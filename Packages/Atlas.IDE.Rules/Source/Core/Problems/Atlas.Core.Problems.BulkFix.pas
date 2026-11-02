@@ -76,14 +76,20 @@ begin
   FSummary := '';
   FFiles := nil;
   if not (AAnswer is TJSONObject) then
+  begin
     Exit;
+  end;
   FSummary := TJSONObject(AAnswer).GetValue<string>('summary', '');
   if not TJSONObject(AAnswer).TryGetValue<TJSONArray>('files', mItems) then
+  begin
     Exit;
+  end;
   for mValue in mItems do
   begin
     if not (mValue is TJSONObject) then
+    begin
       Continue;
+    end;
     mItem := TJSONObject(mValue);
     mFile := Default(TAtlasBulkFixFile);
     mFile.FileName := mItem.GetValue<string>('file', '');
@@ -94,7 +100,9 @@ begin
     // Ohne lesbares Edit lässt sich die Datei nicht anwenden: wie verworfen nicht wählbar.
     mFile.Checked := not mFile.Rejected and not mFile.Edit.IsEmpty;
     if mFile.FileName <> '' then
+    begin
       FFiles := FFiles + [mFile];
+    end;
   end;
 end;
 
@@ -110,13 +118,21 @@ begin
   begin
     if (mFinding.Category = TAtlasFindingCategory.Compiler) or not SameText(mFinding.Rule, ARule) or
       (mFinding.FileName = '') then
+    begin
       Continue;
+    end;
     mKnown := False;
     for mName in Result do
+    begin
       if SameText(mName, mFinding.FileName) then
+      begin
         mKnown := True;
+      end;
+    end;
     if not mKnown then
+    begin
       Result := Result + [mFinding.FileName];
+    end;
   end;
 end;
 
@@ -136,7 +152,9 @@ begin
     mOptions.AddPair('rules', mRules);
     mFiles := TJSONArray.Create;
     for mName in AFiles do
+    begin
       mFiles.Add(mName);
+    end;
     mOptions.AddPair('files', mFiles);
     Result := mArguments.ToJSON;
   finally
@@ -157,7 +175,9 @@ end;
 procedure TAtlasBulkFixPreview.SetChecked(AIndex: Integer; AChecked: Boolean);
 begin
   if (AIndex < 0) or (AIndex > High(FFiles)) then
+  begin
     Exit;
+  end;
   FFiles[AIndex].Checked := AChecked and not FFiles[AIndex].Rejected and not FFiles[AIndex].Edit.IsEmpty;
 end;
 
@@ -167,8 +187,12 @@ var
 begin
   Result := 0;
   for mFile in FFiles do
+  begin
     if mFile.Checked then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasBulkFixPreview.SelectedFixes: Integer;
@@ -177,8 +201,12 @@ var
 begin
   Result := 0;
   for mFile in FFiles do
+  begin
     if mFile.Checked then
+    begin
       Inc(Result, mFile.Fixes);
+    end;
+  end;
 end;
 
 function TAtlasBulkFixPreview.SelectedEdit: TLspWorkspaceEdit;
@@ -187,8 +215,12 @@ var
 begin
   Result := TLspWorkspaceEdit.FromJson(nil);
   for mFile in FFiles do
+  begin
     if mFile.Checked then
+    begin
       Result.Files := Result.Files + mFile.Edit.Files;
+    end;
+  end;
 end;
 
 end.

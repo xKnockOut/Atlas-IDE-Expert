@@ -63,12 +63,18 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   Found := TList<string>.Create;
   try
     for Name in TDirectory.GetFiles(AFolder, '*' + RequestExtension) do
+    begin
       if Name.EndsWith(RequestExtension, True) and not Name.EndsWith(ResultSuffix, True) then
+      begin
         Found.Add(Name);
+      end;
+    end;
     Found.Sort;
     Result := Found.ToArray;
   finally
@@ -86,7 +92,9 @@ begin
   Taken := ChangeFileExt(AFileName, TakenExtension);
   // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen gelöscht, schlägt es fehl.
   if not RenameFile(AFileName, Taken) then
+  begin
     Exit(False);
+  end;
   try
     Text := TFile.ReadAllText(Taken, TEncoding.UTF8);
   except
@@ -102,7 +110,9 @@ begin
     Json.Free;
   end;
   if not Result then
+  begin
     Answer(ExtractFilePath(AFileName), ARequest, False, False, 'Auftrag nicht lesbar');
+  end;
 end;
 
 class procedure TAtlasEditInbox.Answer(const AFolder: string; const ARequest: TAtlasEditRequest; AApplied,
@@ -115,9 +125,13 @@ begin
   try
     Json.AddPair('applied', TJSONBool.Create(AApplied));
     if ANotOpen then
+    begin
       Json.AddPair('notOpen', TJSONBool.Create(True));
+    end;
     if AReason <> '' then
+    begin
       Json.AddPair('reason', AReason);
+    end;
     Text := Json.ToJSON;
   finally
     Json.Free;
@@ -126,10 +140,14 @@ begin
   Temporary := Target + '.tmp';
   TFile.WriteAllText(Temporary, Text, TEncoding.UTF8);
   if FileExists(Target) then
+  begin
     TFile.Delete(Target);
+  end;
   TFile.Move(Temporary, Target);
   if FileExists(TPath.Combine(AFolder, ARequest.Id + TakenExtension)) then
+  begin
     TFile.Delete(TPath.Combine(AFolder, ARequest.Id + TakenExtension));
+  end;
 end;
 
 end.

@@ -165,14 +165,18 @@ begin
   Count := 0;
   Start := 0;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = #10 then
     begin
       Len := Index - 1 - Start;
       if (Len > 0) and (AText[Index - 1] = #13) then
+      begin
         Dec(Len);
+      end;
       Add(Start, Len);
       Start := Index;
     end;
+  end;
   Add(Start, Length(AText) - Start);
   SetLength(Starts, Count);
   SetLength(Lengths, Count);
@@ -201,9 +205,13 @@ begin
   begin
     Middle := (Low + High + 1) div 2;
     if Starts[Middle] <= AOffset then
-      Low := Middle
+    begin
+      Low := Middle;
+    end
     else
+    begin
       High := Middle - 1;
+    end;
   end;
   ALine := Low;
   ACharacter := EnsureRange(AOffset - Starts[Low], 0, Lengths[Low]);
@@ -214,9 +222,13 @@ end;
 function ComparePos(ALine1, ACharacter1, ALine2, ACharacter2: Integer): Integer;
 begin
   if ALine1 <> ALine2 then
-    Result := CompareValue(ALine1, ALine2)
+  begin
+    Result := CompareValue(ALine1, ALine2);
+  end
   else
+  begin
     Result := CompareValue(ACharacter1, ACharacter2);
+  end;
 end;
 
 function IsSpace(C: Char): Boolean;
@@ -247,10 +259,16 @@ var
 begin
   Result := 0;
   for Index := 1 to Min(ACharacter, Length(ALine)) do
+  begin
     if ALine[Index] = #9 then
-      Result := (Result div TabSize(ATabWidth) + 1) * TabSize(ATabWidth)
+    begin
+      Result := (Result div TabSize(ATabWidth) + 1) * TabSize(ATabWidth);
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 /// <summary>Zeichenindex zur Anzeigespalte AColumn, höchstens das Zeilenende.</summary>
@@ -263,9 +281,13 @@ begin
   while (Result < Length(ALine)) and (Column < AColumn) do
   begin
     if ALine[Result + 1] = #9 then
-      Column := (Column div TabSize(ATabWidth) + 1) * TabSize(ATabWidth)
+    begin
+      Column := (Column div TabSize(ATabWidth) + 1) * TabSize(ATabWidth);
+    end
     else
+    begin
       Inc(Column);
+    end;
     Inc(Result);
   end;
 end;
@@ -275,7 +297,9 @@ var
   ASL, ASC, AEL, AEC, BSL, BSC, BEL, BEC: Integer;
 begin
   if not A.HasSelection and not B.HasSelection then
+  begin
     Exit((A.Line = B.Line) and (A.Character = B.Character));
+  end;
   A.Bounds(ASL, ASC, AEL, AEC);
   B.Bounds(BSL, BSC, BEL, BEC);
   Result := (ComparePos(ASL, ASC, BEL, BEC) < 0) and (ComparePos(BSL, BSC, AEL, AEC) < 0);
@@ -290,7 +314,9 @@ begin
   AKept.Bounds(KSL, KSC, KEL, KEC);
   AOther.Bounds(OSL, OSC, OEL, OEC);
   if (ComparePos(OSL, OSC, KSL, KSC) >= 0) and (ComparePos(OEL, OEC, KEL, KEC) <= 0) then
+  begin
     Exit(AKept);
+  end;
   if ComparePos(OSL, OSC, KSL, KSC) < 0 then
   begin
     KSL := OSL;
@@ -303,9 +329,13 @@ begin
   end;
   Backward := ComparePos(AKept.Line, AKept.Character, AKept.AnchorLine, AKept.AnchorCharacter) < 0;
   if Backward then
-    Result := TAtlasCaret.Range(KEL, KEC, KSL, KSC)
+  begin
+    Result := TAtlasCaret.Range(KEL, KEC, KSL, KSC);
+  end
   else
+  begin
     Result := TAtlasCaret.Range(KSL, KSC, KEL, KEC);
+  end;
 end;
 
 /// <summary>Indizes von ACarets nach dem Anfang ihrer Markierung (Textreihenfolge).</summary>
@@ -316,7 +346,9 @@ begin
   Result := nil;
   SetLength(Result, Length(ACarets));
   for Index := 0 to High(ACarets) do
+  begin
     Result[Index] := Index;
+  end;
   for Index := 1 to High(Result) do
   begin
     Value := Result[Index];
@@ -326,7 +358,9 @@ begin
     begin
       ACarets[Result[Inner]].Bounds(SL, SC, EL, EC);
       if ComparePos(SL, SC, VL, VC) <= 0 then
+      begin
         Break;
+      end;
       Result[Inner + 1] := Result[Inner];
       Dec(Inner);
     end;
@@ -343,10 +377,14 @@ begin
   Limit := Min(Length(AOld), Length(ANew));
   Prefix := 0;
   while (Prefix < Limit) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  begin
     Inc(Prefix);
+  end;
   Suffix := 0;
   while (Suffix < Limit - Prefix) and (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  begin
     Inc(Suffix);
+  end;
   AStart := Prefix;
   AStop := Length(AOld) - Suffix;
   AInsert := Copy(ANew, Prefix + 1, Length(ANew) - Suffix - Prefix);
@@ -361,12 +399,20 @@ var
 begin
   Delta := 0;
   for Edit in AEdits do
+  begin
     if Edit.Stop <= AOffset then
-      Delta := Delta + Length(Edit.Text) - (Edit.Stop - Edit.Start)
+    begin
+      Delta := Delta + Length(Edit.Text) - (Edit.Stop - Edit.Start);
+    end
     else if Edit.Start < AOffset then
-      Exit(Edit.Start + Delta + Length(Edit.Text))
+    begin
+      Exit(Edit.Start + Delta + Length(Edit.Text));
+    end
     else
+    begin
       Break;
+    end;
+  end;
   Result := AOffset + Delta;
 end;
 
@@ -399,23 +445,33 @@ begin
   for Index := 0 to High(Sorted) do
   begin
     if (Index > 0) and (Sorted[Index].Start < Sorted[Index - 1].Stop) then
+    begin
       Sorted[Index].Start := Sorted[Index - 1].Stop;
+    end;
     if Sorted[Index].Stop < Sorted[Index].Start then
+    begin
       Sorted[Index].Stop := Sorted[Index].Start;
+    end;
     if (Sorted[Index].Stop > Sorted[Index].Start) or (Sorted[Index].Text <> '') then
+    begin
       Result := True;
+    end;
   end;
   ANewText := AText;
   ANewCarets := ACarets;
   if not Result then
+  begin
     Exit;
+  end;
   ANewText := '';
   Position := 0;
   Delta := 0;
   Edited := nil;
   SetLength(Edited, Length(ACarets));
   for Index := 0 to High(Edited) do
+  begin
     Edited[Index] := -1;
+  end;
   for Index := 0 to High(Sorted) do
   begin
     ANewText := ANewText + Copy(AText, Position + 1, Sorted[Index].Start - Position) + Sorted[Index].Text;
@@ -423,7 +479,9 @@ begin
     Sorted[Index].NewStop := Sorted[Index].Start + Delta + Length(Sorted[Index].Text);
     Delta := Delta + Length(Sorted[Index].Text) - (Sorted[Index].Stop - Sorted[Index].Start);
     if (Sorted[Index].Caret >= 0) and (Sorted[Index].Caret < Length(Edited)) then
+    begin
       Edited[Sorted[Index].Caret] := Sorted[Index].NewStop;
+    end;
   end;
   ANewText := ANewText + Copy(AText, Position + 1, MaxInt);
   OldIndex := TLineIndex.Build(AText);
@@ -464,7 +522,9 @@ function WithLineBreak(const AText, ALineBreak: string): string;
 begin
   Result := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
   if ALineBreak <> #10 then
+  begin
     Result := StringReplace(Result, #10, ALineBreak, [rfReplaceAll]);
+  end;
 end;
 
 function IsWholeWord(const ALine: string; AStart, ALength: Integer): Boolean;
@@ -481,12 +541,16 @@ var
 begin
   Result := False;
   for Caret in ACarets do
+  begin
     if Caret.HasSelection then
     begin
       Caret.Bounds(SL, SC, EL, EC);
       if (ComparePos(ALine, AStart, EL, EC) < 0) and (ComparePos(SL, SC, ALine, AStop) < 0) then
+      begin
         Exit(True);
+      end;
     end;
+  end;
 end;
 
 /// <summary>Nächstes Vorkommen von ANeedle ab (AFromLine, AFromCharacter), am Dateiende von vorn; Stellen, die
@@ -501,19 +565,27 @@ begin
   ALine := 0;
   ACharacter := 0;
   if (ANeedle = '') or (Length(ALines) = 0) then
+  begin
     Exit;
+  end;
   Needle := ANeedle;
   if not AMatchCase then
+  begin
     Needle := AnsiLowerCase(ANeedle);
+  end;
   for Pass := 0 to Length(ALines) do
   begin
     Line := (EnsureRange(AFromLine, 0, High(ALines)) + Pass) mod Length(ALines);
     From := 0;
     if Pass = 0 then
+    begin
       From := Max(0, AFromCharacter);
+    end;
     Hay := ALines[Line];
     if not AMatchCase then
+    begin
       Hay := AnsiLowerCase(Hay);
+    end;
     Found := Pos(Needle, Hay, From + 1);
     while Found > 0 do
     begin
@@ -540,16 +612,24 @@ begin
   if (Index >= Length(ALine)) or not TTextChars.IsIdentChar(ALine[Index + 1]) then
   begin
     if (Index > 0) and TTextChars.IsIdentChar(ALine[Index]) then
-      Dec(Index)
+    begin
+      Dec(Index);
+    end
     else
+    begin
       Exit(False);
+    end;
   end;
   AStart := Index;
   while (AStart > 0) and TTextChars.IsIdentChar(ALine[AStart]) do
+  begin
     Dec(AStart);
+  end;
   AStop := Index + 1;
   while (AStop < Length(ALine)) and TTextChars.IsIdentChar(ALine[AStop + 1]) do
+  begin
     Inc(AStop);
+  end;
   Result := True;
 end;
 
@@ -565,12 +645,16 @@ begin
   ACharacter := EnsureRange(ACharacter, 0, Length(Text));
   Column := AColumn;
   if Column < 0 then
+  begin
     Column := DisplayColumn(Text, ACharacter, ATabWidth);
+  end;
   AColumn := -1;
   case AMove of
     TAtlasCaretMove.Left:
       if ACharacter > 0 then
-        Dec(ACharacter)
+      begin
+        Dec(ACharacter);
+      end
       else if ALine > 0 then
       begin
         Dec(ALine);
@@ -578,7 +662,9 @@ begin
       end;
     TAtlasCaretMove.Right:
       if ACharacter < Length(Text) then
-        Inc(ACharacter)
+      begin
+        Inc(ACharacter);
+      end
       else if ALine < High(ALines) then
       begin
         Inc(ALine);
@@ -588,7 +674,9 @@ begin
       begin
         AColumn := Column;
         if ALine = 0 then
-          ACharacter := 0
+        begin
+          ACharacter := 0;
+        end
         else
         begin
           Dec(ALine);
@@ -599,7 +687,9 @@ begin
       begin
         AColumn := Column;
         if ALine = High(ALines) then
-          ACharacter := Length(Text)
+        begin
+          ACharacter := Length(Text);
+        end
         else
         begin
           Inc(ALine);
@@ -623,13 +713,23 @@ begin
       begin
         Index := ACharacter + 1;
         if TTextChars.IsIdentChar(Text[Index]) then
+        begin
           while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
-            Inc(Index)
-        else if not IsSpace(Text[Index]) then
-          while (Index <= Length(Text)) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
+          begin
             Inc(Index);
+          end;
+        end
+        else if not IsSpace(Text[Index]) then
+        begin
+          while (Index <= Length(Text)) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
+          begin
+            Inc(Index);
+          end;
+        end;
         while (Index <= Length(Text)) and IsSpace(Text[Index]) do
+        begin
           Inc(Index);
+        end;
         ACharacter := Index - 1;
       end;
     TAtlasCaretMove.WordLeft:
@@ -645,15 +745,25 @@ begin
       begin
         Index := ACharacter;
         while (Index >= 1) and IsSpace(Text[Index]) do
+        begin
           Dec(Index);
+        end;
         if Index >= 1 then
         begin
           if TTextChars.IsIdentChar(Text[Index]) then
+          begin
             while (Index >= 1) and TTextChars.IsIdentChar(Text[Index]) do
-              Dec(Index)
-          else
-            while (Index >= 1) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
+            begin
               Dec(Index);
+            end;
+          end
+          else
+          begin
+            while (Index >= 1) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
+            begin
+              Dec(Index);
+            end;
+          end;
         end;
         ACharacter := Index;
       end;
@@ -716,13 +826,17 @@ begin
     begin
       Found := -1;
       for Index := 0 to High(Kept) do
+      begin
         if Overlaps(Kept[Index], Caret) then
         begin
           Found := Index;
           Break;
         end;
+      end;
       if Found < 0 then
-        Kept := Kept + [Caret]
+      begin
+        Kept := Kept + [Caret];
+      end
       else
       begin
         Kept[Found] := Union(Kept[Found], Caret);
@@ -741,13 +855,21 @@ begin
   Result := nil;
   Found := False;
   for Index := 0 to High(ACarets) do
+  begin
     if (Index > 0) and not Found and not ACarets[Index].HasSelection and (ACarets[Index].Line = ALine) and
       (ACarets[Index].Character = ACharacter) then
-      Found := True
+    begin
+      Found := True;
+    end
     else
+    begin
       Result := Result + [ACarets[Index]];
+    end;
+  end;
   if not Found then
+  begin
     Result := Merge(Result + [TAtlasCaret.At(ALine, ACharacter)]);
+  end;
 end;
 
 class function TAtlasMultiCursor.Move(const ALines: TArray<string>; const ACarets: TAtlasCarets;
@@ -767,9 +889,13 @@ begin
     begin
       Caret.Bounds(SL, SC, EL, EC);
       if AMove = TAtlasCaretMove.Left then
-        Result[Index] := TAtlasCaret.At(SL, SC)
+      begin
+        Result[Index] := TAtlasCaret.At(SL, SC);
+      end
       else
+      begin
         Result[Index] := TAtlasCaret.At(EL, EC);
+      end;
       Continue;
     end;
     Line := Caret.Line;
@@ -782,7 +908,9 @@ begin
       Caret.Character := Character;
     end
     else
+    begin
       Caret := TAtlasCaret.At(Line, Character);
+    end;
     Caret.Column := Column;
     Result[Index] := Caret;
   end;
@@ -800,28 +928,42 @@ begin
   AResult := Copy(ACarets);
   Result := False;
   if Length(ACarets) = 0 then
+  begin
     Exit;
+  end;
   Lines := SafeLines(ALines);
   Pick := 0;
   for Index := 1 to High(ACarets) do
+  begin
     if (AUp and (ACarets[Index].Line < ACarets[Pick].Line)) or
       (not AUp and (ACarets[Index].Line > ACarets[Pick].Line)) then
+    begin
       Pick := Index;
+    end;
+  end;
   Target := ACarets[Pick].Line + 1;
   if AUp then
+  begin
     Target := ACarets[Pick].Line - 1;
+  end;
   if (Target < 0) or (Target > High(Lines)) then
+  begin
     Exit;
+  end;
   Column := ACarets[Pick].Column;
   if Column < 0 then
+  begin
     Column := DisplayColumn(Lines[EnsureRange(ACarets[Pick].Line, 0, High(Lines))], ACarets[Pick].Character,
       ATabWidth);
+  end;
   Caret := TAtlasCaret.At(Target, CharacterAt(Lines[Target], Column, ATabWidth));
   Caret.Column := Column;
   Merged := Merge(ACarets + [Caret]);
   Result := Length(Merged) > Length(ACarets);
   if Result then
+  begin
     AResult := Merged;
+  end;
 end;
 
 class function TAtlasMultiCursor.LineEnds(const ALines: TArray<string>; const ACaret: TAtlasCaret): TAtlasCarets;
@@ -835,9 +977,13 @@ begin
   SL := EnsureRange(SL, 0, High(Lines));
   EL := EnsureRange(EL, 0, High(Lines));
   if (EC = 0) and (EL > SL) then
+  begin
     Dec(EL);
+  end;
   for Line := SL to EL do
+  begin
     Result := Result + [TAtlasCaret.At(Line, Length(Lines[Line]))];
+  end;
 end;
 
 class function TAtlasMultiCursor.NextOccurrence(const ALines: TArray<string>; const ACarets: TAtlasCarets;
@@ -851,7 +997,9 @@ begin
   AResult := Copy(ACarets);
   Result := TAtlasOccurrence.None;
   if Length(ACarets) = 0 then
+  begin
     Exit;
+  end;
   Lines := SafeLines(ALines);
   if (Length(ACarets) = 1) and not ACarets[0].HasSelection then
   begin
@@ -866,7 +1014,9 @@ begin
   end;
   Last := ACarets[High(ACarets)];
   if not Last.HasSelection or (Last.AnchorLine <> Last.Line) or (Last.Line < 0) or (Last.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   Last.Bounds(SL, SC, EL, EC);
   Needle := Copy(Lines[SL], SC + 1, EC - SC);
   if Find(Lines, ACarets, Needle, EL, EC, AMatchCase, AWholeWord, FoundLine, FoundCharacter) then
@@ -888,17 +1038,23 @@ begin
   AResult := Copy(ACarets);
   Result := Length(ACarets) >= 2;
   if not Result then
+  begin
     Exit;
+  end;
   Lines := SafeLines(ALines);
   Last := ACarets[High(ACarets)];
   Rest := Copy(ACarets, 0, High(ACarets));
   AResult := Rest;
   if not Last.HasSelection or (Last.AnchorLine <> Last.Line) or (Last.Line < 0) or (Last.Line > High(Lines)) then
+  begin
     Exit;
+  end;
   Last.Bounds(SL, SC, EL, EC);
   Needle := Copy(Lines[SL], SC + 1, EC - SC);
   if Find(Lines, Rest, Needle, EL, EC, AMatchCase, AWholeWord, FoundLine, FoundCharacter) then
+  begin
     AResult := Rest + [TAtlasCaret.Range(FoundLine, FoundCharacter, FoundLine, FoundCharacter + Length(Needle))];
+  end;
 end;
 
 class function TAtlasMultiCursor.Edit(const AText: string; const ACarets: TAtlasCarets;
@@ -921,23 +1077,35 @@ begin
         Edits := Edits + [MakeEdit(Start, Stop, AInsert, Caret)];
       TAtlasCaretEditKind.Backspace:
         if Start < Stop then
-          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)]
+        begin
+          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)];
+        end
         else if Start > 0 then
         begin
           if (Start >= 2) and (AText[Start - 1] = #13) and (AText[Start] = #10) then
-            Edits := Edits + [MakeEdit(Start - 2, Start, '', Caret)]
+          begin
+            Edits := Edits + [MakeEdit(Start - 2, Start, '', Caret)];
+          end
           else
+          begin
             Edits := Edits + [MakeEdit(Start - 1, Start, '', Caret)];
+          end;
         end;
       TAtlasCaretEditKind.Delete:
         if Start < Stop then
-          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)]
+        begin
+          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)];
+        end
         else if Start < Length(AText) then
         begin
           if (AText[Start + 1] = #13) and (Start + 2 <= Length(AText)) and (AText[Start + 2] = #10) then
-            Edits := Edits + [MakeEdit(Start, Start + 2, '', Caret)]
+          begin
+            Edits := Edits + [MakeEdit(Start, Start + 2, '', Caret)];
+          end
           else
+          begin
             Edits := Edits + [MakeEdit(Start, Start + 1, '', Caret)];
+          end;
         end;
       TAtlasCaretEditKind.NewLine:
         begin
@@ -946,7 +1114,9 @@ begin
           Indent := 0;
           while (Indent < Start - Index.Starts[SL]) and (Indent < Length(LineText)) and
             IsSpace(LineText[Indent + 1]) do
+          begin
             Inc(Indent);
+          end;
           Edits := Edits + [MakeEdit(Start, Stop, LineBreakOf(AText) + Copy(LineText, 1, Indent), Caret)];
         end;
     end;
@@ -974,7 +1144,9 @@ begin
   begin
     Part := Whole;
     if (Length(ACarets) > 1) and (Length(Parts) = Length(ACarets)) then
+    begin
       Part := Parts[Rank];
+    end;
     ACarets[Order[Rank]].Bounds(SL, SC, EL, EC);
     Edits := Edits + [MakeEdit(Index.Offset(SL, SC), Index.Offset(EL, EC), Part, Order[Rank])];
   end;
@@ -987,9 +1159,13 @@ var
 begin
   Parts := Lines(AClipboard);
   if (Length(Parts) > 1) and (Parts[High(Parts)] = '') then
+  begin
     SetLength(Parts, Length(Parts) - 1);
+  end;
   if Length(Parts) = ACount then
-    Result := Parts
+  begin
+    Result := Parts;
+  end
   else
   begin
     Result := nil;
@@ -1011,15 +1187,19 @@ begin
   Order := TextOrder(ACarets);
   First := True;
   for Rank := 0 to High(Order) do
+  begin
     if ACarets[Order[Rank]].HasSelection then
     begin
       ACarets[Order[Rank]].Bounds(SL, SC, EL, EC);
       Start := Index.Offset(SL, SC);
       if not First then
+      begin
         Result := Result + ALineBreak;
+      end;
       Result := Result + Copy(AText, Start + 1, Index.Offset(EL, EC) - Start);
       First := False;
     end;
+  end;
 end;
 
 class function TAtlasMultiCursor.Shift(const AOldText, ANewText: string;
@@ -1033,17 +1213,25 @@ var
   function Moved(AOffset: Integer): Integer;
   begin
     if AOffset < Start then
-      Result := AOffset
+    begin
+      Result := AOffset;
+    end
     else if AOffset >= Stop then
-      Result := AOffset + Length(Insert) - (Stop - Start)
+    begin
+      Result := AOffset + Length(Insert) - (Stop - Start);
+    end
     else
+    begin
       Result := Start + Length(Insert);
+    end;
   end;
 
 begin
   Result := Copy(ACarets);
   if AOldText = ANewText then
+  begin
     Exit;
+  end;
   Difference(AOldText, ANewText, Start, Stop, Insert);
   OldIndex := TLineIndex.Build(AOldText);
   NewIndex := TLineIndex.Build(ANewText);
@@ -1073,20 +1261,27 @@ begin
   ANewCarets := Copy(ACarets);
   Result := False;
   if (Length(ACarets) = 0) or ACarets[0].HasSelection or (AOldText = ANewText) then
+  begin
     Exit;
+  end;
   Difference(AOldText, ANewText, Start, Stop, Insert);
   Deleted := Copy(AOldText, Start + 1, Stop - Start);
   if (Pos(#10, Deleted) > 0) or (Pos(#13, Deleted) > 0) then
+  begin
     Exit;
+  end;
   Index := TLineIndex.Build(AOldText);
   Main := Index.Offset(ACarets[0].Line, ACarets[0].Character);
   if (Main < Start) or (Main > Stop) then
+  begin
     Exit;
+  end;
   Before := Main - Start;
   After := Stop - Main;
   Edits := nil;
   Edits := Edits + [MakeEdit(Start, Stop, Insert, 0)];
   for Caret := 1 to High(ACarets) do
+  begin
     if not ACarets[Caret].HasSelection then
     begin
       Offset := Index.Offset(ACarets[Caret].Line, ACarets[Caret].Character);
@@ -1094,6 +1289,7 @@ begin
       LineStop := LineStart + Index.Lengths[EnsureRange(ACarets[Caret].Line, 0, Index.Count - 1)];
       Edits := Edits + [MakeEdit(Max(LineStart, Offset - Before), Min(LineStop, Offset + After), Insert, Caret)];
     end;
+  end;
   ApplyEdits(AOldText, ACarets, Edits, AText, ANewCarets);
   Result := True;
 end;
@@ -1107,7 +1303,9 @@ begin
   Result := nil;
   SetLength(Result, Index.Count);
   for Line := 0 to Index.Count - 1 do
+  begin
     Result[Line] := Copy(AText, Index.Starts[Line] + 1, Index.Lengths[Line]);
+  end;
 end;
 
 class function TAtlasMultiCursor.LineBreakOf(const AText: string): string;

@@ -136,7 +136,9 @@ end;
 class function TAtlasNavHistory.IsJump(const AFrom, ATo: TAtlasNavPlace): Boolean;
 begin
   if (AFrom.FileName = '') or (ATo.FileName = '') then
+  begin
     Exit(False);
+  end;
   Result := not SameText(AFrom.FileName, ATo.FileName) or (Abs(ATo.Line - AFrom.Line) > JumpLines);
 end;
 
@@ -144,23 +146,33 @@ class function TAtlasNavHistory.Excerpt(const ALineText: string): string;
 begin
   Result := Trim(ALineText.Replace(#9, ' '));
   if Length(Result) > MaxExcerpt then
+  begin
     Result := Copy(Result, 1, MaxExcerpt - 1) + '…';
+  end;
 end;
 
 class procedure TAtlasNavHistory.Push(AList: TList<TAtlasNavPlace>; const APlace: TAtlasNavPlace);
 begin
   if (AList.Count > 0) and AList.Last.SameLine(APlace) then
-    AList[AList.Count - 1] := APlace
+  begin
+    AList[AList.Count - 1] := APlace;
+  end
   else
+  begin
     AList.Add(APlace);
+  end;
   while AList.Count > MaxEntries do
+  begin
     AList.Delete(0);
+  end;
 end;
 
 procedure TAtlasNavHistory.Jumped(const AFrom, ATo: TAtlasNavPlace);
 begin
   if not IsJump(AFrom, ATo) then
+  begin
     Exit;
+  end;
   Push(FBack, AFrom);
   FForward.Clear;
 end;
@@ -169,22 +181,30 @@ function TAtlasNavHistory.StepBack(const ACurrent: TAtlasNavPlace; out ATarget: 
 begin
   Result := FBack.Count > 0;
   if not Result then
+  begin
     Exit;
+  end;
   ATarget := FBack.Last;
   FBack.Delete(FBack.Count - 1);
   if ACurrent.FileName <> '' then
+  begin
     Push(FForward, ACurrent);
+  end;
 end;
 
 function TAtlasNavHistory.StepForward(const ACurrent: TAtlasNavPlace; out ATarget: TAtlasNavPlace): Boolean;
 begin
   Result := FForward.Count > 0;
   if not Result then
+  begin
     Exit;
+  end;
   ATarget := FForward.Last;
   FForward.Delete(FForward.Count - 1);
   if ACurrent.FileName <> '' then
+  begin
     Push(FBack, ACurrent);
+  end;
 end;
 
 procedure TAtlasNavHistory.Edited(const APlace: TAtlasNavPlace);
@@ -198,7 +218,9 @@ begin
   end;
   FEdits.Add(APlace);
   while FEdits.Count > MaxEntries do
+  begin
     FEdits.Delete(0);
+  end;
 end;
 
 function TAtlasNavHistory.LastEdit(const ACurrent: TAtlasNavPlace; out ATarget: TAtlasNavPlace): Boolean;
@@ -207,16 +229,22 @@ var
 begin
   Result := FEdits.Count > 0;
   if not Result then
+  begin
     Exit;
+  end;
   if FEditCursor < 0 then
   begin
     // Erster Aufruf: die jüngste Änderung, außer der Cursor steht schon dort.
     Index := FEdits.Count - 1;
     if FEdits[Index].SameLine(ACurrent) and (Index > 0) then
+    begin
       Dec(Index);
+    end;
   end
   else
+  begin
     Index := Max(0, FEditCursor - 1);
+  end;
   FEditCursor := Index;
   ATarget := FEdits[Index];
 end;
@@ -231,12 +259,18 @@ begin
   begin
     Place := AList[Index];
     if not SameText(Place.FileName, AFileName) or (Place.Line <= AAnchor) then
+    begin
       Continue;
+    end;
     if (ADelta < 0) and (Place.Line <= AAnchor - ADelta) then
+    begin
       // In den gelöschten Zeilen: an die Stelle der Löschung.
-      Place.Line := AAnchor
+      Place.Line := AAnchor;
+    end
     else
+    begin
       Place.Line := Place.Line + ADelta;
+    end;
     AList[Index] := Place;
   end;
 end;
@@ -244,7 +278,9 @@ end;
 procedure TAtlasNavHistory.LinesChanged(const AFileName: string; AAnchor, ADelta: Integer);
 begin
   if ADelta = 0 then
+  begin
     Exit;
+  end;
   ShiftList(FBack, AFileName, AAnchor, ADelta);
   ShiftList(FForward, AFileName, AAnchor, ADelta);
   ShiftList(FEdits, AFileName, AAnchor, ADelta);
@@ -290,24 +326,34 @@ begin
     TAtlasNavKind.Back:
       begin
         if (AEntry.Index < 0) or (AEntry.Index >= FBack.Count) then
+        begin
           Exit;
+        end;
         // Zurückspulen: alles über dem Eintrag wandert auf den Vor-Stapel.
         while (FBack.Count > AEntry.Index + 1) and StepBack(Current, Next) do
+        begin
           Current := Next;
+        end;
         Result := StepBack(Current, ATarget);
       end;
     TAtlasNavKind.Ahead:
       begin
         if (AEntry.Index < 0) or (AEntry.Index >= FForward.Count) then
+        begin
           Exit;
+        end;
         while (FForward.Count > AEntry.Index + 1) and StepForward(Current, Next) do
+        begin
           Current := Next;
+        end;
         Result := StepForward(Current, ATarget);
       end;
     TAtlasNavKind.Edit:
       begin
         if (AEntry.Index < 0) or (AEntry.Index >= FEdits.Count) then
+        begin
           Exit;
+        end;
         ATarget := FEdits[AEntry.Index];
         Jumped(ACurrent, ATarget);
         Result := True;

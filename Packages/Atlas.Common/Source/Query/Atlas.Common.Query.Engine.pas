@@ -155,6 +155,16 @@ type
     function CallsTarget(AElement: TQueryElement; const AName: string): Boolean;
     function HasAttribute(AElement: TQueryElement; const AName: string): Boolean;
     procedure CheckCancelled;
+    procedure AddUnitElements(AUnit: TQueryUnit; AEntity: TQueryEntity; AList: TObjectList<TQueryElement>;
+      ASeen: TDictionary<string, Integer>);
+    function TryPlainValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+    function TryCountValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+    function LinesValue(AElement: TQueryElement): TQueryValue;
+    function TryMetricValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+    function UsedByValue(AElement: TQueryElement): TQueryValue;
+    function TryRelationValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+    function LogicHolds(AElement: TQueryElement; ANode: TQueryLogicNode): Boolean;
+    function PredicateHolds(AElement: TQueryElement; ANode: TQueryPredicateNode): Boolean;
   public
     constructor Create(const ASource: TQuerySource; ACollector: TMetricsCollector);
     destructor Destroy; override;
@@ -406,19 +416,13 @@ begin
     ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
 end;
 
-procedure TQueryFacts.LoadCounts(AUnit: TQueryUnit);
+/// <summary>Trägt die Typen der Unit in Types ein und zählt die Klassen.</summary>
+procedure CollectTypes(AUnit: TQueryUnit);
 var
-  mIndex, mType: Integer;
+  mIndex: Integer;
   mSymbol: TIndexSymbol;
-  mKey: string;
-  mCounts: TTypeCounts;
   mClasses: TDictionary<string, Boolean>;
 begin
-  if AUnit.HasCounts then
-  begin
-    Exit;
-  end;
-  AUnit.HasCounts := True;
   mClasses := TDictionary<string, Boolean>.Create;
   try
     for mIndex := 0 to High(AUnit.Data.Symbols) do
@@ -439,6 +443,65 @@ begin
   finally
     mClasses.Free;
   end;
+end;
+
+/// <summary>Steht das Symbol AIndex (kein Typ) als Mitglied im Rumpf seines Typs oder ohne Typ in der Unit?
+/// </summary>
+function IsDeclaredMember(AUnit: TQueryUnit; AIndex: Integer): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mType: Integer;
+begin
+  mSymbol := AUnit.Data.Symbols[AIndex];
+  // Der Index führt auch die Rümpfe im implementation-Teil (procedure TFoo.Bar) als Methode von TFoo; Mitglied
+  // ist nur, was im Rumpf des Typs steht.
+  Result := (mSymbol.Container = '') or (mSymbol.FileName <> '') or
+    (AUnit.Types.TryGetValue(UpperCase(mSymbol.Container), mType) and
+    RangeHas(AUnit.Data.Symbols[mType].Range, mSymbol.Range.StartPos));
+end;
+
+/// <summary>Zählt das deklarierte Mitglied ASymbol bei seinem Typ.</summary>
+procedure CountMember(AUnit: TQueryUnit; const ASymbol: TIndexSymbol);
+var
+  mKey: string;
+  mCounts: TTypeCounts;
+begin
+  mKey := UpperCase(ASymbol.Container);
+  if not AUnit.Counts.TryGetValue(mKey, mCounts) then
+  begin
+    mCounts := Default(TTypeCounts);
+  end;
+  if ASymbol.Kind in cMethodKinds then
+  begin
+    Inc(mCounts.Methods);
+    Inc(AUnit.RoutineCount);
+    if ASymbol.HasDirective('override') then
+    begin
+      Inc(mCounts.Overrides);
+    end;
+  end
+  else if ASymbol.Kind = TIndexSymbolKind.Field then
+  begin
+    Inc(mCounts.Fields);
+  end
+  else
+  begin
+    Inc(mCounts.Properties);
+  end;
+  AUnit.Counts.AddOrSetValue(mKey, mCounts);
+end;
+
+procedure TQueryFacts.LoadCounts(AUnit: TQueryUnit);
+var
+  mIndex: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  if AUnit.HasCounts then
+  begin
+    Exit;
+  end;
+  AUnit.HasCounts := True;
+  CollectTypes(AUnit);
   SetLength(AUnit.Declared, Length(AUnit.Data.Symbols));
   for mIndex := 0 to High(AUnit.Data.Symbols) do
   begin
@@ -447,56 +510,65 @@ begin
     begin
       Continue;
     end;
-    if mSymbol.Container = '' then
+    AUnit.Declared[mIndex] := IsDeclaredMember(AUnit, mIndex);
+    if AUnit.Declared[mIndex] and (mSymbol.Container <> '') and
+      (mSymbol.Kind in cMethodKinds + [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
     begin
-      AUnit.Declared[mIndex] := True;
+      CountMember(AUnit, mSymbol);
+    end;
+  end;
+end;
+
+/// <summary>Stellen in AMetrics je Name (groß, ohne Typargumente).</summary>
+function MetricsByName(const AMetrics: TArray<TRoutineMetrics>): TObjectDictionary<string, TList<Integer>>;
+var
+  mIndex: Integer;
+  mKey: string;
+  mList: TList<Integer>;
+begin
+  Result := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
+  for mIndex := 0 to High(AMetrics) do
+  begin
+    mKey := UpperCase(WithoutTypeArgs(AMetrics[mIndex].Name));
+    if not Result.TryGetValue(mKey, mList) then
+    begin
+      mList := TList<Integer>.Create;
+      Result.Add(mKey, mList);
+    end;
+    mList.Add(mIndex);
+  end;
+end;
+
+/// <summary>Erste freie Stelle aus ACandidates, zuerst mit AParameters Parametern; -1 = keine.</summary>
+function ChooseMetric(AUnit: TQueryUnit; ACandidates: TList<Integer>; AUsed: TDictionary<Integer, Boolean>;
+  AParameters: Integer): Integer;
+var
+  mCandidate: Integer;
+begin
+  Result := -1;
+  for mCandidate in ACandidates do
+  begin
+    if AUsed.ContainsKey(mCandidate) then
+    begin
       Continue;
     end;
-    // Der Index führt auch die Rümpfe im implementation-Teil (procedure TFoo.Bar) als Methode von TFoo; Mitglied
-    // ist nur, was im Rumpf des Typs steht.
-    AUnit.Declared[mIndex] := (mSymbol.FileName <> '') or
-      (AUnit.Types.TryGetValue(UpperCase(mSymbol.Container), mType) and
-      RangeHas(AUnit.Data.Symbols[mType].Range, mSymbol.Range.StartPos));
-    if not AUnit.Declared[mIndex] then
+    if AUnit.Metrics[mCandidate].Values[TMetricKind.ParameterCount] = AParameters then
     begin
-      Continue;
+      Exit(mCandidate);
     end;
-    if not (mSymbol.Kind in cMethodKinds + [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+    if Result < 0 then
     begin
-      Continue;
+      Result := mCandidate;
     end;
-    mKey := UpperCase(mSymbol.Container);
-    if not AUnit.Counts.TryGetValue(mKey, mCounts) then
-    begin
-      mCounts := Default(TTypeCounts);
-    end;
-    if mSymbol.Kind in cMethodKinds then
-    begin
-      Inc(mCounts.Methods);
-      Inc(AUnit.RoutineCount);
-      if mSymbol.HasDirective('override') then
-      begin
-        Inc(mCounts.Overrides);
-      end;
-    end
-    else if mSymbol.Kind = TIndexSymbolKind.Field then
-    begin
-      Inc(mCounts.Fields);
-    end
-    else
-    begin
-      Inc(mCounts.Properties);
-    end;
-    AUnit.Counts.AddOrSetValue(mKey, mCounts);
   end;
 end;
 
 procedure TQueryFacts.LoadMetrics(AUnit: TQueryUnit);
 var
-  mText, mKey: string;
+  mText: string;
   mByName: TObjectDictionary<string, TList<Integer>>;
   mList: TList<Integer>;
-  mIndex, mCandidate, mChosen: Integer;
+  mIndex, mChosen: Integer;
   mUsed: TDictionary<Integer, Boolean>;
   mSymbol: TIndexSymbol;
 begin
@@ -510,59 +582,25 @@ begin
     Exit;
   end;
   AUnit.Metrics := FCollector.FileRoutines(AUnit.Data.FileName, mText);
-  mByName := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
+  mByName := MetricsByName(AUnit.Metrics);
   mUsed := TDictionary<Integer, Boolean>.Create;
   try
-    for mIndex := 0 to High(AUnit.Metrics) do
-    begin
-      mKey := UpperCase(WithoutTypeArgs(AUnit.Metrics[mIndex].Name));
-      if not mByName.TryGetValue(mKey, mList) then
-      begin
-        mList := TList<Integer>.Create;
-        mByName.Add(mKey, mList);
-      end;
-      mList.Add(mIndex);
-    end;
     // Alle Routinen der Unit auf einmal zuordnen, damit Überladungen unabhängig von der Reihenfolge der Abfrage
     // dieselbe Implementierung bekommen: zuerst die mit gleicher Parameterzahl, sonst die erste freie.
     for mIndex := 0 to High(AUnit.Data.Symbols) do
     begin
       mSymbol := AUnit.Data.Symbols[mIndex];
-      if not (mSymbol.Kind in cRoutineKinds) or (mSymbol.FileName <> '') then
+      if not (mSymbol.Kind in cRoutineKinds) or (mSymbol.FileName <> '') or
+        not mByName.TryGetValue(UpperCase(WithoutTypeArgs(mSymbol.QualifiedName)), mList) then
       begin
         Continue;
       end;
-      if not mByName.TryGetValue(UpperCase(WithoutTypeArgs(mSymbol.QualifiedName)), mList) then
+      mChosen := ChooseMetric(AUnit, mList, mUsed, mSymbol.MaxArgs);
+      if mChosen >= 0 then
       begin
-        Continue;
+        mUsed.Add(mChosen, True);
+        AUnit.MetricOf.AddOrSetValue(mIndex, mChosen);
       end;
-      mChosen := -1;
-      for mCandidate in mList do
-      begin
-        if not mUsed.ContainsKey(mCandidate) and
-          (AUnit.Metrics[mCandidate].Values[TMetricKind.ParameterCount] = mSymbol.MaxArgs) then
-        begin
-          mChosen := mCandidate;
-          Break;
-        end;
-      end;
-      if mChosen < 0 then
-      begin
-        for mCandidate in mList do
-        begin
-          if not mUsed.ContainsKey(mCandidate) then
-          begin
-            mChosen := mCandidate;
-            Break;
-          end;
-        end;
-      end;
-      if mChosen < 0 then
-      begin
-        Continue;
-      end;
-      mUsed.Add(mChosen, True);
-      AUnit.MetricOf.AddOrSetValue(mIndex, mChosen);
     end;
   finally
     mUsed.Free;
@@ -812,12 +850,31 @@ begin
   end;
 end;
 
+/// <summary>Vorfahren aller Interfaces namens AName im Index, als Kurznamen.</summary>
+function InterfaceAncestors(const AIndex: ISymbolIndex; const AName: string): TArray<string>;
+var
+  mLocation: TSymbolLocation;
+  mAncestor: string;
+begin
+  Result := nil;
+  for mLocation in AIndex.FindSymbols(AName) do
+  begin
+    if mLocation.Symbol.Kind <> TIndexSymbolKind.InterfaceType then
+    begin
+      Continue;
+    end;
+    for mAncestor in mLocation.Symbol.Ancestors do
+    begin
+      Result := Result + [TCodeQueryEngine.ShortName(mAncestor)];
+    end;
+  end;
+end;
+
 function TQueryFacts.InterfaceClosure(const AName: string): TArray<string>;
 var
   mKey, mName, mAncestor: string;
   mQueue: TQueue<string>;
   mSeen: TDictionary<string, Boolean>;
-  mLocation: TSymbolLocation;
 begin
   mKey := UpperCase(TCodeQueryEngine.ShortName(AName));
   if FInterfaceNames.TryGetValue(mKey, Result) then
@@ -838,15 +895,9 @@ begin
       end;
       mSeen.Add(UpperCase(mName), True);
       Result := Result + [mName];
-      for mLocation in FSource.Index.FindSymbols(mName) do
+      for mAncestor in InterfaceAncestors(FSource.Index, mName) do
       begin
-        if mLocation.Symbol.Kind = TIndexSymbolKind.InterfaceType then
-        begin
-          for mAncestor in mLocation.Symbol.Ancestors do
-          begin
-            mQueue.Enqueue(TCodeQueryEngine.ShortName(mAncestor));
-          end;
-        end;
+        mQueue.Enqueue(mAncestor);
       end;
     end;
   finally
@@ -856,48 +907,62 @@ begin
   FInterfaceNames.Add(mKey, Result);
 end;
 
+function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Nennt die Typ-Kette AChain den Vorfahren ATarget (Kurzname)? Der erste Eintrag ist der Typ selbst.
+/// </summary>
+function ChainNames(const AChain: TArray<TSymbolLocation>; const ATarget: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to High(AChain) do
+  begin
+    // Der erste Eintrag ist der Typ selbst; er erbt nicht von sich. Der Vorfahr, wie er geschrieben ist, zählt
+    // auch, wenn er selbst nicht im Index steht (VCL nicht indiziert).
+    if ((mIndex > 0) and SameText(TCodeQueryEngine.ShortName(AChain[mIndex].Symbol.Name), ATarget)) or
+      ((Length(AChain[mIndex].Symbol.Ancestors) > 0) and
+      SameText(TCodeQueryEngine.ShortName(AChain[mIndex].Symbol.Ancestors[0]), ATarget)) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TQueryFacts.Inherits(AElement: TQueryElement; const AName: string): Boolean;
 var
   mType: TSymbolLocation;
-  mChain: TArray<TSymbolLocation>;
-  mTarget, mAncestor, mName: string;
-  mIndex: Integer;
+  mTarget, mAncestor: string;
 begin
+  Result := False;
   if not TypeOf(AElement, mType) then
   begin
-    Exit(False);
+    Exit;
   end;
   mTarget := TCodeQueryEngine.ShortName(AName);
-  if mType.Symbol.Kind = TIndexSymbolKind.InterfaceType then
+  if mType.Symbol.Kind <> TIndexSymbolKind.InterfaceType then
   begin
-    for mAncestor in mType.Symbol.Ancestors do
-    begin
-      for mName in InterfaceClosure(mAncestor) do
-      begin
-        if SameText(mName, mTarget) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-    Exit(False);
+    Exit(ChainNames(Chain(AElement.Owner, mType), mTarget));
   end;
-  mChain := Chain(AElement.Owner, mType);
-  for mIndex := 0 to High(mChain) do
+  for mAncestor in mType.Symbol.Ancestors do
   begin
-    // Der erste Eintrag ist der Typ selbst; er erbt nicht von sich.
-    if (mIndex > 0) and SameText(TCodeQueryEngine.ShortName(mChain[mIndex].Symbol.Name), mTarget) then
-    begin
-      Exit(True);
-    end;
-    // Der Vorfahr, wie er geschrieben ist: zählt auch, wenn er selbst nicht im Index steht (VCL nicht indiziert).
-    if (Length(mChain[mIndex].Symbol.Ancestors) > 0) and
-      SameText(TCodeQueryEngine.ShortName(mChain[mIndex].Symbol.Ancestors[0]), mTarget) then
+    if ContainsName(InterfaceClosure(mAncestor), mTarget) then
     begin
       Exit(True);
     end;
   end;
-  Result := False;
 end;
 
 function TQueryFacts.Implements(AElement: TQueryElement; const AName: string): Boolean;
@@ -992,29 +1057,113 @@ begin
   Result := False;
 end;
 
+/// <summary>Gehört ASymbol aus AUnit zur Menge AEntity (ohne Prüfung, ob es ein deklariertes Mitglied ist)?
+/// </summary>
+function TakesSymbol(AEntity: TQueryEntity; AUnit: TQueryUnit; const ASymbol: TIndexSymbol): Boolean;
+begin
+  case AEntity of
+    TQueryEntity.Classes:
+      Result := ASymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+    TQueryEntity.Records:
+      Result := ASymbol.Kind = TIndexSymbolKind.RecordType;
+    TQueryEntity.Interfaces:
+      Result := ASymbol.Kind = TIndexSymbolKind.InterfaceType;
+    TQueryEntity.Forms:
+      Result := (ASymbol.Kind = TIndexSymbolKind.ClassType) and (AUnit.FormClass <> '') and
+        SameText(ASymbol.QualifiedName, AUnit.FormClass);
+    TQueryEntity.Methods:
+      Result := (ASymbol.Kind in cMethodKinds) and (ASymbol.Container <> '');
+    TQueryEntity.Routines:
+      Result := (ASymbol.Kind = TIndexSymbolKind.Routine) and (ASymbol.Container = '');
+    TQueryEntity.Fields:
+      Result := (ASymbol.Kind = TIndexSymbolKind.Field) and (ASymbol.Container <> '');
+    TQueryEntity.Properties:
+      Result := (ASymbol.Kind = TIndexSymbolKind.Property_) and (ASymbol.Container <> '');
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Schlüssel, unter dem ein Element nur einmal zählt: Typen mit Vorwärtsdeklaration und Deklaration,
+/// Routinen mit Deklaration im interface und Rumpf im implementation; '' = jedes Symbol zählt.</summary>
+function ElementKey(AEntity: TQueryEntity; const ASymbol: TIndexSymbol): string;
+begin
+  if AEntity in TQueryCatalog.TypeEntities then
+  begin
+    Result := UpperCase(ASymbol.QualifiedName);
+  end
+  else if AEntity = TQueryEntity.Routines then
+  begin
+    Result := UpperCase(ASymbol.Name) + '(' + UpperCase(string.Join(',', ASymbol.ParamTypes)) + ')';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function NewElement(AUnit: TQueryUnit; ASymbolIndex: Integer): TQueryElement;
+begin
+  Result := TQueryElement.Create;
+  Result.Owner := AUnit;
+  Result.SymbolIndex := ASymbolIndex;
+end;
+
+/// <summary>Steht unter AKey schon ein Element in AList? Bei Typen gilt dann die spätere Deklaration AIndex,
+/// bei Routinen bleibt die erste. Sonst wird AKey für das nächste Element vorgemerkt.</summary>
+function IsSeenElement(AEntity: TQueryEntity; const AKey: string; AIndex: Integer; AList: TObjectList<TQueryElement>;
+  ASeen: TDictionary<string, Integer>): Boolean;
+var
+  mSlot: Integer;
+begin
+  Result := (AKey <> '') and ASeen.TryGetValue(AKey, mSlot);
+  if Result and (AEntity in TQueryCatalog.TypeEntities) then
+  begin
+    AList[mSlot].SymbolIndex := AIndex;
+  end
+  else if not Result and (AKey <> '') then
+  begin
+    ASeen.Add(AKey, AList.Count);
+  end;
+end;
+
+procedure TQueryFacts.AddUnitElements(AUnit: TQueryUnit; AEntity: TQueryEntity; AList: TObjectList<TQueryElement>;
+  ASeen: TDictionary<string, Integer>);
+var
+  mIndex: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  if AEntity in TQueryCatalog.MemberEntities then
+  begin
+    LoadCounts(AUnit);
+  end;
+  for mIndex := 0 to High(AUnit.Data.Symbols) do
+  begin
+    mSymbol := AUnit.Data.Symbols[mIndex];
+    if TakesSymbol(AEntity, AUnit, mSymbol) and
+      (not (AEntity in TQueryCatalog.MemberEntities) or AUnit.Declared[mIndex]) and
+      not IsSeenElement(AEntity, ElementKey(AEntity, mSymbol), mIndex, AList, ASeen) then
+    begin
+      AList.Add(NewElement(AUnit, mIndex));
+    end;
+  end;
+end;
+
 function TQueryFacts.Elements(AEntity: TQueryEntity): TObjectList<TQueryElement>;
 var
   mUnit: TQueryUnit;
-  mIndex, mSlot: Integer;
-  mSymbol: TIndexSymbol;
-  mElement: TQueryElement;
   mSeen: TDictionary<string, Integer>;
-  mKey: string;
-  mTake: Boolean;
 begin
   Result := TObjectList<TQueryElement>.Create(True);
+  mSeen := TDictionary<string, Integer>.Create;
   try
-    mSeen := TDictionary<string, Integer>.Create;
     try
       for mUnit in FUnits do
       begin
         CheckCancelled;
         if AEntity = TQueryEntity.Units then
         begin
-          mElement := TQueryElement.Create;
-          mElement.Owner := mUnit;
-          mElement.SymbolIndex := -1;
-          Result.Add(mElement);
+          Result.Add(NewElement(mUnit, -1));
           Continue;
         end;
         if AEntity = TQueryEntity.Forms then
@@ -1022,245 +1171,223 @@ begin
           LoadForm(mUnit);
         end;
         mSeen.Clear;
-        for mIndex := 0 to High(mUnit.Data.Symbols) do
-        begin
-          mSymbol := mUnit.Data.Symbols[mIndex];
-          case AEntity of
-            TQueryEntity.Classes:
-              mTake := mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
-            TQueryEntity.Records:
-              mTake := mSymbol.Kind = TIndexSymbolKind.RecordType;
-            TQueryEntity.Interfaces:
-              mTake := mSymbol.Kind = TIndexSymbolKind.InterfaceType;
-            TQueryEntity.Forms:
-              mTake := (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mUnit.FormClass <> '') and
-                SameText(mSymbol.QualifiedName, mUnit.FormClass);
-            TQueryEntity.Methods:
-              mTake := (mSymbol.Kind in cMethodKinds) and (mSymbol.Container <> '');
-            TQueryEntity.Routines:
-              mTake := (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '');
-            TQueryEntity.Fields:
-              mTake := (mSymbol.Kind = TIndexSymbolKind.Field) and (mSymbol.Container <> '');
-            TQueryEntity.Properties:
-              mTake := (mSymbol.Kind = TIndexSymbolKind.Property_) and (mSymbol.Container <> '');
-          else
-            mTake := False;
-          end;
-          if not mTake then
-          begin
-            Continue;
-          end;
-          if AEntity in TQueryCatalog.MemberEntities then
-          begin
-            LoadCounts(mUnit);
-            if not mUnit.Declared[mIndex] then
-            begin
-              Continue;
-            end;
-          end;
-          // Typen: Vorwärtsdeklaration und Deklaration einmal (die spätere gilt). Routinen: Deklaration im
-          // interface und Rumpf im implementation einmal (die erste gilt).
-          if AEntity in TQueryCatalog.TypeEntities then
-          begin
-            mKey := UpperCase(mSymbol.QualifiedName);
-          end
-          else if AEntity = TQueryEntity.Routines then
-          begin
-            mKey := UpperCase(mSymbol.Name) + '(' + UpperCase(string.Join(',', mSymbol.ParamTypes)) + ')';
-          end
-          else
-          begin
-            mKey := '';
-          end;
-          if (mKey <> '') and mSeen.TryGetValue(mKey, mSlot) then
-          begin
-            if AEntity in TQueryCatalog.TypeEntities then
-            begin
-              Result[mSlot].SymbolIndex := mIndex;
-            end;
-            Continue;
-          end;
-          mElement := TQueryElement.Create;
-          mElement.Owner := mUnit;
-          mElement.SymbolIndex := mIndex;
-          Result.Add(mElement);
-          if mKey <> '' then
-          begin
-            mSeen.Add(mKey, Result.Count - 1);
-          end;
-        end;
+        AddUnitElements(mUnit, AEntity, Result, mSeen);
       end;
-    finally
-      mSeen.Free;
+    except
+      // Abbruch (EQueryCancelled) mitten im Sammeln: die Liste gehört noch niemandem.
+      Result.Free;
+      raise;
     end;
-  except
-    // Abbruch (EQueryCancelled) mitten im Sammeln: die Liste gehört noch niemandem.
-    Result.Free;
-    raise;
+  finally
+    mSeen.Free;
+  end;
+end;
+
+function LineValue(AElement: TQueryElement): TQueryValue;
+begin
+  if AElement.IsUnit then
+  begin
+    Result := TQueryValue.OfNumber(1);
+  end
+  else
+  begin
+    Result := TQueryValue.OfNumber(AElement.Symbol.SelectionRange.StartPos.Line + 1);
+  end;
+end;
+
+function TypeValue(const ASymbol: TIndexSymbol): TQueryValue;
+var
+  mText: string;
+begin
+  mText := ASymbol.TypeName;
+  if ASymbol.TypeArgs <> '' then
+  begin
+    mText := mText + '<' + ASymbol.TypeArgs + '>';
+  end;
+  Result := TQueryValue.OfText(mText);
+end;
+
+function AncestorValue(const ASymbol: TIndexSymbol): TQueryValue;
+begin
+  if Length(ASymbol.Ancestors) > 0 then
+  begin
+    Result := TQueryValue.OfText(ASymbol.Ancestors[0]);
+  end
+  else if ASymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType] then
+  begin
+    Result := TQueryValue.OfText('TObject');
+  end
+  else
+  begin
+    Result := TQueryValue.OfText('');
+  end;
+end;
+
+function TQueryFacts.TryPlainValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+begin
+  Result := True;
+  case IndexText(AField, ['name', 'unit', 'path', 'line', 'class', 'visibility', 'type', 'params', 'virtual',
+    'ancestor']) of
+    0:
+      AValue := TQueryValue.OfText(AElement.Name);
+    1:
+      AValue := TQueryValue.OfText(AElement.Owner.Data.UnitName);
+    2:
+      AValue := TQueryValue.OfText(RelativePath(FSource.Root, AElement.Location.FileName));
+    3:
+      AValue := LineValue(AElement);
+    4:
+      AValue := TQueryValue.OfText(AElement.Symbol.Container);
+    5:
+      AValue := TQueryValue.OfText(VisibilityName(AElement.Symbol.Visibility));
+    6:
+      AValue := TypeValue(AElement.Symbol);
+    7:
+      AValue := TQueryValue.OfNumber(AElement.Symbol.MaxArgs);
+    8:
+      AValue := TQueryValue.OfFlag(AElement.Symbol.IsVirtual);
+    9:
+      AValue := AncestorValue(AElement.Symbol);
+  else
+    Result := False;
+  end;
+end;
+
+function TQueryFacts.TryCountValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+begin
+  Result := True;
+  case IndexText(AField, ['classes', 'methods', 'fields', 'properties', 'overrides', 'uses']) of
+    0:
+      begin
+        LoadCounts(AElement.Owner);
+        AValue := TQueryValue.OfNumber(AElement.Owner.ClassCount);
+      end;
+    1:
+      if AElement.IsUnit then
+      begin
+        LoadCounts(AElement.Owner);
+        AValue := TQueryValue.OfNumber(AElement.Owner.RoutineCount);
+      end
+      else
+      begin
+        AValue := TQueryValue.OfNumber(CountsOf(AElement).Methods);
+      end;
+    2:
+      AValue := TQueryValue.OfNumber(CountsOf(AElement).Fields);
+    3:
+      AValue := TQueryValue.OfNumber(CountsOf(AElement).Properties);
+    4:
+      if AElement.Symbol.Kind in cMethodKinds then
+      begin
+        AValue := TQueryValue.OfNumber(Ord(AElement.Symbol.HasDirective('override')));
+      end
+      else
+      begin
+        AValue := TQueryValue.OfNumber(CountsOf(AElement).Overrides);
+      end;
+    5:
+      AValue := TQueryValue.OfNumber(Length(AElement.Owner.Data.InterfaceUses) +
+        Length(AElement.Owner.Data.ImplementationUses));
+  else
+    Result := False;
+  end;
+end;
+
+function TQueryFacts.LinesValue(AElement: TQueryElement): TQueryValue;
+var
+  mSymbol: TIndexSymbol;
+begin
+  if AElement.IsUnit then
+  begin
+    LoadLength(AElement.Owner);
+    if AElement.Owner.UnitLength < 0 then
+    begin
+      Exit(TQueryValue.Empty);
+    end;
+    Exit(TQueryValue.OfNumber(AElement.Owner.UnitLength));
+  end;
+  mSymbol := AElement.Symbol;
+  if mSymbol.Kind in cRoutineKinds then
+  begin
+    Result := MetricValue(AElement, TMetricKind.MethodLength);
+  end
+  else
+  begin
+    Result := TQueryValue.OfNumber(mSymbol.Range.EndPos.Line - mSymbol.Range.StartPos.Line + 1);
+  end;
+end;
+
+function TQueryFacts.TryMetricValue(AElement: TQueryElement; const AField: string; out AValue: TQueryValue): Boolean;
+begin
+  Result := True;
+  case IndexText(AField, ['lines', 'complexity', 'cognitive', 'nesting', 'locals', 'exits']) of
+    0:
+      AValue := LinesValue(AElement);
+    1:
+      AValue := MetricValue(AElement, TMetricKind.Cyclomatic);
+    2:
+      AValue := MetricValue(AElement, TMetricKind.Cognitive);
+    3:
+      AValue := MetricValue(AElement, TMetricKind.NestingDepth);
+    4:
+      AValue := MetricValue(AElement, TMetricKind.LocalCount);
+    5:
+      AValue := MetricValue(AElement, TMetricKind.ExitPoints);
+  else
+    Result := False;
+  end;
+end;
+
+function TQueryFacts.UsedByValue(AElement: TQueryElement): TQueryValue;
+var
+  mNode: Integer;
+begin
+  mNode := Graph.IndexOfFile(AElement.Owner.Data.FileName);
+  if mNode < 0 then
+  begin
+    Result := TQueryValue.OfNumber(0);
+  end
+  else
+  begin
+    Result := TQueryValue.OfNumber(Length(Graph.DirectDependents(mNode, [TUsesSection.Interface_,
+      TUsesSection.Implementation_])));
+  end;
+end;
+
+function TQueryFacts.TryRelationValue(AElement: TQueryElement; const AField: string;
+  out AValue: TQueryValue): Boolean;
+var
+  mField: Integer;
+begin
+  Result := True;
+  mField := IndexText(AField, ['callers', 'callees', 'usedBy', 'components']);
+  case mField of
+    0, 1:
+      if Assigned(FSource.Calls) then
+      begin
+        AValue := TQueryValue.OfNumber(Length(CallsOf(AElement, mField = 0)));
+      end
+      else
+      begin
+        AValue := TQueryValue.Empty;
+      end;
+    2:
+      AValue := UsedByValue(AElement);
+    3:
+      begin
+        LoadForm(AElement.Owner);
+        AValue := TQueryValue.OfNumber(AElement.Owner.FormComponents);
+      end;
+  else
+    Result := False;
   end;
 end;
 
 function TQueryFacts.Value(AElement: TQueryElement; const AField: string): TQueryValue;
-var
-  mSymbol: TIndexSymbol;
-  mNode: Integer;
-  mText: string;
 begin
-  mSymbol := AElement.Symbol;
-  case IndexText(AField, ['name', 'unit', 'path', 'line', 'class', 'visibility', 'type', 'classes', 'methods',
-    'fields', 'properties', 'lines', 'complexity', 'cognitive', 'nesting', 'params', 'locals', 'exits', 'callers',
-    'callees', 'overrides', 'virtual', 'uses', 'usedBy', 'ancestor', 'components']) of
-    0:
-      Result := TQueryValue.OfText(AElement.Name);
-    1:
-      Result := TQueryValue.OfText(AElement.Owner.Data.UnitName);
-    2:
-      Result := TQueryValue.OfText(RelativePath(FSource.Root, AElement.Location.FileName));
-    3:
-      if AElement.IsUnit then
-      begin
-        Result := TQueryValue.OfNumber(1);
-      end
-      else
-      begin
-        Result := TQueryValue.OfNumber(mSymbol.SelectionRange.StartPos.Line + 1);
-      end;
-    4:
-      Result := TQueryValue.OfText(mSymbol.Container);
-    5:
-      Result := TQueryValue.OfText(VisibilityName(mSymbol.Visibility));
-    6:
-      begin
-        mText := mSymbol.TypeName;
-        if mSymbol.TypeArgs <> '' then
-        begin
-          mText := mText + '<' + mSymbol.TypeArgs + '>';
-        end;
-        Result := TQueryValue.OfText(mText);
-      end;
-    7:
-      begin
-        LoadCounts(AElement.Owner);
-        Result := TQueryValue.OfNumber(AElement.Owner.ClassCount);
-      end;
-    8:
-      if AElement.IsUnit then
-      begin
-        LoadCounts(AElement.Owner);
-        Result := TQueryValue.OfNumber(AElement.Owner.RoutineCount);
-      end
-      else
-      begin
-        Result := TQueryValue.OfNumber(CountsOf(AElement).Methods);
-      end;
-    9:
-      Result := TQueryValue.OfNumber(CountsOf(AElement).Fields);
-    10:
-      Result := TQueryValue.OfNumber(CountsOf(AElement).Properties);
-    11:
-      if AElement.IsUnit then
-      begin
-        LoadLength(AElement.Owner);
-        if AElement.Owner.UnitLength < 0 then
-        begin
-          Result := TQueryValue.Empty;
-        end
-        else
-        begin
-          Result := TQueryValue.OfNumber(AElement.Owner.UnitLength);
-        end;
-      end
-      else if mSymbol.Kind in cRoutineKinds then
-      begin
-        Result := MetricValue(AElement, TMetricKind.MethodLength);
-      end
-      else
-      begin
-        Result := TQueryValue.OfNumber(mSymbol.Range.EndPos.Line - mSymbol.Range.StartPos.Line + 1);
-      end;
-    12:
-      Result := MetricValue(AElement, TMetricKind.Cyclomatic);
-    13:
-      Result := MetricValue(AElement, TMetricKind.Cognitive);
-    14:
-      Result := MetricValue(AElement, TMetricKind.NestingDepth);
-    15:
-      Result := TQueryValue.OfNumber(mSymbol.MaxArgs);
-    16:
-      Result := MetricValue(AElement, TMetricKind.LocalCount);
-    17:
-      Result := MetricValue(AElement, TMetricKind.ExitPoints);
-    18:
-      if Assigned(FSource.Calls) then
-      begin
-        Result := TQueryValue.OfNumber(Length(CallsOf(AElement, True)));
-      end
-      else
-      begin
-        Result := TQueryValue.Empty;
-      end;
-    19:
-      if Assigned(FSource.Calls) then
-      begin
-        Result := TQueryValue.OfNumber(Length(CallsOf(AElement, False)));
-      end
-      else
-      begin
-        Result := TQueryValue.Empty;
-      end;
-    20:
-      if mSymbol.Kind in cMethodKinds then
-      begin
-        if mSymbol.HasDirective('override') then
-        begin
-          Result := TQueryValue.OfNumber(1);
-        end
-        else
-        begin
-          Result := TQueryValue.OfNumber(0);
-        end;
-      end
-      else
-      begin
-        Result := TQueryValue.OfNumber(CountsOf(AElement).Overrides);
-      end;
-    21:
-      Result := TQueryValue.OfFlag(mSymbol.IsVirtual);
-    22:
-      Result := TQueryValue.OfNumber(Length(AElement.Owner.Data.InterfaceUses) +
-        Length(AElement.Owner.Data.ImplementationUses));
-    23:
-      begin
-        mNode := Graph.IndexOfFile(AElement.Owner.Data.FileName);
-        if mNode < 0 then
-        begin
-          Result := TQueryValue.OfNumber(0);
-        end
-        else
-        begin
-          Result := TQueryValue.OfNumber(Length(Graph.DirectDependents(mNode, [TUsesSection.Interface_,
-            TUsesSection.Implementation_])));
-        end;
-      end;
-    24:
-      if Length(mSymbol.Ancestors) > 0 then
-      begin
-        Result := TQueryValue.OfText(mSymbol.Ancestors[0]);
-      end
-      else if mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType] then
-      begin
-        Result := TQueryValue.OfText('TObject');
-      end
-      else
-      begin
-        Result := TQueryValue.OfText('');
-      end;
-    25:
-      begin
-        LoadForm(AElement.Owner);
-        Result := TQueryValue.OfNumber(AElement.Owner.FormComponents);
-      end;
-  else
+  if not TryPlainValue(AElement, AField, Result) and not TryCountValue(AElement, AField, Result) and
+    not TryMetricValue(AElement, AField, Result) and not TryRelationValue(AElement, AField, Result) then
+  begin
     Result := TQueryValue.Empty;
   end;
 end;
@@ -1314,61 +1441,64 @@ begin
   end;
 end;
 
-function TQueryFacts.Holds(AElement: TQueryElement; ANode: TQueryNode): Boolean;
+function TQueryFacts.LogicHolds(AElement: TQueryElement; ANode: TQueryLogicNode): Boolean;
 var
   mItem: TQueryNode;
-  mPredicate: TQueryPredicateNode;
+  mAll: Boolean;
+begin
+  // and: gilt, bis ein Glied nicht gilt; or: gilt nicht, bis ein Glied gilt.
+  mAll := ANode.Logic = TQueryLogic.And_;
+  for mItem in ANode.Items do
+  begin
+    if Holds(AElement, mItem) <> mAll then
+    begin
+      Exit(not mAll);
+    end;
+  end;
+  Result := mAll;
+end;
+
+function TQueryFacts.PredicateHolds(AElement: TQueryElement; ANode: TQueryPredicateNode): Boolean;
+begin
+  case ANode.Kind of
+    TQueryPredicateKind.Inherits:
+      Result := Inherits(AElement, ANode.Argument);
+    TQueryPredicateKind.Implements:
+      Result := Implements(AElement, ANode.Argument);
+    TQueryPredicateKind.Uses_:
+      Result := UsesTarget(AElement, ANode.Argument);
+    TQueryPredicateKind.Calls:
+      Result := CallsTarget(AElement, ANode.Argument);
+  else
+    Result := HasAttribute(AElement, ANode.Argument);
+  end;
+end;
+
+function TQueryFacts.Holds(AElement: TQueryElement; ANode: TQueryNode): Boolean;
+var
   mCompare: TQueryCompareNode;
 begin
   if ANode = nil then
   begin
-    Exit(True);
-  end;
-  if ANode is TQueryLogicNode then
+    Result := True;
+  end
+  else if ANode is TQueryLogicNode then
   begin
-    if TQueryLogicNode(ANode).Logic = TQueryLogic.And_ then
-    begin
-      for mItem in TQueryLogicNode(ANode).Items do
-      begin
-        if not Holds(AElement, mItem) then
-        begin
-          Exit(False);
-        end;
-      end;
-      Exit(True);
-    end;
-    for mItem in TQueryLogicNode(ANode).Items do
-    begin
-      if Holds(AElement, mItem) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Exit(False);
-  end;
-  if ANode is TQueryNotNode then
+    Result := LogicHolds(AElement, TQueryLogicNode(ANode));
+  end
+  else if ANode is TQueryNotNode then
   begin
-    Exit(not Holds(AElement, TQueryNotNode(ANode).Inner));
-  end;
-  if ANode is TQueryPredicateNode then
+    Result := not Holds(AElement, TQueryNotNode(ANode).Inner);
+  end
+  else if ANode is TQueryPredicateNode then
   begin
-    mPredicate := TQueryPredicateNode(ANode);
-    case mPredicate.Kind of
-      TQueryPredicateKind.Inherits:
-        Result := Inherits(AElement, mPredicate.Argument);
-      TQueryPredicateKind.Implements:
-        Result := Implements(AElement, mPredicate.Argument);
-      TQueryPredicateKind.Uses_:
-        Result := UsesTarget(AElement, mPredicate.Argument);
-      TQueryPredicateKind.Calls:
-        Result := CallsTarget(AElement, mPredicate.Argument);
-    else
-      Result := HasAttribute(AElement, mPredicate.Argument);
-    end;
-    Exit;
+    Result := PredicateHolds(AElement, TQueryPredicateNode(ANode));
+  end
+  else
+  begin
+    mCompare := ANode as TQueryCompareNode;
+    Result := ValueHolds(Value(AElement, mCompare.Field.Name), mCompare.Comparison, mCompare.Value);
   end;
-  mCompare := ANode as TQueryCompareNode;
-  Result := ValueHolds(Value(AElement, mCompare.Field.Name), mCompare.Comparison, mCompare.Value);
 end;
 
 { Reihenfolge der and-Glieder }
@@ -1572,19 +1702,113 @@ begin
   Result.InferredDetail := AElement.InferredDetail;
 end;
 
+/// <summary>Spalten: Name, bei Mitgliedern der Typ, Unit und Zeile, dann die Felder der Abfrage und weitere
+/// gewünschte (AFields).</summary>
+function QueryColumns(AAst: TQueryAst; const AFields: TArray<string>): TArray<string>;
+var
+  mName: string;
+  mField: TQueryFieldInfo;
+begin
+  Result := ['name'];
+  if AAst.Entity in TQueryCatalog.MemberEntities then
+  begin
+    Result := Result + ['class'];
+  end;
+  if AAst.Entity <> TQueryEntity.Units then
+  begin
+    Result := Result + ['unit', 'line'];
+  end;
+  for mName in AAst.UsedFields + AFields do
+  begin
+    if (IndexText(mName, Result) < 0) and TQueryCatalog.TryField(mName, mField) and
+      (AAst.Entity in mField.Entities) then
+    begin
+      Result := Result + [mField.Name];
+    end;
+  end;
+end;
+
+/// <summary>Zeilen der Elemente, für die die Bedingung von AAst gilt, mit den Werten der Spalten von AResult.
+/// </summary>
+procedure CollectRows(AFacts: TQueryFacts; AAst: TQueryAst; const ARoot: string; var AResult: TQueryResult;
+  ARows: TList<TQueryRow>);
+var
+  mElements: TObjectList<TQueryElement>;
+  mElement: TQueryElement;
+  mIndex, mCount: Integer;
+  mRow: TQueryRow;
+begin
+  mElements := AFacts.Elements(AAst.Entity);
+  try
+    mCount := 0;
+    for mElement in mElements do
+    begin
+      Inc(mCount);
+      if mCount mod cCancelStride = 0 then
+      begin
+        AFacts.CheckCancelled;
+      end;
+      if not AFacts.Holds(mElement, AAst.Condition) then
+      begin
+        Continue;
+      end;
+      SetLength(mElement.Values, Length(AResult.Columns));
+      for mIndex := 0 to High(AResult.Columns) do
+      begin
+        mElement.Values[mIndex] := AFacts.Value(mElement, AResult.Columns[mIndex]);
+      end;
+      mRow := RowOf(mElement, ARoot);
+      ARows.Add(mRow);
+      Inc(AResult.InferredCount, Ord(mRow.Inferred));
+    end;
+  finally
+    mElements.Free;
+  end;
+end;
+
+/// <summary>Höchstzahl der Zeilen aus limit der Abfrage und der Anfrage (0 bzw. -1 = keine Grenze).</summary>
+function RowLimit(AAst: TQueryAst; const ARequest: TQueryRequest; ACount: Integer): Integer;
+begin
+  Result := ACount;
+  if (AAst.Limit >= 0) and (AAst.Limit < Result) then
+  begin
+    Result := AAst.Limit;
+  end;
+  if (ARequest.Limit > 0) and (ARequest.Limit < Result) then
+  begin
+    Result := ARequest.Limit;
+  end;
+end;
+
+/// <summary>Sortiert ARows nach order by und legt die ersten bis zur Grenze in AResult ab.</summary>
+procedure TakeRows(AAst: TQueryAst; const ARequest: TQueryRequest; ARows: TList<TQueryRow>;
+  var AResult: TQueryResult);
+var
+  mOrderColumn, mIndex: Integer;
+begin
+  mOrderColumn := -1;
+  if AAst.HasOrder then
+  begin
+    mOrderColumn := AResult.ColumnOf(AAst.OrderField.Name);
+  end;
+  ARows.Sort(RowComparer(mOrderColumn, AAst.Descending));
+  AResult.Total := ARows.Count;
+  SetLength(AResult.Rows, RowLimit(AAst, ARequest, ARows.Count));
+  for mIndex := 0 to High(AResult.Rows) do
+  begin
+    AResult.Rows[mIndex] := ARows[mIndex];
+  end;
+end;
+
 class function TCodeQueryEngine.Run(const ASource: TQuerySource; const ARequest: TQueryRequest;
   ACollector: TMetricsCollector): TQueryResult;
 var
   mAst: TQueryAst;
-  mError, mSuggestion, mName: string;
-  mColumn, mIndex, mLimit, mOrderColumn, mCount: Integer;
+  mError, mSuggestion: string;
+  mColumn: Integer;
   mFacts: TQueryFacts;
-  mElements: TObjectList<TQueryElement>;
-  mElement: TQueryElement;
   mRows: TList<TQueryRow>;
-  mRow: TQueryRow;
   mOwnCollector: TMetricsCollector;
-  mField: TQueryFieldInfo;
   mWatch: TStopwatch;
 begin
   mWatch := TStopwatch.StartNew;
@@ -1604,56 +1828,14 @@ begin
     ACollector := mOwnCollector;
   end;
   mFacts := nil;
-  mElements := nil;
   mRows := TList<TQueryRow>.Create;
   try
     Result.Entity := TQueryCatalog.EntityName(mAst.Entity);
-    // Spalten: Name, bei Mitgliedern der Typ, Unit und Zeile, dann die Felder der Abfrage und weitere gewünschte.
-    Result.Columns := ['name'];
-    if mAst.Entity in TQueryCatalog.MemberEntities then
-    begin
-      Result.Columns := Result.Columns + ['class'];
-    end;
-    if mAst.Entity <> TQueryEntity.Units then
-    begin
-      Result.Columns := Result.Columns + ['unit', 'line'];
-    end;
-    for mName in mAst.UsedFields + ARequest.Fields do
-    begin
-      if (Result.ColumnOf(mName) < 0) and TQueryCatalog.TryField(mName, mField) and
-        (mAst.Entity in mField.Entities) then
-      begin
-        Result.Columns := Result.Columns + [mField.Name];
-      end;
-    end;
+    Result.Columns := QueryColumns(mAst, ARequest.Fields);
     OrderByCost(mAst.Condition);
     mFacts := TQueryFacts.Create(ASource, ACollector);
     try
-      mElements := mFacts.Elements(mAst.Entity);
-      mCount := 0;
-      for mElement in mElements do
-      begin
-        Inc(mCount);
-        if mCount mod cCancelStride = 0 then
-        begin
-          mFacts.CheckCancelled;
-        end;
-        if not mFacts.Holds(mElement, mAst.Condition) then
-        begin
-          Continue;
-        end;
-        SetLength(mElement.Values, Length(Result.Columns));
-        for mIndex := 0 to High(Result.Columns) do
-        begin
-          mElement.Values[mIndex] := mFacts.Value(mElement, Result.Columns[mIndex]);
-        end;
-        mRow := RowOf(mElement, ASource.Root);
-        mRows.Add(mRow);
-        if mRow.Inferred then
-        begin
-          Inc(Result.InferredCount);
-        end;
-      end;
+      CollectRows(mFacts, mAst, ASource.Root, Result, mRows);
     except
       on E: EQueryCancelled do
       begin
@@ -1661,30 +1843,9 @@ begin
         Exit;
       end;
     end;
-    mOrderColumn := -1;
-    if mAst.HasOrder then
-    begin
-      mOrderColumn := Result.ColumnOf(mAst.OrderField.Name);
-    end;
-    mRows.Sort(RowComparer(mOrderColumn, mAst.Descending));
-    Result.Total := mRows.Count;
-    mLimit := mRows.Count;
-    if (mAst.Limit >= 0) and (mAst.Limit < mLimit) then
-    begin
-      mLimit := mAst.Limit;
-    end;
-    if (ARequest.Limit > 0) and (ARequest.Limit < mLimit) then
-    begin
-      mLimit := ARequest.Limit;
-    end;
-    SetLength(Result.Rows, mLimit);
-    for mIndex := 0 to mLimit - 1 do
-    begin
-      Result.Rows[mIndex] := mRows[mIndex];
-    end;
+    TakeRows(mAst, ARequest, mRows, Result);
   finally
     mRows.Free;
-    mElements.Free;
     mFacts.Free;
     mOwnCollector.Free;
     mAst.Free;

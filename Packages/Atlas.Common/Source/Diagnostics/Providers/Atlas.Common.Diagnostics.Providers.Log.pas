@@ -88,68 +88,86 @@ begin
   inherited;
 end;
 
+/// <summary>Ergebnis der Anfrage: Anzahl bei ok, Grund bei leer und Fehler.</summary>
+procedure AppendOutcome(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  ABuilder.Append(' ').Append(DiagnosticOutcomeCodes[ARequest.Outcome]);
+  case ARequest.Outcome of
+    TDiagnosticOutcome.Ok:
+      ABuilder.Append(':').Append(ARequest.Count);
+    TDiagnosticOutcome.Empty, TDiagnosticOutcome.Error:
+      if ARequest.Reason = '' then
+      begin
+        ABuilder.Append(':unspecified');
+      end
+      else
+      begin
+        ABuilder.Append(':').Append(ARequest.Reason);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Dokument und Stelle der Anfrage.</summary>
+procedure AppendLocation(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  if ARequest.Document <> '' then
+  begin
+    ABuilder.Append(' ').Append(ARequest.Document).Append(' v').Append(ARequest.Version).Append(' len ')
+      .Append(ARequest.Length_).Append(' crc ').Append(ARequest.Checksum);
+  end;
+  if ARequest.Line >= 0 then
+  begin
+    ABuilder.Append(' line ').Append(ARequest.Line);
+    if ARequest.LineCount > 0 then
+    begin
+      ABuilder.Append(' of ').Append(ARequest.LineCount);
+    end;
+    ABuilder.Append(' col ').Append(ARequest.Column);
+  end;
+end;
+
+/// <summary>Stand des Index und Auflösung.</summary>
+procedure AppendIndex(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  if ARequest.IndexUnits > 0 then
+  begin
+    ABuilder.Append(' index units ').Append(ARequest.IndexUnits).Append(' lib ').Append(ARequest.IndexLibrary);
+    if ARequest.IndexLoading >= 0 then
+    begin
+      ABuilder.Append(' loading ').Append(ARequest.IndexLoading).Append(' %');
+    end;
+  end;
+  if ARequest.Resolve <> '' then
+  begin
+    ABuilder.Append(' resolve ').Append(ARequest.Resolve);
+  end;
+end;
+
 class function TDiagnosticLog.FormatRequest(const ARequest: TDiagnosticRequest): string;
 var
-  Builder: TStringBuilder;
-  Note: string;
+  mBuilder: TStringBuilder;
+  mNote: string;
 begin
-  Builder := TStringBuilder.Create(256);
+  mBuilder := TStringBuilder.Create(256);
   try
-    Builder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
-    Builder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
+    mBuilder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
+    mBuilder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
     if ARequest.QueueMs > 0 then
     begin
-      Builder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
+      mBuilder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
     end;
-    Builder.Append(' ').Append(DiagnosticOutcomeCodes[ARequest.Outcome]);
-    case ARequest.Outcome of
-      TDiagnosticOutcome.Ok:
-        Builder.Append(':').Append(ARequest.Count);
-      TDiagnosticOutcome.Empty, TDiagnosticOutcome.Error:
-        if ARequest.Reason = '' then
-        begin
-          Builder.Append(':unspecified');
-        end
-        else
-        begin
-          Builder.Append(':').Append(ARequest.Reason);
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    if ARequest.Document <> '' then
+    AppendOutcome(mBuilder, ARequest);
+    AppendLocation(mBuilder, ARequest);
+    for mNote in ARequest.Notes do
     begin
-      Builder.Append(' ').Append(ARequest.Document).Append(' v').Append(ARequest.Version).Append(' len ')
-        .Append(ARequest.Length_).Append(' crc ').Append(ARequest.Checksum);
+      mBuilder.Append(' ').Append(mNote);
     end;
-    if ARequest.Line >= 0 then
-    begin
-      Builder.Append(' line ').Append(ARequest.Line);
-      if ARequest.LineCount > 0 then
-      begin
-        Builder.Append(' of ').Append(ARequest.LineCount);
-      end;
-      Builder.Append(' col ').Append(ARequest.Column);
-    end;
-    for Note in ARequest.Notes do
-    begin
-      Builder.Append(' ').Append(Note);
-    end;
-    if ARequest.IndexUnits > 0 then
-    begin
-      Builder.Append(' index units ').Append(ARequest.IndexUnits).Append(' lib ').Append(ARequest.IndexLibrary);
-      if ARequest.IndexLoading >= 0 then
-      begin
-        Builder.Append(' loading ').Append(ARequest.IndexLoading).Append(' %');
-      end;
-    end;
-    if ARequest.Resolve <> '' then
-    begin
-      Builder.Append(' resolve ').Append(ARequest.Resolve);
-    end;
-    Result := Builder.ToString;
+    AppendIndex(mBuilder, ARequest);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

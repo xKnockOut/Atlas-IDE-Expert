@@ -194,17 +194,18 @@ begin
   Result := TAtlasRegValue.Create(AName, TAtlasRegKind.Number, IntToStr(AValue));
 end;
 
-procedure AddItem(ALayout: TAtlasRegKey; AIndex: Integer; const AId: string; ARow, AColumn, ARowSpan,
-  AColumnSpan: Integer);
+/// <summary>Kachel AId an APlace: Zeile, Spalte, Zeilen- und Spaltenspanne.</summary>
+procedure AddItem(ALayout: TAtlasRegKey; AIndex: Integer; const AId: string; const APlace: array of Integer);
 var
   Item: TAtlasRegKey;
 begin
+  Assert.AreEqual(4, Integer(Length(APlace)), 'Zeile, Spalte, Zeilenspanne, Spaltenspanne');
   Item := ALayout.AddKey('Item ' + IntToStr(AIndex));
   Item.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, AId));
-  Item.SetValue(Number('Row', ARow));
-  Item.SetValue(Number('Column', AColumn));
-  Item.SetValue(Number('RowSpan', ARowSpan));
-  Item.SetValue(Number('ColumnSpan', AColumnSpan));
+  Item.SetValue(Number('Row', APlace[0]));
+  Item.SetValue(Number('Column', APlace[1]));
+  Item.SetValue(Number('RowSpan', APlace[2]));
+  Item.SetValue(Number('ColumnSpan', APlace[3]));
 end;
 
 /// <summary>Schlüssel WelcomePage wie in Marcos Export aus Delphi 12 (BDS 23.0).</summary>
@@ -222,9 +223,9 @@ begin
   Layout := Result.AddKey('Layout');
   Layout.SetValue(Number('RowsCount', 2));
   Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', 0, 0, 2, 1);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', 0, 1, 2, 1);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.Learn', 0, 2, 2, 1);
+  AddItem(Layout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [0, 0, 2, 1]);
+  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', [0, 1, 2, 1]);
+  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.Learn', [0, 2, 2, 1]);
 end;
 
 /// <summary>Schlüssel WelcomePage nach „Atlas-Layout anwenden“ früherer Fassungen: „Atlas“ oben über zwei
@@ -242,10 +243,10 @@ begin
   Layout := Result.AddKey('Layout');
   Layout.SetValue(Number('RowsCount', 4));
   Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Atlas.Welcome.board', 0, 0, 2, 3);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', 2, 0, 2, 1);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', 2, 1, 2, 1);
-  AddItem(Layout, 3, 'Embarcadero.WelcomePagePlugin.Learn', 2, 2, 2, 1);
+  AddItem(Layout, 0, 'Atlas.Welcome.board', [0, 0, 2, 3]);
+  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [2, 0, 2, 1]);
+  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', [2, 1, 2, 1]);
+  AddItem(Layout, 3, 'Embarcadero.WelcomePagePlugin.Learn', [2, 2, 2, 1]);
 end;
 
 function ReadLayout(AKey: TAtlasRegKey): TAtlasHostLayout;

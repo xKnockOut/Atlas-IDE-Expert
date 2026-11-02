@@ -86,7 +86,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 { TAtlasTestProjectChoices }
@@ -102,14 +104,18 @@ begin
     begin
       Item := AnsiLowerCase(Trim(Candidate));
       if (Item <> '') and not Items.Contains(Item) then
+      begin
         Items.Add(Item);
+      end;
     end;
     Items.Sort;
     Result := '';
     for Item in Items do
     begin
       if Result <> '' then
+      begin
         Result := Result + '|';
+      end;
       Result := Result + Item;
     end;
   finally
@@ -123,14 +129,20 @@ var
 begin
   Result := 0;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Root := TJSONObject.ParseJSONValue(AText);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('format');
     if Value is TJSONNumber then
+    begin
       Result := TJSONNumber(Value).AsInt;
+    end;
   finally
     Root.Free;
   end;
@@ -144,25 +156,37 @@ var
 begin
   Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Root := TJSONObject.ParseJSONValue(AText);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('format');
     if (Value is TJSONNumber) and (TJSONNumber(Value).AsInt > Format) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('choices');
     if not (Value is TJSONArray) then
+    begin
       Exit;
+    end;
     for Index := 0 to TJSONArray(Value).Count - 1 do
+    begin
       if TJSONArray(Value).Items[Index] is TJSONObject then
       begin
         Choice.Key := StringOf(TJSONObject(TJSONArray(Value).Items[Index]), 'candidates');
         Choice.Project := StringOf(TJSONObject(TJSONArray(Value).Items[Index]), 'project');
         if (Choice.Key <> '') and (Choice.Project <> '') and (Length(Result) < MaxEntries) then
+        begin
           Result := Result + [Choice];
+        end;
       end;
+    end;
   finally
     Root.Free;
   end;
@@ -183,12 +207,16 @@ begin
     for Index := 0 to High(AChoices) do
     begin
       if Index > 0 then
+      begin
         Lines.Append(',');
+      end;
       Lines.Append(NewLine + '    {"candidates": ' + Quote(AChoices[Index].Key) + ', "project": ' +
         Quote(AChoices[Index].Project) + '}');
     end;
     if Length(AChoices) > 0 then
+    begin
       Lines.Append(NewLine + '  ');
+    end;
     Lines.Append(']' + NewLine + '}' + NewLine);
     Result := Lines.ToString;
   finally
@@ -203,7 +231,9 @@ var
 begin
   AChoices := nil;
   if AFile = '' then
+  begin
     Exit(TAtlasDataLoad.Missing);
+  end;
   Choices := nil;
   Result := TAtlasDataFile.Load(AFile, 'Wahl des Testprojekts',
     function(const AText: string): Boolean
@@ -214,7 +244,9 @@ begin
       Result := FormatOf(AText) >= 1;
     end);
   if Result = TAtlasDataLoad.Loaded then
+  begin
     AChoices := Choices;
+  end;
 end;
 
 class function TAtlasTestProjectChoices.Load(const AFile: string): TArray<TAtlasTestProjectChoice>;
@@ -229,11 +261,15 @@ var
 begin
   Result := False;
   if AFile = '' then
+  begin
     Exit;
+  end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
     if FileExists(AFile) and (not TAtlasDataFile.TryRead(AFile, Text) or (FormatOf(Text) > Format)) then
+    begin
       Exit;
+    end;
     TAtlasDataFile.Write(AFile, ToJson(AChoices));
     Result := True;
   except
@@ -250,19 +286,29 @@ var
   Index: Integer;
 begin
   if Length(ACandidates) = 1 then
+  begin
     Exit(0);
+  end;
   Result := -1;
   if Length(ACandidates) = 0 then
+  begin
     Exit;
+  end;
   Key := KeyOf(ACandidates);
   for Choice in AChoices do
+  begin
     if Choice.Key = Key then
     begin
       for Index := 0 to High(ACandidates) do
+      begin
         if SameText(Trim(ACandidates[Index]), Trim(Choice.Project)) then
+        begin
           Exit(Index);
+        end;
+      end;
       Exit;
     end;
+  end;
 end;
 
 class procedure TAtlasTestProjectChoices.Remember(var AChoices: TArray<TAtlasTestProjectChoice>;
@@ -274,11 +320,17 @@ begin
   Fresh.Key := KeyOf(ACandidates);
   Fresh.Project := Trim(AProject);
   if (Fresh.Key = '') or (Fresh.Project = '') then
+  begin
     Exit;
+  end;
   Kept := [Fresh];
   for Choice in AChoices do
+  begin
     if (Choice.Key <> Fresh.Key) and (Length(Kept) < MaxEntries) then
+    begin
       Kept := Kept + [Choice];
+    end;
+  end;
   AChoices := Kept;
 end;
 

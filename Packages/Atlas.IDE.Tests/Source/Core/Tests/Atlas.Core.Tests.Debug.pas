@@ -96,9 +96,13 @@ function TAtlasTestSelection.Caption: string;
 begin
   Result := Fixture;
   if Method <> '' then
+  begin
     Result := Result + '.' + Method;
+  end;
   if CaseName <> '' then
+  begin
     Result := Result + '.' + CaseName;
+  end;
 end;
 
 { TAtlasTestDebug }
@@ -111,16 +115,22 @@ begin
   Result := Default(TAtlasTestSelection);
   Result.BreakLine := -1;
   if (AFixtureIndex < 0) or (AFixtureIndex > High(AUnit.Fixtures)) then
+  begin
     Exit;
+  end;
   Result.UnitName := AUnit.UnitName;
   Result.Fixture := AUnit.Fixtures[AFixtureIndex].Name;
   Result.Names := TDUnitXCommandLine.RunNames(AUnit, AFixtureIndex, ATestIndex, ACaseIndex);
   if (ATestIndex < 0) or (ATestIndex > High(AUnit.Fixtures[AFixtureIndex].Tests)) then
+  begin
     Exit;
+  end;
   Test := AUnit.Fixtures[AFixtureIndex].Tests[ATestIndex];
   Result.Method := Test.Method;
   if (ACaseIndex >= 0) and (ACaseIndex <= High(Test.Cases)) and not Test.Ignored then
+  begin
     Result.CaseName := Test.Cases[ACaseIndex];
+  end;
   Result.BreakLine := Test.BeginLine;
 end;
 
@@ -133,7 +143,9 @@ begin
   ASelection.BreakLine := -1;
   Result := AUnit.TestAt(ALine, FixtureIndex, TestIndex, CaseIndex);
   if Result then
+  begin
     ASelection := Selection(AUnit, FixtureIndex, TestIndex, CaseIndex);
+  end;
 end;
 
 class function TAtlasTestDebug.SelectByName(const AUnit: TDUnitXUnit; const AFullName: string;
@@ -149,7 +161,9 @@ begin
   Name := Trim(AFullName);
   // Der Unitname steht davor oder fehlt (Fixture.Methode).
   if (AUnit.UnitName <> '') and SameText(Copy(Name, 1, Length(AUnit.UnitName) + 1), AUnit.UnitName + '.') then
+  begin
     Name := Copy(Name, Length(AUnit.UnitName) + 2, MaxInt);
+  end;
   for FixtureIndex := 0 to High(AUnit.Fixtures) do
   begin
     Fixture := AUnit.Fixtures[FixtureIndex];
@@ -168,11 +182,13 @@ begin
         Exit(True);
       end;
       for CaseIndex := 0 to High(Test.Cases) do
+      begin
         if SameText(TDUnitXCommandLine.CaseName('', Fixture.Name, Test.Method, Test.Cases[CaseIndex]), Name) then
         begin
           ASelection := Selection(AUnit, FixtureIndex, TestIndex, CaseIndex);
           Exit(True);
         end;
+      end;
     end;
   end;
   Result := False;
@@ -194,25 +210,33 @@ begin
       (AText[Index] = #10)) then
     begin
       if Started then
+      begin
         Result := Result + [Current];
+      end;
       Current := '';
       Started := False;
       Continue;
     end;
     if AText[Index] = '"' then
+    begin
       Quoted := not Quoted;
+    end;
     Current := Current + AText[Index];
     Started := True;
   end;
   if Started then
+  begin
     Result := Result + [Current];
+  end;
 end;
 
 class function TAtlasTestDebug.QuoteArgument(const AValue: string): string;
 begin
   Result := AValue;
   if (Pos(' ', AValue) > 0) or (Pos(#9, AValue) > 0) then
+  begin
     Result := '"' + StringReplace(AValue, '"', '', [rfReplaceAll]) + '"';
+  end;
 end;
 
 class function TAtlasTestDebug.OptionName(const AArgument: string): string;
@@ -223,14 +247,22 @@ begin
   Result := '';
   Text := StringReplace(AArgument, '"', '', [rfReplaceAll]);
   if Copy(Text, 1, 2) = '--' then
-    Delete(Text, 1, 2)
+  begin
+    Delete(Text, 1, 2);
+  end
   else if (Copy(Text, 1, 1) = '-') or (Copy(Text, 1, 1) = '/') then
-    Delete(Text, 1, 1)
+  begin
+    Delete(Text, 1, 1);
+  end
   else
+  begin
     Exit;
+  end;
   Colon := Pos(':', Text);
   if Colon > 0 then
+  begin
     Text := Copy(Text, 1, Colon - 1);
+  end;
   Result := LowerCase(Text);
 end;
 
@@ -247,24 +279,38 @@ begin
     Name := OptionName(Argument);
     Drop := False;
     for Dropped in DroppedOptions do
+    begin
       if Name = Dropped then
+      begin
         Drop := True;
+      end;
+    end;
     if not Drop then
+    begin
       Parts := Parts + [Argument];
+    end;
   end;
   Run := '';
   for Name in ANames do
+  begin
     if Name <> '' then
     begin
       if Run <> '' then
+      begin
         Run := Run + ',';
+      end;
       Run := Run + Name;
     end;
+  end;
   if Run <> '' then
+  begin
     Parts := Parts + [QuoteArgument('--run:' + Run)];
+  end;
   Parts := Parts + ['--exitbehavior:Continue'];
   if AXmlFile <> '' then
+  begin
     Parts := Parts + [QuoteArgument('--xmlfile:' + AXmlFile)];
+  end;
   Result := string.Join(' ', Parts);
 end;
 

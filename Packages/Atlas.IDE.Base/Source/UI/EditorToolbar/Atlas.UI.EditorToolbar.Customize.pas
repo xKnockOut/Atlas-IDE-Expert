@@ -240,10 +240,16 @@ begin
   ShowHint := True;
   BuildAvailable;
   for Index := 0 to High(AtlasToolbarPositions) do
+  begin
     if SameText(AtlasToolbarPositions[Index], FConfig.Position) then
+    begin
       FConfig.Position := AtlasToolbarPositions[Index];
+    end;
+  end;
   if FConfig.Position = '' then
+  begin
     FConfig.Position := AtlasToolbarPositions[0];
+  end;
 end;
 
 function TAtlasToolbarCustomizeDialog.NewButton(AParent: TWinControl; const ACaption, AHint: string;
@@ -274,10 +280,16 @@ var
   Command: TAtlasToolbarCommandInfo;
 begin
   if TAtlasToolbarItems.IsSeparator(AId) then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.EditorToolbarSeparator));
+  end;
   for Command in FCommands do
+  begin
     if SameText(Command.Id, AId) then
+    begin
       Exit(Command.Caption);
+    end;
+  end;
   Result := AId;
 end;
 
@@ -294,10 +306,16 @@ begin
     begin
       Used := False;
       for Item in FConfig.Items do
+      begin
         if SameText(Item, Command.Id) then
+        begin
           Used := True;
+        end;
+      end;
       if not Used then
+      begin
         Rest.Add(Command);
+      end;
     end;
     Rest.Sort(TComparer<TAtlasToolbarCommandInfo>.Construct(
       function(const A, B: TAtlasToolbarCommandInfo): Integer
@@ -306,7 +324,9 @@ begin
       end));
     FAvailable := [TAtlasToolbarItems.Separator];
     for Command in Rest do
+    begin
       FAvailable := FAvailable + [Command.Id];
+    end;
   finally
     Rest.Free;
   end;
@@ -322,10 +342,14 @@ var
   Next: Integer;
 begin
   if (AAvailableIndex < 0) or (AAvailableIndex > High(FAvailable)) then
+  begin
     Exit(-1);
+  end;
   Result := TAtlasToolbarItems.Add(FConfig.Items, FAvailable[AAvailableIndex], AIndex);
   if Result < 0 then
+  begin
     Exit;
+  end;
   BuildAvailable;
   // Links bleibt die Auswahl an derselben Stelle (der Trennstrich bleibt stehen).
   Next := Min(AAvailableIndex, High(FAvailable));
@@ -336,7 +360,9 @@ function TAtlasToolbarCustomizeDialog.RemoveItem(AIndex: Integer): Boolean;
 begin
   Result := TAtlasToolbarItems.Remove(FConfig.Items, AIndex);
   if not Result then
+  begin
     Exit;
+  end;
   BuildAvailable;
   Fill(Min(AIndex, High(FConfig.Items)), -1);
 end;
@@ -360,7 +386,9 @@ procedure TAtlasToolbarCustomizeDialog.SetLabels(AValue: Boolean);
 begin
   FConfig.Labels := AValue;
   if FFilled and (FLabelsCheck.Checked <> AValue) then
+  begin
     FLabelsCheck.Checked := AValue;
+  end;
 end;
 
 procedure TAtlasToolbarCustomizeDialog.SetPosition(const AValue: string);
@@ -368,12 +396,16 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AtlasToolbarPositions) do
+  begin
     if SameText(AtlasToolbarPositions[Index], AValue) then
     begin
       FConfig.Position := AtlasToolbarPositions[Index];
       if FFilled then
+      begin
         FPositionCombo.ItemIndex := Index;
+      end;
     end;
+  end;
 end;
 
 procedure TAtlasToolbarCustomizeDialog.DoShow;
@@ -389,13 +421,17 @@ var
 begin
   // Ohne Fenster bleibt es bei FConfig; DoShow füllt dann.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   FFilled := True;
   FAvailableList.Items.BeginUpdate;
   try
     FAvailableList.Items.Clear;
     for Item in FAvailable do
+    begin
       FAvailableList.Items.Add(CaptionOf(Item));
+    end;
   finally
     FAvailableList.Items.EndUpdate;
   end;
@@ -403,7 +439,9 @@ begin
   try
     FCurrentList.Items.Clear;
     for Item in FConfig.Items do
+    begin
       FCurrentList.Items.Add(CaptionOf(Item));
+    end;
   finally
     FCurrentList.Items.EndUpdate;
   end;
@@ -418,8 +456,12 @@ begin
   end;
   FPositionCombo.ItemIndex := 0;
   for Index := 0 to High(AtlasToolbarPositions) do
+  begin
     if AtlasToolbarPositions[Index] = FConfig.Position then
+    begin
       FPositionCombo.ItemIndex := Index;
+    end;
+  end;
   UpdateButtons;
 end;
 
@@ -446,7 +488,9 @@ begin
   // Hinter dem ausgewählten Knopf der Leiste einfügen, sonst hinten.
   Target := Length(FConfig.Items);
   if FCurrentList.ItemIndex >= 0 then
+  begin
     Target := FCurrentList.ItemIndex + 1;
+  end;
   AddItem(FAvailableList.ItemIndex, Target);
 end;
 
@@ -478,7 +522,9 @@ end;
 procedure TAtlasToolbarCustomizeDialog.PositionChange(Sender: TObject);
 begin
   if (FPositionCombo.ItemIndex >= 0) and (FPositionCombo.ItemIndex <= High(AtlasToolbarPositions)) then
+  begin
     FConfig.Position := AtlasToolbarPositions[FPositionCombo.ItemIndex];
+  end;
 end;
 
 procedure TAtlasToolbarCustomizeDialog.OkClick(Sender: TObject);
@@ -500,7 +546,9 @@ begin
   List := TListBox(Control);
   List.Canvas.FillRect(Rect);
   if (Index < 0) or (Index > High(FConfig.Items)) then
+  begin
     Exit;
+  end;
   Id := FConfig.Items[Index];
   Caption_ := CaptionOf(Id);
   Size := ScaleValue(16);
@@ -514,8 +562,10 @@ begin
     List.Canvas.LineTo(Icon.Right, Middle);
   end
   else
+  begin
     TAtlasGlyphPainter.Draw(List.Canvas, TAtlasToolbarIcons.IconOf(Id), Icon, List.Canvas.Font.Color,
       List.Canvas.Brush.Color, Caption_);
+  end;
   mText := System.Types.Rect(Icon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
   List.Canvas.Brush.Style := bsClear;
   DrawText(List.Canvas.Handle, PChar(Caption_), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
@@ -532,7 +582,9 @@ begin
   try
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       AConfig := Dialog.Config;
+    end;
   finally
     Dialog.Free;
   end;

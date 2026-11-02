@@ -121,10 +121,16 @@ var
   Index: Integer;
 begin
   if AModule = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to AModule.ModuleFileCount - 1 do
+  begin
     if AModule.ModuleFileEditors[Index] <> nil then
+    begin
       AFiles := AFiles + [AModule.ModuleFileEditors[Index].FileName];
+    end;
+  end;
 end;
 
 procedure AddProject(const AProject: IOTAProject; var AFiles: TArray<string>);
@@ -134,24 +140,36 @@ var
   Main: string;
 begin
   if AProject = nil then
+  begin
     Exit;
+  end;
   for Main in TArray<string>.Create(ChangeFileExt(AProject.FileName, '.dpr'),
     ChangeFileExt(AProject.FileName, '.dpk')) do
+  begin
     if TFile.Exists(Main) then
+    begin
       AFiles := AFiles + [Main];
+    end;
+  end;
   for Index := 0 to AProject.GetModuleCount - 1 do
   begin
     Info := AProject.GetModule(Index);
     if (Info = nil) or (Info.FileName = '') then
+    begin
       Continue;
+    end;
     AFiles := AFiles + [Info.FileName];
     // Formular der Unit (Projektmodule nennen nur die .pas).
     if Info.FormName <> '' then
     begin
       if TFile.Exists(ChangeFileExt(Info.FileName, '.dfm')) then
-        AFiles := AFiles + [ChangeFileExt(Info.FileName, '.dfm')]
+      begin
+        AFiles := AFiles + [ChangeFileExt(Info.FileName, '.dfm')];
+      end
       else if TFile.Exists(ChangeFileExt(Info.FileName, '.fmx')) then
+      begin
         AFiles := AFiles + [ChangeFileExt(Info.FileName, '.fmx')];
+      end;
     end;
   end;
 end;
@@ -164,21 +182,31 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   case AScope of
     TAtlasSearchScope.OpenFiles:
       for Index := 0 to Services.ModuleCount - 1 do
+      begin
         AddModuleFiles(Services.Modules[Index], Result);
+      end;
     TAtlasSearchScope.Project:
       AddProject(Services.GetActiveProject, Result);
     TAtlasSearchScope.ProjectGroup:
       begin
         Group := Services.MainProjectGroup;
         if Group = nil then
-          AddProject(Services.GetActiveProject, Result)
+        begin
+          AddProject(Services.GetActiveProject, Result);
+        end
         else
+        begin
           for Index := 0 to Group.ProjectCount - 1 do
+          begin
             AddProject(Group.Projects[Index], Result);
+          end;
+        end;
       end;
     TAtlasSearchScope.UnitFile, TAtlasSearchScope.Method, TAtlasSearchScope.Selection: ;
   end;
@@ -193,16 +221,24 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ModuleCount - 1 do
   begin
     Module := Services.Modules[Index];
     if Module = nil then
+    begin
       Continue;
+    end;
     for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    begin
       if Supports(Module.ModuleFileEditors[FileIndex], IOTAEditBuffer, Buffer) and
         TAtlasFileSearch.IsSearchable(Buffer.FileName) then
+      begin
         Result := Result + [TAtlasSearchSource.FromBuffer(Buffer.FileName, TAtlasEditorBuffer.Text(Buffer))];
+      end;
+    end;
   end;
 end;
 
@@ -216,7 +252,9 @@ begin
   Sources := TAtlasFileSearch.Sources(AFiles, Buffers, AFirst);
   Result := Length(Sources) > 0;
   if not Result then
+  begin
     Exit;
+  end;
   Inc(FRun);
   FOnFound := AOnFound;
   FOnDone := AOnDone;
@@ -226,7 +264,9 @@ end;
 class procedure TAtlasIdeFileSearch.Found(ARun: Integer; const AHits: TAtlasFileHits);
 begin
   if (ARun = FRun) and Assigned(FOnFound) then
+  begin
     FOnFound(AHits);
+  end;
 end;
 
 class procedure TAtlasIdeFileSearch.Done(ARun: Integer; const ASummary: TAtlasFileSearchSummary);
@@ -234,11 +274,15 @@ var
   OnDone: TProc<TAtlasFileSearchSummary>;
 begin
   if ARun <> FRun then
+  begin
     Exit;
+  end;
   OnDone := FOnDone;
   Finish;
   if Assigned(OnDone) then
+  begin
     OnDone(ASummary);
+  end;
 end;
 
 /// <summary>Fertigen Thread freigeben, Rückrufe vergessen.</summary>
@@ -257,7 +301,9 @@ end;
 class procedure TAtlasIdeFileSearch.Cancel;
 begin
   if FWorker <> nil then
+  begin
     FWorker.Terminate;
+  end;
 end;
 
 class procedure TAtlasIdeFileSearch.Stop;

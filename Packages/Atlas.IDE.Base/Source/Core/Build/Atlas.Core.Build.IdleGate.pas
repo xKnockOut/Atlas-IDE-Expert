@@ -48,7 +48,9 @@ end;
 procedure TAtlasBuildIdleGate.Touch(ANow: UInt64);
 begin
   if ANow > FLastEvent then
+  begin
     FLastEvent := ANow;
+  end;
 end;
 
 procedure TAtlasBuildIdleGate.ProjectStarted(ANow: UInt64);
@@ -61,7 +63,9 @@ procedure TAtlasBuildIdleGate.ProjectFinished(ANow: UInt64);
 begin
   // Nach dem Neuladen mitten im Build kann ein Ende ohne Anfang kommen.
   if FProjects > 0 then
+  begin
     Dec(FProjects);
+  end;
   Touch(ANow);
 end;
 

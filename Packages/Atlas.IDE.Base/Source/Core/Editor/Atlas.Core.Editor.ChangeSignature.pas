@@ -123,7 +123,9 @@ begin
   FOverloadPossible := True;
   FOverload := True;
   if APrepared = nil then
+  begin
     Exit;
+  end;
   FName := APrepared.GetValue<string>('name', '');
   FContainer := APrepared.GetValue<string>('container', '');
   FKind := APrepared.GetValue<string>('kind', 'procedure');
@@ -137,10 +139,13 @@ begin
   Items := APrepared.GetValue('parameters') as TJSONArray;
   Index := 0;
   if Items <> nil then
+  begin
     for Item in Items do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Row := Default(TAtlasSignatureRow);
       Row.Origin := Index;
       Row.Name := TJSONObject(Item).GetValue<string>('name', '');
@@ -150,11 +155,16 @@ begin
       FOriginal := FOriginal + [Row];
       Inc(Index);
     end;
+  end;
   FRows := Copy(FOriginal);
   Items := APrepared.GetValue('warnings') as TJSONArray;
   if Items <> nil then
+  begin
     for Item in Items do
+    begin
       FWarnings := FWarnings + [Item.Value];
+    end;
+  end;
 end;
 
 function TAtlasSignatureModel.GetCount: Integer;
@@ -179,16 +189,22 @@ begin
   Row.Value := Trim(AValue);
   Result := AIndex + 1;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
   if Result > Length(FRows) then
+  begin
     Result := Length(FRows);
+  end;
   Insert(Row, FRows, Result);
 end;
 
 procedure TAtlasSignatureModel.Remove(AIndex: Integer);
 begin
   if (AIndex >= 0) and (AIndex <= High(FRows)) then
+  begin
     Delete(FRows, AIndex, 1);
+  end;
 end;
 
 function TAtlasSignatureModel.MoveRow(AIndex, ADelta: Integer): Boolean;
@@ -199,7 +215,9 @@ begin
   Target := AIndex + ADelta;
   Result := (AIndex >= 0) and (AIndex <= High(FRows)) and (Target >= 0) and (Target <= High(FRows));
   if not Result then
+  begin
     Exit;
+  end;
   Row := FRows[AIndex];
   Delete(FRows, AIndex, 1);
   Insert(Row, FRows, Target);
@@ -208,13 +226,17 @@ end;
 procedure TAtlasSignatureModel.Rename(AIndex: Integer; const AName: string);
 begin
   if (AIndex >= 0) and (AIndex <= High(FRows)) then
+  begin
     FRows[AIndex].Name := Trim(AName);
+  end;
 end;
 
 procedure TAtlasSignatureModel.Change(AIndex: Integer; const ATypeName, AModifier, AValue: string);
 begin
   if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].IsNew then
+  begin
     Exit;
+  end;
   FRows[AIndex].TypeName := Trim(ATypeName);
   FRows[AIndex].Modifier := LowerCase(Trim(AModifier));
   FRows[AIndex].Value := Trim(AValue);
@@ -231,21 +253,33 @@ begin
   begin
     Part := Row.Name;
     if Row.Modifier <> '' then
+    begin
       Part := Row.Modifier + ' ' + Part;
+    end;
     if Row.TypeName <> '' then
+    begin
       Part := Part + ': ' + Row.TypeName;
+    end;
     if Row.DefaultValue <> '' then
+    begin
       Part := Part + ' = ' + Row.DefaultValue;
+    end;
     Parts := Parts + [Part];
   end;
   Result := FName;
   if FContainer <> '' then
+  begin
     Result := FContainer + '.' + Result;
+  end;
   Result := FKind + ' ' + Result;
   if Length(Parts) > 0 then
+  begin
     Result := Result + '(' + string.Join('; ', Parts) + ')';
+  end;
   if FResultType <> '' then
+  begin
     Result := Result + ': ' + FResultType;
+  end;
 end;
 
 function TAtlasSignatureModel.AddsParameters: Boolean;
@@ -253,8 +287,12 @@ var
   Row: TAtlasSignatureRow;
 begin
   for Row in FRows do
+  begin
     if Row.IsNew then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -264,9 +302,15 @@ var
 begin
   Result := Length(FRows) <> Length(FOriginal);
   if not Result then
+  begin
     for Index := 0 to High(FRows) do
+    begin
       if (FRows[Index].Origin <> Index) or not SameStr(FRows[Index].Name, FOriginal[Index].Name) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasSignatureModel.Validate: TAtlasSignatureProblem;
@@ -291,30 +335,50 @@ begin
     Row := FRows[Index];
     AName := Row.Name;
     if Row.Origin <> Index then
+    begin
       TypesChanged := True;
+    end;
     if not IsName(Row.Name) then
+    begin
       Exit(TAtlasSignatureProblem.BadName);
+    end;
     for Other := 0 to Index - 1 do
+    begin
       if SameText(FRows[Other].Name, Row.Name) then
+      begin
         Exit(TAtlasSignatureProblem.Duplicate);
+      end;
+    end;
     if not Row.IsNew then
     begin
       if Row.DefaultValue <> '' then
+      begin
         SeenDefault := True;
+      end;
       Continue;
     end;
     if Row.TypeName = '' then
+    begin
       Exit(TAtlasSignatureProblem.MissingType);
+    end;
     if Row.Value = '' then
+    begin
       Exit(TAtlasSignatureProblem.MissingValue);
+    end;
     if SeenDefault then
+    begin
       Exit(TAtlasSignatureProblem.AfterDefault);
+    end;
   end;
   AName := FBoundEvent;
   if TypesChanged and FEventFixed then
-    Result := TAtlasSignatureProblem.TypesFixed
+  begin
+    Result := TAtlasSignatureProblem.TypesFixed;
+  end
   else
+  begin
     AName := '';
+  end;
 end;
 
 function TAtlasSignatureModel.RequestJson: TJSONObject;
@@ -340,9 +404,13 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('parameters', Items);
   if FOverload and FOverloadPossible then
-    Result.AddPair('newParameter', 'overload')
+  begin
+    Result.AddPair('newParameter', 'overload');
+  end
   else
+  begin
     Result.AddPair('newParameter', 'updateCallers');
+  end;
   Result.AddPair('virtualOverload', TJSONBool.Create(FVirtualOverload));
 end;
 

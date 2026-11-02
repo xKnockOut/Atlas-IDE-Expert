@@ -87,7 +87,9 @@ var
   Reason: string;
 begin
   if (FOwner = nil) or (Project = nil) then
+  begin
     Exit;
+  end;
   try
     Info := FOwner.ProjectInfo(Project);
     if FOwner.FEvents.BeforeCompile(Info, IsCodeInsight, Reason) then
@@ -96,7 +98,9 @@ begin
       FOwner.ShowCancel(Reason);
     end
     else if not IsCodeInsight then
+    begin
       FOwner.FEvents.ProjectStarted(Info);
+    end;
   except
     // Keine Exception an die IDE (#493); der Compile läuft weiter.
     on E: Exception do
@@ -116,12 +120,18 @@ procedure TAtlasIdeCompileEvents.TIdeNotifier.AfterCompile(const Project: IOTAPr
   IsCodeInsight: Boolean);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   try
     if IsCodeInsight then
-      FOwner.FEvents.CodeInsightFinished
+    begin
+      FOwner.FEvents.CodeInsightFinished;
+    end
     else if Project <> nil then
+    begin
       FOwner.FEvents.ProjectFinished(Project.FileName, Succeeded);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Build, E);
@@ -136,7 +146,9 @@ var
   Info: TAtlasCompileProject;
 begin
   if (FOwner = nil) or (Project = nil) then
+  begin
     Exit;
+  end;
   try
     FOwner.FKind := TAtlasIdeCompileEvents.KindOf(Mode);
     Info := FOwner.ProjectInfo(Project);
@@ -152,7 +164,9 @@ procedure TAtlasIdeCompileEvents.TCompileNotifier.ProjectCompileFinished(const P
 begin
   // crOTABackground: läuft im Hintergrund weiter; das Ende meldet AfterCompile.
   if (FOwner = nil) or (Project = nil) or (Result = crOTABackground) then
+  begin
     Exit;
+  end;
   try
     FOwner.FEvents.ProjectFinished(Project.FileName, Result = crOTASucceeded);
   except
@@ -164,7 +178,9 @@ end;
 procedure TAtlasIdeCompileEvents.TCompileNotifier.ProjectGroupCompileStarted(Mode: TOTACompileMode);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   try
     FOwner.FKind := TAtlasIdeCompileEvents.KindOf(Mode);
     FOwner.FEvents.GroupStarted(FOwner.FKind);
@@ -177,7 +193,9 @@ end;
 procedure TAtlasIdeCompileEvents.TCompileNotifier.ProjectGroupCompileFinished(Result: TOTACompileResult);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   try
     FOwner.FEvents.GroupFinished(Result <> crOTAFailed);
     FOwner.FKind := TAtlasCompileKind.Make;
@@ -222,13 +240,21 @@ var
 begin
   // Erst abmelden, dann freigeben (#493); die IDE hält die Notifier evtl. noch.
   if FIde <> nil then
+  begin
     FIde.FOwner := nil;
+  end;
   if FCompile <> nil then
+  begin
     FCompile.FOwner := nil;
+  end;
   if (FIdeIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Services.RemoveNotifier(FIdeIndex);
+  end;
   if (FCompileIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, CompileServices) then
+  begin
     CompileServices.RemoveNotifier(FCompileIndex);
+  end;
   FIdeRef := nil;
   FCompileRef := nil;
   FEvents.Free;
@@ -259,7 +285,9 @@ begin
   Result.Platform := AProject.CurrentPlatform;
   Options := AProject.ProjectOptions;
   if Options <> nil then
+  begin
     Result.OutputFile := Options.TargetName;
+  end;
 end;
 
 procedure TAtlasIdeCompileEvents.ShowCancel(const AReason: string);
@@ -268,11 +296,15 @@ var
   Group: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
   Group := Messages.GetGroup(MessageGroup);
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup(MessageGroup);
+  end;
   Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.CompileCancelled, [AReason]), Group);
   Messages.ShowMessageView(Group);
 end;

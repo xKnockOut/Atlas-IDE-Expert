@@ -161,7 +161,9 @@ end;
 procedure TAtlasCallDiagramView.SetProjectOnly(AValue: Boolean);
 begin
   if FDiagram.ProjectOnly = AValue then
+  begin
     Exit;
+  end;
   FDiagram.ProjectOnly := AValue;
   Relayout;
 end;
@@ -186,7 +188,9 @@ begin
   Relayout;
   FFitted := False;
   if (ClientWidth > 0) and (ClientHeight > 0) then
+  begin
     FitView;
+  end;
 end;
 
 procedure TAtlasCallDiagramView.ToggleNode(ANode: Integer);
@@ -194,7 +198,9 @@ var
   Children: TArray<TAtlasHierarchyItem>;
 begin
   if (ANode < 0) or (ANode >= FDiagram.Count) then
+  begin
     Exit;
+  end;
   if FDiagram.NeedsLoad(ANode) then
   begin
     Children := nil;
@@ -210,7 +216,9 @@ begin
     FDiagram.SetChildren(ANode, Children);
   end
   else
+  begin
     FDiagram.Toggle(ANode);
+  end;
   Relayout;
 end;
 
@@ -253,14 +261,18 @@ end;
 procedure TAtlasCallDiagramView.OpenSelected;
 begin
   if (FSelected >= 0) and (FSelected < FDiagram.Count) and Assigned(FOnOpen) then
+  begin
     FOnOpen(FDiagram[FSelected].Item);
+  end;
 end;
 
 procedure TAtlasCallDiagramView.Resize;
 begin
   inherited Resize;
   if not FFitted and (ClientWidth > 0) and (ClientHeight > 0) and (Length(FLayout.Boxes) > 0) then
+  begin
     FitView;
+  end;
 end;
 
 procedure TAtlasCallDiagramView.DrawEdge(const AEdge: TAtlasCallEdge; ADash, ABack: TColor);
@@ -310,17 +322,27 @@ begin
   Canvas.Brush.Color := Canvas.Pen.Color;
   Count := Max(3, Px(6 * FView.Scale));
   if AEdge.Back then
+  begin
     Canvas.Polygon([Points[3], Point(Points[3].X - Count div 2, Points[3].Y - Count),
-      Point(Points[3].X + Count div 2, Points[3].Y - Count)])
+      Point(Points[3].X + Count div 2, Points[3].Y - Count)]);
+  end
   else
+  begin
     Canvas.Polygon([Points[3], Point(Points[3].X - Count, Points[3].Y - Count div 2),
       Point(Points[3].X - Count, Points[3].Y + Count div 2)]);
+  end;
   if not AEdge.Dashed or AEdge.Back or (AEdge.Implementations <= 0) or (FView.Scale < MinTextScale) then
+  begin
     Exit;
+  end;
   if AEdge.Implementations = 1 then
-    Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramImplementation)
+  begin
+    Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramImplementation);
+  end
   else
+  begin
     Caption := TAtlasStrings.Fmt(TAtlasTextId.CallDiagramImplementations, [AEdge.Implementations]);
+  end;
   Canvas.Brush.Style := bsClear;
   Canvas.TextOut(Points[3].X - Canvas.TextWidth(Caption) - Px(8 * FView.Scale),
     Points[3].Y - Canvas.TextHeight(Caption) - 1, Caption);
@@ -348,14 +370,18 @@ begin
   // Rekursion in Warnfarbe wie die HTML-Datei.
   Back := Colors.Warn;
   for Index := 0 to High(FLayout.Edges) do
+  begin
     DrawEdge(FLayout.Edges[Index], ToColor(Colors.Line), ToColor(Back));
+  end;
   Pad := Max(ScaleValue(2), Px(8 * FView.Scale));
   for Index := 0 to High(FLayout.Boxes) do
   begin
     Box := FLayout.Boxes[Index];
     R := BoxRect(Index);
     if not R.IntersectsWith(ClientRect) then
+    begin
       Continue;
+    end;
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Width := 1;
     if Box.Kind = TAtlasCallBoxKind.More then
@@ -379,10 +405,14 @@ begin
     Node := FDiagram[Box.Node];
     Fill := Colors.Surface;
     if Node.Library_ then
+    begin
       Fill := Colors.Gutter;
+    end;
     Border := Colors.Line;
     if Node.Parent < 0 then
+    begin
       Border := Colors.Accent;
+    end;
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := ToColor(Fill);
     Canvas.Pen.Color := ToColor(Border);
@@ -393,24 +423,34 @@ begin
     end;
     Canvas.RoundRect(R.Left, R.Top, R.Right, R.Bottom, Px(8 * FView.Scale), Px(8 * FView.Scale));
     if FView.Scale < MinTextScale then
+    begin
       Continue;
+    end;
     Canvas.Brush.Style := bsClear;
     // Erste Zeile: Name (erschlossen mit ≈), zweite: Fundstelle, ▸ wenn zugeklappte Kinder warten.
     Caption := TAtlasCallDiagram.Title(Node.Item);
     if Node.Item.Confidence.Inferred then
+    begin
       Caption := '≈ ' + Caption;
+    end;
     Canvas.Font.Style := [fsBold];
     if Node.Library_ then
-      Canvas.Font.Color := ToColor(Colors.Muted)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Muted);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(Colors.Text);
+    end;
     TextBox := Rect(R.Left + Pad, R.Top + Pad div 2, R.Right - Pad, (R.Top + R.Bottom) div 2 + 1);
     Canvas.TextRect(TextBox, Caption, [tfSingleLine, tfVerticalCenter, tfEndEllipsis, tfNoPrefix]);
     Canvas.Font.Style := [];
     Canvas.Font.Color := ToColor(Colors.Muted);
     Caption := TAtlasCallDiagram.Location(Node.Item);
     if FDiagram.NeedsLoad(Box.Node) or (not Node.Expanded and (Length(Node.Children) > 0)) then
+    begin
       Caption := Caption + '  ▸';
+    end;
     TextBox := Rect(R.Left + Pad, (R.Top + R.Bottom) div 2 - 1, R.Right - Pad, R.Bottom - Pad div 2);
     Canvas.TextRect(TextBox, Caption, [tfSingleLine, tfVerticalCenter, tfEndEllipsis, tfNoPrefix]);
   end;
@@ -421,25 +461,37 @@ var
   Node: TAtlasCallNode;
 begin
   if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.CallDiagramHint));
+  end;
   if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
+  begin
     Exit(TAtlasStrings.Fmt(TAtlasTextId.CallDiagramMore, [FLayout.Boxes[ABox].Hidden]));
+  end;
   Node := FDiagram[FLayout.Boxes[ABox].Node];
   Result := TAtlasCallDiagram.Title(Node.Item);
   if Node.Item.FileName <> '' then
+  begin
     Result := Result + ' (' + TAtlasCallDiagram.Location(Node.Item) + ')';
+  end;
   if Node.Item.Confidence.Explanation <> '' then
+  begin
     Result := Result + sLineBreak + Node.Item.Confidence.Explanation;
+  end;
 end;
 
 procedure TAtlasCallDiagramView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if CanFocus then
+  begin
     SetFocus;
+  end;
   // Doppelklick: Der erste Klick hat schon aufgeklappt, der zweite springt nur (DblClick).
   if (Button <> mbLeft) or (ssDouble in Shift) then
+  begin
     Exit;
+  end;
   FDragging := True;
   FMoved := False;
   FDragX := X;
@@ -463,7 +515,9 @@ begin
     Exit;
   end;
   if not FMoved and (Abs(X - FDragX) <= DragThreshold) and (Abs(Y - FDragY) <= DragThreshold) then
+  begin
     Exit;
+  end;
   FMoved := True;
   FView.Pan(X - FDragX, Y - FDragY);
   FDragX := X;
@@ -475,10 +529,14 @@ procedure TAtlasCallDiagramView.MouseUp(Button: TMouseButton; Shift: TShiftState
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if (Button <> mbLeft) or not FDragging then
+  begin
     Exit;
+  end;
   FDragging := False;
   if FMoved then
+  begin
     Exit;
+  end;
   ClickBox(FView.BoxAt(FLayout, X, Y));
 end;
 
@@ -515,9 +573,13 @@ begin
   Result := True;
   Local := ScreenToClient(MousePos);
   if WheelDelta > 0 then
-    FView.ZoomAt(1.15, Local.X, Local.Y)
+  begin
+    FView.ZoomAt(1.15, Local.X, Local.Y);
+  end
   else
+  begin
     FView.ZoomAt(1 / 1.15, Local.X, Local.Y);
+  end;
   Invalidate;
 end;
 

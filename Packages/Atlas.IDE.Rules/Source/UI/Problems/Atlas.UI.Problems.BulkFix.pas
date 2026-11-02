@@ -158,9 +158,13 @@ var
 begin
   mFile := FPreview.Files[AIndex];
   if mFile.Rejected then
-    Result := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewRejected, [ExtractFileName(mFile.FileName)])
+  begin
+    Result := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.FixPreviewRejected, [ExtractFileName(mFile.FileName)]);
+  end
   else
+  begin
     Result := Format('%s (%d)', [ExtractFileName(mFile.FileName), mFile.Fixes]);
+  end;
 end;
 
 procedure TAtlasBulkFixDialog.Fill;
@@ -168,7 +172,9 @@ var
   mIndex: Integer;
 begin
   if FFiles.Items.Count > 0 then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     FFiles.Items.BeginUpdate;
@@ -186,7 +192,9 @@ begin
     FUpdating := False;
   end;
   if FFiles.Items.Count > 0 then
+  begin
     FFiles.ItemIndex := 0;
+  end;
   ShowDiff;
   UpdateSelection;
 end;
@@ -201,9 +209,13 @@ end;
 procedure TAtlasBulkFixDialog.ShowDiff;
 begin
   if (FFiles.ItemIndex < 0) or (FFiles.ItemIndex >= FPreview.Count) then
-    FDiff.Lines.Text := ''
+  begin
+    FDiff.Lines.Text := '';
+  end
   else
+  begin
     FDiff.Lines.Text := FPreview.Files[FFiles.ItemIndex].Diff;
+  end;
 end;
 
 procedure TAtlasBulkFixDialog.UpdateSelection;
@@ -223,16 +235,22 @@ var
   mIndex: Integer;
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   for mIndex := 0 to FFiles.Items.Count - 1 do
+  begin
     FPreview.SetChecked(mIndex, FFiles.Checked[mIndex]);
+  end;
   UpdateSelection;
 end;
 
 procedure TAtlasBulkFixDialog.ApplyClick(Sender: TObject);
 begin
   if FPreview.SelectedCount > 0 then
+  begin
     ModalResult := mrOk;
+  end;
 end;
 
 procedure TAtlasBulkFixDialog.CancelClick(Sender: TObject);
