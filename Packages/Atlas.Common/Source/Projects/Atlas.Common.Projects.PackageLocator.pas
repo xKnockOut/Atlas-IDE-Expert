@@ -369,17 +369,34 @@ begin
   end;
 end;
 
+/// <summary>Hängt die Dateien aus AItems an AFiles an, die noch nicht in ASeen stehen (ohne Rücksicht auf
+/// Groß-/Kleinschreibung, Reihenfolge bleibt).</summary>
+procedure AddNewFiles(const AItems: TArray<string>; ASeen: TDictionary<string, Boolean>; AFiles: TList<string>);
+var
+  mItem: string;
+begin
+  for mItem in AItems do
+  begin
+    if not ASeen.ContainsKey(UpperCase(mItem)) then
+    begin
+      ASeen.Add(UpperCase(mItem), True);
+      AFiles.Add(mItem);
+    end;
+  end;
+end;
+
 function TPackageLocator.RequiredFiles(const ASource: TPackageSource): TArray<string>;
 var
-  Seen, Files: TDictionary<string, Boolean>;
+  Seen, Known: TDictionary<string, Boolean>;
+  Files: TList<string>;
   Pending: TQueue<TPackageSource>;
   Current, Required: TPackageSource;
   Entry: TPackageEntry;
-  FileName, Item: string;
+  FileName: string;
 begin
-  Result := nil;
   Seen := TDictionary<string, Boolean>.Create;
-  Files := TDictionary<string, Boolean>.Create;
+  Known := TDictionary<string, Boolean>.Create;
+  Files := TList<string>.Create;
   Pending := TQueue<TPackageSource>.Create;
   try
     Seen.Add(UpperCase(ASource.Name), True);
@@ -389,29 +406,24 @@ begin
       Current := Pending.Dequeue;
       for Entry in Current.Requires do
       begin
+        // Jedes Package nur einmal, auch wenn es mehrere verlangen.
         if Seen.ContainsKey(UpperCase(Entry.Name)) then
         begin
           Continue;
         end;
         Seen.Add(UpperCase(Entry.Name), True);
-        if not FindSource(Entry.Name, FileName, Required) then
+        if FindSource(Entry.Name, FileName, Required) then
         begin
-          Continue;
+          AddNewFiles(ContainedFiles(FileName, Required), Known, Files);
+          Pending.Enqueue(Required);
         end;
-        for Item in ContainedFiles(FileName, Required) do
-        begin
-          if not Files.ContainsKey(UpperCase(Item)) then
-          begin
-            Files.Add(UpperCase(Item), True);
-            Result := Result + [Item];
-          end;
-        end;
-        Pending.Enqueue(Required);
       end;
     end;
+    Result := Files.ToArray;
   finally
     Pending.Free;
     Files.Free;
+    Known.Free;
     Seen.Free;
   end;
 end;

@@ -342,12 +342,59 @@ begin
   ASnapshot.Requests := mAll;
 end;
 
+/// <summary>Schlüssel process (Server ab #1356); ohne ihn bleibt Known False.</summary>
+procedure ReadProcess(var ASnapshot: TAtlasServerSnapshot; AProcess: TJSONObject);
+begin
+  ASnapshot.Known := AProcess <> nil;
+  if AProcess = nil then
+  begin
+    Exit;
+  end;
+  ASnapshot.ProcessId := Cardinal(IntOf(AProcess, 'pid', 0));
+  ASnapshot.Version := TextOf(AProcess, 'version');
+  ASnapshot.UptimeMs := IntOf(AProcess, 'uptimeMs', 0);
+  ASnapshot.State := StateOf(TextOf(AProcess, 'state'));
+end;
+
+/// <summary>Schlüssel memory; Gesamtwert und Budget überschreiben die alten Schlüssel nur, wenn vorhanden.</summary>
+procedure ReadMemory(var ASnapshot: TAtlasServerSnapshot; AMemory: TJSONObject);
+begin
+  if AMemory = nil then
+  begin
+    Exit;
+  end;
+  ASnapshot.Memory[TAtlasServerMemoryPart.Symbols] := IntOf(AMemory, 'symbols', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Usages] := IntOf(AMemory, 'usages', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.LibraryUnits] := IntOf(AMemory, 'libraryUnits', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.TreeCache] := IntOf(AMemory, 'treeCache', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Packages] := IntOf(AMemory, 'packages', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Documents] := IntOf(AMemory, 'documents', 0);
+  ASnapshot.Memory[TAtlasServerMemoryPart.Rest] := IntOf(AMemory, 'rest', 0);
+  ASnapshot.MemoryTotal := IntOf(AMemory, 'total', ASnapshot.MemoryTotal);
+  ASnapshot.MemoryBudget := IntOf(AMemory, 'budget', ASnapshot.MemoryBudget);
+  ASnapshot.OverBudget := BoolOf(AMemory, 'overBudget');
+end;
+
+/// <summary>Schlüssel queue: wartende und laufende Aufträge.</summary>
+procedure ReadQueue(var ASnapshot: TAtlasServerSnapshot; AQueue: TJSONObject);
+begin
+  if AQueue = nil then
+  begin
+    Exit;
+  end;
+  ASnapshot.IndexWaiting := Integer(IntOf(AQueue, 'indexWaiting', 0));
+  ASnapshot.IndexRunning := Integer(IntOf(AQueue, 'indexRunning', 0));
+  ASnapshot.CheckWaiting := Integer(IntOf(AQueue, 'checkWaiting', 0));
+  ASnapshot.CheckRunning := Integer(IntOf(AQueue, 'checkRunning', 0));
+  ASnapshot.OldestWaitMs := IntOf(AQueue, 'oldestWaitMs', 0);
+end;
+
 { TAtlasServerSnapshot }
 
 class function TAtlasServerSnapshot.Parse(const AJson: string): TAtlasServerSnapshot;
 var
   mValue: TJSONValue;
-  mRoot, mProcess, mMemory, mQueue, mHits: TJSONObject;
+  mRoot, mHits: TJSONObject;
 begin
   Result := Default(TAtlasServerSnapshot);
   Result.Units := -1;
@@ -374,39 +421,10 @@ begin
     Result.MemoryTotal := IntOf(mRoot, 'memoryBytes', 0);
     Result.MemoryBudget := IntOf(mRoot, 'budgetBytes', 0);
     ReadRequests(Result, ArrayOf(mRoot, 'requests'));
-    mProcess := ObjectOf(mRoot, 'process');
-    Result.Known := mProcess <> nil;
-    if mProcess <> nil then
-    begin
-      Result.ProcessId := Cardinal(IntOf(mProcess, 'pid', 0));
-      Result.Version := TextOf(mProcess, 'version');
-      Result.UptimeMs := IntOf(mProcess, 'uptimeMs', 0);
-      Result.State := StateOf(TextOf(mProcess, 'state'));
-    end;
-    mMemory := ObjectOf(mRoot, 'memory');
-    if mMemory <> nil then
-    begin
-      Result.Memory[TAtlasServerMemoryPart.Symbols] := IntOf(mMemory, 'symbols', 0);
-      Result.Memory[TAtlasServerMemoryPart.Usages] := IntOf(mMemory, 'usages', 0);
-      Result.Memory[TAtlasServerMemoryPart.LibraryUnits] := IntOf(mMemory, 'libraryUnits', 0);
-      Result.Memory[TAtlasServerMemoryPart.TreeCache] := IntOf(mMemory, 'treeCache', 0);
-      Result.Memory[TAtlasServerMemoryPart.Packages] := IntOf(mMemory, 'packages', 0);
-      Result.Memory[TAtlasServerMemoryPart.Documents] := IntOf(mMemory, 'documents', 0);
-      Result.Memory[TAtlasServerMemoryPart.Rest] := IntOf(mMemory, 'rest', 0);
-      Result.MemoryTotal := IntOf(mMemory, 'total', Result.MemoryTotal);
-      Result.MemoryBudget := IntOf(mMemory, 'budget', Result.MemoryBudget);
-      Result.OverBudget := BoolOf(mMemory, 'overBudget');
-    end;
+    ReadProcess(Result, ObjectOf(mRoot, 'process'));
+    ReadMemory(Result, ObjectOf(mRoot, 'memory'));
     ReadCheckRun(Result, ObjectOf(mRoot, 'checkRun'));
-    mQueue := ObjectOf(mRoot, 'queue');
-    if mQueue <> nil then
-    begin
-      Result.IndexWaiting := Integer(IntOf(mQueue, 'indexWaiting', 0));
-      Result.IndexRunning := Integer(IntOf(mQueue, 'indexRunning', 0));
-      Result.CheckWaiting := Integer(IntOf(mQueue, 'checkWaiting', 0));
-      Result.CheckRunning := Integer(IntOf(mQueue, 'checkRunning', 0));
-      Result.OldestWaitMs := IntOf(mQueue, 'oldestWaitMs', 0);
-    end;
+    ReadQueue(Result, ObjectOf(mRoot, 'queue'));
     mHits := ObjectOf(mRoot, 'cacheHits');
     Result.IndexHitPercent := PercentOf(mHits, 'index');
     Result.TreeHitPercent := PercentOf(mHits, 'trees');
