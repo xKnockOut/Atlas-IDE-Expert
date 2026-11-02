@@ -1453,6 +1453,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>
         <DCCReference Include="Application\Shell\Shell.Replay.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Compile.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Compile.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>

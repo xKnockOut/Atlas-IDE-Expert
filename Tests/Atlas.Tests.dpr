@@ -1377,6 +1377,8 @@ uses
   Shell.Replay in '..\Application\Source\Shell\Shell.Replay.pas',
   Shell.Replay.Tests in 'Application\Shell\Shell.Replay.Tests.pas',
   Shell.Composition in '..\Application\Source\Shell\Shell.Composition.pas',
+  Shell.Composition.Compile in '..\Application\Source\Shell\Shell.Composition.Compile.pas',
+  Shell.Composition.Compile.Tests in 'Application\Shell\Shell.Composition.Compile.Tests.pas',
   Shell.ReplayServer in '..\Application\Source\Shell\Shell.ReplayServer.pas',
   Shell.ReplayServer.Tests in 'Application\Shell\Shell.ReplayServer.Tests.pas',
   Shell.Linter in '..\Application\Source\Shell\Shell.Linter.pas',
