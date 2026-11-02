@@ -46,6 +46,7 @@ uses
   Shell.Composition.Directives in 'Source\Shell\Shell.Composition.Directives.pas',
   Shell.Composition.FileOptions in 'Source\Shell\Shell.Composition.FileOptions.pas',
   Shell.Composition.Folders in 'Source\Shell\Shell.Composition.Folders.pas',
+  Shell.Composition.CompileSetup in 'Source\Shell\Shell.Composition.CompileSetup.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
