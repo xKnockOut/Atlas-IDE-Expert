@@ -74,6 +74,7 @@ uses
   Shell.Composition.Directives,
   Shell.Composition.FileOptions,
   Shell.Composition.Folders,
+  Shell.Composition.CompileSetup,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Projects.MissingUnit,
@@ -100,9 +101,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
   Atlas.Common.Compiler.Backend,
-  Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
-  Shell.Compiler,
   Shell.Composition.Compile,
   Shell.Composition.Refactorings,
   Atlas.Common.Diagnostics.Contract,
@@ -396,9 +395,6 @@ type
     procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
     /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
     procedure SourceSaved(const AFileName: string);
-    /// <summary>Auftrag für das Projekt zu AFileName ('' = einziger Ordner); False ohne Projekt oder Installation
-    /// (Grund in AError).</summary>
-    function CompileJobFor(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean;
     /// <summary>Beenden: Index-Threads aller Ordner anhalten; nil-sicher.</summary>
     procedure StopIndexThreads;
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
@@ -478,21 +474,6 @@ uses
 const
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
   CompilePauseLimitMs = 10 * 60 * 1000;
-
-// PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
-// durchsucht PATH nicht selbst.
-function PowerShellProgram: string;
-begin
-  Result := TVcsChanges.FindProgram('pwsh');
-  if SameText(Result, 'pwsh') then
-  begin
-    Result := TVcsChanges.FindProgram('powershell');
-  end;
-  if SameText(Result, 'powershell') then
-  begin
-    Result := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\WindowsPowerShell\v1.0\powershell.exe');
-  end;
-end;
 
 // Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer
 // Server (jede RAD-Studio-IDE startet einen eigenen), weicht er auf einen Namen
@@ -706,45 +687,20 @@ end;
 
 procedure TServerComposition.WireCompile;
 var
-  mServices: TShellCompileServices;
+  mServices: TShellCompileSetupServices;
 begin
-  mServices := Default(TShellCompileServices);
   FCompilerProcess := TProcessRunner.Create;
-  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken; eigene IDE über cc.ps1.
-  mServices.Editions := TShellCompilerEditions.Create(FCompilerProcess, FLogger, TShellCompilerEditions.DefaultFile);
-  mServices.IdeCompiler := TShellIdeCompiler.Create(FCompilerProcess, FLogger, PowerShellProgram,
-    function: TArray<Cardinal>
-    begin
-      Result := TProcessInstances.IdsOf('bds.exe');
-    end,
-    function(APid: Cardinal): Boolean
-    begin
-      Result := TProcessInstances.Running(APid);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-      try
-        if TFile.Exists(AFileName) then
-        begin
-          Result := TFileEncoding.LoadLines(AFileName);
-        end;
-      except
-        on E: Exception do
-          FLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
-      end;
-    end);
+  mServices := Default(TShellCompileSetupServices);
   mServices.Logger := FLogger;
   mServices.Transport := FTransport;
   mServices.Process := FCompilerProcess;
-  mServices.Progress := TLspWorkDoneProgress.Create(FTransport, 'atlas-compile');
-  mServices.JobFor := CompileJobFor;
+  mServices.Workspaces := FWorkspaces;
   mServices.Publish :=
     procedure(const AFiles: TArray<string>)
     begin
       FSyntaxDiagnostics.RefreshFiles(AFiles);
     end;
-  FCompile := TShellCompileHost.Create(mServices);
+  FCompile := TShellCompileSetup.NewHost(mServices);
 end;
 
 /// <summary>Kanonischer Pfad für den Dokumentspeicher.</summary>
@@ -2674,35 +2630,6 @@ begin
   begin
     FCompile.Start(AFileName, False, mChoice);
   end;
-end;
-
-function TServerComposition.CompileJobFor(const AFileName: string; out AJob: TShellCompileJob;
-  out AError: string): Boolean;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  AJob := Default(TShellCompileJob);
-  AError := '';
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    mWorkspace := nil;
-    if AFileName <> '' then
-    begin
-      mWorkspace := FWorkspaces.WorkspaceOf(AFileName);
-    end;
-    mWorkspace := TShellWorkspaces.Choose(mWorkspace, FWorkspaces.Items);
-    if mWorkspace = nil then
-    begin
-      AError := 'Kein Ordner mit Projekt geöffnet';
-    end
-    else if mWorkspace.CompileJob(AJob, AError) then
-    begin
-      AError := '';
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  Result := AError = '';
 end;
 
 /// <summary>Protokoll für den stdio-Betrieb: Debug-Senke der Plattform, stderr nur für Fehler, Auszug der Sitzung
