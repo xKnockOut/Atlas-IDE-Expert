@@ -165,53 +165,69 @@ begin
   raise EProtocolMismatch.Create('Ordner Tests\Data\Protocol nicht gefunden');
 end;
 
-class function TProtocolReplay.Mismatch(const AExpected, AActual: TJSONValue; const APath: string): string;
+/// <summary>Erste Abweichung zwischen den Objekten AExpected und AActual (AActual darf mehr Felder haben).
+/// </summary>
+function ObjectMismatch(AExpected: TJSONObject; AActual: TJSONValue; const APath: string): string;
 var
-  Pair: TJSONPair;
-  ActualValue: TJSONValue;
-  Index: Integer;
+  mPair: TJSONPair;
+  mActualValue: TJSONValue;
+begin
+  Result := '';
+  if not (AActual is TJSONObject) then
+  begin
+    Exit(Format('%s: Objekt erwartet, %s gefunden', [APath, AActual.ToJSON]));
+  end;
+  for mPair in AExpected do
+  begin
+    mActualValue := TJSONObject(AActual).GetValue(mPair.JsonString.Value);
+    if mActualValue = nil then
+    begin
+      Exit(Format('%s.%s fehlt', [APath, mPair.JsonString.Value]));
+    end;
+    Result := TProtocolReplay.Mismatch(mPair.JsonValue, mActualValue, APath + '.' + mPair.JsonString.Value);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Erste Abweichung zwischen den Arrays AExpected und AActual.</summary>
+function ArrayMismatch(AExpected: TJSONArray; AActual: TJSONValue; const APath: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  if not (AActual is TJSONArray) then
+  begin
+    Exit(Format('%s: Array erwartet, %s gefunden', [APath, AActual.ToJSON]));
+  end;
+  if AExpected.Count <> TJSONArray(AActual).Count then
+  begin
+    Exit(Format('%s: %d Elemente erwartet, %d gefunden: %s',
+      [APath, AExpected.Count, TJSONArray(AActual).Count, AActual.ToJSON]));
+  end;
+  for mIndex := 0 to AExpected.Count - 1 do
+  begin
+    Result := TProtocolReplay.Mismatch(AExpected.Items[mIndex], TJSONArray(AActual).Items[mIndex],
+      Format('%s[%d]', [APath, mIndex]));
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+class function TProtocolReplay.Mismatch(const AExpected, AActual: TJSONValue; const APath: string): string;
 begin
   Result := '';
   if AExpected is TJSONObject then
   begin
-    if not (AActual is TJSONObject) then
-    begin
-      Exit(Format('%s: Objekt erwartet, %s gefunden', [APath, AActual.ToJSON]));
-    end;
-    for Pair in TJSONObject(AExpected) do
-    begin
-      ActualValue := TJSONObject(AActual).GetValue(Pair.JsonString.Value);
-      if ActualValue = nil then
-      begin
-        Exit(Format('%s.%s fehlt', [APath, Pair.JsonString.Value]));
-      end;
-      Result := Mismatch(Pair.JsonValue, ActualValue, APath + '.' + Pair.JsonString.Value);
-      if Result <> '' then
-      begin
-        Exit;
-      end;
-    end;
+    Result := ObjectMismatch(TJSONObject(AExpected), AActual, APath);
   end
   else if AExpected is TJSONArray then
   begin
-    if not (AActual is TJSONArray) then
-    begin
-      Exit(Format('%s: Array erwartet, %s gefunden', [APath, AActual.ToJSON]));
-    end;
-    if TJSONArray(AExpected).Count <> TJSONArray(AActual).Count then
-    begin
-      Exit(Format('%s: %d Elemente erwartet, %d gefunden: %s',
-        [APath, TJSONArray(AExpected).Count, TJSONArray(AActual).Count, AActual.ToJSON]));
-    end;
-    for Index := 0 to TJSONArray(AExpected).Count - 1 do
-    begin
-      Result := Mismatch(TJSONArray(AExpected).Items[Index], TJSONArray(AActual).Items[Index],
-        Format('%s[%d]', [APath, Index]));
-      if Result <> '' then
-      begin
-        Exit;
-      end;
-    end;
+    Result := ArrayMismatch(TJSONArray(AExpected), AActual, APath);
   end
   else if AExpected.ToJSON <> AActual.ToJSON then
   begin
