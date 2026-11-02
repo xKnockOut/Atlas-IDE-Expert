@@ -62,6 +62,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.Editing.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Stepping.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Baselines.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Overviews.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>

@@ -37,10 +37,10 @@ type
     /// <summary>Die Fassade meldet die Befehle aller Teile an, auch die des Debuggers.</summary>
     [Test]
     procedure RegistersCommandsOfAllParts;
-    /// <summary>Ohne eingeschaltetes Refactoring bietet keine Datei eine Code-Aktion an.</summary>
     /// <summary>Jeder Teil meldet nur seine eigenen Befehle an.</summary>
     [Test]
     procedure EachPartRegistersItsCommands;
+    /// <summary>Ohne eingeschaltetes Refactoring bietet keine Datei eine Code-Aktion an.</summary>
     [Test]
     procedure DisabledRefactoringsOfferNoActions;
     /// <summary>Ein abgeschaltetes Refactoring nennt seine Einstellung.</summary>
