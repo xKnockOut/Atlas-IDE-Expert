@@ -10,7 +10,6 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Backend,
-  Atlas.Common.Lsp.Processes,
   Shell.Workspace,
   Shell.Composition.ServerCommands;
 
@@ -27,7 +26,6 @@ type
     procedure Logged(const AText: string);
     function Compile(const AFileName: string; out AChoice: TCompilerBackendChoice): Boolean;
     function NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
-    function NoProcesses: TArray<TLspProcessWorkspace>;
     function Retry(const AUri: string): Integer;
     procedure Recheck;
   public
@@ -40,7 +38,8 @@ type
     /// </summary>
     [Test]
     procedure CompileWithoutBackendFails;
-    /// <summary>Ohne Arbeitsbereiche liefert die Projektwahl eine leere Liste und den Index für keinen Ordner.</summary>
+    /// <summary>Ohne Arbeitsbereiche liefert die Projektwahl eine leere Liste, der Index baut für keinen Ordner
+    /// neu auf, und Prozesse am Index-Cache gibt es keine.</summary>
     [Test]
     procedure WithoutWorkspacesNothingHappens;
     /// <summary>Erneut versuchen gibt die URI weiter, Neuprüfen stößt eine neue Generation an und schreibt ins Log.
@@ -56,6 +55,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
+  Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
@@ -132,11 +132,6 @@ begin
   Result := nil;
 end;
 
-function TShellServerCommandsTests.NoProcesses: TArray<TLspProcessWorkspace>;
-begin
-  Result := nil;
-end;
-
 function TShellServerCommandsTests.Retry(const AUri: string): Integer;
 begin
   FRetried := AUri;
@@ -154,7 +149,6 @@ begin
   Result.Logger := TCollectingLogger.Create(Logged);
   Result.Compile := Compile;
   Result.Workspaces := NoWorkspaces;
-  Result.Processes := NoProcesses;
   Result.RetryCrashCase := Retry;
   Result.Recheck := Recheck;
   Result.ActiveProject :=
@@ -251,6 +245,13 @@ begin
   Execute(TShellServerCommands.RebuildIndexCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, Integer(Length(FLog)));
   Assert.AreEqual('Index wird für 0 Ordner neu aufgebaut', FLog[0]);
+  mAnswer := Execute(ProcessesCommand, TJSONArray.Create);
+  try
+    Assert.IsNotNull(mAnswer);
+  finally
+    mAnswer.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(FLog)));
 end;
 
 procedure TShellServerCommandsTests.RetryAndRecheck;

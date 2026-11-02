@@ -1,8 +1,8 @@
 ﻿unit Shell.Composition.Status;
 
-// Internals-Rolle Shell: Status des Servers (#28, #1356), Prozesse am Index-Cache (#62), Fehlerbericht (#108)
-// und Diagnosepaket (#1356). Die Komposition reicht Index, Dokumente, Arbeitsbereiche (unter ihrer Sperre),
-// Protokoll, Mitschnitt und die Zustände von Compiler, Prüflauf und Index-Warteschlange als Dienste herein.
+// Internals-Rolle Shell: Status des Servers (#28, #1356), Fehlerbericht (#108) und Diagnosepaket (#1356). Die
+// Komposition reicht Index, Dokumente, Arbeitsbereiche (unter ihrer Sperre), Protokoll, Mitschnitt und die
+// Zustände von Compiler, Prüflauf und Index-Warteschlange als Dienste herein.
 
 interface
 
@@ -20,12 +20,10 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Lsp.Processes,
-  Shell.Workspace;
+  Shell.Workspace,
+  Shell.Composition.Contract;
 
 type
-  TShellStatusWorkspacesProc = reference to procedure(const AWorkspaces: TArray<TShellWorkspace>);
-  TShellStatusVisitProc = reference to procedure(const AVisit: TShellStatusWorkspacesProc);
   TShellStatusTextFunc = reference to function: string;
   TShellStatusSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
   TShellStatusRecentLogFunc = reference to function: IRecentLogLines;
@@ -42,7 +40,7 @@ type
     Documents: IDocumentStore;
     Statistics: IJsonRpcStatistics;
     /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter deren Sperre auf.</summary>
-    VisitWorkspaces: TShellStatusVisitProc;
+    VisitWorkspaces: TShellVisitWorkspacesProc;
     /// <summary>Einstellungen des Editors (Text der Schichtung).</summary>
     EditorSettings: TShellStatusTextFunc;
     /// <summary>Aktives Projekt der IDE.</summary>
@@ -80,8 +78,6 @@ type
     procedure RegisterCommands(ACommands: TLspCommands);
     /// <summary>Status als JSON und ins Log; nicht anonym auch als Statusdatei für get_server_status.</summary>
     function StatusJson(AAnonymize: Boolean): TJSONObject;
-    /// <summary>Arbeitsbereiche mit Index-Cache und den Prozessen daran (#62).</summary>
-    function CollectProcesses: TArray<TLspProcessWorkspace>;
   end;
 
 implementation
@@ -96,7 +92,6 @@ uses
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.ServerPackage,
-  Atlas.Common.Index.Cache,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
@@ -313,33 +308,6 @@ begin
   end;
   FServices.Logger.Info('Fehlerbericht erstellt');
   Result := mAnswer;
-end;
-
-function TShellStatusReports.CollectProcesses: TArray<TLspProcessWorkspace>;
-var
-  mWorkspace: TShellWorkspace;
-  mItem: TLspProcessWorkspace;
-  mStatus: TWorkspaceStatus;
-begin
-  Result := nil;
-  for mWorkspace in Workspaces do
-  begin
-    mItem := Default(TLspProcessWorkspace);
-    if not mWorkspace.Cache.Processes(mItem.CacheFile, mItem.Processes) then
-    begin
-      Continue;
-    end;
-    mStatus := mWorkspace.IndexStatus;
-    mItem.Name := mWorkspace.Name;
-    mItem.Project := mStatus.Project;
-    mItem.FormatVersion := TIndexCache.FormatVersion;
-    mItem.Units := mStatus.Parsed + mStatus.FromCache;
-    if TFile.Exists(mItem.CacheFile) then
-    begin
-      mItem.Saved := TFile.GetLastWriteTime(mItem.CacheFile);
-    end;
-    Result := Result + [mItem];
-  end;
 end;
 
 function TShellStatusReports.CollectStatus: TServerStatus;
