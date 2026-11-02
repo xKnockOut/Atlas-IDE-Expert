@@ -103,6 +103,15 @@ type
     procedure WriteIndent;
     procedure NewLine;
     procedure WriteString(const AText: string);
+    procedure ConvertList;
+    procedure ConvertBinary;
+    procedure ConvertSet;
+    procedure ConvertCollectionItem;
+    procedure ConvertCollection;
+    /// <summary>Text eines Werts vaString, vaLString, vaWString oder vaUTF8String.</summary>
+    function ReadText(AKind: Byte): string;
+    /// <summary>Text eines einfachen Werts (Zahl, Bezeichner, True, nil …); EBinaryForm bei unbekanntem.</summary>
+    function ScalarText(AKind: Byte): string;
     procedure ConvertValue;
     procedure ConvertProperty;
     procedure ConvertObject;
@@ -288,242 +297,237 @@ begin
   WriteIndent;
 end;
 
+/// <summary>Zeichen, das in einem Text in Hochkommas stehen darf (druckbares ASCII ohne Hochkomma).</summary>
+function IsPlainChar(ACh: Char): Boolean;
+begin
+  Result := (ACh >= ' ') and (ACh <> '''') and (Ord(ACh) <= 127);
+end;
+
+/// <summary>Ende des Laufs druckbarer Zeichen ab AIndex, höchstens bis zur Zeilenlänge ab ALineStart.</summary>
+function PlainRunEnd(const AText: string; AIndex, ALineStart: Integer): Integer;
+begin
+  Result := AIndex;
+  repeat
+    Inc(Result);
+  until (Result > Length(AText)) or not IsPlainChar(AText[Result]) or
+    (Result - ALineStart >= TDfmBinary.LineLength);
+end;
+
 procedure TConverter.WriteString(const AText: string);
 var
-  Index, Start, LineStart, Count: Integer;
-  LineBreak: Boolean;
+  mIndex, mStart, mLineStart: Integer;
 begin
-  Count := Length(AText);
-  if Count = 0 then
+  if AText = '' then
   begin
     Emit('''''');
     Exit;
   end;
-  Index := 1;
+  mIndex := 1;
   Inc(FNesting);
   try
-    if Count > TDfmBinary.LineLength then
+    if Length(AText) > TDfmBinary.LineLength then
     begin
       NewLine;
     end;
-    LineStart := Index;
+    mLineStart := mIndex;
     repeat
-      LineBreak := False;
-      if (AText[Index] >= ' ') and (AText[Index] <> '''') and (Ord(AText[Index]) <= 127) then
+      if IsPlainChar(AText[mIndex]) then
       begin
-        Start := Index;
-        repeat
-          Inc(Index);
-        until (Index > Count) or (AText[Index] < ' ') or (AText[Index] = '''') or
-          (Index - LineStart >= TDfmBinary.LineLength) or (Ord(AText[Index]) > 127);
-        if Index - LineStart >= TDfmBinary.LineLength then
-        begin
-          LineBreak := True;
-        end;
-        Emit('''' + Copy(AText, Start, Index - Start) + '''');
+        mStart := mIndex;
+        mIndex := PlainRunEnd(AText, mIndex, mLineStart);
+        Emit('''' + Copy(AText, mStart, mIndex - mStart) + '''');
       end
       else
       begin
-        Emit('#' + IntToStr(Ord(AText[Index])));
-        Inc(Index);
-        if Index - LineStart >= TDfmBinary.LineLength then
-        begin
-          LineBreak := True;
-        end;
+        Emit('#' + IntToStr(Ord(AText[mIndex])));
+        Inc(mIndex);
       end;
-      if LineBreak and (Index <= Count) then
+      if (mIndex - mLineStart >= TDfmBinary.LineLength) and (mIndex <= Length(AText)) then
       begin
         Emit(' +');
         NewLine;
-        LineStart := Index;
+        mLineStart := mIndex;
       end;
-    until Index > Count;
+    until mIndex > Length(AText);
   finally
     Dec(FNesting);
   end;
 end;
 
-procedure TConverter.ConvertValue;
+procedure TConverter.ConvertList;
+begin
+  ReadByte;
+  Emit('(');
+  Inc(FNesting);
+  while not EndOfList do
+  begin
+    NewLine;
+    ConvertValue;
+  end;
+  ReadListEnd;
+  Dec(FNesting);
+  Emit(')');
+end;
+
+procedure TConverter.ConvertBinary;
 const
   HexDigits = '0123456789ABCDEF';
 var
-  Kind: Byte;
-  Count, Index, Chunk: Integer;
-  Bytes: TBytes;
-  Line, Name: string;
-  First: Boolean;
+  mCount, mIndex, mChunk: Integer;
+  mBytes: TBytes;
+  mLine: string;
 begin
-  Kind := NextByte;
-  case Kind of
-    vaList:
-      begin
-        ReadByte;
-        Emit('(');
-        Inc(FNesting);
-        while not EndOfList do
-        begin
-          NewLine;
-          ConvertValue;
-        end;
-        ReadListEnd;
-        Dec(FNesting);
-        Emit(')');
-      end;
-    vaInt8, vaInt16, vaInt32, vaInt64:
-      Emit(IntToStr(ReadInteger));
-    vaExtended:
-      begin
-        ReadByte;
-        Emit(FloatText(ReadExtended));
-      end;
-    vaDouble:
-      begin
-        ReadByte;
-        Emit(FloatText(ReadDouble));
-      end;
-    vaSingle:
-      begin
-        ReadByte;
-        Emit(FloatText(ReadSingle) + 's');
-      end;
-    vaCurrency:
-      begin
-        ReadByte;
-        Emit(FloatText(ReadInt64 / 10000) + 'c');
-      end;
-    vaDate:
-      begin
-        ReadByte;
-        Emit(FloatText(ReadDouble) + 'd');
-      end;
-    vaString:
-      begin
-        ReadByte;
-        WriteString(ReadStr);
-      end;
+  ReadByte;
+  mCount := ReadInt32;
+  mBytes := ReadBytes(mCount);
+  Emit('{');
+  Inc(FNesting);
+  mIndex := 0;
+  while mIndex < mCount do
+  begin
+    NewLine;
+    mChunk := Min(32, mCount - mIndex);
+    mLine := '';
+    while mChunk > 0 do
+    begin
+      mLine := mLine + HexDigits[mBytes[mIndex] shr 4 + 1] + HexDigits[mBytes[mIndex] and $F + 1];
+      Inc(mIndex);
+      Dec(mChunk);
+    end;
+    Emit(mLine);
+  end;
+  Dec(FNesting);
+  Emit('}');
+end;
+
+procedure TConverter.ConvertSet;
+var
+  mName: string;
+  mFirst: Boolean;
+begin
+  ReadByte;
+  Emit('[');
+  mFirst := True;
+  mName := ReadStr;
+  while mName <> '' do
+  begin
+    if not mFirst then
+    begin
+      Emit(', ');
+    end;
+    Emit(mName);
+    mFirst := False;
+    mName := ReadStr;
+  end;
+  Emit(']');
+end;
+
+procedure TConverter.ConvertCollectionItem;
+begin
+  NewLine;
+  Emit('item');
+  if NextByte in [vaInt8, vaInt16, vaInt32] then
+  begin
+    Emit(' [');
+    ConvertValue;
+    Emit(']');
+  end;
+  Emit(CrLf);
+  if ReadByte <> vaList then
+  begin
+    raise EBinaryForm.Create('Collection-Eintrag erwartet');
+  end;
+  Inc(FNesting);
+  while not EndOfList do
+  begin
+    ConvertProperty;
+  end;
+  ReadListEnd;
+  Dec(FNesting);
+  WriteIndent;
+  Emit('end');
+end;
+
+procedure TConverter.ConvertCollection;
+begin
+  ReadByte;
+  Emit('<');
+  Inc(FNesting);
+  while not EndOfList do
+  begin
+    ConvertCollectionItem;
+  end;
+  ReadListEnd;
+  Dec(FNesting);
+  Emit('>');
+end;
+
+function TConverter.ReadText(AKind: Byte): string;
+begin
+  ReadByte;
+  case AKind of
     vaLString:
-      begin
-        ReadByte;
-        Count := ReadInt32;
-        WriteString(TEncoding.ANSI.GetString(ReadBytes(Count)));
-      end;
+      Result := TEncoding.ANSI.GetString(ReadBytes(ReadInt32));
     vaWString:
-      begin
-        ReadByte;
-        Count := ReadInt32;
-        WriteString(TEncoding.Unicode.GetString(ReadBytes(Count * 2)));
-      end;
+      Result := TEncoding.Unicode.GetString(ReadBytes(ReadInt32 * 2));
     vaUTF8String:
-      begin
-        ReadByte;
-        Count := ReadInt32;
-        WriteString(TEncoding.UTF8.GetString(ReadBytes(Count)));
-      end;
-    vaIdent:
-      begin
-        ReadByte;
-        Emit(ReadStr);
-      end;
-    vaFalse:
-      begin
-        ReadByte;
-        Emit('False');
-      end;
-    vaTrue:
-      begin
-        ReadByte;
-        Emit('True');
-      end;
-    vaNil:
-      begin
-        ReadByte;
-        Emit('nil');
-      end;
-    vaNull:
-      begin
-        ReadByte;
-        Emit('Null');
-      end;
-    vaBinary:
-      begin
-        ReadByte;
-        Count := ReadInt32;
-        Bytes := ReadBytes(Count);
-        Emit('{');
-        Inc(FNesting);
-        Index := 0;
-        while Index < Count do
-        begin
-          NewLine;
-          Chunk := Min(32, Count - Index);
-          Line := '';
-          while Chunk > 0 do
-          begin
-            Line := Line + HexDigits[Bytes[Index] shr 4 + 1] + HexDigits[Bytes[Index] and $F + 1];
-            Inc(Index);
-            Dec(Chunk);
-          end;
-          Emit(Line);
-        end;
-        Dec(FNesting);
-        Emit('}');
-      end;
-    vaSet:
-      begin
-        ReadByte;
-        Emit('[');
-        First := True;
-        repeat
-          Name := ReadStr;
-          if Name = '' then
-          begin
-            Break;
-          end;
-          if not First then
-          begin
-            Emit(', ');
-          end;
-          Emit(Name);
-          First := False;
-        until False;
-        Emit(']');
-      end;
-    vaCollection:
-      begin
-        ReadByte;
-        Emit('<');
-        Inc(FNesting);
-        while not EndOfList do
-        begin
-          NewLine;
-          Emit('item');
-          if NextByte in [vaInt8, vaInt16, vaInt32] then
-          begin
-            Emit(' [');
-            ConvertValue;
-            Emit(']');
-          end;
-          Emit(CrLf);
-          if ReadByte <> vaList then
-          begin
-            raise EBinaryForm.Create('Collection-Eintrag erwartet');
-          end;
-          Inc(FNesting);
-          while not EndOfList do
-          begin
-            ConvertProperty;
-          end;
-          ReadListEnd;
-          Dec(FNesting);
-          WriteIndent;
-          Emit('end');
-        end;
-        ReadListEnd;
-        Dec(FNesting);
-        Emit('>');
-      end;
+      Result := TEncoding.UTF8.GetString(ReadBytes(ReadInt32));
   else
-    raise EBinaryForm.CreateFmt('Unbekannter Werttyp %d', [Kind]);
+    Result := ReadStr;
+  end;
+end;
+
+function TConverter.ScalarText(AKind: Byte): string;
+begin
+  if AKind in [vaInt8, vaInt16, vaInt32, vaInt64] then
+  begin
+    Exit(IntToStr(ReadInteger));
+  end;
+  ReadByte;
+  case AKind of
+    vaExtended:
+      Result := FloatText(ReadExtended);
+    vaDouble:
+      Result := FloatText(ReadDouble);
+    vaSingle:
+      Result := FloatText(ReadSingle) + 's';
+    vaCurrency:
+      Result := FloatText(ReadInt64 / 10000) + 'c';
+    vaDate:
+      Result := FloatText(ReadDouble) + 'd';
+    vaIdent:
+      Result := ReadStr;
+    vaFalse:
+      Result := 'False';
+    vaTrue:
+      Result := 'True';
+    vaNil:
+      Result := 'nil';
+    vaNull:
+      Result := 'Null';
+  else
+    raise EBinaryForm.CreateFmt('Unbekannter Werttyp %d', [AKind]);
+  end;
+end;
+
+procedure TConverter.ConvertValue;
+var
+  mKind: Byte;
+begin
+  mKind := NextByte;
+  case mKind of
+    vaList:
+      ConvertList;
+    vaBinary:
+      ConvertBinary;
+    vaSet:
+      ConvertSet;
+    vaCollection:
+      ConvertCollection;
+    vaString, vaLString, vaWString, vaUTF8String:
+      WriteString(ReadText(mKind));
+  else
+    Emit(ScalarText(mKind));
   end;
 end;
 
@@ -646,34 +650,37 @@ begin
   end;
 end;
 
+/// <summary>Byte zu ACode in Windows-1252; 0, wenn das Zeichen dort fehlt.</summary>
+function Cp1252Byte(ACode: Integer): Byte;
+var
+  mHigh: Integer;
+begin
+  if (ACode < $80) or ((ACode >= $A0) and (ACode <= $FF)) then
+  begin
+    Exit(ACode);
+  end;
+  for mHigh := $80 to $9F do
+  begin
+    if Cp1252High[mHigh] = ACode then
+    begin
+      Exit(mHigh);
+    end;
+  end;
+  Result := 0;
+end;
+
 /// <summary>Bytes zum Text, der als Windows-1252 dekodiert wurde; False bei fremden Zeichen.</summary>
 function Cp1252Bytes(const AText: string; out ABytes: TBytes): Boolean;
 var
-  Index, Code, High: Integer;
+  mIndex: Integer;
 begin
   SetLength(ABytes, Length(AText));
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    Code := Ord(AText[Index]);
-    if (Code < $80) or ((Code >= $A0) and (Code <= $FF)) then
+    ABytes[mIndex - 1] := Cp1252Byte(Ord(AText[mIndex]));
+    if (ABytes[mIndex - 1] = 0) and (AText[mIndex] <> #0) then
     begin
-      ABytes[Index - 1] := Code;
-    end
-    else
-    begin
-      ABytes[Index - 1] := 0;
-      for High := $80 to $9F do
-      begin
-        if Cp1252High[High] = Code then
-        begin
-          ABytes[Index - 1] := High;
-          Break;
-        end;
-      end;
-      if (ABytes[Index - 1] = 0) then
-      begin
-        Exit(False);
-      end;
+      Exit(False);
     end;
   end;
   Result := True;
