@@ -65,8 +65,6 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
-  Atlas.Common.Lsp.BulkFix,
-  Atlas.Common.Lsp.CompilerBaseline,
   Shell.Composition.Baselines,
   Shell.Composition.Overviews,
   Shell.Composition.Analysis,
@@ -382,12 +380,6 @@ type
     function IncludePathsOf(const AUri: string): TArray<string>;
     /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
     function RunConvertForms(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Baseline des Projekts aktualisieren.</summary>
-    function RunBaseline(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Vorschau der Sammelkorrektur.</summary>
-    function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>Compilermeldungen in die Baseline.</summary>
-    function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Status (#28), optional anonymisiert (#1356).</summary>
     function RunStatus(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Prozesse am selben Index-Cache (#62).</summary>
@@ -1605,6 +1597,7 @@ begin
   mServices.DefinesFor := DefinesFor;
   mServices.IncludeResolverFor := IncludeResolverFor;
   mServices.RefreshLater := RefreshDiagnosticsLater;
+  mServices.Logger := FLogger;
   FBaselines := TShellBaselines.Create(mServices);
 end;
 
@@ -1892,9 +1885,7 @@ begin
   FOverviews.RegisterUnitCommands(FCommands);
   WireEditorCommands;
   FEditorCommands.RegisterMarkCommands(FCommands);
-  FCommands.Register(TLspBaseline.Command, RunBaseline);
-  FCommands.Register(TLspBulkFix.Command, RunBulkFix);
-  FCommands.Register(TLspCompilerBaseline.AddCommand, RunCompilerBaselineAdd);
+  FBaselines.RegisterCommands(FCommands);
   WireSlashCommands;
   FEditorCommands.RegisterTextCommands(FCommands);
   WireServerCommands;
@@ -1909,11 +1900,7 @@ end;
 
 procedure TServerComposition.WireSlashCommands;
 begin
-  FCommands.Register(TLspCompilerBaseline.ClassifyCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FBaselines.CompilerBaseline.ExecuteClassify(AArguments);
-    end);
+  FBaselines.RegisterClassifyCommand(FCommands);
   FEditing.RegisterCommands(FCommands);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1974,54 +1961,6 @@ begin
   FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
     [Converted, Backups]));
   Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
-end;
-
-function TServerComposition.RunBaseline(const AArguments: TJSONArray): TJSONValue;
-var
-  Watch: TStopwatch;
-begin
-  // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
-  Watch := TStopwatch.StartNew;
-  Result := FBaselines.Baseline.Execute(AArguments);
-  if Result is TJSONObject then
-  begin
-    FLogger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
-      '(%d neu, %d entfernt, %d ohne Datei), %d ms', [TJSONObject(Result).GetValue<Integer>('total', -1),
-      TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
-      TJSONObject(Result).GetValue<Integer>('removed', -1),
-      TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
-  end;
-end;
-
-function TServerComposition.RunBulkFix(const AArguments: TJSONArray): TJSONValue;
-var
-  Watch: TStopwatch;
-  Summary: string;
-begin
-  // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
-  Watch := TStopwatch.StartNew;
-  Result := FBaselines.BulkFix.Execute(AArguments);
-  if not (Result is TJSONObject) then
-  begin
-    Exit;
-  end;
-  Summary := TJSONObject(Result).GetValue<string>('summary', '');
-  if Pos(sLineBreak, Summary) > 0 then
-  begin
-    Summary := Copy(Summary, 1, Pos(sLineBreak, Summary) - 1);
-  end;
-  FLogger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [Summary, Watch.ElapsedMilliseconds]));
-end;
-
-function TServerComposition.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
-begin
-  Result := FBaselines.CompilerBaseline.ExecuteAdd(AArguments);
-  if Result is TJSONObject then
-  begin
-    FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
-      [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
-      TJSONObject(Result).GetValue<Integer>('removed', -1)]));
-  end;
 end;
 
 function TServerComposition.RunStatus(const AArguments: TJSONArray): TJSONValue;
