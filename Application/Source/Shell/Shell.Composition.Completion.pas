@@ -19,7 +19,7 @@ uses
   Atlas.Common.Lsp.ExpressionCompletion;
 
 type
-  TShellRefactoringSettingsFunc = reference to function(const AUri: string): TRefactoringSettings;
+  TShellCompletionRefactoringFunc = reference to function(const AUri: string): TRefactoringSettings;
   TShellLanguageLevelFunc = reference to function(const AUri: string): string;
   TShellRefactoringContextFunc = reference to function(const AUri: string): TRefactoringContext;
 
@@ -31,7 +31,7 @@ type
     ReadText: TCompletionReadText;
     /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480), Abgleich.</summary>
     CompletionSettingsFor: TCompletionSettingsFunc;
-    RefactoringSettingsFor: TShellRefactoringSettingsFunc;
+    RefactoringSettingsFor: TShellCompletionRefactoringFunc;
     LanguageLevelFor: TShellLanguageLevelFunc;
     /// <summary>Kontext der Refactorings für with auflösen und Methode anlegen.</summary>
     RefactoringContextFor: TShellRefactoringContextFunc;
