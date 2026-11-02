@@ -69,10 +69,14 @@ end;
 procedure TAtlasSearchHistory.SetCapacity(AValue: Integer);
 begin
   if AValue < 0 then
+  begin
     AValue := 0;
+  end;
   FCapacity := AValue;
   if Length(FItems) > FCapacity then
+  begin
     SetLength(FItems, FCapacity);
+  end;
   Reset;
 end;
 
@@ -83,11 +87,17 @@ var
 begin
   Reset;
   if (AText = '') or (FCapacity = 0) then
+  begin
     Exit;
+  end;
   Next := [AText];
   for Index := 0 to High(FItems) do
+  begin
     if (FItems[Index] <> AText) and (Length(Next) < FCapacity) then
+    begin
       Next := Next + [FItems[Index]];
+    end;
+  end;
   FItems := Next;
 end;
 
@@ -95,7 +105,9 @@ function TAtlasSearchHistory.Step(const ACurrent: string; AOlder: Boolean): stri
 begin
   Result := ACurrent;
   if Length(FItems) = 0 then
+  begin
     Exit;
+  end;
   if AOlder then
   begin
     if FPosition < 0 then
@@ -103,21 +115,31 @@ begin
       FTyped := ACurrent;
       // Steht der neueste Eintrag schon im Feld, ist der nächste ältere gemeint.
       if ACurrent = FItems[0] then
+      begin
         FPosition := 0;
+      end;
     end;
     if FPosition < High(FItems) then
+    begin
       Inc(FPosition);
+    end;
     Result := FItems[FPosition];
   end
   else
   begin
     if FPosition < 0 then
+    begin
       Exit;
+    end;
     Dec(FPosition);
     if FPosition < 0 then
-      Result := FTyped
+    begin
+      Result := FTyped;
+    end
     else
+    begin
       Result := FItems[FPosition];
+    end;
   end;
 end;
 
@@ -139,7 +161,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Item in FItems do
+  begin
     Result.Add(Item);
+  end;
 end;
 
 procedure TAtlasSearchHistory.LoadFromJson(const AValue: TJSONValue);
@@ -150,15 +174,23 @@ var
 begin
   Clear;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   Loaded := nil;
   for Element in TJSONArray(AValue) do
+  begin
     // TJSONNumber erbt von TJSONString; Zahlen sind keine Einträge.
     if (Element is TJSONString) and not (Element is TJSONNumber) and (Element.Value <> '') then
+    begin
       Loaded := Loaded + [Element.Value];
+    end;
+  end;
   // Von hinten merken: so steht der erste Eintrag der Datei wieder vorn, Doppelte fallen weg.
   for Index := High(Loaded) downto 0 do
+  begin
     Remember(Loaded[Index]);
+  end;
 end;
 
 { TAtlasSearchHistories }
@@ -187,7 +219,9 @@ begin
   try
     Result := Root is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     ASearch.LoadFromJson(TJSONObject(Root).GetValue('search'));
     AReplace.LoadFromJson(TJSONObject(Root).GetValue('replace'));
   finally

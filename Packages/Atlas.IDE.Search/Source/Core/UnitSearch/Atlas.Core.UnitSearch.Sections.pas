@@ -83,26 +83,38 @@ var
 begin
   OpenCount := 0;
   for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  begin
     if not AInputs[Section].Present then
-      Result[Section] := TAtlasSectionState.Hidden
+    begin
+      Result[Section] := TAtlasSectionState.Hidden;
+    end
     else if AChoices[Section] = TAtlasSectionChoice.HandClosed then
-      Result[Section] := TAtlasSectionState.Collapsed
+    begin
+      Result[Section] := TAtlasSectionState.Collapsed;
+    end
     else
     begin
       Result[Section] := TAtlasSectionState.Open;
       Inc(OpenCount);
     end;
+  end;
   if not AAutoCollapse then
+  begin
     Exit;
+  end;
   Total := Height(AInputs, Result);
   // Vom unwichtigsten her einklappen; von Hand geöffnete bleiben offen.
   for Index := High(Priority) downto Low(Priority) do
   begin
     if (Total <= AAvailable) or (OpenCount <= 1) then
+    begin
       Break;
+    end;
     Section := Priority[Index];
     if (Result[Section] <> TAtlasSectionState.Open) or (AChoices[Section] = TAtlasSectionChoice.HandOpen) then
+    begin
       Continue;
+    end;
     Result[Section] := TAtlasSectionState.AutoCollapsed;
     Dec(OpenCount);
     Dec(Total, AInputs[Section].OpenHeight - AInputs[Section].ClosedHeight);
@@ -112,9 +124,13 @@ end;
 class function TAtlasPreviewSections.Toggled(AState: TAtlasSectionState): TAtlasSectionChoice;
 begin
   if AState = TAtlasSectionState.Open then
-    Result := TAtlasSectionChoice.HandClosed
+  begin
+    Result := TAtlasSectionChoice.HandClosed;
+  end
   else
+  begin
     Result := TAtlasSectionChoice.HandOpen;
+  end;
 end;
 
 end.
