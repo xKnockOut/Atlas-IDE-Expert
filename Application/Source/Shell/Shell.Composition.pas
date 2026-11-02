@@ -674,7 +674,6 @@ uses
   Atlas.Common.JsonRpc.Messages;
 
 const
-  /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
   CompilePauseLimitMs = 10 * 60 * 1000;
 
