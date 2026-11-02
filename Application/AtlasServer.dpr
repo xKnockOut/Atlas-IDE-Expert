@@ -31,6 +31,7 @@ uses
   Shell.Composition.EditorCommands in 'Source\Shell\Shell.Composition.EditorCommands.pas',
   Shell.Composition.ServerCommands in 'Source\Shell\Shell.Composition.ServerCommands.pas',
   Shell.Composition.CodeActions in 'Source\Shell\Shell.Composition.CodeActions.pas',
+  Shell.Composition.Status in 'Source\Shell\Shell.Composition.Status.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
