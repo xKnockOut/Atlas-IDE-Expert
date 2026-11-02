@@ -145,21 +145,27 @@ begin
   Owner := FOwner;
   if (Owner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
     not TAtlasOpenBuild.IsProjectFile(FileName) then
+  begin
     Exit;
+  end;
   Name := FileName;
   // Keine Exception an die IDE (#493).
   if NotifyCode = ofnFileOpened then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
         Owner.Opened(Name);
-      end)
+      end);
+  end
   else
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
         Owner.Closing(Name);
       end);
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.TIdeNotifier.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
@@ -175,7 +181,9 @@ end;
 procedure TAtlasIdeOpenBuild.TWatcher.GroupStarted(AKind: TAtlasCompileKind);
 begin
   if (FOwner = nil) or FOwner.FCore.Running then
+  begin
     Exit;
+  end;
   FOwner.FUserGroup := True;
   FOwner.FCore.BuildStarted;
 end;
@@ -183,12 +191,16 @@ end;
 procedure TAtlasIdeOpenBuild.TWatcher.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   if FOwner.FCore.Running then
   begin
     // Im Hintergrund weitergelaufen: hier endet der eigene Lauf; modal schließt Compile nach der Rückkehr ab.
     if FOwner.FWaiting and not FOwner.FCompiling then
+    begin
       FOwner.Finish;
+    end;
     Exit;
   end;
   FOwner.FUserGroup := False;
@@ -198,7 +210,9 @@ end;
 procedure TAtlasIdeOpenBuild.TWatcher.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
   if (FOwner = nil) or AProject.Background or SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  begin
     Exit;
+  end;
   FOwner.FCore.BuildStarted;
 end;
 
@@ -206,7 +220,9 @@ procedure TAtlasIdeOpenBuild.TWatcher.ProjectFinished(const AProject: TAtlasComp
   ADurationMs: Int64);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   if SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
   begin
     FOwner.FCore.ProjectFinished(AProject.FileName, ASucceeded);
@@ -214,13 +230,17 @@ begin
   end;
   // In einem Gruppenlauf des Benutzers endet der Build erst mit der Gruppe.
   if not AProject.Background and not FOwner.FUserGroup then
+  begin
     FOwner.FCore.BuildFinished;
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.TWatcher.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
 begin
   if (FOwner <> nil) and SameText(AProject.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  begin
     FOwner.FCore.ProjectCancelled(AProject.FileName, AReason);
+  end;
 end;
 
 { TAtlasIdeOpenBuild }
@@ -255,7 +275,9 @@ begin
     begin
       Group := Modules.MainProjectGroup;
       if (Group <> nil) and (Group.ProjectCount > 0) then
+      begin
         FCore.Opened(Group.FileName, NowMs);
+      end;
     end;
   end;
   FTimer := TTimer.Create(nil);
@@ -275,16 +297,22 @@ begin
   end;
   // Erst abmelden, dann freigeben (#493).
   if FNotifier <> nil then
+  begin
     FNotifier.FOwner := nil;
+  end;
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Services.RemoveNotifier(FNotifierIndex);
+  end;
   FNotifierRef := nil;
   FWatcher.FOwner := nil;
   FEvents.Remove(FWatcher);
   FWatcher := nil;
   RestoreTargets;
   if FCore.Running and SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  begin
     FEvents.RequestedBy := '';
+  end;
   FCore.Free;
   inherited;
 end;
@@ -302,12 +330,18 @@ begin
   // Zeit seit der letzten Eingabe in Windows; ohne Angabe gilt die IDE als ruhig.
   Info.cbSize := SizeOf(Info);
   if not GetLastInputInfo(Info) then
+  begin
     Exit(High(Integer));
+  end;
   Ticks := GetTickCount;
   if Ticks >= Info.dwTime then
-    Result := Ticks - Info.dwTime
+  begin
+    Result := Ticks - Info.dwTime;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasIdeOpenBuild.Debugging: Boolean;
@@ -320,7 +354,9 @@ end;
 procedure TAtlasIdeOpenBuild.Opened(const AFileName: string);
 begin
   if TAtlasIdeSettings.Current.BuildOnOpen then
+  begin
     FCore.Opened(AFileName, NowMs);
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.Closing(const AFileName: string);
@@ -334,8 +370,12 @@ begin
   begin
     Group := Modules.MainProjectGroup;
     if (Group <> nil) and SameText(Group.FileName, AFileName) then
+    begin
       for Index := 0 to Group.ProjectCount - 1 do
+      begin
         FCore.Closed(Group.Projects[Index].FileName);
+      end;
+    end;
   end;
   FCore.Closed(AFileName);
 end;
@@ -351,19 +391,29 @@ begin
   AMembers := nil;
   Result := False;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Group := Modules.MainProjectGroup;
   if (Group = nil) or not SameText(Group.FileName, AFileName) or (Group.ProjectCount = 0) then
+  begin
     Exit;
+  end;
   for Index := 0 to Group.ProjectCount - 1 do
+  begin
     AMembers := AMembers + [Group.Projects[Index].FileName];
+  end;
   if AScope = TAtlasOpenBuildScope.Active then
   begin
     if Group.ActiveProject <> nil then
+    begin
       AProjects := [Group.ActiveProject.FileName];
+    end;
   end
   else
+  begin
     AProjects := AMembers;
+  end;
   Result := True;
 end;
 
@@ -373,11 +423,17 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   // Die IDE kennt das Projekt meist unter der .dproj, die .dpr/.dpk nur als Quelltext.
   if not Supports(Modules.FindModule(AFileName), IOTAProject, Result) then
+  begin
     if not Supports(Modules.FindModule(ChangeFileExt(AFileName, '.dproj')), IOTAProject, Result) then
+    begin
       Result := nil;
+    end;
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.Tick(Sender: TObject);
@@ -389,24 +445,34 @@ begin
     if FCompiling then
     begin
       if not FWaiting then
+      begin
         TAtlasIdeCheckOnSave.PressProgressOk;
+      end;
       Exit;
     end;
     if FWaiting then
     begin
       // Im Hintergrund: Ende über die Compile-Ereignisse; ohne Gruppenende spätestens nach MaxRunMs.
       if FCore.RunComplete or FCore.RunOverdue(NowMs) then
+      begin
         Finish;
+      end;
       Exit;
     end;
     Settings := TAtlasIdeSettings.Current;
     if not Settings.BuildOnOpen then
+    begin
       Exit;
+    end;
     // Compilerprüfung (#548) oder ein Auftrag des Läufers (#261, #69) läuft gerade.
     if FEvents.Background or (FEvents.RequestedBy <> '') then
+    begin
       Exit;
+    end;
     if FCore.Due(NowMs, Settings.BuildOnOpenDelayMs, IdleMs, Debugging) then
+    begin
       Run;
+    end;
   except
     // Keine Exception an die IDE (#493).
     on E: Exception do
@@ -432,6 +498,7 @@ begin
   Covered := nil;
   // Zuerst die Gruppen: Sie entscheiden auch über ihre einzeln gemeldeten Projekte.
   for FileName in Files do
+  begin
     if TAtlasOpenBuild.IsGroupFile(FileName) then
     begin
       if ResolveGroup(FileName, Scope, Resolved, Members) then
@@ -440,23 +507,38 @@ begin
         Covered := Covered + Members;
       end
       else
+      begin
         FCore.Retry(FileName, NowMs);
+      end;
     end;
+  end;
   for FileName in Files do
   begin
     if TAtlasOpenBuild.IsGroupFile(FileName) then
+    begin
       Continue;
+    end;
     Skip := False;
     for Member in Covered do
+    begin
       if TAtlasOpenBuild.KeyOf(Member) = TAtlasOpenBuild.KeyOf(FileName) then
+      begin
         Skip := True;
+      end;
+    end;
     if Skip then
+    begin
       Continue;
+    end;
     Project := FindProject(FileName);
     if Project <> nil then
-      Candidates := Candidates + [Project.FileName]
+    begin
+      Candidates := Candidates + [Project.FileName];
+    end
     else
+    begin
       FCore.Retry(FileName, NowMs);
+    end;
   end;
   Selected := FCore.Select(Candidates, TAtlasOpenBuildSettings.ParseExclude(Settings.BuildOnOpenExclude));
   Projects := nil;
@@ -471,7 +553,9 @@ begin
     end;
   end;
   if Length(Projects) = 0 then
+  begin
     Exit;
+  end;
   FKind := TAtlasOpenBuildSettings.KindOf(Settings.BuildOnOpenKind);
   Compile(Projects, Built);
 end;
@@ -491,7 +575,9 @@ begin
   FTargetNotes := nil;
   Settings := TAtlasIdeSettings.Current;
   if (Settings.BuildOnOpenConfig = '') and (Settings.BuildOnOpenPlatform = '') then
+  begin
     Exit;
+  end;
   for Project in AProjects do
   begin
     Switch.Project := Project;
@@ -502,22 +588,32 @@ begin
     begin
       Names := nil;
       if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+      begin
         for Index := 0 to Configurations.ConfigurationCount - 1 do
+        begin
           Names := Names + [Configurations.Configurations[Index].Name];
+        end;
+      end;
       Configuration := TAtlasOpenBuildSettings.PickTarget(Settings.BuildOnOpenConfig, Names);
       if Configuration = '' then
+      begin
         FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
           [TAtlasOpenBuildSettings.NameOf(Project.FileName), Settings.BuildOnOpenConfig])];
+      end;
     end;
     Platform := '';
     if Settings.BuildOnOpenPlatform <> '' then
     begin
       // Nur aktivierte Plattformen, in der Schreibweise des Projekts (auch „Win 64“ trifft Win64).
       if Supports(Project, IOTAProjectPlatforms, Platforms) then
+      begin
         Platform := TAtlasOpenBuildSettings.PickTarget(Settings.BuildOnOpenPlatform, Platforms.EnabledPlatforms);
+      end;
       if Platform = '' then
+      begin
         FTargetNotes := FTargetNotes + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTargetMissing,
           [TAtlasOpenBuildSettings.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
+      end;
     end;
     // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
     if ((Configuration <> '') and not SameText(Configuration, Switch.Configuration)) or
@@ -525,9 +621,13 @@ begin
     begin
       FSwitched := FSwitched + [Switch];
       if (Configuration <> '') and not SameText(Configuration, Switch.Configuration) then
+      begin
         Project.CurrentConfiguration := Configuration;
+      end;
       if (Platform <> '') and not SameText(Platform, Switch.Platform) then
+      begin
         Project.CurrentPlatform := Platform;
+      end;
     end;
   end;
 end;
@@ -539,9 +639,13 @@ begin
   for Switch in FSwitched do
     try
       if not SameText(Switch.Project.CurrentConfiguration, Switch.Configuration) then
+      begin
         Switch.Project.CurrentConfiguration := Switch.Configuration;
+      end;
       if not SameText(Switch.Project.CurrentPlatform, Switch.Platform) then
+      begin
         Switch.Project.CurrentPlatform := Switch.Platform;
+      end;
     except
       // Ein inzwischen geschlossenes Projekt hält die anderen nicht auf (#493).
       on E: Exception do
@@ -560,7 +664,9 @@ var
   Activity: IInterface;
 begin
   if not Supports(BorlandIDEServices, IOTACompileServices, CompileServices) then
+  begin
     Exit;
+  end;
   FCore.RunStarted(AFiles, NowMs);
   FStartedAt := NowMs;
   FWaiting := False;
@@ -584,9 +690,13 @@ begin
     end;
   end;
   if (Outcome = crOTABackground) and FCore.Running and not FCore.RunComplete then
-    FWaiting := True
+  begin
+    FWaiting := True;
+  end
   else
+  begin
     Finish;
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.Finish;
@@ -597,36 +707,56 @@ var
   Lines: TArray<string>;
 begin
   if not FCore.Running then
+  begin
     Exit;
+  end;
   FWaiting := False;
   // Erst nach dem ganzen Lauf, auch im Hintergrund: Die Auswahl des Benutzers kommt zurück (#1293).
   RestoreTargets;
   if SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
+  begin
     FEvents.RequestedBy := '';
+  end;
   Outcome := FCore.RunFinished;
   Kind := TAtlasOpenBuildSettings.KindName(FKind);
   if Assigned(FReport) then
+  begin
     FReport(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReport, [Kind, Outcome.Total, Outcome.Succeeded,
       Outcome.Failed, Outcome.NotBuilt, NowMs - FStartedAt]));
+  end;
   // Ein einzelnes gebautes Projekt meldet schon „Build fertig“ (#535); die Zusammenfassung lohnt nur sonst.
   if (Outcome.Total <= 1) and (Outcome.NotBuilt = 0) and (Length(FTargetNotes) = 0) then
+  begin
     Exit;
+  end;
   Severity := TAtlasNotificationSeverity.Info;
   if (Outcome.NotBuilt > 0) or (Length(FTargetNotes) > 0) then
+  begin
     Severity := TAtlasNotificationSeverity.Warning;
+  end;
   if Outcome.Failed > 0 then
+  begin
     Severity := TAtlasNotificationSeverity.Error;
+  end;
   Lines := nil;
   if Outcome.Failed > 0 then
+  begin
     Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildFailed,
       [string.Join(', ', Outcome.FailedNames)])];
+  end;
   if Outcome.NotBuilt > 0 then
+  begin
     Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildNotBuilt,
       [string.Join(', ', Outcome.NotBuiltNames)])];
+  end;
   if Outcome.CancelReason <> '' then
+  begin
     Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReason, [Outcome.CancelReason])];
+  end;
   if Length(Lines) = 0 then
+  begin
     Lines := Lines + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildSucceeded, [Kind])];
+  end;
   // Vorgaben, die ein Projekt nicht kennt (#1293): gebaut wie im Projekt eingestellt.
   Lines := Lines + FTargetNotes;
   Text := string.Join(sLineBreak, Lines);

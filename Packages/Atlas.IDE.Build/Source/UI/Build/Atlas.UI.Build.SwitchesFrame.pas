@@ -213,7 +213,9 @@ begin
     for Index := 0 to High(AView.Rows) do
     begin
       if AView.Rows[Index].Section <> Section then
+      begin
         Continue;
+      end;
       if not HasHeader then
       begin
         Line := Default(TAtlasSwitchLine);
@@ -257,19 +259,31 @@ begin
       begin
         // Symbole tragen ihre Herkunft schon als Satz („Konfiguration Debug (.dproj)“).
         if ARow.Section = TAtlasSwitchSection.Target then
-          Result := ''
+        begin
+          Result := '';
+        end
         else if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
-          Result := ARow.OriginText
+        begin
+          Result := ARow.OriginText;
+        end
         else if ARow.OriginText <> '' then
-          Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText])
+        begin
+          Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText]);
+        end
         else
+        begin
           Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginProject);
+        end;
       end;
   else
     if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
-      Result := ARow.OriginText
+    begin
+      Result := ARow.OriginText;
+    end
     else
+    begin
       Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginDefault);
+    end;
   end;
 end;
 
@@ -281,19 +295,29 @@ begin
   if ARow.Section = TAtlasSwitchSection.Target then
   begin
     if ARow.Name = 'platform' then
-      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform)
+    begin
+      Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform);
+    end
     else
+    begin
       Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
+    end;
     Result := TArray<string>.Create(Name, ARow.Value, '', '');
     Exit;
   end;
   if ARow.LongName <> '' then
+  begin
     Name := Name + ' (' + ARow.LongName + ')';
+  end;
   if ARow.Section = TAtlasSwitchSection.Defines then
-    Result := TArray<string>.Create(Name, '', '', OriginText(ARow))
+  begin
+    Result := TArray<string>.Create(Name, '', '', OriginText(ARow));
+  end
   else
+  begin
     Result := TArray<string>.Create(Name, TAtlasCompilerSwitchTexts.Value(ARow.Value),
       TAtlasCompilerSwitchTexts.Value(ARow.ProjectValue), OriginText(ARow));
+  end;
 end;
 
 class function TAtlasBuildSwitchesFrame.AsText(const AView: TAtlasCompilerSwitchView): string;
@@ -304,10 +328,16 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Line in Lines(AView) do
+    begin
       if Line.Header then
-        Builder.Append(SectionText(Line.Section)).Append(sLineBreak)
+      begin
+        Builder.Append(SectionText(Line.Section)).Append(sLineBreak);
+      end
       else
+      begin
         Builder.Append('  ').Append(string.Join(#9, Cells(AView.Rows[Line.Row]))).Append(sLineBreak);
+      end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -329,7 +359,9 @@ procedure TAtlasBuildSwitchesFrame.SetMessage(const AText: string);
 begin
   FMessage := AText;
   if AText <> '' then
+  begin
     FHasView := False;
+  end;
   Refill;
 end;
 
@@ -353,31 +385,47 @@ begin
     Exit;
   end;
   if FFileName <> '' then
+  begin
     FWhere.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesAt,
-      [ExtractFileName(FFileName), FLine + 1])
+      [ExtractFileName(FFileName), FLine + 1]);
+  end
   else
+  begin
     FWhere.Caption := '';
+  end;
   FLines := Lines(FView);
   Deviations := FView.Deviations;
   if Length(Deviations) = 0 then
-    FSummary.Caption := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoDeviations)
+  begin
+    FSummary.Caption := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoDeviations);
+  end
   else
   begin
     Names := FView.Summary;
     if Names = '' then
+    begin
       for Row in Deviations do
+      begin
         Names := Trim(Names + ' ' + Row.Name);
+      end;
+    end;
     FSummary.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesDeviations, [Names]);
   end;
   if not FView.HasProject then
+  begin
     FSummary.Caption := FSummary.Caption + sLineBreak + TAtlasBuildStrings.Text(
       TAtlasBuildTextId.CompilerSwitchesNoProject);
+  end;
   // Liste erst mit Fenster füllen (TListView.Items braucht eins); CreateWnd holt es nach.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   Keep := -1;
   if FList.Selected <> nil then
+  begin
     Keep := FList.Selected.Index;
+  end;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
@@ -392,10 +440,14 @@ begin
       Texts := Cells(FView.Rows[Line.Row]);
       Item.Caption := '  ' + Texts[0];
       for Part := 1 to High(Texts) do
+      begin
         Item.SubItems.Add(Texts[Part]);
+      end;
     end;
     if (Keep >= 0) and (Keep < FList.Items.Count) then
+    begin
       FList.Items[Keep].Selected := True;
+    end;
   finally
     FList.Items.EndUpdate;
   end;
@@ -408,11 +460,15 @@ begin
   ARow := Default(TAtlasSwitchRow);
   Result := FHasView and (FList.Selected <> nil) and (FList.Selected.Index <= High(FLines));
   if not Result then
+  begin
     Exit;
+  end;
   Line := FLines[FList.Selected.Index];
   Result := not Line.Header and (Line.Row >= 0) and (Line.Row <= High(FView.Rows));
   if Result then
+  begin
     ARow := FView.Rows[Line.Row];
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.ExecuteSelected;
@@ -420,20 +476,28 @@ var
   Row: TAtlasSwitchRow;
 begin
   if not TrySelected(Row) then
+  begin
     Exit;
+  end;
   if Row.CanJump then
   begin
     if Assigned(FOnJump) then
+    begin
       FOnJump(Row);
+    end;
   end
   else if Row.FromProject and Assigned(FOnOptions) then
+  begin
     FOnOptions();
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.CopyAll;
 begin
   if FHasView and Assigned(FOnCopy) then
+  begin
     FOnCopy(AsText(FView));
+  end;
 end;
 
 function TAtlasBuildSwitchesFrame.ListColor(AColor: TColor): TColor;
@@ -453,12 +517,16 @@ begin
   begin
     Line := FLines[AIndex];
     if Line.Header then
-      ACanvas.Font.Style := [fsBold]
+    begin
+      ACanvas.Font.Style := [fsBold];
+    end
     else
     begin
       Deviates := FView.Rows[Line.Row].Deviates;
       if Deviates then
+      begin
         ACanvas.Font.Style := [fsBold];
+      end;
     end;
   end;
   // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
@@ -471,12 +539,18 @@ begin
   begin
     ACanvas.Brush.Color := ListColor(FList.Color);
     if Deviates then
+    begin
       ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
-        ACanvas.Brush.Color))).Warn))
+        ACanvas.Brush.Color))).Warn));
+    end
     else if (AIndex >= 0) and (AIndex <= High(FLines)) and FLines[AIndex].Header then
-      ACanvas.Font.Color := ListColor(clGrayText)
+    begin
+      ACanvas.Font.Color := ListColor(clGrayText);
+    end
     else
+    begin
       ACanvas.Font.Color := ListColor(FList.Font.Color);
+    end;
   end;
 end;
 
@@ -485,7 +559,9 @@ procedure TAtlasBuildSwitchesFrame.ListCustomDrawItem(Sender: TCustomListView; I
 begin
   DefaultDraw := True;
   if Item <> nil then
+  begin
     RowColors(Sender.Canvas, State, Item.Index);
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
@@ -493,7 +569,9 @@ procedure TAtlasBuildSwitchesFrame.ListCustomDrawSubItem(Sender: TCustomListView
 begin
   DefaultDraw := True;
   if Item <> nil then
+  begin
     RowColors(Sender.Canvas, State, Item.Index);
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.ListDblClick(Sender: TObject);
@@ -531,13 +609,17 @@ var
   Row: TAtlasSwitchRow;
 begin
   if TrySelected(Row) and Row.CanJump and Assigned(FOnJump) then
+  begin
     FOnJump(Row);
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.OptionsClick(Sender: TObject);
 begin
   if Assigned(FOnOptions) then
+  begin
     FOnOptions();
+  end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.CopyClick(Sender: TObject);
