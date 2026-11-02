@@ -246,8 +246,6 @@ var
     end;
   end;
 
-  /// <summary>Klasse sealed (#1380): eigene abstrakte Methoden (E2383 an der Methode), offene abstrakte
-  /// Methoden je E2539 und an der Klasse E2540; abstract sealed ebenso E2540.</summary>
   /// <summary>Token des Namens AName ab AFrom vor dem Offset AEnd (davor können Attribute stehen); -1 ohne.
   /// </summary>
   function NameToken(AFrom, AEnd: Integer; const AName: string): Integer;
@@ -283,6 +281,8 @@ var
     end;
   end;
 
+  /// <summary>Klasse sealed (#1380): eigene abstrakte Methoden (E2383 an der Methode), offene abstrakte
+  /// Methoden je E2539 und an der Klasse E2540; abstract sealed ebenso E2540.</summary>
   procedure CheckSealed(ADecl, ABody: TSyntaxNode; AAbstract: Boolean);
   var
     mName: string;
