@@ -108,7 +108,9 @@ begin
   FShown := AShown;
   FHover := -1;
   if (FSelected < 0) or (FSelected > High(FEntries)) then
+  begin
     FSelected := -1;
+  end;
   Hint := '';
   Relayout;
   Invalidate;
@@ -117,9 +119,13 @@ end;
 procedure TAtlasHotspotChartView.SelectEntry(AEntry: Integer);
 begin
   if (AEntry < 0) or (AEntry > High(FEntries)) then
+  begin
     AEntry := -1;
+  end;
   if AEntry = FSelected then
+  begin
     Exit;
+  end;
   FSelected := AEntry;
   Invalidate;
 end;
@@ -130,7 +136,9 @@ var
 begin
   Result := '';
   if (AEntry < 0) or (AEntry > High(FEntries)) then
+  begin
     Exit;
+  end;
   mEntry := FEntries[AEntry];
   Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsBubbleHint,
     [mEntry.Caption, mEntry.Changes, mEntry.Complexity,
@@ -215,6 +223,7 @@ begin
   Canvas.Pen.Width := 1;
   // Name der gewählten Blase daneben.
   for mBubble in FBubbles do
+  begin
     if mBubble.Entry = FSelected then
     begin
       Canvas.Brush.Style := bsClear;
@@ -222,6 +231,7 @@ begin
       Canvas.TextOut(mBubble.X + mBubble.Radius + Round(3 * Scale), mBubble.Y - Canvas.TextHeight('Ag') div 2,
         FEntries[mBubble.Entry].Caption);
     end;
+  end;
 end;
 
 procedure TAtlasHotspotChartView.SelectAt(X, Y: Integer);
@@ -231,17 +241,23 @@ begin
   mHit := TAtlasHotspotChart.HitTest(FBubbles, X, Y);
   SelectEntry(mHit);
   if Assigned(FOnSelect) then
+  begin
     FOnSelect(mHit);
+  end;
 end;
 
 procedure TAtlasHotspotChartView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if CanFocus and Showing then
+  begin
     SetFocus;
+  end;
   // Rechtsklick wählt die Blase, bevor das Kontextmenü aufgeht.
   if Button in [mbLeft, mbRight] then
+  begin
     SelectAt(X, Y);
+  end;
 end;
 
 procedure TAtlasHotspotChartView.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -251,7 +267,9 @@ begin
   inherited MouseMove(Shift, X, Y);
   mHit := TAtlasHotspotChart.HitTest(FBubbles, X, Y);
   if mHit = FHover then
+  begin
     Exit;
+  end;
   FHover := mHit;
   Hint := BubbleText(mHit);
   Application.CancelHint;
@@ -262,7 +280,9 @@ procedure TAtlasHotspotChartView.DblClick;
 begin
   inherited DblClick;
   if (FSelected >= 0) and Assigned(FOnOpen) then
+  begin
     FOnOpen(FSelected);
+  end;
 end;
 
 procedure TAtlasHotspotChartView.KeyDown(var Key: Word; Shift: TShiftState);

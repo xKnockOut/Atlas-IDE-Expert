@@ -36,19 +36,27 @@ uses
 class function TAtlasNotesList.GroupText(const AGroup: TAtlasNoteGroup): string;
 begin
   if AGroup.Orphaned then
-    Result := Format(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesOrphanGroup), [Length(AGroup.Notes)])
+  begin
+    Result := Format(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesOrphanGroup), [Length(AGroup.Notes)]);
+  end
   else
+  begin
     Result := Format('%s (%d)', [ExtractFileName(AGroup.FileName), Length(AGroup.Notes)]);
+  end;
 end;
 
 class function TAtlasNotesList.NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string;
 begin
   if AOrphaned then
+  begin
     Result := Format(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesOrphanEntry),
       [ExtractFileName(ANote.FileName),
-      ANote.Line + 1, ANote.Title])
+      ANote.Line + 1, ANote.Title]);
+  end
   else
+  begin
     Result := Format('%d: %s', [ANote.Line + 1, ANote.Title]);
+  end;
 end;
 
 class function TAtlasNotesList.Build(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;

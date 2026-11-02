@@ -156,18 +156,24 @@ var
   mListener: IAtlasTaskListener;
 begin
   if AProject = '' then
+  begin
     Exit;
+  end;
   mResult := Default(TAtlasTaskResult);
   mResult.Name := ARun.Name;
   mResult.Passed := ARun.Passed;
   mResult.Summary := TAtlasTaskTexts.LastResult(TAtlasTaskLastRun.From(ARun), True);
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTaskListener) do
+  begin
     if Supports(mItem, IAtlasTaskListener, mListener) then
+    begin
       TAtlasGuard.Run(TAtlasFeature.Tasks,
         procedure
         begin
           mListener.TaskFinished(AProject, mResult);
         end);
+    end;
+  end;
 end;
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
@@ -177,8 +183,12 @@ var
 begin
   AJobs := nil;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+  begin
     if Supports(mItem, IAtlasBuildJobs, AJobs) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -198,9 +208,13 @@ begin
   // Dieselbe Art wie der angehaltene Compile; Make für alles außer Build und Check.
   mJob.Kind := TAtlasBuildJobKind.Make;
   if AProject.Kind = TAtlasCompileKind.Build then
-    mJob.Kind := TAtlasBuildJobKind.Build
+  begin
+    mJob.Kind := TAtlasBuildJobKind.Build;
+  end
   else if AProject.Kind = TAtlasCompileKind.Check then
+  begin
     mJob.Kind := TAtlasBuildJobKind.Check;
+  end;
   // Auftraggeber '' wie ein Build des Benutzers: Tests nach dem Build und die übrigen Teilnehmer laufen mit.
   Result := mJobs.Start(mJob, nil, AReason);
 end;
@@ -231,7 +245,9 @@ var
 begin
   mEvents := TAtlasIdeHost.CompileEvents;
   if (mEvents <> nil) and (GTasksParticipant <> nil) then
+  begin
     mEvents.Remove(GTasksParticipant);
+  end;
   GTasksParticipant := nil;
   // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm. Schutznetz: Die Befunde
   // gehen auch dann weg, wenn der Abbau des Läufers scheitert.
@@ -254,11 +270,13 @@ begin
     procedure
     begin
       if GTasks <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Tasks,
           procedure
           begin
             AProc(GTasks);
           end);
+      end;
     end;
 end;
 
@@ -268,11 +286,13 @@ begin
     procedure
     begin
       if GTasks <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Tasks,
           procedure
           begin
             GTasks.RunFromMenu(AName);
           end);
+      end;
     end;
 end;
 
@@ -473,7 +493,9 @@ begin
   Result := [MenuEntry('Atlas.CompilerSwitches')];
   // Untermenü „Aufgaben“ (#900): ohne Läufer bzw. mit tasks.enabled aus fehlt es; Base fragt bei jedem Öffnen.
   if not TasksVisible then
+  begin
     Exit;
+  end;
   mItems := nil;
   TAtlasGuard.Run(TAtlasFeature.Tasks,
     procedure
@@ -481,24 +503,34 @@ begin
       mItems := GTasks.MenuItems;
     end);
   for mItem in mItems do
+  begin
     Result := Result + [TaskEntry(TaskEntryPrefix + mItem.Name, mItem.Caption, TaskMenuRun(mItem.Name))];
+  end;
   if Length(mItems) = 0 then
+  begin
     Result := Result + [TaskEntry(TaskEntryPrefix, TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksMenuEmpty), nil)];
+  end;
 end;
 
 procedure TAtlasBuildModule.ApplySettings;
 begin
   // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
   if GTasks <> nil then
+  begin
     GTasks.ApplySettings;
+  end;
   // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
   TAtlasIdeCompilerSwitches.ApplySettings;
   // startProfiles.enabled aus: Zeitgeber und Feld weg (die Feature-Tabelle startet sie wieder);
   // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
   if not TAtlasIdeSettings.Current.StartProfiles then
-    StopStartProfiles
+  begin
+    StopStartProfiles;
+  end
   else
+  begin
     TAtlasIdeStartProfiles.Refresh;
+  end;
 end;
 
 procedure TAtlasBuildModule.ThemeChanged;
@@ -512,7 +544,9 @@ var
 begin
   Result := nil;
   for mEntry in TAtlasIdeStartProfiles.Profiles(AProject) do
+  begin
     Result := Result + [mEntry.Profile.Name];
+  end;
   AActive := TAtlasIdeStartProfiles.ActiveName(AProject);
 end;
 
@@ -525,7 +559,9 @@ function TAtlasBuildModule.TaskNames(const AProject: string): TArray<string>;
 begin
   Result := nil;
   if TasksVisible then
+  begin
     Result := GTasks.TaskNamesOf(AProject);
+  end;
 end;
 
 function TAtlasBuildModule.RunTask(const AProject, AName: string; out AReason: string): Boolean;
@@ -579,7 +615,9 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
@@ -591,7 +629,9 @@ begin
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasAppliesSettings, mRef);
@@ -607,13 +647,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
+  begin
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    begin
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+    end;
+  end;
 end;
 
 initialization

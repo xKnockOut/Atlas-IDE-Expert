@@ -127,18 +127,26 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
     Exit;
+  end;
   mProject := mModules.GetActiveProject;
   if mProject = nil then
+  begin
     Exit;
+  end;
   for mIndex := 0 to mProject.GetModuleCount - 1 do
   begin
     mInfo := mProject.GetModule(mIndex);
     if (mInfo = nil) or not SameText(ExtractFileExt(mInfo.FileName), '.pas') then
+    begin
       Continue;
+    end;
     mName := ChangeFileExt(ExtractFileName(mInfo.FileName), '');
     if StartsText(APrefix, mName) then
+    begin
       Result := Result + [mName];
+    end;
   end;
 end;
 
@@ -158,7 +166,9 @@ begin
   TAtlasIdeCodeQueryWindow.Prepare;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeCodeQueryWindow.ExistingFrame <> nil then
+  begin
     Wire(TAtlasIdeCodeQueryWindow.ExistingFrame);
+  end;
 end;
 
 destructor TCodeQueryState.Destroy;
@@ -226,7 +236,9 @@ begin
     procedure
     begin
       if (TAtlasIdeCodeQuery.FState = Self) and Active and TAtlasIdeCodeQueryWindow.Visible then
+      begin
         LoadCatalog;
+      end;
     end);
 end;
 
@@ -238,16 +250,22 @@ begin
   mProject := GetActiveProject;
   Result := (mProject <> nil) and (mProject.FileName <> '');
   if Result then
+  begin
     AUri := TLspSession.PathToUri(mProject.FileName);
+  end;
 end;
 
 function TCodeQueryState.Symbols(const APredicate, APrefix: string): TArray<string>;
 begin
   Result := nil;
   if APredicate = 'uses' then
-    Result := ProjectUnits(APrefix)
+  begin
+    Result := ProjectUnits(APrefix);
+  end
   else if Assigned(FSymbols) then
+  begin
     Result := FSymbols(APredicate, APrefix);
+  end;
 end;
 
 procedure TCodeQueryState.LoadCatalog;
@@ -256,7 +274,9 @@ var
   mRequest: Integer;
 begin
   if not ProjectUri(mUri) then
+  begin
     mUri := '';
+  end;
   Inc(FCatalogRequest);
   mRequest := FCatalogRequest;
   FRequest(TAtlasQueryRequest.CatalogMethod, TAtlasQueryRequest.CatalogParams(mUri), cCatalogTimeoutMs, nil,
@@ -266,10 +286,14 @@ begin
       mFrame: TAtlasCodeQueryFrame;
     begin
       if (TAtlasIdeCodeQuery.FState <> Self) or (mRequest <> FCatalogRequest) then
+      begin
         Exit;
+      end;
       mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
       if (mFrame <> nil) and TAtlasQueryCatalog.Parse(AAnswer, mCatalog) and mCatalog.Enabled then
+      begin
         mFrame.SetCatalog(mCatalog);
+      end;
     end);
 end;
 
@@ -281,7 +305,9 @@ var
 begin
   mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   if not ProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoProject), True);
@@ -298,18 +324,30 @@ begin
       mCurrent: TAtlasCodeQueryFrame;
     begin
       if (TAtlasIdeCodeQuery.FState <> Self) or (mRequest <> TAtlasIdeCodeQuery.FCurrent) then
+      begin
         Exit;
+      end;
       mCurrent := TAtlasIdeCodeQueryWindow.ExistingFrame;
       if mCurrent = nil then
+      begin
         Exit;
+      end;
       if not TAtlasQueryAnswer.Parse(AAnswer, mAnswer) then
-        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryFailed), True)
+      begin
+        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryFailed), True);
+      end
       else if not mAnswer.Enabled then
-        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryDisabled), False)
+      begin
+        mCurrent.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryDisabled), False);
+      end
       else
+      begin
         mCurrent.SetAnswer(mAnswer);
+      end;
     end) then
+  begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), True);
+  end;
 end;
 
 procedure TCodeQueryState.Cancel;
@@ -320,7 +358,9 @@ begin
   Inc(TAtlasIdeCodeQuery.FCurrent);
   mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
   if mFrame <> nil then
+  begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancelled), True);
+  end;
 end;
 
 procedure TCodeQueryState.SaveRule(const AQuery: string);
@@ -334,7 +374,9 @@ var
 begin
   mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   if TAtlasProjectSettings.SettingsFile = '' then
   begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
@@ -347,7 +389,9 @@ begin
     [TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleName),
       TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleDescription),
     TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleMessage)], mValues) then
+  begin
     Exit;
+  end;
   mSaved := Default(TAtlasSavedQuery);
   mSaved.Name := Trim(mValues[0]);
   mSaved.Query := AQuery;
@@ -365,7 +409,9 @@ begin
     begin
       mExisting := mProject.GetValue('queries');
       if mExisting is TJSONArray then
+      begin
         mExistingJson := mExisting.ToJSON([]);
+      end;
     end;
   finally
     mProject.Free;
@@ -407,20 +453,28 @@ var
   mFrame: TAtlasCodeQueryFrame;
 begin
   if (FState = nil) or not Active then
+  begin
     Exit;
+  end;
   mFrame := TAtlasIdeCodeQueryWindow.Show;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   // Gespeicherte Abfragen können sich geändert haben (atlas.json, anderes Projekt): bei jedem Zeigen neu holen.
   TCodeQueryState(FState).LoadCatalog;
   if mFrame.Input.CanFocus and mFrame.Showing then
+  begin
     mFrame.Input.SetFocus;
+  end;
 end;
 
 class procedure TAtlasIdeCodeQuery.ApplySettings;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   if not Active then
   begin
     // Laufende Anfrage abbrechen und das Fenster schließen.

@@ -150,7 +150,9 @@ begin
   Area := Rect;
   Canvas.Font.Style := [fsBold];
   if FColor <> clNone then
+  begin
     Canvas.Font.Color := FColor;
+  end;
   Canvas.TextRect(Area, Area.Left + 2, Area.Top, FText);
 end;
 
@@ -169,9 +171,13 @@ begin
   Name := TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksGroup);
   Result := AMessages.GetGroup(Name);
   if (Result = nil) and ACreate then
+  begin
     Result := AMessages.AddMessageGroup(Name);
+  end;
   if Result <> nil then
+  begin
     FGroup.Used;
+  end;
 end;
 
 constructor TAtlasIdeTaskOutput.Create;
@@ -191,15 +197,21 @@ var
   Entry: TEntry;
 begin
   for Entry in FEntries do
+  begin
     if Entry.Id = AId then
+    begin
       Exit(Entry);
+    end;
+  end;
   Result := nil;
 end;
 
 procedure TAtlasIdeTaskOutput.SetOnlyFindings(AValue: Boolean);
 begin
   if FOnlyFindings = AValue then
+  begin
     Exit;
+  end;
   FOnlyFindings := AValue;
   Render;
 end;
@@ -213,10 +225,14 @@ var
   Text: string;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target = nil then
+  begin
     Exit;
+  end;
   if AEntry.Running then
   begin
     Text := TAtlasTaskTexts.Running(AEntry.Name, AEntry.CommandLine);
@@ -227,9 +243,13 @@ begin
     Text := TAtlasTaskTexts.Header(AEntry.Run, AEntry.TimeoutSec);
     Colors := TAtlasIdeStyle.Colors;
     if AEntry.Run.ExitedCleanly then
-      Color := TColor(Colors.Add)
+    begin
+      Color := TColor(Colors.Add);
+    end
     else
+    begin
       Color := TColor(Colors.Error);
+    end;
   end;
   Messages.AddCustomMessage(THeaderMessage.Create(Text, Color) as IOTACustomMessage, Target);
 end;
@@ -243,10 +263,14 @@ var
   Line: Integer;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target = nil then
+  begin
     Exit;
+  end;
   if (AIndex <= High(AEntry.LineFinding)) and (AEntry.LineFinding[AIndex] >= 0) then
   begin
     Finding := AEntry.Findings[AEntry.LineFinding[AIndex]];
@@ -254,14 +278,18 @@ begin
     begin
       Line := Finding.Line;
       if Line < 1 then
+      begin
         Line := 1;
+      end;
       Messages.AddToolMessage(Finding.FileName, AEntry.Lines[AIndex], AEntry.Name, Line, Finding.Column, nil,
         LineRef, Target);
       Exit;
     end;
   end
   else if FOnlyFindings then
+  begin
     Exit;
+  end;
   Messages.AddTitleMessage('  ' + AEntry.Lines[AIndex], Target);
 end;
 
@@ -279,10 +307,14 @@ begin
   Entry.Running := True;
   FEntries.Add(Entry);
   while FEntries.Count > MaxRuns do
+  begin
     FEntries.Delete(0);
+  end;
   AddHeader(Entry);
   if AShow and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Messages.ShowMessageView(Group(Messages, True));
+  end;
 end;
 
 procedure TAtlasIdeTaskOutput.Lines(AId: Integer; const ALines: TArray<string>; const AFindings: TAtlasTaskFindings);
@@ -294,24 +326,34 @@ var
 begin
   Entry := Find(AId);
   if Entry = nil then
+  begin
     Exit;
+  end;
   First := Length(Entry.Lines);
   for Line in ALines do
+  begin
     if Length(Entry.Lines) < MaxLines then
     begin
       Entry.Lines := Entry.Lines + [Line];
       Entry.LineFinding := Entry.LineFinding + [-1];
     end
     else
+    begin
       Inc(Entry.Dropped);
+    end;
+  end;
   for Finding in AFindings do
   begin
     Entry.Findings := Entry.Findings + [Finding];
     if (Finding.OutputLine >= 0) and (Finding.OutputLine <= High(Entry.LineFinding)) then
+    begin
       Entry.LineFinding[Finding.OutputLine] := High(Entry.Findings);
+    end;
   end;
   for Index := First to High(Entry.Lines) do
+  begin
     AddLine(Entry, Index);
+  end;
 end;
 
 procedure TAtlasIdeTaskOutput.Finished(AId: Integer; const ARun: TAtlasTaskRun);
@@ -320,7 +362,9 @@ var
 begin
   Entry := Find(AId);
   if Entry = nil then
+  begin
     Exit;
+  end;
   Entry.Running := False;
   Entry.Run := ARun;
   Render;
@@ -334,18 +378,26 @@ var
   Index: Integer;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, FEntries.Count > 0);
   if Target = nil then
+  begin
     Exit;
+  end;
   Messages.ClearMessageGroup(Target);
   for Entry in FEntries do
   begin
     AddHeader(Entry);
     for Index := 0 to High(Entry.Lines) do
+    begin
       AddLine(Entry, Index);
+    end;
     if (Entry.Dropped > 0) and not FOnlyFindings then
+    begin
       Messages.AddTitleMessage(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMoreLines, [Entry.Dropped]), Target);
+    end;
   end;
 end;
 
@@ -357,12 +409,18 @@ begin
   FEntries.Clear;
   // Ohne eigene Gruppe und beim Beenden der IDE das Meldungsfenster nicht anfassen.
   if FGroup.Release(IdeClosing) <> TAtlasTaskOutputRelease.Remove then
+  begin
     Exit;
+  end;
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, False);
   if Target <> nil then
+  begin
     Messages.RemoveMessageGroup(Target);
+  end;
 end;
 
 end.

@@ -173,9 +173,13 @@ end;
 function WordStartsAt(const AText: string; APos: Integer): Boolean;
 begin
   if APos <= 1 then
+  begin
     Exit(True);
+  end;
   if (AText[APos - 1] = '_') or (AText[APos - 1] = ' ') then
+  begin
     Exit(True);
+  end;
   Result := IsUpper(AText[APos]) and IsLower(AText[APos - 1]);
 end;
 
@@ -187,21 +191,31 @@ begin
   Result := TAtlasDesignerMatch.None;
   mPattern := Key(Trim(APattern));
   if (mPattern = '') or (AText = '') then
+  begin
     Exit;
+  end;
   mText := Key(AText);
   if mText = mPattern then
+  begin
     Exit(TAtlasDesignerMatch.Exact);
+  end;
   mPos := Pos(mPattern, mText);
   if mPos = 0 then
+  begin
     Exit;
+  end;
   if mPos = 1 then
+  begin
     Exit(TAtlasDesignerMatch.Prefix);
+  end;
   Result := TAtlasDesignerMatch.Contains;
   // Weitere Vorkommen: Zählt eins an einem Wortanfang, ist es ein Wortanfang-Treffer.
   while mPos > 0 do
   begin
     if WordStartsAt(AText, mPos) then
+    begin
       Exit(TAtlasDesignerMatch.WordStart);
+    end;
     mPos := Pos(mPattern, mText, mPos + 1);
   end;
 end;
@@ -231,19 +245,25 @@ begin
   begin
     mMatch := TAtlasDesignerSearch.MatchOf(AItem.Name, APattern);
     if mMatch <> TAtlasDesignerMatch.None then
+    begin
       Exit(Ord(mMatch));
+    end;
   end;
   if TAtlasDesignerField.Caption in AFields then
   begin
     mMatch := TAtlasDesignerSearch.MatchOf(AItem.Caption, APattern);
     if mMatch <> TAtlasDesignerMatch.None then
+    begin
       Exit(4 + Ord(mMatch));
+    end;
   end;
   if TAtlasDesignerField.ClassName in AFields then
   begin
     mMatch := TAtlasDesignerSearch.MatchOf(AItem.TypeName, APattern);
     if mMatch <> TAtlasDesignerMatch.None then
+    begin
       Exit(8 + Ord(mMatch));
+    end;
   end;
 end;
 
@@ -265,13 +285,21 @@ begin
     for mIndex := 0 to High(AItems) do
     begin
       if (AItems[mIndex].Name = '') or not OfKind(AItems[mIndex], AKind) then
+      begin
         Continue;
+      end;
       if mAll then
-        mRanks[mIndex] := 0
+      begin
+        mRanks[mIndex] := 0;
+      end
       else
+      begin
         mRanks[mIndex] := RankOf(AItems[mIndex], APattern, AFields);
+      end;
       if mRanks[mIndex] >= 0 then
+      begin
         mHits.Add(mIndex);
+      end;
     end;
     // Sort ist nicht stabil: bei Gleichstand eindeutig nach Name, dann nach Lage.
     mHits.Sort(TComparer<Integer>.Construct(
@@ -279,9 +307,13 @@ begin
       begin
         Result := mRanks[ALeft] - mRanks[ARight];
         if Result = 0 then
+        begin
           Result := CompareText(mItems[ALeft].Name, mItems[ARight].Name);
+        end;
         if Result = 0 then
+        begin
           Result := ALeft - ARight;
+        end;
       end));
     Result := mHits.ToArray;
   finally
@@ -292,7 +324,9 @@ end;
 class function TAtlasDesignerSearch.Step(AIndex, ACount, ADelta: Integer): Integer;
 begin
   if ACount <= 0 then
+  begin
     Exit(-1);
+  end;
   Result := EnsureRange(AIndex + ADelta, 0, ACount - 1);
 end;
 
@@ -327,11 +361,17 @@ begin
       for mHit in AHits do
       begin
         if AGrouping = TAtlasDesignerGrouping.ClassName then
-          mGroup := AItems[mHit].TypeName
+        begin
+          mGroup := AItems[mHit].TypeName;
+        end
         else
+        begin
           mGroup := AItems[mHit].ParentName;
+        end;
         if mGroup = '' then
+        begin
           mGroup := ARootName;
+        end;
         if not mGroups.TryGetValue(mGroup, mList) then
         begin
           mList := TList<Integer>.Create;
@@ -387,9 +427,13 @@ begin
   mOverlap := Min(A.Bottom, B.Bottom) - Max(A.Top, B.Top);
   mLower := Min(A.Height, B.Height);
   if (mLower > 0) and (mOverlap * 2 >= mLower) then
-    Result := A.Left < B.Left
+  begin
+    Result := A.Left < B.Left;
+  end
   else
+  begin
     Result := A.Top < B.Top;
+  end;
 end;
 
 class function TAtlasTabOrder.OutOfOrder(const AStops: TArray<TAtlasTabStop>): TArray<Boolean>;
@@ -402,25 +446,35 @@ begin
   mStops := AStops;
   SetLength(mOrder, Length(AStops));
   for mIndex := 0 to High(mOrder) do
+  begin
     mOrder[mIndex] := mIndex;
+  end;
   // Nach Elternelement, dann TabOrder; bei Gleichstand nach Lage in der Liste.
   TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
       Result := CompareText(mStops[ALeft].ParentName, mStops[ARight].ParentName);
       if Result = 0 then
+      begin
         Result := mStops[ALeft].TabOrder - mStops[ARight].TabOrder;
+      end;
       if Result = 0 then
+      begin
         Result := ALeft - ARight;
+      end;
     end));
   for mIndex := 1 to High(mOrder) do
   begin
     mPrevious := mOrder[mIndex - 1];
     if not SameText(mStops[mPrevious].ParentName, mStops[mOrder[mIndex]].ParentName) then
+    begin
       Continue;
+    end;
     // Rücksprung: Das nächste liegt in der Lesereihenfolge vor dem vorigen.
     if TAtlasTabOrder.ReadsBefore(mStops[mOrder[mIndex]].Bounds, mStops[mPrevious].Bounds) then
+    begin
       Result[mOrder[mIndex]] := True;
+    end;
   end;
 end;
 
@@ -441,7 +495,9 @@ end;
 function TAtlasTabClicks.Next(const AParentName: string): Integer;
 begin
   if not FNext.TryGetValue(Key(AParentName), Result) then
+  begin
     Result := 0;
+  end;
   FNext.AddOrSetValue(Key(AParentName), Result + 1);
 end;
 
@@ -481,52 +537,80 @@ begin
   mRects := ARects;
   SetLength(mOrder, Length(ARects));
   for mIndex := 0 to High(mOrder) do
+  begin
     mOrder[mIndex] := mIndex;
+  end;
   TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
       if AHorizontal then
-        Result := mRects[ALeft].Left - mRects[ARight].Left
+      begin
+        Result := mRects[ALeft].Left - mRects[ARight].Left;
+      end
       else
+      begin
         Result := mRects[ALeft].Top - mRects[ARight].Top;
+      end;
       if Result = 0 then
+      begin
         Result := ALeft - ARight;
+      end;
     end));
   mFirst := ARects[mOrder[0]];
   mLast := ARects[mOrder[High(mOrder)]];
   mTotal := 0;
   for mIndex := 0 to High(ARects) do
+  begin
     if AHorizontal then
-      Inc(mTotal, ARects[mIndex].Width)
+    begin
+      Inc(mTotal, ARects[mIndex].Width);
+    end
     else
+    begin
       Inc(mTotal, ARects[mIndex].Height);
+    end;
+  end;
   if AHorizontal then
-    mSpan := mLast.Right - mFirst.Left
+  begin
+    mSpan := mLast.Right - mFirst.Left;
+  end
   else
+  begin
     mSpan := mLast.Bottom - mFirst.Top;
+  end;
   // Ganzzahlig: Der Rest geht an die ersten Lücken, damit das letzte genau an seiner Stelle bleibt.
   mGap := (mSpan - mTotal) div High(mOrder);
   if AHorizontal then
-    mPos := mFirst.Left
+  begin
+    mPos := mFirst.Left;
+  end
   else
+  begin
     mPos := mFirst.Top;
+  end;
   for mIndex := 0 to High(mOrder) do
   begin
     if mIndex = High(mOrder) then
+    begin
       Break;
+    end;
     if AHorizontal then
     begin
       Result[mOrder[mIndex]] := Moved(ARects[mOrder[mIndex]], mPos, ARects[mOrder[mIndex]].Top);
       mPos := mPos + ARects[mOrder[mIndex]].Width + mGap;
       if mIndex < (mSpan - mTotal) mod High(mOrder) then
+      begin
         Inc(mPos);
+      end;
     end
     else
     begin
       Result[mOrder[mIndex]] := Moved(ARects[mOrder[mIndex]], ARects[mOrder[mIndex]].Left, mPos);
       mPos := mPos + ARects[mOrder[mIndex]].Height + mGap;
       if mIndex < (mSpan - mTotal) mod High(mOrder) then
+      begin
         Inc(mPos);
+      end;
     end;
   end;
 end;
@@ -540,7 +624,9 @@ var
 begin
   Result := Copy(ARects);
   if not Applicable(AKind, Length(ARects)) then
+  begin
     Exit;
+  end;
   mRef := ARects[0];
   case AKind of
     TAtlasAlignKind.SpaceH:
@@ -552,15 +638,23 @@ begin
         // Die Auswahl als Ganzes, ihre Abstände untereinander bleiben.
         mBox := ARects[0];
         for mIndex := 1 to High(ARects) do
+        begin
           mBox.Union(ARects[mIndex]);
+        end;
         mDX := 0;
         mDY := 0;
         if AKind = TAtlasAlignKind.CenterInParentH then
-          mDX := AParent.Left + (AParent.Width - mBox.Width) div 2 - mBox.Left
+        begin
+          mDX := AParent.Left + (AParent.Width - mBox.Width) div 2 - mBox.Left;
+        end
         else
+        begin
           mDY := AParent.Top + (AParent.Height - mBox.Height) div 2 - mBox.Top;
+        end;
         for mIndex := 0 to High(ARects) do
+        begin
           Result[mIndex] := Moved(ARects[mIndex], ARects[mIndex].Left + mDX, ARects[mIndex].Top + mDY);
+        end;
         Exit;
       end;
     // Ausrichten am ersten Element: in der Schleife darunter.
