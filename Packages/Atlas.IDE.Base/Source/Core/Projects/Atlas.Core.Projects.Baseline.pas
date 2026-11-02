@@ -139,7 +139,9 @@ begin
   Result := TAtlasProjectSummaries.NormalizedPath(AFileName);
   Index := Length(Result);
   while (Index > 0) and (Result[Index] <> '\') do
+  begin
     Dec(Index);
+  end;
   Result := Copy(Result, 1, Index - 1);
 end;
 
@@ -151,7 +153,9 @@ var
 begin
   Result := 0;
   for Orphan in Orphans do
+  begin
     Inc(Result, Orphan.Count);
+  end;
 end;
 
 { Helfer }
@@ -160,7 +164,9 @@ function Joined(const AFolder, AName: string): string;
 begin
   Result := AFolder;
   if (Result <> '') and not CharInSet(Result[Length(Result)], ['\', '/']) then
+  begin
     Result := Result + '\';
+  end;
   Result := Result + AName;
 end;
 
@@ -170,10 +176,14 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -182,10 +192,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function ParseObject(const AText: string): TJSONObject;
@@ -194,7 +208,9 @@ var
 begin
   Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   try
     Value := TJSONObject.ParseJSONValue(AText);
   except
@@ -202,9 +218,13 @@ begin
       Value := nil;
   end;
   if Value is TJSONObject then
-    Result := TJSONObject(Value)
+  begin
+    Result := TJSONObject(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 /// <summary>Fügt ACount Treffer zu APath hinzu (gleicher Pfad ohne Rücksicht auf Groß-/Kleinschreibung).</summary>
@@ -214,11 +234,13 @@ var
   Orphan: TAtlasBaselineOrphan;
 begin
   for Index := 0 to High(AOrphans) do
+  begin
     if SameText(AOrphans[Index].Path, APath) then
     begin
       Inc(AOrphans[Index].Count, ACount);
       Exit;
     end;
+  end;
   Orphan.Path := APath;
   Orphan.Count := ACount;
   AOrphans := AOrphans + [Orphan];
@@ -235,11 +257,17 @@ class function TAtlasProjectBaselines.FileIn(const AFolder: string; const AExist
 begin
   Result := '';
   if AFolder = '' then
+  begin
     Exit;
+  end;
   if AExists(Joined(AFolder, FileName)) then
+  begin
     Exit(Joined(AFolder, FileName));
+  end;
   if AExists(Joined(AFolder, LegacyFileName)) then
+  begin
     Result := Joined(AFolder, LegacyFileName);
+  end;
 end;
 
 class function TAtlasProjectBaselines.StateOfText(const AFolder, AText: string;
@@ -262,10 +290,14 @@ begin
   Root := ParseObject(AText);
   try
     if Root = nil then
+    begin
       Exit;
+    end;
     Findings := Root.GetValue('findings');
     if not (Findings is TJSONArray) then
+    begin
       Exit;
+    end;
     Result.Valid := True;
     for Item in TJSONArray(Findings) do
     begin
@@ -279,28 +311,38 @@ begin
       end;
       Inc(Result.Hits, Count);
       if (Path = '') or not Assigned(AExists) then
+      begin
         Continue;
+      end;
       // Jeden Pfad nur einmal prüfen: Eine Datei hat oft viele Einträge.
       Found := False;
       Gone := False;
       for Index := 0 to High(Known) do
+      begin
         if SameText(Known[Index], Path) then
         begin
           Found := True;
           Gone := Missing[Index] <> '';
           Break;
         end;
+      end;
       if not Found then
       begin
         Gone := not AExists(Joined(AFolder, StringReplace(Path, '/', '\', [rfReplaceAll])));
         Known := Known + [Path];
         if Gone then
-          Missing := Missing + [Path]
+        begin
+          Missing := Missing + [Path];
+        end
         else
+        begin
           Missing := Missing + [''];
+        end;
       end;
       if Gone then
+      begin
         AddOrphan(Result.Orphans, Path, Count);
+      end;
     end;
   finally
     Root.Free;
@@ -316,11 +358,17 @@ begin
   Result.Orphans := nil;
   Name := FileIn(AFolder, AExists);
   if Name = '' then
+  begin
     Exit;
+  end;
   if ARead(Name, Text) then
-    Result := StateOfText(AFolder, Text, AExists)
+  begin
+    Result := StateOfText(AFolder, Text, AExists);
+  end
   else
+  begin
     Result.Exists := True;
+  end;
   Result.FileName := Name;
 end;
 
@@ -371,7 +419,9 @@ begin
   Root := ParseObject(AJson);
   try
     if (Root = nil) or not (Root.GetValue('total') is TJSONNumber) or (TextOf(Root, 'file') = '') then
+    begin
       Exit;
+    end;
     AUpdate.FileName := TextOf(Root, 'file');
     AUpdate.Previous := TextOf(Root, 'previous');
     AUpdate.SetAside := TextOf(Root, 'setAside');
@@ -384,18 +434,26 @@ begin
     AUpdate.Completed := NumberOf(Root, 'completed', 0);
     Orphaned := nil;
     if Root.GetValue('orphaned') is TJSONObject then
+    begin
       Orphaned := TJSONObject(Root.GetValue('orphaned'));
+    end;
     if Orphaned <> nil then
     begin
       Entries := Orphaned.GetValue('entries');
       if Entries is TJSONArray then
+      begin
         for Item in TJSONArray(Entries) do
+        begin
           if Item is TJSONObject then
           begin
             Path := TextOf(TJSONObject(Item), 'path');
             if Path <> '' then
+            begin
               AddOrphan(AUpdate.Orphans, Path, NumberOf(TJSONObject(Item), 'count', 1));
+            end;
           end;
+        end;
+      end;
       AUpdate.OrphanCount := NumberOf(Orphaned, 'count', 0);
     end;
     Result := True;

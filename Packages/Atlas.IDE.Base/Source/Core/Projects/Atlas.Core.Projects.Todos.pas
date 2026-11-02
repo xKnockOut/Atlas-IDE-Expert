@@ -83,9 +83,13 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
-    Result := TJSONString(Value).Value
+  begin
+    Result := TJSONString(Value).Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Integer;
@@ -94,9 +98,13 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function JsonText(const AValue: string): string;
@@ -117,10 +125,16 @@ var
   Item: string;
 begin
   if AValue = '' then
+  begin
     Exit;
+  end;
   for Item in AList do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [AValue];
 end;
 
@@ -131,7 +145,9 @@ begin
     begin
       Result := CompareText(ALeft, ARight);
       if Result = 0 then
+      begin
         Result := CompareStr(ALeft, ARight);
+      end;
     end));
 end;
 
@@ -160,7 +176,9 @@ var
   procedure Add(const AName, AValue: string);
   begin
     if AValue <> '' then
+    begin
       Parts := Parts + [JsonText(AName) + ': ' + JsonText(AValue)];
+    end;
   end;
 
 begin
@@ -171,7 +189,9 @@ begin
   Add('unit', Clean.UnitName);
   Add('keyword', Clean.Keyword);
   if Clean.IncludeDone then
+  begin
     Parts := Parts + ['"includeDone": true'];
+  end;
   Result := '{' + string.Join(', ', Parts) + '}';
 end;
 
@@ -183,15 +203,25 @@ begin
   Clean := Trimmed;
   Parts := nil;
   if Clean.Category <> '' then
+  begin
     Parts := Parts + ['-c' + Clean.Category];
+  end;
   if Clean.Owner <> '' then
+  begin
     Parts := Parts + ['-o' + Clean.Owner];
+  end;
   if Clean.UnitName <> '' then
+  begin
     Parts := Parts + [Clean.UnitName];
+  end;
   if Clean.Keyword <> '' then
+  begin
     Parts := Parts + [UpperCase(Clean.Keyword)];
+  end;
   if Clean.IncludeDone then
+  begin
     Parts := Parts + ['DONE'];
+  end;
   Result := string.Join(', ', Parts);
 end;
 
@@ -204,18 +234,26 @@ var
 begin
   Result := AKeyword;
   if APriority > 0 then
+  begin
     Result := Result + ' ' + IntToStr(APriority);
+  end;
   Details := ACategory;
   if AOwner <> '' then
   begin
     if Details <> '' then
+    begin
       Details := Details + ', ';
+    end;
     Details := Details + AOwner;
   end;
   if Details <> '' then
+  begin
     Result := Result + ' [' + Details + ']';
+  end;
   if AText <> '' then
+  begin
     Result := Result + ': ' + AText;
+  end;
 end;
 
 class function TAtlasTodoList.FullPath(const ARoot, APath: string): string;
@@ -225,10 +263,14 @@ begin
   Path := StringReplace(APath, '/', '\', [rfReplaceAll]);
   // Laufwerk (C:\…) oder UNC (\\server\…): schon absolut.
   if ((Length(Path) >= 2) and (Path[2] = ':')) or ((Length(Path) >= 1) and (Path[1] = '\')) or (ARoot = '') then
+  begin
     Exit(Path);
+  end;
   Result := StringReplace(ARoot, '/', '\', [rfReplaceAll]);
   if Result[Length(Result)] <> '\' then
+  begin
     Result := Result + '\';
+  end;
   Result := Result + Path;
 end;
 
@@ -251,31 +293,45 @@ begin
   end;
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not (Root.GetValue('files') is TJSONArray) then
+    begin
       Exit;
+    end;
     RootPath := TextOf(Root, 'root');
     Files := TJSONArray(Root.GetValue('files'));
     for FileIndex := 0 to Files.Count - 1 do
     begin
       if not (Files.Items[FileIndex] is TJSONObject) then
+      begin
         Continue;
+      end;
       FileItem := TJSONObject(Files.Items[FileIndex]);
       FileName := FullPath(RootPath, TextOf(FileItem, 'file'));
       if not (FileItem.GetValue('todos') is TJSONArray) then
+      begin
         Continue;
+      end;
       Todos := TJSONArray(FileItem.GetValue('todos'));
       for TodoIndex := 0 to Todos.Count - 1 do
       begin
         if not (Todos.Items[TodoIndex] is TJSONObject) then
+        begin
           Continue;
+        end;
         Todo := TJSONObject(Todos.Items[TodoIndex]);
         Entry := TAtlasResultEntry.Create(FileName, NumberOf(Todo, 'line') - 1, NumberOf(Todo, 'character') - 1);
         if Entry.Line < 0 then
+        begin
           Entry.Line := 0;
+        end;
         if Entry.Character < 0 then
+        begin
           Entry.Character := 0;
+        end;
         Entry.Text := Caption(TextOf(Todo, 'keyword'), NumberOf(Todo, 'priority'), TextOf(Todo, 'category'),
           TextOf(Todo, 'owner'), TextOf(Todo, 'text'));
         AEntries := AEntries + [Entry];
@@ -304,30 +360,42 @@ begin
   end;
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not (Root.GetValue('files') is TJSONArray) then
+    begin
       Exit;
+    end;
     Files := TJSONArray(Root.GetValue('files'));
     for FileIndex := 0 to Files.Count - 1 do
     begin
       if not (Files.Items[FileIndex] is TJSONObject) then
+      begin
         Continue;
+      end;
       FileItem := TJSONObject(Files.Items[FileIndex]);
       AddDistinct(AChoices.Units, TextOf(FileItem, 'unit'));
       if not (FileItem.GetValue('todos') is TJSONArray) then
+      begin
         Continue;
+      end;
       Todos := TJSONArray(FileItem.GetValue('todos'));
       for TodoIndex := 0 to Todos.Count - 1 do
       begin
         if not (Todos.Items[TodoIndex] is TJSONObject) then
+        begin
           Continue;
+        end;
         Todo := TJSONObject(Todos.Items[TodoIndex]);
         AddDistinct(AChoices.Categories, TextOf(Todo, 'category'));
         AddDistinct(AChoices.Owners, TextOf(Todo, 'owner'));
         // Erledigt ist kein Filter nach Marke, sondern „Erledigte zeigen“.
         if not SameText(TextOf(Todo, 'keyword'), 'DONE') then
+        begin
           AddDistinct(AChoices.Keywords, UpperCase(TextOf(Todo, 'keyword')));
+        end;
       end;
     end;
     SortTexts(AChoices.Categories);

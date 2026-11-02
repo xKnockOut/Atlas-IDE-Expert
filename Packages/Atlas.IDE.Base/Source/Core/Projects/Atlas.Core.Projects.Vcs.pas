@@ -182,7 +182,9 @@ begin
   mValue := AObject.GetValue(AName);
   // TJSONNumber erbt von TJSONString: Zahlen zählen nicht als Text.
   if (mValue is TJSONString) and not (mValue is TJSONNumber) then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 function MatchesOf(const AItems: TArray<TAtlasVcsProjectMapping>): TArray<string>;
@@ -191,7 +193,9 @@ var
 begin
   SetLength(Result, Length(AItems));
   for mIndex := 0 to High(AItems) do
+  begin
     Result[mIndex] := AItems[mIndex].Match;
+  end;
 end;
 
 function PersonalOf(const AItems: TArray<TAtlasVcsProjectMapping>): TArray<Boolean>;
@@ -200,7 +204,9 @@ var
 begin
   SetLength(Result, Length(AItems));
   for mIndex := 0 to High(AItems) do
+  begin
     Result[mIndex] := not AItems[mIndex].ReadOnly;
+  end;
 end;
 
 /// <summary>Ergebnis aus .atlas, gefundener Zeile und globalem Wert.</summary>
@@ -223,7 +229,9 @@ begin
   mTeamProvider := Trim(ATeamProvider);
   mTeamMain := Trim(ATeamMainBranch);
   if (mTeamProvider = '') and (mTeamMain = '') then
+  begin
     Exit;
+  end;
   Result.Match := TAtlasProjectMatch.TeamFile;
   Result.Index := -1;
   Result.SourceMatch := '';
@@ -233,14 +241,18 @@ begin
     Result.Source := TAtlasVcsProviderSource.TeamFile;
   end;
   if mTeamMain <> '' then
+  begin
     Result.MainBranch := mTeamMain;
+  end;
 end;
 
 class function TAtlasVcsProjects.ProviderText(const AText: string): string;
 begin
   Result := LowerCase(Trim(AText));
   if (Result <> 'git') and (Result <> 'svn') and (Result <> 'off') then
+  begin
     Result := 'auto';
+  end;
 end;
 
 class function TAtlasVcsProjects.Read(const AJson: string): TArray<TAtlasVcsProjectMapping>;
@@ -251,19 +263,27 @@ var
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mMapping := TAtlasVcsProjectMapping.Create(TextOf(TJSONObject(mItem), 'match'),
         TextOf(TJSONObject(mItem), 'provider'), TextOf(TJSONObject(mItem), 'mainBranch'));
       if (mMapping.Match = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
+      begin
         Continue;
+      end;
       Result := Result + [mMapping];
     end;
   finally
@@ -281,10 +301,14 @@ begin
   for mItem in AItems do
   begin
     if mItem.ReadOnly or (mItem.Match = '') then
+    begin
       Continue;
+    end;
     mText := '{"match": ' + Quoted(mItem.Match) + ', "provider": ' + Quoted(ProviderText(mItem.Provider));
     if mItem.MainBranch <> '' then
+    begin
       mText := mText + ', "mainBranch": ' + Quoted(mItem.MainBranch);
+    end;
     mParts := mParts + [mText + '}'];
   end;
   Result := '[' + string.Join(', ', mParts) + ']';
