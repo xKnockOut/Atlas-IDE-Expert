@@ -56,7 +56,9 @@ begin
   Name := TAtlasStrings.Text(TAtlasTextId.ProblemsGroup);
   Result := AMessages.GetGroup(Name);
   if (Result = nil) and ACreate then
+  begin
     Result := AMessages.AddMessageGroup(Name);
+  end;
 end;
 
 procedure TAtlasProblemsList.Update(AStore: TAtlasProblemStore);
@@ -82,38 +84,54 @@ begin
   Builder := TStringBuilder.Create;
   try
     for FileName in AStore.Files do
+    begin
       for Problem in AStore.ForFile(FileName) do
       begin
         if Problem.IsCompiler then
+        begin
           Continue;
+        end;
         Inc(Total);
         if Length(Entries) >= MaxEntries then
+        begin
           Continue;
+        end;
         Entry.FileName := FileName;
         Entry.Problem := Problem;
         Entries := Entries + [Entry];
         Builder.Append(FileName).Append('|').Append(Problem.StartLine).Append('|').Append(Problem.StartCharacter)
           .Append('|').Append(Ord(Problem.Severity)).Append('|').Append(Problem.Caption).Append(#10);
       end;
+    end;
     Builder.Append(Total);
     Signature := Builder.ToString;
   finally
     Builder.Free;
   end;
   if Signature = FSignature then
+  begin
     Exit;
+  end;
   FSignature := Signature;
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, Length(Entries) > 0);
   if Target = nil then
+  begin
     Exit;
+  end;
   Messages.ClearMessageGroup(Target);
   for Entry in Entries do
+  begin
     Messages.AddToolMessage(Entry.FileName, Entry.Problem.Caption, SeverityText(Entry.Problem.Severity),
       Entry.Problem.StartLine + 1, Entry.Problem.StartCharacter + 1, nil, LineRef, Target);
+  end;
   if Total > Length(Entries) then
+  begin
     Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ProblemsMore, [Total - Length(Entries)]), Target);
+  end;
 end;
 
 class procedure TAtlasProblemsList.ShowList;
@@ -121,7 +139,9 @@ var
   Messages: IOTAMessageServices;
 begin
   if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Messages.ShowMessageView(Group(Messages, False));
+  end;
 end;
 
 procedure TAtlasProblemsList.Clear;
@@ -130,13 +150,19 @@ var
   Target: IOTAMessageGroup;
 begin
   if FSignature = '' then
+  begin
     Exit;
+  end;
   FSignature := '';
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, False);
   if Target <> nil then
+  begin
     Messages.RemoveMessageGroup(Target);
+  end;
 end;
 
 end.

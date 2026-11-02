@@ -49,11 +49,17 @@ begin
   begin
     Key := UpperCase(Name);
     if (Pos('NAV', Key) = 0) or (Pos('BAR', Key) = 0) then
+    begin
       Continue;
+    end;
     if (Pos('SHOW', Key) > 0) or (Pos('VISIBLE', Key) > 0) then
+    begin
       Exit(Name);
+    end;
     if Result = '' then
+    begin
       Result := Name;
+    end;
   end;
 end;
 
@@ -66,7 +72,9 @@ begin
   begin
     Key := UpperCase(Name);
     if (Pos('NAV', Key) > 0) or (Pos('TOOLBAR', Key) > 0) then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -74,23 +82,37 @@ class function TAtlasNavigationOption.IsOn(const AValue: Variant): Boolean;
 begin
   Result := True;
   if VarIsNull(AValue) or VarIsEmpty(AValue) then
+  begin
     Exit;
+  end;
   if VarIsType(AValue, varBoolean) then
-    Result := Boolean(AValue)
+  begin
+    Result := Boolean(AValue);
+  end
   else if VarIsOrdinal(AValue) then
-    Result := Int64(AValue) <> 0
+  begin
+    Result := Int64(AValue) <> 0;
+  end
   else if VarIsStr(AValue) then
+  begin
     Result := not (SameText(Trim(VarToStr(AValue)), 'False') or (Trim(VarToStr(AValue)) = '0'));
+  end;
 end;
 
 class function TAtlasNavigationOption.Encode(const AOld: Variant; AOn: Boolean): Variant;
 begin
   if VarIsOrdinal(AOld) and not VarIsType(AOld, varBoolean) then
-    Result := Ord(AOn)
+  begin
+    Result := Ord(AOn);
+  end
   else if VarIsStr(AOld) then
-    Result := BoolToStr(AOn, True)
+  begin
+    Result := BoolToStr(AOn, True);
+  end
   else
+  begin
     Result := AOn;
+  end;
 end;
 
 end.

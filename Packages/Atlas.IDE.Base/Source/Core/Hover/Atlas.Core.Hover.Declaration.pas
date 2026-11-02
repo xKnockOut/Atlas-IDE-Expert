@@ -39,7 +39,9 @@ begin
         Inc(Depth);
       ')', ']', '>':
         if Depth > 0 then
+        begin
           Dec(Depth);
+        end;
       ':':
         if Depth = 0 then
         begin
@@ -50,20 +52,28 @@ begin
     Inc(Index);
   end;
   if not Found then
+  begin
     Exit;
+  end;
   Inc(Index);
   while (Index <= Length(ADeclaration)) and (ADeclaration[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   // Name mit Units und Typargumenten; „array of Byte“ und „set of …“ als Ganzes.
   if StartsText('array of ', Copy(ADeclaration, Index, MaxInt)) then
   begin
     Start := Index;
     Inc(Index, Length('array of '));
     while (Index <= Length(ADeclaration)) and (ADeclaration[Index] = ' ') do
+    begin
       Inc(Index);
+    end;
   end
   else
+  begin
     Start := Index;
+  end;
   Depth := 0;
   while Index <= Length(ADeclaration) do
   begin
@@ -74,15 +84,23 @@ begin
         Inc(Depth);
       '>':
         if Depth = 0 then
-          Break
+        begin
+          Break;
+        end
         else
+        begin
           Dec(Depth);
+        end;
       ',', ' ':
         if Depth = 0 then
+        begin
           Break;
+        end;
     else
       if (Depth = 0) and (Ord(ADeclaration[Index]) < 128) then
+      begin
         Break;
+      end;
     end;
     Inc(Index);
   end;
