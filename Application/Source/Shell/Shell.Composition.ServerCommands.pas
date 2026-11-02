@@ -17,7 +17,6 @@ uses
 
 type
   TShellServerStatusFunc = reference to function(AAnonymize: Boolean): TJSONObject;
-  TShellServerProcessesFunc = reference to function: TArray<TLspProcessWorkspace>;
   TShellServerTextFunc = reference to function: string;
   TShellServerFilesFunc = reference to function: TArray<string>;
   TShellServerCompileFunc = reference to function(const AFileName: string;
@@ -33,7 +32,6 @@ type
     Logger: ILogger;
     /// <summary>Status als JSON, auf Wunsch ohne Pfade und Namen.</summary>
     Status: TShellServerStatusFunc;
-    Processes: TShellServerProcessesFunc;
     /// <summary>Globale Benutzerdatei der Einstellungen ('' ohne).</summary>
     GlobalSettingsFile: TShellServerTextFunc;
     /// <summary>Quelltexte aller Projekte, neben denen Formulare liegen.</summary>
@@ -69,6 +67,8 @@ type
     function RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
     function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
     function ProjectWorkspaces: TArray<TShellWorkspace>;
+    /// <summary>Arbeitsbereiche mit Index-Cache und den Prozessen daran (#62).</summary>
+    function CollectProcesses: TArray<TLspProcessWorkspace>;
   public const
     CompileCommand = 'atlas.server.compile';
     SelectBuildCommand = 'atlas.server.selectBuild';
@@ -89,7 +89,9 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   Atlas.Common.Documents.Uris,
+  Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract,
@@ -167,9 +169,36 @@ function TShellServerCommands.RunProcesses(const AArguments: TJSONArray): TJSONV
 var
   mWorkspaces: TArray<TLspProcessWorkspace>;
 begin
-  mWorkspaces := FServices.Processes();
+  mWorkspaces := CollectProcesses;
   Result := TLspProcesses.ToJson(mWorkspaces, TShellPlatform.CurrentProcessId, Now);
   FServices.Logger.Info(TLspProcesses.ToMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
+end;
+
+function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
+var
+  mWorkspace: TShellWorkspace;
+  mItem: TLspProcessWorkspace;
+  mStatus: TWorkspaceStatus;
+begin
+  Result := nil;
+  for mWorkspace in FServices.Workspaces('') do
+  begin
+    mItem := Default(TLspProcessWorkspace);
+    if not mWorkspace.Cache.Processes(mItem.CacheFile, mItem.Processes) then
+    begin
+      Continue;
+    end;
+    mStatus := mWorkspace.IndexStatus;
+    mItem.Name := mWorkspace.Name;
+    mItem.Project := mStatus.Project;
+    mItem.FormatVersion := TIndexCache.FormatVersion;
+    mItem.Units := mStatus.Parsed + mStatus.FromCache;
+    if TFile.Exists(mItem.CacheFile) then
+    begin
+      mItem.Saved := TFile.GetLastWriteTime(mItem.CacheFile);
+    end;
+    Result := Result + [mItem];
+  end;
 end;
 
 function TShellServerCommands.RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;
