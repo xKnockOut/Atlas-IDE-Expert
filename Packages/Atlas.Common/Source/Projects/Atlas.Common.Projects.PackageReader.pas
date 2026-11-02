@@ -83,68 +83,93 @@ begin
   end;
 end;
 
+type
+  /// <summary>Eintrag, der in ReadList gerade gelesen wird.</summary>
+  TListState = record
+    Entry: TPackageEntry;
+    First: Integer;
+    Last: Integer;
+    AfterIn: Boolean;
+  end;
+
+procedure ResetEntry(var AState: TListState);
+begin
+  AState.Entry := Default(TPackageEntry);
+  AState.First := -1;
+  AState.AfterIn := False;
+end;
+
+procedure FlushEntry(const ATokens: TArray<TPascalToken>; var AState: TListState;
+  var AEntries: TArray<TPackageEntry>);
+begin
+  if AState.Entry.Name <> '' then
+  begin
+    AState.Entry.Range := TTextRange.Create(ATokens[AState.First].StartPos, ATokens[AState.Last].EndPos);
+    AEntries := AEntries + [AState.Entry];
+  end;
+  ResetEntry(AState);
+end;
+
+/// <summary>Nimmt das Token AIndex in den Eintrag auf; False bei einem unerwarteten Wort (z. B. "end"): Die Liste
+/// ist dann unvollständig.</summary>
+function TakeListToken(const ATokens: TArray<TPascalToken>; AIndex: Integer; var AState: TListState): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  Result := True;
+  mToken := ATokens[AIndex];
+  if mToken.IsKeyword('in') then
+  begin
+    AState.AfterIn := True;
+  end
+  else if AState.AfterIn then
+  begin
+    if mToken.Kind = TPascalTokenKind.StringLiteral then
+    begin
+      AState.Entry.Path := Unquote(mToken.Text);
+    end;
+  end
+  else if (mToken.Kind = TPascalTokenKind.Identifier) or mToken.IsSymbol('.') then
+  begin
+    if AState.First < 0 then
+    begin
+      AState.First := AIndex;
+    end;
+    AState.Last := AIndex;
+    AState.Entry.Name := AState.Entry.Name + mToken.Text;
+  end
+  else
+  begin
+    Result := IsTrivia(mToken);
+  end;
+end;
+
 /// <summary>Liest eine Liste ab dem Token hinter requires/contains bis zum Semikolon; liefert dessen Index.</summary>
 function ReadList(const ATokens: TArray<TPascalToken>; AIndex: Integer; var AEntries: TArray<TPackageEntry>): Integer;
 var
-  Entry: TPackageEntry;
-  First, Last: Integer;
-  AfterIn: Boolean;
-
-  procedure Flush;
-  begin
-    if Entry.Name <> '' then
-    begin
-      Entry.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
-      AEntries := AEntries + [Entry];
-    end;
-    Entry := Default(TPackageEntry);
-    First := -1;
-    AfterIn := False;
-  end;
-
+  mState: TListState;
 begin
-  Entry := Default(TPackageEntry);
-  First := -1;
-  Last := -1;
-  AfterIn := False;
+  ResetEntry(mState);
+  mState.Last := -1;
   Result := AIndex;
   while Result <= High(ATokens) do
   begin
     if ATokens[Result].IsSymbol(';') then
     begin
-      Flush;
+      FlushEntry(ATokens, mState, AEntries);
       Exit;
     end;
     if ATokens[Result].IsSymbol(',') then
     begin
-      Flush;
+      FlushEntry(ATokens, mState, AEntries);
     end
-    else if ATokens[Result].IsKeyword('in') then
+    else if not TakeListToken(ATokens, Result, mState) then
     begin
-      AfterIn := True;
-    end
-    else if AfterIn and (ATokens[Result].Kind = TPascalTokenKind.StringLiteral) then
-    begin
-      Entry.Path := Unquote(ATokens[Result].Text);
-    end
-    else if not AfterIn and ((ATokens[Result].Kind = TPascalTokenKind.Identifier) or
-      ATokens[Result].IsSymbol('.')) then
-    begin
-      if First < 0 then
-      begin
-        First := Result;
-      end;
-      Last := Result;
-      Entry.Name := Entry.Name + ATokens[Result].Text;
-    end
-    else if not IsTrivia(ATokens[Result]) and not AfterIn then
-    begin
-      // Unerwartetes Wort (z. B. "end"): Liste ist unvollständig.
       Break;
     end;
     Inc(Result);
   end;
-  Flush;
+  FlushEntry(ATokens, mState, AEntries);
   Result := -1;
 end;
 
@@ -180,63 +205,63 @@ end;
 
 { TPackageReader }
 
+/// <summary>Liest die Anweisung ab AIndex (hinter einem Semikolon): requires oder contains. Liefert den Index des
+/// nächsten Semikolons oder -1, wenn die Liste nicht endet.</summary>
+function ReadSection(const ATokens: TArray<TPascalToken>; AIndex: Integer; var ASource: TPackageSource): Integer;
+begin
+  Result := AIndex;
+  if IsWord(ATokens[AIndex], 'requires') then
+  begin
+    Result := ReadList(ATokens, AIndex + 1, ASource.Requires);
+  end
+  else if IsWord(ATokens[AIndex], 'contains') then
+  begin
+    Result := ReadList(ATokens, AIndex + 1, ASource.Contains);
+    if Result >= 0 then
+    begin
+      ASource.HasContains := True;
+      ASource.ContainsEnd := ATokens[Result].StartPos;
+    end;
+  end;
+end;
+
 class function TPackageReader.Read(const AText: string): TPackageSource;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Stop: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := Default(TPackageSource);
-  Tokens := TPascalLexer.Tokenize(AText);
-  Index := NextCode(Tokens, 0);
-  if (Index > High(Tokens)) or not IsWord(Tokens[Index], 'package') then
+  mTokens := TPascalLexer.Tokenize(AText);
+  mIndex := NextCode(mTokens, 0);
+  if (mIndex > High(mTokens)) or not IsWord(mTokens[mIndex], 'package') then
   begin
     Exit;
   end;
   Result.IsPackage := True;
-  Index := NextCode(Tokens, Index + 1);
-  while (Index <= High(Tokens)) and not Tokens[Index].IsSymbol(';') do
+  mIndex := NextCode(mTokens, mIndex + 1);
+  while (mIndex <= High(mTokens)) and not mTokens[mIndex].IsSymbol(';') do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) or Tokens[Index].IsSymbol('.') then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) or mTokens[mIndex].IsSymbol('.') then
     begin
-      Result.Name := Result.Name + Tokens[Index].Text;
+      Result.Name := Result.Name + mTokens[mIndex].Text;
     end;
-    Index := NextCode(Tokens, Index + 1);
+    mIndex := NextCode(mTokens, mIndex + 1);
   end;
-  while Index <= High(Tokens) do
+  // requires und contains nur am Anweisungsanfang: nach einem Semikolon.
+  while (mIndex >= 0) and (mIndex <= High(mTokens)) do
   begin
-    // requires und contains nur am Anweisungsanfang: nach einem Semikolon.
-    if Tokens[Index].IsSymbol(';') then
+    if mTokens[mIndex].IsSymbol(';') then
     begin
-      Index := NextCode(Tokens, Index + 1);
-      if Index > High(Tokens) then
+      mIndex := NextCode(mTokens, mIndex + 1);
+      if mIndex <= High(mTokens) then
       begin
-        Break;
+        mIndex := ReadSection(mTokens, mIndex, Result);
       end;
-      if IsWord(Tokens[Index], 'requires') then
-      begin
-        Stop := ReadList(Tokens, Index + 1, Result.Requires);
-        if Stop < 0 then
-        begin
-          Break;
-        end;
-        Index := Stop;
-        Continue;
-      end;
-      if IsWord(Tokens[Index], 'contains') then
-      begin
-        Stop := ReadList(Tokens, Index + 1, Result.Contains);
-        if Stop < 0 then
-        begin
-          Break;
-        end;
-        Result.HasContains := True;
-        Result.ContainsEnd := Tokens[Stop].StartPos;
-        Index := Stop;
-        Continue;
-      end;
-      Continue;
+    end
+    else
+    begin
+      Inc(mIndex);
     end;
-    Inc(Index);
   end;
 end;
 
