@@ -335,8 +335,32 @@ type
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Teil von Create (S-02): Dispatcher mit Watchdog und Fehlerprotokoll, Lebenszyklus (initialize/shutdown).</summary>
     procedure WireProtocol;
+    /// <summary>Meldung des Watchdogs, wenn eine Anfrage ihr Zeitlimit überschreitet.</summary>
+    procedure RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
+    /// <summary>Absturzfall beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.</summary>
+    procedure RequestExpired(const AId, AMethod: string; ATimeoutMs: Cardinal);
+    /// <summary>Überspringt eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte (#1355).</summary>
+    procedure GuardRequest(const AMethod: string; const AParams: TJSONValue);
+    /// <summary>Protokolliert eine fehlgeschlagene Anfrage und hält sie als Absturzfall fest.</summary>
+    procedure RequestFailed(const AMethod: string; const AParams: TJSONValue; const AError: Exception);
+    /// <summary>Fähigkeiten für initialize; Pull-Diagnosen nur für Clients, die sie können.</summary>
+    function LifecycleCapabilities: TJSONObject;
+    /// <summary>Schickt eine Benachrichtigung an den Client.</summary>
+    procedure NotifyClient(const AMethod: string; AParams: TJSONObject);
+    /// <summary>Schreibt AText ins Debug-Protokoll.</summary>
+    procedure LogDebug(const AText: string);
     /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
     procedure WireDocuments;
+    /// <summary>Protokolliert einen Fehler der Syntaxprüfung.</summary>
+    procedure SyntaxCheckFailed(AError: Exception);
+    /// <summary>Anonyme Bezeichnung einer Unit im Diagnoselog (#1094); 'unit', solange es fehlt.</summary>
+    function DiagnosticsFileLabel(const AFileName: string): string;
+    /// <summary>Zeitlimit einer Anfrage aus den Einstellungen.</summary>
+    function CurrentRequestTimeout: Cardinal;
+    /// <summary>Units, die AFileName in uses haben (#1247).</summary>
+    function DependentUnitsOf(const AFileName: string): TArray<string>;
+    /// <summary>Schreibt AMessage ins Protokoll.</summary>
+    procedure LogInfo(const AMessage: string);
     /// <summary>Teil von WireDocuments (#1355): Absturzfälle und Sicherheitsnetz mit Dokumenten, Einstellungen
     /// und Benachrichtigung an den Client.</summary>
     procedure WireCrashCases;
@@ -358,8 +382,20 @@ type
     procedure WireIndex;
     /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
     procedure WireNavigation;
+    /// <summary>Einstellungen der Hervorhebungen aus dem Arbeitsbereich von AUri.</summary>
+    function HighlightSettingsFor(const AUri: string): THighlightSettings;
     /// <summary>Teil von Create (S-02): Vervollständigung mit Einstellungen, Postfix-Vorlagen und Teilergebnissen.</summary>
     procedure WireCompletion;
+    function CompletionMatchingFor(const AUri: string): TCompletionMatching;
+    /// <summary>Optionen der Postfix-Vorlagen (#188) für AUri.</summary>
+    function PostfixOptionsFor(const AUri: string): TPostfixOptions;
+    /// <summary>with auflösen über Strg+Leer auf with (#50).</summary>
+    function CompletionWithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
+    /// <summary>Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472).</summary>
+    function CompletionCreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
+      out AEdits: TArray<TTextEdit>): Boolean;
+    /// <summary>Präfix der Namensvorschläge (#452).</summary>
+    function NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
     /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
     procedure WireAnalysis;
     /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
@@ -821,77 +857,100 @@ begin
   FDispatcher.Statistics := FStatistics;
   FRecent := TJsonRpcRecentMessages.Create;
   FDispatcher.Recent := FRecent;
-  mWatchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
-    begin
-      // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
-      if AAnswered then
-      begin
-        FLogger.Warning(Format('Anfrage %s nach %d ms mit RequestCancelled beantwortet (Zeitlimit)',
-          [AMethod, ATimeoutMs]));
-      end
-      else
-      begin
-        FLogger.Warning(Format('Anfrage %s hat das Zeitlimit von %d ms überschritten; Abbruch angefordert',
-          [AMethod, ATimeoutMs]));
-      end;
-    end);
+  mWatchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs, RequestTimedOut);
   // Absturzfall auch beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.
-  mWatchdog.OnExpired :=
-    procedure(const AId, AMethod: string; ATimeoutMs: Cardinal)
-    begin
-      if FCrashCases <> nil then
-      begin
-        FCrashCases.TimedOut(AId, AMethod, ATimeoutMs);
-      end;
-    end;
+  mWatchdog.OnExpired := RequestExpired;
   FDispatcher.Watchdog := mWatchdog;
   // Sicherheitsnetz (#1355): eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte, überspringen.
-  FDispatcher.RequestGuard :=
-    procedure(const AMethod: string; const AParams: TJSONValue)
-    begin
-      if FCrashCases <> nil then
-      begin
-        FCrashCases.Guard(AMethod, AParams);
-      end;
-    end;
-  FDispatcher.OnRequestFailed :=
-    procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
-    var
-      Params: string;
-    begin
-      Params := '';
-      if AParams <> nil then
-      begin
-        Params := AParams.ToJSON;
-      end;
-      if Length(Params) > 500 then
-      begin
-        Params := Copy(Params, 1, 500) + '…';
-      end;
-      FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
-        [AMethod, AError.ClassName, AError.Message, sLineBreak, Params, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
-      // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
-      if FCrashCases <> nil then
-      begin
-        FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
-      end;
-    end;
-  FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version,
-    function: TJSONObject
-    begin
-      Result := BuildCapabilities;
-      // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-      if TLspPullDiagnostics.ClientSupportsPull(FLifecycle.InitializeParams) then
-      begin
-        Result.AddPair('diagnosticProvider', TLspPullDiagnostics.Capability);
-        FPullDiagnostics.RefreshSupport := TLspPullDiagnostics.ClientSupportsRefresh(FLifecycle.InitializeParams);
-        FSyntaxDiagnostics.PullMode := True;
-      end;
-    end);
+  FDispatcher.RequestGuard := GuardRequest;
+  FDispatcher.OnRequestFailed := RequestFailed;
+  FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version, LifecycleCapabilities);
   FLifecycle.Attach(FDispatcher);
   // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
   FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
+end;
+
+procedure TServerComposition.RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
+begin
+  // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
+  if AAnswered then
+  begin
+    FLogger.Warning(Format('Anfrage %s nach %d ms mit RequestCancelled beantwortet (Zeitlimit)',
+      [AMethod, ATimeoutMs]));
+  end
+  else
+  begin
+    FLogger.Warning(Format('Anfrage %s hat das Zeitlimit von %d ms überschritten; Abbruch angefordert',
+      [AMethod, ATimeoutMs]));
+  end;
+end;
+
+procedure TServerComposition.RequestExpired(const AId, AMethod: string; ATimeoutMs: Cardinal);
+begin
+  if FCrashCases <> nil then
+  begin
+    FCrashCases.TimedOut(AId, AMethod, ATimeoutMs);
+  end;
+end;
+
+procedure TServerComposition.GuardRequest(const AMethod: string; const AParams: TJSONValue);
+begin
+  if FCrashCases <> nil then
+  begin
+    FCrashCases.Guard(AMethod, AParams);
+  end;
+end;
+
+procedure TServerComposition.RequestFailed(const AMethod: string; const AParams: TJSONValue;
+  const AError: Exception);
+var
+  mParams: string;
+begin
+  mParams := '';
+  if AParams <> nil then
+  begin
+    mParams := AParams.ToJSON;
+  end;
+  if Length(mParams) > 500 then
+  begin
+    mParams := Copy(mParams, 1, 500) + '…';
+  end;
+  FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
+    [AMethod, AError.ClassName, AError.Message, sLineBreak, mParams, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
+  // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
+  if FCrashCases <> nil then
+  begin
+    FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
+  end;
+end;
+
+function TServerComposition.LifecycleCapabilities: TJSONObject;
+begin
+  Result := BuildCapabilities;
+  // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
+  if TLspPullDiagnostics.ClientSupportsPull(FLifecycle.InitializeParams) then
+  begin
+    Result.AddPair('diagnosticProvider', TLspPullDiagnostics.Capability);
+    FPullDiagnostics.RefreshSupport := TLspPullDiagnostics.ClientSupportsRefresh(FLifecycle.InitializeParams);
+    FSyntaxDiagnostics.PullMode := True;
+  end;
+end;
+
+procedure TServerComposition.NotifyClient(const AMethod: string; AParams: TJSONObject);
+var
+  mNotification: TJSONObject;
+begin
+  mNotification := TJsonRpcMessages.Notification(AMethod, AParams);
+  try
+    FTransport.WriteMessage(mNotification);
+  finally
+    mNotification.Free;
+  end;
+end;
+
+procedure TServerComposition.LogDebug(const AText: string);
+begin
+  FLogger.Debug(AText);
 end;
 
 procedure TServerComposition.WireCrashCases;
@@ -934,18 +993,7 @@ begin
         System.TMonitor.Exit(FWorkspacesLock);
       end;
     end;
-  FCrashCases.Notify :=
-    procedure(const AMethod: string; AParams: TJSONObject)
-    var
-      mNotification: TJSONObject;
-    begin
-      mNotification := TJsonRpcMessages.Notification(AMethod, AParams);
-      try
-        FTransport.WriteMessage(mNotification);
-      finally
-        mNotification.Free;
-      end;
-    end;
+  FCrashCases.Notify := NotifyClient;
 end;
 
 procedure TServerComposition.PrepareReplay(const ASettingsFile: string);
@@ -999,73 +1047,60 @@ begin
   FCompile := TShellCompileHost.Create(mServices);
 end;
 
+/// <summary>Kanonischer Pfad für den Dokumentspeicher.</summary>
+function CanonicalPath(const APath: string): string;
+begin
+  Result := TShellPlatform.CanonicalizePath(APath);
+end;
+
+/// <summary>Zeitstempel einer Datei in Millisekunden (UTC); False, wenn sie fehlt.</summary>
+function FileStampOf(const AFileName: string; out AStamp: Int64): Boolean;
+begin
+  Result := TFile.Exists(AFileName);
+  if Result then
+  begin
+    AStamp := Round(TFile.GetLastWriteTimeUtc(AFileName) * MSecsPerDay);
+  end
+  else
+  begin
+    AStamp := 0;
+  end;
+end;
+
+/// <summary>Liest eine vorhandene Datei mit erkannter Kodierung; False, wenn sie fehlt.</summary>
+function LoadExistingFile(const AFileName: string; out AText: string): Boolean;
+var
+  mFileFormat: TFileFormat;
+begin
+  Result := TFile.Exists(AFileName);
+  if Result then
+  begin
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  end
+  else
+  begin
+    AText := '';
+  end;
+end;
+
 procedure TServerComposition.WireDocuments;
 begin
-  FDocuments := TDocumentStore.Create(
-    function(const APath: string): string
-    begin
-      Result := TShellPlatform.CanonicalizePath(APath);
-    end);
+  FDocuments := TDocumentStore.Create(CanonicalPath);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
   WireCrashCases;
   FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, SyntaxDiagnosticsProviders);
-  FSyntaxDiagnostics.OnError :=
-    procedure(AError: Exception)
-    begin
-      FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
-    end;
+  FSyntaxDiagnostics.OnError := SyntaxCheckFailed;
   WireCompile;
   FSyntaxDiagnostics.Attach;
   FIndexRecheck := TWorkspaceCheckIndexGate.Create;
   FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, CheckSourceFiles,
-    function(const AFileName: string; out AStamp: Int64): Boolean
-    begin
-      Result := TFile.Exists(AFileName);
-      if Result then
-      begin
-        AStamp := Round(TFile.GetLastWriteTimeUtc(AFileName) * MSecsPerDay);
-      end
-      else
-      begin
-        AStamp := 0;
-      end;
-    end,
-    function(const AFileName: string; out AText: string): Boolean
-    var
-      FileFormat: TFileFormat;
-    begin
-      Result := TFile.Exists(AFileName);
-      if Result then
-      begin
-        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
-      end
-      else
-      begin
-        AText := '';
-      end;
-    end);
-  FPullDiagnostics.Busy :=
-    function: Boolean
-    begin
-      Result := ProjectIndexPending;
-    end;
+    FileStampOf, LoadExistingFile);
+  FPullDiagnostics.Busy := ProjectIndexPending;
   // Unit im Diagnoselog nur anonym (#1094); das Diagnoselog entsteht erst später.
-  FPullDiagnostics.FileLabel :=
-    function(const AFileName: string): string
-    begin
-      Result := 'unit';
-      if FDiagnostics <> nil then
-      begin
-        Result := FDiagnostics.FileLabel(AFileName);
-      end;
-    end;
+  FPullDiagnostics.FileLabel := DiagnosticsFileLabel;
   // Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).
-  FPullDiagnostics.RequestTimeout :=
-    function: Cardinal
-    begin
-      Result := FRequestTimeout;
-    end;
+  FPullDiagnostics.RequestTimeout := CurrentRequestTimeout;
   FPullDiagnostics.Attach(FDispatcher);
   // Als anonyme Methode statt der Methode selbst: Free Pascal (Linux-Bau) bricht an der Zuweisung einer
   // Methode an eine Methodenreferenz intern ab.
@@ -1081,20 +1116,41 @@ begin
       FPullDiagnostics.FilesChanged(AFiles);
     end;
   // Nach dem Speichern prüft die Projektprüfung auch die Units, die die Datei in uses haben (#1247).
-  FPullDiagnostics.Check.Dependents :=
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
-      if FIndex <> nil then
-      begin
-        Result := TLspWorkspaceCheck.DependentsOf(FIndex.Units, AFileName);
-      end;
-    end;
-  FPullDiagnostics.Check.OnLog :=
-    procedure(const AMessage: string)
-    begin
-      FLogger.Info(AMessage);
-    end;
+  FPullDiagnostics.Check.Dependents := DependentUnitsOf;
+  FPullDiagnostics.Check.OnLog := LogInfo;
+end;
+
+procedure TServerComposition.SyntaxCheckFailed(AError: Exception);
+begin
+  FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
+end;
+
+function TServerComposition.DiagnosticsFileLabel(const AFileName: string): string;
+begin
+  Result := 'unit';
+  if FDiagnostics <> nil then
+  begin
+    Result := FDiagnostics.FileLabel(AFileName);
+  end;
+end;
+
+function TServerComposition.CurrentRequestTimeout: Cardinal;
+begin
+  Result := FRequestTimeout;
+end;
+
+function TServerComposition.DependentUnitsOf(const AFileName: string): TArray<string>;
+begin
+  Result := nil;
+  if FIndex <> nil then
+  begin
+    Result := TLspWorkspaceCheck.DependentsOf(FIndex.Units, AFileName);
+  end;
+end;
+
+procedure TServerComposition.LogInfo(const AMessage: string);
+begin
+  FLogger.Info(AMessage);
 end;
 
 /// <summary>Schreibt eine resourcestring-Unit (#473) über den Slash-Host AHost. Eigene Routine, damit die Closure
@@ -1353,11 +1409,7 @@ begin
   FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(TShellPlatform.CurrentProcessId),
     FDocuments, FIndex);
   FDiagnosticsRef := FDiagnostics;
-  FDiagnostics.TimeoutMs :=
-    function: Cardinal
-    begin
-      Result := FRequestTimeout;
-    end;
+  FDiagnostics.TimeoutMs := CurrentRequestTimeout;
   FDiagnostics.IndexLoading :=
     function: Integer
     begin
@@ -1387,26 +1439,7 @@ begin
   FWorkspaceSymbols.Attach(FDispatcher);
   FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
     EnsureUnit);
-  FDocumentHighlights.SettingsFor :=
-    function(const AUri: string): THighlightSettings
-    var
-      Workspace: TShellWorkspace;
-    begin
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-        if Workspace <> nil then
-        begin
-          Result := Workspace.Configuration.Settings.Highlight;
-        end
-        else
-        begin
-          Result := THighlightSettings.Default;
-        end;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-    end;
+  FDocumentHighlights.SettingsFor := HighlightSettingsFor;
   FDocumentHighlights.Attach(FDispatcher);
   // Lokale Bezeichner brauchen den Index (#658).
   FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
@@ -1432,87 +1465,44 @@ begin
   FRename.Attach(FDispatcher);
 end;
 
+function TServerComposition.HighlightSettingsFor(const AUri: string): THighlightSettings;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  System.TMonitor.Enter(FWorkspacesLock);
+  try
+    mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    if mWorkspace <> nil then
+    begin
+      Result := mWorkspace.Configuration.Settings.Highlight;
+    end
+    else
+    begin
+      Result := THighlightSettings.Default;
+    end;
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
 procedure TServerComposition.WireCompletion;
 begin
   FCompletion := TLspCompletion.Create(FDocuments, FIndex,
     EnsureUnit);
-  FCompletion.MatchingFor :=
-    function(const AUri: string): TCompletionMatching
-    begin
-      Result := CompletionSettingsFor(AUri).Matching;
-    end;
+  FCompletion.MatchingFor := CompletionMatchingFor;
   // Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480).
-  FCompletion.SettingsFor :=
-    function(const AUri: string): TCompletionSettings
-    begin
-      Result := CompletionSettingsFor(AUri);
-    end;
+  FCompletion.SettingsFor := CompletionSettingsFor;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
   FCompletion.RuleIdsFor := SlashRuleIdsAt;
   // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
   // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
-  FCompletion.PostfixFor :=
-    function(const AUri: string): TPostfixOptions
-    begin
-      Result := TPostfixOptions.Default;
-      Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
-      Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
-        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
-    end;
+  FCompletion.PostfixFor := PostfixOptionsFor;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
-  FCompletion.WithFor :=
-    function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
-    var
-      Context: TRefactoringContext;
-      Action: TCodeAction;
-    begin
-      AEdits := nil;
-      Context := FRefactorings.ContextFor(ARequest.Uri);
-      Result := Context.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
-        ARequest.Text, ARequest.Position, Context, Action);
-      if Result then
-      begin
-        AEdits := Action.Edits;
-      end;
-    end;
+  FCompletion.WithFor := CompletionWithEdits;
   // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
-  FCompletion.CreateFor :=
-    function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
-    var
-      Context: TRefactoringContext;
-      Created: TCreatedMethod;
-    begin
-      ATitle := '';
-      ADetail := '';
-      AEdits := nil;
-      Context := FRefactorings.ContextFor(ARequest.Uri);
-      // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
-      Result := Context.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
-        ARequest.Text, ARequest.Position, Context, True, Created) and (Created.FileEdits = nil);
-      if Result then
-      begin
-        ATitle := Created.Title;
-        ADetail := Created.Detail;
-        AEdits := Created.Edits;
-      end;
-    end;
-  // Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas aus dem Projektkontext der IDE, sonst die
-  // Zählung im Index.
-  FCompletion.NamingFor :=
-    function(const AUri: string; AKind: TNamingKind): string
-    var
-      Workspace: TShellWorkspace;
-      Project: TProjectInfo;
-      Context: TIdeProjectContext;
-    begin
-      Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-      if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeProject.Find(Project.FileName, Context) and
-        Context.HasNaming[AKind] then
-      begin
-        Exit(Context.Naming[AKind]);
-      end;
-      Result := TLspCompletion.NamingPrefix(FIndex, AKind);
-    end;
+  FCompletion.CreateFor := CompletionCreateMethod;
+  // Präfix der Namensvorschläge (#452).
+  FCompletion.NamingFor := NamingPrefixFor;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
   // „Parameter abgleichen“ in ///-Blöcken (#88) hängt an completeBlocks.docComment.
@@ -1521,29 +1511,81 @@ begin
   FCompletion.SymbolsFor := ConditionalContextFor;
   FCompletion.ReadText := ReadSourceText;
   // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
-  FCompletion.Notify :=
-    procedure(const AMethod: string; AParams: TJSONObject)
-    var
-      Notification: TJSONObject;
-    begin
-      Notification := TJsonRpcMessages.Notification(AMethod, AParams);
-      try
-        FTransport.WriteMessage(Notification);
-      finally
-        Notification.Free;
-      end;
-    end;
-  FCompletion.Log :=
-    procedure(const AText: string)
-    begin
-      FLogger.Debug(AText);
-    end;
+  FCompletion.Notify := NotifyClient;
+  FCompletion.Log := LogDebug;
   FCompletion.Attach(FDispatcher);
   // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
   FExpressionCompletion := TLspExpressionCompletion.Create(FDocuments, FCompletion);
   FExpressionCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
   FSlashMenu.Completion := FCompletion;
+end;
+
+function TServerComposition.CompletionMatchingFor(const AUri: string): TCompletionMatching;
+begin
+  Result := CompletionSettingsFor(AUri).Matching;
+end;
+
+function TServerComposition.PostfixOptionsFor(const AUri: string): TPostfixOptions;
+begin
+  // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
+  // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
+  Result := TPostfixOptions.Default;
+  Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
+  Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
+    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
+end;
+
+function TServerComposition.CompletionWithEdits(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mContext: TRefactoringContext;
+  mAction: TCodeAction;
+begin
+  AEdits := nil;
+  mContext := FRefactorings.ContextFor(ARequest.Uri);
+  Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
+    ARequest.Text, ARequest.Position, mContext, mAction);
+  if Result then
+  begin
+    AEdits := mAction.Edits;
+  end;
+end;
+
+function TServerComposition.CompletionCreateMethod(ARequest: TCompletionRequest; out ATitle, ADetail: string;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mContext: TRefactoringContext;
+  mCreated: TCreatedMethod;
+begin
+  ATitle := '';
+  ADetail := '';
+  AEdits := nil;
+  mContext := FRefactorings.ContextFor(ARequest.Uri);
+  // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
+  Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
+    ARequest.Text, ARequest.Position, mContext, True, mCreated) and (mCreated.FileEdits = nil);
+  if Result then
+  begin
+    ATitle := mCreated.Title;
+    ADetail := mCreated.Detail;
+    AEdits := mCreated.Edits;
+  end;
+end;
+
+function TServerComposition.NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TProjectInfo;
+  mContext: TIdeProjectContext;
+begin
+  // Vorgabe der Projektdatei .atlas aus dem Projektkontext der IDE, sonst die Zählung im Index.
+  mWorkspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIdeProject.Find(mProject.FileName, mContext) and
+    mContext.HasNaming[AKind] then
+  begin
+    Exit(mContext.Naming[AKind]);
+  end;
+  Result := TLspCompletion.NamingPrefix(FIndex, AKind);
 end;
 
 procedure TServerComposition.WireAnalysis;
