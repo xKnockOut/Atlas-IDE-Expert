@@ -50,19 +50,27 @@ begin
   begin
     Module := Modules.CurrentModule;
     if Module <> nil then
+    begin
       for Index := 0 to Module.ModuleFileCount - 1 do
+      begin
         if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Source) and (Source.EditViewCount > 0) then
         begin
           Result := Source.EditViews[0];
           // Die zuletzt benutzte Ansicht, falls die Datei in mehreren Fenstern offen ist.
           if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopView <> nil) and
             (Editors.TopView.Buffer = Result.Buffer) then
+          begin
             Result := Editors.TopView;
+          end;
           Exit;
         end;
+      end;
+    end;
   end;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Result := Editors.TopView;
+  end;
 end;
 
 class function TAtlasEditorBuffer.Text(const ABuffer: IOTAEditBuffer): string;
@@ -111,13 +119,17 @@ begin
   // Unter dem Dateiende liefert der Editor eine Position in der letzten Zeile; deren Text gehört
   // nicht zu ALine (Diagnoselog 15.10.2026: Hover auf Zeile 1800 bei 1793 Zeilen).
   if AView.PosToCharPos(Position).Line <> ALine then
+  begin
     Exit('');
+  end;
   Reader := AView.Buffer.CreateReader;
   SetLength(Chunk, MaxLine);
   Count := Reader.GetText(Position, PAnsiChar(Chunk), MaxLine);
   Stop := 1;
   while (Stop <= Count) and not (Chunk[Stop] in [#13, #10]) do
+  begin
     Inc(Stop);
+  end;
   Result := UTF8ToString(Copy(Chunk, 1, Stop - 1));
 end;
 
@@ -130,9 +142,13 @@ begin
   begin
     Stops := Trim(ABuffer.BufferOptions.TabStops);
     if Stops <> '' then
+    begin
       Result := StrToIntDef(Stops.Split([' '])[0], 8);
+    end;
     if Result < 1 then
+    begin
       Result := 8;
+    end;
   end;
 end;
 
@@ -141,9 +157,13 @@ begin
   Result := 2;
   // Blockeinzug steht in den Editoroptionen des Puffers, nicht in BufferOptions.
   if ABuffer.EditOptions <> nil then
+  begin
     Result := ABuffer.EditOptions.BlockIndent;
+  end;
   if Result < 1 then
+  begin
     Result := 2;
+  end;
 end;
 
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;
@@ -155,12 +175,16 @@ begin
   while (Line < ALine) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   LineEnd := Index;
   while (LineEnd <= Length(AText)) and not CharInSet(AText[LineEnd], [#13, #10]) do
+  begin
     Inc(LineEnd);
+  end;
   Result := Min(Index + ACharacter, LineEnd) - 1;
 end;
 

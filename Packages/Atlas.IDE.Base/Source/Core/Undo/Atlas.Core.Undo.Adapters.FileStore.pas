@@ -76,13 +76,17 @@ begin
     TJSONObject(AValue).TryGetValue<string>('encoding', Name) and
     TJSONObject(AValue).TryGetValue<Integer>('codePage', AContent.CodePage);
   if not Result then
+  begin
     Exit;
+  end;
   for Encoding := Low(TAtlasTextEncoding) to High(TAtlasTextEncoding) do
+  begin
     if EncodingNames[Encoding] = Name then
     begin
       AContent.Encoding := Encoding;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -104,7 +108,9 @@ function TAtlasUndoFileStore.SetFiles: TArray<string>;
 begin
   Result := nil;
   if not TDirectory.Exists(FFolder) then
+  begin
     Exit;
+  end;
   Result := TDirectory.GetFiles(FFolder, Prefix + '*' + Extension);
   // Kennungen mit führenden Nullen: alphabetisch = älteste zuerst.
   TArray.Sort<string>(Result, TComparer<string>.Construct(
@@ -135,9 +141,13 @@ begin
     Item.AddPair('project', Change.Project);
     Item.AddPair('undone', TJSONBool.Create(Change.Undone));
     if Change.Kind <> TAtlasFileChangeKind.Created then
+    begin
       Item.AddPair('before', ContentToJson(Change.Before));
+    end;
     if Change.Kind <> TAtlasFileChangeKind.Deleted then
+    begin
       Item.AddPair('after', ContentToJson(Change.After));
+    end;
   end;
 end;
 
@@ -153,37 +163,55 @@ var
 begin
   ASet := Default(TAtlasChangeSet);
   if not (AValue is TJSONObject) then
+  begin
     Exit(False);
+  end;
   Root := TJSONObject(AValue);
   if not (Root.TryGetValue<Integer>('id', ASet.Id) and Root.TryGetValue<string>('action', ASet.Action) and
     Root.TryGetValue<string>('time', Time) and Root.TryGetValue<TJSONArray>('files', Files)) then
+  begin
     Exit(False);
+  end;
   if not TryISO8601ToDate(Time, ASet.Time, False) then
+  begin
     Exit(False);
+  end;
   for Value in Files do
   begin
     if not (Value is TJSONObject) then
+    begin
       Exit(False);
+    end;
     Item := TJSONObject(Value);
     Change := Default(TAtlasFileChange);
     if not (Item.TryGetValue<string>('file', Change.FileName) and Item.TryGetValue<string>('kind', Kind) and
       Item.TryGetValue<string>('project', Change.Project) and Item.TryGetValue<Boolean>('undone', Change.Undone)) then
+    begin
       Exit(False);
+    end;
     Known := False;
     for Candidate := Low(TAtlasFileChangeKind) to High(TAtlasFileChangeKind) do
+    begin
       if KindNames[Candidate] = Kind then
       begin
         Change.Kind := Candidate;
         Known := True;
       end;
+    end;
     if not Known then
+    begin
       Exit(False);
+    end;
     if (Change.Kind <> TAtlasFileChangeKind.Created) and not ContentFromJson(Item.GetValue('before'),
       Change.Before) then
+    begin
       Exit(False);
+    end;
     if (Change.Kind <> TAtlasFileChangeKind.Deleted) and not ContentFromJson(Item.GetValue('after'),
       Change.After) then
+    begin
       Exit(False);
+    end;
     ASet.Files := ASet.Files + [Change];
   end;
   Result := (ASet.Id > 0) and (Length(ASet.Files) > 0);
@@ -206,7 +234,9 @@ begin
   begin
     // Zu groß für die Grenze: nicht sichern, auch keinen älteren Stand dieses Satzes behalten.
     if TFile.Exists(FileName) then
+    begin
       TFile.Delete(FileName);
+    end;
     Exit;
   end;
   TDirectory.CreateDirectory(FFolder);
@@ -223,7 +253,9 @@ begin
   Files := SetFiles;
   Total := 0;
   for Index := 0 to High(Files) do
+  begin
     Inc(Total, TFile.GetSize(Files[Index]));
+  end;
   Index := 0;
   while (Total > FMaxBytes) and (Index < Length(Files)) do
   begin
@@ -236,7 +268,9 @@ end;
 procedure TAtlasUndoFileStore.Delete(AId: Integer);
 begin
   if TFile.Exists(FileOf(AId)) then
+  begin
     TFile.Delete(FileOf(AId));
+  end;
 end;
 
 function TAtlasUndoFileStore.Load: TArray<TAtlasChangeSet>;
@@ -264,7 +298,9 @@ begin
     Value := ReadSet(FileName);
     try
       if FromJson(Value, ChangeSet) then
+      begin
         Result := Result + [ChangeSet];
+      end;
     finally
       Value.Free;
     end;
@@ -276,7 +312,9 @@ var
   FileName: string;
 begin
   for FileName in SetFiles do
+  begin
     TFile.Delete(FileName);
+  end;
 end;
 
 end.

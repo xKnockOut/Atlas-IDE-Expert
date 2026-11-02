@@ -102,7 +102,9 @@ var
 begin
   Result := nil;
   if not Exists(AVariant, ASize) then
+  begin
     Exit;
+  end;
   Stream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, ASize), RT_RCDATA);
   try
     Result := TWICImage.Create;
@@ -126,12 +128,16 @@ begin
   Size := TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch);
   Name := TAtlasSymbol.ResourceName(AVariant, Size);
   if Cache = nil then
+  begin
     Cache := TObjectDictionary<string, TWICImage>.Create([doOwnsValues]);
+  end;
   if not Cache.TryGetValue(Name, Result) then
   begin
     Result := Load(AVariant, Size);
     if Result <> nil then
+    begin
       Cache.Add(Name, Result);
+    end;
   end;
 end;
 
@@ -147,13 +153,19 @@ begin
   Result := 0;
   Image := Load(AVariant, TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch));
   if Image = nil then
+  begin
     Exit;
+  end;
   try
     if Failed(TWICImage.ImagingFactory.CreateFormatConverter(Converter)) then
+    begin
       Exit;
+    end;
     if Failed(Converter.Initialize(Image.Handle, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nil, 0,
       WICBitmapPaletteTypeCustom)) then
+    begin
       Exit;
+    end;
     Width := Image.Width;
     Height := Image.Height;
     FillChar(Info, SizeOf(Info), 0);
@@ -189,7 +201,9 @@ class function TAtlasSymbolImages.Collection(AOwner: TComponent): TImageCollecti
     for Index := 0 to TAtlasSymbol.SizeCount - 1 do
     begin
       if not Exists(AVariant, TAtlasSymbol.Size(Index)) then
+      begin
         Continue;
+      end;
       Stream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, TAtlasSymbol.Size(Index)),
         RT_RCDATA);
       try
@@ -210,7 +224,9 @@ class function TAtlasSymbolImages.Icon(AVariant: TAtlasSymbolVariant): TIcon;
 begin
   Result := TIcon.Create;
   if FindResource(ResourceModule, PChar(TAtlasSymbol.IconName(AVariant)), RT_GROUP_ICON) <> 0 then
+  begin
     Result.LoadFromResourceName(ResourceModule, TAtlasSymbol.IconName(AVariant));
+  end;
 end;
 
 class function TAtlasSymbolImages.VariantOf(AControl: TControl): TAtlasSymbolVariant;
@@ -235,7 +251,9 @@ end;
 procedure TAtlasSymbolImage.SetLogicalSize(AValue: Integer);
 begin
   if AValue = FLogicalSize then
+  begin
     Exit;
+  end;
   FLogicalSize := AValue;
   UpdateSize;
   Invalidate;
@@ -264,16 +282,22 @@ begin
   FShownVariant := TAtlasSymbolImages.VariantOf(Self);
   Image := TAtlasSymbolImages.Cached(FShownVariant, FLogicalSize, CurrentPPI);
   if Image = nil then
+  begin
     Exit;
+  end;
   FShownSize := Image.Width;
   Pixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
   Target := Rect(0, 0, Pixels, Pixels);
   OffsetRect(Target, (Width - Pixels) div 2, (Height - Pixels) div 2);
   // Gleich groß: ungestreckt und damit scharf; sonst die nächstgrößere Datei verkleinert.
   if Image.Width = Pixels then
-    Canvas.Draw(Target.Left, Target.Top, Image)
+  begin
+    Canvas.Draw(Target.Left, Target.Top, Image);
+  end
   else
+  begin
     Canvas.StretchDraw(Target, Image);
+  end;
 end;
 
 initialization

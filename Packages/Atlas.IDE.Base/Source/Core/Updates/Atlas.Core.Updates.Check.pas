@@ -112,7 +112,9 @@ begin
   try
     Root.AddPair('asked', TJSONBool.Create(Asked));
     if LastCheck > 0 then
+    begin
       Root.AddPair('lastCheck', TJSONString.Create(DateToISO8601(LastCheck, False)));
+    end;
     if Available <> '' then
     begin
       Root.AddPair('available', TJSONString.Create(Available));
@@ -140,13 +142,17 @@ begin
   end;
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     Root.TryGetValue<Boolean>('asked', Result.Asked);
     // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
     Found := Root.TryGetValue<string>('lastCheck', Text);
     if Found and not TryISO8601ToDate(Text, Result.LastCheck, False) then
+    begin
       Result.LastCheck := 0;
+    end;
     // Nur eine gültige Version (#754); ohne https-Adresse gilt die Release-Seite der Version.
     Found := Root.TryGetValue<string>('available', Text);
     if Found and TAtlasUpdates.IsValidVersion(Text) then
@@ -155,7 +161,9 @@ begin
       Found := Root.TryGetValue<string>('changes', Result.ChangesUrl);
       if not Found or not Result.ChangesUrl.StartsWith('https://', True) or
         (Result.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0) then
+      begin
         Result.ChangesUrl := TAtlasUpdates.ReleasesUrl + '/tag/v' + Text;
+      end;
     end;
   finally
     Value.Free;
@@ -175,8 +183,12 @@ var
 begin
   Result := AText <> '';
   for C in AText do
+  begin
     if not CharInSet(C, ['0'..'9']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function CompareNumbers(const A, B: string): Integer;
@@ -184,7 +196,9 @@ begin
   // Ohne führende Nullen (SemVer): länger ist größer, sonst Zeichen für Zeichen.
   Result := Sign(Length(A) - Length(B));
   if Result = 0 then
+  begin
     Result := Sign(CompareStr(A, B));
+  end;
 end;
 
 function ComparePrerelease(const A, B: string): Integer;
@@ -194,21 +208,33 @@ var
 begin
   // Ohne Vorabversion ist eine Version größer als mit.
   if (A = '') or (B = '') then
+  begin
     Exit(Ord(A = '') - Ord(B = ''));
+  end;
   PartsA := A.Split(['.']);
   PartsB := B.Split(['.']);
   for Index := 0 to Min(Length(PartsA), Length(PartsB)) - 1 do
   begin
     if IsNumber(PartsA[Index]) and IsNumber(PartsB[Index]) then
-      Result := CompareNumbers(PartsA[Index], PartsB[Index])
+    begin
+      Result := CompareNumbers(PartsA[Index], PartsB[Index]);
+    end
     else if IsNumber(PartsA[Index]) then
-      Result := -1
+    begin
+      Result := -1;
+    end
     else if IsNumber(PartsB[Index]) then
-      Result := 1
+    begin
+      Result := 1;
+    end
     else
+    begin
       Result := Sign(CompareStr(PartsA[Index], PartsB[Index]));
+    end;
     if Result <> 0 then
+    begin
       Exit;
+    end;
   end;
   Result := Sign(Length(PartsA) - Length(PartsB));
 end;
@@ -221,11 +247,15 @@ var
 begin
   Result := TRegEx.IsMatch(AVersion, SemVerPattern);
   if not Result then
+  begin
     Exit;
+  end;
   Rest := AVersion;
   Position := Pos('+', Rest);
   if Position > 0 then
+  begin
     Rest := Copy(Rest, 1, Position - 1);
+  end;
   APrerelease := '';
   Position := Pos('-', Rest);
   if Position > 0 then
@@ -246,12 +276,16 @@ begin
   ValidA := SplitVersion(A, CoreA, PreA);
   ValidB := SplitVersion(B, CoreB, PreB);
   if not ValidA or not ValidB then
+  begin
     Exit(Ord(ValidA) - Ord(ValidB));
+  end;
   for Index := 0 to 2 do
   begin
     Result := CompareNumbers(CoreA[Index], CoreB[Index]);
     if Result <> 0 then
+    begin
       Exit;
+    end;
   end;
   Result := ComparePrerelease(PreA, PreB);
 end;
@@ -286,7 +320,9 @@ begin
     if not Found or
       not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
     then
+    begin
       ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + ARelease.Version;
+    end;
   finally
     Value.Free;
   end;
@@ -328,12 +364,16 @@ begin
   ARelease := Default(TAtlasRelease);
   Result := (AState.Available <> '') and (Compare(AState.Available, AInstalled) > 0);
   if not Result then
+  begin
     Exit;
+  end;
   ARelease.Version := AState.Available;
   ARelease.ChangesUrl := AState.ChangesUrl;
   if not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
   then
+  begin
     ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + AState.Available;
+  end;
 end;
 
 class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; var AState: TAtlasUpdateState;
@@ -366,9 +406,13 @@ begin
     Exit;
   end;
   if Compare(Result.Release.Version, AInstalled) > 0 then
-    Result.Outcome := TAtlasUpdateOutcome.NewVersion
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.NewVersion;
+  end
   else
+  begin
     Result.Outcome := TAtlasUpdateOutcome.Current;
+  end;
 end;
 
 class function TAtlasUpdates.IdeVersion: string;

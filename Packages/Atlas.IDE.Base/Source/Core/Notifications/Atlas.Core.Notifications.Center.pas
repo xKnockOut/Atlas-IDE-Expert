@@ -238,17 +238,25 @@ end;
 class function TAtlasNotificationCenter.Worse(ALeft, ARight: TAtlasNotificationSeverity): TAtlasNotificationSeverity;
 begin
   if Ord(ARight) > Ord(ALeft) then
-    Result := ARight
+  begin
+    Result := ARight;
+  end
   else
+  begin
     Result := ALeft;
+  end;
 end;
 
 class function TAtlasNotificationCenter.CaptionOf(const ATitle: string; ACount: Integer): string;
 begin
   if ACount > 1 then
-    Result := IntToStr(ACount) + ' × ' + ATitle
+  begin
+    Result := IntToStr(ACount) + ' × ' + ATitle;
+  end
   else
+  begin
     Result := ATitle;
+  end;
 end;
 
 class function TAtlasNotificationCenter.Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction;
@@ -274,9 +282,13 @@ end;
 function TAtlasNotificationCenter.Now_: TDateTime;
 begin
   if Assigned(FClock) then
-    Result := FClock()
+  begin
+    Result := FClock();
+  end
   else
+  begin
     Result := Now;
+  end;
 end;
 
 function TAtlasNotificationCenter.IndexOf(AId: Integer): Integer;
@@ -284,21 +296,29 @@ var
   Index: Integer;
 begin
   for Index := 0 to FItems.Count - 1 do
+  begin
     if FItems[Index].Id = AId then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
 function TAtlasNotificationCenter.ModeLocked(const ASource: string): TAtlasNotificationMode;
 begin
   if not FEnabled or not FModes.TryGetValue(LowerCase(ASource), Result) then
+  begin
     Result := TAtlasNotificationMode.Show;
+  end;
 end;
 
 procedure TAtlasNotificationCenter.Trim_;
 begin
   while FItems.Count > FMaxEntries do
+  begin
     FItems.Delete(FItems.Count - 1);
+  end;
 end;
 
 procedure TAtlasNotificationCenter.Notify_;
@@ -343,7 +363,9 @@ begin
   try
     Result := ModeLocked(ASource);
     if not FEnabled or (Result = TAtlasNotificationMode.Off) then
+    begin
       Exit;
+    end;
     // Gleichartig: dieselbe Quelle und derselbe Titel, letzte Meldung höchstens MergeSeconds zurück.
     Limit := Stamp - MergeSeconds / SecsPerDay;
     Found := -1;
@@ -398,13 +420,19 @@ end;
 procedure TAtlasNotificationCenter.SetMode(const ASource: string; AMode: TAtlasNotificationMode);
 begin
   if Trim(ASource) = '' then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     if AMode = TAtlasNotificationMode.Show then
-      FModes.Remove(LowerCase(ASource))
+    begin
+      FModes.Remove(LowerCase(ASource));
+    end
     else
+    begin
       FModes.AddOrSetValue(LowerCase(ASource), AMode);
+    end;
   finally
     FLock.Leave;
   end;
@@ -419,8 +447,12 @@ begin
   try
     FModes.Clear;
     for Entry in TAtlasNotificationSources.Parse(ASpec) do
+    begin
       if Entry.Mode <> TAtlasNotificationMode.Show then
+      begin
         FModes.AddOrSetValue(LowerCase(Entry.Source), Entry.Mode);
+      end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -442,11 +474,17 @@ var
   Entry: IAtlasNotification;
 begin
   if ASource = '' then
+  begin
     Exit(Items);
+  end;
   Result := nil;
   for Entry in Items do
+  begin
     if SameText(Entry.Source, ASource) then
+    begin
       Result := Result + [Entry];
+    end;
+  end;
 end;
 
 function TAtlasNotificationCenter.Find(AId: Integer): IAtlasNotification;
@@ -458,7 +496,9 @@ begin
   try
     Index := IndexOf(AId);
     if Index >= 0 then
+    begin
       Result := FItems[Index];
+    end;
   finally
     FLock.Leave;
   end;
@@ -475,10 +515,16 @@ begin
   begin
     Known := False;
     for Source in Result do
+    begin
       if SameText(Source, Entry.Source) then
+      begin
         Known := True;
+      end;
+    end;
     if not Known then
+    begin
       Result := Result + [Entry.Source];
+    end;
   end;
 end;
 
@@ -491,7 +537,9 @@ begin
   try
     Index := IndexOf(AId);
     if (Index < 0) or FItems[Index].Read then
+    begin
       Exit;
+    end;
     Entry := Copy_(FItems[Index]);
     Entry.FRead := True;
     FItems[Index] := Entry;
@@ -511,6 +559,7 @@ begin
   FLock.Enter;
   try
     for Index := 0 to FItems.Count - 1 do
+    begin
       if not FItems[Index].Read then
       begin
         Entry := Copy_(FItems[Index]);
@@ -518,11 +567,14 @@ begin
         FItems[Index] := Entry;
         Changed := True;
       end;
+    end;
   finally
     FLock.Leave;
   end;
   if Changed then
+  begin
     Notify_;
+  end;
 end;
 
 procedure TAtlasNotificationCenter.Clear;
@@ -545,15 +597,21 @@ begin
   Entry := Find(AId);
   Result := False;
   if Entry = nil then
+  begin
     Exit;
+  end;
   Actions := Entry.Actions;
   if (AIndex < 0) or (AIndex > High(Actions)) then
+  begin
     Exit;
+  end;
   Run := Actions[AIndex].Run;
   // Erst gelesen, dann die Aktion: Sie kann ein Fenster öffnen oder die Liste ändern.
   MarkRead(AId);
   if Assigned(Run) then
+  begin
     Run();
+  end;
   Result := True;
 end;
 
@@ -565,8 +623,12 @@ begin
   FLock.Enter;
   try
     for Entry in FItems do
+    begin
       if not Entry.Read then
+      begin
         Inc(Result);
+      end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -581,14 +643,20 @@ begin
   FLock.Enter;
   try
     for Entry in FItems do
+    begin
       if not Entry.Read then
       begin
         if not Result then
-          ASeverity := Entry.Severity
+        begin
+          ASeverity := Entry.Severity;
+        end
         else
+        begin
           ASeverity := Worse(ASeverity, Entry.Severity);
+        end;
         Result := True;
       end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -614,7 +682,9 @@ begin
     FMaxEntries := EnsureRange(AValue, MinEntries, MaxMaxEntries);
     Trim_;
     if FItems.Count = Before then
+    begin
       Exit;
+    end;
   finally
     FLock.Leave;
   end;
@@ -668,11 +738,15 @@ begin
   FLock.Enter;
   try
     if FEnabled = AValue then
+    begin
       Exit;
+    end;
     FEnabled := AValue;
     // Ausgeschaltet: keine Liste, kein Zähler.
     if not AValue then
+    begin
       FItems.Clear;
+    end;
   finally
     FLock.Leave;
   end;

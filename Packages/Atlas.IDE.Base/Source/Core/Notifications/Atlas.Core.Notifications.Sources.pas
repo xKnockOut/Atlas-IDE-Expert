@@ -102,9 +102,13 @@ begin
   Name := LowerCase(Trim(AName));
   Result := True;
   if Name = 'collect' then
-    AMode := TAtlasNotificationMode.Collect
+  begin
+    AMode := TAtlasNotificationMode.Collect;
+  end
   else if Name = 'off' then
-    AMode := TAtlasNotificationMode.Off
+  begin
+    AMode := TAtlasNotificationMode.Off;
+  end
   else
   begin
     AMode := TAtlasNotificationMode.Show;
@@ -126,14 +130,22 @@ begin
   begin
     Equals := Pos('=', Part);
     if Equals <= 0 then
+    begin
       Continue;
+    end;
     Source := Trim(Copy(Part, 1, Equals - 1));
     if (Source = '') or not TryMode(Copy(Part, Equals + 1, MaxInt), Mode) then
+    begin
       Continue;
+    end;
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Source, Source) then
+      begin
         Found := Index;
+      end;
+    end;
     if Found >= 0 then
     begin
       Result[Found].Mode := Mode;
@@ -153,9 +165,13 @@ begin
   for Entry in AModes do
   begin
     if (Entry.Mode = TAtlasNotificationMode.Show) or (Trim(Entry.Source) = '') then
+    begin
       Continue;
+    end;
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Trim(Entry.Source) + '=' + ModeName(Entry.Mode);
   end;
 end;
@@ -166,8 +182,12 @@ var
 begin
   Result := TAtlasNotificationMode.Show;
   for Entry in Parse(ASpec) do
+  begin
     if SameText(Entry.Source, ASource) then
+    begin
       Result := Entry.Mode;
+    end;
+  end;
 end;
 
 class function TAtlasNotificationSources.WithMode(const ASpec, ASource: string;
@@ -181,11 +201,13 @@ begin
   Modes := Parse(ASpec);
   Found := False;
   for Index := 0 to High(Modes) do
+  begin
     if SameText(Modes[Index].Source, ASource) then
     begin
       Modes[Index].Mode := AMode;
       Found := True;
     end;
+  end;
   if not Found and (Trim(ASource) <> '') then
   begin
     Entry.Source := Trim(ASource);

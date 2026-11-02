@@ -109,11 +109,13 @@ begin
   FLock.Enter;
   try
     for Index := 0 to High(FParts) do
+    begin
       if SameText(FParts[Index].Name, AName) then
       begin
         FParts[Index].Ms := FParts[Index].Ms + Max(AMs, Int64(0));
         Exit;
       end;
+    end;
     Part.Name := AName;
     Part.Ms := Max(AMs, Int64(0));
     FParts := FParts + [Part];
@@ -142,7 +144,9 @@ begin
   FLock.Enter;
   try
     for Part in FParts do
+    begin
       Inc(Result, Part.Ms);
+    end;
   finally
     FLock.Leave;
   end;
@@ -165,14 +169,20 @@ begin
   for Part in Parts do
   begin
     if Part.Ms < MinPartMs then
+    begin
       Continue;
+    end;
     Target := Length(Result);
     while (Target > 0) and (Result[Target - 1].Ms < Part.Ms) do
+    begin
       Dec(Target);
+    end;
     Insert(Part, Result, Target);
   end;
   if Length(Result) > Max(AMax, 0) then
+  begin
     SetLength(Result, Max(AMax, 0));
+  end;
 end;
 
 function TAtlasStartTimes.SlowestText: string;
@@ -183,7 +193,9 @@ begin
   for Part in Slowest(MaxParts) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Format('%s %d ms', [Part.Name, Part.Ms]);
   end;
 end;
@@ -199,11 +211,15 @@ var
 begin
   Result := Format('Start: %d ms bis zur freien Nachrichtenschleife', [ALoadMs]);
   if IsSlow(ALoadMs, ALimitMs) then
+  begin
     Result := Result + Format(' (länger als %d ms)', [ALimitMs]);
+  end;
   Result := Result + Format(', davon Atlas %d ms', [Total]);
   Parts := SlowestText;
   if Parts <> '' then
+  begin
     Result := Result + ': ' + Parts;
+  end;
 end;
 
 end.
