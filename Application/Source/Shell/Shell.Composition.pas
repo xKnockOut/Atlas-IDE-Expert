@@ -31,11 +31,8 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.CompilerSwitches,
   Atlas.Common.Lsp.Formatting,
-  Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.CodeActions,
@@ -71,7 +68,6 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.OverrideMarks,
-  Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
@@ -81,6 +77,7 @@ uses
   Shell.Composition.Analysis,
   Shell.Composition.Navigation,
   Shell.Composition.Completion,
+  Shell.Composition.Editing,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -156,11 +153,8 @@ type
     FPullDiagnostics: TLspPullDiagnostics;
     // Projektprüfung je Indexaufbau nur einmal neu starten (29.10.2026).
     FIndexRecheck: TWorkspaceCheckIndexGate;
-    FDocumentSymbols: TLspDocumentSymbols;
-    FFoldingRanges: TLspFoldingRanges;
-    FFormatting: TLspFormatting;
-    FSlashMenu: TLspSlashMenu;
-    FSelectionRanges: TLspSelectionRanges;
+    /// <summary>Bearbeiten: Gliederung, Falt- und Auswahlbereiche, Formatieren, Erzeugen-Menü (#719).</summary>
+    FEditing: TShellEditing;
     /// <summary>Navigation: Definition, Hover, Symbolsuche mit Lesezeichen, Hervorhebungen, verknüpftes
     /// Bearbeiten, Werte beim Debuggen, Compilerschalter, Referenzen und Umbenennen.</summary>
     FNavigation: TShellNavigation;
@@ -339,6 +333,8 @@ type
     procedure WireCompile;
     /// <summary>Teil von Create (S-02): Dokumentbezogene Funktionen ohne Index: Symbole, Faltung, Formatierung, Schnellbefehle.</summary>
     procedure WireEditing;
+    /// <summary>Teil von WireEditing: Gliederung, Falt- und Auswahlbereiche, Formatieren, Erzeugen-Menü.</summary>
+    procedure WireEditors;
     /// <summary>Arbeitsbereich der Datei für die Schnellbefehle.</summary>
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
     /// <summary>Vorlage des Dateikopfs für /header (#56).</summary>
@@ -1252,22 +1248,7 @@ var
   SlashHost: TShellSlashHost;
   KeepHost: ISlashHost;
 begin
-  FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
-  FDocumentSymbols.Attach(FDispatcher);
-  FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
-  FFoldingRanges.Attach(FDispatcher);
-  FFormatting := TLspFormatting.Create(FDocuments, FormatStyleFor,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-      if Result then
-      begin
-        AText := TFileEncoding.LoadText(AFileName);
-      end;
-    end);
-  FFormatting.SlashCommandsFor := SlashCommandsFor;
-  FFormatting.DelphiVersionFor := LanguageLevelFor;
-  FFormatting.DocCommentsFor := DocCommentsFor;
+  WireEditors;
   SlashHost := TShellSlashHost.Create(TShellSlashSources.New(SlashWorkspaceOf, ReadSourceText, SlashHeaderTemplateOf),
     FTransport, FLogger, FDispatcher,
     // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
@@ -1293,21 +1274,27 @@ begin
   SlashHost.RuleIdsOf := SlashRuleIdsAt;
   SlashHost.UsesContextOf := UsesContextFor;
   SlashHost.FindingsOf := SlashFindingsAt;
-  FFormatting.SlashHost := SlashHost;
   // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben. Eigene Routine: Im Rahmen
   // dieser Methode hielte die Closure den Host fest, der seinerseits Closures dieses Rahmens hält (Leck).
   KeepHost := SlashHost;
+  FEditing.UseSlashHost(KeepHost);
   FResourceStringWrite := ResourceStringWriteFor(KeepHost);
-  FFormatting.Attach(FDispatcher);
-  // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
-  FSlashMenu := TLspSlashMenu.Create(FDocuments);
-  FSlashMenu.SlashCommandsFor := SlashCommandsFor;
-  FSlashMenu.DelphiVersionFor := LanguageLevelFor;
-  FSlashMenu.SlashHost := SlashHost;
-  // Einrückung wie beim Formatieren (#43), ohne Editor-Optionen: .editorconfig und "format".
-  FSlashMenu.FormatStyleFor := ResolvedFormatStyleFor;
-  FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
-  FSelectionRanges.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireEditors;
+var
+  mServices: TShellEditingServices;
+begin
+  mServices := Default(TShellEditingServices);
+  mServices.Documents := FDocuments;
+  mServices.FormatStyleFor := FormatStyleFor;
+  mServices.ResolvedFormatStyleFor := ResolvedFormatStyleFor;
+  mServices.SlashCommandsFor := SlashCommandsFor;
+  mServices.LanguageLevelFor := LanguageLevelFor;
+  mServices.DocCommentsFor := DocCommentsFor;
+  mServices.ReadText := ReadSourceText;
+  FEditing := TShellEditing.Create(mServices);
+  FEditing.Attach(FDispatcher);
 end;
 
 function TServerComposition.SlashWorkspaceOf(const AUri: string): TShellWorkspace;
@@ -1482,11 +1469,7 @@ begin
       end;
       Result := False;
     end);
-  FFormatting.Index := FIndex;
-  // Standardsichtbarkeit published über die Vorfahren (#537).
-  FDocumentSymbols.Index := FIndex;
-  FDocumentSymbols.ReadText := ReadSourceText;
-  FSlashMenu.Index := FIndex;
+  FEditing.UseIndex(FIndex);
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := RequestTimeoutMs;
   FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(TShellPlatform.CurrentProcessId),
@@ -1570,7 +1553,7 @@ begin
   FCompletion := TShellCompletion.Create(mServices);
   FCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
-  FSlashMenu.Completion := FCompletion.Completion;
+  FEditing.UseCompletion(FCompletion.Completion);
 end;
 
 function TServerComposition.NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
@@ -1805,7 +1788,7 @@ begin
   Result.Index := FIndex;
   Result.DelphiVersion := LanguageLevelFor(AUri);
   Result.Uri := AUri;
-  Result.Host := FFormatting.SlashHost;
+  Result.Host := FEditing.SlashHost;
 end;
 
 function TServerComposition.MemberOrderOf(const AUri: string): TMemberOrderSettings;
@@ -1947,21 +1930,7 @@ begin
     begin
       Result := FBaselines.CompilerBaseline.ExecuteClassify(AArguments);
     end);
-  FCommands.Register(TLspSlashMenu.MenuCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FSlashMenu.ExecuteMenu(AArguments);
-    end);
-  FCommands.Register(TLspSlashMenu.ChoicesCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FSlashMenu.ExecuteChoices(AArguments);
-    end);
-  FCommands.Register(TLspSlashMenu.RunCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FSlashMenu.ExecuteRun(AArguments);
-    end);
+  FEditing.RegisterCommands(FCommands);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -2740,11 +2709,7 @@ end;
 
 procedure TServerComposition.FreeEditorFeatures;
 begin
-  FreeAndNil(FDocumentSymbols);
-  FreeAndNil(FFoldingRanges);
-  FreeAndNil(FFormatting);
-  FreeAndNil(FSlashMenu);
-  FreeAndNil(FSelectionRanges);
+  FreeAndNil(FEditing);
 end;
 
 procedure TServerComposition.FreeAnalysisFeatures;
