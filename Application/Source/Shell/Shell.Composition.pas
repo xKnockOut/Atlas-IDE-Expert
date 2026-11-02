@@ -74,6 +74,7 @@ uses
   Shell.Composition.Slash,
   Shell.Composition.Contract,
   Shell.Composition.UnitSearch,
+  Shell.Composition.TestUnits,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -176,9 +177,7 @@ type
     FCodeActions: TShellCodeActions;
     FRefactorings: TShellRefactorings;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
-    FTestUnits: TLspTestUnits;
-    /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
-    FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
+    FTestUnits: TShellTestUnits;
     /// <summary>Daten des Fensters „Units suchen“ im Plugin (#777).</summary>
     FUnitSearch: TShellUnitSearch;
     FCommands: TLspCommands;
@@ -362,6 +361,8 @@ type
     procedure WireRefactorings;
     /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
     procedure WireCodeActions;
+    /// <summary>Teil von WireCodeActions: Testunits anlegen und wechseln (#274, #189).</summary>
+    procedure WireTestUnits;
     /// <summary>Was die Code-Aktionen vom Arbeitsbereich der Datei brauchen, unter der Sperre gelesen.</summary>
     function CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
     /// <summary>Code-Aktionen für Testunits und der Refactorings.</summary>
@@ -458,21 +459,6 @@ type
     function RuleProjectsComplete(out AReason: string): Boolean;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
-    /// <summary>Einstellungen, Wurzel und Hauptdateien der Projekte; False ohne Arbeitsbereich.</summary>
-    function TestUnitWorkspace(const AFileName: string; var AContext: TTestUnitContext;
-      out ACandidates: TArray<string>): Boolean;
-    /// <summary>Quelltext einer Datei, '' wenn sie fehlt.</summary>
-    function SourceTextOrEmpty(const AFileName: string): string;
-    /// <summary>Datei auf der Platte oder als offenes Dokument.</summary>
-    function DocumentOrFileExists(const AFileName: string): Boolean;
-    /// <summary>Datei einer Projekt-Unit aus dem Index; '' für unbekannte und Bibliotheks-Units.</summary>
-    function ProjectUnitFile(const AUnitName: string): string;
-    /// <summary>Gemerktes Testprogramm der Wurzel, solange es frisch ist.</summary>
-    function CachedTestProgram(const ARoot: string; out AProgram: string): Boolean;
-    /// <summary>Merkt das Testprogramm der Wurzel.</summary>
-    procedure StoreTestProgram(const ARoot, AProgram: string);
-    /// <summary>.dpr in der Wurzel und eine Ebene darunter (ohne Punktordner).</summary>
-    function DprFilesNear(const ARoot: string): TArray<string>;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Dateien der Projektprüfung: ProjectSourceFiles ohne Testunits, wenn excludeTests gilt.</summary>
@@ -728,7 +714,6 @@ uses
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Editing.TestUnits,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Compiler.OutputParser,
@@ -1474,8 +1459,7 @@ procedure TServerComposition.WireCodeActions;
 var
   mServices: TShellCodeActionServices;
 begin
-  FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
-  FTestUnits := TLspTestUnits.Create(FDocuments, TestUnitContextFor);
+  WireTestUnits;
   mServices := Default(TShellCodeActionServices);
   mServices.Documents := FDocuments;
   mServices.Index := FIndex;
@@ -1492,6 +1476,20 @@ begin
   mServices.SlashHost := FEditing.SlashHost;
   FCodeActions := TShellCodeActions.Create(mServices);
   FCodeActions.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireTestUnits;
+var
+  mServices: TShellTestUnitServices;
+begin
+  mServices := Default(TShellTestUnitServices);
+  mServices.Logger := FLogger;
+  mServices.Documents := FDocuments;
+  mServices.Index := FIndex;
+  mServices.ReadText := ReadSourceText;
+  mServices.VisitWorkspaces := VisitWorkspaces;
+  mServices.PickWorkspace := PickWorkspace;
+  FTestUnits := TShellTestUnits.Create(mServices);
 end;
 
 function TServerComposition.CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
@@ -1579,11 +1577,7 @@ procedure TServerComposition.WireSlashCommands;
 begin
   FBaselines.RegisterClassifyCommand(FCommands);
   FEditing.RegisterCommands(FCommands);
-  FCommands.Register(TLspTestUnits.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FTestUnits.Execute(AArguments);
-    end);
+  FTestUnits.RegisterCommand(FCommands);
   WireUnitSearch;
   FUnitSearch.RegisterCommands(FCommands);
 end;
@@ -2133,7 +2127,6 @@ begin
   FreeAndNil(FNavigation);
   FreeAndNil(FCodeActions);
   FreeAndNil(FTestUnits);
-  FreeAndNil(FTestPrograms);
   FreeAndNil(FUnitSearch);
   FreeAndNil(FCommands);
   // Nach allen Nutzern des Hosts der Schnellbefehle: Er ruft dessen Methoden.
@@ -3025,144 +3018,9 @@ begin
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
-var
-  mCandidates: TArray<string>;
-  mFound: string;
 begin
   AContext := Default(TTestUnitContext);
-  if not TestUnitWorkspace(TDocumentUris.ToPath(AUri), AContext, mCandidates) then
-  begin
-    Exit(False);
-  end;
-  AContext.ReadText := SourceTextOrEmpty;
-  AContext.Exists := DocumentOrFileExists;
-  // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
-  AContext.FindUnit := ProjectUnitFile;
-  Result := True;
-  if AContext.Settings.Project <> '' then
-  begin
-    mFound := AContext.Settings.Project;
-    if not TPath.IsPathRooted(mFound) then
-    begin
-      mFound := TPath.Combine(AContext.Root, mFound);
-    end;
-    AContext.TestProgram := ChangeFileExt(ExpandFileName(mFound), '.dpr');
-  end
-  else if not CachedTestProgram(AContext.Root, AContext.TestProgram) then
-  begin
-    AContext.TestProgram := TTestUnits.FindTestProgram(mCandidates + DprFilesNear(AContext.Root), AContext.ReadText);
-    StoreTestProgram(AContext.Root, AContext.TestProgram);
-  end;
-end;
-
-function TServerComposition.TestUnitWorkspace(const AFileName: string; var AContext: TTestUnitContext;
-  out ACandidates: TArray<string>): Boolean;
-var
-  mWorkspace, mOther: TShellWorkspace;
-  mInfo: TProjectInfo;
-begin
-  ACandidates := nil;
-  System.TMonitor.Enter(FWorkspacesLock);
-  try
-    mWorkspace := PickWorkspace(AFileName);
-    Result := mWorkspace <> nil;
-    if not Result then
-    begin
-      Exit;
-    end;
-    AContext.Settings := mWorkspace.Configuration.Settings.TestUnits;
-    AContext.Root := mWorkspace.Root;
-    // Projekte der Gruppe zuerst, dann .dpr in der Wurzel und eine Ebene darunter.
-    for mOther in FWorkspaces do
-    begin
-      if mOther.State.Project(mInfo) and (mInfo.MainSource <> '') then
-      begin
-        ACandidates := ACandidates + [mInfo.MainSource];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FWorkspacesLock);
-  end;
-end;
-
-function TServerComposition.SourceTextOrEmpty(const AFileName: string): string;
-begin
-  if not ReadSourceText(AFileName, Result) then
-  begin
-    Result := '';
-  end;
-end;
-
-function TServerComposition.DocumentOrFileExists(const AFileName: string): Boolean;
-var
-  mDocument: ITextDocument;
-begin
-  Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), mDocument);
-end;
-
-function TServerComposition.ProjectUnitFile(const AUnitName: string): string;
-var
-  mUnit: TUnitIndex;
-begin
-  if FIndex.FindUnit(AUnitName, mUnit) and not mUnit.Library_ then
-  begin
-    Result := mUnit.FileName;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function TServerComposition.CachedTestProgram(const ARoot: string; out AProgram: string): Boolean;
-const
-  // Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.
-  cCacheMs = 10000;
-var
-  mCached: TPair<string, UInt64>;
-begin
-  System.TMonitor.Enter(FTestPrograms);
-  try
-    Result := FTestPrograms.TryGetValue(LowerCase(ARoot), mCached) and
-      (TThread.GetTickCount64 - mCached.Value < cCacheMs);
-  finally
-    System.TMonitor.Exit(FTestPrograms);
-  end;
-  AProgram := '';
-  if Result then
-  begin
-    AProgram := mCached.Key;
-  end;
-end;
-
-procedure TServerComposition.StoreTestProgram(const ARoot, AProgram: string);
-begin
-  System.TMonitor.Enter(FTestPrograms);
-  try
-    FTestPrograms.AddOrSetValue(LowerCase(ARoot), TPair<string, UInt64>.Create(AProgram, TThread.GetTickCount64));
-  finally
-    System.TMonitor.Exit(FTestPrograms);
-  end;
-end;
-
-function TServerComposition.DprFilesNear(const ARoot: string): TArray<string>;
-var
-  mFolder: string;
-begin
-  Result := nil;
-  try
-    Result := TDirectory.GetFiles(ARoot, '*.dpr', TSearchOption.soTopDirectoryOnly);
-    for mFolder in TDirectory.GetDirectories(ARoot) do
-    begin
-      if not ExtractFileName(mFolder).StartsWith('.') then
-      begin
-        Result := Result + TDirectory.GetFiles(mFolder, '*.dpr', TSearchOption.soTopDirectoryOnly);
-      end;
-    end;
-  except
-    on E: EInOutError do
-      FLogger.Debug('Testprojekt: Ordner nicht lesbar: ' + E.Message);
-  end;
+  Result := (FTestUnits <> nil) and FTestUnits.ContextFor(AUri, AContext);
 end;
 
 function TServerComposition.ProjectSourceFiles: TArray<string>;
