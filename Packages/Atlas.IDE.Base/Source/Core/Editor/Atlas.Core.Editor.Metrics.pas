@@ -138,67 +138,105 @@ begin
   Result.Methods := nil;
   Result.Structures := nil;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AValue);
   if not Answer.TryGetValue<Boolean>('enabled', Result.Enabled) then
+  begin
     Result.Enabled := True;
+  end;
   if Answer.GetValue('limits') is TJSONObject then
   begin
     Limits := TJSONObject(Answer.GetValue('limits'));
     for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+    begin
       if Limits.TryGetValue<Integer>(TAtlasMetricsLens.Key(Metric), Number) then
-        Result.Limits[Metric] := Number
+      begin
+        Result.Limits[Metric] := Number;
+      end
       else
+      begin
         Result.Limits[Metric] := MaxInt;
+      end;
+    end;
   end
   else
+  begin
     for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+    begin
       Result.Limits[Metric] := MaxInt;
+    end;
+  end;
   if Answer.GetValue('structure') is TJSONArray then
+  begin
     for Item in TJSONArray(Answer.GetValue('structure')) do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Structure := Default(TAtlasStructureItem);
       if not (TJSONObject(Item).TryGetValue<string>('kind', KindText) and
         TJSONObject(Item).TryGetValue<Integer>('line', Number) and
         TJSONObject(Item).TryGetValue<Integer>('value', Structure.Value)) then
+      begin
         Continue;
+      end;
       Known := False;
       for Kind := Low(TAtlasStructureMetric) to High(TAtlasStructureMetric) do
+      begin
         if SameText(KindText, TAtlasMetricsLens.StructureKey(Kind)) then
         begin
           Structure.Kind := Kind;
           Known := True;
         end;
+      end;
       if not Known then
+      begin
         Continue;
+      end;
       Structure.Line := Number - 1;
       TJSONObject(Item).TryGetValue<string>('name', Structure.Name);
       if not TJSONObject(Item).TryGetValue<Boolean>('atLeast', Structure.AtLeast) then
+      begin
         Structure.AtLeast := False;
+      end;
       if not TJSONObject(Item).TryGetValue<Integer>('limit', Structure.Limit) then
+      begin
         Structure.Limit := MaxInt;
+      end;
       Result.Structures := Result.Structures + [Structure];
     end;
+  end;
   if not (Answer.GetValue('methods') is TJSONArray) then
+  begin
     Exit;
+  end;
   Methods := TJSONArray(Answer.GetValue('methods'));
   for Item in Methods do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Method := Default(TAtlasMethodMetrics);
     if not (TJSONObject(Item).TryGetValue<string>('name', Method.Name) and
       TJSONObject(Item).TryGetValue<Integer>('line', Number)) then
+    begin
       Continue;
+    end;
     Method.Line := Number - 1;
     if TJSONObject(Item).GetValue('values') is TJSONObject then
     begin
       Values := TJSONObject(TJSONObject(Item).GetValue('values'));
       for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+      begin
         if Values.TryGetValue<Integer>(TAtlasMetricsLens.Key(Metric), Number) then
+        begin
           Method.Values[Metric] := Number;
+        end;
+      end;
     end;
     Result.Methods := Result.Methods + [Method];
   end;
@@ -209,8 +247,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Methods) do
+  begin
     if Methods[Index].Line = ALine then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -219,8 +261,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Structures) do
+  begin
     if Structures[Index].Line = ALine then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -230,8 +276,12 @@ var
 begin
   Result := nil;
   for Item in Structures do
+  begin
     if Item.Line = ALine then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 { TAtlasMetricsLens }
@@ -255,7 +305,9 @@ class function TAtlasMetricsLens.StructureCaption(const AItem: TAtlasStructureIt
 begin
   Result := Format(AFormats[AItem.Kind], [AItem.Value]);
   if AItem.Value > AItem.Limit then
+  begin
     Result := Format(ALimitFormat, [Result, AItem.Limit]);
+  end;
 end;
 
 class function TAtlasMetricsLens.StructureCaption(const AItems: TArray<TAtlasStructureItem>;
@@ -269,9 +321,13 @@ begin
   begin
     Formats := AFormats;
     if Item.AtLeast then
+    begin
       Formats[Item.Kind] := AAtLeastFormat;
+    end;
     if Result <> '' then
+    begin
       Result := Result + ' · ';
+    end;
     Result := Result + StructureCaption(Item, Formats, ALimitFormat);
   end;
 end;
@@ -309,9 +365,13 @@ begin
   begin
     Part := Format(AFormats[Metric], [AMethod.Values[Metric]]);
     if AMethod.Values[Metric] > ALimits[Metric] then
+    begin
       Part := Format(ALimitFormat, [Part, ALimits[Metric]]);
+    end;
     if Result <> '' then
+    begin
       Result := Result + ' · ';
+    end;
     Result := Result + Part;
   end;
 end;
@@ -321,8 +381,12 @@ var
   Metric: TAtlasMetric;
 begin
   for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+  begin
     if AMethod.Values[Metric] > ALimits[Metric] then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -334,10 +398,14 @@ begin
   Name := AName;
   Dot := LastDelimiter('.', Name);
   if Dot > 0 then
+  begin
     Name := Copy(Name, Dot + 1, MaxInt);
+  end;
   Result := False;
   if Name = '' then
+  begin
     Exit;
+  end;
   Line := UpperCase(ALine);
   Name := UpperCase(Name);
   Start := Pos(Name, Line);
@@ -345,7 +413,9 @@ begin
   begin
     if ((Start = 1) or not TTextChars.IsIdentChar(Line[Start - 1])) and
       ((Start + Length(Name) > Length(Line)) or not TTextChars.IsIdentChar(Line[Start + Length(Name)])) then
+    begin
       Exit(True);
+    end;
     Start := Pos(Name, Line, Start + 1);
   end;
 end;
@@ -363,9 +433,13 @@ var
 begin
   Name := ChangeFileExt(ExtractFileName(AProject), '');
   if Name = '' then
-    Name := 'Metriken'
+  begin
+    Name := 'Metriken';
+  end
   else
+  begin
     Name := 'Metriken-' + Name;
+  end;
   Result := IncludeTrailingPathDelimiter(AFolder) + Name + '.md';
 end;
 
@@ -382,7 +456,9 @@ begin
   end;
   try
     if Value is TJSONString then
+    begin
       AText := TJSONString(Value).Value;
+    end;
   finally
     Value.Free;
   end;

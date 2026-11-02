@@ -104,11 +104,17 @@ begin
     Change.OldLine := Hunk.OldStart;
     Change.OldLines := Copy(AOld, Hunk.OldStart, Hunk.OldCount);
     if Hunk.OldCount = 0 then
-      Change.Kind := TAtlasLineChangeKind.Added
+    begin
+      Change.Kind := TAtlasLineChangeKind.Added;
+    end
     else if Hunk.NewCount = 0 then
-      Change.Kind := TAtlasLineChangeKind.Deleted
+    begin
+      Change.Kind := TAtlasLineChangeKind.Deleted;
+    end
     else
+    begin
       Change.Kind := TAtlasLineChangeKind.Modified;
+    end;
     Result := Result + [Change];
   end;
 end;
@@ -123,15 +129,21 @@ begin
   for Index := 0 to High(AChanges) do
   begin
     if AChanges[Index].Line > ALine then
+    begin
       Break;
+    end;
     if (AChanges[Index].Kind <> TAtlasLineChangeKind.Deleted) and
       (ALine < AChanges[Index].Line + AChanges[Index].Count) then
     begin
       AIndex := Index;
       if AChanges[Index].Kind = TAtlasLineChangeKind.Added then
-        Result := TAtlasLineMark.Added
+      begin
+        Result := TAtlasLineMark.Added;
+      end
       else
+      begin
         Result := TAtlasLineMark.Modified;
+      end;
       Exit;
     end;
   end;
@@ -142,9 +154,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AChanges) do
+  begin
     if (AChanges[Index].Kind = TAtlasLineChangeKind.Deleted) and ((AChanges[Index].Line = ALine) or
       ((ALine = ALineCount - 1) and (AChanges[Index].Line >= ALineCount))) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -152,7 +168,9 @@ class function TAtlasLineChanges.ChangeAt(const AChanges: TAtlasLineChangeList; 
 begin
   MarkAt(AChanges, ALine, Result);
   if Result < 0 then
+  begin
     Result := DeletedAt(AChanges, ALine, ALineCount);
+  end;
 end;
 
 class function TAtlasLineChanges.Next(const AChanges: TAtlasLineChangeList; ALine, ALineCount: Integer;
@@ -165,7 +183,9 @@ var
     Result := AChanges[AIndex].Line;
     // Löschung am Ende: auf die letzte Zeile.
     if ALineCount > 0 then
+    begin
       Result := Min(Result, ALineCount - 1);
+    end;
   end;
 
   function Contains(AIndex: Integer): Boolean;
@@ -177,25 +197,31 @@ begin
   ATarget := ALine;
   Result := Length(AChanges) > 0;
   if not Result then
+  begin
     Exit;
+  end;
   if AForward then
   begin
     for Index := 0 to High(AChanges) do
+    begin
       if (StartOf(Index) > ALine) and not Contains(Index) then
       begin
         ATarget := StartOf(Index);
         Exit;
       end;
+    end;
     ATarget := StartOf(0);
   end
   else
   begin
     for Index := High(AChanges) downto 0 do
+    begin
       if (StartOf(Index) < ALine) and not Contains(Index) then
       begin
         ATarget := StartOf(Index);
         Exit;
       end;
+    end;
     ATarget := StartOf(High(AChanges));
   end;
 end;
@@ -223,7 +249,9 @@ begin
       // Am Ende: hinter der letzten Zeile.
       Result.StartLine := Max(0, High(ALines));
       if Length(ALines) > 0 then
+      begin
         Result.StartCharacter := Length(ALines[High(ALines)]);
+      end;
       Result.EndLine := Result.StartLine;
       Result.EndCharacter := Result.StartCharacter;
       Result.NewText := ALineBreak + Old;
@@ -237,13 +265,17 @@ begin
     Result.EndLine := Last;
     Result.NewText := Old;
     if AChange.Kind = TAtlasLineChangeKind.Modified then
+    begin
       Result.NewText := Old + ALineBreak;
+    end;
     Exit;
   end;
   // Block bis zum Ende des Puffers.
   Result.EndLine := Max(0, High(ALines));
   if Length(ALines) > 0 then
+  begin
     Result.EndCharacter := Length(ALines[High(ALines)]);
+  end;
   if (AChange.Kind = TAtlasLineChangeKind.Added) and (AChange.Line > 0) then
   begin
     // Neue Zeilen am Ende samt dem Umbruch davor entfernen.
@@ -267,9 +299,13 @@ begin
   for Hunk in AHunks do
   begin
     if ABufferLine < Hunk.NewStart then
+    begin
       Break;
+    end;
     if ABufferLine < Hunk.NewStart + Hunk.NewCount then
+    begin
       Exit(-1);
+    end;
     Shift := Hunk.OldCount - Hunk.NewCount + Shift;
   end;
   Result := ABufferLine + Shift;
@@ -287,9 +323,13 @@ begin
   Result.Count := 0;
   Minutes := Max(0, MinutesBetween(ANow, ADate));
   if ANow < ADate then
+  begin
     Minutes := 0;
+  end;
   if Minutes < 1 then
-    Result.Unit_ := TAtlasAgeUnit.JustNow
+  begin
+    Result.Unit_ := TAtlasAgeUnit.JustNow;
+  end
   else if Minutes < 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Minutes;
@@ -301,7 +341,9 @@ begin
     Result.Count := Integer(Minutes div 60);
   end
   else if Minutes < 2 * 24 * 60 then
-    Result.Unit_ := TAtlasAgeUnit.Yesterday
+  begin
+    Result.Unit_ := TAtlasAgeUnit.Yesterday;
+  end
   else if Minutes < 30 * 24 * 60 then
   begin
     Result.Unit_ := TAtlasAgeUnit.Days;

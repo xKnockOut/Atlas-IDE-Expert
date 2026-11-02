@@ -80,7 +80,9 @@ end;
 procedure TAtlasCheckOnSave.Saved(const AProject: string; ANowMs: Int64);
 begin
   if (AProject = '') or IsDisabled(AProject) then
+  begin
     Exit;
+  end;
   FPending := True;
   FProject := AProject;
   FDueAt := ANowMs + FDelayMs;
@@ -111,7 +113,9 @@ function TAtlasCheckOnSave.CheckFinished(const AProject: string; ADurationMs: In
 begin
   Result := (ADurationMs > FMaxMs) and not IsDisabled(AProject);
   if Result then
+  begin
     FDisabled.AddOrSetValue(UpperCase(AProject), True);
+  end;
 end;
 
 function TAtlasCheckOnSave.IsDisabled(const AProject: string): Boolean;

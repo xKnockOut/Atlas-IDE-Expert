@@ -84,10 +84,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
+  begin
     if A[Index] <> B[Index] then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasLineAnchor.SameAs(const AOther: TAtlasLineAnchor): Boolean;
@@ -108,15 +114,21 @@ begin
   try
     Space := False;
     for Ch in AText do
+    begin
       if (Ch = ' ') or (Ch = #9) then
-        Space := True
+      begin
+        Space := True;
+      end
       else
       begin
         if Space and (Builder.Length > 0) then
+        begin
           Builder.Append(' ');
+        end;
         Space := False;
         Builder.Append(Ch);
       end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -135,7 +147,9 @@ begin
   Result := Default(TAtlasLineAnchor);
   Result.Line := ALine;
   if (ALine < 0) or (ALine > High(ALines)) then
+  begin
     Exit;
+  end;
   Result.Text := Normalize(ALines[ALine]);
   Index := ALine - 1;
   while (Index >= 0) and (Length(Result.Before) < ContextLines) do
@@ -161,13 +175,17 @@ begin
   begin
     Line := AIndex - 1 - Step;
     if (Line >= 0) and (ANorm[Line] = AAnchor.Before[Step]) then
+    begin
       Inc(Result);
+    end;
   end;
   for Step := 0 to High(AAnchor.After) do
   begin
     Line := AIndex + 1 + Step;
     if (Line <= High(ANorm)) and (ANorm[Line] = AAnchor.After[Step]) then
+    begin
       Inc(Result);
+    end;
   end;
 end;
 
@@ -178,11 +196,19 @@ var
 begin
   Result := False;
   for Text in AAnchor.Before do
+  begin
     if Text <> '' then
+    begin
       Exit(True);
+    end;
+  end;
   for Text in AAnchor.After do
+  begin
     if Text <> '' then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Ist ACandidate näher an ATarget als ABest (ABest = -1: noch keiner)?</summary>
@@ -206,12 +232,18 @@ begin
   ALine := AAnchor.Line;
   Result := TAtlasLineMatch.Orphaned;
   if AFirst < 0 then
+  begin
     AFirst := 0;
+  end;
   if ALast > High(ALines) then
+  begin
     ALast := High(ALines);
+  end;
   SetLength(Norm, Length(ALines));
   for Index := 0 to High(ALines) do
+  begin
     Norm[Index] := Normalize(ALines[Index]);
+  end;
   // 1. Gleicher Inhalt.
   Best := -1;
   BestScore := -1;
@@ -219,11 +251,15 @@ begin
   for Index := AFirst to ALast do
   begin
     if Norm[Index] <> AAnchor.Text then
+    begin
       Continue;
+    end;
     Score := ContextScore(Norm, AAnchor, Index);
     // Eine leere Zeile gibt es oft; sie zählt nur mit passendem Nachbarn.
     if (AAnchor.Text = '') and (Score = 0) then
+    begin
       Continue;
+    end;
     Inc(Count);
     if (Score > BestScore) or ((Score = BestScore) and Closer(Index, Best, AAnchor.Line)) then
     begin
@@ -233,24 +269,36 @@ begin
   end;
   // Mehrere gleiche Zeilen ohne passenden Nachbarn: nur die bisherige Stelle ist eindeutig.
   if (Best >= 0) and (Count > 1) and (BestScore = 0) and (Best <> AAnchor.Line) then
+  begin
     Best := -1;
+  end;
   if Best >= 0 then
   begin
     ALine := Best;
     if Best = AAnchor.Line then
-      Result := TAtlasLineMatch.Same
+    begin
+      Result := TAtlasLineMatch.Same;
+    end
     else
+    begin
       Result := TAtlasLineMatch.Moved;
+    end;
     Exit;
   end;
   // 2. Inhalt geändert: alle Nachbarn passen noch um eine Stelle.
   Full := Length(AAnchor.Before) + Length(AAnchor.After);
   if (Full = 0) or not HasSolidContext(AAnchor) then
+  begin
     Exit;
+  end;
   Best := -1;
   for Index := AFirst to ALast do
+  begin
     if (ContextScore(Norm, AAnchor, Index) = Full) and Closer(Index, Best, AAnchor.Line) then
+    begin
       Best := Index;
+    end;
+  end;
   if Best >= 0 then
   begin
     ALine := Best;

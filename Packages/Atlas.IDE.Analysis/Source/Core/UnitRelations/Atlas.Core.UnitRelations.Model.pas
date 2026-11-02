@@ -136,9 +136,13 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -147,9 +151,13 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
-    Result := Value.Value
+  begin
+    Result := Value.Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function RelationsOf(AValue: TJSONValue): TAtlasUnitRelationList; forward;
@@ -186,10 +194,16 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AValue) do
+  begin
     if Item is TJSONObject then
+    begin
       Result := Result + [RelationOf(TJSONObject(Item))];
+    end;
+  end;
 end;
 
 { TAtlasUnitRelationsModel }
@@ -203,14 +217,20 @@ begin
   ARelations.Depth := 1;
   Result := False;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not (Root.GetValue('uses') is TJSONArray) then
+    begin
       Exit;
+    end;
     ARelations.Found := BoolOf(Root, 'found');
     ARelations.UnitName := TextOf(Root, 'unit');
     ARelations.FileName := TextOf(Root, 'file');
@@ -224,7 +244,9 @@ begin
     ARelations.Depth := IntOf(Root, 'depth', 1);
     Generation := Root.GetValue('generation');
     if Generation is TJSONNumber then
+    begin
       ARelations.Generation := TJSONNumber(Generation).AsInt64;
+    end;
     Result := True;
   finally
     Value.Free;
@@ -240,14 +262,18 @@ var
 begin
   Needle := LowerCase(Trim(AText));
   if Needle = '' then
+  begin
     Exit(AItems);
+  end;
   Result := nil;
   for Index := 0 to High(AItems) do
   begin
     Item := AItems[Index];
     Item.Children := Filter(Item.Children, Needle);
     if (Pos(Needle, LowerCase(Item.Name)) > 0) or (Item.Children <> nil) then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -259,10 +285,16 @@ begin
   AProject := nil;
   ALibrary := nil;
   for Item in AItems do
+  begin
     if Item.Library_ then
-      ALibrary := ALibrary + [Item]
+    begin
+      ALibrary := ALibrary + [Item];
+    end
     else
+    begin
       AProject := AProject + [Item];
+    end;
+  end;
 end;
 
 class procedure TAtlasUnitRelationsModel.SplitUsedBy(const AItems: TAtlasUnitRelationList; out AInterface,
@@ -273,10 +305,16 @@ begin
   AInterface := nil;
   AImplementation := nil;
   for Item in AItems do
+  begin
     if Item.InInterface then
-      AInterface := AInterface + [Item]
+    begin
+      AInterface := AInterface + [Item];
+    end
     else
+    begin
       AImplementation := AImplementation + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasUnitRelationsModel.Movable(const AItems: TAtlasUnitRelationList): Integer;
@@ -285,8 +323,12 @@ var
 begin
   Result := 0;
   for Item in AItems do
+  begin
     if Item.OnlyImplementation and Item.InInterface then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TAtlasUnitRelationsCommands }
@@ -301,9 +343,13 @@ begin
     Items.Add(AUri);
     Option := TJSONObject.Create;
     if AAllLevels then
-      Option.AddPair('depth', TJSONNumber.Create(0))
+    begin
+      Option.AddPair('depth', TJSONNumber.Create(0));
+    end
     else
+    begin
       Option.AddPair('depth', TJSONNumber.Create(1));
+    end;
     Items.AddElement(Option);
     Result := Items.ToJSON;
   finally
@@ -320,9 +366,13 @@ begin
     Items.Add(AUri);
     Items.Add(AUnit);
     if AToInterface then
-      Items.Add('interface')
+    begin
+      Items.Add('interface');
+    end
     else
+    begin
       Items.Add('implementation');
+    end;
     Result := Items.ToJSON;
   finally
     Items.Free;
@@ -369,7 +419,9 @@ var
   Key: string;
 begin
   if (AFileName = '') or (AJson = '') then
+  begin
     Exit;
+  end;
   Key := KeyOf(AFileName, AAllLevels);
   FKeys.Remove(Key);
   FKeys.Add(Key);

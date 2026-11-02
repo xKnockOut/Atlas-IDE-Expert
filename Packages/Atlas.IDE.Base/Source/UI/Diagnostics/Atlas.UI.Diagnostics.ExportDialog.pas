@@ -147,7 +147,9 @@ begin
     Dialog.FileName := FDefaultName;
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if not Dialog.Execute then
+    begin
       Exit;
+    end;
     FFileName := Dialog.FileName;
     ModalResult := mrOk;
   finally
@@ -175,7 +177,9 @@ begin
     ADefaultExt);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
     AFileName := Dialog.FileName;
   finally
@@ -191,7 +195,9 @@ begin
   Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, AHint, APreview);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
     AFileName := Dialog.FileName;
   finally

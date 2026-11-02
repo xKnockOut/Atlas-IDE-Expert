@@ -328,15 +328,23 @@ begin
   Result := 0;
   mIndex := AStart;
   if (mIndex <= Length(AText)) and (AText[mIndex] = '#') then
-    Inc(mIndex)
+  begin
+    Inc(mIndex);
+  end
   else
   begin
     if (mIndex > Length(AText)) or not CharInSet(AText[mIndex], ['A'..'Z']) then
+    begin
       Exit;
+    end;
     while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', '0'..'9', '_']) do
+    begin
       Inc(mIndex);
+    end;
     if (mIndex > Length(AText)) or (AText[mIndex] <> '-') then
+    begin
       Exit;
+    end;
     Inc(mIndex);
   end;
   mDigits := 0;
@@ -346,10 +354,14 @@ begin
     Inc(mDigits);
   end;
   if mDigits = 0 then
+  begin
     Exit;
+  end;
   // Danach Ende, Leerraum oder Doppelpunkt: "ATL-130x" ist keine Kennung.
   if (mIndex <= Length(AText)) and IsKeyChar(AText[mIndex]) then
+  begin
     Exit;
+  end;
   Result := mIndex - AStart;
 end;
 
@@ -363,43 +375,59 @@ begin
   Result := False;
   mIndex := AFrom;
   while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
+  begin
     Inc(mIndex);
+  end;
   mWordEnd := mIndex;
   while (mWordEnd < ATo) and CharInSet(ALine[mWordEnd], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(mWordEnd);
+  end;
   mWord := Copy(ALine, mIndex, mWordEnd - mIndex);
   if not SameText(mWord, 'TODO') and not SameText(mWord, 'FIXME') then
+  begin
     Exit;
+  end;
   // „TODOs“ oder „TODO-Liste“ sind keine Einträge.
   if (mWordEnd < ATo) and not IsSpace(ALine[mWordEnd]) and (ALine[mWordEnd] <> ':') then
+  begin
     Exit;
+  end;
   ATodo := Default(TAtlasTodoComment);
   ATodo.Style := AStyle;
   ATodo.Keyword := mWord;
   ATodo.KeywordEnd := mWordEnd;
   mIndex := mWordEnd;
   while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
+  begin
     Inc(mIndex);
+  end;
   // Optionen der IDE ({ TODO 1 -oMarco -cGUI : Text }): Text nach dem Doppelpunkt.
   if (mIndex < ATo) and (CharInSet(ALine[mIndex], ['0'..'9']) or ((ALine[mIndex] = '-') and (mIndex + 1 < ATo) and
     CharInSet(ALine[mIndex + 1], ['o', 'O', 'c', 'C']))) then
   begin
     mColon := mIndex;
     while (mColon < ATo) and (ALine[mColon] <> ':') do
+    begin
       Inc(mColon);
+    end;
     if mColon < ATo then
     begin
       ATodo.HasOptions := True;
       mIndex := mColon + 1;
       while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
+      begin
         Inc(mIndex);
+      end;
     end;
   end
   else if (mIndex < ATo) and (ALine[mIndex] = ':') then
   begin
     Inc(mIndex);
     while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
+    begin
       Inc(mIndex);
+    end;
   end;
   ATodo.TextStart := mIndex;
   ATodo.Text := Trim(Copy(ALine, mIndex, ATo - mIndex));
@@ -409,7 +437,9 @@ begin
     ATodo.Key := Copy(ALine, mIndex, mKeyLength);
     mIndex := mIndex + mKeyLength;
     if (mIndex < ATo) and (ALine[mIndex] = ':') then
+    begin
       Inc(mIndex);
+    end;
     ATodo.Text := Trim(Copy(ALine, mIndex, ATo - mIndex));
   end;
   Result := True;
@@ -429,7 +459,9 @@ begin
   while mIndex <= Length(ALine) do
   begin
     if ALine[mIndex] = '''' then
-      mInString := not mInString
+    begin
+      mInString := not mInString;
+    end
     else if not mInString then
     begin
       if (ALine[mIndex] = '/') and (mIndex < Length(ALine)) and (ALine[mIndex + 1] = '/') then
@@ -437,27 +469,37 @@ begin
         mClose := mIndex + 2;
         // "///" (XML-Doku) zählt wie "//".
         while (mClose <= Length(ALine)) and (ALine[mClose] = '/') do
+        begin
           Inc(mClose);
+        end;
         Exit(ParseBody(ALine, mClose, Length(ALine) + 1, TAtlasTodoStyle.Slashes, ATodo));
       end;
       if (ALine[mIndex] = '{') then
       begin
         mClose := Pos('}', ALine, mIndex + 1);
         if mClose = 0 then
+        begin
           mClose := Length(ALine) + 1;
+        end;
         if ((mIndex = Length(ALine)) or (ALine[mIndex + 1] <> '$')) and
           ParseBody(ALine, mIndex + 1, mClose, TAtlasTodoStyle.Braces, ATodo) then
+        begin
           Exit(True);
+        end;
         mIndex := mClose;
       end
       else if (ALine[mIndex] = '(') and (mIndex < Length(ALine)) and (ALine[mIndex + 1] = '*') then
       begin
         mClose := Pos('*)', ALine, mIndex + 2);
         if mClose = 0 then
+        begin
           mClose := Length(ALine) + 1;
+        end;
         if ((mIndex + 2 > Length(ALine)) or (ALine[mIndex + 2] <> '$')) and
           ParseBody(ALine, mIndex + 2, mClose, TAtlasTodoStyle.Parens, ATodo) then
+        begin
           Exit(True);
+        end;
         mIndex := mClose + 1;
       end;
     end;
@@ -473,25 +515,35 @@ begin
   Result := ALine;
   mKey := Trim(AKey);
   if (mKey = '') or not TodoAt(ALine, mTodo) or (mTodo.Key <> '') then
+  begin
     Exit;
+  end;
   if mTodo.HasOptions then
   begin
     // { TODO -oMarco : Text } → { TODO -oMarco : ATL-130: Text }
     mInsert := mKey + ': ';
     if mTodo.Text = '' then
+    begin
       mInsert := mKey + ' ';
+    end;
     Result := TrimRight(Copy(ALine, 1, mTodo.TextStart - 1) + mInsert + Copy(ALine, mTodo.TextStart, MaxInt));
     Exit;
   end;
   // // TODO Text → // TODO ATL-130: Text; ohne Text // TODO ATL-130 (bei { } mit Leerzeichen davor).
   mInsert := ' ' + mKey;
   if mTodo.Text <> '' then
-    mInsert := mInsert + ': '
+  begin
+    mInsert := mInsert + ': ';
+  end
   else if mTodo.Style <> TAtlasTodoStyle.Slashes then
+  begin
     mInsert := mInsert + ' ';
+  end;
   Result := Copy(ALine, 1, mTodo.KeywordEnd - 1) + mInsert + Copy(ALine, mTodo.TextStart, MaxInt);
   if mTodo.Style = TAtlasTodoStyle.Slashes then
+  begin
     Result := TrimRight(Result);
+  end;
 end;
 
 class function TAtlasNewIssues.KeyComment(const AKey: string): string;
@@ -503,7 +555,9 @@ class function TAtlasNewIssues.WithKeyComment(const ALine, AKey: string): string
 begin
   Result := TrimRight(ALine);
   if Trim(Result) = '' then
+  begin
     Exit(ALine + KeyComment(AKey));
+  end;
   Result := Result + ' ' + KeyComment(AKey);
 end;
 
@@ -512,7 +566,9 @@ begin
   Result := Trim(StringReplace(StringReplace(StringReplace(AText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
     [rfReplaceAll]), #9, ' ', [rfReplaceAll]));
   if Length(Result) > MaxTitle then
+  begin
     Result := TrimRight(Copy(Result, 1, MaxTitle - 1)) + '…';
+  end;
 end;
 
 class function TAtlasNewIssues.TitleOf(const AContext: TAtlasNewIssueContext): string;
@@ -524,18 +580,24 @@ begin
   if Trim(AContext.Selection) <> '' then
   begin
     for mLine in TTextLines.SplitLines(AContext.Selection) do
+    begin
       if Trim(mLine) <> '' then
       begin
         // Steht ein TODO in der ersten Zeile, gilt dessen Text.
         if TodoAt(mLine, mTodo) and (mTodo.Text <> '') then
+        begin
           Exit(ShortTitle(mTodo.Text));
+        end;
         Exit(ShortTitle(mLine));
       end;
+    end;
     Exit;
   end;
   if (AContext.Line >= 1) and (AContext.Line <= Length(AContext.Lines)) and
     TodoAt(AContext.Lines[AContext.Line - 1], mTodo) then
+  begin
     Result := ShortTitle(mTodo.Text);
+  end;
 end;
 
 /// <summary>Gemeinsame Einrückung aller nicht leeren Zeilen entfernen, leere Zeilen am Rand weglassen.</summary>
@@ -547,28 +609,42 @@ begin
   Result := '';
   mFirst := 0;
   while (mFirst <= High(ALines)) and (Trim(ALines[mFirst]) = '') do
+  begin
     Inc(mFirst);
+  end;
   mLast := High(ALines);
   while (mLast >= mFirst) and (Trim(ALines[mLast]) = '') do
+  begin
     Dec(mLast);
+  end;
   if mFirst > mLast then
+  begin
     Exit;
+  end;
   mIndent := MaxInt;
   for mIndex := mFirst to mLast do
   begin
     mLine := ALines[mIndex];
     if Trim(mLine) = '' then
+    begin
       Continue;
+    end;
     mCount := 0;
     while (mCount < Length(mLine)) and IsSpace(mLine[mCount + 1]) do
+    begin
       Inc(mCount);
+    end;
     if mCount < mIndent then
+    begin
       mIndent := mCount;
+    end;
   end;
   for mIndex := mFirst to mLast do
   begin
     if mIndex > mFirst then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + TrimRight(Copy(ALines[mIndex], mIndent + 1, MaxInt));
   end;
 end;
@@ -582,18 +658,26 @@ begin
   begin
     mLines := TTextLines.SplitLines(AContext.Selection);
     if Length(mLines) > MaxCodeLines then
+    begin
       SetLength(mLines, MaxCodeLines);
+    end;
     Exit(Dedent(mLines));
   end;
   Result := '';
   if (AContext.Line < 1) or (AContext.Line > Length(AContext.Lines)) then
+  begin
     Exit;
+  end;
   mFrom := AContext.Line - 1 - ContextLines;
   if mFrom < 0 then
+  begin
     mFrom := 0;
+  end;
   mTo := AContext.Line - 1 + ContextLines;
   if mTo > High(AContext.Lines) then
+  begin
     mTo := High(AContext.Lines);
+  end;
   Result := Dedent(Copy(AContext.Lines, mFrom, mTo - mFrom + 1));
 end;
 
@@ -603,7 +687,9 @@ var
 begin
   mFence := '```';
   if Pos('```', ACode) > 0 then
+  begin
     mFence := '~~~';
+  end;
   Result := mFence + 'pascal' + #10 + ACode + #10 + mFence;
 end;
 
@@ -612,7 +698,9 @@ begin
   Result := Trim(ACommit);
   // Git-Hash auf 7 Zeichen; SVN-Revisionen sind kurz.
   if Length(Result) > 12 then
+  begin
     Result := Copy(Result, 1, 7);
+  end;
 end;
 
 class function TAtlasNewIssues.DescriptionOf(const AContext: TAtlasNewIssueContext;
@@ -623,25 +711,35 @@ begin
   Result := '';
   mLine := AContext.Line;
   if (Trim(AContext.Selection) <> '') and (AContext.SelectionLine > 0) then
+  begin
     mLine := AContext.SelectionLine;
+  end;
   if AContext.FileName <> '' then
   begin
     Result := ALabels.Location + ': `' + ExtractFileName(AContext.FileName) + '`';
     if mLine > 0 then
+    begin
       Result := Result + ', ' + ALabels.Line + ' ' + IntToStr(mLine);
+    end;
     Result := Result + #10;
   end;
   if AContext.Method <> '' then
+  begin
     Result := Result + ALabels.Method + ': `' + AContext.Method + '`' + #10;
+  end;
   if AContext.Branch <> '' then
   begin
     Result := Result + ALabels.Branch + ': `' + AContext.Branch + '`';
     if AContext.Commit <> '' then
+    begin
       Result := Result + ' (' + ALabels.Commit + ' `' + ShortCommit(AContext.Commit) + '`)';
+    end;
     Result := Result + #10;
   end
   else if AContext.Commit <> '' then
+  begin
     Result := Result + ALabels.Commit + ': `' + ShortCommit(AContext.Commit) + '`' + #10;
+  end;
   Result := TrimRight(Result);
 end;
 
@@ -652,11 +750,17 @@ begin
   Result := TrimRight(StringReplace(ADescription, #13#10, #10, [rfReplaceAll]));
   mCode := StringReplace(ACode, #13#10, #10, [rfReplaceAll]);
   while (mCode <> '') and CharInSet(mCode[Length(mCode)], [#10, ' ', #9]) do
+  begin
     Delete(mCode, Length(mCode), 1);
+  end;
   if not AIncludeCode or (Trim(mCode) = '') then
+  begin
     Exit;
+  end;
   if Result <> '' then
+  begin
     Result := Result + #10#10;
+  end;
   Result := Result + CodeBlock(mCode);
 end;
 
@@ -668,7 +772,9 @@ begin
   // "Unit1.pas:12:5" → "Unit1.pas"; Laufwerksbuchstaben gibt es in der Fundstelle nicht.
   mIndex := Pos(':', Result);
   if mIndex > 0 then
+  begin
     Result := Copy(Result, 1, mIndex - 1);
+  end;
 end;
 
 class function TAtlasNewIssues.TitleOfFindings(const AFindings: TArray<TAtlasNewIssueFinding>;
@@ -676,12 +782,16 @@ class function TAtlasNewIssues.TitleOfFindings(const AFindings: TArray<TAtlasNew
 begin
   Result := '';
   if Length(AFindings) = 0 then
+  begin
     Exit;
+  end;
   if Length(AFindings) = 1 then
   begin
     Result := AFindings[0].Message;
     if AFindings[0].Rule <> '' then
+    begin
       Result := AFindings[0].Rule + ': ' + Result;
+    end;
     Exit(ShortTitle(Result));
   end;
   Result := ShortTitle(Format(ALabels.FindingsTitle, [Length(AFindings), UnitOfLocation(AFindings[0].Location)]));
@@ -695,13 +805,17 @@ var
 begin
   Result := '';
   if Length(AFindings) = 0 then
+  begin
     Exit;
+  end;
   mHead := '';
   if AContext.Branch <> '' then
   begin
     mHead := ALabels.Branch + ': `' + AContext.Branch + '`';
     if AContext.Commit <> '' then
+    begin
       mHead := mHead + ' (' + ALabels.Commit + ' `' + ShortCommit(AContext.Commit) + '`)';
+    end;
     mHead := mHead + #10#10;
   end;
   Result := mHead + ALabels.Findings + ':' + #10;
@@ -709,10 +823,14 @@ begin
   begin
     mLine := '- ';
     if mFinding.Rule <> '' then
+    begin
       mLine := mLine + '`' + mFinding.Rule + '` ';
+    end;
     mLine := mLine + mFinding.Message;
     if mFinding.Location <> '' then
+    begin
       mLine := mLine + ' – `' + mFinding.Location + '`';
+    end;
     Result := Result + mLine + #10;
   end;
   Result := TrimRight(Result);
@@ -726,11 +844,17 @@ begin
   for mFinding in AFindings do
   begin
     if Trim(mFinding.LineText) = '' then
+    begin
       Continue;
+    end;
     if Result <> '' then
+    begin
       Result := Result + #10;
+    end;
     if mFinding.Location <> '' then
+    begin
       Result := Result + '// ' + mFinding.Location + #10;
+    end;
     Result := Result + Trim(mFinding.LineText);
   end;
 end;
@@ -743,10 +867,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.Values[AName];
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Integer;
@@ -755,10 +883,14 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.Values[AName];
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsInt;
+  end;
 end;
 
 function IsOneOf(const AName: string; const ANames: array of string): Boolean;
@@ -767,8 +899,12 @@ var
 begin
   Result := False;
   for mName in ANames do
+  begin
     if SameText(AName, mName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function AddUnique(const AItems: TArray<string>; const AValue: string): TArray<string>;
@@ -777,10 +913,16 @@ var
 begin
   Result := AItems;
   if (AValue = '') or (Length(Result) >= TAtlasNewIssues.MaxValues) then
+  begin
     Exit;
+  end;
   for mItem in Result do
+  begin
     if SameText(mItem, AValue) then
+    begin
       Exit;
+    end;
+  end;
   Result := Result + [AValue];
 end;
 
@@ -793,10 +935,16 @@ begin
   try
     Result := mRoot is TJSONArray;
     if not Result then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
+    begin
       if mItem is TJSONObject then
+      begin
         ANames := AddUnique(ANames, TextOf(TJSONObject(mItem), AName));
+      end;
+    end;
   finally
     mRoot.Free;
   end;
@@ -810,7 +958,9 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if mRoot is TJSONObject then
+    begin
       Result := TextOf(TJSONObject(mRoot), 'login');
+    end;
   finally
     mRoot.Free;
   end;
@@ -822,7 +972,9 @@ class function TAtlasNewIssues.YouTrackProjectsUrl(const ATarget: TAtlasTrackerT
 begin
   Result := '';
   if ATarget.Server <> '' then
+  begin
     Result := ATarget.Url + '/api/admin/projects?fields=id,shortName&$top=500';
+  end;
 end;
 
 class function TAtlasNewIssues.ParseYouTrackProject(const AText, AShortName: string; out AId: string): Boolean;
@@ -834,13 +986,17 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
+    begin
       if (mItem is TJSONObject) and SameText(TextOf(TJSONObject(mItem), 'shortName'), Trim(AShortName)) then
       begin
         AId := TextOf(TJSONObject(mItem), 'id');
         Exit(AId <> '');
       end;
+    end;
   finally
     mRoot.Free;
   end;
@@ -851,7 +1007,9 @@ class function TAtlasNewIssues.YouTrackFieldsUrl(const ATarget: TAtlasTrackerTar
 begin
   Result := '';
   if (ATarget.Server = '') or (AProjectId = '') then
+  begin
     Exit;
+  end;
   Result := ATarget.Url + '/api/admin/projects/' + TTextUris.PercentEncode(AProjectId) + '/customFields?fields=' +
     TTextUris.PercentEncode('field(name),bundle(values(name,login),aggregatedUsers(login))') + '&$top=100';
 end;
@@ -864,26 +1022,44 @@ var
 begin
   Result := nil;
   if ABundle = nil then
+  begin
     Exit;
+  end;
   mList := ABundle.Values['values'];
   if mList is TJSONArray then
+  begin
     for mItem in TJSONArray(mList) do
+    begin
       if mItem is TJSONObject then
       begin
         mName := '';
         if AUsers then
+        begin
           mName := TextOf(TJSONObject(mItem), 'login');
+        end;
         if mName = '' then
+        begin
           mName := TextOf(TJSONObject(mItem), 'name');
+        end;
         Result := AddUnique(Result, mName);
       end;
+    end;
+  end;
   if not AUsers then
+  begin
     Exit;
+  end;
   mList := ABundle.Values['aggregatedUsers'];
   if mList is TJSONArray then
+  begin
     for mItem in TJSONArray(mList) do
+    begin
       if mItem is TJSONObject then
+      begin
         Result := AddUnique(Result, TextOf(TJSONObject(mItem), 'login'));
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasNewIssues.ParseYouTrackFields(const AText: string; var AFields: TAtlasNewIssueFields): Boolean;
@@ -895,19 +1071,27 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mField := TJSONObject(mItem).Values['field'];
       if not (mField is TJSONObject) then
+      begin
         Continue;
+      end;
       mName := TextOf(TJSONObject(mField), 'name');
       mBundle := TJSONObject(mItem).Values['bundle'];
       if not (mBundle is TJSONObject) then
+      begin
         mBundle := nil;
+      end;
       if IsOneOf(mName, YouTrackTypeNames) and (AFields.TypeField = '') then
       begin
         AFields.TypeField := mName;
@@ -933,14 +1117,18 @@ class function TAtlasNewIssues.YouTrackCreateUrl(const ATarget: TAtlasTrackerTar
 begin
   Result := '';
   if ATarget.Server <> '' then
+  begin
     Result := ATarget.Url + '/api/issues?fields=idReadable,numberInProject';
+  end;
 end;
 
 function FieldName(const AName, ADefault: string): string;
 begin
   Result := Trim(AName);
   if Result = '' then
+  begin
     Result := ADefault;
+  end;
 end;
 
 function EnumField(const AName, AValue: string): TJSONObject;
@@ -959,7 +1147,9 @@ function AssigneeOf(const ADraft: TAtlasNewIssueDraft; const AMe: string): strin
 begin
   Result := Trim(ADraft.Assignee);
   if ADraft.AssignToMe and (AMe <> '') then
+  begin
     Result := AMe;
+  end;
 end;
 
 class function TAtlasNewIssues.YouTrackBody(const AProjectId: string; const ADraft: TAtlasNewIssueDraft;
@@ -979,9 +1169,13 @@ begin
     mFields := TJSONArray.Create;
     mRoot.AddPair('customFields', mFields);
     if Trim(ADraft.IssueType) <> '' then
+    begin
       mFields.AddElement(EnumField(FieldName(ADraft.TypeField, 'Type'), Trim(ADraft.IssueType)));
+    end;
     if Trim(ADraft.Priority) <> '' then
+    begin
       mFields.AddElement(EnumField(FieldName(ADraft.PriorityField, 'Priority'), Trim(ADraft.Priority)));
+    end;
     mAssignee := AssigneeOf(ADraft, AMe);
     if mAssignee <> '' then
     begin
@@ -1025,28 +1219,36 @@ function RepoBase(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := '';
   if ATarget.Configured and (TAtlasGitHubApi.Base(ATarget) <> '') then
+  begin
     Result := TAtlasGitHubApi.Base(ATarget) + '/repos/' + ATarget.Project;
+  end;
 end;
 
 class function TAtlasNewIssues.GitHubCreateUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := RepoBase(ATarget);
   if Result <> '' then
+  begin
     Result := Result + '/issues';
+  end;
 end;
 
 class function TAtlasNewIssues.GitHubLabelsUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := RepoBase(ATarget);
   if Result <> '' then
+  begin
     Result := Result + '/labels?per_page=100';
+  end;
 end;
 
 class function TAtlasNewIssues.GitHubAssigneesUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := RepoBase(ATarget);
   if Result <> '' then
+  begin
     Result := Result + '/assignees?per_page=100';
+  end;
 end;
 
 class function TAtlasNewIssues.GitHubBody(const ADraft: TAtlasNewIssueDraft; const AMe: string): string;
@@ -1064,9 +1266,13 @@ begin
     begin
       mLabels := TJSONArray.Create;
       if Trim(ADraft.IssueType) <> '' then
+      begin
         mLabels.Add(Trim(ADraft.IssueType));
+      end;
       if (Trim(ADraft.Priority) <> '') and not SameText(Trim(ADraft.Priority), Trim(ADraft.IssueType)) then
+      begin
         mLabels.Add(Trim(ADraft.Priority));
+      end;
       mRoot.AddPair('labels', mLabels);
     end;
     mAssignee := AssigneeOf(ADraft, AMe);
@@ -1090,7 +1296,9 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if mRoot is TJSONObject then
+    begin
       ANumber := NumberOf(TJSONObject(mRoot), 'number');
+    end;
   finally
     mRoot.Free;
   end;
@@ -1103,7 +1311,9 @@ function Remaining(const AWatch: TStopwatch): Integer;
 begin
   Result := TAtlasNewIssues.TimeoutMs - Integer(AWatch.ElapsedMilliseconds);
   if Result < 1 then
+  begin
     Result := 1;
+  end;
 end;
 
 function IsYouTrack(const AProvider: IAtlasTrackerProvider): Boolean;
@@ -1132,7 +1342,9 @@ begin
   AFields := TAtlasNewIssueFields.Empty;
   Result := False;
   if (AProvider = nil) or (ATransport = nil) or not ATarget.Configured then
+  begin
     Exit;
+  end;
   mWatch := TStopwatch.StartNew;
   if GetText(ATransport, AProvider.ProbeUrl(ATarget), mWatch, mText) then
   begin
@@ -1145,7 +1357,9 @@ begin
       ParseYouTrackProject(mText, ATarget.Project, mId) and
       GetText(ATransport, YouTrackFieldsUrl(ATarget, mId), mWatch, mText) and
       ParseYouTrackFields(mText, AFields) then
+    begin
       Result := True;
+    end;
     Exit;
   end;
   if GetText(ATransport, GitHubLabelsUrl(ATarget), mWatch, mText) and ParseNames(mText, 'name', mNames) then
@@ -1203,7 +1417,9 @@ begin
   Result := TAtlasNewIssueResult.Create(OutcomeOfStatus(AStatus));
   Result.HttpStatus := AStatus;
   if Result.Outcome = TAtlasNewIssueOutcome.Invalid then
+  begin
     Result.TrackerMessage := TAtlasTrackerQueryTest.TrackerMessage(AText);
+  end;
 end;
 
 class function TAtlasNewIssues.CreateIssue(const AProvider: IAtlasTrackerProvider;
@@ -1217,31 +1433,45 @@ var
   mError: TAtlasCiFetchError;
 begin
   if (AProvider = nil) or not ATarget.Configured or (Trim(ADraft.Title) = '') then
+  begin
     Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured));
+  end;
   if (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
     Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NoToken));
+  end;
   mWatch := TStopwatch.StartNew;
   mId := '';
   if IsYouTrack(AProvider) then
   begin
     // YouTrack braucht die ID des Projekts, die Zuordnung kennt das Kürzel.
     if ATarget.Project = '' then
+    begin
       Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown));
+    end;
     if not ATransport.Get(YouTrackProjectsUrl(ATarget), Remaining(mWatch), mStatus, mText, mError) then
+    begin
       Exit(TAtlasNewIssueResult.Create(OutcomeOfError(mError)));
+    end;
     if mStatus <> 200 then
+    begin
       Exit(Failure(mStatus, mText));
+    end;
     if not ParseYouTrackProject(mText, ATarget.Project, mId) then
     begin
       Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown);
       if not IsJson(mText) then
+      begin
         Result.Outcome := TAtlasNewIssueOutcome.Unreadable;
+      end;
       Exit;
     end;
   end;
   mMe := '';
   if ADraft.AssignToMe and GetText(ATransport, AProvider.ProbeUrl(ATarget), mWatch, mText) then
+  begin
     mMe := ParseLogin(mText);
+  end;
   if IsYouTrack(AProvider) then
   begin
     mUrl := YouTrackCreateUrl(ATarget);
@@ -1253,11 +1483,17 @@ begin
     mBody := GitHubBody(ADraft, mMe);
   end;
   if mUrl = '' then
+  begin
     Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured));
+  end;
   if not mSend.Send('POST', mUrl, mBody, Remaining(mWatch), mStatus, mText, mError) then
+  begin
     Exit(TAtlasNewIssueResult.Create(OutcomeOfError(mError)));
+  end;
   if (mStatus <> 200) and (mStatus <> 201) then
+  begin
     Exit(Failure(mStatus, mText));
+  end;
   Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
   Result.HttpStatus := mStatus;
   if IsYouTrack(AProvider) then

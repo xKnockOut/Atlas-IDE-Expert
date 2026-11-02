@@ -241,10 +241,14 @@ var
 begin
   // Ohne Fenster gibt es keine Reihenfolge; Refill versucht es erneut.
   if (FList = nil) or not FList.HandleAllocated then
+  begin
     Exit;
+  end;
   Order[0] := NumberColumn;
   for Index := 1 to NumberColumn do
+  begin
     Order[Index] := Index - 1;
+  end;
   ListView_SetColumnOrderArray(FList.Handle, Length(Order), @Order[0]);
 end;
 
@@ -269,12 +273,18 @@ var
 begin
   Preview := ABookmark.Preview;
   if ABookmark.Lost then
+  begin
     Preview := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost) + ' · ' + Preview;
+  end;
   Number := '';
   if ABookmark.Number > 0 then
-    Number := IntToStr(ABookmark.Number)
+  begin
+    Number := IntToStr(ABookmark.Number);
+  end
   else if ABookmark.Kind = TAtlasBookmarkKind.Quick then
+  begin
     Number := AtlasQuickBookmarkDot;
+  end;
   Result := [ABookmark.DisplayName, ExtractFileName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1),
     ABookmark.Method, Preview, Number];
 end;
@@ -282,10 +292,14 @@ end;
 procedure TAtlasBookmarksFrame.SetCurrentFile(const AFileName: string);
 begin
   if SameText(FCurrentFile, AFileName) then
+  begin
     Exit;
+  end;
   FCurrentFile := AFileName;
   if FOnlyFile.Checked then
+  begin
     Refill(SelectedId);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.NumberSelected(ANumber: Integer);
@@ -294,7 +308,9 @@ var
 begin
   Id := SelectedId;
   if (Id <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FOnNumber) then
+  begin
     FOnNumber(Id, ANumber);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.OnlyFileClick(Sender: TObject);
@@ -308,7 +324,9 @@ var
 begin
   Select := ASelectId;
   if Select = '' then
+  begin
     Select := SelectedId;
+  end;
   FBookmarks := AList;
   FPlace.Caption := APlace;
   Refill(Select);
@@ -323,10 +341,14 @@ var
 begin
   FShown := nil;
   for Index in FBookmarks.Filter(FFilter.Text) do
+  begin
     // „nur diese Datei“ (#1104): ohne bekannte Datei alle.
     if not FOnlyFile.Checked or (FCurrentFile = '') or
       TAtlasBookmarks.SameFile(FBookmarks.Bookmarks[Index].FileName, FCurrentFile) then
+    begin
       FShown := FShown + [FBookmarks.Bookmarks[Index]];
+    end;
+  end;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
@@ -336,7 +358,9 @@ begin
       Item := FList.Items.Add;
       Item.Caption := Texts[0];
       for Part := 1 to High(Texts) do
+      begin
         Item.SubItems.Add(Texts[Part]);
+      end;
       if SameText(FShown[Index].Id, ASelectId) then
       begin
         Item.Selected := True;
@@ -352,7 +376,9 @@ begin
     FList.Items[0].Focused := True;
   end;
   if FList.Selected <> nil then
+  begin
     FList.Selected.MakeVisible(False);
+  end;
   ApplyColumnOrder;
   // Hinweis nur ohne jedes Lesezeichen; ein Filter ohne Treffer zeigt die leere Liste.
   FEmpty.Visible := FBookmarks.Count = 0;
@@ -363,14 +389,18 @@ function TAtlasBookmarksFrame.IdAt(AIndex: Integer): string;
 begin
   Result := '';
   if (AIndex >= 0) and (AIndex <= High(FShown)) then
+  begin
     Result := FShown[AIndex].Id;
+  end;
 end;
 
 function TAtlasBookmarksFrame.SelectedId: string;
 begin
   Result := '';
   if FList.Selected <> nil then
+  begin
     Result := IdAt(FList.Selected.Index);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.OpenSelected;
@@ -379,13 +409,17 @@ var
 begin
   Id := SelectedId;
   if (Id <> '') and Assigned(FOnOpen) then
+  begin
     FOnOpen(Id);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.BeginRename;
 begin
   if FList.Selected = nil then
+  begin
     Exit;
+  end;
   FEditAllowed := True;
   try
     FList.Selected.EditCaption;
@@ -400,7 +434,9 @@ var
 begin
   Id := SelectedId;
   if (Id <> '') and Assigned(FOnDelete) then
+  begin
     FOnDelete(Id);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.MoveSelected(ADelta: Integer);
@@ -409,18 +445,24 @@ var
   Before: string;
 begin
   if FList.Selected = nil then
+  begin
     Exit;
+  end;
   Index := FList.Selected.Index;
   if ADelta < 0 then
   begin
     if Index <= 0 then
+    begin
       Exit;
+    end;
     Before := IdAt(Index - 1);
   end
   else
   begin
     if Index >= High(FShown) then
+    begin
       Exit;
+    end;
     // Hinter den nächsten: vor den übernächsten bzw. ans Ende.
     Before := IdAt(Index + 2);
   end;
@@ -430,7 +472,9 @@ end;
 procedure TAtlasBookmarksFrame.Drop(const AId, ABeforeId: string);
 begin
   if (AId = '') or SameText(AId, ABeforeId) or not Assigned(FOnMove) then
+  begin
     Exit;
+  end;
   FOnMove(AId, ABeforeId);
 end;
 
@@ -447,7 +491,9 @@ begin
       begin
         Key := 0;
         if FList.CanFocus and FList.Showing then
+        begin
           FList.SetFocus;
+        end;
       end;
     VK_RETURN:
       begin
@@ -465,7 +511,9 @@ procedure TAtlasBookmarksFrame.FilterKeyPress(Sender: TObject; var Key: Char);
 begin
   // Enter springt; kein Signalton des Eingabefelds.
   if Key = #13 then
+  begin
     Key := #0;
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
@@ -495,7 +543,9 @@ procedure TAtlasBookmarksFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift
 begin
   // Während der Namensbearbeitung gehören die Tasten dem Eingabefeld.
   if FList.IsEditing then
+  begin
     Exit;
+  end;
   case Key of
     VK_RETURN:
       begin
@@ -523,9 +573,13 @@ begin
       if ssCtrl in Shift then
       begin
         if Key = VK_UP then
-          MoveSelected(-1)
+        begin
+          MoveSelected(-1);
+        end
         else
+        begin
           MoveSelected(1);
+        end;
         Key := 0;
       end;
   end;
@@ -551,7 +605,9 @@ begin
   end;
   S := mName;
   if Assigned(FOnRename) then
+  begin
     FOnRename(Id, mName);
+  end;
 end;
 
 procedure TAtlasBookmarksFrame.ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
@@ -566,7 +622,9 @@ var
   Before: string;
 begin
   if (Source <> FList) or (FList.Selected = nil) then
+  begin
     Exit;
+  end;
   FDropped := True;
   Target := FList.GetItemAt(X, Y);
   Before := '';
@@ -574,9 +632,13 @@ begin
   begin
     // Nach unten gezogen: hinter das Ziel, nach oben: davor.
     if Target.Index > FList.Selected.Index then
-      Before := IdAt(Target.Index + 1)
+    begin
+      Before := IdAt(Target.Index + 1);
+    end
     else
+    begin
       Before := IdAt(Target.Index);
+    end;
   end;
   Drop(SelectedId, Before);
 end;
@@ -601,9 +663,13 @@ begin
   begin
     ACanvas.Brush.Color := ListColor(FList.Color);
     if AGray then
-      ACanvas.Font.Color := ListColor(clGrayText)
+    begin
+      ACanvas.Font.Color := ListColor(clGrayText);
+    end
     else
+    begin
       ACanvas.Font.Color := ListColor(FList.Font.Color);
+    end;
   end;
 end;
 

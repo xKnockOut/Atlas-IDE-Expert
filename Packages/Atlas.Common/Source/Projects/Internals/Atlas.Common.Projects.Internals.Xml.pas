@@ -48,6 +48,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 type
   TParser = class
   private
@@ -62,7 +65,15 @@ type
     procedure SkipSpace;
     procedure SkipUntil(const ATerminator: string);
     function ReadName: string;
+    function CharReference(const AEntity: string): string;
+    function EntityText(const AEntity: string): string;
     function Decode(const AValue: string): string;
+    procedure ReadAttribute(AElement: TXmlElement);
+    /// <summary>Liest die Attribute bis "&gt;" oder "/&gt;"; True bei "/&gt;" (Element ohne Inhalt).</summary>
+    function ReadAttributes(AElement: TXmlElement): Boolean;
+    procedure ReadClosingTag(AElement: TXmlElement);
+    procedure ReadPlainText(ABuilder: TStringBuilder);
+    procedure ReadContent(AElement: TXmlElement);
     procedure SkipMisc;
     function ParseElement: TXmlElement;
   public
@@ -229,87 +240,85 @@ begin
   Result := Copy(FText, Start, FPos - Start);
 end;
 
+function TParser.CharReference(const AEntity: string): string;
+var
+  mCode: Integer;
+begin
+  if (Length(AEntity) > 1) and CharInSet(AEntity[2], ['x', 'X']) then
+  begin
+    mCode := StrToIntDef('$' + Copy(AEntity, 3, MaxInt), -1);
+  end
+  else
+  begin
+    mCode := StrToIntDef(Copy(AEntity, 2, MaxInt), -1);
+  end;
+  if (mCode < 0) or (mCode > $10FFFF) then
+  begin
+    Fail('Ungültige Zeichenreferenz &' + AEntity + ';');
+  end;
+  if mCode > $FFFF then
+  begin
+    Result := Char($D800 + ((mCode - $10000) shr 10)) + Char($DC00 + ((mCode - $10000) and $3FF));
+  end
+  else
+  begin
+    Result := Char(mCode);
+  end;
+end;
+
+function TParser.EntityText(const AEntity: string): string;
+begin
+  case IndexStr(AEntity, ['amp', 'lt', 'gt', 'quot', 'apos']) of
+    0:
+      Result := '&';
+    1:
+      Result := '<';
+    2:
+      Result := '>';
+    3:
+      Result := '"';
+    4:
+      Result := '''';
+  else
+    if (AEntity = '') or (AEntity[1] <> '#') then
+    begin
+      Fail('Unbekannte Entity &' + AEntity + ';');
+    end;
+    Result := CharReference(AEntity);
+  end;
+end;
+
 function TParser.Decode(const AValue: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Semicolon: Integer;
-  Entity: string;
-  Code: Integer;
+  mBuilder: TStringBuilder;
+  mIndex, mSemicolon: Integer;
 begin
   if Pos('&', AValue) = 0 then
   begin
     Exit(AValue);
   end;
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AValue) do
+    mIndex := 1;
+    while mIndex <= Length(AValue) do
     begin
-      if AValue[Index] <> '&' then
+      if AValue[mIndex] <> '&' then
       begin
-        Builder.Append(AValue[Index]);
-        Inc(Index);
+        mBuilder.Append(AValue[mIndex]);
+        Inc(mIndex);
         Continue;
       end;
-      Semicolon := Pos(';', AValue, Index);
-      if Semicolon = 0 then
+      mSemicolon := Pos(';', AValue, mIndex);
+      if mSemicolon = 0 then
       begin
         Fail('";" nach "&" fehlt');
       end;
-      Entity := Copy(AValue, Index + 1, Semicolon - Index - 1);
-      if Entity = 'amp' then
-      begin
-        Builder.Append('&');
-      end
-      else if Entity = 'lt' then
-      begin
-        Builder.Append('<');
-      end
-      else if Entity = 'gt' then
-      begin
-        Builder.Append('>');
-      end
-      else if Entity = 'quot' then
-      begin
-        Builder.Append('"');
-      end
-      else if Entity = 'apos' then
-      begin
-        Builder.Append('''');
-      end
-      else if (Entity <> '') and (Entity[1] = '#') then
-      begin
-        if (Length(Entity) > 1) and CharInSet(Entity[2], ['x', 'X']) then
-        begin
-          Code := StrToIntDef('$' + Copy(Entity, 3, MaxInt), -1);
-        end
-        else
-        begin
-          Code := StrToIntDef(Copy(Entity, 2, MaxInt), -1);
-        end;
-        if (Code < 0) or (Code > $10FFFF) then
-        begin
-          Fail('Ungültige Zeichenreferenz &' + Entity + ';');
-        end;
-        if Code > $FFFF then
-        begin
-          Builder.Append(Char($D800 + ((Code - $10000) shr 10))).Append(Char($DC00 + ((Code - $10000) and $3FF)));
-        end
-        else
-        begin
-          Builder.Append(Char(Code));
-        end;
-      end
-      else
-      begin
-        Fail('Unbekannte Entity &' + Entity + ';');
-      end;
-      Index := Semicolon + 1;
+      mBuilder.Append(EntityText(Copy(AValue, mIndex + 1, mSemicolon - mIndex - 1)));
+      mIndex := mSemicolon + 1;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -338,106 +347,126 @@ begin
   end;
 end;
 
-function TParser.ParseElement: TXmlElement;
+procedure TParser.ReadAttribute(AElement: TXmlElement);
 var
-  Name: string;
-  AttributeName: string;
-  Quote: Char;
-  Start: Integer;
-  TextBuilder: TStringBuilder;
+  mName: string;
+  mQuote: Char;
+  mStart: Integer;
+begin
+  mName := ReadName;
+  SkipSpace;
+  Expect('=');
+  SkipSpace;
+  mQuote := Peek;
+  if not CharInSet(mQuote, ['"', '''']) then
+  begin
+    Fail('Anführungszeichen erwartet');
+  end;
+  Inc(FPos);
+  mStart := FPos;
+  while (not AtEnd) and (Peek <> mQuote) do
+  begin
+    Inc(FPos);
+  end;
+  if AtEnd then
+  begin
+    Fail('Attributwert nicht abgeschlossen');
+  end;
+  AElement.FAttributeNames.Add(mName);
+  AElement.FAttributeValues.Add(Decode(Copy(FText, mStart, FPos - mStart)));
+  Inc(FPos);
+end;
+
+function TParser.ReadAttributes(AElement: TXmlElement): Boolean;
+begin
+  SkipSpace;
+  while not StartsWith('/>') and (Peek <> '>') do
+  begin
+    ReadAttribute(AElement);
+    SkipSpace;
+  end;
+  Result := Peek <> '>';
+  Inc(FPos, 1 + Ord(Result));
+end;
+
+procedure TParser.ReadClosingTag(AElement: TXmlElement);
+var
+  mName: string;
+begin
+  Inc(FPos, 2);
+  mName := ReadName;
+  if mName <> AElement.Name then
+  begin
+    Fail(Format('</%s> erwartet, </%s> gefunden', [AElement.Name, mName]));
+  end;
+  SkipSpace;
+  Expect('>');
+end;
+
+procedure TParser.ReadPlainText(ABuilder: TStringBuilder);
+var
+  mStart: Integer;
+begin
+  mStart := FPos;
+  while (not AtEnd) and (Peek <> '<') do
+  begin
+    Inc(FPos);
+  end;
+  ABuilder.Append(Decode(Copy(FText, mStart, FPos - mStart)));
+end;
+
+procedure TParser.ReadContent(AElement: TXmlElement);
+var
+  mBuilder: TStringBuilder;
+  mStart: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    while not StartsWith('</') do
+    begin
+      if AtEnd then
+      begin
+        Fail(Format('</%s> fehlt', [AElement.Name]));
+      end;
+      if StartsWith('<!--') then
+      begin
+        SkipUntil('-->');
+      end
+      else if StartsWith('<![CDATA[') then
+      begin
+        Inc(FPos, 9);
+        mStart := FPos;
+        SkipUntil(']]>');
+        mBuilder.Append(Copy(FText, mStart, FPos - 3 - mStart));
+      end
+      else if StartsWith('<?') then
+      begin
+        SkipUntil('?>');
+      end
+      else if Peek = '<' then
+      begin
+        AElement.FChildren.Add(ParseElement);
+      end
+      else
+      begin
+        ReadPlainText(mBuilder);
+      end;
+    end;
+    ReadClosingTag(AElement);
+    AElement.FText := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+function TParser.ParseElement: TXmlElement;
 begin
   Expect('<');
   Result := TXmlElement.Create(ReadName);
   try
-    while True do
+    if not ReadAttributes(Result) then
     begin
-      SkipSpace;
-      if StartsWith('/>') then
-      begin
-        Inc(FPos, 2);
-        Exit;
-      end;
-      if Peek = '>' then
-      begin
-        Inc(FPos);
-        Break;
-      end;
-      AttributeName := ReadName;
-      SkipSpace;
-      Expect('=');
-      SkipSpace;
-      Quote := Peek;
-      if not CharInSet(Quote, ['"', '''']) then
-      begin
-        Fail('Anführungszeichen erwartet');
-      end;
-      Inc(FPos);
-      Start := FPos;
-      while (not AtEnd) and (Peek <> Quote) do
-      begin
-        Inc(FPos);
-      end;
-      if AtEnd then
-      begin
-        Fail('Attributwert nicht abgeschlossen');
-      end;
-      Result.FAttributeNames.Add(AttributeName);
-      Result.FAttributeValues.Add(Decode(Copy(FText, Start, FPos - Start)));
-      Inc(FPos);
-    end;
-
-    TextBuilder := TStringBuilder.Create;
-    try
-      while True do
-      begin
-        if AtEnd then
-        begin
-          Fail(Format('</%s> fehlt', [Result.Name]));
-        end;
-        if StartsWith('</') then
-        begin
-          Inc(FPos, 2);
-          Name := ReadName;
-          if Name <> Result.Name then
-          begin
-            Fail(Format('</%s> erwartet, </%s> gefunden', [Result.Name, Name]));
-          end;
-          SkipSpace;
-          Expect('>');
-          Break;
-        end
-        else if StartsWith('<!--') then
-        begin
-          SkipUntil('-->');
-        end
-        else if StartsWith('<![CDATA[') then
-        begin
-          Inc(FPos, 9);
-          Start := FPos;
-          SkipUntil(']]>');
-          TextBuilder.Append(Copy(FText, Start, FPos - 3 - Start));
-        end
-        else if StartsWith('<?') then
-        begin
-          SkipUntil('?>');
-        end
-        else if Peek = '<' then
-        begin
-          Result.FChildren.Add(ParseElement);
-        end
-        else
-        begin
-          Start := FPos;
-          while (not AtEnd) and (Peek <> '<') do
-          begin
-            Inc(FPos);
-          end;
-          TextBuilder.Append(Decode(Copy(FText, Start, FPos - Start)));
-        end;
-      end;
-      Result.FText := TextBuilder.ToString;
-    finally
-      TextBuilder.Free;
+      ReadContent(Result);
     end;
   except
     Result.Free;

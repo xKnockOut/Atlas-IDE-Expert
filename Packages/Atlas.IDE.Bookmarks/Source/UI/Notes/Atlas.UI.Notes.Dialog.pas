@@ -135,7 +135,9 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   if Result.Width < ScaleValue(90) then
+  begin
     Result.Width := ScaleValue(90);
+  end;
   Result.Top := ScaleValue(Gap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
@@ -154,11 +156,17 @@ end;
 procedure TAtlasNoteDialog.Accept;
 begin
   if NoteText <> '' then
-    FChoice := TAtlasNoteChoice.Save
+  begin
+    FChoice := TAtlasNoteChoice.Save;
+  end
   else if FCanDelete then
-    FChoice := TAtlasNoteChoice.Delete
+  begin
+    FChoice := TAtlasNoteChoice.Delete;
+  end
   else
+  begin
     FChoice := TAtlasNoteChoice.Cancel;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -192,7 +200,9 @@ procedure TAtlasNoteDialog.MemoKeyPress(Sender: TObject; var Key: Char);
 begin
   // Strg+Enter erzeugt zusätzlich ein Zeichen #10; es soll keine Zeile einfügen.
   if Key = #10 then
+  begin
     Key := #0;
+  end;
 end;
 
 class function TAtlasNoteDialog.Execute(const ATitle: string; var AText: string;
@@ -205,7 +215,9 @@ begin
     Dialog.ShowModal;
     Result := Dialog.Choice;
     if Result = TAtlasNoteChoice.Save then
+    begin
       AText := Dialog.NoteText;
+    end;
   finally
     Dialog.Free;
   end;

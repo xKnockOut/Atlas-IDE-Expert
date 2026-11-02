@@ -272,7 +272,9 @@ begin
   Key := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
   Hash := 2166136261;
   for Index := 1 to Length(Key) do
+  begin
     Hash := Cardinal((UInt64(Hash xor Ord(Key[Index])) * 16777619) and $FFFFFFFF);
+  end;
   Result := 'Local\Atlas.Log.' + IntToHex(Hash, 8);
 end;
 
@@ -296,13 +298,21 @@ begin
   begin
     Older := TPath.Combine(FFolder, Format('atlas.%d.log', [Index]));
     if Index = 1 then
-      Newer := FileName
+    begin
+      Newer := FileName;
+    end
     else
+    begin
       Newer := TPath.Combine(FFolder, Format('atlas.%d.log', [Index - 1]));
+    end;
     if TFile.Exists(Older) then
+    begin
       TFile.Delete(Older);
+    end;
     if TFile.Exists(Newer) then
+    begin
       TFile.Move(Newer, Older);
+    end;
   end;
 end;
 
@@ -349,12 +359,16 @@ begin
               end;
           end;
         if FFailed > 0 then
+        begin
           Lines := Lines + Stamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
             [FFailed, Clean(FLastError)]) + sLineBreak;
+        end;
         TFile.AppendAllText(FileName, Lines + ALine, TEncoding.UTF8);
       finally
         if Owned then
+        begin
           Lock.Release;
+        end;
       end;
     finally
       Lock.Free;
@@ -392,7 +406,9 @@ begin
   end;
   // Außerhalb der Sperren: Der Empfänger darf selbst protokollieren.
   if Notify and Assigned(FOnError) then
+  begin
     FOnError(Error);
+  end;
 end;
 
 { TAtlasFuse }
@@ -407,11 +423,13 @@ begin
   inherited Create;
   FClock := AClock;
   if not Assigned(FClock) then
+  begin
     FClock :=
       function: TDateTime
       begin
         Result := Now;
       end;
+  end;
   FLock := TCriticalSection.Create;
   FProviderFailures := TDictionary<string, TArray<TDateTime>>.Create;
   FProvidersTripped := TDictionary<string, string>.Create;
@@ -437,8 +455,12 @@ begin
   Time := FClock;
   Recent := nil;
   for Stamp in AStamps do
+  begin
     if MinutesBetween(Time, Stamp) < WindowMinutes then
+    begin
       Recent := Recent + [Stamp];
+    end;
+  end;
   Recent := Recent + [Time];
   AStamps := Recent;
   Result := Length(Recent) >= Limit;
@@ -477,7 +499,9 @@ begin
     FLastCounted[AFeature] := Time;
     FRepeats[AFeature] := 0;
     if AFeature in FTripped then
+    begin
       Exit;
+    end;
     if Count(FFailures[AFeature]) then
     begin
       Include(FTripped, AFeature);
@@ -498,9 +522,13 @@ begin
   try
     Result := False;
     if FProvidersTripped.ContainsKey(Key) then
+    begin
       Exit;
+    end;
     if not FProviderFailures.TryGetValue(Key, Stamps) then
+    begin
       Stamps := nil;
+    end;
     if Count(Stamps) then
     begin
       FProvidersTripped.Add(Key, AName);
@@ -522,7 +550,9 @@ begin
   try
     Time := FClock;
     if not FSlowSkipped.TryGetValue(Key, ASkipped) then
+    begin
       ASkipped := 0;
+    end;
     Result := not FSlowLogged.TryGetValue(Key, Logged) or (SecondsBetween(Time, Logged) >= SlowLogSeconds);
     if Result then
     begin
@@ -611,7 +641,9 @@ var
   Feature: TAtlasFeature;
 begin
   for Feature := Low(TAtlasFeature) to High(TAtlasFeature) do
+  begin
     Reset(Feature);
+  end;
   FLock.Enter;
   try
     FProvidersTripped.Clear;
@@ -662,7 +694,9 @@ end;
 class procedure TAtlasGuard.Log(const AText: string);
 begin
   if FLog <> nil then
+  begin
     FLog.Add(AText);
+  end;
 end;
 
 class function TAtlasGuard.SafeMessage(const AText: string): string;
@@ -676,21 +710,29 @@ begin
   try
     Space := False;
     for Ch in AText do
+    begin
       if CharInSet(Ch, [#0..#32]) then
-        Space := True
+      begin
+        Space := True;
+      end
       else
       begin
         if Space and (Builder.Length > 0) then
+        begin
           Builder.Append(' ');
+        end;
         Space := False;
         Builder.Append(Ch);
       end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
   end;
   if Length(Result) > MaxMessageLength then
+  begin
     Result := Copy(Result, 1, MaxMessageLength) + '…';
+  end;
 end;
 
 class function TAtlasGuard.ErrorLine(const AWhere: string; E: Exception): string;
@@ -710,7 +752,9 @@ begin
         Trace := 'nicht verfügbar (' + Inner.ClassName + ')';
     end;
   if Trace <> '' then
+  begin
     Result := Result + sLineBreak + '  Stack: ' + StringReplace(Trace, sLineBreak, sLineBreak + '  ', [rfReplaceAll]);
+  end;
 end;
 
 class procedure TAtlasGuard.Warn(const AText: string);
@@ -728,9 +772,13 @@ class function TAtlasGuard.FailureKey(E: Exception): string;
 begin
   // ExceptAddr gehört zur gerade behandelten Ausnahme; Report läuft in deren except-Block.
   if ExceptAddr <> nil then
-    Result := Format('%s@%p', [E.ClassName, ExceptAddr])
+  begin
+    Result := Format('%s@%p', [E.ClassName, ExceptAddr]);
+  end
   else
+  begin
     Result := E.ClassName + ': ' + E.Message;
+  end;
 end;
 
 class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; E: Exception);
@@ -745,14 +793,20 @@ begin
   Repeated := False;
   Skipped := 0;
   if FFuse <> nil then
+  begin
     Fired := FFuse.Failed(AFeature, FailureKey(E), Repeated, Skipped);
+  end;
   // Derselbe Fehler kurz nach dem gezählten (etwa für jede Zeile eines Zeichendurchlaufs): nicht noch einmal
   // protokollieren und nicht zählen; die nächste gezählte Zeile nennt die Zahl.
   if Repeated then
+  begin
     Exit;
+  end;
   Where := FeatureName(AFeature);
   if Skipped > 0 then
+  begin
     Where := Format('%s (seit der letzten Meldung %d Wiederholungen übergangen)', [Where, Skipped]);
+  end;
   Log(ErrorLine(Where, E));
   Failure := FOnFailure;
   if Assigned(Failure) then
@@ -762,7 +816,9 @@ begin
       // Die Meldung eines Fehlers darf selbst keinen auslösen.
     end;
   if not Fired then
+  begin
     Exit;
+  end;
   Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
     'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
     'Funktionen einschalten.', [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
@@ -780,10 +836,12 @@ class procedure TAtlasGuard.ReportProvider(const AName: string; E: Exception);
 begin
   Log(ErrorLine('Quelle ' + AName, E));
   if (FFuse <> nil) and FFuse.ProviderFailed(AName) then
+  begin
     Warn(Format('Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen ' +
       'Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über ' +
       'Atlas > Abgeschaltete Funktionen einschalten.', [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
       SafeMessage(E.Message)]));
+  end;
 end;
 
 class procedure TAtlasGuard.ReportProvider(const AName, AMessage: string);
@@ -804,17 +862,23 @@ var
   Suffix: string;
 begin
   if (FFuse = nil) or not FFuse.ProviderSlow(AName, Skipped) then
+  begin
     Exit;
+  end;
   Suffix := '';
   if Skipped > 0 then
+  begin
     Suffix := Format(' (dazu %d weitere seit der letzten Meldung)', [Skipped]);
+  end;
   Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, SafeMessage(AText), Suffix]));
 end;
 
 class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;
 begin
   if ProviderDisabled(AName) then
+  begin
     Exit(False);
+  end;
   try
     AProc();
     Result := True;
@@ -837,22 +901,30 @@ end;
 class procedure TAtlasGuard.EnableProvider(const AName: string);
 begin
   if FFuse <> nil then
+  begin
     FFuse.ResetProvider(AName);
+  end;
   Log(Format('Quelle %s wieder eingeschaltet', [AName]));
 end;
 
 class function TAtlasGuard.DisabledProviders: TArray<string>;
 begin
   if FFuse = nil then
-    Result := nil
+  begin
+    Result := nil;
+  end
   else
+  begin
     Result := FFuse.TrippedProviders;
+  end;
 end;
 
 class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 begin
   if Disabled(AFeature) then
+  begin
     Exit(False);
+  end;
   try
     AProc();
     Result := True;
@@ -875,15 +947,21 @@ end;
 class function TAtlasGuard.DisabledSet: TAtlasFeatures;
 begin
   if FFuse = nil then
-    Result := []
+  begin
+    Result := [];
+  end
   else
+  begin
     Result := FFuse.TrippedSet;
+  end;
 end;
 
 class procedure TAtlasGuard.Enable(AFeature: TAtlasFeature);
 begin
   if FFuse <> nil then
+  begin
     FFuse.Reset(AFeature);
+  end;
   Log(Format('%s wieder eingeschaltet', [FeatureName(AFeature)]));
 end;
 
@@ -893,9 +971,13 @@ var
   Name: string;
 begin
   for Feature in DisabledSet do
+  begin
     Enable(Feature);
+  end;
   for Name in DisabledProviders do
+  begin
     EnableProvider(Name);
+  end;
 end;
 
 end.

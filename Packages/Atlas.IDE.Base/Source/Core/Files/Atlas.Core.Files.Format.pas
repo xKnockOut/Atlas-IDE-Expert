@@ -134,7 +134,9 @@ begin
     Result.Encoding := TAtlasFileEncoding.Ansi;
   end;
   if (Result.Encoding = TAtlasFileEncoding.Ansi) and IsUtf8(ABytes, 0) then
+  begin
     Result.Encoding := TAtlasFileEncoding.Utf8;
+  end;
   Result.LineBreak := LineBreakOf(Decode(ABytes, Result.Encoding));
 end;
 
@@ -143,19 +145,31 @@ begin
   case AEncoding of
     TAtlasFileEncoding.Utf8Bom:
       if Length(ABytes) >= 3 then
-        Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3)
+      begin
+        Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
+      end
       else
+      begin
         Result := '';
+      end;
     TAtlasFileEncoding.Utf16LE:
       if Length(ABytes) >= 2 then
-        Result := TEncoding.Unicode.GetString(ABytes, 2, Length(ABytes) - 2)
+      begin
+        Result := TEncoding.Unicode.GetString(ABytes, 2, Length(ABytes) - 2);
+      end
       else
+      begin
         Result := '';
+      end;
     TAtlasFileEncoding.Utf16BE:
       if Length(ABytes) >= 2 then
-        Result := TEncoding.BigEndianUnicode.GetString(ABytes, 2, Length(ABytes) - 2)
+      begin
+        Result := TEncoding.BigEndianUnicode.GetString(ABytes, 2, Length(ABytes) - 2);
+      end
       else
+      begin
         Result := '';
+      end;
     TAtlasFileEncoding.Ansi:
       Result := TEncoding.ANSI.GetString(ABytes);
   else
@@ -215,7 +229,9 @@ begin
   SameEncoding := Actual.Encoding = ATarget.Encoding;
   if not SameEncoding and (Actual.Encoding = TAtlasFileEncoding.Utf8) and
     (ATarget.Encoding = TAtlasFileEncoding.Ansi) then
+  begin
     SameEncoding := IsAscii(ABytes);
+  end;
   Result := SameEncoding and ((Actual.LineBreak = ATarget.LineBreak) or (Actual.LineBreak = TAtlasLineBreak.None));
 end;
 
@@ -227,8 +243,12 @@ begin
   Back := TEncoding.ANSI.GetString(TEncoding.ANSI.GetBytes(AText));
   Result := Abs(Length(Back) - Length(AText));
   for Index := 1 to Length(AText) do
+  begin
     if (Index <= Length(Back)) and (Back[Index] <> AText[Index]) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasFileFormats.Targets: TArray<TAtlasFileFormat>;

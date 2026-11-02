@@ -109,7 +109,9 @@ function PascalView: IOTAEditView;
 begin
   Result := TAtlasEditorBuffer.ActiveView;
   if (Result <> nil) and ((Result.Buffer = nil) or not IsPascal(Result.Buffer.FileName)) then
+  begin
     Result := nil;
+  end;
 end;
 
 { TAtlasIdeMethodPlacement }
@@ -140,7 +142,9 @@ class procedure TAtlasIdeMethodPlacement.Install(const ASession: TAtlasMethodPla
   const AMessage: TProc<string>; const APolicy: TFunc<TAtlasUnopenedPolicy>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeMethodPlacement.Create(ASession, AMessage, APolicy);
+  end;
 end;
 
 class procedure TAtlasIdeMethodPlacement.Uninstall;
@@ -175,7 +179,9 @@ end;
 class procedure TAtlasIdeMethodPlacement.Run;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   if not Enabled then
   begin
     FInstance.Report(TAtlasStrings.Text(TAtlasTextId.MethodOrderOff));
@@ -199,7 +205,9 @@ end;
 class procedure TAtlasIdeMethodPlacement.EditorModified;
 begin
   if (FInstance = nil) or FInstance.FWriting or not Enabled then
+  begin
     Exit;
+  end;
   FInstance.FTimer.Enabled := False;
   FInstance.FTimer.Enabled := True;
 end;
@@ -207,14 +215,18 @@ end;
 procedure TAtlasIdeMethodPlacement.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 function TAtlasIdeMethodPlacement.CurrentSession: TLspSession;
 begin
   Result := nil;
   if Assigned(FSession) then
+  begin
     Result := FSession();
+  end;
 end;
 
 procedure TAtlasIdeMethodPlacement.Snapshot;
@@ -225,7 +237,9 @@ begin
   FText := '';
   View := PascalView;
   if View = nil then
+  begin
     Exit;
+  end;
   FFileName := View.Buffer.FileName;
   FText := TAtlasEditorBuffer.Text(View.Buffer);
 end;
@@ -236,13 +250,17 @@ var
   Writer: IOTAEditWriter;
 begin
   if not TAtlasMethodPlacement.Difference(AText, ANewText, Range) then
+  begin
     Exit;
+  end;
   // Ein Schreiber = ein Rückgängig-Schritt.
   Writer := ABuffer.CreateUndoableWriter;
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.StartOffset)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Range.EndOffset)));
   if Range.NewText <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(Range.NewText)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -257,15 +275,21 @@ begin
       Text, Before: string;
     begin
       if not Enabled then
+      begin
         Exit;
+      end;
       View := PascalView;
       if View = nil then
+      begin
         Exit;
+      end;
       Text := TAtlasEditorBuffer.Text(View.Buffer);
       Before := FText;
       // Andere Datei als beim letzten Stand: erst der neue Ausgangsstand.
       if SameText(View.Buffer.FileName, FFileName) and TAtlasMethodPlacement.NewHeaders(Before, Text) then
+      begin
         Place(View, Before, Text);
+      end;
       Snapshot;
     end);
 end;
@@ -282,7 +306,9 @@ var
 begin
   Session := CurrentSession;
   if Session = nil then
+  begin
     Exit;
+  end;
   Buffer := AView.Buffer;
   FileName := Buffer.FileName;
   try
@@ -303,21 +329,29 @@ begin
     end;
   end;
   if (Reply.Edits = nil) or (Reply.Moved = 0) then
+  begin
     Exit;
+  end;
   Final := TLspEdits.Apply(AAfter, Reply.Edits);
   Caret := AView.CursorPos;
   FWriting := True;
   try
     // Ein Schritt mit der Vervollständigung, wenn sich genau sie zurücknehmen lässt.
     if Buffer.Undo and (TAtlasEditorBuffer.Text(Buffer) = ABefore) then
-      WriteBuffer(Buffer, ABefore, Final)
+    begin
+      WriteBuffer(Buffer, ABefore, Final);
+    end
     else
     begin
       if TAtlasEditorBuffer.Text(Buffer) <> AAfter then
+      begin
         Buffer.Redo;
+      end;
       // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
       if TAtlasEditorBuffer.Text(Buffer) <> AAfter then
+      begin
         Exit;
+      end;
       WriteBuffer(Buffer, AAfter, Final);
     end;
     if TAtlasMethodPlacement.CaretLine(Reply.Moves, Caret.Line - 1, Line) then
@@ -349,7 +383,9 @@ var
 begin
   View := PascalView;
   if View = nil then
+  begin
     Exit;
+  end;
   Session := CurrentSession;
   if Session = nil then
   begin
@@ -394,7 +430,9 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle), Hint,
     TAtlasStrings.Text(TAtlasTextId.MethodOrderApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Files := Default(TLspFileEdits);
   Files.FileName := FileName;
   Files.Edits := Reply.Edits;

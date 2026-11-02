@@ -66,6 +66,11 @@ type
     FNextTicket: Int64;
     FStopping: Boolean;
     FThread: TThread;
+    /// <summary>Nimmt die abgelaufenen Einträge aus FEntries nach AExpired; liefert die nächste Fälligkeit
+    /// (High(UInt64) ohne). Nur unter der Sperre von FEntries.</summary>
+    function CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
+    /// <summary>Wartet, bis Einträge ablaufen, und nimmt sie nach AExpired; False beim Beenden.</summary>
+    function TakeExpired(AExpired: TList<TEntry>): Boolean;
     procedure Execute;
     procedure Expire(const AEntry: TEntry);
   public
@@ -252,69 +257,71 @@ begin
   end;
 end;
 
+function TJsonRpcWatchdog.CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
+var
+  mPair: TPair<Int64, TEntry>;
+begin
+  Result := High(UInt64);
+  for mPair in FEntries.ToArray do
+  begin
+    if mPair.Value.Due <= ATicks then
+    begin
+      AExpired.Add(mPair.Value);
+      FEntries.Remove(mPair.Key);
+    end
+    else if mPair.Value.Due < Result then
+    begin
+      Result := mPair.Value.Due;
+    end;
+  end;
+end;
+
+function TJsonRpcWatchdog.TakeExpired(AExpired: TList<TEntry>): Boolean;
+var
+  mTicks, mNextDue: UInt64;
+begin
+  TMonitor.Enter(FEntries);
+  try
+    Result := not FStopping;
+    if not Result then
+    begin
+      Exit;
+    end;
+    mTicks := TThread.GetTickCount64;
+    mNextDue := CollectExpired(AExpired, mTicks);
+    if (AExpired.Count = 0) and (mNextDue = High(UInt64)) then
+    begin
+      TMonitor.Wait(FEntries, WaitForever);
+    end
+    else if AExpired.Count = 0 then
+    begin
+      TMonitor.Wait(FEntries, Cardinal(mNextDue - mTicks));
+    end;
+  finally
+    TMonitor.Exit(FEntries);
+  end;
+end;
+
 procedure TJsonRpcWatchdog.Execute;
 var
-  Pair: TPair<Int64, TEntry>;
-  Expired: TList<TEntry>;
-  Entry: TEntry;
-  Ticks: UInt64;
-  NextDue: UInt64;
+  mExpired: TList<TEntry>;
+  mEntry: TEntry;
 begin
-  Expired := TList<TEntry>.Create;
+  mExpired := TList<TEntry>.Create;
   try
-    while True do
+    while TakeExpired(mExpired) do
     begin
-      TMonitor.Enter(FEntries);
-      try
-        if FStopping then
-        begin
-          Exit;
-        end;
-        Ticks := TThread.GetTickCount64;
-        NextDue := High(UInt64);
-        for Pair in FEntries do
-        begin
-          if Pair.Value.Due <= Ticks then
-          begin
-            Expired.Add(Pair.Value);
-          end
-          else if Pair.Value.Due < NextDue then
-          begin
-            NextDue := Pair.Value.Due;
-          end;
-        end;
-        for Pair in FEntries.ToArray do
-        begin
-          if Pair.Value.Due <= Ticks then
-          begin
-            FEntries.Remove(Pair.Key);
-          end;
-        end;
-        if Expired.Count = 0 then
-        begin
-          if NextDue = High(UInt64) then
-          begin
-            TMonitor.Wait(FEntries, WaitForever);
-          end
-          else
-          begin
-            TMonitor.Wait(FEntries, Cardinal(NextDue - Ticks));
-          end;
-        end;
-      finally
-        TMonitor.Exit(FEntries);
-      end;
       // Außerhalb der Sperre: Cancel und Meldung dürfen dauern.
-      for Entry in Expired do
+      for mEntry in mExpired do
         try
-          Expire(Entry);
+          Expire(mEntry);
         except
           // Eine fehlerhafte Meldung darf die Überwachung nicht beenden.
         end;
-      Expired.Clear;
+      mExpired.Clear;
     end;
   finally
-    Expired.Free;
+    mExpired.Free;
   end;
 end;
 

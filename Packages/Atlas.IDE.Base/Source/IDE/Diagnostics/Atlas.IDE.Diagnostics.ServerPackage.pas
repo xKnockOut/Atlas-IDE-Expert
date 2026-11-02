@@ -48,7 +48,9 @@ var
   mServer: TAtlasServerCommandWithArguments;
 begin
   if FBusy then
+  begin
     Exit;
+  end;
   mMessage := AMessage;
   mServer := AServer;
   mInput := TAtlasIdeBugReport.Collect;
@@ -97,18 +99,26 @@ var
 begin
   mServerFiles := TAtlasServerDiagnostics.ServerFiles(AServerAnswer);
   if Length(mServerFiles) = 0 then
+  begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.ServerPackageNoServer));
+  end;
   mFiles := TAtlasServerDiagnostics.Build(AReport, mServerFiles);
   if AAnonymize then
-    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized)
+  begin
+    mNote := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized);
+  end
   else
+  begin
     mNote := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
+  end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Text(TAtlasTextId.ServerPackageTitle),
     TAtlasStrings.Fmt(TAtlasTextId.ServerPackageHint, [mNote]),
     TAtlasServerDiagnostics.Preview(mFiles, TAtlasStrings.Text(TAtlasTextId.ServerPackageCut)),
     TAtlasServerDiagnostics.ZipName(Now), TAtlasStrings.Text(TAtlasTextId.ServerPackageFilter), 'zip',
     mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
+  begin
     Exit;
+  end;
   TAtlasDiagnosticPackage.WriteZip(mFiles, mTarget);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.ServerPackageDone, [mTarget]));
 end;

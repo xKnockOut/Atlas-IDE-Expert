@@ -92,7 +92,9 @@ function TAtlasChecklistProgress.Text: string;
 begin
   Result := '';
   if Any then
+  begin
     Result := IntToStr(Done) + '/' + IntToStr(Total);
+  end;
 end;
 
 { Zeilen }
@@ -105,26 +107,42 @@ begin
   Result := 0;
   mIndex := 1;
   while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
+  begin
     Inc(mIndex);
+  end;
   if mIndex > Length(ALine) then
+  begin
     Exit;
+  end;
   if CharInSet(ALine[mIndex], ['-', '*', '+']) then
-    Inc(mIndex)
+  begin
+    Inc(mIndex);
+  end
   else
   begin
     if not CharInSet(ALine[mIndex], ['0'..'9']) then
+    begin
       Exit;
+    end;
     while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], ['0'..'9']) do
+    begin
       Inc(mIndex);
+    end;
     if (mIndex > Length(ALine)) or not CharInSet(ALine[mIndex], ['.', ')']) then
+    begin
       Exit;
+    end;
     Inc(mIndex);
   end;
   while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
+  begin
     Inc(mIndex);
+  end;
   if (mIndex + 2 <= Length(ALine)) and (ALine[mIndex] = '[') and (ALine[mIndex + 2] = ']') and
     CharInSet(ALine[mIndex + 1], [' ', 'x', 'X']) then
+  begin
     Result := mIndex;
+  end;
 end;
 
 { TAtlasTrackerChecklist }
@@ -141,7 +159,9 @@ begin
   begin
     if (mBlock.Kind <> TAtlasMarkdownBlockKind.Bullet) or (mBlock.Task = TAtlasMarkdownTask.None) or
       (mBlock.Line < 0) or (mBlock.Line > High(mLines)) then
+    begin
       Continue;
+    end;
     mItem := Default(TAtlasChecklistItem);
     mItem.Index := Length(Result);
     mItem.Line := mBlock.Line;
@@ -163,7 +183,9 @@ begin
   begin
     Inc(Result.Total);
     if mItem.Checked then
+    begin
       Inc(Result.Done);
+    end;
   end;
 end;
 
@@ -176,7 +198,9 @@ begin
   mItems := Items(AText);
   Result := (AIndex >= 0) and (AIndex <= High(mItems));
   if Result then
+  begin
     AItem := mItems[AIndex];
+  end;
 end;
 
 class function TAtlasTrackerChecklist.Toggle(const AText: string; const AItem: TAtlasChecklistItem;
@@ -191,23 +215,33 @@ begin
   // Derselbe Punkt an derselben Zeile mit demselben Wortlaut, sonst wurde die Beschreibung geändert.
   mFound := False;
   for mItem in Items(AText) do
+  begin
     if (mItem.Line = AItem.Line) and (mItem.LineText = AItem.LineText) then
     begin
       mFound := True;
       Break;
     end;
+  end;
   if not mFound then
+  begin
     Exit(False);
+  end;
   mBox := BoxPosition(AItem.LineText);
   mTable := TLineTable.Build(AText);
   if (mBox = 0) or (AItem.Line >= mTable.LineCount) then
+  begin
     Exit(False);
+  end;
   // Nur das Zeichen im Kästchen (Offsets der Tabelle 0-basiert); alles andere bleibt, auch die Zeilenenden.
   mAt := mTable.LineStart(AItem.Line) + mBox + 1;
   if AText[mAt] = ' ' then
-    AResult[mAt] := 'x'
+  begin
+    AResult[mAt] := 'x';
+  end
   else
+  begin
     AResult[mAt] := ' ';
+  end;
   Result := True;
 end;
 
@@ -222,31 +256,45 @@ begin
   AResult := AText;
   mText := Trim(StringReplace(StringReplace(AItemText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Length(mText) > MaxItemText then
+  begin
     mText := Copy(mText, 1, MaxItemText);
+  end;
   mItems := Items(AText);
   if (mText = '') or (Length(mItems) = 0) then
+  begin
     Exit(False);
+  end;
   // Unter dem letzten Punkt mit dessen Einzug und Marke.
   mLast := mItems[High(mItems)];
   mBox := BoxPosition(mLast.LineText);
   if mBox = 0 then
+  begin
     Exit(False);
+  end;
   mPrefix := Copy(mLast.LineText, 1, mBox - 1);
   // Nummeriert: die nächste Zahl ("3. [ ]" → "4. [ ]").
   mIndex := 1;
   while (mIndex <= Length(mPrefix)) and CharInSet(mPrefix[mIndex], [' ', #9]) do
+  begin
     Inc(mIndex);
+  end;
   mDigits := '';
   while (mIndex + Length(mDigits) <= Length(mPrefix)) and
     CharInSet(mPrefix[mIndex + Length(mDigits)], ['0'..'9']) do
+  begin
     mDigits := mDigits + mPrefix[mIndex + Length(mDigits)];
+  end;
   if (mDigits <> '') and TryStrToInt(mDigits, mNumber) then
+  begin
     mPrefix := Copy(mPrefix, 1, mIndex - 1) + IntToStr(mNumber + 1) +
       Copy(mPrefix, mIndex + Length(mDigits), MaxInt);
+  end;
   mLine := mPrefix + '[ ] ' + mText;
   mTable := TLineTable.Build(AText);
   if (mLast.LastLine < 0) or (mLast.LastLine >= mTable.LineCount) then
+  begin
     Exit(False);
+  end;
   // Hinter dem Inhalt der letzten Zeile des Punkts (0-basiert = Anzahl der Zeichen davor).
   mEnd := mTable.LineContentEnd(mLast.LastLine);
   AResult := Copy(AText, 1, mEnd) + TTextLines.LineBreakOf(AText) + mLine + Copy(AText, mEnd + 1, MaxInt);

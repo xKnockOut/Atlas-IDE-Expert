@@ -106,7 +106,9 @@ class function TAtlasBlameLinks.Keys(const APattern: TAtlasIssueKeyPattern; cons
 begin
   Result := nil;
   if APattern.Active and (AMessage <> '') then
+  begin
     Result := TAtlasCodeLinks.DistinctKeys(TAtlasCodeLinks.FindKeys(APattern, AMessage));
+  end;
 end;
 
 class function TAtlasBlameLinks.CaptionSuffix(const AKeys: TArray<TAtlasIssueKeyMatch>): string;
@@ -117,9 +119,13 @@ begin
   for mMatch in AKeys do
   begin
     if Result = '' then
-      Result := ' · '
+    begin
+      Result := ' · ';
+    end
     else
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + mMatch.Key;
   end;
 end;
@@ -130,10 +136,14 @@ var
   mCompare: Integer;
 begin
   if A.LastDate <> B.LastDate then
+  begin
     Exit(A.LastDate > B.LastDate);
+  end;
   mCompare := CompareText(A.Match.Key, B.Match.Key);
   if mCompare <> 0 then
+  begin
     Exit(mCompare < 0);
+  end;
   Result := CompareStr(A.Match.Key, B.Match.Key) < 0;
 end;
 
@@ -156,7 +166,9 @@ begin
     begin
       mMatches := Keys(APattern, ACommits[mCommit].Message);
       if Length(mMatches) = 0 then
+      begin
         Inc(Result.Unlinked);
+      end;
       for mMatch in mMatches do
       begin
         mName := UpperCase(mMatch.Key);
@@ -172,7 +184,9 @@ begin
         SetLength(Result.Issues[mIssue].Commits, Length(Result.Issues[mIssue].Commits) + 1);
         Result.Issues[mIssue].Commits[High(Result.Issues[mIssue].Commits)] := mCommit;
         if ACommits[mCommit].Date > Result.Issues[mIssue].LastDate then
+        begin
           Result.Issues[mIssue].LastDate := ACommits[mCommit].Date;
+        end;
       end;
     end;
   finally
@@ -208,11 +222,17 @@ begin
   end;
   mCount := 1;
   for mIndex := 1 to Length(AText) do
+  begin
     if AText[mIndex] = #10 then
+    begin
       Inc(mCount);
+    end;
+  end;
   // Ein Zeilenende am Schluss beginnt keine Zeile mehr.
   if (AText <> '') and (AText[Length(AText)] = #10) then
+  begin
     Dec(mCount);
+  end;
   AFirst := 0;
   ALast := mCount - 1;
   AName := '';
@@ -239,7 +259,9 @@ begin
     end;
   end;
   if not Result then
+  begin
     Exit;
+  end;
   for mLine := ALast downto AFirst do
   begin
     mMapped := TAtlasLineChanges.BlameLine(mHunks, mLine);
@@ -263,7 +285,9 @@ begin
   Result.Outcome := TAtlasBlameHistoryOutcome.Failed;
   Result.VcsOutcome := TAtlasVcsOutcome.Failed;
   if (AVcs = nil) or not Supports(AVcs, IAtlasVcsLineHistory, mHistory) then
+  begin
     Exit;
+  end;
   // Git HEAD bzw. SVN BASE; scheitert es, ist die Datei nicht übernommen (oder git bzw. svn fehlt).
   Result.VcsOutcome := AVcs.FileAt(AFileName, '', mBytes);
   if Result.VcsOutcome = TAtlasVcsOutcome.Failed then
@@ -272,7 +296,9 @@ begin
     Exit;
   end;
   if Result.VcsOutcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   mRepository := TTextLines.SplitLines(TAtlasTextFile.Decode(mBytes).Text);
   // Ganz neu geschriebener Bereich: keine Historie, aber auch kein Fehler.
   if not RepositoryRange(mRepository, ABuffer, AFirst, ALast, mFirst, mLast) then
@@ -282,9 +308,13 @@ begin
   end;
   Result.VcsOutcome := mHistory.LineHistory(AFileName, mFirst, mLast, AMaxRevisions, Result.Commits);
   if Result.VcsOutcome = TAtlasVcsOutcome.Ok then
-    Result.Outcome := TAtlasBlameHistoryOutcome.Ok
+  begin
+    Result.Outcome := TAtlasBlameHistoryOutcome.Ok;
+  end
   else
+  begin
     Result.Commits := nil;
+  end;
 end;
 
 class function TAtlasBlameLinks.BlameRevisions(const ALines: TArray<TAtlasVcsBlameLine>): TArray<string>;
@@ -300,12 +330,14 @@ begin
   mSeen := TDictionary<string, Boolean>.Create;
   try
     for mLine in ALines do
+    begin
       if not mLine.Uncommitted and not mSeen.ContainsKey(mLine.Revision) then
       begin
         mSeen.Add(mLine.Revision, True);
         Result[mCount] := mLine.Revision;
         Inc(mCount);
       end;
+    end;
   finally
     mSeen.Free;
   end;
@@ -329,8 +361,12 @@ var
   mLine: string;
 begin
   for mLine in AMessage.Split([#10]) do
+  begin
     if Trim(mLine) <> '' then
+    begin
       Exit(Trim(mLine));
+    end;
+  end;
   Result := '';
 end;
 

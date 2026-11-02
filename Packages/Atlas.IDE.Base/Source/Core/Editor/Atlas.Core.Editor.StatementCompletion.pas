@@ -117,8 +117,12 @@ var
 begin
   Result := AText.Split([#10]);
   for Index := 0 to High(Result) do
+  begin
     if Result[Index].EndsWith(#13) then
+    begin
       Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+    end;
+  end;
 end;
 
 function LeadingSpace(const ALine: string): string;
@@ -127,7 +131,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(ALine, 1, Index - 1);
 end;
 
@@ -137,8 +143,12 @@ var
 begin
   Result := False;
   for Item in AList do
+  begin
     if Item = AWord then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Erstes Wort der Zeile (kleingeschrieben) gleich AWord?</summary>
@@ -156,8 +166,12 @@ var
 begin
   Result := False;
   for Word in AWords do
+  begin
     if StartsWord(ALine, Word) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Beginnt ALine in einem Blockkommentar?</summary>
@@ -178,7 +192,9 @@ begin
       if Brace then
       begin
         if Text[Index] = '}' then
+        begin
           Brace := False;
+        end;
       end
       else if ParenStar then
       begin
@@ -192,12 +208,18 @@ begin
       begin
         Inc(Index);
         while (Index <= Length(Text)) and (Text[Index] <> '''') do
+        begin
           Inc(Index);
+        end;
       end
       else if (Text[Index] = '/') and (Index < Length(Text)) and (Text[Index + 1] = '/') then
-        Index := Length(Text)
+      begin
+        Index := Length(Text);
+      end
       else if Text[Index] = '{' then
-        Brace := True
+      begin
+        Brace := True;
+      end
       else if (Text[Index] = '(') and (Index < Length(Text)) and (Text[Index + 1] = '*') then
       begin
         ParenStar := True;
@@ -225,7 +247,9 @@ begin
     if InString then
     begin
       if ABody[Index] = '''' then
+      begin
         InString := False;
+      end;
       Inc(Index);
       Continue;
     end;
@@ -244,11 +268,15 @@ begin
           Index := Close + 1;
         end
         else
+        begin
           Stack := Stack + ABody[Index];
+        end;
       ')', ']':
         if (Stack <> '') and (((ABody[Index] = ')') and (Stack[Length(Stack)] = '(')) or
           ((ABody[Index] = ']') and (Stack[Length(Stack)] = '['))) then
+        begin
           Delete(Stack, Length(Stack), 1);
+        end;
       '/':
         if (Index < Length(ABody)) and (ABody[Index + 1] = '/') then
         begin
@@ -260,24 +288,34 @@ begin
           Close := Pos('}', ABody, Index + 1);
           // Direktiven zählen wie Code; ein Kommentar mitten in der Zeile wird übersprungen.
           if (Index = Length(ABody)) or (ABody[Index + 1] <> '$') then
+          begin
             if (Close = 0) or (Trim(Copy(ABody, Close + 1, MaxInt)) = '') then
             begin
               CommentAt := Index;
               Break;
             end;
+          end;
           if Close = 0 then
-            Index := Length(ABody)
+          begin
+            Index := Length(ABody);
+          end
           else
+          begin
             Index := Close;
+          end;
         end;
       ':':
         if (Index < Length(ABody)) and (ABody[Index + 1] = '=') then
+        begin
           Result.HasAssign := True;
+        end;
       'A'..'Z', 'a'..'z', '_':
         begin
           Start := Index;
           while (Index < Length(ABody)) and TTextChars.IsAsciiIdentChar(ABody[Index + 1]) do
+          begin
             Inc(Index);
+          end;
           // "&begin" ist ein Bezeichner, kein Schlüsselwort.
           if (Start = 1) or (ABody[Start - 1] <> '&') then
           begin
@@ -294,13 +332,21 @@ begin
     Result.Comment := Copy(ABody, Length(Result.Code) + 1, MaxInt);
   end
   else
+  begin
     Result.Code := TrimRight(ABody);
+  end;
   Result.OpenString := InString;
   for Index := Length(Stack) downto 1 do
+  begin
     if Stack[Index] = '(' then
-      Result.Closers := Result.Closers + ')'
+    begin
+      Result.Closers := Result.Closers + ')';
+    end
     else
+    begin
       Result.Closers := Result.Closers + ']';
+    end;
+  end;
 end;
 
 function HasWord(const AScan: TLineScan; const AWord: string): Boolean;
@@ -314,8 +360,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(AScan.Words) do
+  begin
     if AScan.Words[Index] = AWord then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 /// <summary>Nächste nicht leere Zeile nach ALine; -1 ohne.</summary>
@@ -323,9 +373,13 @@ function NextCode(const ALines: TArray<string>; ALine: Integer): Integer;
 begin
   Result := ALine + 1;
   while (Result <= High(ALines)) and (Trim(ALines[Result]) = '') do
+  begin
     Inc(Result);
+  end;
   if Result > High(ALines) then
+  begin
     Result := -1;
+  end;
 end;
 
 /// <summary>Letzte Zeile des tiefer eingerückten Rumpfs nach ALine (Leerzeilen dazwischen zählen mit); ALine ohne.
@@ -354,7 +408,9 @@ begin
   begin
     Code := ScanLine(Trim(ALines[Line])).Code;
     if (Code <> '') and (Code.EndsWith(';') or (Line = ALast)) then
+    begin
       Inc(Result);
+    end;
   end;
 end;
 
@@ -370,18 +426,28 @@ begin
   begin
     Text := LowerCase(Trim(ScanLine(Trim(ALines[Line])).Code));
     if Text = '' then
+    begin
       Continue;
+    end;
     if (Text = 'implementation') or (Text = 'begin') then
+    begin
       Exit;
+    end;
     if Length(LeadingSpace(ALines[Line])) >= Indent then
+    begin
       Continue;
+    end;
     // Ein Typkopf links von der Zeile: "TFoo = class", "TFoo = class(TBar)", "= record", "= interface".
     Text := StringReplace(Text, ' ', '', [rfReplaceAll]);
     if (Pos('=class', Text) > 0) or (Pos('=record', Text) > 0) or (Pos('=packedrecord', Text) > 0) or
       (Pos('=interface', Text) > 0) or (Pos('=dispinterface', Text) > 0) or (Pos('=object', Text) > 0) then
+    begin
       Exit(not Text.EndsWith(';'));
+    end;
     if Text.StartsWith('end') then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -391,8 +457,12 @@ var
 begin
   Result := False;
   for Line := ALine - 1 downto 0 do
+  begin
     if StartsWord(ALines[Line], 'implementation') then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function Kind(const AScan: TLineScan; out AFirst: Integer): TStatementKind;
@@ -404,33 +474,59 @@ begin
   AFirst := 0;
   Result := TStatementKind.Plain;
   if Length(Words) = 0 then
+  begin
     Exit;
+  end;
   // "end else …" und "else if …" wie das, was nach else kommt.
   if (Words[0] = 'end') and (Length(Words) > 1) and (Words[1] = 'else') then
+  begin
     AFirst := 1;
+  end;
   if (Words[AFirst] = 'else') and (Length(Words) > AFirst + 1) and (Words[AFirst + 1] = 'if') then
+  begin
     Inc(AFirst);
+  end;
   First := Words[AFirst];
   if (First = 'class') and (Length(Words) > AFirst + 1) and InList(Words[AFirst + 1], RoutineWords) then
+  begin
     First := Words[AFirst + 1];
+  end;
   if First = 'if' then
-    Result := TStatementKind.IfHeader
+  begin
+    Result := TStatementKind.IfHeader;
+  end
   else if (First = 'while') or (First = 'with') or (First = 'on') then
-    Result := TStatementKind.LoopHeader
+  begin
+    Result := TStatementKind.LoopHeader;
+  end
   else if First = 'for' then
-    Result := TStatementKind.ForHeader
+  begin
+    Result := TStatementKind.ForHeader;
+  end
   else if First = 'else' then
-    Result := TStatementKind.ElseHeader
+  begin
+    Result := TStatementKind.ElseHeader;
+  end
   else if First = 'case' then
-    Result := TStatementKind.CaseHeader
+  begin
+    Result := TStatementKind.CaseHeader;
+  end
   else if (First = 'try') and (Length(Words) = AFirst + 1) then
-    Result := TStatementKind.TryLine
+  begin
+    Result := TStatementKind.TryLine;
+  end
   else if (First = 'repeat') and (Length(Words) = AFirst + 1) then
-    Result := TStatementKind.RepeatLine
+  begin
+    Result := TStatementKind.RepeatLine;
+  end
   else if (First = 'begin') and (Length(Words) = AFirst + 1) then
-    Result := TStatementKind.BeginLine
+  begin
+    Result := TStatementKind.BeginLine;
+  end
   else if InList(First, RoutineWords) and (Pos(':=', AScan.Code) = 0) then
+  begin
     Result := TStatementKind.Routine;
+  end;
 end;
 
 /// <summary>Soll hinter ACode ein Semikolon? Nicht hinter Schlüsselwörtern, die etwas öffnen, Marken und "end.".
@@ -441,13 +537,17 @@ var
 begin
   Result := False;
   if (ACode = '') or ACode.EndsWith(';') or ACode.EndsWith(':') or ACode.EndsWith('.') then
+  begin
     Exit;
+  end;
   if Length(AScan.Words) > 0 then
   begin
     Last := AScan.Words[High(AScan.Words)];
     // Nur wenn das Wort wirklich am Ende steht.
     if InList(Last, OpenWords) and (AScan.Starts[High(AScan.Starts)] + Length(Last) - 1 = Length(AScan.Code)) then
+    begin
       Exit;
+    end;
   end;
   Result := True;
 end;
@@ -511,17 +611,23 @@ var
     begin
       // Vor else kein Semikolon.
       if Code.EndsWith(';') then
+      begin
         Delete(Code, Length(Code), 1);
+      end;
       Exit;
     end;
     if not WantsSemicolon(Code, Scan) then
+    begin
       Exit;
+    end;
     if (Cursor < 0) and (Scan.Code.EndsWith(':=') or CharInSet(Scan.Code[Length(Scan.Code)],
       ['+', '-', '*', '/', '<', '>', ',', '(', '['])) then
     begin
       // Hinter einem Operator geht es mit einem Leerzeichen weiter.
       if not CharInSet(Scan.Code[Length(Scan.Code)], ['(', '[']) then
+      begin
         Code := Code + ' ';
+      end;
       Cursor := Length(Code);
     end;
     Code := Code + ';';
@@ -532,29 +638,41 @@ begin
   Result := False;
   Lines := LinesOf(AText);
   if (ALine < 0) or (ALine > High(Lines)) or StartsInComment(Lines, ALine) then
+  begin
     Exit;
+  end;
   Original := Lines[ALine];
   Indent := LeadingSpace(Original);
   Scan := ScanLine(Copy(Original, Length(Indent) + 1, MaxInt));
   if Scan.Code = '' then
+  begin
     Exit;
+  end;
   Width := AOptions.IndentWidth;
   if Width < 1 then
+  begin
     Width := 2;
+  end;
   Step := StringOfChar(' ', Width);
   if Pos(#9, Indent) > 0 then
+  begin
     Step := #9;
+  end;
   Code := Scan.Code;
   Cursor := -1;
   if Scan.OpenString then
+  begin
     Code := Code + '''';
+  end;
   if Scan.Closers <> '' then
   begin
     if CharInSet(Scan.Code[Length(Scan.Code)], ['(', '[', ',']) then
     begin
       // Nach dem Komma geht es mit einem Leerzeichen weiter.
       if Scan.Code.EndsWith(',') and not Scan.OpenString then
+      begin
         Code := Code + ' ';
+      end;
       Cursor := Length(Code);
     end;
     Code := Code + Scan.Closers;
@@ -588,7 +706,9 @@ begin
       end;
     TStatementKind.CaseHeader:
       if not HasWord(Scan, 'of') then
+      begin
         Code := Code + ' of';
+      end;
     TStatementKind.Plain: ;
     TStatementKind.ElseHeader: ;
     TStatementKind.TryLine: ;
@@ -602,24 +722,38 @@ begin
   begin
     Index := WordIndex(Scan, Keyword);
     if Index < 0 then
-      Code := Code + ' ' + Keyword
+    begin
+      Code := Code + ' ' + Keyword;
+    end
     else
+    begin
       Rest := Trim(Copy(Code, Scan.Starts[Index] + Length(Keyword), MaxInt));
+    end;
   end
   else if StatementKind = TStatementKind.ElseHeader then
+  begin
     Rest := Trim(Copy(Code, Scan.Starts[First] + 4, MaxInt));
+  end;
   if Rest <> '' then
   begin
     // Etwas hinter then/do/else: begin öffnet einen Block, sonst eine Anweisung in derselben Zeile.
     if SameText(Rest, 'begin') then
-      StatementKind := TStatementKind.BeginLine
+    begin
+      StatementKind := TStatementKind.BeginLine;
+    end
     else
+    begin
       Plain := True;
+    end;
   end;
   if StatementKind = TStatementKind.Routine then
+  begin
     Plain := True;
+  end;
   if Plain then
+  begin
     EnsureSemicolon;
+  end;
   Output := TList<string>.Create;
   try
     Output.AddRange(Lines);
@@ -628,20 +762,26 @@ begin
     // Platzhalter (for-Grenze) oder offene Klammer: Der Cursor bleibt in der Zeile.
     HeaderCursor := Cursor >= 0;
     if Cursor < 0 then
+    begin
       Cursor := Length(Code);
+    end;
     CursorAt(ALine, Length(Indent) + Cursor);
     Last := BodyEnd(Lines, ALine, Length(Indent));
     HasBody := Last > ALine;
     After := NextCode(Lines, Last);
     EndWord := 'end;';
     if AfterStarts(['else']) then
+    begin
       EndWord := 'end';
+    end;
     // Zeilen ab ALine + 1 stehen in der Ausgabe noch an derselben Stelle; eingefügt wird von hinten.
     if Plain and (StatementKind <> TStatementKind.Routine) then
     begin
       // Vollständig: neue Zeile darunter, vor else aber keine (dort darf keine Anweisung stehen).
       if not Changed and not ((After >= 0) and StartsWord(Lines[After], 'else')) then
+      begin
         CursorLineAfter(ALine, Indent);
+      end;
     end
     else if Plain then
     begin
@@ -653,15 +793,21 @@ begin
           // Position im Namen hinter procedure/function: Die Klassenvervollständigung gilt dann nur ihr.
           Name := First;
           if Scan.Words[Name] = 'class' then
+          begin
             Inc(Name);
+          end;
           if Name < High(Scan.Words) then
+          begin
             Inc(Name);
+          end;
           AEdit.FollowUp := TAtlasStatementFollowUp.MethodBody;
           AEdit.FollowLine := ALine;
           AEdit.FollowCharacter := Length(Indent) + Scan.Starts[Name];
         end
         else if not Changed then
+        begin
           CursorLineAfter(ALine, Indent);
+        end;
       end
       else if InImplementation(Lines, ALine) and not HasWord(Scan, 'forward') and not HasWord(Scan, 'external') and
         ((After < 0) or not StartsAnyWord(Lines[After], BodyStartWords)) then
@@ -672,7 +818,9 @@ begin
         CursorAt(ALine + 2, Length(Indent + Step));
       end
       else if not Changed then
+      begin
         CursorLineAfter(ALine, Indent);
+      end;
     end
     else
       case StatementKind of
@@ -682,8 +830,10 @@ begin
               ((AOptions.BeginEnd = TAtlasBeginEndMode.MultiLine) and HasBody and
               (StatementCount(Lines, ALine + 1, Last) >= 2));
             if not HasBody and AfterStarts(['begin']) then
+            begin
               // Der Block steht schon da: in ihn hinein.
-              CursorLineAfter(After, Indent + Step)
+              CursorLineAfter(After, Indent + Step);
+            end
             else if Wrap and HasBody then
             begin
               InsertLine(Last + 1, Indent + EndWord);
@@ -698,11 +848,17 @@ begin
               CursorAt(ALine + 2, Length(Indent + Step));
             end
             else if HasBody and Changed then
-              CursorAt(Last, Length(Output[Last]))
+            begin
+              CursorAt(Last, Length(Output[Last]));
+            end
             else if HasBody then
-              CursorLineAfter(Last, Indent)
+            begin
+              CursorLineAfter(Last, Indent);
+            end
             else
+            begin
               CursorLineAfter(ALine, Indent + Step);
+            end;
           end;
         TStatementKind.BeginLine, TStatementKind.CaseHeader:
           begin
@@ -715,9 +871,13 @@ begin
             if AfterStarts(['end']) then
             begin
               if HasBody then
-                CursorLineAfter(Last, Indent + Step)
+              begin
+                CursorLineAfter(Last, Indent + Step);
+              end
               else
+              begin
                 CursorLineAfter(ALine, Indent + Step);
+              end;
             end
             else if HasBody then
             begin
@@ -734,15 +894,21 @@ begin
           if AfterStarts(['finally', 'except', 'end']) then
           begin
             if HasBody then
-              CursorLineAfter(Last, Indent + Step)
+            begin
+              CursorLineAfter(Last, Indent + Step);
+            end
             else
+            begin
               CursorLineAfter(ALine, Indent + Step);
+            end;
           end
           else
           begin
             Keyword := 'finally';
             if AOptions.TryKind = TAtlasTryKind.TryExcept then
+            begin
               Keyword := 'except';
+            end;
             if HasBody then
             begin
               InsertLine(Last + 1, Indent + EndWord);
@@ -762,9 +928,13 @@ begin
           if AfterStarts(['until']) then
           begin
             if HasBody then
-              CursorLineAfter(Last, Indent + Step)
+            begin
+              CursorLineAfter(Last, Indent + Step);
+            end
             else
+            begin
               CursorLineAfter(ALine, Indent + Step);
+            end;
           end
           else if HasBody then
           begin
@@ -781,15 +951,21 @@ begin
         TStatementKind.Routine: ;
       end;
     if HeaderCursor then
+    begin
       CursorAt(ALine, Length(Indent) + Cursor);
+    end;
     // Kleinster Bereich, der sich ändert.
     Index := 0;
     while (Index < Length(Lines)) and (Index < Output.Count) and (Lines[Index] = Output[Index]) do
+    begin
       Inc(Index);
+    end;
     Last := 0;
     while (Last < Length(Lines) - Index) and (Last < Output.Count - Index) and
       (Lines[High(Lines) - Last] = Output[Output.Count - 1 - Last]) do
+    begin
       Inc(Last);
+    end;
     // Ohne Änderung bleibt nur der Sprung des Cursors.
     if (Index <> Length(Lines)) or (Index <> Output.Count) then
     begin
@@ -814,7 +990,9 @@ begin
   Lines := LinesOf(AText);
   if (ALine < 0) or (ALine > High(Lines)) or StartsInComment(Lines, ALine) or
     not SameText(ScanLine(Trim(Lines[ALine])).Code, 'try') then
+  begin
     Exit;
+  end;
   Indent := Length(LeadingSpace(Lines[ALine]));
   Last := BodyEnd(Lines, ALine, Indent);
   After := NextCode(Lines, Last);
@@ -829,11 +1007,17 @@ var
 begin
   SetLength(Result, Length(ALines) - AEdit.OldCount + Length(AEdit.Lines));
   for Index := 0 to AEdit.StartLine - 1 do
+  begin
     Result[Index] := ALines[Index];
+  end;
   for Index := 0 to High(AEdit.Lines) do
+  begin
     Result[AEdit.StartLine + Index] := AEdit.Lines[Index];
+  end;
   for Index := AEdit.StartLine + AEdit.OldCount to High(ALines) do
+  begin
     Result[Index - AEdit.OldCount + Length(AEdit.Lines)] := ALines[Index];
+  end;
 end;
 
 class function TAtlasStatementCompleter.AfterCaseBranches(var ALines: TArray<string>;
@@ -843,10 +1027,14 @@ var
 begin
   Result := False;
   if (ACursorLine < 0) or (ACursorLine >= High(ALines)) or (Trim(ALines[ACursorLine]) <> '') then
+  begin
     Exit;
+  end;
   Branch := TrimRight(ALines[ACursorLine + 1]);
   if not Branch.EndsWith(': ;') then
+  begin
     Exit;
+  end;
   Delete(ALines, ACursorLine, 1);
   ACursorCharacter := Length(Branch) - 1;
   Result := True;

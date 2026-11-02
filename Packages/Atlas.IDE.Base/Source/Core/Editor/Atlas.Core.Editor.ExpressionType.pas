@@ -150,7 +150,9 @@ begin
   Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', Line) and
     TJSONObject(AValue).TryGetValue<Integer>('character', Character);
   if Result then
+  begin
     APosition := TLspTextPosition.Create(Line, Character);
+  end;
 end;
 
 function ReadRange(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
@@ -164,7 +166,9 @@ function StringOf(const AObject: TJSONObject; const AName: string): string;
 begin
   Result := '';
   if AObject.GetValue(AName) is TJSONString then
+  begin
     Result := AObject.GetValue(AName).Value;
+  end;
 end;
 
 function PositionJson(const APosition: TLspTextPosition): TJSONObject;
@@ -182,11 +186,17 @@ var
 begin
   Parts := ADetail.Split(['|']);
   if (Length(Parts) = 3) and (Parts[1] = '') then
-    Result := Format(ATexts.OperatorUnary, [Parts[0], Parts[2]])
+  begin
+    Result := Format(ATexts.OperatorUnary, [Parts[0], Parts[2]]);
+  end
   else if Length(Parts) = 3 then
-    Result := Format(ATexts.OperatorMismatch, [Parts[0], Parts[1], Parts[2]])
+  begin
+    Result := Format(ATexts.OperatorMismatch, [Parts[0], Parts[1], Parts[2]]);
+  end
   else
+  begin
     Result := Format(ATexts.Unknown, [ADetail]);
+  end;
 end;
 
 function Row(AKind: TAtlasExpressionTypeRowKind; const AText: string; ALink: Boolean): TAtlasExpressionTypeRow;
@@ -245,7 +255,9 @@ begin
   AInfo := Default(TAtlasExpressionTypeInfo);
   Result := AAnswer is TJSONObject;
   if not Result then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AAnswer);
   ReadRange(Answer.GetValue('range'), AInfo.Range);
   AInfo.Expression := StringOf(Answer, 'expression');
@@ -257,12 +269,18 @@ begin
     Location := TJSONObject(Answer.GetValue('location'));
     AInfo.FileName := StringOf(Location, 'file');
     if Location.TryGetValue<Integer>('line', Number) then
+    begin
       AInfo.Line := Number;
+    end;
     if Location.TryGetValue<Integer>('character', Number) then
+    begin
       AInfo.Character := Number;
+    end;
   end;
   if Answer.GetValue('conversions') is TJSONArray then
+  begin
     for Element in TJSONArray(Answer.GetValue('conversions')) do
+    begin
       if Element is TJSONObject then
       begin
         Item := TJSONObject(Element);
@@ -273,6 +291,8 @@ begin
         Conversion.Convert := StringOf(Item, 'kind') = 'convert';
         AInfo.Conversions := AInfo.Conversions + [Conversion];
       end;
+    end;
+  end;
   if (Answer.GetValue('value') is TJSONNumber) and Answer.TryGetValue<Int64>('value', Value) then
   begin
     AInfo.HasValue := True;
@@ -296,48 +316,74 @@ var
 begin
   Result := nil;
   if AInfo.Expression <> '' then
+  begin
     Result := Result + [Row(TAtlasExpressionTypeRowKind.Expression, AInfo.Expression, False)];
+  end;
   if AInfo.Error <> '' then
   begin
     Detail := AInfo.ErrorDetail;
     if Detail = '' then
+    begin
       Detail := AInfo.Expression;
+    end;
     if AInfo.Error = ErrorNoExpression then
-      Text := ATexts.NoExpression
+    begin
+      Text := ATexts.NoExpression;
+    end
     else if AInfo.Error = 'unknownName' then
-      Text := Format(ATexts.UnknownName, [Detail])
+    begin
+      Text := Format(ATexts.UnknownName, [Detail]);
+    end
     else if AInfo.Error = 'operator' then
-      Text := OperatorText(Detail, ATexts)
+    begin
+      Text := OperatorText(Detail, ATexts);
+    end
     else if AInfo.Error = 'noResult' then
-      Text := Format(ATexts.NoResult, [Detail])
+    begin
+      Text := Format(ATexts.NoResult, [Detail]);
+    end
     else
+    begin
       Text := Format(ATexts.Unknown, [Detail]);
+    end;
     Result := Result + [Row(TAtlasExpressionTypeRowKind.Error, Text, False)];
   end
   else
   begin
     Text := AInfo.TypeName;
     if (AInfo.BaseName <> '') and not SameText(AInfo.BaseName, AInfo.TypeName) then
+    begin
       Text := Text + ' = ' + AInfo.BaseName;
+    end;
     Result := Result + [Row(TAtlasExpressionTypeRowKind.TypeName, Text, AInfo.HasLocation)];
     if AInfo.HasValue then
+    begin
       Result := Result + [Row(TAtlasExpressionTypeRowKind.Value, Format(ATexts.Value, [IntToStr(AInfo.Value)]),
         False)];
+    end;
     for Conversion in AInfo.Conversions do
     begin
       if Conversion.Convert then
-        Text := Format(ATexts.Convert, [Conversion.Expression, Conversion.FromType, Conversion.ToType])
+      begin
+        Text := Format(ATexts.Convert, [Conversion.Expression, Conversion.FromType, Conversion.ToType]);
+      end
       else
+      begin
         Text := Format(ATexts.Widen, [Conversion.Expression, Conversion.FromType, Conversion.ToType]);
+      end;
       Result := Result + [Row(TAtlasExpressionTypeRowKind.Conversion, Text, False)];
     end;
     if AInfo.Overload <> '' then
+    begin
       Result := Result + [Row(TAtlasExpressionTypeRowKind.Overload, Format(ATexts.Overload, [AInfo.Overload]),
         False)];
+    end;
   end;
   // Erweitern nur, wo es einen Ausdruck gibt.
   if (ATexts.Expand <> '') and (AInfo.Error <> ErrorNoExpression) then
+  begin
     Result := Result + [Row(TAtlasExpressionTypeRowKind.Hint, ATexts.Expand, False)];
+  end;
 end;
 
 class procedure TAtlasExpressionType.NextRequest(const AShown: TAtlasExpressionTypeShown; const AFileName,
@@ -346,9 +392,13 @@ begin
   AExpand := AShown.Active and SameText(AShown.FileName, AFileName) and (AShown.Text = AText) and
     AShown.Selection.Same(ASelection);
   if AExpand then
-    ARange := AShown.Range
+  begin
+    ARange := AShown.Range;
+  end
   else
+  begin
     ARange := ASelection;
+  end;
 end;
 
 class function TAtlasExpressionType.KeepShown(AExpand: Boolean; const AInfo: TAtlasExpressionTypeInfo): Boolean;
@@ -362,15 +412,23 @@ begin
   ASpan := Default(TAtlasExpressionTypeSpan);
   Result := (ALine >= ARange.StartPos.Line) and (ALine <= ARange.EndPos.Line) and not ARange.IsEmpty;
   if not Result then
+  begin
     Exit;
+  end;
   ASpan.Start := 0;
   if ALine = ARange.StartPos.Line then
+  begin
     ASpan.Start := ARange.StartPos.Character;
+  end;
   ASpan.Stop := ALength;
   if ALine = ARange.EndPos.Line then
+  begin
     ASpan.Stop := ARange.EndPos.Character;
+  end;
   if ASpan.Stop > ALength then
+  begin
     ASpan.Stop := ALength;
+  end;
   Result := ASpan.Stop > ASpan.Start;
 end;
 

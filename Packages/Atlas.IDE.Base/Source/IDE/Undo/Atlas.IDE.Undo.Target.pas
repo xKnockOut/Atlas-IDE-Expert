@@ -69,7 +69,9 @@ begin
     begin
       Project := ProjectOf(AProject);
       if Project <> nil then
+      begin
         Project.AddFile(AFileName, SameText(ExtractFileExt(AFileName), '.pas'));
+      end;
     end;
   Hooks.OnRemoveFromProject :=
     procedure(const AFileName, AProject: string)
@@ -78,7 +80,9 @@ begin
     begin
       Project := ProjectOf(AProject);
       if Project <> nil then
+      begin
         Project.RemoveFile(AFileName);
+      end;
     end;
   Hooks.OnRecycle :=
     procedure(AFileName: string)
@@ -86,7 +90,9 @@ begin
       Recycle(AFileName);
     end;
   if not Assigned(FDiskFactory) then
+  begin
     raise EInvalidOpException.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
+  end;
   FDisk := FDiskFactory(Hooks);
 end;
 
@@ -94,7 +100,9 @@ class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProjec
 begin
   Result := nil;
   if AProject <> '' then
+  begin
     Supports(TAtlasIdeFiles.ProjectModule(AProject), IOTAProject, Result);
+  end;
 end;
 
 function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
@@ -136,7 +144,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, StartOffset)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AOld, 1, EndOffset)));
   if Change.Text <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(Change.Text)));
+  end;
   Writer := nil;
   // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen (P-04).
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
@@ -156,17 +166,23 @@ begin
     // Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.
     Module := TAtlasIdeFiles.ProjectModule(AFileName);
     if (Module <> nil) and TAtlasIdeFiles.ProjectModified(Module) then
+    begin
       raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+    end;
     FDisk.Write(AFileName, AContent);
     if (Module <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+    begin
       Actions.ReloadFile(AFileName);
+    end;
     Exit;
   end;
   Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
   begin
     if Buffer.IsReadOnly then
+    begin
       raise EInOutError.Create('schreibgeschützt');
+    end;
     WriteBuffer(Buffer, TAtlasEditorBuffer.Text(Buffer), AContent.Text);
     Exit;
   end;
@@ -174,11 +190,15 @@ begin
   begin
     // Wie beim Umbenennen (#402): Im Designer setzt Atlas Ereignis-Zuordnungen und Eigenschaften (#309).
     if not TAtlasFormChanges.Diff(Old, AContent.Text, FormChanges, FormProperties, Reason) then
+    begin
       raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und ' +
         'Eigenschaften (%s)', [Reason]);
+    end;
     Reason := TAtlasIdeForms.Apply(AFileName, FormChanges, FormProperties);
     if Reason <> '' then
+    begin
       raise EInOutError.Create(Reason);
+    end;
     Exit;
   end;
   FDisk.Write(AFileName, AContent);
@@ -195,11 +215,15 @@ var
   Module: IOTAModule;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Module := Services.FindModule(AFileName);
   // Inhalt ist geprüft (genau der Stand nach der Aktion); ohne Rückfrage schließen.
   if Module <> nil then
+  begin
     Module.CloseModule(True);
+  end;
 end;
 
 procedure TAtlasIdeUndoTarget.RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);
@@ -220,7 +244,9 @@ begin
   Operation.pFrom := PChar(From);
   Operation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
   if (SHFileOperation(Operation) <> 0) or Operation.fAnyOperationsAborted then
+  begin
     raise EInOutError.Create('Papierkorb nicht erreichbar');
+  end;
 end;
 
 end.

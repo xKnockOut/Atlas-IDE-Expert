@@ -62,21 +62,31 @@ begin
       Exit;
     end;
     if not TAtlasBulkFixDialog.Execute(mPreview) then
+    begin
       Exit;
+    end;
     mFixes := mPreview.SelectedFixes;
     mCount := mPreview.SelectedCount;
     mNames := nil;
     for mIndex := 0 to mPreview.Count - 1 do
+    begin
       if mPreview.Files[mIndex].Checked then
+      begin
         mNames := mNames + [ExtractFileName(mPreview.Files[mIndex].FileName)];
+      end;
+    end;
     mError := TAtlasIdeWorkspaceEdit.Apply(mPreview.SelectedEdit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllAction, [ARule])).Error;
     if mError <> '' then
-      TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllFailed, [ARule, mError]))
+    begin
+      TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllFailed, [ARule, mError]));
+    end
     else
+    begin
       TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.ProblemsFixAllDone, [ARule, mFixes, mCount,
         string.Join(', ', mNames)]));
+    end;
   finally
     mPreview.Free;
   end;
@@ -131,7 +141,9 @@ var
   mFiles: TArray<string>;
 begin
   if not CanFixAll then
+  begin
     Exit;
+  end;
   mFiles := TAtlasBulkFixPreview.FilesOf(AFindings, ARule);
   if mFiles = nil then
   begin
@@ -140,7 +152,9 @@ begin
   end;
   if not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Problems, TAtlasBulkFixPreview.Command,
     TAtlasBulkFixPreview.ArgumentsJson(ARule, mFiles), FixTimeoutMs, FixAnswer(ARule)) then
+  begin
     TAtlasIdeHost.Message(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
+  end;
 end;
 
 end.

@@ -64,7 +64,9 @@ begin
   FTimer.Free;
   try
     if FileExists(FFileName) then
+    begin
       TFile.Delete(FFileName);
+    end;
   except
     // Ein liegengebliebener Eintrag wird vom Server übergangen (Prozess beendet).
     on Exception do
@@ -82,7 +84,9 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   for Index := 0 to Modules.ModuleCount - 1 do
   begin
     Module := Modules.Modules[Index];
@@ -90,7 +94,9 @@ begin
     begin
       Editor := Module.ModuleFileEditors[FileIndex];
       if (Editor <> nil) and Editor.Modified and (Editor.FileName <> '') then
+      begin
         Result := Result + [Editor.FileName];
+      end;
     end;
   end;
 end;
@@ -105,7 +111,9 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   for Index := 0 to Modules.ModuleCount - 1 do
   begin
     Module := Modules.Modules[Index];
@@ -113,7 +121,9 @@ begin
     begin
       Editor := Module.ModuleFileEditors[FileIndex];
       if (Editor <> nil) and (Editor.FileName <> '') and Supports(Editor, IOTAEditBuffer, Buffer) then
+      begin
         Result := Result + [Editor.FileName];
+      end;
     end;
   end;
 end;
@@ -127,14 +137,22 @@ begin
   Result := nil;
   AActive := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   for Index := 0 to Modules.ModuleCount - 1 do
+  begin
     if Supports(Modules.Modules[Index], IOTAProject, Project) and
       SameText(ExtractFileExt(Project.FileName), '.dproj') then
+    begin
       Result := Result + [Project.FileName];
+    end;
+  end;
   Project := Modules.GetActiveProject;
   if (Project <> nil) and SameText(ExtractFileExt(Project.FileName), '.dproj') then
+  begin
     AActive := Project.FileName;
+  end;
 end;
 
 procedure TAtlasDirtyExport.Tick(Sender: TObject);
@@ -146,13 +164,19 @@ begin
   try
     Files := TJSONArray.Create;
     for Name in ModifiedFiles do
+    begin
       Files.Add(Name);
+    end;
     Open := TJSONArray.Create;
     for Name in OpenFiles do
+    begin
       Open.Add(Name);
+    end;
     Projects := TJSONArray.Create;
     for Name in OpenProjects(Active) do
+    begin
       Projects.Add(Name);
+    end;
     Json := TJSONObject.Create;
     try
       Json.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
@@ -165,7 +189,9 @@ begin
       Json.Free;
     end;
     if Text = FLast then
+    begin
       Exit;
+    end;
     // Atomar (Bericht N3): Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
     TAtlasDataFile.Write(FFileName, Text);
     FLast := Text;
