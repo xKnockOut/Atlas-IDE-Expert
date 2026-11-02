@@ -126,9 +126,13 @@ procedure TAtlasWelcomeHeaderFrame.ShowInfo(const AInfo: TAtlasWelcomeHeaderInfo
 begin
   FData := AInfo;
   if AInfo.Greeting then
-    FGreeting.Caption := GreetingText(AInfo.Hour, AInfo.FirstName)
+  begin
+    FGreeting.Caption := GreetingText(AInfo.Hour, AInfo.FirstName);
+  end
   else
+  begin
     FGreeting.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle);
+  end;
   FInfo.Caption := InfoText(AInfo);
   Arrange;
   // Symbol neu zeichnen: Die Variante folgt dem Hintergrund (Themenwechsel).
@@ -146,13 +150,19 @@ begin
   if FSearch <> nil then
   begin
     if not AVisible then
+    begin
       FSearch.Clear;
+    end;
     FSearch.Visible := AVisible;
   end;
   if AVisible then
-    FSearchHost.Width := ScaleValue(SearchWidth)
+  begin
+    FSearchHost.Width := ScaleValue(SearchWidth);
+  end
   else
+  begin
     FSearchHost.Width := 0;
+  end;
   Arrange;
 end;
 
@@ -171,7 +181,9 @@ begin
   // eigenen Zeile darunter (schmales Fenster „Atlas-Start“).
   // Ohne Fenster lässt sich kein Text messen; Resize ordnet nach dem Einhängen.
   if not HasWindow then
+  begin
     Exit;
+  end;
   if FArranging or (FSearch = nil) or not FSearch.Visible then
   begin
     if not FArranging and (FSearchHost.Align <> alRight) then
@@ -217,7 +229,9 @@ begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNight);
   end;
   if AFirstName <> '' then
+  begin
     Result := Result + ', ' + AFirstName;
+  end;
 end;
 
 class function TAtlasWelcomeHeaderFrame.Thousands(AValue: Integer): string;
@@ -255,13 +269,21 @@ begin
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeServerIdle));
   end;
   if APhase <> TAtlasServerPhase.Running then
+  begin
     Exit;
+  end;
   if AIndexing and (APercent >= 0) then
-    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIndexingPercent, [APercent])
+  begin
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIndexingPercent, [APercent]);
+  end
   else if AIndexing then
-    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeIndexing)
+  begin
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeIndexing);
+  end
   else if AUnits >= 0 then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnits, [Thousands(AUnits)]);
+  end;
 end;
 
 class function TAtlasWelcomeHeaderFrame.InfoText(const AInfo: TAtlasWelcomeHeaderInfo): string;
