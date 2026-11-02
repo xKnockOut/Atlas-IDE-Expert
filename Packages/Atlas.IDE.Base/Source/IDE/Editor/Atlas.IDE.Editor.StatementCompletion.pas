@@ -74,7 +74,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -85,8 +87,12 @@ var
 begin
   Result := 0;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = #10 then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 /// <summary>Code-Aktion mit ATag an ALine, ACharacter für AText (dem Server vorher geschickt) angewandt; False
@@ -105,14 +111,21 @@ begin
   ASession.Sync(AFileName, AText);
   Actions := ASession.CodeActions(AFileName, TLspRange.Create(ALine, ACharacter, ALine, ACharacter));
   for Action in Actions do
+  begin
     if SameText(Action.Tag, ATag) and (Action.Disabled = '') then
     begin
       Edits := nil;
       for Files in Action.Edit.Files do
+      begin
         if SameText(Files.FileName, AFileName) then
+        begin
           Edits := Edits + Files.Edits;
+        end;
+      end;
       if Length(Edits) = 0 then
+      begin
         Exit;
+      end;
       Shift := 0;
       for Index := 0 to High(Edits) do
       begin
@@ -120,12 +133,15 @@ begin
         Edits[Index].NewText := StringReplace(StringReplace(Edits[Index].NewText, #13#10, #10, [rfReplaceAll]),
           #10, ALineBreak, [rfReplaceAll]);
         if Edits[Index].EndPos.Line < ACursorLine then
+        begin
           Inc(Shift, LineCount(Edits[Index].NewText) - (Edits[Index].EndPos.Line - Edits[Index].StartPos.Line));
+        end;
       end;
       AResult := TLspEdits.Apply(AText, Edits);
       Inc(ACursorLine, Shift);
       Exit(True);
     end;
+  end;
 end;
 
 { TAtlasIdeStatementCompletion }
@@ -153,9 +169,13 @@ class function TAtlasIdeStatementCompletion.Options(AIndentWidth: Integer;
 begin
   Result := TAtlasStatementOptions.Defaults;
   if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
-    Result.BeginEnd := TAtlasBeginEndMode.Always
+  begin
+    Result.BeginEnd := TAtlasBeginEndMode.Always;
+  end
   else if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndNever then
+  begin
     Result.BeginEnd := TAtlasBeginEndMode.Never;
+  end;
   Result.TryKind := ATryKind;
   Result.IndentWidth := AIndentWidth;
   Result.MethodBody := TAtlasIdeSettings.Current.CompleteStatementMethodBody;
@@ -170,10 +190,14 @@ var
   Area: TRect;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
   begin
     RunWith(TAtlasTryKind.TryExcept);
@@ -202,17 +226,27 @@ begin
         procedure
         begin
           if AChosen.Id = 'except' then
-            RunWith(TAtlasTryKind.TryExcept)
+          begin
+            RunWith(TAtlasTryKind.TryExcept);
+          end
           else
+          begin
             RunWith(TAtlasTryKind.TryFinally);
+          end;
         end);
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 
@@ -229,19 +263,27 @@ var
 begin
   View := TAtlasEditorBuffer.ActiveView;
   if not Enabled or (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   if Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   LineBreak := #10;
   if Pos(#13#10, Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
   if not TAtlasStatementCompleter.Complete(Text, View.CursorPos.Line - 1,
     Options(TAtlasEditorBuffer.BlockIndent(Buffer), ATryKind), Edit) then
+  begin
     Exit;
+  end;
   NewLines := TAtlasStatementCompleter.Apply(Lines, Edit);
   NewText := string.Join(LineBreak, NewLines);
   Final := NewText;
@@ -250,12 +292,18 @@ begin
   // Rumpf bzw. Zweige vom Server, auf den ergänzten Text.
   Tag := '';
   if Edit.FollowUp = TAtlasStatementFollowUp.MethodBody then
-    Tag := ClassBodiesTag
+  begin
+    Tag := ClassBodiesTag;
+  end
   else if Edit.FollowUp = TAtlasStatementFollowUp.CaseBranches then
+  begin
     Tag := CaseCompleteTag;
+  end;
   Session := nil;
   if (Tag <> '') and Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if Session <> nil then
     try
       if WithServerAction(Session, Buffer.FileName, NewText, LineBreak, Tag, Edit.FollowLine,
@@ -263,22 +311,32 @@ begin
       begin
         NewLines := Final.Split([#13#10, #10]);
         if TAtlasStatementCompleter.AfterCaseBranches(NewLines, CursorLine, CursorCharacter) then
+        begin
           Final := string.Join(LineBreak, NewLines);
+        end;
       end;
     except
       // Ohne Antwort bleibt es beim Gerüst.
       on E: ELspClientError do
         if Assigned(FMessage) then
+        begin
           FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+        end;
       on E: ELspEditError do
         if Assigned(FMessage) then
+        begin
           FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+        end;
     end;
   NewLines := Final.Split([#13#10, #10]);
   if TAtlasLineMover.Difference(Text, Final, Start, OldLength, Insert) then
+  begin
     WriteBuffer(Buffer, Text, Start, OldLength, Insert);
+  end;
   if (CursorLine < 0) or (CursorLine > High(NewLines)) then
+  begin
     Exit;
+  end;
   Target.Line := CursorLine + 1;
   Target.Col := TLspSession.IndexToColumn(NewLines[CursorLine], CursorCharacter, TabWidth);
   View.CursorPos := Target;

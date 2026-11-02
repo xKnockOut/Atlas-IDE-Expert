@@ -95,14 +95,18 @@ function IntegerOf(AObject: TJSONObject; const AName: string; ADefault: Integer)
 begin
   Result := ADefault;
   if AObject.GetValue(AName) is TJSONNumber then
+  begin
     Result := TJSONNumber(AObject.GetValue(AName)).AsInt;
+  end;
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 begin
   Result := '';
   if AObject.GetValue(AName) is TJSONString then
+  begin
     Result := TJSONString(AObject.GetValue(AName)).Value;
+  end;
 end;
 
 /// <summary>Kopf einer Methode mit Typ: "procedure TFoo.Bar", auch class procedure und constructor.</summary>
@@ -114,15 +118,21 @@ begin
   Result := False;
   Lower := LowerCase(Trim(ALine));
   for Word in RoutineWords do
+  begin
     if StartsStr(Word, Lower) then
     begin
       Stop := Length(Lower) + 1;
       if Pos('(', Lower) > 0 then
+      begin
         Stop := Pos('(', Lower);
+      end;
       if (Pos(';', Lower) > 0) and (Pos(';', Lower) < Stop) then
+      begin
         Stop := Pos(';', Lower);
+      end;
       Exit(Pos('.', Copy(Lower, Length(Word) + 1, Stop - Length(Word) - 1)) > 0);
     end;
+  end;
 end;
 
 { TAtlasMethodPlacementReply }
@@ -133,8 +143,12 @@ var
 begin
   Result := 0;
   for Move in Moves do
+  begin
     if not Move.Fixed then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TAtlasMethodPlacement }
@@ -151,7 +165,9 @@ begin
     Options := TJSONObject.Create;
     Options.AddPair('mode', AMode);
     if AAll then
-      Options.AddPair('scope', 'all')
+    begin
+      Options.AddPair('scope', 'all');
+    end
     else
     begin
       Options.AddPair('scope', 'new');
@@ -174,17 +190,28 @@ begin
   AReply := Default(TAtlasMethodPlacementReply);
   Result := AAnswer is TJSONObject;
   if not Result then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AAnswer);
   if Answer.GetValue('edits') is TJSONArray then
+  begin
     for Element in TJSONArray(Answer.GetValue('edits')) do
+    begin
       if TLspTextEdit.FromJson(Element, Edit) then
+      begin
         AReply.Edits := AReply.Edits + [Edit];
+      end;
+    end;
+  end;
   if Answer.GetValue('moves') is TJSONArray then
+  begin
     for Element in TJSONArray(Answer.GetValue('moves')) do
     begin
       if not (Element is TJSONObject) then
+      begin
         Continue;
+      end;
       Item := TJSONObject(Element);
       Move := Default(TAtlasMethodMove);
       Move.TypeName := StringOf(Item, 'type');
@@ -197,6 +224,7 @@ begin
       Move.Reason := StringOf(Item, 'reason');
       AReply.Moves := AReply.Moves + [Move];
     end;
+  end;
 end;
 
 class function TAtlasMethodPlacement.NewHeaders(const ABefore, AAfter: string): Boolean;
@@ -206,15 +234,25 @@ var
 begin
   Result := False;
   if ABefore = AAfter then
+  begin
     Exit;
+  end;
   Known := TDictionary<string, Boolean>.Create;
   try
     for Line in TTextLines.SplitLines(ABefore) do
+    begin
       if IsMethodHeader(Line) then
+      begin
         Known.AddOrSetValue(Trim(Line), True);
+      end;
+    end;
     for Line in TTextLines.SplitLines(AAfter) do
+    begin
       if IsMethodHeader(Line) and not Known.ContainsKey(Trim(Line)) then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     Known.Free;
   end;
@@ -227,20 +265,30 @@ begin
   ARange := Default(TLspTextRange);
   Result := AOld <> ANew;
   if not Result then
+  begin
     Exit;
+  end;
   Prefix := 0;
   while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  begin
     Inc(Prefix);
+  end;
   Suffix := 0;
   while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
     (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  begin
     Inc(Suffix);
+  end;
   // Kein Schnitt mitten in einem Zeilenumbruch #13#10 oder einem Ersatzpaar.
   while (Prefix > 0) and ((AOld[Prefix] = #13) or ((AOld[Prefix] >= #$D800) and (AOld[Prefix] <= #$DBFF))) do
+  begin
     Dec(Prefix);
+  end;
   while (Suffix > 0) and ((AOld[Length(AOld) - Suffix + 1] = #10) or
     ((AOld[Length(AOld) - Suffix + 1] >= #$DC00) and (AOld[Length(AOld) - Suffix + 1] <= #$DFFF))) do
+  begin
     Dec(Suffix);
+  end;
   ARange.StartOffset := Prefix;
   ARange.EndOffset := Length(AOld) - Suffix;
   ARange.NewText := Copy(ANew, Prefix + 1, Length(ANew) - Suffix - Prefix);
@@ -253,11 +301,13 @@ var
 begin
   ANewLine := ALine;
   for Move in AMoves do
+  begin
     if not Move.Fixed and (Move.NewLine >= 0) and (ALine >= Move.Line) and (ALine < Move.Line + Move.Size) then
     begin
       ANewLine := Move.NewLine + ALine - Move.Line;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -270,15 +320,23 @@ begin
   begin
     Reason := ATexts.SharedLine;
     if AMove.Reason = 'region' then
-      Reason := ATexts.Region
+    begin
+      Reason := ATexts.Region;
+    end
     else if AMove.Reason = 'ifdef' then
+    begin
       Reason := ATexts.Conditional;
+    end;
     Result := Format(ATexts.Stays, [Reason]);
   end
   else if AMove.Delta < 0 then
-    Result := Format(ATexts.Up, [-AMove.Delta])
+  begin
+    Result := Format(ATexts.Up, [-AMove.Delta]);
+  end
   else
+  begin
     Result := Format(ATexts.Down, [AMove.Delta]);
+  end;
   Result := Result + '  ' + AMove.TypeName + '.' + AMove.Name;
 end;
 
