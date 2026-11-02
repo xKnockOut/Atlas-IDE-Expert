@@ -188,33 +188,61 @@ end;
 class function TAtlasNotificationsWindow.SourceCaption(const ASource: string): string;
 begin
   if SameText(ASource, TAtlasNotificationSources.Build) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuild)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuild);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Check) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceCheck)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceCheck);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Reload) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceReload)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceReload);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Server) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer);
+  end
   else if SameText(ASource, TAtlasNotificationSources.ShortcutTips) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips);
+  end
   else if SameText(ASource, TAtlasNotificationSources.BuildServer) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer);
+  end
   else if SameText(ASource, TAtlasNotificationSources.OpenBuild) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Hidden) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden);
+  end
   else if SameText(ASource, TAtlasNotificationSources.UnitRename) then
-    Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Minimap) then
-    Result := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle);
+  end
   else if SameText(ASource, TAtlasNotificationSources.NewIssue) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle);
+  end
   else if SameText(ASource, TAtlasNotificationSources.Issues) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceIssues)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceIssues);
+  end
   else if SameText(ASource, TAtlasNotificationSources.RuleChecks) then
-    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks);
+  end
   else
+  begin
     Result := ASource;
+  end;
 end;
 
 class function TAtlasNotificationsWindow.SeverityColor(const AColors: TAtlasColors;
@@ -233,9 +261,13 @@ end;
 class function TAtlasNotificationsWindow.TimeText(ATime, ANow: TDateTime): string;
 begin
   if IsSameDay(ATime, ANow) then
-    Result := FormatDateTime('hh":"nn', ATime)
+  begin
+    Result := FormatDateTime('hh":"nn', ATime);
+  end
   else
+  begin
     Result := FormatDateTime('dd.mm. hh":"nn', ATime);
+  end;
 end;
 
 function TAtlasNotificationsWindow.LineHeight: Integer;
@@ -281,10 +313,14 @@ var
 begin
   Result := Rect(0, 0, 0, 0);
   if (ARow < 0) or (ARow > High(FItems)) then
+  begin
     Exit;
+  end;
   Actions := FItems[ARow].Actions;
   if (AChip < 0) or (AChip > High(Actions)) then
+  begin
     Exit;
+  end;
   Canvas.Font := Font;
   Entry := EntryRect(ARow);
   Left_ := Entry.Left + ScaleValue(34);
@@ -293,7 +329,9 @@ begin
   begin
     Width_ := Canvas.TextWidth(Actions[Index].Caption) + ScaleValue(TAtlasDraw.ChipPad + 8);
     if Index = AChip then
+    begin
       Exit(Rect(Left_, Top_, Left_ + Width_, Top_ + LineHeight + ScaleValue(6)));
+    end;
     Inc(Left_, Width_ + ScaleValue(6));
   end;
 end;
@@ -305,16 +343,24 @@ begin
   AChip := -1;
   Result := -1;
   if not PtInRect(ListRect, APoint) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FItems) do
+  begin
     if PtInRect(EntryRect(Index), APoint) then
     begin
       Result := Index;
       for Chip := 0 to High(FItems[Index].Actions) do
+      begin
         if PtInRect(ChipRect(Index, Chip), APoint) then
+        begin
           AChip := Chip;
+        end;
+      end;
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasNotificationsWindow.Layout;
@@ -332,16 +378,22 @@ begin
     // Titel und Text, darunter die Aktionen.
     Height_ := ScaleValue(12) + 2 * Line;
     if Length(FItems[Index].Actions) > 0 then
+    begin
       Inc(Height_, Line + ScaleValue(12));
+    end;
     FTops[Index] := Top_;
     FHeights[Index] := Height_;
     Inc(Top_, Height_);
   end;
   FContentHeight := Top_;
   if Length(FItems) = 0 then
-    ListHeight := 3 * Line
+  begin
+    ListHeight := 3 * Line;
+  end
   else
+  begin
     ListHeight := Min(FContentHeight, MaxListHeight);
+  end;
   ClientHeight := HeaderHeight + ListHeight + ButtonsHeight;
   ScrollTo(FScroll);
   Gap := ScaleValue(8);
@@ -367,28 +419,42 @@ begin
   try
     Sources := nil;
     if FCenter <> nil then
+    begin
       Sources := FCenter.Sources;
+    end;
     // Gewählte Quelle ohne Einträge (z. B. nach „Liste leeren“) bleibt wählbar.
     Found := -1;
     for Index := 0 to High(Sources) do
+    begin
       if SameText(Sources[Index], FFilter) then
+      begin
         Found := Index;
+      end;
+    end;
     if (FFilter <> '') and (Found < 0) then
+    begin
       Sources := Sources + [FFilter];
+    end;
     FFilterSources := [''] + Sources;
     FFilterBox.Items.BeginUpdate;
     try
       FFilterBox.Items.Clear;
       FFilterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll));
       for Source in Sources do
+      begin
         FFilterBox.Items.Add(SourceCaption(Source));
+      end;
     finally
       FFilterBox.Items.EndUpdate;
     end;
     FFilterBox.ItemIndex := 0;
     for Index := 1 to High(FFilterSources) do
+    begin
       if SameText(FFilterSources[Index], FFilter) then
+      begin
         FFilterBox.ItemIndex := Index;
+      end;
+    end;
   finally
     FUpdating := False;
   end;
@@ -401,20 +467,30 @@ var
 begin
   SelectedId := -1;
   if (FSelected >= 0) and (FSelected <= High(FItems)) then
+  begin
     SelectedId := FItems[FSelected].Id;
+  end;
   FItems := nil;
   if FCenter <> nil then
+  begin
     FItems := FCenter.Items(FFilter);
+  end;
   FSelected := -1;
   for Index := 0 to High(FItems) do
+  begin
     if FItems[Index].Id = SelectedId then
+    begin
       FSelected := Index;
+    end;
+  end;
   FHotRow := -1;
   FHotChip := -1;
   FillFilter;
   Layout;
   if Visible then
+  begin
     SetBounds(FAnchor.X, FAnchor.Y - Height, Width, Height);
+  end;
   Invalidate;
 end;
 
@@ -434,7 +510,9 @@ function TAtlasNotificationsWindow.Row(AIndex: Integer): IAtlasNotification;
 begin
   Result := nil;
   if (AIndex >= 0) and (AIndex <= High(FItems)) then
+  begin
     Result := FItems[AIndex];
+  end;
 end;
 
 procedure TAtlasNotificationsWindow.ScrollTo(AValue: Integer);
@@ -451,13 +529,19 @@ var
   Visible_: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FItems)) then
+  begin
     Exit;
+  end;
   List := ListRect;
   Visible_ := List.Bottom - List.Top;
   if FTops[AIndex] < FScroll then
-    ScrollTo(FTops[AIndex])
+  begin
+    ScrollTo(FTops[AIndex]);
+  end
   else if FTops[AIndex] + FHeights[AIndex] > FScroll + Visible_ then
+  begin
     ScrollTo(FTops[AIndex] + FHeights[AIndex] - Visible_);
+  end;
 end;
 
 procedure TAtlasNotificationsWindow.ShowAbove(const AAnchor: TPoint);
@@ -480,7 +564,9 @@ end;
 procedure TAtlasNotificationsWindow.Dismiss;
 begin
   if FClosing then
+  begin
     Exit;
+  end;
   FClosing := True;
   Close;
   Release;
@@ -489,35 +575,45 @@ end;
 procedure TAtlasNotificationsWindow.CloseAndRun(const AProc: TProc);
 begin
   if FClosing then
+  begin
     Exit;
+  end;
   Dismiss;
   // Erst nach dem Schließen ausführen: Die Aktion springt in den Editor oder öffnet ein Fenster.
   if Assigned(AProc) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Notifications,
       procedure
       begin
         AProc();
       end);
+  end;
 end;
 
 procedure TAtlasNotificationsWindow.FormDeactivate(Sender: TObject);
 begin
   // Das eigene Kontextmenü nimmt den Fokus nicht weg; sicherheitshalber offen lassen.
   if not FMenuOpen then
+  begin
     Dismiss;
+  end;
 end;
 
 procedure TAtlasNotificationsWindow.FilterChange(Sender: TObject);
 begin
   if FUpdating or (FFilterBox.ItemIndex < 0) or (FFilterBox.ItemIndex > High(FFilterSources)) then
+  begin
     Exit;
+  end;
   SetFilter(FFilterSources[FFilterBox.ItemIndex]);
 end;
 
 procedure TAtlasNotificationsWindow.AllReadClick(Sender: TObject);
 begin
   if FCenter = nil then
+  begin
     Exit;
+  end;
   FCenter.MarkAllRead;
   Reload;
 end;
@@ -525,7 +621,9 @@ end;
 procedure TAtlasNotificationsWindow.ClearClick(Sender: TObject);
 begin
   if FCenter = nil then
+  begin
     Exit;
+  end;
   FCenter.Clear;
   FScroll := 0;
   Reload;
@@ -534,10 +632,14 @@ end;
 procedure TAtlasNotificationsWindow.ClickRow(ARow: Integer);
 begin
   if (ARow < 0) or (ARow > High(FItems)) or (FCenter = nil) then
+  begin
     Exit;
+  end;
   FSelected := ARow;
   if not FItems[ARow].Read then
+  begin
     FCenter.MarkRead(FItems[ARow].Id);
+  end;
   Reload;
 end;
 
@@ -548,7 +650,9 @@ var
 begin
   if (ARow < 0) or (ARow > High(FItems)) or (AAction < 0) or (AAction > High(FItems[ARow].Actions)) or
     (FCenter = nil) then
+  begin
     Exit;
+  end;
   Center := FCenter;
   Id := FItems[ARow].Id;
   CloseAndRun(
@@ -572,7 +676,9 @@ begin
   FMenu.Items.Clear;
   FMenuRow := -1;
   if (ARow < 0) or (ARow > High(FItems)) or (FCenter = nil) then
+  begin
     Exit;
+  end;
   FMenuRow := ARow;
   Source := FItems[ARow].Source;
   Item := TMenuItem.Create(FMenu);
@@ -608,7 +714,9 @@ var
   Handler: TAtlasNotificationModeEvent;
 begin
   if (FMenuRow < 0) or (FMenuRow > High(FItems)) or (FCenter = nil) then
+  begin
     Exit;
+  end;
   Tag_ := (Sender as TMenuItem).Tag;
   if Tag_ = MarkReadTag then
   begin
@@ -616,13 +724,17 @@ begin
     Exit;
   end;
   if (Tag_ < ModeTag) or (Tag_ > ModeTag + Ord(High(TAtlasNotificationMode))) then
+  begin
     Exit;
+  end;
   Source := FItems[FMenuRow].Source;
   Mode := TAtlasNotificationMode(Tag_ - ModeTag);
   FCenter.SetMode(Source, Mode);
   Handler := FOnModeChange;
   if Assigned(Handler) then
+  begin
     Handler(Source, Mode);
+  end;
   Reload;
 end;
 
@@ -641,9 +753,13 @@ begin
       if (Length(FItems) > 0) and (ActiveControl = nil) then
       begin
         if Key = VK_UP then
-          Next := Max(0, FSelected - 1)
+        begin
+          Next := Max(0, FSelected - 1);
+        end
         else
+        begin
           Next := Min(High(FItems), FSelected + 1);
+        end;
         Key := 0;
         FSelected := Next;
         EnsureVisible(FSelected);
@@ -655,9 +771,13 @@ begin
       begin
         Key := 0;
         if Length(FItems[FSelected].Actions) > 0 then
-          ClickAction(FSelected, 0)
+        begin
+          ClickAction(FSelected, 0);
+        end
         else
+        begin
           ClickRow(FSelected);
+        end;
         Exit;
       end;
     VK_DELETE:
@@ -678,9 +798,13 @@ begin
   inherited;
   Row := HitTest(Point(X, Y), Chip);
   if Chip >= 0 then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   if (Row <> FHotRow) or (Chip <> FHotChip) then
   begin
     FHotRow := Row;
@@ -708,7 +832,9 @@ begin
   inherited;
   Row := HitTest(Point(X, Y), Chip);
   if Row < 0 then
+  begin
     Exit;
+  end;
   if Button = mbRight then
   begin
     FSelected := Row;
@@ -724,11 +850,17 @@ begin
     Exit;
   end;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   if Chip >= 0 then
-    ClickAction(Row, Chip)
+  begin
+    ClickAction(Row, Chip);
+  end
   else
+  begin
     ClickRow(Row);
+  end;
 end;
 
 function TAtlasNotificationsWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
@@ -802,7 +934,9 @@ begin
   Part.Right := Part.Right - Canvas.TextWidth(Right) - ScaleValue(10);
   // Titel mit Zähler; ungelesen fett.
   if not Item.Read then
+  begin
     Canvas.Font.Style := [fsBold];
+  end;
   Canvas.Font.Color := ToColor(FColors.Text);
   mText := Item.Caption;
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -819,9 +953,13 @@ begin
     Chip := ChipRect(AIndex, Index);
     Canvas.Brush.Style := bsSolid;
     if (AIndex = FHotRow) and (Index = FHotChip) then
-      Canvas.Brush.Color := ToColor(FColors.AccentSoft)
+    begin
+      Canvas.Brush.Color := ToColor(FColors.AccentSoft);
+    end
     else
+    begin
       Canvas.Brush.Color := ToColor(FColors.Surface);
+    end;
     Canvas.Pen.Color := ToColor(FColors.Accent);
     Canvas.RoundRect(Chip.Left, Chip.Top, Chip.Right, Chip.Bottom, ScaleValue(2 * TAtlasDraw.ChipRadius),
       ScaleValue(2 * TAtlasDraw.ChipRadius));
@@ -858,7 +996,9 @@ begin
     begin
       Part := EntryRect(Index);
       if (Part.Bottom > List.Top) and (Part.Top < List.Bottom) then
+      begin
         DrawEntry(Index);
+      end;
     end;
     // Daumen, wenn die Liste länger ist als der Bereich.
     if FContentHeight > List.Bottom - List.Top then
@@ -883,7 +1023,9 @@ begin
   Canvas.Font.Style := [];
   Unread := 0;
   if FCenter <> nil then
+  begin
     Unread := FCenter.UnreadCount;
+  end;
   if Unread > 0 then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);

@@ -603,8 +603,12 @@ var
   Checks: TAtlasTrackerChecks;
 begin
   for Checks := Low(TAtlasTrackerChecks) to High(TAtlasTrackerChecks) do
+  begin
     if SameText(ChecksKeys[Checks], AKey) then
+    begin
       Exit(Checks);
+    end;
+  end;
   Result := TAtlasTrackerChecks.Unknown;
 end;
 
@@ -621,10 +625,16 @@ var
 begin
   Result := TAtlasTrackerLinkKind.Other;
   if AKey = '' then
+  begin
     Exit;
+  end;
   for mKind := Low(TAtlasTrackerLinkKind) to High(TAtlasTrackerLinkKind) do
+  begin
     if SameText(LinkKindKeys[mKind], AKey) then
+    begin
       Exit(mKind);
+    end;
+  end;
 end;
 
 function TAtlasTrackerLink.Blocking: Boolean;
@@ -648,7 +658,9 @@ function TAtlasTrackerChange.Who: string;
 begin
   Result := AuthorName;
   if Result = '' then
+  begin
     Result := Author;
+  end;
 end;
 
 { TAtlasTrackerPoll }
@@ -689,12 +701,18 @@ var
 begin
   mText := LowerCase(Trim(AText));
   if (mText = '') or LowerCase(Login).StartsWith(mText) then
+  begin
     Exit(0);
+  end;
   mName := ' ' + LowerCase(Name);
   if Pos(' ' + mText, mName) > 0 then
+  begin
     Exit(1);
+  end;
   if (Pos(mText, LowerCase(Login)) > 0) or (Pos(mText, mName) > 0) then
+  begin
     Exit(2);
+  end;
   Result := 3;
 end;
 
@@ -711,15 +729,21 @@ begin
   for mRank := 0 to 3 do
   begin
     if (mRank = 3) and not AKeepOthers then
+    begin
       Break;
+    end;
     for mIndex := 0 to High(AUsers) do
     begin
       if Length(Result) >= AMax then
+      begin
         Exit;
+      end;
       mUser := AUsers[mIndex];
       if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or
         (Pos('|' + LowerCase(mUser.Login) + '|', mSeen) > 0) then
+      begin
         Continue;
+      end;
       mSeen := mSeen + LowerCase(mUser.Login) + '|';
       Result := Result + [mUser];
     end;
@@ -746,7 +770,9 @@ var
 begin
   Result := MimeType.StartsWith('image/', True);
   if Result or (MimeType <> '') then
+  begin
     Exit;
+  end;
   mExt := LowerCase(ExtractFileExt(Name));
   Result := (mExt = '.png') or (mExt = '.jpg') or (mExt = '.jpeg') or (mExt = '.gif') or (mExt = '.bmp');
 end;
@@ -772,7 +798,9 @@ begin
   Result.Title := Copy(Title, 1, TAtlasTrackerIssue.MaxTitle);
   mCount := Length(Labels);
   if mCount > TAtlasTrackerIssue.MaxLabels then
+  begin
     mCount := TAtlasTrackerIssue.MaxLabels;
+  end;
   Result.Labels := Copy(Labels, 0, mCount);
   Result.State := State;
   Result.Priority := Priority;
@@ -785,8 +813,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Attachments) do
+  begin
     if SameText(Attachments[mIndex].Name, AName) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -857,9 +889,13 @@ function TrimSlashes(const AText: string): string;
 begin
   Result := Trim(AText);
   while (Result <> '') and (Result[1] = '/') do
+  begin
     Delete(Result, 1, 1);
+  end;
   while (Result <> '') and (Result[Length(Result)] = '/') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasTrackerTarget.Create(const AProvider, AUrl, AProject, AQuery: string): TAtlasTrackerTarget;
@@ -870,26 +906,38 @@ begin
   Result.Provider := LowerCase(Trim(AProvider));
   Result.Url := Trim(AUrl);
   while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
+  begin
     Delete(Result.Url, Length(Result.Url), 1);
+  end;
   Result.Project := TrimSlashes(AProject);
   Result.Query := Trim(AQuery);
   Result.Language := '';
   if Result.Provider <> GitHub then
+  begin
     Exit;
+  end;
   if Result.Url = '' then
+  begin
     Result.Url := GitHubUrl;
+  end;
   // "https://github.com/owner/repo" ohne Projekt: Projekt aus der Adresse.
   Origin := Result.Server;
   if Origin = '' then
+  begin
     Exit;
+  end;
   Path := TrimSlashes(Copy(Result.Url, Length(Origin) + 1, MaxInt));
   if Path = '' then
+  begin
     Exit;
+  end;
   Parts := Path.Split(['/']);
   if Length(Parts) = 2 then
   begin
     if Result.Project = '' then
+    begin
       Result.Project := Path;
+    end;
     Result.Url := Copy(Result.Url, 1, Length(Origin));
   end;
 end;
@@ -898,7 +946,9 @@ function TAtlasTrackerTarget.Configured: Boolean;
 begin
   Result := (Provider <> '') and (Server <> '');
   if Result and (Provider = GitHub) then
+  begin
     Result := (Pos('/', Project) > 1) and (Pos('/', Project) < Length(Project));
+  end;
 end;
 
 function TAtlasTrackerTarget.Server: string;
@@ -911,7 +961,9 @@ function TAtlasTrackerTarget.CredentialTarget: string;
 begin
   Result := '';
   if Server <> '' then
+  begin
     Result := 'Atlas:tracker:' + Server;
+  end;
 end;
 
 function TAtlasTrackerTarget.Key: string;

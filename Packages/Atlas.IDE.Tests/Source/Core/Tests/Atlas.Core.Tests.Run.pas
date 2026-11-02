@@ -152,22 +152,28 @@ begin
       Failure.Test := Item;
       Failure.Line := -1;
       if (Item.UnitName <> '') and Assigned(AUnitFile) then
+      begin
         Failure.FileName := AUnitFile(Item.UnitName);
+      end;
       if Failure.FileName <> '' then
       begin
         Key := AnsiLowerCase(Failure.FileName);
         if not Units.TryGetValue(Key, Found) then
         begin
           if not Assigned(AReadLines) or not AReadLines(Failure.FileName, Lines) then
+          begin
             Lines := nil;
+          end;
           Found := TDUnitXSource.Scan(Lines);
           Units.Add(Key, Found);
           Texts.Add(Key, Lines);
         end;
         Lines := Texts[Key];
         if Length(Lines) = 0 then
+        begin
           // Datei nicht lesbar: keine Fundstelle.
-          Failure.FileName := ''
+          Failure.FileName := '';
+        end
         else
         begin
           Failure.Line := Found.LineOf(Item.Fixture, Item.Method);
@@ -176,12 +182,16 @@ begin
             Text := Lines[Failure.Line];
             Index := 0;
             while (Index < Length(Text)) and ((Text[Index + 1] = ' ') or (Text[Index + 1] = #9)) do
+            begin
               Inc(Index);
+            end;
             Failure.StartCharacter := Index;
             Failure.EndCharacter := Length(TrimRight(Text));
           end
           else
+          begin
             Failure.Line := -1;
+          end;
         end;
       end;
       Result := Result + [Failure];
@@ -196,11 +206,17 @@ class function TAtlasTestRun.ShortName(const ACase: TTestCaseResult): string;
 begin
   Result := ACase.Method;
   if ACase.Fixture <> '' then
+  begin
     Result := ACase.Fixture + '.' + Result;
+  end;
   if ACase.CaseName <> '' then
+  begin
     Result := Result + '.' + ACase.CaseName;
+  end;
   if Result = '' then
+  begin
     Result := ACase.FullName;
+  end;
 end;
 
 class function TAtlasTestRun.ProblemText(const ACase: TTestCaseResult; const AFormat, AValuesFormat: string): string;
@@ -209,12 +225,16 @@ var
   Index: Integer;
 begin
   if ACase.HasValues then
+  begin
     Exit(Format(AValuesFormat, [ShortName(ACase), ACase.Expected, ACase.Actual]));
+  end;
   // Nur die erste Zeile: Die Liste der Probleme zeigt eine Zeile je Eintrag.
   Message := Trim(ACase.Message);
   Index := Pos(#10, Message);
   if Index > 0 then
+  begin
     Message := TrimRight(Copy(Message, 1, Index - 1));
+  end;
   Result := Format(AFormat, [ShortName(ACase), Message]);
 end;
 
@@ -228,7 +248,9 @@ begin
   for Failure in AFailures do
   begin
     if (Failure.FileName = '') or (Failure.Line < 0) then
+    begin
       Continue;
+    end;
     Problem := Default(TAtlasProblem);
     Problem.StartLine := Failure.Line;
     Problem.EndLine := Failure.Line;
@@ -263,13 +285,17 @@ begin
   for Failure in AFailures do
   begin
     if Length(Result.Failures) >= TAtlasProjectTests.MaxFailures then
+    begin
       Break;
+    end;
     Item := Default(TAtlasProjectTestFailure);
     Item.Test := Failure.Test.FullName;
     Item.Message := Failure.Test.Message;
     Item.FileName := Failure.FileName;
     if Failure.Line >= 0 then
+    begin
       Item.Line := Failure.Line + 1;
+    end;
     Result.Failures := Result.Failures + [Item];
   end;
 end;
@@ -290,15 +316,25 @@ begin
   begin
     if not SameText(Item.Fixture, AFixture) or ((AUnitName <> '') and (Item.UnitName <> '') and
       not SameText(Item.UnitName, AUnitName)) then
+    begin
       Continue;
+    end;
     if (AMethod <> '') and not SameText(Item.Method, AMethod) then
+    begin
       Continue;
+    end;
     if (ACaseName <> '') and not SameText(Item.CaseName, ACaseName) then
+    begin
       Continue;
+    end;
     if Item.IsFailure then
+    begin
       Exit(TAtlasTestStatus.Failed);
+    end;
     if Item.Outcome = TTestOutcome.Passed then
+    begin
       Result := TAtlasTestStatus.Passed;
+    end;
   end;
 end;
 

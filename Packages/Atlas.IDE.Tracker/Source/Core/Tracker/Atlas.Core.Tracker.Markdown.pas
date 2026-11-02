@@ -143,12 +143,20 @@ var
 begin
   Result := 0;
   for mIndex := 1 to Length(ALine) do
+  begin
     if ALine[mIndex] = ' ' then
-      Inc(Result)
+    begin
+      Inc(Result);
+    end
     else if ALine[mIndex] = #9 then
-      Inc(Result, 4)
+    begin
+      Inc(Result, 4);
+    end
     else
+    begin
       Exit;
+    end;
+  end;
 end;
 
 function IsBlank(const ALine: string): Boolean;
@@ -166,23 +174,35 @@ begin
   AFence := '';
   ALanguage := '';
   if Indent(ALine) > 3 then
+  begin
     Exit;
+  end;
   mText := TrimLeft(ALine);
   if Length(mText) < 3 then
+  begin
     Exit;
+  end;
   mChar := mText[1];
   if (mChar <> '`') and (mChar <> '~') then
+  begin
     Exit;
+  end;
   mCount := 0;
   while (mCount < Length(mText)) and (mText[mCount + 1] = mChar) do
+  begin
     Inc(mCount);
+  end;
   if mCount < 3 then
+  begin
     Exit;
+  end;
   AFence := StringOfChar(mChar, mCount);
   ALanguage := Trim(Copy(mText, mCount + 1, MaxInt));
   // Nur das erste Wort: "pascal title=x" bzw. "{.delphi}".
   if Pos(' ', ALanguage) > 0 then
+  begin
     ALanguage := Copy(ALanguage, 1, Pos(' ', ALanguage) - 1);
+  end;
   ALanguage := ALanguage.Trim(['{', '}', '.']);
   // Ein Backtick-Zaun darf keine Backticks in der Info haben (sonst ist es Code im Fließtext).
   Result := (mChar <> '`') or (Pos('`', ALanguage) = 0);
@@ -205,18 +225,28 @@ begin
   ALevel := 0;
   AText := '';
   if Indent(ALine) > 3 then
+  begin
     Exit;
+  end;
   mText := TrimLeft(ALine);
   while (ALevel < Length(mText)) and (mText[ALevel + 1] = '#') do
+  begin
     Inc(ALevel);
+  end;
   if (ALevel < 1) or (ALevel > 6) then
+  begin
     Exit;
+  end;
   if (Length(mText) > ALevel) and (mText[ALevel + 1] <> ' ') and (mText[ALevel + 1] <> #9) then
+  begin
     Exit;
+  end;
   AText := Trim(Copy(mText, ALevel + 1, MaxInt));
   // Schließende # ("## Titel ##").
   while (AText <> '') and (AText[Length(AText)] = '#') do
+  begin
     Delete(AText, Length(AText), 1);
+  end;
   AText := Trim(AText);
   Result := True;
 end;
@@ -229,19 +259,31 @@ var
 begin
   Result := False;
   if Indent(ALine) > 3 then
+  begin
     Exit;
+  end;
   mText := Trim(ALine);
   if mText = '' then
+  begin
     Exit;
+  end;
   mChar := mText[1];
   if (mChar <> '-') and (mChar <> '*') and (mChar <> '_') then
+  begin
     Exit;
+  end;
   mCount := 0;
   for mIndex := 1 to Length(mText) do
+  begin
     if mText[mIndex] = mChar then
-      Inc(mCount)
+    begin
+      Inc(mCount);
+    end
     else if mText[mIndex] <> ' ' then
+    begin
       Exit;
+    end;
+  end;
   Result := mCount >= 3;
 end;
 
@@ -253,10 +295,14 @@ begin
   mText := TrimLeft(ALine);
   Result := (Indent(ALine) <= 3) and (mText <> '') and (mText[1] = '>');
   if not Result then
+  begin
     Exit;
+  end;
   AText := Copy(mText, 2, MaxInt);
   if (AText <> '') and (AText[1] = ' ') then
+  begin
     Delete(AText, 1, 1);
+  end;
 end;
 
 /// <summary>Listenpunkt: AMarker "•" bzw. "1.", ATask das Aufgabenkästchen davor (Text ohne Kästchen).</summary>
@@ -273,11 +319,15 @@ begin
   AIndent := Indent(ALine);
   mText := TrimLeft(ALine);
   if mText = '' then
+  begin
     Exit;
+  end;
   if CharInSet(mText[1], ['-', '*', '+']) then
   begin
     if (Length(mText) > 1) and (mText[2] <> ' ') and (mText[2] <> #9) then
+    begin
       Exit;
+    end;
     AMarker := cBullet;
     AText := Trim(Copy(mText, 2, MaxInt));
   end
@@ -285,11 +335,17 @@ begin
   begin
     mDigits := 0;
     while (mDigits < Length(mText)) and (mDigits < 9) and CharInSet(mText[mDigits + 1], ['0'..'9']) do
+    begin
       Inc(mDigits);
+    end;
     if (mDigits = 0) or (mDigits >= Length(mText)) or not CharInSet(mText[mDigits + 1], ['.', ')']) then
+    begin
       Exit;
+    end;
     if (Length(mText) > mDigits + 1) and (mText[mDigits + 2] <> ' ') and (mText[mDigits + 2] <> #9) then
+    begin
       Exit;
+    end;
     AMarker := Copy(mText, 1, mDigits) + '.';
     AText := Trim(Copy(mText, mDigits + 2, MaxInt));
   end;
@@ -323,10 +379,14 @@ begin
   Result := nil;
   mText := Trim(ALine);
   if (mText <> '') and (mText[1] = '|') then
+  begin
     Delete(mText, 1, 1);
+  end;
   if (mText <> '') and (mText[Length(mText)] = '|') and ((Length(mText) < 2) or (mText[Length(mText) - 1] <> '\'))
     then
+  begin
     Delete(mText, Length(mText), 1);
+  end;
   mCell := '';
   mEscaped := False;
   mInCode := False;
@@ -335,7 +395,9 @@ begin
     if mEscaped then
     begin
       if mText[mIndex] <> '|' then
+      begin
         mCell := mCell + '\';
+      end;
       mCell := mCell + mText[mIndex];
       mEscaped := False;
       Continue;
@@ -346,14 +408,18 @@ begin
       Continue;
     end;
     if mText[mIndex] = '`' then
+    begin
       mInCode := not mInCode;
+    end;
     if (mText[mIndex] = '|') and not mInCode then
     begin
       Result := Result + [Trim(mCell)];
       mCell := '';
     end
     else
+    begin
       mCell := mCell + mText[mIndex];
+    end;
   end;
   Result := Result + [Trim(mCell)];
 end;
@@ -366,18 +432,28 @@ var
 begin
   Result := False;
   if Pos('-', ALine) = 0 then
+  begin
     Exit;
+  end;
   mCells := SplitRow(ALine);
   if Length(mCells) = 0 then
+  begin
     Exit;
+  end;
   for mCell in mCells do
   begin
     mText := mCell.Trim([':']);
     if mText = '' then
+    begin
       Exit;
+    end;
     for mIndex := 1 to Length(mText) do
+    begin
       if mText[mIndex] <> '-' then
+      begin
         Exit;
+      end;
+    end;
   end;
   Result := True;
 end;
@@ -396,22 +472,30 @@ begin
   Result := '';
   mPos := Pos(LowerCase(AName) + '=', LowerCase(ATag));
   if mPos = 0 then
+  begin
     Exit;
+  end;
   mPos := mPos + Length(AName) + 1;
   if mPos > Length(ATag) then
+  begin
     Exit;
+  end;
   mQuote := ATag[mPos];
   if (mQuote = '"') or (mQuote = '''') then
   begin
     mStop := PosEx(mQuote, ATag, mPos + 1);
     if mStop > 0 then
+    begin
       Result := Copy(ATag, mPos + 1, mStop - mPos - 1);
+    end;
   end
   else
   begin
     mStop := mPos;
     while (mStop <= Length(ATag)) and not CharInSet(ATag[mStop], [' ', '>', '/']) do
+    begin
       Inc(mStop);
+    end;
     Result := Copy(ATag, mPos, mStop - mPos);
   end;
 end;
@@ -433,22 +517,32 @@ begin
     Exit(AUrl <> '');
   end;
   if not StartsStr('![', mText) then
+  begin
     Exit;
+  end;
   mClose := Pos('](', mText);
   if mClose = 0 then
+  begin
     Exit;
+  end;
   mOpen := mClose + 1;
   mStop := PosEx(')', mText, mOpen + 1);
   if mStop = 0 then
+  begin
     Exit;
+  end;
   // Danach nur noch Attribute in geschweiften Klammern.
   if (mStop < Length(mText)) and ((mText[mStop + 1] <> '{') or (mText[Length(mText)] <> '}')) then
+  begin
     Exit;
+  end;
   AAlt := Copy(mText, 3, mClose - 3);
   AUrl := Trim(Copy(mText, mOpen + 1, mStop - mOpen - 1));
   // Titel nach der Adresse: ![a](bild.png "Titel").
   if Pos(' ', AUrl) > 0 then
+  begin
     AUrl := Copy(AUrl, 1, Pos(' ', AUrl) - 1);
+  end;
   AUrl := AUrl.Trim(['<', '>']);
   Result := AUrl <> '';
 end;
@@ -503,12 +597,18 @@ var
   begin
     // Ebene aus den Einzügen der offenen Liste: tiefer eingerückt = eine Ebene tiefer.
     while (Length(mIndents) > 0) and (mIndents[High(mIndents)] > AIndent) do
+    begin
       SetLength(mIndents, Length(mIndents) - 1);
+    end;
     if (Length(mIndents) = 0) or (mIndents[High(mIndents)] < AIndent) then
+    begin
       mIndents := mIndents + [AIndent];
+    end;
     mProbe := Length(mIndents);
     if mProbe > MaxListLevel then
+    begin
       mProbe := MaxListLevel;
+    end;
     Result := mProbe;
   end;
 
@@ -526,7 +626,9 @@ begin
       Continue;
     end;
     if not ListItemOf(mLine, mIndent, mMarker, mText) then
+    begin
       mIndents := nil;
+    end;
     // Codeblock mit Zaun; ohne schließenden Zaun bis zum Ende.
     if FenceOf(mLine, mFence, mLanguage) then
     begin
@@ -544,7 +646,9 @@ begin
           Inc(mLevel);
         end;
         if mCode <> '' then
+        begin
           mCode := mCode + #10;
+        end;
         mCode := mCode + mText;
         Inc(mIndex);
       end;
@@ -637,7 +741,9 @@ begin
       while (mIndex <= High(mLines)) and (IsBlank(mLines[mIndex]) or (Indent(mLines[mIndex]) >= 4)) do
       begin
         if mCode <> '' then
+        begin
           mCode := mCode + #10;
+        end;
         mCode := mCode + Copy(mLines[mIndex], 5, MaxInt);
         Inc(mIndex);
       end;
@@ -684,7 +790,9 @@ var
   mRun: TAtlasDocRun;
 begin
   if Text = '' then
+  begin
     Exit;
+  end;
   mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Text, Text);
   mRun.Bold := Bold or BaseBold;
   mRun.Italic := Italic or BaseItalic;
@@ -705,7 +813,9 @@ var
 begin
   mText := AText;
   if mText = '' then
+  begin
     mText := AUrl;
+  end;
   mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Link, mText, AUrl);
   mRun.Bold := Bold or BaseBold;
   mRun.Italic := Italic or BaseItalic;
@@ -735,7 +845,9 @@ begin
   for mProbe := AIndex to Length(AText) do
   begin
     if AText[mProbe] = '[' then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if AText[mProbe] = ']' then
     begin
       Dec(mDepth);
@@ -746,22 +858,32 @@ begin
       end;
     end
     else if AText[mProbe] = #10 then
+    begin
       Exit;
+    end;
   end;
   if (mClose = 0) or (mClose >= Length(AText)) or (AText[mClose + 1] <> '(') then
+  begin
     Exit;
+  end;
   mProbe := PosEx(')', AText, mClose + 2);
   if mProbe = 0 then
+  begin
     Exit;
+  end;
   ALabel := Copy(AText, AIndex + 1, mClose - AIndex - 1);
   AUrl := Trim(Copy(AText, mClose + 2, mProbe - mClose - 2));
   if Pos(' ', AUrl) > 0 then
+  begin
     AUrl := Copy(AUrl, 1, Pos(' ', AUrl) - 1);
+  end;
   AUrl := AUrl.Trim(['<', '>']);
   Result := mProbe;
   // YouTrack: Attribute nach dem Bild ({width=70%}).
   if (Result < Length(AText)) and (AText[Result + 1] = '{') and (PosEx('}', AText, Result + 1) > 0) then
+  begin
     Result := PosEx('}', AText, Result + 1);
+  end;
 end;
 
 /// <summary>Nackte Adresse ab AIndex ("https://…"); Satzzeichen am Ende gehören nicht dazu.</summary>
@@ -769,10 +891,14 @@ function BareUrlEnd(const AText: string; AIndex: Integer): Integer;
 begin
   Result := AIndex;
   while (Result <= Length(AText)) and not CharInSet(AText[Result], [' ', #9, #10, '<', '>', '"']) do
+  begin
     Inc(Result);
+  end;
   Dec(Result);
   while (Result > AIndex) and CharInSet(AText[Result], ['.', ',', ';', ':', '!', '?', ')', '''']) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Ein schließendes ADelimiter folgt noch (sonst ist es kein Hervorheben).</summary>
@@ -785,7 +911,9 @@ begin
   begin
     // Schließend: davor kein Leerzeichen.
     if (mProbe > AFrom) and not CharInSet(AText[mProbe - 1], [' ', #9, #10]) then
+    begin
       Exit(True);
+    end;
     mProbe := PosEx(ADelimiter, AText, mProbe + Length(ADelimiter));
   end;
   Result := False;
@@ -808,13 +936,21 @@ begin
   begin
     mChar := mText[mIndex];
     if mIndex < Length(mText) then
-      mNext := mText[mIndex + 1]
+    begin
+      mNext := mText[mIndex + 1];
+    end
     else
+    begin
       mNext := #0;
+    end;
     if mIndex > 1 then
-      mPrev := mText[mIndex - 1]
+    begin
+      mPrev := mText[mIndex - 1];
+    end
     else
+    begin
       mPrev := ' ';
+    end;
     // Maskiert: \* \_ \` \[ …
     if (mChar = '\') and (mNext <> #0) and CharInSet(mNext, ['\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '#',
       '+', '-', '.', '!', '|', '<', '>', '~']) then
@@ -828,7 +964,9 @@ begin
     begin
       mBuilder.Text := TrimRight(mBuilder.Text);
       if EndsStr('\', mBuilder.Text) then
+      begin
         Delete(mBuilder.Text, Length(mBuilder.Text), 1);
+      end;
       mBuilder.AddBreak;
       Inc(mIndex);
       Continue;
@@ -838,7 +976,9 @@ begin
     begin
       mTicks := 0;
       while (mIndex + mTicks <= Length(mText)) and (mText[mIndex + mTicks] = '`') do
+      begin
         Inc(mTicks);
+      end;
       mClose := PosEx(StringOfChar('`', mTicks), mText, mIndex + mTicks);
       if mClose > 0 then
       begin
@@ -858,7 +998,9 @@ begin
       if mStop > 0 then
       begin
         if mLabel = '' then
+        begin
           mLabel := Copy(mUrl, LastDelimiter('/\', mUrl) + 1, MaxInt);
+        end;
         mBuilder.AddLink(mLabel, mUrl);
         mIndex := mStop + 1;
         Continue;
@@ -892,9 +1034,13 @@ begin
         if (mTag <> '') and (CharInSet(mTag[1], ['a'..'z', 'A'..'Z', '/', '!'])) and (Pos(#10, mTag) = 0) then
         begin
           if SameText(mTag.TrimRight(['/', ' ']), 'br') then
-            mBuilder.AddBreak
+          begin
+            mBuilder.AddBreak;
+          end
           else if StartsText('img', mTag) and (AttributeOf(mTag, 'src') <> '') then
-            mBuilder.AddLink(DecodeHtml(AttributeOf(mTag, 'alt')), DecodeHtml(AttributeOf(mTag, 'src')))
+          begin
+            mBuilder.AddLink(DecodeHtml(AttributeOf(mTag, 'alt')), DecodeHtml(AttributeOf(mTag, 'src')));
+          end
           else if StartsText('a ', mTag) and (AttributeOf(mTag, 'href') <> '') then
           begin
             // <a href="…">Text</a>: Text als Link.
@@ -932,9 +1078,13 @@ begin
     if (mChar = '*') or (mChar = '_') then
     begin
       if mNext = mChar then
-        mDelimiter := mChar + mChar
+      begin
+        mDelimiter := mChar + mChar;
+      end
       else
+      begin
         mDelimiter := mChar;
+      end;
       if (mChar = '_') and TTextChars.IsIdentChar(mPrev) and (mIndex + Length(mDelimiter) <= Length(mText)) and
         TTextChars.IsIdentChar(mText[mIndex + Length(mDelimiter)]) then
       begin
@@ -1035,9 +1185,13 @@ begin
               begin
                 mRun.Text := ABlock.ListMarker;
                 if ABlock.Task = TAtlasMarkdownTask.Done then
-                  mText := '[x] ' + mText
+                begin
+                  mText := '[x] ' + mText;
+                end
                 else
+                begin
                   mText := '[ ] ' + mText;
+                end;
               end;
             TAtlasMarkdownTasks.Clickable:
               mRun.Target := TAtlasTrackerMarkdown.TaskTarget(ATaskIndex);
@@ -1048,7 +1202,9 @@ begin
         Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(mText);
         // Nach dem letzten Punkt einer Liste ein Absatz (Abstand und Ende des hängenden Einzugs).
         if not ANextIsBullet then
+        begin
           Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+        end;
       end;
     TAtlasMarkdownBlockKind.Quote:
       begin
@@ -1066,7 +1222,9 @@ begin
         begin
           mRow := ABlock.Rows[mRowIndex];
           if Length(mRow) = 0 then
+          begin
             Continue;
+          end;
           mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, '');
           mRun.Level := 1;
           Result := Result + [mRun] + TAtlasTrackerMarkdown.InlineRuns(mRow[0], mRowIndex = 0, False) +
@@ -1074,7 +1232,9 @@ begin
           for mCell := 1 to High(mRow) do
           begin
             if mCell > 1 then
+            begin
               Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Cell, '')];
+            end;
             Result := Result + TAtlasTrackerMarkdown.InlineRuns(mRow[mCell], mRowIndex = 0, False);
           end;
         end;
@@ -1087,7 +1247,9 @@ begin
         TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
   end;
   if (ABlock.Kind = TAtlasMarkdownBlockKind.Image) and (Result[0].Text = '') then
+  begin
     Result[0].Text := Copy(ABlock.Info, LastDelimiter('/\', ABlock.Info) + 1, MaxInt);
+  end;
 end;
 
 function DocOf(const ARuns: TAtlasDocRuns): TAtlasDoc;
@@ -1100,9 +1262,13 @@ begin
   mRuns := ARuns;
   // Kein Abstand nach dem letzten Block.
   while (Length(mRuns) > 0) and (mRuns[High(mRuns)].Kind = TAtlasDocRunKind.Paragraph) do
+  begin
     SetLength(mRuns, Length(mRuns) - 1);
+  end;
   if Length(mRuns) = 0 then
+  begin
     Exit;
+  end;
   mSection := Default(TAtlasDocSection);
   mSection.Kind := TAtlasDocSectionKind.Summary;
   mSection.Runs := mRuns;
@@ -1129,7 +1295,9 @@ begin
   mRuns := nil;
   mTask := 0;
   for mIndex := 0 to High(mBlocks) do
+  begin
     mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex), ATasks, mTask);
+  end;
   Result := DocOf(mRuns);
 end;
 
@@ -1144,7 +1312,9 @@ begin
   Result := StartsStr(TaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(TaskPrefix) + 1, MaxInt), AIndex)
     and (AIndex >= 0);
   if not Result then
+  begin
     AIndex := -1;
+  end;
 end;
 
 class function TAtlasTrackerMarkdown.Segments(const AText: string): TArray<TAtlasMarkdownSegment>;
@@ -1167,7 +1337,9 @@ var
     mDoc := DocOf(mRuns);
     mRuns := nil;
     if mDoc.IsEmpty then
+    begin
       Exit;
+    end;
     mSegment := Default(TAtlasMarkdownSegment);
     mSegment.Kind := TAtlasMarkdownSegmentKind.Doc;
     mSegment.Doc := mDoc;
@@ -1213,15 +1385,23 @@ begin
         mRuns := InlineRuns(mBlock.Text);
       TAtlasMarkdownBlockKind.Table:
         for mRow in mBlock.Rows do
+        begin
           for mCell in mRow do
+          begin
             mRuns := mRuns + InlineRuns(mCell);
+          end;
+        end;
       TAtlasMarkdownBlockKind.Image:
         Result := Result + [TAtlasMarkdownLink.Create(mBlock.Text, mBlock.Info)];
       TAtlasMarkdownBlockKind.Code, TAtlasMarkdownBlockKind.Rule: ;
     end;
     for mRun in mRuns do
+    begin
       if mRun.Kind = TAtlasDocRunKind.Link then
+      begin
         Result := Result + [TAtlasMarkdownLink.Create(mRun.Text, mRun.Target)];
+      end;
+    end;
   end;
 end;
 

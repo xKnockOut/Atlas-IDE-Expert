@@ -239,10 +239,16 @@ var
 begin
   Result := SameText(Trim(AConfiguration), TAtlasBuildPipelineSettings.ReleaseConfiguration);
   if Result or (Trim(AConfiguration) = '') then
+  begin
     Exit;
+  end;
   for Name in Configurations do
+  begin
     if SameText(Name, Trim(AConfiguration)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasReleaseGuard }
@@ -273,11 +279,17 @@ begin
   Result := StringReplace(Result, '$(Config)', AConfiguration, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
   while Result.StartsWith('.\') do
+  begin
     Result := Copy(Result, 3, MaxInt);
+  end;
   while (Length(Result) > 1) and Result.EndsWith('\') do
+  begin
     Result := Copy(Result, 1, Length(Result) - 1);
+  end;
   if (Result = '') or (Result = '.') then
+  begin
     Result := '.';
+  end;
 end;
 
 {$SCOPEDENUMS ON}
@@ -297,11 +309,17 @@ var
 begin
   Text := UpperCase(StringReplace(StringReplace(AExpression, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]));
   if Pos('NOTDEFINED(DEBUG)', Text) > 0 then
-    Result := TGuardKind.IfNotDebug
+  begin
+    Result := TGuardKind.IfNotDebug;
+  end
   else if Pos('DEFINED(DEBUG)', Text) > 0 then
-    Result := TGuardKind.IfDebug
+  begin
+    Result := TGuardKind.IfDebug;
+  end
   else
+  begin
     Result := TGuardKind.Neutral;
+  end;
 end;
 
 function FrameGuarded(const AFrame: TGuardFrame): Boolean;
@@ -329,8 +347,12 @@ var
   begin
     Result := False;
     for Item in Frames do
+    begin
       if FrameGuarded(Item) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
   procedure CountLines(AFrom, ATo: Integer);
@@ -338,8 +360,12 @@ var
     Position: Integer;
   begin
     for Position := AFrom to ATo do
+    begin
       if ASource[Position] = #10 then
+      begin
         Inc(Line);
+      end;
+    end;
   end;
 
   procedure HandleDirective(const AText: string);
@@ -353,18 +379,26 @@ var
     begin
       Frame.InElse := False;
       if SameText(Argument, 'DEBUG') then
-        Frame.Kind := TGuardKind.IfDebug
+      begin
+        Frame.Kind := TGuardKind.IfDebug;
+      end
       else
+      begin
         Frame.Kind := TGuardKind.Neutral;
+      end;
       Frames := Frames + [Frame];
     end
     else if Name = 'IFNDEF' then
     begin
       Frame.InElse := False;
       if SameText(Argument, 'DEBUG') then
-        Frame.Kind := TGuardKind.IfNotDebug
+      begin
+        Frame.Kind := TGuardKind.IfNotDebug;
+      end
       else
+      begin
         Frame.Kind := TGuardKind.Neutral;
+      end;
       Frames := Frames + [Frame];
     end
     else if (Name = 'IF') or (Name = 'IFOPT') then
@@ -372,7 +406,9 @@ var
       Frame.InElse := False;
       Frame.Kind := DirectiveKind(Argument);
       if Name = 'IFOPT' then
+      begin
         Frame.Kind := TGuardKind.Neutral;
+      end;
       Frames := Frames + [Frame];
     end
     else if (Name = 'ELSEIF') and (System.Length(Frames) > 0) then
@@ -381,9 +417,13 @@ var
       Frames[High(Frames)].InElse := False;
     end
     else if (Name = 'ELSE') and (System.Length(Frames) > 0) then
-      Frames[High(Frames)].InElse := True
+    begin
+      Frames[High(Frames)].InElse := True;
+    end
     else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (System.Length(Frames) > 0) then
+    begin
       SetLength(Frames, System.Length(Frames) - 1);
+    end;
   end;
 
   procedure SkipBlanks;
@@ -391,7 +431,9 @@ var
     while (Index <= Length_) and CharInSet(ASource[Index], [' ', #9, #13, #10]) do
     begin
       if ASource[Index] = #10 then
+      begin
         Inc(Line);
+      end;
       Inc(Index);
     end;
   end;
@@ -415,16 +457,22 @@ begin
         if (Index < Length_) and (ASource[Index + 1] = '/') then
         begin
           while (Index <= Length_) and (ASource[Index] <> #10) do
+          begin
             Inc(Index);
+          end;
         end
         else
+        begin
           Inc(Index);
+        end;
       '{':
         begin
           Start := Index;
           Found := Pos('}', ASource, Index + 1);
           if Found = 0 then
+          begin
             Found := Length_;
+          end;
           if (Index < Length_) and (ASource[Index + 1] = '$') then
           begin
             Directive := Trim(Copy(ASource, Index + 2, Found - Index - 2));
@@ -439,7 +487,9 @@ begin
           Start := Index;
           Found := Pos('*)', ASource, Index + 2);
           if Found = 0 then
+          begin
             Found := Length_;
+          end;
           if (Index + 2 <= Length_) and (ASource[Index + 2] = '$') then
           begin
             Directive := Trim(Copy(ASource, Index + 3, Found - Index - 3));
@@ -449,22 +499,30 @@ begin
           Index := Found + 2;
         end
         else
+        begin
           Inc(Index);
+        end;
       '''':
         begin
           Inc(Index);
           while (Index <= Length_) and (ASource[Index] <> '''') and (ASource[Index] <> #10) do
+          begin
             Inc(Index);
+          end;
           // Das Zeilenende zählt die Hauptschleife.
           if (Index <= Length_) and (ASource[Index] = '''') then
+          begin
             Inc(Index);
+          end;
         end;
     else
       if IsQualifiedChar(ASource[Index]) then
       begin
         Start := Index;
         while (Index <= Length_) and IsQualifiedChar(ASource[Index]) do
+        begin
           Inc(Index);
+        end;
         Word := UpperCase(Copy(ASource, Start, Index - Start));
         if (Word = 'REPORTMEMORYLEAKSONSHUTDOWN') or (Word = 'SYSTEM.REPORTMEMORYLEAKSONSHUTDOWN') then
         begin
@@ -476,14 +534,20 @@ begin
             SkipBlanks;
             Start := Index;
             while (Index <= Length_) and IsQualifiedChar(ASource[Index]) do
+            begin
               Inc(Index);
+            end;
             if SameText(Copy(ASource, Start, Index - Start), 'True') and not Guarded then
+            begin
               Exit(FoundLine);
+            end;
           end;
         end;
       end
       else
+      begin
         Inc(Index);
+      end;
     end;
   end;
 end;
@@ -517,7 +581,9 @@ var
     ACompilerDefault: Boolean);
   begin
     if Enabled(ACheck) and (IsOn(AValue, ACompilerDefault) <> Expected(ACheck)) then
+    begin
       Findings := Findings + [Finding(AIssue, ACheck, AValue, Expected(ACheck))];
+    end;
   end;
 
 var
@@ -527,19 +593,25 @@ var
 begin
   Findings := nil;
   if Enabled(TAtlasReleaseCheck.DebugDefine) then
+  begin
     for Define in AOptions.Defines do
+    begin
       if SameText(Trim(Define), 'DEBUG') then
       begin
         Findings := Findings + [Finding(TAtlasReleaseIssue.DebugDefine, TAtlasReleaseCheck.DebugDefine, 'DEBUG',
           False)];
         Break;
       end;
+    end;
+  end;
   Option(TAtlasReleaseIssue.DebugInfo, TAtlasReleaseCheck.DebugInfo, AOptions.DebugInformation, True);
   // „Mit Debug-Informationen linken“ zählt nur, wenn keine Debug-Informationen gewollt sind.
   if Enabled(TAtlasReleaseCheck.DebugInfo) and not Expected(TAtlasReleaseCheck.DebugInfo) and
     IsOn(AOptions.DebugInfoInExe, False) then
+  begin
     Findings := Findings + [Finding(TAtlasReleaseIssue.DebugInfoInExe, TAtlasReleaseCheck.DebugInfo,
       AOptions.DebugInfoInExe, False)];
+  end;
   Option(TAtlasReleaseIssue.StackFrames, TAtlasReleaseCheck.StackFrames, AOptions.StackFrames, False);
   Option(TAtlasReleaseIssue.Assertions, TAtlasReleaseCheck.Assertions, AOptions.Assertions, True);
   Option(TAtlasReleaseIssue.RangeChecks, TAtlasReleaseCheck.RangeChecks, AOptions.RangeChecks, False);
@@ -560,20 +632,26 @@ begin
   begin
     Version := VersionOf(AOptions);
     if (Version = '') or (Version = '0.0.0.0') then
+    begin
       Findings := Findings + [Finding(TAtlasReleaseIssue.VersionMissing, TAtlasReleaseCheck.VersionInfo, Version,
-        False)]
+        False)];
+    end
     else if (AOptions.LastVersion <> '') and SameText(Version, AOptions.LastVersion) and
       not IsOn(AOptions.AutoIncrementVersion, False) then
+    begin
       Findings := Findings + [Finding(TAtlasReleaseIssue.VersionUnchanged, TAtlasReleaseCheck.VersionInfo, Version,
         False)];
+    end;
   end;
   if Enabled(TAtlasReleaseCheck.OutputFolder) and not AOptions.IsPackage and AOptions.HasDebugConfiguration and
     not SameText(AOptions.Configuration, DebugConfiguration) then
   begin
     Output := ResolveFolder(AOptions.OutputFolder, AOptions.Configuration, AOptions.Platform);
     if SameText(Output, ResolveFolder(AOptions.DebugOutputFolder, DebugConfiguration, AOptions.Platform)) then
+    begin
       Findings := Findings + [Finding(TAtlasReleaseIssue.OutputFolder, TAtlasReleaseCheck.OutputFolder, Output,
         False)];
+    end;
   end;
   Result := Findings;
 end;
@@ -586,7 +664,9 @@ begin
   Result := AnsiUpperCase(AOptions.Project) + '|' + UpperCase(AOptions.Configuration) + '|' +
     UpperCase(AOptions.Platform);
   for Item in AFindings do
+  begin
     Result := Result + '|' + OptionNames[Item.Issue] + '=' + Item.Value;
+  end;
 end;
 
 { TAtlasReleaseGuardParticipant }
@@ -613,16 +693,24 @@ end;
 function TAtlasReleaseGuardParticipant.Now_: Int64;
 begin
   if Assigned(FClock) then
-    Result := FClock()
+  begin
+    Result := FClock();
+  end
   else
+  begin
     Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
 end;
 
 function TAtlasReleaseGuardParticipant.PendingIndex(const AFileName: string): Integer;
 begin
   for Result := 0 to FPending.Count - 1 do
+  begin
     if SameText(FPending[Result].Options.Project, AFileName) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -641,14 +729,22 @@ begin
   Result := False;
   Settings := FSettings();
   if not TAtlasReleaseGuard.Applies(Settings, AProject) or not FRead(AProject, Options) then
+  begin
     Exit;
+  end;
   if Options.Project = '' then
+  begin
     Options.Project := AProject.FileName;
+  end;
   Findings := TAtlasReleaseGuard.Evaluate(Settings, Options);
   if Length(Findings) = 0 then
-    Outcome := TAtlasReleaseOutcome.Passed
+  begin
+    Outcome := TAtlasReleaseOutcome.Passed;
+  end
   else if Settings.Gate <> TAtlasBuildGate.Block then
-    Outcome := TAtlasReleaseOutcome.Reported
+  begin
+    Outcome := TAtlasReleaseOutcome.Reported;
+  end
   else
   begin
     Key := TAtlasReleaseGuard.FindingsKey(Options, Findings);
@@ -667,7 +763,9 @@ begin
   Reason := FReport(Options, Findings, Outcome);
   Index := PendingIndex(Options.Project);
   if Index >= 0 then
+  begin
     FPending.Delete(Index);
+  end;
   if Outcome = TAtlasReleaseOutcome.Blocked then
   begin
     AReason := Reason;
@@ -676,7 +774,9 @@ begin
   Pending.Options := Options;
   Pending.Version := TAtlasReleaseGuard.VersionOf(Options);
   if Pending.Version <> '' then
+  begin
     FPending.Add(Pending);
+  end;
 end;
 
 procedure TAtlasReleaseGuardParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
@@ -687,11 +787,15 @@ var
 begin
   Index := PendingIndex(AProject.FileName);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Pending := FPending[Index];
   FPending.Delete(Index);
   if ASucceeded and Assigned(FRemember) then
+  begin
     FRemember(Pending.Options, Pending.Version);
+  end;
 end;
 
 end.

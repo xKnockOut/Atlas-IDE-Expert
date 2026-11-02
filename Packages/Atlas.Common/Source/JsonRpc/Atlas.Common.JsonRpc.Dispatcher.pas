@@ -80,10 +80,9 @@ type
     FExpected: TDictionary<string, TJsonRpcResponseHandler>;
     function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue;
       AQueueMs: Int64): TJSONObject;
-    /// <summary>Nebenläufiger Handler für AMethod: eigener oder normaler mit erfüllter Bedingung.</summary>
-    function ConcurrentFor(const AMethod: string; const AParams: TJSONValue;
-      out AHandler: TJsonRpcConcurrentRequestHandler): Boolean;
-    procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
+    /// <summary>Verteilt eine Nachricht mit gültiger Methode: Anfrage, Abbruch oder Benachrichtigung.</summary>
+    function DispatchValid(const AMessage: TJSONObject; const AId: TJSONValue; const AMethod: string;
+      AQueueMs: Int64): TJSONObject;
   public
     constructor Create;
     destructor Destroy; override;
@@ -186,55 +185,148 @@ begin
     end;
 end;
 
-procedure ObserveFinished(const AObserver: IJsonRpcRequestObserver; const AMethod: string;
-  const AParams, AResult: TJSONValue; const AError: Exception; AQueueMs, AElapsedMs: Int64);
+type
+  /// <summary>Eine Anfrage auf dem Weg durch den Handler: Kennung, Abbruchsignal und Beobachter.</summary>
+  TRequestRun = record
+    Id: TJSONValue;
+    Params: TJSONValue;
+    Method: string;
+    Token: IJsonRpcCancellationToken;
+    OnFailed: TJsonRpcRequestFailedEvent;
+    Statistics: IJsonRpcStatistics;
+    Observer: IJsonRpcRequestObserver;
+    /// <summary>Wartezeit vor dem Start.</summary>
+    QueueMs: Int64;
+  end;
+
+procedure ObserveFinished(const ARun: TRequestRun; const AResult: TJSONValue; const AError: Exception;
+  AElapsedMs: Int64);
 begin
-  if AObserver <> nil then
+  if ARun.Observer <> nil then
     try
-      AObserver.Finished(AMethod, AParams, AResult, AError, AQueueMs, AElapsedMs);
+      ARun.Observer.Finished(ARun.Method, ARun.Params, AResult, AError, ARun.QueueMs, AElapsedMs);
     except
       // Das Diagnoselog darf keine Antwort verhindern.
     end;
 end;
 
-function RunConcurrent(const AId, AParams: TJSONValue; const AMethod: string;
-  const AHandler: TJsonRpcConcurrentRequestHandler; const AToken: IJsonRpcCancellationToken;
-  const AOnFailed: TJsonRpcRequestFailedEvent; const AStatistics: IJsonRpcStatistics;
-  const AObserver: IJsonRpcRequestObserver; AQueueMs: Int64): TJSONObject;
-var
-  Watch: TStopwatch;
-  Failed: Boolean;
-  Value: TJSONValue;
-  Previous: Pointer;
+/// <summary>Antwort mit AValue; meldet Ende und Laufzeit.</summary>
+function SucceededResponse(const ARun: TRequestRun; const AValue: TJSONValue; AElapsedMs: Int64): TJSONObject;
 begin
-  Watch := TStopwatch.StartNew;
-  Failed := False;
-  ObserveStarted(AObserver, AMethod);
+  Result := TJsonRpcMessages.Response(ARun.Id, AValue);
+  ObserveFinished(ARun, AValue, nil, AElapsedMs);
+  if ARun.Statistics <> nil then
+  begin
+    ARun.Statistics.Add(ARun.Method, AElapsedMs, False);
+  end;
+end;
+
+/// <summary>Fehlerantwort zu AError; mit AMeasured auch Ende und Laufzeit des Handlers.</summary>
+function FailedResponse(const ARun: TRequestRun; const AError: Exception; AMeasured: Boolean;
+  AElapsedMs: Int64): TJSONObject;
+begin
+  // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
+  TStackGuard.AfterError(AError);
+  if AMeasured then
+  begin
+    ObserveFinished(ARun, nil, AError, AElapsedMs);
+  end;
+  if AMeasured and (ARun.Statistics <> nil) then
+  begin
+    ARun.Statistics.Add(ARun.Method, AElapsedMs, True);
+  end;
+  NotifyFailed(ARun.OnFailed, ARun.Method, ARun.Params, AError);
+  Result := ErrorResponse(ARun.Id, AError);
+end;
+
+function RunConcurrent(const ARun: TRequestRun; const AHandler: TJsonRpcConcurrentRequestHandler): TJSONObject;
+var
+  mWatch: TStopwatch;
+  mValue: TJSONValue;
+  mPrevious: Pointer;
+begin
+  mWatch := TStopwatch.StartNew;
+  ObserveStarted(ARun.Observer, ARun.Method);
   try
-    AToken.ThrowIfCancellationRequested;
+    ARun.Token.ThrowIfCancellationRequested;
     // Tiefe Aufrufe ohne Token-Parameter (EnsureUnit) fragen das Signal über TJsonRpcCurrentRequest (A-06).
-    Previous := TJsonRpcCurrentRequest.Enter(AToken);
+    mPrevious := TJsonRpcCurrentRequest.Enter(ARun.Token);
     try
-      Value := AHandler(AParams, AToken);
+      mValue := AHandler(ARun.Params, ARun.Token);
     finally
-      TJsonRpcCurrentRequest.Leave(Previous);
+      TJsonRpcCurrentRequest.Leave(mPrevious);
     end;
-    Result := TJsonRpcMessages.Response(AId, Value);
-    ObserveFinished(AObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
+    Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
     on E: Exception do
     begin
-      // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
-      TStackGuard.AfterError(E);
-      Failed := True;
-      ObserveFinished(AObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
-      NotifyFailed(AOnFailed, AMethod, AParams, E);
-      Result := ErrorResponse(AId, E);
+      Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
     end;
   end;
-  if AStatistics <> nil then
+end;
+
+function RunOrdered(const ARun: TRequestRun; const AHandler: TJsonRpcRequestHandler): TJSONObject;
+var
+  mWatch: TStopwatch;
+  mValue: TJSONValue;
+  mPrevious: Pointer;
+begin
+  mWatch := TStopwatch.StartNew;
+  ObserveStarted(ARun.Observer, ARun.Method);
+  try
+    mPrevious := TJsonRpcCurrentRequest.Enter(ARun.Token);
+    try
+      mValue := AHandler(ARun.Params);
+    finally
+      TJsonRpcCurrentRequest.Leave(mPrevious);
+    end;
+    Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
+  except
+    on E: Exception do
+    begin
+      Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
+    end;
+  end;
+end;
+
+/// <summary>Läuft im Worker: Anfrage überwachen, ausführen, Kopien freigeben und genau einmal antworten.
+/// AQueued misst die Zeit seit der Übergabe an den Scheduler.</summary>
+procedure RunScheduled(const ARun: TRequestRun; const AHandler: TJsonRpcConcurrentRequestHandler;
+  const APending: IJsonRpcPendingRequests; const AWatchdog: IJsonRpcWatchdog; const AResponder: TJsonRpcResponder;
+  AQueuedMs: Int64);
+var
+  mRun: TRequestRun;
+  mResponse: TJSONObject;
+  mTicket: Int64;
+begin
+  mRun := ARun;
+  mRun.QueueMs := ARun.QueueMs + AQueuedMs;
+  mTicket := 0;
+  // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled (Code-Review A-06).
+  if AWatchdog <> nil then
   begin
-    AStatistics.Add(AMethod, Watch.ElapsedMilliseconds, Failed);
+    mTicket := AWatchdog.Watch(mRun.Id, mRun.Method, mRun.Token, AResponder);
+  end;
+  try
+    mResponse := RunConcurrent(mRun, AHandler);
+  finally
+    if AWatchdog <> nil then
+    begin
+      AWatchdog.Unwatch(mTicket);
+    end;
+    APending.Release(mRun.Id, mRun.Token);
+    mRun.Params.Free;
+    mRun.Id.Free;
+  end;
+  // Hat der Watchdog schon mit RequestCancelled geantwortet, wird die späte Antwort verworfen:
+  // genau eine Antwort je Anfrage (A-06).
+  if APending.TryAnswer(mRun.Token) then
+  begin
+    AResponder(mResponse);
+  end
+  else
+  begin
+    mResponse.Free;
   end;
 end;
 
@@ -242,89 +334,183 @@ end;
 // Referenzen auf referenzgezählte Objekte und Kopien von id und Parametern,
 // nicht auf den Dispatcher.
 procedure ScheduleConcurrent(const AScheduler: TJsonRpcScheduler; const AResponder: TJsonRpcResponder;
-  const APending: IJsonRpcPendingRequests; const AHandler: TJsonRpcConcurrentRequestHandler;
-  const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; const AMethod: string;
-  const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent;
-  const AStatistics: IJsonRpcStatistics; const AObserver: IJsonRpcRequestObserver; AQueueMs: Int64);
+  const APending: IJsonRpcPendingRequests; const AWatchdog: IJsonRpcWatchdog;
+  const AHandler: TJsonRpcConcurrentRequestHandler; const ARun: TRequestRun);
 var
-  Method: string;
-  Statistics: IJsonRpcStatistics;
-  Observer: IJsonRpcRequestObserver;
-  Queued: TStopwatch;
-  Watchdog: IJsonRpcWatchdog;
-  OnFailed: TJsonRpcRequestFailedEvent;
-  Id: TJSONValue;
-  Params: TJSONValue;
-  Responder: TJsonRpcResponder;
-  Pending: IJsonRpcPendingRequests;
-  Handler: TJsonRpcConcurrentRequestHandler;
-  Token: IJsonRpcCancellationToken;
-  Waited: Int64;
+  mRun: TRequestRun;
+  mQueued: TStopwatch;
+  mResponder: TJsonRpcResponder;
+  mPending: IJsonRpcPendingRequests;
+  mWatchdog: IJsonRpcWatchdog;
+  mHandler: TJsonRpcConcurrentRequestHandler;
 begin
-  Responder := AResponder;
-  Waited := AQueueMs;
-  Pending := APending;
-  Handler := AHandler;
-  Token := AToken;
-  Method := AMethod;
-  Watchdog := AWatchdog;
-  OnFailed := AOnFailed;
-  Statistics := AStatistics;
-  Observer := AObserver;
-  Queued := TStopwatch.StartNew;
-  Id := TJSONValue(AId.Clone);
-  Params := nil;
-  if AParams <> nil then
+  mResponder := AResponder;
+  mPending := APending;
+  mWatchdog := AWatchdog;
+  mHandler := AHandler;
+  mQueued := TStopwatch.StartNew;
+  mRun := ARun;
+  mRun.Id := TJSONValue(ARun.Id.Clone);
+  mRun.Params := nil;
+  if ARun.Params <> nil then
   begin
-    Params := TJSONValue(AParams.Clone);
+    mRun.Params := TJSONValue(ARun.Params.Clone);
   end;
 
-  Pending.BeginWork;
+  mPending.BeginWork;
   try
     AScheduler(
       procedure
-      var
-        Response: TJSONObject;
-        Ticket: Int64;
       begin
         try
-          Ticket := 0;
-          // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled (Code-Review A-06).
-          if Watchdog <> nil then
-          begin
-            Ticket := Watchdog.Watch(Id, Method, Token, Responder);
-          end;
-          try
-            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics, Observer,
-              Waited + Queued.ElapsedMilliseconds);
-          finally
-            if Watchdog <> nil then
-            begin
-              Watchdog.Unwatch(Ticket);
-            end;
-            Pending.Release(Id, Token);
-            Params.Free;
-            Id.Free;
-          end;
-          // Hat der Watchdog schon mit RequestCancelled geantwortet, wird die späte Antwort verworfen:
-          // genau eine Antwort je Anfrage (A-06).
-          if Pending.TryAnswer(Token) then
-          begin
-            Responder(Response);
-          end
-          else
-          begin
-            Response.Free;
-          end;
+          RunScheduled(mRun, mHandler, mPending, mWatchdog, mResponder, mQueued.ElapsedMilliseconds);
         finally
-          Pending.EndWork;
+          mPending.EndWork;
         end;
       end);
   except
-    Params.Free;
-    Id.Free;
-    Pending.EndWork;
+    mRun.Params.Free;
+    mRun.Id.Free;
+    mPending.EndWork;
     raise;
+  end;
+end;
+
+/// <summary>Normaler Handler in der Form eines nebenläufigen.</summary>
+function WrappedHandler(const AHandler: TJsonRpcRequestHandler): TJsonRpcConcurrentRequestHandler;
+var
+  mHandler: TJsonRpcRequestHandler;
+begin
+  mHandler := AHandler;
+  Result :=
+    function(const ARequestParams: TJSONValue; const AToken: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := mHandler(ARequestParams);
+    end;
+end;
+
+/// <summary>Nebenläufiger Handler für AMethod: eigener oder normaler mit erfüllter Bedingung.</summary>
+function ConcurrentFor(AConcurrent: TDictionary<string, TJsonRpcConcurrentRequestHandler>;
+  AWhen: TDictionary<string, TJsonRpcConcurrentWhen>; ARequests: TDictionary<string, TJsonRpcRequestHandler>;
+  const AMethod: string; const AParams: TJSONValue; out AHandler: TJsonRpcConcurrentRequestHandler): Boolean;
+var
+  mWhen: TJsonRpcConcurrentWhen;
+  mHandler: TJsonRpcRequestHandler;
+begin
+  AHandler := nil;
+  if AConcurrent.TryGetValue(AMethod, AHandler) then
+  begin
+    Exit(True);
+  end;
+  Result := AWhen.TryGetValue(AMethod, mWhen) and ARequests.TryGetValue(AMethod, mHandler);
+  if Result then
+    try
+      Result := mWhen(AParams);
+    except
+      // Unlesbare Parameter: in der Reihenfolge laufen; der Handler meldet den Fehler selbst.
+      on Exception do
+        Result := False;
+    end;
+  if Result then
+  begin
+    AHandler := WrappedHandler(mHandler);
+  end;
+end;
+
+/// <summary>Merkt AMessage für Absturzfälle; Fehler dabei verhindern keine Nachricht.</summary>
+
+procedure RememberMessage(const ARecent: IJsonRpcRecentMessages; const AMessage: TJSONObject);
+begin
+  if ARecent <> nil then
+    try
+      ARecent.Add(AMessage);
+    except
+      // Das Mitschreiben für Absturzfälle darf keine Nachricht verhindern.
+      on Exception do
+        ;
+    end;
+end;
+
+/// <summary>Nimmt den angemeldeten Handler der Antwort auf die eigene Anfrage AId heraus; False ohne.</summary>
+
+function TakeExpected(AExpected: TDictionary<string, TJsonRpcResponseHandler>; const AId: TJSONValue;
+  out AHandler: TJsonRpcResponseHandler): Boolean;
+begin
+  Result := False;
+  if AId = nil then
+  begin
+    Exit;
+  end;
+  TMonitor.Enter(AExpected);
+  try
+    Result := AExpected.TryGetValue(AId.Value, AHandler);
+    if Result then
+    begin
+      AExpected.Remove(AId.Value);
+    end;
+  finally
+    TMonitor.Exit(AExpected);
+  end;
+end;
+
+/// <summary>Methode und id für Absturzprotokolle.</summary>
+
+function MessageLabel(const AMethod: string; const AId: TJSONValue): string;
+begin
+  Result := AMethod;
+  if AId <> nil then
+  begin
+    Result := AMethod + ' (id ' + AId.ToJSON + ')';
+  end;
+end;
+
+/// <summary>Prüft Guard und RequestGuard von ADispatcher; eine Ausnahme lehnt die Anfrage ab.</summary>
+
+procedure CheckGuards(ADispatcher: TJsonRpcDispatcher; const AMethod: string; const AParams: TJSONValue);
+begin
+  if Assigned(ADispatcher.Guard) then
+  begin
+    ADispatcher.Guard(AMethod, True);
+  end;
+  if Assigned(ADispatcher.RequestGuard) then
+  begin
+    ADispatcher.RequestGuard(AMethod, AParams);
+  end;
+end;
+
+/// <summary>Anfrage AId mit Abbruchsignal AToken und den Beobachtern von ADispatcher.</summary>
+
+function NewRun(ADispatcher: TJsonRpcDispatcher; const AId: TJSONValue; const AMethod: string;
+  const AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; AQueueMs: Int64): TRequestRun;
+begin
+  Result.Id := AId;
+  Result.Params := AParams;
+  Result.Method := AMethod;
+  Result.Token := AToken;
+  Result.OnFailed := ADispatcher.OnRequestFailed;
+  Result.Statistics := ADispatcher.Statistics;
+  Result.Observer := ADispatcher.Observer;
+  Result.QueueMs := AQueueMs;
+end;
+
+/// <summary>Verteilt eine Benachrichtigung. Sie erhält keine Antwort, auch keine Fehlerantwort; unbekannte und
+/// vom Guard abgelehnte werden verworfen. Andere Exceptions eines Handlers gehen an den Aufrufer.</summary>
+
+procedure DispatchNotification(const AGuard: TJsonRpcGuard;
+  AHandlers: TDictionary<string, TJsonRpcNotificationHandler>; const AMethod: string; const AParams: TJSONValue);
+var
+  mHandler: TJsonRpcNotificationHandler;
+begin
+  if Assigned(AGuard) then
+    try
+      AGuard(AMethod, False);
+    except
+      on EJsonRpcError do
+        Exit;
+    end;
+  if AHandlers.TryGetValue(AMethod, mHandler) then
+  begin
+    mHandler(AParams);
   end;
 end;
 
@@ -408,121 +594,58 @@ end;
 
 function TJsonRpcDispatcher.DispatchMessage(const AMessage: TJSONObject; AQueueMs: Int64): TJSONObject;
 var
-  Id: TJSONValue;
-  MethodValue: TJSONValue;
-  Params: TJSONValue;
-  Handler: TJsonRpcResponseHandler;
-  Found: Boolean;
+  mId, mMethodValue: TJSONValue;
+  mHandler: TJsonRpcResponseHandler;
 begin
-  Id := AMessage.GetValue('id');
-  MethodValue := AMessage.GetValue('method');
-  Params := AMessage.GetValue('params');
-  if FRecent <> nil then
-    try
-      FRecent.Add(AMessage);
-    except
-      // Das Mitschreiben für Absturzfälle darf keine Nachricht verhindern.
-      on Exception do
-        ;
-    end;
-
-  if MethodValue = nil then
+  Result := nil;
+  mId := AMessage.GetValue('id');
+  mMethodValue := AMessage.GetValue('method');
+  RememberMessage(FRecent, AMessage);
+  if (mMethodValue = nil) and ((AMessage.GetValue('result') <> nil) or (AMessage.GetValue('error') <> nil)) then
   begin
     // Antwort der Gegenseite auf eine eigene Anfrage: an den angemeldeten Handler, sonst verwerfen.
-    if (AMessage.GetValue('result') <> nil) or (AMessage.GetValue('error') <> nil) then
+    if TakeExpected(FExpected, mId, mHandler) then
     begin
-      Found := False;
-      if Id <> nil then
-      begin
-        TMonitor.Enter(FExpected);
-        try
-          Found := FExpected.TryGetValue(Id.Value, Handler);
-          if Found then
-          begin
-            FExpected.Remove(Id.Value);
-          end;
-        finally
-          TMonitor.Exit(FExpected);
-        end;
-      end;
-      if Found then
-      begin
-        Handler(AMessage);
-      end;
-      Exit(nil);
+      mHandler(AMessage);
     end;
-    Exit(TJsonRpcMessages.Error(Id, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" fehlt'));
-  end;
-
-  if not (MethodValue is TJSONString) then
+  end
+  else if mMethodValue = nil then
   begin
-    if Id = nil then
+    Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" fehlt');
+  end
+  else if not (mMethodValue is TJSONString) then
+  begin
+    if mId <> nil then
     begin
-      Exit(nil);
+      Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest,
+        'Feld "method" ist keine Zeichenkette');
     end;
-    Exit(TJsonRpcMessages.Error(Id, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" ist keine Zeichenkette'));
-  end;
-
-  if Id = nil then
-  begin
-    FLastMessage := MethodValue.Value;
   end
   else
   begin
-    FLastMessage := MethodValue.Value + ' (id ' + Id.ToJSON + ')';
-  end;
-
-  if Id = nil then
-  begin
-    // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
-    // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
-    if (MethodValue.Value = JsonRpcCancelRequestMethod) or (MethodValue.Value = McpCancelledMethod) then
-    begin
-      FPending.Observe(AMessage);
-      Exit(nil);
-    end;
-    DispatchNotification(MethodValue.Value, Params);
-    Result := nil;
-  end
-  else
-  begin
-    Result := DispatchRequest(Id, MethodValue.Value, Params, AQueueMs);
+    FLastMessage := MessageLabel(mMethodValue.Value, mId);
+    Result := DispatchValid(AMessage, mId, mMethodValue.Value, AQueueMs);
   end;
 end;
 
-function TJsonRpcDispatcher.ConcurrentFor(const AMethod: string; const AParams: TJSONValue;
-  out AHandler: TJsonRpcConcurrentRequestHandler): Boolean;
-var
-  When: TJsonRpcConcurrentWhen;
-  Handler: TJsonRpcRequestHandler;
-  Concurrent: Boolean;
+function TJsonRpcDispatcher.DispatchValid(const AMessage: TJSONObject; const AId: TJSONValue;
+  const AMethod: string; AQueueMs: Int64): TJSONObject;
 begin
-  AHandler := nil;
-  if FConcurrentHandlers.TryGetValue(AMethod, AHandler) then
+  Result := nil;
+  if AId <> nil then
   begin
-    Exit(True);
-  end;
-  if not (FConcurrentWhen.TryGetValue(AMethod, When) and FRequestHandlers.TryGetValue(AMethod, Handler)) then
+    Result := DispatchRequest(AId, AMethod, AMessage.GetValue('params'), AQueueMs);
+  end
+  // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
+  // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
+  else if (AMethod = JsonRpcCancelRequestMethod) or (AMethod = McpCancelledMethod) then
   begin
-    Exit(False);
-  end;
-  try
-    Concurrent := When(AParams);
-  except
-    // Unlesbare Parameter: in der Reihenfolge laufen; der Handler meldet den Fehler selbst.
-    on Exception do
-      Concurrent := False;
-  end;
-  if not Concurrent then
+    FPending.Observe(AMessage);
+  end
+  else
   begin
-    Exit(False);
+    DispatchNotification(FGuard, FNotificationHandlers, AMethod, AMessage.GetValue('params'));
   end;
-  AHandler :=
-    function(const ARequestParams: TJSONValue; const AToken: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Handler(ARequestParams);
-    end;
-  Result := True;
 end;
 
 function TJsonRpcDispatcher.Methods: TArray<string>;
@@ -533,118 +656,59 @@ end;
 function TJsonRpcDispatcher.DispatchRequest(const AId: TJSONValue; const AMethod: string;
   const AParams: TJSONValue; AQueueMs: Int64): TJSONObject;
 var
-  Handler: TJsonRpcRequestHandler;
-  ConcurrentHandler: TJsonRpcConcurrentRequestHandler;
-  Token: IJsonRpcCancellationToken;
-  Scheduled: Boolean;
-  Ticket: Int64;
-  Watch: TStopwatch;
-  Measured: Boolean;
-  Value: TJSONValue;
-  Previous: Pointer;
+  mRun: TRequestRun;
+  mHandler: TJsonRpcRequestHandler;
+  mConcurrent: TJsonRpcConcurrentRequestHandler;
+  mScheduled: Boolean;
+  mTicket: Int64;
 begin
-  Token := FPending.Acquire(AId);
-  Scheduled := False;
-  Measured := False;
-  Watch := TStopwatch.StartNew;
-  Ticket := 0;
+  mRun := NewRun(Self, AId, AMethod, AParams, FPending.Acquire(AId), AQueueMs);
+  mScheduled := False;
+  mTicket := 0;
   try
     try
-      if Assigned(FGuard) then
+      CheckGuards(Self, AMethod, AParams);
+      if ConcurrentFor(FConcurrentHandlers, FConcurrentWhen, FRequestHandlers, AMethod, AParams, mConcurrent) then
       begin
-        FGuard(AMethod, True);
-      end;
-      if Assigned(FRequestGuard) then
-      begin
-        FRequestGuard(AMethod, AParams);
-      end;
-      if ConcurrentFor(AMethod, AParams, ConcurrentHandler) then
-      begin
-        if Assigned(FScheduler) and Assigned(FResponder) then
+        mScheduled := Assigned(FScheduler) and Assigned(FResponder);
+        if mScheduled then
         begin
-          ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token, AMethod,
-            FWatchdog, FOnRequestFailed, FStatistics, FObserver, AQueueMs);
-          Scheduled := True;
+          ScheduleConcurrent(FScheduler, FResponder, FPending, FWatchdog, mConcurrent, mRun);
           Exit(nil);
         end;
         // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
         if FWatchdog <> nil then
         begin
-          Ticket := FWatchdog.Watch(AId, AMethod);
+          mTicket := FWatchdog.Watch(AId, AMethod);
         end;
-        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics,
-          FObserver, AQueueMs));
+        Exit(RunConcurrent(mRun, mConcurrent));
       end;
-      if not FRequestHandlers.TryGetValue(AMethod, Handler) then
+      if not FRequestHandlers.TryGetValue(AMethod, mHandler) then
       begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
       end;
       // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
-      Token.ThrowIfCancellationRequested;
+      mRun.Token.ThrowIfCancellationRequested;
       if FWatchdog <> nil then
       begin
-        Ticket := FWatchdog.Watch(AId, AMethod);
+        mTicket := FWatchdog.Watch(AId, AMethod);
       end;
-      Measured := True;
-      ObserveStarted(FObserver, AMethod);
-      Previous := TJsonRpcCurrentRequest.Enter(Token);
-      try
-        Value := Handler(AParams);
-      finally
-        TJsonRpcCurrentRequest.Leave(Previous);
-      end;
-      Result := TJsonRpcMessages.Response(AId, Value);
-      ObserveFinished(FObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
-      if FStatistics <> nil then
-      begin
-        FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, False);
-      end;
+      Result := RunOrdered(mRun, mHandler);
     except
       on E: Exception do
       begin
-        // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
-        TStackGuard.AfterError(E);
-        if Measured then
-        begin
-          ObserveFinished(FObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
-        end;
-        if Measured and (FStatistics <> nil) then
-        begin
-          FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, True);
-        end;
-        NotifyFailed(FOnRequestFailed, AMethod, AParams, E);
-        Result := ErrorResponse(AId, E);
+        Result := FailedResponse(mRun, E, False, 0);
       end;
     end;
   finally
     if FWatchdog <> nil then
     begin
-      FWatchdog.Unwatch(Ticket);
+      FWatchdog.Unwatch(mTicket);
     end;
-    if not Scheduled then
+    if not mScheduled then
     begin
-      FPending.Release(AId, Token);
+      FPending.Release(AId, mRun.Token);
     end;
-  end;
-end;
-
-procedure TJsonRpcDispatcher.DispatchNotification(const AMethod: string; const AParams: TJSONValue);
-var
-  Handler: TJsonRpcNotificationHandler;
-begin
-  // Benachrichtigungen erhalten keine Antwort, auch keine Fehlerantwort.
-  // Unbekannte und vom Guard abgelehnte Benachrichtigungen werden verworfen.
-  // Andere Exceptions eines Handlers gehen an den Aufrufer.
-  if Assigned(FGuard) then
-    try
-      FGuard(AMethod, False);
-    except
-      on EJsonRpcError do
-        Exit;
-    end;
-  if FNotificationHandlers.TryGetValue(AMethod, Handler) then
-  begin
-    Handler(AParams);
   end;
 end;
 

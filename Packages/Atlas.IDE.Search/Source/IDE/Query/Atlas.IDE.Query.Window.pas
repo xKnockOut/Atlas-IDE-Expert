@@ -101,14 +101,20 @@ var
   Frame: TAtlasCodeQueryFrame;
 begin
   if not (AFrame is TAtlasCodeQueryFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasCodeQueryFrame(AFrame);
   TAtlasIdeCodeQueryWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeCodeQueryWindow.OnFrame) then
+  begin
     TAtlasIdeCodeQueryWindow.OnFrame(Frame);
+  end;
 end;
 
 function TCodeQueryDock.GetMenuActionList: TCustomActionList;
@@ -160,7 +166,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TCodeQueryDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeCodeQueryWindow }
@@ -173,7 +181,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -181,7 +191,9 @@ class function TAtlasIdeCodeQueryWindow.ExistingFrame: TAtlasCodeQueryFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasCodeQueryFrame) then
+  begin
     Result := TAtlasCodeQueryFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeCodeQueryWindow.Visible: Boolean;
@@ -193,7 +205,9 @@ end;
 class procedure TAtlasIdeCodeQueryWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeCodeQueryWindow.UpdateIcon;
@@ -201,7 +215,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -217,7 +233,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

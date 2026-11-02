@@ -91,7 +91,9 @@ destructor TChordState.Destroy;
 begin
   // Erst abmelden, dann freigeben (#493).
   if TAtlasKeyHook.Contains(Self) then
+  begin
     TAtlasKeyHook.Remove(Self);
+  end;
   FTimer.Free;
   inherited Destroy;
 end;
@@ -102,7 +104,9 @@ begin
   FStarted := TThread.GetTickCount64;
   FWaiting := True;
   if not TAtlasKeyHook.Contains(Self) then
+  begin
     TAtlasKeyHook.Add(Self);
+  end;
   FTimer.Enabled := True;
 end;
 
@@ -111,7 +115,9 @@ begin
   FWaiting := False;
   FTimer.Enabled := False;
   if TAtlasKeyHook.Contains(Self) then
+  begin
     TAtlasKeyHook.Remove(Self);
+  end;
 end;
 
 procedure TChordState.Toggle;
@@ -152,7 +158,9 @@ begin
   // zweiter Teil.
   Result := False;
   if not FWaiting or (AKey = FBaseKey) then
+  begin
     Exit;
+  end;
   case TAtlasQuickBookmarks.Chord(TAtlasIdeSettings.Current.QuickBookmarkChordWait,
     Integer(TThread.GetTickCount64 - FStarted), AKey) of
     TAtlasChordAction.PassOn:
@@ -200,7 +208,9 @@ var
     Input.Itype := INPUT_KEYBOARD;
     Input.ki.wVk := AVirtual;
     if AUp then
+    begin
       Input.ki.dwFlags := KEYEVENTF_KEYUP;
+    end;
     Inputs := Inputs + [Input];
   end;
 
@@ -210,17 +220,27 @@ begin
   Base := Word(TAtlasIdeSettings.Current.QuickBookmarkKey);
   // Umschalttasten des ersten Teils, die der Nutzer nicht mehr hält, kurz selbst drücken.
   if ((Base and scCtrl) <> 0) and (GetKeyState(VK_CONTROL) >= 0) then
+  begin
     Pressed := Pressed + [VK_CONTROL];
+  end;
   if ((Base and scShift) <> 0) and (GetKeyState(VK_SHIFT) >= 0) then
+  begin
     Pressed := Pressed + [VK_SHIFT];
+  end;
   if ((Base and scAlt) <> 0) and (GetKeyState(VK_MENU) >= 0) then
+  begin
     Pressed := Pressed + [VK_MENU];
+  end;
   for Modifier in Pressed do
+  begin
     Add(Modifier, False);
+  end;
   Add(FBaseKey, False);
   Add(FBaseKey, True);
   for Modifier in Pressed do
+  begin
     Add(Modifier, True);
+  end;
   // Der zweite Teil mit den Umschalttasten, die der Nutzer gerade hält, wie er ihn gedrückt hat.
   Add(AKey, False);
   Add(AKey, True);
@@ -239,7 +259,9 @@ var
   Wait: Integer;
 begin
   if State = nil then
+  begin
     State := TChordState.Create;
+  end;
   // Der selbst gesendete erste Teil geht an die Faltung der IDE.
   if (State.FPassAt <> 0) and (TThread.GetTickCount64 - State.FPassAt < PassMs) then
   begin
@@ -256,7 +278,9 @@ begin
   end;
   // Wiederholung der gehaltenen Taste, während Atlas noch wartet: weiter warten.
   if State.FWaiting then
+  begin
     Exit;
+  end;
   State.Start;
 end;
 

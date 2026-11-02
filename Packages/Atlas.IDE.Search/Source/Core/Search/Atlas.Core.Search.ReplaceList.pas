@@ -99,11 +99,15 @@ var
   Index: Integer;
 begin
   if Length(AFile.Hits) = 0 then
+  begin
     Exit;
+  end;
   Checks := nil;
   SetLength(Checks, Length(AFile.Hits));
   for Index := 0 to High(Checks) do
+  begin
     Checks[Index] := True;
+  end;
   FResults := FResults + [AFile];
   FChecked := FChecked + [Checks];
 end;
@@ -113,15 +117,21 @@ var
   Index: Integer;
 begin
   if (AFile < 0) or (AFile > High(FChecked)) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FChecked[AFile]) do
+  begin
     FChecked[AFile][Index] := AValue;
+  end;
 end;
 
 procedure TAtlasReplaceList.SetHitChecked(AFile, AHit: Integer; AValue: Boolean);
 begin
   if (AFile < 0) or (AFile > High(FChecked)) or (AHit < 0) or (AHit > High(FChecked[AFile])) then
+  begin
     Exit;
+  end;
   FChecked[AFile][AHit] := AValue;
 end;
 
@@ -131,10 +141,16 @@ var
 begin
   Result := (AFile >= 0) and (AFile <= High(FChecked));
   if not Result then
+  begin
     Exit;
+  end;
   for Value in FChecked[AFile] do
+  begin
     if not Value then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasReplaceList.HitChecked(AFile, AHit: Integer): Boolean;
@@ -150,9 +166,15 @@ var
 begin
   Result := 0;
   for Checks in FChecked do
+  begin
     for Value in Checks do
+    begin
       if Value then
+      begin
         Inc(Result);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasReplaceList.HitCount: Integer;
@@ -189,7 +211,9 @@ begin
       Row.Line := Item.Hits[HitIndex].Line + 1;
       Row.Text := TAtlasTextSearch.HitText(Item.Lines, Item.Hits[HitIndex]);
       if FQuery.Options.Regex then
+      begin
         Row.Preview := TAtlasSearchReplace.Preview(Item.Lines, Item.Hits[HitIndex], FQuery, FReplace).Caption;
+      end;
       Result := Result + [Row];
     end;
   end;
@@ -209,10 +233,16 @@ begin
     Item := FResults[FileIndex];
     Chosen := nil;
     for HitIndex := 0 to High(Item.Hits) do
+    begin
       if FChecked[FileIndex][HitIndex] then
+      begin
         Chosen := Chosen + [Item.Hits[HitIndex]];
+      end;
+    end;
     if Length(Chosen) = 0 then
+    begin
       Continue;
+    end;
     if Assigned(AIsReadOnly) and AIsReadOnly(Item.FileName) then
     begin
       Result.ReadOnly := Result.ReadOnly + [Item.FileName];

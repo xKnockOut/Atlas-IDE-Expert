@@ -97,12 +97,16 @@ begin
   try
     First := Reported.IndexOf(AKey) < 0;
     if First then
+    begin
       Reported.Add(AKey);
+    end;
   finally
     ReportLock.Leave;
   end;
   if First then
+  begin
     TAtlasGuard.Log(AText);
+  end;
 end;
 
 /// <summary>Eine Zeile, dass die Datei der Art AKind unverändert bleibt.</summary>
@@ -115,9 +119,13 @@ function TextOf(const ABytes: TBytes): string;
 begin
   // Mit oder ohne BOM.
   if (Length(ABytes) >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3)
+  begin
+    Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
+  end
   else
+  begin
     Result := TEncoding.UTF8.GetString(ABytes);
+  end;
 end;
 
 class function TAtlasDataFile.TryRead(const AFileName: string; out AText: string): Boolean;
@@ -125,7 +133,9 @@ begin
   AText := '';
   Result := False;
   if not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   try
     AText := TextOf(TAtlasTextFile.ReadAllBytes(AFileName));
     Result := True;
@@ -144,13 +154,17 @@ begin
   begin
     // Zwischen Prüfen und Öffnen gelöscht: wie ohne Datei.
     if not FileExists(AFileName) then
+    begin
       Exit(TAtlasDataLoad.Missing);
+    end;
     ReportKept(AKind, 'gesperrt oder nicht lesbar');
     Exit(TAtlasDataLoad.Kept);
   end;
   try
     if AParse(Text) then
+    begin
       Exit(TAtlasDataLoad.Loaded);
+    end;
   except
     // Eine Ausnahme kann am Inhalt oder am Leser liegen: Die Datei bleibt, wie sie ist. Nur die Klasse, die
     // Meldung könnte Inhalt der Datei enthalten.
@@ -161,14 +175,22 @@ begin
     end;
   end;
   if Trim(Text) = '' then
-    Reason := 'leer'
+  begin
+    Reason := 'leer';
+  end
   else
+  begin
     Reason := 'kein gültiger Inhalt';
+  end;
   // Fort: Ein zweiter Leser (anderer Thread, zweite IDE) hat sie eben beiseitegelegt.
   if SetAside(AFileName, AKind, Reason) or not FileExists(AFileName) then
-    Result := TAtlasDataLoad.Renewed
+  begin
+    Result := TAtlasDataLoad.Renewed;
+  end
   else
+  begin
     Result := TAtlasDataLoad.Kept;
+  end;
 end;
 
 class function TAtlasDataFile.Writable(ALoad: TAtlasDataLoad): Boolean;
@@ -182,7 +204,9 @@ var
 begin
   Folder := ExtractFileDir(AFileName);
   if (Folder <> '') and not ForceDirectories(Folder) then
+  begin
     raise EInOutError.Create('Ordner der Datendatei lässt sich nicht anlegen');
+  end;
   TAtlasTextFile.Replace(AFileName, TEncoding.UTF8.GetBytes(AText));
 end;
 
@@ -195,10 +219,14 @@ begin
   // löschen, dann umbenennen konnte zwei Lesern die eben beiseitegelegte Datei kosten.
   Result := MoveFileEx(PChar(AFileName), PChar(Target), MOVEFILE_REPLACE_EXISTING);
   if Result then
+  begin
     TAtlasGuard.Log(Format('Datendatei %s: %s; beiseitegelegt als *%s, Atlas beginnt sie neu',
-      [AKind, AReason, DefectExtension]))
+      [AKind, AReason, DefectExtension]));
+  end
   else if FileExists(AFileName) then
+  begin
     ReportKept(AKind, AReason + ', lässt sich nicht beiseitelegen');
+  end;
 end;
 
 class procedure TAtlasDataFile.ReportNotWritten(const AKind: string; E: Exception);
@@ -207,7 +235,9 @@ var
 begin
   Reason := E.ClassName;
   if E is EAtlasTextFileError then
+  begin
     Reason := Reason + ': ' + TAtlasGuard.SafeMessage(E.Message);
+  end;
   ReportOnce('w:' + AKind, Format('Datendatei %s nicht gespeichert (%s)', [AKind, Reason]));
 end;
 

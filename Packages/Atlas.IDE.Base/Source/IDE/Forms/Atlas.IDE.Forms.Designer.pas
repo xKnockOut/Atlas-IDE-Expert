@@ -114,13 +114,19 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ModuleCount - 1 do
   begin
     Module := Services.Modules[Index];
     for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    begin
       if Supports(Module.ModuleFileEditors[FileIndex], IOTAFormEditor, Editor) then
+      begin
         Result := Result + [Editor];
+      end;
+    end;
   end;
 end;
 
@@ -130,8 +136,12 @@ var
 begin
   Result := nil;
   for Editor in FormEditors do
+  begin
     if SameText(Editor.FileName, AFileName) then
+    begin
       Exit(Editor);
+    end;
+  end;
 end;
 
 function RootOf(const AEditor: IOTAFormEditor): TComponent;
@@ -140,7 +150,9 @@ var
 begin
   Result := nil;
   if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, Component) then
+  begin
     Result := Component.GetComponent;
+  end;
 end;
 
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
@@ -149,7 +161,9 @@ var
 begin
   Result := nil;
   if Supports(AEditor, INTAFormEditor, Native) then
+  begin
     Result := Native.FormDesigner;
+  end;
 end;
 
 function TextOf(const AEditor: IOTAFormEditor): string;
@@ -161,7 +175,9 @@ begin
   Root := RootOf(AEditor);
   Designer := DesignerOf(AEditor);
   if (Root = nil) or (Designer = nil) then
+  begin
     Exit;
+  end;
   Result := TAtlasFormText.Write(Root,
     function(AMethod: TMethod): string
     begin
@@ -184,19 +200,27 @@ begin
   AProp := nil;
   Parts := APath.Split(['.']);
   if Length(Parts) = 0 then
+  begin
     Exit('ohne Eigenschaft');
+  end;
   for Index := 0 to High(Parts) - 1 do
   begin
     AProp := GetPropInfo(AInstance, Parts[Index]);
     if (AProp = nil) or (AProp^.PropType^.Kind <> tkClass) then
+    begin
       Exit(Format('%s ist keine Objekt-Eigenschaft', [Parts[Index]]));
+    end;
     AInstance := GetObjectProp(AInstance, AProp);
     if AInstance = nil then
+    begin
       Exit(Format('%s ist nicht gesetzt', [Parts[Index]]));
+    end;
   end;
   AProp := GetPropInfo(AInstance, Parts[High(Parts)]);
   if (AProp = nil) or (AProp^.SetProc = nil) then
+  begin
     Exit(Format('%s lässt sich nicht setzen', [APath]));
+  end;
   Result := '';
 end;
 
@@ -219,26 +243,38 @@ begin
     if Kind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet] then
     begin
       if AProp^.Default = NoDefaultValue then
+      begin
         Exit(Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]));
+      end;
       if not ACheckOnly then
+      begin
         SetOrdProp(AInstance, AProp, AProp^.Default);
+      end;
     end
     else if Kind in [tkString, tkLString, tkWString, tkUString] then
     begin
       if not ACheckOnly then
+      begin
         SetStrProp(AInstance, AProp, '');
+      end;
     end
     else
+    begin
       Result := Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]);
+    end;
     Exit;
   end;
   case Kind of
     tkString, tkLString, tkWString, tkUString:
       begin
         if not TAtlasFormChanges.StringValue(AChange.Value, Text) then
+        begin
           Exit(Format('%s: kein String-Wert', [AChange.PropertyPath]));
+        end;
         if not ACheckOnly then
+        begin
           SetStrProp(AInstance, AProp, Text);
+        end;
       end;
     tkInteger:
       begin
@@ -247,25 +283,37 @@ begin
           // Bezeichner wie clRed oder crHandPoint.
           IdentToInt := FindIdentToInt(AProp^.PropType^);
           if not Assigned(IdentToInt) or not IdentToInt(AChange.Value, Number) then
+          begin
             Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+          end;
         end;
         if not ACheckOnly then
+        begin
           SetOrdProp(AInstance, AProp, Number);
+        end;
       end;
     tkInt64:
       begin
         if not TryStrToInt64(AChange.Value, Number64) then
+        begin
           Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+        end;
         if not ACheckOnly then
+        begin
           SetInt64Prop(AInstance, AProp, Number64);
+        end;
       end;
     tkEnumeration:
       begin
         Number := GetEnumValue(AProp^.PropType^, AChange.Value);
         if Number < 0 then
+        begin
           Exit(Format('%s: unbekannter Wert %s', [AChange.PropertyPath, AChange.Value]));
+        end;
         if not ACheckOnly then
+        begin
           SetOrdProp(AInstance, AProp, Number);
+        end;
       end;
     tkSet:
       begin
@@ -276,14 +324,20 @@ begin
             Exit(Format('%s: unbekanntes Element in %s', [AChange.PropertyPath, AChange.Value]));
         end;
         if not ACheckOnly then
+        begin
           SetOrdProp(AInstance, AProp, Number);
+        end;
       end;
     tkFloat:
       begin
         if not TryStrToFloat(AChange.Value, Float, TFormatSettings.Invariant) then
+        begin
           Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+        end;
         if not ACheckOnly then
+        begin
           SetFloatProp(AInstance, AProp, Float);
+        end;
       end;
   else
     Result := Format('%s: Typ wird im Designer nicht gesetzt', [AChange.PropertyPath]);
@@ -295,19 +349,25 @@ end;
 procedure TAtlasIdeForms.TNotification.ItemDeleted(const ADesigner: IDesigner; AItem: TPersistent);
 begin
   if FOwner <> nil then
+  begin
     FOwner.Changed;
+  end;
 end;
 
 procedure TAtlasIdeForms.TNotification.ItemInserted(const ADesigner: IDesigner; AItem: TPersistent);
 begin
   if FOwner <> nil then
+  begin
     FOwner.Changed;
+  end;
 end;
 
 procedure TAtlasIdeForms.TNotification.ItemsModified(const ADesigner: IDesigner);
 begin
   if FOwner <> nil then
+  begin
     FOwner.Changed;
+  end;
 end;
 
 procedure TAtlasIdeForms.TNotification.SelectionChanged(const ADesigner: IDesigner;
@@ -318,7 +378,9 @@ end;
 procedure TAtlasIdeForms.TNotification.DesignerOpened(const ADesigner: IDesigner; AResurrecting: Boolean);
 begin
   if FOwner <> nil then
+  begin
     FOwner.Changed;
+  end;
 end;
 
 procedure TAtlasIdeForms.TNotification.DesignerClosed(const ADesigner: IDesigner; AGoingDormant: Boolean);
@@ -328,7 +390,9 @@ var
 begin
   Owner := FOwner;
   if (Owner = nil) or (ADesigner = nil) then
+  begin
     Exit;
+  end;
   Root := ADesigner.Root;
   TAtlasGuard.Run(TAtlasFeature.Forms,
     procedure
@@ -362,7 +426,9 @@ destructor TAtlasIdeForms.Destroy;
 begin
   // Erst abmelden, dann freigeben (#493).
   if FCurrent = Self then
+  begin
     FCurrent := nil;
+  end;
   FTimer.Free;
   FNotification.FOwner := nil;
   UnregisterDesignNotification(FNotificationRef);
@@ -375,7 +441,9 @@ end;
 procedure TAtlasIdeForms.Log(const AText: string);
 begin
   if Assigned(FLog) then
+  begin
     FLog(AText);
+  end;
 end;
 
 procedure TAtlasIdeForms.Changed;
@@ -397,7 +465,9 @@ begin
     begin
       Session := nil;
       if Assigned(FSessionOf) then
+      begin
         Session := FSessionOf();
+      end;
       if Session = nil then
       begin
         FLastSession := nil;
@@ -411,7 +481,9 @@ begin
         FDirty := True;
       end;
       if not FDirty then
+      begin
         Exit;
+      end;
       FDirty := False;
       SyncAll(Session);
     end);
@@ -427,11 +499,15 @@ begin
     try
       Root := RootOf(Editor);
       if Root = nil then
+      begin
         Continue;
+      end;
       FRoots.AddOrSetValue(Root, Editor.FileName);
       Text := TextOf(Editor);
       if (Text = '') or (FTexts.TryGetValue(Key(Editor.FileName), Previous) and (Previous = Text)) then
+      begin
         Continue;
+      end;
       ASession.Sync(Editor.FileName, Text);
       FTexts.AddOrSetValue(Key(Editor.FileName), Text);
     except
@@ -446,12 +522,16 @@ var
   Session: TLspSession;
 begin
   if not FRoots.TryGetValue(ARoot, FileName) then
+  begin
     Exit;
+  end;
   FRoots.Remove(ARoot);
   FTexts.Remove(Key(FileName));
   Session := nil;
   if Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if Session <> nil then
     try
       Session.Close(FileName);
@@ -464,7 +544,9 @@ end;
 class procedure TAtlasIdeForms.SyncNow(ASession: TLspSession);
 begin
   if (FCurrent = nil) or (ASession = nil) then
+  begin
     Exit;
+  end;
   if ASession <> FCurrent.FLastSession then
   begin
     FCurrent.FLastSession := ASession;
@@ -500,7 +582,9 @@ begin
   AProperties := nil;
   // Die Positionen des Servers beziehen sich auf den Text, den Atlas zuletzt geschickt hat.
   if (FCurrent = nil) or not FCurrent.FTexts.TryGetValue(Key(AFileName), Sent) then
+  begin
     Exit('im Designer offen, aber noch nicht an den Server gemeldet');
+  end;
   try
     Edited := TLspEdits.Apply(Sent, AEdits);
   except
@@ -508,8 +592,10 @@ begin
       Exit(E.Message);
   end;
   if not TAtlasFormChanges.Diff(Sent, Edited, AChanges, AProperties, Reason) then
+  begin
     Exit(Format('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und einzeilige Eigenschaften (%s)',
       [Reason]));
+  end;
   Result := '';
 end;
 
@@ -533,24 +619,36 @@ begin
   Root := RootOf(Editor);
   Designer := DesignerOf(Editor);
   if (Root = nil) or (Designer = nil) then
+  begin
     Exit('Formular ist nicht mehr offen');
+  end;
   // Erst alles prüfen, dann setzen: Entweder alle Zuordnungen oder keine.
   Targets := nil;
   Properties := nil;
   for Change in AChanges do
   begin
     if Change.Component = '' then
-      Component := Root
+    begin
+      Component := Root;
+    end
     else
+    begin
       Component := Root.FindComponent(Change.Component);
+    end;
     if Component = nil then
+    begin
       Exit(Format('Komponente %s nicht gefunden', [Change.Component]));
+    end;
     PropInfo := GetPropInfo(Component, Change.EventName);
     if (PropInfo = nil) or (PropInfo^.PropType^.Kind <> tkMethod) then
+    begin
       Exit(Format('%s.%s ist kein Ereignis', [Component.Name, Change.EventName]));
+    end;
     // Die Unit ist schon geändert; der Handler muss dort unter dem neuen Namen stehen.
     if not Designer.MethodExists(Change.NewHandler) then
+    begin
       Exit(Format('Methode %s fehlt in der Unit', [Change.NewHandler]));
+    end;
     Targets := Targets + [Component];
     Properties := Properties + [PropInfo];
   end;
@@ -559,29 +657,45 @@ begin
   for Prop in AProperties do
   begin
     if Prop.Component = '' then
-      Component := Root
+    begin
+      Component := Root;
+    end
     else
+    begin
       Component := Root.FindComponent(Prop.Component);
+    end;
     if Component = nil then
+    begin
       Exit(Format('Komponente %s nicht gefunden', [Prop.Component]));
+    end;
     Reason := ResolveProperty(Component, Prop.PropertyPath, Instance, PropInfo);
     if Reason = '' then
+    begin
       Reason := AssignValue(Instance, PropInfo, Prop, True);
+    end;
     if Reason <> '' then
+    begin
       Exit(Format('%s: %s', [Component.Name, Reason]));
+    end;
     ValueTargets := ValueTargets + [Instance];
     ValueProps := ValueProps + [PropInfo];
   end;
   for Index := 0 to High(AChanges) do
+  begin
     SetMethodProp(Targets[Index], Properties[Index], Designer.CreateMethod(AChanges[Index].NewHandler,
       GetTypeData(Properties[Index]^.PropType^)));
+  end;
   for Index := 0 to High(AProperties) do
+  begin
     AssignValue(ValueTargets[Index], ValueProps[Index], AProperties[Index], False);
+  end;
   if (Length(AChanges) > 0) or (Length(AProperties) > 0) then
   begin
     Designer.Modified;
     if FCurrent <> nil then
+    begin
       FCurrent.Changed;
+    end;
   end;
   Result := '';
 end;

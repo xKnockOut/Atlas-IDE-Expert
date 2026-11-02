@@ -144,12 +144,16 @@ begin
   try
     FList.Items.Clear;
     for mItem in FItems do
+    begin
       FList.Items.Add(RowText(mItem));
+    end;
   finally
     FList.Items.EndUpdate;
   end;
   if FList.Items.Count > 0 then
+  begin
     FList.ItemIndex := 0;
+  end;
   UpdateButtons;
   inherited;
 end;
@@ -158,7 +162,9 @@ function TAtlasTrackerTimeListDialog.Selected: Integer;
 begin
   Result := -1;
   if FList.HandleAllocated and (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FItems)) then
+  begin
     Result := FList.ItemIndex;
+  end;
 end;
 
 procedure TAtlasTrackerTimeListDialog.UpdateButtons;
@@ -175,7 +181,9 @@ end;
 procedure TAtlasTrackerTimeListDialog.BookClick(Sender: TObject);
 begin
   if Selected < 0 then
+  begin
     Exit;
+  end;
   FAction := TAtlasTimeListAction.Book;
   FChosen := Selected;
   ModalResult := mrOk;
@@ -184,7 +192,9 @@ end;
 procedure TAtlasTrackerTimeListDialog.DiscardClick(Sender: TObject);
 begin
   if Selected < 0 then
+  begin
     Exit;
+  end;
   FAction := TAtlasTimeListAction.Discard;
   FChosen := Selected;
   ModalResult := mrOk;
@@ -196,7 +206,9 @@ var
 begin
   mDays := DateToStr(AItem.FirstDay);
   if AItem.LastDay <> AItem.FirstDay then
+  begin
     mDays := mDays + ' – ' + DateToStr(AItem.LastDay);
+  end;
   Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeOpenRow, [AItem.Issue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(AItem.Seconds, 1)), mDays]);
 end;
@@ -212,7 +224,9 @@ begin
     Result := mDialog.Action;
     AIndex := mDialog.Chosen;
     if AIndex < 0 then
+    begin
       Result := TAtlasTimeListAction.Close;
+    end;
   finally
     mDialog.Free;
   end;

@@ -207,14 +207,18 @@ begin
   FMessage := AMessage;
   FStatus := AStatus;
   if FImported = nil then
+  begin
     FImported := TDictionary<string, Boolean>.Create;
+  end;
   if FLists = nil then
   begin
     FLists := TDictionary<string, TAtlasBookmarkList>.Create;
     FShared := TAtlasIdeSettings.Current.BookmarksShared;
   end;
   if FProjectOf = nil then
+  begin
     FProjectOf := TDictionary<string, string>.Create;
+  end;
   TAtlasIdeBookmarksWindow.OnFrame :=
     procedure(AFrame: TAtlasBookmarksFrame)
     begin
@@ -229,7 +233,9 @@ class procedure TAtlasIdeBookmarks.Release;
 begin
   TAtlasIdeBookmarksWindow.Release;
   if Assigned(FStatus) and (FStatusAt <> 0) then
+  begin
     FStatus('');
+  end;
   FMessage := nil;
   FStatus := nil;
   FStatusAt := 0;
@@ -248,7 +254,9 @@ end;
 class procedure TAtlasIdeBookmarks.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.Status(const AText: string);
@@ -266,10 +274,14 @@ end;
 class procedure TAtlasIdeBookmarks.ExpireStatus;
 begin
   if (FStatusAt = 0) or (TThread.GetTickCount64 - FStatusAt < StatusMs) then
+  begin
     Exit;
+  end;
   FStatusAt := 0;
   if Assigned(FStatus) then
+  begin
     FStatus('');
+  end;
 end;
 
 class function TAtlasIdeBookmarks.NowUtc: TDateTime;
@@ -281,21 +293,27 @@ class function TAtlasIdeBookmarks.Enabled(AReport: Boolean): Boolean;
 begin
   Result := (FLists <> nil) and TAtlasIdeSettings.Current.BookmarksNamed;
   if not Result and AReport and (FLists <> nil) then
+  begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDisabled));
+  end;
 end;
 
 class function TAtlasIdeBookmarks.QuickOn(AReport: Boolean): Boolean;
 begin
   Result := (FLists <> nil) and TAtlasIdeSettings.Current.QuickBookmarks;
   if not Result and AReport and (FLists <> nil) then
+  begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkDisabled));
+  end;
 end;
 
 class function TAtlasIdeBookmarks.Available(AReport: Boolean): Boolean;
 begin
   Result := (FLists <> nil) and (TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks);
   if not Result and AReport and (FLists <> nil) then
+  begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDisabled));
+  end;
 end;
 
 class function TAtlasIdeBookmarks.ColumnShown: Boolean;
@@ -308,7 +326,9 @@ end;
 class procedure TAtlasIdeBookmarks.ColumnPainted(APainted: Boolean);
 begin
   if FColumnPainted = APainted then
+  begin
     Exit;
+  end;
   FColumnPainted := APainted;
   // Die Schicht der benannten Lesezeichen zeigt nummerierte nun selbst bzw. überlässt sie der Spalte.
   Invalidate;
@@ -321,19 +341,27 @@ var
 begin
   Result := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Project := Services.GetActiveProject;
   if Project <> nil then
+  begin
     Result := Project.FileName;
+  end;
 end;
 
 class function TAtlasIdeBookmarks.ResolveProject(const AFileName: string): string;
 begin
   Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
+  begin
     Result := ActiveProject;
+  end;
   if (Result <> '') and (FProjectOf <> nil) then
+  begin
     FProjectOf.AddOrSetValue(Key(AFileName), Result);
+  end;
 end;
 
 class function TAtlasIdeBookmarks.CurrentProject: string;
@@ -344,9 +372,13 @@ begin
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
   View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) and (View.Buffer.FileName <> '') then
+  begin
     Result := ResolveProject(View.Buffer.FileName);
+  end;
   if Result = '' then
+  begin
     Result := ActiveProject;
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.CheckStorage;
@@ -363,17 +395,23 @@ class function TAtlasIdeBookmarks.List(const AProject: string): TAtlasBookmarkLi
 begin
   CheckStorage;
   if (FLists <> nil) and FLists.TryGetValue(Key(AProject), Result) then
+  begin
     Exit;
+  end;
   // Ohne Datei oder bei ungültigem Inhalt: leere Liste zu diesem Projekt.
   TAtlasBookmarks.Load(AProject, FShared, Result);
   if FLists <> nil then
+  begin
     FLists.AddOrSetValue(Key(AProject), Result);
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.Put(const AList: TAtlasBookmarkList);
 begin
   if FLists <> nil then
+  begin
     FLists.AddOrSetValue(Key(AList.Project), AList);
+  end;
 end;
 
 class function TAtlasIdeBookmarks.Store(const AList: TAtlasBookmarkList): Boolean;
@@ -381,7 +419,9 @@ begin
   Put(AList);
   Result := TAtlasBookmarks.Save(AList, FShared);
   if not Result then
+  begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksSaveFailed));
+  end;
 end;
 
 class function TAtlasIdeBookmarks.RelocateFile(var AList: TAtlasBookmarkList; const AFileName: string): Boolean;
@@ -391,11 +431,17 @@ begin
   Text := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
   // Leer heißt: Datei fehlt (oder ist leer); ihre Lesezeichen sind dann nicht zu finden.
   if Text = '' then
-    Result := AList.LoseFile(AFileName)
+  begin
+    Result := AList.LoseFile(AFileName);
+  end
   else
+  begin
     Result := AList.Relocate(AFileName, Text);
+  end;
   if FProjectOf <> nil then
+  begin
     FProjectOf.AddOrSetValue(Key(AFileName), AList.Project);
+  end;
 end;
 
 class function TAtlasIdeBookmarks.RelocateAll(var AList: TAtlasBookmarkList): Boolean;
@@ -404,7 +450,9 @@ var
 begin
   Result := False;
   for FileName in AList.Files do
+  begin
     Result := RelocateFile(AList, FileName) or Result;
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.Invalidate;
@@ -419,10 +467,14 @@ var
 begin
   Result := False;
   if not Available(False) or (AFileName = '') then
+  begin
     Exit;
+  end;
   Project := ResolveProject(AFileName);
   if Project = '' then
+  begin
     Exit;
+  end;
   // Das Seitenfenster folgt dem Projekt der Datei vorn.
   if TAtlasIdeBookmarksWindow.Visible and (Key(Project) <> Key(FWindowProject)) then
   begin
@@ -431,10 +483,14 @@ begin
   end;
   Current := List(Project);
   if Length(Current.ForFile(AFileName)) = 0 then
+  begin
     Exit;
+  end;
   Result := Current.Relocate(AFileName, AText);
   if not Result then
+  begin
     Exit;
+  end;
   Store(Current);
   RefreshWindow('');
 end;
@@ -457,11 +513,17 @@ begin
   Result := nil;
   if not ((FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FLists.TryGetValue(Key(Project), Current)) then
+  begin
     Exit;
+  end;
   // Schnelle Lesezeichen gehören in ihre Spalte, nummerierte benannte ebenfalls, solange sie sichtbar ist.
   for Mark in Current.AtLine(AFileName, ALine) do
+  begin
     if (Mark.Kind = TAtlasBookmarkKind.Named) and not (ColumnShown and (Mark.Number > 0)) then
+    begin
       Result := Result + [Mark];
+    end;
+  end;
 end;
 
 class function TAtlasIdeBookmarks.ColumnMarksAt(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>;
@@ -472,7 +534,9 @@ begin
   Result := nil;
   if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FLists.TryGetValue(Key(Project), Current) then
+  begin
     Result := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
+  end;
 end;
 
 class function TAtlasIdeBookmarks.NextNumber(const AFileName: string): Integer;
@@ -483,7 +547,9 @@ begin
   Result := 1;
   if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FLists.TryGetValue(Key(Project), Current) then
+  begin
     Result := TAtlasQuickBookmarks.FreeNumber(Current);
+  end;
 end;
 
 class function TAtlasIdeBookmarks.HasColumnMarks(const AFileName: string): Boolean;
@@ -504,12 +570,20 @@ begin
   AMarks := nil;
   Result := QuickOn(False);
   if not Result then
+  begin
     Exit;
+  end;
   if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FLists.TryGetValue(Key(Project), Current) then
+  begin
     for Mark in Current.ForFile(AFileName) do
+    begin
       if not Mark.Lost then
+      begin
         AMarks := AMarks + [Mark];
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasIdeBookmarks.Target(out AFileName: string; out ALine: Integer): Boolean;
@@ -520,7 +594,9 @@ begin
   ALine := -1;
   Result := False;
   if not Enabled(True) then
+  begin
     Exit;
+  end;
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
@@ -531,7 +607,9 @@ begin
   AFileName := View.Buffer.FileName;
   // Rechtsklick in die Rinne gilt vor dem Cursor, solange er frisch ist und zur Datei passt.
   if not TAtlasIdeGutterMarks.TakeLine(AFileName, ALine) then
+  begin
     ALine := View.CursorPos.Line - 1;
+  end;
   Result := ALine >= 0;
 end;
 
@@ -542,7 +620,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not Target(FileName, Line) then
+  begin
     Exit;
+  end;
   Project := ResolveProject(FileName);
   if Project = '' then
   begin
@@ -565,7 +645,9 @@ begin
   Store(Current);
   Invalidate;
   if TAtlasIdeBookmarksWindow.Visible then
+  begin
     FWindowProject := Project;
+  end;
   RefreshWindow(Id);
 end;
 
@@ -580,7 +662,9 @@ var
   Area: TRect;
 begin
   if not Available(True) then
+  begin
     Exit;
+  end;
   Project := CurrentProject;
   if Project = '' then
   begin
@@ -589,9 +673,13 @@ begin
   end;
   Current := List(Project);
   if RelocateAll(Current) then
-    Store(Current)
+  begin
+    Store(Current);
+  end
   else
+  begin
     Put(Current);
+  end;
   if Current.Count = 0 then
   begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNone));
@@ -605,10 +693,14 @@ begin
     Command.Id := Mark.Id;
     Command.Caption := Mark.DisplayName;
     if Mark.Number > 0 then
+    begin
       Command.Caption := IntToStr(Mark.Number) + ' · ' + Command.Caption;
+    end;
     Command.Path := TAtlasBookmarks.Location(Mark);
     if Mark.Lost then
+    begin
       Command.ShortCut := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksLost);
+    end;
     Command.Description := Mark.Preview;
     Commands := Commands + [Command];
   end;
@@ -627,11 +719,17 @@ begin
         end);
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 
@@ -640,21 +738,29 @@ var
   Current: TAtlasBookmarkList;
 begin
   if AProject = '' then
+  begin
     Exit(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksNoProjectList));
+  end;
   // Fußzeile: „Lesezeichen in Projekt.dproj: 5, davon 1 nicht gefunden · Lokal in …“.
   Current := List(AProject);
   Result := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksListTitle,
     [ExtractFileName(AProject), Current.Count, Current.LostCount]) + ' · ';
   if FShared then
-    Result := Result + TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksStoredShared)
+  begin
+    Result := Result + TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksStoredShared);
+  end
   else
+  begin
     Result := Result + TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksStoredLocal);
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.WireFrame(AFrame: TAtlasBookmarksFrame);
 begin
   if AFrame = nil then
+  begin
     Exit;
+  end;
   AFrame.OnOpen :=
     procedure(AId: string)
     begin
@@ -710,15 +816,23 @@ var
 begin
   Frame := TAtlasIdeBookmarksWindow.ExistingFrame;
   if (Frame = nil) or (FLists = nil) then
+  begin
     Exit;
+  end;
   // „nur diese Datei“ bezieht sich auf die Datei im oberen Editor.
   View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) then
+  begin
     Frame.SetCurrentFile(View.Buffer.FileName);
+  end;
   if FWindowProject = '' then
-    Current := TAtlasBookmarkList.Create('')
+  begin
+    Current := TAtlasBookmarkList.Create('');
+  end
   else
+  begin
     Current := List(FWindowProject);
+  end;
   Frame.SetBookmarks(Current, PlaceText(FWindowProject), ASelectId);
 end;
 
@@ -728,22 +842,32 @@ var
   Frame: TAtlasBookmarksFrame;
 begin
   if not Available(True) then
+  begin
     Exit;
+  end;
   FWindowProject := CurrentProject;
   if FWindowProject <> '' then
   begin
     Current := List(FWindowProject);
     if RelocateAll(Current) then
-      Store(Current)
+    begin
+      Store(Current);
+    end
     else
+    begin
       Put(Current);
+    end;
   end;
   Frame := TAtlasIdeBookmarksWindow.Show;
   if Frame = nil then
+  begin
     Exit;
+  end;
   RefreshWindow('');
   if Frame.Filter.CanFocus then
+  begin
     Frame.Filter.SetFocus;
+  end;
 end;
 
 class procedure TAtlasIdeBookmarks.OpenBookmark(const AProject, AId: string);
@@ -753,11 +877,15 @@ var
   Mark: TAtlasBookmark;
 begin
   if not Available(True) or (AProject = '') then
+  begin
     Exit;
+  end;
   Current := List(AProject);
   Index := Current.IndexOf(AId);
   if Index < 0 then
+  begin
     Exit;
+  end;
   // Unmittelbar vor dem Sprung wiederfinden: Die Datei kann sich außerhalb geändert haben.
   if RelocateFile(Current, Current.Bookmarks[Index].FileName) then
   begin
@@ -765,10 +893,14 @@ begin
     RefreshWindow(AId);
   end
   else
+  begin
     Put(Current);
+  end;
   Mark := Current.Bookmarks[Index];
   if Mark.Lost then
+  begin
     Say(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksLostJump, [Mark.DisplayName]));
+  end;
   TAtlasIdeResults.Open(Mark.FileName, Mark.Line, 0);
   Invalidate;
 end;
@@ -778,10 +910,14 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not Available(True) or (AProject = '') then
+  begin
     Exit;
+  end;
   Current := List(AProject);
   if not Current.Rename(AId, AName) then
+  begin
     Exit;
+  end;
   Store(Current);
   RefreshWindow(AId);
 end;
@@ -792,15 +928,21 @@ var
   Index: Integer;
 begin
   if not Available(True) or (AProject = '') then
+  begin
     Exit;
+  end;
   Current := List(AProject);
   Index := Current.IndexOf(AId);
   if Index < 0 then
+  begin
     Exit;
+  end;
   if MessageDlg(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksDeleteConfirm,
     [Current.Bookmarks[Index].DisplayName]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
     Exit;
+  end;
   Current.Remove(AId);
   Store(Current);
   Invalidate;
@@ -812,10 +954,14 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not Available(True) or (AProject = '') then
+  begin
     Exit;
+  end;
   Current := List(AProject);
   if not Current.MoveBefore(AId, ABeforeId) then
+  begin
     Exit;
+  end;
   Store(Current);
   RefreshWindow(AId);
 end;
@@ -823,7 +969,9 @@ end;
 class procedure TAtlasIdeBookmarks.ApplySettings;
 begin
   if FLists = nil then
+  begin
     Exit;
+  end;
   if not Available(False) then
   begin
     // Beide Arten aus: Fenster zu, die Rinne zeichnet nichts mehr (Wanted der Schicht).
@@ -837,7 +985,9 @@ begin
   begin
     FStatusAt := 0;
     if Assigned(FStatus) then
+    begin
       FStatus('');
+    end;
   end;
   if FShared <> TAtlasIdeSettings.Current.BookmarksShared then
   begin
@@ -878,7 +1028,9 @@ begin
   AList := TAtlasBookmarkList.Create('');
   Result := False;
   if not QuickOn(True) then
+  begin
     Exit;
+  end;
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
@@ -913,16 +1065,22 @@ var
 begin
   SetLength(Result, TAtlasQuickBookmarks.MaxNumber + 1);
   if FLists = nil then
+  begin
     Exit;
+  end;
   Project := ResolveProject(AFileName);
   if Project = '' then
+  begin
     Exit;
+  end;
   Current := List(Project);
   for Number := 1 to TAtlasQuickBookmarks.MaxNumber do
   begin
     Index := Current.IndexOfNumber(Number);
     if Index < 0 then
+    begin
       Continue;
+    end;
     Mark := Current.Bookmarks[Index];
     Result[Number] := ExtractFileName(Mark.FileName) + ':' + IntToStr(Mark.Line + 1) + ' ' + Mark.DisplayName;
   end;
@@ -935,7 +1093,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickTarget(FileName, Text, Line, Current) then
+  begin
     Exit;
+  end;
   Commit(Current, TAtlasQuickBookmarks.Toggle(Current, FileName, Text, Line, NowUtc) <> TAtlasQuickChange.None, '');
 end;
 
@@ -946,7 +1106,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickTarget(FileName, Text, Line, Current) then
+  begin
     Exit;
+  end;
   Commit(Current, TAtlasQuickBookmarks.SetNumber(Current, FileName, Text, Line, ANumber, NowUtc) <>
     TAtlasQuickChange.None, '');
 end;
@@ -958,7 +1120,9 @@ var
 begin
   Index := AList.IndexOf(AId);
   if Index < 0 then
+  begin
     Exit;
+  end;
   // Unmittelbar vor dem Sprung wiederfinden: Die Datei kann sich außerhalb geändert haben.
   if RelocateFile(AList, AList.Bookmarks[Index].FileName) then
   begin
@@ -966,10 +1130,14 @@ begin
     RefreshWindow(AId);
   end
   else
+  begin
     Put(AList);
+  end;
   Mark := AList.Bookmarks[Index];
   if Mark.Lost and (ANumber > 0) then
+  begin
     Status(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkNotFound, [ANumber]));
+  end;
   // Der Navigationsverlauf (#504) nimmt den Sprung wie jeden anderen auf (andere Datei oder weiter als einige
   // Zeilen).
   TAtlasIdeResults.Open(Mark.FileName, Mark.Line, 0);
@@ -985,7 +1153,9 @@ var
   Index: Integer;
 begin
   if not QuickOn(True) then
+  begin
     Exit;
+  end;
   Project := CurrentProject;
   if Project = '' then
   begin
@@ -995,10 +1165,14 @@ begin
   FileName := '';
   View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) then
+  begin
     FileName := View.Buffer.FileName;
+  end;
   Scope := TAtlasQuickScope.Project;
   if SameText(TAtlasIdeSettings.Current.QuickBookmarksScope, 'file') then
+  begin
     Scope := TAtlasQuickScope.CurrentFile;
+  end;
   Current := List(Project);
   case TAtlasQuickBookmarks.Jump(Current, ANumber, FileName, Scope, Index) of
     TAtlasQuickJump.NotAssigned:
@@ -1017,7 +1191,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickTarget(FileName, Text, Line, Current) then
+  begin
     Exit;
+  end;
   Put(Current);
   if not TAtlasQuickBookmarks.Step(Current, FileName, Line, AForward, Target) then
   begin
@@ -1044,7 +1220,9 @@ var
 begin
   if not QuickOn(True) or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
     not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Commit(Current, TAtlasQuickBookmarks.Click(Current, AFileName, Text, ALine, NowUtc) <> TAtlasQuickChange.None, '');
 end;
 
@@ -1056,12 +1234,18 @@ var
   Change: TAtlasQuickChange;
 begin
   if not QuickOn(True) or not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Marks := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
   if Length(Marks) > 0 then
-    Change := TAtlasQuickBookmarks.AssignNumber(Current, Marks[0].Id, ANumber)
+  begin
+    Change := TAtlasQuickBookmarks.AssignNumber(Current, Marks[0].Id, ANumber);
+  end
   else
+  begin
     Change := TAtlasQuickBookmarks.SetNumber(Current, AFileName, Text, ALine, ANumber, NowUtc);
+  end;
   Commit(Current, Change <> TAtlasQuickChange.None, '');
 end;
 
@@ -1072,12 +1256,18 @@ var
   Marks: TArray<TAtlasBookmark>;
 begin
   if not QuickOn(True) or not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Marks := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
   if Length(Marks) > 0 then
-    Name := Marks[0].DisplayName
+  begin
+    Name := Marks[0].DisplayName;
+  end
   else
+  begin
     Name := TAtlasBookmarks.SuggestName(AFileName, Text, ALine);
+  end;
   if not TAtlasBookmarkDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksDialogTitle,
     [ExtractFileName(AFileName), ALine + 1]), Name) then
   begin
@@ -1091,7 +1281,9 @@ begin
     Current.Rename(Id, Name);
   end
   else
+  begin
     Id := Current.Add(AFileName, Text, ALine, Name, NowUtc);
+  end;
   Commit(Current, True, Id);
 end;
 
@@ -1101,7 +1293,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickOn(True) or not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Commit(Current, TAtlasQuickBookmarks.RemoveAt(Current, AFileName, ALine) > 0, '');
 end;
 
@@ -1111,7 +1305,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickOn(True) or not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Commit(Current, TAtlasQuickBookmarks.RemoveFile(Current, AFileName) > 0, '');
 end;
 
@@ -1120,7 +1316,9 @@ var
   Current: TAtlasBookmarkList;
 begin
   if not QuickOn(True) or (AProject = '') then
+  begin
     Exit;
+  end;
   Current := List(AProject);
   Commit(Current, TAtlasQuickBookmarks.AssignNumber(Current, AId, ANumber) <> TAtlasQuickChange.None, AId);
 end;
@@ -1140,10 +1338,14 @@ begin
   // übernommenen nirgends mehr zu sehen (#1281).
   if (FImported = nil) or not QuickOn(False) or not TAtlasIdeSettings.Current.QuickBookmarksImportIde or
     not ColumnShown or (AFileName = '') or FImported.ContainsKey(Key(AFileName)) then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, AFileName) then
+  begin
     Exit;
+  end;
   // Einmal je Datei und Sitzung: Später gesetzte IDE-Lesezeichen (etwa mit Strg+Umschalt+0) bleiben bei der IDE.
   FImported.Add(Key(AFileName), True);
   Marks := nil;
@@ -1151,10 +1353,14 @@ begin
   begin
     Position := View.BookmarkPos[Number];
     if Position.Line > 0 then
+    begin
       Marks := Marks + [TAtlasIdeBookmarkPos.Create(Number, Position.Line - 1)];
+    end;
   end;
   if (Length(Marks) = 0) or not PrepareFile(AFileName, Project, Text, Current) then
+  begin
     Exit;
+  end;
   Taken := TAtlasQuickBookmarks.Import(Current, AFileName, Text, Marks, NowUtc);
   if Length(Taken) = 0 then
   begin
@@ -1162,7 +1368,9 @@ begin
     Exit;
   end;
   if not Store(Current) then
+  begin
     Exit;
+  end;
   // In der IDE entfernen, damit kein doppeltes Symbol bleibt: BookmarkToggle wirkt an der Schreibmarke, also
   // kurz an die Zeile des Lesezeichens und zurück, ohne dass die Ansicht springt.
   Saved := View.CursorPos;
@@ -1172,7 +1380,9 @@ begin
   begin
     Position := View.BookmarkPos[Number];
     if Position.Line <= 0 then
+    begin
       Continue;
+    end;
     Place.Line := Position.Line;
     Place.Col := Position.CharIndex + 1;
     View.CursorPos := Place;

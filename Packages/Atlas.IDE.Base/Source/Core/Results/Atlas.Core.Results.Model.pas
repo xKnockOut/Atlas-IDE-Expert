@@ -154,7 +154,9 @@ begin
         begin
           Result := A.Line - B.Line;
           if Result = 0 then
+          begin
             Result := A.Character - B.Character;
+          end;
         end));
       Bucket.Entries := Entries;
       Groups[Item] := Bucket;
@@ -164,7 +166,9 @@ begin
       begin
         Result := CompareText(ExtractFileName(A.FileName), ExtractFileName(B.FileName));
         if Result = 0 then
+        begin
           Result := CompareText(A.FileName, B.FileName);
+        end;
       end));
     Result := Groups.ToArray;
   finally
@@ -189,7 +193,9 @@ begin
         Cache.Add(AnsiUpperCase(AEntries[Index].FileName), FileLines);
       end;
       if (AEntries[Index].Line >= 0) and (AEntries[Index].Line < Length(FileLines)) then
+      begin
         AEntries[Index].Text := Trim(FileLines[AEntries[Index].Line]);
+      end;
     end;
   finally
     Cache.Free;
@@ -235,29 +241,46 @@ begin
       FileLines := TAtlasResults.Lines(AReadText(FileEdits.FileName));
       Changed.Clear;
       for Edit in FileEdits.Edits do
+      begin
         if not Changed.Contains(Edit.StartPos.Line) then
+        begin
           Changed.Add(Edit.StartPos.Line);
+        end;
+      end;
       Changed.Sort;
       for Line in Changed do
       begin
         Before := '';
         if (Line >= 0) and (Line < Length(FileLines)) then
+        begin
           Before := FileLines[Line];
+        end;
         OnLine := nil;
         for Edit in FileEdits.Edits do
+        begin
           if Edit.StartPos.Line = Line then
+          begin
             OnLine := OnLine + [Edit];
+          end;
+        end;
         Entry := TAtlasResultEntry.Create(FileEdits.FileName, Line, OnLine[0].StartPos.Character);
         for Edit in OnLine do
+        begin
           if Edit.StartPos.Character < Entry.Character then
+          begin
             Entry.Character := Edit.StartPos.Character;
+          end;
+        end;
         Entry.Text := Trim(Before);
         // Nur Änderungen innerhalb der Zeile lassen sich als Zeile zeigen.
         After := '';
         SameLine := nil;
         for Edit in OnLine do
+        begin
           if Edit.EndPos.Line <> Line then
-            After := Edit.NewText
+          begin
+            After := Edit.NewText;
+          end
           else
           begin
             // Auf die eine Zeile bezogen: Zeile 0 in Before.
@@ -266,6 +289,7 @@ begin
             Shifted.EndPos.Line := 0;
             SameLine := SameLine + [Shifted];
           end;
+        end;
         if After = '' then
           try
             After := TLspEdits.Apply(Before, SameLine);
@@ -298,8 +322,12 @@ var
 begin
   Result := nil;
   for Entry in AEntries do
+  begin
     if not Entry.Confidence.Inferred then
+    begin
       Result := Result + [Entry];
+    end;
+  end;
 end;
 
 class function TAtlasResults.InferredCount(const AEntries: TArray<TAtlasResultEntry>): Integer;
@@ -308,8 +336,12 @@ var
 begin
   Result := 0;
   for Entry in AEntries do
+  begin
     if Entry.Confidence.Inferred then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasResults.SymbolBadge(AKind: Integer): string;

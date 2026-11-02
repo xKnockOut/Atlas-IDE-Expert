@@ -55,9 +55,13 @@ class function TAtlasStatusSlot.Create(AWidth, AMinWidth, AShrink: Integer): TAt
 begin
   Result.Width := AWidth;
   if AMinWidth > AWidth then
-    Result.MinWidth := AWidth
+  begin
+    Result.MinWidth := AWidth;
+  end
   else
+  begin
     Result.MinWidth := AMinWidth;
+  end;
   Result.Shrink := AShrink;
 end;
 
@@ -82,13 +86,17 @@ begin
   Result := 0;
   Shown := 0;
   for Width in AWidths do
+  begin
     if Width > 0 then
     begin
       Inc(Result, Width);
       Inc(Shown);
     end;
+  end;
   if Shown > 1 then
+  begin
     Inc(Result, (Shown - 1) * AGap);
+  end;
 end;
 
 /// <summary>Indizes in Kürzreihenfolge: kleine Stufe zuerst, bei Gleichstand das hintere Element zuerst.</summary>
@@ -98,7 +106,9 @@ var
 begin
   SetLength(Result, Length(ASlots));
   for Index := 0 to High(Result) do
+  begin
     Result[Index] := Index;
+  end;
   // Einfügesortierung: wenige Elemente, und die Reihenfolge bleibt eindeutig.
   for Index := 1 to High(Result) do
   begin
@@ -122,7 +132,9 @@ var
 begin
   SetLength(Widths, Length(ASlots));
   for Index := 0 to High(ASlots) do
+  begin
     Widths[Index] := ASlots[Index].Width;
+  end;
   Result := Total(Widths, AGap);
 end;
 
@@ -135,28 +147,40 @@ begin
   Result := nil;
   SetLength(Result, Length(ASlots));
   for Index := 0 to High(ASlots) do
+  begin
     Result[Index] := ASlots[Index].Width;
+  end;
   Excess := Total(Result, AGap) - AAvailable;
   if Excess <= 0 then
+  begin
     Exit;
+  end;
   Order := ShrinkOrder(ASlots);
   for Index in Order do
   begin
     Cut := Result[Index] - ASlots[Index].MinWidth;
     if Cut > Excess then
+    begin
       Cut := Excess;
+    end;
     if Cut <= 0 then
+    begin
       Continue;
+    end;
     Dec(Result[Index], Cut);
     Dec(Excess, Cut);
     if Excess <= 0 then
+    begin
       Exit;
+    end;
   end;
   // Auch gekürzt zu breit: ganze Elemente weglassen, in derselben Reihenfolge.
   for Index in Order do
   begin
     if Total(Result, AGap) <= AAvailable then
+    begin
       Exit;
+    end;
     Result[Index] := 0;
   end;
 end;
@@ -176,9 +200,13 @@ begin
     Result[Index].Left := Left;
     Result[Index].Right := Left;
     if AWidths[Index] <= 0 then
+    begin
       Continue;
+    end;
     if Started then
+    begin
       Inc(Left, AGap);
+    end;
     Started := True;
     Result[Index].Left := Left;
     Result[Index].Right := Left + AWidths[Index];
@@ -191,8 +219,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ASpans) do
+  begin
     if not ASpans[Index].IsEmpty and ASpans[Index].Contains(X) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 

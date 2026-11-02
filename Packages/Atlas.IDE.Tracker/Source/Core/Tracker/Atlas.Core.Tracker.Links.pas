@@ -125,10 +125,16 @@ begin
   Result := False;
   mText := Trim(AText);
   if mText = '' then
+  begin
     Exit;
+  end;
   for mName in ANames do
+  begin
     if SameText(mText, mName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerLinks.YouTrackKind(const AName, ASourceToTarget, ATargetToSource, ADirection: string;
@@ -141,26 +147,44 @@ begin
   mFamily := TFamily.None;
   mReversed := False;
   if IsOneOf(AName, DependNames) then
-    mFamily := TFamily.Depend
+  begin
+    mFamily := TFamily.Depend;
+  end
   else if IsOneOf(AName, SubtaskNames) then
-    mFamily := TFamily.Subtask
+  begin
+    mFamily := TFamily.Subtask;
+  end
   else if IsOneOf(AName, DuplicateNames) then
-    mFamily := TFamily.Duplicate
+  begin
+    mFamily := TFamily.Duplicate;
+  end
   else if IsOneOf(AName, RelatesNames) then
-    mFamily := TFamily.Relates
+  begin
+    mFamily := TFamily.Relates;
+  end
   else if AAggregation then
-    mFamily := TFamily.Subtask
+  begin
+    mFamily := TFamily.Subtask;
+  end
   else if IsOneOf(ASourceToTarget, DependSource) or IsOneOf(ATargetToSource, DependTarget) or
     IsOneOf(ASourceToTarget, DependTarget) or IsOneOf(ATargetToSource, DependSource) then
-    mFamily := TFamily.Depend
+  begin
+    mFamily := TFamily.Depend;
+  end
   else if IsOneOf(ASourceToTarget, SubtaskSource) or IsOneOf(ATargetToSource, SubtaskTarget) or
     IsOneOf(ASourceToTarget, SubtaskTarget) or IsOneOf(ATargetToSource, SubtaskSource) then
-    mFamily := TFamily.Subtask
+  begin
+    mFamily := TFamily.Subtask;
+  end
   else if IsOneOf(ASourceToTarget, DuplicateSource) or IsOneOf(ATargetToSource, DuplicateTarget) or
     IsOneOf(ASourceToTarget, DuplicateTarget) or IsOneOf(ATargetToSource, DuplicateSource) then
-    mFamily := TFamily.Duplicate
+  begin
+    mFamily := TFamily.Duplicate;
+  end
   else if IsOneOf(ASourceToTarget, RelatesPhrases) or IsOneOf(ATargetToSource, RelatesPhrases) then
+  begin
     mFamily := TFamily.Relates;
+  end;
   // Eigener Typ mit vertauschten Beschriftungen ("depends on" auf der Seite der Quelle): Richtung umdrehen.
   case mFamily of
     TFamily.Depend:
@@ -175,33 +199,55 @@ begin
   if mReversed then
   begin
     if mDirection = 'OUTWARD' then
-      mDirection := 'INWARD'
+    begin
+      mDirection := 'INWARD';
+    end
     else if mDirection = 'INWARD' then
+    begin
       mDirection := 'OUTWARD';
+    end;
   end;
   Result := TAtlasTrackerLinkKind.Other;
   case mFamily of
     TFamily.Depend:
       if mDirection = 'INWARD' then
-        Result := TAtlasTrackerLinkKind.DependsOn
+      begin
+        Result := TAtlasTrackerLinkKind.DependsOn;
+      end
       else if mDirection = 'OUTWARD' then
-        Result := TAtlasTrackerLinkKind.Blocks
+      begin
+        Result := TAtlasTrackerLinkKind.Blocks;
+      end
       else
+      begin
         Result := TAtlasTrackerLinkKind.Relates;
+      end;
     TFamily.Subtask:
       if mDirection = 'OUTWARD' then
-        Result := TAtlasTrackerLinkKind.Subtask
+      begin
+        Result := TAtlasTrackerLinkKind.Subtask;
+      end
       else if mDirection = 'INWARD' then
-        Result := TAtlasTrackerLinkKind.Parent
+      begin
+        Result := TAtlasTrackerLinkKind.Parent;
+      end
       else
+      begin
         Result := TAtlasTrackerLinkKind.Relates;
+      end;
     TFamily.Duplicate:
       if mDirection = 'INWARD' then
-        Result := TAtlasTrackerLinkKind.Duplicates
+      begin
+        Result := TAtlasTrackerLinkKind.Duplicates;
+      end
       else if mDirection = 'OUTWARD' then
-        Result := TAtlasTrackerLinkKind.DuplicatedBy
+      begin
+        Result := TAtlasTrackerLinkKind.DuplicatedBy;
+      end
       else
+      begin
         Result := TAtlasTrackerLinkKind.Relates;
+      end;
     TFamily.Relates:
       Result := TAtlasTrackerLinkKind.Relates;
     TFamily.None: ;
@@ -228,15 +274,21 @@ begin
     mGroup.Links := nil;
     mGroup.Collapsed := Collapsed(mKind);
     for mLink in ALinks do
+    begin
       if mLink.Kind = mKind then
       begin
         mGroup.Links := mGroup.Links + [mLink];
         Inc(mGroup.Total);
         if mLink.StateKnown and mLink.Resolved then
+        begin
           Inc(mGroup.Done);
+        end;
       end;
+    end;
     if mGroup.Total > 0 then
+    begin
       Result := Result + [mGroup];
+    end;
   end;
 end;
 
@@ -248,12 +300,16 @@ begin
   ADone := 0;
   ATotal := 0;
   for mLink in ALinks do
+  begin
     if mLink.Kind = TAtlasTrackerLinkKind.Subtask then
     begin
       Inc(ATotal);
       if mLink.StateKnown and mLink.Resolved then
+      begin
         Inc(ADone);
+      end;
     end;
+  end;
   Result := ATotal > 0;
 end;
 
@@ -268,8 +324,12 @@ var
 begin
   Result := nil;
   for mLink in ALinks do
+  begin
     if mLink.Blocking then
+    begin
       Result := Result + [mLink];
+    end;
+  end;
 end;
 
 class function TAtlasTrackerLinks.WarnOnStart(AWarn: Boolean;
@@ -277,7 +337,9 @@ class function TAtlasTrackerLinks.WarnOnStart(AWarn: Boolean;
 begin
   Result := nil;
   if AWarn then
+  begin
     Result := OpenBlockers(ADetails.Links);
+  end;
 end;
 
 class function TAtlasTrackerLinks.Locked(const ADetails: TAtlasTrackerDetails): Boolean;
@@ -288,13 +350,21 @@ end;
 class function TAtlasTrackerLinks.Mark(const ALink: TAtlasTrackerLink): TAtlasTrackerLinkMark;
 begin
   if not ALink.StateKnown then
-    Result := TAtlasTrackerLinkMark.Unknown
+  begin
+    Result := TAtlasTrackerLinkMark.Unknown;
+  end
   else if ALink.Resolved then
-    Result := TAtlasTrackerLinkMark.Done
+  begin
+    Result := TAtlasTrackerLinkMark.Done;
+  end
   else if ALink.Blocking then
-    Result := TAtlasTrackerLinkMark.Blocking
+  begin
+    Result := TAtlasTrackerLinkMark.Blocking;
+  end
   else
+  begin
     Result := TAtlasTrackerLinkMark.Open;
+  end;
 end;
 
 /// <summary>Ab AStart (1-basiert) in ALine: "#12, #13 und #14" lesen; Trenner davor (":", "*", "_", Leerraum)
@@ -306,37 +376,57 @@ var
 begin
   mPos := AStart;
   while (mPos <= Length(ALine)) and CharInSet(ALine[mPos], [':', '*', '_', ' ', #9]) do
+  begin
     Inc(mPos);
+  end;
   while (mPos <= Length(ALine)) and (ALine[mPos] = '#') do
   begin
     Inc(mPos);
     mFrom := mPos;
     while (mPos <= Length(ALine)) and CharInSet(ALine[mPos], ['0'..'9']) do
+    begin
       Inc(mPos);
+    end;
     if (mPos = mFrom) or not TryStrToInt(Copy(ALine, mFrom, mPos - mFrom), mNumber) or (mNumber <= 0) then
+    begin
       Exit;
+    end;
     // Kein "#12a" und kein "#12-…" (Anker, Kennungen anderer Art).
     if (mPos <= Length(ALine)) and CharInSet(ALine[mPos], ['A'..'Z', 'a'..'z', '0'..'9', '_', '-']) then
+    begin
       Exit;
+    end;
     mKnown := False;
     for mIndex := 0 to High(ANumbers) do
+    begin
       if ANumbers[mIndex] = mNumber then
+      begin
         mKnown := True;
+      end;
+    end;
     if not mKnown then
     begin
       if Length(ANumbers) >= TAtlasTrackerLinks.MaxTextDependencies then
+      begin
         Exit;
+      end;
       ANumbers := ANumbers + [mNumber];
     end;
     // Trenner bis zur nächsten Nummer: ",", ";", "*", Leerraum, "und", "and".
     while mPos <= Length(ALine) do
     begin
       if CharInSet(ALine[mPos], [',', ';', '*', ' ', #9]) then
-        Inc(mPos)
+      begin
+        Inc(mPos);
+      end
       else if SameText(Copy(ALine, mPos, 4), 'und ') or SameText(Copy(ALine, mPos, 4), 'and ') then
-        Inc(mPos, 4)
+      begin
+        Inc(mPos, 4);
+      end
       else
+      begin
         Break;
+      end;
     end;
   end;
 end;
@@ -360,17 +450,25 @@ begin
       begin
         // Nur als eigenes Wort ("independs on" zählt nicht).
         if (mAt = 1) or not CharInSet(mLower[mAt - 1], ['a'..'z', '0'..'9', '_']) then
+        begin
           ReadNumbers(mLine, mAt + Length(mPhrase), Result);
+        end;
         mAt := PosEx(mPhrase, mLower, mAt + Length(mPhrase));
       end;
     end;
     // Am Zeilenanfang (nach Aufzählungszeichen und Fettdruck): "- **Benötigt:** #765, #1264".
     mStart := 1;
     while (mStart <= Length(mLower)) and CharInSet(mLower[mStart], [' ', #9, '-', '*', '_', '>']) do
+    begin
       Inc(mStart);
+    end;
     for mLead in LeadingPhrases do
+    begin
       if Copy(mLower, mStart, Length(mLead)) = mLead then
+      begin
         ReadNumbers(mLine, mStart + Length(mLead), Result);
+      end;
+    end;
   end;
 end;
 

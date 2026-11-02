@@ -134,7 +134,9 @@ begin
     mMeasure.Free;
   end;
   if Result.Width < Scaled(AForm, 90) then
+  begin
     Result.Width := Scaled(AForm, 90);
+  end;
   Result.Top := Scaled(AForm, Gap);
   Result.Height := Scaled(AForm, 28);
   Result.Anchors := [akTop, akRight];
@@ -242,7 +244,9 @@ end;
 procedure TAtlasSubtaskDialog.OkClick(Sender: TObject);
 begin
   if IssueTitle = '' then
+  begin
     Exit;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -341,15 +345,21 @@ function TAtlasIssueLinkDialog.OtherKey: string;
 begin
   Result := TAtlasIssuePreview.KeyOf(FProvider, FOther.Text);
   if SameText(Result, FKey) then
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasIssueLinkDialog.Kind: TAtlasTrackerLinkKind;
 begin
   if FBlocks.Checked then
-    Result := TAtlasTrackerLinkKind.Blocks
+  begin
+    Result := TAtlasTrackerLinkKind.Blocks;
+  end
   else
+  begin
     Result := TAtlasTrackerLinkKind.DependsOn;
+  end;
 end;
 
 procedure TAtlasIssueLinkDialog.OtherChange(Sender: TObject);
@@ -360,7 +370,9 @@ end;
 procedure TAtlasIssueLinkDialog.OkClick(Sender: TObject);
 begin
   if OtherKey = '' then
+  begin
     Exit;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -395,9 +407,13 @@ class function TAtlasBlockedPrompt.Text(const ABlockers: TArray<TAtlasTrackerLin
 begin
   Result := '';
   if Length(ABlockers) = 1 then
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedOne, [ABlockers[0].Key])
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedOne, [ABlockers[0].Key]);
+  end
   else if Length(ABlockers) > 1 then
+  begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueBlockedMore, [ABlockers[0].Key, Length(ABlockers) - 1]);
+  end;
 end;
 
 class function TAtlasBlockedPrompt.Ask(const ABlockers: TArray<TAtlasTrackerLink>): TAtlasBlockedChoice;
@@ -410,7 +426,9 @@ var
 begin
   Result := TAtlasBlockedChoice.Cancel;
   if Length(ABlockers) = 0 then
+  begin
     Exit;
+  end;
   mDialog := TTaskDialog.Create(nil);
   try
     mDialog.Caption := 'Atlas';
@@ -426,7 +444,9 @@ begin
     mButton.ModalResult := AnswerShow;
     mButton.Default := True;
     if not mDialog.Execute then
+    begin
       Exit;
+    end;
     case mDialog.ModalResult of
       AnswerStart:
         Result := TAtlasBlockedChoice.StartAnyway;

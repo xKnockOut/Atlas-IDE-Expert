@@ -158,7 +158,9 @@ procedure TAtlasOverviewRuler.SetMarks(const AMarks: TAtlasOverviewMarks; ALineC
 begin
   if TAtlasOverview.Same(AMarks, FMarks) and (ALineCount = FLineCount) and (AFirstVisible = FFirstVisible) and
     (ALastVisible = FLastVisible) then
+  begin
     Exit;
+  end;
   FMarks := AMarks;
   FLineCount := ALineCount;
   FFirstVisible := AFirstVisible;
@@ -176,7 +178,9 @@ end;
 procedure TAtlasOverviewRuler.Layout;
 begin
   if FLaidOut then
+  begin
     Exit;
+  end;
   FBars := TAtlasOverview.Layout(FMarks, FLineCount, ClientHeight, Scale(BaseMinHeight));
   FLaidOut := True;
 end;
@@ -197,7 +201,9 @@ function TAtlasOverviewRuler.MarkAtY(AY: Integer): Integer;
 begin
   Layout;
   if not TAtlasOverview.Hit(FBars, AY, Scale(BaseTolerance), Result) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TAtlasOverviewRuler.TargetAtY(AY: Integer): Integer;
@@ -206,9 +212,13 @@ var
 begin
   Mark := MarkAtY(AY);
   if Mark >= 0 then
-    Result := Min(FMarks[Mark].Line, Max(0, FLineCount - 1))
+  begin
+    Result := Min(FMarks[Mark].Line, Max(0, FLineCount - 1));
+  end
   else
+  begin
     Result := LineAtY(AY);
+  end;
 end;
 
 procedure TAtlasOverviewRuler.Paint;
@@ -222,7 +232,9 @@ begin
   Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(FColors.Gutter, FColors.Surface, 0.5));
   Canvas.FillRect(ClientRect);
   if FLineCount <= 0 then
+  begin
     Exit;
+  end;
   // Sichtbarer Bereich.
   if FLastVisible >= FFirstVisible then
   begin
@@ -260,7 +272,9 @@ begin
     Area := TRect.Create(mLeft, Bar.Top, Right, Bar.Bottom);
     // Der Cursor ist eine dünne Linie über die ganze Breite.
     if Bar.Kind = TAtlasOverviewMarkKind.Cursor then
+    begin
       Area.Bottom := Min(Area.Bottom, Area.Top + Scale(2));
+    end;
     Canvas.Brush.Color := TColor(ColorOf(FColors, Bar.Kind));
     Canvas.FillRect(Area);
   end;
@@ -270,12 +284,18 @@ procedure TAtlasOverviewRuler.MouseDown(Button: TMouseButton; Shift: TShiftState
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if (Button <> mbLeft) or (FLineCount <= 0) then
+  begin
     Exit;
+  end;
   if Assigned(FOnHoverEnd) then
+  begin
     FOnHoverEnd;
+  end;
   FHoverLine := -1;
   if Assigned(FOnJump) then
+  begin
     FOnJump(TargetAtY(Y));
+  end;
 end;
 
 procedure TAtlasOverviewRuler.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -284,15 +304,21 @@ var
 begin
   inherited MouseMove(Shift, X, Y);
   if FLineCount <= 0 then
+  begin
     Exit;
+  end;
   Mark := MarkAtY(Y);
   Line := TargetAtY(Y);
   if (Line = FHoverLine) and (Mark = FHoverMark) then
+  begin
     Exit;
+  end;
   FHoverLine := Line;
   FHoverMark := Mark;
   if Assigned(FOnHover) then
+  begin
     FOnHover(Line, Mark, ClientToScreen(Point(X, Y)));
+  end;
 end;
 
 procedure TAtlasOverviewRuler.CMMouseLeave(var Message: TMessage);
@@ -301,7 +327,9 @@ begin
   FHoverLine := -1;
   FHoverMark := -1;
   if Assigned(FOnHoverEnd) then
+  begin
     FOnHoverEnd;
+  end;
 end;
 
 end.

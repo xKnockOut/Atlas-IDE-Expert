@@ -111,8 +111,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -120,7 +124,9 @@ function LeadLength(const ALine: string): Integer;
 begin
   Result := 0;
   while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function Quoted(const AText: string): string;
@@ -148,7 +154,9 @@ begin
   Text := TrimLeft(ALine);
   Stop := 0;
   while (Stop < Length(Text)) and CharInSet(Text[Stop + 1], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(Stop);
+  end;
   Result := MatchText(Copy(Text, 1, Stop), Closers);
 end;
 
@@ -157,13 +165,21 @@ end;
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
 begin
   if SameText(AValue, ModeBoth) then
-    Result := TAtlasPasteMode.Both
+  begin
+    Result := TAtlasPasteMode.Both;
+  end
   else if SameText(AValue, ModeUses) then
-    Result := TAtlasPasteMode.UsesOnly
+  begin
+    Result := TAtlasPasteMode.UsesOnly;
+  end
   else if SameText(AValue, ModeIndent) then
-    Result := TAtlasPasteMode.IndentOnly
+  begin
+    Result := TAtlasPasteMode.IndentOnly;
+  end
   else
+  begin
     Result := TAtlasPasteMode.Off;
+  end;
 end;
 
 class function TAtlasSmartPaste.WantsUses(AMode: TAtlasPasteMode): Boolean;
@@ -191,20 +207,30 @@ begin
   Result := False;
   Count := Length(APasted);
   if (Count = 0) or (Length(ALines) <> Count) or (ACaret < 0) or (ACaret > Length(ALines[Count - 1])) then
+  begin
     Exit;
+  end;
   Last := Copy(ALines[Count - 1], 1, ACaret);
   if not Last.EndsWith(APasted[Count - 1]) then
+  begin
     Exit;
+  end;
   if Count = 1 then
   begin
     AStart := ACaret - Length(APasted[0]);
     Exit(True);
   end;
   for Index := 1 to Count - 2 do
+  begin
     if ALines[Index] <> APasted[Index] then
+    begin
       Exit;
+    end;
+  end;
   if not ALines[0].EndsWith(APasted[0]) then
+  begin
     Exit;
+  end;
   AStart := Length(ALines[0]) - Length(APasted[0]);
   Result := True;
 end;
@@ -215,12 +241,20 @@ var
 begin
   Result := 0;
   if ATabWidth < 1 then
+  begin
     ATabWidth := 1;
+  end;
   for Index := 1 to LeadLength(ALine) do
+  begin
     if ALine[Index] = #9 then
-      Result := (Result div ATabWidth + 1) * ATabWidth
+    begin
+      Result := (Result div ATabWidth + 1) * ATabWidth;
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasSmartPaste.Opens(const ALine: string): Boolean;
@@ -231,11 +265,15 @@ begin
   Text := ALine;
   Cut := Pos('//', Text);
   if Cut > 0 then
+  begin
     Text := Copy(Text, 1, Cut - 1);
+  end;
   Text := TrimRight(Text);
   Start := Length(Text);
   while (Start > 0) and CharInSet(Text[Start], ['A'..'Z', 'a'..'z', '_']) do
+  begin
     Dec(Start);
+  end;
   Word := Copy(Text, Start + 1, MaxInt);
   // „class“ nur als Typdeklaration (= class), nicht in „class function“.
   Result := (Word <> '') and MatchText(Word, Openers) and ((Start = 0) or (Text[Start] <> '.'));
@@ -250,24 +288,34 @@ begin
   AEdits := nil;
   Result := False;
   if (Length(APasted) < 2) or not IsBlank(APrefix) then
+  begin
     Exit;
+  end;
   // Erste Zeile mit Inhalt.
   First := -1;
   for Index := 0 to High(APasted) do
+  begin
     if not IsBlank(APasted[Index]) then
     begin
       First := Index;
       Break;
     end;
+  end;
   if First < 0 then
+  begin
     Exit;
+  end;
   if APrefix <> '' then
-    Target := IndentWidth(APrefix, ATabWidth)
+  begin
+    Target := IndentWidth(APrefix, ATabWidth);
+  end
   else
   begin
     Target := IndentWidth(AAbove, ATabWidth);
     if Opens(AAbove) then
+    begin
       Inc(Target, AStep);
+    end;
   end;
   Base := IndentWidth(APasted[First], ATabWidth);
   if (First = 0) and (LeadLength(APasted[0]) = 0) then
@@ -277,30 +325,44 @@ begin
     Smallest := -1;
     Closing := -1;
     for Index := 1 to High(APasted) do
+    begin
       if not IsBlank(APasted[Index]) then
       begin
         Width := IndentWidth(APasted[Index], ATabWidth);
         if (Smallest < 0) or (Width < Smallest) then
+        begin
           Smallest := Width;
+        end;
         if Closes(APasted[Index]) and ((Closing < 0) or (Width < Closing)) then
+        begin
           Closing := Width;
+        end;
       end;
+    end;
     if Closing >= 0 then
-      Base := Closing
+    begin
+      Base := Closing;
+    end
     else if Smallest > 0 then
     begin
       Base := Smallest;
       if Opens(APasted[0]) then
+      begin
         Base := Base - AStep;
+      end;
       if Base < 0 then
+      begin
         Base := 0;
+      end;
     end;
   end;
   Delta := Target - Base;
   for Index := First to High(APasted) do
   begin
     if IsBlank(APasted[Index]) then
+    begin
       Continue;
+    end;
     Edit.Line := Index;
     if Index = 0 then
     begin
@@ -308,17 +370,23 @@ begin
       Edit.Remove := Length(APrefix) + LeadLength(APasted[0]);
       Edit.Indent := StringOfChar(' ', Target);
       if Edit.Indent = APrefix + Copy(APasted[0], 1, LeadLength(APasted[0])) then
+      begin
         Continue;
+      end;
     end
     else
     begin
       Width := IndentWidth(APasted[Index], ATabWidth) + Delta;
       if Width < 0 then
+      begin
         Width := 0;
+      end;
       Edit.Remove := LeadLength(APasted[Index]);
       Edit.Indent := StringOfChar(' ', Width);
       if Edit.Indent = Copy(APasted[Index], 1, Edit.Remove) then
+      begin
         Continue;
+      end;
     end;
     AEdits := AEdits + [Edit];
   end;
@@ -333,29 +401,49 @@ var
 begin
   Result := Default(TAtlasPasteAnalysis);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Reply := TJSONObject(AValue);
   if not (Reply.GetValue('units') is TJSONArray) or not (Reply.GetValue('choices') is TJSONArray) then
+  begin
     Exit;
+  end;
   Result.Valid := True;
   for Value in TJSONArray(Reply.GetValue('units')) do
+  begin
     if Value is TJSONString then
+    begin
       Result.Units := Result.Units + [Value.Value];
+    end;
+  end;
   for Value in TJSONArray(Reply.GetValue('choices')) do
   begin
     if not (Value is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Value);
     Choice := Default(TAtlasPasteChoice);
     Choice.Chosen := -1;
     if Item.GetValue('name') is TJSONString then
+    begin
       Choice.Name := Item.GetValue('name').Value;
+    end;
     if Item.GetValue('units') is TJSONArray then
+    begin
       for UnitValue in TJSONArray(Item.GetValue('units')) do
+      begin
         if UnitValue is TJSONString then
+        begin
           Choice.Units := Choice.Units + [UnitValue.Value];
+        end;
+      end;
+    end;
     if Length(Choice.Units) > 1 then
+    begin
       Result.Choices := Result.Choices + [Choice];
+    end;
   end;
   Result.InInterface := (Reply.GetValue('interface') is TJSONBool) and TJSONBool(Reply.GetValue('interface')).AsBoolean;
 end;
@@ -367,20 +455,32 @@ var
 begin
   Result := nil;
   for Name in AAnalysis.Units do
+  begin
     if not Contains(Result, Name) then
+    begin
       Result := Result + [Name];
+    end;
+  end;
   for Choice in AAnalysis.Choices do
+  begin
     if (Choice.Chosen >= 0) and (Choice.Chosen <= High(Choice.Units)) and
       not Contains(Result, Choice.Units[Choice.Chosen]) then
+    begin
       Result := Result + [Choice.Units[Choice.Chosen]];
+    end;
+  end;
 end;
 
 class function TAtlasSmartPaste.Named(const AUnits: TArray<string>): string;
 begin
   if Length(AUnits) <= MaxNamed then
-    Result := string.Join(', ', AUnits)
+  begin
+    Result := string.Join(', ', AUnits);
+  end
   else
+  begin
     Result := string.Join(', ', Copy(AUnits, 0, MaxNamed)) + ', …';
+  end;
 end;
 
 class function TAtlasSmartPaste.Arguments(const AUri: string; AStartLine, AStartCharacter, AEndLine,
@@ -399,7 +499,9 @@ begin
   List := TJSONArray.Create;
   try
     for Name in AUnits do
+    begin
       List.Add(Name);
+    end;
     Result := Arguments(AUri, AStartLine, AStartCharacter, AEndLine, AEndCharacter);
     // Die Liste kommt vor die schließende Klammer.
     Result := Copy(Result, 1, Length(Result) - 1) + ',' + List.ToJSON + ']';

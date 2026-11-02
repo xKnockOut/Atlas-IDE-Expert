@@ -138,7 +138,9 @@ begin
     // Nur die äußerste Aktion zählt: Verschachtelte stecken in ihrer Dauer.
     Timed := (Length(FNames) = 0) and (FTimes <> nil);
     if Timed then
+    begin
       Started := FTimes.Clock;
+    end;
     FNames := FNames + [AName];
   finally
     FLock.Leave;
@@ -151,10 +153,14 @@ begin
   FLock.Enter;
   try
     if Length(FNames) > 0 then
+    begin
       SetLength(FNames, Length(FNames) - 1);
+    end;
     // Unter der Sperre: Nach TimeInto(nil) schreibt keine Aktion mehr in die freigegebenen Startanteile.
     if ATimed and (FTimes <> nil) then
+    begin
       FTimes.Add('Aktion ' + AName, FTimes.Clock - AStarted);
+    end;
   finally
     FLock.Leave;
   end;
@@ -174,10 +180,14 @@ class function TAtlasActivity.Current: string;
 begin
   Result := '';
   if not FLock.TryEnter then
+  begin
     Exit;
+  end;
   try
     if Length(FNames) > 0 then
+    begin
       Result := FNames[High(FNames)];
+    end;
   finally
     FLock.Leave;
   end;
@@ -202,15 +212,21 @@ begin
   for Address in AAddresses do
   begin
     if Length(Result) >= AMax then
+    begin
       Break;
+    end;
     for Module in AModules do
+    begin
       if (Address >= Module.Base) and (Address < Module.Base + Module.Size) then
       begin
         Frame := Format('%s+%x', [Module.Name, Address - Module.Base]);
         if (Length(Result) = 0) or (Result[High(Result)] <> Frame) then
+        begin
           Result := Result + [Frame];
+        end;
         Break;
       end;
+    end;
   end;
 end;
 
@@ -233,8 +249,12 @@ var
 begin
   Result := AHang.Activity <> '';
   for Frame in AHang.Frames do
+  begin
     if Frame.StartsWith('Atlas', True) then
+    begin
       Result := True;
+    end;
+  end;
 end;
 
 function TAtlasHangMonitor.Finish(const AHang: TAtlasHang): string;
@@ -244,25 +264,41 @@ var
 begin
   Result := '';
   if AHang.DurationMs < FThresholdMs then
+  begin
     Exit;
+  end;
   Inc(FCount);
   if AHang.DurationMs > FLongestMs then
+  begin
     FLongestMs := AHang.DurationMs;
+  end;
   if InvolvesAtlas(AHang) then
+  begin
     Inc(FWithAtlas);
+  end;
   Lines := TStringBuilder.Create;
   try
     Lines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);
     if AHang.Activity <> '' then
-      Lines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs])
+    begin
+      Lines.AppendFormat('; Atlas: %s, %d ms', [AHang.Activity, AHang.DurationMs]);
+    end
     else if InvolvesAtlas(AHang) then
+    begin
       Lines.Append('; Atlas im Aufrufstapel');
+    end;
     if AHang.Window <> '' then
+    begin
       Lines.AppendFormat('; Fenster: %s', [AHang.Window]);
+    end;
     if AHang.CodeInsightCount > 0 then
+    begin
       Lines.AppendFormat('; Code Insight bisher %d-mal, %d ms', [AHang.CodeInsightCount, AHang.CodeInsightMs]);
+    end;
     for Frame in AHang.Frames do
+    begin
       Lines.Append(sLineBreak).Append('    ').Append(Frame);
+    end;
     Lines.Append(sLineBreak).Append('    ').Append(Summary);
     Result := Lines.ToString;
   finally

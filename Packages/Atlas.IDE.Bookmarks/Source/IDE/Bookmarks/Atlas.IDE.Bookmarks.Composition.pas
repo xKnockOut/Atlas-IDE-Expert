@@ -143,7 +143,9 @@ function BookmarkKey: Integer;
 begin
   Result := 0;
   if TAtlasIdeSettings.Current.BookmarksNamed then
+  begin
     Result := TAtlasIdeSettings.Current.BookmarkKey;
+  end;
 end;
 
 /// <summary>Akkord der schnellen Lesezeichen (#1104); 0, solange sie aus sind oder die Wartezeit 0 ist (dann bleibt
@@ -152,21 +154,27 @@ function QuickBookmarkKey: Integer;
 begin
   Result := 0;
   if TAtlasIdeSettings.Current.QuickBookmarks and (TAtlasIdeSettings.Current.QuickBookmarkChordWait > 0) then
+  begin
     Result := TAtlasIdeSettings.Current.QuickBookmarkKey;
+  end;
 end;
 
 function NextBookmarkKey: Integer;
 begin
   Result := 0;
   if TAtlasIdeSettings.Current.QuickBookmarks then
+  begin
     Result := TAtlasIdeSettings.Current.NextBookmarkKey;
+  end;
 end;
 
 function PreviousBookmarkKey: Integer;
 begin
   Result := 0;
   if TAtlasIdeSettings.Current.QuickBookmarks then
+  begin
     Result := TAtlasIdeSettings.Current.PreviousBookmarkKey;
+  end;
 end;
 
 { Start der Teile (aus der Kompositionswurzel hierher gezogen, #1455) }
@@ -254,17 +262,27 @@ begin
   end;
   // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
   if AFilter.IsEmpty and TAtlasTodoList.Choices(AAnswer, mChoices) then
+  begin
     GTodoChoices := mChoices;
+  end;
   if (Length(mEntries) = 0) and (ADescribed = '') then
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListEmpty, [AName]))
+  begin
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListEmpty, [AName]));
+  end
   else if Length(mEntries) = 0 then
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListNoMatch, [AName, ADescribed]))
+  begin
+    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListNoMatch, [AName, ADescribed]));
+  end
   else if ADescribed = '' then
+  begin
     TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListTitle,
-      [AName, Length(mEntries)]), mEntries)
+      [AName, Length(mEntries)]), mEntries);
+  end
   else
+  begin
     TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListFilteredTitle,
       [AName, ADescribed, Length(mEntries)]), mEntries);
+  end;
 end;
 
 /// <summary>Rückruf der TODO-Liste; eigene Routine, damit er nur seine Werte festhält.</summary>
@@ -288,7 +306,9 @@ var
 begin
   // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
   if (GScope = nil) or not TAtlasIdeSettings.Current.TodoList then
+  begin
     Exit;
+  end;
   mProject := GetActiveProject;
   if (mProject = nil) or (mProject.FileName = '') then
   begin
@@ -305,8 +325,10 @@ begin
   end;
   if not TAtlasIdeHost.RunCommandAsync(GScope, TAtlasFeature.Palette, TodosCommand,
     TodoArguments(mProject.FileName, mFilter), TodosTimeoutMs, TodosDone(mName, mDescribed, mFilter)) then
+  begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
     TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListBusy));
+  end;
 end;
 
 procedure AllProjectTodos;
@@ -320,10 +342,14 @@ var
   mFilter: TAtlasTodoFilter;
 begin
   if not TAtlasIdeSettings.Current.TodoList then
+  begin
     Exit;
+  end;
   mFilter := GTodoFilter;
   if not TAtlasTodoFilterDialog.Execute(GTodoChoices, mFilter) then
+  begin
     Exit;
+  end;
   GTodoFilter := mFilter;
   ProjectTodos(mFilter);
 end;
@@ -376,7 +402,9 @@ function PriorityOf(ATake: Boolean): TAtlasKeyPriority;
 begin
   Result := TAtlasKeyPriority.Yield;
   if ATake then
+  begin
     Result := TAtlasKeyPriority.Take;
+  end;
 end;
 
 /// <summary>Befehl für Nummer ANumber: eigene Funktion, damit jede anonyme Methode ihre Nummer behält.</summary>
@@ -389,9 +417,13 @@ begin
         procedure
         begin
           if AJump then
-            TAtlasIdeBookmarks.QuickJump(ANumber)
+          begin
+            TAtlasIdeBookmarks.QuickJump(ANumber);
+          end
           else
+          begin
             TAtlasIdeBookmarks.QuickSetNumber(ANumber);
+          end;
         end);
     end;
 end;
@@ -409,7 +441,9 @@ begin
   begin
     mKey := TAtlasQuickBookmarks.KeyFor(Word(ABase), mNumber);
     if mKey = 0 then
+    begin
       Exit;
+    end;
     if AJump then
     begin
       mId := 'Atlas.QuickBookmarkJump' + IntToStr(mNumber);
@@ -552,14 +586,20 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
   if mSettings.BookmarksNamed then
+  begin
     Result := Result + [ModuleKey('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
       mSettings.BookmarkKey, TAtlasKeyPriority.Shared, Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark))];
+  end;
   // Schnelle Lesezeichen (#1104): aus = alle Tasten gehören wieder der IDE.
   if not mSettings.QuickBookmarks then
+  begin
     Exit;
+  end;
   if mSettings.QuickBookmarksNumberedKeys then
+  begin
     Result := Result + NumberKeys(mSettings.QuickBookmarkSetKey, mSettings.QuickBookmarkSetKeyPriority, False) +
       NumberKeys(mSettings.QuickBookmarkJumpKey, mSettings.QuickBookmarkJumpKeyPriority, True);
+  end;
   // Wartezeit 0: Strg+Umschalt+K bleibt bei der IDE. Erster Teil neben den Faltungsakkorden der IDE, mit Rückfall
   // an die IDE für den selbst weitergereichten Akkord (TAtlasIdeQuickChord).
   if mSettings.QuickBookmarkChordWait > 0 then
@@ -587,7 +627,9 @@ begin
   TAtlasIdeBookmarks.ApplySettings;
   // bookmarks.quick aus: ein halb gedrückter Akkord gehört wieder der IDE (#1104).
   if not TAtlasIdeSettings.Current.QuickBookmarks then
+  begin
     TAtlasIdeQuickChord.Release;
+  end;
 end;
 
 procedure TAtlasBookmarksModule.ThemeChanged;
@@ -604,9 +646,13 @@ begin
   AMarks := nil;
   Result := GBookmarksStarted and TAtlasIdeBookmarks.OverviewMarks(AFileName, mMarks);
   if Result then
+  begin
     for mMark in mMarks do
+    begin
       AMarks := AMarks + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, mMark.Line, 1,
         mMark.DisplayName)];
+    end;
+  end;
 end;
 
 class function TAtlasBookmarksModule.Parts: TArray<IAtlasFeaturePart>;
@@ -637,7 +683,9 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
@@ -649,7 +697,9 @@ begin
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasKeySource, mRef);
@@ -670,13 +720,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
+  begin
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    begin
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+    end;
+  end;
 end;
 
 initialization
