@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Status.Tests;
 
-// Status, Prozesse und Fehlerbericht der Komposition ohne Arbeitsbereiche: Zustände kommen über die Dienste,
+// Status und Fehlerbericht der Komposition ohne Arbeitsbereiche: Zustände kommen über die Dienste,
 // der Fehlerbericht enthält die Version und meldet sich im Log.
 
 interface
@@ -11,6 +11,7 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.WorkspaceCheck,
   Shell.Workspace,
+  Shell.Composition.Contract,
   Shell.Composition.Status;
 
 type
@@ -23,7 +24,7 @@ type
     FQueueAsked: Integer;
     function NewServices: TShellStatusServices;
     procedure Logged(const AText: string);
-    procedure VisitNone(const AVisit: TShellStatusWorkspacesProc);
+    procedure VisitNone(const AVisit: TShellWorkspacesProc);
     procedure CompilerStatus(var AStatus: TServerStatus);
     procedure CheckStatus(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
     function IndexQueue: TIndexSchedulerQueue;
@@ -33,9 +34,6 @@ type
     /// <summary>Der anonyme Status fragt Compiler, Prüflauf und Index-Warteschlange und schreibt ins Log.</summary>
     [Test]
     procedure StatusAsksAllStates;
-    /// <summary>Ohne Arbeitsbereiche gibt es keine Prozesse am Index-Cache.</summary>
-    [Test]
-    procedure NoProcessesWithoutWorkspaces;
     /// <summary>Der Fehlerbericht liefert Text mit der Serverversion und meldet sich im Log.</summary>
     [Test]
     procedure BugReportHasVersion;
@@ -114,7 +112,7 @@ begin
   FLog := FLog + [AText];
 end;
 
-procedure TShellStatusReportsTests.VisitNone(const AVisit: TShellStatusWorkspacesProc);
+procedure TShellStatusReportsTests.VisitNone(const AVisit: TShellWorkspacesProc);
 begin
   AVisit(nil);
 end;
@@ -191,18 +189,6 @@ begin
   Assert.AreEqual(1, FQueueAsked);
   Assert.AreEqual(1, Integer(Length(FLog)));
   Assert.StartsWith('Status:', FLog[0]);
-end;
-
-procedure TShellStatusReportsTests.NoProcessesWithoutWorkspaces;
-var
-  mReports: TShellStatusReports;
-begin
-  mReports := TShellStatusReports.Create(NewServices);
-  try
-    Assert.AreEqual(0, Integer(Length(mReports.CollectProcesses)));
-  finally
-    mReports.Free;
-  end;
 end;
 
 procedure TShellStatusReportsTests.BugReportHasVersion;

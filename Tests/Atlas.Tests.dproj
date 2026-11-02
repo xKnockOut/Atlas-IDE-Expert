@@ -1474,6 +1474,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeActions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Status.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Slash.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Contract.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.UnitSearch.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
@@ -1487,6 +1489,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.CodeActions.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Status.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Slash.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.UnitSearch.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>

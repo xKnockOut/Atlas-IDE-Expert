@@ -33,6 +33,8 @@ uses
   Shell.Composition.CodeActions in 'Source\Shell\Shell.Composition.CodeActions.pas',
   Shell.Composition.Status in 'Source\Shell\Shell.Composition.Status.pas',
   Shell.Composition.Slash in 'Source\Shell\Shell.Composition.Slash.pas',
+  Shell.Composition.Contract in 'Source\Shell\Shell.Composition.Contract.pas',
+  Shell.Composition.UnitSearch in 'Source\Shell\Shell.Composition.UnitSearch.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
