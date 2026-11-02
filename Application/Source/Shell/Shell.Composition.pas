@@ -72,6 +72,7 @@ uses
   Shell.Composition.ServerCommands,
   Shell.Composition.CodeActions,
   Shell.Composition.Status,
+  Shell.Composition.Slash,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -84,7 +85,6 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
-  Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.JsonRpc.Statistics,
@@ -184,8 +184,8 @@ type
     // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
     // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
     FEnsureUnitRef: TEnsureUnitFunc;
-    /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
-    FResourceStringWrite: TResourceStringWrite;
+    /// <summary>Host der Schnellbefehle (#297) mit seinen Quellen.</summary>
+    FSlash: TShellSlash;
     /// <summary>Befehle des Plugins am Editor (#698, #712, #689, #660, #768, #473).</summary>
     FEditorCommands: TShellEditorCommands;
     /// <summary>Befehle am Server selbst: Status, Einstellungen, Bau, Index, Build und Projekt wählen.</summary>
@@ -330,12 +330,8 @@ type
     procedure WireEditors;
     /// <summary>Arbeitsbereich der Datei für die Schnellbefehle.</summary>
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
-    /// <summary>Vorlage des Dateikopfs für /header (#56).</summary>
-    function SlashHeaderTemplateOf(const AUri: string): string;
-    /// <summary>Testunit für /test (#295): dieselbe Suche wie die Code-Aktion aus #274.</summary>
-    function SlashTestUnitOf(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
-    /// <summary>Protokollaufruf (#304), Palettenseite (#299) und weitere Einstellungen der Schnellbefehle.</summary>
-    function SlashSettingOf(const AUri, AName: string): string;
+    /// <summary>Einstellungen des Ordners von AUri unter FWorkspacesLock; False ohne Ordner.</summary>
+    function WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
     /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
@@ -521,18 +517,12 @@ type
     function LanguageLevelFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
-    /// <summary>Kennungen der Prüfregeln, die in Zeile ALine von AText treffen (/ignore, #297); False ohne
-    /// Prüfregeln für die Datei.</summary>
-    function SlashRuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>Optionen des Graphen der Unit-Beziehungen (#593): Wurzel und Namensräume des Projekts der
     /// Datei, ohne Ausschlüsse der Architektur, damit „Wird verwendet von“ vollständig bleibt.</summary>
     function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
-    /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
-    /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
-    function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
@@ -719,7 +709,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.IncludeFiles,
-  Shell.SlashHost,
   Shell.Workspace.Setup,
   Shell.Workspace.Jobs,
   Shell.Workspace.RuleProjects,
@@ -738,7 +727,6 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.ServerPackage,
   Atlas.Common.Lsp.StatusFile,
-  Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Lsp.DfmPropertyRules,
@@ -747,10 +735,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.DfmProperties,
   Atlas.Common.Dfm.BinaryForm,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.TestUnits,
@@ -1144,33 +1128,26 @@ begin
   FLogger.Info(AMessage);
 end;
 
-/// <summary>Schreibt eine resourcestring-Unit (#473) über den Slash-Host AHost. Eigene Routine, damit die Closure
-/// nur AHost einfängt und nicht den Rahmen von WireEditing.</summary>
-function ResourceStringWriteFor(const AHost: ISlashHost): TResourceStringWrite;
-begin
-  Result :=
-    procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
-    begin
-      (AHost as TShellSlashHost).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
-    end;
-end;
-
 procedure TServerComposition.WireEditing;
 var
-  SlashHost: TShellSlashHost;
-  KeepHost: ISlashHost;
+  mServices: TShellSlashServices;
 begin
   WireEditors;
-  SlashHost := TShellSlashHost.Create(TShellSlashSources.New(SlashWorkspaceOf, ReadSourceText, SlashHeaderTemplateOf),
-    FTransport, FLogger, FDispatcher,
-    // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
+  mServices := Default(TShellSlashServices);
+  mServices.Transport := FTransport;
+  mServices.Logger := FLogger;
+  mServices.Dispatcher := FDispatcher;
+  mServices.WorkspaceOf := SlashWorkspaceOf;
+  mServices.ReadText := ReadSourceText;
+  // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
+  mServices.ClientAppliesEdits :=
     function: Boolean
     begin
       Result := TLspApplyEdit.ClientSupports(FLifecycle.InitializeParams);
-    end);
+    end;
   // Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03); FConnection liest die Closure
   // erst beim Aufruf.
-  SlashHost.RunInLoop :=
+  mServices.RunInLoop :=
     procedure(const AWork: TProc)
     begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
@@ -1178,19 +1155,13 @@ begin
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
       end;
     end;
-  // Testunit für /test (#295): dieselbe Suche wie die Code-Aktion aus #274.
-  SlashHost.TestUnitOf := SlashTestUnitOf;
-  // Protokollaufruf (#304) und Palettenseite (#299) aus der atlas.json des Ordners.
-  SlashHost.SettingOf := SlashSettingOf;
-  // /ignore und /sortuses (#297): Regeltreffer der Zeile und ungenutzte uses.
-  SlashHost.RuleIdsOf := SlashRuleIdsAt;
-  SlashHost.UsesContextOf := UsesContextFor;
-  SlashHost.FindingsOf := SlashFindingsAt;
-  // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben. Eigene Routine: Im Rahmen
-  // dieser Methode hielte die Closure den Host fest, der seinerseits Closures dieses Rahmens hält (Leck).
-  KeepHost := SlashHost;
-  FEditing.UseSlashHost(KeepHost);
-  FResourceStringWrite := ResourceStringWriteFor(KeepHost);
+  mServices.SettingsFor := SettingsFor;
+  mServices.WorkspaceSettingsOf := WorkspaceSettingsOf;
+  mServices.TestUnitContextFor := TestUnitContextFor;
+  mServices.RuleContextFor := RuleContextFor;
+  mServices.UsesContextFor := UsesContextFor;
+  FSlash := TShellSlash.Create(mServices);
+  FEditing.UseSlashHost(FSlash.Host);
 end;
 
 procedure TServerComposition.WireEditors;
@@ -1219,122 +1190,25 @@ begin
   end;
 end;
 
-function TServerComposition.SlashHeaderTemplateOf(const AUri: string): string;
+function TServerComposition.WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
 var
   mWorkspace: TShellWorkspace;
-  mSettings: TServerSettings;
 begin
   TMonitor.Enter(FWorkspacesLock);
   try
     mWorkspace := PickWorkspace(TDocumentUris.ToPath(AUri));
-    if mWorkspace = nil then
+    Result := mWorkspace <> nil;
+    if Result then
     begin
-      Exit('');
+      ASettings := mWorkspace.Configuration.Settings;
+    end
+    else
+    begin
+      ASettings := Default(TServerSettings);
     end;
-    mSettings := mWorkspace.Configuration.Settings;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Eigene Vorlage der Schnellbefehle, sonst die der Regel file-header (#56).
-  Result := mSettings.SlashHeaderTemplate;
-  if Result = '' then
-  begin
-    Result := TFileHeaderRule.Template(TRuleEngine.RuleOptions('file-header', mSettings));
-  end;
-end;
-
-function TServerComposition.SlashTestUnitOf(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
-var
-  mContext: TTestUnitContext;
-  mTarget: TTestUnitTarget;
-begin
-  ATarget := Default(TSlashTestUnit);
-  if not TestUnitContextFor(AUri, mContext) then
-  begin
-    ATarget.Reason := 'Datei gehört zu keinem Arbeitsbereich';
-    Exit(False);
-  end;
-  mTarget := TLspTestUnits.Resolve(TDocumentUris.ToPath(AUri), AText, -1, mContext);
-  ATarget.UnitName := mTarget.Counterpart;
-  ATarget.TestProgram := mContext.TestProgram;
-  if mTarget.UnitName = '' then
-  begin
-    ATarget.Reason := 'Die Datei ist keine Unit';
-  end
-  else if mTarget.IsTest then
-  begin
-    ATarget.Reason := 'Die Datei ist selbst eine Testunit';
-  end
-  else if mTarget.CounterpartFile <> '' then
-  begin
-    ATarget.FileName := mTarget.CounterpartFile;
-    ATarget.Exists := True;
-  end
-  else if mTarget.CanCreate then
-  begin
-    ATarget.FileName := mTarget.NewFile;
-  end
-  else
-  begin
-    ATarget.Reason := mTarget.Reason;
-  end;
-  Result := ATarget.Reason = '';
-end;
-
-/// <summary>Abschnitt für neue Interface-Methoden als Text der Schnellbefehle.</summary>
-function InterfaceSectionText(ASection: TCompletionInterfaceSection): string;
-begin
-  case ASection of
-    TCompletionInterfaceSection.Private:
-      Result := 'private';
-    TCompletionInterfaceSection.Protected:
-      Result := 'protected';
-  else
-    Result := 'public';
-  end;
-end;
-
-/// <summary>Einstellung AName der Schnellbefehle als Text; leer, wenn es sie nicht gibt.</summary>
-function SlashSettingValue(const ASettings: TServerSettings; const AName: string): string;
-begin
-  Result := '';
-  if AName = TSlashSettings.LogCall then
-  begin
-    Result := ASettings.SlashLogCall;
-  end
-  else if AName = TSlashSettings.TodoOwner then
-  begin
-    Result := ASettings.SlashTodoOwner;
-  end
-  else if AName = TSlashSettings.TodoCategory then
-  begin
-    Result := ASettings.SlashTodoCategory;
-  end
-  else if AName = TSlashSettings.SortUsesRemoveUnused then
-  begin
-    Result := LowerCase(BoolToStr(ASettings.SlashSortUsesRemoveUnused, True));
-  end
-  else if AName = TSlashSettings.EnumHelper then
-  begin
-    Result := LowerCase(BoolToStr(ASettings.SlashEnumHelper, True));
-  end
-  else if AName = TSlashSettings.SetHelper then
-  begin
-    Result := LowerCase(BoolToStr(ASettings.SlashSetHelper, True));
-  end
-  else if AName = TSlashSettings.ComponentPalette then
-  begin
-    Result := ASettings.SlashComponentPalette;
-  end
-  else if AName = TSlashSettings.InterfaceSection then
-  begin
-    Result := InterfaceSectionText(ASettings.Completion.InterfaceSection);
-  end;
-end;
-
-function TServerComposition.SlashSettingOf(const AUri, AName: string): string;
-begin
-  Result := SlashSettingValue(SettingsFor(AUri), AName);
 end;
 
 procedure TServerComposition.WireWorkspaces;
@@ -1455,7 +1329,11 @@ begin
       Result := FRefactorings.ContextFor(AUri);
     end;
   mServices.SlashCommandsFor := SlashCommandsFor;
-  mServices.RuleIdsFor := SlashRuleIdsAt;
+  mServices.RuleIdsFor :=
+    function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
+    begin
+      Result := FSlash.RuleIdsAt(AUri, AText, ALine, AIds);
+    end;
   mServices.NamingFor := NamingPrefixFor;
   mServices.HintsFor := HintSettingsFor;
   mServices.DocCommentsFor := DocCommentsFor;
@@ -1671,7 +1549,7 @@ begin
     end;
   mServices.HighlightSettingsFor := HighlightSettingsFor;
   mServices.StringLiteralFor := StringLiteralFor;
-  mServices.ResourceStringWrite := FResourceStringWrite;
+  mServices.ResourceStringWrite := FSlash.ResourceStringWrite;
   FEditorCommands := TShellEditorCommands.Create(mServices);
 end;
 
@@ -2268,6 +2146,8 @@ begin
   FreeAndNil(FTestPrograms);
   FreeAndNil(FUnitSearch);
   FreeAndNil(FCommands);
+  // Nach allen Nutzern des Hosts der Schnellbefehle: Er ruft dessen Methoden.
+  FreeAndNil(FSlash);
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
   FreeAndNil(FWatchedFiles);
@@ -3714,80 +3594,6 @@ end;
 const
   /// <summary>Protokoll der Sitzung im Speicher für Fehlerbericht und Diagnosepaket (#1356).</summary>
   SessionLogLines = 10000;
-
-function TServerComposition.SlashRuleIdsAt(const AUri, AText: string; ALine: Integer;
-  out AIds: TArray<string>): Boolean;
-var
-  Context: TRuleCheckContext;
-  Tree: TSyntaxTree;
-  Finding: TRuleFinding;
-begin
-  AIds := nil;
-  Result := RuleContextFor(AUri, Context);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Tree := TSyntaxTreeCache.Parse(AText);
-  try
-    for Finding in TLspSyntaxDiagnostics.RuleFindings(AText, Tree, Context) do
-    begin
-      if (Finding.Range.StartPos.Line = ALine) and not SameText(Finding.RuleId, 'slash-command') and
-        not MatchText(Finding.RuleId, AIds) then
-      begin
-        AIds := AIds + [Finding.RuleId];
-      end;
-    end;
-  finally
-    Tree.Free;
-  end;
-end;
-
-function TServerComposition.SlashFindingsAt(const AUri, AText: string; ALine: Integer;
-  out AFindings: TArray<TSlashFinding>): Boolean;
-var
-  Context: TRuleCheckContext;
-  Tree: TSyntaxTree;
-  Catalog: TRuleCatalog;
-  Finding: TRuleFinding;
-  Entry: TRuleCatalogEntry;
-  Item: TSlashFinding;
-  Action: TCodeAction;
-begin
-  AFindings := nil;
-  Result := RuleContextFor(AUri, Context);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Tree := TSyntaxTreeCache.Parse(AText);
-  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
-  try
-    for Finding in TLspSyntaxDiagnostics.RuleFindings(AText, Tree, Context) do
-    begin
-      if (Finding.Range.StartPos.Line <> ALine) or SameText(Finding.RuleId, 'slash-command') then
-      begin
-        Continue;
-      end;
-      Item := Default(TSlashFinding);
-      Item.RuleId := Finding.RuleId;
-      Item.Message := Finding.Message;
-      if Catalog.TryFind(Finding.RuleId, Entry) then
-      begin
-        Item.Explanation := TRuleCatalog.Explanation(Entry, #10);
-      end;
-      // Nur als sicher markierte Korrekturen, wie beim Speichern (#182).
-      if TRuleCodeActions.FixAll([Finding], Action) then
-      begin
-        Item.SafeFix := Action.Edits;
-      end;
-      AFindings := AFindings + [Item];
-    end;
-  finally
-    Catalog.Free;
-    Tree.Free;
-  end;
-end;
 
 function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
