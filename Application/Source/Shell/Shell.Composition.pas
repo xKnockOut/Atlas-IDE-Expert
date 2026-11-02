@@ -39,7 +39,6 @@ uses
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Refactorings,
-  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Pascal.FormatRoutines,
@@ -73,6 +72,7 @@ uses
   Shell.Composition.FileChanges,
   Shell.Composition.Sources,
   Shell.Composition.Directives,
+  Shell.Composition.FileOptions,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Projects.MissingUnit,
@@ -217,6 +217,9 @@ type
     FSources: TShellSources;
     /// <summary>Direktiven je Datei aus dem Projekt (Shell.Composition.Directives).</summary>
     FDirectives: TShellDirectives;
+    /// <summary>Vorgaben je Datei: Version, Sprachstand, Schnellbefehle, Formatstil (Shell.Composition.FileOptions).
+    /// </summary>
+    FFileOptions: TShellFileOptions;
     FCompilerProcess: ICompilerProcess;
     /// <summary>Compilerläufe (#40, #261): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.</summary>
     FCompile: TShellCompileHost;
@@ -396,21 +399,9 @@ type
     function GroupMembersOf(AWorkspace: TShellWorkspace): TArray<TMissingUnitProject>;
     /// <summary>Datei einer Unit aus dem Index, ohne nachzuladen; '' wenn unbekannt.</summary>
     function IndexUnitFile(AName: string): string;
-    /// <summary>Präfixe neuer Namen für Refactorings in AUri: die der Namensregel, wenn sie für die Datei läuft
-    /// (dieselbe Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
-    function NewNamesFor(const AUri: string): TPascalNamePrefixes;
-    function DelphiVersionFor(const AUri: string): string;
-    /// <summary>Sprachstand von AUri (#1126): die ältere aus DelphiVersionFor und minDelphiVersion des Projekts.
-    /// Gilt für Diagnosen, Code-Aktionen, Schnellbefehle und Formatieren; Hover und Hilfe-Links nehmen weiter
-    /// DelphiVersionFor.</summary>
-    function LanguageLevelFor(const AUri: string): string;
-    /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
-    function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
-    /// <summary>"completeBlocks.docComment" (#88).</summary>
-    function DocCommentsFor(const AUri: string): Boolean;
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
@@ -424,9 +415,6 @@ type
     function AffectedQueryFor(AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
     /// <summary>Dateien, Testprogramme und Optionen für betroffene Tests zu AUri.</summary>
     function AffectedRequestFor(const AUri: string; const ASettings: TServerSettings): TAffectedRequest;
-    function FormatStyleFor(const AUri: string): TFormatStyle;
-    /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
-    function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     /// <summary>Dienste der Syntaxprüfung; sie lösen erst beim Aufruf auf, die Felder dahinter entstehen in den
     /// späteren Wire-Schritten vor der ersten Nachricht.</summary>
     function SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
@@ -519,7 +507,6 @@ uses
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Logging.RotatingFileStream,
@@ -962,11 +949,27 @@ var
 begin
   mServices := Default(TShellEditingServices);
   mServices.Documents := FDocuments;
-  mServices.FormatStyleFor := FormatStyleFor;
-  mServices.ResolvedFormatStyleFor := ResolvedFormatStyleFor;
-  mServices.SlashCommandsFor := SlashCommandsFor;
-  mServices.LanguageLevelFor := LanguageLevelFor;
-  mServices.DocCommentsFor := DocCommentsFor;
+  mServices.FormatStyleFor :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := FFileOptions.FormatStyleFor(AUri);
+    end;
+  mServices.ResolvedFormatStyleFor :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := FFileOptions.ResolvedFormatStyleFor(AUri);
+    end;
+  mServices.SlashCommandsFor := FFileOptions.SlashCommands();
+  mServices.LanguageLevelFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.LanguageLevelFor(AUri);
+    end;
+  mServices.DocCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := FFileOptions.DocCommentsFor(AUri);
+    end;
   mServices.ReadText := ReadSourceText;
   FEditing := TShellEditing.Create(mServices);
   FEditing.Attach(FDispatcher);
@@ -1049,11 +1052,12 @@ begin
   FSettings := TShellSettings.Create(FWorkspaces,
     function(const AUri: string): string
     begin
-      Result := LanguageLevelFor(AUri);
+      Result := FFileOptions.LanguageLevelFor(AUri);
     end);
   FRuleContext := TShellRuleContext.Create(RuleContextServices);
   FSources := TShellSources.Create(SourcesServices);
   FDirectives := TShellDirectives.Create(FWorkspaces, FSettings);
+  FFileOptions := TShellFileOptions.Create(FWorkspaces, FSettings);
   FIndexScheduler := TIndexScheduler.Create;
   FConfiguration := TShellConfiguration.Create(ConfigurationServices);
   FDocuments.Subscribe(HandleDocumentEvent);
@@ -1111,7 +1115,11 @@ begin
   mServices.ReadText := ReadSourceText;
   mServices.ProjectFiles := ProjectSourceFiles;
   mServices.EnsureUnit := EnsureUnit;
-  mServices.DelphiVersionFor := DelphiVersionFor;
+  mServices.DelphiVersionFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.DelphiVersionFor(AUri);
+    end;
   mServices.HintSettingsFor :=
     function(const AUri: string): THintSettings
     begin
@@ -1153,13 +1161,17 @@ begin
     begin
       Result := FSettings.Refactoring(AUri);
     end;
-  mServices.LanguageLevelFor := LanguageLevelFor;
+  mServices.LanguageLevelFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.LanguageLevelFor(AUri);
+    end;
   mServices.RefactoringContextFor :=
     function(const AUri: string): TRefactoringContext
     begin
       Result := FRefactorings.ContextFor(AUri);
     end;
-  mServices.SlashCommandsFor := SlashCommandsFor;
+  mServices.SlashCommandsFor := FFileOptions.SlashCommands();
   mServices.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
@@ -1171,7 +1183,11 @@ begin
     begin
       Result := FSettings.Hints(AUri);
     end;
-  mServices.DocCommentsFor := DocCommentsFor;
+  mServices.DocCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := FFileOptions.DocCommentsFor(AUri);
+    end;
   mServices.SymbolsFor := FDirectives.ConditionalContext();
   mServices.Notify := NotifyClient;
   mServices.Log := LogDebug;
@@ -1298,9 +1314,21 @@ begin
     begin
       Result := FSettings.Refactoring(AUri);
     end;
-  mServices.FormatStyleFor := ResolvedFormatStyleFor;
-  mServices.LanguageLevelFor := LanguageLevelFor;
-  mServices.DelphiVersionFor := DelphiVersionFor;
+  mServices.FormatStyleFor :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := FFileOptions.ResolvedFormatStyleFor(AUri);
+    end;
+  mServices.LanguageLevelFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.LanguageLevelFor(AUri);
+    end;
+  mServices.DelphiVersionFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.DelphiVersionFor(AUri);
+    end;
   // Die Code-Aktionen entstehen erst in WireCodeActions: UsesContextFor liest sie beim Aufruf.
   mServices.UsesContextFor := UsesContextFor;
   mServices.MessagesFor :=
@@ -1309,7 +1337,11 @@ begin
       Result := FCompile.Results.MessagesFor(AFileName);
     end;
   mServices.ProjectFor := RefactoringProject;
-  mServices.NewNamesFor := NewNamesFor;
+  mServices.NewNamesFor :=
+    function(const AUri: string): TPascalNamePrefixes
+    begin
+      Result := FFileOptions.NewNamesFor(AUri);
+    end;
   mServices.MissingUnitSetupFor := MissingUnitSetupFor;
   FRefactorings := TShellRefactorings.Create(mServices);
 end;
@@ -1333,8 +1365,16 @@ begin
     begin
       Result := FSettings.StringLiteral(AUri, AMultiline);
     end;
-  mServices.DocCommentsFor := DocCommentsFor;
-  mServices.FormatStyleFor := ResolvedFormatStyleFor;
+  mServices.DocCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := FFileOptions.DocCommentsFor(AUri);
+    end;
+  mServices.FormatStyleFor :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := FFileOptions.ResolvedFormatStyleFor(AUri);
+    end;
   mServices.RefactoringFor :=
     function(const AUri: string): TRefactoringSettings
     begin
@@ -1342,7 +1382,11 @@ begin
     end;
   mServices.DefinesFor := FDirectives.Defines();
   mServices.ExtraActions := ExtraCodeActions;
-  mServices.LanguageLevelFor := LanguageLevelFor;
+  mServices.LanguageLevelFor :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.LanguageLevelFor(AUri);
+    end;
   mServices.WorkspaceOf := CodeActionWorkspaceOf;
   mServices.SlashHost := FEditing.SlashHost;
   FCodeActions := TShellCodeActions.Create(mServices);
@@ -1889,6 +1933,7 @@ begin
   FWorkspaces.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FIndexRecheck.Free;
+  FreeAndNil(FFileOptions);
   FreeAndNil(FDirectives);
   FreeAndNil(FSources);
   FreeAndNil(FRuleContext);
@@ -2616,35 +2661,6 @@ begin
   end;
 end;
 
-function TServerComposition.NewNamesFor(const AUri: string): TPascalNamePrefixes;
-var
-  FileName: string;
-  Workspace: TShellWorkspace;
-  Settings: TServerSettings;
-  Context: TRuleContext;
-begin
-  FileName := TDocumentUris.ToPath(AUri);
-  Context := Default(TRuleContext);
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(FileName);
-    if Workspace = nil then
-    begin
-      Settings := FSettings.Loose;
-    end
-    else
-    begin
-      Settings := Workspace.Configuration.Settings;
-      Context.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
-      Context.Naming := Workspace.RuleServices.Naming;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-  Context.UnitName := ChangeFileExt(ExtractFileName(FileName), '');
-  Result := TRuleEngine.NewNames(BuiltinRules, Settings, Context);
-end;
-
 const
   /// <summary>Protokoll der Sitzung im Speicher für Fehlerbericht und Diagnosepaket (#1356).</summary>
   SessionLogLines = 10000;
@@ -2653,55 +2669,6 @@ function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUs
 begin
   AContext := Default(TUsesContext);
   Result := (FCodeActions <> nil) and FCodeActions.UsesContextOf(AUri, AContext);
-end;
-
-function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
-var
-  Settings: TServerSettings;
-begin
-  Settings := FSettings.SettingsFor(AUri);
-  Result := Settings.SlashCommands;
-  ADisabled := Settings.SlashCommandsDisabled;
-  // usesCommand bleibt als Alias erhalten (#254).
-  if not Settings.UsesCommand then
-  begin
-    ADisabled := ADisabled + ['uses'];
-  end;
-end;
-
-function TServerComposition.DocCommentsFor(const AUri: string): Boolean;
-begin
-  Result := FSettings.SettingsFor(AUri).CompleteBlocksDocComment;
-end;
-
-function TServerComposition.DelphiVersionFor(const AUri: string): string;
-var
-  Workspace: TShellWorkspace;
-begin
-  TMonitor.Enter(FWorkspaces.Lock);
-  try
-    Workspace := FWorkspaces.Pick(TDocumentUris.ToPath(AUri));
-    if Workspace = nil then
-    begin
-      Result := '';
-    end
-    else
-    begin
-      // Tatsächlich gewählte Installation (#47), sonst die konfigurierte Version.
-      Result := Workspace.State.DelphiVersion;
-      if Result = '' then
-      begin
-        Result := Workspace.Configuration.Settings.DelphiVersion;
-      end;
-    end;
-  finally
-    TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-function TServerComposition.LanguageLevelFor(const AUri: string): string;
-begin
-  Result := TLanguageFeatures.LanguageLevel(DelphiVersionFor(AUri), FSettings.SettingsFor(AUri).MinDelphiVersion);
 end;
 
 function TServerComposition.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
@@ -2847,30 +2814,16 @@ begin
     ReadSourceText);
 end;
 
-function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
-begin
-  Result := FSettings.SettingsFor(AUri).Formatting;
-end;
-
-function TServerComposition.ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
-begin
-  Result := TLspFormatting.Resolve(nil, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-      if Result then
-      begin
-        AText := TFileEncoding.LoadText(AFileName);
-      end;
-    end);
-end;
-
 function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
 begin
   Result := Default(TSyntaxDiagnosticsProviders);
   Result.Defines := FDirectives.Defines();
   // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
-  Result.Version := LanguageLevelFor;
+  Result.Version :=
+    function(const AUri: string): string
+    begin
+      Result := FFileOptions.LanguageLevelFor(AUri);
+    end;
   Result.BuildTarget := FDirectives.BuildTarget();
   Result.Rules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
