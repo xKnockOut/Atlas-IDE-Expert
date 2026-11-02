@@ -445,9 +445,8 @@ var
   Names, Prefixes, Warnings, Preview: TArray<string>;
   Repair: TEnumTableRepair;
   Cases: TArray<TSyntaxNode>;
-  CaseEdits: TArray<TTextEdit>;
-  Index, Count, Places, TableCount, CaseCount: Integer;
-  HasElse: Boolean;
+  Completion: TCaseCompletionEdits;
+  Index, Places, TableCount, CaseCount: Integer;
   Files: TArray<TFileEdits>;
   Item: TFileEdits;
 begin
@@ -519,12 +518,12 @@ begin
         for Index := 0 to High(Cases) do
         begin
           if TCaseCompletion.Complete(SyncFile.Text, SyncFile.Tree, Cases[Index], Target.Names, Prefixes[Index],
-            CaseEdits, Count, HasElse) then
+            Completion) then
           begin
-            Item.Edits := Item.Edits + CaseEdits;
+            Item.Edits := Item.Edits + Completion.Edits;
             Inc(CaseCount);
             Preview := Preview + [Format('%s: case: %d Zweige ergänzt', [Where(SyncFile.FileName, SyncFile.Text,
-              Cases[Index].StartOffset), Count])];
+              Cases[Index].StartOffset), Completion.Count])];
           end;
         end;
       finally
