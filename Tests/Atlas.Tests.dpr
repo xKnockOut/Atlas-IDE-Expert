@@ -81,6 +81,7 @@ uses
   Atlas.Common.Lsp.Processes.Tests in 'Common\Lsp\Atlas.Common.Lsp.Processes.Tests.pas',
   Atlas.Common.Index.Memory.Tests in 'Common\Index\Atlas.Common.Index.Memory.Tests.pas',
   Atlas.Common.Index.Content.Tests in 'Common\Index\Atlas.Common.Index.Content.Tests.pas',
+  Atlas.Common.Index.Builder.Tests in 'Common\Index\Atlas.Common.Index.Builder.Tests.pas',
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',
   Atlas.Common.Semantics.Recursion.Tests in 'Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas',
   Atlas.Common.Semantics.ExitPoints.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas',

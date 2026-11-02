@@ -98,8 +98,8 @@ begin
     mFrame.Parent := mHost;
     mFrame.SetSnapshot(Sample, False, 0);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowNoServer), mFrame.Header.Caption);
-    Assert.IsFalse(mFrame.RebuildButton.Enabled, 'ohne Server kein Neuaufbau');
-    Assert.AreEqual(0, mFrame.Units.Items.Count, 'ohne Server leer');
+    Assert.IsFalse(mFrame.Buttons.RebuildButton.Enabled, 'ohne Server kein Neuaufbau');
+    Assert.AreEqual(0, mFrame.Tables.Units.Items.Count, 'ohne Server leer');
     mFrame.SetSnapshot(Default(TAtlasServerSnapshot), True, 0);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowWaiting), mFrame.Header.Caption);
     mSnapshot := Sample;
@@ -113,7 +113,7 @@ begin
     Assert.IsTrue(string(mFrame.Header.Caption).EndsWith(': 2'), mFrame.Header.Caption);
     Assert.IsTrue(string(mFrame.QueueLine.Caption).Contains('90 %'), mFrame.QueueLine.Caption);
     Assert.IsTrue(string(mFrame.CheckRunLine.Caption).Contains('3 Units'), mFrame.CheckRunLine.Caption);
-    Assert.IsTrue(mFrame.RebuildButton.Enabled);
+    Assert.IsTrue(mFrame.Buttons.RebuildButton.Enabled);
   finally
     mHost.Free;
   end;
@@ -130,12 +130,12 @@ begin
     mFrame := TAtlasServerFrame.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.SetSnapshot(Sample, True, 0);
-    Assert.AreEqual(1, mFrame.Units.Items.Count);
-    Assert.AreEqual(1, mFrame.Rules.Items.Count);
-    Assert.AreEqual(2, mFrame.Requests.Items.Count);
-    Assert.AreEqual('Haupt', mFrame.Units.Items[0].Caption);
-    Assert.AreEqual('unused-uses', mFrame.Rules.Items[0].Caption);
-    Assert.AreEqual('3', mFrame.Rules.Items[0].SubItems[1]);
+    Assert.AreEqual(1, mFrame.Tables.Units.Items.Count);
+    Assert.AreEqual(1, mFrame.Tables.Rules.Items.Count);
+    Assert.AreEqual(2, mFrame.Tables.Requests.Items.Count);
+    Assert.AreEqual('Haupt', mFrame.Tables.Units.Items[0].Caption);
+    Assert.AreEqual('unused-uses', mFrame.Tables.Rules.Items[0].Caption);
+    Assert.AreEqual('3', mFrame.Tables.Rules.Items[0].SubItems[1]);
     Assert.IsTrue(mFrame.OverBudget.Visible, 'Budget überschritten');
     mSnapshot := Sample;
     mSnapshot.OverBudget := False;
@@ -162,40 +162,40 @@ begin
   try
     mFrame := TAtlasServerFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.OnOpenUnit :=
+    mFrame.Tables.OnOpenUnit :=
       procedure(AUnit: TAtlasServerSlowUnit)
       begin
         mOpenedUnit := AUnit.FileName;
       end;
-    mFrame.OnOpenRule :=
+    mFrame.Tables.OnOpenRule :=
       procedure(ARule: string)
       begin
         mOpenedRule := ARule;
       end;
-    mFrame.OnRefresh :=
+    mFrame.Buttons.OnRefresh :=
       procedure
       begin
         Inc(mRefreshed);
       end;
-    mFrame.OnRebuild :=
+    mFrame.Buttons.OnRebuild :=
       procedure
       begin
         Inc(mRebuilt);
       end;
-    mFrame.OnPackage :=
+    mFrame.Buttons.OnPackage :=
       procedure
       begin
         Inc(mPacked);
       end;
     mFrame.SetSnapshot(Sample, True, 0);
-    mFrame.OpenUnit(0);
-    mFrame.OpenRule(0);
-    mFrame.OpenUnit(5);
+    mFrame.Tables.OpenUnit(0);
+    mFrame.Tables.OpenRule(0);
+    mFrame.Tables.OpenUnit(5);
     Assert.AreEqual('C:\P\Haupt.pas', mOpenedUnit);
     Assert.AreEqual('unused-uses', mOpenedRule);
-    mFrame.RefreshButton.Click;
-    mFrame.RebuildButton.Click;
-    mFrame.PackageButton.Click;
+    mFrame.Buttons.RefreshButton.Click;
+    mFrame.Buttons.RebuildButton.Click;
+    mFrame.Buttons.PackageButton.Click;
     Assert.AreEqual(1, mRefreshed);
     Assert.AreEqual(1, mRebuilt);
     Assert.AreEqual(1, mPacked);
