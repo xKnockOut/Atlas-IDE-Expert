@@ -80,6 +80,7 @@ uses
   Shell.Composition.RuleContext,
   Shell.Composition.Ide,
   Shell.Composition.Configuration,
+  Shell.Composition.FileChanges,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -97,7 +98,6 @@ uses
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Lsp.WatchedFiles,
-  Atlas.Common.Lsp.IndexRefresh,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.WorkspaceFolders,
@@ -196,11 +196,8 @@ type
     FStatistics: IJsonRpcStatistics;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
-    FWatchedFiles: TLspWatchedFiles;
-    /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
-    FIndexRefresh: TLspIndexRefresh;
-    /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
-    FUsesChanges: TLspUsesChanges;
+    /// <summary>Dateiänderungen von außen und Tipp-Pause (#492) (Shell.Composition.FileChanges).</summary>
+    FFileChanges: TShellFileChanges;
     /// <summary>Build-Ergebnisse, Compilermeldungen (#528) und Projektkontext (#396) aus der IDE
     /// (Shell.Composition.Ide).</summary>
     FIde: TShellIde;
@@ -358,6 +355,7 @@ type
     procedure WireUnitSearch;
     /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
     procedure WireWatchedFiles;
+    function FileChangesServices: TShellFileChangesServices;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
     /// <summary>Dienste der IDE-Nachrichten: Meldungen ersetzen die des letzten Laufs, Pause der Projektprüfung
@@ -501,8 +499,6 @@ type
     function LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
     /// <summary>Index und Arbeitsbereiche zu einem Dokumentereignis einer Datei auf der Platte.</summary>
     procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-    /// <summary>Tipp-Pause (#492): ungespeicherter Stand in den Index, beim Schließen der der Platte.</summary>
-    procedure IndexRefreshEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
     /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
     procedure SourceSaved(const AFileName: string);
     /// <summary>Auftrag für das Projekt zu AFileName ('' = einziger Ordner); False ohne Projekt oder Installation
@@ -518,15 +514,6 @@ type
     procedure FreeAnalysisFeatures;
     /// <summary>Teil von FreeFeatures: Vervollständigung, Code-Aktionen, Befehle, IDE und Protokoll.</summary>
     procedure FreeCodeFeatures;
-    /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
-    procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
-    /// <summary>Ordnet eine Dateiänderung ein: Einstellungen, Projektdatei (AReload) oder Quelltext (ASources).</summary>
-    procedure WatchedFileChanged(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
-      var ASources: TArray<TFileChange>);
-    /// <summary>Lädt die Arbeitsbereiche mit geänderter Projektdatei neu.</summary>
-    procedure ReloadWorkspaces(AReload: TList<TShellWorkspace>);
-    /// <summary>Geänderte Quelltexte in den Index und in die Projektprüfung (#1247).</summary>
-    procedure ApplySourceChanges(const ASources: TArray<TFileChange>);
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
@@ -1703,47 +1690,42 @@ end;
 
 procedure TServerComposition.WireWatchedFiles;
 begin
-  FWatchedFiles := TLspWatchedFiles.Create(FTransport);
-  FWatchedFiles.OnChanged := HandleWatchedFiles;
-  FUsesChanges := TLspUsesChanges.Create;
-  FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
-    procedure(const AFileName, AText: string)
-    var
-      Workspace: TShellWorkspace;
-      Targets: TArray<TShellWorkspace>;
-      Updated: Boolean;
+  FFileChanges := TShellFileChanges.Create(FileChangesServices);
+  FFileChanges.Attach(FDispatcher);
+end;
+
+function TServerComposition.FileChangesServices: TShellFileChangesServices;
+begin
+  Result := Default(TShellFileChangesServices);
+  Result.Logger := FLogger;
+  Result.Workspaces := FWorkspaces;
+  Result.Transport := FTransport;
+  Result.Configuration := FConfiguration;
+  Result.RefreshLater :=
+    procedure
     begin
-      Updated := False;
-      TMonitor.Enter(FWorkspaces.Lock);
-      try
-        Targets := FWorkspaces.Items.ToArray;
-      finally
-        TMonitor.Exit(FWorkspaces.Lock);
-      end;
-      for Workspace in Targets do
-      begin
-        if Workspace.ApplyText(AFileName, AText) then
-        begin
-          Updated := True;
-        end;
-      end;
-      if Updated then
-      begin
-        FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
-      end;
-      // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
-      // folgt dem Index, die Neuprüfung ist gebündelt.
-      if Updated and FUsesChanges.Changed(AFileName, AText) and (FSyntaxDiagnostics <> nil) then
+      if FSyntaxDiagnostics <> nil then
       begin
         FSyntaxDiagnostics.RefreshLater;
       end;
-    end);
-  FIndexRefresh.OnError :=
-    procedure(E: Exception)
-    begin
-      FLogger.Warning('Index nach Tipp-Pause: ' + E.Message);
     end;
-  FWatchedFiles.Attach(FDispatcher);
+  // Beim Tippen macht die Projektprüfung Platz (#1247).
+  Result.Typed :=
+    procedure
+    begin
+      if FPullDiagnostics <> nil then
+      begin
+        FPullDiagnostics.Typed;
+      end;
+    end;
+  Result.Affected :=
+    procedure(const AFiles: TArray<string>)
+    begin
+      if FPullDiagnostics <> nil then
+      begin
+        FPullDiagnostics.Check.Affected(AFiles, True);
+      end;
+    end;
 end;
 
 function TServerComposition.IdeServices: TShellIdeServices;
@@ -1846,7 +1828,7 @@ begin
     AddWorkspace(mFolder);
   end;
   FConfiguration.UpdateWatchedFiles;
-  FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
+  FFileChanges.RegisterWatchers(FLifecycle.InitializeParams);
 end;
 
 procedure TServerComposition.ApplyClientInfo(const AParams: TJSONObject);
@@ -1884,8 +1866,10 @@ var
 begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
-  FreeAndNil(FIndexRefresh);
-  FreeAndNil(FUsesChanges);
+  if FFileChanges <> nil then
+  begin
+    FFileChanges.StopRefresh;
+  end;
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   if FConfiguration <> nil then
   begin
@@ -2004,7 +1988,7 @@ begin
   FreeAndNil(FSlash);
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
-  FreeAndNil(FWatchedFiles);
+  FreeAndNil(FFileChanges);
   FreeAndNil(FIde);
   FreeAndNil(FProjectSelection);
   FreeAndNil(FTextDocumentSync);
@@ -3559,9 +3543,9 @@ var
   mWorkspace: TShellWorkspace;
 begin
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
-  if FIndexRefresh <> nil then
+  if FFileChanges <> nil then
   begin
-    IndexRefreshEvent(AKind, AFileName, AText);
+    FFileChanges.DocumentEvent(AKind, AFileName, AText);
   end;
   if AKind <> TDocumentEventKind.Opened then
   begin
@@ -3580,30 +3564,6 @@ begin
   end;
 end;
 
-procedure TServerComposition.IndexRefreshEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-begin
-  case AKind of
-    TDocumentEventKind.Changed:
-      begin
-        FIndexRefresh.Changed(AFileName, AText);
-        // Beim Tippen macht die Projektprüfung Platz (#1247).
-        if FPullDiagnostics <> nil then
-        begin
-          FPullDiagnostics.Typed;
-        end;
-      end;
-    TDocumentEventKind.Closed:
-      if TLspIndexRefresh.Applies(AFileName) then
-      begin
-        FIndexRefresh.Closed(AFileName);
-        FUsesChanges.Forget(AFileName);
-        HandleWatchedFiles([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
 procedure TServerComposition.SourceSaved(const AFileName: string);
 var
   mWorkspace: TShellWorkspace;
@@ -3614,7 +3574,7 @@ begin
   // bei einer .inc liest der Index die einbindenden Units neu ein.
   if not SameText(ExtractFileExt(AFileName), '.dpk') then
   begin
-    HandleWatchedFiles([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
+    FFileChanges.Handle([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
   end;
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
@@ -3656,101 +3616,6 @@ begin
     TMonitor.Exit(FWorkspaces.Lock);
   end;
   Result := AError = '';
-end;
-
-procedure TServerComposition.HandleWatchedFiles(const AChanges: TArray<TFileChange>);
-var
-  mChange: TFileChange;
-  mSources: TArray<TFileChange>;
-  mReload: TList<TShellWorkspace>;
-begin
-  mSources := nil;
-  mReload := TList<TShellWorkspace>.Create;
-  try
-    for mChange in AChanges do
-    begin
-      WatchedFileChanged(mChange, mReload, mSources);
-    end;
-    ReloadWorkspaces(mReload);
-  finally
-    mReload.Free;
-  end;
-  if Length(mSources) > 0 then
-  begin
-    ApplySourceChanges(mSources);
-  end;
-end;
-
-procedure TServerComposition.WatchedFileChanged(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
-  var ASources: TArray<TFileChange>);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  if FConfiguration.IsGlobalSettingsFile(AChange.FileName) then
-  begin
-    FConfiguration.LoadGlobalSettings;
-  end
-  else if IsConfigurationFileName(ExtractFileName(AChange.FileName)) then
-  begin
-    FConfiguration.FileChanged(AChange.FileName);
-  end
-  else if TLspWatchedFiles.IsProjectFile(AChange.FileName) then
-  begin
-    mWorkspace := LockedWorkspaceOf(AChange.FileName);
-    if (mWorkspace <> nil) and not AReload.Contains(mWorkspace) then
-    begin
-      AReload.Add(mWorkspace);
-    end;
-  end
-  // .inc (#264): der Index liest die einbindenden Units neu ein.
-  else if MatchText(ExtractFileExt(AChange.FileName), ['.pas', '.dpr', '.inc']) then
-  begin
-    ASources := ASources + [AChange];
-    // Editor-Bäume mit $I neu lesen (#860): Die Symbole der .inc wählen ihre Zweige.
-    if SameText(ExtractFileExt(AChange.FileName), '.inc') then
-    begin
-      TSyntaxTreeCache.IncludesChanged;
-      FSyntaxDiagnostics.RefreshLater;
-    end;
-  end;
-end;
-
-procedure TServerComposition.ReloadWorkspaces(AReload: TList<TShellWorkspace>);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
-  for mWorkspace in AReload do
-  begin
-    FLogger.Info(Format('Projektdatei in %s geändert, Symbolindex wird neu aufgebaut', [mWorkspace.Root]));
-    mWorkspace.Reload;
-  end;
-end;
-
-procedure TServerComposition.ApplySourceChanges(const ASources: TArray<TFileChange>);
-var
-  mWorkspace: TShellWorkspace;
-  mChange: TFileChange;
-  mUpdated: Integer;
-  mNames: TArray<string>;
-begin
-  // Jeder Ordner aktualisiert die Units, die sein Aufbau kennt.
-  mUpdated := 0;
-  for mWorkspace in FWorkspaces.Items.ToArray do
-  begin
-    Inc(mUpdated, mWorkspace.ApplyChanges(ASources));
-  end;
-  FLogger.Debug(Format('%d Dateiänderungen von außen, %d Units im Index aktualisiert', [Length(ASources), mUpdated]));
-  // Gespeichert oder von außen geändert (#1247): die Datei und die Units, die sie in uses haben bzw. einbinden.
-  if FPullDiagnostics <> nil then
-  begin
-    mNames := nil;
-    for mChange in ASources do
-    begin
-      mNames := mNames + [mChange.FileName];
-    end;
-    FPullDiagnostics.Check.Affected(mNames, True);
-  end;
 end;
 
 /// <summary>Protokoll für den stdio-Betrieb: Debug-Senke der Plattform, stderr nur für Fehler, Auszug der Sitzung
