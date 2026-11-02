@@ -39,12 +39,18 @@ end;
 function TAtlasTaskOutputGroup.Release(AIdeClosing: Boolean): TAtlasTaskOutputRelease;
 begin
   if not FCreated then
+  begin
     Exit(TAtlasTaskOutputRelease.None);
+  end;
   FCreated := False;
   if AIdeClosing then
-    Result := TAtlasTaskOutputRelease.Forget
+  begin
+    Result := TAtlasTaskOutputRelease.Forget;
+  end
   else
+  begin
     Result := TAtlasTaskOutputRelease.Remove;
+  end;
 end;
 
 end.
