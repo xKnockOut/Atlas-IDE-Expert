@@ -2,11 +2,14 @@
 
 // Internals-Rolle Shell: Baselines des Servers (#97, #530) und die Sammelkorrektur (#1352). Die Komposition reicht
 // Metrikquelle, Prüfkontext, Defines und Include-Suche als Dienste herein; Dateien liest und schreibt die Unit
-// selbst.
+// selbst. Die Befehle dazu schreiben nur Zahlen ins Log, keine Pfade.
 
 interface
 
 uses
+  System.JSON,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
@@ -32,6 +35,7 @@ type
     IncludeResolverFor: TShellIncludeResolverFunc;
     /// <summary>Offene Dokumente bald neu prüfen.</summary>
     RefreshLater: TShellRefreshProc;
+    Logger: ILogger;
   end;
 
   /// <summary>Baseline der Befunde, Baseline der Compilermeldungen und Sammelkorrektur.</summary>
@@ -46,9 +50,17 @@ type
     function CheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
     function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
     procedure Written(AFileName: string);
+    function RunBaseline(const AArguments: TJSONArray): TJSONValue;
+    function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
+    function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
+    function RunCompilerBaselineClassify(const AArguments: TJSONArray): TJSONValue;
   public
     constructor Create(const AServices: TShellBaselineServices);
     destructor Destroy; override;
+    /// <summary>Baseline aktualisieren, Sammelkorrektur und Compilermeldungen in die Baseline.</summary>
+    procedure RegisterCommands(ACommands: TLspCommands);
+    /// <summary>Compilermeldungen einordnen (Schnellbefehl im Editor).</summary>
+    procedure RegisterClassifyCommand(ACommands: TLspCommands);
     property Baseline: TLspBaseline read FBaseline;
     property BulkFix: TLspBulkFix read FBulkFix;
     property CompilerBaseline: TLspCompilerBaseline read FCompilerBaseline;
@@ -62,6 +74,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Diagnostics,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
@@ -218,6 +231,76 @@ end;
 procedure TShellBaselines.Written(AFileName: string);
 begin
   FServices.RefreshLater();
+end;
+
+procedure TShellBaselines.RegisterCommands(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspBaseline.Command, RunBaseline);
+  ACommands.Register(TLspBulkFix.Command, RunBulkFix);
+  ACommands.Register(TLspCompilerBaseline.AddCommand, RunCompilerBaselineAdd);
+end;
+
+procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspCompilerBaseline.ClassifyCommand, RunCompilerBaselineClassify);
+end;
+
+function TShellBaselines.RunBaseline(const AArguments: TJSONArray): TJSONValue;
+var
+  mWatch: TStopwatch;
+  mAnswer: TJSONObject;
+begin
+  // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
+  mWatch := TStopwatch.StartNew;
+  Result := FBaseline.Execute(AArguments);
+  if Result is TJSONObject then
+  begin
+    mAnswer := TJSONObject(Result);
+    FServices.Logger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
+      '(%d neu, %d entfernt, %d ohne Datei), %d ms', [mAnswer.GetValue<Integer>('total', -1),
+      mAnswer.GetValue<Integer>('files', -1), mAnswer.GetValue<Integer>('added', -1),
+      mAnswer.GetValue<Integer>('removed', -1), mAnswer.GetValue<Integer>('orphaned.count', -1),
+      mWatch.ElapsedMilliseconds]));
+  end;
+end;
+
+function TShellBaselines.RunBulkFix(const AArguments: TJSONArray): TJSONValue;
+var
+  mWatch: TStopwatch;
+  mSummary: string;
+begin
+  // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
+  mWatch := TStopwatch.StartNew;
+  Result := FBulkFix.Execute(AArguments);
+  if not (Result is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mSummary := TJSONObject(Result).GetValue<string>('summary', '');
+  if Pos(sLineBreak, mSummary) > 0 then
+  begin
+    mSummary := Copy(mSummary, 1, Pos(sLineBreak, mSummary) - 1);
+  end;
+  FServices.Logger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [mSummary, mWatch.ElapsedMilliseconds]));
+end;
+
+function TShellBaselines.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
+var
+  mAnswer: TJSONObject;
+begin
+  Result := FCompilerBaseline.ExecuteAdd(AArguments);
+  if Result is TJSONObject then
+  begin
+    mAnswer := TJSONObject(Result);
+    FServices.Logger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
+      [mAnswer.GetValue<Integer>('total', -1), mAnswer.GetValue<Integer>('added', -1),
+      mAnswer.GetValue<Integer>('removed', -1)]));
+  end;
+end;
+
+function TShellBaselines.RunCompilerBaselineClassify(const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := FCompilerBaseline.ExecuteClassify(AArguments);
 end;
 
 end.
