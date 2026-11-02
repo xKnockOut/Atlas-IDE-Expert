@@ -116,16 +116,24 @@ begin
         AText := ADetails.Title;
         mFields := nil;
         if ADetails.State <> '' then
+        begin
           mFields := mFields
             + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState) + ': ' + ADetails.State];
+        end;
         if ADetails.Assignee <> '' then
+        begin
           mFields := mFields + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee) + ': ' +
             ADetails.Assignee];
+        end;
         if ADetails.Updated > 0 then
+        begin
           mFields := mFields + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
             [AgeText(ADetails.Updated, ANow)])];
+        end;
         if Length(mFields) > 0 then
+        begin
           AText := AText + #10 + string.Join(' · ', mFields);
+        end;
       end;
     TAtlasIssueTipState.NotFound:
       AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
@@ -135,9 +143,13 @@ begin
     AText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
   end;
   if APreview then
-    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooter)
+  begin
+    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooter);
+  end
   else
+  begin
     mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooterBrowser);
+  end;
   AText := AText + #10#10 + mFooter;
 end;
 
@@ -149,9 +161,13 @@ begin
       begin
         Result := AKey;
         if ADetails.Title <> '' then
+        begin
           Result := Result + ' · ' + ADetails.Title;
+        end;
         if ADetails.State <> '' then
+        begin
           Result := Result + ' · ' + ADetails.State;
+        end;
       end;
     TAtlasIssueTipState.NotFound:
       Result := AKey + ' · ' + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
@@ -165,29 +181,45 @@ end;
 class function TAtlasIssueTip.BlameFooter(APreview: Boolean): string;
 begin
   if APreview then
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssueFooter)
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssueFooter);
+  end
   else
+  begin
     Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssueFooterBrowser);
+  end;
 end;
 
 class function TAtlasIssueTip.ScopeLink(AMethod: Boolean; ACount: Integer): string;
 begin
   if AMethod and (ACount >= 0) then
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesMethodLink, [ACount])
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesMethodLink, [ACount]);
+  end
   else if AMethod then
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesMethodLinkOpen)
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesMethodLinkOpen);
+  end
   else if ACount >= 0 then
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnitLink, [ACount])
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnitLink, [ACount]);
+  end
   else
+  begin
     Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesUnitLinkOpen);
+  end;
 end;
 
 class function TAtlasIssueTip.CommitCount(ACount: Integer): string;
 begin
   if ACount = 1 then
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommit)
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BlameIssuesCommit);
+  end
   else
+  begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesCommits, [ACount]);
+  end;
 end;
 
 class function TAtlasIssueTip.IssueRow(const AKey: string; AKnown: Boolean; const ADetails: TAtlasTrackerDetails;
@@ -195,11 +227,17 @@ class function TAtlasIssueTip.IssueRow(const AKey: string; AKnown: Boolean; cons
 begin
   Result := AKey;
   if AKnown and (ADetails.Title <> '') then
+  begin
     Result := Result + ' · ' + ADetails.Title;
+  end;
   if AKnown and (ADetails.State <> '') then
+  begin
     Result := Result + ' · ' + ADetails.State;
+  end;
   if ALastDate > 0 then
+  begin
     Result := Result + ' · ' + AgeText(ALastDate, ANow);
+  end;
   Result := Result + ' · ' + CommitCount(ACommits);
 end;
 
@@ -208,18 +246,26 @@ class function TAtlasIssueTip.CommitRow(const ARevision, AAuthor: string; ALocal
 begin
   Result := ARevision;
   if AAuthor <> '' then
+  begin
     Result := Result + ' · ' + AAuthor;
+  end;
   if ALocalDate > 0 then
+  begin
     Result := Result + ' · ' + FormatDateTime('dd"."mm"."yyyy', ALocalDate);
+  end;
   if ASubject <> '' then
+  begin
     Result := Result + ' · ' + ASubject;
+  end;
 end;
 
 class function TAtlasIssueTip.ScopeTitle(const AName: string; AIssues, ACommits, AUnlinked: Integer): string;
 begin
   Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesTitle, [AName, AIssues, ACommits]);
   if AUnlinked > 0 then
+  begin
     Result := Result + ' · ' + TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnlinked, [AUnlinked]);
+  end;
 end;
 
 end.

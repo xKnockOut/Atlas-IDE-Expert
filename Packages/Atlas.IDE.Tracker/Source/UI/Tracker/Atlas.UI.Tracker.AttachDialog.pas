@@ -295,9 +295,13 @@ begin
   FHint.WordWrap := True;
   FHint.SetBounds(Gap, mTop, DialogWidth - 2 * Gap, 32);
   if FInput.CanUpload then
-    FHint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint, [FInput.Tracker])
+  begin
+    FHint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint, [FInput.Tracker]);
+  end
   else
+  begin
     FHint.Caption := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFallbackHint, [FInput.Tracker]);
+  end;
   Inc(mTop, 38);
 
   mGroup := TGroupBox.Create(Self);
@@ -325,9 +329,13 @@ begin
   Inc(mRow, 22);
   // Formular im Designer.
   if FForm <> nil then
-    FFormCheck := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, [FInput.FormName]))
+  begin
+    FFormCheck := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, [FInput.FormName]));
+  end
   else
+  begin
     FFormCheck := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoForm));
+  end;
   FFormCheck.Width := 520;
   FFormCheck.Enabled := FForm <> nil;
   FFormMarkup := AddButton(mGroup, 544, mRow - 3, 110, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkup),
@@ -341,7 +349,9 @@ begin
   FLogBox.Style := csDropDown;
   FLogBox.SetBounds(102, mRow - 2, 250, 23);
   if Length(FInput.LogFiles) > 0 then
+  begin
     FLogBox.Text := FInput.LogFiles[0];
+  end;
   FLogBox.OnChange := Changed;
   FLogBrowse := AddButton(mGroup, 356, mRow - 3, 28, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogBrowse),
     LogBrowseClick);
@@ -362,17 +372,25 @@ begin
   Inc(mRow, 22);
   // Debug-Notiz nur bei angehaltenem Programm, Exception-Verlauf nur mit Einträgen.
   if FInput.DebugNote <> '' then
-    FDebugNote := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNote))
+  begin
+    FDebugNote := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNote));
+  end
   else
+  begin
     FDebugNote := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachDebugNoteOff));
+  end;
   FDebugNote.Width := 600;
   FDebugNote.Enabled := FInput.DebugNote <> '';
   Inc(mRow, 26);
   if FInput.ExceptionCount > 0 then
+  begin
     FExceptions := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions,
-      [FInput.ExceptionCount]))
+      [FInput.ExceptionCount]));
+  end
   else
+  begin
     FExceptions := AddCheck(mGroup, mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachExceptionsNone));
+  end;
   FExceptions.Width := 600;
   FExceptions.Enabled := (FInput.ExceptionCount > 0) and (FInput.ExceptionsText <> '');
   Inc(mRow, 26);
@@ -436,13 +454,17 @@ begin
   ClientHeight := mTop + 44;
   // Fenster des Programms; das Hauptfenster zuerst. In die Liste erst mit Fenster (CreateWnd).
   if FInput.ProcessId <> 0 then
+  begin
     FWindows := TAtlasWindowCapture.WindowsOf(FInput.ProcessId);
+  end;
   FWindowBox.Enabled := Length(FWindows) > 0;
   FPick.Enabled := True;
   FBuilt := True;
   // ClientWidth im Konstruktor legt das Fenster schon vor BuildControls an: dann hier füllen.
   if HandleAllocated then
+  begin
     FillLists;
+  end;
 end;
 
 procedure TAtlasAttachDialog.CreateWnd;
@@ -457,15 +479,21 @@ var
   mText: string;
 begin
   if FFilled or not FBuilt then
+  begin
     Exit;
+  end;
   FFilled := True;
   // Einträge von Auswahllisten brauchen das Fenster: nicht im Konstruktor.
   FWindowBox.Items.BeginUpdate;
   try
     for mInfo in FWindows do
+    begin
       FWindowBox.Items.Add(mInfo.Caption);
+    end;
     if Length(FWindows) = 0 then
+    begin
       FWindowBox.Items.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachNoWindows));
+    end;
   finally
     FWindowBox.Items.EndUpdate;
   end;
@@ -473,22 +501,30 @@ begin
   FIssue.Items.BeginUpdate;
   try
     for mText in FInput.Issues do
+    begin
       FIssue.Items.Add(mText);
+    end;
   finally
     FIssue.Items.EndUpdate;
   end;
   FLogBox.Items.BeginUpdate;
   try
     for mText in FInput.LogFiles do
+    begin
       FLogBox.Items.Add(mText);
+    end;
   finally
     FLogBox.Items.EndUpdate;
   end;
   // Das Hauptfenster des Programms gleich aufnehmen; die Liste braucht ihr Fenster.
   if Length(FWindows) > 0 then
-    CaptureWindow(FWindows[0].Handle)
+  begin
+    CaptureWindow(FWindows[0].Handle);
+  end
   else
+  begin
     Rebuild;
+  end;
 end;
 
 procedure TAtlasAttachDialog.SetScreenshot(ABitmap: TBitmap);
@@ -502,7 +538,9 @@ begin
     FShotInfo.Caption := Format('%d × %d', [FShot.Width, FShot.Height]);
   end
   else
+  begin
     FShotInfo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCaptureFailed);
+  end;
   FUpdating := True;
   try
     FScreenshot.Checked := FShot <> nil;
@@ -527,7 +565,9 @@ end;
 procedure TAtlasAttachDialog.WindowChanged(Sender: TObject);
 begin
   if (FWindowBox.ItemIndex >= 0) and (FWindowBox.ItemIndex < Length(FWindows)) then
+  begin
     CaptureWindow(FWindows[FWindowBox.ItemIndex].Handle);
+  end;
 end;
 
 procedure TAtlasAttachDialog.PickClick(Sender: TObject);
@@ -544,9 +584,13 @@ begin
   if (AWindow = 0) or (TAtlasWindowCapture.ProcessOf(AWindow) = GetCurrentProcessId) then
   begin
     if FShot <> nil then
-      FShotInfo.Caption := Format('%d × %d', [FShot.Width, FShot.Height])
+    begin
+      FShotInfo.Caption := Format('%d × %d', [FShot.Width, FShot.Height]);
+    end
     else
+    begin
       FShotInfo.Caption := '';
+    end;
     Exit;
   end;
   CaptureWindow(AWindow);
@@ -580,9 +624,13 @@ begin
     mDialog.Filter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachLogFilter);
     mDialog.Options := [ofFileMustExist, ofEnableSizing];
     if FLogBox.Text <> '' then
+    begin
       mDialog.InitialDir := ExtractFilePath(FLogBox.Text);
+    end;
     if not mDialog.Execute then
+    begin
       Exit;
+    end;
     FLogBox.Text := mDialog.FileName;
     FLog.Checked := True;
     Rebuild;
@@ -597,7 +645,9 @@ var
 begin
   // Kontrolle vor dem Senden: nur Bilder und Texte, die Atlas selbst geschrieben hat.
   if FList.Selected = nil then
+  begin
     Exit;
+  end;
   mIndex := FList.Selected.Index;
   if (mIndex >= 0) and (mIndex < Length(FPaths)) and (FPaths[mIndex] <> '') then
   begin
@@ -608,7 +658,9 @@ end;
 procedure TAtlasAttachDialog.Changed(Sender: TObject);
 begin
   if not FUpdating then
+  begin
     Rebuild;
+  end;
 end;
 
 procedure TAtlasAttachDialog.TextChanged(Sender: TObject);
@@ -636,7 +688,9 @@ function TAtlasAttachDialog.LogLineCount: Integer;
 begin
   Result := 0;
   if FLogLines.Checked then
+  begin
     Result := StrToIntDef(FLogCount.Text, TAtlasAttachLog.DefaultLines);
+  end;
 end;
 
 procedure TAtlasAttachDialog.Rebuild;
@@ -647,19 +701,25 @@ var
   mLog: string;
 begin
   if not FFilled then
+  begin
     Exit;
+  end;
   mFiles := nil;
   FShotMarkup.Enabled := FShot <> nil;
   FScreenshot.Enabled := FShot <> nil;
   FFormMarkup.Enabled := FForm <> nil;
   FLogInfo.Caption := '';
   if FScreenshot.Checked and (FShot <> nil) then
+  begin
     mFiles := mFiles + [TAtlasAttachFile.CreateImage(TAtlasAttachKind.Screenshot,
       TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachScreenshotName) + '.png', ImagePng(FShot, FShotPng))];
+  end;
   if FFormCheck.Checked and (FForm <> nil) then
+  begin
     mFiles := mFiles + [TAtlasAttachFile.CreateImage(TAtlasAttachKind.Form,
       TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFormName, [FInput.FormName]) + '.png',
         ImagePng(FForm, FFormPng))];
+  end;
   mLog := Trim(FLogBox.Text);
   if FLog.Checked and (mLog <> '') then
   begin
@@ -687,7 +747,9 @@ begin
     mFiles := mFiles + [mFile];
   end;
   if FExtra.Checked then
+  begin
     mFiles := mFiles + FInput.Extra;
+  end;
   FFiles := TAtlasAttachFile.UniqueNames(mFiles);
   // Der Ordner des Laufs enthält genau diese Dateien.
   FPaths := nil;
@@ -695,7 +757,9 @@ begin
   begin
     FTemp.Cleanup;
     for mFile in FFiles do
+    begin
       FPaths := FPaths + [FTemp.Write(mFile)];
+    end;
   end;
   FList.Items.BeginUpdate;
   try
@@ -707,7 +771,9 @@ begin
       mItem.SubItems.Add(SizeText(mFile.Size));
     end;
     if (Length(FFiles) = 0) and WithComment then
+    begin
       FList.Items.Add.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommentOnly);
+    end;
   finally
     FList.Items.EndUpdate;
   end;
@@ -717,7 +783,9 @@ end;
 procedure TAtlasAttachDialog.UpdateSend;
 begin
   if FSend <> nil then
+  begin
     FSend.Enabled := CanSend;
+  end;
 end;
 
 function TAtlasAttachDialog.Key: string;
@@ -729,11 +797,17 @@ begin
   // „ATL-123 Titel“ aus den Vorschlägen: nur die Kennung.
   mSpace := Pos(' ', mText);
   if mSpace > 0 then
+  begin
     mText := Copy(mText, 1, mSpace - 1);
+  end;
   if Assigned(FInput.KeyOf) then
-    Result := FInput.KeyOf(mText)
+  begin
+    Result := FInput.KeyOf(mText);
+  end
   else
+  begin
     Result := mText;
+  end;
 end;
 
 function TAtlasAttachDialog.Files: TAtlasAttachFiles;
@@ -745,7 +819,9 @@ function TAtlasAttachDialog.CommentText: string;
 begin
   Result := '';
   if FComment.Checked then
+  begin
     Result := Trim(FCommentMemo.Lines.Text);
+  end;
 end;
 
 function TAtlasAttachDialog.WithComment: Boolean;

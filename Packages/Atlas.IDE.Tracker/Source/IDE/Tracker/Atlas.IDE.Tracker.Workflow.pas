@@ -192,7 +192,9 @@ end;
 procedure TAtlasIdeTrackerSync.Stop;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   FStopped := True;
   // Höchstens die Zeitgrenze eines Schreibens; danach kommt kein Ergebnis mehr an.
   FWorker.Stop(1000);
@@ -205,7 +207,9 @@ end;
 procedure TAtlasIdeTrackerSync.Report(const AText: string);
 begin
   if Assigned(FReport) and (AText <> '') then
+  begin
     FReport(AText);
+  end;
 end;
 
 class function TAtlasIdeTrackerSync.Options(const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
@@ -223,7 +227,9 @@ end;
 class function TAtlasIdeTrackerSync.WriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerWriter;
 begin
   if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerWriter, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TAtlasIdeTrackerSync.Enabled(const AProvider: IAtlasTrackerProvider;
@@ -240,13 +246,19 @@ var
 begin
   mName := '';
   if AProvider <> nil then
+  begin
     mName := AProvider.Name;
+  end;
   // Anonym: Anbieter, Art, Ergebnis; nie Adresse, Kennung, Kommentar oder Token.
   if AResult.Succeeded then
-    TAtlasGuard.Log(Format('Tracker nachführen: %s %s geschrieben', [mName, AWhat]))
+  begin
+    TAtlasGuard.Log(Format('Tracker nachführen: %s %s geschrieben', [mName, AWhat]));
+  end
   else
+  begin
     TAtlasGuard.Log(Format('Tracker nachführen: %s %s nicht geschrieben (%s, %d)', [mName, AWhat,
       TAtlasCiBuild.ErrorKey(AResult.Error), AResult.Status]));
+  end;
 end;
 
 procedure TAtlasIdeTrackerSync.Apply(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -283,9 +295,13 @@ begin
         // Token aus dem Anmeldespeicher ohne Dialog; ohne Token nichts schreiben.
         mTransport := mTransports(mProvider, mTarget);
         if mTransport = nil then
-          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
+        end
         else
+        begin
           mResult := mWriter.Apply(mTarget, mTransport, mKey, mChange, TAtlasTrackerWorkflow.WriteTimeoutMs);
+        end;
       except
         on E: Exception do
         begin
@@ -298,7 +314,9 @@ begin
     begin
       mDone(mResult);
     end) then
+  begin
     ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+  end;
 end;
 
 procedure TAtlasIdeTrackerSync.Started(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -311,10 +329,14 @@ var
   mKey: string;
 begin
   if not Enabled(AProvider, ATarget) then
+  begin
     Exit;
+  end;
   mOptions := Options(ATarget);
   if not mOptions.HasStartWork then
+  begin
     Exit;
+  end;
   mChange := TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create(AKey, ABranch));
   mOwner := Self;
   mProvider := AProvider;
@@ -324,11 +346,15 @@ begin
     begin
       Logged(mProvider, 'Beginnen', AResult);
       if AResult.Succeeded then
+      begin
         mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartSynced,
-          [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]))
+          [mKey, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+      end
       else
+      begin
         mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerStartFailed,
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
+      end;
     end);
 end;
 
@@ -344,7 +370,9 @@ var
   mCommits: string;
 begin
   if not Enabled(AProvider, ATarget) then
+  begin
     Exit;
+  end;
   mOwner := Self;
   mProvider := AProvider;
   mTarget := ATarget;
@@ -361,18 +389,24 @@ begin
     begin
       mVcs := TAtlasIdeVcs.ForFolder(mInput.Folder, VcsTimeoutMs);
       if Supports(mVcs, IAtlasVcsLocalWork, mWork) then
+      begin
         mCommits := TAtlasTrackerWorkflow.CommitsFor(mWork, mInput.Branch, mInput.Base, mInput.Key);
+      end;
     end,
     procedure
     begin
       if not mOwner.FStopped then
+      begin
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
             mOwner.ShowEnd(mProvider, mTarget, mInput, mOptions, mCommits, mEnded);
           end);
+      end;
     end) then
+  begin
     ShowEnd(AProvider, ATarget, AInput, mOptions, '', AEnded);
+  end;
 end;
 
 procedure TAtlasIdeTrackerSync.ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -388,7 +422,9 @@ begin
   mValues.Commits := ACommits;
   mValues.PullRequest := AInput.PullRequest;
   if Assigned(FTimeText) then
+  begin
     mValues.Time := FTimeText(AInput.Key);
+  end;
   mSession := TAtlasTrackerEndSession.Create;
   try
     mDone := TAtlasTrackerEndDialog.Execute(AInput.Key, AOptions,
@@ -399,10 +435,14 @@ begin
     mSession.SetDialog(nil);
   end;
   if not mDone or FStopped then
+  begin
     Exit;
+  end;
   if mChange.HasWork then
+  begin
     Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerEndSent,
       [AInput.Key, TAtlasTrackerEndDialog.SummaryText(mChange)]));
+  end;
   AEnded(mChange);
 end;
 
@@ -468,7 +508,9 @@ begin
   // Vorlage steht schon im Feld (kein Entwurf); ein Entwurf des Felds "end" wird mit „Übernehmen“ angeboten.
   mAssist := nil;
   if Assigned(FCommentAssist) then
+  begin
     mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.FieldEnd);
+  end;
   ADialog.CommentEditor.Enhanced := mAssist <> nil;
   ADialog.CommentEditor.Bind(mAssist);
 end;
@@ -487,7 +529,9 @@ begin
   mWriter := WriterOf(AProvider);
   mTransports := FTransport;
   if (mWriter = nil) or not Assigned(mTransports) then
+  begin
     Exit;
+  end;
   mProvider := AProvider;
   mTarget := ATarget;
   mField := AStateField;
@@ -503,7 +547,9 @@ begin
       try
         mTransport := mTransports(mProvider, mTarget);
         if mTransport = nil then
+        begin
           Exit;
+        end;
         mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.Users, '', TAtlasTrackerWorkflow.WriteTimeoutMs,
           mUsers);
         mWriter.Values(mTarget, mTransport, TAtlasTrackerValueKind.States, mField,
@@ -516,7 +562,9 @@ begin
     procedure
     begin
       if mSession.Dialog = nil then
+      begin
         Exit;
+      end;
       mSession.Dialog.SetUsers(mUsers);
       mSession.Dialog.SetStates(mStates);
     end);
@@ -525,7 +573,9 @@ end;
 class function TAtlasIdeTrackerSync.TimeWriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerTimeWriter;
 begin
   if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerTimeWriter, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 procedure TAtlasIdeTrackerSync.BookTime(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -561,9 +611,13 @@ begin
       try
         mTransport := mTransports(mProvider, mTarget);
         if mTransport = nil then
-          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
+        end
         else
+        begin
           mResult := mWriter.BookTime(mTarget, mTransport, mKey, mItem, TAtlasTrackerWorkflow.WriteTimeoutMs);
+        end;
       except
         on E: Exception do
         begin
@@ -577,7 +631,9 @@ begin
       Logged(mProvider, 'Zeitbuchung', mResult);
       mDone(mResult);
     end) then
+  begin
     ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+  end;
 end;
 
 procedure TAtlasIdeTrackerSync.TimeSettings(const AProvider: IAtlasTrackerProvider;
@@ -596,7 +652,9 @@ begin
   mWriter := TimeWriterOf(AProvider);
   mTransports := FTransport;
   if FStopped or (mWriter = nil) or not Assigned(mTransports) then
+  begin
     Exit;
+  end;
   mProvider := AProvider;
   mTarget := ATarget;
   mKey := AKey;
@@ -612,9 +670,13 @@ begin
       try
         mTransport := mTransports(mProvider, mTarget);
         if mTransport = nil then
-          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
+        end
         else
+        begin
           mResult := mWriter.TimeSettings(mTarget, mTransport, mKey, TAtlasTrackerWorkflow.WriteTimeoutMs, mSettings);
+        end;
       except
         on E: Exception do
         begin
@@ -651,7 +713,9 @@ begin
     begin
       Logged(mProvider, 'Kommentar', AResult);
       if AResult.Succeeded then
+      begin
         mOwner.Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerCommentSent, [mKey]));
+      end;
       mDone(AResult);
     end);
 end;
