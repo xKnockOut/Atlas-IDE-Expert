@@ -108,9 +108,13 @@ begin
     Screen.Cursor := OldCursor;
     CloseHandle(OutputFile);
     if NulHandle <> INVALID_HANDLE_VALUE then
+    begin
       CloseHandle(NulHandle);
+    end;
     if Result then
+    begin
       AOutput := TFile.ReadAllText(OutputName, TEncoding.UTF8);
+    end;
     TFile.Delete(OutputName);
   end;
 end;
@@ -124,12 +128,18 @@ begin
   Result := '';
   Size := GetFileVersionInfoSize(PChar(AFileName), Handle);
   if Size = 0 then
+  begin
     Exit;
+  end;
   SetLength(Buffer, Size);
   if not GetFileVersionInfo(PChar(AFileName), 0, Size, @Buffer[0]) then
+  begin
     Exit;
+  end;
   if not VerQueryValue(@Buffer[0], '\', Pointer(Info), Length_) or (Length_ = 0) then
+  begin
     Exit;
+  end;
   Result := Format('%d.%d.%d.%d', [HiWord(Info.dwFileVersionMS), LoWord(Info.dwFileVersionMS),
     HiWord(Info.dwFileVersionLS), LoWord(Info.dwFileVersionLS)]);
 end;

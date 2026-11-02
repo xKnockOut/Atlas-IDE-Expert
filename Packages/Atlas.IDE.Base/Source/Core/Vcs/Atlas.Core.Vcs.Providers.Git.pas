@@ -151,15 +151,21 @@ var
 begin
   Result := '';
   if not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   try
     Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
       if Stream.Size > 4096 then
+      begin
         Exit;
+      end;
       SetLength(Bytes, Stream.Size);
       if Length(Bytes) > 0 then
+      begin
         Stream.ReadBuffer(Bytes[0], Length(Bytes));
+      end;
     finally
       Stream.Free;
     end;
@@ -178,9 +184,13 @@ var
   Age: TDateTime;
 begin
   if FileAge(AFileName, Age) then
-    Result := FloatToStr(Age, TFormatSettings.Invariant)
+  begin
+    Result := FloatToStr(Age, TFormatSettings.Invariant);
+  end
   else
+  begin
     Result := '-';
+  end;
 end;
 
 { TAtlasGitVersionControl }
@@ -239,12 +249,18 @@ begin
   AHead := TAtlasVcsHead.Empty;
   AChanges := nil;
   if AUntracked then
-    Untracked := '--untracked-files=all'
+  begin
+    Untracked := '--untracked-files=all';
+  end
   else
+  begin
     Untracked := '--untracked-files=no';
+  end;
   Result := Git(['status', '--porcelain=v2', '--branch', '-z', Untracked], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     TAtlasGitParser.ParseStatus(VcsUtf8(Output), FRoot, AHead, AChanges);
   except
@@ -277,13 +293,19 @@ var
 begin
   AContent := nil;
   if not VcsRelativePath(FRoot, AFileName, Relative) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Revision := Trim(ARevision);
   if Revision = '' then
+  begin
     Revision := 'HEAD';
+  end;
   // Eine Revision, die mit "-" beginnt, wäre eine Option.
   if Revision[1] = '-' then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['show', Revision + ':' + Relative], AContent);
 end;
 
@@ -295,10 +317,14 @@ var
 begin
   ALines := nil;
   if not VcsRelativePath(FRoot, AFileName, Relative) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['blame', '--porcelain', '--', Relative], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ALines := TAtlasGitParser.ParseBlame(VcsUtf8(Output));
   except
@@ -317,9 +343,15 @@ var
 begin
   Result := (Length(AText) >= 7) and (Length(AText) <= 64);
   if Result then
+  begin
     for mIndex := 1 to Length(AText) do
+    begin
       if not CharInSet(AText[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasGitVersionControl.Messages(const AFileName: string; const ARevisions: TArray<string>;
@@ -332,19 +364,27 @@ var
 begin
   AMessages := nil;
   for mRevision in ARevisions do
+  begin
     if not IsHash(mRevision) then
+    begin
       Exit(TAtlasVcsOutcome.Failed);
+    end;
+  end;
   Result := TAtlasVcsOutcome.Ok;
   mStart := 0;
   while mStart < Length(ARevisions) do
   begin
     mArguments := ['log', '--no-walk=unsorted', '--format=' + TAtlasGitParser.MessageFormat];
     for mIndex := mStart to Min(mStart + MessageBatch, Length(ARevisions)) - 1 do
+    begin
       mArguments := mArguments + [ARevisions[mIndex]];
+    end;
     Inc(mStart, MessageBatch);
     Result := Git(mArguments + ['--'], mOutput);
     if Result <> TAtlasVcsOutcome.Ok then
+    begin
       Break;
+    end;
     try
       AMessages := AMessages + TAtlasGitParser.ParseMessages(VcsUtf8(mOutput));
     except
@@ -356,7 +396,9 @@ begin
     end;
   end;
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     AMessages := nil;
+  end;
 end;
 
 function TAtlasGitVersionControl.LineHistory(const AFileName: string; AFirstLine, ALastLine,
@@ -367,11 +409,15 @@ var
 begin
   ACommits := nil;
   if not VcsRelativePath(FRoot, AFileName, mRelative) or (AFirstLine < 1) or (ALastLine < AFirstLine) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['log', '--format=' + TAtlasGitParser.LineLogFormat, '--max-count=' + IntToStr(Max(1, AMaxRevisions)),
     '--no-ext-diff', '-L' + IntToStr(AFirstLine) + ',' + IntToStr(ALastLine) + ':' + mRelative], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ACommits := TAtlasGitParser.ParseLineLog(VcsUtf8(mOutput));
   except
@@ -390,9 +436,15 @@ var
 begin
   Result := (AName <> '') and (AName[1] <> '-');
   if Result then
+  begin
     for Index := 1 to Length(AName) do
+    begin
       if Ord(AName[Index]) <= 32 then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasGitVersionControl.Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
@@ -402,7 +454,9 @@ begin
   ABranches := nil;
   Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.BranchFormat, 'refs/heads'], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ABranches := TAtlasGitParser.ParseBranches(VcsUtf8(Output));
   except
@@ -421,7 +475,9 @@ begin
   AStashes := nil;
   Result := Git(['stash', 'list', '--format=' + TAtlasGitParser.StashFormat], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     AStashes := TAtlasGitParser.ParseStashes(VcsUtf8(Output));
   except
@@ -440,7 +496,9 @@ begin
   ANames := nil;
   Result := Git(['remote'], Output);
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     ANames := TAtlasGitParser.ParseLines(VcsUtf8(Output));
+  end;
 end;
 
 function TAtlasGitVersionControl.Outgoing(const ABranch, AUpstream: string; AMax: Integer;
@@ -452,20 +510,30 @@ var
 begin
   ACommits := nil;
   if not SafeName(ABranch) or ((AUpstream <> '') and not SafeName(AUpstream)) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Limit := AMax;
   if Limit < 1 then
+  begin
     Limit := 1;
+  end;
   Arguments := ['log', '--format=' + TAtlasGitParser.LogFormat, '--max-count=' + IntToStr(Limit),
     'refs/heads/' + ABranch, '--not'];
   // Ohne Upstream: Commits, die auf keinem Remote liegen.
   if AUpstream = '' then
-    Arguments := Arguments + ['--remotes']
+  begin
+    Arguments := Arguments + ['--remotes'];
+  end
   else
+  begin
     Arguments := Arguments + [AUpstream];
+  end;
   Result := Git(Arguments, Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ACommits := TAtlasGitParser.ParseLog(VcsUtf8(Output));
   except
@@ -484,11 +552,15 @@ var
 begin
   AChanges := nil;
   if not SafeName(ARevision) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   // Stash: erster Vorgänger ist der Stand beim Anlegen; der Unterschied ist die gesicherte Arbeit.
   Result := Git(['diff', '--name-status', '-z', '--no-renames', ARevision + '^1', ARevision], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     AChanges := TAtlasGitParser.ParseNameStatus(VcsUtf8(Output), FRoot);
   except
@@ -507,10 +579,14 @@ var
   Output: TBytes;
 begin
   if not SafeName(ABranch) or not SafeName(ARemote) or not SafeName(ARemoteRef) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Arguments := ['push', '--porcelain'];
   if ASetUpstream then
+  begin
     Arguments := Arguments + ['--set-upstream'];
+  end;
   Arguments := Arguments + [ARemote, 'refs/heads/' + ABranch + ':' + ARemoteRef];
   Result := GitRemote(Arguments, Output);
 end;
@@ -521,13 +597,19 @@ var
 begin
   ARevision := '';
   if not SafeName(ARef) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['rev-parse', '--verify', '--quiet', ARef + '^{commit}'], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   ARevision := Trim(VcsUtf8(Output));
   if ARevision = '' then
+  begin
     Result := TAtlasVcsOutcome.Failed;
+  end;
 end;
 
 function TAtlasGitVersionControl.Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
@@ -541,27 +623,39 @@ var
 begin
   ACommits := nil;
   if not SafeName(AUpstream) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Limit := AMax;
   if Limit < 1 then
+  begin
     Limit := 1;
+  end;
   Arguments := ['log', '--format=' + TAtlasGitParser.IncomingFormat, '--name-only', '-z', '--no-renames',
     '--max-count=' + IntToStr(Limit), AUpstream];
   Excluded := False;
   for Revision in AExclude do
   begin
     if Revision = '' then
+    begin
       Continue;
+    end;
     if not SafeName(Revision) then
+    begin
       Exit(TAtlasVcsOutcome.Failed);
+    end;
     if not Excluded then
+    begin
       Arguments := Arguments + ['--not'];
+    end;
     Excluded := True;
     Arguments := Arguments + [Revision];
   end;
   Result := Git(Arguments, Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ACommits := TAtlasGitParser.ParseIncoming(VcsUtf8(Output), FRoot);
   except
@@ -579,10 +673,14 @@ var
   Output: TBytes;
 begin
   if (ARemote <> '') and not SafeName(ARemote) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Arguments := ['fetch', '--quiet', '--no-tags'];
   if ARemote <> '' then
+  begin
     Arguments := Arguments + [ARemote];
+  end;
   Result := GitRemote(Arguments, Output);
 end;
 
@@ -605,17 +703,25 @@ begin
   // for-each-ref mit vollem Namen: genau dieser Ref oder nichts; nie ein Fehler, wenn er fehlt.
   Result := Git(['for-each-ref', '--format=%(refname)', ARef], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   for Line in TAtlasGitParser.ParseLines(VcsUtf8(Output)) do
+  begin
     if Line = ARef then
+    begin
       AExists := True;
+    end;
+  end;
 end;
 
 function TAtlasGitVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   AExists := False;
   if not VcsSafeBranchName(AName) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := RefExists('refs/heads/' + AName, AExists);
 end;
 
@@ -629,7 +735,9 @@ function TAtlasGitVersionControl.RemoteBranchExists(const AName: string; out AEx
 begin
   AExists := False;
   if not VcsSafeBranchName(AName) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := RefExists('refs/remotes/origin/' + AName, AExists);
 end;
 
@@ -657,11 +765,17 @@ var
   Output: TBytes;
 begin
   if Length(AStep.Arguments) = 0 then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   if AStep.Remote then
-    Result := GitRemote(AStep.Arguments, Output)
+  begin
+    Result := GitRemote(AStep.Arguments, Output);
+  end
   else
+  begin
     Result := Git(AStep.Arguments, Output);
+  end;
 end;
 
 function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
@@ -669,7 +783,9 @@ var
   Output: TBytes;
 begin
   if not VcsSafeBranchName(AName) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['checkout', '--quiet', AName, '--'], Output);
 end;
 
@@ -677,9 +793,13 @@ end;
 function AbsoluteGitPath(const ARoot, APath: string): string;
 begin
   if (Pos(':', APath) = 2) or (Copy(APath, 1, 1) = '/') or (Copy(APath, 1, 2) = '\\') then
-    Result := VcsNormalizeDir(APath)
+  begin
+    Result := VcsNormalizeDir(APath);
+  end
   else
+  begin
     Result := VcsFullPath(ARoot, APath);
+  end;
 end;
 
 function TAtlasGitVersionControl.SwitchBranch(const AName: string;
@@ -695,7 +815,9 @@ begin
   AText := '';
   Result := Git(['submodule', 'status', '--recursive'], Output);
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     AText := VcsUtf8(Output);
+  end;
 end;
 
 function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
@@ -709,10 +831,14 @@ begin
   // Verwaltungsordner.
   Result := Git(['rev-parse', '--git-path', 'hooks', '--git-dir'], Output);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   Lines := TAtlasGitParser.ParseLines(VcsUtf8(Output));
   if (Length(Lines) < 2) or (Trim(Lines[0]) = '') or (Trim(Lines[1]) = '') then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   AHooks := AbsoluteGitPath(FRoot, Trim(Lines[0]));
   AGitDir := AbsoluteGitPath(FRoot, Trim(Lines[1]));
 end;
@@ -729,19 +855,29 @@ begin
   AEntries := nil;
   // Ein Zeilenende im Suchtext wäre ein zweites Muster; leer fände alles.
   if Trim(AText) = '' then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   for mIndex := 1 to Length(AText) do
+  begin
     if Ord(AText[mIndex]) < 32 then
+    begin
       Exit(TAtlasVcsOutcome.Failed);
+    end;
+  end;
   mLimit := AMax;
   if mLimit < 1 then
+  begin
     mLimit := 1;
+  end;
   // --grep=<Text> in einem Argument: Der Text kann nie als Option gelesen werden.
   Result := Git(['log', '--all', '--fixed-strings', '--regexp-ignore-case', '--grep=' + AText,
     '--format=' + TAtlasGitParser.HistoryFormat, '--name-status', '-z', '--no-renames',
     '--max-count=' + IntToStr(mLimit)], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     AEntries := TAtlasGitParser.ParseHistory(VcsUtf8(mOutput), FRoot);
   except
@@ -760,7 +896,9 @@ begin
   ABranches := nil;
   Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.RefFormat, 'refs/heads', 'refs/remotes'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     ABranches := TAtlasGitParser.ParseRefs(VcsUtf8(mOutput));
   except
@@ -779,10 +917,14 @@ begin
   AAhead := -1;
   ABehind := -1;
   if not SafeName(ABranch) or not SafeName(ABase) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := Git(['rev-list', '--left-right', '--count', ABase + '...' + ABranch, '--'], mOutput);
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   try
     TAtlasGitParser.ParseDistance(VcsUtf8(mOutput), AAhead, ABehind);
   except
@@ -802,14 +944,20 @@ var
 begin
   AContent := nil;
   if not SafeName(ARevision) or (AFile.RepositoryPath = '') then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   // Was es auf der Seite nicht gibt, ist leer.
   if (ABefore and (AFile.Kind = TAtlasVcsChangeKind.Added)) or
     (not ABefore and (AFile.Kind = TAtlasVcsChangeKind.Deleted)) then
+  begin
     Exit(TAtlasVcsOutcome.Ok);
+  end;
   mRevision := ARevision;
   if ABefore then
+  begin
     mRevision := mRevision + '^1';
+  end;
   Result := Git(['show', mRevision + ':' + AFile.RepositoryPath], AContent);
 end;
 
@@ -819,16 +967,24 @@ var
 begin
   DotGit := IncludeTrailingPathDelimiter(VcsNormalizeDir(ARoot)) + '.git';
   if DirectoryExists(DotGit) then
+  begin
     Exit(DotGit);
+  end;
   Result := '';
   if not FileExists(DotGit) then
+  begin
     Exit;
+  end;
   Content := ReadSmallFile(DotGit);
   if Copy(Content, 1, 7) <> 'gitdir:' then
+  begin
     Exit;
+  end;
   Content := Trim(Copy(Content, 8, MaxInt));
   if Content = '' then
+  begin
     Exit;
+  end;
   // Relativ zum Ordner der Datei .git, sonst absolut.
   Result := AbsoluteGitPath(ARoot, Content);
 end;
@@ -839,7 +995,9 @@ var
 begin
   Dir := GitDir(FRoot);
   if Dir = '' then
+  begin
     Exit('');
+  end;
   Dir := IncludeTrailingPathDelimiter(Dir);
   HeadText := ReadSmallFile(Dir + 'HEAD');
   Result := HeadText + '|' + Stamp(Dir + 'HEAD');
@@ -849,8 +1007,10 @@ begin
     Result := Result + '|' + ReadSmallFile(Dir + StringReplace(Ref, '/', PathDelim, [rfReplaceAll]));
     // Worktrees: Branches liegen im gemeinsamen Ordner (commondir).
     if FileExists(Dir + 'commondir') then
+    begin
       Result := Result + '|' + ReadSmallFile(VcsFullPath(Dir, ReadSmallFile(Dir + 'commondir')) + PathDelim +
         StringReplace(Ref, '/', PathDelim, [rfReplaceAll]));
+    end;
   end;
   Result := Result + '|' + Stamp(Dir + 'packed-refs');
 end;

@@ -103,28 +103,42 @@ begin
   begin
     Entry := ACatalog[Index];
     if Entry.Source <> asPlugin then
+    begin
       Continue;
+    end;
     for Former in Entry.RenamedFrom do
     begin
       if SameText(Former, Entry.Name) or not ANames.Contains(Former) then
+      begin
         Continue;
+      end;
       Rename := Default(TAtlasSettingsRename);
       Rename.OldName := Former;
       Rename.OldKey := Former;
       if Length(Entry.FormerKeys) > 0 then
+      begin
         Rename.OldKey := Entry.FormerKeys[0];
+      end;
       Rename.NewName := Entry.Name;
       Rename.NewKey := Entry.Key;
       if ANames.Contains(Entry.Name) then
-        Rename.Outcome := srSuperseded
+      begin
+        Rename.Outcome := srSuperseded;
+      end
       else if not ReadValue(AStore, Entry.Kind, Former, Number, Text) then
-        Rename.Outcome := srInvalid
+      begin
+        Rename.Outcome := srInvalid;
+      end
       else
       begin
         if Entry.Kind in [akBoolean, akInteger] then
-          AStore.WriteInteger(Entry.Name, Number)
+        begin
+          AStore.WriteInteger(Entry.Name, Number);
+        end
         else
+        begin
           AStore.WriteString(Entry.Name, Text);
+        end;
         Rename.Outcome := srMoved;
       end;
       ANames.Remove(Former);
