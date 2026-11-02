@@ -72,20 +72,13 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
-  Atlas.Common.Lsp.Architecture,
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.Query,
-  Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Service,
-  Atlas.Common.Lsp.UnitRelations,
-  Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Lsp.DebugDisplay,
-  Atlas.Common.Lsp.EventHandlers,
-  Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
@@ -99,6 +92,7 @@ uses
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
   Shell.Composition.Baselines,
+  Shell.Composition.Overviews,
   Atlas.Common.Lsp.AffectedTests,
   Shell.AffectedTests,
   Atlas.Common.Metrics.Contract,
@@ -219,27 +213,9 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
-    /// <summary>Architekturübersicht (#1118): Dienst mit Zwischenspeicher je Index-Generation, Anfrage
-    /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
-    FArchitectureService: TArchitectureService;
-    FArchitecture: TLspArchitecture;
-    /// <summary>Code-Abfragen (#1351): Dienst mit Zwischenspeicher je Index-Stand für atlas/query, das Fenster
-    /// „Atlas-Abfrage“ und die Regeln query:&lt;name&gt;.</summary>
-    FQueries: ICodeQueries;
-    FQuery: TLspQuery;
-    /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,
-    /// Anfrage atlas/hotspots und Befehle atlas.hotspots und atlas.hotspots.saveReport.</summary>
-    FHotspotService: THotspotService;
-    FHotspots: TLspHotspots;
-    /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
-    /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
-    FUnitRelationsGraph: TUsesGraphService;
-    FUnitRelations: TLspUnitRelations;
-    FSymbolPath: TLspSymbolPath;
-    /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
-    FDebugDisplay: TLspDebugDisplay;
-    FEventHandlers: TLspEventHandlers;
-    FRecursion: TLspRecursion;
+    /// <summary>Übersichten (#1118, #1351, #1354, #593, #1117, #854, #623): Architektur, Abfragen, Hotspots,
+    /// Unit-Beziehungen, Weg zwischen Symbolen, Wertdarstellungen, Ereignisbehandlungen, Rekursion.</summary>
+    FOverviews: TShellOverviews;
     /// <summary>Baseline für Altprojekte (#97, atlas.updateBaseline), Compilermeldungen darin (#530) und die
     /// Sammelkorrektur (#1352).</summary>
     FBaselines: TShellBaselines;
@@ -509,8 +485,6 @@ type
     procedure WireServerCommands;
     /// <summary>Befehle für Metriken, TODOs, Architektur, Abfragen und Hotspots.</summary>
     procedure WireReportCommands;
-    /// <summary>Befehle für Unit-Beziehungen, Symbolpfad, Debuggeranzeige, Ereignisse und Rekursion.</summary>
-    procedure WireUnitCommands;
     /// <summary>Befehle für Compiler-Baseline, Slash-Menü, Testunits und Unit-Suche.</summary>
     procedure WireSlashCommands;
     /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
@@ -858,7 +832,6 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Product.Version,
-  Atlas.Common.Query.Service,
   Atlas.Common.Query.Language,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -1799,43 +1772,24 @@ begin
 end;
 
 procedure TServerComposition.WireOverviews;
+var
+  mServices: TShellOverviewServices;
 begin
-  // Architekturübersicht (#1118): Fundstellen der uses-Einträge mit den Defines des Projekts der Datei.
-  FArchitectureService := TArchitectureService.Create(FIndex,
-    ReadSourceText,
-    DefinesOfFile);
-  FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
-  FArchitecture.Attach(FDispatcher);
-  // Code-Abfragen (#1351): ein Dienst für Fenster, Befehl und die Regeln query:<name>.
-  FQueries := TCodeQueryService.Create(QuerySource);
-  FQuery := TLspQuery.Create(FQueries, QuerySettingsFor);
-  FQuery.Attach(FDispatcher);
-  // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte, Verlauf über Shell.Hotspots.
-  FHotspotService := THotspotService.Create(FIndex,
-    ReadSourceText);
-  FHotspots := TLspHotspots.Create(FHotspotService, HotspotSourceFor);
-  FHotspots.Attach(FDispatcher);
-  // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
-  // entsteht erst weiter unten, daher über UsesContextFor.
-  FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
-  FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph,
-    ReadSourceText,
-    DefinesOfFile,
-    UsesContextFor, UnitRelationsOptionsFor);
-  FUnitRelations.Attach(FDispatcher);
-  // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units, Fundstellen wie oben.
-  FSymbolPath := TLspSymbolPath.Create(FIndex,
-    ReadSourceText,
-    DefinesOfFile,
-    EnsureUnit, SymbolPathSourceFor);
-  FSymbolPath.Attach(FDispatcher);
-  // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
-  FDebugDisplay := TLspDebugDisplay.Create(MetricsSourceFor, ReadSourceText);
-  FDebugDisplay.Index := FIndex;
-  FEventHandlers := TLspEventHandlers.Create(MetricsSourceFor, ReadSourceText);
-  FEventHandlers.Index := FIndex;
-  // Rekursionssymbole im Editorrand (#623).
-  FRecursion := TLspRecursion.Create(ReadSourceText);
+  mServices := Default(TShellOverviewServices);
+  mServices.Index := FIndex;
+  mServices.ReadText := ReadSourceText;
+  mServices.DefinesOf := DefinesOfFile;
+  mServices.EnsureUnit := EnsureUnit;
+  mServices.MetricsSourceFor := MetricsSourceFor;
+  mServices.UsesContextFor := UsesContextFor;
+  mServices.ArchitectureSourceFor := ArchitectureSourceFor;
+  mServices.QuerySource := QuerySource;
+  mServices.QuerySettingsFor := QuerySettingsFor;
+  mServices.HotspotSourceFor := HotspotSourceFor;
+  mServices.UnitRelationsOptionsFor := UnitRelationsOptionsFor;
+  mServices.SymbolPathSourceFor := SymbolPathSourceFor;
+  FOverviews := TShellOverviews.Create(mServices);
+  FOverviews.Attach(FDispatcher);
 end;
 
 procedure TServerComposition.WireBaselines;
@@ -2115,7 +2069,7 @@ begin
   FCommands.Register(TLspDfmPropertyRules.Command, ApplyDfmPropertyRules);
   FRefactorings.Register(FCommands);
   WireReportCommands;
-  WireUnitCommands;
+  FOverviews.RegisterUnitCommands(FCommands);
   // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
   FCommands.Register(TLspExitPoints.Command, RunExitPoints);
   // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
@@ -2151,81 +2105,7 @@ begin
     begin
       Result := FTodos.Execute(AArguments);
     end);
-  FCommands.Register(TLspArchitecture.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FArchitecture.Execute(AArguments);
-    end);
-  FCommands.Register(TLspArchitecture.SaveCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FArchitecture.SaveReport(AArguments);
-    end);
-  FCommands.Register(TLspQuery.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FQuery.Execute(AArguments);
-    end);
-  // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
-  FCommands.RegisterConcurrent(TLspHotspots.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FHotspots.Execute(AArguments);
-    end);
-  FCommands.RegisterConcurrent(TLspHotspots.SaveCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FHotspots.SaveReport(AArguments);
-    end);
-end;
-
-procedure TServerComposition.WireUnitCommands;
-begin
-  FCommands.Register(TLspUnitRelations.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitRelations.Execute(AArguments);
-    end);
-  FCommands.Register(TLspUnitRelations.MoveCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitRelations.Move(AArguments);
-    end);
-  FCommands.Register(TLspUnitRelations.RemoveCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitRelations.Remove(AArguments);
-    end);
-  FCommands.Register(TLspUnitRelations.CostCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitRelations.Cost(AArguments);
-    end);
-  FCommands.Register(TLspUnitRelations.UseUnitCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitRelations.UseUnitInfo(AArguments);
-    end);
-  FCommands.Register(TLspSymbolPath.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FSymbolPath.Execute(AArguments);
-    end);
-  FCommands.Register(TLspDebugDisplay.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FDebugDisplay.Execute(AArguments);
-    end);
-  FCommands.Register(TLspEventHandlers.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FEventHandlers.Execute(AArguments);
-    end);
-  FCommands.Register(TLspRecursion.Command,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FRecursion.Execute(AArguments);
-    end);
+  FOverviews.RegisterReportCommands(FCommands);
 end;
 
 procedure TServerComposition.WireSlashCommands;
@@ -3051,18 +2931,7 @@ begin
   FreeAndNil(FCodeLens);
   FreeAndNil(FMetrics);
   FreeAndNil(FTodos);
-  FreeAndNil(FSymbolPath);
-  FreeAndNil(FArchitecture);
-  FreeAndNil(FArchitectureService);
-  FreeAndNil(FQuery);
-  FQueries := nil;
-  FreeAndNil(FHotspots);
-  FreeAndNil(FHotspotService);
-  FreeAndNil(FUnitRelations);
-  FreeAndNil(FUnitRelationsGraph);
-  FreeAndNil(FDebugDisplay);
-  FreeAndNil(FEventHandlers);
-  FreeAndNil(FRecursion);
+  FreeAndNil(FOverviews);
   FreeAndNil(FBaselines);
   FreeAndNil(FInlayHints);
   FreeAndNil(FImplementations);
@@ -5846,7 +5715,7 @@ begin
       // (#1112).
       AContext.Services := mWorkspace.RuleServices;
       // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
-      AContext.Services.Queries := FQueries;
+      AContext.Services.Queries := FOverviews.Queries;
       AProjects := ProjectsWithFile(mWorkspace, AFileName);
     end;
     // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
