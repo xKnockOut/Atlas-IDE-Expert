@@ -96,6 +96,7 @@ uses
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Projects.MissingUnit,
@@ -398,6 +399,20 @@ type
     function NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
     /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
     procedure WireAnalysis;
+    /// <summary>Teil von WireAnalysis: Architektur, Code-Abfragen, Hotspots, Unit-Beziehungen, Wege, Wertdarstellungen.</summary>
+    procedure WireOverviews;
+    /// <summary>Teil von WireAnalysis: Baseline, Sammelkorrektur und Baseline der Compilermeldungen.</summary>
+    procedure WireBaselines;
+    /// <summary>Defines des Projekts zur Datei AFileName; nil ohne Projekt.</summary>
+    function DefinesOfFile(const AFileName: string): TArray<string>;
+    /// <summary>Grenzen der Metrik-Linse; False, wenn Metriken oder die Linse abgeschaltet sind.</summary>
+    function CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
+    /// <summary>Text und Befunde einer Datei für die Baseline (#97) wie im Editor.</summary>
+    function BaselineCheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
+    /// <summary>Nach dem Schreiben einer Baseline offene Dokumente neu prüfen.</summary>
+    procedure BaselineWritten(AFileName: string);
+    /// <summary>Eingaben der Sammelkorrektur (#1352): Text, Regeln, Projekt, Index und Baseline.</summary>
+    function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
     /// <summary>Teil von Create (S-02): Refactorings und Befehle des Debuggers (Shell.Composition.Refactorings).
     /// </summary>
     procedure WireRefactorings;
@@ -479,8 +494,32 @@ type
     procedure WireWatchedFiles;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
+    /// <summary>Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs (#528).</summary>
+    procedure IdeMessagesReceived(const AMessages: TArray<TCompilerMessage>);
+    /// <summary>Wurzel des Arbeitsbereichs zum Projekt AProject, sonst dessen Ordner.</summary>
+    function BuildRootOf(const AProject: string): string;
+    /// <summary>Legt den letzten Build für den MCP-Prozess ab (#556).</summary>
+    procedure IdeBuildChanged(const ABuild: TIdeBuild);
+    /// <summary>Während die IDE kompiliert, ruht die Projektprüfung (#1247).</summary>
+    procedure IdeCompiling(ARunning: Boolean);
+    /// <summary>Arbeitsbereiche, die das Projekt AProject laden.</summary>
+    function WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+    /// <summary>Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.</summary>
+    procedure IdeProjectChanged(const AContext: TIdeProjectContext);
+    /// <summary>Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu.</summary>
+    procedure IdeNamingChanged(const AContext: TIdeProjectContext);
     /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
     procedure WireWorkspaceFolders;
+    /// <summary>Arbeitsbereichsordner entfernen und hinzufügen, wie der Client sie meldet.</summary>
+    procedure WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
+    /// <summary>Nach initialized: Client, Einstellungen, Beobachtung und erste Arbeitsbereiche.</summary>
+    procedure ClientInitialized;
+    /// <summary>Name, Fähigkeiten und Editor-Einstellungen des Clients aus initialize.</summary>
+    procedure ApplyClientInfo(const AParams: TJSONObject);
+    /// <summary>Lädt die globale Benutzerdatei und startet die Dateibeobachtung.</summary>
+    procedure StartSettingsWatch;
+    /// <summary>Änderungen auf der Platte wie eine Meldung des Clients einreihen.</summary>
+    procedure FilesChangedOnDisk(const AFiles: TArray<string>);
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     /// <summary>Unter mehreren Projekten mit der Datei (#46): ausgewählt (selectProject), dann aktiv in der IDE,
@@ -760,7 +799,6 @@ uses
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Metrics,
-  Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Compiler.Edition,
@@ -1630,18 +1668,7 @@ begin
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
-  FCodeLens.MetricsFor :=
-    function(const AUri: string; out ALimits: TMetricLimits): Boolean
-    var
-      Source: TLspMetricsSource;
-    begin
-      if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, Source) then
-      begin
-        Source.Settings := TServerSettings.Default;
-      end;
-      ALimits := TMetricRules.Limits(Source.Settings);
-      Result := Source.Settings.Metrics and Source.Settings.CodeLens.Metrics;
-    end;
+  FCodeLens.MetricsFor := CodeLensMetricsFor;
   FCodeLens.Attach(FDispatcher);
   FMetrics := TLspMetrics.Create(MetricsSourceFor,
     ReadSourceText);
@@ -1650,19 +1677,19 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  WireOverviews;
+  WireBaselines;
+  FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
+    EnsureUnit);
+  FSemanticTokens.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireOverviews;
+begin
   // Architekturübersicht (#1118): Fundstellen der uses-Einträge mit den Defines des Projekts der Datei.
   FArchitectureService := TArchitectureService.Create(FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
-      begin
-        Result := nil;
-      end;
-    end);
+    ReadSourceText,
+    DefinesOfFile);
   FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
   FArchitecture.Attach(FDispatcher);
   // Code-Abfragen (#1351): ein Dienst für Fenster, Befehl und die Regeln query:<name>.
@@ -1671,49 +1698,21 @@ begin
   FQuery.Attach(FDispatcher);
   // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte, Verlauf über Shell.Hotspots.
   FHotspotService := THotspotService.Create(FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end);
+    ReadSourceText);
   FHotspots := TLspHotspots.Create(FHotspotService, HotspotSourceFor);
   FHotspots.Attach(FDispatcher);
   // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
   // entsteht erst weiter unten, daher über UsesContextFor.
   FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
   FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
-      begin
-        Result := nil;
-      end;
-    end,
-    function(const AUri: string; out AContext: TUsesContext): Boolean
-    begin
-      Result := UsesContextFor(AUri, AContext);
-    end,
-    function(const AFileName: string): TUsesGraphOptions
-    begin
-      Result := UnitRelationsOptionsFor(AFileName);
-    end);
+    ReadSourceText,
+    DefinesOfFile,
+    UsesContextFor, UnitRelationsOptionsFor);
   FUnitRelations.Attach(FDispatcher);
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units, Fundstellen wie oben.
   FSymbolPath := TLspSymbolPath.Create(FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AFileName: string): TArray<string>
-    begin
-      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
-      begin
-        Result := nil;
-      end;
-    end,
+    ReadSourceText,
+    DefinesOfFile,
     EnsureUnit, SymbolPathSourceFor);
   FSymbolPath.Attach(FDispatcher);
   // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
@@ -1723,89 +1722,107 @@ begin
   FEventHandlers.Index := FIndex;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
+end;
+
+procedure TServerComposition.WireBaselines;
+begin
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
   FBaseline := TLspBaseline.Create(MetricsSourceFor,
-    function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
-    var
-      Context: TRuleCheckContext;
-      Tree: TSyntaxTree;
-      Extension: string;
-    begin
-      ACheck := Default(TLspBaselineCheck);
-      Extension := LowerCase(ExtractFileExt(AFileName));
-      Result := ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk')) and
-        ReadSourceText(AFileName, ACheck.Text) and RuleContextFor(TDocumentUris.FromPath(AFileName), Context) and
-        (Context.RelativePath <> '');
-      if not Result then
-      begin
-        Exit;
-      end;
-      ACheck.RelativePath := Context.RelativePath;
-      Tree := TSyntaxTreeCache.Parse(ACheck.Text);
-      try
-        ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, Tree, Context);
-      finally
-        Tree.Free;
-      end;
-    end,
+    BaselineCheckFor,
     BaselineFiles);
-  FBaseline.OnWritten :=
-    procedure(AFileName: string)
-    begin
-      // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
-      FSyntaxDiagnostics.RefreshLater;
-    end;
+  // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
+  FBaseline.OnWritten := BaselineWritten;
   // Sammelkorrektur für das Plugin (#1352): Text, Regeln, Projekt, Index und Baseline wie die Editor-Prüfung, aber
   // nicht Live (unused-uses meldet sich nur außerhalb des Editors) und mit den Symbolen des Projekts wie der Linter.
-  FBulkFix := TLspBulkFix.Create(
-    function(const AFileName: string; out AInput: TLspBulkFixInput): Boolean
-    var
-      mContext: TRuleCheckContext;
-      mDefines: TArray<string>;
-      mUri: string;
-    begin
-      AInput := Default(TLspBulkFixInput);
-      mUri := TDocumentUris.FromPath(AFileName);
-      Result := ReadSourceText(AFileName, AInput.Text) and RuleContextFor(mUri, mContext);
-      if not Result then
-      begin
-        Exit;
-      end;
-      AInput.Rules := mContext.Rules;
-      AInput.Settings := mContext.Settings;
-      AInput.RelativePath := mContext.RelativePath;
-      if AInput.RelativePath = '' then
-      begin
-        AInput.RelativePath := ExtractFileName(AFileName);
-      end;
-      AInput.Baseline := mContext.Baseline;
-      AInput.Project.Application := mContext.Application;
-      AInput.Project.Name := mContext.ProjectName;
-      AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
-      AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
-      AInput.Project.FileName := AFileName;
-      AInput.Project.Services := mContext.Services;
-      if not DefinesFor(mUri, mDefines) then
-      begin
-        mDefines := nil;
-      end;
-      AInput.Source := TCheckSource.Create(AFileName, mDefines, IncludeResolverFor(mUri));
-    end);
+  FBulkFix := TLspBulkFix.Create(BulkFixInputFor);
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     BaselineFiles);
-  FCompilerBaseline.OnWritten :=
-    procedure(AFileName: string)
-    begin
-      FSyntaxDiagnostics.RefreshLater;
-    end;
-  FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
-    EnsureUnit);
-  FSemanticTokens.Attach(FDispatcher);
+  FCompilerBaseline.OnWritten := BaselineWritten;
+end;
+
+function TServerComposition.DefinesOfFile(const AFileName: string): TArray<string>;
+begin
+  if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TServerComposition.CodeLensMetricsFor(const AUri: string; out ALimits: TMetricLimits): Boolean;
+var
+  mSource: TLspMetricsSource;
+begin
+  if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, mSource) then
+  begin
+    mSource.Settings := TServerSettings.Default;
+  end;
+  ALimits := TMetricRules.Limits(mSource.Settings);
+  Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
+end;
+
+function TServerComposition.BaselineCheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
+var
+  mContext: TRuleCheckContext;
+  mTree: TSyntaxTree;
+  mExtension: string;
+begin
+  ACheck := Default(TLspBaselineCheck);
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk')) and
+    ReadSourceText(AFileName, ACheck.Text) and RuleContextFor(TDocumentUris.FromPath(AFileName), mContext) and
+    (mContext.RelativePath <> '');
+  if not Result then
+  begin
+    Exit;
+  end;
+  ACheck.RelativePath := mContext.RelativePath;
+  mTree := TSyntaxTreeCache.Parse(ACheck.Text);
+  try
+    ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, mTree, mContext);
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TServerComposition.BaselineWritten(AFileName: string);
+begin
+  FSyntaxDiagnostics.RefreshLater;
+end;
+
+function TServerComposition.BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
+var
+  mContext: TRuleCheckContext;
+  mDefines: TArray<string>;
+  mUri: string;
+begin
+  AInput := Default(TLspBulkFixInput);
+  mUri := TDocumentUris.FromPath(AFileName);
+  Result := ReadSourceText(AFileName, AInput.Text) and RuleContextFor(mUri, mContext);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AInput.Rules := mContext.Rules;
+  AInput.Settings := mContext.Settings;
+  AInput.RelativePath := mContext.RelativePath;
+  if AInput.RelativePath = '' then
+  begin
+    AInput.RelativePath := ExtractFileName(AFileName);
+  end;
+  AInput.Baseline := mContext.Baseline;
+  AInput.Project.Application := mContext.Application;
+  AInput.Project.Name := mContext.ProjectName;
+  AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
+  AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
+  AInput.Project.FileName := AFileName;
+  AInput.Project.Services := mContext.Services;
+  if not DefinesFor(mUri, mDefines) then
+  begin
+    mDefines := nil;
+  end;
+  AInput.Source := TCheckSource.Create(AFileName, mDefines, IncludeResolverFor(mUri));
 end;
 
 procedure TServerComposition.WireRefactorings;
@@ -2652,53 +2669,12 @@ procedure TServerComposition.WireIde;
 begin
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
   FIdeBuild := TLspIdeBuild.Create;
-  FIdeBuild.OnMessages :=
-    procedure(const AMessages: TArray<TCompilerMessage>)
-    begin
-      FSyntaxDiagnostics.RefreshFiles(FCompile.Results.Replace(AMessages));
-      FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
-    end;
+  FIdeBuild.OnMessages := IdeMessagesReceived;
   // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
-  FIdeBuild.OnChanged :=
-    procedure(const ABuild: TIdeBuild)
-    var
-      Workspace: TShellWorkspace;
-      Root: string;
-    begin
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Workspace := PickWorkspace(ABuild.Project);
-        if Workspace <> nil then
-        begin
-          Root := Workspace.Root;
-        end
-        else
-        begin
-          Root := ExtractFileDir(ABuild.Project);
-        end;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      if Root = '' then
-      begin
-        Exit;
-      end;
-      try
-        ForceDirectories(TIndexCacheDirectory.DefaultRoot);
-        TFile.WriteAllText(TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, Root),
-          TMcpBuildTools.ToFileText(ABuild), TEncoding.UTF8);
-      except
-        on E: Exception do
-          FLogger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
-      end;
-    end;
+  FIdeBuild.OnChanged := IdeBuildChanged;
   // Während die IDE kompiliert, ruht die Projektprüfung (#1247). Die Frist ist ein Sicherheitsnetz für ein
   // verlorenes Ende, keine Steuerung.
-  FIdeBuild.OnCompiling :=
-    procedure(ARunning: Boolean)
-    begin
-      FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
-    end;
+  FIdeBuild.OnCompiling := IdeCompiling;
   FIdeBuild.Attach(FDispatcher);
   // Projektwahl je Benutzer über Neustarts (#46).
   FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
@@ -2706,134 +2682,202 @@ begin
   FProjectChoices := TDictionary<string, string>.Create;
   // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
   FIdeProject := TLspIdeProject.Create;
-  FIdeProject.OnChanged :=
-    procedure(const AContext: TIdeProjectContext)
-    var
-      Workspace: TShellWorkspace;
-      Affected: TArray<TShellWorkspace>;
-      Project: TProjectInfo;
-    begin
-      Affected := nil;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        for Workspace in FWorkspaces do
-        begin
-          if SameText(Workspace.Setup.ProjectFile, AContext.Project) or
-            (Workspace.State.Project(Project) and SameText(Project.FileName, AContext.Project)) then
-          begin
-            Affected := Affected + [Workspace];
-          end;
-        end;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      FLogger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
-        [ExtractFileName(AContext.Project), AContext.Configuration, AContext.Platform]));
-      for Workspace in Affected do
-      begin
-        Workspace.Reload;
-      end;
-    end;
+  FIdeProject.OnChanged := IdeProjectChanged;
   // Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu, das Projekt bleibt geladen.
-  FIdeProject.OnNamingChanged :=
-    procedure(const AContext: TIdeProjectContext)
-    begin
-      FSyntaxDiagnostics.RefreshLater;
-    end;
+  FIdeProject.OnNamingChanged := IdeNamingChanged;
   FIdeProject.Attach(FDispatcher);
 end;
 
 procedure TServerComposition.WireWorkspaceFolders;
 begin
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
-  FWorkspaceFolders.OnChanged :=
-    procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>)
-    var
-      Folder: TWorkspaceFolder;
-    begin
-      for Folder in ARemoved do
-      begin
-        RemoveWorkspace(Folder);
-      end;
-      for Folder in AAdded do
-      begin
-        AddWorkspace(Folder);
-      end;
-    end;
+  FWorkspaceFolders.OnChanged := WorkspaceFoldersChanged;
   FWorkspaceFolders.Attach(FDispatcher);
-  FLifecycle.OnInitialized :=
-    procedure
-    var
-      Folders: TArray<TWorkspaceFolder>;
-      Folder: TWorkspaceFolder;
+  FLifecycle.OnInitialized := ClientInitialized;
+end;
+
+procedure TServerComposition.IdeMessagesReceived(const AMessages: TArray<TCompilerMessage>);
+begin
+  FSyntaxDiagnostics.RefreshFiles(FCompile.Results.Replace(AMessages));
+  FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
+end;
+
+function TServerComposition.BuildRootOf(const AProject: string): string;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  System.TMonitor.Enter(FWorkspacesLock);
+  try
+    mWorkspace := PickWorkspace(AProject);
+    if mWorkspace <> nil then
     begin
-      WatchParent(FLifecycle.InitializeParams);
-      // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
-      if FLifecycle.InitializeParams <> nil then
-      begin
-        FClientName := FLifecycle.InitializeParams.GetValue<string>('clientInfo.name', '');
-      end;
-      // Absturzfälle nennen den Client (#1355); der neue Client erfährt, was nach Abstürzen übersprungen wird.
-      if FLifecycle.InitializeParams <> nil then
-      begin
-        FCrashCases.Client := Trim(FClientName + ' ' +
-          FLifecycle.InitializeParams.GetValue<string>('clientInfo.version', ''));
-      end;
-      FCrashCases.Announce;
-      // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
-      // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
-      // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
-      if FLifecycle.InitializeParams <> nil then
-      begin
-        SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(
-          FLifecycle.InitializeParams.GetValue('initializationOptions')));
-      end;
-      UpdateLooseSettings;
-      FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
-      // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
-      FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(FLifecycle.InitializeParams);
-      FCompletion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(FLifecycle.InitializeParams);
-      Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
-      // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
-      FIdeProject.LoadInitialize(FLifecycle.InitializeParams);
-      // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
-      // Projekte weiter einen abgeleiteten Arbeitsbereich.
-      FDeriveWorkspaces := True;
-      for Folder in Folders do
-      begin
-        if Folder.ProjectFile = '' then
-        begin
-          FDeriveWorkspaces := False;
-        end;
-      end;
-      if Length(Folders) = 0 then
-      begin
-        FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
-      end;
-      // Globale Benutzerdatei (#227) vor dem ersten Ordner; der Server beobachtet sie und die atlas.json
-      // selbst, weil die RAD-Studio-IDE keine Dateiänderungen meldet.
-      if FReplay then
-      begin
-        FGlobalSettingsFile := FReplaySettingsFile;
-      end
-      else
-      begin
-        FGlobalSettingsFile := GlobalSettingsPath;
-      end;
-      LoadGlobalSettings;
-      FFileWatcher := TFileWatcher.Create(
-        procedure(const AFiles: TArray<string>)
-        begin
-          // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
-          FConnection.Post(TLspWatchedFiles.Notification(AFiles));
-        end);
-      for Folder in Folders do
-      begin
-        AddWorkspace(Folder);
-      end;
-      UpdateWatchedSettings;
-      FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
+      Result := mWorkspace.Root;
+    end
+    else
+    begin
+      Result := ExtractFileDir(AProject);
     end;
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.IdeBuildChanged(const ABuild: TIdeBuild);
+var
+  mRoot: string;
+begin
+  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
+  mRoot := BuildRootOf(ABuild.Project);
+  if mRoot = '' then
+  begin
+    Exit;
+  end;
+  try
+    ForceDirectories(TIndexCacheDirectory.DefaultRoot);
+    TFile.WriteAllText(TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, mRoot),
+      TMcpBuildTools.ToFileText(ABuild), TEncoding.UTF8);
+  except
+    on E: Exception do
+      FLogger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
+  end;
+end;
+
+procedure TServerComposition.IdeCompiling(ARunning: Boolean);
+begin
+  // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
+  FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
+end;
+
+function TServerComposition.WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TProjectInfo;
+begin
+  Result := nil;
+  System.TMonitor.Enter(FWorkspacesLock);
+  try
+    for mWorkspace in FWorkspaces do
+    begin
+      if SameText(mWorkspace.Setup.ProjectFile, AProject) or
+        (mWorkspace.State.Project(mProject) and SameText(mProject.FileName, AProject)) then
+      begin
+        Result := Result + [mWorkspace];
+      end;
+    end;
+  finally
+    System.TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.IdeProjectChanged(const AContext: TIdeProjectContext);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  FLogger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
+    [ExtractFileName(AContext.Project), AContext.Configuration, AContext.Platform]));
+  for mWorkspace in WorkspacesOfProject(AContext.Project) do
+  begin
+    mWorkspace.Reload;
+  end;
+end;
+
+procedure TServerComposition.IdeNamingChanged(const AContext: TIdeProjectContext);
+begin
+  FSyntaxDiagnostics.RefreshLater;
+end;
+
+procedure TServerComposition.WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
+var
+  mFolder: TWorkspaceFolder;
+begin
+  for mFolder in ARemoved do
+  begin
+    RemoveWorkspace(mFolder);
+  end;
+  for mFolder in AAdded do
+  begin
+    AddWorkspace(mFolder);
+  end;
+end;
+
+procedure TServerComposition.ClientInitialized;
+var
+  mFolders: TArray<TWorkspaceFolder>;
+  mFolder: TWorkspaceFolder;
+begin
+  WatchParent(FLifecycle.InitializeParams);
+  ApplyClientInfo(FLifecycle.InitializeParams);
+  mFolders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
+  // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
+  FIdeProject.LoadInitialize(FLifecycle.InitializeParams);
+  // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
+  // Projekte weiter einen abgeleiteten Arbeitsbereich.
+  FDeriveWorkspaces := True;
+  for mFolder in mFolders do
+  begin
+    if mFolder.ProjectFile = '' then
+    begin
+      FDeriveWorkspaces := False;
+    end;
+  end;
+  if Length(mFolders) = 0 then
+  begin
+    FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+  end;
+  StartSettingsWatch;
+  for mFolder in mFolders do
+  begin
+    AddWorkspace(mFolder);
+  end;
+  UpdateWatchedSettings;
+  FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
+end;
+
+procedure TServerComposition.ApplyClientInfo(const AParams: TJSONObject);
+begin
+  if AParams <> nil then
+  begin
+    // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
+    FClientName := AParams.GetValue<string>('clientInfo.name', '');
+    // Absturzfälle nennen den Client (#1355).
+    FCrashCases.Client := Trim(FClientName + ' ' + AParams.GetValue<string>('clientInfo.version', ''));
+  end;
+  // Der neue Client erfährt, was nach Abstürzen übersprungen wird.
+  FCrashCases.Announce;
+  // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
+  // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
+  // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
+  if AParams <> nil then
+  begin
+    SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams.GetValue('initializationOptions')));
+  end;
+  UpdateLooseSettings;
+  FHover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
+  // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
+  FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
+  FCompletion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
+end;
+
+procedure TServerComposition.StartSettingsWatch;
+begin
+  // Globale Benutzerdatei (#227) vor dem ersten Ordner; der Server beobachtet sie und die atlas.json
+  // selbst, weil die RAD-Studio-IDE keine Dateiänderungen meldet.
+  if FReplay then
+  begin
+    FGlobalSettingsFile := FReplaySettingsFile;
+  end
+  else
+  begin
+    FGlobalSettingsFile := GlobalSettingsPath;
+  end;
+  LoadGlobalSettings;
+  FFileWatcher := TFileWatcher.Create(FilesChangedOnDisk);
+end;
+
+procedure TServerComposition.FilesChangedOnDisk(const AFiles: TArray<string>);
+begin
+  // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
+  FConnection.Post(TLspWatchedFiles.Notification(AFiles));
 end;
 
 destructor TServerComposition.Destroy;
