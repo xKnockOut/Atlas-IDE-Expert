@@ -2013,7 +2013,7 @@ begin
   Character := TLspSession.ColumnToIndex(Lines[Line], Cursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
   try
     Edits := Running.OnTypeFormatting(FileName, Line, Character, TAtlasSlashTrigger.TriggerChar(AKind),
-      TAtlasEditorBuffer.BlockIndent(AView.Buffer), True, SlashTimeoutMs);
+      TLspFormatOptions.Create(TAtlasEditorBuffer.BlockIndent(AView.Buffer), True), SlashTimeoutMs);
   except
     on E: ELspClientError do
     begin

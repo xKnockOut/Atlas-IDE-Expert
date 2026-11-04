@@ -114,6 +114,9 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.CrashCases.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Base.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Requests.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Uris.pas"/>
