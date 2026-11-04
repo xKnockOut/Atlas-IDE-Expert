@@ -110,6 +110,80 @@ type
   TAtlasQuickRowProc = reference to procedure(ARow: Integer);
   TAtlasQuickScale = reference to function(AValue: Integer): Integer;
 
+  TAtlasQuickActionsBar = class;
+
+  /// <summary>Texte und Farben der Schnellaktionen ohne Steuerelement: Beschriftung, Marke und Tooltip.</summary>
+  TAtlasQuickActionTexts = class
+  public
+    /// <summary>Beschriftung des Knopfs; während seine Aktion läuft „baut … 12 s“.</summary>
+    class function Caption(const AButton: TAtlasQuickActionButton; const AState: TAtlasQuickActionState;
+      ANowMs: UInt64): string; static;
+    /// <summary>Stand als Text der Marke; '' = keine Marke (etwa nach einem Build: die Build-Marke zeigt ihn).
+    /// AUpdate: SVN („aktualisiert …“).</summary>
+    class function StateText(const AState: TAtlasQuickActionState; ANowMs: UInt64; AUpdate: Boolean): string;
+      static;
+    class function StateColor(const AState: TAtlasQuickActionState): TColor; static;
+    /// <summary>Tooltip eines Knopfs; AKey: Taste der Aktion (0 = keine), AConsole: Programm der Konsole.</summary>
+    class function ButtonHint(const AButton: TAtlasQuickActionButton; ARunning: Boolean; AKey: Integer;
+      const AConsole: string): string; static;
+  end;
+
+  /// <summary>Auswahl hinter den Knöpfen (Konfiguration × Plattform, Startprofile, Testprojekte, Projektaufgaben,
+  /// Externals) und Einträge der Schnellaktionen im Kontextmenü eines Bereichs.</summary>
+  TAtlasQuickActionsMenus = class(TComponent)
+  private type
+    TChoiceKind = (Target, Profile, TestProject, Task, Update);
+    TChoice = record
+      Kind: TChoiceKind;
+      Project: string;
+      A: string;
+      B: string;
+    end;
+  private
+    FBar: TAtlasQuickActionsBar;
+    FPopup: TPopupMenu;
+    FChoices: TArray<TChoice>;
+    FContextItems: TArray<TMenuItem>;
+    FContextActions: TArray<TAtlasQuickAction>;
+    FBuildWithItem: TMenuItem;
+    FRunWithItem: TMenuItem;
+    FTasksItem: TMenuItem;
+    FContextSeparator: TMenuItem;
+    FContextRow: Integer;
+    procedure ChoiceClick(Sender: TObject);
+    procedure ContextClick(Sender: TObject);
+    procedure AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice; ADefault: Boolean);
+    procedure AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
+    procedure AddContextItem(AMenu: TPopupMenu; AAction: TAtlasQuickAction; const ACaption: string);
+    function AddSubmenu(AMenu: TPopupMenu; AId: TAtlasWelcomeTextId): TMenuItem;
+    procedure FillTargets(AParent: TMenuItem; const AProject: string);
+    procedure FillProfiles(AParent: TMenuItem; const AProject: string);
+    procedure FillTestProjects(AParent: TMenuItem; const AProject: string; const ACandidates: TArray<string>);
+    procedure FillTasks(AParent: TMenuItem; const AProject: string);
+    procedure FillUpdate(AParent: TMenuItem; const AProject: string);
+    /// <summary>Auswahl zu AButton in AParent (mit Überschrift in der aufgeklappten Auswahl); False ohne Einträge.
+    /// </summary>
+    function FillFor(AParent: TMenuItem; const AButton: TAtlasQuickActionButton; const AProject: string): Boolean;
+    procedure PreparePull(AItem: TMenuItem; const AButtons: TAtlasQuickActionButtons; ARow, AFound: Integer);
+    /// <summary>Untermenü AItem mit der Auswahl des Knopfs AAction füllen; True, wenn es sichtbar ist.</summary>
+    function PrepareSubmenu(AItem: TMenuItem; const AButtons: TAtlasQuickActionButtons; ARow: Integer;
+      AAction: TAtlasQuickAction): Boolean;
+  public
+    constructor Create(ABar: TAtlasQuickActionsBar); reintroduce;
+    /// <summary>Auswahl zu Knopf AIndex der Zeile ARow unter dem Knopf aufklappen.</summary>
+    procedure PopupAt(ARow, AIndex: Integer);
+    /// <summary>Auswahl zu Knopf AIndex der Zeile ARow füllen (Konfiguration × Plattform, Startprofile bzw.
+    /// Testprojekte bzw. Projektaufgaben) in AParent; False, wenn es keine Auswahl gibt.</summary>
+    function FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
+    /// <summary>Einträge der Schnellaktionen unten an AMenu anhängen (Kontextmenü eines Bereichs).</summary>
+    procedure Attach(AMenu: TPopupMenu);
+    /// <summary>Einträge für ARow sichtbar, gesperrt und Untermenüs gefüllt (vor dem Öffnen des Kontextmenüs).
+    /// </summary>
+    procedure Prepare(ARow: Integer);
+    /// <summary>Aufgeklappte Auswahl unter einem Knopf.</summary>
+    property Popup: TPopupMenu read FPopup;
+  end;
+
   /// <summary>Knopfleiste, Stand und Tastatur für die Zeilen eines Bereichs. Der Bereich meldet Zeilen
   /// (Projekte), Maus und Zeichnen; die Leiste ruft die Quelle.</summary>
   TAtlasQuickActionsBar = class(TComponent)
@@ -122,61 +196,42 @@ type
     MenuPart = 16;
     TickMs = 1000;
   private type
-    TChoiceKind = (Target, Profile, TestProject, Task, Update);
-    TChoice = record
-      Kind: TChoiceKind;
-      Project: string;
-      A: string;
-      B: string;
+    /// <summary>Projekte der Zeilen mit Knöpfen, Stand und Rechtecken der Knöpfe (entstehen beim Zeichnen).
+    /// </summary>
+    TRowData = record
+      Projects: TArray<string>;
+      Buttons: TArray<TAtlasQuickActionButtons>;
+      States: TArray<TAtlasQuickActionState>;
+      Rects: TArray<TArray<TRect>>;
+      NowMs: UInt64;
+    end;
+    /// <summary>Zeile und Knopf unter der Maus bzw. mit der Tastatur gewählt.</summary>
+    TSelection = record
+      HoverRow: Integer;
+      HoverButton: Integer;
+      KeyRow: Integer;
+      KeyButton: Integer;
+      // Letzte Eingabe kam von der Tastatur: Die gewählte Zeile ist die aktive, nicht die unter der Maus.
+      UseKey: Boolean;
+    end;
+    THandlers = record
+      Scale: TAtlasQuickScale;
+      OpenRow: TAtlasQuickRowProc;
+      RowMenu: TAtlasQuickRowProc;
+      SelectRow: TAtlasQuickRowProc;
     end;
   private
     FBox: TAtlasWelcomeCanvas;
     FSink: TAtlasQuickKeySink;
     FSource: IAtlasQuickActionsSource;
     FTimer: TTimer;
-    FMenu: TPopupMenu;
-    FScale: TAtlasQuickScale;
-    FProjects: TArray<string>;
-    FButtons: TArray<TAtlasQuickActionButtons>;
-    FStates: TArray<TAtlasQuickActionState>;
-    FRects: TArray<TArray<TRect>>;
-    FChoices: TArray<TChoice>;
-    FHoverRow: Integer;
-    FHoverButton: Integer;
-    FKeyRow: Integer;
-    FKeyButton: Integer;
-    // Letzte Eingabe kam von der Tastatur: Die gewählte Zeile ist die aktive, nicht die unter der Maus.
-    FUseKey: Boolean;
-    FNowMs: UInt64;
-    FOnOpenRow: TAtlasQuickRowProc;
-    FOnRowMenu: TAtlasQuickRowProc;
-    FOnSelectRow: TAtlasQuickRowProc;
-    FContextItems: TArray<TMenuItem>;
-    FContextActions: TArray<TAtlasQuickAction>;
-    FBuildWithItem: TMenuItem;
-    FRunWithItem: TMenuItem;
-    FTasksItem: TMenuItem;
-    FContextSeparator: TMenuItem;
-    FContextRow: Integer;
+    FMenus: TAtlasQuickActionsMenus;
+    FRows: TRowData;
+    FSelection: TSelection;
+    FHandlers: THandlers;
     procedure SetSource(const AValue: IAtlasQuickActionsSource);
     procedure TimerTick(Sender: TObject);
     procedure SinkFocusChange(Sender: TObject);
-    function SinkKey(AKey: Word; AShift: TShiftState): Boolean;
-    procedure ChoiceClick(Sender: TObject);
-    procedure ContextClick(Sender: TObject);
-    function Scale(AValue: Integer): Integer;
-    function ValidRow(ARow: Integer): Boolean;
-    function ItemsOf(ARow: Integer): TAtlasQuickActions;
-    procedure Queue(const AProc: TProc);
-    procedure AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice; ADefault: Boolean);
-    procedure AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
-    procedure FillTargets(AParent: TMenuItem; const AProject: string);
-    procedure FillProfiles(AParent: TMenuItem; const AProject: string);
-    procedure FillTestProjects(AParent: TMenuItem; const AProject: string; const ACandidates: TArray<string>);
-    procedure FillTasks(AParent: TMenuItem; const AProject: string);
-    procedure FillUpdate(AParent: TMenuItem; const AProject: string);
-    procedure PopupAt(ARow, AIndex: Integer);
-    procedure UpdateTimer;
   public
     constructor Create(AOwner: TComponent; ABox: TAtlasWelcomeCanvas; AParent: TWinControl); reintroduce;
     destructor Destroy; override;
@@ -189,8 +244,6 @@ type
     function StateOf(ARow: Integer): TAtlasQuickActionState;
     /// <summary>Zeile mit Knopfleiste: unter der Maus bzw. mit der Tastatur gewählt; -1 = keine.</summary>
     function ActiveRow: Integer;
-    /// <summary>Hat die Tastatur des Bereichs den Fokus?</summary>
-    function Focused: Boolean;
     /// <summary>Maus über ARow (-1 = keine Zeile) an X, Y; zeichnet bei Wechsel neu.</summary>
     procedure MouseMove(ARow, X, Y: Integer);
     procedure MouseLeave;
@@ -212,41 +265,21 @@ type
     function HintAt(X, Y: Integer; out AHint: string): Boolean;
     /// <summary>Taste wie in der Tastatur des Bereichs gedrückt.</summary>
     function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
-    /// <summary>Auswahl zu Knopf AIndex der Zeile ARow füllen (Konfiguration × Plattform, Startprofile bzw.
-    /// Testprojekte bzw. Projektaufgaben) in AParent; False, wenn es keine Auswahl gibt.</summary>
-    function FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
-    /// <summary>Einträge der Schnellaktionen unten an AMenu anhängen (Kontextmenü eines Bereichs).</summary>
-    procedure AttachMenu(AMenu: TPopupMenu);
-    /// <summary>Einträge für ARow sichtbar, gesperrt und Untermenüs gefüllt (vor dem Öffnen des Kontextmenüs).
-    /// </summary>
-    procedure PrepareMenu(ARow: Integer);
-    /// <summary>Beschriftung des Knopfs; während seine Aktion läuft „baut … 12 s“.</summary>
-    class function Caption(const AButton: TAtlasQuickActionButton; const AState: TAtlasQuickActionState;
-      ANowMs: UInt64): string; static;
-    /// <summary>Stand als Text der Marke; '' = keine Marke (etwa nach einem Build: die Build-Marke zeigt ihn).
-    /// AUpdate: SVN („aktualisiert …“).</summary>
-    class function StateText(const AState: TAtlasQuickActionState; ANowMs: UInt64; AUpdate: Boolean): string;
-      static;
-    class function StateColor(const AState: TAtlasQuickActionState): TColor; static;
-    /// <summary>Tooltip eines Knopfs; AKey: Taste der Aktion (0 = keine), AConsole: Programm der Konsole.</summary>
-    class function ButtonHint(const AButton: TAtlasQuickActionButton; ARunning: Boolean; AKey: Integer;
-      const AConsole: string): string; static;
     property Source: IAtlasQuickActionsSource read FSource write SetSource;
     property Sink: TAtlasQuickKeySink read FSink;
-    property Menu: TPopupMenu read FMenu;
-    property Timer: TTimer read FTimer;
+    /// <summary>Auswahl der Knöpfe und Einträge im Kontextmenü des Bereichs.</summary>
+    property Menus: TAtlasQuickActionsMenus read FMenus;
     /// <summary>Zeitpunkt der letzten Aktualisierung (ms); 0 ohne Quelle.</summary>
-    property NowMs: UInt64 read FNowMs;
-    property HoverRow: Integer read FHoverRow;
-    property KeyRow: Integer read FKeyRow write FKeyRow;
-    property KeyButton: Integer read FKeyButton write FKeyButton;
-    property OnScale: TAtlasQuickScale read FScale write FScale;
+    property NowMs: UInt64 read FRows.NowMs;
+    property KeyRow: Integer read FSelection.KeyRow write FSelection.KeyRow;
+    property KeyButton: Integer read FSelection.KeyButton write FSelection.KeyButton;
+    property OnScale: TAtlasQuickScale read FHandlers.Scale write FHandlers.Scale;
     /// <summary>Enter ohne gewählten Knopf: Zeile öffnen bzw. fortsetzen.</summary>
-    property OnOpenRow: TAtlasQuickRowProc read FOnOpenRow write FOnOpenRow;
+    property OnOpenRow: TAtlasQuickRowProc read FHandlers.OpenRow write FHandlers.OpenRow;
     /// <summary>Kontextmenütaste: Kontextmenü der Zeile öffnen.</summary>
-    property OnRowMenu: TAtlasQuickRowProc read FOnRowMenu write FOnRowMenu;
+    property OnRowMenu: TAtlasQuickRowProc read FHandlers.RowMenu write FHandlers.RowMenu;
     /// <summary>Pfeil auf/ab hat die Zeile gewechselt.</summary>
-    property OnSelectRow: TAtlasQuickRowProc read FOnSelectRow write FOnSelectRow;
+    property OnSelectRow: TAtlasQuickRowProc read FHandlers.SelectRow write FHandlers.SelectRow;
   end;
 
   /// <summary>Texte zu einer Zeile mit Schnellaktionen, gemeinsam für die Bereiche „Projekte“ und
@@ -278,6 +311,431 @@ const
   Separator = ' · ';
   MenuArrow = #$25BE;
 
+type
+  /// <summary>Ordnet die Knöpfe einer Zeile rechtsbündig an, bei wenig Platz in zwei Zeilen.</summary>
+  TQuickRowLayout = record
+    Area: TRect;
+    Gap: Integer;
+    Widths: TArray<Integer>;
+    Rects: TArray<TRect>;
+    /// <summary>Breite der Knöpfe AFrom bis ATo samt Abständen.</summary>
+    function Span(AFrom, ATo: Integer): Integer;
+    procedure Place(AFrom, ATo, ATop, AHeight: Integer);
+    /// <summary>Erster Knopf der zweiten Zeile: vorne die ersten Knöpfe, so gleichmäßig wie möglich.</summary>
+    function SplitIndex: Integer;
+    procedure PlaceTwoLines(ALineGap, AHeight: Integer);
+    function LeftEdge: Integer;
+  end;
+
+  TQuickButtonColors = record
+    Text: TColor;
+    Muted: TColor;
+    Line: TColor;
+    Accent: TColor;
+    AccentText: TColor;
+  end;
+
+  /// <summary>Zeichnet die Knöpfe der Zeile Row in die Rechtecke aus LayoutRow.</summary>
+  TQuickRowPainter = record
+    Bar: TAtlasQuickActionsBar;
+    Canvas: TCanvas;
+    Colors: TQuickButtonColors;
+    Row: Integer;
+    Buttons: TAtlasQuickActionButtons;
+    function Scaled(AValue: Integer): Integer;
+    /// <summary>Rahmen bzw. Füllung und Schriftfarbe; „Öffnen und bauen“ ist gefüllt, solange er nutzbar ist.
+    /// </summary>
+    procedure PaintFrame(AIndex: Integer; const AArea: TRect);
+    procedure PaintCaption(AIndex: Integer; const AArea: TRect);
+    procedure PaintFocus(AIndex: Integer; const AArea: TRect);
+    procedure PaintButton(AIndex: Integer);
+  end;
+
+  /// <summary>Tastatur der Zeile Row (#764, #399).</summary>
+  TQuickKeys = record
+    Bar: TAtlasQuickActionsBar;
+    Row: Integer;
+    Buttons: TAtlasQuickActionButtons;
+    Shift: TShiftState;
+    /// <summary>Strg+B, Strg+T (einstellbar) auf der gewählten Zeile.</summary>
+    function ActionKey(AKey: Word): Boolean;
+    /// <summary>Alt+↓: Auswahl des gewählten Knopfs, sonst die von „Öffnen und bauen“.</summary>
+    function MenuKey: Boolean;
+    function StepRow(AKey: Word): Boolean;
+    function StepButton(AKey: Word): Boolean;
+    function Home: Boolean;
+    function Enter: Boolean;
+    function Escape: Boolean;
+    function ContextMenu: Boolean;
+    function Handle(AKey: Word): Boolean;
+  end;
+
+function ScaleOf(ABar: TAtlasQuickActionsBar; AValue: Integer): Integer;
+begin
+  Result := AValue;
+  if Assigned(ABar.FHandlers.Scale) then
+  begin
+    Result := ABar.FHandlers.Scale(AValue);
+  end;
+end;
+
+function IsRow(ABar: TAtlasQuickActionsBar; ARow: Integer): Boolean;
+begin
+  Result := (ARow >= 0) and (ARow <= High(ABar.FRows.Projects));
+end;
+
+function HasKeyFocus(ABar: TAtlasQuickActionsBar): Boolean;
+begin
+  Result := ABar.FSink.Focused;
+end;
+
+function ActionsOf(ABar: TAtlasQuickActionsBar; ARow: Integer): TAtlasQuickActions;
+var
+  mButton: TAtlasQuickActionButton;
+begin
+  Result := [];
+  for mButton in ABar.ButtonsOf(ARow) do
+  begin
+    Include(Result, mButton.Action);
+  end;
+end;
+
+procedure InvalidateBox(ABar: TAtlasQuickActionsBar);
+begin
+  if ABar.FBox <> nil then
+  begin
+    ABar.FBox.Invalidate;
+  end;
+end;
+
+/// <summary>Zeitgeber nur, solange eine Aktion läuft („baut … 12 s“ zählt weiter).</summary>
+procedure UpdateTimer(ABar: TAtlasQuickActionsBar);
+var
+  mState: TAtlasQuickActionState;
+  mRunning: Boolean;
+begin
+  mRunning := False;
+  for mState in ABar.FRows.States do
+  begin
+    mRunning := mRunning or mState.Running;
+  end;
+  ABar.FTimer.Enabled := mRunning;
+end;
+
+procedure QueueOnMain(const AProc: TProc);
+var
+  mProc: TProc;
+begin
+  mProc := AProc;
+  // Die Quelle füllt die Bereiche danach neu: nicht im eigenen Maus- bzw. Tastenereignis.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      mProc();
+    end);
+end;
+
+/// <summary>Fragt der Knopf erst nach einer Auswahl? „Startprofil ▾“ und „Aufgaben ▾“ immer, „Tests“ bei mehreren
+/// Testprojekten, Pull bei vcs.externals.update = ask (#1292), „Öffnen und bauen“ auf dem Teil ▾.</summary>
+function NeedsChoice(const AButton: TAtlasQuickActionButton; AMenu: Boolean; const ASource: IAtlasQuickActionsSource;
+  const AProject: string): Boolean;
+begin
+  case AButton.Action of
+    TAtlasQuickAction.Build:
+      Result := AMenu;
+    TAtlasQuickAction.Run, TAtlasQuickAction.Tasks:
+      Result := True;
+    TAtlasQuickAction.Tests:
+      Result := Length(ASource.TestProjects(AProject)) > 1;
+    TAtlasQuickAction.Pull:
+      Result := AButton.AskExternals;
+  else
+    Result := False;
+  end;
+end;
+
+function RunningText(AAction: TAtlasQuickAction; ASeconds: Integer; AUpdate: Boolean): string;
+begin
+  case AAction of
+    TAtlasQuickAction.Build:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickBuilding, [ASeconds]);
+    TAtlasQuickAction.Tests:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTesting, [ASeconds]);
+    TAtlasQuickAction.Run:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickStarting, [ASeconds]);
+    TAtlasQuickAction.Pull:
+      if AUpdate then
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickUpdating, [ASeconds]);
+      end
+      else
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickPulling, [ASeconds]);
+      end;
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTasking, [ASeconds]);
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Gebaut: Die Marke „Build 0/0/0“ des Bereichs zeigt das Ergebnis; nur Abgelehnt und Fehlgeschlagen.
+/// </summary>
+function BuildDoneText(const AState: TAtlasQuickActionState): string;
+begin
+  Result := '';
+  if AState.Phase = TAtlasQuickActionPhase.Refused then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildRefused);
+  end
+  else if AState.Phase = TAtlasQuickActionPhase.Failed then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildFailed);
+  end;
+end;
+
+function TestsDoneText(const AState: TAtlasQuickActionState): string;
+begin
+  if AState.Phase = TAtlasQuickActionPhase.Succeeded then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsPassed, [AState.Passed]);
+  end
+  else if (AState.Phase = TAtlasQuickActionPhase.Failed) and (AState.Failed > 0) then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsFailed, [AState.Failed]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTestsNotRun);
+  end;
+end;
+
+function RunDoneText(const AState: TAtlasQuickActionState): string;
+begin
+  if AState.Phase = TAtlasQuickActionPhase.Succeeded then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunStarted);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunRefused);
+  end;
+end;
+
+function PullDoneText(const AState: TAtlasQuickActionState; AUpdate: Boolean): string;
+begin
+  if (AState.Phase = TAtlasQuickActionPhase.Succeeded) and (AState.Pull = TAtlasPullOutcome.Updated) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpdated);
+  end
+  else if AState.Phase = TAtlasQuickActionPhase.Succeeded then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpToDate);
+  end
+  else if AState.Pull = TAtlasPullOutcome.Blocked then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullBlocked);
+  end
+  else if AUpdate then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateFailed);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullFailed);
+  end;
+end;
+
+/// <summary>Fertig: Aufgabe und Ergebnis als Text der IDE-Schicht („Delphi-12-Prüfung: 2 Fehler 14:03“).</summary>
+function TasksDoneText(const AState: TAtlasQuickActionState): string;
+begin
+  Result := AState.Detail;
+  if (AState.Phase = TAtlasQuickActionPhase.Refused) or (AState.Detail = '') then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasksRefused);
+  end;
+end;
+
+function DoneText(const AState: TAtlasQuickActionState; AUpdate: Boolean): string;
+begin
+  Result := '';
+  case AState.Action of
+    TAtlasQuickAction.Build:
+      Result := BuildDoneText(AState);
+    TAtlasQuickAction.Tests:
+      Result := TestsDoneText(AState);
+    TAtlasQuickAction.Run:
+      Result := RunDoneText(AState);
+    TAtlasQuickAction.Pull:
+      Result := PullDoneText(AState, AUpdate);
+    TAtlasQuickAction.Console:
+      if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsoleFailed);
+      end;
+    TAtlasQuickAction.Tasks:
+      Result := TasksDoneText(AState);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Grund eines gesperrten Knopfs; '' = nicht gesperrt.</summary>
+function BlockedHint(const AButton: TAtlasQuickActionButton; ARunning: Boolean): string;
+begin
+  case AButton.Block of
+    TAtlasPullBlock.LocalChanges:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges);
+    TAtlasPullBlock.NoWorkingCopy:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy);
+    TAtlasPullBlock.Busy:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy);
+  else
+    Result := '';
+  end;
+  if (Result = '') and not AButton.Enabled then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickIdeBusy);
+    if ARunning then
+    begin
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy);
+    end;
+  end;
+end;
+
+function ActionHint(const AButton: TAtlasQuickActionButton; const AConsole: string): string;
+begin
+  case AButton.Action of
+    TAtlasQuickAction.Build:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintBuild);
+    TAtlasQuickAction.Tests:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTests);
+    TAtlasQuickAction.Run:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintRun);
+    TAtlasQuickAction.Pull:
+      if AButton.Update then
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintUpdate);
+      end
+      else
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintPull);
+      end;
+    TAtlasQuickAction.Folder:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTasks);
+  else
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintConsole,
+      [TAtlasWelcomeQuickActions.NormalizedConsole(AConsole)]);
+  end;
+end;
+
+{ TAtlasQuickActionTexts }
+
+class function TAtlasQuickActionTexts.Caption(const AButton: TAtlasQuickActionButton;
+  const AState: TAtlasQuickActionState; ANowMs: UInt64): string;
+begin
+  if AState.Running and (AState.Action = AButton.Action) then
+  begin
+    Exit(StateText(AState, ANowMs, AButton.Update));
+  end;
+  if AButton.Action = TAtlasQuickAction.Pull then
+  begin
+    if AButton.Update then
+    begin
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
+    end
+    else
+    begin
+      Result := QuickActionTitle(TAtlasQuickAction.Pull);
+    end;
+    if AButton.AskExternals then
+    begin
+      Result := Result + ' ' + MenuArrow;
+    end;
+  end
+  else
+  begin
+    Result := QuickActionTitle(AButton.Action);
+  end;
+end;
+
+class function TAtlasQuickActionTexts.StateText(const AState: TAtlasQuickActionState; ANowMs: UInt64;
+  AUpdate: Boolean): string;
+begin
+  if AState.Running then
+  begin
+    Result := RunningText(AState.Action, AState.ElapsedSeconds(ANowMs), AUpdate);
+  end
+  else if AState.Phase = TAtlasQuickActionPhase.Idle then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := DoneText(AState, AUpdate);
+  end;
+end;
+
+class function TAtlasQuickActionTexts.StateColor(const AState: TAtlasQuickActionState): TColor;
+begin
+  // Farben wie die Marken des Bereichs „Projekte“ (#592): grau, grün, gelb, rot.
+  case AState.Phase of
+    TAtlasQuickActionPhase.Succeeded:
+      Result := TColor($0043A02E);
+    TAtlasQuickActionPhase.Refused:
+      Result := TColor($001A8CC9);
+    TAtlasQuickActionPhase.Failed:
+      if (AState.Action = TAtlasQuickAction.Pull) and (AState.Pull = TAtlasPullOutcome.Blocked) then
+      begin
+        Result := TColor($001A8CC9);
+      end
+      else
+      begin
+        Result := TColor($002E22CF);
+      end;
+  else
+    Result := TColor($00817666);
+  end;
+end;
+
+class function TAtlasQuickActionTexts.ButtonHint(const AButton: TAtlasQuickActionButton; ARunning: Boolean;
+  AKey: Integer; const AConsole: string): string;
+begin
+  Result := BlockedHint(AButton, ARunning);
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  Result := ActionHint(AButton, AConsole);
+  if AKey <> 0 then
+  begin
+    Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintKey,
+      [ShortCutToText(TShortCut(AKey))]);
+  end;
+end;
+
+function QuickActionTitle(AAction: TAtlasQuickAction): string;
+begin
+  case AAction of
+    TAtlasQuickAction.Build:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuild);
+    TAtlasQuickAction.Tests:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTests);
+    TAtlasQuickAction.Run:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRun);
+    TAtlasQuickAction.Pull:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+    TAtlasQuickAction.Folder:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasks);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsole);
+  end;
+end;
+
 { TAtlasQuickRowTexts }
 
 class function TAtlasQuickRowTexts.IsUpdateRow(ABar: TAtlasQuickActionsBar; ARow: Integer): Boolean;
@@ -296,7 +754,7 @@ end;
 
 class function TAtlasQuickRowTexts.StateText(ABar: TAtlasQuickActionsBar; ARow: Integer): string;
 begin
-  Result := TAtlasQuickActionsBar.StateText(ABar.StateOf(ARow), ABar.NowMs, IsUpdateRow(ABar, ARow));
+  Result := TAtlasQuickActionTexts.StateText(ABar.StateOf(ARow), ABar.NowMs, IsUpdateRow(ABar, ARow));
 end;
 
 class function TAtlasQuickRowTexts.HintSuffix(ABar: TAtlasQuickActionsBar; ARow: Integer): string;
@@ -397,654 +855,353 @@ begin
   end;
 end;
 
-{ TAtlasQuickActionsBar }
+{ TQuickRowLayout }
 
-constructor TAtlasQuickActionsBar.Create(AOwner: TComponent; ABox: TAtlasWelcomeCanvas; AParent: TWinControl);
-begin
-  inherited Create(AOwner);
-  FBox := ABox;
-  FHoverRow := -1;
-  FHoverButton := -1;
-  FKeyRow := -1;
-  FKeyButton := -1;
-  FContextRow := -1;
-  FSink := TAtlasQuickKeySink.Create(Self);
-  FSink.Parent := AParent;
-  FSink.OnKey := SinkKey;
-  FSink.OnFocusChange := SinkFocusChange;
-  FTimer := TTimer.Create(Self);
-  FTimer.Interval := TickMs;
-  FTimer.Enabled := False;
-  FTimer.OnTimer := TimerTick;
-  FMenu := TPopupMenu.Create(Self);
-end;
-
-destructor TAtlasQuickActionsBar.Destroy;
-begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  FSource := nil;
-  inherited;
-end;
-
-function TAtlasQuickActionsBar.Scale(AValue: Integer): Integer;
-begin
-  Result := AValue;
-  if Assigned(FScale) then
-  begin
-    Result := FScale(AValue);
-  end;
-end;
-
-procedure TAtlasQuickActionsBar.SetSource(const AValue: IAtlasQuickActionsSource);
-begin
-  FSource := AValue;
-  SetRows(FProjects);
-end;
-
-function TAtlasQuickActionsBar.Active: Boolean;
-begin
-  Result := (FSource <> nil) and FSource.Enabled;
-end;
-
-function TAtlasQuickActionsBar.ValidRow(ARow: Integer): Boolean;
-begin
-  Result := (ARow >= 0) and (ARow <= High(FProjects));
-end;
-
-procedure TAtlasQuickActionsBar.SetRows(const AProjects: TArray<string>);
+function TQuickRowLayout.Span(AFrom, ATo: Integer): Integer;
 var
-  Row: Integer;
-  On: Boolean;
+  mIndex: Integer;
 begin
-  FProjects := AProjects;
-  On := Active;
-  SetLength(FButtons, Length(FProjects));
-  SetLength(FStates, Length(FProjects));
-  SetLength(FRects, Length(FProjects));
-  for Row := 0 to High(FProjects) do
+  Result := 0;
+  for mIndex := AFrom to ATo do
   begin
-    FButtons[Row] := nil;
-    FStates[Row] := TAtlasQuickActionState.Idle;
-    FRects[Row] := nil;
-    if FSource = nil then
-    begin
-      Continue;
-    end;
-    // Der Stand gilt auch ohne Knöpfe (Ergebnis einer Aktion vor dem Ausschalten).
-    FStates[Row] := FSource.State(FProjects[Row]);
-    if On then
-    begin
-      FButtons[Row] := FSource.Buttons(FProjects[Row]);
-    end;
+    Inc(Result, Widths[mIndex]);
   end;
-  if FSource <> nil then
+  if ATo > AFrom then
   begin
-    FNowMs := FSource.NowMs;
-  end;
-  if FKeyRow > High(FProjects) then
-  begin
-    FKeyRow := High(FProjects);
-  end;
-  if FHoverRow > High(FProjects) then
-  begin
-    FHoverRow := -1;
-  end;
-  if ValidRow(FKeyRow) and (FKeyButton > High(FButtons[FKeyRow])) then
-  begin
-    FKeyButton := -1;
-  end;
-  FHoverButton := -1;
-  FSink.TabStop := On and (Length(FProjects) > 0);
-  UpdateTimer;
-  if FBox <> nil then
-  begin
-    FBox.Invalidate;
+    Inc(Result, (ATo - AFrom) * Gap);
   end;
 end;
 
-procedure TAtlasQuickActionsBar.UpdateTimer;
+procedure TQuickRowLayout.Place(AFrom, ATo, ATop, AHeight: Integer);
 var
-  State: TAtlasQuickActionState;
-  Running: Boolean;
+  mIndex, mRight: Integer;
 begin
-  Running := False;
-  for State in FStates do
+  mRight := Area.Right;
+  for mIndex := ATo downto AFrom do
   begin
-    if State.Running then
-    begin
-      Running := True;
-    end;
+    Rects[mIndex] := Rect(mRight - Widths[mIndex], ATop, mRight, ATop + AHeight);
+    Dec(mRight, Widths[mIndex] + Gap);
   end;
-  FTimer.Enabled := Running;
 end;
 
-procedure TAtlasQuickActionsBar.TimerTick(Sender: TObject);
+function TQuickRowLayout.SplitIndex: Integer;
 var
-  Row: Integer;
+  mIndex: Integer;
 begin
-  try
-    // „baut … 12 s“ weiterzählen; Ende und Ergebnis meldet die Quelle über den Bereich.
-    if FSource = nil then
-    begin
-      FTimer.Enabled := False;
-      Exit;
-    end;
-    FNowMs := FSource.NowMs;
-    for Row := 0 to High(FProjects) do
-    begin
-      FStates[Row] := FSource.State(FProjects[Row]);
-    end;
-    UpdateTimer;
-    if FBox <> nil then
-    begin
-      FBox.Invalidate;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-    end;
-  end;
-end;
-
-function TAtlasQuickActionsBar.ButtonsOf(ARow: Integer): TAtlasQuickActionButtons;
-begin
-  Result := nil;
-  if ValidRow(ARow) and Active then
+  Result := Length(Widths) div 2;
+  for mIndex := 1 to High(Widths) do
   begin
-    Result := FButtons[ARow];
+    if (Span(0, mIndex - 1) <= Area.Width) and (Span(mIndex, High(Widths)) <= Area.Width) then
+    begin
+      Exit(mIndex);
+    end;
   end;
 end;
 
-function TAtlasQuickActionsBar.StateOf(ARow: Integer): TAtlasQuickActionState;
-begin
-  Result := TAtlasQuickActionState.Idle;
-  if ValidRow(ARow) then
-  begin
-    Result := FStates[ARow];
-  end;
-end;
-
-function TAtlasQuickActionsBar.ItemsOf(ARow: Integer): TAtlasQuickActions;
+procedure TQuickRowLayout.PlaceTwoLines(ALineGap, AHeight: Integer);
 var
-  Button: TAtlasQuickActionButton;
+  mSplit, mLineHeight, mTop: Integer;
 begin
-  Result := [];
-  for Button in ButtonsOf(ARow) do
+  // Zwei Zeilen in der Zeilenhöhe.
+  mSplit := SplitIndex;
+  mLineHeight := (Area.Height - ALineGap) div 2;
+  if mLineHeight > AHeight then
   begin
-    Include(Result, Button.Action);
+    mLineHeight := AHeight;
+  end;
+  mTop := Area.Top + (Area.Height - 2 * mLineHeight - ALineGap) div 2;
+  Place(0, mSplit - 1, mTop, mLineHeight);
+  Place(mSplit, High(Widths), mTop + mLineHeight + ALineGap, mLineHeight);
+end;
+
+function TQuickRowLayout.LeftEdge: Integer;
+var
+  mRect: TRect;
+begin
+  Result := Area.Right;
+  for mRect in Rects do
+  begin
+    if mRect.Left < Result then
+    begin
+      Result := mRect.Left;
+    end;
   end;
 end;
 
-function TAtlasQuickActionsBar.Focused: Boolean;
+{ TQuickRowPainter }
+
+function TQuickRowPainter.Scaled(AValue: Integer): Integer;
 begin
-  Result := FSink.Focused;
+  Result := ScaleOf(Bar, AValue);
 end;
 
-function TAtlasQuickActionsBar.ActiveRow: Integer;
+procedure TQuickRowPainter.PaintFrame(AIndex: Integer; const AArea: TRect);
+var
+  mButton: TAtlasQuickActionButton;
 begin
-  Result := -1;
-  if not Active or (Length(FProjects) = 0) then
+  mButton := Buttons[AIndex];
+  if (mButton.Action = TAtlasQuickAction.Build) and mButton.Enabled then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := Colors.Accent;
+    Canvas.Pen.Color := Colors.Accent;
+    Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+    Canvas.Font.Color := Colors.AccentText;
+    Exit;
+  end;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Color := Colors.Line;
+  if (AIndex = Bar.FSelection.HoverButton) and (Row = Bar.FSelection.HoverRow) and mButton.Enabled then
+  begin
+    Canvas.Pen.Color := Colors.Accent;
+  end;
+  Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+  Canvas.Font.Color := Colors.Muted;
+  if mButton.Enabled then
+  begin
+    Canvas.Font.Color := Colors.Text;
+  end;
+end;
+
+procedure TQuickRowPainter.PaintCaption(AIndex: Integer; const AArea: TRect);
+var
+  mText: string;
+  mPart: Integer;
+begin
+  Canvas.Brush.Style := bsClear;
+  mText := TAtlasQuickActionTexts.Caption(Buttons[AIndex], Bar.FRows.States[Row], Bar.FRows.NowMs);
+  if Buttons[AIndex].Action <> TAtlasQuickAction.Build then
+  begin
+    Canvas.TextOut(AArea.Left + (AArea.Width - Canvas.TextWidth(mText)) div 2,
+      AArea.Top + (AArea.Height - Canvas.TextHeight(mText)) div 2, mText);
+    Exit;
+  end;
+  // Teil ▾ rechts, durch einen Strich getrennt.
+  mPart := Scaled(TAtlasQuickActionsBar.MenuPart);
+  Canvas.TextOut(AArea.Left + (AArea.Width - mPart - Canvas.TextWidth(mText)) div 2,
+    AArea.Top + (AArea.Height - Canvas.TextHeight(mText)) div 2, mText);
+  Canvas.Pen.Color := Canvas.Font.Color;
+  Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(4));
+  Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(4));
+  Canvas.TextOut(AArea.Right - mPart + (mPart - Canvas.TextWidth(MenuArrow)) div 2,
+    AArea.Top + (AArea.Height - Canvas.TextHeight(MenuArrow)) div 2, MenuArrow);
+end;
+
+procedure TQuickRowPainter.PaintFocus(AIndex: Integer; const AArea: TRect);
+var
+  mFocus: TRect;
+begin
+  if HasKeyFocus(Bar) and (Row = Bar.FSelection.KeyRow) and (AIndex = Bar.FSelection.KeyButton) then
+  begin
+    mFocus := AArea;
+    InflateRect(mFocus, -2, -2);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.DrawFocusRect(mFocus);
+    Canvas.Brush.Style := bsClear;
+  end;
+end;
+
+procedure TQuickRowPainter.PaintButton(AIndex: Integer);
+var
+  mArea: TRect;
+begin
+  mArea := Bar.FRows.Rects[Row][AIndex];
+  PaintFrame(AIndex, mArea);
+  PaintCaption(AIndex, mArea);
+  PaintFocus(AIndex, mArea);
+end;
+
+{ TQuickKeys }
+
+function TQuickKeys.ActionKey(AKey: Word): Boolean;
+var
+  mAction: TAtlasQuickAction;
+  mIndex: Integer;
+begin
+  Result := (Bar.FSource <> nil) and TAtlasWelcomeQuickActions.ActionForKey(Integer(Vcl.Menus.ShortCut(AKey, Shift)),
+    Bar.FSource.BuildKey, Bar.FSource.TestKey, ActionsOf(Bar, Row), mAction);
+  if not Result then
   begin
     Exit;
   end;
-  if FUseKey and Focused and ValidRow(FKeyRow) then
+  mIndex := TAtlasWelcomeQuickActions.IndexOf(Buttons, mAction);
+  Bar.FSelection.UseKey := True;
+  if mIndex >= 0 then
   begin
-    Result := FKeyRow;
+    Bar.FSelection.KeyButton := mIndex;
+    Bar.Activate(Row, mIndex, False);
+  end;
+end;
+
+function TQuickKeys.MenuKey: Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := Bar.FSelection.KeyButton;
+  if (mIndex < 0) or (mIndex > High(Buttons)) or not Buttons[mIndex].HasMenu then
+  begin
+    mIndex := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Build);
+  end;
+  if mIndex >= 0 then
+  begin
+    Bar.FMenus.PopupAt(Row, mIndex);
+  end;
+  Result := True;
+end;
+
+function TQuickKeys.StepRow(AKey: Word): Boolean;
+var
+  mDelta: Integer;
+begin
+  mDelta := 1;
+  if AKey = VK_UP then
+  begin
+    mDelta := -1;
+  end;
+  Bar.FSelection.KeyRow := TAtlasWelcomeQuickActions.MoveRow(Bar.FSelection.KeyRow, mDelta,
+    Length(Bar.FRows.Projects));
+  Bar.FSelection.KeyButton := -1;
+  Bar.FSelection.UseKey := True;
+  if (Bar.FSelection.KeyRow <> Row) and Assigned(Bar.FHandlers.SelectRow) then
+  begin
+    Bar.FHandlers.SelectRow(Bar.FSelection.KeyRow);
+  end;
+  Result := True;
+end;
+
+function TQuickKeys.StepButton(AKey: Word): Boolean;
+var
+  mDelta: Integer;
+begin
+  mDelta := 1;
+  if AKey = VK_LEFT then
+  begin
+    mDelta := -1;
+  end;
+  Bar.FSelection.KeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, Bar.FSelection.KeyButton, mDelta);
+  Bar.FSelection.UseKey := True;
+  Result := True;
+end;
+
+function TQuickKeys.Home: Boolean;
+begin
+  Bar.FSelection.KeyButton := -1;
+  Bar.FSelection.UseKey := True;
+  Result := True;
+end;
+
+function TQuickKeys.Enter: Boolean;
+begin
+  Bar.FSelection.UseKey := True;
+  if (Bar.FSelection.KeyButton >= 0) and (Bar.FSelection.KeyButton <= High(Buttons)) then
+  begin
+    Bar.Activate(Row, Bar.FSelection.KeyButton, False);
   end
-  else if ValidRow(FHoverRow) then
+  else if Assigned(Bar.FHandlers.OpenRow) then
   begin
-    Result := FHoverRow;
-  end
-  else if Focused and ValidRow(FKeyRow) then
-  begin
-    Result := FKeyRow;
+    Bar.FHandlers.OpenRow(Row);
   end;
-  if (Result >= 0) and (Length(FButtons[Result]) = 0) then
-  begin
-    Result := -1;
-  end;
+  Result := True;
 end;
 
-procedure TAtlasQuickActionsBar.SinkFocusChange(Sender: TObject);
+function TQuickKeys.Escape: Boolean;
 begin
-  // Mit dem Fokus kommt eine Zeile; ohne gewählte die erste.
-  if Focused and not ValidRow(FKeyRow) and (Length(FProjects) > 0) then
-  begin
-    FKeyRow := 0;
-  end;
-  if FBox <> nil then
-  begin
-    FBox.Invalidate;
-  end;
-end;
-
-procedure TAtlasQuickActionsBar.MouseMove(ARow, X, Y: Integer);
-var
-  Row, Index, OldButton: Integer;
-  mMenu, Changed: Boolean;
-begin
-  Changed := ARow <> FHoverRow;
-  // Maus in eine andere Zeile: Sie wird die aktive.
-  if Changed then
-  begin
-    FUseKey := False;
-  end;
-  FHoverRow := ARow;
-  OldButton := FHoverButton;
-  if not HitTest(X, Y, Row, Index, mMenu) or (Row <> ARow) then
-  begin
-    Index := -1;
-  end;
-  FHoverButton := Index;
-  if (Changed or (OldButton <> Index)) and (FBox <> nil) then
-  begin
-    FBox.Invalidate;
-  end;
-end;
-
-procedure TAtlasQuickActionsBar.MouseLeave;
-begin
-  if (FHoverRow < 0) and (FHoverButton < 0) then
-  begin
-    Exit;
-  end;
-  FHoverRow := -1;
-  FHoverButton := -1;
-  if FBox <> nil then
-  begin
-    FBox.Invalidate;
-  end;
-end;
-
-procedure TAtlasQuickActionsBar.MouseDown(ARow: Integer);
-begin
-  if not Active then
-  begin
-    Exit;
-  end;
-  if ValidRow(ARow) then
-  begin
-    FKeyRow := ARow;
-    FKeyButton := -1;
-  end;
-  FUseKey := False;
-  if FSink.CanFocus and not FSink.Focused and (GetParentForm(FSink) <> nil) and GetParentForm(FSink).Visible then
-  begin
-    FSink.SetFocus;
-  end;
-end;
-
-function TAtlasQuickActionsBar.LayoutRow(ACanvas: TCanvas; ARow: Integer; const AArea: TRect): Integer;
-var
-  Buttons: TAtlasQuickActionButtons;
-  Widths: TArray<Integer>;
-  Rects: TArray<TRect>;
-  Index, Total, Gap, Height, Split, First, Second, Top, Right, LineHeight: Integer;
-
-  function Span(AFrom, ATo: Integer): Integer;
-  var
-    I: Integer;
-  begin
-    Result := 0;
-    for I := AFrom to ATo do
-    begin
-      Inc(Result, Widths[I]);
-    end;
-    if ATo > AFrom then
-    begin
-      Inc(Result, (ATo - AFrom) * Gap);
-    end;
-  end;
-
-  procedure Place(AFrom, ATo, ATop, AHeight: Integer);
-  var
-    I: Integer;
-  begin
-    Right := AArea.Right;
-    for I := ATo downto AFrom do
-    begin
-      Rects[I] := Rect(Right - Widths[I], ATop, Right, ATop + AHeight);
-      Dec(Right, Widths[I] + Gap);
-    end;
-  end;
-
-begin
-  Result := AArea.Right;
-  Buttons := ButtonsOf(ARow);
-  if not ValidRow(ARow) then
-  begin
-    Exit;
-  end;
-  FRects[ARow] := nil;
-  if Length(Buttons) = 0 then
-  begin
-    Exit;
-  end;
-  SetLength(Widths, Length(Buttons));
-  SetLength(Rects, Length(Buttons));
-  for Index := 0 to High(Buttons) do
-  begin
-    Widths[Index] := ACanvas.TextWidth(Caption(Buttons[Index], FStates[ARow], FNowMs)) + 2 * Scale(ButtonPadding);
-    if Buttons[Index].Action = TAtlasQuickAction.Build then
-    begin
-      Inc(Widths[Index], Scale(MenuPart));
-    end;
-  end;
-  Gap := Scale(ButtonGap);
-  Height := Scale(ButtonHeight);
-  Total := Span(0, High(Buttons));
-  if (Total <= AArea.Width) or (Length(Buttons) < 2) then
-  begin
-    Place(0, High(Buttons), AArea.Top + (AArea.Height - Height) div 2, Height);
-  end
-  else
-  begin
-    // Zwei Zeilen in der Zeilenhöhe: vorne die ersten Knöpfe, so gleichmäßig wie möglich.
-    Split := Length(Buttons) div 2;
-    for Index := 1 to High(Buttons) do
-    begin
-      if (Span(0, Index - 1) <= AArea.Width) and (Span(Index, High(Buttons)) <= AArea.Width) then
-      begin
-        Split := Index;
-        Break;
-      end;
-    end;
-    LineHeight := (AArea.Height - Scale(LineGap)) div 2;
-    if LineHeight > Height then
-    begin
-      LineHeight := Height;
-    end;
-    Top := AArea.Top + (AArea.Height - 2 * LineHeight - Scale(LineGap)) div 2;
-    First := Split - 1;
-    Second := Split;
-    Place(0, First, Top, LineHeight);
-    Place(Second, High(Buttons), Top + LineHeight + Scale(LineGap), LineHeight);
-  end;
-  for Index := 0 to High(Rects) do
-  begin
-    if Rects[Index].Left < Result then
-    begin
-      Result := Rects[Index].Left;
-    end;
-  end;
-  FRects[ARow] := Rects;
-end;
-
-procedure TAtlasQuickActionsBar.PaintBackground(ACanvas: TCanvas; ARow: Integer; const ARowRect: TRect);
-var
-  Focus: TRect;
-begin
-  if ARow = ActiveRow then
-  begin
-    // Wie im Mockup: Die aktive Zeile ist hinterlegt.
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := StyleServices(FBox).GetSystemColor(clBtnFace);
-    ACanvas.FillRect(ARowRect);
-    ACanvas.Brush.Style := bsClear;
-  end;
-  if Focused and (ARow = FKeyRow) and (FKeyButton < 0) then
-  begin
-    Focus := ARowRect;
-    InflateRect(Focus, -1, -1);
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.DrawFocusRect(Focus);
-    ACanvas.Brush.Style := bsClear;
-  end;
-end;
-
-procedure TAtlasQuickActionsBar.PaintRow(ACanvas: TCanvas; ARow: Integer);
-var
-  Buttons: TAtlasQuickActionButtons;
-  Rects: TArray<TRect>;
-  Index, Radius, Part: Integer;
-  Area, Focus: TRect;
-  Button: TAtlasQuickActionButton;
-  Text: string;
-  TextColor, MutedColor, LineColor, AccentColor, AccentText: TColor;
-  Primary: Boolean;
-begin
-  if not ValidRow(ARow) then
-  begin
-    Exit;
-  end;
-  Buttons := ButtonsOf(ARow);
-  Rects := FRects[ARow];
-  if Length(Rects) <> Length(Buttons) then
-  begin
-    Exit;
-  end;
-  TextColor := StyleServices(FBox).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(FBox).GetSystemColor(clGrayText);
-  LineColor := StyleServices(FBox).GetSystemColor(clBtnShadow);
-  AccentColor := StyleServices(FBox).GetSystemColor(clHighlight);
-  AccentText := StyleServices(FBox).GetSystemColor(clHighlightText);
-  Radius := Scale(6);
-  Part := Scale(MenuPart);
-  for Index := 0 to High(Buttons) do
-  begin
-    Button := Buttons[Index];
-    Area := Rects[Index];
-    // „Öffnen und bauen“ ist der Hauptknopf (gefüllt), solange er nutzbar ist.
-    Primary := (Button.Action = TAtlasQuickAction.Build) and Button.Enabled;
-    if Primary then
-    begin
-      ACanvas.Brush.Style := bsSolid;
-      ACanvas.Brush.Color := AccentColor;
-      ACanvas.Pen.Color := AccentColor;
-      ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, Radius, Radius);
-      ACanvas.Font.Color := AccentText;
-    end
-    else
-    begin
-      ACanvas.Brush.Style := bsClear;
-      if (Index = FHoverButton) and (ARow = FHoverRow) and Button.Enabled then
-      begin
-        ACanvas.Pen.Color := AccentColor;
-      end
-      else
-      begin
-        ACanvas.Pen.Color := LineColor;
-      end;
-      ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, Radius, Radius);
-      if Button.Enabled then
-      begin
-        ACanvas.Font.Color := TextColor;
-      end
-      else
-      begin
-        ACanvas.Font.Color := MutedColor;
-      end;
-    end;
-    ACanvas.Brush.Style := bsClear;
-    Text := Caption(Button, FStates[ARow], FNowMs);
-    if Button.Action = TAtlasQuickAction.Build then
-    begin
-      // Teil ▾ rechts, durch einen Strich getrennt.
-      ACanvas.TextOut(Area.Left + (Area.Width - Part - ACanvas.TextWidth(Text)) div 2,
-        Area.Top + (Area.Height - ACanvas.TextHeight(Text)) div 2, Text);
-      ACanvas.Pen.Color := ACanvas.Font.Color;
-      ACanvas.MoveTo(Area.Right - Part, Area.Top + Scale(4));
-      ACanvas.LineTo(Area.Right - Part, Area.Bottom - Scale(4));
-      ACanvas.TextOut(Area.Right - Part + (Part - ACanvas.TextWidth(MenuArrow)) div 2,
-        Area.Top + (Area.Height - ACanvas.TextHeight(MenuArrow)) div 2, MenuArrow);
-    end
-    else
-    begin
-      ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(Text)) div 2,
-        Area.Top + (Area.Height - ACanvas.TextHeight(Text)) div 2, Text);
-    end;
-    if Focused and (ARow = FKeyRow) and (Index = FKeyButton) then
-    begin
-      Focus := Area;
-      InflateRect(Focus, -2, -2);
-      ACanvas.Brush.Style := bsSolid;
-      ACanvas.DrawFocusRect(Focus);
-      ACanvas.Brush.Style := bsClear;
-    end;
-  end;
-end;
-
-function TAtlasQuickActionsBar.HitTest(X, Y: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
-var
-  Rects: TArray<TRect>;
-  Index: Integer;
-begin
-  ARow := ActiveRow;
-  AIndex := -1;
-  AMenu := False;
-  Result := False;
-  if not ValidRow(ARow) then
-  begin
-    Exit;
-  end;
-  Rects := FRects[ARow];
-  if Length(Rects) <> Length(FButtons[ARow]) then
-  begin
-    Exit;
-  end;
-  for Index := 0 to High(Rects) do
-  begin
-    if Rects[Index].Contains(Point(X, Y)) then
-    begin
-      AIndex := Index;
-      AMenu := (FButtons[ARow][Index].Action = TAtlasQuickAction.Build) and
-        (X >= Rects[Index].Right - Scale(MenuPart));
-      Exit(True);
-    end;
-  end;
-end;
-
-function TAtlasQuickActionsBar.ClickAt(X, Y: Integer): Boolean;
-var
-  Row, Index: Integer;
-  mMenu: Boolean;
-begin
-  Result := HitTest(X, Y, Row, Index, mMenu);
+  Result := Bar.FSelection.KeyButton >= 0;
   if Result then
   begin
-    Activate(Row, Index, mMenu);
+    Bar.FSelection.KeyButton := -1;
   end;
 end;
 
-procedure TAtlasQuickActionsBar.Queue(const AProc: TProc);
-var
-  Proc: TProc;
+function TQuickKeys.ContextMenu: Boolean;
 begin
-  Proc := AProc;
-  // Die Quelle füllt die Bereiche danach neu: nicht im eigenen Maus- bzw. Tastenereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      Proc();
-    end);
+  Result := Assigned(Bar.FHandlers.RowMenu);
+  if Result then
+  begin
+    Bar.FHandlers.RowMenu(Row);
+  end;
 end;
 
-procedure TAtlasQuickActionsBar.Activate(ARow, AIndex: Integer; AMenu: Boolean);
-var
-  mSource: IAtlasQuickActionsSource;
-  Button: TAtlasQuickActionButton;
-  mName: string;
-  Candidates: TArray<string>;
+function TQuickKeys.Handle(AKey: Word): Boolean;
 begin
-  if (FSource = nil) or not ValidRow(ARow) or (AIndex < 0) or (AIndex > High(ButtonsOf(ARow))) then
+  Result := False;
+  case AKey of
+    VK_UP, VK_DOWN:
+      if (ssAlt in Shift) and (AKey = VK_DOWN) then
+      begin
+        Result := MenuKey;
+      end
+      else if Shift = [] then
+      begin
+        Result := StepRow(AKey);
+      end;
+    VK_LEFT, VK_RIGHT:
+      Result := (Shift = []) and StepButton(AKey);
+    VK_HOME:
+      Result := (Shift = []) and Home;
+    VK_RETURN, VK_SPACE:
+      Result := (Shift = []) and Enter;
+    VK_ESCAPE:
+      Result := Escape;
+    VK_APPS, VK_F10:
+      Result := ((AKey = VK_APPS) or (Shift = [ssShift])) and ContextMenu;
+  end;
+end;
+
+{ TAtlasQuickActionsMenus }
+
+constructor TAtlasQuickActionsMenus.Create(ABar: TAtlasQuickActionsBar);
+begin
+  inherited Create(ABar);
+  FBar := ABar;
+  FContextRow := -1;
+  FPopup := TPopupMenu.Create(Self);
+end;
+
+procedure TAtlasQuickActionsMenus.PopupAt(ARow, AIndex: Integer);
+var
+  mArea: TRect;
+  mPosition: TPoint;
+begin
+  if not FillChoices(FPopup.Items, ARow, AIndex) then
   begin
     Exit;
   end;
-  Button := FButtons[ARow][AIndex];
-  if not Button.Enabled then
+  mArea := Rect(0, 0, 0, 0);
+  if (ARow <= High(FBar.FRows.Rects)) and (AIndex <= High(FBar.FRows.Rects[ARow])) then
   begin
-    Exit;
+    mArea := FBar.FRows.Rects[ARow][AIndex];
   end;
-  mSource := FSource;
-  mName := FProjects[ARow];
-  case Button.Action of
-    TAtlasQuickAction.Build:
-      if AMenu then
-      begin
-        PopupAt(ARow, AIndex);
-        Exit;
-      end;
-    TAtlasQuickAction.Run, TAtlasQuickAction.Tasks:
-      begin
-        // „Startprofil ▾“ fragt immer nach dem Profil, „Aufgaben ▾“ nach der Aufgabe.
-        PopupAt(ARow, AIndex);
-        Exit;
-      end;
-    TAtlasQuickAction.Tests:
-      begin
-        Candidates := mSource.TestProjects(mName);
-        if Length(Candidates) > 1 then
-        begin
-          PopupAt(ARow, AIndex);
-          Exit;
-        end;
-      end;
-    TAtlasQuickAction.Pull:
-      // vcs.externals.update = ask (#1292): erst „mit Externals“ oder „ohne Externals“ wählen.
-      if Button.AskExternals then
-      begin
-        PopupAt(ARow, AIndex);
-        Exit;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
+  mPosition := Point(mArea.Left, mArea.Bottom);
+  if FBar.FBox <> nil then
+  begin
+    mPosition := FBar.FBox.ClientToScreen(mPosition);
   end;
-  Queue(
-    procedure
-    begin
-      mSource.Execute(mName, Button.Action);
-    end);
+  FPopup.Popup(mPosition.X, mPosition.Y);
 end;
 
-procedure TAtlasQuickActionsBar.PopupAt(ARow, AIndex: Integer);
-var
-  Area: TRect;
-  Position: TPoint;
-begin
-  if not FillChoices(FMenu.Items, ARow, AIndex) then
-  begin
-    Exit;
-  end;
-  Area := Rect(0, 0, 0, 0);
-  if (ARow <= High(FRects)) and (AIndex <= High(FRects[ARow])) then
-  begin
-    Area := FRects[ARow][AIndex];
-  end;
-  Position := Point(Area.Left, Area.Bottom);
-  if FBox <> nil then
-  begin
-    Position := FBox.ClientToScreen(Position);
-  end;
-  FMenu.Popup(Position.X, Position.Y);
-end;
-
-procedure TAtlasQuickActionsBar.AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice;
+procedure TAtlasQuickActionsMenus.AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice;
   ADefault: Boolean);
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
   FChoices := FChoices + [AChoice];
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := ACaption;
-  Item.Tag := High(FChoices);
-  Item.Default := ADefault;
-  Item.OnClick := ChoiceClick;
-  AParent.Add(Item);
+  mItem := TMenuItem.Create(FPopup);
+  mItem.Caption := ACaption;
+  mItem.Tag := High(FChoices);
+  mItem.Default := ADefault;
+  mItem.OnClick := ChoiceClick;
+  AParent.Add(mItem);
 end;
 
-procedure TAtlasQuickActionsBar.FillTargets(AParent: TMenuItem; const AProject: string);
+procedure TAtlasQuickActionsMenus.FillTargets(AParent: TMenuItem; const AProject: string);
 var
   Targets: TAtlasProjectTargets;
   Configuration, Platform, Wanted, WantedPlatform: string;
   Choice: TChoice;
   Text: string;
 begin
-  Targets := FSource.Targets(AProject, Wanted, WantedPlatform);
+  Targets := FBar.FSource.Targets(AProject, Wanted, WantedPlatform);
   Choice := Default(TChoice);
   Choice.Kind := TChoiceKind.Target;
   Choice.Project := AProject;
@@ -1079,13 +1236,13 @@ begin
   end;
 end;
 
-procedure TAtlasQuickActionsBar.FillProfiles(AParent: TMenuItem; const AProject: string);
+procedure TAtlasQuickActionsMenus.FillProfiles(AParent: TMenuItem; const AProject: string);
 var
   Names: TArray<string>;
   mName, Active, Text: string;
   Choice: TChoice;
 begin
-  Names := FSource.Profiles(AProject, Active);
+  Names := FBar.FSource.Profiles(AProject, Active);
   Choice := Default(TChoice);
   Choice.Kind := TChoiceKind.Profile;
   Choice.Project := AProject;
@@ -1103,7 +1260,7 @@ begin
   AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickProfileNone), Choice, Active = '');
 end;
 
-procedure TAtlasQuickActionsBar.FillTestProjects(AParent: TMenuItem; const AProject: string;
+procedure TAtlasQuickActionsMenus.FillTestProjects(AParent: TMenuItem; const AProject: string;
   const ACandidates: TArray<string>);
 var
   Candidate: string;
@@ -1119,7 +1276,7 @@ begin
   end;
 end;
 
-procedure TAtlasQuickActionsBar.FillTasks(AParent: TMenuItem; const AProject: string);
+procedure TAtlasQuickActionsMenus.FillTasks(AParent: TMenuItem; const AProject: string);
 var
   Name: string;
   Choice: TChoice;
@@ -1127,14 +1284,14 @@ begin
   Choice := Default(TChoice);
   Choice.Kind := TChoiceKind.Task;
   Choice.Project := AProject;
-  for Name in FSource.TaskNames(AProject) do
+  for Name in FBar.FSource.TaskNames(AProject) do
   begin
     Choice.A := Name;
     AddChoice(AParent, Name, Choice, False);
   end;
 end;
 
-procedure TAtlasQuickActionsBar.FillUpdate(AParent: TMenuItem; const AProject: string);
+procedure TAtlasQuickActionsMenus.FillUpdate(AParent: TMenuItem; const AProject: string);
 var
   Choice: TChoice;
 begin
@@ -1147,624 +1304,677 @@ begin
   AddChoice(AParent, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
 end;
 
-procedure TAtlasQuickActionsBar.AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
+procedure TAtlasQuickActionsMenus.AddTitle(AParent: TMenuItem; AId: TAtlasWelcomeTextId);
 var
-  Item: TMenuItem;
+  mItem: TMenuItem;
 begin
   // Überschrift der aufgeklappten Auswahl (nicht im Untermenü des Kontextmenüs).
-  if AParent <> FMenu.Items then
+  if AParent <> FPopup.Items then
   begin
     Exit;
   end;
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(AId);
-  Item.Enabled := False;
-  AParent.Add(Item);
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := '-';
-  AParent.Add(Item);
+  mItem := TMenuItem.Create(FPopup);
+  mItem.Caption := TAtlasWelcomeStrings.Text(AId);
+  mItem.Enabled := False;
+  AParent.Add(mItem);
+  mItem := TMenuItem.Create(FPopup);
+  mItem.Caption := '-';
+  AParent.Add(mItem);
 end;
 
-function TAtlasQuickActionsBar.FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
+function TAtlasQuickActionsMenus.FillFor(AParent: TMenuItem; const AButton: TAtlasQuickActionButton;
+  const AProject: string): Boolean;
 var
-  Buttons: TAtlasQuickActionButtons;
-  mName: string;
-  Candidates: TArray<string>;
+  mCandidates: TArray<string>;
 begin
-  Result := False;
-  Buttons := ButtonsOf(ARow);
-  if (FSource = nil) or (AIndex < 0) or (AIndex > High(Buttons)) or not Buttons[AIndex].Enabled then
-  begin
-    Exit;
-  end;
-  AParent.Clear;
-  if AParent = FMenu.Items then
-  begin
-    FChoices := nil;
-  end;
-  mName := FProjects[ARow];
-  case Buttons[AIndex].Action of
+  case AButton.Action of
     TAtlasQuickAction.Build:
       begin
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTargetsTitle);
-        FillTargets(AParent, mName);
+        FillTargets(AParent, AProject);
       end;
     TAtlasQuickAction.Run:
       begin
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickProfilesTitle);
-        FillProfiles(AParent, mName);
+        FillProfiles(AParent, AProject);
       end;
     TAtlasQuickAction.Tests:
       begin
-        Candidates := FSource.TestProjects(mName);
-        if Length(Candidates) < 2 then
+        mCandidates := FBar.FSource.TestProjects(AProject);
+        if Length(mCandidates) >= 2 then
         begin
-          Exit;
+          AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTestsChoose);
+          FillTestProjects(AParent, AProject, mCandidates);
         end;
-        AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTestsChoose);
-        FillTestProjects(AParent, mName, Candidates);
       end;
     TAtlasQuickAction.Tasks:
+      if Length(FBar.FSource.TaskNames(AProject)) > 0 then
       begin
-        if Length(FSource.TaskNames(mName)) = 0 then
-        begin
-          Exit;
-        end;
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTasksTitle);
-        FillTasks(AParent, mName);
+        FillTasks(AParent, AProject);
       end;
     TAtlasQuickAction.Pull:
+      if AButton.AskExternals then
       begin
-        if not Buttons[AIndex].AskExternals then
-        begin
-          Exit;
-        end;
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickUpdate);
-        FillUpdate(AParent, mName);
+        FillUpdate(AParent, AProject);
       end;
   else
-    Exit;
+    // Ordner und Konsole ohne Auswahl.
   end;
   Result := AParent.Count > 0;
 end;
 
-procedure TAtlasQuickActionsBar.ChoiceClick(Sender: TObject);
+function TAtlasQuickActionsMenus.FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
 var
-  Choice: TChoice;
-  mSource: IAtlasQuickActionsSource;
-  Index: Integer;
+  mButtons: TAtlasQuickActionButtons;
 begin
-  Index := TMenuItem(Sender).Tag;
-  if (FSource = nil) or (Index < 0) or (Index > High(FChoices)) then
+  Result := False;
+  mButtons := FBar.ButtonsOf(ARow);
+  if (FBar.FSource = nil) or (AIndex < 0) or (AIndex > High(mButtons)) or not mButtons[AIndex].Enabled then
   begin
     Exit;
   end;
-  Choice := FChoices[Index];
-  mSource := FSource;
-  Queue(
+  AParent.Clear;
+  if AParent = FPopup.Items then
+  begin
+    FChoices := nil;
+  end;
+  Result := FillFor(AParent, mButtons[AIndex], FBar.FRows.Projects[ARow]);
+end;
+
+procedure TAtlasQuickActionsMenus.ChoiceClick(Sender: TObject);
+var
+  mChoice: TChoice;
+  mSource: IAtlasQuickActionsSource;
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (FBar.FSource = nil) or (mIndex < 0) or (mIndex > High(FChoices)) then
+  begin
+    Exit;
+  end;
+  mChoice := FChoices[mIndex];
+  mSource := FBar.FSource;
+  QueueOnMain(
     procedure
     begin
-      case Choice.Kind of
+      case mChoice.Kind of
         TChoiceKind.Target:
-          mSource.Build(Choice.Project, Choice.A, Choice.B);
+          mSource.Build(mChoice.Project, mChoice.A, mChoice.B);
         TChoiceKind.Profile:
-          mSource.Run(Choice.Project, Choice.A);
+          mSource.Run(mChoice.Project, mChoice.A);
         TChoiceKind.Task:
-          mSource.RunTask(Choice.Project, Choice.A);
+          mSource.RunTask(mChoice.Project, mChoice.A);
         TChoiceKind.Update:
-          mSource.Pull(Choice.Project, Choice.A = 'without');
+          mSource.Pull(mChoice.Project, mChoice.A = 'without');
       else
-        mSource.RunTests(Choice.Project, Choice.A);
+        mSource.RunTests(mChoice.Project, mChoice.A);
       end;
     end);
 end;
 
-procedure TAtlasQuickActionsBar.AttachMenu(AMenu: TPopupMenu);
+procedure TAtlasQuickActionsMenus.AddContextItem(AMenu: TPopupMenu; AAction: TAtlasQuickAction;
+  const ACaption: string);
+var
+  mItem: TMenuItem;
+begin
+  mItem := TMenuItem.Create(AMenu);
+  mItem.Caption := ACaption;
+  mItem.Tag := Length(FContextItems);
+  mItem.OnClick := ContextClick;
+  FContextItems := FContextItems + [mItem];
+  FContextActions := FContextActions + [AAction];
+  AMenu.Items.Add(mItem);
+end;
 
-  function Add(AParent: TMenuItem; AAction: TAtlasQuickAction; const ACaption: string): TMenuItem;
-  begin
-    Result := TMenuItem.Create(AMenu);
-    Result.Caption := ACaption;
-    Result.Tag := Length(FContextItems);
-    Result.OnClick := ContextClick;
-    FContextItems := FContextItems + [Result];
-    FContextActions := FContextActions + [AAction];
-    AParent.Add(Result);
-  end;
+function TAtlasQuickActionsMenus.AddSubmenu(AMenu: TPopupMenu; AId: TAtlasWelcomeTextId): TMenuItem;
+begin
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := TAtlasWelcomeStrings.Text(AId);
+  AMenu.Items.Add(Result);
+end;
 
+procedure TAtlasQuickActionsMenus.Attach(AMenu: TPopupMenu);
 begin
   FContextSeparator := TMenuItem.Create(AMenu);
   FContextSeparator.Caption := '-';
   AMenu.Items.Add(FContextSeparator);
-  Add(AMenu.Items, TAtlasQuickAction.Build, QuickActionTitle(TAtlasQuickAction.Build));
-  FBuildWithItem := TMenuItem.Create(AMenu);
-  FBuildWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuBuildWith);
-  AMenu.Items.Add(FBuildWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Tests, QuickActionTitle(TAtlasQuickAction.Tests));
-  FRunWithItem := TMenuItem.Create(AMenu);
-  FRunWithItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuRunWith);
-  AMenu.Items.Add(FRunWithItem);
-  Add(AMenu.Items, TAtlasQuickAction.Pull, QuickActionTitle(TAtlasQuickAction.Pull));
-  Add(AMenu.Items, TAtlasQuickAction.Console, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuConsole));
-  FTasksItem := TMenuItem.Create(AMenu);
-  FTasksItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuTasks);
-  AMenu.Items.Add(FTasksItem);
+  AddContextItem(AMenu, TAtlasQuickAction.Build, QuickActionTitle(TAtlasQuickAction.Build));
+  FBuildWithItem := AddSubmenu(AMenu, TAtlasWelcomeTextId.WelcomeQuickMenuBuildWith);
+  AddContextItem(AMenu, TAtlasQuickAction.Tests, QuickActionTitle(TAtlasQuickAction.Tests));
+  FRunWithItem := AddSubmenu(AMenu, TAtlasWelcomeTextId.WelcomeQuickMenuRunWith);
+  AddContextItem(AMenu, TAtlasQuickAction.Pull, QuickActionTitle(TAtlasQuickAction.Pull));
+  AddContextItem(AMenu, TAtlasQuickAction.Console,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickMenuConsole));
+  FTasksItem := AddSubmenu(AMenu, TAtlasWelcomeTextId.WelcomeQuickMenuTasks);
 end;
 
-procedure TAtlasQuickActionsBar.PrepareMenu(ARow: Integer);
-var
-  Buttons: TAtlasQuickActionButtons;
-  Index, Found: Integer;
-  Item: TMenuItem;
-  Any: Boolean;
+procedure TAtlasQuickActionsMenus.PreparePull(AItem: TMenuItem; const AButtons: TAtlasQuickActionButtons; ARow,
+  AFound: Integer);
 begin
-  FContextRow := ARow;
-  Buttons := ButtonsOf(ARow);
-  Any := False;
-  FChoices := nil;
-  for Index := 0 to High(FContextItems) do
+  if AFound < 0 then
   begin
-    Item := FContextItems[Index];
-    Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, FContextActions[Index]);
-    Item.Visible := Found >= 0;
-    Item.Enabled := (Found >= 0) and Buttons[Found].Enabled;
-    if (Found >= 0) and (FContextActions[Index] = TAtlasQuickAction.Pull) then
-    begin
-      if Buttons[Found].Update then
-      begin
-        Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
-      end
-      else
-      begin
-        Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
-      end;
-      // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
-      if not (Buttons[Found].Enabled and Buttons[Found].AskExternals and FillChoices(Item, ARow, Found)) then
-      begin
-        Item.Clear;
-      end;
-    end
-    else if FContextActions[Index] = TAtlasQuickAction.Pull then
-    begin
-      Item.Clear;
-    end;
-    Any := Any or Item.Visible;
+    AItem.Clear;
+    Exit;
   end;
-  // Untermenüs „Bauen mit“ und „Starten mit“ mit der Auswahl der Zeile.
-  if FBuildWithItem <> nil then
+  if AButtons[AFound].Update then
   begin
-    Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Build);
-    FBuildWithItem.Visible := (Found >= 0) and FillChoices(FBuildWithItem, ARow, Found);
-    FBuildWithItem.Enabled := FBuildWithItem.Visible;
+    AItem.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
+  end
+  else
+  begin
+    AItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
   end;
-  if FRunWithItem <> nil then
+  // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
+  if not (AButtons[AFound].Enabled and AButtons[AFound].AskExternals and FillChoices(AItem, ARow, AFound)) then
   begin
-    Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Run);
-    FRunWithItem.Visible := (Found >= 0) and FillChoices(FRunWithItem, ARow, Found);
-    FRunWithItem.Enabled := FRunWithItem.Visible;
-  end;
-  // Untermenü „Aufgabe ausführen“ mit den Projektaufgaben (#900).
-  if FTasksItem <> nil then
-  begin
-    Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Tasks);
-    FTasksItem.Visible := (Found >= 0) and FillChoices(FTasksItem, ARow, Found);
-    FTasksItem.Enabled := FTasksItem.Visible;
-    Any := Any or FTasksItem.Visible;
-  end;
-  if FContextSeparator <> nil then
-  begin
-    FContextSeparator.Visible := Any;
+    AItem.Clear;
   end;
 end;
 
-procedure TAtlasQuickActionsBar.ContextClick(Sender: TObject);
+function TAtlasQuickActionsMenus.PrepareSubmenu(AItem: TMenuItem; const AButtons: TAtlasQuickActionButtons;
+  ARow: Integer; AAction: TAtlasQuickAction): Boolean;
 var
-  Index, Found: Integer;
+  mFound: Integer;
 begin
-  Index := TMenuItem(Sender).Tag;
-  if (Index < 0) or (Index > High(FContextActions)) then
+  Result := False;
+  if AItem = nil then
   begin
     Exit;
   end;
-  Found := TAtlasWelcomeQuickActions.IndexOf(ButtonsOf(FContextRow), FContextActions[Index]);
-  if Found >= 0 then
+  mFound := TAtlasWelcomeQuickActions.IndexOf(AButtons, AAction);
+  AItem.Visible := (mFound >= 0) and FillChoices(AItem, ARow, mFound);
+  AItem.Enabled := AItem.Visible;
+  Result := AItem.Visible;
+end;
+
+procedure TAtlasQuickActionsMenus.Prepare(ARow: Integer);
+var
+  mButtons: TAtlasQuickActionButtons;
+  mIndex, mFound: Integer;
+  mItem: TMenuItem;
+  mAny: Boolean;
+begin
+  FContextRow := ARow;
+  mButtons := FBar.ButtonsOf(ARow);
+  mAny := False;
+  FChoices := nil;
+  for mIndex := 0 to High(FContextItems) do
   begin
-    Activate(FContextRow, Found, False);
+    mItem := FContextItems[mIndex];
+    mFound := TAtlasWelcomeQuickActions.IndexOf(mButtons, FContextActions[mIndex]);
+    mItem.Visible := mFound >= 0;
+    mItem.Enabled := (mFound >= 0) and mButtons[mFound].Enabled;
+    if FContextActions[mIndex] = TAtlasQuickAction.Pull then
+    begin
+      PreparePull(mItem, mButtons, ARow, mFound);
+    end;
+    mAny := mAny or mItem.Visible;
   end;
+  // Untermenüs „Bauen mit“ und „Starten mit“ mit der Auswahl der Zeile.
+  PrepareSubmenu(FBuildWithItem, mButtons, ARow, TAtlasQuickAction.Build);
+  PrepareSubmenu(FRunWithItem, mButtons, ARow, TAtlasQuickAction.Run);
+  // Untermenü „Aufgabe ausführen“ mit den Projektaufgaben (#900).
+  mAny := PrepareSubmenu(FTasksItem, mButtons, ARow, TAtlasQuickAction.Tasks) or mAny;
+  if FContextSeparator <> nil then
+  begin
+    FContextSeparator.Visible := mAny;
+  end;
+end;
+
+procedure TAtlasQuickActionsMenus.ContextClick(Sender: TObject);
+var
+  mIndex, mFound: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FContextActions)) then
+  begin
+    Exit;
+  end;
+  mFound := TAtlasWelcomeQuickActions.IndexOf(FBar.ButtonsOf(FContextRow), FContextActions[mIndex]);
+  if mFound >= 0 then
+  begin
+    FBar.Activate(FContextRow, mFound, False);
+  end;
+end;
+
+{ TAtlasQuickActionsBar }
+
+constructor TAtlasQuickActionsBar.Create(AOwner: TComponent; ABox: TAtlasWelcomeCanvas; AParent: TWinControl);
+begin
+  inherited Create(AOwner);
+  FBox := ABox;
+  FSelection.HoverRow := -1;
+  FSelection.HoverButton := -1;
+  FSelection.KeyRow := -1;
+  FSelection.KeyButton := -1;
+  FSink := TAtlasQuickKeySink.Create(Self);
+  FSink.Parent := AParent;
+  FSink.OnKey := HandleKey;
+  FSink.OnFocusChange := SinkFocusChange;
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := TickMs;
+  FTimer.Enabled := False;
+  FTimer.OnTimer := TimerTick;
+  FMenus := TAtlasQuickActionsMenus.Create(Self);
+end;
+
+destructor TAtlasQuickActionsBar.Destroy;
+begin
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+  end;
+  FSource := nil;
+  inherited;
+end;
+
+procedure TAtlasQuickActionsBar.SetSource(const AValue: IAtlasQuickActionsSource);
+begin
+  FSource := AValue;
+  SetRows(FRows.Projects);
+end;
+
+function TAtlasQuickActionsBar.Active: Boolean;
+begin
+  Result := (FSource <> nil) and FSource.Enabled;
+end;
+
+procedure TAtlasQuickActionsBar.SetRows(const AProjects: TArray<string>);
+var
+  mRow: Integer;
+  mOn: Boolean;
+begin
+  FRows.Projects := AProjects;
+  mOn := Active;
+  SetLength(FRows.Buttons, Length(AProjects));
+  SetLength(FRows.States, Length(AProjects));
+  SetLength(FRows.Rects, Length(AProjects));
+  for mRow := 0 to High(AProjects) do
+  begin
+    FRows.Buttons[mRow] := nil;
+    FRows.States[mRow] := TAtlasQuickActionState.Idle;
+    FRows.Rects[mRow] := nil;
+    if FSource = nil then
+    begin
+      Continue;
+    end;
+    // Der Stand gilt auch ohne Knöpfe (Ergebnis einer Aktion vor dem Ausschalten).
+    FRows.States[mRow] := FSource.State(AProjects[mRow]);
+    if mOn then
+    begin
+      FRows.Buttons[mRow] := FSource.Buttons(AProjects[mRow]);
+    end;
+  end;
+  if FSource <> nil then
+  begin
+    FRows.NowMs := FSource.NowMs;
+  end;
+  if FSelection.KeyRow > High(AProjects) then
+  begin
+    FSelection.KeyRow := High(AProjects);
+  end;
+  if FSelection.HoverRow > High(AProjects) then
+  begin
+    FSelection.HoverRow := -1;
+  end;
+  if IsRow(Self, FSelection.KeyRow) and (FSelection.KeyButton > High(FRows.Buttons[FSelection.KeyRow])) then
+  begin
+    FSelection.KeyButton := -1;
+  end;
+  FSelection.HoverButton := -1;
+  FSink.TabStop := mOn and (Length(AProjects) > 0);
+  UpdateTimer(Self);
+  InvalidateBox(Self);
+end;
+
+procedure TAtlasQuickActionsBar.TimerTick(Sender: TObject);
+var
+  mRow: Integer;
+begin
+  try
+    // „baut … 12 s“ weiterzählen; Ende und Ergebnis meldet die Quelle über den Bereich.
+    if FSource = nil then
+    begin
+      FTimer.Enabled := False;
+      Exit;
+    end;
+    FRows.NowMs := FSource.NowMs;
+    for mRow := 0 to High(FRows.Projects) do
+    begin
+      FRows.States[mRow] := FSource.State(FRows.Projects[mRow]);
+    end;
+    UpdateTimer(Self);
+    InvalidateBox(Self);
+  except
+    on E: Exception do
+    begin
+      FTimer.Enabled := False;
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+    end;
+  end;
+end;
+
+function TAtlasQuickActionsBar.ButtonsOf(ARow: Integer): TAtlasQuickActionButtons;
+begin
+  Result := nil;
+  if IsRow(Self, ARow) and Active then
+  begin
+    Result := FRows.Buttons[ARow];
+  end;
+end;
+
+function TAtlasQuickActionsBar.StateOf(ARow: Integer): TAtlasQuickActionState;
+begin
+  Result := TAtlasQuickActionState.Idle;
+  if IsRow(Self, ARow) then
+  begin
+    Result := FRows.States[ARow];
+  end;
+end;
+
+function TAtlasQuickActionsBar.ActiveRow: Integer;
+begin
+  Result := -1;
+  if not Active or (Length(FRows.Projects) = 0) then
+  begin
+    Exit;
+  end;
+  if FSelection.UseKey and HasKeyFocus(Self) and IsRow(Self, FSelection.KeyRow) then
+  begin
+    Result := FSelection.KeyRow;
+  end
+  else if IsRow(Self, FSelection.HoverRow) then
+  begin
+    Result := FSelection.HoverRow;
+  end
+  else if HasKeyFocus(Self) and IsRow(Self, FSelection.KeyRow) then
+  begin
+    Result := FSelection.KeyRow;
+  end;
+  if (Result >= 0) and (Length(FRows.Buttons[Result]) = 0) then
+  begin
+    Result := -1;
+  end;
+end;
+
+procedure TAtlasQuickActionsBar.SinkFocusChange(Sender: TObject);
+begin
+  // Mit dem Fokus kommt eine Zeile; ohne gewählte die erste.
+  if HasKeyFocus(Self) and not IsRow(Self, FSelection.KeyRow) and (Length(FRows.Projects) > 0) then
+  begin
+    FSelection.KeyRow := 0;
+  end;
+  InvalidateBox(Self);
+end;
+
+procedure TAtlasQuickActionsBar.MouseMove(ARow, X, Y: Integer);
+var
+  mRow, mIndex, mOldButton: Integer;
+  mMenu, mChanged: Boolean;
+begin
+  mChanged := ARow <> FSelection.HoverRow;
+  // Maus in eine andere Zeile: Sie wird die aktive.
+  if mChanged then
+  begin
+    FSelection.UseKey := False;
+  end;
+  FSelection.HoverRow := ARow;
+  mOldButton := FSelection.HoverButton;
+  if not HitTest(X, Y, mRow, mIndex, mMenu) or (mRow <> ARow) then
+  begin
+    mIndex := -1;
+  end;
+  FSelection.HoverButton := mIndex;
+  if mChanged or (mOldButton <> mIndex) then
+  begin
+    InvalidateBox(Self);
+  end;
+end;
+
+procedure TAtlasQuickActionsBar.MouseLeave;
+begin
+  if (FSelection.HoverRow < 0) and (FSelection.HoverButton < 0) then
+  begin
+    Exit;
+  end;
+  FSelection.HoverRow := -1;
+  FSelection.HoverButton := -1;
+  InvalidateBox(Self);
+end;
+
+procedure TAtlasQuickActionsBar.MouseDown(ARow: Integer);
+begin
+  if not Active then
+  begin
+    Exit;
+  end;
+  if IsRow(Self, ARow) then
+  begin
+    FSelection.KeyRow := ARow;
+    FSelection.KeyButton := -1;
+  end;
+  FSelection.UseKey := False;
+  if FSink.CanFocus and not FSink.Focused and (GetParentForm(FSink) <> nil) and GetParentForm(FSink).Visible then
+  begin
+    FSink.SetFocus;
+  end;
+end;
+
+function TAtlasQuickActionsBar.LayoutRow(ACanvas: TCanvas; ARow: Integer; const AArea: TRect): Integer;
+var
+  mButtons: TAtlasQuickActionButtons;
+  mLayout: TQuickRowLayout;
+  mIndex, mHeight: Integer;
+begin
+  Result := AArea.Right;
+  mButtons := ButtonsOf(ARow);
+  if not IsRow(Self, ARow) then
+  begin
+    Exit;
+  end;
+  FRows.Rects[ARow] := nil;
+  if Length(mButtons) = 0 then
+  begin
+    Exit;
+  end;
+  mLayout.Area := AArea;
+  mLayout.Gap := ScaleOf(Self, ButtonGap);
+  SetLength(mLayout.Widths, Length(mButtons));
+  SetLength(mLayout.Rects, Length(mButtons));
+  for mIndex := 0 to High(mButtons) do
+  begin
+    mLayout.Widths[mIndex] := ACanvas.TextWidth(TAtlasQuickActionTexts.Caption(mButtons[mIndex], FRows.States[ARow],
+      FRows.NowMs)) + 2 * ScaleOf(Self, ButtonPadding);
+    if mButtons[mIndex].Action = TAtlasQuickAction.Build then
+    begin
+      Inc(mLayout.Widths[mIndex], ScaleOf(Self, MenuPart));
+    end;
+  end;
+  mHeight := ScaleOf(Self, ButtonHeight);
+  if (mLayout.Span(0, High(mButtons)) <= AArea.Width) or (Length(mButtons) < 2) then
+  begin
+    mLayout.Place(0, High(mButtons), AArea.Top + (AArea.Height - mHeight) div 2, mHeight);
+  end
+  else
+  begin
+    mLayout.PlaceTwoLines(ScaleOf(Self, LineGap), mHeight);
+  end;
+  Result := mLayout.LeftEdge;
+  FRows.Rects[ARow] := mLayout.Rects;
+end;
+
+procedure TAtlasQuickActionsBar.PaintBackground(ACanvas: TCanvas; ARow: Integer; const ARowRect: TRect);
+var
+  mFocus: TRect;
+begin
+  if ARow = ActiveRow then
+  begin
+    // Wie im Mockup: Die aktive Zeile ist hinterlegt.
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := StyleServices(FBox).GetSystemColor(clBtnFace);
+    ACanvas.FillRect(ARowRect);
+    ACanvas.Brush.Style := bsClear;
+  end;
+  if HasKeyFocus(Self) and (ARow = FSelection.KeyRow) and (FSelection.KeyButton < 0) then
+  begin
+    mFocus := ARowRect;
+    InflateRect(mFocus, -1, -1);
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.DrawFocusRect(mFocus);
+    ACanvas.Brush.Style := bsClear;
+  end;
+end;
+
+procedure TAtlasQuickActionsBar.PaintRow(ACanvas: TCanvas; ARow: Integer);
+var
+  mPainter: TQuickRowPainter;
+  mIndex: Integer;
+begin
+  if not IsRow(Self, ARow) then
+  begin
+    Exit;
+  end;
+  mPainter.Buttons := ButtonsOf(ARow);
+  if Length(FRows.Rects[ARow]) <> Length(mPainter.Buttons) then
+  begin
+    Exit;
+  end;
+  mPainter.Bar := Self;
+  mPainter.Canvas := ACanvas;
+  mPainter.Row := ARow;
+  mPainter.Colors.Text := StyleServices(FBox).GetSystemColor(clWindowText);
+  mPainter.Colors.Muted := StyleServices(FBox).GetSystemColor(clGrayText);
+  mPainter.Colors.Line := StyleServices(FBox).GetSystemColor(clBtnShadow);
+  mPainter.Colors.Accent := StyleServices(FBox).GetSystemColor(clHighlight);
+  mPainter.Colors.AccentText := StyleServices(FBox).GetSystemColor(clHighlightText);
+  for mIndex := 0 to High(mPainter.Buttons) do
+  begin
+    mPainter.PaintButton(mIndex);
+  end;
+end;
+
+function TAtlasQuickActionsBar.HitTest(X, Y: Integer; out ARow, AIndex: Integer; out AMenu: Boolean): Boolean;
+var
+  mRects: TArray<TRect>;
+  mIndex: Integer;
+begin
+  ARow := ActiveRow;
+  AIndex := -1;
+  AMenu := False;
+  Result := False;
+  if not IsRow(Self, ARow) then
+  begin
+    Exit;
+  end;
+  mRects := FRows.Rects[ARow];
+  if Length(mRects) <> Length(FRows.Buttons[ARow]) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mRects) do
+  begin
+    if mRects[mIndex].Contains(Point(X, Y)) then
+    begin
+      AIndex := mIndex;
+      AMenu := (FRows.Buttons[ARow][mIndex].Action = TAtlasQuickAction.Build) and
+        (X >= mRects[mIndex].Right - ScaleOf(Self, MenuPart));
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAtlasQuickActionsBar.ClickAt(X, Y: Integer): Boolean;
+var
+  mRow, mIndex: Integer;
+  mMenu: Boolean;
+begin
+  Result := HitTest(X, Y, mRow, mIndex, mMenu);
+  if Result then
+  begin
+    Activate(mRow, mIndex, mMenu);
+  end;
+end;
+
+procedure TAtlasQuickActionsBar.Activate(ARow, AIndex: Integer; AMenu: Boolean);
+var
+  mSource: IAtlasQuickActionsSource;
+  mButton: TAtlasQuickActionButton;
+  mName: string;
+begin
+  if (FSource = nil) or (AIndex < 0) or (AIndex > High(ButtonsOf(ARow))) or
+    not FRows.Buttons[ARow][AIndex].Enabled then
+  begin
+    Exit;
+  end;
+  mButton := FRows.Buttons[ARow][AIndex];
+  mSource := FSource;
+  mName := FRows.Projects[ARow];
+  if NeedsChoice(mButton, AMenu, mSource, mName) then
+  begin
+    FMenus.PopupAt(ARow, AIndex);
+    Exit;
+  end;
+  QueueOnMain(
+    procedure
+    begin
+      mSource.Execute(mName, mButton.Action);
+    end);
 end;
 
 function TAtlasQuickActionsBar.HintAt(X, Y: Integer; out AHint: string): Boolean;
 var
-  Row, Index, Key: Integer;
+  mRow, mIndex, mKey: Integer;
   mMenu: Boolean;
-  Button: TAtlasQuickActionButton;
-  Console: string;
+  mButton: TAtlasQuickActionButton;
+  mConsole: string;
 begin
   AHint := '';
-  Result := HitTest(X, Y, Row, Index, mMenu);
+  Result := HitTest(X, Y, mRow, mIndex, mMenu);
   if not Result then
   begin
     Exit;
   end;
-  Button := FButtons[Row][Index];
-  Key := 0;
-  Console := '';
+  mButton := FRows.Buttons[mRow][mIndex];
+  mKey := 0;
+  mConsole := '';
   if FSource <> nil then
   begin
-    if Button.Action = TAtlasQuickAction.Build then
+    if mButton.Action = TAtlasQuickAction.Build then
     begin
-      Key := FSource.BuildKey;
+      mKey := FSource.BuildKey;
     end
-    else if Button.Action = TAtlasQuickAction.Tests then
+    else if mButton.Action = TAtlasQuickAction.Tests then
     begin
-      Key := FSource.TestKey;
+      mKey := FSource.TestKey;
     end;
-    Console := FSource.ConsoleProgram;
+    mConsole := FSource.ConsoleProgram;
   end;
-  AHint := ButtonHint(Button, FStates[Row].Running, Key, Console);
-end;
-
-function TAtlasQuickActionsBar.SinkKey(AKey: Word; AShift: TShiftState): Boolean;
-begin
-  Result := HandleKey(AKey, AShift);
+  AHint := TAtlasQuickActionTexts.ButtonHint(mButton, FRows.States[mRow].Running, mKey, mConsole);
 end;
 
 function TAtlasQuickActionsBar.HandleKey(AKey: Word; AShift: TShiftState): Boolean;
 var
-  Row, Index: Integer;
-  Action: TAtlasQuickAction;
-  Buttons: TAtlasQuickActionButtons;
-  Shift: TShiftState;
+  mKeys: TQuickKeys;
 begin
   Result := False;
-  if not Active or (Length(FProjects) = 0) then
+  if not Active or (Length(FRows.Projects) = 0) then
   begin
     Exit;
   end;
-  if not ValidRow(FKeyRow) then
+  if not IsRow(Self, FSelection.KeyRow) then
   begin
-    FKeyRow := 0;
+    FSelection.KeyRow := 0;
   end;
-  Row := FKeyRow;
-  Buttons := ButtonsOf(Row);
-  Shift := AShift * [ssShift, ssAlt, ssCtrl];
-  // Strg+B, Strg+T (#399: einstellbar) auf der gewählten Zeile.
-  if (FSource <> nil) and TAtlasWelcomeQuickActions.ActionForKey(Integer(ShortCut(AKey, Shift)), FSource.BuildKey,
-    FSource.TestKey, ItemsOf(Row), Action) then
+  mKeys.Bar := Self;
+  mKeys.Row := FSelection.KeyRow;
+  mKeys.Buttons := ButtonsOf(mKeys.Row);
+  mKeys.Shift := AShift * [ssShift, ssAlt, ssCtrl];
+  Result := mKeys.ActionKey(AKey) or mKeys.Handle(AKey);
+  if Result then
   begin
-    Index := TAtlasWelcomeQuickActions.IndexOf(Buttons, Action);
-    FUseKey := True;
-    if Index >= 0 then
-    begin
-      FKeyButton := Index;
-      Activate(Row, Index, False);
-    end;
-    if FBox <> nil then
-    begin
-      FBox.Invalidate;
-    end;
-    Exit(True);
-  end;
-  case AKey of
-    VK_UP, VK_DOWN:
-      if (ssAlt in Shift) and (AKey = VK_DOWN) then
-      begin
-        // Alt+↓: Auswahl des gewählten Knopfs, sonst die von „Öffnen und bauen“.
-        Index := FKeyButton;
-        if (Index < 0) or (Index > High(Buttons)) or not Buttons[Index].HasMenu then
-        begin
-          Index := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Build);
-        end;
-        if Index >= 0 then
-        begin
-          PopupAt(Row, Index);
-        end;
-        Result := True;
-      end
-      else if Shift = [] then
-      begin
-        if AKey = VK_UP then
-        begin
-          FKeyRow := TAtlasWelcomeQuickActions.MoveRow(FKeyRow, -1, Length(FProjects));
-        end
-        else
-        begin
-          FKeyRow := TAtlasWelcomeQuickActions.MoveRow(FKeyRow, 1, Length(FProjects));
-        end;
-        FKeyButton := -1;
-        FUseKey := True;
-        if (FKeyRow <> Row) and Assigned(FOnSelectRow) then
-        begin
-          FOnSelectRow(FKeyRow);
-        end;
-        Result := True;
-      end;
-    VK_LEFT, VK_RIGHT:
-      if Shift = [] then
-      begin
-        if AKey = VK_LEFT then
-        begin
-          FKeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, FKeyButton, -1);
-        end
-        else
-        begin
-          FKeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, FKeyButton, 1);
-        end;
-        FUseKey := True;
-        Result := True;
-      end;
-    VK_HOME:
-      if Shift = [] then
-      begin
-        FKeyButton := -1;
-        FUseKey := True;
-        Result := True;
-      end;
-    VK_RETURN, VK_SPACE:
-      if Shift = [] then
-      begin
-        FUseKey := True;
-        if (FKeyButton >= 0) and (FKeyButton <= High(Buttons)) then
-        begin
-          Activate(Row, FKeyButton, False);
-        end
-        else if Assigned(FOnOpenRow) then
-        begin
-          FOnOpenRow(Row);
-        end;
-        Result := True;
-      end;
-    VK_ESCAPE:
-      if FKeyButton >= 0 then
-      begin
-        FKeyButton := -1;
-        Result := True;
-      end;
-    VK_APPS, VK_F10:
-      if ((AKey = VK_APPS) or (Shift = [ssShift])) and Assigned(FOnRowMenu) then
-      begin
-        FOnRowMenu(Row);
-        Result := True;
-      end;
-  end;
-  if Result and (FBox <> nil) then
-  begin
-    FBox.Invalidate;
-  end;
-end;
-
-class function TAtlasQuickActionsBar.Caption(const AButton: TAtlasQuickActionButton;
-  const AState: TAtlasQuickActionState; ANowMs: UInt64): string;
-begin
-  if AState.Running and (AState.Action = AButton.Action) then
-  begin
-    Exit(StateText(AState, ANowMs, AButton.Update));
-  end;
-  if AButton.Action = TAtlasQuickAction.Pull then
-  begin
-    if AButton.Update then
-    begin
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
-    end
-    else
-    begin
-      Result := QuickActionTitle(TAtlasQuickAction.Pull);
-    end;
-    if AButton.AskExternals then
-    begin
-      Result := Result + ' ' + MenuArrow;
-    end;
-  end
-  else
-  begin
-    Result := QuickActionTitle(AButton.Action);
-  end;
-end;
-
-function QuickActionTitle(AAction: TAtlasQuickAction): string;
-begin
-  case AAction of
-    TAtlasQuickAction.Build:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuild);
-    TAtlasQuickAction.Tests:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTests);
-    TAtlasQuickAction.Run:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRun);
-    TAtlasQuickAction.Pull:
-      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
-    TAtlasQuickAction.Folder:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickFolder);
-    TAtlasQuickAction.Tasks:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasks);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsole);
-  end;
-end;
-
-class function TAtlasQuickActionsBar.StateText(const AState: TAtlasQuickActionState; ANowMs: UInt64;
-  AUpdate: Boolean): string;
-var
-  Seconds: Integer;
-begin
-  Result := '';
-  if AState.Running then
-  begin
-    Seconds := AState.ElapsedSeconds(ANowMs);
-    case AState.Action of
-      TAtlasQuickAction.Build:
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickBuilding, [Seconds]);
-      TAtlasQuickAction.Tests:
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTesting, [Seconds]);
-      TAtlasQuickAction.Run:
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickStarting, [Seconds]);
-      TAtlasQuickAction.Pull:
-        if AUpdate then
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickUpdating, [Seconds]);
-        end
-        else
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickPulling, [Seconds]);
-        end;
-      TAtlasQuickAction.Tasks:
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTasking, [Seconds]);
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    Exit;
-  end;
-  if AState.Phase = TAtlasQuickActionPhase.Idle then
-  begin
-    Exit;
-  end;
-  case AState.Action of
-    TAtlasQuickAction.Build:
-      // Gebaut: Die Marke „Build 0/0/0“ des Bereichs zeigt das Ergebnis.
-      if AState.Phase = TAtlasQuickActionPhase.Refused then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildRefused);
-      end
-      else if AState.Phase = TAtlasQuickActionPhase.Failed then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildFailed);
-      end;
-    TAtlasQuickAction.Tests:
-      if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-      begin
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsPassed, [AState.Passed]);
-      end
-      else if (AState.Phase = TAtlasQuickActionPhase.Failed) and (AState.Failed > 0) then
-      begin
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsFailed, [AState.Failed]);
-      end
-      else
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTestsNotRun);
-      end;
-    TAtlasQuickAction.Run:
-      if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunStarted);
-      end
-      else
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunRefused);
-      end;
-    TAtlasQuickAction.Pull:
-      if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-      begin
-        if AState.Pull = TAtlasPullOutcome.Updated then
-        begin
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpdated);
-        end
-        else
-        begin
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpToDate);
-        end;
-      end
-      else if AState.Pull = TAtlasPullOutcome.Blocked then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullBlocked);
-      end
-      else if AUpdate then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateFailed);
-      end
-      else
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullFailed);
-      end;
-    TAtlasQuickAction.Console:
-      if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsoleFailed);
-      end;
-    TAtlasQuickAction.Tasks:
-      // Fertig: Aufgabe und Ergebnis als Text der IDE-Schicht („Delphi-12-Prüfung: 2 Fehler 14:03“).
-      if (AState.Phase = TAtlasQuickActionPhase.Refused) or (AState.Detail = '') then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasksRefused);
-      end
-      else
-      begin
-        Result := AState.Detail;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-class function TAtlasQuickActionsBar.StateColor(const AState: TAtlasQuickActionState): TColor;
-begin
-  // Farben wie die Marken des Bereichs „Projekte“ (#592): grau, grün, gelb, rot.
-  case AState.Phase of
-    TAtlasQuickActionPhase.Succeeded:
-      Result := TColor($0043A02E);
-    TAtlasQuickActionPhase.Refused:
-      Result := TColor($001A8CC9);
-    TAtlasQuickActionPhase.Failed:
-      if (AState.Action = TAtlasQuickAction.Pull) and (AState.Pull = TAtlasPullOutcome.Blocked) then
-      begin
-        Result := TColor($001A8CC9);
-      end
-      else
-      begin
-        Result := TColor($002E22CF);
-      end;
-  else
-    Result := TColor($00817666);
-  end;
-end;
-
-class function TAtlasQuickActionsBar.ButtonHint(const AButton: TAtlasQuickActionButton; ARunning: Boolean;
-  AKey: Integer; const AConsole: string): string;
-begin
-  case AButton.Block of
-    TAtlasPullBlock.LocalChanges:
-      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges));
-    TAtlasPullBlock.NoWorkingCopy:
-      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy));
-    TAtlasPullBlock.Busy:
-      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy));
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-  if not AButton.Enabled then
-  begin
-    if ARunning then
-    begin
-      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy));
-    end;
-    Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickIdeBusy));
-  end;
-  case AButton.Action of
-    TAtlasQuickAction.Build:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintBuild);
-    TAtlasQuickAction.Tests:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTests);
-    TAtlasQuickAction.Run:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintRun);
-    TAtlasQuickAction.Pull:
-      if AButton.Update then
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintUpdate);
-      end
-      else
-      begin
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintPull);
-      end;
-    TAtlasQuickAction.Folder:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintFolder);
-    TAtlasQuickAction.Tasks:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintTasks);
-  else
-    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintConsole,
-      [TAtlasWelcomeQuickActions.NormalizedConsole(AConsole)]);
-  end;
-  if AKey <> 0 then
-  begin
-    Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintKey,
-      [ShortCutToText(TShortCut(AKey))]);
+    InvalidateBox(Self);
   end;
 end;
 
