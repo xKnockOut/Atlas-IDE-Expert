@@ -24,6 +24,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
+  Atlas.Core.Style.Color,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Popup.Window;
 
@@ -45,6 +46,10 @@ type
     FOnAccept: TAtlasUnwrapIndexEvent;
     FOnCancel: TProc;
     function Layout(ADraw: Boolean): TSize;
+    procedure LayoutRow(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
+    procedure LayoutEntry(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
+    procedure LayoutFooter(ADraw: Boolean; AY, ATextHeight: Integer; var AWidth: Integer);
+    procedure Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
     function Title: string;
   protected
     procedure Paint; override;
@@ -104,90 +109,97 @@ begin
   SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
 end;
 
-class function TAtlasUnwrapWindow.EntryCaption(const AEntry: TAtlasUnwrapEntry): string;
-var
-  Suffix: string;
-begin
-  Suffix := '';
-  if AEntry.Kind = 'beginEnd' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapBeginEnd);
-  end
-  else if AEntry.Kind = 'tryFinally' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapTryFinally);
-  end
-  else if AEntry.Kind = 'tryExcept' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapTryExcept);
-  end
-  else if (AEntry.Kind = 'ifThen') and (AEntry.VariantCount > 1) then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapIfElse);
-  end
-  else if AEntry.Kind = 'ifThen' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapIfThen);
-  end
-  else if AEntry.Kind = 'withDo' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapWith);
-  end
-  else if AEntry.Kind = 'forDo' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapFor);
-  end
-  else if AEntry.Kind = 'whileDo' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapWhile);
-  end
-  else if AEntry.Kind = 'repeatUntil' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapRepeat);
-  end
-  else if AEntry.Kind = 'ifdef' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapIfDef);
-  end
-  else if AEntry.Kind = 'region' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapRegion);
-  end
-  else
-  begin
-    Result := AEntry.Kind;
+type
+  TKindText = record
+    Kind: string;
+    Text: TAtlasTextId;
   end;
+
+const
+  KindTexts: array[0..9] of TKindText = (
+    (Kind: 'beginEnd'; Text: TAtlasTextId.UnwrapBeginEnd),
+    (Kind: 'tryFinally'; Text: TAtlasTextId.UnwrapTryFinally),
+    (Kind: 'tryExcept'; Text: TAtlasTextId.UnwrapTryExcept),
+    (Kind: 'ifThen'; Text: TAtlasTextId.UnwrapIfThen),
+    (Kind: 'withDo'; Text: TAtlasTextId.UnwrapWith),
+    (Kind: 'forDo'; Text: TAtlasTextId.UnwrapFor),
+    (Kind: 'whileDo'; Text: TAtlasTextId.UnwrapWhile),
+    (Kind: 'repeatUntil'; Text: TAtlasTextId.UnwrapRepeat),
+    (Kind: 'ifdef'; Text: TAtlasTextId.UnwrapIfDef),
+    (Kind: 'region'; Text: TAtlasTextId.UnwrapRegion));
+
+/// <summary>„try … finally … end“ usw.; unbekannte Arten stehen, wie sie heißen.</summary>
+function KindCaption(const AEntry: TAtlasUnwrapEntry): string;
+var
+  mItem: TKindText;
+begin
+  if (AEntry.Kind = 'ifThen') and (AEntry.VariantCount > 1) then
+  begin
+    Exit(TAtlasStrings.Text(TAtlasTextId.UnwrapIfElse));
+  end;
+  for mItem in KindTexts do
+  begin
+    if mItem.Kind = AEntry.Kind then
+    begin
+      Exit(TAtlasStrings.Text(mItem.Text));
+    end;
+  end;
+  Result := AEntry.Kind;
+end;
+
+/// <summary>Welcher Zweig einer Bedingung bleibt: AFirst (then bzw. erster Zweig, nur bei mehreren Varianten) oder
+/// AElse; '' sonst.</summary>
+function BranchSuffix(const AEntry: TAtlasUnwrapEntry; AFirst, AElse: TAtlasTextId): string;
+begin
+  Result := '';
+  if (AEntry.VariantCount > 1) and (AEntry.VariantKind = 'then') then
+  begin
+    Result := TAtlasStrings.Text(AFirst);
+  end
+  else if AEntry.VariantKind = 'else' then
+  begin
+    Result := TAtlasStrings.Text(AElse);
+  end;
+end;
+
+/// <summary>Was von der Variante bleibt („finally-Teil behalten“ usw.); '' ohne.</summary>
+function VariantSuffix(const AEntry: TAtlasUnwrapEntry): string;
+begin
   if AEntry.VariantKind = 'keepFinally' then
   begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepFinally);
+    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepFinally);
   end
   else if AEntry.VariantKind = 'dropFinally' then
   begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapDropFinally);
+    Result := TAtlasStrings.Text(TAtlasTextId.UnwrapDropFinally);
   end
-  else if (AEntry.Kind = 'ifThen') and (AEntry.VariantCount > 1) and (AEntry.VariantKind = 'then') then
+  else if AEntry.Kind = 'ifThen' then
   begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepThen);
+    Result := BranchSuffix(AEntry, TAtlasTextId.UnwrapKeepThen, TAtlasTextId.UnwrapKeepElse);
   end
-  else if (AEntry.Kind = 'ifThen') and (AEntry.VariantKind = 'else') then
+  else if AEntry.Kind = 'ifdef' then
   begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepElse);
+    Result := BranchSuffix(AEntry, TAtlasTextId.UnwrapKeepFirst, TAtlasTextId.UnwrapKeepIfDefElse);
   end
-  else if (AEntry.Kind = 'ifdef') and (AEntry.VariantCount > 1) and (AEntry.VariantKind = 'then') then
+  else
   begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepFirst);
-  end
-  else if (AEntry.Kind = 'ifdef') and (AEntry.VariantKind = 'else') then
-  begin
-    Suffix := TAtlasStrings.Text(TAtlasTextId.UnwrapKeepIfDefElse);
-  end
-  else if AEntry.VariantKind = 'branch' then
-  begin
-    Suffix := TAtlasStrings.Fmt(TAtlasTextId.UnwrapKeepBranch, [AEntry.Branch + 1]);
+    Result := '';
   end;
-  if Suffix <> '' then
+  if (Result = '') and (AEntry.VariantKind = 'branch') then
   begin
-    Result := Result + Dash + Suffix;
+    Result := TAtlasStrings.Fmt(TAtlasTextId.UnwrapKeepBranch, [AEntry.Branch + 1]);
+  end;
+end;
+
+class function TAtlasUnwrapWindow.EntryCaption(const AEntry: TAtlasUnwrapEntry): string;
+var
+  mSuffix: string;
+begin
+  Result := KindCaption(AEntry);
+  mSuffix := VariantSuffix(AEntry);
+  if mSuffix <> '' then
+  begin
+    Result := Result + Dash + mSuffix;
   end;
 end;
 
@@ -223,127 +235,131 @@ begin
   end;
 end;
 
+procedure TAtlasUnwrapWindow.Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+begin
+  if ADraw then
+  begin
+    Canvas.Font.Color := ToColor(AColor);
+    Canvas.TextOut(AX, AY, AText);
+  end;
+end;
+
+/// <summary>Zeile von Eintrag AIndex unter AY: Beschriftung (gewählt mit Marke) und Zeilennummer.</summary>
+procedure TAtlasUnwrapWindow.LayoutRow(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
+var
+  mEntry: TAtlasUnwrapEntry;
+  mX, mTop: Integer;
+  mText, mLine: string;
+  mColor: TAtlasColor;
+begin
+  mEntry := FEntries[AIndex];
+  AY := AY + ATextHeight + Scale(RowGap);
+  mTop := AY;
+  mX := Scale(Pad);
+  mText := EntryCaption(mEntry);
+  mColor := Colors.Muted;
+  if mEntry.Available then
+  begin
+    mColor := Colors.Text;
+  end;
+  if AIndex = FRow then
+  begin
+    mText := Marker + mText;
+    mColor := Colors.Accent;
+  end
+  else
+  begin
+    mX := mX + Canvas.TextWidth(Marker);
+  end;
+  Put(ADraw, mX, AY, mText, mColor);
+  Inc(mX, Canvas.TextWidth(mText));
+  mLine := Separator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [mEntry.Line + 1]);
+  Put(ADraw, mX, AY, mLine, Colors.Muted);
+  Inc(mX, Canvas.TextWidth(mLine));
+  AWidth := Max(AWidth, mX);
+  FRowRects[AIndex] := Rect(Scale(Pad), mTop, mX, AY + ATextHeight);
+end;
+
+/// <summary>Eintrag AIndex: Zeile (nicht in der Kurzform) und Hinweis darunter.</summary>
+procedure TAtlasUnwrapWindow.LayoutEntry(ADraw: Boolean; AIndex, ATextHeight: Integer; var AY, AWidth: Integer);
+var
+  mNote: string;
+  mX: Integer;
+begin
+  FRowRects[AIndex] := TRect.Empty;
+  if not FCompact then
+  begin
+    LayoutRow(ADraw, AIndex, ATextHeight, AY, AWidth);
+  end;
+  mNote := EntryNote(FEntries[AIndex]);
+  if mNote = '' then
+  begin
+    Exit;
+  end;
+  AY := AY + ATextHeight + Scale(RowGap);
+  mX := Scale(Pad) + 2 * Canvas.TextWidth(Marker);
+  Put(ADraw, mX, AY, mNote, Colors.Warn);
+  AWidth := Max(AWidth, mX + Canvas.TextWidth(mNote));
+  if not FCompact then
+  begin
+    FRowRects[AIndex].Bottom := AY + ATextHeight;
+  end;
+end;
+
+/// <summary>Fußzeile mit den beiden Links in Zeile AY.</summary>
+procedure TAtlasUnwrapWindow.LayoutFooter(ADraw: Boolean; AY, ATextHeight: Integer; var AWidth: Integer);
+var
+  mX: Integer;
+  mAccept, mCancel: string;
+  mColor: TAtlasColor;
+begin
+  mX := Scale(Pad);
+  mAccept := TAtlasStrings.Text(TAtlasTextId.UnwrapAccept);
+  mCancel := TAtlasStrings.Text(TAtlasTextId.UnwrapCancel);
+  FAcceptRect := Rect(mX, AY, mX + Canvas.TextWidth(mAccept), AY + ATextHeight);
+  mColor := Colors.Muted;
+  if FRow >= 0 then
+  begin
+    mColor := Colors.Accent;
+  end;
+  Put(ADraw, mX, AY, mAccept, mColor);
+  Put(ADraw, FAcceptRect.Right, AY, Separator, Colors.Muted);
+  mX := FAcceptRect.Right + Canvas.TextWidth(Separator);
+  FCancelRect := Rect(mX, AY, mX + Canvas.TextWidth(mCancel), AY + ATextHeight);
+  Put(ADraw, mX, AY, mCancel, Colors.Accent);
+  AWidth := Max(AWidth, FCancelRect.Right);
+end;
+
 function TAtlasUnwrapWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, mWidth, Index: Integer;
-  mText, Line, Note, Accept, Cancel: string;
-  Entry: TAtlasUnwrapEntry;
-  mTop: Integer;
+  mY, mWidth, mIndex, mTextHeight: Integer;
+  mTitle: string;
 begin
   Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
+  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  X := Scale(Pad);
-  Y := Scale(Pad);
-  mText := Title;
+  mY := Scale(Pad);
+  mTitle := Title;
   Canvas.Font.Style := [fsBold];
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, mText);
-  end;
-  mWidth := X + Canvas.TextWidth(mText);
+  Put(ADraw, Scale(Pad), mY, mTitle, Colors.Text);
+  mWidth := Scale(Pad) + Canvas.TextWidth(mTitle);
   Canvas.Font.Style := [];
   SetLength(FRowRects, Length(FEntries));
-  for Index := 0 to High(FEntries) do
+  for mIndex := 0 to High(FEntries) do
   begin
-    Entry := FEntries[Index];
-    FRowRects[Index] := TRect.Empty;
-    Note := EntryNote(Entry);
-    if not FCompact then
-    begin
-      Y := Y + TextHeight + Scale(RowGap);
-      mTop := Y;
-      X := Scale(Pad);
-      mText := EntryCaption(Entry);
-      if Index = FRow then
-      begin
-        mText := Marker + mText;
-      end
-      else
-      begin
-        X := X + Canvas.TextWidth(Marker);
-      end;
-      if ADraw then
-      begin
-        if Index = FRow then
-        begin
-          Canvas.Font.Color := ToColor(Colors.Accent);
-        end
-        else if Entry.Available then
-        begin
-          Canvas.Font.Color := ToColor(Colors.Text);
-        end
-        else
-        begin
-          Canvas.Font.Color := ToColor(Colors.Muted);
-        end;
-        Canvas.TextOut(X, Y, mText);
-      end;
-      Inc(X, Canvas.TextWidth(mText));
-      Line := Separator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [Entry.Line + 1]);
-      if ADraw then
-      begin
-        Canvas.Font.Color := ToColor(Colors.Muted);
-        Canvas.TextOut(X, Y, Line);
-      end;
-      Inc(X, Canvas.TextWidth(Line));
-      mWidth := Max(mWidth, X);
-      FRowRects[Index] := Rect(Scale(Pad), mTop, X, Y + TextHeight);
-    end;
-    if Note <> '' then
-    begin
-      Y := Y + TextHeight + Scale(RowGap);
-      X := Scale(Pad) + 2 * Canvas.TextWidth(Marker);
-      if ADraw then
-      begin
-        Canvas.Font.Color := ToColor(Colors.Warn);
-        Canvas.TextOut(X, Y, Note);
-      end;
-      mWidth := Max(mWidth, X + Canvas.TextWidth(Note));
-      if not FCompact then
-      begin
-        FRowRects[Index].Bottom := Y + TextHeight;
-      end;
-    end;
+    LayoutEntry(ADraw, mIndex, mTextHeight, mY, mWidth);
   end;
-  // Fußzeile mit den beiden Links.
-  Y := Y + TextHeight + Scale(RowGap) * 2;
-  X := Scale(Pad);
-  Accept := TAtlasStrings.Text(TAtlasTextId.UnwrapAccept);
-  Cancel := TAtlasStrings.Text(TAtlasTextId.UnwrapCancel);
-  FAcceptRect := Rect(X, Y, X + Canvas.TextWidth(Accept), Y + TextHeight);
-  if ADraw then
-  begin
-    if FRow >= 0 then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Accent);
-    end
-    else
-    begin
-      Canvas.Font.Color := ToColor(Colors.Muted);
-    end;
-    Canvas.TextOut(X, Y, Accept);
-    Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(FAcceptRect.Right, Y, Separator);
-  end;
-  X := FAcceptRect.Right + Canvas.TextWidth(Separator);
-  FCancelRect := Rect(X, Y, X + Canvas.TextWidth(Cancel), Y + TextHeight);
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Accent);
-    Canvas.TextOut(X, Y, Cancel);
-  end;
-  mWidth := Max(mWidth, FCancelRect.Right);
+  mY := mY + mTextHeight + Scale(RowGap) * 2;
+  LayoutFooter(ADraw, mY, mTextHeight, mWidth);
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
   Result.cx := mWidth + Scale(Pad);
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cy := mY + mTextHeight + Scale(Pad);
 end;
 
 procedure TAtlasUnwrapWindow.ShowFor(const AEntries: TArray<TAtlasUnwrapEntry>; const APoint: TPoint);
