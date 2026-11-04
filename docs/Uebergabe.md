@@ -6,6 +6,12 @@
 
 # Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde in Base UI Teil 1 (04.11.2026, Branch `claude/project-thread-joyczh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/UI/{Diagnostics,Results,Popup,Notifications}` (anfangs 36), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde. PR #1696.
+- `TAtlasResultsFrame` ist zerlegt: Frame mit Titelzeile und Baum, `TAtlasResultsView` (Daten je Knoten, verteilt Ereignisse an die Teile), Teile `TAtlasResultsPart` in `Atlas.UI.Results.{Entries,Hierarchy,Changes,Items,SymbolPath,Impact,DataFlow,Issues}`, Zeilentexte in `Atlas.UI.Results.Texts`. Aufruf über den Teil: `Frame.Impact.Show`, `Frame.Hierarchy.Controls.Toggle`, `Frame.Items.ShowsItemsOf` usw. Neue Darstellung = neuer Teil, im Konstruktor des Frames anmelden.
+- Weitere Schnittstellen: `TAtlasExportDialogTexts`, `TAtlasStyledText.Draw(TAtlasStyledTarget, …)`, `TAtlasNotificationTexts`, `Rows` im Benachrichtigungsfenster.
+- Offen: Delphi-Build und Handtests (Liste im PR), vor allem das Ergebnisfenster mit allen Listen.
+
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
 - Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
