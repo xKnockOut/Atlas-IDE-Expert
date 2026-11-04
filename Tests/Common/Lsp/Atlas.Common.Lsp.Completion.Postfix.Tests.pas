@@ -80,6 +80,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Lsp.Completion.Postfix,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
@@ -465,7 +466,7 @@ begin
   Params := TJSONObject.ParseJSONValue('{"templates": [{"key": "log", "description": "Protokoll", ' +
     '"body": "Log($expr);", "type": "class"}, {"key": "a b", "body": "x"}, {"key": "leer"}]}') as TJSONObject;
   try
-    Templates := TLspCompletion.ParsePostfixTemplates(Params);
+    Templates := TCompletionPostfix.ParseTemplates(Params);
   finally
     Params.Free;
   end;
