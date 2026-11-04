@@ -153,10 +153,14 @@ end;
 procedure TAtlasIdeProjects.Stop;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   FStopped := True;
   if FListening <> nil then
+  begin
     FListening.Revoke;
+  end;
   FListening := nil;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Projects);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Projects);
@@ -176,7 +180,9 @@ end;
 procedure TAtlasIdeProjects.Changed;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Projects);
   // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
@@ -201,7 +207,9 @@ procedure TAtlasIdeProjects.Select(const AProject: string);
 begin
   if FStopped or (TAtlasProjectSummaries.NormalizedPath(AProject) = TAtlasProjectSummaries.NormalizedPath(FSelected))
   then
+  begin
     Exit;
+  end;
   FSelected := AProject;
   Changed;
 end;
@@ -214,7 +222,9 @@ end;
 procedure TAtlasIdeProjects.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 function TAtlasIdeProjects.Entries: TAtlasProjectEntries;
@@ -227,7 +237,9 @@ var
 begin
   Result := nil;
   if FStopped then
+  begin
     Exit;
+  end;
   Recent := nil;
   try
     Recent := TAtlasIdeWelcomeSearch.ClosedProjects;
@@ -245,7 +257,9 @@ begin
     TAtlasIdeSettings.Current.WelcomePageMaxProjects);
   mSummaries := Summaries;
   if mSummaries = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Result) do
   begin
     if mSummaries.LiveVcs(Result[Index].Project, Vcs) then
@@ -262,22 +276,30 @@ var
   Entry: TAtlasProjectEntry;
 begin
   if FStopped or (Summaries = nil) or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
+  begin
     Exit;
+  end;
   for Entry in Entries do
+  begin
     Summaries.QueryIfStale(Entry.Project);
+  end;
 end;
 
 function TAtlasIdeProjects.VcsOf(const AProject: string): TAtlasProjectVcs;
 begin
   Result := TAtlasProjectVcs.Empty;
   if not FStopped and (Summaries <> nil) then
+  begin
     Result := Summaries.VcsOf(AProject);
+  end;
 end;
 
 procedure TAtlasIdeProjects.Refresh(const AProject: string);
 begin
   if not FStopped and (Summaries <> nil) then
+  begin
     Summaries.Refresh(AProject);
+  end;
 end;
 
 procedure TAtlasIdeProjects.SummaryChanged(const AProject: string);
@@ -298,7 +320,9 @@ begin
         Exit;
       end;
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Actions.OpenProject(AProject, True);
+      end;
     end);
 end;
 
@@ -320,16 +344,24 @@ begin
       end;
       // Erst das Projekt (wie die Liste der IDE), dann die erste Meldung.
       if not ProjectOpen(AProject) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Actions.OpenProject(AProject, True);
+      end;
       if Target.IsEmpty or not FileExists(Target.FileName) then
+      begin
         Exit;
+      end;
       // Die Zusammenfassung zählt ab 1, der Editor ab 0.
       Line := Target.Line - 1;
       if Line < 0 then
+      begin
         Line := 0;
+      end;
       Column := Target.Column - 1;
       if Column < 0 then
+      begin
         Column := 0;
+      end;
       TAtlasIdeResults.Open(Target.FileName, Line, Column);
     end);
 end;
@@ -340,12 +372,18 @@ begin
     procedure
     begin
       if FileExists(AProject) then
+      begin
         // Explorer mit markierter Projektdatei.
-        ShellExecute(0, 'open', 'explorer.exe', PChar('/select,"' + AProject + '"'), nil, SW_SHOWNORMAL)
+        ShellExecute(0, 'open', 'explorer.exe', PChar('/select,"' + AProject + '"'), nil, SW_SHOWNORMAL);
+      end
       else if DirectoryExists(ExtractFileDir(AProject)) then
-        ShellExecute(0, 'open', PChar(ExtractFileDir(AProject)), nil, nil, SW_SHOWNORMAL)
+      begin
+        ShellExecute(0, 'open', PChar(ExtractFileDir(AProject)), nil, nil, SW_SHOWNORMAL);
+      end
       else
+      begin
         Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+      end;
     end);
 end;
 
@@ -365,7 +403,9 @@ begin
         begin
           // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.
           if (mKeep <> nil) and not FStopped then
+          begin
             Refresh(mProject);
+          end;
         end);
     end);
 end;
@@ -385,7 +425,9 @@ begin
         begin
           // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.
           if (mKeep <> nil) and not FStopped then
+          begin
             Refresh(mProject);
+          end;
         end);
     end);
 end;
@@ -402,7 +444,9 @@ begin
     begin
       // Nur dieser Bereich: Die Liste „Zuletzt geöffnet“ der IDE bleibt unverändert.
       if Summaries <> nil then
+      begin
         Summaries.SetHidden(AProject, True);
+      end;
     end);
 end;
 

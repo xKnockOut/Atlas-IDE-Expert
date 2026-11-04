@@ -293,7 +293,9 @@ var
 begin
   Count := IntToStr(AException.Count);
   if AIgnoredClass then
+  begin
     Count := Count + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnored);
+  end;
   Result := TArray<string>.Create(FormatDateTime('hh:nn:ss', AException.LastTime), AException.ExceptionClass,
     AException.Message, Count, AException.LocationText,
     AException.ThreadText(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread)));
@@ -303,9 +305,13 @@ function TAtlasDebugExceptionsFrame.ClassFilter: string;
 begin
   // Eintrag 0 ist „Alle Klassen“.
   if (FClassBox.ItemIndex > 0) and (FClassBox.ItemIndex <= Length(FClasses)) then
-    Result := FClasses[FClassBox.ItemIndex - 1]
+  begin
+    Result := FClasses[FClassBox.ItemIndex - 1];
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.FillClasses;
@@ -315,21 +321,29 @@ var
 begin
   // Erst mit Fenster (CreateWnd): TComboBox.Items braucht eins.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   Keep := ClassFilter;
   FClassBox.Items.BeginUpdate;
   try
     FClassBox.Items.Clear;
     FClassBox.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsAllClasses));
     for Name in FClasses do
+    begin
       FClassBox.Items.Add(Name);
+    end;
   finally
     FClassBox.Items.EndUpdate;
   end;
   FClassBox.ItemIndex := 0;
   for Index := 0 to High(FClasses) do
+  begin
     if SameText(FClasses[Index], Keep) then
+    begin
       FClassBox.ItemIndex := Index + 1;
+    end;
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.SetHistory(const AHistory: TAtlasDebugExceptionHistory;
@@ -347,7 +361,9 @@ begin
     // Reihenfolge des Verlaufs: zuletzt gesehen zuerst.
     Filtered := AHistory.Filter('', '');
     for Index in Filtered do
+    begin
       FHistory := FHistory + [AHistory[Index]];
+    end;
     FClasses := AHistory.Classes;
     FTotal := AHistory.Total;
   end;
@@ -367,13 +383,19 @@ var
 begin
   Selected := '';
   if TrySelected(Current) then
+  begin
     Selected := Current.Key;
+  end;
   FShown := nil;
   Words := TAtlasDebugException.FilterWords(FFilter.Text);
   OnlyClass := ClassFilter;
   for Entry in FHistory do
+  begin
     if Entry.Matches(OnlyClass, Words) then
+    begin
       FShown := FShown + [Entry];
+    end;
+  end;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
@@ -383,9 +405,13 @@ begin
       Item := FList.Items.Add;
       Item.Caption := Texts[0];
       for Part := 1 to High(Texts) do
+      begin
         Item.SubItems.Add(Texts[Part]);
+      end;
       if (Selected <> '') and (Entry.Key = Selected) then
+      begin
         Item.Selected := True;
+      end;
     end;
   finally
     FList.Items.EndUpdate;
@@ -402,9 +428,13 @@ function TAtlasDebugExceptionsFrame.TrySelected(out AException: TAtlasDebugExcep
 begin
   Result := (FList <> nil) and (FList.Selected <> nil) and (FList.Selected.Index <= High(FShown));
   if Result then
-    AException := FShown[FList.Selected.Index]
+  begin
+    AException := FShown[FList.Selected.Index];
+  end
   else
+  begin
     AException := Default(TAtlasDebugException);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.OpenSelected;
@@ -412,7 +442,9 @@ var
   Entry: TAtlasDebugException;
 begin
   if TrySelected(Entry) and Entry.HasSource and Assigned(FOnOpen) then
+  begin
     FOnOpen(Entry);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.CopySelected;
@@ -420,7 +452,9 @@ var
   Entry: TAtlasDebugException;
 begin
   if TrySelected(Entry) and Assigned(FOnCopy) then
+  begin
     FOnCopy(Entry);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.FilterChange(Sender: TObject);
@@ -435,7 +469,9 @@ begin
   begin
     FList.SetFocus;
     if FList.Selected = nil then
+    begin
       FList.Items[0].Selected := True;
+    end;
     Key := 0;
   end;
 end;
@@ -462,7 +498,9 @@ end;
 procedure TAtlasDebugExceptionsFrame.SetJustMyCode(AValue: Boolean);
 begin
   if FJustMyCode = AValue then
+  begin
     Exit;
+  end;
   FJustMyCode := AValue;
   FExpanded := nil;
   FillStack;
@@ -475,12 +513,16 @@ var
   Where: string;
 begin
   if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
+  begin
     Exit(TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStackLibrary, [ARow.Count]),
       ''));
+  end;
   Frame := AFrames[ARow.First];
   Where := '';
   if Frame.HasSource then
+  begin
     Where := ExtractFileName(Frame.FileName) + ':' + IntToStr(Frame.Line);
+  end;
   Result := TArray<string>.Create(Frame.Header, Where);
 end;
 
@@ -492,11 +534,15 @@ var
   Item: TListItem;
 begin
   if FStack = nil then
+  begin
     Exit;
+  end;
   if TrySelected(Entry) then
   begin
     if Entry.Key <> FStackKey then
+    begin
       FExpanded := nil;
+    end;
     FStackKey := Entry.Key;
     FStackFrames := Entry.Frames;
   end
@@ -518,7 +564,9 @@ begin
       Item.SubItems.Add(Texts[1]);
     end;
     if (FStackRows = nil) and (FStackKey <> '') then
+    begin
       FStack.Items.Add.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStackEmpty);
+    end;
   finally
     FStack.Items.EndUpdate;
   end;
@@ -534,24 +582,32 @@ var
   Row: TAtlasDebugStackRow;
 begin
   if (AIndex < 0) or (AIndex > High(FStackRows)) then
+  begin
     Exit;
+  end;
   Row := FStackRows[AIndex];
   if Row.Kind = TAtlasDebugStackRowKind.LibraryGroup then
   begin
     FExpanded := FExpanded + [Row.First];
     FillStack;
     if AIndex < FStack.Items.Count then
+    begin
       FStack.Items[AIndex].Selected := True;
+    end;
     Exit;
   end;
   if FStackFrames[Row.First].HasSource and Assigned(FOnOpenFrame) then
+  begin
     FOnOpenFrame(FStackFrames[Row.First]);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.StackDblClick(Sender: TObject);
 begin
   if FStack.Selected <> nil then
+  begin
     OpenStackRow(FStack.Selected.Index);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.StackKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -600,9 +656,13 @@ begin
   begin
     ACanvas.Brush.Color := ListColor(FList.Color);
     if AGray then
-      ACanvas.Font.Color := ListColor(clGrayText)
+    begin
+      ACanvas.Font.Color := ListColor(clGrayText);
+    end
     else
+    begin
       ACanvas.Font.Color := ListColor(FList.Font.Color);
+    end;
   end;
 end;
 
@@ -658,7 +718,9 @@ var
   Entry: TAtlasDebugException;
 begin
   if TrySelected(Entry) and Assigned(FOnIgnoreClass) then
+  begin
     FOnIgnoreClass(Entry.ExceptionClass, True);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.StopClick(Sender: TObject);
@@ -666,7 +728,9 @@ var
   Entry: TAtlasDebugException;
 begin
   if TrySelected(Entry) and Assigned(FOnIgnoreClass) then
+  begin
     FOnIgnoreClass(Entry.ExceptionClass, False);
+  end;
 end;
 
 procedure TAtlasDebugExceptionsFrame.CopyClick(Sender: TObject);
@@ -677,7 +741,9 @@ end;
 procedure TAtlasDebugExceptionsFrame.ClearClick(Sender: TObject);
 begin
   if Assigned(FOnClear) then
+  begin
     FOnClear();
+  end;
 end;
 
 end.

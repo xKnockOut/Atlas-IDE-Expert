@@ -178,7 +178,9 @@ end;
 procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean);
 begin
   if (Index < 0) or (Index > High(FTypes)) then
+  begin
     Exit;
+  end;
   TypeName := FTypes[Index].TypeName;
   AllDescendants := FTypes[Index].AllDescendants;
 end;
@@ -187,7 +189,9 @@ procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: str
   var IsGeneric: Boolean);
 begin
   if (Index < 0) or (Index > High(FTypes)) then
+  begin
     Exit;
+  end;
   TypeName := FTypes[Index].TypeName;
   AllDescendants := FTypes[Index].AllDescendants;
   IsGeneric := FTypes[Index].IsGeneric;
@@ -218,11 +222,15 @@ begin
   try
     Options := TAtlasIdeVisualizers.Options;
     if not TAtlasIdeSettings.Current.DebugVisualizers or not (FKind in Options.Kinds) then
+    begin
       Exit;
+    end;
     Text := TAtlasVisualizers.Replacement(FKind, Expression, TypeName, EvalResult, Options,
       TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs));
     if Text <> '' then
+    begin
       Result := Text;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -290,29 +298,41 @@ begin
   Closed := FClosed;
   FClosed := nil;
   if Assigned(Closed) then
+  begin
     Closed;
+  end;
 end;
 
 procedure TAtlasIdeViewerUpdater.CloseVisualizer;
 begin
   if FForm <> nil then
+  begin
     FForm.Close;
+  end;
 end;
 
 procedure TAtlasIdeViewerUpdater.MarkUnavailable(Reason: TOTAVisualizerUnavailableReason);
 begin
   if FForm = nil then
+  begin
     Exit;
+  end;
   if Reason = ovurProcessRunning then
-    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerRunning))
+  begin
+    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerRunning));
+  end
   else
+  begin
     FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerOutOfScope));
+  end;
 end;
 
 procedure TAtlasIdeViewerUpdater.RefreshVisualizer(const Expression, TypeName, EvalResult: string);
 begin
   if FForm = nil then
+  begin
     Exit;
+  end;
   try
     FForm.ShowView(Expression, FSource(Expression, TypeName, EvalResult));
   except
@@ -337,7 +357,9 @@ begin
     Form.Free;
   end;
   if Assigned(Closed) then
+  begin
     Closed;
+  end;
 end;
 
 procedure TAtlasIdeViewerUpdater.SetClosedCallback(ClosedProc: TOTAVisualizerClosedProcedure);
@@ -380,18 +402,26 @@ var
   Visualizer: IOTADebuggerVisualizer;
 begin
   if Started or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   FRegistered := TList<IOTADebuggerVisualizer>.Create;
   FSignature := SettingsSignature;
   Kinds := TAtlasVisualizerSettings.ParseKinds(TAtlasIdeSettings.Current.DebugVisualizerTypes);
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
     if not (Kind in Kinds) then
+    begin
       Continue;
+    end;
     if Kind in ViewerKinds then
-      Visualizer := TAtlasIdeViewerVisualizer.Create(Kind)
+    begin
+      Visualizer := TAtlasIdeViewerVisualizer.Create(Kind);
+    end
     else
+    begin
       Visualizer := TAtlasIdeVisualizer.Create(Kind);
+    end;
     try
       Debugger.RegisterDebugVisualizer(Visualizer);
       FRegistered.Add(Visualizer);
@@ -408,8 +438,11 @@ var
   Visualizer: IOTADebuggerVisualizer;
 begin
   if FRegistered = nil then
+  begin
     Exit;
+  end;
   if Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     for Visualizer in FRegistered do
       try
         Debugger.UnregisterDebugVisualizer(Visualizer);
@@ -417,6 +450,7 @@ begin
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Debugger, E);
       end;
+  end;
   FreeAndNil(FRegistered);
 end;
 
@@ -428,13 +462,21 @@ begin
   // Sofort freigeben: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe sie erst über eine
   // eingereihte Nachricht frei.
   if FViewers = nil then
+  begin
     Exit;
+  end;
   Viewers := FViewers.ToArray;
   for Viewer in Viewers do
+  begin
     if Viewer.Group = AGroup then
+    begin
       Viewer.Shutdown;
+    end;
+  end;
   if FViewers.Count = 0 then
+  begin
     FreeAndNil(FViewers);
+  end;
 end;
 
 class function TAtlasIdeVisualizers.KindSource(AKind: TAtlasVisualizerKind): TAtlasViewSource;
@@ -478,10 +520,14 @@ begin
   Result := '';
   if not TAtlasIdeSettings.Current.DebugVisualizers or (Length(ATypeChain) = 0) or
     not TAtlasVisualizers.KindOfChain(ATypeChain, Kind) then
+  begin
     Exit;
+  end;
   Wanted := Options;
   if not (Kind in Wanted.Kinds) then
+  begin
     Exit;
+  end;
   TypeName := ATypeChain[0];
   try
     Result := TAtlasVisualizers.Replacement(Kind, AExpression, TypeName, AEvalResult, Wanted,
@@ -505,15 +551,21 @@ end;
 class procedure TAtlasIdeVisualizers.ViewerOpened(AViewer: TAtlasIdeViewerUpdater);
 begin
   if FViewers = nil then
+  begin
     FViewers := TList<TAtlasIdeViewerUpdater>.Create;
+  end;
   if not FViewers.Contains(AViewer) then
+  begin
     FViewers.Add(AViewer);
+  end;
 end;
 
 class procedure TAtlasIdeVisualizers.ViewerClosed(AViewer: TAtlasIdeViewerUpdater);
 begin
   if FViewers <> nil then
+  begin
     FViewers.Remove(AViewer);
+  end;
 end;
 
 end.

@@ -110,19 +110,100 @@ end;
 
 { /inline }
 
+/// <summary>Bezeichner-Token in Zeile ALine.</summary>
+function IdentifiersOnLine(const ATokens: TArray<TPascalToken>; ALine: Integer): TArray<TPascalToken>;
+var
+  mToken: TPascalToken;
+begin
+  Result := nil;
+  for mToken in ATokens do
+  begin
+    if (mToken.StartPos.Line = ALine) and (mToken.Kind = TPascalTokenKind.Identifier) then
+    begin
+      Result := Result + [mToken];
+    end;
+  end;
+end;
+
+/// <summary>Bettet den ersten Aufruf unter ANames ein, dessen Routine genau einmal in der Datei steht. AWhy hält
+/// den Grund des letzten Versuchs.</summary>
+function InlineFirstCall(const ASource: TInlineSource; const ANames: TArray<TPascalToken>;
+  const AOptions: TInlineOptions; out AAction: TCodeAction; var AWhy: string): Boolean;
+var
+  mToken: TPascalToken;
+  mCall: TInlineCall;
+  mRoutines: TArray<TSyntaxNode>;
+begin
+  Result := False;
+  for mToken in ANames do
+  begin
+    if not TInlineRefactoring.CallAt(ASource.Tree, ASource.Text, mToken.StartPos, mCall) then
+    begin
+      Continue;
+    end;
+    mRoutines := TInlineRefactoring.FindRoutines(ASource.Tree, mCall.Name);
+    if (Length(mRoutines) = 1) and TInlineRefactoring.InlineMethod(ASource, mToken.StartPos, ASource,
+      mRoutines[0], AOptions, AAction, AWhy) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Bettet die erste Variable unter ANames ein.</summary>
+function InlineFirstVariable(const ASource: TInlineSource; const ANames: TArray<TPascalToken>;
+  const AOptions: TInlineOptions; out AAction: TCodeAction): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  Result := False;
+  for mToken in ANames do
+  begin
+    if TInlineRefactoring.InlineVariable(ASource, mToken.StartPos, AOptions, AAction) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Dateiname zur URI des Kontexts; '' ohne URI.</summary>
+function FileNameOf(const AContext: TSlashContext): string;
+begin
+  Result := '';
+  if AContext.Uri <> '' then
+  begin
+    Result := TDocumentUris.ToPath(AContext.Uri);
+  end;
+end;
+
+/// <summary>Erst ein Aufruf einer Routine dieser Datei in Zeile ALine, dann eine Variable. False mit Grund.
+/// </summary>
+function InlineOnLine(const AContext: TSlashContext; ASource: TCommandSource; ALine: Integer;
+  out AAction: TCodeAction; out AWhy: string): Boolean;
+var
+  mInline: TInlineSource;
+  mOptions: TInlineOptions;
+  mNames: TArray<TPascalToken>;
+begin
+  mNames := IdentifiersOnLine(ASource.Tree.Tokens, ALine);
+  mInline := TInlineSource.Create(FileNameOf(AContext), ASource.Text, ASource.Tree);
+  mOptions := TInlineOptions.Default;
+  mOptions.Style := AContext.Style;
+  AWhy := '';
+  Result := InlineFirstCall(mInline, mNames, mOptions, AAction, AWhy) or
+    InlineFirstVariable(mInline, mNames, mOptions, AAction);
+  if not Result and (AWhy = '') then
+  begin
+    AWhy := 'In der Zeile darunter steht kein Aufruf einer Routine dieser Datei und keine einbettbare Variable';
+  end;
+end;
+
 function ExecuteInline(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  Inline_: TInlineSource;
-  Options: TInlineOptions;
-  Token: TPascalToken;
-  Names: TArray<TPascalToken>;
-  Call: TInlineCall;
-  Routines: TArray<TSyntaxNode>;
   Action: TCodeAction;
-  Why, FileName: string;
+  Why: string;
   Next: Integer;
-  Found: Boolean;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -136,58 +217,8 @@ begin
     begin
       Exit(Fail('Unter /inline steht keine Anweisung', AReason));
     end;
-    Names := nil;
-    for Token in Source.Tree.Tokens do
+    if not InlineOnLine(AContext, Source, Next, Action, Why) then
     begin
-      if (Token.StartPos.Line = Next) and (Token.Kind = TPascalTokenKind.Identifier) then
-      begin
-        Names := Names + [Token];
-      end;
-    end;
-    FileName := '';
-    if AContext.Uri <> '' then
-    begin
-      FileName := TDocumentUris.ToPath(AContext.Uri);
-    end;
-    Inline_ := TInlineSource.Create(FileName, Source.Text, Source.Tree);
-    Options := TInlineOptions.Default;
-    Options.Style := AContext.Style;
-    Why := '';
-    Found := False;
-    // Erst ein Aufruf einer Routine dieser Datei, dann eine Variable.
-    for Token in Names do
-    begin
-      if TInlineRefactoring.CallAt(Source.Tree, Source.Text, Token.StartPos, Call) then
-      begin
-        Routines := TInlineRefactoring.FindRoutines(Source.Tree, Call.Name);
-        if Length(Routines) = 1 then
-        begin
-          Found := TInlineRefactoring.InlineMethod(Inline_, Token.StartPos, Inline_, Routines[0], Options, Action,
-            Why);
-          if Found then
-          begin
-            Break;
-          end;
-        end;
-      end;
-    end;
-    if not Found then
-    begin
-      for Token in Names do
-      begin
-        Found := TInlineRefactoring.InlineVariable(Inline_, Token.StartPos, Options, Action);
-        if Found then
-        begin
-          Break;
-        end;
-      end;
-    end;
-    if not Found then
-    begin
-      if Why = '' then
-      begin
-        Why := 'In der Zeile darunter steht kein Aufruf einer Routine dieser Datei und keine einbettbare Variable';
-      end;
       Exit(Fail('/inline: ' + Why, AReason));
     end;
     AEdits := Action.Edits + [Source.RemoveCommand];

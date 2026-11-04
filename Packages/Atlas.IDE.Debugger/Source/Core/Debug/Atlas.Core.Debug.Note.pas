@@ -137,8 +137,12 @@ var
 begin
   mName := LowerCase(StringReplace(StringReplace(AName, '_', '', [rfReplaceAll]), '-', '', [rfReplaceAll]));
   for mWord in SecretWords do
+  begin
     if Pos(mWord, mName) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -166,25 +170,41 @@ begin
     // Ein Name …
     mNameStart := mIndex;
     while (mIndex <= Length(Result)) and IsNameChar(Result[mIndex]) do
+    begin
       Inc(mIndex);
+    end;
     mName := Copy(Result, mNameStart, mIndex - mNameStart);
     if not TAtlasDebugNote.IsSecretName(mName) then
+    begin
       Continue;
+    end;
     // … gefolgt von „:=“, „=“ oder „:“ (mit Leerraum).
     mValueStart := mIndex;
     while (mValueStart <= Length(Result)) and (Result[mValueStart] = ' ') do
+    begin
       Inc(mValueStart);
+    end;
     if (mValueStart < Length(Result)) and (Result[mValueStart] = ':') and (Result[mValueStart + 1] = '=') then
-      Inc(mValueStart, 2)
+    begin
+      Inc(mValueStart, 2);
+    end
     else if (mValueStart <= Length(Result)) and ((Result[mValueStart] = '=') or (AColon and
       (Result[mValueStart] = ':'))) then
-      Inc(mValueStart)
-    else
-      Continue;
-    while (mValueStart <= Length(Result)) and (Result[mValueStart] = ' ') do
+    begin
       Inc(mValueStart);
+    end
+    else
+    begin
+      Continue;
+    end;
+    while (mValueStart <= Length(Result)) and (Result[mValueStart] = ' ') do
+    begin
+      Inc(mValueStart);
+    end;
     if mValueStart > Length(Result) then
+    begin
       Break;
+    end;
     // Wert: in Hochkommas bzw. Anführungszeichen bis zum schließenden, sonst bis Leerraum, „;“, „,“ oder „)“.
     mValueEnd := mValueStart;
     if CharInSet(Result[mValueStart], ['''', '"']) then
@@ -192,16 +212,26 @@ begin
       mQuote := Result[mValueStart];
       mValueEnd := mValueStart + 1;
       while (mValueEnd <= Length(Result)) and (Result[mValueEnd] <> mQuote) do
+      begin
         Inc(mValueEnd);
+      end;
       if mValueEnd <= Length(Result) then
+      begin
         Inc(mValueEnd);
+      end;
     end
     else
+    begin
       while (mValueEnd <= Length(Result)) and not CharInSet(Result[mValueEnd], [' ', #9, ';', ',', ')', #13, #10])
         do
+      begin
         Inc(mValueEnd);
+      end;
+    end;
     if mValueEnd = mValueStart then
+    begin
       Continue;
+    end;
     Result := Copy(Result, 1, mValueStart - 1) + TAtlasDebugNote.Mask + Copy(Result, mValueEnd, MaxInt);
     mIndex := mValueStart + Length(TAtlasDebugNote.Mask);
   end;
@@ -225,13 +255,19 @@ begin
   Result := nil;
   AStart := 0;
   if (Length(ALines) = 0) or (ALine < AFirstLine) or (ALine >= AFirstLine + Length(ALines)) then
+  begin
     Exit;
+  end;
   mFrom := ALine - AContext;
   if mFrom < AFirstLine then
+  begin
     mFrom := AFirstLine;
+  end;
   mTo := ALine + AContext;
   if mTo > AFirstLine + High(ALines) then
+  begin
     mTo := AFirstLine + High(ALines);
+  end;
   AStart := mFrom;
   Result := Copy(ALines, mFrom - AFirstLine, mTo - mFrom + 1);
 end;
@@ -249,18 +285,24 @@ begin
   for mIndex := 0 to Min(Length(AExceptions), AMax) - 1 do
   begin
     if Result <> '' then
+    begin
       Result := Result + #13#10#13#10;
+    end;
     Result := Result + Redact(TrimRight(AExceptions[mIndex].CopyText));
   end;
   if Result <> '' then
+  begin
     Result := Result + #13#10;
+  end;
 end;
 
 function Shortened(const AText: string): string;
 begin
   Result := AText;
   if Length(Result) > TAtlasDebugNote.MaxLineLength then
+  begin
     Result := Copy(Result, 1, TAtlasDebugNote.MaxLineLength - 1) + '…';
+  end;
 end;
 
 class function TAtlasDebugNote.Markdown(const AData: TAtlasDebugNoteData; const ATexts: TAtlasDebugNoteTexts): string;
@@ -274,7 +316,9 @@ var
   procedure Field(const ALabel, AValue: string);
   begin
     if AValue <> '' then
+    begin
       mLines.Append('- **').Append(ALabel).Append(':** ').Append(AValue).Append(#13#10);
+    end;
   end;
 
 begin
@@ -285,17 +329,23 @@ begin
     Field(ATexts.Configuration, AData.Configuration);
     Field(ATexts.TargetPlatform, AData.TargetPlatform);
     if AData.Time > 0 then
+    begin
       Field(ATexts.Time, FormatDateTime('yyyy-mm-dd hh:nn:ss', AData.Time));
+    end;
     Field(ATexts.Thread, AData.Thread);
     // Ort mit Ausschnitt.
     mLines.Append(#13#10).Append('## ').Append(ATexts.Location).Append(#13#10#13#10);
     if (AData.FileName = '') or (AData.Line <= 0) then
-      mLines.Append(ATexts.NoLocation).Append(#13#10)
+    begin
+      mLines.Append(ATexts.NoLocation).Append(#13#10);
+    end
     else
     begin
       mLines.Append('`').Append(ExtractFileName(AData.FileName)).Append(':').Append(AData.Line).Append('`');
       if AData.Routine <> '' then
+      begin
         mLines.Append(' – `').Append(AData.Routine).Append('`');
+      end;
       mLines.Append(#13#10);
       mExcerpt := Excerpt(AData.Source, AData.SourceFirstLine, AData.Line, ContextLines, mStart);
       if Length(mExcerpt) > 0 then
@@ -305,9 +355,13 @@ begin
         for mIndex := 0 to High(mExcerpt) do
         begin
           if mStart + mIndex = AData.Line then
-            mText := '> '
+          begin
+            mText := '> ';
+          end
           else
+          begin
             mText := '  ';
+          end;
           mText := mText + StringOfChar(' ', mWidth - Length(IntToStr(mStart + mIndex))) + IntToStr(mStart + mIndex) +
             ' ' + Shortened(RedactCode(TrimRight(mExcerpt[mIndex])));
           mLines.Append(TTextAnonymizer.FenceSafe(mText)).Append(#13#10);
@@ -330,9 +384,13 @@ begin
         Inc(mIndex);
         mText := '`' + Shortened(mFrame.Header) + '`';
         if mFrame.HasSource then
+        begin
           mText := mText + ' (' + ExtractFileName(mFrame.FileName) + ':' + IntToStr(mFrame.Line) + ')';
+        end;
         if mFrame.Own then
+        begin
           mText := '**' + mText + '**';
+        end;
         mLines.Append('- ').Append(mText).Append(#13#10);
       end;
     end;
@@ -342,12 +400,18 @@ begin
       mLines.Append(#13#10).Append('## ').Append(ATexts.LastException).Append(#13#10#13#10);
       mLines.Append('**').Append(AData.Exception.ExceptionClass).Append('**');
       if AData.Exception.Message <> '' then
+      begin
         mLines.Append(': ').Append(Shortened(Redact(AData.Exception.Message)));
+      end;
       mLines.Append(#13#10);
       if AData.Exception.LocationText <> '' then
+      begin
         mLines.Append(#13#10).Append('`').Append(AData.Exception.LocationText).Append('`').Append(#13#10);
+      end;
       if AData.Exception.Count > 1 then
+      begin
         mLines.Append(#13#10).Append(Format(ATexts.Count, [AData.Exception.Count])).Append(#13#10);
+      end;
     end;
     Result := TrimRight(mLines.ToString) + #13#10;
   finally
