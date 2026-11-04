@@ -1,5 +1,11 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
+- Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
+- Einzige Ausnahme: `// lsp-ignore: metric-parameter-count` an `PaintText` in Pairs (Signatur der Open Tools API).
+- Offen: Delphi-Build (IDE- und UI-Units übersetzen nur mit Delphi) und Handtests, vor allem Mehrere Einfügemarken (Tasten samt Strg+K, Alt+Klick, Rückgängig), Änderungsmarken und Zeilenhistorie, Bezeichner mitziehen, Minimap, Mitglieder herauslösen.
+
 ## NameResolver in Teile zerlegt (04.11.2026, Branch `claude/project-thread-ehlyuz` auf `Pilot-2.0.0-beta.1`)
 - Ziel: `Atlas.Common.Semantics.NameResolver` (5421 Zeilen, Klasse mit 166 Elementen, 78 Atlas-Befunde) ohne Befunde mit Metriken, ohne Grenzwerte zu ändern. Jetzt 14 Units `Atlas.Common.Semantics.NameResolver.*`, alle 0 Befunde.
 - Aufbau: `TNameResolver` ist Fassade (37 Elemente) über `TResolverCore` (`.Core`), der die Teile in Reihenfolge anlegt und rückwärts freigibt: `Place`, `Units`, `Lookup`, `Typing`, `Members`, `Locals`, `Expressions`, `Chains`, `Candidates`, `Queries`. Gemeinsame Teile reicht der Record `TResolverParts` (`.Expressions`) weiter; `Typing.Infer` setzt der Kern als Closure auf die Ausdrücke. Typen und Konstanten in `.Symbols`.
