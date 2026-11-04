@@ -1191,6 +1191,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Outline\Atlas.UI.Outline.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Outline.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas"/>

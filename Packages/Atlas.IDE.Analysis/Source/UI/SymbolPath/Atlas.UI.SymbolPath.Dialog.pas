@@ -99,107 +99,142 @@ const
 
 { TAtlasSymbolPathDialog }
 
+type
+  /// <summary>Abstände des Dialogs in Bildpunkten (nach CurrentPPI).</summary>
+  TDialogLayout = record
+    Gap: Integer;
+    LabelWidth: Integer;
+    EditWidth: Integer;
+    /// <summary>Abstand zwischen zwei Zeilen.</summary>
+    Spacing: Integer;
+  end;
+
+function LayoutOf(ADialog: TAtlasSymbolPathDialog): TDialogLayout;
+begin
+  Result.Gap := MulDiv(12, ADialog.CurrentPPI, 96);
+  Result.LabelWidth := MulDiv(130, ADialog.CurrentPPI, 96);
+  Result.EditWidth := MulDiv(360, ADialog.CurrentPPI, 96);
+  Result.Spacing := MulDiv(8, ADialog.CurrentPPI, 96);
+end;
+
+function AddLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string; ATop: Integer;
+  AFocus: TWinControl): TLabel;
+begin
+  Result := TLabel.Create(ADialog);
+  Result.Parent := ADialog;
+  Result.Left := ALayout.Gap;
+  Result.Top := ATop + MulDiv(3, ADialog.CurrentPPI, 96);
+  Result.Caption := AText;
+  Result.FocusControl := AFocus;
+end;
+
+function NewEdit(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; ATop: Integer): TEdit;
+begin
+  Result := TEdit.Create(ADialog);
+  Result.Parent := ADialog;
+  Result.Left := ALayout.Gap + ALayout.LabelWidth;
+  Result.Top := ATop;
+  Result.Width := ALayout.EditWidth;
+  Result.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathInputHint);
+  Result.OnChange := ADialog.EditChange;
+  Result.OnKeyDown := ADialog.EditKeyDown;
+  Result.OnEnter := ADialog.ControlEnter;
+end;
+
+/// <summary>„Höchstens Schritte“ mit Drehfeld und „Alle gleich kurzen Wege“ ab AY; AY steht danach darunter.</summary>
+procedure BuildOptions(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; var AY: Integer);
+begin
+  ADialog.FSteps := TEdit.Create(ADialog);
+  ADialog.FSteps.Parent := ADialog;
+  ADialog.FSteps.Left := ALayout.Gap + ALayout.LabelWidth;
+  ADialog.FSteps.Top := AY;
+  ADialog.FSteps.Width := MulDiv(50, ADialog.CurrentPPI, 96);
+  ADialog.FSteps.NumbersOnly := True;
+  ADialog.FSteps.OnEnter := ADialog.ControlEnter;
+  ADialog.FStepsUpDown := TUpDown.Create(ADialog);
+  ADialog.FStepsUpDown.Parent := ADialog;
+  ADialog.FStepsUpDown.Associate := ADialog.FSteps;
+  ADialog.FStepsUpDown.Min := 1;
+  ADialog.FStepsUpDown.Max := MaxSteps;
+  ADialog.FStepsUpDown.Position := DefaultSteps;
+  AddLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
+    ADialog.FSteps);
+  Inc(AY, ADialog.FSteps.Height + ALayout.Spacing);
+  ADialog.FAll := TCheckBox.Create(ADialog);
+  ADialog.FAll.Parent := ADialog;
+  ADialog.FAll.Left := ALayout.Gap + ALayout.LabelWidth;
+  ADialog.FAll.Top := AY;
+  ADialog.FAll.Width := ALayout.EditWidth;
+  ADialog.FAll.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathAll);
+  ADialog.FAll.OnEnter := ADialog.ControlEnter;
+  Inc(AY, ADialog.FAll.Height + ALayout.Spacing);
+end;
+
+/// <summary>Meldungszeile und die Knöpfe „Suchen“ und „Abbrechen“ ab AY; danach die Höhe des Dialogs.</summary>
+procedure BuildButtons(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; AY: Integer);
+begin
+  ADialog.FMessage := TLabel.Create(ADialog);
+  ADialog.FMessage.Parent := ADialog;
+  ADialog.FMessage.Left := ALayout.Gap;
+  ADialog.FMessage.Top := AY;
+  ADialog.FMessage.Font.Color := clRed;
+  ADialog.FMessage.ShowAccelChar := False;
+  Inc(AY, ADialog.FMessage.Height + ALayout.Spacing);
+  ADialog.FCancel := TButton.Create(ADialog);
+  ADialog.FCancel.Parent := ADialog;
+  ADialog.FCancel.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCancel);
+  ADialog.FCancel.Cancel := True;
+  ADialog.FCancel.ModalResult := mrCancel;
+  ADialog.FCancel.Top := AY;
+  ADialog.FCancel.Left := ADialog.ClientWidth - ALayout.Gap - ADialog.FCancel.Width;
+  ADialog.FSearch := TButton.Create(ADialog);
+  ADialog.FSearch.Parent := ADialog;
+  ADialog.FSearch.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathSearch);
+  ADialog.FSearch.Default := True;
+  ADialog.FSearch.Top := AY;
+  ADialog.FSearch.Left := ADialog.FCancel.Left - ALayout.Spacing - ADialog.FSearch.Width;
+  ADialog.FSearch.OnClick := ADialog.SearchClick;
+  ADialog.ClientHeight := AY + ADialog.FSearch.Height + ALayout.Gap;
+end;
+
+/// <summary>Vorschlagsliste über den Feldern darunter (erst beim Tippen sichtbar) und Zeitgeber der Pause.</summary>
+procedure BuildList(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout);
+begin
+  ADialog.FList := TListBox.Create(ADialog);
+  ADialog.FList.Parent := ADialog;
+  ADialog.FList.Visible := False;
+  ADialog.FList.Width := ALayout.EditWidth;
+  ADialog.FList.Height := MulDiv(160, ADialog.CurrentPPI, 96);
+  ADialog.FList.OnKeyDown := ADialog.ListKeyDown;
+  ADialog.FList.OnDblClick := ADialog.ListDblClick;
+  ADialog.FTimer := TTimer.Create(ADialog);
+  ADialog.FTimer.Enabled := False;
+  ADialog.FTimer.Interval := SuggestDelayMs;
+  ADialog.FTimer.OnTimer := ADialog.TimerTick;
+end;
+
 constructor TAtlasSymbolPathDialog.CreateDialog(AOwner: TComponent; const ASuggest: TAtlasSymbolPathSuggest);
 var
-  Y, Gap, LabelWidth, EditWidth: Integer;
-
-  function AddLabel(const AText: string; ATop: Integer; AFocus: TWinControl): TLabel;
-  begin
-    Result := TLabel.Create(Self);
-    Result.Parent := Self;
-    Result.Left := Gap;
-    Result.Top := ATop + MulDiv(3, CurrentPPI, 96);
-    Result.Caption := AText;
-    Result.FocusControl := AFocus;
-  end;
-
-  function NewEdit(ATop: Integer): TEdit;
-  begin
-    Result := TEdit.Create(Self);
-    Result.Parent := Self;
-    Result.Left := Gap + LabelWidth;
-    Result.Top := ATop;
-    Result.Width := EditWidth;
-    Result.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathInputHint);
-    Result.OnChange := EditChange;
-    Result.OnKeyDown := EditKeyDown;
-    Result.OnEnter := ControlEnter;
-  end;
-
+  mLayout: TDialogLayout;
+  mY: Integer;
 begin
   inherited CreateNew(AOwner);
   FSuggest := ASuggest;
   Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
-  Gap := MulDiv(12, CurrentPPI, 96);
-  LabelWidth := MulDiv(130, CurrentPPI, 96);
-  EditWidth := MulDiv(360, CurrentPPI, 96);
-  ClientWidth := Gap * 2 + LabelWidth + EditWidth;
-  Y := Gap;
-  FFrom := NewEdit(Y);
-  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), Y, FFrom);
-  Inc(Y, FFrom.Height + MulDiv(8, CurrentPPI, 96));
-  FTo := NewEdit(Y);
-  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), Y, FTo);
-  Inc(Y, FTo.Height + MulDiv(8, CurrentPPI, 96));
-  FSteps := TEdit.Create(Self);
-  FSteps.Parent := Self;
-  FSteps.Left := Gap + LabelWidth;
-  FSteps.Top := Y;
-  FSteps.Width := MulDiv(50, CurrentPPI, 96);
-  FSteps.NumbersOnly := True;
-  FSteps.OnEnter := ControlEnter;
-  FStepsUpDown := TUpDown.Create(Self);
-  FStepsUpDown.Parent := Self;
-  FStepsUpDown.Associate := FSteps;
-  FStepsUpDown.Min := 1;
-  FStepsUpDown.Max := MaxSteps;
-  FStepsUpDown.Position := DefaultSteps;
-  AddLabel(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), Y, FSteps);
-  Inc(Y, FSteps.Height + MulDiv(8, CurrentPPI, 96));
-  FAll := TCheckBox.Create(Self);
-  FAll.Parent := Self;
-  FAll.Left := Gap + LabelWidth;
-  FAll.Top := Y;
-  FAll.Width := EditWidth;
-  FAll.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathAll);
-  FAll.OnEnter := ControlEnter;
-  Inc(Y, FAll.Height + MulDiv(8, CurrentPPI, 96));
-  FMessage := TLabel.Create(Self);
-  FMessage.Parent := Self;
-  FMessage.Left := Gap;
-  FMessage.Top := Y;
-  FMessage.Font.Color := clRed;
-  FMessage.ShowAccelChar := False;
-  Inc(Y, FMessage.Height + MulDiv(8, CurrentPPI, 96));
-  FCancel := TButton.Create(Self);
-  FCancel.Parent := Self;
-  FCancel.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCancel);
-  FCancel.Cancel := True;
-  FCancel.ModalResult := mrCancel;
-  FCancel.Top := Y;
-  FCancel.Left := ClientWidth - Gap - FCancel.Width;
-  FSearch := TButton.Create(Self);
-  FSearch.Parent := Self;
-  FSearch.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathSearch);
-  FSearch.Default := True;
-  FSearch.Top := Y;
-  FSearch.Left := FCancel.Left - MulDiv(8, CurrentPPI, 96) - FSearch.Width;
-  FSearch.OnClick := SearchClick;
-  ClientHeight := Y + FSearch.Height + Gap;
-  // Vorschlagsliste über den Feldern darunter; erst beim Tippen sichtbar.
-  FList := TListBox.Create(Self);
-  FList.Parent := Self;
-  FList.Visible := False;
-  FList.Width := EditWidth;
-  FList.Height := MulDiv(160, CurrentPPI, 96);
-  FList.OnKeyDown := ListKeyDown;
-  FList.OnDblClick := ListDblClick;
-  FTimer := TTimer.Create(Self);
-  FTimer.Enabled := False;
-  FTimer.Interval := SuggestDelayMs;
-  FTimer.OnTimer := TimerTick;
+  mLayout := LayoutOf(Self);
+  ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
+  mY := mLayout.Gap;
+  FFrom := NewEdit(Self, mLayout, mY);
+  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
+  Inc(mY, FFrom.Height + mLayout.Spacing);
+  FTo := NewEdit(Self, mLayout, mY);
+  AddLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathTo), mY, FTo);
+  Inc(mY, FTo.Height + mLayout.Spacing);
+  BuildOptions(Self, mLayout, mY);
+  BuildButtons(Self, mLayout, mY);
+  BuildList(Self, mLayout);
   ActiveControl := FFrom;
 end;
 
