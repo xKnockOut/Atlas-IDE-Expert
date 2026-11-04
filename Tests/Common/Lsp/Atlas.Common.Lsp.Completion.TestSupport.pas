@@ -127,10 +127,14 @@ function DataNamesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
 /// <summary>TCompletionGuard.GuardItems an APosition mit Freigabe AStyle.</summary>
 function GuardAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
   ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionLists.Collect an APosition mit Fuzzy-Matching.</summary>
+function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; const APostfix: TPostfixOptions;
+  const AOnPartial: TCompletionPartialProc): TCompletionItems;
 
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Completion.Forms,
   Atlas.Common.Lsp.Completion.Methods,
@@ -242,7 +246,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker), AMatching);
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker), AMatching);
   finally
     Tree.Free;
   end;
@@ -394,6 +398,19 @@ begin
     mSettings.FreeStyle := AStyle;
     mRequest.Settings := mSettings;
     Result := TCompletionGuard.GuardItems(mRequest, ANewLine, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function CollectAt(const ALookup: TEnumLookup; const APosition: TTextPosition; const APostfix: TPostfixOptions;
+  const AOnPartial: TCompletionPartialProc): TCompletionItems;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionLists.Collect(mRequest, APostfix, AOnPartial);
   finally
     mRequest.Free;
   end;
