@@ -24,26 +24,18 @@ uses
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.TextDocumentSync,
-  Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Pascal.FormatRoutines,
-  Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Query.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.Baseline,
   Shell.Composition.Status,
   Shell.Composition.Contract,
   Shell.Composition.Workspaces,
@@ -61,17 +53,13 @@ uses
   Shell.Composition.IdeArea,
   Shell.Composition.EditingArea,
   Shell.Composition.IndexArea,
+  Shell.Composition.Capabilities,
   Shell.Composition.ServerCommands,
-  Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
-  Atlas.Common.Lsp.Processes,
-  Atlas.Common.Lsp.QualifiedNames,
-  Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Logging.Providers.RecentSink,
-  Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -94,13 +82,10 @@ uses
 type
   TServerComposition = class
   private
-    FTransport: IJsonRpcTransport;
-    /// <summary>Mitschnitt (--trace) in FTransport, nicht besitzend; nil ohne Mitschnitt.</summary>
-    FTracing: TJsonRpcTracingTransport;
-    FLogger: ILogger;
-    /// <summary>Anonymisiert das Server-Log (#647) und den Status im Diagnosepaket (#1356); kennt alle Namen der
-    /// Projekte. Ohne --log bzw. mit --log-names nur für das Paket; nil nur ohne CreateForStdio.</summary>
-    FLogAnonymizer: ILogAnonymizer;
+    /// <summary>Logger, Transport, Mitschnitt (--trace), letzte Logzeilen (#108) und Anonymisierer (#647, #1356).
+    /// Create setzt Logger und Transport; Mitschnitt, Logzeilen und Anonymisierer nur CreateForStdio, sonst nil.
+    /// Der Mitschnitt liegt nicht besitzend in Transport.</summary>
+    FChannel: TShellStdioChannel;
     /// <summary>Teilwurzel Protokoll: Verteiler, Statistik, letzte Nachrichten, Lebenszyklus, Absturzfälle.</summary>
     FProtocol: TShellProtocol;
     /// <summary>Teilwurzel Sitzung: Diagnoselog, Wächter des Editor-Prozesses, Client, Endgrund, Zeitlimit.</summary>
@@ -123,8 +108,6 @@ type
     FEditingArea: TShellEditingArea;
     /// <summary>Teilwurzel Index: Symbolindex, Uses-Graph, Ordner des Arbeitsbereichs und Ereignisse des Aufbaus.</summary>
     FIndexArea: TShellIndexArea;
-    /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
-    FRecentLog: IRecentLogLines;
     FConnection: TJsonRpcConnection;
     /// <summary>Arbeitsbereiche, Einstellungen, Ordner und was je Datei aus ihnen folgt.</summary>
     FCore: TShellCore;
@@ -205,7 +188,6 @@ type
     procedure FreeAnalysisFeatures;
     /// <summary>Teil von FreeFeatures: Vervollständigung, Code-Aktionen, Befehle, IDE und Protokoll.</summary>
     procedure FreeCodeFeatures;
-    class function BuildCapabilities: TJSONObject; static;
   public const
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
@@ -240,7 +222,6 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Diagnostics.CheckProfile,
-  Atlas.Common.Diagnostics.ServerPackage,
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
@@ -257,8 +238,8 @@ uses
 constructor TServerComposition.Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
 begin
   inherited Create;
-  FTransport := ATransport;
-  FLogger := ALogger;
+  FChannel.Transport := ATransport;
+  FChannel.Logger := ALogger;
   WireProtocol;
   WireDocuments;
   WireEditing;
@@ -269,11 +250,11 @@ begin
   WireCommands;
   WireIde;
   FProtocol.Lifecycle.OnInitialized := ClientInitialized;
-  FConnection := TJsonRpcConnection.Create(FTransport, FProtocol.Dispatcher);
+  FConnection := TJsonRpcConnection.Create(FChannel.Transport, FProtocol.Dispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
     begin
-      FLogger.Error('Fehler bei der Verarbeitung: ' + FSession.DescribeFailure(AError));
+      FChannel.Logger.Error('Fehler bei der Verarbeitung: ' + FSession.DescribeFailure(AError));
     end;
   FProtocol.Lifecycle.OnExit :=
     procedure
@@ -287,7 +268,7 @@ procedure TServerComposition.WireProtocol;
 var
   mServices: TShellProtocolServices;
 begin
-  mServices.Logger := FLogger;
+  mServices.Logger := FChannel.Logger;
   mServices.TimeoutMs := RequestTimeoutMs;
   mServices.Capabilities := LifecycleCapabilities;
   FProtocol := TShellProtocol.Create(mServices);
@@ -295,7 +276,7 @@ end;
 
 function TServerComposition.LifecycleCapabilities: TJSONObject;
 begin
-  Result := BuildCapabilities;
+  Result := TShellCapabilities.Build;
   // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
   FDiagnosticsArea.ApplyClientCapabilities(FProtocol.Lifecycle.InitializeParams, Result);
 end;
@@ -306,7 +287,7 @@ var
 begin
   mNotification := TJsonRpcMessages.Notification(AMethod, AParams);
   try
-    FTransport.WriteMessage(mNotification);
+    FChannel.Transport.WriteMessage(mNotification);
   finally
     mNotification.Free;
   end;
@@ -314,7 +295,7 @@ end;
 
 procedure TServerComposition.LogDebug(const AText: string);
 begin
-  FLogger.Debug(AText);
+  FChannel.Logger.Debug(AText);
 end;
 
 function TServerComposition.CurrentRequestTimeout: Cardinal;
@@ -371,8 +352,8 @@ var
 begin
   FCompilerProcess := TProcessRunner.Create;
   mServices := Default(TShellCompileSetupServices);
-  mServices.Logger := FLogger;
-  mServices.Transport := FTransport;
+  mServices.Logger := FChannel.Logger;
+  mServices.Transport := FChannel.Transport;
   mServices.Process := FCompilerProcess;
   mServices.Workspaces :=
     function: TShellWorkspaceRegistry
@@ -403,8 +384,8 @@ begin
   WireCrashCases;
   WireCompile;
   mServices := Default(TShellDiagnosticsAreaServices);
-  mServices.Logger := FLogger;
-  mServices.Transport := FTransport;
+  mServices.Logger := FChannel.Logger;
+  mServices.Transport := FChannel.Transport;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   // Closures: Kern und Index entstehen erst nach den Diagnosen (WireWorkspaces, WireIndex).
@@ -466,8 +447,8 @@ begin
     end;
   mServices.Editing.Documents := FDocuments;
   mServices.Editing.ReadText := ReadSourceText;
-  mServices.Slash.Transport := FTransport;
-  mServices.Slash.Logger := FLogger;
+  mServices.Slash.Transport := FChannel.Transport;
+  mServices.Slash.Logger := FChannel.Logger;
   mServices.Slash.Dispatcher := FProtocol.Dispatcher;
   mServices.Slash.ReadText := ReadSourceText;
   // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
@@ -483,7 +464,7 @@ begin
     begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
       begin
-        FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
+        FChannel.Logger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
       end;
     end;
   mServices.Slash.TestUnitContextFor := TestUnitContextFor;
@@ -539,8 +520,8 @@ end;
 function TServerComposition.CoreServices: TShellCoreServices;
 begin
   Result := Default(TShellCoreServices);
-  Result.Logger := FLogger;
-  Result.Transport := FTransport;
+  Result.Logger := FChannel.Logger;
+  Result.Transport := FChannel.Transport;
   Result.Documents := FDocuments;
   Result.Index :=
     function: ISymbolIndex
@@ -581,7 +562,7 @@ begin
   Result.Anonymizer :=
     function: ILogAnonymizer
     begin
-      Result := FLogAnonymizer;
+      Result := FChannel.Anonymizer;
     end;
   Result.ClientName :=
     function: string
@@ -661,7 +642,7 @@ begin
   Result.Anonymizer :=
     function: ILogAnonymizer
     begin
-      Result := FLogAnonymizer;
+      Result := FChannel.Anonymizer;
     end;
   Result.ProjectStarted :=
     procedure
@@ -694,7 +675,7 @@ procedure TServerComposition.WireSession;
 var
   mServices: TShellSessionServices;
 begin
-  mServices.Logger := FLogger;
+  mServices.Logger := FChannel.Logger;
   mServices.Documents := FDocuments;
   mServices.Index := Index;
   mServices.Dispatcher := FProtocol.Dispatcher;
@@ -716,7 +697,7 @@ var
   mServices: TShellCodeAreaServices;
 begin
   mServices := Default(TShellCodeAreaServices);
-  mServices.Logger := FLogger;
+  mServices.Logger := FChannel.Logger;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := Index;
@@ -748,7 +729,7 @@ var
   mServices: TShellAnalysisAreaServices;
 begin
   mServices := Default(TShellAnalysisAreaServices);
-  mServices.Logger := FLogger;
+  mServices.Logger := FChannel.Logger;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := Index;
@@ -770,7 +751,7 @@ var
   mServices: TShellCommandAreaServices;
 begin
   mServices := Default(TShellCommandAreaServices);
-  mServices.Logger := FLogger;
+  mServices.Logger := FChannel.Logger;
   mServices.Dispatcher := FProtocol.Dispatcher;
   CommandStatus(mServices.Status);
   CommandServer(mServices.Server);
@@ -801,17 +782,17 @@ begin
   AServices.RecentLog :=
     function: IRecentLogLines
     begin
-      Result := FRecentLog;
+      Result := FChannel.RecentLog;
     end;
   AServices.Tracing :=
     function: TJsonRpcTracingTransport
     begin
-      Result := FTracing;
+      Result := FChannel.Tracing;
     end;
   AServices.Anonymizer :=
     function: ILogAnonymizer
     begin
-      Result := FLogAnonymizer;
+      Result := FChannel.Anonymizer;
     end;
   AServices.CompilerStatus :=
     procedure(var AStatus: TServerStatus)
@@ -867,8 +848,8 @@ procedure TServerComposition.WireIde;
 var
   mServices: TShellIdeAreaServices;
 begin
-  mServices.Logger := FLogger;
-  mServices.Transport := FTransport;
+  mServices.Logger := FChannel.Logger;
+  mServices.Transport := FChannel.Transport;
   mServices.Dispatcher := FProtocol.Dispatcher;
   // Beim Beenden sind Diagnosen und Compile-Host vor der Teilwurzel IDE fort.
   mServices.Diagnostics :=
@@ -906,7 +887,7 @@ begin
   end;
   if Length(mFolders) = 0 then
   begin
-    FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+    FChannel.Logger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
   end;
   FCore.Configuration.Start;
   for mFolder in mFolders do
@@ -996,20 +977,19 @@ begin
   if Unfinished then
   begin
     // Der Prozess endet gleich: Speicher stehen lassen, statt ihn unter einem laufenden Handler freizugeben.
-    FLogger.Warning('Beim Beenden liefen noch Anfragen; ihre Objekte werden nicht freigegeben');
+    FChannel.Logger.Warning('Beim Beenden liefen noch Anfragen; ihre Objekte werden nicht freigegeben');
   end
   else
   begin
     FreeFeatures;
   end;
-  if FTracing <> nil then
+  if FChannel.Tracing <> nil then
   begin
-    FTracing.OnFailed := nil;
+    FChannel.Tracing.OnFailed := nil;
   end;
   // Statusdatei für get_server_status (#1356) gehört nur dem laufenden Server.
   TServerStatusFile.Delete(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId);
-  FTransport := nil;
-  FLogger := nil;
+  FChannel := Default(TShellStdioChannel);
   inherited;
 end;
 
@@ -1096,72 +1076,15 @@ begin
   mChannel := TShellStdio.Open(AOptions);
   mLogger := mChannel.Logger;
   Result := TServerComposition.Create(mChannel.Transport, mLogger);
-  Result.FTracing := mChannel.Tracing;
-  Result.FRecentLog := mChannel.RecentLog;
-  Result.FLogAnonymizer := mChannel.Anonymizer;
+  Result.FChannel.Tracing := mChannel.Tracing;
+  Result.FChannel.RecentLog := mChannel.RecentLog;
+  Result.FChannel.Anonymizer := mChannel.Anonymizer;
   Result.FCompile.Restricted := AOptions.Restricted;
   Result.FSession.ClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then
   begin
     mLogger.Info('Eingeschränkter Modus (Arbeitsbereich nicht vertrauenswürdig): der Compiler wird nicht gestartet');
   end;
-end;
-
-class function TServerComposition.BuildCapabilities: TJSONObject;
-var
-  Commands: TJSONArray;
-begin
-  // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
-  Result := TJSONObject.Create;
-  Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
-  Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
-  Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
-  Result.AddPair('linkedEditingRangeProvider', TJSONBool.Create(True));
-  Result.AddPair('documentFormattingProvider', TJSONBool.Create(True));
-  // Nur für den Schnellbefehl /uses (#254); Blockabschluss (#179) übernimmt die IDE.
-  Result.AddPair('documentOnTypeFormattingProvider', TLspFormatting.OnTypeCapability);
-  Result.AddPair('documentRangeFormattingProvider', TJSONBool.Create(True));
-  Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
-  Result.AddPair('definitionProvider', TJSONBool.Create(True));
-  Result.AddPair('declarationProvider', TJSONBool.Create(True));
-  Result.AddPair('typeDefinitionProvider', TJSONBool.Create(True));
-  Result.AddPair('hoverProvider', TJSONBool.Create(True));
-  Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
-  Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
-  Result.AddPair('referencesProvider', TJSONBool.Create(True));
-  Result.AddPair('renameProvider', TLspRename.Capability);
-  Result.AddPair('completionProvider', TLspCompletion.Capability);
-  Result.AddPair('signatureHelpProvider', TLspSignatureHelp.Capability);
-  Result.AddPair('typeHierarchyProvider', TJSONBool.Create(True));
-  Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
-  Result.AddPair('implementationProvider', TJSONBool.Create(True));
-  Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
-  Result.AddPair('inlineValueProvider', TJSONBool.Create(True));
-  Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
-  Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
-  Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
-  Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
-  Result.AddPair('colorProvider', TJSONBool.Create(True));
-  Commands := TJSONArray.Create;
-  Commands.Add(StatusCommand);
-  Commands.Add(TShellCrashCases.RetryCommand);
-  Commands.Add(ProcessesCommand);
-  Commands.Add(TShellServerCommands.CompileCommand);
-  Commands.Add(TShellServerCommands.SelectBuildCommand);
-  Commands.Add(TShellServerCommands.SelectProjectCommand);
-  Commands.Add(TShellServerCommands.RebuildIndexCommand);
-  Commands.Add(ClearIndexCommand);
-  Commands.Add(TLspPullDiagnostics.RecheckCommand);
-  Commands.Add(TBugReport.Command);
-  Commands.Add(TServerPackage.Command);
-  Commands.Add(TQualifiedNames.Command);
-  Commands.Add(TEnumValueCommands.Command);
-  Commands.Add(TStringLiteralCommands.PlainTextCommand);
-  Commands.Add(TStringLiteralCommands.ToLiteralCommand);
-  // Editor-Befehl (#97): Clients wie VS Code bieten ihn damit an.
-  Commands.Add(TLspBaseline.Command);
-  Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
-  Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;
 
 function TServerComposition.Run: Integer;
