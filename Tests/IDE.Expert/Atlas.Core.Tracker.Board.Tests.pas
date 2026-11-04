@@ -2,7 +2,7 @@
 
 // Tests des Boards (#1272) ohne Server: Kürzel, Prioritätsstufen, Filter
 // „Nur meine“ und Suche, Zuordnung Zustand → Spalte, Verschieben erlaubt,
-// aktueller Sprint, Zwischenspeicher; Abbildung der Board- und
+// aktueller Sprint, Zwischenspeicher, Workflow-Regeln (Zustandsmaschine von YouTrack); Abbildung der Board- und
 // Sprint-Antworten von YouTrack und GitHub (GraphQL, REST) aus Beispieldateien
 // (Tests\Data\YouTrack, Tests\Data\GitHub) und das Verschieben gegen einen
 // Transport mit festen Antworten. Für die Sprint-Kachel (#1277) Schätzung,
@@ -34,6 +34,10 @@ type
     procedure VisibleFiltersMineAndSearch;
     [Test]
     procedure CanMoveOnlyToOtherColumnWithValue;
+    /// <summary>Übergänge nach Spalten benannt: nur deren Spalten erreichbar; benannte Ereignisse („Beginnen“)
+    /// lassen offen, ohne Zustandsmaschine gilt CanMove.</summary>
+    [Test]
+    procedure TransitionsDecideColumns;
     [Test]
     procedure CurrentSprintContainsNow;
     [Test]
@@ -66,6 +70,17 @@ type
     procedure MoveSendsCommand;
     [Test]
     procedure MoveWithoutRightsFailsWithReason;
+    /// <summary>Feld unter einer Zustandsmaschine: Feld-ID und possibleEvents an der Karte.</summary>
+    [Test]
+    procedure SprintCardsReadWorkflow;
+    /// <summary>Passender Übergang: Kommentar, dann POST auf das Feld mit dem Ereignis.</summary>
+    [Test]
+    procedure MoveFiresTransition;
+    /// <summary>Lehnt YouTrack einen Wert ab (400), folgt der nächste Wert der Spalte; 403 nicht.</summary>
+    [Test]
+    procedure MoveTriesNextValueOfColumn;
+    [Test]
+    procedure WorkflowUrlAndEventJson;
     /// <summary>#1277: Schätzfeld des Boards (Zahl bzw. Zeitraum in Stunden), resolved, Seite des Boards.
     /// </summary>
     [Test]
@@ -124,6 +139,7 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.YouTrackWorkflow,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Adapters.LocalFiles;
@@ -363,6 +379,48 @@ begin
   mSnapshot.Columns[1].OptionId := 'o2';
   mSnapshot.Cards[0].ItemId := 'PVTI_1';
   Assert.IsTrue(TAtlasTrackerBoard.CanMove(mSnapshot, 0, 1));
+end;
+
+function WorkflowSample: TAtlasBoardSnapshot;
+begin
+  Result := TAtlasBoardSnapshot.Empty;
+  Result.Columns := [TAtlasBoardColumn.Create('Offen', TArray<string>.Create('Offen'), '', False),
+    TAtlasBoardColumn.Create('In Arbeit', TArray<string>.Create('In Arbeit'), '', False),
+    TAtlasBoardColumn.Create('Erledigt', TArray<string>.Create('Erledigt'), '', True)];
+  Result.Cards := [Card('ATL-1', 'Offen', nil)];
+  Result.Cards[0].Workflow.StateMachine := True;
+  Result.Cards[0].Workflow.FieldId := '82-11';
+  Result.Cards[0].Workflow.Transitions := [TAtlasBoardTransition.Create('in-arbeit', '')];
+end;
+
+procedure TAtlasTrackerBoardTests.TransitionsDecideColumns;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+begin
+  mSnapshot := WorkflowSample;
+  Assert.IsTrue(TAtlasBoardTransitions.Known(mSnapshot, 0));
+  Assert.AreEqual(0, TAtlasBoardTransitions.Into(mSnapshot.Cards[0], mSnapshot.Columns[1]), 'Kennung "in-arbeit"');
+  Assert.AreEqual(-1, TAtlasBoardTransitions.Into(mSnapshot.Cards[0], mSnapshot.Columns[2]));
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 1));
+  Assert.IsFalse(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 2), 'kein Übergang nach Erledigt');
+  Assert.IsFalse(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 0), 'gleiche Spalte');
+  Assert.AreEqual('in-arbeit', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
+  // Benanntes Ereignis verrät sein Ziel nicht: YouTrack entscheidet.
+  mSnapshot.Cards[0].Workflow.Transitions := mSnapshot.Cards[0].Workflow.Transitions +
+    [TAtlasBoardTransition.Create('beginnen', 'Beginnen')];
+  Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 0));
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 2));
+  Assert.AreEqual('in-arbeit, Beginnen', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
+  // Kein Übergang ab hier: nichts erreichbar.
+  mSnapshot.Cards[0].Workflow.Transitions := nil;
+  Assert.IsTrue(TAtlasBoardTransitions.Known(mSnapshot, 0));
+  Assert.IsFalse(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 1));
+  Assert.AreEqual('', TAtlasBoardTransitions.Names(mSnapshot.Cards[0]));
+  // Ohne Zustandsmaschine: wie CanMove.
+  mSnapshot.Cards[0].Workflow := Default(TAtlasBoardWorkflow);
+  Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 0));
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 2));
+  Assert.IsFalse(TAtlasBoardTransitions.Known(mSnapshot, 5), 'keine Karte');
 end;
 
 procedure TAtlasTrackerBoardTests.CurrentSprintContainsNow;
@@ -642,6 +700,121 @@ begin
   Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
   Assert.AreEqual(403, mResult.Status);
   Assert.IsTrue(Pos('Keine Berechtigung', mResult.Message) > 0);
+end;
+
+procedure TAtlasYouTrackBoardTests.SprintCardsReadWorkflow;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+begin
+  Assert.IsTrue(Pos('possibleEvents(id,presentation)', TAtlasYouTrackBoards.CardFields) > 0);
+  mSnapshot := YouTrackSnapshot;
+  Assert.IsFalse(mSnapshot.Cards[0].Workflow.StateMachine, 'ATL-123 ohne Zustandsmaschine');
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 0, 3));
+  Assert.IsTrue(mSnapshot.Cards[1].Workflow.StateMachine);
+  Assert.AreEqual('82-11', mSnapshot.Cards[1].Workflow.FieldId);
+  Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards[1].Workflow.Transitions)));
+  Assert.AreEqual('start', mSnapshot.Cards[1].Workflow.Transitions[0].Id);
+  Assert.AreEqual('In Arbeit', mSnapshot.Cards[1].Workflow.Transitions[0].Name);
+  Assert.IsTrue(TAtlasBoardTransitions.Known(mSnapshot, 1));
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 1, 1), 'In Arbeit');
+  Assert.IsFalse(TAtlasBoardTransitions.Allowed(mSnapshot, 1, 2), 'Zur Prüfung');
+  Assert.IsTrue(TAtlasBoardTransitions.Allowed(mSnapshot, 1, 3), 'Erledigt');
+end;
+
+procedure TAtlasYouTrackBoardTests.MoveFiresTransition;
+var
+  mTransport: TFakeBoardTransport;
+  mKeep: IAtlasCiTransport;
+  mBoards: IAtlasTrackerBoards;
+  mSnapshot: TAtlasBoardSnapshot;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/issues/ATL-124/comments', '', 200, '{}');
+  mTransport.Answer('https://firma.youtrack.cloud/api/issues/ATL-124/fields/82-11', '', 200, '{}');
+  mSnapshot := YouTrackSnapshot;
+  mBoards := TAtlasYouTrackBoards.Create;
+  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[1], 1, 'Los', 15000);
+  Assert.IsTrue(mResult.Succeeded);
+  Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
+  Assert.IsTrue(Pos('/comments', mTransport.Calls[0]) > 0, 'Kommentar zuerst');
+  Assert.AreEqual('POST', mTransport.Methods[1]);
+  Assert.AreEqual('https://firma.youtrack.cloud/api/issues/ATL-124/fields/82-11?fields=id', mTransport.Calls[1]);
+  Assert.IsTrue(Pos('"start"', mTransport.Bodies[1]) > 0);
+  Assert.IsTrue(Pos('StateMachineIssueCustomField', mTransport.Bodies[1]) > 0);
+  // Abgelehnt: Fehler mit dem Text von YouTrack, ohne Befehl hinterher.
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/issues/ATL-124/fields/82-11', '', 400,
+    '{"error": "bad_request", "error_description": "No event found"}');
+  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[1], 3, '', 15000);
+  Assert.IsFalse(mResult.Succeeded);
+  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual('No event found', mResult.Message);
+  Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
+end;
+
+procedure TAtlasYouTrackBoardTests.MoveTriesNextValueOfColumn;
+var
+  mTransport: TFakeBoardTransport;
+  mKeep: IAtlasCiTransport;
+  mBoards: IAtlasTrackerBoards;
+  mSnapshot: TAtlasBoardSnapshot;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/commands', 'Zustand Offen', 400,
+    '{"error_description": "Workflow: nicht erlaubt"}');
+  mTransport.Answer('https://firma.youtrack.cloud/api/commands', 'Zustand Nachgefragt', 200, '{}');
+  mSnapshot := YouTrackSnapshot;
+  mBoards := TAtlasYouTrackBoards.Create;
+  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 0, '', 15000);
+  Assert.IsTrue(mResult.Succeeded);
+  Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
+  Assert.AreEqual('Zustand Nachgefragt', JsonText(mTransport.Bodies[1], 'query'));
+  // Beide abgelehnt: der letzte Grund.
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/commands', '', 400,
+    '{"error_description": "Workflow: nicht erlaubt"}');
+  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 0, '', 15000);
+  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual('Workflow: nicht erlaubt', mResult.Message);
+  Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
+  // Ohne Recht: kein zweiter Versuch.
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/commands', '', 403, '{}');
+  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 0, '', 15000);
+  Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
+  Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
+end;
+
+procedure TAtlasYouTrackBoardTests.WorkflowUrlAndEventJson;
+var
+  mValue: TJSONValue;
+  mJson: string;
+begin
+  Assert.AreEqual('https://firma.youtrack.cloud/api/issues/ATL-1/fields/82-11?fields=id',
+    TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL-1', '82-11'));
+  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL 1', '82-11'));
+  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(YouTrackTarget, 'ATL-1', '82/11'));
+  Assert.AreEqual('', TAtlasYouTrackWorkflow.FieldUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''),
+    'ATL-1', '82-11'));
+  mJson := TAtlasYouTrackWorkflow.EventJson('82-11', TAtlasBoardTransition.Create('start', 'Beginnen'));
+  Assert.AreEqual('82-11', JsonText(mJson, 'id'));
+  Assert.AreEqual('StateMachineIssueCustomField', JsonText(mJson, '$type'));
+  mValue := TJSONObject.ParseJSONValue(mJson);
+  try
+    Assert.IsTrue(mValue is TJSONObject);
+    Assert.IsTrue(TJSONObject(mValue).Values['event'] is TJSONObject);
+    Assert.AreEqual('start', TJSONObject(TJSONObject(mValue).Values['event']).Values['id'].Value);
+    Assert.AreEqual('Beginnen', TJSONObject(TJSONObject(mValue).Values['event']).Values['presentation'].Value);
+  finally
+    mValue.Free;
+  end;
 end;
 
 { TAtlasGitHubBoardTests }

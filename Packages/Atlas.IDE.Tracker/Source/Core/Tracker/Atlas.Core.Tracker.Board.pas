@@ -65,6 +65,27 @@ type
     class function Create(const AId, AName: string): TAtlasBoardRef; static;
   end;
 
+  /// <summary>Übergang einer Zustandsmaschine (Workflow von YouTrack): Ereignis mit Kennung und Anzeigename.
+  /// </summary>
+  TAtlasBoardTransition = record
+    /// <summary>Kennung des Ereignisses ("in-progress").</summary>
+    Id: string;
+    /// <summary>Anzeigename ("In Progress", "Beginnen").</summary>
+    Name: string;
+    class function Create(const AId, AName: string): TAtlasBoardTransition; static;
+  end;
+
+  /// <summary>Regeln des Spaltenfeldes einer Karte. Steuert eine Zustandsmaschine das Feld (YouTrack
+  /// „StateMachineIssueCustomField“), sind ab dem aktuellen Wert nur die Übergänge in Transitions erlaubt.</summary>
+  TAtlasBoardWorkflow = record
+    /// <summary>Das Spaltenfeld steht unter einer Zustandsmaschine.</summary>
+    StateMachine: Boolean;
+    /// <summary>ID des Feldes am Issue ("82-11"), um einen Übergang auszulösen; '' unbekannt.</summary>
+    FieldId: string;
+    /// <summary>Übergänge ab dem aktuellen Wert.</summary>
+    Transitions: TArray<TAtlasBoardTransition>;
+  end;
+
   /// <summary>Karte je Issue.</summary>
   TAtlasBoardCard = record
   public const
@@ -96,6 +117,9 @@ type
     /// <summary>Schätzung aus dem Schätzfeld des Boards (#1277); nur mit HasPoints.</summary>
     Points: Double;
     HasPoints: Boolean;
+    /// <summary>Workflow-Regeln des Spaltenfeldes (YouTrack); ohne Zustandsmaschine leer. Nicht im
+    /// Zwischenspeicher, ohne Netz wird ohnehin nicht verschoben.</summary>
+    Workflow: TAtlasBoardWorkflow;
     /// <summary>Für „Beginnen“ und die Vorschau.</summary>
     function Issue: TAtlasTrackerIssue;
   end;
@@ -226,6 +250,23 @@ type
     class function TimeValue(const AText: string): TDateTime; static;
   end;
 
+  /// <summary>Workflow-Regeln beim Verschieben: welcher Übergang einer Zustandsmaschine in eine Spalte führt und
+  /// ob eine Spalte nach den Regeln des Trackers erreichbar ist.</summary>
+  TAtlasBoardTransitions = class
+  public
+    /// <summary>Übergang von ACard, der in AColumn führt: Kennung oder Name gleich einem Wert der Spalte oder ihrer
+    /// Beschriftung (ohne Groß- und Kleinschreibung, '-' und '_' wie Leerzeichen); -1 ohne.</summary>
+    class function Into(const ACard: TAtlasBoardCard; const AColumn: TAtlasBoardColumn): Integer; static;
+    /// <summary>Die Zustandsmaschine legt die erreichbaren Spalten sicher fest: Jeder Übergang der Karte ist nach
+    /// einer Spalte des Boards benannt (oder es gibt keinen). Ohne Zustandsmaschine False. Benannte Ereignisse
+    /// ("Beginnen") verraten ihr Ziel nicht; dann entscheidet der Tracker beim Verschieben.</summary>
+    class function Known(const ASnapshot: TAtlasBoardSnapshot; ACard: Integer): Boolean; static;
+    /// <summary>TAtlasTrackerBoard.CanMove und, wenn Known gilt, ein Übergang in die Spalte.</summary>
+    class function Allowed(const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean; static;
+    /// <summary>Namen der Übergänge von ACard mit ", " verbunden; '' ohne.</summary>
+    class function Names(const ACard: TAtlasBoardCard): string; static;
+  end;
+
 implementation
 
 uses
@@ -250,6 +291,14 @@ end;
 { TAtlasBoardRef }
 
 class function TAtlasBoardRef.Create(const AId, AName: string): TAtlasBoardRef;
+begin
+  Result.Id := AId;
+  Result.Name := AName;
+end;
+
+{ TAtlasBoardTransition }
+
+class function TAtlasBoardTransition.Create(const AId, AName: string): TAtlasBoardTransition;
 begin
   Result.Id := AId;
   Result.Name := AName;
@@ -497,6 +546,104 @@ begin
       Result := (ASnapshot.Columns[AColumn].OptionId <> '') and (ASnapshot.Cards[ACard].ItemId <> '');
   else
     Result := Length(ASnapshot.Columns[AColumn].Values) > 0;
+  end;
+end;
+
+{ TAtlasBoardTransitions }
+
+/// <summary>Vergleichsform: klein, ohne Rand, '-' und '_' als Leerzeichen.</summary>
+function Plain(const AText: string): string;
+begin
+  Result := LowerCase(Trim(StringReplace(StringReplace(AText, '-', ' ', [rfReplaceAll]), '_', ' ',
+    [rfReplaceAll])));
+end;
+
+/// <summary>ATransition führt nach Kennung oder Name in AColumn.</summary>
+function LeadsInto(const ATransition: TAtlasBoardTransition; const AColumn: TAtlasBoardColumn): Boolean;
+var
+  mValues: TArray<string>;
+  mValue, mPlain: string;
+begin
+  Result := False;
+  mValues := AColumn.Values + [AColumn.Name];
+  for mValue in mValues do
+  begin
+    mPlain := Plain(mValue);
+    if (mPlain <> '') and ((mPlain = Plain(ATransition.Name)) or (mPlain = Plain(ATransition.Id))) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+class function TAtlasBoardTransitions.Into(const ACard: TAtlasBoardCard; const AColumn: TAtlasBoardColumn): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := High(ACard.Workflow.Transitions) downto 0 do
+  begin
+    if LeadsInto(ACard.Workflow.Transitions[mIndex], AColumn) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>ATransition führt in irgendeine Spalte von ASnapshot.</summary>
+function LeadsAnywhere(const ATransition: TAtlasBoardTransition; const ASnapshot: TAtlasBoardSnapshot): Boolean;
+var
+  mColumn: TAtlasBoardColumn;
+begin
+  Result := False;
+  for mColumn in ASnapshot.Columns do
+  begin
+    Result := Result or LeadsInto(ATransition, mColumn);
+  end;
+end;
+
+class function TAtlasBoardTransitions.Known(const ASnapshot: TAtlasBoardSnapshot; ACard: Integer): Boolean;
+var
+  mTransition: TAtlasBoardTransition;
+begin
+  Result := (ACard >= 0) and (ACard <= High(ASnapshot.Cards)) and ASnapshot.Cards[ACard].Workflow.StateMachine;
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mTransition in ASnapshot.Cards[ACard].Workflow.Transitions do
+  begin
+    Result := Result and LeadsAnywhere(mTransition, ASnapshot);
+  end;
+end;
+
+class function TAtlasBoardTransitions.Allowed(const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean;
+begin
+  Result := TAtlasTrackerBoard.CanMove(ASnapshot, ACard, AColumn);
+  if Result and Known(ASnapshot, ACard) then
+  begin
+    Result := Into(ASnapshot.Cards[ACard], ASnapshot.Columns[AColumn]) >= 0;
+  end;
+end;
+
+class function TAtlasBoardTransitions.Names(const ACard: TAtlasBoardCard): string;
+var
+  mTransition: TAtlasBoardTransition;
+  mName: string;
+begin
+  Result := '';
+  for mTransition in ACard.Workflow.Transitions do
+  begin
+    mName := mTransition.Name;
+    if mName = '' then
+    begin
+      mName := mTransition.Id;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + mName;
   end;
 end;
 

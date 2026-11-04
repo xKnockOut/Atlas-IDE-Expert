@@ -82,7 +82,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
-  Atlas.Core.Tracker.Attach;
+  Atlas.Core.Tracker.Attach,
+  Atlas.Core.Tracker.YouTrackWorkflow;
 
 type
   TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
@@ -301,9 +302,13 @@ type
   //   #1279), die Checkliste aus der Beschreibung (#1273), den Wert des
   //   Spaltenfeldes, den Anmeldenamen des Zuständigen und die Farbe der
   //   Priorität.
-  // - Verschieben: ein Befehl über TAtlasYouTrackTracker.Apply (#1266) mit dem
-  //   Spaltenfeld und dem ersten Wert der Zielspalte, Kommentar im selben
-  //   Befehl.
+  // - Verschieben: Steht das Spaltenfeld unter einer Zustandsmaschine (Workflow
+  //   des Boards) und führt einer ihrer Übergänge in die Zielspalte, wird er
+  //   ausgelöst wie im Board von YouTrack (TAtlasYouTrackWorkflow), Kommentar
+  //   vorher. Sonst ein Befehl über TAtlasYouTrackTracker.Apply (#1266) mit dem
+  //   Spaltenfeld und einem Wert der Zielspalte, Kommentar im selben Befehl;
+  //   lehnt YouTrack den Wert ab (400, z. B. Workflow-Regel), folgt der nächste
+  //   Wert der Spalte.
   // - Sprint-Kachel (#1277): Schätzfeld des Boards (estimationField, Zahl bzw.
   //   Zeitraum in Stunden), Zeitpunkt der Erledigung (resolved) und die
   //   Arbeitstage aus GET /api/admin/timeTrackingSettings/workTimeSettings
@@ -317,7 +322,8 @@ type
     /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
     /// (Schätzung als Zeitraum, #1277).</summary>
     CardFields = 'idReadable,numberInProject,summary,description,resolved,' +
-      'customFields(name,value(name,presentation,login,fullName,minutes,color(background))),' +
+      'customFields(' + TAtlasYouTrackWorkflow.CardFieldParts +
+      ',name,value(name,presentation,login,fullName,minutes,color(background))),' +
       'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
   public
@@ -607,16 +613,7 @@ end;
 
 class function TAtlasYouTrackTracker.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
-  case AStatus of
-    401, 403:
-      Result := TAtlasCiFetchError.Unauthorized;
-    404:
-      Result := TAtlasCiFetchError.NotFound;
-    400:
-      Result := TAtlasCiFetchError.Invalid;
-  else
-    Result := TAtlasCiFetchError.Server;
-  end;
+  Result := TAtlasYouTrackErrors.OfStatus(AStatus);
 end;
 
 function ValidKey(const AKey: string): Boolean;
@@ -1203,24 +1200,8 @@ begin
 end;
 
 class function TAtlasYouTrackTracker.ErrorMessage(const AJson: string): string;
-var
-  mValue: TJSONValue;
 begin
-  Result := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if mValue is TJSONObject then
-    begin
-      Result := TextOf(TJSONObject(mValue), 'error_description');
-      if Result = '' then
-      begin
-        Result := TextOf(TJSONObject(mValue), 'error');
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-  Result := Shorten(Result, 300);
+  Result := TAtlasYouTrackErrors.Message(AJson);
 end;
 
 function FieldTypeOf(AField: TJSONObject): string;
@@ -2448,6 +2429,7 @@ begin
         mCard.Page := mProvider.IssuePage(ATarget, mDetails.Key);
         mCard.ResolvedAt := TimeOf(mIssue, 'resolved');
         ReadFields(mIssue, ASnapshot.Field, ASnapshot.PointsField, mCard);
+        mCard.Workflow := TAtlasYouTrackWorkflow.Find(mIssue, ASnapshot.Field);
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;
     end;
@@ -2598,20 +2580,16 @@ function TAtlasYouTrackBoards.MoveCard(const ATarget: TAtlasTrackerTarget; const
   const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
   ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
-  mChange: TAtlasTrackerWrite;
-  mWriter: IAtlasTrackerWriter;
+  mMove: TAtlasYouTrackMove;
 begin
-  if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) or (Length(ASnapshot.Columns[AColumn].Values) = 0) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
-  end;
-  // Derselbe Schreibweg wie „Beginnen“ und „Beenden“ (#1266): ein Befehl mit Feld, Wert und Kommentar.
-  mChange := TAtlasTrackerWrite.Empty;
-  mChange.StateField := ASnapshot.Field;
-  mChange.State := ASnapshot.Columns[AColumn].Values[0];
-  mChange.Comment := AComment;
-  mWriter := TAtlasYouTrackTracker.Create;
-  Result := mWriter.Apply(ATarget, ATransport, ACard.Key, mChange, ATimeoutMs);
+  // Übergang der Zustandsmaschine bzw. Befehl je Wert der Spalte (Workflow-Regeln, TAtlasYouTrackWorkflow).
+  mMove := Default(TAtlasYouTrackMove);
+  mMove.Target := ATarget;
+  mMove.Transport := ATransport;
+  mMove.Writer := TAtlasYouTrackTracker.Create;
+  mMove.Comment := AComment;
+  mMove.TimeoutMs := ATimeoutMs;
+  Result := TAtlasYouTrackWorkflow.Move(mMove, ASnapshot, ACard, AColumn);
 end;
 
 function TAtlasYouTrackBoards.WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
