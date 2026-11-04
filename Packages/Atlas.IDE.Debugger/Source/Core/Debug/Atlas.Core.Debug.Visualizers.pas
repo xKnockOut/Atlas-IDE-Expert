@@ -130,7 +130,6 @@ type
       const AOptions: TAtlasVisualizerOptions; const AContext: TAtlasVisualizerContext): TAtlasVisualizerView; static;
   end;
 
-  /// <summary>Formatierung ohne Debugger, einzeln getestet.</summary>
   /// <summary>Aufbau der Pixel eines DIB für TAtlasVisualizerFormat.DibPixels.</summary>
   TAtlasDibLayout = record
     Width: Integer;
@@ -144,6 +143,7 @@ type
       ABottomUp: Boolean): TAtlasDibLayout; static;
   end;
 
+  /// <summary>Formatierung ohne Debugger, einzeln getestet.</summary>
   TAtlasVisualizerFormat = class
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
