@@ -536,7 +536,7 @@ var
 begin
   mRect := Rect(ALimit - Canvas.TextWidth(AText) - Scaled(12), ATop + Scaled(3), ALimit, ATop + Scaled(19));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(AState);
+  Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(AState);
   Canvas.Pen.Color := Canvas.Brush.Color;
   Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, Scaled(16), Scaled(16));
   Canvas.Brush.Style := bsClear;
@@ -964,7 +964,7 @@ begin
     end;
   FQuick.OnOpenRow := QuickOpenRow;
   FQuick.OnRowMenu := QuickRowMenu;
-  FQuick.AttachMenu(FMenu);
+  FQuick.Menus.Attach(FMenu);
 end;
 
 procedure TAtlasContinueRecentView.Fill;
@@ -1040,7 +1040,7 @@ begin
   FMenuRow := HitTest(Position.X, Position.Y).Row;
   FResumeItem.Enabled := FMenuRow >= 0;
   // Schnellaktionen der Zeile: nur eingestellte Knöpfe, gesperrte grau.
-  FQuick.PrepareMenu(FMenuRow);
+  FQuick.Menus.Prepare(FMenuRow);
 end;
 
 procedure TAtlasContinueRecentView.ResumeClick(Sender: TObject);
