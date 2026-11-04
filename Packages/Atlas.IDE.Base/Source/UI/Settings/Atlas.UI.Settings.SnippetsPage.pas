@@ -194,6 +194,7 @@ begin
   try
     FList.Items.Clear;
     if FCatalog <> nil then
+    begin
       for Index := 0 to FCatalog.Count - 1 do
       begin
         Entry := FCatalog.Entry(Index);
@@ -202,9 +203,12 @@ begin
         // Herkunft und, falls eine andere Vorlage mit demselben Kürzel gilt, „ersetzt“.
         Detail := OriginText(Entry.Snippet.Origin);
         if FCatalog.Replaced(Index) then
+        begin
           Detail := Detail + ', ' + TAtlasStrings.Text(TAtlasTextId.SnippetsReplaced);
+        end;
         Item.SubItems.Add(Entry.Snippet.Name + ' (' + Detail + ')');
       end;
+    end;
   finally
     FList.Items.EndUpdate;
     FFilling := False;
@@ -220,9 +224,13 @@ end;
 function TAtlasSnippetsPage.Selected: Integer;
 begin
   if (FCatalog = nil) or (FList.Selected = nil) then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else
+  begin
     Result := FList.Selected.Index;
+  end;
 end;
 
 procedure TAtlasSnippetsPage.ShowEntry;
@@ -267,7 +275,9 @@ end;
 procedure TAtlasSnippetsPage.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if not FFilling then
+  begin
     ShowEntry;
+  end;
 end;
 
 procedure TAtlasSnippetsPage.FieldChange(Sender: TObject);
@@ -278,7 +288,9 @@ var
 begin
   Index := Selected;
   if FFilling or (Index < 0) or not FCatalog.Editable(Index) then
+  begin
     Exit;
+  end;
   Snippet := FCatalog.Entry(Index).Snippet;
   Snippet.Prefix := Trim(FPrefix.Text);
   Snippet.Name := Trim(FName.Text);
@@ -293,16 +305,22 @@ end;
 procedure TAtlasSnippetsPage.NewClick(Sender: TObject);
 begin
   if FCatalog = nil then
+  begin
     Exit;
+  end;
   FillList(FCatalog.AddNew);
   if FPrefix.CanFocus and FPrefix.Showing then
+  begin
     FPrefix.SetFocus;
+  end;
 end;
 
 procedure TAtlasSnippetsPage.CopyClick(Sender: TObject);
 begin
   if Selected >= 0 then
+  begin
     FillList(FCatalog.CopyAsOwn(Selected));
+  end;
 end;
 
 procedure TAtlasSnippetsPage.DeleteClick(Sender: TObject);
@@ -311,10 +329,14 @@ var
 begin
   Index := Selected;
   if (Index < 0) or not FCatalog.Editable(Index) then
+  begin
     Exit;
+  end;
   FCatalog.Delete(Index);
   if Index >= FCatalog.Count then
+  begin
     Index := FCatalog.Count - 1;
+  end;
   FillList(Index);
 end;
 
@@ -325,7 +347,9 @@ var
 begin
   Result := '';
   if (FCatalog = nil) or FCatalog.Validate(Problems) then
+  begin
     Exit;
+  end;
   case Problems[0].Kind of
     TAtlasSnippetProblemKind.PrefixMissing:
       Reason := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefixMissing);

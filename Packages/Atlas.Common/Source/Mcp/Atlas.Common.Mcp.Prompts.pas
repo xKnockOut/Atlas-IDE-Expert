@@ -78,16 +78,10 @@ type
     FChanges: TMcpChangesFunc;
     FEnglish: Boolean;
     function Say(const AGerman, AEnglish: string): string;
-    function Section(const ATitle, ABody: string): string;
     function ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string; overload;
     function ToolSection(const ATitle, ATool, AName, AValue: string): string; overload;
     function ConventionsSection: string;
-    function UnitFile(const AUnit: string): string;
-    function CheckedFile(const AFile: string): string;
     function FormFile(const AFile: string): string;
-    function ReadLines(const AFileName: string): TArray<string>;
-    function Intro(const AText: string): string;
-    function ReadOnlyNote: string;
     function Builtin: TArray<TMcpPrompt>;
     function Custom: TArray<TMcpPrompt>;
     function UnitReview(const AArguments: TDictionary<string, string>): string;
@@ -211,6 +205,74 @@ end;
 procedure TMcpPrompts.UseLanguage;
 begin
   FEnglish := SameText(FSettings().McpPromptLanguage, 'en');
+end;
+
+/// <summary>Deutscher oder englischer Text je nach mcp.promptLanguage.</summary>
+function SayIn(AEnglish: Boolean; const AGerman, AEnglishText: string): string;
+begin
+  if AEnglish then
+  begin
+    Result := AEnglishText;
+  end
+  else
+  begin
+    Result := AGerman;
+  end;
+end;
+
+/// <summary>Abschnitt mit Überschrift, Inhalt auf TMcpPrompts.MaxSectionBytes gekürzt.</summary>
+function Section(const ATitle, ABody: string): string;
+begin
+  Result := '## ' + ATitle + sLineBreak + sLineBreak + TMcpPrompts.Limit(TrimRight(ABody), TMcpPrompts.MaxSectionBytes,
+    '');
+end;
+
+/// <summary>Datei der Unit AUnit über AResolve; EMcpToolError ohne Auflösung.</summary>
+function UnitFile(const AResolve: TFunc<string, string>; const AUnit: string): string;
+begin
+  if not Assigned(AResolve) then
+  begin
+    raise EMcpToolError.CreateFmt('Unit "%s" lässt sich hier nicht auflösen', [AUnit]);
+  end;
+  Result := AResolve(AUnit);
+end;
+
+/// <summary>Geprüfte Datei AFile über AResolve; EMcpToolError ohne Auflösung.</summary>
+function CheckedFile(const AResolve: TFunc<string, string>; const AFile: string): string;
+begin
+  if not Assigned(AResolve) then
+  begin
+    raise EMcpToolError.CreateFmt('Datei "%s" lässt sich hier nicht auflösen', [AFile]);
+  end;
+  Result := AResolve(AFile);
+end;
+
+/// <summary>Zeilen der Datei über AReadText; nil, wenn sie sich nicht lesen lässt.</summary>
+function ReadLines(const AReadText: TMcpReadText; const AFileName: string): TArray<string>;
+var
+  mText: string;
+begin
+  Result := nil;
+  if Assigned(AReadText) and AReadText(AFileName, mText) then
+  begin
+    Result := TTextLines.SplitLines(mText);
+  end;
+end;
+
+function Intro(AEnglish: Boolean; const AText: string): string;
+begin
+  Result := AText + sLineBreak + sLineBreak + SayIn(AEnglish,
+    'Die Daten unten hat der Atlas-Server eben ermittelt. Rufe dafür keine Werkzeuge erneut auf; frage nur nach, ' +
+    'was hier fehlt.',
+    'The Atlas server has just collected the data below. Do not call tools again for it; only ask for what is ' +
+    'missing here.');
+end;
+
+function ReadOnlyNote(AEnglish: Boolean): string;
+begin
+  Result := SayIn(AEnglish, 'Eingeschränkter Modus (--restricted): Ändere keine Dateien, schreibe Vorschläge als ' +
+    'Diff in die Antwort.', 'Restricted mode (--restricted): do not change any files, put suggestions as a diff ' +
+    'into your answer.');
 end;
 
 function TMcpPrompts.Say(const AGerman, AEnglish: string): string;
@@ -359,17 +421,55 @@ begin
   end;
 end;
 
+/// <summary>Routine AName im implementation-Teil ASection; nil ohne.</summary>
+function FindRoutine(ASection: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ASection = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if (ASection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ASection[mIndex].Name, AName) then
+    begin
+      Exit(ASection[mIndex]);
+    end;
+  end;
+end;
+
+/// <summary>Ein Handler mit seinen Verwendungen AWhere und, wenn gefunden, dem Rumpf aus ALines.</summary>
+procedure AppendHandler(ABuilder: TStringBuilder; const AHandler, AWhere: string; ARoutine: TSyntaxNode;
+  const ALines: TArray<string>);
+begin
+  if ABuilder.Length > 0 then
+  begin
+    ABuilder.Append(sLineBreak).Append(sLineBreak);
+  end;
+  ABuilder.Append(Format('%s (%s)', [AHandler, AWhere]));
+  if ARoutine = nil then
+  begin
+    ABuilder.Append(sLineBreak).Append('  Implementierung nicht gefunden.');
+    Exit;
+  end;
+  ABuilder.Append(Format(', Zeile %d:', [ARoutine.StartPos.Line + 1])).Append(sLineBreak)
+    .Append('```pascal').Append(sLineBreak)
+    .Append(LinesOf(ALines, ARoutine.StartPos.Line, ARoutine.EndPos.Line)).Append(sLineBreak)
+    .Append('```');
+end;
+
 class function TMcpPrompts.HandlerBodies(const AFormText, AUnitText: string): string;
 var
   mDocument: TDfmDocument;
   mTree: TSyntaxTree;
-  mSection, mRoutine: TSyntaxNode;
+  mSection: TSyntaxNode;
   mHandlers: TList<string>;
   mUses: TDictionary<string, string>;
   mLines: TArray<string>;
   mBuilder: TStringBuilder;
-  mHandler, mFormClass: string;
-  mIndex: Integer;
+  mHandler: string;
 begin
   mDocument := TDfmParser.Parse(AFormText);
   mHandlers := TList<string>.Create;
@@ -377,12 +477,10 @@ begin
   mBuilder := TStringBuilder.Create;
   mTree := nil;
   try
-    if mDocument.Root = nil then
+    if mDocument.Root <> nil then
     begin
-      Exit('');
+      CollectEvents(mDocument.Root, mHandlers, mUses);
     end;
-    mFormClass := mDocument.Root.TypeName;
-    CollectEvents(mDocument.Root, mHandlers, mUses);
     if mHandlers.Count = 0 then
     begin
       Exit('');
@@ -392,42 +490,15 @@ begin
     if AUnitText <> '' then
     begin
       mTree := TSyntaxTreeCache.Parse(AUnitText);
-      if (mTree <> nil) and (mTree.Root <> nil) then
-      begin
-        mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
-      end;
+    end;
+    if (mTree <> nil) and (mTree.Root <> nil) then
+    begin
+      mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
     end;
     for mHandler in mHandlers do
     begin
-      mRoutine := nil;
-      if mSection <> nil then
-      begin
-        for mIndex := 0 to mSection.ChildCount - 1 do
-        begin
-          if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and
-            SameText(mSection[mIndex].Name, mFormClass + '.' + mHandler) then
-          begin
-            mRoutine := mSection[mIndex];
-            Break;
-          end;
-        end;
-      end;
-      if mBuilder.Length > 0 then
-      begin
-        mBuilder.Append(sLineBreak).Append(sLineBreak);
-      end;
-      mBuilder.Append(Format('%s (%s)', [mHandler, mUses[LowerCase(mHandler)]]));
-      if mRoutine = nil then
-      begin
-        mBuilder.Append(sLineBreak).Append('  Implementierung nicht gefunden.');
-      end
-      else
-      begin
-        mBuilder.Append(Format(', Zeile %d:', [mRoutine.StartPos.Line + 1])).Append(sLineBreak)
-          .Append('```pascal').Append(sLineBreak)
-          .Append(LinesOf(mLines, mRoutine.StartPos.Line, mRoutine.EndPos.Line)).Append(sLineBreak)
-          .Append('```');
-      end;
+      AppendHandler(mBuilder, mHandler, mUses[LowerCase(mHandler)],
+        FindRoutine(mSection, mDocument.Root.TypeName + '.' + mHandler), mLines);
     end;
     Result := mBuilder.ToString;
   finally
@@ -581,11 +652,6 @@ begin
   end;
 end;
 
-function TMcpPrompts.Section(const ATitle, ABody: string): string;
-begin
-  Result := '## ' + ATitle + sLineBreak + sLineBreak + Limit(TrimRight(ABody), MaxSectionBytes, '');
-end;
-
 function TMcpPrompts.ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string;
 var
   mText: string;
@@ -638,29 +704,12 @@ begin
   end;
 end;
 
-function TMcpPrompts.UnitFile(const AUnit: string): string;
-begin
-  if not Assigned(FResolveUnit) then
-  begin
-    raise EMcpToolError.CreateFmt('Unit "%s" lässt sich hier nicht auflösen', [AUnit]);
-  end;
-  Result := FResolveUnit(AUnit);
-end;
-
-function TMcpPrompts.CheckedFile(const AFile: string): string;
-begin
-  if not Assigned(FResolveFile) then
-  begin
-    raise EMcpToolError.CreateFmt('Datei "%s" lässt sich hier nicht auflösen', [AFile]);
-  end;
-  Result := FResolveFile(AFile);
-end;
 
 function TMcpPrompts.FormFile(const AFile: string): string;
 var
   mText: string;
 begin
-  Result := CheckedFile(AFile);
+  Result := CheckedFile(FResolveFile, AFile);
   if SameText(ExtractFileExt(Result), '.pas') then
   begin
     if Assigned(FReadText) and FReadText(ChangeFileExt(Result, '.dfm'), mText) then
@@ -678,32 +727,7 @@ begin
   end;
 end;
 
-function TMcpPrompts.ReadLines(const AFileName: string): TArray<string>;
-var
-  mText: string;
-begin
-  Result := nil;
-  if Assigned(FReadText) and FReadText(AFileName, mText) then
-  begin
-    Result := TTextLines.SplitLines(mText);
-  end;
-end;
 
-function TMcpPrompts.Intro(const AText: string): string;
-begin
-  Result := AText + sLineBreak + sLineBreak + Say(
-    'Die Daten unten hat der Atlas-Server eben ermittelt. Rufe dafür keine Werkzeuge erneut auf; frage nur nach, ' +
-    'was hier fehlt.',
-    'The Atlas server has just collected the data below. Do not call tools again for it; only ask for what is ' +
-    'missing here.');
-end;
-
-function TMcpPrompts.ReadOnlyNote: string;
-begin
-  Result := Say('Eingeschränkter Modus (--restricted): Ändere keine Dateien, schreibe Vorschläge als Diff in die ' +
-    'Antwort.', 'Restricted mode (--restricted): do not change any files, put suggestions as a diff into your ' +
-    'answer.');
-end;
 
 function TMcpPrompts.UnitReview(const AArguments: TDictionary<string, string>): string;
 var
@@ -711,7 +735,7 @@ var
 begin
   UseLanguage;
   mUnit := Argument(AArguments, 'unit');
-  mFile := UnitFile(mUnit);
+  mFile := UnitFile(FResolveUnit, mUnit);
   mSteps := Say(
     '1. Ordne die Punkte nach Schweregrad: Fehler, Warnungen, dann Hinweise und Stil. Fasse gleichartige zusammen.' +
     sLineBreak +
@@ -722,7 +746,7 @@ begin
     '3. Take methods above the metric limits, unused code and the project conventions into account.' + sLineBreak);
   if FServer.Restricted then
   begin
-    mSteps := mSteps + '4. ' + ReadOnlyNote + Say(' Prüfe jeden Vorschlag mit check_code.',
+    mSteps := mSteps + '4. ' + ReadOnlyNote(FEnglish) + Say(' Prüfe jeden Vorschlag mit check_code.',
       ' Check every suggestion with check_code.');
   end
   else
@@ -730,7 +754,7 @@ begin
     mSteps := mSteps + Say('4. Prüfe jede Änderung vor dem Schreiben mit check_code und ändere erst nach Rückfrage.',
       '4. Check every change with check_code before writing it, and only change code after asking.');
   end;
-  Result := Intro(Format(Say('Führe ein Code-Review der Unit %s (%s) durch.', 'Review the unit %s (%s).'),
+  Result := Intro(FEnglish, Format(Say('Führe ein Code-Review der Unit %s (%s) durch.', 'Review the unit %s (%s).'),
     [mUnit, mFile])) + sLineBreak + sLineBreak + mSteps + sLineBreak + sLineBreak +
     ToolSection(Say('Gliederung', 'Outline'), 'get_unit_outline', 'unit', mFile) + sLineBreak + sLineBreak +
     ToolSection(Say('Befunde', 'Findings'), 'get_diagnostics', 'file', mFile) + sLineBreak + sLineBreak +
@@ -764,7 +788,7 @@ begin
   begin
     mBindings := Say('Keine Datenbindungen.', 'No data bindings.');
   end;
-  Result := Intro(Format(Say('Erkläre das Formular %s.', 'Explain the form %s.'), [mFile])) + sLineBreak +
+  Result := Intro(FEnglish, Format(Say('Erkläre das Formular %s.', 'Explain the form %s.'), [mFile])) + sLineBreak +
     sLineBreak + Say(
     '1. Wozu dient das Formular, welche Bereiche hat es (Komponentenbaum)?' + sLineBreak +
     '2. Was tun die Ereignis-Handler, in welcher Reihenfolge laufen sie typischerweise?' + sLineBreak +
@@ -813,7 +837,7 @@ begin
     sLineBreak + '2. Put them into the matching test unit following the conventions below.' + sLineBreak);
   if FServer.Restricted then
   begin
-    mSteps := mSteps + '3. ' + ReadOnlyNote;
+    mSteps := mSteps + '3. ' + ReadOnlyNote(FEnglish);
   end
   else if FServer.ToolAvailable('run_tests') then
   begin
@@ -826,7 +850,7 @@ begin
     mSteps := mSteps + Say('3. Prüfe den Code mit check_code; run_tests ist hier nicht verfügbar, nenne die Tests ' +
       'zum Ausführen.', '3. Check the code with check_code; run_tests is not available here, list the tests to run.');
   end;
-  Result := Intro(Format(Say('Schreibe DUnitX-Tests für %s.', 'Write DUnitX tests for %s.'), [mName])) +
+  Result := Intro(FEnglish, Format(Say('Schreibe DUnitX-Tests für %s.', 'Write DUnitX tests for %s.'), [mName])) +
     sLineBreak + sLineBreak + mSteps + sLineBreak + sLineBreak +
     ToolSection(Say('Deklaration', 'Declaration'), 'get_declaration', 'name', mName) + sLineBreak + sLineBreak +
     ToolSection(Say('Aufrufer', 'Callers'), 'get_call_hierarchy', IncomingCalls(mName)) + sLineBreak + sLineBreak +
@@ -842,13 +866,13 @@ var
   mLines: TArray<string>;
 begin
   UseLanguage;
-  mFile := CheckedFile(Argument(AArguments, 'file'));
+  mFile := CheckedFile(FResolveFile, Argument(AArguments, 'file'));
   if not TryStrToInt(Argument(AArguments, 'line'), mLine) or (mLine < 1) then
   begin
     raise EMcpToolError.Create(Say('"line" muss eine Zeilennummer ab 1 sein', '"line" must be a line number from 1'));
   end;
   mRule := Argument(AArguments, 'rule');
-  mLines := ReadLines(mFile);
+  mLines := ReadLines(FReadText, mFile);
   if mLines = nil then
   begin
     raise EMcpToolError.CreateFmt(Say('%s ist nicht lesbar', '%s cannot be read'), [mFile]);
@@ -863,7 +887,7 @@ begin
   if FServer.Restricted or not FServer.ToolAvailable('apply_code_action') then
   begin
     mSteps := mSteps + Say('2. Schlage die Korrektur als Diff vor und prüfe sie mit check_code.',
-      '2. Suggest the fix as a diff and check it with check_code.') + sLineBreak + '3. ' + ReadOnlyNote;
+      '2. Suggest the fix as a diff and check it with check_code.') + sLineBreak + '3. ' + ReadOnlyNote(FEnglish);
   end
   else
   begin
@@ -872,7 +896,7 @@ begin
       '2. Fix the cause: with one of the fixes below (apply_code_action with title, dryRun first) or by hand.' +
       sLineBreak + '3. Check the result with check_code before writing.');
   end;
-  Result := Intro(Format(Say('Behebe den Befund in %s, Zeile %d%s.', 'Fix the finding in %s, line %d%s.'),
+  Result := Intro(FEnglish, Format(Say('Behebe den Befund in %s, Zeile %d%s.', 'Fix the finding in %s, line %d%s.'),
     [mFile, mLine, IfThen(mRule <> '', ' (' + mRule + ')', '')])) + sLineBreak + sLineBreak + mSteps +
     sLineBreak + sLineBreak + ToolSection(Say('Befund', 'Finding'), 'explain_finding',
     FindingArgs(mFile, mLine, mRule)) + sLineBreak +
@@ -886,9 +910,75 @@ begin
   end;
 end;
 
+/// <summary>Schritte von prepare_commit: Befunde, Tests, Commit-Nachricht (mit APrefix) und Freigabe.</summary>
+function CommitSteps(AEnglish, ARestricted: Boolean; const APrefix: string): string;
+begin
+  Result := SayIn(AEnglish,
+    '1. Prüfe die Befunde in den geänderten Zeilen: Fehler und Warnungen vor dem Commit beheben, den Rest nennen.' +
+    sLineBreak + '2. Nenne die betroffenen Tests, die vor dem Commit laufen sollten.' + sLineBreak,
+    '1. Review the findings in the changed lines: fix errors and warnings before committing, list the rest.' +
+    sLineBreak + '2. List the affected tests that should run before the commit.' + sLineBreak);
+  if APrefix <> '' then
+  begin
+    Result := Result + Format(SayIn(AEnglish, '3. Schreibe eine Commit-Nachricht, die mit "%s" beginnt: erste ' +
+      'Zeile kurz, danach was und warum.', '3. Write a commit message starting with "%s": a short first line, ' +
+      'then what and why.'), [APrefix]);
+  end
+  else
+  begin
+    Result := Result + SayIn(AEnglish, '3. Schreibe eine Commit-Nachricht: erste Zeile kurz, danach was und warum.',
+      '3. Write a commit message: a short first line, then what and why.');
+  end;
+  if ARestricted then
+  begin
+    Result := Result + sLineBreak + '4. ' + ReadOnlyNote(AEnglish) + SayIn(AEnglish, ' Committe nicht.',
+      ' Do not commit.');
+  end
+  else
+  begin
+    Result := Result + sLineBreak + SayIn(AEnglish, '4. Committe erst, wenn der Benutzer zustimmt.',
+      '4. Only commit once the user agrees.');
+  end;
+end;
+
+function CommitIntro(AEnglish: Boolean; const ABase: string): string;
+begin
+  if ABase = '' then
+  begin
+    Result := Intro(AEnglish, SayIn(AEnglish, 'Bereite den Commit der nicht eingecheckten Änderungen vor.',
+      'Prepare the commit of the uncommitted changes.'));
+  end
+  else
+  begin
+    Result := Intro(AEnglish, Format(SayIn(AEnglish, 'Bereite den Commit der Änderungen seit %s vor.',
+      'Prepare the commit of the changes since %s.'), [ABase]));
+  end;
+end;
+
+/// <summary>Abschnitt mit den geänderten Dateien und neuen Befunden bzw. dem Grund, warum sie fehlen.</summary>
+function ChangesSection(AEnglish: Boolean; const AChanges: TMcpChangeSet): string;
+begin
+  if AChanges.Error <> '' then
+  begin
+    Result := Section(SayIn(AEnglish, 'Geänderte Dateien', 'Changed files'), SayIn(AEnglish, 'Nicht verfügbar: ',
+      'Not available: ') + AChanges.Error);
+  end
+  else
+  begin
+    Result := Section(SayIn(AEnglish, 'Geänderte Dateien und neue Befunde', 'Changed files and new findings'),
+      TMcpPrompts.ChangeReport(AChanges, AEnglish));
+  end;
+end;
+
+function PrefixSection(AEnglish: Boolean; const APrefix: string): string;
+begin
+  Result := Section(SayIn(AEnglish, 'Commit-Präfix', 'Commit prefix'), Format(SayIn(AEnglish,
+    '"%s" (aktuelles Issue, issues.commitPattern)', '"%s" (current issue, issues.commitPattern)'), [APrefix]));
+end;
+
 function TMcpPrompts.PrepareCommit(const AArguments: TDictionary<string, string>): string;
 var
-  mBase, mSteps, mPrefix: string;
+  mBase: string;
   mChanges: TMcpChangeSet;
 begin
   UseLanguage;
@@ -902,53 +992,9 @@ begin
     mChanges := Default(TMcpChangeSet);
     mChanges.Error := Say('Keine Versionsverwaltung angebunden.', 'No version control connected.');
   end;
-  mPrefix := mChanges.CommitPrefix;
-  mSteps := Say(
-    '1. Prüfe die Befunde in den geänderten Zeilen: Fehler und Warnungen vor dem Commit beheben, den Rest nennen.' +
-    sLineBreak + '2. Nenne die betroffenen Tests, die vor dem Commit laufen sollten.' + sLineBreak,
-    '1. Review the findings in the changed lines: fix errors and warnings before committing, list the rest.' +
-    sLineBreak + '2. List the affected tests that should run before the commit.' + sLineBreak);
-  if mPrefix <> '' then
-  begin
-    mSteps := mSteps + Format(Say('3. Schreibe eine Commit-Nachricht, die mit "%s" beginnt: erste Zeile kurz, ' +
-      'danach was und warum.', '3. Write a commit message starting with "%s": a short first line, then what and why.'),
-      [mPrefix]);
-  end
-  else
-  begin
-    mSteps := mSteps + Say('3. Schreibe eine Commit-Nachricht: erste Zeile kurz, danach was und warum.',
-      '3. Write a commit message: a short first line, then what and why.');
-  end;
-  if FServer.Restricted then
-  begin
-    mSteps := mSteps + sLineBreak + '4. ' + ReadOnlyNote + Say(' Committe nicht.', ' Do not commit.');
-  end
-  else
-  begin
-    mSteps := mSteps + sLineBreak + Say('4. Committe erst, wenn der Benutzer zustimmt.',
-      '4. Only commit once the user agrees.');
-  end;
-  if mBase = '' then
-  begin
-    Result := Intro(Say('Bereite den Commit der nicht eingecheckten Änderungen vor.',
-      'Prepare the commit of the uncommitted changes.'));
-  end
-  else
-  begin
-    Result := Intro(Format(Say('Bereite den Commit der Änderungen seit %s vor.',
-      'Prepare the commit of the changes since %s.'), [mBase]));
-  end;
-  Result := Result + sLineBreak + sLineBreak + mSteps + sLineBreak + sLineBreak;
-  if mChanges.Error <> '' then
-  begin
-    Result := Result + Section(Say('Geänderte Dateien', 'Changed files'), Say('Nicht verfügbar: ',
-      'Not available: ') + mChanges.Error);
-  end
-  else
-  begin
-    Result := Result + Section(Say('Geänderte Dateien und neue Befunde', 'Changed files and new findings'),
-      ChangeReport(mChanges, FEnglish));
-  end;
+  Result := CommitIntro(FEnglish, mBase) + sLineBreak + sLineBreak +
+    CommitSteps(FEnglish, FServer.Restricted, mChanges.CommitPrefix) + sLineBreak + sLineBreak +
+    ChangesSection(FEnglish, mChanges);
   // Betroffene Tests aus den Änderungen (#1353), sobald der Server das Werkzeug hat.
   if FServer.ToolAvailable('get_affected_tests') then
   begin
@@ -961,18 +1007,47 @@ begin
       'Ermittle sie mit get_impact für die geänderten Methoden.', 'Find them with get_impact for the changed ' +
       'methods.'));
   end;
-  if mPrefix <> '' then
+  if mChanges.CommitPrefix <> '' then
   begin
-    Result := Result + sLineBreak + sLineBreak + Section(Say('Commit-Präfix', 'Commit prefix'),
-      Format(Say('"%s" (aktuelles Issue, issues.commitPattern)', '"%s" (current issue, issues.commitPattern)'),
-      [mPrefix]));
+    Result := Result + sLineBreak + sLineBreak + PrefixSection(FEnglish, mChanges.CommitPrefix);
   end;
+end;
+
+/// <summary>Einbindbarer Inhalt AInclude, der ein Werkzeug mit "unit" oder "file" aufruft: Titel, Werkzeug und
+/// Name des Arguments; False für andere.</summary>
+function TryFileTool(AEnglish: Boolean; const AInclude: string; out ATitle, ATool, AArgument: string): Boolean;
+const
+  cIncludes: array[0..6] of string = ('outline', 'dependencies', 'diagnostics', 'metrics', 'unused', 'todos',
+    'form');
+  cGerman: array[0..6] of string = ('Gliederung', 'Abhängigkeiten', 'Befunde', 'Metriken über Grenzwert',
+    'Ungenutzter Code', 'TODO', 'Komponentenbaum');
+  cEnglish: array[0..6] of string = ('Outline', 'Dependencies', 'Findings', 'Metrics above limits', 'Unused code',
+    'TODO', 'Component tree');
+  cTools: array[0..6] of string = ('get_unit_outline', 'get_unit_dependencies', 'get_diagnostics', 'get_metrics',
+    'find_unused_code', 'get_todos', 'get_dfm_info');
+  cArguments: array[0..6] of string = ('unit', 'unit', 'file', 'file', 'file', 'file', 'file');
+var
+  mIndex: Integer;
+begin
+  ATitle := '';
+  ATool := '';
+  AArgument := '';
+  for mIndex := Low(cIncludes) to High(cIncludes) do
+  begin
+    if AInclude = cIncludes[mIndex] then
+    begin
+      ATitle := SayIn(AEnglish, cGerman[mIndex], cEnglish[mIndex]);
+      ATool := cTools[mIndex];
+      AArgument := cArguments[mIndex];
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TMcpPrompts.IncludeSection(const AInclude: string; const AArguments: TDictionary<string, string>): string;
 var
-  mFile, mUnit, mName: string;
-  mMissing: string;
+  mFile, mUnit, mName, mTitle, mTool, mArgument: string;
 begin
   mFile := Argument(AArguments, 'file');
   mUnit := Argument(AArguments, 'unit');
@@ -980,7 +1055,7 @@ begin
   // Datei-Werkzeuge nehmen auch eine Unit (über ResolveUnit), Unit-Werkzeuge auch einen Pfad.
   if (mFile = '') and (mUnit <> '') then
   begin
-    mFile := UnitFile(mUnit);
+    mFile := UnitFile(FResolveUnit, mUnit);
   end;
   if mUnit = '' then
   begin
@@ -990,8 +1065,6 @@ begin
   begin
     mName := mUnit;
   end;
-  mMissing := Format(Say('"%s" braucht ein Argument "file" oder "unit".', '"%s" needs an argument "file" or ' +
-    '"unit".'), [AInclude]);
   if AInclude = 'conventions' then
   begin
     Result := ConventionsSection;
@@ -1000,53 +1073,31 @@ begin
   begin
     Result := ToolSection(Say('Letzter Build', 'Last build'), 'get_last_build', TJSONObject.Create);
   end
+  else if (AInclude = 'impact') and (mName = '') then
+  begin
+    Result := Section(AInclude, Format(Say('"%s" braucht ein Argument "name".', '"%s" needs an argument ' +
+      '"name".'), [AInclude]));
+  end
   else if AInclude = 'impact' then
   begin
-    if mName = '' then
-    begin
-      Result := Section(AInclude, Format(Say('"%s" braucht ein Argument "name".', '"%s" needs an argument ' +
-        '"name".'), [AInclude]));
-    end
-    else
-    begin
-      Result := ToolSection(Say('Auswirkungen', 'Impact'), 'get_impact', 'name', mName);
-    end;
+    Result := ToolSection(Say('Auswirkungen', 'Impact'), 'get_impact', 'name', mName);
   end
   else if mFile = '' then
   begin
-    Result := Section(AInclude, mMissing);
+    Result := Section(AInclude, Format(Say('"%s" braucht ein Argument "file" oder "unit".', '"%s" needs an ' +
+      'argument "file" or "unit".'), [AInclude]));
   end
-  else if AInclude = 'outline' then
+  else if not TryFileTool(FEnglish, AInclude, mTitle, mTool, mArgument) then
   begin
-    Result := ToolSection(Say('Gliederung', 'Outline'), 'get_unit_outline', 'unit', mUnit);
+    Result := Section(AInclude, Say('Unbekannter Inhalt.', 'Unknown content.'));
   end
-  else if AInclude = 'dependencies' then
+  else if mArgument = 'unit' then
   begin
-    Result := ToolSection(Say('Abhängigkeiten', 'Dependencies'), 'get_unit_dependencies', 'unit', mUnit);
-  end
-  else if AInclude = 'diagnostics' then
-  begin
-    Result := ToolSection(Say('Befunde', 'Findings'), 'get_diagnostics', 'file', mFile);
-  end
-  else if AInclude = 'metrics' then
-  begin
-    Result := ToolSection(Say('Metriken über Grenzwert', 'Metrics above limits'), 'get_metrics', 'file', mFile);
-  end
-  else if AInclude = 'unused' then
-  begin
-    Result := ToolSection(Say('Ungenutzter Code', 'Unused code'), 'find_unused_code', 'file', mFile);
-  end
-  else if AInclude = 'todos' then
-  begin
-    Result := ToolSection('TODO', 'get_todos', 'file', mFile);
-  end
-  else if AInclude = 'form' then
-  begin
-    Result := ToolSection(Say('Komponentenbaum', 'Component tree'), 'get_dfm_info', 'file', mFile);
+    Result := ToolSection(mTitle, mTool, mArgument, mUnit);
   end
   else
   begin
-    Result := Section(AInclude, Say('Unbekannter Inhalt.', 'Unknown content.'));
+    Result := ToolSection(mTitle, mTool, mArgument, mFile);
   end;
 end;
 
@@ -1059,7 +1110,7 @@ begin
   Result := Substitute(APrompt.Text, AArguments);
   if FServer.Restricted then
   begin
-    Result := Result + sLineBreak + sLineBreak + ReadOnlyNote;
+    Result := Result + sLineBreak + sLineBreak + ReadOnlyNote(FEnglish);
   end;
   for mInclude in APrompt.Include do
   begin
@@ -1067,74 +1118,71 @@ begin
   end;
 end;
 
+function MakePrompt(const AName, ADescription: string; const AArguments: TArray<TMcpPromptArgument>;
+  const AHandler: TMcpPromptHandler): TMcpPrompt;
+begin
+  Result.Name := AName;
+  Result.Description := ADescription;
+  Result.Arguments := AArguments;
+  Result.Handler := AHandler;
+end;
+
 function TMcpPrompts.Builtin: TArray<TMcpPrompt>;
-var
-  mPrompt: TMcpPrompt;
 begin
   Result := nil;
-  mPrompt.Name := 'unit_review';
-  mPrompt.Description := Say('Code-Review einer Unit: Gliederung, Befunde, Metriken über Grenzwert, ungenutzter ' +
-    'Code und Projektkonventionen in einer Nachricht.', 'Code review of a unit: outline, findings, metrics above ' +
-    'limits, unused code and project conventions in one message.');
-  mPrompt.Arguments := TArray<TMcpPromptArgument>.Create(PromptArgument('unit', Say('Unit-Name (UI.Auftrag) ' +
-    'oder Pfad der .pas-Datei', 'Unit name (UI.Order) or path of the .pas file'), True));
-  mPrompt.Handler :=
+  Result := Result + [MakePrompt('unit_review',
+    Say('Code-Review einer Unit: Gliederung, Befunde, Metriken über Grenzwert, ungenutzter Code und ' +
+    'Projektkonventionen in einer Nachricht.', 'Code review of a unit: outline, findings, metrics above limits, ' +
+    'unused code and project conventions in one message.'),
+    TArray<TMcpPromptArgument>.Create(PromptArgument('unit', Say('Unit-Name (UI.Auftrag) oder Pfad der ' +
+    '.pas-Datei', 'Unit name (UI.Order) or path of the .pas file'), True)),
     function(const AArguments: TDictionary<string, string>): string
     begin
       Result := UnitReview(AArguments);
-    end;
-  Result := Result + [mPrompt];
-  mPrompt.Name := 'explain_form';
-  mPrompt.Description := Say('Erklärt ein Formular: Komponentenbaum, Ereignis-Handler mit Rümpfen und ' +
-    'Datenbindungen.', 'Explains a form: component tree, event handlers with bodies and data bindings.');
-  mPrompt.Arguments := TArray<TMcpPromptArgument>.Create(PromptArgument('file', Say('Pfad der .dfm/.fmx oder ' +
-    'der .pas dazu', 'Path of the .dfm/.fmx or its .pas'), True));
-  mPrompt.Handler :=
+    end)];
+  Result := Result + [MakePrompt('explain_form',
+    Say('Erklärt ein Formular: Komponentenbaum, Ereignis-Handler mit Rümpfen und Datenbindungen.',
+    'Explains a form: component tree, event handlers with bodies and data bindings.'),
+    TArray<TMcpPromptArgument>.Create(PromptArgument('file', Say('Pfad der .dfm/.fmx oder der .pas dazu',
+    'Path of the .dfm/.fmx or its .pas'), True)),
     function(const AArguments: TDictionary<string, string>): string
     begin
       Result := ExplainForm(AArguments);
-    end;
-  Result := Result + [mPrompt];
-  mPrompt.Name := 'write_tests';
-  mPrompt.Description := Say('Neue DUnitX-Tests für ein Symbol: Deklaration, Aufrufer, vorhandene Tests und ' +
-    'Testkonventionen des Projekts.', 'New DUnitX tests for a symbol: declaration, callers, existing tests and the ' +
-    'test conventions of the project.');
-  mPrompt.Arguments := TArray<TMcpPromptArgument>.Create(PromptArgument('name', Say('Symbol, am besten ' +
-    'qualifiziert (TFoo.Bar)', 'Symbol, preferably qualified (TFoo.Bar)'), True));
-  mPrompt.Handler :=
+    end)];
+  Result := Result + [MakePrompt('write_tests',
+    Say('Neue DUnitX-Tests für ein Symbol: Deklaration, Aufrufer, vorhandene Tests und Testkonventionen des ' +
+    'Projekts.', 'New DUnitX tests for a symbol: declaration, callers, existing tests and the test conventions ' +
+    'of the project.'),
+    TArray<TMcpPromptArgument>.Create(PromptArgument('name', Say('Symbol, am besten qualifiziert (TFoo.Bar)',
+    'Symbol, preferably qualified (TFoo.Bar)'), True)),
     function(const AArguments: TDictionary<string, string>): string
     begin
       Result := WriteTests(AArguments);
-    end;
-  Result := Result + [mPrompt];
-  mPrompt.Name := 'fix_finding';
-  mPrompt.Description := Say('Behebt einen Befund: Erklärung, Codeausschnitt und verfügbare Korrekturen; erst die ' +
-    'Ursache, dann die Korrektur, dann check_code.', 'Fixes a finding: explanation, code snippet and available ' +
-    'fixes; first the cause, then the fix, then check_code.');
-  mPrompt.Arguments := TArray<TMcpPromptArgument>.Create(
+    end)];
+  Result := Result + [MakePrompt('fix_finding',
+    Say('Behebt einen Befund: Erklärung, Codeausschnitt und verfügbare Korrekturen; erst die Ursache, dann die ' +
+    'Korrektur, dann check_code.', 'Fixes a finding: explanation, code snippet and available fixes; first the ' +
+    'cause, then the fix, then check_code.'),
+    TArray<TMcpPromptArgument>.Create(
     PromptArgument('file', Say('Pfad der Unit (relativ zum Projekt oder absolut)', 'Path of the unit (relative ' +
-      'to the project or absolute)'), True),
+    'to the project or absolute)'), True),
     PromptArgument('line', Say('Zeile des Befunds (ab 1)', 'Line of the finding (from 1)'), True),
-    PromptArgument('rule', Say('Optional: nur diese Regel', 'Optional: only this rule'), False));
-  mPrompt.Handler :=
+    PromptArgument('rule', Say('Optional: nur diese Regel', 'Optional: only this rule'), False)),
     function(const AArguments: TDictionary<string, string>): string
     begin
       Result := FixFinding(AArguments);
-    end;
-  Result := Result + [mPrompt];
-  mPrompt.Name := 'prepare_commit';
-  mPrompt.Description := Say('Bereitet einen Commit vor: geänderte Dateien, neue Befunde nur in geänderten ' +
-    'Zeilen, betroffene Tests und Commit-Präfix des aktuellen Issues.', 'Prepares a commit: changed files, new ' +
-    'findings in changed lines only, affected tests and the commit prefix of the current issue.');
-  mPrompt.Arguments := TArray<TMcpPromptArgument>.Create(PromptArgument('base', Say('Optional: Vergleichsbasis, ' +
-    'z. B. main; leer = nicht eingecheckte Änderungen', 'Optional: base to compare with, e.g. main; empty = ' +
-    'uncommitted changes'), False));
-  mPrompt.Handler :=
+    end)];
+  Result := Result + [MakePrompt('prepare_commit',
+    Say('Bereitet einen Commit vor: geänderte Dateien, neue Befunde nur in geänderten Zeilen, betroffene Tests ' +
+    'und Commit-Präfix des aktuellen Issues.', 'Prepares a commit: changed files, new findings in changed lines ' +
+    'only, affected tests and the commit prefix of the current issue.'),
+    TArray<TMcpPromptArgument>.Create(PromptArgument('base', Say('Optional: Vergleichsbasis, z. B. main; leer = ' +
+    'nicht eingecheckte Änderungen', 'Optional: base to compare with, e.g. main; empty = uncommitted changes'),
+    False)),
     function(const AArguments: TDictionary<string, string>): string
     begin
       Result := PrepareCommit(AArguments);
-    end;
-  Result := Result + [mPrompt];
+    end)];
 end;
 
 /// <summary>Eigene Methode: jede Methodenreferenz fängt ihren eigenen Prompt ein, nicht die Schleifenvariable.
@@ -1175,7 +1223,7 @@ var
   mFile, mText, mInterface: string;
 begin
   UseLanguage;
-  mFile := UnitFile(AName);
+  mFile := UnitFile(FResolveUnit, AName);
   Result := '# Unit ' + AName + sLineBreak + sLineBreak + mFile + sLineBreak + sLineBreak + '## ' +
     Say('Gliederung', 'Outline') + sLineBreak + sLineBreak + ToolText('get_unit_outline', StringArgs('unit', mFile));
   if Assigned(FReadText) and FReadText(mFile, mText) then
@@ -1205,7 +1253,7 @@ var
   mFile: string;
 begin
   UseLanguage;
-  mFile := CheckedFile(AFile);
+  mFile := CheckedFile(FResolveFile, AFile);
   Result := Limit('# ' + Say('Befunde ', 'Findings ') + mFile + sLineBreak + sLineBreak +
     ToolText('get_diagnostics', StringArgs('file', mFile)), MaxResourceBytes, 'get_diagnostics');
 end;

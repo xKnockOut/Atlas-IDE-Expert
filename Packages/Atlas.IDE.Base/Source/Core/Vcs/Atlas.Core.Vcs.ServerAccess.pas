@@ -76,55 +76,93 @@ var
 begin
   Result := False;
   for mMarker in AMarkers do
+  begin
     if Pos(mMarker, AText) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Zustand allein aus dem Ergebnis des Aufrufs; False, wenn er (Ok, Exit-Code ungleich 0) aus der Meldung
+/// folgt.</summary>
+function OutcomeState(const AResult: TAtlasVcsRunResult; out AState: TAtlasVcsServerState): Boolean;
+begin
+  Result := True;
+  case AResult.Outcome of
+    TAtlasVcsOutcome.Ok:
+      begin
+        AState := TAtlasVcsServerState.Reachable;
+        Result := AResult.ExitCode = 0;
+      end;
+    TAtlasVcsOutcome.TimedOut:
+      AState := TAtlasVcsServerState.Unreachable;
+    TAtlasVcsOutcome.ToolMissing:
+      AState := TAtlasVcsServerState.ToolMissing;
+    TAtlasVcsOutcome.NoWorkingCopy:
+      AState := TAtlasVcsServerState.NoServer;
+    TAtlasVcsOutcome.LoginNeeded:
+      AState := TAtlasVcsServerState.LoginNeeded;
+  else
+    AState := TAtlasVcsServerState.Failed;
+  end;
+end;
+
+/// <summary>Zustand aus der Fehlermeldung von svn (klein geschrieben).</summary>
+function SvnState(const AText: string): TAtlasVcsServerState;
+begin
+  // Feste Fehlerkennungen (svn: E170001: …); die Anmeldung zuerst, weil svn mehrere Zeilen schreibt.
+  Result := TAtlasVcsServerState.Failed;
+  if HasAny(AText, SvnLogin) then
+  begin
+    Result := TAtlasVcsServerState.LoginNeeded;
+  end
+  else if HasAny(AText, SvnUnreachable) then
+  begin
+    Result := TAtlasVcsServerState.Unreachable;
+  end
+  else if HasAny(AText, SvnNoServer) then
+  begin
+    Result := TAtlasVcsServerState.NoServer;
+  end;
+end;
+
+/// <summary>Zustand aus der Fehlermeldung von git (klein geschrieben).</summary>
+function GitState(const AText: string): TAtlasVcsServerState;
+begin
+  // git endet bei Fehlern mit dem Server mit 128; die Meldung unterscheidet die Ursache.
+  Result := TAtlasVcsServerState.Failed;
+  if HasAny(AText, GitNoServer) then
+  begin
+    Result := TAtlasVcsServerState.NoServer;
+  end
+  else if HasAny(AText, GitLogin) then
+  begin
+    Result := TAtlasVcsServerState.LoginNeeded;
+  end
+  else if HasAny(AText, GitUnreachable) then
+  begin
+    Result := TAtlasVcsServerState.Unreachable;
+  end;
 end;
 
 { TAtlasVcsServerAccess }
 
 class function TAtlasVcsServerAccess.State(AKind: TAtlasVcsKind;
   const AResult: TAtlasVcsRunResult): TAtlasVcsServerState;
-var
-  mText: string;
 begin
-  case AResult.Outcome of
-    TAtlasVcsOutcome.Ok:
-      ;
-    TAtlasVcsOutcome.TimedOut:
-      Exit(TAtlasVcsServerState.Unreachable);
-    TAtlasVcsOutcome.ToolMissing:
-      Exit(TAtlasVcsServerState.ToolMissing);
-    TAtlasVcsOutcome.NoWorkingCopy:
-      Exit(TAtlasVcsServerState.NoServer);
-    TAtlasVcsOutcome.LoginNeeded:
-      Exit(TAtlasVcsServerState.LoginNeeded);
-  else
-    Exit(TAtlasVcsServerState.Failed);
-  end;
-  if AResult.ExitCode = 0 then
-    Exit(TAtlasVcsServerState.Reachable);
-  mText := LowerCase(AResult.ErrorText);
-  Result := TAtlasVcsServerState.Failed;
-  if AKind = TAtlasVcsKind.Svn then
+  if OutcomeState(AResult, Result) then
   begin
-    // Feste Fehlerkennungen (svn: E170001: …); die Anmeldung zuerst, weil svn mehrere Zeilen schreibt.
-    if HasAny(mText, SvnLogin) then
-      Result := TAtlasVcsServerState.LoginNeeded
-    else if HasAny(mText, SvnUnreachable) then
-      Result := TAtlasVcsServerState.Unreachable
-    else if HasAny(mText, SvnNoServer) then
-      Result := TAtlasVcsServerState.NoServer;
     Exit;
   end;
-  if AKind <> TAtlasVcsKind.Git then
-    Exit;
-  // git endet bei Fehlern mit dem Server mit 128; die Meldung unterscheidet die Ursache.
-  if HasAny(mText, GitNoServer) then
-    Result := TAtlasVcsServerState.NoServer
-  else if HasAny(mText, GitLogin) then
-    Result := TAtlasVcsServerState.LoginNeeded
-  else if HasAny(mText, GitUnreachable) then
-    Result := TAtlasVcsServerState.Unreachable;
+  case AKind of
+    TAtlasVcsKind.Svn:
+      Result := SvnState(LowerCase(AResult.ErrorText));
+    TAtlasVcsKind.Git:
+      Result := GitState(LowerCase(AResult.ErrorText));
+  else
+    Result := TAtlasVcsServerState.Failed;
+  end;
 end;
 
 class function TAtlasVcsServerAccess.OutcomeOf(AKind: TAtlasVcsKind;
@@ -132,10 +170,14 @@ class function TAtlasVcsServerAccess.OutcomeOf(AKind: TAtlasVcsKind;
 begin
   Result := AResult.Outcome;
   if (Result <> TAtlasVcsOutcome.Ok) or (AResult.ExitCode = 0) then
+  begin
     Exit;
+  end;
   Result := TAtlasVcsOutcome.Failed;
   if State(AKind, AResult) = TAtlasVcsServerState.LoginNeeded then
+  begin
     Result := TAtlasVcsOutcome.LoginNeeded;
+  end;
 end;
 
 class function TAtlasVcsServerAccess.VariableName(const AEntry: string): string;
@@ -144,10 +186,14 @@ var
 begin
   // Einträge der Laufwerke („=C:=C:\…“) sind keine Variablen.
   if AEntry.StartsWith('=') then
+  begin
     Exit('');
+  end;
   mAt := Pos('=', AEntry);
   if mAt <= 1 then
+  begin
     Exit('');
+  end;
   Result := Copy(AEntry, 1, mAt - 1);
 end;
 
@@ -161,13 +207,21 @@ begin
   begin
     mReplaced := False;
     for mVariable in NoPromptVariables do
+    begin
       if SameText(VariableName(mEntry), VariableName(mVariable)) then
+      begin
         mReplaced := True;
+      end;
+    end;
     if not mReplaced then
+    begin
       Result := Result + [mEntry];
+    end;
   end;
   for mVariable in NoPromptVariables do
+  begin
     Result := Result + [mVariable];
+  end;
 end;
 
 end.

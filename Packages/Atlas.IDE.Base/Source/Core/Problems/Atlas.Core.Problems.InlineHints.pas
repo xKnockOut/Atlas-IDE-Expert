@@ -200,53 +200,55 @@ begin
   end;
 end;
 
+/// <summary>Steht A in Richtung AForward vor B (vorwärts: weiter oben, rückwärts: weiter unten)?</summary>
+function Ahead(const A, B: TAtlasProblem; AForward: Boolean): Boolean;
+begin
+  if AForward then
+  begin
+    Result := Before(A.StartLine, A.StartCharacter, B.StartLine, B.StartCharacter);
+  end
+  else
+  begin
+    Result := Before(B.StartLine, B.StartCharacter, A.StartLine, A.StartCharacter);
+  end;
+end;
+
 class function TAtlasInlineDiagnostics.Next(const AProblems: TArray<TAtlasProblem>; ALine, ACharacter: Integer;
   AForward: Boolean; out ATarget: TAtlasProblem): Boolean;
 var
-  Problem: TAtlasProblem;
-  Found, Wrap: Boolean;
-  Edge: TAtlasProblem;
+  mProblem, mEdge, mCursor: TAtlasProblem;
+  mWrap: Boolean;
 begin
   ATarget := Default(TAtlasProblem);
-  Edge := Default(TAtlasProblem);
-  Found := False;
-  Wrap := False;
-  for Problem in AProblems do
+  mEdge := Default(TAtlasProblem);
+  mCursor := Default(TAtlasProblem);
+  mCursor.StartLine := ALine;
+  mCursor.StartCharacter := ACharacter;
+  Result := False;
+  mWrap := False;
+  for mProblem in AProblems do
   begin
-    if not IsFinding(Problem) then
+    if not IsFinding(mProblem) then
     begin
       Continue;
     end;
     // Am anderen Ende für den Umlauf: der erste bzw. letzte Befund der Datei.
-    if not Wrap or (AForward and Before(Problem.StartLine, Problem.StartCharacter, Edge.StartLine,
-      Edge.StartCharacter)) or (not AForward and Before(Edge.StartLine, Edge.StartCharacter, Problem.StartLine,
-      Problem.StartCharacter)) then
+    if not mWrap or Ahead(mProblem, mEdge, AForward) then
     begin
-      Edge := Problem;
+      mEdge := mProblem;
     end;
-    Wrap := True;
-    if AForward then
+    mWrap := True;
+    if Ahead(mCursor, mProblem, AForward) and (not Result or Ahead(mProblem, ATarget, AForward)) then
     begin
-      if Before(ALine, ACharacter, Problem.StartLine, Problem.StartCharacter) and
-        (not Found or Before(Problem.StartLine, Problem.StartCharacter, ATarget.StartLine, ATarget.StartCharacter)) then
-      begin
-        ATarget := Problem;
-        Found := True;
-      end;
-    end
-    else if Before(Problem.StartLine, Problem.StartCharacter, ALine, ACharacter) and
-      (not Found or Before(ATarget.StartLine, ATarget.StartCharacter, Problem.StartLine, Problem.StartCharacter)) then
-    begin
-      ATarget := Problem;
-      Found := True;
+      ATarget := mProblem;
+      Result := True;
     end;
   end;
-  if not Found and Wrap then
+  if not Result and mWrap then
   begin
-    ATarget := Edge;
-    Found := True;
+    ATarget := mEdge;
+    Result := True;
   end;
-  Result := Found;
 end;
 
 class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: Cardinal): Boolean;

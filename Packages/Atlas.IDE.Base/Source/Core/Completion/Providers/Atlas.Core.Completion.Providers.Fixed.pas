@@ -65,7 +65,9 @@ begin
   while TThread.GetTickCount64 - Start < FDelayMs do
   begin
     if ACancelled() then
+    begin
       Exit(nil);
+    end;
     TThread.Sleep(5);
   end;
   Result := FItems;
