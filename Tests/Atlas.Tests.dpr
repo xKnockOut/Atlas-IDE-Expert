@@ -1380,6 +1380,7 @@ uses
   Atlas.Common.Mcp.DeadCodeTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas',
   Atlas.Common.Mcp.StatusTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas',
   Atlas.Common.Mcp.Prompts.Tests in 'Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas',
+  Atlas.Common.Mcp.CheckTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas',
   Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas',
   Shell.Mcp.Tools.Tests in 'Application\Shell\Shell.Mcp.Tools.Tests.pas',
   Shell.Diagnostics.Tests in 'Application\Shell\Shell.Diagnostics.Tests.pas',
