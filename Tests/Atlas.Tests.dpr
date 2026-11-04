@@ -361,6 +361,7 @@ uses
   Atlas.Common.Pascal.ConditionalSyntax.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalSyntax.Tests.pas',
   Atlas.Common.Pascal.LanguageFeatures.Tests in 'Common\Pascal\Atlas.Common.Pascal.LanguageFeatures.Tests.pas',
   Atlas.Common.Pascal.Preprocessor.Tests in 'Common\Pascal\Atlas.Common.Pascal.Preprocessor.Tests.pas',
+  Atlas.Common.Pascal.Preprocessor.Expressions.Tests in 'Common\Pascal\Atlas.Common.Pascal.Preprocessor.Expressions.Tests.pas',
   Atlas.Common.Lsp.ProtocolReplay in 'Common\Lsp\Atlas.Common.Lsp.ProtocolReplay.pas',
   Atlas.Common.Lsp.Protocol.Tests in 'Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
