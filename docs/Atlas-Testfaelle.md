@@ -8085,6 +8085,10 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog 
 | AW20 | Im Eingabefeld `Ku` tippen (`debug.completionInDialogs` an) | Atlas-Popup wie in „Auswerten/Ändern“ (#538), auch angedockt; Pfeil runter im leeren Feld zeigt das Verlaufsmenü des Fensters, nicht das Popup |
 | AW21 | Entf auf einer Zeile bzw. auf einem Feld; Programm beenden | Zeile entfernt (auf dem Feld die ganze Zeile); nach dem Ende „‹Programm nicht angehalten›“ |
 | AW22 | Dunkles und helles Thema | Baum, Ansicht und Knöpfe gut lesbar, geänderte Werte deutlich |
+| AW23 | 20 Ausdrücke, zwei davon (Objekt mit vielen Feldern) aufgeklappt; F8 mehrmals, dabei in der Mitte der Liste eine Zeile gewählt und nach unten gescrollt | Kein Flackern, kein Sprung der Bildlaufposition, Auswahl und aufgeklappte Zeilen bleiben; nur geänderte Zeilen ändern Text und Farbe |
+| AW24 | Während F8 die Werte nachlädt: im Eingabefeld tippen, Pfeiltasten im Baum, Fenster verschieben | Fenster reagiert ohne spürbare Verzögerung (vorher wurde der Baum nach jeder Zeitscheibe neu aufgebaut) |
+| AW25 | Objekt-Zeile zugeklappt, F8 | Aufklappzeichen bleibt beim Neu-Auswerten stehen (kein kurzes Verschwinden) |
+| AW26 | Langer String (z. B. 1 MB `TStringList.Text`) als Ausdruck, Ansicht JSON bzw. Text gewählt, F8 mehrmals | Baumzeile gekürzt mit …, Ansicht unten unverändert ohne Ruckeln; Fenster schließen und wieder andocken: Zeilen, Farben und Auswahl stimmen |
 
 ## Werte im Editor beim Debuggen (#508)
 

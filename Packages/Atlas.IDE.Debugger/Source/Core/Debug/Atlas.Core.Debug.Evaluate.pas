@@ -151,6 +151,23 @@ type
     property Roots[AIndex: Integer]: TAtlasEvalNode read GetRoot;
   end;
 
+  /// <summary>Was die Ansicht unten zeigt: gewählter Knoten, sein Zustand und Wert, Ansicht und Wert von „.Text“.
+  /// Gleich wie beim letzten Mal: nichts neu berechnen. Der Frame gleicht nach jeder Zeitscheibe der Auswertung
+  /// ab; JSON formatieren und den Text des Memos lesen kostet bei langen Werten sonst jedes Mal.</summary>
+  TAtlasEvalDetailInput = record
+    Valid: Boolean;
+    Key: string;
+    State: TAtlasEvalState;
+    Value: string;
+    View: TAtlasEvalView;
+    LinesOk: Boolean;
+    Lines: string;
+    /// <summary>Eingabe für ANode (nil: keine Auswahl).</summary>
+    class function ForNode(ANode: TAtlasEvalNode; AView: TAtlasEvalView; ALinesOk: Boolean;
+      const ALines: string): TAtlasEvalDetailInput; static;
+    function Same(const AOther: TAtlasEvalDetailInput): Boolean;
+  end;
+
 implementation
 
 uses
@@ -987,6 +1004,15 @@ begin
   end;
 end;
 
+/// <summary>AKey gehört zu einem Knoten unter dem mit AParentKey (AParentKey + #1 + …).</summary>
+function IsUnder(const AKey, AParentKey: string): Boolean;
+var
+  mLength: Integer;
+begin
+  mLength := Length(AParentKey);
+  Result := (Length(AKey) > mLength) and (AKey[mLength + 1] = #1) and AKey.StartsWith(AParentKey);
+end;
+
 function TAtlasEvalList.Find(const AKey: string): TAtlasEvalNode;
 
   function Search(ANode: TAtlasEvalNode): TAtlasEvalNode;
@@ -996,6 +1022,12 @@ function TAtlasEvalList.Find(const AKey: string): TAtlasEvalNode;
     if ANode.Key = AKey then
     begin
       Exit(ANode);
+    end;
+    // Kinder tragen den Schlüssel des Elternknotens vorn (Key + #1 + Name): andere Teilbäume nicht absuchen. Der
+    // Frame fragt bei jedem Abgleich und jeder Auswahl; ohne das ging jede Suche durch alle Knoten.
+    if not IsUnder(AKey, ANode.Key) then
+    begin
+      Exit(nil);
     end;
     for Index := 0 to ANode.ChildCount - 1 do
     begin
@@ -1034,6 +1066,31 @@ begin
       Result := Result + [FRoots[Index].Expression];
     end;
   end;
+end;
+
+{ TAtlasEvalDetailInput }
+
+class function TAtlasEvalDetailInput.ForNode(ANode: TAtlasEvalNode; AView: TAtlasEvalView; ALinesOk: Boolean;
+  const ALines: string): TAtlasEvalDetailInput;
+begin
+  Result := Default(TAtlasEvalDetailInput);
+  Result.Valid := True;
+  Result.View := AView;
+  Result.LinesOk := ALinesOk;
+  Result.Lines := ALines;
+  if ANode <> nil then
+  begin
+    Result.Key := ANode.Key;
+    Result.State := ANode.State;
+    Result.Value := ANode.Value;
+  end;
+end;
+
+function TAtlasEvalDetailInput.Same(const AOther: TAtlasEvalDetailInput): Boolean;
+begin
+  // Strings derselben Instanz vergleicht Delphi über den Zeiger: ein unveränderter langer Wert kostet nichts.
+  Result := Valid and AOther.Valid and (Key = AOther.Key) and (State = AOther.State) and (View = AOther.View) and
+    (LinesOk = AOther.LinesOk) and (Value = AOther.Value) and (Lines = AOther.Lines);
 end;
 
 end.

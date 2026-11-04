@@ -81,6 +81,7 @@ contains
   Atlas.Core.Debug.DialogCompletion in 'Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas',
   Atlas.IDE.Debug.DialogCompletion in 'Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas',
   Atlas.Core.Debug.Evaluate in 'Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas',
+  Atlas.UI.Debug.EvaluateTree in 'Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas',
   Atlas.UI.Debug.EvaluateFrame in 'Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas' {AtlasDebugEvaluateFrame: TFrame},
   Atlas.IDE.Debug.EvaluateWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas',
   Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas',
