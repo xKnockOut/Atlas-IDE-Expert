@@ -204,14 +204,14 @@ begin
     Keep := Source;
     Board := ArrangeBoard(Host, Keep);
     // Außerhalb des Bearbeitungsmodus: nur der Stift, keine Griffe, keine Leiste „Ausgeblendet“.
-    Assert.IsTrue(Board.Bar.Visible);
-    Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Edit, '') >= 0);
-    Assert.AreEqual(-1, Board.Bar.IndexOf(TAtlasArrangePartKind.Column, '2'));
-    Assert.AreEqual(-1, Board.Bar.IndexOf(TAtlasArrangePartKind.Layout, ''), 'ein Layout: kein Umschalter');
+    Assert.IsTrue(Board.Arranger.Bar.Visible);
+    Assert.IsTrue(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Edit, '') >= 0);
+    Assert.AreEqual(-1, Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Column, '2'));
+    Assert.AreEqual(-1, Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Layout, ''), 'ein Layout: kein Umschalter');
     Assert.IsNull(Board.GripOf(TAtlasWelcomeIds.State));
-    Assert.IsFalse(Board.HiddenBar.Visible);
-    Assert.IsFalse(Board.InsertLine.Visible);
-    Assert.IsTrue(Board.View(TAtlasWelcomeIds.State).TitleBar.PopupMenu = Board.SectionMenu, 'Rechtsklick');
+    Assert.IsFalse(Board.Arranger.HiddenBar.Visible);
+    Assert.IsFalse(Board.Arranger.InsertLine.Visible);
+    Assert.IsTrue(Board.View(TAtlasWelcomeIds.State).TitleBar.PopupMenu = Board.Menus.SectionMenu, 'Rechtsklick');
     // Bearbeitungsmodus.
     Source.EditingOn := True;
     Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
@@ -221,23 +221,23 @@ begin
     Assert.IsNotNull(Board.GripOf(TAtlasWelcomeIds.State));
     Assert.IsNotNull(Board.ToolsOf(TAtlasWelcomeIds.State));
     Assert.IsTrue(Board.GripOf(TAtlasWelcomeIds.State).TabStop, 'Tab erreicht den Griff');
-    Assert.IsTrue(Board.Bar.Parts[Board.Bar.IndexOf(TAtlasArrangePartKind.Column, '2')].Down);
-    Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Add, '') >= 0);
-    Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Reset, '') >= 0);
-    Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Layout, '') >= 0);
-    Assert.IsTrue(Board.HiddenBar.Visible);
-    Assert.IsTrue(Board.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.Tests) >= 0);
-    Assert.AreEqual(-1, Board.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.State));
-    Assert.IsTrue(Board.InsertLine.Visible);
+    Assert.IsTrue(Board.Arranger.Bar.Parts[Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Column, '2')].Down);
+    Assert.IsTrue(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Add, '') >= 0);
+    Assert.IsTrue(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Reset, '') >= 0);
+    Assert.IsTrue(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Layout, '') >= 0);
+    Assert.IsTrue(Board.Arranger.HiddenBar.Visible);
+    Assert.IsTrue(Board.Arranger.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.Tests) >= 0);
+    Assert.AreEqual(-1, Board.Arranger.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.State));
+    Assert.IsTrue(Board.Arranger.InsertLine.Visible);
     // welcomePage.customLayout aus: kein Bearbeitungsmodus, keine Leiste, festes Layout.
     Source.Can := False;
     Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
       Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
     Assert.IsFalse(Board.Editing);
-    Assert.IsFalse(Board.Bar.Visible);
+    Assert.IsFalse(Board.Arranger.Bar.Visible);
     Assert.IsNull(Board.GripOf(TAtlasWelcomeIds.State));
     Assert.IsNull(Board.ToolsOf(TAtlasWelcomeIds.State));
-    Assert.IsFalse(Board.HiddenBar.Visible);
+    Assert.IsFalse(Board.Arranger.HiddenBar.Visible);
     // Ohne Quelle (Tests, ältere Aufrufer): kein Rechtsklick-Menü.
     Board.Source := nil;
     Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
@@ -323,17 +323,17 @@ begin
     Source := ArrangeSource(True);
     Keep := Source;
     Board := ArrangeBoard(Host, Keep);
-    Board.Bar.ClickPart(Board.Bar.IndexOf(TAtlasArrangePartKind.Column, '1'));
+    Board.Arranger.Bar.ClickPart(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Column, '1'));
     Assert.AreEqual(1, Board.Layout.Columns);
     Assert.AreEqual(1, Integer(Length(Board.Columns)));
-    Assert.IsTrue(Board.Bar.Parts[Board.Bar.IndexOf(TAtlasArrangePartKind.Column, '1')].Down);
+    Assert.IsTrue(Board.Arranger.Bar.Parts[Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Column, '1')].Down);
     CheckSynchronize;
     Assert.AreEqual('arrange', Source.Last);
     Assert.AreEqual(1, Source.Arranged.Columns);
-    Board.Bar.ClickPart(Board.Bar.IndexOf(TAtlasArrangePartKind.Reset, ''));
+    Board.Arranger.Bar.ClickPart(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Reset, ''));
     CheckSynchronize;
     Assert.AreEqual('reset', Source.Last);
-    Board.Bar.ClickPart(Board.Bar.IndexOf(TAtlasArrangePartKind.Edit, ''));
+    Board.Arranger.Bar.ClickPart(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Edit, ''));
     CheckSynchronize;
     Assert.AreEqual('edit False', Source.Last, '„Fertig“');
   finally
@@ -356,27 +356,27 @@ begin
     Keep := Source;
     Board := ArrangeBoard(Host, Keep);
     // Akzeptanz: „Bereich hinzufügen“ listet alle Bereiche; sichtbare sind abgehakt.
-    Board.BuildAddMenu;
-    Assert.AreEqual(4, Integer(Board.BarMenu.Items.Count));
-    Assert.IsTrue(Board.BarMenu.Items[0].Checked);
-    Assert.IsFalse(Board.BarMenu.Items[0].Enabled);
-    Assert.IsFalse(Board.BarMenu.Items[2].Checked);
-    Assert.IsTrue(Board.BarMenu.Items[2].Enabled);
-    Assert.AreEqual('Testergebnisse – Letzter Lauf', StripHotkey(Board.BarMenu.Items[2].Caption));
+    Board.Menus.BuildAddMenu;
+    Assert.AreEqual(4, Integer(Board.Menus.BarMenu.Items.Count));
+    Assert.IsTrue(Board.Menus.BarMenu.Items[0].Checked);
+    Assert.IsFalse(Board.Menus.BarMenu.Items[0].Enabled);
+    Assert.IsFalse(Board.Menus.BarMenu.Items[2].Checked);
+    Assert.IsTrue(Board.Menus.BarMenu.Items[2].Enabled);
+    Assert.AreEqual('Testergebnisse – Letzter Lauf', StripHotkey(Board.Menus.BarMenu.Items[2].Caption));
     // Der Ausgeblendete erscheint an der Einfügelinie.
-    Board.SetTarget(0, TAtlasWelcomeIds.Projects);
-    Board.Target(Column, Before);
+    Board.Arranger.SetTarget(0, TAtlasWelcomeIds.Projects);
+    Board.Arranger.Target(Column, Before);
     Assert.AreEqual(0, Column);
     Assert.AreEqual(Board.View(TAtlasWelcomeIds.Projects).Top - TAtlasWelcomeBoardFrame.Gap div 2 - 1,
-      Board.InsertLine.Top);
-    Board.BarMenu.Items[2].Click;
+      Board.Arranger.InsertLine.Top);
+    Board.Menus.BarMenu.Items[2].Click;
     CheckSynchronize;
     Assert.AreEqual('show atlas.tests 0 atlas.projects', Source.Last);
     // Danach wieder die Vorgabe: Ende der Spalte mit dem meisten Platz (rechts steht nur die Kachel).
-    Board.Target(Column, Before);
+    Board.Arranger.Target(Column, Before);
     Assert.AreEqual(1, Column);
     Assert.AreEqual('', Before);
-    Board.HiddenBar.ClickPart(Board.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.Tests));
+    Board.Arranger.HiddenBar.ClickPart(Board.Arranger.HiddenBar.IndexOf(TAtlasArrangePartKind.Hidden, TAtlasWelcomeIds.Tests));
     CheckSynchronize;
     Assert.AreEqual('show atlas.tests 1 ', Source.Last);
   finally
@@ -400,22 +400,22 @@ begin
     Keep := Source;
     Board := ArrangeBoard(Host, Keep);
     // Akzeptanz: zwei Layouts lassen sich im Kopf umschalten, auch ohne Bearbeitungsmodus.
-    Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Layout, '') >= 0);
-    Board.BuildLayoutMenu;
-    Assert.AreEqual(6, Integer(Board.BarMenu.Items.Count), 'zwei Layouts, Strich, Neu, Umbenennen, Löschen');
-    Assert.IsTrue(Board.BarMenu.Items[0].Checked);
-    Assert.IsTrue(Board.BarMenu.Items[5].Enabled);
-    Board.BarMenu.Items[1].Click;
+    Assert.IsTrue(Board.Arranger.Bar.IndexOf(TAtlasArrangePartKind.Layout, '') >= 0);
+    Board.Menus.BuildLayoutMenu;
+    Assert.AreEqual(6, Integer(Board.Menus.BarMenu.Items.Count), 'zwei Layouts, Strich, Neu, Umbenennen, Löschen');
+    Assert.IsTrue(Board.Menus.BarMenu.Items[0].Checked);
+    Assert.IsTrue(Board.Menus.BarMenu.Items[5].Enabled);
+    Board.Menus.BarMenu.Items[1].Click;
     CheckSynchronize;
     Assert.AreEqual('switch Präsentation', Source.Last);
     // Neu: vergebener Name wird gemeldet, nichts angelegt.
-    Board.OnAskName :=
+    Board.Menus.OnAskName :=
       function(const APrompt: string; var AName: string): Boolean
       begin
         AName := Answer; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
         Result := True;
       end;
-    Board.OnConfirm :=
+    Board.Menus.OnConfirm :=
       function(const AText: string; AQuestion: Boolean): Boolean
       begin
         Told := AText;
@@ -423,19 +423,19 @@ begin
       end;
     Source.Calls := nil;
     Answer := 'arbeit';
-    Board.BarMenu.Items[3].Click;
+    Board.Menus.BarMenu.Items[3].Click;
     CheckSynchronize;
     Assert.AreEqual(0, Integer(Length(Source.Calls)));
     Assert.IsTrue(Pos('arbeit', Told) > 0);
     Answer := ' Vortrag ';
-    Board.BarMenu.Items[3].Click;
+    Board.Menus.BarMenu.Items[3].Click;
     CheckSynchronize;
     Assert.AreEqual('add Vortrag', Source.Last);
     Answer := 'Arbeit 2';
-    Board.BarMenu.Items[4].Click;
+    Board.Menus.BarMenu.Items[4].Click;
     CheckSynchronize;
     Assert.AreEqual('rename Arbeit 2', Source.Last);
-    Board.BarMenu.Items[5].Click;
+    Board.Menus.BarMenu.Items[5].Click;
     CheckSynchronize;
     Assert.AreEqual('delete', Source.Last);
   finally
@@ -455,27 +455,27 @@ begin
     Source := ArrangeSource(False);
     Keep := Source;
     Board := ArrangeBoard(Host, Keep);
-    Board.PrepareSectionMenu(TAtlasWelcomeIds.State);
-    Assert.IsTrue(Board.SectionMenu.Items[0].Enabled);
-    Assert.IsTrue(Board.SectionMenu.Items[3].Visible, '„Seite anpassen“');
-    Board.SectionMenu.Items[0].Click;
+    Board.Menus.PrepareSectionMenu(TAtlasWelcomeIds.State);
+    Assert.IsTrue(Board.Menus.SectionMenu.Items[0].Enabled);
+    Assert.IsTrue(Board.Menus.SectionMenu.Items[3].Visible, '„Seite anpassen“');
+    Board.Menus.SectionMenu.Items[0].Click;
     CheckSynchronize;
     Assert.AreEqual('hideAt ' + TAtlasWelcomeIds.State, Source.Last);
-    Board.SectionMenu.Items[1].Click;
+    Board.Menus.SectionMenu.Items[1].Click;
     CheckSynchronize;
     Assert.AreEqual('settings ' + TAtlasWelcomeIds.State, Source.Last);
-    Board.SectionMenu.Items[3].Click;
+    Board.Menus.SectionMenu.Items[3].Click;
     CheckSynchronize;
     Assert.AreEqual('edit True', Source.Last);
     // Fremder Bereich ohne Schalter: nichts auszublenden.
-    Board.PrepareSectionMenu('plugin.fremd');
-    Assert.IsFalse(Board.SectionMenu.Items[0].Enabled);
+    Board.Menus.PrepareSectionMenu('plugin.fremd');
+    Assert.IsFalse(Board.Menus.SectionMenu.Items[0].Enabled);
     // Ohne welcomePage.customLayout: „Ausblenden“ bleibt, „Seite anpassen“ fehlt.
     Source.Can := False;
     Board.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
-    Board.PrepareSectionMenu(TAtlasWelcomeIds.State);
-    Assert.IsTrue(Board.SectionMenu.Items[0].Enabled);
-    Assert.IsFalse(Board.SectionMenu.Items[3].Visible);
+    Board.Menus.PrepareSectionMenu(TAtlasWelcomeIds.State);
+    Assert.IsTrue(Board.Menus.SectionMenu.Items[0].Enabled);
+    Assert.IsFalse(Board.Menus.SectionMenu.Items[3].Visible);
   finally
     Host.Free;
     TAtlasWelcomeViews.Release;
