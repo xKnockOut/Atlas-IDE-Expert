@@ -188,9 +188,9 @@ begin
   mDocument := Open(mUri, mSettings.EnumTables, '"Namenstabelle anlegen" ist abgeschaltet (refactoring.enumTables).');
   mContext := Default(TEnumTablesContext);
   mContext.ResourceStrings := mSettings.EnumTablesResourceStrings;
-  Result := TLspEnumTables.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
-    mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2].Value,
-    Trim(AArguments.Items[3].Value), mContext);
+  Result := TLspEnumTables.Execute(TEnumTablesDocument.Create(TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1])),
+    AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), mContext);
   Log('Namenstabelle angelegt');
 end;
 
@@ -212,8 +212,8 @@ begin
   mContext.ReadText := Reader;
   mResolver := NewResolver;
   try
-    mAnswer := TLspEnumTables.Sync(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
-      mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
+    mAnswer := TLspEnumTables.Sync(mResolver, TEnumTablesDocument.Create(TSyntaxTreeCache.Get(mDocument, nil).Tree,
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1])), mContext);
   finally
     mResolver.Free;
   end;

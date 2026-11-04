@@ -38,6 +38,17 @@ type
 
   TDefinitionRequestKind = (Definition, Declaration, TypeDefinition);
 
+  /// <summary>Stelle einer Sprungabfrage: Baum, Datei, Position und ob zur Deklaration.</summary>
+  TDefinitionQuery = record
+    Tree: TSyntaxTree;
+    FileName: string;
+    Position: TTextPosition;
+    /// <summary>Immer zur Deklaration springen (sonst wechselt die Taste zwischen beiden).</summary>
+    Declaration: Boolean;
+    class function Create(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+      ADeclaration: Boolean): TDefinitionQuery; static;
+  end;
+
   TLspDefinition = class
   public const
     DefinitionMethod = 'textDocument/definition';
@@ -72,9 +83,8 @@ type
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
     /// <summary>Wie Targets, für ein schon aufgelöstes Symbol (etwa einen Kandidaten aus ResolveAll, #1119).
     /// </summary>
-    class function TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
-      ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
+    class function TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AQuery: TDefinitionQuery;
+      const AResolved: TResolvedSymbol): TArray<TDefinitionTarget>; static;
     /// <summary>Deklaration des Typs des Bezeichners an APosition; leer, wenn er keinen bekannten Typ hat.</summary>
     class function TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
@@ -137,6 +147,17 @@ begin
   Result.SelectionRange := ASelectionRange;
 end;
 
+{ TDefinitionQuery }
+
+class function TDefinitionQuery.Create(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  ADeclaration: Boolean): TDefinitionQuery;
+begin
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Declaration := ADeclaration;
+end;
+
 { TLspDefinition }
 
 function TLspDefinition.GetNamespaces: TArray<string>;
@@ -173,129 +194,154 @@ end;
 class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>;
 begin
-  Result := TargetsOf(AResolver, AIndex, ATree, AFileName, APosition, AResolver.Resolve(ATree, AFileName, APosition),
-    ADeclaration);
+  Result := TargetsOf(AResolver, AIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, ADeclaration),
+    AResolver.Resolve(ATree, AFileName, APosition));
 end;
 
-class function TLspDefinition.TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
-  ADeclaration: Boolean): TArray<TDefinitionTarget>;
+/// <summary>Die Deklaration unter dem Cursor in der eigenen Datei; Kind None, wenn dort keine steht.</summary>
+function DeclarationAt(AResolver: TNameResolver; const AQuery: TDefinitionQuery): TResolvedSymbol;
 var
-  Resolved: TResolvedSymbol;
-  OwnerUnit, Here: TUnitIndex;
-  Symbol, First, Last: TIndexSymbol;
-  Same, Variant: TArray<TIndexSymbol>;
-  Params: TArray<string>;
-  Empty: TTextRange;
+  mOwnerUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
-  Result := nil;
+  Result := Default(TResolvedSymbol);
+  // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
+  mOwnerUnit := AResolver.ExtractedUnit(AQuery.Tree, AQuery.FileName);
+  for mSymbol in mOwnerUnit.Symbols do
+  begin
+    if SameText(mOwnerUnit.SymbolFile(mSymbol), AQuery.FileName) and
+      Within(AQuery.Position, mSymbol.SelectionRange) then
+    begin
+      Result.Kind := TResolvedKind.Symbol;
+      Result.Name := mSymbol.Name;
+      Result.Container := mSymbol.Container;
+      Result.SymbolKind := mSymbol.Kind;
+      Result.FileName := AQuery.FileName;
+      Result.Range := mSymbol.Range;
+      Result.SelectionRange := mSymbol.SelectionRange;
+      Result.ParamTypes := mSymbol.ParamTypes;
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Parametertypen der gemeinten Variante: die der Routine unter dem Cursor in AHere, sonst die von
+/// AResolved.</summary>
+function VariantParams(AHere: TUnitIndex; const AResolved: TResolvedSymbol;
+  const APosition: TTextPosition): TArray<string>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AHere.Symbols do
+  begin
+    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Name, AResolved.Name) and
+      Within(APosition, mSymbol.SelectionRange) then
+    begin
+      Exit(mSymbol.ParamTypes);
+    end;
+  end;
+  Result := AResolved.ParamTypes;
+end;
+
+/// <summary>Fundstellen der Routine AResolved in AOwner: erst die Variante mit AParams, ohne zweite Fundstelle
+/// das einzige Paar ohne Überladungen (die Implementierung darf ihre Parameter weglassen). False ohne Paar.
+/// </summary>
+function RoutinePair(AOwner: TUnitIndex; const AResolved: TResolvedSymbol; const AParams: TArray<string>;
+  out AVariant: TArray<TIndexSymbol>): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mSame: TArray<TIndexSymbol>;
+begin
+  mSame := nil;
+  AVariant := nil;
+  for mSymbol in AOwner.Symbols do
+  begin
+    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Container, AResolved.Container) and
+      SameText(mSymbol.Name, AResolved.Name) then
+    begin
+      mSame := mSame + [mSymbol];
+      if SameParams(mSymbol.ParamTypes, AParams) then
+      begin
+        AVariant := AVariant + [mSymbol];
+      end;
+    end;
+  end;
+  if (Length(AVariant) < 2) and (Length(mSame) = 2) then
+  begin
+    AVariant := mSame;
+  end;
+  Result := Length(AVariant) >= 2;
+end;
+
+/// <summary>Ziel einer Routine: Deklaration und Implementierung derselben Variante. Steht der Cursor auf einer
+/// Routine dieser Datei (Deklaration oder Implementierung), gilt deren Variante. Ohne Paar das Symbol selbst.
+/// </summary>
+function RoutineTargets(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AQuery: TDefinitionQuery;
+  const AResolved: TResolvedSymbol): TArray<TDefinitionTarget>;
+var
+  mHere, mOwnerUnit: TUnitIndex;
+  mVariant: TArray<TIndexSymbol>;
+  mFirst, mLast, mChosen: TIndexSymbol;
+  mFound: Boolean;
+begin
+  Result := [Target(AResolved.FileName, AResolved.Range, AResolved.SelectionRange)];
+  mHere := AResolver.ExtractedUnit(AQuery.Tree, AQuery.FileName);
+  mOwnerUnit := mHere;
+  mFound := SameText(AResolved.FileName, AQuery.FileName) or TIndexFiles.UnitOf(AIndex, AResolved.FileName,
+    mOwnerUnit);
+  if not mFound or not RoutinePair(mOwnerUnit, AResolved, VariantParams(mHere, AResolved, AQuery.Position),
+    mVariant) then
+  begin
+    Exit;
+  end;
+  mFirst := mVariant[0];
+  mLast := mVariant[High(mVariant)];
+  // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
+  mChosen := mLast;
+  if AQuery.Declaration or (SameText(mOwnerUnit.SymbolFile(mLast), AQuery.FileName) and
+    Within(AQuery.Position, mLast.SelectionRange)) then
+  begin
+    mChosen := mFirst;
+  end;
+  Result := [Target(mOwnerUnit.SymbolFile(mChosen), mChosen.Range, mChosen.SelectionRange)];
+end;
+
+class function TLspDefinition.TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AQuery: TDefinitionQuery; const AResolved: TResolvedSymbol): TArray<TDefinitionTarget>;
+var
+  mResolved: TResolvedSymbol;
+  mEmpty: TTextRange;
+begin
   // Namen in Deklarationen (z. B. Methoden in der Klasse) sind keine Verwendungen:
   // dann gilt die Deklaration unter dem Cursor selbst. Zuerst prüfen: Die
   // Namensauflösung liest einen solchen Namen sonst wie eine Verwendung und nimmt
   // bei Überladungen die erste (Hover auf der zweiten zeigte die erste).
-  // Das Extrakt erst in einer Variablen halten und unten Result zuweisen statt
-  // Exit([...]): In der früheren Form brach dcc64 (Delphi 13) ohne Meldung ab.
-  Resolved := Default(TResolvedSymbol);
-  // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
-  OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
-  for Symbol in OwnerUnit.Symbols do
-  begin
-    if SameText(OwnerUnit.SymbolFile(Symbol), AFileName) and Within(APosition, Symbol.SelectionRange) then
-    begin
-      Resolved.Kind := TResolvedKind.Symbol;
-      Resolved.Name := Symbol.Name;
-      Resolved.Container := Symbol.Container;
-      Resolved.SymbolKind := Symbol.Kind;
-      Resolved.FileName := AFileName;
-      Resolved.Range := Symbol.Range;
-      Resolved.SelectionRange := Symbol.SelectionRange;
-      Resolved.ParamTypes := Symbol.ParamTypes;
-      Break;
-    end;
-  end;
+  // Das Ergebnis erst zuweisen statt Exit([...]): In der früheren Form brach dcc64 (Delphi 13) ohne Meldung ab.
+  mResolved := DeclarationAt(AResolver, AQuery);
   // Sonst die schon aufgelöste Verwendung des Aufrufers (TargetsOf, #1119).
-  if Resolved.Kind = TResolvedKind.None then
+  if mResolved.Kind = TResolvedKind.None then
   begin
-    Resolved := AResolved;
+    mResolved := AResolved;
   end;
-  case Resolved.Kind of
+  case mResolved.Kind of
     TResolvedKind.None:
-      Exit;
+      Result := nil;
     TResolvedKind.UnitName:
       begin
-        Empty := TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 0));
-        Result := [Target(Resolved.FileName, Empty, Empty)];
-        Exit;
+        mEmpty := TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 0));
+        Result := [Target(mResolved.FileName, mEmpty, mEmpty)];
       end;
     TResolvedKind.Local:
-      begin
-        Result := [Target(AFileName, Resolved.Range, Resolved.SelectionRange)];
-        Exit;
-      end;
+      Result := [Target(AQuery.FileName, mResolved.Range, mResolved.SelectionRange)];
   else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-
-  Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
-  if not (Resolved.SymbolKind in RoutineKinds) then
-  begin
-    Exit;
-  end;
-  // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle derselben Variante. Steht der
-  // Cursor auf einer Routine dieser Datei (Deklaration oder Implementierung), gilt deren Variante.
-  Params := Resolved.ParamTypes;
-  Here := AResolver.ExtractedUnit(ATree, AFileName);
-  for Symbol in Here.Symbols do
-  begin
-    if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
-      Within(APosition, Symbol.SelectionRange) then
+    if mResolved.SymbolKind in RoutineKinds then
     begin
-      Params := Symbol.ParamTypes;
-      Break;
-    end;
-  end;
-  if SameText(Resolved.FileName, AFileName) then
-  begin
-    OwnerUnit := Here;
-  end
-  else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
-  begin
-    Exit;
-  end;
-  Same := nil;
-  Variant := nil;
-  for Symbol in OwnerUnit.Symbols do
-  begin
-    if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Resolved.Container) and
-      SameText(Symbol.Name, Resolved.Name) then
+      Result := RoutineTargets(AResolver, AIndex, AQuery, mResolved);
+    end
+    else
     begin
-      Same := Same + [Symbol];
-      if SameParams(Symbol.ParamTypes, Params) then
-      begin
-        Variant := Variant + [Symbol];
-      end;
+      Result := [Target(mResolved.FileName, mResolved.Range, mResolved.SelectionRange)];
     end;
-  end;
-  // Ohne zweite Fundstelle dieser Variante: Die Implementierung darf ihre Parameter weglassen, aber nur ohne
-  // Überladungen; dann wie bisher das einzige Paar.
-  if Length(Variant) < 2 then
-  begin
-    if Length(Same) <> 2 then
-    begin
-      Exit;
-    end;
-    Variant := Same;
-  end;
-  First := Variant[0];
-  Last := Variant[High(Variant)];
-  // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
-  if ADeclaration or (SameText(OwnerUnit.SymbolFile(Last), AFileName) and Within(APosition, Last.SelectionRange)) then
-  begin
-    Result := [Target(OwnerUnit.SymbolFile(First), First.Range, First.SelectionRange)];
-  end
-  else
-  begin
-    Result := [Target(OwnerUnit.SymbolFile(Last), Last.Range, Last.SelectionRange)];
   end;
 end;
 
