@@ -244,41 +244,18 @@ begin
   Result := (AIndex <> nil) and AIndex.FindFile(AType.FileName, AUnit);
 end;
 
-/// <summary>Werte der Aufzählung AType in Deklarationsreihenfolge, Aliase verfolgt; False, wenn AType keine
-/// Aufzählung ist.</summary>
-function EnumValues(AResolver: TNameResolver; ASource: TCommandSource; const AIndex: ISymbolIndex;
-  const AFileName: string; AType: TResolvedSymbol; out AName: string; out AValues: TArray<string>): Boolean;
+/// <summary>Werte der Aufzählung AType in Deklarationsreihenfolge.</summary>
+function EnumMembers(const AOwner: TUnitIndex; const AType: TResolvedSymbol): TArray<string>;
 var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Step: Integer;
+  mSymbol: TIndexSymbol;
 begin
-  AName := '';
-  AValues := nil;
-  Result := False;
-  for Step := 1 to 4 do
+  Result := nil;
+  for mSymbol in AOwner.Symbols do
   begin
-    if not AType.Found or not AType.IsType or not OwnerOf(AResolver, ASource, AIndex, AFileName, AType, Owner) then
+    if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and (SameText(mSymbol.Container, AType.QualifiedName) or
+      SameText(mSymbol.Container, AType.Name)) then
     begin
-      Exit;
-    end;
-    if AType.SymbolKind = TIndexSymbolKind.EnumType then
-    begin
-      for Symbol in Owner.Symbols do
-      begin
-        if (Symbol.Kind = TIndexSymbolKind.EnumMember) and (SameText(Symbol.Container, AType.QualifiedName) or
-          SameText(Symbol.Container, AType.Name)) then
-        begin
-          AValues := AValues + [Symbol.Name];
-        end;
-      end;
-      AName := AType.Name;
-      Exit(AValues <> nil);
-    end;
-    if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
-      not AResolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
-    begin
-      Exit;
+      Result := Result + [mSymbol.Name];
     end;
   end;
 end;
@@ -332,149 +309,274 @@ begin
   end;
 end;
 
-function ExecuteCase(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+/// <summary>Öffnet das Token einen Block, den ein end bzw. until schließt?</summary>
+function OpensBlock(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsKeyword('begin') or AToken.IsKeyword('try') or AToken.IsKeyword('case') or
+    AToken.IsKeyword('repeat') or AToken.IsKeyword('asm');
+end;
+
 const
-  Usage = '/case erwartet darunter eine case-Anweisung über einer Aufzählung';
+  cCaseUsage = '/case erwartet darunter eine case-Anweisung über einer Aufzählung';
+
+type
+  /// <summary>Ablauf von /case: fehlende Werte der Aufzählung als Zweige ergänzen.</summary>
+  TCaseCommand = class
+  private
+    FContext: TSlashContext;
+    FSource: TCommandSource;
+    FTokens: TArray<TPascalToken>;
+    FCaseIndex: Integer;
+    FOfIndex: Integer;
+    FNames: TArray<string>;
+    FFileName: string;
+    FEnumName: string;
+    FValues: TArray<string>;
+    FScoped: Boolean;
+    FSlot: TCaseBranchSlot;
+    FMissing: TArray<string>;
+    FReason: string;
+    function Fail(const AReason: string): Boolean;
+    /// <summary>case unter der Befehlszeile und sein Auswahlausdruck (nur Namen und Punkte).</summary>
+    function FindCase: Boolean;
+    /// <summary>Werte der Aufzählung AType, Aliase verfolgt; False, wenn AType keine Aufzählung ist.</summary>
+    function EnumValues(AResolver: TNameResolver; AType: TResolvedSymbol): Boolean;
+    /// <summary>Typ des Auswahlausdrucks als Aufzählung bestimmen.</summary>
+    function ResolveEnum: Boolean;
+    /// <summary>Vorhandene Marken lesen und die fehlenden bestimmen.</summary>
+    function FindMissing: Boolean;
+    /// <summary>Letztes Token der Zweige: vor else bzw. end des case auf Ebene 0.</summary>
+    function LastBranchToken: Integer;
+    /// <summary>Text der neuen Zweige hinter dem Token ALastIndex.</summary>
+    function BranchText(ALastIndex: Integer): string;
+  public
+    constructor Create(const AContext: TSlashContext);
+    destructor Destroy; override;
+    function Run(out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+  end;
+
+constructor TCaseCommand.Create(const AContext: TSlashContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  FSource := TCommandSource.Create(AContext);
+end;
+
+destructor TCaseCommand.Destroy;
+begin
+  FSource.Free;
+  inherited;
+end;
+
+function TCaseCommand.Fail(const AReason: string): Boolean;
+begin
+  FReason := AReason;
+  Result := False;
+end;
+
+function TCaseCommand.FindCase: Boolean;
+begin
+  FTokens := TPascalLexer.Tokenize(FSource.Text);
+  // Erstes Token unter der Befehlszeile muss "case" sein.
+  FCaseIndex := 0;
+  while (FCaseIndex <= High(FTokens)) and ((FTokens[FCaseIndex].StartPos.Line <= FSource.Line) or
+    (FTokens[FCaseIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
+  begin
+    Inc(FCaseIndex);
+  end;
+  if (FCaseIndex > High(FTokens)) or not FTokens[FCaseIndex].IsKeyword('case') then
+  begin
+    Exit(Fail(cCaseUsage));
+  end;
+  // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
+  FNames := nil;
+  FOfIndex := NextCode(FTokens, FCaseIndex);
+  while (FOfIndex <= High(FTokens)) and not FTokens[FOfIndex].IsKeyword('of') do
+  begin
+    if FTokens[FOfIndex].Kind = TPascalTokenKind.Identifier then
+    begin
+      FNames := FNames + [FTokens[FOfIndex].Text];
+    end
+    else if not FTokens[FOfIndex].IsSymbol('.') then
+    begin
+      Exit(Fail('/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art'));
+    end;
+    FOfIndex := NextCode(FTokens, FOfIndex);
+  end;
+  Result := (FOfIndex <= High(FTokens)) and (FNames <> nil);
+  if not Result then
+  begin
+    FReason := cCaseUsage;
+  end;
+end;
+
+function TCaseCommand.EnumValues(AResolver: TNameResolver; AType: TResolvedSymbol): Boolean;
 var
-  Source: TCommandSource;
-  Tokens: TArray<TPascalToken>;
-  CaseIndex, OfIndex, Index, Depth, LastIndex: Integer;
-  Names, Missing, Values: TArray<string>;
-  Resolver: TNameResolver;
-  Owner, EnumType: TResolvedSymbol;
-  TypeFound, Scoped: Boolean;
-  FileName, EnumName, Prefix, Text, Label_: string;
-  Slot: TCaseBranchSlot;
-  InsertAt: TTextPosition;
+  mOwner: TUnitIndex;
+  mStep: Integer;
+begin
+  Result := False;
+  for mStep := 1 to 4 do
+  begin
+    if not AType.Found or not AType.IsType or not OwnerOf(AResolver, FSource, FContext.Index, FFileName, AType,
+      mOwner) then
+    begin
+      Exit;
+    end;
+    if AType.SymbolKind = TIndexSymbolKind.EnumType then
+    begin
+      FValues := EnumMembers(mOwner, AType);
+      FEnumName := AType.Name;
+      Exit(FValues <> nil);
+    end;
+    if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
+      not AResolver.ResolveTypeFrom(mOwner, AType.TypeName, AType) then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+function TCaseCommand.ResolveEnum: Boolean;
+var
+  mResolver: TNameResolver;
+  mOwner, mEnumType: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  FFileName := '';
+  if FContext.Uri <> '' then
+  begin
+    FFileName := TDocumentUris.ToPath(FContext.Uri);
+  end;
+  mResolver := TNameResolver.Create(FContext.Index);
+  try
+    Result := mResolver.ChainType(FSource.Tree, FFileName, FNames, FTokens[FCaseIndex].Offset, mOwner, mEnumType,
+      mTypeFound) and mTypeFound and EnumValues(mResolver, mEnumType);
+    if not Result then
+    begin
+      Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', FNames)])));
+    end;
+    FScoped := ScopedEnum(FContext, FSource, FFileName, mEnumType);
+  finally
+    mResolver.Free;
+  end;
+end;
+
+function TCaseCommand.FindMissing: Boolean;
+var
+  mLabel: string;
+begin
+  // Vorhandene Marken und Einrückung wie bei der Vervollständigung (#449).
+  if not TCaseCompletion.BranchSlot(FSource.Text, FTokens, FTokens[FOfIndex].EndPos, FSlot) then
+  begin
+    Exit(Fail(cCaseUsage));
+  end;
+  if not TCaseCompletion.Missing(FValues, FSlot.Labels, FMissing) then
+  begin
+    Exit(Fail(Format('Eine Marke im case ist kein Wert von %s', [FEnumName])));
+  end;
+  if FMissing = nil then
+  begin
+    Exit(Fail(Format('Der case behandelt schon alle Werte von %s', [FEnumName])));
+  end;
+  for mLabel in FSlot.Labels do
+  begin
+    FScoped := FScoped or (Pos('.', mLabel) > 0);
+  end;
+  Result := True;
+end;
+
+function TCaseCommand.LastBranchToken: Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := FOfIndex;
+  mDepth := 0;
+  mIndex := NextCode(FTokens, FOfIndex);
+  while mIndex <= High(FTokens) do
+  begin
+    if (mDepth = 0) and (FTokens[mIndex].IsKeyword('end') or (FTokens[mIndex].IsKeyword('else') and
+      (FTokens[Result].IsSymbol(';') or (Result = FOfIndex)))) then
+    begin
+      Break;
+    end;
+    if OpensBlock(FTokens[mIndex]) then
+    begin
+      Inc(mDepth);
+    end
+    else if FTokens[mIndex].IsKeyword('end') or FTokens[mIndex].IsKeyword('until') then
+    begin
+      Dec(mDepth);
+    end;
+    Result := mIndex;
+    mIndex := NextCode(FTokens, mIndex);
+  end;
+end;
+
+function TCaseCommand.BranchText(ALastIndex: Integer): string;
+var
+  mPrefix, mLabel: string;
+begin
+  mPrefix := '';
+  if FScoped then
+  begin
+    mPrefix := FEnumName + '.';
+  end;
+  Result := '';
+  if (ALastIndex <> FOfIndex) and not FTokens[ALastIndex].IsSymbol(';') then
+  begin
+    Result := ';';
+  end;
+  for mLabel in FMissing do
+  begin
+    Result := Result + FSource.LineBreak + FSlot.BranchIndent + mPrefix + mLabel + ': ;';
+  end;
+  if not FSlot.HasEnd then
+  begin
+    Result := Result + FSource.LineBreak + FSlot.CaseIndent + 'end;';
+  end;
+end;
+
+function TCaseCommand.Run(out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mLastIndex: Integer;
+  mInsertAt: TTextPosition;
 begin
   AEdits := nil;
-  if AContext.Arguments <> '' then
+  if FContext.Arguments <> '' then
   begin
-    Exit(Fail('/case hat keine Argumente', AReason));
+    FReason := '/case hat keine Argumente';
+    Result := False;
+  end
+  else if FSource.RoutineAt = nil then
+  begin
+    FReason := '/case gilt nur im Rumpf einer Routine';
+    Result := False;
+  end
+  else
+  begin
+    Result := FindCase and ResolveEnum and FindMissing;
   end;
-  Source := TCommandSource.Create(AContext);
+  AReason := FReason;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mLastIndex := LastBranchToken;
+  mInsertAt := FTokens[mLastIndex].EndPos;
+  AEdits := [TTextEdit.Create(TTextRange.Create(mInsertAt, mInsertAt), BranchText(mLastIndex)),
+    FSource.RemoveCommand];
+end;
+
+function ExecuteCase(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mCommand: TCaseCommand;
+begin
+  mCommand := TCaseCommand.Create(AContext);
   try
-    if Source.RoutineAt = nil then
-    begin
-      Exit(Fail('/case gilt nur im Rumpf einer Routine', AReason));
-    end;
-    Tokens := TPascalLexer.Tokenize(Source.Text);
-    // Erstes Token unter der Befehlszeile muss "case" sein.
-    CaseIndex := 0;
-    while (CaseIndex <= High(Tokens)) and ((Tokens[CaseIndex].StartPos.Line <= Source.Line) or
-      (Tokens[CaseIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
-    begin
-      Inc(CaseIndex);
-    end;
-    if (CaseIndex > High(Tokens)) or not Tokens[CaseIndex].IsKeyword('case') then
-    begin
-      Exit(Fail(Usage, AReason));
-    end;
-    // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
-    Names := nil;
-    OfIndex := NextCode(Tokens, CaseIndex);
-    while (OfIndex <= High(Tokens)) and not Tokens[OfIndex].IsKeyword('of') do
-    begin
-      if Tokens[OfIndex].Kind = TPascalTokenKind.Identifier then
-      begin
-        Names := Names + [Tokens[OfIndex].Text];
-      end
-      else if not Tokens[OfIndex].IsSymbol('.') then
-      begin
-        Exit(Fail('/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art', AReason));
-      end;
-      OfIndex := NextCode(Tokens, OfIndex);
-    end;
-    if (OfIndex > High(Tokens)) or (Names = nil) then
-    begin
-      Exit(Fail(Usage, AReason));
-    end;
-    FileName := '';
-    if AContext.Uri <> '' then
-    begin
-      FileName := TDocumentUris.ToPath(AContext.Uri);
-    end;
-    Resolver := TNameResolver.Create(AContext.Index);
-    try
-      if not Resolver.ChainType(Source.Tree, FileName, Names, Tokens[CaseIndex].Offset, Owner, EnumType,
-        TypeFound) or not TypeFound or
-        not EnumValues(Resolver, Source, AContext.Index, FileName, EnumType, EnumName, Values) then
-      begin
-        Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', Names)]), AReason));
-      end;
-      Scoped := ScopedEnum(AContext, Source, FileName, EnumType);
-    finally
-      Resolver.Free;
-    end;
-    // Vorhandene Marken und Einrückung wie bei der Vervollständigung (#449).
-    if not TCaseCompletion.BranchSlot(Source.Text, Tokens, Tokens[OfIndex].EndPos, Slot) then
-    begin
-      Exit(Fail(Usage, AReason));
-    end;
-    if not TCaseCompletion.Missing(Values, Slot.Labels, Missing) then
-    begin
-      Exit(Fail(Format('Eine Marke im case ist kein Wert von %s', [EnumName]), AReason));
-    end;
-    if Missing = nil then
-    begin
-      Exit(Fail(Format('Der case behandelt schon alle Werte von %s', [EnumName]), AReason));
-    end;
-    for Label_ in Slot.Labels do
-    begin
-      if Pos('.', Label_) > 0 then
-      begin
-        Scoped := True;
-      end;
-    end;
-    Prefix := '';
-    if Scoped then
-    begin
-      Prefix := EnumName + '.';
-    end;
-    // Letztes Token der Zweige: vor else bzw. end des case auf Ebene 0.
-    LastIndex := OfIndex;
-    Depth := 0;
-    Index := NextCode(Tokens, OfIndex);
-    while Index <= High(Tokens) do
-    begin
-      if Depth = 0 then
-      begin
-        if Tokens[Index].IsKeyword('end') or (Tokens[Index].IsKeyword('else') and
-          (Tokens[LastIndex].IsSymbol(';') or (LastIndex = OfIndex))) then
-        begin
-          Break;
-        end;
-      end;
-      if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
-        Tokens[Index].IsKeyword('repeat') or Tokens[Index].IsKeyword('asm') then
-      begin
-        Inc(Depth);
-      end
-      else if Tokens[Index].IsKeyword('end') or Tokens[Index].IsKeyword('until') then
-      begin
-        Dec(Depth);
-      end;
-      LastIndex := Index;
-      Index := NextCode(Tokens, Index);
-    end;
-    InsertAt := Tokens[LastIndex].EndPos;
-    Text := '';
-    if (LastIndex <> OfIndex) and not Tokens[LastIndex].IsSymbol(';') then
-    begin
-      Text := ';';
-    end;
-    for Label_ in Missing do
-    begin
-      Text := Text + Source.LineBreak + Slot.BranchIndent + Prefix + Label_ + ': ;';
-    end;
-    if not Slot.HasEnd then
-    begin
-      Text := Text + Source.LineBreak + Slot.CaseIndent + 'end;';
-    end;
-    AEdits := [TTextEdit.Create(TTextRange.Create(InsertAt, InsertAt), Text), Source.RemoveCommand];
-    Result := True;
+    Result := mCommand.Run(AEdits, AReason);
   finally
-    Source.Free;
+    mCommand.Free;
   end;
 end;
 

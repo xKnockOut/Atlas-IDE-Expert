@@ -1784,8 +1784,8 @@ begin
     begin
       Continue;
     end;
-    Expansion := TPostfixTemplates.Expand(Template, Expr, Indent, LineBreak, Traits, APostfix.InlineVar,
-      APostfix.Snippet);
+    Expansion := TPostfixTemplates.Expand(Template, Expr, Traits,
+      TPostfixLayout.Create(Indent, LineBreak, APostfix.InlineVar, APostfix.Snippet));
     Item := Default(TCompletionItem);
     Item.Name := Template.Key;
     Item.Detail := Template.Description;
