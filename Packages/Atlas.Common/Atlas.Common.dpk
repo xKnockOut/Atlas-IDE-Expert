@@ -151,6 +151,7 @@ contains
   Atlas.Common.Lsp.Completion in 'Source\Lsp\Atlas.Common.Lsp.Completion.pas',
   Atlas.Common.Lsp.Completion.Context in 'Source\Lsp\Atlas.Common.Lsp.Completion.Context.pas',
   Atlas.Common.Lsp.Completion.Values in 'Source\Lsp\Atlas.Common.Lsp.Completion.Values.pas',
+  Atlas.Common.Lsp.Completion.Declarations in 'Source\Lsp\Atlas.Common.Lsp.Completion.Declarations.pas',
   Atlas.Common.Lsp.CompletionEnums in 'Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas',
   Atlas.Common.Lsp.CompletionGenerics in 'Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas',
   Atlas.Common.Lsp.CompletionAttributes in 'Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas',

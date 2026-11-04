@@ -68,6 +68,7 @@ function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: 
 implementation
 
 uses
+  Atlas.Common.Localization.Texts,
   Atlas.Text.Lines,
   System.SysUtils,
   System.StrUtils,
@@ -86,7 +87,14 @@ uses
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.Completion.Context;
 
+type
+  /// <summary>Texte der Werte-Vervollständigung in beiden Sprachen (#1458).</summary>
+  TValuesText = (FillMissing, InsertAll);
+
 const
+  cTexts: array[TValuesText] of TAtlasText = (
+    (De: 'Fehlende Werte ergänzen (%d)'; En: 'Add missing values (%d)'),
+    (De: 'Alle Werte einfügen'; En: 'Insert all values'));
   /// <summary>So oft folgt die Auflösung Aliasen und Mengen bis zur Aufzählung.</summary>
   cMaxAliasSteps = 4;
   /// <summary>Höchstens so viele Zeilen liest RangeText (lange Aufzählungen stehen über viele Zeilen).</summary>
@@ -128,21 +136,6 @@ type
     procedure AddField;
     procedure AddConstant;
   end;
-
-/// <summary>Zeilen von AText ohne Zeilenende.</summary>
-function TextLines(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
-end;
 
 /// <summary>Text von ARange, über höchstens cMaxRangeLines Zeilen.</summary>
 function RangeText(const AText: string; const ARange: TTextRange): string;
@@ -384,10 +377,10 @@ begin
   begin
     mPrefix := AEnum.Name + '.';
   end;
-  AItem.Name := Format('Fehlende Werte ergänzen (%d)', [Length(mMissing)]);
+  AItem.Name := cTexts[TValuesText.FillMissing].Fmt([Length(mMissing)]);
   if mSlot.Labels = nil then
   begin
-    AItem.Name := 'Alle Werte einfügen';
+    AItem.Name := cTexts[TValuesText.InsertAll].Text;
     AItem.Count := Length(mMissing);
   end;
   AItem.Kind := KindSnippet;
@@ -1255,5 +1248,8 @@ begin
   FillAssignText(AItem, mFields, mExpr, Copy(mLineText, 1, mContext.ChainStart.Character), ARequest.LineBreak,
     ASnippets);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Completion.Values', cTexts);
 
 end.
