@@ -355,6 +355,7 @@ uses
   Atlas.Common.Configuration.Scopes.Tests in 'Common\Configuration\Atlas.Common.Configuration.Scopes.Tests.pas',
   Atlas.Common.Configuration.JsonTree.Tests in 'Common\Configuration\Atlas.Common.Configuration.JsonTree.Tests.pas',
   Atlas.Common.Configuration.Internals.Forbidden.Tests in 'Common\Configuration\Atlas.Common.Configuration.Internals.Forbidden.Tests.pas',
+  Atlas.Common.Configuration.Internals.Reader.Tests in 'Common\Configuration\Atlas.Common.Configuration.Internals.Reader.Tests.pas',
   Atlas.Common.Lsp.Configuration.Tests in 'Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas',
   Atlas.Common.Lsp.SettingsCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas',
   Atlas.Common.Pascal.Parser.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas',
