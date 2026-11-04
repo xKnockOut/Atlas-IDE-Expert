@@ -118,84 +118,107 @@ begin
     'Falsche Anzahl Argumente beim Aufruf');
 end;
 
+/// <summary>Erste Klammer auf oberster Ebene (außerhalb von Strings und Typargumenten); 0 ohne. Steht ":"
+/// oder ";" davor, gibt es keine Parameterliste: dann 0 und AStop dessen Stelle, sonst AStop = 0.</summary>
+function HeaderOpenParen(const AHeader: string; out AStop: Integer): Integer;
+var
+  mIndex, mGeneric: Integer;
+  mInString: Boolean;
+  mChar: Char;
+begin
+  Result := 0;
+  AStop := 0;
+  mGeneric := 0;
+  mInString := False;
+  mIndex := 1;
+  while (Result = 0) and (AStop = 0) and (mIndex <= Length(AHeader)) do
+  begin
+    mChar := AHeader[mIndex];
+    if mChar = '''' then
+    begin
+      mInString := not mInString;
+    end;
+    if mInString then
+    begin
+      // Inhalt eines Strings zählt nicht.
+    end
+    else if mChar = '<' then
+    begin
+      Inc(mGeneric);
+    end
+    else if mChar = '>' then
+    begin
+      Dec(mGeneric);
+    end
+    else if (mGeneric = 0) and (mChar = '(') then
+    begin
+      Result := mIndex;
+    end
+    else if (mGeneric = 0) and CharInSet(mChar, [':', ';']) then
+    begin
+      AStop := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Schließende Klammer zur Klammer an AOpen (außerhalb von Strings); 0 ohne.</summary>
+function HeaderCloseParen(const AHeader: string; AOpen: Integer): Integer;
+var
+  mIndex, mDepth: Integer;
+  mInString: Boolean;
+  mChar: Char;
+begin
+  Result := 0;
+  mDepth := 0;
+  mInString := False;
+  mIndex := AOpen;
+  while (Result = 0) and (mIndex <= Length(AHeader)) do
+  begin
+    mChar := AHeader[mIndex];
+    if mChar = '''' then
+    begin
+      mInString := not mInString;
+    end;
+    if not mInString and CharInSet(mChar, ['(', '[']) then
+    begin
+      Inc(mDepth);
+    end
+    else if not mInString and CharInSet(mChar, [')', ']']) then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Result := mIndex;
+      end;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 class function TArgumentCountMismatchRule.SplitHeader(const AHeader: string; out AParameters,
   ATail: string): Boolean;
 var
-  Index, Depth, Generic, Open: Integer;
-  InString: Boolean;
-  Ch: Char;
+  mOpen, mClose, mStop: Integer;
 begin
   AParameters := '';
   ATail := '';
-  Result := False;
-  Generic := 0;
-  InString := False;
-  Open := 0;
   // Bis zur ersten Klammer auf oberster Ebene; ":" oder ";" davor heißt: keine Parameterliste.
-  for Index := 1 to Length(AHeader) do
+  mOpen := HeaderOpenParen(AHeader, mStop);
+  if mOpen = 0 then
   begin
-    Ch := AHeader[Index];
-    if Ch = '''' then
+    if mStop > 0 then
     begin
-      InString := not InString;
+      ATail := Copy(AHeader, mStop, MaxInt);
     end;
-    if InString then
-    begin
-      Continue;
-    end;
-    if Ch = '<' then
-    begin
-      Inc(Generic);
-    end
-    else if Ch = '>' then
-    begin
-      Dec(Generic);
-    end
-    else if Generic > 0 then
-    begin
-      Continue;
-    end
-    else if Ch = '(' then
-    begin
-      Open := Index;
-      Break;
-    end
-    else if CharInSet(Ch, [':', ';']) then
-    begin
-      ATail := Copy(AHeader, Index, MaxInt);
-      Exit(True);
-    end;
-  end;
-  if Open = 0 then
-  begin
     Exit(True);
   end;
-  Depth := 0;
-  for Index := Open to Length(AHeader) do
+  mClose := HeaderCloseParen(AHeader, mOpen);
+  Result := mClose > 0;
+  if Result then
   begin
-    Ch := AHeader[Index];
-    if Ch = '''' then
-    begin
-      InString := not InString;
-    end;
-    if InString then
-    begin
-      Continue;
-    end;
-    if CharInSet(Ch, ['(', '[']) then
-    begin
-      Inc(Depth);
-    end
-    else if CharInSet(Ch, [')', ']']) then
-    begin
-      Dec(Depth);
-      if Depth = 0 then
-      begin
-        AParameters := Copy(AHeader, Open + 1, Index - Open - 1);
-        ATail := Copy(AHeader, Index + 1, MaxInt);
-        Exit(True);
-      end;
-    end;
+    AParameters := Copy(AHeader, mOpen + 1, mClose - mOpen - 1);
+    ATail := Copy(AHeader, mClose + 1, MaxInt);
   end;
 end;
 
@@ -290,6 +313,39 @@ begin
   end;
 end;
 
+/// <summary>Signaturhilfe in den Klammern vor ")"; ohne Klammern erst () hinter den Namen.</summary>
+function SignatureFix(ANode, ACallee: TSyntaxNode): TRuleFix;
+var
+  Target: TTextPosition;
+begin
+  if ANode = ACallee then
+  begin
+    Target := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character + 1);
+    Result := TRuleFix.SignatureHelp('Signaturhilfe öffnen', Target);
+    Result.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
+  end
+  else
+  begin
+    Result := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
+      ANode.EndPos.Character - 1));
+  end;
+end;
+
+/// <summary>Argumente des Aufrufs ACall ohne Typargumente.</summary>
+function CallArguments(ACall: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 1 to ACall.ChildCount - 1 do
+  begin
+    if ACall[Index].Kind <> TSyntaxKind.GenericArgs then
+    begin
+      Result := Result + [ACall[Index]];
+    end;
+  end;
+end;
+
 procedure TArgumentCountMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
@@ -311,34 +367,38 @@ var
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   end;
 
+  /// <summary>Text des Kopfs der Routine ADecl (ohne Kopfknoten die ganze Deklaration).</summary>
+  function RoutineHeaderText(ADecl: TSyntaxNode): string;
+  var
+    Header: TSyntaxNode;
+  begin
+    Header := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+    begin
+      Header := ADecl;
+    end;
+    Result := NodeText(Header);
+  end;
+
   /// <summary>Kopf einer Routine dieser Datei, die der Resolver ohne Index-Eintrag liefert (verschachtelte
   /// Routinen): der Knoten, der an ARange beginnt. Iterativ (Bericht M1).</summary>
   function LocalHeader(ARoot: TSyntaxNode; const ARange: TTextRange): string;
   var
     Pending: TStack<TSyntaxNode>;
-    Node, Header: TSyntaxNode;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
     Result := '';
     Pending := TStack<TSyntaxNode>.Create;
     try
       Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      while (Result = '') and (Pending.Count > 0) do
       begin
         Node := Pending.Pop;
         if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.StartPos.Line = ARange.StartPos.Line) and
           (Node.StartPos.Character = ARange.StartPos.Character) then
         begin
-          Header := Node.FindChild(TSyntaxKind.RoutineHeader);
-          if Header = nil then
-          begin
-            Header := Node;
-          end;
-          Result := NodeText(Header);
-          if Result <> '' then
-          begin
-            Exit;
-          end;
+          Result := RoutineHeaderText(Node);
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -364,85 +424,90 @@ var
     end;
   end;
 
+  /// <summary>Kopf des Kandidaten, wenn er eine Routine mit Quelltext ohne overload und varargs ist, die mit
+  /// dem Aufruf am Pfad ACallPath übersetzt wird; '' sonst.</summary>
+  function CandidateHeader(const ACandidate: TResolvedSymbol; const ACallPath: string): string;
+  var
+    Parameters, Tail: string;
+  begin
+    Result := '';
+    if ACandidate.IsType or ACandidate.Builtin or not (ACandidate.SymbolKind in RoutineKinds) or
+      (ACandidate.Condition <> '') or (Length(ACandidate.Overloads) > 0) then
+    begin
+      Exit;
+    end;
+    // Deklaration dieser Datei in einem Zweig, der ohne den Aufruf wegfallen kann.
+    if ((ACandidate.Kind = TResolvedKind.Local) or SameText(ACandidate.FileName, FileName)) and
+      not TConditionalBranches.Implies(ACallPath, PathOf(ACandidate.SelectionRange.StartPos)) then
+    begin
+      Exit;
+    end;
+    Result := HeaderOf(ACandidate);
+    if (Result <> '') and (not SplitHeader(Result, Parameters, Tail) or HasWord(Tail, 'overload') or
+      HasWord(Tail, 'varargs')) then
+    begin
+      Result := '';
+    end;
+  end;
+
+  /// <summary>Index des maßgeblichen Kopfs: Ein Rumpf ohne Parameterliste (procedure TKunde.Senden;) gehört zur
+  /// Deklaration mit Liste. -1, wenn mehrere Köpfe eine Liste haben (Überladung ohne overload oder Verdeckung;
+  /// das klärt der Compiler).</summary>
+  function ChosenHeader(const AHeaders: TArray<string>): Integer;
+  var
+    Index, WithList: Integer;
+  begin
+    Result := 0;
+    WithList := 0;
+    for Index := High(AHeaders) downto 0 do
+    begin
+      if Pos('(', AHeaders[Index]) > 0 then
+      begin
+        Inc(WithList);
+        Result := Index;
+      end;
+    end;
+    if (WithList > 1) and (Length(AHeaders) > 1) then
+    begin
+      Result := -1;
+    end;
+  end;
+
   /// <summary>Die eine Routine hinter ACallee samt Kopf; False bei Überladungen, varargs und allem, was
   /// keine Routine mit Quelltext ist.</summary>
   function SingleRoutine(ACallee: TSyntaxNode; out ARoutine: TResolvedSymbol; out AParameters: string): Boolean;
   var
-    Candidates, Routines: TArray<TResolvedSymbol>;
-    Candidate: TResolvedSymbol;
+    Candidates: TArray<TResolvedSymbol>;
     Headers: TArray<string>;
-    Header, Parameters, Tail, CallPath: string;
-    Index, WithList: Integer;
+    Header, Tail, CallPath: string;
+    Index: Integer;
   begin
     Result := False;
+    ARoutine := Default(TResolvedSymbol);
+    AParameters := '';
     CallPath := PathOf(ACallee.StartPos);
     Candidates := Resolver.CallCandidates(AContext.Tree, FileName, ACallee);
     if (Length(Candidates) = 0) or Resolver.MayBeHiddenMember(AContext.Tree, FileName, ACallee, Candidates[0]) then
     begin
       Exit;
     end;
-    Routines := nil;
     Headers := nil;
-    WithList := 0;
-    for Candidate in Candidates do
+    for Index := 0 to High(Candidates) do
     begin
-      if Candidate.IsType or Candidate.Builtin or not (Candidate.SymbolKind in RoutineKinds) or
-        (Candidate.Condition <> '') or (Length(Candidate.Overloads) > 0) then
+      Header := CandidateHeader(Candidates[Index], CallPath);
+      if Header = '' then
       begin
         Exit;
       end;
-      // Deklaration dieser Datei in einem Zweig, der ohne den Aufruf wegfallen kann.
-      if ((Candidate.Kind = TResolvedKind.Local) or SameText(Candidate.FileName, FileName)) and
-        not TConditionalBranches.Implies(CallPath, PathOf(Candidate.SelectionRange.StartPos)) then
-      begin
-        Exit;
-      end;
-      Header := HeaderOf(Candidate);
-      if (Header = '') or not SplitHeader(Header, Parameters, Tail) or HasWord(Tail, 'overload') or
-        HasWord(Tail, 'varargs') then
-      begin
-        Exit;
-      end;
-      if Pos('(', Header) > 0 then
-      begin
-        Inc(WithList);
-      end;
-      Routines := Routines + [Candidate];
       Headers := Headers + [Header];
     end;
-    // Ein Rumpf ohne Parameterliste (procedure TKunde.Senden;) gehört zur Deklaration mit Liste.
-    Index := -1;
-    if Length(Routines) = 1 then
+    Index := ChosenHeader(Headers);
+    Result := Index >= 0;
+    if Result then
     begin
-      Index := 0;
-    end
-    else if WithList = 1 then
-    begin
-      for Candidate in Routines do
-      begin
-        Inc(Index);
-        if Pos('(', Headers[Index]) > 0 then
-        begin
-          Break;
-        end;
-      end;
-    end
-    else if WithList = 0 then
-    begin
-      Index := 0;
+      ARoutine := Candidates[Index];
+      SplitHeader(Headers[Index], AParameters, Tail);
     end;
-    if Index < 0 then
-    begin
-      Exit;
-    end;
-    // Mehrere Köpfe mit Liste: Überladung ohne overload oder Verdeckung; das klärt der Compiler.
-    if (Length(Routines) > 1) and (WithList > 1) then
-    begin
-      Exit;
-    end;
-    ARoutine := Routines[Index];
-    SplitHeader(Headers[Index], AParameters, Tail);
-    Result := True;
   end;
 
   function ResultTypeKnown(ACall: TSyntaxNode): Boolean;
@@ -455,16 +520,56 @@ var
       TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType]));
   end;
 
+  /// <summary>Meldung bei zu vielen Argumenten (E2034).</summary>
+  function TooManyMessage(const ARoutine: TResolvedSymbol; ACount: Integer): string;
+  begin
+    if ARoutine.MaxArgs = 0 then
+    begin
+      Result := Format('%s erwartet keine Argumente, %s (wie E2034).', [ARoutine.Name, PassedText(ACount)]);
+    end
+    else if ARoutine.MinArgs = ARoutine.MaxArgs then
+    begin
+      Result := Format('%s erwartet %s, %s (wie E2034).', [ARoutine.Name, ArgumentsText(ARoutine.MaxArgs),
+        PassedText(ACount)]);
+    end
+    else
+    begin
+      Result := Format('%s erwartet höchstens %s, %s (wie E2034).', [ARoutine.Name,
+        ArgumentsText(ARoutine.MaxArgs), PassedText(ACount)]);
+    end;
+  end;
+
+  /// <summary>Meldung bei zu wenigen Argumenten (E2035) mit den Namen der fehlenden.</summary>
+  function TooFewMessage(const ARoutine: TResolvedSymbol; ACount: Integer;
+    const AParameters: TArray<TSignatureParameter>): string;
+  var
+    Missing: TArray<string>;
+    Index: Integer;
+  begin
+    Missing := nil;
+    for Index := ACount to ARoutine.MinArgs - 1 do
+    begin
+      Missing := Missing + [AParameters[Index].Name];
+    end;
+    if ARoutine.MinArgs = ARoutine.MaxArgs then
+    begin
+      Result := Format('%s erwartet %s, %s; %s (wie E2035).', [ARoutine.Name, ArgumentsText(ARoutine.MinArgs),
+        PassedText(ACount), MissingText(Missing)]);
+    end
+    else
+    begin
+      Result := Format('%s erwartet mindestens %s, %s; %s (wie E2035).', [ARoutine.Name,
+        ArgumentsText(ARoutine.MinArgs), PassedText(ACount), MissingText(Missing)]);
+    end;
+  end;
+
   procedure CheckCall(ANode, ACallee: TSyntaxNode; const AArguments: TArray<TSyntaxNode>);
   var
     Routine: TResolvedSymbol;
     ParameterText, Message: string;
     Parameters: TArray<TSignatureParameter>;
-    Missing: TArray<string>;
-    Count, Index: Integer;
+    Count: Integer;
     Range: TTextRange;
-    Target: TTextPosition;
-    Fix: TRuleFix;
   begin
     if not (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       not SingleRoutine(ACallee, Routine, ParameterText) then
@@ -488,54 +593,15 @@ var
       begin
         Exit;
       end;
-      if Routine.MaxArgs = 0 then
-      begin
-        Message := Format('%s erwartet keine Argumente, %s (wie E2034).', [Routine.Name, PassedText(Count)]);
-      end
-      else if Routine.MinArgs = Routine.MaxArgs then
-      begin
-        Message := Format('%s erwartet %s, %s (wie E2034).', [Routine.Name, ArgumentsText(Routine.MaxArgs),
-          PassedText(Count)]);
-      end
-      else
-      begin
-        Message := Format('%s erwartet höchstens %s, %s (wie E2034).', [Routine.Name,
-          ArgumentsText(Routine.MaxArgs), PassedText(Count)]);
-      end;
+      Message := TooManyMessage(Routine, Count);
       Range := TTextRange.Create(AArguments[Routine.MaxArgs].StartPos, AArguments[High(AArguments)].EndPos);
     end
     else
     begin
-      Missing := nil;
-      for Index := Count to Routine.MinArgs - 1 do
-      begin
-        Missing := Missing + [Parameters[Index].Name];
-      end;
-      if Routine.MinArgs = Routine.MaxArgs then
-      begin
-        Message := Format('%s erwartet %s, %s; %s (wie E2035).', [Routine.Name, ArgumentsText(Routine.MinArgs),
-          PassedText(Count), MissingText(Missing)]);
-      end
-      else
-      begin
-        Message := Format('%s erwartet mindestens %s, %s; %s (wie E2035).', [Routine.Name,
-          ArgumentsText(Routine.MinArgs), PassedText(Count), MissingText(Missing)]);
-      end;
+      Message := TooFewMessage(Routine, Count, Parameters);
       Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
     end;
-    // In die Klammern vor ")"; ohne Klammern erst () hinter den Namen.
-    if ANode = ACallee then
-    begin
-      Target := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character + 1);
-      Fix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', Target);
-      Fix.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
-    end
-    else
-    begin
-      Fix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
-        ANode.EndPos.Character - 1));
-    end;
-    AReport.Add(Range, Message, TRuleConfidence.High, [Fix]);
+    AReport.Add(Range, Message, TRuleConfidence.High, [SignatureFix(ANode, ACallee)]);
   end;
 
   // Iterativ (Bericht M1).
@@ -544,7 +610,6 @@ var
     Pending: TStack<TSyntaxNode>;
     Node: TSyntaxNode;
     Index: Integer;
-    Arguments: TArray<TSyntaxNode>;
   begin
     Pending := TStack<TSyntaxNode>.Create;
     try
@@ -555,15 +620,7 @@ var
         if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
           (NodeText(Node).TrimRight.EndsWith(')')) then
         begin
-          Arguments := nil;
-          for Index := 1 to Node.ChildCount - 1 do
-          begin
-            if Node[Index].Kind <> TSyntaxKind.GenericArgs then
-            begin
-              Arguments := Arguments + [Node[Index]];
-            end;
-          end;
-          CheckCall(Node, Node[0], Arguments);
+          CheckCall(Node, Node[0], CallArguments(Node));
         end
         // Versenden; als Anweisung ohne Klammern.
         else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
@@ -630,6 +687,8 @@ const
   cFloats = [TExpressionCategory.Float, TExpressionCategory.Currency_];
   cDecided = [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
     TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_];
+var
+  mFits: Boolean;
 begin
   if AParameter = TExpressionCategory.Variant_ then
   begin
@@ -642,27 +701,22 @@ begin
   end;
   case AArgument of
     TExpressionCategory.Integer_:
-      if AParameter in cNumbers then
-      begin
-        Exit(TArgumentFit.Fits);
-      end;
+      mFits := AParameter in cNumbers;
     TExpressionCategory.Float, TExpressionCategory.Currency_:
-      if AParameter in cFloats then
-      begin
-        Exit(TArgumentFit.Fits);
-      end;
+      mFits := AParameter in cFloats;
     TExpressionCategory.Char_:
-      if AParameter in [TExpressionCategory.Char_, TExpressionCategory.String_] then
-      begin
-        Exit(TArgumentFit.Fits);
-      end;
+      mFits := AParameter in [TExpressionCategory.Char_, TExpressionCategory.String_];
   else
-    if AParameter = AArgument then
-    begin
-      Exit(TArgumentFit.Fits);
-    end;
+    mFits := AParameter = AArgument;
   end;
-  Result := TArgumentFit.Fails;
+  if mFits then
+  begin
+    Result := TArgumentFit.Fits;
+  end
+  else
+  begin
+    Result := TArgumentFit.Fails;
+  end;
 end;
 
 class function TOverloadResolutionRule.SameTypeName(const A, B: string): Boolean;
@@ -829,26 +883,77 @@ var
     end;
   end;
 
+  /// <summary>Überladungen ohne die Rümpfe, deren Deklaration schon in AFound steht.</summary>
+  function WithoutBodies(const AFound: TArray<TResolvedSymbol>): TArray<TResolvedSymbol>;
+  var
+    mSymbol: TResolvedSymbol;
+  begin
+    Result := nil;
+    for mSymbol in AFound do
+    begin
+      if not IsBody(mSymbol, AFound) then
+      begin
+        Result := Result + [mSymbol];
+      end;
+    end;
+  end;
+
+  /// <summary>Ist ASymbol eine gewöhnliche Routine mit Quelltext (kein Typ, nichts Eingebautes, nicht lokal,
+  /// unbedingt, nicht generisch)?</summary>
+  function PlainRoutine(const ASymbol: TResolvedSymbol): Boolean;
+  begin
+    Result := not ASymbol.IsType and not ASymbol.Builtin and (ASymbol.SymbolKind in RoutineKinds) and
+      (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.Condition = '');
+    Result := Result and (ASymbol.TypeParams = '') and (Length(ASymbol.Bindings) = 0) and
+      (Pos('<', ASymbol.Container) = 0);
+  end;
+
+  /// <summary>Taugt ASymbol als Überladung im Sinne von dcc, die mit dem Aufruf am Pfad ACallPath übersetzt
+  /// wird und deren Geschwister alle bekannt sind?</summary>
+  function UsableOverload(const ASymbol: TResolvedSymbol; const ACallPath: string): Boolean;
+  begin
+    Result := PlainRoutine(ASymbol) and HasWord(ASymbol.Signature, 'overload') and
+      not HasWord(ASymbol.Signature, 'varargs');
+    Result := Result and (not SameText(ASymbol.FileName, mFileName) or
+      TConditionalBranches.Implies(ACallPath, PathOf(ASymbol.SelectionRange.StartPos)));
+    if Result and (ASymbol.Container = '') then
+    begin
+      Result := not RoutineElsewhere(ASymbol.Name);
+    end
+    else if Result then
+    begin
+      Result := AncestorsKnown(ASymbol);
+    end;
+  end;
+
+  /// <summary>Kandidat mit Parametern aus dem Kopf; False, wenn der Kopf nicht zu den Zahlen des Index passt.
+  /// </summary>
+  function MakeCandidate(const ASymbol: TResolvedSymbol; out ACandidate: TOverloadCandidate): Boolean;
+  var
+    mTail: string;
+  begin
+    ACandidate := Default(TOverloadCandidate);
+    ACandidate.Symbol := ASymbol;
+    Result := TArgumentCountMismatchRule.SplitHeader(ASymbol.Signature, ACandidate.ParameterText, mTail);
+    if Result then
+    begin
+      ACandidate.Parameters := TChangeSignature.ParseParameters(ACandidate.ParameterText);
+      Result := Length(ACandidate.Parameters) = ASymbol.MaxArgs;
+    end;
+  end;
+
   /// <summary>Alle Überladungen hinter ACallee mit ihren Parametern; False, wenn die Liste nicht sicher
   /// vollständig ist oder es keine Überladung im Sinne von dcc ist.</summary>
   function Candidates(ACallee: TSyntaxNode; out AResult: TArray<TOverloadCandidate>): Boolean;
   var
-    mFound, mSymbols: TArray<TResolvedSymbol>;
+    mSymbols: TArray<TResolvedSymbol>;
     mSymbol: TResolvedSymbol;
     mCandidate: TOverloadCandidate;
-    mTail, mCallPath: string;
+    mCallPath: string;
   begin
     Result := False;
     AResult := nil;
-    mFound := mResolver.CallCandidates(AContext.Tree, mFileName, ACallee);
-    mSymbols := nil;
-    for mSymbol in mFound do
-    begin
-      if not IsBody(mSymbol, mFound) then
-      begin
-        mSymbols := mSymbols + [mSymbol];
-      end;
-    end;
+    mSymbols := WithoutBodies(mResolver.CallCandidates(AContext.Tree, mFileName, ACallee));
     if (Length(mSymbols) < 2) or TUnresolvedNames.IsIntrinsic(ACallee.Name) or
       mResolver.MayBeHiddenMember(AContext.Tree, mFileName, ACallee, mSymbols[0]) then
     begin
@@ -857,36 +962,7 @@ var
     mCallPath := PathOf(ACallee.StartPos);
     for mSymbol in mSymbols do
     begin
-      if mSymbol.IsType or mSymbol.Builtin or not (mSymbol.SymbolKind in RoutineKinds) or
-        (mSymbol.Kind = TResolvedKind.Local) or (mSymbol.Condition <> '') or (mSymbol.TypeParams <> '') or
-        (Length(mSymbol.Bindings) > 0) or (Pos('<', mSymbol.Container) > 0) or
-        not HasWord(mSymbol.Signature, 'overload') or HasWord(mSymbol.Signature, 'varargs') then
-      begin
-        Exit;
-      end;
-      if SameText(mSymbol.FileName, mFileName) and
-        not TConditionalBranches.Implies(mCallPath, PathOf(mSymbol.SelectionRange.StartPos)) then
-      begin
-        Exit;
-      end;
-      if mSymbol.Container = '' then
-      begin
-        if RoutineElsewhere(mSymbol.Name) then
-        begin
-          Exit;
-        end;
-      end
-      else if not AncestorsKnown(mSymbol) then
-      begin
-        Exit;
-      end;
-      mCandidate.Symbol := mSymbol;
-      if not TArgumentCountMismatchRule.SplitHeader(mSymbol.Signature, mCandidate.ParameterText, mTail) then
-      begin
-        Exit;
-      end;
-      mCandidate.Parameters := TChangeSignature.ParseParameters(mCandidate.ParameterText);
-      if Length(mCandidate.Parameters) <> mSymbol.MaxArgs then
+      if not UsableOverload(mSymbol, mCallPath) or not MakeCandidate(mSymbol, mCandidate) then
       begin
         Exit;
       end;
@@ -896,41 +972,34 @@ var
     Result := not mResolver.HasUnknownAncestor;
   end;
 
-  /// <summary>Typ eines Arguments; '' wenn er nicht sicher ist (überladene Aufrufe darin, untypisierte
-  /// Konstanten, die als Char zählen könnten).</summary>
-  function ArgumentType(AArgument: TSyntaxNode; out ACategory: TExpressionCategory): string;
+  /// <summary>Macht ANode im Argument dessen Typ unsicher? Anonyme Methoden, überladene Aufrufe (ihr Typ hängt
+  /// selbst von der Auswahl ab) und freie Routinen aus mehreren Units (welche gilt, entscheidet dcc nach
+  /// uses-Reihenfolge und Argumenten).</summary>
+  function UncertainNode(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := ANode.Kind = TSyntaxKind.AnonymousMethod;
+    if not Result and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+    begin
+      Result := (Length(mResolver.CallCandidates(AContext.Tree, mFileName, ANode[0])) <> 1) or
+        (ANode[0].Kind = TSyntaxKind.Identifier) and RoutineInSeveralUnits(ANode[0].Name);
+    end;
+  end;
+
+  /// <summary>Enthält AArgument einen Knoten, der seinen Typ unsicher macht?</summary>
+  function HasUncertainNode(AArgument: TSyntaxNode): Boolean;
   var
     mPending: TStack<TSyntaxNode>;
     mNode: TSyntaxNode;
-    mIndex, mWidth: Integer;
-    mSigned, mTypeFound: Boolean;
-    mInfo: TExpressionTypeInfo;
-    mSymbol, mType: TResolvedSymbol;
+    mIndex: Integer;
   begin
-    Result := '';
-    ACategory := TExpressionCategory.Unknown;
+    Result := False;
     mPending := TStack<TSyntaxNode>.Create;
     try
       mPending.Push(AArgument);
-      while mPending.Count > 0 do
+      while not Result and (mPending.Count > 0) do
       begin
         mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.AnonymousMethod then
-        begin
-          Exit;
-        end;
-        // Der Typ eines überladenen Aufrufs im Argument hängt selbst von der Auswahl ab.
-        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
-          (Length(mResolver.CallCandidates(AContext.Tree, mFileName, mNode[0])) <> 1) then
-        begin
-          Exit;
-        end;
-        // Freie Routine aus mehreren Units: Welche gilt, entscheidet dcc nach uses-Reihenfolge und Argumenten.
-        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and
-          RoutineInSeveralUnits(mNode[0].Name) then
-        begin
-          Exit;
-        end;
+        Result := UncertainNode(mNode);
         for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
           mPending.Push(mNode[mIndex]);
@@ -939,8 +1008,36 @@ var
     finally
       mPending.Free;
     end;
+  end;
+
+  /// <summary>Ist AArgument eine Konstante? Konstanten bekommen ihren Typ erst am Aufruf (const X = 'a' ist ein
+  /// Char, Separator = '›' kein Integer).</summary>
+  function IsConstant(AArgument: TSyntaxNode): Boolean;
+  var
+    mSymbol, mType: TResolvedSymbol;
+    mTypeFound: Boolean;
+  begin
+    Result := (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      mResolver.NodeType(AContext.Tree, mFileName, AArgument, mSymbol, mType, mTypeFound) and
+      (mSymbol.SymbolKind = TIndexSymbolKind.Constant);
+  end;
+
+  /// <summary>Typ eines Arguments; '' wenn er nicht sicher ist (überladene Aufrufe darin, untypisierte
+  /// Konstanten, die als Char zählen könnten).</summary>
+  function ArgumentType(AArgument: TSyntaxNode; out ACategory: TExpressionCategory): string;
+  var
+    mWidth: Integer;
+    mSigned: Boolean;
+    mInfo: TExpressionTypeInfo;
+  begin
+    Result := '';
+    ACategory := TExpressionCategory.Unknown;
+    if HasUncertainNode(AArgument) then
+    begin
+      Exit;
+    end;
     mInfo := mTypes.Describe(AArgument);
-    if not mInfo.Found then
+    if not mInfo.Found or IsConstant(AArgument) then
     begin
       Exit;
     end;
@@ -950,14 +1047,20 @@ var
       Result := mInfo.BaseName;
     end;
     ACategory := TExpressionTypes.CategoryOf(Result, mWidth, mSigned);
-    // Konstanten bekommen ihren Typ erst am Aufruf (const X = 'a' ist ein Char, Separator = '›' kein Integer).
-    if (AArgument.Kind in [TSyntaxKind.Identifier,
-      TSyntaxKind.MemberAccess]) and mResolver.NodeType(AContext.Tree, mFileName, AArgument, mSymbol, mType,
-      mTypeFound) and (mSymbol.SymbolKind = TIndexSymbolKind.Constant) then
-    begin
-      ACategory := TExpressionCategory.Unknown;
-      Result := '';
-    end;
+  end;
+
+  /// <summary>Eingebauter Grundtyp des Alias ATypeText (TFileName = string) aus Sicht der Unit von ACandidate.
+  /// </summary>
+  function BuiltinAliasTarget(const ACandidate: TOverloadCandidate; const ATypeText: string;
+    out ATarget: TResolvedSymbol): Boolean;
+  var
+    mUnit: TUnitIndex;
+    mResolved: TResolvedSymbol;
+  begin
+    Result := mResolver.DeclaringUnit(ACandidate.Symbol, mUnit) and
+      mResolver.ResolveTypeTextFrom(mUnit, ATypeText, mResolved) and not mResolved.Builtin;
+    Result := Result and (mResolved.SymbolKind = TIndexSymbolKind.TypeAlias) and
+      mResolver.TypeOf(mResolved, ATarget) and ATarget.Builtin;
   end;
 
   /// <summary>Typfamilie eines Parametertyps; Aliase auf eingebaute Typen (TFileName = string) zählen wie
@@ -968,8 +1071,7 @@ var
     mText: string;
     mWidth: Integer;
     mSigned: Boolean;
-    mUnit: TUnitIndex;
-    mResolved, mFollowed: TResolvedSymbol;
+    mFollowed: TResolvedSymbol;
   begin
     Result := TExpressionCategory.Unknown;
     mText := Trim(AParameter.TypeName);
@@ -983,9 +1085,7 @@ var
       Exit;
     end;
     Result := TExpressionCategory.Unknown;
-    if mResolver.DeclaringUnit(ACandidate.Symbol, mUnit) and mResolver.ResolveTypeTextFrom(mUnit, mText, mResolved) and
-      not mResolved.Builtin and (mResolved.SymbolKind = TIndexSymbolKind.TypeAlias) and
-      mResolver.TypeOf(mResolved, mFollowed) and mFollowed.Builtin then
+    if BuiltinAliasTarget(ACandidate, mText, mFollowed) then
     begin
       Result := TExpressionTypes.CategoryOf(mFollowed.Name, mWidth, mSigned);
     end;
@@ -1120,15 +1220,69 @@ var
     end;
   end;
 
+  /// <summary>Unterscheidet nichts ACandidate von AFirst: gleiche Typen für die ersten ACount Argumente,
+  /// dieselbe Klasse bzw. Unit und Tiefe?</summary>
+  function Indistinguishable(const AFirst, ACandidate: TOverloadCandidate; ACount: Integer): Boolean;
+  begin
+    Result := SamePrefix(AFirst, ACandidate, ACount) and
+      SameText(ACandidate.Symbol.Container, AFirst.Symbol.Container) and
+      SameText(ACandidate.Symbol.FileName, AFirst.Symbol.FileName) and
+      (ACandidate.Symbol.Depth = AFirst.Symbol.Depth);
+  end;
+
+  /// <summary>Mehrdeutig nur, wenn nichts die Kandidaten unterscheidet: gleiche Typen für alle übergebenen
+  /// Argumente, dieselbe Klasse bzw. Unit, vor dem Aufruf deklariert, jedes Argument sicher passend.</summary>
+  function Ambiguous(const AApplicable: TArray<TOverloadCandidate>; ACall: TSyntaxNode;
+    const ATypes: TArray<string>): Boolean;
+  var
+    mCandidate: TOverloadCandidate;
+  begin
+    Result := Length(AApplicable) >= 2;
+    for mCandidate in AApplicable do
+    begin
+      Result := Result and Indistinguishable(AApplicable[0], mCandidate, Length(ATypes)) and
+        DeclaredBefore(mCandidate, ACall) and SurelyFits(mCandidate, ATypes);
+    end;
+  end;
+
+  /// <summary>Kandidaten, zu denen die Argumente nicht sicher unpassend sind.</summary>
+  function Applicable(const ACandidates: TArray<TOverloadCandidate>; const ATypes: TArray<string>;
+    const ACategories: TArray<TExpressionCategory>): TArray<TOverloadCandidate>;
+  var
+    mCandidate: TOverloadCandidate;
+  begin
+    Result := nil;
+    for mCandidate in ACandidates do
+    begin
+      if not Fails(mCandidate, ATypes, ACategories) then
+      begin
+        Result := Result + [mCandidate];
+      end;
+    end;
+  end;
+
+  /// <summary>Meldung, wenn keine Überladung passt (E2250).</summary>
+  function NoneFitsMessage(ACallee: TSyntaxNode; ACount: Integer; const ATypes: TArray<string>): string;
+  begin
+    if Length(ATypes) = 0 then
+    begin
+      Result := Format('Keine der %d Überladungen von %s lässt sich ohne Argumente aufrufen (wie E2250).',
+        [ACount, ACallee.Name]);
+    end
+    else
+    begin
+      Result := Format('Keine der %d Überladungen von %s passt zu den Argumenten (%s) (wie E2250).',
+        [ACount, ACallee.Name, TypesText(ATypes)]);
+    end;
+  end;
+
   procedure CheckCall(ANode, ACallee: TSyntaxNode; const AArguments: TArray<TSyntaxNode>);
   var
     mCandidates, mApplicable: TArray<TOverloadCandidate>;
-    mCandidate: TOverloadCandidate;
     mTypes: TArray<string>;
     mCategories: TArray<TExpressionCategory>;
     mIndex: Integer;
     mMessage: string;
-    mFix: TRuleFix;
   begin
     if not (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       (ACallee.FindChild(TSyntaxKind.GenericArgs) <> nil) or InWith(ANode) or
@@ -1142,58 +1296,22 @@ var
     begin
       mTypes[mIndex] := ArgumentType(AArguments[mIndex], mCategories[mIndex]);
     end;
-    mApplicable := nil;
-    for mCandidate in mCandidates do
+    mApplicable := Applicable(mCandidates, mTypes, mCategories);
+    if Length(mApplicable) = 0 then
     begin
-      if not Fails(mCandidate, mTypes, mCategories) then
-      begin
-        mApplicable := mApplicable + [mCandidate];
-      end;
-    end;
-    if (Length(mApplicable) = 0) and (Length(mTypes) = 0) then
-    begin
-      mMessage := Format('Keine der %d Überladungen von %s lässt sich ohne Argumente aufrufen (wie E2250).',
-        [Length(mCandidates), ACallee.Name]);
+      mMessage := NoneFitsMessage(ACallee, Length(mCandidates), mTypes);
     end
-    else if Length(mApplicable) = 0 then
+    else if Ambiguous(mApplicable, ANode, mTypes) then
     begin
-      mMessage := Format('Keine der %d Überladungen von %s passt zu den Argumenten (%s) (wie E2250).',
-        [Length(mCandidates), ACallee.Name, TypesText(mTypes)]);
-    end
-    else
-    begin
-      // Mehrdeutig nur, wenn nichts die Kandidaten unterscheidet: gleiche Typen für alle übergebenen
-      // Argumente, dieselbe Klasse bzw. Unit, vor dem Aufruf deklariert, jedes Argument sicher passend.
-      if Length(mApplicable) < 2 then
-      begin
-        Exit;
-      end;
-      for mCandidate in mApplicable do
-      begin
-        if not SamePrefix(mApplicable[0], mCandidate, Length(AArguments)) or
-          not SameText(mCandidate.Symbol.Container, mApplicable[0].Symbol.Container) or
-          not SameText(mCandidate.Symbol.FileName, mApplicable[0].Symbol.FileName) or
-          (mCandidate.Symbol.Depth <> mApplicable[0].Symbol.Depth) or not DeclaredBefore(mCandidate, ANode) or
-          not SurelyFits(mCandidate, mTypes) then
-        begin
-          Exit;
-        end;
-      end;
       mMessage := Format('Aufruf von %s ist mehrdeutig: %s passen gleich gut (wie E2251).',
         [ACallee.Name, ListText(mApplicable)]);
-    end;
-    if ANode = ACallee then
-    begin
-      mFix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ACallee.EndPos.Line,
-        ACallee.EndPos.Character + 1));
-      mFix.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
     end
     else
     begin
-      mFix := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
-        ANode.EndPos.Character - 1));
+      Exit;
     end;
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, [mFix]);
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High,
+      [SignatureFix(ANode, ACallee)]);
   end;
 
   // Iterativ (Bericht M1).
@@ -1202,7 +1320,6 @@ var
     mPending: TStack<TSyntaxNode>;
     mNode: TSyntaxNode;
     mIndex: Integer;
-    mArguments: TArray<TSyntaxNode>;
   begin
     mPending := TStack<TSyntaxNode>.Create;
     try
@@ -1213,15 +1330,7 @@ var
         if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
           (NodeText(mNode).TrimRight.EndsWith(')')) then
         begin
-          mArguments := nil;
-          for mIndex := 1 to mNode.ChildCount - 1 do
-          begin
-            if mNode[mIndex].Kind <> TSyntaxKind.GenericArgs then
-            begin
-              mArguments := mArguments + [mNode[mIndex]];
-            end;
-          end;
-          CheckCall(mNode, mNode[0], mArguments);
+          CheckCall(mNode, mNode[0], CallArguments(mNode));
         end
         // Nimm; als Anweisung ohne Klammern.
         else if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount = 1) and
