@@ -61,6 +61,37 @@ uses
 
 { TAtlasProjectTrendLog }
 
+/// <summary>Build des Benutzers: Warnungen plus Hinweise, Dauer.</summary>
+procedure MeasureBuild(const ASummary: TAtlasProjectSummary; AAtUtc: TDateTime; var APoint: TAtlasTrendPoint);
+begin
+  if ASummary.Build.Known and TAtlasProjectTrendLog.SameStamp(ASummary.Build.At, AAtUtc) then
+  begin
+    APoint.SetValue(TAtlasTrendSeries.Warnings, (ASummary.Build.Warnings + ASummary.Build.Hints) * 10);
+    if ASummary.Build.DurationMs > 0 then
+    begin
+      APoint.SetValue(TAtlasTrendSeries.Duration, (ASummary.Build.DurationMs + 50) div 100);
+    end;
+  end;
+end;
+
+/// <summary>Regeltreffer nur mit gültiger Baseline: ohne sie wären alle Treffer „neu“, das ist kein
+/// Verlauf.</summary>
+procedure MeasureRuleHits(const ASummary: TAtlasProjectSummary; AAtUtc: TDateTime; var APoint: TAtlasTrendPoint);
+var
+  BaselineUsable: Boolean;
+begin
+  BaselineUsable := ASummary.Baseline.Known and ASummary.Baseline.Exists and ASummary.Baseline.Valid;
+  if ASummary.Baseline.Known and TAtlasProjectTrendLog.SameStamp(ASummary.Baseline.At, AAtUtc) and
+    not BaselineUsable then
+  begin
+    APoint.Clear(TAtlasTrendSeries.RuleHits);
+  end
+  else if BaselineUsable and ASummary.Rules.Known and TAtlasProjectTrendLog.SameStamp(ASummary.Rules.At, AAtUtc) then
+  begin
+    APoint.SetValue(TAtlasTrendSeries.RuleHits, ASummary.Rules.NewHits * 10);
+  end;
+end;
+
 class function TAtlasProjectTrendLog.SameStamp(AUtc1, AUtc2: TDateTime): Boolean;
 begin
   Result := (AUtc1 > 0) and (AUtc2 > 0) and
@@ -69,28 +100,9 @@ end;
 
 class procedure TAtlasProjectTrendLog.Measure(const ASummary: TAtlasProjectSummary; AAtUtc: TDateTime;
   var APoint: TAtlasTrendPoint);
-var
-  BaselineUsable: Boolean;
 begin
-  // Build des Benutzers: Warnungen plus Hinweise, Dauer.
-  if ASummary.Build.Known and SameStamp(ASummary.Build.At, AAtUtc) then
-  begin
-    APoint.SetValue(TAtlasTrendSeries.Warnings, (ASummary.Build.Warnings + ASummary.Build.Hints) * 10);
-    if ASummary.Build.DurationMs > 0 then
-    begin
-      APoint.SetValue(TAtlasTrendSeries.Duration, (ASummary.Build.DurationMs + 50) div 100);
-    end;
-  end;
-  // Regeltreffer nur mit gültiger Baseline: ohne sie wären alle Treffer „neu“, das ist kein Verlauf.
-  BaselineUsable := ASummary.Baseline.Known and ASummary.Baseline.Exists and ASummary.Baseline.Valid;
-  if ASummary.Baseline.Known and SameStamp(ASummary.Baseline.At, AAtUtc) and not BaselineUsable then
-  begin
-    APoint.Clear(TAtlasTrendSeries.RuleHits);
-  end
-  else if BaselineUsable and ASummary.Rules.Known and SameStamp(ASummary.Rules.At, AAtUtc) then
-  begin
-    APoint.SetValue(TAtlasTrendSeries.RuleHits, ASummary.Rules.NewHits * 10);
-  end;
+  MeasureBuild(ASummary, AAtUtc, APoint);
+  MeasureRuleHits(ASummary, AAtUtc, APoint);
   if ASummary.Todos.Known and SameStamp(ASummary.Todos.At, AAtUtc) then
   begin
     APoint.SetValue(TAtlasTrendSeries.Todos, ASummary.Todos.Open * 10);
