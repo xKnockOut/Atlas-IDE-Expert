@@ -1571,6 +1571,7 @@ uses
   Atlas.Common.Rules.Builtin.General.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.General.Tests.pas',
   Atlas.Common.Rules.Builtin.RtlPatterns.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlPatterns.Tests.pas',
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests.pas',
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.Tests.pas',
   Atlas.Common.Rules.Builtin.Exceptions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.Tests.pas',
   Atlas.Common.Rules.Builtin.Style.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tests.pas',
   Atlas.Common.Rules.Builtin.Style.Tokens.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tokens.Tests.pas',
