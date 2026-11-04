@@ -355,7 +355,9 @@ begin
   FEvents.OnEditorScrolled := EditorScrolled;
   FEvents.OnEditorResized := EditorResized;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasEditorHover.Destroy;
@@ -364,7 +366,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   TAtlasKeyHook.Remove(FKeys);
   if FEvents <> nil then
   begin
@@ -379,7 +383,9 @@ begin
   FEventsRef := nil;
   // Laufende Anfragen zeigen nichts mehr; auf sie warten, bevor die Sitzung wegfällt.
   if FAlive <> nil then
+  begin
     FAlive.Alive := False;
+  end;
   ReapWorkers(True);
   FWorkers.Free;
   FDebug.Free;
@@ -395,7 +401,9 @@ end;
 procedure TAtlasEditorHover.Log(const AMessage: string);
 begin
   if Assigned(FLog) then
+  begin
     FLog(AMessage);
+  end;
 end;
 
 function TAtlasEditorHover.Handles(const AFileName: string): Boolean;
@@ -407,7 +415,9 @@ function TAtlasEditorHover.CurrentSession: TLspSession;
 begin
   Result := nil;
   if Assigned(FSession) then
+  begin
     Result := FSession();
+  end;
 end;
 
 function TAtlasEditorHover.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
@@ -437,15 +447,21 @@ begin
   // Anzeige der XMLDoc (#654): hints aus settings.json meldet der Server, sonst die Optionen des Plugins
   // (dieselben Werte, #227).
   if Result.Data.Display.Known then
-    Result.Display := Result.Data.Display
+  begin
+    Result.Display := Result.Data.Display;
+  end
   else
+  begin
     Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
+  end;
   // Neu zugewiesen (#712): nur mit der Einstellung und für die gewählten Arten; der Server kennt sie nicht.
   if not TAtlasIdeSettings.ReassignedOn(Targets, Style, Color) or TAtlasGuard.Disabled(TAtlasFeature.Reassigned) or
     not TAtlasReassignedNames.TryTarget(Result.Data.ReassignedTarget, Target) or
     not (Target in TAtlasReassignedNames.ParseTargets(Targets)) then
+  begin
     Result.Data.ClearReassigned;
+  end;
   // Probleme und der Wert im Debugger gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
   begin
@@ -463,10 +479,14 @@ var
 begin
   Result := FDebugValue;
   if (FDebugValue.State <> TAtlasDebugValueState.Value) or not Assigned(FOnVisualize) then
+  begin
     Exit;
+  end;
   Data := FHistory.Current;
   if not Data.Found then
+  begin
     Exit;
+  end;
   // Einmal je Wert und Typ: Die Visualisierer werten im Debugger aus, Refresh kommt öfter.
   Key := FDebugValue.Expression + #0 + FDebugValue.Text + #0 + Data.Declaration;
   if Key <> FVisualizedKey then
@@ -474,11 +494,15 @@ begin
     FVisualizedKey := Key;
     Chain := TArray<string>.Create(TAtlasHoverDeclaration.DeclaredType(Data.Declaration));
     for Ancestor in Data.Ancestors do
+    begin
       Chain := Chain + [Ancestor.Name];
+    end;
     FVisualized := FOnVisualize(FDebugValue.Expression, Chain, FDebugValue.Text);
   end;
   if FVisualized <> '' then
+  begin
     Result := TAtlasDebugValue.Evaluated(FDebugValue.Expression, FVisualized);
+  end;
 end;
 
 procedure TAtlasEditorHover.Refresh;
@@ -521,7 +545,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Result := Editors.TopView;
+  end;
 end;
 
 function TAtlasEditorHover.MouseOverEditor: Boolean;
@@ -550,14 +576,20 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+  begin
     Exit;
+  end;
   try
     if not TAtlasIdeSettings.Current.Enabled or not TAtlasIdeSettings.Current.HoverTooltip or
       not Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+    begin
       Exit;
+    end;
     // Angeheftet: Der Tooltip bleibt, bis Esc oder ein Klick in den Editor ihn schließt (#588).
     if FHistory.Pinned and FTip.IsShown then
+    begin
       Exit;
+    end;
     State := Services.EditorState[Editor];
     Key := '';
     if (State <> nil) and State.PointToCharacterPos(Point(X, Y), Column, VisibleLine) then
@@ -585,7 +617,9 @@ begin
             FProblemsOnly := False;
             FDebugExpression := '';
             if TAtlasIdeSettings.Current.DebugHoverValues and TAtlasIdeDebugValues.Stopped then
+            begin
               FDebugExpression := TAtlasDebugExpression.At(Text, Start, Stop);
+            end;
             // Wortrechteck aus der ersten und letzten Spalte des Worts (Bildschirmkoordinaten).
             First := State.GetCharacterPosPx(Column - (Index - Start), VisibleLine);
             Last := State.GetCharacterPosPx(Column + (Stop - Index - 1), VisibleLine);
@@ -618,7 +652,9 @@ begin
       FShowTimer.Enabled := False;
       FKey := '';
       if FTip.IsShown then
+      begin
         FHideTimer.Enabled := True;
+      end;
       Exit;
     end;
     if Key = FShownKey then
@@ -632,7 +668,9 @@ begin
       FShowTimer.Enabled := False;
       FShowTimer.Enabled := True;
       if FTip.IsShown then
+      begin
         FHideTimer.Enabled := True;
+      end;
     end;
   except
     on E: Exception do
@@ -648,12 +686,14 @@ var
   Index: Integer;
 begin
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 procedure TAtlasEditorHover.ShowTimerTick(Sender: TObject);
@@ -668,18 +708,26 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+  begin
     Exit;
+  end;
   FShowTimer.Enabled := False;
   try
     if (FView = nil) or (FKey = '') or not Application.Active then
+    begin
       Exit;
+    end;
     FProblems := nil;
     if Assigned(FProblemsAt) then
+    begin
       FProblems := FProblemsAt(FView.Buffer.FileName, FLine - 1, FMouseCharacter);
+    end;
     EvaluateDebugValue;
     Session := nil;
     if not FProblemsOnly then
+    begin
       Session := CurrentSession;
+    end;
     if Session = nil then
     begin
       ShowData(Default(TAtlasHoverData));
@@ -716,7 +764,9 @@ begin
           begin
             // Nur die jüngste Anfrage und nur, solange die Maus noch auf demselben Wort steht.
             if not Alive.Alive or (AliveRef = nil) or (Owner.FRequest <> Request) or (Owner.FKey <> Key) then
+            begin
               Exit;
+            end;
             TAtlasGuard.Run(TAtlasFeature.Hover,
               procedure
               begin
@@ -741,7 +791,9 @@ end;
 procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
 begin
   if (FView = nil) or not Application.Active or not MouseOverEditor then
+  begin
     Exit;
+  end;
   if not AData.Found and (Length(FProblems) = 0) and not FDebugValue.Visible then
   begin
     Hide;
@@ -768,7 +820,9 @@ begin
   FDebug.Cancel;
   FDebugValue := Default(TAtlasDebugValue);
   if (FDebugExpression = '') or FProblemsOnly or not TAtlasIdeSettings.Current.DebugHoverValues then
+  begin
     Exit;
+  end;
   Owner := Self;
   Key := FKey;
   // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
@@ -788,7 +842,9 @@ begin
   Result := AValue;
   if (AValue.State <> TAtlasDebugValueState.Failed) or (AValue.Note.Caption <> '') or (AKey <> FKey) or
     not Assigned(FOnExplain) then
+  begin
     Exit;
+  end;
   Owner := Self;
   Alive := FAlive;
   AliveRef := FAliveRef;
@@ -797,7 +853,9 @@ begin
     begin
       // AliveRef hält die Markierung, bis die Erklärung kommt; das Objekt selbst kann schon weg sein.
       if Alive.Alive and (AliveRef <> nil) then
+      begin
         Owner.DebugValueDone(AKey, ADone);
+      end;
     end);
 end;
 
@@ -805,15 +863,23 @@ procedure TAtlasEditorHover.DebugValueDone(const AKey: string; const AValue: TAt
 begin
   // Nur für das Wort, auf dem die Maus noch steht; FDebug verwirft ältere Auswertungen ohnehin.
   if AKey <> FKey then
+  begin
     Exit;
+  end;
   FDebugValue := AValue;
   if not FTip.IsShown or (FShownKey <> AKey) then
+  begin
     Exit;
+  end;
   // Kein Wert (Fehler, weitergelaufen) und sonst nichts zu zeigen: schließen.
   if not FDebugValue.Visible and not FHistory.Current.Found and (Length(FProblems) = 0) then
-    Hide
+  begin
+    Hide;
+  end
   else
+  begin
     Refresh;
+  end;
 end;
 
 function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
@@ -825,11 +891,15 @@ begin
   Result.Focus := GetFocus;
   View := CurrentEditView;
   if View = nil then
+  begin
     Exit;
+  end;
   Result.TopRow := View.TopRow;
   Result.Rows := View.ViewSize.cy;
   if View.Buffer <> nil then
+  begin
     Result.FileName := View.Buffer.FileName;
+  end;
 end;
 
 procedure TAtlasEditorHover.WatchTimerTick(Sender: TObject);
@@ -838,10 +908,14 @@ begin
     // Andere Anwendung im Vordergrund, anderer Editor-Tab, Fokus woanders in der IDE (Objektinspektor,
     // Projektverwaltung …), gescrollt (#414). Größe und Scrollen melden zusätzlich die Editor-Ereignisse.
     if not FTip.IsShown then
-      FWatchTimer.Enabled := False
+    begin
+      FWatchTimer.Enabled := False;
+    end
     else if TAtlasCloseRules.Tooltip(FShown, WindowState, FHistory.Pinned, MouseOverTip) <>
       TAtlasCloseReason.None then
+    begin
       Hide;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
@@ -856,7 +930,9 @@ begin
     if FTip.IsShown and (FHistory.Pinned or MouseOverTip) and Application.Active then
     begin
       if not FHistory.Pinned then
+      begin
         FHideTimer.Enabled := True;
+      end;
       Exit;
     end;
     Hide;
@@ -943,11 +1019,15 @@ var
 begin
   try
     if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
+    begin
       Exit;
+    end;
     Problem := FTip.View.Problems[AProblem];
     Tag := Tags[AAction];
     if AAction = TAtlasHoverProblemAction.Related then
+    begin
       Tag := Tag + IntToStr(AItem);
+    end;
     Hide;
     FOnProblemAction(Problem, Tag);
   except
@@ -963,7 +1043,9 @@ begin
   try
     Value := FTip.View.DebugValue;
     if not Assigned(FOnDebugFix) or (AIndex < 0) or (AIndex > High(Value.Note.Fixes)) then
+    begin
       Exit;
+    end;
     Hide;
     FOnDebugFix(Value, AIndex);
   except
@@ -977,7 +1059,9 @@ begin
   try
     // Nur Web- und Mail-Adressen; andere Schemata (file:, Programme) öffnet der Tooltip nicht.
     if StartsText('http://', AUrl) or StartsText('https://', AUrl) or StartsText('mailto:', AUrl) then
+    begin
       ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
@@ -990,7 +1074,9 @@ var
 begin
   Data := FHistory.Current;
   if (CurrentSession = nil) or not Data.Location.HasLocation then
+  begin
     Exit;
+  end;
   // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen.
   FUsagesCount := TAtlasIdeResults.ShowReferences(Data.Location.FileName, Data.Location.Line,
     Data.Location.Character, Data.Title);
@@ -1016,15 +1102,23 @@ begin
         // Markierter Doku-Text (#654) hat Vorrang, bei Komponentenklassen die gezeigte Liste (#110), sonst die
         // Deklaration.
         if FTip.HasSelection then
-          Clipboard.AsText := FTip.SelectedText
+        begin
+          Clipboard.AsText := FTip.SelectedText;
+        end
         else if Length(Data.Members) > 0 then
+        begin
           Clipboard.AsText := Data.MembersText(not FTip.View.HideInherited, FTip.View.OnlyDefaults,
-            TAtlasStrings.Text(TAtlasTextId.PublishedImplicit))
+            TAtlasStrings.Text(TAtlasTextId.PublishedImplicit));
+        end
         else
+        begin
           Clipboard.AsText := Data.Declaration;
+        end;
       TAtlasHoverAction.Help:
         if Data.DocWiki <> '' then
+        begin
           ShellExecute(0, 'open', PChar(Data.DocWiki), nil, nil, SW_SHOWNORMAL);
+        end;
     end;
   except
     on E: Exception do
@@ -1042,27 +1136,43 @@ var
 begin
   Result := False;
   if not FTip.IsShown then
+  begin
     Exit;
+  end;
   if (AKey = VK_ESCAPE) and (AShift = []) then
+  begin
     Exit(True);
+  end;
   if FHistory.Pinned and FHistory.CanGoBack and (((AKey = VK_BACK) and (AShift = [])) or
     ((AKey = VK_LEFT) and (AShift = [ssAlt]))) then
+  begin
     Exit(True);
+  end;
   // Kürzel der Aktionsleiste nur, wenn der Tooltip gemeint ist: angeheftet oder mit der Maus darüber.
   ForTip := FHistory.Pinned or MouseOverTip;
   Data := FHistory.Current;
   // Markierter Doku-Text lässt sich auch ohne Fundort kopieren (#654).
   if ForTip and FTip.HasSelection and (AKey = Ord('C')) and (AShift = [ssCtrl]) then
+  begin
     Exit(True);
+  end;
   // Aktionen unter Befunden (#909), auch ohne Fundort (Hover nur mit Problem).
   if ForTip and (AKey = VK_RETURN) and (AShift = [ssAlt]) and FTip.HasFix then
+  begin
     Exit(True);
+  end;
   if ForTip and (AKey = VK_TAB) and ((AShift = []) or (AShift = [ssShift])) and FTip.HasProblemActions then
+  begin
     Exit(True);
+  end;
   if ForTip and (AKey = VK_RETURN) and (AShift = []) and FTip.ProblemActionMarked then
+  begin
     Exit(True);
+  end;
   if not ForTip or not Data.Location.HasLocation then
+  begin
     Exit;
+  end;
   Result := ((AKey = VK_F12) and ((AShift = []) or (AShift = [ssShift]))) or
     ((AKey = Ord('C')) and (AShift = [ssCtrl])) or
     ((AKey = VK_F1) and (AShift = []) and (Data.DocWiki <> ''));
@@ -1077,21 +1187,31 @@ begin
       TipBack(nil);
     VK_F12:
       if ssShift in AShift then
-        Execute(TAtlasHoverAction.Usages)
+      begin
+        Execute(TAtlasHoverAction.Usages);
+      end
       else
+      begin
         Execute(TAtlasHoverAction.Navigate);
+      end;
     VK_F1:
       Execute(TAtlasHoverAction.Help);
     VK_TAB:
       FTip.StepProblemAction(not (ssShift in AShift));
     VK_RETURN:
       if ssAlt in AShift then
-        FTip.ApplyFix
+      begin
+        FTip.ApplyFix;
+      end
       else
+      begin
         FTip.ActivateProblemAction;
+      end;
   else
     if AKey = Ord('C') then
+    begin
       Execute(TAtlasHoverAction.Copy);
+    end;
   end;
 end;
 
@@ -1113,7 +1233,9 @@ begin
   try
     // Umschalt, Strg und Alt allein schließen nicht: Strg+Klick und die Kürzel brauchen sie.
     if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+    begin
       Exit;
+    end;
     Hide;
   except
     on E: Exception do

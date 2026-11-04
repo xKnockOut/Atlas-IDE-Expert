@@ -186,69 +186,87 @@ end;
 
 { TIdeProjectContext }
 
+/// <summary>Liefert den getrimmten Text von AValue, wenn es eine Zeichenkette (keine Zahl) ist.</summary>
+function PrefixOf(const AValue: TJSONValue; out APrefix: string): Boolean;
+begin
+  // TJSONNumber erbt von TJSONString.
+  Result := (AValue is TJSONString) and not (AValue is TJSONNumber);
+  APrefix := '';
+  if Result then
+  begin
+    APrefix := Trim(AValue.Value);
+  end;
+end;
+
+/// <summary>Liest die Präfixe aus „naming“ in AContext.</summary>
+procedure ReadNaming(AItem: TJSONObject; var AContext: TIdeProjectContext);
+var
+  mPrefixes: TJSONObject;
+  mKind: TNamingKind;
+begin
+  if not AItem.TryGetValue<TJSONObject>('naming', mPrefixes) then
+  begin
+    Exit;
+  end;
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
+  begin
+    AContext.HasNaming[mKind] := PrefixOf(mPrefixes.GetValue(NamingKeys[mKind]), AContext.Naming[mKind]);
+  end;
+  AContext.HasConstantPrefix := PrefixOf(mPrefixes.GetValue('constant'), AContext.ConstantPrefix);
+end;
+
+/// <summary>Liest die eigenen Formatfunktionen aus „formatFunctions“ in AContext.</summary>
+procedure ReadFormatFunctions(AItem: TJSONObject; var AContext: TIdeProjectContext);
+var
+  mFunctions: TJSONArray;
+  mEntry: TJSONValue;
+  mName: string;
+begin
+  if not AItem.TryGetValue<TJSONArray>('formatFunctions', mFunctions) then
+  begin
+    Exit;
+  end;
+  for mEntry in mFunctions do
+  begin
+    if mEntry is TJSONObject then
+    begin
+      mName := Trim(TJSONObject(mEntry).GetValue<string>('name', ''));
+      if mName <> '' then
+      begin
+        AContext.FormatFunctions := AContext.FormatFunctions + [TFormatRoutines.Custom(mName,
+          TJSONObject(mEntry).GetValue<Integer>('formatIndex', -1))];
+      end;
+    end;
+  end;
+end;
+
 class function TIdeProjectContext.FromJson(const AValue: TJSONValue): TIdeProjectContext;
 var
-  Item, Prefixes: TJSONObject;
-  HasDefines, HasPaths, HasNamespaces, Ignored: Boolean;
-  Kind: TNamingKind;
-  Prefix, Entry: TJSONValue;
-  Functions: TJSONArray;
-  Name: string;
+  mItem: TJSONObject;
+  mHasDefines, mHasPaths, mHasNamespaces, mIgnored: Boolean;
 begin
   Result := Default(TIdeProjectContext);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Item := TJSONObject(AValue);
-  Result.Project := Item.GetValue<string>('project', '');
-  Result.Configuration := Item.GetValue<string>('configuration', '');
-  Result.Platform := Item.GetValue<string>('platform', '');
-  Result.BdsVersion := Item.GetValue<string>('bdsVersion', '');
-  Result.Defines := StringsOf(Item, 'defines', HasDefines);
-  Result.SearchPaths := StringsOf(Item, 'searchPaths', HasPaths);
-  Result.Namespaces := StringsOf(Item, 'namespaces', HasNamespaces);
-  Result.HasOptions := HasDefines or HasPaths or HasNamespaces;
-  Result.LibraryPaths := StringsOf(Item, 'libraryPaths', Ignored);
-  Result.HasActive := Item.GetValue('active') is TJSONBool;
+  mItem := TJSONObject(AValue);
+  Result.Project := mItem.GetValue<string>('project', '');
+  Result.Configuration := mItem.GetValue<string>('configuration', '');
+  Result.Platform := mItem.GetValue<string>('platform', '');
+  Result.BdsVersion := mItem.GetValue<string>('bdsVersion', '');
+  Result.Defines := StringsOf(mItem, 'defines', mHasDefines);
+  Result.SearchPaths := StringsOf(mItem, 'searchPaths', mHasPaths);
+  Result.Namespaces := StringsOf(mItem, 'namespaces', mHasNamespaces);
+  Result.HasOptions := mHasDefines or mHasPaths or mHasNamespaces;
+  Result.LibraryPaths := StringsOf(mItem, 'libraryPaths', mIgnored);
+  Result.HasActive := mItem.GetValue('active') is TJSONBool;
   if Result.HasActive then
   begin
-    Result.Active := TJSONBool(Item.GetValue('active')).AsBoolean;
+    Result.Active := TJSONBool(mItem.GetValue('active')).AsBoolean;
   end;
-  if Item.TryGetValue<TJSONObject>('naming', Prefixes) then
-  begin
-    for Kind := Low(TNamingKind) to High(TNamingKind) do
-    begin
-      Prefix := Prefixes.GetValue(NamingKeys[Kind]);
-      // TJSONNumber erbt von TJSONString.
-      if (Prefix is TJSONString) and not (Prefix is TJSONNumber) then
-      begin
-        Result.HasNaming[Kind] := True;
-        Result.Naming[Kind] := Trim(Prefix.Value);
-      end;
-    end;
-    Prefix := Prefixes.GetValue('constant');
-    if (Prefix is TJSONString) and not (Prefix is TJSONNumber) then
-    begin
-      Result.HasConstantPrefix := True;
-      Result.ConstantPrefix := Trim(Prefix.Value);
-    end;
-  end;
-  if Item.TryGetValue<TJSONArray>('formatFunctions', Functions) then
-  begin
-    for Entry in Functions do
-    begin
-      if Entry is TJSONObject then
-      begin
-        Name := Trim(TJSONObject(Entry).GetValue<string>('name', ''));
-        if Name <> '' then
-        begin
-          Result.FormatFunctions := Result.FormatFunctions + [TFormatRoutines.Custom(Name,
-            TJSONObject(Entry).GetValue<Integer>('formatIndex', -1))];
-        end;
-      end;
-    end;
-  end;
+  ReadNaming(mItem, Result);
+  ReadFormatFunctions(mItem, Result);
 end;
 
 function TIdeProjectContext.NamingKey: string;

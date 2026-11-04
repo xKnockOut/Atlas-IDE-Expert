@@ -223,16 +223,88 @@ begin
   end;
 end;
 
+/// <summary>Legt in AFolder ein Git-Repository für den Benutzer AUser an (ohne CRLF-Umwandlung und Signatur).
+/// </summary>
+procedure InitGit(const ARunner: IAtlasVcsRunner; const AGit, AFolder, AUser: string);
+begin
+  Exec(ARunner, AGit, ['init', '-q'], AFolder);
+  Exec(ARunner, AGit, ['config', 'user.name', AUser], AFolder);
+  Exec(ARunner, AGit, ['config', 'user.email', 'test@example.org'], AFolder);
+  Exec(ARunner, AGit, ['config', 'core.autocrlf', 'false'], AFolder);
+  Exec(ARunner, AGit, ['config', 'commit.gpgsign', 'false'], AFolder);
+end;
+
+/// <summary>Fünf Commits in AFolder; im dritten wird Src/Alt.pas zu Src/Neu.pas.</summary>
+procedure CommitGitSteps(const ARunner: IAtlasVcsRunner; const AGit, AFolder: string);
+var
+  mStep: Integer;
+begin
+  for mStep := 1 to 5 do
+  begin
+    if mStep = 3 then
+    begin
+      Exec(ARunner, AGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], AFolder);
+    end
+    else
+    begin
+      WriteStep(AFolder, mStep);
+    end;
+    Exec(ARunner, AGit, ['add', '-A'], AFolder);
+    Exec(ARunner, AGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], AFolder);
+  end;
+end;
+
+/// <summary>Kopf und Verlauf von AVcs wie git rev-parse und git log.</summary>
+procedure AssertGitHistory(const AVcs: IHotspotVcs; const ARunner: IAtlasVcsRunner; const AGit, AFolder: string);
+var
+  mCommits: TArray<THotspotCommit>;
+  mError, mHead: string;
+begin
+  Assert.IsTrue(AVcs.Kind = THotspotVcsKind.Git);
+  Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(AFolder), AVcs.Root));
+  mHead := AVcs.Head;
+  Assert.AreEqual(Exec(ARunner, AGit, ['rev-parse', 'HEAD'], AFolder), mHead);
+  Assert.IsTrue(AVcs.Log(IncDay(Now, -1), mCommits, mError), mError);
+  Assert.AreEqual(5, Integer(Length(mCommits)));
+  Assert.AreEqual('Schritt 5', mCommits[0].Summary, 'neueste zuerst');
+  Assert.AreEqual('Atlas Test', mCommits[0].Author);
+  Assert.IsTrue(mCommits[2].Files[0].Kind = THotspotChangeKind.Renamed, 'git mv');
+  Assert.AreEqual('Src/Alt.pas', mCommits[2].Files[0].OldPath);
+end;
+
+/// <summary>Methodenebene über git log -L, auch über die Umbenennung.</summary>
+procedure AssertLineHistory(const AVcs: IHotspotVcs; const AFolder: string; const AResult: THotspotResult);
+var
+  mLines: TArray<THotspotLineCommit>;
+  mEntry: THotspotEntry;
+begin
+  Assert.IsTrue(AVcs.LineLog(TPath.Combine(AFolder, 'Src/Neu.pas'), 7, 20, IncDay(Now, -1), mLines));
+  Assert.IsTrue(Length(mLines) >= 3, IntToStr(Length(mLines)));
+  Assert.AreEqual('Schritt 4', mLines[0].Summary);
+  mEntry := Find(AResult.Methods, 'Neu');
+  Assert.AreEqual('Rechne', mEntry.Method);
+  Assert.AreEqual(Integer(Length(mLines)), mEntry.Changes.Changes);
+end;
+
+/// <summary>Stand: heute gibt es Neu.pas, Fehlt.pas gab es nie, vor dem ersten Commit ist nichts bekannt.</summary>
+procedure AssertTextStates(const AVcs: IHotspotVcs);
+var
+  mText: string;
+begin
+  Assert.IsTrue(AVcs.TextAt('Src/Neu.pas', IncDay(Now, 1), mText) = THotspotTextState.Found);
+  Assert.IsTrue(mText.Contains('// vier'));
+  Assert.IsTrue(AVcs.TextAt('Src/Fehlt.pas', IncDay(Now, 1), mText) = THotspotTextState.Missing);
+  Assert.IsTrue(AVcs.TextAt('Src/Neu.pas', IncDay(Now, -2), mText) = THotspotTextState.Unknown);
+end;
+
 procedure TShellHotspotsTests.GitHistoryFollowsRenameAndMatchesGitLog;
 var
-  mGit, mFolder, mError, mText, mHead: string;
+  mGit, mFolder, mError: string;
   mRunner: IAtlasVcsRunner;
   mVcs: IHotspotVcs;
-  mCommits: TArray<THotspotCommit>;
-  mLines: TArray<THotspotLineCommit>;
   mResult: THotspotResult;
   mEntry: THotspotEntry;
-  mStep, mFollowed: Integer;
+  mFollowed: Integer;
 begin
   mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
   // Ohne git keine Prüfung. Exit statt Assert.Pass: Der Leckmonitor zählte die Meldung als Leck.
@@ -243,36 +315,11 @@ begin
   mRunner := TShellPlatform.CreateVcsRunner(True, nil);
   mFolder := NewFolder('git');
   try
-    Exec(mRunner, mGit, ['init', '-q'], mFolder);
-    Exec(mRunner, mGit, ['config', 'user.name', 'Atlas Test'], mFolder);
-    Exec(mRunner, mGit, ['config', 'user.email', 'test@example.org'], mFolder);
-    Exec(mRunner, mGit, ['config', 'core.autocrlf', 'false'], mFolder);
-    Exec(mRunner, mGit, ['config', 'commit.gpgsign', 'false'], mFolder);
-    for mStep := 1 to 5 do
-    begin
-      if mStep = 3 then
-      begin
-        Exec(mRunner, mGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], mFolder);
-      end
-      else
-      begin
-        WriteStep(mFolder, mStep);
-      end;
-      Exec(mRunner, mGit, ['add', '-A'], mFolder);
-      Exec(mRunner, mGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], mFolder);
-    end;
+    InitGit(mRunner, mGit, mFolder, 'Atlas Test');
+    CommitGitSteps(mRunner, mGit, mFolder);
     Assert.IsTrue(TShellHotspotVcs.Detect(TPath.Combine(mFolder, 'Src'), TServerSettings.Default, mVcs, mError),
       mError);
-    Assert.IsTrue(mVcs.Kind = THotspotVcsKind.Git);
-    Assert.IsTrue(SameText(ExcludeTrailingPathDelimiter(mFolder), mVcs.Root));
-    mHead := mVcs.Head;
-    Assert.AreEqual(Exec(mRunner, mGit, ['rev-parse', 'HEAD'], mFolder), mHead);
-    Assert.IsTrue(mVcs.Log(IncDay(Now, -1), mCommits, mError), mError);
-    Assert.AreEqual(5, Integer(Length(mCommits)));
-    Assert.AreEqual('Schritt 5', mCommits[0].Summary, 'neueste zuerst');
-    Assert.AreEqual('Atlas Test', mCommits[0].Author);
-    Assert.IsTrue(mCommits[2].Files[0].Kind = THotspotChangeKind.Renamed, 'git mv');
-    Assert.AreEqual('Src/Alt.pas', mCommits[2].Files[0].OldPath);
+    AssertGitHistory(mVcs, mRunner, mGit, mFolder);
 
     // Wie git log --follow: Neu.pas hat vier Commits (drei davon unter dem alten Namen).
     mFollowed := Length(Exec(mRunner, mGit, ['log', '--follow', '--format=%H', '--', 'Src/Neu.pas'], mFolder)
@@ -284,42 +331,106 @@ begin
     Assert.AreEqual(3, Find(mResult.Units, 'Andere').Changes.Changes);
     Assert.AreEqual('Neu', mResult.Units[0].UnitName, 'oft geändert und am komplexesten');
     Assert.AreEqual(5, mEntry.Complexity);
-
-    // Methodenebene über git log -L, auch über die Umbenennung.
-    Assert.IsTrue(mVcs.LineLog(TPath.Combine(mFolder, 'Src/Neu.pas'), 7, 20, IncDay(Now, -1), mLines));
-    Assert.IsTrue(Length(mLines) >= 3, IntToStr(Length(mLines)));
-    Assert.AreEqual('Schritt 4', mLines[0].Summary);
-    mEntry := Find(mResult.Methods, 'Neu');
-    Assert.AreEqual('Rechne', mEntry.Method);
-    Assert.AreEqual(Integer(Length(mLines)), mEntry.Changes.Changes);
-
-    // Stand: heute gibt es Neu.pas, Fehlt.pas gab es nie, vor dem ersten Commit ist nichts bekannt.
-    Assert.IsTrue(mVcs.TextAt('Src/Neu.pas', IncDay(Now, 1), mText) = THotspotTextState.Found);
-    Assert.IsTrue(mText.Contains('// vier'));
-    Assert.IsTrue(mVcs.TextAt('Src/Fehlt.pas', IncDay(Now, 1), mText) = THotspotTextState.Missing);
-    Assert.IsTrue(mVcs.TextAt('Src/Neu.pas', IncDay(Now, -2), mText) = THotspotTextState.Unknown);
+    AssertLineHistory(mVcs, mFolder, mResult);
+    AssertTextStates(mVcs);
   finally
     mVcs := nil;
     RemoveFolder(mFolder);
   end;
 end;
 
+/// <summary>git, svn und svnadmin; False, wenn eines fehlt.</summary>
+function SvnTools(out AGit, ASvn, ASvnAdmin: string): Boolean;
+begin
+  AGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
+  ASvn := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, '');
+  ASvnAdmin := '';
+  Result := (AGit <> '') and (ASvn <> '');
+  if Result then
+  begin
+    ASvnAdmin := TPath.Combine(ExtractFilePath(ASvn), 'svnadmin' + ExtractFileExt(ASvn));
+    Result := TFile.Exists(ASvnAdmin);
+  end;
+end;
+
+/// <summary>Legt die SVN-Ablage ARepository mit trunk an und checkt trunk nach AWorkingCopy aus.</summary>
+procedure CreateSvnWorkingCopy(const ARunner: IAtlasVcsRunner; const ASvn, ASvnAdmin, AFolder, ARepository,
+  AWorkingCopy: string);
+var
+  mUrl: string;
+begin
+  Exec(ARunner, ASvnAdmin, ['create', ARepository], AFolder);
+  mUrl := 'file:///' + StringReplace(ARepository, '\', '/', [rfReplaceAll]);
+  if mUrl.StartsWith('file:////') then
+  begin
+    mUrl := 'file://' + Copy(mUrl, 9, MaxInt);
+  end;
+  Exec(ARunner, ASvn, ['mkdir', '-q', '-m', 'Ablage', mUrl + '/trunk', '--non-interactive', '--username', 'atlas'],
+    AFolder);
+  Exec(ARunner, ASvn, ['checkout', '-q', mUrl + '/trunk', AWorkingCopy, '--non-interactive'], AFolder);
+end;
+
+/// <summary>Gleich aufgebaute Verläufe: dieselben fünf Schritte in AGitFolder und AWorkingCopy.</summary>
+procedure CommitBothSteps(const ARunner: IAtlasVcsRunner; const AGit, ASvn, AGitFolder, AWorkingCopy: string);
+var
+  mStep: Integer;
+begin
+  for mStep := 1 to 5 do
+  begin
+    if mStep = 3 then
+    begin
+      Exec(ARunner, AGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], AGitFolder);
+      Exec(ARunner, ASvn, ['move', '-q', 'Src/Alt.pas', 'Src/Neu.pas'], AWorkingCopy);
+    end
+    else
+    begin
+      WriteStep(AGitFolder, mStep);
+      WriteStep(AWorkingCopy, mStep);
+      if mStep = 1 then
+      begin
+        Exec(ARunner, ASvn, ['add', '-q', 'Src'], AWorkingCopy);
+      end;
+    end;
+    Exec(ARunner, AGit, ['add', '-A'], AGitFolder);
+    Exec(ARunner, AGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], AGitFolder);
+    Exec(ARunner, ASvn, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep), '--non-interactive', '--username',
+      'atlas'], AWorkingCopy);
+  end;
+end;
+
+/// <summary>Git und SVN liefern dieselben Werte je Unit und Methode.</summary>
+procedure AssertSameResults(const AGitResult, ASvnResult: THotspotResult);
+var
+  mIndex: Integer;
+begin
+  Assert.AreEqual(Integer(Length(AGitResult.Units)), Integer(Length(ASvnResult.Units)));
+  for mIndex := 0 to High(AGitResult.Units) do
+  begin
+    Assert.AreEqual(AGitResult.Units[mIndex].UnitName, ASvnResult.Units[mIndex].UnitName);
+    Assert.AreEqual(AGitResult.Units[mIndex].Changes.Changes, ASvnResult.Units[mIndex].Changes.Changes,
+      AGitResult.Units[mIndex].UnitName);
+    Assert.AreEqual(Integer(Length(AGitResult.Units[mIndex].Changes.Authors)),
+      Integer(Length(ASvnResult.Units[mIndex].Changes.Authors)));
+    Assert.AreEqual(AGitResult.Units[mIndex].Complexity, ASvnResult.Units[mIndex].Complexity);
+    Assert.AreEqual(AGitResult.Units[mIndex].Score, ASvnResult.Units[mIndex].Score, 1E-9);
+  end;
+  Assert.AreEqual(Integer(Length(AGitResult.Methods)), Integer(Length(ASvnResult.Methods)));
+  for mIndex := 0 to High(AGitResult.Methods) do
+  begin
+    Assert.AreEqual(AGitResult.Methods[mIndex].Changes.Changes, ASvnResult.Methods[mIndex].Changes.Changes,
+      AGitResult.Methods[mIndex].UnitName);
+  end;
+  Assert.AreEqual(Integer(Length(AGitResult.Coupling)), Integer(Length(ASvnResult.Coupling)));
+end;
+
 procedure TShellHotspotsTests.SvnGivesSameValuesAsGit;
 var
-  mGit, mSvn, mSvnAdmin, mFolder, mGitFolder, mRepository, mUrl, mWorkingCopy, mError: string;
+  mGit, mSvn, mSvnAdmin, mFolder, mGitFolder, mWorkingCopy, mError: string;
   mRunner: IAtlasVcsRunner;
   mGitVcs, mSvnVcs: IHotspotVcs;
-  mStep, mIndex: Integer;
   mGitResult, mSvnResult: THotspotResult;
 begin
-  mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
-  mSvn := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, '');
-  if (mGit = '') or (mSvn = '') then
-  begin
-    Exit;
-  end;
-  mSvnAdmin := TPath.Combine(ExtractFilePath(mSvn), 'svnadmin' + ExtractFileExt(mSvn));
-  if not TFile.Exists(mSvnAdmin) then
+  if not SvnTools(mGit, mSvn, mSvnAdmin) then
   begin
     Exit;
   end;
@@ -327,45 +438,11 @@ begin
   mFolder := NewFolder('svn');
   try
     mGitFolder := TPath.Combine(mFolder, 'git');
-    mRepository := TPath.Combine(mFolder, 'repo');
     mWorkingCopy := TPath.Combine(mFolder, 'wc');
     TDirectory.CreateDirectory(mGitFolder);
-    Exec(mRunner, mGit, ['init', '-q'], mGitFolder);
-    Exec(mRunner, mGit, ['config', 'user.name', 'atlas'], mGitFolder);
-    Exec(mRunner, mGit, ['config', 'user.email', 'test@example.org'], mGitFolder);
-    Exec(mRunner, mGit, ['config', 'core.autocrlf', 'false'], mGitFolder);
-    Exec(mRunner, mGit, ['config', 'commit.gpgsign', 'false'], mGitFolder);
-    Exec(mRunner, mSvnAdmin, ['create', mRepository], mFolder);
-    mUrl := 'file:///' + StringReplace(mRepository, '\', '/', [rfReplaceAll]);
-    if mUrl.StartsWith('file:////') then
-    begin
-      mUrl := 'file://' + Copy(mUrl, 9, MaxInt);
-    end;
-    Exec(mRunner, mSvn, ['mkdir', '-q', '-m', 'Ablage', mUrl + '/trunk', '--non-interactive', '--username', 'atlas'],
-      mFolder);
-    Exec(mRunner, mSvn, ['checkout', '-q', mUrl + '/trunk', mWorkingCopy, '--non-interactive'], mFolder);
-    // Gleich aufgebaute Verläufe: dieselben Schritte in beiden.
-    for mStep := 1 to 5 do
-    begin
-      if mStep = 3 then
-      begin
-        Exec(mRunner, mGit, ['mv', 'Src/Alt.pas', 'Src/Neu.pas'], mGitFolder);
-        Exec(mRunner, mSvn, ['move', '-q', 'Src/Alt.pas', 'Src/Neu.pas'], mWorkingCopy);
-      end
-      else
-      begin
-        WriteStep(mGitFolder, mStep);
-        WriteStep(mWorkingCopy, mStep);
-        if mStep = 1 then
-        begin
-          Exec(mRunner, mSvn, ['add', '-q', 'Src'], mWorkingCopy);
-        end;
-      end;
-      Exec(mRunner, mGit, ['add', '-A'], mGitFolder);
-      Exec(mRunner, mGit, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep)], mGitFolder);
-      Exec(mRunner, mSvn, ['commit', '-q', '-m', 'Schritt ' + IntToStr(mStep), '--non-interactive', '--username',
-        'atlas'], mWorkingCopy);
-    end;
+    InitGit(mRunner, mGit, mGitFolder, 'atlas');
+    CreateSvnWorkingCopy(mRunner, mSvn, mSvnAdmin, mFolder, TPath.Combine(mFolder, 'repo'), mWorkingCopy);
+    CommitBothSteps(mRunner, mGit, mSvn, mGitFolder, mWorkingCopy);
     Exec(mRunner, mSvn, ['update', '-q', '--non-interactive'], mWorkingCopy);
     Assert.IsTrue(TShellHotspotVcs.Detect(mGitFolder, TServerSettings.Default, mGitVcs, mError), mError);
     Assert.IsTrue(TShellHotspotVcs.Detect(mWorkingCopy, TServerSettings.Default, mSvnVcs, mError), mError);
@@ -374,24 +451,7 @@ begin
     mGitResult := Analyze(mGitFolder, mGitVcs);
     mSvnResult := Analyze(mWorkingCopy, mSvnVcs);
     Assert.AreEqual(5, mSvnResult.Commits);
-    Assert.AreEqual(Integer(Length(mGitResult.Units)), Integer(Length(mSvnResult.Units)));
-    for mIndex := 0 to High(mGitResult.Units) do
-    begin
-      Assert.AreEqual(mGitResult.Units[mIndex].UnitName, mSvnResult.Units[mIndex].UnitName);
-      Assert.AreEqual(mGitResult.Units[mIndex].Changes.Changes, mSvnResult.Units[mIndex].Changes.Changes,
-        mGitResult.Units[mIndex].UnitName);
-      Assert.AreEqual(Integer(Length(mGitResult.Units[mIndex].Changes.Authors)),
-        Integer(Length(mSvnResult.Units[mIndex].Changes.Authors)));
-      Assert.AreEqual(mGitResult.Units[mIndex].Complexity, mSvnResult.Units[mIndex].Complexity);
-      Assert.AreEqual(mGitResult.Units[mIndex].Score, mSvnResult.Units[mIndex].Score, 1E-9);
-    end;
-    Assert.AreEqual(Integer(Length(mGitResult.Methods)), Integer(Length(mSvnResult.Methods)));
-    for mIndex := 0 to High(mGitResult.Methods) do
-    begin
-      Assert.AreEqual(mGitResult.Methods[mIndex].Changes.Changes, mSvnResult.Methods[mIndex].Changes.Changes,
-        mGitResult.Methods[mIndex].UnitName);
-    end;
-    Assert.AreEqual(Integer(Length(mGitResult.Coupling)), Integer(Length(mSvnResult.Coupling)));
+    AssertSameResults(mGitResult, mSvnResult);
   finally
     mGitVcs := nil;
     mSvnVcs := nil;
