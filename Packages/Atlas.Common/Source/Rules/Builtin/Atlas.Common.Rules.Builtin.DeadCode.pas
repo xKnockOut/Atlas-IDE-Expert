@@ -109,6 +109,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Dfm.FormModel,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -1152,7 +1153,8 @@ end;
 
 /// <summary>Auskunft über eine Unit im uses für TUsesActions.Entries aus dem Index; AEnsure lädt sie vorher
 /// nach, wenn gesetzt.</summary>
-function UsesUnitInfo(const AIndex: ISymbolIndex; const AEnsure: TEnsureUnitFunc): TUsesUnitInfoFunc;
+function UsesUnitInfo(const AIndex: ISymbolIndex; const AEnsure: TEnsureUnitFunc;
+  const AModules: TArray<string>): TUsesUnitInfoFunc;
 begin
   Result :=
     function(const AUnitName: string): TUsesUnitInfo
@@ -1174,6 +1176,8 @@ begin
           if mSymbol.InInterface then
           begin
             Result.Names := Result.Names + [mSymbol.Name];
+            Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
+              (mSymbol.Kind = TIndexSymbolKind.Variable));
           end;
         end;
       end;
@@ -1203,8 +1207,10 @@ begin
   begin
     Exit;
   end;
+  // Module, auf die die Formulardatei verweist: Ihr uses-Eintrag ist gebraucht (dfm-reference-unit-missing).
   for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges,
-    UsesUnitInfo(AContext.Index, AContext.EnsureUnit), AContext.UsesKeep) do
+    UsesUnitInfo(AContext.Index, AContext.EnsureUnit, TFormModel.ForeignModulesOf(AContext.FormText)),
+    AContext.UsesKeep) do
   begin
     if mEntry.State <> TUsesEntryState.Unused then
     begin

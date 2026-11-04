@@ -77,6 +77,14 @@ type
     function Occurrences(const AName: string): TArray<TTextRange>;
     /// <summary>Formularobjekt mit diesem Namen; nil ohne.</summary>
     function FindComponent(const AName: string): TDfmObject;
+    /// <summary>Nennt AName das Formular selbst oder eine eigene Komponente (auch einen eingebetteten Rahmen wie
+    /// Frame11 in Frame11.Button1)? Dann ist ein Verweis AName.X kein Verweis auf ein anderes Modul.</summary>
+    function IsOwnName(const AName: string): Boolean;
+    /// <summary>Andere Module, auf die References verweisen (DM in DataSource = DM.dsKunden), ohne das eigene
+    /// Formular und eigene Komponenten, jedes einmal.</summary>
+    function ForeignModules: TArray<string>;
+    /// <summary>ForeignModules der Formulardatei AFormText; leer ohne Text.</summary>
+    class function ForeignModulesOf(const AFormText: string): TArray<string>; static;
     /// <summary>Binär gespeichert; gelesen wird die Umwandlung in Text.</summary>
     property Binary: Boolean read FBinary;
     property Document: TDfmDocument read FDocument;
@@ -259,6 +267,42 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+function TFormModel.IsOwnName(const AName: string): Boolean;
+begin
+  Result := ((FDocument.Root <> nil) and SameText(FDocument.Root.Name, AName)) or (FindComponent(AName) <> nil);
+end;
+
+function TFormModel.ForeignModules: TArray<string>;
+var
+  mReference: TFormModuleReference;
+begin
+  Result := nil;
+  for mReference in FReferences do
+  begin
+    if not IsOwnName(mReference.ModuleName) and (IndexText(mReference.ModuleName, Result) < 0) then
+    begin
+      Result := Result + [mReference.ModuleName];
+    end;
+  end;
+end;
+
+class function TFormModel.ForeignModulesOf(const AFormText: string): TArray<string>;
+var
+  mModel: TFormModel;
+begin
+  Result := nil;
+  if AFormText = '' then
+  begin
+    Exit;
+  end;
+  mModel := TFormModel.Create(AFormText);
+  try
+    Result := mModel.ForeignModules;
+  finally
+    mModel.Free;
+  end;
 end;
 
 procedure SortByPosition(var ARanges: TArray<TTextRange>);

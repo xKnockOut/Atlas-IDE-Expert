@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDe2: array[0..956] of string = (
+  CatalogLinesDe2: array[0..955] of string = (
     '        }',
     '      ]',
     '    },',
@@ -944,9 +944,10 @@ const
     '      "id": "unused-uses",',
     '      "name": "Ungenutzte Unit im uses",',
     '      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil i' +
-    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Eint' +
-    'räge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix' +
-    ' unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
+    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep, Units, ' +
+    'auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen b' +
+    'leiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo di' +
+    'eselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
     '    },',
     '    {',
     '      "id": "message-method-invalid",',
@@ -1310,6 +1311,16 @@ const
     ' (var Action: TCloseAction) durch Action := caFree."',
     '    },',
     '    {',
+    '      "id": "dfm-reference-unit-missing",',
+    '      "name": "Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht",',
+    '      "description": "Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit aber weder im interface- ' +
+    'noch im implementation-uses steht. Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL d' +
+    'en Verweis nur auf, solange ein Modul dieses Namens existiert. Das Modul ist der Name der Wurzelkomponente (Form1, nicht TForm1). Seine Unit kommt aus der .dpr des Projekts (Unit1 in ''Unit1.pas'' {Form' +
+    '1}, Sicherheit hoch), sonst aus dem Index: globale Variable dieses Namens im interface einer Unit, die ihren Typ als Klasse deklariert (Sicherheit mittel). Still bleibt die Regel bei Verweisen auf das' +
+    ' eigene Formular, auf eigene Komponenten (eingebettete Rahmen wie Frame11.Button1) und auf Module, deren Unit weder .dpr noch Index kennen. Gemeldet wird am Feld der Komponente, die den Verweis hält, ' +
+    'sonst an der Formularklasse; die Zeile der Formulardatei steht als weitere Stelle dabei. Korrektur: die Unit ins implementation-uses aufnehmen, wie es die IDE anbietet."',
+    '    },',
+    '    {',
     '      "id": "parallel-for-shared-write",',
     '      "name": "Gemeinsame Variable in TParallel.For geschrieben",',
     '      "description": "Der Rumpf von TParallel.For bzw. eines TTask.Run/Create/Future, der in einer Schleife entsteht, schreibt eine Variable von außerhalb ohne Sperre: Summe := Summe + …, Inc/Dec oder' +
@@ -1495,17 +1506,7 @@ const
     ': die Anweisung entfernen, wenn sie in einem begin…end oder direkt in repeat steht."',
     '    },',
     '    {',
-    '      "id": "generic-constraint-violated",',
-    '      "name": "Typargument verletzt eine Einschränkung",',
-    '      "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basiskla' +
-    'sse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz o' +
-    'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' +
-    'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' +
-    'nschränkung ergänzen (T: class, constructor bzw. T: class)."',
-    '    },',
-    '    {',
-    '      "id": "generic-inference-failed",',
-    '      "name": "Typargumente lassen sich nicht ableiten",');
+    '      "id": "generic-constraint-violated",');
 
 implementation
 

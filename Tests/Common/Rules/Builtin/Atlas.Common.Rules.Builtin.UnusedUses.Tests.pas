@@ -32,6 +32,8 @@ type
     procedure WithoutIndexIsQuiet;
     [Test]
     procedure BulkFixRemovesAllUnusedEntries;
+    [Test]
+    procedure FormReferenceKeepsUnit;
   end;
 
 implementation
@@ -51,7 +53,8 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Tests.RuleAssert;
 
 const
   cHelper = 'unit Hilfe;'#13#10#13#10'interface'#13#10#13#10'procedure Tu;'#13#10#13#10'implementation'#13#10#13#10 +
@@ -142,6 +145,29 @@ var
 begin
   mSettings := TConfigurationParser.Parse('{"usesKeep": ["Hilfe"]}', mIssues);
   Assert.AreEqual('', Names(Check(UnitText('Hilfe, Andere'), mSettings, Index, 'Bericht.pas')));
+end;
+
+procedure TUnusedUsesTests.FormReferenceKeepsUnit;
+const
+  cFormUnit = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  THauptForm = class'#13#10'  end;'#13#10'var'#13#10 +
+    '  HauptForm: THauptForm;'#13#10'implementation'#13#10'end.'#13#10;
+  cFormText = 'object BerichtForm: TBerichtForm'#13#10'  object Query: TFDQuery'#13#10 +
+    '    Connection = HauptForm.Connection'#13#10'  end'#13#10'end'#13#10;
+var
+  mIndex: ISymbolIndex;
+  mContext: TRuleContext;
+begin
+  // Die Formulardatei verweist auf HauptForm.Connection: Der Eintrag Haupt bleibt (dfm-reference-unit-missing).
+  mIndex := Index;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnit, 'Haupt.pas', nil, nil, True));
+  mContext := Default(TRuleContext);
+  mContext.Text := UnitText('Andere, Haupt');
+  mContext.Index := mIndex;
+  mContext.FormText := cFormText;
+  Assert.AreEqual('', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create, mContext, '')));
+  mContext.FormText := StringReplace(cFormText, 'HauptForm.', 'Query2.', []);
+  Assert.AreEqual('Aus Haupt wird nichts verwendet;', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create,
+    mContext, '')));
 end;
 
 procedure TUnusedUsesTests.InactiveBranchIsIgnored;
