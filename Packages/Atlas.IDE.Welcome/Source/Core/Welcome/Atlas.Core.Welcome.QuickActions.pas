@@ -748,23 +748,84 @@ begin
   end;
 end;
 
+function IsTestProject(const AFileName: string; const AExists: TAtlasQuickFileExists;
+  const AReadLines: TAtlasQuickReadLines): Boolean;
+var
+  mLines: TArray<string>;
+  mMain: string;
+begin
+  // Wie die IDE (#69): Hauptdatei .dpr neben der .dproj verwendet DUnitX.TestFramework.
+  mMain := WithExtension(AFileName, '.dpr');
+  Result := AExists(mMain) and AReadLines(mMain, mLines) and TDUnitXSource.UsesDUnitX(mLines);
+end;
+
+function NamedAfterGroup(const ACandidate, AGroup: string): Boolean;
+begin
+  Result := SameText(BaseNameOf(ACandidate), AGroup + '.Tests') or SameText(BaseNameOf(ACandidate), AGroup + 'Tests');
+end;
+
+function GroupTestProject(const AGroup: string; const AExists: TAtlasQuickFileExists;
+  const AReadLines: TAtlasQuickReadLines; out ACandidates: TArray<string>): string;
+var
+  mLines: TArray<string>;
+  mCandidate, mGroup: string;
+begin
+  Result := '';
+  ACandidates := nil;
+  if not AReadLines(AGroup, mLines) then
+  begin
+    Exit;
+  end;
+  for mCandidate in TAtlasWelcomeQuickActions.GroupProjects(string.Join(#10, mLines), FolderOf(AGroup)) do
+  begin
+    if IsTestProject(mCandidate, AExists, AReadLines) then
+    begin
+      ACandidates := ACandidates + [mCandidate];
+    end;
+  end;
+  if Length(ACandidates) = 1 then
+  begin
+    Exit(ACandidates[0]);
+  end;
+  // Mehrere: das nach der Gruppe benannte, sonst fragt die IDE.
+  mGroup := BaseNameOf(AGroup);
+  for mCandidate in ACandidates do
+  begin
+    if NamedAfterGroup(mCandidate, mGroup) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+end;
+
+function SingleTestProject(const AProject: string; const AExists: TAtlasQuickFileExists;
+  const AReadLines: TAtlasQuickReadLines; out ACandidates: TArray<string>): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  ACandidates := nil;
+  if IsTestProject(AProject, AExists, AReadLines) then
+  begin
+    ACandidates := [AProject];
+    Exit(AProject);
+  end;
+  for mCandidate in TAtlasWelcomeQuickActions.TestCandidates(AProject) do
+  begin
+    if AExists(mCandidate) and IsTestProject(mCandidate, AExists, AReadLines) then
+    begin
+      ACandidates := ACandidates + [mCandidate];
+    end;
+  end;
+  if Length(ACandidates) > 0 then
+  begin
+    Result := ACandidates[0];
+  end;
+end;
+
 class function TAtlasWelcomeQuickActions.TestProjectFor(const AProject: string;
   const AExists: TAtlasQuickFileExists; const AReadLines: TAtlasQuickReadLines;
   out ACandidates: TArray<string>): string;
-
-  function IsTestProject(const AFileName: string): Boolean;
-  var
-    Lines: TArray<string>;
-    Main: string;
-  begin
-    // Wie die IDE (#69): Hauptdatei .dpr neben der .dproj verwendet DUnitX.TestFramework.
-    Main := WithExtension(AFileName, '.dpr');
-    Result := AExists(Main) and AReadLines(Main, Lines) and TDUnitXSource.UsesDUnitX(Lines);
-  end;
-
-var
-  Lines: TArray<string>;
-  Candidate, Group: string;
 begin
   Result := '';
   ACandidates := nil;
@@ -774,47 +835,11 @@ begin
   end;
   if IsGroup(AProject) then
   begin
-    if not AReadLines(AProject, Lines) then
-    begin
-      Exit;
-    end;
-    for Candidate in GroupProjects(string.Join(#10, Lines), FolderOf(AProject)) do
-    begin
-      if IsTestProject(Candidate) then
-      begin
-        ACandidates := ACandidates + [Candidate];
-      end;
-    end;
-    if Length(ACandidates) = 1 then
-    begin
-      Exit(ACandidates[0]);
-    end;
-    // Mehrere: das nach der Gruppe benannte, sonst fragt die IDE.
-    Group := BaseNameOf(AProject);
-    for Candidate in ACandidates do
-    begin
-      if SameText(BaseNameOf(Candidate), Group + '.Tests') or SameText(BaseNameOf(Candidate), Group + 'Tests') then
-      begin
-        Exit(Candidate);
-      end;
-    end;
-    Exit;
-  end;
-  if IsTestProject(AProject) then
+    Result := GroupTestProject(AProject, AExists, AReadLines, ACandidates);
+  end
+  else
   begin
-    ACandidates := [AProject];
-    Exit(AProject);
-  end;
-  for Candidate in TestCandidates(AProject) do
-  begin
-    if AExists(Candidate) and IsTestProject(Candidate) then
-    begin
-      ACandidates := ACandidates + [Candidate];
-    end;
-  end;
-  if Length(ACandidates) > 0 then
-  begin
-    Result := ACandidates[0];
+    Result := SingleTestProject(AProject, AExists, AReadLines, ACandidates);
   end;
 end;
 

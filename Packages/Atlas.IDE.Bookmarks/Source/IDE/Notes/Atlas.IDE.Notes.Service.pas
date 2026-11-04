@@ -88,6 +88,7 @@ uses
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Notes.List,
+  Atlas.UI.Results.Items,
   Atlas.UI.Results.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.GutterMarks,
@@ -497,12 +498,12 @@ var
 begin
   Frame := TAtlasIdeResultsWindow.ExistingFrame;
   // Nur, wenn das Fenster gerade die Notizen zeigt; sonst bleibt seine Liste.
-  if (Frame = nil) or (FListProject = '') or not Frame.ShowsItemsOf(TAtlasNotesList.Owner) then
+  if (Frame = nil) or (FListProject = '') or not Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner) then
   begin
     Exit;
   end;
   Current := Book(FListProject);
-  Frame.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
+  Frame.Items.Show(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(FListProject), Current.Count, Current.OrphanCount]), Current.Groups, ASelectId));
 end;
 

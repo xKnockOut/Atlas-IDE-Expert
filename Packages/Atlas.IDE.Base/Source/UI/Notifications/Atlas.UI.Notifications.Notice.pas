@@ -21,6 +21,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.ExtCtrls,
+  Atlas.Core.Style.Color,
   Atlas.UI.Popup.Window;
 
 type
@@ -40,6 +41,12 @@ type
     FOnAction: TProc<Integer>;
     procedure TimerTick(Sender: TObject);
     function Layout(ADraw: Boolean): TSize;
+    /// <summary>Breite des Fensters: Überschrift mit „×“, längste Textzeile, Zeile der Aktionen.</summary>
+    function MeasureWidth: Integer;
+    /// <summary>AText an AX, AY in AColor, nur mit ADraw.</summary>
+    procedure PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+    /// <summary>Zeile der Aktionen ab AX, AY; legt FActionRects an.</summary>
+    procedure LayoutActions(ADraw: Boolean; AX, AY, ATextHeight: Integer);
     function HitTest(const APoint: TPoint): Integer;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
@@ -109,98 +116,103 @@ begin
   Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
+function TAtlasNoticeWindow.MeasureWidth: Integer;
+var
+  mLine: string;
+begin
+  Canvas.Font.Style := [fsBold];
+  Result := Scale(Pad) + Canvas.TextWidth(FTitle);
+  Canvas.Font.Style := [];
+  // „×“ rechts neben der Überschrift; die endgültige Lage folgt der Breite.
+  Result := Result + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
+  for mLine in FText.Split([sLineBreak]) do
+  begin
+    Result := Max(Result, Scale(Pad) + Canvas.TextWidth(mLine));
+  end;
+  if Length(FActions) > 0 then
+  begin
+    Result := Max(Result, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
+  end;
+  Result := Result + Scale(Pad);
+end;
+
+procedure TAtlasNoticeWindow.PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+begin
+  if ADraw then
+  begin
+    Canvas.Font.Color := ToColor(AColor);
+    Canvas.TextOut(AX, AY, AText);
+  end;
+end;
+
+procedure TAtlasNoticeWindow.LayoutActions(ADraw: Boolean; AX, AY, ATextHeight: Integer);
+var
+  mIndex, mX: Integer;
+begin
+  mX := AX;
+  for mIndex := 0 to High(FActions) do
+  begin
+    if mIndex > 0 then
+    begin
+      PutText(ADraw, mX, AY, Separator, Colors.Muted);
+      Inc(mX, Canvas.TextWidth(Separator));
+    end;
+    FActionRects[mIndex] := Rect(mX, AY, mX + Canvas.TextWidth(FActions[mIndex]), AY + ATextHeight);
+    if ADraw and (FHot = mIndex) then
+    begin
+      Canvas.Font.Style := [fsUnderline];
+    end;
+    PutText(ADraw, mX, AY, FActions[mIndex], Colors.Accent);
+    Canvas.Font.Style := [];
+    Inc(mX, Canvas.TextWidth(FActions[mIndex]));
+  end;
+end;
+
 function TAtlasNoticeWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, mWidth, Index: Integer;
-  Line: string;
+  mX, mY, mTextHeight, mWidth: Integer;
+  mLine: string;
+  mCloseColor: TAtlasColor;
 begin
   Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
+  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  X := Scale(Pad);
-  Y := Scale(Pad);
+  mX := Scale(Pad);
+  mY := Scale(Pad);
+  mWidth := MeasureWidth;
   Canvas.Font.Style := [fsBold];
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, FTitle);
-  end;
-  mWidth := X + Canvas.TextWidth(FTitle);
+  PutText(ADraw, mX, mY, FTitle, Colors.Text);
   Canvas.Font.Style := [];
-  // „×“ rechts neben der Überschrift; die endgültige Lage folgt der Breite.
-  mWidth := mWidth + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
-  for Line in FText.Split([sLineBreak]) do
+  FCloseRect := Rect(mWidth - Scale(Pad) - Canvas.TextWidth(CloseText), mY, mWidth - Scale(Pad), mY + mTextHeight);
+  mCloseColor := Colors.Muted;
+  if FHot = HitClose then
   begin
-    mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(Line));
+    mCloseColor := Colors.Text;
   end;
-  if Length(FActions) > 0 then
-  begin
-    mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
-  end;
-  mWidth := mWidth + Scale(Pad);
-  FCloseRect := Rect(mWidth - Scale(Pad) - Canvas.TextWidth(CloseText), Y, mWidth - Scale(Pad), Y + TextHeight);
-  if ADraw then
-  begin
-    if FHot = HitClose then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Text);
-    end
-    else
-    begin
-      Canvas.Font.Color := ToColor(Colors.Muted);
-    end;
-    Canvas.TextOut(FCloseRect.Left, FCloseRect.Top, CloseText);
-  end;
+  PutText(ADraw, FCloseRect.Left, FCloseRect.Top, CloseText, mCloseColor);
   if FText <> '' then
   begin
-    for Line in FText.Split([sLineBreak]) do
+    for mLine in FText.Split([sLineBreak]) do
     begin
-      Y := Y + TextHeight + Scale(RowGap);
-      if ADraw then
-      begin
-        Canvas.Font.Color := ToColor(Colors.Muted);
-        Canvas.TextOut(X, Y, Line);
-      end;
+      mY := mY + mTextHeight + Scale(RowGap);
+      PutText(ADraw, mX, mY, mLine, Colors.Muted);
     end;
   end;
   SetLength(FActionRects, Length(FActions));
   if Length(FActions) > 0 then
   begin
-    Y := Y + TextHeight + Scale(RowGap) * 2;
-    for Index := 0 to High(FActions) do
-    begin
-      if Index > 0 then
-      begin
-        if ADraw then
-        begin
-          Canvas.Font.Color := ToColor(Colors.Muted);
-          Canvas.TextOut(X, Y, Separator);
-        end;
-        Inc(X, Canvas.TextWidth(Separator));
-      end;
-      FActionRects[Index] := Rect(X, Y, X + Canvas.TextWidth(FActions[Index]), Y + TextHeight);
-      if ADraw then
-      begin
-        if FHot = Index then
-        begin
-          Canvas.Font.Style := [fsUnderline];
-        end;
-        Canvas.Font.Color := ToColor(Colors.Accent);
-        Canvas.TextOut(X, Y, FActions[Index]);
-        Canvas.Font.Style := [];
-      end;
-      Inc(X, Canvas.TextWidth(FActions[Index]));
-    end;
+    mY := mY + mTextHeight + Scale(RowGap) * 2;
+    LayoutActions(ADraw, mX, mY, mTextHeight);
   end;
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
   Result.cx := mWidth;
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cy := mY + mTextHeight + Scale(Pad);
 end;
 
 procedure TAtlasNoticeWindow.ShowNotice(const ATitle, AText: string; const AActions: TArray<string>;

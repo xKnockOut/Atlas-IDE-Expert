@@ -74,7 +74,8 @@ uses
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.Attach;
+  Atlas.IDE.Tracker.Attach,
+  Atlas.IDE.Tracker.IssueLookups;
 
 { TAtlasIdeIssueCommands }
 
@@ -248,13 +249,13 @@ begin
     Exit;
   end;
   // Der Titel gehört in Branch-Namen und Präfix: aus dem Zwischenspeicher, sonst erst fragen.
-  if FServices.Preview.Peek(ATarget, AKey, mDetails) then
+  if FServices.Preview.Lookups.Peek(ATarget, AKey, mDetails) then
   begin
     FContext.Actions.Start(mDetails.Issue, FServices.Options.Start);
   end
   else
   begin
-    FServices.Preview.Lookup(ATarget, AKey, StartAfterLookup(FContext.Actions, FContext, FServices, AKey));
+    FServices.Preview.Lookups.Lookup(ATarget, AKey, StartAfterLookup(FContext.Actions, FContext, FServices, AKey));
   end;
 end;
 

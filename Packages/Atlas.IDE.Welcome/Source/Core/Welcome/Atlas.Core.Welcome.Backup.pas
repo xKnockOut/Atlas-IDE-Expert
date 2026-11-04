@@ -305,90 +305,125 @@ begin
   end;
 end;
 
-function KeyFromJson(const AName: string; AJson: TJSONObject; out AKey: TAtlasRegKey): Boolean;
+function KeyFromJson(const AName: string; AJson: TJSONObject; out AKey: TAtlasRegKey): Boolean; forward;
+
+/// <summary>Inhalt eines Werts: „lines“ bei MultiText, sonst „data“; False bei falschem Typ.</summary>
+function ValueDataFromJson(AItem: TJSONObject; var AValue: TAtlasRegValue): Boolean;
 var
-  Field, LinesField: TJSONValue;
-  Values, Lines: TJSONArray;
-  Keys, Item: TJSONObject;
-  Index, LineIndex: Integer;
-  Value: TAtlasRegValue;
-  Kind: TAtlasRegKind;
-  Child: TAtlasRegKey;
+  mField: TJSONValue;
+  mLines: TJSONArray;
+  mIndex: Integer;
+begin
+  if AValue.Kind = TAtlasRegKind.MultiText then
+  begin
+    mField := AItem.GetValue('lines');
+    Result := mField is TJSONArray;
+    if Result then
+    begin
+      mLines := TJSONArray(mField);
+      for mIndex := 0 to mLines.Count - 1 do
+      begin
+        AValue.Lines := AValue.Lines + [mLines.Items[mIndex].Value];
+      end;
+    end;
+  end
+  else
+  begin
+    mField := AItem.GetValue('data');
+    Result := mField is TJSONString;
+    if Result then
+    begin
+      AValue.Data := mField.Value;
+    end;
+  end;
+end;
+
+function ValueFromJson(AJson: TJSONValue; out AValue: TAtlasRegValue): Boolean;
+var
+  mItem: TJSONObject;
+  mName, mKind: TJSONValue;
+begin
+  AValue := TAtlasRegValue.Create('', TAtlasRegKind.Text, '');
+  Result := False;
+  if not (AJson is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AJson);
+  mName := mItem.GetValue('name');
+  mKind := mItem.GetValue('kind');
+  if (mName is TJSONString) and (mKind is TJSONString) and KindOf(mKind.Value, AValue.Kind) then
+  begin
+    AValue.Name := mName.Value;
+    Result := ValueDataFromJson(mItem, AValue);
+  end;
+end;
+
+/// <summary>Werte aus „values“ in AKey; fehlt das Feld, gibt es keine. False bei einem ungültigen Wert.</summary>
+function ValuesFromJson(AField: TJSONValue; AKey: TAtlasRegKey): Boolean;
+var
+  mValues: TJSONArray;
+  mIndex: Integer;
+  mValue: TAtlasRegValue;
+begin
+  Result := True;
+  if not (AField is TJSONArray) then
+  begin
+    Exit;
+  end;
+  mValues := TJSONArray(AField);
+  mIndex := 0;
+  while Result and (mIndex < mValues.Count) do
+  begin
+    Result := ValueFromJson(mValues.Items[mIndex], mValue);
+    if Result then
+    begin
+      AKey.Values.Add(mValue);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Unterschlüssel aus „keys“ in AKey; fehlt das Feld, gibt es keine. False bei einem ungültigen.</summary>
+function KeysFromJson(AField: TJSONValue; AKey: TAtlasRegKey): Boolean;
+var
+  mKeys: TJSONObject;
+  mIndex: Integer;
+  mPair: TJSONPair;
+  mChild: TAtlasRegKey;
+begin
+  Result := True;
+  if not (AField is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mKeys := TJSONObject(AField);
+  mIndex := 0;
+  while Result and (mIndex < mKeys.Count) do
+  begin
+    mPair := mKeys.Pairs[mIndex];
+    Result := (mPair.JsonValue is TJSONObject) and
+      KeyFromJson(mPair.JsonString.Value, TJSONObject(mPair.JsonValue), mChild);
+    if Result then
+    begin
+      AKey.Keys.Add(mChild);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+function KeyFromJson(const AName: string; AJson: TJSONObject; out AKey: TAtlasRegKey): Boolean;
 begin
   AKey := TAtlasRegKey.Create(AName);
-  Result := False;
   try
-    Field := AJson.GetValue('values');
-    if Field is TJSONArray then
-    begin
-      Values := TJSONArray(Field);
-      for Index := 0 to Values.Count - 1 do
-      begin
-        if not (Values.Items[Index] is TJSONObject) then
-        begin
-          Exit;
-        end;
-        Item := TJSONObject(Values.Items[Index]);
-        Field := Item.GetValue('name');
-        if not (Field is TJSONString) then
-        begin
-          Exit;
-        end;
-        Value := TAtlasRegValue.Create(Field.Value, TAtlasRegKind.Text, '');
-        Field := Item.GetValue('kind');
-        if not (Field is TJSONString) or not KindOf(Field.Value, Kind) then
-        begin
-          Exit;
-        end;
-        Value.Kind := Kind;
-        if Kind = TAtlasRegKind.MultiText then
-        begin
-          LinesField := Item.GetValue('lines');
-          if not (LinesField is TJSONArray) then
-          begin
-            Exit;
-          end;
-          Lines := TJSONArray(LinesField);
-          for LineIndex := 0 to Lines.Count - 1 do
-          begin
-            Value.Lines := Value.Lines + [Lines.Items[LineIndex].Value];
-          end;
-        end
-        else
-        begin
-          Field := Item.GetValue('data');
-          if not (Field is TJSONString) then
-          begin
-            Exit;
-          end;
-          Value.Data := Field.Value;
-        end;
-        AKey.Values.Add(Value);
-      end;
-    end;
-    Field := AJson.GetValue('keys');
-    if Field is TJSONObject then
-    begin
-      Keys := TJSONObject(Field);
-      for Index := 0 to Keys.Count - 1 do
-      begin
-        if not (Keys.Pairs[Index].JsonValue is TJSONObject) then
-        begin
-          Exit;
-        end;
-        if not KeyFromJson(Keys.Pairs[Index].JsonString.Value, TJSONObject(Keys.Pairs[Index].JsonValue), Child) then
-        begin
-          Exit;
-        end;
-        AKey.Keys.Add(Child);
-      end;
-    end;
-    Result := True;
-  finally
-    if not Result then
-    begin
-      FreeAndNil(AKey);
-    end;
+    Result := ValuesFromJson(AJson.GetValue('values'), AKey) and KeysFromJson(AJson.GetValue('keys'), AKey);
+  except
+    FreeAndNil(AKey);
+    raise;
+  end;
+  if not Result then
+  begin
+    FreeAndNil(AKey);
   end;
 end;
 

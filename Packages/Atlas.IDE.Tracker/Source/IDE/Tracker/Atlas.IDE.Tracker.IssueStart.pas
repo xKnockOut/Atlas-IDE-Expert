@@ -112,7 +112,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Tracker.Workflow;
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.IDE.Tracker.IssueLinkWrites;
 
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung bei „Beginnen“.</summary>
@@ -314,7 +315,7 @@ begin
   FContext.Notice := TAtlasIssuesNotice.Create(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting,
     [mIssue.Key]), False);
   FContext.Changed;
-  FServices.Preview.CheckBlocked(mTarget, mIssue.Key,
+  FServices.Preview.LinkWrites.CheckBlocked(mTarget, mIssue.Key,
     procedure(AKnown: Boolean; const ADetails: TAtlasTrackerDetails)
     begin
       if (mKeep <> nil) and mOwner.FContext.Started then
