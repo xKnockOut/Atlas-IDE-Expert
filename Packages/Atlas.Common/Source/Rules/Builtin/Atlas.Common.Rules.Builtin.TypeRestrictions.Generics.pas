@@ -81,6 +81,48 @@ type
   TConstraintKind = (Unknown, ClassKeyword, RecordKeyword, ConstructorKeyword, ClassType, InterfaceType, Invalid);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Bisherige Einschränkungen einer Gruppe: class, record, constructor und Zahl der Klassen.</summary>
+  TConstraintState = record
+    HasClass: Boolean;
+    HasRecord: Boolean;
+    HasConstructor: Boolean;
+    ClassTypes: Integer;
+  end;
+
+  /// <summary>Sucht im Kopf TFoo&lt;T&gt;.Bar&lt;U&gt; die Typparameterliste der letzten Namenskomponente.</summary>
+  THeaderGenericScan = record
+    /// <summary>Zahl der Punkte im Namen, also Index der letzten Komponente.</summary>
+    Dots: Integer;
+    Component: Integer;
+    Depth: Integer;
+    /// <summary>Index der zuletzt geöffneten Liste auf Ebene 0.</summary>
+    Seen: Integer;
+    /// <summary>Index der Liste der letzten Komponente, -1 ohne.</summary>
+    Own: Integer;
+    /// <summary>Verarbeitet AToken; False am Ende der Namen (Klammer, Doppelpunkt, Semikolon auf Ebene 0).
+    /// </summary>
+    function Step(const AToken: TPascalToken): Boolean;
+    procedure OpenAngle;
+  end;
+
+  /// <summary>Zerlegt eine Typparameterliste in Gruppen "A, B: Einschränkungen".</summary>
+  TConstraintScan = record
+    Groups: TArray<TArray<TGenericConstraint>>;
+    Group: TArray<TGenericConstraint>;
+    Current: TGenericConstraint;
+    Depth: Integer;
+    InConstraints: Boolean;
+    /// <summary>Verarbeitet AToken; False am Ende der Liste.</summary>
+    function Step(const AToken: TPascalToken): Boolean;
+    procedure Flush;
+    procedure CloseGroup;
+    /// <summary>Schließende spitze Klammer; True, wenn die Liste damit endet.</summary>
+    function Close(const AToken: TPascalToken): Boolean;
+    /// <summary>Trenner auf Ebene 1 (Doppelpunkt, Komma, Semikolon) verarbeitet?</summary>
+    function Separator(const AToken: TPascalToken): Boolean;
+    procedure Append(const AToken: TPascalToken);
+  end;
+
 const
   // Typarten, die als Typ mit Typparametern nicht erlaubt sind (E2508).
   NonGenericTypeKinds = [TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType,
@@ -111,185 +153,293 @@ begin
   end;
 end;
 
+{ THeaderGenericScan }
+
+function THeaderGenericScan.Step(const AToken: TPascalToken): Boolean;
+begin
+  Result := True;
+  if AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+  begin
+    Exit;
+  end;
+  if (Depth = 0) and (AToken.IsSymbol('(') or AToken.IsSymbol(':') or AToken.IsSymbol(';')) then
+  begin
+    Exit(False);
+  end;
+  if AToken.IsSymbol('<') then
+  begin
+    OpenAngle;
+  end
+  else if AToken.IsSymbol('>') then
+  begin
+    Dec(Depth);
+  end
+  else if AToken.IsSymbol('>>') then
+  begin
+    Dec(Depth, 2);
+  end
+  else if (Depth = 0) and AToken.IsSymbol('.') then
+  begin
+    Inc(Component);
+  end;
+end;
+
+procedure THeaderGenericScan.OpenAngle;
+begin
+  if Depth = 0 then
+  begin
+    Inc(Seen);
+    if Component = Dots then
+    begin
+      Own := Seen;
+    end;
+  end;
+  Inc(Depth);
+end;
+
+/// <summary>Die AIndex-te Typparameterliste unter AHeader, nil ohne.</summary>
+function NthGenericParams(AHeader: TSyntaxNode; AIndex: Integer): TSyntaxNode;
+var
+  Seen, Child: Integer;
+begin
+  Seen := -1;
+  for Child := 0 to AHeader.ChildCount - 1 do
+  begin
+    if AHeader[Child].Kind <> TSyntaxKind.GenericParams then
+    begin
+      Continue;
+    end;
+    Inc(Seen);
+    if Seen = AIndex then
+    begin
+      Exit(AHeader[Child]);
+    end;
+  end;
+  Result := nil;
+end;
+
 /// <summary>Eigene Typparameter des Kopfs: bei TFoo&lt;T&gt;.Bar&lt;U&gt; die von Bar, nil ohne.</summary>
 function OwnGenericParams(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TSyntaxNode;
 var
-  Dots, Component, Depth, Index, Seen, Own, Child: Integer;
+  Index: Integer;
+  Scan: THeaderGenericScan;
 begin
   Result := nil;
   if (AHeader.Parent = nil) or (AHeader.Parent.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', AHeader.Name) = 0) then
   begin
     Exit(AHeader.FindChild(TSyntaxKind.GenericParams));
   end;
-  Dots := Length(AHeader.Name) - Length(StringReplace(AHeader.Name, '.', '', [rfReplaceAll]));
-  Component := 0;
-  Depth := 0;
-  Seen := -1;
-  Own := -1;
+  Scan := Default(THeaderGenericScan);
+  Scan.Dots := Length(AHeader.Name) - Length(StringReplace(AHeader.Name, '.', '', [rfReplaceAll]));
+  Scan.Seen := -1;
+  Scan.Own := -1;
   Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
-  while (Index >= 0) and (Index < Length(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) do
+  while (Index >= 0) and (Index < Length(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) and
+    Scan.Step(ATokens[Index]) do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      if (Depth = 0) and (ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol(':') or
-        ATokens[Index].IsSymbol(';')) then
-      begin
-        Break;
-      end;
-      if ATokens[Index].IsSymbol('<') then
-      begin
-        if Depth = 0 then
-        begin
-          Inc(Seen);
-          if Component = Dots then
-          begin
-            Own := Seen;
-          end;
-        end;
-        Inc(Depth);
-      end
-      else if ATokens[Index].IsSymbol('>') then
-      begin
-        Dec(Depth);
-      end
-      else if ATokens[Index].IsSymbol('>>') then
-      begin
-        Dec(Depth, 2);
-      end
-      else if (Depth = 0) and ATokens[Index].IsSymbol('.') then
-      begin
-        Inc(Component);
-      end;
-    end;
     Inc(Index);
   end;
-  if Own < 0 then
+  if Scan.Own >= 0 then
+  begin
+    Result := NthGenericParams(AHeader, Scan.Own);
+  end;
+end;
+
+{ TConstraintScan }
+
+procedure TConstraintScan.Flush;
+begin
+  if Current.Text <> '' then
+  begin
+    Group := Group + [Current];
+  end;
+  Current := Default(TGenericConstraint);
+end;
+
+procedure TConstraintScan.CloseGroup;
+begin
+  Flush;
+  if Group <> nil then
+  begin
+    Groups := Groups + [Group];
+  end;
+  Group := nil;
+  InConstraints := False;
+end;
+
+function TConstraintScan.Close(const AToken: TPascalToken): Boolean;
+begin
+  if AToken.IsSymbol('>>') then
+  begin
+    Dec(Depth, 2);
+  end
+  else
+  begin
+    Dec(Depth);
+  end;
+  Result := Depth <= 0;
+  if not Result then
   begin
     Exit;
   end;
-  Seen := -1;
-  for Child := 0 to AHeader.ChildCount - 1 do
+  if AToken.IsSymbol('>>') and InConstraints then
   begin
-    if AHeader[Child].Kind = TSyntaxKind.GenericParams then
-    begin
-      Inc(Seen);
-      if Seen = Own then
-      begin
-        Exit(AHeader[Child]);
-      end;
-    end;
+    Current.Text := Current.Text + '>';
+    Current.Range.EndPos := AToken.EndPos;
   end;
+  CloseGroup;
+end;
+
+function TConstraintScan.Separator(const AToken: TPascalToken): Boolean;
+begin
+  Result := True;
+  if AToken.IsSymbol(':') then
+  begin
+    InConstraints := True;
+  end
+  else if AToken.IsSymbol(',') then
+  begin
+    if InConstraints then
+    begin
+      Flush;
+    end;
+  end
+  else if AToken.IsSymbol(';') then
+  begin
+    CloseGroup;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TConstraintScan.Append(const AToken: TPascalToken);
+begin
+  if not InConstraints then
+  begin
+    Exit;
+  end;
+  if Current.Text = '' then
+  begin
+    Current.Range.StartPos := AToken.StartPos;
+  end;
+  Current.Text := Current.Text + AToken.Text;
+  Current.Range.EndPos := AToken.EndPos;
+end;
+
+function TConstraintScan.Step(const AToken: TPascalToken): Boolean;
+begin
+  Result := True;
+  if AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+  begin
+    Exit;
+  end;
+  if AToken.IsSymbol('<') then
+  begin
+    Inc(Depth);
+    if Depth = 1 then
+    begin
+      Exit;
+    end;
+  end
+  else if AToken.IsSymbol('>') or AToken.IsSymbol('>=') or AToken.IsSymbol('>>') then
+  begin
+    if Close(AToken) then
+    begin
+      Exit(False);
+    end;
+  end
+  else if (Depth = 1) and Separator(AToken) then
+  begin
+    Exit;
+  end;
+  Append(AToken);
 end;
 
 /// <summary>Gruppen "A, B: Einschränkungen" der Liste AParams; je Gruppe die Einschränkungen in Reihenfolge.</summary>
 function ConstraintGroups(const ATokens: TArray<TPascalToken>; AParams: TSyntaxNode):
   TArray<TArray<TGenericConstraint>>;
 var
-  Groups: TArray<TArray<TGenericConstraint>>;
-  Group: TArray<TGenericConstraint>;
-  Current: TGenericConstraint;
-  Index, Depth: Integer;
-  InConstraints: Boolean;
-  Token: TPascalToken;
-
-  procedure Flush;
-  begin
-    if Current.Text <> '' then
-    begin
-      Group := Group + [Current];
-    end;
-    Current := Default(TGenericConstraint);
-  end;
-
-  procedure CloseGroup;
-  begin
-    Flush;
-    if Group <> nil then
-    begin
-      Groups := Groups + [Group];
-    end;
-    Group := nil;
-    InConstraints := False;
-  end;
-
+  Scan: TConstraintScan;
+  Index: Integer;
 begin
-  Groups := nil;
-  Group := nil;
-  Current := Default(TGenericConstraint);
-  InConstraints := False;
-  Depth := 0;
+  Scan := Default(TConstraintScan);
   Index := TRoutineBody.TokenAt(ATokens, AParams.StartOffset);
-  while (Index >= 0) and (Index < Length(ATokens)) and (ATokens[Index].Offset < AParams.EndOffset) do
+  while (Index >= 0) and (Index < Length(ATokens)) and (ATokens[Index].Offset < AParams.EndOffset) and
+    Scan.Step(ATokens[Index]) do
   begin
-    Token := ATokens[Index];
     Inc(Index);
-    if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Continue;
-    end;
-    if Token.IsSymbol('<') then
-    begin
-      Inc(Depth);
-      if Depth = 1 then
-      begin
-        Continue;
-      end;
-    end
-    else if Token.IsSymbol('>') or Token.IsSymbol('>=') or Token.IsSymbol('>>') then
-    begin
-      if Token.IsSymbol('>>') then
-      begin
-        Dec(Depth, 2);
-      end
-      else
-      begin
-        Dec(Depth);
-      end;
-      if Depth <= 0 then
-      begin
-        if Token.IsSymbol('>>') and InConstraints then
-        begin
-          Current.Text := Current.Text + '>';
-          Current.Range.EndPos := Token.EndPos;
-        end;
-        CloseGroup;
-        Break;
-      end;
-    end
-    else if Depth = 1 then
-    begin
-      if Token.IsSymbol(':') then
-      begin
-        InConstraints := True;
-        Continue;
-      end;
-      if Token.IsSymbol(',') then
-      begin
-        if InConstraints then
-        begin
-          Flush;
-        end;
-        Continue;
-      end;
-      if Token.IsSymbol(';') then
-      begin
-        CloseGroup;
-        Continue;
-      end;
-    end;
-    if not InConstraints then
-    begin
-      Continue;
-    end;
-    if Current.Text = '' then
-    begin
-      Current.Range.StartPos := Token.StartPos;
-    end;
-    Current.Text := Current.Text + Token.Text;
-    Current.Range.EndPos := Token.EndPos;
   end;
-  CloseGroup;
-  Result := Groups;
+  Scan.CloseGroup;
+  Result := Scan.Groups;
+end;
+
+/// <summary>Einschränkung class, record oder constructor?</summary>
+function KeywordConstraint(const AText: string; out AKind: TConstraintKind): Boolean;
+begin
+  Result := True;
+  if SameText(AText, 'class') then
+  begin
+    AKind := TConstraintKind.ClassKeyword;
+  end
+  else if SameText(AText, 'record') then
+  begin
+    AKind := TConstraintKind.RecordKeyword;
+  end
+  else if SameText(AText, 'constructor') then
+  begin
+    AKind := TConstraintKind.ConstructorKeyword;
+  end
+  else
+  begin
+    AKind := TConstraintKind.Unknown;
+    Result := False;
+  end;
+end;
+
+/// <summary>Ist ABare ein eingebauter einfacher Typ (Integer, string, Boolean …)?</summary>
+function IsBuiltinType(const ABare: string): Boolean;
+begin
+  Result := MatchText(ABare, BuiltinTypeNames) or MatchText(ABare, BooleanTypeNames);
+end;
+
+/// <summary>Art einer Einschränkung, deren Typ in der Datei als AKind deklariert ist.</summary>
+function DeclaredConstraintKind(AKind: TSyntaxKind): TConstraintKind;
+begin
+  if AKind = TSyntaxKind.ClassType then
+  begin
+    Result := TConstraintKind.ClassType;
+  end
+  else if AKind = TSyntaxKind.InterfaceType then
+  begin
+    Result := TConstraintKind.InterfaceType;
+  end
+  else if AKind in InvalidConstraintKinds then
+  begin
+    Result := TConstraintKind.Invalid;
+  end
+  else
+  begin
+    Result := TConstraintKind.Unknown;
+  end;
+end;
+
+/// <summary>Art einer Einschränkung, die weder in der Datei steht noch qualifiziert ist.</summary>
+function BuiltinConstraintKind(const ABare: string): TConstraintKind;
+begin
+  if SameText(ABare, 'TObject') then
+  begin
+    Result := TConstraintKind.ClassType;
+  end
+  else if IsBuiltinType(ABare) then
+  begin
+    Result := TConstraintKind.Invalid;
+  end
+  else
+  begin
+    Result := TConstraintKind.Unknown;
+  end;
 end;
 
 /// <summary>Art der Einschränkung AText; Typparameter aus AScope und unbekannte Typen ergeben Unknown.</summary>
@@ -297,61 +447,137 @@ function ConstraintKind(const ATypes: TFileTypes; const AText: string; const ASc
   TConstraintKind;
 var
   Bare: string;
-  Kind: TSyntaxKind;
-  Qualified: Boolean;
 begin
-  if SameText(AText, 'class') then
+  if KeywordConstraint(AText, Result) then
   begin
-    Exit(TConstraintKind.ClassKeyword);
+    Exit;
   end;
-  if SameText(AText, 'record') then
-  begin
-    Exit(TConstraintKind.RecordKeyword);
-  end;
-  if SameText(AText, 'constructor') then
-  begin
-    Exit(TConstraintKind.ConstructorKeyword);
-  end;
-  Result := TConstraintKind.Unknown;
   Bare := BareTypeName(AText);
   if (Bare = '') or MatchText(Bare, AScope) then
   begin
     Exit;
   end;
-  Qualified := Pos('.', Copy(AText, 1, Pos('<', AText + '<') - 1)) > 0;
-  if Qualified then
+  if Pos('.', Copy(AText, 1, Pos('<', AText + '<') - 1)) > 0 then
   begin
-    if StartsText('System.', AText) and (MatchText(Bare, BuiltinTypeNames) or MatchText(Bare, BooleanTypeNames)) then
+    if StartsText('System.', AText) and IsBuiltinType(Bare) then
     begin
       Result := TConstraintKind.Invalid;
     end;
-    Exit;
-  end;
-  if ATypes.IndexOf(Bare) >= 0 then
-  begin
-    Kind := ATypes.DeclaredKind(Bare);
-    if Kind = TSyntaxKind.ClassType then
-    begin
-      Result := TConstraintKind.ClassType;
-    end
-    else if Kind = TSyntaxKind.InterfaceType then
-    begin
-      Result := TConstraintKind.InterfaceType;
-    end
-    else if Kind in InvalidConstraintKinds then
-    begin
-      Result := TConstraintKind.Invalid;
-    end;
-    Exit;
-  end;
-  if SameText(Bare, 'TObject') then
-  begin
-    Result := TConstraintKind.ClassType;
   end
-  else if MatchText(Bare, BuiltinTypeNames) or MatchText(Bare, BooleanTypeNames) then
+  else if ATypes.IndexOf(Bare) >= 0 then
   begin
-    Result := TConstraintKind.Invalid;
+    Result := DeclaredConstraintKind(ATypes.DeclaredKind(Bare));
+  end
+  else
+  begin
+    Result := BuiltinConstraintKind(Bare);
   end;
+end;
+
+/// <summary>Widerspruch der Einschränkung class, record oder constructor zu AState, '' ohne.</summary>
+function KeywordConflict(AKind: TConstraintKind; const AState: TConstraintState): string;
+begin
+  Result := '';
+  case AKind of
+    TConstraintKind.ClassKeyword:
+      if AState.HasRecord then
+      begin
+        Result := 'class und record lassen sich nicht zusammen fordern (wie E2507).';
+      end
+      else if AState.ClassTypes > 0 then
+      begin
+        Result := 'class lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+      end;
+    TConstraintKind.RecordKeyword:
+      if AState.HasClass then
+      begin
+        Result := 'class und record lassen sich nicht zusammen fordern (wie E2507).';
+      end
+      else if AState.ClassTypes > 0 then
+      begin
+        Result := 'record lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+      end
+      else if AState.HasConstructor then
+      begin
+        Result := 'record widerspricht der Einschränkung constructor (wie E2516).';
+      end;
+    TConstraintKind.ConstructorKeyword:
+      if AState.HasRecord then
+      begin
+        Result := 'constructor widerspricht der Einschränkung record (wie E2516).';
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Meldung zur Einschränkung AText der Art AKind nach den bisherigen AState, '' ohne.</summary>
+function ConstraintConflict(AKind: TConstraintKind; const AState: TConstraintState; const AText: string): string;
+begin
+  Result := '';
+  case AKind of
+    TConstraintKind.ClassType:
+      if AState.ClassTypes > 0 then
+      begin
+        Result := Format('Nur eine Klasse ist als Einschränkung erlaubt; %s ist die zweite (wie E2553).', [AText]);
+      end
+      else if AState.HasClass or AState.HasRecord then
+      begin
+        Result := Format('Die Klasse %s lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).',
+          [AText]);
+      end;
+    TConstraintKind.Invalid:
+      Result := Format('%s ist keine gültige Einschränkung; erlaubt sind Klassen, Interfaces, class, record und ' +
+        'constructor (wie E2510).', [AText]);
+  else
+    Result := KeywordConflict(AKind, AState);
+  end;
+end;
+
+/// <summary>Merkt die Einschränkung der Art AKind in AState.</summary>
+procedure NoteConstraint(AKind: TConstraintKind; var AState: TConstraintState);
+begin
+  case AKind of
+    TConstraintKind.ClassKeyword:
+      AState.HasClass := True;
+    TConstraintKind.RecordKeyword:
+      AState.HasRecord := True;
+    TConstraintKind.ConstructorKeyword:
+      AState.HasConstructor := True;
+    TConstraintKind.ClassType:
+      Inc(AState.ClassTypes);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Varianten "F&lt;T, U&gt;" der Köpfe AHeads; AFits, wenn eine ACount Typparameter hat. False, wenn ein
+/// Kopf keine Typparameter hat.</summary>
+function DescribeVariants(const AHeads: TArray<TSyntaxNode>; ACount: Integer; out AVariants: string;
+  out AFits: Boolean): Boolean;
+var
+  Head, Params: TSyntaxNode;
+  Names: TArray<string>;
+begin
+  AFits := False;
+  AVariants := '';
+  Result := False;
+  for Head in AHeads do
+  begin
+    Params := Head.FindChild(TSyntaxKind.GenericParams);
+    if Params = nil then
+    begin
+      Exit;
+    end;
+    Names := TypeParamNames(Params);
+    AFits := AFits or (Length(Names) = ACount);
+    if AVariants <> '' then
+    begin
+      AVariants := AVariants + ', ';
+    end;
+    AVariants := AVariants + Head.Name + '<' + string.Join(', ', Names) + '>';
+  end;
+  Result := True;
 end;
 
 /// <summary>Typparameter der umgebenden generischen Typen von ANode und von ANode selbst.</summary>
@@ -375,6 +601,33 @@ begin
   end;
 end;
 
+/// <summary>Meldung für Typparameter an Operator, Destruktor oder Konstruktor in einem Typ der Art AHolderKind,
+/// '' sonst.</summary>
+function MemberGenericMessage(const AHead: TRoutineHead; AHolderKind: TSyntaxKind): string;
+begin
+  if AHead.Keyword = 'operator' then
+  begin
+    Result := 'Operatoren dürfen keine Typparameter haben (wie E2529).';
+  end
+  else if AHead.Keyword = 'destructor' then
+  begin
+    Result := 'Destruktoren dürfen keine Typparameter haben (wie E2528).';
+  end
+  else if AHead.IsClass and (AHead.Keyword = 'constructor') then
+  begin
+    Result := 'Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).';
+  end
+  // Mit dcc 13 belegt für Klassen (Cm.E2528); Records und object bleiben ungeprüft still.
+  else if (AHead.Keyword = 'constructor') and (AHolderKind = TSyntaxKind.ClassType) then
+  begin
+    Result := 'Konstruktoren dürfen keine Typparameter haben (wie E2528).';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
 function TGenericDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(GenericDeclarationInvalidRuleId, TRuleSeverity.Error,
@@ -388,7 +641,6 @@ var
   Root, InterfacePart: TSyntaxNode;
   Nodes: TList<TSyntaxNode>;
   Node: TSyntaxNode;
-  Index: Integer;
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   mLocal: TUnitIndex;
@@ -473,99 +725,55 @@ var
     end;
   end;
 
+  /// <summary>Art der Einschränkung aus Datei und eingebauten Typen, sonst über den Index.</summary>
+  function ResolvedConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
+  begin
+    Result := ConstraintKind(Types, AText, AScope);
+    if Result = TConstraintKind.Unknown then
+    begin
+      Result := IndexConstraintKind(AText, AScope);
+    end;
+  end;
+
+  procedure CheckGroup(const AGroup: TArray<TGenericConstraint>; const AScope: TArray<string>);
+  var
+    Seen: TArray<string>;
+    Constraint: TGenericConstraint;
+    Kind: TConstraintKind;
+    State: TConstraintState;
+    Key, Message: string;
+  begin
+    Seen := nil;
+    State := Default(TConstraintState);
+    for Constraint in AGroup do
+    begin
+      Kind := ResolvedConstraintKind(Constraint.Text, AScope);
+      Key := LowerCase(Constraint.Text);
+      if MatchText(Key, Seen) and (Kind <> TConstraintKind.ClassType) then
+      begin
+        Report(Constraint.Range, Format('Die Einschränkung %s steht doppelt (wie E2603).', [Constraint.Text]));
+        Continue;
+      end;
+      Seen := Seen + [Key];
+      Message := ConstraintConflict(Kind, State, Constraint.Text);
+      if Message <> '' then
+      begin
+        Report(Constraint.Range, Message);
+      end;
+      NoteConstraint(Kind, State);
+    end;
+  end;
+
   // Einschränkungen einer Typparameterliste: E2507, E2510, E2516, E2552, E2553, E2603.
   procedure CheckConstraints(AParams: TSyntaxNode);
   var
-    Scope, Seen: TArray<string>;
+    Scope: TArray<string>;
     Group: TArray<TGenericConstraint>;
-    Constraint: TGenericConstraint;
-    Kind: TConstraintKind;
-    HasClass, HasRecord, HasConstructor: Boolean;
-    ClassTypes: Integer;
-    Key: string;
   begin
     Scope := ScopeTypeParams(AParams);
     for Group in ConstraintGroups(Tokens, AParams) do
     begin
-      Seen := nil;
-      HasClass := False;
-      HasRecord := False;
-      HasConstructor := False;
-      ClassTypes := 0;
-      for Constraint in Group do
-      begin
-        Kind := ConstraintKind(Types, Constraint.Text, Scope);
-        if Kind = TConstraintKind.Unknown then
-        begin
-          Kind := IndexConstraintKind(Constraint.Text, Scope);
-        end;
-        Key := LowerCase(Constraint.Text);
-        if MatchText(Key, Seen) and (Kind <> TConstraintKind.ClassType) then
-        begin
-          Report(Constraint.Range, Format('Die Einschränkung %s steht doppelt (wie E2603).', [Constraint.Text]));
-          Continue;
-        end;
-        Seen := Seen + [Key];
-        case Kind of
-          TConstraintKind.ClassKeyword:
-            begin
-              if HasRecord then
-              begin
-                Report(Constraint.Range, 'class und record lassen sich nicht zusammen fordern (wie E2507).');
-              end
-              else if ClassTypes > 0 then
-              begin
-                Report(Constraint.Range,
-                  'class lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).');
-              end;
-              HasClass := True;
-            end;
-          TConstraintKind.RecordKeyword:
-            begin
-              if HasClass then
-              begin
-                Report(Constraint.Range, 'class und record lassen sich nicht zusammen fordern (wie E2507).');
-              end
-              else if ClassTypes > 0 then
-              begin
-                Report(Constraint.Range,
-                  'record lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).');
-              end
-              else if HasConstructor then
-              begin
-                Report(Constraint.Range, 'record widerspricht der Einschränkung constructor (wie E2516).');
-              end;
-              HasRecord := True;
-            end;
-          TConstraintKind.ConstructorKeyword:
-            begin
-              if HasRecord then
-              begin
-                Report(Constraint.Range, 'constructor widerspricht der Einschränkung record (wie E2516).');
-              end;
-              HasConstructor := True;
-            end;
-          TConstraintKind.ClassType:
-            begin
-              if ClassTypes > 0 then
-              begin
-                Report(Constraint.Range, Format('Nur eine Klasse ist als Einschränkung erlaubt; %s ist die zweite ' +
-                  '(wie E2553).', [Constraint.Text]));
-              end
-              else if HasClass or HasRecord then
-              begin
-                Report(Constraint.Range, Format('Die Klasse %s lässt sich nicht zusammen mit class bzw. record ' +
-                  'fordern (wie E2552).', [Constraint.Text]));
-              end;
-              Inc(ClassTypes);
-            end;
-          TConstraintKind.Invalid:
-            Report(Constraint.Range, Format('%s ist keine gültige Einschränkung; erlaubt sind Klassen, Interfaces, ' +
-              'class, record und constructor (wie E2510).', [Constraint.Text]));
-          TConstraintKind.Unknown: ;
-          TConstraintKind.InterfaceType: ;
-        end;
-      end;
+      CheckGroup(Group, Scope);
     end;
   end;
 
@@ -621,14 +829,72 @@ var
     end;
   end;
 
+  // Generische Attributklasse: E2549.
+  procedure CheckAttributeClass(ADecl: TSyntaxNode);
+  var
+    Ancestor: string;
+    Depth: Integer;
+  begin
+    Ancestor := Types.ParentOf(ADecl.Name);
+    Depth := 0;
+    while (Ancestor <> '') and (Depth < 32) do
+    begin
+      if SameText(Ancestor, 'TCustomAttribute') then
+      begin
+        Report(TokenRangeAt(ADecl.StartOffset), Format('Die Attributklasse %s darf keine Typparameter haben ' +
+          '(wie E2549).', [ADecl.Name]));
+        Break;
+      end;
+      Ancestor := Types.ParentOf(Ancestor);
+      Inc(Depth);
+    end;
+  end;
+
+  /// <summary>Typparameterlisten innerhalb von ATypeNode, ohne Methodenzuordnungen.</summary>
+  function InnerGenericParams(ATypeNode: TSyntaxNode): TArray<TSyntaxNode>;
+  var
+    Found: TArray<TSyntaxNode>;
+  begin
+    Found := nil;
+    ATypeNode.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
+        // eigenen (#1325).
+        Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
+        if Result and (ANode.Kind = TSyntaxKind.GenericParams) then
+        begin
+          Found := Found + [ANode];
+        end;
+      end);
+    Result := Found;
+  end;
+
+  // Typparameter, die einen des umgebenden Typs verdecken: H2509.
+  procedure CheckShadowing(ADecl, AParams, ATypeNode: TSyntaxNode);
+  var
+    Inner: TSyntaxNode;
+    Names: TArray<string>;
+    Child: Integer;
+  begin
+    Names := TypeParamNames(AParams);
+    for Inner in InnerGenericParams(ATypeNode) do
+    begin
+      for Child := 0 to Inner.ChildCount - 1 do
+      begin
+        if (Inner[Child].Kind = TSyntaxKind.Identifier) and MatchText(Inner[Child].Name, Names) then
+        begin
+          Report(NodeRange(Inner[Child]), Format('Der Typparameter %s verdeckt den gleichnamigen Typparameter ' +
+            'von %s (wie H2509).', [Inner[Child].Name, ADecl.Name]));
+        end;
+      end;
+    end;
+  end;
+
   // Typdeklaration mit Typparametern: E2508, E2549, H2509.
   procedure CheckTypeDecl(ADecl: TSyntaxNode);
   var
-    Params, TypeNode, Inner: TSyntaxNode;
-    Names: TArray<string>;
-    Ancestor: string;
-    Depth, Child: Integer;
-    Shadowing: TList<TSyntaxNode>;
+    Params, TypeNode: TSyntaxNode;
   begin
     Params := ADecl.FindChild(TSyntaxKind.GenericParams);
     TypeNode := TypeOfDecl(ADecl);
@@ -648,62 +914,75 @@ var
     end;
     if TypeNode.Kind = TSyntaxKind.ClassType then
     begin
-      Ancestor := Types.ParentOf(ADecl.Name);
-      Depth := 0;
-      while (Ancestor <> '') and (Depth < 32) do
+      CheckAttributeClass(ADecl);
+    end;
+    CheckShadowing(ADecl, Params, TypeNode);
+  end;
+
+  // Methoden mit eigenen Typparametern: E2528, E2529, E2533.
+  procedure CheckMemberHeader(AHeader, AHolder: TSyntaxNode);
+  var
+    Head: TRoutineHead;
+    Message, Name: string;
+    Directive: TSyntaxNode;
+  begin
+    Head := TRoutineHead.Read(Tokens, AHeader);
+    Message := MemberGenericMessage(Head, AHolder.Kind);
+    if Message <> '' then
+    begin
+      Report(HeaderNameRange(AHeader), Message);
+      Exit;
+    end;
+    for Name in VirtualDirectives do
+    begin
+      Directive := Head.Directive(Name);
+      if Directive <> nil then
       begin
-        if SameText(Ancestor, 'TCustomAttribute') then
-        begin
-          Report(TokenRangeAt(ADecl.StartOffset), Format('Die Attributklasse %s darf keine Typparameter haben ' +
-            '(wie E2549).', [ADecl.Name]));
-          Break;
-        end;
-        Ancestor := Types.ParentOf(Ancestor);
-        Inc(Depth);
+        Report(NodeRange(Directive), 'Virtuelle, dynamische und message-Methoden dürfen keine Typparameter ' +
+          'haben (wie E2533).');
+        Exit;
       end;
     end;
-    Names := TypeParamNames(Params);
-    Shadowing := TList<TSyntaxNode>.Create;
-    try
-      TypeNode.Walk(
-        function(ANode: TSyntaxNode): Boolean
-        begin
-          Result := True;
-          // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
-          // eigenen (#1325).
-          if (ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution then
-          begin
-            Exit(False);
-          end;
-          if ANode.Kind = TSyntaxKind.GenericParams then
-          begin
-            Shadowing.Add(ANode);
-          end;
-        end);
-      for Inner in Shadowing do
-      begin
-        for Child := 0 to Inner.ChildCount - 1 do
-        begin
-          if (Inner[Child].Kind = TSyntaxKind.Identifier) and MatchText(Inner[Child].Name, Names) then
-          begin
-            Report(NodeRange(Inner[Child]), Format('Der Typparameter %s verdeckt den gleichnamigen Typparameter ' +
-              'von %s (wie H2509).', [Inner[Child].Name, ADecl.Name]));
-          end;
-        end;
-      end;
-    finally
-      Shadowing.Free;
+  end;
+
+  /// <summary>Steht im interface-Teil eine generische Routine AName?</summary>
+  function DeclaredGenericInInterface(const AName: string): Boolean;
+  var
+    Child: Integer;
+    Other, Header: TSyntaxNode;
+  begin
+    Result := False;
+    if InterfacePart = nil then
+    begin
+      Exit;
     end;
+    for Child := 0 to InterfacePart.ChildCount - 1 do
+    begin
+      Other := InterfacePart[Child];
+      if (Other.Kind <> TSyntaxKind.RoutineDecl) or not SameText(Other.Name, AName) then
+      begin
+        Continue;
+      end;
+      Header := Other.FindChild(TSyntaxKind.RoutineHeader);
+      if (Header <> nil) and (Header.FindChild(TSyntaxKind.GenericParams) <> nil) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+
+  /// <summary>Ist AHeader der Kopf einer globalen Routine (Holder ist ihre RoutineDecl)?</summary>
+  function IsGlobalRoutine(AHeader, AHolder: TSyntaxNode): Boolean;
+  begin
+    Result := (AHolder.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', AHeader.Name) = 0) and (AHolder.Parent <> nil);
+    Result := Result and (AHolder.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.UnitFile]);
   end;
 
   // Routine mit eigenen Typparametern: E2528, E2529, E2530, E2533, E2535.
   procedure CheckHeader(AHeader: TSyntaxNode);
   var
-    Own, Holder, Directive, Other: TSyntaxNode;
-    Head: TRoutineHead;
-    Name: string;
-    Declared: Boolean;
-    Child: Integer;
+    Own, Holder: TSyntaxNode;
   begin
     Own := OwnGenericParams(Tokens, AHeader);
     if (Own = nil) or (AHeader.Parent = nil) then
@@ -711,70 +990,18 @@ var
       Exit;
     end;
     Holder := AHeader.Parent;
-    Head := TRoutineHead.Read(Tokens, AHeader);
     if Holder.Kind = TSyntaxKind.InterfaceType then
     begin
       Report(HeaderNameRange(AHeader), 'Interface-Methoden dürfen keine Typparameter haben (wie E2535).');
-      Exit;
-    end;
-    if Holder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
+    end
+    else if Holder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
       TSyntaxKind.HelperType] then
     begin
-      if Head.Keyword = 'operator' then
-      begin
-        Report(HeaderNameRange(AHeader), 'Operatoren dürfen keine Typparameter haben (wie E2529).');
-        Exit;
-      end;
-      if Head.Keyword = 'destructor' then
-      begin
-        Report(HeaderNameRange(AHeader), 'Destruktoren dürfen keine Typparameter haben (wie E2528).');
-        Exit;
-      end;
-      if Head.IsClass and (Head.Keyword = 'constructor') then
-      begin
-        Report(HeaderNameRange(AHeader), 'Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).');
-        Exit;
-      end;
-      // Mit dcc 13 belegt für Klassen (Cm.E2528); Records und object bleiben ungeprüft still.
-      if (Head.Keyword = 'constructor') and (Holder.Kind = TSyntaxKind.ClassType) then
-      begin
-        Report(HeaderNameRange(AHeader), 'Konstruktoren dürfen keine Typparameter haben (wie E2528).');
-        Exit;
-      end;
-      for Name in VirtualDirectives do
-      begin
-        Directive := Head.Directive(Name);
-        if Directive <> nil then
-        begin
-          Report(NodeRange(Directive), 'Virtuelle, dynamische und message-Methoden dürfen keine Typparameter ' +
-            'haben (wie E2533).');
-          Exit;
-        end;
-      end;
-      Exit;
-    end;
-    if (Holder.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', AHeader.Name) > 0) or (Holder.Parent = nil) or
-      not (Holder.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.UnitFile]) then
-    begin
-      Exit;
-    end;
+      CheckMemberHeader(AHeader, Holder);
+    end
     // Rumpf einer Routine aus dem interface-Teil: dort schon gemeldet.
-    Declared := False;
-    if (Holder.Parent.Kind = TSyntaxKind.ImplementationSection) and (InterfacePart <> nil) then
-    begin
-      for Child := 0 to InterfacePart.ChildCount - 1 do
-      begin
-        Other := InterfacePart[Child];
-        if (Other.Kind = TSyntaxKind.RoutineDecl) and SameText(Other.Name, AHeader.Name) and
-          (Other.FindChild(TSyntaxKind.RoutineHeader) <> nil) and
-          (Other.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.GenericParams) <> nil) then
-        begin
-          Declared := True;
-        end;
-      end;
-    end;
-    if not Declared then
+    else if IsGlobalRoutine(AHeader, Holder) and not ((Holder.Parent.Kind = TSyntaxKind.ImplementationSection) and
+      DeclaredGenericInInterface(AHeader.Name)) then
     begin
       Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, Own.EndPos), 'Globale Routinen dürfen keine ' +
         'Typparameter haben; als class-Methode eines Records deklarieren (wie E2530).');
@@ -804,13 +1031,27 @@ var
     end;
   end;
 
+  /// <summary>Hängt die Köpfe AMethod direkt in ATypeNode an AHeads an.</summary>
+  procedure AddMethodHeads(ATypeNode: TSyntaxNode; const AMethod: string; var AHeads: TArray<TSyntaxNode>);
+  var
+    Child: Integer;
+  begin
+    for Child := 0 to ATypeNode.ChildCount - 1 do
+    begin
+      if (ATypeNode[Child].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeNode[Child].Name, AMethod) then
+      begin
+        AHeads := AHeads + [ATypeNode[Child]];
+      end;
+    end;
+  end;
+
   /// <summary>Köpfe AMethod der Klasse oder des Records AType samt Vorfahren der Datei; False, wenn die Kette
   /// außerhalb der Datei weitergeht.</summary>
   function MethodHeads(const AType, AMethod: string; out AHeads: TArray<TSyntaxNode>): Boolean;
   var
     Current: string;
     Decl, TypeNode: TSyntaxNode;
-    Depth, Child: Integer;
+    Depth: Integer;
   begin
     AHeads := nil;
     Result := False;
@@ -824,24 +1065,14 @@ var
         Exit;
       end;
       TypeNode := TypeOfDecl(Decl);
-      for Child := 0 to TypeNode.ChildCount - 1 do
-      begin
-        if (TypeNode[Child].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeNode[Child].Name, AMethod) then
-        begin
-          AHeads := AHeads + [TypeNode[Child]];
-        end;
-      end;
+      AddMethodHeads(TypeNode, AMethod, AHeads);
       if (TypeNode.Kind <> TSyntaxKind.ClassType) or (TypeNode.ChildCount = 0) or
         (TypeNode[0].Kind <> TSyntaxKind.TypeReference) then
       begin
         Exit(True);
       end;
       Current := BareTypeName(TypeNode[0].Name);
-      if SameText(Current, 'TObject') then
-      begin
-        Exit(True);
-      end;
-      if Types.DeclaredKind(Current) = TSyntaxKind.InterfaceType then
+      if SameText(Current, 'TObject') or (Types.DeclaredKind(Current) = TSyntaxKind.InterfaceType) then
       begin
         Exit(True);
       end;
@@ -849,68 +1080,70 @@ var
     end;
   end;
 
-  // Aufruf F<…> mit einer Zahl Typargumente, die keine Variante von F hat: E2551.
-  procedure CheckCall(AAccess: TSyntaxNode);
+  /// <summary>Ist AAccess (F&lt;…&gt;) das aufgerufene Ziel eines Aufrufs?</summary>
+  function IsGenericCall(AAccess: TSyntaxNode): Boolean;
+  begin
+    Result := (AAccess.ChildCount = 2) and (AAccess[1].Kind = TSyntaxKind.GenericArgs) and (AAccess.Parent <> nil);
+    Result := Result and (AAccess.Parent.Kind in [TSyntaxKind.Call, TSyntaxKind.CallStatement]) and
+      (AAccess.Parent[0] = AAccess);
+  end;
+
+  /// <summary>Typ hinter X.F&lt;…&gt; mit dem Bezeichner AQualifier als X ('' ohne).</summary>
+  function QualifiedCallType(AAccess, AQualifier: TSyntaxNode): string;
+  begin
+    Result := '';
+    if SameText(AQualifier.Name, 'Self') then
+    begin
+      Result := EnclosingClass(AAccess, False);
+    end
+    else if ((EnclosingClass(AAccess, True) <> '') or (Pos('.', AQualifier.Name) = 0)) and
+      (Types.DeclaredKind(AQualifier.Name) in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+    begin
+      Result := AQualifier.Name;
+    end;
+  end;
+
+  /// <summary>Klasse oder Record, deren Methode AAccess aufruft ('' unbekannt).</summary>
+  function CallTypeName(AAccess: TSyntaxNode): string;
   var
     Target: TSyntaxNode;
-    TypeName, Variants: string;
-    Heads: TArray<TSyntaxNode>;
-    Head: TSyntaxNode;
-    Count: Integer;
-    Fits: Boolean;
   begin
-    if (AAccess.ChildCount <> 2) or (AAccess[1].Kind <> TSyntaxKind.GenericArgs) or (AAccess.Parent = nil) or
-      not (AAccess.Parent.Kind in [TSyntaxKind.Call, TSyntaxKind.CallStatement]) or
-      (AAccess.Parent[0] <> AAccess) then
+    Result := '';
+    Target := AAccess[0];
+    if not SameText(Target.Name, AAccess.Name) then
     begin
       Exit;
     end;
-    Target := AAccess[0];
-    TypeName := '';
-    if (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, AAccess.Name) then
+    if Target.Kind = TSyntaxKind.Identifier then
     begin
-      TypeName := EnclosingClass(AAccess, True);
+      Result := EnclosingClass(AAccess, True);
     end
-    else if (Target.Kind = TSyntaxKind.MemberAccess) and SameText(Target.Name, AAccess.Name) and
-      (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) then
+    else if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+      (Target[0].Kind = TSyntaxKind.Identifier) then
     begin
-      if SameText(Target[0].Name, 'Self') then
-      begin
-        TypeName := EnclosingClass(AAccess, False);
-      end
-      else if (EnclosingClass(AAccess, True) <> '') or (Pos('.', Target[0].Name) = 0) then
-      begin
-        if Types.DeclaredKind(Target[0].Name) in [TSyntaxKind.ClassType, TSyntaxKind.RecordType] then
-        begin
-          TypeName := Target[0].Name;
-        end;
-      end;
+      Result := QualifiedCallType(AAccess, Target[0]);
     end;
+  end;
+
+  // Aufruf F<…> mit einer Zahl Typargumente, die keine Variante von F hat: E2551.
+  procedure CheckCall(AAccess: TSyntaxNode);
+  var
+    TypeName, Variants: string;
+    Heads: TArray<TSyntaxNode>;
+    Count: Integer;
+    Fits: Boolean;
+  begin
+    if not IsGenericCall(AAccess) then
+    begin
+      Exit;
+    end;
+    TypeName := CallTypeName(AAccess);
     if (TypeName = '') or not MethodHeads(TypeName, AAccess.Name, Heads) or (Heads = nil) then
     begin
       Exit;
     end;
     Count := AAccess[1].ChildCount;
-    Fits := False;
-    Variants := '';
-    for Head in Heads do
-    begin
-      if Head.FindChild(TSyntaxKind.GenericParams) = nil then
-      begin
-        Exit;
-      end;
-      if Length(TypeParamNames(Head.FindChild(TSyntaxKind.GenericParams))) = Count then
-      begin
-        Fits := True;
-      end;
-      if Variants <> '' then
-      begin
-        Variants := Variants + ', ';
-      end;
-      Variants := Variants + Head.Name + '<' + string.Join(', ',
-        TypeParamNames(Head.FindChild(TSyntaxKind.GenericParams))) + '>';
-    end;
-    if not Fits then
+    if DescribeVariants(Heads, Count, Variants, Fits) and not Fits then
     begin
       Report(NodeRange(AAccess), Format('%s hat keine Variante mit %d Typparametern; deklariert: %s (wie E2551).',
         [AAccess.Name, Count, Variants]));
@@ -960,6 +1193,57 @@ var
     end;
   end;
 
+  // class of eines parametrisierten Typs: E2548.
+  procedure CheckClassOf(AClassOf: TSyntaxNode);
+  begin
+    if (AClassOf.ChildCount > 0) and (AClassOf[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
+    begin
+      Report(NodeRange(AClassOf[0]), 'class of ist für parametrisierte Typen nicht erlaubt (wie E2548).');
+    end;
+  end;
+
+  // Parametrisierter Typ als Attribut: E2565.
+  procedure CheckGenericAttribute(AAttribute: TSyntaxNode);
+  var
+    Item: TSyntaxNode;
+    Generic: Boolean;
+  begin
+    if AAttribute.ChildCount = 0 then
+    begin
+      Exit;
+    end;
+    Item := AAttribute[0];
+    Generic := Item.FindChild(TSyntaxKind.GenericArgs) <> nil;
+    Generic := Generic or ((Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) and
+      (Item[0].FindChild(TSyntaxKind.GenericArgs) <> nil));
+    if Generic then
+    begin
+      Report(NodeRange(AAttribute), 'Parametrisierte Typen können nicht als Attribut stehen (wie E2565).');
+    end;
+  end;
+
+  procedure CheckNode(ANode: TSyntaxNode);
+  begin
+    case ANode.Kind of
+      TSyntaxKind.GenericParams:
+        CheckConstraints(ANode);
+      TSyntaxKind.TypeDecl:
+        CheckTypeDecl(ANode);
+      TSyntaxKind.ClassOfType:
+        CheckClassOf(ANode);
+      TSyntaxKind.Attribute:
+        CheckGenericAttribute(ANode);
+      TSyntaxKind.RoutineHeader:
+        CheckHeader(ANode);
+      TSyntaxKind.MemberAccess:
+        CheckCall(ANode);
+      TSyntaxKind.RoutineDecl:
+        CheckLocalRoutines(ANode);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos('<', AContext.Text) = 0) then
   begin
@@ -984,35 +1268,9 @@ begin
           Nodes.Add(ANode);
         end;
       end);
-    for Index := 0 to Nodes.Count - 1 do
+    for Node in Nodes do
     begin
-      Node := Nodes[Index];
-      case Node.Kind of
-        TSyntaxKind.GenericParams:
-          CheckConstraints(Node);
-        TSyntaxKind.TypeDecl:
-          CheckTypeDecl(Node);
-        TSyntaxKind.ClassOfType:
-          if (Node.ChildCount > 0) and (Node[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
-          begin
-            Report(NodeRange(Node[0]), 'class of ist für parametrisierte Typen nicht erlaubt (wie E2548).');
-          end;
-        TSyntaxKind.Attribute:
-          if (Node.ChildCount > 0) and ((Node[0].FindChild(TSyntaxKind.GenericArgs) <> nil) or
-            ((Node[0].Kind = TSyntaxKind.Call) and (Node[0].ChildCount > 0) and
-            (Node[0][0].FindChild(TSyntaxKind.GenericArgs) <> nil))) then
-          begin
-            Report(NodeRange(Node), 'Parametrisierte Typen können nicht als Attribut stehen (wie E2565).');
-          end;
-        TSyntaxKind.RoutineHeader:
-          CheckHeader(Node);
-        TSyntaxKind.MemberAccess:
-          CheckCall(Node);
-        TSyntaxKind.RoutineDecl:
-          CheckLocalRoutines(Node);
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
+      CheckNode(Node);
     end;
     CheckLocalSymbols;
   finally
