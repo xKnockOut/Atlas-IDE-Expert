@@ -268,12 +268,15 @@ function Execute(const AIndex: ISymbolIndex; const AFileName: string; ALine, ACh
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  WithChoices: TSafeDeleteContext;
 begin
+  WithChoices := Context(AIndex);
+  WithChoices.Choices := AChoices;
   Tree := TPascalParser.Parse(TextOf(AFileName));
   Resolver := TNameResolver.Create(AIndex, nil);
   try
     Result := TLspSafeDelete.Execute(Resolver, Tree, AFileName, TextOf(AFileName),
-      TTextPosition.Create(ALine, ACharacter), AChoices, Context(AIndex));
+      TTextPosition.Create(ALine, ACharacter), WithChoices);
   finally
     Resolver.Free;
     Tree.Free;

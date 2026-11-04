@@ -113,6 +113,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Lsp.Completion.Names,
   Shell.Workspace.Jobs;
 
 constructor TShellCodeArea.Create(ACore: TShellCore; const AServices: TShellCodeAreaServices);
@@ -367,7 +368,7 @@ begin
   begin
     Exit(mContext.Naming[AKind]);
   end;
-  Result := TLspCompletion.NamingPrefix(FServices.Index, AKind);
+  Result := TCompletionNames.NamingPrefix(FServices.Index, AKind);
 end;
 
 function TShellCodeArea.CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
