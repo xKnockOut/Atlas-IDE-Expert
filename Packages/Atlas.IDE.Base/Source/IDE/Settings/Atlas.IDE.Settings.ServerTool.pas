@@ -14,17 +14,32 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>Ein Aufruf: Programm, Argumente, Arbeitsordner und Zeitlimit.</summary>
+  TAtlasServerToolCall = record
+    Exe: string;
+    Arguments: string;
+    Directory: string;
+    TimeoutMs: Cardinal;
+    class function Create(const AExe, AArguments, ADirectory: string; ATimeoutMs: Cardinal): TAtlasServerToolCall;
+      static;
+  end;
+
+  /// <summary>Ergebnis eines Aufrufs: stdout, Exit-Code und, wenn er scheiterte, warum.</summary>
+  TAtlasServerToolResult = record
+    Output: string;
+    ExitCode: Cardinal;
+    Error: string;
+  end;
+
   TAtlasServerTool = class
   public const
     /// <summary>Zeitlimit für einen Lauf über das ganze Projekt.</summary>
     CheckTimeoutMs = 600000;
     ShortTimeoutMs = 60000;
   public
-    /// <summary>Startet AExe mit AArguments im Ordner ADirectory und wartet höchstens ATimeoutMs.
-    /// AOutput: stdout; AExitCode: Exit-Code. False, wenn der Prozess nicht startet oder abgebrochen wurde
-    /// (AError sagt, warum).</summary>
-    class function Run(const AExe, AArguments, ADirectory: string; ATimeoutMs: Cardinal; out AOutput: string;
-      out AExitCode: Cardinal; out AError: string): Boolean; static;
+    /// <summary>Startet ACall.Exe mit den Argumenten im Arbeitsordner und wartet höchstens bis zum Zeitlimit.
+    /// False, wenn der Prozess nicht startet oder abgebrochen wurde (AResult.Error sagt, warum).</summary>
+    class function Run(const ACall: TAtlasServerToolCall; out AResult: TAtlasServerToolResult): Boolean; static;
     /// <summary>Dateiversion aus der Versionsressource ("1.2.3.4"); '' ohne.</summary>
     class function FileVersion(const AFileName: string): string; static;
   end;
@@ -38,84 +53,131 @@ uses
   Vcl.Controls,
   System.UITypes;
 
-{ TAtlasServerTool }
+{ TAtlasServerToolCall }
 
-class function TAtlasServerTool.Run(const AExe, AArguments, ADirectory: string; ATimeoutMs: Cardinal;
-  out AOutput: string; out AExitCode: Cardinal; out AError: string): Boolean;
-var
-  Security: TSecurityAttributes;
-  OutputFile, NulHandle: THandle;
-  OutputName, CommandLine: string;
-  Startup: TStartupInfo;
-  Info: TProcessInformation;
-  Wait: Cardinal;
-  OldCursor: TCursor;
+class function TAtlasServerToolCall.Create(const AExe, AArguments, ADirectory: string;
+  ATimeoutMs: Cardinal): TAtlasServerToolCall;
 begin
-  Result := False;
-  AOutput := '';
-  AExitCode := High(Cardinal);
-  AError := '';
-  if not FileExists(AExe) then
-  begin
-    AError := AExe;
-    Exit;
+  Result.Exe := AExe;
+  Result.Arguments := AArguments;
+  Result.Directory := ADirectory;
+  Result.TimeoutMs := ATimeoutMs;
+end;
+
+type
+  /// <summary>Handles der Standardkanäle eines Laufs: stdout in die temporäre Datei, stderr nach NUL.</summary>
+  TAtlasToolHandles = record
+    OutputName: string;
+    OutputFile: THandle;
+    NulHandle: THandle;
+    /// <summary>Legt die temporäre Datei und NUL vererbbar an; False (AError gesetzt), wenn die Datei nicht
+    /// angelegt werden kann.</summary>
+    function Open(out AError: string): Boolean;
+    procedure Close;
   end;
-  Security := Default(TSecurityAttributes);
-  Security.nLength := SizeOf(Security);
-  Security.bInheritHandle := True;
+
+function TAtlasToolHandles.Open(out AError: string): Boolean;
+var
+  mSecurity: TSecurityAttributes;
+begin
+  AError := '';
+  mSecurity := Default(TSecurityAttributes);
+  mSecurity.nLength := SizeOf(mSecurity);
+  mSecurity.bInheritHandle := True;
   OutputName := TPath.GetTempFileName;
-  OutputFile := CreateFile(PChar(OutputName), GENERIC_WRITE, FILE_SHARE_READ, @Security, CREATE_ALWAYS,
+  OutputFile := CreateFile(PChar(OutputName), GENERIC_WRITE, FILE_SHARE_READ, @mSecurity, CREATE_ALWAYS,
     FILE_ATTRIBUTE_TEMPORARY, 0);
-  if OutputFile = INVALID_HANDLE_VALUE then
+  Result := OutputFile <> INVALID_HANDLE_VALUE;
+  if not Result then
   begin
     AError := SysErrorMessage(GetLastError);
     Exit;
   end;
-  NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @Security, OPEN_EXISTING, 0, 0);
-  OldCursor := Screen.Cursor;
-  Screen.Cursor := crHourGlass;
+  NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity, OPEN_EXISTING, 0,
+    0);
+end;
+
+procedure TAtlasToolHandles.Close;
+begin
+  CloseHandle(OutputFile);
+  if NulHandle <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(NulHandle);
+  end;
+end;
+
+/// <summary>Startet den Prozess mit AHandles als stdout/stderr und wartet; True mit Exit-Code, wenn er im Zeitlimit
+/// endete, sonst wird er beendet.</summary>
+function RunProcess(const ACall: TAtlasServerToolCall; const AHandles: TAtlasToolHandles;
+  var AResult: TAtlasServerToolResult): Boolean;
+var
+  mCommandLine: string;
+  mStartup: TStartupInfo;
+  mInfo: TProcessInformation;
+begin
+  Result := False;
+  mStartup := Default(TStartupInfo);
+  mStartup.cb := SizeOf(mStartup);
+  mStartup.dwFlags := STARTF_USESTDHANDLES;
+  mStartup.hStdInput := 0;
+  mStartup.hStdOutput := AHandles.OutputFile;
+  mStartup.hStdError := AHandles.NulHandle;
+  mCommandLine := '"' + ACall.Exe + '" ' + ACall.Arguments;
+  UniqueString(mCommandLine);
+  if not CreateProcess(nil, PChar(mCommandLine), nil, nil, True, CREATE_NO_WINDOW, nil, PChar(ACall.Directory),
+    mStartup, mInfo) then
+  begin
+    AResult.Error := SysErrorMessage(GetLastError);
+    Exit;
+  end;
   try
-    Startup := Default(TStartupInfo);
-    Startup.cb := SizeOf(Startup);
-    Startup.dwFlags := STARTF_USESTDHANDLES;
-    Startup.hStdInput := 0;
-    Startup.hStdOutput := OutputFile;
-    Startup.hStdError := NulHandle;
-    CommandLine := '"' + AExe + '" ' + AArguments;
-    UniqueString(CommandLine);
-    if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil, PChar(ADirectory), Startup,
-      Info) then
+    if WaitForSingleObject(mInfo.hProcess, ACall.TimeoutMs) <> WAIT_OBJECT_0 then
     begin
-      AError := SysErrorMessage(GetLastError);
+      TerminateProcess(mInfo.hProcess, 1);
+      WaitForSingleObject(mInfo.hProcess, 5000);
+      AResult.Error := 'Zeitlimit';
       Exit;
     end;
-    try
-      Wait := WaitForSingleObject(Info.hProcess, ATimeoutMs);
-      if Wait <> WAIT_OBJECT_0 then
-      begin
-        TerminateProcess(Info.hProcess, 1);
-        WaitForSingleObject(Info.hProcess, 5000);
-        AError := 'Zeitlimit';
-        Exit;
-      end;
-      GetExitCodeProcess(Info.hProcess, AExitCode);
-      Result := True;
-    finally
-      CloseHandle(Info.hThread);
-      CloseHandle(Info.hProcess);
-    end;
+    GetExitCodeProcess(mInfo.hProcess, AResult.ExitCode);
+    Result := True;
   finally
-    Screen.Cursor := OldCursor;
-    CloseHandle(OutputFile);
-    if NulHandle <> INVALID_HANDLE_VALUE then
-    begin
-      CloseHandle(NulHandle);
-    end;
+    CloseHandle(mInfo.hThread);
+    CloseHandle(mInfo.hProcess);
+  end;
+end;
+
+{ TAtlasServerTool }
+
+class function TAtlasServerTool.Run(const ACall: TAtlasServerToolCall; out AResult: TAtlasServerToolResult): Boolean;
+var
+  mHandles: TAtlasToolHandles;
+  mOldCursor: TCursor;
+begin
+  Result := False;
+  AResult := Default(TAtlasServerToolResult);
+  AResult.ExitCode := High(Cardinal);
+  if not FileExists(ACall.Exe) then
+  begin
+    AResult.Error := ACall.Exe;
+    Exit;
+  end;
+  mHandles := Default(TAtlasToolHandles);
+  if not mHandles.Open(AResult.Error) then
+  begin
+    Exit;
+  end;
+  mOldCursor := Screen.Cursor;
+  Screen.Cursor := crHourGlass;
+  try
+    Result := RunProcess(ACall, mHandles, AResult);
+  finally
+    Screen.Cursor := mOldCursor;
+    mHandles.Close;
     if Result then
     begin
-      AOutput := TFile.ReadAllText(OutputName, TEncoding.UTF8);
+      AResult.Output := TFile.ReadAllText(mHandles.OutputName, TEncoding.UTF8);
     end;
-    TFile.Delete(OutputName);
+    TFile.Delete(mHandles.OutputName);
   end;
 end;
 

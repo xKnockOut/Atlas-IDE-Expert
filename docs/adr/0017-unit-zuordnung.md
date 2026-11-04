@@ -527,6 +527,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Settings.QuickToggles` | `IDE/Settings/Atlas.IDE.Settings.QuickToggles.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.RuleChecksNotice` | `IDE/Settings/Atlas.IDE.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
 | `Atlas.IDE.Settings.ServerTool` | `IDE/Settings/Atlas.IDE.Settings.ServerTool.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.ServerActions` | `IDE/Settings/Atlas.IDE.Settings.ServerActions.pas` | Baseline, Unterdrückungen und Index-Cache über AtlasServer.exe |
+| `Atlas.IDE.Settings.SubPages` | `IDE/Settings/Atlas.IDE.Settings.SubPages.pas` | Unterseiten Snippets, Tastenkonflikte und Server in Tools › Optionen |
+| `Atlas.IDE.Settings.VcsOptions` | `IDE/Settings/Atlas.IDE.Settings.VcsOptions.pas` | Seite Versionsverwaltung in Tools › Optionen, #1285 |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
 | `Atlas.IDE.Signature.Editor` | `IDE/Signature/Atlas.IDE.Signature.Editor.pas` | Ordner `IDE/Signature` |
