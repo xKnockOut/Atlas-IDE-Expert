@@ -126,9 +126,13 @@ function StartsWord(const AText: string; AIndex: Integer): Boolean;
 begin
   // Nach einem Trennzeichen beginnt immer ein Wort ("Expert.Welcome", "Atlas-Layout").
   if AIndex = 1 then
+  begin
     Exit(True);
+  end;
   if not CharInSet(AText[AIndex - 1], ['0'..'9', 'A'..'Z', 'a'..'z']) then
+  begin
     Exit(CharInSet(AText[AIndex], ['0'..'9', 'A'..'Z', 'a'..'z']));
+  end;
   Result := TAtlasCompletionMatcher.IsWordStart(AText, AIndex);
 end;
 
@@ -139,34 +143,50 @@ var
 begin
   Pattern := Trim(APattern);
   if (Pattern = '') or (AText = '') then
+  begin
     Exit(NoMatch);
+  end;
   Result := TAtlasCompletionMatcher.Score(Pattern, AText);
   if Result <> TAtlasCompletionMatcher.NoMatch then
+  begin
     Exit;
+  end;
   Result := NoMatch;
   Limit := TAtlasCompletionMatcher.TypoLimit(Pattern);
   if Limit = 0 then
+  begin
     Exit;
+  end;
   Best := MaxInt;
   for Index := 1 to Length(AText) do
+  begin
     if StartsWord(AText, Index) then
     begin
       Distance := TAtlasCompletionMatcher.TypoDistance(Pattern, Copy(AText, Index, MaxInt));
       if Distance < Best then
+      begin
         Best := Distance;
+      end;
     end;
+  end;
   if Best <= Limit then
+  begin
     Result := ScoreTypo - Best;
+  end;
 end;
 
 class function TAtlasWelcomeSearch.ScoreHit(const APattern: string; const AHit: TAtlasWelcomeHit): Integer;
 begin
   Result := Score(APattern, AHit.Caption);
   if AHit.Alias <> '' then
+  begin
     Result := Max(Result, Score(APattern, AHit.Alias));
+  end;
   // Der Server hat schon gefiltert, auch nach Container und Teilen, die hier nicht stehen.
   if AHit.Prefiltered and (Result = NoMatch) and (Trim(APattern) <> '') then
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasWelcomeSearch.Search(const APattern: string; const ACandidates: TArray<TAtlasWelcomeHit>;
@@ -189,30 +209,44 @@ begin
   Candidates := ACandidates;
   SetLength(Scores, Length(Candidates));
   for Index := 0 to High(Candidates) do
+  begin
     Scores[Index] := ScoreHit(APattern, Candidates[Index]);
+  end;
   Found := TList<Integer>.Create;
   try
     for Group := Low(TAtlasWelcomeSearchGroup) to High(TAtlasWelcomeSearchGroup) do
     begin
       Found.Clear;
       for Index := 0 to High(Candidates) do
+      begin
         if (Candidates[Index].Group = Group) and (Scores[Index] <> NoMatch) then
+        begin
           Found.Add(Index);
+        end;
+      end;
       Found.Sort(TComparer<Integer>.Construct(
         function(const A, B: Integer): Integer
         begin
           // Gefilterte Symbole behalten die Reihenfolge des Servers.
           if Candidates[A].Prefiltered and Candidates[B].Prefiltered then
-            Result := 0
+          begin
+            Result := 0;
+          end
           else
+          begin
             Result := Scores[B] - Scores[A];
+          end;
           if Result = 0 then
+          begin
             Result := A - B;
+          end;
         end));
       Entry := Default(TAtlasWelcomeSearchResult);
       Entry.Group := Group;
       if (Group = TAtlasWelcomeSearchGroup.Symbols) and (ASymbolHint <> '') and (Found.Count = 0) then
+      begin
         Entry.Hint := ASymbolHint;
+      end;
       for Index := 0 to Min(Found.Count, ALimit) - 1 do
       begin
         Entry.Hits := Entry.Hits + [Candidates[Found[Index]]];
@@ -220,7 +254,9 @@ begin
       end;
       Entry.More := Max(0, Found.Count - ALimit);
       if (Length(Entry.Hits) > 0) or (Entry.Hint <> '') then
+      begin
         Result := Result + [Entry];
+      end;
     end;
   finally
     Found.Free;
@@ -233,7 +269,9 @@ var
 begin
   Result := nil;
   for Entry in AResults do
+  begin
     Result := Result + Entry.Hits;
+  end;
 end;
 
 function Row(AKind: TAtlasWelcomeRowKind; AGroup: TAtlasWelcomeSearchGroup; AIndex: Integer;
@@ -261,9 +299,13 @@ begin
       Inc(Flat);
     end;
     if Entry.Hint <> '' then
+    begin
       Result := Result + [Row(TAtlasWelcomeRowKind.Hint, Entry.Group, -1, Entry.Hint)];
+    end;
     if Entry.More > 0 then
+    begin
       Result := Result + [Row(TAtlasWelcomeRowKind.More, Entry.Group, Entry.More, '')];
+    end;
   end;
 end;
 
@@ -293,7 +335,9 @@ begin
   // Ziffern am Ende: File_12 → 12; ohne Ziffern ans Ende.
   Index := Length(AName);
   while (Index > 0) and CharInSet(AName[Index], ['0'..'9']) do
+  begin
     Dec(Index);
+  end;
   Result := StrToIntDef(Copy(AName, Index + 1, MaxInt), MaxInt);
 end;
 
@@ -314,9 +358,12 @@ begin
       begin
         Result := CompareValue(NumberOf(A.Key), NumberOf(B.Key));
         if Result = 0 then
+        begin
           Result := CompareText(A.Key, B.Key);
+        end;
       end));
     for Pair in Values do
+    begin
       for Part in Pair.Value.Split([',']) do
       begin
         // Delphi 13 setzt den Pfad in Hochkommas: TProjectGroup,'C:\P\A.groupproj',1.
@@ -331,6 +378,7 @@ begin
           Break;
         end;
       end;
+    end;
   finally
     Seen.Free;
     Values.Free;

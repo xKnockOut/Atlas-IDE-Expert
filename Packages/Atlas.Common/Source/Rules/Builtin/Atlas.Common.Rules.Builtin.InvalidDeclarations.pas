@@ -376,10 +376,32 @@ var
     Result := mCpp;
   end;
 
+  /// <summary>W1029 am Konstruktor AHeader, wenn ein früherer anderen Namens (AHeaders, Schlüssel AKeys) dieselben
+  /// Parametertypen AKey hat.</summary>
+  procedure CheckConstructor(AHeader: TSyntaxNode; const AKey: string; const AHeaders: TArray<TSyntaxNode>;
+    const AKeys: TArray<string>);
+  var
+    mEarlier: Integer;
+  begin
+    for mEarlier := 0 to High(AHeaders) do
+    begin
+      if (AKeys[mEarlier] = AKey) and not SameText(AHeaders[mEarlier].Name, AHeader.Name) then
+      begin
+        if CppProject then
+        begin
+          AReport.Add(TokenRange(NameToken(AHeader)), Format('Die Konstruktoren %s und %s haben dieselben ' +
+            'Parametertypen; aus C++ ist %s nicht erreichbar (wie W1029).', [AHeaders[mEarlier].Name, AHeader.Name,
+            AHeader.Name]), TRuleConfidence.High);
+        end;
+        Exit;
+      end;
+    end;
+  end;
+
   /// <summary>W1029: zwei Konstruktoren der Klasse mit denselben Parametertypen.</summary>
   procedure CheckConstructors(AClass: TSyntaxNode);
   var
-    mIndex, mEarlier: Integer;
+    mIndex: Integer;
     mHeaders: TArray<TSyntaxNode>;
     mKeys: TArray<string>;
     mKey: string;
@@ -391,19 +413,7 @@ var
       if (AClass[mIndex].Kind = TSyntaxKind.RoutineHeader) and IsConstructor(AClass[mIndex]) then
       begin
         mKey := ParameterKey(AClass[mIndex]);
-        for mEarlier := 0 to High(mHeaders) do
-        begin
-          if (mKeys[mEarlier] = mKey) and not SameText(mHeaders[mEarlier].Name, AClass[mIndex].Name) then
-          begin
-            if CppProject then
-            begin
-              AReport.Add(TokenRange(NameToken(AClass[mIndex])), Format('Die Konstruktoren %s und %s haben ' +
-                'dieselben Parametertypen; aus C++ ist %s nicht erreichbar (wie W1029).',
-                [mHeaders[mEarlier].Name, AClass[mIndex].Name, AClass[mIndex].Name]), TRuleConfidence.High);
-            end;
-            Break;
-          end;
-        end;
+        CheckConstructor(AClass[mIndex], mKey, mHeaders, mKeys);
         mHeaders := mHeaders + [AClass[mIndex]];
         mKeys := mKeys + [mKey];
       end;

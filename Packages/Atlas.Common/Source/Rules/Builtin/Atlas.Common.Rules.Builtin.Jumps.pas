@@ -80,6 +80,9 @@ type
     InFinally: Boolean;
   end;
 
+  /// <summary>Gesetzte Marken einer Routine je Schlüssel (TLabelMisuseRule.LabelKey).</summary>
+  TLabelSets = TObjectDictionary<string, TList<TSyntaxNode>>;
+
 /// <summary>Hat der Parser im Bereich von AScope einen Fehler gemeldet (nil: irgendwo)? Dann ist die
 /// Schachtelung dort nicht sicher. Meldungen der Prüfungen am fertigen Baum (TreeIntact, z. B. E2031)
 /// zählen nicht: Der Baum ist dort vollständig.</summary>
@@ -189,70 +192,84 @@ var
     AReport.Add(Range, AMessage, TRuleConfidence.High, Fixes);
   end;
 
+  /// <summary>Zustand AEntry für den Knoten ANode nachführen: neue Sprunggrenze, Schleife oder finally.</summary>
+  procedure Enter(var AEntry: TJumpVisit; ANode: TSyntaxNode);
+  begin
+    if IsJumpScope(ANode) then
+    begin
+      AEntry.Scope := ANode;
+      AEntry.HasLoop := False;
+      AEntry.FinallySinceLoop := False;
+      AEntry.InFinally := False;
+    end
+    else if IsLoop(ANode) then
+    begin
+      AEntry.HasLoop := True;
+      AEntry.FinallySinceLoop := False;
+    end
+    else if ANode.Kind = TSyntaxKind.FinallyBlock then
+    begin
+      AEntry.FinallySinceLoop := True;
+      AEntry.InFinally := True;
+    end;
+  end;
+
+  /// <summary>Break, Continue oder Exit als Anweisung ANode mit dem Zustand AEntry prüfen.</summary>
+  procedure CheckCall(ANode: TSyntaxNode; const AEntry: TJumpVisit);
+  var
+    mName, mWritten: string;
+  begin
+    mName := PlainCallName(ANode);
+    if not MatchStr(mName, ['break', 'continue', 'exit']) or Declared.ContainsKey(mName) then
+    begin
+      Exit;
+    end;
+    mWritten := Copy(AContext.Text, ANode.StartOffset + 1, Length(mName));
+    if (mName <> 'exit') and not AEntry.HasLoop then
+    begin
+      Report(ANode, AEntry.Scope, mName, Format('%s außerhalb einer Schleife (wie E2097).', [mWritten]),
+        (mName = 'break') and not AEntry.InFinally);
+    end
+    else if ((mName <> 'exit') and AEntry.FinallySinceLoop) or ((mName = 'exit') and AEntry.InFinally) then
+    begin
+      Report(ANode, AEntry.Scope, mName, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
+        [mWritten]), False);
+    end;
+  end;
+
   // AHasLoop: eine Schleife umschließt die Stelle in derselben Routine; AFinallySinceLoop: zwischen ihr und der
   // Stelle liegt ein finally; AInFinally: irgendein finally der Routine umschließt die Stelle.
   // Iterativ (Bericht M1): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TJumpVisit>;
-    Entry, ChildEntry: TJumpVisit;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Name, Written: string;
+    mPending: TStack<TJumpVisit>;
+    mEntry, mChildEntry: TJumpVisit;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Pending := TStack<TJumpVisit>.Create;
+    mPending := TStack<TJumpVisit>.Create;
     try
-      Entry := Default(TJumpVisit);
-      Entry.Node := ARoot;
-      Pending.Push(Entry);
-      while Pending.Count > 0 do
+      mEntry := Default(TJumpVisit);
+      mEntry.Node := ARoot;
+      mPending.Push(mEntry);
+      while mPending.Count > 0 do
       begin
-        Entry := Pending.Pop;
-        Node := Entry.Node;
-        if IsJumpScope(Node) then
+        mEntry := mPending.Pop;
+        mNode := mEntry.Node;
+        Enter(mEntry, mNode);
+        if mNode.Kind = TSyntaxKind.CallStatement then
         begin
-          Entry.Scope := Node;
-          Entry.HasLoop := False;
-          Entry.FinallySinceLoop := False;
-          Entry.InFinally := False;
-        end
-        else if IsLoop(Node) then
-        begin
-          Entry.HasLoop := True;
-          Entry.FinallySinceLoop := False;
-        end
-        else if Node.Kind = TSyntaxKind.FinallyBlock then
-        begin
-          Entry.FinallySinceLoop := True;
-          Entry.InFinally := True;
-        end
-        else if Node.Kind = TSyntaxKind.CallStatement then
-        begin
-          Name := PlainCallName(Node);
-          if ((Name = 'break') or (Name = 'continue') or (Name = 'exit')) and not Declared.ContainsKey(Name) then
-          begin
-            Written := Copy(AContext.Text, Node.StartOffset + 1, Length(Name));
-            if (Name <> 'exit') and not Entry.HasLoop then
-            begin
-              Report(Node, Entry.Scope, Name, Format('%s außerhalb einer Schleife (wie E2097).', [Written]),
-                (Name = 'break') and not Entry.InFinally);
-            end
-            else if ((Name <> 'exit') and Entry.FinallySinceLoop) or ((Name = 'exit') and Entry.InFinally) then
-            begin
-              Report(Node, Entry.Scope, Name, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
-                [Written]), False);
-            end;
-          end;
+          CheckCall(mNode, mEntry);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          ChildEntry := Entry;
-          ChildEntry.Node := Node[Index];
-          Pending.Push(ChildEntry);
+          mChildEntry := mEntry;
+          mChildEntry.Node := mNode[mIndex];
+          mPending.Push(mChildEntry);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -377,225 +394,308 @@ var
       TTextPosition.Create(ANode.StartPos.Line, ANode.StartPos.Character + Length(AName)));
   end;
 
+  /// <summary>Token der Marken im label-Abschnitt ASection (bis zum Semikolon) an AProc übergeben; endet,
+  /// sobald AProc True liefert.</summary>
+  function ForEachLabel(ASection: TSyntaxNode; const AProc: TFunc<Integer, Boolean>): Boolean;
+  var
+    mToken: Integer;
+  begin
+    mToken := TokenAt(ASection.StartOffset) + 1;
+    while (mToken <= High(Tokens)) and (Tokens[mToken].Offset < ASection.EndOffset) and
+      not Tokens[mToken].IsSymbol(';') do
+    begin
+      if (Tokens[mToken].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and AProc(mToken) then
+      begin
+        Exit(True);
+      end;
+      Inc(mToken);
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Deklariert der label-Abschnitt ASection die Marke AKey?</summary>
+  function SectionDeclares(ASection: TSyntaxNode; const AKey: string): Boolean;
+  begin
+    Result := ForEachLabel(ASection,
+      function(AToken: Integer): Boolean
+      begin
+        Result := LabelKey(Tokens[AToken].Text) = AKey;
+      end);
+  end;
+
+  /// <summary>Deklariert die Routine ARoutine in einem label-Abschnitt die Marke AKey?</summary>
+  function RoutineDeclares(ARoutine: TSyntaxNode; const AKey: string): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    for mIndex := 0 to ARoutine.ChildCount - 1 do
+    begin
+      if (ARoutine[mIndex].Kind = TSyntaxKind.LabelSection) and SectionDeclares(ARoutine[mIndex], AKey) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
   // Ist AKey in einer Routine deklariert, die AScope umgibt? Sonst meldet die Syntaxprüfung den Sprung (E2031).
   function DeclaredOutside(AScope: TSyntaxNode; const AKey: string): Boolean;
   var
-    Outer, Section: TSyntaxNode;
-    Index, First: Integer;
+    mOuter: TSyntaxNode;
   begin
-    Result := False;
-    Outer := AScope.Parent;
-    while (Outer <> nil) and not Result do
+    mOuter := AScope.Parent;
+    while mOuter <> nil do
     begin
-      if Outer.Kind = TSyntaxKind.RoutineDecl then
+      if (mOuter.Kind = TSyntaxKind.RoutineDecl) and RoutineDeclares(mOuter, AKey) then
       begin
-        for Index := 0 to Outer.ChildCount - 1 do
+        Exit(True);
+      end;
+      mOuter := mOuter.Parent;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>label A, B, 10; in den Deklarationen der Routine AScope: Schlüssel und Token der Marke.</summary>
+  procedure CollectDeclared(AScope: TSyntaxNode; ADeclared: TDictionary<string, Integer>);
+  var
+    mIndex: Integer;
+  begin
+    for mIndex := 0 to AScope.ChildCount - 1 do
+    begin
+      if AScope[mIndex].Kind = TSyntaxKind.LabelSection then
+      begin
+        ForEachLabel(AScope[mIndex],
+          function(AToken: Integer): Boolean
+          begin
+            ADeclared.AddOrSetValue(LabelKey(Tokens[AToken].Text), AToken);
+            Result := False;
+          end);
+      end;
+    end;
+  end;
+
+  procedure AddSet(ASets: TLabelSets; ANode: TSyntaxNode);
+  var
+    mName: string;
+    mList: TList<TSyntaxNode>;
+  begin
+    mName := LabelKey(ANode.Name);
+    if not ASets.TryGetValue(mName, mList) then
+    begin
+      mList := TList<TSyntaxNode>.Create;
+      ASets.Add(mName, mList);
+    end;
+    mList.Add(ANode);
+  end;
+
+  /// <summary>Gesetzte Marken und goto-Anweisungen unter ARoot; False, wenn ein asm-Block vorkommt (dessen
+  /// Marken sieht der Baum nicht). Iterativ (Bericht M1).</summary>
+  function Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
+  var
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mChild: Integer;
+  begin
+    Result := True;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
+        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
         begin
-          Section := Outer[Index];
-          if Section.Kind <> TSyntaxKind.LabelSection then
-          begin
-            Continue;
-          end;
-          First := TokenAt(Section.StartOffset) + 1;
-          while (First <= High(Tokens)) and (Tokens[First].Offset < Section.EndOffset) and
-            not Tokens[First].IsSymbol(';') do
-          begin
-            if (Tokens[First].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and
-              (LabelKey(Tokens[First].Text) = AKey) then
+          Continue;
+        end;
+        case mNode.Kind of
+          TSyntaxKind.AsmBlock:
+            Result := False;
+          TSyntaxKind.LabeledStatement:
+            AddSet(ASets, mNode);
+          TSyntaxKind.GotoStatement:
+            if mNode.Name <> '' then
             begin
-              Result := True;
+              AGotos.Add(mNode);
             end;
-            Inc(First);
-          end;
+        else
+          // Übrige Knoten setzen keine Marke.
+        end;
+        for mChild := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode[mChild]);
         end;
       end;
-      Outer := Outer.Parent;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  /// <summary>Wird die Marke in AList an AIndex nie ohne eine frühere übersetzt?</summary>
+  function SetEarlier(AList: TList<TSyntaxNode>; AIndex: Integer): Boolean;
+  var
+    mFirst: Integer;
+  begin
+    for mFirst := 0 to AIndex - 1 do
+    begin
+      if TConditionalBranches.Implies(PathOf(AList[AIndex]), PathOf(AList[mFirst])) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>E2073: dieselbe Marke zweimal gesetzt, wenn die spätere nie ohne die frühere übersetzt wird;
+  /// E2093: gesetzt, aber in dieser Routine nicht deklariert.</summary>
+  procedure CheckSets(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
+  var
+    mKey: string;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+  begin
+    for mKey in ASets.Keys do
+    begin
+      for mIndex := 1 to ASets[mKey].Count - 1 do
+      begin
+        mNode := ASets[mKey][mIndex];
+        if SetEarlier(ASets[mKey], mIndex) then
+        begin
+          AReport.Add(NameRange(mNode, mNode.Name), Format('Marke %s ist bereits gesetzt (wie E2073).',
+            [mNode.Name]), TRuleConfidence.High);
+        end;
+      end;
+    end;
+    for mKey in ASets.Keys do
+    begin
+      if ADeclared.ContainsKey(mKey) then
+      begin
+        Continue;
+      end;
+      for mNode in ASets[mKey] do
+      begin
+        AReport.Add(NameRange(mNode, mNode.Name), Format('Marke %s ist in dieser Routine nicht deklariert ' +
+          '(wie E2093).', [mNode.Name]), TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+  /// <summary>Länge des gemeinsamen Anfangs der Ketten AGotoChain und ATargetChain.</summary>
+  function CommonLength(const AGotoChain, ATargetChain: TArray<TSyntaxNode>): Integer;
+  begin
+    Result := 0;
+    while (Result < Length(AGotoChain)) and (Result < Length(ATargetChain)) and
+      (AGotoChain[Result] = ATargetChain[Result]) do
+    begin
+      Inc(Result);
+    end;
+  end;
+
+  /// <summary>E2127: goto ANode in einen try-Block hinein oder aus ihm heraus zum Ziel ATarget.</summary>
+  procedure CheckTryJump(AScope, ANode, ATarget: TSyntaxNode);
+  var
+    mGotoChain, mTargetChain: TArray<TSyntaxNode>;
+    mFirst: Integer;
+  begin
+    mGotoChain := TryChain(ANode, AScope);
+    mTargetChain := TryChain(ATarget, AScope);
+    if (Length(mGotoChain) = Length(mTargetChain)) and IsPrefix(mGotoChain, mTargetChain) then
+    begin
+      Exit;
+    end;
+    // Gemeinsamer Anfang beider Ketten; der erste Block danach steht in der Meldung.
+    mFirst := CommonLength(mGotoChain, mTargetChain);
+    if mFirst = Length(mGotoChain) then
+    begin
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('goto %s springt in einen %s ' +
+        '(wie E2127).', [ANode.Name, BlockName(mTargetChain[mFirst])]), TRuleConfidence.High);
+    end
+    else
+    begin
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('goto %s verlässt einen %s ' +
+        '(wie E2127).', [ANode.Name, BlockName(mGotoChain[mFirst])]), TRuleConfidence.High);
+    end;
+  end;
+
+  procedure CheckGoto(AScope, ANode: TSyntaxNode; ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
+  var
+    mKey: string;
+  begin
+    mKey := LabelKey(ANode.Name);
+    if not ADeclared.ContainsKey(mKey) then
+    begin
+      // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
+      if not ASets.ContainsKey(mKey) and DeclaredOutside(AScope, mKey) then
+      begin
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Marke %s ist in dieser Routine ' +
+          'nicht deklariert (wie E2093).', [ANode.Name]), TRuleConfidence.High);
+      end;
+    end
+    // E2127 nur bei genau einem Ziel.
+    else if ASets.ContainsKey(mKey) and (ASets[mKey].Count = 1) then
+    begin
+      CheckTryJump(AScope, ANode, ASets[mKey][0]);
+    end;
+  end;
+
+  /// <summary>Springt eine goto-Anweisung aus AGotos die Marke AKey an?</summary>
+  function Jumped(AGotos: TList<TSyntaxNode>; const AKey: string): Boolean;
+  var
+    mNode: TSyntaxNode;
+  begin
+    for mNode in AGotos do
+    begin
+      if LabelKey(mNode.Name) = AKey then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>E2074: deklariert und angesprungen, aber nie gesetzt.</summary>
+  procedure CheckNeverSet(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>; AGotos: TList<TSyntaxNode>);
+  var
+    mPair: TPair<string, Integer>;
+  begin
+    for mPair in ADeclared do
+    begin
+      if not ASets.ContainsKey(mPair.Key) and Jumped(AGotos, mPair.Key) then
+      begin
+        AReport.Add(TTextRange.Create(Tokens[mPair.Value].StartPos, Tokens[mPair.Value].EndPos),
+          Format('Marke %s wird angesprungen, aber nie gesetzt (wie E2074).', [Tokens[mPair.Value].Text]),
+          TRuleConfidence.High);
+      end;
     end;
   end;
 
   procedure CheckScope(AScope, ABody: TSyntaxNode);
   var
-    Declared: TDictionary<string, Integer>;
-    Sets: TObjectDictionary<string, TList<TSyntaxNode>>;
-    Gotos: TList<TSyntaxNode>;
-    HasAsm: Boolean;
-    Index, First: Integer;
-    Section, Node, Earlier, Target: TSyntaxNode;
-    Key: string;
-    Pair: TPair<string, Integer>;
-    GotoChain, TargetChain: TArray<TSyntaxNode>;
-
-    // Iterativ (Bericht M1).
-    procedure Collect(ARoot: TSyntaxNode);
-    var
-      Pending: TStack<TSyntaxNode>;
-      Node: TSyntaxNode;
-      Child: Integer;
-      Name: string;
-      List: TList<TSyntaxNode>;
-    begin
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
-          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-          begin
-            Continue;
-          end;
-          if Node.Kind = TSyntaxKind.AsmBlock then
-          begin
-            HasAsm := True;
-          end
-          else if Node.Kind = TSyntaxKind.LabeledStatement then
-          begin
-            Name := LabelKey(Node.Name);
-            if not Sets.TryGetValue(Name, List) then
-            begin
-              List := TList<TSyntaxNode>.Create;
-              Sets.Add(Name, List);
-            end;
-            List.Add(Node);
-          end
-          else if (Node.Kind = TSyntaxKind.GotoStatement) and (Node.Name <> '') then
-          begin
-            Gotos.Add(Node);
-          end;
-          for Child := Node.ChildCount - 1 downto 0 do
-          begin
-            Pending.Push(Node[Child]);
-          end;
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
+    mDeclared: TDictionary<string, Integer>;
+    mSets: TLabelSets;
+    mGotos: TList<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
-    Declared := TDictionary<string, Integer>.Create;
-    Sets := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
-    Gotos := TList<TSyntaxNode>.Create;
+    mDeclared := TDictionary<string, Integer>.Create;
+    mSets := TLabelSets.Create([doOwnsValues]);
+    mGotos := TList<TSyntaxNode>.Create;
     try
-      // label A, B, 10; in den Deklarationen der Routine: Token bis zum Semikolon.
-      for Index := 0 to AScope.ChildCount - 1 do
-      begin
-        Section := AScope[Index];
-        if Section.Kind <> TSyntaxKind.LabelSection then
-        begin
-          Continue;
-        end;
-        First := TokenAt(Section.StartOffset) + 1;
-        while (First <= High(Tokens)) and (Tokens[First].Offset < Section.EndOffset) and
-          not Tokens[First].IsSymbol(';') do
-        begin
-          if Tokens[First].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
-          begin
-            Declared.AddOrSetValue(LabelKey(Tokens[First].Text), First);
-          end;
-          Inc(First);
-        end;
-      end;
-      HasAsm := False;
-      Collect(ABody);
-      if HasAsm then
+      CollectDeclared(AScope, mDeclared);
+      // Marken im asm-Block sieht der Baum nicht.
+      if not Collect(ABody, mSets, mGotos) then
       begin
         Exit;
-      end; // Marken im asm-Block sieht der Baum nicht.
-      // E2073: dieselbe Marke zweimal gesetzt, wenn die spätere nie ohne die frühere übersetzt wird.
-      for Key in Sets.Keys do
-      begin
-        for Index := 1 to Sets[Key].Count - 1 do
-        begin
-          Node := Sets[Key][Index];
-          for First := 0 to Index - 1 do
-          begin
-            Earlier := Sets[Key][First];
-            if TConditionalBranches.Implies(PathOf(Node), PathOf(Earlier)) then
-            begin
-              AReport.Add(NameRange(Node, Node.Name), Format('Marke %s ist bereits gesetzt (wie E2073).',
-                [Node.Name]), TRuleConfidence.High);
-              Break;
-            end;
-          end;
-        end;
       end;
-      // E2093: gesetzt oder angesprungen, aber in dieser Routine nicht deklariert.
-      for Key in Sets.Keys do
+      CheckSets(mSets, mDeclared);
+      for mNode in mGotos do
       begin
-        if not Declared.ContainsKey(Key) then
-        begin
-          for Node in Sets[Key] do
-          begin
-            AReport.Add(NameRange(Node, Node.Name), Format('Marke %s ist in dieser Routine nicht deklariert ' +
-              '(wie E2093).', [Node.Name]), TRuleConfidence.High);
-          end;
-        end;
+        CheckGoto(AScope, mNode, mSets, mDeclared);
       end;
-      for Node in Gotos do
-      begin
-        Key := LabelKey(Node.Name);
-        if not Declared.ContainsKey(Key) then
-        begin
-          // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
-          if not Sets.ContainsKey(Key) and DeclaredOutside(AScope, Key) then
-          begin
-            AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Marke %s ist in dieser Routine ' +
-              'nicht deklariert (wie E2093).', [Node.Name]), TRuleConfidence.High);
-          end;
-          Continue;
-        end;
-        // E2127: goto in einen try-Block hinein oder aus ihm heraus; nur bei genau einem Ziel.
-        if not Sets.ContainsKey(Key) or (Sets[Key].Count <> 1) then
-        begin
-          Continue;
-        end;
-        Target := Sets[Key][0];
-        GotoChain := TryChain(Node, AScope);
-        TargetChain := TryChain(Target, AScope);
-        if (Length(GotoChain) = Length(TargetChain)) and IsPrefix(GotoChain, TargetChain) then
-        begin
-          Continue;
-        end;
-        // Gemeinsamer Anfang beider Ketten; der erste Block danach steht in der Meldung.
-        First := 0;
-        while (First < Length(GotoChain)) and (First < Length(TargetChain)) and
-          (GotoChain[First] = TargetChain[First]) do
-        begin
-          Inc(First);
-        end;
-        if First = Length(GotoChain) then
-        begin
-          AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('goto %s springt in einen %s ' +
-            '(wie E2127).', [Node.Name, BlockName(TargetChain[First])]), TRuleConfidence.High);
-        end
-        else
-        begin
-          AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('goto %s verlässt einen %s ' +
-            '(wie E2127).', [Node.Name, BlockName(GotoChain[First])]), TRuleConfidence.High);
-        end;
-      end;
-      // E2074: deklariert und angesprungen, aber nie gesetzt.
-      for Pair in Declared do
-      begin
-        if not Sets.ContainsKey(Pair.Key) then
-        begin
-          for Node in Gotos do
-          begin
-            if LabelKey(Node.Name) = Pair.Key then
-            begin
-              AReport.Add(TTextRange.Create(Tokens[Pair.Value].StartPos, Tokens[Pair.Value].EndPos), Format('Marke %s wird angesprungen, aber nie ' +
-                'gesetzt (wie E2074).', [Tokens[Pair.Value].Text]), TRuleConfidence.High);
-              Break;
-            end;
-          end;
-        end;
-      end;
+      CheckNeverSet(mSets, mDeclared, mGotos);
     finally
-      Gotos.Free;
-      Sets.Free;
-      Declared.Free;
+      mGotos.Free;
+      mSets.Free;
+      mDeclared.Free;
     end;
   end;
 

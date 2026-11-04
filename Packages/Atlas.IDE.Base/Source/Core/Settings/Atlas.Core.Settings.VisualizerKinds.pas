@@ -61,9 +61,15 @@ var
 begin
   Result := [];
   for Part in AText.Split([',', ';']) do
+  begin
     for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+    begin
       if SameText(Trim(Part), KindNames[Kind]) then
+      begin
         Include(Result, Kind);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasVisualizerSettings.KindsText(AKinds: TAtlasVisualizerKinds): string;
@@ -72,12 +78,16 @@ var
 begin
   Result := '';
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     if Kind in AKinds then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + KindNames[Kind];
     end;
+  end;
 end;
 
 class function TAtlasVisualizerSettings.NormalizeKinds(const AText: string): string;
@@ -90,8 +100,12 @@ var
   Item: TAtlasVisualizerEvaluation;
 begin
   for Item := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
+  begin
     if SameText(Trim(AText), EvaluationNames[Item]) then
+    begin
       Exit(Item);
+    end;
+  end;
   Result := TAtlasVisualizerEvaluation.Properties;
 end;
 
@@ -105,13 +119,21 @@ begin
   begin
     Name := Trim(Part);
     if (Name = '') or not IsValidIdent(Name) then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in Result do
+    begin
       if SameText(Known, Name) then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 

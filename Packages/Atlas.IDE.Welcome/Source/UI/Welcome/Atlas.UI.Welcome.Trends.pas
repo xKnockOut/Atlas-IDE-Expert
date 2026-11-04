@@ -182,15 +182,21 @@ begin
   OldHeight := HeightFor(ClientWidth);
   FView := Default(TAtlasTrendView);
   if FSource <> nil then
+  begin
     FView := FSource.View;
+  end;
   // Anderes Projekt: der gewählte Punkt gehört zum alten.
   if not SameText(OldProject, FView.Project) then
+  begin
     FChosenBuild := 0;
+  end;
   FHintTile := -1;
   FBox.Invalidate;
   inherited;
   if OldHeight <> HeightFor(ClientWidth) then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BodyResize(Sender: TObject);
@@ -201,7 +207,9 @@ begin
   FContentHeight := HeightFor(ClientWidth);
   // Andere Anzahl Reihen von Kacheln: Der Frame „Atlas“ ordnet die Spalten neu.
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.AreaWidth: Integer;
@@ -224,7 +232,9 @@ var
 begin
   Result := ScaleValue(HeadHeight);
   if (Length(FView.Points) = 0) or (Length(FView.Tiles) = 0) then
+  begin
     Exit;
+  end;
   Rows := (Length(FView.Tiles) + Columns(AWidth) - 1) div Columns(AWidth);
   Inc(Result, Rows * (ScaleValue(TileHeight) + ScaleValue(TileGap)));
 end;
@@ -232,7 +242,9 @@ end;
 function TAtlasWelcomeTrendsFrame.HeightFor(AWidth: Integer): Integer;
 begin
   if FView.Project = '' then
+  begin
     Exit(ScaleValue(EmptyHeight));
+  end;
   Result := InfoTop(AWidth) + ScaleValue(InfoHeight);
 end;
 
@@ -285,9 +297,13 @@ end;
 class function TAtlasWelcomeTrendsFrame.DecimalChar: Char;
 begin
   if TAtlasStrings.Language = TAtlasLanguage.German then
-    Result := ','
+  begin
+    Result := ',';
+  end
   else
+  begin
     Result := '.';
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.ValueWithUnit(ASeries: TAtlasTrendSeries; ATenths: Integer): string;
@@ -306,9 +322,13 @@ end;
 class function TAtlasWelcomeTrendsFrame.ValueLine(const ATile: TAtlasTrendTile): string;
 begin
   if ATile.HasLast then
-    Result := ValueWithUnit(ATile.Series, ATile.Last)
+  begin
+    Result := ValueWithUnit(ATile.Series, ATile.Last);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue);
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.PreviousLine(const ATile: TAtlasTrendTile): string;
@@ -317,14 +337,18 @@ var
 begin
   Result := '';
   if ATile.Previous(Value) then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsPrevious, [ValueWithUnit(ATile.Series, Value)]);
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.LocalText(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc <= 0 then
+  begin
     Exit;
+  end;
   Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
 end;
 
@@ -342,23 +366,37 @@ var
 begin
   Result := '';
   if (ATile < 0) or (ATile > High(AView.Tiles)) or (APoint < 0) or (APoint > High(AView.Points)) then
+  begin
     Exit;
+  end;
   Point := AView.Points[APoint];
   Tile := AView.Tiles[ATile];
   // Wie im Mockup „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
   Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuild, [APoint + 1, Length(AView.Points)]);
   if ANumber and (Point.Build > 0) and (Point.Build <> APoint + 1) then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuildNumber, [Point.Build]);
+  end;
   if Point.At > 0 then
+  begin
     Result := Result + ' · ' + LocalText(Point.At);
+  end;
   if Point.Branch <> '' then
+  begin
     Result := Result + ' · ' + Point.Branch;
+  end;
   if Point.Commit <> '' then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeTrends.ShortCommit(Point.Commit);
+  end;
   if Tile.Has[APoint] then
-    Value := ValueWithUnit(Tile.Series, Tile.Values[APoint])
+  begin
+    Value := ValueWithUnit(Tile.Series, Tile.Values[APoint]);
+  end
   else
+  begin
     Value := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue);
+  end;
   Result := Result + ' · ' + SeriesTitle(Tile.Series) + ': ' + Value;
 end;
 
@@ -368,10 +406,16 @@ var
 begin
   Result := -1;
   if FChosenBuild <= 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FView.Points) do
+  begin
     if FView.Points[Index].Build = FChosenBuild then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.ChosenTile: Integer;
@@ -380,29 +424,45 @@ var
 begin
   Result := -1;
   if ChosenPoint < 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FView.Tiles) do
+  begin
     if FView.Tiles[Index].Series = FChosenSeries then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.HeadingText: string;
 begin
   Result := '';
   if FView.Project <> '' then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsHeading, [FView.Name, FView.Limit]);
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.InfoText: string;
 begin
   if FView.Project = '' then
+  begin
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoProject));
+  end;
   if Length(FView.Points) = 0 then
+  begin
     Exit(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsNoPoints, [FView.Name]));
+  end;
   if Length(FView.Tiles) = 0 then
+  begin
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoSeries));
+  end;
   if ChosenTile >= 0 then
+  begin
     Exit(PointInfo(FView, ChosenTile, ChosenPoint));
+  end;
   Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint);
 end;
 
@@ -414,25 +474,33 @@ begin
   Result.Tile := -1;
   Result.Point := -1;
   if Length(FView.Points) = 0 then
+  begin
     Exit;
+  end;
   mWidth := AreaWidth;
   for Index := 0 to High(FView.Tiles) do
+  begin
     if TileRect(Index, mWidth).Contains(Point(X, Y)) then
     begin
       Result.Tile := Index;
       Area := SparkRect(TileRect(Index, mWidth));
       // Ein paar Punkte Spielraum um die Linie: Sie ist dünn.
       if (Y >= Area.Top - ScaleValue(TilePadding)) and (Y <= Area.Bottom + ScaleValue(TilePadding)) then
+      begin
         Result.Point := TAtlasWelcomeTrends.NearestPoint(X, Length(FView.Points), Area.Left, Area.Width);
+      end;
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasWelcomeTrendsFrame.ClickAt(const AHit: TAtlasTrendsHit);
 begin
   // Nur Anzeige im Bereich: keine Aktion der IDE, darum direkt und ohne Nachrichtenschleife.
   if (AHit.Tile < 0) or (AHit.Tile > High(FView.Tiles)) or (AHit.Point < 0) or (AHit.Point > High(FView.Points)) then
+  begin
     Exit;
+  end;
   FChosenSeries := FView.Tiles[AHit.Tile].Series;
   FChosenBuild := FView.Points[AHit.Point].Build;
   FBox.Invalidate;
@@ -546,7 +614,9 @@ begin
     X := TAtlasWelcomeTrends.PointX(Chosen, Count, Area.Left, Area.Width);
     Y := ZeroY;
     if Tile.Has[Chosen] then
+    begin
       Y := TAtlasWelcomeTrends.PointY(Tile.Values[Chosen], Tile.Bottom, Tile.Top, Area.Top, Area.Height);
+    end;
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Brush.Color := BackColor;
     ACanvas.Pen.Color := TextColor;
@@ -578,15 +648,21 @@ begin
   Canvas.Font.Color := MutedColor;
   Canvas.TextOut(ScaleValue(Indent), ScaleValue(3), HeadingText);
   if Length(FView.Points) > 0 then
+  begin
     for Index := 0 to High(FView.Tiles) do
+    begin
       DrawTile(Canvas, Index, TileRect(Index, mWidth));
+    end;
+  end;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := MutedColor;
   Info := InfoText;
   // Zu schmal für alles: die laufende Nummer weglassen.
   if (ChosenTile >= 0) and (Canvas.TextWidth(Info) > mWidth - 2 * ScaleValue(Indent)) then
+  begin
     Info := PointInfo(FView, ChosenTile, ChosenPoint, False);
+  end;
   Canvas.TextOut(ScaleValue(Indent), InfoTop(mWidth) + ScaleValue(3), Info);
 end;
 
@@ -596,17 +672,27 @@ var
 begin
   Hit := HitTest(X, Y);
   if Hit.Point >= 0 then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if Hit.Tile = FHintTile then
+  begin
     Exit;
+  end;
   FHintTile := Hit.Tile;
   if Hit.Tile >= 0 then
+  begin
     FBox.Hint := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsTileHint,
-      [SeriesTitle(FView.Tiles[Hit.Tile].Series)])
+      [SeriesTitle(FView.Tiles[Hit.Tile].Series)]);
+  end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -614,7 +700,9 @@ procedure TAtlasWelcomeTrendsFrame.BoxMouseUp(Sender: TObject; Button: TMouseBut
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickAt(HitTest(X, Y));
+  end;
 end;
 
 end.

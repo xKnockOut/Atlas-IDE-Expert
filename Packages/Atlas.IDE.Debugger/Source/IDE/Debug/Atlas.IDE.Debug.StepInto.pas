@@ -181,7 +181,9 @@ end;
 class procedure TAtlasIdeStepInto.Install(const ASession: TAtlasStepIntoSessionFunc; const AMessage: TProc<string>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeStepInto.Create(ASession, AMessage);
+  end;
 end;
 
 class procedure TAtlasIdeStepInto.Uninstall;
@@ -210,7 +212,9 @@ end;
 class procedure TAtlasIdeStepInto.Run;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   if not Enabled then
   begin
     FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
@@ -228,19 +232,25 @@ class function TAtlasIdeStepInto.TryRun: Boolean;
 begin
   Result := (FInstance <> nil) and Enabled and Stopped;
   if Result then
+  begin
     FInstance.Execute;
+  end;
 end;
 
 class procedure TAtlasIdeStepInto.Dismiss;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Close;
+  end;
 end;
 
 procedure TAtlasIdeStepInto.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 function TAtlasIdeStepInto.SourceText(const AFileName: string; out AText: string): Boolean;
@@ -273,17 +283,25 @@ var
 begin
   Result := True;
   if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Exit;
+  end;
   Root := Services.GetRootDirectory;
   if not TAtlasStepInto.IsLibraryFile(AFileName, Root) then
+  begin
     Exit;
+  end;
   // RTL, VCL und FMX: Haltepunkte greifen nur mit Debug-DCUs.
   Result := False;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Project := Modules.GetActiveProject;
   if Project = nil then
+  begin
     Exit;
+  end;
   Value := TAtlasIdeProjectContext.ConfigurationValue(Project, Project.CurrentConfiguration, Project.CurrentPlatform,
     'DCC_DebugDCUs');
   Result := SameText(Trim(Value), 'true');
@@ -307,7 +325,9 @@ begin
   Result := True;
   Close;
   if FRunning then
+  begin
     Exit;
+  end;
   Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process = nil then
   begin
@@ -321,7 +341,9 @@ begin
   end;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
@@ -333,7 +355,9 @@ begin
       TAtlasStepInto.Arguments(TLspSession.PathToUri(FFileName), Line), TimeoutMs);
     try
       if not TAtlasStepInto.ReadAnswer(Answer, FAnswer) then
+      begin
         FAnswer := Default(TAtlasStepAnswer);
+      end;
     finally
       Answer.Free;
     end;
@@ -375,7 +399,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Accept(AIndex);
+            end;
           end);
       end;
     FWindow.OnCancel :=
@@ -385,7 +411,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Close;
+            end;
           end);
       end;
   end;
@@ -401,13 +429,17 @@ var
 begin
   Process := TAtlasIdeBreakpoints.StoppedProcess;
   if Process <> nil then
+  begin
     Process.Run(ormStmtStepInto);
+  end;
 end;
 
 procedure TAtlasIdeStepInto.Close;
 begin
   if (FWindow <> nil) and FWindow.IsShown then
+  begin
     FWindow.Dismiss;
+  end;
 end;
 
 procedure TAtlasIdeStepInto.Accept(AIndex: Integer);
@@ -438,7 +470,9 @@ begin
   FBreaks := [TAtlasIdeBreakpoints.Add(FTarget.FileName, FTarget.Line)];
   // Hält das Programm zuerst an der Folgeanweisung, ist der Aufruf nicht erfolgt.
   if (FFollowLine >= 0) and not (SameText(FTarget.FileName, FFileName) and (FTarget.Line = FFollowLine)) then
+  begin
     FBreaks := FBreaks + [TAtlasIdeBreakpoints.Add(FFileName, FFollowLine)];
+  end;
   FRunning := True;
   FSeenRunning := False;
   FTimer.Enabled := True;
@@ -481,7 +515,9 @@ begin
       end;
       Process := Services.CurrentProcess;
       if Process = nil then
+      begin
         Exit;
+      end;
       if not (Process.ProcessState in [psStopped, psFault, psException]) then
       begin
         FSeenRunning := True;
@@ -490,15 +526,23 @@ begin
       // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
       TAtlasIdeBreakpoints.Position(Process.CurrentThread, FileName, Line);
       if not FSeenRunning and SameText(FileName, FStartFile) and (Line = FStartLine) then
+      begin
         Exit;
+      end;
       Finish;
       if SameText(FileName, FTarget.FileName) and (Line = FTarget.Line) then
+      begin
         Exit;
+      end;
       if SameText(FileName, FFileName) and (Line = FFollowLine) then
-        Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FCaption, FFollowLine + 1]))
+      begin
+        Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FCaption, FFollowLine + 1]));
+      end
       else if Process.ProcessState = psStopped then
+      begin
         Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetElsewhere,
           [ExtractFileName(FileName), Line + 1]));
+      end;
     end);
 end;
 
@@ -507,10 +551,14 @@ var
   Key: Word;
 begin
   if (FWindow = nil) or not FWindow.IsShown then
+  begin
     Exit;
+  end;
   Key := Word(Msg.wParam);
   if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  begin
     Exit;
+  end;
   if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
     case Key of
       VK_RETURN:
@@ -558,15 +606,21 @@ end;
 procedure TAtlasIdeStepInto.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or (FWindow = nil) or not FWindow.IsShown then
+  begin
     Exit;
+  end;
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
         if IsEditorWindow(Msg.hwnd) then
+        begin
           KeyDown(Msg, Handled);
+        end;
       WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
         if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
+        begin
           Close;
+        end;
     end;
   except
     // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.

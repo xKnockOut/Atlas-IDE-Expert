@@ -246,28 +246,27 @@ var
     end;
   end;
 
-  /// <summary>Klasse sealed (#1380): eigene abstrakte Methoden (E2383 an der Methode), offene abstrakte
-  /// Methoden je E2539 und an der Klasse E2540; abstract sealed ebenso E2540.</summary>
-  procedure CheckSealed(ADecl, ABody: TSyntaxNode; AAbstract: Boolean);
-  var
-    mName: string;
-    mNameToken, mIndex, mAbstract: Integer;
-    mLocation: TSymbolLocation;
-    mOpen: TArray<TIndexSymbol>;
-    mOwners: TArray<string>;
+  /// <summary>Token des Namens AName ab AFrom vor dem Offset AEnd (davor können Attribute stehen); -1 ohne.
+  /// </summary>
+  function NameToken(AFrom, AEnd: Integer; const AName: string): Integer;
   begin
-    mName := WithoutTypeParams(ADecl.Name);
-    // Der Name vor dem Rumpf (davor können Attribute stehen).
-    mNameToken := TokenAt(ADecl.StartOffset);
-    while (mNameToken < Length(Tokens)) and (Tokens[mNameToken].Offset < ABody.StartOffset) and
-      not ((Tokens[mNameToken].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mNameToken].Text, mName)) do
+    Result := AFrom;
+    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AEnd) do
     begin
-      Inc(mNameToken);
+      if (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      begin
+        Exit;
+      end;
+      Inc(Result);
     end;
-    if (mNameToken >= Length(Tokens)) or (Tokens[mNameToken].Offset >= ABody.StartOffset) then
-    begin
-      Exit;
-    end;
+    Result := -1;
+  end;
+
+  /// <summary>E2383 an jeder eigenen abstrakten Methode der sealed-Klasse AName.</summary>
+  procedure ReportOwnAbstract(ABody: TSyntaxNode; const AName: string);
+  var
+    mIndex, mAbstract: Integer;
+  begin
     for mIndex := 0 to ABody.ChildCount - 1 do
     begin
       if ABody[mIndex].Kind = TSyntaxKind.RoutineHeader then
@@ -276,10 +275,29 @@ var
         if mAbstract >= 0 then
         begin
           AReport.Add(TokenRange(mAbstract), Format('%s ist abstract, die Klasse %s aber sealed; abstract und ' +
-            'sealed schließen sich aus (wie E2383).', [ABody[mIndex].Name, mName]), TRuleConfidence.High);
+            'sealed schließen sich aus (wie E2383).', [ABody[mIndex].Name, AName]), TRuleConfidence.High);
         end;
       end;
     end;
+  end;
+
+  /// <summary>Klasse sealed (#1380): eigene abstrakte Methoden (E2383 an der Methode), offene abstrakte
+  /// Methoden je E2539 und an der Klasse E2540; abstract sealed ebenso E2540.</summary>
+  procedure CheckSealed(ADecl, ABody: TSyntaxNode; AAbstract: Boolean);
+  var
+    mName: string;
+    mNameToken, mIndex: Integer;
+    mLocation: TSymbolLocation;
+    mOpen: TArray<TIndexSymbol>;
+    mOwners: TArray<string>;
+  begin
+    mName := WithoutTypeParams(ADecl.Name);
+    mNameToken := NameToken(TokenAt(ADecl.StartOffset), ABody.StartOffset, mName);
+    if mNameToken < 0 then
+    begin
+      Exit;
+    end;
+    ReportOwnAbstract(ABody, mName);
     mOpen := nil;
     mOwners := nil;
     if Ancestry.FindClass(mName, mLocation) and (mLocation.FileName = '') then
@@ -303,61 +321,76 @@ var
     end;
   end;
 
+  /// <summary>Prüft die Klasse oder das Objekt der Typdeklaration ANode. Ergebnis ist deren Rumpf, ohne Klasse
+  /// oder Objekt ANode selbst.</summary>
+  function CheckTypeDecl(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    mIndex: Integer;
+    mAbstract, mSealed: Boolean;
+  begin
+    Result := ANode.FindChild(TSyntaxKind.ClassType);
+    if Result = nil then
+    begin
+      Result := ANode.FindChild(TSyntaxKind.ObjectType);
+    end;
+    if Result = nil then
+    begin
+      Exit(ANode);
+    end;
+    mAbstract := False;
+    mSealed := False;
+    if Result.Kind = TSyntaxKind.ClassType then
+    begin
+      CheckClassHeader(Result, mAbstract, mSealed);
+    end;
+    for mIndex := 0 to Result.ChildCount - 1 do
+    begin
+      if Result[mIndex].Kind = TSyntaxKind.RoutineHeader then
+      begin
+        CheckHeader(WithoutTypeParams(ANode.Name), Result[mIndex]);
+      end;
+    end;
+    if mSealed then
+    begin
+      CheckSealed(ANode, Result, mAbstract);
+    end;
+  end;
+
+  /// <summary>Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).</summary>
+  procedure PushContainers(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode);
+  var
+    mIndex: Integer;
+  begin
+    for mIndex := ANode.ChildCount - 1 downto 0 do
+    begin
+      if ANode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+        TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
+      begin
+        APending.Push(ANode[mIndex]);
+      end;
+    end;
+  end;
+
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node, Body: TSyntaxNode;
-    Index: Integer;
-    mAbstract, mSealed: Boolean;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          Body := Node.FindChild(TSyntaxKind.ClassType);
-          if Body = nil then
-          begin
-            Body := Node.FindChild(TSyntaxKind.ObjectType);
-          end;
-          if Body <> nil then
-          begin
-            mAbstract := False;
-            mSealed := False;
-            if Body.Kind = TSyntaxKind.ClassType then
-            begin
-              CheckClassHeader(Body, mAbstract, mSealed);
-            end;
-            for Index := 0 to Body.ChildCount - 1 do
-            begin
-              if Body[Index].Kind = TSyntaxKind.RoutineHeader then
-              begin
-                CheckHeader(WithoutTypeParams(Node.Name), Body[Index]);
-              end;
-            end;
-            if mSealed then
-            begin
-              CheckSealed(Node, Body, mAbstract);
-            end;
-            Node := Body;
-          end;
+          mNode := CheckTypeDecl(mNode);
         end;
-        // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-            TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
-          begin
-            Pending.Push(Node[Index]);
-          end;
-        end;
+        PushContainers(mPending, mNode);
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -411,50 +444,65 @@ var
     Result := [TRuleFix.Create('Rumpf entfernen', [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
   end;
 
+  /// <summary>Token des Methodennamens AName hinter dem Klassennamen im Kopf AHeader; -1 ohne.</summary>
+  function QualifiedNameToken(AHeader: TSyntaxNode; const AName: string): Integer;
+  begin
+    Result := TokenAt(AHeader.StartOffset);
+    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AHeader.EndOffset) do
+    begin
+      if (Result > 0) and Tokens[Result - 1].IsSymbol('.') and
+        (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      begin
+        Exit;
+      end;
+      Inc(Result);
+    end;
+    Result := -1;
+  end;
+
+  /// <summary>Hat ARoutine einen Rumpf (Block oder asm)?</summary>
+  function HasBody(ARoutine: TSyntaxNode): Boolean;
+  begin
+    Result := (ARoutine.FindChild(TSyntaxKind.Block) <> nil) or (ARoutine.FindChild(TSyntaxKind.AsmBlock) <> nil);
+  end;
+
+  /// <summary>Gehört der Rumpf ARoutine zu einer abstrakten Methode AClassName.AName, und keine gleichnamige
+  /// nicht abstrakte wird mit ihm übersetzt?</summary>
+  function IsAbstractBody(ARoutine: TSyntaxNode; const AClassName, AName: string): Boolean;
+  var
+    mAbstract, mConcrete: Boolean;
+  begin
+    Lookup(AClassName, AName, TConditionalBranches.PathAt(Paths, TokenAt(ARoutine.StartOffset)), mAbstract,
+      mConcrete);
+    Result := mAbstract and not mConcrete;
+  end;
+
   procedure CheckBody(ARoutine: TSyntaxNode);
   var
-    Parts: TArray<string>;
-    ClassName, Name: string;
-    IsAbstract, IsConcrete: Boolean;
-    Header: TSyntaxNode;
-    First: Integer;
+    mParts: TArray<string>;
+    mClassName, mName: string;
+    mHeader: TSyntaxNode;
+    mFirst: Integer;
   begin
-    if (ARoutine.FindChild(TSyntaxKind.Block) = nil) and (ARoutine.FindChild(TSyntaxKind.AsmBlock) = nil) then
+    mParts := ARoutine.Name.Split(['.']);
+    if not HasBody(ARoutine) or (Length(mParts) < 2) then
     begin
       Exit;
     end;
-    Parts := ARoutine.Name.Split(['.']);
-    if Length(Parts) < 2 then
-    begin
-      Exit;
-    end;
-    ClassName := Parts[High(Parts) - 1];
-    Name := Parts[High(Parts)];
-    First := TokenAt(ARoutine.StartOffset);
-    Lookup(ClassName, Name, TConditionalBranches.PathAt(Paths, First), IsAbstract, IsConcrete);
-    if not IsAbstract or IsConcrete then
-    begin
-      Exit;
-    end;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header = nil then
+    mClassName := mParts[High(mParts) - 1];
+    mName := mParts[High(mParts)];
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader = nil) or not IsAbstractBody(ARoutine, mClassName, mName) then
     begin
       Exit;
     end;
     // Den Namen hinter dem Klassennamen markieren.
-    First := TokenAt(Header.StartOffset);
-    while (First < Length(Tokens)) and (Tokens[First].Offset < Header.EndOffset) and
-      not ((Tokens[First].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[First].Text, Name) and
-      (First > 0) and Tokens[First - 1].IsSymbol('.')) do
+    mFirst := QualifiedNameToken(mHeader, mName);
+    if mFirst >= 0 then
     begin
-      Inc(First);
+      AReport.Add(TokenRange(mFirst), Format('%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).',
+        [mClassName, mName]), TRuleConfidence.High, RemoveBody(ARoutine));
     end;
-    if (First >= Length(Tokens)) or (Tokens[First].Offset >= Header.EndOffset) then
-    begin
-      Exit;
-    end;
-    AReport.Add(TokenRange(First), Format('%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).',
-      [ClassName, Name]), TRuleConfidence.High, RemoveBody(ARoutine));
   end;
 
   // Rekursion nur in den implementation-Abschnitt (höchstens zwei Ebenen, unabhängig von der Ausdruckstiefe).

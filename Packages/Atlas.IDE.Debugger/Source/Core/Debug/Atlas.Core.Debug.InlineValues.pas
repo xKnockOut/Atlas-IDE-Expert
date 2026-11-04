@@ -161,10 +161,16 @@ var
 begin
   Result := False;
   if (AName = '') or CharInSet(AName[1], ['0'..'9']) or TAtlasDebugExpression.IsReserved(AName) then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(AName) do
+  begin
     if not (CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[Index]) > 127)) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -173,13 +179,21 @@ var
   Pair: TPair<string, TValue>;
 begin
   if FValues.Count = 0 then
+  begin
     Exit;
+  end;
   if FPreviousContext <> FContext then
+  begin
     FPrevious.Clear;
+  end;
   FPreviousContext := FContext;
   for Pair in FValues do
+  begin
     if Pair.Value.State = TAtlasInlineValueState.Ready then
+    begin
       FPrevious.AddOrSetValue(Pair.Key, Pair.Value.Raw);
+    end;
+  end;
 end;
 
 procedure TAtlasInlineValues.Start(const AFileName, AContext: string; AStoppedLine: Integer;
@@ -203,33 +217,51 @@ begin
   FContext := AContext;
   FStoppedLine := AStoppedLine;
   if APerLine < 1 then
+  begin
     APerLine := 1;
+  end;
   Sorted := TList<TAtlasInlineValueRef>.Create;
   try
     for Ref in ARefs do
+    begin
       if IsPlainIdentifier(Ref.Name) then
+      begin
         Sorted.Add(Ref);
+      end;
+    end;
     // Reihenfolge im Text; der Server liefert sie schon so, aber darauf verlässt sich die Anzeige nicht.
     Sorted.Sort(TDelegatedComparer<TAtlasInlineValueRef>.Construct(
       function(const ALeft, ARight: TAtlasInlineValueRef): Integer
       begin
         Result := ALeft.Line - ARight.Line;
         if Result = 0 then
+        begin
           Result := ALeft.Character - ARight.Character;
+        end;
       end));
     for Ref in Sorted do
     begin
       Key := KeyOf(Ref.Name);
       if not FLines.TryGetValue(Ref.Line, Names) then
+      begin
         Names := nil;
+      end;
       if Length(Names) >= APerLine then
+      begin
         Continue;
+      end;
       Seen := False;
       for Name in Names do
+      begin
         if Name = Key then
+        begin
           Seen := True;
+        end;
+      end;
       if Seen then
+      begin
         Continue;
+      end;
       FLines.AddOrSetValue(Ref.Line, Names + [Key]);
       if not FTypes.ContainsKey(Key) then
       begin
@@ -248,12 +280,20 @@ begin
     begin
       Result := Abs(ALeft - AStoppedLine) - Abs(ARight - AStoppedLine);
       if Result = 0 then
+      begin
         Result := ARight - ALeft;
+      end;
     end));
   for Line in Lines do
+  begin
     for Key in FLines[Line] do
+    begin
       if not FOrder.Contains(Key) then
+      begin
         FOrder.Add(Key);
+      end;
+    end;
+  end;
 end;
 
 procedure TAtlasInlineValues.Clear;
@@ -307,7 +347,9 @@ var
 begin
   Key := KeyOf(AName);
   if not FValues.ContainsKey(Key) then
+  begin
     Exit;
+  end;
   Value.Raw := Trim(ARaw);
   if AOk then
   begin
@@ -342,12 +384,16 @@ var
 begin
   Result := nil;
   if (FOrder.Count = 0) or not SameText(AFileName, FFileName) or not FLines.TryGetValue(ALine, Names) then
+  begin
     Exit;
+  end;
   for Key in Names do
   begin
     Value := FValues[Key];
     if not (Value.State in [TAtlasInlineValueState.Ready, TAtlasInlineValueState.Unavailable]) then
+    begin
       Continue;
+    end;
     Item.Name := FSpellings[Key];
     Item.Text := Value.Text;
     Item.State := Value.State;
@@ -366,7 +412,9 @@ begin
   Result := Trim(ARaw);
   Kind := LowerCase(ATypeName);
   if Kind.StartsWith('system.') then
+  begin
     Kind := Copy(Kind, Length('system.') + 1, MaxInt);
+  end;
   if (Kind = 'tdatetime') or (Kind = 'tdate') or (Kind = 'ttime') then
   begin
     Invariant := TFormatSettings.Invariant;
@@ -374,13 +422,21 @@ begin
       (Number < MaxDateTime) then
     begin
       if Kind = 'tdate' then
-        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant)
+      begin
+        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant);
+      end
       else if Kind = 'ttime' then
-        Result := FormatDateTime('hh:nn:ss', Number, Invariant)
+      begin
+        Result := FormatDateTime('hh:nn:ss', Number, Invariant);
+      end
       else if Frac(Number) = 0 then
-        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant)
+      begin
+        Result := FormatDateTime('yyyy-mm-dd', Number, Invariant);
+      end
       else
+      begin
         Result := FormatDateTime('yyyy-mm-dd hh:nn:ss', Number, Invariant);
+      end;
     end;
   end;
   // Zeilenumbrüche im Wert (mehrzeilige Strings) gehören nicht hinter das Zeilenende.
@@ -396,7 +452,9 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Item.Caption;
   end;
 end;

@@ -84,6 +84,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
+  System.Math,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates;
 
@@ -212,12 +213,42 @@ begin
   end;
 end;
 
-class function TAtlasTrackerQueryTest.Evaluate(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; AAnswered: Boolean; AStatus: Integer; const AText: string):
-  TAtlasTrackerQueryTestResult;
+/// <summary>Antwort 200: Treffer zählen, die ersten Kennungen merken.</summary>
+procedure ReadFound(var AResult: TAtlasTrackerQueryTestResult; const AProvider: IAtlasTrackerProvider;
+  const AText: string);
 var
   mIssues: TArray<TAtlasTrackerIssue>;
   mIndex: Integer;
+begin
+  // Eine Anmeldeseite (falsche Adresse, Proxy) antwortet auch mit 200.
+  if LooksLikeHtml(AText) or not AProvider.ParseList(AText, TAtlasTrackerQueryTest.MaxIssues + 1, mIssues) then
+  begin
+    AResult.Outcome := TAtlasTrackerQueryOutcome.Unreadable;
+    Exit;
+  end;
+  AResult.More := Length(mIssues) > TAtlasTrackerQueryTest.MaxIssues;
+  if AResult.More then
+  begin
+    SetLength(mIssues, TAtlasTrackerQueryTest.MaxIssues);
+  end;
+  AResult.Count := Length(mIssues);
+  for mIndex := 0 to Min(High(mIssues), TAtlasTrackerQueryTest.MaxKeys - 1) do
+  begin
+    AResult.Keys := AResult.Keys + [mIssues[mIndex].Key];
+  end;
+  if AResult.Count > 0 then
+  begin
+    AResult.Outcome := TAtlasTrackerQueryOutcome.Found;
+  end
+  else
+  begin
+    AResult.Outcome := TAtlasTrackerQueryOutcome.Empty;
+  end;
+end;
+
+class function TAtlasTrackerQueryTest.Evaluate(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; AAnswered: Boolean; AStatus: Integer; const AText: string):
+  TAtlasTrackerQueryTestResult;
 begin
   Result := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, AProvider.SentQuery(ATarget));
   if not AAnswered then
@@ -227,35 +258,7 @@ begin
   Result.HttpStatus := AStatus;
   case AStatus of
     200:
-      begin
-        // Eine Anmeldeseite (falsche Adresse, Proxy) antwortet auch mit 200.
-        if LooksLikeHtml(AText) or not AProvider.ParseList(AText, MaxIssues + 1, mIssues) then
-        begin
-          Result.Outcome := TAtlasTrackerQueryOutcome.Unreadable;
-          Exit;
-        end;
-        Result.More := Length(mIssues) > MaxIssues;
-        if Result.More then
-        begin
-          SetLength(mIssues, MaxIssues);
-        end;
-        Result.Count := Length(mIssues);
-        for mIndex := 0 to High(mIssues) do
-        begin
-          if mIndex < MaxKeys then
-          begin
-            Result.Keys := Result.Keys + [mIssues[mIndex].Key];
-          end;
-        end;
-        if Result.Count > 0 then
-        begin
-          Result.Outcome := TAtlasTrackerQueryOutcome.Found;
-        end
-        else
-        begin
-          Result.Outcome := TAtlasTrackerQueryOutcome.Empty;
-        end;
-      end;
+      ReadFound(Result, AProvider, AText);
     400, 422:
       begin
         Result.Outcome := TAtlasTrackerQueryOutcome.QueryRejected;

@@ -216,7 +216,9 @@ procedure TAtlasDebugViewer.ViewerClose(Sender: TObject; var AAction: TCloseActi
 begin
   AAction := caFree;
   if Assigned(FOnClosed) then
+  begin
     FOnClosed(Self);
+  end;
 end;
 
 procedure TAtlasDebugViewer.HideContent;
@@ -311,13 +313,19 @@ begin
       ListColumn := FList.Columns.Add;
       ListColumn.Caption := ColumnCaption(Column);
       if Column = TAtlasVisualizerColumn.Index then
-        ListColumn.Width := ScaleValue(56)
+      begin
+        ListColumn.Width := ScaleValue(56);
+      end
       else
+      begin
         ListColumn.Width := ScaleValue(160);
+      end;
     end;
     // Die letzte Spalte füllt den Rest.
     if FList.Columns.Count > 0 then
+    begin
       FList.Columns[FList.Columns.Count - 1].AutoSize := True;
+    end;
     FList.ShowColumnHeaders := True;
     FList.Items.Count := Length(CurrentRows);
   finally
@@ -386,11 +394,15 @@ begin
     FBitmap.SetSize(FView.Width, FView.Height);
     // $AARRGGBB liegt im Speicher als B, G, R, A: genau die Zeile eines 32-Bit-DIB.
     for Row := 0 to FView.Height - 1 do
+    begin
       Move(FView.Pixels[Row * FView.Width], FBitmap.ScanLine[Row]^, FView.Width * SizeOf(Cardinal));
+    end;
     FImage.SetBounds(0, 0, FView.Width, FView.Height);
   end
   else
+  begin
     FImage.SetBounds(0, 0, 0, 0);
+  end;
   FImageBox.Visible := True;
   FImage.Invalidate;
 end;
@@ -402,17 +414,25 @@ var
   X, Y: Integer;
 begin
   if FBitmap = nil then
+  begin
     Exit;
+  end;
   // Schachbrett hinter dem Bild, damit Transparenz und Weiß erkennbar sind.
   for Y := 0 to (FImage.Height - 1) div Cell do
+  begin
     for X := 0 to (FImage.Width - 1) div Cell do
     begin
       if Odd(X + Y) then
-        FImage.Canvas.Brush.Color := $00E0E0E0
+      begin
+        FImage.Canvas.Brush.Color := $00E0E0E0;
+      end
       else
+      begin
         FImage.Canvas.Brush.Color := clWhite;
+      end;
       FImage.Canvas.FillRect(Rect(X * Cell, Y * Cell, (X + 1) * Cell, (Y + 1) * Cell));
     end;
+  end;
   FImage.Canvas.Draw(0, 0, FBitmap);
 end;
 
@@ -436,25 +456,37 @@ end;
 function TAtlasDebugViewer.RowText(AIndex: Integer): string;
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Hex then
-    Result := TAtlasVisualizerFormat.HexLine(FView.Bytes, AIndex * 16)
+  begin
+    Result := TAtlasVisualizerFormat.HexLine(FView.Bytes, AIndex * 16);
+  end
   else if (AIndex >= 0) and (AIndex < Length(CurrentRows)) then
-    Result := string.Join(#9, CurrentRows[AIndex])
+  begin
+    Result := string.Join(#9, CurrentRows[AIndex]);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasDebugViewer.CurrentRows: TArray<TArray<string>>;
 begin
   if FAllFields.Visible and FAllFields.Checked then
-    Result := FView.AllRows
+  begin
+    Result := FView.AllRows;
+  end
   else
+  begin
     Result := FView.Rows;
+  end;
 end;
 
 procedure TAtlasDebugViewer.AllFieldsClick(Sender: TObject);
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Table then
+  begin
     ShowTable;
+  end;
 end;
 
 procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
@@ -470,13 +502,19 @@ begin
   end;
   Rows := CurrentRows;
   if (AItem.Index < 0) or (AItem.Index >= Length(Rows)) then
+  begin
     Exit;
+  end;
   Cells := Rows[AItem.Index];
   if Length(Cells) = 0 then
+  begin
     Exit;
+  end;
   AItem.Caption := Cells[0];
   for Index := 1 to High(Cells) do
+  begin
     AItem.SubItems.Add(Cells[Index]);
+  end;
 end;
 
 function TAtlasDebugViewer.SelectedText: string;
@@ -488,18 +526,24 @@ begin
   if FTree.Visible then
   begin
     if FTree.Selected <> nil then
+    begin
       Result := FTree.Selected.Text;
+    end;
     Exit;
   end;
   if FText.Visible then
   begin
     Result := FText.SelText;
     if Result = '' then
+    begin
       Result := FText.Text;
+    end;
     Exit;
   end;
   if not FList.Visible then
+  begin
     Exit;
+  end;
   Lines := TStringList.Create;
   try
     Item := FList.Selected;
@@ -520,7 +564,9 @@ var
 begin
   Text := SelectedText;
   if Text <> '' then
+  begin
     Clipboard.AsText := Text;
+  end;
 end;
 
 procedure TAtlasDebugViewer.ContentKeyDown(Sender: TObject; var AKey: Word; AShift: TShiftState);

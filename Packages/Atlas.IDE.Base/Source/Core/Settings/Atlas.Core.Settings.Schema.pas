@@ -76,20 +76,30 @@ var
 begin
   Value := ASchema.GetValue('type');
   if Value is TJSONString then
-    Result := TJSONString(Value).Value
+  begin
+    Result := TJSONString(Value).Value;
+  end
   else if Value is TJSONArray then
-    Result := 'mixed'
+  begin
+    Result := 'mixed';
+  end
   else if ASchema.GetValue('oneOf') <> nil then
-    Result := 'oneOf'
+  begin
+    Result := 'oneOf';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function DescriptionOf(ASchema: TJSONObject): string;
 begin
   Result := ASchema.GetValue<string>('description', '');
   if Result = '' then
+  begin
     Result := ASchema.GetValue<string>('markdownDescription', '');
+  end;
 end;
 
 /// <summary>Art eines Schemas; Complex, wenn kein einfaches Bedienelement passt.</summary>
@@ -106,30 +116,46 @@ begin
   if Enum is TJSONArray then
   begin
     for Value in TJSONArray(Enum) do
+    begin
       AChoices := AChoices + [Value.ToJSON];
+    end;
     Exit(TAtlasSettingKind.Choice);
   end;
   Kind := TypeOf(ASchema);
   if Kind = 'boolean' then
+  begin
     Exit(TAtlasSettingKind.Boolean_);
+  end;
   if (Kind = 'integer') or (Kind = 'number') then
+  begin
     Exit(TAtlasSettingKind.Integer_);
+  end;
   if Kind = 'string' then
+  begin
     Exit(TAtlasSettingKind.Text);
+  end;
   if Kind = 'array' then
   begin
     Items := ASchema.GetValue('items');
     if (Items is TJSONObject) and (TypeOf(TJSONObject(Items)) = 'string') then
+    begin
       Exit(TAtlasSettingKind.List);
+    end;
   end;
   // oneOf mit String-Variante (z. B. profile): als Text, solange der Wert ein String ist.
   if Kind = 'oneOf' then
   begin
     OneOf := ASchema.GetValue('oneOf');
     if OneOf is TJSONArray then
+    begin
       for Option in TJSONArray(OneOf) do
+      begin
         if (Option is TJSONObject) and (TypeOf(TJSONObject(Option)) = 'string') then
+        begin
           Exit(TAtlasSettingKind.Text);
+        end;
+      end;
+    end;
   end;
   Result := TAtlasSettingKind.Complex;
 end;
@@ -143,10 +169,14 @@ var
   Choice: string;
 begin
   if AJson = '' then
+  begin
     Exit(True);
+  end;
   Value := TJSONObject.ParseJSONValue(AJson);
   if Value = nil then
+  begin
     Exit(False);
+  end;
   try
     case Kind of
       TAtlasSettingKind.Boolean_:
@@ -160,16 +190,26 @@ begin
         begin
           Result := False;
           for Choice in Choices do
+          begin
             if Choice = Value.ToJSON then
+            begin
               Result := True;
+            end;
+          end;
         end;
       TAtlasSettingKind.List:
         begin
           Result := Value is TJSONArray;
           if Result then
+          begin
             for Item in TJSONArray(Value) do
+            begin
               if not (Item is TJSONString) or (Item is TJSONNumber) then
+              begin
                 Result := False;
+              end;
+            end;
+          end;
         end;
     else
       Result := True;
@@ -203,16 +243,24 @@ var
     Result.Page := ASchema.GetValue<string>('x-page', APage);
     Result.Description := DescriptionOf(ASchema);
     if Result.Description = '' then
+    begin
       Result.Description := AFallback;
+    end;
     Result.Kind := KindOf(ASchema, Result.Choices);
     Default_ := ASchema.GetValue('default');
     if Default_ <> nil then
+    begin
       Result.DefaultJson := Default_.ToJSON;
+    end;
     Result.Control := ASchema.GetValue<string>('x-control', '');
     Examples := ASchema.GetValue('examples');
     if Examples is TJSONArray then
+    begin
       for Example in TJSONArray(Examples) do
+      begin
         Result.Examples := Result.Examples + [Display(Example.ToJSON)];
+      end;
+    end;
     Restart := ASchema.GetValue('x-restart');
     Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
     Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
@@ -226,14 +274,20 @@ begin
   Root := TJSONObject.ParseJSONValue(ASchemaJson);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Properties := TJSONObject(Root).GetValue('properties');
     if not (Properties is TJSONObject) then
+    begin
       Exit;
+    end;
     for Pair in TJSONObject(Properties) do
     begin
       if not (Pair.JsonValue is TJSONObject) or (Pair.JsonString.Value = '$schema') then
+      begin
         Continue;
+      end;
       Child := Pair.JsonValue;
       Children := TJSONObject(Child).GetValue('properties');
       // Objekt mit mindestens einem einfachen Glied: Felder je Glied, komplexe Glieder als eigenes JSON-Feld
@@ -242,18 +296,28 @@ begin
       begin
         Simple := False;
         for Sub in TJSONObject(Children) do
+        begin
           if (Sub.JsonValue is TJSONObject) and
             (KindOf(TJSONObject(Sub.JsonValue), Choices) <> TAtlasSettingKind.Complex) then
+          begin
             Simple := True;
+          end;
+        end;
         for Sub in TJSONObject(Children) do
+        begin
           if not (Sub.JsonValue is TJSONObject) then
+          begin
             Simple := False;
+          end;
+        end;
         if Simple then
         begin
           for Sub in TJSONObject(Children) do
+          begin
             Result := Result + [Make(Pair.JsonString.Value + '.' + Sub.JsonString.Value,
               TJSONObject(Child).GetValue<string>('x-page', ''), TJSONObject(Sub.JsonValue),
               DescriptionOf(TJSONObject(Child)), TJSONObject(Child).GetValue<string>('x-scope', ''))];
+          end;
           Continue;
         end;
       end;
@@ -277,15 +341,23 @@ begin
   for Field in AFields do
   begin
     if (Field.Global <> AGlobal) and not Field.Both then
+    begin
       Continue;
+    end;
     Excluded := False;
     for Path in AExclude do
+    begin
       // Ein zusammengesetztes Feld (ganzes Objekt als JSON, z. B. "vcs" seit #1285) mit einem ausgeschlossenen
       // Glied fällt mit weg: Es im Dialog als Ganzes zu bearbeiten, überschriebe die Werte der eigenen Seite.
       if SameText(Path, Field.Path) or SameText(Copy(Path, 1, Length(Field.Path) + 1), Field.Path + '.') then
+      begin
         Excluded := True;
+      end;
+    end;
     if not Excluded then
+    begin
       Result := Result + [Field];
+    end;
   end;
 end;
 
@@ -300,10 +372,16 @@ begin
   begin
     Known := False;
     for Page in Result do
+    begin
       if SameText(Page, Field.Page) then
+      begin
         Known := True;
+      end;
+    end;
     if not Known then
+    begin
       Result := Result + [Field.Page];
+    end;
   end;
 end;
 
@@ -315,7 +393,9 @@ begin
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if Value is TJSONString then
+    begin
       Result := TJSONString(Value).Value;
+    end;
   finally
     Value.Free;
   end;

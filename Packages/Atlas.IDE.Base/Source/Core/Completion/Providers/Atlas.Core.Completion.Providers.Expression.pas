@@ -81,10 +81,14 @@ var
 begin
   AData := nil;
   if AContext.Trigger = TAtlasTriggers.History then
+  begin
     Exit(Assigned(FHistory));
+  end;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   Result := (Session <> nil) and (AContext.FileName <> '') and (AContext.Line >= 0);
   AData := Session;
 end;
@@ -97,16 +101,22 @@ var
 begin
   AState := Default(TAtlasFetchState);
   if AContext.Trigger = TAtlasTriggers.History then
+  begin
     Exit(HistoryItems(FHistory(), FHistoryCaption));
+  end;
   Response := TLspSession(AData).ExpressionCompletion(AContext.FileName, AContext.Line, AContext.Text,
     AContext.Character, FTimeoutMs);
   try
     if ACancelled() then
+    begin
       Exit(nil);
+    end;
     // Antwort {prefix, items} in der Form einer CompletionList.
     Result := nil;
     if Assigned(FItemsOf) then
+    begin
       Result := FItemsOf(Response);
+    end;
   finally
     Response.Free;
   end;

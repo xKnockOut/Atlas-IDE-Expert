@@ -334,6 +334,30 @@ begin
   end;
 end;
 
+/// <summary>#890: Bereiche oben im Baum in fester Reihenfolge; jede Seite hat Inhalt und keinen sichtbaren Reiter.</summary>
+procedure AssertTreeAreas(APage: TAtlasSettingsPage; const AAreas: TArray<TTreeNode>);
+var
+  mIndex: Integer;
+begin
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), AAreas[0].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), AAreas[6].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), AAreas[7].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), AAreas[8].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), AAreas[9].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), AAreas[13].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), AAreas[14].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), AAreas[15].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), AAreas[16].Text, 'eigener Bereich (#1280)');
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), AAreas[17].Text, 'eigener Bereich (#1285)');
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[18].Text);
+  Assert.IsTrue(APage.Pages.PageCount > 17, 'Unterpunkte haben eigene Seiten');
+  for mIndex := 0 to APage.Pages.PageCount - 1 do
+  begin
+    Assert.IsTrue(APage.Pages.Pages[mIndex].ControlCount > 0, APage.Pages.Pages[mIndex].Caption);
+    Assert.IsFalse(APage.Pages.Pages[mIndex].TabVisible, APage.Pages.Pages[mIndex].Caption);
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.TreeShowsAreasAndNodes;
 var
   Host: TForm;
@@ -341,7 +365,6 @@ var
   Areas: TArray<TTreeNode>;
   Node: TTreeNode;
   Minimap: TTabSheet;
-  Index: Integer;
 begin
   // #890: Bereiche oben im Baum, Funktionen als Unterpunkte; jeder Knoten zeigt nur seine Seite.
   TAtlasSettingsPage.ForgetTreeState;
@@ -352,23 +375,7 @@ begin
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
     Assert.AreEqual(19, Integer(Length(Areas)));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Areas[0].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Areas[6].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), Areas[7].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Areas[8].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Areas[9].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Areas[13].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[14].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[15].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), Areas[16].Text, 'eigener Bereich (#1280)');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), Areas[17].Text, 'eigener Bereich (#1285)');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[18].Text);
-    Assert.IsTrue(Page.Pages.PageCount > 17, 'Unterpunkte haben eigene Seiten');
-    for Index := 0 to Page.Pages.PageCount - 1 do
-    begin
-      Assert.IsTrue(Page.Pages.Pages[Index].ControlCount > 0, Page.Pages.Pages[Index].Caption);
-      Assert.IsFalse(Page.Pages.Pages[Index].TabVisible, Page.Pages.Pages[Index].Caption);
-    end;
+    AssertTreeAreas(Page, Areas);
     Assert.IsTrue(Page.Pages.ActivePage = Page.Pages.Pages[0], 'erstes Öffnen: Allgemein');
     // Unterpunkt „Minikarte“ unter „Editor“ mit ihren Einstellungen und nichts sonst.
     Minimap := Page.NodeSheet('editor.minimap');
@@ -686,35 +693,71 @@ begin
   end;
 end;
 
+/// <summary>Werte von der Vorgabe abweichend setzen.</summary>
+procedure SetPageRoundTrip(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.Enabled := False;
+  ASettings.VisibleRows := 12;
+  ASettings.Preview := True;
+  ASettings.HoverTooltip := False;
+  ASettings.XmlDocExpand := 'collapsed';
+  ASettings.XmlDocMaxLines := 7;
+  ASettings.ListWidth := 333;
+  ASettings.ActionsKey := 0;
+  ASettings.ExpandKey := $C057;
+  ASettings.EditorKeysPriority := True;
+  ASettings.SlashCommands := False;
+  ASettings.Snippets := False;
+  ASettings.ImportIdeTemplates := False;
+  ASettings.ProviderTimeLimitMs := 400;
+  ASettings.PairOwners := False;
+  ASettings.PairGuideWidth := 3;
+  ASettings.PairGuideOpacity := 70;
+  ASettings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
+  ASettings.CodeLensMetrics := False;
+  ASettings.TodoList := False;
+  ASettings.MetricsReport := False;
+  ASettings.TeamFile := False;
+  ASettings.StartProfiles := False;
+end;
+
+/// <summary>Über die Seite gespeicherte Werte.</summary>
+procedure AssertPageRoundTrip(const ASaved: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ASaved.Enabled);
+  Assert.AreEqual(12, ASaved.VisibleRows);
+  Assert.IsTrue(ASaved.Preview);
+  Assert.IsFalse(ASaved.HoverTooltip);
+  Assert.AreEqual('collapsed', ASaved.XmlDocExpand);
+  Assert.AreEqual(7, ASaved.XmlDocMaxLines);
+  Assert.AreEqual(333, ASaved.ListWidth);
+  Assert.AreEqual(0, ASaved.ActionsKey);
+  Assert.AreEqual($C057, ASaved.ExpandKey);
+  Assert.AreEqual($6057, ASaved.ShrinkKey);
+  Assert.IsTrue(ASaved.EditorKeysPriority);
+  Assert.IsFalse(ASaved.SlashCommands);
+  Assert.IsFalse(ASaved.Snippets);
+  Assert.IsFalse(ASaved.ImportIdeTemplates);
+  Assert.AreEqual(400, ASaved.ProviderTimeLimitMs);
+  Assert.IsFalse(ASaved.PairOwners);
+  Assert.AreEqual(3, ASaved.PairGuideWidth);
+  Assert.AreEqual(70, ASaved.PairGuideOpacity);
+  Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', ASaved.PairColorsLight);
+  Assert.AreEqual('', ASaved.PairColorsDark, 'Standardfarben bleiben leer');
+  Assert.IsFalse(ASaved.CodeLensMetrics, 'Code Lens Metriken (#66)');
+  Assert.IsFalse(ASaved.TodoList, 'Befehl (#68)');
+  Assert.IsFalse(ASaved.MetricsReport, 'Befehl (#66)');
+  Assert.IsFalse(ASaved.TeamFile, 'Projektdatei (#486)');
+  Assert.IsFalse(ASaved.StartProfiles, 'Startprofile (#575)');
+end;
+
 procedure TAtlasSettingsPageTests.CreatesAndRoundTripsSettings;
 var
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
 begin
   Settings := TAtlasPluginSettings.Defaults;
-  Settings.Enabled := False;
-  Settings.VisibleRows := 12;
-  Settings.Preview := True;
-  Settings.HoverTooltip := False;
-  Settings.XmlDocExpand := 'collapsed';
-  Settings.XmlDocMaxLines := 7;
-  Settings.ListWidth := 333;
-  Settings.ActionsKey := 0;
-  Settings.ExpandKey := $C057;
-  Settings.EditorKeysPriority := True;
-  Settings.SlashCommands := False;
-  Settings.Snippets := False;
-  Settings.ImportIdeTemplates := False;
-  Settings.ProviderTimeLimitMs := 400;
-  Settings.PairOwners := False;
-  Settings.PairGuideWidth := 3;
-  Settings.PairGuideOpacity := 70;
-  Settings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
-  Settings.CodeLensMetrics := False;
-  Settings.TodoList := False;
-  Settings.MetricsReport := False;
-  Settings.TeamFile := False;
-  Settings.StartProfiles := False;
+  SetPageRoundTrip(Settings);
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -723,31 +766,7 @@ begin
   finally
     Page.Free;
   end;
-  Assert.IsFalse(Saved.Enabled);
-  Assert.AreEqual(12, Saved.VisibleRows);
-  Assert.IsTrue(Saved.Preview);
-  Assert.IsFalse(Saved.HoverTooltip);
-  Assert.AreEqual('collapsed', Saved.XmlDocExpand);
-  Assert.AreEqual(7, Saved.XmlDocMaxLines);
-  Assert.AreEqual(333, Saved.ListWidth);
-  Assert.AreEqual(0, Saved.ActionsKey);
-  Assert.AreEqual($C057, Saved.ExpandKey);
-  Assert.AreEqual($6057, Saved.ShrinkKey);
-  Assert.IsTrue(Saved.EditorKeysPriority);
-  Assert.IsFalse(Saved.SlashCommands);
-  Assert.IsFalse(Saved.Snippets);
-  Assert.IsFalse(Saved.ImportIdeTemplates);
-  Assert.AreEqual(400, Saved.ProviderTimeLimitMs);
-  Assert.IsFalse(Saved.PairOwners);
-  Assert.AreEqual(3, Saved.PairGuideWidth);
-  Assert.AreEqual(70, Saved.PairGuideOpacity);
-  Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', Saved.PairColorsLight);
-  Assert.AreEqual('', Saved.PairColorsDark, 'Standardfarben bleiben leer');
-  Assert.IsFalse(Saved.CodeLensMetrics, 'Code Lens Metriken (#66)');
-  Assert.IsFalse(Saved.TodoList, 'Befehl (#68)');
-  Assert.IsFalse(Saved.MetricsReport, 'Befehl (#66)');
-  Assert.IsFalse(Saved.TeamFile, 'Projektdatei (#486)');
-  Assert.IsFalse(Saved.StartProfiles, 'Startprofile (#575)');
+  AssertPageRoundTrip(Saved);
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;
@@ -791,6 +810,26 @@ begin
   end;
 end;
 
+/// <summary>Antwort noch während des Ereignisses, wie ohne Server.</summary>
+procedure AnswerIndexMetricsAtOnce(APage: TAtlasSettingsPage);
+begin
+  // Antwort noch während des Ereignisses, wie ohne Server.
+  APage.OnIndexMetrics :=
+    procedure
+    begin
+      APage.IndexAnswered('Units: 3');
+    end;
+end;
+
+/// <summary>Antwort auf den Neuaufbau gibt die Befehle wieder frei.</summary>
+procedure AnswerIndexRebuild(APage: TAtlasSettingsPage);
+begin
+  APage.IndexAnswered('wird neu aufgebaut');
+  Assert.IsFalse(APage.IndexBusy);
+  Assert.AreEqual('wird neu aufgebaut', APage.IndexInfo.Caption);
+  Assert.IsTrue(APage.IndexRebuild.Enabled and APage.IndexClear.Enabled);
+end;
+
 procedure TAtlasSettingsPageTests.IndexSectionRoundTripsAndRunsCommands;
 var
   Page: TAtlasSettingsPage;
@@ -810,12 +849,7 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'ohne Server keine Befehle');
-    // Antwort noch während des Ereignisses, wie ohne Server.
-    Page.OnIndexMetrics :=
-      procedure
-      begin
-        Page.IndexAnswered('Units: 3');
-      end;
+    AnswerIndexMetricsAtOnce(Page);
     // Antwort erst später, wie bei einem Server, der gerade indexiert.
     Page.OnIndexRebuild :=
       procedure
@@ -843,10 +877,7 @@ begin
     Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'gesperrt bis zur Antwort');
     Page.IndexRebuild.Click;
     Assert.AreEqual(1, Rebuilds, 'kein zweiter Befehl, solange einer läuft');
-    Page.IndexAnswered('wird neu aufgebaut');
-    Assert.IsFalse(Page.IndexBusy);
-    Assert.AreEqual('wird neu aufgebaut', Page.IndexInfo.Caption);
-    Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
+    AnswerIndexRebuild(Page);
     Page.IndexClear.Click;
     Assert.AreEqual(0, Cleared, 'abgelehnt: nichts löschen');
     Confirm := True;
@@ -1116,6 +1147,106 @@ begin
   end;
 end;
 
+/// <summary>Debugger-Schalter der Seite mit den Vorgaben.</summary>
+procedure AssertDebugPageDefaults(APage: TAtlasSettingsPage);
+begin
+  Assert.IsTrue(APage.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
+  Assert.IsTrue(APage.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
+  Assert.IsTrue(APage.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
+  Assert.IsTrue(APage.DebugExplainUnavailableCheck.Checked, 'debug.explainUnavailable (#840)');
+  Assert.IsTrue(APage.DebugCompletionInDialogsCheck.Checked, 'debug.completionInDialogs (#538)');
+  Assert.IsTrue(APage.DebugEvaluateWindowCheck.Checked, 'debug.evaluateWindow (#784)');
+  Assert.IsTrue(APage.DebugEvaluateReplaceCtrlF7Check.Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(APage.DebugExplainAccessViolationCheck.Checked, 'debug.explainAccessViolation (#865)');
+  Assert.IsFalse(APage.DebugExplainAccessViolationAllowCallsCheck.Checked, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsTrue(APage.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
+  Assert.IsTrue(APage.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
+  Assert.IsFalse(APage.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
+  Assert.IsTrue(APage.DebugExceptionBannerIgnoreAtLocationCheck.Checked,
+    'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(APage.DebugInlineValuesCheck.Checked, 'debug.inlineValues (#508)');
+  Assert.AreEqual('5', APage.DebugInlineValuesPerLineEdit.Text, 'debug.inlineValuesPerLine (#508)');
+end;
+
+/// <summary>Alle Debugger-Schalter der Seite umstellen.</summary>
+procedure EditDebugPage(APage: TAtlasSettingsPage);
+begin
+  APage.TestDebugCheck.Checked := False;
+  APage.TestBreakAtStartCheck.Checked := False;
+  APage.DebugHoverValuesCheck.Checked := False;
+  APage.DebugExplainUnavailableCheck.Checked := False;
+  APage.DebugCompletionInDialogsCheck.Checked := False;
+  APage.DebugEvaluateWindowCheck.Checked := False;
+  APage.DebugEvaluateReplaceCtrlF7Check.Checked := False;
+  APage.DebugExplainAccessViolationCheck.Checked := False;
+  APage.DebugExplainAccessViolationAllowCallsCheck.Checked := True;
+  APage.DebugExceptionHistoryCheck.Checked := False;
+  APage.DebugJustMyCodeCheck.Checked := False;
+  APage.DebugExceptionBannerCheck.Checked := True;
+  APage.DebugExceptionBannerIgnoreAtLocationCheck.Checked := False;
+  APage.DebugInlineValuesCheck.Checked := False;
+  APage.DebugInlineValuesPerLineEdit.Text := '3';
+  APage.DebugOwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
+end;
+
+/// <summary>Umgestellte Debugger-Schalter gespeichert.</summary>
+procedure AssertDebugSaved(const ASaved: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ASaved.TestDebug);
+  Assert.IsFalse(ASaved.TestBreakAtStart);
+  Assert.IsFalse(ASaved.DebugHoverValues);
+  Assert.IsFalse(ASaved.DebugExplainUnavailable);
+  Assert.IsFalse(ASaved.DebugCompletionInDialogs);
+  Assert.IsFalse(ASaved.DebugEvaluateWindow);
+  Assert.IsFalse(ASaved.DebugEvaluateReplaceCtrlF7);
+  Assert.IsFalse(ASaved.DebugExplainAccessViolation);
+  Assert.IsTrue(ASaved.DebugExplainAccessViolationAllowCalls);
+  Assert.IsFalse(ASaved.DebugExceptionHistory);
+  Assert.IsFalse(ASaved.DebugJustMyCode);
+  Assert.IsTrue(ASaved.DebugExceptionBanner);
+  Assert.IsFalse(ASaved.DebugExceptionBannerIgnoreAtLocation);
+  Assert.IsFalse(ASaved.DebugInlineValues);
+  Assert.AreEqual(3, ASaved.DebugInlineValuesPerLine);
+  Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
+end;
+
+/// <summary>Debugger-Werte für das erneute Laden zurückstellen.</summary>
+procedure SetDebugSaved(var ASaved: TAtlasPluginSettings);
+begin
+  ASaved.TestBreakAtStart := True;
+  ASaved.DebugHoverValues := True;
+  ASaved.DebugExplainUnavailable := True;
+  ASaved.DebugCompletionInDialogs := True;
+  ASaved.DebugEvaluateWindow := True;
+  ASaved.DebugEvaluateReplaceCtrlF7 := True;
+  ASaved.DebugExplainAccessViolation := True;
+  ASaved.DebugExplainAccessViolationAllowCalls := False;
+  ASaved.DebugExceptionHistory := True;
+  ASaved.DebugJustMyCode := True;
+  ASaved.DebugExceptionBanner := False;
+  ASaved.DebugExceptionBannerIgnoreAtLocation := True;
+  ASaved.DebugInlineValues := True;
+end;
+
+/// <summary>Debugger-Schalter der Seite nach erneutem Laden.</summary>
+procedure AssertDebugReloaded(APage: TAtlasSettingsPage);
+begin
+  Assert.IsFalse(APage.TestDebugCheck.Checked);
+  Assert.IsTrue(APage.TestBreakAtStartCheck.Checked);
+  Assert.IsTrue(APage.DebugHoverValuesCheck.Checked);
+  Assert.IsTrue(APage.DebugExplainUnavailableCheck.Checked);
+  Assert.IsTrue(APage.DebugCompletionInDialogsCheck.Checked);
+  Assert.IsTrue(APage.DebugEvaluateWindowCheck.Checked);
+  Assert.IsTrue(APage.DebugEvaluateReplaceCtrlF7Check.Checked);
+  Assert.IsTrue(APage.DebugExplainAccessViolationCheck.Checked);
+  Assert.IsFalse(APage.DebugExplainAccessViolationAllowCallsCheck.Checked);
+  Assert.IsTrue(APage.DebugExceptionHistoryCheck.Checked);
+  Assert.IsTrue(APage.DebugJustMyCodeCheck.Checked);
+  Assert.IsFalse(APage.DebugExceptionBannerCheck.Checked);
+  Assert.IsTrue(APage.DebugExceptionBannerIgnoreAtLocationCheck.Checked);
+  Assert.IsTrue(APage.DebugInlineValuesCheck.Checked);
+end;
+
 procedure TAtlasSettingsPageTests.TestDebugRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -1124,84 +1255,14 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
-    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
-    Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
-    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked, 'debug.explainUnavailable (#840)');
-    Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked, 'debug.completionInDialogs (#538)');
-    Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked, 'debug.evaluateWindow (#784)');
-    Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
-    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked, 'debug.explainAccessViolation (#865)');
-    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked, 'debug.explainAccessViolation.allowCalls (#865)');
-    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
-    Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
-    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
-    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked,
-      'debug.exceptionBanner.ignoreAtLocation (#783)');
-    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked, 'debug.inlineValues (#508)');
-    Assert.AreEqual('5', Page.DebugInlineValuesPerLineEdit.Text, 'debug.inlineValuesPerLine (#508)');
-    Page.TestDebugCheck.Checked := False;
-    Page.TestBreakAtStartCheck.Checked := False;
-    Page.DebugHoverValuesCheck.Checked := False;
-    Page.DebugExplainUnavailableCheck.Checked := False;
-    Page.DebugCompletionInDialogsCheck.Checked := False;
-    Page.DebugEvaluateWindowCheck.Checked := False;
-    Page.DebugEvaluateReplaceCtrlF7Check.Checked := False;
-    Page.DebugExplainAccessViolationCheck.Checked := False;
-    Page.DebugExplainAccessViolationAllowCallsCheck.Checked := True;
-    Page.DebugExceptionHistoryCheck.Checked := False;
-    Page.DebugJustMyCodeCheck.Checked := False;
-    Page.DebugExceptionBannerCheck.Checked := True;
-    Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked := False;
-    Page.DebugInlineValuesCheck.Checked := False;
-    Page.DebugInlineValuesPerLineEdit.Text := '3';
-    Page.DebugOwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
+    AssertDebugPageDefaults(Page);
+    EditDebugPage(Page);
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.TestDebug);
-    Assert.IsFalse(Saved.TestBreakAtStart);
-    Assert.IsFalse(Saved.DebugHoverValues);
-    Assert.IsFalse(Saved.DebugExplainUnavailable);
-    Assert.IsFalse(Saved.DebugCompletionInDialogs);
-    Assert.IsFalse(Saved.DebugEvaluateWindow);
-    Assert.IsFalse(Saved.DebugEvaluateReplaceCtrlF7);
-    Assert.IsFalse(Saved.DebugExplainAccessViolation);
-    Assert.IsTrue(Saved.DebugExplainAccessViolationAllowCalls);
-    Assert.IsFalse(Saved.DebugExceptionHistory);
-    Assert.IsFalse(Saved.DebugJustMyCode);
-    Assert.IsTrue(Saved.DebugExceptionBanner);
-    Assert.IsFalse(Saved.DebugExceptionBannerIgnoreAtLocation);
-    Assert.IsFalse(Saved.DebugInlineValues);
-    Assert.AreEqual(3, Saved.DebugInlineValuesPerLine);
-    Assert.AreEqual('C:\Komponenten', Saved.DebugOwnCodeFolders, 'bereinigt (#578)');
-    Saved.TestBreakAtStart := True;
-    Saved.DebugHoverValues := True;
-    Saved.DebugExplainUnavailable := True;
-    Saved.DebugCompletionInDialogs := True;
-    Saved.DebugEvaluateWindow := True;
-    Saved.DebugEvaluateReplaceCtrlF7 := True;
-    Saved.DebugExplainAccessViolation := True;
-    Saved.DebugExplainAccessViolationAllowCalls := False;
-    Saved.DebugExceptionHistory := True;
-    Saved.DebugJustMyCode := True;
-    Saved.DebugExceptionBanner := False;
-    Saved.DebugExceptionBannerIgnoreAtLocation := True;
-    Saved.DebugInlineValues := True;
+    AssertDebugSaved(Saved);
+    SetDebugSaved(Saved);
     Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.TestDebugCheck.Checked);
-    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
-    Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
-    Assert.IsTrue(Page.DebugExplainUnavailableCheck.Checked);
-    Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked);
-    Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked);
-    Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked);
-    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked);
-    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked);
-    Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
-    Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
-    Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);
-    Assert.IsTrue(Page.DebugExceptionBannerIgnoreAtLocationCheck.Checked);
-    Assert.IsTrue(Page.DebugInlineValuesCheck.Checked);
+    AssertDebugReloaded(Page);
   finally
     Page.Free;
   end;
@@ -1503,6 +1564,203 @@ begin
   end;
 end;
 
+/// <summary>Vorgaben und Änderungen: Blockende, Datenfluss, Austrittspunkte, Unterstreichung, Ausdruckstyp.</summary>
+procedure EditHideElementMarkers(APage: TAtlasSettingsPage);
+begin
+  Assert.IsTrue(APage.BlockEndLabelsCheck.Checked, 'standardmäßig an');
+  Assert.AreEqual(ShortCutToText($40BE), APage.HideElementKey.Text, 'Strg+.');
+  Assert.AreEqual('25', APage.BlockEndLabelsMinLinesEdit.Text, 'Mindestlänge (#620)');
+  Assert.IsTrue(APage.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
+  Assert.IsTrue(APage.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
+  Assert.AreEqual('4', APage.RecursionMarkersDepthEdit.Text);
+  // Datenfluss (#690).
+  Assert.IsTrue(APage.DataFlowCheck.Checked, 'navigation.dataFlow (#690)');
+  Assert.AreEqual('6', APage.DataFlowMaxDepthEdit.Text);
+  Assert.IsFalse(APage.DataFlowExcludeTestsCheck.Checked);
+  APage.DataFlowCheck.Checked := False;
+  APage.DataFlowMaxDepthEdit.Text := '9';
+  APage.DataFlowExcludeTestsCheck.Checked := True;
+  Assert.IsTrue(APage.ExitPointsCheck.Checked, 'Austrittspunkte standardmaessig an (#698)');
+  Assert.IsTrue(APage.ExitPointsExceptionsCheck.Checked);
+  Assert.IsTrue(APage.ExitPointsLoopsCheck.Checked);
+  Assert.IsTrue(APage.ExitPointsBadgeCheck.Checked);
+  Assert.IsTrue(APage.ReassignedCheck.Checked, 'Unterstreichung standardmaessig an (#712)');
+  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.Locals).Checked);
+  Assert.IsFalse(APage.ReassignedTargetCheck(TAtlasReassignedTarget.LoopVars).Checked);
+  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked);
+  Assert.IsFalse(APage.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
+  Assert.AreEqual(0, APage.ReassignedStyleBox.Choice, 'gepunktet');
+  Assert.AreEqual('theme', APage.ReassignedColorEdit.Text);
+  Assert.IsTrue(APage.ExpressionTypeCheck.Checked, 'Typ des Ausdrucks standardmaessig an (#689)');
+  Assert.IsTrue(APage.ExpressionTypeConversionsCheck.Checked);
+  Assert.IsTrue(APage.ExpressionTypeConstValueCheck.Checked);
+  Assert.AreEqual(ShortCutToText($6054), APage.ExpressionTypeKey.Text);
+  Assert.AreEqual(0, APage.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
+end;
+
+/// <summary>Vorgaben und Änderungen: Atlas-Spalte, gleicher Text, Blockkommentar.</summary>
+procedure EditHideElementSelection(APage: TAtlasSettingsPage);
+begin
+  // Atlas-Spalte in der Zeilenleiste (#768).
+  Assert.IsTrue(APage.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
+  Assert.IsTrue(APage.GutterColumnProblemsCheck.Checked);
+  Assert.IsTrue(APage.GutterColumnCodeActionsCheck.Checked);
+  Assert.IsTrue(APage.GutterColumnOverridesCheck.Checked);
+  APage.GutterColumnCodeActionsCheck.Checked := False;
+  APage.GutterColumnOverridesCheck.Checked := False;
+  // Gleichen Text hervorheben (#709).
+  Assert.IsTrue(APage.SelectionMatchesCheck.Checked, 'gleichen Text hervorheben standardmäßig an (#709)');
+  Assert.AreEqual('3', APage.SelectionMatchesMinLength.Text);
+  Assert.IsFalse(APage.SelectionMatchesCaseSensitiveCheck.Checked);
+  Assert.IsFalse(APage.SelectionMatchesWholeWordCheck.Checked);
+  Assert.IsTrue(APage.SelectionMatchesNavigateF3Check.Checked);
+  Assert.AreEqual('1000', APage.SelectionMatchesMaxMatches.Text);
+  APage.SelectionMatchesMinLength.Text := '4';
+  APage.SelectionMatchesWholeWordCheck.Checked := True;
+  APage.SelectionMatchesNavigateF3Check.Checked := False;
+  APage.SelectionMatchesMaxMatches.Text := '50';
+  // Blockkommentar umschalten (#703).
+  Assert.IsTrue(APage.ToggleBlockComment.Checked, 'Blockkommentar umschalten standardmäßig an (#703)');
+  Assert.AreEqual(ShortCutToText($A041), APage.ToggleBlockCommentKey.Text);
+  Assert.AreEqual(0, APage.ToggleBlockCommentStyle.Choice);
+  Assert.AreEqual(0, APage.ToggleBlockCommentFallback.Choice);
+  Assert.IsFalse(APage.ToggleBlockCommentOwnLines.Checked);
+  Assert.AreEqual(0, APage.ToggleBlockCommentScope.Choice);
+  APage.ToggleBlockCommentStyle.Choice := 1;
+  APage.ToggleBlockCommentFallback.Choice := 1;
+  APage.ToggleBlockCommentOwnLines.Checked := True;
+  APage.ToggleBlockCommentScope.Choice := 1;
+end;
+
+/// <summary>Vorgaben und Änderungen: Zeilen, Umschließen, Löschen, Fehlertext, Abschalten.</summary>
+procedure EditHideElementCommands(APage: TAtlasSettingsPage);
+begin
+  // Neue Zeile ober- oder unterhalb (#700).
+  Assert.IsTrue(APage.NewLineAround.Checked, 'Neue Zeile ober-/unterhalb standardmäßig an (#700)');
+  Assert.AreEqual(ShortCutToText($200D), APage.NewLineBelowKey.Text);
+  Assert.AreEqual(ShortCutToText($C00D), APage.NewLineAboveKey.Text);
+  Assert.IsTrue(APage.NewLineAroundStatementAware.Checked);
+  APage.NewLineAroundStatementAware.Checked := False;
+  // Umschließung entfernen (#657).
+  Assert.IsTrue(APage.Unwrap.Checked, 'Umschließung entfernen standardmäßig an (#657)');
+  Assert.AreEqual(ShortCutToText($602E), APage.UnwrapKey.Text);
+  APage.Unwrap.Checked := False;
+  // Sicher löschen (#716).
+  Assert.IsTrue(APage.SafeDelete.Checked, 'Sicher löschen standardmäßig an (#716)');
+  Assert.AreEqual(ShortCutToText($802E), APage.SafeDeleteKey.Text);
+  APage.SafeDelete.Checked := False;
+  // Markierung beim Tippen umschließen (#672).
+  Assert.IsTrue(APage.WrapSelection.Checked, 'Umschließen standardmäßig an (#672)');
+  Assert.AreEqual('([{''', APage.WrapSelectionChars.Text);
+  APage.WrapSelectionChars.Text := ' ([<';
+  // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
+  Assert.AreEqual(1, APage.InlineDiagnostics.Choice, 'nur Fehler');
+  Assert.IsTrue(APage.ProblemsStatusCounterCheck.Checked);
+  Assert.AreEqual(ShortCutToText($C077), APage.NextProblemKey.Text);
+  APage.BlockEndLabelsCheck.Checked := False;
+  APage.DimUnusedUsesCheck.Checked := False;
+  APage.RecursionMarkersCheck.Checked := False;
+  APage.RecursionMarkersDepthEdit.Text := '2';
+  APage.ExitPointsCheck.Checked := False;
+  APage.ExitPointsBadgeCheck.Checked := False;
+  APage.ReassignedCheck.Checked := False;
+  APage.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked := False;
+  APage.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
+  APage.ReassignedStyleBox.Choice := 1;
+  APage.ReassignedColorEdit.Text := 'rot';
+  APage.ExpressionTypeCheck.Checked := False;
+  APage.ExpressionTypeConstValueCheck.Checked := False;
+  APage.ExpressionTypeKey.Text := '';
+  APage.MethodPlacementBox.Choice := 2;
+  APage.InlineDiagnostics.Choice := 2;
+  APage.ProblemsStatusCounterCheck.Checked := False;
+  APage.PreviousProblemKey.Text := '';
+  APage.BlockEndLabelsMinLinesEdit.Text := '30';
+  APage.HideElementKey.Text := '';
+end;
+
+/// <summary>Gespeichert: Blockende, Datenfluss, Austrittspunkte, Unterstreichung, Ausdruckstyp, Spalte.</summary>
+procedure AssertHideElementSavedMarkers(const ASaved: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ASaved.BlockEndLabels, 'abschaltbar');
+  Assert.AreEqual(30, ASaved.BlockEndLabelsMinLines);
+  Assert.IsFalse(ASaved.DimUnusedUses);
+  Assert.IsFalse(ASaved.RecursionMarkers);
+  Assert.AreEqual(2, ASaved.RecursionMarkersDepth);
+  Assert.IsFalse(ASaved.DataFlow);
+  Assert.AreEqual(9, ASaved.DataFlowMaxDepth);
+  Assert.IsTrue(ASaved.DataFlowExcludeTests);
+  Assert.IsFalse(ASaved.ExitPoints);
+  Assert.IsTrue(ASaved.ExitPointsExceptions);
+  Assert.IsTrue(ASaved.ExitPointsLoops);
+  Assert.IsFalse(ASaved.ExitPointsBadge);
+  Assert.IsFalse(ASaved.Reassigned);
+  Assert.AreEqual('locals,varParams', ASaved.ReassignedTargets);
+  Assert.AreEqual('solid', ASaved.ReassignedStyle);
+  Assert.AreEqual('theme', ASaved.ReassignedColor, 'Unlesbares wird theme');
+  Assert.IsFalse(ASaved.ExpressionType);
+  Assert.IsTrue(ASaved.ExpressionTypeConversions);
+  Assert.IsFalse(ASaved.ExpressionTypeConstValue);
+  Assert.AreEqual('off', ASaved.MethodPlacement, 'Methodenreihenfolge abschaltbar');
+  Assert.AreEqual(0, ASaved.ExpressionTypeKey, 'leer = kein Kuerzel');
+  Assert.IsTrue(ASaved.GutterColumn);
+  Assert.IsTrue(ASaved.GutterColumnProblems);
+  Assert.IsFalse(ASaved.GutterColumnCodeActions);
+  Assert.IsFalse(ASaved.GutterColumnOverrides);
+end;
+
+/// <summary>Gespeichert: gleicher Text, Blockkommentar, Zeilen, Umschließen, Löschen, Fehlertext.</summary>
+procedure AssertHideElementSavedEditing(const ASaved: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASaved.SelectionMatches);
+  Assert.AreEqual(4, ASaved.SelectionMatchesMinLength);
+  Assert.IsFalse(ASaved.SelectionMatchesCaseSensitive);
+  Assert.IsTrue(ASaved.SelectionMatchesWholeWord);
+  Assert.IsFalse(ASaved.SelectionMatchesNavigateF3);
+  Assert.AreEqual(50, ASaved.SelectionMatchesMaxMatches);
+  Assert.IsTrue(ASaved.ToggleBlockComment);
+  Assert.AreEqual($A041, ASaved.ToggleBlockCommentKey);
+  Assert.AreEqual('parens', ASaved.ToggleBlockCommentStyle);
+  Assert.AreEqual('refuse', ASaved.ToggleBlockCommentFallback);
+  Assert.IsTrue(ASaved.ToggleBlockCommentOwnLines);
+  Assert.AreEqual('line', ASaved.ToggleBlockCommentWithoutSelection);
+  Assert.IsTrue(ASaved.NewLineAround);
+  Assert.AreEqual($200D, ASaved.NewLineBelowKey);
+  Assert.AreEqual($C00D, ASaved.NewLineAboveKey);
+  Assert.IsFalse(ASaved.NewLineAroundStatementAware);
+  Assert.IsFalse(ASaved.Unwrap);
+  Assert.AreEqual($602E, ASaved.UnwrapKey);
+  Assert.IsFalse(ASaved.SafeDelete);
+  Assert.AreEqual($802E, ASaved.SafeDeleteKey);
+  Assert.IsTrue(ASaved.WrapSelection);
+  Assert.AreEqual('([<', ASaved.WrapSelectionChars);
+  Assert.AreEqual('errorsAndWarnings', ASaved.InlineDiagnostics);
+  Assert.IsFalse(ASaved.ProblemsStatusCounter);
+  Assert.AreEqual($C077, ASaved.NextProblemKey);
+  Assert.AreEqual(0, ASaved.PreviousProblemKey);
+  Assert.AreEqual(0, ASaved.HideElementKey, 'leer = keine Taste');
+end;
+
+/// <summary>Seite nach erneutem Laden.</summary>
+procedure AssertHideElementReloaded(APage: TAtlasSettingsPage);
+begin
+  Assert.IsFalse(APage.BlockEndLabelsCheck.Checked);
+  Assert.IsFalse(APage.DimUnusedUsesCheck.Checked);
+  Assert.IsFalse(APage.RecursionMarkersCheck.Checked);
+  Assert.IsFalse(APage.ExitPointsCheck.Checked);
+  Assert.IsFalse(APage.ExitPointsBadgeCheck.Checked);
+  Assert.IsFalse(APage.ReassignedCheck.Checked);
+  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
+  Assert.AreEqual(1, APage.ReassignedStyleBox.Choice);
+  Assert.IsFalse(APage.ExpressionTypeCheck.Checked);
+  Assert.IsFalse(APage.ExpressionTypeConstValueCheck.Checked);
+  Assert.IsFalse(APage.GutterColumnOverridesCheck.Checked);
+  Assert.IsTrue(APage.SelectionMatchesWholeWordCheck.Checked);
+  Assert.AreEqual(1, APage.ToggleBlockCommentScope.Choice);
+  Assert.AreEqual(2, APage.InlineDiagnostics.Choice);
+  Assert.AreEqual('', APage.HideElementKey.Text);
+end;
+
 procedure TAtlasSettingsPageTests.HideElementRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -1511,176 +1769,15 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(Page.BlockEndLabelsCheck.Checked, 'standardmäßig an');
-    Assert.AreEqual(ShortCutToText($40BE), Page.HideElementKey.Text, 'Strg+.');
-    Assert.AreEqual('25', Page.BlockEndLabelsMinLinesEdit.Text, 'Mindestlänge (#620)');
-    Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
-    Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
-    Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
-    // Datenfluss (#690).
-    Assert.IsTrue(Page.DataFlowCheck.Checked, 'navigation.dataFlow (#690)');
-    Assert.AreEqual('6', Page.DataFlowMaxDepthEdit.Text);
-    Assert.IsFalse(Page.DataFlowExcludeTestsCheck.Checked);
-    Page.DataFlowCheck.Checked := False;
-    Page.DataFlowMaxDepthEdit.Text := '9';
-    Page.DataFlowExcludeTestsCheck.Checked := True;
-    Assert.IsTrue(Page.ExitPointsCheck.Checked, 'Austrittspunkte standardmaessig an (#698)');
-    Assert.IsTrue(Page.ExitPointsExceptionsCheck.Checked);
-    Assert.IsTrue(Page.ExitPointsLoopsCheck.Checked);
-    Assert.IsTrue(Page.ExitPointsBadgeCheck.Checked);
-    Assert.IsTrue(Page.ReassignedCheck.Checked, 'Unterstreichung standardmaessig an (#712)');
-    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.Locals).Checked);
-    Assert.IsFalse(Page.ReassignedTargetCheck(TAtlasReassignedTarget.LoopVars).Checked);
-    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked);
-    Assert.IsFalse(Page.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
-    Assert.AreEqual(0, Page.ReassignedStyleBox.Choice, 'gepunktet');
-    Assert.AreEqual('theme', Page.ReassignedColorEdit.Text);
-    Assert.IsTrue(Page.ExpressionTypeCheck.Checked, 'Typ des Ausdrucks standardmaessig an (#689)');
-    Assert.IsTrue(Page.ExpressionTypeConversionsCheck.Checked);
-    Assert.IsTrue(Page.ExpressionTypeConstValueCheck.Checked);
-    Assert.AreEqual(ShortCutToText($6054), Page.ExpressionTypeKey.Text);
-    Assert.AreEqual(0, Page.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
-    // Atlas-Spalte in der Zeilenleiste (#768).
-    Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
-    Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
-    Assert.IsTrue(Page.GutterColumnCodeActionsCheck.Checked);
-    Assert.IsTrue(Page.GutterColumnOverridesCheck.Checked);
-    Page.GutterColumnCodeActionsCheck.Checked := False;
-    Page.GutterColumnOverridesCheck.Checked := False;
-    // Gleichen Text hervorheben (#709).
-    Assert.IsTrue(Page.SelectionMatchesCheck.Checked, 'gleichen Text hervorheben standardmäßig an (#709)');
-    Assert.AreEqual('3', Page.SelectionMatchesMinLength.Text);
-    Assert.IsFalse(Page.SelectionMatchesCaseSensitiveCheck.Checked);
-    Assert.IsFalse(Page.SelectionMatchesWholeWordCheck.Checked);
-    Assert.IsTrue(Page.SelectionMatchesNavigateF3Check.Checked);
-    Assert.AreEqual('1000', Page.SelectionMatchesMaxMatches.Text);
-    Page.SelectionMatchesMinLength.Text := '4';
-    Page.SelectionMatchesWholeWordCheck.Checked := True;
-    Page.SelectionMatchesNavigateF3Check.Checked := False;
-    Page.SelectionMatchesMaxMatches.Text := '50';
-    // Blockkommentar umschalten (#703).
-    Assert.IsTrue(Page.ToggleBlockComment.Checked, 'Blockkommentar umschalten standardmäßig an (#703)');
-    Assert.AreEqual(ShortCutToText($A041), Page.ToggleBlockCommentKey.Text);
-    Assert.AreEqual(0, Page.ToggleBlockCommentStyle.Choice);
-    Assert.AreEqual(0, Page.ToggleBlockCommentFallback.Choice);
-    Assert.IsFalse(Page.ToggleBlockCommentOwnLines.Checked);
-    Assert.AreEqual(0, Page.ToggleBlockCommentScope.Choice);
-    Page.ToggleBlockCommentStyle.Choice := 1;
-    Page.ToggleBlockCommentFallback.Choice := 1;
-    Page.ToggleBlockCommentOwnLines.Checked := True;
-    Page.ToggleBlockCommentScope.Choice := 1;
-    // Neue Zeile ober- oder unterhalb (#700).
-    Assert.IsTrue(Page.NewLineAround.Checked, 'Neue Zeile ober-/unterhalb standardmäßig an (#700)');
-    Assert.AreEqual(ShortCutToText($200D), Page.NewLineBelowKey.Text);
-    Assert.AreEqual(ShortCutToText($C00D), Page.NewLineAboveKey.Text);
-    Assert.IsTrue(Page.NewLineAroundStatementAware.Checked);
-    Page.NewLineAroundStatementAware.Checked := False;
-    // Umschließung entfernen (#657).
-    Assert.IsTrue(Page.Unwrap.Checked, 'Umschließung entfernen standardmäßig an (#657)');
-    Assert.AreEqual(ShortCutToText($602E), Page.UnwrapKey.Text);
-    Page.Unwrap.Checked := False;
-    // Sicher löschen (#716).
-    Assert.IsTrue(Page.SafeDelete.Checked, 'Sicher löschen standardmäßig an (#716)');
-    Assert.AreEqual(ShortCutToText($802E), Page.SafeDeleteKey.Text);
-    Page.SafeDelete.Checked := False;
-    // Markierung beim Tippen umschließen (#672).
-    Assert.IsTrue(Page.WrapSelection.Checked, 'Umschließen standardmäßig an (#672)');
-    Assert.AreEqual('([{''', Page.WrapSelectionChars.Text);
-    Page.WrapSelectionChars.Text := ' ([<';
-    // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
-    Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
-    Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
-    Assert.AreEqual(ShortCutToText($C077), Page.NextProblemKey.Text);
-    Page.BlockEndLabelsCheck.Checked := False;
-    Page.DimUnusedUsesCheck.Checked := False;
-    Page.RecursionMarkersCheck.Checked := False;
-    Page.RecursionMarkersDepthEdit.Text := '2';
-    Page.ExitPointsCheck.Checked := False;
-    Page.ExitPointsBadgeCheck.Checked := False;
-    Page.ReassignedCheck.Checked := False;
-    Page.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked := False;
-    Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
-    Page.ReassignedStyleBox.Choice := 1;
-    Page.ReassignedColorEdit.Text := 'rot';
-    Page.ExpressionTypeCheck.Checked := False;
-    Page.ExpressionTypeConstValueCheck.Checked := False;
-    Page.ExpressionTypeKey.Text := '';
-    Page.MethodPlacementBox.Choice := 2;
-    Page.InlineDiagnostics.Choice := 2;
-    Page.ProblemsStatusCounterCheck.Checked := False;
-    Page.PreviousProblemKey.Text := '';
-    Page.BlockEndLabelsMinLinesEdit.Text := '30';
-    Page.HideElementKey.Text := '';
+    EditHideElementMarkers(Page);
+    EditHideElementSelection(Page);
+    EditHideElementCommands(Page);
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.BlockEndLabels, 'abschaltbar');
-    Assert.AreEqual(30, Saved.BlockEndLabelsMinLines);
-    Assert.IsFalse(Saved.DimUnusedUses);
-    Assert.IsFalse(Saved.RecursionMarkers);
-    Assert.AreEqual(2, Saved.RecursionMarkersDepth);
-    Assert.IsFalse(Saved.DataFlow);
-    Assert.AreEqual(9, Saved.DataFlowMaxDepth);
-    Assert.IsTrue(Saved.DataFlowExcludeTests);
-    Assert.IsFalse(Saved.ExitPoints);
-    Assert.IsTrue(Saved.ExitPointsExceptions);
-    Assert.IsTrue(Saved.ExitPointsLoops);
-    Assert.IsFalse(Saved.ExitPointsBadge);
-    Assert.IsFalse(Saved.Reassigned);
-    Assert.AreEqual('locals,varParams', Saved.ReassignedTargets);
-    Assert.AreEqual('solid', Saved.ReassignedStyle);
-    Assert.AreEqual('theme', Saved.ReassignedColor, 'Unlesbares wird theme');
-    Assert.IsFalse(Saved.ExpressionType);
-    Assert.IsTrue(Saved.ExpressionTypeConversions);
-    Assert.IsFalse(Saved.ExpressionTypeConstValue);
-    Assert.AreEqual('off', Saved.MethodPlacement, 'Methodenreihenfolge abschaltbar');
-    Assert.AreEqual(0, Saved.ExpressionTypeKey, 'leer = kein Kuerzel');
-    Assert.IsTrue(Saved.GutterColumn);
-    Assert.IsTrue(Saved.GutterColumnProblems);
-    Assert.IsFalse(Saved.GutterColumnCodeActions);
-    Assert.IsFalse(Saved.GutterColumnOverrides);
-    Assert.IsTrue(Saved.SelectionMatches);
-    Assert.AreEqual(4, Saved.SelectionMatchesMinLength);
-    Assert.IsFalse(Saved.SelectionMatchesCaseSensitive);
-    Assert.IsTrue(Saved.SelectionMatchesWholeWord);
-    Assert.IsFalse(Saved.SelectionMatchesNavigateF3);
-    Assert.AreEqual(50, Saved.SelectionMatchesMaxMatches);
-    Assert.IsTrue(Saved.ToggleBlockComment);
-    Assert.AreEqual($A041, Saved.ToggleBlockCommentKey);
-    Assert.AreEqual('parens', Saved.ToggleBlockCommentStyle);
-    Assert.AreEqual('refuse', Saved.ToggleBlockCommentFallback);
-    Assert.IsTrue(Saved.ToggleBlockCommentOwnLines);
-    Assert.AreEqual('line', Saved.ToggleBlockCommentWithoutSelection);
-    Assert.IsTrue(Saved.NewLineAround);
-    Assert.AreEqual($200D, Saved.NewLineBelowKey);
-    Assert.AreEqual($C00D, Saved.NewLineAboveKey);
-    Assert.IsFalse(Saved.NewLineAroundStatementAware);
-    Assert.IsFalse(Saved.Unwrap);
-    Assert.AreEqual($602E, Saved.UnwrapKey);
-    Assert.IsFalse(Saved.SafeDelete);
-    Assert.AreEqual($802E, Saved.SafeDeleteKey);
-    Assert.IsTrue(Saved.WrapSelection);
-    Assert.AreEqual('([<', Saved.WrapSelectionChars);
-    Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
-    Assert.IsFalse(Saved.ProblemsStatusCounter);
-    Assert.AreEqual($C077, Saved.NextProblemKey);
-    Assert.AreEqual(0, Saved.PreviousProblemKey);
-    Assert.AreEqual(0, Saved.HideElementKey, 'leer = keine Taste');
+    AssertHideElementSavedMarkers(Saved);
+    AssertHideElementSavedEditing(Saved);
     Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
-    Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
-    Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
-    Assert.IsFalse(Page.ExitPointsCheck.Checked);
-    Assert.IsFalse(Page.ExitPointsBadgeCheck.Checked);
-    Assert.IsFalse(Page.ReassignedCheck.Checked);
-    Assert.IsTrue(Page.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
-    Assert.AreEqual(1, Page.ReassignedStyleBox.Choice);
-    Assert.IsFalse(Page.ExpressionTypeCheck.Checked);
-    Assert.IsFalse(Page.ExpressionTypeConstValueCheck.Checked);
-    Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
-    Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
-    Assert.AreEqual(1, Page.ToggleBlockCommentScope.Choice);
-    Assert.AreEqual(2, Page.InlineDiagnostics.Choice);
-    Assert.AreEqual('', Page.HideElementKey.Text);
+    AssertHideElementReloaded(Page);
   finally
     Page.Free;
   end;
@@ -1864,6 +1961,194 @@ begin
   end;
 end;
 
+type
+  /// <summary>Hält fest, was die Seite „Versionsverwaltung“ über ihre Ereignisse angefragt hat.</summary>
+  TVcsPageProbe = class
+  public
+    FLocated: string;
+    FCheckedKind: TAtlasVcsKind;
+    FCheckedPath: string;
+    FProjectCalls: Integer;
+  end;
+
+/// <summary>Werkzeugpfad lokalisieren: leer = bekannter Ordner, sonst fehlt die angegebene Datei.</summary>
+function LocateVcsTool(const APath: string): TAtlasVcsToolLocation;
+begin
+  Result := TAtlasVcsToolLocation.Empty;
+  Result.Configured := APath;
+  if APath = '' then
+  begin
+    Result.Executable := 'C:\Program Files\Git\cmd\git.exe';
+    Result.Source := TAtlasVcsToolSource.KnownDir;
+  end
+  else
+  begin
+    Result.Source := TAtlasVcsToolSource.ConfiguredMissing;
+  end;
+end;
+
+/// <summary>Hängt die Ereignisse der Seite an AProbe.</summary>
+procedure WireVcsPage(APage: TAtlasSettingsPage; AProbe: TVcsPageProbe);
+begin
+  AProbe.FCheckedKind := TAtlasVcsKind.None;
+  APage.OnVcsLocate :=
+    function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
+    begin
+      AProbe.FLocated := APath;
+      Result := LocateVcsTool(APath);
+    end;
+  APage.OnVcsCheck :=
+    procedure(AKind: TAtlasVcsKind; const APath: string)
+    begin
+      AProbe.FCheckedKind := AKind;
+      AProbe.FCheckedPath := APath;
+    end;
+  APage.OnVcsProject :=
+    procedure
+    begin
+      Inc(AProbe.FProjectCalls);
+    end;
+end;
+
+/// <summary>Steuerelemente der Seite: Lage im Baum und geladene Werte (#1285, #1288, #1290–#1292).</summary>
+procedure AssertVcsPageControls(APage: TAtlasSettingsPage; AVcs: TTabSheet);
+begin
+  Assert.IsTrue(SheetOf(APage.VcsPath(TAtlasVcsKind.Git)) = AVcs);
+  Assert.IsTrue(SheetOf(APage.VcsPath(TAtlasVcsKind.Svn)) = AVcs);
+  Assert.IsTrue(SheetOf(APage.VcsTimeout) = AVcs);
+  Assert.IsTrue(SheetOf(APage.VcsProjectInfo) = AVcs);
+  Assert.AreEqual(2, APage.VcsProviderChoice.Choice, 'svn');
+  Assert.AreEqual('D:\Tools\svn.exe', APage.VcsPath(TAtlasVcsKind.Svn).Text);
+  Assert.AreEqual('45', APage.VcsTimeout.Text);
+  // #1288: Dialog „Branch anlegen“ bei „Beginnen“, Unterknoten vcs.branches (Schema).
+  Assert.IsTrue(SheetOf(APage.VcsBranchConfirm) = APage.NodeSheet('vcs.branches'));
+  Assert.IsTrue(APage.VcsBranchConfirm.Checked);
+  // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
+  Assert.IsTrue(SheetOf(APage.VcsBranchSvnLocation) = APage.NodeSheet('vcs.branches'));
+  Assert.IsTrue(SheetOf(APage.VcsBranchSvnMessage) = APage.NodeSheet('vcs.branches'));
+  Assert.AreEqual('{projektwurzel}/branches/{name}', APage.VcsBranchSvnLocation.Text);
+  Assert.AreEqual(0, APage.VcsBranchSvnSource.Choice, 'head');
+  Assert.AreEqual(0, APage.VcsBranchSvnAfter.Choice, 'switch');
+  Assert.AreEqual('..\{projekt}-{kennung}', APage.VcsBranchSvnFolder.Text);
+  // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
+  Assert.IsTrue(SheetOf(APage.VcsExternalsRules) = APage.NodeSheet('vcs.externals'));
+  Assert.AreEqual(0, APage.VcsExternalsOnBranch.Choice, 'pin');
+  Assert.AreEqual(0, APage.VcsExternalsSuggest.Choice, 'modified');
+  Assert.AreEqual('', APage.VcsExternalsRules.Text);
+  APage.VcsExternalsRules.Text := '^/Packages/Basis = fragen';
+  APage.VcsExternalsRules.OnChange(APage.VcsExternalsRules);
+  Assert.Contains(APage.VcsExternalsRulesError.Caption, '^/Packages/Basis = fragen');
+  APage.VcsExternalsRules.Text := '^/Packages/Basis = keep';
+  APage.VcsExternalsRules.OnChange(APage.VcsExternalsRules);
+  Assert.AreEqual('', APage.VcsExternalsRulesError.Caption);
+  // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
+  Assert.IsTrue(SheetOf(APage.VcsExternalsShow) = APage.NodeSheet('vcs.externals'));
+  Assert.IsTrue(APage.VcsExternalsShow.Checked);
+  Assert.AreEqual(0, APage.VcsExternalsUpdate.Choice, 'with');
+end;
+
+/// <summary>Pfad ändern prüft nur die Datei; „Prüfen“ fragt im Hintergrund und sperrt den Knopf bis zum
+/// Ergebnis.</summary>
+procedure AssertVcsToolChecks(APage: TAtlasSettingsPage; AProbe: TVcsPageProbe);
+var
+  mCheck: TAtlasVcsToolCheck;
+begin
+  APage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
+  APage.VcsPath(TAtlasVcsKind.Git).OnChange(APage.VcsPath(TAtlasVcsKind.Git));
+  Assert.AreEqual('X:\fehlt\git.exe', AProbe.FLocated);
+  Assert.Contains(APage.VcsState(TAtlasVcsKind.Git).Caption, 'X:\fehlt\git.exe');
+  Assert.IsTrue(AProbe.FCheckedKind = TAtlasVcsKind.None, 'Prüfen erst auf Klick');
+  APage.VcsPath(TAtlasVcsKind.Git).Text := '';
+  APage.VcsPath(TAtlasVcsKind.Git).OnChange(APage.VcsPath(TAtlasVcsKind.Git));
+  Assert.Contains(APage.VcsState(TAtlasVcsKind.Git).Caption, 'C:\Program Files\Git\cmd\git.exe');
+  APage.VcsCheckButton(TAtlasVcsKind.Svn).Click;
+  Assert.IsTrue(AProbe.FCheckedKind = TAtlasVcsKind.Svn);
+  Assert.AreEqual('D:\Tools\svn.exe', AProbe.FCheckedPath);
+  Assert.IsFalse(APage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
+  mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Svn, TAtlasVcsToolLocation.Empty);
+  mCheck.State := TAtlasVcsToolState.Found;
+  mCheck.Version := 'svn 1.14.3';
+  mCheck.Location.Executable := 'D:\Tools\svn.exe';
+  mCheck.Location.Source := TAtlasVcsToolSource.Configured;
+  APage.VcsCheckDone(mCheck);
+  Assert.IsTrue(APage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
+  Assert.Contains(APage.VcsState(TAtlasVcsKind.Svn).Caption, 'svn 1.14.3');
+end;
+
+/// <summary>Aktuelles Projekt: einmal beim ersten Zeigen der Seite; Links auf die steuernden Seiten.</summary>
+procedure AssertVcsProjectAndLinks(APage: TAtlasSettingsPage; AProbe: TVcsPageProbe; const AAreas: TArray<TTreeNode>);
+var
+  mVcs: TTabSheet;
+  mState: TAtlasVcsProjectState;
+begin
+  mVcs := SheetOf(APage.VcsProviderChoice);
+  APage.Navigation.OnChange(APage.Navigation, AAreas[17]);
+  Assert.IsTrue(APage.Pages.ActivePage = mVcs);
+  Assert.AreEqual(1, AProbe.FProjectCalls);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying), APage.VcsProjectInfo.Caption);
+  APage.Navigation.OnChange(APage.Navigation, AAreas[0]);
+  APage.Navigation.OnChange(APage.Navigation, AAreas[17]);
+  Assert.AreEqual(1, AProbe.FProjectCalls, 'nur einmal je Öffnen');
+  mState := TAtlasVcsProjectState.Empty;
+  mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+  mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+  APage.VcsProjectDone(mState);
+  Assert.Contains(APage.VcsProjectInfo.Caption, 'Kasse.dproj');
+  APage.VcsLinkWelcome.Click;
+  // Ohne das Modul Willkommensseite die Seite seines Schalters (#1456).
+  Assert.IsTrue(APage.Pages.ActivePage = SheetOf(APage.ControlOfSetting('WelcomePage')));
+  APage.VcsLinkIssues.Click;
+  Assert.IsTrue(APage.Pages.ActivePage = SheetOf(APage.ControlOfSetting('IssuesEnabled')));
+  APage.VcsLinkEditor.Click;
+  Assert.IsFalse(APage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
+end;
+
+/// <summary>Alle Werte der Seite ändern.</summary>
+procedure EditVcsPage(APage: TAtlasSettingsPage);
+begin
+  APage.VcsProviderChoice.Choice := 1;
+  APage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
+  APage.VcsTimeout.Text := '120';
+  APage.VcsBranchConfirm.Checked := False;
+  APage.VcsBranchSvnLocation.Text := '^/branches/{kennung}';
+  APage.VcsBranchSvnSource.Choice := 1;
+  APage.VcsBranchSvnAfter.Choice := 1;
+  APage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
+  APage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
+  APage.VcsExternalsOnBranch.Choice := 2;
+  APage.VcsExternalsSuggest.Choice := 2;
+  APage.VcsExternalsShow.Checked := False;
+  APage.VcsExternalsUpdate.Choice := 1;
+end;
+
+/// <summary>Speichern; eine ungültige Regelzeile lässt die bisherigen Regeln stehen.</summary>
+procedure AssertVcsPageSaved(APage: TAtlasSettingsPage; var ASaved: TAtlasPluginSettings);
+begin
+  APage.SaveTo(ASaved);
+  Assert.IsFalse(ASaved.VcsExternalsShow);
+  Assert.AreEqual('without', ASaved.VcsExternalsUpdate);
+  Assert.AreEqual('ask', ASaved.VcsExternalsOnBranch);
+  Assert.AreEqual('always', ASaved.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', ASaved.VcsExternalsRules);
+  APage.VcsExternalsRules.Text := '^/Packages/Basis = keep'#13#10'kaputt';
+  APage.SaveTo(ASaved);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', ASaved.VcsExternalsRules);
+  APage.LoadFrom(ASaved);
+  Assert.AreEqual('^/Packages/Basis = keep', APage.VcsExternalsRules.Text);
+  Assert.AreEqual(2, APage.VcsExternalsOnBranch.Choice);
+  APage.SaveTo(ASaved);
+  Assert.IsFalse(ASaved.VcsBranchConfirm);
+  Assert.AreEqual('^/branches/{kennung}', ASaved.VcsBranchSvnLocation);
+  Assert.AreEqual('workingCopy', ASaved.VcsBranchSvnSource);
+  Assert.AreEqual('checkout', ASaved.VcsBranchSvnAfter);
+  Assert.AreEqual('D:\Branches\{name}', ASaved.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('Neu: {kennung}', ASaved.VcsBranchSvnMessage);
+  Assert.AreEqual('git', ASaved.VcsProvider);
+  Assert.AreEqual('D:\Git\git.exe', ASaved.VcsGitPath);
+  Assert.AreEqual('D:\Tools\svn.exe', ASaved.VcsSvnPath);
+  Assert.AreEqual(120, ASaved.VcsTimeoutSeconds);
+end;
+
 procedure TAtlasSettingsPageTests.VcsPageLocatesChecksAndShowsProject;
 var
   mHost: TForm;
@@ -1871,49 +2156,16 @@ var
   mAreas: TArray<TTreeNode>;
   mVcs: TTabSheet;
   mSettings, mSaved: TAtlasPluginSettings;
-  mCheckedKind: TAtlasVcsKind;
-  mCheckedPath, mLocated: string;
-  mProjectCalls: Integer;
-  mCheck: TAtlasVcsToolCheck;
-  mState: TAtlasVcsProjectState;
+  mProbe: TVcsPageProbe;
 begin
   TAtlasSettingsPage.ForgetTreeState;
-  mCheckedKind := TAtlasVcsKind.None;
-  mCheckedPath := '';
-  mLocated := '';
-  mProjectCalls := 0;
+  mProbe := TVcsPageProbe.Create;
   mHost := TForm.CreateNew(nil);
   try
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    mPage.OnVcsLocate :=
-      function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
-      begin
-        mLocated := APath;
-        Result := TAtlasVcsToolLocation.Empty;
-        Result.Configured := APath;
-        if APath = '' then
-        begin
-          Result.Executable := 'C:\Program Files\Git\cmd\git.exe';
-          Result.Source := TAtlasVcsToolSource.KnownDir;
-        end
-        else
-        begin
-          Result.Source := TAtlasVcsToolSource.ConfiguredMissing;
-        end;
-      end;
-    mPage.OnVcsCheck :=
-      procedure(AKind: TAtlasVcsKind; const APath: string)
-      begin
-        mCheckedKind := AKind;
-        mCheckedPath := APath;
-      end;
-    mPage.OnVcsProject :=
-      procedure
-      begin
-        Inc(mProjectCalls);
-      end;
+    WireVcsPage(mPage, mProbe);
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.VcsProvider := 'svn';
     mSettings.VcsSvnPath := 'D:\Tools\svn.exe';
@@ -1925,133 +2177,25 @@ begin
     // Mit Punkt: svn, Pfad und Zeitlimit weichen von der Vorgabe ab.
     Assert.AreEqual(TAtlasSettingsMarks.Dot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[17].Text,
       'eigener Bereich');
-    Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Git)) = mVcs);
-    Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Svn)) = mVcs);
-    Assert.IsTrue(SheetOf(mPage.VcsTimeout) = mVcs);
-    Assert.IsTrue(SheetOf(mPage.VcsProjectInfo) = mVcs);
-    Assert.AreEqual(2, mPage.VcsProviderChoice.Choice, 'svn');
-    Assert.AreEqual('D:\Tools\svn.exe', mPage.VcsPath(TAtlasVcsKind.Svn).Text);
-    Assert.AreEqual('45', mPage.VcsTimeout.Text);
-    // #1288: Dialog „Branch anlegen“ bei „Beginnen“, Unterknoten vcs.branches (Schema).
-    Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mPage.NodeSheet('vcs.branches'));
-    Assert.IsTrue(mPage.VcsBranchConfirm.Checked);
-    // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
-    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnLocation) = mPage.NodeSheet('vcs.branches'));
-    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnMessage) = mPage.NodeSheet('vcs.branches'));
-    Assert.AreEqual('{projektwurzel}/branches/{name}', mPage.VcsBranchSvnLocation.Text);
-    Assert.AreEqual(0, mPage.VcsBranchSvnSource.Choice, 'head');
-    Assert.AreEqual(0, mPage.VcsBranchSvnAfter.Choice, 'switch');
-    Assert.AreEqual('..\{projekt}-{kennung}', mPage.VcsBranchSvnFolder.Text);
-    // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
-    Assert.IsTrue(SheetOf(mPage.VcsExternalsRules) = mPage.NodeSheet('vcs.externals'));
-    Assert.AreEqual(0, mPage.VcsExternalsOnBranch.Choice, 'pin');
-    Assert.AreEqual(0, mPage.VcsExternalsSuggest.Choice, 'modified');
-    Assert.AreEqual('', mPage.VcsExternalsRules.Text);
-    mPage.VcsExternalsRules.Text := '^/Packages/Basis = fragen';
-    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
-    Assert.Contains(mPage.VcsExternalsRulesError.Caption, '^/Packages/Basis = fragen');
-    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep';
-    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
-    Assert.AreEqual('', mPage.VcsExternalsRulesError.Caption);
-    // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
-    Assert.IsTrue(SheetOf(mPage.VcsExternalsShow) = mPage.NodeSheet('vcs.externals'));
-    Assert.IsTrue(mPage.VcsExternalsShow.Checked);
-    Assert.AreEqual(0, mPage.VcsExternalsUpdate.Choice, 'with');
-    Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
-    // Pfad ändern: nur Dateiprüfung, kein Prozess.
-    mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
-    mPage.VcsPath(TAtlasVcsKind.Git).OnChange(mPage.VcsPath(TAtlasVcsKind.Git));
-    Assert.AreEqual('X:\fehlt\git.exe', mLocated);
-    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Git).Caption, 'X:\fehlt\git.exe');
-    Assert.IsTrue(mCheckedKind = TAtlasVcsKind.None, 'Prüfen erst auf Klick');
-    mPage.VcsPath(TAtlasVcsKind.Git).Text := '';
-    mPage.VcsPath(TAtlasVcsKind.Git).OnChange(mPage.VcsPath(TAtlasVcsKind.Git));
-    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Git).Caption, 'C:\Program Files\Git\cmd\git.exe');
-    // „Prüfen“: Hintergrund über OnVcsCheck, Knopf gesperrt bis zum Ergebnis.
-    mPage.VcsCheckButton(TAtlasVcsKind.Svn).Click;
-    Assert.IsTrue(mCheckedKind = TAtlasVcsKind.Svn);
-    Assert.AreEqual('D:\Tools\svn.exe', mCheckedPath);
-    Assert.IsFalse(mPage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
-    mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Svn, TAtlasVcsToolLocation.Empty);
-    mCheck.State := TAtlasVcsToolState.Found;
-    mCheck.Version := 'svn 1.14.3';
-    mCheck.Location.Executable := 'D:\Tools\svn.exe';
-    mCheck.Location.Source := TAtlasVcsToolSource.Configured;
-    mPage.VcsCheckDone(mCheck);
-    Assert.IsTrue(mPage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
-    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Svn).Caption, 'svn 1.14.3');
-    // Aktuelles Projekt: einmal beim ersten Zeigen der Seite.
-    mPage.Navigation.OnChange(mPage.Navigation, mAreas[17]);
-    Assert.IsTrue(mPage.Pages.ActivePage = mVcs);
-    Assert.AreEqual(1, mProjectCalls);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying), mPage.VcsProjectInfo.Caption);
-    mPage.Navigation.OnChange(mPage.Navigation, mAreas[0]);
-    mPage.Navigation.OnChange(mPage.Navigation, mAreas[17]);
-    Assert.AreEqual(1, mProjectCalls, 'nur einmal je Öffnen');
-    mState := TAtlasVcsProjectState.Empty;
-    mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
-    mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
-    mPage.VcsProjectDone(mState);
-    Assert.Contains(mPage.VcsProjectInfo.Caption, 'Kasse.dproj');
-    // Links auf die Seiten, die die Anzeige steuern.
-    mPage.VcsLinkWelcome.Click;
-    // Ohne das Modul Willkommensseite die Seite seines Schalters (#1456).
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.ControlOfSetting('WelcomePage')));
-    mPage.VcsLinkIssues.Click;
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.ControlOfSetting('IssuesEnabled')));
-    mPage.VcsLinkEditor.Click;
-    Assert.IsFalse(mPage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
-    // Speichern.
-    mPage.VcsProviderChoice.Choice := 1;
-    mPage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
-    mPage.VcsTimeout.Text := '120';
-    mPage.VcsBranchConfirm.Checked := False;
-    mPage.VcsBranchSvnLocation.Text := '^/branches/{kennung}';
-    mPage.VcsBranchSvnSource.Choice := 1;
-    mPage.VcsBranchSvnAfter.Choice := 1;
-    mPage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
-    mPage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
-    mPage.VcsExternalsOnBranch.Choice := 2;
-    mPage.VcsExternalsSuggest.Choice := 2;
-    mPage.VcsExternalsShow.Checked := False;
-    mPage.VcsExternalsUpdate.Choice := 1;
+    AssertVcsPageControls(mPage, mVcs);
+    Assert.AreEqual(0, mProbe.FProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
+    AssertVcsToolChecks(mPage, mProbe);
+    AssertVcsProjectAndLinks(mPage, mProbe, mAreas);
+    EditVcsPage(mPage);
     mSaved := mSettings;
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.VcsExternalsShow);
-    Assert.AreEqual('without', mSaved.VcsExternalsUpdate);
-    Assert.AreEqual('ask', mSaved.VcsExternalsOnBranch);
-    Assert.AreEqual('always', mSaved.VcsExternalsSuggestBranch);
-    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
-    // Ungültige Zeile: Die bisherigen Regeln bleiben.
-    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep'#13#10'kaputt';
-    mPage.SaveTo(mSaved);
-    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
-    mPage.LoadFrom(mSaved);
-    Assert.AreEqual('^/Packages/Basis = keep', mPage.VcsExternalsRules.Text);
-    Assert.AreEqual(2, mPage.VcsExternalsOnBranch.Choice);
-    mPage.SaveTo(mSaved);
-    Assert.IsFalse(mSaved.VcsBranchConfirm);
-    Assert.AreEqual('^/branches/{kennung}', mSaved.VcsBranchSvnLocation);
-    Assert.AreEqual('workingCopy', mSaved.VcsBranchSvnSource);
-    Assert.AreEqual('checkout', mSaved.VcsBranchSvnAfter);
-    Assert.AreEqual('D:\Branches\{name}', mSaved.VcsBranchSvnCheckoutFolder);
-    Assert.AreEqual('Neu: {kennung}', mSaved.VcsBranchSvnMessage);
-    Assert.AreEqual('git', mSaved.VcsProvider);
-    Assert.AreEqual('D:\Git\git.exe', mSaved.VcsGitPath);
-    Assert.AreEqual('D:\Tools\svn.exe', mSaved.VcsSvnPath);
-    Assert.AreEqual(120, mSaved.VcsTimeoutSeconds);
+    AssertVcsPageSaved(mPage, mSaved);
   finally
     mHost.Free;
+    mProbe.Free;
   end;
 end;
 
-procedure TAtlasSettingsPageTests.VcsTexts;
+/// <summary>Texte zu Fundort und Prüfung des Werkzeugs.</summary>
+procedure AssertVcsToolTexts;
 var
   mLocation: TAtlasVcsToolLocation;
   mCheck: TAtlasVcsToolCheck;
-  mState: TAtlasVcsProjectState;
   mText: string;
-  mServer: TAtlasVcsServerCheck;
 begin
   mLocation := TAtlasVcsToolLocation.Empty;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing),
@@ -2075,6 +2219,43 @@ begin
   mText := TAtlasSettingsPage.VcsCheckText(mCheck);
   Assert.Contains(mText, 'git version 2.47.1');
   Assert.Contains(mText, 'C:\Git\cmd\git.exe');
+end;
+
+/// <summary>#1287: Zustände der Tabelle „Server“.</summary>
+procedure AssertVcsServerTexts;
+var
+  mServer: TAtlasVcsServerCheck;
+begin
+  // #1287: Zustände der Tabelle „Server“.
+  mServer := TAtlasVcsServerCheck.Empty;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
+    TAtlasSettingsPage.VcsServerStateText(mServer, True));
+  mServer.State := TAtlasVcsServerState.Reachable;
+  mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.LoginNeeded;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.Unreachable;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.NoServer;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.ToolMissing;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+end;
+
+procedure TAtlasSettingsPageTests.VcsTexts;
+var
+  mState: TAtlasVcsProjectState;
+  mText: string;
+begin
+  AssertVcsToolTexts;
   mState := TAtlasVcsProjectState.Empty;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone), TAtlasSettingsPage.VcsProjectText(mState));
   mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
@@ -2101,39 +2282,96 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsPage.VcsProviderCaption('SVN'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsPage.VcsProviderCaption(''));
-  // #1287: Zustände der Tabelle „Server“.
-  mServer := TAtlasVcsServerCheck.Empty;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
-    TAtlasSettingsPage.VcsServerStateText(mServer, True));
-  mServer.State := TAtlasVcsServerState.Reachable;
-  mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
-  mServer.State := TAtlasVcsServerState.LoginNeeded;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
-  mServer.State := TAtlasVcsServerState.Unreachable;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
-  mServer.State := TAtlasVcsServerState.NoServer;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
-  mServer.State := TAtlasVcsServerState.ToolMissing;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  AssertVcsServerTexts;
+end;
+
+/// <summary>Kontext: Projekt und Gruppe Kasse, eine Zeile aus der .atlas.</summary>
+procedure WireKasseTeamContext(APage: TAtlasSettingsPage);
+begin
+  APage.OnVcsContext :=
+    function: TAtlasVcsProjectContext
+    begin
+      Result := TAtlasVcsProjectContext.Empty;
+      Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+      Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+      Result.Team := [TAtlasVcsProjectMapping.FromTeamFile('C:\Projekte\Kasse\Kasse.dproj', '', 'develop')];
+    end;
+end;
+
+/// <summary>Persönliche Zeile vor der aus der .atlas; diese nur ansehen.</summary>
+procedure AssertVcsProjectRows(APage: TAtlasSettingsPage; AList: TListView);
+begin
+  // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
+  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual('C:\Projekte', AList.Items[0].Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), AList.Items[0].SubItems[0]);
+  Assert.AreEqual('trunk', AList.Items[0].SubItems[1]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), AList.Items[0].SubItems[2]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), AList.Items[1].SubItems[0]);
+  Assert.AreEqual('develop', AList.Items[1].SubItems[1]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), AList.Items[1].SubItems[2]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint), APage.VcsProjectNote.Caption);
+  Assert.IsTrue(APage.VcsProjectMatch.Enabled);
+  // Zeile aus der .atlas: nur ansehen.
+  AList.Items[1].Selected := True;
+  Assert.IsFalse(APage.VcsProjectMatch.Enabled);
+  Assert.IsFalse(APage.VcsProjectProvider.Enabled);
+  Assert.IsFalse(APage.VcsProjectRemove.Enabled);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), APage.VcsProjectNote.Caption);
+end;
+
+/// <summary>Aktuelles Projekt übernehmen, Hauptbranch prüfen, doppelten Pfad abweisen.</summary>
+procedure EditVcsProjectRows(APage: TAtlasSettingsPage; AList: TListView);
+var
+  mState: TAtlasVcsProjectState;
+begin
+  // „Aktuelles Projekt“: die geöffnete Gruppe, Art aus der letzten Abfrage.
+  mState := TAtlasVcsProjectState.Empty;
+  mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+  mState.Outcome := TAtlasVcsOutcome.Ok;
+  mState.WorkingCopy.Kind := TAtlasVcsKind.Svn;
+  APage.VcsProjectDone(mState);
+  APage.VcsProjectAddCurrent.Click;
+  Assert.AreEqual(2, Integer(Length(APage.VcsProjects)));
+  Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', APage.VcsProjects[1].Match);
+  Assert.AreEqual('svn', APage.VcsProjects[1].Provider);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess), AList.Items[1].SubItems[1]);
+  // Hauptbranch: Leerraum wird abgewiesen.
+  APage.VcsProjectMainBranch.Text := 'release 1';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid), APage.VcsProjectNote.Caption);
+  Assert.AreEqual('', APage.VcsProjects[1].MainBranch);
+  APage.VcsProjectMainBranch.Text := 'branches/develop';
+  Assert.AreEqual('branches/develop', APage.VcsProjects[1].MainBranch);
+  Assert.AreEqual('branches/develop', AList.Items[1].SubItems[1]);
+  // Derselbe Pfad zweimal wird nicht übernommen.
+  APage.VcsProjectMatch.Text := 'c:\projekte';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken), APage.VcsProjectNote.Caption);
+  Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', APage.VcsProjects[1].Match);
+end;
+
+/// <summary>Nur persönliche Zeilen landen in vcs.projects.</summary>
+procedure AssertVcsProjectsSaved(APage: TAtlasSettingsPage; const ASettings: TAtlasPluginSettings);
+var
+  mSaved: TAtlasPluginSettings;
+  mMappings: TArray<TAtlasVcsProjectMapping>;
+begin
+  mSaved := ASettings;
+  APage.SaveTo(mSaved);
+  mMappings := TAtlasVcsProjects.Read(mSaved.VcsProjects);
+  Assert.AreEqual(2, Integer(Length(mMappings)), mSaved.VcsProjects);
+  Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[0].Match);
+  Assert.AreEqual('branches/develop', mMappings[0].MainBranch);
+  Assert.AreEqual('git', mMappings[1].Provider);
+  Assert.IsFalse(mSaved.VcsProjects.Contains('Kasse.dproj'), 'Zeile aus der .atlas bleibt dort');
 end;
 
 procedure TAtlasSettingsPageTests.VcsProjectsTable;
 var
   mHost: TForm;
   mPage: TAtlasSettingsPage;
-  mSettings, mSaved: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
   mList: TListView;
   mBrowsed: string;
-  mState: TAtlasVcsProjectState;
-  mMappings: TArray<TAtlasVcsProjectMapping>;
 begin
   mBrowsed := '';
   mHost := TForm.CreateNew(nil);
@@ -2141,14 +2379,7 @@ begin
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    mPage.OnVcsContext :=
-      function: TAtlasVcsProjectContext
-      begin
-        Result := TAtlasVcsProjectContext.Empty;
-        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
-        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
-        Result.Team := [TAtlasVcsProjectMapping.FromTeamFile('C:\Projekte\Kasse\Kasse.dproj', '', 'develop')];
-      end;
+    WireKasseTeamContext(mPage);
     mPage.OnBrowseProject :=
       function(AFolder: Boolean; out APath: string): Boolean
       begin
@@ -2160,45 +2391,8 @@ begin
     mSettings.VcsProjects := '[{"match": "C:\\Projekte", "provider": "svn", "mainBranch": "trunk"}]';
     mPage.LoadFrom(mSettings);
     mList := mPage.VcsProjectList;
-    // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
-    Assert.AreEqual(2, mList.Items.Count);
-    Assert.AreEqual('C:\Projekte', mList.Items[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), mList.Items[0].SubItems[0]);
-    Assert.AreEqual('trunk', mList.Items[0].SubItems[1]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), mList.Items[0].SubItems[2]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), mList.Items[1].SubItems[0]);
-    Assert.AreEqual('develop', mList.Items[1].SubItems[1]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), mList.Items[1].SubItems[2]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint), mPage.VcsProjectNote.Caption);
-    Assert.IsTrue(mPage.VcsProjectMatch.Enabled);
-    // Zeile aus der .atlas: nur ansehen.
-    mList.Items[1].Selected := True;
-    Assert.IsFalse(mPage.VcsProjectMatch.Enabled);
-    Assert.IsFalse(mPage.VcsProjectProvider.Enabled);
-    Assert.IsFalse(mPage.VcsProjectRemove.Enabled);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), mPage.VcsProjectNote.Caption);
-    // „Aktuelles Projekt“: die geöffnete Gruppe, Art aus der letzten Abfrage.
-    mState := TAtlasVcsProjectState.Empty;
-    mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
-    mState.Outcome := TAtlasVcsOutcome.Ok;
-    mState.WorkingCopy.Kind := TAtlasVcsKind.Svn;
-    mPage.VcsProjectDone(mState);
-    mPage.VcsProjectAddCurrent.Click;
-    Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
-    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
-    Assert.AreEqual('svn', mPage.VcsProjects[1].Provider);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess), mList.Items[1].SubItems[1]);
-    // Hauptbranch: Leerraum wird abgewiesen.
-    mPage.VcsProjectMainBranch.Text := 'release 1';
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid), mPage.VcsProjectNote.Caption);
-    Assert.AreEqual('', mPage.VcsProjects[1].MainBranch);
-    mPage.VcsProjectMainBranch.Text := 'branches/develop';
-    Assert.AreEqual('branches/develop', mPage.VcsProjects[1].MainBranch);
-    Assert.AreEqual('branches/develop', mList.Items[1].SubItems[1]);
-    // Derselbe Pfad zweimal wird nicht übernommen.
-    mPage.VcsProjectMatch.Text := 'c:\projekte';
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken), mPage.VcsProjectNote.Caption);
-    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
+    AssertVcsProjectRows(mPage, mList);
+    EditVcsProjectRows(mPage, mList);
     // Paketordner aus SVN-Externals über die Ordnerauswahl, dann Art Git.
     mPage.VcsProjectAddMenu.Items[1].Click;
     Assert.AreEqual('True', mBrowsed);
@@ -2214,19 +2408,94 @@ begin
     mList.Items[0].Selected := True;
     mPage.VcsProjectRemove.Click;
     Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
-    mSaved := mSettings;
-    mPage.SaveTo(mSaved);
-    mMappings := TAtlasVcsProjects.Read(mSaved.VcsProjects);
-    Assert.AreEqual(2, Integer(Length(mMappings)), mSaved.VcsProjects);
-    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[0].Match);
-    Assert.AreEqual('branches/develop', mMappings[0].MainBranch);
-    Assert.AreEqual('git', mMappings[1].Provider);
-    Assert.IsFalse(mSaved.VcsProjects.Contains('Kasse.dproj'), 'Zeile aus der .atlas bleibt dort');
+    AssertVcsProjectsSaved(mPage, mSettings);
   finally
     mHost.Free;
   end;
   mBrowsed := '';
-  mMappings := nil;
+end;
+
+/// <summary>Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).</summary>
+procedure AssertVcsServerRows(AList: TListView);
+begin
+  // Aktuelles Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).
+  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual('Kasse.groupproj', AList.Items[0].Caption);
+  Assert.AreEqual('–', AList.Items[0].SubItems[0]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown), AList.Items[0].SubItems[1]);
+  Assert.AreEqual('Basis', AList.Items[1].Caption);
+  Assert.AreEqual('https://svn.firma.local/basis', AList.Items[1].SubItems[0]);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['09:30']), AList.Items[1].SubItems[1]);
+end;
+
+/// <summary>Prüfergebnis: Git-Server von Kasse verlangt eine Anmeldung.</summary>
+function KasseLoginNeeded: TAtlasVcsServerCheck;
+begin
+  Result := TAtlasVcsServerCheck.Empty;
+  Result.Kind := TAtlasVcsKind.Git;
+  Result.Root := 'C:\Projekte\Kasse';
+  Result.Remote := 'origin';
+  Result.Url := 'https://git.firma.local/kasse.git';
+  Result.State := TAtlasVcsServerState.LoginNeeded;
+end;
+
+/// <summary>Nach der Anmeldung wartet die Zeile auf die neue Prüfung und wird erreichbar.</summary>
+procedure AssertVcsLoginRechecked(APage: TAtlasSettingsPage; AList: TListView; const ACheck: TAtlasVcsServerCheck);
+var
+  mCheck: TAtlasVcsServerCheck;
+begin
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen), APage.VcsServerNote.Caption);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), AList.Items[0].SubItems[1]);
+  mCheck := ACheck;
+  mCheck.State := TAtlasVcsServerState.Reachable;
+  mCheck.CheckedAt := EncodeTime(10, 0, 0, 0);
+  APage.VcsServerDone('C:\Projekte\Kasse', mCheck);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['10:00']), AList.Items[0].SubItems[1]);
+  Assert.IsFalse(APage.VcsServerLogin.Enabled);
+end;
+
+type
+  /// <summary>Hält fest, welche Ordner die Tabelle „Server“ prüfen und anmelden ließ.</summary>
+  TVcsServerProbe = class
+  public
+    FChecked: TArray<string>;
+    FLogins: TArray<string>;
+  end;
+
+/// <summary>Kontext Kasse, bekannter Zustand des Paketordners, Prüfen und Anmelden über AProbe.</summary>
+procedure WireVcsServers(APage: TAtlasSettingsPage; AProbe: TVcsServerProbe);
+begin
+  APage.OnVcsContext :=
+    function: TAtlasVcsProjectContext
+    begin
+      Result := TAtlasVcsProjectContext.Empty;
+      Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+      Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+    end;
+  APage.OnVcsServerState :=
+    function(AFolder: string): TAtlasVcsServerCheck
+    begin
+      Result := TAtlasVcsServerCheck.Empty;
+      // Aus der Sitzung: das Paket war schon erreichbar.
+      if SameText(AFolder, 'C:\Projekte\Pakete\Basis') then
+      begin
+        Result.Kind := TAtlasVcsKind.Svn;
+        Result.Url := 'https://svn.firma.local/basis';
+        Result.State := TAtlasVcsServerState.Reachable;
+        Result.CheckedAt := EncodeTime(9, 30, 0, 0);
+      end;
+    end;
+  APage.OnVcsServerCheck :=
+    procedure(const AFolder: string)
+    begin
+      AProbe.FChecked := AProbe.FChecked + [AFolder];
+    end;
+  APage.OnVcsServerLogin :=
+    function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
+    begin
+      AProbe.FLogins := AProbe.FLogins + [AFolder + '|' + ACheck.Remote];
+      Result := True;
+    end;
 end;
 
 procedure TAtlasSettingsPageTests.VcsServersTable;
@@ -2235,106 +2504,76 @@ var
   mPage: TAtlasSettingsPage;
   mSettings: TAtlasPluginSettings;
   mList: TListView;
-  mChecked, mLogins: TArray<string>;
   mCheck: TAtlasVcsServerCheck;
+  mProbe: TVcsServerProbe;
 begin
-  mChecked := nil;
-  mLogins := nil;
+  mProbe := TVcsServerProbe.Create;
   mHost := TForm.CreateNew(nil);
   try
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    mPage.OnVcsContext :=
-      function: TAtlasVcsProjectContext
-      begin
-        Result := TAtlasVcsProjectContext.Empty;
-        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
-        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
-      end;
-    mPage.OnVcsServerState :=
-      function(AFolder: string): TAtlasVcsServerCheck
-      begin
-        Result := TAtlasVcsServerCheck.Empty;
-        // Aus der Sitzung: das Paket war schon erreichbar.
-        if SameText(AFolder, 'C:\Projekte\Pakete\Basis') then
-        begin
-          Result.Kind := TAtlasVcsKind.Svn;
-          Result.Url := 'https://svn.firma.local/basis';
-          Result.State := TAtlasVcsServerState.Reachable;
-          Result.CheckedAt := EncodeTime(9, 30, 0, 0);
-        end;
-      end;
-    mPage.OnVcsServerCheck :=
-      procedure(const AFolder: string)
-      begin
-        mChecked := mChecked + [AFolder];
-      end;
-    mPage.OnVcsServerLogin :=
-      function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
-      begin
-        mLogins := mLogins + [AFolder + '|' + ACheck.Remote];
-        Result := True;
-      end;
+    WireVcsServers(mPage, mProbe);
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.VcsProjects := '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "provider": "svn"},' +
       ' {"match": "C:\\Projekte\\Pakete\\Basis", "provider": "svn"}]';
     mPage.LoadFrom(mSettings);
     mList := mPage.VcsServerList;
-    // Aktuelles Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).
-    Assert.AreEqual(2, mList.Items.Count);
-    Assert.AreEqual('Kasse.groupproj', mList.Items[0].Caption);
-    Assert.AreEqual('–', mList.Items[0].SubItems[0]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown), mList.Items[0].SubItems[1]);
-    Assert.AreEqual('Basis', mList.Items[1].Caption);
-    Assert.AreEqual('https://svn.firma.local/basis', mList.Items[1].SubItems[0]);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['09:30']), mList.Items[1].SubItems[1]);
-    Assert.AreEqual(0, Integer(Length(mChecked)), 'ohne Klick kein Netzzugriff');
+    AssertVcsServerRows(mList);
+    Assert.AreEqual(0, Integer(Length(mProbe.FChecked)), 'ohne Klick kein Netzzugriff');
     Assert.IsFalse(mPage.VcsServerLogin.Enabled);
     // Prüfen der gewählten Zeile.
     mPage.VcsServerCheck.Click;
-    Assert.AreEqual(1, Integer(Length(mChecked)));
-    Assert.AreEqual('C:\Projekte\Kasse', mChecked[0]);
+    Assert.AreEqual(1, Integer(Length(mProbe.FChecked)));
+    Assert.AreEqual('C:\Projekte\Kasse', mProbe.FChecked[0]);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
     Assert.IsFalse(mPage.VcsServerCheck.Enabled, 'läuft schon');
-    mCheck := TAtlasVcsServerCheck.Empty;
-    mCheck.Kind := TAtlasVcsKind.Git;
-    mCheck.Root := 'C:\Projekte\Kasse';
-    mCheck.Remote := 'origin';
-    mCheck.Url := 'https://git.firma.local/kasse.git';
-    mCheck.State := TAtlasVcsServerState.LoginNeeded;
+    mCheck := KasseLoginNeeded;
     mPage.VcsServerDone('c:\projekte\kasse', mCheck);
     Assert.AreEqual('origin · git.firma.local', mList.Items[0].SubItems[0]);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded), mList.Items[0].SubItems[1]);
     Assert.IsTrue(mPage.VcsServerLogin.Enabled, 'Anmelden bei „Anmeldung nötig“');
     // „Anmelden …“: Konsole offen, die Zeile wartet auf die neue Prüfung.
     mPage.VcsServerLogin.Click;
-    Assert.AreEqual(1, Integer(Length(mLogins)));
-    Assert.AreEqual('C:\Projekte\Kasse|origin', mLogins[0]);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen), mPage.VcsServerNote.Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
-    mCheck.State := TAtlasVcsServerState.Reachable;
-    mCheck.CheckedAt := EncodeTime(10, 0, 0, 0);
-    mPage.VcsServerDone('C:\Projekte\Kasse', mCheck);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['10:00']), mList.Items[0].SubItems[1]);
-    Assert.IsFalse(mPage.VcsServerLogin.Enabled);
+    Assert.AreEqual(1, Integer(Length(mProbe.FLogins)));
+    Assert.AreEqual('C:\Projekte\Kasse|origin', mProbe.FLogins[0]);
+    AssertVcsLoginRechecked(mPage, mList, mCheck);
     // „Alle prüfen“.
-    mChecked := nil;
+    mProbe.FChecked := nil;
     mPage.VcsServerCheckAll.Click;
-    Assert.AreEqual(2, Integer(Length(mChecked)));
-    Assert.AreEqual('C:\Projekte\Pakete\Basis', mChecked[1]);
+    Assert.AreEqual(2, Integer(Length(mProbe.FChecked)));
+    Assert.AreEqual('C:\Projekte\Pakete\Basis', mProbe.FChecked[1]);
     // „prüfen …“ der Willkommensseite für einen Ordner ohne Zeile: Zeile kommt dazu und wird geprüft.
-    mChecked := nil;
+    mProbe.FChecked := nil;
     mPage.RevealVcsServer('C:\Projekte\Lager\');
     Assert.AreEqual(3, mList.Items.Count);
     Assert.AreEqual('Lager', mList.Items[2].Caption);
-    Assert.AreEqual(1, Integer(Length(mChecked)));
-    Assert.AreEqual('C:\Projekte\Lager', mChecked[0]);
+    Assert.AreEqual(1, Integer(Length(mProbe.FChecked)));
+    Assert.AreEqual('C:\Projekte\Lager', mProbe.FChecked[0]);
   finally
     mHost.Free;
+    mProbe.Free;
   end;
-  mChecked := nil;
-  mLogins := nil;
+end;
+
+/// <summary>Die Seite liest und löst Favoriten über AFavorites.</summary>
+procedure WireFavorites(APage: TAtlasSettingsPage; AFavorites: TAtlasFavorites);
+begin
+  APage.OnRemoveFavorites :=
+    procedure(AKeys: TArray<string>)
+    var
+      Key: string;
+    begin
+      for Key in AKeys do
+      begin
+        AFavorites.Remove(Key);
+      end;
+    end;
+  APage.OnFavorites :=
+    function: TArray<TAtlasFavorite>
+    begin
+      Result := AFavorites.Items;
+    end;
 end;
 
 procedure TAtlasSettingsPageTests.FavoritesListAndRemove;
@@ -2362,21 +2601,7 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Page.OnRemoveFavorites :=
-      procedure(AKeys: TArray<string>)
-      var
-        Key: string;
-      begin
-        for Key in AKeys do
-        begin
-          Favorites.Remove(Key);
-        end;
-      end;
-    Page.OnFavorites :=
-      function: TArray<TAtlasFavorite>
-      begin
-        Result := Favorites.Items;
-      end;
+    WireFavorites(Page, Favorites);
     Settings := TAtlasPluginSettings.Defaults;
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.FavoritesCheck.Checked);
@@ -2889,6 +3114,26 @@ begin
   end;
 end;
 
+/// <summary>Feste Antworten für Unterdrückungen, Cache und Rückfrage.</summary>
+procedure WireServerPageAnswers(APage: TAtlasServerPage);
+begin
+  APage.OnSuppressions :=
+    function: TArray<string>
+    begin
+      Result := ['no-with: 3 (ungenutzt 1, in 2 Dateien)'];
+    end;
+  APage.OnClearCache :=
+    function: string
+    begin
+      Result := 'Cache leer';
+    end;
+  APage.Confirm :=
+    function(AQuestion: string): Boolean
+    begin
+      Result := True;
+    end;
+end;
+
 procedure TAtlasSettingsPageTests.ServerPageRunsActions;
 var
   Host: TForm;
@@ -2922,21 +3167,7 @@ begin
         Deleted := True;
         Result := 'gelöscht';
       end;
-    Page.OnSuppressions :=
-      function: TArray<string>
-      begin
-        Result := ['no-with: 3 (ungenutzt 1, in 2 Dateien)'];
-      end;
-    Page.OnClearCache :=
-      function: string
-      begin
-        Result := 'Cache leer';
-      end;
-    Page.Confirm :=
-      function(AQuestion: string): Boolean
-      begin
-        Result := True;
-      end;
+    WireServerPageAnswers(Page);
     Page.Refresh;
     Assert.AreEqual('5 Treffer in 2 Einträgen', Page.BaselineInfo.Caption);
     Page.EditGlobal.Click;
@@ -3057,6 +3288,23 @@ begin
   end;
 end;
 
+/// <summary>Abstand des nächsten Steuerelements unter AEditor zu dessen Unterkante; MaxInt ohne.</summary>
+function SpaceBelow(ABox: TWinControl; AEditor: TControl): Integer;
+var
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  Result := MaxInt;
+  for mIndex := 0 to ABox.ControlCount - 1 do
+  begin
+    mControl := ABox.Controls[mIndex];
+    if (mControl <> AEditor) and (mControl.Top > AEditor.Top) then
+    begin
+      Result := Min(Result, mControl.Top - (AEditor.Top + AEditor.Height));
+    end;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.DialogRuleEditorPushesFieldsDown;
 const
   CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
@@ -3070,8 +3318,7 @@ var
   Catalog: TJSONValue;
   Editor: TAtlasRulesEditor;
   Box: TWinControl;
-  Index, Before, Spacing, Below: Integer;
-  Control: TControl;
+  Before, Spacing, Below: Integer;
 begin
   Catalog := TJSONObject.ParseJSONValue(CatalogText);
   Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', False);
@@ -3084,41 +3331,17 @@ begin
       Editor := Dialog.RuleEditor;
       Box := Editor.Parent;
       // Abstand des ersten Steuerelements unter dem Editor zu seiner Unterkante beim Aufbau.
-      Spacing := MaxInt;
-      for Index := 0 to Box.ControlCount - 1 do
-      begin
-        Control := Box.Controls[Index];
-        if (Control <> Editor) and (Control.Top > Editor.Top) then
-        begin
-          Spacing := Min(Spacing, Control.Top - (Editor.Top + Editor.Height));
-        end;
-      end;
+      Spacing := SpaceBelow(Box, Editor);
       Assert.IsTrue(Spacing < MaxInt, 'Zustand und Zurücksetzen von "rules" stehen unter dem Editor');
       Assert.IsTrue(Spacing >= 0);
       Before := Editor.Height;
       Assert.IsTrue(Editor.SelectRule('magic-number'));
       Assert.IsTrue(Editor.Height > Before, 'Optionen und Beispiele lassen den Editor wachsen');
-      Below := MaxInt;
-      for Index := 0 to Box.ControlCount - 1 do
-      begin
-        Control := Box.Controls[Index];
-        if (Control <> Editor) and (Control.Top > Editor.Top) then
-        begin
-          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
-        end;
-      end;
+      Below := SpaceBelow(Box, Editor);
       Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor nach unten');
       // Zurück zu einer Regel ohne Optionen: Die Felder rücken wieder hoch.
       Assert.IsTrue(Editor.SelectRule('no-with'));
-      Below := MaxInt;
-      for Index := 0 to Box.ControlCount - 1 do
-      begin
-        Control := Box.Controls[Index];
-        if (Control <> Editor) and (Control.Top > Editor.Top) then
-        begin
-          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
-        end;
-      end;
+      Below := SpaceBelow(Box, Editor);
       Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor wieder hoch');
     finally
       Dialog.Free;
@@ -3274,6 +3497,30 @@ begin
   end;
 end;
 
+/// <summary>Knoten des Bereichs Regeln: Prüffenster und „Profile und Baseline“, keine Regelgruppen.</summary>
+procedure AssertRulesNodes(APage: TAtlasSettingsPage);
+begin
+  Assert.IsTrue(SheetOf(APage.ProblemsWindowCheck) = APage.NodeSheet('rules.window'));
+  Assert.IsTrue(SheetOf(APage.ProblemsLiveCheck) = APage.NodeSheet('rules.window'));
+  Assert.IsTrue(SheetOf(APage.FixBulkCheck) = APage.NodeSheet('rules.window'));
+  Assert.IsNotNull(APage.NodeSheet('rules.profiles'));
+  Assert.IsTrue(SheetOf(APage.BaselineInfoLabel) = APage.NodeSheet('rules.profiles'));
+  Assert.IsNull(APage.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
+end;
+
+/// <summary>Gespeicherte Einstellungen des Prüffensters und der Gruppe „Compiler vorab“.</summary>
+procedure AssertRulesAreaSaved(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.AreEqual('both', ASettings.ProblemsCompilerMerge);
+  Assert.IsFalse(ASettings.ProblemsShowCompilerCode);
+  Assert.AreEqual('file', ASettings.ProblemsWindowScope);
+  Assert.AreEqual('rule', ASettings.ProblemsWindowGroupBy);
+  Assert.IsTrue(ASettings.ProblemsWindowCompiler);
+  Assert.IsFalse(ASettings.ProblemsLive, 'Live gespeichert');
+  Assert.IsFalse(ASettings.FixBulk, 'Sammelkorrektur gespeichert');
+  Assert.IsFalse(ASettings.HoverProblemActions, 'Hover-Aktionen gespeichert');
+end;
+
 procedure TAtlasSettingsPageTests.RulesAreaLinksToDialogs;
 var
   Host: TForm;
@@ -3289,12 +3536,7 @@ begin
     Page.HandleNeeded;
     // Knoten: Prüffenster, Compiler vorab, „Profile und Baseline“; die Regeln stehen in den Dialogen der
     // Einstellungsdateien.
-    Assert.IsTrue(SheetOf(Page.ProblemsWindowCheck) = Page.NodeSheet('rules.window'));
-    Assert.IsTrue(SheetOf(Page.ProblemsLiveCheck) = Page.NodeSheet('rules.window'));
-    Assert.IsTrue(SheetOf(Page.FixBulkCheck) = Page.NodeSheet('rules.window'));
-    Assert.IsNotNull(Page.NodeSheet('rules.profiles'));
-    Assert.IsTrue(SheetOf(Page.BaselineInfoLabel) = Page.NodeSheet('rules.profiles'));
-    Assert.IsNull(Page.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
+    AssertRulesNodes(Page);
     // Hauptknoten: Wege zum Projekt- und zum globalen Dialog.
     Project := 0;
     Global := 0;
@@ -3336,14 +3578,7 @@ begin
     Page.ProblemsShowCompilerCodeCheck.Checked := False;
     Settings := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Settings);
-    Assert.AreEqual('both', Settings.ProblemsCompilerMerge);
-    Assert.IsFalse(Settings.ProblemsShowCompilerCode);
-    Assert.AreEqual('file', Settings.ProblemsWindowScope);
-    Assert.AreEqual('rule', Settings.ProblemsWindowGroupBy);
-    Assert.IsTrue(Settings.ProblemsWindowCompiler);
-    Assert.IsFalse(Settings.ProblemsLive, 'Live gespeichert');
-    Assert.IsFalse(Settings.FixBulk, 'Sammelkorrektur gespeichert');
-    Assert.IsFalse(Settings.HoverProblemActions, 'Hover-Aktionen gespeichert');
+    AssertRulesAreaSaved(Settings);
   finally
     Host.Free;
     TAtlasSettingsPage.ForgetTreeState;
