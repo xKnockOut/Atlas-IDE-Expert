@@ -142,8 +142,8 @@ begin
       Continue;
     end;
     mRoutines := TInlineRefactoring.FindRoutines(ASource.Tree, mCall.Name);
-    if (Length(mRoutines) = 1) and TInlineRefactoring.InlineMethod(ASource, mToken.StartPos, ASource,
-      mRoutines[0], AOptions, AAction, AWhy) then
+    if (Length(mRoutines) = 1) and TInlineRefactoring.InlineMethod(ASource, mToken.StartPos,
+      TInlineCallee.Create(ASource, mRoutines[0]), AOptions, AAction, AWhy) then
     begin
       Exit(True);
     end;
