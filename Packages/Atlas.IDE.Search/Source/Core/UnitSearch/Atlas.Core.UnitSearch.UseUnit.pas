@@ -121,11 +121,56 @@ begin
   end;
 end;
 
+/// <summary>Texte des Arrays AName; andere Einträge zählen nicht.</summary>
+function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if AObject.GetValue(AName) is TJSONArray then
+  begin
+    for mItem in TJSONArray(AObject.GetValue(AName)) do
+    begin
+      if mItem is TJSONString then
+      begin
+        Result := Result + [mItem.Value];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Zyklen aus "cycles"; nur Einträge mit Name und Pfad.</summary>
+function CyclesOf(AObject: TJSONObject): TArray<TAtlasUseUnitCycle>;
+var
+  mItem: TJSONValue;
+  mCycle: TAtlasUseUnitCycle;
+begin
+  Result := nil;
+  if not (AObject.GetValue('cycles') is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AObject.GetValue('cycles')) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mCycle := Default(TAtlasUseUnitCycle);
+      mCycle.Name := TextOf(TJSONObject(mItem), 'name');
+      mCycle.FileName := TextOf(TJSONObject(mItem), 'file');
+      mCycle.InterfacePath := TextOf(TJSONObject(mItem), 'interfacePath');
+      mCycle.Path := TextOf(TJSONObject(mItem), 'path');
+      if (mCycle.Name <> '') and (mCycle.Path <> '') then
+      begin
+        Result := Result + [mCycle];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasUseUnit.Parse(const AJson: string; out AInfo: TAtlasUseUnitInfo): Boolean;
 var
-  Value, Item: TJSONValue;
-  Root: TJSONObject;
-  Cycle: TAtlasUseUnitCycle;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
   AInfo := Default(TAtlasUseUnitInfo);
   Result := False;
@@ -133,56 +178,25 @@ begin
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) or not (TJSONObject(mValue).GetValue('found') is TJSONBool) then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not (Root.GetValue('found') is TJSONBool) then
+    mRoot := TJSONObject(mValue);
+    AInfo.Found := TJSONBool(mRoot.GetValue('found')).AsBoolean;
+    AInfo.UnitName := TextOf(mRoot, 'unit');
+    AInfo.FileName := TextOf(mRoot, 'file');
+    AInfo.InUses := TextsOf(mRoot, 'inUses');
+    AInfo.Cycles := CyclesOf(mRoot);
+    if mRoot.GetValue('generation') is TJSONNumber then
     begin
-      Exit;
-    end;
-    AInfo.Found := TJSONBool(Root.GetValue('found')).AsBoolean;
-    AInfo.UnitName := TextOf(Root, 'unit');
-    AInfo.FileName := TextOf(Root, 'file');
-    if Root.GetValue('inUses') is TJSONArray then
-    begin
-      for Item in TJSONArray(Root.GetValue('inUses')) do
-      begin
-        if Item is TJSONString then
-        begin
-          AInfo.InUses := AInfo.InUses + [Item.Value];
-        end;
-      end;
-    end;
-    if Root.GetValue('cycles') is TJSONArray then
-    begin
-      for Item in TJSONArray(Root.GetValue('cycles')) do
-      begin
-        if not (Item is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Cycle := Default(TAtlasUseUnitCycle);
-        Cycle.Name := TextOf(TJSONObject(Item), 'name');
-        Cycle.FileName := TextOf(TJSONObject(Item), 'file');
-        Cycle.InterfacePath := TextOf(TJSONObject(Item), 'interfacePath');
-        Cycle.Path := TextOf(TJSONObject(Item), 'path');
-        if (Cycle.Name <> '') and (Cycle.Path <> '') then
-        begin
-          AInfo.Cycles := AInfo.Cycles + [Cycle];
-        end;
-      end;
-    end;
-    if Root.GetValue('generation') is TJSONNumber then
-    begin
-      AInfo.Generation := TJSONNumber(Root.GetValue('generation')).AsInt64;
+      AInfo.Generation := TJSONNumber(mRoot.GetValue('generation')).AsInt64;
     end;
     Result := True;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

@@ -134,6 +134,7 @@ implementation
 uses
   System.Character,
   System.Generics.Collections,
+  System.Math,
   Atlas.Text.Chars;
 
 { TAtlasSearchOptions }
@@ -331,6 +332,26 @@ begin
   Result := Copy(Line, First, Last - First + 1);
 end;
 
+/// <summary>Steht der Abschnitt [AAt, AStop) (1-basiert) an Wortgrenzen der Zeile?</summary>
+function IsWholeWordAt(const ALine: string; AAt, AStop: Integer): Boolean;
+begin
+  Result := ((AAt = 1) or not TTextChars.IsIdentChar(ALine[AAt - 1])) and
+    ((AStop > Length(ALine)) or not TTextChars.IsIdentChar(ALine[AStop]));
+end;
+
+/// <summary>Treffer anhängen, wenn er ganz im Bereich liegt.</summary>
+procedure AddCovered(AHits: TList<TAtlasSearchHit>; const AArea: TAtlasSearchArea; ALine, ACharacter,
+  ALength: Integer);
+var
+  mHit: TAtlasSearchHit;
+begin
+  mHit := TAtlasSearchHit.Create(ALine, ACharacter, ALength);
+  if AArea.Covers(mHit.StartPos, mHit.StopPos) then
+  begin
+    AHits.Add(mHit);
+  end;
+end;
+
 /// <summary>Textmodus: Treffer einer Zeile.</summary>
 procedure FindInLine(const ALine: string; ALineIndex: Integer; const ANeedle: string;
   const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; AHits: TList<TAtlasSearchHit>);
@@ -361,12 +382,7 @@ begin
   while At > 0 do
   begin
     Stop := At + Length(Needle);
-    Whole := True;
-    if AOptions.WholeWord then
-    begin
-      Whole := ((At = 1) or not TTextChars.IsIdentChar(Line[At - 1])) and
-        ((Stop > Length(Line)) or not TTextChars.IsIdentChar(Line[Stop]));
-    end;
+    Whole := not AOptions.WholeWord or IsWholeWordAt(Line, At, Stop);
     Hit := TAtlasSearchHit.Create(ALineIndex, At - 1, Length(Needle));
     if Whole and AArea.Covers(Hit.StartPos, Hit.StopPos) then
     begin
@@ -380,158 +396,292 @@ begin
   end;
 end;
 
-class function TAtlasTextSearch.CodeOnly(const ALines: TArray<string>): TArray<string>;
+{$SCOPEDENUMS ON}
 type
-  TState = (Code, Brace, Paren, MultiString);
+  /// <summary>Zustand des Lexers in CodeOnly; reicht über Zeilengrenzen.</summary>
+  TCodeState = (Code, Brace, Paren, MultiString);
+{$SCOPEDENUMS OFF}
+
+type
+  /// <summary>Lexer von CodeOnly: ersetzt in einer Zeile Kommentare, Direktiven und Strings durch CodeMask. Der
+  /// Zustand bleibt für die nächste Zeile stehen (mehrzeilige Kommentare und Strings).</summary>
+  TCodeMasker = record
+  private
+    FState: TCodeState;
+    FLine: string;
+    FCount: Integer;
+    FAt: Integer;
+    procedure Mask(AFrom, ATo: Integer);
+    function NextIs(AChar: Char): Boolean;
+    function RestIsBlank(AFrom: Integer): Boolean;
+    procedure SkipQuoted;
+    procedure StepComment;
+    /// <summary>False: Rest der Zeile gehört zum String.</summary>
+    function StepMultiString: Boolean;
+    /// <summary>False: Rest der Zeile ist erledigt (Kommentar bis Zeilenende, mehrzeiliger String).</summary>
+    function StepString: Boolean;
+    function StepCode: Boolean;
+  public
+    function MaskLine(const ALine: string): string;
+  end;
+
+{ TCodeMasker }
+
+procedure TCodeMasker.Mask(AFrom, ATo: Integer);
 var
-  State: TState;
-  LineIndex, I, Count, Start: Integer;
-  Line: string;
-
-  function RestIsBlank(AFrom: Integer): Boolean;
-  var
-    K: Integer;
+  mIndex: Integer;
+begin
+  for mIndex := AFrom to ATo do
   begin
-    Result := True;
-    for K := AFrom to Length(Line) do
+    if (mIndex >= 1) and (mIndex <= FCount) then
     begin
-      if not Line[K].IsWhiteSpace then
-      begin
-        Exit(False);
-      end;
+      FLine[mIndex] := TAtlasTextSearch.CodeMask;
     end;
   end;
+end;
 
-  procedure Mask(AFrom, ATo: Integer);
-  var
-    K: Integer;
+function TCodeMasker.NextIs(AChar: Char): Boolean;
+begin
+  Result := (FAt < FCount) and (FLine[FAt + 1] = AChar);
+end;
+
+function TCodeMasker.RestIsBlank(AFrom: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := AFrom to FCount do
   begin
-    for K := AFrom to ATo do
+    if not FLine[mIndex].IsWhiteSpace then
     begin
-      if (K >= 1) and (K <= Count) then
-      begin
-        Line[K] := CodeMask;
-      end;
+      Exit(False);
     end;
   end;
+end;
 
+procedure TCodeMasker.SkipQuoted;
+var
+  mClosed: Boolean;
+begin
+  mClosed := False;
+  while not mClosed and (FAt <= FCount) do
+  begin
+    if FLine[FAt] <> '''' then
+    begin
+      Inc(FAt);
+    end
+    else if NextIs('''') then
+    begin
+      Inc(FAt, 2);
+    end
+    else
+    begin
+      Inc(FAt);
+      mClosed := True;
+    end;
+  end;
+end;
+
+procedure TCodeMasker.StepComment;
+begin
+  if FState = TCodeState.Brace then
+  begin
+    if FLine[FAt] = '}' then
+    begin
+      FState := TCodeState.Code;
+    end;
+    Mask(FAt, FAt);
+    Inc(FAt);
+  end
+  else if (FLine[FAt] = '*') and NextIs(')') then
+  begin
+    FState := TCodeState.Code;
+    Mask(FAt, FAt + 1);
+    Inc(FAt, 2);
+  end
+  else
+  begin
+    Mask(FAt, FAt);
+    Inc(FAt);
+  end;
+end;
+
+function TCodeMasker.StepMultiString: Boolean;
+var
+  mStart: Integer;
+begin
+  // Ende: Zeile, die (nach Einzug) mit ''' beginnt.
+  Result := Copy(TrimLeft(FLine), 1, 3) = '''''''';
+  if Result then
+  begin
+    FState := TCodeState.Code;
+    mStart := Pos('''''''', FLine) + 3;
+    Mask(1, mStart - 1);
+    FAt := mStart;
+  end
+  else
+  begin
+    Mask(1, FCount);
+  end;
+end;
+
+function TCodeMasker.StepString: Boolean;
+var
+  mStart: Integer;
+begin
+  // Mehrzeiliger String: ''' und dahinter nichts mehr in der Zeile.
+  Result := not ((Copy(FLine, FAt, 3) = '''''''') and RestIsBlank(FAt + 3));
+  if Result then
+  begin
+    mStart := FAt;
+    Inc(FAt);
+    SkipQuoted;
+    Mask(mStart, FAt - 1);
+  end
+  else
+  begin
+    FState := TCodeState.MultiString;
+    Mask(FAt, FCount);
+  end;
+end;
+
+function TCodeMasker.StepCode: Boolean;
+begin
+  Result := True;
+  case FLine[FAt] of
+    '{':
+      begin
+        FState := TCodeState.Brace;
+        Mask(FAt, FAt);
+        Inc(FAt);
+      end;
+    '(':
+      if NextIs('*') then
+      begin
+        FState := TCodeState.Paren;
+        Mask(FAt, FAt + 1);
+        Inc(FAt, 2);
+      end
+      else
+      begin
+        Inc(FAt);
+      end;
+    '/':
+      if NextIs('/') then
+      begin
+        Mask(FAt, FCount);
+        Result := False;
+      end
+      else
+      begin
+        Inc(FAt);
+      end;
+    '''':
+      Result := StepString;
+  else
+    Inc(FAt);
+  end;
+end;
+
+function TCodeMasker.MaskLine(const ALine: string): string;
+var
+  mGoOn: Boolean;
+begin
+  FLine := CleanLine(ALine);
+  FCount := Length(FLine);
+  FAt := 1;
+  mGoOn := True;
+  while mGoOn and (FAt <= FCount) do
+  begin
+    case FState of
+      TCodeState.Brace, TCodeState.Paren:
+        StepComment;
+      TCodeState.MultiString:
+        mGoOn := StepMultiString;
+    else
+      mGoOn := StepCode;
+    end;
+  end;
+  Result := FLine;
+end;
+
+class function TAtlasTextSearch.CodeOnly(const ALines: TArray<string>): TArray<string>;
+var
+  mMasker: TCodeMasker;
+  mIndex: Integer;
 begin
   Result := nil;
   SetLength(Result, Length(ALines));
-  State := TState.Code;
-  for LineIndex := 0 to High(ALines) do
+  mMasker := Default(TCodeMasker);
+  for mIndex := 0 to High(ALines) do
   begin
-    Line := CleanLine(ALines[LineIndex]);
-    Count := Length(Line);
-    I := 1;
-    while I <= Count do
+    Result[mIndex] := mMasker.MaskLine(ALines[mIndex]);
+  end;
+end;
+
+/// <summary>Suchtext des Bezeichner-Modus ohne führendes &amp;; '' wenn er kein Bezeichner ist.</summary>
+function IdentifierNeedle(const ANeedle: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ANeedle;
+  if (Result <> '') and (Result[1] = '&') then
+  begin
+    Delete(Result, 1, 1);
+  end;
+  if (Result = '') or Result[1].IsDigit then
+  begin
+    Exit('');
+  end;
+  for mIndex := 1 to Length(Result) do
+  begin
+    if not TTextChars.IsIdentChar(Result[mIndex]) then
     begin
-      case State of
-        TState.Brace:
-          begin
-            if Line[I] = '}' then
-            begin
-              State := TState.Code;
-            end;
-            Mask(I, I);
-            Inc(I);
-            Continue;
-          end;
-        TState.Paren:
-          begin
-            if (Line[I] = '*') and (I < Count) and (Line[I + 1] = ')') then
-            begin
-              State := TState.Code;
-              Mask(I, I + 1);
-              Inc(I, 2);
-            end
-            else
-            begin
-              Mask(I, I);
-              Inc(I);
-            end;
-            Continue;
-          end;
-        TState.MultiString:
-          begin
-            // Ende: Zeile, die (nach Einzug) mit ''' beginnt.
-            if Copy(TrimLeft(Line), 1, 3) = '''''''' then
-            begin
-              State := TState.Code;
-              Start := Pos('''''''', Line) + 3;
-              Mask(1, Start - 1);
-              I := Start;
-              Continue;
-            end;
-            Mask(1, Count);
-            Break;
-          end;
-      end;
-      case Line[I] of
-        '{':
-          begin
-            State := TState.Brace;
-            Mask(I, I);
-            Inc(I);
-          end;
-        '(':
-          if (I < Count) and (Line[I + 1] = '*') then
-          begin
-            State := TState.Paren;
-            Mask(I, I + 1);
-            Inc(I, 2);
-          end
-          else
-          begin
-            Inc(I);
-          end;
-        '/':
-          if (I < Count) and (Line[I + 1] = '/') then
-          begin
-            Mask(I, Count);
-            Break;
-          end
-          else
-          begin
-            Inc(I);
-          end;
-        '''':
-          begin
-            // Mehrzeiliger String: ''' und dahinter nichts mehr in der Zeile.
-            if (Copy(Line, I, 3) = '''''''') and RestIsBlank(I + 3) then
-            begin
-              State := TState.MultiString;
-              Mask(I, Count);
-              Break;
-            end;
-            Start := I;
-            Inc(I);
-            while I <= Count do
-            begin
-              if Line[I] = '''' then
-              begin
-                if (I < Count) and (Line[I + 1] = '''') then
-                begin
-                  Inc(I, 2);
-                end
-                else
-                begin
-                  Inc(I);
-                  Break;
-                end;
-              end
-              else
-              begin
-                Inc(I);
-              end;
-            end;
-            Mask(Start, I - 1);
-          end;
-      else
-        Inc(I);
-      end;
+      Exit('');
     end;
-    Result[LineIndex] := Line;
+  end;
+end;
+
+/// <summary>Erste Stelle ab AFrom, die kein Bezeichnerzeichen ist (Length + 1 am Zeilenende).</summary>
+function SkipWord(const ALine: string; AFrom: Integer): Integer;
+begin
+  Result := AFrom;
+  while (Result <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Bezeichner-Modus: Treffer einer Zeile aus CodeOnly.</summary>
+procedure FindIdentifiersInLine(const ALine: string; ALineIndex: Integer; const ANeedle: string;
+  const AArea: TAtlasSearchArea; AHits: TList<TAtlasSearchHit>);
+var
+  mAt, mFirst: Integer;
+  mEscaped: Boolean;
+begin
+  mAt := 1;
+  while mAt <= Length(ALine) do
+  begin
+    if CharInSet(ALine[mAt], ['#', '$', '%', '0'..'9']) then
+    begin
+      // Zeichenkonstante, Hex-, Binärzahl oder Zahl: Ziffern und Buchstaben gehören dazu ($FF, 1E5).
+      mAt := SkipWord(ALine, mAt + 1);
+    end
+    else if (ALine[mAt] = '&') or TTextChars.IsIdentChar(ALine[mAt]) then
+    begin
+      mEscaped := ALine[mAt] = '&';
+      mFirst := mAt + Ord(mEscaped);
+      mAt := SkipWord(ALine, mFirst);
+      if (mAt > mFirst) and SameText(Copy(ALine, mFirst, mAt - mFirst), ANeedle) and
+        (mEscaped or not TAtlasTextSearch.IsReserved(ANeedle)) then
+      begin
+        AddCovered(AHits, AArea, ALineIndex, mFirst - 1, mAt - mFirst);
+      end;
+    end
+    else
+    begin
+      Inc(mAt);
+    end;
   end;
 end;
 
@@ -540,87 +690,34 @@ end;
 procedure FindIdentifiers(const ALines: TArray<string>; const ANeedle: string; const AArea: TAtlasSearchArea;
   AHits: TList<TAtlasSearchHit>);
 var
-  Code: TArray<string>;
-  LineIndex, I, First, Count: Integer;
-  Line, Name, Needle: string;
-  Escaped: Boolean;
-  Hit: TAtlasSearchHit;
+  mCode: TArray<string>;
+  mNeedle: string;
+  mLineIndex: Integer;
 begin
-  Needle := ANeedle;
-  if (Needle <> '') and (Needle[1] = '&') then
-  begin
-    Delete(Needle, 1, 1);
-  end;
-  if Needle = '' then
+  mNeedle := IdentifierNeedle(ANeedle);
+  if mNeedle = '' then
   begin
     Exit;
   end;
-  for I := 1 to Length(Needle) do
+  mCode := TAtlasTextSearch.CodeOnly(ALines);
+  for mLineIndex := Max(AArea.Start.Line, 0) to Min(AArea.Stop.Line, High(mCode)) do
   begin
-    if not TTextChars.IsIdentChar(Needle[I]) then
-    begin
-      Exit;
-    end;
+    FindIdentifiersInLine(mCode[mLineIndex], mLineIndex, mNeedle, AArea, AHits);
   end;
-  if Needle[1].IsDigit then
+end;
+
+/// <summary>Zählt ein Regex-Treffer? Leere Treffer (^, x*) lassen sich weder markieren noch sinnvoll ersetzen;
+/// ACode ist die Zeile aus CodeOnly oder '' außerhalb des Bezeichner-Modus.</summary>
+function KeepMatch(const AFound: TMatch; const ALine, ACode: string; AWholeWord: Boolean): Boolean;
+begin
+  Result := AFound.Length > 0;
+  if Result and AWholeWord then
   begin
-    Exit;
+    Result := IsWholeWordAt(ALine, AFound.Index, AFound.Index + AFound.Length);
   end;
-  Code := TAtlasTextSearch.CodeOnly(ALines);
-  for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+  if Result and (ACode <> '') then
   begin
-    if (LineIndex < 0) or (LineIndex > High(Code)) then
-    begin
-      Continue;
-    end;
-    Line := Code[LineIndex];
-    Count := Length(Line);
-    I := 1;
-    while I <= Count do
-    begin
-      case Line[I] of
-        '#', '$', '%', '0'..'9':
-          begin
-            // Zeichenkonstante, Hex-, Binärzahl oder Zahl: Ziffern und Buchstaben gehören dazu ($FF, 1E5).
-            Inc(I);
-            while (I <= Count) and TTextChars.IsIdentChar(Line[I]) do
-            begin
-              Inc(I);
-            end;
-          end;
-      else
-        if (Line[I] = '&') or TTextChars.IsIdentChar(Line[I]) then
-        begin
-          Escaped := Line[I] = '&';
-          if Escaped then
-          begin
-            Inc(I);
-          end;
-          First := I;
-          while (I <= Count) and TTextChars.IsIdentChar(Line[I]) do
-          begin
-            Inc(I);
-          end;
-          if I = First then
-          begin
-            Continue;
-          end;
-          Name := Copy(Line, First, I - First);
-          if SameText(Name, Needle) and (Escaped or not TAtlasTextSearch.IsReserved(Name)) then
-          begin
-            Hit := TAtlasSearchHit.Create(LineIndex, First - 1, I - First);
-            if AArea.Covers(Hit.StartPos, Hit.StopPos) then
-            begin
-              AHits.Add(Hit);
-            end;
-          end;
-        end
-        else
-        begin
-          Inc(I);
-        end;
-      end;
-    end;
+    Result := Pos(TAtlasTextSearch.CodeMask, Copy(ACode, AFound.Index, AFound.Length)) = 0;
   end;
 end;
 
@@ -628,46 +725,28 @@ end;
 procedure FindPattern(const ALines, ACode: TArray<string>; const APattern: string;
   const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; AHits: TList<TAtlasSearchHit>);
 var
-  Expression: TRegEx;
-  Found: TMatch;
-  LineIndex, At, Stop: Integer;
-  Line: string;
-  Hit: TAtlasSearchHit;
-  Keep: Boolean;
+  mExpression: TRegEx;
+  mFound: TMatch;
+  mLineIndex: Integer;
+  mLine, mCodeLine: string;
 begin
-  Expression := TRegEx.Create(APattern, TAtlasSearchRegex.Options(AOptions));
-  for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+  mExpression := TRegEx.Create(APattern, TAtlasSearchRegex.Options(AOptions));
+  for mLineIndex := Max(AArea.Start.Line, 0) to Min(AArea.Stop.Line, High(ALines)) do
   begin
-    if (LineIndex < 0) or (LineIndex > High(ALines)) then
+    mLine := CleanLine(ALines[mLineIndex]);
+    mCodeLine := '';
+    if ACode <> nil then
     begin
-      Continue;
+      mCodeLine := ACode[mLineIndex];
     end;
-    Line := CleanLine(ALines[LineIndex]);
-    Found := Expression.Match(Line);
-    while Found.Success do
+    mFound := mExpression.Match(mLine);
+    while mFound.Success do
     begin
-      // Leere Treffer (^, x*) lassen sich weder markieren noch sinnvoll ersetzen.
-      if Found.Length > 0 then
+      if KeepMatch(mFound, mLine, mCodeLine, AOptions.WholeWord) then
       begin
-        At := Found.Index;
-        Stop := At + Found.Length;
-        Keep := True;
-        if AOptions.WholeWord then
-        begin
-          Keep := ((At = 1) or not TTextChars.IsIdentChar(Line[At - 1])) and
-            ((Stop > Length(Line)) or not TTextChars.IsIdentChar(Line[Stop]));
-        end;
-        if Keep and (ACode <> nil) then
-        begin
-          Keep := Pos(TAtlasTextSearch.CodeMask, Copy(ACode[LineIndex], At, Found.Length)) = 0;
-        end;
-        Hit := TAtlasSearchHit.Create(LineIndex, At - 1, Found.Length);
-        if Keep and AArea.Covers(Hit.StartPos, Hit.StopPos) then
-        begin
-          AHits.Add(Hit);
-        end;
+        AddCovered(AHits, AArea, mLineIndex, mFound.Index - 1, mFound.Length);
       end;
-      Found := Found.NextMatch;
+      mFound := mFound.NextMatch;
     end;
   end;
 end;
