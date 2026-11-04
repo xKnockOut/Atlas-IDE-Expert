@@ -231,8 +231,8 @@ begin
     begin
       Exit('-');
     end;
-    if not TInlineRefactoring.InlineMethod(Source, Position, Source, Routines[0], Options(AInline), Action,
-      AReason) then
+    if not TInlineRefactoring.InlineMethod(Source, Position, TInlineCallee.Create(Source, Routines[0]),
+      Options(AInline), Action, AReason) then
     begin
       Exit('-');
     end;
@@ -501,15 +501,15 @@ begin
     // Gleiche Bedeutung: aus der anderen Datei eingesetzt.
     Options.Lookup := FakeLookup(nil);
     Assert.IsTrue(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', CallerText, Caller), Position,
-      TInlineSource.Create('c.pas', CalleeText, Callee), TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0],
-      Options, Action, Reason), Reason);
+      TInlineCallee.Create(TInlineSource.Create('c.pas', CalleeText, Callee),
+      TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0]), Options, Action, Reason), Reason);
     Assert.AreEqual(Unit_(['procedure P(Y: Integer);', 'begin', '  Y := Min(Y, Limit);', 'end;']),
       TChangeSignature.ApplyEdits(CallerText, Action.Edits));
     // Limit bedeutet am Aufruf etwas anderes.
     Options.Lookup := FakeLookup(Caller);
     Assert.IsFalse(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', CallerText, Caller), Position,
-      TInlineSource.Create('c.pas', CalleeText, Callee), TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0],
-      Options, Action, Reason));
+      TInlineCallee.Create(TInlineSource.Create('c.pas', CalleeText, Callee),
+      TInlineRefactoring.FindRoutines(Callee, 'Clamp')[0]), Options, Action, Reason));
     Assert.Contains(Reason, 'Limit');
   finally
     Caller.Free;
