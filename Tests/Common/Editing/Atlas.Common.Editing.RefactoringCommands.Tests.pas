@@ -215,7 +215,8 @@ const
 function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
   out AReason: string): Boolean;
 begin
-  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, nil, nil, nil, '', FixUri, AHost, AEdits, AReason);
+  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', FixUri,
+    AHost), AEdits, AReason);
 end;
 
 function Finding(const ARuleId, AMessage: string; ASafe: Boolean): TSlashFinding;
@@ -359,8 +360,8 @@ begin
   Host.HasFindings := True;
   Host.Findings := [Finding('free-without-try', 'Free ohne try', False)];
   Text := Format(RoutineUnit, ['/explain']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(11, 0), nil, nil, Edits, nil,
-    '', FixUri, Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(11, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', FixUri, Keep), Edits));
   // Nur die Befehlszeile geht.
   Assert.AreEqual(1, Integer(Length(Edits)));
   Assert.AreEqual(StringReplace(Format(RoutineUnit, ['']), '  '#10'  Liste  :=', '  Liste  :=', []), Apply(Text, Edits));
