@@ -8576,6 +8576,12 @@ Vorbereitung: YouTrack mit Agile Board (deutsche Oberfläche, Spalten Offen, In 
 | BO22 | `issues.board.onlyMine` aus, IDE neu starten, Board öffnen | Board zeigt zuerst alle Karten |
 | BO23 | Helles und dunkles IDE-Design, 150 % Skalierung | Lesbare Karten, Ziehen mit halbdurchsichtiger Karte und markierter Zielspalte |
 | BO24 | Plugin entladen, während das Board lädt bzw. verschiebt | Keine Zugriffsverletzung |
+| BO25 | YouTrack-Board, dessen Zustandsfeld ein Workflow mit Zustandsmaschine steuert (z. B. Offen → In Arbeit → Zur Prüfung → Erledigt); Karte aus „Offen“ nach „In Arbeit“ ziehen | Karte wechselt wie im Board von YouTrack; im Issue steht derselbe Verlauf wie nach Ziehen in YouTrack (**Abnahme**) |
+| BO26 | Wie BO25, Karte aus „Offen“ direkt nach „Erledigt“ ziehen (Übergang nicht erlaubt) | Spalte „Erledigt“ leuchtet beim Ziehen nicht auf, Mauszeiger „nicht ablegen“; nach dem Loslassen nennt die Statuszeile „… nicht nach „Erledigt“ verschoben: Der Workflow von YouTrack erlaubt von „Offen“ aus nur: In Arbeit …“; keine Anfrage an den Server (**Abnahme**) |
+| BO27 | Zustandsmaschine mit benannten Übergängen („Beginnen“, „Abschließen“), Karte in eine Spalte ziehen | Atlas lässt YouTrack entscheiden: erlaubt → verschoben; abgelehnt → Karte springt zurück, Meldung mit dem Text von YouTrack und „Von „…“ aus erlaubt der Workflow von YouTrack: Beginnen, …“ |
+| BO28 | Spalte mit mehreren Werten (z. B. „Offen, Nachgefragt“), Workflow erlaubt aus dem aktuellen Zustand nur „Nachgefragt“; Karte in diese Spalte ziehen | Karte landet in der Spalte, im Issue steht „Nachgefragt“ |
+| BO29 | Workflow-Regel verlangt vor einem Wechsel ein Feld (z. B. Zuständig), Feld leer lassen und ziehen | Karte springt zurück, die Statuszeile zeigt die Meldung der Regel aus YouTrack |
+| BO30 | Wie BO25 mit Kommentar in der Rückfrage | Kommentar steht im Issue, Zustand gewechselt |
 
 ## Sprint-Kachel (#1277)
 

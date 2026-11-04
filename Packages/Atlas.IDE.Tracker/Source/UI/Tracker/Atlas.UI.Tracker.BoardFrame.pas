@@ -14,7 +14,9 @@
 // Schmaler als 360 px: Spalten untereinander als einklappbare Gruppen (Klick
 // auf die Kopfzeile). Ziehen einer Karte in eine andere Spalte meldet
 // OnMove; die IDE-Schicht fragt nach, schreibt und ruft danach MoveCard
-// (sofort sichtbar) bzw. RevertMove (springt zurück). Klick meldet OnOpen,
+// (sofort sichtbar) bzw. RevertMove (springt zurück); Spalten, die der
+// Workflow des Trackers sicher ausschließt (TAtlasBoardTransitions), werden
+// beim Ziehen nicht hervorgehoben. Klick meldet OnOpen,
 // Doppelklick OnStart, Rechtsklick zeigt das Kontextmenü (Beginnen,
 // Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen). Mit
 // CanDrag = False (ohne Netz) lässt sich nichts ziehen. Filter „Nur meine“
@@ -650,7 +652,7 @@ begin
   begin
     mColumn := FLayout.Columns[mIndex];
     // Fläche der Spalte; Ziel beim Ziehen hervorgehoben.
-    if FDragging and (mColumn = FDropColumn) and TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, mColumn) then
+    if FDragging and (mColumn = FDropColumn) and TAtlasBoardTransitions.Allowed(FSnapshot, FPressCard, mColumn) then
     begin
       Canvas.Brush.Color := ToColor(FColors.Selection);
     end
@@ -753,7 +755,8 @@ begin
   begin
     FDragPoint := Point(X, Y);
     FDropColumn := FLayout.ColumnAt(FDragPoint);
-    if TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, FDropColumn) then
+    // Spalten, die der Workflow des Trackers sicher nicht zulässt, nehmen nichts an (Grund beim Loslassen).
+    if TAtlasBoardTransitions.Allowed(FSnapshot, FPressCard, FDropColumn) then
     begin
       Cursor := crDrag;
     end

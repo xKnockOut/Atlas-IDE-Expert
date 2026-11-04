@@ -713,6 +713,7 @@ uses
   Atlas.Core.Tracker.Internals.GitHubApi in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubApi.pas',
   Atlas.Core.Tracker.Providers.GitHub in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas',
   Atlas.Core.Tracker.Providers.YouTrack in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas',
+  Atlas.Core.Tracker.YouTrackWorkflow in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas',
   Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
   Atlas.Core.Tracker.Tests in 'IDE.Expert\Atlas.Core.Tracker.Tests.pas',
   Atlas.Core.Tracker.Connections.Tests in 'IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas',
