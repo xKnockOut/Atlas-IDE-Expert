@@ -4771,11 +4771,11 @@ begin
     Exit;
   end;
   // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
-  Names := TDataFieldNames.Lookup(ARequest.Text, ARequest.FileName, Call, ARequest.Index,
+  Names := TDataFieldNames.Lookup(TDataLookupSource.Create(ARequest.Text, ARequest.FileName, ARequest.Index,
     function(const AName: string; out AContent: string): Boolean
     begin
       Result := ARequest.ReadText(AName, AContent);
-    end, Sql, Found);
+    end), Call, Sql, Found);
   Source := TDataFieldNames.ShortSql(Sql);
   Range := TTextRange.Create(ARequest.Position.Line, Call.ContentStart, ARequest.Position.Line, Call.ContentEnd);
   for Name in Names do

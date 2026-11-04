@@ -90,6 +90,14 @@ type
     function IsFieldGroup: Boolean;
   end;
 
+  /// <summary>Klasse auf der Kopfzeile Line einer Unit mit Text und Syntaxbaum.</summary>
+  TClassSource = record
+    Tree: TSyntaxTree;
+    Text: string;
+    Line: Integer;
+    class function Create(ATree: TSyntaxTree; const AText: string; ALine: Integer): TClassSource; static;
+  end;
+
   TClassSection = record
     Visibility: TClassVisibility;
     /// <summary>Zeile des Schlüsselworts; -1 beim ersten Abschnitt ohne Schlüsselwort.</summary>
@@ -359,6 +367,15 @@ type
   public
     class procedure Run(ALayout: TClassLayout); static;
   end;
+
+{ TClassSource }
+
+class function TClassSource.Create(ATree: TSyntaxTree; const AText: string; ALine: Integer): TClassSource;
+begin
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.Line := ALine;
+end;
 
 { TClassMember }
 
