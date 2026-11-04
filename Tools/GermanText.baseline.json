@@ -74,7 +74,7 @@
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.InvertBoolean.pas": 3,
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MaintenanceCommands.pas": 12,
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MemberTransfer.pas": 9,
-  "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MethodWithoutSelf.pas": 49,
+  "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MethodWithoutSelf.pas": 47,
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MoveClass.pas": 11,
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.MoveMember.pas": 26,
   "Packages/Atlas.Common/Source/Editing/Atlas.Common.Editing.NestedRoutines.pas": 37,
