@@ -100,6 +100,12 @@
         <DCCReference Include="Source\Shell\Shell.Composition.IdeArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.EditingArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.IndexArea.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Parts.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.CoreWiring.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.FeatureWiring.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.CommandWiring.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
