@@ -453,8 +453,8 @@ begin
   end;
   Result := nil;
   for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
-    RelativeTo(AScope.Root, AFileName), mText, TFileChecker.ProjectOf(FCheckProject, AFileName),
-    TFileChecker.SourceOf(FCheckSource, AFileName), mScopes), mText,
+    RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
+    mScopes), mText,
     TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
   begin
     if (Length(mAction.Edits) > 0) and (mAction.Command = '') then

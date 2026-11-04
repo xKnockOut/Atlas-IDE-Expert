@@ -304,109 +304,125 @@ begin
   end;
 end;
 
+/// <summary>Meldet AFindings die Regel ARuleId in ALine?</summary>
+function Reported(const AFindings: TArray<TRuleFinding>; const ARuleId: string; ALine: Integer): Boolean;
+var
+  mFinding: TRuleFinding;
+begin
+  for mFinding in AFindings do
+  begin
+    if SameText(mFinding.RuleId, ARuleId) and (mFinding.Range.StartPos.Line = ALine) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TGoldenCorpus.Compare(const AFileName: string; const AMarkers: TArray<TGoldenMarker>;
   const AFindings: TArray<TRuleFinding>; const AKnownIds, APlannedIds: TArray<string>): TGoldenResult;
 var
-  Marker: TGoldenMarker;
-  Finding: TRuleFinding;
-  Found: Boolean;
-  Place: string;
+  mMarker: TGoldenMarker;
+  mFound: Boolean;
+  mPlace: string;
 begin
   Result := Default(TGoldenResult);
-  for Marker in AMarkers do
+  for mMarker in AMarkers do
   begin
-    Place := Format('%s(%d): %s', [AFileName, Marker.Line + 1, Marker.RuleId]);
-    if not Contains(AKnownIds, Marker.RuleId) then
+    mPlace := Format('%s(%d): %s', [AFileName, mMarker.Line + 1, mMarker.RuleId]);
+    if not Contains(AKnownIds, mMarker.RuleId) and Contains(APlannedIds, mMarker.RuleId) then
     begin
-      if Contains(APlannedIds, Marker.RuleId) then
-      begin
-        Result.Skipped := Result.Skipped + [Place + ' ist geplant und wird übersprungen'];
-      end
-      else
-      begin
-        Result.Unknown := Result.Unknown + [Place + ' ist keine bekannte Regel'];
-      end;
+      Result.Skipped := Result.Skipped + [mPlace + ' ist geplant und wird übersprungen'];
       Continue;
     end;
-    Found := False;
-    for Finding in AFindings do
+    if not Contains(AKnownIds, mMarker.RuleId) then
     begin
-      if SameText(Finding.RuleId, Marker.RuleId) and (Finding.Range.StartPos.Line = Marker.Line) then
-      begin
-        Found := True;
-        Break;
-      end;
+      Result.Unknown := Result.Unknown + [mPlace + ' ist keine bekannte Regel'];
+      Continue;
     end;
-    if Marker.Expected and not Found then
+    mFound := Reported(AFindings, mMarker.RuleId, mMarker.Line);
+    if mMarker.Expected and not mFound then
     begin
-      Result.Missing := Result.Missing + [Place + ' erwartet, aber nicht gemeldet'];
+      Result.Missing := Result.Missing + [mPlace + ' erwartet, aber nicht gemeldet'];
     end
-    else if not Marker.Expected and Found then
+    else if not mMarker.Expected and mFound then
     begin
-      Result.FalseAlarms := Result.FalseAlarms + [Place + ' gemeldet, obwohl KEIN-TREFFER'];
-    end
+      Result.FalseAlarms := Result.FalseAlarms + [mPlace + ' gemeldet, obwohl KEIN-TREFFER'];
+    end;
+  end;
+end;
+
+/// <summary>Index der Quote von ARuleId in ARates; legt sie an, wenn es sie noch nicht gibt.</summary>
+function RateIndex(var ARates: TArray<TRuleRate>; const ARuleId: string): Integer;
+var
+  mIndex: Integer;
+  mRate: TRuleRate;
+begin
+  for mIndex := 0 to High(ARates) do
+  begin
+    if SameText(ARates[mIndex].RuleId, ARuleId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  mRate := Default(TRuleRate);
+  mRate.RuleId := ARuleId;
+  ARates := ARates + [mRate];
+  Result := High(ARates);
+end;
+
+/// <summary>Nach Regelkennung sortiert; wenige Regeln: einfaches Einfügesortieren (stabil).</summary>
+procedure SortRates(var ARates: TArray<TRuleRate>);
+var
+  mIndex, mSwap: Integer;
+  mTemp: TRuleRate;
+begin
+  for mIndex := 1 to High(ARates) do
+  begin
+    mTemp := ARates[mIndex];
+    mSwap := mIndex - 1;
+    while (mSwap >= 0) and (CompareText(ARates[mSwap].RuleId, mTemp.RuleId) > 0) do
+    begin
+      ARates[mSwap + 1] := ARates[mSwap];
+      Dec(mSwap);
+    end;
+    ARates[mSwap + 1] := mTemp;
   end;
 end;
 
 class function TGoldenCorpus.Rates(const ACsv: string): TArray<TRuleRate>;
 var
-  Lines, Columns: TArray<string>;
-  Index, Rate, Swap: Integer;
-  Verdict: string;
-  Temp: TRuleRate;
+  mLines, mColumns: TArray<string>;
+  mIndex, mRate: Integer;
+  mVerdict: string;
 begin
   Result := nil;
-  Lines := TTextLines.SplitLines(ACsv);
+  mLines := TTextLines.SplitLines(ACsv);
   // Zeile 0 ist die Kopfzeile.
-  for Index := 1 to High(Lines) do
+  for mIndex := 1 to High(mLines) do
   begin
-    Columns := Lines[Index].Split([',']);
-    if Length(Columns) < 4 then
+    mColumns := mLines[mIndex].Split([',']);
+    if Length(mColumns) < 4 then
     begin
       Continue;
     end;
-    Rate := -1;
-    for Swap := 0 to High(Result) do
+    mRate := RateIndex(Result, Trim(mColumns[0]));
+    mVerdict := LowerCase(Trim(mColumns[3]));
+    if mVerdict = 'richtig' then
     begin
-      if SameText(Result[Swap].RuleId, Trim(Columns[0])) then
-      begin
-        Rate := Swap;
-      end;
-    end;
-    if Rate < 0 then
-    begin
-      Temp := Default(TRuleRate);
-      Temp.RuleId := Trim(Columns[0]);
-      Result := Result + [Temp];
-      Rate := High(Result);
-    end;
-    Verdict := LowerCase(Trim(Columns[3]));
-    if Verdict = 'richtig' then
-    begin
-      Inc(Result[Rate].Correct);
+      Inc(Result[mRate].Correct);
     end
-    else if Verdict = 'falsch' then
+    else if mVerdict = 'falsch' then
     begin
-      Inc(Result[Rate].Wrong);
+      Inc(Result[mRate].Wrong);
     end
     else
     begin
       raise EArgumentException.CreateFmt('Zeile %d: Bewertung "%s" ist weder richtig noch falsch',
-        [Index + 1, Columns[3]]);
+        [mIndex + 1, mColumns[3]]);
     end;
   end;
-  // Wenige Regeln: einfaches Einfügesortieren.
-  for Index := 1 to High(Result) do
-  begin
-    Temp := Result[Index];
-    Swap := Index - 1;
-    while (Swap >= 0) and (CompareText(Result[Swap].RuleId, Temp.RuleId) > 0) do
-    begin
-      Result[Swap + 1] := Result[Swap];
-      Dec(Swap);
-    end;
-    Result[Swap + 1] := Temp;
-  end;
+  SortRates(Result);
 end;
 
 /// <summary>Teile einer Mutationszeile an " | ", \| bleibt im Teil.</summary>
