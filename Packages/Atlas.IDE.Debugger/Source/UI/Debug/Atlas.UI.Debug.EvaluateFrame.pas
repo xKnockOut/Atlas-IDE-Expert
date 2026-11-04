@@ -29,7 +29,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.Core.Debug.Evaluate;
+  Atlas.Core.Debug.Evaluate,
+  Atlas.UI.Debug.EvaluateTree;
 
 type
   TAtlasEvalNodeProc = reference to procedure(ANode: TAtlasEvalNode);
@@ -76,11 +77,11 @@ type
   /// <summary>Zustand zwischen zwei Refresh.</summary>
   TAtlasEvalFrameState = record
     List: TAtlasEvalList;
-    // Schlüssel je Baumknoten (Data = Index + 1): Knoten der Liste können zwischen zwei Refresh freigegeben sein.
-    NodeKeys: TArray<string>;
+    // Schlüssel und Darstellung je Baumknoten: Knoten der Liste können zwischen zwei Refresh freigegeben sein.
+    Sync: TAtlasEvalTreeSync;
+    Shown: TAtlasEvalDetailInput;
     View: TAtlasEvalView;
     Filling: Boolean;
-    Shape: string;
     // Wert von „.Text“ für die Zeilen-Ansicht und der Knoten, zu dem er gehört.
     LinesKey: string;
     LinesOk: Boolean;
@@ -88,9 +89,6 @@ type
   end;
 
   TAtlasDebugEvaluateFrame = class(TFrame)
-  public const
-    /// <summary>Höchstens so viele Zeichen eines Werts im Baum; der ganze steht unten.</summary>
-    MaxTreeValue = 200;
   private
     FParts: TAtlasEvalFrameParts;
     FState: TAtlasEvalFrameState;
@@ -113,6 +111,7 @@ type
     /// <summary>Meldungen an die IDE-Schicht.</summary>
     Hooks: TAtlasEvalFrameHooks;
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     /// <summary>Liste, die der Baum zeigt; gehört der IDE-Schicht.</summary>
     procedure SetList(AList: TAtlasEvalList);
     /// <summary>Nach jeder Änderung der Liste: Baum neu aufbauen, wenn sich Zeilen geändert haben, sonst nur Texte.
@@ -132,8 +131,6 @@ type
     /// <summary>Verlaufsmenü unter dem Eingabefeld zeigen (Pfeil nach unten im leeren Feld).</summary>
     procedure ShowHistory;
     procedure SetView(AView: TAtlasEvalView);
-    /// <summary>Text im Baum: „Name = Wert“, Wert gekürzt und einzeilig.</summary>
-    class function NodeText(ANode: TAtlasEvalNode): string; static;
     /// <summary>Inhalt der Ansicht unten; AUnfit: Ansicht passt nicht, gezeigt wird der Text.</summary>
     class function DetailText(ANode: TAtlasEvalNode; AView: TAtlasEvalView; ALinesOk: Boolean;
       const ALines: string; out AUnfit: Boolean): string; static;
@@ -305,156 +302,35 @@ end;
 
 { Knoten }
 
-function KeyOf(ASelf: TAtlasDebugEvaluateFrame; ATreeNode: TTreeNode): string;
-var
-  mIndex: NativeInt;
-begin
-  Result := '';
-  if (ATreeNode = nil) or (ATreeNode.Data = nil) then
-  begin
-    Exit;
-  end;
-  mIndex := NativeInt(ATreeNode.Data) - 1;
-  if (mIndex >= 0) and (mIndex <= High(ASelf.FState.NodeKeys)) then
-  begin
-    Result := ASelf.FState.NodeKeys[mIndex];
-  end;
-end;
-
 function NodeOf(ASelf: TAtlasDebugEvaluateFrame; ATreeNode: TTreeNode): TAtlasEvalNode;
 var
   mKey: string;
 begin
   // Über den Schlüssel: nil, wenn es den Knoten nicht mehr gibt.
   Result := nil;
-  mKey := KeyOf(ASelf, ATreeNode);
+  mKey := ASelf.FState.Sync.KeyOf(ATreeNode);
   if (mKey <> '') and (ASelf.FState.List <> nil) then
   begin
     Result := ASelf.FState.List.Find(mKey);
   end;
 end;
 
-procedure WalkShape(ABuilder: TStringBuilder; ANode: TAtlasEvalNode);
-var
-  mIndex: Integer;
-begin
-  ABuilder.Append(ANode.Key);
-  if ANode.ChildrenLoaded then
-  begin
-    ABuilder.Append('{');
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      WalkShape(ABuilder, ANode.Children[mIndex]);
-    end;
-    ABuilder.Append('}');
-  end
-  else if ANode.CanExpand then
-  begin
-    ABuilder.Append('+');
-  end;
-  ABuilder.Append(#3);
-end;
-
-/// <summary>Zeilen samt Aufklappbarkeit: Ändert sich das, baut Refresh den Baum neu auf.</summary>
-function ShapeOf(AList: TAtlasEvalList): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
-begin
-  Result := '';
-  if AList = nil then
-  begin
-    Exit;
-  end;
-  mBuilder := TStringBuilder.Create;
-  try
-    for mIndex := 0 to AList.Count - 1 do
-    begin
-      WalkShape(mBuilder, AList.Roots[mIndex]);
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
-end;
-
-procedure AddTreeNodes(ASelf: TAtlasDebugEvaluateFrame; AParent: TTreeNode; ANode: TAtlasEvalNode);
-var
-  mItem: TTreeNode;
-  mIndex: Integer;
-  mItems: TTreeNodes;
-begin
-  mItems := ASelf.FParts.Tree.Items;
-  ASelf.FState.NodeKeys := ASelf.FState.NodeKeys + [ANode.Key];
-  mItem := mItems.AddChildObject(AParent, TAtlasDebugEvaluateFrame.NodeText(ANode),
-    Pointer(NativeInt(Length(ASelf.FState.NodeKeys))));
-  if ANode.ChildrenLoaded then
-  begin
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      AddTreeNodes(ASelf, mItem, ANode.Children[mIndex]);
-    end;
-    if ANode.ChildCount = 0 then
-    begin
-      mItems.AddChildObject(mItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoFields), nil);
-    end;
-  end
-  else if ANode.CanExpand then
-  begin
-    // Platzhalter für das Aufklappzeichen; die Felder holt Hooks.Expand.
-    mItems.AddChildObject(mItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending), nil);
-  end;
-  if ANode.Expanded and ANode.ChildrenLoaded then
-  begin
-    mItem.Expand(False);
-  end;
-end;
-
-procedure Rebuild(ASelf: TAtlasDebugEvaluateFrame);
+procedure SyncTree(ASelf: TAtlasDebugEvaluateFrame);
 var
   mKeep: string;
-  mIndex: Integer;
 begin
-  mKeep := KeyOf(ASelf, ASelf.FParts.Tree.Selected);
+  mKeep := ASelf.FState.Sync.KeyOf(ASelf.FParts.Tree.Selected);
   ASelf.FState.Filling := True;
-  ASelf.FParts.Tree.Items.BeginUpdate;
   try
-    ASelf.FParts.Tree.Items.Clear;
-    ASelf.FState.NodeKeys := nil;
-    if ASelf.FState.List <> nil then
-    begin
-      for mIndex := 0 to ASelf.FState.List.Count - 1 do
-      begin
-        AddTreeNodes(ASelf, nil, ASelf.FState.List.Roots[mIndex]);
-      end;
-    end;
+    ASelf.FState.Sync.Sync(ASelf.FState.List);
   finally
-    ASelf.FParts.Tree.Items.EndUpdate;
     ASelf.FState.Filling := False;
   end;
-  if mKeep <> '' then
+  // Wurde der gewählte Knoten ersetzt (Teile eines neuen Werts), denselben Schlüssel wieder wählen.
+  if (mKeep <> '') and (ASelf.FState.Sync.KeyOf(ASelf.FParts.Tree.Selected) <> mKeep) then
   begin
     ASelf.Select(mKeep);
   end;
-end;
-
-procedure UpdateTexts(ASelf: TAtlasDebugEvaluateFrame);
-var
-  mIndex: Integer;
-  mItem: TTreeNode;
-  mNode: TAtlasEvalNode;
-begin
-  for mIndex := 0 to ASelf.FParts.Tree.Items.Count - 1 do
-  begin
-    mItem := ASelf.FParts.Tree.Items[mIndex];
-    mNode := NodeOf(ASelf, mItem);
-    if (mNode <> nil) and (mItem.Text <> TAtlasDebugEvaluateFrame.NodeText(mNode)) then
-    begin
-      mItem.Text := TAtlasDebugEvaluateFrame.NodeText(mNode);
-    end;
-  end;
-  // Farben (geändert, Fehler) hängen nicht am Text.
-  ASelf.FParts.Tree.Invalidate;
 end;
 
 { Ansicht und Knöpfe }
@@ -494,6 +370,7 @@ begin
     ASelf.FState.LinesKey := ANode.Key;
     ASelf.FState.LinesOk := False;
     ASelf.FState.LinesText := '';
+    ASelf.FState.Shown.Valid := False;
     ASelf.FParts.Detail.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
     ASelf.Hooks.Lines(ANode);
   end;
@@ -503,16 +380,21 @@ procedure ShowDetail(ASelf: TAtlasDebugEvaluateFrame; ANode: TAtlasEvalNode; AOk
 var
   mText: string;
   mUnfit: Boolean;
+  mInput: TAtlasEvalDetailInput;
 begin
+  // Refresh kommt nach jeder Zeitscheibe der Auswertung: nur rechnen, wenn sich das Gezeigte ändert.
+  mInput := TAtlasEvalDetailInput.ForNode(ANode, ASelf.FState.View, AOk, ALines);
+  if mInput.Same(ASelf.FState.Shown) then
+  begin
+    Exit;
+  end;
+  ASelf.FState.Shown := mInput;
   mText := TAtlasDebugEvaluateFrame.DetailText(ANode, ASelf.FState.View, AOk, ALines, mUnfit);
   if mUnfit and (ASelf.FState.View <> TAtlasEvalView.Lines) then
   begin
     mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateViewUnfit) + sLineBreak + sLineBreak + mText;
   end;
-  if ASelf.FParts.Detail.Text <> mText then
-  begin
-    ASelf.FParts.Detail.Text := mText;
-  end;
+  ASelf.FParts.Detail.Text := mText;
 end;
 
 procedure UpdateDetail(ASelf: TAtlasDebugEvaluateFrame);
@@ -674,14 +556,29 @@ begin
   BuildKeys(Self);
   BuildBottom(Self);
   BuildTree(Self);
+  FState.Sync := TAtlasEvalTreeSync.Create(FParts.Tree);
   UpdateButtons(Self);
+end;
+
+destructor TAtlasDebugEvaluateFrame.Destroy;
+begin
+  // Der Baum entsteht und vergeht als Komponente des Frames: Beim Löschen seiner Knoten im inherited darf er nicht
+  // mehr nach FState.Sync fragen.
+  if FParts.Tree <> nil then
+  begin
+    FParts.Tree.OnChange := nil;
+    FParts.Tree.OnExpanding := nil;
+    FParts.Tree.OnCollapsing := nil;
+    FParts.Tree.OnCustomDrawItem := nil;
+  end;
+  FreeAndNil(FState.Sync);
+  inherited Destroy;
 end;
 
 procedure TAtlasDebugEvaluateFrame.CreateWnd;
 begin
   inherited CreateWnd;
   // TTreeView.Items braucht ein Fenster.
-  FState.Shape := #0;
   Refresh;
 end;
 
@@ -689,26 +586,14 @@ procedure TAtlasDebugEvaluateFrame.SetList(AList: TAtlasEvalList);
 begin
   FState.List := AList;
   FState.LinesKey := '';
-  FState.Shape := #0;
   Refresh;
 end;
 
 procedure TAtlasDebugEvaluateFrame.Refresh;
-var
-  mCurrent: string;
 begin
   if HandleAllocated then
   begin
-    mCurrent := ShapeOf(FState.List);
-    if mCurrent <> FState.Shape then
-    begin
-      FState.Shape := mCurrent;
-      Rebuild(Self);
-    end
-    else
-    begin
-      UpdateTexts(Self);
-    end;
+    SyncTree(Self);
   end;
   UpdateButtons(Self);
   UpdateDetail(Self);
@@ -725,49 +610,17 @@ end;
 
 procedure TAtlasDebugEvaluateFrame.Select(const AKey: string);
 var
-  mIndex: Integer;
+  mItem: TTreeNode;
 begin
   if not HandleAllocated then
   begin
     Exit;
   end;
-  for mIndex := 0 to FParts.Tree.Items.Count - 1 do
+  mItem := FState.Sync.ItemOf(AKey);
+  if mItem <> nil then
   begin
-    if KeyOf(Self, FParts.Tree.Items[mIndex]) = AKey then
-    begin
-      FParts.Tree.Selected := FParts.Tree.Items[mIndex];
-      Exit;
-    end;
+    FParts.Tree.Selected := mItem;
   end;
-end;
-
-class function TAtlasDebugEvaluateFrame.NodeText(ANode: TAtlasEvalNode): string;
-var
-  mValue: string;
-begin
-  case ANode.State of
-    TAtlasEvalState.Pending:
-      // Bis zum neuen Wert grau der des letzten Halts: kein Flackern bei jedem Schritt.
-      if ANode.Value <> '' then
-      begin
-        mValue := ANode.Value;
-      end
-      else
-      begin
-        mValue := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
-      end;
-    TAtlasEvalState.Unavailable:
-      mValue := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNotStopped);
-  else
-    mValue := ANode.Value;
-  end;
-  // Einzeilig und gekürzt; den ganzen Wert zeigt die Ansicht unten.
-  mValue := StringReplace(StringReplace(mValue, #13#10, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
-  if Length(mValue) > MaxTreeValue then
-  begin
-    mValue := Copy(mValue, 1, MaxTreeValue) + #$2026;
-  end;
-  Result := ANode.Name + ' = ' + mValue;
 end;
 
 class function TAtlasDebugEvaluateFrame.DetailText(ANode: TAtlasEvalNode; AView: TAtlasEvalView;
@@ -872,14 +725,15 @@ end;
 procedure TAtlasDebugEvaluateFrame.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 var
-  mEvalNode: TAtlasEvalNode;
+  mInfo: TAtlasEvalItemInfo;
   mCanvas: TCanvas;
 begin
   DefaultDraw := True;
   mCanvas := Sender.Canvas;
-  mEvalNode := NodeOf(Self, Node);
+  // Darstellung steht am Baumknoten (FState.Sync): Zeichnen sucht nicht in der Liste.
+  mInfo := FState.Sync.InfoOf(Node);
   mCanvas.Font.Style := [];
-  if (mEvalNode <> nil) and (mEvalNode.Parent = nil) and mEvalNode.Pinned then
+  if mInfo.Bold then
   begin
     mCanvas.Font.Style := [fsBold];
   end;
@@ -890,17 +744,13 @@ begin
     Exit;
   end;
   mCanvas.Brush.Color := TreeColor(Self, FParts.Tree.Color);
-  if (mEvalNode <> nil) and mEvalNode.Changed then
-  begin
-    mCanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
-      mCanvas.Brush.Color))).Warn));
-  end
-  else if (mEvalNode = nil) or (mEvalNode.State <> TAtlasEvalState.Value) then
-  begin
-    mCanvas.Font.Color := TreeColor(Self, clGrayText);
-  end
+  case mInfo.Look of
+    TAtlasEvalLook.Changed:
+      mCanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
+        mCanvas.Brush.Color))).Warn));
+    TAtlasEvalLook.Gray:
+      mCanvas.Font.Color := TreeColor(Self, clGrayText);
   else
-  begin
     mCanvas.Font.Color := TreeColor(Self, FParts.Tree.Font.Color);
   end;
 end;

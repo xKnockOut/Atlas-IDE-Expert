@@ -1856,6 +1856,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas"/>

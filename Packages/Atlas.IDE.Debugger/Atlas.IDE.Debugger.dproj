@@ -145,6 +145,7 @@
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas"/>

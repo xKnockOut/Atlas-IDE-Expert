@@ -1826,6 +1826,8 @@ uses
   Atlas.Core.Completion.Providers.Expression.Tests in 'IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas',
   Atlas.Core.Debug.Evaluate in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas',
   Atlas.Core.Debug.Evaluate.Tests in 'IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas',
+  Atlas.UI.Debug.EvaluateTree in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas',
+  Atlas.UI.Debug.EvaluateTree.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas',
   Atlas.UI.Debug.EvaluateFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas',
   Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas',
   Atlas.Common.Lsp.DataFlow.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas',

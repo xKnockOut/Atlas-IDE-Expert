@@ -1,9 +1,8 @@
 ﻿unit Atlas.UI.Debug.EvaluateFrame.Tests;
 
-// Fenster „Auswerten“ (#784), Oberfläche: Text im Baum je Zustand (gekürzt,
-// einzeilig, grau der alte Wert bis zum neuen), Ansichten unten (Text mit
-// sichtbaren Steuerzeichen, Zeilen aus „.Text“, JSON, Hex, Hinweis bei
-// unpassender Ansicht), Baum mit Platzhalter zum Aufklappen und Kindern aus
+// Fenster „Auswerten“ (#784), Oberfläche (Text im Baum: EvaluateTree.Tests):
+// Ansichten unten (Text mit sichtbaren Steuerzeichen, Zeilen aus „.Text“,
+// JSON, Hex, Hinweis bei unpassender Ansicht), Baum mit Platzhalter zum Aufklappen und Kindern aus
 // Teilen, Enter/Strg+Enter im Eingabefeld, Entf auf einem Feld entfernt die
 // ganze Zeile, Knopf „Festheften“ bzw. „Lösen“.
 
@@ -27,8 +26,6 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    [Test]
-    procedure NodeTexts;
     [Test]
     procedure DetailViews;
     [Test]
@@ -72,33 +69,6 @@ end;
 procedure TAtlasDebugEvaluateFrameTests.TearDown;
 begin
   TAtlasStrings.Language := FLanguage;
-end;
-
-procedure TAtlasDebugEvaluateFrameTests.NodeTexts;
-var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-begin
-  List := TAtlasEvalList.Create;
-  try
-    Node := List.Add(' Summe ');
-    Assert.AreEqual('Summe = wird ausgewertet …', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.SetResult(Node, True, '42');
-    Assert.AreEqual('Summe = 42', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.BeginStop;
-    Assert.AreEqual('Summe = 42', TAtlasDebugEvaluateFrame.NodeText(Node), 'alter Wert bis zum neuen');
-    List.SetResult(Node, False, 'Undeclared identifier');
-    Assert.AreEqual('Summe = Undeclared identifier', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.Unavailable;
-    Assert.AreEqual('Summe = ‹Programm nicht angehalten›', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.BeginStop;
-    List.SetResult(Node, True, '''a''#13#10''b''' + StringOfChar('x', 300));
-    Assert.IsFalse(TAtlasDebugEvaluateFrame.NodeText(Node).Contains(#13), 'einzeilig');
-    Assert.AreEqual(Integer(Length('Summe = ') + TAtlasDebugEvaluateFrame.MaxTreeValue + 1),
-      Integer(Length(TAtlasDebugEvaluateFrame.NodeText(Node))), 'gekürzt mit …');
-  finally
-    List.Free;
-  end;
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.DetailViews;
