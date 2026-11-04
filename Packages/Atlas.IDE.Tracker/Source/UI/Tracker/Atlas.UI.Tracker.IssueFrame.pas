@@ -1057,7 +1057,7 @@ begin
   Result := '';
   if ATime > 0 then
   begin
-    Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime));
+    Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime), FormatSettings);
   end;
 end;
 
@@ -1254,7 +1254,7 @@ begin
           mItem.Caption := mAttachment.Name;
           if mAttachment.Size >= 0 then
           begin
-            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB');
+            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024, FormatSettings) + ' KB');
           end
           else
           begin
