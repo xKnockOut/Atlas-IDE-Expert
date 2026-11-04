@@ -53,7 +53,13 @@ type
     procedure TimerTick(Sender: TObject);
     procedure Snapshot;
     procedure Place(const AView: IOTAEditView; const ABefore, AAfter: string);
+    /// <summary>Schreibt AFinal (Stand nach dem Ordnen) in den Puffer von AView, möglichst als ein Schritt mit der
+    /// Vervollständigung, und setzt den Cursor mit der verschobenen Methode.</summary>
+    procedure WritePlaced(const AView: IOTAEditView; const ABefore, AAfter, AFinal: string;
+      const AReply: TAtlasMethodPlacementReply);
     procedure Arrange;
+    /// <summary>Übernimmt die Änderungen von AReply an AFileName und meldet das Ergebnis.</summary>
+    procedure ApplyArranged(const AFileName: string; const AReply: TAtlasMethodPlacementReply);
     procedure Report(const AText: string);
     function CurrentSession: TLspSession;
     class function Mode: string; static;
@@ -294,32 +300,52 @@ begin
     end);
 end;
 
+/// <summary>Schickt AText von AFileName und fragt den Server mit AArguments; wirft ELspClientError.</summary>
+function RequestPlacement(ASession: TLspSession; const AFileName, AText, AArguments: string; ATimeoutMs: Integer):
+  TAtlasMethodPlacementReply;
+var
+  mAnswer: TJSONValue;
+begin
+  ASession.Sync(AFileName, AText);
+  mAnswer := ASession.RunCommand(TAtlasMethodPlacement.Command, AArguments, ATimeoutMs);
+  try
+    TAtlasMethodPlacement.Read(mAnswer, Result);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+/// <summary>Je verschobene Methode eine Zeile der Vorschau.</summary>
+function PreviewOf(const AFileName: string; const AReply: TAtlasMethodPlacementReply;
+  const ATexts: TAtlasMethodPlacementTexts): TArray<TAtlasResultEntry>;
+var
+  mMove: TAtlasMethodMove;
+  mEntry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for mMove in AReply.Moves do
+  begin
+    mEntry := TAtlasResultEntry.Create(AFileName, mMove.Line, 0);
+    mEntry.Text := TAtlasMethodPlacement.MoveText(mMove, ATexts);
+    Result := Result + [mEntry];
+  end;
+end;
+
 procedure TAtlasIdeMethodPlacement.Place(const AView: IOTAEditView; const ABefore, AAfter: string);
 var
-  Session: TLspSession;
-  Buffer: IOTAEditBuffer;
-  FileName, Final: string;
-  Answer: TJSONValue;
-  Reply: TAtlasMethodPlacementReply;
-  Caret: TOTAEditPos;
-  Line: Integer;
+  mSession: TLspSession;
+  mFileName: string;
+  mReply: TAtlasMethodPlacementReply;
 begin
-  Session := CurrentSession;
-  if Session = nil then
+  mSession := CurrentSession;
+  if mSession = nil then
   begin
     Exit;
   end;
-  Buffer := AView.Buffer;
-  FileName := Buffer.FileName;
+  mFileName := AView.Buffer.FileName;
   try
-    Session.Sync(FileName, AAfter);
-    Answer := Session.RunCommand(TAtlasMethodPlacement.Command,
-      TAtlasMethodPlacement.Arguments(TLspSession.PathToUri(FileName), Mode, False, ABefore), PlaceTimeoutMs);
-    try
-      TAtlasMethodPlacement.Read(Answer, Reply);
-    finally
-      Answer.Free;
-    end;
+    mReply := RequestPlacement(mSession, mFileName, AAfter, TAtlasMethodPlacement.Arguments(
+      TLspSession.PathToUri(mFileName), Mode, False, ABefore), PlaceTimeoutMs);
   except
     // Ohne Antwort bleibt der Rumpf, wo die IDE ihn hingesetzt hat.
     on ELspClientError do
@@ -328,36 +354,45 @@ begin
       Exit;
     end;
   end;
-  if (Reply.Edits = nil) or (Reply.Moved = 0) then
+  if (mReply.Edits <> nil) and (mReply.Moved > 0) then
   begin
-    Exit;
+    WritePlaced(AView, ABefore, AAfter, TLspEdits.Apply(AAfter, mReply.Edits), mReply);
   end;
-  Final := TLspEdits.Apply(AAfter, Reply.Edits);
-  Caret := AView.CursorPos;
+end;
+
+procedure TAtlasIdeMethodPlacement.WritePlaced(const AView: IOTAEditView; const ABefore, AAfter, AFinal: string;
+  const AReply: TAtlasMethodPlacementReply);
+var
+  mBuffer: IOTAEditBuffer;
+  mCaret: TOTAEditPos;
+  mLine: Integer;
+begin
+  mBuffer := AView.Buffer;
+  mCaret := AView.CursorPos;
   FWriting := True;
   try
     // Ein Schritt mit der Vervollständigung, wenn sich genau sie zurücknehmen lässt.
-    if Buffer.Undo and (TAtlasEditorBuffer.Text(Buffer) = ABefore) then
+    if mBuffer.Undo and (TAtlasEditorBuffer.Text(mBuffer) = ABefore) then
     begin
-      WriteBuffer(Buffer, ABefore, Final);
+      WriteBuffer(mBuffer, ABefore, AFinal);
     end
     else
     begin
-      if TAtlasEditorBuffer.Text(Buffer) <> AAfter then
+      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
       begin
-        Buffer.Redo;
+        mBuffer.Redo;
       end;
       // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
-      if TAtlasEditorBuffer.Text(Buffer) <> AAfter then
+      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
       begin
         Exit;
       end;
-      WriteBuffer(Buffer, AAfter, Final);
+      WriteBuffer(mBuffer, AAfter, AFinal);
     end;
-    if TAtlasMethodPlacement.CaretLine(Reply.Moves, Caret.Line - 1, Line) then
+    if TAtlasMethodPlacement.CaretLine(AReply.Moves, mCaret.Line - 1, mLine) then
     begin
-      Caret.Line := Line + 1;
-      AView.CursorPos := Caret;
+      mCaret.Line := mLine + 1;
+      AView.CursorPos := mCaret;
       AView.MoveViewToCursor;
     end;
     AView.Paint;
@@ -368,41 +403,26 @@ end;
 
 procedure TAtlasIdeMethodPlacement.Arrange;
 var
-  View: IOTAEditView;
-  Session: TLspSession;
-  FileName, Text, Hint: string;
-  Answer: TJSONValue;
-  Reply: TAtlasMethodPlacementReply;
-  Move: TAtlasMethodMove;
-  Preview: TArray<TAtlasResultEntry>;
-  Entry: TAtlasResultEntry;
-  Edit: TLspWorkspaceEdit;
-  Files: TLspFileEdits;
-  Outcome: TAtlasWorkspaceEditResult;
-  Open: TAtlasResultsOpen;
+  mView: IOTAEditView;
+  mSession: TLspSession;
+  mFileName: string;
+  mReply: TAtlasMethodPlacementReply;
+  mOpen: TAtlasResultsOpen;
 begin
-  View := PascalView;
-  if View = nil then
-  begin
-    Exit;
-  end;
-  Session := CurrentSession;
-  if Session = nil then
+  mView := PascalView;
+  mSession := CurrentSession;
+  if (mView <> nil) and (mSession = nil) then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+  end;
+  if (mView = nil) or (mSession = nil) then
+  begin
     Exit;
   end;
-  FileName := View.Buffer.FileName;
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  mFileName := mView.Buffer.FileName;
   try
-    Session.Sync(FileName, Text);
-    Answer := Session.RunCommand(TAtlasMethodPlacement.Command,
-      TAtlasMethodPlacement.Arguments(TLspSession.PathToUri(FileName), Mode, True, ''), ArrangeTimeoutMs);
-    try
-      TAtlasMethodPlacement.Read(Answer, Reply);
-    finally
-      Answer.Free;
-    end;
+    mReply := RequestPlacement(mSession, mFileName, TAtlasEditorBuffer.Text(mView.Buffer),
+      TAtlasMethodPlacement.Arguments(TLspSession.PathToUri(mFileName), Mode, True, ''), ArrangeTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -410,47 +430,51 @@ begin
       Exit;
     end;
   end;
-  if (Reply.Edits = nil) or (Reply.Moved = 0) then
+  if (mReply.Edits = nil) or (mReply.Moved = 0) then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MethodOrderNothing));
     Exit;
   end;
-  Preview := nil;
-  for Move in Reply.Moves do
-  begin
-    Entry := TAtlasResultEntry.Create(FileName, Move.Line, 0);
-    Entry.Text := TAtlasMethodPlacement.MoveText(Move, Texts);
-    Preview := Preview + [Entry];
-  end;
-  Hint := TAtlasStrings.Fmt(TAtlasTextId.MethodOrderHint, [Reply.Moved, Length(Reply.Moves) - Reply.Moved]);
-  Open :=
+  mOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle), Hint,
-    TAtlasStrings.Text(TAtlasTextId.MethodOrderApply), TAtlasResults.Group(Preview), Open) then
+  if TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle),
+    TAtlasStrings.Fmt(TAtlasTextId.MethodOrderHint, [mReply.Moved, Length(mReply.Moves) - mReply.Moved]),
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderApply), TAtlasResults.Group(PreviewOf(mFileName, mReply, Texts)),
+    mOpen) then
   begin
-    Exit;
+    ApplyArranged(mFileName, mReply);
   end;
-  Files := Default(TLspFileEdits);
-  Files.FileName := FileName;
-  Files.Edits := Reply.Edits;
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [Files];
+end;
+
+procedure TAtlasIdeMethodPlacement.ApplyArranged(const AFileName: string; const AReply: TAtlasMethodPlacementReply);
+var
+  mFiles: TLspFileEdits;
+  mEdit: TLspWorkspaceEdit;
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  mFiles := Default(TLspFileEdits);
+  mFiles.FileName := AFileName;
+  mFiles.Edits := AReply.Edits;
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [mFiles];
   FWriting := True;
   try
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, FPolicy(), TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle));
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, FPolicy(), TAtlasStrings.Text(TAtlasTextId.MethodOrderTitle));
   finally
     FWriting := False;
   end;
   Snapshot;
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-    Exit;
+    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+  end
+  else
+  begin
+    Report(TAtlasStrings.Fmt(TAtlasTextId.MethodOrderDone, [AReply.Moved]));
   end;
-  Report(TAtlasStrings.Fmt(TAtlasTextId.MethodOrderDone, [Reply.Moved]));
 end;
 
 end.

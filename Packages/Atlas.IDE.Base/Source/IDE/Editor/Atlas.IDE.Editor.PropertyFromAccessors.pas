@@ -44,7 +44,6 @@ const
 class procedure TAtlasIdePropertyFromAccessors.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  mCommand: TAtlasServerEditCommand;
   mReply: TAtlasServerEditReply;
   mProperties, mCalls: Integer;
   mHint: string;
@@ -56,13 +55,10 @@ begin
     Exit;
   end;
   // Die Argumente der Code-Aktion gehen unverändert an den Server.
-  mCommand.Command := ApplyCommand;
-  mCommand.Arguments := AArgumentsJson;
-  mCommand.TimeoutMs := TimeoutMs;
-  mCommand.Failed := TAtlasTextId.PropertyAccessorsFailed;
   mProperties := 0;
   mCalls := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, mCommand,
+  if not TAtlasIdeServerEdit.Fetch(ASession,
+    TAtlasServerEditCommand.Create(ApplyCommand, AArgumentsJson, TimeoutMs, TAtlasTextId.PropertyAccessorsFailed),
     procedure(const AReply: TJSONObject)
     begin
       mProperties := TAtlasIdeServerEdit.NumberOf(AReply, 'properties');

@@ -163,6 +163,7 @@ contains
   Atlas.IDE.Generate.NewFile in 'Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas',
   Atlas.IDE.Editor.Rename in 'Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas',
   Atlas.IDE.Editor.ChangeSignature in 'Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas',
+  Atlas.IDE.Editor.ClassExtraction in 'Source\IDE\Editor\Atlas.IDE.Editor.ClassExtraction.pas',
   Atlas.IDE.Editor.MoveClass in 'Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas',
   Atlas.IDE.Editor.ExtractInterface in 'Source\IDE\Editor\Atlas.IDE.Editor.ExtractInterface.pas',
   Atlas.IDE.Editor.ExtractSuperclass in 'Source\IDE\Editor\Atlas.IDE.Editor.ExtractSuperclass.pas',

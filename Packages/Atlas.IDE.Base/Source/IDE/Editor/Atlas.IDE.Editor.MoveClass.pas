@@ -31,17 +31,10 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.JSON,
-  Vcl.Dialogs,
   Atlas.UI.Strings,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Results.Model,
-  Atlas.UI.Results.Frame,
-  Atlas.UI.Results.RenamePreview,
-  Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Foundation.Navigation;
 
 const
@@ -52,15 +45,9 @@ const
 class procedure TAtlasIdeMoveClass.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Arguments, Answer, Item: TJSONValue;
-  Values, List: TJSONArray;
-  Reply: TJSONObject;
-  Name, ApplyArguments, Hint, Warning, NewFile: string;
-  Warnings: TArray<string>;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mName, mApplyArguments, mHint, mNewFile: string;
+  mReply: TAtlasServerEditReply;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
@@ -68,116 +55,39 @@ begin
     Exit;
   end;
   // Name abfragen und das dritte Argument ersetzen.
-  Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
-  try
-    if not (Arguments is TJSONArray) or (TJSONArray(Arguments).Count < 3) then
-    begin
-      Exit;
-    end;
-    Values := TJSONArray(Arguments);
-    Name := Values.Items[2].Value;
-    if not InputQuery(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle),
-      TAtlasStrings.Text(TAtlasTextId.MoveClassPrompt), Name) then
-    begin
-      Exit;
-    end;
-    Name := Trim(Name);
-    if Name = '' then
-    begin
-      Exit;
-    end;
-    List := TJSONArray.Create;
-    try
-      List.AddElement(Values.Items[0].Clone as TJSONValue);
-      List.AddElement(Values.Items[1].Clone as TJSONValue);
-      List.Add(Name);
-      ApplyArguments := List.ToJSON;
-    finally
-      List.Free;
-    end;
-  finally
-    Arguments.Free;
+  if not TAtlasIdeServerEdit.AskName(AArgumentsJson, TAtlasTextId.MoveClassTitle, TAtlasTextId.MoveClassPrompt, mName,
+    mApplyArguments) then
+  begin
+    Exit;
   end;
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  Warnings := nil;
-  NewFile := '';
-  try
-    Answer := ASession.RunCommand(ApplyCommand, ApplyArguments, TimeoutMs);
-    try
-      Reply := nil;
-      if Answer is TJSONObject then
-      begin
-        Reply := TJSONObject(Answer);
-      end;
-      Edit := TLspWorkspaceEdit.FromJson(nil);
-      if Reply <> nil then
-      begin
-        Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
-        if Reply.GetValue('file') is TJSONString then
-        begin
-          NewFile := TLspSession.UriToPath(Reply.GetValue('file').Value);
-        end;
-        if Reply.GetValue('warnings') is TJSONArray then
-        begin
-          for Item in TJSONArray(Reply.GetValue('warnings')) do
-          begin
-            Warnings := Warnings + [Item.Value];
-          end;
-        end;
-      end;
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
+  mNewFile := '';
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mApplyArguments, TimeoutMs,
+    TAtlasTextId.MoveClassFailed),
+    procedure(const AReply: TJSONObject)
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassFailed, [E.Message]));
-      Exit;
-    end;
+      mNewFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+    end, AMessage, mReply) then
+  begin
+    Exit;
   end;
-  if Edit.IsEmpty then
+  if mReply.Edit.IsEmpty then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MoveClassNothing));
     Exit;
   end;
-  Hint := TAtlasStrings.Fmt(TAtlasTextId.MoveClassPreviewHint, [Name, Edit.EditCount, Length(Edit.Files)]);
-  for Warning in Warnings do
+  mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveClassPreviewHint, [mName, mReply.Edit.EditCount,
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.MoveClassWarning);
+  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), mHint,
+    TAtlasStrings.Text(TAtlasTextId.MoveClassApply), mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), AMessage,
+    mOutcome) then
   begin
-    Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.MoveClassWarning, [Warning]);
-  end;
-  Preview := TAtlasResults.RenamePreview(Edit,
-    function(const AFileName: string): string
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassDone, [mName, mOutcome.Edits, mOutcome.Files]));
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.MoveClassWarning, AMessage);
+    if mNewFile <> '' then
     begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  Open :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+      TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(mNewFile), 0, 0);
     end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.MoveClassTitle), Hint,
-    TAtlasStrings.Text(TAtlasTextId.MoveClassApply), TAtlasResults.Group(Preview), Open) then
-  begin
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveClassTitle));
-  if Outcome.Error <> '' then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-    Exit;
-  end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassDone, [Name, Outcome.Edits, Outcome.Files]));
-  for Warning in Warnings do
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveClassWarning, [Warning]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
-  end;
-  if NewFile <> '' then
-  begin
-    TAtlasIdeNavigation.GoToLocation(NewFile, 0, 0);
   end;
 end;
 
