@@ -81,14 +81,20 @@ var
   Tree: TSyntaxTree;
   Actions: TArray<TJSONObject>;
   Action: TJSONObject;
+  mRequest: TCompilerFixRequest;
 begin
   Result := '';
   Tree := TPascalParser.Parse(Source);
   try
-    Actions := TLspCompilerFixes.Actions(AEnabled, Source, Tree, Uri, ARange,
+    mRequest.Text := Source;
+    mRequest.Tree := Tree;
+    mRequest.Uri := Uri;
+    mRequest.Range := ARange;
+    mRequest.Context := Context;
+    Actions := TLspCompilerFixes.Actions(AEnabled, mRequest,
       [Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''),
       Msg(9, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(6, 'E2003', 'Undeclared identifier: ''TStringList'''),
-      Msg(-1, 'W1057', 'ohne Zeile')], Context);
+      Msg(-1, 'W1057', 'ohne Zeile')]);
     for Action in Actions do
     begin
       Result := Result + Action.GetValue<string>('title', '') + ' [' + Action.GetValue<string>('kind', '') + ']|';
