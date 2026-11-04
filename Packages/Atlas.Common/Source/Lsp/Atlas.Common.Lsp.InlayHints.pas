@@ -601,7 +601,7 @@ begin
   Values := nil;
   for Binding in AType.Bindings do
   begin
-    Values := Values + [AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+    Values := Values + [AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
@@ -616,7 +616,7 @@ begin
   for Binding in ABindings do
   begin
     Unqualified := Unqualified + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   Result := TInterfaceStubs.SubstituteWords(AText, Unqualified);
 end;
@@ -672,7 +672,7 @@ var
   mMember: TResolvedSymbol;
 begin
   Result := '';
-  for mMember in ASource.Resolver.MemberCandidates(ASource.Tree, ASource.FileName, ANames + ['GetEnumerator'],
+  for mMember in ASource.Resolver.Candidates.MemberCandidates(ASource.Tree, ASource.FileName, ANames + ['GetEnumerator'],
     AOffset) do
   begin
     if SameText(mMember.Name, 'Current') and (mMember.TypeName <> '') then
@@ -689,21 +689,20 @@ function ForInElement(const ASource: TInlayHintSource; AFirst, ALast: Integer; o
 var
   mTokens: TArray<TPascalToken>;
   mNames: TArray<string>;
-  mOwner, mTypeInfo: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mChain: TResolvedChainType;
 begin
   Result := '';
   AOrigin := Default(TResolvedSymbol);
   mTokens := ASource.Tree.Tokens;
   // Nur eine Kette A.B.C ohne Aufruf.
   if not ChainNames(mTokens, AFirst, ALast, mNames) or not ASource.Resolver.ChainType(ASource.Tree, ASource.FileName,
-    mNames, mTokens[ALast].Offset, mOwner, mTypeInfo, mTypeFound) then
+    mNames, mTokens[ALast].Offset, mChain) then
   begin
     Exit;
   end;
-  AOrigin := mOwner;
-  Result := DirectElement(mOwner, mTypeInfo, mTypeFound);
-  if (Result = '') and mTypeFound and not mTypeInfo.Builtin then
+  AOrigin := mChain.Owner;
+  Result := DirectElement(mChain.Owner, mChain.TypeInfo, mChain.TypeFound);
+  if (Result = '') and mChain.TypeFound and not mChain.TypeInfo.Builtin then
   begin
     Result := EnumeratorElement(ASource, mNames, mTokens[ALast].Offset, AOrigin);
   end;
@@ -827,22 +826,21 @@ end;
 function ResolvedVariableType(const ASource: TInlayHintSource; ANameToken, AEndOffset: Integer;
   var AFound: TInferredType): Boolean;
 var
-  mOwner, mTypeInfo: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mChain: TResolvedChainType;
 begin
   Result := ASource.Resolver.ChainType(ASource.Tree, ASource.FileName,
-    [CleanName(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mOwner, mTypeInfo, mTypeFound) and mTypeFound and
-    (mTypeInfo.Name <> '');
+    [CleanName(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mChain) and mChain.TypeFound and
+    (mChain.TypeInfo.Name <> '');
   if not Result then
   begin
     Exit;
   end;
-  AFound.TypeName := TypeDisplay(ASource.Resolver, mTypeInfo);
-  if not mTypeInfo.Builtin then
+  AFound.TypeName := TypeDisplay(ASource.Resolver, mChain.TypeInfo);
+  if not mChain.TypeInfo.Builtin then
   begin
-    AFound.TypeUnit := mTypeInfo.UnitName;
+    AFound.TypeUnit := mChain.TypeInfo.UnitName;
   end;
-  AFound.Origin := mTypeInfo;
+  AFound.Origin := mChain.TypeInfo;
 end;
 
 /// <summary>Index der schließenden Klammer zu der hinter AIndex (bis ALast); AIndex, wenn keine folgt.</summary>
