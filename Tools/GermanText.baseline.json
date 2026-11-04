@@ -123,7 +123,7 @@
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.CompilerBaseline.pas": 3,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.CompilerDirectives.pas": 42,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.CompilerSwitches.pas": 1,
-  "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.Completion.pas": 6,
+  "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.Completion.pas": 4,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.CompletionCollector.pas": 2,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.ConditionalSymbols.pas": 18,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.DataFlow.pas": 1,
