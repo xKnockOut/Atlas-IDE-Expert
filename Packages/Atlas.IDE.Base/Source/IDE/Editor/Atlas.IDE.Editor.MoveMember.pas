@@ -36,18 +36,12 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.JSON,
   Atlas.UI.Strings,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Results.Model,
   Atlas.Core.Editor.ClassExtraction,
-  Atlas.UI.Results.Frame,
-  Atlas.UI.Results.RenamePreview,
-  Atlas.UI.Editor.ExtractMembers,
-  Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.ServerEdit,
+  Atlas.IDE.Editor.ClassExtraction,
   Atlas.IDE.Foundation.Navigation;
 
 const
@@ -56,167 +50,77 @@ const
   // Verweise suchen und Namen auflösen dauert; wie beim Umbenennen.
   TimeoutMs = 60000;
 
-/// <summary>Antwort des Servers als Objekt; nil bei anderem Wert. Der Aufrufer gibt Answer frei.</summary>
-function AsObject(AAnswer: TJSONValue): TJSONObject;
+/// <summary>„… in Vorfahr verschieben“ bzw. „… in Nachfahren verschieben“ je nach Richtung von AModel.</summary>
+function TitleOf(AModel: TAtlasClassExtractionModel): string;
 begin
-  Result := nil;
-  if AAnswer is TJSONObject then
+  if AModel.Direction = 'down' then
   begin
-    Result := TJSONObject(AAnswer);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveDownTitle, [AModel.MemberName]);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveUpTitle, [AModel.MemberName]);
   end;
 end;
 
 class procedure TAtlasIdeMoveMember.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Arguments, Answer, Item: TJSONValue;
-  Values: TJSONArray;
-  Reply: TJSONObject;
-  Model: TAtlasClassExtractionModel;
-  Title, ApplyArguments, Hint, Warning, TargetFile: string;
-  Warnings: TArray<string>;
-  Moved, TargetLine: Integer;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mChoice: TAtlasClassExtractionChoice;
+  mReply: TAtlasServerEditReply;
+  mTargetFile, mHint: string;
+  mMoved, mTargetLine: Integer;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  Model := nil;
-  try
-    try
-      Answer := ASession.RunCommand(PrepareCommand, AArgumentsJson, TimeoutMs);
-      try
-        Model := TAtlasClassExtractionModel.Create(AsObject(Answer));
-      finally
-        Answer.Free;
-      end;
-    except
-      on E: ELspClientError do
-      begin
-        AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-    if Model.Direction = 'down' then
+  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(PrepareCommand, AArgumentsJson,
+    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+    function(AModel: TAtlasClassExtractionModel): string
     begin
-      Title := TAtlasStrings.Fmt(TAtlasTextId.MoveDownTitle, [Model.MemberName]);
-    end
-    else
-    begin
-      Title := TAtlasStrings.Fmt(TAtlasTextId.MoveUpTitle, [Model.MemberName]);
-    end;
-    if not TAtlasExtractMembersDialog.Execute(Model, Title) then
-    begin
-      Exit;
-    end;
-    // Argumente der Aktion (URI, Position, Richtung) um Auswahl, Ziele und Wahl ergänzen.
-    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
-    try
-      if not (Arguments is TJSONArray) then
-      begin
-        Exit;
-      end;
-      Values := TJSONArray(Arguments);
-      Values.AddElement(Model.RequestJson);
-      ApplyArguments := Values.ToJSON;
-    finally
-      Arguments.Free;
-    end;
-  finally
-    Model.Free;
+      Result := TitleOf(AModel);
+    end, AMessage, mChoice) then
+  begin
+    Exit;
   end;
-  Warnings := nil;
-  TargetFile := '';
-  Moved := 0;
-  TargetLine := 0;
-  try
-    Answer := ASession.RunCommand(ApplyCommand, ApplyArguments, TimeoutMs);
-    try
-      Reply := AsObject(Answer);
-      Edit := TLspWorkspaceEdit.FromJson(nil);
-      if Reply <> nil then
-      begin
-        Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
-        if Reply.GetValue('file') is TJSONString then
-        begin
-          TargetFile := TLspSession.UriToPath(Reply.GetValue('file').Value);
-        end;
-        if Reply.GetValue('moved') is TJSONNumber then
-        begin
-          Moved := TJSONNumber(Reply.GetValue('moved')).AsInt;
-        end;
-        if Reply.GetValue('line') is TJSONNumber then
-        begin
-          TargetLine := TJSONNumber(Reply.GetValue('line')).AsInt;
-        end;
-        if Reply.GetValue('warnings') is TJSONArray then
-        begin
-          for Item in TJSONArray(Reply.GetValue('warnings')) do
-          begin
-            Warnings := Warnings + [Item.Value];
-          end;
-        end;
-      end;
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
+  mTargetFile := '';
+  mMoved := 0;
+  mTargetLine := 0;
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mChoice.ApplyArguments,
+    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+    procedure(const AReply: TJSONObject)
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberFailed, [E.Message]));
-      Exit;
-    end;
+      mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');
+      if mTargetFile <> '' then
+      begin
+        mTargetFile := TLspSession.UriToPath(mTargetFile);
+      end;
+      mMoved := TAtlasIdeServerEdit.NumberOf(AReply, 'moved');
+      mTargetLine := TAtlasIdeServerEdit.NumberOf(AReply, 'line');
+    end, AMessage, mReply) then
+  begin
+    Exit;
   end;
-  if Edit.IsEmpty or (Moved = 0) then
+  if mReply.Edit.IsEmpty or (mMoved = 0) then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MoveMemberNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Hinweise (gehobene Sichtbarkeit, override, uses) im Hinweis.
-  Hint := TAtlasStrings.Fmt(TAtlasTextId.MoveMemberPreviewHint, [Moved, Edit.EditCount, Length(Edit.Files)]);
-  for Warning in Warnings do
+  mHint := TAtlasStrings.Fmt(TAtlasTextId.MoveMemberPreviewHint, [mMoved, mReply.Edit.EditCount,
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.ExtractIntfWarning);
+  if TAtlasIdeServerEdit.Confirm(mChoice.Title, mHint, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), mReply.Edit) and
+    TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), AMessage, mOutcome) then
   begin
-    Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfWarning, [Warning]);
-  end;
-  Preview := TAtlasResults.RenamePreview(Edit,
-    function(const AFileName: string): string
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberDone, [mMoved, mOutcome.Edits, mOutcome.Files]));
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.ExtractIntfWarning, AMessage);
+    if mTargetFile <> '' then
     begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  Open :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+      TAtlasIdeNavigation.GoToLocation(mTargetFile, mTargetLine, 0);
     end;
-  if not TAtlasRenamePreview.Execute(Title, Hint,
-    TAtlasStrings.Text(TAtlasTextId.MoveMemberApply), TAtlasResults.Group(Preview), Open) then
-  begin
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.MoveMemberApply));
-  if Outcome.Error <> '' then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-    Exit;
-  end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MoveMemberDone, [Moved, Outcome.Edits, Outcome.Files]));
-  for Warning in Warnings do
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfWarning, [Warning]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
-  end;
-  if TargetFile <> '' then
-  begin
-    TAtlasIdeNavigation.GoToLocation(TargetFile, TargetLine, 0);
   end;
 end;
 

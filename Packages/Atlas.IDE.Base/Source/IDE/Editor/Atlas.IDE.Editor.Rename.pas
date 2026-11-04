@@ -70,126 +70,178 @@ begin
   TAtlasIdeForms.SyncNow(ASession);
 end;
 
+type
+  // Stelle des Namens unter dem Cursor und sein bisheriger Name.
+  TRenameTarget = record
+    FileName: string;
+    Line: Integer;
+    Character: Integer;
+    OldName: string;
+  end;
+
+/// <summary>Oberer Editor, sonst nil.</summary>
+function TopView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
+end;
+
+/// <summary>Name unter dem Cursor von AView, den der Server umbenennen kann. False mit Meldung, wenn es keinen gibt
+/// oder der Server scheitert.</summary>
+function PrepareTarget(ASession: TLspSession; const AView: IOTAEditView; const AMessage: TProc<string>;
+  out ATarget: TRenameTarget): Boolean;
+var
+  mText: string;
+  mLines: TArray<string>;
+  mCursor: TOTAEditPos;
+begin
+  Result := False;
+  ATarget := Default(TRenameTarget);
+  ATarget.FileName := AView.Buffer.FileName;
+  TAtlasIdeRename.SyncOpenBuffers(ASession);
+  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  mLines := mText.Split([#13#10, #10]);
+  mCursor := AView.CursorPos;
+  if (mCursor.Line < 1) or (mCursor.Line > Length(mLines)) then
+  begin
+    AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+    Exit;
+  end;
+  ATarget.Line := mCursor.Line - 1;
+  ATarget.Character := TLspSession.ColumnToIndex(mLines[ATarget.Line], mCursor.Col,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  try
+    Result := ASession.PrepareRename(ATarget.FileName, mText, ATarget.Line, ATarget.Character, ATarget.OldName);
+    if not Result then
+    begin
+      AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
+    end;
+  except
+    on E: ELspClientError do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
+    end;
+  end;
+end;
+
+/// <summary>Fragt nach dem neuen Namen; False bei Abbruch, leerem oder unverändertem Namen.</summary>
+function AskNewName(const AOldName: string; out ANewName: string): Boolean;
+begin
+  ANewName := AOldName;
+  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.RenameTitle), TAtlasStrings.Fmt(TAtlasTextId.RenamePrompt,
+    [AOldName]), ANewName);
+  ANewName := Trim(ANewName);
+  Result := Result and (ANewName <> '') and (ANewName <> AOldName);
+end;
+
+/// <summary>Änderung des Servers für ATarget mit ANewName; False mit Meldung, wenn er scheitert.</summary>
+function FetchEdit(ASession: TLspSession; const ATarget: TRenameTarget; const ANewName: string;
+  const AMessage: TProc<string>; out AEdit: TLspWorkspaceEdit): Boolean;
+var
+  mResponse: TJSONValue;
+begin
+  Result := False;
+  AEdit := TLspWorkspaceEdit.FromJson(nil);
+  try
+    mResponse := ASession.Rename(ATarget.FileName, ATarget.Line, ATarget.Character, ANewName, RenameTimeoutMs);
+    try
+      AEdit := TLspWorkspaceEdit.FromJson(mResponse);
+    finally
+      mResponse.Free;
+    end;
+    Result := True;
+  except
+    on E: ELspClientError do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
+    end;
+  end;
+end;
+
+/// <summary>Vorschau (#400): alle betroffenen Zeilen vorher und nachher; True, wenn der Benutzer umbenennt.</summary>
+function ConfirmRename(const AOldName, ANewName: string; const AEdit: TLspWorkspaceEdit): Boolean;
+var
+  mPreview: TArray<TAtlasResultEntry>;
+  mOpen: TAtlasResultsOpen;
+begin
+  mPreview := TAtlasResults.RenamePreview(AEdit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  // Typisierte Variable: Execute ist überladen (Delphi und anonyme Methoden).
+  mOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+    end;
+  Result := TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [AOldName, ANewName]),
+    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [AEdit.EditCount, Length(AEdit.Files)]),
+    TAtlasResults.Group(mPreview), mOpen);
+end;
+
+/// <summary>Übernimmt AEdit und meldet das Ergebnis.</summary>
+procedure ApplyRename(const AOldName, ANewName: string; const AEdit: TLspWorkspaceEdit;
+  APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+var
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  mOutcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, APolicy,
+    TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [AOldName, ANewName]));
+  if mOutcome.Error <> '' then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+  end
+  else
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameDone, [AOldName, ANewName, mOutcome.Edits, mOutcome.Files]));
+  end;
+  if mOutcome.Written > 0 then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
+  end;
+  if AEdit.Unsupported > 0 then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [AEdit.Unsupported]));
+  end;
+end;
+
 class procedure TAtlasIdeRename.Execute(ASession: TLspSession; APolicy: TAtlasUnopenedPolicy;
   const AMessage: TProc<string>);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  FileName, Text, OldName, NewName: string;
-  Lines: TArray<string>;
-  Cursor: TOTAEditPos;
-  Line, Character: Integer;
-  Response: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mView: IOTAEditView;
+  mTarget: TRenameTarget;
+  mNewName: string;
+  mEdit: TLspWorkspaceEdit;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-  begin
-    View := Editors.TopView;
-  end;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
     Exit;
   end;
-  FileName := View.Buffer.FileName;
-  SyncOpenBuffers(ASession);
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  Lines := Text.Split([#13#10, #10]);
-  Cursor := View.CursorPos;
-  if (Cursor.Line < 1) or (Cursor.Line > Length(Lines)) then
+  if not PrepareTarget(ASession, mView, AMessage, mTarget) or not AskNewName(mTarget.OldName, mNewName) or
+    not FetchEdit(ASession, mTarget, mNewName, AMessage, mEdit) then
+  begin
+    Exit;
+  end;
+  if mEdit.IsEmpty then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
-    Exit;
-  end;
-  Line := Cursor.Line - 1;
-  Character := TLspSession.ColumnToIndex(Lines[Line], Cursor.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
-  try
-    if not ASession.PrepareRename(FileName, Text, Line, Character, OldName) then
-    begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
-      Exit;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  NewName := OldName;
-  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.RenameTitle), TAtlasStrings.Fmt(TAtlasTextId.RenamePrompt,
-    [OldName]), NewName) then
-  begin
-    Exit;
-  end;
-  NewName := Trim(NewName);
-  if (NewName = '') or (NewName = OldName) then
-  begin
-    Exit;
-  end;
-  try
-    Response := ASession.Rename(FileName, Line, Character, NewName, RenameTimeoutMs);
-    try
-      Edit := TLspWorkspaceEdit.FromJson(Response);
-    finally
-      Response.Free;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  if Edit.IsEmpty then
-  begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
-    Exit;
-  end;
-  // Vorschau (#400): alle betroffenen Zeilen vorher und nachher.
-  Preview := TAtlasResults.RenamePreview(Edit,
-    function(const AFileName: string): string
-    begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  // Typisierte Variable: Execute ist überladen (Delphi und anonyme Methoden).
-  Open :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-    end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [OldName, NewName]),
-    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [Edit.EditCount, Length(Edit.Files)]),
-    TAtlasResults.Group(Preview), Open) then
-  begin
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
-    TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [OldName, NewName]));
-  if Outcome.Error <> '' then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
   end
-  else
+  else if ConfirmRename(mTarget.OldName, mNewName, mEdit) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameDone, [OldName, NewName, Outcome.Edits, Outcome.Files]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
-  end;
-  if Edit.Unsupported > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [Edit.Unsupported]));
+    ApplyRename(mTarget.OldName, mNewName, mEdit, APolicy, AMessage);
   end;
 end;
 

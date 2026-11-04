@@ -66,6 +66,12 @@ const
   ReportTree = 'tree=passCount,failCount,skipCount,' + CaseTree +
     ',childReports%5Bresult%5BpassCount,failCount,skipCount,' + CaseTree + '%5D%5D';
 
+/// <summary>Zeichen, die in einer Adresse unverändert bleiben (RFC 3986, „unreserved“).</summary>
+function IsUnreserved(AValue: Byte): Boolean;
+begin
+  Result := CharInSet(Char(AValue), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~']);
+end;
+
 { TAtlasJenkinsProvider }
 
 class function TAtlasJenkinsProvider.Encode(const AText: string): string;
@@ -77,9 +83,7 @@ begin
   Bytes := TEncoding.UTF8.GetBytes(AText);
   for Value in Bytes do
   begin
-    if ((Value >= Ord('A')) and (Value <= Ord('Z'))) or ((Value >= Ord('a')) and (Value <= Ord('z'))) or
-      ((Value >= Ord('0')) and (Value <= Ord('9'))) or (Value = Ord('-')) or (Value = Ord('.')) or
-      (Value = Ord('_')) or (Value = Ord('~')) then
+    if IsUnreserved(Value) then
     begin
       Result := Result + Char(Value);
     end
@@ -250,14 +254,10 @@ begin
   end;
 end;
 
-/// <summary>Fälle eines Berichts (oder eines Teilberichts) zählen und Fehlschläge sammeln.</summary>
-procedure ReadReport(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
+/// <summary>Zähler eines Berichts zu ABuild addieren.</summary>
+procedure ReadCounts(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
 var
   Count: Int64;
-  Suites, Cases: TJSONValue;
-  Suite, Item: TJSONValue;
-  Status, ClassName, CaseName: string;
-  Failure: TAtlasCiFailure;
 begin
   if NumberOf(AReport, 'passCount', Count) then
   begin
@@ -271,48 +271,88 @@ begin
   begin
     Inc(ABuild.Skipped, Integer(Count));
   end;
-  Suites := AReport.Values['suites'];
-  if not (Suites is TJSONArray) then
+end;
+
+/// <summary>Fehlgeschlagener Fall aus AItem; False bei anderem Status oder ohne Namen.</summary>
+function FailureOf(AItem: TJSONValue; out AFailure: TAtlasCiFailure): Boolean;
+var
+  Status, ClassName, CaseName: string;
+begin
+  AFailure := Default(TAtlasCiFailure);
+  Result := False;
+  if not (AItem is TJSONObject) then
   begin
     Exit;
   end;
-  for Suite in TJSONArray(Suites) do
+  Status := TextOf(TJSONObject(AItem), 'status');
+  if not (SameText(Status, 'FAILED') or SameText(Status, 'REGRESSION')) then
   begin
-    if not (Suite is TJSONObject) then
+    Exit;
+  end;
+  ClassName := Trim(TextOf(TJSONObject(AItem), 'className'));
+  CaseName := Trim(TextOf(TJSONObject(AItem), 'name'));
+  AFailure.Test := CaseName;
+  if ClassName <> '' then
+  begin
+    AFailure.Test := ClassName + '.' + CaseName;
+  end;
+  AFailure.Message := FirstLine(TextOf(TJSONObject(AItem), 'errorDetails'));
+  Result := AFailure.Test <> '';
+end;
+
+/// <summary>Fehlschläge der Fälle einer Suite sammeln, höchstens MaxFailures.</summary>
+procedure ReadCases(ASuite: TJSONValue; var ABuild: TAtlasCiBuild);
+var
+  Cases, Item: TJSONValue;
+  Failure: TAtlasCiFailure;
+begin
+  if not (ASuite is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Cases := TJSONObject(ASuite).Values['cases'];
+  if not (Cases is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for Item in TJSONArray(Cases) do
+  begin
+    if (Length(ABuild.Failures) < TAtlasCiBuild.MaxFailures) and FailureOf(Item, Failure) then
     begin
-      Continue;
+      ABuild.Failures := ABuild.Failures + [Failure];
     end;
-    Cases := TJSONObject(Suite).Values['cases'];
-    if not (Cases is TJSONArray) then
+  end;
+end;
+
+/// <summary>Fälle eines Berichts (oder eines Teilberichts) zählen und Fehlschläge sammeln.</summary>
+procedure ReadReport(AReport: TJSONObject; var ABuild: TAtlasCiBuild);
+var
+  Suites, Suite: TJSONValue;
+begin
+  ReadCounts(AReport, ABuild);
+  Suites := AReport.Values['suites'];
+  if Suites is TJSONArray then
+  begin
+    for Suite in TJSONArray(Suites) do
     begin
-      Continue;
+      ReadCases(Suite, ABuild);
     end;
-    for Item in TJSONArray(Cases) do
+  end;
+end;
+
+/// <summary>Teilberichte (Matrix, Pipeline) aus AChildren zählen.</summary>
+procedure ReadChildReports(AChildren: TJSONArray; var ABuild: TAtlasCiBuild);
+var
+  Child, Inner: TJSONValue;
+begin
+  for Child in AChildren do
+  begin
+    if Child is TJSONObject then
     begin
-      if not (Item is TJSONObject) then
+      Inner := TJSONObject(Child).Values['result'];
+      if Inner is TJSONObject then
       begin
-        Continue;
-      end;
-      Status := TextOf(TJSONObject(Item), 'status');
-      if not (SameText(Status, 'FAILED') or SameText(Status, 'REGRESSION')) then
-      begin
-        Continue;
-      end;
-      if Length(ABuild.Failures) >= TAtlasCiBuild.MaxFailures then
-      begin
-        Continue;
-      end;
-      ClassName := Trim(TextOf(TJSONObject(Item), 'className'));
-      CaseName := Trim(TextOf(TJSONObject(Item), 'name'));
-      Failure.Test := CaseName;
-      if ClassName <> '' then
-      begin
-        Failure.Test := ClassName + '.' + CaseName;
-      end;
-      Failure.Message := FirstLine(TextOf(TJSONObject(Item), 'errorDetails'));
-      if Failure.Test <> '' then
-      begin
-        ABuild.Failures := ABuild.Failures + [Failure];
+        ReadReport(TJSONObject(Inner), ABuild);
       end;
     end;
   end;
@@ -320,7 +360,7 @@ end;
 
 class function TAtlasJenkinsProvider.ParseTestReport(const AJson: string; var ABuild: TAtlasCiBuild): Boolean;
 var
-  Value, Children, Child, Inner: TJSONValue;
+  Value, Children: TJSONValue;
   Root: TJSONObject;
   Sum: TAtlasCiBuild;
 begin
@@ -337,17 +377,7 @@ begin
     if (Children is TJSONArray) and (TJSONArray(Children).Count > 0) then
     begin
       // Zusammengefasster Bericht (Matrix, Pipeline mit Teilberichten): Teilberichte zählen.
-      for Child in TJSONArray(Children) do
-      begin
-        if Child is TJSONObject then
-        begin
-          Inner := TJSONObject(Child).Values['result'];
-          if Inner is TJSONObject then
-          begin
-            ReadReport(TJSONObject(Inner), Sum);
-          end;
-        end;
-      end;
+      ReadChildReports(TJSONArray(Children), Sum);
     end
     else
     begin
@@ -410,17 +440,18 @@ begin
   if Status <> 200 then
   begin
     AError := ErrorOfStatus(Status);
-    Exit;
-  end;
-  if not ParseBuild(Text, ABuild) then
+  end
+  else if not ParseBuild(Text, ABuild) then
   begin
     AError := TAtlasCiFetchError.Invalid;
-    Exit;
+  end
+  else
+  begin
+    Result := True;
   end;
-  Result := True;
   // Testbericht in der restlichen Zeit; fehlt er oder reicht die Zeit nicht, bleiben die Tests unbekannt.
   Rest := ATimeoutMs - Watch.ElapsedMilliseconds;
-  if Rest <= 0 then
+  if not Result or (Rest <= 0) then
   begin
     Exit;
   end;

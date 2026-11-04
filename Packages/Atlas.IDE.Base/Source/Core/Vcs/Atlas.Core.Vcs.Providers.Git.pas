@@ -62,16 +62,42 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules,
-    IAtlasVcsLineHistory,
-    IAtlasVcsHistory)
+  /// <summary>Zeilen- und Projektgeschichte von Git, Teil von TAtlasGitVersionControl: Wurzel und Befehl gehören
+  /// dem Ganzen, das auch die Referenzen zählt.</summary>
+  TAtlasGitHistoryPart = class(TAggregatedObject, IAtlasVcsLineHistory, IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Commits je Aufruf von Messages (Länge der Befehlszeile).</summary>
     MessageBatch = 100;
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
+    function Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+  public
+    constructor Create(const AController: IInterface; const ARoot: string; ACommand: TAtlasVcsCommand);
+    { IAtlasVcsLineHistory }
+    function Messages(const AFileName: string; const ARevisions: TArray<string>;
+      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
+      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+    { IAtlasVcsHistory }
+    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
+      out AContent: TBytes): TAtlasVcsOutcome;
+  end;
+
+  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules,
+    IAtlasVcsLineHistory,
+    IAtlasVcsHistory)
+  public const
+    /// <summary>Höchstens so viele Commits je Aufruf von Messages (Länge der Befehlszeile).</summary>
+    MessageBatch = TAtlasGitHistoryPart.MessageBatch;
+  private
+    FRoot: string;
+    FCommand: TAtlasVcsCommand;
+    FHistoryPart: TAtlasGitHistoryPart;
     function Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     function GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     function Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
@@ -121,19 +147,10 @@ type
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     { IAtlasVcsSubmodules }
     function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
-    { IAtlasVcsLineHistory }
-    function Messages(const AFileName: string; const ARevisions: TArray<string>;
-      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
-    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
-      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
-    { IAtlasVcsHistory }
-    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
-    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
-    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
-    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
-      out AContent: TBytes): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
+    /// <summary>IAtlasVcsLineHistory und IAtlasVcsHistory.</summary>
+    property HistoryPart: TAtlasGitHistoryPart read FHistoryPart implements IAtlasVcsLineHistory, IAtlasVcsHistory;
   end;
 
 implementation
@@ -201,6 +218,7 @@ begin
   inherited Create;
   FRoot := VcsNormalizeDir(ARoot);
   FCommand := TAtlasVcsCommand.Create(ARunner, AExecutable, FRoot, ATimeoutMs);
+  FHistoryPart := TAtlasGitHistoryPart.Create(Self, FRoot, FCommand);
 end;
 
 constructor TAtlasGitVersionControl.Create(const ARoot: string; const ARunner: IAtlasVcsRunner;
@@ -211,6 +229,7 @@ end;
 
 destructor TAtlasGitVersionControl.Destroy;
 begin
+  FreeAndNil(FHistoryPart);
   FCommand.Free;
   inherited;
 end;
@@ -226,11 +245,34 @@ begin
   Result.Root := FRoot;
 end;
 
-function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+/// <summary>git ohne Netz mit den festen Optionen (Kopf der Unit).</summary>
+function RunGit(ACommand: TAtlasVcsCommand; const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
 begin
-  Result := FCommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
+  Result := ACommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
     AOutput);
 end;
+
+function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  Result := RunGit(FCommand, AArguments, AOutput);
+end;
+
+{ TAtlasGitHistoryPart }
+
+constructor TAtlasGitHistoryPart.Create(const AController: IInterface; const ARoot: string;
+  ACommand: TAtlasVcsCommand);
+begin
+  inherited Create(AController);
+  FRoot := ARoot;
+  FCommand := ACommand;
+end;
+
+function TAtlasGitHistoryPart.Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  Result := RunGit(FCommand, AArguments, AOutput);
+end;
+
+{ TAtlasGitVersionControl }
 
 function TAtlasGitVersionControl.GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
 begin
@@ -354,7 +396,7 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.Messages(const AFileName: string; const ARevisions: TArray<string>;
+function TAtlasGitHistoryPart.Messages(const AFileName: string; const ARevisions: TArray<string>;
   out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
 var
   mRevision: string;
@@ -401,7 +443,7 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.LineHistory(const AFileName: string; AFirstLine, ALastLine,
+function TAtlasGitHistoryPart.LineHistory(const AFileName: string; AFirstLine, ALastLine,
   AMaxRevisions: Integer; out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
 var
   mRelative: string;
@@ -845,7 +887,7 @@ end;
 
 { IAtlasVcsHistory (#1269) }
 
-function TAtlasGitVersionControl.SearchLog(const AText: string; AMax: Integer;
+function TAtlasGitHistoryPart.SearchLog(const AText: string; AMax: Integer;
   out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
 var
   mOutput: TBytes;
@@ -889,7 +931,7 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+function TAtlasGitHistoryPart.AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
 var
   mOutput: TBytes;
 begin
@@ -910,7 +952,7 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+function TAtlasGitHistoryPart.Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
 var
   mOutput: TBytes;
 begin
@@ -937,7 +979,7 @@ begin
   end;
 end;
 
-function TAtlasGitVersionControl.ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile;
+function TAtlasGitHistoryPart.ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile;
   ABefore: Boolean; out AContent: TBytes): TAtlasVcsOutcome;
 var
   mRevision: string;
