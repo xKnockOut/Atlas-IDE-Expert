@@ -26,6 +26,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup,
   Atlas.Common.Lsp.References;
 
 type
@@ -302,8 +303,8 @@ begin
   end;
   FResolver.PinTree(FTree, FFileName);
   try
-    mDone := TMethodWithoutSelf.Execute(FDeclaring, mOthers, APosition, AConversion, FContext.WithStatic, FLookup,
-      FContext.Style, Result, mReason);
+    mDone := TMethodWithoutSelf.Execute(FDeclaring, mOthers, TMethodRequest.Create(APosition, AConversion,
+      FContext.WithStatic, FLookup, FContext.Style), Result, mReason);
   finally
     FResolver.UnpinTree;
   end;

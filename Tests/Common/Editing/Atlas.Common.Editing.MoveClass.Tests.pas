@@ -132,8 +132,8 @@ begin
   end;
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TMoveClass.Plan('lager.pas', AText, Tree, TTextPosition.Create(Line, 4), ATarget.NewUnit,
-      ATarget.Lookup, Plan, AReason);
+    Result := TMoveClass.Plan(TMoveClassSource.Create('lager.pas', AText, Tree), TTextPosition.Create(Line, 4),
+      ATarget.NewUnit, ATarget.Lookup, Plan, AReason);
     if not Result then
     begin
       Exit;
@@ -280,12 +280,14 @@ begin
     '', 'procedure Run;', 'var', '  S: Lager.TStock;', 'begin', '  S := TStock.Create;', 'end;', '', 'end.']);
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TMoveClass.UpdateUser(Text, Tree, 'Lager', 'Stock', 'TStock', nil, True, Edits));
+    Assert.IsTrue(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TStock'), nil, True,
+      Edits));
     Assert.AreEqual(Join(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager,', '  Stock;',
       '', 'implementation', '', 'procedure Run;', 'var', '  S: Stock.TStock;', 'begin', '  S := TStock.Create;',
       'end;', '', 'end.']), TChangeSignature.ApplyEdits(Text, Edits));
     // Ohne Vorkommen keine Änderung.
-    Assert.IsFalse(TMoveClass.UpdateUser(Text, Tree, 'Lager', 'Stock', 'TOther', nil, True, Edits));
+    Assert.IsFalse(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TOther'), nil, True,
+      Edits));
   finally
     Tree.Free;
   end;

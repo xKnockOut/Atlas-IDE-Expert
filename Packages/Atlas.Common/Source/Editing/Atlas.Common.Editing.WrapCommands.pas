@@ -111,13 +111,13 @@ begin
     // Result gehört dem Aufrufer: nur bei einer Ausnahme freigeben.
     if SameText(Variable, 'Result') then
     begin
-      Result := Wrap(Source, 'try', ['try'], ['except', '  Result.Free;', '  raise;', 'end;'], '  ', AEdits,
-        AReason);
+      Result := Wrap(Source, 'try', TWrapFrame.Create(['try'], ['except', '  Result.Free;', '  raise;', 'end;'], '  '),
+        AEdits, AReason);
     end
     else
     begin
-      Result := Wrap(Source, 'try', ['try'], ['finally', '  ' + Variable + '.Free;', 'end;'], '  ', AEdits,
-        AReason);
+      Result := Wrap(Source, 'try', TWrapFrame.Create(['try'], ['finally', '  ' + Variable + '.Free;', 'end;'], '  '),
+        AEdits, AReason);
     end;
   finally
     Source.Free;
@@ -149,13 +149,13 @@ begin
     end;
     if Section <> '' then
     begin
-      Result := Wrap(Source, 'lock', [Section + '.Enter;', 'try'], ['finally', '  ' + Section + '.Leave;', 'end;'],
-        '  ', AEdits, AReason);
+      Result := Wrap(Source, 'lock', TWrapFrame.Create([Section + '.Enter;', 'try'], ['finally',
+        '  ' + Section + '.Leave;', 'end;'], '  '), AEdits, AReason);
     end
     else
     begin
-      Result := Wrap(Source, 'lock', ['TMonitor.Enter(Self);', 'try'], ['finally', '  TMonitor.Exit(Self);',
-        'end;'], '  ', AEdits, AReason);
+      Result := Wrap(Source, 'lock', TWrapFrame.Create(['TMonitor.Enter(Self);', 'try'], ['finally',
+        '  TMonitor.Exit(Self);', 'end;'], '  '), AEdits, AReason);
     end;
   finally
     Source.Free;
@@ -171,8 +171,8 @@ var
 begin
   Source := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, AContext.Name, ['TThread.' + AMethod + '(nil,', '  procedure', '  begin'],
-      ['  end);'], '    ', AEdits, AReason);
+    Result := Wrap(Source, AContext.Name, TWrapFrame.Create(['TThread.' + AMethod + '(nil,', '  procedure', '  begin'],
+      ['  end);'], '    '), AEdits, AReason);
   finally
     Source.Free;
   end;
@@ -189,7 +189,8 @@ begin
   end;
   Source := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, 'ifdef', ['{$IFDEF ' + AContext.Arguments + '}'], ['{$ENDIF}'], '', AEdits, AReason);
+    Result := Wrap(Source, 'ifdef', TWrapFrame.Create(['{$IFDEF ' + AContext.Arguments + '}'], ['{$ENDIF}'], ''),
+      AEdits, AReason);
   finally
     Source.Free;
   end;
@@ -206,8 +207,8 @@ begin
   end;
   Source := TCommandSource.Create(AContext);
   try
-    Result := Wrap(Source, 'region', ['{$REGION ''' + StringReplace(AContext.Arguments, '''', '''''',
-      [rfReplaceAll]) + '''}'], ['{$ENDREGION}'], '', AEdits, AReason);
+    Result := Wrap(Source, 'region', TWrapFrame.Create(['{$REGION ''' + StringReplace(AContext.Arguments, '''', '''''',
+      [rfReplaceAll]) + '''}'], ['{$ENDREGION}'], ''), AEdits, AReason);
   finally
     Source.Free;
   end;
@@ -222,8 +223,8 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     // Nie ein leeres except: protokollieren und weiterwerfen.
-    Result := Wrap(Source, 'except', ['try'], ['except', '  on E: Exception do', '  begin',
-      '    ' + LogStatement(AContext, 'E.ClassName + '': '' + E.Message'), '    raise;', '  end;', 'end;'], '  ',
+    Result := Wrap(Source, 'except', TWrapFrame.Create(['try'], ['except', '  on E: Exception do', '  begin',
+      '    ' + LogStatement(AContext, 'E.ClassName + '': '' + E.Message'), '    raise;', '  end;', 'end;'], '  '),
       AEdits, AReason);
   finally
     Source.Free;

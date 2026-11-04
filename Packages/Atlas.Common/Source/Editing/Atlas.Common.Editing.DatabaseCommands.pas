@@ -237,9 +237,9 @@ begin
   Source := TCommandSource.Create(AContext);
   try
     // Next steht fest am Ende der Schleife: keine Endlosschleife durch ein vergessenes Next.
-    Result := Wrap(Source, 'loop', [Name + '.DisableControls;', 'try', '  ' + Name + '.First;',
+    Result := Wrap(Source, 'loop', TWrapFrame.Create([Name + '.DisableControls;', 'try', '  ' + Name + '.First;',
       '  while not ' + Name + '.Eof do', '  begin'], ['    ' + Name + '.Next;', '  end;', 'finally',
-      '  ' + Name + '.EnableControls;', 'end;'], '    ', AEdits, AReason);
+      '  ' + Name + '.EnableControls;', 'end;'], '    '), AEdits, AReason);
   finally
     Source.Free;
   end;
@@ -289,8 +289,8 @@ begin
       Commit := Name + '.Commit;';
       Rollback := Name + '.Rollback;';
     end;
-    Result := Wrap(Source, 'transaction', [Start, 'try'], ['  ' + Commit, 'except', '  ' + Rollback, '  raise;',
-      'end;'], '  ', AEdits, AReason);
+    Result := Wrap(Source, 'transaction', TWrapFrame.Create([Start, 'try'], ['  ' + Commit, 'except',
+      '  ' + Rollback, '  raise;', 'end;'], '  '), AEdits, AReason);
     if Result and (Tx <> '') then
     begin
       AEdits := AEdits + [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Tx + ': TDBXTransaction;')];

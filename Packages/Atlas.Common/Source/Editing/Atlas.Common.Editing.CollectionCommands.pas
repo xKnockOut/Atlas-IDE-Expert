@@ -294,8 +294,8 @@ begin
   mIndent := ASource.Indent(ASource.Line);
   mCreate := ASpec.Name + ' := ' + ASpec.Construction + ';';
   mLB := ASource.LineBreak;
-  if Wrap(ASource, 'list', [mCreate, 'try'], ['finally', '  ' + ASpec.Name + '.Free;', 'end;'], '  ', mWrapped,
-    AReason) then
+  if Wrap(ASource, 'list', TWrapFrame.Create([mCreate, 'try'], ['finally', '  ' + ASpec.Name + '.Free;', 'end;'],
+    '  '), mWrapped, AReason) then
   begin
     AEdits := mWrapped;
   end
