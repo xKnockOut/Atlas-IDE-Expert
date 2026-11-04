@@ -1177,6 +1177,7 @@ uses
   Atlas.Core.Editor.WrapSelection in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas',
   Atlas.Core.Problems.InlineHints in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas',
   Atlas.Core.Problems.Findings in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Findings.pas',
+  Atlas.Core.Problems.FindingsCache in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas',
   Atlas.Core.Problems.BulkFix in '..\Packages\Atlas.IDE.Rules\Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas',
   Atlas.Core.Editor.LineTail in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas',
   Atlas.UI.Popup.Styled in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas',
