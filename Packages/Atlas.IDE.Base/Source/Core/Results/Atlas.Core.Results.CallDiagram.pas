@@ -174,8 +174,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Boxes) do
+  begin
     if (Boxes[Index].Kind = TAtlasCallBoxKind.Call) and (Boxes[Index].Node = ANode) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -203,26 +207,38 @@ begin
   Container := AItem.Detail;
   Separator := Pos(' · ', Container);
   if Separator > 0 then
-    Container := Copy(Container, 1, Separator - 1)
+  begin
+    Container := Copy(Container, 1, Separator - 1);
+  end
   else if SameText(Container, ChangeFileExt(ExtractFileName(AItem.FileName), '')) then
+  begin
     Container := '';
+  end;
   if Container <> '' then
-    Result := Container + '.' + AItem.Name
+  begin
+    Result := Container + '.' + AItem.Name;
+  end
   else
+  begin
     Result := AItem.Name;
+  end;
 end;
 
 class function TAtlasCallDiagram.Location(const AItem: TAtlasHierarchyItem): string;
 begin
   Result := '';
   if AItem.FileName <> '' then
+  begin
     Result := ExtractFileName(AItem.FileName) + ':' + IntToStr(AItem.Line + 1);
+  end;
 end;
 
 function TAtlasCallDiagram.IsLibrary(const AItem: TAtlasHierarchyItem): Boolean;
 begin
   if AItem.FileName = '' then
+  begin
     Exit(True);
+  end;
   Result := Assigned(FIsProjectFile) and not FIsProjectFile(AItem.FileName);
 end;
 
@@ -235,7 +251,9 @@ begin
   Node.Parent := AParent;
   Node.BackTo := -1;
   if AParent >= 0 then
+  begin
     Node.Level := FNodes[AParent].Level + 1;
+  end;
   Node.Library_ := IsLibrary(AItem);
   Result := Length(FNodes);
   FNodes := FNodes + [Node];
@@ -263,7 +281,9 @@ begin
   FDirection := ADirection;
   FNodes := nil;
   for Item in ARoots do
+  begin
     NewNode(Item, -1);
+  end;
 end;
 
 function TAtlasCallDiagram.NeedsLoad(ANode: Integer): Boolean;
@@ -279,7 +299,9 @@ var
   Ancestor, Child: Integer;
 begin
   if (ANode < 0) or (ANode > High(FNodes)) or (FNodes[ANode].BackTo >= 0) then
+  begin
     Exit;
+  end;
   Seen := TDictionary<string, Boolean>.Create;
   try
     FNodes[ANode].Children := nil;
@@ -288,7 +310,9 @@ begin
       Key := KeyOf(Item);
       // Derselbe Aufrufer bzw. Aufgerufene kann mehrfach kommen (sicher und erschlossen, #1119): ein Kasten.
       if Seen.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Seen.Add(Key, True);
       Child := NewNode(Item, ANode);
       Ancestor := ANode;
@@ -315,9 +339,13 @@ function TAtlasCallDiagram.Toggle(ANode: Integer): Boolean;
 begin
   Result := False;
   if (ANode < 0) or (ANode > High(FNodes)) or not FNodes[ANode].Loaded or (FNodes[ANode].BackTo >= 0) then
+  begin
     Exit;
+  end;
   if not FNodes[ANode].Expanded and (Length(FNodes[ANode].Children) = 0) then
+  begin
     Exit;
+  end;
   FNodes[ANode].Expanded := not FNodes[ANode].Expanded;
   Result := True;
 end;
@@ -325,7 +353,9 @@ end;
 procedure TAtlasCallDiagram.ShowAll(ANode: Integer);
 begin
   if (ANode >= 0) and (ANode <= High(FNodes)) then
+  begin
     FNodes[ANode].ShowAll := True;
+  end;
 end;
 
 function TAtlasCallDiagram.VisibleChildren(ANode: Integer; out AMore: Integer): TArray<Integer>;
@@ -336,18 +366,26 @@ begin
   Result := nil;
   AMore := 0;
   if (ANode < 0) or (ANode > High(FNodes)) or not FNodes[ANode].Expanded then
+  begin
     Exit;
+  end;
   All := nil;
   for Child in FNodes[ANode].Children do
   begin
     if FNodes[Child].BackTo >= 0 then
+    begin
       Continue;
+    end;
     if FProjectOnly and FNodes[Child].Library_ then
+    begin
       Continue;
+    end;
     All := All + [Child];
   end;
   if FNodes[ANode].ShowAll or (Length(All) <= MaxChildren) then
+  begin
     Exit(All);
+  end;
   Result := Copy(All, 0, MaxChildren);
   AMore := Length(All) - MaxChildren;
 end;
@@ -358,10 +396,16 @@ var
 begin
   Result := nil;
   if (ANode < 0) or (ANode > High(FNodes)) or not FNodes[ANode].Expanded then
+  begin
     Exit;
+  end;
   for Child in FNodes[ANode].Children do
+  begin
     if FNodes[Child].BackTo >= 0 then
+    begin
       Result := Result + [Child];
+    end;
+  end;
 end;
 
 function TAtlasCallDiagram.Layout: TAtlasCallLayout;
@@ -386,7 +430,9 @@ var
     Entry.Hidden := AHidden;
     Result := Boxes.Add(Entry);
     if AKind = TAtlasCallBoxKind.Call then
+    begin
       BoxOfNode.AddOrSetValue(ANode, Result);
+    end;
   end;
 
   procedure AddEdge(ASource, ATarget: Integer; const ANode: TAtlasCallNode; ABack: Boolean);
@@ -424,7 +470,9 @@ var
     begin
       ChildBox := Place(Child);
       if First < 0 then
+      begin
         First := ChildBox;
+      end;
       Last := ChildBox;
       AddEdge(Own, ChildBox, FNodes[Child], False);
     end;
@@ -433,7 +481,9 @@ var
       ChildBox := AddBox(TAtlasCallBoxKind.More, ANode, FNodes[ANode].Level + 1, NextRow, More);
       NextRow := NextRow + 1;
       if First < 0 then
+      begin
         First := ChildBox;
+      end;
       Last := ChildBox;
       Edge := Default(TAtlasCallEdge);
       Edge.Source := Own;
@@ -453,7 +503,9 @@ var
   begin
     Pending.Add(ANode);
     for Child in VisibleChildren(ANode, More) do
+    begin
       CollectBackLinks(Child);
+    end;
   end;
 
 var
@@ -467,19 +519,29 @@ begin
   try
     NextRow := 0;
     for Root := 0 to High(FNodes) do
+    begin
       if FNodes[Root].Parent < 0 then
       begin
         Place(Root);
         CollectBackLinks(Root);
       end;
+    end;
     // Rekursionen: Pfeil vom Knoten zurück zum Vorfahren, wenn beide zu sehen sind.
     for Node in Pending do
+    begin
       for Link in BackLinks(Node) do
+      begin
         if BoxOfNode.ContainsKey(Node) and BoxOfNode.ContainsKey(FNodes[Link].BackTo) then
+        begin
           AddEdge(BoxOfNode[Node], BoxOfNode[FNodes[Link].BackTo], FNodes[Link], True);
+        end;
+      end;
+    end;
     Columns := 0;
     for Box in Boxes do
+    begin
       Columns := Max(Columns, Box.Column + 1);
+    end;
     Result.Boxes := Boxes.ToArray;
     Result.Edges := Edges.ToArray;
     Result.Columns := Columns;
@@ -504,9 +566,13 @@ begin
     Root.AddPair('format', TJSONNumber.Create(1));
     Root.AddPair('title', ATitle);
     if FDirection = TAtlasHierarchyDirection.Incoming then
-      Root.AddPair('direction', 'incoming')
+    begin
+      Root.AddPair('direction', 'incoming');
+    end
     else
+    begin
       Root.AddPair('direction', 'outgoing');
+    end;
     Root.AddPair('projectOnly', TJSONBool.Create(FProjectOnly));
     Root.AddPair('maxChildren', TJSONNumber.Create(MaxChildren));
     Items := TJSONArray.Create;
@@ -574,7 +640,9 @@ begin
   Height := Max(1, ALayout.Rows) * RowHeight - (RowHeight - BoxHeight);
   Scale := 1;
   if (AWidth > 2 * Margin) and (AHeight > 2 * Margin) then
+  begin
     Scale := Min(1, Min((AWidth - 2 * Margin) / Width, (AHeight - 2 * Margin) / Height));
+  end;
   Scale := Max(MinScale, Scale);
   OffsetX := Margin;
   // Kleine Diagramme senkrecht mittig, große oben beginnen.
@@ -596,7 +664,9 @@ var
   NewScale: Double;
 begin
   if Scale <= 0 then
+  begin
     Scale := 1;
+  end;
   NewScale := EnsureRange(Scale * AFactor, MinScale, MaxScale);
   OffsetX := AX - (AX - OffsetX) * NewScale / Scale;
   OffsetY := AY - (AY - OffsetY) * NewScale / Scale;
@@ -619,7 +689,9 @@ begin
     Left := ScreenX(BoxX(ALayout.Boxes[Index]));
     Top := ScreenY(BoxY(ALayout.Boxes[Index]));
     if (AX >= Left) and (AX <= Left + BoxWidth * Scale) and (AY >= Top) and (AY <= Top + BoxHeight * Scale) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;

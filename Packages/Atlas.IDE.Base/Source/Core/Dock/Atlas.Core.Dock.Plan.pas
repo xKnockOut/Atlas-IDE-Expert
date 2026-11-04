@@ -46,13 +46,21 @@ implementation
 class function TAtlasDockPlan.ShowStep(AServices, AFormAlive, AFrameAlive: Boolean): TAtlasDockStep;
 begin
   if AFormAlive and AFrameAlive then
+  begin
     Exit(TAtlasDockStep.RevealForm);
+  end;
   if not AServices then
+  begin
     Exit(TAtlasDockStep.Unavailable);
+  end;
   if AFormAlive then
-    Result := TAtlasDockStep.RecreateForm
+  begin
+    Result := TAtlasDockStep.RecreateForm;
+  end
   else
+  begin
     Result := TAtlasDockStep.CreateForm;
+  end;
 end;
 
 class function TAtlasDockPlan.FrameUsable(AFormAlive, AFrameAlive: Boolean): Boolean;
@@ -66,7 +74,9 @@ var
 begin
   Result := AFormVisible;
   for Visible in AHostsVisible do
+  begin
     Result := Result and Visible;
+  end;
 end;
 
 class function TAtlasDockPlan.DockToDefault(ACreated, AFloating, APlaced, ATargetDocked: Boolean): Boolean;

@@ -343,9 +343,13 @@ begin
     FHotspots.Columns.Clear;
     AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRank), 36);
     if FLevelValue = cLevelValues[1] then
-      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColMethod), 220)
+    begin
+      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColMethod), 220);
+    end
     else
+    begin
       AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColUnit), 220);
+    end;
     AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColScore), 60);
     AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges), 80);
     AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColAuthors), 60);
@@ -364,9 +368,13 @@ var
 begin
   inherited CreateWnd;
   for mSheet in FSheets do
+  begin
     mSheet.TabVisible := True;
+  end;
   if (FPages.ActivePage = nil) and (Length(FSheets) > 0) then
+  begin
     FPages.ActivePage := FSheets[0];
+  end;
   // Combo und Listen halten ihre Einträge im Fenster: erst jetzt füllen.
   FillLevel;
   FillAll;
@@ -380,7 +388,9 @@ end;
 procedure TAtlasHotspotsFrame.FillLevel;
 begin
   if not CanFill(FLevel) then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     FLevel.Items.BeginUpdate;
@@ -392,9 +402,13 @@ begin
       FLevel.Items.EndUpdate;
     end;
     if FLevelValue = cLevelValues[1] then
-      FLevel.ItemIndex := 1
+    begin
+      FLevel.ItemIndex := 1;
+    end
     else
+    begin
       FLevel.ItemIndex := 0;
+    end;
   finally
     FUpdating := False;
   end;
@@ -407,9 +421,13 @@ var
   mIndex: Integer;
 begin
   if AValue = cLevelValues[1] then
-    mValue := cLevelValues[1]
+  begin
+    mValue := cLevelValues[1];
+  end
   else
+  begin
     mValue := cLevelValues[0];
+  end;
   if mValue = FLevelValue then
   begin
     FillLevel;
@@ -418,7 +436,9 @@ begin
   // Die Auswahl bleibt über die Unit erhalten, wenn es sie auf der anderen Ebene gibt.
   mSelected := '';
   if (FSelected >= 0) and (FSelected < Length(Entries)) then
+  begin
     mSelected := Entries[FSelected].UnitName;
+  end;
   FLevelValue := mValue;
   FModel.Level := mValue;
   FSelected := -1;
@@ -427,14 +447,18 @@ begin
   FillHotspotColumns;
   FillAll;
   if mSelected = '' then
+  begin
     Exit;
+  end;
   // Erste (höchstbewertete) Zeile derselben Unit.
   for mIndex := 0 to High(Entries) do
+  begin
     if SameText(Entries[mIndex].UnitName, mSelected) then
     begin
       Select(mIndex);
       Break;
     end;
+  end;
 end;
 
 function TAtlasHotspotsFrame.Entries: TArray<TAtlasHotspotEntry>;
@@ -450,7 +474,9 @@ var
 begin
   mCaption := '';
   if (FSelected >= 0) and (FSelected < Length(Entries)) then
+  begin
     mCaption := Entries[FSelected].Caption + #1 + Entries[FSelected].Path;
+  end;
   FModel := AModel;
   FModel.Level := FLevelValue;
   FHasModel := True;
@@ -459,14 +485,18 @@ begin
   FHistoryEntry := -1;
   FillAll;
   if mCaption = '' then
+  begin
     Exit;
+  end;
   mFound := FModel.Filter('');
   for mIndex in mFound do
+  begin
     if Entries[mIndex].Caption + #1 + Entries[mIndex].Path = mCaption then
     begin
       Select(mIndex);
       Break;
     end;
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.SetMessage(const AText: string; AKeep: Boolean);
@@ -487,15 +517,25 @@ end;
 function TAtlasHotspotsFrame.TrendCaption(const ATrend: string): string;
 begin
   if ATrend = 'rising' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendRising)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendRising);
+  end
   else if ATrend = 'steady' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendSteady)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendSteady);
+  end
   else if ATrend = 'falling' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendFalling)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendFalling);
+  end
   else if ATrend = 'new' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendNew)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTrendNew);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.FillAll;
@@ -503,9 +543,13 @@ begin
   FRows := FModel.Filter(FFilter.Text);
   FPairs := FModel.FilterCoupling(FFilter.Text);
   if FHasModel and (Length(Entries) = 0) then
-    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoEntries)
+  begin
+    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoEntries);
+  end
   else
+  begin
     FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
+  end;
   FChart.SetEntries(Entries, FRows);
   FChart.SelectEntry(FSelected);
   FillHotspots;
@@ -522,7 +566,9 @@ var
   mAll: TArray<TAtlasHotspotEntry>;
 begin
   if not CanFill(FHotspots) then
+  begin
     Exit;
+  end;
   mAll := Entries;
   FUpdating := True;
   FHotspots.Items.BeginUpdate;
@@ -543,7 +589,9 @@ begin
       mItem.SubItems.Add(TrendCaption(mEntry.Trend));
       mItem.SubItems.Add(Copy(mEntry.LastChange, 1, 10));
       if FRows[mIndex] = FSelected then
+      begin
         mItem.Selected := True;
+      end;
     end;
   finally
     FHotspots.Items.EndUpdate;
@@ -558,7 +606,9 @@ var
   mPair: TAtlasHotspotPair;
 begin
   if not CanFill(FCoupling) then
+  begin
     Exit;
+  end;
   FCoupling.Items.BeginUpdate;
   try
     FCoupling.Items.Clear;
@@ -594,12 +644,16 @@ begin
       [mEntry.Caption, mEntry.Changes]);
   end;
   if not CanFill(FHistory) then
+  begin
     Exit;
+  end;
   FHistory.Items.BeginUpdate;
   try
     FHistory.Items.Clear;
     if FHistoryEntry < 0 then
+    begin
       Exit;
+    end;
     for mCommit in Entries[FHistoryEntry].History do
     begin
       mItem := FHistory.Items.Add;
@@ -608,9 +662,13 @@ begin
       mItem.SubItems.Add(mCommit.Author);
       mItem.SubItems.Add(mCommit.Summary);
       if mCommit.Added < 0 then
-        mItem.SubItems.Add('')
+      begin
+        mItem.SubItems.Add('');
+      end
       else
+      begin
         mItem.SubItems.Add('+' + IntToStr(mCommit.Added) + ' −' + IntToStr(mCommit.Deleted));
+      end;
     end;
   finally
     FHistory.Items.EndUpdate;
@@ -622,13 +680,19 @@ var
   mRange: string;
 begin
   if FMessageText <> '' then
-    FStatus.Caption := FMessageText
+  begin
+    FStatus.Caption := FMessageText;
+  end
   else if FHasModel then
   begin
     if SameText(FModel.Vcs, 'svn') then
-      mRange := 'SVN'
+    begin
+      mRange := 'SVN';
+    end
     else
+    begin
       mRange := 'Git';
+    end;
     mRange := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsRange,
       [mRange, FModel.Months, Copy(FModel.Since, 1, 10),
       FModel.Commits]);
@@ -636,7 +700,9 @@ begin
       Length(FModel.Methods), Length(FModel.Coupling)]);
   end
   else
+  begin
     FStatus.Caption := '';
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.SelectRow(AEntry: Integer);
@@ -644,16 +710,20 @@ var
   mIndex: Integer;
 begin
   if not CanFill(FHotspots) then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     for mIndex := 0 to High(FRows) do
+    begin
       if (FRows[mIndex] = AEntry) and (mIndex < FHotspots.Items.Count) then
       begin
         FHotspots.Items[mIndex].Selected := True;
         FHotspots.Items[mIndex].MakeVisible(False);
         Exit;
       end;
+    end;
     FHotspots.Selected := nil;
   finally
     FUpdating := False;
@@ -663,7 +733,9 @@ end;
 procedure TAtlasHotspotsFrame.Select(AEntry: Integer);
 begin
   if (AEntry < 0) or (AEntry >= Length(Entries)) then
+  begin
     AEntry := -1;
+  end;
   FSelected := AEntry;
   FChart.SelectEntry(AEntry);
   SelectRow(AEntry);
@@ -679,7 +751,9 @@ var
   mEntry: TAtlasHotspotEntry;
 begin
   if (AEntry < 0) or (AEntry >= Length(Entries)) or not Assigned(FOnOpen) then
+  begin
     Exit;
+  end;
   mEntry := Entries[AEntry];
   FOnOpen(mEntry.FileName, Max(1, mEntry.Line));
 end;
@@ -687,7 +761,9 @@ end;
 procedure TAtlasHotspotsFrame.ShowHistory(AEntry: Integer);
 begin
   if (AEntry < 0) or (AEntry >= Length(Entries)) then
+  begin
     Exit;
+  end;
   Select(AEntry);
   FHistoryEntry := AEntry;
   FillHistory;
@@ -700,7 +776,9 @@ var
   mEntry: TAtlasHotspotEntry;
 begin
   if (AEntry < 0) or (AEntry >= Length(Entries)) or not Assigned(FOnImpact) then
+  begin
     Exit;
+  end;
   mEntry := Entries[AEntry];
   FOnImpact(mEntry.FileName, Max(1, mEntry.Line), mEntry.Method);
 end;
@@ -708,7 +786,9 @@ end;
 procedure TAtlasHotspotsFrame.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.SaveClick(Sender: TObject);
@@ -721,9 +801,13 @@ begin
     mDialog.DefaultExt := 'html';
     mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if FModel.Title <> '' then
+    begin
       mDialog.FileName := 'Hotspots-' + FModel.Title + '.html';
+    end;
     if mDialog.Execute and Assigned(FOnSave) then
+    begin
       FOnSave(mDialog.FileName);
+    end;
   finally
     mDialog.Free;
   end;
@@ -732,10 +816,14 @@ end;
 procedure TAtlasHotspotsFrame.LevelChange(Sender: TObject);
 begin
   if FUpdating or (FLevel.ItemIndex < 0) then
+  begin
     Exit;
+  end;
   LevelValue := cLevelValues[EnsureRange(FLevel.ItemIndex, 0, High(cLevelValues))];
   if Assigned(FOnLevelChanged) then
+  begin
     FOnLevelChanged(FLevelValue);
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.FilterChange(Sender: TObject);
@@ -747,7 +835,9 @@ end;
 procedure TAtlasHotspotsFrame.HotspotsSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if FUpdating or not Selected or (Item = nil) or (Item.Index > High(FRows)) then
+  begin
     Exit;
+  end;
   FSelected := FRows[Item.Index];
   FChart.SelectEntry(FSelected);
 end;
@@ -762,22 +852,34 @@ var
   mPair: TAtlasHotspotPair;
 begin
   if (FCoupling.Selected = nil) or (FCoupling.Selected.Index > High(FPairs)) or not Assigned(FOnOpen) then
+  begin
     Exit;
+  end;
   mPair := FModel.Coupling[FPairs[FCoupling.Selected.Index]];
   if GetKeyState(VK_CONTROL) < 0 then
-    FOnOpen(mPair.SecondFile, 1)
+  begin
+    FOnOpen(mPair.SecondFile, 1);
+  end
   else
+  begin
     FOnOpen(mPair.FirstFile, 1);
+  end;
 end;
 
 procedure TAtlasHotspotsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key <> VK_RETURN then
+  begin
     Exit;
+  end;
   if Sender = FHotspots then
-    HotspotsDblClick(Sender)
+  begin
+    HotspotsDblClick(Sender);
+  end
   else if Sender = FCoupling then
+  begin
     CouplingDblClick(Sender);
+  end;
   Key := 0;
 end;
 
@@ -816,7 +918,9 @@ begin
   begin
     mLine := AList.Items[mIndex].Caption;
     for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
+    begin
       mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
+    end;
     Result := Result + [mLine];
   end;
 end;

@@ -134,7 +134,9 @@ begin
   TAtlasIdeHotspotsWindow.Prepare;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeHotspotsWindow.ExistingFrame <> nil then
+  begin
     Wire(TAtlasIdeHotspotsWindow.ExistingFrame);
+  end;
 end;
 
 destructor THotspotsState.Destroy;
@@ -196,7 +198,9 @@ begin
     procedure
     begin
       if (TAtlasIdeHotspots.FState = Self) and Active and TAtlasIdeHotspotsWindow.Visible then
+      begin
         EnsureData;
+      end;
     end);
 end;
 
@@ -206,7 +210,9 @@ var
 begin
   mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
   if (mFrame <> nil) and not mFrame.HasModel and not FPending and not FPoll.Enabled then
+  begin
     Request(False);
+  end;
 end;
 
 procedure THotspotsState.PollTimer(Sender: TObject);
@@ -216,7 +222,9 @@ begin
     procedure
     begin
       if Active and (TAtlasIdeHotspotsWindow.ExistingFrame <> nil) then
+      begin
         Request(False);
+      end;
     end);
 end;
 
@@ -233,7 +241,9 @@ begin
   mProject := GetActiveProject;
   Result := (mProject <> nil) and (mProject.FileName <> '');
   if Result then
+  begin
     AUri := TLspSession.PathToUri(mProject.FileName);
+  end;
 end;
 
 procedure THotspotsState.Impact(const AFileName: string; ALine: Integer; const AMethod: string);
@@ -244,20 +254,30 @@ var
   mColumn: Integer;
 begin
   if not Assigned(TAtlasIdeHotspots.OnImpact) then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, 0);
   // Der Befehl wirkt auf das Symbol am Cursor: auf den Namen der Methode (bzw. der Unit) setzen.
   mView := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
     mView := mEditors.TopView;
+  end;
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, AFileName) then
+  begin
     Exit;
+  end;
   mLines := TAtlasEditorBuffer.Text(mView.Buffer).Split([#13#10, #10]);
   if (ALine < 1) or (ALine > Length(mLines)) then
+  begin
     Exit;
+  end;
   mColumn := TAtlasHotspotCommands.NameColumn(mLines[ALine - 1], AMethod);
   if mColumn < 0 then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.GoToPosition(ALine - 1, mColumn);
   TAtlasIdeHotspots.OnImpact();
 end;
@@ -271,7 +291,9 @@ begin
   FPoll.Enabled := False;
   mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   if not ProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), False);
@@ -298,17 +320,27 @@ begin
           mCurrent: TAtlasHotspotsFrame;
         begin
           if (TAtlasIdeHotspots.FState <> Self) or (mRequest <> FRequest) then
+          begin
             Exit;
+          end;
           FPending := False;
           mCurrent := TAtlasIdeHotspotsWindow.ExistingFrame;
           if mCurrent = nil then
+          begin
             Exit;
+          end;
           if not mParsed then
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), False)
+          begin
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), False);
+          end
           else if not mEnabled then
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsDisabled), False)
+          begin
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsDisabled), False);
+          end
           else if not mHasVcs then
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, [mMessage]), False)
+          begin
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, [mMessage]), False);
+          end
           else if mModel.Pending then
           begin
             // Der Server rechnet noch: bisherige Daten stehen lassen und später nachfragen.
@@ -316,7 +348,9 @@ begin
             FPoll.Enabled := True;
           end
           else
+          begin
             mCurrent.SetModel(mModel);
+          end;
         end);
     end) then
   begin
@@ -332,7 +366,9 @@ var
 begin
   mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
   if (mFrame = nil) or (AFileName = '') then
+  begin
     Exit;
+  end;
   if not ProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoProject), True);
@@ -353,19 +389,31 @@ begin
           mCurrent: TAtlasHotspotsFrame;
         begin
           if TAtlasIdeHotspots.FState <> Self then
+          begin
             Exit;
+          end;
           mCurrent := TAtlasIdeHotspotsWindow.ExistingFrame;
           if mCurrent = nil then
+          begin
             Exit;
+          end;
           if mSaved <> '' then
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsSaved, [mSaved]), True)
+          begin
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsSaved, [mSaved]), True);
+          end
           else if mPendingSave then
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True)
+          begin
+            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
+          end
           else
+          begin
             mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), True);
+          end;
         end);
     end) then
+  begin
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);
+  end;
 end;
 
 procedure THotspotsState.ApplySettings;
@@ -376,7 +424,9 @@ begin
     (FMinCommits <> TAtlasIdeSettings.Current.HotspotsCouplingMinCommits);
   // Zeitraum oder Kopplung auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
   if mChanged and TAtlasIdeHotspotsWindow.Visible then
+  begin
     Request(False);
+  end;
 end;
 
 { TAtlasIdeHotspots }
@@ -404,20 +454,28 @@ var
   mFrame: TAtlasHotspotsFrame;
 begin
   if (FState = nil) or not Active then
+  begin
     Exit;
+  end;
   mFrame := TAtlasIdeHotspotsWindow.Show;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   // Beim ersten Öffnen rechnen; danach nur auf „Neu berechnen“ oder geänderte Einstellungen.
   THotspotsState(FState).EnsureData;
   if mFrame.Filter.CanFocus and mFrame.Filter.Showing then
+  begin
     mFrame.Filter.SetFocus;
+  end;
 end;
 
 class procedure TAtlasIdeHotspots.ApplySettings;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   if not Active then
   begin
     TAtlasIdeHotspotsWindow.Hide;
@@ -433,7 +491,9 @@ begin
   TAtlasIdeHotspotsWindow.ApplyTheme;
   mFrame := TAtlasIdeHotspotsWindow.ExistingFrame;
   if mFrame <> nil then
+  begin
     mFrame.Chart.Invalidate;
+  end;
 end;
 
 end.

@@ -152,10 +152,14 @@ var
 begin
   Result := nil;
   if (AVcs = nil) or not Supports(AVcs, IAtlasVcsLineHistory, mHistory) then
+  begin
     Exit;
+  end;
   // Gescheitert: Die Randanzeige bleibt wie bisher (Betreff aus blame).
   if mHistory.Messages(AFileName, TAtlasBlameLinks.BlameRevisions(ALines), Result) <> TAtlasVcsOutcome.Ok then
+  begin
     Result := nil;
+  end;
 end;
 
 { TAtlasIdeBlameLinks }
@@ -176,21 +180,25 @@ begin
     procedure(AList, AId: Integer)
     begin
       if FInstance <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.BlameIssues,
           procedure
           begin
             FInstance.IssueOpen(AList, AId);
           end);
+      end;
     end;
   TAtlasIdeResultsWindow.OnIssueCommit :=
     procedure(AList, AId: Integer)
     begin
       if FInstance <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.BlameIssues,
           procedure
           begin
             FInstance.IssueCommit(AList, AId);
           end);
+      end;
     end;
 end;
 
@@ -245,7 +253,9 @@ function TAtlasIdeBlameLinks.Preview: TAtlasIdeIssuePreview;
 begin
   Result := nil;
   if Assigned(FHooks.Preview) then
+  begin
     Result := FHooks.Preview();
+  end;
 end;
 
 class function TAtlasIdeBlameLinks.MessageMatches(const APattern: TAtlasIssueKeyPattern;
@@ -277,7 +287,9 @@ begin
     begin
       Result := '';
       if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and FInstance.PatternOf(mTarget, mPattern) then
+      begin
         Result := TAtlasBlameLinks.CaptionSuffix(TAtlasBlameLinks.Keys(mPattern, AMessage));
+      end;
     end;
   Result.Describe :=
     function(const ACommit: TAtlasBlameCommit; var AText: string; out ALinks: TArray<string>): Boolean
@@ -289,11 +301,13 @@ begin
     procedure(const ACommit: TAtlasBlameCommit; AIndex: Integer)
     begin
       if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.BlameIssues,
           procedure
           begin
             FInstance.Link(ACommit, AIndex);
           end);
+      end;
     end;
 end;
 
@@ -315,10 +329,14 @@ begin
   mKey := StateKey(APattern, AMatch);
   // Einmal je Hover und Kennung; ein frischer Stand braucht keine Abfrage.
   if (mPreview = nil) or FKeyStates.ContainsKey(mKey) then
+  begin
     Exit;
+  end;
   if mPreview.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails) and
     TAtlasIdeIssuePreview.Fresh(mDetails) then
+  begin
     Exit;
+  end;
   mState.State := TAtlasIssueTipState.Loading;
   mState.Error := TAtlasCiFetchError.None;
   FKeyStates.Add(mKey, mState);
@@ -329,18 +347,28 @@ begin
       mDone: TKeyState;
     begin
       if (FInstance = nil) or (FInstance.FSerialOf <> mSerial) or not FInstance.FKeyStates.ContainsKey(mKey) then
+      begin
         Exit;
+      end;
       mDone.Error := AError;
       if ASucceeded then
-        mDone.State := TAtlasIssueTipState.Found
+      begin
+        mDone.State := TAtlasIssueTipState.Found;
+      end
       else if AError = TAtlasCiFetchError.NotFound then
-        mDone.State := TAtlasIssueTipState.NotFound
+      begin
+        mDone.State := TAtlasIssueTipState.NotFound;
+      end
       else
+      begin
         mDone.State := TAtlasIssueTipState.Failed;
+      end;
       FInstance.FKeyStates[mKey] := mDone;
       // Kam die Antwort sofort (aus Describe heraus), baut Describe den Text selbst.
       if not FInstance.FDescribing then
+      begin
         TAtlasIdeLineChanges.RefreshBlameTip;
+      end;
     end);
 end;
 
@@ -356,17 +384,27 @@ begin
   mCached := False;
   mDetails := TAtlasTrackerDetails.Empty;
   if mPreview <> nil then
+  begin
     mCached := mPreview.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails);
+  end;
   mKnown := FKeyStates.TryGetValue(StateKey(APattern, AMatch), mState);
   if mKnown and (mState.State = TAtlasIssueTipState.NotFound) then
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.NotFound, mDetails, mState.Error)
+  begin
+    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.NotFound, mDetails, mState.Error);
+  end
   else if mCached then
+  begin
     // Ohne Netz bleibt ein vorhandener Stand stehen.
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None)
+    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None);
+  end
   else if mKnown and (mState.State = TAtlasIssueTipState.Failed) then
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Failed, mDetails, mState.Error)
+  begin
+    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Failed, mDetails, mState.Error);
+  end
   else
+  begin
     Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Loading, mDetails, TAtlasCiFetchError.None);
+  end;
 end;
 
 function TAtlasIdeBlameLinks.Describe(const ACommit: TAtlasBlameCommit; var AText: string;
@@ -382,7 +420,9 @@ begin
   ALinks := nil;
   Result := False;
   if not PatternOf(mTarget, mPattern) then
+  begin
     Exit;
+  end;
   // Anderer Commit: Stände der letzten Kennungen verwerfen, beim nächsten Hover wird neu gefragt.
   if ACommit.Revision <> FStatesRevision then
   begin
@@ -393,14 +433,20 @@ begin
   FDescribing := True;
   try
     for mMatch in mMatches do
+    begin
       Ask(mTarget, mPattern, mMatch);
+    end;
   finally
     FDescribing := False;
   end;
   for mMatch in mMatches do
+  begin
     ALinks := ALinks + [KeyText(mTarget, mPattern, mMatch)];
+  end;
   if Length(mMatches) > 0 then
+  begin
     AText := TrimRight(AText) + #10#10 + TAtlasIssueTip.BlameFooter(TAtlasIdeIssuePreview.Active);
+  end;
   mCount := ScopeCount(ACommit.FileName, ACommit.Line, mMethod);
   ALinks := ALinks + [TAtlasIssueTip.ScopeLink(mMethod, mCount)];
   Result := True;
@@ -416,7 +462,9 @@ begin
   mView := TAtlasEditorBuffer.ActiveView;
   Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, AFileName);
   if not Result then
+  begin
     Exit;
+  end;
   AText := TAtlasEditorBuffer.Text(mView.Buffer);
   ALines := TTextLines.SplitLines(AText);
 end;
@@ -434,18 +482,26 @@ begin
   Result := -1;
   AMethod := False;
   if not BufferLines(AFileName, mLines, mText) or not PatternOf(mTarget, mPattern) then
+  begin
     Exit;
+  end;
   AMethod := TAtlasBlameLinks.Scope(mText, ALine, mFirst, mLast, mName);
   mVcs := TAtlasIdeVcs.ForFolder(ExtractFileDir(AFileName));
   if (mVcs = nil) or (mVcs.Kind = TAtlasVcsKind.None) then
+  begin
     Exit;
+  end;
   // Gezählt je Bereich und Stand der Arbeitskopie; ein Commit oder Wechsel des Branchs zählt neu.
   mKey := AFileName + #1 + IntToStr(mFirst) + #1 + IntToStr(mLast) + #1 + mName + #1 + mVcs.ChangeMarker + #1 +
     mPattern.Key;
   if mKey = FCountKey then
+  begin
     Exit(FCount);
+  end;
   if FCountBusy then
+  begin
     Exit;
+  end;
   FCountKey := mKey;
   FCount := -1;
   FCountBusy := True;
@@ -460,18 +516,28 @@ begin
     procedure
     begin
       if (FInstance = nil) or (FInstance.FSerialOf <> mSerial) then
+      begin
         Exit;
+      end;
       FInstance.FCountBusy := False;
       if FInstance.FCountKey <> mKey then
+      begin
         Exit;
+      end;
       if mHistory.Outcome = TAtlasBlameHistoryOutcome.Failed then
+      begin
         // Ohne Zahl; der nächste Hover versucht es wieder.
-        FInstance.FCountKey := ''
+        FInstance.FCountKey := '';
+      end
       else
+      begin
         FInstance.FCount := Length(TAtlasBlameLinks.Group(mPattern, mHistory.Commits).Issues);
+      end;
       TAtlasIdeLineChanges.RefreshBlameTip;
     end) then
+  begin
     FCountBusy := False;
+  end;
 end;
 
 procedure TAtlasIdeBlameLinks.Link(const ACommit: TAtlasBlameCommit; AIndex: Integer);
@@ -481,12 +547,18 @@ var
   mMatches: TArray<TAtlasIssueKeyMatch>;
 begin
   if not PatternOf(mTarget, mPattern) then
+  begin
     Exit;
+  end;
   mMatches := MessageMatches(mPattern, ACommit);
   if (AIndex >= 0) and (AIndex < Length(mMatches)) then
-    Act(ACommit, MenuShow, AIndex)
+  begin
+    Act(ACommit, MenuShow, AIndex);
+  end
   else
+  begin
     ShowScopeAt(ACommit.FileName, ACommit.Line);
+  end;
 end;
 
 procedure TAtlasIdeBlameLinks.Act(const ACommit: TAtlasBlameCommit; ACommand, AKey: Integer);
@@ -502,18 +574,26 @@ begin
     Exit;
   end;
   if not PatternOf(mTarget, mPattern) then
+  begin
     Exit;
+  end;
   mMatches := MessageMatches(mPattern, ACommit);
   if (AKey < 0) or (AKey >= Length(mMatches)) then
+  begin
     Exit;
+  end;
   mMatch := mMatches[AKey];
   case ACommand of
     MenuShow:
       if Assigned(FHooks.Show) then
+      begin
         FHooks.Show(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
+      end;
     MenuBrowse:
       if Assigned(FHooks.Browse) then
+      begin
         FHooks.Browse(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
+      end;
     MenuCopy:
       Clipboard.AsText := mMatch.Key;
   end;
@@ -534,7 +614,9 @@ begin
       FSwallowUp := 0;
       Handled := True;
       if GetCapture = Msg.hwnd then
+      begin
         ReleaseCapture;
+      end;
       if Msg.message = WM_RBUTTONUP then
       begin
         mCommit := FMenuCommit;
@@ -544,28 +626,40 @@ begin
           procedure
           begin
             if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+            begin
               TAtlasGuard.Run(TAtlasFeature.BlameIssues,
                 procedure
                 begin
                   FInstance.ShowMenu(mCommit, mWhere);
                 end);
+            end;
           end);
       end;
       Exit;
     end;
     if not ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_RBUTTONDOWN)) then
+    begin
       Exit;
+    end;
     if (Msg.message = WM_LBUTTONDOWN) and ((Msg.wParam and MK_CONTROL) = 0) then
+    begin
       Exit;
+    end;
     // Umschalt+Rechtsklick: Kontextmenü der IDE.
     if (Msg.message = WM_RBUTTONDOWN) and ((Msg.wParam and MK_SHIFT) <> 0) then
+    begin
       Exit;
+    end;
     if not TAtlasIdeLineChanges.BlameAt(Msg.hwnd, SmallInt(LoWord(Msg.lParam)), SmallInt(HiWord(Msg.lParam)),
       mCommit) or not PatternOf(mTarget, mPattern) then
+    begin
       Exit;
+    end;
     // Strg+Klick nur mit Kennung; ohne Kennung bleibt der Klick beim Editor.
     if (Msg.message = WM_LBUTTONDOWN) and (Length(MessageMatches(mPattern, mCommit)) = 0) then
+    begin
       Exit;
+    end;
     Handled := True;
     TAtlasIdeLineChanges.HideBlameTip;
     if Msg.message = WM_RBUTTONDOWN then
@@ -579,17 +673,21 @@ begin
     FSwallowUp := WM_LBUTTONUP;
     mCommand := MenuShow;
     if (Msg.wParam and MK_SHIFT) <> 0 then
+    begin
       mCommand := MenuBrowse;
+    end;
     mSerial := FSerialOf;
     TAtlasMainThread.ForceQueue(TAtlasFeature.BlameIssues,
       procedure
       begin
         if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+        begin
           TAtlasGuard.Run(TAtlasFeature.BlameIssues,
             procedure
             begin
               FInstance.Act(mCommit, mCommand, 0);
             end);
+        end;
       end);
   except
     on E: Exception do
@@ -622,7 +720,9 @@ begin
   FMenuCommit := ACommit;
   mMatches := nil;
   if PatternOf(mTarget, mPattern) then
+  begin
     mMatches := MessageMatches(mPattern, ACommit);
+  end;
   for mIndex := 0 to High(mMatches) do
   begin
     // Eine Kennung: Einträge direkt; mehrere: je Kennung ein Untermenü.
@@ -641,7 +741,9 @@ begin
       mIndex * MenuStride + MenuCopy);
   end;
   if Length(mMatches) > 0 then
+  begin
     AddMenuItem(FMenu.Items, '-', 0).OnClick := nil;
+  end;
   mMethod := BufferLines(ACommit.FileName, mLines, mText) and
     TAtlasBlameLinks.Scope(mText, ACommit.Line, mFirst, mLast, mName);
   AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), MenuScope);
@@ -706,7 +808,9 @@ begin
     Exit;
   end;
   if not TAtlasBlameLinks.Scope(mText, ALine, mFirst, mLast, mName) then
+  begin
     mName := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesUnitName, [ExtractFileName(AFileName)]);
+  end;
   mKind := mVcs.Kind;
   mMax := TAtlasIdeSettings.Current.IssuesBlameMaxRevisions;
   mSerial := FSerialOf;
@@ -722,15 +826,19 @@ begin
     begin
       // Nur, solange niemand eine neue Liste angefordert hat.
       if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and (FInstance.FList = mList) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.BlameIssues,
           procedure
           begin
             FInstance.ShowList(mList, mName, mHistory, mTarget, mPattern, mKind);
           end);
+      end;
     end) then
+  begin
     // Versionsverwaltung beendet (Entladen): kein Ergebnis mehr.
     TAtlasIdeResultsWindow.ShowIssues(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BlameIssuesFailed,
       [mName, AtlasVcsOutcomeName(TAtlasVcsOutcome.Cancelled)]), mList, nil);
+  end;
 end;
 
 function TAtlasIdeBlameLinks.IssueText(AIssue: Integer; AKnown: Boolean; const ADetails: TAtlasTrackerDetails): string;
@@ -787,7 +895,9 @@ begin
     mKnown[mIndex] := False;
     mDetails := TAtlasTrackerDetails.Empty;
     if mPreview <> nil then
+    begin
       mKnown[mIndex] := mPreview.Peek(mMatch.IssueTarget(ATarget), mMatch.IssueKey, mDetails);
+    end;
     mIssues[mIndex].Id := mIndex;
     mIssues[mIndex].Text := IssueText(mIndex, mKnown[mIndex], mDetails);
     SetLength(mIssues[mIndex].Commits, Length(FListResult.Issues[mIndex].Commits));
@@ -804,7 +914,9 @@ begin
   TAtlasIdeResultsWindow.ShowIssues(TAtlasIssueTip.ScopeTitle(AName, Length(FListResult.Issues),
     Length(FListResult.Commits), FListResult.Unlinked), AList, mIssues);
   if mPreview = nil then
+  begin
     Exit;
+  end;
   // Titel und Zustand nachfragen, die der Zwischenspeicher nicht (frisch) hat; die Zeile folgt der Antwort.
   mAsked := 0;
   for mIndex := 0 to High(FListResult.Issues) do
@@ -812,9 +924,13 @@ begin
     mMatch := FListResult.Issues[mIndex].Match;
     if mKnown[mIndex] and mPreview.Peek(mMatch.IssueTarget(ATarget), mMatch.IssueKey, mDetails) and
       TAtlasIdeIssuePreview.Fresh(mDetails) then
+    begin
       Continue;
+    end;
     if mAsked >= MaxLookups then
+    begin
       Break;
+    end;
     Inc(mAsked);
     AskRow(mPreview, ATarget, AList, mIndex);
   end;
@@ -834,7 +950,9 @@ begin
     begin
       if ASucceeded and (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and (FInstance.FList = AList) and
         (AId <= High(FInstance.FListResult.Issues)) then
+      begin
         TAtlasIdeResultsWindow.SetIssueText(AList, AId, FInstance.IssueText(AId, True, ADetails));
+      end;
     end);
 end;
 
@@ -843,7 +961,9 @@ var
   mMatch: TAtlasIssueKeyMatch;
 begin
   if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Issues)) or not Assigned(FHooks.Show) then
+  begin
     Exit;
+  end;
   mMatch := FListResult.Issues[AId].Match;
   FHooks.Show(mMatch.IssueTarget(FListTarget), mMatch.IssueKey);
 end;
@@ -854,7 +974,9 @@ var
   mLines: TArray<string>;
 begin
   if (AList <> FList) or (AId < 0) or (AId > High(FListResult.Commits)) then
+  begin
     Exit;
+  end;
   mCommit := FListResult.Commits[AId];
   // Nachricht, Leerzeile, dann der Unterschied des Bereichs.
   mLines := TTextLines.SplitLines(TrimRight(mCommit.Message));

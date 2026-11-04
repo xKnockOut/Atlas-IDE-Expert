@@ -77,8 +77,12 @@ var
 begin
   Result := AText.Split([#10]);
   for Index := 0 to High(Result) do
+  begin
     if Result[Index].EndsWith(#13) then
+    begin
       Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+    end;
+  end;
 end;
 
 function LeadingSpace(const ALine: string): string;
@@ -87,7 +91,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(ALine, 1, Index - 1);
 end;
 
@@ -109,7 +115,9 @@ begin
         TLexState.Brace:
           begin
             if Text[Index] = '}' then
+            begin
               Result.State := TLexState.Code;
+            end;
             Inc(Index);
           end;
         TLexState.ParenStar:
@@ -127,18 +135,24 @@ begin
           // String bis zum schließenden Hochkomma ('' ist ein Hochkomma im String).
           Inc(Index);
           while (Index <= Length(Text)) and (Text[Index] <> '''') do
+          begin
             Inc(Index);
+          end;
           Inc(Index);
         end
         else if (Text[Index] = '/') and (Index < Length(Text)) and (Text[Index + 1] = '/') then
-          Index := Length(Text) + 1
+        begin
+          Index := Length(Text) + 1;
+        end
         else if Text[Index] = '{' then
         begin
           // Direktiven enden in derselben Zeile; sie zählen wie Code.
           if (Index < Length(Text)) and (Text[Index + 1] = '$') then
           begin
             while (Index <= Length(Text)) and (Text[Index] <> '}') do
+            begin
               Inc(Index);
+            end;
             Inc(Index);
           end
           else
@@ -157,7 +171,9 @@ begin
           Inc(Index, 2);
         end
         else
+        begin
           Inc(Index);
+        end;
       end;
   end;
 end;
@@ -186,21 +202,29 @@ begin
     AMarker := Copy(AContent, 1, 1) + Copy(LeadingSpace(Copy(AContent, 2, MaxInt)), 1, MaxInt);
     ANext := AContent[1] + ' ';
     if Length(AMarker) > 1 then
+    begin
       ANext := AMarker;
+    end;
     Exit(True);
   end;
   Index := 1;
   while (Index <= Length(AContent)) and CharInSet(AContent[Index], ['0'..'9']) do
+  begin
     Inc(Index);
+  end;
   // "1." bzw. "1)" mit Leerzeichen oder am Ende; höchstens drei Ziffern (keine Jahreszahl wie "2026. ").
   if (Index = 1) or (Index > 4) or (Index > Length(AContent)) or not CharInSet(AContent[Index], ['.', ')']) or
     ((Index < Length(AContent)) and (AContent[Index + 1] <> ' ')) then
+  begin
     Exit;
+  end;
   Number := StrToInt(Copy(AContent, 1, Index - 1));
   AMarker := Copy(AContent, 1, Index) + LeadingSpace(Copy(AContent, Index + 1, MaxInt));
   ANext := IntToStr(Number + 1) + AContent[Index] + Copy(AMarker, Index + 1, MaxInt);
   if Length(ANext) = Length(IntToStr(Number + 1)) + 1 then
+  begin
     ANext := ANext + ' ';
+  end;
   Result := True;
 end;
 
@@ -236,11 +260,15 @@ begin
   Result := False;
   Lines := LinesOf(AText);
   if (ALine < 1) or (ALine > High(Lines)) then
+  begin
     Exit;
+  end;
   Previous := Lines[ALine - 1];
   Current := Lines[ALine];
   if Trim(Copy(Current, 1, ACharacter)) <> '' then
+  begin
     Exit;
+  end;
   Rest := TrimLeft(Current);
   // Zustand am Anfang der Zeile darüber: Nur dann ist ein "//" am Zeilenanfang ein Zeilenkommentar.
   State := StateAfter(Lines, ALine - 2);
@@ -250,9 +278,13 @@ begin
     Body := TrimLeft(Previous);
     Marker := '//';
     if Body.StartsWith('///') and not Body.StartsWith('////') then
+    begin
       Marker := '///';
+    end;
     if (Marker = '//') and not AOptions.LineComments then
+    begin
       Exit;
+    end;
     After := Copy(Body, Length(Marker) + 1, MaxInt);
     Space := LeadingSpace(After);
     Content := Copy(After, Length(Space) + 1, MaxInt);
@@ -273,7 +305,9 @@ begin
       end;
     end;
     if Space = '' then
+    begin
       Space := ' ';
+    end;
     Prefix := Indent + Marker + Space + Next;
     SetCurrent(Prefix + Rest, Length(Prefix));
     Exit(True);
@@ -281,26 +315,38 @@ begin
   // In einem offenen Blockkommentar: Einrückung (und Präfix).
   State := StateAfter(Lines, ALine - 1);
   if State.State = TLexState.Code then
+  begin
     Exit;
+  end;
   Opener := '{';
   if State.State = TLexState.ParenStar then
+  begin
     Opener := '(*';
+  end;
   Base := LeadingSpace(Lines[State.OpenLine]);
   if AOptions.BlockPrefix <> '' then
   begin
     if Rest.StartsWith('*)') then
-      Prefix := Base + ' '
+    begin
+      Prefix := Base + ' ';
+    end
     else if Rest.StartsWith('}') then
-      Prefix := Base
+    begin
+      Prefix := Base;
+    end
     else
+    begin
       Prefix := Base + AOptions.BlockPrefix;
+    end;
   end
   else if State.OpenLine = ALine - 1 then
   begin
     // Unter den Text hinter der öffnenden Klammer; Tabulatoren davor bleiben.
     After := Copy(Previous, State.OpenCharacter + Length(Opener) + 1, MaxInt);
     if Trim(After) = '' then
-      Prefix := Base + '  '
+    begin
+      Prefix := Base + '  ';
+    end
     else
     begin
       Prefix := Copy(Previous, 1, State.OpenCharacter + Length(Opener)) + LeadingSpace(After);
@@ -308,11 +354,17 @@ begin
     end;
   end
   else if Trim(Previous) <> '' then
-    Prefix := LeadingSpace(Previous)
+  begin
+    Prefix := LeadingSpace(Previous);
+  end
   else
+  begin
     Exit;
+  end;
   if Prefix + Rest = Current then
+  begin
     Exit;
+  end;
   SetCurrent(Prefix + Rest, Length(Prefix));
   Result := True;
 end;

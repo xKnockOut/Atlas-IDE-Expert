@@ -392,83 +392,107 @@ begin
   end;
 end;
 
+/// <summary>Länge der Folge nach dem Startbyte ALead (0 bei ASCII oder ungültigem Startbyte) und seine Bits.
+/// </summary>
+procedure Utf8Lead(ALead: Byte; out ACount: Integer; out ACodePoint: Cardinal);
+begin
+  ACount := 0;
+  ACodePoint := 0;
+  if (ALead >= $C2) and (ALead <= $DF) then
+  begin
+    ACount := 1;
+    ACodePoint := ALead and $1F;
+  end
+  else if (ALead >= $E0) and (ALead <= $EF) then
+  begin
+    ACount := 2;
+    ACodePoint := ALead and $0F;
+  end
+  else if (ALead >= $F0) and (ALead <= $F4) then
+  begin
+    ACount := 3;
+    ACodePoint := ALead and $07;
+  end;
+end;
+
+/// <summary>ACodePoint aus ACount Folgebytes ist kürzest kodiert, kein Surrogat und höchstens U+10FFFF.</summary>
+function IsValidUtf8CodePoint(ACount: Integer; ACodePoint: Cardinal): Boolean;
+begin
+  Result := not ((ACount = 2) and (ACodePoint < $800)) and not ((ACount = 3) and (ACodePoint < $10000)) and
+    (ACodePoint <= $10FFFF) and not ((ACodePoint >= $D800) and (ACodePoint <= $DFFF));
+end;
+
+/// <summary>Liest die Mehrbytefolge, die an AIndex beginnt: ACount Folgebytes laut Startbyte, davon AValid
+/// gültige, ACodePoint der Wert. True, wenn die Folge vollständig und gültig ist.</summary>
+function ReadUtf8Sequence(const ABytes: TBytes; AIndex: Integer; out ACount, AValid: Integer;
+  out ACodePoint: Cardinal): Boolean;
+begin
+  Utf8Lead(ABytes[AIndex], ACount, ACodePoint);
+  // Gültige Folgebytes zählen; eine zu kurze Folge ist eine Fehlstelle samt ihrer Folgebytes.
+  AValid := 0;
+  while (AValid < ACount) and (AIndex + AValid + 1 < Length(ABytes)) and
+    ((ABytes[AIndex + AValid + 1] and $C0) = $80) do
+  begin
+    ACodePoint := (ACodePoint shl 6) or (ABytes[AIndex + AValid + 1] and $3F);
+    Inc(AValid);
+  end;
+  Result := (ACount > 0) and (AValid = ACount) and IsValidUtf8CodePoint(ACount, ACodePoint);
+end;
+
+/// <summary>Hängt ACodePoint (als Surrogatpaar ab U+10000) an AText an; ALen ist die belegte Länge.</summary>
+procedure PutCodePoint(var AText: string; var ALen: Integer; ACodePoint: Cardinal);
+begin
+  if ACodePoint >= $10000 then
+  begin
+    Dec(ACodePoint, $10000);
+    Inc(ALen);
+    AText[ALen] := Char($D800 + (ACodePoint shr 10));
+    Inc(ALen);
+    AText[ALen] := Char($DC00 + (ACodePoint and $3FF));
+  end
+  else
+  begin
+    Inc(ALen);
+    AText[ALen] := Char(ACodePoint);
+  end;
+end;
+
 /// <summary>
 /// UTF-8 ab AStart, tolerant: TEncoding.UTF8 wirft unter Delphi bei ungültigen Bytes (EEncodingError). Jede
 /// ungültige oder zu kurze Folge wird zu genau einem U+FFFD, wie InvalidUtf8 sie zählt.
 /// </summary>
 function DecodeUtf8(const ABytes: TBytes; AStart: Integer): string;
 var
-  Index, Count, Valid, Len: Integer;
-  Lead: Byte;
-  CodePoint: Cardinal;
+  mIndex, mCount, mValid, mLen: Integer;
+  mCodePoint: Cardinal;
 begin
   if TTextEncodingProbe.IsValidUtf8(ABytes, AStart) then
   begin
     Exit(TEncoding.UTF8.GetString(ABytes, AStart, Length(ABytes) - AStart));
   end;
   SetLength(Result, 2 * (Length(ABytes) - AStart));
-  Len := 0;
-  Index := AStart;
-  while Index < Length(ABytes) do
+  mLen := 0;
+  mIndex := AStart;
+  while mIndex < Length(ABytes) do
   begin
-    Lead := ABytes[Index];
-    if Lead < $80 then
+    if ABytes[mIndex] < $80 then
     begin
-      Inc(Len);
-      Result[Len] := Char(Lead);
-      Inc(Index);
-      Continue;
-    end;
-    Count := 0;
-    CodePoint := 0;
-    if (Lead >= $C2) and (Lead <= $DF) then
-    begin
-      Count := 1;
-      CodePoint := Lead and $1F;
+      PutCodePoint(Result, mLen, ABytes[mIndex]);
+      Inc(mIndex);
     end
-    else if (Lead >= $E0) and (Lead <= $EF) then
+    else if ReadUtf8Sequence(ABytes, mIndex, mCount, mValid, mCodePoint) then
     begin
-      Count := 2;
-      CodePoint := Lead and $0F;
+      PutCodePoint(Result, mLen, mCodePoint);
+      Inc(mIndex, mCount + 1);
     end
-    else if (Lead >= $F0) and (Lead <= $F4) then
+    else
     begin
-      Count := 3;
-      CodePoint := Lead and $07;
+      // Fehlstelle samt ihrer gültigen Folgebytes: ein Ersatzzeichen.
+      PutCodePoint(Result, mLen, $FFFD);
+      Inc(mIndex, mValid + 1);
     end;
-    Valid := 0;
-    while (Valid < Count) and (Index + Valid + 1 < Length(ABytes)) and
-      ((ABytes[Index + Valid + 1] and $C0) = $80) do
-    begin
-      CodePoint := (CodePoint shl 6) or (ABytes[Index + Valid + 1] and $3F);
-      Inc(Valid);
-    end;
-    if (Count > 0) and (Valid = Count) and not (((Count = 2) and (CodePoint < $800)) or
-      ((Count = 3) and (CodePoint < $10000)) or (CodePoint > $10FFFF) or
-      ((CodePoint >= $D800) and (CodePoint <= $DFFF))) then
-    begin
-      if CodePoint >= $10000 then
-      begin
-        Dec(CodePoint, $10000);
-        Inc(Len);
-        Result[Len] := Char($D800 + (CodePoint shr 10));
-        Inc(Len);
-        Result[Len] := Char($DC00 + (CodePoint and $3FF));
-      end
-      else
-      begin
-        Inc(Len);
-        Result[Len] := Char(CodePoint);
-      end;
-      Inc(Index, Count + 1);
-      Continue;
-    end;
-    // Fehlstelle samt ihrer gültigen Folgebytes: ein Ersatzzeichen.
-    Inc(Len);
-    Result[Len] := Char($FFFD);
-    Inc(Index, Valid + 1);
   end;
-  SetLength(Result, Len);
+  SetLength(Result, mLen);
 end;
 
 function DecodeUtf16(const ABytes: TBytes; AStart: Integer; ABigEndian: Boolean): string;
@@ -545,34 +569,27 @@ end;
 
 class function TFileEncoding.DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind): TFileEncodingKind;
 var
-  HasNonAscii: Boolean;
+  mHasNonAscii: Boolean;
 begin
   if TTextEncodingProbe.HasPrefix(ABytes, [$EF, $BB, $BF]) then
   begin
-    Exit(TFileEncodingKind.Utf8Bom);
-  end;
-  if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) then
-  begin
-    Exit(TFileEncodingKind.Utf16LE);
-  end;
-  if TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
-  begin
-    Exit(TFileEncodingKind.Utf16BE);
-  end;
-  if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) then
-  begin
-    Exit(TFileEncodingKind.Ansi1252);
-  end;
-  if HasNonAscii then
-  begin
-    Exit(TFileEncodingKind.Utf8);
-  end;
-  // Reines ASCII: Utf8Bom als Vorgabe heißt nur „UTF-8“, eine BOM fehlt ja.
-  if ADefault = TFileEncodingKind.Utf8Bom then
-  begin
-    Result := TFileEncodingKind.Utf8;
+    Result := TFileEncodingKind.Utf8Bom;
   end
-  else if ADefault in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
+  else if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) then
+  begin
+    Result := TFileEncodingKind.Utf16LE;
+  end
+  else if TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
+  begin
+    Result := TFileEncodingKind.Utf16BE;
+  end
+  else if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, mHasNonAscii) then
+  begin
+    Result := TFileEncodingKind.Ansi1252;
+  end
+  // Reines ASCII: Utf8Bom oder UTF-16 als Vorgabe heißt nur „UTF-8“, eine BOM fehlt ja.
+  else if mHasNonAscii or (ADefault in [TFileEncodingKind.Utf8Bom, TFileEncodingKind.Utf16LE,
+    TFileEncodingKind.Utf16BE]) then
   begin
     Result := TFileEncodingKind.Utf8;
   end
@@ -661,108 +678,87 @@ begin
   Result := TTextEncodingProbe.ParseCodePage(AText, ACodePage);
 end;
 
+/// <summary>Spalten, die ein Zeichen aus 1 + ACount Bytes belegt: im ANSI-Text eines je Byte, im UTF-8-Text eines
+/// bzw. ein Surrogatpaar.</summary>
+function Utf8Columns(AAnsi: Boolean; ACount: Integer; ACodePoint: Cardinal): Integer;
+begin
+  if AAnsi then
+  begin
+    Result := ACount + 1;
+  end
+  else if ACodePoint >= $10000 then
+  begin
+    Result := 2;
+  end
+  else
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Rückt Zeile und Spalte über das ASCII-Byte AByte vor.</summary>
+procedure AdvanceAscii(AByte: Byte; var ALine, AColumn: Integer);
+begin
+  if AByte = 10 then
+  begin
+    Inc(ALine);
+    AColumn := 0;
+  end
+  else
+  begin
+    Inc(AColumn);
+  end;
+end;
+
 class function TFileEncoding.InvalidUtf8(const ABytes: TBytes; const AFormat: TFileFormat): TArray<TInvalidUtf8>;
 var
-  Index, Count, Valid, Line, Column: Integer;
-  Lead: Byte;
-  CodePoint: Cardinal;
-  Item: TInvalidUtf8;
-  mMultibyteCount: Integer;
+  mIndex, mCount, mValid, mLine, mColumn, mMultibyteCount: Integer;
+  mCodePoint: Cardinal;
+  mItem: TInvalidUtf8;
+  mAnsi: Boolean;
 begin
   Result := nil;
   if AFormat.Encoding in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
   begin
     Exit;
   end;
-  Index := 0;
+  mAnsi := AFormat.Encoding = TFileEncodingKind.Ansi1252;
+  mIndex := 0;
   if AFormat.Encoding = TFileEncodingKind.Utf8Bom then
   begin
-    Index := 3;
+    mIndex := 3;
   end;
-  Line := 0;
-  Column := 0;
+  mLine := 0;
+  mColumn := 0;
   mMultibyteCount := 0;
-  while Index < Length(ABytes) do
+  while mIndex < Length(ABytes) do
   begin
-    Lead := ABytes[Index];
-    if Lead < $80 then
+    if ABytes[mIndex] < $80 then
     begin
-      if Lead = 10 then
-      begin
-        Inc(Line);
-        Column := 0;
-      end
-      else
-      begin
-        Inc(Column);
-      end;
-      Inc(Index);
-      Continue;
-    end;
-    Count := 0;
-    CodePoint := 0;
-    if (Lead >= $C2) and (Lead <= $DF) then
-    begin
-      Count := 1;
-      CodePoint := Lead and $1F;
+      AdvanceAscii(ABytes[mIndex], mLine, mColumn);
+      Inc(mIndex);
     end
-    else if (Lead >= $E0) and (Lead <= $EF) then
-    begin
-      Count := 2;
-      CodePoint := Lead and $0F;
-    end
-    else if (Lead >= $F0) and (Lead <= $F4) then
-    begin
-      Count := 3;
-      CodePoint := Lead and $07;
-    end;
-    // Gültige Folgebytes zählen; eine zu kurze Folge ist eine Fehlstelle samt ihrer Folgebytes.
-    Valid := 0;
-    while (Valid < Count) and (Index + Valid + 1 < Length(ABytes)) and
-      ((ABytes[Index + Valid + 1] and $C0) = $80) do
-    begin
-      CodePoint := (CodePoint shl 6) or (ABytes[Index + Valid + 1] and $3F);
-      Inc(Valid);
-    end;
-    if (Count > 0) and (Valid = Count) and not (((Count = 2) and (CodePoint < $800)) or
-      ((Count = 3) and (CodePoint < $10000)) or (CodePoint > $10FFFF) or
-      ((CodePoint >= $D800) and (CodePoint <= $DFFF))) then
+    else if ReadUtf8Sequence(ABytes, mIndex, mCount, mValid, mCodePoint) then
     begin
       Inc(mMultibyteCount);
-      // Im ANSI-Text ein Zeichen je Byte, im UTF-8-Text eines bzw. ein Surrogatpaar.
-      if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
-      begin
-        Inc(Column, Count + 1);
-      end
-      else if CodePoint >= $10000 then
-      begin
-        Inc(Column, 2);
-      end
-      else
-      begin
-        Inc(Column);
-      end;
-      Inc(Index, Count + 1);
-      Continue;
-    end;
-    Item.Value := Lead;
-    Item.ByteOffset := Index;
-    Item.Position := TTextPosition.Create(Line, Column);
-    Result := Result + [Item];
-    if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
-    begin
-      Inc(Column, Valid + 1);
+      Inc(mColumn, Utf8Columns(mAnsi, mCount, mCodePoint));
+      Inc(mIndex, mCount + 1);
     end
     else
     begin
-      Inc(Column);
+      mItem.Value := ABytes[mIndex];
+      mItem.ByteOffset := mIndex;
+      mItem.Position := TTextPosition.Create(mLine, mColumn);
+      Result := Result + [mItem];
+      // Im ANSI-Text belegt die Fehlstelle samt Folgebytes je Byte eine Spalte, im UTF-8-Text ein Ersatzzeichen.
+      Inc(mColumn, Utf8Columns(mAnsi, mValid, 0));
+      Inc(mIndex, mValid + 1);
     end;
-    Inc(Index, Valid + 1);
   end;
   // Ohne BOM liest dcc jede Datei, die nicht ganz gültiges UTF-8 ist, als ANSI. Beschädigtes UTF-8 ist sie nur,
   // wenn die gültigen Folgen überwiegen (ein eingestreutes ANSI-Byte in einer UTF-8-Datei). Ein zufällig
   // gültiges Paar wie "Â°" in einer ANSI-Datei mit Umlauten macht deren Umlaute nicht zu Fehlstellen (#1327).
-  if (AFormat.Encoding = TFileEncodingKind.Ansi1252) and (mMultibyteCount <= Length(Result)) then
+  if mAnsi and (mMultibyteCount <= Length(Result)) then
   begin
     Result := nil;
   end;

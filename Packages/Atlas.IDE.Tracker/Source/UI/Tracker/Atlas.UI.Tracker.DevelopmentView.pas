@@ -156,7 +156,9 @@ end;
 destructor TAtlasIssueDevelopmentView.Destroy;
 begin
   if FCommitTimer <> nil then
+  begin
     FCommitTimer.Enabled := False;
+  end;
   FParts.Free;
   inherited;
 end;
@@ -186,7 +188,9 @@ begin
     Result.Font.Color := ToColor(FColors.Muted);
   end
   else
+  begin
     Result.Caption := ACaption;
+  end;
 end;
 
 function TAtlasIssueDevelopmentView.AddNote(const ACaption: string): TLabel;
@@ -225,7 +229,9 @@ begin
   DisableAlign;
   try
     for mIndex := FParts.Count - 1 downto 0 do
+    begin
       FParts[mIndex].Free;
+    end;
     FParts.Clear;
     FStatus := nil;
     FBranches := nil;
@@ -261,7 +267,9 @@ function TAtlasIssueDevelopmentView.WhenText(ATime: TDateTime): string;
 begin
   Result := '';
   if ATime > 0 then
+  begin
     Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime));
+  end;
 end;
 
 function TAtlasIssueDevelopmentView.VcsText: string;
@@ -302,9 +310,13 @@ begin
     Clear;
     mVcs := AVcsNote;
     if mVcs = '' then
+    begin
       mVcs := VcsText;
+    end;
     if mVcs <> '' then
-      FStatus := AddNote(mVcs)
+    begin
+      FStatus := AddNote(mVcs);
+    end
     else
     begin
       AddBranches;
@@ -312,7 +324,9 @@ begin
     end;
     AddTracker(ATrackerNote);
     if mVcs = '' then
+    begin
       AddUnits;
+    end;
   finally
     EnableAlign;
   end;
@@ -341,19 +355,29 @@ begin
     for mBranch in FDevelopment.Branches do
     begin
       if mBranch.Local and mBranch.Remote then
-        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocalRemote)
+      begin
+        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocalRemote);
+      end
       else if mBranch.Local then
-        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocal)
+      begin
+        mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocal);
+      end
       else
+      begin
         mWhere := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevRemote);
+      end;
       mState := '';
       if (mBranch.Base <> '') and (mBranch.Ahead >= 0) and (mBranch.Behind >= 0) then
+      begin
         mState := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevAheadBehind,
           [mBranch.Ahead, mBranch.Behind, mBranch.Base]);
+      end;
       if mBranch.Current then
       begin
         if mState <> '' then
+        begin
           mState := ', ' + mState;
+        end;
         mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCurrent) + mState;
       end;
       mItem := FBranches.Items.Add;
@@ -385,9 +409,13 @@ var
   mItem: TListItem;
 begin
   if FDevelopment.Truncated then
-    AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevCommitsMore, [Length(FDevelopment.Commits)]), True)
+  begin
+    AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevCommitsMore, [Length(FDevelopment.Commits)]), True);
+  end
   else
+  begin
     AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevCommits, [Length(FDevelopment.Commits)]), True);
+  end;
   if Length(FDevelopment.Commits) = 0 then
   begin
     AddNote(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevNoCommits, [FDevelopment.Key]));
@@ -431,7 +459,9 @@ begin
     Exit;
   end;
   if not FDevelopment.TrackerLoaded then
+  begin
     Exit;
+  end;
   // YouTrack kennt keine Pull Requests, aber verknüpfte Änderungen.
   if Length(FDevelopment.Tracker.Changes) > 0 then
   begin
@@ -455,7 +485,9 @@ begin
       FChanges.Items.EndUpdate;
     end;
     if Length(FDevelopment.Tracker.Pulls) = 0 then
+    begin
       Exit;
+    end;
   end;
   AddLabel(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevPulls, [Length(FDevelopment.Tracker.Pulls)]), True);
   if Length(FDevelopment.Tracker.Pulls) = 0 then
@@ -514,10 +546,14 @@ begin
   begin
     mFolder := IncludeTrailingPathDelimiter(ExtractFilePath(AGroup.ProjectFile));
     if SameText(Copy(AUnit.Path, 1, Length(mFolder)), mFolder) then
+    begin
       Result := Copy(AUnit.Path, Length(mFolder) + 1, MaxInt);
+    end;
   end;
   if AUnit.Deleted then
+  begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevDeleted, [Result]);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.AddUnits;
@@ -546,7 +582,9 @@ begin
     begin
       mCaption := mGroup.Project;
       if mCaption = '' then
+      begin
         mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevOtherFiles);
+      end;
       mNode := FUnits.Items.AddChildObject(nil, Format('%s (%d)', [mCaption, Length(mGroup.Units)]), Pointer(-1));
       Inc(mRows);
       for mUnit in mGroup.Units do
@@ -571,16 +609,22 @@ begin
   Color := ToColor(AColors.Surface);
   ParentBackground := False;
   if FHasDevelopment then
-    ShowDevelopment(FDevelopment, FTrackerNote, FVcsNote)
+  begin
+    ShowDevelopment(FDevelopment, FTrackerNote, FVcsNote);
+  end
   else if FStatus <> nil then
+  begin
     FStatus.Font.Color := ToColor(AColors.Muted);
+  end;
 end;
 
 function TAtlasIssueDevelopmentView.StatusText: string;
 begin
   Result := '';
   if FStatus <> nil then
+  begin
     Result := FStatus.Caption;
+  end;
 end;
 
 function TAtlasIssueDevelopmentView.UnitLines: TArray<string>;
@@ -590,21 +634,29 @@ var
 begin
   Result := nil;
   if FUnits = nil then
+  begin
     Exit;
+  end;
   for mIndex := 0 to FUnits.Items.Count - 1 do
   begin
     mNode := FUnits.Items[mIndex];
     if mNode.Level = 0 then
-      Result := Result + [mNode.Text]
+    begin
+      Result := Result + [mNode.Text];
+    end
     else
+    begin
       Result := Result + ['  ' + mNode.Text];
+    end;
   end;
 end;
 
 procedure TAtlasIssueDevelopmentView.BranchesSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if FSwitch = nil then
+  begin
     Exit;
+  end;
   // Wechseln nur zu einem anderen als dem aktuellen Branch.
   FSwitch.Enabled := (FBranches.Selected <> nil) and (FBranches.Selected.Index <= High(FDevelopment.Branches)) and
     not FDevelopment.Branches[FBranches.Selected.Index].Current;
@@ -613,9 +665,13 @@ end;
 procedure TAtlasIssueDevelopmentView.SwitchClick(Sender: TObject);
 begin
   if (FBranches = nil) or (FBranches.Selected = nil) or (FBranches.Selected.Index > High(FDevelopment.Branches)) then
+  begin
     Exit;
+  end;
   if Assigned(FOnSwitchBranch) then
+  begin
     FOnSwitchBranch(FDevelopment.Branches[FBranches.Selected.Index]);
+  end;
 end;
 
 function TAtlasIssueDevelopmentView.SelectedCommit(out AEntry: TAtlasVcsLogEntry): Boolean;
@@ -623,15 +679,21 @@ begin
   Result := (FCommits <> nil) and (FCommits.Selected <> nil) and
     (FCommits.Selected.Index <= High(FDevelopment.Commits));
   if Result then
-    AEntry := FDevelopment.Commits[FCommits.Selected.Index]
+  begin
+    AEntry := FDevelopment.Commits[FCommits.Selected.Index];
+  end
   else
+  begin
     AEntry := Default(TAtlasVcsLogEntry);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.CommitsClick(Sender: TObject);
 begin
   if (FCommits = nil) or (FCommits.Selected = nil) then
+  begin
     Exit;
+  end;
   // Erst nach der Doppelklickzeit: Ein Doppelklick öffnet statt des Diffs.
   FPendingCommit := FCommits.Selected.Index;
   FCommitTimer.Enabled := False;
@@ -652,9 +714,13 @@ begin
   mIndex := FPendingCommit;
   FPendingCommit := -1;
   if (mIndex < 0) or (mIndex > High(FDevelopment.Commits)) then
+  begin
     Exit;
+  end;
   if Assigned(FOnShowDiff) then
+  begin
     FOnShowDiff(FDevelopment.Commits[mIndex]);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.CommitsDblClick(Sender: TObject);
@@ -664,7 +730,9 @@ begin
   FCommitTimer.Enabled := False;
   FPendingCommit := -1;
   if SelectedCommit(mEntry) and Assigned(FOnOpenCommit) then
+  begin
     FOnOpenCommit(mEntry);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.CommitsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -680,7 +748,9 @@ begin
   else if (Key = VK_SPACE) and SelectedCommit(mEntry) then
   begin
     if Assigned(FOnShowDiff) then
+    begin
       FOnShowDiff(mEntry);
+    end;
     Key := 0;
   end;
 end;
@@ -688,9 +758,13 @@ end;
 procedure TAtlasIssueDevelopmentView.PullsDblClick(Sender: TObject);
 begin
   if (FPulls = nil) or (FPulls.Selected = nil) or (FPulls.Selected.Index > High(FDevelopment.Tracker.Pulls)) then
+  begin
     Exit;
+  end;
   if Assigned(FOnOpenPull) then
+  begin
     FOnOpenPull(FDevelopment.Tracker.Pulls[FPulls.Selected.Index]);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.UnitsClick(Sender: TObject);
@@ -698,12 +772,18 @@ var
   mIndex: NativeInt;
 begin
   if (FUnits = nil) or (FUnits.Selected = nil) then
+  begin
     Exit;
+  end;
   mIndex := NativeInt(FUnits.Selected.Data);
   if (mIndex < 0) or (mIndex > High(FUnitList)) or FUnitList[mIndex].Deleted then
+  begin
     Exit;
+  end;
   if Assigned(FOnOpenUnit) then
+  begin
     FOnOpenUnit(FUnitList[mIndex]);
+  end;
 end;
 
 procedure TAtlasIssueDevelopmentView.UnitsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

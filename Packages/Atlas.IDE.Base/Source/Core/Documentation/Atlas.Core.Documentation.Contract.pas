@@ -163,7 +163,9 @@ class function TAtlasDocTarget.FromJson(const AObject: TJSONObject): TAtlasDocTa
 begin
   Result := Default(TAtlasDocTarget);
   if AObject = nil then
+  begin
     Exit;
+  end;
   Result.Name := AObject.GetValue<string>('name', '');
   Result.UnitName := AObject.GetValue<string>('unit', '');
   Result.FileName := AObject.GetValue<string>('file', '');
@@ -210,9 +212,13 @@ begin
         Result := Result + #10 + Run.Text + #10;
       TAtlasDocRunKind.Bullet:
         if Run.Text = '' then
-          Result := Result + #10
+        begin
+          Result := Result + #10;
+        end
         else
+        begin
           Result := Result + #10 + Run.Text + ' ';
+        end;
       TAtlasDocRunKind.Cell:
         Result := Result + ' – ';
     else
@@ -233,8 +239,12 @@ var
   Section: TAtlasDocSection;
 begin
   for Section in Sections do
+  begin
     if Section.Kind = AKind then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -244,8 +254,12 @@ var
 begin
   Result := nil;
   for Section in Sections do
+  begin
     if Section.Kind = AKind then
+    begin
       Result := Result + [Section];
+    end;
+  end;
 end;
 
 class function TAtlasDoc.TryParseRunKind(const AName: string; out AKind: TAtlasDocRunKind): Boolean;
@@ -253,11 +267,13 @@ var
   Kind: TAtlasDocRunKind;
 begin
   for Kind := Low(TAtlasDocRunKind) to High(TAtlasDocRunKind) do
+  begin
     if SameText(RunKindNames[Kind], AName) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -266,11 +282,13 @@ var
   Kind: TAtlasDocSectionKind;
 begin
   for Kind := Low(TAtlasDocSectionKind) to High(TAtlasDocSectionKind) do
+  begin
     if SameText(SectionKindNames[Kind], AName) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -286,16 +304,22 @@ var
 begin
   Result := Default(TAtlasDoc);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   List := nil;
   if not TJSONObject(AValue).TryGetValue<TJSONArray>('sections', List) then
+  begin
     Exit;
+  end;
   for Item in List do
   begin
     // Unbekannte Abschnitte und Läufe (neuerer Server) überspringen statt abbrechen.
     if not (Item is TJSONObject) or
       not TryParseSectionKind(TJSONObject(Item).GetValue<string>('kind', ''), SectionKind) then
+    begin
       Continue;
+    end;
     Section := Default(TAtlasDocSection);
     Section.Kind := SectionKind;
     Section.Name := TJSONObject(Item).GetValue<string>('name', '');
@@ -304,15 +328,20 @@ begin
     begin
       Section.NameRef := TAtlasDocTarget.FromJson(TJSONObject(Ref));
       if Section.NameRef.Name = '' then
+      begin
         Section.NameRef.Name := Section.Name;
+      end;
     end;
     Runs := nil;
     if TJSONObject(Item).TryGetValue<TJSONArray>('runs', Runs) then
+    begin
       for RunItem in Runs do
       begin
         if not (RunItem is TJSONObject) or
           not TryParseRunKind(TJSONObject(RunItem).GetValue<string>('kind', ''), RunKind) then
+        begin
           Continue;
+        end;
         Run := TAtlasDocRun.Create(RunKind, TJSONObject(RunItem).GetValue<string>('text', ''),
           TJSONObject(RunItem).GetValue<string>('target', ''));
         Run.Bold := TJSONObject(RunItem).GetValue<Boolean>('bold', False);
@@ -322,10 +351,13 @@ begin
         begin
           Run.Location := TAtlasDocTarget.FromJson(TJSONObject(RunItem));
           if Run.Location.Name = '' then
+          begin
             Run.Location.Name := Run.Target;
+          end;
         end;
         Section.Runs := Section.Runs + [Run];
       end;
+    end;
     Result.Sections := Result.Sections + [Section];
   end;
 end;
@@ -340,7 +372,9 @@ var
 begin
   Result := Default(TAtlasDoc);
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Section := Default(TAtlasDocSection);
   Section.Kind := TAtlasDocSectionKind.Summary;
   HasPending := False;
@@ -362,11 +396,17 @@ begin
       Continue;
     end;
     if HasPending then
+    begin
       Section.Runs := Section.Runs + [TAtlasDocRun.Create(Pending, '')];
+    end;
     if Line.StartsWith(' ') then
-      Section.Runs := Section.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(Line))]
+    begin
+      Section.Runs := Section.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(Line))];
+    end
     else
+    begin
       Section.Runs := Section.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.Text, TrimRight(Line))];
+    end;
     HasPending := True;
     Pending := TAtlasDocRunKind.LineBreak;
   end;
@@ -390,8 +430,12 @@ var
   Expand: TAtlasDocExpand;
 begin
   for Expand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
+  begin
     if SameText(ExpandNames[Expand], Trim(AName)) then
+    begin
       Exit(Expand);
+    end;
+  end;
   Result := TAtlasDocExpand.Last;
 end;
 
@@ -407,19 +451,29 @@ var
 begin
   Result := AFallback;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Known := True;
   if TJSONObject(AValue).GetValue('expand') is TJSONString then
-    Result.Expand := ExpandOf(TJSONObject(AValue).GetValue<string>('expand', ''))
+  begin
+    Result.Expand := ExpandOf(TJSONObject(AValue).GetValue<string>('expand', ''));
+  end
   else
   begin
     // Server vor #770: "full".
     Full := TJSONObject(AValue).GetValue('full');
     if Full is TJSONBool then
+    begin
       if TJSONBool(Full).AsBoolean then
-        Result.Expand := TAtlasDocExpand.Expanded
+      begin
+        Result.Expand := TAtlasDocExpand.Expanded;
+      end
       else
+      begin
         Result.Expand := TAtlasDocExpand.Collapsed;
+      end;
+    end;
   end;
   Result.MaxLines := EnsureRange(TJSONObject(AValue).GetValue<Integer>('maxLines', AFallback.MaxLines), 0,
     MaxMaxLines);
@@ -439,8 +493,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Params) do
+  begin
     if SameText(Params[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -449,8 +507,12 @@ var
   Param: TAtlasDocParam;
 begin
   for Param in Params do
+  begin
     if Param.TypeText <> '' then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -465,15 +527,25 @@ begin
   for Index := AFrom to Length(AText) do
   begin
     if AText[Index] = '''' then
+    begin
       InString := not InString;
+    end;
     if InString then
+    begin
       Continue;
+    end;
     if (Depth = 0) and (AText[Index] = AChar) then
+    begin
       Exit(Index);
+    end;
     if CharInSet(AText[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(AText[Index], [')', ']', '>']) and (Depth > 0) then
+    begin
       Dec(Depth);
+    end;
   end;
   Result := 0;
 end;
@@ -510,21 +582,31 @@ begin
   Result := Default(TAtlasDocSignature);
   Text := Trim(StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Text = '' then
+  begin
     Exit;
+  end;
   // Erstes Wort nach "class": function, procedure, constructor, destructor, operator, property.
   Head := LowerCase(Text);
   if Head.StartsWith('class ') then
+  begin
     Head := Trim(Copy(Head, 7, MaxInt));
+  end;
   Word := Copy(Head, 1, Pos(' ', Head + ' ') - 1);
   if (Word <> 'function') and (Word <> 'procedure') and (Word <> 'constructor') and (Word <> 'destructor') and
     (Word <> 'operator') and (Word <> 'property') then
+  begin
     Exit;
+  end;
   // Parameterliste: erste runde (bzw. bei Properties eckige) Klammer nach dem Namen, außerhalb von Generics.
   Result.IsProperty := Word = 'property';
   if Result.IsProperty then
-    CloseChar := ']'
+  begin
+    CloseChar := ']';
+  end
   else
+  begin
     CloseChar := ')';
+  end;
   Open := 0;
   Index := 1;
   while Index <= Length(Text) do
@@ -533,12 +615,16 @@ begin
     begin
       Close := FindTop(Text, '>', Index + 1);
       if Close = 0 then
+      begin
         Break;
+      end;
       Index := Close + 1;
       Continue;
     end;
     if CharInSet(Text[Index], [':', ';', '=']) then
+    begin
       Break;
+    end;
     if ((CloseChar = ')') and (Text[Index] = '(')) or ((CloseChar = ']') and (Text[Index] = '[')) then
     begin
       Open := Index;
@@ -551,11 +637,15 @@ begin
   begin
     Close := FindTop(Text, CloseChar, Open + 1);
     if Close = 0 then
+    begin
       Exit;
+    end;
     for Group in SplitTop(Copy(Text, Open + 1, Close - Open - 1), ';') do
     begin
       if Group = '' then
+      begin
         Continue;
+      end;
       Colon := FindTop(Group, ':', 1);
       if Colon > 0 then
       begin
@@ -563,7 +653,9 @@ begin
         TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
         Equal := FindTop(TypeName, '=', 1);
         if Equal > 0 then
+        begin
           TypeName := Trim(Copy(TypeName, 1, Equal - 1));
+        end;
       end
       else
       begin
@@ -572,19 +664,26 @@ begin
       end;
       // [Ref] und andere Attribute stehen vor oder nach der Art (const/var/out).
       while Names.StartsWith('[') and (Pos(']', Names) > 0) do
+      begin
         Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
+      end;
       Modifier := '';
       for Word in Modifiers do
+      begin
         if LowerCase(Names).StartsWith(Word + ' ') then
         begin
           Modifier := Word;
           Names := Trim(Copy(Names, Length(Word) + 1, MaxInt));
           Break;
         end;
+      end;
       // Attribute zwischen Art und Name ebenfalls weglassen.
       while Names.StartsWith('[') and (Pos(']', Names) > 0) do
+      begin
         Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
+      end;
       for Name in SplitTop(Names, ',') do
+      begin
         if Name <> '' then
         begin
           Param.Name := Name;
@@ -592,11 +691,14 @@ begin
           Param.TypeName := TypeName;
           Result.Params := Result.Params + [Param];
         end;
+      end;
     end;
     Rest := Copy(Text, Close + 1, MaxInt);
   end
   else
+  begin
     Rest := Copy(Text, Index, MaxInt);
+  end;
   Result.Known := True;
   // Ergebnis- bzw. Property-Typ: nach ":" bis ";" oder bis zum ersten Wort von read/write/index/default.
   Rest := Trim(Rest);
@@ -605,12 +707,16 @@ begin
     Rest := Trim(Copy(Rest, 2, MaxInt));
     Close := FindTop(Rest, ';', 1);
     if Close > 0 then
+    begin
       Rest := Copy(Rest, 1, Close - 1);
+    end;
     for Word in Directives do
     begin
       Index := Pos(' ' + Word + ' ', LowerCase(Rest) + ' ');
       if Index > 0 then
+      begin
         Rest := Copy(Rest, 1, Index - 1);
+      end;
     end;
     Result.ResultType := Trim(Rest);
   end;

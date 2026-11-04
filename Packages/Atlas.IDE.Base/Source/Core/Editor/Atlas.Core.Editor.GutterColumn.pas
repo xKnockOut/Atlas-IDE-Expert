@@ -118,21 +118,29 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AValue) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Target := Default(TAtlasGutterTarget);
     Target.Name := TJSONObject(Item).GetValue<string>('name', '');
     Uri := TJSONObject(Item).GetValue<string>('uri', '');
     Target.FileName := Uri;
     if Assigned(AToPath) and (Uri <> '') then
+    begin
       Target.FileName := AToPath(Uri);
+    end;
     Target.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
     Target.Character := TJSONObject(Item).GetValue<Integer>('character', 0);
     if (Target.Name <> '') and (Target.FileName <> '') and (Target.Line >= 0) then
+    begin
       Result := Result + [Target];
+    end;
   end;
 end;
 
@@ -145,17 +153,23 @@ begin
   Result := Default(TAtlasFileOverrides);
   // Typen selbst prüfen: GetValue<TJSONArray> wandelt eine Zahl ungeprüft um.
   if not (AValue is TJSONObject) or not (TJSONObject(AValue).GetValue('lines') is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(TJSONObject(AValue).GetValue('lines')) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Entry := Default(TAtlasGutterOverrides);
     Entry.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
     Entry.Overrides := TargetsOf(TJSONObject(Item).GetValue('overrides'), AToPath);
     Entry.Overridden := TargetsOf(TJSONObject(Item).GetValue('overridden'), AToPath);
     if (Entry.Line >= 0) and ((Length(Entry.Overrides) > 0) or (Length(Entry.Overridden) > 0)) then
+    begin
       Result.Lines := Result.Lines + [Entry];
+    end;
   end;
 end;
 
@@ -165,11 +179,13 @@ var
 begin
   AEntry := Default(TAtlasGutterOverrides);
   for Entry in Lines do
+  begin
     if Entry.Line = ALine then
     begin
       AEntry := Entry;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -186,13 +202,21 @@ begin
   Result := TAtlasGutterSymbol.None;
   if AOptions.Problems and (ALine.Problem in [TAtlasGutterSymbol.Error, TAtlasGutterSymbol.Warning,
     TAtlasGutterSymbol.Hint]) then
-    Result := ALine.Problem
+  begin
+    Result := ALine.Problem;
+  end
   else if AOptions.CodeActions and ALine.Action then
-    Result := TAtlasGutterSymbol.Action
+  begin
+    Result := TAtlasGutterSymbol.Action;
+  end
   else if AOptions.Overrides and ALine.Overrides then
-    Result := TAtlasGutterSymbol.Overrides
+  begin
+    Result := TAtlasGutterSymbol.Overrides;
+  end
   else if AOptions.Overrides and ALine.Overridden then
+  begin
     Result := TAtlasGutterSymbol.Overridden;
+  end;
 end;
 
 function Counts(const AProblem: TAtlasProblem; ALine: Integer): Boolean;
@@ -220,12 +244,16 @@ var
 begin
   Result := TAtlasGutterSymbol.None;
   for Problem in AProblems do
+  begin
     if Counts(Problem, ALine) then
     begin
       Symbol := SymbolOf(Problem.Severity);
       if (Result = TAtlasGutterSymbol.None) or (Ord(Symbol) < Ord(Result)) then
+      begin
         Result := Symbol;
+      end;
     end;
+  end;
 end;
 
 class function TAtlasGutterColumn.ProblemsAt(const AProblems: TArray<TAtlasProblem>;
@@ -236,18 +264,22 @@ var
 begin
   Result := nil;
   for Problem in AProblems do
+  begin
     if Counts(Problem, ALine) then
     begin
       // Stabil nach Schweregrad: Gleich schwere behalten die Reihenfolge des Servers.
       Position := Length(Result);
       for Index := 0 to High(Result) do
+      begin
         if Ord(Problem.Severity) < Ord(Result[Index].Severity) then
         begin
           Position := Index;
           Break;
         end;
+      end;
       Insert(Problem, Result, Position);
     end;
+  end;
 end;
 
 class function TAtlasGutterColumn.Glyph(ASymbol: TAtlasGutterSymbol): string;
@@ -279,7 +311,9 @@ class function TAtlasGutterColumn.ProblemTitle(const AProblem: TAtlasProblem; co
 begin
   Result := ASeverity;
   if AProblem.Code <> '' then
+  begin
     Result := AProblem.Code + ' · ' + ASeverity;
+  end;
 end;
 
 class function TAtlasGutterColumn.TargetText(const ATarget: TAtlasGutterTarget): string;

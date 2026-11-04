@@ -94,9 +94,13 @@ begin
   Result := 0;
   Field := AObject.GetValue(AName);
   if not (Field is TJSONString) or (Field.Value = '') then
+  begin
     Exit;
+  end;
   if not TryISO8601ToDate(Field.Value, Result, False) then
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Ganze Zahl des Felds AName; False ohne Zahl.</summary>
@@ -108,7 +112,9 @@ begin
   Field := AObject.GetValue(AName);
   Result := Field is TJSONNumber;
   if Result then
+  begin
     AValue := TJSONNumber(Field).AsInt;
+  end;
 end;
 
 { TAtlasIndexSnapshot }
@@ -134,9 +140,13 @@ begin
     Root.AddPair('format', TJSONNumber.Create(FormatVersion));
     Root.AddPair('units', TJSONNumber.Create(Units));
     if FullAt > 0 then
+    begin
       Root.AddPair('fullIndexAt', DateText(FullAt));
+    end;
     if At > 0 then
+    begin
       Root.AddPair('at', DateText(At));
+    end;
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -158,12 +168,18 @@ begin
   end;
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not ReadInteger(Root, 'format', Number) or (Number <> FormatVersion) then
+    begin
       Exit;
+    end;
     if ReadInteger(Root, 'units', Number) and (Number >= 0) then
+    begin
       Result.Units := Number;
+    end;
     Result.FullAt := ReadDate(Root, 'fullIndexAt');
     Result.At := ReadDate(Root, 'at');
   finally
@@ -209,7 +225,9 @@ begin
     Result := True;
   end;
   if AUnits < 0 then
+  begin
     Exit;
+  end;
   if AUnits <> FSnapshot.Units then
   begin
     FSnapshot.Units := AUnits;
@@ -217,7 +235,9 @@ begin
   end;
   // Der Stand gilt ab jetzt; geschrieben wird deswegen nur beim ersten Mal.
   if FSnapshot.At <= 0 then
+  begin
     Result := True;
+  end;
   FSnapshot.At := ANow;
 end;
 

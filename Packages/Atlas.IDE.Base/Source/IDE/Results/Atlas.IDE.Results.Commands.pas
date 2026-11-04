@@ -127,7 +127,9 @@ begin
         begin
           Current := Session;
           if Current = nil then
+          begin
             Exit;
+          end;
           try
             Children := Current.HierarchyChildren(ADirection, AItem);
           except
@@ -192,13 +194,17 @@ class function TAtlasIdeResults.Session: TLspSession;
 begin
   Result := nil;
   if Assigned(FSessionOf) then
+  begin
     Result := FSessionOf();
+  end;
 end;
 
 class procedure TAtlasIdeResults.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class procedure TAtlasIdeResults.Open(const AFileName: string; ALine, ACharacter: Integer);
@@ -230,7 +236,9 @@ begin
   end;
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
@@ -313,7 +321,9 @@ var
   Line, Character: Integer;
 begin
   if AtCursor(FileName, Line, Character, Name) then
+  begin
     ShowReferences(FileName, Line, Character, Name);
+  end;
 end;
 
 class procedure TAtlasIdeResults.FindImplementations;
@@ -323,7 +333,9 @@ var
   Found: TArray<TAtlasResultEntry>;
 begin
   if not AtCursor(FileName, Line, Character, Name) then
+  begin
     Exit;
+  end;
   Screen.Cursor := crHourGlass;
   try
     try
@@ -366,7 +378,9 @@ end;
 class procedure TAtlasIdeResults.ShowCallDiagram;
 begin
   if CallDiagramAllowed then
+  begin
     ShowHierarchy(TAtlasHierarchyDirection.Outgoing, True);
+  end;
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
@@ -379,7 +393,9 @@ var
   Roots: TArray<TAtlasHierarchyItem>;
 begin
   if not AtCursor(FileName, Line, Character, Name) then
+  begin
     Exit;
+  end;
   Screen.Cursor := crHourGlass;
   try
     try
@@ -415,7 +431,9 @@ begin
     Exit;
   end;
   if not AtCursor(FileName, Line, Character, Name) then
+  begin
     Exit;
+  end;
   FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, FileName, Line, Character);
   FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
   FFlowName := Name;
@@ -481,7 +499,9 @@ begin
     Exit;
   end;
   if not Found.Found then
+  begin
     Found.Symbol.Name := FFlowName;
+  end;
   TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(Titles[FFlowRequest.Direction],
     [Found.Symbol.Name, Length(Found.Nodes)]), FFlowRequest.Direction, Found,
     TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
@@ -496,7 +516,9 @@ begin
   Result := Default(TAtlasDataFlowResult);
   Current := Session;
   if Current = nil then
+  begin
     Exit;
+  end;
   // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
   Request := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
   Request.Path := APath;
@@ -540,7 +562,9 @@ begin
       Symbols := nil;
       Current := Session;
       if (Current = nil) or (Trim(APattern) = '') then
+      begin
         Exit;
+      end;
       try
         Symbols := Current.WorkspaceSymbols(Trim(APattern), SymbolTimeoutMs);
       except
@@ -554,7 +578,9 @@ begin
         Command.Caption := Symbols[Index].Name;
         Command.Path := ExtractFileName(Symbols[Index].FileName);
         if Symbols[Index].Container <> '' then
+        begin
           Command.Path := Symbols[Index].Container + ' · ' + Command.Path;
+        end;
         Command.ShortCut := TAtlasResults.SymbolBadge(Symbols[Index].Kind);
         Result := Result + [Command];
       end;
@@ -566,14 +592,22 @@ begin
     begin
       Index := StrToIntDef(ACommand.Id, -1);
       if (Index >= 0) and (Index <= High(Symbols)) then
+      begin
         Open(Symbols[Index].FileName, Symbols[Index].Line, Symbols[Index].Character);
+      end;
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 

@@ -108,12 +108,18 @@ begin
   Word := AnsiLowerCase(Trim(AWord));
   Result := True;
   if (Word = 'error') or (Word = 'fehler') or (Word = 'fatal') or (Word = 'schwerer fehler') then
-    ASeverity := TAtlasTaskSeverity.Error
+  begin
+    ASeverity := TAtlasTaskSeverity.Error;
+  end
   else if (Word = 'warning') or (Word = 'warnung') then
-    ASeverity := TAtlasTaskSeverity.Warning
+  begin
+    ASeverity := TAtlasTaskSeverity.Warning;
+  end
   else if (Word = 'hint') or (Word = 'hinweis') or (Word = 'info') or (Word = 'information') or
     (Word = 'message') then
-    ASeverity := TAtlasTaskSeverity.Info
+  begin
+    ASeverity := TAtlasTaskSeverity.Info;
+  end
   else
   begin
     ASeverity := TAtlasTaskSeverity.Error;
@@ -151,23 +157,35 @@ begin
             begin
               Close := Index + 3;
               if APattern[Index + 2] = 'P' then
+              begin
                 Inc(Close);
+              end;
               while (Close <= Length(APattern)) and not CharInSet(APattern[Close], ['>', '''']) do
+              begin
                 Inc(Close);
+              end;
               if (APattern[Index + 2] = 'P') and (Index + 3 <= Length(APattern)) and (APattern[Index + 3] = '<') then
-                Name := Copy(APattern, Index + 4, Close - Index - 4)
+              begin
+                Name := Copy(APattern, Index + 4, Close - Index - 4);
+              end
               else if APattern[Index + 2] <> 'P' then
+              begin
                 Name := Copy(APattern, Index + 3, Close - Index - 3);
+              end;
               if (Name <> '') and not CharInSet(Name[1], ['=', '!']) then
               begin
                 Inc(Count);
                 if SameText(Name, AName) then
+                begin
                   Exit(Count);
+                end;
               end;
             end;
           end
           else
+          begin
             Inc(Count);
+          end;
         end;
     end;
     Inc(Index);
@@ -241,10 +259,16 @@ var
 begin
   Word := AnsiLowerCase(Trim(AText));
   for Index := 0 to High(FMatcher.SeverityWords) do
+  begin
     if FMatcher.SeverityWords[Index] = Word then
+    begin
       Exit(FMatcher.SeverityValues[Index]);
+    end;
+  end;
   if (Word = '') or not SeverityWord(Word, Result) then
+  begin
     Result := FMatcher.DefaultSeverity;
+  end;
 end;
 
 /// <summary>Wert der Gruppe ANumber; '' ohne Gruppe oder wenn sie nicht beteiligt war.</summary>
@@ -252,9 +276,13 @@ function GroupText(const AMatch: TMatch; ANumber: Integer): string;
 begin
   Result := '';
   if (ANumber <= 0) or (ANumber >= AMatch.Groups.Count) then
+  begin
     Exit;
+  end;
   if AMatch.Groups[ANumber].Success then
+  begin
     Result := AMatch.Groups[ANumber].Value;
+  end;
 end;
 
 /// <summary>Wort am Anfang von AMessage, das die Schwere nennt („error: …“, „Warnung …“); entfernt es.</summary>
@@ -266,7 +294,9 @@ begin
     [roIgnoreCase]);
   Result := Match.Success and TAtlasTaskLineMatcher.SeverityWord(Match.Groups[1].Value, ASeverity);
   if Result then
+  begin
     AMessage := Copy(AMessage, Match.Length + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Großgeschriebenes Wort FEHLER, WARNUNG, HINWEIS (ERROR, WARNING, HINT, INFO) am Anfang.</summary>
@@ -277,7 +307,9 @@ begin
   Match := TRegEx.Match(AMessage, '^(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\b\s*:?\s*', []);
   Result := Match.Success and TAtlasTaskLineMatcher.SeverityWord(Match.Groups[1].Value, ASeverity);
   if Result then
+  begin
     AMessage := Copy(AMessage, Match.Length + 1, MaxInt);
+  end;
 end;
 
 function TAtlasTaskLineMatcher.Apply(const ARule: TRule; const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
@@ -291,7 +323,9 @@ begin
   Found := ARule.Regex.Match(ALine);
   Result := Found.Success;
   if not Result then
+  begin
     Exit;
+  end;
   case ARule.Form of
     TForm.DccIde:
       begin
@@ -316,19 +350,29 @@ begin
         AFinding.FileName := Trim(GroupText(Found, 2));
         Text := GroupText(Found, 3);
         if Text = '' then
+        begin
           Text := GroupText(Found, 5);
+        end;
         AFinding.Line := StrToIntDef(Text, 0);
         Text := GroupText(Found, 4);
         if Text = '' then
+        begin
           Text := GroupText(Found, 6);
+        end;
         AFinding.Column := StrToIntDef(Text, 0);
         AFinding.Message := Trim(GroupText(Found, 7));
         if GroupText(Found, 1) <> '' then
-          SeverityWord(GroupText(Found, 1), AFinding.Severity)
+        begin
+          SeverityWord(GroupText(Found, 1), AFinding.Severity);
+        end
         else if UpperSeverity(AFinding.Message, Severity) then
-          AFinding.Severity := Severity
+        begin
+          AFinding.Severity := Severity;
+        end
         else if TRegEx.IsMatch(ALine, '^\s*Write-Error:', []) then
+        begin
           AFinding.Severity := TAtlasTaskSeverity.Error;
+        end;
       end;
     TForm.MsBuildLine:
       begin
@@ -347,7 +391,9 @@ begin
         AFinding.Message := Trim(GroupText(Found, 4));
         // „MSBUILD : error …“ und andere Werkzeugnamen sind keine Dateien.
         if Pos('.', ExtractFileName(AFinding.FileName)) = 0 then
+        begin
           AFinding.FileName := '';
+        end;
       end;
     TForm.GenericParen, TForm.GenericColon:
       begin
@@ -356,7 +402,9 @@ begin
         AFinding.Column := StrToIntDef(GroupText(Found, 3), 0);
         AFinding.Message := Trim(GroupText(Found, 4));
         if LeadingSeverity(AFinding.Message, Severity) then
+        begin
           AFinding.Severity := Severity;
+        end;
         // „error E2003: …“: Code hinter dem Wort.
         Found := TRegEx.Match(AFinding.Message, '^([A-Za-z]{1,4}\d{2,5})\s*:\s*', []);
         if Found.Success then
@@ -373,15 +421,23 @@ begin
         AFinding.Severity := CustomSeverity(GroupText(Found, FSeverityGroup));
         AFinding.Code := Trim(GroupText(Found, FCodeGroup));
         if FMessageGroup > 0 then
-          AFinding.Message := Trim(GroupText(Found, FMessageGroup))
+        begin
+          AFinding.Message := Trim(GroupText(Found, FMessageGroup));
+        end
         else
+        begin
           AFinding.Message := Trim(ALine);
+        end;
       end;
   end;
   if AFinding.Line < 0 then
+  begin
     AFinding.Line := 0;
+  end;
   if AFinding.Column < 0 then
+  begin
     AFinding.Column := 0;
+  end;
 end;
 
 function TAtlasTaskLineMatcher.Match(const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
@@ -390,8 +446,12 @@ var
 begin
   AFinding := Default(TAtlasTaskFinding);
   for Rule in FRules do
+  begin
     if Apply(Rule, ALine, AFinding) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -404,7 +464,9 @@ var
 begin
   Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
   if Result = '' then
+  begin
     Exit;
+  end;
   Prefix := '';
   if Copy(Result, 1, 2) = '\\' then
   begin
@@ -421,12 +483,16 @@ begin
   for Part in Parts do
   begin
     if (Part = '') or (Part = '.') then
+    begin
       Continue;
+    end;
     if (Part = '..') and (Length(Kept) > 0) and (Kept[High(Kept)] <> '..') then
     begin
       // Nicht über das Laufwerk hinaus.
       if not ((Length(Kept) = 1) and (Length(Kept[0]) = 2) and (Kept[0][2] = ':')) then
+      begin
         SetLength(Kept, Length(Kept) - 1);
+      end;
       Continue;
     end;
     Kept := Kept + [Part];
@@ -442,12 +508,16 @@ end;
 function Combine(const AFolder, APath: string): string;
 begin
   if AFolder = '' then
-    Result := APath
+  begin
+    Result := APath;
+  end
   else
   begin
     Result := StringReplace(AFolder, '/', '\', [rfReplaceAll]);
     if Result[Length(Result)] <> '\' then
+    begin
       Result := Result + '\';
+    end;
     Result := Result + APath;
   end;
 end;
@@ -459,24 +529,38 @@ var
 begin
   Relative := Normalize(APath);
   if (Relative = '') or IsAbsolute(Relative) then
+  begin
     Exit(Relative);
+  end;
   Candidate := Normalize(Combine(ACwd, Relative));
   if Assigned(AExists) and AExists(Candidate) then
+  begin
     Exit(Candidate);
+  end;
   // Projektdateien: gleicher Name mit passendem Ende des Pfads.
   for ProjectFile in AProjectFiles do
+  begin
     if SameText(Normalize(ProjectFile), Candidate) or
       SameText(Copy(Normalize(ProjectFile), Length(Normalize(ProjectFile)) - Length(Relative), MaxInt),
       '\' + Relative) then
+    begin
       Exit(Normalize(ProjectFile));
+    end;
+  end;
   if Assigned(AExists) then
+  begin
     for Folder in ASearchPath do
+    begin
       if Trim(Folder) <> '' then
       begin
         Result := Normalize(Combine(Trim(Folder), Relative));
         if AExists(Result) then
+        begin
           Exit;
+        end;
       end;
+    end;
+  end;
   Result := Candidate;
 end;
 

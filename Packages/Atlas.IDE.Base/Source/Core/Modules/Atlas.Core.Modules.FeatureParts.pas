@@ -91,13 +91,17 @@ end;
 procedure TAtlasFeaturePart.Start;
 begin
   if Assigned(FStart) then
+  begin
     FStart();
+  end;
 end;
 
 procedure TAtlasFeaturePart.Stop;
 begin
   if Assigned(FStop) then
+  begin
     FStop();
+  end;
 end;
 
 end.

@@ -141,7 +141,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -164,41 +166,65 @@ begin
   Result.Places := nil;
   Result.Entries := nil;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Root := TJSONObject(AValue);
   Result.Enabled := FlagOf(Root, 'enabled');
   if Root.GetValue('places') is TJSONArray then
+  begin
     for Value in TJSONArray(Root.GetValue('places')) do
+    begin
       if Value is TJSONString then
+      begin
         Result.Places := Result.Places + [TJSONString(Value).Value];
+      end;
+    end;
+  end;
   if not (Root.GetValue('commands') is TJSONArray) then
+  begin
     Exit;
+  end;
   for Value in TJSONArray(Root.GetValue('commands')) do
   begin
     if not (Value is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Value);
     if StringOf(Item, 'name') = '' then
+    begin
       Continue;
+    end;
     if not TAtlasGenerateOptions.TryParseGroup(StringOf(Item, 'group'), Group) or
       (Group = TAtlasGenerateGroup.Recent) or (Group = TAtlasGenerateGroup.Templates) then
+    begin
       Group := TAtlasGenerateGroup.Generate;
+    end;
     Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Slash, Group, StringOf(Item, 'name'),
       StringOf(Item, 'summary'));
     Entry.Detail := StringOf(Item, 'summary');
     Entry.Example := StringOf(Item, 'example');
     Argument := StringOf(Item, 'argument');
     if SameText(Argument, 'required') then
-      Entry.Argument := TAtlasGenerateArgument.Required
+    begin
+      Entry.Argument := TAtlasGenerateArgument.Required;
+    end
     else if SameText(Argument, 'optional') then
-      Entry.Argument := TAtlasGenerateArgument.Optional
+    begin
+      Entry.Argument := TAtlasGenerateArgument.Optional;
+    end
     else
+    begin
       Entry.Argument := TAtlasGenerateArgument.None;
+    end;
     Entry.HasChoices := FlagOf(Item, 'choices');
     Entry.Multi := FlagOf(Item, 'multi');
     Entry.Separator := StringOf(Item, 'separator');
     if Entry.Separator = '' then
+    begin
       Entry.Separator := ' ';
+    end;
     Result.Entries := Result.Entries + [Entry];
   end;
 end;
@@ -209,9 +235,15 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for Value in TJSONArray(AValue) do
+    begin
       if Value is TJSONString then
+      begin
         Result := Result + [TJSONString(Value).Value];
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasGenerateProtocol.ParseRun(const AValue: TJSONValue; out AEdits: TArray<TLspTextEdit>;
@@ -232,12 +264,20 @@ begin
   Root := TJSONObject(AValue);
   AReason := StringOf(Root, 'reason');
   if Root.GetValue('edits') is TJSONArray then
+  begin
     for Value in TJSONArray(Root.GetValue('edits')) do
+    begin
       if TLspTextEdit.FromJson(Value, Edit) then
+      begin
         AEdits := AEdits + [Edit];
+      end;
+    end;
+  end;
   Result := (AReason = '') and (Length(AEdits) > 0);
   if not Result and (AReason = '') then
+  begin
     AReason := 'Der Befehl hat nichts geändert';
+  end;
 end;
 
 class function TAtlasGenerateProtocol.FromSnippets(const ASnippets: TAtlasSnippetList;
@@ -249,17 +289,23 @@ begin
   Result := nil;
   // Kein Ort: Kommentar, String oder asm; dort passt keine Vorlage.
   if Length(APlaces) = 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(ASnippets) do
   begin
     // Dateivorlagen (#759) gehören zu „Neu mit Atlas“, nicht an den Cursor.
     if ASnippets[Index].Postfix or (ASnippets[Index].FileKind <> '') or
       not TAtlasSnippets.FitsContext(ASnippets[Index].Context, APlaces) then
+    begin
       Continue;
+    end;
     Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
       ASnippets[Index].Prefix, ASnippets[Index].Name);
     if Entry.Caption = '' then
+    begin
       Entry.Caption := ASnippets[Index].Prefix;
+    end;
     Entry.Detail := ASnippets[Index].Description;
     Entry.Source := Index;
     Result := Result + [Entry];
@@ -276,7 +322,9 @@ begin
   for Index := 0 to High(AActions) do
   begin
     if (AActions[Index].Disabled <> '') or not AActions[Index].Kind.StartsWith('refactor') then
+    begin
       Continue;
+    end;
     Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate,
       AActions[Index].Title, AActions[Index].Title);
     Entry.Source := Index;

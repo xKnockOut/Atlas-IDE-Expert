@@ -490,14 +490,20 @@ var
   mHeight: Integer;
 begin
   if (FGraphic = nil) or (FGraphic.Width <= 0) or (ClientWidth <= 0) then
+  begin
     Exit;
+  end;
   // Höchstens Originalgröße, sonst Fensterbreite.
   mHeight := FGraphic.Height;
   if FGraphic.Width > ClientWidth then
+  begin
     mHeight := MulDiv(FGraphic.Height, ClientWidth, FGraphic.Width);
+  end;
   mHeight := Max(mHeight, 8);
   if Height <> mHeight then
+  begin
     Height := mHeight;
+  end;
 end;
 
 procedure TAtlasIssueImageBox.Resize;
@@ -532,7 +538,9 @@ procedure TAtlasIssueImageBox.Click;
 begin
   inherited;
   if (FGraphic <> nil) and Assigned(FOnEnlarge) then
+  begin
     FOnEnlarge(Self);
+  end;
 end;
 
 { TAtlasIssueBadgeBar }
@@ -583,9 +591,13 @@ begin
     Inc(mX, mWidth + mGap);
   end;
   if Length(FTexts) = 0 then
-    Height := 4
+  begin
+    Height := 4;
+  end
   else if Height <> mY + mHeight + mGap then
+  begin
     Height := mY + mHeight + mGap;
+  end;
 end;
 
 procedure TAtlasIssueBadgeBar.Resize;
@@ -602,7 +614,9 @@ begin
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.FillRect(ClientRect);
   if Length(FRects) <> Length(FTexts) then
+  begin
     Arrange;
+  end;
   Canvas.Font := Font;
   mRadius := MulDiv(8, CurrentPPI, 96);
   for mIndex := 0 to High(FRects) do
@@ -626,15 +640,25 @@ begin
   inherited;
   mHit := -1;
   for mIndex := 0 to High(FRects) do
+  begin
     if FRects[mIndex].Contains(Point(X, Y)) then
+    begin
       mHit := mIndex;
+    end;
+  end;
   if mHit = FHintIndex then
+  begin
     Exit;
+  end;
   FHintIndex := mHit;
   if (mHit >= 0) and (mHit <= High(FHints)) then
-    Hint := FHints[mHit]
+  begin
+    Hint := FHints[mHit];
+  end
   else
+  begin
     Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -804,9 +828,13 @@ destructor TAtlasIssueFrame.Destroy;
 begin
   // Entwurf sichern, solange das Memo sein Fenster hat.
   if FComment <> nil then
+  begin
     FComment.Unbind;
+  end;
   if Assigned(FOnHidden) then
+  begin
     FOnHidden();
+  end;
   FOnHidden := nil;
   FParts.Free;
   FImages.Free;
@@ -838,7 +866,9 @@ begin
   Result.Caption := ACaption;
   Result.Font.Color := ToColor(FColors.Text);
   if ABold then
+  begin
     Result.Font.Style := [fsBold];
+  end;
   FParts.Add(Result);
 end;
 
@@ -891,7 +921,9 @@ end;
 procedure TAtlasIssueFrame.Defer;
 begin
   if HandleAllocated then
+  begin
     PostMessage(Handle, WM_ATLAS_ISSUE_DEFERRED, 0, 0);
+  end;
 end;
 
 procedure TAtlasIssueFrame.CMShowingChanged(var AMessage: TMessage);
@@ -899,7 +931,9 @@ begin
   inherited;
   // Das X versteckt die Form samt Frame: wie Schließen.
   if not Showing and Assigned(FOnHidden) then
+  begin
     FOnHidden();
+  end;
 end;
 
 procedure TAtlasIssueFrame.WMDeferred(var AMessage: TMessage);
@@ -917,20 +951,26 @@ begin
     FHasPendingLink := False;
     mLink := FPendingLink;
     if Assigned(FOnOpenLink) then
+    begin
       FOnOpenLink(mLink);
+    end;
   end;
   if FPendingTask >= 0 then
   begin
     mTask := FPendingTask;
     FPendingTask := -1;
     if Assigned(FOnToggleTask) then
+    begin
       FOnToggleTask(mTask);
+    end;
   end;
   if FPendingAdd then
   begin
     FPendingAdd := False;
     if Assigned(FOnAddTask) then
+    begin
       FOnAddTask();
+    end;
   end;
 end;
 
@@ -950,11 +990,17 @@ begin
       begin
         mDoc.TasksLocked := FChecklistReadOnly;
         if FChecklistReadOnly then
-          mDoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly)
+        begin
+          mDoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistReadOnly);
+        end
         else
+        begin
           mDoc.TaskHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistToggleHint);
+        end;
         if (FTaskBox = nil) and mDoc.HasTasks then
+        begin
           FTaskBox := mDoc;
+        end;
       end;
       Continue;
     end;
@@ -965,7 +1011,9 @@ begin
     mImage.Url := mUrl;
     mImage.Alt := mSegment.Image.Text;
     if mImage.Alt = '' then
+    begin
       mImage.Alt := mSegment.Image.Url;
+    end;
     mImage.Colors := FColors;
     mImage.OnEnlarge := ImageEnlarge;
     FParts.Add(mImage);
@@ -980,7 +1028,9 @@ begin
   FScroll.DisableAlign;
   try
     for mPart in FParts do
+    begin
       mPart.Free;
+    end;
     FParts.Clear;
     FImages.Clear;
     FDocs.Clear;
@@ -1006,7 +1056,9 @@ function TAtlasIssueFrame.AbsoluteText(ATime: TDateTime): string;
 begin
   Result := '';
   if ATime > 0 then
+  begin
     Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime));
+  end;
 end;
 
 function TAtlasIssueFrame.AgeText(ATime: TDateTime): string;
@@ -1038,11 +1090,15 @@ begin
     FAnchorComment := -1;
     FEmpty.Visible := not FHasDetails;
     if not FHasDetails then
+    begin
       Exit;
+    end;
     // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen in der Beschreibung.
     mProgress := TAtlasChecklistProgress.Create(0, 0);
     if FChecklists then
+    begin
       mProgress := TAtlasTrackerChecklist.Progress(FDetails.Description);
+    end;
     FProgressText := mProgress.Text;
     if FProgressText <> '' then
     begin
@@ -1052,7 +1108,9 @@ begin
       FKey.ShowHint := True;
     end
     else
+    begin
       FKey := AddLabel(FDetails.Key, False);
+    end;
     FKey.Font.Name := FMono.Name;
     FKey.Font.Color := ToColor(FColors.Muted);
     FTitle := AddLabel(FDetails.Title, True);
@@ -1092,7 +1150,9 @@ begin
         mHint := AbsoluteText(mBadge.Time);
       end
       else
+      begin
         mHint := mHint + ': ' + mBadge.Text;
+      end;
       mTexts := mTexts + [mText];
       mHints := mHints + [mHint];
     end;
@@ -1103,12 +1163,18 @@ begin
     // Beschreibung; mit issues.preview.checklists aus die Aufgabenlisten als Text wie geschrieben.
     mTasks := TAtlasMarkdownTasks.Plain;
     if FChecklists then
+    begin
       mTasks := TAtlasMarkdownTasks.Clickable;
+    end;
     if Trim(FDetails.Description) = '' then
+    begin
       AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewNoDescription), False).Font.Color :=
-        ToColor(FColors.Muted)
+        ToColor(FColors.Muted);
+    end
     else
+    begin
       AddMarkdown(FDetails.Description, mTasks);
+    end;
     if mProgress.Any and not FChecklistReadOnly then
     begin
       FAddTask := AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd), False);
@@ -1120,11 +1186,15 @@ begin
     // Checklisten in Kommentaren nur als Kästchen (nicht geschrieben).
     mTasks := TAtlasMarkdownTasks.Plain;
     if FChecklists then
+    begin
       mTasks := TAtlasMarkdownTasks.Boxes;
+    end;
     // Kommentare: neueste unten, ältere eingeklappt.
     if FCommentsOff then
+    begin
       AddLabel(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentsOff),
-        False).Font.Color := ToColor(FColors.Muted)
+        False).Font.Color := ToColor(FColors.Muted);
+    end
     else if Length(FDetails.Comments) > 0 then
     begin
       AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewComments,
@@ -1134,14 +1204,20 @@ begin
       mAnchor := TAtlasIssuePreview.CommentAt(mComments, FAnchor);
       // Der neue Kommentar einer Meldung liegt bei den eingeklappten: aufklappen.
       if (mAnchor >= 0) and (mAnchor < TAtlasIssuePreview.CollapsedComments(Length(mComments), FCommentsExpanded)) then
+      begin
         FCommentsExpanded := True;
+      end;
       mCollapsed := TAtlasIssuePreview.CollapsedComments(Length(mComments), FCommentsExpanded);
       if mCollapsed > 0 then
       begin
         if mCollapsed = 1 then
-          mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment)
+        begin
+          mText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment);
+        end
         else
+        begin
           mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewOlderComments, [mCollapsed]);
+        end;
         FOlder := AddLabel(mText, False);
         FOlder.Font.Color := ToColor(FColors.Accent);
         FOlder.Font.Style := [fsUnderline];
@@ -1177,9 +1253,13 @@ begin
           mItem := FAttachments.Items.Add;
           mItem.Caption := mAttachment.Name;
           if mAttachment.Size >= 0 then
-            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB')
+          begin
+            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB');
+          end
           else
+          begin
             mItem.SubItems.Add('–');
+          end;
         end;
       finally
         FAttachments.Items.EndUpdate;
@@ -1190,19 +1270,29 @@ begin
     end;
     // Verknüpfte Issues: Klick öffnet sie im selben Fenster (bzw. im Browser); als Baum mit #1279.
     if FLinksAsTree then
-      AddLinkTree
+    begin
+      AddLinkTree;
+    end
     else
+    begin
       AddLinkList;
+    end;
   finally
     FScroll.EnableAlign;
   end;
   // Bilder laden lassen (nur die mit Adresse).
   mUrls := nil;
   for mImage in FImages do
+  begin
     if mImage.Url <> '' then
+    begin
       mUrls := mUrls + [mImage.Url];
+    end;
+  end;
   if (Length(mUrls) > 0) and Assigned(FOnImages) then
+  begin
     FOnImages(mUrls);
+  end;
 end;
 
 procedure TAtlasIssueFrame.AddLinkList;
@@ -1211,7 +1301,9 @@ var
   mItem: TListItem;
 begin
   if Length(FDetails.Links) = 0 then
+  begin
     Exit;
+  end;
   AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewLinks, [Length(FDetails.Links)])),
     True).Font.Color := ToColor(FColors.Muted);
   FLinks := AddList(TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewColumnKey),
@@ -1225,11 +1317,17 @@ begin
       mItem.Caption := mLink.Key;
       mItem.SubItems.Add(mLink.Title);
       if mLink.Relation = 'cross-referenced' then
-        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationMentioned))
+      begin
+        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationMentioned));
+      end
       else if mLink.Relation = 'pull request' then
-        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationPull))
+      begin
+        mItem.SubItems.Add(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRelationPull));
+      end
       else
+      begin
         mItem.SubItems.Add(mLink.Relation);
+      end;
     end;
   finally
     FLinks.Items.EndUpdate;
@@ -1254,18 +1352,30 @@ begin
   end;
   // Zustand wie im Tracker, sonst offen bzw. erledigt; dazu, ob es dieses Issue blockiert.
   if not ALink.StateKnown then
-    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksUnknown)
+  begin
+    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksUnknown);
+  end
   else if ALink.State <> '' then
-    mState := ALink.State
+  begin
+    mState := ALink.State;
+  end
   else if ALink.Resolved then
-    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksDone)
+  begin
+    mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksDone);
+  end
   else
+  begin
     mState := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksOpen);
+  end;
   if ALink.Blocking then
+  begin
     mState := mState + ' · ' + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinksBlocking);
+  end;
   Result := mSymbol + '  ' + ALink.Key;
   if ALink.Title <> '' then
+  begin
     Result := Result + '  ' + ALink.Title;
+  end;
   Result := Result + '  — ' + mState;
 end;
 
@@ -1274,8 +1384,10 @@ var
   mId: TAtlasTrackerTextId;
 begin
   if AGroup.Kind = TAtlasTrackerLinkKind.Subtask then
+  begin
     Exit(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
       AGroup.Total)]));
+  end;
   case AGroup.Kind of
     TAtlasTrackerLinkKind.DependsOn:
       mId := TAtlasTrackerTextId.IssueLinksDependsOn;
@@ -1309,7 +1421,9 @@ var
 begin
   mGroups := TAtlasTrackerLinks.Groups(FDetails.Links);
   if (Length(mGroups) = 0) and not FCanWriteLinks then
+  begin
     Exit;
+  end;
   AddLabel(AnsiUpperCase(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinksCaption, [Length(FDetails.Links)])),
     True).Font.Color := ToColor(FColors.Muted);
   if FCanWriteLinks then
@@ -1337,7 +1451,9 @@ begin
     FAddLink.OnClick := AddLinkClick;
   end;
   if Length(mGroups) = 0 then
+  begin
     Exit;
+  end;
   FLinkTree := TTreeView.Create(Self);
   Place(FLinkTree);
   FParts.Add(FLinkTree);
@@ -1379,7 +1495,9 @@ var
   mRows: Integer;
 begin
   if FLinkTree = nil then
+  begin
     Exit;
+  end;
   // Ganze Höhe statt eigener Bildlaufleiste: die Vorschau rollt als Ganzes.
   mRows := 0;
   mNode := FLinkTree.Items.GetFirstNode;
@@ -1387,7 +1505,9 @@ begin
   begin
     Inc(mRows);
     if mNode.Expanded then
+    begin
       Inc(mRows, mNode.Count);
+    end;
     mNode := mNode.getNextSibling;
   end;
   FLinkTree.Height := (mRows + 1) * MulDiv(20, CurrentPPI, 96);
@@ -1403,10 +1523,14 @@ var
   mIndex: NativeInt;
 begin
   if (FLinkTree = nil) or (FLinkTree.Selected = nil) or (FLinkTree.Selected.Data = nil) then
+  begin
     Exit;
+  end;
   mIndex := NativeInt(FLinkTree.Selected.Data) - 1;
   if (mIndex < 0) or (mIndex > High(FTreeLinks)) then
+  begin
     Exit;
+  end;
   // Öffnen ersetzt den Inhalt samt Baum: nicht im Klick des Baums.
   FPendingLink := FTreeLinks[mIndex];
   FHasPendingLink := True;
@@ -1425,13 +1549,17 @@ end;
 procedure TAtlasIssueFrame.CreateSubtaskClick(Sender: TObject);
 begin
   if Assigned(FOnCreateSubtask) then
+  begin
     FOnCreateSubtask();
+  end;
 end;
 
 procedure TAtlasIssueFrame.AddLinkClick(Sender: TObject);
 begin
   if Assigned(FOnAddLink) then
+  begin
     FOnAddLink();
+  end;
 end;
 
 procedure TAtlasIssueFrame.UpdateButtons;
@@ -1439,7 +1567,9 @@ begin
   FStart.Enabled := FHasDetails and FCanStart;
   // Ausgeblendete Knöpfe mit alLeft reihen sich nach Left ein: direkt hinter „Beginnen“.
   if FCanWrite and not FEnd.Visible then
+  begin
     FEnd.Left := FStart.Left + FStart.Width + 1;
+  end;
   FEnd.Visible := FCanWrite;
   FEnd.Enabled := FHasDetails and FCanEnd;
   FCommentPanel.Visible := FCanWrite and FHasDetails;
@@ -1452,9 +1582,13 @@ begin
   FAttachItem.Enabled := FHasDetails;
   FRefresh.Enabled := FHasDetails or FLoading;
   if FLoading then
-    FRefresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel)
+  begin
+    FRefresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCancel);
+  end
   else
+  begin
     FRefresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewRefresh);
+  end;
   FBackAction.Enabled := FBack.Enabled;
   FForwardAction.Enabled := FForward.Enabled;
 end;
@@ -1492,7 +1626,9 @@ begin
   mSame := FHasDetails and SameText(FDetails.Key, ADetails.Key);
   mPosition := FScroll.VertScrollBar.Position;
   if not mSame then
+  begin
     FCommentsExpanded := False;
+  end;
   FDetails := ADetails;
   FHasDetails := True;
   FNow := ANow;
@@ -1502,18 +1638,26 @@ begin
   FStatus.Visible := AStale <> '';
   Rebuild;
   if mSame then
-    FScroll.VertScrollBar.Position := mPosition
+  begin
+    FScroll.VertScrollBar.Position := mPosition;
+  end
   else
+  begin
     FScroll.VertScrollBar.Position := 0;
+  end;
   if FRevealTasks then
+  begin
     ScrollToTasks;
+  end;
   if FAnchorLabel <> nil then
   begin
     // Kopf des Kommentars oben ins Bild.
     FScroll.VertScrollBar.Position := FAnchorLabel.Top - FAnchorLabel.Margins.Top;
     // Gefunden (nicht nur der letzte als Ersatz): Der Anker hat seinen Zweck erfüllt.
     if FDetails.Comments[FAnchorComment].Created >= FAnchor - TAtlasIssuePreview.AnchorSlackMs / MSecsPerDay then
+    begin
       FAnchor := 0;
+    end;
   end;
   UpdateButtons;
 end;
@@ -1523,7 +1667,9 @@ var
   mPosition: Integer;
 begin
   if not FHasDetails then
+  begin
     Exit;
+  end;
   mPosition := FScroll.VertScrollBar.Position;
   FDetails.Description := AText;
   Rebuild;
@@ -1540,7 +1686,9 @@ begin
     FStatus.Visible := True;
   end
   else if FStatusText.Caption = TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistSaving) then
+  begin
     FStatus.Visible := False;
+  end;
 end;
 
 procedure TAtlasIssueFrame.ShowNotice(const AText: string);
@@ -1552,13 +1700,17 @@ procedure TAtlasIssueFrame.RevealChecklist;
 begin
   FRevealTasks := True;
   if FHasDetails and (FTaskBox <> nil) then
+  begin
     ScrollToTasks;
+  end;
 end;
 
 procedure TAtlasIssueFrame.ScrollToTasks;
 begin
   if FTaskBox = nil then
+  begin
     Exit;
+  end;
   FRevealTasks := False;
   FScroll.VertScrollBar.Position := Max(0, FTaskBox.Top + FScroll.VertScrollBar.Position - FScroll.Padding.Top);
 end;
@@ -1566,26 +1718,36 @@ end;
 procedure TAtlasIssueFrame.SetChecklists(AValue: Boolean);
 begin
   if FChecklists = AValue then
+  begin
     Exit;
+  end;
   FChecklists := AValue;
   if FHasDetails then
+  begin
     Rebuild;
+  end;
 end;
 
 procedure TAtlasIssueFrame.SetChecklistReadOnly(AValue: Boolean);
 begin
   if FChecklistReadOnly = AValue then
+  begin
     Exit;
+  end;
   FChecklistReadOnly := AValue;
   if FHasDetails then
+  begin
     Rebuild;
+  end;
 end;
 
 procedure TAtlasIssueFrame.AddTaskClick(Sender: TObject);
 begin
   // Der Dialog und das Neuzeichnen kommen nach dem Klick: Das Label gehört zum Inhalt.
   if FChecklistBusy or FChecklistReadOnly then
+  begin
     Exit;
+  end;
   FPendingAdd := True;
   Defer;
 end;
@@ -1622,13 +1784,17 @@ var
   mCopy: TGraphic;
 begin
   if AGraphic = nil then
+  begin
     Exit;
+  end;
   mOwned := False;
   try
     for mImage in FImages do
     begin
       if mImage.Url <> AUrl then
+      begin
         Continue;
+      end;
       // Dasselbe Bild mehrfach: jede Fläche bekommt ein eigenes.
       if not mOwned then
       begin
@@ -1644,7 +1810,9 @@ begin
     end;
   finally
     if not mOwned then
+    begin
       AGraphic.Free;
+    end;
   end;
 end;
 
@@ -1666,7 +1834,9 @@ begin
   FCommentNote.Font.Color := ToColor(AColors.Muted);
   FComment.ApplyColors(AColors);
   if FHasDetails then
+  begin
     Rebuild;
+  end;
 end;
 
 procedure TAtlasIssueFrame.SetMonoFont(AValue: TFont);
@@ -1674,14 +1844,18 @@ begin
   FMono.Assign(AValue);
   FComment.MonoFont := AValue;
   if FHasDetails then
+  begin
     Rebuild;
+  end;
 end;
 
 function TAtlasIssueFrame.StatusText: string;
 begin
   Result := '';
   if FStatus.Visible then
+  begin
     Result := FStatusText.Caption;
+  end;
 end;
 
 function TAtlasIssueFrame.ImageUrls: TArray<string>;
@@ -1690,7 +1864,9 @@ var
 begin
   Result := nil;
   for mImage in FImages do
+  begin
     Result := Result + [mImage.Url];
+  end;
 end;
 
 function TAtlasIssueFrame.DocCount: Integer;
@@ -1708,9 +1884,13 @@ procedure TAtlasIssueFrame.ApplyTabs;
 begin
   // Sichtbare Reiter brauchen das Fenster des PageControls; ohne bleibt es beim Wunsch in FShowDevelopment.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   if not FShowDevelopment and (FPages.ActivePage = FDevelopmentSheet) then
+  begin
     FPages.ActivePage := FDetailsSheet;
+  end;
   FDevelopmentSheet.TabVisible := FShowDevelopment;
   // Mit nur einem Reiter keine Reiterleiste.
   FDetailsSheet.TabVisible := FShowDevelopment;
@@ -1725,7 +1905,9 @@ end;
 procedure TAtlasIssueFrame.SetDevelopmentVisible(AValue: Boolean);
 begin
   if FShowDevelopment = AValue then
+  begin
     Exit;
+  end;
   FShowDevelopment := AValue;
   ApplyTabs;
 end;
@@ -1738,7 +1920,9 @@ end;
 procedure TAtlasIssueFrame.SelectDevelopment;
 begin
   if not FShowDevelopment or (FPages.ActivePage = FDevelopmentSheet) then
+  begin
     Exit;
+  end;
   FPages.ActivePage := FDevelopmentSheet;
   PagesChange(FPages);
 end;
@@ -1751,31 +1935,41 @@ end;
 procedure TAtlasIssueFrame.PagesChange(Sender: TObject);
 begin
   if DevelopmentActive and Assigned(FOnDevelopmentShown) then
+  begin
     FOnDevelopmentShown();
+  end;
 end;
 
 procedure TAtlasIssueFrame.BackClick(Sender: TObject);
 begin
   if FBack.Enabled and Assigned(FOnBack) then
+  begin
     FOnBack();
+  end;
 end;
 
 procedure TAtlasIssueFrame.ForwardClick(Sender: TObject);
 begin
   if FForward.Enabled and Assigned(FOnForward) then
+  begin
     FOnForward();
+  end;
 end;
 
 procedure TAtlasIssueFrame.StartClick(Sender: TObject);
 begin
   if Assigned(FOnStart) then
+  begin
     FOnStart();
+  end;
 end;
 
 procedure TAtlasIssueFrame.EndClick(Sender: TObject);
 begin
   if FHasDetails and FCanEnd and Assigned(FOnEnd) then
+  begin
     FOnEnd();
+  end;
 end;
 
 procedure TAtlasIssueFrame.CommentSendClick(Sender: TObject);
@@ -1784,7 +1978,9 @@ var
 begin
   mText := Trim(FCommentEdit.Text);
   if (mText = '') or FCommentSending or not FHasDetails or not FCanWrite or not Assigned(FOnComment) then
+  begin
     Exit;
+  end;
   FOnComment(StringReplace(mText, #13#10, #10, [rfReplaceAll]));
 end;
 
@@ -1805,7 +2001,9 @@ begin
   FCommentSending := AValue;
   FCommentEdit.ReadOnly := AValue;
   if AValue then
+  begin
     FCommentNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCommentSending);
+  end;
   UpdateButtons;
 end;
 
@@ -1815,25 +2013,33 @@ begin
   FCommentNote.Caption := AError;
   // Gesendet: Feld leeren und den Entwurf löschen; bei einem Fehler bleibt beides.
   if AError = '' then
+  begin
     FComment.Sent;
+  end;
 end;
 
 procedure TAtlasIssueFrame.BrowseClick(Sender: TObject);
 begin
   if Assigned(FOnBrowse) then
+  begin
     FOnBrowse();
+  end;
 end;
 
 procedure TAtlasIssueFrame.CopyKeyClick(Sender: TObject);
 begin
   if Assigned(FOnCopyKey) then
+  begin
     FOnCopyKey();
+  end;
 end;
 
 procedure TAtlasIssueFrame.AttachClick(Sender: TObject);
 begin
   if FCanAttach and FHasDetails and Assigned(FOnAttach) then
+  begin
     FOnAttach();
+  end;
 end;
 
 procedure TAtlasIssueFrame.SetCanAttach(AValue: Boolean);
@@ -1847,22 +2053,30 @@ begin
   if FLoading then
   begin
     if Assigned(FOnCancel) then
+    begin
       FOnCancel();
+    end;
   end
   else if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasIssueFrame.FixClick(Sender: TObject);
 begin
   if Assigned(FOnFix) then
+  begin
     FOnFix(FFixKind);
+  end;
 end;
 
 procedure TAtlasIssueFrame.TitleClick(Sender: TObject);
 begin
   if Assigned(FOnBrowse) then
+  begin
     FOnBrowse();
+  end;
 end;
 
 procedure TAtlasIssueFrame.OlderClick(Sender: TObject);
@@ -1882,7 +2096,9 @@ var
 begin
   mSource := Sender as TAtlasIssueImageBox;
   if mSource.Graphic = nil then
+  begin
     Exit;
+  end;
   mForm := TImageWindow.CreateNew(nil);
   mForm.Caption := mSource.Alt;
   mForm.Position := poScreenCenter;
@@ -1901,9 +2117,13 @@ end;
 procedure TAtlasIssueFrame.AttachmentsDblClick(Sender: TObject);
 begin
   if (FAttachments = nil) or (FAttachments.Selected = nil) then
+  begin
     Exit;
+  end;
   if (FAttachments.Selected.Index <= High(FDetails.Attachments)) and Assigned(FOnOpenAttachment) then
+  begin
     FOnOpenAttachment(FDetails.Attachments[FAttachments.Selected.Index]);
+  end;
 end;
 
 procedure TAtlasIssueFrame.AttachmentsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1920,7 +2140,9 @@ var
   mLink: TAtlasTrackerLink;
 begin
   if (FLinks = nil) or (FLinks.Selected = nil) or (FLinks.Selected.Index > High(FDetails.Links)) then
+  begin
     Exit;
+  end;
   mLink := FDetails.Links[FLinks.Selected.Index];
   // Öffnen ersetzt den Inhalt samt Liste: nicht im Klick der Liste.
   FPendingLink := mLink;
@@ -1943,7 +2165,9 @@ begin
     Exit;
   end;
   if Assigned(FOnOpenUrl) then
+  begin
     FOnOpenUrl(AUrl);
+  end;
 end;
 
 procedure TAtlasIssueFrame.ScrollWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer;

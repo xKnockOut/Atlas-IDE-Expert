@@ -35,6 +35,7 @@ type
     FListings: TObjectDictionary<string, TDictionary<string, string>>;
     /// <summary>Pfad von AName.pas in ADirectory, über die Auflistung oder FFileExists.</summary>
     function FileIn(const ADirectory, AName: string; out APath: string): Boolean;
+    function FileInAny(const ADirectory: string; const ANames: TArray<string>; out APath: string): Boolean;
     function Candidates(const AUnitName: string): TArray<string>;
     function Search(const AUnitName, AFromDirectory: string): string;
   public
@@ -148,43 +149,46 @@ begin
   end;
 end;
 
+function TUnitResolver.FileInAny(const ADirectory: string; const ANames: TArray<string>; out APath: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames do
+  begin
+    if FileIn(ADirectory, mName, APath) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TUnitResolver.Search(const AUnitName, AFromDirectory: string): string;
 var
-  ProjectUnit: TProjectUnit;
-  Names: TArray<string>;
-  Name: string;
-  Directory: string;
-  Candidate: string;
+  mUnit: TProjectUnit;
+  mNames: TArray<string>;
+  mName, mDirectory: string;
 begin
-  Names := Candidates(AUnitName);
-  for Name in Names do
+  mNames := Candidates(AUnitName);
+  for mName in mNames do
   begin
-    for ProjectUnit in FProject.Units do
+    for mUnit in FProject.Units do
     begin
-      if SameText(ProjectUnit.Name, Name) then
+      if SameText(mUnit.Name, mName) then
       begin
-        Exit(ProjectUnit.FileName);
+        Exit(mUnit.FileName);
       end;
     end;
   end;
-  if AFromDirectory <> '' then
+  if (AFromDirectory <> '') and FileInAny(AFromDirectory, mNames, Result) then
   begin
-    for Name in Names do
-    begin
-      if FileIn(AFromDirectory, Name, Candidate) then
-      begin
-        Exit(Candidate);
-      end;
-    end;
+    Exit;
   end;
-  for Directory in FDirectories do
+  for mDirectory in FDirectories do
   begin
-    for Name in Names do
+    if FileInAny(mDirectory, mNames, Result) then
     begin
-      if FileIn(Directory, Name, Candidate) then
-      begin
-        Exit(Candidate);
-      end;
+      Exit;
     end;
   end;
   Result := '';
