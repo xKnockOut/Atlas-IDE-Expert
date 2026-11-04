@@ -59,7 +59,9 @@ end;
 class procedure TAtlasIdeFavorites.Save;
 begin
   if (FFavorites = nil) or not FFavorites.Changed then
+  begin
     Exit;
+  end;
   try
     FFavorites.SaveToFile(FileName);
   except
@@ -79,7 +81,9 @@ var
   Key: string;
 begin
   for Key in AKeys do
+  begin
     Instance.Remove(Key);
+  end;
   Save;
 end;
 

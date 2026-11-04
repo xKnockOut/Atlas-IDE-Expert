@@ -256,7 +256,9 @@ function WithoutTrailing(const APath: string): string;
 begin
   Result := APath;
   while (Length(Result) > 1) and IsSeparator(Result[Length(Result)]) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function JoinPath(const AFolder, AName: string): string;
@@ -273,13 +275,17 @@ begin
   Result := '';
   Path := WithoutTrailing(AFolder);
   for Index := Length(Path) downto 1 do
+  begin
     if IsSeparator(Path[Index]) then
     begin
       Result := Copy(Path, 1, Index - 1);
       Break;
     end;
+  end;
   if (Result <> '') and IsSeparator(Result[Length(Result)]) then
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Nächster Ordner mit .git (Ordner oder Datei bei Worktrees) oder .svn ab AFolder aufwärts; '' ohne.
@@ -292,7 +298,9 @@ begin
   while Folder <> '' do
   begin
     if AExists(JoinPath(Folder, '.git')) or AExists(JoinPath(Folder, '.svn')) then
+    begin
       Exit(Folder);
+    end;
     Folder := ParentOf(Folder);
   end;
   Result := '';
@@ -314,8 +322,12 @@ var
   Index: Integer;
 begin
   for Index := Length(AFileName) downto 1 do
+  begin
     if IsSeparator(AFileName[Index]) then
+    begin
       Exit(Copy(AFileName, 1, Index - 1));
+    end;
+  end;
   Result := '';
 end;
 
@@ -324,8 +336,12 @@ var
   Ch: Char;
 begin
   for Ch in AText do
+  begin
     if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -387,7 +403,9 @@ function TAtlasTeamSettings.SnippetFolder: string;
 begin
   Result := '';
   if Snippets <> '' then
+  begin
     Result := TAtlasTeamFile.Combine(Folder, Snippets);
+  end;
 end;
 
 function TAtlasTeamSettings.HasValues: Boolean;
@@ -400,8 +418,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(StartProfiles) do
+  begin
     if SameText(StartProfiles[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -448,7 +470,9 @@ begin
   FTeam.Folder := FolderOf(AFileName);
   FTeam.Root := ARoot;
   if FTeam.Root = '' then
+  begin
     FTeam.Root := FTeam.Folder;
+  end;
 end;
 
 procedure TTeamReader.Report(AKind: TAtlasTeamIssueKind; const APath: string);
@@ -471,7 +495,9 @@ function TTeamReader.IsCredential(const AKey, APath: string): Boolean;
 begin
   Result := TTextCheckin.IsCredentialKey(AKey);
   if Result then
+  begin
     Report(TAtlasTeamIssueKind.Credential, APath);
+  end;
 end;
 
 procedure TTeamReader.ScanCredentials(AValue: TJSONValue; const APath: string);
@@ -480,17 +506,27 @@ var
   Key: string;
 begin
   if AValue is TJSONObject then
+  begin
     for Index := 0 to TJSONObject(AValue).Count - 1 do
     begin
       Key := TJSONObject(AValue).Pairs[Index].JsonString.Value;
       if not IsCredential(Key, APath + '.' + Key) then
+      begin
         ScanCredentials(TJSONObject(AValue).Pairs[Index].JsonValue, APath + '.' + Key);
-    end
+      end;
+    end;
+  end
   else if AValue is TJSONArray then
+  begin
     for Index := 0 to TJSONArray(AValue).Count - 1 do
-      ScanCredentials(TJSONArray(AValue).Items[Index], APath)
+    begin
+      ScanCredentials(TJSONArray(AValue).Items[Index], APath);
+    end;
+  end
   else if (AValue is TJSONString) and TTextCheckin.HasUrlCredentials(TJSONString(AValue).Value) then
+  begin
     Report(TAtlasTeamIssueKind.Credential, APath);
+  end;
 end;
 
 function TTeamReader.ReadString(AValue: TJSONValue; const APath: string; out AText: string): Boolean;
@@ -527,13 +563,21 @@ function TTeamReader.ReadPath(AValue: TJSONValue; const APath: string; out AText
 begin
   Result := ReadString(AValue, APath, AText);
   if not Result or (AText = '') then
+  begin
     Exit;
+  end;
   if TTextCheckin.IsAbsolutePath(AText) then
-    Report(TAtlasTeamIssueKind.AbsolutePath, APath)
+  begin
+    Report(TAtlasTeamIssueKind.AbsolutePath, APath);
+  end
   else if not TTextCheckin.StaysInside(FTeam.Root, FTeam.Folder, AText) then
-    Report(TAtlasTeamIssueKind.OutsidePath, APath)
+  begin
+    Report(TAtlasTeamIssueKind.OutsidePath, APath);
+  end
   else
+  begin
     Exit(True);
+  end;
   AText := '';
   Result := False;
 end;
@@ -553,11 +597,17 @@ begin
   begin
     Item := Format('%s[%d]', [APath, Index]);
     if not ReadString(TJSONArray(AValue).Items[Index], Item, Text) then
+    begin
       Continue;
+    end;
     if Text = '' then
-      Report(TAtlasTeamIssueKind.InvalidValue, Item)
+    begin
+      Report(TAtlasTeamIssueKind.InvalidValue, Item);
+    end
     else
+    begin
       Result := Result + [Text];
+    end;
   end;
 end;
 
@@ -578,14 +628,19 @@ begin
     Key := TJSONObject(AValue).Pairs[Index].JsonString.Value;
     Path := 'naming.' + Key;
     if IsCredential(Key, Path) then
+    begin
       Continue;
+    end;
     Known := False;
     for Kind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
+    begin
       if Key = NamingKeys[Kind] then
       begin
         Known := True;
         if not ReadString(TJSONObject(AValue).Pairs[Index].JsonValue, Path, Text) then
+        begin
           Break;
+        end;
         if not IsPrefixText(Text) then
         begin
           Report(TAtlasTeamIssueKind.InvalidValue, Path);
@@ -594,8 +649,11 @@ begin
         FTeam.Naming[Kind] := Text;
         FTeam.HasNaming[Kind] := True;
       end;
+    end;
     if not Known then
+    begin
       Report(TAtlasTeamIssueKind.UnknownKey, Path);
+    end;
   end;
 end;
 
@@ -629,13 +687,19 @@ begin
       Key := Entry.Pairs[Pair].JsonString.Value;
       Value := Entry.Pairs[Pair].JsonValue;
       if IsCredential(Key, Item + '.' + Key) then
+      begin
         Continue;
+      end;
       if Key = 'name' then
-        Ok := ReadString(Value, Item + '.name', Name) and Ok
+      begin
+        Ok := ReadString(Value, Item + '.name', Name) and Ok;
+      end
       else if Key = 'formatIndex' then
       begin
         if Value is TJSONNumber then
-          FormatIndex := TJSONNumber(Value).AsInt
+        begin
+          FormatIndex := TJSONNumber(Value).AsInt;
+        end
         else
         begin
           Report(TAtlasTeamIssueKind.WrongType, Item + '.formatIndex');
@@ -643,10 +707,14 @@ begin
         end;
       end
       else
+      begin
         Report(TAtlasTeamIssueKind.UnknownKey, Item + '.' + Key);
+      end;
     end;
     if not Ok then
+    begin
       Continue;
+    end;
     if (Name = '') or (FormatIndex < 0) then
     begin
       Report(TAtlasTeamIssueKind.InvalidValue, Item);
@@ -714,20 +782,28 @@ begin
   Path := APath;
   Value := Entry.GetValue('name');
   if (Value is TJSONString) and (Trim(TJSONString(Value).Value) <> '') then
+  begin
     Path := Format('startProfiles[%s]', [Trim(TJSONString(Value).Value)]);
+  end;
   Result := True;
   for Index := 0 to Entry.Count - 1 do
   begin
     Key := Entry.Pairs[Index].JsonString.Value;
     Value := Entry.Pairs[Index].JsonValue;
     if IsCredential(Key, Path + '.' + Key) then
-      Result := False
+    begin
+      Result := False;
+    end
     else if Key = 'name' then
-      Result := ReadString(Value, Path + '.name', AProfile.Name) and Result
+    begin
+      Result := ReadString(Value, Path + '.name', AProfile.Name) and Result;
+    end
     else if Key = 'parameters' then
     begin
       if not ReadString(Value, Path + '.parameters', AProfile.Parameters) then
-        Result := False
+      begin
+        Result := False;
+      end
       else if TTextCheckin.ContainsMachinePath(AProfile.Parameters) then
       begin
         Report(TAtlasTeamIssueKind.AbsolutePath, Path + '.parameters');
@@ -735,11 +811,17 @@ begin
       end;
     end
     else if Key = 'workingDir' then
-      Result := ReadPath(Value, Path + '.workingDir', AProfile.WorkingDir) and Result
+    begin
+      Result := ReadPath(Value, Path + '.workingDir', AProfile.WorkingDir) and Result;
+    end
     else if Key = 'host' then
-      Result := ReadPath(Value, Path + '.host', AProfile.Host) and Result
+    begin
+      Result := ReadPath(Value, Path + '.host', AProfile.Host) and Result;
+    end
     else if Key = 'environment' then
-      Result := ReadEnvironment(Value, Path + '.environment', AProfile.Environment) and Result
+    begin
+      Result := ReadEnvironment(Value, Path + '.environment', AProfile.Environment) and Result;
+    end
     else
     begin
       Report(TAtlasTeamIssueKind.UnknownKey, Path + '.' + Key);
@@ -766,11 +848,17 @@ begin
   for Index := 0 to TJSONArray(AValue).Count - 1 do
   begin
     if not ReadStartProfile(TJSONArray(AValue).Items[Index], Format('startProfiles[%d]', [Index]), Profile) then
+    begin
       Continue;
+    end;
     if FTeam.IndexOfProfile(Profile.Name) >= 0 then
-      Report(TAtlasTeamIssueKind.InvalidValue, Format('startProfiles[%s]', [Profile.Name]))
+    begin
+      Report(TAtlasTeamIssueKind.InvalidValue, Format('startProfiles[%s]', [Profile.Name]));
+    end
     else
+    begin
       FTeam.StartProfiles := FTeam.StartProfiles + [Profile];
+    end;
   end;
 end;
 
@@ -803,16 +891,26 @@ begin
     begin
       Key := TJSONObject(Item).Pairs[Member].JsonString.Value;
       if Key = 'setting' then
-        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.setting', Setting) and Usable
+      begin
+        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.setting', Setting) and Usable;
+      end
       else if Key = 'file' then
-        Usable := ReadPath(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.file', FileName) and Usable
+      begin
+        Usable := ReadPath(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.file', FileName) and Usable;
+      end
       else if Key = 'anchor' then
-        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.anchor', Anchor) and Usable
+      begin
+        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.anchor', Anchor) and Usable;
+      end
       else
+      begin
         Report(TAtlasTeamIssueKind.UnknownKey, Path + '.' + Key);
+      end;
     end;
     if not Usable then
+    begin
       Continue;
+    end;
     if (Setting = '') or (FileName = '') then
     begin
       Report(TAtlasTeamIssueKind.InvalidValue, Path);
@@ -843,25 +941,37 @@ begin
     Path := TAtlasTeamFile.DisplayRulesKey + '.' + Rule.TypeName;
     Usable := Rule.TypeName <> '';
     if Value is TJSONObject then
+    begin
       for Member := 0 to TJSONObject(Value).Count - 1 do
       begin
         Key := TJSONObject(Value).Pairs[Member].JsonString.Value;
         Field := TJSONObject(Value).Pairs[Member].JsonValue;
         if Key = 'template' then
-          Usable := ReadString(Field, Path + '.template', Rule.Template) and Usable
+        begin
+          Usable := ReadString(Field, Path + '.template', Rule.Template) and Usable;
+        end
         else if Key = 'children' then
         begin
           // Liste oder kommagetrennt wie in // atlas-debug-children:
           if (Field is TJSONString) and not (Field is TJSONNumber) then
-            Rule.Children := TDebugDisplayText.SplitNames(Field.Value)
+          begin
+            Rule.Children := TDebugDisplayText.SplitNames(Field.Value);
+          end
           else
+          begin
             Rule.Children := TDebugDisplayText.SplitNames(string.Join(',', ReadNames(Field, Path + '.children')));
+          end;
         end
         else
+        begin
           Report(TAtlasTeamIssueKind.UnknownKey, Path + '.' + Key);
-      end
+        end;
+      end;
+    end
     else if not ReadString(Value, Path, Rule.Template) then
+    begin
       Continue;
+    end;
     Text := Rule.Template;
     if not Usable or ((Text = '') and (Rule.Children = nil)) or
       ((Text <> '') and not TDebugDisplayTemplate.Parse(Text).Valid) then
@@ -893,7 +1003,9 @@ begin
     Value := TJSONObject(AValue).Pairs[Index].JsonValue;
     Path := 'ci.' + Key;
     if IsCredential(Key, Path) then
+    begin
       Continue;
+    end;
     if Key = 'provider' then
     begin
       if ReadString(Value, Path, Ci.Provider) then
@@ -906,18 +1018,28 @@ begin
         end;
       end
       else
+      begin
         Exit;
+      end;
     end
     else if Key = 'url' then
-      ReadUrl(Value, Path, Ci.Url)
+    begin
+      ReadUrl(Value, Path, Ci.Url);
+    end
     else if Key = 'job' then
-      ReadString(Value, Path, Ci.Job)
+    begin
+      ReadString(Value, Path, Ci.Job);
+    end
     else if Key = 'multibranch' then
     begin
       if Value is TJSONBool then
-        Ci.Multibranch := TJSONBool(Value).AsBoolean
+      begin
+        Ci.Multibranch := TJSONBool(Value).AsBoolean;
+      end
       else
+      begin
         Report(TAtlasTeamIssueKind.WrongType, Path);
+      end;
     end
     else
     begin
@@ -947,7 +1069,9 @@ begin
     Value := TJSONObject(AValue).Pairs[Index].JsonValue;
     Path := 'tracker.' + Key;
     if IsCredential(Key, Path) then
+    begin
       Continue;
+    end;
     if Key = 'provider' then
     begin
       if ReadString(Value, Path, Tracker.Provider) then
@@ -960,12 +1084,18 @@ begin
         end;
       end
       else
+      begin
         Exit;
+      end;
     end
     else if Key = 'url' then
-      ReadUrl(Value, Path, Tracker.Url)
+    begin
+      ReadUrl(Value, Path, Tracker.Url);
+    end
     else if Key = 'project' then
-      ReadString(Value, Path, Tracker.Project)
+    begin
+      ReadString(Value, Path, Tracker.Project);
+    end
     else
     begin
       Report(TAtlasTeamIssueKind.UnknownKey, Path);
@@ -999,26 +1129,38 @@ begin
     mValue := TJSONObject(AValue).Pairs[mIndex].JsonValue;
     mPath := 'vcs.' + mKey;
     if IsCredential(mKey, mPath) then
+    begin
       Continue;
+    end;
     if mKey = 'provider' then
     begin
       if ReadString(mValue, mPath, mText) then
       begin
         mText := LowerCase(Trim(mText));
         if (mText = 'auto') or (mText = 'git') or (mText = 'svn') or (mText = 'off') then
-          mVcs.Provider := mText
+        begin
+          mVcs.Provider := mText;
+        end
         else
+        begin
           Report(TAtlasTeamIssueKind.InvalidValue, mPath);
+        end;
       end;
     end
     else if mKey = 'mainBranch' then
     begin
       // Leerzeichen und Steuerzeichen gibt es in keinem Branch-Namen; ein solcher Wert gilt nicht.
       if ReadString(mValue, mPath, mText) then
+      begin
         if (Trim(mText) = '') or (Trim(mText).IndexOfAny([' ', #9, #10, #13]) >= 0) then
-          Report(TAtlasTeamIssueKind.InvalidValue, mPath)
+        begin
+          Report(TAtlasTeamIssueKind.InvalidValue, mPath);
+        end
         else
+        begin
           mVcs.MainBranch := Trim(mText);
+        end;
+      end;
     end
     else
     begin
@@ -1046,7 +1188,9 @@ begin
   end;
   FTeam.Version := Version;
   if Version > TAtlasTeamFile.CurrentVersion then
+  begin
     Report(TAtlasTeamIssueKind.Version, 'version');
+  end;
 end;
 
 procedure TTeamReader.Read(ARoot: TJSONObject);
@@ -1063,36 +1207,62 @@ begin
     Key := ARoot.Pairs[Index].JsonString.Value;
     Value := ARoot.Pairs[Index].JsonValue;
     if IsCredential(Key, Key) or (Key = '$schema') then
+    begin
       Continue;
+    end;
     if Key = 'version' then
     begin
       HasVersion := True;
       ReadVersion(Value);
     end
     else if Key = 'naming' then
-      ReadNaming(Value)
+    begin
+      ReadNaming(Value);
+    end
     else if Key = 'snippets' then
-      ReadPath(Value, Key, FTeam.Snippets)
+    begin
+      ReadPath(Value, Key, FTeam.Snippets);
+    end
     else if Key = 'formatFunctions' then
-      ReadFormatFunctions(Value)
+    begin
+      ReadFormatFunctions(Value);
+    end
     else if Key = 'sqlTargets' then
-      FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil)
+    begin
+      FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil);
+    end
     else if Key = 'fileMethods' then
-      FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil)
+    begin
+      FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil);
+    end
     else if Key = 'mainThreadExceptions' then
-      FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil)
+    begin
+      FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(Value, Key), nil);
+    end
     else if Key = 'startProfiles' then
-      ReadStartProfiles(Value)
+    begin
+      ReadStartProfiles(Value);
+    end
     else if Key = 'ci' then
-      ReadCi(Value)
+    begin
+      ReadCi(Value);
+    end
     else if Key = 'tracker' then
-      ReadTracker(Value)
+    begin
+      ReadTracker(Value);
+    end
     else if Key = 'vcs' then
-      ReadVcs(Value)
+    begin
+      ReadVcs(Value);
+    end
     else if Key = TAtlasHiddenPlaces.Key then
-      ReadHidden(Value)
+    begin
+      ReadHidden(Value);
+    end
     else if Key = TAtlasTeamFile.DisplayRulesKey then
-      ReadDisplayRules(Value)
+    begin
+      ReadDisplayRules(Value);
+    end
     else
     begin
       Report(TAtlasTeamIssueKind.UnknownKey, Key);
@@ -1100,7 +1270,9 @@ begin
     end;
   end;
   if not HasVersion then
+  begin
     Report(TAtlasTeamIssueKind.Version, 'version');
+  end;
 end;
 
 { TAtlasTeamFile }
@@ -1115,7 +1287,9 @@ class function TAtlasTeamFile.RootOf(const AFolder: string; const AExists: TAtla
 begin
   Result := RepositoryRoot(AFolder, AExists);
   if Result = '' then
+  begin
     Result := WithoutTrailing(AFolder);
+  end;
 end;
 
 class function TAtlasTeamFile.Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string;
@@ -1132,24 +1306,36 @@ begin
   Folder := WithoutTrailing(AProjectFolder);
   Group := WithoutTrailing(AGroupFolder);
   if Folder = '' then
+  begin
     Exit;
+  end;
   // Grenze der Suche aufwärts: Wurzel des Repositorys, ohne Repository die Gruppe darüber, sonst nur der Ordner.
   Limit := RepositoryRoot(Folder, AExists);
   if (Limit = '') and FolderContains(Group, Folder) then
+  begin
     Limit := Group;
+  end;
   if Limit = '' then
+  begin
     Limit := Folder;
+  end;
   while Folder <> '' do
   begin
     if AExists(JoinPath(Folder, FileName)) then
+    begin
       Exit(JoinPath(Folder, FileName));
+    end;
     if SameText(Folder, Limit) then
+    begin
       Break;
+    end;
     Folder := ParentOf(Folder);
   end;
   // Die Gruppe kann außerhalb des Repositorys liegen (darüber oder daneben).
   if (Group <> '') and AExists(JoinPath(Group, FileName)) then
+  begin
     Result := JoinPath(Group, FileName);
+  end;
 end;
 
 class function TAtlasTeamFile.Parse(const AText, AFileName, ARoot: string): TAtlasTeamSettings;
@@ -1162,10 +1348,14 @@ begin
   try
     Value := nil;
     if Trim(AText) <> '' then
+    begin
       Value := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
+    end;
     try
       if Value is TJSONObject then
-        Reader.Read(TJSONObject(Value))
+      begin
+        Reader.Read(TJSONObject(Value));
+      end
       else
       begin
         // Wo es hakt, sagt die Meldung mit Zeile und Spalte (sonst sucht man in der Datei nach dem Fehler).
@@ -1173,7 +1363,9 @@ begin
         Column := 0;
         Offset := TJsoncScanner.SyntaxError(AText);
         if Offset > 0 then
+        begin
           TJsoncScanner.LineColumn(AText, Offset, Line, Column);
+        end;
         Reader.Invalid(Line, Column);
       end;
     finally
@@ -1227,7 +1419,9 @@ var
 begin
   Result := '';
   for Line in Lines do
+  begin
     Result := Result + Line + #13#10;
+  end;
 end;
 
 class function TAtlasTeamFile.Prefix(const ATeam: TAtlasTeamSettings; AKind: TAtlasNamingKind;
@@ -1235,7 +1429,9 @@ class function TAtlasTeamFile.Prefix(const ATeam: TAtlasTeamSettings; AKind: TAt
 begin
   Result := APersonal;
   if ATeam.Valid and ATeam.HasNaming[AKind] then
+  begin
     Result := ATeam.Naming[AKind];
+  end;
 end;
 
 class function TAtlasTeamFile.MergeNames(const ATeam, APersonal: TArray<string>): TArray<string>;
@@ -1248,13 +1444,17 @@ begin
   begin
     Found := False;
     for Known in Result do
+    begin
       if SameText(Known, Item) then
       begin
         Found := True;
         Break;
       end;
+    end;
     if not Found then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -1269,13 +1469,17 @@ begin
   begin
     Found := False;
     for Known in Result do
+    begin
       if SameText(Known.Name, Item.Name) then
       begin
         Found := True;
         Break;
       end;
+    end;
     if not Found then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -1290,13 +1494,17 @@ begin
   begin
     Found := False;
     for Known in Result do
+    begin
       if SameText(Known.Name, Item.Name) then
       begin
         Found := True;
         Break;
       end;
+    end;
     if not Found then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -1321,47 +1529,69 @@ var
 begin
   Result := nil;
   if not ATeam.Valid then
+  begin
     Exit;
+  end;
   for Kind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
+  begin
     if ATeam.HasNaming[Kind] then
+    begin
       Add('naming.' + NamingKeys[Kind], '"' + ATeam.Naming[Kind] + '"');
+    end;
+  end;
   if ATeam.Snippets <> '' then
+  begin
     Add('snippets', ATeam.Snippets);
+  end;
   if Length(ATeam.FormatFunctions) > 0 then
   begin
     Text := '';
     for Item in ATeam.FormatFunctions do
     begin
       if Text <> '' then
+      begin
         Text := Text + ', ';
+      end;
       Text := Text + Format('%s (%d)', [Item.Name, Item.FormatIndex]);
     end;
     Add('formatFunctions', Text);
   end;
   if Length(ATeam.SqlTargets) > 0 then
+  begin
     Add('sqlTargets', string.Join(', ', ATeam.SqlTargets));
+  end;
   if Length(ATeam.FileMethods) > 0 then
+  begin
     Add('fileMethods', string.Join(', ', ATeam.FileMethods));
+  end;
   if Length(ATeam.MainThreadExceptions) > 0 then
+  begin
     Add('mainThreadExceptions', string.Join(', ', ATeam.MainThreadExceptions));
+  end;
   if Length(ATeam.StartProfiles) > 0 then
   begin
     Text := '';
     for Profile in ATeam.StartProfiles do
     begin
       if Text <> '' then
+      begin
         Text := Text + ', ';
+      end;
       Text := Text + Profile.Name;
     end;
     Add('startProfiles', Text);
   end;
   if ATeam.Ci.Configured then
+  begin
     Add('ci', Format('%s, %s, %s', [ATeam.Ci.Provider, ATeam.Ci.Url, ATeam.Ci.Job]));
+  end;
   if ATeam.Tracker.Configured then
   begin
     Text := ATeam.Tracker.Provider + ', ' + ATeam.Tracker.Url;
     if ATeam.Tracker.Project <> '' then
+    begin
       Text := Text + ', ' + ATeam.Tracker.Project;
+    end;
     Add('tracker', Text);
   end;
   if ATeam.Vcs.Configured then
@@ -1370,7 +1600,9 @@ begin
     if ATeam.Vcs.MainBranch <> '' then
     begin
       if Text <> '' then
+      begin
         Text := Text + ', ';
+      end;
       Text := Text + ATeam.Vcs.MainBranch;
     end;
     Add('vcs', Text);
@@ -1381,10 +1613,14 @@ begin
     for Place in ATeam.Hidden do
     begin
       if Text <> '' then
+      begin
         Text := Text + ', ';
+      end;
       Text := Text + Place.Setting + ' ' + Place.FileName;
       if Place.Anchor <> '' then
+      begin
         Text := Text + ' (' + Place.Anchor + ')';
+      end;
     end;
     Add(TAtlasHiddenPlaces.Key, Text);
   end;
@@ -1394,7 +1630,9 @@ begin
     for Rule in ATeam.DisplayRules do
     begin
       if Text <> '' then
+      begin
         Text := Text + ', ';
+      end;
       Text := Text + Rule.TypeName;
     end;
     Add(DisplayRulesKey, Text);
@@ -1415,26 +1653,36 @@ begin
   Lead := '';
   Path := AFolder + '\' + ARelative;
   if (Length(AFolder) >= 2) and IsSeparator(AFolder[1]) and IsSeparator(AFolder[2]) then
-    Lead := '\\'
+  begin
+    Lead := '\\';
+  end
   else if (AFolder <> '') and IsSeparator(AFolder[1]) then
+  begin
     Lead := '\';
+  end;
   Parts := nil;
   Start := 1;
   for Index := 1 to Length(Path) + 1 do
+  begin
     if (Index > Length(Path)) or IsSeparator(Path[Index]) then
     begin
       Part := Copy(Path, Start, Index - Start);
       Start := Index + 1;
       if (Part = '') or (Part = '.') then
+      begin
         Continue;
+      end;
       if Part = '..' then
       begin
         if Length(Parts) > 1 then
+        begin
           SetLength(Parts, Length(Parts) - 1);
+        end;
         Continue;
       end;
       Parts := Parts + [Part];
     end;
+  end;
   Result := Lead + string.Join('\', Parts);
 end;
 

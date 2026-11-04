@@ -223,7 +223,9 @@ begin
   FTimer.Free;
   // Beim Entladen bleiben die Konsolen offen; nur die Handles schließen, ohne Rückruf.
   for mProcess in FProcesses do
+  begin
     CloseHandle(mProcess);
+  end;
   FProcesses.Free;
   FClosed.Free;
   inherited Destroy;
@@ -242,6 +244,7 @@ var
   mClosed: TProc;
 begin
   for mIndex := FProcesses.Count - 1 downto 0 do
+  begin
     if WaitForSingleObject(FProcesses[mIndex], 0) = WAIT_OBJECT_0 then
     begin
       CloseHandle(FProcesses[mIndex]);
@@ -249,8 +252,11 @@ begin
       FProcesses.Delete(mIndex);
       FClosed.Delete(mIndex);
       if Assigned(mClosed) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Settings, mClosed);
+      end;
     end;
+  end;
   FTimer.Enabled := FProcesses.Count > 0;
 end;
 
@@ -274,11 +280,15 @@ var
 begin
   Result := '';
   if AJson = '' then
+  begin
     Exit;
+  end;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if mValue is TJSONString then
+    begin
       Result := Trim(TJSONString(mValue).Value);
+    end;
   finally
     mValue.Free;
   end;
@@ -301,7 +311,9 @@ begin
         // Außerhalb 1–300 gilt die Vorgabe, wie im Parser des Servers.
         mSeconds := StrToIntDef(TAtlasJsonText.ValueAt(mRoot, 'vcs.timeoutSeconds'), cDefaultTimeoutSeconds);
         if (mSeconds < cMinTimeoutSeconds) or (mSeconds > cMaxTimeoutSeconds) then
+        begin
           mSeconds := cDefaultTimeoutSeconds;
+        end;
         Result.TimeoutMs := Cardinal(mSeconds) * 1000;
         Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.Path));
       end;
@@ -331,7 +343,9 @@ begin
     Lock.Enter;
     try
       if mAge = CachedAge then
+      begin
         Exit(Cached);
+      end;
     finally
       Lock.Leave;
     end;
@@ -363,7 +377,9 @@ class function TAtlasIdeVcs.AtLeast(AMinimumMs: Cardinal): Cardinal;
 begin
   Result := TimeoutMs;
   if AMinimumMs > Result then
+  begin
     Result := AMinimumMs;
+  end;
 end;
 
 class procedure TAtlasIdeVcs.Reload;
@@ -397,15 +413,21 @@ var
 begin
   Result := Default(TAtlasTeamVcs);
   if not TeamFileOn or (AFolder = '') then
+  begin
     Exit;
+  end;
   mFileName := TAtlasTeamFile.Locate(ExcludeTrailingPathDelimiter(AFolder), TeamPathExists);
   if (mFileName = '') or not FileAge(mFileName, mAge) then
+  begin
     Exit;
+  end;
   mKey := LowerCase(mFileName);
   Lock.Enter;
   try
     if TeamCache.TryGetValue(mKey, mEntry) and (mEntry.Age = mAge) then
+    begin
       Exit(mEntry.Vcs);
+    end;
   finally
     Lock.Leave;
   end;
@@ -413,7 +435,9 @@ begin
     mTeam := TAtlasTeamFile.Parse(TAtlasTextFile.Load(mFileName).Text, mFileName,
       TAtlasTeamFile.RootOf(ExtractFileDir(mFileName), TeamPathExists));
     if mTeam.Valid then
+    begin
       Result := mTeam.Vcs;
+    end;
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: ohne Abschnitt, beim nächsten Mal neu.
     on Exception do
@@ -461,7 +485,9 @@ class function TAtlasIdeVcs.MainBranchOf(const AProjectFile, AGroupFile: string)
 begin
   Result := '';
   if AProjectFile <> '' then
+  begin
     Result := ForProjectResolution(AProjectFile, AGroupFile).MainBranch;
+  end;
 end;
 
 /// <summary>Umsetzung für AFolder mit der Art AProvider; nil vor dem ersten Start.</summary>
@@ -472,13 +498,19 @@ var
 begin
   Result := nil;
   if not Assigned(Backend.Open) then
+  begin
     Exit;
+  end;
   mRunner := Runner;
   if mRunner = nil then
+  begin
     mRunner := Backend.NewRunner(nil);
+  end;
   mTimeoutMs := ATimeoutMs;
   if mTimeoutMs = 0 then
+  begin
     mTimeoutMs := Current.TimeoutMs;
+  end;
   Result := Backend.Open(AFolder, AProvider, mRunner, mTimeoutMs);
 end;
 
@@ -491,15 +523,21 @@ begin
   // Eigener Pfad (#1285): Der Pfad steht nur in der Meldungsansicht, nie im Protokoll.
   mConfigured := TAtlasVcsTools.Configured(AKind);
   if mConfigured <> '' then
-    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [Name, mConfigured])
+  begin
+    Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolConfiguredMissing), [Name, mConfigured]);
+  end
   else
+  begin
     Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [Name, Name]);
+  end;
   // Kann aus einem Hintergrund-Thread kommen; die Meldungsansicht nur im Hauptthread.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
     procedure
     begin
       if Assigned(Message_) and not TAtlasShutdown.Signalled then
+      begin
         Message_(Text);
+      end;
     end);
 end;
 
@@ -509,23 +547,31 @@ begin
   Backend := ABackend;
   TeamFileOn := TAtlasIdeTeamFile.Wanted;
   if Runner = nil then
+  begin
     Runner := Backend.NewRunner(
       function: Boolean
       begin
         Result := TAtlasShutdown.Signalled;
       end);
+  end;
   if Worker = nil then
+  begin
     Worker := TAtlasVcsWorker.Create;
+  end;
   Backend.SetToolMissing(ToolMissing);
 end;
 
 class procedure TAtlasIdeVcs.Stop;
 begin
   if Assigned(Backend.SetToolMissing) then
+  begin
     Backend.SetToolMissing(nil);
+  end;
   Message_ := nil;
   if Worker <> nil then
+  begin
     Worker.Stop(TAtlasShutdown.StopMs);
+  end;
   FreeAndNil(Worker);
   Runner := nil;
   FreeAndNil(Logins);
@@ -540,7 +586,9 @@ begin
     procedure
     begin
       if Assigned(Message_) and not TAtlasShutdown.Signalled then
+      begin
         Message_(mText);
+      end;
     end);
 end;
 
@@ -574,7 +622,9 @@ var
 begin
   mRunner := Runner;
   if (mRunner = nil) or (AKind = TAtlasVcsKind.None) then
+  begin
     Exit(False);
+  end;
   mLocation := Locate(AKind, APath);
   mCheck := TAtlasVcsToolChecks.Missing(AKind, mLocation);
   // Arbeit und Ergebnis teilen sich mCheck; das Ergebnis kommt erst nach der Arbeit.
@@ -598,13 +648,17 @@ var
 begin
   mRunner := Runner;
   if mRunner = nil then
+  begin
     Exit(False);
+  end;
   mKey := LowerCase(AFolder);
   // Art und Wurzel ohne Prozess; „Aus“ und keine Arbeitskopie: sofort „kein Server“.
   mCopy := ForFolder(AFolder).WorkingCopy;
   mExecutable := '';
   if mCopy.Kind <> TAtlasVcsKind.None then
+  begin
     mExecutable := TAtlasVcsTools.Find(mCopy.Kind);
+  end;
   mCheck := TAtlasVcsServerCheck.Empty;
   if mCopy.Kind = TAtlasVcsKind.None then
   begin
@@ -624,7 +678,9 @@ begin
     procedure
     begin
       if ServerStates <> nil then
+      begin
         ServerStates.AddOrSetValue(mKey, mCheck);
+      end;
       ADone(mCheck);
     end);
 end;
@@ -632,7 +688,9 @@ end;
 class function TAtlasIdeVcs.ServerState(const AFolder: string): TAtlasVcsServerCheck;
 begin
   if (ServerStates = nil) or not ServerStates.TryGetValue(LowerCase(AFolder), Result) then
+  begin
     Result := TAtlasVcsServerCheck.Empty;
+  end;
 end;
 
 class function TAtlasIdeVcs.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
@@ -643,14 +701,20 @@ var
 begin
   Result := False;
   if (Runner = nil) or not ACheck.CanLogin or not DirectoryExists(ACheck.Root) then
+  begin
     Exit;
+  end;
   mShell := System.SysUtils.GetEnvironmentVariable('ComSpec');
   if mShell = '' then
+  begin
     mShell := 'cmd.exe';
+  end;
   mCommandLine := TAtlasVcsServerChecks.LoginCommandLine(mShell, TAtlasVcsTools.Find(ACheck.Kind), ACheck.Kind,
     ACheck.Remote);
   if mCommandLine = '' then
+  begin
     Exit;
+  end;
   UniqueString(mCommandLine);
   FillChar(mStartup, SizeOf(mStartup), 0);
   mStartup.cb := SizeOf(mStartup);
@@ -658,10 +722,14 @@ begin
   // Sichtbar und mit eigener Konsole: Hier dürfen git, Git Credential Manager und svn nachfragen.
   if not CreateProcess(nil, PChar(mCommandLine), nil, nil, False, CREATE_NEW_CONSOLE, nil, PChar(ACheck.Root),
     mStartup, mProcess) then
+  begin
     Exit;
+  end;
   CloseHandle(mProcess.hThread);
   if Logins = nil then
+  begin
     Logins := TLoginWatch.Create;
+  end;
   Logins.Add(mProcess.hProcess, AClosed);
   Result := True;
 end;
@@ -700,16 +768,24 @@ begin
   mVcs := OpenFolder(mFolder, mState.Provider, 0);
   // Art und Wurzel ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.
   if mState.Provider = TAtlasVcsProvider.Off then
-    mState.Outcome := TAtlasVcsOutcome.Disabled
+  begin
+    mState.Outcome := TAtlasVcsOutcome.Disabled;
+  end
   else
   begin
     mState.WorkingCopy := TAtlasVcsDetection.Find(mFolder, mState.Provider);
     if mState.WorkingCopy.Kind = TAtlasVcsKind.None then
-      mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy
+    begin
+      mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+    end
     else if (mVcs = nil) or (mVcs.Kind = TAtlasVcsKind.None) then
-      mState.Outcome := TAtlasVcsOutcome.ToolMissing
+    begin
+      mState.Outcome := TAtlasVcsOutcome.ToolMissing;
+    end
     else
+    begin
       mState.Outcome := TAtlasVcsOutcome.Ok;
+    end;
   end;
   if mState.Outcome <> TAtlasVcsOutcome.Ok then
   begin

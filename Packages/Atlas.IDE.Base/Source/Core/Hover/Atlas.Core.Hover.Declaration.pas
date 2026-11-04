@@ -22,89 +22,89 @@ uses
   System.SysUtils,
   System.StrUtils;
 
-class function TAtlasHoverDeclaration.DeclaredType(const ADeclaration: string): string;
+/// <summary>Erster Doppelpunkt außerhalb von Klammern (Parameter) und spitzen Klammern (Typargumente); 0 ohne.
+/// </summary>
+function FirstColon(const AText: string): Integer;
 var
-  Index, Depth, Start: Integer;
-  Found: Boolean;
+  mIndex, mDepth: Integer;
 begin
-  Result := '';
-  // Erster Doppelpunkt außerhalb von Klammern (Parameter) und spitzen Klammern (Typargumente).
-  Depth := 0;
-  Found := False;
-  Index := 1;
-  while Index <= Length(ADeclaration) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AText) do
   begin
-    case ADeclaration[Index] of
+    case AText[mIndex] of
       '(', '[', '<':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']', '>':
-        if Depth > 0 then
+        if mDepth > 0 then
         begin
-          Dec(Depth);
+          Dec(mDepth);
         end;
       ':':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Found := True;
-          Break;
+          Exit(mIndex);
         end;
     end;
-    Inc(Index);
   end;
-  if not Found then
+  Result := 0;
+end;
+
+function SkipSpaces(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] = ' ') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Endet der Typname vor AChar? ADepth zählt offene spitze Klammern.</summary>
+function EndsType(AChar: Char; var ADepth: Integer): Boolean;
+begin
+  Result := False;
+  case AChar of
+    'A'..'Z', 'a'..'z', '0'..'9', '_', '.':
+      ;
+    '<':
+      Inc(ADepth);
+    '>':
+      begin
+        Result := ADepth = 0;
+        if not Result then
+        begin
+          Dec(ADepth);
+        end;
+      end;
+    ',', ' ':
+      Result := ADepth = 0;
+  else
+    Result := (ADepth = 0) and (Ord(AChar) < 128);
+  end;
+end;
+
+class function TAtlasHoverDeclaration.DeclaredType(const ADeclaration: string): string;
+var
+  mIndex, mDepth, mStart: Integer;
+begin
+  Result := '';
+  mIndex := FirstColon(ADeclaration);
+  if mIndex = 0 then
   begin
     Exit;
   end;
-  Inc(Index);
-  while (Index <= Length(ADeclaration)) and (ADeclaration[Index] = ' ') do
-  begin
-    Inc(Index);
-  end;
+  mStart := SkipSpaces(ADeclaration, mIndex + 1);
+  mIndex := mStart;
   // Name mit Units und Typargumenten; „array of Byte“ und „set of …“ als Ganzes.
-  if StartsText('array of ', Copy(ADeclaration, Index, MaxInt)) then
+  if StartsText('array of ', Copy(ADeclaration, mStart, MaxInt)) then
   begin
-    Start := Index;
-    Inc(Index, Length('array of '));
-    while (Index <= Length(ADeclaration)) and (ADeclaration[Index] = ' ') do
-    begin
-      Inc(Index);
-    end;
-  end
-  else
-  begin
-    Start := Index;
+    mIndex := SkipSpaces(ADeclaration, mStart + Length('array of '));
   end;
-  Depth := 0;
-  while Index <= Length(ADeclaration) do
+  mDepth := 0;
+  while (mIndex <= Length(ADeclaration)) and not EndsType(ADeclaration[mIndex], mDepth) do
   begin
-    case ADeclaration[Index] of
-      'A'..'Z', 'a'..'z', '0'..'9', '_', '.':
-        ;
-      '<':
-        Inc(Depth);
-      '>':
-        if Depth = 0 then
-        begin
-          Break;
-        end
-        else
-        begin
-          Dec(Depth);
-        end;
-      ',', ' ':
-        if Depth = 0 then
-        begin
-          Break;
-        end;
-    else
-      if (Depth = 0) and (Ord(ADeclaration[Index]) < 128) then
-      begin
-        Break;
-      end;
-    end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Trim(Copy(ADeclaration, Start, Index - Start));
+  Result := Trim(Copy(ADeclaration, mStart, mIndex - mStart));
 end;
 
 end.

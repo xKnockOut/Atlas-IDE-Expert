@@ -95,6 +95,11 @@ type
   public
     function Descriptor: TRuleDescriptor; virtual; abstract;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  private
+    /// <summary>Ein Treffer für die Sammlung von AFirst mit den Zieltypen ACastTypes, dazu die Umwandlung bzw. der
+    /// Grund, warum es keine gibt.</summary>
+    procedure ReportCollection(const AContext: TRuleContext; const AReport: IRuleReport; const AFileName: string;
+      const AFirst: TLegacyCollectionRead; const ACastTypes: TArray<string>; AResolver: TNameResolver);
   end;
 
   TLegacyTListRule = class(TLegacyCollectionRule)
@@ -203,25 +208,63 @@ var
       Exit;
     end;
     if not AResolver.NodeType(ATree, AFileName, ANode, ASymbol, AType, TypeFound) or not TypeFound or
-      ASymbol.IsType or not AType.IsType or (AType.TypeParams <> '') or (Pos('<', ASymbol.TypeName) > 0) then
+      ASymbol.IsType or not AType.IsType then
+    begin
+      Exit;
+    end;
+    if (AType.TypeParams <> '') or (Pos('<', ASymbol.TypeName) > 0) then
     begin
       Exit;
     end;
     for Wanted in ATypes do
     begin
-      if SameText(AType.Name, Wanted.TypeName) and (SameText(AType.UnitName, Wanted.UnitName) or
-        SameText(AType.UnitName, Wanted.ShortUnitName)) then
-      begin
-        Exit(True);
-      end;
+      Result := Result or SameText(AType.Name, Wanted.TypeName) and (SameText(AType.UnitName, Wanted.UnitName) or
+        SameText(AType.UnitName, Wanted.ShortUnitName));
+    end;
+  end;
+
+  /// <summary>Liste[I], Liste.Items[I], Objekt.Liste[I].</summary>
+  function IndexedRead(AValue: TSyntaxNode; out ACollection: TSyntaxNode; out ASymbol,
+    AType: TResolvedSymbol): Boolean;
+  var
+    Base: TSyntaxNode;
+  begin
+    Result := False;
+    ACollection := nil;
+    if not AIndexed or (AValue.ChildCount <> 2) then
+    begin
+      Exit;
+    end;
+    Base := AValue[0];
+    if (Base.Kind = TSyntaxKind.MemberAccess) and SameText(Base.Name, 'Items') and (Base.ChildCount = 1) and
+      IsLegacyCollection(Base[0], ASymbol, AType) then
+    begin
+      ACollection := Base[0];
+    end
+    else if IsLegacyCollection(Base, ASymbol, AType) then
+    begin
+      ACollection := Base;
+    end;
+    Result := ACollection <> nil;
+  end;
+
+  /// <summary>Liest der Zugriff AAccess (Liste.First, Stapel.Pop) über ein gesuchtes Mitglied ein Element?
+  /// </summary>
+  function MemberRead(AAccess: TSyntaxNode; out ACollection: TSyntaxNode; out ASymbol,
+    AType: TResolvedSymbol): Boolean;
+  begin
+    ACollection := nil;
+    Result := (AAccess.Kind = TSyntaxKind.MemberAccess) and (AAccess.ChildCount = 1) and
+      IsMember(AAccess.Name, AMembers) and IsLegacyCollection(AAccess[0], ASymbol, AType);
+    if Result then
+    begin
+      ACollection := AAccess[0];
     end;
   end;
 
   /// <summary>Liest AValue ein Element einer gesuchten Sammlung? Dann deren Ausdruck, Deklaration und Typ.
   /// </summary>
   function ElementRead(AValue: TSyntaxNode; out ACollection: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
-  var
-    Base: TSyntaxNode;
   begin
     Result := False;
     ACollection := nil;
@@ -232,42 +275,13 @@ var
     end;
     case AValue.Kind of
       TSyntaxKind.IndexAccess:
-        begin
-          // Liste[I], Liste.Items[I], Objekt.Liste[I]
-          if not AIndexed or (AValue.ChildCount <> 2) then
-          begin
-            Exit;
-          end;
-          Base := AValue[0];
-          if (Base.Kind = TSyntaxKind.MemberAccess) and SameText(Base.Name, 'Items') and (Base.ChildCount = 1) and
-            IsLegacyCollection(Base[0], ASymbol, AType) then
-          begin
-            ACollection := Base[0];
-            Exit(True);
-          end;
-          if IsLegacyCollection(Base, ASymbol, AType) then
-          begin
-            ACollection := Base;
-            Exit(True);
-          end;
-        end;
+        Result := IndexedRead(AValue, ACollection, ASymbol, AType);
       TSyntaxKind.MemberAccess:
         // Liste.First, Stapel.Pop
-        if (AValue.ChildCount = 1) and IsMember(AValue.Name, AMembers) and
-          IsLegacyCollection(AValue[0], ASymbol, AType) then
-        begin
-          ACollection := AValue[0];
-          Exit(True);
-        end;
+        Result := MemberRead(AValue, ACollection, ASymbol, AType);
       TSyntaxKind.Call:
         // Liste.First(), Liste.Extract(Element)
-        if (AValue.ChildCount >= 1) and (AValue[0].Kind = TSyntaxKind.MemberAccess) and
-          (AValue[0].ChildCount = 1) and IsMember(AValue[0].Name, AMembers) and
-          IsLegacyCollection(AValue[0][0], ASymbol, AType) then
-        begin
-          ACollection := AValue[0][0];
-          Exit(True);
-        end;
+        Result := (AValue.ChildCount >= 1) and MemberRead(AValue[0], ACollection, ASymbol, AType);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -388,6 +402,64 @@ begin
   end;
 end;
 
+/// <summary>Lassen sich die übrigen Units der Projektgruppe prüfen? Sonst lehnt AConversion mit Grund ab.
+/// </summary>
+function OtherUnitsCheckable(const AContext: TRuleContext; const ANames: TArray<string>;
+  AConversion: TGenericListConversion): Boolean;
+var
+  Reason: string;
+begin
+  Result := False;
+  if AContext.ProjectFiles = nil then
+  begin
+    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, und ohne geladenes Projekt lassen sie sich ' +
+      'nicht prüfen', [ANames[0]]));
+  end
+  else if not AContext.ProjectFiles.Complete(Reason) then
+  begin
+    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, die sich noch nicht prüfen lassen (%s)',
+      [ANames[0], Reason]));
+  end
+  else
+  begin
+    Result := True;
+  end;
+end;
+
+/// <summary>Gibt die Unit ASource in die Umwandlung, wenn sie einen der Namen enthält; False, wenn sie nicht
+/// lesbar ist (dann lehnt AConversion ab).</summary>
+function AddOtherUnit(const AContext: TRuleContext; const AFileName, ASource: string; const ANames: TArray<string>;
+  AConversion: TGenericListConversion): Boolean;
+var
+  Text: string;
+begin
+  Result := True;
+  case NamesIn(AContext.ProjectFiles, ASource, ANames) of
+    TRuleNameAnswer.Absent:
+      Exit;
+    TRuleNameAnswer.Unknown:
+      Result := False;
+  else
+    // Die geprüfte Unit mit dem Text des Editors, alle anderen über die Projektdateien.
+    if SameText(ASource, AFileName) then
+    begin
+      Text := AContext.Text;
+    end
+    else
+    begin
+      Result := AContext.ProjectFiles.ReadText(ASource, Text);
+    end;
+  end;
+  if Result then
+  begin
+    AConversion.AddFile(Text, ASource);
+  end
+  else
+  begin
+    AConversion.Reject(Format('%s ist nicht lesbar', [ExtractFileName(ASource)]));
+  end;
+end;
+
 /// <summary>Die Units der Projektgruppe, die die Sammlung unter einem ihrer äußeren Namen erreichen, in die
 /// Umwandlung geben; ist eine nicht lesbar oder das Projekt unbekannt, scheidet die Umwandlung aus.</summary>
 procedure AddOtherUnits(const AContext: TRuleContext; const AFileName, ADeclarationFile: string;
@@ -396,23 +468,11 @@ var
   Names: TArray<string>;
   Seen: TList<string>;
   Project: TRuleProject;
-  Source, Text, Reason: string;
+  Source: string;
 begin
   Names := AConversion.ExternalNames;
-  if Names = nil then
+  if (Names = nil) or not OtherUnitsCheckable(AContext, Names, AConversion) then
   begin
-    Exit;
-  end;
-  if AContext.ProjectFiles = nil then
-  begin
-    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, und ohne geladenes Projekt lassen sie sich ' +
-      'nicht prüfen', [Names[0]]));
-    Exit;
-  end;
-  if not AContext.ProjectFiles.Complete(Reason) then
-  begin
-    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, die sich noch nicht prüfen lassen (%s)',
-      [Names[0], Reason]));
     Exit;
   end;
   Seen := TList<string>.Create;
@@ -427,26 +487,10 @@ begin
           Continue;
         end;
         Seen.Add(LowerCase(Source));
-        case NamesIn(AContext.ProjectFiles, Source, Names) of
-          TRuleNameAnswer.Absent:
-            Continue;
-          TRuleNameAnswer.Unknown:
-            begin
-              AConversion.Reject(Format('%s ist nicht lesbar', [ExtractFileName(Source)]));
-              Exit;
-            end;
-        end;
-        // Die geprüfte Unit mit dem Text des Editors, alle anderen über die Projektdateien.
-        if SameText(Source, AFileName) then
+        if not AddOtherUnit(AContext, AFileName, Source, Names, AConversion) then
         begin
-          Text := AContext.Text;
-        end
-        else if not AContext.ProjectFiles.ReadText(Source, Text) then
-        begin
-          AConversion.Reject(Format('%s ist nicht lesbar', [ExtractFileName(Source)]));
           Exit;
         end;
-        AConversion.AddFile(Text, Source);
       end;
     end;
   finally
@@ -493,14 +537,104 @@ begin
   end;
 end;
 
+type
+  /// <summary>Datei mit der Deklaration einer Sammlung: Baum, Text, Name; OwnsTree, wenn der Baum eigens
+  /// gelesen wurde.</summary>
+  TLegacyDeclarationSource = record
+    Tree: TSyntaxTree;
+    Text: string;
+    FileName: string;
+    OwnsTree: Boolean;
+  end;
+
+/// <summary>Text der Datei AFile mit der Deklaration von ARead aus einer anderen Unit der Projektgruppe; False
+/// mit Grund in AReason, wenn sie sich nicht sicher ändern lässt.</summary>
+function ForeignDeclarationText(const AContext: TRuleContext; const AFileName: string;
+  const ARead: TLegacyCollectionRead; const AFile: string; out AText, AReason: string): Boolean;
+var
+  Reason: string;
+begin
+  Result := False;
+  AText := '';
+  if AContext.ProjectFiles = nil then
+  begin
+    AReason := Format('%s ist in %s deklariert, und ohne geladenes Projekt lässt sich die Unit nicht ändern',
+      [ARead.Symbol.Name, ARead.Symbol.UnitName]);
+  end
+  else if not AContext.ProjectFiles.Complete(Reason) then
+  begin
+    AReason := Format('%s ist in %s deklariert, und das Projekt ist noch nicht vollständig geladen (%s)',
+      [ARead.Symbol.Name, ARead.Symbol.UnitName, Reason]);
+  end
+  else if not InProjects(AContext.ProjectFiles.ProjectsOf(AFileName, True), AFile) then
+  begin
+    AReason := Format('%s ist in %s deklariert, die zu keinem Projekt der Gruppe gehört',
+      [ARead.Symbol.Name, ARead.Symbol.UnitName]);
+  end
+  else if not AContext.ProjectFiles.ReadText(AFile, AText) then
+  begin
+    AReason := Format('%s ist nicht lesbar', [ExtractFileName(AFile)]);
+  end
+  else
+  begin
+    Result := True;
+  end;
+end;
+
+/// <summary>Die Deklaration steht in dieser Unit oder in einer anderen Unit der Projektgruppe.</summary>
+function DeclarationSource(const AContext: TRuleContext; const AFileName: string;
+  const ARead: TLegacyCollectionRead; out ASource: TLegacyDeclarationSource; out AReason: string): Boolean;
+begin
+  ASource := Default(TLegacyDeclarationSource);
+  AReason := '';
+  Result := True;
+  if TLegacyCollections.DeclaredIn(ARead.Symbol, AFileName) then
+  begin
+    ASource.Tree := AContext.Tree;
+    ASource.Text := AContext.Text;
+    ASource.FileName := AFileName;
+    Exit;
+  end;
+  ASource.FileName := ARead.Symbol.FileName;
+  Result := ForeignDeclarationText(AContext, AFileName, ARead, ASource.FileName, ASource.Text, AReason);
+  if Result then
+  begin
+    ASource.Tree := TSyntaxTreeCache.Parse(ASource.Text);
+    ASource.OwnsTree := True;
+  end;
+end;
+
+/// <summary>Plant die Umwandlung der Deklaration von ARead in ASource; liefert den Grund, wenn sie nicht sicher
+/// möglich ist, sonst ''.</summary>
+function PlanConversion(const AContext: TRuleContext; const AFileName: string; const ARead: TLegacyCollectionRead;
+  const ASource: TLegacyDeclarationSource; AConversion: TGenericListConversion; out APlan: TGenericListPlan): string;
+var
+  Name: string;
+  Declaration: TSyntaxNode;
+begin
+  Result := '';
+  APlan := Default(TGenericListPlan);
+  Name := ARead.Symbol.Name;
+  Declaration := TGenericListConversion.DeclarationAt(ASource.Tree, ARead.Symbol.SelectionRange.StartPos, Name);
+  if Declaration = nil then
+  begin
+    Exit(Format('Die Deklaration von %s ist kein Feld und keine Variable', [ARead.Symbol.Name]));
+  end;
+  if AConversion.Start(ASource.Tree, ASource.Text, ASource.FileName, Declaration, Name) then
+  begin
+    AddOtherUnits(AContext, AFileName, ASource.FileName, AConversion);
+  end;
+  if not AConversion.Finish(APlan) then
+  begin
+    Result := AConversion.Reason;
+  end;
+end;
+
 class function TLegacyCollections.ConversionFix(const AContext: TRuleContext; const AFileName: string;
   const ARead: TLegacyCollectionRead; AResolver: TNameResolver; out AFix: TRuleFix; out AReason: string): Boolean;
 var
   Kind: TLegacyListKind;
-  Tree: TSyntaxTree;
-  OwnsTree: Boolean;
-  Text, DeclarationFile, Name, Reason: string;
-  Declaration: TSyntaxNode;
+  Source: TLegacyDeclarationSource;
   Conversion: TGenericListConversion;
   Plan: TGenericListPlan;
 begin
@@ -512,158 +646,131 @@ begin
     AReason := Format('Für %s gibt es kein generisches Gegenstück', [ARead.CollectionType.Name]);
     Exit;
   end;
-  // Die Deklaration steht in dieser Unit oder in einer anderen Unit der Projektgruppe.
-  OwnsTree := False;
-  if DeclaredIn(ARead.Symbol, AFileName) then
+  if not DeclarationSource(AContext, AFileName, ARead, Source, AReason) then
   begin
-    Tree := AContext.Tree;
-    Text := AContext.Text;
-    DeclarationFile := AFileName;
-  end
-  else
-  begin
-    DeclarationFile := ARead.Symbol.FileName;
-    if AContext.ProjectFiles = nil then
-    begin
-      AReason := Format('%s ist in %s deklariert, und ohne geladenes Projekt lässt sich die Unit nicht ändern',
-        [ARead.Symbol.Name, ARead.Symbol.UnitName]);
-      Exit;
-    end;
-    if not AContext.ProjectFiles.Complete(Reason) then
-    begin
-      AReason := Format('%s ist in %s deklariert, und das Projekt ist noch nicht vollständig geladen (%s)',
-        [ARead.Symbol.Name, ARead.Symbol.UnitName, Reason]);
-      Exit;
-    end;
-    if not InProjects(AContext.ProjectFiles.ProjectsOf(AFileName, True), DeclarationFile) then
-    begin
-      AReason := Format('%s ist in %s deklariert, die zu keinem Projekt der Gruppe gehört',
-        [ARead.Symbol.Name, ARead.Symbol.UnitName]);
-      Exit;
-    end;
-    if not AContext.ProjectFiles.ReadText(DeclarationFile, Text) then
-    begin
-      AReason := Format('%s ist nicht lesbar', [ExtractFileName(DeclarationFile)]);
-      Exit;
-    end;
-    Tree := TSyntaxTreeCache.Parse(Text);
-    OwnsTree := True;
+    Exit;
   end;
   try
-    Name := ARead.Symbol.Name;
-    Declaration := TGenericListConversion.DeclarationAt(Tree, ARead.Symbol.SelectionRange.StartPos, Name);
-    if Declaration = nil then
-    begin
-      AReason := Format('Die Deklaration von %s ist kein Feld und keine Variable', [ARead.Symbol.Name]);
-      Exit;
-    end;
     Conversion := TGenericListConversion.Create(Kind, AResolver);
     try
-      if Conversion.Start(Tree, Text, DeclarationFile, Declaration, Name) then
-      begin
-        AddOtherUnits(AContext, AFileName, DeclarationFile, Conversion);
-      end;
-      if not Conversion.Finish(Plan) then
-      begin
-        AReason := Conversion.Reason;
-        Exit;
-      end;
+      AReason := PlanConversion(AContext, AFileName, ARead, Source, Conversion, Plan);
+      Result := AReason = '';
     finally
       Conversion.Free;
     end;
   finally
-    if OwnsTree then
+    if Source.OwnsTree then
     begin
-      Tree.Free;
+      Source.Tree.Free;
     end;
   end;
-  AFix := FixFromPlan(Plan, AFileName, DeclarationFile);
-  Result := True;
+  if Result then
+  begin
+    AFix := FixFromPlan(Plan, AFileName, Source.FileName);
+  end;
 end;
 
 { TLegacyCollectionRule }
+
+/// <summary>Name der geprüften Datei; ohne Dateinamen der relative Pfad bzw. Unitname.pas.</summary>
+function CheckedFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+  begin
+    Result := AContext.RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := AContext.UnitName + '.pas';
+  end;
+end;
+
+/// <summary>Namen der Zieltypen aller Casts auf die Sammlung mit dem Schlüssel AKey, ohne Doppelte.</summary>
+function CastTypeNames(const AReads: TArray<TLegacyCollectionRead>; const AKey: string): TArray<string>;
+var
+  Names: TList<string>;
+  Read: TLegacyCollectionRead;
+begin
+  Names := TList<string>.Create;
+  try
+    for Read in AReads do
+    begin
+      if (Read.Key = AKey) and not Names.Contains(Read.CastType.Name) then
+      begin
+        Names.Add(Read.CastType.Name);
+      end;
+    end;
+    Result := Names.ToArray;
+  finally
+    Names.Free;
+  end;
+end;
+
+procedure TLegacyCollectionRule.ReportCollection(const AContext: TRuleContext; const AReport: IRuleReport;
+  const AFileName: string; const AFirst: TLegacyCollectionRead; const ACastTypes: TArray<string>;
+  AResolver: TNameResolver);
+var
+  Range: TTextRange;
+  Fix: TRuleFix;
+  Reason: string;
+begin
+  if TLegacyCollections.DeclaredIn(AFirst.Symbol, AFileName) then
+  begin
+    Range := AFirst.Symbol.SelectionRange;
+  end
+  else
+  begin
+    Range := TTextRange.Create(AFirst.Cast.StartPos, AFirst.Cast.EndPos);
+  end;
+  if TLegacyCollections.ConversionFix(AContext, AFileName, AFirst, AResolver, Fix, Reason) then
+  begin
+    AReport.Add(Range, FindingMessage(AFirst.CollectionType.Name, ACastTypes), TRuleConfidence.High, [Fix]);
+  end
+  else
+  begin
+    AReport.AddWithDetails(Range, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
+      'Keine Schnellkorrektur: ' + Reason + '.', TRuleConfidence.High, nil);
+  end;
+end;
 
 procedure TLegacyCollectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName, Key, Reason: string;
+  FileName: string;
   Reads: TArray<TLegacyCollectionRead>;
-  Read, First: TLegacyCollectionRead;
+  Read: TLegacyCollectionRead;
   Keys: TList<string>;
-  CastTypes: TList<string>;
-  Range: TTextRange;
-  Index: Integer;
-  Fix: TRuleFix;
 begin
   // Kein Vorfilter über den Text: Die Liste kann in einer anderen Unit deklariert sein (Objekt.Liste[I]).
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Index = nil) then
   begin
     Exit;
   end;
-  FileName := AContext.FileName;
-  if FileName = '' then
-  begin
-    FileName := AContext.RelativePath;
-  end;
-  if FileName = '' then
-  begin
-    FileName := AContext.UnitName + '.pas';
-  end;
-  Keys := nil;
-  CastTypes := nil;
+  FileName := CheckedFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  Resolver.PinTree(AContext.Tree, FileName);
   try
-    Resolver.PinTree(AContext.Tree, FileName);
-    try
-      Reads := TLegacyCollections.Reads(AContext.Tree, FileName, Resolver, CollectionTypes, ReadMembers,
-        IndexedReads);
-    finally
-      Resolver.UnpinTree;
-    end;
-    Keys := TList<string>.Create;
-    CastTypes := TList<string>.Create;
+    Reads := TLegacyCollections.Reads(AContext.Tree, FileName, Resolver, CollectionTypes, ReadMembers,
+      IndexedReads);
+  finally
+    Resolver.UnpinTree;
+  end;
+  Keys := TList<string>.Create;
+  try
     // Je Sammlung ein Treffer mit allen Zieltypen ihrer Casts.
     for Read in Reads do
     begin
-      Key := Read.Key;
-      if Keys.Contains(Key) then
+      if not Keys.Contains(Read.Key) then
       begin
-        Continue;
-      end;
-      Keys.Add(Key);
-      First := Read;
-      CastTypes.Clear;
-      for Index := 0 to High(Reads) do
-      begin
-        if (Reads[Index].Key = Key) and not CastTypes.Contains(Reads[Index].CastType.Name) then
-        begin
-          CastTypes.Add(Reads[Index].CastType.Name);
-        end;
-      end;
-      if TLegacyCollections.DeclaredIn(First.Symbol, FileName) then
-      begin
-        Range := First.Symbol.SelectionRange;
-      end
-      else
-      begin
-        Range := TTextRange.Create(First.Cast.StartPos, First.Cast.EndPos);
-      end;
-      if TLegacyCollections.ConversionFix(AContext, FileName, First, Resolver, Fix, Reason) then
-      begin
-        AReport.Add(Range, FindingMessage(First.CollectionType.Name, CastTypes.ToArray), TRuleConfidence.High,
-          [Fix]);
-      end
-      else
-      begin
-        AReport.AddWithDetails(Range, FindingMessage(First.CollectionType.Name, CastTypes.ToArray),
-          'Keine Schnellkorrektur: ' + Reason + '.', TRuleConfidence.High, nil);
+        Keys.Add(Read.Key);
+        ReportCollection(AContext, AReport, FileName, Read, CastTypeNames(Reads, Read.Key), Resolver);
       end;
     end;
   finally
-    CastTypes.Free;
     Keys.Free;
   end;
 end;

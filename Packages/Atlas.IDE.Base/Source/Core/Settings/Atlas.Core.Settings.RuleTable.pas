@@ -164,9 +164,13 @@ begin
   Result := '';
   AHasOptions := AValue is TJSONObject;
   if (AValue is TJSONString) and not (AValue is TJSONNumber) then
-    Result := TJSONString(AValue).Value
+  begin
+    Result := TJSONString(AValue).Value;
+  end
   else if AHasOptions then
+  begin
     Result := TJSONObject(AValue).GetValue<string>('severity', '');
+  end;
 end;
 
 function ParseRules(const ARulesJson: string): TJSONObject;
@@ -175,9 +179,13 @@ var
 begin
   Value := nil;
   if ARulesJson <> '' then
+  begin
     Value := TJSONObject.ParseJSONValue(ARulesJson);
+  end;
   if Value is TJSONObject then
+  begin
     Exit(TJSONObject(Value));
+  end;
   Value.Free;
   Result := TJSONObject.Create;
 end;
@@ -186,7 +194,9 @@ function RulesText(ARules: TJSONObject): string;
 begin
   Result := '';
   if ARules.Count > 0 then
+  begin
     Result := ARules.ToJSON;
+  end;
 end;
 
 /// <summary>Einstellung von AId als Objekt; ein Text wird zu {"severity": …}.</summary>
@@ -198,15 +208,21 @@ var
 begin
   Existing := ARules.GetValue(AId);
   if Existing is TJSONObject then
+  begin
     Exit(TJSONObject(Existing));
+  end;
   Severity := '';
   if (Existing is TJSONString) and not (Existing is TJSONNumber) then
+  begin
     Severity := TJSONString(Existing).Value;
+  end;
   Pair := ARules.RemovePair(AId);
   Pair.Free;
   Result := TJSONObject.Create;
   if Severity <> '' then
+  begin
     Result.AddPair('severity', Severity);
+  end;
   ARules.AddPair(AId, Result);
 end;
 
@@ -219,7 +235,9 @@ var
 begin
   Rule := ARules.GetValue(AId);
   if not (Rule is TJSONObject) then
+  begin
     Exit;
+  end;
   if TJSONObject(Rule).Count = 0 then
   begin
     Pair := ARules.RemovePair(AId);
@@ -242,15 +260,21 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for mItem in TJSONArray(AValue) do
+  begin
     if mItem is TJSONObject then
     begin
       mColumn.Name := TJSONObject(mItem).GetValue<string>('name', '');
       mColumn.List := TJSONObject(mItem).GetValue<Boolean>('list', False);
       if mColumn.Name <> '' then
+      begin
         Result := Result + [mColumn];
+      end;
     end;
+  end;
 end;
 
 procedure ReadOptions(AOptions: TJSONValue; var ARow: TAtlasRuleRow);
@@ -260,22 +284,30 @@ var
 begin
   ARow.Options := nil;
   if not (AOptions is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AOptions) do
+  begin
     if Item is TJSONObject then
     begin
       Option := Default(TAtlasRuleOption);
       Option.Name := TJSONObject(Item).GetValue<string>('name', '');
       if Option.Name = '' then
+      begin
         Continue;
+      end;
       Option.Kind := TJSONObject(Item).GetValue<string>('type', 'json');
       Option.Columns := ColumnsOf(TJSONObject(Item).GetValue('columns'));
       Option.Description := TJSONObject(Item).GetValue<string>('description', '');
       DefaultValue := TJSONObject(Item).GetValue('default');
       if DefaultValue <> nil then
+      begin
         Option.DefaultJson := DefaultValue.ToJSON;
+      end;
       ARow.Options := ARow.Options + [Option];
     end;
+  end;
 end;
 
 /// <summary>Werte der Optionen und "exclude" aus der Einstellung einer Regel; unbekannte Optionen kommen
@@ -290,26 +322,38 @@ var
 begin
   ARow.Exclude := nil;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   for Pair in TJSONObject(AValue) do
   begin
     if SameText(Pair.JsonString.Value, 'severity') then
+    begin
       Continue;
+    end;
     if SameText(Pair.JsonString.Value, 'exclude') then
     begin
       if Pair.JsonValue is TJSONArray then
+      begin
         for Item in TJSONArray(Pair.JsonValue) do
+        begin
           if Item is TJSONString then
+          begin
             ARow.Exclude := ARow.Exclude + [TJSONString(Item).Value];
+          end;
+        end;
+      end;
       Continue;
     end;
     Found := False;
     for Index := 0 to High(ARow.Options) do
+    begin
       if SameText(ARow.Options[Index].Name, Pair.JsonString.Value) then
       begin
         ARow.Options[Index].ValueJson := Pair.JsonValue.ToJSON;
         Found := True;
       end;
+    end;
     if not Found then
     begin
       Option := Default(TAtlasRuleOption);
@@ -327,9 +371,13 @@ function TAtlasRuleRow.Effective: string;
 begin
   Result := Severity;
   if Result = '' then
+  begin
     Result := GlobalSeverity;
+  end;
   if Result = '' then
+  begin
     Result := DefaultSeverity;
+  end;
 end;
 
 function TAtlasRuleRow.Enabled: Boolean;
@@ -342,7 +390,9 @@ var
   Needle: string;
 begin
   if AText = '' then
+  begin
     Exit(True);
+  end;
   Needle := AText.ToLower;
   Result := Id.ToLower.Contains(Needle) or Name.ToLower.Contains(Needle) or
     Category.ToLower.Contains(Needle) or Description.ToLower.Contains(Needle);
@@ -358,12 +408,20 @@ var
 begin
   Result := Rows(ACatalog, ARulesJson);
   if AGlobalRulesJson = '' then
+  begin
     Exit;
+  end;
   Global := Rows(nil, AGlobalRulesJson);
   for Other := 0 to High(Global) do
+  begin
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Id, Global[Other].Id) then
+      begin
         Result[Index].GlobalSeverity := Global[Other].Severity;
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>;
@@ -377,19 +435,27 @@ begin
   Result := nil;
   Rules := nil;
   if ARulesJson <> '' then
+  begin
     Rules := TJSONObject.ParseJSONValue(ARulesJson);
+  end;
   try
     Items := nil;
     if ACatalog is TJSONObject then
+    begin
       Items := TJSONObject(ACatalog).GetValue('rules');
+    end;
     if Items is TJSONArray then
+    begin
       for Item in TJSONArray(Items) do
+      begin
         if Item is TJSONObject then
         begin
           Row := Default(TAtlasRuleRow);
           Row.Id := TJSONObject(Item).GetValue<string>('id', '');
           if Row.Id = '' then
+          begin
             Continue;
+          end;
           Row.Name := TJSONObject(Item).GetValue<string>('name', '');
           Row.Category := TJSONObject(Item).GetValue<string>('category', '');
           Row.DefaultSeverity := TJSONObject(Item).GetValue<string>('severity', '');
@@ -401,9 +467,15 @@ begin
           Row.Known := True;
           Overrides := TJSONObject(Item).GetValue('overriddenBy');
           if Overrides is TJSONArray then
+          begin
             for Overriding in TJSONArray(Overrides) do
+            begin
               if (Overriding is TJSONString) and not (Overriding is TJSONNumber) then
+              begin
                 Row.OverriddenBy := Row.OverriddenBy + [Overriding.Value];
+              end;
+            end;
+          end;
           ReadOptions(TJSONObject(Item).GetValue('options'), Row);
           if Rules is TJSONObject then
           begin
@@ -412,24 +484,36 @@ begin
           end;
           Result := Result + [Row];
         end;
+      end;
+    end;
     // Regeln, die der Katalog nicht kennt (oder ohne Server): trotzdem zeigen.
     if Rules is TJSONObject then
+    begin
       for Pair in TJSONObject(Rules) do
       begin
         Found := False;
         for Index := 0 to High(Result) do
+        begin
           if SameText(Result[Index].Id, Pair.JsonString.Value) then
+          begin
             Found := True;
+          end;
+        end;
         if Found then
+        begin
           Continue;
+        end;
         Row := Default(TAtlasRuleRow);
         Row.Id := Pair.JsonString.Value;
         if Pair.JsonString.Value.StartsWith('group:') then
+        begin
           Continue;
+        end;
         Row.Severity := SeverityOf(Pair.JsonValue, Row.HasOptions);
         ReadSettings(Pair.JsonValue, Row);
         Result := Result + [Row];
       end;
+    end;
   finally
     Rules.Free;
   end;
@@ -443,19 +527,27 @@ begin
   APath := 'rules.' + AId;
   Value := nil;
   if ARulesJson <> '' then
+  begin
     Value := TJSONObject.ParseJSONValue(ARulesJson);
+  end;
   try
     Existing := nil;
     if Value is TJSONObject then
+    begin
       Existing := TJSONObject(Value).GetValue(AId);
+    end;
     if Existing is TJSONObject then
+    begin
       APath := APath + '.severity';
+    end;
   finally
     Value.Free;
   end;
   AJson := '';
   if ASeverity <> '' then
+  begin
     AJson := '"' + ASeverity + '"';
+  end;
 end;
 
 class function TAtlasRuleTable.WithSeverity(const ARulesJson, AId, ASeverity: string): string;
@@ -467,7 +559,9 @@ var
 begin
   Value := nil;
   if ARulesJson <> '' then
+  begin
     Value := TJSONObject.ParseJSONValue(ARulesJson);
+  end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;
@@ -482,19 +576,27 @@ begin
       Pair := TJSONObject(Existing).RemovePair('severity');
       Pair.Free;
       if ASeverity <> '' then
+      begin
         TJSONObject(Existing).AddPair('severity', ASeverity);
+      end;
     end
     else
     begin
       Pair := Rules.RemovePair(AId);
       Pair.Free;
       if ASeverity <> '' then
+      begin
         Rules.AddPair(AId, ASeverity);
+      end;
     end;
     if Rules.Count = 0 then
-      Result := ''
+    begin
+      Result := '';
+    end
     else
+    begin
       Result := Rules.ToJSON;
+    end;
   finally
     Rules.Free;
   end;
@@ -513,13 +615,17 @@ begin
     begin
       Value := TJSONObject.ParseJSONValue(AValueJson);
       if Value = nil then
+      begin
         Exit(RulesText(Rules));
+      end;
     end;
     Rule := RuleObject(Rules, AId);
     Pair := Rule.RemovePair(AOption);
     Pair.Free;
     if Value <> nil then
+    begin
       Rule.AddPair(AOption, Value);
+    end;
     Compact(Rules, AId);
     Result := RulesText(Rules);
   finally
@@ -541,14 +647,20 @@ begin
     Pair.Free;
     Items := nil;
     for Pattern in AExclude do
+    begin
       if Pattern.Trim <> '' then
       begin
         if Items = nil then
+        begin
           Items := TJSONArray.Create;
+        end;
         Items.Add(Pattern.Trim);
       end;
+    end;
     if Items <> nil then
+    begin
       Rule.AddPair('exclude', Items);
+    end;
     Compact(Rules, AId);
     Result := RulesText(Rules);
   finally
@@ -570,7 +682,9 @@ begin
   try
     Value := Rules.GetValue(GroupKey(AGroup));
     if Value is TJSONObject then
+    begin
       Value := TJSONObject(Value).GetValue('severity');
+    end;
     Result := (Value is TJSONString) and not (Value is TJSONNumber) and SameText(TJSONString(Value).Value, 'off');
   finally
     Rules.Free;
@@ -583,7 +697,9 @@ var
 begin
   Value := '';
   if not AOn then
+  begin
     Value := 'off';
+  end;
   Result := WithGroupOption(ARulesJson, AGroup, 'severity', Value);
 end;
 
@@ -597,11 +713,17 @@ begin
   try
     Value := Rules.GetValue(GroupKey(AGroup));
     if Value is TJSONObject then
-      Value := TJSONObject(Value).GetValue(AOption)
+    begin
+      Value := TJSONObject(Value).GetValue(AOption);
+    end
     else if not SameText(AOption, 'severity') then
+    begin
       Value := nil;
+    end;
     if (Value is TJSONString) and not (Value is TJSONNumber) then
+    begin
       Result := TJSONString(Value).Value;
+    end;
   finally
     Rules.Free;
   end;
@@ -629,7 +751,9 @@ begin
           Group := TJSONObject(TJSONObject(Value).Clone);
         end
         else if (Value is TJSONString) and not (Value is TJSONNumber) then
+        begin
           Group.AddPair('severity', TJSONString(Value).Value);
+        end;
       end;
     finally
       Pair.Free;
@@ -637,9 +761,13 @@ begin
     Pair := Group.RemovePair(AOption);
     Pair.Free;
     if AValue <> '' then
+    begin
       Group.AddPair(AOption, AValue);
+    end;
     if Group.Count = 0 then
-      Group.Free
+    begin
+      Group.Free;
+    end
     else if (Group.Count = 1) and (Group.GetValue('severity') is TJSONString) then
     begin
       Severity := TJSONString(Group.GetValue('severity')).Value;
@@ -647,7 +775,9 @@ begin
       Rules.AddPair(GroupKey(AGroup), Severity);
     end
     else
+    begin
       Rules.AddPair(GroupKey(AGroup), Group);
+    end;
     Result := RulesText(Rules);
   finally
     Rules.Free;
@@ -664,13 +794,21 @@ begin
   for Row in ARows do
   begin
     if Row.Group = '' then
+    begin
       Continue;
+    end;
     Found := False;
     for Group in Result do
+    begin
       if SameText(Group, Row.Group) then
+      begin
         Found := True;
+      end;
+    end;
     if not Found then
+    begin
       Result := Result + [Row.Group];
+    end;
   end;
 end;
 
@@ -681,8 +819,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(ARows) do
+  begin
     if ((AGroup = '') or SameText(ARows[Index].Group, AGroup)) and ARows[Index].Matches(AText.Trim) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 class function TAtlasRuleTable.OverridingRule(const ARows: TArray<TAtlasRuleRow>;
@@ -692,9 +834,15 @@ var
   Index: Integer;
 begin
   for Id in ARow.OverriddenBy do
+  begin
     for Index := 0 to High(ARows) do
+    begin
       if SameText(ARows[Index].Id, Id) and ARows[Index].Enabled then
+      begin
         Exit(ARows[Index].Id);
+      end;
+    end;
+  end;
   Result := '';
 end;
 
@@ -709,8 +857,12 @@ var
 begin
   Result := nil;
   for Part in AText.Split([';']) do
+  begin
     if Part.Trim <> '' then
+    begin
       Result := Result + [Part.Trim];
+    end;
+  end;
 end;
 
 class function TAtlasRuleTable.OptionText(const AOption: TAtlasRuleOption): string;
@@ -721,23 +873,35 @@ var
 begin
   Json := AOption.ValueJson;
   if Json = '' then
+  begin
     Json := AOption.DefaultJson;
+  end;
   Result := Json;
   if Json = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(Json);
   try
     if (Value is TJSONString) and not (Value is TJSONNumber) then
-      Result := TJSONString(Value).Value
+    begin
+      Result := TJSONString(Value).Value;
+    end
     else if (Value is TJSONArray) and (SameText(AOption.Kind, 'string-list') or
       SameText(AOption.Kind, 'number-list')) then
     begin
       Items := nil;
       for Item in TJSONArray(Value) do
+      begin
         if (Item is TJSONString) and not (Item is TJSONNumber) then
-          Items := Items + [TJSONString(Item).Value]
+        begin
+          Items := Items + [TJSONString(Item).Value];
+        end
         else
+        begin
           Items := Items + [Item.ToJSON];
+        end;
+      end;
       Result := ListText(Items);
     end;
   finally
@@ -755,37 +919,57 @@ begin
   Result := nil;
   mJson := AOption.ValueJson;
   if mJson = '' then
+  begin
     mJson := AOption.DefaultJson;
+  end;
   if mJson = '' then
+  begin
     Exit;
+  end;
   mValue := TJSONObject.ParseJSONValue(mJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mRow := nil;
       for mColumn in AOption.Columns do
       begin
         mCell := TJSONObject(mItem).GetValue(mColumn.Name);
         if mCell = nil then
-          mRow := mRow + ['']
+        begin
+          mRow := mRow + [''];
+        end
         else if (mCell is TJSONString) and not (mCell is TJSONNumber) then
-          mRow := mRow + [TJSONString(mCell).Value]
+        begin
+          mRow := mRow + [TJSONString(mCell).Value];
+        end
         else if mCell is TJSONArray then
         begin
           mItems := nil;
           for mEntry in TJSONArray(mCell) do
+          begin
             if (mEntry is TJSONString) and not (mEntry is TJSONNumber) then
-              mItems := mItems + [TJSONString(mEntry).Value]
+            begin
+              mItems := mItems + [TJSONString(mEntry).Value];
+            end
             else
+            begin
               mItems := mItems + [mEntry.ToJSON];
+            end;
+          end;
           mRow := mRow + [ListText(mItems)];
         end
         else
+        begin
           mRow := mRow + [mCell.ToJSON];
+        end;
       end;
       Result := Result + [mRow];
     end;
@@ -812,23 +996,35 @@ begin
       begin
         mText := '';
         if mIndex <= High(mRow) then
+        begin
           mText := Trim(mRow[mIndex]);
+        end;
         if mText = '' then
+        begin
           Continue;
+        end;
         if AOption.Columns[mIndex].List then
         begin
           mList := TJSONArray.Create;
           for mEntry in ParseList(mText) do
+          begin
             mList.Add(mEntry);
+          end;
           mObject.AddPair(AOption.Columns[mIndex].Name, mList);
         end
         else
+        begin
           mObject.AddPair(AOption.Columns[mIndex].Name, mText);
+        end;
       end;
       if mObject.Count = 0 then
-        mObject.Free
+      begin
+        mObject.Free;
+      end
       else
+      begin
         mItems.AddElement(mObject);
+      end;
     end;
     Result := mItems.ToJSON;
   finally
@@ -847,19 +1043,25 @@ begin
   AJson := '';
   Text := AText.Trim;
   if Text = '' then
+  begin
     Exit(True);
+  end;
   Result := True;
   if SameText(AKind, 'integer') then
   begin
     Result := TryStrToInt64(Text, Number);
     if Result then
+    begin
       AJson := IntToStr(Number);
+    end;
   end
   else if SameText(AKind, 'boolean') then
   begin
     Result := SameText(Text, 'true') or SameText(Text, 'false');
     if Result then
+    begin
       AJson := Text.ToLower;
+    end;
   end
   else if SameText(AKind, 'string') then
   begin
@@ -875,7 +1077,9 @@ begin
     Items := TJSONArray.Create;
     try
       for Item in ParseList(Text) do
+      begin
         Items.Add(Item);
+      end;
       AJson := Items.ToJSON;
     finally
       Items.Free;
@@ -889,11 +1093,17 @@ begin
       for Item in ParseList(Text) do
       begin
         if not TryStrToFloat(Item, Float, TFormatSettings.Invariant) then
+        begin
           Exit(False);
+        end;
         if (Frac(Float) = 0) and (Abs(Float) < 1E15) then
-          Items.AddElement(TJSONNumber.Create(Trunc(Float)))
+        begin
+          Items.AddElement(TJSONNumber.Create(Trunc(Float)));
+        end
         else
+        begin
           Items.AddElement(TJSONNumber.Create(Float));
+        end;
       end;
       AJson := Items.ToJSON;
     finally
@@ -906,7 +1116,9 @@ begin
     Value := TJSONObject.ParseJSONValue(Text);
     Result := Value <> nil;
     if Result then
+    begin
       AJson := Value.ToJSON;
+    end;
     Value.Free;
   end;
 end;
@@ -925,11 +1137,17 @@ begin
     begin
       Value := Old.GetValue(Pair.JsonString.Value);
       if (Value = nil) or (Value.ToJSON <> Pair.JsonValue.ToJSON) then
+      begin
         Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, Pair.JsonValue.ToJSON)];
+      end;
     end;
     for Pair in Old do
+    begin
       if Updated.GetValue(Pair.JsonString.Value) = nil then
+      begin
         Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, '')];
+      end;
+    end;
   finally
     Updated.Free;
     Old.Free;

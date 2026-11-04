@@ -13,12 +13,15 @@ uses
   System.Types,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
-  Atlas.Core.Hover.Layout;
+  Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Texts;
 
 type
   [TestFixture]
   THoverLayoutTests = class
   private
+    /// <summary>Kurze Texte, an denen die Tests die Abschnitte erkennen.</summary>
+    function Texts: TAtlasHoverTexts;
     function Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
     function Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout; overload;
     function Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout; overload;
@@ -185,6 +188,31 @@ begin
   Result := TAtlasHoverView.Create(Data);
 end;
 
+function THoverLayoutTests.Texts: TAtlasHoverTexts;
+begin
+  Result := Default(TAtlasHoverTexts);
+  Result.Pinned := 'pinned';
+  Result.Inheritance := 'Vererbung';
+  Result.TargetType := 'Ziel %s';
+  Result.Navigate := 'Go';
+  Result.Usages := 'Us';
+  Result.UsagesCount := '%d Us';
+  Result.Copy := 'Cp';
+  Result.CopySelection := 'Sel';
+  Result.Help := 'H';
+  Result.KeyUsages := 'U';
+  Result.KeyCopy := 'C';
+  Result.SourceAtlas := 'Atlas';
+  Result.SourceCompiler := 'dcc';
+  Result.SourceInactive := 'inaktiv';
+  Result.Stale := 'alt';
+  Result.DebugPending := 'eval';
+  Result.DebugExplaining := 'sucht';
+  Result.DebugChecked := 'geprüft';
+  Result.ReassignedOne := 'einmal %s';
+  Result.ReassignedCount := '%d mal %s';
+end;
+
 function THoverLayoutTests.Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
 begin
   Result := Default(TAtlasHoverInput);
@@ -192,26 +220,7 @@ begin
   Result.Width := AWidth;
   Result.PPI := 96;
   Result.Colors := TAtlasColors.Light;
-  Result.Texts.Pinned := 'pinned';
-  Result.Texts.Inheritance := 'Vererbung';
-  Result.Texts.TargetType := 'Ziel %s';
-  Result.Texts.Navigate := 'Go';
-  Result.Texts.Usages := 'Us';
-  Result.Texts.UsagesCount := '%d Us';
-  Result.Texts.Copy := 'Cp';
-  Result.Texts.CopySelection := 'Sel';
-  Result.Texts.Help := 'H';
-  Result.Texts.KeyUsages := 'U';
-  Result.Texts.KeyCopy := 'C';
-  Result.Texts.SourceAtlas := 'Atlas';
-  Result.Texts.SourceCompiler := 'dcc';
-  Result.Texts.SourceInactive := 'inaktiv';
-  Result.Texts.Stale := 'alt';
-  Result.Texts.DebugPending := 'eval';
-  Result.Texts.DebugExplaining := 'sucht';
-  Result.Texts.DebugChecked := 'geprüft';
-  Result.Texts.ReassignedOne := 'einmal %s';
-  Result.Texts.ReassignedCount := '%d mal %s';
+  Result.Texts := Texts;
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;

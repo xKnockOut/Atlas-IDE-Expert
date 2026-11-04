@@ -112,19 +112,29 @@ begin
   Count := 0;
   Start := 1;
   for Index := 1 to Length(ALine) do
+  begin
     if ALine[Index] = ' ' then
     begin
       if Count = AIndex then
+      begin
         Exit(Copy(ALine, Start, Index - Start));
+      end;
       Inc(Count);
       Start := Index + 1;
       if (Count = AIndex) and ARest then
+      begin
         Exit(Copy(ALine, Start, MaxInt));
+      end;
     end;
+  end;
   if Count = AIndex then
-    Result := Copy(ALine, Start, MaxInt)
+  begin
+    Result := Copy(ALine, Start, MaxInt);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TAtlasGitParser.KindOf(const AXY: string): TAtlasVcsChangeKind;
@@ -132,21 +142,35 @@ var
   X, Y: Char;
 begin
   if Length(AXY) < 2 then
+  begin
     raise EAtlasVcsParse.CreateFmt('git status: Feld XY "%s" unbekannt', [AXY]);
+  end;
   X := AXY[1];
   Y := AXY[2];
   if (X = 'A') or (Y = 'A') then
-    Result := TAtlasVcsChangeKind.Added
+  begin
+    Result := TAtlasVcsChangeKind.Added;
+  end
   else if (X = 'D') or (Y = 'D') then
-    Result := TAtlasVcsChangeKind.Deleted
+  begin
+    Result := TAtlasVcsChangeKind.Deleted;
+  end
   else if (X = 'T') or (Y = 'T') then
-    Result := TAtlasVcsChangeKind.TypeChanged
+  begin
+    Result := TAtlasVcsChangeKind.TypeChanged;
+  end
   else if (X = 'R') or (Y = 'R') then
-    Result := TAtlasVcsChangeKind.Renamed
+  begin
+    Result := TAtlasVcsChangeKind.Renamed;
+  end
   else if (X = 'C') or (Y = 'C') then
-    Result := TAtlasVcsChangeKind.Copied
+  begin
+    Result := TAtlasVcsChangeKind.Copied;
+  end
   else
+  begin
     Result := TAtlasVcsChangeKind.Modified;
+  end;
 end;
 
 function MakeChange(const ARoot, APath: string; AKind: TAtlasVcsChangeKind; const AXY: string): TAtlasVcsChange;
@@ -167,9 +191,13 @@ begin
   AheadText := Field(AValue, 0, False);
   BehindText := Field(AValue, 1, False);
   if (Copy(AheadText, 1, 1) = '+') and TryStrToInt(Copy(AheadText, 2, MaxInt), Number) then
+  begin
     AHead.Ahead := Number;
+  end;
   if (Copy(BehindText, 1, 1) = '-') and TryStrToInt(Copy(BehindText, 2, MaxInt), Number) then
+  begin
     AHead.Behind := Number;
+  end;
 end;
 
 class procedure TAtlasGitParser.ParseStatus(const AText, ARoot: string; out AHead: TAtlasVcsHead;
@@ -184,9 +212,13 @@ begin
   AChanges := nil;
   // Mit -z durch NUL getrennt, sonst durch Zeilenumbrüche.
   if Pos(#0, AText) > 0 then
-    Entries := AText.Split([#0])
+  begin
+    Entries := AText.Split([#0]);
+  end
   else
+  begin
     Entries := AText.Split([#10]);
+  end;
   Index := 0;
   while Index <= High(Entries) do
   begin
@@ -194,7 +226,9 @@ begin
     Inc(Index);
     Entry := Entry.TrimRight([#13, #10]);
     if Entry = '' then
+    begin
       Continue;
+    end;
     case Entry[1] of
       '#':
         begin
@@ -203,19 +237,29 @@ begin
           if Key = 'branch.oid' then
           begin
             if Value <> '(initial)' then
+            begin
               AHead.Revision := Value;
+            end;
           end
           else if Key = 'branch.head' then
           begin
             if Value = '(detached)' then
-              AHead.Detached := True
+            begin
+              AHead.Detached := True;
+            end
             else
+            begin
               AHead.Branch := Value;
+            end;
           end
           else if Key = 'branch.upstream' then
-            AHead.Upstream := Value
+          begin
+            AHead.Upstream := Value;
+          end
           else if Key = 'branch.ab' then
+          begin
             ReadAheadBehind(Value, AHead);
+          end;
         end;
       '1':
         begin
@@ -229,9 +273,13 @@ begin
           XY := Field(Entry, 1, False);
           Value := Field(Entry, 8, False);
           if Copy(Value, 1, 1) = 'C' then
-            Change := MakeChange(ARoot, Field(Entry, 9, True), TAtlasVcsChangeKind.Copied, XY)
+          begin
+            Change := MakeChange(ARoot, Field(Entry, 9, True), TAtlasVcsChangeKind.Copied, XY);
+          end
           else
+          begin
             Change := MakeChange(ARoot, Field(Entry, 9, True), TAtlasVcsChangeKind.Renamed, XY);
+          end;
           if Index <= High(Entries) then
           begin
             Change.OldPath := VcsFullPath(ARoot, Entries[Index]);
@@ -265,8 +313,12 @@ var
 begin
   Result := nil;
   for Line in AText.Split([#10]) do
+  begin
     if Line.TrimRight([#13]) <> '' then
+    begin
       Result := Result + [Line.TrimRight([#13])];
+    end;
+  end;
 end;
 
 /// <summary>Unix-Zeit als UTC; 0 bei ungültigem Text.</summary>
@@ -275,9 +327,13 @@ var
   Seconds: Int64;
 begin
   if TryStrToInt64(Trim(AText), Seconds) and (Seconds > 0) then
-    Result := VcsUnixToDate(Seconds)
+  begin
+    Result := VcsUnixToDate(Seconds);
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 procedure ReadTrack(const AText: string; var ABranch: TAtlasVcsBranch);
@@ -293,7 +349,9 @@ begin
     Exit;
   end;
   if ABranch.Upstream = '' then
+  begin
     Exit;
+  end;
   ABranch.Ahead := 0;
   ABranch.Behind := 0;
   for Part in Text.Split([',']) do
@@ -301,19 +359,29 @@ begin
     if Copy(Trim(Part), 1, 6) = 'ahead ' then
     begin
       if TryStrToInt(Trim(Copy(Trim(Part), 7, MaxInt)), Number) then
-        ABranch.Ahead := Number
+      begin
+        ABranch.Ahead := Number;
+      end
       else
+      begin
         raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
+      end;
     end
     else if Copy(Trim(Part), 1, 7) = 'behind ' then
     begin
       if TryStrToInt(Trim(Copy(Trim(Part), 8, MaxInt)), Number) then
-        ABranch.Behind := Number
+      begin
+        ABranch.Behind := Number;
+      end
       else
+      begin
         raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
+      end;
     end
     else if Trim(Part) <> '' then
+    begin
       raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
+    end;
   end;
 end;
 
@@ -328,7 +396,9 @@ begin
   begin
     Fields := Line.Split([#0]);
     if Length(Fields) < 7 then
+    begin
       raise EAtlasVcsParse.Create('git for-each-ref: sieben Felder erwartet');
+    end;
     Branch := Default(TAtlasVcsBranch);
     Branch.Name := Fields[0];
     Branch.Upstream := Fields[1];
@@ -340,7 +410,9 @@ begin
     Branch.TipDate := UnixField(Fields[5]);
     Branch.Current := Trim(Fields[6]) = '*';
     if Branch.Name = '' then
+    begin
       raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+    end;
     Result := Result + [Branch];
   end;
 end;
@@ -357,7 +429,9 @@ begin
   begin
     Fields := Line.Split([#0]);
     if Length(Fields) < 4 then
+    begin
       raise EAtlasVcsParse.Create('git stash list: vier Felder erwartet');
+    end;
     Stash := Default(TAtlasVcsStash);
     Stash.Hash := Fields[0];
     Stash.Date := UnixField(Fields[1]);
@@ -369,21 +443,29 @@ begin
     if (Colon > 0) and ((Copy(Subject, 1, 7) = 'WIP on ') or (Copy(Subject, 1, 3) = 'On ')) then
     begin
       if Copy(Subject, 1, 7) = 'WIP on ' then
-        Stash.Branch := Copy(Subject, 8, Colon - 8)
+      begin
+        Stash.Branch := Copy(Subject, 8, Colon - 8);
+      end
       else
+      begin
         Stash.Branch := Copy(Subject, 4, Colon - 4);
+      end;
       Rest := Copy(Subject, Colon + 2, MaxInt);
       if Copy(Subject, 1, 7) = 'WIP on ' then
       begin
         // Kurzer Hash vorn entfällt.
         Space := Pos(' ', Rest);
         if Space > 0 then
+        begin
           Rest := Copy(Rest, Space + 1, MaxInt);
+        end;
       end;
       Stash.Message := Rest;
     end;
     if Stash.Hash = '' then
+    begin
       raise EAtlasVcsParse.Create('git stash list: Hash fehlt');
+    end;
     Result := Result + [Stash];
   end;
 end;
@@ -399,13 +481,19 @@ begin
   begin
     Fields := Line.Split([#0]);
     if (Length(Fields) < 2) or (Length(Fields[0]) < 7) then
+    begin
       raise EAtlasVcsParse.Create('git log: Hash und Zeit erwartet');
+    end;
     Commit.Hash := Fields[0];
     Commit.Date := UnixField(Fields[1]);
     if Length(Fields) > 2 then
-      Commit.Summary := Fields[2]
+    begin
+      Commit.Summary := Fields[2];
+    end
     else
+    begin
       Commit.Summary := '';
+    end;
     Result := Result + [Commit];
   end;
 end;
@@ -425,9 +513,13 @@ begin
     Status := Entries[Index].Trim([#10, #13]);
     Inc(Index);
     if Status = '' then
+    begin
       Continue;
+    end;
     if Index > High(Entries) then
+    begin
       raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
+    end;
     Change := Default(TAtlasVcsChange);
     Change.Staged := True;
     Change.Unstaged := False;
@@ -445,20 +537,28 @@ begin
       'R', 'C':
         begin
           if Status[1] = 'R' then
-            Change.Kind := TAtlasVcsChangeKind.Renamed
+          begin
+            Change.Kind := TAtlasVcsChangeKind.Renamed;
+          end
           else
+          begin
             Change.Kind := TAtlasVcsChangeKind.Copied;
+          end;
           // Erst der alte, dann der neue Pfad.
           Change.OldPath := VcsFullPath(ARoot, Entries[Index]);
           Inc(Index);
           if Index > High(Entries) then
+          begin
             raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
+          end;
         end;
     else
       raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [Status]);
     end;
     if Entries[Index] = '' then
+    begin
       raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
+    end;
     Change.Path := VcsFullPath(ARoot, Entries[Index]);
     Inc(Index);
     Result := Result + [Change];
@@ -478,10 +578,14 @@ begin
   begin
     // Vor dem ersten Trenner steht nichts; Zeilenenden zwischen den Commits zählen nicht.
     if Item.Trim([#0, #10, #13]) = '' then
+    begin
       Continue;
+    end;
     Fields := Item.Split([#0]);
     if (Length(Fields) < 4) or (Length(Fields[0]) < 7) then
+    begin
       raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
+    end;
     Commit := Default(TAtlasVcsIncomingCommit);
     Commit.Hash := Fields[0];
     Commit.Date := UnixField(Fields[1]);
@@ -492,7 +596,9 @@ begin
     begin
       Path := Fields[Index].Trim([#10, #13]);
       if Path <> '' then
+      begin
         Commit.Files := Commit.Files + [VcsFullPath(ARoot, Path)];
+      end;
     end;
     Result := Result + [Commit];
   end;
@@ -501,7 +607,9 @@ end;
 function StatusKind(const AStatus: string): TAtlasVcsChangeKind;
 begin
   if AStatus = '' then
+  begin
     raise EAtlasVcsParse.Create('git log --name-status: Art fehlt');
+  end;
   case AStatus[1] of
     'M':
       Result := TAtlasVcsChangeKind.Modified;
@@ -536,10 +644,14 @@ begin
     for mItem in mRecords do
     begin
       if mItem.Trim([#0, #10, #13]) = '' then
+      begin
         Continue;
+      end;
       mFields := mItem.Split([#0]);
       if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
+      begin
         raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Nachricht erwartet');
+      end;
       mEntry := Default(TAtlasVcsLogEntry);
       mEntry.Revision := mFields[0];
       mEntry.Date := UnixField(mFields[1]);
@@ -548,9 +660,13 @@ begin
       mEntry.Message := mMessage;
       mBreak := Pos(#10, mMessage);
       if mBreak > 0 then
-        mEntry.Summary := Copy(mMessage, 1, mBreak - 1)
+      begin
+        mEntry.Summary := Copy(mMessage, 1, mBreak - 1);
+      end
       else
+      begin
         mEntry.Summary := mMessage;
+      end;
       // Danach Paare aus Art und Pfad; leere Einträge (Ende der Nachricht, Zeilenende davor) zählen nicht.
       mFiles.Clear;
       mIndex := 4;
@@ -559,9 +675,13 @@ begin
         mStatus := mFields[mIndex].Trim([#10, #13]);
         Inc(mIndex);
         if mStatus = '' then
+        begin
           Continue;
+        end;
         if (mIndex > High(mFields)) or (mFields[mIndex] = '') then
+        begin
           raise EAtlasVcsParse.Create('git log --name-status: Pfad fehlt');
+        end;
         mFile := Default(TAtlasVcsLogFile);
         mFile.Kind := StatusKind(mStatus);
         mFile.RepositoryPath := mFields[mIndex];
@@ -594,7 +714,9 @@ begin
   begin
     mFields := mLine.Split([#0]);
     if Length(mFields) < 3 then
+    begin
       raise EAtlasVcsParse.Create('git for-each-ref: drei Felder erwartet');
+    end;
     mName := mFields[0];
     mRef := Default(TAtlasVcsRef);
     if mName.StartsWith(cHeads) then
@@ -608,16 +730,24 @@ begin
       mRef.Remote := True;
       // "origin/HEAD" zeigt nur auf einen anderen Branch.
       if mRef.Name.EndsWith('/HEAD') then
+      begin
         Continue;
+      end;
       mSlash := Pos('/', mRef.Name);
       if mSlash = 0 then
+      begin
         Continue;
+      end;
       mRef.LocalName := Copy(mRef.Name, mSlash + 1, MaxInt);
     end
     else
+    begin
       Continue;
+    end;
     if mRef.Name = '' then
+    begin
       raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+    end;
     mRef.TipDate := UnixField(mFields[1]);
     mRef.Current := Trim(mFields[2]) = '*';
     Result := Result + [mRef];
@@ -631,7 +761,9 @@ begin
   // Links steht, was nur in der Basis liegt (Rückstand), rechts, was nur im Branch liegt (Vorsprung).
   mParts := Trim(AText).Split([#9, ' '], TStringSplitOptions.ExcludeEmpty);
   if (Length(mParts) <> 2) or not TryStrToInt(mParts[0], ABehind) or not TryStrToInt(mParts[1], AAhead) then
+  begin
     raise EAtlasVcsParse.CreateFmt('git rev-list --count: "%s" unbekannt', [Trim(AText)]);
+  end;
 end;
 
 class function TAtlasGitParser.ParseLines(const AText: string): TArray<string>;
@@ -640,7 +772,9 @@ var
 begin
   Result := nil;
   for Line in NonEmptyLines(AText) do
+  begin
     Result := Result + [Trim(Line)];
+  end;
 end;
 
 /// <summary>Zeilen von AText ohne CR; leere Zeilen am Anfang und am Ende entfallen.</summary>
@@ -651,13 +785,19 @@ var
 begin
   mLines := AText.Split([#10]);
   for mIndex := 0 to High(mLines) do
+  begin
     mLines[mIndex] := mLines[mIndex].TrimRight([#13]);
+  end;
   mFirst := 0;
   while (mFirst <= High(mLines)) and (mLines[mFirst] = '') do
+  begin
     Inc(mFirst);
+  end;
   mLast := High(mLines);
   while (mLast >= mFirst) and (mLines[mLast] = '') do
+  begin
     Dec(mLast);
+  end;
   Result := Copy(mLines, mFirst, mLast - mFirst + 1);
 end;
 
@@ -676,7 +816,9 @@ begin
   for mItem in mItems do
   begin
     if mItem.Trim([#10, #13]) = '' then
+    begin
       Continue;
+    end;
     // Hash, Autor, Zeit, Nachricht und der Rest (Unterschied); nur vier Trenner zählen.
     SetLength(mFields, 5);
     mStart := 1;
@@ -685,14 +827,18 @@ begin
     begin
       mStop := Pos(#$1F, mItem, mStart);
       if mStop = 0 then
+      begin
         Break;
+      end;
       mFields[mCount] := Copy(mItem, mStart, mStop - mStart);
       Inc(mCount);
       mStart := mStop + 1;
     end;
     mFields[4] := Copy(mItem, mStart, MaxInt);
     if (mCount < 4) or (Length(mFields[0]) < 7) then
+    begin
       raise EAtlasVcsParse.Create('git log -L: Hash, Autor, Zeit und Nachricht erwartet');
+    end;
     mCommit := Default(TAtlasVcsLineCommit);
     mCommit.Revision := mFields[0];
     mCommit.Author := mFields[1];
@@ -720,10 +866,14 @@ begin
   for mItem in mItems do
   begin
     if mItem.Trim([#10, #13]) = '' then
+    begin
       Continue;
+    end;
     mSplit := Pos(#$1F, mItem);
     if mSplit < 8 then
+    begin
       raise EAtlasVcsParse.Create('git log: Hash und Nachricht erwartet');
+    end;
     mMessage.Revision := Copy(mItem, 1, mSplit - 1);
     mMessage.Message := TrimRight(Copy(mItem, mSplit + 1, MaxInt));
     Result[mFound] := mMessage;
@@ -765,11 +915,15 @@ begin
       Line := Lines[Index].TrimRight([#13]);
       Inc(Index);
       if Line = '' then
+      begin
         Continue;
+      end;
       // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
       Hash := Field(Line, 0, False);
       if (Length(Hash) < 40) or not TryStrToInt(Field(Line, 2, False), Final) then
+      begin
         raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
+      end;
       if not CommitIndexOf.TryGetValue(Hash, CommitIndex) then
       begin
         CommitIndex := CommitCount;
@@ -786,15 +940,23 @@ begin
         Line := Lines[Index].TrimRight([#13]);
         Inc(Index);
         if (Line <> '') and (Line[1] = #9) then
+        begin
           Break;
+        end;
         Key := Field(Line, 0, False);
         Value := Field(Line, 1, True);
         if Key = 'author' then
-          Commits[CommitIndex].Author := Value
+        begin
+          Commits[CommitIndex].Author := Value;
+        end
         else if (Key = 'author-time') and TryStrToInt64(Value, Seconds) then
-          Commits[CommitIndex].Date := VcsUnixToDate(Seconds)
+        begin
+          Commits[CommitIndex].Date := VcsUnixToDate(Seconds);
+        end
         else if Key = 'summary' then
+        begin
           Commits[CommitIndex].Summary := Value;
+        end;
       end;
       Item.Line := Final;
       if Hash = NullCommit then
