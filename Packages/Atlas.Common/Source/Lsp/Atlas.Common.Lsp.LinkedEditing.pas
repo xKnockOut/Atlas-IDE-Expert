@@ -33,7 +33,7 @@ type
   /// zusammenstieße (#658).</summary>
   TLinkedConflict = record
     Name: string;
-    /// <summary>Wie TNameResolver.ShadowText, z. B. "Feld TKunde.Total".</summary>
+    /// <summary>Wie TResolvedSymbol.ShadowText, z. B. "Feld TKunde.Total".</summary>
     Detail: string;
   end;
 
@@ -312,13 +312,13 @@ begin
     Seen.Add(LowerCase(AName), True);
     for Probe in AOffsets do
     begin
-      for Candidate in AResolver.OwnScopeCandidates(ATree, AFileName, Probe) do
+      for Candidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, Probe) do
       begin
         if not Seen.ContainsKey(LowerCase(Candidate.Name)) then
         begin
           Seen.Add(LowerCase(Candidate.Name), True);
           Conflict.Name := Candidate.Name;
-          Conflict.Detail := TNameResolver.ShadowText(Candidate);
+          Conflict.Detail := Candidate.ShadowText;
           Result := Result + [Conflict];
         end;
       end;

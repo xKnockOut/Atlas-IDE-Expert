@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.CompletionExceptions;
 
 // Exception-Klassen (#483, ARG-085): Nach "raise " und nach "on Name: " bleiben nur Exception-Klassen
-// (TNameResolver.ExceptionClassOf).
+// (TNameResolver.Queries.ExceptionClassOf).
 // - Nach raise: Projektklassen vor denen der Bibliotheken; Übernahme als "EFoo.Create('')" mit dem Cursor
 //   zwischen den Anführungszeichen, dazu je Klasse ein eigener Eintrag "EFoo.CreateFmt('', [])".
 // - Nach "on E: ": zuerst die Gruppe „Aus dem try-Block“ mit den Klassen, die die dort aufgerufenen Routinen laut
@@ -287,7 +287,7 @@ begin
     var
       ExceptionClass: TResolvedSymbol;
     begin
-      Result := AResolver.ExceptionClassOf(ASymbol, ExceptionClass);
+      Result := AResolver.Queries.ExceptionClassOf(ASymbol, ExceptionClass);
     end;
 end;
 
@@ -474,7 +474,7 @@ begin
     for Item in AItems do
     begin
       if not TCompletionGenerics.ItemSymbol(ARequest, Units, Item, Symbol) or
-        not ARequest.Resolver.ExceptionClassOf(Symbol, ExceptionClass) or
+        not ARequest.Resolver.Queries.ExceptionClassOf(Symbol, ExceptionClass) or
         (IndexOfText(Item.Name, Site.Handled) >= 0) then
       begin
         Continue;
@@ -497,7 +497,7 @@ begin
       Entry.Library_ := ARequest.Resolver.DeclaringUnit(ExceptionClass, DeclaringUnit) and DeclaringUnit.Library_;
       Entry.TryRank := IndexOfText(Item.Name, TryNames);
       // Reihenfolge der Zweige: Ein früherer Zweig fängt schon alle Nachfahren seiner Klasse.
-      Ancestors := ARequest.Resolver.AncestorNames(ExceptionClass);
+      Ancestors := ARequest.Resolver.Queries.AncestorNames(ExceptionClass);
       for Earlier in Site.Earlier do
       begin
         if IndexOfText(Earlier, Ancestors) > 0 then
