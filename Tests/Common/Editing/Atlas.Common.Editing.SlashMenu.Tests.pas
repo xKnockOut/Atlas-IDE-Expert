@@ -176,8 +176,8 @@ var
   Edits: TArray<TRuleEdit>;
 begin
   Result := '';
-  if TSlashMenu.Run(TSlashCommandRegistry.Shared, AText, ASpot, AName, AArguments, nil, nil, '', '', nil, Edits,
-    AReason) then
+  if TSlashMenu.Run(TSlashCommandRegistry.Shared, AText, ASpot, TSlashMenuCall.Create(AName, AArguments,
+    TSlashEnvironment.Create(nil, nil)), Edits, AReason) then
   begin
     Result := Apply(AText, Edits);
   end;
@@ -380,11 +380,11 @@ var
 begin
   Assert.AreEqual('', RunAt(ClassUnit, Spot(26), 'ctor', '', Reason));
   Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', Reason);
-  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), 'ctor', '', ['ctor'], nil, '', '',
-    nil, Edits, Reason));
+  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), TSlashMenuCall.Create('ctor', '',
+    TSlashEnvironment.Create(nil, ['ctor'], nil, '', '', nil)), Edits, Reason));
   Assert.IsTrue(Pos('abgeschaltet', Reason) > 0, Reason);
-  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), 'gibtsnicht', '', nil, nil, '', '',
-    nil, Edits, Reason));
+  Assert.IsFalse(TSlashMenu.Run(TSlashCommandRegistry.Shared, ClassUnit, Spot(8), TSlashMenuCall.Create('gibtsnicht',
+    '', TSlashEnvironment.Create(nil, nil)), Edits, Reason));
   Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', Reason);
 end;
 

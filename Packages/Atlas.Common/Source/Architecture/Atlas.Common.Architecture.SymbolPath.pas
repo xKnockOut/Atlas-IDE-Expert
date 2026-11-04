@@ -111,6 +111,16 @@ type
     class function Default: TSymbolPathRequest; static;
   end;
 
+  /// <summary>Quellen einer Suche über TSymbolPathSearch.Run; Graphs und Locator gehören dem Aufrufer.</summary>
+  TSymbolPathSources = record
+    Index: ISymbolIndex;
+    Graphs: TUsesGraphService;
+    Locator: TUsesLocator;
+    ReadText: TSymbolPathReadText;
+    EnsureUnit: TEnsureUnitFunc;
+    Namespaces: TArray<string>;
+  end;
+
   TSymbolPathSearch = class
   private
     FIndex: ISymbolIndex;
@@ -130,9 +140,8 @@ type
     destructor Destroy; override;
     function Find(const ARequest: TSymbolPathRequest; const ACancelled: TSymbolPathCancelled): TSymbolPathResult;
     /// <summary>Find über den Graphen des Dienstes (unter seiner Sperre).</summary>
-    class function Run(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
-      const AReadText: TSymbolPathReadText; const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>;
-      const ARequest: TSymbolPathRequest; const ACancelled: TSymbolPathCancelled): TSymbolPathResult; static;
+    class function Run(const ASources: TSymbolPathSources; const ARequest: TSymbolPathRequest;
+      const ACancelled: TSymbolPathCancelled): TSymbolPathResult; static;
     /// <summary>Name der Kantenart in via ("uses", "hasField" …).</summary>
     class function EdgeName(AKind: TSymbolPathEdgeKind): string; static;
     /// <summary>Kantenart aus via; "library" setzt AThroughLibrary statt einer Kantenart.</summary>
@@ -803,22 +812,23 @@ begin
   end;
 end;
 
-class function TSymbolPathSearch.Run(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService;
-  ALocator: TUsesLocator; const AReadText: TSymbolPathReadText; const AEnsureUnit: TEnsureUnitFunc;
-  const ANamespaces: TArray<string>; const ARequest: TSymbolPathRequest;
+class function TSymbolPathSearch.Run(const ASources: TSymbolPathSources; const ARequest: TSymbolPathRequest;
   const ACancelled: TSymbolPathCancelled): TSymbolPathResult;
 var
   mAnswer: TSymbolPathResult;
+  mSources: TSymbolPathSources;
 begin
   mAnswer := Default(TSymbolPathResult);
-  AGraphs.Read(
+  mSources := ASources;
+  ASources.Graphs.Read(
     procedure(const AGraph: TUsesGraph)
     var
       mSearch: TSymbolPathSearch;
     begin
-      mSearch := TSymbolPathSearch.Create(AIndex, AGraph, ALocator, AReadText, AEnsureUnit);
+      mSearch := TSymbolPathSearch.Create(mSources.Index, AGraph, mSources.Locator, mSources.ReadText,
+        mSources.EnsureUnit);
       try
-        mSearch.Namespaces := ANamespaces;
+        mSearch.Namespaces := mSources.Namespaces;
         mAnswer := mSearch.Find(ARequest, ACancelled);
       finally
         mSearch.Free;

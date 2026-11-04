@@ -192,51 +192,70 @@ begin
   Result := ServerText(AInfo, Now);
 end;
 
+function RunningText(const AInfo: TAtlasServerInfo; ANow: TDateTime): string;
+begin
+  Result := 'Server: läuft';
+  if AInfo.Since > 0 then
+  begin
+    Result := Result + ' seit ' + TAtlasStatusLines.When(AInfo.Since, ANow);
+  end;
+  if AInfo.Samples > 0 then
+  begin
+    Result := Result + Format(', %s im Mittel der letzten %d Anfragen', [Milliseconds(AInfo.AverageMs),
+      AInfo.Samples]);
+    if AInfo.AverageMs >= TAtlasStatusLines.SlowMs then
+    begin
+      Result := Result + ' (langsam)';
+    end;
+  end;
+  if AInfo.Skipped > 0 then
+  begin
+    Result := Result + ', ' + SkippedText(AInfo);
+  end;
+end;
+
+function StoppedText(const AInfo: TAtlasServerInfo; ANow: TDateTime): string;
+begin
+  if AInfo.Ended then
+  begin
+    Result := 'Server: beendet';
+  end
+  else
+  begin
+    Result := 'Server: abgestürzt';
+  end;
+  if AInfo.Since > 0 then
+  begin
+    Result := Result + ' um ' + TAtlasStatusLines.When(AInfo.Since, ANow);
+  end;
+  if not AInfo.Ended and (AInfo.Error <> '') then
+  begin
+    Result := Result + ' (' + AInfo.Error + ')';
+  end;
+end;
+
+/// <summary>AFirst und ASecond mit ", " verbunden; leere fallen weg.</summary>
+function Joined(const AFirst, ASecond: string): string;
+begin
+  if (AFirst <> '') and (ASecond <> '') then
+  begin
+    Result := AFirst + ', ' + ASecond;
+  end
+  else
+  begin
+    Result := AFirst + ASecond;
+  end;
+end;
+
 class function TAtlasStatusLines.ServerText(const AInfo: TAtlasServerInfo; ANow: TDateTime): string;
 begin
   case AInfo.Phase of
     TAtlasServerPhase.Starting:
       Result := 'Server: wird gestartet';
     TAtlasServerPhase.Running:
-      begin
-        Result := 'Server: läuft';
-        if AInfo.Since > 0 then
-        begin
-          Result := Result + ' seit ' + When(AInfo.Since, ANow);
-        end;
-        if AInfo.Samples > 0 then
-        begin
-          Result := Result + Format(', %s im Mittel der letzten %d Anfragen', [Milliseconds(AInfo.AverageMs),
-            AInfo.Samples]);
-          if AInfo.AverageMs >= SlowMs then
-          begin
-            Result := Result + ' (langsam)';
-          end;
-        end;
-        if AInfo.Skipped > 0 then
-        begin
-          Result := Result + ', ' + SkippedText(AInfo);
-        end;
-      end;
+      Result := RunningText(AInfo, ANow);
     TAtlasServerPhase.Stopped:
-      begin
-        if AInfo.Ended then
-        begin
-          Result := 'Server: beendet';
-        end
-        else
-        begin
-          Result := 'Server: abgestürzt';
-        end;
-        if AInfo.Since > 0 then
-        begin
-          Result := Result + ' um ' + When(AInfo.Since, ANow);
-        end;
-        if not AInfo.Ended and (AInfo.Error <> '') then
-        begin
-          Result := Result + ' (' + AInfo.Error + ')';
-        end;
-      end;
+      Result := StoppedText(AInfo, ANow);
     TAtlasServerPhase.Failed:
       begin
         Result := 'Server: Start fehlgeschlagen';
@@ -360,44 +379,40 @@ begin
 end;
 
 class function TAtlasStatusLines.ServerDetail(const AInfo: TAtlasServerInfo; ANow: TDateTime): string;
+var
+  mSince, mMore: string;
 begin
-  Result := '';
+  mSince := '';
+  mMore := '';
   case AInfo.Phase of
     TAtlasServerPhase.Running:
       begin
         if AInfo.Since > 0 then
         begin
-          Result := 'seit ' + When(AInfo.Since, ANow);
+          mSince := 'seit ' + When(AInfo.Since, ANow);
         end;
-        if (AInfo.Skipped > 0) and (Result <> '') then
+        if AInfo.Skipped > 0 then
         begin
-          Result := Result + ', ' + SkippedText(AInfo);
-        end
-        else if AInfo.Skipped > 0 then
-        begin
-          Result := SkippedText(AInfo);
+          mMore := SkippedText(AInfo);
         end;
       end;
     TAtlasServerPhase.Stopped:
       begin
         if AInfo.Since > 0 then
         begin
-          Result := 'um ' + When(AInfo.Since, ANow);
+          mSince := 'um ' + When(AInfo.Since, ANow);
         end;
-        if not AInfo.Ended and (AInfo.Error <> '') and (Result <> '') then
+        if not AInfo.Ended then
         begin
-          Result := Result + ', ' + AInfo.Error;
-        end
-        else if not AInfo.Ended and (AInfo.Error <> '') then
-        begin
-          Result := AInfo.Error;
+          mMore := AInfo.Error;
         end;
       end;
     TAtlasServerPhase.Failed:
-      Result := AInfo.Error;
+      mMore := AInfo.Error;
     TAtlasServerPhase.NotStarted: ;
     TAtlasServerPhase.Starting: ;
   end;
+  Result := Joined(mSince, mMore);
 end;
 
 class function TAtlasStatusLines.IndexText(const AInfo: TAtlasIndexInfo): string;

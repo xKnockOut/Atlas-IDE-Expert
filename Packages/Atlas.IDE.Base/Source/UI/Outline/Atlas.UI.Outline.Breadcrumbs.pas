@@ -54,10 +54,9 @@ type
   /// <summary>Zum Glied AIndex springen; ADeclaration = zur Deklaration statt zur Implementierung.</summary>
   TAtlasCrumbJumpEvent = reference to procedure(AIndex: Integer; ADeclaration: Boolean);
 
-  TAtlasBreadcrumbBar = class(TAtlasEditorBar)
-  private const
-    /// <summary>Teil des „›“ hinter Glied i: SeparatorPart + i.</summary>
-    SeparatorPart = $10000;
+  /// <summary>Glieder der Brotkrumenleiste und ihre Aufteilung auf die Breite; Grundlage von
+  /// TAtlasBreadcrumbBar.</summary>
+  TAtlasBreadcrumbLayout = class(TAtlasEditorBar)
   private
     FCrumbs: TAtlasCrumbs;
     FRects: TArray<TRect>;
@@ -67,41 +66,24 @@ type
     FLaidOut: Boolean;
     FSelected: Integer;
     FEmptyText: string;
-    FCrumbHint: string;
-    FSeparatorHint: string;
-    FOnOpenMenu: TAtlasCrumbMenuEvent;
-    FOnOpenChildren: TAtlasCrumbMenuEvent;
-    FOnJump: TAtlasCrumbJumpEvent;
-    FOnLeave: TProc;
     function BadgeWidth: Integer;
     function CrumbWidth(AIndex: Integer): Integer;
     function SeparatorWidth: Integer;
     function EllipsisWidth: Integer;
     procedure Layout;
+    /// <summary>Breite aller Glieder samt „›“; AWidths je Glied.</summary>
+    function TotalWidth(out AWidths: TArray<Integer>): Integer;
+    /// <summary>Flächen der gezeigten Glieder und ihrer „›“ ab FFirstShown, rechts bis ARight.</summary>
+    procedure PlaceCrumbs(const AWidths: TArray<Integer>; ARight: Integer);
     function GetFirstShown: Integer;
     procedure SetEmptyText(const AValue: string);
-    procedure DrawCrumb(AIndex: Integer);
-    procedure DrawSeparator(ALeft: Integer; const AText: string); overload;
-    procedure DrawSeparator(AIndex: Integer); overload;
     function TrailingSeparator: Boolean;
-    /// <summary>Glied mit Menü oder Sprungziel (Hand, Hervorhebung)?</summary>
-    function Clickable(AIndex: Integer): Boolean;
-    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
-    function PartAt(X, Y: Integer): Integer; override;
-    function PartHint(APart: Integer): string; override;
-    function PartEnabled(APart: Integer): Boolean; override;
-    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
-    procedure Paint; override;
     procedure Resize; override;
-    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    procedure DoEnter; override;
-    procedure DoExit; override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
     procedure AlignControls(AControl: TControl; var Rect: TRect); override;
   public
-    constructor Create(AOwner: TComponent); override;
     /// <summary>Rechter Rand der Glieder: Client-Breite ohne sichtbare Kinder mit alRight.</summary>
     function ContentRight: Integer;
     /// <summary>Glieder setzen; gleiche Glieder zeichnen nicht neu. Die Auswahl springt aufs letzte Glied.</summary>
@@ -114,14 +96,6 @@ type
     function SeparatorAt(X, Y: Integer): Integer;
     /// <summary>Fläche des „›“ hinter dem Glied; leer, wenn keins steht.</summary>
     function SeparatorRect(AIndex: Integer): TRect;
-    /// <summary>Fokus und Auswahl aufs letzte Glied (Tastenkürzel).</summary>
-    procedure FocusLast;
-    /// <summary>Menü des Glieds öffnen, wenn es Geschwister hat.</summary>
-    procedure OpenMenu(AIndex: Integer);
-    /// <summary>Menü der Kinder des Glieds unter dessen „›“ öffnen, wenn es Kinder hat.</summary>
-    procedure OpenChildren(AIndex: Integer);
-    /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
-    procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Was am Fenster der Leiste unabhängig vom Mauspunkt nicht stimmt (kein Fenster, anderer Thread,
     /// anderes Elternfenster, gesperrt, ausgeblendet); '' = in Ordnung.</summary>
     function WindowProblem: string;
@@ -135,6 +109,46 @@ type
     /// <summary>Erstes sichtbares Glied (davor „…“).</summary>
     property FirstShown: Integer read GetFirstShown;
     property EmptyText: string read FEmptyText write SetEmptyText;
+  end;
+
+  TAtlasBreadcrumbBar = class(TAtlasBreadcrumbLayout)
+  private const
+    /// <summary>Teil des „›“ hinter Glied i: SeparatorPart + i.</summary>
+    SeparatorPart = $10000;
+  private
+    FCrumbHint: string;
+    FSeparatorHint: string;
+    FOnOpenMenu: TAtlasCrumbMenuEvent;
+    FOnOpenChildren: TAtlasCrumbMenuEvent;
+    FOnJump: TAtlasCrumbJumpEvent;
+    FOnLeave: TProc;
+    procedure DrawCrumb(AIndex: Integer);
+    /// <summary>Kennzeichen des Glieds ab ALeft; liefert den linken Rand des Namens dahinter.</summary>
+    function DrawBadge(const ACrumb: TAtlasCrumb; ALeft: Integer): Integer;
+    procedure DrawSeparator(ALeft: Integer; const AText: string); overload;
+    procedure DrawSeparator(AIndex: Integer); overload;
+    /// <summary>Glied mit Menü oder Sprungziel (Hand, Hervorhebung)?</summary>
+    function Clickable(AIndex: Integer): Boolean;
+    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
+  protected
+    function PartAt(X, Y: Integer): Integer; override;
+    function PartHint(APart: Integer): string; override;
+    function PartEnabled(APart: Integer): Boolean; override;
+    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
+    procedure Paint; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure DoEnter; override;
+    procedure DoExit; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    /// <summary>Fokus und Auswahl aufs letzte Glied (Tastenkürzel).</summary>
+    procedure FocusLast;
+    /// <summary>Menü des Glieds öffnen, wenn es Geschwister hat.</summary>
+    procedure OpenMenu(AIndex: Integer);
+    /// <summary>Menü der Kinder des Glieds unter dessen „›“ öffnen, wenn es Kinder hat.</summary>
+    procedure OpenChildren(AIndex: Integer);
+    /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
+    procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
     property CrumbHint: string read FCrumbHint write FCrumbHint;
     property SeparatorHint: string read FSeparatorHint write FSeparatorHint;
@@ -197,13 +211,13 @@ begin
   FSelected := -1;
 end;
 
-procedure TAtlasBreadcrumbBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+procedure TAtlasBreadcrumbLayout.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
   inherited ChangeScale(M, D, isDpiChange);
   FLaidOut := False;
 end;
 
-procedure TAtlasBreadcrumbBar.SetCrumbs(const ACrumbs: TAtlasCrumbs);
+procedure TAtlasBreadcrumbLayout.SetCrumbs(const ACrumbs: TAtlasCrumbs);
 begin
   if SameCrumbs(ACrumbs, FCrumbs) then
   begin
@@ -216,7 +230,7 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasBreadcrumbBar.SetEmptyText(const AValue: string);
+procedure TAtlasBreadcrumbLayout.SetEmptyText(const AValue: string);
 begin
   if AValue = FEmptyText then
   begin
@@ -229,7 +243,7 @@ begin
   end;
 end;
 
-function TAtlasBreadcrumbBar.ContentRight: Integer;
+function TAtlasBreadcrumbLayout.ContentRight: Integer;
 var
   Index: Integer;
   Child: TControl;
@@ -246,7 +260,7 @@ begin
   Result := Max(0, Result);
 end;
 
-procedure TAtlasBreadcrumbBar.AlignControls(AControl: TControl; var Rect: TRect);
+procedure TAtlasBreadcrumbLayout.AlignControls(AControl: TControl; var Rect: TRect);
 begin
   inherited AlignControls(AControl, Rect);
   // Ein Kind rechts kam, ging oder änderte die Breite: Glieder neu verteilen.
@@ -254,38 +268,38 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasBreadcrumbBar.Resize;
+procedure TAtlasBreadcrumbLayout.Resize;
 begin
   inherited Resize;
   FLaidOut := False;
   Invalidate;
 end;
 
-procedure TAtlasBreadcrumbBar.CMFontChanged(var Message: TMessage);
+procedure TAtlasBreadcrumbLayout.CMFontChanged(var Message: TMessage);
 begin
   inherited;
   FLaidOut := False;
   Invalidate;
 end;
 
-function TAtlasBreadcrumbBar.BadgeWidth: Integer;
+function TAtlasBreadcrumbLayout.BadgeWidth: Integer;
 begin
   Result := Scale(22);
 end;
 
-function TAtlasBreadcrumbBar.SeparatorWidth: Integer;
+function TAtlasBreadcrumbLayout.SeparatorWidth: Integer;
 begin
   Canvas.Font := Font;
   Result := Canvas.TextWidth(Separator) + Scale(10);
 end;
 
-function TAtlasBreadcrumbBar.EllipsisWidth: Integer;
+function TAtlasBreadcrumbLayout.EllipsisWidth: Integer;
 begin
   Canvas.Font := Font;
   Result := Canvas.TextWidth(Ellipsis) + Scale(6);
 end;
 
-function TAtlasBreadcrumbBar.CrumbWidth(AIndex: Integer): Integer;
+function TAtlasBreadcrumbLayout.CrumbWidth(AIndex: Integer): Integer;
 begin
   Canvas.Font := Font;
   if AIndex = High(FCrumbs) then
@@ -300,17 +314,62 @@ begin
   Canvas.Font := Font;
 end;
 
-function TAtlasBreadcrumbBar.GetFirstShown: Integer;
+function TAtlasBreadcrumbLayout.GetFirstShown: Integer;
 begin
   // Die Aufteilung entsteht erst beim Zeichnen; nach SetCrumbs oder Größenänderung hier nachholen.
   Layout;
   Result := FFirstShown;
 end;
 
-procedure TAtlasBreadcrumbBar.Layout;
+function TAtlasBreadcrumbLayout.TotalWidth(out AWidths: TArray<Integer>): Integer;
+var
+  Index: Integer;
+begin
+  SetLength(AWidths, Length(FCrumbs));
+  Result := 0;
+  for Index := 0 to High(FCrumbs) do
+  begin
+    AWidths[Index] := CrumbWidth(Index);
+    Inc(Result, AWidths[Index]);
+  end;
+  Inc(Result, High(FCrumbs) * SeparatorWidth);
+  if TrailingSeparator then
+  begin
+    Inc(Result, SeparatorWidth);
+  end;
+end;
+
+procedure TAtlasBreadcrumbLayout.PlaceCrumbs(const AWidths: TArray<Integer>; ARight: Integer);
+var
+  Index, Left_: Integer;
+begin
+  Left_ := Scale(4);
+  if FFirstShown > 0 then
+  begin
+    Inc(Left_, EllipsisWidth + SeparatorWidth);
+  end;
+  for Index := 0 to High(FCrumbs) do
+  begin
+    FRects[Index] := TRect.Empty;
+    FSeparators[Index] := TRect.Empty;
+    if Index < FFirstShown then
+    begin
+      Continue;
+    end;
+    FRects[Index] := Rect(Left_, 0, Min(Left_ + AWidths[Index], ARight), ClientHeight);
+    Left_ := Left_ + AWidths[Index];
+    if (Index < High(FCrumbs)) or TrailingSeparator then
+    begin
+      FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, ARight), ClientHeight);
+    end;
+    Left_ := Left_ + SeparatorWidth;
+  end;
+end;
+
+procedure TAtlasBreadcrumbLayout.Layout;
 var
   Widths: TArray<Integer>;
-  Index, Total, Available, Left_, Right_: Integer;
+  Total, Available, Right_: Integer;
 begin
   if FLaidOut or not HandleAllocated then
   begin
@@ -319,23 +378,12 @@ begin
   FLaidOut := True;
   SetLength(FRects, Length(FCrumbs));
   SetLength(FSeparators, Length(FCrumbs));
-  SetLength(Widths, Length(FCrumbs));
   FFirstShown := 0;
   if Length(FCrumbs) = 0 then
   begin
     Exit;
   end;
-  Total := 0;
-  for Index := 0 to High(FCrumbs) do
-  begin
-    Widths[Index] := CrumbWidth(Index);
-    Inc(Total, Widths[Index]);
-  end;
-  Inc(Total, High(FCrumbs) * SeparatorWidth);
-  if TrailingSeparator then
-  begin
-    Inc(Total, SeparatorWidth);
-  end;
+  Total := TotalWidth(Widths);
   Right_ := ContentRight;
   Available := Right_ - 2 * Scale(4);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
@@ -348,36 +396,14 @@ begin
     end;
     Inc(FFirstShown);
   end;
-  Left_ := Scale(4);
-  if FFirstShown > 0 then
-  begin
-    Inc(Left_, EllipsisWidth + SeparatorWidth);
-  end;
-  for Index := 0 to High(FCrumbs) do
-  begin
-    FSeparators[Index] := TRect.Empty;
-    if Index < FFirstShown then
-    begin
-      FRects[Index] := TRect.Empty;
-    end
-    else
-    begin
-      FRects[Index] := Rect(Left_, 0, Min(Left_ + Widths[Index], Right_), ClientHeight);
-      Left_ := Left_ + Widths[Index];
-      if (Index < High(FCrumbs)) or TrailingSeparator then
-      begin
-        FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, Right_), ClientHeight);
-      end;
-      Left_ := Left_ + SeparatorWidth;
-    end;
-  end;
+  PlaceCrumbs(Widths, Right_);
   if FSelected < FFirstShown then
   begin
     FSelected := High(FCrumbs);
   end;
 end;
 
-function TAtlasBreadcrumbBar.CrumbRect(AIndex: Integer): TRect;
+function TAtlasBreadcrumbLayout.CrumbRect(AIndex: Integer): TRect;
 begin
   Layout;
   if (AIndex < 0) or (AIndex > High(FRects)) then
@@ -387,12 +413,12 @@ begin
   Result := FRects[AIndex];
 end;
 
-function TAtlasBreadcrumbBar.TrailingSeparator: Boolean;
+function TAtlasBreadcrumbLayout.TrailingSeparator: Boolean;
 begin
   Result := (Length(FCrumbs) > 0) and (Length(FCrumbs[High(FCrumbs)].Children) > 0);
 end;
 
-function TAtlasBreadcrumbBar.SeparatorRect(AIndex: Integer): TRect;
+function TAtlasBreadcrumbLayout.SeparatorRect(AIndex: Integer): TRect;
 begin
   Layout;
   if (AIndex < 0) or (AIndex > High(FSeparators)) then
@@ -402,7 +428,7 @@ begin
   Result := FSeparators[AIndex];
 end;
 
-function TAtlasBreadcrumbBar.SeparatorAt(X, Y: Integer): Integer;
+function TAtlasBreadcrumbLayout.SeparatorAt(X, Y: Integer): Integer;
 var
   Index: Integer;
 begin
@@ -421,7 +447,7 @@ begin
   Result := -1;
 end;
 
-function TAtlasBreadcrumbBar.CrumbAt(X, Y: Integer): Integer;
+function TAtlasBreadcrumbLayout.CrumbAt(X, Y: Integer): Integer;
 var
   Index: Integer;
 begin
@@ -468,11 +494,39 @@ begin
   DrawSeparator(Area.Left, Separator);
 end;
 
+function TAtlasBreadcrumbBar.DrawBadge(const ACrumb: TAtlasCrumb; ALeft: Integer): Integer;
+var
+  Box: TRect;
+  BoxHeight, Radius: Integer;
+begin
+  Result := ALeft;
+  if ACrumb.Badge.Code = '' then
+  begin
+    Exit;
+  end;
+  BoxHeight := Scale(15);
+  Box := Rect(ALeft, (ClientHeight - BoxHeight) div 2, ALeft + BadgeWidth, (ClientHeight - BoxHeight) div 2 +
+    BoxHeight);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Badges[ACrumb.Badge.Kind].Background);
+  Canvas.Pen.Color := Canvas.Brush.Color;
+  Radius := Scale(4);
+  Canvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Radius, Radius);
+  Canvas.Font := Font;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Height := -Round(Box.Height * 0.62);
+  Canvas.Font.Color := ToColor(Colors.Badges[ACrumb.Badge.Kind].Text);
+  Canvas.Brush.Style := bsClear;
+  DrawText(Canvas.Handle, PChar(ACrumb.Badge.Code), -1, Box, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
+    DT_NOPREFIX);
+  Result := Box.Right + Scale(4);
+end;
+
 procedure TAtlasBreadcrumbBar.DrawCrumb(AIndex: Integer);
 var
   Crumb: TAtlasCrumb;
-  Area, Box, Part: TRect;
-  Left_, BoxHeight, Radius: Integer;
+  Area, Part: TRect;
+  Left_, Radius: Integer;
 begin
   Crumb := FCrumbs[AIndex];
   Area := FRects[AIndex];
@@ -488,26 +542,7 @@ begin
     Radius := Scale(4);
     Canvas.RoundRect(Area.Left, Area.Top + Scale(2), Area.Right, Area.Bottom - Scale(2), Radius, Radius);
   end;
-  Left_ := Area.Left + Scale(4);
-  if Crumb.Badge.Code <> '' then
-  begin
-    BoxHeight := Scale(15);
-    Box := Rect(Left_, (ClientHeight - BoxHeight) div 2, Left_ + BadgeWidth, (ClientHeight - BoxHeight) div 2 +
-      BoxHeight);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Colors.Badges[Crumb.Badge.Kind].Background);
-    Canvas.Pen.Color := Canvas.Brush.Color;
-    Radius := Scale(4);
-    Canvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Radius, Radius);
-    Canvas.Font := Font;
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Height := -Round(Box.Height * 0.62);
-    Canvas.Font.Color := ToColor(Colors.Badges[Crumb.Badge.Kind].Text);
-    Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(Crumb.Badge.Code), -1, Box, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
-      DT_NOPREFIX);
-    Left_ := Box.Right + Scale(4);
-  end;
+  Left_ := DrawBadge(Crumb, Area.Left + Scale(4));
   Canvas.Font := Font;
   Canvas.Brush.Style := bsClear;
   if AIndex = High(FCrumbs) then
@@ -753,7 +788,7 @@ begin
   end;
 end;
 
-function TAtlasBreadcrumbBar.WindowProblem: string;
+function TAtlasBreadcrumbLayout.WindowProblem: string;
 begin
   Result := '';
   if not HandleAllocated then
@@ -778,43 +813,46 @@ begin
   end;
 end;
 
-function TAtlasBreadcrumbBar.HitProblem(const AScreenPoint: TPoint): string;
+/// <summary>Liegt der Bildschirmpunkt außerhalb des Fensters von AControl, außerhalb der Client-Fläche seines
+/// Elternfensters oder außerhalb seiner Fensterregion? '' = nein.</summary>
+function PlaceProblem(AControl: TWinControl; const AScreenPoint: TPoint): string;
 var
   Bounds: TRect;
   Region: HRGN;
-  ExStyle: NativeInt;
-  HitTest: LRESULT;
-  Topmost: HWND;
 begin
-  Result := WindowProblem;
-  if Result <> '' then
-  begin
-    Exit;
-  end;
-  GetWindowRect(Handle, Bounds);
+  Result := '';
+  GetWindowRect(AControl.Handle, Bounds);
   if not PtInRect(Bounds, AScreenPoint) then
   begin
-    Result := Format('Punkt (%d, %d) liegt außerhalb des Fensters (%d, %d, %d, %d)', [AScreenPoint.X,
-      AScreenPoint.Y, Bounds.Left, Bounds.Top, Bounds.Right, Bounds.Bottom]);
-    Exit;
+    Exit(Format('Punkt (%d, %d) liegt außerhalb des Fensters (%d, %d, %d, %d)', [AScreenPoint.X,
+      AScreenPoint.Y, Bounds.Left, Bounds.Top, Bounds.Right, Bounds.Bottom]));
   end;
   // Kinder trifft Windows nur in der Client-Fläche des Elternfensters; im Rahmen bekommt es das Elternfenster.
-  if not PtInRect(Parent.ClientRect, Parent.ScreenToClient(AScreenPoint)) then
+  if not PtInRect(AControl.Parent.ClientRect, AControl.Parent.ScreenToClient(AScreenPoint)) then
   begin
     Exit('Punkt liegt im Rahmen des Elternfensters, nicht in seiner Client-Fläche');
   end;
   Region := CreateRectRgn(0, 0, 0, 0);
   try
     // Die Region ist relativ zur linken oberen Ecke des Fensters; ERROR = keine Region gesetzt.
-    if (GetWindowRgn(Handle, Region) <> ERROR) and
+    if (GetWindowRgn(AControl.Handle, Region) <> ERROR) and
       not PtInRegion(Region, AScreenPoint.X - Bounds.Left, AScreenPoint.Y - Bounds.Top) then
     begin
-      Exit('Punkt liegt außerhalb der Fensterregion (SetWindowRgn)');
+      Result := 'Punkt liegt außerhalb der Fensterregion (SetWindowRgn)';
     end;
   finally
     DeleteObject(Region);
   end;
-  ExStyle := GetWindowLongPtr(Handle, GWL_EXSTYLE);
+end;
+
+/// <summary>Lässt das Fenster von AControl die Maus durch (Stil, WM_NCHITTEST)? '' = nein.</summary>
+function PassThroughProblem(AControl: TWinControl; const AScreenPoint: TPoint): string;
+var
+  ExStyle: NativeInt;
+  HitTest: LRESULT;
+begin
+  Result := '';
+  ExStyle := GetWindowLongPtr(AControl.Handle, GWL_EXSTYLE);
   if ExStyle and WS_EX_TRANSPARENT <> 0 then
   begin
     Exit('Fenster hat WS_EX_TRANSPARENT');
@@ -824,15 +862,41 @@ begin
     Exit('Fenster ist geschichtet (WS_EX_LAYERED)');
   end;
   // Über die ganze Fensterprozedur, also auch über Unterklassen und Stil-Hooks der IDE.
-  HitTest := SendMessage(Handle, WM_NCHITTEST, 0, MakeLParam(Word(AScreenPoint.X), Word(AScreenPoint.Y)));
+  HitTest := SendMessage(AControl.Handle, WM_NCHITTEST, 0, MakeLParam(Word(AScreenPoint.X), Word(AScreenPoint.Y)));
   if Integer(HitTest) = HTTRANSPARENT then
   begin
-    Exit('WM_NCHITTEST liefert HTTRANSPARENT');
+    Result := 'WM_NCHITTEST liefert HTTRANSPARENT';
   end;
-  Topmost := ChildWindowFromPointEx(Parent.Handle, Parent.ScreenToClient(AScreenPoint), CWP_SKIPINVISIBLE);
-  if (Topmost <> 0) and (Topmost <> Handle) and (Topmost <> Parent.Handle) then
+end;
+
+/// <summary>Liegt ein Geschwisterfenster über AControl? '' = nein.</summary>
+function CoverProblem(AControl: TWinControl; const AScreenPoint: TPoint): string;
+var
+  Topmost: HWND;
+begin
+  Result := '';
+  Topmost := ChildWindowFromPointEx(AControl.Parent.Handle, AControl.Parent.ScreenToClient(AScreenPoint),
+    CWP_SKIPINVISIBLE);
+  if (Topmost <> 0) and (Topmost <> AControl.Handle) and (Topmost <> AControl.Parent.Handle) then
   begin
     Result := Format('Geschwisterfenster liegt darüber (%s)', [WindowLabel(Topmost)]);
+  end;
+end;
+
+function TAtlasBreadcrumbLayout.HitProblem(const AScreenPoint: TPoint): string;
+begin
+  Result := WindowProblem;
+  if Result = '' then
+  begin
+    Result := PlaceProblem(Self, AScreenPoint);
+  end;
+  if Result = '' then
+  begin
+    Result := PassThroughProblem(Self, AScreenPoint);
+  end;
+  if Result = '' then
+  begin
+    Result := CoverProblem(Self, AScreenPoint);
   end;
 end;
 

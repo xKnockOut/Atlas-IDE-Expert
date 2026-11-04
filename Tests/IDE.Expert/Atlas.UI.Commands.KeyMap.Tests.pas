@@ -259,25 +259,31 @@ begin
   Assert.IsFalse(Items[0].RarelyByKeyboard);
 end;
 
-procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
+/// <summary>Jede Funktion hat eine eigene, nicht leere Beschriftung ohne Doppelpunkt oder Auslassung.</summary>
+procedure AssertCaptionsPlainAndUnique;
 var
-  Func, Other: TAtlasKeyFunction;
-  Caption: string;
+  mFunc, mOther: TAtlasKeyFunction;
+  mCaption: string;
 begin
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    Caption := TAtlasKeyMapWindow.FunctionCaption(Func);
-    Assert.AreNotEqual('', Caption);
-    Assert.IsFalse(Caption.EndsWith(':') or Caption.EndsWith('…'), Caption);
+    mCaption := TAtlasKeyMapWindow.FunctionCaption(mFunc);
+    Assert.AreNotEqual('', mCaption);
+    Assert.IsFalse(mCaption.EndsWith(':') or mCaption.EndsWith('…'), mCaption);
     // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
-    for Other := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+    for mOther := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
     begin
-      if Other <> Func then
+      if mOther <> mFunc then
       begin
-        Assert.AreNotEqual(Caption, TAtlasKeyMapWindow.FunctionCaption(Other), Caption);
+        Assert.AreNotEqual(mCaption, TAtlasKeyMapWindow.FunctionCaption(mOther), mCaption);
       end;
     end;
   end;
+end;
+
+procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
+begin
+  AssertCaptionsPlainAndUnique;
   Assert.AreEqual('Deklaration/Implementierung wechseln',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));
   Assert.AreEqual('Zwischen Unit und Testunit wechseln',

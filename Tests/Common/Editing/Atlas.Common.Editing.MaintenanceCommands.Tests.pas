@@ -111,7 +111,8 @@ var
   Edits: TArray<TTextEdit>;
 begin
   AResult := '';
-  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, nil, nil, nil, '', '', AHost, Edits, AReason);
+  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', '', AHost),
+    Edits, AReason);
   if Result then
   begin
     AResult := Apply(AText, Edits);

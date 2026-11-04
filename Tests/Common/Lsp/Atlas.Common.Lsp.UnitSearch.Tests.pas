@@ -114,9 +114,25 @@ const
     '  end'#13#10 +
     'end';
 
+/// <summary>Projekte App und Tests; Kunden.pas steht in beiden.</summary>
+function UnitSearchProjects: TArray<TUnitSearchProject>;
+var
+  mMain, mTests: TUnitSearchProject;
+begin
+  mMain := Default(TUnitSearchProject);
+  mMain.Name := 'App';
+  mMain.FileName := 'C:\P\App.dproj';
+  mMain.Files := ['C:\P\App.dpr', 'C:\P\Kunden.pas', 'C:\P\Haupt.pas', 'C:\P\Neu.pas'];
+  mTests := Default(TUnitSearchProject);
+  mTests.Name := 'Tests';
+  mTests.FileName := 'C:\P\Tests\Tests.dproj';
+  mTests.IsTest := True;
+  mTests.Files := ['C:\P\Tests\Tests.dpr', 'C:\P\Tests\Kunden.Tests.pas', 'C:\P\Kunden.pas'];
+  Result := [mMain, mTests];
+end;
+
 function TUnitSearchTests.Context: TUnitSearchContext;
 var
-  Main, Tests: TUnitSearchProject;
   Kunden, Haupt, KundenTests, Hilfe, Sys: TUnitIndex;
 begin
   Kunden := MakeUnit('Kunden', 'C:\P\Kunden.pas', ['System.SysUtils']);
@@ -126,18 +142,9 @@ begin
   Hilfe := MakeUnit('Hilfe', 'C:\Lib\Hilfe.pas', nil);
   Sys := MakeUnit('System.SysUtils', 'C:\BDS\SysUtils.pas', nil);
   Sys.Library_ := True;
-  Main := Default(TUnitSearchProject);
-  Main.Name := 'App';
-  Main.FileName := 'C:\P\App.dproj';
-  Main.Files := ['C:\P\App.dpr', 'C:\P\Kunden.pas', 'C:\P\Haupt.pas', 'C:\P\Neu.pas'];
-  Tests := Default(TUnitSearchProject);
-  Tests.Name := 'Tests';
-  Tests.FileName := 'C:\P\Tests\Tests.dproj';
-  Tests.IsTest := True;
-  Tests.Files := ['C:\P\Tests\Tests.dpr', 'C:\P\Tests\Kunden.Tests.pas', 'C:\P\Kunden.pas'];
   Result := Default(TUnitSearchContext);
   Result.Units := [Kunden, Haupt, KundenTests, Hilfe, Sys];
-  Result.Projects := [Main, Tests];
+  Result.Projects := UnitSearchProjects;
   Result.AncestorsOf :=
     function(AType: string): TArray<string>
     begin
