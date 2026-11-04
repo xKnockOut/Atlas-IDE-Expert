@@ -202,26 +202,6 @@ type
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>completionProvider mit Punkt als Auslöser.</summary>
     class function Capability: TJSONObject; static;
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition;
-      AMatching: TCompletionMatching): TCompletionItems; overload; static;
-    /// <summary>Wie oben mit AMatching = Fuzzy.</summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition): TCompletionItems; overload; static;
-    /// <summary>Wie oben, mit Dokumenttext für Postfix-Vorlagen (#188).</summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-      const APostfix: TPostfixOptions): TCompletionItems; overload; static;
-    /// <summary>Wie oben, gestaffelt (#616): AOnPartial bekommt zuerst den eigenen Gültigkeitsbereich, dann die
-    /// Units aus uses; das Ergebnis enthält nur noch den Rest (Importe, nicht verfügbare, Postfix-Vorlagen).
-    /// Ohne AOnPartial wie oben.</summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-      const APostfix: TPostfixOptions; const AOnPartial: TCompletionPartialProc): TCompletionItems; overload; static;
-    /// <summary>Wie oben, mit Baum, Resolver, Index, Text, Position und Matching aus ARequest (Code-Review S-01).
-    /// </summary>
-    class function Collect(ARequest: TCompletionRequest; const APostfix: TPostfixOptions;
-      const AOnPartial: TCompletionPartialProc): TCompletionItems; overload; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach Settings.SenderCast und den Namen. False ohne
@@ -229,14 +209,6 @@ type
     /// ist.</summary>
     class function SenderItems(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
       out AItems: TCompletionItems): Boolean; static;
-    /// <summary>Kontextabhängige Code-Vorlagen (#51) für die Zeile von APosition: prop, changed, create, free.
-    /// Mit ASnippetSupport als LSP-Snippet, sonst als Klartext ohne Platzhalter.</summary>
-    class function ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AText: string;
-      const APosition: TTextPosition; AMatching: TCompletionMatching;
-      ASnippetSupport: Boolean): TArray<TCompletionItem>; overload; static;
-    /// <summary>Wie oben, mit Text, Position, Index und Matching aus ARequest.</summary>
-    class function ContextItems(ARequest: TCompletionRequest; const ANamespaces: TArray<string>;
-      ASnippetSupport: Boolean): TArray<TCompletionItem>; overload; static;
     /// <summary>Meldet der Client textDocument.completion.completionItem.snippetSupport?</summary>
     class function ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
@@ -292,7 +264,7 @@ uses
   Atlas.Common.Lsp.Completion.Methods,
   Atlas.Common.Lsp.Completion.Guard,
   Atlas.Common.Lsp.Completion.Details,
-  Atlas.Common.Lsp.Completion.InheritedCalls,
+  Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Slash,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.CompletionJson,
@@ -305,7 +277,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.CompletionUses,
   Atlas.Common.Lsp.CompletionInherited,
@@ -333,7 +304,6 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.CompletionGenerics,
-  Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Lsp.CompletionSyntax,
   Atlas.Common.Editing.DataFieldNames,
@@ -343,12 +313,6 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.DocComments,
   Atlas.Text.Lines;
-
-const
-  /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
-  ContextCodes: array[TCompletionContextKind] of string = ('none', 'scope', 'memberAccess', 'uses');
-  TypeKeywords: array[0..7] of string = ('string', 'array', 'set', 'record', 'packed', 'procedure', 'function',
-    'reference');
 
 { TLspCompletion }
 
@@ -471,402 +435,12 @@ begin
   Result.AddPair('resolveProvider', TJSONBool.Create(True));
 end;
 
-class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition): TCompletionItems;
-begin
-  Result := Collect(AResolver, AIndex, ATree, AFileName, APosition, TCompletionMatching.Fuzzy);
-end;
-
-class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; AMatching: TCompletionMatching): TCompletionItems;
-var
-  Postfix: TPostfixOptions;
-begin
-  Postfix := TPostfixOptions.Default;
-  Postfix.Enabled := False;
-  Result := Collect(AResolver, AIndex, ATree, AFileName, '', APosition, AMatching, Postfix);
-end;
-
 class function TLspCompletion.ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean;
 var
   Value: Boolean;
 begin
   Result := (AInitializeParams <> nil) and AInitializeParams.TryGetValue<Boolean>(
     'capabilities.textDocument.completion.completionItem.snippetSupport', Value) and Value;
-end;
-
-class function TLspCompletion.ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>;
-  const AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  ASnippetSupport: Boolean): TArray<TCompletionItem>;
-var
-  Request: TCompletionRequest;
-begin
-  Request := TCompletionRequest.Create(AText, '', APosition);
-  try
-    Request.Index := AIndex;
-    Request.Matching := AMatching;
-    Result := ContextItems(Request, ANamespaces, ASnippetSupport);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.ContextItems(ARequest: TCompletionRequest; const ANamespaces: TArray<string>;
-  ASnippetSupport: Boolean): TArray<TCompletionItem>;
-var
-  Slash: TSlashContext;
-  Snippet: TContextSnippet;
-  Item: TCompletionItem;
-  LineText, Word: string;
-  Start: Integer;
-begin
-  Result := nil;
-  LineText := ARequest.LineText(ARequest.Position.Line);
-  // Getipptes Wort vor dem Cursor; TContextSnippets prüft, dass sonst nichts in der Zeile steht.
-  Start := Min(ARequest.Position.Character, Length(LineText));
-  while (Start > 0) and CharInSet(LineText[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-  begin
-    Dec(Start);
-  end;
-  Word := Copy(LineText, Start + 1, ARequest.Position.Character - Start);
-  Slash := Default(TSlashContext);
-  Slash.Text := ARequest.Text;
-  Slash.Line := ARequest.Position.Line;
-  Slash.LineText := LineText;
-  Slash.Index := ARequest.Index;
-  Slash.Namespaces := ANamespaces;
-  for Snippet in TContextSnippets.At(Slash, ARequest.Position.Character) do
-  begin
-    if (MatchScore(Snippet.Prefix, Word, ARequest.Matching) = TFuzzyMatch.NoMatch) and
-      (MatchScore(Snippet.Name, Word, ARequest.Matching) = TFuzzyMatch.NoMatch) then
-    begin
-      Continue;
-    end;
-    Item := Default(TCompletionItem);
-    Item.Name := Snippet.Name;
-    Item.Detail := Snippet.Description;
-    Item.Kind := KindSnippet;
-    Item.FilterText := Snippet.Prefix;
-    Item.HasTextEdit := True;
-    Item.Snippet := ASnippetSupport;
-    if ASnippetSupport then
-    begin
-      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
-        ARequest.Position.Character), Snippet.Text);
-    end
-    else
-    begin
-      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
-        ARequest.Position.Character), TContextSnippets.ToPlain(Snippet.Text));
-    end;
-    Item.AdditionalEdits := Snippet.AdditionalEdits;
-    // Atlas wertet die weiteren Änderungen dann nicht als uses-Ergänzung.
-    Item.Action := 'snippet';
-    Result := Result + [Item];
-  end;
-end;
-
-class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  const APostfix: TPostfixOptions): TCompletionItems;
-begin
-  Result := Collect(AResolver, AIndex, ATree, AFileName, AText, APosition, AMatching, APostfix, nil);
-end;
-
-/// <summary>Schlüsselwörter passend zur Stelle (#31), erst ab einem getippten Zeichen; ohne Eingabe gingen die
-/// Namen darin unter.</summary>
-function KeywordsAt(const AContext: TCompletionContext): TArray<string>;
-var
-  Word: string;
-begin
-  Result := nil;
-  if AContext.Prefix = '' then
-  begin
-    Exit;
-  end;
-  if AContext.Filter = TCompletionFilter.Types then
-  begin
-    if not AContext.TypeKeywords then
-    begin
-      Exit;
-    end;
-    for Word in TypeKeywords do
-    begin
-      Result := Result + [Word];
-    end;
-  end
-  else
-  begin
-    Result := TCompletionContexts.Keywords(AContext.Place);
-  end;
-end;
-
-class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
-  const APostfix: TPostfixOptions; const AOnPartial: TCompletionPartialProc): TCompletionItems;
-var
-  Request: TCompletionRequest;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
-  try
-    Request.Tree := ATree;
-    Request.Resolver := AResolver;
-    Request.Index := AIndex;
-    Request.Matching := AMatching;
-    Result := Collect(Request, APostfix, AOnPartial);
-  finally
-    Request.Free;
-  end;
-end;
-
-/// <summary>Exception-Klassen, die schon ohne Eingabe aus nicht eingebundenen Units kommen (#483): die gängigen
-/// und, nach "on E: ", die aus dem try-Block.</summary>
-function ExceptionImportNames(ARequest: TCompletionRequest; const AContext: TCompletionContext): TArray<string>;
-var
-  Site: TExceptionSite;
-  Name: string;
-  Units: TArray<string>;
-begin
-  Result := nil;
-  for Name in TCompletionExceptions.CommonNames do
-  begin
-    Result := Result + [Name];
-  end;
-  if TCompletionExceptions.SiteAt(ARequest.Tree.Tokens, AContext.ExceptionToken, Site) then
-  begin
-    for Name in TCompletionExceptions.TryClasses(ARequest, Site, Units) do
-    begin
-      if IndexText(Name, Result) < 0 then
-      begin
-        Result := Result + [Name];
-      end;
-    end;
-  end;
-end;
-
-class function TLspCompletion.Collect(ARequest: TCompletionRequest; const APostfix: TPostfixOptions;
-  const AOnPartial: TCompletionPartialProc): TCompletionItems;
-var
-  Postfix: TArray<TCompletionItem>;
-  Context: TCompletionContext;
-  Candidates: TArray<TResolvedSymbol>;
-  UnitInfo: TUnitIndex;
-  Expected: string;
-  Collector: TCompletionCollector;
-  GenericOwner, Candidate: TResolvedSymbol;
-  OnPartial: TCompletionPartialProc;
-begin
-  Result := Default(TCompletionItems);
-  Postfix := nil;
-  Context := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
-  // Typargument (#450): nur Typen, gefiltert nach den Constraints. Nicht gestaffelt, weil erst die ganze
-  // Liste gefiltert wird.
-  GenericOwner := Default(TResolvedSymbol);
-  OnPartial := AOnPartial;
-  if Context.Generic and ARequest.Settings.GenericConstraints then
-  begin
-    Context.Generic := False;
-    for Candidate in ARequest.Resolver.ResolveAll(ARequest.Tree, ARequest.FileName, Context.GenericOwnerPos) do
-    begin
-      if Candidate.IsType and (Candidate.TypeParams <> '') then
-      begin
-        GenericOwner := Candidate;
-        Context.Generic := True;
-        Context.Filter := TCompletionFilter.Types;
-        Context.TypeKeywords := False;
-        OnPartial := nil;
-        Break;
-      end;
-    end;
-  end
-  else
-  begin
-    Context.Generic := False;
-  end;
-  // Attribute (#465): erst die ganze Liste filtern und sortieren, deshalb nicht gestaffelt.
-  if Context.Attribute and not ARequest.Settings.Attributes then
-  begin
-    Context.Attribute := False;
-    Context.Filter := TCompletionFilter.Any;
-  end;
-  if Context.Attribute then
-  begin
-    OnPartial := nil;
-  end;
-  // Exception-Klassen (#483): ebenso erst die ganze Liste; aus: die gewöhnliche Liste.
-  if Context.Exceptions and not ARequest.Settings.ExceptionClasses then
-  begin
-    Context.Exceptions := False;
-    Context.Filter := TCompletionFilter.Any;
-  end;
-  if Context.Exceptions then
-  begin
-    OnPartial := nil;
-  end;
-  // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
-  TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
-  TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
-  if Context.Kind = TCompletionContextKind.Member then
-  begin
-    TRequestDiagnostics.Note('chainLen', Length(Context.Names));
-  end
-  else if Context.Kind = TCompletionContextKind.None then
-  begin
-    TRequestDiagnostics.Reason('noContext');
-  end;
-  Expected := '';
-  if Context.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
-  begin
-    Expected := TCompletionContexts.ExpectedType(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
-      ARequest.Position);
-  end;
-  // Viele Auflösungen auf demselben Baum: einmal auswerten (Code-Review P-02). Hat Handle den Baum schon
-  // gepinnt, zählt das nur hoch.
-  if ARequest.Tree <> nil then
-  begin
-    ARequest.Resolver.PinTree(ARequest.Tree, ARequest.FileName);
-  end;
-  Collector := TCompletionCollector.Create(ARequest, Context, Expected, OnPartial);
-  try
-    if Context.Attribute then
-    begin
-      Collector.SetAdmit(TCompletionAttributes.Admit(ARequest.Resolver));
-    end;
-    if Context.Exceptions then
-    begin
-      Collector.SetAdmit(TCompletionExceptions.Admit(ARequest.Resolver));
-    end;
-    case Context.Kind of
-      TCompletionContextKind.UsesClause:
-        // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
-        if ARequest.Settings.UsesDetails then
-        begin
-          TCompletionUses.Collect(ARequest, Context, Collector);
-        end
-        else
-        begin
-          for UnitInfo in ARequest.Index.Units do
-          begin
-            Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
-          end;
-        end;
-      TCompletionContextKind.Member, TCompletionContextKind.Scope:
-        begin
-          // Nur passende Namen aufbauen (#616); ohne Eingabe passt ohnehin alles. Der Filter gilt nur beim
-          // Sammeln, nicht für die Typprüfungen in Add.
-          if Context.Kind = TCompletionContextKind.Member then
-          begin
-            // Die Postfix-Vorlagen brauchen die Mitglieder (GetEnumerator).
-            Collector.SetNameFilter(True);
-            try
-              Candidates := ARequest.Resolver.Candidates.MemberCandidates(ARequest.Tree, ARequest.FileName,
-                Context.Names,
-                Context.Offset);
-            finally
-              Collector.SetNameFilter(False);
-            end;
-            Collector.AddCandidates(Candidates);
-            Collector.AddUnavailableMembers(Candidates);
-            // Helper aus nicht eingebundenen Units mit uses-Eintrag (#456), wie Symbole bei #180.
-            Collector.AddHelpersFromOtherUnits(ARequest.Resolver.Candidates.ReceiverTypes(ARequest.Tree,
-              ARequest.FileName,
-              Context.Names, Context.Offset));
-          end
-          else if Context.Filter = TCompletionFilter.InheritedCall then
-          begin
-            // Nach "inherited " nur Methoden der Vorfahren (#31).
-            Collector.SetNameFilter(True);
-            try
-              Candidates := ARequest.Resolver.Candidates.InheritedCandidates(ARequest.Tree, ARequest.FileName,
-                Context.Offset);
-            finally
-              Collector.SetNameFilter(False);
-            end;
-            // Vollständiger Aufruf mit den eigenen Parametern zuerst (#482).
-            if ARequest.Settings.InheritedCall then
-            begin
-              TCompletionInheritedCalls.Add(ARequest, Context, Collector, Candidates);
-            end;
-            Collector.AddCandidates(Candidates);
-          end
-          else
-          begin
-            // Eigener Gültigkeitsbereich zuerst (#616): lokal, Self, eigene Unit; dann die Units aus uses.
-            Collector.SetNameFilter(True);
-            try
-              Candidates := ARequest.Resolver.Candidates.OwnScopeCandidates(ARequest.Tree, ARequest.FileName,
-                Context.Offset);
-            finally
-              Collector.SetNameFilter(False);
-            end;
-            Collector.AddCandidates(Candidates);
-            Collector.MarkUsedShadows;
-            Collector.SendStage;
-            Collector.SetNameFilter(True);
-            try
-              // Mit Eingabe auch die Bezeichner von System ohne Quelltext (#880): Assigned, SetLength,
-              // Integer ... Ohne Eingabe nicht, die Liste ist dann ohnehin unvollständig (Incomplete).
-              Candidates := ARequest.Resolver.Candidates.UsedScopeCandidates(Context.Prefix <> '');
-            finally
-              Collector.SetNameFilter(False);
-            end;
-            Collector.AddCandidates(Candidates);
-            // Gleichnamige Bezeichner aus anderen Units direkt hinter der aktiven Variante (#475).
-            Collector.AddSameNameVariants;
-          end;
-          if (Context.Kind = TCompletionContextKind.Scope) and
-            (Context.Filter <> TCompletionFilter.InheritedCall) then
-          begin
-            // Danach die nicht eingebundenen Units.
-            Collector.SendStage;
-            if Length(Context.Prefix) >= MinImportPrefix then
-            begin
-              Collector.AddFromOtherUnits;
-            end
-            else if Context.Attribute then
-            begin
-              // Bekannte Attribute (DUnitX, JSON) schon nach "[" mit uses-Eintrag (#465).
-              Collector.AddFromOtherUnits(TCompletionAttributes.KnownClassNames);
-            end
-            else if Context.Exceptions then
-            begin
-              // Gängige Exception-Klassen schon nach "raise " bzw. "on E: " mit uses-Eintrag (#483).
-              Collector.AddFromOtherUnits(ExceptionImportNames(ARequest, Context));
-            end;
-            Collector.AddUnavailable;
-            Collector.AddKeywords(KeywordsAt(Context));
-          end;
-          // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
-          if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (ARequest.Text <> '') then
-          begin
-            Postfix := TCompletionPostfix.Items(ARequest, Context, Candidates, APostfix);
-          end;
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    Result.Items := Collector.Finish(Result.Incomplete);
-    if Context.Generic then
-    begin
-      Result.Items := TCompletionGenerics.Apply(ARequest, Context, GenericOwner, Result.Items);
-    end;
-    if Context.Attribute then
-    begin
-      Result.Items := TCompletionAttributes.Apply(ARequest, Context, Result.Items);
-    end;
-    if Context.Exceptions then
-    begin
-      // Platzhalter wie bei den Postfix-Vorlagen nach snippetSupport des Clients.
-      Result.Items := TCompletionExceptions.Apply(ARequest, Context, APostfix.Snippet, Result.Items);
-    end;
-    Result.Items := Result.Items + Postfix;
-  finally
-    Collector.Free;
-    if ARequest.Tree <> nil then
-    begin
-      ARequest.Resolver.UnpinTree;
-    end;
-  end;
 end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
@@ -1409,7 +983,7 @@ begin
       Collected: TCompletionItems;
     begin
       Result := TCompletionOutcome.Next;
-      Collected := Collect(ARequest, AAnswer.Postfix, AAnswer.Partial);
+      Collected := TCompletionLists.Collect(ARequest, AAnswer.Postfix, AAnswer.Partial);
       AAnswer.Body := WithoutNames(Collected.Items, AAnswer.Prefetched);
       if not ARequest.Settings.Keywords then
       begin
@@ -1422,7 +996,7 @@ begin
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
     begin
       Result := TCompletionOutcome.Next;
-      AAnswer.Tail := AAnswer.Tail + ContextItems(ARequest, Namespaces, FSnippetSupport);
+      AAnswer.Tail := AAnswer.Tail + TCompletionLists.ContextItems(ARequest, Namespaces, FSnippetSupport);
     end);
   // Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu fragen.
   AddCase(FTreeCases,
@@ -1665,7 +1239,7 @@ begin
       mRequest.Matching := ARequest.Matching;
       mPostfix := TPostfixOptions.Default;
       mPostfix.Enabled := False;
-      AItems := Collect(mRequest, mPostfix, nil);
+      AItems := TCompletionLists.Collect(mRequest, mPostfix, nil);
     finally
       mRequest.Tree.Free;
     end;

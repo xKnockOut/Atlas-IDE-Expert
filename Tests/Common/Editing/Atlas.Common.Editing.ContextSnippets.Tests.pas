@@ -41,6 +41,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -322,7 +323,7 @@ begin
   Code := Format(Setter, ['ch|']);
   Context := ContextAt(Code, Character);
   // Ohne snippetSupport: Klartext ohne "${", kein insertTextFormat.
-  Items := TLspCompletion.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
+  Items := TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
     TCompletionMatching.Fuzzy, False);
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.IsFalse(Items[0].Snippet);
@@ -339,7 +340,7 @@ begin
     Json.Free;
   end;
   // Mit snippetSupport: Snippet mit Platzhalter.
-  Items := TLspCompletion.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
+  Items := TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line, Character),
     TCompletionMatching.Fuzzy, True);
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.IsTrue(Items[0].Snippet);
@@ -353,7 +354,7 @@ begin
   // Passt das Wort nicht, kommt nichts.
   Code := Format(Setter, ['xyz|']);
   Context := ContextAt(Code, Character);
-  Assert.AreEqual(0, Integer(Length(TLspCompletion.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line,
+  Assert.AreEqual(0, Integer(Length(TCompletionLists.ContextItems(nil, nil, Code, TTextPosition.Create(Context.Line,
     Character), TCompletionMatching.Prefix, True))));
 end;
 

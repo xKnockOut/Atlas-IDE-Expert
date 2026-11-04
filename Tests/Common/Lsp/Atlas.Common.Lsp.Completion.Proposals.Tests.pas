@@ -88,6 +88,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.IOUtils,
   System.Generics.Collections,
@@ -1384,7 +1385,7 @@ procedure TLspCompletionProposalTests.GroupsByExpectedType;
     Resolver := TNameResolver.Create(FIndex);
     try
       Result := TCompletionContexts.ExpectedType(Resolver, Tree, HauptFile, Position);
-      Items := TLspCompletion.Collect(Resolver, FIndex, Tree, HauptFile, Position);
+      Items := TCompletionLists.Collect(Resolver, FIndex, Tree, HauptFile, Position);
       // Passende zuerst, danach keine passenden mehr.
       Fits := '';
       Fitting := True;
@@ -1584,10 +1585,10 @@ begin
   try
     FResolver.PinTree(Tree, HauptFile);
     try
-      Assert.AreEqual(Plain, Names(TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile,
+      Assert.AreEqual(Plain, Names(TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile,
         PositionOf(Text, #10'begin'#10'  '), TCompletionMatching.Prefix)));
       // Ein zweiter Aufruf im selben Pin (wie Handle mit mehreren Stufen).
-      Assert.AreEqual(Plain, Names(TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile,
+      Assert.AreEqual(Plain, Names(TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile,
         PositionOf(Text, #10'begin'#10'  '), TCompletionMatching.Prefix)));
     finally
       FResolver.UnpinTree;
