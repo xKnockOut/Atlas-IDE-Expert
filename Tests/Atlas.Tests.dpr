@@ -1082,6 +1082,8 @@ uses
   Atlas.Core.Architecture.Model in '..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Model.pas',
   Atlas.Core.Architecture.Commands in '..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas',
   Atlas.Core.Architecture.View in '..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.View.pas',
+  Atlas.Core.Architecture.MapState in '..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas',
+  Atlas.Core.Architecture.MapState.Tests in 'IDE.Expert\Atlas.Core.Architecture.MapState.Tests.pas',
   Atlas.Core.Architecture.Model.Tests in 'IDE.Expert\Atlas.Core.Architecture.Model.Tests.pas',
   Atlas.UI.Architecture.Map in '..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas',
   Atlas.UI.Architecture.Slider in '..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
