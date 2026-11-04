@@ -87,7 +87,9 @@ implementation
 procedure TAtlasModuleHosting.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if FOwner = nil then
+  begin
     Exit;
+  end;
   case AChange.Kind of
     rcModuleAdded:
       FOwner.Added(AChange.ModuleId);
@@ -95,7 +97,9 @@ begin
       FOwner.Removed(AChange.ModuleId);
     rcProvided, rcRevoked:
       if IsEqualGUID(AChange.IID, IAtlasFeaturePart) and FOwner.SyncParts and Assigned(FOwner.FOnChanged) then
+      begin
         FOwner.FOnChanged();
+      end;
   else
     // Bereitstellungen und die Liste bekannter Module ändern die Tabelle nicht.
   end;
@@ -114,9 +118,13 @@ begin
   FListener.FOwner := Self;
   FListenerRef := FListener;
   if FRegistry = nil then
+  begin
     Exit;
+  end;
   for mModule in FRegistry.Modules do
+  begin
     AddPart(mModule);
+  end;
   SyncParts;
   FSubscription := FRegistry.Subscribe(FListenerRef);
 end;
@@ -125,7 +133,9 @@ destructor TAtlasModuleHosting.Destroy;
 begin
   FListener.FOwner := nil;
   if FSubscription <> nil then
+  begin
     FSubscription.Revoke;
+  end;
   FSubscription := nil;
   FListenerRef := nil;
   FParts := nil;
@@ -207,7 +217,9 @@ var
 begin
   Result := '';
   if (AOwnerId <> '') and FRegistry.FindModule(AOwnerId, mModule) then
+  begin
     Result := mModule.Info.Switch;
+  end;
 end;
 
 function TAtlasModuleHosting.IndexOfPart(const APart: IAtlasFeaturePart): Integer;
@@ -216,8 +228,12 @@ var
 begin
   Result := -1;
   for mIndex := 0 to High(FParts) do
+  begin
     if Pointer(FParts[mIndex].Part) = Pointer(APart) then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 function TAtlasModuleHosting.SyncParts: Boolean;
@@ -235,20 +251,32 @@ begin
   mProvided := FRegistry.Provisions(IAtlasFeaturePart);
   mWanted := nil;
   for mItem in mProvided do
+  begin
     if Supports(mItem.Instance, IAtlasFeaturePart, mPart) then
+    begin
       mWanted := mWanted + [mPart];
+    end;
+  end;
   // Zurückgezogen: stoppen, falls es läuft, und aus der Tabelle (rückwärts).
   for mIndex := High(FParts) downto 0 do
   begin
     mFound := False;
     for mPart in mWanted do
+    begin
       if Pointer(mPart) = Pointer(FParts[mIndex].Part) then
+      begin
         mFound := True;
+      end;
+    end;
     if mFound then
+    begin
       Continue;
+    end;
     try
       if FParts[mIndex].Part.IsActive then
+      begin
         FParts[mIndex].Part.Stop;
+      end;
     except
       on mError: Exception do
         FFailures := FFailures + [FParts[mIndex].Name + ': ' + mError.ClassName + ': ' + mError.Message];
@@ -260,15 +288,21 @@ begin
   for mItem in mProvided do
   begin
     if not Supports(mItem.Instance, IAtlasFeaturePart, mPart) or (IndexOfPart(mPart) >= 0) then
+    begin
       Continue;
+    end;
     mEntry.Part := mPart;
     mEntry.Name := mPart.Name;
     if FFeatures.Contains(mEntry.Name) then
+    begin
       raise EAtlasModuleRegistry.CreateFmt('Teil %s gibt es schon (Modul %s)', [mEntry.Name, mItem.OwnerId]);
+    end;
     FFeatures.AddWanted(mEntry.Name, PartWanted(mPart), PartIsActive(mPart), PartStart(mPart), PartStop(mPart));
     mSwitch := SwitchOf(mItem.OwnerId);
     if mSwitch <> '' then
+    begin
       FFeatures.Join(mSwitch, [mEntry.Name]);
+    end;
     FParts := FParts + [mEntry];
     Result := True;
   end;
@@ -288,10 +322,14 @@ begin
   mInfo := AModule.Info;
   mName := PartName(mInfo.Id);
   if FFeatures.Contains(mName) then
+  begin
     Exit;
+  end;
   FFeatures.Add(mName, mInfo.MinLevel, IsActiveOf(AModule), StartOf(AModule), StopOf(AModule));
   if mInfo.Switch <> '' then
+  begin
     FFeatures.Join(mInfo.Switch, [mName]);
+  end;
 end;
 
 procedure TAtlasModuleHosting.Added(const AModuleId: string);
@@ -299,10 +337,14 @@ var
   mModule: IAtlasModule;
 begin
   if not FRegistry.FindModule(AModuleId, mModule) then
+  begin
     Exit;
+  end;
   AddPart(mModule);
   if Assigned(FOnChanged) then
+  begin
     FOnChanged();
+  end;
 end;
 
 procedure TAtlasModuleHosting.Removed(const AModuleId: string);

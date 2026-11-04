@@ -178,14 +178,20 @@ begin
   for Item in AUnits do
   begin
     if Item.FileName = '' then
+    begin
       Continue;
+    end;
     if (ARemembered <> nil) and ARemembered.TryGetValue(UpperCase(Item.FileName), Stamp) then
     begin
       if Stamp <> Item.Stamp then
+      begin
         Result := Result + [Item.FileName];
+      end;
     end
     else if (AOutputTime = 0) or (Item.ModifiedAt = 0) or (Item.ModifiedAt > AOutputTime) then
+    begin
       Result := Result + [Item.FileName];
+    end;
   end;
 end;
 
@@ -203,8 +209,10 @@ var
 begin
   Parts := nil;
   for Finding in AFindings do
+  begin
     Parts := Parts + [Format('%s:%d:%d:%s', [UpperCase(Finding.FileName), Finding.Problem.StartLine,
       Finding.Problem.StartCharacter, Finding.Problem.Code])];
+  end;
   TArray.Sort<string>(Parts);
   Result := UpperCase(AProject) + '|' + string.Join(';', AStamps) + '|' + string.Join(';', Parts);
 end;
@@ -235,23 +243,33 @@ end;
 function TAtlasBuildGateParticipant.Now_: Int64;
 begin
   if Assigned(FClock) then
-    Result := FClock()
+  begin
+    Result := FClock();
+  end
   else
+  begin
     Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
 end;
 
 function TAtlasBuildGateParticipant.PendingIndex(const AFileName: string): Integer;
 begin
   for Result := 0 to FPending.Count - 1 do
+  begin
     if SameText(FPending[Result].Project, AFileName) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
 function TAtlasBuildGateParticipant.RememberedOf(const AProject: string): TDictionary<string, string>;
 begin
   if not FRemembered.TryGetValue(UpperCase(AProject), Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TAtlasBuildGateParticipant.RememberedStamp(const AProject, AFileName: string): string;
@@ -261,7 +279,9 @@ begin
   Result := '';
   Stamps := RememberedOf(AProject);
   if Stamps <> nil then
+  begin
     Stamps.TryGetValue(UpperCase(AFileName), Result);
+  end;
 end;
 
 function TAtlasBuildGateParticipant.CancelCompile(const AProject: TAtlasCompileProject;
@@ -287,18 +307,26 @@ begin
   Result := False;
   Settings := FSettings();
   if not TAtlasBuildGateCheck.Applies(Settings, AProject) or not FUnits(AProject, Units, OutputTime) then
+  begin
     Exit;
+  end;
   // Stand vormerken: Gelingt der Compile, gilt er als letzter erfolgreicher.
   Pending.Project := AProject.FileName;
   Pending.Units := Units;
   Index := PendingIndex(AProject.FileName);
   if Index >= 0 then
-    FPending[Index] := Pending
+  begin
+    FPending[Index] := Pending;
+  end
   else
+  begin
     FPending.Add(Pending);
+  end;
   Changed := TAtlasBuildGateCheck.Changed(Units, RememberedOf(AProject.FileName), OutputTime);
   if Length(Changed) = 0 then
+  begin
     Exit;
+  end;
   Started := Now_;
   Findings := nil;
   Stamps := nil;
@@ -315,15 +343,21 @@ begin
     end;
     Inc(Checked);
     for Item in Units do
+    begin
       if SameText(Item.FileName, FileName) then
+      begin
         Stamps := Stamps + [Item.Stamp];
+      end;
+    end;
     for Problem in Problems do
+    begin
       if TAtlasBuildGateCheck.Counts(Problem) then
       begin
         Finding.FileName := FileName;
         Finding.Problem := Problem;
         Findings := Findings + [Finding];
       end;
+    end;
   end;
   NotifyTimeout := False;
   if TimedOut then
@@ -333,12 +367,18 @@ begin
     NotifyTimeout := not FTimeoutNotified;
     FTimeoutNotified := True;
     if (Length(Findings) = 0) and not NotifyTimeout then
+    begin
       Exit;
+    end;
   end
   else if Length(Findings) = 0 then
-    Exit
+  begin
+    Exit;
+  end
   else if Settings.Gate <> TAtlasBuildGate.Block then
-    Outcome := TAtlasGateOutcome.Reported
+  begin
+    Outcome := TAtlasGateOutcome.Reported;
+  end
   else
   begin
     CurrentKey := TAtlasBuildGateCheck.Key(AProject.FileName, Stamps, Findings);
@@ -369,7 +409,9 @@ begin
   // Abgebrochen (von uns oder einem anderen Teilnehmer): der vorgemerkte Stand gilt nicht.
   Index := PendingIndex(AProject.FileName);
   if Index >= 0 then
+  begin
     FPending.Delete(Index);
+  end;
 end;
 
 procedure TAtlasBuildGateParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
@@ -382,15 +424,23 @@ var
 begin
   Index := PendingIndex(AProject.FileName);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Pending := FPending[Index];
   FPending.Delete(Index);
   if not ASucceeded then
+  begin
     Exit;
+  end;
   Stamps := TDictionary<string, string>.Create;
   for Item in Pending.Units do
+  begin
     if Item.FileName <> '' then
+    begin
       Stamps.AddOrSetValue(UpperCase(Item.FileName), Item.Stamp);
+    end;
+  end;
   FRemembered.AddOrSetValue(UpperCase(Pending.Project), Stamps);
 end;
 

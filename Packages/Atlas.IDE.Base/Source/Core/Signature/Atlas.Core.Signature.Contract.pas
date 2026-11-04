@@ -111,9 +111,13 @@ implementation
 function TAtlasSignatureParameter.Text(const ALabel: string): string;
 begin
   if (Start >= 0) and (Stop > Start) then
-    Result := Copy(ALabel, Start + 1, Stop - Start)
+  begin
+    Result := Copy(ALabel, Start + 1, Stop - Start);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 { TAtlasFormatRange }

@@ -87,13 +87,21 @@ begin
   end;
   Result.S := Delta / (1 - Abs(2 * Result.L - 1));
   if MaxValue = R then
-    Result.H := 60 * FMod((G - B) / Delta, 6)
+  begin
+    Result.H := 60 * FMod((G - B) / Delta, 6);
+  end
   else if MaxValue = G then
-    Result.H := 60 * ((B - R) / Delta + 2)
+  begin
+    Result.H := 60 * ((B - R) / Delta + 2);
+  end
   else
+  begin
     Result.H := 60 * ((R - G) / Delta + 4);
+  end;
   if Result.H < 0 then
+  begin
     Result.H := Result.H + 360;
+  end;
 end;
 
 function TAtlasHSL.ToColor: TAtlasColor;
@@ -103,7 +111,9 @@ begin
   C := (1 - Abs(2 * EnsureRange(L, 0, 1) - 1)) * EnsureRange(S, 0, 1);
   Hue := FMod(H, 360);
   if Hue < 0 then
+  begin
     Hue := Hue + 360;
+  end;
   X := C * (1 - Abs(FMod(Hue / 60, 2) - 1));
   M := EnsureRange(L, 0, 1) - C / 2;
   case Trunc(Hue / 60) of
@@ -130,7 +140,9 @@ var
   Value: Integer;
 begin
   if (Length(AHex) <> 7) or (AHex[1] <> '#') or not TryStrToInt('$' + Copy(AHex, 2, 6), Value) then
+  begin
     raise EConvertError.CreateFmt('Ungültige Farbe "%s"', [AHex]);
+  end;
   Result := Rgb((Value shr 16) and $FF, (Value shr 8) and $FF, Value and $FF);
 end;
 
@@ -189,9 +201,13 @@ class function TAtlasColorMath.Luminance(AColor: TAtlasColor): Double;
   begin
     Value := AValue / 255;
     if Value <= 0.04045 then
-      Result := Value / 12.92
+    begin
+      Result := Value / 12.92;
+    end
     else
+    begin
       Result := Power((Value + 0.055) / 1.055, 2.4);
+    end;
   end;
 
 begin
@@ -222,17 +238,25 @@ class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
   begin
     Value := AValue / 255;
     if Value <= 0.04045 then
-      Result := Value / 12.92
+    begin
+      Result := Value / 12.92;
+    end
     else
+    begin
       Result := Power((Value + 0.055) / 1.055, 2.4);
+    end;
   end;
 
   function F(AValue: Double): Double;
   begin
     if AValue > 216 / 24389 then
-      Result := Power(AValue, 1 / 3)
+    begin
+      Result := Power(AValue, 1 / 3);
+    end
     else
+    begin
       Result := (24389 / 27 * AValue + 16) / 116;
+    end;
   end;
 
 var
@@ -257,10 +281,14 @@ var
   function Hue(AB, AA: Double): Double;
   begin
     if (AA = 0) and (AB = 0) then
+    begin
       Exit(0);
+    end;
     Result := RadToDeg(ArcTan2(AB, AA));
     if Result < 0 then
+    begin
       Result := Result + 360;
+    end;
   end;
 
 begin
@@ -281,21 +309,33 @@ begin
   begin
     DeltaHue := H2p - H1p;
     if DeltaHue > 180 then
-      DeltaHue := DeltaHue - 360
+    begin
+      DeltaHue := DeltaHue - 360;
+    end
     else if DeltaHue < -180 then
+    begin
       DeltaHue := DeltaHue + 360;
+    end;
   end;
   DHp := 2 * Sqrt(C1p * C2p) * Sin(DegToRad(DeltaHue / 2));
   LMean := (A.L + B.L) / 2;
   CpMean := (C1p + C2p) / 2;
   if C1p * C2p = 0 then
-    HpMean := H1p + H2p
+  begin
+    HpMean := H1p + H2p;
+  end
   else if Abs(H1p - H2p) <= 180 then
-    HpMean := (H1p + H2p) / 2
+  begin
+    HpMean := (H1p + H2p) / 2;
+  end
   else if H1p + H2p < 360 then
-    HpMean := (H1p + H2p + 360) / 2
+  begin
+    HpMean := (H1p + H2p + 360) / 2;
+  end
   else
+  begin
     HpMean := (H1p + H2p - 360) / 2;
+  end;
   T := 1 - 0.17 * Cos(DegToRad(HpMean - 30)) + 0.24 * Cos(DegToRad(2 * HpMean)) +
     0.32 * Cos(DegToRad(3 * HpMean + 6)) - 0.20 * Cos(DegToRad(4 * HpMean - 63));
   DTheta := 30 * Exp(-Sqr((HpMean - 275) / 25));

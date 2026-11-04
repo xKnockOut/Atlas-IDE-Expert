@@ -134,12 +134,16 @@ begin
   ATitle := '';
   AText := '';
   if Length(ANotes) = 0 then
+  begin
     Exit;
+  end;
   if Length(ANotes) = 1 then
   begin
     Stamp := ANotes[0].Changed;
     if Stamp = 0 then
+    begin
       Stamp := ANotes[0].Created;
+    end;
     ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesTipTitle,
       [DateToStr(TTimeZone.Local.ToLocalTime(Stamp), FormatSettings)]);
     AText := ANotes[0].Text;
@@ -149,7 +153,9 @@ begin
   for Note in ANotes do
   begin
     if AText <> '' then
+    begin
       AText := AText + #10#10;
+    end;
     AText := AText + Note.Text;
   end;
 end;

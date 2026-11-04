@@ -117,7 +117,9 @@ class function TAtlasSymbolPathChain.LocationText(const AFileName: string; ALine
 begin
   Result := '';
   if AFileName <> '' then
+  begin
     Result := Format('%s:%d', [ExtractFileName(AFileName), ALine + 1]);
+  end;
 end;
 
 class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
@@ -125,37 +127,61 @@ begin
   if AStep.Kind = 'uses' then
   begin
     if AStep.Implementation_ then
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl)
+    begin
+      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl);
+    end
     else
+    begin
       Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUses);
+    end;
   end
   else if AStep.Kind = 'inherits' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeInherits)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeInherits);
+  end
   else if AStep.Kind = 'implements' then
   begin
     if AStep.Reverse then
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy)
+    begin
+      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy);
+    end
     else
+    begin
       Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplements);
+    end;
   end
   else if AStep.Kind = 'hasField' then
   begin
     // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
     if AStep.Caption = 'vom Typ' then
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType)
+    begin
+      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType);
+    end
     else
+    begin
       Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeHasField);
+    end;
   end
   else if AStep.Kind = 'parameter' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeParameter)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeParameter);
+  end
   else if AStep.Kind = 'result' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeResult)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeResult);
+  end
   else if AStep.Kind = 'calls' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls);
+  end
   else if AStep.Kind = 'contains' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains);
+  end
   else
+  begin
     Result := AStep.Caption;
+  end;
 end;
 
 function NodeDetail(const ANode: TAtlasSymbolPathNode): string;
@@ -164,18 +190,24 @@ var
 begin
   Result := '';
   if not ANode.IsUnit then
+  begin
     Result := ANode.UnitName;
+  end;
   Location := TAtlasSymbolPathChain.LocationText(ANode.FileName, ANode.Line);
   if Location <> '' then
   begin
     if Result <> '' then
+    begin
       Result := Result + ' · ';
+    end;
     Result := Result + Location;
   end;
   if ANode.Library_ then
   begin
     if Result <> '' then
+    begin
       Result := Result + ' · ';
+    end;
     Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathLibrary);
   end;
 end;
@@ -202,7 +234,9 @@ begin
         Step := AAnswer.Routes[ARow.Route].Steps[ARow.Index];
         AMain := StepCaption(Step);
         if Step.Inferred then
+        begin
           AMain := AMain + ' [' + TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + ']';
+        end;
         ADetail := LocationText(Step.FileName, Step.Line);
       end;
     TAtlasSymbolPathRowKind.Candidate:
@@ -220,15 +254,23 @@ begin
     TAtlasSymbolPathStatus.Found:
       begin
         if Length(AAnswer.Routes) > 1 then
+        begin
           Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFoundMany, [AAnswer.StepCount, Length(AAnswer.Routes),
-            AAnswer.Visited, AAnswer.ElapsedMs])
+            AAnswer.Visited, AAnswer.ElapsedMs]);
+        end
         else
+        begin
           Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFound, [AAnswer.StepCount, AAnswer.Visited,
             AAnswer.ElapsedMs]);
+        end;
         if AAnswer.MoreRoutes then
+        begin
           Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathMoreRoutes);
+        end;
         if AAnswer.CallsIncomplete then
+        begin
           Result := Result + TAtlasStrings.Text(TAtlasTextId.SymbolPathCallsIncomplete);
+        end;
       end;
     TAtlasSymbolPathStatus.NoPath:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNoPath, [AAnswer.MaxSteps, AAnswer.Visited]);
@@ -252,7 +294,9 @@ begin
   begin
     FSelected := 0;
     if FRows[0].Kind = TAtlasSymbolPathRowKind.Header then
+    begin
       FSelected := Min(1, High(FRows));
+    end;
   end;
   Layout;
   Invalidate;
@@ -279,7 +323,9 @@ begin
     Inc(Top, FHeights[Index]);
     // Treffer stehen ohne Pfeil untereinander, mit etwas Abstand.
     if FRows[Index].Kind = TAtlasSymbolPathRowKind.Candidate then
+    begin
       Inc(Top, Px(4));
+    end;
   end;
   Height := Top + Px(Margin);
 end;
@@ -301,8 +347,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FRows) do
+  begin
     if (Y >= FTops[Index]) and (Y < FTops[Index] + FHeights[Index]) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -310,7 +360,9 @@ function TAtlasSymbolPathChain.RowRect(AIndex: Integer): TRect;
 begin
   Result := TRect.Empty;
   if (AIndex >= 0) and (AIndex <= High(FRows)) then
+  begin
     Result := TRect.Create(Px(Margin), FTops[AIndex], ClientWidth - Px(Margin), FTops[AIndex] + FHeights[AIndex]);
+  end;
 end;
 
 function TAtlasSymbolPathChain.Lines: TArray<string>;
@@ -323,7 +375,9 @@ begin
   begin
     RowTexts(FAnswer, Row, Main, Detail);
     if Detail <> '' then
+    begin
       Main := Main + ' · ' + Detail;
+    end;
     Result := Result + [Main];
   end;
 end;
@@ -333,9 +387,13 @@ var
   Bounds: TRect;
 begin
   if (AValue < -1) or (AValue > High(FRows)) then
+  begin
     AValue := -1;
+  end;
   if FSelected = AValue then
+  begin
     Exit;
+  end;
   FSelected := AValue;
   Invalidate;
   // In der Scrollbox sichtbar halten.
@@ -343,11 +401,15 @@ begin
   begin
     Bounds := RowRect(FSelected);
     if Top + Bounds.Top < 0 then
+    begin
       TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
-        Top + Bounds.Top
+        Top + Bounds.Top;
+    end
     else if Top + Bounds.Bottom > Parent.ClientHeight then
+    begin
       TScrollingWinControl(Parent).VertScrollBar.Position := TScrollingWinControl(Parent).VertScrollBar.Position +
         Top + Bounds.Bottom - Parent.ClientHeight;
+    end;
   end;
 end;
 
@@ -356,10 +418,14 @@ var
   Row: TAtlasSymbolPathRow;
 begin
   if (FSelected < 0) or (FSelected > High(FRows)) then
+  begin
     Exit;
+  end;
   Row := FRows[FSelected];
   if (Row.FileName = '') or not Assigned(FOnOpen) then
+  begin
     Exit;
+  end;
   FOnOpen(Row.FileName, Row.Line, Row.Character);
 end;
 
@@ -369,10 +435,14 @@ var
 begin
   inherited;
   if Showing and CanFocus then
+  begin
     SetFocus;
+  end;
   Hit := RowAt(Y);
   if (Hit >= 0) and (FRows[Hit].Kind <> TAtlasSymbolPathRowKind.Header) then
+  begin
     SetSelected(Hit);
+  end;
 end;
 
 procedure TAtlasSymbolPathChain.DblClick;
@@ -397,12 +467,18 @@ begin
         Next := FSelected;
         repeat
           if Key = VK_DOWN then
-            Inc(Next)
+          begin
+            Inc(Next);
+          end
           else
+          begin
             Dec(Next);
+          end;
         until (Next < 0) or (Next > High(FRows)) or (FRows[Next].Kind <> TAtlasSymbolPathRowKind.Header);
         if (Next >= 0) and (Next <= High(FRows)) then
+        begin
           SetSelected(Next);
+        end;
         Key := 0;
       end;
   end;
@@ -478,9 +554,13 @@ begin
             Canvas.Pen.Width := Max(1, Px(2));
           end;
           if Index = FSelected then
-            Canvas.Pen.Color := ToColor(Colors.Accent)
+          begin
+            Canvas.Pen.Color := ToColor(Colors.Accent);
+          end
           else
+          begin
             Canvas.Pen.Color := ToColor(Colors.Muted);
+          end;
           Canvas.MoveTo(X, Y);
           Canvas.LineTo(X, Bottom);
           Canvas.Pen.Style := psSolid;
@@ -491,9 +571,13 @@ begin
           Canvas.Polygon([Point(X - Tip, Bottom - Tip), Point(X + Tip, Bottom - Tip), Point(X, Bottom)]);
           Canvas.Brush.Style := bsClear;
           if Index = FSelected then
-            Canvas.Font.Color := ToColor(Colors.Accent)
+          begin
+            Canvas.Font.Color := ToColor(Colors.Accent);
+          end
           else
+          begin
             Canvas.Font.Color := ToColor(Colors.Text);
+          end;
           TextTop := Box.Top + (Box.Height - Canvas.TextHeight(Main)) div 2;
           Canvas.TextOut(X + Px(14), TextTop, Main);
           if Detail <> '' then

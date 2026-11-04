@@ -90,7 +90,9 @@ end;
 function TAtlasUnitSearchState.GroupState(const AGroupFile: string): TGroupState;
 begin
   if not FGroups.TryGetValue(LowerCase(AGroupFile), Result) then
+  begin
     Result := Default(TGroupState);
+  end;
 end;
 
 function TAtlasUnitSearchState.Collapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping): TArray<string>;
@@ -100,8 +102,12 @@ begin
   Result := nil;
   Prefix := GroupingPrefix(AGrouping);
   for Item in GroupState(AGroupFile).Collapsed do
+  begin
     if Item.StartsWith(Prefix) then
+    begin
       Result := Result + [Copy(Item, Length(Prefix) + 1, MaxInt)];
+    end;
+  end;
 end;
 
 procedure TAtlasUnitSearchState.SetCollapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping;
@@ -115,10 +121,16 @@ begin
   Prefix := GroupingPrefix(AGrouping);
   Kept := nil;
   for Item in State.Collapsed do
+  begin
     if not Item.StartsWith(Prefix) then
+    begin
       Kept := Kept + [Item];
+    end;
+  end;
   for Item in AKeys do
+  begin
     Kept := Kept + [Prefix + LowerCase(Item)];
+  end;
   State.Collapsed := Kept;
   FGroups.AddOrSetValue(LowerCase(AGroupFile), State);
 end;
@@ -171,19 +183,29 @@ begin
       Item := TJSONObject.Create;
       List := TJSONArray.Create;
       for Value in Pair.Value.Collapsed do
+      begin
         List.Add(Value);
+      end;
       Item.AddPair('collapsed', List);
       if Pair.Value.HasFilters then
       begin
         List := TJSONArray.Create;
         for Origin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
+        begin
           if Origin in Pair.Value.Origins then
+          begin
             List.Add(OriginTexts[Origin]);
+          end;
+        end;
         Item.AddPair('origins', List);
         List := TJSONArray.Create;
         for Kind := Low(TAtlasUnitKind) to High(TAtlasUnitKind) do
+        begin
           if Kind in Pair.Value.Kinds then
+          begin
             List.Add(TAtlasUnitSearch.KindText(Kind));
+          end;
+        end;
         Item.AddPair('kinds', List);
       end;
       Groups.AddPair(Pair.Key, Item);
@@ -217,7 +239,9 @@ begin
   try
     Result := Root is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     if TJSONObject(Root).TryGetValue<TJSONObject>('window', Window) then
     begin
       Window.TryGetValue<Integer>('left', Left);
@@ -228,28 +252,48 @@ begin
       Window.TryGetValue<Boolean>('previewVisible', PreviewVisible);
     end;
     if not TJSONObject(Root).TryGetValue<TJSONObject>('groups', Groups) then
+    begin
       Exit;
+    end;
     for Pair in Groups do
     begin
       if not (Pair.JsonValue is TJSONObject) then
+      begin
         Continue;
+      end;
       Item := TJSONObject(Pair.JsonValue);
       State := Default(TGroupState);
       if Item.TryGetValue<TJSONArray>('collapsed', List) then
+      begin
         for Value in List do
+        begin
           State.Collapsed := State.Collapsed + [LowerCase(Value.Value)];
+        end;
+      end;
       if Item.TryGetValue<TJSONArray>('origins', List) then
       begin
         State.HasFilters := True;
         for Value in List do
+        begin
           for Origin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
+          begin
             if SameText(Value.Value, OriginTexts[Origin]) then
+            begin
               Include(State.Origins, Origin);
+            end;
+          end;
+        end;
       end;
       if Item.TryGetValue<TJSONArray>('kinds', List) then
+      begin
         for Value in List do
+        begin
           if TAtlasUnitSearch.KindFromText(Value.Value, Kind) then
+          begin
             Include(State.Kinds, Kind);
+          end;
+        end;
+      end;
       FGroups.AddOrSetValue(LowerCase(Pair.JsonString.Value), State);
     end;
   finally
@@ -266,17 +310,23 @@ begin
       Result := LoadJson(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   // Ohne gelesene Datei gelten die Vorgaben.
   if Result <> TAtlasDataLoad.Loaded then
+  begin
     LoadJson('');
+  end;
 end;
 
 function TAtlasUnitSearchState.SaveToFile(const AFileName: string): Boolean;
 begin
   Result := not SameFileName(AFileName, FKept);
   if Result then
+  begin
     TAtlasDataFile.Write(AFileName, ToJson);
+  end;
 end;
 
 end.

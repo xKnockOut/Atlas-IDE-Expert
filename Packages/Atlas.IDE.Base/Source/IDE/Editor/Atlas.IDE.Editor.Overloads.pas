@@ -74,7 +74,9 @@ begin
   View := TAtlasEditorBuffer.ActiveView;
   Before := '';
   if (View <> nil) and (View.Buffer <> nil) then
+  begin
     Before := TAtlasEditorBuffer.Text(View.Buffer);
+  end;
   Warnings := nil;
   Placeholders := nil;
   try
@@ -87,10 +89,16 @@ begin
           Reply := TJSONObject(Answer);
           Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
           if Reply.GetValue('placeholders') is TJSONArray then
+          begin
             Placeholders := Reply.GetValue('placeholders').Clone as TJSONValue;
+          end;
           if Reply.GetValue('warnings') is TJSONArray then
+          begin
             for Item in TJSONArray(Reply.GetValue('warnings')) do
+            begin
               Warnings := Warnings + [Item.Value];
+            end;
+          end;
         end;
       finally
         Answer.Free;
@@ -115,16 +123,24 @@ begin
     end;
     AMessage(TAtlasStrings.Text(TAtlasTextId.OverloadDone));
     for Warning in Warnings do
+    begin
       AMessage(TAtlasStrings.Fmt(TAtlasTextId.OverloadNote, [Warning]));
+    end;
     // Platzhalter nur in der Ansicht der geänderten Datei.
     if (View = nil) or (View.Buffer = nil) or (Length(Edit.Files) <> 1) then
+    begin
       Exit;
+    end;
     FileName := Edit.Files[0].FileName;
     if not SameText(FileName, View.Buffer.FileName) then
+    begin
       Exit;
+    end;
     Expansion := TAtlasServerPlaceholders.Expansion(Placeholders, TAtlasEditorBuffer.Text(View.Buffer));
     if Expansion.HasPlaceholders and Assigned(APlaceholders) then
+    begin
       APlaceholders(View, Before, 0, Expansion);
+    end;
   finally
     Placeholders.Free;
   end;

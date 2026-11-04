@@ -86,9 +86,13 @@ const
 function Truth(ACondition: Boolean): Double;
 begin
   if ACondition then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 { TExprParser }
@@ -119,13 +123,17 @@ begin
     if AText[Index].IsLetter or (AText[Index] = '_') then
     begin
       while (Index <= Length(AText)) and (AText[Index].IsLetterOrDigit or CharInSet(AText[Index], ['_', '.'])) do
+      begin
         Inc(Index);
+      end;
       Token.Kind := etIdent;
     end
     else if AText[Index].IsDigit then
     begin
       while (Index <= Length(AText)) and (AText[Index].IsDigit or (AText[Index] = '.')) do
+      begin
         Inc(Index);
+      end;
       Token.Kind := etNumber;
     end
     else
@@ -133,7 +141,9 @@ begin
       Inc(Index);
       if (Index <= Length(AText)) and CharInSet(AText[Start], ['<', '>']) and CharInSet(AText[Index], ['=', '>'])
         then
+      begin
         Inc(Index);
+      end;
       Token.Kind := etSymbol;
     end;
     Token.Text := Copy(AText, Start, Index - Start);
@@ -144,7 +154,9 @@ end;
 function TExprParser.Peek: TExprToken;
 begin
   if FPos <= High(FTokens) then
-    Result := FTokens[FPos]
+  begin
+    Result := FTokens[FPos];
+  end
   else
   begin
     Result.Kind := etEnd;
@@ -156,7 +168,9 @@ function TExprParser.Take: TExprToken;
 begin
   Result := Peek;
   if FPos <= High(FTokens) then
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TExprParser.IsWord(const AWord: string): Boolean;
@@ -219,22 +233,36 @@ begin
   Result := ParseValue;
   if not (IsSymbol('=') or IsSymbol('<>') or IsSymbol('<') or IsSymbol('>') or IsSymbol('<=') or
     IsSymbol('>=')) then
+  begin
     Exit;
+  end;
   Op := Take.Text;
   Right := ParseValue;
   // $IF vergleicht wie dcc exakt; eine Toleranz würde Zweige anders wählen als der Compiler.
   if Op = '=' then
-    Result := Truth(Result = Right) // lsp-ignore: float-equality
+  begin
+    Result := Truth(Result = Right); // lsp-ignore: float-equality
+  end
   else if Op = '<>' then
-    Result := Truth(Result <> Right) // lsp-ignore: float-equality
+  begin
+    Result := Truth(Result <> Right); // lsp-ignore: float-equality
+  end
   else if Op = '<' then
-    Result := Truth(Result < Right)
+  begin
+    Result := Truth(Result < Right);
+  end
   else if Op = '>' then
-    Result := Truth(Result > Right)
+  begin
+    Result := Truth(Result > Right);
+  end
   else if Op = '<=' then
-    Result := Truth(Result <= Right)
+  begin
+    Result := Truth(Result <= Right);
+  end
   else
+  begin
     Result := Truth(Result >= Right);
+  end;
 end;
 
 function TExprParser.ParseValue: Double;
@@ -247,7 +275,9 @@ begin
   case Token.Kind of
     etNumber:
       if not TryStrToFloat(Token.Text, Result, TFormatSettings.Invariant) then
+      begin
         Result := UnknownValue;
+      end;
     etIdent:
       if SameText(Token.Text, 'Defined') or SameText(Token.Text, 'Declared') then
       begin
@@ -256,25 +286,37 @@ begin
         begin
           Take;
           while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+          begin
             Name := Name + Take.Text;
+          end;
           Take;
         end;
         // Declared kennt nur der Compiler: bleibt wahr.
         if SameText(Token.Text, 'Defined') then
+        begin
           Result := Truth(FOwner.Defined(Name));
+        end;
       end
       else if SameText(Token.Text, 'CompilerVersion') or SameText(Token.Text, 'RTLVersion') then
-        Result := FOwner.CompilerVersion
+      begin
+        Result := FOwner.CompilerVersion;
+      end
       else if SameText(Token.Text, 'True') then
-        Result := 1
+      begin
+        Result := 1;
+      end
       else if SameText(Token.Text, 'False') then
+      begin
         Result := 0;
+      end;
     etSymbol:
       if Token.Text = '(' then
       begin
         Result := ParseOr;
         if IsSymbol(')') then
+        begin
           Take;
+        end;
       end;
   else
     // Ende des Ausdrucks: bleibt unbekannt.
@@ -292,8 +334,12 @@ begin
   FFrames := TList<TFrame>.Create;
   FCompilerVersion := ACompilerVersion;
   for Symbol in ADefines do
+  begin
     if Trim(Symbol) <> '' then
+    begin
       FDefines.AddOrSetValue(UpperCase(Trim(Symbol)), True);
+    end;
+  end;
 end;
 
 destructor TAtlasConditionals.Destroy;
@@ -335,7 +381,9 @@ begin
   Text := Trim(ADirective);
   Split := 1;
   while (Split <= Length(Text)) and (Text[Split].IsLetterOrDigit or (Text[Split] = '_')) do
+  begin
     Inc(Split);
+  end;
   Name := UpperCase(Copy(Text, 1, Split - 1));
   Argument := Trim(Copy(Text, Split, MaxInt));
   Result := True;
@@ -344,12 +392,20 @@ begin
     Frame.ParentActive := Active;
     Condition := False;
     if Frame.ParentActive then
+    begin
       if Name = 'IFDEF' then
-        Condition := Defined(Argument)
+      begin
+        Condition := Defined(Argument);
+      end
       else if Name = 'IFNDEF' then
-        Condition := not Defined(Argument)
+      begin
+        Condition := not Defined(Argument);
+      end
       else if Name = 'IF' then
+      begin
         Condition := Evaluate(Argument);
+      end;
+    end;
     Frame.Active := Frame.ParentActive and Condition;
     Frame.Taken := Frame.Active;
     FFrames.Add(Frame);
@@ -371,20 +427,28 @@ begin
   else if (Name = 'ENDIF') or (Name = 'IFEND') then
   begin
     if FFrames.Count > 0 then
+    begin
       FFrames.Delete(FFrames.Count - 1);
+    end;
   end
   else if Name = 'DEFINE' then
   begin
     if Active and (Argument <> '') then
+    begin
       FDefines.AddOrSetValue(UpperCase(Argument), True);
+    end;
   end
   else if Name = 'UNDEF' then
   begin
     if Active then
+    begin
       FDefines.Remove(UpperCase(Argument));
+    end;
   end
   else
+  begin
     Result := False;
+  end;
 end;
 
 end.

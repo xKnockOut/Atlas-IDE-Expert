@@ -103,8 +103,12 @@ var
 begin
   Result := TAtlasSwitchOriginKind.Default;
   for Kind := Low(TAtlasSwitchOriginKind) to High(TAtlasSwitchOriginKind) do
+  begin
     if OriginKinds[Kind] = AText then
+    begin
       Result := Kind;
+    end;
+  end;
 end;
 
 function RowOf(ASection: TAtlasSwitchSection; AEntry: TJSONObject): TAtlasSwitchRow;
@@ -136,11 +140,19 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONObject then
-    ARows := ARows + [RowOf(ASection, TJSONObject(Value))]
+  begin
+    ARows := ARows + [RowOf(ASection, TJSONObject(Value))];
+  end
   else if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONObject then
+      begin
         ARows := ARows + [RowOf(ASection, TJSONObject(Item))];
+      end;
+    end;
+  end;
 end;
 
 function TargetRow(const AName, AValue: string): TAtlasSwitchRow;
@@ -177,7 +189,9 @@ begin
   AView := Default(TAtlasCompilerSwitchView);
   Result := AValue is TJSONObject;
   if not Result then
+  begin
     Exit;
+  end;
   Root := TJSONObject(AValue);
   AView.Configuration := Root.GetValue<string>('configuration', '');
   AView.Platform := Root.GetValue<string>('platform', '');
@@ -201,8 +215,12 @@ var
 begin
   Result := nil;
   for Row in Rows do
+  begin
     if Row.Deviates then
+    begin
       Result := Result + [Row];
+    end;
+  end;
 end;
 
 { TAtlasCompilerSwitchTexts }
@@ -210,9 +228,13 @@ end;
 class function TAtlasCompilerSwitchTexts.Value(const AValue: string): string;
 begin
   if AValue = '-' then
-    Result := #$2212
+  begin
+    Result := #$2212;
+  end
   else
+  begin
     Result := AValue;
+  end;
 end;
 
 { TAtlasSwitchFollow }
@@ -228,7 +250,9 @@ function TAtlasSwitchFollow.Moved(const AFileName: string; ALine, ACharacter: In
 begin
   Result := not SameText(AFileName, FFileName) or (ALine <> FLine) or (ACharacter <> FCharacter);
   if not Result then
+  begin
     Exit;
+  end;
   FFileName := AFileName;
   FLine := ALine;
   FCharacter := ACharacter;

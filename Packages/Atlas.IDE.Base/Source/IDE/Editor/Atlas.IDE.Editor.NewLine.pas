@@ -51,7 +51,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -62,7 +64,9 @@ var
 begin
   LineText := '';
   if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
+  begin
     LineText := ALines[APosition.Line];
+  end;
   Result.Line := APosition.Line + 1;
   Result.Col := TLspSession.IndexToColumn(LineText, APosition.Character, ATabWidth);
 end;
@@ -93,24 +97,34 @@ var
   Done: TAtlasNewLineResult;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   if Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   LineBreak := #10;
   if Pos(#13#10, Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
   Done := TAtlasNewLine.Insert(Lines, View.CursorPos.Line - 1, ADirection,
     Options(TAtlasEditorBuffer.BlockIndent(Buffer)));
   NewText := string.Join(LineBreak, Done.Lines);
   if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
+  begin
     WriteBuffer(Buffer, Text, Start, OldLength, Insert);
+  end;
   View.CursorPos := EditPos(Done.Lines, Done.Cursor, TabWidth);
   View.MoveViewToCursor;
   View.Paint;

@@ -282,11 +282,19 @@ begin
   Result := -1;
   mState := Trim(AState);
   if mState = '' then
+  begin
     Exit;
+  end;
   for mColumn := 0 to High(Columns) do
+  begin
     for mValue in Columns[mColumn].Values do
+    begin
       if SameText(Trim(mValue), mState) then
+      begin
         Exit(mColumn);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasBoardSnapshot.CardIndex(const AKey: string): Integer;
@@ -294,8 +302,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Cards) do
+  begin
     if SameText(Cards[mIndex].Key, Trim(AKey)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -303,7 +315,9 @@ function TAtlasBoardSnapshot.CardColumn(ACard: Integer): Integer;
 begin
   Result := -1;
   if (ACard >= 0) and (ACard <= High(Cards)) then
+  begin
     Result := ColumnOf(Cards[ACard].State);
+  end;
 end;
 
 { TAtlasTrackerBoard }
@@ -324,23 +338,35 @@ begin
   // "Marco B. (mb)": nur der Name; Anmeldenamen mit Punkt oder Unterstrich als Wörter.
   mIndex := Pos('(', mText);
   if mIndex > 1 then
+  begin
     mText := Trim(Copy(mText, 1, mIndex - 1));
+  end;
   mText := StringReplace(StringReplace(StringReplace(mText, '.', ' ', [rfReplaceAll]), '_', ' ', [rfReplaceAll]), '-',
     ' ', [rfReplaceAll]);
   mWords := nil;
   for mWord in mText.Split([' ', #9]) do
+  begin
     if (mWord <> '') and IsLetter(mWord[1]) then
+    begin
       mWords := mWords + [mWord];
+    end;
+  end;
   if Length(mWords) = 0 then
+  begin
     Exit;
+  end;
   if Length(mWords) = 1 then
   begin
     Result := mWords[0][1];
     if (Length(mWords[0]) > 1) and IsLetter(mWords[0][2]) then
+    begin
       Result := Result + mWords[0][2];
+    end;
   end
   else
+  begin
     Result := mWords[0][1] + mWords[1][1];
+  end;
   Result := UpperCase(Result);
 end;
 
@@ -350,8 +376,12 @@ var
 begin
   Result := False;
   for mName in ANames do
+  begin
     if SameText(AName, mName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerBoard.PriorityLevel(const APriority: string): Integer;
@@ -361,17 +391,29 @@ begin
   mName := Trim(APriority);
   // GitHub-Projekte: "P0" … "P3"; Labels "priority:high".
   if Pos(':', mName) > 0 then
+  begin
     mName := Trim(Copy(mName, Pos(':', mName) + 1, MaxInt));
+  end;
   if NameIn(mName, ['Show-stopper', 'Critical', 'Kritisch', 'Blocker', 'Urgent', 'Dringend', 'P0']) then
-    Result := 4
+  begin
+    Result := 4;
+  end
   else if NameIn(mName, ['Major', 'High', 'Hoch', 'Wichtig', 'P1']) then
-    Result := 3
+  begin
+    Result := 3;
+  end
   else if NameIn(mName, ['Normal', 'Medium', 'Mittel', 'P2']) then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else if NameIn(mName, ['Minor', 'Low', 'Niedrig', 'Gering', 'Trivial', 'P3', 'P4']) then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasTrackerBoard.Mine(const ACard: TAtlasBoardCard; const AMe: string): Boolean;
@@ -380,10 +422,16 @@ var
 begin
   Result := Trim(AMe) = '';
   if Result then
+  begin
     Exit;
+  end;
   for mLogin in ACard.Logins do
+  begin
     if SameText(Trim(mLogin), Trim(AMe)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerBoard.Matches(const ACard: TAtlasBoardCard; const ASearch: string): Boolean;
@@ -393,8 +441,12 @@ begin
   Result := True;
   mText := LowerCase(ACard.Key + ' ' + ACard.Title + ' ' + ACard.Assignee + ' ' + string.Join(' ', ACard.Logins));
   for mWord in LowerCase(Trim(ASearch)).Split([' ', #9]) do
+  begin
     if (mWord <> '') and (Pos(mWord, mText) = 0) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerBoard.Visible(const ASnapshot: TAtlasBoardSnapshot; AOnlyMine: Boolean;
@@ -406,9 +458,13 @@ begin
   for mIndex := 0 to High(ASnapshot.Cards) do
   begin
     if AOnlyMine and not Mine(ASnapshot.Cards[mIndex], ASnapshot.Me) then
+    begin
       Continue;
+    end;
     if not Matches(ASnapshot.Cards[mIndex], ASearch) then
+    begin
       Continue;
+    end;
     Result := Result + [mIndex];
   end;
 end;
@@ -420,8 +476,12 @@ var
 begin
   Result := nil;
   for mCard in AVisible do
+  begin
     if ASnapshot.CardColumn(mCard) = AColumn then
+    begin
       Result := Result + [mCard];
+    end;
+  end;
 end;
 
 class function TAtlasTrackerBoard.CanMove(const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean;
@@ -429,7 +489,9 @@ begin
   Result := (ACard >= 0) and (ACard <= High(ASnapshot.Cards)) and (AColumn >= 0) and
     (AColumn <= High(ASnapshot.Columns)) and (ASnapshot.CardColumn(ACard) <> AColumn);
   if not Result then
+  begin
     Exit;
+  end;
   case ASnapshot.Kind of
     TAtlasBoardKind.Project:
       Result := (ASnapshot.Columns[AColumn].OptionId <> '') and (ASnapshot.Cards[ACard].ItemId <> '');
@@ -447,12 +509,18 @@ begin
   begin
     if (ASprints[mIndex].Start > 0) and (ASprints[mIndex].Start <= ANow) and
       ((ASprints[mIndex].Finish = 0) or (ANow < ASprints[mIndex].Finish)) then
+    begin
       Exit(mIndex);
+    end;
     if (ASprints[mIndex].Start > ANow) and ((mNext < 0) or (ASprints[mIndex].Start < ASprints[mNext].Start)) then
+    begin
       mNext := mIndex;
+    end;
   end;
   if mNext >= 0 then
+  begin
     Exit(mNext);
+  end;
   Result := High(ASprints);
 end;
 
@@ -473,25 +541,35 @@ end;
 class function TAtlasTrackerBoard.KindOf(const AKey: string): TAtlasBoardKind;
 begin
   if SameText(AKey, 'project') then
-    Result := TAtlasBoardKind.Project
+  begin
+    Result := TAtlasBoardKind.Project;
+  end
   else if SameText(AKey, 'repository') then
-    Result := TAtlasBoardKind.Repository
+  begin
+    Result := TAtlasBoardKind.Repository;
+  end
   else
+  begin
     Result := TAtlasBoardKind.Agile;
+  end;
 end;
 
 class function TAtlasTrackerBoard.TimeText(AValue: TDateTime): string;
 begin
   Result := '';
   if AValue > 0 then
+  begin
     Result := DateToISO8601(AValue, True);
+  end;
 end;
 
 class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
 begin
   Result := 0;
   if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 function Texts(const AItems: TArray<string>): TJSONArray;
@@ -500,7 +578,9 @@ var
 begin
   Result := TJSONArray.Create;
   for mItem in AItems do
+  begin
     Result.Add(mItem);
+  end;
 end;
 
 function SprintJson(const ASprint: TAtlasBoardSprint): TJSONObject;
@@ -557,7 +637,9 @@ begin
     mRoot.AddPair('columns', mList);
     mList := TJSONArray.Create;
     for mSprint in ASnapshot.Sprints do
+    begin
       mList.AddElement(SprintJson(mSprint));
+    end;
     mRoot.AddPair('sprints', mList);
     mRoot.AddPair('sprint', SprintJson(ASnapshot.Sprint));
     mList := TJSONArray.Create;
@@ -579,7 +661,9 @@ begin
       mItem.AddPair('page', mCard.Page);
       mItem.AddPair('resolvedAt', TimeText(mCard.ResolvedAt));
       if mCard.HasPoints then
+      begin
         mItem.AddPair('points', TJSONNumber.Create(mCard.Points));
+      end;
       mList.AddElement(mItem);
     end;
     mRoot.AddPair('cards', mList);
@@ -596,7 +680,9 @@ begin
   Result := '';
   mValue := AObject.Values[AName];
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 function IntOf(AObject: TJSONObject; const AName: string): Integer;
@@ -606,7 +692,9 @@ begin
   Result := 0;
   mValue := AObject.Values[AName];
   if (mValue is TJSONNumber) and not TryStrToInt(TJSONNumber(mValue).Value, Result) then
+  begin
     Result := 0;
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -624,9 +712,15 @@ begin
   Result := nil;
   mValue := AObject.Values[AName];
   if mValue is TJSONArray then
+  begin
     for mItem in TJSONArray(mValue) do
+    begin
       if mItem is TJSONString then
+      begin
         Result := Result + [TJSONString(mItem).Value];
+      end;
+    end;
+  end;
 end;
 
 function SprintOf(AValue: TJSONValue): TAtlasBoardSprint;
@@ -635,7 +729,9 @@ var
 begin
   Result := Default(TAtlasBoardSprint);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   mObject := TJSONObject(AValue);
   Result.Id := TextOf(mObject, 'id');
   Result.Name := TextOf(mObject, 'name');
@@ -656,10 +752,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     if IntOf(mRoot, 'version') <> TAtlasBoardSnapshot.Version then
+    begin
       Exit;
+    end;
     ASnapshot.Kind := KindOf(TextOf(mRoot, 'kind'));
     ASnapshot.Fetched := TimeValue(TextOf(mRoot, 'fetched'));
     ASnapshot.Me := TextOf(mRoot, 'me');
@@ -670,12 +770,20 @@ begin
     ASnapshot.ProjectId := TextOf(mRoot, 'projectId');
     ASnapshot.FieldId := TextOf(mRoot, 'fieldId');
     if mRoot.Values['boards'] is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot.Values['boards']) do
+      begin
         if mItem is TJSONObject then
+        begin
           ASnapshot.Boards := ASnapshot.Boards + [TAtlasBoardRef.Create(TextOf(TJSONObject(mItem), 'id'),
             TextOf(TJSONObject(mItem), 'name'))];
+        end;
+      end;
+    end;
     if mRoot.Values['columns'] is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot.Values['columns']) do
+      begin
         if mItem is TJSONObject then
         begin
           mObject := TJSONObject(mItem);
@@ -683,15 +791,24 @@ begin
             TextOf(mObject, 'optionId'), FlagOf(mObject, 'resolved'));
           ASnapshot.Columns := ASnapshot.Columns + [mColumn];
         end;
+      end;
+    end;
     if mRoot.Values['sprints'] is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot.Values['sprints']) do
+      begin
         ASnapshot.Sprints := ASnapshot.Sprints + [SprintOf(mItem)];
+      end;
+    end;
     ASnapshot.Sprint := SprintOf(mRoot.Values['sprint']);
     if mRoot.Values['cards'] is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot.Values['cards']) do
       begin
         if not (mItem is TJSONObject) then
+        begin
           Continue;
+        end;
         mObject := TJSONObject(mItem);
         mCard := Default(TAtlasBoardCard);
         mCard.Key := TextOf(mObject, 'key');
@@ -709,10 +826,15 @@ begin
         mCard.ResolvedAt := TimeValue(TextOf(mObject, 'resolvedAt'));
         mCard.HasPoints := mObject.Values['points'] is TJSONNumber;
         if mCard.HasPoints then
+        begin
           mCard.Points := TJSONNumber(mObject.Values['points']).AsDouble;
+        end;
         if (mCard.Key <> '') and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.MaxCards) then
+        begin
           ASnapshot.Cards := ASnapshot.Cards + [mCard];
+        end;
       end;
+    end;
     Result := True;
   finally
     mValue.Free;
@@ -733,11 +855,17 @@ var
 begin
   Result := '';
   if (AFolder = '') or (ATarget.Server = '') or (AName = '') then
+  begin
     Exit;
+  end;
   // Der Name kommt auch aus IDs des Trackers (Sprints): nur harmlose Zeichen in den Dateinamen.
   for mIndex := 1 to Length(AName) do
+  begin
     if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    begin
       Exit;
+    end;
+  end;
   Result := TAtlasTrackerFiles.Join(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
 end;
 

@@ -102,9 +102,22 @@ begin
     end;
 end;
 
-/// <summary>Umwandlung an AMarker mit AName ('' = Vorschlag); AResult ist der Text, der fehlerfrei parsen muss.
-/// </summary>
-function Run(const AText, AMarker, AName: string; out ATarget: TPromoteTarget; out APromoted: TPromoteResult;
+type
+  /// <summary>Wo umgewandelt wird (Marker) und unter welchem Namen ('' = Vorschlag).</summary>
+  TPromoteAt = record
+    Marker: string;
+    Name: string;
+  end;
+
+function At(const AMarker, AName: string): TPromoteAt;
+begin
+  Result := Default(TPromoteAt);
+  Result.Marker := AMarker;
+  Result.Name := AName;
+end;
+
+/// <summary>Umwandlung nach AAt; AResult ist der Text, der fehlerfrei parsen muss.</summary>
+function Run(const AText: string; const AAt: TPromoteAt; out ATarget: TPromoteTarget; out APromoted: TPromoteResult;
   out AReason, AResult: string): Boolean;
 var
   Tree, Check: TSyntaxTree;
@@ -115,17 +128,17 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TPromoteVariable.Target(AText, Tree, PositionOf(AText, AMarker), TestLookup(Tree), ATarget, AReason);
+    Result := TPromoteVariable.Target(AText, Tree, PositionOf(AText, AAt.Marker), TestLookup(Tree), ATarget, AReason);
     if not Result then
     begin
       Exit;
     end;
-    Name := AName;
+    Name := AAt.Name;
     if Name = '' then
     begin
       Name := ATarget.Suggested;
     end;
-    Result := TPromoteVariable.Execute(AText, Tree, PositionOf(AText, AMarker), TestLookup(Tree),
+    Result := TPromoteVariable.Execute(AText, Tree, PositionOf(AText, AAt.Marker), TestLookup(Tree),
       TFormatStyle.Default, Name, APromoted, AReason);
     if Result then
     begin
@@ -146,7 +159,8 @@ function Promoted(const AText, AMarker: string; out ATarget: TPromoteTarget; out
 var
   Reason: string;
 begin
-  Assert.IsTrue(Run(AText, AMarker, '', ATarget, AResult, Reason, Result), 'Aktion fehlt (' + Reason + '): ' + AText);
+  Assert.IsTrue(Run(AText, At(AMarker, ''), ATarget, AResult, Reason, Result),
+    'Aktion fehlt (' + Reason + '): ' + AText);
 end;
 
 function PromotedText(const AText, AMarker: string): string;
@@ -163,7 +177,7 @@ var
   Promote: TPromoteResult;
   Text: string;
 begin
-  Assert.IsFalse(Run(AText, AMarker, '', Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, At(AMarker, ''), Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
   Assert.AreNotEqual('', Result);
 end;
 
@@ -182,7 +196,7 @@ begin
   finally
     Tree.Free;
   end;
-  Assert.IsFalse(Run(AText, AMarker, AName, Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, At(AMarker, AName), Target, Promote, Result, Text), 'Aktion unerwartet: ' + Text);
 end;
 
 procedure TPromoteVariableTests.Names;

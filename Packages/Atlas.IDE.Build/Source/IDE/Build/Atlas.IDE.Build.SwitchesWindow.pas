@@ -99,14 +99,20 @@ var
   Frame: TAtlasBuildSwitchesFrame;
 begin
   if not (AFrame is TAtlasBuildSwitchesFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasBuildSwitchesFrame(AFrame);
   TAtlasIdeBuildSwitchesWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeBuildSwitchesWindow.OnFrame) then
+  begin
     TAtlasIdeBuildSwitchesWindow.OnFrame(Frame);
+  end;
 end;
 
 function TSwitchesDock.GetMenuActionList: TCustomActionList;
@@ -158,7 +164,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TSwitchesDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeBuildSwitchesWindow }
@@ -171,7 +179,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -179,7 +189,9 @@ class function TAtlasIdeBuildSwitchesWindow.ExistingFrame: TAtlasBuildSwitchesFr
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasBuildSwitchesFrame) then
+  begin
     Result := TAtlasBuildSwitchesFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeBuildSwitchesWindow.Visible: Boolean;
@@ -191,7 +203,9 @@ end;
 class procedure TAtlasIdeBuildSwitchesWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeBuildSwitchesWindow.UpdateIcon;
@@ -199,7 +213,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -215,7 +231,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

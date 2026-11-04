@@ -149,7 +149,9 @@ var
   Func: TBlendFunction;
 begin
   if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
+  begin
     Exit;
+  end;
   Memory := CreateCompatibleDC(ACanvas.Handle);
   Bitmap := CreateCompatibleBitmap(ACanvas.Handle, 1, 1);
   Old := SelectObject(Memory, Bitmap);
@@ -275,9 +277,13 @@ procedure TAtlasMinimapView.SetContent(const ALines: TArray<string>; const ARuns
   ATabWidth: Integer);
 begin
   if (Length(ARuns) = Length(FRuns)) and (ATabWidth = FTabWidth) then
-    FDirty := FDirty + TAtlasMinimap.ChangedLines(FRuns, ARuns)
+  begin
+    FDirty := FDirty + TAtlasMinimap.ChangedLines(FRuns, ARuns);
+  end
   else
+  begin
     FCodeValid := False;
+  end;
   FLines := ALines;
   FRuns := ARuns;
   FTabWidth := Max(1, ATabWidth);
@@ -294,7 +300,9 @@ end;
 procedure TAtlasMinimapView.SetFolds(const AFolds: TAtlasMinimapFolds);
 begin
   if TAtlasMinimap.SameFolds(AFolds, FFolds) then
+  begin
     Exit;
+  end;
   FFolds := AFolds;
   InvalidateLayout;
 end;
@@ -302,7 +310,9 @@ end;
 procedure TAtlasMinimapView.SetView(ATopLine, ABottomLine, ACursorLine: Integer);
 begin
   if (ATopLine = FTopLine) and (ABottomLine = FBottomLine) and (ACursorLine = FCursorLine) then
+  begin
     Exit;
+  end;
   FTopLine := ATopLine;
   FBottomLine := ABottomLine;
   FCursorLine := ACursorLine;
@@ -325,7 +335,9 @@ end;
 procedure TAtlasMinimapView.SetMarks(const AMarks: TAtlasOverviewMarks);
 begin
   if TAtlasOverview.Same(AMarks, FMarks) then
+  begin
     Exit;
+  end;
   FMarks := AMarks;
   FBarsValid := False;
   Invalidate;
@@ -334,7 +346,9 @@ end;
 procedure TAtlasMinimapView.EnsureMap;
 begin
   if FMapValid then
+  begin
     Exit;
+  end;
   FMap := TAtlasMinimapMap.Create(Length(FRuns), FFolds, RowHeight, ClientHeight);
   // Passt der Inhalt nicht, scrollt die Minimap mit der Lage im Editor mit (wie VS Code) statt zu stauchen.
   FMap.Follow(FTopLine, Max(FTopLine, FBottomLine));
@@ -365,7 +379,9 @@ begin
   begin
     FHeaders := nil;
     if FOptions.SectionHeaders then
+    begin
       FHeaders := TAtlasMinimap.Headers(FNodes, FMap, LabelHeight);
+    end;
     FHeadersValid := True;
   end;
   Result := FHeaders;
@@ -386,13 +402,19 @@ var
 begin
   Line := FMap.LineOf(ARow);
   if (Line < 0) or (Line > High(FRuns)) then
+  begin
     Exit;
+  end;
   if FOptions.Render = TAtlasMinimapRender.Characters then
   begin
     if Line <= High(FLines) then
-      mText := TAtlasMinimap.Expand(FLines[Line], FOptions.MaxColumn, FTabWidth)
+    begin
+      mText := TAtlasMinimap.Expand(FLines[Line], FOptions.MaxColumn, FTabWidth);
+    end
     else
+    begin
       mText := '';
+    end;
     for Run in FRuns[Line] do
     begin
       ACanvas.Brush.Color := TColor(TokenColor(FColors, Run.Kind));
@@ -400,12 +422,16 @@ begin
       begin
         mHeight := TAtlasMinimap.GlyphHeight(mText[Column + 1], AHeight);
         if mHeight <= 0 then
+        begin
           Continue;
+        end;
         mLeft := FOptions.ColumnX(Column, ClientWidth);
         Right := Max(mLeft + 1, FOptions.ColumnX(Column + 1, ClientWidth));
         // Zeichen stehen auf der Grundlinie; eine Lücke trennt Nachbarn.
         if Right - mLeft > 1 then
+        begin
           Dec(Right);
+        end;
         ACanvas.FillRect(TRect.Create(mLeft, ATop + AHeight - mHeight, Right, ATop + AHeight));
       end;
     end;
@@ -434,7 +460,9 @@ begin
     (FCodeRows = FMap.RowCount) and (FCodeRowHeight = FMap.RowHeight) and (FCodeOffset = FMap.Offset) and
     TAtlasMinimap.SameFolds(FCodeFolds, FMap.Folds);
   if Same and (FDirty = nil) then
+  begin
     Exit;
+  end;
   FCode.Canvas.Brush.Style := bsSolid;
   // Gestaucht teilen sich Zeilen ein Pixel: dann immer alles neu.
   if Same and not FMap.Compressed then
@@ -442,7 +470,9 @@ begin
     for Line in FDirty do
     begin
       if (Line < 0) or (Line >= FMap.LineCount) or (FMap.LineOf(FMap.RowOf(Line)) <> Line) then
+      begin
         Continue;
+      end;
       Row := FMap.RowOf(Line);
       mTop := FMap.PixelOfRow(Row);
       Bottom := FMap.PixelOfRow(Row + 1);
@@ -501,14 +531,18 @@ begin
       FBarsValid := True;
     end;
     for Bar in FBars do
+    begin
       if Bar.Lane = TAtlasOverviewLane.Left then
       begin
         Canvas.Brush.Color := TColor(TAtlasOverviewRuler.ColorOf(FColors, Bar.Kind));
         Canvas.FillRect(TRect.Create(0, Bar.Top, Scale(BaseChangeWidth), Bar.Bottom));
       end
       else
+      begin
         Blend(Canvas, TRect.Create(0, Bar.Top, ClientWidth, Bar.Bottom),
           TAtlasOverviewRuler.ColorOf(FColors, Bar.Kind), BandAlpha);
+      end;
+    end;
   end;
   // Überschriften.
   if FOptions.SectionHeaders then
@@ -522,9 +556,13 @@ begin
         Scale(4)), Area.Bottom), FColors.Surface, 200);
       Canvas.Brush.Style := bsClear;
       if Header.IsType then
-        Canvas.Font.Color := TColor(FColors.Keyword)
+      begin
+        Canvas.Font.Color := TColor(FColors.Keyword);
+      end
       else
+      begin
         Canvas.Font.Color := TColor(FColors.Text);
+      end;
       Canvas.TextRect(Area, Area.Left + Scale(2), Area.Top, Header.Text);
       Canvas.Brush.Style := bsSolid;
     end;
@@ -553,10 +591,14 @@ end;
 procedure TAtlasMinimapView.Scroll(ATopLine: Integer);
 begin
   if ATopLine = FLastScroll then
+  begin
     Exit;
+  end;
   FLastScroll := ATopLine;
   if Assigned(FOnScroll) then
+  begin
     FOnScroll(ATopLine);
+  end;
 end;
 
 function TAtlasMinimapView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
@@ -568,7 +610,9 @@ begin
   Top := Max(0, FTopLine - (WheelDelta * Lines) div WHEEL_DELTA);
   Result := True;
   if (Top = FTopLine) or not Assigned(FOnScroll) then
+  begin
     Exit;
+  end;
   FLastScroll := Top;
   FOnScroll(Top);
 end;
@@ -580,21 +624,29 @@ begin
   inherited MouseDown(Button, Shift, X, Y);
   EnsureMap;
   if (Button <> mbLeft) or (FMap.RowCount <= 0) then
+  begin
     Exit;
+  end;
   Span := SliderSpan;
   FLastScroll := -1;
   if (Y >= Span.Top) and (Y < Span.Bottom) then
-    FGrab := Y - Span.Top
+  begin
+    FGrab := Y - Span.Top;
+  end
   else
   begin
     if FOptions.ClickJumps then
     begin
       if Assigned(FOnJump) then
+      begin
         FOnJump(FMap.LineAt(Y));
+      end;
       FLastScroll := FMap.ClickTop(Y, FMap.VisibleRows(FTopLine, FBottomLine));
     end
     else
+    begin
       Scroll(FMap.ClickTop(Y, FMap.VisibleRows(FTopLine, FBottomLine)));
+    end;
     // Weiter ziehen: gegriffen in der Mitte des Schiebers.
     FGrab := (Span.Bottom - Span.Top) div 2;
   end;
@@ -606,7 +658,9 @@ procedure TAtlasMinimapView.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseMove(Shift, X, Y);
   if not FDragging then
+  begin
     Exit;
+  end;
   if not (ssLeft in Shift) then
   begin
     FDragging := False;
@@ -632,7 +686,9 @@ begin
   inherited;
   FHot := True;
   if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasMinimapView.CMMouseLeave(var Message: TMessage);
@@ -640,7 +696,9 @@ begin
   inherited;
   FHot := False;
   if FOptions.Slider = TAtlasMinimapSlider.MouseOver then
+  begin
     Invalidate;
+  end;
 end;
 
 end.

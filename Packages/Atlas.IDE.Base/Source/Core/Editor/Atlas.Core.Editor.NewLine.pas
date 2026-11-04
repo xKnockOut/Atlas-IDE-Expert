@@ -96,10 +96,16 @@ var
 begin
   Result := False;
   if not AToken.IsWord then
+  begin
     Exit;
+  end;
   for Word in AWords do
+  begin
     if AToken.Text = Word then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function IsWord(const AToken: TAtlasCodeToken; const AWord: string): Boolean;
@@ -116,14 +122,22 @@ var
 begin
   Result := False;
   if not ATokens[AIndex].IsWord then
+  begin
     Exit;
+  end;
   Word := ATokens[AIndex].Text;
   if Word = 'record' then
+  begin
     Exit(True);
+  end;
   if (Word <> 'class') and (Word <> 'interface') and (Word <> 'dispinterface') and (Word <> 'object') then
+  begin
     Exit;
+  end;
   if (AIndex = 0) or not ((ATokens[AIndex - 1].Text = '=') or IsWord(ATokens[AIndex - 1], 'packed')) then
+  begin
     Exit;
+  end;
   Next := AIndex + 1;
   if (Next <= High(ATokens)) and (ATokens[Next].Text = '(') then
   begin
@@ -131,12 +145,18 @@ begin
     while Next <= High(ATokens) do
     begin
       if ATokens[Next].Text = '(' then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if ATokens[Next].Text = ')' then
+      begin
         Dec(Depth);
+      end;
       Inc(Next);
       if Depth = 0 then
+      begin
         Break;
+      end;
     end;
   end;
   Result := (Next > High(ATokens)) or not ((ATokens[Next].Text = ';') or IsWord(ATokens[Next], 'of'));
@@ -162,10 +182,14 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if (ATokens[Index].Text = ')') or (ATokens[Index].Text = ']') then
+    begin
       Depth := Max(0, Depth - 1);
+    end;
     Result[Index] := Depth;
     if (ATokens[Index].Text = '(') or (ATokens[Index].Text = '[') then
+    begin
       Inc(Depth);
+    end;
   end;
 end;
 
@@ -177,14 +201,20 @@ begin
   AFirst := -1;
   ALast := -1;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].StartPos.Line = ALine then
     begin
       if AFirst < 0 then
+      begin
         AFirst := Index;
+      end;
       ALast := Index;
     end
     else if ATokens[Index].StartPos.Line > ALine then
+    begin
       Break;
+    end;
+  end;
   Result := AFirst >= 0;
 end;
 
@@ -197,12 +227,16 @@ var
 begin
   AStart := AIndex;
   while (AStart > 0) and not ((ADepths[AStart - 1] = 0) and IsBoundary(ATokens, AStart - 1)) do
+  begin
     Dec(AStart);
+  end;
   AStop := High(ATokens);
   for Index := AIndex to High(ATokens) do
   begin
     if ADepths[Index] > 0 then
+    begin
       Continue;
+    end;
     if (Index > AIndex) and InList(ATokens[Index], Closers) then
     begin
       AStop := Index - 1;
@@ -222,7 +256,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(ALine, 1, Index - 1);
 end;
 
@@ -233,21 +269,35 @@ var
 begin
   Result := False;
   if not LineTokens(ATokens, ALine, First, Last) then
+  begin
     Exit;
+  end;
   if InList(ATokens[Last], IndentOpeners) then
+  begin
     Exit(True);
+  end;
   if IsWord(ATokens[Last], 'of') then
   begin
     for Index := First to Last do
+    begin
       if IsWord(ATokens[Index], 'case') then
+      begin
         Exit(True);
+      end;
+    end;
     Exit;
   end;
   if ATokens[Last].Text = ';' then
+  begin
     Exit;
+  end;
   for Index := First to Last do
+  begin
     if IsTypeOpener(ATokens, Index) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Oberhalb von ALine eine Ebene tiefer?</summary>
@@ -265,9 +315,13 @@ var
 begin
   Result := False;
   for Span in TAtlasBlockComment.Spans(ALines) do
+  begin
     if (Span.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
       (Span.StartPos.Line < ALine) and (Span.EndPos.Line >= ALine) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Präfix einer "//"-Zeile (Einzug, Schrägstriche, Abstand); False, wenn ALine keine ist oder "//"
@@ -282,12 +336,18 @@ begin
   Rest := Copy(ALine, Length(Indent) + 1, MaxInt);
   Result := Rest.StartsWith('///') or (ALineComments and Rest.StartsWith('//'));
   if not Result then
+  begin
     Exit;
+  end;
   Index := 1;
   while (Index <= Length(Rest)) and (Rest[Index] = '/') do
+  begin
     Inc(Index);
+  end;
   while (Index <= Length(Rest)) and CharInSet(Rest[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   APrefix := Indent + Copy(Rest, 1, Index - 1);
 end;
 
@@ -319,11 +379,17 @@ begin
   Tokens := TAtlasBlockComment.Tokens(ALines);
   Result := LineTokens(Tokens, ALine, First, Last);
   if not Result then
+  begin
     Exit;
+  end;
   if ADirection = TAtlasNewLineDirection.Below then
-    Extent(Tokens, DepthsOf(Tokens), Last, Start, Stop)
+  begin
+    Extent(Tokens, DepthsOf(Tokens), Last, Start, Stop);
+  end
   else
+  begin
     Extent(Tokens, DepthsOf(Tokens), First, Start, Stop);
+  end;
   AFirstLine := Tokens[Start].StartPos.Line;
   ALastLine := Tokens[Stop].StartPos.Line;
 end;
@@ -340,16 +406,22 @@ var
 begin
   Lines := ALines;
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Line := EnsureRange(ALine, 0, High(Lines));
   Tokens := TAtlasBlockComment.Tokens(Lines);
   RefLine := Line;
   BaseLine := Line;
   HasCode := LineTokens(Tokens, Line, First, Last);
   if HasCode and AOptions.StatementAware then
+  begin
     StatementLines(Lines, Line, ADirection, BaseLine, RefLine);
+  end;
   if ADirection = TAtlasNewLineDirection.Above then
+  begin
     RefLine := BaseLine;
+  end;
   Done := False;
   Character := -1;
   if ADirection = TAtlasNewLineDirection.Below then
@@ -372,7 +444,9 @@ begin
     begin
       Text := LeadingWhitespace(Lines[BaseLine]);
       if IndentsBelow(Tokens, RefLine) then
+      begin
         Text := Text + StringOfChar(' ', Max(0, AOptions.IndentWidth));
+      end;
     end;
   end
   else
@@ -382,7 +456,9 @@ begin
     begin
       Done := LineCommentPrefix(Lines[RefLine], AOptions.Comments.LineComments, Prefix);
       if Done then
-        Text := Prefix
+      begin
+        Text := Prefix;
+      end
       else if InsideBlockComment(Lines, RefLine) then
       begin
         Text := LeadingWhitespace(Lines[RefLine]);
@@ -393,11 +469,15 @@ begin
     begin
       Text := LeadingWhitespace(Lines[RefLine]);
       if IndentsAbove(Tokens, RefLine) then
+      begin
         Text := Text + StringOfChar(' ', Max(0, AOptions.IndentWidth));
+      end;
     end;
   end;
   if Character < 0 then
+  begin
     Character := Length(Text);
+  end;
   Result.Lines := InsertLine(Lines, Target, Text);
   Result.Line := Target;
   Result.Text := Text;

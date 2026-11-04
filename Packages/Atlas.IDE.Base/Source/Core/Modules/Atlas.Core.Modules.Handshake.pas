@@ -51,11 +51,17 @@ exports
 class function TAtlasContractHandshake.Compare(AFound: Boolean; AVersion, AExpected: Integer): TAtlasContractCheck;
 begin
   if not AFound then
-    Result := ccMissing
+  begin
+    Result := ccMissing;
+  end
   else if AVersion <> AExpected then
-    Result := ccMismatch
+  begin
+    Result := ccMismatch;
+  end
   else
+  begin
     Result := ccMatch;
+  end;
 end;
 
 class function TAtlasContractHandshake.Query(AModule: HMODULE; out AVersion: Integer): Boolean;
@@ -65,11 +71,15 @@ begin
   AVersion := 0;
   Result := False;
   if AModule = 0 then
+  begin
     Exit;
+  end;
   @mFunction := GetProcAddress(AModule, PAnsiChar(cAtlasCoreContractExport));
   Result := Assigned(mFunction);
   if Result then
+  begin
     AVersion := mFunction();
+  end;
 end;
 
 class function TAtlasContractHandshake.Check(AModule: HMODULE; AExpected: Integer): TAtlasContractCheck;

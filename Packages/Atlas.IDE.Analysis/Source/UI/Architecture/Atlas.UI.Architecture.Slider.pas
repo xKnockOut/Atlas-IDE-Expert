@@ -138,13 +138,17 @@ begin
     FPosition := mPosition;
     Invalidate;
     if Assigned(FOnTracking) then
+    begin
       FOnTracking(GetValue);
+    end;
   end;
   if ACommit and (FPosition <> FCommitted) then
   begin
     FCommitted := FPosition;
     if Assigned(FOnChange) then
+    begin
       FOnChange(GetValue);
+    end;
   end;
 end;
 
@@ -164,9 +168,13 @@ begin
   inherited MouseDown(AButton, AShift, AX, AY);
   // Der zweite Druck eines Doppelklicks gehört DblClick.
   if (AButton <> mbLeft) or (ssDouble in AShift) then
+  begin
     Exit;
+  end;
   if CanFocus and Showing then
+  begin
     SetFocus;
+  end;
   FDragging := True;
   MoveTo(PositionAt(AX), False);
 end;
@@ -175,14 +183,18 @@ procedure TAtlasResolutionSlider.MouseMove(AShift: TShiftState; AX, AY: Integer)
 begin
   inherited MouseMove(AShift, AX, AY);
   if FDragging then
+  begin
     MoveTo(PositionAt(AX), False);
+  end;
 end;
 
 procedure TAtlasResolutionSlider.MouseUp(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);
 begin
   inherited MouseUp(AButton, AShift, AX, AY);
   if not FDragging or (AButton <> mbLeft) then
+  begin
     Exit;
+  end;
   FDragging := False;
   MoveTo(PositionAt(AX), True);
 end;
@@ -265,7 +277,9 @@ begin
     Canvas.Pen.Color := ToColor(mColors.Text);
   end
   else
+  begin
     Canvas.Pen.Color := ToColor(mColors.Accent);
+  end;
   Canvas.Ellipse(mCenter - mRadius, mMiddle - mRadius, mCenter + mRadius + 1, mMiddle + mRadius + 1);
 end;
 

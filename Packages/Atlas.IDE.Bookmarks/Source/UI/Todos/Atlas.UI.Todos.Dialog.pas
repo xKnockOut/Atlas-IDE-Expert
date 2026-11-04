@@ -144,7 +144,9 @@ begin
   Result.SetBounds(ScaleValue(Gap + LabelWidth), FNextTop, ClientWidth - ScaleValue(2 * Gap + LabelWidth),
     ScaleValue(23));
   for Item in AItems do
+  begin
     Result.Items.Add(Item);
+  end;
   Result.Text := AText;
   Prompt.FocusControl := Result;
   FNextTop := Result.Top + Result.Height + ScaleValue(Gap);
@@ -160,7 +162,9 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   if Result.Width < ScaleValue(90) then
+  begin
     Result.Width := ScaleValue(90);
+  end;
   Result.Top := ScaleValue(Gap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
@@ -206,7 +210,9 @@ begin
   try
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       AFilter := Dialog.Filter;
+    end;
   finally
     Dialog.Free;
   end;
