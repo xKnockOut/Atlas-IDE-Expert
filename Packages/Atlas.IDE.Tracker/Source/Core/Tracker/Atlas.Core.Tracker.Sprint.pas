@@ -178,16 +178,26 @@ begin
   for mDay in ADays do
   begin
     if (mDay < 1) or (mDay > 7) then
+    begin
       Continue;
+    end;
     mFound := False;
     for mKnown in Result.Days do
+    begin
       if mKnown = mDay then
+      begin
         mFound := True;
+      end;
+    end;
     if not mFound then
+    begin
       Result.Days := Result.Days + [mDay];
+    end;
   end;
   if Length(Result.Days) = 0 then
+  begin
     Result := WorkWeek;
+  end;
 end;
 
 function TAtlasSprintCalendar.Text: string;
@@ -198,7 +208,9 @@ begin
   for mDay in Days do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + IntToStr(mDay);
   end;
 end;
@@ -211,8 +223,12 @@ var
 begin
   mDays := nil;
   for mPart in AText.Split([',']) do
+  begin
     if TryStrToInt(Trim(mPart), mDay) then
+    begin
       mDays := mDays + [mDay];
+    end;
+  end;
   Result := Create(mDays);
 end;
 
@@ -223,8 +239,12 @@ begin
   mWeekDay := DayOfTheWeek(ADate);
   Result := False;
   for mDay in Days do
+  begin
     if mDay = mWeekDay then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasSprintCalendar.SprintDays(AStart, AFinish: TDateTime): TArray<TDateTime>;
@@ -234,7 +254,9 @@ var
 begin
   Result := nil;
   if (AStart <= 0) or (AFinish <= AStart) then
+  begin
     Exit;
+  end;
   // Das Ende gehört nicht mehr dazu (GitHub: Start + Dauer; YouTrack: Mitternacht nach dem letzten Tag).
   mLast := DateOf(AFinish - OneSecond);
   mDay := DateOf(AStart);
@@ -243,11 +265,15 @@ begin
   begin
     mAll := mAll + [mDay];
     if IsWorkDay(mDay) then
+    begin
       Result := Result + [mDay];
+    end;
     mDay := IncDay(mDay);
   end;
   if Length(Result) = 0 then
+  begin
     Result := mAll;
+  end;
 end;
 
 function TAtlasSprintCalendar.DaysLeft(ANow, AStart, AFinish: TDateTime): Integer;
@@ -256,8 +282,12 @@ var
 begin
   Result := 0;
   for mDay in SprintDays(AStart, AFinish) do
+  begin
     if mDay >= DateOf(ANow) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TAtlasSprintSummary }
@@ -266,7 +296,9 @@ function TAtlasSprintSummary.Velocity: Double;
 begin
   Result := 0;
   if Length(Done) > 0 then
+  begin
     Result := Done[High(Done)];
+  end;
 end;
 
 function TAtlasSprintSummary.DoneAt(AFraction: Double): Double;
@@ -275,7 +307,9 @@ var
 begin
   Result := 0;
   if Length(Done) = 0 then
+  begin
     Exit;
+  end;
   mIndex := Round(EnsureRange(AFraction, 0, 1) * Days);
   Result := Done[Min(mIndex, High(Done))];
 end;
@@ -286,10 +320,14 @@ class function TAtlasTrackerSprint.Weight(const ACard: TAtlasBoardCard; AUsesPoi
 begin
   Result := 1;
   if not AUsesPoints then
+  begin
     Exit;
+  end;
   Result := 0;
   if ACard.HasPoints and (ACard.Points > 0) then
+  begin
     Result := ACard.Points;
+  end;
 end;
 
 class function TAtlasTrackerSprint.UsesPoints(const ASnapshot: TAtlasBoardSnapshot): Boolean;
@@ -298,10 +336,16 @@ var
 begin
   Result := False;
   if Trim(ASnapshot.PointsField) = '' then
+  begin
     Exit;
+  end;
   for mCard in ASnapshot.Cards do
+  begin
     if mCard.HasPoints then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerSprint.DoneAt(const ASnapshot: TAtlasBoardSnapshot; ACard: Integer;
@@ -311,18 +355,26 @@ var
 begin
   Result := 0;
   if (ACard < 0) or (ACard > High(ASnapshot.Cards)) then
+  begin
     Exit;
+  end;
   mColumn := ASnapshot.CardColumn(ACard);
   // Wieder geöffnet: Der alte Zeitpunkt der Erledigung zählt nicht.
   if (mColumn >= 0) and not ASnapshot.Columns[mColumn].Resolved then
+  begin
     Exit;
+  end;
   if ASnapshot.Cards[ACard].ResolvedAt > 0 then
+  begin
     Exit(ASnapshot.Cards[ACard].ResolvedAt);
+  end;
   if mColumn >= 0 then
   begin
     Result := ASnapshot.Fetched;
     if Result <= 0 then
+    begin
       Result := ANow;
+    end;
   end;
 end;
 
@@ -355,22 +407,32 @@ begin
   // Tage bis heute: der laufende Tag zählt mit; nach dem Ende alle.
   mToday := 0;
   for mDay := 0 to High(mDays) do
+  begin
     if mDays[mDay] <= DateOf(ANow) then
+    begin
       mToday := mDay + 1;
+    end;
+  end;
   SetLength(Result.Done, mToday + 1);
   for mDay := 0 to mToday do
   begin
     // k = 0: vor dem ersten Tag; sonst bis zum Ende des k-ten Arbeitstags.
     if mDay = 0 then
-      mLimit := DateOf(ASnapshot.Sprint.Start)
+    begin
+      mLimit := DateOf(ASnapshot.Sprint.Start);
+    end
     else
+    begin
       mLimit := mDays[mDay - 1] + 1;
+    end;
     mSum := 0;
     for mCard := 0 to High(ASnapshot.Cards) do
     begin
       mDone := mDoneAt[mCard];
       if (mDone > 0) and (mDone < mLimit) then
+      begin
         mSum := mSum + mWeights[mCard];
+      end;
     end;
     Result.Done[mDay] := mSum;
   end;
@@ -381,10 +443,14 @@ var
   mDay: Integer;
 begin
   if ADays <= 0 then
+  begin
     Exit(TArray<Double>.Create(ATotal));
+  end;
   SetLength(Result, ADays + 1);
   for mDay := 0 to ADays do
+  begin
     Result[mDay] := ATotal * (ADays - mDay) / ADays;
+  end;
 end;
 
 class function TAtlasTrackerSprint.Normalized(const APrevious: TAtlasSprintSummary; ADays: Integer;
@@ -395,7 +461,9 @@ var
 begin
   Result := nil;
   if (ADays <= 0) or (APrevious.Days <= 0) or (APrevious.Total <= 0) or (Length(APrevious.Done) = 0) then
+  begin
     Exit;
+  end;
   SetLength(Result, ADays + 1);
   for mDay := 0 to ADays do
   begin
@@ -414,23 +482,33 @@ var
 begin
   Result := nil;
   if (ACount <= 0) or (ACurrent.Start <= 0) then
+  begin
     Exit;
+  end;
   mCandidates := TList<TAtlasBoardSprint>.Create;
   try
     // Endet spätestens einen Tag nach dem Start des aktuellen (Sprints grenzen oft auf den Tag aneinander).
     for mSprint in ASprints do
+    begin
       if not SameText(mSprint.Id, ACurrent.Id) and (mSprint.Start > 0) and (mSprint.Finish > 0) and
         (mSprint.Start < ACurrent.Start) and (mSprint.Finish <= ACurrent.Start + 1) then
+      begin
         mCandidates.Add(mSprint);
+      end;
+    end;
     // Die jüngsten ACount, ohne instabiles Sortieren: je Runde den spätesten Start (bei Gleichstand die ID).
     while (Length(Result) < ACount) and (mCandidates.Count > 0) do
     begin
       mBest := 0;
       for mIndex := 1 to mCandidates.Count - 1 do
+      begin
         if (mCandidates[mIndex].Start > mCandidates[mBest].Start) or
           ((mCandidates[mIndex].Start = mCandidates[mBest].Start) and
           (CompareText(mCandidates[mIndex].Id, mCandidates[mBest].Id) > 0)) then
+        begin
           mBest := mIndex;
+        end;
+      end;
       Result := TArray<TAtlasBoardSprint>.Create(mCandidates[mBest]) + Result;
       mCandidates.Delete(mBest);
     end;
@@ -465,20 +543,32 @@ begin
   for mCard := 0 to High(ASnapshot.Cards) do
   begin
     if DoneAt(ASnapshot, mCard, ANow) > 0 then
+    begin
       Result.TeamDone := Result.TeamDone + Weight(ASnapshot.Cards[mCard], mSummary.UsesPoints);
+    end;
     if not Result.MineKnown or not TAtlasTrackerBoard.Mine(ASnapshot.Cards[mCard], ASnapshot.Me) then
+    begin
       Continue;
+    end;
     if DoneAt(ASnapshot, mCard, ANow) > 0 then
-      Result.MineDone := Result.MineDone + [ASnapshot.Cards[mCard].Issue]
+    begin
+      Result.MineDone := Result.MineDone + [ASnapshot.Cards[mCard].Issue];
+    end
     else
+    begin
       Result.MineOpen := Result.MineOpen + [ASnapshot.Cards[mCard].Issue];
+    end;
   end;
   Result.TeamLeft := Max(0, Result.Total - Result.TeamDone);
   SetLength(Result.Actual, Length(mSummary.Done));
   for mCard := 0 to High(mSummary.Done) do
+  begin
     Result.Actual[mCard] := Max(0, mSummary.Total - mSummary.Done[mCard]);
+  end;
   if Length(mSummary.Done) > 0 then
+  begin
     Result.DoneToday := mSummary.Done[High(mSummary.Done)];
+  end;
   Result.Ideal := Ideal(mSummary.Total, mSummary.Days);
   for mLast in APrevious do
   begin
@@ -486,16 +576,22 @@ begin
     Result.VelocityNames := Result.VelocityNames + [mLast.Name];
   end;
   if Length(APrevious) = 0 then
+  begin
     Exit;
+  end;
   mLast := APrevious[High(APrevious)];
   mScale := mSummary.Total;
   if mScale <= 0 then
+  begin
     mScale := mLast.Total;
+  end;
   Result.Previous := Normalized(mLast, mSummary.Days, mScale);
   Result.HasPrevious := Length(Result.Previous) > 0;
   Result.PreviousName := mLast.Name;
   if Result.HasPrevious and (mSummary.Days > 0) then
+  begin
     Result.PreviousDone := mLast.DoneAt(Result.Today / mSummary.Days);
+  end;
 end;
 
 class function TAtlasTrackerSprint.SummaryToJson(const ASummary: TAtlasSprintSummary): string;
@@ -516,7 +612,9 @@ begin
     mRoot.AddPair('days', TJSONNumber.Create(ASummary.Days));
     mList := TJSONArray.Create;
     for mValue in ASummary.Done do
+    begin
       mList.AddElement(TJSONNumber.Create(mValue));
+    end;
     mRoot.AddPair('done', mList);
     Result := mRoot.ToJSON;
   finally
@@ -531,7 +629,9 @@ begin
   Result := '';
   mValue := AObject.Values[AName];
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Double;
@@ -541,7 +641,9 @@ begin
   Result := 0;
   mValue := AObject.Values[AName];
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsDouble;
+  end;
 end;
 
 class function TAtlasTrackerSprint.SummaryFromJson(const AJson: string; out ASummary: TAtlasSprintSummary): Boolean;
@@ -554,10 +656,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     if Round(NumberOf(mRoot, 'version')) <> TAtlasSprintSummary.Version then
+    begin
       Exit;
+    end;
     ASummary.Id := TextOf(mRoot, 'id');
     ASummary.Name := TextOf(mRoot, 'name');
     ASummary.Start := TAtlasTrackerBoard.TimeValue(TextOf(mRoot, 'start'));
@@ -567,9 +673,15 @@ begin
     ASummary.Total := NumberOf(mRoot, 'total');
     ASummary.Days := EnsureRange(Round(NumberOf(mRoot, 'days')), 0, TAtlasTrackerSprint.MaxDays);
     if mRoot.Values['done'] is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot.Values['done']) do
+      begin
         if (mItem is TJSONNumber) and (Length(ASummary.Done) <= ASummary.Days) then
+        begin
           ASummary.Done := ASummary.Done + [TJSONNumber(mItem).AsDouble];
+        end;
+      end;
+    end;
     Result := ASummary.Id <> '';
   finally
     mValue.Free;

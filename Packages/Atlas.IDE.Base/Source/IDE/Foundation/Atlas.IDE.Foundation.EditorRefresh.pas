@@ -52,12 +52,16 @@ var
 begin
   if Application.Terminated or (Application.MainForm = nil) or
     (csDestroying in Application.MainForm.ComponentState) then
+  begin
     Exit(False);
+  end;
   for Index := 0 to Screen.CustomFormCount - 1 do
   begin
     Form := Screen.CustomForms[Index];
     if SameText(Form.ClassName, EditWindowClass) and not (csDestroying in Form.ComponentState) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -65,20 +69,26 @@ end;
 class procedure TAtlasIdeEditorRefresh.InvalidateTop(const AServices: INTACodeEditorServices);
 begin
   if (AServices <> nil) and EditorOpen then
+  begin
     AServices.InvalidateTopEditor;
+  end;
 end;
 
 class procedure TAtlasIdeEditorRefresh.InvalidateTop(const AServices: INTACodeEditorServices280);
 begin
   if (AServices <> nil) and EditorOpen then
+  begin
     AServices.InvalidateTopEditor;
+  end;
 end;
 
 class procedure TAtlasIdeEditorRefresh.InvalidateTopLine(const AServices: INTACodeEditorServices;
   ALogicalLine: Integer);
 begin
   if (AServices <> nil) and EditorOpen then
+  begin
     AServices.InvalidateTopEditorLogicalLine(ALogicalLine);
+  end;
 end;
 
 end.

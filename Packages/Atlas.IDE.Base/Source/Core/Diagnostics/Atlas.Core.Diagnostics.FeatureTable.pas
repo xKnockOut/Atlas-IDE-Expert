@@ -136,9 +136,13 @@ begin
     if SlotModuleOn(Slot) and not Slot.IsActive() and Slot.Wanted(ALevel) then
     begin
       if FTimes <> nil then
-        FTimes.Measure(Slot.Name, Slot.Start)
+      begin
+        FTimes.Measure(Slot.Name, Slot.Start);
+      end
       else
+      begin
         Slot.Start();
+      end;
     end;
   end;
 end;
@@ -158,7 +162,9 @@ begin
       procedure
       begin
         if Slot.IsActive() then
+        begin
           Slot.Stop();
+        end;
       end);
   end;
   Result := Teardown.Failures;
@@ -180,6 +186,7 @@ begin
   begin
     mFound := False;
     for mIndex := 0 to FSlots.Count - 1 do
+    begin
       if FSlots[mIndex].Name = mName then
       begin
         mSlot := FSlots[mIndex];
@@ -187,8 +194,11 @@ begin
         FSlots[mIndex] := mSlot;
         mFound := True;
       end;
+    end;
     if not mFound then
+    begin
       raise EArgumentException.CreateFmt('Teil "%s" für Modul "%s" unbekannt', [mName, AModule]);
+    end;
   end;
 end;
 
@@ -203,12 +213,16 @@ begin
   begin
     mSlot := FSlots[mIndex];
     if SlotModuleOn(mSlot) then
+    begin
       Continue;
+    end;
     mTeardown.Step(mSlot.Name,
       procedure
       begin
         if mSlot.IsActive() then
+        begin
           mSlot.Stop();
+        end;
       end);
   end;
   Result := mTeardown.Failures;
@@ -220,8 +234,12 @@ var
 begin
   Result := False;
   for mIndex := 0 to FSlots.Count - 1 do
+  begin
     if FSlots[mIndex].Name = AName then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasFeatureTable.Remove(const AName: string): Boolean;
@@ -230,11 +248,13 @@ var
 begin
   Result := False;
   for mIndex := FSlots.Count - 1 downto 0 do
+  begin
     if FSlots[mIndex].Name = AName then
     begin
       FSlots.Delete(mIndex);
       Result := True;
     end;
+  end;
 end;
 
 function TAtlasFeatureTable.ModuleOf(const AName: string): string;
@@ -243,8 +263,12 @@ var
 begin
   Result := '';
   for mIndex := 0 to FSlots.Count - 1 do
+  begin
     if FSlots[mIndex].Name = AName then
+    begin
       Exit(FSlots[mIndex].Module);
+    end;
+  end;
 end;
 
 function TAtlasFeatureTable.Names: TArray<string>;
@@ -254,7 +278,9 @@ begin
   Result := nil;
   SetLength(Result, FSlots.Count);
   for Index := 0 to FSlots.Count - 1 do
+  begin
     Result[Index] := FSlots[Index].Name;
+  end;
 end;
 
 end.

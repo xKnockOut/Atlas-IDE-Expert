@@ -180,15 +180,21 @@ function PlainCaption(const ACaption: string): string;
 begin
   Result := ACaption;
   if Result.StartsWith(AtlasPrefix) then
+  begin
     Result := Copy(Result, Length(AtlasPrefix) + 1, MaxInt);
+  end;
 end;
 
 function BarColors: TAtlasColors;
 begin
   if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-    Result := TAtlasIdeStyle.ChromeColors
+  begin
+    Result := TAtlasIdeStyle.ChromeColors;
+  end
   else
+  begin
     Result := TAtlasIdeStyle.Colors;
+  end;
 end;
 
 function SectionCaption(ATarget: TAtlasSectionTarget): string;
@@ -210,15 +216,25 @@ function SectionTargetOf(const AId: string; out ATarget: TAtlasSectionTarget): B
 begin
   Result := True;
   if SameText(AId, TAtlasToolbarItems.GotoInterface) then
-    ATarget := TAtlasSectionTarget.InterfacePart
+  begin
+    ATarget := TAtlasSectionTarget.InterfacePart;
+  end
   else if SameText(AId, TAtlasToolbarItems.GotoImplementation) then
-    ATarget := TAtlasSectionTarget.ImplementationPart
+  begin
+    ATarget := TAtlasSectionTarget.ImplementationPart;
+  end
   else if SameText(AId, TAtlasToolbarItems.GotoUses) then
-    ATarget := TAtlasSectionTarget.UsesClause
+  begin
+    ATarget := TAtlasSectionTarget.UsesClause;
+  end
   else if SameText(AId, TAtlasToolbarItems.GotoInitialization) then
-    ATarget := TAtlasSectionTarget.Initialization_
+  begin
+    ATarget := TAtlasSectionTarget.Initialization_;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 /// <summary>Hervorgehoben, wenn der Caret in diesem Abschnitt steht (finalization zählt zu initialization).</summary>
@@ -245,10 +261,14 @@ begin
   ALine := -1;
   ACharacter := -1;
   if AView = nil then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   if Cursor.Line < 1 then
+  begin
     Exit;
+  end;
   ALine := Cursor.Line - 1;
   ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
@@ -307,9 +327,13 @@ begin
     end);
   ApplyTheme;
   if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
-    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands()
+  begin
+    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
+  end
   else
+  begin
     FCommands := nil;
+  end;
 end;
 
 procedure TToolbarState.ApplyTheme;
@@ -329,8 +353,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to AHost.ControlCount - 1 do
+  begin
     if AHost.Controls[Index] is TAtlasBreadcrumbBar then
+    begin
       Exit(TAtlasBreadcrumbBar(AHost.Controls[Index]));
+    end;
+  end;
   Result := nil;
 end;
 
@@ -367,10 +395,14 @@ begin
           if SameText(Id, TAtlasToolbarItems.CommandPalette) then
           begin
             if Assigned(TAtlasIdeEditorToolbar.FHooks.ShowPalette) then
+            begin
               TAtlasIdeEditorToolbar.FHooks.ShowPalette();
+            end;
           end
           else if Assigned(TAtlasIdeEditorToolbar.FHooks.Execute) then
+          begin
             TAtlasIdeEditorToolbar.FHooks.Execute(Id);
+          end;
         end);
     end;
   Bar.OnReturn :=
@@ -418,7 +450,9 @@ begin
     // So breit wie nötig, höchstens die halbe Zeile; der Rest geht ins ».
     Width_ := Min(ABar.PreferredWidth, Max(MulDiv(120, Crumbs.CurrentPPI, 96), Crumbs.ClientWidth div 2));
     if ABar.Width <> Width_ then
+    begin
       ABar.Width := Width_;
+    end;
     Exit;
   end;
   if ABar.Parent <> AHost then
@@ -428,20 +462,28 @@ begin
     ABar.Align := alNone;
     ABar.Top := 0;
     if (Crumbs <> nil) and not SameText(Position, PositionAbove) then
+    begin
       ABar.Top := Crumbs.Top + Crumbs.Height;
+    end;
     ABar.Align := alTop;
     ABar.Parent := AHost;
   end;
   if Crumbs = nil then
+  begin
     Exit;
+  end;
   // alTop ordnet nach Top: kleiner steht weiter oben.
   if SameText(Position, PositionAbove) then
   begin
     if ABar.Top > Crumbs.Top then
+    begin
       ABar.Top := Crumbs.Top - 1;
+    end;
   end
   else if ABar.Top < Crumbs.Top then
+  begin
     ABar.Top := Crumbs.Top + Crumbs.Height;
+  end;
 end;
 
 function TToolbarState.SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
@@ -464,11 +506,13 @@ var
   Command: TAtlasCommand;
 begin
   for Command in FCommands do
+  begin
     if SameText(Command.Id, AId) then
     begin
       ACommand := Command;
       Exit(True);
     end;
+  end;
   ACommand := Default(TAtlasCommand);
   Result := False;
 end;
@@ -500,17 +544,27 @@ begin
     end;
     // Die Palette selbst ist kein Palettenbefehl; abgeschaltete Funktionen fehlen in der Palette und in der Leiste.
     if SameText(Id, TAtlasToolbarItems.CommandPalette) then
-      Caption := TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand)
+    begin
+      Caption := TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand);
+    end
     else if CommandOf(Id, Command) then
-      Caption := PlainCaption(Command.Caption)
+    begin
+      Caption := PlainCaption(Command.Caption);
+    end
     else
+    begin
       Continue;
+    end;
     Key := '';
     if Assigned(Hooks.ShortCutOf) then
+    begin
       Key := Hooks.ShortCutOf(Id);
+    end;
     Hint := Caption;
     if Key <> '' then
+    begin
       Hint := Hint + ' (' + Key + ')';
+    end;
     Button := TAtlasToolbarButton.Create(Id, Caption, Hint, TAtlasToolbarIcons.IconOf(Id));
     Button.Pinned := Index < Pinned;
     if SectionTargetOf(Id, Target) then
@@ -520,9 +574,13 @@ begin
       if not Button.Enabled then
       begin
         if Target in [TAtlasSectionTarget.InterfacePart, TAtlasSectionTarget.ImplementationPart] then
-          Button.Hint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoParts)
+        begin
+          Button.Hint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoParts);
+        end
         else
+        begin
           Button.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoSection), [Caption]);
+        end;
       end;
     end
     else if SameText(Id, ProblemsId) and Assigned(Hooks.FindingsOf) and (AFileName <> '') then
@@ -530,12 +588,18 @@ begin
       Findings := Hooks.FindingsOf(AFileName);
       Button.Dot := Findings > 0;
       if Findings > 0 then
+      begin
         Button.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarFindings), [Hint, Findings]);
+      end;
     end
     else if SameText(Id, BackId) and Assigned(Hooks.CanGoBack) then
-      Button.Enabled := Hooks.CanGoBack()
+    begin
+      Button.Enabled := Hooks.CanGoBack();
+    end
     else if SameText(Id, ForwardId) and Assigned(Hooks.CanGoForward) then
+    begin
       Button.Enabled := Hooks.CanGoForward();
+    end;
     Result := Result + [Button];
   end;
 end;
@@ -551,13 +615,19 @@ begin
   if TAtlasIdeSettings.Current.EditorToolbarReturnButton and FPoints.Find(AFileName, Point) then
   begin
     if Point.Context <> '' then
-      Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLineIn), [Point.Line + 1, Point.Context])
+    begin
+      Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLineIn), [Point.Line + 1, Point.Context]);
+    end
     else
+    begin
       Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLine), [Point.Line + 1]);
+    end;
     ABar.SetReturn(True, IntToStr(Point.Line + 1), Hint);
   end
   else
+  begin
     ABar.SetReturn(False, '', '');
+  end;
 end;
 
 /// <summary>Rücksprungpunkte mit eingefügten bzw. gelöschten Zeilen verschieben (wie der Navigationsverlauf) und
@@ -579,7 +649,9 @@ begin
     // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
     Anchor := ALine;
     if SameText(FLastFile, AFileName) and (FLastLine >= 0) then
+    begin
       Anchor := Min(Anchor, FLastLine);
+    end;
     FPoints.LinesChanged(AFileName, Anchor, Count - Known);
   end;
   FLineCounts.AddOrSetValue(Key, Count);
@@ -595,10 +667,14 @@ var
   Index: Integer;
 begin
   if (FPoints.Count = 0) or not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Files := nil;
   for Index := 0 to Services.ModuleCount - 1 do
+  begin
     Files := Files + [Services.Modules[Index].FileName];
+  end;
   FPoints.KeepOnly(Files);
 end;
 
@@ -609,12 +685,16 @@ begin
   On_ := ToolbarOn;
   // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
   if not FHost.Guard then
+  begin
     Exit;
+  end;
   // Ohne Leiste und ohne Rücksprungpunkte gibt es nichts zu tun.
   if not On_ and (FPoints.Count = 0) then
   begin
     if FHost.Count > 0 then
+    begin
       FHost.Clear;
+    end;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
@@ -630,27 +710,41 @@ begin
       begin
         FSlow := 0;
         if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
+        begin
           FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
+        end;
         ForgetClosedFiles;
       end;
       // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
       if On_ then
-        FHost.Ensure
+      begin
+        FHost.Ensure;
+      end
       else if FHost.Count > 0 then
+      begin
         FHost.Clear;
+      end;
       View := TAtlasEditorBuffer.ActiveView;
       if (View = nil) or not CaretOf(View, Line, Character) then
+      begin
         Exit;
+      end;
       FileName := View.Buffer.FileName;
       Track(View, FileName, Line);
       if not On_ then
+      begin
         Exit;
+      end;
       Bar := TAtlasEditorToolbar(FHost.ActiveBar);
       if Bar = nil then
+      begin
         Exit;
+      end;
       SectionsOf(View, FileName);
       if FileName = '' then
+      begin
         FileName := View.Buffer.FileName;
+      end;
       UpdateBar(Bar, FileName, Line, Character);
     end);
 end;
@@ -667,7 +761,9 @@ begin
     procedure
     begin
       if TAtlasIdeEditorToolbar.FState <> Owner then
+      begin
         Exit;
+      end;
       TAtlasGuard.Run(TAtlasFeature.EditorToolbar, Action);
     end);
 end;
@@ -677,7 +773,9 @@ end;
 class procedure TAtlasIdeEditorToolbar.Say(const AText: string);
 begin
   if Assigned(FHooks.Message) then
+  begin
     FHooks.Message(AText);
+  end;
 end;
 
 class function TAtlasIdeEditorToolbar.Enabled: Boolean;
@@ -702,13 +800,17 @@ end;
 class procedure TAtlasIdeEditorToolbar.ApplySettings;
 begin
   if FState <> nil then
+  begin
     State.Reset;
+  end;
 end;
 
 class procedure TAtlasIdeEditorToolbar.ThemeChanged;
 begin
   if FState <> nil then
+  begin
     State.ApplyTheme;
+  end;
 end;
 
 class procedure TAtlasIdeEditorToolbar.GoToSection(ATarget: TAtlasSectionTarget);
@@ -722,13 +824,19 @@ var
   Outline: TAtlasOutlineSnapshot;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or not CaretOf(View, Line, Character) then
+  begin
     Exit;
+  end;
   Sections := State.SectionsOf(View, FileName);
   if FileName = '' then
+  begin
     FileName := View.Buffer.FileName;
+  end;
   if not Sections.Target(ATarget, Line, Character, Mark) then
   begin
     Say(Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoSection), [SectionCaption(ATarget)]));
@@ -738,7 +846,9 @@ begin
   Context := '';
   Outline := TAtlasIdeOutlineCache.Refresh(View);
   if (Outline.Status = TAtlasOutlineStatus.Ready) and SameText(Outline.FileName, FileName) then
+  begin
     Context := TAtlasReturnPoints.ContextAt(Outline.Nodes, Line);
+  end;
   TAtlasGuard.Log(Format('Editorleiste: Abschnittssprung %d', [Ord(ATarget)]));
   TAtlasIdeNavigation.GoToLocation(FileName, Mark.Line, Mark.Character);
   // Ziel ins obere Drittel: Darunter steht, was zum Abschnitt gehört.
@@ -780,10 +890,14 @@ var
   Character: Integer;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if View = nil then
+  begin
     Exit;
+  end;
   FileName := View.Buffer.FileName;
   if not State.Points.Find(FileName, Point) then
   begin
@@ -812,11 +926,15 @@ var
 begin
   View := TAtlasEditorBuffer.ActiveView;
   if View = nil then
+  begin
     Exit;
+  end;
   Snapshot := TAtlasIdeOutlineCache.Refresh(View);
   Routines := nil;
   if Snapshot.Status = TAtlasOutlineStatus.Ready then
+  begin
     Routines := TAtlasBreadcrumbs.Routines(Snapshot.Nodes);
+  end;
   if Length(Routines) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.FindMethodNoOutline));
@@ -827,7 +945,9 @@ begin
   FileName := Snapshot.FileName;
   Current := '';
   if CaretOf(View, Line, Character) then
+  begin
     Current := TAtlasReturnPoints.ContextAt(Nodes, Line);
+  end;
   Commands := nil;
   for Node in Routines do
   begin
@@ -842,8 +962,12 @@ begin
   // Ohne Eingabe in Quelltextreihenfolge, die Methode am Caret vorgewählt.
   Window.KeepOrder := True;
   for Command in Commands do
+  begin
     if (Current <> '') and SameText(Command.Caption, Current) then
+    begin
       Window.InitialId := Command.Id;
+    end;
+  end;
   Window.OnExecuteShift :=
     procedure(ACommand: TAtlasCommand; AShifted: Boolean)
     var
@@ -851,19 +975,29 @@ begin
     begin
       Chosen := StrToIntDef(ACommand.Id, -1);
       if (Chosen < 0) or (Chosen > High(Nodes)) then
+      begin
         Exit;
+      end;
       // Enter zur Implementierung, Umschalt+Enter zur Deklaration.
       Target := TAtlasBreadcrumbs.Target(Nodes, Chosen, not AShifted);
       if Target < 0 then
+      begin
         Exit;
+      end;
       TAtlasIdeNavigation.GoToLocation(FileName, Nodes[Target].NameLine, Nodes[Target].NameCharacter);
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 
@@ -873,8 +1007,12 @@ var
 begin
   Result := nil;
   if Assigned(FHooks.Commands) then
+  begin
     for Command in FHooks.Commands() do
+    begin
       Result := Result + [TAtlasToolbarCommandInfo.Create(Command.Id, PlainCaption(Command.Caption))];
+    end;
+  end;
   Result := Result + [TAtlasToolbarCommandInfo.Create(TAtlasToolbarItems.CommandPalette,
     TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand))];
 end;
@@ -889,7 +1027,9 @@ begin
   Config.Labels := Next.EditorToolbarLabels;
   Config.Position := Next.EditorToolbarPosition;
   if not TAtlasToolbarCustomizeDialog.Execute(CommandInfos, Config) then
+  begin
     Exit;
+  end;
   Next.EditorToolbarItems := TAtlasToolbarItems.Format(Config.Items);
   Next.EditorToolbarLabels := Config.Labels;
   Next.EditorToolbarPosition := Config.Position;

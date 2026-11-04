@@ -72,18 +72,26 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Group := Modules.MainProjectGroup;
   if Group = nil then
+  begin
     Exit;
+  end;
   Folder := ExtractFileDir(Group.FileName);
   if Folder <> '' then
+  begin
     Result := Result + [Folder];
+  end;
   for Index := 0 to Group.ProjectCount - 1 do
   begin
     Folder := ExtractFileDir(Group.Projects[Index].FileName);
     if Folder <> '' then
+    begin
       Result := Result + [Folder];
+    end;
   end;
 end;
 
@@ -133,9 +141,13 @@ var
 begin
   Input := AInput;
   if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
-    Input.ServerReport := TJSONObject(AAnswer).GetValue('text').Value
+  begin
+    Input.ServerReport := TJSONObject(AAnswer).GetValue('text').Value;
+  end
   else
+  begin
     Input.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
+  end;
   Result := TAtlasBugReport.Build(Input);
 end;
 
@@ -146,7 +158,9 @@ var
   Message: TProc<string>;
 begin
   if FBusy then
+  begin
     Exit;
+  end;
   Message := AMessage;
   Input := Collect;
   if not Assigned(AServer) then
@@ -180,14 +194,20 @@ var
 begin
   Report := ReportText(AInput, AAnswer);
   if AInput.Anonymize then
-    Note := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized)
+  begin
+    Note := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized);
+  end
   else
+  begin
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
+  end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
     TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [Note, TAtlasBugReport.IssuesUrl]), Report,
     TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md', Target,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
+  begin
     Exit;
+  end;
   TFile.WriteAllText(Target, Report, TEncoding.UTF8);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.BugReportDone, [Target, TAtlasBugReport.IssuesUrl]));
 end;

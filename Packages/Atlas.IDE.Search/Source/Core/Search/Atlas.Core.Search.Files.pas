@@ -109,8 +109,12 @@ var
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
   for Known in Extensions do
+  begin
     if Extension = Known then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -122,7 +126,9 @@ begin
       AText := '';
       Result := FileExists(AFileName);
       if Result then
+      begin
         AText := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+      end;
     end;
 end;
 
@@ -138,25 +144,41 @@ begin
   // Die aktive Datei zuerst, aber nur, wenn sie zum Bereich gehört.
   Ordered := nil;
   for FileName in AFiles do
+  begin
     if (AFirst <> '') and SameText(FileName, AFirst) then
+    begin
       Ordered := [FileName];
+    end;
+  end;
   Ordered := Ordered + AFiles;
   Seen := nil;
   for FileName in Ordered do
   begin
     if (FileName = '') or not IsSearchable(FileName) then
+    begin
       Continue;
+    end;
     Duplicate := False;
     for Known in Seen do
+    begin
       if SameText(Known, FileName) then
+      begin
         Duplicate := True;
+      end;
+    end;
     if Duplicate then
+    begin
       Continue;
+    end;
     Seen := Seen + [FileName];
     Source := TAtlasSearchSource.FromDisk(FileName);
     for Buffer in ABuffers do
+    begin
       if Buffer.HasText and SameText(Buffer.FileName, FileName) then
+      begin
         Source := TAtlasSearchSource.FromBuffer(FileName, Buffer.Text);
+      end;
+    end;
     Result := Result + [Source];
   end;
 end;
@@ -211,11 +233,15 @@ begin
     Inc(Result.Files);
     Found := SearchText(Source.FileName, Text, AQuery);
     if Length(Found.Hits) = 0 then
+    begin
       Continue;
+    end;
     Inc(Result.FilesWithHits);
     Inc(Result.Hits, Length(Found.Hits));
     if Assigned(AFound) then
+    begin
       AFound(Found);
+    end;
   end;
 end;
 
@@ -225,7 +251,9 @@ var
 begin
   Result := 0;
   for Item in AResults do
+  begin
     Inc(Result, Length(Item.Hits));
+  end;
 end;
 
 class function TAtlasFileSearch.IndexOfFile(const AResults: TArray<TAtlasFileHits>;
@@ -234,8 +262,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AResults) do
+  begin
     if SameText(AResults[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -252,7 +284,9 @@ begin
   Count := Length(AResults);
   Result := HitCount(AResults) > 0;
   if not Result then
+  begin
     Exit;
+  end;
   Current := IndexOfFile(AResults, AFileName);
   if Current >= 0 then
   begin
@@ -261,34 +295,48 @@ begin
     if ABackward then
     begin
       for Index := High(Hits) downto 0 do
+      begin
         if TAtlasSearchPos.Compare(Hits[Index].StartPos, AFrom) < 0 then
         begin
           AFileIndex := Current;
           AHitIndex := Index;
           Exit;
         end;
+      end;
     end
     else
+    begin
       for Index := 0 to High(Hits) do
+      begin
         if TAtlasSearchPos.Compare(Hits[Index].StartPos, AFrom) >= 0 then
         begin
           AFileIndex := Current;
           AHitIndex := Index;
           Exit;
         end;
+      end;
+    end;
   end;
   // Dann die nächste bzw. vorige Datei mit Treffern; über das Ende hinaus von der anderen Seite.
   if ABackward then
-    Step := -1
+  begin
+    Step := -1;
+  end
   else
+  begin
     Step := 1;
+  end;
   Index := Current;
   if Index < 0 then
   begin
     if ABackward then
-      Index := Count
+    begin
+      Index := Count;
+    end
     else
+    begin
       Index := -1;
+    end;
   end;
   repeat
     Index := Index + Step;
@@ -305,9 +353,13 @@ begin
   until Length(AResults[Index].Hits) > 0;
   AFileIndex := Index;
   if ABackward then
-    AHitIndex := High(AResults[Index].Hits)
+  begin
+    AHitIndex := High(AResults[Index].Hits);
+  end
   else
+  begin
     AHitIndex := 0;
+  end;
 end;
 
 end.

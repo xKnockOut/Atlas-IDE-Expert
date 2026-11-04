@@ -124,15 +124,23 @@ begin
   ATitle := '';
   AText := '';
   if Length(ABookmarks) = 0 then
+  begin
     Exit;
+  end;
   if Length(ABookmarks) = 1 then
-    ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksTipTitle)
+  begin
+    ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksTipTitle);
+  end
   else
+  begin
     ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.BookmarksTipMore, [Length(ABookmarks)]);
+  end;
   for Mark in ABookmarks do
   begin
     if AText <> '' then
+    begin
       AText := AText + #10;
+    end;
     AText := AText + Mark.Name;
   end;
 end;

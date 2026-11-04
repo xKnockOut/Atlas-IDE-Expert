@@ -96,16 +96,24 @@ begin
   AToken := '';
   Result := False;
   if ATarget = '' then
+  begin
     Exit;
+  end;
   Credential := nil;
   if not CredReadW(PWideChar(ATarget), CRED_TYPE_GENERIC, 0, Credential) then
+  begin
     Exit;
+  end;
   try
     if Credential.UserName <> nil then
+    begin
       AUser := Credential.UserName;
+    end;
     if (Credential.CredentialBlob <> nil) and (Credential.CredentialBlobSize >= SizeOf(WideChar)) then
+    begin
       SetString(AToken, PWideChar(Credential.CredentialBlob), Integer(Credential.CredentialBlobSize) div
         SizeOf(WideChar));
+    end;
     Result := (AUser <> '') and (AToken <> '');
   finally
     CredFree(Credential);
@@ -124,7 +132,9 @@ var
 begin
   Result := False;
   if (ATarget = '') or (AUser = '') or (AToken = '') or (Length(AToken) > MaxTokenLength) then
+  begin
     Exit;
+  end;
   Blob := AToken;
   UniqueString(Blob);
   try
@@ -146,7 +156,9 @@ end;
 class function TAtlasCiCredentials.Delete(const ATarget: string): Boolean;
 begin
   if ATarget = '' then
+  begin
     Exit(False);
+  end;
   Result := CredDeleteW(PWideChar(ATarget), CRED_TYPE_GENERIC, 0) or (GetLastError = ERROR_NOT_FOUND);
 end;
 

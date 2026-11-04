@@ -83,7 +83,9 @@ var
 begin
   Name := Client;
   if Name = '' then
+  begin
     Name := 'unbekannter Client';
+  end;
   Result := System.SysUtils.Format('%s (pid %d)', [Name, Pid]);
 end;
 
@@ -94,8 +96,12 @@ var
   Row: TAtlasProcessRow;
 begin
   for Row in Processes do
+  begin
     if SameText(Row.Kind, 'MCP') then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -111,14 +117,20 @@ var
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) then
+  begin
     Exit;
+  end;
   Items := TJSONObject(AAnswer).GetValue('workspaces');
   if not (Items is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Items) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Workspace := Default(TAtlasProcessWorkspace);
     Workspace.Name := TJSONObject(Item).GetValue<string>('name', '');
     Workspace.Project := TJSONObject(Item).GetValue<string>('project', '');
@@ -130,7 +142,9 @@ begin
     Workspace.BuiltOnce := TJSONObject(Item).GetValue<Boolean>('builtOnce', False);
     List := TJSONObject(Item).GetValue('processes');
     if List is TJSONArray then
+    begin
       for Entry in TJSONArray(List) do
+      begin
         if Entry is TJSONObject then
         begin
           Row.Pid := TJSONObject(Entry).GetValue<Integer>('pid', 0);
@@ -141,15 +155,21 @@ begin
           Row.Own := TJSONObject(Entry).GetValue<Boolean>('own', False);
           Workspace.Processes := Workspace.Processes + [Row];
         end;
+      end;
+    end;
     List := TJSONObject(Item).GetValue('events');
     if List is TJSONArray then
+    begin
       for Entry in TJSONArray(List) do
+      begin
         if Entry is TJSONObject then
         begin
           Line.Time := TJSONObject(Entry).GetValue<string>('time', '');
           Line.Text := TJSONObject(Entry).GetValue<string>('text', '');
           Workspace.Events := Workspace.Events + [Line];
         end;
+      end;
+    end;
     Result := Result + [Workspace];
   end;
 end;
@@ -158,14 +178,18 @@ class function TAtlasProcessesView.Markdown(const AAnswer: TJSONValue): string;
 begin
   Result := '';
   if AAnswer is TJSONObject then
+  begin
     Result := TJSONObject(AAnswer).GetValue<string>('markdown', '');
+  end;
 end;
 
 class function TAtlasProcessesView.GroupName(const AWorkspaces: TArray<TAtlasProcessWorkspace>): string;
 begin
   Result := '';
   if Length(AWorkspaces) > 0 then
+  begin
     Result := AWorkspaces[0].Name;
+  end;
 end;
 
 class function TAtlasProcessesView.ProcessCount(const AWorkspaces: TArray<TAtlasProcessWorkspace>): Integer;
@@ -174,7 +198,9 @@ var
 begin
   Result := 0;
   for Workspace in AWorkspaces do
+  begin
     Inc(Result, Length(Workspace.Processes));
+  end;
 end;
 
 class function TAtlasProcessesView.DirtyNames(const AModifiedFiles: TArray<string>): TArray<string>;
@@ -189,11 +215,17 @@ begin
     Names.Duplicates := dupIgnore;
     Names.CaseSensitive := False;
     for FileName in AModifiedFiles do
+    begin
       if FileName <> '' then
+      begin
         Names.Add(ExtractFileName(FileName));
+      end;
+    end;
     SetLength(Result, Names.Count);
     for Index := 0 to Names.Count - 1 do
+    begin
       Result[Index] := Names[Index];
+    end;
   finally
     Names.Free;
   end;

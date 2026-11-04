@@ -254,7 +254,9 @@ begin
     Inc(Index);
   end;
   if Same then
+  begin
     Exit;
+  end;
   FButtons := AButtons;
   FLaidOut := False;
   Invalidate;
@@ -263,7 +265,9 @@ end;
 procedure TAtlasEditorToolbar.SetReturn(AShown: Boolean; const AText, AHint: string);
 begin
   if (AShown = FReturnShown) and (AText = FReturnText) and (AHint = FReturnHint) then
+  begin
     Exit;
+  end;
   FReturnShown := AShown;
   FReturnText := AText;
   FReturnHint := AHint;
@@ -274,7 +278,9 @@ end;
 procedure TAtlasEditorToolbar.SetLabels(AValue: Boolean);
 begin
   if AValue = FLabels then
+  begin
     Exit;
+  end;
   FLabels := AValue;
   FLaidOut := False;
   Invalidate;
@@ -283,7 +289,9 @@ end;
 procedure TAtlasEditorToolbar.SetInline(AValue: Boolean);
 begin
   if AValue = FInline then
+  begin
     Exit;
+  end;
   FInline := AValue;
   // In der Brotkrumenzeile bestimmt deren Höhe die Höhe (alRight).
   FixedHeight := not FInline;
@@ -313,7 +321,9 @@ end;
 function TAtlasEditorToolbar.ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
 begin
   if AButton.IsSeparator then
+  begin
     Exit(SeparatorWidth);
+  end;
   Result := Scale(BaseButton);
   if FLabels and (AButton.Caption <> '') then
   begin
@@ -348,7 +358,9 @@ begin
     Result := Result + [Index];
   end;
   if not Placed then
+  begin
     Result := Result + [PartReturn];
+  end;
 end;
 
 procedure TAtlasEditorToolbar.Layout;
@@ -360,22 +372,32 @@ var
   Overflow: Integer;
 begin
   if FLaidOut or not HandleAllocated then
+  begin
     Exit;
+  end;
   FLaidOut := True;
   Order := Entries;
   SetLength(Slots, Length(Order));
   for Index := 0 to High(Order) do
+  begin
     if Order[Index] = PartReturn then
-      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True)
+    begin
+      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
+    end
     else
+    begin
       Slots[Index] := TAtlasToolbarSlot.Create(ButtonWidth(FButtons[Order[Index]]),
         FButtons[Order[Index]].IsSeparator, FButtons[Order[Index]].Pinned);
+    end;
+  end;
   Width_ := Scale(BaseButton);
   Available := ClientWidth - 2 * Scale(Margin) - Width_;
   Fit := TAtlasToolbarLayout.Fit(Slots, Available, Width_);
   SetLength(FRects, Length(FButtons));
   for Index := 0 to High(FRects) do
+  begin
     FRects[Index] := TRect.Empty;
+  end;
   FReturnRect := TRect.Empty;
   Top_ := Scale(1);
   Bottom_ := ClientHeight - Scale(1);
@@ -383,25 +405,37 @@ begin
   for Index := 0 to High(Order) do
   begin
     if not Fit.Visible[Index] then
+    begin
       Continue;
+    end;
     Part := Order[Index];
     if Part = PartReturn then
-      FReturnRect := Rect(Left_, Top_, Left_ + Slots[Index].Width, Bottom_)
+    begin
+      FReturnRect := Rect(Left_, Top_, Left_ + Slots[Index].Width, Bottom_);
+    end
     else
+    begin
       FRects[Part] := Rect(Left_, Top_, Left_ + Slots[Index].Width, Bottom_);
+    end;
     Inc(Left_, Slots[Index].Width);
   end;
   FOverflow := nil;
   for Overflow in Fit.Overflow do
+  begin
     if Order[Overflow] >= 0 then
+    begin
       FOverflow := FOverflow + [Order[Overflow]];
+    end;
+  end;
   if Fit.More then
   begin
     FMoreRect := Rect(Left_, Top_, Left_ + Width_, Bottom_);
     Inc(Left_, Width_);
   end
   else
+  begin
     FMoreRect := TRect.Empty;
+  end;
   // Zahnrad rechts außen.
   FGearRect := Rect(Max(Left_, ClientWidth - Scale(Margin) - Width_), Top_, Max(Left_, ClientWidth - Scale(Margin) -
     Width_) + Width_, Bottom_);
@@ -416,14 +450,22 @@ begin
   Order := Entries;
   SetLength(Slots, Length(Order));
   for Index := 0 to High(Order) do
+  begin
     if Order[Index] = PartReturn then
-      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True)
+    begin
+      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
+    end
     else
+    begin
       Slots[Index] := TAtlasToolbarSlot.Create(ButtonWidth(FButtons[Order[Index]]),
         FButtons[Order[Index]].IsSeparator, FButtons[Order[Index]].Pinned);
+    end;
+  end;
   Result := TAtlasToolbarLayout.FullWidth(Slots) + 2 * Scale(Margin) + Scale(BaseButton);
   if FInline then
+  begin
     Inc(Result, Scale(Margin));
+  end;
 end;
 
 function TAtlasEditorToolbar.PartRect(APart: Integer): TRect;
@@ -438,9 +480,13 @@ begin
       Result := FGearRect;
   else
     if (APart >= 0) and (APart <= High(FRects)) then
-      Result := FRects[APart]
+    begin
+      Result := FRects[APart];
+    end
     else
+    begin
       Result := TRect.Empty;
+    end;
   end;
 end;
 
@@ -449,8 +495,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FButtons) do
+  begin
     if SameText(FButtons[Index].Id, AId) then
+    begin
       Exit(PartRect(Index));
+    end;
+  end;
   Result := TRect.Empty;
 end;
 
@@ -476,7 +526,9 @@ begin
   Layout;
   Result := nil;
   for Index in FOverflow do
+  begin
     Result := Result + [FButtons[Index].Id];
+  end;
 end;
 
 function TAtlasEditorToolbar.PartAt(X, Y: Integer): Integer;
@@ -487,14 +539,24 @@ begin
   Layout;
   Point_ := Point(X, Y);
   if FReturnRect.Contains(Point_) then
+  begin
     Exit(PartReturn);
+  end;
   if FMoreRect.Contains(Point_) then
+  begin
     Exit(PartMore);
+  end;
   if FGearRect.Contains(Point_) then
+  begin
     Exit(PartGear);
+  end;
   for Index := 0 to High(FRects) do
+  begin
     if not FButtons[Index].IsSeparator and FRects[Index].Contains(Point_) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := PartNone;
 end;
 
@@ -512,7 +574,9 @@ begin
   else
     Result := FButtons[APart].Hint;
     if Result = '' then
+    begin
       Result := FButtons[APart].Caption;
+    end;
   end;
 end;
 
@@ -555,7 +619,9 @@ begin
       Radius, Radius);
   end;
   if not AEnabled then
+  begin
     Fore := ToColor(Colors.Muted);
+  end;
   Icon := Rect(ARect.Left + Scale(4), ARect.Top + (ARect.Height - IconSize) div 2, ARect.Left + Scale(4) + IconSize,
     ARect.Top + (ARect.Height - IconSize) div 2 + IconSize);
   Canvas.Font := Font;
@@ -599,7 +665,9 @@ begin
   begin
     Area := FRects[Index];
     if Area.IsEmpty then
+    begin
       Continue;
+    end;
     Button := FButtons[Index];
     if Button.IsSeparator then
     begin
@@ -611,7 +679,9 @@ begin
     end;
     mText := '';
     if FLabels then
+    begin
       mText := Button.Caption;
+    end;
     DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, Hot = Index, Button.Dot, mText);
   end;
   if not FReturnRect.IsEmpty then
@@ -635,7 +705,9 @@ begin
     Canvas.Font := Font;
   end;
   if not FMoreRect.IsEmpty then
+  begin
     DrawButton(FMoreRect, TAtlasToolbarIcon.More, '', True, False, Hot = PartMore, False, '');
+  end;
   DrawButton(FGearRect, TAtlasToolbarIcon.Gear, '', True, False, Hot = PartGear, False, '');
 end;
 
@@ -669,7 +741,9 @@ begin
       ;
     PartReturn:
       if Assigned(FOnReturn) then
+      begin
         FOnReturn();
+      end;
     PartMore:
       begin
         Area := FMoreRect;
@@ -677,13 +751,19 @@ begin
       end;
     PartGear:
       if Assigned(FOnCustomize) then
+      begin
         FOnCustomize();
+      end;
   else
     if not FButtons[APart].Enabled then
+    begin
       TAtlasGuard.Log(Format('Editorleiste: Klick auf gesperrten Knopf %s (%s)', [FButtons[APart].Id,
-        PartHint(APart)]))
+        PartHint(APart)]));
+    end
     else if Assigned(FOnCommand) then
+    begin
       FOnCommand(FButtons[APart].Id);
+    end;
   end;
 end;
 
@@ -716,7 +796,9 @@ begin
       FMenu.Items.Add(Item);
     end;
     if FMenu.Items.Count > 0 then
+    begin
       FMenu.Items.Add(NewLine);
+    end;
   end;
   Item := TMenuItem.Create(FMenu);
   Item.Caption := StringReplace(FCustomizeCaption, '&', '&&', [rfReplaceAll]);
@@ -731,13 +813,17 @@ var
 begin
   Index := TMenuItem(Sender).Tag;
   if (Index >= 0) and (Index <= High(FMenuIds)) and Assigned(FOnCommand) then
+  begin
     FOnCommand(FMenuIds[Index]);
+  end;
 end;
 
 procedure TAtlasEditorToolbar.MenuCustomizeClick(Sender: TObject);
 begin
   if Assigned(FOnCustomize) then
+  begin
     FOnCustomize();
+  end;
 end;
 
 end.

@@ -229,7 +229,9 @@ begin
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
+  end;
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
@@ -244,7 +246,9 @@ var
   mPainted: Boolean;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   FreeAndNil(FTimer);
   if FAppEvents <> nil then
   begin
@@ -253,7 +257,9 @@ begin
   end;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
     mServices.RemoveEditorEventsNotifier(FIndex);
+  end;
   if FEvents <> nil then
   begin
     FEvents.OnEditorPaintLine := nil;
@@ -270,7 +276,9 @@ begin
   FHover := Default(THit);
   FHooks := Default(TAtlasCodeLinksHooks);
   if mPainted then
+  begin
     Invalidate;
+  end;
   inherited Destroy;
 end;
 
@@ -279,7 +287,9 @@ var
   mServices: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
 end;
 
 class function TAtlasIdeCodeLinks.IsPascal(const AFileName: string): Boolean;
@@ -293,7 +303,9 @@ var
 begin
   Result := (FIndex >= 0) and Assigned(FHooks.Target) and not TAtlasGuard.Disabled(TAtlasFeature.IssueLinks);
   if not Result then
+  begin
     Exit;
+  end;
   mSettings := TAtlasIdeSettings.Current;
   Result := mSettings.Enabled and mSettings.IssuesCodeLinks;
 end;
@@ -312,9 +324,13 @@ begin
   FLines := nil;
   FStates := nil;
   if FMatches <> nil then
+  begin
     FMatches.Clear;
+  end;
   if FHits <> nil then
+  begin
     FHits.Clear;
+  end;
 end;
 
 procedure TAtlasIdeCodeLinks.Tick(Sender: TObject);
@@ -339,7 +355,9 @@ begin
   mHad := FFileName <> '';
   mView := nil;
   if Active and FHooks.Target(mTarget) then
+  begin
     mView := TAtlasEditorBuffer.ActiveView;
+  end;
   if (mView = nil) or (mView.Buffer = nil) or not IsPascal(mView.Buffer.FileName) then
   begin
     SetHover(Default(THit), False);
@@ -352,11 +370,15 @@ begin
   end;
   mCommit := '';
   if Assigned(FHooks.CommitPattern) then
+  begin
     mCommit := FHooks.CommitPattern();
+  end;
   mKey := PatternKey(mTarget, mCommit);
   mSnapshot := TAtlasEditorSnapshots.Get(mView);
   if (mSnapshot.Version = FVersion) and SameText(mSnapshot.FileName, FFileName) and (mKey = FPatternKey) then
+  begin
     Exit;
+  end;
   // Neuer Stand: nur die Zustände der Zeilen; Kennungen sucht erst das Zeichnen der sichtbaren Zeilen.
   SetHover(Default(THit), False);
   FFileName := mSnapshot.FileName;
@@ -376,7 +398,9 @@ end;
 function TAtlasIdeCodeLinks.MatchesOf(ALine: Integer): TArray<TAtlasIssueKeyMatch>;
 begin
   if FMatches.TryGetValue(ALine, Result) then
+  begin
     Exit;
+  end;
   Result := TAtlasCodeLinks.LineMatches(FPattern, FLines[ALine], FStates[ALine], FCommit);
   FMatches.Add(ALine, Result);
 end;
@@ -402,7 +426,9 @@ begin
   mSaved := SaveDC(mDC);
   try
     if mCode.Right > mCode.Left then
+    begin
       IntersectClipRect(mDC, mCode.Left, Rect.Top, Rect.Right, Rect.Bottom);
+    end;
     mY := Rect.Bottom - 2;
     for mMatch in AMatches do
     begin
@@ -442,27 +468,41 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FFileName = '') or
     TAtlasGuard.Disabled(TAtlasFeature.IssueLinks) then
+  begin
     Exit;
+  end;
   try
     if (Context.EditControl = nil) or (Context.EditView = nil) or (Context.EditorState = nil) then
+    begin
       Exit;
+    end;
     // Was diese Zeile des Editors vorher zeigte, gilt nicht mehr.
     FHits.Remove(Context.EditorLineNum);
     if not Shown or not SameText(Context.FileName, FFileName) then
+    begin
       Exit;
+    end;
     mLineState := Context.LineState;
     if mLineState = nil then
+    begin
       Exit;
+    end;
     mLine := Context.LogicalLineNum - 1;
     if (mLine < 0) or (mLine >= Length(FLines)) then
+    begin
       Exit;
+    end;
     mText := FLines[mLine];
     // Nur, wenn die Zeile im Editor dem Stand entspricht (sonst kommt gleich ein neuer Takt).
     if TrimRight(mLineState.Text) <> TrimRight(mText) then
+    begin
       Exit;
+    end;
     mMatches := MatchesOf(mLine);
     if Length(mMatches) > 0 then
+    begin
       PaintMatches(Rect, Context, mText, mMatches);
+    end;
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
@@ -479,20 +519,30 @@ begin
   AHit := Default(THit);
   Result := False;
   if not Shown or (FHits.Count = 0) then
+  begin
     Exit;
+  end;
   mView := TAtlasEditorBuffer.ActiveView;
   if (mView = nil) or (mView.Buffer = nil) then
+  begin
     Exit;
+  end;
   for mHits in FHits.Values do
+  begin
     for mHit in mHits do
+    begin
       if (mHit.Wnd = AWnd) and PtInRect(mHit.Rect, Point(X, Y)) then
       begin
         // Nur, wenn die Kennung noch dort steht: gleiche Datei, nicht gescrollt.
         if not SameText(mHit.FileName, mView.Buffer.FileName) or (mHit.TopRow <> mView.TopRow) then
+        begin
           Exit;
+        end;
         AHit := mHit;
         Exit(True);
       end;
+    end;
+  end;
 end;
 
 function TAtlasIdeCodeLinks.TargetOf(const AHit: THit): TAtlasTrackerTarget;
@@ -504,7 +554,9 @@ function TAtlasIdeCodeLinks.Preview: TAtlasIdeIssuePreview;
 begin
   Result := nil;
   if Assigned(FHooks.Preview) then
+  begin
     Result := FHooks.Preview();
+  end;
 end;
 
 function TAtlasIdeCodeLinks.CanStart: Boolean;
@@ -518,10 +570,14 @@ var
 begin
   mChanged := AOn <> FHovering;
   if AOn and FHovering then
+  begin
     mChanged := (AHit.Wnd <> FHover.Wnd) or (AHit.Line <> FHover.Line) or
       (AHit.Match.Character <> FHover.Match.Character) or not SameText(AHit.FileName, FHover.FileName);
+  end;
   if not mChanged then
+  begin
     Exit;
+  end;
   HideTip;
   FHovering := AOn;
   FHover := AHit;
@@ -537,7 +593,9 @@ begin
     begin
       // Über dem Tooltip selbst bleibt er offen (CheckHover).
       if not (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos)) then
+      begin
         SetHover(Default(THit), False);
+      end;
       Exit;
     end;
     SetHover(mHit, True);
@@ -552,7 +610,9 @@ end;
 procedure TAtlasIdeCodeLinks.CheckHover;
 begin
   if not FHovering then
+  begin
     Exit;
+  end;
   if not Shown then
   begin
     SetHover(Default(THit), False);
@@ -566,14 +626,18 @@ begin
     Exit;
   end;
   if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= TAtlasCloseRules.TooltipShowDelayMs) then
+  begin
     ShowTip(FHover);
+  end;
 end;
 
 procedure TAtlasIdeCodeLinks.HideTip;
 begin
   FTipKey := '';
   if (FTip <> nil) and FTip.IsShown then
+  begin
     FTip.HidePopup;
+  end;
 end;
 
 procedure TAtlasIdeCodeLinks.ShowState(const AKey: string; AState: TAtlasIssueTipState;
@@ -598,24 +662,34 @@ var
 begin
   mPreview := Preview;
   if mPreview = nil then
+  begin
     Exit;
+  end;
   mTarget := TargetOf(AHit);
   mKey := AHit.Match.IssueKey;
   mCached := mPreview.Peek(mTarget, mKey, mDetails);
   if mCached then
-    ShowState(AHit.Match.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None)
+  begin
+    ShowState(AHit.Match.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None);
+  end
   else
+  begin
     ShowState(AHit.Match.Key, TAtlasIssueTipState.Loading, mDetails, TAtlasCiFetchError.None);
+  end;
   // Erst der Hover fragt; ein frischer Stand braucht keine Abfrage.
   if mCached and TAtlasIdeIssuePreview.Fresh(mDetails) then
+  begin
     Exit;
+  end;
   mSerial := FSerialOf;
   mKey := AHit.Match.Key;
   mPreview.Lookup(mTarget, AHit.Match.IssueKey,
     procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
     begin
       if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+      begin
         FInstance.LookedUp(mKey, ASucceeded, ADetails, AError);
+      end;
     end);
 end;
 
@@ -626,14 +700,22 @@ var
 begin
   // Nur, solange der Tooltip noch diese Kennung zeigt.
   if not FHovering or not FTip.IsShown or (FTipKey <> AKey) then
+  begin
     Exit;
+  end;
   if ASucceeded then
-    ShowState(AKey, TAtlasIssueTipState.Found, ADetails, AError)
+  begin
+    ShowState(AKey, TAtlasIssueTipState.Found, ADetails, AError);
+  end
   else if AError = TAtlasCiFetchError.NotFound then
-    ShowState(AKey, TAtlasIssueTipState.NotFound, ADetails, AError)
+  begin
+    ShowState(AKey, TAtlasIssueTipState.NotFound, ADetails, AError);
+  end
   else if not ((Preview <> nil) and Preview.Peek(TargetOf(FHover), FHover.Match.IssueKey, mCached)) then
+  begin
     // Ohne Netz bleibt ein vorhandener Stand stehen; sonst der Grund.
     ShowState(AKey, TAtlasIssueTipState.Failed, ADetails, AError);
+  end;
 end;
 
 procedure TAtlasIdeCodeLinks.Act(const AHit: THit; ACommand: Integer);
@@ -641,15 +723,21 @@ begin
   case ACommand of
     MenuShow:
       if Assigned(FHooks.Show) then
+      begin
         FHooks.Show(TargetOf(AHit), AHit.Match.IssueKey);
+      end;
     MenuBrowse:
       if Assigned(FHooks.Browse) then
+      begin
         FHooks.Browse(TargetOf(AHit), AHit.Match.IssueKey);
+      end;
     MenuCopy:
       Clipboard.AsText := AHit.Match.Key;
     MenuStart:
       if CanStart then
+      begin
         FHooks.Start(TargetOf(AHit), AHit.Match.IssueKey);
+      end;
   end;
 end;
 
@@ -666,7 +754,9 @@ begin
       FSwallowUp := 0;
       Handled := True;
       if GetCapture = Msg.hwnd then
+      begin
         ReleaseCapture;
+      end;
       if Msg.message = WM_RBUTTONUP then
       begin
         mHit := FMenuHit;
@@ -676,24 +766,34 @@ begin
           procedure
           begin
             if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+            begin
               TAtlasGuard.Run(TAtlasFeature.IssueLinks,
                 procedure
                 begin
                   FInstance.ShowMenu(mHit, mWhere);
                 end);
+            end;
           end);
       end;
       Exit;
     end;
     if not ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_RBUTTONDOWN)) then
+    begin
       Exit;
+    end;
     if (Msg.message = WM_LBUTTONDOWN) and ((Msg.wParam and MK_CONTROL) = 0) then
+    begin
       Exit;
+    end;
     // Umschalt+Rechtsklick: Kontextmenü der IDE.
     if (Msg.message = WM_RBUTTONDOWN) and ((Msg.wParam and MK_SHIFT) <> 0) then
+    begin
       Exit;
+    end;
     if not HitAt(Msg.hwnd, SmallInt(LoWord(Msg.lParam)), SmallInt(HiWord(Msg.lParam)), mHit) then
+    begin
       Exit;
+    end;
     Handled := True;
     HideTip;
     if Msg.message = WM_RBUTTONDOWN then
@@ -707,17 +807,21 @@ begin
     FSwallowUp := WM_LBUTTONUP;
     mCommand := MenuShow;
     if (Msg.wParam and MK_SHIFT) <> 0 then
+    begin
       mCommand := MenuBrowse;
+    end;
     mSerial := FSerialOf;
     TAtlasMainThread.ForceQueue(TAtlasFeature.IssueLinks,
       procedure
       begin
         if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
+        begin
           TAtlasGuard.Run(TAtlasFeature.IssueLinks,
             procedure
             begin
               FInstance.Act(mHit, mCommand);
             end);
+        end;
       end);
   except
     on E: Exception do
