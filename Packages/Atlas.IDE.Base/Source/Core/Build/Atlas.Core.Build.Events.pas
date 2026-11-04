@@ -236,9 +236,13 @@ end;
 function TAtlasCompileEvents.Now_: Int64;
 begin
   if Assigned(FClock) then
-    Result := FClock()
+  begin
+    Result := FClock();
+  end
   else
+  begin
     Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
 end;
 
 procedure TAtlasCompileEvents.Add(AParticipant: TAtlasCompileParticipant);
@@ -249,12 +253,18 @@ end;
 procedure TAtlasCompileEvents.Remove(AParticipant: TAtlasCompileParticipant);
 begin
   if (AParticipant = nil) or not FParticipants.Contains(AParticipant) then
+  begin
     Exit;
+  end;
   FParticipants.Extract(AParticipant);
   if FDispatching > 0 then
-    FRetired.Add(AParticipant)
+  begin
+    FRetired.Add(AParticipant);
+  end
   else
+  begin
     AParticipant.Free;
+  end;
 end;
 
 function TAtlasCompileEvents.EnterDispatch: TArray<TAtlasCompileParticipant>;
@@ -267,7 +277,9 @@ procedure TAtlasCompileEvents.LeaveDispatch;
 begin
   Dec(FDispatching);
   if FDispatching = 0 then
+  begin
     FRetired.Clear;
+  end;
 end;
 
 function TAtlasCompileEvents.IsLive(AParticipant: TAtlasCompileParticipant): Boolean;
@@ -285,9 +297,13 @@ end;
 procedure TAtlasCompileEvents.Notify(const AMethod: string; AParams: TJSONObject);
 begin
   if Assigned(FOnNotify) then
-    FOnNotify(AMethod, AParams)
+  begin
+    FOnNotify(AMethod, AParams);
+  end
   else
+  begin
     AParams.Free;
+  end;
 end;
 
 procedure TAtlasCompileEvents.Guard(const AWhat: string; const AAction: TProc);
@@ -297,15 +313,21 @@ begin
   except
     on E: Exception do
       if Assigned(FOnLog) then
+      begin
         FOnLog(Format('Compile-Ereignis %s: %s: %s', [AWhat, E.ClassName, E.Message]));
+      end;
   end;
 end;
 
 function TAtlasCompileEvents.RunningIndex(const AFileName: string): Integer;
 begin
   for Result := 0 to FRunning.Count - 1 do
+  begin
     if SameText(FRunning[Result].Project.FileName, AFileName) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -320,8 +342,12 @@ begin
   Participants := EnterDispatch;
   try
     for Participant in Participants do
+    begin
       if IsLive(Participant) then
+      begin
         Guard(Participant.ClassName, procedure begin Participant.GroupStarted(AKind); end);
+      end;
+    end;
   finally
     LeaveDispatch;
   end;
@@ -336,14 +362,20 @@ var
   Duration: Int64;
 begin
   if not FInGroup then
+  begin
     Exit;
+  end;
   FInGroup := False;
   Duration := Now_ - FGroupStarted;
   Participants := EnterDispatch;
   try
     for Participant in Participants do
+    begin
       if IsLive(Participant) then
+      begin
         Guard(Participant.ClassName, procedure begin Participant.GroupFinished(ASucceeded, Duration); end);
+      end;
+    end;
   finally
     LeaveDispatch;
   end;
@@ -377,7 +409,9 @@ begin
     for Participant in Participants do
     begin
       if not IsLive(Participant) then
+      begin
         Continue;
+      end;
       Cancel := False;
       Reason := '';
       Guard(Participant.ClassName, procedure begin Cancel := Participant.CancelCompile(Info, Reason); end);
@@ -392,13 +426,19 @@ begin
     LeaveDispatch;
   end;
   if not Result then
+  begin
     Exit;
+  end;
   Text := AReason;
   Participants := EnterDispatch;
   try
     for Participant in Participants do
+    begin
       if IsLive(Participant) then
+      begin
         Guard(Participant.ClassName, procedure begin Participant.CompileCancelled(Info, Text); end);
+      end;
+    end;
   finally
     LeaveDispatch;
   end;
@@ -407,7 +447,9 @@ end;
 procedure TAtlasCompileEvents.CodeInsightFinished;
 begin
   if FCodeInsightStarted <> 0 then
+  begin
     Inc(FCodeInsightMs, Now_ - FCodeInsightStarted);
+  end;
   FCodeInsightStarted := 0;
 end;
 
@@ -419,11 +461,17 @@ begin
   Result.AddPair('configuration', AProject.Configuration);
   Result.AddPair('platform', AProject.Platform);
   if AProject.OutputFile <> '' then
+  begin
     Result.AddPair('output', AProject.OutputFile);
+  end;
   if AProject.Background then
+  begin
     Result.AddPair('background', TJSONBool.Create(True));
+  end;
   if AProject.RequestedBy <> '' then
+  begin
     Result.AddPair('requestedBy', AProject.RequestedBy);
+  end;
 end;
 
 procedure TAtlasCompileEvents.ProjectStarted(const AProject: TAtlasCompileProject);
@@ -433,7 +481,9 @@ var
   Running: TRunning;
 begin
   if (AProject.FileName = '') or (RunningIndex(AProject.FileName) >= 0) then
+  begin
     Exit;
+  end;
   Running.Project := AProject;
   Running.Project.Background := FBackground;
   Running.Project.RequestedBy := FRequestedBy;
@@ -442,8 +492,12 @@ begin
   Participants := EnterDispatch;
   try
     for Participant in Participants do
+    begin
       if IsLive(Participant) then
+      begin
         Guard(Participant.ClassName, procedure begin Participant.ProjectStarted(Running.Project); end);
+      end;
+    end;
   finally
     LeaveDispatch;
   end;
@@ -461,19 +515,25 @@ var
 begin
   Index := RunningIndex(AFileName);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Running := FRunning[Index];
   FRunning.Delete(Index);
   Duration := Now_ - Running.Started;
   Participants := EnterDispatch;
   try
     for Participant in Participants do
+    begin
       if IsLive(Participant) then
+      begin
         Guard(Participant.ClassName,
           procedure
           begin
             Participant.ProjectFinished(Running.Project, ASucceeded, Duration);
           end);
+      end;
+    end;
   finally
     LeaveDispatch;
   end;

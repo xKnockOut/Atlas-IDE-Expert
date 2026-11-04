@@ -49,26 +49,46 @@ begin
   Done := Length(AReport.Done);
   Count := Length(Problems);
   if AReport.Disabled then
-    Line := TAtlasStrings.Text(TAtlasTextId.UndoDisabled)
+  begin
+    Line := TAtlasStrings.Text(TAtlasTextId.UndoDisabled);
+  end
   else if AReport.NotFound and AReport.Redo then
-    Line := TAtlasStrings.Text(TAtlasTextId.RedoNothing)
+  begin
+    Line := TAtlasStrings.Text(TAtlasTextId.RedoNothing);
+  end
   else if AReport.NotFound then
-    Line := TAtlasStrings.Text(TAtlasTextId.UndoNothing)
+  begin
+    Line := TAtlasStrings.Text(TAtlasTextId.UndoNothing);
+  end
   else if AReport.Aborted and AReport.Redo then
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoAborted, [AReport.Action, Count])
+  begin
+    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoAborted, [AReport.Action, Count]);
+  end
   else if AReport.Aborted then
-    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, [AReport.Action, Count])
+  begin
+    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, [AReport.Action, Count]);
+  end
   else if (Count = 0) and AReport.Redo then
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [AReport.Action, Done])
+  begin
+    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [AReport.Action, Done]);
+  end
   else if Count = 0 then
-    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [AReport.Action, Done])
+  begin
+    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [AReport.Action, Done]);
+  end
   else if AReport.Redo then
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, [AReport.Action, Done, Count])
+  begin
+    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, [AReport.Action, Done, Count]);
+  end
   else
+  begin
     Line := TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, [AReport.Action, Done, Count]);
+  end;
   Result := Result + [Line];
   if AReport.Disabled or AReport.NotFound then
+  begin
     Exit;
+  end;
   for Problem in Problems do
   begin
     case Problem.Kind of
@@ -102,9 +122,13 @@ var
   Time: string;
 begin
   if SameDate(ASet.Time, ANow) then
-    Time := FormatDateTime('hh":"nn', ASet.Time)
+  begin
+    Time := FormatDateTime('hh":"nn', ASet.Time);
+  end
   else
+  begin
     Time := FormatDateTime('dd.mm. hh":"nn', ASet.Time);
+  end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.UndoSetCaption, [ASet.Action, Length(ASet.Files), Time,
     StateText(ASet.State)]);
 end;
@@ -113,7 +137,9 @@ class function TAtlasUndoMessages.FileCaption(const AChange: TAtlasFileChange): 
 begin
   Result := ExtractFileName(AChange.FileName);
   if ExtractFileDir(AChange.FileName) <> '' then
+  begin
     Result := Result + ' (' + ExtractFileDir(AChange.FileName) + ')';
+  end;
   case AChange.Kind of
     TAtlasFileChangeKind.Created:
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoKindCreated);
@@ -123,7 +149,9 @@ begin
     // Übrige Werte bewusst ohne Wirkung.
   end;
   if AChange.Undone then
+  begin
     Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.UndoStateUndone);
+  end;
 end;
 
 class function TAtlasUndoMessages.DiffLines(const ASet: TAtlasChangeSet; const AFileName: string): TArray<string>;
@@ -135,14 +163,20 @@ begin
   for Change in ASet.Files do
   begin
     if (AFileName <> '') and not SameText(Change.FileName, AFileName) then
+    begin
       Continue;
+    end;
     Lines := TAtlasUndoJournal.Diff(Change);
     if Length(Lines) = 0 then
+    begin
       Lines := [TAtlasStrings.Text(TAtlasTextId.UndoNoDiff)];
+    end;
     if AFileName = '' then
     begin
       if Length(Result) > 0 then
+      begin
         Result := Result + [''];
+      end;
       Result := Result + ['=== ' + FileCaption(Change) + ' ==='];
     end;
     Result := Result + Lines;

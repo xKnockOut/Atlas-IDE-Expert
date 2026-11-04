@@ -251,9 +251,13 @@ var
 begin
   Result := False;
   for Item in Hidden do
+  begin
     if SameText(Item, AEntry.Id) or ((AEntry.Kind <> TAtlasGenerateKind.Action) and (SameText(Item, AEntry.Name) or
       SameText(Item, AEntry.CommandName))) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasGenerateOptions.HasGroup(AGroup: TAtlasGenerateGroup): Boolean;
@@ -262,8 +266,12 @@ var
 begin
   Result := False;
   for Group in Groups do
+  begin
     if Group = AGroup then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasGenerateOptions.Only(const AGroups: TArray<TAtlasGenerateGroup>): TAtlasGenerateOptions;
@@ -273,14 +281,26 @@ begin
   Result := Self;
   Result.Groups := nil;
   for Group in Groups do
+  begin
     for Wanted in AGroups do
+    begin
       if Group = Wanted then
+      begin
         Result.Groups := Result.Groups + [Group];
+      end;
+    end;
+  end;
   // Ausdrücklich verlangt, aber in den Einstellungen nicht eingeschaltet: trotzdem zeigen.
   if Length(Result.Groups) = 0 then
+  begin
     for Wanted in AGroups do
+    begin
       if Wanted <> TAtlasGenerateGroup.Recent then
+      begin
         Result.Groups := Result.Groups + [Wanted];
+      end;
+    end;
+  end;
 end;
 
 { TAtlasGenerateRecent }
@@ -291,10 +311,14 @@ var
 begin
   Index := IndexText(AId, FIds);
   if Index >= 0 then
+  begin
     Delete(FIds, Index, 1);
+  end;
   Insert(AId, FIds, 0);
   if Length(FIds) > MaxCount then
+  begin
     SetLength(FIds, MaxCount);
+  end;
 end;
 
 function TAtlasGenerateRecent.Rank(const AId: string): Integer;
@@ -318,8 +342,12 @@ var
 begin
   FIds := nil;
   for Line in TTextLines.SplitLines(AText) do
+  begin
     if (Trim(Line) <> '') and (IndexText(Trim(Line), FIds) < 0) and (Length(FIds) < MaxCount) then
+    begin
       FIds := FIds + [Trim(Line)];
+    end;
+  end;
 end;
 
 function TAtlasGenerateRecent.ToText: string;
@@ -335,13 +363,19 @@ var
 begin
   Pattern := Trim(APattern);
   if Pattern.StartsWith('/') then
+  begin
     Delete(Pattern, 1, 1);
+  end;
   if Pattern = '' then
+  begin
     Exit(0);
+  end;
   Result := Max(TAtlasCompletionMatcher.Score(Pattern, AEntry.Caption),
     TAtlasCompletionMatcher.Score(Pattern, AEntry.Name));
   if Result = TAtlasCompletionMatcher.NoMatch then
+  begin
     Result := NoMatch;
+  end;
 end;
 
 class function TAtlasGenerateMenu.Rows(const AEntries: TArray<TAtlasGenerateEntry>;
@@ -361,7 +395,9 @@ var
     Member: Integer;
   begin
     if Length(AMembers) = 0 then
+    begin
       Exit;
+    end;
     Row := Default(TAtlasGenerateRow);
     Row.IsHeader := True;
     Row.Group := AGroup;
@@ -387,7 +423,9 @@ var
     I, J: Integer;
   begin
     if Trim(APattern) = '' then
+    begin
       Exit;
+    end;
     for I := 1 to High(AMembers) do
     begin
       J := I;
@@ -409,7 +447,9 @@ begin
   begin
     Scores[Index] := NoMatch;
     if AOptions.IsHidden(AEntries[Index]) or not AOptions.HasGroup(AEntries[Index].Group) then
+    begin
       Continue;
+    end;
     Scores[Index] := Score(AEntries[Index], APattern);
   end;
   // Zuletzt gewählt: nach Rang, höchstens RecentCount.
@@ -417,6 +457,7 @@ begin
   if AOptions.RecentFirst and (ARecent <> nil) then
   begin
     for Index := 0 to High(AEntries) do
+    begin
       if (Scores[Index] <> NoMatch) and (ARecent.Rank(AEntries[Index].Id) >= 0) then
       begin
         Other := Length(Recent);
@@ -430,10 +471,15 @@ begin
           Dec(Other);
         end;
       end;
+    end;
     if Length(Recent) > RecentCount then
+    begin
       SetLength(Recent, RecentCount);
+    end;
     for Index in Recent do
+    begin
       InRecent[Index] := True;
+    end;
   end;
   Digit := 1;
   AddGroup(TAtlasGenerateGroup.Recent, Recent);
@@ -441,8 +487,12 @@ begin
   begin
     Members := nil;
     for Index := 0 to High(AEntries) do
+    begin
       if (AEntries[Index].Group = Group) and (Scores[Index] <> NoMatch) and not InRecent[Index] then
+      begin
         Members := Members + [Index];
+      end;
+    end;
     SortByScore(Members);
     AddGroup(Group, Members);
   end;
@@ -455,10 +505,16 @@ var
 begin
   Result := -1;
   if ADigit <= 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(ARows) do
+  begin
     if not ARows[Index].IsHeader and (ARows[Index].Digit = ADigit) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 class function TAtlasGenerateMenu.FirstEntryRow(const ARows: TArray<TAtlasGenerateRow>): Integer;
@@ -467,8 +523,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(ARows) do
+  begin
     if not ARows[Index].IsHeader then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 class function TAtlasGenerateMenu.StepRow(const ARows: TArray<TAtlasGenerateRow>; AFrom, ADelta: Integer): Integer;
@@ -477,15 +537,21 @@ var
 begin
   Result := FirstEntryRow(ARows);
   if Result < 0 then
+  begin
     Exit;
+  end;
   if (AFrom < 0) or (AFrom > High(ARows)) then
+  begin
     Exit;
+  end;
   Result := AFrom;
   Index := AFrom + Sign(ADelta);
   while (Index >= 0) and (Index <= High(ARows)) do
   begin
     if not ARows[Index].IsHeader then
+    begin
       Exit(Index);
+    end;
     Inc(Index, Sign(ADelta));
   end;
 end;
@@ -502,9 +568,13 @@ begin
   begin
     Scores[Index] := 0;
     if Trim(APattern) <> '' then
+    begin
       Scores[Index] := TAtlasCompletionMatcher.Score(Trim(APattern), AChoices[Index]);
+    end;
     if Scores[Index] = TAtlasCompletionMatcher.NoMatch then
+    begin
       Continue;
+    end;
     Position := Length(Result);
     Result := Result + [Index];
     while (Position > 0) and (Scores[Result[Position - 1]] < Scores[Result[Position]]) do
@@ -526,13 +596,17 @@ begin
   Chosen := nil;
   Count := 0;
   for Index := 0 to High(AChoices) do
+  begin
     if (Index <= High(AChecked)) and AChecked[Index] then
     begin
       Chosen := Chosen + [AChoices[Index]];
       Inc(Count);
     end;
+  end;
   if AAllMeansEmpty and ((Count = 0) or (Count = Length(AChoices))) then
+  begin
     Exit('');
+  end;
   Result := string.Join(ASeparator, Chosen);
 end;
 
@@ -540,10 +614,14 @@ class function TAtlasGenerateMenu.SelectionEndLine(AStartLine, AEndLine, AEndCha
   AHasSelection: Boolean): Integer;
 begin
   if not AHasSelection then
+  begin
     Exit(-1);
+  end;
   Result := AEndLine;
   if (AEndCharacter = 0) and (AEndLine > AStartLine) then
+  begin
     Result := AEndLine - 1;
+  end;
 end;
 
 end.

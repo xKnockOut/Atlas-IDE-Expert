@@ -55,9 +55,13 @@ const
 function VariantText(AVariant: TAtlasSymbolVariant): string;
 begin
   if AVariant = TAtlasSymbolVariant.Dark then
-    Result := 'DUNKEL'
+  begin
+    Result := 'DUNKEL';
+  end
   else
+  begin
     Result := 'HELL';
+  end;
 end;
 
 { TAtlasSymbol }
@@ -70,7 +74,9 @@ end;
 class function TAtlasSymbol.PixelSize(ALogicalSize, APixelsPerInch: Integer): Integer;
 begin
   if APixelsPerInch <= 0 then
+  begin
     APixelsPerInch := 96;
+  end;
   // Kaufmännisch gerundet wie MulDiv: 16 px bei 150 % sind 24 px.
   Result := (ALogicalSize * APixelsPerInch + 48) div 96;
 end;
@@ -81,8 +87,12 @@ var
 begin
   Needed := PixelSize(ALogicalSize, APixelsPerInch);
   for Index := Low(Sizes) to High(Sizes) do
+  begin
     if Sizes[Index] >= Needed then
+    begin
       Exit(Sizes[Index]);
+    end;
+  end;
   Result := Sizes[High(Sizes)];
 end;
 
@@ -94,9 +104,13 @@ end;
 class function TAtlasSymbol.VariantFor(ADarkTheme: Boolean): TAtlasSymbolVariant;
 begin
   if ADarkTheme then
-    Result := TAtlasSymbolVariant.Dark
+  begin
+    Result := TAtlasSymbolVariant.Dark;
+  end
   else
+  begin
     Result := TAtlasSymbolVariant.Light;
+  end;
 end;
 
 class function TAtlasSymbol.ResourceName(AVariant: TAtlasSymbolVariant; ASize: Integer): string;

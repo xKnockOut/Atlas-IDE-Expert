@@ -175,7 +175,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := TimerTick;
@@ -190,7 +192,9 @@ begin
   FreeAndNil(FTimer);
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
@@ -200,14 +204,18 @@ begin
   Clear;
   FreeAndNil(FFont);
   if Painted then
+  begin
     Invalidate;
+  end;
   inherited;
 end;
 
 class procedure TAtlasIdeExitPoints.Install(const ASession: TAtlasExitPointsSessionFunc);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeExitPoints.Create(ASession);
+  end;
 end;
 
 class procedure TAtlasIdeExitPoints.Uninstall;
@@ -225,7 +233,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasIdeExitPoints.IsSource(const AFileName: string): Boolean;
@@ -271,14 +281,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 procedure TAtlasIdeExitPoints.TimerTick(Sender: TObject);
@@ -302,20 +316,26 @@ begin
   View := nil;
   Badge := False;
   if TAtlasIdeSettings.ExitPointsOn(Exceptions, Loops, Badge) and not TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) then
+  begin
     View := TAtlasEditorBuffer.ActiveView;
+  end;
   Had := FSet.Found;
   if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) or HasBlock(View) then
   begin
     Clear;
     if Had then
+    begin
       Invalidate;
+    end;
     Exit;
   end;
   if Badge <> FBadge then
   begin
     FBadge := Badge;
     if Had then
+    begin
       Invalidate;
+    end;
   end;
   Snapshot := TAtlasEditorSnapshots.Get(View);
   if (Snapshot.Version <> FVersion) or not SameText(Snapshot.FileName, FFileName) then
@@ -323,7 +343,9 @@ begin
     // Neuer Text: Die alte Antwort gilt nicht mehr.
     Clear;
     if Had then
+    begin
       Invalidate;
+    end;
     Had := False;
     FFileName := Snapshot.FileName;
     FVersion := Snapshot.Version;
@@ -332,7 +354,9 @@ begin
   end;
   ReadCaret(View, Line, Character);
   if FSet.Holds(Line, Character) then
+  begin
     Exit;
+  end;
   if Had then
   begin
     FSet := Default(TAtlasExitPointSet);
@@ -340,7 +364,9 @@ begin
   end;
   LineText := '';
   if Line < Length(FLines) then
+  begin
     LineText := FLines[Line];
+  end;
   if not TAtlasExitPoints.Triggers(LineText, Character) or
     not TAtlasExitPoints.WordAt(LineText, Character, Start, Stop) then
   begin
@@ -358,7 +384,9 @@ begin
   end;
   Inc(FIdleCount);
   if (FIdleCount < IdleTicks) or (Key = FAskedKey) then
+  begin
     Exit;
+  end;
   FAskedKey := Key;
   Ask(Snapshot.Text, Line, Character, Exceptions, Loops);
 end;
@@ -374,10 +402,14 @@ var
   Worker: TThread;
 begin
   if not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   FileName := FFileName;
   Version := FVersion;
   Values := TJSONArray.Create;
@@ -423,12 +455,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.ExitPoints,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.Accept(Request, FileName, Version, Found);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -441,10 +477,14 @@ procedure TAtlasIdeExitPoints.Accept(ARequest: Integer; const AFileName: string;
 begin
   // Nur die jüngste Antwort und nur für den Text, nach dem gefragt wurde.
   if (ARequest <> FRequest) or not SameText(AFileName, FFileName) or (AVersion <> FVersion) then
+  begin
     Exit;
+  end;
   FSet := ASet;
   if FSet.Found then
+  begin
     Invalidate;
+  end;
 end;
 
 class function TAtlasIdeExitPoints.TryJump(ABackward: Boolean): Boolean;
@@ -463,19 +503,29 @@ var
 begin
   Result := False;
   if not FSet.Found then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or HasBlock(View) then
+  begin
     Exit;
+  end;
   Snapshot := TAtlasEditorSnapshots.Get(View);
   if not SameText(Snapshot.FileName, FFileName) or (Snapshot.Version <> FVersion) then
+  begin
     Exit;
+  end;
   ReadCaret(View, Line, Character);
   if not FSet.Holds(Line, Character) or not FSet.Next(Line, Character, ABackward, Point) then
+  begin
     Exit;
+  end;
   LineText := '';
   if Point.Line < Length(FLines) then
+  begin
     LineText := FLines[Point.Line];
+  end;
   Position.Line := Point.Line + 1;
   Position.Col := TLspSession.IndexToColumn(LineText, Point.Character, FTabWidth);
   View.CursorPos := Position;
@@ -490,7 +540,9 @@ var
 begin
   Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
   if Key = FFontKey then
+  begin
     Exit;
+  end;
   FFont.Assign(AEditorFont);
   FFont.Style := [];
   FFontKey := Key;
@@ -511,7 +563,9 @@ begin
   Saved := SaveDC(DC);
   try
     if Code.Right > Code.Left then
+    begin
       IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+    end;
     for Point in APoints do
     begin
       First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Point.Character, FTabWidth),
@@ -547,7 +601,9 @@ begin
   Colors := TAtlasColors.ForBackground(ABack);
   Tone := Colors.Warn;
   if FSet.ResultMissing then
+  begin
     Tone := Colors.Error;
+  end;
   EnsureFont(Context.Canvas.Font);
   DC := Context.Canvas.Handle;
   Saved := SaveDC(DC);
@@ -582,30 +638,46 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FSet.Found or
     TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) then
+  begin
     Exit;
+  end;
   try
     if not SameText(Context.FileName, FFileName) or
       TAtlasIdeElements.FileHidden(TAtlasDrawnElement.ExitPoints, Context.FileName) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if LineState = nil then
+    begin
       Exit;
+    end;
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line >= Length(FLines)) then
+    begin
       Exit;
+    end;
     Text := FLines[Line];
     // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht (sonst kommt gleich ein neuer Takt).
     if TrimRight(LineState.Text) <> TrimRight(Text) then
+    begin
       Exit;
+    end;
     Points := FSet.PointsAt(Line);
     Badge := FBadge and FSet.HasBadge and (Line = FSet.RoutineLine);
     if (Length(Points) = 0) and not Badge then
+    begin
       Exit;
+    end;
     Back := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
     if Length(Points) > 0 then
+    begin
       PaintPoints(Rect, Context, Text, Points, Back);
+    end;
     if Badge then
+    begin
       PaintBadge(Rect, Context, Text, Back);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.ExitPoints, E);

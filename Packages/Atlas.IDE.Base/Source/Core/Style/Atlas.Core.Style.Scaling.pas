@@ -31,14 +31,20 @@ uses
 class function TAtlasScaling.ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double;
 begin
   if (ACaretHeight <= 0) or (ATextHeight <= 0) then
+  begin
     Exit(1);
+  end;
   Result := ACaretHeight / ATextHeight;
   // Der Caret ist bei 100 % etwas höher als der Text (Zeilenabstand), nie kleiner.
   if (Result >= 1 - 0.1) and (Result <= 1 + Tolerance) then
+  begin
     Exit(1);
+  end;
   // Oberhalb: den Zeilenabstand wieder herausrechnen, damit 150 % nicht zu 160 % wird.
   if Result > 1 then
+  begin
     Result := Result / (1 + Tolerance / 2);
+  end;
   Result := EnsureRange(Result, MinZoom, MaxZoom);
 end;
 

@@ -55,7 +55,9 @@ var
 begin
   Stop := ACharacter + 1;
   while (Stop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Stop]) do
+  begin
     Inc(Stop);
+  end;
   Result := LowerCase(Copy(ALine, ACharacter + 1, Stop - ACharacter - 1));
 end;
 
@@ -73,17 +75,25 @@ begin
   for Block in Blocks do
   begin
     if (Block.OwnerLine < 0) or (Block.OwnerLine > High(Lines)) or (Block.OpenLine > High(Lines)) then
+    begin
       Continue;
+    end;
     // Typdeklarationen (TFoo = class … end) haben sich selbst als Besitzer.
     if (Block.OwnerLine = Block.OpenLine) and (Block.OwnerCharacter = Block.OpenCharacter) then
+    begin
       Continue;
+    end;
     Owner := WordAtPos(Lines[Block.OwnerLine], Block.OwnerCharacter);
     Opener := WordAtPos(Lines[Block.OpenLine], Block.OpenCharacter);
     if not ((Opener = 'begin') or (Opener = 'asm')) then
+    begin
       Continue;
+    end;
     if not ((Owner = 'procedure') or (Owner = 'function') or (Owner = 'constructor') or (Owner = 'destructor') or
       (Owner = 'operator') or (Owner = 'class')) then
+    begin
       Continue;
+    end;
     // Bis hinter das end des Rumpfs.
     Routine.Area := TAtlasSearchArea.Create(Block.OwnerLine, Block.OwnerCharacter, Block.CloseLine,
       Block.CloseCharacter + 3);
@@ -102,17 +112,25 @@ begin
   Result := nil;
   All := Routines(AText);
   for Routine in All do
+  begin
     if Routine.Area.Contains(APos) then
+    begin
       Result := Result + [Routine];
+    end;
+  end;
   // Innerste zuerst: der späteste Anfang (umgebende Routinen beginnen vorher).
   for I := 1 to High(Result) do
+  begin
     for J := I downto 1 do
+    begin
       if TAtlasSearchPos.Compare(Result[J].Area.Start, Result[J - 1].Area.Start) > 0 then
       begin
         Swap := Result[J];
         Result[J] := Result[J - 1];
         Result[J - 1] := Swap;
       end;
+    end;
+  end;
 end;
 
 class function TAtlasSearchScopes.AreaFor(const AText: string; AScope: TAtlasSearchScope;
@@ -128,18 +146,26 @@ begin
       begin
         Around := RoutinesAt(AText, ACursor);
         if Length(Around) = 0 then
+        begin
           Exit(False);
+        end;
         Level := ALevel;
         if Level < 0 then
+        begin
           Level := 0;
+        end;
         if Level > High(Around) then
+        begin
           Level := High(Around);
+        end;
         AArea := Around[Level].Area;
       end;
     TAtlasSearchScope.Selection:
       begin
         if ASelection.IsEmpty then
+        begin
           Exit(False);
+        end;
         AArea := ASelection;
       end;
   else

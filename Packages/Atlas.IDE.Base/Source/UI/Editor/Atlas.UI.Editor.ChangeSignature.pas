@@ -119,11 +119,15 @@ begin
   FNotes.ShowAccelChar := False;
   Notes := '';
   if AModel.EventFixed then
+  begin
     Notes := TAtlasStrings.Fmt(TAtlasTextId.SigEventFixed, [AModel.BoundEvent]);
+  end;
   for Warning in AModel.Warnings do
   begin
     if Notes <> '' then
+    begin
       Notes := Notes + sLineBreak;
+    end;
     Notes := Notes + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]);
   end;
   FNotes.Caption := Notes;
@@ -287,9 +291,13 @@ end;
 function TAtlasChangeSignatureDialog.Selected: Integer;
 begin
   if FList.Selected = nil then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else
+  begin
     Result := FList.Selected.Index;
+  end;
 end;
 
 procedure TAtlasChangeSignatureDialog.FillList(ASelect: Integer);
@@ -311,17 +319,25 @@ begin
         Item.SubItems.Add(Row.TypeName);
         Item.SubItems.Add(Row.Modifier);
         if Row.IsNew then
-          Item.SubItems.Add(Row.Value)
+        begin
+          Item.SubItems.Add(Row.Value);
+        end
         else if Row.DefaultValue <> '' then
-          Item.SubItems.Add('= ' + Row.DefaultValue)
+        begin
+          Item.SubItems.Add('= ' + Row.DefaultValue);
+        end
         else
+        begin
           Item.SubItems.Add('');
+        end;
       end;
     finally
       FList.Items.EndUpdate;
     end;
     if (ASelect >= 0) and (ASelect < FList.Items.Count) then
+    begin
       FList.Items[ASelect].Selected := True;
+    end;
   finally
     FUpdating := False;
   end;
@@ -348,7 +364,9 @@ begin
       FModifier.ItemIndex := FModifier.Items.IndexOf(Row.Modifier);
       FValue.Text := Row.Value;
       if not Row.IsNew then
+      begin
         FValue.Text := Row.DefaultValue;
+      end;
     end
     else
     begin
@@ -421,20 +439,26 @@ begin
   Index := Selected;
   FModel.Remove(Index);
   if Index >= FModel.Count then
+  begin
     Index := FModel.Count - 1;
+  end;
   FillList(Index);
 end;
 
 procedure TAtlasChangeSignatureDialog.UpClick(Sender: TObject);
 begin
   if FModel.MoveRow(Selected, -1) then
+  begin
     FillList(Selected - 1);
+  end;
 end;
 
 procedure TAtlasChangeSignatureDialog.DownClick(Sender: TObject);
 begin
   if FModel.MoveRow(Selected, 1) then
+  begin
     FillList(Selected + 1);
+  end;
 end;
 
 procedure TAtlasChangeSignatureDialog.FieldChange(Sender: TObject);
@@ -444,10 +468,14 @@ var
   Row: TAtlasSignatureRow;
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   Index := Selected;
   if Index < 0 then
+  begin
     Exit;
+  end;
   FModel.Rename(Index, FName.Text);
   FModel.Change(Index, FType.Text, FModifier.Text, FValue.Text);
   // Nur die Zeile auffrischen, damit der Fokus im Feld bleibt.
@@ -457,7 +485,9 @@ begin
   Item.SubItems[0] := Row.TypeName;
   Item.SubItems[1] := Row.Modifier;
   if Row.IsNew then
+  begin
     Item.SubItems[2] := Row.Value;
+  end;
   Refresh;
 end;
 
@@ -471,13 +501,17 @@ end;
 procedure TAtlasChangeSignatureDialog.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if not FUpdating then
+  begin
     ShowRow;
+  end;
 end;
 
 procedure TAtlasChangeSignatureDialog.OkClick(Sender: TObject);
 begin
   if FModel.Validate = TAtlasSignatureProblem.None then
+  begin
     ModalResult := mrOk;
+  end;
 end;
 
 class function TAtlasChangeSignatureDialog.Execute(AModel: TAtlasSignatureModel): Boolean;

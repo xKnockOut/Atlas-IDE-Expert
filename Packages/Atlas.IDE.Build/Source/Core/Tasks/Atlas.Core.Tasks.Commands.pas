@@ -47,11 +47,15 @@ var
 begin
   Folder := AFolder;
   while (Folder <> '') and CharInSet(Folder[Length(Folder)], ['\', '/']) do
+  begin
     SetLength(Folder, Length(Folder) - 1);
+  end;
   Result := Folder + '\' + AName;
   // Unter Linux (Tests unter FPC) gilt / als Trenner.
   if PathDelim <> '\' then
+  begin
     Result := StringReplace(Result, '\', PathDelim, [rfReplaceAll]);
+  end;
 end;
 
 { TAtlasTaskCommands }
@@ -74,41 +78,63 @@ var
       Exit(True);
     end;
     for Ext in Extensions do
+    begin
       if AExists(ACandidate + Ext) then
       begin
         AFound := ACandidate + Ext;
         Exit(True);
       end;
+    end;
     Result := False;
   end;
 
 begin
   Result := '';
   if Trim(ACommand) = '' then
+  begin
     Exit;
+  end;
   Extensions := nil;
   for Extension in APathExt.Split([';']) do
+  begin
     if Trim(Extension) <> '' then
+    begin
       Extensions := Extensions + [AnsiLowerCase(Trim(Extension))];
+    end;
+  end;
   if Length(Extensions) = 0 then
+  begin
     Extensions := TArray<string>.Create('.com', '.exe', '.bat', '.cmd');
+  end;
   if HasPathPart(ACommand) then
   begin
     Base := ACommand;
     if not ((Length(Base) >= 2) and (Base[2] = ':')) and not CharInSet(Base[1], ['\', '/']) and (ACwd <> '') then
+    begin
       Base := JoinPath(ACwd, Base);
+    end;
     Probe(Base, Result);
     Exit;
   end;
   Folders := nil;
   if ACwd <> '' then
+  begin
     Folders := Folders + [ACwd];
+  end;
   for Folder in APath.Split([';']) do
+  begin
     if Trim(Folder) <> '' then
+    begin
       Folders := Folders + [Trim(StringReplace(Folder, '"', '', [rfReplaceAll]))];
+    end;
+  end;
   for Folder in Folders do
+  begin
     if Probe(JoinPath(Folder, ACommand), Result) then
+    begin
       Exit;
+    end;
+  end;
 end;
 
 class function TAtlasTaskCommands.MergeEnvironment(const ACurrent, ANames, AValues: TArray<string>): TArray<string>;
@@ -120,7 +146,9 @@ begin
   for Index := 0 to High(ANames) do
   begin
     if (Trim(ANames[Index]) = '') or (Index > High(AValues)) then
+    begin
       Continue;
+    end;
     Found := False;
     for Item := 0 to High(Result) do
     begin
@@ -134,7 +162,9 @@ begin
       end;
     end;
     if not Found then
+    begin
       Result := Result + [ANames[Index] + '=' + AValues[Index]];
+    end;
   end;
 end;
 
@@ -143,17 +173,23 @@ var
   Index, Backslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
+  begin
     Exit(AArgument);
+  end;
   Result := '"';
   Backslashes := 0;
   for Index := 1 to Length(AArgument) do
   begin
     if AArgument[Index] = '\' then
-      Inc(Backslashes)
+    begin
+      Inc(Backslashes);
+    end
     else
     begin
       if AArgument[Index] = '"' then
+      begin
         Result := Result + StringOfChar('\', Backslashes + 1);
+      end;
       Backslashes := 0;
     end;
     Result := Result + AArgument[Index];
@@ -168,10 +204,14 @@ var
 begin
   Result := QuoteArgument(AProgram);
   for Arg in AArgs do
+  begin
     Result := Result + ' ' + QuoteArgument(Arg);
+  end;
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg, der Rest bleibt wie geschrieben.
   if ABatch then
+  begin
     Result := 'cmd.exe /d /s /c "' + Result + '"';
+  end;
 end;
 
 class function TAtlasTaskCommands.IsBatch(const AProgram: string): Boolean;

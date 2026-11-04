@@ -136,7 +136,9 @@ begin
   for Note in AModel.Notes do
   begin
     if Notes <> '' then
+    begin
       Notes := Notes + sLineBreak;
+    end;
     Notes := Notes + Note;
   end;
   FNotes.Caption := Notes;
@@ -190,9 +192,13 @@ begin
       FOptionBox := TCheckBox.Create(Self);
       FOptionBox.Parent := Header;
       if AModel.OptionKind = 'keepAbstract' then
-        FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract)
+      begin
+        FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract);
+      end
       else
+      begin
         FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersOverrideSiblings);
+      end;
       FOptionBox.SetBounds(ScaleValue(120), Row, ScaleValue(DialogWidth - 120 - Gap), ScaleValue(23));
       FOptionBox.Anchors := [akLeft, akTop, akRight];
       FOptionBox.Checked := AModel.Option;
@@ -257,7 +263,9 @@ begin
   Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColReason);
   Column.Width := ScaleValue(140);
   if FName <> nil then
+  begin
     ActiveControl := FName;
+  end;
 end;
 
 function TAtlasExtractMembersDialog.AddButton(AParent: TWinControl; const ACaption: string;
@@ -326,7 +334,9 @@ begin
           begin
             FTarget.Items.Add(TargetCaption(Index));
             if FModel.Targets[Index].Checked then
+            begin
               FTarget.ItemIndex := Index;
+            end;
           end;
         finally
           FTarget.Items.EndUpdate;
@@ -345,8 +355,12 @@ begin
       try
         FUnit.Items.Add(OwnUnitCaption);
         for Name in FModel.Units do
+        begin
           if not SameText(Name, FModel.OwnUnit) then
+          begin
             FUnit.Items.Add(Name);
+          end;
+        end;
       finally
         FUnit.Items.EndUpdate;
       end;
@@ -356,9 +370,13 @@ begin
       begin
         Index := FUnit.Items.IndexOf(FModel.Target);
         if Index >= 0 then
-          FUnit.ItemIndex := Index
+        begin
+          FUnit.ItemIndex := Index;
+        end
         else
+        begin
           FUnit.Text := FModel.Target;
+        end;
       end;
     finally
       FUpdating := False;
@@ -366,7 +384,9 @@ begin
     FillList;
   end;
   if FName <> nil then
+  begin
     FName.SelectAll;
+  end;
 end;
 
 function TAtlasExtractMembersDialog.KindText(AIndex: Integer): string;
@@ -375,13 +395,21 @@ var
 begin
   Member := FModel[AIndex];
   if Member.Kind = 'property' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty);
+  end
   else if Member.Kind = 'field' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersField)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersField);
+  end
   else if Member.Abstract then
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstractMethod)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstractMethod);
+  end
   else
+  begin
     Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersMethod);
+  end;
 end;
 
 procedure TAtlasExtractMembersDialog.FillList;
@@ -392,7 +420,9 @@ var
 begin
   Selected := -1;
   if FList.Selected <> nil then
+  begin
     Selected := FList.Selected.Index;
+  end;
   FUpdating := True;
   try
     FList.Items.BeginUpdate;
@@ -412,7 +442,9 @@ begin
       FList.Items.EndUpdate;
     end;
     if (Selected >= 0) and (Selected < FList.Items.Count) then
+    begin
       FList.Items[Selected].Selected := True;
+    end;
   finally
     FUpdating := False;
   end;
@@ -426,7 +458,9 @@ var
   Member: TAtlasExtractionMember;
 begin
   if not FAbstract.Visible then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     if (FList.Selected <> nil) and (FList.Selected.Index < FModel.Count) then
@@ -496,7 +530,9 @@ end;
 procedure TAtlasExtractMembersDialog.TargetChange(Sender: TObject);
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   FModel.SetTargetChecked(FTarget.ItemIndex, True);
   Refresh;
 end;
@@ -506,9 +542,13 @@ var
   Index: Integer;
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   for Index := 0 to FTargetList.Items.Count - 1 do
+  begin
     FModel.SetTargetChecked(Index, FTargetList.Checked[Index]);
+  end;
   Refresh;
 end;
 
@@ -520,12 +560,18 @@ end;
 procedure TAtlasExtractMembersDialog.UnitChange(Sender: TObject);
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   // Erster Eintrag = Unit der Klasse.
   if (FUnit.ItemIndex = 0) or (FUnit.Text = OwnUnitCaption) then
-    FModel.TargetUnit := ''
+  begin
+    FModel.TargetUnit := '';
+  end
   else
+  begin
     FModel.TargetUnit := FUnit.Text;
+  end;
   Refresh;
 end;
 
@@ -550,7 +596,9 @@ end;
 procedure TAtlasExtractMembersDialog.AbstractClick(Sender: TObject);
 begin
   if FUpdating or (FList.Selected = nil) then
+  begin
     Exit;
+  end;
   FModel.SetAbstract(FList.Selected.Index, FAbstract.Checked);
   FList.Selected.SubItems[0] := KindText(FList.Selected.Index);
   Refresh;
@@ -559,13 +607,17 @@ end;
 procedure TAtlasExtractMembersDialog.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if not FUpdating then
+  begin
     ShowMode;
+  end;
 end;
 
 procedure TAtlasExtractMembersDialog.ListChecked(Sender: TObject; Item: TListItem);
 begin
   if FUpdating or (Item = nil) then
+  begin
     Exit;
+  end;
   FModel.SetChecked(Item.Index, Item.Checked);
   // Gesperrte Einträge springen auf den Stand des Modells zurück.
   if Item.Checked <> FModel[Item.Index].Checked then
@@ -584,13 +636,17 @@ procedure TAtlasExtractMembersDialog.ListCustomDraw(Sender: TCustomListView; Ite
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   if (Item <> nil) and (Item.Index < FModel.Count) and not FModel[Item.Index].Enabled then
+  begin
     Sender.Canvas.Font.Color := clGrayText;
+  end;
 end;
 
 procedure TAtlasExtractMembersDialog.OkClick(Sender: TObject);
 begin
   if FModel.Validate = TAtlasExtractionProblem.None then
+  begin
     ModalResult := mrOk;
+  end;
 end;
 
 class function TAtlasExtractMembersDialog.Execute(AModel: TAtlasClassExtractionModel; const ATitle: string): Boolean;

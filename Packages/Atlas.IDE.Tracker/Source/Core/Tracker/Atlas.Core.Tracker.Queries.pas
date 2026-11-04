@@ -113,7 +113,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 class function TAtlasTrackerQueries.Read(const AJson: string): TArray<TAtlasTrackerQuery>;
@@ -124,19 +126,27 @@ var
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mQuery := TAtlasTrackerQuery.Create(TextOf(TJSONObject(mItem), 'name'), TextOf(TJSONObject(mItem), 'query'),
         TextOf(TJSONObject(mItem), 'connection'), TextOf(TJSONObject(mItem), 'project'));
       if (mQuery.Name = '') or (mQuery.Query = '') or (IndexOfName(Result, mQuery.Name) >= 0) then
+      begin
         Continue;
+      end;
       Result := Result + [mQuery];
     end;
   finally
@@ -154,12 +164,18 @@ begin
   for mItem in AItems do
   begin
     if mItem.Builtin then
+    begin
       Continue;
+    end;
     mPart := '{"name": ' + Quoted(mItem.Name) + ', "query": ' + Quoted(mItem.Query);
     if mItem.Connection <> '' then
+    begin
       mPart := mPart + ', "connection": ' + Quoted(mItem.Connection);
+    end;
     if mItem.Project <> '' then
+    begin
       mPart := mPart + ', "project": ' + Quoted(mItem.Project);
+    end;
     mParts := mParts + [mPart + '}'];
   end;
   Result := '[' + string.Join(', ', mParts) + ']';
@@ -172,8 +188,12 @@ var
 begin
   Result := -1;
   for mIndex := 0 to High(AItems) do
+  begin
     if SameText(AItems[mIndex].Name, Trim(AName)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerQueries.Applies(const AQuery: TAtlasTrackerQuery; const ATarget: TAtlasTrackerTarget;
@@ -183,16 +203,24 @@ var
   mConnection: TAtlasTrackerConnection;
 begin
   if not ATarget.Configured then
+  begin
     Exit(False);
+  end;
   if (AQuery.Project <> '') and not SameText(AQuery.Project, ATarget.Project) then
+  begin
     Exit(False);
+  end;
   if (AQuery.Connection = '') or SameText(AQuery.Connection, AConnectionName) then
+  begin
     Exit(True);
+  end;
   // Andere oder keine benannte Verbindung (.atlas): passt, wenn die Verbindung der Abfrage auf denselben Server
   // desselben Anbieters zeigt.
   mIndex := TAtlasTrackerConnections.IndexOfName(AConnections, AQuery.Connection);
   if mIndex < 0 then
+  begin
     Exit(False);
+  end;
   mConnection := AConnections[mIndex];
   Result := SameText(mConnection.Provider, ATarget.Provider) and (mConnection.Target.Server <> '') and
     SameText(mConnection.Target.Server, ATarget.Server);
@@ -206,24 +234,38 @@ var
 begin
   Result := nil;
   if not ATarget.Configured then
+  begin
     Exit;
+  end;
   for mItem in AItems do
+  begin
     if not mItem.Builtin and Applies(mItem, ATarget, AConnectionName, AConnections) then
+    begin
       Result := Result + [mItem];
+    end;
+  end;
   if Length(Result) = 0 then
+  begin
     Result := [TAtlasTrackerQuery.Fallback(ADefaultName)];
+  end;
 end;
 
 class function TAtlasTrackerQueries.Choose(const AAvailable: TArray<TAtlasTrackerQuery>; const ASelected: string;
   APicker: Boolean): Integer;
 begin
   if Length(AAvailable) = 0 then
+  begin
     Exit(-1);
+  end;
   Result := -1;
   if APicker and (Trim(ASelected) <> '') then
+  begin
     Result := IndexOfName(AAvailable, ASelected);
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 class procedure TAtlasTrackerQueries.RenameConnection(var AItems: TArray<TAtlasTrackerQuery>; const AOld,
@@ -232,10 +274,16 @@ var
   mIndex: Integer;
 begin
   if AOld = '' then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(AItems) do
+  begin
     if SameText(AItems[mIndex].Connection, AOld) then
+    begin
       AItems[mIndex].Connection := ANew;
+    end;
+  end;
 end;
 
 end.

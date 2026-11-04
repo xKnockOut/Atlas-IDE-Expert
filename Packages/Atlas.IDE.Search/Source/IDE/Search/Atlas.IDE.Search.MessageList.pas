@@ -44,7 +44,9 @@ begin
   Name := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   Result := AMessages.GetGroup(Name);
   if (Result = nil) and ACreate then
+  begin
     Result := AMessages.AddMessageGroup(Name);
+  end;
 end;
 
 class procedure TAtlasIdeSearchMessages.Show(const AFileName, ATitle: string;
@@ -57,18 +59,26 @@ var
   LineRef: Pointer;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target = nil then
+  begin
     Exit;
+  end;
   Messages.ClearMessageGroup(Target);
   Messages.AddTitleMessage(ATitle, Target);
   Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   for Entry in AEntries do
+  begin
     Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
+  end;
   if ATotal > Length(AEntries) then
+  begin
     Messages.AddTitleMessage(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchListMore, [ATotal - Length(AEntries)]),
       Target);
+  end;
   Messages.ShowMessageView(Target);
 end;
 
@@ -78,10 +88,14 @@ var
   Target: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target = nil then
+  begin
     Exit;
+  end;
   Messages.ClearMessageGroup(Target);
   Messages.AddTitleMessage(ATitle, Target);
   Messages.ShowMessageView(Target);
@@ -96,13 +110,19 @@ var
   LineRef: Pointer;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target = nil then
+  begin
     Exit;
+  end;
   Prefix := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchGroup);
   for Entry in AEntries do
+  begin
     Messages.AddToolMessage(AFileName, Entry.Text, Prefix, Entry.Line, Entry.Column, nil, LineRef, Target);
+  end;
 end;
 
 class procedure TAtlasIdeSearchMessages.AddTitle(const AText: string);
@@ -111,10 +131,14 @@ var
   Target: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, True);
   if Target <> nil then
+  begin
     Messages.AddTitleMessage(AText, Target);
+  end;
 end;
 
 class procedure TAtlasIdeSearchMessages.Clear;
@@ -123,10 +147,14 @@ var
   Target: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Target := Group(Messages, False);
   if Target <> nil then
+  begin
     Messages.RemoveMessageGroup(Target);
+  end;
 end;
 
 end.

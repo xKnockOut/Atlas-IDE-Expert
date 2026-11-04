@@ -42,17 +42,25 @@ uses
   System.JSON,
   Atlas.Core.Hotspots.Model;
 
-function EntryJson(const AUnit, APath, AMethod: string; ALine, AChanges, AComplexity, ALines: Integer;
+/// <summary>JSON eines Eintrags; ANumbers sind Zeile, Änderungen, Komplexität und Zeilenzahl.</summary>
+function EntryJson(const AUnit, APath, AMethod: string; const ANumbers: array of Integer;
   const AScore, ATrend: string): string;
+var
+  mLine, mChanges, mComplexity, mLines: Integer;
 begin
+  Assert.AreEqual(4, Integer(Length(ANumbers)), 'Zeile, Änderungen, Komplexität, Zeilen');
+  mLine := ANumbers[0];
+  mChanges := ANumbers[1];
+  mComplexity := ANumbers[2];
+  mLines := ANumbers[3];
   Result := '{"unit":"' + AUnit + '","path":"' + APath + '"';
   if AMethod <> '' then
   begin
     Result := Result + ',"method":"' + AMethod + '"';
   end;
-  Result := Result + ',"line":' + IntToStr(ALine) + ',"endLine":' + IntToStr(ALine + ALines - 1) + ',"changes":' +
-    IntToStr(AChanges) + ',"authors":2,"authorNames":["anna","bernd"],"added":10,"deleted":4,' +
-    '"lastChange":"2026-10-20T08:00:00Z","complexity":' + IntToStr(AComplexity) + ',"lines":' + IntToStr(ALines) +
+  Result := Result + ',"line":' + IntToStr(mLine) + ',"endLine":' + IntToStr(mLine + mLines - 1) + ',"changes":' +
+    IntToStr(mChanges) + ',"authors":2,"authorNames":["anna","bernd"],"added":10,"deleted":4,' +
+    '"lastChange":"2026-10-20T08:00:00Z","complexity":' + IntToStr(mComplexity) + ',"lines":' + IntToStr(mLines) +
     ',"pastComplexity":-1,"trend":"' + ATrend + '","score":' + AScore + ',"history":[' +
     '{"revision":"0123456789abcdef","author":"anna","date":"2026-10-20T08:00:00Z","summary":"Rechnung","added":3,' +
     '"deleted":1},{"revision":"fedcba9876543210","author":"bernd","date":"2026-10-01T08:00:00Z","summary":"Start",' +
@@ -63,11 +71,11 @@ function SampleHotspotAnswer: string;
 begin
   Result := '{"enabled":true,"vcs":true,"root":"C:\\Projekt","format":"json","data":{"format":1,"title":"Demo",' +
     '"vcs":"git","head":"abc","months":12,"since":"2025-10-29T00:00:00Z","commits":42,"level":"method",' +
-    '"units":[' + EntryJson('App.Kern', 'App/Kern.pas', '', 1, 12, 80, 400, '1', 'rising') + ',' +
-    EntryJson('App.Daten', 'App/Daten.pas', '', 1, 6, 40, 200, '0.25', 'steady') + ',' +
-    EntryJson('App.Form', 'App/Form.pas', '', 1, 2, 10, 50, '0.02', 'unknown') + '],"methods":[' +
-    EntryJson('App.Kern', 'App/Kern.pas', 'TKern.Rechne', 120, 7, 25, 60, '1', 'new') + ',' +
-    EntryJson('App.Daten', 'App/Daten.pas', 'TDaten.Lade', 40, 3, 10, 20, '0.17', 'falling') + '],"coupling":[' +
+    '"units":[' + EntryJson('App.Kern', 'App/Kern.pas', '', [1, 12, 80, 400], '1', 'rising') + ',' +
+    EntryJson('App.Daten', 'App/Daten.pas', '', [1, 6, 40, 200], '0.25', 'steady') + ',' +
+    EntryJson('App.Form', 'App/Form.pas', '', [1, 2, 10, 50], '0.02', 'unknown') + '],"methods":[' +
+    EntryJson('App.Kern', 'App/Kern.pas', 'TKern.Rechne', [120, 7, 25, 60], '1', 'new') + ',' +
+    EntryJson('App.Daten', 'App/Daten.pas', 'TDaten.Lade', [40, 3, 10, 20], '0.17', 'falling') + '],"coupling":[' +
     '{"first":{"unit":"App.Daten","path":"App/Daten.pas"},"second":{"unit":"App.Form","path":"App/Form.pas"},' +
     '"shared":6,"firstChanges":6,"secondChanges":7,"ratio":0.9231}]}}';
 end;

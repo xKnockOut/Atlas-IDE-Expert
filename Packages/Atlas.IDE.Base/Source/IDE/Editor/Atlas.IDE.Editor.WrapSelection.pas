@@ -84,7 +84,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -93,7 +95,9 @@ function LineOf(const ALines: TArray<string>; ARow: Integer): string;
 begin
   Result := '';
   if (ARow >= 1) and (ARow <= Length(ALines)) then
+  begin
     Result := ALines[ARow - 1];
+  end;
 end;
 
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
@@ -127,7 +131,9 @@ end;
 class procedure TAtlasIdeWrapSelection.Install(const ABusy: TFunc<Boolean>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeWrapSelection.Create(ABusy);
+  end;
 end;
 
 class procedure TAtlasIdeWrapSelection.Uninstall;
@@ -153,13 +159,19 @@ var
   Typed: Char;
 begin
   if Handled or (Msg.message <> WM_CHAR) or TAtlasGuard.Disabled(TAtlasFeature.WrapSelection) then
+  begin
     Exit;
+  end;
   try
     Typed := Char(Msg.wParam);
     if not IsEditorWindow(Msg.hwnd) or not Enabled or not TAtlasWrapSelection.Accepts(Typed, Chars) then
+    begin
       Exit;
+    end;
     if Assigned(FBusy) and FBusy() then
+    begin
       Exit;
+    end;
     Handled := Run(Typed);
   except
     // Keine Exception an die IDE (#493); das Zeichen geht dann normal weiter.
@@ -187,16 +199,22 @@ begin
   Result := False;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   Block := View.Block;
   // Ohne Markierung bleibt alles wie in der IDE.
   if Buffer.IsReadOnly or (Block = nil) or not Block.IsValid or (Block.Size = 0) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   LineBreak := #10;
   if Pos(#13#10, Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
   Column := Block.Style = btColumn;
@@ -211,7 +229,9 @@ begin
       StartPos := PositionOf(Lines, Row, FirstColumn, TabWidth);
       StopPos := PositionOf(Lines, Row, LastColumn, TabWidth);
       if StartPos.Character < Length(LineOf(Lines, Row)) then
+      begin
         Ranges := Ranges + [TLspRange.Create(StartPos.Line, StartPos.Character, StopPos.Line, StopPos.Character)];
+      end;
     end;
   end
   else
@@ -221,17 +241,25 @@ begin
     Ranges := [TLspRange.Create(StartPos.Line, StartPos.Character, StopPos.Line, StopPos.Character)];
   end;
   if not TAtlasWrapSelection.Wrap(Lines, Ranges, AOpen, Chars, Wrapped) then
+  begin
     Exit;
+  end;
   NewText := string.Join(LineBreak, Wrapped.Lines);
   if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
+  begin
     WriteBuffer(Buffer, Text, Start, OldLength, Insert);
+  end;
   // Markierung wieder auf dem ursprünglichen Text.
   StartPos := Wrapped.Selections[0].StartPos;
   StopPos := Wrapped.Selections[High(Wrapped.Selections)].EndPos;
   if Column then
-    View.Block.Style := btColumn
+  begin
+    View.Block.Style := btColumn;
+  end
   else
+  begin
     View.Block.Style := btNonInclusive;
+  end;
   View.CursorPos := EditPos(Wrapped.Lines, StartPos, TabWidth);
   View.Block.BeginBlock;
   View.CursorPos := EditPos(Wrapped.Lines, StopPos, TabWidth);

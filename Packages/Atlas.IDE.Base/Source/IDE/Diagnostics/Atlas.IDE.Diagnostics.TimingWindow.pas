@@ -96,14 +96,20 @@ var
   Frame: TAtlasTimingFrame;
 begin
   if not (AFrame is TAtlasTimingFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasTimingFrame(AFrame);
   TAtlasIdeTimingWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeTimingWindow.OnFrame) then
+  begin
     TAtlasIdeTimingWindow.OnFrame(Frame);
+  end;
 end;
 
 function TTimingDock.GetMenuActionList: TCustomActionList;
@@ -156,7 +162,9 @@ procedure EnsureHost;
 begin
   // Nicht im Desktop: Der Diagnosemodus öffnet das Fenster selbst, und zwar erst nach dem Build (TAtlasIdeBuildIdleGate).
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TTimingDock.Create, False);
+  end;
 end;
 
 { TAtlasIdeTimingWindow }
@@ -169,7 +177,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -177,7 +187,9 @@ class function TAtlasIdeTimingWindow.ExistingFrame: TAtlasTimingFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasTimingFrame) then
+  begin
     Result := TAtlasTimingFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeTimingWindow.Visible: Boolean;
@@ -189,7 +201,9 @@ end;
 class procedure TAtlasIdeTimingWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeTimingWindow.UpdateIcon;
@@ -197,7 +211,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -213,7 +229,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

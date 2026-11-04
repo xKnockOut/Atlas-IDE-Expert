@@ -225,9 +225,13 @@ begin
   // Optional (#479): nur mit vorhandenen Daten.
   FChecks[TAtlasPackagePart.LastData].Enabled := FLastDataAvailable;
   if FLastDataAvailable then
-    FChecks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastData)
+  begin
+    FChecks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastData);
+  end
   else
+  begin
     FChecks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing);
+  end;
   Heading := AddLabel(Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview));
   Heading.Top := 500;
 
@@ -314,18 +318,28 @@ var
 begin
   Result := [];
   for Part := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
+  begin
     if FChecks[Part].Checked and FChecks[Part].Enabled then
+    begin
       Include(Result, Part);
+    end;
+  end;
 end;
 
 class function TAtlasReportDialog.SizeText(ABytes: Int64): string;
 begin
   if ABytes < 1024 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeBytes, [ABytes])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeBytes, [ABytes]);
+  end
   else if ABytes < 1024 * 1024 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024, FormatSettings)])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / 1024, FormatSettings)]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.ReportSizeMb, [FormatFloat('0.0', ABytes / (1024 * 1024), FormatSettings)]);
+  end;
 end;
 
 procedure TAtlasReportDialog.Refresh;
@@ -334,7 +348,9 @@ var
   Row: TListItem;
 begin
   if FList = nil then
+  begin
     Exit;
+  end;
   FFiles := TAtlasDiagnosticPackage.Build(FInput, Parts);
   // Eine vorher angelegte ZIP passt nicht mehr zur Auswahl.
   FZipFile := '';
@@ -352,10 +368,14 @@ begin
     FList.Items.EndUpdate;
   end;
   if Length(FFiles) = 0 then
-    FSummary.Caption := TAtlasStrings.Text(TAtlasTextId.ReportEmpty)
+  begin
+    FSummary.Caption := TAtlasStrings.Text(TAtlasTextId.ReportEmpty);
+  end
   else
+  begin
     FSummary.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportSummary, [Length(FFiles),
       SizeText(TAtlasDiagnosticPackage.TotalSize(FFiles))]);
+  end;
   FZipButton.Enabled := Length(FFiles) > 0;
   FViewButton.Enabled := FList.Selected <> nil;
 end;
@@ -394,24 +414,34 @@ function TAtlasReportDialog.ViewFile(AIndex: Integer): string;
 begin
   Result := '';
   if (AIndex < 0) or (AIndex >= Length(FFiles)) then
+  begin
     Exit;
+  end;
   Result := FFiles[AIndex].Text;
   if Assigned(FActions.ShowText) then
-    FActions.ShowText(FFiles[AIndex].Name, Result)
+  begin
+    FActions.ShowText(FFiles[AIndex].Name, Result);
+  end
   else
+  begin
     ShowTextWindow(FFiles[AIndex].Name, Result);
+  end;
 end;
 
 procedure TAtlasReportDialog.ListDblClick(Sender: TObject);
 begin
   if FList.Selected <> nil then
+  begin
     ViewFile(FList.Selected.Index);
+  end;
 end;
 
 procedure TAtlasReportDialog.ViewClick(Sender: TObject);
 begin
   if FList.Selected <> nil then
+  begin
     ViewFile(FList.Selected.Index);
+  end;
 end;
 
 procedure TAtlasReportDialog.FolderClick(Sender: TObject);
@@ -421,7 +451,9 @@ var
 begin
   Picked := '';
   if Assigned(FActions.PickFolder) then
-    Picked := FActions.PickFolder(FFolder)
+  begin
+    Picked := FActions.PickFolder(FFolder);
+  end
   else
   begin
     Dialog := TFileOpenDialog.Create(Self);
@@ -429,13 +461,17 @@ begin
       Dialog.Options := Dialog.Options + [fdoPickFolders, fdoPathMustExist];
       Dialog.DefaultFolder := FFolder;
       if Dialog.Execute then
+      begin
         Picked := Dialog.FileName;
+      end;
     finally
       Dialog.Free;
     end;
   end;
   if Picked = '' then
+  begin
     Exit;
+  end;
   FFolder := Picked;
   ShowFolder;
 end;
@@ -446,7 +482,9 @@ var
 begin
   Result := False;
   if Length(FFiles) = 0 then
+  begin
     Exit;
+  end;
   try
     ForceDirectories(FFolder);
     Target := TAtlasDiagnosticPackage.ZipTarget(FFolder, Now,
@@ -465,7 +503,9 @@ begin
   FZipFile := Target;
   FStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(Target)]);
   if Assigned(FActions.ShowFile) then
+  begin
     FActions.ShowFile(Target);
+  end;
   Result := True;
 end;
 
@@ -482,11 +522,17 @@ begin
   Url := FReportUrl;
   // Nur Webadressen an den Browser; sonst die Issue-Seite des Atlas-Repositorys.
   if not TAtlasDiagnosticPackage.IsWebUrl(Url) then
+  begin
     Url := TAtlasPluginSettings.DefaultHelpReportUrl;
+  end;
   if Assigned(FActions.CopyText) then
+  begin
     FActions.CopyText(IssueText);
+  end;
   if Assigned(FActions.OpenUrl) then
+  begin
     FActions.OpenUrl(Url);
+  end;
   FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.ReportIssueDone);
 end;
 

@@ -290,7 +290,9 @@ begin
   Result.Folds := TAtlasMinimap.NormalizeFolds(AFolds, Result.LineCount);
   Result.RowCount := Result.LineCount;
   for Fold in Result.Folds do
+  begin
     Dec(Result.RowCount, Fold.Hidden);
+  end;
   Result.Offset := 0;
 end;
 
@@ -333,16 +335,22 @@ var
   Line, HiddenBefore: Integer;
 begin
   if LineCount <= 0 then
+  begin
     Exit(0);
+  end;
   Line := EnsureRange(ALine, 0, LineCount - 1);
   HiddenBefore := 0;
   for Fold in Folds do
   begin
     if Fold.Line >= Line then
+    begin
       Break;
+    end;
     // In der Faltung verborgen: Zeile der Kopfzeile.
     if Line <= Fold.Line + Fold.Hidden then
+    begin
       Exit(Fold.Line - HiddenBefore);
+    end;
     Inc(HiddenBefore, Fold.Hidden);
   end;
   Result := Line - HiddenBefore;
@@ -354,13 +362,17 @@ var
   Row, HiddenBefore: Integer;
 begin
   if RowCount <= 0 then
+  begin
     Exit(0);
+  end;
   Row := EnsureRange(ARow, 0, RowCount - 1);
   HiddenBefore := 0;
   for Fold in Folds do
   begin
     if Fold.Line - HiddenBefore >= Row then
+    begin
       Break;
+    end;
     Inc(HiddenBefore, Fold.Hidden);
   end;
   Result := Min(Row + HiddenBefore, LineCount - 1);
@@ -371,7 +383,9 @@ var
   Row: Integer;
 begin
   if (RowCount <= 0) or (Height <= 0) then
+  begin
     Exit(0);
+  end;
   Row := EnsureRange(ARow, 0, RowCount);
   Result := Row * RowHeight - Offset;
 end;
@@ -379,7 +393,9 @@ end;
 function TAtlasMinimapMap.RowAt(AY: Integer): Integer;
 begin
   if (RowCount <= 0) or (Height <= 0) then
+  begin
     Exit(0);
+  end;
   Result := (Max(0, AY) + Offset) div RowHeight;
   Result := EnsureRange(Result, 0, RowCount - 1);
 end;
@@ -406,7 +422,9 @@ begin
   Result.Top := 0;
   Result.Bottom := 0;
   if (RowCount <= 0) or (Height <= 0) then
+  begin
     Exit;
+  end;
   MinHeight := Min(Max(1, AMinHeight), Height);
   Result.Top := PixelOfRow(RowOf(ATopLine));
   Result.Bottom := Max(PixelOfRow(RowOf(Max(ATopLine, ABottomLine)) + 1), Result.Top + MinHeight);
@@ -422,18 +440,26 @@ var
   Row: Integer;
 begin
   if RowCount <= 0 then
+  begin
     Exit(0);
+  end;
   if TotalHeight > Height then
+  begin
     // Mitscrollend (Follow): Die Oberkante des Schiebers läuft linear von 0 bis Height − Schieberhöhe, während die
     // oberste Zeile von 0 bis RowCount − AVisibleRows läuft. Umkehrung davon; der Offset ändert sich beim Ziehen mit
     // und darf nicht in die Rechnung eingehen, sonst läuft der Schieber davon.
     Row := Integer((Int64(Max(0, AY - AGrab)) * Max(1, RowCount - Max(1, AVisibleRows))) div
-      Max(1, Height - Max(1, AVisibleRows) * RowHeight))
+      Max(1, Height - Max(1, AVisibleRows) * RowHeight));
+  end
   else
+  begin
     Row := RowAt(AY - AGrab);
+  end;
   // Ganz oben gegriffen und darüber hinaus gezogen: erste Zeile.
   if AY - AGrab <= 0 then
+  begin
     Row := 0;
+  end;
   Row := EnsureRange(Row, 0, Max(0, RowCount - Max(1, AVisibleRows)));
   Result := LineOf(Row);
 end;
@@ -443,7 +469,9 @@ var
   Row: Integer;
 begin
   if RowCount <= 0 then
+  begin
     Exit(0);
+  end;
   Row := RowAt(AY) - Max(1, AVisibleRows) div 2;
   Row := EnsureRange(Row, 0, Max(0, RowCount - Max(1, AVisibleRows)));
   Result := LineOf(Row);
@@ -486,8 +514,12 @@ var
   Render: TAtlasMinimapRender;
 begin
   for Render := Low(TAtlasMinimapRender) to High(TAtlasMinimapRender) do
+  begin
     if SameText(Trim(AName), RenderNames[Render]) then
+    begin
       Exit(Render);
+    end;
+  end;
   Result := TAtlasMinimapRender.Characters;
 end;
 
@@ -496,8 +528,12 @@ var
   Side: TAtlasMinimapSide;
 begin
   for Side := Low(TAtlasMinimapSide) to High(TAtlasMinimapSide) do
+  begin
     if SameText(Trim(AName), SideNames[Side]) then
+    begin
       Exit(Side);
+    end;
+  end;
   Result := TAtlasMinimapSide.Right;
 end;
 
@@ -506,8 +542,12 @@ var
   Slider: TAtlasMinimapSlider;
 begin
   for Slider := Low(TAtlasMinimapSlider) to High(TAtlasMinimapSlider) do
+  begin
     if SameText(Trim(AName), SliderNames[Slider]) then
+    begin
       Exit(Slider);
+    end;
+  end;
   Result := TAtlasMinimapSlider.Always;
 end;
 
@@ -539,7 +579,9 @@ begin
   for Fold in AFolds do
   begin
     if (Fold.Hidden < 1) or (Fold.Line < 0) or (Fold.Line >= ALineCount - 1) then
+    begin
       Continue;
+    end;
     Sorted := Sorted + [TAtlasMinimapFold.Create(Fold.Line, Min(Fold.Hidden, ALineCount - 1 - Fold.Line))];
     Position := High(Sorted);
     while (Position > 0) and (Sorted[Position - 1].Line > Sorted[Position].Line) do
@@ -562,7 +604,9 @@ begin
     end;
     Result := Result + [Sorted[Index]];
     if Length(Result) >= MaxFolds then
+    begin
       Break;
+    end;
   end;
 end;
 
@@ -596,24 +640,40 @@ begin
   begin
     // Nur direkt aufeinanderfolgende Bildschirmzeilen sagen etwas über die Faltung.
     if (ARowHeight <= 0) or (Rows[Index].Top - Rows[Index - 1].Top <> ARowHeight) then
+    begin
       Continue;
+    end;
     if Rows[Index].Line - Rows[Index - 1].Line > 1 then
-      Result := Result + [TAtlasMinimapFold.Create(Rows[Index - 1].Line, Rows[Index].Line - Rows[Index - 1].Line - 1)]
+    begin
+      Result := Result + [TAtlasMinimapFold.Create(Rows[Index - 1].Line, Rows[Index].Line - Rows[Index - 1].Line - 1)];
+    end
     else if Rows[Index].Line - Rows[Index - 1].Line = 1 then
+    begin
       Opened := Opened + [Rows[Index - 1].Line];
+    end;
   end;
   for Fold in AKnown do
   begin
     Keep := True;
     for Index in Opened do
+    begin
       if Index = Fold.Line then
+      begin
         Keep := False;
+      end;
+    end;
     // Neu beobachtet: der neue Stand gilt.
     for Index := 0 to High(Result) do
+    begin
       if Result[Index].Line = Fold.Line then
+      begin
         Keep := False;
+      end;
+    end;
     if Keep then
+    begin
       Result := Result + [Fold];
+    end;
   end;
   Result := NormalizeFolds(Result, ALineCount);
 end;
@@ -624,10 +684,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
+  begin
     if (A[Index].Line <> B[Index].Line) or (A[Index].Hidden <> B[Index].Hidden) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasMinimap.Headers(const ANodes: TAtlasOutlineNodes; const AMap: TAtlasMinimapMap;
@@ -645,11 +711,15 @@ begin
   begin
     Node := ANodes[Index];
     if Node.InBody or (Node.Name = '') then
+    begin
       Continue;
+    end;
     IsType := (Node.Category = TAtlasOutlineCategory.TypeDecl) and IsHeaderType(Node.Kind);
     // Routinen außerhalb von Typen: Rümpfe im implementation-Teil und globale Routinen.
     if not IsType and not ((Node.Category = TAtlasOutlineCategory.Routine) and IsRoutine(Node.Kind)) then
+    begin
       Continue;
+    end;
     Order := Order + [Index];
     Position := High(Order);
     while (Position > 0) and (ANodes[Order[Position - 1]].StartLine > Node.StartLine) do
@@ -666,9 +736,13 @@ begin
     Node := ANodes[Index];
     Top := AMap.PixelOfLine(Node.StartLine);
     if (LastBottom >= 0) and (Top < LastBottom) then
+    begin
       Continue;
+    end;
     if (AMap.Height > 0) and (Top + Max(1, ALabelHeight) > AMap.Height) then
+    begin
       Continue;
+    end;
     Header.Node := Index;
     Header.Line := Node.StartLine;
     Header.Text := Node.Name;
@@ -688,12 +762,18 @@ begin
   AEndLine := -1;
   Best := -1;
   for Index := 0 to High(ANodes) do
+  begin
     if IsRoutine(ANodes[Index].Kind) and (ANodes[Index].Category <> TAtlasOutlineCategory.Method) and
       (ANodes[Index].StartLine <= ALine) and (ALine <= ANodes[Index].EndLine) then
+    begin
       // Die innerste gewinnt: späterer Anfang bzw. bei gleichem Anfang das kürzere Ende.
       if (Best < 0) or (ANodes[Index].StartLine > ANodes[Best].StartLine) or
         ((ANodes[Index].StartLine = ANodes[Best].StartLine) and (ANodes[Index].EndLine < ANodes[Best].EndLine)) then
+      begin
         Best := Index;
+      end;
+    end;
+  end;
   Result := Best >= 0;
   if Result then
   begin
@@ -717,13 +797,18 @@ var
 begin
   Result := nil;
   if (AMap.LineCount <= 0) or (AMap.Height <= 0) then
+  begin
     Exit;
+  end;
   for Kind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
   begin
     if not (TAtlasOverview.GroupOf(Kind) in MarkerKinds) then
+    begin
       Continue;
+    end;
     Order := nil;
     for Index := 0 to High(AMarks) do
+    begin
       if AMarks[Index].Kind = Kind then
       begin
         Order := Order + [Index];
@@ -736,6 +821,7 @@ begin
           Dec(Position);
         end;
       end;
+    end;
     Last := -1;
     for Index in Order do
     begin
@@ -755,9 +841,13 @@ begin
       Bar.Mark := Index;
       Bar.Kind := Kind;
       if TAtlasOverview.GroupOf(Kind) = TAtlasOverviewKind.Changes then
-        Bar.Lane := TAtlasOverviewLane.Left
+      begin
+        Bar.Lane := TAtlasOverviewLane.Left;
+      end
       else
+      begin
         Bar.Lane := TAtlasOverviewLane.Full;
+      end;
       Bar.Top := Top;
       Bar.Bottom := Bottom;
       Result := Result + [Bar];
@@ -777,11 +867,15 @@ var
   procedure Close(AStop: Integer);
   begin
     if not InWord then
+    begin
       Exit;
+    end;
     InWord := False;
     Run.Stop := Min(AStop, AMaxColumn);
     if Run.Stop > Run.Start then
+    begin
       Result := Result + [Run];
+    end;
   end;
 
 begin
@@ -796,14 +890,20 @@ begin
     for Index := Start to Min(Token.Stop, Length(ALine)) - 1 do
     begin
       if Column >= AMaxColumn then
+      begin
         Break;
+      end;
       if (ALine[Index + 1] = ' ') or (ALine[Index + 1] = #9) then
       begin
         Close(Column);
         if ALine[Index + 1] = #9 then
-          Column := (Column div TabWidth + 1) * TabWidth
+        begin
+          Column := (Column div TabWidth + 1) * TabWidth;
+        end
         else
+        begin
           Inc(Column);
+        end;
         Continue;
       end;
       if not InWord then
@@ -815,7 +915,9 @@ begin
       Inc(Column);
     end;
     if Column >= AMaxColumn then
+    begin
       Break;
+    end;
   end;
   Close(Column);
 end;
@@ -829,7 +931,9 @@ begin
   Tokens := TAtlasSyntax.LineTokens(ALines);
   SetLength(Result, Length(ALines));
   for Index := 0 to High(ALines) do
+  begin
     Result[Index] := LineRuns(ALines[Index], Tokens[Index], AMaxColumn, ATabWidth);
+  end;
 end;
 
 class function TAtlasMinimap.SameLine(const A, B: TAtlasMinimapLine): Boolean;
@@ -838,10 +942,16 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
+  begin
     if (A[Index].Start <> B[Index].Start) or (A[Index].Stop <> B[Index].Stop) or (A[Index].Kind <> B[Index].Kind) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasMinimap.Expand(const ALine: string; AMaxColumn, ATabWidth: Integer): string;
@@ -853,7 +963,9 @@ begin
   for Index := 1 to Length(ALine) do
   begin
     if Column >= AMaxColumn then
+    begin
       Break;
+    end;
     if ALine[Index] = #9 then
     begin
       Next := Min((Column div Max(1, ATabWidth) + 1) * Max(1, ATabWidth), AMaxColumn);
@@ -875,22 +987,36 @@ begin
   Result := nil;
   Common := Min(Length(AOld), Length(ANew));
   for Index := 0 to Common - 1 do
+  begin
     if not SameLine(AOld[Index], ANew[Index]) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
   for Index := Common to Max(Length(AOld), Length(ANew)) - 1 do
+  begin
     Result := Result + [Index];
+  end;
 end;
 
 class function TAtlasMinimap.GlyphHeight(AChar: Char; ARowHeight: Integer): Integer;
 begin
   if ARowHeight <= 0 then
+  begin
     Exit(0);
+  end;
   if (AChar = ' ') or (AChar = #9) or (AChar < ' ') then
+  begin
     Exit(0);
+  end;
   if CharInSet(AChar, ['A'..'Z', '0'..'9', '(', ')', '[', ']', '{', '}', '''', '"', '#', '$', '@', '|']) then
+  begin
     Exit(ARowHeight);
+  end;
   if CharInSet(AChar, ['a'..'z']) or TTextChars.IsIdentStart(AChar) then
+  begin
     Exit(Max(1, (ARowHeight * 2 + 2) div 3));
+  end;
   Result := 1;
 end;
 

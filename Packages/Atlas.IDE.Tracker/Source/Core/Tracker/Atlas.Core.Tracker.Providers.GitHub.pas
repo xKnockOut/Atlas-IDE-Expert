@@ -403,7 +403,9 @@ begin
   Result := '';
   Value := AObject.Values[AName];
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function IntOf(AObject: TJSONObject; const AName: string): Integer;
@@ -415,7 +417,9 @@ begin
   Value := AObject.Values[AName];
   if (Value is TJSONNumber) and TryStrToInt64(TJSONNumber(Value).Value, Number) and (Number > 0) and
     (Number <= MaxInt) then
+  begin
     Result := Integer(Number);
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -430,7 +434,9 @@ function Shorten(const AText: string; AMax: Integer): string;
 begin
   Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Length(Result) > AMax then
+  begin
     Result := Copy(Result, 1, AMax - 1) + '…';
+  end;
 end;
 
 /// <summary>Logins aus "assignees" mit ", ", ersatzweise "assignee"; '' ohne.</summary>
@@ -442,20 +448,30 @@ begin
   Result := '';
   mItem := AObject.Values['assignees'];
   if mItem is TJSONArray then
+  begin
     for mEntry in TJSONArray(mItem) do
     begin
       mText := '';
       if mEntry is TJSONObject then
+      begin
         mText := Shorten(TextOf(TJSONObject(mEntry), 'login'), 60);
+      end;
       if mText = '' then
+      begin
         Continue;
+      end;
       if Result <> '' then
+      begin
         Result := Result + ', ';
+      end;
       Result := Result + mText;
     end;
+  end;
   mItem := AObject.Values['assignee'];
   if (Result = '') and (mItem is TJSONObject) then
+  begin
     Result := Shorten(TextOf(TJSONObject(mItem), 'login'), 60);
+  end;
 end;
 
 { TAtlasGitHubTracker }
@@ -469,7 +485,9 @@ class function TAtlasGitHubTracker.SearchText(const ATarget: TAtlasTrackerTarget
 begin
   Result := ATarget.Query;
   if Result = '' then
+  begin
     Result := Query;
+  end;
   Result := Result + ' repo:' + ATarget.Project + ' is:issue';
 end;
 
@@ -480,13 +498,19 @@ var
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
+  begin
     Exit('');
+  end;
   Text := SearchText(ATarget);
   Limit := AMax;
   if Limit < 1 then
+  begin
     Limit := 1;
+  end;
   if Limit > 100 then
+  begin
     Limit := 100;
+  end;
   Result := Result + '/search/issues?q=' + TTextUris.PercentEncode(Text) + '&per_page=' + IntToStr(Limit) +
     '&sort=updated&order=desc';
 end;
@@ -498,12 +522,18 @@ var
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') or (Trim(AText) = '') then
+  begin
     Exit('');
+  end;
   mLimit := AMax;
   if mLimit < 1 then
+  begin
     mLimit := 1;
+  end;
   if mLimit > 100 then
+  begin
     mLimit := 100;
+  end;
   // Ohne sort: GitHub ordnet nach Treffergüte.
   Result := Result + '/search/issues?q=' + TTextUris.PercentEncode('repo:' + ATarget.Project + ' is:issue ' +
     Trim(AText)) + '&per_page=' + IntToStr(mLimit);
@@ -513,7 +543,9 @@ class function TAtlasGitHubTracker.PullsUrl(const ATarget: TAtlasTrackerTarget):
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/pulls?state=open&per_page=' +
     IntToStr(MaxPulls);
 end;
@@ -524,16 +556,24 @@ var
 begin
   Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
   if Result then
+  begin
     for Index := 1 to Length(ASha) do
+    begin
       if not CharInSet(ASha[Index], ['0'..'9', 'a'..'f', 'A'..'F']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasGitHubTracker.CheckRunsUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string;
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') or not SafeSha(ASha) then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/commits/' + ASha +
     '/check-runs?per_page=100';
 end;
@@ -542,7 +582,9 @@ class function TAtlasGitHubTracker.StatusUrl(const ATarget: TAtlasTrackerTarget;
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') or not SafeSha(ASha) then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/commits/' + ASha + '/status';
 end;
 
@@ -558,42 +600,64 @@ begin
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Items := TJSONObject(Value).Values['items'];
     if not (Items is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for Item in TJSONArray(Items) do
     begin
       if Length(AIssues) >= AMax then
+      begin
         Break;
+      end;
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       // Die Suche liefert auch Pull Requests; die gehören nicht in die Liste.
       if TJSONObject(Item).Values['pull_request'] <> nil then
+      begin
         Continue;
+      end;
       Issue := TAtlasTrackerIssue.Empty;
       Issue.Number := IntOf(TJSONObject(Item), 'number');
       if Issue.Number <= 0 then
+      begin
         Continue;
+      end;
       Issue.Key := '#' + IntToStr(Issue.Number);
       Issue.Title := Shorten(TextOf(TJSONObject(Item), 'title'), TAtlasTrackerIssue.MaxTitle);
       Issue.State := TextOf(TJSONObject(Item), 'state');
       Issue.Assignee := AssigneesOf(TJSONObject(Item));
       Labels := TJSONObject(Item).Values['labels'];
       if Labels is TJSONArray then
+      begin
         for LabelValue in TJSONArray(Labels) do
         begin
           if Length(Issue.Labels) >= TAtlasTrackerIssue.MaxLabels then
+          begin
             Break;
+          end;
           LabelName := '';
           if LabelValue is TJSONObject then
-            LabelName := Trim(TextOf(TJSONObject(LabelValue), 'name'))
+          begin
+            LabelName := Trim(TextOf(TJSONObject(LabelValue), 'name'));
+          end
           else if LabelValue is TJSONString then
+          begin
             LabelName := Trim(TJSONString(LabelValue).Value);
+          end;
           if LabelName <> '' then
+          begin
             Issue.Labels := Issue.Labels + [Shorten(LabelName, 40)];
+          end;
         end;
+      end;
       AIssues := AIssues + [Issue];
     end;
   finally
@@ -609,7 +673,9 @@ begin
   Result := 0;
   mText := TextOf(AObject, 'updated_at');
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParsePulls(const AJson: string; out APulls: TArray<TAtlasGitHubPull>): Boolean;
@@ -622,16 +688,22 @@ begin
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for Item in TJSONArray(Value) do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Pull := Default(TAtlasGitHubPull);
       Pull.Number := IntOf(TJSONObject(Item), 'number');
       if Pull.Number <= 0 then
+      begin
         Continue;
+      end;
       Pull.Draft := FlagOf(TJSONObject(Item), 'draft');
       Pull.State := LowerCase(TextOf(TJSONObject(Item), 'state'));
       Pull.Merged := TextOf(TJSONObject(Item), 'merged_at') <> '';
@@ -674,14 +746,24 @@ begin
       // Rückwärts: Leerzeichen und ":" überspringen, dann das Wort davor.
       Start := Index - 1;
       while (Start >= 1) and CharInSet(Lower[Start], [' ', ':', #9]) do
+      begin
         Dec(Start);
+      end;
       Stop := Start;
       while (Start >= 1) and CharInSet(Lower[Start], ['a'..'z']) do
+      begin
         Dec(Start);
+      end;
       if Stop > Start then
+      begin
         for Word in Words do
+        begin
           if Copy(Lower, Start + 1, Stop - Start) = Word then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
     end;
     Index := Pos(Mark, Lower, Index + 1);
   end;
@@ -691,7 +773,9 @@ class function TAtlasGitHubTracker.PullMentions(const APull: TAtlasGitHubPull; A
 begin
   Result := False;
   if ANumber <= 0 then
+  begin
     Exit;
+  end;
   Result := (TAtlasTrackerNaming.KeyOfBranch(ProviderName, '', APull.Branch) = '#' + IntToStr(ANumber)) or
     TextClosesIssue(APull.Title, ANumber) or TextClosesIssue(APull.Body, ANumber);
 end;
@@ -710,7 +794,9 @@ begin
     mStop := mIndex + Length(mMark);
     if ((mStop > Length(AText)) or not CharInSet(AText[mStop], ['0'..'9'])) and
       ((mIndex = 1) or not CharInSet(AText[mIndex - 1], ['0'..'9', 'A'..'Z', 'a'..'z'])) then
+    begin
       Exit(True);
+    end;
     mIndex := Pos(mMark, AText, mIndex + 1);
   end;
 end;
@@ -724,7 +810,9 @@ class function TAtlasGitHubTracker.AllPullsUrl(const ATarget: TAtlasTrackerTarge
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/pulls?state=all&per_page=' +
     IntToStr(MaxPageSize) + '&sort=updated&direction=desc';
 end;
@@ -732,13 +820,21 @@ end;
 class function TAtlasGitHubTracker.PullState(const APull: TAtlasGitHubPull): TAtlasTrackerPullState;
 begin
   if APull.Merged then
-    Result := TAtlasTrackerPullState.Merged
+  begin
+    Result := TAtlasTrackerPullState.Merged;
+  end
   else if APull.State = 'closed' then
-    Result := TAtlasTrackerPullState.Closed
+  begin
+    Result := TAtlasTrackerPullState.Closed;
+  end
   else if APull.Draft then
-    Result := TAtlasTrackerPullState.Draft
+  begin
+    Result := TAtlasTrackerPullState.Draft;
+  end
   else
+  begin
     Result := TAtlasTrackerPullState.Open;
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseCheckRuns(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean;
@@ -752,10 +848,14 @@ begin
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Runs := TJSONObject(Value).Values['check_runs'];
     if not (Runs is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     Any := False;
     Running := False;
@@ -763,22 +863,34 @@ begin
     for Run in TJSONArray(Runs) do
     begin
       if not (Run is TJSONObject) then
+      begin
         Continue;
+      end;
       Any := True;
       Status := LowerCase(TextOf(TJSONObject(Run), 'status'));
       Conclusion := LowerCase(TextOf(TJSONObject(Run), 'conclusion'));
       if Status <> 'completed' then
-        Running := True
+      begin
+        Running := True;
+      end
       else if (Conclusion = 'failure') or (Conclusion = 'timed_out') or (Conclusion = 'cancelled') or
         (Conclusion = 'action_required') or (Conclusion = 'startup_failure') then
+      begin
         Failed := True;
+      end;
     end;
     if Failed then
-      AChecks := TAtlasTrackerChecks.Failure
+    begin
+      AChecks := TAtlasTrackerChecks.Failure;
+    end
     else if Running then
-      AChecks := TAtlasTrackerChecks.Pending
+    begin
+      AChecks := TAtlasTrackerChecks.Pending;
+    end
     else if Any then
+    begin
       AChecks := TAtlasTrackerChecks.Success;
+    end;
   finally
     Value.Free;
   end;
@@ -794,19 +906,29 @@ begin
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Result := True;
     // Ohne einzelne Status meldet GitHub "pending"; das ist keine Ampel.
     Statuses := TJSONObject(Value).Values['statuses'];
     if not (Statuses is TJSONArray) or (TJSONArray(Statuses).Count = 0) then
+    begin
       Exit;
+    end;
     State := LowerCase(TextOf(TJSONObject(Value), 'state'));
     if State = 'success' then
-      AChecks := TAtlasTrackerChecks.Success
+    begin
+      AChecks := TAtlasTrackerChecks.Success;
+    end
     else if (State = 'failure') or (State = 'error') then
-      AChecks := TAtlasTrackerChecks.Failure
+    begin
+      AChecks := TAtlasTrackerChecks.Failure;
+    end
     else if State = 'pending' then
+    begin
       AChecks := TAtlasTrackerChecks.Pending;
+    end;
   finally
     Value.Free;
   end;
@@ -832,7 +954,9 @@ end;
 function NumberOfKey(const AKey: string): Integer;
 begin
   if not TryStrToInt(TAtlasTrackerNaming.BranchKey(AKey), Result) or (Result <= 0) then
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>ISO 8601 ("2026-10-28T10:40:49Z") als UTC; 0 ohne.</summary>
@@ -843,14 +967,18 @@ begin
   Result := 0;
   mText := TextOf(AObject, AName);
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 function LoginOf(AValue: TJSONValue): string;
 begin
   Result := '';
   if AValue is TJSONObject then
+  begin
     Result := Shorten(TextOf(TJSONObject(AValue), 'login'), 60);
+  end;
 end;
 
 function Limited(const AText: string): string;
@@ -865,7 +993,9 @@ begin
   Result := ApiBase(ATarget);
   mNumber := NumberOfKey(AKey);
   if (Result = '') or (ATarget.Project = '') or (mNumber = 0) then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/issues/' + IntToStr(mNumber);
 end;
 
@@ -882,11 +1012,15 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     ADetails.Number := IntOf(mRoot, 'number');
     if ADetails.Number <= 0 then
+    begin
       Exit;
+    end;
     ADetails.Key := '#' + IntToStr(ADetails.Number);
     ADetails.Title := Shorten(TextOf(mRoot, 'title'), 500);
     ADetails.Description := Limited(TextOf(mRoot, 'body'));
@@ -894,28 +1028,42 @@ begin
     ADetails.State := TextOf(mRoot, 'state');
     mReason := TextOf(mRoot, 'state_reason');
     if (ADetails.State = 'closed') and (mReason <> '') and (mReason <> 'completed') then
+    begin
       ADetails.State := ADetails.State + ' (' + StringReplace(mReason, '_', ' ', [rfReplaceAll]) + ')';
+    end;
     ADetails.Created := TimeOf(mRoot, 'created_at');
     ADetails.Updated := TimeOf(mRoot, 'updated_at');
     ACommentCount := IntOf(mRoot, 'comments');
     mItem := mRoot.Values['labels'];
     if mItem is TJSONArray then
+    begin
       for mEntry in TJSONArray(mItem) do
       begin
         mText := '';
         if mEntry is TJSONObject then
-          mText := Trim(TextOf(TJSONObject(mEntry), 'name'))
+        begin
+          mText := Trim(TextOf(TJSONObject(mEntry), 'name'));
+        end
         else if mEntry is TJSONString then
+        begin
           mText := Trim(TJSONString(mEntry).Value);
+        end;
         if mText <> '' then
+        begin
           ADetails.Labels := ADetails.Labels + [Shorten(mText, 40)];
+        end;
       end;
+    end;
     ADetails.Assignee := AssigneesOf(mRoot);
     if mRoot.Values['milestone'] is TJSONObject then
+    begin
       ADetails.Sprint := Shorten(TextOf(TJSONObject(mRoot.Values['milestone']), 'title'), 60);
+    end;
     // Issue-Typen (Bug, Feature …) der Organisation.
     if mRoot.Values['type'] is TJSONObject then
+    begin
       ADetails.Kind := Shorten(TextOf(TJSONObject(mRoot.Values['type']), 'name'), 40);
+    end;
     Result := True;
   finally
     mValue.Free;
@@ -933,12 +1081,16 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mComment := Default(TAtlasTrackerComment);
       mComment.Author := LoginOf(TJSONObject(mItem).Values['user']);
       mComment.Created := TimeOf(TJSONObject(mItem), 'created_at');
@@ -964,30 +1116,46 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) or (TextOf(TJSONObject(mItem), 'event') <> 'cross-referenced') then
+      begin
         Continue;
+      end;
       mSource := TJSONObject(mItem).Values['source'];
       if not (mSource is TJSONObject) then
+      begin
         Continue;
+      end;
       mIssue := TJSONObject(mSource).Values['issue'];
       if not (mIssue is TJSONObject) then
+      begin
         Continue;
+      end;
       mNumber := IntOf(TJSONObject(mIssue), 'number');
       if mNumber <= 0 then
+      begin
         Continue;
+      end;
       mRepository := '';
       if TJSONObject(mIssue).Values['repository'] is TJSONObject then
+      begin
         mRepository := TextOf(TJSONObject(TJSONObject(mIssue).Values['repository']), 'full_name');
+      end;
       mLink := Default(TAtlasTrackerLink);
       mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
       if mLink.Local then
-        mLink.Key := '#' + IntToStr(mNumber)
+      begin
+        mLink.Key := '#' + IntToStr(mNumber);
+      end
       else
+      begin
         mLink.Key := mRepository + '#' + IntToStr(mNumber);
+      end;
       mLink.Title := Shorten(TextOf(TJSONObject(mIssue), 'title'), 200);
       if TJSONObject(mIssue).Values['pull_request'] <> nil then
       begin
@@ -1006,13 +1174,21 @@ begin
       // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
       mPage := TextOf(TJSONObject(mIssue), 'html_url');
       if StartsText('https://', mPage) then
+      begin
         mLink.Page := mPage;
+      end;
       mKnown := False;
       for mIndex := 0 to High(ALinks) do
+      begin
         if SameText(ALinks[mIndex].Key, mLink.Key) then
+        begin
           mKnown := True;
+        end;
+      end;
       if not mKnown and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+      begin
         ALinks := ALinks + [mLink];
+      end;
     end;
   finally
     mValue.Free;
@@ -1033,27 +1209,41 @@ begin
   Result := nil;
   mTexts := TArray<string>.Create(ADetails.Description);
   for mComment in ADetails.Comments do
+  begin
     mTexts := mTexts + [mComment.Text];
+  end;
   for mText in mTexts do
+  begin
     for mLink in TAtlasTrackerMarkdown.Links(mText) do
     begin
       if not StartsText('https://', mLink.Url) or (Pos('/user-attachments/files/', mLink.Url) = 0) then
+      begin
         Continue;
+      end;
       mKnown := False;
       for mIndex := 0 to High(Result) do
+      begin
         if Result[mIndex].Url = mLink.Url then
+        begin
           mKnown := True;
+        end;
+      end;
       if mKnown or (Length(Result) >= TAtlasTrackerDetails.MaxAttachments) then
+      begin
         Continue;
+      end;
       mAttachment := Default(TAtlasTrackerAttachment);
       mAttachment.Name := Shorten(mLink.Text, 200);
       if mAttachment.Name = '' then
+      begin
         mAttachment.Name := Copy(mLink.Url, LastDelimiter('/', mLink.Url) + 1, 200);
+      end;
       mAttachment.Size := -1;
       mAttachment.Url := mLink.Url;
       mAttachment.External := True;
       Result := Result + [mAttachment];
     end;
+  end;
 end;
 
 function TAtlasGitHubTracker.Name: string;
@@ -1083,7 +1273,9 @@ begin
   Rest := ATimeoutMs - AWatch.ElapsedMilliseconds;
   Result := 0;
   if Rest > 0 then
+  begin
     Result := Integer(Rest);
+  end;
 end;
 
 function TAtlasGitHubTracker.Fetch(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -1107,7 +1299,9 @@ begin
   end;
   Watch := TStopwatch.StartNew;
   if not ATransport.Get(SearchUrl(ATarget, AMax), ATimeoutMs, Status, Text, AError) then
+  begin
     Exit;
+  end;
   if Status <> 200 then
   begin
     AError := ErrorOfStatus(Status);
@@ -1120,18 +1314,25 @@ begin
   end;
   Result := True;
   if (Length(AIssues) = 0) or (Remaining(Watch, ATimeoutMs) = 0) then
+  begin
     Exit;
+  end;
   // Pull Requests und Ampeln in der restlichen Zeit; was fehlt, bleibt unbekannt.
   if not ATransport.Get(PullsUrl(ATarget), Remaining(Watch, ATimeoutMs), Status, Text, Ignored) or
     (Status <> 200) or not ParsePulls(Text, Pulls) then
+  begin
     Exit;
+  end;
   Checked := 0;
   for Index := 0 to High(AIssues) do
+  begin
     for PullIndex := 0 to High(Pulls) do
     begin
       Pull := Pulls[PullIndex];
       if not PullMentions(Pull, AIssues[Index].Number) then
+      begin
         Continue;
+      end;
       AIssues[Index].PullRequest.Number := Pull.Number;
       AIssues[Index].PullRequest.Draft := Pull.Draft;
       if (Checked < MaxChecks) and (Remaining(Watch, ATimeoutMs) > 0) and (CheckRunsUrl(ATarget, Pull.Sha) <> '') then
@@ -1140,16 +1341,21 @@ begin
         Checks := TAtlasTrackerChecks.Unknown;
         if ATransport.Get(CheckRunsUrl(ATarget, Pull.Sha), Remaining(Watch, ATimeoutMs), Status, Text, Ignored) and
           (Status = 200) then
+        begin
           ParseCheckRuns(Text, Checks);
+        end;
         // Ohne Check Runs: der ältere kombinierte Status (externe CI wie Jenkins).
         if (Checks = TAtlasTrackerChecks.Unknown) and (Remaining(Watch, ATimeoutMs) > 0) and
           ATransport.Get(StatusUrl(ATarget, Pull.Sha), Remaining(Watch, ATimeoutMs), Status, Text, Ignored) and
           (Status = 200) then
+        begin
           ParseStatus(Text, Checks);
+        end;
         AIssues[Index].PullRequest.Checks := Checks;
       end;
       Break;
     end;
+  end;
   AError := TAtlasCiFetchError.None;
 end;
 
@@ -1159,9 +1365,13 @@ var
 begin
   Result := '';
   if (ATarget.Server = '') or (ATarget.Project = '') then
+  begin
     Exit;
+  end;
   if not TryStrToInt(TAtlasTrackerNaming.BranchKey(AKey), Number) or (Number <= 0) then
+  begin
     Exit;
+  end;
   Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/issues/' + IntToStr(Number);
 end;
 
@@ -1169,7 +1379,9 @@ function TAtlasGitHubTracker.PullRequestPage(const ATarget: TAtlasTrackerTarget;
 begin
   Result := '';
   if (ATarget.Server = '') or (ATarget.Project = '') or (ANumber <= 0) then
+  begin
     Exit;
+  end;
   Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/pull/' + IntToStr(ANumber);
 end;
 
@@ -1177,7 +1389,9 @@ function TAtlasGitHubTracker.ProbeUrl(const ATarget: TAtlasTrackerTarget): strin
 begin
   Result := ApiBase(ATarget);
   if Result <> '' then
+  begin
     Result := Result + '/user';
+  end;
 end;
 
 function TAtlasGitHubTracker.ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
@@ -1225,7 +1439,9 @@ begin
   end;
   mWatch := TStopwatch.StartNew;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -1253,17 +1469,23 @@ begin
         (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mUrl + '/comments?per_page=' +
         IntToStr(MaxPageSize) + '&page=' + IntToStr(mPage - 1), Remaining(mWatch, ATimeoutMs), mStatus, mText,
         mIgnored) and (mStatus = 200) and ParseComments(mText, mOlder) then
+      begin
         mComments := mOlder + mComments;
+      end;
       if Length(mComments) > TAtlasTrackerDetails.MaxComments then
+      begin
         mComments := Copy(mComments, Length(mComments) - TAtlasTrackerDetails.MaxComments,
           TAtlasTrackerDetails.MaxComments);
+      end;
       ADetails.Comments := mComments;
     end;
   end;
   if (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mUrl + '/timeline?per_page=' + IntToStr(MaxPageSize),
     Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
     ParseTimeline(mText, ATarget.Project, mLinks) then
+  begin
     ADetails.Links := mLinks;
+  end;
   LoadRelations(ATarget, ATransport, mUrl, mSummary, mWatch, ATimeoutMs, ADetails);
   ADetails.Attachments := FileAttachments(ADetails);
 end;
@@ -1279,8 +1501,12 @@ var
 begin
   Result := False;
   for mState in ClosingStates do
+  begin
     if SameText(mState, Trim(AState)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasGitHubTracker.CommentJson(const AText: string): string;
@@ -1303,13 +1529,19 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for mItem in TJSONArray(AValue) do
+    begin
       if mItem is TJSONObject then
       begin
         mText := Trim(TextOf(TJSONObject(mItem), AField));
         if mText <> '' then
+        begin
           Result := Result + [mText];
+        end;
       end;
+    end;
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseAssignment(const AJson: string;
@@ -1323,7 +1555,9 @@ begin
   try
     Result := mValue is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     ALabels := NamesOf(TJSONObject(mValue).Values['labels'], 'name');
     AAssignees := NamesOf(TJSONObject(mValue).Values['assignees'], 'login');
   finally
@@ -1336,8 +1570,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AItems) do
+  begin
     if SameText(AItems[mIndex], AText) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1347,7 +1585,9 @@ var
 begin
   Result := TJSONArray.Create;
   for mItem in AItems do
+  begin
     Result.Add(mItem);
+  end;
 end;
 
 class function TAtlasGitHubTracker.PatchJson(const ALabels, AAssignees: TArray<string>;
@@ -1400,13 +1640,19 @@ begin
     // Keep: Zuständige bleiben.
   end;
   if not (mLabelsChanged or mAssigneesChanged or mClose) then
+  begin
     Exit;
+  end;
   mObject := TJSONObject.Create;
   try
     if mLabelsChanged then
+    begin
       mObject.AddPair('labels', JsonList(mLabels));
+    end;
     if mAssigneesChanged then
+    begin
       mObject.AddPair('assignees', JsonList(mAssignees));
+    end;
     if mClose then
     begin
       mObject.AddPair('state', 'closed');
@@ -1427,7 +1673,9 @@ begin
   try
     Result := mValue is TJSONArray;
     if Result then
+    begin
       AValues := NamesOf(mValue, AField);
+    end;
   finally
     mValue.Free;
   end;
@@ -1442,14 +1690,18 @@ begin
   AUsers := nil;
   Result := ParseNames(AJson, 'login', mLogins);
   for mLogin in mLogins do
+  begin
     AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin, '')];
+  end;
 end;
 
 class function TAtlasGitHubTracker.AssigneesUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
+  begin
     Exit('');
+  end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/assignees?per_page=' +
     IntToStr(MaxPageSize);
 end;
@@ -1462,7 +1714,9 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if mValue is TJSONObject then
+    begin
       Result := TextOf(TJSONObject(mValue), 'message');
+    end;
   finally
     mValue.Free;
   end;
@@ -1487,52 +1741,82 @@ var
 begin
   Result := TAtlasTrackerWriteResult.Ok;
   if not AChange.HasWork then
+  begin
     Exit;
+  end;
   mUrl := IssueApiUrl(ATarget, AKey);
   if (mUrl = '') or not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
   mWatch := TStopwatch.StartNew;
   mMe := '';
   if AChange.Assign = TAtlasTrackerAssign.Me then
   begin
     if not ATransport.Get(ApiBase(ATarget) + '/user', ATimeoutMs, mStatus, mText, mError) then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    end;
     if mStatus <> 200 then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+    end;
     mValue := TJSONObject.ParseJSONValue(mText);
     try
       if mValue is TJSONObject then
+      begin
         mMe := Trim(TextOf(TJSONObject(mValue), 'login'));
+      end;
     finally
       mValue.Free;
     end;
     if mMe = '' then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
+    end;
   end;
   // Zuerst der Kommentar: Fehlen die Schreibrechte, ändert sich nichts am Issue.
   if Trim(AChange.Comment) <> '' then
   begin
     if not mSend.Send('POST', mUrl + '/comments', CommentJson(AChange.Comment), Remaining(mWatch, ATimeoutMs),
       mStatus, mText, mError) then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    end;
     if not Answered(mStatus) then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+    end;
   end;
   if (Trim(AChange.State) = '') and (AChange.Assign = TAtlasTrackerAssign.Keep) then
+  begin
     Exit;
+  end;
   if not ATransport.Get(mUrl, Remaining(mWatch, ATimeoutMs), mStatus, mText, mError) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
   if mStatus <> 200 then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  end;
   if not ParseAssignment(mText, mLabels, mAssignees) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
+  end;
   mBody := PatchJson(mLabels, mAssignees, AChange, mMe);
   if mBody = '' then
+  begin
     Exit;
+  end;
   if not mSend.Send('PATCH', mUrl, mBody, Remaining(mWatch, ATimeoutMs), mStatus, mText, mError) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
   if not Answered(mStatus) then
+  begin
     Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText));
+  end;
 end;
 
 function TAtlasGitHubTracker.Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -1547,10 +1831,14 @@ begin
   Result := TAtlasTrackerWriteResult.Ok;
   // GitHub kennt keine Felder: Zustände sind Labels, zuständig sind Benutzer.
   if (AKind = TAtlasTrackerValueKind.StateFields) or (AKind = TAtlasTrackerValueKind.UserFields) then
+  begin
     Exit;
+  end;
   mUrl := ApiBase(ATarget);
   if (mUrl = '') or (ATarget.Project = '') or (ATransport = nil) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
   if AKind = TAtlasTrackerValueKind.Users then
   begin
     mUrl := AssigneesUrl(ATarget);
@@ -1562,11 +1850,17 @@ begin
     mField := 'name';
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
   if mStatus <> 200 then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  end;
   if not ParseNames(mText, mField, AValues) then
+  begin
     Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseBody(const AJson: string; out AText: string): Boolean;
@@ -1578,7 +1872,9 @@ begin
   try
     Result := (mValue is TJSONObject) and (IntOf(TJSONObject(mValue), 'number') > 0);
     if Result then
+    begin
       AText := TextOf(TJSONObject(mValue), 'body');
+    end;
   finally
     mValue.Free;
   end;
@@ -1613,7 +1909,9 @@ begin
     Exit;
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mJson, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -1650,7 +1948,9 @@ begin
     Exit;
   end;
   if not mSend.Send('PATCH', mUrl, BodyJson(AText), ATimeoutMs, mStatus, mAnswer, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -1669,11 +1969,15 @@ begin
   Result := -1;
   mValue := ARoot.Values[AObject];
   if not (mValue is TJSONObject) then
+  begin
     Exit;
+  end;
   mValue := TJSONObject(mValue).Values[AName];
   if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mNumber) and (mNumber >= 0) and
     (mNumber <= MaxInt) then
+  begin
     Result := Integer(mNumber);
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseLinkSummary(const AJson: string): TAtlasGitHubLinkSummary;
@@ -1686,7 +1990,9 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     Result.SubIssues := SummaryCount(TJSONObject(mValue), 'sub_issues_summary', 'total');
     Result.BlockedBy := SummaryCount(TJSONObject(mValue), 'issue_dependencies_summary', 'total_blocked_by');
     Result.Blocking := SummaryCount(TJSONObject(mValue), 'issue_dependencies_summary', 'total_blocking');
@@ -1705,7 +2011,9 @@ begin
   mUrl := TextOf(AIssue, 'repository_url');
   mAt := Pos('/repos/', mUrl);
   if mAt > 0 then
+  begin
     Result := Copy(mUrl, mAt + Length('/repos/'), MaxInt);
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseRelated(const AJson, AProject: string; AKind: TAtlasTrackerLinkKind;
@@ -1725,23 +2033,33 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) or (Length(ALinks) >= TAtlasTrackerDetails.MaxLinks) then
+      begin
         Continue;
+      end;
       mIssue := TJSONObject(mItem);
       mNumber := IntOf(mIssue, 'number');
       if mNumber <= 0 then
+      begin
         Continue;
+      end;
       mRepository := RepositoryOf(mIssue);
       mLink := Default(TAtlasTrackerLink);
       mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
       if mLink.Local then
-        mLink.Key := '#' + IntToStr(mNumber)
+      begin
+        mLink.Key := '#' + IntToStr(mNumber);
+      end
       else
+      begin
         mLink.Key := mRepository + '#' + IntToStr(mNumber);
+      end;
       mLink.Title := Shorten(TextOf(mIssue, 'title'), 200);
       mLink.Kind := AKind;
       mLink.Relation := Relations[AKind];
@@ -1750,7 +2068,9 @@ begin
       mLink.Resolved := SameText(mLink.State, 'closed');
       mPage := TextOf(mIssue, 'html_url');
       if StartsText('https://', mPage) then
+      begin
         mLink.Page := mPage;
+      end;
       ALinks := ALinks + [mLink];
     end;
   finally
@@ -1769,10 +2089,13 @@ begin
   begin
     mDone := False;
     for mIndex := 0 to High(ALinks) do
+    begin
       if SameText(ALinks[mIndex].Key, mLink.Key) then
       begin
         if ALinks[mIndex].Kind = mLink.Kind then
-          mDone := True
+        begin
+          mDone := True;
+        end
         // Die Erwähnung desselben Issues weicht der genaueren Art.
         else if ALinks[mIndex].Kind in [TAtlasTrackerLinkKind.Mentioned, TAtlasTrackerLinkKind.Other] then
         begin
@@ -1780,10 +2103,15 @@ begin
           mDone := True;
         end;
         if mDone then
+        begin
           Break;
+        end;
       end;
+    end;
     if not mDone and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+    begin
       ALinks := ALinks + [mLink];
+    end;
   end;
 end;
 
@@ -1795,10 +2123,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mId := TJSONObject(mValue).Values['id'];
     if not (mId is TJSONNumber) or not TryStrToInt64(TJSONNumber(mId).Value, Result) or (Result < 0) then
+    begin
       Result := 0;
+    end;
   finally
     mValue.Free;
   end;
@@ -1812,7 +2144,9 @@ begin
   try
     mRoot.AddPair('title', Trim(ATitle));
     if Trim(ADescription) <> '' then
+    begin
       mRoot.AddPair('body', ADescription);
+    end;
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
@@ -1850,7 +2184,9 @@ begin
     ATransport.Get(AUrl + '/sub_issues?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch, ATimeoutMs), mStatus,
     mText, mIgnored) and (mStatus = 200) and ParseRelated(mText, ATarget.Project, TAtlasTrackerLinkKind.Subtask,
     mLinks) then
+  begin
     MergeLinks(ADetails.Links, mLinks);
+  end;
   mBlockers := False;
   if (ASummary.BlockedBy <> 0) and (Remaining(AWatch, ATimeoutMs) > 0) and
     ATransport.Get(AUrl + '/dependencies/blocked_by?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch,
@@ -1864,23 +2200,35 @@ begin
     ATransport.Get(AUrl + '/dependencies/blocking?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch,
     ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and ParseRelated(mText, ATarget.Project,
     TAtlasTrackerLinkKind.Blocks, mLinks) then
+  begin
     MergeLinks(ADetails.Links, mLinks);
+  end;
   if mBlockers then
+  begin
     Exit;
+  end;
   // Ohne „blocked by“: Abhängigkeiten aus dem Text, Zustand je Issue nachgefragt.
   for mNumber in TAtlasTrackerLinks.TextDependencies(ADetails.Description) do
   begin
     if mNumber = ADetails.Number then
+    begin
       Continue;
+    end;
     mLink := Default(TAtlasTrackerLink);
     mLink.Key := '#' + IntToStr(mNumber);
     mKnown := False;
     for mIndex := 0 to High(ADetails.Links) do
+    begin
       if SameText(ADetails.Links[mIndex].Key, mLink.Key) and
         (ADetails.Links[mIndex].Kind = TAtlasTrackerLinkKind.DependsOn) then
+      begin
         mKnown := True;
+      end;
+    end;
     if mKnown then
+    begin
       Continue;
+    end;
     mLink.Local := True;
     mLink.Kind := TAtlasTrackerLinkKind.DependsOn;
     mLink.Relation := 'depends on';
@@ -1907,7 +2255,9 @@ var
 begin
   Result := 0;
   if not ATransport.Get(TAtlasGitHubTracker.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
@@ -1915,7 +2265,9 @@ begin
   end;
   Result := TAtlasGitHubTracker.ParseIssueId(mText);
   if Result = 0 then
+  begin
     AError := TAtlasCiFetchError.Invalid;
+  end;
 end;
 
 /// <summary>POST mit AStatus 200/201 als Erfolg.</summary>
@@ -1926,7 +2278,9 @@ var
 begin
   Result := False;
   if not APost.Send('POST', AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+  begin
     Exit;
+  end;
   if (mStatus <> 200) and (mStatus <> 201) then
   begin
     AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
@@ -1952,7 +2306,9 @@ begin
   Result := False;
   mParent := IssueApiUrl(ATarget, AParentKey);
   if (mParent = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
+  begin
     Exit;
+  end;
   if Trim(ATitle) = '' then
   begin
     AError := TAtlasCiFetchError.Invalid;
@@ -1961,13 +2317,17 @@ begin
   mWatch := TStopwatch.StartNew;
   if not Posted(mPost, ApiBase(ATarget) + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/issues',
     NewIssueBody(ATitle, ADescription), ATimeoutMs, mText, AError) then
+  begin
     Exit;
+  end;
   mId := ParseIssueId(mText);
   mNumber := 0;
   mValue := TJSONObject.ParseJSONValue(mText);
   try
     if mValue is TJSONObject then
+    begin
       mNumber := IntOf(TJSONObject(mValue), 'number');
+    end;
   finally
     mValue.Free;
   end;
@@ -1993,7 +2353,9 @@ begin
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
   if (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
+  begin
     Exit;
+  end;
   // „hängt ab von“: AKey wird von AOtherKey blockiert; „blockiert“: umgekehrt.
   if AKind = TAtlasTrackerLinkKind.DependsOn then
   begin
@@ -2019,7 +2381,9 @@ begin
   mWatch := TStopwatch.StartNew;
   mId := IssueId(ATarget, ATransport, mBlocker, ATimeoutMs, AError);
   if mId = 0 then
+  begin
     Exit;
+  end;
   Result := Posted(mPost, IssueApiUrl(ATarget, mBlocked) + '/dependencies/blocked_by', IdBody('issue_id', mId),
     Remaining(mWatch, ATimeoutMs), mText, AError);
 end;
@@ -2031,7 +2395,9 @@ function TimeOfText(const AText: string): TDateTime;
 begin
   Result := 0;
   if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Objekt unter einem Pfad aus Namen ("data", "node"); nil, wenn ein Teil fehlt.</summary>
@@ -2045,11 +2411,15 @@ begin
   for mName in APath do
   begin
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mValue := TJSONObject(mValue).Values[mName];
   end;
   if mValue is TJSONObject then
+  begin
     Result := TJSONObject(mValue);
+  end;
 end;
 
 /// <summary>Liste "nodes" eines Objekts; nil ohne.</summary>
@@ -2059,12 +2429,18 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.Values[AName];
   if mValue is TJSONObject then
+  begin
     mValue := TJSONObject(mValue).Values['nodes'];
+  end;
   if mValue is TJSONArray then
+  begin
     Result := TJSONArray(mValue);
+  end;
 end;
 
 function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
@@ -2074,7 +2450,9 @@ begin
   mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
   Result := 0;
   if mRest > 0 then
+  begin
     Result := Integer(mRest);
+  end;
 end;
 
 { TAtlasGitHubBoards }
@@ -2086,11 +2464,17 @@ begin
   Result := '';
   mBase := TAtlasGitHubTracker.ApiBase(ATarget);
   if mBase = '' then
+  begin
     Exit;
+  end;
   if mBase = TAtlasGitHubTracker.ApiHost then
-    Result := mBase + '/graphql'
+  begin
+    Result := mBase + '/graphql';
+  end
   else
+  begin
     Result := ATarget.Server + '/api/graphql';
+  end;
 end;
 
 class function TAtlasGitHubBoards.GraphQlBody(const AQuery: string; const AVariables: array of string): string;
@@ -2125,23 +2509,37 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit(TAtlasCiFetchError.Invalid);
+    end;
     if not (TJSONObject(mValue).Values['errors'] is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(TJSONObject(mValue).Values['errors']) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       if AMessage = '' then
+      begin
         AMessage := Copy(TextOf(TJSONObject(mItem), 'message'), 1, 300);
+      end;
       mType := UpperCase(TextOf(TJSONObject(mItem), 'type'));
       if (mType = 'INSUFFICIENT_SCOPES') or (mType = 'FORBIDDEN') then
+      begin
         Exit(TAtlasCiFetchError.Unauthorized);
+      end;
       if mType = 'NOT_FOUND' then
+      begin
         Result := TAtlasCiFetchError.NotFound;
+      end;
     end;
     if Result = TAtlasCiFetchError.None then
+    begin
       Result := TAtlasCiFetchError.Invalid;
+    end;
   finally
     mValue.Free;
   end;
@@ -2159,27 +2557,41 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mViewer := ObjectAt(mValue, ['data', 'viewer']);
     if mViewer <> nil then
+    begin
       ASnapshot.Me := TextOf(mViewer, 'login');
+    end;
     mOpen := nil;
     mClosed := nil;
     mNodes := NodesOf(ObjectAt(mValue, ['data', 'repository']), 'projectsV2');
     if mNodes <> nil then
+    begin
       for mItem in mNodes do
       begin
         if not (mItem is TJSONObject) then
+        begin
           Continue;
+        end;
         mProject := TJSONObject(mItem);
         mRef := TAtlasBoardRef.Create(TextOf(mProject, 'id'), TextOf(mProject, 'title'));
         if mRef.Id = '' then
+        begin
           Continue;
+        end;
         if FlagOf(mProject, 'closed') then
-          mClosed := mClosed + [mRef]
+        begin
+          mClosed := mClosed + [mRef];
+        end
         else
+        begin
           mOpen := mOpen + [mRef];
+        end;
       end;
+    end;
     ASnapshot.Boards := Copy(mOpen + mClosed, 0, TAtlasBoardSnapshot.MaxBoards);
     Result := True;
   finally
@@ -2199,7 +2611,9 @@ begin
   begin
     Result.Start := mStart;
     if IntOf(AObject, 'duration') > 0 then
+    begin
       Result.Finish := mStart + IntOf(AObject, 'duration');
+    end;
   end;
 end;
 
@@ -2214,8 +2628,12 @@ var
 begin
   Result := False;
   for mName in Names do
+  begin
     if SameText(Trim(AName), mName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Spalten, Feld, Schätzfeld und Sprints aus fields.</summary>
@@ -2236,58 +2654,88 @@ begin
   ASnapshot.PointsField := '';
   mNodes := NodesOf(AProject, 'fields');
   if mNodes = nil then
+  begin
     Exit;
+  end;
   for mItem in mNodes do
   begin
     if not (mItem is TJSONObject) then
+    begin
       Continue;
+    end;
     mField := TJSONObject(mItem);
     mName := TextOf(mField, 'name');
     if mField.Values['options'] is TJSONArray then
     begin
       // Auswahlfeld: „Status“ geht vor, sonst das erste außer der Priorität; diese gibt den Farbbalken.
       if SameText(mName, 'Priority') or SameText(mName, 'Priorität') then
-        APriority := mName
+      begin
+        APriority := mName;
+      end
       else if SameText(mName, 'Status') then
-        mChosen := mField
+      begin
+        mChosen := mField;
+      end
       else if (mChosen = nil) and (mFirst = nil) then
+      begin
         mFirst := mField;
+      end;
     end
     else if (ASnapshot.PointsField = '') and SameText(TextOf(mField, 'dataType'), 'NUMBER') and
       IsPointsName(mName) then
-      ASnapshot.PointsField := mName
+    begin
+      ASnapshot.PointsField := mName;
+    end
     else if (AIteration = '') and (mField.Values['configuration'] is TJSONObject) then
     begin
       AIteration := mName;
       mConfig := TJSONObject(mField.Values['configuration']);
       // Laufende und künftige, dann abgeschlossene.
       if mConfig.Values['iterations'] is TJSONArray then
+      begin
         for mOption in TJSONArray(mConfig.Values['iterations']) do
+        begin
           if mOption is TJSONObject then
+          begin
             ASnapshot.Sprints := ASnapshot.Sprints + [IterationOf(TJSONObject(mOption))];
+          end;
+        end;
+      end;
       if mConfig.Values['completedIterations'] is TJSONArray then
+      begin
         for mOption in TJSONArray(mConfig.Values['completedIterations']) do
+        begin
           if mOption is TJSONObject then
           begin
             mSprint := IterationOf(TJSONObject(mOption));
             mSprint.Archived := True;
             ASnapshot.Sprints := ASnapshot.Sprints + [mSprint];
           end;
+        end;
+      end;
       ASnapshot.Sprints := Copy(ASnapshot.Sprints, 0, TAtlasBoardSnapshot.MaxSprints);
     end;
   end;
   if mChosen = nil then
+  begin
     mChosen := mFirst;
+  end;
   if mChosen = nil then
+  begin
     Exit;
+  end;
   ASnapshot.Field := TextOf(mChosen, 'name');
   ASnapshot.FieldId := TextOf(mChosen, 'id');
   mOptions := TJSONArray(mChosen.Values['options']);
   for mOption in mOptions do
+  begin
     if (mOption is TJSONObject) and (TextOf(TJSONObject(mOption), 'name') <> '') then
+    begin
       ASnapshot.Columns := ASnapshot.Columns + [TAtlasBoardColumn.Create(TextOf(TJSONObject(mOption), 'name'),
         TArray<string>.Create(TextOf(TJSONObject(mOption), 'name')), TextOf(TJSONObject(mOption), 'id'),
         TAtlasGitHubTracker.ClosesIssue(TextOf(TJSONObject(mOption), 'name')))];
+    end;
+  end;
 end;
 
 /// <summary>Kennung eines Issues: "#12" im Repository des Ziels, sonst "owner/repo#12".</summary>
@@ -2298,9 +2746,13 @@ begin
   Result := '#' + IntToStr(IntOf(AIssue, 'number'));
   mRepository := '';
   if AIssue.Values['repository'] is TJSONObject then
+  begin
     mRepository := TextOf(TJSONObject(AIssue.Values['repository']), 'nameWithOwner');
+  end;
   if (mRepository <> '') and not SameText(mRepository, AProject) then
+  begin
     Result := mRepository + Result;
+  end;
 end;
 
 /// <summary>Zuständige aus assignees (GraphQL: nodes, REST: Liste).</summary>
@@ -2310,19 +2762,27 @@ var
   mName: string;
 begin
   if AValue is TJSONObject then
+  begin
     AValue := TJSONObject(AValue).Values['nodes'];
+  end;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for mItem in TJSONArray(AValue) do
   begin
     if not (mItem is TJSONObject) or (TextOf(TJSONObject(mItem), 'login') = '') then
+    begin
       Continue;
+    end;
     ACard.Logins := ACard.Logins + [TextOf(TJSONObject(mItem), 'login')];
     if ACard.Assignee = '' then
     begin
       mName := TextOf(TJSONObject(mItem), 'name');
       if mName = '' then
+      begin
         mName := TextOf(TJSONObject(mItem), 'login');
+      end;
       ACard.Assignee := mName;
     end;
   end;
@@ -2343,7 +2803,9 @@ begin
   try
     mProject := ObjectAt(mValue, ['data', 'node']);
     if (mProject = nil) or (TextOf(mProject, 'id') = '') then
+    begin
       Exit;
+    end;
     ASnapshot.Kind := TAtlasBoardKind.Project;
     ASnapshot.ProjectId := TextOf(mProject, 'id');
     ASnapshot.Board := TAtlasBoardRef.Create(ASnapshot.ProjectId, TextOf(mProject, 'title'));
@@ -2353,24 +2815,37 @@ begin
     ASnapshot.Sprint := Default(TAtlasBoardSprint);
     mSprint := -1;
     for mIndex := 0 to High(ASnapshot.Sprints) do
+    begin
       if (ASprintId <> '') and SameText(ASnapshot.Sprints[mIndex].Id, ASprintId) then
+      begin
         mSprint := mIndex;
+      end;
+    end;
     if mSprint < 0 then
+    begin
       mSprint := TAtlasTrackerBoard.CurrentSprint(ASnapshot.Sprints, ANow);
+    end;
     if mSprint >= 0 then
+    begin
       ASnapshot.Sprint := ASnapshot.Sprints[mSprint];
+    end;
     ASnapshot.Cards := nil;
     mNodes := NodesOf(mProject, 'items');
     if mNodes <> nil then
+    begin
       for mItem in mNodes do
       begin
         if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
+        begin
           Continue;
+        end;
         mEntry := TJSONObject(mItem);
         mIssue := ObjectAt(mEntry, ['content']);
         // Nur Issues; Pull Requests und Entwürfe haben hier keinen Inhalt.
         if (mIssue = nil) or (IntOf(mIssue, 'number') <= 0) then
+        begin
           Continue;
+        end;
         mCard := Default(TAtlasBoardCard);
         mCard.ItemId := TextOf(mEntry, 'id');
         mCard.Number := IntOf(mIssue, 'number');
@@ -2383,18 +2858,25 @@ begin
         mItemIteration := '';
         mValues := NodesOf(mEntry, 'fieldValues');
         if mValues <> nil then
+        begin
           for mField in mValues do
           begin
             if not (mField is TJSONObject) then
+            begin
               Continue;
+            end;
             mFieldName := ObjectAt(mField, ['field']);
             mName := '';
             if mFieldName <> nil then
+            begin
               mName := TextOf(mFieldName, 'name');
+            end;
             if TJSONObject(mField).Values['iterationId'] is TJSONString then
             begin
               if SameText(mName, mIteration) then
+              begin
                 mItemIteration := TextOf(TJSONObject(mField), 'iterationId');
+              end;
             end
             else if TJSONObject(mField).Values['number'] is TJSONNumber then
             begin
@@ -2405,15 +2887,23 @@ begin
               end;
             end
             else if SameText(mName, ASnapshot.Field) then
-              mCard.State := TextOf(TJSONObject(mField), 'name')
+            begin
+              mCard.State := TextOf(TJSONObject(mField), 'name');
+            end
             else if (mPriority <> '') and SameText(mName, mPriority) then
+            begin
               mCard.Priority := TextOf(TJSONObject(mField), 'name');
+            end;
           end;
+        end;
         // Mit Iterationen nur die Karten des Sprints.
         if (ASnapshot.Sprint.Id <> '') and not SameText(mItemIteration, ASnapshot.Sprint.Id) then
+        begin
           Continue;
+        end;
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;
+    end;
     Result := True;
   finally
     mValue.Free;
@@ -2431,15 +2921,21 @@ begin
   try
     Result := mValue is TJSONArray;
     if not Result then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
+      begin
         Continue;
+      end;
       mIssue := TJSONObject(mItem);
       // /issues enthält auch Pull Requests.
       if (mIssue.Values['pull_request'] <> nil) or (IntOf(mIssue, 'number') <= 0) then
+      begin
         Continue;
+      end;
       mCard := Default(TAtlasBoardCard);
       mCard.Number := IntOf(mIssue, 'number');
       mCard.Key := '#' + IntToStr(mCard.Number);
@@ -2450,7 +2946,9 @@ begin
       mCard.ResolvedAt := TimeOfText(TextOf(mIssue, 'closed_at'));
       ReadAssignees(mIssue.Values['assignees'], mCard);
       if ASnapshot.CardIndex(mCard.Key) < 0 then
+      begin
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
+      end;
     end;
   finally
     mValue.Free;
@@ -2466,7 +2964,9 @@ var
 begin
   Result := False;
   if not ASend.Send('POST', AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
@@ -2483,7 +2983,9 @@ var
 begin
   Result := False;
   if not ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
@@ -2512,10 +3014,14 @@ begin
   // Board im Browser: die Issues des Repositorys.
   ASnapshot.Page := (TAtlasGitHubTracker.Create as IAtlasTrackerProvider).IssuePage(ATarget, '#1');
   if ASnapshot.Page <> '' then
+  begin
     SetLength(ASnapshot.Page, Length(ASnapshot.Page) - Length('/1'));
+  end;
   mBase := TAtlasGitHubTracker.ApiBase(ATarget) + '/repos/' + ATarget.Project + '/issues';
   if not GetText(ATransport, mBase + '?state=open&per_page=100', Rest(AWatch, ATimeoutMs), mText, AError) then
+  begin
     Exit;
+  end;
   if not TAtlasGitHubBoards.ParseIssues(mText, ATarget, ASnapshot) then
   begin
     AError := TAtlasCiFetchError.Invalid;
@@ -2523,14 +3029,18 @@ begin
   end;
   if GetText(ATransport, mBase + '?state=closed&sort=updated&per_page=' + IntToStr(TAtlasGitHubBoards.MaxClosed),
     Rest(AWatch, ATimeoutMs), mText, mError) then
+  begin
     TAtlasGitHubBoards.ParseIssues(mText, ATarget, ASnapshot);
+  end;
   if (ASnapshot.Me = '') and GetText(ATransport, TAtlasGitHubTracker.ApiBase(ATarget) + '/user',
     Rest(AWatch, ATimeoutMs), mText, mError) then
   begin
     mValue := TJSONObject.ParseJSONValue(mText);
     try
       if mValue is TJSONObject then
+      begin
         ASnapshot.Me := TextOf(TJSONObject(mValue), 'login');
+      end;
     finally
       mValue.Free;
     end;
@@ -2569,10 +3079,16 @@ begin
     ParseProjects(mText, ASnapshot) then
   begin
     for mIndex := 0 to High(ASnapshot.Boards) do
+    begin
       if (ABoardId <> '') and SameText(ASnapshot.Boards[mIndex].Id, ABoardId) then
+      begin
         mProject := ASnapshot.Boards[mIndex].Id;
+      end;
+    end;
     if (mProject = '') and (Length(ASnapshot.Boards) > 0) then
+    begin
       mProject := ASnapshot.Boards[0].Id;
+    end;
   end;
   if mProject = '' then
   begin
@@ -2581,7 +3097,9 @@ begin
     Exit;
   end;
   if not Query(mSend, mUrl, GraphQlBody(ProjectQuery, ['id', mProject]), Rest(mWatch, ATimeoutMs), mText, AError) then
+  begin
     Exit;
+  end;
   if not ParseProject(mText, ATarget, ASprintId, TTimeZone.Local.ToUniversalTime(Now), ASnapshot) then
   begin
     AError := TAtlasCiFetchError.Invalid;
@@ -2603,9 +3121,13 @@ var
   mColumn: TAtlasBoardColumn;
 begin
   if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  end;
   if not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
   mColumn := ASnapshot.Columns[AColumn];
   mWatch := TStopwatch.StartNew;
   // Zuerst der Kommentar (#1266): Fehlen die Schreibrechte, ändert sich nichts. Nur im Repository des Ziels.
@@ -2614,36 +3136,54 @@ begin
     mWriter := TAtlasGitHubTracker.Create;
     Result := mWriter.Apply(ATarget, ATransport, ACard.Key, TAtlasTrackerWrite.CommentOnly(AComment), ATimeoutMs);
     if not Result.Succeeded then
+    begin
       Exit;
+    end;
   end;
   if ASnapshot.Kind = TAtlasBoardKind.Project then
   begin
     if (mColumn.OptionId = '') or (ACard.ItemId = '') or (ASnapshot.FieldId = '') then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+    end;
     mBody := GraphQlBody(MoveMutation, ['project', ASnapshot.ProjectId, 'item', ACard.ItemId, 'field',
       ASnapshot.FieldId, 'option', mColumn.OptionId]);
     if not mSend.Send('POST', GraphQlUrl(ATarget), mBody, Rest(mWatch, ATimeoutMs), mStatus, mText, mError) then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    end;
     if mStatus <> 200 then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mStatus), mStatus,
         TAtlasGitHubTracker.ErrorMessage(mText)));
+    end;
     mError := GraphQlError(mText, mMessage);
     if mError <> TAtlasCiFetchError.None then
+    begin
       Exit(TAtlasTrackerWriteResult.Failed(mError, mStatus, mMessage));
+    end;
     Exit(TAtlasTrackerWriteResult.Ok);
   end;
   // Ohne Projekt: Zustand des Issues.
   mUrl := TAtlasGitHubTracker.IssueApiUrl(ATarget, ACard.Key);
   if (mUrl = '') or (Length(mColumn.Values) = 0) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  end;
   mBody := '{"state":"open"}';
   if mColumn.Resolved then
+  begin
     mBody := '{"state":"closed"}';
+  end;
   if not mSend.Send('PATCH', mUrl, mBody, Rest(mWatch, ATimeoutMs), mStatus, mText, mError) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
   if not Answered(mStatus) then
+  begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mStatus), mStatus,
       TAtlasGitHubTracker.ErrorMessage(mText)));
+  end;
   Result := TAtlasTrackerWriteResult.Ok;
 end;
 
@@ -2686,7 +3226,9 @@ begin
     Exit;
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -2717,7 +3259,9 @@ begin
     Exit;
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -2750,7 +3294,9 @@ begin
     Exit;
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -2791,7 +3337,9 @@ begin
   end;
   mWatch := TStopwatch.StartNew;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  begin
     Exit;
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -2808,9 +3356,13 @@ begin
   for mGitHubPull in mPulls do
   begin
     if not PullRefersTo(mGitHubPull, mNumber) then
+    begin
       Continue;
+    end;
     if Length(ADevelopment.Pulls) >= TAtlasTrackerDevelopment.MaxPulls then
+    begin
       Break;
+    end;
     mPull := Default(TAtlasTrackerPull);
     mPull.Number := mGitHubPull.Number;
     mPull.Title := Shorten(mGitHubPull.Title, TAtlasTrackerIssue.MaxTitle);
@@ -2827,11 +3379,15 @@ begin
       mChecks := TAtlasTrackerChecks.Unknown;
       if ATransport.Get(CheckRunsUrl(ATarget, mGitHubPull.Sha), Remaining(mWatch, ATimeoutMs), mStatus, mText,
         mIgnored) and (mStatus = 200) then
+      begin
         ParseCheckRuns(mText, mChecks);
+      end;
       if (mChecks = TAtlasTrackerChecks.Unknown) and (Remaining(mWatch, ATimeoutMs) > 0) and
         ATransport.Get(StatusUrl(ATarget, mGitHubPull.Sha), Remaining(mWatch, ATimeoutMs), mStatus, mText,
         mIgnored) and (mStatus = 200) then
+      begin
         ParseStatus(mText, mChecks);
+      end;
       mPull.Checks := mChecks;
     end;
     ADevelopment.Pulls := ADevelopment.Pulls + [mPull];
@@ -2847,7 +3403,9 @@ class function TAtlasGitHubTracker.NotificationsUrl(const ATarget: TAtlasTracker
 begin
   Result := ApiBase(ATarget);
   if Result <> '' then
+  begin
     Result := Result + '/notifications?since=' + TTextUris.PercentEncode(IsoTime(ASince)) + '&per_page=50';
+  end;
 end;
 
 /// <summary>"owner/repo" und Nummer aus ".../repos/owner/repo/issues/12"; False bei anderer Adresse.</summary>
@@ -2861,12 +3419,14 @@ begin
   ANumber := 0;
   mParts := AUrl.Split(['/']);
   for mIndex := 0 to High(mParts) - 4 do
+  begin
     if (mParts[mIndex] = 'repos') and (mParts[mIndex + 3] = 'issues') and
       TryStrToInt(mParts[mIndex + 4], ANumber) and (ANumber > 0) then
     begin
       ARepository := mParts[mIndex + 1] + '/' + mParts[mIndex + 2];
       Exit(True);
     end;
+  end;
 end;
 
 class function TAtlasGitHubTracker.ParseNotifications(const AJson: string; ASince: TDateTime;
@@ -2881,27 +3441,39 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mObject := TJSONObject(mItem);
       if not (mObject.Values['subject'] is TJSONObject) then
+      begin
         Continue;
+      end;
       mSubject := TJSONObject(mObject.Values['subject']);
       // Nur Issues; Pull Requests, Releases und Diskussionen nicht.
       if not SameText(TextOf(mSubject, 'type'), 'Issue') then
+      begin
         Continue;
+      end;
       mThread := Default(TAtlasGitHubThread);
       if not IssueOfApiUrl(TextOf(mSubject, 'url'), mThread.Repository, mThread.Number) then
+      begin
         Continue;
+      end;
       mThread.Title := Shorten(TextOf(mSubject, 'title'), TAtlasTrackerIssue.MaxTitle);
       mThread.Reason := LowerCase(TextOf(mObject, 'reason'));
       mThread.Updated := TimeOf(mObject, 'updated_at');
       if mThread.Updated > ASince then
+      begin
         AThreads := AThreads + [mThread];
+      end;
     end;
   finally
     mValue.Free;
@@ -2939,17 +3511,23 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       // since= filtert nach der letzten Bearbeitung; neu ist nur, was danach angelegt wurde.
       mTime := TimeOf(TJSONObject(mItem), 'created_at');
       if mTime > ASince then
+      begin
         AChanges := AChanges + [ChangeOf(AThread, TAtlasTrackerChangeKind.Comment,
           LoginOf(TJSONObject(mItem).Values['user']), mTime)];
+      end;
     end;
   finally
     mValue.Free;
@@ -2970,16 +3548,22 @@ begin
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mValue is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mObject := TJSONObject(mItem);
       mTime := TimeOf(mObject, 'created_at');
       if mTime <= ASince then
+      begin
         Continue;
+      end;
       mEvent := LowerCase(TextOf(mObject, 'event'));
       if mEvent = 'assigned' then
       begin
@@ -2992,12 +3576,18 @@ begin
         mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.State, LoginOf(mObject.Values['actor']), mTime);
         // Zustand wie bei GitHub; die Oberfläche übersetzt "closed" und "open".
         if mEvent = 'closed' then
-          mChange.Value := 'closed'
+        begin
+          mChange.Value := 'closed';
+        end
         else
+        begin
           mChange.Value := 'open';
+        end;
       end
       else
+      begin
         Continue;
+      end;
       AChanges := AChanges + [mChange];
     end;
   finally
@@ -3032,17 +3622,27 @@ begin
   mPoll := 0;
   mLastModified := '';
   if Supports(ATransport, IAtlasCiConditional, mConditional) then
+  begin
     mAnswered := mConditional.GetConditional(NotificationsUrl(ATarget, APoll.Since), APoll.LastModified, ATimeoutMs,
-      mStatus, mText, mLastModified, mPoll, AError)
+      mStatus, mText, mLastModified, mPoll, AError);
+  end
   else
+  begin
     mAnswered := ATransport.Get(NotificationsUrl(ATarget, APoll.Since), ATimeoutMs, mStatus, mText, AError);
+  end;
   if not mAnswered then
+  begin
     Exit;
+  end;
   if mPoll > 0 then
+  begin
     APoll.PollSeconds := mPoll;
+  end;
   // Unverändert seit der letzten Antwort.
   if mStatus = 304 then
+  begin
     Exit(True);
+  end;
   if mStatus <> 200 then
   begin
     AError := ErrorOfStatus(mStatus);
@@ -3054,15 +3654,21 @@ begin
     Exit;
   end;
   if mLastModified <> '' then
+  begin
     APoll.LastModified := mLastModified;
+  end;
   Result := True;
   mCount := 0;
   for mThread in mThreads do
   begin
     if mThread.Updated > APoll.Latest then
+    begin
       APoll.Latest := mThread.Updated;
+    end;
     if not InScope(mThread.Reason, APoll.Scope) or (mCount >= MaxChangedIssues) then
+    begin
       Continue;
+    end;
     Inc(mCount);
     mFound := nil;
     mIssueUrl := mBase + '/repos/' + TTextUris.PercentEncode(mThread.Repository) + '/issues/' +
@@ -3071,27 +3677,39 @@ begin
       TTextUris.PercentEncode(IsoTime(APoll.Since)) + '&per_page=' + IntToStr(MaxPageSize),
       Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
       ParseCommentChanges(mText, mThread, APoll.Since, mMore) then
+    begin
       mFound := mFound + mMore;
+    end;
     if (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mIssueUrl + '/events?per_page=' +
       IntToStr(MaxPageSize), Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
       ParseEventChanges(mText, mThread, APoll.Me, APoll.Since, mMore) then
+    begin
       mFound := mFound + mMore;
+    end;
     // Nichts Erkennbares (z. B. Erwähnung, ältere Ereignisse auf späteren Seiten): allgemeine Änderung.
     if Length(mFound) = 0 then
+    begin
       mFound := [ChangeOf(mThread, TAtlasTrackerChangeKind.Other, '', mThread.Updated)];
+    end;
     AChanges := AChanges + mFound;
   end;
   // Auch ein Kommentar, den GitHub später stempelt als die Benachrichtigung, kommt nicht noch einmal.
   for mIndex := 0 to High(AChanges) do
+  begin
     if AChanges[mIndex].Time > APoll.Latest then
+    begin
       APoll.Latest := AChanges[mIndex].Time;
+    end;
+  end;
 end;
 
 class function TAtlasGitHubTracker.CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
   Result := IssueApiUrl(ATarget, AKey);
   if Result <> '' then
+  begin
     Result := Result + '/comments';
+  end;
 end;
 
 function TAtlasGitHubTracker.CanUpload: Boolean;
@@ -3115,7 +3733,9 @@ begin
   Result := TAtlasAttachSender.Post(ASend, CommentsUrl(ATarget, AKey), 'application/json',
     TAtlasAttachComment.JsonBody('body', AMarkdown), ATimeoutMs, mStatus, AError);
   if not Result and (mStatus <> 0) then
+  begin
     AError := ErrorOfStatus(mStatus);
+  end;
 end;
 
 function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;

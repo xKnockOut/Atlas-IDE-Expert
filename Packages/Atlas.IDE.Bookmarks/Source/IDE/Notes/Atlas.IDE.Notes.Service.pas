@@ -117,11 +117,17 @@ class procedure TAtlasIdeNotes.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
   if FFolder = '' then
+  begin
     FFolder := TAtlasNotes.DefaultFolder;
+  end;
   if FBooks = nil then
+  begin
     FBooks := TDictionary<string, TAtlasNoteBook>.Create;
+  end;
   if FProjectOf = nil then
+  begin
     FProjectOf := TDictionary<string, string>.Create;
+  end;
 end;
 
 class procedure TAtlasIdeNotes.Release;
@@ -142,7 +148,9 @@ end;
 class procedure TAtlasIdeNotes.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class function TAtlasIdeNotes.NowUtc: TDateTime;
@@ -157,35 +165,49 @@ var
 begin
   Result := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Project := Services.GetActiveProject;
   if Project <> nil then
+  begin
     Result := Project.FileName;
+  end;
 end;
 
 class function TAtlasIdeNotes.ResolveProject(const AFileName: string): string;
 begin
   Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
+  begin
     Result := ActiveProject;
+  end;
   if (Result <> '') and (FProjectOf <> nil) then
+  begin
     FProjectOf.AddOrSetValue(Key(AFileName), Result);
+  end;
 end;
 
 class function TAtlasIdeNotes.Book(const AProject: string): TAtlasNoteBook;
 begin
   if (FBooks <> nil) and FBooks.TryGetValue(Key(AProject), Result) then
+  begin
     Exit;
+  end;
   // Ohne Datei oder bei ungültigem Inhalt: leeres Buch zu diesem Projekt.
   TAtlasNotes.Load(FFolder, AProject, Result);
   if FBooks <> nil then
+  begin
     FBooks.AddOrSetValue(Key(AProject), Result);
+  end;
 end;
 
 class procedure TAtlasIdeNotes.Put(const ABook: TAtlasNoteBook);
 begin
   if FBooks <> nil then
+  begin
     FBooks.AddOrSetValue(Key(ABook.Project), ABook);
+  end;
 end;
 
 class function TAtlasIdeNotes.Store(const ABook: TAtlasNoteBook): Boolean;
@@ -193,7 +215,9 @@ begin
   Put(ABook);
   Result := (FFolder <> '') and TAtlasNotes.Save(FFolder, ABook);
   if not Result then
+  begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesSaveFailed));
+  end;
 end;
 
 class function TAtlasIdeNotes.CurrentLines(const AFileName: string): TArray<string>;
@@ -206,7 +230,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasIdeNotes.Track(const AFileName, AText: string): Boolean;
@@ -216,16 +242,24 @@ var
 begin
   Result := False;
   if (FBooks = nil) or (AFileName = '') then
+  begin
     Exit;
+  end;
   Project := ResolveProject(AFileName);
   if Project = '' then
+  begin
     Exit;
+  end;
   Current := Book(Project);
   if Length(Current.ForFile(AFileName)) = 0 then
+  begin
     Exit;
+  end;
   Result := Current.Relocate(AFileName, TAtlasLineAnchors.Lines(AText));
   if Result then
+  begin
     Store(Current);
+  end;
 end;
 
 class function TAtlasIdeNotes.HasNotes(const AFileName: string): Boolean;
@@ -245,7 +279,9 @@ begin
   Result := nil;
   if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FBooks.TryGetValue(Key(Project), Current) then
+  begin
     Result := Current.AtLine(AFileName, ALine);
+  end;
 end;
 
 class function TAtlasIdeNotes.Target(out AFileName: string; out ALine: Integer): Boolean;
@@ -256,7 +292,9 @@ begin
   ALine := -1;
   Result := False;
   if FBooks = nil then
+  begin
     Exit;
+  end;
   if not TAtlasIdeSettings.Current.Notes then
   begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
@@ -272,7 +310,9 @@ begin
   AFileName := View.Buffer.FileName;
   // Rechtsklick in die Rinne (#545) gilt vor dem Cursor, solange er frisch ist und zur Datei passt.
   if not TAtlasIdeGutterMarks.TakeLine(AFileName, ALine) then
+  begin
     ALine := View.CursorPos.Line - 1;
+  end;
   Result := ALine >= 0;
 end;
 
@@ -292,7 +332,9 @@ var
   Choice: TAtlasNoteChoice;
 begin
   if not Target(FileName, Line) then
+  begin
     Exit;
+  end;
   Project := ResolveProject(FileName);
   if Project = '' then
   begin
@@ -306,18 +348,26 @@ begin
   Index := Current.IndexAt(FileName, Line);
   Text := '';
   if Index >= 0 then
+  begin
     Text := Current.Notes[Index].Text;
+  end;
   Choice := TAtlasNoteDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDialogTitle,
     [ExtractFileName(FileName), Line + 1]), Text, Index >= 0);
   case Choice of
     TAtlasNoteChoice.Save:
       if Index >= 0 then
-        Current.SetText(Current.Notes[Index].Id, Text, NowUtc)
+      begin
+        Current.SetText(Current.Notes[Index].Id, Text, NowUtc);
+      end
       else
+      begin
         Current.Add(FileName, Lines, Line, Text, NowUtc);
+      end;
     TAtlasNoteChoice.Delete:
       if Index >= 0 then
+      begin
         Current.Remove(Current.Notes[Index].Id);
+      end;
   else
     // Abbrechen: nur die neue Verankerung behalten.
     Put(Current);
@@ -335,7 +385,9 @@ var
   Current: TAtlasNoteBook;
 begin
   if not Target(FileName, Line) then
+  begin
     Exit;
+  end;
   Project := ResolveProject(FileName);
   if Project = '' then
   begin
@@ -352,7 +404,9 @@ begin
     Exit;
   end;
   if not Confirm(Current.Notes[Index]) then
+  begin
     Exit;
+  end;
   Current.Remove(Current.Notes[Index].Id);
   Store(Current);
   Invalidate;
@@ -368,7 +422,9 @@ var
   Text: string;
 begin
   if FBooks = nil then
+  begin
     Exit;
+  end;
   if not TAtlasIdeSettings.Current.Notes then
   begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
@@ -378,9 +434,13 @@ begin
   // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
   View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) and (View.Buffer.FileName <> '') then
+  begin
     Project := ResolveProject(View.Buffer.FileName);
+  end;
   if Project = '' then
+  begin
     Project := ActiveProject;
+  end;
   if Project = '' then
   begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
@@ -393,16 +453,26 @@ begin
     Text := TAtlasIdeWorkspaceEdit.CurrentText(FileName);
     // Leer heißt: Datei fehlt (oder ist leer); ihre Notizen sind dann nicht zuordenbar.
     if Text = '' then
-      Changed := Current.OrphanFile(FileName) or Changed
+    begin
+      Changed := Current.OrphanFile(FileName) or Changed;
+    end
     else
+    begin
       Changed := Current.Relocate(FileName, TAtlasLineAnchors.Lines(Text)) or Changed;
+    end;
     if FProjectOf <> nil then
+    begin
       FProjectOf.AddOrSetValue(Key(FileName), Project);
+    end;
   end;
   if Changed then
-    Store(Current)
+  begin
+    Store(Current);
+  end
   else
+  begin
     Put(Current);
+  end;
   FListProject := Project;
   TAtlasIdeResultsWindow.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(Project), Current.Count, Current.OrphanCount]), Current.Groups, ''));
@@ -416,7 +486,9 @@ begin
   Frame := TAtlasIdeResultsWindow.ExistingFrame;
   // Nur, wenn das Fenster gerade die Notizen zeigt; sonst bleibt seine Liste.
   if (Frame = nil) or (FListProject = '') or not Frame.ShowsItemsOf(TAtlasNotesList.Owner) then
+  begin
     Exit;
+  end;
   Current := Book(FListProject);
   Frame.ShowItems(ListOf(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesListTitle,
     [ExtractFileName(FListProject), Current.Count, Current.OrphanCount]), Current.Groups, ASelectId));
@@ -430,11 +502,15 @@ var
   Note: TAtlasNote;
 begin
   if (FBooks = nil) or (FListProject = '') then
+  begin
     Exit;
+  end;
   Current := Book(FListProject);
   Index := Current.IndexOf(AId);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Note := Current.Notes[Index];
   Text := Note.Text;
   case TAtlasNoteDialog.Execute(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.NotesDialogTitle,
@@ -457,11 +533,15 @@ var
   Index: Integer;
 begin
   if (FBooks = nil) or (FListProject = '') then
+  begin
     Exit;
+  end;
   Current := Book(FListProject);
   Index := Current.IndexOf(AId);
   if (Index < 0) or not Confirm(Current.Notes[Index]) then
+  begin
     Exit;
+  end;
   Current.Remove(AId);
   Store(Current);
   Invalidate;

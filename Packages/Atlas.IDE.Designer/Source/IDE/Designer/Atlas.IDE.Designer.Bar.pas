@@ -162,9 +162,13 @@ end;
 function BarColors: TAtlasColors;
 begin
   if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-    Result := TAtlasIdeStyle.ChromeColors
+  begin
+    Result := TAtlasIdeStyle.ChromeColors;
+  end
   else
+  begin
     Result := TAtlasIdeStyle.Colors;
+  end;
 end;
 
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
@@ -173,7 +177,9 @@ var
 begin
   Result := nil;
   if Supports(AEditor, INTAFormEditor, mNative) then
+  begin
     Result := mNative.FormDesigner;
+  end;
 end;
 
 /// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
@@ -185,7 +191,9 @@ begin
   while mControl <> nil do
   begin
     if csDesigning in mControl.ComponentState then
+    begin
       Exit(True);
+    end;
     mControl := mControl.Parent;
   end;
   Result := False;
@@ -200,12 +208,16 @@ begin
   Result := TRect.Empty;
   mParent := AControl.Parent;
   if mParent = nil then
+  begin
     Exit;
+  end;
   mTopLeft := AControl.BoundsRect.TopLeft;
   if mParent <> ARoot then
   begin
     if not ARoot.ContainsControl(mParent) then
+    begin
       Exit;
+    end;
     mTopLeft := mParent.ClientToParent(mTopLeft, ARoot);
   end;
   Result := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
@@ -215,7 +227,9 @@ function ParentNameOf(AControl: TControl; ARoot: TComponent): string;
 begin
   Result := '';
   if (AControl.Parent <> nil) and (AControl.Parent <> ARoot) then
+  begin
     Result := AControl.Parent.Name;
+  end;
 end;
 
 /// <summary>Wert der Eigenschaft als Text für die Vorschau; False ohne sie oder ohne Wert.</summary>
@@ -227,13 +241,17 @@ begin
   AText := '';
   mInfo := GetPropInfo(AComponent, AName);
   if mInfo = nil then
+  begin
     Exit(False);
+  end;
   case mInfo^.PropType^.Kind of
     tkClass:
       begin
         mObject := GetObjectProp(AComponent, mInfo);
         if mObject is TComponent then
+        begin
           AText := TComponent(mObject).Name;
+        end;
       end;
     tkInteger, tkInt64, tkEnumeration, tkFloat, tkSet, tkChar, tkWChar, tkString, tkLString, tkUString, tkWString:
       AText := VarToStr(GetPropValue(AComponent, mInfo, True));
@@ -254,7 +272,9 @@ end;
 procedure TSearchKeyClient.HandleKey(AKey: Word; AShift: TShiftState);
 begin
   if TAtlasIdeDesignerBar.FState = nil then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
@@ -328,7 +348,9 @@ begin
       TAtlasDesignerBar(ABar).ApplyColors(mColors);
     end);
   if FOverlay <> nil then
+  begin
     FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -379,7 +401,9 @@ end;
 procedure TDesignerBarState.Place(ABar: TAtlasDesignerBar; AEditorParent: TWinControl);
 begin
   if ABar.Parent = AEditorParent then
+  begin
     Exit;
+  end;
   // Über dem Designer: zuerst ganz oben einhängen, dann oben ausrichten.
   ABar.Top := 0;
   ABar.Align := alTop;
@@ -401,19 +425,25 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
     Exit;
+  end;
   mList := mServices.ActionList;
   // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
   if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
     SameText(mList.Actions[FActionIndex].Name, NonVisualAction) then
+  begin
     Exit(mList.Actions[FActionIndex]);
+  end;
   FActionIndex := -1;
   for mIndex := 0 to mList.ActionCount - 1 do
+  begin
     if SameText(mList.Actions[mIndex].Name, NonVisualAction) then
     begin
       FActionIndex := mIndex;
       Exit(mList.Actions[mIndex]);
     end;
+  end;
   if not FActionLogged then
   begin
     FActionLogged := True;
@@ -452,7 +482,9 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarSearchHint);
   if mSettings.DesignerSearchKey <> 0 then
+  begin
     mHint := mHint + ' (' + ShortCutToText(TShortCut(mSettings.DesignerSearchKey)) + ')';
+  end;
   Result := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create(IdSearch,
     TAtlasToolbarIcon.ComponentSearch, mHint));
   mButton := TAtlasDesignerButton.Create(IdNonVisual, TAtlasToolbarIcon.NonVisual,
@@ -472,7 +504,9 @@ begin
       mButton.Pressed := TCustomAction(mAction).Checked;
       // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
       if mButton.Pressed then
+      begin
         mButton.Icon := TAtlasToolbarIcon.NonVisualHidden;
+      end;
     end;
   end;
   Result := Result + [mButton];
@@ -481,9 +515,13 @@ begin
   mButton.GapBefore := True;
   Result := Result + [mButton];
   if mSettings.DesignerTabOrderClick then
-    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint)
+  begin
+    mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderClickHint);
+  end
   else
+  begin
     mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarTabOrderHint);
+  end;
   mButton := TAtlasDesignerButton.Create(IdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
   mButton.Pressed := FTabOrder;
   Result := Result + [mButton];
@@ -501,7 +539,9 @@ var
   mButtons: TArray<TAtlasDesignerButton>;
 begin
   if FHost.Count = 0 then
+  begin
     Exit;
+  end;
   mButtons := Buttons;
   FHost.ForEach(
     procedure(ABar: TControl)
@@ -518,9 +558,13 @@ begin
   mWanted := FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and
     (TAtlasIdeSettings.Current.DesignerSearchKey <> 0) and (TAtlasIdeDesignerView.CurrentFormEditor <> nil);
   if mWanted then
-    TAtlasKeyHook.Add(FKeyClient)
+  begin
+    TAtlasKeyHook.Add(FKeyClient);
+  end
   else
+  begin
     TAtlasKeyHook.Remove(FKeyClient);
+  end;
 end;
 
 procedure TDesignerBarState.Tick(Sender: TObject);
@@ -537,7 +581,9 @@ begin
     TAtlasKeyHook.Remove(FKeyClient);
     HideOverlay;
     if FHost.Count > 0 then
+    begin
       FHost.Clear;
+    end;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
@@ -553,15 +599,25 @@ end;
 procedure TDesignerBarState.Command(const AId: string);
 begin
   if SameText(AId, IdSearch) then
-    OpenSearch
+  begin
+    OpenSearch;
+  end
   else if SameText(AId, IdNonVisual) then
-    ToggleNonVisual
+  begin
+    ToggleNonVisual;
+  end
   else if SameText(AId, IdParent) then
-    SelectParent
+  begin
+    SelectParent;
+  end
   else if SameText(AId, IdTabOrder) then
-    ToggleTabOrder
+  begin
+    ToggleTabOrder;
+  end
   else if SameText(AId, IdAlign) then
+  begin
     AlignSelection(FLastAlign);
+  end;
   UpdateBars;
 end;
 
@@ -574,7 +630,9 @@ var
   mCount: Integer;
 begin
   if not SameText(AId, IdAlign) or not Current(mEditor, mRoot) then
+  begin
     Exit;
+  end;
   mCount := Length(Selection(mEditor, mRoot));
   FAlignMenu.Items.Clear;
   for mKind := Low(TAtlasAlignKind) to High(TAtlasAlignKind) do
@@ -624,7 +682,9 @@ begin
   end;
   mAction.Update;
   if (mAction is TCustomAction) and not TCustomAction(mAction).Enabled then
+  begin
     Exit;
+  end;
   mAction.Execute;
 end;
 
@@ -638,14 +698,18 @@ begin
   Result := nil;
   mDesigner := DesignerOf(AEditor);
   if mDesigner = nil then
+  begin
     Exit;
+  end;
   mList := CreateSelectionList;
   mDesigner.GetSelections(mList);
   for mIndex := 0 to mList.Count - 1 do
   begin
     mItem := mList[mIndex];
     if (mItem is TComponent) and (mItem <> ARoot) and (TComponent(mItem).Owner = ARoot) then
+    begin
       Result := Result + [TComponent(mItem)];
+    end;
   end;
 end;
 
@@ -657,7 +721,9 @@ var
   mDesigner: IDesigner;
 begin
   if not Current(mEditor, mRoot) then
+  begin
     Exit;
+  end;
   mDesigner := DesignerOf(mEditor);
   mSelected := Selection(mEditor, mRoot);
   if (mDesigner = nil) or (Length(mSelected) = 0) then
@@ -678,15 +744,21 @@ begin
   FTabOrder := not FTabOrder;
   FTabClicks.Reset;
   if FTabOrder then
-    UpdateOverlay
+  begin
+    UpdateOverlay;
+  end
   else
+  begin
     HideOverlay;
+  end;
 end;
 
 procedure TDesignerBarState.HideOverlay;
 begin
   if FOverlay <> nil then
+  begin
     FOverlay.HideOverlay;
+  end;
 end;
 
 procedure TDesignerBarState.UpdateOverlay;
@@ -722,10 +794,14 @@ begin
   begin
     mComponent := mForm.Components[mIndex];
     if not (mComponent is TWinControl) or (mComponent.Name = '') then
+    begin
       Continue;
+    end;
     mControl := TWinControl(mComponent);
     if (mControl.Parent = nil) or not (mControl.TabStop or (csAcceptsControls in mControl.ControlStyle)) then
+    begin
       Continue;
+    end;
     mStops := mStops + [TAtlasTabStop.Create(mControl.Name, ParentNameOf(mControl, mForm), mControl.TabOrder,
       BoundsInRoot(mControl, mForm))];
   end;
@@ -736,9 +812,13 @@ begin
   mHost := GetParent(mForm.Handle);
   mVisible := mScreen;
   if (mHost <> 0) and GetWindowRect(mHost, mVisible) then
-    mVisible.Intersect(mScreen)
+  begin
+    mVisible.Intersect(mScreen);
+  end
   else
+  begin
     mVisible := mScreen;
+  end;
   if mVisible.IsEmpty then
   begin
     HideOverlay;
@@ -746,9 +826,11 @@ begin
   end;
   mBadges := nil;
   for mIndex := 0 to High(mStops) do
+  begin
     mBadges := mBadges + [TAtlasTabBadge.Create(mStops[mIndex].Name, mStops[mIndex].TabOrder, mOut[mIndex],
       Point(mStops[mIndex].Bounds.Left + mScreen.Left - mVisible.Left,
       mStops[mIndex].Bounds.Top + mScreen.Top - mVisible.Top))];
+  end;
   if FOverlay = nil then
   begin
     FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
@@ -768,7 +850,9 @@ begin
   FOverlay.Clickable := TAtlasIdeSettings.Current.DesignerTabOrderClick;
   FOverlay.SetBadges(mBadges);
   if not FOverlay.Shown or (FOverlay.BoundsRect <> mVisible) then
+  begin
     FOverlay.ShowAt(mVisible);
+  end;
 end;
 
 procedure TDesignerBarState.TabBadgeClicked(const AName: string);
@@ -779,11 +863,15 @@ var
   mOrder: Integer;
 begin
   if not TAtlasIdeSettings.Current.DesignerTabOrderClick or not Current(mEditor, mRoot) then
+  begin
     Exit;
+  end;
   mComponent := mRoot.FindComponent(AName);
   mDesigner := DesignerOf(mEditor);
   if not (mComponent is TWinControl) or (mDesigner = nil) then
+  begin
     Exit;
+  end;
   mOrder := FTabClicks.Next(ParentNameOf(TWinControl(mComponent), mRoot));
   // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
   TWinControl(mComponent).TabOrder := mOrder;
@@ -806,22 +894,32 @@ var
   mIndex: Integer;
 begin
   if not TAtlasIdeSettings.Current.DesignerAlign or not Current(mEditor, mRoot) then
+  begin
     Exit;
+  end;
   mDesigner := DesignerOf(mEditor);
   if mDesigner = nil then
+  begin
     Exit;
+  end;
   mSelected := Selection(mEditor, mRoot);
   mControls := nil;
   mParent := nil;
   for mComponent in mSelected do
+  begin
     if mComponent is TControl then
     begin
       if mParent = nil then
+      begin
         mParent := TControl(mComponent).Parent;
+      end;
       // Nur Geschwister: Lagen in verschiedenen Elternelementen sind nicht vergleichbar.
       if TControl(mComponent).Parent = mParent then
+      begin
         mControls := mControls + [TControl(mComponent)];
+      end;
     end;
+  end;
   if (mParent = nil) or not TAtlasDesignerAlign.Applicable(AKind, Length(mControls)) then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarAlignNeeds));
@@ -829,11 +927,17 @@ begin
   end;
   SetLength(mRects, Length(mControls));
   for mIndex := 0 to High(mControls) do
+  begin
     mRects[mIndex] := mControls[mIndex].BoundsRect;
+  end;
   mNew := TAtlasDesignerAlign.Apply(AKind, mRects, mParent.ClientRect);
   for mIndex := 0 to High(mControls) do
+  begin
     if mNew[mIndex] <> mRects[mIndex] then
+    begin
       mControls[mIndex].BoundsRect := mNew[mIndex];
+    end;
+  end;
   mDesigner.Modified;
 end;
 
@@ -851,7 +955,9 @@ begin
   begin
     mComponent := ARoot.Components[mIndex];
     if mComponent.Name = '' then
+    begin
       Continue;
+    end;
     mItem := TAtlasDesignerItem.Create(mComponent.Name, mComponent.ClassName, mComponent is TControl);
     if mComponent is TControl then
     begin
@@ -859,19 +965,27 @@ begin
         (csAcceptsControls in TControl(mComponent).ControlStyle);
       mItem.ParentName := ParentNameOf(TControl(mComponent), ARoot);
       if ARoot is TWinControl then
+      begin
         mItem.Bounds := BoundsInRoot(TControl(mComponent), TWinControl(ARoot));
+      end;
     end;
     if PropText(mComponent, 'Caption', mText) or PropText(mComponent, 'Text', mText) then
+    begin
       mItem.Caption := mText;
+    end;
     for mName in PreviewProperties do
+    begin
       if PropText(mComponent, mName, mText) then
       begin
         // Vorgaben zeigen nichts Neues.
         if (SameText(mName, 'Align') and SameText(mText, 'alNone')) or
           ((SameText(mName, 'Visible') or SameText(mName, 'Enabled')) and SameText(mText, 'True')) then
+        begin
           Continue;
+        end;
         mItem.Properties := mItem.Properties + [mName + ' = ' + mText];
       end;
+    end;
     if ADesigner <> nil then
     begin
       mCount := GetPropList(PTypeInfo(mComponent.ClassInfo), [tkMethod], nil);
@@ -884,10 +998,14 @@ begin
           begin
             mMethod := GetMethodProp(mComponent, mList^[mProp]);
             if mMethod.Code = nil then
+            begin
               Continue;
+            end;
             mText := ADesigner.GetMethodName(mMethod);
             if mText <> '' then
+            begin
               mItem.Events := mItem.Events + [string(mList^[mProp]^.Name) + ' = ' + mText];
+            end;
           end;
         finally
           FreeMem(mList);
@@ -921,7 +1039,9 @@ begin
     TAtlasPluginSettings.DesignerSearchPopup);
   mOptions.FormName := mRoot.Name;
   if mRoot is TWinControl then
+  begin
     mOptions.FormBounds := Rect(0, 0, TWinControl(mRoot).ClientWidth, TWinControl(mRoot).ClientHeight);
+  end;
   mOptions.Kind := FSearchKind;
   mOptions.Fields := FSearchFields;
   mOptions.Grouping := FSearchGrouping;
@@ -929,7 +1049,9 @@ begin
   mOptions.Bounds := FSearchBounds;
   mSelected := Selection(mEditor, mRoot);
   if Length(mSelected) > 0 then
+  begin
     mOptions.Current := mSelected[0].Name;
+  end;
   mWindow := TAtlasComponentSearchWindow.CreateSearch(nil, mOptions, ItemsOf(mRoot, mDesigner),
     TAtlasIdeStyle.Colors);
   FSearch := mWindow;
@@ -940,7 +1062,9 @@ begin
     begin
       mItem := AItem;
       if TAtlasIdeDesignerBar.FState = nil then
+      begin
         Exit;
+      end;
       TAtlasGuard.Run(TAtlasFeature.DesignerBar,
         procedure
         begin
@@ -951,7 +1075,9 @@ begin
     procedure
     begin
       if (TAtlasIdeDesignerBar.FState = nil) or (State.FSearch <> mWindow) then
+      begin
         Exit;
+      end;
       // Wahl merken bis zum Ende der Sitzung.
       State.FSearchKind := mWindow.Kind;
       State.FSearchFields := mWindow.Fields;
@@ -965,7 +1091,9 @@ begin
     end;
   mArea := Screen.WorkAreaRect;
   if mRoot is TWinControl then
+  begin
     mArea := Screen.MonitorFromWindow(TWinControl(mRoot).Handle).WorkareaRect;
+  end;
   mWindow.ShowOver(mArea);
 end;
 
@@ -974,7 +1102,9 @@ var
   mWindow: TAtlasComponentSearchWindow;
 begin
   if FSearch = nil then
+  begin
     Exit;
+  end;
   mWindow := FSearch;
   FSearch := nil;
   mWindow.OnClosed := nil;
@@ -991,31 +1121,45 @@ var
   mPos: Integer;
 begin
   if not Current(mEditor, mRoot) then
+  begin
     Exit;
+  end;
   mComponent := mRoot.FindComponent(AItem.Name);
   mDesigner := DesignerOf(mEditor);
   // Umbenannt oder gelöscht, seit das Fenster offen ist.
   if (mComponent = nil) or (mDesigner = nil) then
+  begin
     Exit;
+  end;
   if AAction = TAtlasComponentSearchAction.Select then
   begin
     mDesigner.SelectComponent(mComponent);
     Exit;
   end;
   if (AAction <> TAtlasComponentSearchAction.Event) or (Length(AItem.Events) = 0) then
+  begin
     Exit;
+  end;
   // OnClick, sonst das erste belegte Ereignis.
   mEvent := AItem.Events[0];
   for mMethod in AItem.Events do
+  begin
     if mMethod.StartsWith('OnClick ', True) then
+    begin
       mEvent := mMethod;
+    end;
+  end;
   mPos := Pos(' = ', mEvent);
   if mPos = 0 then
+  begin
     Exit;
+  end;
   mMethod := Copy(mEvent, mPos + 3, MaxInt);
   mDesigner.SelectComponent(mComponent);
   if mDesigner.MethodExists(mMethod) then
+  begin
     mDesigner.ShowMethod(mMethod);
+  end;
 end;
 
 procedure TDesignerBarState.Later(const AAction: TProc);
@@ -1029,7 +1173,9 @@ begin
     procedure
     begin
       if TAtlasIdeDesignerBar.FState <> mOwner then
+      begin
         Exit;
+      end;
       TAtlasGuard.Run(TAtlasFeature.DesignerBar, mAction);
     end);
 end;
@@ -1038,7 +1184,9 @@ procedure TDesignerBarState.Say(const AText: string);
 begin
   TAtlasGuard.Log('Designer-Leiste: ' + AText);
   if Assigned(TAtlasIdeDesignerBar.FHooks.Message) then
+  begin
     TAtlasIdeDesignerBar.FHooks.Message(AText);
+  end;
 end;
 
 { TAtlasIdeDesignerBar }
@@ -1059,13 +1207,17 @@ end;
 class procedure TAtlasIdeDesignerBar.ApplySettings;
 begin
   if FState <> nil then
+  begin
     State.Reset;
+  end;
 end;
 
 class procedure TAtlasIdeDesignerBar.ThemeChanged;
 begin
   if FState <> nil then
+  begin
     State.ApplyTheme;
+  end;
 end;
 
 end.

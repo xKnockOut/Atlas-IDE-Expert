@@ -64,7 +64,9 @@ var
 begin
   SetLength(Result, Length(APath) + 1);
   for Index := 0 to High(APath) do
+  begin
     Result[Index] := APath[Index];
+  end;
   Result[High(Result)] := AKey;
 end;
 
@@ -72,7 +74,9 @@ class function TAtlasDataFlowTree.FirstPlace(const ANode: TAtlasDataFlowNode): T
 begin
   Result := Default(TAtlasDataFlowPlace);
   if Length(ANode.Places) > 0 then
+  begin
     Result := ANode.Places[0];
+  end;
 end;
 
 class function TAtlasDataFlowTree.Children(const ANode: TAtlasDataFlowNode; ALevel,
@@ -85,6 +89,7 @@ begin
   Result := nil;
   // Zusammengefasste Stellen: jeder Fundort einzeln zum Anspringen.
   if Length(ANode.Places) > 1 then
+  begin
     for Place in ANode.Places do
     begin
       Child := Default(TAtlasDataFlowChild);
@@ -92,6 +97,7 @@ begin
       Child.Place := Place;
       Result := Result + [Child];
     end;
+  end;
   for Source in ANode.Sources do
   begin
     Child := Default(TAtlasDataFlowChild);
@@ -109,7 +115,9 @@ end;
 class function TAtlasDataFlowTree.Origin(const ANode: TAtlasDataFlowNode): TAtlasDataFlowOrigin;
 begin
   if Length(ANode.Sources) > 0 then
+  begin
     Exit(TAtlasDataFlowOrigin.None);
+  end;
   case ANode.Kind of
     TAtlasDataFlowKind.Input:
       Result := TAtlasDataFlowOrigin.Input;
@@ -125,12 +133,18 @@ begin
       Result := TAtlasDataFlowOrigin.Address;
   else
     if ANode.Literal then
-      Result := TAtlasDataFlowOrigin.Literal
+    begin
+      Result := TAtlasDataFlowOrigin.Literal;
+    end
     else if ANode.Via <> '' then
+    begin
       // Nur über eine Routine von außen (IntToStr(1) ohne Variablen): dort endet der Weg.
-      Result := TAtlasDataFlowOrigin.Outside
+      Result := TAtlasDataFlowOrigin.Outside;
+    end
     else
+    begin
       Result := TAtlasDataFlowOrigin.Open;
+    end;
   end;
 end;
 

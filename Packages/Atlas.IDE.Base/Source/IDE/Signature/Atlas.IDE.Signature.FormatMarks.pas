@@ -90,7 +90,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasIdeFormatMarks.Destroy;
@@ -100,7 +102,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   Painted := FByLine.Count > 0;
@@ -108,7 +112,9 @@ begin
   FLines := nil;
   FreeAndNil(FByLine);
   if Painted then
+  begin
     Invalidate;
+  end;
   inherited;
 end;
 
@@ -117,7 +123,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;
@@ -133,15 +141,21 @@ begin
   FTabWidth := ATabWidth;
   FLines := nil;
   if Length(AMarks) > 0 then
+  begin
     FLines := TTextLines.SplitLines(AText);
+  end;
   for Mark in AMarks do
   begin
     if not FByLine.TryGetValue(Mark.Line, Marks) then
+    begin
       Marks := nil;
+    end;
     FByLine.AddOrSetValue(Mark.Line, Marks + [Mark]);
   end;
   if Painted or (FByLine.Count > 0) then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasIdeFormatMarks.Clear;
@@ -149,7 +163,9 @@ begin
   FFileName := '';
   FLines := nil;
   if FByLine.Count = 0 then
+  begin
     Exit;
+  end;
   FByLine.Clear;
   Invalidate;
 end;
@@ -169,7 +185,9 @@ begin
   Saved := SaveDC(DC);
   try
     if Code.Right > Code.Left then
+    begin
       IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+    end;
     for Mark in AMarks do
     begin
       First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Mark.Start, FTabWidth),
@@ -193,17 +211,25 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FByLine.Count = 0) or
     TAtlasGuard.Disabled(TAtlasFeature.Signature) then
+  begin
     Exit;
+  end;
   try
     if not SameText(Context.FileName, FFileName) then
+    begin
       Exit;
+    end;
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line >= Length(FLines)) or not FByLine.TryGetValue(Line, Marks) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     // Nur, wenn die Zeile im Editor dem angefragten Stand entspricht.
     if (LineState = nil) or (TrimRight(LineState.Text) <> TrimRight(FLines[Line])) then
+    begin
       Exit;
+    end;
     PaintMarks(Rect, Context, FLines[Line], Marks, TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2,
       Rect.Top + 1));
   except
