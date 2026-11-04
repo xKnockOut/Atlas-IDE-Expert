@@ -131,6 +131,80 @@ implementation
 uses
   Atlas.Core.Commands.KeyMap;
 
+/// <summary>Einstellung, Umfang, Kürzel und Weg des Aufrufs; Show, wenn nichts dagegen spricht.</summary>
+function SetupVerdict(const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
+begin
+  if not ASituation.Enabled then
+  begin
+    Result := TAtlasTipVerdict.Disabled;
+  end
+  else if (ASituation.Scope = TAtlasTipScope.Atlas) and not ASituation.IsAtlas then
+  begin
+    Result := TAtlasTipVerdict.OutOfScope;
+  end
+  else if Trim(ASituation.KeyText) = '' then
+  begin
+    Result := TAtlasTipVerdict.NoShortCut;
+  end
+  else if ASituation.ViaKeyboard then
+  begin
+    Result := TAtlasTipVerdict.ViaKeyboard;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
+/// <summary>Was der Befehl selbst sagt (ausgeblendet, gelernt, heute schon gezeigt); Show sonst.</summary>
+function EntryVerdict(const AEntry: TAtlasCommandUsageEntry; ANow: TDateTime): TAtlasTipVerdict;
+begin
+  if AEntry.Never then
+  begin
+    Result := TAtlasTipVerdict.Hidden;
+  end
+  else if AEntry.Keyboard >= TAtlasShortcutTips.LearnedAfter then
+  begin
+    Result := TAtlasTipVerdict.Learned;
+  end
+  else if TAtlasShortcutTips.SameDay(AEntry.LastTip, ANow) then
+  begin
+    Result := TAtlasTipVerdict.ShownToday;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
+/// <summary>Letzter Tipp so kurz her, dass keiner kommt; auch bei zurückgestellter Uhr nicht sofort wieder.</summary>
+function TooSoon(const ASituation: TAtlasTipSituation): Boolean;
+begin
+  Result := (ASituation.LastTipAt > 0)
+    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.MinGapSeconds);
+end;
+
+/// <summary>Der Augenblick: Debugger angehalten, modales Fenster, letzter Tipp zu kurz her; Show sonst.</summary>
+function MomentVerdict(const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
+begin
+  if ASituation.DebugPaused then
+  begin
+    Result := TAtlasTipVerdict.Debugging;
+  end
+  else if ASituation.ModalOpen then
+  begin
+    Result := TAtlasTipVerdict.Modal;
+  end
+  else if TooSoon(ASituation) then
+  begin
+    Result := TAtlasTipVerdict.TooSoon;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
 { TAtlasTipSituation }
 
 class function TAtlasTipSituation.Create(AEnabled: Boolean; AScope: TAtlasTipScope; AIsAtlas: Boolean;
@@ -194,48 +268,15 @@ end;
 class function TAtlasShortcutTips.Decide(const AEntry: TAtlasCommandUsageEntry;
   const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
 begin
-  if not ASituation.Enabled then
+  Result := SetupVerdict(ASituation);
+  if Result = TAtlasTipVerdict.Show then
   begin
-    Exit(TAtlasTipVerdict.Disabled);
+    Result := EntryVerdict(AEntry, ASituation.Now);
   end;
-  if (ASituation.Scope = TAtlasTipScope.Atlas) and not ASituation.IsAtlas then
+  if Result = TAtlasTipVerdict.Show then
   begin
-    Exit(TAtlasTipVerdict.OutOfScope);
+    Result := MomentVerdict(ASituation);
   end;
-  if Trim(ASituation.KeyText) = '' then
-  begin
-    Exit(TAtlasTipVerdict.NoShortCut);
-  end;
-  if ASituation.ViaKeyboard then
-  begin
-    Exit(TAtlasTipVerdict.ViaKeyboard);
-  end;
-  if AEntry.Never then
-  begin
-    Exit(TAtlasTipVerdict.Hidden);
-  end;
-  if AEntry.Keyboard >= LearnedAfter then
-  begin
-    Exit(TAtlasTipVerdict.Learned);
-  end;
-  if SameDay(AEntry.LastTip, ASituation.Now) then
-  begin
-    Exit(TAtlasTipVerdict.ShownToday);
-  end;
-  if ASituation.DebugPaused then
-  begin
-    Exit(TAtlasTipVerdict.Debugging);
-  end;
-  if ASituation.ModalOpen then
-  begin
-    Exit(TAtlasTipVerdict.Modal);
-  end;
-  // Auch bei zurückgestellter Uhr nicht sofort wieder.
-  if (ASituation.LastTipAt > 0) and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < MinGapSeconds) then
-  begin
-    Exit(TAtlasTipVerdict.TooSoon);
-  end;
-  Result := TAtlasTipVerdict.Show;
 end;
 
 class procedure TAtlasShortcutTips.MarkShown(var AEntry: TAtlasCommandUsageEntry; ANow: TDateTime);
