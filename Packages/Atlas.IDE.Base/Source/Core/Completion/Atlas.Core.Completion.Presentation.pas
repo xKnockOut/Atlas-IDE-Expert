@@ -130,7 +130,9 @@ var
 begin
   SetLength(Result, ACount);
   for Index := 0 to ACount - 1 do
+  begin
     Result[Index] := AStart + Index;
+  end;
 end;
 
 function WordStartPositions(const APattern, AName: string): TArray<Integer>;
@@ -140,14 +142,18 @@ begin
   Result := nil;
   PatternIndex := 1;
   for NameIndex := 1 to Length(AName) do
+  begin
     if (PatternIndex <= Length(APattern)) and IsWordStart(AName, NameIndex) and
       SameChar(AName[NameIndex], APattern[PatternIndex]) then
     begin
       Result := Result + [NameIndex];
       Inc(PatternIndex);
     end;
+  end;
   if PatternIndex <= Length(APattern) then
+  begin
     Result := nil;
+  end;
 end;
 
 function SubsequencePositions(const APattern, AName: string): TArray<Integer>;
@@ -160,7 +166,9 @@ begin
   Result := nil;
   SetLength(Reached, Length(APattern) + 1, Length(AName) + 1);
   for NameIndex := 1 to Length(AName) do
+  begin
     Reached[1][NameIndex] := IsWordStart(AName, NameIndex) and SameChar(AName[NameIndex], APattern[1]);
+  end;
   for PatternIndex := 2 to Length(APattern) do
   begin
     Before := False;
@@ -174,26 +182,36 @@ begin
   // Frühestes Ende des ganzen Musters, dann rückwärts: bevorzugt direkt davor.
   NameIndex := 0;
   for Previous := 1 to Length(AName) do
+  begin
     if Reached[Length(APattern)][Previous] then
     begin
       NameIndex := Previous;
       Break;
     end;
+  end;
   if NameIndex = 0 then
+  begin
     Exit;
+  end;
   SetLength(Result, Length(APattern));
   for PatternIndex := Length(APattern) downto 1 do
   begin
     Result[PatternIndex - 1] := NameIndex;
     if PatternIndex = 1 then
+    begin
       Break;
+    end;
     if Reached[PatternIndex - 1][NameIndex - 1] then
-      Dec(NameIndex)
+    begin
+      Dec(NameIndex);
+    end
     else
     begin
       Previous := NameIndex - 2;
       while (Previous >= 1) and not Reached[PatternIndex - 1][Previous] do
+      begin
         Dec(Previous);
+      end;
       NameIndex := Previous;
     end;
   end;
@@ -207,7 +225,9 @@ var
 begin
   Signature := LowerCase(TrimLeft(AItem.Signature));
   if AItem.Attribute then
+  begin
     Exit(MakeBadge(TAtlasBadgeKind.Type_, 'at'));
+  end;
   case AItem.Kind of
     TAtlasItemKind.Procedure_, TAtlasItemKind.Destructor_:
       Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
@@ -215,9 +235,13 @@ begin
       Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
     TAtlasItemKind.Method:
       if Signature.StartsWith('procedure') or Signature.StartsWith('destructor') then
-        Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr')
+      begin
+        Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
+      end
       else
+      begin
         Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
+      end;
     TAtlasItemKind.Property_:
       Result := MakeBadge(TAtlasBadgeKind.Property_, 'pp');
     TAtlasItemKind.Field:
@@ -251,18 +275,26 @@ var
 begin
   Result := '';
   if AItem.UnitUsed then
+  begin
     Exit;
+  end;
   // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)").
   if EndsText(UsesSuffix, AItem.Signature) then
+  begin
     Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(UsesSuffix)));
+  end;
   // Sonst aus der Ergänzung selbst (", System.Classes" bzw. "uses System.Classes;").
   for Edit in AItem.AdditionalEdits do
   begin
     Text := Trim(Edit.NewText.Replace(',', ' ').Replace(';', ' '));
     if StartsText('uses', Text) and ((Length(Text) = 4) or not Text[5].IsLetter) then
+    begin
       Text := Trim(Copy(Text, 5, MaxInt));
+    end;
     if Text <> '' then
+    begin
       Exit(Text);
+    end;
   end;
 end;
 
@@ -273,34 +305,50 @@ var
 begin
   Result := AItem.Name;
   if AKind <> '' then
+  begin
     Result := Result + ', ' + AKind;
+  end;
   Result := Result + ', ' + Format(AOf, [APosition, ACount]) + '.';
   Short := Detail(AItem);
   if (Short <> '') and not SameText(Short, AItem.Name) then
+  begin
     Result := Result + ' ' + Short;
+  end;
 end;
 
 class function TAtlasItemPresentation.Detail(const AItem: TAtlasCompletionItem): string;
 begin
   if MissingUnit(AItem) <> '' then
+  begin
     Exit('');
+  end;
   // uses-Abschnitt (#469): der Pfad steht im Detailpanel, rechts nur der Hinweis auf den anderen Abschnitt.
   if AItem.UsesGroup <> '' then
   begin
     if AItem.UsesElsewhere <> '' then
+    begin
       Exit('bereits im ' + AItem.UsesElsewhere + '-Teil');
+    end;
     Exit('');
   end;
   Result := AItem.Signature;
   // Units: nur der Dateiname statt des ganzen Pfads.
   if AItem.Kind = TAtlasItemKind.Unit_ then
+  begin
     Result := ExtractFileName(Result);
+  end;
   // Geerbt (#419): Herkunft vorn, damit sie beim Kürzen bleibt.
   if (AItem.Depth > 0) and (AItem.DeclaringClass <> '') then
+  begin
     if (Result <> '') and not SameText(Result, AItem.DeclaringClass) then
-      Result := AItem.DeclaringClass + ' · ' + Result
+    begin
+      Result := AItem.DeclaringClass + ' · ' + Result;
+    end
     else
+    begin
       Result := AItem.DeclaringClass;
+    end;
+  end;
 end;
 
 class function TAtlasItemPresentation.TagText(const AItem: TAtlasCompletionItem): string;
@@ -309,10 +357,16 @@ var
 begin
   Result := '';
   for Tag in Tags(AItem) do
+  begin
     if Result = '' then
-      Result := Tag.Text
+    begin
+      Result := Tag.Text;
+    end
     else
+    begin
       Result := Result + ', ' + Tag.Text;
+    end;
+  end;
 end;
 
 class function TAtlasItemPresentation.Tags(const AItem: TAtlasCompletionItem): TAtlasTags;
@@ -322,7 +376,9 @@ begin
   Result := nil;
   // Gerüst einer anonymen Methode (#468): der erwartete Typ.
   if AItem.MethodRef <> '' then
+  begin
     Result := Result + [MakeTag(AItem.MethodRef, TAtlasTagKind.Accent)];
+  end;
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
   if AItem.Unreachable <> '' then
   begin
@@ -330,7 +386,9 @@ begin
     Result[High(Result)].Filled := True;
   end;
   if AItem.Count > 0 then
+  begin
     Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
+  end;
   // Zirkelbezug im uses-Abschnitt (#469).
   if AItem.UsesCycle <> '' then
   begin
@@ -355,10 +413,14 @@ begin
     Result[High(Result)].Id := TAtlasTagId.Overload;
   end
   else if (AItem.InheritedMatch = 'other') and (AItem.DeclaringClass <> '') then
+  begin
     Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
+  end;
   MissingName := MissingUnit(AItem);
   if MissingName <> '' then
+  begin
     Result := Result + [MakeTag('+ ' + MissingName, TAtlasTagKind.Add)];
+  end;
   case AItem.Kind of
     TAtlasItemKind.Constructor_: Result := Result + [MakeTag('constructor', TAtlasTagKind.Neutral)];
     TAtlasItemKind.Destructor_: Result := Result + [MakeTag('destructor', TAtlasTagKind.Neutral)];
@@ -366,20 +428,30 @@ begin
     // Übrige Werte bewusst ohne Wirkung.
   end;
   for Directive in AItem.Directives do
+  begin
     if SameText(Directive, 'deprecated') then
+    begin
       Result := Result + [MakeTag('deprecated', TAtlasTagKind.Warn)];
+    end;
+  end;
   // Herkunft (#488): woher ein Name ohne Punkt davor stammt.
   case AItem.Scope of
     1: Result := Result + [MakeTag('lokal', TAtlasTagKind.Accent)];
     2: Result := Result + [MakeTag('Parameter', TAtlasTagKind.Accent)];
     3:
       if AItem.Kind = TAtlasItemKind.Property_ then
-        Result := Result + [MakeTag('Eigenschaft', TAtlasTagKind.Neutral)]
+      begin
+        Result := Result + [MakeTag('Eigenschaft', TAtlasTagKind.Neutral)];
+      end
       else if AItem.Kind = TAtlasItemKind.Field then
-        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)]
+      begin
+        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)];
+      end
       else if AItem.DeclaringClass <> '' then
+      begin
         // Methoden von Self: die Klasse, die sie deklariert.
         Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
+      end;
     4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
     6:
       if AItem.WithOrigin <> '' then
@@ -394,16 +466,26 @@ begin
       end;
     5:
       if AItem.DeclaringUnit <> '' then
+      begin
         Result := Result + [MakeTag(AItem.DeclaringUnit, TAtlasTagKind.Neutral)];
+      end;
   end;
   // Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als Warnung.
   if SameText(AItem.Condition, 'platform') then
-    Result := Result + [MakeTag('platform', TAtlasTagKind.Warn)]
+  begin
+    Result := Result + [MakeTag('platform', TAtlasTagKind.Warn)];
+  end
   else if AItem.Condition <> '' then
+  begin
     if AItem.Unavailable then
-      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Warn)]
+    begin
+      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Warn)];
+    end
     else
+    begin
       Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Neutral)];
+    end;
+  end;
   // Felder varianter Records (#846): „Zweig 0“.
   if AItem.VariantBranch <> '' then
   begin
@@ -412,20 +494,32 @@ begin
     Result[High(Result)].Arg := AItem.VariantBranch;
   end;
   if AItem.OverloadCount > 1 then
+  begin
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
+  end;
   if AItem.IsHelper then
+  begin
     Result := Result + [MakeTag('Helper', TAtlasTagKind.Accent)];
+  end;
   // Postfix-Vorlagen (#188) und Code-Vorlagen (#51).
   if AItem.Postfix then
-    Result := Result + [MakeTag('Postfix', TAtlasTagKind.Neutral)]
+  begin
+    Result := Result + [MakeTag('Postfix', TAtlasTagKind.Neutral)];
+  end
   else if AItem.Snippet <> '' then
+  begin
     Result := Result + [MakeTag('Snippet', TAtlasTagKind.Neutral)];
+  end;
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then
+  begin
     Result := Result + [MakeTag('als ' + AItem.Sender, TAtlasTagKind.Accent)];
+  end;
   // Typkonvertierung (#490).
   if AItem.Conversion <> '' then
+  begin
     Result := Result + [MakeTag('→ ' + AItem.Conversion, TAtlasTagKind.Accent)];
+  end;
   case AItem.Usage of
     TAtlasUsageMark.Recent:
       begin
@@ -449,11 +543,17 @@ begin
   Result := nil;
   Score := TAtlasCompletionMatcher.Score(APattern, AName);
   if (APattern = '') or (Score = TAtlasCompletionMatcher.NoMatch) then
+  begin
     Exit;
+  end;
   if Score >= TAtlasCompletionMatcher.ScorePrefix then
+  begin
     Exit(Range(1, Length(APattern)));
+  end;
   if Score = TAtlasCompletionMatcher.ScoreWordStarts then
+  begin
     Exit(WordStartPositions(APattern, AName));
+  end;
   if Score = TAtlasCompletionMatcher.ScoreSubstring then
   begin
     Found := Pos(APattern.ToUpper, AName.ToUpper);
@@ -467,8 +567,12 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Item in AItems do
+  begin
     if Item.HiddenKinds <> '' then
+    begin
       Exit(Item.HiddenKinds);
+    end;
+  end;
   Result := '';
 end;
 
@@ -477,8 +581,12 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Item in AItems do
+  begin
     if Item.DataSource <> '' then
+    begin
       Exit(Item.DataSource);
+    end;
+  end;
   Result := '';
 end;
 
@@ -498,8 +606,12 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Item in AItems do
+  begin
     if Length(Item.UsesHidden) > 0 then
+    begin
       Exit(Item.UsesHidden);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -508,8 +620,12 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Item in AItems do
+  begin
     if Length(Item.InheritedAbstract) > 0 then
+    begin
       Exit(Item.InheritedAbstract);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -520,9 +636,15 @@ var
 begin
   Result := nil;
   for Item in AItems do
+  begin
     for Name in Item.SameNameHidden do
+    begin
       if not MatchText(Name, Result) then
+      begin
         Result := Result + [Name];
+      end;
+    end;
+  end;
 end;
 
 class procedure TAtlasItemPresentation.AddSameName(const AItem: TAtlasCompletionItem;
@@ -531,9 +653,13 @@ begin
   ADetails.SameNameUnits := AItem.SameNameUnits;
   ADetails.SameNameHidden := AItem.SameNameHidden;
   if Length(AItem.SameNameUnits) = 0 then
-    ADetails.SameNameThis := ''
+  begin
+    ADetails.SameNameThis := '';
+  end
   else
+  begin
     ADetails.SameNameThis := AItem.DeclaringUnit;
+  end;
   ADetails.SameNameInsert := AItem.SameNameInsert;
 end;
 
@@ -543,8 +669,12 @@ var
 begin
   Result := Length(AItems) > 0;
   for Item in AItems do
+  begin
     if not Item.Guard then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 end.

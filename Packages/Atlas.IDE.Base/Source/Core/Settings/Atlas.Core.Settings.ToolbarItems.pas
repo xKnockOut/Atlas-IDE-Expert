@@ -73,8 +73,12 @@ var
 begin
   Result := nil;
   for Part in AText.Split([Delimiter]) do
+  begin
     if Trim(Part) <> '' then
+    begin
       Result := Result + [Trim(Part)];
+    end;
+  end;
 end;
 
 class function TAtlasToolbarItems.Format(const AItems: TArray<string>): string;
@@ -97,26 +101,38 @@ begin
   for Item in AItems do
   begin
     if Trim(Item) = '' then
+    begin
       Continue;
+    end;
     if IsSeparator(Item) then
     begin
       // Kein Trennstrich am Anfang und keiner doppelt.
       if (Length(Result) = 0) or IsSeparator(Result[High(Result)]) then
+      begin
         Continue;
+      end;
     end
     else
     begin
       Seen := False;
       for Index := 0 to High(Result) do
+      begin
         if SameText(Result[Index], Item) then
+        begin
           Seen := True;
+        end;
+      end;
       if Seen then
+      begin
         Continue;
+      end;
     end;
     Result := Result + [Trim(Item)];
   end;
   if (Length(Result) > 0) and IsSeparator(Result[High(Result)]) then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TAtlasToolbarItems.Normalize(const AText: string): string;
@@ -130,7 +146,9 @@ var
 begin
   SetLength(Result, Length(DefaultItems));
   for Index := 0 to High(DefaultItems) do
+  begin
     Result[Index] := DefaultItems[Index];
+  end;
 end;
 
 class function TAtlasToolbarItems.DefaultText: string;
@@ -148,7 +166,9 @@ class function TAtlasToolbarItems.PinnedCount(const AItems: TArray<string>): Int
 begin
   Result := 0;
   while (Result <= High(AItems)) and IsSection(AItems[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TAtlasToolbarItems.Add(var AItems: TArray<string>; const AId: string; AIndex: Integer): Integer;
@@ -157,13 +177,23 @@ var
 begin
   Result := -1;
   if Trim(AId) = '' then
+  begin
     Exit;
+  end;
   if not IsSeparator(AId) then
+  begin
     for Index := 0 to High(AItems) do
+    begin
       if SameText(AItems[Index], AId) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   if (AIndex < 0) or (AIndex > Length(AItems)) then
+  begin
     AIndex := Length(AItems);
+  end;
   Insert(AId, AItems, AIndex);
   Result := AIndex;
 end;
@@ -172,7 +202,9 @@ class function TAtlasToolbarItems.Remove(var AItems: TArray<string>; AIndex: Int
 begin
   Result := (AIndex >= 0) and (AIndex <= High(AItems));
   if Result then
+  begin
     Delete(AItems, AIndex, 1);
+  end;
 end;
 
 class function TAtlasToolbarItems.Move(var AItems: TArray<string>; AIndex, ADelta: Integer): Integer;
@@ -183,7 +215,9 @@ begin
   Result := AIndex;
   Target := AIndex + ADelta;
   if (AIndex < 0) or (AIndex > High(AItems)) or (Target < 0) or (Target > High(AItems)) then
+  begin
     Exit;
+  end;
   Item := AItems[AIndex];
   AItems[AIndex] := AItems[Target];
   AItems[Target] := Item;

@@ -184,9 +184,13 @@ begin
   Result.ExternalsRules := TAtlasVcsBranchPlan.RulesOf(mSettings.VcsExternalsRules);
   mGroup := '';
   if AProject <> '' then
+  begin
     mGroup := TAtlasIdeFiles.GroupOfProject(AProject);
+  end;
   if mGroup = '' then
+  begin
     mGroup := AProject;
+  end;
   Result.Project := ChangeFileExt(ExtractFileName(mGroup), '');
 end;
 
@@ -196,10 +200,14 @@ var
   mActions: IOTAActionServices;
 begin
   if (AProject = '') or (AFolder = '') then
+  begin
     Exit;
+  end;
   mFile := TAtlasIdeFiles.GroupOfProject(AProject);
   if mFile = '' then
+  begin
     mFile := AProject;
+  end;
   mTarget := TAtlasVcsBranchPlan.CheckoutTarget(ARoot, AFolder, mFile);
   if (mTarget = '') or not FileExists(mTarget) then
   begin
@@ -209,9 +217,13 @@ begin
   if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchOpenCheckout, [ExtractFileName(mTarget), AFolder,
     sLineBreak + sLineBreak]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
     Exit;
+  end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
     mActions.OpenProject(mTarget, True);
+  end;
 end;
 
 class function TAtlasIdeBranching.Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
@@ -244,7 +256,9 @@ begin
         procedure
         begin
           if mOpen then
+          begin
             mDialog.ServerLoaded(mFacts);
+          end;
         end) then
       begin
         mFacts.ServerChecked := True;
@@ -268,7 +282,9 @@ end;
 class procedure TAtlasIdeBranching.RebuildIndex;
 begin
   if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.RebuildCommand) then
+  begin
     Exit;
+  end;
   TAtlasGuard.Log('Branch anlegen: Externals geändert, Index wird neu aufgebaut');
   TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchIndexRebuild));
 end;
@@ -279,7 +295,9 @@ var
 begin
   mNext := TAtlasIdeSettings.Stored;
   if not mNext.VcsBranchConfirm then
+  begin
     Exit;
+  end;
   mNext.VcsBranchConfirm := False;
   TAtlasIdeSettings.Update(mNext);
   TAtlasGuard.Log('Branch anlegen: Dialog abgeschaltet (vcs.branch.confirm)');
@@ -312,7 +330,9 @@ class function TAtlasIdeBranching.AskLocal(const AFacts: TAtlasVcsBranchFacts;
 begin
   AFallback := ARequest;
   if not TAtlasVcsBranchPlan.FetchFailed(ASteps, ARun) then
+  begin
     Exit(False);
+  end;
   AFallback := TAtlasVcsBranchPlan.LocalFallback(AFacts, ARequest);
   Result := MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetchFailedAsk, [ARequest.Base.RemoteName,
     ServerState(ARun.Outcome), sLineBreak + sLineBreak, TAtlasVcsBranchPlan.BaseName(AFallback.Kind,
@@ -334,13 +354,19 @@ begin
     // Eigene Beschriftungen statt Ja/Nein: mitnehmen, beiseitelegen, abbrechen.
     mButton := mDialog.FindComponent('Yes');
     if mButton is TButton then
+    begin
       TButton(mButton).Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchCarry);
+    end;
     mButton := mDialog.FindComponent('No');
     if mButton is TButton then
+    begin
       TButton(mButton).Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchStashShort);
+    end;
     mButton := mDialog.FindComponent('Cancel');
     if mButton is TButton then
+    begin
       TButton(mButton).Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
+    end;
     TAtlasIdeDockWindow.ApplyIdeTheme(mDialog);
     mAnswer := mDialog.ShowModal;
   finally
@@ -358,9 +384,13 @@ begin
   mGroup := TAtlasIdeFiles.GroupOfProject(AProject);
   Result := '';
   if mGroup <> '' then
+  begin
     Result := TAtlasVcsBranchPlan.ProjectInFolder(mGroup, ARoot, AFolder);
+  end;
   if Result = '' then
+  begin
     Result := TAtlasVcsBranchPlan.ProjectInFolder(AProject, ARoot, AFolder);
+  end;
 end;
 
 class function TAtlasIdeBranching.OfferWorktree(const AName, AFolder, ATarget: string): Boolean;
@@ -401,18 +431,26 @@ var
   mList: string;
 begin
   if (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) then
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchStepFailed, [ARun.Failed + 1,
-      TAtlasVcsBranchPlan.StepText(AKind, ASteps[ARun.Failed]), AtlasVcsOutcomeName(ARun.Outcome)])
+      TAtlasVcsBranchPlan.StepText(AKind, ASteps[ARun.Failed]), AtlasVcsOutcomeName(ARun.Outcome)]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFailed, [AtlasVcsOutcomeName(ARun.Outcome)]);
+  end;
   mDone := TAtlasVcsBranchPlan.ServerStepsDone(ASteps, ARun.Done);
   if Length(mDone) = 0 then
+  begin
     Exit;
+  end;
   mList := '';
   for mStep in mDone do
   begin
     if mList <> '' then
+    begin
       mList := mList + '; ';
+    end;
     mList := mList + TAtlasVcsBranchPlan.StepText(AKind, mStep);
   end;
   Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.VcsBranchServerDone, [mList]);
@@ -430,7 +468,9 @@ begin
   mFolder := ExtractFileDir(AProject);
   mDone := ADone;
   if mFolder = '' then
+  begin
     Exit;
+  end;
   mFacts := TAtlasVcsBranchFacts.Empty;
   mBaseText := TAtlasIdeSettings.Current.IssuesBranchBase;
   mSvn := SvnOptions(AProject);
@@ -445,12 +485,16 @@ begin
       mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(TimeoutMs));
       mKind := TAtlasVcsKind.None;
       if mVcs <> nil then
+      begin
         mKind := mVcs.Kind;
+      end;
       mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TAtlasVcsBranchNames.Bases(mKind = TAtlasVcsKind.Svn, mBaseText,
         TAtlasIdeVcs.MainBranchOf(mProject, TAtlasIdeFiles.GroupOfProject(mProject))));
       // Geänderte Dateien für die Zeile „Offene Änderungen“ im Dialog (#1289).
       if (mFacts.Outcome = TAtlasVcsOutcome.Ok) and (mVcs.Changes(mItems) = TAtlasVcsOutcome.Ok) then
+      begin
         mFacts.LocalChanges := TAtlasVcsBranchPlan.LocalChanges(mItems);
+      end;
     end,
     procedure
     var
@@ -463,9 +507,13 @@ begin
         Exit;
       end;
       if Ask(mFolder, mFacts, '', '', '', mSvn, False, mRequest, mNever) then
+      begin
         RunCreate(mProject, mFacts, mRequest, mSvn, True, mDone);
+      end;
     end) then
+  begin
     TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+  end;
 end;
 
 class procedure TAtlasIdeBranching.RunCreate(const AProject: string; const AFacts: TAtlasVcsBranchFacts;
@@ -510,14 +558,20 @@ begin
       // Am Ort aus dem Dialog suchen (#1290), an dem auch angelegt wird.
       mFound := mSvn;
       if mRequest.Location <> '' then
+      begin
         mFound.Location := '^/' + mRequest.Location;
+      end;
       mRun.Outcome := mBranching.BranchExists(mRequest.Name, mFound, mExists);
       if (mRun.Outcome <> TAtlasVcsOutcome.Ok) or mExists then
+      begin
         Exit;
+      end;
       // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
       mTaken := (mRequest.WorktreeFolder <> '') and DirectoryExists(mRequest.WorktreeFolder);
       if mTaken then
+      begin
         Exit;
+      end;
       mRun := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, mSteps, Progress(mRequest.Kind));
     end,
     procedure
@@ -528,42 +582,66 @@ begin
       TAtlasGuard.Log(Format('Branch anlegen (Befehl): %s, %s', [AtlasVcsKindName(mRequest.Kind),
         AtlasVcsOutcomeName(mRun.Outcome)]));
       if mExists then
-        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExists, [mRequest.Name]))
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchExists, [mRequest.Name]));
+      end
       else if mTaken then
-        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mRequest.WorktreeFolder]))
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mRequest.WorktreeFolder]));
+      end
       else if mRun.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(mSteps, mRun) then
       begin
         if mRequest.WorktreeFolder <> '' then
+        begin
           TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [mRequest.Name,
-            TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base), mRequest.WorktreeFolder]))
+            TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base), mRequest.WorktreeFolder]));
+        end
         else
+        begin
           TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchCreated, [mRequest.Name,
             TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base)]));
+        end;
         // Nur der Push scheiterte: der lokale Branch bleibt.
         if not mRun.Succeeded then
+        begin
           TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchPushFailed, [mRequest.Name,
             ServerState(mRun.Outcome)]));
+        end;
         if Assigned(mDone) then
+        begin
           mDone();
+        end;
         if TAtlasVcsBranchPlan.ChangesExternals(mRequest) then
+        begin
           RebuildIndex;
+        end;
         if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
+        begin
           OfferOpen(mProject, mFacts.Root, mRequest.CheckoutFolder);
+        end;
         if mRequest.WorktreeFolder <> '' then
         begin
           mTarget := WorktreeProject(mProject, mFacts.Root, mRequest.WorktreeFolder);
           if OfferWorktree(mRequest.Name, mRequest.WorktreeFolder, mTarget) then
+          begin
             OpenProject(mTarget);
+          end;
         end;
       end
       // Abruf gescheitert, noch nichts geändert: nach Rückfrage vom lokalen Stand, ohne erneute Rückfrage.
       else if mOfferLocal and AskLocal(mFacts, mRequest, mSteps, mRun, mFallback) then
-        RunCreate(mProject, mFacts, mFallback, mSvn, False, mDone)
+      begin
+        RunCreate(mProject, mFacts, mFallback, mSvn, False, mDone);
+      end
       else
+      begin
         TAtlasIdeVcs.Report(FailureText(mRequest.Kind, mSteps, mRun));
+      end;
     end) then
+  begin
     TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFailed,
       [AtlasVcsOutcomeName(TAtlasVcsOutcome.Failed)]));
+  end;
 end;
 
 class procedure TAtlasIdeBranching.OpenProject(const AFile: string);
@@ -571,7 +649,9 @@ var
   mActions: IOTAActionServices;
 begin
   if FileExists(AFile) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
     mActions.OpenProject(AFile, True);
+  end;
 end;
 
 end.

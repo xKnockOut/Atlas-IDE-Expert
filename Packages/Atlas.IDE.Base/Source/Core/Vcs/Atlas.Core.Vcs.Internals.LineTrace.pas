@@ -55,12 +55,18 @@ var
 begin
   mStart := APos;
   while (APos <= Length(AText)) and CharInSet(AText[APos], ['0'..'9']) do
+  begin
     Inc(APos);
+  end;
   Result := (APos > mStart) and (APos - mStart <= 9);
   if Result then
-    AValue := StrToInt(Copy(AText, mStart, APos - mStart))
+  begin
+    AValue := StrToInt(Copy(AText, mStart, APos - mStart));
+  end
   else
+  begin
     AValue := 0;
+  end;
 end;
 
 /// <summary>"a" oder "a,b" ab APos; ohne Anzahl 1.</summary>
@@ -80,7 +86,9 @@ function FirstOf(AStart, ACount: Integer): Integer;
 begin
   Result := AStart;
   if ACount = 0 then
+  begin
     Result := AStart + 1;
+  end;
 end;
 
 { TAtlasVcsLineTrace }
@@ -92,15 +100,23 @@ begin
   AHunk := Default(TAtlasVcsHunk);
   Result := False;
   if Copy(ALine, 1, 4) <> '@@ -' then
+  begin
     Exit;
+  end;
   mPos := 5;
   if not ReadRange(ALine, mPos, AHunk.OldStart, AHunk.OldCount) then
+  begin
     Exit;
+  end;
   if Copy(ALine, mPos, 2) <> ' +' then
+  begin
     Exit;
+  end;
   Inc(mPos, 2);
   if not ReadRange(ALine, mPos, AHunk.NewStart, AHunk.NewCount) then
+  begin
     Exit;
+  end;
   Result := Copy(ALine, mPos, 3) = ' @@';
 end;
 
@@ -132,7 +148,9 @@ begin
       Inc(mIndex);
       // Manche Werkzeuge kürzen die Leerzeile im Kontext auf "".
       if mLine = '' then
+      begin
         mLine := ' ';
+      end;
       case mLine[1] of
         ' ':
           begin
@@ -155,7 +173,9 @@ begin
     end;
     SetLength(mHunk.Lines, mCount);
     if mFound = Length(Result) then
+    begin
       SetLength(Result, mFound * 2 + 4);
+    end;
     Result[mFound] := mHunk;
     Inc(mFound);
   end;
@@ -173,7 +193,9 @@ begin
   begin
     mNew := FirstOf(mHunk.NewStart, mHunk.NewCount);
     if mNew > ALast + 1 then
+    begin
       Break;
+    end;
     for mLine in mHunk.Lines do
       case mLine[1] of
         ' ':
@@ -181,13 +203,17 @@ begin
         '+':
           begin
             if (mNew >= AFirst) and (mNew <= ALast) then
+            begin
               Exit(True);
+            end;
             Inc(mNew);
           end;
         '-':
           // Gelöscht vor der neuen Zeile mNew: nur zwischen zwei Zeilen des Bereichs.
           if (mNew > AFirst) and (mNew <= ALast) then
+          begin
             Exit(True);
+          end;
       end;
   end;
 end;
@@ -205,14 +231,18 @@ begin
   begin
     mNew := FirstOf(mHunk.NewStart, mHunk.NewCount);
     if ALine < mNew then
+    begin
       Break;
+    end;
     mOld := FirstOf(mHunk.OldStart, mHunk.OldCount);
     for mLine in mHunk.Lines do
       case mLine[1] of
         ' ':
           begin
             if mNew = ALine then
+            begin
               Exit(mOld);
+            end;
             Inc(mOld);
             Inc(mNew);
           end;
@@ -223,7 +253,9 @@ begin
             if mNew = ALine then
             begin
               if AForward then
+              begin
                 Exit(mOld);
+              end;
               Exit(mOld - 1);
             end;
             Inc(mNew);
@@ -242,7 +274,9 @@ begin
   mLast := OldLineOf(AHunks, ALast, False);
   Result := (mFirst <= mLast) and (mLast >= 1);
   if not Result then
+  begin
     Exit;
+  end;
   AFirst := mFirst;
   ALast := mLast;
 end;
@@ -268,7 +302,9 @@ begin
       Inc(mFound);
     end;
     if not MapBack(mHunks, mFirst, mLast) then
+    begin
       Break;
+    end;
   end;
   SetLength(Result, mFound);
 end;
