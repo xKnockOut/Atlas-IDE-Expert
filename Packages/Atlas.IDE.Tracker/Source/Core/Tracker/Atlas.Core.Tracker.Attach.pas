@@ -177,9 +177,9 @@ type
     class function Send(const AProvider: IAtlasTrackerProvider; const ATransport: IAtlasCiTransport;
       const ARequest: TAtlasAttachRequest; ATimeoutMs: Integer): TAtlasAttachOutcome; static;
     /// <summary>Ein POST für die Anbieter: True nur bei 200/201. Kam eine andere Antwort, steht ihr Status in
-    /// AStatus (der Anbieter ordnet ihn zu) und AError ist Server; ohne Antwort ist AStatus 0.</summary>
+    /// AResponse (der Anbieter ordnet ihn zu) und Error ist Server; ohne Antwort ist Status 0.</summary>
     class function Post(const ASend: IAtlasCiPost; const AUrl, AContentType: string; const ABody: TBytes;
-      ATimeoutMs: Integer; out AStatus: Integer; out AError: TAtlasCiFetchError): Boolean; static;
+      ATimeoutMs: Integer; out AResponse: TAtlasCiResponse): Boolean; static;
   end;
 
   TAtlasAttachTemp = class
@@ -901,28 +901,25 @@ begin
 end;
 
 class function TAtlasAttachSender.Post(const ASend: IAtlasCiPost; const AUrl, AContentType: string;
-  const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer; out AError: TAtlasCiFetchError): Boolean;
-var
-  mText: string;
+  const ABody: TBytes; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse): Boolean;
 begin
   Result := False;
-  AStatus := 0;
-  AError := TAtlasCiFetchError.NotConfigured;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.NotConfigured);
   if (AUrl = '') or (ASend = nil) then
   begin
     Exit;
   end;
-  if not ASend.Post(AUrl, AContentType, ABody, ATimeoutMs, AStatus, mText, AError) then
+  if not ASend.Post(AUrl, AContentType, ABody, ATimeoutMs, AResponse) then
   begin
-    AStatus := 0;
+    AResponse.Status := 0;
     Exit;
   end;
-  if (AStatus <> 200) and (AStatus <> 201) then
+  if (AResponse.Status <> 200) and (AResponse.Status <> 201) then
   begin
-    AError := TAtlasCiFetchError.Server;
+    AResponse.Error := TAtlasCiFetchError.Server;
     Exit;
   end;
-  AError := TAtlasCiFetchError.None;
+  AResponse.Error := TAtlasCiFetchError.None;
   Result := True;
 end;
 
