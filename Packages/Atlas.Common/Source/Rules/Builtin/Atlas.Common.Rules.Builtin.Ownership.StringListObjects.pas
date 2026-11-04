@@ -99,537 +99,658 @@ begin
   end;
 end;
 
-procedure TStringListObjectsLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf der Regel über eine Unit.</summary>
+  TStringListObjectsScan = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FHosts: TArray<TObjectsHost>;
+    FAncestry: TAncestry;
+    FLines: TArray<string>;
+    FLineBreak: string;
+    function TextOf(ANode: TSyntaxNode): string;
+    function HostIndex(const AKey: string): Integer;
+    function StringListCreate(ANode: TSyntaxNode; const AClasses: array of string): TSyntaxNode;
+    function CreatedClass(ANode: TSyntaxNode): string;
+    procedure AddHost(const AText: string; ACreation: TSyntaxNode);
+    procedure CollectHosts(ANode: TSyntaxNode);
+    procedure CollectOwning(ANode: TSyntaxNode);
+    function ContainsFree(ANode: TSyntaxNode): Boolean;
+    procedure MarkReleases(ARoutine, ANode: TSyntaxNode);
+    procedure MarkHandled(ANode: TSyntaxNode);
+    procedure VisitRoutines(ANode: TSyntaxNode);
+    function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+    function LocalCreatedClass(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode): string;
+    function ScanLocal(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode; out AFound: string): Boolean;
+    function ConsiderLocalUse(ANode, AAdd: TSyntaxNode; var AFound: string): Boolean;
+    function OwnsFix(const AHost: TObjectsHost; out AFix: TRuleFix): Boolean;
+    function OwnsObjectsFix(AStatement: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure CheckAdd(ANode: TSyntaxNode);
+    function AddedObjectHost(ANode: TSyntaxNode; out AHost: Integer): Boolean;
+    function AddedClass(AAdd, AArgument: TSyntaxNode): string;
+    procedure CheckAdds(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+/// <summary>X.Create mit einem Typnamen X (auch mit Unit-Präfix).</summary>
+function IsCreateAccess(AAccess: TSyntaxNode): Boolean;
+begin
+  Result := (AAccess.Kind = TSyntaxKind.MemberAccess) and SameText(AAccess.Name, 'Create') and
+    (AAccess.ChildCount = 1) and (AAccess[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]);
+end;
+
+/// <summary>Die Liste ANode als Argument (FreeObjects(Liste)), auf der rechten Seite einer Zuweisung oder mit @.</summary>
+function IsPassedOn(ANode: TSyntaxNode): Boolean;
 var
-  Hosts: TArray<TObjectsHost>;
-  Ancestry: TAncestry;
-  Lines: TArray<string>;
-  LineBreak: string;
-
-  function TextOf(ANode: TSyntaxNode): string;
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  if mParent = nil then
   begin
-    Result := TRoutineBody.TextOf(AContext.Text, ANode);
+    Exit(False);
   end;
-
-  function HostIndex(const AKey: string): Integer;
-  begin
-    for Result := 0 to High(Hosts) do
-    begin
-      if Hosts[Result].Key = AKey then
-      begin
-        Exit;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  // TStringList.Create bzw. TStringList.Create(…) (auch mit Unit-Präfix): der Create-Knoten, sonst nil.
-  function StringListCreate(ANode: TSyntaxNode; const AClasses: array of string): TSyntaxNode;
-  var
-    Access: TSyntaxNode;
-  begin
-    Result := nil;
-    Access := ANode;
-    if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
-    begin
-      Access := Access[0];
-    end;
-    if (Access.Kind = TSyntaxKind.MemberAccess) and SameText(Access.Name, 'Create') and (Access.ChildCount = 1) and
-      (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Access[0].Name, AClasses)
-      then
-    begin
-      Result := ANode;
-    end;
-  end;
-
-  // Erzeugtes Objekt T.Create(…) ohne Owner: Name der Klasse, sonst ''.
-  function CreatedClass(ANode: TSyntaxNode): string;
-  var
-    Access: TSyntaxNode;
-    Name, First: string;
-  begin
-    Result := '';
-    Access := ANode;
-    First := '';
-    if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
-    begin
-      if Access.ChildCount > 1 then
-      begin
-        First := TextOf(Access[1]);
-      end;
-      Access := Access[0];
-    end;
-    if (Access.Kind <> TSyntaxKind.MemberAccess) or not SameText(Access.Name, 'Create') or (Access.ChildCount <> 1) or
-      not (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-    begin
-      Exit;
-    end;
-    Name := Access[0].Name;
-    // Komponenten mit Owner gibt der Owner frei (wie create-without-assignment).
-    if (First <> '') and not SameText(First, 'nil') and (MatchText(First, ['Self', 'Owner', 'AOwner',
-      'Application']) or Ancestry.DescendsFrom(Name, 'TComponent')) then
-    begin
-      Exit;
-    end;
-    if TCreateWithoutAssignmentRule.LooksLikeType(Name) then
-    begin
-      Result := Name;
-    end;
-  end;
-
-  procedure AddHost(const AText: string; ACreation: TSyntaxNode);
-  var
-    Host: TObjectsHost;
-    Index: Integer;
-  begin
-    Host.Key := KeyOf(AText);
-    Host.Text := AText;
-    Host.Creation := ACreation;
-    Host.Owning := False;
-    Host.Handled := False;
-    if ACreation <> nil then
-    begin
-      // Create(True) besitzt; andere Konstruktoren (QuoteChar, Duplicates) nicht.
-      Host.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
-        SameText(TextOf(ACreation[1]), 'True');
-    end;
-    Index := HostIndex(Host.Key);
-    if Index < 0 then
-    begin
-      Hosts := Hosts + [Host];
-    end
-    else if ACreation <> nil then
-    begin
-      // Mehrfach erzeugt: besitzend, sobald eine Erzeugung besitzt; die erste bleibt Ziel der Korrektur.
-      Hosts[Index].Owning := Hosts[Index].Owning or Host.Owning;
-      if Hosts[Index].Creation = nil then
-      begin
-        Hosts[Index].Creation := ACreation;
-      end;
-    end;
-  end;
-
-  // Erzeugungen, OwnsObjects := True und Felder vom Typ eines Steuerelements.
-  procedure CollectHosts(ANode: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Name: string;
-  begin
-    // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-          (StringListCreate(Node[1], StringListClasses) <> nil) then
-        begin
-          AddHost(TextOf(Node[0]), Node[1]);
-        end;
-        if (Node.Kind = TSyntaxKind.Field) and (Node.ChildCount > 0) and
-          (Node[0].Kind = TSyntaxKind.TypeReference) and MatchText(Node[0].Name, ObjectItemControls) then
-        begin
-          for Name in Node.Name.Split([',']) do
-          begin
-            AddHost(Trim(Name) + '.Items', nil);
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-  procedure CollectOwning(ANode: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index, Host: Integer;
-  begin
-    // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-          (Node[0].Kind = TSyntaxKind.MemberAccess) and SameText(Node[0].Name, 'OwnsObjects') and
-          (Node[0].ChildCount = 1) and SameText(TextOf(Node[1]), 'True') then
-        begin
-          Host := HostIndex(KeyOf(TextOf(Node[0][0])));
-          if Host >= 0 then
-          begin
-            Hosts[Host].Owning := True;
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-  function ContainsFree(ANode: TSyntaxNode): Boolean;
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-  begin
-    // Iterativ (Bericht M1).
+  case mParent.Kind of
+    TSyntaxKind.Call:
+      Result := (mParent[0] <> ANode) and not MatchText(mParent.Name, ['FreeAndNil', 'Assigned']);
+    TSyntaxKind.AssignStatement:
+      Result := mParent[0] <> ANode;
+    TSyntaxKind.AddressOf:
+      Result := True;
+  else
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+  end;
+end;
+
+/// <summary>Ist AName im var-Abschnitt von ARoutine deklariert?</summary>
+function IsLocalVariable(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex, mInner: Integer;
+  mName: string;
+begin
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[mIndex].Kind <> TSyntaxKind.VarSection then
+    begin
+      Continue;
+    end;
+    for mInner := 0 to ARoutine[mIndex].ChildCount - 1 do
+    begin
+      for mName in ARoutine[mIndex][mInner].Name.Split([',']) do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
-          MatchText(Node.Name, FreeWords) then
+        if SameText(Trim(mName), AName) then
         begin
           Exit(True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
       end;
-    finally
-      Pending.Free;
     end;
   end;
+  Result := False;
+end;
 
-  // Liest die Routine X.Objects[…] und gibt sie etwas frei, gilt die Freigabe als erledigt.
-  procedure MarkReleases(ARoutine, ANode: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index, Host: Integer;
+/// <summary>Position des Objekt-Arguments: 2 bei AddObject, 3 bei InsertObject, sonst 0.</summary>
+// Zuweisung der Form <Liste>.OwnsObjects := <Wert>.
+function IsOwnsObjectsAssign(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+    (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'OwnsObjects') and
+    (ANode[0].ChildCount = 1);
+end;
+
+function ObjectArgument(ANode: TSyntaxNode): Integer;
+begin
+  Result := 0;
+  if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount < 1) or (ANode[0].Kind <> TSyntaxKind.MemberAccess) then
   begin
-    // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.MemberAccess) and SameText(Node.Name, 'Objects') and (Node.ChildCount = 1) then
-        begin
-          Host := HostIndex(KeyOf(TextOf(Node[0])));
-          if (Host >= 0) and ContainsFree(ARoutine) then
-          begin
-            Hosts[Host].Handled := True;
-          end;
-        end;
-        // Die Liste als Argument (FreeObjects(Liste)) oder auf der rechten Seite einer Zuweisung: weitergegeben.
-        if (Node.Parent <> nil) and (((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] <> Node) and
-          not MatchText(Node.Parent.Name, ['FreeAndNil', 'Assigned'])) or
-          ((Node.Parent.Kind = TSyntaxKind.AssignStatement) and (Node.Parent[0] <> Node)) or
-          (Node.Parent.Kind = TSyntaxKind.AddressOf)) and
-          (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-        begin
-          Host := HostIndex(KeyOf(TextOf(Node)));
-          if Host >= 0 then
-          begin
-            Hosts[Host].Handled := True;
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
+    Exit;
   end;
-
-  procedure VisitRoutines(ANode: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+  if SameText(ANode.Name, 'AddObject') then
   begin
-    // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
-        begin
-          MarkReleases(Node, Node);
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
+    Result := 2;
+  end
+  else if SameText(ANode.Name, 'InsertObject') then
+  begin
+    Result := 3;
   end;
+end;
 
-  function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+{ TStringListObjectsScan }
+
+constructor TStringListObjectsScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TStringListObjectsScan.TextOf(ANode: TSyntaxNode): string;
+begin
+  Result := TRoutineBody.TextOf(FContext.Text, ANode);
+end;
+
+function TStringListObjectsScan.HostIndex(const AKey: string): Integer;
+begin
+  for Result := 0 to High(FHosts) do
   begin
-    Result := ANode.Parent;
-    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      Result := Result.Parent;
-    end;
-  end;
-
-  // Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
-  // AddObject übergeben: Name der Klasse, sonst ''.
-  function LocalCreatedClass(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode): string;
-  var
-    Found: string;
-    Other: Boolean;
-
-    procedure Scan(ANode: TSyntaxNode);
-    var
-      Pending: TStack<TSyntaxNode>;
-      Node: TSyntaxNode;
-      Index: Integer;
-      Parent: TSyntaxNode;
-    begin
-      // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (die erste Erzeugung zählt).
-      Pending := TStack<TSyntaxNode>.Create;
-      try
-        Pending.Push(ANode);
-        while Pending.Count > 0 do
-        begin
-          Node := Pending.Pop;
-          if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) and (Node.Parent <> nil) then
-          begin
-            Parent := Node.Parent;
-            if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = Node) and (Parent.ChildCount = 2) and
-              (CreatedClass(Parent[1]) <> '') and (Found = '') then
-            begin
-              Found := CreatedClass(Parent[1]);
-            end
-            // V.Name liest nur; alles andere außer dem AddObject-Argument gibt V weiter oder frei.
-            else if not ((Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = Node) and
-              not MatchText(Parent.Name, FreeWords)) and (Parent <> AAdd) then
-            begin
-              Other := True;
-            end;
-          end;
-          for Index := Node.ChildCount - 1 downto 0 do
-          begin
-            Pending.Push(Node[Index]);
-          end;
-        end;
-      finally
-        Pending.Free;
-      end;
-    end;
-
-  var
-    Index, Inner: Integer;
-    Local: Boolean;
-    Name: string;
-  begin
-    Result := '';
-    Local := False;
-    for Index := 0 to ARoutine.ChildCount - 1 do
-    begin
-      if ARoutine[Index].Kind = TSyntaxKind.VarSection then
-      begin
-        for Inner := 0 to ARoutine[Index].ChildCount - 1 do
-        begin
-          for Name in ARoutine[Index][Inner].Name.Split([',']) do
-          begin
-            if SameText(Trim(Name), AName) then
-            begin
-              Local := True;
-            end;
-          end;
-        end;
-      end;
-    end;
-    if not Local then
+    if FHosts[Result].Key = AKey then
     begin
       Exit;
     end;
-    Found := '';
-    Other := False;
-    Scan(ARoutine);
-    if not Other then
+  end;
+  Result := -1;
+end;
+
+// TStringList.Create bzw. TStringList.Create(…) (auch mit Unit-Präfix): der Create-Knoten, sonst nil.
+// TStringList.Create bzw. TStringList.Create(…) (auch mit Unit-Präfix): der Create-Knoten, sonst nil.
+function TStringListObjectsScan.StringListCreate(ANode: TSyntaxNode; const AClasses: array of string): TSyntaxNode;
+var
+  mAccess: TSyntaxNode;
+begin
+  Result := nil;
+  mAccess := ANode;
+  if (mAccess.Kind = TSyntaxKind.Call) and (mAccess.ChildCount > 0) then
+  begin
+    mAccess := mAccess[0];
+  end;
+  if IsCreateAccess(mAccess) and MatchText(mAccess[0].Name, AClasses) then
+  begin
+    Result := ANode;
+  end;
+end;
+
+// Erzeugtes Objekt T.Create(…) ohne Owner: Name der Klasse, sonst ''.
+// Erzeugtes Objekt T.Create(…) ohne Owner: Name der Klasse, sonst ''.
+function TStringListObjectsScan.CreatedClass(ANode: TSyntaxNode): string;
+var
+  mAccess: TSyntaxNode;
+  mName, mFirst: string;
+begin
+  Result := '';
+  mAccess := ANode;
+  mFirst := '';
+  if (mAccess.Kind = TSyntaxKind.Call) and (mAccess.ChildCount > 0) then
+  begin
+    if mAccess.ChildCount > 1 then
     begin
-      Result := Found;
+      mFirst := TextOf(mAccess[1]);
+    end;
+    mAccess := mAccess[0];
+  end;
+  if not IsCreateAccess(mAccess) then
+  begin
+    Exit;
+  end;
+  mName := mAccess[0].Name;
+  // Komponenten mit Owner gibt der Owner frei (wie create-without-assignment).
+  if (mFirst <> '') and not SameText(mFirst, 'nil') and (MatchText(mFirst, ['Self', 'Owner', 'AOwner',
+    'Application']) or FAncestry.DescendsFrom(mName, 'TComponent')) then
+  begin
+    Exit;
+  end;
+  if TCreateWithoutAssignmentRule.LooksLikeType(mName) then
+  begin
+    Result := mName;
+  end;
+end;
+
+procedure TStringListObjectsScan.AddHost(const AText: string; ACreation: TSyntaxNode);
+var
+  Host: TObjectsHost;
+  Index: Integer;
+begin
+  Host.Key := TStringListObjectsLeakRule.KeyOf(AText);
+  Host.Text := AText;
+  Host.Creation := ACreation;
+  Host.Owning := False;
+  Host.Handled := False;
+  if ACreation <> nil then
+  begin
+    // Create(True) besitzt; andere Konstruktoren (QuoteChar, Duplicates) nicht.
+    Host.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
+      SameText(TextOf(ACreation[1]), 'True');
+  end;
+  Index := HostIndex(Host.Key);
+  if Index < 0 then
+  begin
+    FHosts := FHosts + [Host];
+  end
+  else if ACreation <> nil then
+  begin
+    // Mehrfach erzeugt: besitzend, sobald eine Erzeugung besitzt; die erste bleibt Ziel der Korrektur.
+    FHosts[Index].Owning := FHosts[Index].Owning or Host.Owning;
+    if FHosts[Index].Creation = nil then
+    begin
+      FHosts[Index].Creation := ACreation;
     end;
   end;
+end;
 
-  function OwnsFix(const AHost: TObjectsHost; out AFix: TRuleFix): Boolean;
-  var
-    Creation, Access: TSyntaxNode;
-    Statement: TSyntaxNode;
-    ClassText: string;
+// Erzeugungen, OwnsObjects := True und Felder vom Typ eines Steuerelements.
+procedure TStringListObjectsScan.CollectHosts(ANode: TSyntaxNode);
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
+        (StringListCreate(Node[1], StringListClasses) <> nil) then
+      begin
+        AddHost(TextOf(Node[0]), Node[1]);
+      end;
+      if (Node.Kind = TSyntaxKind.Field) and (Node.ChildCount > 0) and
+        (Node[0].Kind = TSyntaxKind.TypeReference) and MatchText(Node[0].Name, ObjectItemControls) then
+      begin
+        for Name in Node.Name.Split([',']) do
+        begin
+          AddHost(Trim(Name) + '.Items', nil);
+        end;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(Node[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+procedure TStringListObjectsScan.CollectOwning(ANode: TSyntaxNode);
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index, Host: Integer;
+begin
+  // Iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if IsOwnsObjectsAssign(Node) and SameText(TextOf(Node[1]), 'True') then
+      begin
+        Host := HostIndex(TStringListObjectsLeakRule.KeyOf(TextOf(Node[0][0])));
+        if Host >= 0 then
+        begin
+          FHosts[Host].Owning := True;
+        end;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(Node[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+function TStringListObjectsScan.ContainsFree(ANode: TSyntaxNode): Boolean;
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+begin
+  // Iterativ (Bericht M1).
+  Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
+        MatchText(Node.Name, FreeWords) then
+      begin
+        Exit(True);
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(Node[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+// Liest die Routine X.Objects[…] und gibt sie etwas frei, gilt die Freigabe als erledigt.
+// Liest die Routine X.Objects[…] und gibt sie etwas frei, gilt die Freigabe als erledigt.
+procedure TStringListObjectsScan.MarkReleases(ARoutine, ANode: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (Bericht M1).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.MemberAccess) and SameText(mNode.Name, 'Objects') and (mNode.ChildCount = 1) and
+        ContainsFree(ARoutine) then
+      begin
+        MarkHandled(mNode[0]);
+      end;
+      // Die Liste als Argument (FreeObjects(Liste)) oder auf der rechten Seite einer Zuweisung: weitergegeben.
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsPassedOn(mNode) then
+      begin
+        MarkHandled(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TStringListObjectsScan.MarkHandled(ANode: TSyntaxNode);
+var
+  mHost: Integer;
+begin
+  mHost := HostIndex(TStringListObjectsLeakRule.KeyOf(TextOf(ANode)));
+  if mHost >= 0 then
+  begin
+    FHosts[mHost].Handled := True;
+  end;
+end;
+
+procedure TStringListObjectsScan.VisitRoutines(ANode: TSyntaxNode);
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+begin
+  // Iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        MarkReleases(Node, Node);
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(Node[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+function TStringListObjectsScan.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+// Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
+// AddObject übergeben: Name der Klasse, sonst ''.
+// Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
+// AddObject übergeben: Name der Klasse, sonst ''.
+function TStringListObjectsScan.LocalCreatedClass(ARoutine: TSyntaxNode; const AName: string;
+  AAdd: TSyntaxNode): string;
+var
+  mFound: string;
+begin
+  Result := '';
+  if IsLocalVariable(ARoutine, AName) and ScanLocal(ARoutine, AName, AAdd, mFound) then
+  begin
+    Result := mFound;
+  end;
+end;
+
+/// <summary>Erste Erzeugung der Variablen AName in AFound; False, wenn sie außer V.Name und dem AddObject-Argument
+/// AAdd anders vorkommt (weitergegeben oder freigegeben).</summary>
+function TStringListObjectsScan.ScanLocal(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode;
+  out AFound: string): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (die erste Erzeugung zählt).
+  Result := True;
+  AFound := '';
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoutine);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) and (mNode.Parent <> nil) then
+      begin
+        Result := Result and ConsiderLocalUse(mNode, AAdd, AFound);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Ein Vorkommen ANode der lokalen Variablen: Erzeugung (merkt die Klasse) oder V.Name bzw. das
+/// AddObject-Argument (True); sonst False.</summary>
+function TStringListObjectsScan.ConsiderLocalUse(ANode, AAdd: TSyntaxNode; var AFound: string): Boolean;
+var
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  Result := True;
+  if (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent[0] = ANode) and (mParent.ChildCount = 2) and
+    (CreatedClass(mParent[1]) <> '') then
+  begin
+    if AFound = '' then
+    begin
+      AFound := CreatedClass(mParent[1]);
+    end;
+  end
+  // V.Name liest nur; alles andere außer dem AddObject-Argument gibt V weiter oder frei.
+  else if not ((mParent.Kind = TSyntaxKind.MemberAccess) and (mParent[0] = ANode) and
+    not MatchText(mParent.Name, FreeWords)) and (mParent <> AAdd) then
   begin
     Result := False;
-    Creation := AHost.Creation;
-    if Creation = nil then
-    begin
-      Exit;
-    end;
-    Access := Creation;
-    if Creation.Kind = TSyntaxKind.Call then
-    begin
-      Access := Creation[0];
-    end;
-    ClassText := TextOf(Access[0]);
-    if (Creation.Kind = TSyntaxKind.MemberAccess) or (Creation.ChildCount = 1) then
-    begin
-      // TStringList.Create bzw. TStringList.Create() → TStringList.Create(True)
-      AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [ClassText]),
-        [TTextEdit.Create(TTextRange.Create(Creation.StartPos, Creation.EndPos), ClassText + '.Create(True)')]);
-      Exit(True);
-    end;
-    if (Creation.ChildCount = 2) and SameText(TextOf(Creation[1]), 'False') then
-    begin
-      AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [ClassText]),
-        [TTextEdit.Create(TTextRange.Create(Creation[1].StartPos, Creation[1].EndPos), 'True')]);
-      Exit(True);
-    end;
-    // Andere Konstruktoren: OwnsObjects nach der Erzeugung setzen.
-    Statement := Creation.Parent;
-    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or
-      (Statement.StartPos.Line <> Statement.EndPos.Line) or (Statement.EndPos.Line > High(Lines)) then
-    begin
-      Exit;
-    end;
-    // Die Zeile muss mit der Anweisung enden.
-    if Trim(Copy(Lines[Statement.EndPos.Line], Statement.EndPos.Character + 1, MaxInt)) <> ';' then
-    begin
-      Exit;
-    end;
-    AFix := TRuleFix.Create('OwnsObjects := True setzen',
-      [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line + 1, 0, Statement.EndPos.Line + 1, 0),
-      Copy(Lines[Statement.StartPos.Line], 1, Statement.StartPos.Character) + TextOf(Statement[0]) +
-      '.OwnsObjects := True;' + LineBreak)]);
-    Result := True;
   end;
+end;
 
-  procedure CheckAdd(ANode: TSyntaxNode);
-  var
-    Host, ObjectArg: Integer;
-    Access, Argument, Routine: TSyntaxNode;
-    ClassName: string;
-    Fix: TRuleFix;
-    Fixes: TArray<TRuleFix>;
-  begin
-    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount < 1) or (ANode[0].Kind <> TSyntaxKind.MemberAccess) then
-    begin
-      Exit;
-    end;
-    if SameText(ANode.Name, 'AddObject') then
-    begin
-      ObjectArg := 2;
-    end
-    else if SameText(ANode.Name, 'InsertObject') then
-    begin
-      ObjectArg := 3;
-    end
-    else
-    begin
-      Exit;
-    end;
-    Access := ANode[0];
-    if (ANode.ChildCount <> ObjectArg + 1) or (Access.ChildCount <> 1) then
-    begin
-      Exit;
-    end;
-    Host := HostIndex(KeyOf(TextOf(Access[0])));
-    if (Host < 0) or Hosts[Host].Owning or Hosts[Host].Handled then
-    begin
-      Exit;
-    end;
-    Argument := ANode[ObjectArg];
-    ClassName := CreatedClass(Argument);
-    if (ClassName = '') and (Argument.Kind = TSyntaxKind.Identifier) then
-    begin
-      Routine := EnclosingRoutine(ANode);
-      if Routine <> nil then
-      begin
-        ClassName := LocalCreatedClass(Routine, Argument.Name, ANode);
-      end;
-    end;
-    if ClassName = '' then
-    begin
-      Exit;
-    end;
-    Fixes := nil;
-    if OwnsFix(Hosts[Host], Fix) then
-    begin
-      Fixes := [Fix];
-    end;
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-      Format('%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.',
-      [TextOf(Access[0]), ClassName]), TRuleConfidence.Medium, Fixes);
-  end;
-
-  // Prüft jeden Knoten nach seinen Kindern (Nachordnung) mit CheckAdd.
-  procedure CheckAdds(ANode: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxPostOrderEntry>;
-    Entry: TSyntaxPostOrderEntry;
-    Index: Integer;
-  begin
-    // Iterativ (Bericht M1): Done = die Kinder sind schon geprüft.
-    Pending := TStack<TSyntaxPostOrderEntry>.Create;
-    try
-      Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-      while Pending.Count > 0 do
-      begin
-        Entry := Pending.Pop;
-        if Entry.Done then
-        begin
-          CheckAdd(Entry.Node);
-          Continue;
-        end;
-        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-        for Index := Entry.Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
+function TStringListObjectsScan.OwnsFix(const AHost: TObjectsHost; out AFix: TRuleFix): Boolean;
+var
+  mCreation, mAccess: TSyntaxNode;
+  mClassText: string;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not (ContainsText(AContext.Text, 'AddObject') or
-    ContainsText(AContext.Text, 'InsertObject')) then
+  mCreation := AHost.Creation;
+  if mCreation = nil then
+  begin
+    Exit(False);
+  end;
+  mAccess := mCreation;
+  if mCreation.Kind = TSyntaxKind.Call then
+  begin
+    mAccess := mCreation[0];
+  end;
+  mClassText := TextOf(mAccess[0]);
+  Result := True;
+  if (mCreation.Kind = TSyntaxKind.MemberAccess) or (mCreation.ChildCount = 1) then
+  begin
+    // TStringList.Create bzw. TStringList.Create() → TStringList.Create(True)
+    AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [mClassText]),
+      [TTextEdit.Create(TTextRange.Create(mCreation.StartPos, mCreation.EndPos), mClassText + '.Create(True)')]);
+  end
+  else if (mCreation.ChildCount = 2) and SameText(TextOf(mCreation[1]), 'False') then
+  begin
+    AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [mClassText]),
+      [TTextEdit.Create(TTextRange.Create(mCreation[1].StartPos, mCreation[1].EndPos), 'True')]);
+  end
+  else
+  begin
+    Result := OwnsObjectsFix(mCreation.Parent, AFix);
+  end;
+end;
+
+/// <summary>Andere Konstruktoren: OwnsObjects := True in die Zeile nach der Erzeugung AStatement; die Zeile muss mit
+/// der Anweisung enden.</summary>
+function TStringListObjectsScan.OwnsObjectsFix(AStatement: TSyntaxNode; out AFix: TRuleFix): Boolean;
+begin
+  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.AssignStatement) and
+    (AStatement.StartPos.Line = AStatement.EndPos.Line) and (AStatement.EndPos.Line <= High(FLines));
+  Result := Result and (Trim(Copy(FLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)) = ';');
+  if Result then
+  begin
+    AFix := TRuleFix.Create('OwnsObjects := True setzen',
+      [TTextEdit.Create(TTextRange.Create(AStatement.EndPos.Line + 1, 0, AStatement.EndPos.Line + 1, 0),
+      Copy(FLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character) + TextOf(AStatement[0]) +
+      '.OwnsObjects := True;' + FLineBreak)]);
+  end;
+end;
+
+procedure TStringListObjectsScan.CheckAdd(ANode: TSyntaxNode);
+var
+  mHost: Integer;
+  mClassName: string;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  if not AddedObjectHost(ANode, mHost) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Hosts := nil;
-  CollectHosts(AContext.Tree.Root);
-  if Hosts = nil then
+  mClassName := AddedClass(ANode, ANode[ANode.ChildCount - 1]);
+  if mClassName = '' then
   begin
     Exit;
   end;
-  CollectOwning(AContext.Tree.Root);
-  VisitRoutines(AContext.Tree.Root);
-  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  mFixes := nil;
+  if OwnsFix(FHosts[mHost], mFix) then
+  begin
+    mFixes := [mFix];
+  end;
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+    Format('%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.',
+    [TextOf(ANode[0][0]), mClassName]), TRuleConfidence.Medium, mFixes);
+end;
+
+/// <summary>X.AddObject(S, O) bzw. X.InsertObject(I, S, O) an einer Liste der Unit, die weder besitzt noch ihre
+/// Objekte selbst freigibt: Index der Liste in AHost.</summary>
+function TStringListObjectsScan.AddedObjectHost(ANode: TSyntaxNode; out AHost: Integer): Boolean;
+var
+  mObjectArg: Integer;
+begin
+  AHost := -1;
+  mObjectArg := ObjectArgument(ANode);
+  if (mObjectArg > 0) and (ANode.ChildCount = mObjectArg + 1) and (ANode[0].ChildCount = 1) then
+  begin
+    AHost := HostIndex(TStringListObjectsLeakRule.KeyOf(TextOf(ANode[0][0])));
+  end;
+  Result := (AHost >= 0) and not FHosts[AHost].Owning and not FHosts[AHost].Handled;
+end;
+
+/// <summary>Klasse des übergebenen Objekts: direkt T.Create(…) oder eine lokale Variable daraus; sonst ''.</summary>
+function TStringListObjectsScan.AddedClass(AAdd, AArgument: TSyntaxNode): string;
+var
+  mRoutine: TSyntaxNode;
+begin
+  Result := CreatedClass(AArgument);
+  if (Result = '') and (AArgument.Kind = TSyntaxKind.Identifier) then
+  begin
+    mRoutine := EnclosingRoutine(AAdd);
+    if mRoutine <> nil then
+    begin
+      Result := LocalCreatedClass(mRoutine, AArgument.Name, AAdd);
+    end;
+  end;
+end;
+
+// Prüft jeden Knoten nach seinen Kindern (Nachordnung) mit CheckAdd.
+procedure TStringListObjectsScan.CheckAdds(ANode: TSyntaxNode);
+var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
+  Index: Integer;
+begin
+  // Iterativ (Bericht M1): Done = die Kinder sind schon geprüft.
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    CheckAdds(AContext.Tree.Root);
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
+    begin
+      Entry := Pending.Pop;
+      if Entry.Done then
+      begin
+        CheckAdd(Entry.Node);
+        Continue;
+      end;
+      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+      for Index := Entry.Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+      end;
+    end;
   finally
-    Ancestry.Free;
+    Pending.Free;
+  end;
+end;
+
+procedure TStringListObjectsScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) or not (ContainsText(FContext.Text, 'AddObject') or
+    ContainsText(FContext.Text, 'InsertObject')) then
+  begin
+    Exit;
+  end;
+  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  FHosts := nil;
+  CollectHosts(FContext.Tree.Root);
+  if FHosts = nil then
+  begin
+    Exit;
+  end;
+  CollectOwning(FContext.Tree.Root);
+  VisitRoutines(FContext.Tree.Root);
+  FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(FContext), FContext));
+  try
+    CheckAdds(FContext.Tree.Root);
+  finally
+    FAncestry.Free;
+  end;
+end;
+
+{ TStringListObjectsLeakRule }
+
+procedure TStringListObjectsLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mWorker: TStringListObjectsScan;
+begin
+  mWorker := TStringListObjectsScan.Create(AContext, AReport);
+  try
+    mWorker.Run;
+  finally
+    mWorker.Free;
   end;
 end;
 
