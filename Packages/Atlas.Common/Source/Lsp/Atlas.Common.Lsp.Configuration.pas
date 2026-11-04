@@ -39,6 +39,27 @@ type
   /// <summary>Weitere Meldungen zu den Einstellungen einer atlas.json, z. B. über den Index (#309).</summary>
   TConfigurationExtraIssues = reference to function(const ASettings: TServerSettings): TArray<TConfigurationIssue>;
 
+  /// <summary>Konfigurationsdateien eines Arbeitsbereichs.</summary>
+  TConfigurationFiles = record
+    /// <summary>Gelesene Datei: atlas.json oder die frühere; '' ohne.</summary>
+    Read: string;
+    /// <summary>atlas.json und die frühere Datei, auch wenn es sie nicht gibt; für den Dateibeobachter (#227).
+    /// </summary>
+    Primary: string;
+    Legacy: string;
+  end;
+
+  /// <summary>Texte, aus denen die Einstellungen entstehen (unterste Ebene zuerst); nur im Thread der
+  /// Nachrichtenschleife.</summary>
+  TConfigurationTexts = record
+    /// <summary>Globale Benutzerdatei (#227).</summary>
+    Global: string;
+    /// <summary>Abschnitt der Editor-Einstellungen.</summary>
+    Editor: string;
+    /// <summary>atlas.json des Arbeitsbereichs.</summary>
+    Workspace: string;
+  end;
+
   TLspConfiguration = class
   public const
     DidChangeConfigurationMethod = 'workspace/didChangeConfiguration';
@@ -51,16 +72,11 @@ type
     FLock: TObject;
     FSettings: TServerSettings;
     FRootPath: string;
-    /// <summary>Gelesene Datei des Arbeitsbereichs: atlas.json oder die frühere.</summary>
-    FFileName: string;
-    FPrimaryFileName: string;
-    FLegacyFileName: string;
+    FFiles: TConfigurationFiles;
     FOnChanged: TConfigurationChangedEvent;
     FExtraIssues: TConfigurationExtraIssues;
     // Nur im Thread der Nachrichtenschleife benutzt.
-    FFileText: string;
-    FEditorText: string;
-    FGlobalText: string;
+    FTexts: TConfigurationTexts;
     procedure Recompute;
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -109,17 +125,11 @@ type
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
-    /// <summary>Gelesene Datei (atlas.json oder die frühere), '' ohne; für den Fehlerbericht (#108).</summary>
-    property FileName: string read FFileName;
-    /// <summary>atlas.json und die frühere Datei des Arbeitsbereichs, auch wenn es sie nicht gibt; für den
-    /// Dateibeobachter (#227).</summary>
-    property PrimaryFileName: string read FPrimaryFileName;
-    property LegacyFileName: string read FLegacyFileName;
-    /// <summary>Text der Datei bzw. des Editor-Abschnitts, aus dem Settings entsteht; nur im Thread der
-    /// Nachrichtenschleife lesen.</summary>
-    property FileText: string read FFileText;
-    property EditorText: string read FEditorText;
-    property GlobalText: string read FGlobalText;
+    /// <summary>Gelesene Datei sowie atlas.json und die frühere des Arbeitsbereichs; für den Fehlerbericht (#108)
+    /// und den Dateibeobachter (#227).</summary>
+    property Files: TConfigurationFiles read FFiles;
+    /// <summary>Texte, aus denen Settings entsteht; nur im Thread der Nachrichtenschleife lesen.</summary>
+    property Texts: TConfigurationTexts read FTexts;
     /// <summary>Weitere Meldungen in atlas.json; ohne Zuweisung keine.</summary>
     property ExtraIssues: TConfigurationExtraIssues read FExtraIssues write FExtraIssues;
     /// <summary>Wird nach jeder Übernahme neuer Einstellungen aufgerufen.</summary>
@@ -194,7 +204,7 @@ var
   Ignored: TArray<TConfigurationIssue>;
 begin
   // Die Meldungen zur Datei sind schon veröffentlicht.
-  Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalText, FEditorText, FFileText), Ignored));
+  Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FTexts.Global, FTexts.Editor, FTexts.Workspace), Ignored));
 end;
 
 function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
@@ -216,18 +226,18 @@ var
   Uri: string;
   Document: ITextDocument;
 begin
-  if FFileName = '' then
+  if FFiles.Read = '' then
   begin
     Exit;
   end;
-  Uri := TDocumentUris.FromPath(FFileName);
+  Uri := TDocumentUris.FromPath(FFiles.Read);
   if (FStore <> nil) and FStore.TryGet(Uri, Document) then
   begin
     Publish(Uri, Document.Version, FileIssues(Document.Text));
   end
-  else if FFileText <> '' then
+  else if FTexts.Workspace <> '' then
   begin
-    Publish(Uri, -1, FileIssues(FFileText));
+    Publish(Uri, -1, FileIssues(FTexts.Workspace));
   end;
 end;
 
@@ -238,21 +248,21 @@ end;
 
 procedure TLspConfiguration.SetEditorSettings(const AText: string);
 begin
-  if AText = FEditorText then
+  if AText = FTexts.Editor then
   begin
     Exit;
   end;
-  FEditorText := AText;
+  FTexts.Editor := AText;
   Recompute;
 end;
 
 procedure TLspConfiguration.SetGlobalSettings(const AText: string);
 begin
-  if AText = FGlobalText then
+  if AText = FTexts.Global then
   begin
     Exit;
   end;
-  FGlobalText := AText;
+  FTexts.Global := AText;
   Recompute;
 end;
 
@@ -260,13 +270,13 @@ function TLspConfiguration.FileChanged(const AFileName: string): Boolean;
 var
   Document: ITextDocument;
 begin
-  Result := (AFileName <> '') and (SameText(AFileName, FPrimaryFileName) or SameText(AFileName, FLegacyFileName));
+  Result := (AFileName <> '') and (SameText(AFileName, FFiles.Primary) or SameText(AFileName, FFiles.Legacy));
   if not Result then
   begin
     Exit;
   end;
   // Im Editor geöffnet: Dort gilt der Text des Editors, bis er schließt.
-  if (FFileName <> '') and FStore.TryGet(TDocumentUris.FromPath(FFileName), Document) then
+  if (FFiles.Read <> '') and FStore.TryGet(TDocumentUris.FromPath(FFiles.Read), Document) then
   begin
     Exit(False);
   end;
@@ -343,7 +353,7 @@ end;
 
 function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
 begin
-  Result := (FFileName <> '') and SameText(TDocumentUris.ToPath(AUri), FFileName);
+  Result := (FFiles.Read <> '') and SameText(TDocumentUris.ToPath(AUri), FFiles.Read);
 end;
 
 class function TLspConfiguration.BuildParams(const AUri: string; AVersion: Integer;
@@ -398,83 +408,95 @@ var
   Issues: TArray<TConfigurationIssue>;
   Found: Boolean;
 begin
-  FFileName := FPrimaryFileName;
-  Found := (FFileName <> '') and FReadFile(FFileName, Text);
-  if not Found and (FLegacyFileName <> '') and FReadFile(FLegacyFileName, Text) then
+  FFiles.Read := FFiles.Primary;
+  Found := (FFiles.Read <> '') and FReadFile(FFiles.Read, Text);
+  if not Found and (FFiles.Legacy <> '') and FReadFile(FFiles.Legacy, Text) then
   begin
-    FFileName := FLegacyFileName;
+    FFiles.Read := FFiles.Legacy;
     Found := True;
   end;
   if Found then
   begin
     Issues := FileIssues(Text);
-    Publish(TDocumentUris.FromPath(FFileName), -1, Issues);
-    FFileText := Text;
+    Publish(TDocumentUris.FromPath(FFiles.Read), -1, Issues);
+    FTexts.Workspace := Text;
   end
   else
   begin
-    FFileText := '';
+    FTexts.Workspace := '';
   end;
   Recompute;
 end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath, AGlobalText: string);
 begin
-  FGlobalText := AGlobalText;
+  FTexts.Global := AGlobalText;
   LoadWorkspace(ARootPath);
+end;
+
+/// <summary>ARootPath mit Trennzeichen am Ende, \ oder / wie im Pfad.</summary>
+function DirOf(const ARootPath: string): string;
+var
+  mSeparator: string;
+begin
+  mSeparator := '/';
+  if Pos('\', ARootPath) > 0 then
+  begin
+    mSeparator := '\';
+  end;
+  Result := ARootPath;
+  if ARootPath[Length(ARootPath)] <> mSeparator then
+  begin
+    Result := ARootPath + mSeparator;
+  end;
+end;
+
+/// <summary>Gibt es in ADir atlas.json oder die frühere Datei?</summary>
+function HasConfiguration(const AReadFile: TConfigurationFileReader; const ADir: string): Boolean;
+var
+  mText: string;
+begin
+  Result := AReadFile(ADir + ConfigurationFileName, mText) or AReadFile(ADir + LegacyConfigurationFileName, mText);
+end;
+
+/// <summary>Ordner mit atlas.json ab ADir nach oben, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks;
+/// '' ohne Fund.</summary>
+function ConfigurationDir(const AReadFile: TConfigurationFileReader; const ADir: string): string;
+var
+  mParent: string;
+begin
+  Result := ADir;
+  while not HasConfiguration(AReadFile, Result) do
+  begin
+    mParent := ExtractFilePath(ExcludeTrailingPathDelimiter(Result));
+    if DirectoryExists(Result + '.git') or DirectoryExists(Result + '.svn') or FileExists(Result + '.git') or
+      (mParent = '') or SameText(mParent, Result) then
+    begin
+      Exit('');
+    end;
+    Result := mParent;
+  end;
 end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);
 var
-  Separator, Dir, Parent, Text: string;
+  mDir, mFound: string;
 begin
   FRootPath := ARootPath;
-  if ARootPath = '' then
+  FFiles.Primary := '';
+  FFiles.Legacy := '';
+  if ARootPath <> '' then
   begin
-    FPrimaryFileName := '';
-    FLegacyFileName := '';
-  end
-  else
-  begin
-    if Pos('\', ARootPath) > 0 then
-    begin
-      Separator := '\';
-    end
-    else
-    begin
-      Separator := '/';
-    end;
-    if ARootPath[Length(ARootPath)] = Separator then
-    begin
-      Dir := ARootPath;
-    end
-    else
-    begin
-      Dir := ARootPath + Separator;
-    end;
     // Projekte einer Gruppe liegen oft in Unterordnern (Packages\X\X.dproj), atlas.json im Stamm: nach oben
-    // suchen, bis zum Stamm des Repositorys (.git/.svn) bzw. des Laufwerks. Ohne Fund gilt die Wurzel selbst
-    // (dort legt "atlas.json anlegen" die Datei an).
-    FPrimaryFileName := Dir + ConfigurationFileName;
-    FLegacyFileName := Dir + LegacyConfigurationFileName;
-    while not (FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text)) do
+    // suchen. Ohne Fund gilt die Wurzel selbst (dort legt "atlas.json anlegen" die Datei an).
+    mDir := DirOf(ARootPath);
+    mFound := ConfigurationDir(FReadFile, mDir);
+    if mFound <> '' then
     begin
-      if DirectoryExists(Dir + '.git') or DirectoryExists(Dir + '.svn') or FileExists(Dir + '.git') then
-      begin
-        Break;
-      end;
-      Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Dir));
-      if (Parent = '') or SameText(Parent, Dir) then
-      begin
-        Break;
-      end;
-      Dir := Parent;
+      mDir := mFound;
     end;
-    if FReadFile(Dir + ConfigurationFileName, Text) or FReadFile(Dir + LegacyConfigurationFileName, Text) then
-    begin
-      FPrimaryFileName := Dir + ConfigurationFileName;
-      FLegacyFileName := Dir + LegacyConfigurationFileName;
-    end;
+    FFiles.Primary := mDir + ConfigurationFileName;
+    FFiles.Legacy := mDir + LegacyConfigurationFileName;
   end;
   LoadFromDisk;
 end;
@@ -494,7 +516,7 @@ begin
         Publish(ADocument.Uri, ADocument.Version, Issues);
         if IsWorkspaceFile(ADocument.Uri) then
         begin
-          FFileText := ADocument.Text;
+          FTexts.Workspace := ADocument.Text;
           Recompute;
         end;
       end;
