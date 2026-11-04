@@ -54,6 +54,16 @@ type
     /// <summary>Adresse eines Issues in der API (ohne Anhang wie /comments); '' bei ungültiger Kennung.</summary>
     class function IssueApiUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
     class function Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer; static;
+    /// <summary>Ergebnis eines Schreibzugriffs: Fehler ohne Antwort (ASent = False) bzw. mit Status außerhalb
+    /// von Answered, sonst Ok.</summary>
+    class function WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult; static;
+    /// <summary>GET mit Antwort 200; sonst False mit AError (Status über ErrorOfStatus).</summary>
+    class function GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer;
+      out AText: string; out AError: TAtlasCiFetchError): Boolean; static;
+    /// <summary>GET in der restlichen Zeit von ACall (seit AWatch) mit Antwort 200; False ohne Zeit oder bei
+    /// Fehler (der dann nicht zählt).</summary>
+    class function GetInTime(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch; const AUrl: string;
+      out AText: string): Boolean; static;
     /// <summary>AState schließt das Issue statt ein Label zu setzen (Erledigt, Done, Closed, Geschlossen, Completed,
     /// Fertig; ohne Groß-/Kleinschreibung).</summary>
     class function ClosesIssue(const AState: string): Boolean; static;
@@ -294,6 +304,46 @@ end;
 const
   ClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
 
+class function TAtlasGitHubApi.WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
+begin
+  if not ASent then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(AResponse.Error, 0, '');
+  end
+  else if not Answered(AResponse.Status) then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(AResponse.Status), AResponse.Status,
+      ErrorMessage(AResponse.Text));
+  end
+  else
+  begin
+    Result := TAtlasTrackerWriteResult.Ok;
+  end;
+end;
+
+class function TAtlasGitHubApi.GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer;
+  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+begin
+  Result := ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError);
+  if Result and (mStatus <> 200) then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Result := False;
+  end;
+end;
+
+class function TAtlasGitHubApi.GetInTime(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch;
+  const AUrl: string; out AText: string): Boolean;
+var
+  mIgnored: TAtlasCiFetchError;
+begin
+  AText := '';
+  Result := (Remaining(AWatch, ACall.TimeoutMs) > 0)
+    and GetText(ACall.Transport, AUrl, Remaining(AWatch, ACall.TimeoutMs), AText, mIgnored);
+end;
+
 class function TAtlasGitHubApi.ClosesIssue(const AState: string): Boolean;
 var
   mState: string;
@@ -346,55 +396,70 @@ begin
   end;
 end;
 
+/// <summary>Labels nach dem neuen Zustand: der Zustand aus „Beginnen“ fällt weg, der neue kommt dazu (nicht
+/// beim Schließen); True, wenn sich etwas ändert.</summary>
+function ChangeStateLabels(var ALabels: TArray<string>; const AState, APrevious: string; AClose: Boolean): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  if AState = '' then
+  begin
+    Exit;
+  end;
+  mIndex := IndexOfText(ALabels, APrevious);
+  if (APrevious <> '') and not SameText(APrevious, AState) and (mIndex >= 0) then
+  begin
+    Delete(ALabels, mIndex, 1);
+    Result := True;
+  end;
+  if not AClose and (IndexOfText(ALabels, AState) < 0) then
+  begin
+    ALabels := ALabels + [AState];
+    Result := True;
+  end;
+end;
+
+/// <summary>Zuständige nach AChange.Assign; True, wenn sich etwas ändert.</summary>
+function ChangeAssignees(var AAssignees: TArray<string>; const AChange: TAtlasTrackerWrite;
+  const AMe: string): Boolean;
+var
+  mUser: string;
+begin
+  Result := False;
+  mUser := Trim(AChange.Assignee);
+  if AChange.Assign = TAtlasTrackerAssign.Me then
+  begin
+    Result := (AMe <> '') and (IndexOfText(AAssignees, AMe) < 0);
+    if Result then
+    begin
+      AAssignees := AAssignees + [AMe];
+    end;
+  end
+  else if (AChange.Assign = TAtlasTrackerAssign.User) and (mUser <> '') then
+  begin
+    // Übergeben: der neue Zuständige statt aller bisherigen.
+    Result := (Length(AAssignees) <> 1) or not SameText(AAssignees[0], mUser);
+    AAssignees := TArray<string>.Create(mUser);
+  end;
+  // Keep: Zuständige bleiben.
+end;
+
 class function TAtlasGitHubApi.PatchJson(const ALabels, AAssignees: TArray<string>;
   const AChange: TAtlasTrackerWrite; const AMe: string): string;
 var
   mObject: TJSONObject;
   mLabels, mAssignees: TArray<string>;
-  mState, mPrevious: string;
-  mIndex: Integer;
+  mState: string;
   mClose, mLabelsChanged, mAssigneesChanged: Boolean;
 begin
   Result := '';
   mLabels := Copy(ALabels);
   mAssignees := Copy(AAssignees);
   mState := Trim(AChange.State);
-  mPrevious := Trim(AChange.PreviousState);
   mClose := (mState <> '') and ClosesIssue(mState);
-  mLabelsChanged := False;
-  if mState <> '' then
-  begin
-    // Der Zustand aus „Beginnen“ gilt nicht mehr.
-    mIndex := IndexOfText(mLabels, mPrevious);
-    if (mPrevious <> '') and not SameText(mPrevious, mState) and (mIndex >= 0) then
-    begin
-      Delete(mLabels, mIndex, 1);
-      mLabelsChanged := True;
-    end;
-    if not mClose and (IndexOfText(mLabels, mState) < 0) then
-    begin
-      mLabels := mLabels + [mState];
-      mLabelsChanged := True;
-    end;
-  end;
-  mAssigneesChanged := False;
-  case AChange.Assign of
-    TAtlasTrackerAssign.Me:
-      if (AMe <> '') and (IndexOfText(mAssignees, AMe) < 0) then
-      begin
-        mAssignees := mAssignees + [AMe];
-        mAssigneesChanged := True;
-      end;
-    TAtlasTrackerAssign.User:
-      if Trim(AChange.Assignee) <> '' then
-      begin
-        // Übergeben: der neue Zuständige statt aller bisherigen.
-        mAssigneesChanged := (Length(mAssignees) <> 1) or not SameText(mAssignees[0], Trim(AChange.Assignee));
-        mAssignees := TArray<string>.Create(Trim(AChange.Assignee));
-      end;
-  else
-    // Keep: Zuständige bleiben.
-  end;
+  mLabelsChanged := ChangeStateLabels(mLabels, mState, Trim(AChange.PreviousState), mClose);
+  mAssigneesChanged := ChangeAssignees(mAssignees, AChange, AMe);
   if not (mLabelsChanged or mAssigneesChanged or mClose) then
   begin
     Exit;

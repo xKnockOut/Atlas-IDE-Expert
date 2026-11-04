@@ -496,7 +496,7 @@ begin
     '{"login":"anna","fullName":"Anna Berger"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(YouTrackTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   // YouTrack findet "mail" etwa über die E-Mail-Adresse: bleibt, aber hinter dem Treffer im Namen.
   Assert.AreEqual('anna,mail', Logins(mUsers));
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
@@ -519,7 +519,7 @@ begin
   mTransport := TUsersTransport.Create(200, '[{"login":"octocat"},{"login":"anna-b"},{"login":"banana"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasGitHubTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(GitHubTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   Assert.AreEqual('anna-b,banana', Logins(mUsers), 'nur passende, Anfang zuerst');
   Assert.IsTrue(mTransport.Calls[0].EndsWith('/assignees?per_page=100'));
   mUsers := nil;

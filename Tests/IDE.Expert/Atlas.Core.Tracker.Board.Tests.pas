@@ -537,7 +537,7 @@ begin
     Fixture('YouTrack', 'agile-sprint.json'));
   mTransport.Answer('https://firma.youtrack.cloud/api/users/me', '', 200, Fixture('YouTrack', 'users-me.json'));
   mBoards := TAtlasYouTrackBoards.Create;
-  Assert.IsTrue(mBoards.LoadBoard(YouTrackTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.None);
   Assert.AreEqual(Integer(4), Integer(Length(mTransport.Calls)));
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Sprints)));
@@ -546,7 +546,7 @@ begin
   Assert.AreEqual(Integer(1), Integer(Length(TAtlasTrackerBoard.Visible(mSnapshot, True, ''))));
   // Gewählter Sprint statt des aktuellen.
   mTransport.Calls := nil;
-  mBoards.LoadBoard(YouTrackTarget, mKeep, '108-2', '109-41', 10000, mSnapshot, mError);
+  mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '108-2', '109-41', 10000), mSnapshot, mError);
   Assert.IsTrue(Pos('/sprints/109-41?', mTransport.Calls[2]) > 0);
 end;
 
@@ -562,12 +562,12 @@ begin
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, '[]');
   mBoards := TAtlasYouTrackBoards.Create;
-  Assert.IsFalse(mBoards.LoadBoard(YouTrackTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles', '', 401, '');
-  Assert.IsFalse(mBoards.LoadBoard(YouTrackTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
 end;
 
@@ -585,7 +585,7 @@ begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, '[]');
-  Assert.IsFalse(mBoards.LoadBoard(YouTrackTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsFalse(mBoards.LoadBoard(TAtlasBoardRequest.Create(YouTrackTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotFound, 'weitergeleitet an TAtlasYouTrackBoards');
 end;
 
@@ -611,7 +611,8 @@ begin
   mTransport.Answer('https://firma.youtrack.cloud/api/commands', '', 200, '{}');
   mSnapshot := YouTrackSnapshot;
   mBoards := TAtlasYouTrackBoards.Create;
-  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 2, 'Bitte prüfen', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 2, 'Bitte prüfen',
+    15000), mSnapshot);
   Assert.IsTrue(mResult.Succeeded);
   Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
   Assert.AreEqual('POST', mTransport.Methods[0]);
@@ -619,9 +620,10 @@ begin
   Assert.AreEqual('Bitte prüfen', JsonText(mTransport.Bodies[0], 'comment'));
   Assert.IsTrue(Pos('ATL-123', mTransport.Bodies[0]) > 0);
   // Spalte mit mehreren Werten: der erste.
-  mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 0, '', 15000);
+  mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 0, '', 15000), mSnapshot);
   Assert.AreEqual('Zustand Offen', JsonText(mTransport.Bodies[1], 'query'));
-  Assert.IsFalse(mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 9, '', 15000).Succeeded);
+  Assert.IsFalse(mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 9, '', 15000),
+    mSnapshot).Succeeded);
 end;
 
 procedure TAtlasYouTrackBoardTests.MoveWithoutRightsFailsWithReason;
@@ -638,7 +640,8 @@ begin
     '{"error": "Forbidden", "error_description": "Keine Berechtigung für das Feld Zustand"}');
   mSnapshot := YouTrackSnapshot;
   mBoards := TAtlasYouTrackBoards.Create;
-  mResult := mBoards.MoveCard(YouTrackTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 2, '', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(YouTrackTarget, mKeep, mSnapshot.Cards[0], 2, '', 15000),
+    mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
   Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
   Assert.AreEqual(403, mResult.Status);
@@ -726,7 +729,7 @@ begin
   mTransport.Answer('https://api.github.com/graphql', 'projectsV2', 200, Fixture('GitHub', 'projects-v2.json'));
   mTransport.Answer('https://api.github.com/graphql', 'PVT_atlas', 200, Fixture('GitHub', 'project-v2.json'));
   mBoards := TAtlasGitHubBoards.Create;
-  Assert.IsTrue(mBoards.LoadBoard(GitHubTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
   Assert.IsTrue(Pos('"name":"atlas"', mTransport.Bodies[0]) > 0, mTransport.Bodies[0]);
   Assert.AreEqual('PVT_atlas', mSnapshot.Board.Id);
@@ -751,7 +754,7 @@ begin
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
     Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
-  Assert.IsTrue(mBoards.LoadBoard(GitHubTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository);
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Columns)));
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards)), 'ohne Pull Request');
@@ -781,7 +784,7 @@ begin
     Fixture('GitHub', 'repo-issues-open.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
     Fixture('GitHub', 'repo-issues-closed.json'));
-  Assert.IsTrue(mBoards.LoadBoard(GitHubTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository, 'weitergeleitet an TAtlasGitHubBoards');
 end;
 
@@ -801,7 +804,7 @@ begin
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
     Fixture('GitHub', 'repo-issues-closed.json'));
   mBoards := TAtlasGitHubBoards.Create;
-  Assert.IsTrue(mBoards.LoadBoard(GitHubTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mBoards.LoadBoard(TAtlasBoardRequest.Create(GitHubTarget, mKeep, '', '', 10000), mSnapshot, mError));
   Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository);
   Assert.IsTrue(mSnapshot.ProjectsDenied);
   Assert.AreEqual(Integer(2), Integer(Length(mSnapshot.Cards)));
@@ -827,7 +830,8 @@ begin
     '{"data":{"updateProjectV2ItemFieldValue":{"projectV2Item":{"id":"PVTI_1"}}}}');
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753/comments', '', 201, '{}');
   mBoards := TAtlasGitHubBoards.Create;
-  mResult := mBoards.MoveCard(GitHubTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 2, 'Zur Prüfung', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 2, 'Zur Prüfung',
+    15000), mSnapshot);
   Assert.IsTrue(mResult.Succeeded, mResult.Message);
   Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
   Assert.IsTrue(Pos('/comments', mTransport.Calls[0]) > 0, 'Kommentar zuerst');
@@ -837,7 +841,7 @@ begin
   mTransport := TFakeBoardTransport.Create;
   mKeep := mTransport;
   mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'graphql-scopes.json'));
-  mResult := mBoards.MoveCard(GitHubTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 2, '', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 2, '', 15000), mSnapshot);
   Assert.IsFalse(mResult.Succeeded);
   Assert.IsTrue(mResult.Error = TAtlasCiFetchError.Unauthorized);
   Assert.IsTrue(Pos('read:project', mResult.Message) > 0);
@@ -862,10 +866,11 @@ begin
     '{"message": "Must have admin rights"}');
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', '', 200, '{}');
   mBoards := TAtlasGitHubBoards.Create;
-  mResult := mBoards.MoveCard(GitHubTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 1, 'Fertig', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 1, 'Fertig', 15000),
+    mSnapshot);
   Assert.IsFalse(mResult.Succeeded, 'Kommentar abgelehnt: nichts geändert');
   Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
-  mResult := mBoards.MoveCard(GitHubTarget, mKeep, mSnapshot, mSnapshot.Cards[0], 1, '', 15000);
+  mResult := mBoards.MoveCard(TAtlasBoardMove.Create(GitHubTarget, mKeep, mSnapshot.Cards[0], 1, '', 15000), mSnapshot);
   Assert.IsTrue(mResult.Succeeded);
   Assert.AreEqual('PATCH', mTransport.Methods[1]);
   Assert.AreEqual('{"state":"closed"}', mTransport.Bodies[1]);
