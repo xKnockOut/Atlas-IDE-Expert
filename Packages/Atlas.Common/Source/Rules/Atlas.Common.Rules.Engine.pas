@@ -183,6 +183,58 @@ type
       const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
   end;
 
+  /// <summary>Regel mit IRuleAfterFindings, die nach allen Regeln mit den rohen Treffern läuft (#297).</summary>
+  TDeferredRule = record
+    Rule: IRuleAfterFindings;
+    Id: string;
+    Severity: TRuleSeverity;
+    Context: TRuleContext;
+  end;
+
+  /// <summary>Ein Lauf von TRuleEngine.Run über eine Datei: Regeln, nachgelagerte Regeln, Unterdrückungen.
+  /// Hält den gemeinsamen Kontext samt eigenem Ableitungscache und eigener Baumauswertung und gibt sie im
+  /// Destruktor frei, bevor der Aufrufer den Baum freigibt.</summary>
+  TRuleRun = class
+  private
+    FRules: TArray<IRule>;
+    FSettings: TServerSettings;
+    FContext: TRuleContext;
+    FShared: TRuleContext;
+    FOwnCache: IRuleDerivedCache;
+    FOwnUnits: ITreeUnits;
+    FFindings: TList<TRuleFinding>;
+    FKept: TList<TRuleFinding>;
+    FRanIds: TList<string>;
+    FDeferred: TList<TDeferredRule>;
+    FSuppressions: TSuppressions;
+    function RuleContext(const ARuleId: string): TRuleContext;
+    function Runs(const ADescriptor: TRuleDescriptor; out ASeverity: TRuleSeverity): Boolean;
+    function MustRaise(AError: Exception): Boolean;
+    procedure Discard(AError: Exception; const ARuleId: string; ABefore: Integer);
+    procedure CheckCancelled;
+    function Checked(const ARule: IRule; const ARuleId: string; ASeverity: TRuleSeverity;
+      const AContext: TRuleContext): Boolean;
+    procedure RuleTimed(const ARuleId: string; const AWatch: TStopwatch);
+    procedure Defer(const ARule: IRule; const ARuleId: string; ASeverity: TRuleSeverity; const AContext: TRuleContext);
+    procedure RunRule(const ARule: IRule);
+    procedure RunDeferred(const ADeferred: TDeferredRule);
+    procedure KeepUnsuppressed;
+    function AllRan(const AEntry: TSuppressionEntry): Boolean;
+    procedure KeepUnusedSuppressions;
+    function KnownRuleIds: TArray<string>;
+    procedure KeepUnknownRuleIds;
+  public
+    /// <summary>ASettings sind die Einstellungen der Datei, für Test-Units schon mit dem Testprofil.</summary>
+    constructor Create(const ARules: TArray<IRule>; const ASettings: TServerSettings; const AContext: TRuleContext);
+    destructor Destroy; override;
+    /// <summary>Alle Treffer der Regeln, nach Zeile sortiert.</summary>
+    function Execute: TArray<TRuleFinding>;
+    /// <summary>False, wenn die Datei ausgeschlossen ist (global oder als Test-Unit); AEffective sind die
+    /// Einstellungen für die Datei (Testprofil für Test-Units).</summary>
+    class function Applies(const ASettings: TServerSettings; const AContext: TRuleContext;
+      out AEffective: TServerSettings): Boolean; static;
+  end;
+
 /// <summary>Hinweis unit-too-deep an der tiefsten Stelle einer Unit, deren Baum tiefer als MaxTreeDepth ist
 /// (Bericht M1); leer, wenn der Hinweis abgeschaltet ist.</summary>
 function TooDeepFindings(ATree: TSyntaxTree; const ASettings: TServerSettings): TArray<TRuleFinding>;
@@ -509,422 +561,517 @@ begin
   end;
 end;
 
+/// <summary>True und wirksamer Schweregrad, wenn ADescriptor für den Pfad läuft: nicht aus und, falls
+/// experimentell, in "rules" eingeschaltet.</summary>
+function SeverityIfOn(const ADescriptor: TRuleDescriptor; const ASettings: TServerSettings;
+  const ARelativePath: string; out ASeverity: TRuleSeverity): Boolean;
+var
+  mEnabled: Boolean;
+begin
+  ASeverity := TRuleEngine.EffectiveSeverity(ADescriptor, ASettings, ARelativePath, mEnabled);
+  Result := (ASeverity <> TRuleSeverity.Off) and (mEnabled or not ADescriptor.Experimental);
+end;
+
+/// <summary>Beschreibung der Regel AId aus ARules, sonst aus dem Katalog; False, wenn sie keiner kennt.</summary>
+function TryDescriptor(const AId: string; const ARules: TArray<IRule>; out ADescriptor: TRuleDescriptor): Boolean;
+var
+  mRule: IRule;
+  mEntry: TRuleCatalogEntry;
+begin
+  for mRule in ARules do
+  begin
+    if SameText(mRule.Descriptor.Id, AId) then
+    begin
+      ADescriptor := mRule.Descriptor;
+      Exit(True);
+    end;
+  end;
+  Result := TRuleCatalog.Shared.TryFind(AId, mEntry);
+  if Result then
+  begin
+    ADescriptor := TRuleDescriptor.Create(mEntry.Id, mEntry.DefaultSeverity, mEntry.Name);
+  end;
+end;
+
 class function TRuleEngine.OverridingRule(const ARuleId: string; const ARules: TArray<IRule>;
   const ASettings: TServerSettings; const ARelativePath, AUnitName: string): string;
 var
-  Entry, Other: TRuleCatalogEntry;
-  Id: string;
-  Rule: IRule;
-  Descriptor: TRuleDescriptor;
-  Found, Enabled: Boolean;
+  mEntry: TRuleCatalogEntry;
+  mId: string;
+  mDescriptor: TRuleDescriptor;
+  mSeverity: TRuleSeverity;
 begin
   Result := '';
-  if not TRuleCatalog.Shared.TryFind(ARuleId, Entry) then
+  if not TRuleCatalog.Shared.TryFind(ARuleId, mEntry) then
   begin
     Exit;
   end;
-  for Id in Entry.OverriddenBy do
+  for mId in mEntry.OverriddenBy do
   begin
-    Found := False;
-    for Rule in ARules do
+    if TryDescriptor(mId, ARules, mDescriptor) and
+      SeverityIfOn(mDescriptor, ASettings, ARelativePath, mSeverity) and
+      not IsExceptedByOptions(RuleOptions(mDescriptor.Id, ASettings), ARelativePath, AUnitName) then
     begin
-      if SameText(Rule.Descriptor.Id, Id) then
-      begin
-        Descriptor := Rule.Descriptor;
-        Found := True;
-        Break;
-      end;
+      Exit(mDescriptor.Id);
     end;
-    if not Found then
-    begin
-      if not TRuleCatalog.Shared.TryFind(Id, Other) then
-      begin
-        Continue;
-      end;
-      Descriptor := TRuleDescriptor.Create(Other.Id, Other.DefaultSeverity, Other.Name);
-    end;
-    if EffectiveSeverity(Descriptor, ASettings, ARelativePath, Enabled) = TRuleSeverity.Off then
-    begin
-      Continue;
-    end;
-    if (Descriptor.Experimental and not Enabled) or
-      IsExceptedByOptions(RuleOptions(Descriptor.Id, ASettings), ARelativePath, AUnitName) then
-    begin
-      Continue;
-    end;
-    Exit(Descriptor.Id);
   end;
 end;
 
 class function TRuleEngine.NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TPascalNamePrefixes;
 var
-  Rule: IRule;
-  Source: IRuleNewNames;
-  Descriptor: TRuleDescriptor;
-  Enabled: Boolean;
-  Context: TRuleContext;
+  mRule: IRule;
+  mSource: IRuleNewNames;
+  mSeverity: TRuleSeverity;
+  mContext: TRuleContext;
 begin
   Result := TPascalNamePrefixes.None;
-  for Rule in ARules do
+  for mRule in ARules do
   begin
-    if not Supports(Rule, IRuleNewNames, Source) then
-    begin
-      Continue;
-    end;
-    Descriptor := Rule.Descriptor;
     // Dieselben Bedingungen wie für den Lauf der Regel: Schweregrad, experimentell, Ausnahmen der Optionen.
-    if (EffectiveSeverity(Descriptor, ASettings, AContext.RelativePath, Enabled) = TRuleSeverity.Off) or
-      (Descriptor.Experimental and not Enabled) then
+    if not Supports(mRule, IRuleNewNames, mSource) or
+      not SeverityIfOn(mRule.Descriptor, ASettings, AContext.RelativePath, mSeverity) then
     begin
       Continue;
     end;
-    Context := AContext;
-    Context.Options := RuleOptions(Descriptor.Id, ASettings);
-    if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
+    mContext := AContext;
+    mContext.Options := RuleOptions(mRule.Descriptor.Id, ASettings);
+    if not IsExceptedByOptions(mContext.Options, mContext.RelativePath, mContext.UnitName) then
     begin
-      Continue;
+      Exit(mSource.NewNames(mContext));
     end;
-    Exit(Source.NewNames(Context));
   end;
 end;
 
 class function TRuleEngine.Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TArray<TRuleFinding>;
 var
-  Findings: TList<TRuleFinding>;
-  Kept: TList<TRuleFinding>;
-  Suppressions: TSuppressions;
-  Rule: IRule;
-  Report: IRuleReport;
-  Descriptor: TRuleDescriptor;
-  Severity: TRuleSeverity;
-  Context: TRuleContext;
-  Finding: TRuleFinding;
-  RanIds: TList<string>;
-  Entry: TSuppressionEntry;
-  Id: string;
-  AllRan: Boolean;
-  Removal: TTextRange;
-  Enabled: Boolean;
-  Settings: TServerSettings;
-  MinConfidence: TRuleConfidence;
-  Watch: TStopwatch;
-  Elapsed: Int64;
-  Shared: TRuleContext;
-  OwnCache: IRuleDerivedCache;
-  mOwnUnits: ITreeUnits;
-  Known: TArray<string>;
-  Index: Integer;
-  Suggestion: string;
-  After: IRuleAfterFindings;
-  Afters: TList<IRuleAfterFindings>;
-  AfterIds: TList<string>;
-  AfterSeverities: TList<TRuleSeverity>;
-  AfterContexts: TList<TRuleContext>;
-  Before: Integer;
-  Failed: Boolean;
-  mRules: TArray<IRule>;
+  mSettings: TServerSettings;
+  mRun: TRuleRun;
 begin
-  if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
+  Result := nil;
+  if not TRuleRun.Applies(ASettings, AContext, mSettings) then
   begin
-    Exit(nil);
-  end;
-  Settings := ASettings;
-  if (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
-    TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
-  begin
-    if ASettings.ExcludeTests then
-    begin
-      Exit(nil);
-    end;
-    Settings.Profile := ASettings.TestProfile;
+    Exit;
   end;
   if (AContext.Tree <> nil) and (AContext.Tree.Depth > MaxTreeDepth) then
   begin
     TRequestDiagnostics.TreeTooDeep(AContext.Tree.Depth);
-    Result := TooDeepFindings(AContext.Tree, ASettings);
-    Exit;
+    Exit(TooDeepFindings(AContext.Tree, ASettings));
   end;
-  MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
+  mRun := TRuleRun.Create(ARules, mSettings, AContext);
+  try
+    Result := mRun.Execute;
+  finally
+    mRun.Free;
+  end;
+end;
+
+{ TRuleRun }
+
+class function TRuleRun.Applies(const ASettings: TServerSettings; const AContext: TRuleContext;
+  out AEffective: TServerSettings): Boolean;
+begin
+  AEffective := ASettings;
+  Result := (AContext.RelativePath = '') or not ASettings.IsExcluded(AContext.RelativePath);
+  if Result and (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
+    TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
+  begin
+    Result := not ASettings.ExcludeTests;
+    AEffective.Profile := ASettings.TestProfile;
+  end;
+end;
+
+constructor TRuleRun.Create(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const AContext: TRuleContext);
+begin
+  inherited Create;
+  FSettings := ASettings;
+  FContext := AContext;
   // Gespeicherte Abfragen mit failIfAny (#1351) laufen als Regeln query:<name>, wo der Arbeitsbereich Abfragen
   // anbietet: Editor, --check und SARIF zeigen sie, Unterdrückungen und Baseline wirken wie bei jeder Regel.
-  mRules := ARules;
+  FRules := ARules;
   if AContext.Queries <> nil then
   begin
-    mRules := mRules + TSavedQueryRule.RulesOf(Settings);
+    FRules := FRules + TSavedQueryRule.RulesOf(ASettings);
   end;
+  FFindings := TList<TRuleFinding>.Create;
+  FKept := TList<TRuleFinding>.Create;
+  FRanIds := TList<string>.Create;
+  FDeferred := TList<TDeferredRule>.Create;
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
-  Shared := AContext;
+  FShared := AContext;
   // Neue Namen der Korrekturen nach der Namensregel (#1111), einmal für alle Regeln.
-  Shared.NewNames := NewNames(mRules, Settings, Shared);
-  OwnCache := nil;
-  if Shared.Derived = nil then
+  FShared.NewNames := TRuleEngine.NewNames(FRules, ASettings, FShared);
+  if FShared.Derived = nil then
   begin
-    OwnCache := TRuleDerivedCache.Create;
-    Shared.Derived := OwnCache;
+    FOwnCache := TRuleDerivedCache.Create;
+    FShared.Derived := FOwnCache;
   end;
   // Eine Auswertung des Baums für alle Namensauflöser des Laufs (#1322): Sonst extrahierte jede Typabfrage
   // eines nicht gepinnten Resolvers die ganze Unit neu, und Regeln mit vielen Abfragen wurden quadratisch.
-  mOwnUnits := nil;
-  if (Shared.TreeUnits = nil) and (Shared.Tree <> nil) then
+  if (FShared.TreeUnits = nil) and (FShared.Tree <> nil) then
   begin
-    mOwnUnits := TTreeUnits.Create(Shared.Tree);
-    Shared.TreeUnits := mOwnUnits;
+    FOwnUnits := TTreeUnits.Create(FShared.Tree);
+    FShared.TreeUnits := FOwnUnits;
   end;
-  Findings := TList<TRuleFinding>.Create;
-  Kept := TList<TRuleFinding>.Create;
-  Suppressions := nil;
-  RanIds := TList<string>.Create;
-  Afters := TList<IRuleAfterFindings>.Create;
-  AfterIds := TList<string>.Create;
-  AfterSeverities := TList<TRuleSeverity>.Create;
-  AfterContexts := TList<TRuleContext>.Create;
+end;
+
+destructor TRuleRun.Destroy;
+begin
+  // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
+  // Referenzzyklen über Kontextkopien in abgelegten Objekten.
+  if FOwnCache <> nil then
+  begin
+    FOwnCache.Clear;
+  end;
+  // Kontextkopien in abgelegten Objekten können die Auswertung überleben: ohne Baum bedient sie keinen mehr.
+  if FOwnUnits <> nil then
+  begin
+    FOwnUnits.Clear;
+  end;
+  FDeferred.Free;
+  FRanIds.Free;
+  FSuppressions.Free;
+  FKept.Free;
+  FFindings.Free;
+  inherited;
+end;
+
+function TRuleRun.Execute: TArray<TRuleFinding>;
+var
+  mRule: IRule;
+  mDeferred: TDeferredRule;
+begin
+  for mRule in FRules do
+  begin
+    RunRule(mRule);
+  end;
+  // Nach allen Regeln, mit den rohen Treffern (#297).
+  for mDeferred in FDeferred do
+  begin
+    RunDeferred(mDeferred);
+  end;
+  if FContext.Tree <> nil then
+  begin
+    FSuppressions := TSuppressions.Create(FContext.Tree.Tokens);
+  end;
+  KeepUnsuppressed;
+  if FSuppressions <> nil then
+  begin
+    KeepUnusedSuppressions;
+    KeepUnknownRuleIds;
+  end;
+  Result := SortedFindings(FKept.ToArray);
+end;
+
+function TRuleRun.Runs(const ADescriptor: TRuleDescriptor; out ASeverity: TRuleSeverity): Boolean;
+begin
+  Result := SeverityIfOn(ADescriptor, FSettings, FContext.RelativePath, ASeverity) and
+    (TRuleEngine.OverridingRule(ADescriptor.Id, FRules, FSettings, FContext.RelativePath, FContext.UnitName) = '');
+end;
+
+function TRuleRun.RuleContext(const ARuleId: string): TRuleContext;
+begin
+  Result := FShared;
+  // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
+  if Result.DelphiVersion = '' then
+  begin
+    Result.DelphiVersion := TLanguageFeatures.LanguageLevel(FSettings.DelphiVersion, FSettings.MinDelphiVersion);
+  end;
+  Result.Options := TRuleEngine.RuleOptions(ARuleId, FSettings);
+  Result.DfmPropertyRules := FSettings.DfmPropertyRules;
+  Result.NoSignatureSync := not FSettings.Refactoring.SyncSignatures;
+  Result.NoForwardDeclaration := not FSettings.Refactoring.ForwardDeclaration;
+  Result.NoFreeFields := not FSettings.Refactoring.FreeFields;
+  Result.FreeFieldsFreeAndNil := SameText(FSettings.Refactoring.FreeFieldsStyle, 'freeAndNil');
+  Result.NoMethodKind := not FSettings.Refactoring.MethodKind;
+  Result.MethodKindStatic := FSettings.Refactoring.MethodKindStatic;
+  Result.InlineAccessorDiagnostic := FSettings.Refactoring.InlineAccessor and
+    FSettings.Refactoring.InlineAccessorDiagnostic;
+  Result.NoAccessorEqualityCheck := not FSettings.Refactoring.InlineAccessorEqualityCheck;
+  Result.AccessorsProtected := FSettings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
+  Result.Formatting := FSettings.Formatting;
+  Result.KeepAttributes := FSettings.DeadCodeKeepAttributes;
+  Result.KeepPatterns := FSettings.DeadCodeKeepPatterns;
+  Result.NoUsesCycleLive := not FSettings.DiagnosticsUsesCycleLive;
+  Result.UsesCycleImplementation := FSettings.DiagnosticsUsesCycleImplementation;
+  Result.SortUses := FSettings.SortUses;
+  Result.SortUsesByNamespace := FSettings.SortUsesByNamespace;
+  Result.UsesKeep := FSettings.UsesKeep;
+end;
+
+procedure TRuleRun.CheckCancelled;
+begin
+  if Assigned(FContext.Cancelled) and FContext.Cancelled() then
+  begin
+    raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
+  end;
+end;
+
+function TRuleRun.MustRaise(AError: Exception): Boolean;
+begin
+  // Abgebrochen wird weiter wie bisher; sonst kostet eine scheiternde Regel nur ihre eigenen Treffer (#1094).
+  Result := (AError is ERuleCheckCancelled) or (Assigned(FContext.Cancelled) and FContext.Cancelled());
+end;
+
+procedure TRuleRun.Discard(AError: Exception; const ARuleId: string; ABefore: Integer);
+begin
+  FFindings.Count := ABefore;
+  TStackGuard.AfterError(AError);
+  TRequestDiagnostics.RuleFailed(ARuleId, AError.ClassName);
+end;
+
+function TRuleRun.Checked(const ARule: IRule; const ARuleId: string; ASeverity: TRuleSeverity;
+  const AContext: TRuleContext): Boolean;
+var
+  mReport: IRuleReport;
+  mBefore: Integer;
+begin
+  // Erst in einer Interface-Variablen halten: Check nimmt den Report als
+  // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
+  mReport := TRuleReport.Create(ARuleId, ASeverity, FFindings);
+  TRequestDiagnostics.CurrentRule(ARuleId);
+  mBefore := FFindings.Count;
+  Result := True;
   try
-    for Rule in mRules do
+    ARule.Check(AContext, mReport);
+  except
+    on E: Exception do
     begin
-      Descriptor := Rule.Descriptor;
-      Severity := EffectiveSeverity(Descriptor, Settings, AContext.RelativePath, Enabled);
-      if Severity = TRuleSeverity.Off then
+      if MustRaise(E) then
       begin
-        Continue;
+        raise;
       end;
-      if Descriptor.Experimental and not Enabled then
-      begin
-        Continue;
-      end;
-      if OverridingRule(Descriptor.Id, mRules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
-      begin
-        Continue;
-      end;
-      Context := Shared;
-      // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
-      if Context.DelphiVersion = '' then
-      begin
-        Context.DelphiVersion := TLanguageFeatures.LanguageLevel(Settings.DelphiVersion, Settings.MinDelphiVersion);
-      end;
-      Context.Options := RuleOptions(Descriptor.Id, Settings);
-      Context.DfmPropertyRules := Settings.DfmPropertyRules;
-      Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
-      Context.NoForwardDeclaration := not Settings.Refactoring.ForwardDeclaration;
-      Context.NoFreeFields := not Settings.Refactoring.FreeFields;
-      Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
-      Context.NoMethodKind := not Settings.Refactoring.MethodKind;
-      Context.MethodKindStatic := Settings.Refactoring.MethodKindStatic;
-      Context.InlineAccessorDiagnostic := Settings.Refactoring.InlineAccessor and
-        Settings.Refactoring.InlineAccessorDiagnostic;
-      Context.NoAccessorEqualityCheck := not Settings.Refactoring.InlineAccessorEqualityCheck;
-      Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
-      Context.Formatting := Settings.Formatting;
-      Context.KeepAttributes := Settings.DeadCodeKeepAttributes;
-      Context.KeepPatterns := Settings.DeadCodeKeepPatterns;
-      Context.NoUsesCycleLive := not Settings.DiagnosticsUsesCycleLive;
-      Context.UsesCycleImplementation := Settings.DiagnosticsUsesCycleImplementation;
-      Context.SortUses := Settings.SortUses;
-      Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
-      Context.UsesKeep := Settings.UsesKeep;
-      if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
-      begin
-        Continue;
-      end;
-      // Erst in einer Interface-Variablen halten: Check nimmt den Report als
-      // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
-      if Assigned(AContext.Cancelled) and AContext.Cancelled() then
-      begin
-        raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
-      end;
-      Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
-      Watch := TStopwatch.StartNew;
-      TRequestDiagnostics.CurrentRule(Descriptor.Id);
-      Before := Findings.Count;
-      Failed := False;
-      try
-        Rule.Check(Context, Report);
-      except
-        on ERuleCheckCancelled do
-          raise;
-        on E: Exception do
-        begin
-          // Abgebrochen wird weiter wie bisher; sonst kostet eine scheiternde Regel nur ihre eigenen
-          // Treffer (#1094).
-          if Assigned(AContext.Cancelled) and AContext.Cancelled() then
-          begin
-            raise;
-          end;
-          Findings.Count := Before;
-          TStackGuard.AfterError(E);
-          TRequestDiagnostics.RuleFailed(Descriptor.Id, E.ClassName);
-          Failed := True;
-        end;
-      end;
-      TRequestDiagnostics.CurrentRule('');
-      Report := nil;
-      if Failed then
-      begin
-        Continue;
-      end;
-      Elapsed := Watch.ElapsedMilliseconds;
-      // Zeitprofil des Prüflaufs (#1356): dieselbe Messung, an den Profiler des Threads, falls einer hängt.
-      TCheckProfiler.RuleTimed(Descriptor.Id, TCheckProfiler.TicksToMicroseconds(Watch.ElapsedTicks,
-        TStopwatch.Frequency));
-      if Elapsed >= SlowRuleMs then
-      begin
-        TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
-      end;
-      RanIds.Add(LowerCase(Descriptor.Id));
-      if Supports(Rule, IRuleAfterFindings, After) then
-      begin
-        Afters.Add(After);
-        AfterIds.Add(Descriptor.Id);
-        AfterSeverities.Add(Severity);
-        AfterContexts.Add(Context);
-      end;
-      After := nil;
+      Discard(E, ARuleId, mBefore);
+      Result := False;
     end;
-    // Nach allen Regeln, mit den rohen Treffern (#297).
-    for Index := 0 to Afters.Count - 1 do
-    begin
-      Report := TRuleReport.Create(AfterIds[Index], AfterSeverities[Index], Findings);
-      TRequestDiagnostics.CurrentRule(AfterIds[Index]);
-      Before := Findings.Count;
-      Watch := TStopwatch.StartNew;
-      try
-        Afters[Index].CheckFindings(AfterContexts[Index], Findings.ToArray, RanIds.ToArray, Report);
-        TCheckProfiler.RuleTimed(AfterIds[Index], TCheckProfiler.TicksToMicroseconds(Watch.ElapsedTicks,
-          TStopwatch.Frequency));
-      except
-        on ERuleCheckCancelled do
-          raise;
-        on E: Exception do
-        begin
-          if Assigned(AContext.Cancelled) and AContext.Cancelled() then
-          begin
-            raise;
-          end;
-          Findings.Count := Before;
-          TStackGuard.AfterError(E);
-          TRequestDiagnostics.RuleFailed(AfterIds[Index], E.ClassName);
-        end;
-      end;
-      TRequestDiagnostics.CurrentRule('');
-      Report := nil;
-    end;
+  end;
+  TRequestDiagnostics.CurrentRule('');
+end;
 
-    if AContext.Tree <> nil then
-    begin
-      Suppressions := TSuppressions.Create(AContext.Tree.Tokens);
-    end;
-    // Erst unterdrücken, dann filtern: Auch ausgeblendete Treffer machen einen Kommentar wirksam.
-    for Finding in Findings do
-    begin
-      if ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) and
-        (Ord(Finding.Confidence) >= Ord(MinConfidence)) then
-      begin
-        Kept.Add(Finding);
-      end;
-    end;
+procedure TRuleRun.RuleTimed(const ARuleId: string; const AWatch: TStopwatch);
+begin
+  // Zeitprofil des Prüflaufs (#1356): dieselbe Messung, an den Profiler des Threads, falls einer hängt.
+  TCheckProfiler.RuleTimed(ARuleId, TCheckProfiler.TicksToMicroseconds(AWatch.ElapsedTicks, TStopwatch.Frequency));
+  if AWatch.ElapsedMilliseconds >= TRuleEngine.SlowRuleMs then
+  begin
+    TRequestDiagnostics.Slowest('slowRule', ARuleId, Integer(AWatch.ElapsedMilliseconds));
+  end;
+end;
 
-    if (Suppressions <> nil) and
-      (ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
-    begin
-      for Entry in Suppressions.UnusedEntries do
-      begin
-        AllRan := Length(Entry.Ids) > 0;
-        for Id in Entry.Ids do
-        begin
-          if (Id <> '*') and not RanIds.Contains(Id) then
-          begin
-            AllRan := False;
-          end;
-        end;
-        if not AllRan then
-        begin
-          Continue;
-        end;
-        if Entry.OwnLine then
-        begin
-          Removal := TTextRange.Create(Entry.Range.StartPos.Line, 0, Entry.Range.EndPos.Line + 1, 0);
-        end
-        else
-        begin
-          Removal := Entry.Range;
-        end;
-        Finding := Default(TRuleFinding);
-        Finding.RuleId := UnusedSuppressionRuleId;
-        Finding.Range := Entry.Range;
-        Finding.Message := cTexts[TEngineText.UnusedSuppression].Text;
-        Finding.Severity := ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint);
-        Finding.Confidence := TRuleConfidence.High;
-        Finding.Fixes := [TRuleFix.Create(cTexts[TEngineText.RemoveSuppression].Text, [TRuleEdit.Create(Removal, '')],
-          True)];
-        Kept.Add(Finding);
-      end;
-    end;
+procedure TRuleRun.Defer(const ARule: IRule; const ARuleId: string; ASeverity: TRuleSeverity;
+  const AContext: TRuleContext);
+var
+  mDeferred: TDeferredRule;
+begin
+  mDeferred := Default(TDeferredRule);
+  if Supports(ARule, IRuleAfterFindings, mDeferred.Rule) then
+  begin
+    mDeferred.Id := ARuleId;
+    mDeferred.Severity := ASeverity;
+    mDeferred.Context := AContext;
+    FDeferred.Add(mDeferred);
+  end;
+end;
 
-    if (Suppressions <> nil) and (Length(Suppressions.Entries) > 0) and
-      (ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
-    begin
-      Known := TRuleProfiles.KnownRuleIds;
-      for Rule in mRules do
-      begin
-        Known := Known + [LowerCase(Rule.Descriptor.Id)];
-      end;
-      for Entry in Suppressions.Entries do
-      begin
-        for Index := 0 to High(Entry.Ids) do
-        begin
-          Id := Entry.Ids[Index];
-          if (Id = '*') or (IndexText(TRuleIdAliases.Current(Id), Known) >= 0) then
-          begin
-            Continue;
-          end;
-          Suggestion := TSuppressions.Suggest(Id, Known);
-          Finding := Default(TRuleFinding);
-          Finding.RuleId := UnknownRuleIdRuleId;
-          Finding.Range := Entry.IdRanges[Index];
-          Finding.Severity := ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint);
-          Finding.Confidence := TRuleConfidence.High;
-          if Suggestion = '' then
-          begin
-            Finding.Message := cTexts[TEngineText.UnknownRuleId].Fmt([Id]);
-          end
-          else
-          begin
-            Finding.Message := cTexts[TEngineText.UnknownRuleIdGuess].Fmt([Id, Suggestion]);
-            // Nur genau markierte Kennungen ersetzen, nicht den ganzen Kommentar.
-            if Entry.IdRanges[Index].StartPos.Line = Entry.IdRanges[Index].EndPos.Line then
-            begin
-              Finding.Fixes := [TRuleFix.Create(cTexts[TEngineText.ReplaceWith].Fmt([Suggestion]),
-                [TRuleEdit.Create(Entry.IdRanges[Index], Suggestion)], True)];
-            end;
-          end;
-          Kept.Add(Finding);
-        end;
-      end;
-    end;
+procedure TRuleRun.RunRule(const ARule: IRule);
+var
+  mDescriptor: TRuleDescriptor;
+  mSeverity: TRuleSeverity;
+  mContext: TRuleContext;
+  mWatch: TStopwatch;
+begin
+  mDescriptor := ARule.Descriptor;
+  if not Runs(mDescriptor, mSeverity) then
+  begin
+    Exit;
+  end;
+  mContext := RuleContext(mDescriptor.Id);
+  if TRuleEngine.IsExceptedByOptions(mContext.Options, mContext.RelativePath, mContext.UnitName) then
+  begin
+    Exit;
+  end;
+  CheckCancelled;
+  mWatch := TStopwatch.StartNew;
+  if Checked(ARule, mDescriptor.Id, mSeverity, mContext) then
+  begin
+    RuleTimed(mDescriptor.Id, mWatch);
+    FRanIds.Add(LowerCase(mDescriptor.Id));
+    Defer(ARule, mDescriptor.Id, mSeverity, mContext);
+  end;
+end;
 
-    Result := SortedFindings(Kept.ToArray);
-  finally
-    // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
-    // Referenzzyklen über Kontextkopien in abgelegten Objekten.
-    if OwnCache <> nil then
+procedure TRuleRun.RunDeferred(const ADeferred: TDeferredRule);
+var
+  mReport: IRuleReport;
+  mBefore: Integer;
+  mWatch: TStopwatch;
+begin
+  mReport := TRuleReport.Create(ADeferred.Id, ADeferred.Severity, FFindings);
+  TRequestDiagnostics.CurrentRule(ADeferred.Id);
+  mBefore := FFindings.Count;
+  mWatch := TStopwatch.StartNew;
+  try
+    ADeferred.Rule.CheckFindings(ADeferred.Context, FFindings.ToArray, FRanIds.ToArray, mReport);
+    TCheckProfiler.RuleTimed(ADeferred.Id, TCheckProfiler.TicksToMicroseconds(mWatch.ElapsedTicks,
+      TStopwatch.Frequency));
+  except
+    on E: Exception do
     begin
-      OwnCache.Clear;
+      if MustRaise(E) then
+      begin
+        raise;
+      end;
+      Discard(E, ADeferred.Id, mBefore);
     end;
-    // Kontextkopien in abgelegten Objekten können die Auswertung überleben: ohne Baum bedient sie keinen mehr.
-    if mOwnUnits <> nil then
+  end;
+  TRequestDiagnostics.CurrentRule('');
+end;
+
+procedure TRuleRun.KeepUnsuppressed;
+var
+  mFinding: TRuleFinding;
+  mMinConfidence: TRuleConfidence;
+begin
+  mMinConfidence := TRuleProfiles.MinConfidence(FSettings, FSettings.Profile);
+  // Erst unterdrücken, dann filtern: Auch ausgeblendete Treffer machen einen Kommentar wirksam.
+  for mFinding in FFindings do
+  begin
+    if ((FSuppressions = nil) or not FSuppressions.IsSuppressed(mFinding.RuleId, mFinding.Range.StartPos.Line)) and
+      (Ord(mFinding.Confidence) >= Ord(mMinConfidence)) then
     begin
-      mOwnUnits.Clear;
+      FKept.Add(mFinding);
     end;
-    AfterContexts.Free;
-    AfterSeverities.Free;
-    AfterIds.Free;
-    Afters.Free;
-    RanIds.Free;
-    Suppressions.Free;
-    Kept.Free;
-    Findings.Free;
+  end;
+end;
+
+function TRuleRun.AllRan(const AEntry: TSuppressionEntry): Boolean;
+var
+  mId: string;
+begin
+  Result := Length(AEntry.Ids) > 0;
+  for mId in AEntry.Ids do
+  begin
+    if (mId <> '*') and not FRanIds.Contains(mId) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+/// <summary>Hinweis unused-suppression für AEntry mit Korrektur zum Entfernen (#147).</summary>
+function UnusedSuppressionFinding(const AEntry: TSuppressionEntry; ASeverity: TRuleSeverity): TRuleFinding;
+var
+  mRemoval: TTextRange;
+begin
+  if AEntry.OwnLine then
+  begin
+    mRemoval := TTextRange.Create(AEntry.Range.StartPos.Line, 0, AEntry.Range.EndPos.Line + 1, 0);
+  end
+  else
+  begin
+    mRemoval := AEntry.Range;
+  end;
+  Result := Default(TRuleFinding);
+  Result.RuleId := UnusedSuppressionRuleId;
+  Result.Range := AEntry.Range;
+  Result.Message := cTexts[TEngineText.UnusedSuppression].Text;
+  Result.Severity := ASeverity;
+  Result.Confidence := TRuleConfidence.High;
+  Result.Fixes := [TRuleFix.Create(cTexts[TEngineText.RemoveSuppression].Text, [TRuleEdit.Create(mRemoval, '')],
+    True)];
+end;
+
+procedure TRuleRun.KeepUnusedSuppressions;
+var
+  mSeverity: TRuleSeverity;
+  mEntry: TSuppressionEntry;
+begin
+  mSeverity := FSettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint);
+  if mSeverity = TRuleSeverity.Off then
+  begin
+    Exit;
+  end;
+  for mEntry in FSuppressions.UnusedEntries do
+  begin
+    if AllRan(mEntry) then
+    begin
+      FKept.Add(UnusedSuppressionFinding(mEntry, mSeverity));
+    end;
+  end;
+end;
+
+function TRuleRun.KnownRuleIds: TArray<string>;
+var
+  mCatalog: TArray<string>;
+  mIndex: Integer;
+begin
+  mCatalog := TRuleProfiles.KnownRuleIds;
+  SetLength(Result, Length(mCatalog) + Length(FRules));
+  for mIndex := 0 to High(mCatalog) do
+  begin
+    Result[mIndex] := mCatalog[mIndex];
+  end;
+  for mIndex := 0 to High(FRules) do
+  begin
+    Result[Length(mCatalog) + mIndex] := LowerCase(FRules[mIndex].Descriptor.Id);
+  end;
+end;
+
+/// <summary>Hinweis unknown-rule-id für die Kennung AIndex von AEntry, mit Tippfehler-Vorschlag aus AKnown und
+/// Korrektur, wenn die Kennung in einer Zeile steht (#41).</summary>
+function UnknownRuleIdFinding(const AEntry: TSuppressionEntry; AIndex: Integer; const AKnown: TArray<string>;
+  ASeverity: TRuleSeverity): TRuleFinding;
+var
+  mId, mSuggestion: string;
+  mRange: TTextRange;
+begin
+  mId := AEntry.Ids[AIndex];
+  mRange := AEntry.IdRanges[AIndex];
+  mSuggestion := TSuppressions.Suggest(mId, AKnown);
+  Result := Default(TRuleFinding);
+  Result.RuleId := UnknownRuleIdRuleId;
+  Result.Range := mRange;
+  Result.Severity := ASeverity;
+  Result.Confidence := TRuleConfidence.High;
+  if mSuggestion = '' then
+  begin
+    Result.Message := cTexts[TEngineText.UnknownRuleId].Fmt([mId]);
+    Exit;
+  end;
+  Result.Message := cTexts[TEngineText.UnknownRuleIdGuess].Fmt([mId, mSuggestion]);
+  // Nur genau markierte Kennungen ersetzen, nicht den ganzen Kommentar.
+  if mRange.StartPos.Line = mRange.EndPos.Line then
+  begin
+    Result.Fixes := [TRuleFix.Create(cTexts[TEngineText.ReplaceWith].Fmt([mSuggestion]),
+      [TRuleEdit.Create(mRange, mSuggestion)], True)];
+  end;
+end;
+
+procedure TRuleRun.KeepUnknownRuleIds;
+var
+  mSeverity: TRuleSeverity;
+  mKnown: TArray<string>;
+  mEntry: TSuppressionEntry;
+  mIndex: Integer;
+begin
+  mSeverity := FSettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint);
+  if (Length(FSuppressions.Entries) = 0) or (mSeverity = TRuleSeverity.Off) then
+  begin
+    Exit;
+  end;
+  mKnown := KnownRuleIds;
+  for mEntry in FSuppressions.Entries do
+  begin
+    for mIndex := 0 to High(mEntry.Ids) do
+    begin
+      if (mEntry.Ids[mIndex] <> '*') and (IndexText(TRuleIdAliases.Current(mEntry.Ids[mIndex]), mKnown) < 0) then
+      begin
+        FKept.Add(UnknownRuleIdFinding(mEntry, mIndex, mKnown, mSeverity));
+      end;
+    end;
   end;
 end;
 
