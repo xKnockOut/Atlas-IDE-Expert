@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Settings.Page.Startup;
 
-// Reiter „Start“ (abgesicherter Start #722, Updates #495, Fehlerbericht #108), „Rückgängig“ und „Units suchen“
-// (#777).
+// Reiter „Start“ (abgesicherter Start #722, Updates #495 und #1519, Fehlerbericht #108), „Rückgängig“ und
+// „Units suchen“ (#777).
 
 interface
 
@@ -23,6 +23,9 @@ type
     FUnitSearchGroupBy: TAtlasChoiceBox;
     FUnitSearchDefaultScope: TAtlasChoiceBox;
     FVersion: TLabel;
+    FUpdatesInstall: TAtlasChoiceBox;
+    FUpdatesChannel: TAtlasChoiceBox;
+    FUpdatesNewModules: TAtlasChoiceBox;
     procedure AddSafeSection;
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
@@ -37,6 +40,7 @@ type
     property UndoOnConflict: TAtlasChoiceBox read FUndoOnConflict;
     property UndoNewFiles: TAtlasChoiceBox read FUndoNewFiles;
     property VersionLabel: TLabel read FVersion;
+    property UpdatesInstall: TAtlasChoiceBox read FUpdatesInstall;
   end;
 
 implementation
@@ -48,6 +52,7 @@ uses
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings,
+  Atlas.UI.Updates.Strings,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
@@ -58,6 +63,10 @@ const
   UnitSearchPathStyles: array[0..2] of string = ('relative', 'compact', 'absolute');
   UnitSearchGroupings: array[0..2] of string = ('project', 'folder', 'none');
   UnitSearchScopes: array[0..3] of string = ('group', 'project', 'searchPath', 'library');
+  // Auswahllisten der Updates (#1519) in der Reihenfolge der Anzeige.
+  UpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
+  UpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
+  UpdatesNewModulesModes: array[0..2] of string = ('ask', 'install', 'skip');
 
 { TAtlasSettingsStartupPart }
 
@@ -85,6 +94,9 @@ begin
   FPage.Marks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
   FPage.Marks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
   FPage.Marks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
+  FPage.Marks.Bind(FUpdatesInstall, ['UpdatesInstall']);
+  FPage.Marks.Bind(FUpdatesChannel, ['UpdatesChannel']);
+  FPage.Marks.Bind(FUpdatesNewModules, ['UpdatesNewModules']);
 end;
 
 procedure TAtlasSettingsStartupPart.AddSafeSection;
@@ -190,6 +202,18 @@ begin
   FVersion.Left := 0;
   FVersion.Top := 2;
   BindCheck('UpdatesCheck', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck)));
+  // Update installieren (#1519): anbieten, ohne Frage vorbereiten oder nur melden; Kanal und neue Module.
+  FUpdatesInstall := AddChoice(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstall),
+    [TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstallAsk),
+    TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstallAuto),
+    TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesInstallOff)]);
+  FUpdatesChannel := AddChoice(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesChannel),
+    [TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesChannelStable),
+    TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesChannelPrerelease)]);
+  FUpdatesNewModules := AddChoice(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesNewModules),
+    [TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesNewModulesAsk),
+    TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesNewModulesInstall),
+    TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.SettingsUpdatesNewModulesSkip)]);
 end;
 
 procedure TAtlasSettingsStartupPart.AddBugReportSection;
@@ -214,6 +238,9 @@ begin
   FUnitSearchPathStyle.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
   FUnitSearchGroupBy.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
   FUnitSearchDefaultScope.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
+  FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, UpdatesInstallModes);
+  FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, UpdatesChannels);
+  FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, UpdatesNewModulesModes);
 end;
 
 procedure TAtlasSettingsStartupPart.Save(var ASettings: TAtlasPluginSettings);
@@ -232,6 +259,9 @@ begin
   ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
   ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];
   ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
+  ASettings.UpdatesInstall := UpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
+  ASettings.UpdatesChannel := UpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
+  ASettings.UpdatesNewModules := UpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
 end;
 
 end.

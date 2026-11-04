@@ -21,6 +21,7 @@ Für das IDE-Plugin (#495) enthält jedes Release `atlas-ide-expert-<Version>.zi
 
 ```
 AtlasServer.exe         Server (Win64)
+AtlasUpdate.exe         Installation und Updates (#1519): „AtlasUpdate install“ bindet das Paket in eine IDE ein
 AtlasServer.map         Map-Datei: Stacktraces im Server-Log mit Unit, Routine und Zeile
 Win32\Atlas.IDE.Base370.bpl   Kern des Plugins für die klassische IDE
 Win64\Atlas.IDE.Base370.bpl   Kern des Plugins für die 64-Bit-IDE
@@ -39,7 +40,7 @@ Vorlagen\               Vorlagen für atlas.json („Projekt für Atlas einricht
 Profile\                Einstellungsprofile „Atlas-Standard“, „Minimal“ und „Alles an“ (#723)
 ```
 
-Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei (ADR 0009). Seit 1.2.0 gibt es ihn nicht mehr; das Paket wird von Hand eingebunden:
+Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei (ADR 0009). Seit 1.2.0 gibt es ihn nicht mehr. Ab 2.0 erledigt `AtlasUpdate.exe install` die Schritte unten im Konsolendialog (#1519, ADR 0018): IDE und Profil wählen (auch eigene Profile aus `bds -r` und die 64-Bit-IDE), Zielordner (Vorschlag `%LOCALAPPDATA%\Programs\Atlas`, ohne Adminrechte), Module; ohne passende BPLs im Paket (Delphi 12) baut es das Plugin aus dem Quelltext des Releases (braucht MSBuild der Delphi-Installation). Von Hand geht es weiter so:
 
 1. Delphi schließen und das ZIP in einen festen Ordner entpacken, z. B. `%LOCALAPPDATA%\Programs\Atlas` (dort lag auch die Installation des früheren Installers). Die Ordnerstruktur beibehalten: Das Plugin sucht den Server und die Daten (`whatsnew.json`, `tips.json`, `Vorlagen` …) neben der BPL und eine Ebene darüber.
 2. Delphi starten, *Komponente › Packages installieren › Hinzufügen* und `Win32\Atlas.IDE.Base370.bpl` wählen (Delphi 12: `…290.bpl`, sofern im Paket; 64-Bit-IDE ab Delphi 12.3: `Win64\…`). Ab 2.0 danach `Atlas.IDE.Contracts370.bpl` und jedes Modul-Package aus demselben Ordner hinzufügen (`Atlas.IDE.Debugger370.bpl` …): erst den Kern, dann die Verträge, dann die Module; beim Deinstallieren umgekehrt. Ein Modul lädt den Kern mit, findet ihn aber nur, wenn er schon geladen ist oder auf dem PATH liegt (ADR 0017, Entscheidung 1: Ablage im Bpl-Ordner von RAD Studio).
@@ -51,7 +52,7 @@ Bis 1.1.0 lag dem Paket der Installer `AtlasSetup.exe` bei (ADR 0009). Seit 1.2.
 
 **Einstellungen übertragen (#723):** *Tools › Optionen › Atlas* und die Befehlspalette (*Atlas.SettingsExport*, *Atlas.SettingsImport*, *Atlas.SettingsProfile*, *Atlas.SettingsReset*) exportieren, importieren und setzen die persönlichen Einstellungen des Plugins je Bereich zurück, siehe [Einstellungen.md](Einstellungen.md#bereiche-für-export-import-und-zurücksetzen). Die Kommandozeile `AtlasSetup /exportSettings …` gibt es mit dem Installer nicht mehr.
 
-**Updates:** Nach Zustimmung beim ersten Start prüft das Plugin höchstens einmal täglich, ob eine neue Version vorliegt, und meldet sie in der Meldungsansicht ([RAD-Studio.md](RAD-Studio.md)). Es lädt nichts herunter.
+**Updates:** Nach Zustimmung beim ersten Start prüft das Plugin höchstens einmal täglich, ob eine neue Version vorliegt, und meldet sie in der Meldungsansicht ([RAD-Studio.md](RAD-Studio.md)). Ab 2.0 installiert es sie auf Wunsch selbst (#1519, ADR 0018): „Jetzt aktualisieren“ lädt und prüft das Update im Hintergrund, beim Schließen der IDE spielt ein Konsolenfenster es ein, beim nächsten Start meldet Atlas das Ergebnis. Das klappt nur, wenn der Atlas-Ordner beschreibbar ist (nicht unter `C:\Program Files`); sonst bleibt alles unverändert. Über GetIt installiert kommen Updates über GetIt.
 
 ### Ohne Plugin: Code Insight-Manager (Kurzanleitung)
 

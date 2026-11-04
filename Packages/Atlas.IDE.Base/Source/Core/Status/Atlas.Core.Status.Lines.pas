@@ -72,6 +72,9 @@ type
     CheckEnabled: Boolean;
     /// <summary>Schon einmal erfolgreich oder vergeblich geprüft.</summary>
     Checked: Boolean;
+    /// <summary>Stand der Installation des Updates (#1519), z. B. „wird beim Beenden installiert“; '' = keine.
+    /// </summary>
+    Install: string;
   end;
 
   TAtlasFileInfo = record
@@ -555,6 +558,10 @@ begin
   if UpdateAvailable(AInfo) then
   begin
     Result := Result + ', Update ' + AInfo.Available + ' bereit';
+    if AInfo.Install <> '' then
+    begin
+      Result := Result + ' (' + AInfo.Install + ')';
+    end;
   end
   else if not AInfo.CheckEnabled then
   begin
@@ -612,7 +619,11 @@ end;
 
 class function TAtlasStatusLines.VersionDetail(const AInfo: TAtlasVersionInfo): string;
 begin
-  if UpdateAvailable(AInfo) then
+  if UpdateAvailable(AInfo) and (AInfo.Install <> '') then
+  begin
+    Result := AInfo.Install;
+  end
+  else if UpdateAvailable(AInfo) then
   begin
     Result := 'installiert ' + AInfo.Installed;
   end

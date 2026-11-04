@@ -728,6 +728,15 @@ contains
   Atlas.Common.Lsp.DataFlow.Sources in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Sources.pas',
   Atlas.Common.Lsp.DataFlow.Targets in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Targets.pas',
   Atlas.Common.Lsp.AccessChains in 'Source\Lsp\Atlas.Common.Lsp.AccessChains.pas',
-  Atlas.Common.Lsp.StepFilter in 'Source\Lsp\Atlas.Common.Lsp.StepFilter.pas';
+  Atlas.Common.Lsp.StepFilter in 'Source\Lsp\Atlas.Common.Lsp.StepFilter.pas',
+  Atlas.Common.Updates.Contract in 'Source\Updates\Atlas.Common.Updates.Contract.pas',
+  Atlas.Common.Updates.Ides in 'Source\Updates\Atlas.Common.Updates.Ides.pas',
+  Atlas.Common.Updates.KnownPackages in 'Source\Updates\Atlas.Common.Updates.KnownPackages.pas',
+  Atlas.Common.Updates.Selection in 'Source\Updates\Atlas.Common.Updates.Selection.pas',
+  Atlas.Common.Updates.Archive in 'Source\Updates\Atlas.Common.Updates.Archive.pas',
+  Atlas.Common.Updates.SourceBuild in 'Source\Updates\Atlas.Common.Updates.SourceBuild.pas',
+  Atlas.Common.Updates.Prepare in 'Source\Updates\Atlas.Common.Updates.Prepare.pas',
+  Atlas.Common.Updates.FileSwap in 'Source\Updates\Atlas.Common.Updates.FileSwap.pas',
+  Atlas.Common.Updates.Apply in 'Source\Updates\Atlas.Common.Updates.Apply.pas';
 
 end.

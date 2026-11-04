@@ -14,9 +14,14 @@
 // - Zeile atlas.version im Atlas-Statusfeld (#591) und damit in der
 //   Zustandskachel der Willkommensseite (#754): installierte Version, gelb
 //   mit Versionsnummer, solange ein gefundenes Update nicht installiert ist.
-//   Klick auf die Zeile bzw. „Jetzt aktualisieren“ (OpenUpdate) öffnet wie
-//   der Hinweis aus #495 die Änderungen samt Download im Browser; Atlas lädt
-//   und installiert nichts selbst.
+//   Klick auf die Zeile bzw. „Jetzt aktualisieren“ (OpenUpdate) bietet das
+//   Update zur Installation an (#1519, TAtlasIdeUpdateInstaller): vorbereiten
+//   im Hintergrund, einspielen beim Schließen der IDE. Mit updates.install =
+//   auto beginnt die Vorbereitung ohne Frage (nicht bei einer neuen
+//   Hauptversion). Mit off, über GetIt, ohne AtlasUpdate.exe oder außerhalb
+//   eines Release-Ordners öffnet sie wie bisher (#495) die Änderungen samt
+//   Download im Browser.
+// - Abgefragt wird der Kanal aus updates.channel (#1519).
 // Zustand (gefragt, letzte Prüfung, gefundene Version) in
 // %LOCALAPPDATA%\Atlas\updates.json.
 
@@ -30,7 +35,9 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Updates.Contract,
   Atlas.Core.Updates.Check,
-  Atlas.UI.Updates.Consent;
+  Atlas.Core.Updates.Install,
+  Atlas.UI.Updates.Consent,
+  Atlas.IDE.Updates.Install;
 
 type
   TAtlasIdeUpdates = class(TComponent)
@@ -51,6 +58,13 @@ type
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FLineAction: Boolean;
+    FInstaller: TAtlasIdeUpdateInstaller;
+    procedure StartInstaller;
+    procedure PrepareUpdate(const ARelease: TAtlasRelease);
+    procedure AutoPrepare;
+    procedure OfferUpdate(const ARelease: TAtlasRelease);
+    procedure OpenChanges(const ARelease: TAtlasRelease);
+    function InstallMode: TAtlasUpdateInstallMode;
     procedure UpdateLine;
     procedure LoadState;
     procedure SaveState;
@@ -102,6 +116,13 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings,
+  Atlas.UI.Updates.Strings,
+  Atlas.UI.Updates.Offer,
+  Atlas.UI.Updates.Selection,
+  Atlas.UI.Updates.Texts,
+  Atlas.Text.UpdateRun,
+  ToolsAPI,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeUpdates }
@@ -113,6 +134,7 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := StartDelayMs;
   FTimer.OnTimer := Tick;
+  FInstaller := TAtlasIdeUpdateInstaller.Create(Self);
 end;
 
 destructor TAtlasIdeUpdates.Destroy;
@@ -177,8 +199,54 @@ begin
   FOnMessage := AMessage;
   FOnLog := ALog;
   LoadState;
+  StartInstaller;
   // Erst nach dem Laden der IDE fragen bzw. prüfen.
   FTimer.Enabled := True;
+end;
+
+function RegistryKey: string;
+var
+  mServices: IOTAServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Result := mServices.GetBaseRegistryKey;
+  end;
+end;
+
+procedure TAtlasIdeUpdates.StartInstaller;
+var
+  mEnvironment: TAtlasUpdateEnvironment;
+begin
+  mEnvironment := Default(TAtlasUpdateEnvironment);
+  mEnvironment.PluginDir := TAtlasIdeHost.InstallFolder;
+{$IFDEF WIN64}
+  mEnvironment.Platform := 'Win64';
+{$ELSE}
+  mEnvironment.Platform := 'Win32';
+{$ENDIF}
+  mEnvironment.Ide := TAtlasUpdates.IdeVersion;
+  mEnvironment.RegistryKey := RegistryKey;
+  mEnvironment.Installed := TAtlasPluginVersion.Version;
+  mEnvironment.UpdaterExists := FileExists(TAtlasUpdateInstall.UpdaterOf(mEnvironment.PluginDir));
+  FInstaller.Start(mEnvironment, TAtlasUpdateInstall.UpdatesRoot(GetEnvironmentVariable('LOCALAPPDATA')), FOnMessage,
+    FOnLog,
+    procedure
+    begin
+      UpdateLine;
+    end);
+  // Ergebnis eines Updates beim letzten Schließen (#1519).
+  FInstaller.ReportOutcome;
+end;
+
+function TAtlasIdeUpdates.InstallMode: TAtlasUpdateInstallMode;
+begin
+  Result := TAtlasUpdateInstall.ModeOf(TAtlasIdeSettings.Current.UpdatesInstall);
+  if FInstaller.Blocked <> TAtlasUpdateBlock.None then
+  begin
+    Result := TAtlasUpdateInstallMode.Off;
+  end;
 end;
 
 procedure TAtlasIdeUpdates.Tick(Sender: TObject);
@@ -192,6 +260,8 @@ begin
   else
   begin
     CheckNow;
+    // Ein früher gefundenes Update, das noch nicht vorbereitet ist (#1519).
+    AutoPrepare;
   end;
 end;
 
@@ -254,6 +324,7 @@ procedure TAtlasIdeUpdates.CheckNow;
 var
   Source: IAtlasVersionSource;
   mState: TAtlasUpdateState;
+  mQuery: TAtlasUpdateQuery;
 begin
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
     not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsDue(FState.LastCheck, Now) then
@@ -262,6 +333,10 @@ begin
   end;
   Source := FSource;
   mState := FState;
+  mQuery.Url := TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
+    TAtlasPluginVersion.Version);
+  mQuery.Installed := TAtlasPluginVersion.Version;
+  mQuery.IdeVersion := TAtlasUpdates.IdeVersion;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
@@ -270,8 +345,7 @@ begin
     begin
       Checked := mState;
       try
-        Outcome := TAtlasUpdates.Run(Source, Checked, True, TAtlasPluginVersion.Version,
-          TAtlasUpdates.IdeVersion, Now);
+        Outcome := TAtlasUpdates.Run(Source, mQuery, Checked, True, Now);
       except
         on E: Exception do
         begin
@@ -341,6 +415,7 @@ begin
           FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
             TAtlasPluginVersion.Version, AResult.Release.ChangesUrl]));
         end;
+        AutoPrepare;
       end;
     TAtlasUpdateOutcome.Current:
       Log('Update-Prüfung: aktuell');
@@ -353,6 +428,13 @@ end;
 
 procedure TAtlasIdeUpdates.Stop;
 begin
+  // IDE wird geschlossen (#1519): vorbereitetes Update nach dem Ende der IDE einspielen. Beim bloßen Entladen
+  // des Packages bleibt es für das nächste Schließen liegen.
+  if Application.Terminated and (FSource <> nil) then
+  begin
+    FInstaller.ApplyOnExit(FState.Available);
+  end;
+  FInstaller.Stop;
   FTimer.Enabled := False;
   FSource := nil;
   if FLine <> nil then
@@ -405,6 +487,7 @@ var
   Info: TAtlasVersionInfo;
   Release: TAtlasRelease;
   Ready: Boolean;
+  Stage: TUpdateStage;
 begin
   if FRegistry = nil then
   begin
@@ -416,6 +499,10 @@ begin
   Info.Available := Release.Version;
   Info.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
   Info.Checked := FState.LastCheck > 0;
+  if Ready and FInstaller.TryStage(Release.Version, Stage) then
+  begin
+    Info.Install := TAtlasUpdateTexts.StageText(Stage);
+  end;
   // Anklickbar nur mit Update: Die Zeile wird dafür ersetzt (die Aktion gehört zur Zeile).
   if (FLine = nil) or (FLineAction <> Ready) then
   begin
@@ -448,17 +535,88 @@ begin
     TAtlasStatusLines.VersionDetail(Info));
 end;
 
+procedure TAtlasIdeUpdates.OpenChanges(const ARelease: TAtlasRelease);
+begin
+  Log('Update ' + ARelease.Version + ': Änderungen im Browser geöffnet');
+  // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser.
+  ShellExecute(0, 'open', PChar(ARelease.ChangesUrl), nil, nil, SW_SHOWNORMAL);
+end;
+
+procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
+begin
+  FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
+    TAtlasPluginVersion.Version), TAtlasIdeSettings.Current.UpdatesNewModules);
+  UpdateLine;
+end;
+
+procedure TAtlasIdeUpdates.AutoPrepare;
+var
+  mRelease: TAtlasRelease;
+  mStage: TUpdateStage;
+begin
+  // updates.install = auto (#1519): ohne Frage vorbereiten, eine neue Hauptversion nur nach Frage. Ein schon
+  // vorbereitetes oder gescheitertes Update bleibt, wie es ist.
+  if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
+    TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.Version, mRelease.Version) then
+  begin
+    PrepareUpdate(mRelease);
+  end;
+end;
+
+procedure TAtlasIdeUpdates.OfferUpdate(const ARelease: TAtlasRelease);
+var
+  mStage: TUpdateStage;
+  mChosen: TArray<string>;
+begin
+  // Vorbereitet: Module wählen oder verwerfen (Mockup 6); sonst anbieten (Mockup 2).
+  if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
+  begin
+    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of
+      TAtlasUpdateReadyAnswer.Modules:
+        if TAtlasUpdateSelectionDialog.Choose(ARelease.Version, mStage.Candidates, mChosen) then
+        begin
+          FInstaller.Choose(ARelease.Version, mChosen);
+        end;
+      TAtlasUpdateReadyAnswer.Discard:
+        FInstaller.Discard(ARelease.Version);
+      TAtlasUpdateReadyAnswer.Close: ;
+    end;
+    UpdateLine;
+    Exit;
+  end;
+  case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.Version,
+    TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.Version, ARelease.Version)) of
+    TAtlasUpdateOfferAnswer.Install:
+      PrepareUpdate(ARelease);
+    TAtlasUpdateOfferAnswer.Changes:
+      OpenChanges(ARelease);
+    TAtlasUpdateOfferAnswer.Later: ;
+  end;
+end;
+
 procedure TAtlasIdeUpdates.OpenUpdate;
 var
   Release: TAtlasRelease;
+  mBlock: TAtlasUpdateBlock;
 begin
   if not UpdateReady(Release) then
   begin
     Exit;
   end;
-  Log('Update ' + Release.Version + ': Änderungen im Browser geöffnet');
-  // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser, nicht von Atlas.
-  ShellExecute(0, 'open', PChar(Release.ChangesUrl), nil, nil, SW_SHOWNORMAL);
+  mBlock := FInstaller.Blocked;
+  if (mBlock <> TAtlasUpdateBlock.None) and (TAtlasUpdateInstall.ModeOf(TAtlasIdeSettings.Current.UpdatesInstall) <>
+    TAtlasUpdateInstallMode.Off) and Assigned(FOnMessage) then
+  begin
+    // Warum Atlas nicht selbst installiert (#1519), dann wie bisher der Browser.
+    FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesBlockedMessage, [Release.Version,
+      TAtlasUpdateTexts.BlockText(mBlock), Release.ChangesUrl]));
+  end;
+  if (InstallMode = TAtlasUpdateInstallMode.Off) or FInstaller.Preparing then
+  begin
+    OpenChanges(Release);
+    Exit;
+  end;
+  OfferUpdate(Release);
 end;
 
 end.

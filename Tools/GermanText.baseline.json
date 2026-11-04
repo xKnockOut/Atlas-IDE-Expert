@@ -497,6 +497,7 @@
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Page.Robustness.pas": 1,
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.Page.Sections.pas": 2,
   "Packages/Atlas.IDE.Base/Source/UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas": 1,
+  "Packages/Atlas.IDE.Base/Source/UI/Updates/Atlas.UI.Updates.Strings.pas": 45,
   "Packages/Atlas.IDE.Bookmarks/Source/Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas": 1,
   "Packages/Atlas.IDE.Bookmarks/Source/IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas": 2,
   "Packages/Atlas.IDE.Bookmarks/Source/IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickColumn.pas": 7,

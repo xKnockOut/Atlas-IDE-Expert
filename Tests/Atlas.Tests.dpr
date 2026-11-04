@@ -1277,6 +1277,8 @@ uses
   Atlas.Core.Updates.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Contract.pas',
   Atlas.Core.Updates.Check in '..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Check.pas',
   Atlas.Core.Updates.Tests in 'IDE.Expert\Atlas.Core.Updates.Tests.pas',
+  Atlas.Core.Updates.Install in '..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Install.pas',
+  Atlas.Core.Updates.Install.Tests in 'IDE.Expert\Atlas.Core.Updates.Install.Tests.pas',
   Atlas.Core.Vcs.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
   Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
   Atlas.Core.Vcs.ServerAccess in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas',
@@ -1319,6 +1321,9 @@ uses
   Atlas.UI.Vcs.BranchDialog.Tests in 'IDE.Expert\Atlas.UI.Vcs.BranchDialog.Tests.pas',
   Atlas.UI.Vcs.WorkingCopies.Tests in 'IDE.Expert\Atlas.UI.Vcs.WorkingCopies.Tests.pas',
   Atlas.UI.Updates.Consent in '..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Consent.pas',
+  Atlas.UI.Updates.Strings in '..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Strings.pas',
+  Atlas.UI.Updates.Selection in '..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Selection.pas',
+  Atlas.UI.Updates.Texts in '..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Texts.pas',
   Atlas.UI.Updates.Tests in 'IDE.Expert\Atlas.UI.Updates.Tests.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',
   Atlas.Core.Commands.Palette.Tests in 'IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas',
@@ -1833,7 +1838,13 @@ uses
   Atlas.Core.Debug.StepFilter in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
   Atlas.Core.Debug.StepFilter.Tests in 'IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas',
   Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',
-  Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas';
+  Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas',
+  Atlas.Tests.UpdateFakes in 'Support\Atlas.Tests.UpdateFakes.pas',
+  Atlas.Text.Updates.Tests in 'Text\Atlas.Text.Updates.Tests.pas',
+  Atlas.Text.UpdateRun.Tests in 'Text\Atlas.Text.UpdateRun.Tests.pas',
+  Atlas.Common.Updates.Tests in 'Common\Updates\Atlas.Common.Updates.Tests.pas',
+  Atlas.Common.Updates.Prepare.Tests in 'Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas',
+  Atlas.Common.Updates.Apply.Tests in 'Common\Updates\Atlas.Common.Updates.Apply.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}

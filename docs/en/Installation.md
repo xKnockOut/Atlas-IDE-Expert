@@ -21,6 +21,7 @@ For the IDE plugin (#495) every release contains `atlas-ide-expert-<version>.zip
 
 ```
 AtlasServer.exe         Server (Win64)
+AtlasUpdate.exe         installation and updates (#1519): “AtlasUpdate install” adds the package to an IDE
 AtlasServer.map         Map file: stack traces in the server log with unit, routine and line
 Win32\Atlas.IDE.Expert370.bpl   Plugin for the classic IDE
 Win64\Atlas.IDE.Expert370.bpl   Plugin for the 64-bit IDE
@@ -36,7 +37,7 @@ Vorlagen\               Templates for atlas.json ("Set up project for Atlas" on 
 Profile\                Settings profiles "Atlas default", "Minimal" and "Everything on" (#723)
 ```
 
-Up to 1.1.0 the package contained the installer `AtlasSetup.exe` (ADR 0009). Since 1.2.0 it is gone; the package is added by hand:
+Up to 1.1.0 the package contained the installer `AtlasSetup.exe` (ADR 0009). Since 1.2.0 it is gone. From 2.0 on, `AtlasUpdate.exe install` does the steps below in a console dialog (#1519, ADR 0018): choose IDE and profile (also own profiles from `bds -r` and the 64-bit IDE), target folder (suggested `%LOCALAPPDATA%\Programs\Atlas`, no admin rights needed) and modules; without matching BPLs in the package (Delphi 12) it builds the plugin from the release source (needs MSBuild of the Delphi installation). By hand it still works like this:
 
 1. Close Delphi and unpack the ZIP into a fixed folder, e.g. `%LOCALAPPDATA%\Programs\Atlas` (where the former installer also put it). Keep the folder structure: the plugin looks for the server and the data (`whatsnew.json`, `tips.json`, `Vorlagen` …) next to the BPL and one level above.
 2. Start Delphi, *Component › Install Packages › Add* and pick `Win32\Atlas.IDE.Expert370.bpl` (Delphi 12: `…290.bpl` if included in the package; 64-bit IDE from Delphi 12.3: `Win64\…`).
@@ -48,7 +49,7 @@ Up to 1.1.0 the package contained the installer `AtlasSetup.exe` (ADR 0009). Sin
 
 **Transfer settings (#723):** *Tools › Options › Atlas* and the command palette (*Atlas.SettingsExport*, *Atlas.SettingsImport*, *Atlas.SettingsProfile*, *Atlas.SettingsReset*) export, import and reset the personal settings of the plugin per area, see [Einstellungen.md](../Einstellungen.md#bereiche-für-export-import-und-zurücksetzen) (German). The command line `AtlasSetup /exportSettings …` is gone together with the installer.
 
-**Updates:** after consent at the first start, the plugin checks at most once a day whether a new version is available and reports it in the message view ([RAD-Studio.md](../RAD-Studio.md)). It does not download anything.
+**Updates:** after consent at the first start, the plugin checks at most once a day whether a new version is available and reports it in the message view ([RAD-Studio.md](../RAD-Studio.md)). From 2.0 on it installs it itself on request (#1519, ADR 0018): “Update now” downloads and verifies the update in the background, a console window applies it when the IDE closes, and Atlas reports the result on the next start. This needs a writable Atlas folder (not below `C:\Program Files`); otherwise nothing changes. Installed via GetIt, updates come through GetIt.
 
 ### Without the plugin: Code Insight Manager (quick guide)
 
