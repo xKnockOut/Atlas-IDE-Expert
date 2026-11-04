@@ -168,25 +168,25 @@ begin
   Saved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    NowUtc := TAtlasWelcomeContinueFrame.NowUtc;
+    NowUtc := TAtlasContinueTexts.NowUtc;
     Entry := ContinueEntry('C:\Repo\Atlas.dproj', 7, NowUtc - 2 * OneHour - 5 * OneMinute);
     Entry.State.Tabs[3].Changed := True;
     Entry.State.Tabs[3].ChangedAt := NowUtc - OneHour;
     Entry.State.Tabs[3].Method := 'TKunde.Laden';
     Entry.State.Tabs[3].Line := 42;
-    Assert.AreEqual('Atlas · 7 Reiter', TAtlasWelcomeContinueFrame.TitleText(Entry));
-    Assert.AreEqual('Unit4.pas › TKunde.Laden', TAtlasWelcomeContinueFrame.DetailText(Entry),
+    Assert.AreEqual('Atlas · 7 Reiter', TAtlasContinueTexts.TitleText(Entry));
+    Assert.AreEqual('Unit4.pas › TKunde.Laden', TAtlasContinueTexts.DetailText(Entry),
       'zuletzt bearbeitete Datei und Methode');
-    Assert.AreEqual('1 Reiter', TAtlasWelcomeContinueFrame.TabsText(1));
-    Assert.Contains(TAtlasWelcomeContinueFrame.HintFor(Entry), 'Unit4.pas:42');
-    Assert.AreEqual('gerade eben', TAtlasWelcomeContinueFrame.AgeText(NowUtc - 10 * OneSecond, NowUtc));
-    Assert.AreEqual('vor 5 Min.', TAtlasWelcomeContinueFrame.AgeText(NowUtc - 5 * OneMinute - OneSecond, NowUtc));
-    Assert.AreEqual('', TAtlasWelcomeContinueFrame.AgeText(0, NowUtc), 'unbekannt');
-    Assert.AreEqual('abc1234  Kunde: Prüfung — Eva · Kunde.pas', TAtlasWelcomeContinueFrame.CommitText(
+    Assert.AreEqual('1 Reiter', TAtlasContinueTexts.TabsText(1));
+    Assert.Contains(TAtlasContinueTexts.HintFor(Entry), 'Unit4.pas:42');
+    Assert.AreEqual('gerade eben', TAtlasContinueTexts.AgeText(NowUtc - 10 * OneSecond, NowUtc));
+    Assert.AreEqual('vor 5 Min.', TAtlasContinueTexts.AgeText(NowUtc - 5 * OneMinute - OneSecond, NowUtc));
+    Assert.AreEqual('', TAtlasContinueTexts.AgeText(0, NowUtc), 'unbekannt');
+    Assert.AreEqual('abc1234  Kunde: Prüfung — Eva · Kunde.pas', TAtlasContinueTexts.CommitText(
       ContinueCommit('abc1234ffff', 'Kunde: Prüfung', 'Eva', 'C:\Repo\Kunde.pas')));
-    Assert.Contains(TAtlasWelcomeContinueFrame.CommitHint(ContinueCommit('abc1234ffff', 'Kunde: Prüfung', 'Eva',
+    Assert.Contains(TAtlasContinueTexts.CommitHint(ContinueCommit('abc1234ffff', 'Kunde: Prüfung', 'Eva',
       'C:\Repo\Kunde.pas')), 'Autor: Eva');
-    Cells := TAtlasWelcomeContinueFrame.SavedCells(SavedItem(TAtlasSavedKind.Bookmark, 'b1', 'Speichern',
+    Cells := TAtlasContinueTexts.SavedCells(SavedItem(TAtlasSavedKind.Bookmark, 'b1', 'Speichern',
       'C:\Repo\Kunde.pas', 'C:\Repo\Atlas.dproj', 79));
     Assert.AreEqual(4, Integer(Length(Cells)));
     Assert.AreEqual('Lesezeichen', Cells[0]);
@@ -195,14 +195,14 @@ begin
     Assert.AreEqual('Atlas', Cells[3]);
     Favorite := SavedItem(TAtlasSavedKind.Favorite, 'tdataset|open', 'TDataSet.Open', '', '', -1);
     Favorite.UnitName := 'Data.DB';
-    Cells := TAtlasWelcomeContinueFrame.SavedCells(Favorite);
+    Cells := TAtlasContinueTexts.SavedCells(Favorite);
     Assert.AreEqual('Favorit', Cells[0]);
     Assert.AreEqual('Data.DB', Cells[2]);
     Assert.AreEqual('alle Projekte', Cells[3]);
     TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('Atlas · 7 tabs', TAtlasWelcomeContinueFrame.TitleText(Entry));
-    Assert.AreEqual('5 min ago', TAtlasWelcomeContinueFrame.AgeText(NowUtc - 5 * OneMinute - OneSecond, NowUtc));
-    Assert.AreEqual('Note', TAtlasWelcomeContinueFrame.KindText(TAtlasSavedKind.Note));
+    Assert.AreEqual('Atlas · 7 tabs', TAtlasContinueTexts.TitleText(Entry));
+    Assert.AreEqual('5 min ago', TAtlasContinueTexts.AgeText(NowUtc - 5 * OneMinute - OneSecond, NowUtc));
+    Assert.AreEqual('Note', TAtlasContinueTexts.KindText(TAtlasSavedKind.Note));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -217,16 +217,16 @@ begin
   mHit.Row := 0;
   mHit.Button := False;
   mHit.Commit := -1;
-  AFrame.ClickAt(mHit);
+  AFrame.Recent.ClickAt(mHit);
   mHit.Row := 1;
   mHit.Button := True;
-  AFrame.ClickAt(mHit);
+  AFrame.Recent.ClickAt(mHit);
   mHit.Row := -1;
   mHit.Button := False;
   mHit.Commit := 0;
-  AFrame.ClickAt(mHit);
+  AFrame.Recent.ClickAt(mHit);
   mHit.Commit := 3;
-  AFrame.ClickAt(mHit);
+  AFrame.Recent.ClickAt(mHit);
 end;
 procedure TAtlasWelcomeContinueFrameTests.ResumeAndCommitReachSource;
 var
@@ -254,7 +254,7 @@ begin
     Fake.FIncoming.Commits := [ContinueCommit('abc1234ffff', 'Kunde: Prüfung', 'Eva', 'C:\Repo\Kunde.pas')];
     Frame.UpdateContent;
     Assert.IsTrue(Frame.PreferredHeight > Height, 'zwei Arbeitsstände und ein Commit brauchen mehr Platz');
-    Assert.AreEqual(2, Integer(Length(Frame.Entries)));
+    Assert.AreEqual(2, Integer(Length(Frame.Recent.Entries)));
     Fake.Calls := nil;
     ClickContinueRowsAndCommits(Frame);
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
@@ -262,19 +262,19 @@ begin
     Assert.AreEqual(2, Integer(Length(Fake.Calls)));
     Assert.AreEqual('resume C:\Alt\Alt.groupproj', Fake.Calls[0]);
     Assert.AreEqual('commit C:\Repo\Atlas.dproj abc1234', Fake.Calls[1]);
-    Assert.AreEqual(-1, Frame.HitTest(20, -5).Row, 'über der ersten Zeile');
-    Assert.AreEqual(1, Frame.HitTest(20, Frame.RowTop(1) + 4).Row);
+    Assert.AreEqual(-1, Frame.Recent.HitTest(20, -5).Row, 'über der ersten Zeile');
+    Assert.AreEqual(1, Frame.Recent.HitTest(20, Frame.Recent.RowTop(1) + 4).Row);
     // Anmeldung am Server nötig (#1287): Hinweis als Link unter dem Commit, Klick öffnet die Seite.
-    Assert.IsFalse(Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) +
+    Assert.IsFalse(Frame.Recent.HitTest(20, Frame.Recent.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) +
       4).Login, 'ohne fehlende Anmeldung kein Link');
     Fake.FIncoming.FetchFailed := True;
     Fake.FIncoming.LoginNeeded := True;
     Frame.UpdateContent;
-    Hit := Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) + 4);
+    Hit := Frame.Recent.HitTest(20, Frame.Recent.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) + 4);
     Assert.IsTrue(Hit.Login, 'Zeile unter dem einen Commit');
     Assert.AreEqual(-1, Hit.Commit);
     Fake.Calls := nil;
-    Frame.ClickAt(Hit);
+    Frame.Recent.ClickAt(Hit);
     CheckSynchronize;
     Assert.AreEqual(1, Integer(Length(Fake.Calls)));
     Assert.AreEqual('login C:\Repo\Atlas.dproj', Fake.Calls[0]);
@@ -302,16 +302,16 @@ begin
     Frame.Parent := Host;
     Frame.Width := 600;
     Frame.Source := Source;
-    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
+    Assert.AreEqual(0, Integer(Length(Frame.Recent.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
     Frame.QuickActions := QuickSource;
-    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
-    Assert.IsTrue(Frame.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
+    Assert.AreEqual(7, Integer(Length(Frame.Recent.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
+    Assert.IsTrue(Frame.Recent.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
     Fake.Calls := nil;
     // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_DOWN, []));
-    Assert.IsTrue(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_HOME, []));
-    Assert.IsTrue(Frame.Quick.HandleKey(VK_RETURN, []));
+    Assert.IsTrue(Frame.Recent.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(Frame.Recent.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(Frame.Recent.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(Frame.Recent.Quick.HandleKey(VK_RETURN, []));
     CheckSynchronize;
     Assert.AreEqual(1, Integer(Length(Quick.Calls)));
     Assert.AreEqual('build C:\Alt\Alt.groupproj', Quick.Calls[0]);
@@ -320,7 +320,7 @@ begin
     // Ausgeschaltet: keine Knöpfe mehr.
     Quick.IsOn := False;
     Frame.UpdateContent;
-    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(1))));
+    Assert.AreEqual(0, Integer(Length(Frame.Recent.Quick.ButtonsOf(1))));
   finally
     Host.Free;
   end;
@@ -344,7 +344,7 @@ begin
     Frame.Source := Source;
     // Ohne Versionsverwaltung bzw. ohne Ergebnis: kein Abschnitt.
     Without := Frame.PreferredHeight;
-    Assert.AreEqual(-1, Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(
+    Assert.AreEqual(-1, Frame.Recent.HitTest(20, Frame.Recent.IncomingTop + 2 * Frame.ScaleValue(
       TAtlasWelcomeContinueFrame.LineHeight)).Commit);
     Fake.FQuerying := True;
     Frame.UpdateContent;
@@ -360,7 +360,7 @@ begin
     Frame.UpdateContent;
     WithCommit := Frame.PreferredHeight;
     Assert.IsTrue(WithCommit > Querying, 'zwei Commits und „… und weitere“');
-    Assert.AreEqual(1, Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(
+    Assert.AreEqual(1, Frame.Recent.HitTest(20, Frame.Recent.IncomingTop + 2 * Frame.ScaleValue(
       TAtlasWelcomeContinueFrame.LineHeight) + 2).Commit, 'Überschrift, dann die Commits');
     // Ohne Arbeitsstand auch kein Abschnitt.
     Fake.FEntries := nil;
@@ -403,20 +403,20 @@ begin
     Assert.AreEqual(0, Integer(Length(Fake.Calls)) - 1, '„Gemerkt“ erst beim Wechsel lesen');
     Frame.Page := TAtlasWelcomeContinueFrame.PageSaved;
     Assert.AreEqual(TAtlasWelcomeContinueFrame.PageSaved, Frame.Page);
-    Assert.AreEqual(2, Integer(Frame.List.Items.Count));
-    Assert.AreEqual('Notiz', Frame.List.Items[0].Caption);
-    Assert.AreEqual('Kunde.pas:5', Frame.List.Items[0].SubItems[1]);
-    Assert.AreEqual('Zeta', Frame.List.Items[1].SubItems[2]);
-    Frame.Filter.Text := 'zeta';
-    Assert.AreEqual(1, Integer(Frame.List.Items.Count), 'Filter');
-    Assert.AreEqual('b1', Frame.ShownSaved[0].Id);
-    Frame.Filter.Text := 'gibtsnicht';
-    Assert.IsTrue(Frame.SavedEmptyLabel.Visible);
-    Assert.IsFalse(Frame.List.Visible);
-    Frame.Filter.Text := '';
-    Frame.List.Items[1].Selected := True;
+    Assert.AreEqual(2, Integer(Frame.SavedPage.List.Items.Count));
+    Assert.AreEqual('Notiz', Frame.SavedPage.List.Items[0].Caption);
+    Assert.AreEqual('Kunde.pas:5', Frame.SavedPage.List.Items[0].SubItems[1]);
+    Assert.AreEqual('Zeta', Frame.SavedPage.List.Items[1].SubItems[2]);
+    Frame.SavedPage.Filter.Text := 'zeta';
+    Assert.AreEqual(1, Integer(Frame.SavedPage.List.Items.Count), 'Filter');
+    Assert.AreEqual('b1', Frame.SavedPage.ShownSaved[0].Id);
+    Frame.SavedPage.Filter.Text := 'gibtsnicht';
+    Assert.IsTrue(Frame.SavedPage.EmptyLabel.Visible);
+    Assert.IsFalse(Frame.SavedPage.List.Visible);
+    Frame.SavedPage.Filter.Text := '';
+    Frame.SavedPage.List.Items[1].Selected := True;
     Fake.Calls := nil;
-    Frame.OpenSelected;
+    Frame.SavedPage.OpenSelected;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'über die Nachrichtenschleife');
     CheckSynchronize;
     Assert.AreEqual(1, Integer(Length(Fake.Calls)));
@@ -424,7 +424,7 @@ begin
     // Enter im Filterfeld öffnet den gewählten Eintrag.
     Fake.Calls := nil;
     Key := VK_RETURN;
-    Frame.Filter.OnKeyDown(Frame.Filter, Key, []);
+    Frame.SavedPage.Filter.OnKeyDown(Frame.SavedPage.Filter, Key, []);
     Assert.AreEqual(0, Integer(Key));
     CheckSynchronize;
     Assert.AreEqual('open b1', Fake.Calls[0], 'Enter öffnet den gewählten Eintrag');
@@ -451,7 +451,7 @@ begin
     Assert.IsFalse(Frame.Tabs.Visible, 'welcomePage.saved aus: keine Reiter');
     Frame.Page := TAtlasWelcomeContinueFrame.PageSaved;
     Assert.AreEqual(TAtlasWelcomeContinueFrame.PageRecent, Frame.Page);
-    Assert.IsTrue(Frame.PaintBox.Visible);
+    Assert.IsTrue(Frame.Recent.Visible);
     Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'nichts gelesen außer Shown');
   finally
     Host.Free;
