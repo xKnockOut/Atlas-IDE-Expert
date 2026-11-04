@@ -60,81 +60,110 @@ begin
   ACanvas.Pen.Width := 1;
 end;
 
+/// <summary>Punkte einer Form in Bitmap-Pixeln (AScale je Rastereinheit).</summary>
+function ScaledPoints(const AShape: TAtlasGlyphShape; AScale: Single): TArray<TPoint>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AShape.Points));
+  for mIndex := 0 to High(AShape.Points) do
+  begin
+    Result[mIndex] := Point(Round(AShape.Points[mIndex].X * AScale), Round(AShape.Points[mIndex].Y * AScale));
+  end;
+end;
+
+/// <summary>Eine Form auf ADC; der Stift ist gewählt, gefüllte Formen wählen AFill für die Dauer des Zeichnens.</summary>
+procedure DrawShape(ADC: HDC; const AShape: TAtlasGlyphShape; AScale: Single; AFill: HBRUSH);
+var
+  mPoints: TArray<TPoint>;
+begin
+  mPoints := ScaledPoints(AShape, AScale);
+  if Length(mPoints) = 0 then
+  begin
+    Exit;
+  end;
+  if AShape.Filled then
+  begin
+    SelectObject(ADC, AFill);
+    Polygon(ADC, mPoints[0], Length(mPoints));
+    SelectObject(ADC, GetStockObject(NULL_BRUSH));
+  end
+  else if AShape.Closed then
+  begin
+    Polygon(ADC, mPoints[0], Length(mPoints));
+  end
+  else
+  begin
+    Polyline(ADC, mPoints[0], Length(mPoints));
+  end;
+end;
+
+/// <summary>Alle Formen mit runden Linienenden in Farbe AFore auf ABitmap; AScale je Rastereinheit.</summary>
+procedure DrawShapes(ABitmap: TBitmap; const AShapes: TArray<TAtlasGlyphShape>; AScale: Single; AFore: COLORREF);
+var
+  mShape: TAtlasGlyphShape;
+  mBrush: TLogBrush;
+  mPen, mOldPen: HPEN;
+  mFill, mOldBrush: HBRUSH;
+begin
+  mBrush.lbStyle := BS_SOLID;
+  mBrush.lbColor := AFore;
+  mBrush.lbHatch := 0;
+  mPen := ExtCreatePen(PS_GEOMETRIC or PS_SOLID or PS_ENDCAP_ROUND or PS_JOIN_ROUND,
+    Max(1, Round(TAtlasGlyphs.StrokeWidth * AScale)), mBrush, 0, nil);
+  mFill := CreateSolidBrush(AFore);
+  mOldPen := SelectObject(ABitmap.Canvas.Handle, mPen);
+  mOldBrush := SelectObject(ABitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
+  try
+    for mShape in AShapes do
+    begin
+      DrawShape(ABitmap.Canvas.Handle, mShape, AScale, mFill);
+    end;
+  finally
+    SelectObject(ABitmap.Canvas.Handle, mOldBrush);
+    SelectObject(ABitmap.Canvas.Handle, mOldPen);
+    DeleteObject(mFill);
+    DeleteObject(mPen);
+  end;
+end;
+
+/// <summary>ABitmap auf ASize × ASize Pixel ab ATopLeft verkleinert; HALFTONE mittelt die Pixel: glatte Kanten
+/// ohne GDI+.</summary>
+procedure StretchSmooth(ACanvas: TCanvas; ABitmap: TBitmap; const ATopLeft: TPoint; ASize: Integer);
+var
+  mOrigin: TPoint;
+begin
+  SetStretchBltMode(ACanvas.Handle, HALFTONE);
+  SetBrushOrgEx(ACanvas.Handle, 0, 0, @mOrigin);
+  StretchBlt(ACanvas.Handle, ATopLeft.X, ATopLeft.Y, ASize, ASize, ABitmap.Canvas.Handle, 0, 0, ABitmap.Width,
+    ABitmap.Height, SRCCOPY);
+  SetBrushOrgEx(ACanvas.Handle, mOrigin.X, mOrigin.Y, nil);
+end;
+
 class procedure TAtlasGlyphPainter.Draw(ACanvas: TCanvas; AIcon: TAtlasToolbarIcon; const ARect: TRect; AFore,
   ABack: TColor; const ALetter: string);
 var
-  Shapes: TArray<TAtlasGlyphShape>;
-  Shape: TAtlasGlyphShape;
-  Bitmap: TBitmap;
-  Size, Index: Integer;
-  Scale: Single;
-  Points: array of TPoint;
-  Brush: TLogBrush;
-  Pen, OldPen: HPEN;
-  Fill, OldBrush: HBRUSH;
-  Fore: COLORREF;
-  Origin: TPoint;
+  mShapes: TArray<TAtlasGlyphShape>;
+  mBitmap: TBitmap;
+  mSize: Integer;
 begin
-  Shapes := TAtlasGlyphs.Shapes(AIcon);
-  if Length(Shapes) = 0 then
+  mShapes := TAtlasGlyphs.Shapes(AIcon);
+  if Length(mShapes) = 0 then
   begin
     DrawLetter(ACanvas, ARect, AFore, ALetter);
     Exit;
   end;
-  Size := Max(1, Min(ARect.Width, ARect.Height));
-  Fore := ColorToRGB(AFore);
-  Bitmap := TBitmap.Create;
+  mSize := Max(1, Min(ARect.Width, ARect.Height));
+  mBitmap := TBitmap.Create;
   try
-    Bitmap.PixelFormat := pf24bit;
-    Bitmap.SetSize(Size * Factor, Size * Factor);
-    Bitmap.Canvas.Brush.Color := ABack;
-    Bitmap.Canvas.FillRect(Rect(0, 0, Bitmap.Width, Bitmap.Height));
-    Scale := Size * Factor / TAtlasGlyphs.Size;
-    Brush.lbStyle := BS_SOLID;
-    Brush.lbColor := Fore;
-    Brush.lbHatch := 0;
-    Pen := ExtCreatePen(PS_GEOMETRIC or PS_SOLID or PS_ENDCAP_ROUND or PS_JOIN_ROUND,
-      Max(1, Round(TAtlasGlyphs.StrokeWidth * Scale)), Brush, 0, nil);
-    Fill := CreateSolidBrush(Fore);
-    OldPen := SelectObject(Bitmap.Canvas.Handle, Pen);
-    OldBrush := SelectObject(Bitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
-    try
-      for Shape in Shapes do
-      begin
-        SetLength(Points, Length(Shape.Points));
-        for Index := 0 to High(Shape.Points) do
-        begin
-          Points[Index] := Point(Round(Shape.Points[Index].X * Scale), Round(Shape.Points[Index].Y * Scale));
-        end;
-        if Shape.Filled then
-        begin
-          SelectObject(Bitmap.Canvas.Handle, Fill);
-          Polygon(Bitmap.Canvas.Handle, Points[0], Length(Points));
-          SelectObject(Bitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
-        end
-        else if Shape.Closed then
-        begin
-          Polygon(Bitmap.Canvas.Handle, Points[0], Length(Points));
-        end
-        else
-        begin
-          Polyline(Bitmap.Canvas.Handle, Points[0], Length(Points));
-        end;
-      end;
-    finally
-      SelectObject(Bitmap.Canvas.Handle, OldBrush);
-      SelectObject(Bitmap.Canvas.Handle, OldPen);
-      DeleteObject(Fill);
-      DeleteObject(Pen);
-    end;
-    // HALFTONE mittelt die Pixel: glatte Kanten ohne GDI+.
-    SetStretchBltMode(ACanvas.Handle, HALFTONE);
-    SetBrushOrgEx(ACanvas.Handle, 0, 0, @Origin);
-    StretchBlt(ACanvas.Handle, ARect.Left, ARect.Top, Size, Size, Bitmap.Canvas.Handle, 0, 0, Bitmap.Width,
-      Bitmap.Height, SRCCOPY);
-    SetBrushOrgEx(ACanvas.Handle, Origin.X, Origin.Y, nil);
+    mBitmap.PixelFormat := pf24bit;
+    mBitmap.SetSize(mSize * Factor, mSize * Factor);
+    mBitmap.Canvas.Brush.Color := ABack;
+    mBitmap.Canvas.FillRect(Rect(0, 0, mBitmap.Width, mBitmap.Height));
+    DrawShapes(mBitmap, mShapes, mSize * Factor / TAtlasGlyphs.Size, ColorToRGB(AFore));
+    StretchSmooth(ACanvas, mBitmap, ARect.TopLeft, mSize);
   finally
-    Bitmap.Free;
+    mBitmap.Free;
   end;
 end;
 
