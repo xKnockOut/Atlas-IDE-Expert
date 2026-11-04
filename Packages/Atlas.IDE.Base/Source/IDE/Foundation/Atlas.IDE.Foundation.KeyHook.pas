@@ -77,44 +77,61 @@ begin
   end;
 end;
 
+/// <summary>Erster angemeldeter Client, der die Taste will.</summary>
+function ClientFor(AKey: Word; AShift: TShiftState; out AClient: TAtlasKeyClient): Boolean;
+var
+  mClient: TAtlasKeyClient;
+begin
+  Result := False;
+  AClient := nil;
+  if (Clients = nil) or (Clients.Count = 0) then
+  begin
+    Exit;
+  end;
+  for mClient in Clients.ToArray do
+  begin
+    if mClient.WantsKey(AKey, AShift) then
+    begin
+      AClient := mClient;
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Taste im Hauptthread ausführen, solange der Client noch angemeldet ist.</summary>
+procedure QueueKey(AClient: TAtlasKeyClient; AKey: Word; AShift: TShiftState);
+begin
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      try
+        if TAtlasKeyHook.Contains(AClient) then
+        begin
+          AClient.HandleKey(AKey, AShift);
+        end;
+      except
+        // Die Clients melden ihre Fehler selbst; hier nur das letzte Netz (#493).
+        on E: Exception do
+          TAtlasGuard.Log('Tastatur: ' + E.ClassName + ': ' + E.Message);
+      end;
+    end);
+end;
+
 function KeyboardProc(Code: Integer; WParam: WPARAM; LParam: LPARAM): LRESULT; stdcall;
 var
-  Snapshot: TArray<TAtlasKeyClient>;
-  Client: TAtlasKeyClient;
-  Key: Word;
-  Shift: TShiftState;
+  mClient: TAtlasKeyClient;
+  mShift: TShiftState;
 begin
   try
-    if (Code = HC_ACTION) and (Clients <> nil) and (Clients.Count > 0) then
+    mShift := CurrentShift;
+    if (Code = HC_ACTION) and ClientFor(Word(WParam), mShift, mClient) then
     begin
-      Key := Word(WParam);
-      Shift := CurrentShift;
-      Snapshot := Clients.ToArray;
-      for Client in Snapshot do
+      // Gedrückt (auch Wiederholung): ausführen; losgelassen nur schlucken.
+      if (LParam and $80000000) = 0 then
       begin
-        if Client.WantsKey(Key, Shift) then
-        begin
-          // Gedrückt (auch Wiederholung): ausführen, solange der Client noch angemeldet ist.
-          if (LParam and $80000000) = 0 then
-          begin
-            TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
-              procedure
-              begin
-                try
-                  if TAtlasKeyHook.Contains(Client) then
-                  begin
-                    Client.HandleKey(Key, Shift);
-                  end;
-                except
-                  // Die Clients melden ihre Fehler selbst; hier nur das letzte Netz (#493).
-                  on E: Exception do
-                    TAtlasGuard.Log('Tastatur: ' + E.ClassName + ': ' + E.Message);
-                end;
-              end);
-          end;
-          Exit(1);
-        end;
+        QueueKey(mClient, Word(WParam), mShift);
       end;
+      Exit(1);
     end;
   except
     // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.

@@ -164,7 +164,8 @@ begin
   begin
     Exit;
   end;
-  if not TExtractInterface.Prepare(ATree, AText, APosition.Line, nil, nil, Info, Reason) then
+  if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
+    TExtractInterfaceLookups.Create(nil, nil, nil), Info, Reason) then
   begin
     Exit;
   end;
@@ -193,8 +194,9 @@ var
   Entry: TJSONObject;
   ProjectUnit: TProjectUnit;
 begin
-  if not TExtractInterface.Prepare(ATree, AText, APosition.Line, AncestorsLookup(ATree, AContext.Index),
-    MethodPointer(AContext.Index), Info, Reason) then
+  if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
+    TExtractInterfaceLookups.Create(AncestorsLookup(ATree, AContext.Index), nil, MethodPointer(AContext.Index)), Info,
+    Reason) then
   begin
     raise Failed(Reason);
   end;
@@ -335,7 +337,8 @@ begin
   LineBreak := TTextLines.LineBreakOf(AText);
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TExtractInterface.Plan(ATree, AText, APosition.Line, Request, AncestorsLookup(ATree, AContext.Index),
+    if not TExtractInterface.Plan(TClassSource.Create(ATree, AText, APosition.Line), Request,
+      TExtractInterfaceLookups.Create(AncestorsLookup(ATree, AContext.Index),
       function(const AName: string): Boolean
       var
         Resolved: TResolvedSymbol;
@@ -343,7 +346,7 @@ begin
         Resolved := AResolver.ResolveChain(ATree, AFileName, [AName], TExtractInterface.ClassAt(ATree,
           APosition.Line).StartOffset);
         Result := Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.UnitName];
-      end, MethodPointer(AContext.Index), Plan, Reason) then
+      end, MethodPointer(AContext.Index)), Plan, Reason) then
     begin
       raise Failed(Reason);
     end;
