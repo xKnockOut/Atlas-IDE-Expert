@@ -137,6 +137,80 @@ begin
   end;
 end;
 
+/// <summary>Legt in AFolder ein Git-Repository mit Branch main für „Atlas Test“ an (ohne CRLF-Umwandlung und
+/// Signatur).</summary>
+procedure InitGitRepository(const ARunner: IAtlasVcsRunner; const AGitExe, AFolder: string);
+begin
+  Exec(ARunner, AGitExe, ['init', '-q'], AFolder);
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.name', 'Atlas Test'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.email', 'test@example.org'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'core.autocrlf', 'false'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'commit.gpgsign', 'false'], AFolder);
+end;
+
+/// <summary>Schreibt A.pas (zwei Zeilen) und B.pas nach AFolder.</summary>
+procedure WriteUnitsAB(const AFolder: string);
+begin
+  TFile.WriteAllText(TPath.Combine(AFolder, 'A.pas'), 'unit A;'#10'end.'#10, TEncoding.ASCII);
+  TFile.WriteAllText(TPath.Combine(AFolder, 'B.pas'), 'unit B;'#10, TEncoding.ASCII);
+end;
+
+/// <summary>Prüft den Stand von A.pas im Repository und dessen Blame (zwei übernommene Zeilen aus ARevision, eine
+/// neue); AFirst ist die erste Zeile.</summary>
+procedure AssertBaseAndBlame(const AVcs: IAtlasVersionControl; const AFolder, ARevision, AMessage: string;
+  out AFirst: TAtlasVcsBlameLine);
+var
+  mContent: TBytes;
+  mLines: TArray<TAtlasVcsBlameLine>;
+begin
+  Assert.IsTrue(AVcs.FileAt(TPath.Combine(AFolder, 'A.pas'), '', mContent) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('unit A;'#10'end.'#10, TEncoding.UTF8.GetString(mContent), AMessage);
+  Assert.IsTrue(AVcs.Blame(TPath.Combine(AFolder, 'A.pas'), mLines) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual(ARevision, mLines[0].Revision);
+  Assert.IsTrue(mLines[2].Uncommitted);
+  AFirst := mLines[0];
+end;
+
+/// <summary>Ändert A.pas, legt src\Neu Datei.pas an, löscht B.pas und prüft die drei Änderungen.</summary>
+procedure AssertGitChanges(const AVcs: IAtlasVersionControl; const AFolder: string);
+var
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+begin
+  TFile.AppendAllText(TPath.Combine(AFolder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
+  TFile.WriteAllText(TPath.Combine(AFolder, 'src\Neu Datei.pas'), 'unit Neu;'#10, TEncoding.ASCII);
+  TFile.Delete(TPath.Combine(AFolder, 'B.pas'));
+  Assert.IsTrue(AVcs.Changes(mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(3, Integer(Length(mChanges)));
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'A.pas'), mChange));
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'src\Neu Datei.pas'), mChange), 'neue Datei im Unterordner');
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Untracked);
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'B.pas'), mChange));
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Deleted);
+end;
+
+/// <summary>Die Wache meldet git checkout -b als Branch- und einen Commit als Revisionswechsel.</summary>
+procedure AssertGitWatch(const AVcs: IAtlasVersionControl; const ARunner: IAtlasVcsRunner; const AGitExe,
+  AFolder: string);
+var
+  mWatch: TAtlasVcsWatch;
+begin
+  mWatch := TAtlasVcsWatch.Create(AVcs);
+  try
+    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.None);
+    Exec(ARunner, AGitExe, ['checkout', '-q', '-b', 'feature/x'], AFolder);
+    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Branch, 'git checkout -b');
+    Assert.AreEqual('feature/x', mWatch.Head.Branch);
+    Exec(ARunner, AGitExe, ['commit', '-q', '-a', '-m', 'Zweiter Stand'], AFolder);
+    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Revision, 'Commit');
+  finally
+    mWatch.Free;
+  end;
+end;
+
 procedure TAtlasVcsIntegrationTests.GitWorkingCopyReportsBranchRevisionAndChanges;
 var
   GitExe, Folder, Commit: string;
@@ -144,10 +218,7 @@ var
   Vcs: IAtlasVersionControl;
   Head: TAtlasVcsHead;
   Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Content: TBytes;
-  Lines: TArray<TAtlasVcsBlameLine>;
-  Watch: TAtlasVcsWatch;
+  First: TAtlasVcsBlameLine;
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
@@ -158,14 +229,8 @@ begin
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Folder := NewFolder('git');
   try
-    Exec(Runner, GitExe, ['init', '-q'], Folder);
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
-    TFile.WriteAllText(TPath.Combine(Folder, 'A.pas'), 'unit A;'#10'end.'#10, TEncoding.ASCII);
-    TFile.WriteAllText(TPath.Combine(Folder, 'B.pas'), 'unit B;'#10, TEncoding.ASCII);
+    InitGitRepository(Runner, GitExe, Folder);
+    WriteUnitsAB(Folder);
     Exec(Runner, GitExe, ['add', '.'], Folder);
     Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
     Commit := Exec(Runner, GitExe, ['rev-parse', 'HEAD'], Folder);
@@ -180,83 +245,104 @@ begin
     Assert.IsTrue(Vcs.Changes(Changes) = TAtlasVcsOutcome.Ok);
     Assert.AreEqual(0, Integer(Length(Changes)), 'frisch übernommen');
 
-    TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
-    TFile.WriteAllText(TPath.Combine(Folder, 'src\Neu Datei.pas'), 'unit Neu;'#10, TEncoding.ASCII);
-    TFile.Delete(TPath.Combine(Folder, 'B.pas'));
-    Assert.IsTrue(Vcs.Changes(Changes) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(3, Integer(Length(Changes)));
-    Assert.IsTrue(Find(Changes, TPath.Combine(Folder, 'A.pas'), Change));
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Modified);
-    Assert.IsTrue(Find(Changes, TPath.Combine(Folder, 'src\Neu Datei.pas'), Change), 'neue Datei im Unterordner');
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Untracked);
-    Assert.IsTrue(Find(Changes, TPath.Combine(Folder, 'B.pas'), Change));
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Deleted);
-
-    Assert.IsTrue(Vcs.FileAt(TPath.Combine(Folder, 'A.pas'), '', Content) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual('unit A;'#10'end.'#10, TEncoding.UTF8.GetString(Content), 'Stand im Repository');
-    Assert.IsTrue(Vcs.Blame(TPath.Combine(Folder, 'A.pas'), Lines) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(3, Integer(Length(Lines)));
-    Assert.AreEqual(Commit, Lines[0].Revision);
-    Assert.AreEqual('Atlas Test', Lines[0].Author);
-    Assert.AreEqual('Erster Stand', Lines[0].Summary);
-    Assert.IsTrue(Lines[2].Uncommitted);
-
-    Watch := TAtlasVcsWatch.Create(Vcs);
-    try
-      Assert.IsTrue(Watch.Check = TAtlasVcsSwitch.None);
-      Exec(Runner, GitExe, ['checkout', '-q', '-b', 'feature/x'], Folder);
-      Assert.IsTrue(Watch.Check = TAtlasVcsSwitch.Branch, 'git checkout -b');
-      Assert.AreEqual('feature/x', Watch.Head.Branch);
-      Exec(Runner, GitExe, ['commit', '-q', '-a', '-m', 'Zweiter Stand'], Folder);
-      Assert.IsTrue(Watch.Check = TAtlasVcsSwitch.Revision, 'Commit');
-    finally
-      Watch.Free;
-    end;
+    AssertGitChanges(Vcs, Folder);
+    AssertBaseAndBlame(Vcs, Folder, Commit, 'Stand im Repository', First);
+    Assert.AreEqual('Atlas Test', First.Author);
+    Assert.AreEqual('Erster Stand', First.Summary);
+    AssertGitWatch(Vcs, Runner, GitExe, Folder);
   finally
     Vcs := nil;
     RemoveFolder(Folder);
   end;
 end;
 
+/// <summary>svn und svnadmin; False, wenn eines fehlt.</summary>
+function SvnTools(out ASvnExe, ASvnAdmin: string): Boolean;
+begin
+  ASvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
+  ASvnAdmin := '';
+  Result := ASvnExe <> '';
+  if Result then
+  begin
+    ASvnAdmin := TPath.Combine(ExtractFilePath(ASvnExe), 'svnadmin.exe');
+    Result := TFile.Exists(ASvnAdmin);
+  end;
+end;
+
+/// <summary>Ablage unter AFolder mit trunk und branches, Arbeitskopie von trunk in AWorkingCopy mit A.pas und
+/// B.pas als r2; liefert die URL der Ablage.</summary>
+function CreateSvnCheckout(const ARunner: IAtlasVcsRunner; const ASvnExe, ASvnAdmin, AFolder,
+  AWorkingCopy: string): string;
+var
+  mRepository: string;
+begin
+  mRepository := TPath.Combine(AFolder, 'repo');
+  Exec(ARunner, ASvnAdmin, ['create', mRepository], AFolder);
+  Result := 'file:///' + StringReplace(mRepository, '\', '/', [rfReplaceAll]);
+  Exec(ARunner, ASvnExe, ['mkdir', '-q', '-m', 'Ablage', Result + '/trunk', Result + '/branches',
+    '--non-interactive'], AFolder);
+  Exec(ARunner, ASvnExe, ['checkout', '-q', Result + '/trunk', AWorkingCopy, '--non-interactive'], AFolder);
+  WriteUnitsAB(AWorkingCopy);
+  Exec(ARunner, ASvnExe, ['add', '-q', 'A.pas', 'B.pas'], AWorkingCopy);
+  Exec(ARunner, ASvnExe, ['commit', '-q', '-m', 'Erster Stand', '--non-interactive'], AWorkingCopy);
+  Exec(ARunner, ASvnExe, ['update', '-q', '--non-interactive'], AWorkingCopy);
+end;
+
+/// <summary>Ändert A.pas, legt Neu.pas an und prüft die zwei Änderungen.</summary>
+procedure AssertSvnChanges(const AVcs: IAtlasVersionControl; const AWorkingCopy: string);
+var
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+begin
+  TFile.AppendAllText(TPath.Combine(AWorkingCopy, 'A.pas'), '// neu'#10, TEncoding.ASCII);
+  TFile.WriteAllText(TPath.Combine(AWorkingCopy, 'Neu.pas'), 'unit Neu;'#10, TEncoding.ASCII);
+  Assert.IsTrue(AVcs.Changes(mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(2, Integer(Length(mChanges)));
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AWorkingCopy, 'A.pas'), mChange));
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AWorkingCopy, 'Neu.pas'), mChange));
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Untracked);
+end;
+
+/// <summary>Die Wache meldet svn switch auf branches/x als Branchwechsel.</summary>
+procedure AssertSvnSwitch(const AVcs: IAtlasVersionControl; const ARunner: IAtlasVcsRunner; const ASvnExe,
+  AWorkingCopy, AUrl: string);
+var
+  mWatch: TAtlasVcsWatch;
+begin
+  mWatch := TAtlasVcsWatch.Create(AVcs);
+  try
+    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.None);
+    Exec(ARunner, ASvnExe, ['revert', '-q', 'A.pas'], AWorkingCopy);
+    Exec(ARunner, ASvnExe, ['copy', '-q', '-m', 'Branch', AUrl + '/trunk', AUrl + '/branches/x', '--non-interactive'],
+      AWorkingCopy);
+    Exec(ARunner, ASvnExe, ['switch', '-q', AUrl + '/branches/x', '--non-interactive'], AWorkingCopy);
+    Assert.IsTrue(mWatch.Check = TAtlasVcsSwitch.Branch, 'svn switch');
+    Assert.AreEqual('branches/x', mWatch.Head.Branch);
+  finally
+    mWatch.Free;
+  end;
+end;
+
 procedure TAtlasVcsIntegrationTests.SvnWorkingCopyReportsBranchRevisionAndChanges;
 var
-  SvnExe, SvnAdmin, Folder, Repository, Url, WorkingCopy: string;
+  SvnExe, SvnAdmin, Folder, Url, WorkingCopy: string;
   Runner: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   Head: TAtlasVcsHead;
-  Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Content: TBytes;
-  Lines: TArray<TAtlasVcsBlameLine>;
-  Watch: TAtlasVcsWatch;
+  First: TAtlasVcsBlameLine;
 begin
   // Ohne svn bzw. svnadmin übersprungen. Exit statt Assert.Pass: DUnitX behält die Meldung
   // im Ergebnis, und der Leckmonitor zählte sie als Leck.
-  SvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
-  if SvnExe = '' then
-  begin
-    Exit;
-  end;
-  SvnAdmin := TPath.Combine(ExtractFilePath(SvnExe), 'svnadmin.exe');
-  if not TFile.Exists(SvnAdmin) then
+  if not SvnTools(SvnExe, SvnAdmin) then
   begin
     Exit;
   end;
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Folder := NewFolder('svn');
   try
-    Repository := TPath.Combine(Folder, 'repo');
     WorkingCopy := TPath.Combine(Folder, 'wc');
-    Exec(Runner, SvnAdmin, ['create', Repository], Folder);
-    Url := 'file:///' + StringReplace(Repository, '\', '/', [rfReplaceAll]);
-    Exec(Runner, SvnExe, ['mkdir', '-q', '-m', 'Ablage', Url + '/trunk', Url + '/branches', '--non-interactive'],
-      Folder);
-    Exec(Runner, SvnExe, ['checkout', '-q', Url + '/trunk', WorkingCopy, '--non-interactive'], Folder);
-    TFile.WriteAllText(TPath.Combine(WorkingCopy, 'A.pas'), 'unit A;'#10'end.'#10, TEncoding.ASCII);
-    TFile.WriteAllText(TPath.Combine(WorkingCopy, 'B.pas'), 'unit B;'#10, TEncoding.ASCII);
-    Exec(Runner, SvnExe, ['add', '-q', 'A.pas', 'B.pas'], WorkingCopy);
-    Exec(Runner, SvnExe, ['commit', '-q', '-m', 'Erster Stand', '--non-interactive'], WorkingCopy);
-    Exec(Runner, SvnExe, ['update', '-q', '--non-interactive'], WorkingCopy);
+    Url := CreateSvnCheckout(Runner, SvnExe, SvnAdmin, Folder, WorkingCopy);
 
     Vcs := TAtlasVersionControl.Open(WorkingCopy, TAtlasVcsProvider.Auto, Runner);
     Assert.IsTrue(Vcs.Kind = TAtlasVcsKind.Svn);
@@ -265,38 +351,145 @@ begin
     Assert.AreEqual('trunk', Head.Branch);
     Assert.AreEqual('2', Head.Revision, 'Ablage = r1, erster Stand = r2');
 
-    TFile.AppendAllText(TPath.Combine(WorkingCopy, 'A.pas'), '// neu'#10, TEncoding.ASCII);
-    TFile.WriteAllText(TPath.Combine(WorkingCopy, 'Neu.pas'), 'unit Neu;'#10, TEncoding.ASCII);
-    Assert.IsTrue(Vcs.Changes(Changes) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(2, Integer(Length(Changes)));
-    Assert.IsTrue(Find(Changes, TPath.Combine(WorkingCopy, 'A.pas'), Change));
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Modified);
-    Assert.IsTrue(Find(Changes, TPath.Combine(WorkingCopy, 'Neu.pas'), Change));
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Untracked);
-
-    Assert.IsTrue(Vcs.FileAt(TPath.Combine(WorkingCopy, 'A.pas'), '', Content) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual('unit A;'#10'end.'#10, TEncoding.UTF8.GetString(Content), 'BASE');
-    Assert.IsTrue(Vcs.Blame(TPath.Combine(WorkingCopy, 'A.pas'), Lines) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(3, Integer(Length(Lines)));
-    Assert.AreEqual('2', Lines[0].Revision);
-    Assert.IsTrue(Lines[2].Uncommitted);
-
-    Watch := TAtlasVcsWatch.Create(Vcs);
-    try
-      Assert.IsTrue(Watch.Check = TAtlasVcsSwitch.None);
-      Exec(Runner, SvnExe, ['revert', '-q', 'A.pas'], WorkingCopy);
-      Exec(Runner, SvnExe, ['copy', '-q', '-m', 'Branch', Url + '/trunk', Url + '/branches/x', '--non-interactive'],
-        WorkingCopy);
-      Exec(Runner, SvnExe, ['switch', '-q', Url + '/branches/x', '--non-interactive'], WorkingCopy);
-      Assert.IsTrue(Watch.Check = TAtlasVcsSwitch.Branch, 'svn switch');
-      Assert.AreEqual('branches/x', Watch.Head.Branch);
-    finally
-      Watch.Free;
-    end;
+    AssertSvnChanges(Vcs, WorkingCopy);
+    AssertBaseAndBlame(Vcs, WorkingCopy, '2', 'BASE', First);
+    AssertSvnSwitch(Vcs, Runner, SvnExe, WorkingCopy, Url);
   finally
     Vcs := nil;
     RemoveFolder(Folder);
   end;
+end;
+
+/// <summary>Ablage ARemote und Klon AFolder mit vier Units auf origin/main, dazu 3 ungepushte Commits, 1 Stash und
+/// 4 geänderte Dateien (Abnahme).</summary>
+procedure PrepareLocalWork(const ARunner: IAtlasVcsRunner; const AGitExe, AFolder, ARemote: string);
+var
+  mName: string;
+begin
+  Exec(ARunner, AGitExe, ['init', '-q', '--bare', ARemote], ARemote);
+  // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], ARemote);
+  InitGitRepository(ARunner, AGitExe, AFolder);
+  for mName in TArray<string>.Create('A', 'B', 'C', 'D') do
+  begin
+    TFile.WriteAllText(TPath.Combine(AFolder, mName + '.pas'), 'unit ' + mName + ';'#10, TEncoding.ASCII);
+  end;
+  Exec(ARunner, AGitExe, ['add', '.'], AFolder);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-m', 'Erster Stand'], AFolder);
+  Exec(ARunner, AGitExe, ['remote', 'add', 'origin', ARemote], AFolder);
+  Exec(ARunner, AGitExe, ['push', '-q', '-u', 'origin', 'main'], AFolder);
+  for mName in TArray<string>.Create('Zwei', 'Drei', 'Vier') do
+  begin
+    Exec(ARunner, AGitExe, ['commit', '-q', '--allow-empty', '-m', mName], AFolder);
+  end;
+  TFile.AppendAllText(TPath.Combine(AFolder, 'A.pas'), '// Versuch'#10, TEncoding.ASCII);
+  Exec(ARunner, AGitExe, ['stash', 'push', '-q', '-m', 'Versuch'], AFolder);
+  TFile.AppendAllText(TPath.Combine(AFolder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
+  TFile.AppendAllText(TPath.Combine(AFolder, 'B.pas'), '// neu'#10, TEncoding.ASCII);
+  TFile.Delete(TPath.Combine(AFolder, 'D.pas'));
+  TFile.WriteAllText(TPath.Combine(AFolder, 'E.pas'), 'unit E;'#10, TEncoding.ASCII);
+end;
+
+/// <summary>Remotes, Branches und ungepushte Commits aus PrepareLocalWork.</summary>
+procedure AssertBranchesAndOutgoing(const ALocal: IAtlasVcsLocalWork);
+var
+  mRemotes: TArray<string>;
+  mBranches: TArray<TAtlasVcsBranch>;
+  mCommits: TArray<TAtlasVcsCommit>;
+begin
+  Assert.IsTrue(ALocal.Remotes(mRemotes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mRemotes)));
+  Assert.AreEqual('origin', mRemotes[0]);
+  Assert.IsTrue(ALocal.Branches(mBranches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mBranches)));
+  Assert.AreEqual('main', mBranches[0].Name);
+  Assert.AreEqual('origin/main', mBranches[0].Upstream);
+  Assert.AreEqual(3, mBranches[0].Ahead);
+  Assert.AreEqual(0, mBranches[0].Behind);
+  Assert.IsTrue(mBranches[0].Current);
+  Assert.IsTrue(ALocal.Outgoing('main', 'origin/main', 10, mCommits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(3, Integer(Length(mCommits)));
+  Assert.AreEqual('Vier', mCommits[0].Summary, 'neuester zuerst');
+end;
+
+/// <summary>Der Stash aus PrepareLocalWork mit seiner einen Datei.</summary>
+procedure AssertStash(const ALocal: IAtlasVcsLocalWork; const AFolder: string);
+var
+  mStashes: TArray<TAtlasVcsStash>;
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+begin
+  Assert.IsTrue(ALocal.Stashes(mStashes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mStashes)));
+  Assert.AreEqual('Versuch', mStashes[0].Message);
+  Assert.AreEqual('main', mStashes[0].Branch);
+  Assert.IsTrue(ALocal.ChangesIn(mStashes[0].Hash, mChanges) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mChanges)));
+  Assert.IsTrue(Find(mChanges, TPath.Combine(AFolder, 'A.pas'), mChange), 'Datei im Stash');
+  Assert.IsTrue(mChange.Kind = TAtlasVcsChangeKind.Modified);
+end;
+
+/// <summary>Was die Willkommensseite aus PrepareLocalWork als nicht gesichert zeigt.</summary>
+procedure AssertUnsavedState(const AState: TAtlasUnsavedState; const AFolder: string; ANowUtc: TDateTime);
+var
+  mItem: TAtlasUnsavedItem;
+  mProjects: TArray<TAtlasUnsavedProject>;
+  mView: TAtlasUnsavedView;
+begin
+  Assert.IsTrue(AState.Find(TAtlasUnsavedKind.Changes, mItem));
+  Assert.AreEqual(4, Integer(mItem.Count));
+  Assert.AreEqual(2, mItem.Modified);
+  Assert.AreEqual(1, mItem.Added);
+  Assert.AreEqual(1, mItem.Deleted);
+  Assert.IsTrue(AState.Find(TAtlasUnsavedKind.Commits, mItem));
+  Assert.AreEqual(3, Integer(mItem.Count));
+  Assert.IsTrue(mItem.Since > 0, 'Alter aus dem ältesten Commit');
+  Assert.IsTrue(AState.Find(TAtlasUnsavedKind.Stashes, mItem));
+  Assert.AreEqual(1, Integer(mItem.Count));
+  Assert.IsFalse(AState.Find(TAtlasUnsavedKind.NoUpstream, mItem));
+  SetLength(mProjects, 1);
+  mProjects[0] := Default(TAtlasUnsavedProject);
+  mProjects[0].Project := TPath.Combine(AFolder, 'Atlas.dproj');
+  mProjects[0].State := AState;
+  mProjects[0].Fresh := True;
+  mView := TAtlasWelcomeUnsaved.View(mProjects, ANowUtc, TAtlasUnsavedOptions.Create(0, 24, 72));
+  Assert.AreEqual(3, Integer(Length(mView.Rows)), 'Änderungen, Commits, Stash');
+end;
+
+/// <summary>Plant und pusht den Eintrag AKind aus AState: genau ein Plan auf ATarget, für einen Branch ohne
+/// Upstream mit --set-upstream.</summary>
+procedure PushPlanned(const ALocal: IAtlasVcsLocalWork; const AState: TAtlasUnsavedState;
+  AKind: TAtlasUnsavedKind; const ATarget: string);
+var
+  mItem: TAtlasUnsavedItem;
+  mPlans: TArray<TAtlasUnsavedPush>;
+begin
+  Assert.IsTrue(AState.Find(AKind, mItem));
+  Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(ALocal, mItem, mPlans) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mPlans)));
+  Assert.AreEqual(ATarget, mPlans[0].Target);
+  if AKind = TAtlasUnsavedKind.NoUpstream then
+  begin
+    Assert.IsTrue(mPlans[0].SetUpstream, 'neuer Branch mit --set-upstream');
+  end;
+  Assert.IsTrue(ALocal.Push(mPlans[0].Branch, mPlans[0].Remote, mPlans[0].RemoteRef, mPlans[0].SetUpstream) =
+    TAtlasVcsOutcome.Ok);
+end;
+
+/// <summary>Nach beiden Pushes: beide Branches verfolgt, nichts mehr voraus.</summary>
+procedure AssertAllPushed(const ALocal: IAtlasVcsLocalWork);
+var
+  mBranches: TArray<TAtlasVcsBranch>;
+  mName: string;
+begin
+  Assert.IsTrue(ALocal.Branches(mBranches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(2, Integer(Length(mBranches)));
+  for mName in TArray<string>.Create('feature/lokal', 'main') do
+  begin
+    Assert.IsTrue((mBranches[0].Name = mName) or (mBranches[1].Name = mName), mName);
+  end;
+  Assert.IsTrue(mBranches[0].Tracked and mBranches[1].Tracked, 'beide verfolgt');
+  Assert.AreEqual(0, mBranches[0].Ahead + mBranches[1].Ahead, 'alles gepusht');
 end;
 
 procedure TAtlasVcsIntegrationTests.GitLocalWorkReportsUnsavedAndPushes;
@@ -305,20 +498,10 @@ var
   Runner: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   Local: IAtlasVcsLocalWork;
-  Branches: TArray<TAtlasVcsBranch>;
-  Stashes: TArray<TAtlasVcsStash>;
   Commits: TArray<TAtlasVcsCommit>;
-  Changes: TArray<TAtlasVcsChange>;
-  Change: TAtlasVcsChange;
-  Remotes: TArray<string>;
   State: TAtlasUnsavedState;
   Item: TAtlasUnsavedItem;
-  Projects: TArray<TAtlasUnsavedProject>;
-  View: TAtlasUnsavedView;
-  Plans: TArray<TAtlasUnsavedPush>;
   NowUtc: TDateTime;
-  Name: string;
-  Names: TArray<string>;
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
@@ -329,81 +512,14 @@ begin
   Remote := NewFolder('git-remote');
   Folder := NewFolder('git-local');
   try
-    Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
-    // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Remote);
-    Exec(Runner, GitExe, ['init', '-q'], Folder);
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
-    Names := ['A', 'B', 'C', 'D'];
-    for Name in Names do
-    begin
-      TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
-    end;
-    Exec(Runner, GitExe, ['add', '.'], Folder);
-    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
-    Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
-    Exec(Runner, GitExe, ['push', '-q', '-u', 'origin', 'main'], Folder);
-    // Abnahme: 3 ungepushte Commits, 1 Stash, 4 geänderte Dateien.
-    Names := ['Zwei', 'Drei', 'Vier'];
-    for Name in Names do
-    begin
-      Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', Name], Folder);
-    end;
-    TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// Versuch'#10, TEncoding.ASCII);
-    Exec(Runner, GitExe, ['stash', 'push', '-q', '-m', 'Versuch'], Folder);
-    TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
-    TFile.AppendAllText(TPath.Combine(Folder, 'B.pas'), '// neu'#10, TEncoding.ASCII);
-    TFile.Delete(TPath.Combine(Folder, 'D.pas'));
-    TFile.WriteAllText(TPath.Combine(Folder, 'E.pas'), 'unit E;'#10, TEncoding.ASCII);
-
+    PrepareLocalWork(Runner, GitExe, Folder, Remote);
     Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
     Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local), 'Git kann lokale Arbeit');
-    Assert.IsTrue(Local.Remotes(Remotes) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Remotes)));
-    Assert.AreEqual('origin', Remotes[0]);
-    Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Branches)));
-    Assert.AreEqual('main', Branches[0].Name);
-    Assert.AreEqual('origin/main', Branches[0].Upstream);
-    Assert.AreEqual(3, Branches[0].Ahead);
-    Assert.AreEqual(0, Branches[0].Behind);
-    Assert.IsTrue(Branches[0].Current);
-    Assert.IsTrue(Local.Outgoing('main', 'origin/main', 10, Commits) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(3, Integer(Length(Commits)));
-    Assert.AreEqual('Vier', Commits[0].Summary, 'neuester zuerst');
-    Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Stashes)));
-    Assert.AreEqual('Versuch', Stashes[0].Message);
-    Assert.AreEqual('main', Stashes[0].Branch);
-    Assert.IsTrue(Local.ChangesIn(Stashes[0].Hash, Changes) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Changes)));
-    Assert.IsTrue(Find(Changes, TPath.Combine(Folder, 'A.pas'), Change), 'Datei im Stash');
-    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Modified);
-
+    AssertBranchesAndOutgoing(Local);
+    AssertStash(Local, Folder);
     NowUtc := TTimeZone.Local.ToUniversalTime(Now);
     Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Changes, Item));
-    Assert.AreEqual(4, Integer(Item.Count));
-    Assert.AreEqual(2, Item.Modified);
-    Assert.AreEqual(1, Item.Added);
-    Assert.AreEqual(1, Item.Deleted);
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Commits, Item));
-    Assert.AreEqual(3, Integer(Item.Count));
-    Assert.IsTrue(Item.Since > 0, 'Alter aus dem ältesten Commit');
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Stashes, Item));
-    Assert.AreEqual(1, Integer(Item.Count));
-    Assert.IsFalse(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
-    SetLength(Projects, 1);
-    Projects[0] := Default(TAtlasUnsavedProject);
-    Projects[0].Project := TPath.Combine(Folder, 'Atlas.dproj');
-    Projects[0].State := State;
-    Projects[0].Fresh := True;
-    View := TAtlasWelcomeUnsaved.View(Projects, NowUtc, TAtlasUnsavedOptions.Create(0, 24, 72));
-    Assert.AreEqual(3, Integer(Length(View.Rows)), 'Änderungen, Commits, Stash');
+    AssertUnsavedState(State, Folder, NowUtc);
 
     // Branch ohne Upstream mit einem Commit, der auf keinem Remote liegt.
     Exec(Runner, GitExe, ['checkout', '-q', '-b', 'feature/lokal'], Folder);
@@ -416,28 +532,9 @@ begin
     Assert.AreEqual('feature/lokal', Item.Branches[0]);
 
     // Push erst nach Plan: main auf seinen Upstream, der neue Branch mit --set-upstream.
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Commits, Item));
-    Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(Local, Item, Plans) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Plans)));
-    Assert.AreEqual('origin/main', Plans[0].Target);
-    Assert.IsTrue(Local.Push(Plans[0].Branch, Plans[0].Remote, Plans[0].RemoteRef, Plans[0].SetUpstream) =
-      TAtlasVcsOutcome.Ok);
-    Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
-    Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(Local, Item, Plans) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(1, Integer(Length(Plans)));
-    Assert.IsTrue(Plans[0].SetUpstream);
-    Assert.AreEqual('origin/feature/lokal', Plans[0].Target);
-    Assert.IsTrue(Local.Push(Plans[0].Branch, Plans[0].Remote, Plans[0].RemoteRef, Plans[0].SetUpstream) =
-      TAtlasVcsOutcome.Ok);
-    Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
-    Assert.AreEqual(2, Integer(Length(Branches)));
-    Names := ['feature/lokal', 'main'];
-    for Name in Names do
-    begin
-      Assert.IsTrue((Branches[0].Name = Name) or (Branches[1].Name = Name), Name);
-    end;
-    Assert.IsTrue(Branches[0].Tracked and Branches[1].Tracked, 'beide verfolgt');
-    Assert.AreEqual(0, Branches[0].Ahead + Branches[1].Ahead, 'alles gepusht');
+    PushPlanned(Local, State, TAtlasUnsavedKind.Commits, 'origin/main');
+    PushPlanned(Local, State, TAtlasUnsavedKind.NoUpstream, 'origin/feature/lokal');
+    AssertAllPushed(Local);
     Assert.IsTrue(Local.Push('-x', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed,
       'keine Optionen als Branch');
   finally
@@ -448,6 +545,47 @@ begin
   end;
 end;
 
+/// <summary>Ablage und Arbeitskopie mit Kunde.pas und Fremd.pas, erster Stand gepusht.</summary>
+procedure InitGitWithCustomerUnits(const ARunner: IAtlasVcsRunner; const AGitExe, ARemote, AFolder: string);
+var
+  mName: string;
+  mNames: TArray<string>;
+begin
+  Exec(ARunner, AGitExe, ['init', '-q', '--bare', ARemote], ARemote);
+  // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], ARemote);
+  Exec(ARunner, AGitExe, ['init', '-q'], AFolder);
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.name', 'Atlas Test'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.email', 'test@example.org'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'core.autocrlf', 'false'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'commit.gpgsign', 'false'], AFolder);
+  mNames := ['Kunde', 'Fremd'];
+  for mName in mNames do
+  begin
+    TFile.WriteAllText(TPath.Combine(AFolder, mName + '.pas'), 'unit ' + mName + ';'#10, TEncoding.ASCII);
+  end;
+  Exec(ARunner, AGitExe, ['add', '.'], AFolder);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-m', 'Erster Stand'], AFolder);
+  Exec(ARunner, AGitExe, ['remote', 'add', 'origin', ARemote], AFolder);
+  Exec(ARunner, AGitExe, ['push', '-q', '-u', 'origin', 'main'], AFolder);
+end;
+
+/// <summary>Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.</summary>
+procedure PushColleagueCommits(const ARunner: IAtlasVcsRunner; const AGitExe, ARemote, AOther: string);
+begin
+  Exec(ARunner, AGitExe, ['clone', '-q', ARemote, AOther], AOther);
+  Exec(ARunner, AGitExe, ['config', 'user.name', 'Eva Kollegin'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'user.email', 'eva@example.org'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'core.autocrlf', 'false'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'commit.gpgsign', 'false'], AOther);
+  TFile.AppendAllText(TPath.Combine(AOther, 'Kunde.pas'), '// Prüfung'#10, TEncoding.UTF8);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-am', 'Kunde: Prüfung'], AOther);
+  TFile.AppendAllText(TPath.Combine(AOther, 'Fremd.pas'), '// anders'#10, TEncoding.ASCII);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-am', 'Fremd geändert'], AOther);
+  Exec(ARunner, AGitExe, ['push', '-q', 'origin', 'main'], AOther);
+end;
+
 procedure TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles;
 var
   GitExe, Remote, Folder, Other: string;
@@ -456,8 +594,6 @@ var
   State: TAtlasWorkState;
   Found: TAtlasContinueIncoming;
   NowUtc: TDateTime;
-  Name: string;
-  Names: TArray<string>;
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
@@ -469,24 +605,7 @@ begin
   Folder := NewFolder('git-in-local');
   Other := NewFolder('git-in-other');
   try
-    Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
-    // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Remote);
-    Exec(Runner, GitExe, ['init', '-q'], Folder);
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
-    Names := ['Kunde', 'Fremd'];
-    for Name in Names do
-    begin
-      TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
-    end;
-    Exec(Runner, GitExe, ['add', '.'], Folder);
-    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
-    Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
-    Exec(Runner, GitExe, ['push', '-q', '-u', 'origin', 'main'], Folder);
+    InitGitWithCustomerUnits(Runner, GitExe, Remote, Folder);
     Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
     // Beim Schließen: Kunde.pas offen, HEAD und origin/main gemerkt.
     State := TAtlasWorkState.Empty;
@@ -497,16 +616,7 @@ begin
     Assert.AreEqual(40, Integer(Length(State.Head)));
     Assert.AreEqual(State.Head, State.UpstreamRevision);
     // Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.
-    Exec(Runner, GitExe, ['clone', '-q', Remote, Other], Other);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Eva Kollegin'], Other);
-    Exec(Runner, GitExe, ['config', 'user.email', 'eva@example.org'], Other);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Other);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Other);
-    TFile.AppendAllText(TPath.Combine(Other, 'Kunde.pas'), '// Prüfung'#10, TEncoding.UTF8);
-    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Kunde: Prüfung'], Other);
-    TFile.AppendAllText(TPath.Combine(Other, 'Fremd.pas'), '// anders'#10, TEncoding.ASCII);
-    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Fremd geändert'], Other);
-    Exec(Runner, GitExe, ['push', '-q', 'origin', 'main'], Other);
+    PushColleagueCommits(Runner, GitExe, Remote, Other);
     NowUtc := TTimeZone.Local.ToUniversalTime(Now);
     // Ohne fetch: Grundlage ist der lokale Stand der Remote-Branches, dort ist noch nichts Neues.
     Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
@@ -558,10 +668,33 @@ begin
   Assert.AreEqual('""', TAtlasVcsProcessRunner.QuoteArgument(''));
 end;
 
+/// <summary>Arbeitskopie des Repositorys, in dem die Tests laufen, mit dem Läufer der IDE.</summary>
+function RepositoryVcs(const AGitExe: string): IAtlasVersionControl;
+var
+  mRunner: IAtlasVcsRunner;
+begin
+  // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
+  mRunner := TAtlasVcsProcessRunner.Create;
+  Result := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), mRunner, AGitExe, 5000);
+  Assert.IsTrue(Result.Kind = TAtlasVcsKind.None, 'ohne Arbeitskopie die leere Umsetzung');
+  // Arbeitskopie des Repositorys, in dem die Tests laufen; ohne: irgendein Ordner (dann NoWorkingCopy).
+  Result := TAtlasVersionControl.Open(ExtractFilePath(ParamStr(0)), TAtlasVcsProvider.Auto, mRunner);
+end;
+
+/// <summary>In einer Git-Arbeitskopie liefert Head den Commit.</summary>
+procedure AssertRepositoryHead(const AVcs: IAtlasVersionControl; AOutcome: TAtlasVcsOutcome;
+  const AHead: TAtlasVcsHead);
+begin
+  if AVcs.Kind = TAtlasVcsKind.Git then
+  begin
+    Assert.IsTrue(AOutcome = TAtlasVcsOutcome.Ok);
+    Assert.IsTrue(AHead.Revision <> '', 'Commit des Repositorys');
+  end;
+end;
+
 procedure TAtlasVcsIntegrationTests.WorkerRunsInBackgroundAndDeliversInMainThread;
 var
   Worker: TAtlasVcsWorker;
-  Runner: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   Outcome: TAtlasVcsOutcome;
   Head: TAtlasVcsHead;
@@ -574,12 +707,7 @@ begin
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
-  // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
-  Runner := TAtlasVcsProcessRunner.Create;
-  Vcs := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), Runner, GitExe, 5000);
-  Assert.IsTrue(Vcs.Kind = TAtlasVcsKind.None, 'ohne Arbeitskopie die leere Umsetzung');
-  // Arbeitskopie des Repositorys, in dem die Tests laufen; ohne: irgendein Ordner (dann NoWorkingCopy).
-  Vcs := TAtlasVersionControl.Open(ExtractFilePath(ParamStr(0)), TAtlasVcsProvider.Auto, Runner);
+  Vcs := RepositoryVcs(GitExe);
   Done := False;
   InMain := False;
   Outcome := TAtlasVcsOutcome.Failed;
@@ -603,11 +731,7 @@ begin
     Assert.IsTrue(Done, 'Ergebnis zugestellt');
     Assert.IsTrue(InMain, 'im Hauptthread');
     Assert.IsTrue(Outcome <> TAtlasVcsOutcome.MainThread, 'im Hintergrund gelaufen');
-    if Vcs.Kind = TAtlasVcsKind.Git then
-    begin
-      Assert.IsTrue(Outcome = TAtlasVcsOutcome.Ok);
-      Assert.IsTrue(Head.Revision <> '', 'Commit des Repositorys');
-    end;
+    AssertRepositoryHead(Vcs, Outcome, Head);
     Assert.AreEqual(0, Worker.Pending);
     // Nach Stop kommt nichts mehr an.
     Done := False;

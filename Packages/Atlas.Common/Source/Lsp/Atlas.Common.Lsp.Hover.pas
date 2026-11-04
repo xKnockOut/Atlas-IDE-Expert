@@ -818,7 +818,7 @@ begin
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       SelfName := Symbol.Name;
-      DocSymbol := AResolver.SymbolFrom(OwnerUnit, Symbol);
+      DocSymbol := TResolvedSymbol.FromIndex(OwnerUnit, Symbol);
       DocContainer := Symbol.Container;
       if DocContainer = '' then
       begin

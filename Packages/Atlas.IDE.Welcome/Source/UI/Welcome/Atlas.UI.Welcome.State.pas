@@ -61,6 +61,7 @@ type
     FBarRows: Integer;
     procedure SetSource(const AValue: IAtlasStateSource);
     procedure BoxPaint(Sender: TObject);
+    procedure PaintRow(ACanvas: TCanvas; AIndex, ARight: Integer; ATextColor, AMutedColor: TColor);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure ButtonClick(Sender: TObject);
@@ -175,26 +176,38 @@ begin
   Count := Length(FRows);
   FRows := nil;
   if FSource <> nil then
+  begin
     FRows := FSource.Rows;
+  end;
   // Knöpfe nach den Zeilen: „Jetzt aktualisieren“ nur mit Update.
   for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  begin
     Wanted[Kind] := False;
+  end;
   for Kind in TAtlasWelcomeState.Buttons(FRows) do
+  begin
     Wanted[Kind] := True;
+  end;
   Changed := False;
   for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  begin
     if FButtons[Kind].Visible <> Wanted[Kind] then
     begin
       FButtons[Kind].Visible := Wanted[Kind];
       Changed := True;
     end;
+  end;
   if Changed then
+  begin
     BarResize(FBar);
+  end;
   FHintRow := -1;
   FBox.Invalidate;
   inherited;
   if Count <> Length(FRows) then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeStateFrame.RowTop(ARow: Integer): Integer;
@@ -232,7 +245,9 @@ begin
     for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
     begin
       if not FButtons[Kind].Visible then
+      begin
         Continue;
+      end;
       mWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
       // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
       if (mLeft > ScaleValue(Indent)) and (Right > 0) and (mLeft + mWidth > Right) then
@@ -255,7 +270,9 @@ var
 begin
   BarRows := LayoutButtons;
   if BarRows = FBarRows then
+  begin
     Exit;
+  end;
   // Mehr oder weniger Reihen Knöpfe: Der Frame „Atlas“ ordnet die Spalten neu.
   FBarRows := BarRows;
   FBar.Height := BarHeight;
@@ -280,7 +297,9 @@ end;
 class function TAtlasWelcomeStateFrame.RowText(const ARow: TAtlasStateRow): string;
 begin
   if ARow.Present and (ARow.Text <> '') then
+  begin
     Exit(ARow.Text);
+  end;
   case ARow.Kind of
     TAtlasStateRowKind.Server:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
@@ -299,68 +318,83 @@ class function TAtlasWelcomeStateFrame.DetailText(const ARow: TAtlasStateRow): s
 begin
   Result := '';
   if ARow.Present then
+  begin
     Result := ARow.Detail;
+  end;
 end;
 
 procedure TAtlasWelcomeStateFrame.BoxPaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Index, mLeft, mTop, Dot, TextTop, DetailWidth, Right: Integer;
-  Row: TAtlasStateRow;
-  mText, Detail: string;
-  TextColor, MutedColor: TColor;
-  TextRect: TRect;
+  mCanvas: TCanvas;
+  mIndex: Integer;
+  mTextColor, mMutedColor: TColor;
 begin
-  Canvas := FBox.Canvas;
-  Canvas.Font.Assign(Font);
+  mCanvas := FBox.Canvas;
+  mCanvas.Font.Assign(Font);
   // Farben des IDE-Themas (hell oder dunkel).
-  TextColor := StyleServices(Self).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  Dot := ScaleValue(DotSize);
-  Right := FBox.Width - ScaleValue(Indent);
-  for Index := 0 to High(FRows) do
+  mTextColor := StyleServices(Self).GetSystemColor(clWindowText);
+  mMutedColor := StyleServices(Self).GetSystemColor(clGrayText);
+  for mIndex := 0 to High(FRows) do
   begin
-    Row := FRows[Index];
-    mTop := RowTop(Index);
-    mLeft := ScaleValue(Indent);
-    TextTop := mTop + (ScaleValue(RowHeight) - Canvas.TextHeight('Wg')) div 2;
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := DotColor(Row.State);
-    Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - Dot) div 2, mLeft + Dot,
-      mTop + (ScaleValue(RowHeight) - Dot) div 2 + Dot);
-    Canvas.Brush.Style := bsClear;
-    Inc(mLeft, Dot + ScaleValue(6));
-    // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
-    Detail := DetailText(Row);
-    DetailWidth := 0;
-    if Detail <> '' then
-    begin
-      Canvas.Font.Color := MutedColor;
-      DetailWidth := Canvas.TextWidth(Detail);
-      Canvas.TextOut(Right - DetailWidth, TextTop, Detail);
-      Inc(DetailWidth, ScaleValue(8));
-    end;
-    Canvas.Font.Color := TextColor;
-    if Row.HasAction then
-      Canvas.Font.Style := [fsUnderline]
-    else
-      Canvas.Font.Style := [];
-    mText := RowText(Row);
-    TextRect := Rect(mLeft, TextTop, Max(mLeft, Right - DetailWidth), TextTop + Canvas.TextHeight('Wg'));
-    Canvas.TextRect(TextRect, mText, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
-    Canvas.Font.Style := [];
+    PaintRow(mCanvas, mIndex, FBox.Width - ScaleValue(Indent), mTextColor, mMutedColor);
   end;
+end;
+
+procedure TAtlasWelcomeStateFrame.PaintRow(ACanvas: TCanvas; AIndex, ARight: Integer; ATextColor, AMutedColor: TColor);
+var
+  mLeft, mTop, mDot, mTextTop, mDetailWidth: Integer;
+  mRow: TAtlasStateRow;
+  mDetail: string;
+  mTextRect: TRect;
+begin
+  mRow := FRows[AIndex];
+  mDot := ScaleValue(DotSize);
+  mTop := RowTop(AIndex);
+  mLeft := ScaleValue(Indent);
+  mTextTop := mTop + (ScaleValue(RowHeight) - ACanvas.TextHeight('Wg')) div 2;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := DotColor(mRow.State);
+  ACanvas.Pen.Color := ACanvas.Brush.Color;
+  ACanvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - mDot) div 2, mLeft + mDot,
+    mTop + (ScaleValue(RowHeight) - mDot) div 2 + mDot);
+  ACanvas.Brush.Style := bsClear;
+  Inc(mLeft, mDot + ScaleValue(6));
+  // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
+  mDetail := DetailText(mRow);
+  mDetailWidth := 0;
+  if mDetail <> '' then
+  begin
+    ACanvas.Font.Color := AMutedColor;
+    mDetailWidth := ACanvas.TextWidth(mDetail);
+    ACanvas.TextOut(ARight - mDetailWidth, mTextTop, mDetail);
+    Inc(mDetailWidth, ScaleValue(8));
+  end;
+  ACanvas.Font.Color := ATextColor;
+  if mRow.HasAction then
+  begin
+    ACanvas.Font.Style := [fsUnderline];
+  end
+  else
+  begin
+    ACanvas.Font.Style := [];
+  end;
+  mTextRect := Rect(mLeft, mTextTop, Max(mLeft, ARight - mDetailWidth), mTextTop + ACanvas.TextHeight('Wg'));
+  ACanvas.TextRect(mTextRect, RowText(mRow), [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
+  ACanvas.Font.Style := [];
 end;
 
 function TAtlasWelcomeStateFrame.HitTest(Y: Integer): Integer;
 begin
   Result := -1;
   if (Y < RowTop(0)) or (Length(FRows) = 0) then
+  begin
     Exit;
+  end;
   Result := (Y - RowTop(0)) div ScaleValue(RowHeight);
   if Result > High(FRows) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasWelcomeStateFrame.ClickRow(ARow: Integer);
@@ -369,7 +403,9 @@ var
   Id: string;
 begin
   if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) or not FRows[ARow].HasAction then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Id := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
@@ -385,7 +421,9 @@ var
   mSource: IAtlasStateSource;
 begin
   if FSource = nil then
+  begin
     Exit;
+  end;
   mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
@@ -405,16 +443,26 @@ var
 begin
   Row := HitTest(Y);
   if (Row >= 0) and FRows[Row].HasAction then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if Row = FHintRow then
+  begin
     Exit;
+  end;
   FHintRow := Row;
   if (Row >= 0) and FRows[Row].Present then
-    FBox.Hint := FRows[Row].Hint
+  begin
+    FBox.Hint := FRows[Row].Hint;
+  end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -422,7 +470,9 @@ procedure TAtlasWelcomeStateFrame.BoxMouseUp(Sender: TObject; Button: TMouseButt
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickRow(HitTest(Y));
+  end;
 end;
 
 end.

@@ -72,8 +72,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AFrames) do
+  begin
     if AFrames[Index].HasSource then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -87,14 +91,20 @@ begin
   begin
     Stop := Pos(' ', Result);
     if Stop > 0 then
+    begin
       Result := Trim(Copy(Result, Stop + 1, MaxInt));
+    end;
   end;
   Stop := Pos('(', Result);
   if Stop > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Stop - 1));
+  end;
   Stop := Pos(' + ', Result);
   if Stop > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Stop - 1));
+  end;
 end;
 
 end.

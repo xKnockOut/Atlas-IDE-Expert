@@ -86,6 +86,10 @@ type
     FRotateError: string;
     FOnError: TAtlasLogError;
     procedure Rotate;
+    /// <summary>Rotiert eine volle Datei; Zeile über ein gescheitertes Rotieren oder ''.</summary>
+    function RotateIfFull(const AStamp: string): string;
+    /// <summary>Schreibt ALine samt ausstehender Meldungen; die Sperre hält der Aufrufer.</summary>
+    procedure WriteLocked(const ALine: string);
     function AppendLine(const ALine: string): string;
     function Clean(const AText: string): string;
   public
@@ -352,57 +356,75 @@ end;
 
 /// <summary>Rotieren und Anhängen unter der prozessübergreifenden Sperre; '' = geschrieben, sonst der Grund. Nur
 /// unter FLock.</summary>
+function TAtlasRotatingLog.RotateIfFull(const AStamp: string): string;
+begin
+  Result := '';
+  if not TFile.Exists(FileName) or (TFile.GetSize(FileName) < FMaxBytes) then
+  begin
+    Exit;
+  end;
+  try
+    Rotate;
+    FRotateError := '';
+  except
+    // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
+    // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
+    on E: Exception do
+    begin
+      if E.Message <> FRotateError then
+      begin
+        FRotateError := E.Message;
+        Result := AStamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
+          '); schreibe weiter in atlas.log' + sLineBreak;
+      end;
+    end;
+  end;
+end;
+
+procedure TAtlasRotatingLog.WriteLocked(const ALine: string);
+var
+  mStamp, mLines: string;
+begin
+  mStamp := FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ';
+  mLines := RotateIfFull(mStamp);
+  if FFailed > 0 then
+  begin
+    mLines := mLines + mStamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
+      [FFailed, Clean(FLastError)]) + sLineBreak;
+  end;
+  TFile.AppendAllText(FileName, mLines + ALine, TEncoding.UTF8);
+end;
+
 function TAtlasRotatingLog.AppendLine(const ALine: string): string;
 var
-  Lock: TMutex;
-  Owned: Boolean;
-  Stamp, Lines: string;
+  mLock: TMutex;
+  mOwned: Boolean;
 begin
   Result := '';
   try
     ForceDirectories(FFolder);
     // Je Zeile öffnen statt im Objekt halten: Der Ordner kann wechseln (Tests stellen ihn um), und eine gehaltene
     // Sperre bliebe samt Pfad stehen.
-    Lock := TMutex.Create(nil, False, MutexName(FFolder));
+    mLock := TMutex.Create(nil, False, MutexName(FFolder));
     try
       // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
-      Owned := Lock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+      mOwned := mLock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
       try
-        Stamp := FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ';
-        Lines := '';
-        if TFile.Exists(FileName) and (TFile.GetSize(FileName) >= FMaxBytes) then
-          try
-            Rotate;
-            FRotateError := '';
-          except
-            // Rotieren gescheitert (z. B. eine ältere Datei ist woanders gesperrt): trotzdem anhängen, die Datei wird
-            // dann größer. Früher ging dabei auch die Zeile verloren, bei jedem Versuch wieder.
-            on E: Exception do
-              if E.Message <> FRotateError then
-              begin
-                FRotateError := E.Message;
-                Lines := Stamp + 'Protokoll: Rotieren gescheitert (' + E.ClassName + ': ' + Clean(E.Message) +
-                  '); schreibe weiter in atlas.log' + sLineBreak;
-              end;
-          end;
-        if FFailed > 0 then
-        begin
-          Lines := Lines + Stamp + Format('Protokoll: %d Zeilen nicht geschrieben (zuletzt: %s)',
-            [FFailed, Clean(FLastError)]) + sLineBreak;
-        end;
-        TFile.AppendAllText(FileName, Lines + ALine, TEncoding.UTF8);
+        WriteLocked(ALine);
       finally
-        if Owned then
+        if mOwned then
         begin
-          Lock.Release;
+          mLock.Release;
         end;
       end;
     finally
-      Lock.Free;
+      mLock.Free;
     end;
   except
     on E: Exception do
+    begin
       Result := E.ClassName + ': ' + E.Message;
+    end;
   end;
 end;
 

@@ -138,8 +138,8 @@ begin
     begin
       Name := ATarget.Suggested;
     end;
-    Result := TPromoteVariable.Execute(AText, Tree, PositionOf(AText, AAt.Marker), TestLookup(Tree),
-      TFormatStyle.Default, Name, APromoted, AReason);
+    Result := TPromoteVariable.Execute(AText, Tree, TPromoteRequest.Create(PositionOf(AText, AAt.Marker),
+      TestLookup(Tree), TFormatStyle.Default, Name), APromoted, AReason);
     if Result then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, APromoted.Edits);

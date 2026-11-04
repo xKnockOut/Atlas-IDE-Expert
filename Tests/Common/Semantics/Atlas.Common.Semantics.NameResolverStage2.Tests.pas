@@ -374,7 +374,7 @@ begin
   Tree := TPascalParser.Parse(Source);
   try
     // Ohne Typargumente aus dem Quelltext (Index kennt nur die des ersten Vorfahren) und mit ihnen.
-    Missing := FResolver.MissingInterfaceMembers(TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas'), 'TMeineListe',
+    Missing := FResolver.Queries.MissingInterfaceMembers(TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas'), 'TMeineListe',
       ['TObject', 'IListe<TKunde>']);
     Assert.AreEqual(1, Integer(Length(Missing)));
     Assert.AreEqual('Add', Missing[0].Name);
@@ -384,10 +384,10 @@ begin
   finally
     Tree.Free;
   end;
-  Assert.AreEqual('TKunde', FResolver.UnqualifyType('Kunden.TKunde'));
-  Assert.AreEqual('TList<TKunde>', FResolver.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
-  Assert.AreEqual('TOuter.TInner', FResolver.UnqualifyType('TOuter.TInner'));
-  Assert.AreEqual('TKunde', FResolver.UnqualifyType('Haupt.TKunde', 'Haupt'));
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Kunden.TKunde'));
+  Assert.AreEqual('TList<TKunde>', FResolver.Queries.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
+  Assert.AreEqual('TOuter.TInner', FResolver.Queries.UnqualifyType('TOuter.TInner'));
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Haupt.TKunde', 'Haupt'));
 end;
 
 procedure TNameResolverStage2Tests.BindsGenericMethodArguments;

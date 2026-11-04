@@ -97,13 +97,19 @@ end;
 procedure TOutlineDock.FrameCreated(AFrame: TCustomFrame);
 begin
   if not (AFrame is TAtlasOutlineFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   TAtlasIdeOutlineWindow.UpdateIcon;
   Theme(AFrame);
   if Assigned(TAtlasIdeOutlineWindow.OnFrame) then
+  begin
     TAtlasIdeOutlineWindow.OnFrame(TAtlasOutlineFrame(AFrame));
+  end;
 end;
 
 function TOutlineDock.GetMenuActionList: TCustomActionList;
@@ -155,7 +161,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TOutlineDock.Create, False);
+  end;
 end;
 
 { TAtlasIdeOutlineWindow }
@@ -168,7 +176,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -176,7 +186,9 @@ class function TAtlasIdeOutlineWindow.ExistingFrame: TAtlasOutlineFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasOutlineFrame) then
+  begin
     Result := TAtlasOutlineFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeOutlineWindow.Visible: Boolean;
@@ -188,7 +200,9 @@ end;
 class procedure TAtlasIdeOutlineWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeOutlineWindow.UpdateIcon;
@@ -196,7 +210,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -212,7 +228,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

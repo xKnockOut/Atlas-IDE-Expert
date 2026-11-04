@@ -45,12 +45,16 @@ var
 begin
   SetLength(FChoices, Length(AItems));
   for Index := 0 to High(AItems) do
+  begin
     FChoices[Index] := AItems[Index];
+  end;
   if HandleAllocated then
   begin
     Items.Clear;
     for Index := 0 to High(FChoices) do
+    begin
       Items.Add(FChoices[Index]);
+    end;
     ItemIndex := FChoice;
   end;
 end;
@@ -61,8 +65,12 @@ var
 begin
   inherited CreateWnd;
   if Items.Count = 0 then
+  begin
     for Item in FChoices do
+    begin
       Items.Add(Item);
+    end;
+  end;
   ItemIndex := FChoice;
 end;
 
@@ -77,16 +85,22 @@ end;
 function TAtlasChoiceBox.GetChoice: Integer;
 begin
   if HandleAllocated then
-    Result := ItemIndex
+  begin
+    Result := ItemIndex;
+  end
   else
+  begin
     Result := FChoice;
+  end;
 end;
 
 procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
 begin
   FChoice := AValue;
   if HandleAllocated then
+  begin
     ItemIndex := AValue;
+  end;
 end;
 
 end.

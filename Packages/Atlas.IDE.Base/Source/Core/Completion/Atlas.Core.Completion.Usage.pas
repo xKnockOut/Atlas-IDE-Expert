@@ -15,6 +15,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.JSON,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Files.DataFile;
 
@@ -41,6 +42,8 @@ type
     /// <summary>Übernimmt AText; False, wenn es kein Objekt ist oder "entries"/"recent" die falsche Form haben.
     /// </summary>
     function Parse(const AText: string): Boolean;
+    procedure ReadEntries(AItems: TJSONArray);
+    procedure ReadRecent(ARecent: TJSONObject);
   public
     /// <summary>Schlüssel "typ|member" in Kleinbuchstaben; auch für die Favoriten (#458).</summary>
     class function KeyOf(const AItem: TAtlasCompletionItem): string; static;
@@ -68,7 +71,6 @@ implementation
 
 uses
   System.Math,
-  System.JSON,
   System.Generics.Defaults;
 
 { TAtlasUsage }
@@ -92,7 +94,9 @@ begin
   // Typ des Members; auf Unit-Ebene die Unit, sonst leer.
   Result := LowerCase(AItem.DeclaringClass);
   if Result = '' then
+  begin
     Result := LowerCase(AItem.DeclaringUnit);
+  end;
 end;
 
 class function TAtlasUsage.KeyOf(const AItem: TAtlasCompletionItem): string;
@@ -107,7 +111,9 @@ var
 begin
   Key := KeyOf(AItem);
   if not FEntries.TryGetValue(Key, Entry) then
+  begin
     Entry := Default(TEntry);
+  end;
   Inc(Entry.Count);
   Inc(FClock);
   Entry.Last := FClock;
@@ -115,7 +121,9 @@ begin
   FRecent.AddOrSetValue(TypeOf(AItem), LowerCase(AItem.Name));
   FChanged := True;
   if FEntries.Count > MaxEntries then
+  begin
     Evict;
+  end;
 end;
 
 procedure TAtlasUsage.Evict;
@@ -131,7 +139,9 @@ begin
       Result := CompareValue(A.Value.Last, B.Value.Last);
     end));
   for Index := 0 to Length(Pairs) - MaxEntries + MaxEntries div 10 - 1 do
+  begin
     FEntries.Remove(Pairs[Index].Key);
+  end;
 end;
 
 function TAtlasUsage.Boost(const AItem: TAtlasCompletionItem): Integer;
@@ -140,10 +150,14 @@ var
 begin
   Result := 0;
   if not FEntries.TryGetValue(KeyOf(AItem), Entry) then
+  begin
     Exit;
+  end;
   Result := Min(60, Entry.Count * 15);
   if Mark(AItem) = TAtlasUsageMark.Recent then
+  begin
     Inc(Result, 30);
+  end;
 end;
 
 function TAtlasUsage.Mark(const AItem: TAtlasCompletionItem): TAtlasUsageMark;
@@ -153,9 +167,13 @@ var
 begin
   Result := TAtlasUsageMark.None;
   if FRecent.TryGetValue(TypeOf(AItem), Name) and (Name = LowerCase(AItem.Name)) then
+  begin
     Exit(TAtlasUsageMark.Recent);
+  end;
   if FEntries.TryGetValue(KeyOf(AItem), Entry) and (Entry.Count >= FrequentCount) then
+  begin
     Result := TAtlasUsageMark.Frequent;
+  end;
 end;
 
 function TAtlasUsage.Count: Integer;
@@ -171,44 +189,67 @@ begin
   FChanged := True;
 end;
 
+procedure TAtlasUsage.ReadEntries(AItems: TJSONArray);
+var
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mEntry: TEntry;
+begin
+  for mValue in AItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject(mValue);
+    mEntry.Count := mItem.GetValue<Integer>('count', 0);
+    mEntry.Last := mItem.GetValue<Int64>('last', 0);
+    if mItem.GetValue<string>('key', '') <> '' then
+    begin
+      FEntries.AddOrSetValue(mItem.GetValue<string>('key', ''), mEntry);
+    end;
+    FClock := Max(FClock, mEntry.Last);
+  end;
+end;
+
+procedure TAtlasUsage.ReadRecent(ARecent: TJSONObject);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in ARecent do
+  begin
+    FRecent.AddOrSetValue(mPair.JsonString.Value, mPair.JsonValue.Value);
+  end;
+end;
+
 function TAtlasUsage.Parse(const AText: string): Boolean;
 var
-  Root: TJSONValue;
-  Items: TJSONValue;
-  Value: TJSONValue;
-  Item: TJSONObject;
-  Entry: TEntry;
-  Recent: TJSONValue;
-  Pair: TJSONPair;
+  mRoot, mItems, mRecent: TJSONValue;
 begin
   Result := False;
-  Root := TJSONObject.ParseJSONValue(AText);
-  if Root = nil then
-    Exit;
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
+    begin
       Exit;
-    Items := TJSONObject(Root).GetValue('entries');
-    Recent := TJSONObject(Root).GetValue('recent');
-    if ((Items <> nil) and not (Items is TJSONArray)) or ((Recent <> nil) and not (Recent is TJSONObject)) then
+    end;
+    mItems := TJSONObject(mRoot).GetValue('entries');
+    mRecent := TJSONObject(mRoot).GetValue('recent');
+    if ((mItems <> nil) and not (mItems is TJSONArray)) or ((mRecent <> nil) and not (mRecent is TJSONObject)) then
+    begin
       Exit;
+    end;
     Result := True;
-    if Items <> nil then
-      for Value in TJSONArray(Items) do
-        if Value is TJSONObject then
-        begin
-          Item := TJSONObject(Value);
-          Entry.Count := Item.GetValue<Integer>('count', 0);
-          Entry.Last := Item.GetValue<Int64>('last', 0);
-          if Item.GetValue<string>('key', '') <> '' then
-            FEntries.AddOrSetValue(Item.GetValue<string>('key', ''), Entry);
-          FClock := Max(FClock, Entry.Last);
-        end;
-    if Recent <> nil then
-      for Pair in TJSONObject(Recent) do
-        FRecent.AddOrSetValue(Pair.JsonString.Value, Pair.JsonValue.Value);
+    if mItems <> nil then
+    begin
+      ReadEntries(TJSONArray(mItems));
+    end;
+    if mRecent <> nil then
+    begin
+      ReadRecent(TJSONObject(mRecent));
+    end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -222,10 +263,14 @@ begin
       Result := Parse(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   // Unbrauchbarer Inhalt bleibt nicht halb geladen stehen.
   if Result <> TAtlasDataLoad.Loaded then
+  begin
     Clear;
+  end;
   FChanged := False;
 end;
 
@@ -238,7 +283,9 @@ var
 begin
   Result := not SameFileName(AFileName, FKept);
   if not Result then
+  begin
     Exit;
+  end;
   Root := TJSONObject.Create;
   try
     Root.AddPair('version', TJSONNumber.Create(1));
@@ -255,7 +302,9 @@ begin
     Recent := TJSONObject.Create;
     Root.AddPair('recent', Recent);
     for RecentPair in FRecent do
+    begin
       Recent.AddPair(RecentPair.Key, RecentPair.Value);
+    end;
     TAtlasDataFile.Write(AFileName, Root.ToJSON);
     FChanged := False;
   finally

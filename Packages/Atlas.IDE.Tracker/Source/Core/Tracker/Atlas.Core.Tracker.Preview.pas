@@ -413,62 +413,87 @@ begin
   end;
 end;
 
+// Adresse eines Issues: letzter Pfadteil (".../issue/ATL-12", ".../issues/753").
+function KeyFromAddress(const AText: string): string;
+begin
+  Result := AText;
+  if not (StartsText('https://', Result) or StartsText('http://', Result)) then
+  begin
+    Exit;
+  end;
+  while EndsStr('/', Result) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+  Result := Copy(Result, LastDelimiter('/', Result) + 1, MaxInt);
+  if Pos('?', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('?', Result) - 1);
+  end;
+  if Pos('#', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('#', Result) - 1);
+  end;
+end;
+
+function OnlyChars(const AText: string; const AChars: TSysCharSet): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := 1 to Length(AText) do
+  begin
+    if not CharInSet(AText[mIndex], AChars) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+// GitHub: #753 oder 753.
+function GitHubKeyOf(const AText: string): string;
+var
+  mText: string;
+begin
+  Result := '';
+  mText := AText;
+  if StartsStr('#', mText) then
+  begin
+    Delete(mText, 1, 1);
+  end;
+  if (mText <> '') and OnlyChars(mText, ['0'..'9']) and (StrToIntDef(mText, 0) > 0) then
+  begin
+    Result := '#' + IntToStr(StrToIntDef(mText, 0));
+  end;
+end;
+
+// YouTrack: PROJ-123.
+function YouTrackKeyOf(const AText: string): string;
+begin
+  Result := '';
+  if (AText = '') or (Pos('-', AText) < 2) or (Pos('-', AText) = Length(AText)) then
+  begin
+    Exit;
+  end;
+  if OnlyChars(AText, ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+  begin
+    Result := UpperCase(AText);
+  end;
+end;
+
 class function TAtlasIssuePreview.KeyOf(const AProvider, AInput: string): string;
 var
   mText: string;
-  mIndex: Integer;
 begin
-  Result := '';
-  mText := Trim(AInput);
-  // Adresse eines Issues: letzter Pfadteil (".../issue/ATL-12", ".../issues/753").
-  if StartsText('https://', mText) or StartsText('http://', mText) then
-  begin
-    while EndsStr('/', mText) do
-    begin
-      Delete(mText, Length(mText), 1);
-    end;
-    mText := Copy(mText, LastDelimiter('/', mText) + 1, MaxInt);
-    if Pos('?', mText) > 0 then
-    begin
-      mText := Copy(mText, 1, Pos('?', mText) - 1);
-    end;
-    if Pos('#', mText) > 0 then
-    begin
-      mText := Copy(mText, 1, Pos('#', mText) - 1);
-    end;
-  end;
+  mText := KeyFromAddress(Trim(AInput));
   if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
   begin
-    if StartsStr('#', mText) then
-    begin
-      Delete(mText, 1, 1);
-    end;
-    for mIndex := 1 to Length(mText) do
-    begin
-      if not CharInSet(mText[mIndex], ['0'..'9']) then
-      begin
-        Exit;
-      end;
-    end;
-    if (mText <> '') and (StrToIntDef(mText, 0) > 0) then
-    begin
-      Result := '#' + IntToStr(StrToIntDef(mText, 0));
-    end;
-    Exit;
-  end;
-  // YouTrack: PROJ-123.
-  if (mText = '') or (Pos('-', mText) < 2) or (Pos('-', mText) = Length(mText)) then
+    Result := GitHubKeyOf(mText);
+  end
+  else
   begin
-    Exit;
+    Result := YouTrackKeyOf(mText);
   end;
-  for mIndex := 1 to Length(mText) do
-  begin
-    if not CharInSet(mText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := UpperCase(mText);
 end;
 
 class function TAtlasIssuePreview.SafeFileName(const AName: string): string;

@@ -325,64 +325,82 @@ begin
   Assert.AreEqual('', TAtlasBlameLinks.Subject(''));
 end;
 
+const
+  /// <summary>Trennzeile im Text von svn log.</summary>
+  cSvnLogSeparator = '------------------------------------------------------------------------';
+
+/// <summary>Eintrag der Revision ARevision im XML-Log und in svn log --diff: Jede fünfte ändert die Zeile 1010,
+/// die übrigen weiter oben (Zeilen 100–899).</summary>
+procedure AppendRevision(AXml, ADiff: TStringBuilder; ARevision: Integer);
+var
+  mLine, mStart: Integer;
+begin
+  AXml.Append('<logentry revision="').Append(ARevision).Append('"><author>anna</author>')
+    .Append('<date>2026-10-01T08:00:00.000000Z</date><msg>ATL-').Append(ARevision mod 7 + 1)
+    .Append(' Änderung</msg></logentry>'#10);
+  mStart := 100 + (ARevision * 37) mod 800;
+  if ARevision mod 5 = 0 then
+  begin
+    mStart := 1010;
+  end;
+  ADiff.Append(cSvnLogSeparator).Append(#10).Append('r').Append(ARevision)
+    .Append(' | anna | 2026-10-01 10:00:00 +0200 (Mi, 01 Okt 2026) | 1 line'#10#10'ATL-1 x'#10#10)
+    .Append('Index: Kunde.pas'#10'==================================================================='#10)
+    .Append('--- Kunde.pas'#9'(revision 1)'#10'+++ Kunde.pas'#9'(revision 2)'#10)
+    .Append('@@ -').Append(mStart - 3).Append(',7 +').Append(mStart - 3).Append(',7 @@'#10);
+  for mLine := 1 to 3 do
+  begin
+    ADiff.Append(' gleich').Append(mLine).Append(#10);
+  end;
+  ADiff.Append('-alt'#10'+neu'#10);
+  for mLine := 1 to 3 do
+  begin
+    ADiff.Append(' gleich').Append(mLine).Append(#10);
+  end;
+  ADiff.Append(#10);
+end;
+
+/// <summary>Gibt ARunner Log und Diffs der Revisionen 5000 abwärts, ARevisions Stück.</summary>
+procedure FillHistory(ARunner: TBenchRunner; ARevisions: Integer);
+var
+  mXml, mDiff: TStringBuilder;
+  mRevision: Integer;
+begin
+  mXml := TStringBuilder.Create;
+  mDiff := TStringBuilder.Create;
+  try
+    mXml.Append('<?xml version="1.0" encoding="UTF-8"?>'#10'<log>'#10);
+    for mRevision := 5000 downto 5000 - ARevisions + 1 do
+    begin
+      AppendRevision(mXml, mDiff, mRevision);
+    end;
+    mXml.Append('</log>'#10);
+    mDiff.Append(cSvnLogSeparator).Append(#10);
+    ARunner.Xml := TEncoding.UTF8.GetBytes(mXml.ToString);
+    ARunner.Diff := TEncoding.UTF8.GetBytes(mDiff.ToString);
+  finally
+    mXml.Free;
+    mDiff.Free;
+  end;
+end;
+
 procedure TAtlasBlameLinksTests.SvnHistoryOf200RevisionsIsFast;
 const
   cRevisions = 200;
-  cSep = '------------------------------------------------------------------------';
 var
-  mXml, mDiff: TStringBuilder;
   mRunner: TBenchRunner;
   mRunnerRef: IAtlasVcsRunner;
   mVcs: IAtlasVersionControl;
   mHistory: IAtlasVcsLineHistory;
   mCommits: TArray<TAtlasVcsLineCommit>;
   mList: TAtlasBlameIssueList;
-  mRevision, mLine, mStart: Integer;
   mWatch: TStopwatch;
   mRoot: string;
 begin
   // Jede Revision ändert eine Zeile; jede fünfte trifft die Methode in den Zeilen 1000–1040.
-  mXml := TStringBuilder.Create;
-  mDiff := TStringBuilder.Create;
-  try
-    mXml.Append('<?xml version="1.0" encoding="UTF-8"?>'#10'<log>'#10);
-    for mRevision := 5000 downto 5000 - cRevisions + 1 do
-    begin
-      mXml.Append('<logentry revision="').Append(mRevision).Append('"><author>anna</author>')
-        .Append('<date>2026-10-01T08:00:00.000000Z</date><msg>ATL-').Append(mRevision mod 7 + 1)
-        .Append(' Änderung</msg></logentry>'#10);
-      // Die übrigen ändern weiter oben (Zeilen 100–899).
-      mStart := 100 + (mRevision * 37) mod 800;
-      if mRevision mod 5 = 0 then
-      begin
-        mStart := 1010;
-      end;
-      mDiff.Append(cSep).Append(#10).Append('r').Append(mRevision)
-        .Append(' | anna | 2026-10-01 10:00:00 +0200 (Mi, 01 Okt 2026) | 1 line'#10#10'ATL-1 x'#10#10)
-        .Append('Index: Kunde.pas'#10'==================================================================='#10)
-        .Append('--- Kunde.pas'#9'(revision 1)'#10'+++ Kunde.pas'#9'(revision 2)'#10)
-        .Append('@@ -').Append(mStart - 3).Append(',7 +').Append(mStart - 3).Append(',7 @@'#10);
-      for mLine := 1 to 3 do
-      begin
-        mDiff.Append(' gleich').Append(mLine).Append(#10);
-      end;
-      mDiff.Append('-alt'#10'+neu'#10);
-      for mLine := 1 to 3 do
-      begin
-        mDiff.Append(' gleich').Append(mLine).Append(#10);
-      end;
-      mDiff.Append(#10);
-    end;
-    mXml.Append('</log>'#10);
-    mDiff.Append(cSep).Append(#10);
-    mRunner := TBenchRunner.Create;
-    mRunnerRef := mRunner;
-    mRunner.Xml := TEncoding.UTF8.GetBytes(mXml.ToString);
-    mRunner.Diff := TEncoding.UTF8.GetBytes(mDiff.ToString);
-  finally
-    mXml.Free;
-    mDiff.Free;
-  end;
+  mRunner := TBenchRunner.Create;
+  mRunnerRef := mRunner;
+  FillHistory(mRunner, cRevisions);
   if PathDelim = '\' then
   begin
     mRoot := 'C:\Projekte\Kunde';

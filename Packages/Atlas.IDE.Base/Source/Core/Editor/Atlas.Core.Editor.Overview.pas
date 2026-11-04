@@ -220,63 +220,84 @@ begin
   Result := EnsureRange(Integer((Int64(Max(0, AY)) * ALineCount) div AHeight), 0, ALineCount - 1);
 end;
 
+/// <summary>Marken der Art AKind nach Zeile (Einfügen; die Listen sind meist schon sortiert).</summary>
+function MarksOfKind(const AMarks: TAtlasOverviewMarks; AKind: TAtlasOverviewMarkKind): TArray<Integer>;
+var
+  mIndex, mPosition, mMoved: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AMarks) do
+  begin
+    if AMarks[mIndex].Kind = AKind then
+    begin
+      Result := Result + [mIndex];
+      mPosition := High(Result);
+      while (mPosition > 0) and (AMarks[Result[mPosition - 1]].Line > AMarks[mIndex].Line) do
+      begin
+        mMoved := Result[mPosition - 1];
+        Result[mPosition - 1] := Result[mPosition];
+        Result[mPosition] := mMoved;
+        Dec(mPosition);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Pixelbereich einer Marke, mindestens AMinHeight hoch und innerhalb von AHeight.</summary>
+procedure MarkPixels(const AMark: TAtlasOverviewMark; ALineCount, AHeight, AMinHeight: Integer;
+  out ATop, ABottom: Integer);
+begin
+  ATop := TAtlasOverview.PixelOf(Min(AMark.Line, ALineCount - 1), ALineCount, AHeight);
+  ABottom := Max(TAtlasOverview.PixelOf(Min(AMark.Line + AMark.Count, ALineCount), ALineCount, AHeight),
+    ATop + Max(1, AMinHeight));
+  if ABottom > AHeight then
+  begin
+    ABottom := AHeight;
+    ATop := Max(0, Min(ATop, AHeight - Max(1, AMinHeight)));
+  end;
+end;
+
+/// <summary>Balken der Marken AOrder (alle von einer Art); Überlappungen fasst es zusammen.</summary>
+procedure AddKindBars(const AMarks: TAtlasOverviewMarks; const AOrder: TArray<Integer>;
+  ALineCount, AHeight, AMinHeight: Integer; var ABars: TAtlasOverviewBars);
+var
+  mIndex, mTop, mBottom, mLast: Integer;
+  mBar: TAtlasOverviewBar;
+begin
+  mLast := -1;
+  for mIndex in AOrder do
+  begin
+    MarkPixels(AMarks[mIndex], ALineCount, AHeight, AMinHeight, mTop, mBottom);
+    if (mLast >= 0) and (mTop <= ABars[mLast].Bottom) then
+    begin
+      // Liegt auf (oder direkt an) dem vorigen Balken derselben Art: verlängern.
+      ABars[mLast].Bottom := Max(ABars[mLast].Bottom, mBottom);
+    end
+    else
+    begin
+      mBar.Mark := mIndex;
+      mBar.Kind := AMarks[mIndex].Kind;
+      mBar.Lane := TAtlasOverview.LaneOf(mBar.Kind);
+      mBar.Top := mTop;
+      mBar.Bottom := mBottom;
+      ABars := ABars + [mBar];
+      mLast := High(ABars);
+    end;
+  end;
+end;
+
 class function TAtlasOverview.Layout(const AMarks: TAtlasOverviewMarks; ALineCount, AHeight,
   AMinHeight: Integer): TAtlasOverviewBars;
 var
-  Kind: TAtlasOverviewMarkKind;
-  Order: TArray<Integer>;
-  Index, Position, Moved, Top, Bottom, Last: Integer;
-  Bar: TAtlasOverviewBar;
+  mKind: TAtlasOverviewMarkKind;
 begin
   Result := nil;
-  if (ALineCount <= 0) or (AHeight <= 0) then
+  if (ALineCount > 0) and (AHeight > 0) then
   begin
-    Exit;
-  end;
-  // Je Art in Zeichenreihenfolge; innerhalb der Art aufsteigend, Überlappungen zusammengefasst.
-  for Kind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
-  begin
-    // Marken dieser Art nach Zeile (Einfügen; die Listen sind meist schon sortiert).
-    Order := nil;
-    for Index := 0 to High(AMarks) do
+    // Je Art in Zeichenreihenfolge; innerhalb der Art aufsteigend, Überlappungen zusammengefasst.
+    for mKind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
     begin
-      if AMarks[Index].Kind = Kind then
-      begin
-        Order := Order + [Index];
-        Position := High(Order);
-        while (Position > 0) and (AMarks[Order[Position - 1]].Line > AMarks[Index].Line) do
-        begin
-          Moved := Order[Position - 1];
-          Order[Position - 1] := Order[Position];
-          Order[Position] := Moved;
-          Dec(Position);
-        end;
-      end;
-    end;
-    Last := -1;
-    for Index in Order do
-    begin
-      Top := PixelOf(Min(AMarks[Index].Line, ALineCount - 1), ALineCount, AHeight);
-      Bottom := Max(PixelOf(Min(AMarks[Index].Line + AMarks[Index].Count, ALineCount), ALineCount, AHeight),
-        Top + Max(1, AMinHeight));
-      if Bottom > AHeight then
-      begin
-        Bottom := AHeight;
-        Top := Max(0, Min(Top, AHeight - Max(1, AMinHeight)));
-      end;
-      if (Last >= 0) and (Top <= Result[Last].Bottom) then
-      begin
-        // Liegt auf (oder direkt an) dem vorigen Balken derselben Art: verlängern.
-        Result[Last].Bottom := Max(Result[Last].Bottom, Bottom);
-        Continue;
-      end;
-      Bar.Mark := Index;
-      Bar.Kind := Kind;
-      Bar.Lane := LaneOf(Kind);
-      Bar.Top := Top;
-      Bar.Bottom := Bottom;
-      Result := Result + [Bar];
-      Last := High(Result);
+      AddKindBars(AMarks, MarksOfKind(AMarks, mKind), ALineCount, AHeight, AMinHeight, Result);
     end;
   end;
 end;

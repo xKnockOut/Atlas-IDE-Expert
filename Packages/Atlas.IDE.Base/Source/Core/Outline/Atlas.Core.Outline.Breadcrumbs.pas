@@ -107,98 +107,150 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['a'..'z', 'A'..'Z', '_']) do
+  begin
     Inc(Index);
+  end;
   Result := LowerCase(Copy(ALine, 1, Index - 1));
+end;
+
+/// <summary>Abschnitt nach dem Schlüsselwort AWord am Zeilenanfang; sonst ACurrent.</summary>
+function SectionOfWord(const AWord, ALine: string; ACurrent: TAtlasCodeSection): TAtlasCodeSection;
+begin
+  Result := ACurrent;
+  if AWord = 'interface' then
+  begin
+    Result := TAtlasCodeSection.InterfacePart;
+  end
+  else if AWord = 'implementation' then
+  begin
+    Result := TAtlasCodeSection.ImplementationPart;
+  end
+  else if AWord = 'initialization' then
+  begin
+    Result := TAtlasCodeSection.Initialization_;
+  end
+  else if AWord = 'finalization' then
+  begin
+    Result := TAtlasCodeSection.Finalization_;
+  end
+  else if (AWord = 'end') and (Copy(ALine, 4, 1) = '.') then
+  begin
+    Result := TAtlasCodeSection.None;
+  end;
+end;
+
+function NextIs(const ALine: string; APos: Integer; AChar: Char): Boolean;
+begin
+  Result := (APos < Length(ALine)) and (ALine[APos + 1] = AChar);
+end;
+
+/// <summary>Im Kommentar AComment ('{' oder '(' für (* *)): schließt er an APos, wird AComment #0.</summary>
+procedure CloseComment(const ALine: string; var APos: Integer; var AComment: Char);
+begin
+  if (AComment = '{') and (ALine[APos] = '}') then
+  begin
+    AComment := #0;
+  end
+  else if (AComment = '(') and (ALine[APos] = '*') and NextIs(ALine, APos, ')') then
+  begin
+    AComment := #0;
+    Inc(APos);
+  end;
+end;
+
+/// <summary>Zeichen an APos im Code: öffnet String oder Kommentar, merkt ein Semikolon. False bei //, dann zählt
+/// der Rest der Zeile nicht.</summary>
+function CodeChar(const ALine: string; var APos: Integer; var AComment: Char; var AInString: Boolean;
+  var ASemicolon: Boolean): Boolean;
+begin
+  Result := True;
+  case ALine[APos] of
+    '''':
+      AInString := True;
+    '{':
+      AComment := '{';
+    '(':
+      if NextIs(ALine, APos, '*') then
+      begin
+        AComment := '(';
+        Inc(APos);
+      end;
+    '/':
+      Result := not NextIs(ALine, APos, '/');
+    ';':
+      ASemicolon := True;
+  end;
+end;
+
+/// <summary>Kommentare über Zeilen (AComment, #0 = keiner) mitführen; ASemicolon: ein Semikolon außerhalb von
+/// Kommentaren und Strings.</summary>
+procedure ScanLine(const ALine: string; var AComment: Char; out ASemicolon: Boolean);
+var
+  mPos: Integer;
+  mInString: Boolean;
+begin
+  ASemicolon := False;
+  mInString := False;
+  mPos := 1;
+  while mPos <= Length(ALine) do
+  begin
+    if AComment <> #0 then
+    begin
+      CloseComment(ALine, mPos, AComment);
+    end
+    else if mInString then
+    begin
+      mInString := ALine[mPos] <> '''';
+    end
+    else if not CodeChar(ALine, mPos, AComment, mInString, ASemicolon) then
+    begin
+      Break;
+    end;
+    Inc(mPos);
+  end;
 end;
 
 class function TAtlasBreadcrumbs.SectionAt(const ALines: TArray<string>; ALine: Integer): TAtlasCodeSection;
 var
-  Index, Position: Integer;
-  Line, Word_: string;
-  Section, BeforeUses: TAtlasCodeSection;
-  InUses: Boolean;
-  Comment: Char;
-  InString: Boolean;
+  mIndex: Integer;
+  mLine, mWord: string;
+  mBeforeUses: TAtlasCodeSection;
+  mInUses, mSemicolon: Boolean;
+  mComment: Char;
 begin
-  Section := TAtlasCodeSection.None;
-  BeforeUses := TAtlasCodeSection.None;
-  InUses := False;
+  Result := TAtlasCodeSection.None;
+  mBeforeUses := TAtlasCodeSection.None;
+  mInUses := False;
   // Offener Kommentar über Zeilen: '{' oder '(' für (* *); #0 = keiner.
-  Comment := #0;
-  for Index := 0 to Min(ALine, High(ALines)) do
+  mComment := #0;
+  for mIndex := 0 to Min(ALine, High(ALines)) do
   begin
-    Line := ALines[Index];
-    if (Comment = #0) and not InUses then
+    mLine := ALines[mIndex];
+    if (mComment = #0) and not mInUses then
     begin
-      Word_ := LeadingWord(Line);
-      if Word_ = 'interface' then
-        Section := TAtlasCodeSection.InterfacePart
-      else if Word_ = 'implementation' then
-        Section := TAtlasCodeSection.ImplementationPart
-      else if Word_ = 'initialization' then
-        Section := TAtlasCodeSection.Initialization_
-      else if Word_ = 'finalization' then
-        Section := TAtlasCodeSection.Finalization_
-      else if (Word_ = 'end') and (Copy(Line, 4, 1) = '.') then
-        Section := TAtlasCodeSection.None
-      else if Word_ = 'uses' then
+      mWord := LeadingWord(mLine);
+      mInUses := mWord = 'uses';
+      if mInUses then
       begin
-        BeforeUses := Section;
-        Section := TAtlasCodeSection.UsesClause;
-        InUses := True;
-      end;
-    end;
-    // Kommentare über Zeilen und das Semikolon am Ende von uses.
-    InString := False;
-    Position := 1;
-    while Position <= Length(Line) do
-    begin
-      if Comment = '{' then
-      begin
-        if Line[Position] = '}' then
-          Comment := #0;
-      end
-      else if Comment = '(' then
-      begin
-        if (Line[Position] = '*') and (Position < Length(Line)) and (Line[Position + 1] = ')') then
-        begin
-          Comment := #0;
-          Inc(Position);
-        end;
-      end
-      else if InString then
-      begin
-        if Line[Position] = '''' then
-          InString := False;
+        mBeforeUses := Result;
+        Result := TAtlasCodeSection.UsesClause;
       end
       else
-        case Line[Position] of
-          '''':
-            InString := True;
-          '{':
-            Comment := '{';
-          '(':
-            if (Position < Length(Line)) and (Line[Position + 1] = '*') then
-            begin
-              Comment := '(';
-              Inc(Position);
-            end;
-          '/':
-            if (Position < Length(Line)) and (Line[Position + 1] = '/') then
-              Break;
-          ';':
-            if InUses then
-            begin
-              InUses := False;
-              // Die Zeile mit dem Semikolon gehört noch zu uses.
-              if Index < ALine then
-                Section := BeforeUses;
-            end;
-        end;
-      Inc(Position);
+      begin
+        Result := SectionOfWord(mWord, mLine, Result);
+      end;
+    end;
+    ScanLine(mLine, mComment, mSemicolon);
+    if mInUses and mSemicolon then
+    begin
+      mInUses := False;
+      // Die Zeile mit dem Semikolon gehört noch zu uses.
+      if mIndex < ALine then
+      begin
+        Result := mBeforeUses;
+      end;
     end;
   end;
-  Result := Section;
 end;
 
 class function TAtlasBreadcrumbs.ShortName(const AName: string): string;
@@ -224,14 +276,22 @@ begin
       begin
         Head := '';
         if (ANodes[ANode].StartLine >= 0) and (ANodes[ANode].StartLine <= High(ALines)) then
+        begin
           Head := LowerCase(TrimLeft(Copy(ALines[ANodes[ANode].StartLine], ANodes[ANode].StartCharacter + 1, MaxInt)));
+        end;
         // class procedure/class function: das Wort nach class zählt.
         if Head.StartsWith('class ') then
+        begin
           Head := TrimLeft(Copy(Head, 7, MaxInt));
+        end;
         if Head.StartsWith('procedure') or Head.StartsWith('destructor') then
-          Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr')
+        begin
+          Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
+        end
         else
+        begin
           Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
+        end;
       end;
   else
     Result := MakeBadge(TAtlasBadgeKind.Variable, 'va');
@@ -254,48 +314,62 @@ begin
     ((ALine < ANode.EndLine) or ((ALine = ANode.EndLine) and (ACharacter <= ANode.EndCharacter)));
 end;
 
+/// <summary>Gehört AOther zur selben Gruppe wie ANode: Typen, Routinen bzw. Konstanten und Variablen.</summary>
+function SameGroup(const ANode, AOther: TAtlasOutlineNode): Boolean;
+begin
+  if ANode.Category = TAtlasOutlineCategory.TypeDecl then
+  begin
+    Result := AOther.Category = TAtlasOutlineCategory.TypeDecl;
+  end
+  else if IsRoutine(ANode) then
+  begin
+    Result := IsRoutine(AOther);
+  end
+  else
+  begin
+    Result := AOther.Category in [TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable];
+  end;
+end;
+
+/// <summary>Ist AIndex ein Geschwister von ANode? ATopLevel: Unit-Ebene über interface und implementation hinweg.
+/// </summary>
+function IsSibling(const ANodes: TAtlasOutlineNodes; ANode, AIndex: Integer; ATopLevel: Boolean): Boolean;
+var
+  mNode, mOther: TAtlasOutlineNode;
+begin
+  mNode := ANodes[ANode];
+  mOther := ANodes[AIndex];
+  if mOther.Hidden and not mNode.InBody then
+  begin
+    Exit(False);
+  end;
+  if ATopLevel then
+  begin
+    Result := ((mOther.Parent < 0) or IsSection(ANodes[mOther.Parent])) and not IsSection(mOther) and
+      SameGroup(mNode, mOther);
+  end
+  else
+  begin
+    // Methoden zeigen nur Methoden, lokale Routinen nur lokale Routinen.
+    Result := (mOther.Parent = mNode.Parent) and (not IsRoutine(mNode) or IsRoutine(mOther));
+  end;
+end;
+
 /// <summary>Geschwister von ANode für das Sprungmenü.</summary>
 function SiblingsOf(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>;
 var
-  Parent, Index: Integer;
-  Node: TAtlasOutlineNode;
-  TopLevel: Boolean;
-
-  function SameGroup(const AOther: TAtlasOutlineNode): Boolean;
-  begin
-    if Node.Category = TAtlasOutlineCategory.TypeDecl then
-      Result := AOther.Category = TAtlasOutlineCategory.TypeDecl
-    else if IsRoutine(Node) then
-      Result := IsRoutine(AOther)
-    else
-      Result := AOther.Category in [TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable];
-  end;
-
+  mParent, mIndex: Integer;
+  mTopLevel: Boolean;
 begin
   Result := nil;
-  Node := ANodes[ANode];
-  Parent := Node.Parent;
-  TopLevel := (Parent < 0) or IsSection(ANodes[Parent]);
-  for Index := 0 to High(ANodes) do
+  mParent := ANodes[ANode].Parent;
+  mTopLevel := (mParent < 0) or IsSection(ANodes[mParent]);
+  for mIndex := 0 to High(ANodes) do
   begin
-    if ANodes[Index].Hidden and not Node.InBody then
-      Continue;
-    if TopLevel then
+    if IsSibling(ANodes, ANode, mIndex, mTopLevel) then
     begin
-      // Unit-Ebene: über interface und implementation hinweg.
-      if ((ANodes[Index].Parent >= 0) and not IsSection(ANodes[ANodes[Index].Parent])) or IsSection(ANodes[Index]) or
-        not SameGroup(ANodes[Index]) then
-        Continue;
-    end
-    else
-    begin
-      if ANodes[Index].Parent <> Parent then
-        Continue;
-      // Methoden zeigen nur Methoden, lokale Routinen nur lokale Routinen.
-      if IsRoutine(Node) and not IsRoutine(ANodes[Index]) then
-        Continue;
+      Result := Result + [mIndex];
     end;
-    Result := Result + [Index];
   end;
 end;
 
@@ -310,8 +384,12 @@ begin
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
   for Index := 0 to High(Result.Siblings) do
+  begin
     if Result.Siblings[Index] = ANode then
+    begin
       Result.Current := Index;
+    end;
+  end;
 end;
 
 function TextCrumb(const AText: string; const ABadge: TAtlasBadge): TAtlasCrumb;
@@ -331,18 +409,76 @@ begin
   while ANode >= 0 do
   begin
     if not IsSection(ANodes[ANode]) then
+    begin
       Result := [ANode] + Result;
+    end;
     ANode := ANodes[ANode].Parent;
   end;
+end;
+
+/// <summary>Name des Glieds für die Abschnitte uses, initialization und finalization; sonst ''.</summary>
+function SectionCrumbName(ASection: TAtlasCodeSection): string;
+begin
+  case ASection of
+    TAtlasCodeSection.UsesClause:
+      Result := 'uses';
+    TAtlasCodeSection.Initialization_:
+      Result := 'initialization';
+    TAtlasCodeSection.Finalization_:
+      Result := 'finalization';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Innerster Knoten an der Stelle (Kinder stehen hinter ihren Eltern); -1 ohne.</summary>
+function InnerNode(const ANodes: TAtlasOutlineNodes; ALine, ACharacter: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ANodes) do
+  begin
+    if not IsSection(ANodes[mIndex]) and Contains(ANodes[mIndex], ALine, ACharacter) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Glieder für den Knoten AItem der Kette.</summary>
+function CrumbsOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AItem: Integer): TAtlasCrumbs;
+var
+  mIndex: Integer;
+  mName, mOwner: string;
+begin
+  Result := nil;
+  if ANodes[AItem].Hidden and not ANodes[AItem].InBody and (ANodes[AItem].Declaration >= 0) then
+  begin
+    // Rumpf mit Deklaration: deren Typen und die Deklaration selbst.
+    for mIndex in Chain(ANodes, ANodes[AItem].Declaration) do
+    begin
+      Result := Result + [NewCrumb(ANodes, ALines, mIndex)];
+    end;
+    Exit;
+  end;
+  if not ANodes[AItem].InBody and IsRoutine(ANodes[AItem]) and (Pos('.', ANodes[AItem].Name) > 0) then
+  begin
+    // Rumpf ohne Deklaration in der Unit (Klasse in einer anderen Unit): Besitzer als Text.
+    mName := ANodes[AItem].Name;
+    for mOwner in Copy(mName, 1, LastDelimiter('.', mName) - 1).Split(['.']) do
+    begin
+      Result := Result + [TextCrumb(mOwner, MakeBadge(TAtlasBadgeKind.Type_, 'ty'))];
+    end;
+  end;
+  Result := Result + [NewCrumb(ANodes, ALines, AItem)];
 end;
 
 class function TAtlasBreadcrumbs.Path(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ALine,
   ACharacter: Integer; const AUnitName: string; AShowUnit: Boolean): TAtlasCrumbs;
 var
-  Section: TAtlasCodeSection;
-  Index, Inner, Item: Integer;
-  Name, Owner: string;
-  Parts: TArray<string>;
+  mInner, mItem: Integer;
+  mName: string;
 begin
   Result := nil;
   if AShowUnit and (AUnitName <> '') then
@@ -351,51 +487,20 @@ begin
     Result[0].Siblings := UnitMembers(ANodes);
     Result[0].Children := Result[0].Siblings;
   end;
-  Section := SectionAt(ALines, ALine);
-  Name := '';
-  case Section of
-    TAtlasCodeSection.UsesClause:
-      Name := 'uses';
-    TAtlasCodeSection.Initialization_:
-      Name := 'initialization';
-    TAtlasCodeSection.Finalization_:
-      Name := 'finalization';
-    TAtlasCodeSection.None: ;
-    TAtlasCodeSection.InterfacePart: ;
-    TAtlasCodeSection.ImplementationPart: ;
-  end;
-  if Name <> '' then
+  mName := SectionCrumbName(SectionAt(ALines, ALine));
+  if mName <> '' then
   begin
-    Result := Result + [TextCrumb(Name, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
+    Result := Result + [TextCrumb(mName, MakeBadge(TAtlasBadgeKind.Keyword, 'kw'))];
     Exit;
   end;
-  // Innerster Knoten an der Stelle: Kinder stehen hinter ihren Eltern.
-  Inner := -1;
-  for Index := 0 to High(ANodes) do
-    if not IsSection(ANodes[Index]) and Contains(ANodes[Index], ALine, ACharacter) then
-      Inner := Index;
-  if Inner < 0 then
-    Exit;
-  for Item in Chain(ANodes, Inner) do
+  mInner := InnerNode(ANodes, ALine, ACharacter);
+  if mInner < 0 then
   begin
-    if ANodes[Item].Hidden and not ANodes[Item].InBody and (ANodes[Item].Declaration >= 0) then
-    begin
-      // Rumpf mit Deklaration: deren Typen und die Deklaration selbst.
-      for Index in Chain(ANodes, ANodes[Item].Declaration) do
-        Result := Result + [NewCrumb(ANodes, ALines, Index)];
-    end
-    else if not ANodes[Item].InBody and IsRoutine(ANodes[Item]) and (Pos('.', ANodes[Item].Name) > 0) then
-    begin
-      // Rumpf ohne Deklaration in der Unit (Klasse in einer anderen Unit): Besitzer als Text.
-      Name := ANodes[Item].Name;
-      Owner := Copy(Name, 1, LastDelimiter('.', Name) - 1);
-      Parts := Owner.Split(['.']);
-      for Owner in Parts do
-        Result := Result + [TextCrumb(Owner, MakeBadge(TAtlasBadgeKind.Type_, 'ty'))];
-      Result := Result + [NewCrumb(ANodes, ALines, Item)];
-    end
-    else
-      Result := Result + [NewCrumb(ANodes, ALines, Item)];
+    Exit;
+  end;
+  for mItem in Chain(ANodes, mInner) do
+  begin
+    Result := Result + CrumbsOf(ANodes, ALines, mItem);
   end;
 end;
 
@@ -408,7 +513,9 @@ begin
   begin
     Parent := ANodes[Index].Parent;
     if ANodes[Index].Hidden or IsSection(ANodes[Index]) or ((Parent >= 0) and not IsSection(ANodes[Parent])) then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -421,11 +528,15 @@ begin
   for Index := 0 to High(ANodes) do
   begin
     if ANodes[Index].Hidden or ANodes[Index].InBody or not IsRoutine(ANodes[Index]) then
+    begin
       Continue;
+    end;
     // Lokale Routinen (Eltern ist eine Routine) nicht.
     Parent := ANodes[Index].Parent;
     if (Parent >= 0) and IsRoutine(ANodes[Parent]) then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -435,11 +546,15 @@ var
   Owner: Integer;
 begin
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit('');
+  end;
   Result := ANodes[ANode].Name;
   // Rümpfe tragen den Besitzer schon im Namen („TFoo.Bar“).
   if Pos('.', Result) > 0 then
+  begin
     Exit;
+  end;
   Owner := ANodes[ANode].Parent;
   while (Owner >= 0) and (ANodes[Owner].Category = TAtlasOutlineCategory.TypeDecl) do
   begin
@@ -455,22 +570,30 @@ var
 begin
   Result := nil;
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit;
+  end;
   // Bei Routinen liegen die lokalen Routinen im Rumpf, nicht an der Deklaration.
   Owner := Target(ANodes, ANode, True);
   Routine := IsRoutine(ANodes[Owner]);
   for Index := 0 to High(ANodes) do
   begin
     if ANodes[Index].Parent <> Owner then
+    begin
       Continue;
+    end;
     if Routine then
     begin
       // Nur lokale Routinen, keine lokalen Variablen und Konstanten.
       if not IsRoutine(ANodes[Index]) then
+      begin
         Continue;
+      end;
     end
     else if ANodes[Index].Hidden then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -480,14 +603,20 @@ class function TAtlasBreadcrumbs.Target(const ANodes: TAtlasOutlineNodes; ANode:
 begin
   Result := ANode;
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit(-1);
+  end;
   if AImplementation then
   begin
     if ANodes[ANode].Body >= 0 then
+    begin
       Result := ANodes[ANode].Body;
+    end;
   end
   else if ANodes[ANode].Declaration >= 0 then
+  begin
     Result := ANodes[ANode].Declaration;
+  end;
 end;
 
 class function TAtlasBreadcrumbs.MatchesAtWordStart(const APattern, AName: string): Boolean;
@@ -495,13 +624,21 @@ var
   Index: Integer;
 begin
   if APattern = '' then
+  begin
     Exit(True);
+  end;
   if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.ScoreWordStarts then
+  begin
     Exit(True);
+  end;
   for Index := 2 to Length(AName) - Length(APattern) + 1 do
+  begin
     if TAtlasCompletionMatcher.IsWordStart(AName, Index) and SameText(Copy(AName, Index, Length(APattern)),
       APattern) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -512,8 +649,12 @@ var
 begin
   Result := nil;
   for Item in ASiblings do
+  begin
     if MatchesAtWordStart(APattern, ShortName(ANodes[Item].Name)) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 end.

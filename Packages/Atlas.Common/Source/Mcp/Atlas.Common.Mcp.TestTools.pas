@@ -41,6 +41,13 @@ type
     WorkingDir: string;
   end;
 
+  /// <summary>Was das Testprogramm selbst geliefert hat: Exit-Code und letzte Zeilen der Ausgabe.</summary>
+  TMcpTestProcess = record
+    ExitCode: Integer;
+    Output: TArray<string>;
+    class function Make(AExitCode: Integer; const AOutput: TArray<string>): TMcpTestProcess; static;
+  end;
+
   TMcpTestTools = class
   public const
     /// <summary>Vorgabe des Zeitlimits eines Laufs in Sekunden.</summary>
@@ -69,11 +76,11 @@ type
     class function Locate(const ACase: TTestCaseResult; const AUnits: TArray<TProjectUnit>;
       const AProjectDir: string; const AReadLines: TMcpReadLines; out AFileName: string; out ALine: Integer): Boolean;
       static;
-    /// <summary>Ergebnis von run_tests als JSON-Text. AExitCode des Testprogramms; AOutput dessen letzte Zeilen
-    /// (nur, wenn kein Bericht kam).</summary>
+    /// <summary>Ergebnis von run_tests als JSON-Text. AProcess: Exit-Code des Testprogramms und dessen letzte
+    /// Zeilen (nur, wenn kein Bericht kam).</summary>
     class function Report(const ATarget: TMcpTestTarget; const ATests: TArray<string>; const ARun: TTestRunResult;
-      AExitCode: Integer; const AOutput: TArray<string>; const AUnits: TArray<TProjectUnit>;
-      const AReadLines: TMcpReadLines): string; static;
+      const AProcess: TMcpTestProcess; const AUnits: TArray<TProjectUnit>; const AReadLines: TMcpReadLines): string;
+      static;
   end;
 
 implementation
@@ -81,6 +88,7 @@ implementation
 uses
   System.Generics.Collections,
   System.StrUtils,
+  System.Math,
   Atlas.Common.Projects.Paths,
   Atlas.Text.DUnitX;
 
@@ -124,59 +132,83 @@ begin
   Result := True;
 end;
 
-class function TMcpTestTools.PickProject(const ACandidates: TArray<string>; const AWanted: string;
-  const AIsTestProject: TFunc<string, Boolean>; out AProject, AReason: string): Boolean;
+/// <summary>Alle Kandidaten, die AIsTestProject als Testprojekt erkennt.</summary>
+function TestProjects(const ACandidates: TArray<string>; const AIsTestProject: TFunc<string, Boolean>):
+  TArray<string>;
 var
-  Candidate: string;
-  Found: TArray<string>;
-  Names: string;
+  mCandidate: string;
+begin
+  Result := nil;
+  for mCandidate in ACandidates do
+  begin
+    if AIsTestProject(mCandidate) then
+    begin
+      Result := Result + [mCandidate];
+    end;
+  end;
+end;
+
+/// <summary>Dateinamen der Projekte, mit Komma getrennt.</summary>
+function ProjectNames(const AProjects: TArray<string>): string;
+var
+  mProject: string;
+begin
+  Result := '';
+  for mProject in AProjects do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + TProjectPaths.BaseName(mProject) + TProjectPaths.Extension(mProject);
+  end;
+end;
+
+/// <summary>Kandidat, der zu AWanted passt; False mit Grund.</summary>
+function PickWanted(const ACandidates: TArray<string>; const AWanted: string; out AProject, AReason: string):
+  Boolean;
+var
+  mCandidate: string;
 begin
   AProject := '';
   AReason := '';
+  for mCandidate in ACandidates do
+  begin
+    if SameProject(mCandidate, AWanted) then
+    begin
+      AProject := mCandidate;
+      Exit(True);
+    end;
+  end;
+  AReason := Format('Projekt "%s" nicht gefunden.', [AWanted]);
+  Result := False;
+end;
+
+class function TMcpTestTools.PickProject(const ACandidates: TArray<string>; const AWanted: string;
+  const AIsTestProject: TFunc<string, Boolean>; out AProject, AReason: string): Boolean;
+var
+  mFound: TArray<string>;
+begin
   if AWanted <> '' then
   begin
-    for Candidate in ACandidates do
-    begin
-      if SameProject(Candidate, AWanted) then
-      begin
-        AProject := Candidate;
-        Exit(True);
-      end;
-    end;
-    AReason := Format('Projekt "%s" nicht gefunden.', [AWanted]);
-    Exit(False);
+    Exit(PickWanted(ACandidates, AWanted, AProject, AReason));
   end;
-  Found := nil;
-  for Candidate in ACandidates do
+  AProject := '';
+  AReason := '';
+  mFound := TestProjects(ACandidates, AIsTestProject);
+  Result := Length(mFound) = 1;
+  if Result then
   begin
-    if AIsTestProject(Candidate) then
-    begin
-      Found := Found + [Candidate];
-    end;
-  end;
-  if Length(Found) = 1 then
-  begin
-    AProject := Found[0];
-    Exit(True);
-  end;
-  if Length(Found) = 0 then
+    AProject := mFound[0];
+  end
+  else if Length(mFound) = 0 then
   begin
     AReason := 'Kein DUnitX-Testprojekt gefunden (Hauptdatei mit uses DUnitX.TestFramework); "project" angeben.';
   end
   else
   begin
-    Names := '';
-    for Candidate in Found do
-    begin
-      if Names <> '' then
-      begin
-        Names := Names + ', ';
-      end;
-      Names := Names + TProjectPaths.BaseName(Candidate) + TProjectPaths.Extension(Candidate);
-    end;
-    AReason := Format('Mehrere Testprojekte (%s); "project" angeben.', [Names]);
+    AReason := Format('Mehrere Testprojekte (%s); "project" angeben.', [ProjectNames(mFound)]);
   end;
-  Result := False;
 end;
 
 class function TMcpTestTools.PropertyOf(const AInfo: TProjectInfo; const AName: string): string;
@@ -289,102 +321,131 @@ begin
   Result := Texts[AOutcome];
 end;
 
+class function TMcpTestProcess.Make(AExitCode: Integer; const AOutput: TArray<string>): TMcpTestProcess;
+begin
+  Result.ExitCode := AExitCode;
+  Result.Output := AOutput;
+end;
+
+function StatusOf(const ARun: TTestRunResult): string;
+begin
+  if not ARun.Valid then
+  begin
+    Result := 'noReport';
+  end
+  else if ARun.Total = 0 then
+  begin
+    Result := 'noTests';
+  end
+  else if ARun.AllPassed then
+  begin
+    Result := 'passed';
+  end
+  else
+  begin
+    Result := 'failed';
+  end;
+end;
+
+function StringsJson(const AItems: TArray<string>): TJSONArray;
+var
+  mItem: string;
+begin
+  Result := TJSONArray.Create;
+  for mItem in AItems do
+  begin
+    Result.Add(mItem);
+  end;
+end;
+
+/// <summary>Kopf des Berichts: Ergebnis, Ziel, Filter und Exit-Code.</summary>
+procedure AddHead(ARoot: TJSONObject; const ATarget: TMcpTestTarget; const ATests: TArray<string>;
+  const ARun: TTestRunResult; AExitCode: Integer);
+begin
+  ARoot.AddPair('result', StatusOf(ARun));
+  ARoot.AddPair('project', ATarget.Project);
+  ARoot.AddPair('configuration', ATarget.Configuration);
+  ARoot.AddPair('platform', ATarget.Platform);
+  ARoot.AddPair('executable', ATarget.Executable);
+  if Length(ATests) > 0 then
+  begin
+    ARoot.AddPair('tests', StringsJson(ATests));
+  end;
+  ARoot.AddPair('exitCode', TJSONNumber.Create(AExitCode));
+end;
+
+procedure AddCounts(ARoot: TJSONObject; const ARun: TTestRunResult);
+begin
+  ARoot.AddPair('total', TJSONNumber.Create(ARun.Total));
+  ARoot.AddPair('passed', TJSONNumber.Create(ARun.Count(TTestOutcome.Passed)));
+  ARoot.AddPair('failed', TJSONNumber.Create(ARun.Count(TTestOutcome.Failed)));
+  ARoot.AddPair('errors', TJSONNumber.Create(ARun.Count(TTestOutcome.Error)));
+  ARoot.AddPair('skipped', TJSONNumber.Create(ARun.Count(TTestOutcome.Skipped)));
+  ARoot.AddPair('durationMs', TJSONNumber.Create(ARun.DurationMs));
+end;
+
+/// <summary>Ein fehlgeschlagener Test mit Werten und, wenn gefunden, Datei und Zeile.</summary>
+function FailureJson(const AFailure: TTestCaseResult; const ATarget: TMcpTestTarget;
+  const AUnits: TArray<TProjectUnit>; const AReadLines: TMcpReadLines): TJSONObject;
+var
+  mFileName: string;
+  mLine: Integer;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('test', AFailure.FullName);
+  Result.AddPair('outcome', OutcomeText(AFailure.Outcome));
+  Result.AddPair('message', AFailure.Message);
+  if AFailure.HasValues then
+  begin
+    Result.AddPair('expected', AFailure.Expected);
+    Result.AddPair('actual', AFailure.Actual);
+  end;
+  if TMcpTestTools.Locate(AFailure, AUnits, TProjectPaths.DirectoryOf(ATarget.Project), AReadLines, mFileName,
+    mLine) then
+  begin
+    Result.AddPair('file', mFileName);
+    if mLine > 0 then
+    begin
+      Result.AddPair('line', TJSONNumber.Create(mLine));
+    end;
+  end;
+end;
+
 class function TMcpTestTools.Report(const ATarget: TMcpTestTarget; const ATests: TArray<string>;
-  const ARun: TTestRunResult; AExitCode: Integer; const AOutput: TArray<string>; const AUnits: TArray<TProjectUnit>;
+  const ARun: TTestRunResult; const AProcess: TMcpTestProcess; const AUnits: TArray<TProjectUnit>;
   const AReadLines: TMcpReadLines): string;
 var
-  Root, Item: TJSONObject;
-  Items, Filter, Output: TJSONArray;
-  Failure: TTestCaseResult;
-  Failures: TArray<TTestCaseResult>;
-  FileName, Line, Status: string;
-  LineNumber, Index: Integer;
+  mRoot: TJSONObject;
+  mItems: TJSONArray;
+  mFailures: TArray<TTestCaseResult>;
+  mIndex: Integer;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
+    AddHead(mRoot, ATarget, ATests, ARun, AProcess.ExitCode);
     if not ARun.Valid then
     begin
-      Status := 'noReport';
-    end
-    else if ARun.Total = 0 then
-    begin
-      Status := 'noTests';
-    end
-    else if ARun.AllPassed then
-    begin
-      Status := 'passed';
-    end
-    else
-    begin
-      Status := 'failed';
-    end;
-    Root.AddPair('result', Status);
-    Root.AddPair('project', ATarget.Project);
-    Root.AddPair('configuration', ATarget.Configuration);
-    Root.AddPair('platform', ATarget.Platform);
-    Root.AddPair('executable', ATarget.Executable);
-    if Length(ATests) > 0 then
-    begin
-      Filter := TJSONArray.Create;
-      for Line in ATests do
-      begin
-        Filter.Add(Line);
-      end;
-      Root.AddPair('tests', Filter);
-    end;
-    Root.AddPair('exitCode', TJSONNumber.Create(AExitCode));
-    if not ARun.Valid then
-    begin
-      Root.AddPair('reason', 'Das Testprogramm hat keinen XML-Bericht geschrieben (' + ARun.Error + '). Es braucht ' +
+      mRoot.AddPair('reason', 'Das Testprogramm hat keinen XML-Bericht geschrieben (' + ARun.Error + '). Es braucht ' +
         'einen DUnitX-XML-Logger: runner.AddLogger(TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile)) ' +
         'wie in der Vorlage von RAD Studio.');
-      Output := TJSONArray.Create;
-      for Line in AOutput do
-      begin
-        Output.Add(Line);
-      end;
-      Root.AddPair('output', Output);
-      Exit(Root.Format(2));
+      mRoot.AddPair('output', StringsJson(AProcess.Output));
+      Exit(mRoot.Format(2));
     end;
-    Root.AddPair('total', TJSONNumber.Create(ARun.Total));
-    Root.AddPair('passed', TJSONNumber.Create(ARun.Count(TTestOutcome.Passed)));
-    Root.AddPair('failed', TJSONNumber.Create(ARun.Count(TTestOutcome.Failed)));
-    Root.AddPair('errors', TJSONNumber.Create(ARun.Count(TTestOutcome.Error)));
-    Root.AddPair('skipped', TJSONNumber.Create(ARun.Count(TTestOutcome.Skipped)));
-    Root.AddPair('durationMs', TJSONNumber.Create(ARun.DurationMs));
-    Items := TJSONArray.Create;
-    Root.AddPair('failures', Items);
-    Failures := ARun.Failures;
-    for Index := 0 to High(Failures) do
+    AddCounts(mRoot, ARun);
+    mItems := TJSONArray.Create;
+    mRoot.AddPair('failures', mItems);
+    mFailures := ARun.Failures;
+    for mIndex := 0 to Min(Length(mFailures), MaxFailures) - 1 do
     begin
-      if Index = MaxFailures then
-      begin
-        Root.AddPair('omittedFailures', TJSONNumber.Create(Length(Failures) - MaxFailures));
-        Break;
-      end;
-      Failure := Failures[Index];
-      Item := TJSONObject.Create;
-      Items.AddElement(Item);
-      Item.AddPair('test', Failure.FullName);
-      Item.AddPair('outcome', OutcomeText(Failure.Outcome));
-      Item.AddPair('message', Failure.Message);
-      if Failure.HasValues then
-      begin
-        Item.AddPair('expected', Failure.Expected);
-        Item.AddPair('actual', Failure.Actual);
-      end;
-      if Locate(Failure, AUnits, TProjectPaths.DirectoryOf(ATarget.Project), AReadLines, FileName, LineNumber) then
-      begin
-        Item.AddPair('file', FileName);
-        if LineNumber > 0 then
-        begin
-          Item.AddPair('line', TJSONNumber.Create(LineNumber));
-        end;
-      end;
+      mItems.AddElement(FailureJson(mFailures[mIndex], ATarget, AUnits, AReadLines));
     end;
-    Result := Root.Format(2);
+    if Length(mFailures) > MaxFailures then
+    begin
+      mRoot.AddPair('omittedFailures', TJSONNumber.Create(Length(mFailures) - MaxFailures));
+    end;
+    Result := mRoot.Format(2);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

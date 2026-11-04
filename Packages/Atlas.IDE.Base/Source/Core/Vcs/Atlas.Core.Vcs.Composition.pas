@@ -86,7 +86,9 @@ begin
     FLock.Leave;
   end;
   if Result and Assigned(Handler) then
+  begin
     Handler(AKind);
+  end;
 end;
 
 class procedure TAtlasVcsNotices.Reset;
@@ -96,7 +98,9 @@ begin
   FLock.Enter;
   try
     for Kind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+    begin
       FReported[Kind] := False;
+    end;
   finally
     FLock.Leave;
   end;
@@ -108,16 +112,22 @@ class function TAtlasVersionControl.ForWorkingCopy(const AWorkingCopy: TAtlasVcs
   const ARunner: IAtlasVcsRunner; const AExecutable: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
 begin
   if AWorkingCopy.Kind = TAtlasVcsKind.None then
+  begin
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.NoWorkingCopy));
+  end;
   if AExecutable = '' then
   begin
     TAtlasVcsNotices.ToolMissing(AWorkingCopy.Kind);
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing));
   end;
   if AWorkingCopy.Kind = TAtlasVcsKind.Git then
-    Result := TAtlasGitVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs)
+  begin
+    Result := TAtlasGitVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
+  end
   else
+  begin
     Result := TAtlasSvnVersionControl.Create(AWorkingCopy.Root, ARunner, AExecutable, ATimeoutMs);
+  end;
 end;
 
 class function TAtlasVersionControl.Open(const AFolder: string; AProvider: TAtlasVcsProvider;
@@ -126,10 +136,14 @@ var
   WorkingCopy: TAtlasVcsWorkingCopy;
 begin
   if AProvider = TAtlasVcsProvider.Off then
+  begin
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled));
+  end;
   WorkingCopy := TAtlasVcsDetection.Find(AFolder, AProvider);
   if WorkingCopy.Kind = TAtlasVcsKind.None then
+  begin
     Exit(TAtlasNullVersionControl.Create(TAtlasVcsOutcome.NoWorkingCopy));
+  end;
   Result := ForWorkingCopy(WorkingCopy, ARunner, ALocate(WorkingCopy.Kind), ATimeoutMs);
 end;
 

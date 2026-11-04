@@ -131,6 +131,27 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 
+type
+  /// <summary>Zeichnet die Linie einer Kachel: Nulllinie, Stücke ohne Lücke, letzter und gewählter Punkt.</summary>
+  TTrendSparkPainter = record
+    Canvas: TCanvas;
+    Tile: TAtlasTrendTile;
+    Area: TRect;
+    ZeroY: Integer;
+    Radius: Integer;
+    LineWidth: Integer;
+    TextColor: TColor;
+    LineColor: TColor;
+    BackColor: TColor;
+    /// <summary>Nulllinie, alle Stücke und den letzten Punkt; setzt ZeroY.</summary>
+    procedure Draw(AZeroLineColor: TColor);
+    procedure DrawPiece(const APoints: TArray<TPoint>);
+    procedure DrawLast;
+    /// <summary>Ring um den gewählten Punkt; nichts, wenn AChosen außerhalb liegt. Erst nach Draw.</summary>
+    procedure DrawChosen(AChosen: Integer);
+    function PointAt(AIndex: Integer): TPoint;
+  end;
+
 /// <summary>Mischfarbe: APercent Prozent von AFore auf ABack.</summary>
 function Blend(AFore, ABack: TColor; APercent: Integer): TColor;
 var
@@ -144,6 +165,113 @@ begin
   G := (((Fore shr 8) and $FF) * APercent + ((Back shr 8) and $FF) * (100 - APercent)) div 100;
   B := (((Fore shr 16) and $FF) * APercent + ((Back shr 16) and $FF) * (100 - APercent)) div 100;
   Result := TColor(R or (G shl 8) or (B shl 16));
+end;
+
+{ TTrendSparkPainter }
+
+function TTrendSparkPainter.PointAt(AIndex: Integer): TPoint;
+begin
+  Result := Point(TAtlasWelcomeTrends.PointX(AIndex, Length(Tile.Values), Area.Left, Area.Width),
+    TAtlasWelcomeTrends.PointY(Tile.Values[AIndex], Tile.Bottom, Tile.Top, Area.Top, Area.Height));
+end;
+
+procedure TTrendSparkPainter.Draw(AZeroLineColor: TColor);
+var
+  mCount, mIndex: Integer;
+  mPoints: TArray<TPoint>;
+begin
+  mCount := Length(Tile.Values);
+  ZeroY := TAtlasWelcomeTrends.PointY(0, Tile.Bottom, Tile.Top, Area.Top, Area.Height);
+  Canvas.Pen.Color := AZeroLineColor;
+  Canvas.Pen.Style := psDot;
+  Canvas.MoveTo(Area.Left, ZeroY);
+  Canvas.LineTo(Area.Right, ZeroY);
+  Canvas.Pen.Style := psSolid;
+  // Zusammenhängende Stücke ohne Lücke: Fläche bis zur Nulllinie, darüber die Linie.
+  mIndex := 0;
+  while mIndex < mCount do
+  begin
+    mPoints := nil;
+    while (mIndex < mCount) and Tile.Has[mIndex] do
+    begin
+      mPoints := mPoints + [PointAt(mIndex)];
+      Inc(mIndex);
+    end;
+    if mPoints <> nil then
+    begin
+      DrawPiece(mPoints);
+    end
+    else
+    begin
+      Inc(mIndex);
+    end;
+  end;
+  DrawLast;
+end;
+
+procedure TTrendSparkPainter.DrawPiece(const APoints: TArray<TPoint>);
+var
+  mRadius: Integer;
+begin
+  Canvas.Brush.Style := bsSolid;
+  if Length(APoints) = 1 then
+  begin
+    // Einzelner Wert zwischen Lücken: als kleiner Punkt.
+    Canvas.Brush.Color := LineColor;
+    Canvas.Pen.Color := LineColor;
+    mRadius := Radius - 1;
+    Canvas.Ellipse(APoints[0].X - mRadius, APoints[0].Y - mRadius, APoints[0].X + mRadius + 1,
+      APoints[0].Y + mRadius + 1);
+    Exit;
+  end;
+  Canvas.Brush.Color := Blend(LineColor, BackColor, 22);
+  Canvas.Pen.Style := psClear;
+  Canvas.Polygon(APoints + [Point(APoints[High(APoints)].X, ZeroY), Point(APoints[0].X, ZeroY)]);
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Color := LineColor;
+  Canvas.Pen.Width := LineWidth;
+  Canvas.Polyline(APoints);
+  Canvas.Pen.Width := 1;
+end;
+
+procedure TTrendSparkPainter.DrawLast;
+var
+  mCount, mX, mY: Integer;
+begin
+  // Letzter Punkt hervorgehoben.
+  if not Tile.HasLast then
+  begin
+    Exit;
+  end;
+  mCount := Length(Tile.Values);
+  mX := TAtlasWelcomeTrends.PointX(mCount - 1, mCount, Area.Left, Area.Width);
+  mY := TAtlasWelcomeTrends.PointY(Tile.Last, Tile.Bottom, Tile.Top, Area.Top, Area.Height);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := LineColor;
+  Canvas.Pen.Color := LineColor;
+  Canvas.Ellipse(mX - Radius, mY - Radius, mX + Radius + 1, mY + Radius + 1);
+end;
+
+procedure TTrendSparkPainter.DrawChosen(AChosen: Integer);
+var
+  mX, mY: Integer;
+begin
+  if (AChosen < 0) or (AChosen >= Length(Tile.Values)) then
+  begin
+    Exit;
+  end;
+  mX := TAtlasWelcomeTrends.PointX(AChosen, Length(Tile.Values), Area.Left, Area.Width);
+  mY := ZeroY;
+  if Tile.Has[AChosen] then
+  begin
+    mY := PointAt(AChosen).Y;
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := BackColor;
+  Canvas.Pen.Color := TextColor;
+  Canvas.Pen.Width := LineWidth;
+  Canvas.Ellipse(mX - Radius - 1, mY - Radius - 1, mX + Radius + 2, mY + Radius + 2);
+  Canvas.Pen.Width := 1;
 end;
 
 { TAtlasWelcomeTrendsFrame }
@@ -182,15 +310,21 @@ begin
   OldHeight := HeightFor(ClientWidth);
   FView := Default(TAtlasTrendView);
   if FSource <> nil then
+  begin
     FView := FSource.View;
+  end;
   // Anderes Projekt: der gewählte Punkt gehört zum alten.
   if not SameText(OldProject, FView.Project) then
+  begin
     FChosenBuild := 0;
+  end;
   FHintTile := -1;
   FBox.Invalidate;
   inherited;
   if OldHeight <> HeightFor(ClientWidth) then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BodyResize(Sender: TObject);
@@ -201,7 +335,9 @@ begin
   FContentHeight := HeightFor(ClientWidth);
   // Andere Anzahl Reihen von Kacheln: Der Frame „Atlas“ ordnet die Spalten neu.
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.AreaWidth: Integer;
@@ -224,7 +360,9 @@ var
 begin
   Result := ScaleValue(HeadHeight);
   if (Length(FView.Points) = 0) or (Length(FView.Tiles) = 0) then
+  begin
     Exit;
+  end;
   Rows := (Length(FView.Tiles) + Columns(AWidth) - 1) div Columns(AWidth);
   Inc(Result, Rows * (ScaleValue(TileHeight) + ScaleValue(TileGap)));
 end;
@@ -232,7 +370,9 @@ end;
 function TAtlasWelcomeTrendsFrame.HeightFor(AWidth: Integer): Integer;
 begin
   if FView.Project = '' then
+  begin
     Exit(ScaleValue(EmptyHeight));
+  end;
   Result := InfoTop(AWidth) + ScaleValue(InfoHeight);
 end;
 
@@ -285,9 +425,13 @@ end;
 class function TAtlasWelcomeTrendsFrame.DecimalChar: Char;
 begin
   if TAtlasStrings.Language = TAtlasLanguage.German then
-    Result := ','
+  begin
+    Result := ',';
+  end
   else
+  begin
     Result := '.';
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.ValueWithUnit(ASeries: TAtlasTrendSeries; ATenths: Integer): string;
@@ -306,9 +450,13 @@ end;
 class function TAtlasWelcomeTrendsFrame.ValueLine(const ATile: TAtlasTrendTile): string;
 begin
   if ATile.HasLast then
-    Result := ValueWithUnit(ATile.Series, ATile.Last)
+  begin
+    Result := ValueWithUnit(ATile.Series, ATile.Last);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue);
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.PreviousLine(const ATile: TAtlasTrendTile): string;
@@ -317,14 +465,18 @@ var
 begin
   Result := '';
   if ATile.Previous(Value) then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsPrevious, [ValueWithUnit(ATile.Series, Value)]);
+  end;
 end;
 
 class function TAtlasWelcomeTrendsFrame.LocalText(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc <= 0 then
+  begin
     Exit;
+  end;
   Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
 end;
 
@@ -342,23 +494,37 @@ var
 begin
   Result := '';
   if (ATile < 0) or (ATile > High(AView.Tiles)) or (APoint < 0) or (APoint > High(AView.Points)) then
+  begin
     Exit;
+  end;
   Point := AView.Points[APoint];
   Tile := AView.Tiles[ATile];
   // Wie im Mockup „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
   Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuild, [APoint + 1, Length(AView.Points)]);
   if ANumber and (Point.Build > 0) and (Point.Build <> APoint + 1) then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuildNumber, [Point.Build]);
+  end;
   if Point.At > 0 then
+  begin
     Result := Result + ' · ' + LocalText(Point.At);
+  end;
   if Point.Branch <> '' then
+  begin
     Result := Result + ' · ' + Point.Branch;
+  end;
   if Point.Commit <> '' then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeTrends.ShortCommit(Point.Commit);
+  end;
   if Tile.Has[APoint] then
-    Value := ValueWithUnit(Tile.Series, Tile.Values[APoint])
+  begin
+    Value := ValueWithUnit(Tile.Series, Tile.Values[APoint]);
+  end
   else
+  begin
     Value := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue);
+  end;
   Result := Result + ' · ' + SeriesTitle(Tile.Series) + ': ' + Value;
 end;
 
@@ -368,10 +534,16 @@ var
 begin
   Result := -1;
   if FChosenBuild <= 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FView.Points) do
+  begin
     if FView.Points[Index].Build = FChosenBuild then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.ChosenTile: Integer;
@@ -380,29 +552,45 @@ var
 begin
   Result := -1;
   if ChosenPoint < 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FView.Tiles) do
+  begin
     if FView.Tiles[Index].Series = FChosenSeries then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.HeadingText: string;
 begin
   Result := '';
   if FView.Project <> '' then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsHeading, [FView.Name, FView.Limit]);
+  end;
 end;
 
 function TAtlasWelcomeTrendsFrame.InfoText: string;
 begin
   if FView.Project = '' then
+  begin
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoProject));
+  end;
   if Length(FView.Points) = 0 then
+  begin
     Exit(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsNoPoints, [FView.Name]));
+  end;
   if Length(FView.Tiles) = 0 then
+  begin
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoSeries));
+  end;
   if ChosenTile >= 0 then
+  begin
     Exit(PointInfo(FView, ChosenTile, ChosenPoint));
+  end;
   Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint);
 end;
 
@@ -414,25 +602,33 @@ begin
   Result.Tile := -1;
   Result.Point := -1;
   if Length(FView.Points) = 0 then
+  begin
     Exit;
+  end;
   mWidth := AreaWidth;
   for Index := 0 to High(FView.Tiles) do
+  begin
     if TileRect(Index, mWidth).Contains(Point(X, Y)) then
     begin
       Result.Tile := Index;
       Area := SparkRect(TileRect(Index, mWidth));
       // Ein paar Punkte Spielraum um die Linie: Sie ist dünn.
       if (Y >= Area.Top - ScaleValue(TilePadding)) and (Y <= Area.Bottom + ScaleValue(TilePadding)) then
+      begin
         Result.Point := TAtlasWelcomeTrends.NearestPoint(X, Length(FView.Points), Area.Left, Area.Width);
+      end;
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasWelcomeTrendsFrame.ClickAt(const AHit: TAtlasTrendsHit);
 begin
   // Nur Anzeige im Bereich: keine Aktion der IDE, darum direkt und ohne Nachrichtenschleife.
   if (AHit.Tile < 0) or (AHit.Tile > High(FView.Tiles)) or (AHit.Point < 0) or (AHit.Point > High(FView.Points)) then
+  begin
     Exit;
+  end;
   FChosenSeries := FView.Tiles[AHit.Tile].Series;
   FChosenBuild := FView.Points[AHit.Point].Build;
   FBox.Invalidate;
@@ -440,119 +636,56 @@ end;
 
 procedure TAtlasWelcomeTrendsFrame.DrawTile(ACanvas: TCanvas; AIndex: Integer; const ARect: TRect);
 var
-  Tile: TAtlasTrendTile;
-  Area: TRect;
-  Count, Index, ZeroY, X, Y, Radius, ValueHeight, Chosen: Integer;
-  Points: TArray<TPoint>;
-  TextColor, MutedColor, LineColor, BackColor: TColor;
+  mTile: TAtlasTrendTile;
+  mSpark: TTrendSparkPainter;
+  mMutedColor: TColor;
   mText: string;
+  mX, mY, mValueHeight: Integer;
 begin
-  Tile := FView.Tiles[AIndex];
-  TextColor := StyleServices(Self).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  LineColor := StyleServices(Self).GetSystemColor(clHighlight);
-  BackColor := StyleServices(Self).GetSystemColor(clWindow);
+  mTile := FView.Tiles[AIndex];
+  mMutedColor := StyleServices(Self).GetSystemColor(clGrayText);
+  mSpark.Canvas := ACanvas;
+  mSpark.Tile := mTile;
+  mSpark.TextColor := StyleServices(Self).GetSystemColor(clWindowText);
+  mSpark.LineColor := StyleServices(Self).GetSystemColor(clHighlight);
+  mSpark.BackColor := StyleServices(Self).GetSystemColor(clWindow);
   // Rahmen der Kachel.
   ACanvas.Brush.Style := bsClear;
   ACanvas.Pen.Style := psSolid;
   ACanvas.Pen.Width := 1;
-  ACanvas.Pen.Color := Blend(MutedColor, BackColor, 35);
+  ACanvas.Pen.Color := Blend(mMutedColor, mSpark.BackColor, 35);
   ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, ScaleValue(8), ScaleValue(8));
   // Bezeichnung klein und in Großbuchstaben.
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
-  ACanvas.Font.Color := MutedColor;
+  ACanvas.Font.Color := mMutedColor;
   ACanvas.TextRect(Rect(ARect.Left + ScaleValue(TilePadding), ARect.Top + ScaleValue(5),
     ARect.Right - ScaleValue(TilePadding), ARect.Top + ScaleValue(5) + ACanvas.TextHeight('Ag')),
-    ARect.Left + ScaleValue(TilePadding), ARect.Top + ScaleValue(5), AnsiUpperCase(SeriesTitle(Tile.Series)));
+    ARect.Left + ScaleValue(TilePadding), ARect.Top + ScaleValue(5), AnsiUpperCase(SeriesTitle(mTile.Series)));
   // Letzter Wert groß, Vorwert klein daneben.
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size + 3;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.Font.Color := TextColor;
-  mText := ValueLine(Tile);
-  X := ARect.Left + ScaleValue(TilePadding);
-  Y := ARect.Top + ScaleValue(20);
-  ACanvas.TextOut(X, Y, mText);
-  Inc(X, ACanvas.TextWidth(mText) + ScaleValue(6));
-  ValueHeight := ACanvas.TextHeight(mText);
+  ACanvas.Font.Color := mSpark.TextColor;
+  mText := ValueLine(mTile);
+  mX := ARect.Left + ScaleValue(TilePadding);
+  mY := ARect.Top + ScaleValue(20);
+  ACanvas.TextOut(mX, mY, mText);
+  Inc(mX, ACanvas.TextWidth(mText) + ScaleValue(6));
+  mValueHeight := ACanvas.TextHeight(mText);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
-  ACanvas.Font.Color := MutedColor;
-  ACanvas.TextOut(X, Y + ValueHeight - ACanvas.TextHeight('Ag') - ScaleValue(1), PreviousLine(Tile));
+  ACanvas.Font.Color := mMutedColor;
+  ACanvas.TextOut(mX, mY + mValueHeight - ACanvas.TextHeight('Ag') - ScaleValue(1), PreviousLine(mTile));
   // Linie: eine Skala je Kachel, Nulllinie immer sichtbar.
-  Area := SparkRect(ARect);
-  Count := Length(Tile.Values);
-  ZeroY := TAtlasWelcomeTrends.PointY(0, Tile.Bottom, Tile.Top, Area.Top, Area.Height);
-  ACanvas.Pen.Color := Blend(MutedColor, BackColor, 50);
-  ACanvas.Pen.Style := psDot;
-  ACanvas.MoveTo(Area.Left, ZeroY);
-  ACanvas.LineTo(Area.Right, ZeroY);
-  ACanvas.Pen.Style := psSolid;
-  // Zusammenhängende Stücke ohne Lücke: Fläche bis zur Nulllinie, darüber die Linie.
-  Index := 0;
-  while Index < Count do
-  begin
-    if not Tile.Has[Index] then
-    begin
-      Inc(Index);
-      Continue;
-    end;
-    Points := nil;
-    while (Index < Count) and Tile.Has[Index] do
-    begin
-      Points := Points + [Point(TAtlasWelcomeTrends.PointX(Index, Count, Area.Left, Area.Width),
-        TAtlasWelcomeTrends.PointY(Tile.Values[Index], Tile.Bottom, Tile.Top, Area.Top, Area.Height))];
-      Inc(Index);
-    end;
-    if Length(Points) > 1 then
-    begin
-      ACanvas.Brush.Style := bsSolid;
-      ACanvas.Brush.Color := Blend(LineColor, BackColor, 22);
-      ACanvas.Pen.Style := psClear;
-      ACanvas.Polygon(Points + [Point(Points[High(Points)].X, ZeroY), Point(Points[0].X, ZeroY)]);
-      ACanvas.Pen.Style := psSolid;
-      ACanvas.Pen.Color := LineColor;
-      ACanvas.Pen.Width := ScaleValue(2);
-      ACanvas.Polyline(Points);
-      ACanvas.Pen.Width := 1;
-    end
-    else
-    begin
-      // Einzelner Wert zwischen Lücken: als kleiner Punkt.
-      ACanvas.Brush.Style := bsSolid;
-      ACanvas.Brush.Color := LineColor;
-      ACanvas.Pen.Color := LineColor;
-      Radius := ScaleValue(DotRadius) - 1;
-      ACanvas.Ellipse(Points[0].X - Radius, Points[0].Y - Radius, Points[0].X + Radius + 1,
-        Points[0].Y + Radius + 1);
-    end;
-  end;
-  Radius := ScaleValue(DotRadius);
-  // Letzter Punkt hervorgehoben.
-  if Tile.HasLast then
-  begin
-    X := TAtlasWelcomeTrends.PointX(Count - 1, Count, Area.Left, Area.Width);
-    Y := TAtlasWelcomeTrends.PointY(Tile.Last, Tile.Bottom, Tile.Top, Area.Top, Area.Height);
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := LineColor;
-    ACanvas.Pen.Color := LineColor;
-    ACanvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);
-  end;
+  mSpark.Area := SparkRect(ARect);
+  mSpark.Radius := ScaleValue(DotRadius);
+  mSpark.LineWidth := ScaleValue(2);
+  mSpark.Draw(Blend(mMutedColor, mSpark.BackColor, 50));
   // Gewählter Punkt als Ring; in einer Lücke auf der Nulllinie.
-  Chosen := ChosenPoint;
-  if (Chosen >= 0) and (Chosen < Count) and (Tile.Series = FChosenSeries) then
+  if mTile.Series = FChosenSeries then
   begin
-    X := TAtlasWelcomeTrends.PointX(Chosen, Count, Area.Left, Area.Width);
-    Y := ZeroY;
-    if Tile.Has[Chosen] then
-      Y := TAtlasWelcomeTrends.PointY(Tile.Values[Chosen], Tile.Bottom, Tile.Top, Area.Top, Area.Height);
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := BackColor;
-    ACanvas.Pen.Color := TextColor;
-    ACanvas.Pen.Width := ScaleValue(2);
-    ACanvas.Ellipse(X - Radius - 1, Y - Radius - 1, X + Radius + 2, Y + Radius + 2);
-    ACanvas.Pen.Width := 1;
+    mSpark.DrawChosen(ChosenPoint);
   end;
   ACanvas.Brush.Style := bsClear;
 end;
@@ -578,15 +711,21 @@ begin
   Canvas.Font.Color := MutedColor;
   Canvas.TextOut(ScaleValue(Indent), ScaleValue(3), HeadingText);
   if Length(FView.Points) > 0 then
+  begin
     for Index := 0 to High(FView.Tiles) do
+    begin
       DrawTile(Canvas, Index, TileRect(Index, mWidth));
+    end;
+  end;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := MutedColor;
   Info := InfoText;
   // Zu schmal für alles: die laufende Nummer weglassen.
   if (ChosenTile >= 0) and (Canvas.TextWidth(Info) > mWidth - 2 * ScaleValue(Indent)) then
+  begin
     Info := PointInfo(FView, ChosenTile, ChosenPoint, False);
+  end;
   Canvas.TextOut(ScaleValue(Indent), InfoTop(mWidth) + ScaleValue(3), Info);
 end;
 
@@ -596,17 +735,27 @@ var
 begin
   Hit := HitTest(X, Y);
   if Hit.Point >= 0 then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if Hit.Tile = FHintTile then
+  begin
     Exit;
+  end;
   FHintTile := Hit.Tile;
   if Hit.Tile >= 0 then
+  begin
     FBox.Hint := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsTileHint,
-      [SeriesTitle(FView.Tiles[Hit.Tile].Series)])
+      [SeriesTitle(FView.Tiles[Hit.Tile].Series)]);
+  end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -614,7 +763,9 @@ procedure TAtlasWelcomeTrendsFrame.BoxMouseUp(Sender: TObject; Button: TMouseBut
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickAt(HitTest(X, Y));
+  end;
 end;
 
 end.

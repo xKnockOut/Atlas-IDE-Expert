@@ -17,8 +17,8 @@
       Wächter: Vorgabe aus (false bzw. x-offValue), nie am Hauptschalter
       experimental.enabled, nie an einem ganzen Objekt; Profil „Alles an“ lässt
       sie aus, Profil „Alles an, auch experimentell“ schaltet alle ein.
-    - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
-      denen im Schema entsprechen (Validierung und Schichtung).
+    - Wächter: Die Abschnitte in Atlas.Common.Configuration.Internals.*Options
+      (je Abschnitt Lesen und Schichten) müssen genau den Schlüsseln im Schema entsprechen.
     - Atlas.Common.Configuration.Internals.ScopeData: Ort jedes Schlüssels aus
       x-scope ("global" = %APPDATA%\Atlas\settings.json, "project" = atlas.json,
       "both" = an beiden Orten, das Projekt übersteuert je Glied; steht in beiden Listen).
@@ -491,17 +491,15 @@ $TableText = $Table.ToString().Replace("`r`n", "`n")
 $Problems = New-Object System.Collections.Generic.List[string]
 foreach ($Issue in $GroupIssues) { $Problems.Add($Issue) }
 $SchemaKeys = @($Schema['properties'].Keys | Where-Object { $_ -ne '$schema' } | Sort-Object)
-$ParserText = [IO.File]::ReadAllText($ParserPath, $Utf8).Replace("`r`n", "`n")
-$Starts = [regex]::Matches($ParserText, "Key = 'delphiVersion'")
-if ($Starts.Count -lt 2) { $Problems.Add('Parser: Validierung und Schichtung nicht gefunden') }
-foreach ($Start in $Starts) {
-    $Stop = $ParserText.IndexOf("`nend;", $Start.Index)
-    $Chain = $ParserText.Substring($Start.Index, $Stop - $Start.Index)
-    $Keys = @([regex]::Matches($Chain, "Key = '([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-    $Line = $ParserText.Substring(0, $Start.Index).Split("`n").Count
-    foreach ($Key in $SchemaKeys) { if ($Keys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" aus dem Schema fehlt") } }
-    foreach ($Key in $Keys) { if ($SchemaKeys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" fehlt im Schema") } }
-}
+# Jeder Schlüssel der obersten Ebene ist ein Abschnitt (Section: '…') in einer der Units
+# Internals/*Options.pas; der Abschnitt liest (Read) und schichtet (Take).
+$OptionPaths = @(Get-ChildItem -Path (Join-Path (Split-Path $ParserPath) 'Internals') -Filter 'Atlas.Common.Configuration.Internals.*Options.pas' | Sort-Object Name | ForEach-Object { $_.FullName })
+$ParserText = (@($ParserPath) + $OptionPaths | ForEach-Object { [IO.File]::ReadAllText($_, $Utf8) }) -join "`n"
+$ParserText = $ParserText.Replace("`r`n", "`n")
+$Keys = @([regex]::Matches($ParserText, "Section: '([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+if ($Keys.Count -eq 0) { $Problems.Add('Parser: keine Abschnitte in Internals/*Options.pas gefunden') }
+foreach ($Key in $SchemaKeys) { if ($Keys -cnotcontains $Key) { $Problems.Add("Parser: Abschnitt ""$Key"" aus dem Schema fehlt") } }
+foreach ($Key in $Keys) { if ($SchemaKeys -cnotcontains $Key) { $Problems.Add("Parser: Abschnitt ""$Key"" fehlt im Schema") } }
 foreach ($Name in $SchemaKeys) {
     $P = $Schema['properties'][$Name]
     if (Has $P 'properties') {
@@ -694,7 +692,7 @@ function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [
     return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
         'implementation', '', 'const') + (Pascal-Lines 'Lines' $Source) +
         @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-        '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')
+        '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')
 }
 $SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
@@ -727,13 +725,15 @@ for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
     $ProfileLines += Pascal-Lines "Profile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
 }
 $ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in ALines do', '    Result := Result + Line + #10;', 'end;', '',
+    '  for Line in ALines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '',
     'function AtlasProfileFiles: TArray<string>;', 'begin', "  SetLength(Result, $($Profiles.Count));")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) { $ProfileLines += "  Result[$Index] := '$($Profiles[$Index].Name)';" }
 $ProfileLines += @('end;', '', 'function AtlasProfileJson(const AFileName: string): string;', 'begin', "  Result := '';")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
     $ProfileLines += "  if SameText(AFileName, '$($Profiles[$Index].Name)') then"
+    $ProfileLines += '  begin'
     $ProfileLines += "    Result := Joined(Profile$Index);"
+    $ProfileLines += '  end;'
 }
 $ProfileLines += @('end;', '', 'end.')
 Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.ProfileData.pas') $ProfileLines

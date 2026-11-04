@@ -125,7 +125,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
@@ -142,8 +143,8 @@ type
     procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 procedure TFakeTimeTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
@@ -180,12 +181,12 @@ begin
   Result := Reply('GET', AUrl, AStatus, AText);
 end;
 
-function TFakeTimeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeTimeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AStatus, AText);
+  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
 end;
 
 function YouTrackIssue(const AKey: string): TAtlasTimeIssue;
@@ -629,7 +630,7 @@ var
   mObject: TJSONObject;
   mJson: string;
 begin
-  mJson := TAtlasYouTrackTracker.WorkItemJson(TAtlasTrackerWorkItem.Create(85, At(17, 30), 'Entwicklung',
+  mJson := TAtlasYouTrackBodies.WorkItemJson(TAtlasTrackerWorkItem.Create(85, At(17, 30), 'Entwicklung',
     'Parser repariert'));
   mValue := TJSONObject.ParseJSONValue(mJson);
   try
@@ -644,7 +645,7 @@ begin
   finally
     mValue.Free;
   end;
-  mJson := TAtlasYouTrackTracker.WorkItemJson(TAtlasTrackerWorkItem.Create(30, At(9, 0), '', ''));
+  mJson := TAtlasYouTrackBodies.WorkItemJson(TAtlasTrackerWorkItem.Create(30, At(9, 0), '', ''));
   Assert.IsFalse(mJson.Contains('"type"'), 'ohne Arbeitstyp kein Feld');
   Assert.IsFalse(mJson.Contains('"text"'), 'ohne Beschreibung kein Feld');
 end;
@@ -715,9 +716,9 @@ begin
   Assert.IsFalse(mSettings.Enabled);
   Assert.AreEqual(2, Integer(Length(mSettings.WorkTypes)));
   Assert.AreEqual('Test', mSettings.WorkTypes[1]);
-  Assert.AreEqual('ATL', TAtlasYouTrackTracker.ProjectOfKey('ATL-123'));
-  Assert.AreEqual('MY-PRJ', TAtlasYouTrackTracker.ProjectOfKey('MY-PRJ-7'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.ProjectOfKey('123'));
+  Assert.AreEqual('ATL', TAtlasYouTrackApi.ProjectOfKey('ATL-123'));
+  Assert.AreEqual('MY-PRJ', TAtlasYouTrackApi.ProjectOfKey('MY-PRJ-7'));
+  Assert.AreEqual('', TAtlasYouTrackApi.ProjectOfKey('123'));
 end;
 
 procedure TAtlasTrackerTimeWriterTests.TimeSettingsWithoutProjectRights;

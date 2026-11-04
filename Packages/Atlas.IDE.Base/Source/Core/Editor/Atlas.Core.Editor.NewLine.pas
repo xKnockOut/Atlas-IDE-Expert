@@ -113,53 +113,50 @@ begin
   Result := AToken.IsWord and (AToken.Text = AWord);
 end;
 
+/// <summary>Hinter einer Klammergruppe ab AIndex (wenn dort "(" steht), sonst AIndex.</summary>
+function SkipParens(const ATokens: TCodeTokens; AIndex: Integer): Integer;
+var
+  mDepth: Integer;
+  mDone: Boolean;
+begin
+  Result := AIndex;
+  if (Result <= High(ATokens)) and (ATokens[Result].Text = '(') then
+  begin
+    mDepth := 0;
+    mDone := False;
+    while not mDone and (Result <= High(ATokens)) do
+    begin
+      if ATokens[Result].Text = '(' then
+      begin
+        Inc(mDepth);
+      end
+      else if ATokens[Result].Text = ')' then
+      begin
+        Dec(mDepth);
+      end;
+      Inc(Result);
+      mDone := mDepth = 0;
+    end;
+  end;
+end;
+
 /// <summary>Kopf eines Typs, der einen Block öffnet: "record", "= class", "= interface", "packed object" …,
 /// nicht "= class;", "= class(TBase);" (Vorwärtsdeklaration, kurze Klasse) und "= class of".</summary>
 function IsTypeOpener(const ATokens: TCodeTokens; AIndex: Integer): Boolean;
 var
-  Word: string;
-  Next, Depth: Integer;
+  mNext: Integer;
 begin
   Result := False;
-  if not ATokens[AIndex].IsWord then
+  if IsWord(ATokens[AIndex], 'record') then
   begin
-    Exit;
-  end;
-  Word := ATokens[AIndex].Text;
-  if Word = 'record' then
+    Result := True;
+  end
+  else if InList(ATokens[AIndex], ['class', 'interface', 'dispinterface', 'object']) and (AIndex > 0) and
+    ((ATokens[AIndex - 1].Text = '=') or IsWord(ATokens[AIndex - 1], 'packed')) then
   begin
-    Exit(True);
+    mNext := SkipParens(ATokens, AIndex + 1);
+    Result := (mNext > High(ATokens)) or not ((ATokens[mNext].Text = ';') or IsWord(ATokens[mNext], 'of'));
   end;
-  if (Word <> 'class') and (Word <> 'interface') and (Word <> 'dispinterface') and (Word <> 'object') then
-  begin
-    Exit;
-  end;
-  if (AIndex = 0) or not ((ATokens[AIndex - 1].Text = '=') or IsWord(ATokens[AIndex - 1], 'packed')) then
-  begin
-    Exit;
-  end;
-  Next := AIndex + 1;
-  if (Next <= High(ATokens)) and (ATokens[Next].Text = '(') then
-  begin
-    Depth := 0;
-    while Next <= High(ATokens) do
-    begin
-      if ATokens[Next].Text = '(' then
-      begin
-        Inc(Depth);
-      end
-      else if ATokens[Next].Text = ')' then
-      begin
-        Dec(Depth);
-      end;
-      Inc(Next);
-      if Depth = 0 then
-      begin
-        Break;
-      end;
-    end;
-  end;
-  Result := (Next > High(ATokens)) or not ((ATokens[Next].Text = ';') or IsWord(ATokens[Next], 'of'));
 end;
 
 function IsOpener(const ATokens: TCodeTokens; AIndex: Integer): Boolean;
@@ -262,40 +259,49 @@ begin
   Result := Copy(ALine, 1, Index - 1);
 end;
 
+/// <summary>Steht unter den Tokens AFirst..ALast das Wort AWord?</summary>
+function HasWordIn(const ATokens: TCodeTokens; AFirst, ALast: Integer; const AWord: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := AFirst to ALast do
+  begin
+    Result := Result or IsWord(ATokens[mIndex], AWord);
+  end;
+end;
+
+/// <summary>Öffnet eines der Tokens AFirst..ALast einen Typ?</summary>
+function HasTypeOpener(const ATokens: TCodeTokens; AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := AFirst to ALast do
+  begin
+    Result := Result or IsTypeOpener(ATokens, mIndex);
+  end;
+end;
+
 /// <summary>Unterhalb von ALine eine Ebene tiefer?</summary>
 function IndentsBelow(const ATokens: TCodeTokens; ALine: Integer): Boolean;
 var
-  First, Last, Index: Integer;
+  mFirst, mLast: Integer;
 begin
   Result := False;
-  if not LineTokens(ATokens, ALine, First, Last) then
+  if LineTokens(ATokens, ALine, mFirst, mLast) then
   begin
-    Exit;
-  end;
-  if InList(ATokens[Last], IndentOpeners) then
-  begin
-    Exit(True);
-  end;
-  if IsWord(ATokens[Last], 'of') then
-  begin
-    for Index := First to Last do
+    if InList(ATokens[mLast], IndentOpeners) then
     begin
-      if IsWord(ATokens[Index], 'case') then
-      begin
-        Exit(True);
-      end;
-    end;
-    Exit;
-  end;
-  if ATokens[Last].Text = ';' then
-  begin
-    Exit;
-  end;
-  for Index := First to Last do
-  begin
-    if IsTypeOpener(ATokens, Index) then
+      Result := True;
+    end
+    else if IsWord(ATokens[mLast], 'of') then
     begin
-      Exit(True);
+      Result := HasWordIn(ATokens, mFirst, mLast, 'case');
+    end
+    else if ATokens[mLast].Text <> ';' then
+    begin
+      Result := HasTypeOpener(ATokens, mFirst, mLast);
     end;
   end;
 end;
@@ -356,6 +362,70 @@ begin
   Result := Copy(ALines, 0, AIndex) + [AText] + Copy(ALines, AIndex, MaxInt);
 end;
 
+/// <summary>Wie Enter am Ende der Zeile vor ATarget, nur die neue Zeile ATarget darf sich ändern. False, wenn kein
+/// Kommentar fortgesetzt wird.</summary>
+function ContinuedComment(const ALines: TArray<string>; ATarget: Integer; const AOptions: TAtlasNewLineOptions;
+  out AText: string; out ACharacter: Integer): Boolean;
+var
+  mEdit: TAtlasCommentEdit;
+begin
+  AText := '';
+  ACharacter := -1;
+  Result := TAtlasCommentContinuation.OnEnter(string.Join(#10, InsertLine(ALines, ATarget, '')), ATarget, 0,
+    AOptions.Comments, mEdit) and (mEdit.StartLine = ATarget) and (mEdit.OldCount = 1) and
+    (Length(mEdit.Lines) = 1) and (mEdit.CursorLine = ATarget);
+  if Result then
+  begin
+    AText := mEdit.Lines[0];
+    ACharacter := mEdit.CursorCharacter;
+  end;
+end;
+
+/// <summary>Neue Zeile unter ARefLine: fortgesetzter Kommentar oder Einzug von ABaseLine (eine Ebene tiefer nach
+/// einem Öffner). ACharacter: Cursor, -1 = Zeilenende.</summary>
+function BelowText(const ALines: TArray<string>; const ATokens: TCodeTokens; ABaseLine, ARefLine: Integer;
+  const AOptions: TAtlasNewLineOptions; out ACharacter: Integer): string;
+begin
+  ACharacter := -1;
+  Result := '';
+  if not (AOptions.ContinueComments and ContinuedComment(ALines, ARefLine + 1, AOptions, Result, ACharacter)) then
+  begin
+    Result := LeadingWhitespace(ALines[ABaseLine]);
+    if IndentsBelow(ATokens, ARefLine) then
+    begin
+      Result := Result + StringOfChar(' ', Max(0, AOptions.IndentWidth));
+    end;
+  end;
+end;
+
+/// <summary>Neue Zeile über ARefLine: Präfix einer "//"-Zeile, Einzug im Blockkommentar oder Einzug von ARefLine
+/// (eine Ebene tiefer vor einem Schließer).</summary>
+function AboveText(const ALines: TArray<string>; const ATokens: TCodeTokens; ARefLine: Integer; AHasCode: Boolean;
+  const AOptions: TAtlasNewLineOptions): string;
+var
+  mDone: Boolean;
+begin
+  Result := '';
+  mDone := False;
+  if AOptions.ContinueComments and not AHasCode then
+  begin
+    mDone := LineCommentPrefix(ALines[ARefLine], AOptions.Comments.LineComments, Result);
+    if not mDone and InsideBlockComment(ALines, ARefLine) then
+    begin
+      Result := LeadingWhitespace(ALines[ARefLine]);
+      mDone := True;
+    end;
+  end;
+  if not mDone then
+  begin
+    Result := LeadingWhitespace(ALines[ARefLine]);
+    if IndentsAbove(ATokens, ARefLine) then
+    begin
+      Result := Result + StringOfChar(' ', Max(0, AOptions.IndentWidth));
+    end;
+  end;
+end;
+
 { TAtlasNewLineOptions }
 
 class function TAtlasNewLineOptions.Defaults: TAtlasNewLineOptions;
@@ -397,91 +467,45 @@ end;
 class function TAtlasNewLine.Insert(const ALines: TArray<string>; ALine: Integer;
   ADirection: TAtlasNewLineDirection; const AOptions: TAtlasNewLineOptions): TAtlasNewLineResult;
 var
-  Lines, Probe: TArray<string>;
-  Tokens: TCodeTokens;
-  Line, RefLine, BaseLine, Target, Character, First, Last: Integer;
-  Text, Prefix: string;
-  Edit: TAtlasCommentEdit;
-  HasCode, Done: Boolean;
+  mLines: TArray<string>;
+  mTokens: TCodeTokens;
+  mLine, mRefLine, mBaseLine, mTarget, mCharacter, mFirst, mLast: Integer;
+  mText: string;
+  mHasCode: Boolean;
 begin
-  Lines := ALines;
-  if Length(Lines) = 0 then
+  mLines := ALines;
+  if Length(mLines) = 0 then
   begin
-    Lines := [''];
+    mLines := [''];
   end;
-  Line := EnsureRange(ALine, 0, High(Lines));
-  Tokens := TAtlasBlockComment.Tokens(Lines);
-  RefLine := Line;
-  BaseLine := Line;
-  HasCode := LineTokens(Tokens, Line, First, Last);
-  if HasCode and AOptions.StatementAware then
+  mLine := EnsureRange(ALine, 0, High(mLines));
+  mTokens := TAtlasBlockComment.Tokens(mLines);
+  mRefLine := mLine;
+  mBaseLine := mLine;
+  mHasCode := LineTokens(mTokens, mLine, mFirst, mLast);
+  if mHasCode and AOptions.StatementAware then
   begin
-    StatementLines(Lines, Line, ADirection, BaseLine, RefLine);
+    StatementLines(mLines, mLine, ADirection, mBaseLine, mRefLine);
   end;
-  if ADirection = TAtlasNewLineDirection.Above then
-  begin
-    RefLine := BaseLine;
-  end;
-  Done := False;
-  Character := -1;
   if ADirection = TAtlasNewLineDirection.Below then
   begin
-    Target := RefLine + 1;
-    if AOptions.ContinueComments then
-    begin
-      // Wie Enter am Ende der Bezugszeile, nur die neue Zeile darf sich ändern.
-      Probe := InsertLine(Lines, Target, '');
-      Done := TAtlasCommentContinuation.OnEnter(string.Join(#10, Probe), Target, 0, AOptions.Comments, Edit) and
-        (Edit.StartLine = Target) and (Edit.OldCount = 1) and (Length(Edit.Lines) = 1) and
-        (Edit.CursorLine = Target);
-      if Done then
-      begin
-        Text := Edit.Lines[0];
-        Character := Edit.CursorCharacter;
-      end;
-    end;
-    if not Done then
-    begin
-      Text := LeadingWhitespace(Lines[BaseLine]);
-      if IndentsBelow(Tokens, RefLine) then
-      begin
-        Text := Text + StringOfChar(' ', Max(0, AOptions.IndentWidth));
-      end;
-    end;
+    mTarget := mRefLine + 1;
+    mText := BelowText(mLines, mTokens, mBaseLine, mRefLine, AOptions, mCharacter);
   end
   else
   begin
-    Target := RefLine;
-    if AOptions.ContinueComments and not HasCode then
-    begin
-      Done := LineCommentPrefix(Lines[RefLine], AOptions.Comments.LineComments, Prefix);
-      if Done then
-      begin
-        Text := Prefix;
-      end
-      else if InsideBlockComment(Lines, RefLine) then
-      begin
-        Text := LeadingWhitespace(Lines[RefLine]);
-        Done := True;
-      end;
-    end;
-    if not Done then
-    begin
-      Text := LeadingWhitespace(Lines[RefLine]);
-      if IndentsAbove(Tokens, RefLine) then
-      begin
-        Text := Text + StringOfChar(' ', Max(0, AOptions.IndentWidth));
-      end;
-    end;
+    mTarget := mBaseLine;
+    mCharacter := -1;
+    mText := AboveText(mLines, mTokens, mBaseLine, mHasCode, AOptions);
   end;
-  if Character < 0 then
+  if mCharacter < 0 then
   begin
-    Character := Length(Text);
+    mCharacter := Length(mText);
   end;
-  Result.Lines := InsertLine(Lines, Target, Text);
-  Result.Line := Target;
-  Result.Text := Text;
-  Result.Cursor := TLspTextPosition.Create(Target, Character);
+  Result.Lines := InsertLine(mLines, mTarget, mText);
+  Result.Line := mTarget;
+  Result.Text := mText;
+  Result.Cursor := TLspTextPosition.Create(mTarget, mCharacter);
 end;
 
 end.

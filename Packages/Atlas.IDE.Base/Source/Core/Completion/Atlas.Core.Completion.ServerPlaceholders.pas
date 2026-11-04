@@ -35,9 +35,31 @@ begin
   Result := ARange.TryGetValue<Integer>(AName + '.line', Line) and
     ARange.TryGetValue<Integer>(AName + '.character', Character);
   if Result then
-    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(Line, Character))
+  begin
+    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(Line, Character));
+  end
   else
+  begin
     AOffset := 0;
+  end;
+end;
+
+/// <summary>Platzhalter aus einem Eintrag {"number": n, "range": {...}}; False, wenn er unlesbar ist.</summary>
+function StopOf(AItem: TJSONValue; const ALines: TLineTable; out AStop: TAtlasSnippetStop): Boolean;
+var
+  mRange: TJSONObject;
+  mStart, mEnd: Integer;
+begin
+  AStop := Default(TAtlasSnippetStop);
+  Result := (AItem is TJSONObject) and TJSONObject(AItem).TryGetValue<Integer>('number', AStop.Number) and
+    (AStop.Number >= 0) and TJSONObject(AItem).TryGetValue<TJSONObject>('range', mRange);
+  Result := Result and ReadOffset(ALines, mRange, 'start', mStart) and ReadOffset(ALines, mRange, 'end', mEnd) and
+    (mEnd >= mStart);
+  if Result then
+  begin
+    AStop.Start := mStart;
+    AStop.Length := mEnd - mStart;
+  end;
 end;
 
 class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
@@ -45,32 +67,33 @@ class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
 var
   Lines: TLineTable;
   Item: TJSONValue;
-  Range: TJSONObject;
   Stop: TAtlasSnippetStop;
-  StartOffset, EndOffset: Integer;
 begin
   Result := Default(TAtlasSnippetExpansion);
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   Lines := TLineTable.Build(ADocument);
   for Item in TJSONArray(AValue) do
-    if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<Integer>('number', Stop.Number) and
-      (Stop.Number >= 0) and TJSONObject(Item).TryGetValue<TJSONObject>('range', Range) and
-      ReadOffset(Lines, Range, 'start', StartOffset) and ReadOffset(Lines, Range, 'end', EndOffset) and
-      (EndOffset >= StartOffset) then
+  begin
+    if StopOf(Item, Lines, Stop) then
     begin
-      Stop.Start := StartOffset;
-      Stop.Length := EndOffset - StartOffset;
       Result.Stops := Result.Stops + [Stop];
     end;
+  end;
   // Bei gleichem Anfang zuerst die Nummer, damit die Reihenfolge feststeht.
   TArray.Sort<TAtlasSnippetStop>(Result.Stops, TComparer<TAtlasSnippetStop>.Construct(
     function(const A, B: TAtlasSnippetStop): Integer
     begin
       if A.Start <> B.Start then
-        Result := A.Start - B.Start
+      begin
+        Result := A.Start - B.Start;
+      end
       else
+      begin
         Result := A.Number - B.Number;
+      end;
     end));
 end;
 

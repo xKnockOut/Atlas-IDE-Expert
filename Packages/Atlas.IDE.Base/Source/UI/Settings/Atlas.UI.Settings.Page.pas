@@ -1617,8 +1617,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AValues) do
+  begin
     if SameText(AValues[Index], AValue) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -2694,7 +2698,9 @@ begin
   Bind('ContinuePattern', FContinuePattern);
   Bind('ExperimentalEnabled', FExperimentalEnabled);
   for mIndex := 0 to High(FModuleChecks) do
+  begin
     Bind(FModuleNames[mIndex], FModuleChecks[mIndex]);
+  end;
   BindControls;
   AddModuleSections;
   AddFilterRow;
@@ -2764,16 +2770,22 @@ end;
 procedure TAtlasSettingsPage.FilterChange(Sender: TObject);
 begin
   if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
+  begin
     FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
+  end;
   // Knoten ohne Treffer fallen aus dem Baum (#890).
   if ListReady(FTree) then
+  begin
     FillTree;
+  end;
 end;
 
 procedure TAtlasSettingsPage.Bind(const AKey: string; AControl: TControl);
 begin
   if AControl = nil then
+  begin
     Exit;
+  end;
   FRevealKeys := FRevealKeys + [AKey];
   FRevealControls := FRevealControls + [AControl];
 end;
@@ -2783,8 +2795,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FRevealKeys) do
+  begin
     if SameText(FRevealKeys[Index], AKey) then
+    begin
       Exit(FRevealControls[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -2792,11 +2808,17 @@ function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;
 begin
   Result := ControlOf(AKey) <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   if HandleAllocated then
-    ApplyReveal(AKey)
+  begin
+    ApplyReveal(AKey);
+  end
   else
+  begin
     FPendingReveal := AKey;
+  end;
 end;
 
 procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
@@ -2810,7 +2832,9 @@ begin
   FPendingReveal := '';
   Control := ControlOf(AKey);
   if Control = nil then
+  begin
     Exit;
+  end;
   // Gesperrt (#890): den Hauptschalter zeigen, der sie freigibt.
   Names := FMarks.NamesOf(Control);
   if (Length(Names) > 0) and (FGroups <> nil) then
@@ -2820,7 +2844,9 @@ begin
     begin
       Master := FMarks.ControlOfName(Lock.Master);
       if Master <> nil then
+      begin
         Control := Master;
+      end;
     end;
   end;
   // Knoten des Elements wählen, wie ein Klick im Baum links.
@@ -2828,20 +2854,34 @@ begin
   // Ins Bild rollen.
   mParent := Control.Parent;
   while (mParent <> nil) and not (mParent is TScrollBox) do
+  begin
     mParent := mParent.Parent;
+  end;
   if mParent is TScrollBox then
+  begin
     TScrollBox(mParent).ScrollInView(Control);
+  end;
   // Zeile hervorheben: Kontrollkästchen fett, sonst die Beschriftung der Zeile.
   if Control is TCheckBox then
-    TCheckBox(Control).Font.Style := [fsBold]
+  begin
+    TCheckBox(Control).Font.Style := [fsBold];
+  end
   else if Control.Parent <> nil then
+  begin
     for Child := 0 to Control.Parent.ControlCount - 1 do
+    begin
       if Control.Parent.Controls[Child] is TLabel then
+      begin
         TLabel(Control.Parent.Controls[Child]).Font.Style := [fsBold];
+      end;
+    end;
+  end;
   // Nur mit sichtbarer Form: CanFocus allein lässt eine noch verborgene Form durch („kann den Fokus nicht erhalten“).
   if (Control is TWinControl) and TWinControl(Control).CanFocus and (GetParentForm(Control) <> nil) and
     GetParentForm(Control).Visible then
+  begin
     TWinControl(Control).SetFocus;
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddVcsSection;
@@ -2964,10 +3004,14 @@ var
   mInvalid: string;
 begin
   // Ungültige Zeile: Hinweis; gespeichert bleiben dann die bisherigen Regeln (SaveTo).
-  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
-    FVcsExternalsRulesError.Caption := ''
+  if TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+  begin
+    FVcsExternalsRulesError.Caption := '';
+  end
   else
+  begin
     FVcsExternalsRulesError.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
+  end;
   RefreshMarks;
 end;
 
@@ -3058,12 +3102,18 @@ end;
 class function TAtlasSettingsPage.VcsLocationText(const ALocation: TAtlasVcsToolLocation): string;
 begin
   if ALocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolConfiguredMissing, [ALocation.Configured])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolConfiguredMissing, [ALocation.Configured]);
+  end
   else if ALocation.Executable = '' then
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolWouldUse,
       [ALocation.Executable, VcsSourceText(ALocation.Source)]);
+  end;
 end;
 
 class function TAtlasSettingsPage.VcsCheckText(const ACheck: TAtlasVcsToolCheck): string;
@@ -3089,7 +3139,9 @@ var
   mName, mKind, mHead, mSource: string;
 begin
   if AState.ProjectFile = '' then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+  end;
   mName := ExtractFileName(AState.ProjectFile);
   case AState.Source of
     TAtlasVcsProviderSource.Project:
@@ -3100,7 +3152,9 @@ begin
     mSource := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting);
   end;
   if AState.MainBranch <> '' then
+  begin
     mSource := mSource + TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, [AState.MainBranch]);
+  end;
   mKind := AtlasVcsKindName(AState.WorkingCopy.Kind);
   case AState.Outcome of
     TAtlasVcsOutcome.Disabled:
@@ -3117,16 +3171,24 @@ begin
       sLineBreak + mSource);
   end;
   if AState.WorkingCopy.Kind = TAtlasVcsKind.Svn then
+  begin
     mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectSvnPath,
-      [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)])
+      [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
+  end
   else if AState.Head.Detached then
+  begin
     mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectDetached,
-      [AState.Head.ShortRevision(AState.WorkingCopy.Kind)])
+      [AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
+  end
   else
+  begin
     mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectBranch,
       [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
+  end;
   if AState.Head.Upstream <> '' then
+  begin
     mHead := mHead + TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectUpstream, [AState.Head.Upstream]);
+  end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
     sLineBreak + mHead + sLineBreak + mSource;
 end;
@@ -3134,7 +3196,9 @@ end;
 procedure TAtlasSettingsPage.RefreshVcsTool(AKind: TAtlasVcsKind);
 begin
   if FVcsStates[AKind] = nil then
+  begin
     Exit;
+  end;
   if not Assigned(FOnVcsLocate) then
   begin
     FVcsStates[AKind].Caption := '';
@@ -3161,9 +3225,13 @@ begin
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     mDialog.FileName := Trim(FVcsPaths[mKind].Text);
     if mDialog.FileName = '' then
+    begin
       mDialog.FileName := TAtlasVcsTools.ProgramName(mKind) + '.exe';
+    end;
     if mDialog.Execute then
+    begin
       FVcsPaths[mKind].Text := mDialog.FileName;
+    end;
   finally
     mDialog.Free;
   end;
@@ -3175,7 +3243,9 @@ var
 begin
   mKind := TAtlasVcsKind((Sender as TComponent).Tag);
   if not Assigned(FOnVcsCheck) then
+  begin
     Exit;
+  end;
   FVcsStates[mKind].Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolChecking);
   Allow(FVcsCheck[mKind], False);
   FOnVcsCheck(mKind, Trim(FVcsPaths[mKind].Text));
@@ -3184,7 +3254,9 @@ end;
 procedure TAtlasSettingsPage.VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
 begin
   if (ACheck.Kind = TAtlasVcsKind.None) or (FVcsStates[ACheck.Kind] = nil) then
+  begin
     Exit;
+  end;
   FVcsStates[ACheck.Kind].Caption := VcsCheckText(ACheck);
   Allow(FVcsCheck[ACheck.Kind], True);
 end;
@@ -3193,7 +3265,9 @@ procedure TAtlasSettingsPage.RefreshVcsProject;
 begin
   FVcsProjectAsked := True;
   if not Assigned(FOnVcsProject) then
+  begin
     Exit;
+  end;
   FVcsProjectInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying);
   FOnVcsProject();
 end;
@@ -3201,7 +3275,9 @@ end;
 procedure TAtlasSettingsPage.VcsProjectDone(const AState: TAtlasVcsProjectState);
 begin
   if FVcsProjectInfo <> nil then
+  begin
     FVcsProjectInfo.Caption := VcsProjectText(AState);
+  end;
   // Für „Aktuelles Projekt hinzufügen“: die erkannte Art vorbelegen.
   FVcsDetectedProject := AState.ProjectFile;
   FVcsDetectedKind := AState.WorkingCopy.Kind;
@@ -3212,22 +3288,34 @@ var
   mParent: TControl;
 begin
   if (ASheet = nil) or FVcsProjectAsked or (FVcsProvider = nil) then
+  begin
     Exit;
+  end;
   mParent := FVcsProvider;
   while (mParent <> nil) and (mParent <> ASheet) do
+  begin
     mParent := mParent.Parent;
+  end;
   if mParent <> nil then
+  begin
     RefreshVcsProject;
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsLinkClick(Sender: TObject);
 begin
   if Sender = FVcsLinkEditor then
-    SelectPage(PageOf(FGitGutter))
+  begin
+    SelectPage(PageOf(FGitGutter));
+  end
   else if Sender = FVcsLinkWelcome then
-    SelectModulePage('WelcomePageRefreshVcs', 'WelcomePage')
+  begin
+    SelectModulePage('WelcomePageRefreshVcs', 'WelcomePage');
+  end
   else if Sender = FVcsLinkIssues then
+  begin
     SelectModulePage('IssuesBranchPattern', 'IssuesEnabled');
+  end;
 end;
 
 // Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
@@ -3341,11 +3429,17 @@ end;
 function TAtlasSettingsPage.VcsProjectSourceText(const AMapping: TAtlasVcsProjectMapping): string;
 begin
   if AMapping.ReadOnly then
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam);
+  end
   else if VcsProjectCovered(AMapping) then
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered);
+  end
   else
+  begin
     Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectPersonal);
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectShowItem(AIndex: Integer);
@@ -3357,12 +3451,16 @@ begin
   mRows := VcsProjectRows;
   if (AIndex < 0) or (AIndex > High(mRows)) or not ListReady(FVcsProjectList) or
     (AIndex >= FVcsProjectList.Items.Count) then
+  begin
     Exit;
+  end;
   mItem := FVcsProjectList.Items[AIndex];
   mItem.Caption := mRows[AIndex].Match;
   mBranch := mRows[AIndex].MainBranch;
   if mBranch = '' then
+  begin
     mBranch := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess);
+  end;
   mItem.SubItems.Clear;
   mItem.SubItems.Add(VcsProviderCaption(mRows[AIndex].Provider));
   mItem.SubItems.Add(mBranch);
@@ -3375,13 +3473,19 @@ var
   mIndex: Integer;
 begin
   if FVcsProjectList = nil then
+  begin
     Exit;
+  end;
   FVcsContext := TAtlasVcsProjectContext.Empty;
   if Assigned(FOnVcsContext) then
+  begin
     FVcsContext := FOnVcsContext();
+  end;
   mRows := VcsProjectRows;
   if FVcsProjectSelected > High(mRows) then
+  begin
     FVcsProjectSelected := High(mRows);
+  end;
   if ListReady(FVcsProjectList) then
   begin
     FVcsProjectFilling := True;
@@ -3394,7 +3498,9 @@ begin
         VcsProjectShowItem(mIndex);
       end;
       if FVcsProjectSelected >= 0 then
+      begin
         FVcsProjectList.Items[FVcsProjectSelected].Selected := True;
+      end;
     finally
       FVcsProjectList.Items.EndUpdate;
       FVcsProjectFilling := False;
@@ -3407,11 +3513,17 @@ end;
 procedure TAtlasSettingsPage.VcsProjectNoteFor(const AMapping: TAtlasVcsProjectMapping);
 begin
   if AMapping.ReadOnly then
-    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly)
+  begin
+    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly);
+  end
   else if VcsProjectCovered(AMapping) then
-    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint)
+  begin
+    FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint);
+  end
   else
+  begin
     FVcsProjectNote.Caption := '';
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectFillFields;
@@ -3452,7 +3564,9 @@ end;
 procedure TAtlasSettingsPage.VcsProjectSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if FVcsProjectFilling or not Selected or (Item = nil) then
+  begin
     Exit;
+  end;
   FVcsProjectSelected := Item.Index;
   VcsProjectFillFields;
 end;
@@ -3465,7 +3579,9 @@ begin
   // Von der .atlas überdeckte persönliche Zeile grau.
   mRows := VcsProjectRows;
   if (Item <> nil) and (Item.Index <= High(mRows)) and VcsProjectCovered(mRows[Item.Index]) then
+  begin
     Sender.Canvas.Font.Color := clGrayText;
+  end;
   DefaultDraw := True;
 end;
 
@@ -3475,7 +3591,9 @@ var
   mOther: Integer;
 begin
   if FVcsProjectFilling or not VcsProjectEditable then
+  begin
     Exit;
+  end;
   mMatch := Trim(FVcsProjectMatch.Text);
   // Ein Pfad hat höchstens eine persönliche Zeile.
   mOther := TAtlasVcsProjects.IndexOfMatch(FVcsProjects, mMatch);
@@ -3495,7 +3613,9 @@ var
 begin
   mChoice := FVcsProjectProvider.Choice;
   if FVcsProjectFilling or not VcsProjectEditable or (mChoice < 0) or (mChoice > 3) then
+  begin
     Exit;
+  end;
   case mChoice of
     1:
       FVcsProjects[FVcsProjectSelected].Provider := 'git';
@@ -3515,15 +3635,19 @@ var
   mIndex: Integer;
 begin
   if FVcsProjectFilling or not VcsProjectEditable then
+  begin
     Exit;
+  end;
   mBranch := Trim(FVcsProjectMainBranch.Text);
   // Wie der Server (vcs.projects[].mainBranch): ein Branchname ohne Leerraum.
   for mIndex := 1 to Length(mBranch) do
+  begin
     if CharInSet(mBranch[mIndex], [' ', #9]) then
     begin
       FVcsProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid);
       Exit;
     end;
+  end;
   FVcsProjects[FVcsProjectSelected].MainBranch := mBranch;
   VcsProjectNoteFor(FVcsProjects[FVcsProjectSelected]);
   VcsProjectShowItem(FVcsProjectSelected);
@@ -3534,7 +3658,9 @@ var
   mIndex: Integer;
 begin
   if Trim(AMatch) = '' then
+  begin
     Exit;
+  end;
   mIndex := TAtlasVcsProjects.IndexOfMatch(FVcsProjects, AMatch);
   if mIndex < 0 then
   begin
@@ -3544,7 +3670,9 @@ begin
   FVcsProjectSelected := mIndex;
   RefreshVcsProjects;
   if FVcsProjectMainBranch.CanFocus and FVcsProjectMainBranch.Showing then
+  begin
     FVcsProjectMainBranch.SetFocus;
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectAddCurrentClick(Sender: TObject);
@@ -3600,10 +3728,14 @@ end;
 procedure TAtlasSettingsPage.VcsProjectRemoveClick(Sender: TObject);
 begin
   if not VcsProjectEditable then
+  begin
     Exit;
+  end;
   Delete(FVcsProjects, FVcsProjectSelected, 1);
   if FVcsProjectSelected > High(VcsProjectRows) then
+  begin
     FVcsProjectSelected := High(VcsProjectRows);
+  end;
   RefreshVcsProjects;
 end;
 
@@ -3614,8 +3746,12 @@ var
 begin
   mKept := nil;
   for mMapping in FVcsProjects do
+  begin
     if (mMapping.Match <> '') and (TAtlasVcsProjects.IndexOfMatch(mKept, mMapping.Match) < 0) then
+    begin
       mKept := mKept + [mMapping];
+    end;
+  end;
   Result := TAtlasVcsProjects.ToJson(mKept);
 end;
 
@@ -3662,11 +3798,13 @@ class function TAtlasSettingsPage.VcsServerStateText(const ACheck: TAtlasVcsServ
   AChecking: Boolean): string;
 begin
   if AChecking then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking));
+  end;
   case ACheck.State of
     TAtlasVcsServerState.Reachable:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable,
-        [FormatDateTime('hh:nn', ACheck.CheckedAt)]);
+        [FormatDateTime('hh:nn', ACheck.CheckedAt, FormatSettings)]);
     TAtlasVcsServerState.LoginNeeded:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded);
     TAtlasVcsServerState.Unreachable:
@@ -3689,15 +3827,23 @@ procedure TAtlasSettingsPage.RefreshVcsServers;
     mRow: TAtlasVcsServerRow;
   begin
     if AFolder = '' then
+    begin
       Exit;
+    end;
     for mRow in FVcsServerRows do
+    begin
       if SameText(mRow.Folder, AFolder) then
+      begin
         Exit;
+      end;
+    end;
     mRow.Name := AName;
     mRow.Folder := AFolder;
     mRow.Check := TAtlasVcsServerCheck.Empty;
     if Assigned(FOnVcsServerState) then
+    begin
       mRow.Check := FOnVcsServerState(AFolder);
+    end;
     mRow.Checking := False;
     FVcsServerRows := FVcsServerRows + [mRow];
   end;
@@ -3709,30 +3855,52 @@ var
   mIndex: Integer;
 begin
   if FVcsServerList = nil then
+  begin
     Exit;
+  end;
   mOld := FVcsServerRows;
   FVcsServerRows := nil;
   // Erst das aktuelle Projekt, dann die Zeilen der Tabelle Projekte; .dproj und .groupproj gelten für ihren Ordner.
   if FVcsContext.ProjectFile <> '' then
+  begin
     AddRow(ExtractFileName(TAtlasProjectMatching.CurrentMatch(FVcsContext.ProjectFile, FVcsContext.GroupFile)),
       ExtractFileDir(FVcsContext.ProjectFile));
+  end;
   for mMapping in VcsProjectRows do
+  begin
     if mMapping.Kind = TAtlasProjectMatch.Folder then
+    begin
       AddRow(ExtractFileName(ExcludeTrailingPathDelimiter(mMapping.Match)),
-        ExcludeTrailingPathDelimiter(mMapping.Match))
+        ExcludeTrailingPathDelimiter(mMapping.Match));
+    end
     else
+    begin
       AddRow(ExtractFileName(mMapping.Match), ExtractFileDir(mMapping.Match));
+    end;
+  end;
   if FVcsServerExtra <> '' then
+  begin
     AddRow(ExtractFileName(FVcsServerExtra), FVcsServerExtra);
+  end;
   // Laufende Prüfungen bleiben sichtbar.
   for mIndex := 0 to High(FVcsServerRows) do
+  begin
     for mOldRow in mOld do
+    begin
       if mOldRow.Checking and SameText(mOldRow.Folder, FVcsServerRows[mIndex].Folder) then
+      begin
         FVcsServerRows[mIndex].Checking := True;
+      end;
+    end;
+  end;
   if FVcsServerSelected > High(FVcsServerRows) then
+  begin
     FVcsServerSelected := High(FVcsServerRows);
+  end;
   if (FVcsServerSelected < 0) and (Length(FVcsServerRows) > 0) then
+  begin
     FVcsServerSelected := 0;
+  end;
   if ListReady(FVcsServerList) then
   begin
     FVcsServerList.Items.BeginUpdate;
@@ -3744,7 +3912,9 @@ begin
         VcsServerShowItem(mIndex);
       end;
       if FVcsServerSelected >= 0 then
+      begin
         FVcsServerList.Items[FVcsServerSelected].Selected := True;
+      end;
     finally
       FVcsServerList.Items.EndUpdate;
     end;
@@ -3759,12 +3929,16 @@ var
 begin
   if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not ListReady(FVcsServerList) or
     (AIndex >= FVcsServerList.Items.Count) then
+  begin
     Exit;
+  end;
   mItem := FVcsServerList.Items[AIndex];
   mItem.Caption := FVcsServerRows[AIndex].Name;
   mServer := FVcsServerRows[AIndex].Check.ServerText;
   if mServer = '' then
+  begin
     mServer := '–';
+  end;
   mItem.SubItems.Clear;
   mItem.SubItems.Add(mServer);
   mItem.SubItems.Add(VcsServerStateText(FVcsServerRows[AIndex].Check, FVcsServerRows[AIndex].Checking));
@@ -3786,7 +3960,9 @@ procedure TAtlasSettingsPage.VcsServerStart(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not Assigned(FOnVcsServerCheck) or
     FVcsServerRows[AIndex].Checking then
+  begin
     Exit;
+  end;
   FVcsServerRows[AIndex].Checking := True;
   VcsServerShowItem(AIndex);
   VcsServerFillButtons;
@@ -3798,19 +3974,25 @@ var
   mIndex: Integer;
 begin
   if (FVcsServerList = nil) or (Trim(AFolder) = '') then
+  begin
     Exit;
+  end;
   FVcsServerExtra := ExcludeTrailingPathDelimiter(Trim(AFolder));
   RefreshVcsServers;
   for mIndex := 0 to High(FVcsServerRows) do
+  begin
     if SameText(FVcsServerRows[mIndex].Folder, FVcsServerExtra) then
     begin
       FVcsServerSelected := mIndex;
       if ListReady(FVcsServerList) and (mIndex < FVcsServerList.Items.Count) then
+      begin
         FVcsServerList.Items[mIndex].Selected := True;
+      end;
       SelectPage(PageOf(FVcsServerList));
       VcsServerStart(mIndex);
       Break;
     end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.VcsServerDone(const AFolder: string; const ACheck: TAtlasVcsServerCheck);
@@ -3818,21 +4000,27 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(FVcsServerRows) do
+  begin
     if SameText(FVcsServerRows[mIndex].Folder, AFolder) then
     begin
       FVcsServerRows[mIndex].Check := ACheck;
       FVcsServerRows[mIndex].Checking := False;
       VcsServerShowItem(mIndex);
     end;
+  end;
   if FVcsServerNote <> nil then
+  begin
     FVcsServerNote.Caption := '';
+  end;
   VcsServerFillButtons;
 end;
 
 procedure TAtlasSettingsPage.VcsServerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if not Selected or (Item = nil) then
+  begin
     Exit;
+  end;
   FVcsServerSelected := Item.Index;
   VcsServerFillButtons;
 end;
@@ -3873,7 +4061,9 @@ begin
     FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen);
   end
   else
+  begin
     FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginFailed);
+  end;
   VcsServerFillButtons;
 end;
 
@@ -4027,18 +4217,28 @@ var
 begin
   FOpenBuild.Choice := 0;
   if ASettings.BuildOnOpen then
+  begin
     for Index := Low(TAtlasOpenBuildSettings.KindNames) to High(TAtlasOpenBuildSettings.KindNames) do
+    begin
       if SameText(TAtlasOpenBuildSettings.KindNames[Index],
         TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(ASettings.BuildOnOpenKind))) then
+      begin
         FOpenBuild.Choice := Index + 1;
+      end;
+    end;
+  end;
   FOpenBuildScope.Choice := Ord(TAtlasOpenBuildSettings.ScopeOf(ASettings.BuildOnOpenScope));
   FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
   FOpenBuildExclude.Text := TAtlasOpenBuildSettings.NormalizedExclude(ASettings.BuildOnOpenExclude);
   FOpenBuildConfig.Text := ASettings.BuildOnOpenConfig;
   FOpenBuildPlatform.Choice := 0;
   for Index := 1 to High(OpenBuildPlatforms) do
+  begin
     if TAtlasOpenBuildSettings.PickTarget(ASettings.BuildOnOpenPlatform, [OpenBuildPlatforms[Index]]) <> '' then
+    begin
       FOpenBuildPlatform.Choice := Index;
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
@@ -4046,16 +4246,22 @@ begin
   // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
   ASettings.BuildOnOpen := FOpenBuild.Choice > 0;
   if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuildSettings.KindNames)) then
+  begin
     ASettings.BuildOnOpenKind := TAtlasOpenBuildSettings.KindNames[FOpenBuild.Choice - 1];
+  end;
   if (FOpenBuildScope.Choice >= Ord(Low(TAtlasOpenBuildScope))) and
     (FOpenBuildScope.Choice <= Ord(High(TAtlasOpenBuildScope))) then
+  begin
     ASettings.BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
+  end;
   ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
   ASettings.BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(FOpenBuildExclude.Text);
   ASettings.BuildOnOpenConfig := Trim(FOpenBuildConfig.Text);
   ASettings.BuildOnOpenPlatform := '';
   if (FOpenBuildPlatform.Choice > 0) and (FOpenBuildPlatform.Choice <= High(OpenBuildPlatforms)) then
+  begin
     ASettings.BuildOnOpenPlatform := OpenBuildPlatforms[FOpenBuildPlatform.Choice];
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddTasksSection;
@@ -4082,8 +4288,12 @@ begin
   // Unbekannt = „off“ wie beim Lesen der Einstellungen.
   FTasksBeforeBuild.Choice := 0;
   for mIndex := Low(TasksBeforeBuildNames) to High(TasksBeforeBuildNames) do
+  begin
     if SameText(Trim(ASettings.TasksBeforeBuild), TasksBeforeBuildNames[mIndex]) then
+    begin
       FTasksBeforeBuild.Choice := mIndex;
+    end;
+  end;
   FTasksSaveBeforeRun.Checked := ASettings.TasksSaveBeforeRun;
   FTasksRunChecksParallel.Checked := ASettings.TasksRunChecksParallel;
   FTasksOnlyFindings.Checked := ASettings.TasksOnlyFindings;
@@ -4095,7 +4305,9 @@ begin
   ASettings.TasksProblemsFromOutput := FTasksProblemsFromOutput.Checked;
   if (FTasksBeforeBuild.Choice >= Low(TasksBeforeBuildNames)) and
     (FTasksBeforeBuild.Choice <= High(TasksBeforeBuildNames)) then
+  begin
     ASettings.TasksBeforeBuild := TasksBeforeBuildNames[FTasksBeforeBuild.Choice];
+  end;
   ASettings.TasksSaveBeforeRun := FTasksSaveBeforeRun.Checked;
   ASettings.TasksRunChecksParallel := FTasksRunChecksParallel.Checked;
   ASettings.TasksOnlyFindings := FTasksOnlyFindings.Checked;
@@ -4116,13 +4328,19 @@ begin
   FReleaseConfigs := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseConfigs));
   AddTitle(TAtlasTextId.SettingsReleaseChecksTitle);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
     if TAtlasBuildPipelineSettings.HasTarget[Check] then
+    begin
       FReleaseCheckChoices[Check] := AddChoice(TAtlasStrings.Text(Captions[Check]),
         [TAtlasStrings.Text(TAtlasTextId.SettingsReleaseNotChecked),
         TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOff),
-        TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOn)])
+        TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOn)]);
+    end
     else
+    begin
       FReleaseCheckBoxes[Check] := AddCheck(TAtlasStrings.Text(Captions[Check]));
+    end;
+  end;
 end;
 
 function TAtlasSettingsPage.ReleaseCheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
@@ -4144,17 +4362,27 @@ begin
   FReleaseConfigs.Text := TAtlasBuildPipelineSettings.NormalizedConfigurations(ASettings.ReleaseConfigs);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
     if FReleaseCheckChoices[Check] <> nil then
     begin
       if not Checks.Items[Check].Enabled then
-        FReleaseCheckChoices[Check].Choice := 0
+      begin
+        FReleaseCheckChoices[Check].Choice := 0;
+      end
       else if Checks.Items[Check].Expected then
-        FReleaseCheckChoices[Check].Choice := 2
+      begin
+        FReleaseCheckChoices[Check].Choice := 2;
+      end
       else
+      begin
         FReleaseCheckChoices[Check].Choice := 1;
+      end;
     end
     else if FReleaseCheckBoxes[Check] <> nil then
+    begin
       FReleaseCheckBoxes[Check].Checked := Checks.Items[Check].Enabled;
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.SaveRelease(var ASettings: TAtlasPluginSettings);
@@ -4166,17 +4394,23 @@ begin
   ASettings.ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(FReleaseConfigs.Text);
   Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
     if FReleaseCheckChoices[Check] <> nil then
     begin
       if FReleaseCheckChoices[Check].Choice >= 0 then
       begin
         Checks.Items[Check].Enabled := FReleaseCheckChoices[Check].Choice > 0;
         if FReleaseCheckChoices[Check].Choice > 0 then
+        begin
           Checks.Items[Check].Expected := FReleaseCheckChoices[Check].Choice = 2;
+        end;
       end;
     end
     else if FReleaseCheckBoxes[Check] <> nil then
+    begin
       Checks.Items[Check].Enabled := FReleaseCheckBoxes[Check].Checked;
+    end;
+  end;
   ASettings.ReleaseChecks := Checks.ToText;
 end;
 
@@ -4326,7 +4560,9 @@ begin
   FMarks.Bind(FExitPointsBadge, ['ExitPointsBadge']);
   FMarks.Bind(FReassigned, ['Reassigned']);
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  begin
     FMarks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
+  end;
   FMarks.Bind(FReassignedStyle, ['ReassignedStyle']);
   FMarks.Bind(FReassignedColor, ['ReassignedColor']);
   FMarks.Bind(FExpressionType, ['ExpressionType']);
@@ -4338,7 +4574,9 @@ begin
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  begin
     FMarks.Bind(FOverviewKinds[Kind], ['OverviewRulerKinds']);
+  end;
   FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
   FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
   FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
@@ -4543,7 +4781,9 @@ begin
   FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FDebugVisualizers, ['DebugVisualizers']);
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     FMarks.Bind(FDebugVisualizerKinds[VisualizerKind], ['DebugVisualizerTypes']);
+  end;
   FMarks.Bind(FDebugVisualizerNameFields, ['DebugVisualizerNameFields']);
   FMarks.Bind(FDebugVisualizerMaxLength, ['DebugVisualizerMaxLength']);
   FMarks.Bind(FDebugVisualizerTimeout, ['DebugVisualizerTimeoutMs']);
@@ -4554,7 +4794,9 @@ begin
   FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
   FMarks.Bind(FDebugStepFilters, ['DebugStepFilters']);
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     FMarks.Bind(FDebugStepFilterKinds[StepFilterKind], ['DebugStepFilterKinds']);
+  end;
   FMarks.Bind(FDebugStepFilterPatterns, ['DebugStepFilterPatterns']);
   FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
   FMarks.Bind(FDebugBreakOnNextEvent, ['DebugBreakOnNextEvent']);
@@ -4659,7 +4901,9 @@ begin
   end;
   // Modul-Schalter (#1454).
   for mIndex := 0 to High(FModuleChecks) do
+  begin
     FMarks.Bind(FModuleChecks[mIndex], [FModuleNames[mIndex]]);
+  end;
 end;
 
 destructor TAtlasSettingsPage.Destroy;
@@ -4677,7 +4921,9 @@ end;
 function TAtlasSettingsPage.Catalog: TAtlasSettingsCatalog;
 begin
   if FCatalog = nil then
+  begin
     FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  end;
   Result := FCatalog;
 end;
 
@@ -4694,7 +4940,9 @@ begin
   FTransferBar.Visible := FSettingsExportImport.Checked;
   Modified := nil;
   if FSettingsMarkModified.Checked then
+  begin
     Modified := TAtlasSettingsTransfer.ModifiedNames(Catalog, CurrentSettings);
+  end;
   FMarks.Show(Modified, FSettingsMarkModified.Checked);
   FExperimentalBanner.Visible := FMarks.HasExperimental and not FExperimentalEnabled.Checked;
   UpdateLocks;
@@ -4703,7 +4951,9 @@ begin
   begin
     FMarks.ApplyFilter(sfModified);
     if ListReady(FTree) then
+    begin
       FillTree;
+    end;
   end;
 end;
 
@@ -4715,7 +4965,9 @@ end;
 procedure TAtlasSettingsPage.ResetNames(const ANames: TArray<string>);
 begin
   if Length(ANames) = 0 then
+  begin
     Exit;
+  end;
   LoadFrom(TAtlasSettingsTransfer.ResetNames(Catalog, CurrentSettings, ANames));
 end;
 
@@ -4727,16 +4979,24 @@ begin
   // Ohne Fenster hängen die Reiter noch nicht am PageControl.
   Current := ActiveNode;
   if Current < 0 then
+  begin
     Exit;
+  end;
   // Unterpunkt: nur seine Einstellungen; Hauptknoten: der ganze Bereich mit allen Unterpunkten (#890).
   if FNodePages[Current].Node <> '' then
-    Names := FMarks.NamesIn(FNodePages[Current].Box)
+  begin
+    Names := FMarks.NamesIn(FNodePages[Current].Box);
+  end
   else
   begin
     Names := nil;
     for Index := 0 to High(FNodePages) do
+    begin
       if FNodePages[Index].Area = FNodePages[Current].Area then
+      begin
         Names := Names + FMarks.NamesIn(FNodePages[Index].Box);
+      end;
+    end;
   end;
   ResetNames(Names);
 end;
@@ -4749,7 +5009,9 @@ end;
 procedure TAtlasSettingsPage.ExportClick(Sender: TObject);
 begin
   if Assigned(FOnExportSettings) then
+  begin
     FOnExportSettings(CurrentSettings);
+  end;
 end;
 
 procedure TAtlasSettingsPage.ImportClick(Sender: TObject);
@@ -4757,7 +5019,9 @@ var
   Imported: TAtlasPluginSettings;
 begin
   if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, False, Imported) then
+  begin
     LoadFrom(Imported);
+  end;
 end;
 
 procedure TAtlasSettingsPage.ProfileClick(Sender: TObject);
@@ -4765,7 +5029,9 @@ var
   Imported: TAtlasPluginSettings;
 begin
   if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, True, Imported) then
+  begin
     LoadFrom(Imported);
+  end;
 end;
 
 procedure TAtlasSettingsPage.ResetAllClick(Sender: TObject);
@@ -4773,7 +5039,9 @@ var
   Reset: TAtlasPluginSettings;
 begin
   if Assigned(FOnResetAllSettings) and FOnResetAllSettings(CurrentSettings, Reset) then
+  begin
     LoadFrom(Reset);
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -4788,11 +5056,13 @@ begin
   inherited CreateWnd;
   // Je Knoten ein Reiter, in der Reihenfolge des Baums.
   for Page in FNodePages do
+  begin
     if Page.Sheet.PageControl = nil then
     begin
       Page.Sheet.PageControl := FPages;
       Page.Sheet.TabVisible := False;
     end;
+  end;
   // Der Baum braucht ein Fenster für seine Knoten (wie die Reiter); zeigt die zuletzt gewählte Seite.
   FillTree;
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
@@ -4803,7 +5073,9 @@ begin
   SectionsWindowReady;
   // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
   if FPendingReveal <> '' then
+  begin
     ApplyReveal(FPendingReveal);
+  end;
 end;
 
 // Baum, Rahmen und Sperren (#890).
@@ -4820,7 +5092,9 @@ var
 begin
   Parent := AControl;
   while (Parent <> nil) and (Parent <> AParent) do
+  begin
     Parent := Parent.Parent;
+  end;
   Result := Parent <> nil;
 end;
 
@@ -4836,7 +5110,9 @@ begin
     Control := ABox.Controls[Index];
     Position := Length(Result);
     while (Position > 0) and (Result[Position - 1].Top > Control.Top) do
+    begin
       Dec(Position);
+    end;
     Insert(Control, Result, Position);
   end;
 end;
@@ -4853,8 +5129,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if Item = AText then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [AText];
 end;
 
@@ -4862,21 +5142,29 @@ function PageIndexOf(ANode: TTreeNode): Integer;
 begin
   Result := -1;
   if ANode <> nil then
+  begin
     Result := Integer(NativeInt(ANode.Data));
+  end;
 end;
 
 procedure TAtlasSettingsPage.Attach(ARow, AAnchor: TControl);
 begin
   if (ARow <> nil) and (AAnchor <> nil) then
+  begin
     FAttached.AddOrSetValue(ARow, AAnchor);
+  end;
 end;
 
 function TAtlasSettingsPage.AddNodePage(AArea: Integer; const ANode: string): Integer;
 begin
   if ANode = '' then
-    Result := AddNodePageCaption(AArea, ANode, '')
+  begin
+    Result := AddNodePageCaption(AArea, ANode, '');
+  end
   else
+  begin
     Result := AddNodePageCaption(AArea, ANode, FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
+  end;
 end;
 
 function TAtlasSettingsPage.AddNodePageCaption(AArea: Integer; const ANode, ACaption: string): Integer;
@@ -4885,8 +5173,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FNodePages) do
+  begin
     if (FNodePages[Index].Area = AArea) and SameText(FNodePages[Index].Node, ANode) then
+    begin
       Exit(Index);
+    end;
+  end;
   Page := Default(TAtlasSettingsNodePage);
   Page.Area := AArea;
   Page.Node := ANode;
@@ -5014,25 +5306,33 @@ procedure TAtlasSettingsPage.SetOnBaselineInfo(const AValue: TFunc<string>);
 begin
   FOnBaselineInfo := AValue;
   if Assigned(FOnBaselineInfo) and (FBaselineInfo <> nil) then
+  begin
     FBaselineInfo.Caption := FOnBaselineInfo();
+  end;
 end;
 
 procedure TAtlasSettingsPage.RulesProjectClick(Sender: TObject);
 begin
   if Assigned(FOnRulesProject) then
+  begin
     FOnRulesProject();
+  end;
 end;
 
 procedure TAtlasSettingsPage.RulesGlobalClick(Sender: TObject);
 begin
   if Assigned(FOnRulesGlobal) then
+  begin
     FOnRulesGlobal();
+  end;
 end;
 
 procedure TAtlasSettingsPage.BaselineUpdateClick(Sender: TObject);
 begin
   if Assigned(FOnBaselineUpdate) then
+  begin
     FBaselineInfo.Caption := FOnBaselineUpdate();
+  end;
 end;
 
 procedure TAtlasSettingsPage.BaselineDeleteClick(Sender: TObject);
@@ -5047,7 +5347,9 @@ end;
 procedure TAtlasSettingsPage.Place(AControl: TControl; AHolder: TWinControl);
 begin
   if AHolder is TAtlasSettingsGroup then
-    TAtlasSettingsGroup(AHolder).AddRow(AControl)
+  begin
+    TAtlasSettingsGroup(AHolder).AddRow(AControl);
+  end
   else
   begin
     AControl.Parent := AHolder;
@@ -5066,13 +5368,21 @@ var
 begin
   FGroups := TAtlasSettingsGroups.Create(Catalog);
   for Area := 0 to High(FSheets) do
+  begin
     BuildArea(Area);
+  end;
   AddRulePages;
   for Frame in FFrames do
+  begin
     if not (Frame.Parent is TAtlasSettingsGroup) then
+    begin
       Frame.AdjustHeight;
+    end;
+  end;
   for Area := 0 to High(FSheets) do
+  begin
     AddOverview(Area);
+  end;
   UpdateLocks;
 end;
 
@@ -5095,8 +5405,12 @@ var
   begin
     Result := '';
     for Candidate in FMarks.NamesWithin(AControl) do
+    begin
       if FGroups.Contains(Candidate) then
+      begin
         Exit(Candidate);
+      end;
+    end;
   end;
 
   // Hängt eine Zeile an einem Element in AControl (Liste und Knöpfe einer Funktion)?
@@ -5105,8 +5419,12 @@ var
     Item: TPair<TControl, TControl>;
   begin
     for Item in FAttached do
+    begin
       if Inside(Item.Value, AControl) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -5115,8 +5433,12 @@ var
     Candidate: Integer;
   begin
     for Candidate := 0 to High(Rows) do
+    begin
       if Inside(AAnchor, Rows[Candidate]) then
+      begin
         Exit(Candidate);
+      end;
+    end;
     Result := -1;
   end;
 
@@ -5127,10 +5449,16 @@ var
   begin
     Result := nil;
     if AName = '' then
+    begin
       Exit;
+    end;
     for Candidate := 0 to High(Rows) do
+    begin
       if (Frames[Candidate] <> nil) and (RowPages[Candidate] = APage) and SameText(Names[Candidate], AName) then
+      begin
         Exit(Frames[Candidate]);
+      end;
+    end;
   end;
 
 begin
@@ -5151,16 +5479,25 @@ begin
     Frames[Index] := nil;
     Resolved[Index] := False;
     if Names[Index] <> '' then
-      Kinds[Index] := rkBound
+    begin
+      Kinds[Index] := rkBound;
+    end
     else if FAttached.ContainsKey(Rows[Index]) then
-      Kinds[Index] := rkAttached
+    begin
+      Kinds[Index] := rkAttached;
+    end
     else if IsLabelRow(Rows[Index]) then
-      Kinds[Index] := rkLabel
+    begin
+      Kinds[Index] := rkLabel;
+    end
     else
+    begin
       Kinds[Index] := rkOther;
+    end;
   end;
   // Unterpunkt jeder Einstellung; Hauptschalter (auch Kontrollkästchen mit angehängter Liste) bekommen einen Rahmen.
   for Index := 0 to High(Rows) do
+  begin
     if Kinds[Index] = rkBound then
     begin
       RowPages[Index] := AddNodePage(AArea, FGroups.NodeOf(Names[Index]));
@@ -5170,56 +5507,76 @@ begin
         FFrames := FFrames + [Frames[Index]];
       end;
     end;
+  end;
   // Behälter: der Rahmen des Hauptschalters auf derselben Seite, sonst die Seite selbst.
   for Index := 0 to High(Rows) do
+  begin
     if Kinds[Index] = rkBound then
     begin
       Holders[Index] := FNodePages[RowPages[Index]].Box;
       Frame := FrameFor(FGroups.ParentOf(Names[Index]), RowPages[Index]);
       if Frame <> nil then
+      begin
         Holders[Index] := Frame;
+      end;
       Resolved[Index] := True;
     end;
+  end;
   // Zeilen ohne eigene Einstellung, die zu einer gehören (Liste, Knöpfe): in deren Rahmen.
   for Index := 0 to High(Rows) do
+  begin
     if Kinds[Index] = rkAttached then
     begin
       Other := RowOfAnchor(FAttached[Rows[Index]]);
       if (Other < 0) or not Resolved[Other] then
+      begin
         Continue;
+      end;
       RowPages[Index] := RowPages[Other];
       Holders[Index] := Holders[Other];
       if Frames[Other] <> nil then
+      begin
         Holders[Index] := Frames[Other];
+      end;
       Resolved[Index] := True;
     end;
+  end;
   // Übrige Zeilen (Serverpfad, Knöpfe des Bereichs): oben auf der Seite der Zeile davor.
   Page := Main;
   for Index := 0 to High(Rows) do
+  begin
     if Resolved[Index] then
-      Page := RowPages[Index]
+    begin
+      Page := RowPages[Index];
+    end
     else if Kinds[Index] <> rkLabel then
     begin
       RowPages[Index] := Page;
       Holders[Index] := FNodePages[Page].Box;
       Resolved[Index] := True;
     end;
+  end;
   // Überschriften und Beschriftungen gehören zur Zeile darunter, am Ende des Bereichs zur Zeile darüber.
   for Index := High(Rows) downto 0 do
+  begin
     if not Resolved[Index] and (Index < High(Rows)) and Resolved[Index + 1] then
     begin
       RowPages[Index] := RowPages[Index + 1];
       Holders[Index] := Holders[Index + 1];
       Resolved[Index] := True;
     end;
+  end;
   for Index := 1 to High(Rows) do
+  begin
     if not Resolved[Index] then
     begin
       RowPages[Index] := RowPages[Index - 1];
       Holders[Index] := Holders[Index - 1];
       Resolved[Index] := True;
     end;
+  end;
   for Index := 0 to High(Rows) do
+  begin
     if Frames[Index] <> nil then
     begin
       Place(Frames[Index], Holders[Index]);
@@ -5230,7 +5587,10 @@ begin
       FMarks.Pin(Frames[Index].Reason);
     end
     else
+    begin
       Place(Rows[Index], Holders[Index]);
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddOverview(AArea: Integer);
@@ -5248,15 +5608,21 @@ begin
   for Index := 0 to High(FNodePages) do
   begin
     if (FNodePages[Index].Area <> AArea) or (FNodePages[Index].Node = '') then
+    begin
       Continue;
+    end;
     Box := FNodePages[Index].Box;
     for Child := 0 to Box.ControlCount - 1 do
     begin
       if not (Box.Controls[Child] is TAtlasSettingsGroup) then
+      begin
         Continue;
+      end;
       Frame := TAtlasSettingsGroup(Box.Controls[Child]);
       if Frame.Master = nil then
+      begin
         Continue;
+      end;
       if Overview = nil then
       begin
         Overview := TAtlasSettingsGroup.Create(Self);
@@ -5305,7 +5671,9 @@ begin
     end;
   end;
   if Overview <> nil then
+  begin
     Overview.AdjustHeight;
+  end;
 end;
 
 procedure TAtlasSettingsPage.MirrorClick(Sender: TObject);
@@ -5313,16 +5681,22 @@ var
   Index: Integer;
 begin
   if FSyncing or not (Sender is TCheckBox) then
+  begin
     Exit;
+  end;
   Index := TCheckBox(Sender).Tag;
   if (Index >= 0) and (Index <= High(FMirrored)) then
+  begin
     FMirrored[Index].Checked := TCheckBox(Sender).Checked;
+  end;
 end;
 
 procedure TAtlasSettingsPage.DetailsClick(Sender: TObject);
 begin
   if Sender is TControl then
+  begin
     SelectPage(TControl(Sender).Tag);
+  end;
 end;
 
 function TAtlasSettingsPage.IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
@@ -5330,8 +5704,12 @@ var
   Overview: TAtlasSettingsGroup;
 begin
   for Overview in FOverviews do
+  begin
     if Overview = AFrame then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -5343,12 +5721,20 @@ begin
   Result := -1;
   mParent := AControl;
   while (mParent <> nil) and not (mParent is TTabSheet) do
+  begin
     mParent := mParent.Parent;
+  end;
   if mParent = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FNodePages) do
+  begin
     if FNodePages[Index].Sheet = mParent then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasSettingsPage.ActiveNode: Integer;
@@ -5357,10 +5743,16 @@ var
 begin
   Result := -1;
   if FPages.ActivePage = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FNodePages) do
+  begin
     if FNodePages[Index].Sheet = FPages.ActivePage then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.SelectPage(AIndex: Integer);
@@ -5368,17 +5760,23 @@ var
   Index: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FNodePages)) then
+  begin
     Exit;
+  end;
   FPages.ActivePage := FNodePages[AIndex].Sheet;
   SheetShown(FNodePages[AIndex].Sheet);
   if not ListReady(FTree) then
+  begin
     Exit;
+  end;
   for Index := 0 to FTree.Items.Count - 1 do
+  begin
     if PageIndexOf(FTree.Items[Index]) = AIndex then
     begin
       FTree.Selected := FTree.Items[Index];
       Break;
     end;
+  end;
 end;
 
 function TAtlasSettingsPage.PageShown(AIndex: Integer): Boolean;
@@ -5387,12 +5785,20 @@ var
 begin
   // Der Filter blendet Unterpunkte ohne Treffer aus; ein Bereich bleibt, solange einer seiner Punkte trifft.
   if (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) then
+  begin
     Exit(True);
+  end;
   if FNodePages[AIndex].Node = '' then
+  begin
     for Index := 0 to High(FNodePages) do
+    begin
       if (Index <> AIndex) and (FNodePages[Index].Area = FNodePages[AIndex].Area) and
         FMarks.HasMatch(FNodePages[Index].Box) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -5406,7 +5812,9 @@ begin
   Wanted := nil;
   Selected := ActiveNode;
   if (Selected < 0) and FStateKnown then
+  begin
     Selected := FLastPage;
+  end;
   FFillingTree := True;
   FTree.Items.BeginUpdate;
   try
@@ -5414,7 +5822,9 @@ begin
     for Index := 0 to High(FNodePages) do
     begin
       if not PageShown(Index) then
+      begin
         Continue;
+      end;
       Area := FNodePages[Index].Area;
       if FNodePages[Index].Node = '' then
       begin
@@ -5422,12 +5832,18 @@ begin
         AreaNodes[Area] := Node;
       end
       else
+      begin
         Node := FTree.Items.AddChildObject(AreaNodes[Area], FNodePages[Index].Caption, Pointer(NativeInt(Index)));
+      end;
       if Index = Selected then
+      begin
         Wanted := Node;
+      end;
     end;
     if (Wanted = nil) and (FTree.Items.Count > 0) then
+    begin
       Wanted := FTree.Items[0];
+    end;
     // Aufgeklappt wie beim letzten Mal; beim ersten Öffnen der Bereich der gewählten Seite.
     for Index := 0 to FTree.Items.Count - 1 do
     begin
@@ -5441,9 +5857,13 @@ begin
     if Wanted <> nil then
     begin
       if Wanted.Parent <> nil then
-        Wanted.Parent.Expanded := True
+      begin
+        Wanted.Parent.Expanded := True;
+      end
       else if not FStateKnown and Wanted.HasChildren then
+      begin
         Wanted.Expanded := True;
+      end;
       FTree.Selected := Wanted;
       FPages.ActivePage := FNodePages[PageIndexOf(Wanted)].Sheet;
     end;
@@ -5457,7 +5877,9 @@ end;
 function TAtlasSettingsPage.ListReady(AControl: TWinControl): Boolean;
 begin
   if not AControl.HandleAllocated and HandleAllocated then
+  begin
     AControl.HandleNeeded;
+  end;
   Result := AControl.HandleAllocated;
 end;
 
@@ -5468,19 +5890,27 @@ var
   mText: string;
 begin
   if not ListReady(FTree) then
+  begin
     Exit;
+  end;
   for Index := 0 to FTree.Items.Count - 1 do
   begin
     Node := FTree.Items[Index];
     Page := PageIndexOf(Node);
     if (Page < 0) or (Page > High(FNodePages)) then
+    begin
       Continue;
+    end;
     // Punkt wie an den Einstellungen: Auf dieser Seite ist etwas geändert.
     mText := FNodePages[Page].Caption;
     if FMarks.HasMarked(FNodePages[Page].Box) then
+    begin
       mText := TAtlasSettingsMarks.Dot + mText;
+    end;
     if Node.Text <> mText then
+    begin
       Node.Text := mText;
+    end;
   end;
   FTree.Invalidate;
 end;
@@ -5491,12 +5921,16 @@ var
 begin
   Index := PageIndexOf(Node);
   if (Index < 0) or (Index > High(FNodePages)) or (csDestroying in ComponentState) then
+  begin
     Exit;
+  end;
   FPages.ActivePage := FNodePages[Index].Sheet;
   SheetShown(FNodePages[Index].Sheet);
   // Beim Neuaufbau des Baums wählt er selbst; gemerkt wird nur die Wahl des Nutzers.
   if FFillingTree then
+  begin
     Exit;
+  end;
   FLastPage := Index;
   FStateKnown := True;
 end;
@@ -5507,14 +5941,22 @@ var
 begin
   Index := PageIndexOf(Node);
   if FFillingTree or (csDestroying in ComponentState) or (Index < 0) or (Index > High(FNodePages)) then
+  begin
     Exit;
+  end;
   Area := FNodePages[Index].Area;
   if (Area < 0) or (Area > High(Byte)) then
+  begin
     Exit;
+  end;
   if Node.Expanded then
-    Include(FExpandedAreas, Byte(Area))
+  begin
+    Include(FExpandedAreas, Byte(Area));
+  end
   else
+  begin
     Exclude(FExpandedAreas, Byte(Area));
+  end;
   FStateKnown := True;
 end;
 
@@ -5527,7 +5969,9 @@ begin
   // Abgeschaltete oder gesperrte Unterpunkte grau.
   Index := PageIndexOf(Node);
   if (Index >= 0) and (Index <= High(FNodePages)) and FNodePages[Index].Gray and not (cdsSelected in State) then
+  begin
     Sender.Canvas.Font.Color := clGrayText;
+  end;
 end;
 
 function TAtlasSettingsPage.IsOn(const AName: string): Boolean;
@@ -5537,11 +5981,17 @@ begin
   // Kontrollkästchen: angehakt; Auswahl (etwa „Beim Öffnen bauen“): ein Eintrag außer dem ersten („nicht …“).
   Control := FMarks.ControlOfName(AName);
   if Control is TCheckBox then
-    Result := TCheckBox(Control).Checked
+  begin
+    Result := TCheckBox(Control).Checked;
+  end
   else if Control is TAtlasChoiceBox then
-    Result := TAtlasChoiceBox(Control).Choice > 0
+  begin
+    Result := TAtlasChoiceBox(Control).Choice > 0;
+  end
   else
+  begin
     Result := True;
+  end;
 end;
 
 function TAtlasSettingsPage.LockOfName(const AName: string): TAtlasSettingsLock;
@@ -5562,20 +6012,26 @@ begin
       begin
         mCaption := FMarks.TextOfName(ALock.Master);
         if mCaption = '' then
+        begin
           mCaption := FGroups.KeyOf(ALock.Master);
+        end;
         Where := '';
         Page := PageOf(FMarks.ControlOfName(ALock.Master));
         if Page >= 0 then
         begin
           Where := FSheets[FNodePages[Page].Area].Caption;
           if FNodePages[Page].Node <> '' then
+          begin
             Where := Where + ' › ' + FNodePages[Page].Caption;
+          end;
         end
         else
         begin
           Entry := Catalog.IndexOfName(ALock.Master);
           if Entry >= 0 then
+          begin
             Where := Catalog.Entries[Entry].Page;
+          end;
         end;
         Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, Where]);
       end;
@@ -5589,24 +6045,38 @@ var
   Index: Integer;
 begin
   if AControl = nil then
+  begin
     Exit;
+  end;
   if not ALocked then
-    FLockedControls.Remove(AControl)
+  begin
+    FLockedControls.Remove(AControl);
+  end
   else if not FLockedControls.Contains(AControl) then
+  begin
     FLockedControls.Add(AControl);
+  end;
   AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
   if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
+  begin
     for Index := 0 to TWinControl(AControl).ControlCount - 1 do
+    begin
       SetLocked(TWinControl(AControl).Controls[Index], ALocked);
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsPage.Allow(AControl: TControl; AValue: Boolean);
 begin
   // Eigene Logik der Seite (Liste leer, Server fehlt); eine Sperre durch den Hauptschalter bleibt bestehen.
   if AValue then
-    FOwnOff.Remove(AControl)
+  begin
+    FOwnOff.Remove(AControl);
+  end
   else if not FOwnOff.Contains(AControl) then
+  begin
     FOwnOff.Add(AControl);
+  end;
   AControl.Enabled := AValue and not FLockedControls.Contains(AControl);
 end;
 
@@ -5625,20 +6095,28 @@ begin
     Control := AContainer.Controls[Index];
     if (AContainer is TAtlasSettingsGroup) and ((Control = TAtlasSettingsGroup(AContainer).Master) or
       (Control = TAtlasSettingsGroup(AContainer).Reason)) then
+    begin
       Continue;
+    end;
     if Control is TAtlasSettingsGroup then
     begin
       Frame := TAtlasSettingsGroup(Control);
       if IsOverview(Frame) or (Frame.Master = nil) then
+      begin
         Continue;
+      end;
       // Der Hauptschalter selbst: gesperrt durch einen Rahmen darüber, einen Schalter woanders oder experimentell.
       Lock := LockOfName(Frame.MasterName);
       MasterLocked := ALocked or Lock.Locked;
       SetLocked(Frame.Master, MasterLocked);
       if Lock.Locked and not ALocked then
-        Frame.ShowReason(LockText(Lock))
+      begin
+        Frame.ShowReason(LockText(Lock));
+      end
       else
+      begin
         Frame.ShowReason('');
+      end;
       ApplyLocks(Frame, MasterLocked or not IsOn(Frame.MasterName), AOutside);
       Continue;
     end;
@@ -5648,7 +6126,9 @@ begin
       // Zeile ohne Rahmen: ihr Hauptschalter steht auf einer anderen Seite (Grund oben auf der Seite).
       Names := FMarks.NamesWithin(Control);
       if (Length(Names) = 0) and FAttached.TryGetValue(Control, Anchor) then
+      begin
         Names := FMarks.NamesWithin(Anchor);
+      end;
       for Setting in Names do
       begin
         Lock := LockOfName(Setting);
@@ -5656,7 +6136,9 @@ begin
         begin
           Locked := True;
           if Lock.Reason = lrMasterOff then
+          begin
             AddUnique(AOutside, LockText(Lock));
+          end;
         end;
       end;
     end;
@@ -5682,16 +6164,22 @@ begin
     begin
       Frame := TAtlasSettingsGroup(Control);
       if IsOverview(Frame) or (Frame.Master = nil) then
+      begin
         Continue;
+      end;
       Any := True;
       if Frame.Master.Enabled and IsOn(Frame.MasterName) then
+      begin
         Exit(False);
+      end;
     end
     else if Length(FMarks.NamesWithin(Control)) > 0 then
     begin
       Any := True;
       if Control.Enabled then
+      begin
         Exit(False);
+      end;
     end;
   end;
   Result := Any;
@@ -5703,7 +6191,9 @@ var
   Outside: TArray<string>;
 begin
   if FGroups = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FNodePages) do
   begin
     Outside := nil;
@@ -5723,7 +6213,9 @@ begin
     FSyncing := False;
   end;
   for Index := 0 to High(FNodePages) do
+  begin
     FNodePages[Index].Gray := PageGray(Index);
+  end;
   RefreshTree;
 end;
 
@@ -5732,8 +6224,12 @@ var
   Frame: TAtlasSettingsGroup;
 begin
   for Frame in FFrames do
+  begin
     if SameText(Frame.MasterName, AName) then
+    begin
       Exit(Frame);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -5742,8 +6238,12 @@ var
   Page: TAtlasSettingsNodePage;
 begin
   for Page in FNodePages do
+  begin
     if (ANode <> '') and SameText(Page.Node, ANode) then
+    begin
       Exit(Page.Sheet);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -5755,10 +6255,16 @@ begin
   Result := nil;
   Frame := FrameOf(AName);
   if Frame = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FMirrored) do
+  begin
     if FMirrored[Index] = Frame.Master then
+    begin
       Exit(FMirrors[Index]);
+    end;
+  end;
 end;
 
 function TAtlasSettingsPage.SheetGray(ASheet: TTabSheet): Boolean;
@@ -5766,8 +6272,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FNodePages) do
+  begin
     if FNodePages[Index].Sheet = ASheet then
+    begin
       Exit(FNodePages[Index].Gray);
+    end;
+  end;
   Result := False;
 end;
 
@@ -5776,8 +6286,12 @@ var
   Page: TAtlasSettingsNodePage;
 begin
   for Page in FNodePages do
+  begin
     if Page.Sheet = ASheet then
+    begin
       Exit(Page.Node);
+    end;
+  end;
   Result := '';
 end;
 
@@ -5832,10 +6346,14 @@ var
 begin
   // Wie die Liste der Sicherung: ohne Fenster folgt das in CreateWnd.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   Favorites := nil;
   if Assigned(FOnFavorites) then
+  begin
     Favorites := FOnFavorites();
+  end;
   FFavoriteKeys := nil;
   Any := Length(Favorites) > 0;
   FFavoritesList.Items.BeginUpdate;
@@ -5847,7 +6365,9 @@ begin
       FFavoriteKeys := FFavoriteKeys + [Favorite.Key];
     end;
     if not Any then
+    begin
       FFavoritesList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesNone));
+    end;
   finally
     FFavoritesList.Items.EndUpdate;
   end;
@@ -5862,13 +6382,21 @@ var
   Index: Integer;
 begin
   if not Assigned(FOnRemoveFavorites) then
+  begin
     Exit;
+  end;
   Keys := nil;
   for Index := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
+  begin
     if FFavoritesList.Selected[Index] then
+    begin
       Keys := Keys + [FFavoriteKeys[Index]];
+    end;
+  end;
   if Length(Keys) = 0 then
+  begin
     Exit;
+  end;
   FOnRemoveFavorites(Keys);
   RefreshFavorites;
 end;
@@ -5876,7 +6404,9 @@ end;
 procedure TAtlasSettingsPage.FavoritesRemoveAllClick(Sender: TObject);
 begin
   if not Assigned(FOnRemoveFavorites) or (Length(FFavoriteKeys) = 0) then
+  begin
     Exit;
+  end;
   FOnRemoveFavorites(Copy(FFavoriteKeys));
   RefreshFavorites;
 end;
@@ -5950,7 +6480,9 @@ end;
 procedure TAtlasSettingsPage.StartIndexCommand(const ACommand: TProc);
 begin
   if not Assigned(ACommand) or FIndexBusy then
+  begin
     Exit;
+  end;
   FIndexBusy := True;
   FIndexInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking);
   UpdateIndexButtons;
@@ -5972,9 +6504,13 @@ end;
 procedure TAtlasSettingsPage.RefreshIndex;
 begin
   if Assigned(FOnIndexMetrics) then
-    StartIndexCommand(FOnIndexMetrics)
+  begin
+    StartIndexCommand(FOnIndexMetrics);
+  end
   else if not FIndexBusy then
+  begin
     FIndexInfo.Caption := '';
+  end;
   UpdateIndexButtons;
 end;
 
@@ -5993,14 +6529,22 @@ var
   Confirmed: Boolean;
 begin
   if not Assigned(FOnIndexClear) then
+  begin
     Exit;
+  end;
   if Assigned(FConfirmClear) then
-    Confirmed := FConfirmClear()
+  begin
+    Confirmed := FConfirmClear();
+  end
   else
+  begin
     Confirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
       [mbYes, mbNo], 0) = mrYes;
+  end;
   if Confirmed then
+  begin
     StartIndexCommand(FOnIndexClear);
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddFuseSection;
@@ -6038,18 +6582,26 @@ var
 begin
   // Ohne Fenster (IDE erzeugt die Seite vor dem Einhängen) folgt das in CreateWnd.
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   FFuseList.Items.BeginUpdate;
   try
     FFuseList.Items.Clear;
     // Objects: Feature + 1; nil bei einer Quelle (Name im Text).
     for Feature in TAtlasGuard.DisabledSet do
+    begin
       FFuseList.Items.AddObject(TAtlasGuard.FeatureName(Feature), TObject(NativeInt(Ord(Feature) + 1)));
+    end;
     for mName in TAtlasGuard.DisabledProviders do
+    begin
       FFuseList.Items.AddObject(mName, nil);
+    end;
     Any := FFuseList.Items.Count > 0;
     if not Any then
+    begin
       FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
+    end;
   finally
     FFuseList.Items.EndUpdate;
   end;
@@ -6064,14 +6616,20 @@ var
   mTag: NativeInt;
 begin
   for Index := 0 to FFuseList.Items.Count - 1 do
+  begin
     if FFuseList.Selected[Index] then
     begin
       mTag := NativeInt(FFuseList.Items.Objects[Index]);
       if mTag > 0 then
-        TAtlasGuard.Enable(TAtlasFeature(mTag - 1))
+      begin
+        TAtlasGuard.Enable(TAtlasFeature(mTag - 1));
+      end
       else
+      begin
         TAtlasGuard.EnableProvider(FFuseList.Items[Index]);
+      end;
     end;
+  end;
   RefreshFuse;
 end;
 
@@ -6244,9 +6802,13 @@ begin
   if mIndex >= 0 then
   begin
     if TAtlasStrings.Language = TAtlasLanguage.English then
-      mCaption := Catalog[mIndex].CaptionEn
+    begin
+      mCaption := Catalog[mIndex].CaptionEn;
+    end
     else
+    begin
       mCaption := Catalog[mIndex].Caption;
+    end;
   end;
   Result := AddCheck(mCaption);
   FModuleChecks := FModuleChecks + [Result];
@@ -6280,7 +6842,9 @@ begin
   mCaption.Top := 5;
   Names := nil;
   for Source in TAtlasNotificationSources.Known do
+  begin
     Names := Names + [TAtlasNotificationsWindow.SourceCaption(Source)];
+  end;
   FNotificationSource := TAtlasChoiceBox.Create(Self);
   FNotificationSource.Parent := Panel;
   FNotificationSource.Left := FieldLeft;
@@ -6307,7 +6871,9 @@ var
 begin
   Known := TAtlasNotificationSources.Known;
   if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) then
+  begin
     Exit;
+  end;
   FNotificationMode.Choice := Ord(TAtlasNotificationSources.ModeIn(FNotificationsSpec,
     Known[FNotificationSource.Choice]));
 end;
@@ -6320,7 +6886,9 @@ begin
   if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) or
     (FNotificationMode.Choice < Ord(Low(TAtlasNotificationMode))) or
     (FNotificationMode.Choice > Ord(High(TAtlasNotificationMode))) then
+  begin
     Exit;
+  end;
   FNotificationsSpec := TAtlasNotificationSources.WithMode(FNotificationsSpec, Known[FNotificationSource.Choice],
     TAtlasNotificationMode(FNotificationMode.Choice));
 end;
@@ -6375,13 +6943,17 @@ var
   Dialog: TColorDialog;
 begin
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Dialog := TColorDialog.Create(nil);
   try
     Dialog.Color := TShape(Sender).Brush.Color;
     Dialog.Options := Dialog.Options + [cdFullOpen];
     if Dialog.Execute then
+    begin
       TShape(Sender).Brush.Color := Dialog.Color;
+    end;
   finally
     Dialog.Free;
   end;
@@ -6398,7 +6970,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ASwatches) do
+  begin
     ASwatches[Index].Brush.Color := TColor(APairs[Index]);
+  end;
 end;
 
 class function TAtlasSettingsPage.PairsSetting(const ASwatches: array of TShape;
@@ -6408,10 +6982,14 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Pairs) do
+  begin
     Pairs[Index] := TAtlasColor(ColorToRGB(ASwatches[Index].Brush.Color));
+  end;
   Result := TAtlasColors.PairsText(Pairs);
   if Result = TAtlasColors.PairsText(ADefault) then
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
@@ -6552,7 +7130,9 @@ begin
   FReassigned.Checked := ASettings.Reassigned;
   Targets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  begin
     FReassignedTargets[Target].Checked := Target in Targets;
+  end;
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
   FExpressionType.Checked := ASettings.ExpressionType;
@@ -6565,7 +7145,9 @@ begin
   FOverviewRuler.Checked := ASettings.OverviewRuler;
   Kinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  begin
     FOverviewKinds[Kind].Checked := Kind in Kinds;
+  end;
   FJumpToMatch.Checked := ASettings.JumpToMatch;
   FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
   FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
@@ -6601,14 +7183,22 @@ begin
   // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
   FCompleteStatementBeginEnd.Choice := 1;
   if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
-    FCompleteStatementBeginEnd.Choice := 0
+  begin
+    FCompleteStatementBeginEnd.Choice := 0;
+  end
   else if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndNever then
+  begin
     FCompleteStatementBeginEnd.Choice := 2;
+  end;
   FCompleteStatementTryKind.Choice := 0;
   if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
-    FCompleteStatementTryKind.Choice := 1
+  begin
+    FCompleteStatementTryKind.Choice := 1;
+  end
   else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindAsk then
+  begin
     FCompleteStatementTryKind.Choice := 2;
+  end;
   FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
   FFormatCode.Checked := ASettings.FormatCode;
   FFormatCodeKey.Text := ShortCutToText(TShortCut(ASettings.FormatCodeKey));
@@ -6619,7 +7209,9 @@ begin
   FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, ['off', 'uses', 'indent', 'both']));
   FMultiCursorModifier.Choice := 0;
   if ASettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+  begin
     FMultiCursorModifier.Choice := 1;
+  end;
   FMultiCursorNextKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorNextKey));
   FMultiCursorSkipKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorSkipKey));
   FMultiCursorLineEndsKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorLineEndsKey));
@@ -6756,17 +7348,29 @@ begin
   NotificationSourceChange(nil);
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   if not ASettings.StatusTogglesOnDoubleClick then
-    FStatusToggles.Choice := 1
+  begin
+    FStatusToggles.Choice := 1;
+  end
   else if not ASettings.StatusTogglesOnRightClick then
-    FStatusToggles.Choice := 2
+  begin
+    FStatusToggles.Choice := 2;
+  end
   else
+  begin
     FStatusToggles.Choice := 0;
+  end;
   if SameText(ASettings.IndexProgressPlace, 'menu') then
-    FIndexProgress.Choice := 1
+  begin
+    FIndexProgress.Choice := 1;
+  end
   else if SameText(ASettings.IndexProgressPlace, 'off') then
-    FIndexProgress.Choice := 2
+  begin
+    FIndexProgress.Choice := 2;
+  end
   else
+  begin
     FIndexProgress.Choice := 0;
+  end;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -6775,9 +7379,13 @@ begin
   FMemoryBudget.Text := IntToStr(ASettings.MemoryBudgetMb);
   FAfterSave.Choice := 0;
   if ASettings.CheckOnSave then
-    FAfterSave.Choice := 1
+  begin
+    FAfterSave.Choice := 1;
+  end
   else if ASettings.CompileOnSave then
+  begin
     FAfterSave.Choice := 2;
+  end;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   FMcpBuild.Checked := ASettings.McpBuild;
@@ -6806,7 +7414,9 @@ begin
   FDebugVisualizers.Checked := ASettings.DebugVisualizers;
   VisualizerKinds := TAtlasVisualizerSettings.ParseKinds(ASettings.DebugVisualizerTypes);
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     FDebugVisualizerKinds[VisualizerKind].Checked := VisualizerKind in VisualizerKinds;
+  end;
   FDebugVisualizerNameFields.Text := ASettings.DebugVisualizerNameFields;
   FDebugVisualizerMaxLength.Text := IntToStr(ASettings.DebugVisualizerMaxLength);
   FDebugVisualizerTimeout.Text := IntToStr(ASettings.DebugVisualizerTimeoutMs);
@@ -6818,7 +7428,9 @@ begin
   FDebugStepFilters.Checked := ASettings.DebugStepFilters;
   StepFilterKinds := TStepFilterNames.ParseKinds(ASettings.DebugStepFilterKinds);
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     FDebugStepFilterKinds[StepFilterKind].Checked := StepFilterKind in StepFilterKinds;
+  end;
   FDebugStepFilterPatterns.Text := ASettings.DebugStepFilterPatterns;
   FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
   FDebugBreakOnNextEvent.Checked := ASettings.DebugBreakOnNextEvent;
@@ -6900,7 +7512,7 @@ begin
   FVcsExternalsOnBranch.Choice := Max(0, IndexText(ASettings.VcsExternalsOnBranch, ['pin', 'keep', 'ask']));
   FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
     ['modified', 'never', 'always']));
-  FVcsExternalsRules.Text := TAtlasVcsBranchPlan.RulesText(TAtlasVcsBranchPlan.RulesOf(ASettings.VcsExternalsRules));
+  FVcsExternalsRules.Text := TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(ASettings.VcsExternalsRules));
   FVcsExternalsShow.Checked := ASettings.VcsExternalsShow;
   FVcsExternalsUpdate.Choice := Ord(AtlasVcsExternalsUpdateOf(ASettings.VcsExternalsUpdate));
   FVcsBranchGitBase.Choice := Max(0, IndexText(ASettings.VcsBranchGitBase, cVcsGitBases));
@@ -6913,7 +7525,9 @@ begin
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
   FVcsProjectSelected := -1;
   if Length(FVcsProjects) > 0 then
+  begin
     FVcsProjectSelected := 0;
+  end;
   RefreshVcsProjects;
   FSettingsExportImport.Checked := ASettings.SettingsExportImport;
   FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
@@ -6922,7 +7536,9 @@ begin
   // Modul-Schalter (#1454) über ihre Namen; ohne Eintrag an.
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
   for mIndex := 0 to High(FModuleChecks) do
+  begin
     FModuleChecks[mIndex].Checked := mStore.ReadInteger(FModuleNames[mIndex], 1) <> 0;
+  end;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -6991,9 +7607,13 @@ begin
   ASettings.EditorDesignerBar := FEditorDesignerBar.Checked;
   ASettings.DesignerSearchKey := Integer(TextToShortCut(Trim(FDesignerSearchKey.Text)));
   if FDesignerSearchStyle.Choice = 1 then
-    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup
+  begin
+    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
+  end
   else
+  begin
     ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchWindow;
+  end;
   ASettings.DesignerTabOrderClick := FDesignerTabOrderClick.Checked;
   ASettings.DesignerAlign := FDesignerAlign.Checked;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
@@ -7011,16 +7631,22 @@ begin
   ASettings.Minimap := FMinimap.Checked;
   ASettings.MinimapRender := 'blocks';
   if FMinimapRender.Choice = 1 then
+  begin
     ASettings.MinimapRender := 'characters';
+  end;
   ASettings.MinimapWidth := StrToIntDef(FMinimapWidth.Text, ASettings.MinimapWidth);
   ASettings.MinimapScale := StrToIntDef(FMinimapScale.Text, ASettings.MinimapScale);
   ASettings.MinimapMaxColumn := StrToIntDef(FMinimapMaxColumn.Text, ASettings.MinimapMaxColumn);
   ASettings.MinimapSide := 'right';
   if FMinimapSide.Choice = 1 then
+  begin
     ASettings.MinimapSide := 'left';
+  end;
   ASettings.MinimapShowSlider := 'always';
   if FMinimapShowSlider.Choice = 1 then
+  begin
     ASettings.MinimapShowSlider := 'mouseover';
+  end;
   ASettings.MinimapSectionHeaders := FMinimapSectionHeaders.Checked;
   ASettings.MinimapHighlightMethod := FMinimapHighlightMethod.Checked;
   ASettings.MinimapMarkers := FMinimapMarkers.Checked;
@@ -7046,8 +7672,12 @@ begin
   ASettings.Reassigned := FReassigned.Checked;
   Targets := [];
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  begin
     if FReassignedTargets[Target].Checked then
+    begin
       Include(Targets, Target);
+    end;
+  end;
   ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(Targets);
   ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
     FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
@@ -7063,8 +7693,12 @@ begin
   ASettings.OverviewRuler := FOverviewRuler.Checked;
   Kinds := [];
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  begin
     if FOverviewKinds[Kind].Checked then
+    begin
       Include(Kinds, Kind);
+    end;
+  end;
   ASettings.OverviewRulerKinds := TAtlasOverview.KindsText(Kinds);
   ASettings.JumpToMatch := FJumpToMatch.Checked;
   ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
@@ -7078,14 +7712,20 @@ begin
   ASettings.ToggleBlockCommentKey := Integer(TextToShortCut(Trim(FToggleBlockCommentKey.Text)));
   ASettings.ToggleBlockCommentStyle := 'braces';
   if FToggleBlockCommentStyle.Choice = 1 then
+  begin
     ASettings.ToggleBlockCommentStyle := 'parens';
+  end;
   ASettings.ToggleBlockCommentFallback := 'lineComments';
   if FToggleBlockCommentFallback.Choice = 1 then
+  begin
     ASettings.ToggleBlockCommentFallback := 'refuse';
+  end;
   ASettings.ToggleBlockCommentOwnLines := FToggleBlockCommentOwnLines.Checked;
   ASettings.ToggleBlockCommentWithoutSelection := 'statement';
   if FToggleBlockCommentScope.Choice = 1 then
+  begin
     ASettings.ToggleBlockCommentWithoutSelection := 'line';
+  end;
   ASettings.NewLineAround := FNewLineAround.Checked;
   ASettings.NewLineBelowKey := Integer(TextToShortCut(Trim(FNewLineBelowKey.Text)));
   ASettings.NewLineAboveKey := Integer(TextToShortCut(Trim(FNewLineAboveKey.Text)));
@@ -7137,7 +7777,9 @@ begin
   end;
   ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierAlt;
   if FMultiCursorModifier.Choice = 1 then
+  begin
     ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierCtrl;
+  end;
   ASettings.MultiCursorNextKey := Integer(TextToShortCut(Trim(FMultiCursorNextKey.Text)));
   ASettings.MultiCursorSkipKey := Integer(TextToShortCut(Trim(FMultiCursorSkipKey.Text)));
   ASettings.MultiCursorLineEndsKey := Integer(TextToShortCut(Trim(FMultiCursorLineEndsKey.Text)));
@@ -7180,9 +7822,13 @@ begin
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.CompletionVariantBranch := FCompletionVariantBranch.Checked;
   if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
+  begin
     ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
+  end;
   if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
+  begin
     ASettings.CompletionListScope := TAtlasListModes.ScopeNames[TAtlasListScope(FListScope.Choice)];
+  end;
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
@@ -7241,17 +7887,25 @@ begin
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.ProblemsWindow := FProblemsWindow.Checked;
   if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
+  begin
     ASettings.ProblemsWindowScope := ScopeValues[FProblemsWindowScope.Choice];
+  end;
   if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(GroupByValues)) then
+  begin
     ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
+  end;
   ASettings.ProblemsWindowCompiler := FProblemsWindowCompiler.Checked;
   ASettings.ProblemsWindowFollowCursor := FProblemsWindowFollowCursor.Checked;
   ASettings.ProblemsWindowOpenFirst := FProblemsWindowOpenFirst.Checked;
   if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(ClosedUnitsValues)) then
+  begin
     ASettings.ProblemsWindowClosedUnits := ClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
+  end;
   ASettings.ProblemsWindowShowCleanActive := FProblemsWindowShowCleanActive.Checked;
   if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(CompilerMergeValues)) then
+  begin
     ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
+  end;
   ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;
   ASettings.ProblemsLive := FProblemsLive.Checked;
   ASettings.FixBulk := FFixBulk.Checked;
@@ -7264,9 +7918,13 @@ begin
   ASettings.ServerStatusWindow := FServerStatusWindow.Checked;
   ASettings.ArchitectureEnabled := FArchitecture.Checked;
   if FArchitectureScope.Choice = 1 then
-    ASettings.ArchitectureScope := 'project'
+  begin
+    ASettings.ArchitectureScope := 'project';
+  end
   else
+  begin
     ASettings.ArchitectureScope := 'projectGroup';
+  end;
   ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
   ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
   ASettings.QueryEnabled := FQuery.Checked;
@@ -7323,7 +7981,9 @@ begin
   // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
   ASettings.BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(FBuildWarningsAsErrors.Text);
   if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
+  begin
     ASettings.BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
+  end;
   ASettings.BuildGateTimeoutMs := EnsureRange(StrToIntDef(FBuildGateTimeout.Text, ASettings.BuildGateTimeoutMs),
     TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
   ASettings.BuildCompilerSwitches := FBuildCompilerSwitches.Checked;
@@ -7337,8 +7997,12 @@ begin
   ASettings.DebugVisualizers := FDebugVisualizers.Checked;
   VisualizerKinds := [];
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     if FDebugVisualizerKinds[VisualizerKind].Checked then
+    begin
       Include(VisualizerKinds, VisualizerKind);
+    end;
+  end;
   ASettings.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(VisualizerKinds);
   ASettings.DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(FDebugVisualizerNameFields.Text);
   ASettings.DebugVisualizerMaxLength := StrToIntDef(Trim(FDebugVisualizerMaxLength.Text),
@@ -7355,8 +8019,12 @@ begin
   ASettings.DebugStepFilters := FDebugStepFilters.Checked;
   StepFilterKinds := [];
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     if FDebugStepFilterKinds[StepFilterKind].Checked then
+    begin
       Include(StepFilterKinds, StepFilterKind);
+    end;
+  end;
   ASettings.DebugStepFilterKinds := TStepFilterNames.KindsText(StepFilterKinds);
   ASettings.DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(FDebugStepFilterPatterns.Text);
   ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
@@ -7439,9 +8107,13 @@ begin
   ASettings.VcsBranchConfirm := FVcsBranchConfirm.Checked;
   ASettings.VcsBranchSvnLocation := Trim(FVcsBranchSvnLocation.Text);
   if FVcsBranchSvnSource.Choice = Ord(TAtlasVcsSvnSource.WorkingCopy) then
-    ASettings.VcsBranchSvnSource := 'workingCopy'
+  begin
+    ASettings.VcsBranchSvnSource := 'workingCopy';
+  end
   else
+  begin
     ASettings.VcsBranchSvnSource := 'head';
+  end;
   case FVcsBranchSvnAfter.Choice of
     Ord(TAtlasVcsSvnAfter.Checkout):
       ASettings.VcsBranchSvnAfter := 'checkout';
@@ -7469,8 +8141,10 @@ begin
     ASettings.VcsExternalsSuggestBranch := 'modified';
   end;
   // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
-  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
-    ASettings.VcsExternalsRules := TAtlasVcsBranchPlan.RulesJson(mRules);
+  if TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+  begin
+    ASettings.VcsExternalsRules := TAtlasVcsExternalRules.RulesJson(mRules);
+  end;
   ASettings.VcsExternalsShow := FVcsExternalsShow.Checked;
   case FVcsExternalsUpdate.Choice of
     1:
@@ -7492,7 +8166,9 @@ begin
   ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;
   ASettings.SettingsExportSecrets := 'omit';
   if FSettingsExportSecrets.Choice = 1 then
+  begin
     ASettings.SettingsExportSecrets := 'placeholder';
+  end;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   // Modul-Schalter (#1454) über ihre Namen.
@@ -7500,7 +8176,9 @@ begin
   begin
     mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
     for mIndex := 0 to High(FModuleChecks) do
+    begin
       mStore.WriteInteger(FModuleNames[mIndex], Ord(FModuleChecks[mIndex].Checked));
+    end;
     ASettings.Load(mStore);
   end;
   SaveSections(ASettings);
@@ -7519,22 +8197,34 @@ var
 begin
   Path := Trim(FServerPath.Text);
   if Path = '' then
+  begin
     Path := FDefaultServerPath;
+  end;
   if Path = '' then
-    FServerStatus.Caption := ''
+  begin
+    FServerStatus.Caption := '';
+  end
   else if FileExists(Path) then
-    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [Path])
+  begin
+    FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [Path]);
+  end
   else
+  begin
     FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerMissing, [Path]);
+  end;
   // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
   Version := '';
   if Assigned(FOnServerVersion) and (Path <> '') and FileExists(Path) then
   begin
     Version := FOnServerVersion(Path);
     if Version = '' then
-      Version := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown)
+    begin
+      Version := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown);
+    end
     else
+    begin
       Version := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerVersion, [Version]);
+    end;
   end;
   FServerVersion.Caption := Version;
 end;
@@ -7549,9 +8239,13 @@ procedure TAtlasSettingsPage.AutoWidthClick(Sender: TObject);
 begin
   // Automatisch: gezogene Breite vergessen; aus: die zuletzt gezogene bzw. die Vorgabe.
   if FAutoWidth.Checked then
-    FWidths.ListWidth := 0
+  begin
+    FWidths.ListWidth := 0;
+  end
   else if FWidths.ListWidth = 0 then
+  begin
     FWidths.ListWidth := TAtlasPluginSettings.MinListWidth + 160;
+  end;
 end;
 
 procedure TAtlasSettingsPage.ServerBrowseClick(Sender: TObject);
@@ -7563,11 +8257,17 @@ begin
     Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
     Dialog.Options := Dialog.Options + [ofFileMustExist];
     if Trim(FServerPath.Text) <> '' then
-      Dialog.FileName := Trim(FServerPath.Text)
+    begin
+      Dialog.FileName := Trim(FServerPath.Text);
+    end
     else if FDefaultServerPath <> '' then
+    begin
       Dialog.InitialDir := ExtractFilePath(FDefaultServerPath);
+    end;
     if Dialog.Execute then
+    begin
       FServerPath.Text := Dialog.FileName;
+    end;
   finally
     Dialog.Free;
   end;
@@ -7576,7 +8276,9 @@ end;
 procedure TAtlasSettingsPage.ResetHistoryClick(Sender: TObject);
 begin
   if Assigned(FOnResetHistory) then
+  begin
     FOnResetHistory();
+  end;
   Allow(FResetHistory, False);
 end;
 
@@ -7589,13 +8291,17 @@ var
 begin
   Commands := nil;
   if Assigned(FOnToolbarCommands) then
+  begin
     Commands := FOnToolbarCommands();
+  end;
   Config.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
   Config.Labels := FEditorToolbarLabels.Checked;
   Config.Position := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
     High(AtlasToolbarPositions))];
   if not TAtlasToolbarCustomizeDialog.Execute(Commands, Config) then
+  begin
     Exit;
+  end;
   FEditorToolbarItems.Text := TAtlasToolbarItems.Format(Config.Items);
   FEditorToolbarLabels.Checked := Config.Labels;
   FEditorToolbarPosition.Choice := Max(0, IndexText(Config.Position, AtlasToolbarPositions));
@@ -7645,7 +8351,9 @@ end;
 procedure TAtlasSettingsPage.TeamFileOpenClick(Sender: TObject);
 begin
   if Assigned(FOnOpenTeamFile) then
+  begin
     FOnOpenTeamFile();
+  end;
   RefreshTeamFile;
 end;
 
@@ -7666,16 +8374,26 @@ begin
   // Ausgeschaltet wird die Datei nicht gelesen.
   Team := TAtlasTeamFile.Empty;
   if FTeamFile.Checked and Assigned(FOnTeamFile) then
+  begin
     Team := FOnTeamFile();
+  end;
   FTeamSnippets.Caption := '';
   if Team.Valid and (Team.Snippets <> '') then
+  begin
     FTeamSnippets.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamSnippets, [Team.Snippets]);
+  end;
   if not FTeamFile.Checked then
-    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff)]
+  begin
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff)];
+  end
   else if Team.Project = '' then
-    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject)]
+  begin
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject)];
+  end
   else if not Team.Exists then
-    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileMissing)]
+  begin
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileMissing)];
+  end
   else
   begin
     Lines := [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [Team.FileName])];
@@ -7684,21 +8402,29 @@ begin
       // Mit Zeile und Spalte, wenn bekannt: Dort steht der Fehler im JSON.
       InvalidText := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid);
       for Issue in Team.Issues do
+      begin
         if (Issue.Kind = TAtlasTeamIssueKind.Syntax) and (Issue.Line > 0) then
         begin
           InvalidText := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileInvalidAt, [Issue.Line, Issue.Column]);
           Break;
         end;
+      end;
       Lines := Lines + [InvalidText];
     end
     else
     begin
       for Value in TAtlasTeamFile.Values(Team) do
+      begin
         Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue, [Value.Key, Value.Value])];
+      end;
       if Length(Lines) = 1 then
+      begin
         Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoValues)];
+      end;
       if Length(Team.Issues) > 0 then
+      begin
         Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [Length(Team.Issues)])];
+      end;
     end;
   end;
   FTeamFileInfo.Caption := string.Join(sLineBreak, Lines);

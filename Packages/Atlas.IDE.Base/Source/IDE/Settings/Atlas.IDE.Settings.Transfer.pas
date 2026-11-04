@@ -102,7 +102,9 @@ end;
 class function TAtlasIdeSettingsTransfer.Catalog: TAtlasSettingsCatalog;
 begin
   if FCatalog = nil then
+  begin
     FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  end;
   Result := FCatalog;
 end;
 
@@ -148,17 +150,23 @@ begin
   ATeam := '';
   Project := TAtlasIdeTeamFile.ActiveProject;
   if Project = '' then
+  begin
     Exit;
+  end;
   FileName := TAtlasProjectSetups.ExistingConfig(Project,
     function(const AFileName: string): Boolean
     begin
       Result := FileExists(AFileName);
     end);
   if FileName <> '' then
+  begin
     ReadText(FileName, AProject);
+  end;
   FileName := TAtlasIdeTeamFile.LocateFor(Project);
   if FileName <> '' then
+  begin
     ReadText(FileName, ATeam);
+  end;
 end;
 
 class function TAtlasIdeSettingsTransfer.Save(const AState: TAtlasSettingsState): Boolean;
@@ -185,15 +193,21 @@ begin
     // Ältere Sicherungen aufräumen.
     Files := nil;
     for Old in TDirectory.GetFiles(BackupFolder, TAtlasSettingsTransfer.BackupPrefix + '*.json') do
+    begin
       Files := Files + [ExtractFileName(Old)];
+    end;
     for Old in TAtlasSettingsTransfer.BackupsToDelete(Files, TAtlasSettingsTransfer.KeepBackups) do
+    begin
       System.SysUtils.DeleteFile(TPath.Combine(BackupFolder, Old));
+    end;
   except
     on E: Exception do
       // Scheitert nur das Aufräumen, gilt die Sicherung trotzdem.
       if not Result then
+      begin
         MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.SettingsTransferFailed, [E.Message]), TMsgDlgType.mtError,
           [TMsgDlgBtn.mbOK], 0);
+      end;
   end;
 end;
 
@@ -207,9 +221,13 @@ var
 begin
   Options := TAtlasExportOptions.Create(nil, smOmit);
   if ACurrent.SettingsExportSecrets = 'placeholder' then
+  begin
     Options.Secrets := smPlaceholder;
+  end;
   if not TAtlasExportDialog.Execute(Catalog, Options, nil) then
+  begin
     Exit;
+  end;
   Dialog := TSaveDialog.Create(nil);
   try
     Dialog.FileName := TAtlasSettingsTransfer.FileName;
@@ -217,7 +235,9 @@ begin
     Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if not Dialog.Execute then
+    begin
       Exit;
+    end;
     try
       Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), Options, Macros());
       WriteText(Dialog.FileName, Export_.Text);
@@ -234,12 +254,16 @@ begin
     begin
       Keys := '';
       for Omission in Export_.Omitted do
+      begin
         Keys := Keys + ', ' + Omission.Key;
+      end;
       Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportOmitted, [Copy(Keys, 3, MaxInt)]);
     end;
     if Length(Export_.Placeholders) > 0 then
+    begin
       Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsExportPlaceholders,
         [string.Join(', ', Export_.Placeholders)]);
+    end;
     Inform(Message);
   finally
     Dialog.Free;
@@ -295,9 +319,13 @@ begin
   Descriptions := Descriptions + [''];
   Result := TAtlasProfileDialog.Choose(Names, Descriptions, Index, nil);
   if not Result then
+  begin
     Exit;
+  end;
   if Index > High(Files) then
+  begin
     Exit(ChooseFile(AText, AFileName));
+  end;
   AFileName := Files[Index];
   AText := AtlasProfileJson(AFileName);
 end;
@@ -323,14 +351,17 @@ begin
   end;
   Current := State(ACurrent);
   ProjectTexts(ProjectText, TeamText);
-  Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasSettingsTransfer.ModeOf(Source), nil,
-    Macros(), ProjectText, TeamText);
+  Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source,
+    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(Source), nil, Macros(), ProjectText, TeamText));
   if not TAtlasImportDialog.Execute(Catalog, AFileName, Preview,
     function(AMode: TAtlasImportMode; const AAreas: TArray<string>): TAtlasImportPreview
     begin
-      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, AMode, AAreas, Macros(), ProjectText, TeamText);
+      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasImportOptions.Create(AMode, AAreas,
+        Macros(), ProjectText, TeamText));
     end, nil) then
+  begin
     Exit;
+  end;
   Count := Preview.SelectedCount;
   if Count = 0 then
   begin
@@ -340,14 +371,18 @@ begin
   // Vor jedem Import sichern (settings.backupBeforeImport); ohne Sicherung kein Import.
   BackupFile := '';
   if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, BackupFile) then
+  begin
     Exit;
+  end;
   Next := TAtlasSettingsTransfer.Apply(Catalog, Current, Preview);
   Save(Next);
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
   Message := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportDone, [Count]);
   if BackupFile <> '' then
+  begin
     Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [BackupFile]);
+  end;
   Inform(Message);
 end;
 
@@ -359,9 +394,13 @@ var
 begin
   AResult := ACurrent;
   if AProfile then
-    Chosen := ChooseProfile(Text, FileName)
+  begin
+    Chosen := ChooseProfile(Text, FileName);
+  end
   else
+  begin
     Chosen := ChooseFile(Text, FileName);
+  end;
   Result := Chosen and Import(ACurrent, Text, FileName, AResult);
 end;
 
@@ -374,16 +413,22 @@ begin
   Result := False;
   if MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllConfirm), TMsgDlgType.mtConfirmation,
     [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0, TMsgDlgBtn.mbNo) <> mrYes then
+  begin
     Exit;
+  end;
   BackupFile := '';
   if ACurrent.SettingsBackupBeforeImport and not Backup(ACurrent, BackupFile) then
+  begin
     Exit;
+  end;
   Save(TAtlasSettingsTransfer.ResetAll(Catalog, State(ACurrent)));
   AResult := TAtlasIdeSettings.Stored;
   Result := True;
   Message := TAtlasStrings.Text(TAtlasTextId.SettingsResetAllDone);
   if BackupFile <> '' then
+  begin
     Message := Message + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsBackupDone, [BackupFile]);
+  end;
   Inform(Message);
 end;
 

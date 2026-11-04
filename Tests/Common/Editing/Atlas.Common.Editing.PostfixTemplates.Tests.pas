@@ -146,15 +146,17 @@ begin
   Traits.TypeName := 'TStringList';
   Template := Default(TPostfixTemplate);
   Template.Key := 'try';
-  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', '  ', #10, Traits, True, False);
+  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', Traits,
+    TPostfixLayout.Create('  ', #10, True, False));
   Assert.AreEqual('var StringList := TStringList.Create;'#10'  try'#10'    '#10'  finally'#10 +
     '    StringList.Free;'#10'  end;', Expansion.Text);
   Assert.AreEqual('', Expansion.Declaration);
-  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', '  ', #10, Traits, False, False);
+  Expansion := TPostfixTemplates.Expand(Template, 'TStringList.Create', Traits,
+    TPostfixLayout.Create('  ', #10, False, False));
   Assert.IsTrue(Expansion.Text.StartsWith('StringList := TStringList.Create;'));
   Assert.AreEqual('StringList: TStringList;', Expansion.Declaration);
   Template.Key := 'var';
-  Expansion := TPostfixTemplates.Expand(Template, 'Liste', '  ', #10, Traits, False, False);
+  Expansion := TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('  ', #10, False, False));
   Assert.AreEqual('StringList := Liste;', Expansion.Text);
   Assert.AreEqual('StringList: TStringList;', Expansion.Declaration);
 end;
@@ -168,16 +170,17 @@ begin
   Template := Default(TPostfixTemplate);
   Template.Key := 'for';
   Assert.AreEqual('for var ${1:Item} in Liste do'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'Liste', '', #10, Traits, True, True).Text);
+    TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('', #10, True, True)).Text);
   // Klassisch kein Platzhalter für den Namen, der auch in der Deklaration steht.
   Assert.AreEqual('for Item in Liste do'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'Liste', '', #10, Traits, False, True).Text);
+    TPostfixTemplates.Expand(Template, 'Liste', Traits, TPostfixLayout.Create('', #10, False, True)).Text);
   Template.Key := 'fmt';
-  Assert.AreEqual('Format(S, [$0])', TPostfixTemplates.Expand(Template, 'S', '', #10, Traits, True, True).Text);
+  Assert.AreEqual('Format(S, [$0])', TPostfixTemplates.Expand(Template, 'S', Traits,
+    TPostfixLayout.Create('', #10, True, True)).Text);
   // Der Ausdruck wird maskiert.
   Template.Key := 'notnil';
   Assert.AreEqual('if Assigned(A\\\$B) then'#10'  $0',
-    TPostfixTemplates.Expand(Template, 'A\$B', '', #10, Traits, True, True).Text);
+    TPostfixTemplates.Expand(Template, 'A\$B', Traits, TPostfixLayout.Create('', #10, True, True)).Text);
   Assert.AreEqual('a\\b\$c\}', TPostfixTemplates.Escape('a\b$c}'));
 end;
 

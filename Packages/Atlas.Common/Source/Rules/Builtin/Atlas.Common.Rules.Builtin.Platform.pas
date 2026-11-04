@@ -464,35 +464,56 @@ var
     end;
   end;
 
-  // Empfänger.DefaultEncoding := … in der Datei oder Laden mit Kodierung vor ACall in derselben Routine.
-  function EncodingKnown(ACall: TSyntaxNode; const AReceiver: string): Boolean;
-  var
-    Node, Routine: TSyntaxNode;
+  // X.DefaultEncoding := …
+  function IsDefaultEncodingAssign(ANode: TSyntaxNode): Boolean;
   begin
-    for Node in NodesOf(AContext.Tree.Root, False) do
+    Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'DefaultEncoding') and
+      (ANode[0].ChildCount = 1);
+  end;
+
+  // X.LoadFrom…(Datei, Kodierung)
+  function IsLoadWithEncoding(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and StartsText('LoadFrom', ANode[0].Name) and
+      (ANode[0].ChildCount = 1);
+  end;
+
+  // LoadFromFile(Datei, Kodierung) vor ACall in derselben Routine merkt sich die Kodierung für SaveToFile.
+  function LoadedWithEncoding(ACall: TSyntaxNode; const AReceiver: string): Boolean;
+  var
+    mNode, mRoutine: TSyntaxNode;
+  begin
+    Result := False;
+    mRoutine := RoutineOf(ACall);
+    if mRoutine = nil then
     begin
-      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-        (Node[0].Kind = TSyntaxKind.MemberAccess) and SameText(Node[0].Name, 'DefaultEncoding') and
-        (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
+      Exit;
+    end;
+    for mNode in NodesOf(mRoutine, True) do
+    begin
+      if IsLoadWithEncoding(mNode) and (mNode.StartOffset < ACall.StartOffset) and
+        SameText(NodeText(AContext, mNode[0][0]), AReceiver) then
       begin
         Exit(True);
       end;
     end;
-    Routine := RoutineOf(ACall);
-    if Routine <> nil then
+  end;
+
+  // Empfänger.DefaultEncoding := … in der Datei oder Laden mit Kodierung vor ACall in derselben Routine.
+  function EncodingKnown(ACall: TSyntaxNode; const AReceiver: string): Boolean;
+  var
+    mNode: TSyntaxNode;
+  begin
+    for mNode in NodesOf(AContext.Tree.Root, False) do
     begin
-      // LoadFromFile(Datei, Kodierung) merkt sich die Kodierung für SaveToFile.
-      for Node in NodesOf(Routine, True) do
+      if IsDefaultEncodingAssign(mNode) and SameText(NodeText(AContext, mNode[0][0]), AReceiver) then
       begin
-        if (Node.Kind = TSyntaxKind.Call) and (Node.StartOffset < ACall.StartOffset) and (Node.ChildCount = 3) and
-          (Node[0].Kind = TSyntaxKind.MemberAccess) and StartsText('LoadFrom', Node[0].Name) and
-          (Node[0].ChildCount = 1) and SameText(NodeText(AContext, Node[0][0]), AReceiver) then
-        begin
-          Exit(True);
-        end;
+        Exit(True);
       end;
     end;
-    Result := False;
+    Result := LoadedWithEncoding(ACall, AReceiver);
   end;
 
   function Fix(ACall: TSyntaxNode): TArray<TRuleFix>;
@@ -625,13 +646,39 @@ var
     end;
   end;
 
+  // Schreibt ein späteres Ereignis über AReceiver, bevor ein neuer RootKey sicher gilt?
+  function WrittenLater(const AEvents: TArray<TSyntaxNode>; AIndex: Integer; const AReceiver: string): Boolean;
+  var
+    mLater: Integer;
+    mAssign, mEvent: TSyntaxNode;
+  begin
+    Result := False;
+    mAssign := AEvents[AIndex];
+    for mLater := AIndex + 1 to High(AEvents) do
+    begin
+      mEvent := AEvents[mLater];
+      // Ein neuer RootKey, der immer mit dieser Zuweisung übersetzt wird, gilt für alles danach.
+      if IsRootKeyAssign(mEvent) then
+      begin
+        if SameText(NodeText(AContext, mEvent[0][0]), AReceiver) and
+          TConditionalBranches.Implies(PathOf(Paths, Tokens, mEvent), PathOf(Paths, Tokens, mAssign)) then
+        begin
+          Exit;
+        end;
+      end
+      else if SameText(WriteReceiver(mEvent), AReceiver) and
+        not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, mEvent), PathOf(Paths, Tokens, mAssign)) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+
   procedure CheckRoutine(ARoutine: TSyntaxNode);
   var
     Events: TArray<TSyntaxNode>;
-    Index, Later: Integer;
+    Index: Integer;
     Assign, Event: TSyntaxNode;
-    Receiver: string;
-    Written: Boolean;
   begin
     // Zuweisungen an RootKey und schreibende Aufrufe in Reihenfolge des Quelltexts.
     Events := nil;
@@ -650,28 +697,7 @@ var
       begin
         Continue;
       end;
-      Receiver := NodeText(AContext, Assign[0][0]);
-      Written := False;
-      for Later := Index + 1 to High(Events) do
-      begin
-        Event := Events[Later];
-        // Ein neuer RootKey, der immer mit dieser Zuweisung übersetzt wird, gilt für alles danach.
-        if IsRootKeyAssign(Event) then
-        begin
-          if SameText(NodeText(AContext, Event[0][0]), Receiver) and
-            TConditionalBranches.Implies(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
-          begin
-            Break;
-          end;
-        end
-        else if SameText(WriteReceiver(Event), Receiver) and
-          not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Event), PathOf(Paths, Tokens, Assign)) then
-        begin
-          Written := True;
-          Break;
-        end;
-      end;
-      if Written then
+      if WrittenLater(Events, Index, NodeText(AContext, Assign[0][0])) then
       begin
         AReport.Add(NodeRange(Assign[1]), 'Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ' +
           'ohne sie schlägt es fehl oder landet in der Virtualisierung.', TRuleConfidence.High,
@@ -713,6 +739,334 @@ type
     Node: TSyntaxNode;
   end;
 
+  /// <summary>Lauf der Regel über die Routinen einer Unit; FStarts gilt für die gerade geprüfte Routine.</summary>
+  TNowElapsedScan = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FPaths: TArray<string>;
+    FRoutine: TSyntaxNode;
+    FStarts: TArray<TNowStart>;
+    procedure CollectStarts;
+    function StartOf(ANode, AAt: TSyntaxNode): Integer;
+    function MeasuredStart(ANode: TSyntaxNode): Integer;
+    function IsUniqueStart(AStart: Integer): Boolean;
+    function StartDecl(AStart: Integer; out ATypeNode: TSyntaxNode): Boolean;
+    function IsStopwatchMeasure(ANode: TSyntaxNode; const AName: string): Boolean;
+    function CollectMeasured(AStart: Integer; out AMeasured: TArray<TSyntaxNode>): Boolean;
+    function FreeName(const AName: string): string;
+    function RenameEdits(const AName, ANewName: string; const AMeasured: TArray<TSyntaxNode>): TArray<TRuleEdit>;
+    function Fixes(AStart: Integer): TArray<TRuleFix>;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure CheckRoutine(ARoutine: TSyntaxNode);
+  end;
+
+// Now, Now() oder SysUtils.Now
+function IsNow(ANode: TSyntaxNode): Boolean;
+begin
+  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
+  begin
+    ANode := ANode[0];
+  end;
+  Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
+end;
+
+// MilliSecondsBetween(Now, …) und Verwandte, die TStopwatch ersetzen kann.
+function IsStopwatchCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+    (IndexText(ANode[0].Name, StopwatchFunctions) >= 0) and IsNow(ANode[1]);
+end;
+
+function InsideAny(AOffset: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in ANodes do
+  begin
+    if (AOffset >= mNode.StartOffset) and (AOffset < mNode.EndOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+{ TNowElapsedScan }
+
+constructor TNowElapsedScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FTokens := AContext.Tree.Tokens;
+  FPaths := TConditionalBranches.Paths(FTokens);
+end;
+
+procedure TNowElapsedScan.CollectStarts;
+var
+  mNode: TSyntaxNode;
+  mItem: TNowStart;
+begin
+  FStarts := nil;
+  for mNode in NodesOf(FRoutine, True) do
+  begin
+    mItem.Node := mNode;
+    if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+      (mNode[0].Kind = TSyntaxKind.Identifier) and IsNow(mNode[1]) then
+    begin
+      mItem.Name := mNode[0].Name;
+      FStarts := FStarts + [mItem];
+    end
+    else if (mNode.Kind = TSyntaxKind.InlineVar) and (Pos(',', mNode.Name) = 0) and (mNode.ChildCount > 0) and
+      IsNow(mNode[mNode.ChildCount - 1]) then
+    begin
+      mItem.Name := mNode.Name;
+      FStarts := FStarts + [mItem];
+    end;
+  end;
+end;
+
+procedure TNowElapsedScan.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mMeasures: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  FRoutine := ARoutine;
+  CollectStarts;
+  if FStarts = nil then
+  begin
+    Exit;
+  end;
+  // Teilausdrücke einer Messung nicht noch einmal melden.
+  mMeasures := nil;
+  for mNode in NodesOf(ARoutine, True) do
+  begin
+    if not InsideAny(mNode.StartOffset, mMeasures) and (MeasuredStart(mNode) >= 0) then
+    begin
+      mMeasures := mMeasures + [mNode];
+    end;
+  end;
+  for mNode in mMeasures do
+  begin
+    FReport.Add(NodeRange(mNode), 'Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig ' +
+      'von der Uhrzeit.', TRuleConfidence.High, Fixes(MeasuredStart(mNode)));
+  end;
+end;
+
+// Variable AName, der vor AAt in einem nicht ausschließenden Zweig Now zugewiesen wurde: Index, sonst -1.
+function TNowElapsedScan.StartOf(ANode, AAt: TSyntaxNode): Integer;
+var
+  mItem: Integer;
+begin
+  Result := -1;
+  if ANode.Kind <> TSyntaxKind.Identifier then
+  begin
+    Exit;
+  end;
+  for mItem := 0 to High(FStarts) do
+  begin
+    if SameText(FStarts[mItem].Name, ANode.Name) and (FStarts[mItem].Node.StartOffset < AAt.StartOffset) and
+      not TConditionalBranches.Exclusive(PathOf(FPaths, FTokens, FStarts[mItem].Node), PathOf(FPaths, FTokens, AAt)) then
+    begin
+      Result := mItem;
+    end;
+  end;
+end;
+
+// Now - Start, Ende - Start, MilliSecondsBetween(Now, Start): Index des Starts, sonst -1.
+function TNowElapsedScan.MeasuredStart(ANode: TSyntaxNode): Integer;
+var
+  mA, mB: TSyntaxNode;
+begin
+  Result := -1;
+  if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 2) then
+  begin
+    mA := ANode[0];
+    mB := ANode[1];
+  end
+  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+    MatchText(ANode[0].Name, BetweenFunctions) then
+  begin
+    mA := ANode[1];
+    mB := ANode[2];
+  end
+  else
+  begin
+    Exit;
+  end;
+  if IsNow(mA) or (StartOf(mA, ANode) >= 0) then
+  begin
+    Result := StartOf(mB, ANode);
+  end;
+  if (Result < 0) and (IsNow(mB) or (StartOf(mB, ANode) >= 0)) then
+  begin
+    Result := StartOf(mA, ANode);
+  end;
+end;
+
+// Nur eine Zuweisung von Now an die Variable.
+function TNowElapsedScan.IsUniqueStart(AStart: Integer): Boolean;
+var
+  mItem: Integer;
+begin
+  for mItem := 0 to High(FStarts) do
+  begin
+    if (mItem <> AStart) and SameText(FStarts[mItem].Name, FStarts[AStart].Name) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+// Lokale TDateTime-Variable (var-Abschnitt mit Typ oder die Inline-Variable des Starts selbst).
+function TNowElapsedScan.StartDecl(AStart: Integer; out ATypeNode: TSyntaxNode): Boolean;
+var
+  mDecl, mNode: TSyntaxNode;
+begin
+  ATypeNode := nil;
+  mDecl := nil;
+  for mNode in NodesOf(FRoutine, True) do
+  begin
+    if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) and SameText(mNode.Name, FStarts[AStart].Name) then
+    begin
+      mDecl := mNode;
+    end;
+  end;
+  if mDecl = nil then
+  begin
+    Exit(False);
+  end;
+  ATypeNode := mDecl.FindChild(TSyntaxKind.TypeReference);
+  if ATypeNode <> nil then
+  begin
+    Result := SameText(ATypeNode.Name, 'TDateTime');
+  end
+  else
+  begin
+    Result := mDecl.Kind = TSyntaxKind.InlineVar;
+  end;
+  if Result and (mDecl.Kind = TSyntaxKind.InlineVar) then
+  begin
+    Result := mDecl = FStarts[AStart].Node;
+  end;
+end;
+
+// MilliSecondsBetween(Now, AName) und Verwandte.
+function TNowElapsedScan.IsStopwatchMeasure(ANode: TSyntaxNode; const AName: string): Boolean;
+begin
+  Result := IsStopwatchCall(ANode) and (ANode[2].Kind = TSyntaxKind.Identifier) and SameText(ANode[2].Name, AName);
+end;
+
+// Jede andere Erwähnung muss eine Messung sein, die sich umschreiben lässt.
+function TNowElapsedScan.CollectMeasured(AStart: Integer; out AMeasured: TArray<TSyntaxNode>): Boolean;
+var
+  mNode, mStartNode: TSyntaxNode;
+  mName: string;
+begin
+  AMeasured := nil;
+  mName := FStarts[AStart].Name;
+  mStartNode := FStarts[AStart].Node;
+  for mNode in NodesOf(FRoutine, True) do
+  begin
+    if InsideAny(mNode.StartOffset, AMeasured) then
+    begin
+      Continue;
+    end;
+    if IsStopwatchMeasure(mNode, mName) then
+    begin
+      AMeasured := AMeasured + [mNode];
+    end
+    else if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, mName) and
+      not ((mNode.Parent = mStartNode) and (mNode.Parent[0] = mNode)) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := AMeasured <> nil;
+end;
+
+// Wie im Issue heißt Start danach Uhr, wenn der Name in der Datei frei ist.
+function TNowElapsedScan.FreeName(const AName: string): string;
+var
+  mItem: Integer;
+begin
+  Result := 'Uhr';
+  for mItem := 0 to High(FTokens) do
+  begin
+    if (FTokens[mItem].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mItem].Text, 'Uhr') then
+    begin
+      Exit(AName);
+    end;
+  end;
+end;
+
+function TNowElapsedScan.RenameEdits(const AName, ANewName: string;
+  const AMeasured: TArray<TSyntaxNode>): TArray<TRuleEdit>;
+var
+  mItem: Integer;
+begin
+  Result := nil;
+  for mItem := TokenAt(FTokens, FRoutine.StartOffset) to High(FTokens) do
+  begin
+    if FTokens[mItem].Offset >= FRoutine.EndOffset then
+    begin
+      Break;
+    end;
+    if (FTokens[mItem].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mItem].Text, AName) and
+      not InsideAny(FTokens[mItem].Offset, AMeasured) then
+    begin
+      Result := Result + [TRuleEdit.Create(TTextRange.Create(FTokens[mItem].StartPos, FTokens[mItem].EndPos),
+        ANewName)];
+    end;
+  end;
+end;
+
+// Korrektur nur, wenn Start eine lokale TDateTime-Variable allein für Messungen wie
+// MilliSecondsBetween(Now, Start) ist.
+function TNowElapsedScan.Fixes(AStart: Integer): TArray<TRuleFix>;
+var
+  mTypeNode, mUse, mValue: TSyntaxNode;
+  mMeasured: TArray<TSyntaxNode>;
+  mEdits: TArray<TRuleEdit>;
+  mExtra: TTextEdit;
+  mName, mNewName: string;
+begin
+  Result := nil;
+  if not IsUniqueStart(AStart) or not StartDecl(AStart, mTypeNode) or not CollectMeasured(AStart, mMeasured) then
+  begin
+    Exit;
+  end;
+  mName := FStarts[AStart].Name;
+  mNewName := FreeName(mName);
+  mEdits := nil;
+  if mTypeNode <> nil then
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(NodeRange(mTypeNode), 'TStopwatch')];
+  end;
+  mValue := FStarts[AStart].Node[FStarts[AStart].Node.ChildCount - 1];
+  mEdits := mEdits + [TRuleEdit.Create(NodeRange(mValue), 'TStopwatch.StartNew')];
+  for mUse in mMeasured do
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(NodeRange(mUse), mNewName + '.ElapsedMilliseconds' +
+      StopwatchDivisors[IndexText(mUse[0].Name, StopwatchFunctions)])];
+  end;
+  if not SameText(mNewName, mName) then
+  begin
+    mEdits := mEdits + RenameEdits(mName, mNewName, mMeasured);
+  end;
+  if UsesEdit(FContext, FTokens, FRoutine.StartOffset, 'System.Diagnostics', mExtra) then
+  begin
+    mEdits := mEdits + [mExtra];
+  end;
+  Result := [TRuleFix.Create('In TStopwatch umwandeln', mEdits)];
+end;
+
+{ TNowForElapsedTimeRule }
+
 function TNowForElapsedTimeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(NowForElapsedTimeRuleId, TRuleSeverity.Hint, 'Laufzeit mit Now gemessen');
@@ -720,261 +1074,21 @@ end;
 
 procedure TNowForElapsedTimeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Paths: TArray<string>;
-
-  // Now, Now() oder SysUtils.Now
-  function IsNow(ANode: TSyntaxNode): Boolean;
-  begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
-    begin
-      ANode := ANode[0];
-    end;
-    Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
-  end;
-
-  function InsideAny(AOffset: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
-  var
-    Node: TSyntaxNode;
-  begin
-    for Node in ANodes do
-    begin
-      if (AOffset >= Node.StartOffset) and (AOffset < Node.EndOffset) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure CheckRoutine(ARoutine: TSyntaxNode);
-  var
-    Starts: TArray<TNowStart>;
-    Measures: TArray<TSyntaxNode>;
-    Index, Start: Integer;
-    Found: TArray<TRuleFix>;
-    Node: TSyntaxNode;
-    Item: TNowStart;
-
-    // Variable AName, der vor AAt in einem nicht ausschließenden Zweig Now zugewiesen wurde: Index, sonst -1.
-    function StartOf(ANode, AAt: TSyntaxNode): Integer;
-    var
-      Item: Integer;
-    begin
-      Result := -1;
-      if ANode.Kind <> TSyntaxKind.Identifier then
-      begin
-        Exit;
-      end;
-      for Item := 0 to High(Starts) do
-      begin
-        if SameText(Starts[Item].Name, ANode.Name) and (Starts[Item].Node.StartOffset < AAt.StartOffset) and
-          not TConditionalBranches.Exclusive(PathOf(Paths, Tokens, Starts[Item].Node), PathOf(Paths, Tokens, AAt)) then
-        begin
-          Result := Item;
-        end;
-      end;
-    end;
-
-    // Now - Start, Ende - Start, MilliSecondsBetween(Now, Start): Index des Starts, sonst -1.
-    function MeasuredStart(ANode: TSyntaxNode): Integer;
-    var
-      A, B: TSyntaxNode;
-    begin
-      Result := -1;
-      if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 2) then
-      begin
-        A := ANode[0];
-        B := ANode[1];
-      end
-      else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
-        MatchText(ANode[0].Name, BetweenFunctions) then
-      begin
-        A := ANode[1];
-        B := ANode[2];
-      end
-      else
-      begin
-        Exit;
-      end;
-      if IsNow(A) or (StartOf(A, ANode) >= 0) then
-      begin
-        Result := StartOf(B, ANode);
-      end;
-      if (Result < 0) and (IsNow(B) or (StartOf(B, ANode) >= 0)) then
-      begin
-        Result := StartOf(A, ANode);
-      end;
-    end;
-
-    // Korrektur nur, wenn Start eine lokale TDateTime-Variable allein für Messungen wie
-    // MilliSecondsBetween(Now, Start) ist.
-    function Fixes(AStart: Integer): TArray<TRuleFix>;
-    var
-      Decl, TypeNode, Use, Value, Node: TSyntaxNode;
-      Measured: TArray<TSyntaxNode>;
-      Edits: TArray<TRuleEdit>;
-      Extra: TTextEdit;
-      Name, NewName: string;
-      Item: Integer;
-      Clean: Boolean;
-    begin
-      Result := nil;
-      Name := Starts[AStart].Name;
-      for Item := 0 to High(Starts) do
-      begin
-        if (Item <> AStart) and SameText(Starts[Item].Name, Name) then
-        begin
-          Exit;
-        end;
-      end;
-      Decl := nil;
-      for Node in NodesOf(ARoutine, True) do
-      begin
-        if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) and SameText(Node.Name, Name) then
-        begin
-          Decl := Node;
-        end;
-      end;
-      if Decl = nil then
-      begin
-        Exit;
-      end;
-      TypeNode := Decl.FindChild(TSyntaxKind.TypeReference);
-      if (TypeNode <> nil) and not SameText(TypeNode.Name, 'TDateTime') then
-      begin
-        Exit;
-      end;
-      if (Decl.Kind = TSyntaxKind.VarDecl) and (TypeNode = nil) then
-      begin
-        Exit;
-      end;
-      if (Decl.Kind = TSyntaxKind.InlineVar) and (Decl <> Starts[AStart].Node) then
-      begin
-        Exit;
-      end;
-      // Jede andere Erwähnung muss eine Messung sein, die sich umschreiben lässt.
-      Measured := nil;
-      Clean := True;
-      for Node in NodesOf(ARoutine, True) do
-      begin
-        if InsideAny(Node.StartOffset, Measured) then
-        begin
-          Continue;
-        end;
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 3) and IsQualifiedName(Node[0]) and
-          (IndexText(Node[0].Name, StopwatchFunctions) >= 0) and IsNow(Node[1]) and
-          (Node[2].Kind = TSyntaxKind.Identifier) and SameText(Node[2].Name, Name) then
-        begin
-          Measured := Measured + [Node];
-        end
-        else if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, Name) and
-          not ((Node.Parent = Starts[AStart].Node) and (Node.Parent[0] = Node)) then
-        begin
-          Clean := False;
-        end;
-      end;
-      if not Clean or (Measured = nil) then
-      begin
-        Exit;
-      end;
-      // Wie im Issue heißt Start danach Uhr, wenn der Name in der Datei frei ist.
-      NewName := 'Uhr';
-      for Item := 0 to High(Tokens) do
-      begin
-        if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, NewName) then
-        begin
-          NewName := Name;
-        end;
-      end;
-      Edits := nil;
-      if TypeNode <> nil then
-      begin
-        Edits := Edits + [TRuleEdit.Create(NodeRange(TypeNode), 'TStopwatch')];
-      end;
-      Value := Starts[AStart].Node[Starts[AStart].Node.ChildCount - 1];
-      Edits := Edits + [TRuleEdit.Create(NodeRange(Value), 'TStopwatch.StartNew')];
-      for Use in Measured do
-      begin
-        Edits := Edits + [TRuleEdit.Create(NodeRange(Use), NewName + '.ElapsedMilliseconds' +
-          StopwatchDivisors[IndexText(Use[0].Name, StopwatchFunctions)])];
-      end;
-      if not SameText(NewName, Name) then
-      begin
-        for Item := TokenAt(Tokens, ARoutine.StartOffset) to High(Tokens) do
-        begin
-          if Tokens[Item].Offset >= ARoutine.EndOffset then
-          begin
-            Break;
-          end;
-          if (Tokens[Item].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Item].Text, Name) and
-            not InsideAny(Tokens[Item].Offset, Measured) then
-          begin
-            Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Item].StartPos, Tokens[Item].EndPos),
-              NewName)];
-          end;
-        end;
-      end;
-      if UsesEdit(AContext, Tokens, ARoutine.StartOffset, 'System.Diagnostics', Extra) then
-      begin
-        Edits := Edits + [Extra];
-      end;
-      Result := [TRuleFix.Create('In TStopwatch umwandeln', Edits)];
-    end;
-
-  begin
-    Starts := nil;
-    Measures := nil;
-    for Node in NodesOf(ARoutine, True) do
-    begin
-      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-        (Node[0].Kind = TSyntaxKind.Identifier) and IsNow(Node[1]) then
-      begin
-        Item.Name := Node[0].Name;
-        Item.Node := Node;
-        Starts := Starts + [Item];
-      end
-      else if (Node.Kind = TSyntaxKind.InlineVar) and (Pos(',', Node.Name) = 0) and (Node.ChildCount > 0) and
-        IsNow(Node[Node.ChildCount - 1]) then
-      begin
-        Item.Name := Node.Name;
-        Item.Node := Node;
-        Starts := Starts + [Item];
-      end;
-    end;
-    if Starts = nil then
-    begin
-      Exit;
-    end;
-    // Teilausdrücke einer Messung nicht noch einmal melden.
-    for Node in NodesOf(ARoutine, True) do
-    begin
-      if not InsideAny(Node.StartOffset, Measures) and (MeasuredStart(Node) >= 0) then
-      begin
-        Measures := Measures + [Node];
-      end;
-    end;
-    for Index := 0 to High(Measures) do
-    begin
-      Start := MeasuredStart(Measures[Index]);
-      Found := Fixes(Start);
-      AReport.Add(NodeRange(Measures[Index]), 'Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig ' +
-        'von der Uhrzeit.', TRuleConfidence.High, Found);
-    end;
-  end;
-
-var
-  Routine: TSyntaxNode;
+  mScan: TNowElapsedScan;
+  mRoutine: TSyntaxNode;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
-  for Routine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
-  begin
-    CheckRoutine(Routine);
+  mScan := TNowElapsedScan.Create(AContext, AReport);
+  try
+    for mRoutine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
+    begin
+      mScan.CheckRoutine(mRoutine);
+    end;
+  finally
+    mScan.Free;
   end;
 end;
 

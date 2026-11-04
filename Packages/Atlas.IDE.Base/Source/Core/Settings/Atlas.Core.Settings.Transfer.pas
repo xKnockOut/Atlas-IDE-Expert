@@ -136,6 +136,22 @@ type
     function Selectable: Boolean;
   end;
 
+  /// <summary>Wie importiert wird: Modus, Bereiche (leer = die der Datei, sonst alle), Umgebung für die
+  /// Pfadmakros und atlas.json bzw. .atlas des aktiven Projekts ('' ohne).</summary>
+  TAtlasImportOptions = record
+    Mode: TAtlasImportMode;
+    Areas: TArray<string>;
+    Environment: TAtlasSettingsEnvironment;
+    ProjectText: string;
+    TeamText: string;
+    /// <summary>Ohne Projekt.</summary>
+    class function Create(AMode: TAtlasImportMode; const AAreas: TArray<string>;
+      const AEnvironment: TAtlasSettingsEnvironment): TAtlasImportOptions; overload; static;
+    class function Create(AMode: TAtlasImportMode; const AAreas: TArray<string>;
+      const AEnvironment: TAtlasSettingsEnvironment; const AProjectText, ATeamText: string): TAtlasImportOptions;
+      overload; static;
+  end;
+
   TAtlasImportPreview = record
     Source: TAtlasSettingsFile;
     Mode: TAtlasImportMode;
@@ -187,11 +203,9 @@ type
       const AOptions: TAtlasExportOptions; const AEnvironment: TAtlasSettingsEnvironment): TAtlasExportResult; static;
     /// <summary>Liest eine Exportdatei; ältere Dateien ohne "settings" gelten als flache Liste.</summary>
     class function ParseFile(const AText: string): TAtlasSettingsFile; static;
-    /// <summary>Vorschau des Imports. AAreas leer = Bereiche der Datei (sonst alle). AProjectText und
-    /// ATeamText: atlas.json und .atlas des aktiven Projekts ('' ohne).</summary>
+    /// <summary>Vorschau des Imports mit AOptions.</summary>
     class function Preview(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
-      const AFile: TAtlasSettingsFile; AMode: TAtlasImportMode; const AAreas: TArray<string>;
-      const AEnvironment: TAtlasSettingsEnvironment; const AProjectText, ATeamText: string): TAtlasImportPreview; static;
+      const AFile: TAtlasSettingsFile; const AOptions: TAtlasImportOptions): TAtlasImportPreview; static;
     /// <summary>Übernimmt die gewählten Einträge der Vorschau.</summary>
     class function Apply(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
       const APreview: TAtlasImportPreview): TAtlasSettingsState; static;
@@ -235,9 +249,13 @@ end;
 function BoolJson(AValue: Boolean): string;
 begin
   if AValue then
-    Result := 'true'
+  begin
+    Result := 'true';
+  end
   else
+  begin
     Result := 'false';
+  end;
 end;
 
 function Contains(const AList: TArray<string>; const AValue: string): Boolean;
@@ -246,8 +264,12 @@ var
 begin
   Result := False;
   for Item in AList do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function LastSegment(const AKey: string): string;
@@ -256,15 +278,21 @@ var
 begin
   Result := AKey;
   for Index := Length(AKey) downto 1 do
+  begin
     if AKey[Index] = '.' then
+    begin
       Exit(Copy(AKey, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 function TrimSlash(const APath: string): string;
 begin
   Result := APath;
   while (Result <> '') and ((Result[Length(Result)] = '\') or (Result[Length(Result)] = '/')) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 /// <summary>Endet ein Pfadstück an APos (Trenner, Ende, Anführungszeichen, Leerraum, ;)?</summary>
@@ -286,7 +314,9 @@ begin
   repeat
     Found := Pos(Needle, Copy(Lower, Start, MaxInt));
     if Found = 0 then
+    begin
       Break;
+    end;
     Found := Found + Start - 1;
     if AtBoundary(AText, Found + Length(Needle)) then
     begin
@@ -310,17 +340,23 @@ var
 begin
   Result := False;
   if AUser = '' then
+  begin
     Exit;
+  end;
   Lower := LowerCase(AText);
   Needle := LowerCase(AUser);
   Start := 1;
   repeat
     Found := Pos(Needle, Copy(Lower, Start, MaxInt));
     if Found = 0 then
+    begin
       Exit;
+    end;
     Found := Found + Start - 1;
     if (Found > 1) and CharInSet(AText[Found - 1], ['\', '/']) and AtBoundary(AText, Found + Length(Needle)) then
+    begin
       Exit(True);
+    end;
     Start := Found + 1;
   until False;
 end;
@@ -340,7 +376,9 @@ function EnvironmentValue(const AEnvironment: TAtlasSettingsEnvironment; const A
 begin
   Result := '';
   if Assigned(AEnvironment) then
+  begin
     Result := AEnvironment(AName);
+  end;
 end;
 
 class function TUserFolders.From(const AEnvironment: TAtlasSettingsEnvironment): TUserFolders;
@@ -373,9 +411,13 @@ var
 begin
   Result := AText;
   for Index := 0 to High(Folders) do
+  begin
     Result := ReplaceFolder(Result, Folders[Index], '$(' + Macros[Index] + ')');
+  end;
   if HasUserName(Result, User) then
+  begin
     AHasUser := True;
+  end;
 end;
 
 function TUserFolders.Expand(const AText: string): string;
@@ -384,7 +426,9 @@ var
 begin
   Result := AText;
   for Index := 0 to High(Folders) do
+  begin
     Result := StringReplace(Result, '$(' + Macros[Index] + ')', Folders[Index], [rfReplaceAll, rfIgnoreCase]);
+  end;
 end;
 
 /// <summary>Kopie von AValue mit allen Strings über AFolders gekürzt (AExpand False) bzw. ausgeschrieben.</summary>
@@ -399,26 +443,36 @@ begin
   if IsText(AValue) then
   begin
     if AExpand then
-      Result := TJSONString.Create(AFolders.Expand(TJSONString(AValue).Value))
+    begin
+      Result := TJSONString.Create(AFolders.Expand(TJSONString(AValue).Value));
+    end
     else
+    begin
       Result := TJSONString.Create(AFolders.Shorten(TJSONString(AValue).Value, AHasUser));
+    end;
   end
   else if AValue is TJSONObject then
   begin
     Obj := TJSONObject.Create;
     for Pair in TJSONObject(AValue) do
+    begin
       Obj.AddPair(Pair.JsonString.Value, MapStrings(Pair.JsonValue, AFolders, AExpand, AHasUser));
+    end;
     Result := Obj;
   end
   else if AValue is TJSONArray then
   begin
     List := TJSONArray.Create;
     for Item in TJSONArray(AValue) do
+    begin
       List.AddElement(MapStrings(Item, AFolders, AExpand, AHasUser));
+    end;
     Result := List;
   end
   else
+  begin
     Result := AValue.Clone as TJSONValue;
+  end;
 end;
 
 /// <summary>Trägt AValue Zugangsdaten? Strings unter einem Schlüssel wie token/password, Adressen mit
@@ -430,18 +484,30 @@ var
 begin
   Result := False;
   if IsText(AValue) then
+  begin
     Result := (TJSONString(AValue).Value <> '') and
-      (AMarked or TTextCheckin.IsCredentialKey(AKey) or TTextCheckin.HasUrlCredentials(TJSONString(AValue).Value))
+      (AMarked or TTextCheckin.IsCredentialKey(AKey) or TTextCheckin.HasUrlCredentials(TJSONString(AValue).Value));
+  end
   else if AValue is TJSONObject then
   begin
     for Pair in TJSONObject(AValue) do
+    begin
       if HasSecret(Pair.JsonValue, Pair.JsonString.Value, AMarked) then
+      begin
         Exit(True);
+      end;
+    end;
   end
   else if AValue is TJSONArray then
+  begin
     for Item in TJSONArray(AValue) do
+    begin
       if HasSecret(Item, AKey, AMarked) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Werte des Stands lesen und schreiben (Plugin über einen Speicher, global über den Text).</summary>
@@ -453,6 +519,9 @@ type
     FText: string;
     FRoot: TJSONObject;
     function Root: TJSONObject;
+    procedure PutGlobal(const AEntry: TAtlasCatalogEntry; const AJson: string);
+    procedure PutDefault(const AEntry: TAtlasCatalogEntry);
+    procedure PutPlugin(const AEntry: TAtlasCatalogEntry; AValue: TJSONValue);
   public
     constructor Create(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState);
     destructor Destroy; override;
@@ -467,7 +536,9 @@ var
 function DefaultValues: IAtlasMemorySettingsStore;
 begin
   if DefaultStore = nil then
+  begin
     DefaultStore := TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults);
+  end;
   Result := DefaultStore;
 end;
 
@@ -487,7 +558,9 @@ begin
         Value := TAtlasJsonValues.Parse(AStore.ReadString(AEntry.Name, ''));
         try
           if (Value is TJSONArray) or (Value is TJSONObject) then
+          begin
             Result := Value.ToJSON;
+          end;
         finally
           Value.Free;
         end;
@@ -514,7 +587,9 @@ end;
 function TStateValues.Root: TJSONObject;
 begin
   if FRoot = nil then
+  begin
     FRoot := TAtlasJsonText.Parse(FText);
+  end;
   Result := FRoot;
 end;
 
@@ -524,55 +599,90 @@ var
 begin
   Entry := FCatalog[AIndex];
   if Entry.Source = asPlugin then
+  begin
     Exit(PluginJson(FStore, Entry));
+  end;
   Result := '';
   if Root <> nil then
+  begin
     Result := TAtlasJsonText.ValueAt(Root, Entry.Key);
+  end;
+end;
+
+procedure TStateValues.PutGlobal(const AEntry: TAtlasCatalogEntry; const AJson: string);
+begin
+  if AJson = '' then
+  begin
+    FText := TAtlasJsonText.Remove(FText, AEntry.Key);
+  end
+  else
+  begin
+    FText := TAtlasJsonText.SetValue(FText, AEntry.Key, AJson);
+  end;
+  FreeAndNil(FRoot);
+end;
+
+procedure TStateValues.PutDefault(const AEntry: TAtlasCatalogEntry);
+begin
+  if AEntry.Kind in [akString, akJson] then
+  begin
+    FStore.WriteString(AEntry.Name, DefaultValues.ReadString(AEntry.Name, ''));
+  end
+  else
+  begin
+    FStore.WriteInteger(AEntry.Name, DefaultValues.ReadInteger(AEntry.Name, 0));
+  end;
+end;
+
+procedure TStateValues.PutPlugin(const AEntry: TAtlasCatalogEntry; AValue: TJSONValue);
+begin
+  case AEntry.Kind of
+    akBoolean:
+      FStore.WriteInteger(AEntry.Name, Ord(IsTrue(AValue)));
+    akInteger:
+      if AValue is TJSONNumber then
+      begin
+        FStore.WriteInteger(AEntry.Name, TJSONNumber(AValue).AsInt);
+      end;
+    akJson:
+      if (AValue is TJSONArray) or (AValue is TJSONObject) then
+      begin
+        FStore.WriteString(AEntry.Name, AValue.ToJSON);
+      end;
+  else
+    if IsText(AValue) then
+    begin
+      FStore.WriteString(AEntry.Name, TJSONString(AValue).Value);
+    end;
+  end;
 end;
 
 procedure TStateValues.Put(AIndex: Integer; const AJson: string);
 var
-  Entry: TAtlasCatalogEntry;
-  Value: TJSONValue;
+  mEntry: TAtlasCatalogEntry;
+  mValue: TJSONValue;
 begin
-  Entry := FCatalog[AIndex];
-  if Entry.Source = asGlobal then
+  mEntry := FCatalog[AIndex];
+  if mEntry.Source = asGlobal then
   begin
-    if AJson = '' then
-      FText := TAtlasJsonText.Remove(FText, Entry.Key)
-    else
-      FText := TAtlasJsonText.SetValue(FText, Entry.Key, AJson);
-    FreeAndNil(FRoot);
-    Exit;
-  end;
+    PutGlobal(mEntry, AJson);
+  end
   // Plugin: '' = Standard.
-  if AJson = '' then
+  else if AJson = '' then
   begin
-    if Entry.Kind in [akString, akJson] then
-      FStore.WriteString(Entry.Name, DefaultValues.ReadString(Entry.Name, ''))
-    else
-      FStore.WriteInteger(Entry.Name, DefaultValues.ReadInteger(Entry.Name, 0));
-    Exit;
-  end;
-  Value := TAtlasJsonValues.Parse(AJson);
-  try
-    if Value = nil then
-      Exit;
-    case Entry.Kind of
-      akBoolean:
-        FStore.WriteInteger(Entry.Name, Ord((Value is TJSONBool) and TJSONBool(Value).AsBoolean));
-      akInteger:
-        if Value is TJSONNumber then
-          FStore.WriteInteger(Entry.Name, TJSONNumber(Value).AsInt);
-      akJson:
-        if (Value is TJSONArray) or (Value is TJSONObject) then
-          FStore.WriteString(Entry.Name, Value.ToJSON);
-    else
-      if IsText(Value) then
-        FStore.WriteString(Entry.Name, TJSONString(Value).Value);
+    PutDefault(mEntry);
+  end
+  else
+  begin
+    mValue := TAtlasJsonValues.Parse(AJson);
+    try
+      if mValue <> nil then
+      begin
+        PutPlugin(mEntry, mValue);
+      end;
+    finally
+      mValue.Free;
     end;
-  finally
-    Value.Free;
   end;
 end;
 
@@ -618,14 +728,36 @@ end;
 
 { TAtlasImportPreview }
 
+{ TAtlasImportOptions }
+
+class function TAtlasImportOptions.Create(AMode: TAtlasImportMode; const AAreas: TArray<string>;
+  const AEnvironment: TAtlasSettingsEnvironment): TAtlasImportOptions;
+begin
+  Result := Create(AMode, AAreas, AEnvironment, '', '');
+end;
+
+class function TAtlasImportOptions.Create(AMode: TAtlasImportMode; const AAreas: TArray<string>;
+  const AEnvironment: TAtlasSettingsEnvironment; const AProjectText, ATeamText: string): TAtlasImportOptions;
+begin
+  Result.Mode := AMode;
+  Result.Areas := AAreas;
+  Result.Environment := AEnvironment;
+  Result.ProjectText := AProjectText;
+  Result.TeamText := ATeamText;
+end;
+
 function TAtlasImportPreview.SelectedCount: Integer;
 var
   Item: TAtlasImportItem;
 begin
   Result := 0;
   for Item in Items do
+  begin
     if Item.Selected and Item.Selectable then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasImportPreview.CountOf(AStatus: TAtlasImportStatus): Integer;
@@ -634,8 +766,12 @@ var
 begin
   Result := 0;
   for Item in Items do
+  begin
     if Item.Status = AStatus then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TAtlasSettingsTransfer }
@@ -656,9 +792,13 @@ end;
 class function TAtlasSettingsTransfer.DefaultJson(ACatalog: TAtlasSettingsCatalog; AIndex: Integer): string;
 begin
   if ACatalog[AIndex].Source = asPlugin then
-    Result := PluginJson(DefaultValues, ACatalog[AIndex])
+  begin
+    Result := PluginJson(DefaultValues, ACatalog[AIndex]);
+  end
   else
+  begin
     Result := ACatalog[AIndex].DefaultJson;
+  end;
 end;
 
 function Modified(ACatalog: TAtlasSettingsCatalog; AValues: TStateValues; AIndex: Integer): Boolean;
@@ -667,11 +807,15 @@ var
 begin
   Result := False;
   if not ACatalog[AIndex].Transferable then
+  begin
     Exit;
+  end;
   Current := AValues.Get(AIndex);
   // settings.json: ein fehlender Schlüssel ist der Standard.
   if Current = '' then
+  begin
     Exit;
+  end;
   Default := TAtlasSettingsTransfer.DefaultJson(ACatalog, AIndex);
   Result := (Default = '') or ((Current <> Default) and not TAtlasJsonValues.Same(Current, Default));
 end;
@@ -699,8 +843,12 @@ begin
   Values := TStateValues.Create(ACatalog, AState);
   try
     for Index := 0 to ACatalog.Count - 1 do
+    begin
       if Modified(ACatalog, Values, Index) then
+      begin
         Result := Result + [ACatalog[Index].Key];
+      end;
+    end;
   finally
     Values.Free;
   end;
@@ -716,8 +864,12 @@ begin
   Values := TStateValues.Create(ACatalog, TAtlasSettingsState.Create(ASettings, ''));
   try
     for Index := 0 to ACatalog.Count - 1 do
+    begin
       if (ACatalog[Index].Source = asPlugin) and Modified(ACatalog, Values, Index) then
+      begin
         Result := Result + [ACatalog[Index].Name];
+      end;
+    end;
   finally
     Values.Free;
   end;
@@ -736,7 +888,9 @@ begin
     begin
       Index := ACatalog.IndexOfName(Name);
       if (Index >= 0) and ACatalog[Index].Transferable then
+      begin
         Values.Put(Index, '');
+      end;
     end;
     Result := Values.State.Plugin;
   finally
@@ -757,7 +911,9 @@ begin
     begin
       Index := ACatalog.IndexOfKey(Key);
       if (Index >= 0) and ACatalog[Index].Transferable then
+      begin
         Values.Put(Index, '');
+      end;
     end;
     Result := Values.State;
   finally
@@ -774,9 +930,13 @@ begin
   Values := TStateValues.Create(ACatalog, AState);
   try
     for Index := 0 to ACatalog.Count - 1 do
+    begin
       if ACatalog[Index].Transferable and Contains(AAreas, ACatalog[Index].Area) and
         Modified(ACatalog, Values, Index) then
+      begin
         Values.Put(Index, '');
+      end;
+    end;
     Result := Values.State;
   finally
     Values.Free;
@@ -797,7 +957,9 @@ begin
   for Index := 0 to High(AItems) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + TAtlasJsonText.Quote(AItems[Index]);
   end;
   Result := Result + ']';
@@ -807,115 +969,165 @@ end;
 function ValueText(AValue: TJSONValue): string;
 begin
   if IsText(AValue) then
-    Result := TAtlasJsonText.Quote(TJSONString(AValue).Value)
+  begin
+    Result := TAtlasJsonText.Quote(TJSONString(AValue).Value);
+  end
   else
+  begin
     Result := AValue.ToJSON;
+  end;
+end;
+
+function ExportAreas(ACatalog: TAtlasSettingsCatalog; const AOptions: TAtlasExportOptions): TArray<string>;
+var
+  mArea: string;
+begin
+  Result := nil;
+  for mArea in ACatalog.AreaIds do
+  begin
+    if (Length(AOptions.Areas) = 0) or Contains(AOptions.Areas, mArea) then
+    begin
+      Result := Result + [mArea];
+    end;
+  end;
+end;
+
+/// <summary>Wert für den Export: in der Sicherung jeder gesetzte, sonst nur geänderte.</summary>
+function ExportCurrent(ACatalog: TAtlasSettingsCatalog; AValues: TStateValues; AIndex: Integer; ABackup: Boolean;
+  out ACurrent: string): Boolean;
+begin
+  ACurrent := '';
+  if not ABackup and not Modified(ACatalog, AValues, AIndex) then
+  begin
+    Exit(False);
+  end;
+  ACurrent := AValues.Get(AIndex);
+  Result := ACurrent <> '';
+end;
+
+procedure AddOmission(var AResult: TAtlasExportResult; const AKey: string; AReason: TAtlasOmitReason);
+var
+  mOmission: TAtlasExportOmission;
+begin
+  mOmission.Key := AKey;
+  mOmission.Reason := AReason;
+  AResult.Omitted := AResult.Omitted + [mOmission];
+end;
+
+/// <summary>Zeile "key": wert der Exportdatei; False, wenn der Wert ausgelassen wird (in AResult vermerkt).
+/// </summary>
+function ExportLine(const AEntry: TAtlasCatalogEntry; AValue: TJSONValue; const AOptions: TAtlasExportOptions;
+  const AFolders: TUserFolders; var AResult: TAtlasExportResult; out ALine: string): Boolean;
+var
+  mMapped: TJSONValue;
+  mHasUser: Boolean;
+begin
+  ALine := '    ' + TAtlasJsonText.Quote(AEntry.Key) + ': ';
+  if AOptions.Backup then
+  begin
+    ALine := ALine + ValueText(AValue);
+    Exit(True);
+  end;
+  if HasSecret(AValue, LastSegment(AEntry.Key), AEntry.Secret) then
+  begin
+    Result := AOptions.Secrets <> smOmit;
+    if Result then
+    begin
+      ALine := ALine + TAtlasJsonText.Quote(TAtlasSettingsTransfer.SecretPlaceholder);
+      AResult.Placeholders := AResult.Placeholders + [AEntry.Key];
+    end
+    else
+    begin
+      AddOmission(AResult, AEntry.Key, orSecret);
+    end;
+    Exit;
+  end;
+  mHasUser := False;
+  mMapped := MapStrings(AValue, AFolders, False, mHasUser);
+  try
+    Result := not mHasUser;
+    if Result then
+    begin
+      ALine := ALine + ValueText(mMapped);
+    end
+    else
+    begin
+      AddOmission(AResult, AEntry.Key, orUserPath);
+    end;
+  finally
+    mMapped.Free;
+  end;
+end;
+
+/// <summary>Inhalt der Exportdatei aus Kopf und Zeilen.</summary>
+function ExportText(ACatalog: TAtlasSettingsCatalog; const AAreas, ALines: TArray<string>; ABackup: Boolean): string;
+var
+  mIndex: Integer;
+begin
+  Result := '{' + #10 +
+    '  "format": ' + TAtlasJsonText.Quote(TAtlasSettingsTransfer.FormatName) + ',' + #10 +
+    '  "formatVersion": ' + IntToStr(TAtlasSettingsTransfer.FormatVersion) + ',' + #10 +
+    '  "schemaVersion": ' + IntToStr(ACatalog.Version) + ',' + #10 +
+    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.Version) + ',' + #10;
+  if ABackup then
+  begin
+    Result := Result + '  "backup": true,' + #10;
+  end;
+  Result := Result + '  "areas": ' + JsonList(AAreas) + ',' + #10 + '  "settings": {';
+  for mIndex := 0 to High(ALines) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + #10 + ALines[mIndex];
+  end;
+  if Length(ALines) > 0 then
+  begin
+    Result := Result + #10 + '  ';
+  end;
+  Result := Result + '}' + #10 + '}' + #10;
 end;
 
 class function TAtlasSettingsTransfer.ExportSettings(ACatalog: TAtlasSettingsCatalog;
   const AState: TAtlasSettingsState; const AOptions: TAtlasExportOptions;
   const AEnvironment: TAtlasSettingsEnvironment): TAtlasExportResult;
 var
-  Values: TStateValues;
-  Folders: TUserFolders;
-  Areas, Lines: TArray<string>;
-  Index: Integer;
-  Entry: TAtlasCatalogEntry;
-  Current: string;
-  Value, Mapped: TJSONValue;
-  HasUser: Boolean;
-  Omission: TAtlasExportOmission;
-  Text: string;
+  mValues: TStateValues;
+  mFolders: TUserFolders;
+  mAreas, mLines: TArray<string>;
+  mIndex: Integer;
+  mCurrent, mLine: string;
+  mValue: TJSONValue;
 begin
   Result := Default(TAtlasExportResult);
-  Folders := TUserFolders.From(AEnvironment);
-  Areas := nil;
-  for Text in ACatalog.AreaIds do
-    if (Length(AOptions.Areas) = 0) or Contains(AOptions.Areas, Text) then
-      Areas := Areas + [Text];
-  Lines := nil;
-  Values := TStateValues.Create(ACatalog, AState);
+  mFolders := TUserFolders.From(AEnvironment);
+  mAreas := ExportAreas(ACatalog, AOptions);
+  mLines := nil;
+  mValues := TStateValues.Create(ACatalog, AState);
   try
-    for Index := 0 to ACatalog.Count - 1 do
+    for mIndex := 0 to ACatalog.Count - 1 do
     begin
-      Entry := ACatalog[Index];
-      if not Contains(Areas, Entry.Area) then
+      if not Contains(mAreas, ACatalog[mIndex].Area) or
+        not ExportCurrent(ACatalog, mValues, mIndex, AOptions.Backup, mCurrent) then
+      begin
         Continue;
-      if AOptions.Backup then
-      begin
-        Current := Values.Get(Index);
-        if Current = '' then
-          Continue;
-      end
-      else
-      begin
-        if not Modified(ACatalog, Values, Index) then
-          Continue;
-        Current := Values.Get(Index);
       end;
-      Value := TAtlasJsonValues.Parse(Current);
-      if Value = nil then
-        Continue;
+      mValue := TAtlasJsonValues.Parse(mCurrent);
       try
-        if AOptions.Backup then
+        if (mValue <> nil) and ExportLine(ACatalog[mIndex], mValue, AOptions, mFolders, Result, mLine) then
         begin
-          Lines := Lines + ['    ' + TAtlasJsonText.Quote(Entry.Key) + ': ' + ValueText(Value)];
-          Continue;
-        end;
-        if HasSecret(Value, LastSegment(Entry.Key), Entry.Secret) then
-        begin
-          if AOptions.Secrets = smOmit then
-          begin
-            Omission.Key := Entry.Key;
-            Omission.Reason := orSecret;
-            Result.Omitted := Result.Omitted + [Omission];
-          end
-          else
-          begin
-            Lines := Lines + ['    ' + TAtlasJsonText.Quote(Entry.Key) + ': ' + TAtlasJsonText.Quote(SecretPlaceholder)];
-            Result.Placeholders := Result.Placeholders + [Entry.Key];
-          end;
-          Continue;
-        end;
-        HasUser := False;
-        Mapped := MapStrings(Value, Folders, False, HasUser);
-        try
-          if HasUser then
-          begin
-            Omission.Key := Entry.Key;
-            Omission.Reason := orUserPath;
-            Result.Omitted := Result.Omitted + [Omission];
-            Continue;
-          end;
-          Lines := Lines + ['    ' + TAtlasJsonText.Quote(Entry.Key) + ': ' + ValueText(Mapped)];
-        finally
-          Mapped.Free;
+          mLines := mLines + [mLine];
         end;
       finally
-        Value.Free;
+        mValue.Free;
       end;
     end;
   finally
-    Values.Free;
+    mValues.Free;
   end;
-  Result.Count := Length(Lines);
-  Text := '{' + #10 +
-    '  "format": ' + TAtlasJsonText.Quote(FormatName) + ',' + #10 +
-    '  "formatVersion": ' + IntToStr(FormatVersion) + ',' + #10 +
-    '  "schemaVersion": ' + IntToStr(ACatalog.Version) + ',' + #10 +
-    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.Version) + ',' + #10;
-  if AOptions.Backup then
-    Text := Text + '  "backup": true,' + #10;
-  Text := Text + '  "areas": ' + JsonList(Areas) + ',' + #10 + '  "settings": {';
-  for Index := 0 to High(Lines) do
-  begin
-    if Index > 0 then
-      Text := Text + ',';
-    Text := Text + #10 + Lines[Index];
-  end;
-  if Length(Lines) > 0 then
-    Text := Text + #10 + '  ';
-  Result.Text := Text + '}' + #10 + '}' + #10;
+  Result.Count := Length(mLines);
+  Result.Text := ExportText(ACatalog, mAreas, mLines, AOptions.Backup);
 end;
 
 function StringField(ARoot: TJSONObject; const AName: string): string;
@@ -925,7 +1137,9 @@ begin
   Result := '';
   Value := ARoot.GetValue(AName);
   if IsText(Value) then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function IntegerField(ARoot: TJSONObject; const AName: string): Integer;
@@ -935,81 +1149,120 @@ begin
   Result := 0;
   Value := ARoot.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt;
+  end;
+end;
+
+procedure AddSettingPairs(ASettings: TJSONObject; var AFile: TAtlasSettingsFile);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in ASettings do
+  begin
+    AFile.Keys := AFile.Keys + [mPair.JsonString.Value];
+    AFile.Values := AFile.Values + [ValueText(mPair.JsonValue)];
+  end;
+end;
+
+function TextItems(AValue: TJSONValue): TArray<string>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AValue) do
+  begin
+    if IsText(mItem) then
+    begin
+      Result := Result + [TJSONString(mItem).Value];
+    end;
+  end;
+end;
+
+procedure ReadFileHeader(ARoot: TJSONObject; var AFile: TAtlasSettingsFile);
+begin
+  AFile.FormatVersion := IntegerField(ARoot, 'formatVersion');
+  AFile.SchemaVersion := IntegerField(ARoot, 'schemaVersion');
+  AFile.AtlasVersion := StringField(ARoot, 'atlasVersion');
+  AFile.Name := StringField(ARoot, 'name');
+  AFile.NameEn := StringField(ARoot, 'nameEn');
+  AFile.Description := StringField(ARoot, 'description');
+  AFile.DescriptionEn := StringField(ARoot, 'descriptionEn');
+  AFile.Mode := StringField(ARoot, 'mode');
+  AFile.Backup := IsTrue(ARoot.GetValue('backup'));
+  AFile.Areas := TextItems(ARoot.GetValue('areas'));
+end;
+
+/// <summary>Grund, warum ARoot keine Exportdatei ist; '' wenn sie eine ist.</summary>
+function FileError(ARoot: TJSONObject; ASettings: TJSONValue): string;
+begin
+  Result := '';
+  if ASettings = nil then
+  begin
+    // Ältere Datei: flache Liste von Registry-Namen (Werte 0/1, Zahlen, Text); mit "format" fehlt "settings".
+    if ARoot.GetValue('format') <> nil then
+    begin
+      Result := 'ohne "settings"';
+    end;
+  end
+  else if not (ASettings is TJSONObject) then
+  begin
+    Result := '"settings" ist kein Objekt';
+  end
+  else if (ARoot.GetValue('format') <> nil) and (StringField(ARoot, 'format') <> TAtlasSettingsTransfer.FormatName) then
+  begin
+    Result := 'anderes Format: ' + StringField(ARoot, 'format');
+  end;
 end;
 
 class function TAtlasSettingsTransfer.ParseFile(const AText: string): TAtlasSettingsFile;
 var
-  Root: TJSONObject;
-  Settings, Areas, Item: TJSONValue;
-  Pair: TJSONPair;
+  mRoot: TJSONObject;
+  mSettings: TJSONValue;
 begin
   Result := Default(TAtlasSettingsFile);
-  Root := TAtlasJsonText.Parse(AText);
-  if Root = nil then
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
   begin
     Result.Error := 'kein JSON-Objekt';
     Exit;
   end;
   try
-    Settings := Root.GetValue('settings');
-    if Settings = nil then
+    mSettings := mRoot.GetValue('settings');
+    Result.Error := FileError(mRoot, mSettings);
+    if Result.Error <> '' then
     begin
-      // Ältere Datei: flache Liste von Registry-Namen (Werte 0/1, Zahlen, Text).
-      if Root.GetValue('format') <> nil then
-      begin
-        Result.Error := 'ohne "settings"';
-        Exit;
-      end;
-      for Pair in Root do
-      begin
-        Result.Keys := Result.Keys + [Pair.JsonString.Value];
-        Result.Values := Result.Values + [ValueText(Pair.JsonValue)];
-      end;
-      Result.Valid := True;
       Exit;
     end;
-    if not (Settings is TJSONObject) then
+    if mSettings = nil then
     begin
-      Result.Error := '"settings" ist kein Objekt';
-      Exit;
-    end;
-    if (Root.GetValue('format') <> nil) and (StringField(Root, 'format') <> FormatName) then
+      AddSettingPairs(mRoot, Result);
+    end
+    else
     begin
-      Result.Error := 'anderes Format: ' + StringField(Root, 'format');
-      Exit;
-    end;
-    Result.FormatVersion := IntegerField(Root, 'formatVersion');
-    Result.SchemaVersion := IntegerField(Root, 'schemaVersion');
-    Result.AtlasVersion := StringField(Root, 'atlasVersion');
-    Result.Name := StringField(Root, 'name');
-    Result.NameEn := StringField(Root, 'nameEn');
-    Result.Description := StringField(Root, 'description');
-    Result.DescriptionEn := StringField(Root, 'descriptionEn');
-    Result.Mode := StringField(Root, 'mode');
-    Result.Backup := IsTrue(Root.GetValue('backup'));
-    Areas := Root.GetValue('areas');
-    if Areas is TJSONArray then
-      for Item in TJSONArray(Areas) do
-        if IsText(Item) then
-          Result.Areas := Result.Areas + [TJSONString(Item).Value];
-    for Pair in TJSONObject(Settings) do
-    begin
-      Result.Keys := Result.Keys + [Pair.JsonString.Value];
-      Result.Values := Result.Values + [ValueText(Pair.JsonValue)];
+      ReadFileHeader(mRoot, Result);
+      AddSettingPairs(TJSONObject(mSettings), Result);
     end;
     Result.Valid := True;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasSettingsTransfer.ModeOf(const AFile: TAtlasSettingsFile): TAtlasImportMode;
 begin
   if SameText(AFile.Mode, 'replace') then
-    Result := imReplace
+  begin
+    Result := imReplace;
+  end
   else
+  begin
     Result := imMerge;
+  end;
 end;
 
 /// <summary>Wert an APath in AText (JSON mit Kommentaren) als Anzeige; '' ohne.</summary>
@@ -1017,176 +1270,295 @@ function ProjectValue(ARoot: TJSONObject; const APath: string): string;
 begin
   Result := '';
   if (ARoot = nil) or (APath = '') then
+  begin
     Exit;
+  end;
   Result := TAtlasJsonText.ValueAt(ARoot, APath);
   if Result <> '' then
+  begin
     Result := TAtlasJsonValues.Display(Result);
+  end;
+end;
+
+/// <summary>Umrechnung älterer Werte; False, wenn AValue keine braucht.</summary>
+function MigratedValue(const AEntry: TAtlasCatalogEntry; AValue: TJSONValue; out AJson: string): Boolean;
+begin
+  Result := True;
+  if (AEntry.Kind = akBoolean) and (AValue is TJSONNumber) then
+  begin
+    AJson := BoolJson(TJSONNumber(AValue).AsInt <> 0);
+  end
+  // hints.xmlDocFull (#654) war ein Wahrheitswert (in alten Dateien 0/1); hints.xmlDocExpand (#770) ist
+  // eine Auswahl.
+  else if (AEntry.Name = 'XmlDocExpand') and ((AValue is TJSONBool) or (AValue is TJSONNumber)) then
+  begin
+    AJson := '"collapsed"';
+    if IsTrue(AValue) or ((AValue is TJSONNumber) and (TJSONNumber(AValue).AsInt <> 0)) then
+    begin
+      AJson := '"expanded"';
+    end;
+  end
+  // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
+  // „Standard“ kommt.
+  else if (AEntry.Name = TAtlasSettingsQueryMigrations.SettingName) and (AValue is TJSONString) then
+  begin
+    AJson := TAtlasSettingsQueryMigrations.WithLegacy('[]', TJSONString(AValue).Value);
+  end
+  else
+  begin
+    Result := False;
+  end;
 end;
 
 /// <summary>Wert für AEntry umrechnen: 0/1 für Wahrheitswerte, Pfadmakros ausschreiben.</summary>
 function Migrate(const AEntry: TAtlasCatalogEntry; const AJson: string; const AFolders: TUserFolders;
   var AMigrated: Boolean): string;
 var
-  Value, Mapped: TJSONValue;
-  Dummy: Boolean;
+  mValue, mMapped: TJSONValue;
+  mUnused: Boolean;
 begin
   Result := AJson;
-  Value := TAtlasJsonValues.Parse(AJson);
-  if Value = nil then
+  mValue := TAtlasJsonValues.Parse(AJson);
+  if mValue = nil then
+  begin
     Exit;
+  end;
   try
-    if (AEntry.Kind = akBoolean) and (Value is TJSONNumber) then
+    if MigratedValue(AEntry, mValue, Result) then
     begin
       AMigrated := True;
-      Exit(BoolJson(TJSONNumber(Value).AsInt <> 0));
+      Exit;
     end;
-    // hints.xmlDocFull (#654) war ein Wahrheitswert (in alten Dateien 0/1); hints.xmlDocExpand (#770) ist
-    // eine Auswahl.
-    if (AEntry.Name = 'XmlDocExpand') and ((Value is TJSONBool) or (Value is TJSONNumber)) then
-    begin
-      AMigrated := True;
-      if ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or
-        ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt <> 0)) then
-        Exit('"expanded"');
-      Exit('"collapsed"');
-    end;
-    // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
-    // „Standard“ kommt.
-    if (AEntry.Name = TAtlasSettingsQueryMigrations.SettingName) and (Value is TJSONString) then
-    begin
-      AMigrated := True;
-      Exit(TAtlasSettingsQueryMigrations.WithLegacy('[]', TJSONString(Value).Value));
-    end;
-    Dummy := False;
-    Mapped := MapStrings(Value, AFolders, True, Dummy);
+    mUnused := False;
+    mMapped := MapStrings(mValue, AFolders, True, mUnused);
     try
-      Result := ValueText(Mapped);
+      Result := ValueText(mMapped);
     finally
-      Mapped.Free;
+      mMapped.Free;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
-class function TAtlasSettingsTransfer.Preview(ACatalog: TAtlasSettingsCatalog;
-  const AState: TAtlasSettingsState; const AFile: TAtlasSettingsFile; AMode: TAtlasImportMode;
-  const AAreas: TArray<string>; const AEnvironment: TAtlasSettingsEnvironment;
-  const AProjectText, ATeamText: string): TAtlasImportPreview;
+/// <summary>Bereiche der Vorschau: gewählt, sonst die der Datei, sonst alle.</summary>
+function PreviewAreas(ACatalog: TAtlasSettingsCatalog; const AFile: TAtlasSettingsFile;
+  const AAreas: TArray<string>): TArray<string>;
 var
-  Values: TStateValues;
-  Folders: TUserFolders;
-  Project, Team: TJSONObject;
-  Seen: TArray<Boolean>;
-  KeyIndex, Index: Integer;
-  Item: TAtlasImportItem;
-  Entry: TAtlasCatalogEntry;
-  Migrated: Boolean;
-  Area, Value, Covered: string;
+  mArea: string;
+begin
+  Result := nil;
+  for mArea in ACatalog.AreaIds do
+  begin
+    if Contains(AAreas, mArea) or ((Length(AAreas) = 0) and
+      ((Length(AFile.Areas) = 0) or Contains(AFile.Areas, mArea))) then
+    begin
+      Result := Result + [mArea];
+    end;
+  end;
+end;
+
+/// <summary>Status eines bekannten, übertragbaren Werts nach der Migration.</summary>
+function ValueStatus(ACatalog: TAtlasSettingsCatalog; const AEntry: TAtlasCatalogEntry;
+  var AItem: TAtlasImportItem): TAtlasImportStatus;
+begin
+  if not ACatalog.ValidValue(AEntry, AItem.NewJson, AItem.Issues) then
+  begin
+    Result := isInvalid;
+  end
+  else if (AItem.CurrentJson <> '') and TAtlasJsonValues.Same(AItem.CurrentJson, AItem.NewJson) then
+  begin
+    Result := isSame;
+  end
+  else if (AItem.CurrentJson = '') and (AEntry.DefaultJson <> '') and
+    TAtlasJsonValues.Same(AEntry.DefaultJson, AItem.NewJson) then
+  begin
+    Result := isSame;
+  end
+  else
+  begin
+    Result := isChange;
+  end;
+end;
+
+/// <summary>Status eines Werts im Katalog: übersprungen, Platzhalter oder nach Migration und Prüfung.</summary>
+procedure ResolveItem(ACatalog: TAtlasSettingsCatalog; const AEntry: TAtlasCatalogEntry; ABackup: Boolean;
+  const AFolders: TUserFolders; var AItem: TAtlasImportItem);
+begin
+  if not AEntry.Transferable and not ABackup then
+  begin
+    AItem.Status := isSkipped;
+  end
+  else if TAtlasJsonValues.Same(AItem.NewJson, TAtlasJsonText.Quote(TAtlasSettingsTransfer.SecretPlaceholder)) then
+  begin
+    AItem.Status := isSecret;
+  end
+  else
+  begin
+    AItem.NewJson := Migrate(AEntry, AItem.NewJson, AFolders, AItem.Migrated);
+    AItem.Status := ValueStatus(ACatalog, AEntry, AItem);
+  end;
+end;
+
+type
+  /// <summary>Was die Vorschau für jeden Schlüssel braucht.</summary>
+  TPreviewContext = record
+    Catalog: TAtlasSettingsCatalog;
+    Values: TStateValues;
+    Areas: TArray<string>;
+    Folders: TUserFolders;
+  end;
+
+/// <summary>Eintrag zu Schlüssel AKeyIndex der Datei; False, wenn er außerhalb der Bereiche liegt. AItem.Entry:
+/// Index im Katalog bzw. -1.</summary>
+function FileItem(const AContext: TPreviewContext; const AFile: TAtlasSettingsFile; AKeyIndex: Integer;
+  out AItem: TAtlasImportItem): Boolean;
+var
+  mEntry: TAtlasCatalogEntry;
+  mMigrated: Boolean;
+begin
+  AItem := Default(TAtlasImportItem);
+  AItem.SourceKey := AFile.Keys[AKeyIndex];
+  AItem.Key := AItem.SourceKey;
+  AItem.NewJson := AFile.Values[AKeyIndex];
+  mMigrated := False;
+  AItem.Entry := AContext.Catalog.Resolve(AItem.SourceKey, mMigrated);
+  if AItem.Entry < 0 then
+  begin
+    AItem.Status := isUnknown;
+    if AContext.Catalog.IsProjectPath(AItem.SourceKey) then
+    begin
+      AItem.Status := isSkipped;
+    end;
+    Exit(True);
+  end;
+  mEntry := AContext.Catalog[AItem.Entry];
+  Result := Contains(AContext.Areas, mEntry.Area);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AItem.Key := mEntry.Key;
+  AItem.Area := mEntry.Area;
+  AItem.Migrated := mMigrated;
+  AItem.CurrentJson := AContext.Values.Get(AItem.Entry);
+  ResolveItem(AContext.Catalog, mEntry, AFile.Backup, AContext.Folders, AItem);
+end;
+
+/// <summary>Ersetzen: was in den Bereichen fehlt und geändert ist, geht auf den Standard.</summary>
+function ResetItems(ACatalog: TAtlasSettingsCatalog; AValues: TStateValues; const ASeen: TArray<Boolean>;
+  const AAreas: TArray<string>): TArray<TAtlasImportItem>;
+var
+  mIndex: Integer;
+  mItem: TAtlasImportItem;
+begin
+  Result := nil;
+  for mIndex := 0 to ACatalog.Count - 1 do
+  begin
+    if ASeen[mIndex] or not ACatalog[mIndex].Transferable or not Contains(AAreas, ACatalog[mIndex].Area) or
+      not Modified(ACatalog, AValues, mIndex) then
+    begin
+      Continue;
+    end;
+    mItem := Default(TAtlasImportItem);
+    mItem.Entry := mIndex;
+    mItem.Key := ACatalog[mIndex].Key;
+    mItem.Area := ACatalog[mIndex].Area;
+    mItem.CurrentJson := AValues.Get(mIndex);
+    if ACatalog[mIndex].Source = asPlugin then
+    begin
+      mItem.NewJson := TAtlasSettingsTransfer.DefaultJson(ACatalog, mIndex);
+    end;
+    mItem.Status := isReset;
+    Result := Result + [mItem];
+  end;
+end;
+
+/// <summary>Projektwerte, die die Einstellung überdecken: "atlas.json: pfad = wert; .atlas: …".</summary>
+function CoveredText(const AEntry: TAtlasCatalogEntry; AProject, ATeam: TJSONObject): string;
+var
+  mValue: string;
+begin
+  Result := '';
+  mValue := ProjectValue(AProject, AEntry.ProjectPath);
+  if mValue <> '' then
+  begin
+    Result := 'atlas.json: ' + AEntry.ProjectPath + ' = ' + mValue;
+  end;
+  mValue := ProjectValue(ATeam, AEntry.TeamPath);
+  if mValue = '' then
+  begin
+    Exit;
+  end;
+  if Result <> '' then
+  begin
+    Result := Result + '; ';
+  end;
+  Result := Result + '.atlas: ' + AEntry.TeamPath + ' = ' + mValue;
+end;
+
+/// <summary>Überdeckung aus atlas.json und .atlas und die Vorauswahl.</summary>
+procedure MarkCovered(ACatalog: TAtlasSettingsCatalog; const AProjectText, ATeamText: string;
+  var AItems: TArray<TAtlasImportItem>);
+var
+  mProject, mTeam: TJSONObject;
+  mIndex: Integer;
+begin
+  mProject := TAtlasJsonText.Parse(AProjectText);
+  mTeam := TAtlasJsonText.Parse(ATeamText);
+  try
+    for mIndex := 0 to High(AItems) do
+    begin
+      if AItems[mIndex].Entry >= 0 then
+      begin
+        AItems[mIndex].Covered := CoveredText(ACatalog[AItems[mIndex].Entry], mProject, mTeam);
+      end;
+      AItems[mIndex].Selected := AItems[mIndex].Selectable;
+    end;
+  finally
+    mTeam.Free;
+    mProject.Free;
+  end;
+end;
+
+class function TAtlasSettingsTransfer.Preview(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
+  const AFile: TAtlasSettingsFile; const AOptions: TAtlasImportOptions): TAtlasImportPreview;
+var
+  mContext: TPreviewContext;
+  mSeen: TArray<Boolean>;
+  mKeyIndex: Integer;
+  mItem: TAtlasImportItem;
 begin
   Result := Default(TAtlasImportPreview);
   Result.Source := AFile;
-  Result.Mode := AMode;
+  Result.Mode := AOptions.Mode;
   Result.Newer := AFile.SchemaVersion > ACatalog.Version;
-  // Bereiche: gewählt, sonst die der Datei, sonst alle.
-  for Area in ACatalog.AreaIds do
-    if Contains(AAreas, Area) or ((Length(AAreas) = 0) and
-      ((Length(AFile.Areas) = 0) or Contains(AFile.Areas, Area))) then
-      Result.Areas := Result.Areas + [Area];
-  Folders := TUserFolders.From(AEnvironment);
-  SetLength(Seen, ACatalog.Count);
-  Project := TAtlasJsonText.Parse(AProjectText);
-  Team := TAtlasJsonText.Parse(ATeamText);
-  Values := TStateValues.Create(ACatalog, AState);
+  Result.Areas := PreviewAreas(ACatalog, AFile, AOptions.Areas);
+  mContext.Catalog := ACatalog;
+  mContext.Areas := Result.Areas;
+  mContext.Folders := TUserFolders.From(AOptions.Environment);
+  SetLength(mSeen, ACatalog.Count);
+  mContext.Values := TStateValues.Create(ACatalog, AState);
   try
-    for KeyIndex := 0 to High(AFile.Keys) do
+    for mKeyIndex := 0 to High(AFile.Keys) do
     begin
-      Item := Default(TAtlasImportItem);
-      Item.SourceKey := AFile.Keys[KeyIndex];
-      Item.Key := Item.SourceKey;
-      Item.NewJson := AFile.Values[KeyIndex];
-      Migrated := False;
-      Item.Entry := ACatalog.Resolve(Item.SourceKey, Migrated);
-      if Item.Entry < 0 then
+      if FileItem(mContext, AFile, mKeyIndex, mItem) then
       begin
-        if ACatalog.IsProjectPath(Item.SourceKey) then
-          Item.Status := isSkipped
-        else
-          Item.Status := isUnknown;
-        Result.Items := Result.Items + [Item];
-        Continue;
+        if mItem.Entry >= 0 then
+        begin
+          mSeen[mItem.Entry] := True;
+        end;
+        Result.Items := Result.Items + [mItem];
       end;
-      Entry := ACatalog[Item.Entry];
-      if not Contains(Result.Areas, Entry.Area) then
-        Continue;
-      Seen[Item.Entry] := True;
-      Item.Key := Entry.Key;
-      Item.Area := Entry.Area;
-      Item.Migrated := Migrated;
-      Item.CurrentJson := Values.Get(Item.Entry);
-      if not Entry.Transferable and not AFile.Backup then
-        Item.Status := isSkipped
-      else if TAtlasJsonValues.Same(Item.NewJson, TAtlasJsonText.Quote(SecretPlaceholder)) then
-        Item.Status := isSecret
-      else
-      begin
-        Item.NewJson := Migrate(Entry, Item.NewJson, Folders, Item.Migrated);
-        if not ACatalog.ValidValue(Entry, Item.NewJson, Item.Issues) then
-          Item.Status := isInvalid
-        else if (Item.CurrentJson <> '') and TAtlasJsonValues.Same(Item.CurrentJson, Item.NewJson) then
-          Item.Status := isSame
-        else if (Item.CurrentJson = '') and (Entry.DefaultJson <> '') and
-          TAtlasJsonValues.Same(Entry.DefaultJson, Item.NewJson) then
-          Item.Status := isSame
-        else
-          Item.Status := isChange;
-      end;
-      Result.Items := Result.Items + [Item];
     end;
-    // Ersetzen: was in den Bereichen fehlt, geht auf den Standard.
-    if AMode = imReplace then
-      for Index := 0 to ACatalog.Count - 1 do
-        if not Seen[Index] and ACatalog[Index].Transferable and Contains(Result.Areas, ACatalog[Index].Area) and
-          Modified(ACatalog, Values, Index) then
-        begin
-          Item := Default(TAtlasImportItem);
-          Item.Entry := Index;
-          Item.Key := ACatalog[Index].Key;
-          Item.Area := ACatalog[Index].Area;
-          Item.CurrentJson := Values.Get(Index);
-          if ACatalog[Index].Source = asPlugin then
-            Item.NewJson := DefaultJson(ACatalog, Index);
-          Item.Status := isReset;
-          Result.Items := Result.Items + [Item];
-        end;
-    // Projektwerte, die die Einstellung überdecken; Vorauswahl.
-    for Index := 0 to High(Result.Items) do
+    if AOptions.Mode = imReplace then
     begin
-      Item := Result.Items[Index];
-      if Item.Entry >= 0 then
-      begin
-        Entry := ACatalog[Item.Entry];
-        Covered := '';
-        Value := ProjectValue(Project, Entry.ProjectPath);
-        if Value <> '' then
-          Covered := 'atlas.json: ' + Entry.ProjectPath + ' = ' + Value;
-        Value := ProjectValue(Team, Entry.TeamPath);
-        if Value <> '' then
-        begin
-          if Covered <> '' then
-            Covered := Covered + '; ';
-          Covered := Covered + '.atlas: ' + Entry.TeamPath + ' = ' + Value;
-        end;
-        Item.Covered := Covered;
-      end;
-      Item.Selected := Item.Selectable;
-      Result.Items[Index] := Item;
+      Result.Items := Result.Items + ResetItems(ACatalog, mContext.Values, mSeen, Result.Areas);
     end;
   finally
-    Values.Free;
-    Team.Free;
-    Project.Free;
+    mContext.Values.Free;
   end;
+  MarkCovered(ACatalog, AOptions.ProjectText, AOptions.TeamText, Result.Items);
 end;
 
 class function TAtlasSettingsTransfer.Apply(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
@@ -1198,54 +1570,96 @@ begin
   Values := TStateValues.Create(ACatalog, AState);
   try
     for Item in APreview.Items do
+    begin
       if Item.Selected and Item.Selectable and (Item.Entry >= 0) then
       begin
         if Item.Status = isReset then
-          Values.Put(Item.Entry, '')
+        begin
+          Values.Put(Item.Entry, '');
+        end
         else
+        begin
           Values.Put(Item.Entry, Item.NewJson);
+        end;
       end;
+    end;
     Result := Values.State;
   finally
     Values.Free;
   end;
 end;
 
+/// <summary>Kopf der Datei: Versionen, Modus und Bereiche.</summary>
+function HeaderIssues(ACatalog: TAtlasSettingsCatalog; const ASource: TAtlasSettingsFile): TArray<string>;
+var
+  mArea: string;
+begin
+  Result := nil;
+  if ASource.FormatVersion <> TAtlasSettingsTransfer.FormatVersion then
+  begin
+    Result := Result + ['formatVersion: erwartet ' + IntToStr(TAtlasSettingsTransfer.FormatVersion)];
+  end;
+  if ASource.SchemaVersion <> ACatalog.Version then
+  begin
+    Result := Result + ['schemaVersion: erwartet ' + IntToStr(ACatalog.Version)];
+  end;
+  if (ASource.Mode <> '') and (ASource.Mode <> 'merge') and (ASource.Mode <> 'replace') then
+  begin
+    Result := Result + ['mode: merge oder replace'];
+  end;
+  for mArea in ASource.Areas do
+  begin
+    if not ACatalog.HasArea(mArea) then
+    begin
+      Result := Result + ['areas: unbekannter Bereich ' + mArea];
+    end;
+  end;
+end;
+
+/// <summary>Ein Schlüssel der Datei: bekannt, aktuell, übertragbar und mit gültigem Wert.</summary>
+function KeyIssues(ACatalog: TAtlasSettingsCatalog; const AKey, AValue: string): TArray<string>;
+var
+  mEntry: Integer;
+  mMigrated: Boolean;
+begin
+  Result := nil;
+  mEntry := ACatalog.Resolve(AKey, mMigrated);
+  if mEntry < 0 then
+  begin
+    Result := [AKey + ': unbekannter Schlüssel'];
+  end
+  else if mMigrated then
+  begin
+    Result := [AKey + ': veralteter Schlüssel, richtig ist ' + ACatalog[mEntry].Key];
+  end
+  else if not ACatalog[mEntry].Transferable then
+  begin
+    Result := [AKey + ': wird nicht übertragen'];
+  end
+  // Ungültig: die Meldungen der Schemaprüfung.
+  else if ACatalog.ValidValue(ACatalog[mEntry], AValue, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
 class function TAtlasSettingsTransfer.Validate(ACatalog: TAtlasSettingsCatalog; const AText: string;
   out AIssues: TArray<string>): Boolean;
 var
-  Source: TAtlasSettingsFile;
-  Index, Entry: Integer;
-  Migrated: Boolean;
-  Issues: TArray<string>;
-  Area: string;
+  mSource: TAtlasSettingsFile;
+  mIndex: Integer;
 begin
-  AIssues := nil;
-  Source := ParseFile(AText);
-  if not Source.Valid then
-    AIssues := AIssues + ['Datei: ' + Source.Error]
+  mSource := ParseFile(AText);
+  if not mSource.Valid then
+  begin
+    AIssues := ['Datei: ' + mSource.Error];
+  end
   else
   begin
-    if Source.FormatVersion <> FormatVersion then
-      AIssues := AIssues + ['formatVersion: erwartet ' + IntToStr(FormatVersion)];
-    if Source.SchemaVersion <> ACatalog.Version then
-      AIssues := AIssues + ['schemaVersion: erwartet ' + IntToStr(ACatalog.Version)];
-    if (Source.Mode <> '') and (Source.Mode <> 'merge') and (Source.Mode <> 'replace') then
-      AIssues := AIssues + ['mode: merge oder replace'];
-    for Area in Source.Areas do
-      if not ACatalog.HasArea(Area) then
-        AIssues := AIssues + ['areas: unbekannter Bereich ' + Area];
-    for Index := 0 to High(Source.Keys) do
+    AIssues := HeaderIssues(ACatalog, mSource);
+    for mIndex := 0 to High(mSource.Keys) do
     begin
-      Entry := ACatalog.Resolve(Source.Keys[Index], Migrated);
-      if Entry < 0 then
-        AIssues := AIssues + [Source.Keys[Index] + ': unbekannter Schlüssel']
-      else if Migrated then
-        AIssues := AIssues + [Source.Keys[Index] + ': veralteter Schlüssel, richtig ist ' + ACatalog[Entry].Key]
-      else if not ACatalog[Entry].Transferable then
-        AIssues := AIssues + [Source.Keys[Index] + ': wird nicht übertragen']
-      else if not ACatalog.ValidValue(ACatalog[Entry], Source.Values[Index], Issues) then
-        AIssues := AIssues + Issues;
+      AIssues := AIssues + KeyIssues(ACatalog, mSource.Keys[mIndex], mSource.Values[mIndex]);
     end;
   end;
   Result := Length(AIssues) = 0;
@@ -1266,8 +1680,12 @@ begin
   Backups := TList<string>.Create;
   try
     for Name in AFiles do
+    begin
       if SameText(Copy(Name, 1, Length(BackupPrefix)), BackupPrefix) and SameText(ExtractFileExt(Name), '.json') then
+      begin
         Backups.Add(Name);
+      end;
+    end;
     // Der Name enthält Datum und Uhrzeit: alphabetisch = zeitlich.
     Backups.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
@@ -1275,7 +1693,9 @@ begin
         Result := CompareText(ALeft, ARight);
       end));
     for Index := 0 to Backups.Count - 1 - AKeep do
+    begin
       Result := Result + [Backups[Index]];
+    end;
   finally
     Backups.Free;
   end;

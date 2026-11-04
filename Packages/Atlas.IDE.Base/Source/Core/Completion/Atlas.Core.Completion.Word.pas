@@ -37,18 +37,26 @@ class function TAtlasWord.StartBefore(const ALine: string; ACharacter: Integer):
 begin
   Result := ACharacter;
   if Result > Length(ALine) then
+  begin
     Result := Length(ALine);
+  end;
   while (Result > 0) and IsIdentifierChar(ALine[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 class function TAtlasWord.EndAfter(const ALine: string; ACharacter: Integer): Integer;
 begin
   Result := ACharacter;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
   while (Result < Length(ALine)) and IsIdentifierChar(ALine[Result + 1]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TAtlasWord.InDataNameString(const ALine: string; ACharacter: Integer): Boolean;
@@ -63,14 +71,22 @@ begin
     if ALine[Index] = '''' then
     begin
       if Open = 0 then
-        Open := Index
+      begin
+        Open := Index;
+      end
       else if (Index < Length(ALine)) and (Index < ACharacter) and (ALine[Index + 1] = '''') then
-        Inc(Index)
+      begin
+        Inc(Index);
+      end
       else
+      begin
         Open := 0;
+      end;
     end
     else if (Open = 0) and (ALine[Index] = '/') and (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
+    begin
       Exit(False);
+    end;
     Inc(Index);
   end;
   Result := (Open > 0) and TRegEx.IsMatch(Copy(ALine, 1, Open - 1),

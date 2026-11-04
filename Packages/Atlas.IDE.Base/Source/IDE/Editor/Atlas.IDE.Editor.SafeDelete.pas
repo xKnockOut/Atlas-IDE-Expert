@@ -35,7 +35,6 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.UITypes,
   System.JSON,
   Vcl.Dialogs,
@@ -43,14 +42,11 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Strings,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.Core.Editor.SafeDelete,
-  Atlas.UI.Results.Frame,
-  Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Editor.ServerEdit,
   Atlas.IDE.Foundation.ResultsWindow;
 
 const
@@ -63,15 +59,6 @@ type
   {$SCOPEDENUMS ON}
   TUsageChoice = (Cancel, Show, Force);
   {$SCOPEDENUMS OFF}
-
-function NumberOf(AReply: TJSONObject; const AName: string): Integer;
-begin
-  Result := 0;
-  if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
-  begin
-    Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
-  end;
-end;
 
 function Ask(const AText: string): Boolean;
 begin
@@ -158,146 +145,118 @@ begin
   end;
 end;
 
+/// <summary>Was der Server zum Element sagt (Name, Überschreibungen, Verwendungen …); False mit Meldung, wenn er
+/// scheitert.</summary>
+function FetchInfo(ASession: TLspSession; const AArgumentsJson: string; const AMessage: TProc<string>;
+  out AInfo: TAtlasSafeDeleteInfo): Boolean;
+var
+  mAnswer: TJSONValue;
+begin
+  Result := False;
+  TAtlasIdeRename.SyncOpenBuffers(ASession);
+  try
+    mAnswer := ASession.RunCommand(TAtlasSafeDelete.PrepareCommand, AArgumentsJson, TimeoutMs);
+    try
+      AInfo := TAtlasSafeDeleteInfo.FromJson(mAnswer);
+    finally
+      mAnswer.Free;
+    end;
+    Result := True;
+  except
+    on E: ELspClientError do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [E.Message]));
+    end;
+  end;
+end;
+
+/// <summary>Fragt (je nach Einstellung) nach Überschreibungen, verbleibenden Verwendungen und abhängigen Elementen.
+/// False, wenn der Benutzer abbricht oder die Verwendungen anzeigen lässt.</summary>
+function AskOptions(const AInfo: TAtlasSafeDeleteInfo; out AOverrides, ACascade, AForced: Boolean): Boolean;
+var
+  mBlocking: TArray<TAtlasSafeDeleteUsage>;
+begin
+  ACascade := False;
+  AForced := False;
+  // Erst die Überschreibungen: Bleiben sie, zählen sie als Verwendung.
+  AOverrides := (AInfo.Overrides <> nil) and Decide(AInfo.OverridesMode, TAtlasStrings.Fmt(
+    TAtlasTextId.SafeDeleteAskOverrides, [AInfo.Name, Length(AInfo.Overrides), sLineBreak,
+    TAtlasSafeDelete.Listing(Lines(AInfo.Overrides), MaxListed, TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)),
+    sLineBreak + sLineBreak]));
+  mBlocking := AInfo.Blocking(AOverrides);
+  Result := mBlocking = nil;
+  if not Result then
+  begin
+    case ChooseOnUsages(AInfo, mBlocking) of
+      TUsageChoice.Show:
+        TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteUsagesTitle, [AInfo.Name]),
+          Entries(mBlocking));
+      TUsageChoice.Force:
+        begin
+          AForced := True;
+          Result := True;
+        end;
+    else
+      // Abbrechen: nichts tun.
+    end;
+  end;
+  if Result then
+  begin
+    ACascade := (AInfo.Cascade <> nil) and Decide(AInfo.CascadeMode, TAtlasStrings.Fmt(
+      TAtlasTextId.SafeDeleteAskCascade, [sLineBreak, TAtlasSafeDelete.Listing(AInfo.Cascade, MaxListed,
+      TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)), sLineBreak + sLineBreak]));
+  end;
+end;
+
 class procedure TAtlasIdeSafeDelete.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Answer, Item: TJSONValue;
-  Reply: TJSONObject;
-  Info: TAtlasSafeDeleteInfo;
-  Overrides, Cascade, Forced: Boolean;
-  Blocking: TArray<TAtlasSafeDeleteUsage>;
-  Hint, Warning, Title: string;
-  Warnings: TArray<string>;
-  Deleted: Integer;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mInfo: TAtlasSafeDeleteInfo;
+  mOverrides, mCascade, mForced: Boolean;
+  mTitle, mHint: string;
+  mDeleted: Integer;
+  mReply: TAtlasServerEditReply;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  try
-    Answer := ASession.RunCommand(TAtlasSafeDelete.PrepareCommand, AArgumentsJson, TimeoutMs);
-    try
-      Info := TAtlasSafeDeleteInfo.FromJson(Answer);
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  Title := Info.Title;
-  if Title = '' then
+  if not FetchInfo(ASession, AArgumentsJson, AMessage, mInfo) or
+    not AskOptions(mInfo, mOverrides, mCascade, mForced) then
   begin
-    Title := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
-  end;
-  // Erst die Überschreibungen: Bleiben sie, zählen sie als Verwendung.
-  Overrides := (Info.Overrides <> nil) and Decide(Info.OverridesMode, TAtlasStrings.Fmt(
-    TAtlasTextId.SafeDeleteAskOverrides, [Info.Name, Length(Info.Overrides), sLineBreak,
-    TAtlasSafeDelete.Listing(Lines(Info.Overrides), MaxListed, TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)),
-    sLineBreak + sLineBreak]));
-  Blocking := Info.Blocking(Overrides);
-  Forced := False;
-  if Blocking <> nil then
-    case ChooseOnUsages(Info, Blocking) of
-      TUsageChoice.Show:
-        begin
-          TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteUsagesTitle, [Info.Name]),
-            Entries(Blocking));
-          Exit;
-        end;
-      TUsageChoice.Force:
-        Forced := True;
-    else
-      Exit;
-    end;
-  Cascade := (Info.Cascade <> nil) and Decide(Info.CascadeMode, TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteAskCascade,
-    [sLineBreak, TAtlasSafeDelete.Listing(Info.Cascade, MaxListed, TAtlasStrings.Text(TAtlasTextId.SafeDeleteMore)),
-    sLineBreak + sLineBreak]));
-  Warnings := nil;
-  Deleted := 0;
-  try
-    Answer := ASession.RunCommand(TAtlasSafeDelete.ApplyCommand, TAtlasSafeDelete.ApplyArguments(AArgumentsJson,
-      Overrides, Cascade, Forced), TimeoutMs);
-    try
-      Reply := nil;
-      if Answer is TJSONObject then
-      begin
-        Reply := TJSONObject(Answer);
-      end;
-      Edit := TLspWorkspaceEdit.FromJson(nil);
-      if Reply <> nil then
-      begin
-        Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
-        Deleted := NumberOf(Reply, 'deleted');
-        if Reply.GetValue('warnings') is TJSONArray then
-        begin
-          for Item in TJSONArray(Reply.GetValue('warnings')) do
-          begin
-            Warnings := Warnings + [Item.Value];
-          end;
-        end;
-      end;
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  if Edit.IsEmpty then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [Title]));
     Exit;
   end;
-  if Info.NeedsPreview(Forced) then
+  mTitle := mInfo.Title;
+  if mTitle = '' then
   begin
-    Hint := TAtlasStrings.Fmt(TAtlasTextId.SafeDeletePreviewHint, [Deleted, Edit.EditCount, Length(Edit.Files)]);
-    for Warning in Warnings do
-    begin
-      Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteWarning, [Warning]);
-    end;
-    Preview := TAtlasResults.RenamePreview(Edit,
-      function(const AFileName: string): string
-      begin
-        Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-      end);
-    Open :=
-      procedure(const AFileName: string; ALine, ACharacter: Integer)
-      begin
-        TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-      end;
-    if not TAtlasRenamePreview.Execute(Title, Hint, TAtlasStrings.Text(TAtlasTextId.SafeDeleteApply),
-      TAtlasResults.Group(Preview), Open) then
-    begin
-      Exit;
-    end;
+    mTitle := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
   end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand));
-  if Outcome.Error <> '' then
+  mDeleted := 0;
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.ApplyCommand,
+    TAtlasSafeDelete.ApplyArguments(AArgumentsJson, mOverrides, mCascade, mForced), TimeoutMs,
+    TAtlasTextId.SafeDeleteFailed),
+    procedure(const AReply: TJSONObject)
+    begin
+      mDeleted := TAtlasIdeServerEdit.NumberOf(AReply, 'deleted');
+    end, AMessage, mReply) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteDone, [Deleted, Outcome.Edits, Outcome.Files]));
-  for Warning in Warnings do
+  if mReply.Edit.IsEmpty then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteWarning, [Warning]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteFailed, [mTitle]));
+    Exit;
   end;
-  if Outcome.Written > 0 then
+  mHint := TAtlasStrings.Fmt(TAtlasTextId.SafeDeletePreviewHint, [mDeleted, mReply.Edit.EditCount,
+    Length(mReply.Edit.Files)]) + TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.SafeDeleteWarning);
+  if (not mInfo.NeedsPreview(mForced) or TAtlasIdeServerEdit.Confirm(mTitle, mHint,
+    TAtlasStrings.Text(TAtlasTextId.SafeDeleteApply), mReply.Edit)) and TAtlasIdeServerEdit.Apply(mReply.Edit,
+    APolicy, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand), AMessage, mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteDone, [mDeleted, mOutcome.Edits, mOutcome.Files]));
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.SafeDeleteWarning, AMessage);
   end;
 end;
 

@@ -121,8 +121,8 @@ function FindingsOf(const ACheck: TLinterFixCheck; const AText: string): TArray<
 var
   mScopes: TFindingScopes;
 begin
-  Result := TFileChecker.CheckText(ACheck.Rules, ACheck.Settings, ACheck.RelativePath, AText, ACheck.Project,
-    ACheck.Source, mScopes);
+  Result := TFileChecker.CheckText(ACheck.Rules, ACheck.Settings, ACheck.RelativePath, AText,
+    TCheckOrigin.Make(ACheck.Project, ACheck.Source), mScopes);
   if ACheck.Baseline <> nil then
   begin
     Result := TLinterBaseline.NewFindings(ACheck.Baseline.Classify(ACheck.RelativePath, AText, mScopes, Result));

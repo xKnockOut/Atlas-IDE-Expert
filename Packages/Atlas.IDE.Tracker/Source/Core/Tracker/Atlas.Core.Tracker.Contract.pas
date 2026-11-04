@@ -393,6 +393,15 @@ type
     function Secure: Boolean;
   end;
 
+  /// <summary>Verbindung einer Abfrage: Ziel, Transport und Zeitgrenze für die ganze Abfrage.</summary>
+  TAtlasTrackerCall = record
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    TimeoutMs: Integer;
+    class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      ATimeoutMs: Integer): TAtlasTrackerCall; static;
+  end;
+
   /// <summary>Unteraufgaben anlegen und Issues verknüpfen (#1279); optional, die Vorschau fragt mit Supports. Der
   /// Transport muss IAtlasCiSend können, sonst NotConfigured. Läuft im Hintergrund.</summary>
   IAtlasTrackerLinkWriter = interface
@@ -400,14 +409,12 @@ type
     /// <summary>Neues Issue ATitle (ADescription als Markdown) im Projekt des Issues AParentKey anlegen und als
     /// Unteraufgabe verknüpfen. AKey: Kennung des neuen Issues, auch wenn nur das Verknüpfen scheiterte (dann
     /// False mit AError); '' wenn nichts angelegt wurde.</summary>
-    function CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function CreateSubtask(const ACall: TAtlasTrackerCall; const AParentKey, ATitle,
+      ADescription: string; out AKey: string; out AError: TAtlasCiFetchError): Boolean;
     /// <summary>AKey mit AOtherKey verknüpfen: DependsOn (AKey hängt von AOtherKey ab) bzw. Blocks (AOtherKey
     /// hängt von AKey ab); andere Arten: False mit Invalid.</summary>
-    function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
-      out AError: TAtlasCiFetchError): Boolean;
+    function AddLink(const ACall: TAtlasTrackerCall; const AKey: string; AKind: TAtlasTrackerLinkKind;
+      const AOtherKey: string; out AError: TAtlasCiFetchError): Boolean;
   end;
 
   IAtlasTrackerProvider = interface
@@ -442,16 +449,15 @@ type
     /// </summary>
     function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
     /// <summary>Issue AKey mit Feldern, Beschreibung, Anhängen und Verknüpfungen, mit AComments auch die
-    /// Kommentare (sonst nicht abgefragt), insgesamt höchstens ATimeoutMs; im Hintergrund (#1264). False mit
+    /// Kommentare (sonst nicht abgefragt), insgesamt höchstens ACall.TimeoutMs; im Hintergrund (#1264). False mit
     /// AError, wenn das Issue nicht gelesen werden konnte.</summary>
-    function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Details(const ACall: TAtlasTrackerCall; const AKey: string; AComments: Boolean;
+      out ADetails: TAtlasTrackerDetails; out AError: TAtlasCiFetchError): Boolean;
     /// <summary>Freitextsuche der Befehlspalette (#1270): höchstens AMax Issues zu AText im Projekt des Ziels, eine
-    /// Abfrage ohne Pull Requests und Ampeln, höchstens ATimeoutMs; im Hintergrund. Die Abfrage aus den
-    /// Einstellungen (ATarget.Query) gilt hier nicht.</summary>
-    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
+    /// Abfrage ohne Pull Requests und Ampeln, höchstens ACall.TimeoutMs; im Hintergrund. Die Abfrage aus den
+    /// Einstellungen (ACall.Target.Query) gilt hier nicht.</summary>
+    function Search(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+      out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     /// <summary>Issue AKey mit den Feldern der Liste (#1270), eine Abfrage, höchstens ATimeoutMs; im Hintergrund.
     /// False mit AError (NotFound, wenn es die Kennung nicht gibt).</summary>
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
@@ -579,12 +585,20 @@ type
   IAtlasTrackerPeople = interface
     ['{CBC85BCF-7164-48F0-84AE-466842C69E1C}']
     /// <summary>Höchstens AMax Benutzer zu AText (YouTrack: Suche des Trackers, GitHub: mögliche Zuständige des
-    /// Repositorys, hier gefiltert), eine Abfrage, höchstens ATimeoutMs; im Hintergrund.</summary>
-    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+    /// Repositorys, hier gefiltert), eine Abfrage, höchstens ACall.TimeoutMs; im Hintergrund.</summary>
+    function Users(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+      out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
+
+class function TAtlasTrackerCall.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  ATimeoutMs: Integer): TAtlasTrackerCall;
+begin
+  Result.Target := ATarget;
+  Result.Transport := ATransport;
+  Result.TimeoutMs := ATimeoutMs;
+end;
 
 const
   ChecksKeys: array[TAtlasTrackerChecks] of string = ('unknown', 'pending', 'success', 'failure');

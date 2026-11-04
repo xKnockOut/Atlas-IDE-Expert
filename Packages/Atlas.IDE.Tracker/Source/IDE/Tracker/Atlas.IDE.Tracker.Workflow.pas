@@ -218,8 +218,8 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasTrackerSyncOptions.Create(mSettings.IssuesSyncState, mSettings.IssuesStateField,
-    mSettings.IssuesAssigneeField, mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
-    mSettings.IssuesStartComment, mSettings.IssuesEndStates, mSettings.IssuesEndComment);
+    mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
+    mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates, mSettings.IssuesEndComment);
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
@@ -511,8 +511,8 @@ begin
   begin
     mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.FieldEnd);
   end;
-  ADialog.CommentEditor.Enhanced := mAssist <> nil;
-  ADialog.CommentEditor.Bind(mAssist);
+  ADialog.Parts.Editor.Enhanced := mAssist <> nil;
+  ADialog.Parts.Editor.Bind(mAssist);
 end;
 
 procedure TAtlasIdeTrackerSync.LoadEndValues(const AProvider: IAtlasTrackerProvider;

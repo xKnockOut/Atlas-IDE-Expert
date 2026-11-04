@@ -224,13 +224,43 @@ begin
     [AppFile, ServiceFile, MainFile], [FormFile])];
 end;
 
+/// <summary>Vorgaben oder die atlas.json des Szenarios.</summary>
+function ScenarioSettings(const AConfig: string): TServerSettings;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  if AConfig = '' then
+  begin
+    Result := TServerSettings.Default;
+  end
+  else
+  begin
+    Result := TConfigurationParser.Parse(AConfig, mIssues);
+  end;
+end;
+
+/// <summary>Index über die Units des Szenarios; ATexts nimmt alle Dateien nach Namen auf.</summary>
+function IndexScenario(const AScenario: TScenario; const ATexts: TDictionary<string, string>): ISymbolIndex;
+var
+  mEntry: TTestFile;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText(SystemText, 'C:\BDS\source\System.pas', nil));
+  for mEntry in AScenario.Files do
+  begin
+    ATexts.AddOrSetValue(UpperCase(mEntry.Name), mEntry.Text);
+    if not SameText(ExtractFileExt(mEntry.Name), '.dfm') then
+    begin
+      Result.AddUnit(TIndexExtractor.ExtractText(mEntry.Text, mEntry.Name, nil, nil, True));
+    end;
+  end;
+end;
+
 function Run(const AScenario: TScenario; const ACheck: string): TArray<TRuleFinding>;
 var
   Texts: TDictionary<string, string>;
   Index: ISymbolIndex;
-  Entry: TTestFile;
   Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
   Context: TRuleContext;
   Tree: TSyntaxTree;
   Unreadable: string;
@@ -240,24 +270,8 @@ begin
   Incomplete := AScenario.Incomplete;
   Texts := TDictionary<string, string>.Create;
   try
-    Index := TSymbolIndex.Create;
-    Index.AddUnit(TIndexExtractor.ExtractText(SystemText, 'C:\BDS\source\System.pas', nil));
-    for Entry in AScenario.Files do
-    begin
-      Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
-      if not SameText(ExtractFileExt(Entry.Name), '.dfm') then
-      begin
-        Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil, nil, True));
-      end;
-    end;
-    if AScenario.Config = '' then
-    begin
-      Settings := TServerSettings.Default;
-    end
-    else
-    begin
-      Settings := TConfigurationParser.Parse(AScenario.Config, Issues);
-    end;
+    Index := IndexScenario(AScenario, Texts);
+    Settings := ScenarioSettings(AScenario.Config);
     Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       Context := Default(TRuleContext);
@@ -602,18 +616,76 @@ begin
   Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), Format);
 end;
 
+/// <summary>RefApp.dpr, die Units aus ihren in-Klauseln und deren Formulare, alle in AData abgelegt; AForms sind
+/// die Formulardateien.</summary>
+function RefAppSources(const AFolder: string; var AData: TScenario; out AForms: TArray<string>): TArray<string>;
+var
+  mMainFile, mSource: string;
+  mTree: TSyntaxTree;
+  mToken: TPascalToken;
+begin
+  mMainFile := TPath.Combine(AFolder, 'RefApp.dpr');
+  AData.Put(mMainFile, ReadSource(mMainFile));
+  Result := [mMainFile];
+  AForms := nil;
+  mTree := TSyntaxTreeCache.Parse(AData.Text(mMainFile));
+  try
+    for mToken in mTree.Tokens do
+    begin
+      if (mToken.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', mToken.Text) then
+      begin
+        mSource := TPath.Combine(AFolder, StringReplace(Copy(mToken.Text, 2, Length(mToken.Text) - 2), '\',
+          PathDelim, [rfReplaceAll]));
+        Result := Result + [mSource];
+        AData.Put(mSource, ReadSource(mSource));
+        if TFile.Exists(ChangeFileExt(mSource, '.dfm')) then
+        begin
+          AForms := AForms + [ChangeFileExt(mSource, '.dfm')];
+          AData.Put(ChangeFileExt(mSource, '.dfm'), ReadSource(ChangeFileExt(mSource, '.dfm')));
+        end;
+      end;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+/// <summary>Zeilen von ASource mit AMarker als „Datei:Zeile“.</summary>
+function MarkedLines(const ASource, AText, AMarker: string): string;
+var
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mLines := AText.Replace(#13#10, #10).Split([#10]);
+  for mIndex := 0 to High(mLines) do
+  begin
+    if mLines[mIndex].Contains(AMarker) then
+    begin
+      Result := Result + Format('%s:%d'#10, [ExtractFileName(ASource), mIndex + 1]);
+    end;
+  end;
+end;
+
+/// <summary>Treffer in ASource als „Datei:Zeile“.</summary>
+function FoundLines(const AData: TScenario; const ASource: string): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in Run(AData, ASource) do
+  begin
+    Result := Result + Format('%s:%d'#10, [ExtractFileName(ASource), mFinding.Range.StartPos.Line + 1]);
+  end;
+end;
+
 procedure TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers;
 const
   Marker = '// ERWARTET-PROJEKT: unused-public-member';
 var
-  Folder, MainFile, Source, Expected, Actual: string;
+  Folder, Source, Expected, Actual: string;
   Data: TScenario;
   Sources, Forms: TArray<string>;
-  Lines: TArray<string>;
-  Token: TPascalToken;
-  Tree: TSyntaxTree;
-  Finding: TRuleFinding;
-  Index: Integer;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
@@ -621,31 +693,8 @@ begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
   end;
   // Units von RefApp aus den in-Klauseln der .dpr, Formulare daneben.
-  MainFile := TPath.Combine(Folder, 'RefApp.dpr');
   Data := Default(TScenario);
-  Data.Put(MainFile, ReadSource(MainFile));
-  Sources := [MainFile];
-  Forms := nil;
-  Tree := TSyntaxTreeCache.Parse(Data.Text(MainFile));
-  try
-    for Token in Tree.Tokens do
-    begin
-      if (Token.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', Token.Text) then
-      begin
-        Source := TPath.Combine(Folder, StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '\',
-          PathDelim, [rfReplaceAll]));
-        Sources := Sources + [Source];
-        Data.Put(Source, ReadSource(Source));
-        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-        begin
-          Forms := Forms + [ChangeFileExt(Source, '.dfm')];
-          Data.Put(ChangeFileExt(Source, '.dfm'), ReadSource(ChangeFileExt(Source, '.dfm')));
-        end;
-      end;
-    end;
-  finally
-    Tree.Free;
-  end;
+  Sources := RefAppSources(Folder, Data, Forms);
   Data.Projects := [Project(TPath.Combine(Folder, 'RefApp.dproj'), TRuleProjectKind.Application, False, Sources,
     Forms)];
   // TPluginAufruf trägt [Schnittstelle]: Mit deadCode.keepAttributes gilt Melden als verwendet (#64).
@@ -655,20 +704,10 @@ begin
   Actual := '';
   for Source in Sources do
   begin
-    Lines := Data.Text(Source).Replace(#13#10, #10).Split([#10]);
-    for Index := 0 to High(Lines) do
-    begin
-      if Lines[Index].Contains(Marker) then
-      begin
-        Expected := Expected + Format('%s:%d'#10, [ExtractFileName(Source), Index + 1]);
-      end;
-    end;
+    Expected := Expected + MarkedLines(Source, Data.Text(Source), Marker);
     if SameText(ExtractFileExt(Source), '.pas') then
     begin
-      for Finding in Run(Data, Source) do
-      begin
-        Actual := Actual + Format('%s:%d'#10, [ExtractFileName(Source), Finding.Range.StartPos.Line + 1]);
-      end;
+      Actual := Actual + FoundLines(Data, Source);
     end;
   end;
   Assert.AreEqual(Expected, Actual);

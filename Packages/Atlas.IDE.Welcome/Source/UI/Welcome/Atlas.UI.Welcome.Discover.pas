@@ -61,6 +61,38 @@ type
     procedure BlockTip(const AId: string);
   end;
 
+  /// <summary>Texte der Karte „Atlas entdecken“, ohne Steuerelement.</summary>
+  TAtlasDiscoverTexts = class
+  public
+    /// <summary>„Atlas entdecken“ in der Sprache der IDE.</summary>
+    class function TitleText: string; static;
+    /// <summary>„Noch nie benutzt“, „Zuletzt vor 3 Wochen“ …; '' ohne Hinweis.</summary>
+    class function AgeText(const AAge: TAtlasDiscoverAge): string; static;
+    /// <summary>„Tipp 2 von 7“; '' bei höchstens einem Tipp.</summary>
+    class function PositionText(APosition, ACount: Integer): string; static;
+    class function ButtonCaption(AButton: TAtlasDiscoverButton): string; static;
+  end;
+
+  /// <summary>Bild der Karte: hält die geladene Datei in ihrer eigenen Größe und zeigt sie in einem TImage auf die
+  /// Anzeigegröße gerechnet.</summary>
+  TAtlasDiscoverPicture = class
+  private
+    FImage: TImage;
+    FFileName: string;
+    FOriginal: TPicture;
+    FShownWidth: Integer;
+    FShownHeight: Integer;
+  public
+    /// <summary>AImage gehört dem Aufrufer.</summary>
+    constructor Create(AImage: TImage);
+    destructor Destroy; override;
+    /// <summary>Datei laden, wenn sie sich geändert hat; '' oder fehlende bzw. kaputte Datei = kein Bild.</summary>
+    procedure Load(const AFileName: string);
+    function HasImage: Boolean;
+    /// <summary>Das TImage zeigt das Bild in AWidth × AHeight Pixeln; ohne Umrechnung bei gleicher Größe.</summary>
+    procedure Render(AWidth, AHeight: Integer);
+  end;
+
   TAtlasWelcomeDiscoverFrame = class(TAtlasWelcomeSectionFrame)
   public const
     Indent = 8;
@@ -76,11 +108,7 @@ type
     FCard: TAtlasDiscoverCard;
     FHasCard: Boolean;
     FImage: TImage;
-    FImageFile: string;
-    /// <summary>Geladene Datei in ihrer eigenen Größe; FImage zeigt sie auf die Anzeigegröße gerechnet.</summary>
-    FOriginal: TPicture;
-    FShownWidth: Integer;
-    FShownHeight: Integer;
+    FPicture: TAtlasDiscoverPicture;
     FTitleLabel: TLabel;
     FKey: TLabel;
     FText: TLabel;
@@ -91,13 +119,13 @@ type
     FContentHeight: Integer;
     FArranging: Boolean;
     procedure SetSource(const AValue: IAtlasDiscoverSource);
-    procedure LoadImage(const AFileName: string);
-    function HasImage: Boolean;
-    /// <summary>Bild für die Anzeigebreite AWidth (Pixel) laden und Sichtbarkeit setzen.</summary>
-    procedure ShowImage(AWidth: Integer);
-    /// <summary>FImage zeigt das Bild in AWidth × AHeight Pixeln; ohne Umrechnung bei gleicher Größe.</summary>
-    procedure RenderImage(AWidth, AHeight: Integer);
     procedure Arrange;
+    /// <summary>Bild für die Spalte ALeft..ARight; setzt den Beginn des Texts und die Unterkante des Bilds.</summary>
+    procedure ArrangeImage(ALeft, ARight: Integer; var ATop, ATextLeft, ABottom: Integer);
+    /// <summary>Titel, Kürzel, Text, Alter und Stelle ab ATop; liefert die Unterkante.</summary>
+    function ArrangeTexts(ATextLeft, ARight, ATop: Integer): Integer;
+    /// <summary>Knöpfe ab ATop, bei zu wenig Breite in weiteren Reihen; liefert die Höhe des Inhalts.</summary>
+    function ArrangeButtons(ALeft, ARight, ATop: Integer): Integer;
     procedure BodyResize(Sender: TObject);
     procedure ButtonClick(Sender: TObject);
   protected
@@ -109,13 +137,6 @@ type
     /// <summary>Klick auf einen Knopf wie mit der Maus (auch für Tests).</summary>
     procedure ClickButton(AButton: TAtlasDiscoverButton);
     function Button(AButton: TAtlasDiscoverButton): TButton;
-    /// <summary>„Atlas entdecken“ in der Sprache der IDE.</summary>
-    class function TitleText: string; static;
-    /// <summary>„Noch nie benutzt“, „Zuletzt vor 3 Wochen“ …; '' ohne Hinweis.</summary>
-    class function AgeText(const AAge: TAtlasDiscoverAge): string; static;
-    /// <summary>„Tipp 2 von 7“; '' bei höchstens einem Tipp.</summary>
-    class function PositionText(APosition, ACount: Integer): string; static;
-    class function ButtonCaption(AButton: TAtlasDiscoverButton): string; static;
     property Source: IAtlasDiscoverSource read FSource write SetSource;
     property Card: TAtlasDiscoverCard read FCard;
     property HasCard: Boolean read FHasCard;
@@ -137,6 +158,87 @@ uses
   Vcl.Imaging.pngimage,
   Atlas.UI.Welcome.Strings;
 
+{ TAtlasDiscoverPicture }
+
+constructor TAtlasDiscoverPicture.Create(AImage: TImage);
+begin
+  inherited Create;
+  FImage := AImage;
+  FOriginal := TPicture.Create;
+end;
+
+destructor TAtlasDiscoverPicture.Destroy;
+begin
+  FOriginal.Free;
+  inherited;
+end;
+
+procedure TAtlasDiscoverPicture.Load(const AFileName: string);
+begin
+  if SameFileName(AFileName, FFileName) then
+  begin
+    Exit;
+  end;
+  FFileName := AFileName;
+  FOriginal.Assign(nil);
+  FImage.Picture.Assign(nil);
+  FShownWidth := 0;
+  FShownHeight := 0;
+  if (AFileName = '') or not FileExists(AFileName) then
+  begin
+    Exit;
+  end;
+  try
+    FOriginal.LoadFromFile(AFileName);
+  except
+    // Kaputtes Bild: Karte ohne Bild.
+    on Exception do
+      FOriginal.Assign(nil);
+  end;
+end;
+
+function TAtlasDiscoverPicture.HasImage: Boolean;
+begin
+  Result := (FOriginal.Graphic <> nil) and not FOriginal.Graphic.Empty;
+end;
+
+procedure TAtlasDiscoverPicture.Render(AWidth, AHeight: Integer);
+var
+  Native, Scaled: TBitmap;
+begin
+  if not HasImage or ((AWidth = FShownWidth) and (AHeight = FShownHeight)) then
+  begin
+    Exit;
+  end;
+  FShownWidth := AWidth;
+  FShownHeight := AHeight;
+  Native := TBitmap.Create;
+  Scaled := TBitmap.Create;
+  try
+    Native.PixelFormat := pf24bit;
+    Native.SetSize(FOriginal.Width, FOriginal.Height);
+    Native.Canvas.Draw(0, 0, FOriginal.Graphic);
+    Scaled.PixelFormat := pf24bit;
+    Scaled.SetSize(AWidth, AHeight);
+    if (AWidth = Native.Width) and (AHeight = Native.Height) then
+    begin
+      Scaled.Canvas.Draw(0, 0, Native);
+    end
+    else
+    begin
+      // HALFTONE mittelt die Pixel; die Vorgabe der GDI ließe dünne helle Schrift ausfallen.
+      SetStretchBltMode(Scaled.Canvas.Handle, HALFTONE);
+      SetBrushOrgEx(Scaled.Canvas.Handle, 0, 0, nil);
+      StretchBlt(Scaled.Canvas.Handle, 0, 0, AWidth, AHeight, Native.Canvas.Handle, 0, 0, Native.Width,
+        Native.Height, SRCCOPY);
+    end;
+    FImage.Picture.Assign(Scaled);
+  finally
+    Scaled.Free;
+    Native.Free;
+  end;
+end;
+
 { TAtlasWelcomeDiscoverFrame }
 
 constructor TAtlasWelcomeDiscoverFrame.Create(AOwner: TComponent);
@@ -152,12 +254,12 @@ var
 
 begin
   inherited Create(AOwner);
-  FOriginal := TPicture.Create;
   FImage := TImage.Create(Self);
   FImage.Parent := Body;
-  // RenderImage liefert das Bild schon in der Größe von FImage.
+  // FPicture.Render liefert das Bild schon in der Größe von FImage.
   FImage.Stretch := False;
   FImage.Visible := False;
+  FPicture := TAtlasDiscoverPicture.Create(FImage);
   FTitleLabel := NewLabel;
   FTitleLabel.Font.Style := [fsBold];
   FKey := NewLabel;
@@ -175,7 +277,7 @@ begin
   begin
     FButtons[Kind] := TButton.Create(Self);
     FButtons[Kind].Parent := Body;
-    FButtons[Kind].Caption := ButtonCaption(Kind);
+    FButtons[Kind].Caption := TAtlasDiscoverTexts.ButtonCaption(Kind);
     FButtons[Kind].Tag := Ord(Kind);
     FButtons[Kind].OnClick := ButtonClick;
   end;
@@ -185,16 +287,18 @@ end;
 
 destructor TAtlasWelcomeDiscoverFrame.Destroy;
 begin
-  FOriginal.Free;
+  FPicture.Free;
   inherited;
 end;
 
-class function TAtlasWelcomeDiscoverFrame.TitleText: string;
+{ TAtlasDiscoverTexts }
+
+class function TAtlasDiscoverTexts.TitleText: string;
 begin
   Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverTitle);
 end;
 
-class function TAtlasWelcomeDiscoverFrame.AgeText(const AAge: TAtlasDiscoverAge): string;
+class function TAtlasDiscoverTexts.AgeText(const AAge: TAtlasDiscoverAge): string;
 begin
   case AAge.Kind of
     TAtlasDiscoverAgeKind.Never:
@@ -207,32 +311,46 @@ begin
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverDays, [AAge.Count]);
     TAtlasDiscoverAgeKind.Weeks:
       if AAge.Count = 1 then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverWeek)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverWeek);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverWeeks, [AAge.Count]);
+      end;
     TAtlasDiscoverAgeKind.Months:
       if AAge.Count = 1 then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverMonth)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverMonth);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverMonths, [AAge.Count]);
+      end;
     TAtlasDiscoverAgeKind.Years:
       if AAge.Count = 1 then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverYear)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverYear);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverYears, [AAge.Count]);
+      end;
   else
     Result := '';
   end;
 end;
 
-class function TAtlasWelcomeDiscoverFrame.PositionText(APosition, ACount: Integer): string;
+class function TAtlasDiscoverTexts.PositionText(APosition, ACount: Integer): string;
 begin
   Result := '';
   if (ACount > 1) and (APosition > 0) then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPosition, [APosition, ACount]);
+  end;
 end;
 
-class function TAtlasWelcomeDiscoverFrame.ButtonCaption(AButton: TAtlasDiscoverButton): string;
+class function TAtlasDiscoverTexts.ButtonCaption(AButton: TAtlasDiscoverButton): string;
 begin
   case AButton of
     TAtlasDiscoverButton.TryIt:
@@ -255,70 +373,6 @@ begin
   UpdateContent;
 end;
 
-procedure TAtlasWelcomeDiscoverFrame.LoadImage(const AFileName: string);
-begin
-  if SameFileName(AFileName, FImageFile) then
-    Exit;
-  FImageFile := AFileName;
-  FOriginal.Assign(nil);
-  FImage.Picture.Assign(nil);
-  FShownWidth := 0;
-  FShownHeight := 0;
-  if (AFileName = '') or not FileExists(AFileName) then
-    Exit;
-  try
-    FOriginal.LoadFromFile(AFileName);
-  except
-    // Kaputtes Bild: Karte ohne Bild.
-    on Exception do
-      FOriginal.Assign(nil);
-  end;
-end;
-
-function TAtlasWelcomeDiscoverFrame.HasImage: Boolean;
-begin
-  Result := (FOriginal.Graphic <> nil) and not FOriginal.Graphic.Empty;
-end;
-
-procedure TAtlasWelcomeDiscoverFrame.ShowImage(AWidth: Integer);
-begin
-  LoadImage(TAtlasTipCatalog.ImageFor(FCard.ImageFile, AWidth));
-  FImage.Visible := FHasCard and HasImage;
-end;
-
-procedure TAtlasWelcomeDiscoverFrame.RenderImage(AWidth, AHeight: Integer);
-var
-  Native, Scaled: TBitmap;
-begin
-  if not HasImage or ((AWidth = FShownWidth) and (AHeight = FShownHeight)) then
-    Exit;
-  FShownWidth := AWidth;
-  FShownHeight := AHeight;
-  Native := TBitmap.Create;
-  Scaled := TBitmap.Create;
-  try
-    Native.PixelFormat := pf24bit;
-    Native.SetSize(FOriginal.Width, FOriginal.Height);
-    Native.Canvas.Draw(0, 0, FOriginal.Graphic);
-    Scaled.PixelFormat := pf24bit;
-    Scaled.SetSize(AWidth, AHeight);
-    if (AWidth = Native.Width) and (AHeight = Native.Height) then
-      Scaled.Canvas.Draw(0, 0, Native)
-    else
-    begin
-      // HALFTONE mittelt die Pixel; die Vorgabe der GDI ließe dünne helle Schrift ausfallen.
-      SetStretchBltMode(Scaled.Canvas.Handle, HALFTONE);
-      SetBrushOrgEx(Scaled.Canvas.Handle, 0, 0, nil);
-      StretchBlt(Scaled.Canvas.Handle, 0, 0, AWidth, AHeight, Native.Canvas.Handle, 0, 0, Native.Width,
-        Native.Height, SRCCOPY);
-    end;
-    FImage.Picture.Assign(Scaled);
-  finally
-    Scaled.Free;
-    Native.Free;
-  end;
-end;
-
 procedure TAtlasWelcomeDiscoverFrame.UpdateContent;
 var
   Kind: TAtlasDiscoverButton;
@@ -326,17 +380,21 @@ var
 begin
   // Ohne Fenster später: Die Tafel ruft UpdateContent nach dem Einhängen.
   if not HasWindow then
+  begin
     Exit;
+  end;
   OldHeight := FContentHeight;
   FCard := Default(TAtlasDiscoverCard);
   FHasCard := (FSource <> nil) and FSource.Card(FCard);
   if not FHasCard then
+  begin
     FCard := Default(TAtlasDiscoverCard);
+  end;
   FTitleLabel.Caption := FCard.Title;
   FKey.Caption := FCard.KeyText;
   FText.Caption := FCard.Text;
-  FAge.Caption := AgeText(FCard.Age);
-  FPosition.Caption := PositionText(FCard.Position, FCard.Count);
+  FAge.Caption := TAtlasDiscoverTexts.AgeText(FCard.Age);
+  FPosition.Caption := TAtlasDiscoverTexts.PositionText(FCard.Position, FCard.Count);
   FTitleLabel.Visible := FHasCard;
   FKey.Visible := FHasCard and (FCard.KeyText <> '');
   FText.Visible := FHasCard and (FCard.Text <> '');
@@ -344,13 +402,17 @@ begin
   FPosition.Visible := FHasCard and (FPosition.Caption <> '');
   FEmpty.Visible := not FHasCard;
   for Kind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
+  begin
     FButtons[Kind].Visible := FHasCard;
+  end;
   FButtons[TAtlasDiscoverButton.TryIt].Enabled := FCard.CanTry;
   FButtons[TAtlasDiscoverButton.Next].Enabled := FCard.Count > 1;
   Arrange;
   inherited;
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.BodyResize(Sender: TObject);
@@ -361,23 +423,24 @@ begin
   Arrange;
   // Anderer Umbruch bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.Arrange;
 var
-  mWidth, mLeft, mTop, TextLeft, Right, Bottom, ButtonWidth, ButtonLeft, ButtonTop, ShownWidth, ShownHeight: Integer;
-  Kind: TAtlasDiscoverButton;
-  Measure: TBitmap;
+  mLeft, mRight, mTop, mTextLeft, mBottom: Integer;
 begin
   if FArranging or (FTitleLabel = nil) then
+  begin
     Exit;
+  end;
   FArranging := True;
   try
     // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-    mWidth := ClientWidth;
     mLeft := ScaleValue(Indent);
-    Right := mWidth - ScaleValue(Indent);
+    mRight := ClientWidth - ScaleValue(Indent);
     mTop := ScaleValue(Gap) div 2;
     if not FHasCard then
     begin
@@ -386,89 +449,106 @@ begin
       FContentHeight := FEmpty.Top + FEmpty.Height + ScaleValue(Gap);
       Exit;
     end;
-    TextLeft := mLeft;
-    Bottom := mTop;
-    // Bild in voller Größe, solange die Spalte reicht, sonst kleiner mit gleichem Seitenverhältnis; die Datei
-    // passend zur Breite (nach einem Monitorwechsel neu).
-    ShownWidth := Max(Min(Right - mLeft, ScaleValue(ImageWidth)), 1);
-    ShownHeight := Max(ShownWidth * ImageHeight div ImageWidth, 1);
-    ShowImage(ShownWidth);
-    if FImage.Visible then
-    begin
-      FImage.SetBounds(mLeft, mTop, ShownWidth, ShownHeight);
-      RenderImage(ShownWidth, ShownHeight);
-      if Right - mLeft >= ScaleValue(ImageWidth) + ScaleValue(Gap) + ScaleValue(MinTextWidth) then
-      begin
-        // Breit: Text neben dem Bild.
-        TextLeft := mLeft + ShownWidth + ScaleValue(Gap);
-        Bottom := FImage.Top + FImage.Height;
-      end
-      else
-      begin
-        // Schmal: Text unter dem Bild.
-        mTop := FImage.Top + FImage.Height + ScaleValue(Gap);
-        Bottom := mTop;
-      end;
-    end;
-    FTitleLabel.SetBounds(TextLeft, mTop, FTitleLabel.Width, FTitleLabel.Height);
-    mTop := FTitleLabel.Top + FTitleLabel.Height;
-    if FKey.Visible then
-    begin
-      // Kürzel neben dem Titel, sonst darunter.
-      if FTitleLabel.Left + FTitleLabel.Width + ScaleValue(Gap) + FKey.Width <= Right then
-        FKey.SetBounds(FTitleLabel.Left + FTitleLabel.Width + ScaleValue(Gap), FTitleLabel.Top, FKey.Width,
-          FKey.Height)
-      else
-      begin
-        FKey.SetBounds(TextLeft, mTop, FKey.Width, FKey.Height);
-        mTop := FKey.Top + FKey.Height;
-      end;
-    end;
-    if FText.Visible then
-    begin
-      // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-      FText.Width := Max(Right - TextLeft, ScaleValue(80));
-      // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
-      FText.AutoSize := False;
-      FText.AutoSize := True;
-      FText.Left := TextLeft;
-      FText.Top := mTop + 2;
-      mTop := FText.Top + FText.Height;
-    end;
-    if FAge.Visible or FPosition.Visible then
-    begin
-      Inc(mTop, 2);
-      if FAge.Visible then
-        FAge.SetBounds(TextLeft, mTop, FAge.Width, FAge.Height);
-      if FPosition.Visible then
-        FPosition.SetBounds(Max(TextLeft, Right - FPosition.Width), mTop, FPosition.Width, FPosition.Height);
-      Inc(mTop, Max(FAge.Height, FPosition.Height));
-    end;
-    mTop := Max(mTop, Bottom) + ScaleValue(Gap);
-    // Knöpfe von links nach rechts, bei zu wenig Breite in weiteren Reihen.
-    ButtonLeft := mLeft;
-    ButtonTop := mTop;
-    Measure := TBitmap.Create;
-    try
-      Measure.Canvas.Font.Assign(Font);
-      for Kind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
-      begin
-        ButtonWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
-        if (ButtonLeft > mLeft) and (ButtonLeft + ButtonWidth > Right) then
-        begin
-          ButtonLeft := mLeft;
-          Inc(ButtonTop, ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2);
-        end;
-        FButtons[Kind].SetBounds(ButtonLeft, ButtonTop, ButtonWidth, ScaleValue(ButtonHeight));
-        Inc(ButtonLeft, ButtonWidth + ScaleValue(Gap) div 2);
-      end;
-    finally
-      Measure.Free;
-    end;
-    FContentHeight := ButtonTop + ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2;
+    mTextLeft := mLeft;
+    mBottom := mTop;
+    ArrangeImage(mLeft, mRight, mTop, mTextLeft, mBottom);
+    mTop := ArrangeTexts(mTextLeft, mRight, mTop);
+    FContentHeight := ArrangeButtons(mLeft, mRight, Max(mTop, mBottom) + ScaleValue(Gap));
   finally
     FArranging := False;
   end;
+end;
+
+procedure TAtlasWelcomeDiscoverFrame.ArrangeImage(ALeft, ARight: Integer; var ATop, ATextLeft, ABottom: Integer);
+var
+  mShownWidth, mShownHeight: Integer;
+begin
+  // Bild in voller Größe, solange die Spalte reicht, sonst kleiner mit gleichem Seitenverhältnis; die Datei
+  // passend zur Breite (nach einem Monitorwechsel neu).
+  mShownWidth := Max(Min(ARight - ALeft, ScaleValue(ImageWidth)), 1);
+  mShownHeight := Max(mShownWidth * ImageHeight div ImageWidth, 1);
+  FPicture.Load(TAtlasTipCatalog.ImageFor(FCard.ImageFile, mShownWidth));
+  FImage.Visible := FHasCard and FPicture.HasImage;
+  if not FImage.Visible then
+  begin
+    Exit;
+  end;
+  FImage.SetBounds(ALeft, ATop, mShownWidth, mShownHeight);
+  FPicture.Render(mShownWidth, mShownHeight);
+  if ARight - ALeft >= ScaleValue(ImageWidth) + ScaleValue(Gap) + ScaleValue(MinTextWidth) then
+  begin
+    // Breit: Text neben dem Bild.
+    ATextLeft := ALeft + mShownWidth + ScaleValue(Gap);
+    ABottom := FImage.Top + FImage.Height;
+  end
+  else
+  begin
+    // Schmal: Text unter dem Bild.
+    ATop := FImage.Top + FImage.Height + ScaleValue(Gap);
+    ABottom := ATop;
+  end;
+end;
+
+function TAtlasWelcomeDiscoverFrame.ArrangeTexts(ATextLeft, ARight, ATop: Integer): Integer;
+begin
+  FTitleLabel.SetBounds(ATextLeft, ATop, FTitleLabel.Width, FTitleLabel.Height);
+  Result := FTitleLabel.Top + FTitleLabel.Height;
+  // Kürzel neben dem Titel, sonst darunter.
+  if FKey.Visible and (FTitleLabel.Left + FTitleLabel.Width + ScaleValue(Gap) + FKey.Width <= ARight) then
+  begin
+    FKey.SetBounds(FTitleLabel.Left + FTitleLabel.Width + ScaleValue(Gap), FTitleLabel.Top, FKey.Width, FKey.Height);
+  end
+  else if FKey.Visible then
+  begin
+    FKey.SetBounds(ATextLeft, Result, FKey.Width, FKey.Height);
+    Result := FKey.Top + FKey.Height;
+  end;
+  if FText.Visible then
+  begin
+    // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
+    FText.Width := Max(ARight - ATextLeft, ScaleValue(80));
+    // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
+    FText.AutoSize := False;
+    FText.AutoSize := True;
+    FText.Left := ATextLeft;
+    FText.Top := Result + 2;
+    Result := FText.Top + FText.Height;
+  end;
+  if FAge.Visible or FPosition.Visible then
+  begin
+    Inc(Result, 2);
+    FAge.SetBounds(ATextLeft, Result, FAge.Width, FAge.Height);
+    FPosition.SetBounds(Max(ATextLeft, ARight - FPosition.Width), Result, FPosition.Width, FPosition.Height);
+    Inc(Result, Max(FAge.Height, FPosition.Height));
+  end;
+end;
+
+function TAtlasWelcomeDiscoverFrame.ArrangeButtons(ALeft, ARight, ATop: Integer): Integer;
+var
+  mKind: TAtlasDiscoverButton;
+  mMeasure: TBitmap;
+  mButtonLeft, mButtonTop, mButtonWidth: Integer;
+begin
+  mButtonLeft := ALeft;
+  mButtonTop := ATop;
+  mMeasure := TBitmap.Create;
+  try
+    mMeasure.Canvas.Font.Assign(Font);
+    for mKind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
+    begin
+      mButtonWidth := mMeasure.Canvas.TextWidth(FButtons[mKind].Caption) + 2 * ScaleValue(ButtonPadding);
+      if (mButtonLeft > ALeft) and (mButtonLeft + mButtonWidth > ARight) then
+      begin
+        mButtonLeft := ALeft;
+        Inc(mButtonTop, ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2);
+      end;
+      FButtons[mKind].SetBounds(mButtonLeft, mButtonTop, mButtonWidth, ScaleValue(ButtonHeight));
+      Inc(mButtonLeft, mButtonWidth + ScaleValue(Gap) div 2);
+    end;
+  finally
+    mMeasure.Free;
+  end;
+  Result := mButtonTop + ScaleValue(ButtonHeight) + ScaleValue(Gap) div 2;
 end;
 
 function TAtlasWelcomeDiscoverFrame.BodyHeight: Integer;
@@ -484,7 +564,9 @@ var
   Id: string;
 begin
   if (FSource = nil) or not FHasCard or not FButtons[AButton].Enabled then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Id := FCard.Id;
   // Die Quelle baut die Karte neu: nicht im Klick des Knopfs.

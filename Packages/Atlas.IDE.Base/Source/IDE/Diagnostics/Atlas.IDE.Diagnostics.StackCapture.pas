@@ -190,49 +190,59 @@ begin
   Ring.Add(Item);
 end;
 
-function LoadedMap: TMapFile;
+/// <summary>Neben der BPL unter ihrem Namen (Release-Paket), sonst wie der Linker sie nennt: ohne die
+/// Versionsendung von LIBSUFFIX AUTO (Atlas.IDE.Base370.bpl → Atlas.IDE.Base.map).</summary>
+function MapCandidates(const AModule: string): TArray<string>;
 var
-  Candidates: TArray<string>;
-  Name, Module, Digits: string;
-  Index: Integer;
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := [ChangeFileExt(AModule, '.map')];
+  mName := TPath.GetFileNameWithoutExtension(AModule);
+  mIndex := Length(mName);
+  while (mIndex > 0) and CharInSet(mName[mIndex], ['0'..'9']) do
+  begin
+    Dec(mIndex);
+  end;
+  if mIndex < Length(mName) then
+  begin
+    Result := Result + [TPath.Combine(ExtractFilePath(AModule), Copy(mName, 1, mIndex) + '.map')];
+  end;
+end;
+
+/// <summary>Erste vorhandene Map-Datei aus ACandidates; nil ohne oder wenn sie nicht lesbar ist.</summary>
+function LoadMapFile(const ACandidates: TArray<string>): TMapFile;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in ACandidates do
+  begin
+    if TFile.Exists(mName) then
+    begin
+      try
+        Result := TMapFile.Create(TAtlasTextFile.LoadText(mName));
+        TAtlasGuard.Log('Stacktraces: Map-Datei ' + ExtractFileName(mName) + ' geladen');
+      except
+        on E: Exception do
+        begin
+          FreeAndNil(Result);
+          TAtlasGuard.Log('Stacktraces: Map-Datei nicht lesbar: ' + TAtlasGuard.SafeMessage(E.Message));
+        end;
+      end;
+      Break;
+    end;
+  end;
+end;
+
+function LoadedMap: TMapFile;
 begin
   MapLock.Enter;
   try
     if not MapLoaded then
     begin
       MapLoaded := True;
-      Module := GetModuleName(HInstance);
-      // Neben der BPL unter ihrem Namen (Release-Paket), sonst wie der Linker sie nennt: ohne die
-      // Versionsendung von LIBSUFFIX AUTO (Atlas.IDE.Base370.bpl → Atlas.IDE.Base.map).
-      Candidates := [ChangeFileExt(Module, '.map')];
-      Name := TPath.GetFileNameWithoutExtension(Module);
-      Index := Length(Name);
-      while (Index > 0) and CharInSet(Name[Index], ['0'..'9']) do
-      begin
-        Dec(Index);
-      end;
-      Digits := Copy(Name, Index + 1, MaxInt);
-      if Digits <> '' then
-      begin
-        Candidates := Candidates + [TPath.Combine(ExtractFilePath(Module), Copy(Name, 1, Index) + '.map')];
-      end;
-      for Name in Candidates do
-      begin
-        if TFile.Exists(Name) then
-        begin
-          try
-            Map := TMapFile.Create(TAtlasTextFile.LoadText(Name));
-            TAtlasGuard.Log('Stacktraces: Map-Datei ' + ExtractFileName(Name) + ' geladen');
-          except
-            on E: Exception do
-            begin
-              FreeAndNil(Map);
-              TAtlasGuard.Log('Stacktraces: Map-Datei nicht lesbar: ' + TAtlasGuard.SafeMessage(E.Message));
-            end;
-          end;
-          Break;
-        end;
-      end;
+      Map := LoadMapFile(MapCandidates(GetModuleName(HInstance)));
       if Map = nil then
       begin
         TAtlasGuard.Log('Stacktraces ohne Map-Datei (Rahmen als Modul+Offset)');

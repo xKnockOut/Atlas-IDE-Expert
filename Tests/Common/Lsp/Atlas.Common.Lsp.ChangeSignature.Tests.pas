@@ -9,8 +9,11 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Lsp.ChangeSignature;
+  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Lsp.ChangeSignature.Collector;
 
 type
   [TestFixture]
@@ -22,6 +25,8 @@ type
     FReadOnly: string;
     procedure AddFile(const AFileName, AText: string);
     function TextOf(const AFileName: string): string;
+    function SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition): TChangeSignatureSource;
     function Info(const AFileName, AMarker: string): TChangeSignatureInfo;
     function Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
       AMode: TNewParameterMode): TChangeSignatureOutcome; overload;
@@ -80,11 +85,9 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Rename;
 
 const
@@ -289,6 +292,24 @@ begin
   AddFile(HauptFile, UnitHaupt);
 end;
 
+function TLspChangeSignatureTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := FIndex;
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Files := [BasisFile, HauptFile, MaskeFile, MaskeDfm];
+  Result.ReadText :=
+    function(const AName: string; out AText: string): Boolean
+    begin
+      AText := TextOf(AName);
+      Result := AText <> '';
+    end;
+end;
+
 function TLspChangeSignatureTests.Info(const AFileName, AMarker: string): TChangeSignatureInfo;
 var
   Resolver: TNameResolver;
@@ -299,13 +320,7 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspChangeSignature.Prepare(Resolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker),
-      [BasisFile, HauptFile, MaskeFile, MaskeDfm],
-      function(const AName: string; out AText: string): Boolean
-      begin
-        AText := TextOf(AName);
-        Result := AText <> '';
-      end, nil);
+    Result := TLspChangeSignature.Prepare(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)));
   finally
     Tree.Free;
     Resolver.Free;
@@ -333,17 +348,11 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspChangeSignature.Execute(Resolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker), Request,
-      [BasisFile, HauptFile, MaskeFile, MaskeDfm],
-      function(const AName: string; out AText: string): Boolean
-      begin
-        AText := TextOf(AName);
-        Result := AText <> '';
-      end,
+    Result := TLspChangeSignature.Execute(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)), Request,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, FReadOnly);
-      end, nil);
+      end);
   finally
     Tree.Free;
     Resolver.Free;

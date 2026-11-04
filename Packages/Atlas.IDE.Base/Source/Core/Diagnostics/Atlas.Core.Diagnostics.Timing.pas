@@ -770,6 +770,21 @@ begin
   end;
 end;
 
+function RowLine(const ARow: TAtlasTimingRow): string;
+begin
+  if ARow.Kind = TAtlasTimingRowKind.Entries then
+  begin
+    Result := RowCaption(ARow) + ' | ' + TAtlasTimingRows.CountText(ARow.Last) + ' | ' +
+      TAtlasTimingRows.CountText(ARow.Mean) + ' | ' + TAtlasTimingRows.CountText(ARow.Maximum) + ' | ' + NoValue;
+  end
+  else
+  begin
+    Result := RowCaption(ARow) + ' | ' + TAtlasTimingRows.Ms(ARow.Last) + Mark(ARow.LastWarn) + ' | ' +
+      TAtlasTimingRows.Ms(ARow.Mean) + Mark(ARow.MeanWarn) + ' | ' + TAtlasTimingRows.Ms(ARow.Maximum) +
+      Mark(ARow.MaxWarn) + ' | ' + TAtlasTimingRows.Ms(ARow.Budget);
+  end;
+end;
+
 /// <summary>Tabelle „Schritt | letzte | Mittel | Maximum | Budget“ des Berichts.</summary>
 procedure AddStepTable(ALines: TStrings; const AQueries: TArray<TAtlasQueryTiming>);
 var
@@ -779,17 +794,7 @@ begin
   ALines.Add('--- | --- | --- | --- | ---');
   for mRow in TAtlasTimingRows.Build(AQueries) do
   begin
-    if mRow.Kind = TAtlasTimingRowKind.Entries then
-    begin
-      ALines.Add(RowCaption(mRow) + ' | ' + TAtlasTimingRows.CountText(mRow.Last) + ' | ' +
-        TAtlasTimingRows.CountText(mRow.Mean) + ' | ' + TAtlasTimingRows.CountText(mRow.Maximum) + ' | ' + NoValue);
-    end
-    else
-    begin
-      ALines.Add(RowCaption(mRow) + ' | ' + TAtlasTimingRows.Ms(mRow.Last) + Mark(mRow.LastWarn) + ' | ' +
-        TAtlasTimingRows.Ms(mRow.Mean) + Mark(mRow.MeanWarn) + ' | ' + TAtlasTimingRows.Ms(mRow.Maximum) +
-        Mark(mRow.MaxWarn) + ' | ' + TAtlasTimingRows.Ms(mRow.Budget));
-    end;
+    ALines.Add(RowLine(mRow));
   end;
 end;
 

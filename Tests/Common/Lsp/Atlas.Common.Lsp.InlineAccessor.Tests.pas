@@ -186,12 +186,15 @@ function Run(const AIndex: ISymbolIndex; ALine: Integer; const AScope: string): 
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  mContext: TInlineAccessorContext;
 begin
   Tree := TPascalParser.Parse(UnitModel);
   Resolver := TNameResolver.Create(AIndex, nil);
   try
+    mContext := Context(AIndex);
+    mContext.Scope := AScope;
     Result := TLspInlineAccessor.Execute(Resolver, Tree, ModelFile, UnitModel, TTextPosition.Create(ALine, 6),
-      AScope, Context(AIndex));
+      mContext);
   finally
     Resolver.Free;
     Tree.Free;
@@ -240,9 +243,16 @@ var
   Tree: TSyntaxTree;
 
   function Offered(AEnabled, ABulk: Boolean; ALine: Integer): string;
+  var
+    mOffer: TInlineAccessorOffer;
   begin
-    Result := Titles(TLspInlineAccessor.Actions(AEnabled, ABulk, Tree, UnitModel, 'file:///C:/P/Model.pas',
-      TTextPosition.Create(ALine, 6), TInlineAccessorOptions.Default, FIndex));
+    mOffer := Default(TInlineAccessorOffer);
+    mOffer.Enabled := AEnabled;
+    mOffer.Bulk := ABulk;
+    mOffer.Options := TInlineAccessorOptions.Default;
+    mOffer.Index := FIndex;
+    Result := Titles(TLspInlineAccessor.Actions(mOffer, Tree, UnitModel, 'file:///C:/P/Model.pas',
+      TTextPosition.Create(ALine, 6)));
   end;
 
 begin

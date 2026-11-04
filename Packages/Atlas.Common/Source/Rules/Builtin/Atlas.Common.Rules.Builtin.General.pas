@@ -293,88 +293,133 @@ var
       TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse]);
   end;
 
+  /// <summary>Anweisungen im try-Teil von ATry (ohne finally und leere Anweisungen).</summary>
+  function StatementCount(ATry: TSyntaxNode): Integer;
+  var
+    mIndex: Integer;
+  begin
+    Result := 0;
+    for mIndex := 0 to ATry.ChildCount - 1 do
+    begin
+      if not (ATry[mIndex].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+
+  /// <summary>Stehen try, finally und end je allein auf ihrer Zeile? AEnding: die Zeile von end, getrimmt.
+  /// </summary>
+  function OwnLines(ATryLine, AFinallyLine, AEndLine: Integer; out AEnding: string): Boolean;
+  begin
+    AEnding := '';
+    Result := (AEndLine <= High(Lines)) and (Trim(Lines[ATryLine]) = 'try') and
+      (Trim(Lines[AFinallyLine]) = 'finally');
+    if Result then
+    begin
+      AEnding := Trim(Lines[AEndLine]);
+      Result := (AEnding = 'end') or (AEnding = 'end;');
+    end;
+  end;
+
+  /// <summary>Rumpf zwischen try und finally als begin … end.</summary>
+  function BeginEndBody(ATryLine, AFinallyLine, AEndLine: Integer): TArray<string>;
+  var
+    mLine: Integer;
+  begin
+    Result := [TTextLines.IndentOf(Lines[ATryLine]) + 'begin'];
+    for mLine := ATryLine + 1 to AFinallyLine - 1 do
+    begin
+      Result := Result + [Lines[mLine]];
+    end;
+    Result := Result + [Lines[AEndLine]];
+  end;
+
+  /// <summary>Unterschied zwischen der Einrückung des Rumpfs und der von try; 0, wenn er nicht weiter
+  /// eingerückt ist.</summary>
+  function BodyShift(ATryLine, AFinallyLine: Integer): Integer;
+  var
+    mLine: Integer;
+  begin
+    Result := MaxInt;
+    for mLine := ATryLine + 1 to AFinallyLine - 1 do
+    begin
+      if Trim(Lines[mLine]) <> '' then
+      begin
+        Result := Min(Result, TTextLines.IndentLength(Lines[mLine]) - TTextLines.IndentLength(Lines[ATryLine]));
+      end;
+    end;
+    if (Result = MaxInt) or (Result < 0) then
+    begin
+      Result := 0;
+    end;
+  end;
+
+  /// <summary>Rumpf zwischen try und finally, um seine zusätzliche Einrückung ausgerückt; nil ohne Zeilen.
+  /// end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
+  /// </summary>
+  function OutdentedBody(ATryLine, AFinallyLine: Integer; const AEnding: string): TArray<string>;
+  var
+    mLine, mShift: Integer;
+    mText: string;
+  begin
+    mShift := BodyShift(ATryLine, AFinallyLine);
+    Result := nil;
+    for mLine := ATryLine + 1 to AFinallyLine - 1 do
+    begin
+      if Trim(Lines[mLine]) = '' then
+      begin
+        Result := Result + [''];
+      end
+      else
+      begin
+        Result := Result + [Copy(Lines[mLine], mShift + 1, MaxInt)];
+      end;
+    end;
+    if Result = nil then
+    begin
+      Exit;
+    end;
+    mText := TrimRight(Result[High(Result)]);
+    if (AEnding = 'end;') and not EndsStr(';', mText) then
+    begin
+      Result[High(Result)] := mText + ';';
+    end;
+  end;
+
   // try, finally und end stehen je allein auf ihrer Zeile (end mit oder ohne Semikolon): Dann entfernt die
   // Korrektur die drei Zeilen und rückt den Rumpf aus; als einzige Anweisung mit mehreren Anweisungen im Rumpf
   // wird aus try begin.
   function Fix(ATry: TSyntaxNode; ATryToken, AFinallyToken, AEndToken: Integer; out AFix: TRuleFix): Boolean;
   var
-    TryLine, FinallyLine, EndLine, Line, Shift, Statements, Index: Integer;
-    Body: TArray<string>;
-    Ending, Text: string;
-    Range: TTextRange;
+    mTryLine, mFinallyLine, mEndLine: Integer;
+    mBody: TArray<string>;
+    mEnding: string;
+    mRange: TTextRange;
   begin
-    Result := False;
-    TryLine := Tokens[ATryToken].StartPos.Line;
-    FinallyLine := Tokens[AFinallyToken].StartPos.Line;
-    EndLine := Tokens[AEndToken].StartPos.Line;
-    if (EndLine > High(Lines)) or (Trim(Lines[TryLine]) <> 'try') or (Trim(Lines[FinallyLine]) <> 'finally') then
+    mTryLine := Tokens[ATryToken].StartPos.Line;
+    mFinallyLine := Tokens[AFinallyToken].StartPos.Line;
+    mEndLine := Tokens[AEndToken].StartPos.Line;
+    if not OwnLines(mTryLine, mFinallyLine, mEndLine, mEnding) then
     begin
-      Exit;
+      Exit(False);
     end;
-    Ending := Trim(Lines[EndLine]);
-    if (Ending <> 'end') and (Ending <> 'end;') then
+    mRange := TTextRange.Create(TTextPosition.Create(mTryLine, 0), TTextPosition.Create(mEndLine,
+      Length(Lines[mEndLine])));
+    if not InStatementList(ATry) and (StatementCount(ATry) > 1) then
     begin
-      Exit;
-    end;
-    Statements := 0;
-    for Index := 0 to ATry.ChildCount - 1 do
-    begin
-      if not (ATry[Index].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
-      begin
-        Inc(Statements);
-      end;
-    end;
-    Range := TTextRange.Create(TTextPosition.Create(TryLine, 0), TTextPosition.Create(EndLine, Length(Lines[EndLine])));
-    if not InStatementList(ATry) and (Statements > 1) then
-    begin
-      Body := [TTextLines.IndentOf(Lines[TryLine]) + 'begin'];
-      for Line := TryLine + 1 to FinallyLine - 1 do
-      begin
-        Body := Body + [Lines[Line]];
-      end;
-      Body := Body + [Lines[EndLine]];
       AFix := TRuleFix.Create('try … finally end durch begin … end ersetzen',
-        [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
+        [TRuleEdit.Create(mRange, TTextLines.JoinLines(BeginEndBody(mTryLine, mFinallyLine, mEndLine), LineBreak))]);
       Exit(True);
     end;
     // Rumpf um den Unterschied zwischen seiner Einrückung und der von try ausrücken.
-    Shift := MaxInt;
-    for Line := TryLine + 1 to FinallyLine - 1 do
+    mBody := OutdentedBody(mTryLine, mFinallyLine, mEnding);
+    Result := mBody <> nil;
+    if Result then
     begin
-      if Trim(Lines[Line]) <> '' then
-      begin
-        Shift := Min(Shift, TTextLines.IndentLength(Lines[Line]) - TTextLines.IndentLength(Lines[TryLine]));
-      end;
+      AFix := TRuleFix.Create('try … finally end entfernen (Rumpf bleibt)',
+        [TRuleEdit.Create(mRange, TTextLines.JoinLines(mBody, LineBreak))]);
     end;
-    if (Shift = MaxInt) or (Shift < 0) then
-    begin
-      Shift := 0;
-    end;
-    Body := nil;
-    for Line := TryLine + 1 to FinallyLine - 1 do
-    begin
-      if Trim(Lines[Line]) = '' then
-      begin
-        Body := Body + [''];
-      end
-      else
-      begin
-        Body := Body + [Copy(Lines[Line], Shift + 1, MaxInt)];
-      end;
-    end;
-    if Body = nil then
-    begin
-      Exit;
-    end;
-    // end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
-    Text := TrimRight(Body[High(Body)]);
-    if (Ending = 'end;') and not EndsStr(';', Text) then
-    begin
-      Body[High(Body)] := Text + ';';
-    end;
-    AFix := TRuleFix.Create('try … finally end entfernen (Rumpf bleibt)',
-      [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
-    Result := True;
   end;
 
   procedure CheckTry(ATry: TSyntaxNode);
@@ -475,62 +520,91 @@ type
     IsDispinterface: Boolean;
   end;
 
+/// <summary>"IFoo = interface": vor dem Schlüsselwort an AKeyword steht "=", davor der Name. Token des
+/// Namens; -1 ohne.</summary>
+function InterfaceNameToken(const ATokens: TArray<TPascalToken>; AKeyword: Integer): Integer;
+var
+  mEquals: Integer;
+begin
+  Result := -1;
+  mEquals := PreviousCode(ATokens, AKeyword);
+  if (mEquals >= 0) and ATokens[mEquals].IsSymbol('=') then
+  begin
+    Result := PreviousCode(ATokens, mEquals);
+    if (Result >= 0) and (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
+    begin
+      Result := -1;
+    end;
+  end;
+end;
+
+/// <summary>GUID ab dem Token ANext nach dem Kopf in ADeclaration eintragen.</summary>
+procedure ReadGuid(const ATokens: TArray<TPascalToken>; ANext: Integer; var ADeclaration: TInterfaceDeclaration);
+begin
+  if (ANext + 2 > High(ATokens)) or not ATokens[ANext].IsSymbol('[') then
+  begin
+    Exit;
+  end;
+  if ATokens[ANext + 1].Kind = TPascalTokenKind.StringLiteral then
+  begin
+    ADeclaration.Guid := UpperCase(AnsiDequotedStr(ATokens[ANext + 1].Text, ''''));
+    ADeclaration.GuidToken := ANext + 1;
+  end
+  else
+  begin
+    // GUID über eine Konstante: vorhanden, aber nicht vergleichbar.
+    ADeclaration.GuidToken := ANext;
+  end;
+end;
+
+/// <summary>Deklaration zum Schlüsselwort interface bzw. dispinterface an AKeyword mit dem Namen an AName;
+/// False bei einer Vorwärtsdeklaration "IFoo = interface;" (ohne GUID).</summary>
+function ReadDeclaration(const ATokens: TArray<TPascalToken>; AKeyword, AName: Integer;
+  out ADeclaration: TInterfaceDeclaration): Boolean;
+var
+  mNext: Integer;
+begin
+  ADeclaration := Default(TInterfaceDeclaration);
+  ADeclaration.Name := ATokens[AName].Text;
+  ADeclaration.NameToken := AName;
+  ADeclaration.HeaderEnd := AKeyword;
+  ADeclaration.GuidToken := -1;
+  ADeclaration.IsDispinterface := ATokens[AKeyword].IsKeyword('dispinterface');
+  mNext := NextCode(ATokens, AKeyword + 1);
+  if (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol(';') then
+  begin
+    Exit(False);
+  end;
+  if (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('(') then
+  begin
+    while (mNext <= High(ATokens)) and not ATokens[mNext].IsSymbol(')') do
+    begin
+      Inc(mNext);
+    end;
+    ADeclaration.HeaderEnd := mNext;
+    mNext := NextCode(ATokens, mNext + 1);
+  end;
+  ReadGuid(ATokens, mNext, ADeclaration);
+  Result := True;
+end;
+
 function InterfaceDeclarations(const ATokens: TArray<TPascalToken>): TArray<TInterfaceDeclaration>;
 var
-  Index, Equals, Name, Next: Integer;
-  Declaration: TInterfaceDeclaration;
+  mIndex, mName: Integer;
+  mDeclaration: TInterfaceDeclaration;
 begin
   Result := nil;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if not (ATokens[Index].IsKeyword('interface') or ATokens[Index].IsKeyword('dispinterface')) then
+    if not (ATokens[mIndex].IsKeyword('interface') or ATokens[mIndex].IsKeyword('dispinterface')) then
     begin
       Continue;
     end;
-    // "IFoo = interface": vor dem Schlüsselwort steht "=", davor der Name.
-    Equals := PreviousCode(ATokens, Index);
-    if (Equals < 0) or not ATokens[Equals].IsSymbol('=') then
+    mName := InterfaceNameToken(ATokens, mIndex);
+    if (mName >= 0) and ReadDeclaration(ATokens, mIndex, mName, mDeclaration) then
     begin
-      Continue;
+      Result := Result + [mDeclaration];
     end;
-    Name := PreviousCode(ATokens, Equals);
-    if (Name < 0) or (ATokens[Name].Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Continue;
-    end;
-    Declaration := Default(TInterfaceDeclaration);
-    Declaration.Name := ATokens[Name].Text;
-    Declaration.NameToken := Name;
-    Declaration.HeaderEnd := Index;
-    Declaration.GuidToken := -1;
-    Declaration.IsDispinterface := ATokens[Index].IsKeyword('dispinterface');
-    Next := NextCode(ATokens, Index + 1);
-    // Vorwärtsdeklaration "IFoo = interface;" hat keine GUID.
-    if (Next <= High(ATokens)) and ATokens[Next].IsSymbol(';') then
-    begin
-      Continue;
-    end;
-    if (Next <= High(ATokens)) and ATokens[Next].IsSymbol('(') then
-    begin
-      while (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(')') do
-      begin
-        Inc(Next);
-      end;
-      Declaration.HeaderEnd := Next;
-      Next := NextCode(ATokens, Next + 1);
-    end;
-    if (Next + 2 <= High(ATokens)) and ATokens[Next].IsSymbol('[') and
-      (ATokens[Next + 1].Kind = TPascalTokenKind.StringLiteral) then
-    begin
-      Declaration.Guid := UpperCase(AnsiDequotedStr(ATokens[Next + 1].Text, ''''));
-      Declaration.GuidToken := Next + 1;
-    end
-    else if (Next + 2 <= High(ATokens)) and ATokens[Next].IsSymbol('[') then
-    begin
-      // GUID über eine Konstante: vorhanden, aber nicht vergleichbar.
-      Declaration.GuidToken := Next;
-    end;
-    Result := Result + [Declaration];
   end;
 end;
 
@@ -662,48 +736,78 @@ begin
   Result := TRuleDescriptor.Create('guid-syntax-invalid', TRuleSeverity.Error, 'GUID mit falscher Schreibweise');
 end;
 
-class function TGuidSyntaxInvalidRule.Problem(const AGuid: string): string;
-const
-  Lengths: array[0..4] of Integer = (8, 4, 4, 4, 12);
-  Ordinals: array[0..4] of string = ('erste', 'zweite', 'dritte', 'vierte', 'letzte');
-var
-  Blocks: TArray<string>;
-  Index, Position: Integer;
+/// <summary>Fehlende geschweifte Klammern der GUID AGuid; '' ohne Fehler.</summary>
+function BraceProblem(const AGuid: string): string;
 begin
   Result := '';
   if not AGuid.StartsWith('{') and not AGuid.EndsWith('}') then
   begin
-    Exit('Der GUID fehlen die geschweiften Klammern');
-  end;
-  if not AGuid.StartsWith('{') then
+    Result := 'Der GUID fehlen die geschweiften Klammern';
+  end
+  else if not AGuid.StartsWith('{') then
   begin
-    Exit('Der GUID fehlt die öffnende geschweifte Klammer');
-  end;
-  if not AGuid.EndsWith('}') or (Length(AGuid) < 2) then
+    Result := 'Der GUID fehlt die öffnende geschweifte Klammer';
+  end
+  else if not AGuid.EndsWith('}') or (Length(AGuid) < 2) then
   begin
-    Exit('Der GUID fehlt die schließende geschweifte Klammer');
+    Result := 'Der GUID fehlt die schließende geschweifte Klammer';
   end;
-  Blocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
-  if Length(Blocks) <> Length(Lengths) then
+end;
+
+/// <summary>Anzahl und Längen der Blöcke; '' ohne Fehler.</summary>
+function BlockProblem(const ABlocks: TArray<string>): string;
+const
+  Lengths: array[0..4] of Integer = (8, 4, 4, 4, 12);
+  Ordinals: array[0..4] of string = ('erste', 'zweite', 'dritte', 'vierte', 'letzte');
+var
+  mIndex: Integer;
+begin
+  if Length(ABlocks) <> Length(Lengths) then
   begin
-    Exit(Format('Die GUID hat %d statt 5 Blöcke', [Length(Blocks)]));
+    Exit(Format('Die GUID hat %d statt 5 Blöcke', [Length(ABlocks)]));
   end;
-  for Index := 0 to High(Blocks) do
+  for mIndex := 0 to High(ABlocks) do
   begin
-    if Length(Blocks[Index]) <> Lengths[Index] then
+    if Length(ABlocks[mIndex]) <> Lengths[mIndex] then
     begin
-      Exit(Format('Der %s Block der GUID hat %d statt %d Zeichen', [Ordinals[Index], Length(Blocks[Index]),
-        Lengths[Index]]));
+      Exit(Format('Der %s Block der GUID hat %d statt %d Zeichen', [Ordinals[mIndex], Length(ABlocks[mIndex]),
+        Lengths[mIndex]]));
     end;
   end;
-  for Index := 0 to High(Blocks) do
+  Result := '';
+end;
+
+/// <summary>Zeichen, die keine Hexadezimalziffern sind; '' ohne Fehler.</summary>
+function HexProblem(const ABlocks: TArray<string>): string;
+var
+  mBlock: string;
+  mChar: Char;
+begin
+  for mBlock in ABlocks do
   begin
-    for Position := 1 to Length(Blocks[Index]) do
+    for mChar in mBlock do
     begin
-      if not CharInSet(Blocks[Index][Position], ['0'..'9', 'A'..'F', 'a'..'f']) then
+      if not CharInSet(mChar, ['0'..'9', 'A'..'F', 'a'..'f']) then
       begin
-        Exit(Format('Die GUID enthält „%s“, das ist keine Hexadezimalziffer', [Blocks[Index][Position]]));
+        Exit(Format('Die GUID enthält „%s“, das ist keine Hexadezimalziffer', [mChar]));
       end;
+    end;
+  end;
+  Result := '';
+end;
+
+class function TGuidSyntaxInvalidRule.Problem(const AGuid: string): string;
+var
+  mBlocks: TArray<string>;
+begin
+  Result := BraceProblem(AGuid);
+  if Result = '' then
+  begin
+    mBlocks := Copy(AGuid, 2, Length(AGuid) - 2).Split(['-']);
+    Result := BlockProblem(mBlocks);
+    if Result = '' then
+    begin
+      Result := HexProblem(mBlocks);
     end;
   end;
 end;
@@ -858,6 +962,23 @@ begin
   Result := (Letters >= 3) and (Pos(' ', Trim(AValue)) > 0);
 end;
 
+/// <summary>Tiefe der Anweisungsblöcke ADepth zum Schlüsselwort AToken nachführen.</summary>
+procedure TrackBlockDepth(const AToken: TPascalToken; var ADepth: Integer);
+begin
+  if AToken.IsKeyword('begin') then
+  begin
+    Inc(ADepth);
+  end
+  else if (ADepth > 0) and (AToken.IsKeyword('try') or AToken.IsKeyword('case') or AToken.IsKeyword('asm')) then
+  begin
+    Inc(ADepth);
+  end
+  else if (ADepth > 0) and AToken.IsKeyword('end') then
+  begin
+    Dec(ADepth);
+  end;
+end;
+
 procedure THardcodedStringRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TArray<TPascalToken>;
@@ -873,19 +994,7 @@ begin
   begin
     if Tokens[Index].Kind = TPascalTokenKind.Keyword then
     begin
-      if Tokens[Index].IsKeyword('begin') then
-      begin
-        Inc(Depth);
-      end
-      else if (Depth > 0) and (Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
-        Tokens[Index].IsKeyword('asm')) then
-      begin
-        Inc(Depth);
-      end
-      else if (Depth > 0) and Tokens[Index].IsKeyword('end') then
-      begin
-        Dec(Depth);
-      end;
+      TrackBlockDepth(Tokens[Index], Depth);
       Continue;
     end;
     // Nur Anweisungen: Konstanten- und resourcestring-Abschnitte stehen außerhalb von begin … end.

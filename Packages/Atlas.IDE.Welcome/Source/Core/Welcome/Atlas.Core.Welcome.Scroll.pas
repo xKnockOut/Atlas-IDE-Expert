@@ -58,26 +58,38 @@ class function TAtlasWelcomeScroll.MaxPosition(AContent, APage: Integer): Intege
 begin
   Result := AContent - APage;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasWelcomeScroll.Clamp(APosition, AMax: Integer): Integer;
 begin
   Result := APosition;
   if Result > AMax then
+  begin
     Result := AMax;
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAtlasWelcomeScroll.CanScroll(APosition, AMax, ADelta: Integer): Boolean;
 begin
   if ADelta > 0 then
-    Result := APosition > 0
+  begin
+    Result := APosition > 0;
+  end
   else if ADelta < 0 then
-    Result := APosition < AMax
+  begin
+    Result := APosition < AMax;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 class function TAtlasWelcomeScroll.WheelPixels(var ARest: Integer; ADelta, ALines, ALineHeight,
@@ -87,13 +99,21 @@ var
 begin
   // Richtungswechsel: Rest der alten Richtung verwerfen.
   if ((ARest > 0) and (ADelta < 0)) or ((ARest < 0) and (ADelta > 0)) then
+  begin
     ARest := 0;
+  end;
   if (ALines < 1) or (ALines > 100) then
-    mStep := APage
+  begin
+    mStep := APage;
+  end
   else
+  begin
     mStep := ALines * ALineHeight;
+  end;
   if mStep < 1 then
+  begin
     mStep := 1;
+  end;
   mTotal := ARest + ADelta;
   // Pixel = Raster × Schritt; ganze Pixel nach außen geben, den Bruchteil behalten.
   Result := -((mTotal * mStep) div WheelDelta);
@@ -105,9 +125,13 @@ var
   mTotal: Integer;
 begin
   if ((ARest > 0) and (ADelta < 0)) or ((ARest < 0) and (ADelta > 0)) then
+  begin
     ARest := 0;
+  end;
   if (ALines < 1) or (ALines > 100) then
+  begin
     ALines := 3;
+  end;
   mTotal := ARest + ADelta;
   Result := -((mTotal * ALines) div WheelDelta);
   ARest := mTotal - ((-Result) * WheelDelta) div ALines;
@@ -120,7 +144,9 @@ var
 begin
   mStep := APage - ALineHeight;
   if mStep < ALineHeight then
+  begin
     mStep := ALineHeight;
+  end;
   case AKey of
     TAtlasWelcomeScrollKey.PageUp:
       Result := APosition - mStep;
@@ -142,21 +168,35 @@ var
 begin
   Result := 0;
   if (AHeight <= 0) or (AMaxStep <= 0) then
+  begin
     Exit;
+  end;
   mEdge := AEdge;
   // Niedrige Fläche: höchstens ein Drittel als Randstreifen, sonst gäbe es keine ruhige Mitte.
   if mEdge > AHeight div 3 then
+  begin
     mEdge := AHeight div 3;
+  end;
   if mEdge < 1 then
+  begin
     Exit;
+  end;
   if AY < 0 then
-    Result := -AMaxStep
+  begin
+    Result := -AMaxStep;
+  end
   else if AY >= AHeight then
-    Result := AMaxStep
+  begin
+    Result := AMaxStep;
+  end
   else if AY < mEdge then
-    Result := -(1 + ((mEdge - AY) * (AMaxStep - 1)) div mEdge)
+  begin
+    Result := -(1 + ((mEdge - AY) * (AMaxStep - 1)) div mEdge);
+  end
   else if AY >= AHeight - mEdge then
+  begin
     Result := 1 + ((AY - (AHeight - mEdge) + 1) * (AMaxStep - 1)) div mEdge;
+  end;
 end;
 
 end.

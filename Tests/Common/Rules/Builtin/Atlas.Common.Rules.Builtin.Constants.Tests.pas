@@ -189,6 +189,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
+  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Constants.TypedConstants,
   Atlas.Tests.RuleAssert;
 
 function ConstantFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -521,65 +523,29 @@ begin
     '{"rules": {"constant-expression-error": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
-procedure TConstantExpressionErrorTests.RuleIsRegistered;
+/// <summary>Ob eine der eingebauten Regeln die ID ARuleId trägt.</summary>
+function IsBuiltin(const ARuleId: string): Boolean;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  Result := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = ConstantExpressionErrorRuleId then
+    if mRule.Descriptor.Id = ARuleId then
     begin
-      Found := True;
+      Exit(True);
     end;
   end;
-  Assert.IsTrue(Found, ConstantExpressionErrorRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = DefaultParameterInvalidRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found, DefaultParameterInvalidRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = SignedUnsignedMixRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found, SignedUnsignedMixRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = NarrowingAssignmentRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found, NarrowingAssignmentRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = TypedConstantModifiedRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found, TypedConstantModifiedRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = StringLengthLimitRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found, StringLengthLimitRuleId);
+end;
+
+procedure TConstantExpressionErrorTests.RuleIsRegistered;
+begin
+  Assert.IsTrue(IsBuiltin(ConstantExpressionErrorRuleId), ConstantExpressionErrorRuleId);
+  Assert.IsTrue(IsBuiltin(DefaultParameterInvalidRuleId), DefaultParameterInvalidRuleId);
+  Assert.IsTrue(IsBuiltin(SignedUnsignedMixRuleId), SignedUnsignedMixRuleId);
+  Assert.IsTrue(IsBuiltin(NarrowingAssignmentRuleId), NarrowingAssignmentRuleId);
+  Assert.IsTrue(IsBuiltin(TypedConstantModifiedRuleId), TypedConstantModifiedRuleId);
+  Assert.IsTrue(IsBuiltin(StringLengthLimitRuleId), StringLengthLimitRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>

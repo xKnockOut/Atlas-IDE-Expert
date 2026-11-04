@@ -108,142 +108,745 @@ type
     OwnerCharacter: Integer;
   end;
 
-function Lex(const AText: string): TArray<TLexToken>;
+  /// <summary>Zerlegt den Text in Klammern, Wörter und Satzzeichen; Strings, Kommentare und Zahlen zählen nicht.
+  /// </summary>
+  TPairLexer = class
+  private
+    FText: string;
+    FIndex: Integer;
+    FLine: Integer;
+    FLineStart: Integer;
+    FList: TList<TLexToken>;
+    function CharAt(AIndex: Integer): Char;
+    procedure Add(AStart, ALength: Integer; AIsWord, APlain: Boolean);
+    procedure NewLine;
+    function AfterDot: Boolean;
+    procedure SkipBraceComment;
+    procedure LexSlash;
+    procedure LexParen;
+    procedure LexCaret;
+    function LexString: Boolean;
+    procedure LexWord;
+    procedure SkipNumber;
+    /// <summary>Verarbeitet das Zeichen an FIndex; True: danach ein Zeichen weiter.</summary>
+    function Step: Boolean;
+  public
+    function Run(const AText: string): TArray<TLexToken>;
+  end;
+
+  /// <summary>Paart Klammern und Blockwörter und sammelt die Besitzer (#653).</summary>
+  TPairAnalyzer = class
+  private
+    FTokens: TArray<TLexToken>;
+    FResults: TList<TAtlasPairToken>;
+    FBlocks: TList<TOpen>;
+    FBrackets: TList<TOpen>;
+    FClosed: TList<TAtlasPairBlock>;
+    /// <summary>Token-Indizes von Routinenköpfen, deren Rumpf noch kommt (#653).</summary>
+    FHeaders: TList<Integer>;
+    function Emit(AIndex, ADepth: Integer; AUnpaired: Boolean): Integer;
+    function TextAt(AIndex: Integer): string;
+    function TopWord: string;
+    function AfterParens(AIndex: Integer): string;
+    procedure CloseBlock(AIndex: Integer);
+    function Opens(AIndex: Integer; const AWord: string): Boolean;
+    procedure AddOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
+    function FindBack(AFrom: Integer; const AWords: array of string): Integer;
+    procedure AddCaseOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
+    procedure AddIfOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+    procedure AddLoopOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+    procedure AddRoutineOwners(var AOpen: TOpen; ADepth: Integer);
+    procedure AddStatementOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+    procedure AddOwners(var AOpen: TOpen; AIndex: Integer);
+    function IsRoutineHeader(AIndex: Integer; const AWord: string): Boolean;
+    procedure TrackHeaders(AIndex: Integer; const AWord: string);
+    procedure OpenBracket(AIndex: Integer);
+    procedure CloseBracket(AIndex: Integer);
+    procedure OpenBlock(AIndex: Integer; const AWord: string);
+    procedure HandleEnd(AIndex: Integer);
+    procedure HandleClose(AIndex: Integer; const AWord: string);
+    procedure HandleToken(AIndex: Integer);
+    procedure MarkUnpaired;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Run(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
+  end;
+
+function IsOneOf(const AText: string; const AWords: array of string): Boolean;
 var
-  List: TList<TLexToken>;
-  Index, Line, LineStart, Start: Integer;
-  Token: TLexToken;
-  Escaped: Boolean;
-
-  procedure Add(AStart, ALength: Integer; AIsWord, APlain: Boolean);
-  begin
-    Token.Text := Copy(AText, AStart, ALength);
-    Token.Line := Line;
-    Token.Character := AStart - LineStart;
-    Token.IsWord := AIsWord;
-    Token.Plain := APlain;
-    List.Add(Token);
-  end;
-
-  procedure NewLine;
-  begin
-    Inc(Line);
-    LineStart := Index + 1;
-  end;
-
+  mWord: string;
 begin
-  List := TList<TLexToken>.Create;
-  try
-    Index := 1;
-    Line := 0;
-    LineStart := 1;
-    while Index <= Length(AText) do
-    begin
-      case AText[Index] of
-        #10:
-          NewLine;
-        '{':
-          begin
-            while (Index <= Length(AText)) and (AText[Index] <> '}') do
-            begin
-              if AText[Index] = #10 then
-              begin
-                NewLine;
-              end;
-              Inc(Index);
-            end;
-          end;
-        '/':
-          if (Index < Length(AText)) and (AText[Index + 1] = '/') then
-          begin
-            while (Index < Length(AText)) and (AText[Index + 1] <> #10) do
-            begin
-              Inc(Index);
-            end;
-          end
-          else
-          begin
-            Add(Index, 1, False, False);
-          end;
-        '(':
-          if (Index < Length(AText)) and (AText[Index + 1] = '*') then
-          begin
-            Inc(Index, 2);
-            while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
-            begin
-              if AText[Index] = #10 then
-              begin
-                NewLine;
-              end;
-              Inc(Index);
-            end;
-            Inc(Index);
-          end
-          else
-          begin
-            Add(Index, 1, False, False);
-          end;
-        '^':
-          begin
-            Add(Index, 1, False, False);
-            // ^[ ^] ^( ^) sind Steuerzeichen (#862), keine Klammern; P^[1] und F()^[1] bleiben
-            // Dereferenzierung mit Index.
-            if (Index < Length(AText)) and CharInSet(AText[Index + 1], ['[', ']', '(', ')']) and
-              not ((Index > 1) and
-              CharInSet(AText[Index - 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', ')', ']', '^'])) then
-            begin
-              Inc(Index);
-            end;
-          end;
-        '''':
-          begin
-            Inc(Index);
-            while (Index <= Length(AText)) and (AText[Index] <> '''') and (AText[Index] <> #10) do
-            begin
-              Inc(Index);
-            end;
-            if (Index <= Length(AText)) and (AText[Index] = #10) then
-            begin
-              Continue;
-            end;
-          end;
-        'A'..'Z', 'a'..'z', '_', '&':
-          begin
-            Escaped := AText[Index] = '&';
-            Start := Index;
-            if Escaped then
-            begin
-              Inc(Index);
-            end;
-            // @@End im asm-Block ist eine Sprungmarke, kein Blockende (#861).
-            Escaped := Escaped or (Start > 1) and (AText[Start - 1] = '@');
-            while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-            begin
-              Inc(Index);
-            end;
-            Add(Start, Index - Start, True,
-              Escaped or (List.Count > 0) and (List.Last.Text = '.') and (List.Last.Line = Line));
-            Continue;
-          end;
-        '0'..'9', '$', '#':
-          begin
-            while (Index < Length(AText)) and CharInSet(AText[Index + 1], ['0'..'9', 'A'..'F', 'a'..'f', '$']) do
-            begin
-              Inc(Index);
-            end;
-          end;
-        ' ', #9, #13:
-          ;
-      else
-        Add(Index, 1, False, False);
-      end;
-      Inc(Index);
-    end;
-    Result := List.ToArray;
-  finally
-    List.Free;
+  Result := False;
+  for mWord in AWords do
+  begin
+    Result := Result or (mWord = AText);
   end;
 end;
+
+{ TPairLexer }
+
+function TPairLexer.CharAt(AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(FText)) then
+  begin
+    Result := FText[AIndex];
+  end;
+end;
+
+procedure TPairLexer.Add(AStart, ALength: Integer; AIsWord, APlain: Boolean);
+var
+  mToken: TLexToken;
+begin
+  mToken.Text := Copy(FText, AStart, ALength);
+  mToken.Line := FLine;
+  mToken.Character := AStart - FLineStart;
+  mToken.IsWord := AIsWord;
+  mToken.Plain := APlain;
+  FList.Add(mToken);
+end;
+
+procedure TPairLexer.NewLine;
+begin
+  Inc(FLine);
+  FLineStart := FIndex + 1;
+end;
+
+function TPairLexer.AfterDot: Boolean;
+begin
+  Result := (FList.Count > 0) and (FList.Last.Text = '.') and (FList.Last.Line = FLine);
+end;
+
+procedure TPairLexer.SkipBraceComment;
+begin
+  while (FIndex <= Length(FText)) and (FText[FIndex] <> '}') do
+  begin
+    if FText[FIndex] = #10 then
+    begin
+      NewLine;
+    end;
+    Inc(FIndex);
+  end;
+end;
+
+procedure TPairLexer.LexSlash;
+begin
+  if CharAt(FIndex + 1) <> '/' then
+  begin
+    Add(FIndex, 1, False, False);
+    Exit;
+  end;
+  while (FIndex < Length(FText)) and (FText[FIndex + 1] <> #10) do
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+procedure TPairLexer.LexParen;
+begin
+  if CharAt(FIndex + 1) <> '*' then
+  begin
+    Add(FIndex, 1, False, False);
+    Exit;
+  end;
+  Inc(FIndex, 2);
+  while (FIndex < Length(FText)) and not ((FText[FIndex] = '*') and (FText[FIndex + 1] = ')')) do
+  begin
+    if FText[FIndex] = #10 then
+    begin
+      NewLine;
+    end;
+    Inc(FIndex);
+  end;
+  Inc(FIndex);
+end;
+
+procedure TPairLexer.LexCaret;
+begin
+  Add(FIndex, 1, False, False);
+  // ^[ ^] ^( ^) sind Steuerzeichen (#862), keine Klammern; P^[1] und F()^[1] bleiben
+  // Dereferenzierung mit Index.
+  if CharInSet(CharAt(FIndex + 1), ['[', ']', '(', ')']) and
+    not CharInSet(CharAt(FIndex - 1), ['A'..'Z', 'a'..'z', '0'..'9', '_', ')', ']', '^']) then
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+function TPairLexer.LexString: Boolean;
+begin
+  Inc(FIndex);
+  while (FIndex <= Length(FText)) and (FText[FIndex] <> '''') and (FText[FIndex] <> #10) do
+  begin
+    Inc(FIndex);
+  end;
+  // Am Zeilenende offen: das #10 zählt die nächste Runde.
+  Result := CharAt(FIndex) <> #10;
+end;
+
+procedure TPairLexer.LexWord;
+var
+  mStart: Integer;
+  mEscaped: Boolean;
+begin
+  mEscaped := FText[FIndex] = '&';
+  mStart := FIndex;
+  if mEscaped then
+  begin
+    Inc(FIndex);
+  end;
+  // @@End im asm-Block ist eine Sprungmarke, kein Blockende (#861).
+  mEscaped := mEscaped or (CharAt(mStart - 1) = '@');
+  while (FIndex <= Length(FText)) and CharInSet(FText[FIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
+    Inc(FIndex);
+  end;
+  Add(mStart, FIndex - mStart, True, mEscaped or AfterDot);
+end;
+
+procedure TPairLexer.SkipNumber;
+begin
+  while (FIndex < Length(FText)) and CharInSet(FText[FIndex + 1], ['0'..'9', 'A'..'F', 'a'..'f', '$']) do
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+function TPairLexer.Step: Boolean;
+begin
+  Result := True;
+  case FText[FIndex] of
+    #10:
+      begin
+        NewLine;
+      end;
+    '{':
+      begin
+        SkipBraceComment;
+      end;
+    '/':
+      begin
+        LexSlash;
+      end;
+    '(':
+      begin
+        LexParen;
+      end;
+    '^':
+      begin
+        LexCaret;
+      end;
+    '''':
+      begin
+        Result := LexString;
+      end;
+    'A'..'Z', 'a'..'z', '_', '&':
+      begin
+        LexWord;
+        Result := False;
+      end;
+    '0'..'9', '$', '#':
+      begin
+        SkipNumber;
+      end;
+    ' ', #9, #13:
+      begin
+      end;
+  else
+    begin
+      Add(FIndex, 1, False, False);
+    end;
+  end;
+end;
+
+function TPairLexer.Run(const AText: string): TArray<TLexToken>;
+begin
+  FText := AText;
+  FIndex := 1;
+  FLine := 0;
+  FLineStart := 1;
+  FList := TList<TLexToken>.Create;
+  try
+    while FIndex <= Length(FText) do
+    begin
+      if Step then
+      begin
+        Inc(FIndex);
+      end;
+    end;
+    Result := FList.ToArray;
+  finally
+    FreeAndNil(FList);
+  end;
+end;
+
+{ TPairAnalyzer }
+
+constructor TPairAnalyzer.Create;
+begin
+  inherited Create;
+  FResults := TList<TAtlasPairToken>.Create;
+  FBlocks := TList<TOpen>.Create;
+  FBrackets := TList<TOpen>.Create;
+  FClosed := TList<TAtlasPairBlock>.Create;
+  FHeaders := TList<Integer>.Create;
+end;
+
+destructor TPairAnalyzer.Destroy;
+begin
+  FHeaders.Free;
+  FClosed.Free;
+  FBrackets.Free;
+  FBlocks.Free;
+  FResults.Free;
+  inherited;
+end;
+
+function TPairAnalyzer.Emit(AIndex, ADepth: Integer; AUnpaired: Boolean): Integer;
+var
+  mPair: TAtlasPairToken;
+begin
+  mPair.Line := FTokens[AIndex].Line;
+  mPair.Character := FTokens[AIndex].Character;
+  mPair.Length := Length(FTokens[AIndex].Text);
+  mPair.Depth := ADepth;
+  mPair.Unpaired := AUnpaired;
+  mPair.IsWord := FTokens[AIndex].IsWord;
+  mPair.Owner := False;
+  Result := FResults.Add(mPair);
+end;
+
+function TPairAnalyzer.TextAt(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex <= High(FTokens)) and not FTokens[AIndex].Plain then
+  begin
+    Result := LowerCase(FTokens[AIndex].Text);
+  end;
+end;
+
+function TPairAnalyzer.TopWord: string;
+begin
+  Result := '';
+  if FBlocks.Count > 0 then
+  begin
+    Result := FBlocks.Last.Word;
+  end;
+end;
+
+/// <summary>Nach "class(TBase)" bzw. "interface(IBase)": Token hinter der Klammer.</summary>
+function TPairAnalyzer.AfterParens(AIndex: Integer): string;
+var
+  mDepth, mIndex: Integer;
+begin
+  Result := TextAt(AIndex);
+  if Result <> '(' then
+  begin
+    Exit;
+  end;
+  Result := '';
+  mDepth := 0;
+  mIndex := AIndex;
+  while mIndex <= High(FTokens) do
+  begin
+    if FTokens[mIndex].Text = '(' then
+    begin
+      Inc(mDepth);
+    end
+    else if FTokens[mIndex].Text = ')' then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit(TextAt(mIndex + 1));
+      end;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+// Der oberste offene Block endet am Token AIndex.
+procedure TPairAnalyzer.CloseBlock(AIndex: Integer);
+var
+  mBlock: TAtlasPairBlock;
+begin
+  mBlock.OpenLine := FResults.List[FBlocks.Last.Index].Line;
+  mBlock.OpenCharacter := FResults.List[FBlocks.Last.Index].Character;
+  mBlock.CloseLine := FTokens[AIndex].Line;
+  mBlock.CloseCharacter := FTokens[AIndex].Character;
+  mBlock.OwnerLine := FBlocks.Last.OwnerLine;
+  mBlock.OwnerCharacter := FBlocks.Last.OwnerCharacter;
+  FBlocks.Delete(FBlocks.Count - 1);
+  mBlock.Depth := FBlocks.Count;
+  FClosed.Add(mBlock);
+  Emit(AIndex, FBlocks.Count, False);
+end;
+
+function TPairAnalyzer.Opens(AIndex: Integer; const AWord: string): Boolean;
+var
+  mPrevious: string;
+begin
+  mPrevious := TextAt(AIndex - 1);
+  if IsOneOf(AWord, ['begin', 'try', 'repeat', 'asm']) then
+  begin
+    Result := True;
+  end
+  else if AWord = 'case' then
+  begin
+    Result := not IsOneOf(TopWord, ['record', 'class', 'object']);
+  end
+  else if AWord = 'record' then
+  begin
+    Result := IsOneOf(mPrevious, ['=', ':', 'of', 'packed']);
+  end
+  else if IsOneOf(AWord, ['class', 'interface', 'dispinterface']) then
+  begin
+    Result := IsOneOf(mPrevious, ['=', 'packed']) and (TextAt(AIndex + 1) <> 'of') and
+      (AfterParens(AIndex + 1) <> ';');
+  end
+  else
+  begin
+    Result := (AWord = 'object') and (mPrevious = '=');
+  end;
+end;
+
+/// <summary>AIndex als Besitzer des Blocks AOpen in der Tiefe ADepth (#653).</summary>
+procedure TPairAnalyzer.AddOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
+var
+  mAdded: Integer;
+begin
+  mAdded := Emit(AIndex, ADepth, False);
+  FResults.List[mAdded].Owner := True;
+  AOpen.Owners := AOpen.Owners + [mAdded];
+  if (FTokens[AIndex].Line < AOpen.OwnerLine) or
+    ((FTokens[AIndex].Line = AOpen.OwnerLine) and (FTokens[AIndex].Character < AOpen.OwnerCharacter)) then
+  begin
+    AOpen.OwnerLine := FTokens[AIndex].Line;
+    AOpen.OwnerCharacter := FTokens[AIndex].Character;
+  end;
+end;
+
+/// <summary>Rückwärts ab AFrom das erste der Wörter AWords; -1 bei einem Ende der Anweisung davor.</summary>
+function TPairAnalyzer.FindBack(AFrom: Integer; const AWords: array of string): Integer;
+var
+  mText: string;
+begin
+  Result := AFrom;
+  while Result >= 0 do
+  begin
+    mText := TextAt(Result);
+    if IsOneOf(mText, AWords) then
+    begin
+      Exit;
+    end;
+    if IsOneOf(mText, [';', 'begin', 'end', 'then', 'do', 'else', 'of', 'try', 'finally', 'except', 'repeat',
+      'until', 'asm']) then
+    begin
+      Break;
+    end;
+    Dec(Result);
+  end;
+  Result := -1;
+end;
+
+/// <summary>Besitzer von case: das "of" dahinter.</summary>
+procedure TPairAnalyzer.AddCaseOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
+var
+  mFound, mParens: Integer;
+  mText: string;
+  mDone: Boolean;
+begin
+  mParens := 0;
+  mFound := AIndex + 1;
+  mDone := False;
+  while not mDone and (mFound <= High(FTokens)) do
+  begin
+    mText := TextAt(mFound);
+    if IsOneOf(mText, ['(', '[']) then
+    begin
+      Inc(mParens);
+    end
+    else if IsOneOf(mText, [')', ']']) then
+    begin
+      Dec(mParens);
+    end
+    else if (mParens = 0) and (mText = 'of') then
+    begin
+      AddOwner(AOpen, mFound, ADepth);
+      mDone := True;
+    end
+    else
+    begin
+      mDone := IsOneOf(mText, [';', 'begin', 'end']);
+    end;
+    Inc(mFound);
+  end;
+end;
+
+/// <summary>if … then begin: then, if und ein else davor.</summary>
+procedure TPairAnalyzer.AddIfOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+var
+  mFound: Integer;
+begin
+  mFound := FindBack(AIndex - 2, ['if']);
+  if mFound < 0 then
+  begin
+    Exit;
+  end;
+  AddOwner(AOpen, AIndex - 1, ADepth);
+  AddOwner(AOpen, mFound, ADepth);
+  if TextAt(mFound - 1) = 'else' then
+  begin
+    AddOwner(AOpen, mFound - 1, ADepth);
+  end;
+end;
+
+/// <summary>for/while/with/on … do begin: do und das Schlüsselwort davor.</summary>
+procedure TPairAnalyzer.AddLoopOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+var
+  mFound: Integer;
+begin
+  mFound := FindBack(AIndex - 2, ['for', 'while', 'with', 'on']);
+  if mFound >= 0 then
+  begin
+    AddOwner(AOpen, AIndex - 1, ADepth);
+    AddOwner(AOpen, mFound, ADepth);
+  end;
+end;
+
+/// <summary>Rumpf der zuletzt begonnenen Routine (lokale Routinen kommen vor dem äußeren Rumpf).</summary>
+procedure TPairAnalyzer.AddRoutineOwners(var AOpen: TOpen; ADepth: Integer);
+var
+  mFound: Integer;
+begin
+  mFound := FHeaders.Last;
+  FHeaders.Delete(FHeaders.Count - 1);
+  AddOwner(AOpen, mFound, ADepth);
+  if TextAt(mFound - 1) = 'class' then
+  begin
+    AddOwner(AOpen, mFound - 1, ADepth);
+  end;
+end;
+
+/// <summary>Besitzer von begin bzw. asm: die Anweisung davor.</summary>
+procedure TPairAnalyzer.AddStatementOwners(var AOpen: TOpen; AIndex, ADepth: Integer);
+var
+  mBefore: string;
+begin
+  mBefore := TextAt(AIndex - 1);
+  if mBefore = 'then' then
+  begin
+    AddIfOwners(AOpen, AIndex, ADepth);
+  end
+  else if mBefore = 'do' then
+  begin
+    AddLoopOwners(AOpen, AIndex, ADepth);
+  end
+  else if mBefore = 'else' then
+  begin
+    AddOwner(AOpen, AIndex - 1, ADepth);
+  end
+  else if (ADepth = 0) and (FHeaders.Count > 0) then
+  begin
+    AddRoutineOwners(AOpen, ADepth);
+  end;
+end;
+
+/// <summary>Besitzer des Öffners am Token AIndex: Anweisung davor bzw. "of" hinter case.</summary>
+procedure TPairAnalyzer.AddOwners(var AOpen: TOpen; AIndex: Integer);
+begin
+  if AOpen.Word = 'case' then
+  begin
+    AddCaseOwner(AOpen, AIndex, FBlocks.Count);
+  end
+  else if IsOneOf(AOpen.Word, ['begin', 'asm']) then
+  begin
+    AddStatementOwners(AOpen, AIndex, FBlocks.Count);
+  end;
+end;
+
+function TPairAnalyzer.IsRoutineHeader(AIndex: Integer; const AWord: string): Boolean;
+var
+  mPrevious: string;
+begin
+  mPrevious := TextAt(AIndex - 1);
+  Result := (FBlocks.Count = 0) and not IsOneOf(mPrevious, ['=', ':', 'to', 'of', '(', ',']);
+  if Result and (AWord = 'operator') then
+  begin
+    Result := mPrevious = 'class';
+  end
+  else if Result then
+  begin
+    Result := IsOneOf(AWord, ['procedure', 'function', 'constructor', 'destructor']);
+  end;
+end;
+
+procedure TPairAnalyzer.TrackHeaders(AIndex: Integer; const AWord: string);
+begin
+  if IsRoutineHeader(AIndex, AWord) then
+  begin
+    FHeaders.Add(AIndex);
+  end
+  else if AWord = 'implementation' then
+  begin
+    FHeaders.Clear;
+  end
+  else if IsOneOf(AWord, ['forward', 'external']) and (FBlocks.Count = 0) and (FHeaders.Count > 0) then
+  begin
+    FHeaders.Delete(FHeaders.Count - 1);
+  end;
+end;
+
+procedure TPairAnalyzer.OpenBracket(AIndex: Integer);
+var
+  mOpen: TOpen;
+begin
+  mOpen := Default(TOpen);
+  mOpen.Word := FTokens[AIndex].Text;
+  mOpen.Index := Emit(AIndex, FBrackets.Count, False);
+  FBrackets.Add(mOpen);
+end;
+
+procedure TPairAnalyzer.CloseBracket(AIndex: Integer);
+begin
+  if (FBrackets.Count > 0) and ((FBrackets.Last.Word = '(') = (FTokens[AIndex].Text = ')')) then
+  begin
+    FBrackets.Delete(FBrackets.Count - 1);
+    Emit(AIndex, FBrackets.Count, False);
+  end
+  else
+  begin
+    Emit(AIndex, 0, True);
+  end;
+end;
+
+procedure TPairAnalyzer.OpenBlock(AIndex: Integer; const AWord: string);
+var
+  mOpen: TOpen;
+begin
+  mOpen.Word := AWord;
+  mOpen.Index := Emit(AIndex, FBlocks.Count, False);
+  mOpen.Owners := nil;
+  mOpen.OwnerLine := FTokens[AIndex].Line;
+  mOpen.OwnerCharacter := FTokens[AIndex].Character;
+  AddOwners(mOpen, AIndex);
+  FBlocks.Add(mOpen);
+end;
+
+procedure TPairAnalyzer.HandleEnd(AIndex: Integer);
+begin
+  if (FBlocks.Count > 0) and (TopWord <> 'repeat') then
+  begin
+    CloseBlock(AIndex);
+  end
+  // "end." ohne Öffner: Ende der Unit bzw. des Programms.
+  else if (FBlocks.Count > 0) or (TextAt(AIndex + 1) <> '.') then
+  begin
+    Emit(AIndex, 0, True);
+  end;
+end;
+
+procedure TPairAnalyzer.HandleClose(AIndex: Integer; const AWord: string);
+begin
+  if AWord = 'end' then
+  begin
+    HandleEnd(AIndex);
+  end
+  else if (AWord = 'until') and (TopWord = 'repeat') then
+  begin
+    CloseBlock(AIndex);
+  end
+  else if AWord = 'until' then
+  begin
+    Emit(AIndex, 0, True);
+  end
+  else if IsOneOf(AWord, ['finally', 'except']) and (TopWord = 'try') then
+  begin
+    Emit(AIndex, FBlocks.Count - 1, False);
+  end;
+end;
+
+procedure TPairAnalyzer.HandleToken(AIndex: Integer);
+var
+  mWord: string;
+begin
+  if not FTokens[AIndex].IsWord then
+  begin
+    if IsOneOf(FTokens[AIndex].Text, ['(', '[']) then
+    begin
+      OpenBracket(AIndex);
+    end
+    else if IsOneOf(FTokens[AIndex].Text, [')', ']']) then
+    begin
+      CloseBracket(AIndex);
+    end;
+  end
+  else if not FTokens[AIndex].Plain then
+  begin
+    mWord := LowerCase(FTokens[AIndex].Text);
+    TrackHeaders(AIndex, mWord);
+    if Opens(AIndex, mWord) then
+    begin
+      OpenBlock(AIndex, mWord);
+    end
+    else
+    begin
+      HandleClose(AIndex, mWord);
+    end;
+  end;
+end;
+
+/// <summary>Offen geblieben: unpaarig.</summary>
+procedure TPairAnalyzer.MarkUnpaired;
+var
+  mOpen: TOpen;
+  mOwner: Integer;
+begin
+  for mOpen in FBlocks do
+  begin
+    FResults.List[mOpen.Index].Unpaired := True;
+    for mOwner in mOpen.Owners do
+    begin
+      FResults.List[mOwner].Unpaired := True;
+    end;
+  end;
+  for mOpen in FBrackets do
+  begin
+    FResults.List[mOpen.Index].Unpaired := True;
+  end;
+end;
+
+function TPairAnalyzer.Run(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
+var
+  mLexer: TPairLexer;
+  mIndex: Integer;
+begin
+  mLexer := TPairLexer.Create;
+  try
+    FTokens := mLexer.Run(AText);
+  finally
+    mLexer.Free;
+  end;
+  for mIndex := 0 to High(FTokens) do
+  begin
+    HandleToken(mIndex);
+  end;
+  MarkUnpaired;
+  FResults.Sort(TComparer<TAtlasPairToken>.Construct(
+    function(const A, B: TAtlasPairToken): Integer
+    begin
+      Result := A.Line - B.Line;
+      if Result = 0 then
+      begin
+        Result := A.Character - B.Character;
+      end;
+    end));
+  Result := FResults.ToArray;
+  ABlocks := FClosed.ToArray;
+end;
+
+{ TAtlasPairs }
 
 class function TAtlasPairs.Spans(const AText, ALine: string; const ALineTokens: TArray<TAtlasPairToken>;
   AOwners: Boolean): TArray<TAtlasPairSpan>;
@@ -331,389 +934,13 @@ end;
 
 class function TAtlasPairs.Analyze(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
 var
-  Tokens: TArray<TLexToken>;
-  Results: TList<TAtlasPairToken>;
-  Blocks, Brackets: TList<TOpen>;
-  Closed: TList<TAtlasPairBlock>;
-  /// <summary>Token-Indizes von Routinenköpfen, deren Rumpf noch kommt (#653).</summary>
-  Headers: TList<Integer>;
-  Index, Owner: Integer;
-  Token: TLexToken;
-  Word, Previous, Next: string;
-  Open: TOpen;
-
-  function Emit(AIndex, ADepth: Integer; AUnpaired: Boolean): Integer;
-  var
-    Pair: TAtlasPairToken;
-  begin
-    Pair.Line := Tokens[AIndex].Line;
-    Pair.Character := Tokens[AIndex].Character;
-    Pair.Length := Length(Tokens[AIndex].Text);
-    Pair.Depth := ADepth;
-    Pair.Unpaired := AUnpaired;
-    Pair.IsWord := Tokens[AIndex].IsWord;
-    Pair.Owner := False;
-    Result := Results.Add(Pair);
-  end;
-
-  function TextAt(AIndex: Integer): string;
-  begin
-    if (AIndex >= 0) and (AIndex <= High(Tokens)) and not Tokens[AIndex].Plain then
-    begin
-      Result := LowerCase(Tokens[AIndex].Text);
-    end
-    else
-    begin
-      Result := '';
-    end;
-  end;
-
-  /// <summary>Nach "class(TBase)" bzw. "interface(IBase)": Token hinter der Klammer.</summary>
-  function AfterParens(AIndex: Integer): string;
-  var
-    Depth: Integer;
-  begin
-    if TextAt(AIndex) <> '(' then
-    begin
-      Exit(TextAt(AIndex));
-    end;
-    Depth := 0;
-    while AIndex <= High(Tokens) do
-    begin
-      if Tokens[AIndex].Text = '(' then
-      begin
-        Inc(Depth);
-      end
-      else if Tokens[AIndex].Text = ')' then
-      begin
-        Dec(Depth);
-        if Depth = 0 then
-        begin
-          Exit(TextAt(AIndex + 1));
-        end;
-      end;
-      Inc(AIndex);
-    end;
-    Result := '';
-  end;
-
-  // Der oberste offene Block endet am Token AIndex.
-  procedure CloseBlock(AIndex: Integer);
-  var
-    Block: TAtlasPairBlock;
-  begin
-    Block.OpenLine := Results.List[Blocks.Last.Index].Line;
-    Block.OpenCharacter := Results.List[Blocks.Last.Index].Character;
-    Block.CloseLine := Tokens[AIndex].Line;
-    Block.CloseCharacter := Tokens[AIndex].Character;
-    Block.OwnerLine := Blocks.Last.OwnerLine;
-    Block.OwnerCharacter := Blocks.Last.OwnerCharacter;
-    Blocks.Delete(Blocks.Count - 1);
-    Block.Depth := Blocks.Count;
-    Closed.Add(Block);
-    Emit(AIndex, Blocks.Count, False);
-  end;
-
-  function InRecord: Boolean;
-  begin
-    Result := (Blocks.Count > 0) and ((Blocks.Last.Word = 'record') or (Blocks.Last.Word = 'class') or
-      (Blocks.Last.Word = 'object'));
-  end;
-
-  function Opens: Boolean;
-  begin
-    Previous := TextAt(Index - 1);
-    Next := TextAt(Index + 1);
-    if (Word = 'begin') or (Word = 'try') or (Word = 'repeat') or (Word = 'asm') then
-    begin
-      Exit(True);
-    end;
-    if Word = 'case' then
-    begin
-      Exit(not InRecord);
-    end;
-    if Word = 'record' then
-    begin
-      Exit((Previous = '=') or (Previous = ':') or (Previous = 'of') or (Previous = 'packed'));
-    end;
-    if (Word = 'class') or (Word = 'interface') or (Word = 'dispinterface') then
-    begin
-      Exit(((Previous = '=') or (Previous = 'packed')) and (Next <> 'of') and (AfterParens(Index + 1) <> ';'));
-    end;
-    if Word = 'object' then
-    begin
-      Exit(Previous = '=');
-    end;
-    Result := False;
-  end;
-
-  /// <summary>AIndex als Besitzer des Blocks AOpen in der Tiefe ADepth (#653).</summary>
-  procedure AddOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
-  var
-    Added: Integer;
-  begin
-    Added := Emit(AIndex, ADepth, False);
-    Results.List[Added].Owner := True;
-    AOpen.Owners := AOpen.Owners + [Added];
-    if (Tokens[AIndex].Line < AOpen.OwnerLine) or
-      ((Tokens[AIndex].Line = AOpen.OwnerLine) and (Tokens[AIndex].Character < AOpen.OwnerCharacter)) then
-    begin
-      AOpen.OwnerLine := Tokens[AIndex].Line;
-      AOpen.OwnerCharacter := Tokens[AIndex].Character;
-    end;
-  end;
-
-  function IsStop(const AText: string): Boolean;
-  begin
-    Result := (AText = ';') or (AText = 'begin') or (AText = 'end') or (AText = 'then') or (AText = 'do') or
-      (AText = 'else') or (AText = 'of') or (AText = 'try') or (AText = 'finally') or (AText = 'except') or
-      (AText = 'repeat') or (AText = 'until') or (AText = 'asm');
-  end;
-
-  /// <summary>Rückwärts ab AFrom das erste der Wörter AWords; -1 bei einem Ende der Anweisung davor.</summary>
-  function FindBack(AFrom: Integer; const AWords: array of string): Integer;
-  var
-    Text, Candidate: string;
-  begin
-    while AFrom >= 0 do
-    begin
-      Text := TextAt(AFrom);
-      for Candidate in AWords do
-      begin
-        if Text = Candidate then
-        begin
-          Exit(AFrom);
-        end;
-      end;
-      if IsStop(Text) then
-      begin
-        Exit(-1);
-      end;
-      Dec(AFrom);
-    end;
-    Result := -1;
-  end;
-
-  /// <summary>Besitzer des Öffners am Token AIndex: Anweisung davor bzw. "of" hinter case.</summary>
-  procedure AddOwners(var AOpen: TOpen; AIndex: Integer);
-  var
-    Depth, Found, Parens: Integer;
-    Before: string;
-  begin
-    Depth := Blocks.Count;
-    if AOpen.Word = 'case' then
-    begin
-      Parens := 0;
-      Found := AIndex + 1;
-      while Found <= High(Tokens) do
-      begin
-        Before := TextAt(Found);
-        if (Before = '(') or (Before = '[') then
-        begin
-          Inc(Parens);
-        end
-        else if (Before = ')') or (Before = ']') then
-        begin
-          Dec(Parens);
-        end
-        else if (Parens = 0) and (Before = 'of') then
-        begin
-          AddOwner(AOpen, Found, Depth);
-          Exit;
-        end
-        else if (Before = ';') or (Before = 'begin') or (Before = 'end') then
-        begin
-          Exit;
-        end;
-        Inc(Found);
-      end;
-      Exit;
-    end;
-    if (AOpen.Word <> 'begin') and (AOpen.Word <> 'asm') then
-    begin
-      Exit;
-    end;
-    Before := TextAt(AIndex - 1);
-    if Before = 'then' then
-    begin
-      Found := FindBack(AIndex - 2, ['if']);
-      if Found < 0 then
-      begin
-        Exit;
-      end;
-      AddOwner(AOpen, AIndex - 1, Depth);
-      AddOwner(AOpen, Found, Depth);
-      if TextAt(Found - 1) = 'else' then
-      begin
-        AddOwner(AOpen, Found - 1, Depth);
-      end;
-    end
-    else if Before = 'do' then
-    begin
-      Found := FindBack(AIndex - 2, ['for', 'while', 'with', 'on']);
-      if Found < 0 then
-      begin
-        Exit;
-      end;
-      AddOwner(AOpen, AIndex - 1, Depth);
-      AddOwner(AOpen, Found, Depth);
-    end
-    else if Before = 'else' then
-    begin
-      AddOwner(AOpen, AIndex - 1, Depth);
-    end
-    else if (Depth = 0) and (Headers.Count > 0) then
-    begin
-      // Rumpf der zuletzt begonnenen Routine (lokale Routinen kommen vor dem äußeren Rumpf).
-      Found := Headers.Last;
-      Headers.Delete(Headers.Count - 1);
-      AddOwner(AOpen, Found, Depth);
-      if TextAt(Found - 1) = 'class' then
-      begin
-        AddOwner(AOpen, Found - 1, Depth);
-      end;
-    end;
-  end;
-
-  function IsRoutineHeader: Boolean;
-  begin
-    Result := False;
-    if Blocks.Count > 0 then
-    begin
-      Exit;
-    end;
-    Previous := TextAt(Index - 1);
-    if (Previous = '=') or (Previous = ':') or (Previous = 'to') or (Previous = 'of') or (Previous = '(') or
-      (Previous = ',') then
-    begin
-      Exit;
-    end;
-    if Word = 'operator' then
-    begin
-      Exit(Previous = 'class');
-    end;
-    Result := (Word = 'procedure') or (Word = 'function') or (Word = 'constructor') or (Word = 'destructor');
-  end;
-
+  mAnalyzer: TPairAnalyzer;
 begin
-  Tokens := Lex(AText);
-  Results := TList<TAtlasPairToken>.Create;
-  Blocks := TList<TOpen>.Create;
-  Brackets := TList<TOpen>.Create;
-  Closed := TList<TAtlasPairBlock>.Create;
-  Headers := TList<Integer>.Create;
+  mAnalyzer := TPairAnalyzer.Create;
   try
-    for Index := 0 to High(Tokens) do
-    begin
-      Token := Tokens[Index];
-      if not Token.IsWord then
-      begin
-        if (Token.Text = '(') or (Token.Text = '[') then
-        begin
-          Open.Word := Token.Text;
-          Open.Index := Emit(Index, Brackets.Count, False);
-          Brackets.Add(Open);
-        end
-        else if (Token.Text = ')') or (Token.Text = ']') then
-        begin
-          if (Brackets.Count > 0) and ((Brackets.Last.Word = '(') = (Token.Text = ')')) then
-          begin
-            Brackets.Delete(Brackets.Count - 1);
-            Emit(Index, Brackets.Count, False);
-          end
-          else
-          begin
-            Emit(Index, 0, True);
-          end;
-        end;
-        Continue;
-      end;
-      if Token.Plain then
-      begin
-        Continue;
-      end;
-      Word := LowerCase(Token.Text);
-      if IsRoutineHeader then
-      begin
-        Headers.Add(Index);
-      end
-      else if Word = 'implementation' then
-      begin
-        Headers.Clear;
-      end
-      else if ((Word = 'forward') or (Word = 'external')) and (Blocks.Count = 0) and (Headers.Count > 0) then
-      begin
-        Headers.Delete(Headers.Count - 1);
-      end;
-      if Opens then
-      begin
-        Open.Word := Word;
-        Open.Index := Emit(Index, Blocks.Count, False);
-        Open.Owners := nil;
-        Open.OwnerLine := Token.Line;
-        Open.OwnerCharacter := Token.Character;
-        AddOwners(Open, Index);
-        Blocks.Add(Open);
-      end
-      else if Word = 'end' then
-      begin
-        if (Blocks.Count > 0) and (Blocks.Last.Word <> 'repeat') then
-        begin
-          CloseBlock(Index);
-        end
-        else if (Blocks.Count = 0) and (TextAt(Index + 1) = '.') then
-          // Ende der Unit bzw. des Programms.
-        else
-        begin
-          Emit(Index, 0, True);
-        end;
-      end
-      else if Word = 'until' then
-      begin
-        if (Blocks.Count > 0) and (Blocks.Last.Word = 'repeat') then
-        begin
-          CloseBlock(Index);
-        end
-        else
-        begin
-          Emit(Index, 0, True);
-        end;
-      end
-      else if ((Word = 'finally') or (Word = 'except')) and (Blocks.Count > 0) and (Blocks.Last.Word = 'try') then
-      begin
-        Emit(Index, Blocks.Count - 1, False);
-      end;
-    end;
-    // Offen geblieben: unpaarig.
-    for Open in Blocks do
-    begin
-      Results.List[Open.Index].Unpaired := True;
-      for Owner in Open.Owners do
-      begin
-        Results.List[Owner].Unpaired := True;
-      end;
-    end;
-    for Open in Brackets do
-    begin
-      Results.List[Open.Index].Unpaired := True;
-    end;
-    Results.Sort(TComparer<TAtlasPairToken>.Construct(
-      function(const A, B: TAtlasPairToken): Integer
-      begin
-        Result := A.Line - B.Line;
-        if Result = 0 then
-        begin
-          Result := A.Character - B.Character;
-        end;
-      end));
-    Result := Results.ToArray;
-    ABlocks := Closed.ToArray;
+    Result := mAnalyzer.Run(AText, ABlocks);
   finally
-    Headers.Free;
-    Closed.Free;
-    Brackets.Free;
-    Blocks.Free;
-    Results.Free;
+    mAnalyzer.Free;
   end;
 end;
 

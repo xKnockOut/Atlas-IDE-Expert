@@ -120,7 +120,7 @@ var
 begin
   Result := nil;
   // Helfer nur mit Vorfahr-Helfer (#848); der Zieltyp ist kein Vorfahr.
-  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.HelperParent(AType, Next) then
+  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.Queries.HelperParent(AType, Next) then
   begin
     Exit;
   end;
@@ -142,7 +142,7 @@ begin
     Result := Result + [FromResolved(Current)];
     if Current.SymbolKind = TIndexSymbolKind.HelperType then
     begin
-      if not AResolver.HelperParent(Current, Next) then
+      if not AResolver.Queries.HelperParent(Current, Next) then
       begin
         Break;
       end;

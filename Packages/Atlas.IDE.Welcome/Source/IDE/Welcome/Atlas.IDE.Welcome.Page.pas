@@ -112,7 +112,9 @@ var
 begin
   if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and
     Theming.IDEThemingEnabled then
+  begin
     Theming.ApplyTheme(AFrame);
+  end;
 end;
 
 { TViewWatch }
@@ -121,9 +123,13 @@ procedure TViewWatch.Notification(AComponent: TComponent; Operation: TOperation)
 begin
   inherited;
   if (Operation <> opRemove) or (FPlugin = nil) then
+  begin
     Exit;
+  end;
   if AComponent = FPlugin.FClient then
+  begin
     FPlugin.FClient := nil;
+  end;
   if AComponent = FPlugin.FView then
   begin
     // Der Rahmen besitzt den Inhalt: mit ihm ist auch der Inhalt weg.
@@ -182,8 +188,11 @@ begin
   begin
     FView := WelcomePagePluginService.CreateCaptionFrame(FId, FCaption, nil);
     if FView <> nil then
+    begin
       FView.FreeNotification(FWatch);
+    end;
     if Supports(FView, INTAWelcomePageCaptionFrame, Caption) then
+    begin
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
         begin
@@ -197,6 +206,7 @@ begin
             FClient.UpdateContent;
           end;
         end);
+    end;
   end;
   Result := FView;
 end;
@@ -206,7 +216,9 @@ var
   View: TFrame;
 begin
   if FClient <> nil then
+  begin
     FClient.RemoveFreeNotification(FWatch);
+  end;
   FClient := nil;
   // Nur einen Rahmen freigeben, der noch lebt; hat die IDE ihn schon freigegeben, ist FView nil (TViewWatch).
   View := FView;
@@ -251,10 +263,14 @@ var
   Plugin: TPlugin;
 begin
   if not Available then
+  begin
     Exit;
+  end;
   Unregister(APluginId);
   if Plugins = nil then
+  begin
     Plugins := TDictionary<string, TPlugin>.Create;
+  end;
   Plugin := TPlugin.Create(APluginId, ACaption, AFactory);
   Plugins.Add(LowerCase(APluginId), Plugin);
   ServiceGone := False;
@@ -264,10 +280,14 @@ end;
 class procedure TAtlasIdeWelcomePage.Unregister(const APluginId: string);
 begin
   if (Plugins = nil) or not Plugins.ContainsKey(LowerCase(APluginId)) then
+  begin
     Exit;
+  end;
   Plugins.Remove(LowerCase(APluginId));
   if Available and not ServiceGone then
+  begin
     WelcomePagePluginService.UnRegisterPlugin(APluginId);
+  end;
 end;
 
 class procedure TAtlasIdeWelcomePage.RemoveAll;
@@ -279,6 +299,7 @@ begin
   // Nur den Inhalt (Atlas-Klasse) freigeben, nicht den Rahmen: Der gehört der IDE und kann noch in ihrer Seite
   // stehen. Der Inhalt nimmt sich beim Freigeben selbst aus dem Rahmen.
   if Plugins <> nil then
+  begin
     for Plugin in Plugins.Values do
     begin
       Client := Plugin.FClient;
@@ -289,8 +310,11 @@ begin
         Client.Free;
       end;
     end;
+  end;
   for Id in Registered do
+  begin
     Unregister(Id);
+  end;
   FreeAndNil(Plugins);
 end;
 
@@ -300,8 +324,12 @@ var
 begin
   Result := nil;
   if Plugins <> nil then
+  begin
     for Plugin in Plugins.Values do
+    begin
       Result := Result + [Plugin.FId];
+    end;
+  end;
 end;
 
 class function TAtlasIdeWelcomePage.Client(const APluginId: string): TAtlasWelcomeFrame;
@@ -310,7 +338,9 @@ var
 begin
   Result := nil;
   if (Plugins <> nil) and Plugins.TryGetValue(LowerCase(APluginId), Plugin) then
+  begin
     Result := Plugin.FClient;
+  end;
 end;
 
 class procedure TAtlasIdeWelcomePage.ApplyTheme;
@@ -318,16 +348,22 @@ var
   Plugin: TPlugin;
 begin
   if Plugins = nil then
+  begin
     Exit;
+  end;
   for Plugin in Plugins.Values do
+  begin
     if Plugin.FClient <> nil then
     begin
       Theme(Plugin.FClient);
       Plugin.FClient.UpdateContent;
       // Auch Panels und Überschriften, nicht nur die Zeichenflächen: sonst bleibt der alte Hintergrund stehen.
       if Plugin.FClient.HandleAllocated then
+      begin
         RedrawWindow(Plugin.FClient.Handle, nil, 0, RDW_ERASE or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_FRAME);
+      end;
     end;
+  end;
 end;
 
 end.

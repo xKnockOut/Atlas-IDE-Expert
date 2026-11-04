@@ -73,6 +73,8 @@ type
     procedure ToolClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
     procedure UpdateButtons;
+    procedure AddToolBar;
+    procedure AddBottomButtons;
   protected
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
@@ -185,14 +187,6 @@ end;
 { TAtlasImageMarkupForm }
 
 constructor TAtlasImageMarkupForm.CreateFor(AOwner: TComponent; ABitmap: TBitmap);
-var
-  mTop, mBottom: TPanel;
-  mButton: TButton;
-  mTool: TAtlasMarkupTool;
-  mLeft: Integer;
-const
-  ToolText: array[TAtlasMarkupTool] of TAtlasTrackerTextId = (TAtlasTrackerTextId.AttachMarkupRectangle,
-    TAtlasTrackerTextId.AttachMarkupArrow, TAtlasTrackerTextId.AttachMarkupBlacken);
 begin
   inherited CreateNew(AOwner);
   FBitmap := TBitmap.Create;
@@ -205,6 +199,32 @@ begin
   Width := 1000;
   Height := 720;
 
+  AddToolBar;
+  AddBottomButtons;
+
+  FBox := TPaintBox.Create(Self);
+  FBox.Parent := Self;
+  FBox.Align := alClient;
+  FBox.AlignWithMargins := True;
+  FBox.Margins.SetBounds(Gap, 0, Gap, 0);
+  FBox.Cursor := crCross;
+  FBox.OnPaint := BoxPaint;
+  FBox.OnMouseDown := BoxMouseDown;
+  FBox.OnMouseMove := BoxMouseMove;
+  FBox.OnMouseUp := BoxMouseUp;
+  UpdateButtons;
+end;
+
+/// <summary>Leiste oben: Werkzeuge und „Rückgängig“.</summary>
+procedure TAtlasImageMarkupForm.AddToolBar;
+const
+  ToolText: array[TAtlasMarkupTool] of TAtlasTrackerTextId = (TAtlasTrackerTextId.AttachMarkupRectangle,
+    TAtlasTrackerTextId.AttachMarkupArrow, TAtlasTrackerTextId.AttachMarkupBlacken);
+var
+  mTop: TPanel;
+  mTool: TAtlasMarkupTool;
+  mLeft: Integer;
+begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
@@ -226,7 +246,14 @@ begin
   FUndo.SetBounds(mLeft + Gap, 6, 110, 28);
   FUndo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupUndo);
   FUndo.OnClick := UndoClick;
+end;
 
+/// <summary>Leiste unten: „Übernehmen“ und „Abbrechen“.</summary>
+procedure TAtlasImageMarkupForm.AddBottomButtons;
+var
+  mBottom: TPanel;
+  mButton: TButton;
+begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
@@ -246,18 +273,6 @@ begin
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-
-  FBox := TPaintBox.Create(Self);
-  FBox.Parent := Self;
-  FBox.Align := alClient;
-  FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(Gap, 0, Gap, 0);
-  FBox.Cursor := crCross;
-  FBox.OnPaint := BoxPaint;
-  FBox.OnMouseDown := BoxMouseDown;
-  FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
-  UpdateButtons;
 end;
 
 destructor TAtlasImageMarkupForm.Destroy;

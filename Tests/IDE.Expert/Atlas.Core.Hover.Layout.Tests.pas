@@ -13,12 +13,15 @@ uses
   System.Types,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
-  Atlas.Core.Hover.Layout;
+  Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Texts;
 
 type
   [TestFixture]
   THoverLayoutTests = class
   private
+    /// <summary>Kurze Texte, an denen die Tests die Abschnitte erkennen.</summary>
+    function Texts: TAtlasHoverTexts;
     function Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
     function Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout; overload;
     function Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout; overload;
@@ -185,6 +188,31 @@ begin
   Result := TAtlasHoverView.Create(Data);
 end;
 
+function THoverLayoutTests.Texts: TAtlasHoverTexts;
+begin
+  Result := Default(TAtlasHoverTexts);
+  Result.Pinned := 'pinned';
+  Result.Inheritance := 'Vererbung';
+  Result.TargetType := 'Ziel %s';
+  Result.Navigate := 'Go';
+  Result.Usages := 'Us';
+  Result.UsagesCount := '%d Us';
+  Result.Copy := 'Cp';
+  Result.CopySelection := 'Sel';
+  Result.Help := 'H';
+  Result.KeyUsages := 'U';
+  Result.KeyCopy := 'C';
+  Result.SourceAtlas := 'Atlas';
+  Result.SourceCompiler := 'dcc';
+  Result.SourceInactive := 'inaktiv';
+  Result.Stale := 'alt';
+  Result.DebugPending := 'eval';
+  Result.DebugExplaining := 'sucht';
+  Result.DebugChecked := 'geprüft';
+  Result.ReassignedOne := 'einmal %s';
+  Result.ReassignedCount := '%d mal %s';
+end;
+
 function THoverLayoutTests.Input(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverInput;
 begin
   Result := Default(TAtlasHoverInput);
@@ -192,31 +220,18 @@ begin
   Result.Width := AWidth;
   Result.PPI := 96;
   Result.Colors := TAtlasColors.Light;
-  Result.Texts.Pinned := 'pinned';
-  Result.Texts.Inheritance := 'Vererbung';
-  Result.Texts.TargetType := 'Ziel %s';
-  Result.Texts.Navigate := 'Go';
-  Result.Texts.Usages := 'Us';
-  Result.Texts.UsagesCount := '%d Us';
-  Result.Texts.Copy := 'Cp';
-  Result.Texts.CopySelection := 'Sel';
-  Result.Texts.Help := 'H';
-  Result.Texts.KeyUsages := 'U';
-  Result.Texts.KeyCopy := 'C';
-  Result.Texts.SourceAtlas := 'Atlas';
-  Result.Texts.SourceCompiler := 'dcc';
-  Result.Texts.SourceInactive := 'inaktiv';
-  Result.Texts.Stale := 'alt';
-  Result.Texts.DebugPending := 'eval';
-  Result.Texts.DebugExplaining := 'sucht';
-  Result.Texts.DebugChecked := 'geprüft';
-  Result.Texts.ReassignedOne := 'einmal %s';
-  Result.Texts.ReassignedCount := '%d mal %s';
+  Result.Texts := Texts;
+end;
+
+/// <summary>Layout mit der Messung der Tests.</summary>
+function BuildLayout(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
+begin
+  Result := TAtlasHoverLayout.Build(AInput, TFakeMeasure.Create(AInput.View.Data.Declaration));
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
 begin
-  Result := TAtlasHoverLayout.Build(AInput, TFakeMeasure.Create(AInput.View.Data.Declaration));
+  Result := BuildLayout(AInput);
 end;
 
 function THoverLayoutTests.Build(const AView: TAtlasHoverView; AWidth: Integer): TAtlasHoverLayout;
@@ -977,41 +992,101 @@ begin
   Result.IsEvent := True;
 end;
 
+/// <summary>Kennungen der published-Treffer in ihrer Reihenfolge.</summary>
+function PublishedCodes(const ALayout: TAtlasHoverLayout): string;
+var
+  mHit: TAtlasHoverHit;
+begin
+  Result := '';
+  for mHit in ALayout.Hits do
+  begin
+    if mHit.Kind = TAtlasHoverHitKind.Published then
+    begin
+      Result := Result + IntToStr(mHit.Index);
+    end;
+  end;
+end;
+
+/// <summary>Ob ein Element des Layouts genau diesen Text zeigt.</summary>
+function HasItemText(const ALayout: TAtlasHoverLayout; const AText: string): Boolean;
+var
+  mItem: TAtlasHoverItem;
+begin
+  for mItem in ALayout.Items do
+  begin
+    if mItem.Text = AText then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Schalter, Abschnitte, weitere Zeilen, geerbte und nur mit default.</summary>
+procedure AssertPublishedToggles(const AHoverView: TAtlasHoverView; const AHoverInput: TAtlasHoverInput;
+  const ALayout: TAtlasHoverLayout);
+var
+  mHoverView: TAtlasHoverView;
+  mHoverInput: TAtlasHoverInput;
+  mLayout: TAtlasHoverLayout;
+begin
+  mHoverView := AHoverView;
+  mHoverInput := AHoverInput;
+  mLayout := ALayout;
+  // Schalter, Abschnitte, „+ 1 weitere Properties“ (8 > 7), „+ 1 weitere Ereignisse“ (5 > 4).
+  Assert.AreEqual('012435', PublishedCodes(mLayout));
+  Assert.IsTrue(HasItemText(mLayout, 'published: 8 Properties · 5 Ereignisse'));
+  Assert.IsTrue(HasItemText(mLayout, 'PROPERTIES ▾'));
+  Assert.IsTrue(HasItemText(mLayout, 'implizit'));
+  Assert.IsTrue(HasItemText(mLayout, 'crDefault'));
+  Assert.IsTrue(HasItemText(mLayout, 'nodefault'));
+  Assert.IsTrue(HasItemText(mLayout, 'stored False'));
+  Assert.IsTrue(HasItemText(mLayout, '+ 1 weitere Properties'));
+  Assert.IsFalse(HasItemText(mLayout, 'Width'), 'achte Zeile erst nach dem Klick');
+  Assert.IsTrue(HasItemText(mLayout, 'Controls[Index: Integer]'));
+  Assert.IsTrue(HasItemText(mLayout, 'Standard-Property'));
+  Assert.IsTrue(HasItemText(mLayout, 'Liste'), 'Strg+C kopiert die Liste');
+  // Ereignis am Methodenzeiger-Typ erkannt: kenntlich, wenn der Typname es nicht verrät.
+  Assert.IsFalse(HasItemText(mLayout, '(of object)'), 'OnRueckmeldung steht erst hinter „+ 1 weitere“');
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.MoreProperties);
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.MoreEvents);
+  mHoverInput.View := mHoverView;
+  mLayout := BuildLayout(mHoverInput);
+  Assert.IsTrue(HasItemText(mLayout, 'Width'));
+  Assert.IsTrue(HasItemText(mLayout, '(of object)'));
+  Assert.AreEqual('0123', PublishedCodes(mLayout));
+  // Ohne geerbte: nur die zwei eigenen Properties und das eigene Ereignis.
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
+  mHoverInput.View := mHoverView;
+  mLayout := BuildLayout(mHoverInput);
+  Assert.IsTrue(HasItemText(mLayout, 'Cancel'));
+  Assert.IsFalse(HasItemText(mLayout, 'Cursor'));
+  Assert.IsFalse(HasItemText(mLayout, 'OnClick'));
+  Assert.IsTrue(HasItemText(mLayout, 'OnRueckmeldung'));
+  // Zugeklappt: nur der Titel.
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
+  mHoverInput.View := mHoverView;
+  mLayout := BuildLayout(mHoverInput);
+  Assert.IsTrue(HasItemText(mLayout, 'PROPERTIES ▸'));
+  Assert.IsFalse(HasItemText(mLayout, 'Cancel'));
+  Assert.IsTrue(HasItemText(mLayout, 'OnClick'));
+  // Nur mit default: Cancel, Default, Cursor.
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
+  mHoverView.Toggle(TAtlasHoverPublishedToggle.OnlyDefaults);
+  mHoverInput.View := mHoverView;
+  mLayout := BuildLayout(mHoverInput);
+  Assert.IsTrue(HasItemText(mLayout, 'Cursor'));
+  Assert.IsFalse(HasItemText(mLayout, 'Height'));
+  Assert.IsFalse(HasItemText(mLayout, 'Hint'));
+end;
+
 procedure THoverLayoutTests.PublishedMembersAsTables;
 var
   HoverView: TAtlasHoverView;
   HoverInput: TAtlasHoverInput;
   Layout: TAtlasHoverLayout;
   Hint: TAtlasHoverMember;
-
-  function Codes: string;
-  var
-    Hit: TAtlasHoverHit;
-  begin
-    Result := '';
-    for Hit in Layout.Hits do
-    begin
-      if Hit.Kind = TAtlasHoverHitKind.Published then
-      begin
-        Result := Result + IntToStr(Hit.Index);
-      end;
-    end;
-  end;
-
-  function HasText(const AText: string): Boolean;
-  var
-    Item: TAtlasHoverItem;
-  begin
-    for Item in Layout.Items do
-    begin
-      if Item.Text = AText then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
 begin
   HoverView := ActionsView;
   HoverView.Data.Location.Name := 'TKnopf';
@@ -1041,55 +1116,10 @@ begin
   HoverInput.Texts.PublishedDefaultProperty := 'Standard-Property';
   HoverInput.Texts.PublishedCopyList := 'Liste';
   Layout := Build(HoverInput);
-  // Schalter, Abschnitte, „+ 1 weitere Properties“ (8 > 7), „+ 1 weitere Ereignisse“ (5 > 4).
-  Assert.AreEqual('012435', Codes);
-  Assert.IsTrue(HasText('published: 8 Properties · 5 Ereignisse'));
-  Assert.IsTrue(HasText('PROPERTIES ▾'));
-  Assert.IsTrue(HasText('implizit'));
-  Assert.IsTrue(HasText('crDefault'));
-  Assert.IsTrue(HasText('nodefault'));
-  Assert.IsTrue(HasText('stored False'));
-  Assert.IsTrue(HasText('+ 1 weitere Properties'));
-  Assert.IsFalse(HasText('Width'), 'achte Zeile erst nach dem Klick');
-  Assert.IsTrue(HasText('Controls[Index: Integer]'));
-  Assert.IsTrue(HasText('Standard-Property'));
-  Assert.IsTrue(HasText('Liste'), 'Strg+C kopiert die Liste');
-  // Ereignis am Methodenzeiger-Typ erkannt: kenntlich, wenn der Typname es nicht verrät.
-  Assert.IsFalse(HasText('(of object)'), 'OnRueckmeldung steht erst hinter „+ 1 weitere“');
-  HoverView.Toggle(TAtlasHoverPublishedToggle.MoreProperties);
-  HoverView.Toggle(TAtlasHoverPublishedToggle.MoreEvents);
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
-  Assert.IsTrue(HasText('Width'));
-  Assert.IsTrue(HasText('(of object)'));
-  Assert.AreEqual('0123', Codes);
-  // Ohne geerbte: nur die zwei eigenen Properties und das eigene Ereignis.
-  HoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
-  Assert.IsTrue(HasText('Cancel'));
-  Assert.IsFalse(HasText('Cursor'));
-  Assert.IsFalse(HasText('OnClick'));
-  Assert.IsTrue(HasText('OnRueckmeldung'));
-  // Zugeklappt: nur der Titel.
-  HoverView.Toggle(TAtlasHoverPublishedToggle.ShowInherited);
-  HoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
-  Assert.IsTrue(HasText('PROPERTIES ▸'));
-  Assert.IsFalse(HasText('Cancel'));
-  Assert.IsTrue(HasText('OnClick'));
-  // Nur mit default: Cancel, Default, Cursor.
-  HoverView.Toggle(TAtlasHoverPublishedToggle.Properties);
-  HoverView.Toggle(TAtlasHoverPublishedToggle.OnlyDefaults);
-  HoverInput.View := HoverView;
-  Layout := Build(HoverInput);
-  Assert.IsTrue(HasText('Cursor'));
-  Assert.IsFalse(HasText('Height'));
-  Assert.IsFalse(HasText('Hint'));
+  AssertPublishedToggles(HoverView, HoverInput, Layout);
   // Ohne Mitglieder kein Abschnitt.
   Layout := Build(ActionsView, 460);
-  Assert.AreEqual('', Codes);
+  Assert.AreEqual('', PublishedCodes(Layout));
 end;
 
 initialization
