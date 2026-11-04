@@ -359,6 +359,7 @@ uses
   Atlas.Common.Lsp.DocumentSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas',
   Atlas.Common.Lsp.FoldingRanges.Tests in 'Common\Lsp\Atlas.Common.Lsp.FoldingRanges.Tests.pas',
   Atlas.Common.Lsp.SelectionRanges.Tests in 'Common\Lsp\Atlas.Common.Lsp.SelectionRanges.Tests.pas',
+  Atlas.Common.Lsp.DiagnosticItems.Tests in 'Common\Lsp\Atlas.Common.Lsp.DiagnosticItems.Tests.pas',
   Atlas.Common.Lsp.SyntaxDiagnostics.Tests in 'Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas',
   Atlas.Common.Configuration.Tests in 'Common\Configuration\Atlas.Common.Configuration.Tests.pas',
   Atlas.Common.Configuration.TestSupport in 'Common\Configuration\Atlas.Common.Configuration.TestSupport.pas',
