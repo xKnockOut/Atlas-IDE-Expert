@@ -158,7 +158,9 @@ begin
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
 end;
@@ -174,7 +176,9 @@ begin
   end;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorBeginPaint := nil;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
@@ -187,7 +191,9 @@ end;
 class procedure TAtlasIdeElements.Start;
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeElements.Create;
+  end;
 end;
 
 class procedure TAtlasIdeElements.Stop;
@@ -216,9 +222,13 @@ begin
     FHiddenVersion := TAtlasIdeTeamFile.Version;
     Team := TAtlasIdeTeamFile.Current;
     if Team.Valid then
-      FHidden := TAtlasHiddenIndex.Create(Team.Hidden, Team.Folder)
+    begin
+      FHidden := TAtlasHiddenIndex.Create(Team.Hidden, Team.Folder);
+    end
     else
+    begin
       FHidden := TAtlasHiddenIndex.Create(nil, '');
+    end;
   end;
   Result := FHidden;
 end;
@@ -229,15 +239,25 @@ var
   Hit: TAtlasElementHit;
 begin
   if not FHits.TryGetValue(AKey, Hits) then
+  begin
     Exit;
+  end;
   Kept := nil;
   for Hit in Hits do
+  begin
     if Hit.Round = FRound then
+    begin
       Kept := Kept + [Hit];
+    end;
+  end;
   if Length(Kept) = 0 then
-    FHits.Remove(AKey)
+  begin
+    FHits.Remove(AKey);
+  end
   else if Length(Kept) <> Length(Hits) then
+  begin
     FHits[AKey] := Kept;
+  end;
 end;
 
 procedure TAtlasIdeElements.BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
@@ -249,7 +269,9 @@ procedure TAtlasIdeElements.PaintLine(const Rect: TRect; const Stage: TPaintLine
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 begin
   if (Context = nil) or (FHits.Count = 0) then
+  begin
     Exit;
+  end;
   try
     DropOld(KeyOf(Context.FileName, Context.LogicalLineNum - 1));
   except
@@ -267,23 +289,29 @@ var
   Index: Integer;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Key := KeyOf(ATarget.FileName, ATarget.Line);
   FInstance.DropOld(Key);
   if not FInstance.FHits.TryGetValue(Key, Hits) then
   begin
     if FInstance.FHits.Count >= MaxLines then
+    begin
       FInstance.FHits.Clear;
+    end;
     Hits := nil;
   end;
   // Dasselbe Element mehrmals in einer Zeile (Läufe, mehrere Befunde): Rechtecke zusammenfassen.
   for Index := 0 to High(Hits) do
+  begin
     if (Hits[Index].Target.Element = ATarget.Element) and (Hits[Index].Target.RuleId = ATarget.RuleId) then
     begin
       Hits[Index].Rect.Union(ARect);
       FInstance.FHits.AddOrSetValue(Key, Hits);
       Exit;
     end;
+  end;
   Hit.Target := ATarget;
   Hit.Rect := ARect;
   Hit.TopRow := ATopRow;
@@ -296,7 +324,9 @@ class procedure TAtlasIdeElements.Painted(AElement: TAtlasDrawnElement; const AF
   const AAnchor: string; const ARect: TRect; ATopRow, ALineHeight: Integer);
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Painted(TAtlasHideTarget.Create(AElement, AFileName, ALine, AAnchor), ARect, ATopRow, ALineHeight);
 end;
 
@@ -305,7 +335,9 @@ var
   Places: TAtlasHiddenIndex;
 begin
   if FInstance = nil then
+  begin
     Exit(False);
+  end;
   Places := FInstance.Index;
   Result := not Places.IsEmpty and Places.Hidden(TAtlasDrawnElements.SettingKey(AElement), AFileName,
     TAtlasDrawnElements.Anchor(AAnchor));
@@ -316,7 +348,9 @@ var
   Places: TAtlasHiddenIndex;
 begin
   if FInstance = nil then
+  begin
     Exit(False);
+  end;
   Places := FInstance.Index;
   Result := not Places.IsEmpty and Places.FileHidden(TAtlasDrawnElements.SettingKey(AElement), AFileName);
 end;
@@ -328,9 +362,13 @@ var
 begin
   Result := nil;
   if (FInstance = nil) or not FInstance.FHits.TryGetValue(KeyOf(AFileName, ALine), Hits) then
+  begin
     Exit;
+  end;
   for Hit in Hits do
+  begin
     Result := Result + [Hit.Target];
+  end;
 end;
 
 function TAtlasIdeElements.HitsAt(const AFileName: string; ATopRow, X, Y: Integer): TArray<TAtlasHideTarget>;
@@ -341,23 +379,33 @@ var
 begin
   Result := nil;
   for Pair in FHits do
+  begin
     for Hit in Pair.Value do
     begin
       if not SameFile(Hit.Target.FileName, AFileName) then
+      begin
         Break;
+      end;
       Shifted := Hit.Rect;
       // Gescrollt, ohne dass die Zeile neu gezeichnet wurde: um die Zeilen verschieben.
       if (Hit.TopRow <> ATopRow) and (Hit.LineHeight > 0) then
+      begin
         Shifted.Offset(0, (Hit.TopRow - ATopRow) * Hit.LineHeight);
+      end;
       if PtInRect(Shifted, Point(X, Y)) then
+      begin
         Result := Result + [Hit.Target];
+      end;
     end;
+  end;
 end;
 
 class function TAtlasIdeElements.At(const AFileName: string; ATopRow, X, Y: Integer): TArray<TAtlasHideTarget>;
 begin
   if FInstance = nil then
+  begin
     Exit(nil);
+  end;
   Result := FInstance.HitsAt(AFileName, ATopRow, X, Y);
 end;
 
@@ -366,11 +414,15 @@ begin
   ATargets := nil;
   Result := False;
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Result := (Length(FInstance.FClickTargets) > 0) and SameFile(FInstance.FClickFile, AFileName) and
     (TThread.GetTickCount64 - FInstance.FClickAt <= ClickMs);
   if Result then
+  begin
     ATargets := FInstance.FClickTargets;
+  end;
   FInstance.FClickTargets := nil;
   FInstance.FClickFile := '';
 end;
@@ -386,7 +438,9 @@ begin
     FInstance.FHiddenVersion := -1;
   end;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 procedure TAtlasIdeElements.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
@@ -406,9 +460,13 @@ begin
     end;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View = nil) or (View.Buffer = nil) then
+    begin
       Exit;
+    end;
     Targets := HitsAt(View.Buffer.FileName, View.TopRow, X, Y);
     FClickTargets := Targets;
     FClickFile := View.Buffer.FileName;
@@ -416,8 +474,12 @@ begin
     // Nur auf überlagerten Elementen ersetzt das eigene Menü das der IDE; im Text bleibt es beim Kontextmenü.
     Overlays := nil;
     for Target in Targets do
+    begin
       if TAtlasDrawnElements.Info(Target.Element).Overlay then
+      begin
         Overlays := Overlays + [Target];
+      end;
+    end;
     if (Length(Overlays) > 0) and Assigned(FOnOverlayMenu) and (Editor <> nil) and Editor.HandleAllocated then
     begin
       FPendingWnd := Editor.Handle;
@@ -436,17 +498,23 @@ var
   Where: TPoint;
 begin
   if (FPendingWnd = 0) or (Msg.hwnd <> FPendingWnd) then
+  begin
     Exit;
+  end;
   try
     if Msg.message = WM_RBUTTONUP then
     begin
       FPendingWnd := 0;
       if TThread.GetTickCount64 - FPendingAt > RightUpMs then
+      begin
         Exit;
+      end;
       // Loslassen schlucken: ohne es öffnet die IDE ihr Kontextmenü nicht.
       Handled := True;
       if GetCapture = Msg.hwnd then
+      begin
         ReleaseCapture;
+      end;
       Targets := FPendingTargets;
       FPendingTargets := nil;
       Where := Mouse.CursorPos;
@@ -454,11 +522,15 @@ begin
         procedure
         begin
           if (FInstance <> nil) and Assigned(FOnOverlayMenu) then
+          begin
             FOnOverlayMenu(Targets, Where);
+          end;
         end);
     end
     else if Msg.message = WM_LBUTTONDOWN then
+    begin
       FPendingWnd := 0;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hide, E);

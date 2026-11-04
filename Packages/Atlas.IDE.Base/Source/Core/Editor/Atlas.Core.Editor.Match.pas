@@ -107,25 +107,37 @@ function TextOf(const ALines: TArray<string>; const AToken: TAtlasPairToken): st
 begin
   Result := '';
   if (AToken.Line >= 0) and (AToken.Line <= High(ALines)) then
+  begin
     Result := LowerCase(Copy(ALines[AToken.Line], AToken.Character + 1, AToken.Length));
+  end;
 end;
 
 function RoleOfWord(const AWord: string): TRole;
 begin
   if (AWord = 'end') or (AWord = 'until') then
-    Result := TRole.Closer
+  begin
+    Result := TRole.Closer;
+  end
   else if (AWord = 'finally') or (AWord = 'except') then
-    Result := TRole.Middle
+  begin
+    Result := TRole.Middle;
+  end
   else
+  begin
     Result := TRole.Opener;
+  end;
 end;
 
 function RoleOfBracket(const AText: string): TRole;
 begin
   if (AText = '(') or (AText = '[') then
-    Result := TRole.Opener
+  begin
+    Result := TRole.Opener;
+  end
   else
+  begin
     Result := TRole.Closer;
+  end;
 end;
 
 /// <summary>Gleiche Klammerart: ( mit ), [ mit ].</summary>
@@ -153,15 +165,21 @@ var
   begin
     Result := (Tokens[AIndex].IsWord = IsWord) and not Tokens[AIndex].Owner;
     if Result and not IsWord then
+    begin
       Result := SameBracket(TextOf(Lines, Tokens[AIndex]), Word);
+    end;
   end;
 
   function RoleAt(AIndex: Integer): TRole;
   begin
     if IsWord then
-      Result := RoleOfWord(TextOf(Lines, Tokens[AIndex]))
+    begin
+      Result := RoleOfWord(TextOf(Lines, Tokens[AIndex]));
+    end
     else
+    begin
       Result := RoleOfBracket(TextOf(Lines, Tokens[AIndex]));
+    end;
   end;
 
 begin
@@ -172,14 +190,20 @@ begin
   // Token am Cursor: beginnt dort, sonst enthält es den Cursor oder endet davor.
   Hit := -1;
   for Index := 0 to High(Tokens) do
+  begin
     if not Tokens[Index].Owner and Touches(SpotOf(Tokens[Index]), ALine, ACharacter) then
     begin
       Hit := Index;
       if Tokens[Index].Character = ACharacter then
+      begin
         Break;
+      end;
     end;
+  end;
   if (Hit < 0) or Tokens[Hit].Unpaired then
+  begin
     Exit;
+  end;
   IsWord := Tokens[Hit].IsWord;
   Word := TextOf(Lines, Tokens[Hit]);
   Role := RoleAt(Hit);
@@ -189,18 +213,27 @@ begin
   begin
     First := -1;
     for Index := Hit - 1 downto 0 do
+    begin
       if Relevant(Index) and (Tokens[Index].Depth = Tokens[Hit].Depth) and not Tokens[Index].Unpaired then
       begin
         if RoleAt(Index) = TRole.Opener then
+        begin
           First := Index;
+        end;
         if RoleAt(Index) <> TRole.Middle then
+        begin
           Break;
+        end;
       end;
+    end;
     if First < 0 then
+    begin
       Exit;
+    end;
   end;
   Last := -1;
   for Index := First + 1 to High(Tokens) do
+  begin
     if Relevant(Index) and (Tokens[Index].Depth = Tokens[First].Depth) and not Tokens[Index].Unpaired then
     begin
       if RoleAt(Index) = TRole.Closer then
@@ -209,21 +242,38 @@ begin
         Break;
       end;
       if RoleAt(Index) = TRole.Opener then
+      begin
         Break;
+      end;
     end;
+  end;
   if Last < 0 then
+  begin
     Exit;
+  end;
   // Mehrdeutig: unpaariger Öffner davor bzw. unpaariger Schließer dahinter.
   for Index := 0 to First - 1 do
+  begin
     if Relevant(Index) and Tokens[Index].Unpaired and (RoleAt(Index) = TRole.Opener) then
+    begin
       Exit;
+    end;
+  end;
   for Index := Last + 1 to High(Tokens) do
+  begin
     if Relevant(Index) and Tokens[Index].Unpaired and (RoleAt(Index) = TRole.Closer) then
+    begin
       Exit;
+    end;
+  end;
   if IsWord then
-    AMatch.Kind := TAtlasMatchKind.Block
+  begin
+    AMatch.Kind := TAtlasMatchKind.Block;
+  end
   else
+  begin
     AMatch.Kind := TAtlasMatchKind.Bracket;
+  end;
   AMatch.Current := -1;
   Step := First;
   while Step <= Last do
@@ -232,7 +282,9 @@ begin
       (RoleAt(Step) = TRole.Middle)) then
     begin
       if Step = Hit then
+      begin
         AMatch.Current := Length(AMatch.Spots);
+      end;
       AMatch.Spots := AMatch.Spots + [SpotOf(Tokens[Step])];
     end;
     Inc(Step);
@@ -263,14 +315,22 @@ begin
         begin
           Inc(Index);
           while (Index <= Length(AText)) and (AText[Index] <> '''') and (AText[Index] <> #10) do
+          begin
             Inc(Index);
+          end;
           if (Index <= Length(AText)) and (AText[Index] = #10) then
+          begin
             Continue;
+          end;
         end;
       '/':
         if (Index < Length(AText)) and (AText[Index + 1] = '/') then
+        begin
           while (Index < Length(AText)) and (AText[Index + 1] <> #10) do
+          begin
             Inc(Index);
+          end;
+        end;
       '{', '(':
         if (AText[Index] = '{') or ((Index < Length(AText)) and (AText[Index + 1] = '*')) then
         begin
@@ -279,20 +339,28 @@ begin
           begin
             Stop := Pos('}', AText, Index + 1);
             if Stop = 0 then
+            begin
               Stop := Length(AText);
+            end;
           end
           else
           begin
             Stop := Pos('*)', AText, Index + 2);
             if Stop = 0 then
-              Stop := Length(AText)
+            begin
+              Stop := Length(AText);
+            end
             else
+            begin
               Inc(Stop);
+            end;
           end;
           // Direktive: {$ bzw. (*$ ; der Name endet am ersten Nicht-Buchstaben.
           NameEnd := Start + 1;
           if AText[Start] = '(' then
+          begin
             Inc(NameEnd);
+          end;
           if (NameEnd <= Length(AText)) and (AText[NameEnd] = '$') then
           begin
             Inc(NameEnd);
@@ -304,11 +372,17 @@ begin
             end;
             Directive.Role := TRole.Other;
             if (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IF') or (Name = 'IFOPT') then
-              Directive.Role := TRole.Opener
+            begin
+              Directive.Role := TRole.Opener;
+            end
             else if (Name = 'ELSE') or (Name = 'ELSEIF') then
-              Directive.Role := TRole.Middle
+            begin
+              Directive.Role := TRole.Middle;
+            end
             else if (Name = 'ENDIF') or (Name = 'IFEND') then
+            begin
               Directive.Role := TRole.Closer;
+            end;
             if (Directive.Role <> TRole.Other) and (Pos(#10, Copy(AText, Start, Stop - Start + 1)) = 0) then
             begin
               Directive.Spot := TAtlasMatchSpot.Create(Line, Start - LineStart, Stop - Start + 1);
@@ -343,14 +417,18 @@ begin
   List := Directives(AText);
   Hit := -1;
   for Index := 0 to High(List) do
+  begin
     if (List[Index].Spot.Line = ALine) and (ACharacter >= List[Index].Spot.Character) and
       (ACharacter <= List[Index].Spot.Character + List[Index].Spot.Length) then
     begin
       Hit := Index;
       Break;
     end;
+  end;
   if Hit < 0 then
+  begin
     Exit;
+  end;
   // Gruppen bilden; ein ELSE oder ENDIF ohne IF bleibt ohne Gruppe.
   Stack := nil;
   for Index := 0 to High(List) do
@@ -362,7 +440,9 @@ begin
         end;
       TRole.Middle:
         if Length(Stack) > 0 then
+        begin
           List[Index].Group := Stack[High(Stack)];
+        end;
       TRole.Closer:
         if Length(Stack) > 0 then
         begin
@@ -372,24 +452,38 @@ begin
     end;
   Group := List[Hit].Group;
   if Group < 0 then
+  begin
     Exit;
+  end;
   // Offen gebliebene IFs: die eigene Gruppe unvollständig, eine davor umschließt sie (mehrdeutig).
   for Opened in Stack do
+  begin
     if Opened <= Group then
+    begin
       Exit;
+    end;
+  end;
   // Schließer ohne IF dahinter: mehrdeutig.
   for Index := Group + 1 to High(List) do
+  begin
     if (List[Index].Group < 0) and (List[Index].Role = TRole.Closer) then
+    begin
       Exit;
+    end;
+  end;
   AMatch.Kind := TAtlasMatchKind.Directive;
   AMatch.Current := -1;
   for Index := Group to High(List) do
+  begin
     if List[Index].Group = Group then
     begin
       if Index = Hit then
+      begin
         AMatch.Current := Length(AMatch.Spots);
+      end;
       AMatch.Spots := AMatch.Spots + [List[Index].Spot];
     end;
+  end;
   Result := (AMatch.Current >= 0) and (Length(AMatch.Spots) >= 2);
 end;
 
@@ -404,14 +498,20 @@ begin
   AMatch := Default(TAtlasMatch);
   Places := TAtlasMethodToggle.Places(AText);
   if not TAtlasMethodToggle.PlaceAt(Places, ALine, ACharacter, Source) then
+  begin
     Exit;
+  end;
   // Nur auf dem Namen (letzter Teil von TFoo.Bar).
   Name := Copy(Source.Name, LastDelimiter('.', Source.Name) + 1, MaxInt);
   Spot := TAtlasMatchSpot.Create(Source.Line, Source.Character, Length(Name));
   if not Touches(Spot, ALine, ACharacter) then
+  begin
     Exit;
+  end;
   if not TAtlasMethodToggle.Match(Places, Source, Target) then
+  begin
     Exit;
+  end;
   Other := TAtlasMatchSpot.Create(Target.Line, Target.Character, Length(Name));
   AMatch.Kind := TAtlasMatchKind.Method;
   if Before(Spot.Line, Spot.Character, Other) then
@@ -435,7 +535,9 @@ begin
   Result := FindDirective(AText, ALine, ACharacter, AMatch) or FindPair(AText, ALine, ACharacter, AMatch) or
     FindMethod(AText, ALine, ACharacter, AMatch);
   if not Result then
+  begin
     AMatch := Default(TAtlasMatch);
+  end;
 end;
 
 class function TAtlasJumpToMatch.Target(const AText: string; ALine, ACharacter: Integer;
@@ -446,7 +548,9 @@ begin
   ATarget := Default(TAtlasMatchSpot);
   Result := Find(AText, ALine, ACharacter, Match);
   if Result then
+  begin
     ATarget := Match.Next;
+  end;
 end;
 
 class function TAtlasJumpToMatch.Selection(const AText: string; ALine, ACharacter: Integer; out AStart,
@@ -458,11 +562,17 @@ begin
   AEnd := AStart;
   Result := Target(AText, ALine, ACharacter, Target_);
   if not Result then
+  begin
     Exit;
+  end;
   if Before(ALine, ACharacter, Target_) then
-    AEnd := TAtlasMatchSpot.Create(Target_.Line, Target_.Character + Target_.Length, 0)
+  begin
+    AEnd := TAtlasMatchSpot.Create(Target_.Line, Target_.Character + Target_.Length, 0);
+  end
   else
+  begin
     AStart := TAtlasMatchSpot.Create(Target_.Line, Target_.Character, 0);
+  end;
 end;
 
 end.

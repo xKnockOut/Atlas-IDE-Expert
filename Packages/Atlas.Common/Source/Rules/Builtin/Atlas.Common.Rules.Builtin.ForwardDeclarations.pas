@@ -275,88 +275,102 @@ var
     Result := False;
   end;
 
+  /// <summary>Token des ersten ";" ab AFirst außerhalb von Klammern; -1 ohne.</summary>
+  function HeadStop(AFirst: Integer): Integer;
+  var
+    mIndex, mDepth: Integer;
+  begin
+    mDepth := 0;
+    for mIndex := AFirst to High(Tokens) do
+    begin
+      if Tokens[mIndex].IsSymbol('(') or Tokens[mIndex].IsSymbol('[') then
+      begin
+        Inc(mDepth);
+      end
+      else if Tokens[mIndex].IsSymbol(')') or Tokens[mIndex].IsSymbol(']') then
+      begin
+        Dec(mDepth);
+      end
+      else if (mDepth = 0) and Tokens[mIndex].IsSymbol(';') then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+    Result := -1;
+  end;
+
+  /// <summary>Klammertiefe ADepth zum Zeichen AChar nachführen; ASkipping: innerhalb eines Standardwerts
+  /// (ab "=" in der Parameterliste bis ";" oder zur schließenden Klammer).</summary>
+  procedure TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean);
+  begin
+    case AChar of
+      '(', '[':
+        Inc(ADepth);
+      ')', ']':
+        begin
+          Dec(ADepth);
+          ASkipping := ASkipping and (ADepth <> 0);
+        end;
+      ';':
+        ASkipping := ASkipping and (ADepth <> 1);
+      '=':
+        ASkipping := ASkipping or (ADepth = 1);
+    end;
+  end;
+
+  /// <summary>AText ohne Standardwerte, Leerraum zu einem Leerzeichen zusammengefasst.</summary>
+  function CompactHead(const AText: string): string;
+  var
+    mIndex, mDepth: Integer;
+    mQuoted, mSkipping, mSpace: Boolean;
+  begin
+    Result := '';
+    mDepth := 0;
+    mQuoted := False;
+    mSkipping := False;
+    mSpace := False;
+    for mIndex := 1 to Length(AText) do
+    begin
+      if AText[mIndex] = '''' then
+      begin
+        mQuoted := not mQuoted;
+      end;
+      if not mQuoted then
+      begin
+        TrackDefault(AText[mIndex], mDepth, mSkipping);
+      end;
+      if mSkipping then
+      begin
+        Continue;
+      end;
+      if not mQuoted and CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
+      begin
+        mSpace := Result <> '';
+        Continue;
+      end;
+      if mSpace and not CharInSet(AText[mIndex], [';', ')', ']', ',']) then
+      begin
+        Result := Result + ' ';
+      end;
+      mSpace := False;
+      Result := Result + AText[mIndex];
+    end;
+  end;
+
   /// <summary>Kopf bis zum ersten ";" ohne Standardwerte und Zeilenumbrüche, z. B.
   /// "function Pruefsumme(const Daten: TBytes): Cardinal;"; '' ohne ";".</summary>
   function HeadText(AHeader: TSyntaxNode): string;
   var
-    Index, First, Stop, Depth: Integer;
-    Text: string;
-    Quoted, Skipping, Space: Boolean;
+    mFirst, mStop: Integer;
   begin
-    Result := '';
-    First := TokenAt(AHeader.StartOffset);
-    Stop := -1;
-    Depth := 0;
-    for Index := First to High(Tokens) do
+    mFirst := TokenAt(AHeader.StartOffset);
+    mStop := HeadStop(mFirst);
+    if mStop < 0 then
     begin
-      if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      begin
-        Inc(Depth);
-      end
-      else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      begin
-        Dec(Depth);
-      end
-      else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
-      begin
-        Stop := Index;
-        Break;
-      end;
+      Exit('');
     end;
-    if Stop < 0 then
-    begin
-      Exit;
-    end;
-    Text := Copy(AContext.Text, Tokens[First].Offset + 1, Tokens[Stop].Offset + 1 - Tokens[First].Offset);
-    Depth := 0;
-    Quoted := False;
-    Skipping := False;
-    Space := False;
-    for Index := 1 to Length(Text) do
-    begin
-      if Text[Index] = '''' then
-      begin
-        Quoted := not Quoted;
-      end;
-      if not Quoted then
-        case Text[Index] of
-          '(', '[':
-            Inc(Depth);
-          ')', ']':
-            begin
-              Dec(Depth);
-              if Depth = 0 then
-              begin
-                Skipping := False;
-              end;
-            end;
-          ';':
-            if Depth = 1 then
-            begin
-              Skipping := False;
-            end;
-          '=':
-            if Depth = 1 then
-            begin
-              Skipping := True;
-            end;
-        end;
-      if Skipping then
-      begin
-        Continue;
-      end;
-      if not Quoted and CharInSet(Text[Index], [' ', #9, #10, #13]) then
-      begin
-        Space := Result <> '';
-        Continue;
-      end;
-      if Space and not CharInSet(Text[Index], [';', ')', ']', ',']) then
-      begin
-        Result := Result + ' ';
-      end;
-      Space := False;
-      Result := Result + Text[Index];
-    end;
+    Result := CompactHead(Copy(AContext.Text, Tokens[mFirst].Offset + 1,
+      Tokens[mStop].Offset + 1 - Tokens[mFirst].Offset));
   end;
 
   /// <summary>Korrektur: leeren Rumpf vor initialization bzw. dem abschließenden "end." einfügen.</summary>
@@ -412,13 +426,37 @@ var
       [TRuleEdit.Create(TTextRange.Create(At, At), Head + Break_ + 'begin' + Break_ + 'end;' + Break_ + Break_)])];
   end;
 
+  /// <summary>E2065: Die Routine AContainer[AIndex] ist forward deklariert, aber nicht implementiert.</summary>
+  procedure CheckForward(AContainer: TSyntaxNode; AIndex: Integer);
+  var
+    mChild, mHeader: TSyntaxNode;
+    mMessage: string;
+  begin
+    mChild := AContainer[AIndex];
+    mHeader := mChild.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader = nil) or not HasDirective(mHeader, 'forward') or (Pos('.', mChild.Name) > 0) or
+      (PathOf(mChild) <> '') or Satisfied(AContainer, AIndex + 1, mChild) then
+    begin
+      Exit;
+    end;
+    mMessage := Format('%s ist forward deklariert, aber nicht implementiert (wie E2065).', [mChild.Name]);
+    if AContainer = Implementation_ then
+    begin
+      AReport.Add(NameRange(mHeader, mChild.Name), mMessage, TRuleConfidence.High, CreateBody(mChild));
+    end
+    else
+    begin
+      AReport.Add(NameRange(mHeader, mChild.Name), mMessage, TRuleConfidence.High);
+    end;
+  end;
+
   // Iterativ (Bericht M1): der Stapel hält Container und Index der Routinen, in derselben Reihenfolge wie
   // zuvor die Rekursion in lokale Routinen.
   procedure CheckRoutines(ARoot: TSyntaxNode);
   var
     PendingContainer: TStack<TSyntaxNode>;
     PendingIndex: TStack<Integer>;
-    Container, Child, Header: TSyntaxNode;
+    Container, Child: TSyntaxNode;
     Index, ChildIndex: Integer;
   begin
     PendingContainer := TStack<TSyntaxNode>.Create;
@@ -437,21 +475,7 @@ var
         Container := PendingContainer.Pop;
         Index := PendingIndex.Pop;
         Child := Container[Index];
-        Header := Child.FindChild(TSyntaxKind.RoutineHeader);
-        if (Header <> nil) and HasDirective(Header, 'forward') and (Pos('.', Child.Name) = 0) and
-          (PathOf(Child) = '') and not Satisfied(Container, Index + 1, Child) then
-        begin
-          if Container = Implementation_ then
-          begin
-            AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
-              '(wie E2065).', [Child.Name]), TRuleConfidence.High, CreateBody(Child));
-          end
-          else
-          begin
-            AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
-              '(wie E2065).', [Child.Name]), TRuleConfidence.High);
-          end;
-        end;
+        CheckForward(Container, Index);
         // Lokale Routinen mit forward.
         for ChildIndex := Child.ChildCount - 1 downto 0 do
         begin
@@ -561,11 +585,35 @@ var
     end;
   end;
 
+  /// <summary>Vervollständigt eine spätere Deklaration in ASection die Vorwärtsdeklaration ASection[AIndex]?
+  /// Prüft dabei die Verwendungen dazwischen (CheckIncompleteUse).</summary>
+  function Completed(ASection: TSyntaxNode; AIndex: Integer): Boolean;
+  var
+    mLater: Integer;
+    mDecl, mOther: TSyntaxNode;
+  begin
+    mDecl := ASection[AIndex];
+    for mLater := AIndex + 1 to ASection.ChildCount - 1 do
+    begin
+      mOther := ASection[mLater];
+      if (mOther.Kind = TSyntaxKind.TypeDecl) and SameText(mOther.Name, mDecl.Name) and
+        (mOther.FindChild(TSyntaxKind.ForwardType) = nil) and
+        not TConditionalBranches.Exclusive(PathOf(mDecl), PathOf(mOther)) then
+      begin
+        if PathOf(mOther) = '' then
+        begin
+          CheckIncompleteUse(ASection, mDecl, AIndex + 1, mLater);
+        end;
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
   procedure CheckTypes(ASection: TSyntaxNode);
   var
-    Index, Later: Integer;
-    Decl, Other, Forward_: TSyntaxNode;
-    Complete: Boolean;
+    Index: Integer;
+    Decl, Forward_: TSyntaxNode;
     Code: string;
   begin
     for Index := 0 to ASection.ChildCount - 1 do
@@ -577,27 +625,7 @@ var
       end;
       CheckSelfContained(Decl);
       Forward_ := Decl.FindChild(TSyntaxKind.ForwardType);
-      if (Forward_ = nil) or (PathOf(Decl) <> '') then
-      begin
-        Continue;
-      end;
-      Complete := False;
-      for Later := Index + 1 to ASection.ChildCount - 1 do
-      begin
-        Other := ASection[Later];
-        if (Other.Kind = TSyntaxKind.TypeDecl) and SameText(Other.Name, Decl.Name) and
-          (Other.FindChild(TSyntaxKind.ForwardType) = nil) and
-          not TConditionalBranches.Exclusive(PathOf(Decl), PathOf(Other)) then
-        begin
-          Complete := True;
-          if PathOf(Other) = '' then
-          begin
-            CheckIncompleteUse(ASection, Decl, Index + 1, Later);
-          end;
-          Break;
-        end;
-      end;
-      if Complete then
+      if (Forward_ = nil) or (PathOf(Decl) <> '') or Completed(ASection, Index) then
       begin
         Continue;
       end;

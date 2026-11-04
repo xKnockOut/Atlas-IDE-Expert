@@ -159,11 +159,15 @@ end;
 procedure TAtlasIssueHistory.Visit(const AEntry: TAtlasIssueHistoryEntry);
 begin
   if (FIndex >= 0) and FEntries[FIndex].SameAs(AEntry) then
+  begin
     Exit;
+  end;
   SetLength(FEntries, FIndex + 1);
   FEntries := FEntries + [AEntry];
   if Length(FEntries) > MaxEntries then
+  begin
     FEntries := Copy(FEntries, Length(FEntries) - MaxEntries, MaxEntries);
+  end;
   FIndex := High(FEntries);
 end;
 
@@ -181,7 +185,9 @@ function TAtlasIssueHistory.GoBack(out AEntry: TAtlasIssueHistoryEntry): Boolean
 begin
   Result := CanBack;
   if Result then
+  begin
     Dec(FIndex);
+  end;
   Current(AEntry);
 end;
 
@@ -189,7 +195,9 @@ function TAtlasIssueHistory.GoForward(out AEntry: TAtlasIssueHistoryEntry): Bool
 begin
   Result := CanForward;
   if Result then
+  begin
     Inc(FIndex);
+  end;
   Current(AEntry);
 end;
 
@@ -198,7 +206,9 @@ begin
   AEntry := Default(TAtlasIssueHistoryEntry);
   Result := FIndex >= 0;
   if Result then
+  begin
     AEntry := FEntries[FIndex];
+  end;
 end;
 
 function TAtlasIssueHistory.Count: Integer;
@@ -221,7 +231,9 @@ class function TAtlasIssuePreview.Badges(const ADetails: TAtlasTrackerDetails): 
     mBadge: TAtlasIssueBadge;
   begin
     if (AText = '') and (ATime <= 0) then
+    begin
       Exit;
+    end;
     mBadge.Kind := AKind;
     mBadge.Text := AText;
     mBadge.Time := ATime;
@@ -238,7 +250,9 @@ begin
   Add(TAtlasIssueBadgeKind.Assignee, ADetails.Assignee, 0);
   Add(TAtlasIssueBadgeKind.Sprint, ADetails.Sprint, 0);
   for mLabel in ADetails.Labels do
+  begin
     Add(TAtlasIssueBadgeKind.LabelName, mLabel, 0);
+  end;
   Add(TAtlasIssueBadgeKind.Created, '', ADetails.Created);
   Add(TAtlasIssueBadgeKind.Updated, '', ADetails.Updated);
 end;
@@ -250,7 +264,9 @@ begin
   Result := Default(TAtlasIssueAge);
   mMinutes := MinutesBetween(ANow, AThen);
   if (AThen <= 0) or (AThen > ANow) or (mMinutes < 1) then
-    Result.UnitKind := TAtlasIssueAgeUnit.JustNow
+  begin
+    Result.UnitKind := TAtlasIssueAgeUnit.JustNow;
+  end
   else if mMinutes < 60 then
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Minutes;
@@ -282,7 +298,9 @@ class function TAtlasIssuePreview.CollapsedComments(ACount: Integer; AExpanded: 
 begin
   Result := 0;
   if not AExpanded and (ACount > ShownComments) then
+  begin
     Result := ACount - ShownComments;
+  end;
 end;
 
 class function TAtlasIssuePreview.CommentAt(const AComments: TArray<TAtlasTrackerComment>;
@@ -292,10 +310,16 @@ var
 begin
   Result := -1;
   if (AAnchor <= 0) or (Length(AComments) = 0) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(AComments) do
+  begin
     if AComments[mIndex].Created >= AAnchor - AnchorSlackMs / MSecsPerDay then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := High(AComments);
 end;
 
@@ -306,12 +330,16 @@ var
 begin
   mUrl := Trim(AUrl);
   if StartsText('https://', mUrl) or StartsText('http://', mUrl) then
+  begin
     Exit(mUrl);
+  end;
   // YouTrack: ![](bildschirm.png) nennt einen Anhang.
   mIndex := ADetails.AttachmentIndex(mUrl);
   Result := '';
   if mIndex >= 0 then
+  begin
     Result := ADetails.Attachments[mIndex].Url;
+  end;
 end;
 
 class function TAtlasIssuePreview.MayLoad(const AUrl, AApiServer: string): Boolean;
@@ -376,9 +404,13 @@ end;
 class function TAtlasIssuePreview.KeyExample(const AProvider: string): string;
 begin
   if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
-    Result := '#753'
+  begin
+    Result := '#753';
+  end
   else
+  begin
     Result := 'ATL-123';
+  end;
 end;
 
 class function TAtlasIssuePreview.KeyOf(const AProvider, AInput: string): string;
@@ -392,30 +424,50 @@ begin
   if StartsText('https://', mText) or StartsText('http://', mText) then
   begin
     while EndsStr('/', mText) do
+    begin
       Delete(mText, Length(mText), 1);
+    end;
     mText := Copy(mText, LastDelimiter('/', mText) + 1, MaxInt);
     if Pos('?', mText) > 0 then
+    begin
       mText := Copy(mText, 1, Pos('?', mText) - 1);
+    end;
     if Pos('#', mText) > 0 then
+    begin
       mText := Copy(mText, 1, Pos('#', mText) - 1);
+    end;
   end;
   if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
   begin
     if StartsStr('#', mText) then
+    begin
       Delete(mText, 1, 1);
+    end;
     for mIndex := 1 to Length(mText) do
+    begin
       if not CharInSet(mText[mIndex], ['0'..'9']) then
+      begin
         Exit;
+      end;
+    end;
     if (mText <> '') and (StrToIntDef(mText, 0) > 0) then
+    begin
       Result := '#' + IntToStr(StrToIntDef(mText, 0));
+    end;
     Exit;
   end;
   // YouTrack: PROJ-123.
   if (mText = '') or (Pos('-', mText) < 2) or (Pos('-', mText) = Length(mText)) then
+  begin
     Exit;
+  end;
   for mIndex := 1 to Length(mText) do
+  begin
     if not CharInSet(mText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    begin
       Exit;
+    end;
+  end;
   Result := UpperCase(mText);
 end;
 
@@ -427,14 +479,24 @@ begin
   Result := Trim(AName);
   Result := Copy(Result, LastDelimiter('/\', Result) + 1, MaxInt);
   for mIndex := 1 to Length(Result) do
+  begin
     if CharInSet(Result[mIndex], ['<', '>', ':', '"', '|', '?', '*']) or (Result[mIndex] < ' ') then
+    begin
       Result[mIndex] := '_';
+    end;
+  end;
   while (Result <> '') and CharInSet(Result[Length(Result)], ['.', ' ']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
   while (Result <> '') and (Result[1] = '.') do
+  begin
     Delete(Result, 1, 1);
+  end;
   if Result = '' then
+  begin
     Result := 'anhang';
+  end;
   Result := Copy(Result, 1, 120);
 end;
 

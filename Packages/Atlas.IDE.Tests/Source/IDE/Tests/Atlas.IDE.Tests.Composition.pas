@@ -133,8 +133,12 @@ var
 begin
   AJobs := nil;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
+  begin
     if Supports(mItem, IAtlasBuildJobs, AJobs) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -166,7 +170,9 @@ end;
 procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 begin
   if TAtlasProblemsController.Current <> nil then
+  begin
     TAtlasProblemsController.Current.SetTests(AProblems);
+  end;
 end;
 
 /// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener
@@ -178,20 +184,26 @@ var
   mPassed, mFailed: Integer;
 begin
   if TAtlasIdeProjectSummaries.Current <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
         TAtlasIdeProjectSummaries.Current.RecordTests(AProject, ATests);
       end);
+  end;
   mPassed := ATests.Passed;
   mFailed := ATests.Failed + ATests.Errors;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestsListener) do
+  begin
     if Supports(mItem, IAtlasTestsListener, mListener) then
+    begin
       TAtlasGuard.Run(TAtlasFeature.Build,
         procedure
         begin
           mListener.TestsFinished(AProject, mPassed, mFailed);
         end);
+    end;
+  end;
 end;
 
 function LastFailed(AProject: string): TArray<string>;
@@ -202,13 +214,17 @@ end;
 procedure RunAtCursor;
 begin
   if GDebugger <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build, GDebugger.RunAtCursor);
+  end;
 end;
 
 procedure DebugAtCursor;
 begin
   if GDebugger <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build, GDebugger.DebugAtCursor);
+  end;
 end;
 
 { Betroffene Tests (#1353) }
@@ -216,13 +232,17 @@ end;
 procedure AffectedRunTests(const AFileName: string; const ATests: TArray<string>);
 begin
   if GTests <> nil then
+  begin
     GTests.RunTests(AFileName, ATests);
+  end;
 end;
 
 procedure AffectedRunAll;
 begin
   if GTests <> nil then
+  begin
     GTests.RunAll;
+  end;
 end;
 
 procedure AffectedResolveTarget(const AThen: TAtlasAffectedTargetProc);
@@ -230,7 +250,9 @@ var
   mThen: TAtlasAffectedTargetProc;
 begin
   if GTests = nil then
+  begin
     Exit;
+  end;
   mThen := AThen;
   GTests.ResolveProject('',
     procedure(const AProject: IOTAProject)
@@ -275,7 +297,9 @@ begin
   // tests.run aus (oder Modul aus): pre-commit-Hook entfernen, solange die Haken noch stehen; beim Entladen bleibt
   // er (Einstellung an).
   if not TAtlasIdeAffectedTests.Enabled then
+  begin
     TAtlasIdeAffectedTests.ApplySettings;
+  end;
   TAtlasIdeAffectedTests.Uninstall;
   // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
   // zurück), dann der Läufer; seine Probleme verschwinden mit ihm.
@@ -285,7 +309,9 @@ begin
     FreeAndNil(GTests);
   finally
     if TAtlasProblemsController.Current <> nil then
+    begin
       TAtlasProblemsController.Current.ClearTests;
+    end;
   end;
 end;
 
@@ -318,13 +344,17 @@ end;
 procedure RunAll;
 begin
   if GTests <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build, GTests.RunAll);
+  end;
 end;
 
 procedure RunFailed;
 begin
   if GTests <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Build, GTests.RunFailed);
+  end;
 end;
 
 { TAtlasTestsModule }
@@ -390,7 +420,9 @@ procedure TAtlasTestsModule.ApplySettings;
 begin
   // tests.affectedBeforeCommit (#1353): pre-commit-Hook anlegen bzw. entfernen.
   if GTests <> nil then
+  begin
     TAtlasIdeAffectedTests.ApplySettings;
+  end;
 end;
 
 procedure TAtlasTestsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -398,15 +430,21 @@ procedure TAtlasTestsModule.BuildEvaluated(const AMessages: TArray<TAtlasCompile
 begin
   // Tests nach dem Build (#69), nach derselben Bewertung wie Zusammenfassung und Benachrichtigung (#530).
   if GTests <> nil then
+  begin
     GTests.BuildFinished(AProject, AVerdict.Effective);
+  end;
 end;
 
 procedure TAtlasTestsModule.RunTests(const AFileName: string; const ATests: TArray<string>);
 begin
   if GTests <> nil then
-    GTests.RunTests(AFileName, ATests)
+  begin
+    GTests.RunTests(AFileName, ATests);
+  end
   else
+  begin
     TAtlasIdeHost.Warning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+  end;
 end;
 
 function TAtlasTestsModule.RunProject(const ATestProject: string; out AReason: string): Boolean;
@@ -424,7 +462,9 @@ begin
   AReason := '';
   Result := False;
   if GDebugger <> nil then
+  begin
     Result := GDebugger.DebugByName(AProject, AFullName, AReason);
+  end;
 end;
 
 function TAtlasTestsModule.LocateByName(const AProject, AFullName: string; out AFileName: string;
@@ -459,7 +499,9 @@ begin
   Result := False;
   mRegistry := AtlasModuleRegistry;
   if (mRegistry = nil) or (GScope <> nil) then
+  begin
     Exit;
+  end;
   // Regel 7: zuerst die Vertragsversion von Base (FindClassHInstance einer Base-Klasse, Regel 8).
   if TAtlasContractHandshake.Check(FindClassHInstance(TAtlasModuleRegistry), cAtlasCoreContractVersion) <>
     ccMatch then
@@ -471,7 +513,9 @@ begin
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
+  begin
     GScope.Provide(IAtlasFeaturePart, mPart);
+  end;
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasAppliesSettings, mRef);
@@ -488,13 +532,19 @@ var
   mFailure: string;
 begin
   if GScope = nil then
+  begin
     Exit;
+  end;
   GScope := nil;
   // Regel 5: nur, solange Base noch läuft; sonst hat Base das Modul schon gestoppt und abgemeldet.
   mRegistry := AtlasModuleRegistry;
   if mRegistry <> nil then
+  begin
     for mFailure in mRegistry.UnregisterModule(ModuleId) do
+    begin
       TAtlasGuard.Log('Modul ' + ModuleId + ' nicht sauber abgemeldet: ' + mFailure);
+    end;
+  end;
 end;
 
 initialization

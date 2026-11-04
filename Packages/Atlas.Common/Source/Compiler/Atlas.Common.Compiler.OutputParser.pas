@@ -50,107 +50,104 @@ begin
   end;
 end;
 
+/// <summary>Klammern der Fundstelle "(…)" vor dem ersten ")"; False ohne Klammern oder mit Meldungsnummer davor.</summary>
+function FindLocationParens(const AText: string; out AOpen, AClose: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  AClose := Pos(')', AText);
+  AOpen := AClose - 1;
+  while (AOpen > 0) and (AText[AOpen] <> '(') do
+  begin
+    Dec(AOpen);
+  end;
+  Result := AOpen > 1;
+  // Klammern im Meldungstext ("F1026 File not found: 'a(1).pas'") sind keine Fundstelle.
+  mIndex := 1;
+  while Result and (mIndex < AOpen) do
+  begin
+    Result := not IsCodeAt(AText, mIndex);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Liest "Zeile" oder "Zeile,Spalte" (1-basiert) als 0-basierte Werte; Spalte -1 ohne Komma.</summary>
+function ReadLineColumn(const AInner: string; out ALine, AColumn: Integer): Boolean;
+var
+  mComma: Integer;
+begin
+  AColumn := -1;
+  mComma := Pos(',', AInner);
+  if mComma > 0 then
+  begin
+    Result := TryStrToInt(Trim(Copy(AInner, 1, mComma - 1)), ALine) and
+      TryStrToInt(Trim(Copy(AInner, mComma + 1, MaxInt)), AColumn);
+  end
+  else
+  begin
+    Result := TryStrToInt(Trim(AInner), ALine);
+  end;
+  if Result then
+  begin
+    Dec(ALine);
+    if mComma > 0 then
+    begin
+      Dec(AColumn);
+    end;
+  end;
+end;
+
 /// <summary>Liest "Datei(Zeile)" oder "Datei(Zeile,Spalte)" am Anfang; ARest ist der Text danach.</summary>
 function ReadLocation(const AText: string; out AFileName: string; out ALine, AColumn: Integer;
   out ARest: string): Boolean;
 var
-  Open, Close, Comma, Index: Integer;
-  Inner: string;
+  mOpen, mClose: Integer;
 begin
-  Result := False;
   ALine := -1;
   AColumn := -1;
   AFileName := '';
   ARest := AText;
-  Close := Pos(')', AText);
-  if Close = 0 then
+  Result := FindLocationParens(AText, mOpen, mClose) and
+    ReadLineColumn(Copy(AText, mOpen + 1, mClose - mOpen - 1), ALine, AColumn);
+  if Result then
   begin
-    Exit;
-  end;
-  Open := Close - 1;
-  while (Open > 0) and (AText[Open] <> '(') do
-  begin
-    Dec(Open);
-  end;
-  if Open <= 1 then
-  begin
-    Exit;
-  end;
-  // Klammern im Meldungstext ("F1026 File not found: 'a(1).pas'") sind keine Fundstelle.
-  for Index := 1 to Open - 1 do
-  begin
-    if IsCodeAt(AText, Index) then
-    begin
-      Exit;
-    end;
-  end;
-  Inner := Copy(AText, Open + 1, Close - Open - 1);
-  Comma := Pos(',', Inner);
-  if Comma > 0 then
-  begin
-    if not TryStrToInt(Trim(Copy(Inner, 1, Comma - 1)), ALine) or
-      not TryStrToInt(Trim(Copy(Inner, Comma + 1, MaxInt)), AColumn) then
-    begin
-      Exit;
-    end;
-    Dec(AColumn);
+    AFileName := Trim(Copy(AText, 1, mOpen - 1));
+    ARest := Copy(AText, mClose + 1, MaxInt);
+    Result := AFileName <> '';
   end
-  else if not TryStrToInt(Trim(Inner), ALine) then
+  else
   begin
-    Exit;
+    ALine := -1;
+    AColumn := -1;
   end;
-  Dec(ALine);
-  AFileName := Trim(Copy(AText, 1, Open - 1));
-  ARest := Copy(AText, Close + 1, MaxInt);
-  Result := AFileName <> '';
 end;
 
-{ TCompilerOutputParser }
-
-class function TCompilerOutputParser.ParseLine(const ALine, AWorkingDir: string;
-  out AMessage: TCompilerMessage): Boolean;
-var
-  Text, Rest, FileName: string;
-  Index, Line, Column: Integer;
+/// <summary>Schweregrad aus dem Anfangsbuchstaben der Meldungsnummer.</summary>
+function SeverityOf(ALetter: Char): TCompilerSeverity;
 begin
-  AMessage := Default(TCompilerMessage);
-  AMessage.Line := -1;
-  AMessage.Column := -1;
-  Text := Trim(ALine);
-  // MSBuild: "[dcc32 Error] ..."
-  if (Text <> '') and (Text[1] = '[') and (Pos(']', Text) > 0) then
-  begin
-    Text := Trim(Copy(Text, Pos(']', Text) + 1, MaxInt));
+  case ALetter of
+    'E': Result := TCompilerSeverity.Error;
+    'W': Result := TCompilerSeverity.Warning;
+    'H': Result := TCompilerSeverity.Hint;
+    // X1008 und Verwandte meldet dcc als Warnung (#1040).
+    'X': Result := TCompilerSeverity.Warning;
+  else
+    Result := TCompilerSeverity.Fatal;
   end;
-  Rest := Text;
-  if ReadLocation(Text, FileName, Line, Column, Rest) then
+end;
+
+/// <summary>Sucht die Meldungsnummer in ARest und füllt Code, Schweregrad und Text; False ohne Nummer.</summary>
+function ReadCode(const ARest: string; var AMessage: TCompilerMessage): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to Length(ARest) do
   begin
-    if TProjectPaths.IsAbsolute(FileName) or (AWorkingDir = '') then
+    if IsCodeAt(ARest, mIndex) then
     begin
-      AMessage.FileName := FileName;
-    end
-    else
-    begin
-      AMessage.FileName := TProjectPaths.Combine(AWorkingDir, FileName);
-    end;
-    AMessage.Line := Line;
-    AMessage.Column := Column;
-  end;
-  for Index := 1 to Length(Rest) do
-  begin
-    if IsCodeAt(Rest, Index) then
-    begin
-      AMessage.Code := Copy(Rest, Index, 5);
-      case Rest[Index] of
-        'E': AMessage.Severity := TCompilerSeverity.Error;
-        'W': AMessage.Severity := TCompilerSeverity.Warning;
-        'H': AMessage.Severity := TCompilerSeverity.Hint;
-        // X1008 und Verwandte meldet dcc als Warnung (#1040).
-        'X': AMessage.Severity := TCompilerSeverity.Warning;
-      else
-        AMessage.Severity := TCompilerSeverity.Fatal;
-      end;
-      AMessage.Text := Trim(Copy(Rest, Index + 5, MaxInt));
+      AMessage.Code := Copy(ARest, mIndex, 5);
+      AMessage.Severity := SeverityOf(ARest[mIndex]);
+      AMessage.Text := Trim(Copy(ARest, mIndex + 5, MaxInt));
       if (AMessage.Text <> '') and (AMessage.Text[1] = ':') then
       begin
         AMessage.Text := Trim(Copy(AMessage.Text, 2, MaxInt));
@@ -159,6 +156,40 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ TCompilerOutputParser }
+
+class function TCompilerOutputParser.ParseLine(const ALine, AWorkingDir: string;
+  out AMessage: TCompilerMessage): Boolean;
+var
+  mText, mRest, mFileName: string;
+  mLine, mColumn: Integer;
+begin
+  AMessage := Default(TCompilerMessage);
+  AMessage.Line := -1;
+  AMessage.Column := -1;
+  mText := Trim(ALine);
+  // MSBuild: "[dcc32 Error] ..."
+  if (mText <> '') and (mText[1] = '[') and (Pos(']', mText) > 0) then
+  begin
+    mText := Trim(Copy(mText, Pos(']', mText) + 1, MaxInt));
+  end;
+  mRest := mText;
+  if ReadLocation(mText, mFileName, mLine, mColumn, mRest) then
+  begin
+    if TProjectPaths.IsAbsolute(mFileName) or (AWorkingDir = '') then
+    begin
+      AMessage.FileName := mFileName;
+    end
+    else
+    begin
+      AMessage.FileName := TProjectPaths.Combine(AWorkingDir, mFileName);
+    end;
+    AMessage.Line := mLine;
+    AMessage.Column := mColumn;
+  end;
+  Result := ReadCode(mRest, AMessage);
 end;
 
 class function TCompilerOutputParser.Parse(const ALines: TArray<string>;

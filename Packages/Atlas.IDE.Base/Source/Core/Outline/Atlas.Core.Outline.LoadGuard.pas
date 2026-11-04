@@ -46,12 +46,18 @@ begin
   AClearAll := False;
   AKeys := nil;
   if FDepth > 0 then
+  begin
     Dec(FDepth);
+  end;
   if FDepth > 0 then
+  begin
     Exit(False);
+  end;
   AClearAll := FClearAll;
   if not AClearAll then
+  begin
     AKeys := FKeys;
+  end;
   FClearAll := False;
   FKeys := nil;
   Result := AClearAll or (Length(AKeys) > 0);
@@ -66,7 +72,9 @@ function TAtlasOutlineLoadGuard.ClearAll: Boolean;
 begin
   Result := FDepth = 0;
   if Result then
+  begin
     Exit;
+  end;
   FClearAll := True;
   FKeys := nil;
 end;
@@ -77,10 +85,16 @@ var
 begin
   Result := FDepth = 0;
   if Result or FClearAll then
+  begin
     Exit;
+  end;
   for Existing in FKeys do
+  begin
     if Existing = AKey then
+    begin
       Exit;
+    end;
+  end;
   FKeys := FKeys + [AKey];
 end;
 

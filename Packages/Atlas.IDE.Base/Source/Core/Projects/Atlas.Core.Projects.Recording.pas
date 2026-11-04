@@ -134,7 +134,9 @@ begin
   AState := TAtlasProjectVcs.Empty;
   Result := False;
   if AVcs = nil then
+  begin
     Exit;
+  end;
   Outcome := AVcs.Head(Head);
   if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
   begin
@@ -145,7 +147,9 @@ begin
     Exit(True);
   end;
   if Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   AState.Known := True;
   AState.At := ANowUtc;
   AState.Kind := LowerCase(AtlasVcsKindName(AVcs.Kind));
@@ -157,8 +161,12 @@ begin
   begin
     Count := 0;
     for Change in Changes do
+    begin
       if (AFolder = '') or InFolder(Change.Path, AFolder) or InFolder(Change.OldPath, AFolder) then
+      begin
         Inc(Count);
+      end;
+    end;
     AState.Changed := Count;
   end;
   Result := True;
@@ -171,9 +179,13 @@ begin
   Folder := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
   FileName := StringReplace(Trim(AFileName), '/', '\', [rfReplaceAll]);
   if (Folder = '') or (FileName = '') then
+  begin
     Exit(False);
+  end;
   if Folder[Length(Folder)] <> '\' then
+  begin
     Folder := Folder + '\';
+  end;
   Result := SameText(Copy(FileName, 1, Length(Folder)), Folder);
 end;
 
@@ -199,15 +211,23 @@ begin
   AHits := 0;
   Result := False;
   if AStore = nil then
+  begin
     Exit;
+  end;
   for FileName in AStore.AllFiles do
+  begin
     if InFolder(FileName, AFolder) then
     begin
       Result := True;
       for Problem in AStore.ForFile(FileName) do
+      begin
         if IsRuleHit(Problem) then
+        begin
           Inc(AHits);
+        end;
+      end;
     end;
+  end;
 end;
 
 class procedure TAtlasProjectRecording.RecordRules(var ASummary: TAtlasProjectSummary; AHits: Integer;

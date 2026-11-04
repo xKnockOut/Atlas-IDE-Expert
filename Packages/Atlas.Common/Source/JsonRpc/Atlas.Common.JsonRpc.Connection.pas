@@ -307,80 +307,87 @@ begin
   Result := FReaderDone.WaitFor(ATimeout) = TWaitResult.wrSignaled;
 end;
 
+// Liest eine Nachricht in die Inbox; False, wenn die Eingabe geschlossen ist.
+function ReadIncoming(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
+  const AInbox: IJsonRpcInbox): Boolean;
+var
+  mItem: TJsonRpcInboxItem;
+  mIncoming: TJSONObject;
+begin
+  Result := True;
+  try
+    mIncoming := ATransport.ReadMessage;
+  except
+    on EJsonRpcTransportClosed do
+    begin
+      AInbox.Put(InboxItem(ikClosed));
+      Exit(False);
+    end;
+    on E: EJsonRpcError do
+    begin
+      // Einzelne unlesbare Nachricht: weiterlesen.
+      mItem := InboxItem(ikInvalid);
+      mItem.Code := E.Code;
+      mItem.Text := E.Message;
+      AInbox.Put(mItem);
+      Exit;
+    end;
+  end;
+  try
+    if APending.Observe(mIncoming) then
+    begin
+      FreeAndNil(mIncoming);
+      Exit;
+    end;
+  except
+    FreeAndNil(mIncoming);
+    raise;
+  end;
+  mItem := InboxItem(ikMessage);
+  mItem.Message := mIncoming;
+  mItem.Received := TThread.GetTickCount64;
+  AInbox.Put(mItem);
+end;
+
 // Startet den Lese-Thread. Er hält nur referenzgezählte Objekte, damit er auch
 // dann sicher endet, wenn Run nicht auf ihn warten konnte (blockierendes stdin).
 // Er gibt sich nicht selbst frei: Run wartet auf ihn (ReleaseReader).
 function StartReader(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
   const AInbox: IJsonRpcInbox): TThread;
 var
-  Transport: IJsonRpcTransport;
-  Pending: IJsonRpcPendingRequests;
-  Inbox: IJsonRpcInbox;
-  Reader: TThread;
+  mTransport: IJsonRpcTransport;
+  mPending: IJsonRpcPendingRequests;
+  mInbox: IJsonRpcInbox;
 begin
-  Transport := ATransport;
-  Pending := APending;
-  Inbox := AInbox;
-  Reader := TThread.CreateAnonymousThread(
+  mTransport := ATransport;
+  mPending := APending;
+  mInbox := AInbox;
+  Result := TThread.CreateAnonymousThread(
     procedure
     var
-      Item: TJsonRpcInboxItem;
-      Incoming: TJSONObject;
+      mItem: TJsonRpcInboxItem;
     begin
       try
         try
-          while not Inbox.IsClosed do
+          while not mInbox.IsClosed and ReadIncoming(mTransport, mPending, mInbox) do
           begin
-            try
-              Incoming := Transport.ReadMessage;
-            except
-              on EJsonRpcTransportClosed do
-              begin
-                Inbox.Put(InboxItem(ikClosed));
-                Exit;
-              end;
-              on E: EJsonRpcError do
-              begin
-                // Einzelne unlesbare Nachricht: weiterlesen.
-                Item := InboxItem(ikInvalid);
-                Item.Code := E.Code;
-                Item.Text := E.Message;
-                Inbox.Put(Item);
-                Continue;
-              end;
-            end;
-
-            try
-              if Pending.Observe(Incoming) then
-              begin
-                FreeAndNil(Incoming);
-                Continue;
-              end;
-            except
-              FreeAndNil(Incoming);
-              raise;
-            end;
-            Item := InboxItem(ikMessage);
-            Item.Message := Incoming;
-            Item.Received := TThread.GetTickCount64;
-            Inbox.Put(Item);
+            // weiterlesen
           end;
         except
           // Zerstörter Nachrichtenstrom: Run löst den Fehler erneut aus.
           on Exception do
           begin
-            Item := InboxItem(ikFailed);
-            Item.Error := Exception(AcquireExceptionObject);
-            Inbox.Put(Item);
+            mItem := InboxItem(ikFailed);
+            mItem.Error := Exception(AcquireExceptionObject);
+            mInbox.Put(mItem);
           end;
         end;
       finally
-        Inbox.ReaderDone;
+        mInbox.ReaderDone;
       end;
     end);
-  Reader.FreeOnTerminate := False;
-  Reader.Start;
-  Result := Reader;
+  Result.FreeOnTerminate := False;
+  Result.Start;
 end;
 
 // Wartet auf den Lese-Thread und gibt ihn frei (Bericht N2). Bisher gab er sich
@@ -546,98 +553,114 @@ end;
 
 procedure TJsonRpcConnection.Run;
 var
-  Inbox: IJsonRpcInbox;
-  Item: TJsonRpcInboxItem;
-  Failure: Exception;
-  OwnScheduler: Boolean;
-  OwnResponder: Boolean;
-  Error: Exception;
-  Reader: TThread;
-begin
-  FStopped := False;
-  FUnfinishedWork := False;
-  Inbox := TJsonRpcInbox.Create;
-  SetInbox(Inbox);
+  mInbox: IJsonRpcInbox;
+  mFailure: Exception;
+  mOwnScheduler, mOwnResponder: Boolean;
+  mReader: TThread;
 
-  OwnScheduler := not Assigned(FDispatcher.Scheduler);
-  if OwnScheduler then
+  // Meldet eine unlesbare Nachricht und antwortet mit dem Fehler.
+  procedure ReportInvalid(const AItem: TJsonRpcInboxItem);
+  var
+    mError: Exception;
   begin
-    FDispatcher.Scheduler := ThreadPoolScheduler();
-  end;
-  OwnResponder := not Assigned(FDispatcher.Responder);
-  if OwnResponder then
-  begin
-    FDispatcher.Responder := CreateResponder();
+    mError := EJsonRpcError.Create(AItem.Code, AItem.Text);
+    try
+      ReportError(mError);
+    finally
+      mError.Free;
+    end;
+    Send(TJsonRpcMessages.Error(nil, AItem.Code, AItem.Text));
   end;
 
-  Failure := nil;
-  Reader := nil;
-  try
-    Reader := StartReader(FTransport, FDispatcher.PendingRequests, Inbox);
-    while not FStopped do
-    begin
-      Item := Inbox.Take;
-      case Item.Kind of
-        ikMessage:
-          try
-            Process(Item.Message, Item.WaitedMs);
-          finally
-            Item.Release;
-          end;
-        ikInvalid:
-          begin
-            Error := EJsonRpcError.Create(Item.Code, Item.Text);
-            try
-              ReportError(Error);
-            finally
-              Error.Free;
-            end;
-            Send(TJsonRpcMessages.Error(nil, Item.Code, Item.Text));
-          end;
-        ikClosed:
-          Break;
-        ikFailed:
-          begin
-            Failure := Item.Error;
-            Break;
-          end;
-        ikWakeUp:
-          ; // Stop wurde aufgerufen
-        ikWork:
-          try
-            RunWork(Item.Work);
-          finally
-            Item.Release;
-          end;
-      end;
+  // Verarbeitet einen Eintrag der Inbox; False, wenn die Schleife endet (mFailure bei Fehler).
+  function HandleItem(const AItem: TJsonRpcInboxItem): Boolean;
+  begin
+    Result := True;
+    case AItem.Kind of
+      ikMessage:
+        try
+          Process(AItem.Message, AItem.WaitedMs);
+        finally
+          AItem.Release;
+        end;
+      ikInvalid:
+        ReportInvalid(AItem);
+      ikClosed:
+        Result := False;
+      ikFailed:
+        begin
+          mFailure := AItem.Error;
+          Result := False;
+        end;
+      ikWakeUp:
+        ; // Stop wurde aufgerufen
+      ikWork:
+        try
+          RunWork(AItem.Work);
+        finally
+          AItem.Release;
+        end;
     end;
-    if (Failure = nil) and Assigned(FOnLoopEnded) then
-    begin
-      FOnLoopEnded();
-    end;
-  finally
+  end;
+
+  // Schließt die Inbox, bricht offene Anfragen ab und nimmt eigene Scheduler und Responder zurück.
+  procedure FinishRun;
+  begin
     SetInbox(nil);
-    Inbox.Close;
+    mInbox.Close;
     FDispatcher.PendingRequests.CancelAll;
     if not FDispatcher.PendingRequests.WaitForWork(FWorkTimeout) then
     begin
       FUnfinishedWork := True;
       ReportProblem('Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig');
     end;
-    if OwnScheduler then
+    if mOwnScheduler then
     begin
       FDispatcher.Scheduler := nil;
     end;
-    if OwnResponder then
+    if mOwnResponder then
     begin
       FDispatcher.Responder := nil;
     end;
-    ReleaseReader(Reader, Inbox, DefaultReaderTimeout);
   end;
 
-  if Failure <> nil then
+begin
+  FStopped := False;
+  FUnfinishedWork := False;
+  mInbox := TJsonRpcInbox.Create;
+  SetInbox(mInbox);
+
+  mOwnScheduler := not Assigned(FDispatcher.Scheduler);
+  if mOwnScheduler then
   begin
-    raise Failure;
+    FDispatcher.Scheduler := ThreadPoolScheduler();
+  end;
+  mOwnResponder := not Assigned(FDispatcher.Responder);
+  if mOwnResponder then
+  begin
+    FDispatcher.Responder := CreateResponder();
+  end;
+
+  mFailure := nil;
+  mReader := nil;
+  try
+    mReader := StartReader(FTransport, FDispatcher.PendingRequests, mInbox);
+    while not FStopped and HandleItem(mInbox.Take) do
+    begin
+      // nächste Nachricht
+    end;
+    if (mFailure = nil) and Assigned(FOnLoopEnded) then
+    begin
+      FOnLoopEnded();
+    end;
+  finally
+    FinishRun;
+    ReleaseReader(mReader, mInbox, DefaultReaderTimeout);
+  end;
+
+  if mFailure <> nil then
+  begin
+    raise mFailure;
   end;
 end;
 

@@ -129,9 +129,13 @@ var
   Area: TRect;
 begin
   if (AWindow <> 0) and GetClientRect(AWindow, Area) then
-    Result := Point(Area.Width, Area.Height)
+  begin
+    Result := Point(Area.Width, Area.Height);
+  end
   else
+  begin
     Result := Point(0, 0);
+  end;
 end;
 
 /// <summary>Zustand für TAtlasCloseRules (#414).</summary>
@@ -142,11 +146,15 @@ begin
   Result.Focus := AFocus;
   Result.Size := EditorSize(AWindow);
   if AView = nil then
+  begin
     Exit;
+  end;
   Result.TopRow := AView.TopRow;
   Result.Rows := AView.ViewSize.cy;
   if AView.Buffer <> nil then
+  begin
     Result.FileName := AView.Buffer.FileName;
+  end;
 end;
 
 
@@ -302,7 +310,9 @@ begin
   // Erst abmelden, dann freigeben (#493).
   TAtlasKeyHook.Remove(FKeys);
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  begin
     Editor.RemoveNotifier(FNotifierIndex);
+  end;
   FTimer.Free;
   Shutdown;
   FController.Free;
@@ -316,7 +326,9 @@ end;
 procedure TAtlasEditorSignature.Log(const AMessage: string);
 begin
   if Assigned(FLog) then
+  begin
     FLog(AMessage);
+  end;
 end;
 
 procedure TAtlasEditorSignature.Shutdown;
@@ -347,7 +359,9 @@ begin
   Result := False;
   // Parameter-Hint abgeschaltet (ARG-046): weder bei "(" und "," noch nach dem Übernehmen.
   if (AView = nil) or (AView.Buffer = nil) or not TAtlasIdeSettings.Current.ParameterHints then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   Cursor := AView.CursorPos;
   LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
@@ -368,14 +382,18 @@ begin
   FillChar(Info, SizeOf(Info), 0);
   Info.cbSize := SizeOf(Info);
   if not GetGUIThreadInfo(GetCurrentThreadId, Info) or (Info.hwndCaret = 0) then
+  begin
     Exit;
+  end;
   Anchor := Info.rcCaret;
   MapWindowPoints(Info.hwndCaret, 0, Anchor, 2);
   ApplyStyle(Anchor);
   // Linke Kante an der öffnenden Klammer, wenn sie in derselben Zeile vor dem Caret steht.
   FHint.Canvas.Font := FHint.Font;
   if Caret - Site.OpenParen <= Character then
+  begin
     Anchor.Left := Anchor.Left - FHint.Canvas.TextWidth(Copy(Text, Site.OpenParen + 1, Caret - Site.OpenParen));
+  end;
   FHint.Anchor := Anchor;
   FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
   FHint.FormatPlaceholders := TAtlasIdeSettings.Current.FormatPlaceholders;
@@ -396,7 +414,9 @@ begin
     begin
       FPending := False;
       if FView = nil then
+      begin
         Exit;
+      end;
       // Seit der Anfrage weitergetippt: Parameter lokal neu zählen.
       Current := TAtlasCallScanner.Scan(TAtlasEditorBuffer.Text(FView.Buffer),
         TAtlasEditorBuffer.CharOffset(TAtlasEditorBuffer.Text(FView.Buffer), FView.CursorPos.Line - 1,
@@ -413,7 +433,9 @@ begin
       // Im Detailpanel gewählte Überladung übernehmen (#425), einmalig.
       if (FPreferredName <> '') and SameText(FPreferredName, Current.Name) and (FPreferredIndex > 0) and
         (FPreferredIndex < Length(AHelp.Signatures)) then
+      begin
         FController.SelectOverload(FPreferredIndex);
+      end;
       FPreferredName := '';
       ShowFormat(AHelp.Format, Text);
       Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), Current.ActiveParameter]));
@@ -444,10 +466,14 @@ end;
 procedure TAtlasEditorSignature.ShowFormat(const AFormat: TAtlasSignatureFormat; const AText: string);
 begin
   if FHint.FormatPlaceholders and AFormat.Found and (FView <> nil) and (FView.Buffer <> nil) then
+  begin
     FMarks.Show(FView.Buffer.FileName, AText, TAtlasEditorBuffer.TabWidth(FView.Buffer),
-      TAtlasSignatureFormats.Marks(AFormat))
+      TAtlasSignatureFormats.Marks(AFormat));
+  end
   else
+  begin
     FMarks.Clear;
+  end;
 end;
 
 procedure TAtlasEditorSignature.CheckFormat(const AText: string; ALine, ACharacter, ACaret: Integer);
@@ -455,7 +481,9 @@ var
   Text: string;
 begin
   if FPending or not FHint.FormatPlaceholders or not FController.Help.Format.Found or (FView = nil) then
+  begin
     Exit;
+  end;
   // Erst nach kurzer Ruhe: Jede Anfrage gleicht den Puffer mit dem Server ab.
   if (ACaret <> FFormatCaret) or (AText <> FFormatText) then
   begin
@@ -465,17 +493,23 @@ begin
     Exit;
   end;
   if FFormatDue <= 0 then
+  begin
     Exit;
+  end;
   Dec(FFormatDue);
   if FFormatDue > 0 then
+  begin
     Exit;
+  end;
   Text := AText;
   FProvider.Query(FView.Buffer.FileName, Text, ALine, ACharacter,
     procedure(const AHelp: TAtlasSignatureHelp)
     begin
       // Inzwischen geschlossen oder weitergetippt: Der nächste Takt fragt neu.
       if (FView = nil) or not FController.Active or (Text <> FFormatText) then
+      begin
         Exit;
+      end;
       FController.UpdateFormat(AHelp.Format);
       ShowFormat(AHelp.Format, Text);
     end);
@@ -485,9 +519,13 @@ procedure TAtlasEditorSignature.ActiveChanged;
 begin
   FTimer.Enabled := Active;
   if FController.Active then
-    TAtlasKeyHook.Add(FKeys)
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
   else
+  begin
     TAtlasKeyHook.Remove(FKeys);
+  end;
   if not Active then
   begin
     FView := nil;
@@ -502,9 +540,13 @@ var
   Removed: Boolean;
 begin
   if Active then
+  begin
     Recheck;
+  end;
   if (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   FileName := AView.Buffer.FileName;
   Line := AView.CursorPos.Line;
   LineText := TAtlasEditorBuffer.LineText(AView, Line);
@@ -514,7 +556,9 @@ begin
   FLastLine := Line;
   FLastLineText := LineText;
   if not Removed then
+  begin
     Exit;
+  end;
   // Erst nach der Änderung, wenn die IDE den Caret gesetzt hat.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
     procedure
@@ -527,7 +571,9 @@ begin
           Log('Parameter-Hint: ' + E.Message);
           // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung (Code-Review S-05).
           if not (E is ELspClientError) then
+          begin
             TAtlasGuard.Report(TAtlasFeature.Signature, E);
+          end;
         end;
       end;
     end);
@@ -541,14 +587,18 @@ var
   Site: TAtlasCallSite;
 begin
   if Active or (AView = nil) or (AView.Buffer = nil) or not Application.Active then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   Cursor := AView.CursorPos;
   LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
   Site := TAtlasCallScanner.Scan(Text, TAtlasEditorBuffer.CharOffset(Text, Cursor.Line - 1, Character));
   if not Site.Found or ((Site.OpenParen = FDismissedParen) and SameText(AView.Buffer.FileName, FDismissedFile)) then
+  begin
     Exit;
+  end;
   Log('Parameter-Hint: nach entfernter Klammer wieder geöffnet');
   Invoke(AView);
 end;
@@ -640,7 +690,9 @@ begin
       begin
         // Für diesen Aufruf nicht von selbst wieder öffnen.
         if FView <> nil then
+        begin
           FDismissedFile := FView.Buffer.FileName;
+        end;
         FDismissedParen := FOpenParen;
         Close;
       end;

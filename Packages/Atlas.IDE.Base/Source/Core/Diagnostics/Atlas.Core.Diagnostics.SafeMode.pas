@@ -159,8 +159,12 @@ var
   Level: TAtlasSafeLevel;
 begin
   for Level := Low(TAtlasSafeLevel) to High(TAtlasSafeLevel) do
+  begin
     if SameText(LevelNames[Level], AText) then
+    begin
       Exit(Level);
+    end;
+  end;
   Result := TAtlasSafeLevel.Normal;
 end;
 
@@ -169,8 +173,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AText) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -191,11 +199,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Failures) do
+  begin
     if SameText(Failures[Index].Key, AFeature) then
     begin
       Failures[Index] := TPair<string, Integer>.Create(Failures[Index].Key, Failures[Index].Value + 1);
       Exit;
     end;
+  end;
   Failures := Failures + [TPair<string, Integer>.Create(AFeature, 1)];
 end;
 
@@ -204,8 +214,12 @@ var
   Pair: TPair<string, Integer>;
 begin
   for Pair in Failures do
+  begin
     if SameText(Pair.Key, AFeature) then
+    begin
       Exit(Pair.Value);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -226,11 +240,15 @@ begin
     Root.AddPair('level', TJSONString.Create(LevelNames[Level]));
     List := TJSONArray.Create;
     for Name in Features do
+    begin
       List.Add(Name);
+    end;
     Root.AddPair('features', List);
     Counts := TJSONObject.Create;
     for Pair in Failures do
+    begin
       Counts.AddPair(Pair.Key, TJSONNumber.Create(Pair.Value));
+    end;
     Root.AddPair('failures', Counts);
     Result := Root.ToJSON;
   finally
@@ -250,10 +268,14 @@ begin
   Root := TJSONObject.ParseJSONValue(AText);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('processId');
     if not (Value is TJSONNumber) then
+    begin
       Exit;
+    end;
     AMarker.ProcessId := Cardinal(TJSONNumber(Value).AsInt64);
     AMarker.Version := TJSONObject(Root).GetValue<string>('version', '');
     Stamp := TJSONObject(Root).GetValue<string>('startedAt', '');
@@ -269,19 +291,33 @@ begin
     Value := TJSONObject(Root).GetValue('loadMs');
     AMarker.LoadMs := -1;
     if Value is TJSONNumber then
+    begin
       AMarker.LoadMs := TJSONNumber(Value).AsInt64;
+    end;
     AMarker.Level := LevelOf(TJSONObject(Root).GetValue<string>('level', ''));
     Value := TJSONObject(Root).GetValue('features');
     if Value is TJSONArray then
+    begin
       for Element in TJSONArray(Value) do
+      begin
         if Element is TJSONString then
+        begin
           AMarker.Features := AMarker.Features + [TJSONString(Element).Value];
+        end;
+      end;
+    end;
     Value := TJSONObject(Root).GetValue('failures');
     if Value is TJSONObject then
+    begin
       for Pair in TJSONObject(Value) do
+      begin
         if Pair.JsonValue is TJSONNumber then
+        begin
           AMarker.Failures := AMarker.Failures + [TPair<string, Integer>.Create(Pair.JsonString.Value,
             TJSONNumber(Pair.JsonValue).AsInt)];
+        end;
+      end;
+    end;
     Result := True;
   finally
     Root.Free;
@@ -308,14 +344,22 @@ begin
   try
     Root.AddPair('crashCount', TJSONNumber.Create(CrashCount));
     if LastCrashAt > 0 then
+    begin
       Root.AddPair('lastCrashAt', TJSONString.Create(DateToISO8601(LastCrashAt, True)));
+    end;
     Crashed := nil;
     if CrashedMarker <> '' then
+    begin
       Crashed := TJSONObject.ParseJSONValue(CrashedMarker);
+    end;
     if Crashed is TJSONObject then
-      Root.AddPair('crashed', Crashed)
+    begin
+      Root.AddPair('crashed', Crashed);
+    end
     else
+    begin
       Crashed.Free;
+    end;
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -331,10 +375,14 @@ begin
   Root := TJSONObject.ParseJSONValue(AText);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('crashCount');
     if Value is TJSONNumber then
+    begin
       Result.CrashCount := Max(0, TJSONNumber(Value).AsInt);
+    end;
     Stamp := TJSONObject(Root).GetValue<string>('lastCrashAt', '');
     if Stamp <> '' then
       try
@@ -346,7 +394,9 @@ begin
     // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz (Bericht N4).
     Value := TJSONObject(Root).GetValue('crashed');
     if Value is TJSONObject then
+    begin
       Result.CrashedMarker := Value.ToJSON;
+    end;
   finally
     Root.Free;
   end;
@@ -370,15 +420,23 @@ begin
     Repeated := (AState.CrashCount > 0) and (AState.LastCrashAt > 0) and
       (MinutesBetween(ANow, AState.LastCrashAt) < RepeatWindowMinutes) and (ANow >= AState.LastCrashAt);
     if Repeated then
-      Inc(AState.CrashCount)
+    begin
+      Inc(AState.CrashCount);
+    end
     else
+    begin
       AState.CrashCount := 1;
+    end;
     AState.LastCrashAt := ANow;
     // Für „Details“ die zuletzt gestartete abgestürzte Sitzung.
     Latest := ACrashed[0];
     for Marker in ACrashed do
+    begin
       if Marker.StartedAt > Latest.StartedAt then
+      begin
         Latest := Marker;
+      end;
+    end;
     AState.CrashedMarker := Latest.ToJson;
   end;
   if AForced then
@@ -394,7 +452,9 @@ begin
     Exit;
   end;
   if not Result.Crashed then
+  begin
     Exit;
+  end;
   if Repeated and AOptions.AutoAfterRepeatedCrash then
   begin
     Result.Level := TAtlasSafeLevel.Safe;
@@ -421,21 +481,33 @@ var
 begin
   Value := Trim(AEnvironment);
   if SameText(Value, '1') or SameText(Value, 'true') or SameText(Value, 'yes') then
+  begin
     Exit(True);
+  end;
   for Arg in AArgs do
+  begin
     if SameText(Arg, '-' + SwitchName) or SameText(Arg, '/' + SwitchName) or SameText(Arg, '--' + SwitchName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 class function TAtlasSafeMode.KeyOf(const AText: string): TAtlasStartupKey;
 begin
   if SameText(AText, 'ctrl') then
-    Result := TAtlasStartupKey.Ctrl
+  begin
+    Result := TAtlasStartupKey.Ctrl;
+  end
   else if SameText(AText, 'none') then
-    Result := TAtlasStartupKey.None
+  begin
+    Result := TAtlasStartupKey.None;
+  end
   else
+  begin
     Result := TAtlasStartupKey.Shift;
+  end;
 end;
 
 class function TAtlasSafeMode.KeyText(AKey: TAtlasStartupKey): string;
@@ -456,7 +528,9 @@ var
 begin
   Result := Default(TAtlasToggleSession);
   for Toggle in AToggles do
+  begin
     Result.Put(Toggle.Key, False);
+  end;
 end;
 
 class function TAtlasSafeMode.Suggest(const AToggles: TArray<TAtlasQuickToggle>; const AChangedKeys: TArray<string>;
@@ -471,14 +545,22 @@ begin
   Result := nil;
   // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
   for Key in AChangedKeys do
+  begin
     if TAtlasQuickToggles.Find(AToggles, Key, Toggle) and not ContainsText_(Result, Toggle.Key) then
+    begin
       Result := Result + [Toggle.Key];
+    end;
+  end;
   // Dann Funktionen mit Fehlern in der abgestürzten Sitzung, die meisten zuerst; bei Gleichstand Katalog.
   Candidates := nil;
   for Toggle in AToggles do
+  begin
     if (Toggle.Feature <> '') and (ACrashed.FailureCount(Toggle.Feature) > 0) and
       not ContainsText_(Result, Toggle.Key) then
+    begin
       Candidates := Candidates + [TPair<string, Integer>.Create(Toggle.Key, ACrashed.FailureCount(Toggle.Feature))];
+    end;
+  end;
   for Index := 1 to High(Candidates) do
   begin
     Other := Index;
@@ -491,7 +573,9 @@ begin
     end;
   end;
   for Index := 0 to High(Candidates) do
+  begin
     Result := Result + [Candidates[Index].Key];
+  end;
 end;
 
 function LineStamp(const ALine: string; out AStamp: TDateTime): Boolean;
@@ -506,7 +590,9 @@ begin
     TryStrToInt(Copy(ALine, 15, 2), Minute) and TryStrToInt(Copy(ALine, 18, 2), Second) and
     TryStrToInt(Copy(ALine, 21, 3), Milli);
   if Result then
+  begin
     Result := TryEncodeDateTime(Year, Month, Day, Hour, Minute, Second, Milli, AStamp);
+  end;
 end;
 
 class function TAtlasSafeMode.LogLinesBetween(const ALines: TArray<string>; AFrom, ATo: TDateTime;
@@ -521,12 +607,18 @@ begin
   for Line in ALines do
   begin
     if LineStamp(Line, Stamp) then
+    begin
       Inside := (Stamp >= AFrom) and ((ATo = 0) or (Stamp < ATo));
+    end;
     if Inside then
+    begin
       Result := Result + [Line];
+    end;
   end;
   if (AMax >= 0) and (Length(Result) > AMax) then
+  begin
     Result := Copy(Result, Length(Result) - AMax, AMax);
+  end;
 end;
 
 class function TAtlasSafeMode.Details(const AMarker: TAtlasSessionMarker): TArray<string>;
@@ -536,19 +628,31 @@ var
 begin
   Result := ['Atlas ' + AMarker.Version, 'Start: ' + DateToISO8601(AMarker.StartedAt, True)];
   if AMarker.Loaded then
-    Result := Result + [Format('Laden: %d ms', [AMarker.LoadMs])]
+  begin
+    Result := Result + [Format('Laden: %d ms', [AMarker.LoadMs])];
+  end
   else
+  begin
     Result := Result + ['Laden: nicht abgeschlossen'];
+  end;
   Result := Result + ['Modus: ' + LevelNames[AMarker.Level]];
   Names := string.Join(', ', AMarker.Features);
   if Names = '' then
+  begin
     Names := '–';
+  end;
   Result := Result + ['Aktive Funktionen: ' + Names];
   if Length(AMarker.Failures) = 0 then
-    Result := Result + ['Fehler: keine']
+  begin
+    Result := Result + ['Fehler: keine'];
+  end
   else
+  begin
     for Pair in AMarker.Failures do
+    begin
       Result := Result + [Format('Fehler %s: %d', [Pair.Key, Pair.Value])];
+    end;
+  end;
 end;
 
 { TAtlasSessionFiles }
@@ -574,20 +678,32 @@ begin
   TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
   try
     if TFile.Exists(AFileName) then
-      TFile.Replace(Temp, AFileName, Backup)
+    begin
+      TFile.Replace(Temp, AFileName, Backup);
+    end
     else
+    begin
       TFile.Move(Temp, AFileName);
+    end;
     // TFile.Replace meldet ein Scheitern von ReplaceFile nicht. Hat es das Ziel schon zur Sicherung umbenannt,
     // ohne die neue Datei nachzuschieben, gehört die vollständige neue an seine Stelle.
     if TFile.Exists(Temp) and not TFile.Exists(AFileName) then
+    begin
       TFile.Move(Temp, AFileName);
+    end;
     if TFile.Exists(Temp) then
+    begin
       raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
+    end;
   finally
     if TFile.Exists(Temp) then
+    begin
       TFile.Delete(Temp);
+    end;
     if TFile.Exists(Backup) then
+    begin
       TFile.Delete(Backup);
+    end;
   end;
 end;
 
@@ -609,7 +725,9 @@ end;
 class procedure TAtlasSessionFiles.DeleteMarker(const AFolder: string; AProcessId: Cardinal);
 begin
   if TFile.Exists(MarkerFile(AFolder, AProcessId)) then
+  begin
     TFile.Delete(MarkerFile(AFolder, AProcessId));
+  end;
 end;
 
 class function TAtlasSessionFiles.TakeCrashed(const AFolder: string; AOwnProcessId: Cardinal;
@@ -621,7 +739,9 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(AFolder, MarkerPrefix + '*.json') do
   begin
     try
@@ -630,11 +750,17 @@ begin
       Valid := False;
     end;
     if Valid and (Marker.ProcessId = AOwnProcessId) then
+    begin
       Continue;
+    end;
     if Valid and Assigned(AAlive) and AAlive(Marker.ProcessId, Marker.StartedAt) then
+    begin
       Continue;
+    end;
     if Valid then
+    begin
       Result := Result + [Marker];
+    end;
     try
       TFile.Delete(FileName);
     except
@@ -650,7 +776,9 @@ begin
   Result := Default(TAtlasSafeState);
   try
     if TFile.Exists(StateFile(AFolder)) then
+    begin
       Result := TAtlasSafeState.FromJson(TFile.ReadAllText(StateFile(AFolder), TEncoding.UTF8));
+    end;
   except
     on Exception do
       Result := Default(TAtlasSafeState);

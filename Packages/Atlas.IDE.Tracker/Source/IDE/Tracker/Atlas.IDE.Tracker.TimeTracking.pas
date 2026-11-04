@@ -195,7 +195,9 @@ end;
 procedure TAtlasIdeTrackerTime.Start;
 begin
   if FStopped or (FTimer <> nil) then
+  begin
     Exit;
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := TimerTick;
@@ -205,7 +207,9 @@ end;
 procedure TAtlasIdeTrackerTime.Stop;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   FStopped := True;
   FreeAndNil(FTimer);
   // Zeit bis zur letzten Eingabe sichern; ohne Zeiterfassung gibt es nichts.
@@ -242,7 +246,9 @@ begin
       mOffer: TAtlasTimeIssue;
     begin
       if FStopped then
+      begin
         Exit;
+      end;
       if not Active then
       begin
         // Abgeschaltet: Was schon gezählt ist, kommt noch in die Datei; danach nichts mehr.
@@ -260,7 +266,9 @@ begin
       FClock.Tick;
       Inc(FTicks);
       if FTicks mod SaveTicks = 0 then
+      begin
         Flush;
+      end;
       UpdateStatus;
       // Wechsel auf ein anderes Issue: das bisherige zum Buchen anbieten (nicht mitten im SetIssue des Aufrufers).
       if not FOfferNext.IsEmpty and not FOffering then
@@ -278,18 +286,26 @@ var
   mAge: Cardinal;
 begin
   if FClock.Issue.IsEmpty then
+  begin
     Exit;
+  end;
   // Debugger-Lauf zählt als aktiv, auch wenn das Programm vorn ist.
   if DebuggerRunning then
+  begin
     FClock.Activity;
+  end;
   mInfo.cbSize := SizeOf(mInfo);
   mInfo.dwTime := 0;
   if not GetLastInputInfo(mInfo) or (mInfo.dwTime = FLastInput) then
+  begin
     Exit;
+  end;
   FLastInput := mInfo.dwTime;
   // Nur Eingaben in der IDE: Sie muss vorn sein.
   if not Application.Active then
+  begin
     Exit;
+  end;
   mAge := Cardinal(GetTickCount - mInfo.dwTime);
   FClock.Activity(Now - mAge / MSecsPerDay);
 end;
@@ -309,9 +325,13 @@ begin
       mSpan: TAtlasTimeSpan;
     begin
       for mSpan in mSpans do
+      begin
         ALog.Add(mSpan);
+      end;
       if Assigned(AChange) then
+      begin
         AChange(ALog);
+      end;
     end, mLog);
   if not Result then
   begin
@@ -321,7 +341,9 @@ begin
       FFileFailed := True;
       TAtlasGuard.Log('Zeiterfassung: time.json nicht geschrieben (gesperrt oder unlesbar)');
       if Assigned(FReport) then
+      begin
         FReport(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeFileFailed, [FPath]));
+      end;
     end;
     Exit;
   end;
@@ -341,7 +363,9 @@ var
 begin
   Result := 0;
   if TAtlasTimeFile.Read(FPath, mLog) then
+  begin
     Result := mLog.Total(AIssue);
+  end;
 end;
 
 function TAtlasIdeTrackerTime.CurrentTotal: Int64;
@@ -350,8 +374,12 @@ var
 begin
   Result := FSaved + FClock.Unsaved;
   for mSpan in FPending do
+  begin
     if mSpan.Issue.Same(FClock.Issue) then
+    begin
       Inc(Result, mSpan.Seconds);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeTrackerTime.SetIssue(const AIssue: TAtlasTimeIssue);
@@ -359,24 +387,34 @@ var
   mOld: TAtlasTimeIssue;
 begin
   if FStopped or not Active or FClock.Issue.Same(AIssue) then
+  begin
     Exit;
+  end;
   mOld := FClock.Issue;
   // Die offene Spanne gehört dem bisherigen Issue; danach die Summe des neuen.
   FClock.SetIssue(AIssue);
   Flush;
   if not AIssue.IsEmpty then
+  begin
     FSaved := SavedTotal(AIssue);
+  end;
   if not mOld.IsEmpty and not AIssue.IsEmpty then
+  begin
     FOfferNext := mOld;
+  end;
   UpdateStatus;
 end;
 
 procedure TAtlasIdeTrackerTime.Ended(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
 begin
   if FStopped or not Active or AIssue.IsEmpty then
+  begin
     Exit;
+  end;
   if FClock.Issue.Same(AIssue) then
+  begin
     FClock.SetIssue(TAtlasTimeIssue.None);
+  end;
   Flush;
   UpdateStatus;
   Offer(AIssue, AFolder, ABranch, ABase);
@@ -386,7 +424,9 @@ function TAtlasIdeTrackerTime.TimeText(const AKey: string): string;
 begin
   Result := '';
   if FStopped or not Active or FClock.Issue.IsEmpty or not SameText(FClock.Issue.Key, AKey) then
+  begin
     Exit;
+  end;
   Result := TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(CurrentTotal,
     TAtlasIdeSettings.Current.IssuesTimeRounding));
 end;
@@ -394,7 +434,9 @@ end;
 procedure TAtlasIdeTrackerTime.HideStatus;
 begin
   if FStatusShown and Assigned(FStatus) then
+  begin
     FStatus('', '', nil);
+  end;
   FStatusShown := False;
 end;
 
@@ -411,18 +453,24 @@ begin
   end;
   mTotal := CurrentTotal;
   if FClock.Paused then
+  begin
     mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusPaused, [FClock.Issue.Key,
-      TAtlasTimeRounding.ClockText(mTotal)])
+      TAtlasTimeRounding.ClockText(mTotal)]);
+  end
   else
+  begin
     mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusText,
       [FClock.Issue.Key, TAtlasTimeRounding.ClockText(mTotal)]);
+  end;
   mOwner := Self;
   FStatus(mText, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeStatusHint, [FClock.Issue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]),
     procedure(APoint: TPoint)
     begin
       if not mOwner.FStopped then
+      begin
         mOwner.ShowMenu(APoint);
+      end;
     end);
   FStatusShown := True;
 end;
@@ -442,12 +490,18 @@ var
 begin
   // Ein Menü für die ganze Sitzung: Die Klicks kommen erst nach Popup an.
   if FMenu = nil then
+  begin
     FMenu := TPopupMenu.Create(nil);
+  end;
   FMenu.Items.Clear;
   if FClock.Paused then
-    Add(TAtlasTrackerTextId.TimeMenuResume, MenuPause)
+  begin
+    Add(TAtlasTrackerTextId.TimeMenuResume, MenuPause);
+  end
   else
+  begin
     Add(TAtlasTrackerTextId.TimeMenuPause, MenuPause);
+  end;
   Add(TAtlasTrackerTextId.TimeMenuReset, MenuReset);
   Add(TAtlasTrackerTextId.TimeMenuCorrect, MenuCorrect);
   Add(TAtlasTrackerTextId.TimeMenuBook, MenuBook);
@@ -458,11 +512,17 @@ end;
 procedure TAtlasIdeTrackerTime.MenuPause(Sender: TObject);
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   if FClock.Paused then
-    FClock.Resume
+  begin
+    FClock.Resume;
+  end
   else
+  begin
     FClock.Pause;
+  end;
   UpdateStatus;
 end;
 
@@ -472,14 +532,18 @@ var
   mTotal: Int64;
 begin
   if FStopped or FClock.Issue.IsEmpty then
+  begin
     Exit;
+  end;
   mIssue := FClock.Issue;
   Flush;
   mTotal := CurrentTotal;
   if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mIssue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]), mtConfirmation, [mbYes, mbNo],
     0) <> mrYes then
+  begin
     Exit;
+  end;
   FClock.Discard;
   Settle(mIssue, mTotal);
 end;
@@ -491,16 +555,22 @@ var
   mMinutes: Integer;
 begin
   if FStopped or FClock.Issue.IsEmpty then
+  begin
     Exit;
+  end;
   mIssue := FClock.Issue;
   Flush;
   mText := TAtlasTimeRounding.ClockText(CurrentTotal);
   if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeCorrectCaption),
     TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectPrompt, [mIssue.Key]), mText) then
+  begin
     Exit;
+  end;
   // 0 ist erlaubt (wie Zurücksetzen ohne Rückfrage); sonst muss die Dauer lesbar sein.
   if (Trim(mText) = '0') or (Trim(mText) = '0:00') then
-    mMinutes := 0
+  begin
+    mMinutes := 0;
+  end
   else if not TAtlasTimeRounding.ParseDuration(mText, mMinutes) then
   begin
     MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
@@ -518,13 +588,17 @@ end;
 procedure TAtlasIdeTrackerTime.MenuBook(Sender: TObject);
 begin
   if not FStopped and not FClock.Issue.IsEmpty then
+  begin
     Offer(FClock.Issue, '', '', '');
+  end;
 end;
 
 procedure TAtlasIdeTrackerTime.MenuOpen(Sender: TObject);
 begin
   if not FStopped then
+  begin
     ShowOpen;
+  end;
 end;
 
 procedure TAtlasIdeTrackerTime.Settle(const AIssue: TAtlasTimeIssue; ASeconds: Int64);
@@ -546,7 +620,9 @@ var
   mFolder, mBranch, mBase, mCommits: string;
 begin
   if FStopped or FOffering or not Active or AIssue.IsEmpty then
+  begin
     Exit;
+  end;
   if (AFolder = '') or (ABranch = '') then
   begin
     ShowBook(AIssue, '');
@@ -568,18 +644,24 @@ begin
     begin
       mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeTrackerSync.VcsTimeoutMs);
       if Supports(mVcs, IAtlasVcsLocalWork, mWork) then
+      begin
         mCommits := TAtlasTrackerWorkflow.CommitsFor(mWork, mBranch, mBase, mIssue.Key);
+      end;
     end,
     procedure
     begin
       if (mKeep <> nil) and not mOwner.FStopped then
+      begin
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
             mOwner.ShowBook(mIssue, TAtlasTrackerWorkflow.CommitSubjects(mCommits));
           end);
+      end;
     end) then
+  begin
     ShowBook(AIssue, '');
+  end;
 end;
 
 procedure TAtlasIdeTrackerTime.ShowBook(const AIssue: TAtlasTimeIssue; const AText: string);
@@ -593,18 +675,26 @@ var
   mDecision: TAtlasTimeDecision;
 begin
   if FStopped or FOffering or not Active then
+  begin
     Exit;
+  end;
   Flush;
   mTotal := SavedTotal(AIssue);
   if mTotal < MinOfferSeconds then
+  begin
     Exit;
+  end;
   mProvider := nil;
   if Assigned(FProvider) then
+  begin
     mProvider := FProvider(AIssue.Provider);
+  end;
   mTarget := TargetOf(AIssue);
   mMode := TAtlasTimeBookMode.Comment;
   if TAtlasIdeTrackerSync.TimeWriterOf(mProvider) <> nil then
+  begin
     mMode := TAtlasTimeBookMode.WorkItem;
+  end;
   FOffering := True;
   mSession := TAtlasTimeBookSession.Create;
   try
@@ -617,7 +707,9 @@ begin
     FOffering := False;
   end;
   if FStopped then
+  begin
     Exit;
+  end;
   // Anonym: Anbieter und Entscheidung, nie Kennung oder Beschreibung.
   TAtlasGuard.Log(Format('Zeiterfassung: Buchungsdialog %s, %s', [AIssue.Provider, DecisionNames[mDecision]]));
   case mDecision of
@@ -625,9 +717,11 @@ begin
       begin
         Settle(AIssue, mTotal);
         if Assigned(FReport) then
+        begin
           FReport(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookDone,
             [TAtlasTrackerWorkflow.DurationText(mItem.Minutes),
             AIssue.Key]));
+        end;
       end;
     TAtlasTimeDecision.Discarded:
       Settle(AIssue, mTotal);
@@ -670,7 +764,9 @@ begin
       mComment := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookComment,
         [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
       if AItem.Text <> '' then
+      begin
         mComment := mComment + #10#10 + AItem.Text;
+      end;
       mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
     end;
 end;
@@ -697,7 +793,9 @@ begin
       mSession.SetDialog(ADialog);
       mWriter := TAtlasIdeTrackerSync.TimeWriterOf(mProvider);
       if (mWriter = nil) or (mOwner.FSync = nil) then
+      begin
         Exit;
+      end;
       ADialog.IsTrackingOff :=
         function(const AResult: TAtlasTrackerWriteResult): Boolean
         begin
@@ -708,10 +806,14 @@ begin
         procedure(ASettings: TAtlasTrackerTimeSettings; AResult: TAtlasTrackerWriteResult)
         begin
           if mSession.Dialog = nil then
+          begin
             Exit;
+          end;
           mSession.Dialog.SetWorkTypes(ASettings.WorkTypes);
           if AResult.Succeeded and not ASettings.Enabled then
+          begin
             mSession.Dialog.SetTrackingOff;
+          end;
         end);
     end;
 end;
@@ -724,14 +826,20 @@ var
   mAction: TAtlasTimeListAction;
 begin
   if FStopped or FOffering then
+  begin
     Exit;
+  end;
   Flush;
   if not TAtlasTimeFile.Read(FPath, mLog) then
+  begin
     mLog := TAtlasTimeLog.Empty;
+  end;
   mItems := mLog.Open;
   mAction := TAtlasTrackerTimeListDialog.Execute(mItems, mIndex);
   if (mIndex < 0) or (mIndex > High(mItems)) then
+  begin
     Exit;
+  end;
   case mAction of
     TAtlasTimeListAction.Book:
       Offer(mItems[mIndex].Issue, '', '', '');
@@ -739,7 +847,9 @@ begin
       if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mItems[mIndex].Issue.Key,
         TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mItems[mIndex].Seconds, 1))]),
         mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+      begin
         Settle(mItems[mIndex].Issue, mItems[mIndex].Seconds);
+      end;
   else
     // Schließen.
   end;

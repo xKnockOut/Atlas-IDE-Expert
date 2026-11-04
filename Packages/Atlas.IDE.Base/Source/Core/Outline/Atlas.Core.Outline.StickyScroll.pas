@@ -178,11 +178,17 @@ class function TAtlasStickyScroll.IsBlock(const ANode: TAtlasOutlineNode; AKinds
 begin
   Result := IsBlock(ANode);
   if not Result then
+  begin
     Exit;
+  end;
   if ANode.Category = TAtlasOutlineCategory.TypeDecl then
-    Result := TAtlasStickyKind.Types in AKinds
+  begin
+    Result := TAtlasStickyKind.Types in AKinds;
+  end
   else
+  begin
     Result := TAtlasStickyKind.Routines in AKinds;
+  end;
 end;
 
 class function TAtlasStickyScroll.OwnerKind(const AOwner: string; out AKind: TAtlasStickyKind): Boolean;
@@ -190,17 +196,29 @@ begin
   Result := True;
   AKind := TAtlasStickyKind.Branches;
   if (AOwner = 'if') or (AOwner = 'else') then
-    AKind := TAtlasStickyKind.Branches
+  begin
+    AKind := TAtlasStickyKind.Branches;
+  end
   else if (AOwner = 'for') or (AOwner = 'while') or (AOwner = 'repeat') then
-    AKind := TAtlasStickyKind.Loops
+  begin
+    AKind := TAtlasStickyKind.Loops;
+  end
   else if AOwner = 'try' then
-    AKind := TAtlasStickyKind.TryBlocks
+  begin
+    AKind := TAtlasStickyKind.TryBlocks;
+  end
   else if AOwner = 'case' then
-    AKind := TAtlasStickyKind.CaseBlocks
+  begin
+    AKind := TAtlasStickyKind.CaseBlocks;
+  end
   else if AOwner = 'with' then
-    AKind := TAtlasStickyKind.WithBlocks
+  begin
+    AKind := TAtlasStickyKind.WithBlocks;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 class function TAtlasStickyScroll.Chain(const ANodes: TAtlasOutlineNodes; ALine: Integer): TArray<Integer>;
@@ -210,8 +228,12 @@ begin
   Result := nil;
   // Kinder stehen hinter ihren Eltern: die Reihenfolge ist schon von außen nach innen.
   for Index := 0 to High(ANodes) do
+  begin
     if IsBlock(ANodes[Index]) and (ANodes[Index].NameLine < ALine) and (ALine <= ANodes[Index].EndLine) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 class function TAtlasStickyScroll.Scopes(const ANodes: TAtlasOutlineNodes; ATopLine,
@@ -226,7 +248,9 @@ begin
   begin
     Result := Chain(ANodes, ATopLine + Shown);
     if Min(Length(Result), MaxLines) <= Shown then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -246,7 +270,9 @@ begin
     if InString then
     begin
       if ALine[Position] = '''' then
+      begin
         InString := False;
+      end;
     end
     else
       case ALine[Position] of
@@ -254,11 +280,15 @@ begin
           InString := True;
         '/':
           if (Position < Length(ALine)) and (ALine[Position + 1] = '/') then
+          begin
             Break;
+          end;
         '(':
           begin
             if ADepth = 0 then
+            begin
               AOpen := Position;
+            end;
             Inc(ADepth);
           end;
         ')':
@@ -269,7 +299,9 @@ begin
             begin
               AOpen := 0;
               if AClose = 0 then
+              begin
                 AClose := Position;
+              end;
             end;
           end;
       end;
@@ -283,12 +315,16 @@ var
   Line: string;
 begin
   if (ANode.NameLine < 0) or (ANode.NameLine > High(ALines)) then
+  begin
     Exit(ANode.Name);
+  end;
   Line := Trim(ALines[ANode.NameLine]);
   Depth := 0;
   Scan(Line, Depth, Open, Close);
   if Depth <= 0 then
+  begin
     Exit(Line);
+  end;
   // Parameterliste über mehrere Zeilen: bis zur offenen Klammer, dann „…“ und der Rest nach der schließenden.
   Result := Copy(Line, 1, Open) + '…';
   Last := Min(High(ALines), Min(ANode.EndLine, ANode.NameLine + HeaderSearchLines));
@@ -297,7 +333,9 @@ begin
     Line := Trim(ALines[Index]);
     Scan(Line, Depth, Open, Close);
     if Depth <= 0 then
+    begin
       Exit(Result + Copy(Line, Close, MaxInt));
+    end;
   end;
   Result := Result + ')';
 end;
@@ -309,10 +347,16 @@ begin
   Result := 0;
   ATabWidth := Max(1, ATabWidth);
   for Indent in TTextLines.IndentOf(ALine) do
+  begin
     if Indent = #9 then
-      Result := (Result div ATabWidth + 1) * ATabWidth
+    begin
+      Result := (Result div ATabWidth + 1) * ATabWidth;
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function HeaderRow(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ANode,
@@ -323,7 +367,9 @@ begin
   Result.Character := ANodes[ANode].NameCharacter;
   Result.Indent := 0;
   if (Result.Line >= 0) and (Result.Line <= High(ALines)) then
+  begin
     Result.Indent := TAtlasStickyScroll.IndentColumns(ALines[Result.Line], ATabWidth);
+  end;
   Result.Summary := False;
 end;
 
@@ -346,8 +392,12 @@ var
 begin
   Lower := LowerCase(AWord);
   for Word in Words do
+  begin
     if Word = Lower then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -361,7 +411,9 @@ var
     Token: TAtlasStickyToken;
   begin
     if AStop <= AStart then
+    begin
       Exit;
+    end;
     Token.Start := AStart;
     Token.Length := AStop - AStart;
     Token.Kind := AKind;
@@ -371,9 +423,13 @@ var
   function At(APos: Integer): Char;
   begin
     if APos <= Count then
-      Result := AText[APos]
+    begin
+      Result := AText[APos];
+    end
     else
+    begin
       Result := #0;
+    end;
   end;
 
   /// <summary>Bis hinter ACloser (oder Zeilenende).</summary>
@@ -381,9 +437,13 @@ var
   begin
     Result := Pos(ACloser, AText, AFrom);
     if Result = 0 then
-      Result := Count + 1
+    begin
+      Result := Count + 1;
+    end
     else
+    begin
       Inc(Result, Length(ACloser));
+    end;
   end;
 
 begin
@@ -407,9 +467,13 @@ begin
     begin
       Index := SkipTo(Index + 2, '*)');
       if At(Start + 2) = '$' then
-        Kind := TAtlasStickySyntax.Preprocessor
+      begin
+        Kind := TAtlasStickySyntax.Preprocessor;
+      end
       else
+      begin
         Kind := TAtlasStickySyntax.Comment;
+      end;
     end
     else if (AText[Index] = '/') and (At(Index + 1) = '/') then
     begin
@@ -425,20 +489,26 @@ begin
         begin
           // '' im String ist ein Hochkomma.
           if At(Index + 1) <> '''' then
+          begin
             Break;
+          end;
           Inc(Index);
         end;
         Inc(Index);
       end;
       if Index <= Count then
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasStickySyntax.StringLiteral;
     end
     else if AText[Index] = '#' then
     begin
       Inc(Index);
       while (Index <= Count) and CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '$']) do
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasStickySyntax.Character;
     end
     else if CharInSet(AText[Index], ['0'..'9']) or
@@ -448,7 +518,9 @@ begin
       Inc(Index);
       while (Index <= Count) and (CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '_', '.']) or
         (CharInSet(AText[Index], ['+', '-']) and CharInSet(AText[Index - 1], ['e', 'E']))) do
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasStickySyntax.Number;
     end
     else if (AText[Index] = '&') and TTextChars.IsIdentChar(At(Index + 1)) then
@@ -456,23 +528,33 @@ begin
       // &begin: escapter Bezeichner, nicht reserviert.
       Inc(Index);
       while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasStickySyntax.Identifier;
     end
     else if TTextChars.IsIdentChar(AText[Index]) then
     begin
       while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
+      begin
         Inc(Index);
+      end;
       // Hinter "." ein Mitglied (TFoo.Free, Self.Create), nie ein Schlüsselwort.
       if ((Start = 1) or (AText[Start - 1] <> '.')) and IsReserved(Copy(AText, Start, Index - Start)) then
-        Kind := TAtlasStickySyntax.Reserved
+      begin
+        Kind := TAtlasStickySyntax.Reserved;
+      end
       else
+      begin
         Kind := TAtlasStickySyntax.Identifier;
+      end;
     end
     else if CharInSet(AText[Index], [' ', #9]) then
     begin
       while (Index <= Count) and CharInSet(AText[Index], [' ', #9]) do
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasStickySyntax.Plain;
     end
     else
@@ -501,17 +583,21 @@ begin
   Result.Row := High(ARows);
   Result.FadeIn := Length(ARows) > 0;
   for Index := 0 to High(ARows) do
+  begin
     if not ARows[Index].Summary and (ARows[Index].Line = AFirstLine) then
     begin
       Result.Row := Index;
       Result.FadeIn := False;
     end;
+  end;
 end;
 
 class function TAtlasStickyScroll.FadeWeight(AOffset, AHeight: Integer): Double;
 begin
   if AHeight <= 1 then
+  begin
     Exit(1);
+  end;
   Result := Sqr(EnsureRange(AOffset + 1, 1, AHeight) / AHeight);
 end;
 
@@ -533,6 +619,7 @@ var
 begin
   Result := nil;
   for Index := 0 to High(ANodes) do
+  begin
     if TAtlasStickyScroll.IsBlock(ANodes[Index], AKinds) then
     begin
       Entry.Line := ANodes[Index].NameLine;
@@ -541,6 +628,7 @@ begin
       Entry.Node := Index;
       Result := Result + [Entry];
     end;
+  end;
   for Index := 0 to High(ABlocks) do
   begin
     Entry.Line := ABlocks[Index].Line;
@@ -554,12 +642,18 @@ begin
     begin
       Result := CompareValue(A.Line, B.Line);
       if Result = 0 then
+      begin
         Result := CompareValue(B.EndLine, A.EndLine);
+      end;
       // Eindeutig (TArray.Sort ist nicht stabil): Gliederung vor zusätzlichen Blöcken.
       if Result = 0 then
+      begin
         Result := CompareValue(B.Node, A.Node);
+      end;
       if Result = 0 then
+      begin
         Result := CompareValue(A.Character, B.Character);
+      end;
     end));
 end;
 
@@ -570,8 +664,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(AEntries) do
+  begin
     if (AEntries[Index].Line < ALine) and (ALine <= AEntries[Index].EndLine) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 /// <summary>Kopfzeile eines zusätzlichen Blocks: seine Zeile ohne Einrückung.</summary>
@@ -579,7 +677,9 @@ function BlockText(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
   if (ALine >= 0) and (ALine <= High(ALines)) then
+  begin
     Result := Trim(ALines[ALine]);
+  end;
 end;
 
 /// <summary>Name in der Zusammenfassung „A › B“: Name der Gliederung bzw. gekürzte Kopfzeile.</summary>
@@ -588,23 +688,31 @@ const
   MaxName = 30;
 begin
   if AEntry.Node >= 0 then
+  begin
     Exit(ANodes[AEntry.Node].Name);
+  end;
   Result := BlockText(ALines, AEntry.Line);
   if Length(Result) > MaxName then
+  begin
     Result := Copy(Result, 1, MaxName) + '…';
+  end;
 end;
 
 function EntryRow(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; const AEntry: TEntry;
   ATabWidth: Integer): TAtlasStickyRow;
 begin
   if AEntry.Node >= 0 then
+  begin
     Exit(HeaderRow(ANodes, ALines, AEntry.Node, ATabWidth));
+  end;
   Result.Text := BlockText(ALines, AEntry.Line);
   Result.Line := AEntry.Line;
   Result.Character := AEntry.Character;
   Result.Indent := 0;
   if (AEntry.Line >= 0) and (AEntry.Line <= High(ALines)) then
+  begin
     Result.Indent := TAtlasStickyScroll.IndentColumns(ALines[AEntry.Line], ATabWidth);
+  end;
   Result.Summary := False;
 end;
 
@@ -633,12 +741,16 @@ begin
   begin
     Items := EntryChain(Entries, ATopLine + Shown);
     if Min(Length(Items), MaxLines) <= Shown then
+    begin
       Break;
+    end;
   end;
   if Length(Items) <= MaxLines then
   begin
     for Index := 0 to High(Items) do
+    begin
       Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
+    end;
     Exit;
   end;
   // Die inneren MaxLines - 1 Ebenen einzeln, die äußeren in einer Zeile (bei einer Zeile alle).
@@ -648,14 +760,18 @@ begin
   for Index := 0 to Grouped - 1 do
   begin
     if Index > 0 then
+    begin
       Row.Text := Row.Text + Separator;
+    end;
     Row.Text := Row.Text + EntryName(ANodes, ALines, Entries[Items[Index]]);
   end;
   Row.Line := Entries[Items[Grouped - 1]].Line;
   Row.Character := Entries[Items[Grouped - 1]].Character;
   Result := [Row];
   for Index := Grouped to High(Items) do
+  begin
     Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
+  end;
 end;
 
 class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,

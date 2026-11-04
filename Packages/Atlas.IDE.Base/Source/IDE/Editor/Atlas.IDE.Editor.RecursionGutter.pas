@@ -138,7 +138,9 @@ begin
   FFetchedFile := '';
   FFetchedText := '';
   if Had then
+  begin
     TAtlasIdeGutterMarks.Invalidate;
+  end;
 end;
 
 procedure TAtlasIdeRecursionGutter.Tick(Sender: TObject);
@@ -157,9 +159,13 @@ begin
     end;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
     begin
@@ -170,10 +176,14 @@ begin
     end;
     Moment := GetTickCount;
     if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
+    begin
       Exit;
+    end;
     Depth := TAtlasIdeSettings.RecursionMarkersDepth;
     if SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (FFetchedDepth = Depth) then
+    begin
       Exit;
+    end;
     Fetch(Depth);
   except
     on E: Exception do
@@ -191,7 +201,9 @@ var
 begin
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(FFileName));
@@ -237,7 +249,9 @@ function TAtlasIdeRecursionGutter.CallsAt(const AFileName: string; ALine: Intege
 begin
   Result := nil;
   if SameText(AFileName, FFetchedFile) then
+  begin
     Result := FMarks.CallsAt(ALine);
+  end;
 end;
 
 function TAtlasIdeRecursionGutter.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
@@ -246,7 +260,9 @@ begin
   Result := Length(CallsAt(AFileName, ALine)) > 0;
   // Zeile seit dem Abruf geändert: Das Symbol wartet auf die nächste Antwort.
   if Result and AHasText then
+  begin
     Result := TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FFetchedText, ALine));
+  end;
 end;
 
 procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
@@ -292,7 +308,9 @@ var
 begin
   Result := nil;
   for Step in TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine)) do
+  begin
     Result := Result + [Step.Name];
+  end;
 end;
 
 procedure TAtlasIdeRecursionGutter.OpenLink(const AFileName: string; ALine, AIndex: Integer);
@@ -301,7 +319,9 @@ var
 begin
   Links := TAtlasRecursionMarks.Links(CallsAt(AFileName, ALine));
   if (AIndex >= 0) and (AIndex <= High(Links)) then
+  begin
     TAtlasIdeNavigation.GoToLocation(AFileName, Links[AIndex].Line, Links[AIndex].Character);
+  end;
 end;
 
 end.

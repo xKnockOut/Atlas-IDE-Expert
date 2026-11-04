@@ -131,7 +131,9 @@ function Arg(const AResult: TAtlasSetupResult; AIndex: Integer): string;
 begin
   Result := '';
   if AIndex <= High(AResult.Args) then
+  begin
     Result := AResult.Args[AIndex];
+  end;
 end;
 
 { TAtlasSetupWindow }
@@ -199,9 +201,13 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SetupDelphiUnknown);
     TAtlasSetupFinding.IndexReady:
       if Arg(AResult, 1) <> '' then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexReadyUnits, [Arg(AResult, 0), Arg(AResult, 1)])
+      begin
+        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexReadyUnits, [Arg(AResult, 0), Arg(AResult, 1)]);
+      end
       else
+      begin
         Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexReady, [Arg(AResult, 0)]);
+      end;
     TAtlasSetupFinding.IndexBuilding:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexBuilding, [Arg(AResult, 0), Arg(AResult, 1)]);
     TAtlasSetupFinding.IndexIncomplete:
@@ -231,9 +237,13 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightRestart);
     TAtlasSetupFinding.KeysReady:
       if StrToIntDef(Arg(AResult, 0), 0) > 0 then
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupKeysReadyWins, [Arg(AResult, 0)])
+      begin
+        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupKeysReadyWins, [Arg(AResult, 0)]);
+      end
       else
+      begin
         Result := TAtlasStrings.Text(TAtlasTextId.SetupKeysReady);
+      end;
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.SetupKeysConflict, [Arg(AResult, 0), Arg(AResult, 1), Arg(AResult, 2)]);
   end;
@@ -253,7 +263,9 @@ begin
       Result := TAtlasStrings.Fmt(TAtlasTextId.SetupDelphiPlatform, [Arg(AResult, 1)]);
     TAtlasSetupFinding.IndexBuilding:
       if Arg(AResult, 2) <> '' then
+      begin
         Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexPercent, [Arg(AResult, 2)]);
+      end;
     TAtlasSetupFinding.LibraryReady:
       begin
         Bytes := StrToInt64Def(Arg(AResult, 0), 0);
@@ -359,10 +371,14 @@ begin
   begin
     mText := ResultText(Item);
     if DetailText(Item) <> '' then
+    begin
       mText := mText + ' (' + DetailText(Item) + ')';
+    end;
     Result := Result + [TAtlasSetupReportLine.Create(Item.State, mText, False)];
     for Project in Item.Projects do
+    begin
       Result := Result + [TAtlasSetupReportLine.Create(ProjectState(Project), ProjectText(Project), True)];
+    end;
   end;
 end;
 
@@ -392,7 +408,9 @@ function TAtlasSetupWindow.FixButton(AIndex: Integer): TButton;
 begin
   Result := nil;
   if (AIndex >= 0) and (AIndex <= High(FFixButtons)) then
+  begin
     Result := FFixButtons[AIndex];
+  end;
 end;
 
 procedure TAtlasSetupWindow.Layout;
@@ -417,7 +435,9 @@ begin
   FLines := nil;
   Top_ := HeaderHeight;
   for Index := 0 to High(FFixButtons) do
+  begin
     FFixButtons[Index].Visible := False;
+  end;
   for Index := 0 to High(FResults) do
   begin
     Line.Result_ := Index;
@@ -488,7 +508,9 @@ end;
 procedure TAtlasSetupWindow.SetTryKey(const AKey: string);
 begin
   if AKey <> '' then
+  begin
     FTryKey := AKey;
+  end;
   Invalidate;
 end;
 
@@ -515,7 +537,9 @@ var
 begin
   Index := TButton(Sender).Tag;
   if (Index < 0) or (Index > High(FResults)) then
+  begin
     Exit;
+  end;
   Item := FResults[Index];
   if Item.Fix = TAtlasSetupFix.Explain then
   begin
@@ -524,20 +548,26 @@ begin
   end;
   ShowNote('');
   if Assigned(FOnFix) then
+  begin
     FOnFix(Item);
+  end;
 end;
 
 procedure TAtlasSetupWindow.CopyClick(Sender: TObject);
 begin
   if Assigned(FOnCopy) then
+  begin
     FOnCopy();
+  end;
 end;
 
 procedure TAtlasSetupWindow.RecheckClick(Sender: TObject);
 begin
   ShowNote('');
   if Assigned(FOnRecheck) then
+  begin
     FOnRecheck();
+  end;
 end;
 
 procedure TAtlasSetupWindow.CloseClick(Sender: TObject);
@@ -548,7 +578,9 @@ end;
 procedure TAtlasSetupWindow.ShowAtStartClick(Sender: TObject);
 begin
   if not FUpdating and Assigned(FOnShowAtStart) then
+  begin
     FOnShowAtStart(FShowAtStart.Checked);
+  end;
 end;
 
 procedure TAtlasSetupWindow.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -622,7 +654,9 @@ begin
     Canvas.Brush.Style := bsClear;
     Right_ := ClientWidth - ScaleValue(12);
     if (FixButton(Line.Result_) <> nil) and FixButton(Line.Result_).Visible then
+    begin
       Right_ := FixButton(Line.Result_).Left - ScaleValue(8);
+    end;
     Part := Rect(ScaleValue(34), Line.Top, Right_, Line.Top + Line.Height);
     mText := ResultText(Item);
     Canvas.Font.Color := ToColor(FColors.Text);

@@ -249,7 +249,9 @@ begin
   Result := ADefault;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt64;
+  end;
 end;
 
 function JsonText(AObject: TJSONObject; const AName: string): string;
@@ -259,7 +261,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function SameName(const A, B: string): Boolean;
@@ -284,9 +288,13 @@ var
 begin
   Result := Format('%d|%d|%d|%d|%d', [Ord(Check), Ord(Finding), Ord(State), Ord(Fix), Ord(Pending)]);
   for Arg in Args do
+  begin
     Result := Result + '|' + Arg;
+  end;
   for Project in Projects do
+  begin
     Result := Result + '|' + Project.Name + '=' + IntToStr(Ord(Project.State));
+  end;
 end;
 
 { TAtlasSetupServerStatus }
@@ -300,7 +308,9 @@ begin
   Result := Default(TAtlasSetupServerStatus);
   Result.Units := -1;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -309,12 +319,16 @@ begin
   end;
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     Result.Known := True;
     Result.Units := Integer(JsonNumber(Root, 'units', -1));
     if Root.GetValue('workspaces') is TJSONArray then
+    begin
       for Item in TJSONArray(Root.GetValue('workspaces')) do
+      begin
         if Item is TJSONObject then
         begin
           Workspace.Name := JsonText(TJSONObject(Item), 'name');
@@ -322,6 +336,8 @@ begin
           Workspace.LibraryCacheBytes := JsonNumber(TJSONObject(Item), 'libraryCacheBytes', 0);
           Result.Workspaces := Result.Workspaces + [Workspace];
         end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -356,10 +372,14 @@ class function TAtlasSetupChecklist.VersionsMatch(const AServer, APlugin: string
   begin
     Result := Trim(AValue);
     if (Result <> '') and CharInSet(Result[1], ['v', 'V']) then
+    begin
       Delete(Result, 1, 1);
+    end;
     Plus := Pos('+', Result);
     if Plus > 0 then
+    begin
       Result := Copy(Result, 1, Plus - 1);
+    end;
   end;
 
 begin
@@ -376,8 +396,10 @@ const
   C = TAtlasSetupCheck.Server;
 begin
   if not AInput.ServerFound then
+  begin
     Exit(Make(C, TAtlasSetupFinding.ServerMissing, TAtlasStatusState.Red, TAtlasSetupFix.ChooseServerPath, False,
       nil));
+  end;
   case AInput.Server.Phase of
     TAtlasServerPhase.Starting:
       Result := Make(C, TAtlasSetupFinding.ServerStarting, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
@@ -389,15 +411,21 @@ begin
         [AInput.Server.Error]);
     TAtlasServerPhase.Running:
       if Trim(AInput.Server.Version) = '' then
+      begin
         Result := Make(C, TAtlasSetupFinding.ServerVersionUnknown, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain,
-          True, nil)
+          True, nil);
+      end
       else if not VersionsMatch(AInput.Server.Version, AInput.PluginVersion) then
+      begin
         // Ein anderer Server (z. B. alter Pfad aus einer früheren Installation): richtigen wählen.
         Result := Make(C, TAtlasSetupFinding.ServerVersionMismatch, TAtlasStatusState.Red,
-          TAtlasSetupFix.ChooseServerPath, False, [Trim(AInput.Server.Version), AInput.PluginVersion])
+          TAtlasSetupFix.ChooseServerPath, False, [Trim(AInput.Server.Version), AInput.PluginVersion]);
+      end
       else
+      begin
         Result := Make(C, TAtlasSetupFinding.ServerReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
           [Trim(AInput.Server.Version)]);
+      end;
   else
     // Gefunden, aber noch nicht gebraucht: Atlas startet ihn beim ersten Zugriff.
     Result := Make(C, TAtlasSetupFinding.ServerNotStarted, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer,
@@ -412,14 +440,20 @@ var
   Caption: string;
 begin
   if Trim(AInput.BdsVersion) = '' then
+  begin
     Exit(Make(C, TAtlasSetupFinding.DelphiUnknown, TAtlasStatusState.Red, TAtlasSetupFix.Explain, False, nil));
+  end;
   Caption := TAtlasSettingChoices.DelphiCaption(Trim(AInput.BdsVersion));
   if Trim(AInput.Platform) = '' then
+  begin
     Result := Make(C, TAtlasSetupFinding.DelphiNoProject, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True,
-      [Caption])
+      [Caption]);
+  end
   else
+  begin
     Result := Make(C, TAtlasSetupFinding.DelphiReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
       [Caption, Trim(AInput.Platform)]);
+  end;
 end;
 
 class function TAtlasSetupChecklist.CheckIndex(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -434,7 +468,9 @@ var
   DoneCount, MissingCount, Total: Integer;
 begin
   if AInput.Server.Phase <> TAtlasServerPhase.Running then
+  begin
     Exit(Make(C, TAtlasSetupFinding.IndexNoServer, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer, True, nil));
+  end;
   Projects := nil;
   DoneCount := 0;
   MissingCount := 0;
@@ -445,17 +481,25 @@ begin
     Found := False;
     State := TAtlasSetupProjectState.Missing;
     for Workspace in AInput.Status.Workspaces do
+    begin
       if SameName(Workspace.Name, Name) then
       begin
         Found := True;
         if Workspace.Done then
-          State := TAtlasSetupProjectState.Done
+        begin
+          State := TAtlasSetupProjectState.Done;
+        end
         else
+        begin
           State := TAtlasSetupProjectState.Building;
+        end;
       end;
+    end;
     // Vor der ersten Antwort des Servers gilt jedes Projekt als „wird aufgebaut“.
     if not Found and not AInput.Status.Known then
+    begin
       State := TAtlasSetupProjectState.Building;
+    end;
     case State of
       TAtlasSetupProjectState.Done:
         Inc(DoneCount);
@@ -465,7 +509,9 @@ begin
       begin
         Inc(MissingCount);
         if Missing <> '' then
+        begin
           Missing := Missing + ', ';
+        end;
         Missing := Missing + Name;
       end;
     end;
@@ -473,6 +519,7 @@ begin
   end;
   // Ohne Projektgruppe: die Arbeitsbereiche, die der Server aus geöffneten Dateien abgeleitet hat.
   if Length(AInput.Projects) = 0 then
+  begin
     for Workspace in AInput.Status.Workspaces do
     begin
       if Workspace.Done then
@@ -486,25 +533,34 @@ begin
         Projects := Projects + [TAtlasSetupProject.Create(Workspace.Name, TAtlasSetupProjectState.Building)];
       end;
     end;
+  end;
   Total := Length(Projects);
   if Building then
   begin
     Percent := '';
     if AInput.Indexing and (AInput.IndexPercent >= 0) then
+    begin
       Percent := IntToStr(AInput.IndexPercent);
+    end;
     Result := Make(C, TAtlasSetupFinding.IndexBuilding, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True,
       [IntToStr(DoneCount), IntToStr(Total), Percent]);
   end
   else if Total = 0 then
-    Result := Make(C, TAtlasSetupFinding.IndexNoProjects, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil)
+  begin
+    Result := Make(C, TAtlasSetupFinding.IndexNoProjects, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
+  end
   else if MissingCount > 0 then
+  begin
     Result := Make(C, TAtlasSetupFinding.IndexIncomplete, TAtlasStatusState.Yellow, TAtlasSetupFix.RebuildIndex,
-      False, [IntToStr(MissingCount), IntToStr(Total), Missing])
+      False, [IntToStr(MissingCount), IntToStr(Total), Missing]);
+  end
   else
   begin
     Units := '';
     if AInput.Status.Units >= 0 then
+    begin
       Units := IntToStr(AInput.Status.Units);
+    end;
     Result := Make(C, TAtlasSetupFinding.IndexReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
       [IntToStr(Total), Units]);
   end;
@@ -520,25 +576,37 @@ var
   Building: Boolean;
 begin
   if (AInput.Server.Phase <> TAtlasServerPhase.Running) or not AInput.Status.Known then
+  begin
     Exit(Make(C, TAtlasSetupFinding.LibraryUnknown, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer, True, nil));
+  end;
   Bytes := 0;
   Building := AInput.Indexing;
   for Workspace in AInput.Status.Workspaces do
   begin
     if Workspace.LibraryCacheBytes > Bytes then
+    begin
       Bytes := Workspace.LibraryCacheBytes;
+    end;
     if not Workspace.Done then
+    begin
       Building := True;
+    end;
   end;
   if Bytes > 0 then
+  begin
     Result := Make(C, TAtlasSetupFinding.LibraryReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
-      [IntToStr(Bytes)])
+      [IntToStr(Bytes)]);
+  end
   else if Building or (Length(AInput.Status.Workspaces) = 0) then
+  begin
     // Der Cache entsteht am Ende des ersten Indexlaufs.
-    Result := Make(C, TAtlasSetupFinding.LibraryPending, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil)
+    Result := Make(C, TAtlasSetupFinding.LibraryPending, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
+  end
   else
+  begin
     Result := Make(C, TAtlasSetupFinding.LibraryMissing, TAtlasStatusState.Yellow, TAtlasSetupFix.BuildLibraryCache,
       False, nil);
+  end;
 end;
 
 class function TAtlasSetupChecklist.CheckErrorInsight(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -546,19 +614,29 @@ const
   C = TAtlasSetupCheck.ErrorInsight;
 begin
   if AInput.ErrorInsightRestart then
+  begin
     Result := Make(C, TAtlasSetupFinding.ErrorInsightRestart, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, False,
-      nil)
+      nil);
+  end
   else if AInput.ErrorInsight and AInput.AtlasProblems then
+  begin
     Result := Make(C, TAtlasSetupFinding.ErrorInsightDuplicate, TAtlasStatusState.Yellow,
-      TAtlasSetupFix.DisableErrorInsight, False, nil)
+      TAtlasSetupFix.DisableErrorInsight, False, nil);
+  end
   else if AInput.ErrorInsight then
-    Result := Make(C, TAtlasSetupFinding.ErrorInsightIde, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil)
+  begin
+    Result := Make(C, TAtlasSetupFinding.ErrorInsightIde, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
+  end
   else if AInput.AtlasProblems then
-    Result := Make(C, TAtlasSetupFinding.ErrorInsightAtlas, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil)
+  begin
+    Result := Make(C, TAtlasSetupFinding.ErrorInsightAtlas, TAtlasStatusState.Green, TAtlasSetupFix.None, False, nil);
+  end
   else
+  begin
     // Weder die IDE noch Atlas zeigen Fehler im Editor.
     Result := Make(C, TAtlasSetupFinding.ErrorInsightNone, TAtlasStatusState.Yellow,
       TAtlasSetupFix.EnableErrorInsight, False, nil);
+  end;
 end;
 
 class function TAtlasSetupChecklist.CheckKeys(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -578,7 +656,9 @@ begin
       TAtlasKeyStatus.Left:
         begin
           if Conflicts = 0 then
+          begin
             First := Key;
+          end;
           Inc(Conflicts);
         end;
       // Bewusst entschieden („Atlas verwenden“): kein offener Konflikt.
@@ -586,11 +666,15 @@ begin
         Inc(Wins);
     end;
   if Conflicts > 0 then
+  begin
     Result := Make(C, TAtlasSetupFinding.KeysConflict, TAtlasStatusState.Yellow, TAtlasSetupFix.OpenKeyConflicts,
-      False, [IntToStr(Conflicts), First.KeyText, First.Owner])
+      False, [IntToStr(Conflicts), First.KeyText, First.Owner]);
+  end
   else
+  begin
     Result := Make(C, TAtlasSetupFinding.KeysReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
       [IntToStr(Wins)]);
+  end;
 end;
 
 class function TAtlasSetupChecklist.Evaluate(const AInput: TAtlasSetupInput): TArray<TAtlasSetupResult>;
@@ -607,8 +691,12 @@ begin
   ADone := 0;
   ATotal := Length(AResults);
   for Item in AResults do
+  begin
     if Item.State = TAtlasStatusState.Green then
+    begin
       Inc(ADone);
+    end;
+  end;
 end;
 
 class function TAtlasSetupChecklist.Complete(const AResults: TArray<TAtlasSetupResult>): Boolean;
@@ -626,21 +714,33 @@ var
   Waiting: Boolean;
 begin
   if not AEnabled then
+  begin
     Exit(TAtlasSetupStartAction.Skip);
+  end;
   if AFirstStart then
+  begin
     Exit(TAtlasSetupStartAction.Open);
+  end;
   Waiting := False;
   for Item in AResults do
+  begin
     if Item.State <> TAtlasStatusState.Green then
     begin
       if not Item.Pending then
+      begin
         Exit(TAtlasSetupStartAction.Open);
+      end;
       Waiting := True;
     end;
+  end;
   if (Length(AResults) = 0) or (Waiting and (AElapsedMs < AWaitMs)) then
-    Result := TAtlasSetupStartAction.Wait
+  begin
+    Result := TAtlasSetupStartAction.Wait;
+  end
   else
+  begin
     Result := TAtlasSetupStartAction.Skip;
+  end;
 end;
 
 class function TAtlasSetupChecklist.StateMark(AState: TAtlasStatusState): string;
@@ -670,17 +770,27 @@ begin
     Builder.Append(AInput.Title).Append(sLineBreak);
     Versions := 'Atlas ' + AInput.AtlasVersion;
     if AInput.IdeVersion <> '' then
+    begin
       Versions := Versions + ', IDE ' + AInput.IdeVersion;
+    end;
     if AInput.Platform <> '' then
+    begin
       Versions := Versions + ', ' + AInput.Platform;
+    end;
     Builder.Append(Versions).Append(sLineBreak);
     Builder.Append(FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created)).Append(sLineBreak);
     Builder.Append(AInput.Summary).Append(sLineBreak).Append(sLineBreak);
     for Line in AInput.Lines do
+    begin
       if Line.Indent then
-        Builder.Append('       - ').Append(Line.Text).Append(sLineBreak)
+      begin
+        Builder.Append('       - ').Append(Line.Text).Append(sLineBreak);
+      end
       else
+      begin
         Builder.Append(StateMark(Line.State)).Append(' ').Append(Line.Text).Append(sLineBreak);
+      end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -689,18 +799,28 @@ begin
   // zuerst, sonst bliebe vom Rechnernamen „WS-MARCO“ nach dem Benutzer „marco“ ein Rest stehen.
   Identities := nil;
   for Identity in AInput.Identity do
+  begin
     if Length(Trim(Identity)) >= 2 then
+    begin
       Identities := Identities + [Trim(Identity)];
+    end;
+  end;
   for Index := 0 to High(Identities) - 1 do
+  begin
     for Other := Index + 1 to High(Identities) do
+    begin
       if Length(Identities[Other]) > Length(Identities[Index]) then
       begin
         Swap := Identities[Index];
         Identities[Index] := Identities[Other];
         Identities[Other] := Swap;
       end;
+    end;
+  end;
   for Identity in Identities do
+  begin
     Result := StringReplace(Result, Identity, IdentityMark, [rfReplaceAll, rfIgnoreCase]);
+  end;
 end;
 
 { TAtlasSetupController }
@@ -719,7 +839,9 @@ begin
   FResults := TAtlasSetupChecklist.Evaluate(FEnvironment.Snapshot);
   Key := '';
   for Item in FResults do
+  begin
     Key := Key + Item.Key + #10;
+  end;
   if Key <> FKey then
   begin
     FKey := Key;

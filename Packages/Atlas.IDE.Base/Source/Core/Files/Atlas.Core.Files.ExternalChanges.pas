@@ -136,15 +136,19 @@ begin
       end;
       if not FPending.TryGetValue(Key, Pending) or (Pending.Stamp <> Observed.Stamp) or
         (Pending.Exists <> Observed.Exists) then
+      begin
         FLastChange := ANowMs;
+      end;
       FPending.AddOrSetValue(Key, Observed);
     end;
     for Key in FKnown.Keys.ToArray do
+    begin
       if not Open.ContainsKey(Key) then
       begin
         FKnown.Remove(Key);
         FPending.Remove(Key);
       end;
+    end;
   finally
     Open.Free;
   end;
@@ -168,11 +172,17 @@ begin
     begin
       Decision.FileName := Observed.FileName;
       if not Observed.Exists then
-        Decision.Action := TAtlasReloadAction.Deleted
+      begin
+        Decision.Action := TAtlasReloadAction.Deleted;
+      end
       else if Observed.Modified then
-        Decision.Action := TAtlasReloadAction.KeepModified
+      begin
+        Decision.Action := TAtlasReloadAction.KeepModified;
+      end
       else
+      begin
         Decision.Action := TAtlasReloadAction.Reload;
+      end;
       List.Add(Decision);
       Known.Exists := Observed.Exists;
       Known.Stamp := Observed.Stamp;

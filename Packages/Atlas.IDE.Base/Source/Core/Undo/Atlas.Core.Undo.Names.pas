@@ -32,17 +32,25 @@ uses
 class function TAtlasUndoNames.ConflictModeName(AMode: TAtlasUndoConflictMode): string;
 begin
   if AMode = TAtlasUndoConflictMode.Abort then
-    Result := 'abort'
+  begin
+    Result := 'abort';
+  end
   else
+  begin
     Result := 'partial';
+  end;
 end;
 
 class function TAtlasUndoNames.ParseConflictMode(const AText: string): TAtlasUndoConflictMode;
 begin
   if SameText(Trim(AText), 'abort') then
-    Result := TAtlasUndoConflictMode.Abort
+  begin
+    Result := TAtlasUndoConflictMode.Abort;
+  end
   else
+  begin
     Result := TAtlasUndoConflictMode.Partial;
+  end;
 end;
 
 class function TAtlasUndoNames.NewFilesName(AMode: TAtlasNewFilesMode): string;
@@ -60,11 +68,17 @@ end;
 class function TAtlasUndoNames.ParseNewFiles(const AText: string): TAtlasNewFilesMode;
 begin
   if SameText(Trim(AText), 'delete') then
-    Result := TAtlasNewFilesMode.Delete
+  begin
+    Result := TAtlasNewFilesMode.Delete;
+  end
   else if SameText(Trim(AText), 'keep') then
-    Result := TAtlasNewFilesMode.Keep
+  begin
+    Result := TAtlasNewFilesMode.Keep;
+  end
   else
+  begin
     Result := TAtlasNewFilesMode.RecycleBin;
+  end;
 end;
 
 end.

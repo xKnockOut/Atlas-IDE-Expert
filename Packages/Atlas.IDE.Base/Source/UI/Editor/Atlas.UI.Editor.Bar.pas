@@ -139,7 +139,9 @@ begin
   Constraints.MinHeight := 0;
   Constraints.MaxHeight := 0;
   if not FFixedHeight then
+  begin
     Exit;
+  end;
   Height := BarHeight(APPI);
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
@@ -148,7 +150,9 @@ end;
 procedure TAtlasEditorBar.SetFixedHeight(AValue: Boolean);
 begin
   if AValue = FFixedHeight then
+  begin
     Exit;
+  end;
   FFixedHeight := AValue;
   FixHeight(CurrentPPI);
 end;
@@ -177,7 +181,9 @@ begin
   Canvas.Pen.Color := TColor(FColors.Line);
   mLine := ClientHeight - 1;
   if ALineAtTop then
+  begin
     mLine := 0;
+  end;
   Canvas.MoveTo(0, mLine);
   Canvas.LineTo(ClientWidth, mLine);
 end;
@@ -220,7 +226,9 @@ end;
 procedure TAtlasEditorBar.SetHot(APart: Integer);
 begin
   if APart = FHot then
+  begin
     Exit;
+  end;
   FHot := APart;
   HotChanged;
 end;
@@ -232,12 +240,18 @@ begin
   inherited MouseMove(Shift, X, Y);
   mHot := PartAt(X, Y);
   if mHot = FHot then
+  begin
     Exit;
+  end;
   FHot := mHot;
   if (mHot <> PartNone) and PartEnabled(mHot) then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   Application.CancelHint;
   Hint := PartHint(mHot);
   HotChanged;
@@ -248,7 +262,9 @@ begin
   inherited;
   // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
   if FHot = PartNone then
+  begin
     Exit;
+  end;
   FHot := PartNone;
   HotChanged;
 end;
@@ -257,7 +273,9 @@ procedure TAtlasEditorBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X,
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   FSkipUp := ssDouble in Shift;
   FDown := PartAt(X, Y);
 end;
@@ -268,7 +286,9 @@ var
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   if FSkipUp then
   begin
     FSkipUp := False;
@@ -294,9 +314,13 @@ begin
   // Nicht inherited: Sonst ginge das Kontextmenü an das Editorfenster der IDE weiter.
   Message.Result := 1;
   if (Message.XPos = -1) and (Message.YPos = -1) then
-    mPosition := KeyboardMenuPoint
+  begin
+    mPosition := KeyboardMenuPoint;
+  end
   else
+  begin
     mPosition := ScreenToClient(SmallPointToPoint(Message.Pos));
+  end;
   ContextMenu(mPosition, PartAt(mPosition.X, mPosition.Y));
 end;
 
@@ -304,7 +328,9 @@ procedure TAtlasEditorBar.SetEnabled(Value: Boolean);
 begin
   // Vor dem Sperren melden: Der Aufrufer steht dann noch auf dem Stapel.
   if not Value and Enabled and Assigned(FOnDisabled) then
+  begin
     FOnDisabled(Self);
+  end;
   inherited SetEnabled(Value);
 end;
 
@@ -314,7 +340,9 @@ begin
   // An der VCL vorbei gesperrt (EnableWindow): Die VCL hält die Leiste noch für frei. Über SetEnabled kam die
   // Meldung schon; dann ist Enabled hier bereits False.
   if not Message.Enabled and Enabled and Assigned(FOnDisabled) then
+  begin
     FOnDisabled(Self);
+  end;
 end;
 
 end.

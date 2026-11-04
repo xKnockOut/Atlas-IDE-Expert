@@ -86,8 +86,12 @@ var
 begin
   Result := Length(AHelp.Signatures) > 0;
   for mSignature in AHelp.Signatures do
+  begin
     if CountFits(mSignature, AParameter) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasSignatureController.Fits(ASignature, AParameter: Integer): Boolean;
@@ -103,13 +107,23 @@ begin
   // Die kürzeste passende Signatur; gibt es keine, die längste.
   Best := -1;
   for Index := 0 to High(FHelp.Signatures) do
+  begin
     if Fits(Index, AParameter) and ((Best < 0) or
       (Length(FHelp.Signatures[Index].Parameters) < Length(FHelp.Signatures[Best].Parameters))) then
+    begin
       Best := Index;
+    end;
+  end;
   if Best < 0 then
+  begin
     for Index := 0 to High(FHelp.Signatures) do
+    begin
       if (Best < 0) or (Length(FHelp.Signatures[Index].Parameters) > Length(FHelp.Signatures[Best].Parameters)) then
+      begin
         Best := Index;
+      end;
+    end;
+  end;
   Result := Best;
 end;
 
@@ -124,9 +138,13 @@ begin
   FParameter := AParameter;
   if (AHelp.ActiveSignature >= 0) and (AHelp.ActiveSignature <= High(AHelp.Signatures)) and
     Fits(AHelp.ActiveSignature, AParameter) then
-    FSignature := AHelp.ActiveSignature
+  begin
+    FSignature := AHelp.ActiveSignature;
+  end
   else
+  begin
     FSignature := FirstFitting(AParameter);
+  end;
   FActive := True;
   Update;
 end;
@@ -134,18 +152,24 @@ end;
 procedure TAtlasSignatureController.UpdateParameter(AParameter: Integer);
 begin
   if not FActive or (AParameter = FParameter) then
+  begin
     Exit;
+  end;
   FParameter := AParameter;
   // Automatischer Wechsel nur, wenn die gezeigte Variante nicht mehr passt (#437).
   if not Fits(FSignature, AParameter) then
+  begin
     FSignature := FirstFitting(AParameter);
+  end;
   Update;
 end;
 
 procedure TAtlasSignatureController.UpdateFormat(const AFormat: TAtlasSignatureFormat);
 begin
   if not FActive then
+  begin
     Exit;
+  end;
   FHelp.Format := AFormat;
   Update;
 end;
@@ -153,7 +177,9 @@ end;
 procedure TAtlasSignatureController.NextOverload;
 begin
   if not FActive or (Length(FHelp.Signatures) < 2) then
+  begin
     Exit;
+  end;
   FSignature := (FSignature + 1) mod Length(FHelp.Signatures);
   Update;
 end;
@@ -161,7 +187,9 @@ end;
 procedure TAtlasSignatureController.PreviousOverload;
 begin
   if not FActive or (Length(FHelp.Signatures) < 2) then
+  begin
     Exit;
+  end;
   FSignature := (FSignature + Length(FHelp.Signatures) - 1) mod Length(FHelp.Signatures);
   Update;
 end;
@@ -169,7 +197,9 @@ end;
 procedure TAtlasSignatureController.SelectOverload(AIndex: Integer);
 begin
   if not FActive or (AIndex < 0) or (AIndex > High(FHelp.Signatures)) or (AIndex = FSignature) then
+  begin
     Exit;
+  end;
   FSignature := AIndex;
   Update;
 end;
@@ -182,7 +212,9 @@ end;
 procedure TAtlasSignatureController.Close;
 begin
   if not FActive then
+  begin
     Exit;
+  end;
   FActive := False;
   FHelp := Default(TAtlasSignatureHelp);
   FView.HideSignature;

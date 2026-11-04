@@ -97,7 +97,9 @@ function LineAt(const ALines: TArray<string>; AIndex: Integer): string;
 begin
   Result := '';
   if (AIndex >= 0) and (AIndex < Length(ALines)) then
+  begin
     Result := ALines[AIndex];
+  end;
 end;
 
 /// <summary>Caret des Editors in Bildschirmkoordinaten; False ohne Caret.</summary>
@@ -109,7 +111,9 @@ begin
   Info.cbSize := SizeOf(Info);
   Result := GetGUIThreadInfo(GetCurrentThreadId, Info) and (Info.hwndCaret <> 0);
   if not Result then
+  begin
     Exit;
+  end;
   ARect := Info.rcCaret;
   MapWindowPoints(Info.hwndCaret, 0, ARect, 2);
 end;
@@ -145,13 +149,17 @@ class function TAtlasIdeGenerate.Session: TLspSession;
 begin
   Result := nil;
   if Assigned(FSessionOf) then
+  begin
     Result := FSessionOf();
+  end;
 end;
 
 class procedure TAtlasIdeGenerate.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class function TAtlasIdeGenerate.RecentFile: string;
@@ -162,7 +170,9 @@ end;
 class procedure TAtlasIdeGenerate.LoadRecent;
 begin
   if FRecentLoaded or (FRecent = nil) then
+  begin
     Exit;
+  end;
   FRecentLoaded := True;
   // Eine Kennung je Zeile, jeder Text ist lesbar. Gesperrt: leer beginnen und die Datei nicht überschreiben;
   // TAtlasDataFile protokolliert das ohne Pfad.
@@ -173,17 +183,23 @@ begin
       Result := True;
     end));
   if FRecentKept then
+  begin
     FRecent.Clear;
+  end;
 end;
 
 class procedure TAtlasIdeGenerate.Remember(const AEntry: TAtlasGenerateEntry);
 begin
   if FRecent = nil then
+  begin
     Exit;
+  end;
   LoadRecent;
   FRecent.Chosen(AEntry.Id);
   if FRecentKept then
+  begin
     Exit;
+  end;
   try
     TAtlasDataFile.Write(RecentFile, FRecent.ToText);
   except
@@ -213,7 +229,9 @@ begin
   ASpot := TAtlasGenerateSpot.Create(TLspSession.PathToUri(AView.Buffer.FileName), StartLine, StartChar, -1);
   Block := AView.Block;
   if (Block = nil) or not Block.IsValid or (Block.Size = 0) then
+  begin
     Exit;
+  end;
   StartLine := Block.StartingRow - 1;
   StartChar := TLspSession.ColumnToIndex(LineAt(ALines, StartLine), Block.StartingColumn, ATabWidth);
   EndLine := Block.EndingRow - 1;
@@ -265,7 +283,9 @@ begin
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
     TAtlasGenerateWindow.EntryCaption(AEntry));
   if Outcome.Error <> '' then
+  begin
     ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end;
 end;
 
 class procedure TAtlasIdeGenerate.Show(const AGroups: TArray<TAtlasGenerateGroup>);
@@ -296,7 +316,9 @@ begin
   end;
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
@@ -316,7 +338,9 @@ begin
   Options := TAtlasGenerateOptions.Create(Settings.GenerateMenuGroups, Settings.GenerateMenuHidden,
     Settings.GenerateMenuRecentFirst, Settings.GenerateMenuShowCommandNames);
   if Length(AGroups) > 0 then
+  begin
     Options := Options.Only(AGroups);
+  end;
   Entries := nil;
   Actions := nil;
   Snippets := nil;
@@ -340,7 +364,9 @@ begin
     end;
     // slashCommands aus: keine Schnellbefehle, Vorlagen und Code-Aktionen bleiben.
     if Menu.Enabled then
+    begin
       Entries := Menu.Entries;
+    end;
     if Options.HasGroup(TAtlasGenerateGroup.Generate) then
     begin
       try
@@ -364,7 +390,9 @@ begin
   end;
   // Beschriftungen in der Sprache der Oberfläche; filtert das Fenster mit.
   for Index := 0 to High(Entries) do
+  begin
     Entries[Index].Caption := TAtlasGenerateWindow.EntryCaption(Entries[Index]);
+  end;
   LoadRecent;
   Window := TAtlasGenerateWindow.CreateMenu(Application, Entries, Options, FRecent, TAtlasIdeStyle.Colors);
   Window.OnChoices :=
@@ -376,7 +404,9 @@ begin
       Result := nil;
       Current := Session;
       if Current = nil then
+      begin
         Exit;
+      end;
       try
         Found := Current.RunCommand(TAtlasGenerateProtocol.ChoicesCommand,
           TAtlasGenerateProtocol.ChoicesArguments(Spot, AEntry.Name), CommandTimeoutMs);
@@ -417,7 +447,9 @@ begin
           Current: TLspSession;
         begin
           if (View = nil) or (View.Buffer = nil) then
+          begin
             Exit;
+          end;
           Remember(Entry);
           case Entry.Kind of
             TAtlasGenerateKind.Slash:
@@ -436,21 +468,31 @@ begin
               end;
             TAtlasGenerateKind.Snippet:
               if Assigned(FInsertSnippet) and (Entry.Source >= 0) and (Entry.Source <= High(Snippets)) then
+              begin
                 FInsertSnippet(View, Snippets[Entry.Source]);
+              end;
           else
             if Assigned(FApplyAction) and (Entry.Source >= 0) and (Entry.Source <= High(Actions)) then
+            begin
               FApplyAction(Actions[Entry.Source]);
+            end;
           end;
         end);
     end;
   if CaretRect(Caret) then
-    Window.ShowAt(Caret)
+  begin
+    Window.ShowAt(Caret);
+  end
   else
   begin
     if Application.MainForm <> nil then
-      Area := Application.MainForm.BoundsRect
+    begin
+      Area := Application.MainForm.BoundsRect;
+    end
     else
+    begin
       Area := Screen.WorkAreaRect;
+    end;
     Window.ShowOver(Area);
   end;
 end;

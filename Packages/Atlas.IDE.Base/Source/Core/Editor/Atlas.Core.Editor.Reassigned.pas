@@ -89,23 +89,30 @@ var
 begin
   Result := Default(TAtlasReassignedSet);
   if not (AValue is TJSONObject) or not (TJSONObject(AValue).GetValue('symbols') is TJSONArray) then
+  begin
     Exit;
+  end;
   List := TJSONArray(TJSONObject(AValue).GetValue('symbols'));
   Found := TList<TAtlasReassignedUse>.Create;
   try
     for Item in List do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Symbol.Name := TJSONObject(Item).GetValue<string>('name', '');
       Symbol.Kind := TJSONObject(Item).GetValue<string>('kind', '');
       Symbol.Writes := TJSONObject(Item).GetValue<Integer>('writes', 0);
       Symbol.Routine := TJSONObject(Item).GetValue<string>('routine', '');
       Result.Symbols := Result.Symbols + [Symbol];
       if not (TJSONObject(Item).GetValue('uses') is TJSONArray) then
+      begin
         Continue;
+      end;
       UsesList := TJSONArray(TJSONObject(Item).GetValue('uses'));
       for UseItem in UsesList do
+      begin
         if UseItem is TJSONObject then
         begin
           Use.Line := TJSONObject(UseItem).GetValue<Integer>('line', -1);
@@ -114,23 +121,32 @@ begin
           Use.Write := TJSONObject(UseItem).GetValue<Boolean>('write', False);
           Use.Symbol := High(Result.Symbols);
           if (Use.Line >= 0) and (Use.EndCharacter > Use.Character) then
+          begin
             Found.Add(Use);
+          end;
         end;
+      end;
     end;
     Found.Sort(TComparer<TAtlasReassignedUse>.Construct(
       function(const ALeft, ARight: TAtlasReassignedUse): Integer
       begin
         Result := ALeft.Line - ARight.Line;
         if Result = 0 then
+        begin
           Result := ALeft.Character - ARight.Character;
+        end;
         if Result = 0 then
+        begin
           Result := ALeft.Symbol - ARight.Symbol;
+        end;
       end));
     for Use in Found do
     begin
       Line := Use.Line;
       if Line >= Length(Result.FByLine) then
+      begin
         SetLength(Result.FByLine, Line + 1);
+      end;
       Result.FByLine[Line] := Result.FByLine[Line] + [Use];
     end;
   finally
@@ -148,7 +164,9 @@ function TAtlasReassignedSet.UsesAt(ALine: Integer): TArray<TAtlasReassignedUse>
 begin
   Result := nil;
   if (ALine >= 0) and (ALine < Length(FByLine)) then
+  begin
     Result := FByLine[ALine];
+  end;
 end;
 
 { TAtlasReassigned }
@@ -165,8 +183,12 @@ begin
     Options := TJSONObject.Create;
     Targets := TJSONArray.Create;
     for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+    begin
       if Target in ATargets then
+      begin
         Targets.Add(TAtlasReassignedNames.TargetName(Target));
+      end;
+    end;
     Options.AddPair('targets', Targets);
     Values.AddElement(Options);
     Result := Values.ToJSON;
@@ -183,7 +205,9 @@ var
 begin
   Result := nil;
   if ARight <= ALeft then
+  begin
     Exit;
+  end;
   Step := Max(1, AUnit);
   case AStyle of
     TAtlasReassignedStyle.Solid:
@@ -197,9 +221,13 @@ begin
         begin
           Next := Min(ARight, X + 2 * Step);
           if Up then
-            Result := Result + [Segment(X, ABaseline - Step, Next, ABaseline)]
+          begin
+            Result := Result + [Segment(X, ABaseline - Step, Next, ABaseline)];
+          end
           else
+          begin
             Result := Result + [Segment(X, ABaseline, Next, ABaseline - Step)];
+          end;
           Up := not Up;
           X := Next;
         end;

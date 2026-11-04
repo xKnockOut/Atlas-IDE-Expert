@@ -142,8 +142,12 @@ var
 begin
   Result := AText <> '';
   for mIndex := 1 to Length(AText) do
+  begin
     if not CharInSet(AText[mIndex], ['0'..'9']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 { TAtlasIssueSearchQuery }
@@ -183,7 +187,9 @@ begin
   Result := TAtlasIssueSearchQuery.None;
   mPattern := TrimLeft(APattern);
   if (mPattern = '') or (ATarget.Provider = '') then
+  begin
     Exit;
+  end;
   mGitHub := SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub);
   if mPattern[1] = '#' then
   begin
@@ -223,13 +229,19 @@ begin
   end;
   // Projektkürzel mit "-" gibt es nur bei YouTrack (GitHub: "owner/repo").
   if mGitHub or (ATarget.Project = '') or (Pos(' ', ATarget.Project) > 0) then
+  begin
     Exit;
+  end;
   mPrefix := ATarget.Project + '-';
   if not StartsText(mPrefix, mPattern) then
+  begin
     Exit;
+  end;
   mRest := Trim(Copy(mPattern, Length(mPrefix) + 1, MaxInt));
   if mRest = '' then
-    Result.Kind := TAtlasIssueSearchKind.Recent
+  begin
+    Result.Kind := TAtlasIssueSearchKind.Recent;
+  end
   else if IsDigits(mRest) and (StrToIntDef(mRest, 0) > 0) then
   begin
     Result.Kind := TAtlasIssueSearchKind.Key;
@@ -259,7 +271,9 @@ begin
   Result := nil;
   SetLength(Result, Length(AIssues));
   for mIndex := 0 to High(AIssues) do
+  begin
     Result[mIndex] := Row(AIssues[mIndex]);
+  end;
 end;
 
 { TAtlasIssueSearchDebounce }
@@ -269,7 +283,9 @@ begin
   inherited Create;
   FDelayMs := ADelayMs;
   if FDelayMs < 0 then
+  begin
     FDelayMs := 0;
+  end;
 end;
 
 procedure TAtlasIssueSearchDebounce.Input(const AText: string; ANowMs: UInt64);
@@ -296,15 +312,23 @@ var
 begin
   Result := -1;
   if not FPending then
+  begin
     Exit;
+  end;
   mDue := FInputAt + UInt64(FDelayMs);
   // Auch nach einer Tipppause nicht öfter als einmal je DelayMs.
   if (FSent > 0) and (FSentAt + UInt64(FDelayMs) > mDue) then
+  begin
     mDue := FSentAt + UInt64(FDelayMs);
+  end;
   if mDue <= ANowMs then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := Integer(mDue - ANowMs);
+  end;
 end;
 
 function TAtlasIssueSearchDebounce.Take(ANowMs: UInt64; out AText: string): Boolean;
@@ -312,7 +336,9 @@ begin
   AText := '';
   Result := WaitMs(ANowMs) = 0;
   if not Result then
+  begin
     Exit;
+  end;
   AText := FText;
   FPending := False;
   FSentAt := ANowMs;
@@ -345,7 +371,9 @@ var
   mIndex: Integer;
 begin
   if (Trim(AIssue.Key) = '') or (ATarget.Server = '') then
+  begin
     Exit;
+  end;
   mEntry.Tracker := TrackerKey(ATarget);
   mEntry.Issue := AIssue;
   mEntry.Issue.Key := Trim(AIssue.Key);
@@ -353,11 +381,17 @@ begin
   mEntry.Issue.Labels := nil;
   mEntry.Issue.PullRequest := Default(TAtlasTrackerPullRequest);
   for mIndex := FEntries.Count - 1 downto 0 do
+  begin
     if (FEntries[mIndex].Tracker = mEntry.Tracker) and SameText(FEntries[mIndex].Issue.Key, mEntry.Issue.Key) then
+    begin
       FEntries.Delete(mIndex);
+    end;
+  end;
   FEntries.Insert(0, mEntry);
   while FEntries.Count > MaxStored do
+  begin
     FEntries.Delete(FEntries.Count - 1);
+  end;
 end;
 
 function TAtlasRecentIssues.Items(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
@@ -370,9 +404,13 @@ begin
   for mEntry in FEntries do
   begin
     if Length(Result) >= MaxRecent then
+    begin
       Break;
+    end;
     if mEntry.Tracker = mTracker then
+    begin
       Result := Result + [mEntry.Issue];
+    end;
   end;
 end;
 
@@ -427,25 +465,37 @@ begin
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('version', mVersion) and
       (mVersion = Version);
     if not Result then
+    begin
       Exit;
+    end;
     mList := TJSONObject(mRoot).Values['issues'];
     if not (mList is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mList) do
     begin
       if FEntries.Count >= MaxStored then
+      begin
         Break;
+      end;
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mObject := TJSONObject(mItem);
       mEntry.Tracker := '';
       mEntry.Issue := TAtlasTrackerIssue.Empty;
       if not mObject.TryGetValue<string>('tracker', mEntry.Tracker) or
         not mObject.TryGetValue<string>('key', mEntry.Issue.Key) or (Trim(mEntry.Issue.Key) = '') or
         (mEntry.Tracker = '') then
+      begin
         Continue;
+      end;
       if mObject.TryGetValue<Integer>('number', mNumber) and (mNumber > 0) then
+      begin
         mEntry.Issue.Number := mNumber;
+      end;
       mObject.TryGetValue<string>('title', mEntry.Issue.Title);
       mObject.TryGetValue<string>('state', mEntry.Issue.State);
       mObject.TryGetValue<string>('assignee', mEntry.Issue.Assignee);
@@ -467,16 +517,22 @@ begin
       Result := Parse(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   if Result <> TAtlasDataLoad.Loaded then
+  begin
     FEntries.Clear;
+  end;
 end;
 
 function TAtlasRecentIssues.SaveToFile(const AFileName: string): Boolean;
 begin
   Result := not SameFileName(AFileName, FKept);
   if Result then
+  begin
     TAtlasDataFile.Write(AFileName, ToJson);
+  end;
 end;
 
 end.
