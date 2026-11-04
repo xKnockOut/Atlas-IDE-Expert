@@ -54,7 +54,8 @@ uses
   Atlas.Core.Settings.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Page.Sections;
 
 type
   TTestSection = class(TInterfacedObject, IAtlasSettingsSection)
@@ -210,7 +211,7 @@ begin
   try
     mPage := TAtlasSettingsPage.Create(nil);
     try
-      Assert.AreEqual(1, mPage.SectionCount);
+      Assert.AreEqual(1, mPage.Part<TAtlasSettingsSectionsPart>.Count);
       Assert.AreEqual(1, mSection.Builds);
       // Bereich issues: derselbe Reiter wie die übrigen Einstellungen des Issue-Trackers.
       Assert.AreSame(SheetOf(mPage.ControlOfSetting('IssuesEnabled')), SheetOf(mSection.Row));
@@ -331,7 +332,7 @@ begin
   try
     mRegistration.Revoke;
     Assert.AreEqual(1, mSection.Closes);
-    Assert.AreEqual(0, mPage.SectionCount);
+    Assert.AreEqual(0, mPage.Part<TAtlasSettingsSectionsPart>.Count);
     // Danach erreicht nichts mehr den Abschnitt (Regel 3); seine Werte bleiben.
     mLoads := mSection.Loads;
     mSettings := TAtlasPluginSettings.Defaults;
@@ -382,7 +383,7 @@ begin
   try
     mPage := TAtlasSettingsPage.Create(nil);
     try
-      Assert.AreEqual(0, mPage.SectionCount);
+      Assert.AreEqual(0, mPage.Part<TAtlasSettingsSectionsPart>.Count);
       Assert.AreEqual(1, mSection.Closes);
     finally
       mPage.Free;
@@ -405,7 +406,7 @@ begin
   try
     mPage := TAtlasSettingsPage.Create(nil);
     try
-      Assert.AreEqual(0, mPage.SectionCount);
+      Assert.AreEqual(0, mPage.Part<TAtlasSettingsSectionsPart>.Count);
       Assert.IsNotNull(mPage.ControlOfSetting('IssuesEnabled'));
     finally
       mPage.Free;
@@ -479,11 +480,11 @@ begin
       mPage.HandleNeeded;
       Assert.AreEqual(1, mSection.WindowReadies);
       // Registry-Name der Einstellung, der Abschnitt bekommt den Schlüssel.
-      Assert.IsTrue(mPage.ShowSettingArgument('IssuesTracker', 'youtrack'));
+      Assert.IsTrue(mPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument('IssuesTracker', 'youtrack'));
       Assert.AreEqual('issues.tracker', mSection.ShownKey);
       Assert.AreEqual('youtrack', mSection.ShownArgument);
-      Assert.IsFalse(mPage.ShowSettingArgument('IssuesBoardOnlyMine', 'x'));
-      Assert.IsFalse(mPage.ShowSettingArgument('GibtEsNicht', 'x'));
+      Assert.IsFalse(mPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument('IssuesBoardOnlyMine', 'x'));
+      Assert.IsFalse(mPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument('GibtEsNicht', 'x'));
     finally
       mHost.Free;
     end;
@@ -502,7 +503,7 @@ begin
   // Ohne Abschnitt des Trackers zeigt der Reiter nur den Schalter; Werte des Moduls bleiben, wie sie sind.
   mPage := TAtlasSettingsPage.Create(nil);
   try
-    Assert.AreEqual(0, mPage.SectionCount);
+    Assert.AreEqual(0, mPage.Part<TAtlasSettingsSectionsPart>.Count);
     Assert.IsNull(mPage.ControlOf('issues.tracker'));
     mSettings := TAtlasPluginSettings.Defaults;
     mSettings.IssuesTracker := 'youtrack';

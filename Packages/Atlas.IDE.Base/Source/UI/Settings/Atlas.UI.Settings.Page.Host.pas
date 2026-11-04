@@ -148,7 +148,7 @@ uses
   Atlas.UI.Settings.Group;
 
 const
-  cPartMissing = 'Teil %s fehlt auf der Optionsseite';
+  cPartMissing = 'Teil %s fehlt auf der Optionsseite'; // german-ok: Programmierfehler, nie in der Oberfläche
 
 { TAtlasSettingsPagePart }
 

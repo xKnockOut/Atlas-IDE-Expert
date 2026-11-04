@@ -1,0 +1,145 @@
+﻿unit Atlas.IDE.Settings.PageOptions;
+
+// Haken der Optionsseite „Atlas“ zu anderen Teilen der IDE-Schicht: Prüfregeln und Baseline (#909), Version des
+// Servers (#227), angeheftete Favoriten (#458), Befehle für „Leiste anpassen …“ (#1101), Projektdatei .atlas (#486),
+// Export, Import und „Alles zurücksetzen“ (#723). Ohne Zustand; die Seite hält die Methodenreferenzen.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.UI.EditorToolbar.Customize,
+  Atlas.UI.Settings.Page;
+
+type
+  TAtlasPageOptions = class
+  public
+    /// <summary>Seite Prüfregeln (#909): Wege zu den Regeln im Projekt- und im globalen Dialog, Baseline; dazu die
+    /// Version der gewählten AtlasServer.exe.</summary>
+    class procedure ConnectRules(APage: TAtlasSettingsPage); static;
+    /// <summary>Angeheftete Favoriten (#458) und Befehle für „Leiste anpassen …“ (#1101); AToolbarCommands nil =
+    /// keine Befehle.</summary>
+    class procedure ConnectFavorites(APage: TAtlasSettingsPage;
+      const AToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>); static;
+    /// <summary>Projektdatei .atlas (#486), Export, Import und „Alles zurücksetzen“ (#723).</summary>
+    class procedure ConnectTransfer(APage: TAtlasSettingsPage); static;
+  end;
+
+implementation
+
+uses
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Completion.Favorites,
+  Atlas.IDE.Completion.Favorites,
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Settings.Project,
+  Atlas.IDE.Settings.ServerActions,
+  Atlas.IDE.Settings.ServerTool,
+  Atlas.IDE.Settings.Transfer,
+  Atlas.UI.Settings.Page.General,
+  Atlas.UI.Settings.Page.Rules,
+  Atlas.UI.Settings.Page.Completion,
+  Atlas.UI.Settings.Page.EditorView,
+  Atlas.UI.Settings.Page.TeamFile,
+  Atlas.UI.Settings.Page.Transfer;
+
+class procedure TAtlasPageOptions.ConnectRules(APage: TAtlasSettingsPage);
+begin
+  // Version der gewählten AtlasServer.exe (#227).
+  APage.Part<TAtlasSettingsGeneralPart>.OnServerVersion :=
+    function(APath: string): string
+    begin
+      Result := TAtlasServerTool.FileVersion(APath);
+    end;
+  APage.Part<TAtlasSettingsRulesPart>.OnRulesProject :=
+    procedure
+    begin
+      TAtlasProjectSettings.Execute;
+    end;
+  APage.Part<TAtlasSettingsRulesPart>.OnRulesGlobal :=
+    procedure
+    begin
+      TAtlasProjectSettings.ExecuteGlobal;
+    end;
+  APage.Part<TAtlasSettingsRulesPart>.OnBaselineInfo :=
+    function: string
+    begin
+      Result := TAtlasIdeServerActions.BaselineText;
+    end;
+  APage.Part<TAtlasSettingsRulesPart>.OnBaselineUpdate :=
+    function: string
+    begin
+      Result := TAtlasIdeServerActions.UpdateBaseline;
+    end;
+  APage.Part<TAtlasSettingsRulesPart>.OnBaselineDelete :=
+    function: string
+    begin
+      Result := TAtlasIdeServerActions.DeleteBaseline;
+    end;
+end;
+
+class procedure TAtlasPageOptions.ConnectFavorites(APage: TAtlasSettingsPage; const AToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>);
+begin
+  APage.Part<TAtlasSettingsFavoritesPart>.OnRemoveFavorites :=
+    procedure(AKeys: TArray<string>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeFavorites.Remove(AKeys);
+        end);
+    end;
+  APage.Part<TAtlasSettingsFavoritesPart>.OnFavorites :=
+    function: TArray<TAtlasFavorite>
+    begin
+      Result := TAtlasIdeFavorites.Items;
+    end;
+  APage.Part<TAtlasSettingsEditorViewPart>.OnToolbarCommands :=
+    function: TArray<TAtlasToolbarCommandInfo>
+    begin
+      Result := nil;
+      if Assigned(AToolbarCommands) then
+      begin
+        Result := AToolbarCommands();
+      end;
+    end;
+end;
+
+class procedure TAtlasPageOptions.ConnectTransfer(APage: TAtlasSettingsPage);
+begin
+  // Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt die Datei an.
+  APage.Part<TAtlasSettingsTeamFilePart>.OnTeamFile :=
+    function: TAtlasTeamSettings
+    begin
+      Result := TAtlasIdeTeamFile.Read(TAtlasIdeTeamFile.ActiveProject);
+    end;
+  APage.Part<TAtlasSettingsTeamFilePart>.OnOpenTeamFile :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeTeamFile.OpenInEditor;
+        end);
+    end;
+  // Mit den Werten der Seite; Import und Zurücksetzen speichern sofort (mit Sicherung), die Seite lädt danach neu.
+  APage.Part<TAtlasSettingsTransferPart>.OnExportSettings :=
+    procedure(ACurrent: TAtlasPluginSettings)
+    begin
+      TAtlasIdeSettingsTransfer.ExportSettings(ACurrent);
+    end;
+  APage.Part<TAtlasSettingsTransferPart>.OnImportSettings :=
+    function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean; out AResult: TAtlasPluginSettings): Boolean
+    begin
+      Result := TAtlasIdeSettingsTransfer.ImportSettings(ACurrent, AProfile, AResult);
+    end;
+  APage.Part<TAtlasSettingsTransferPart>.OnResetAllSettings :=
+    function(const ACurrent: TAtlasPluginSettings; out AResult: TAtlasPluginSettings): Boolean
+    begin
+      Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
+    end;
+end;
+
+end.
