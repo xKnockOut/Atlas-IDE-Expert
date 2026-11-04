@@ -779,10 +779,12 @@ var
     if (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
       Resolver.NodeType(AContext.Tree, FileName, mCallee, mSymbol, mTypeInfo, mTypeFound) then
     begin
-      // Überladungen können andere Parameter haben: dann keine Aussage.
+      // Überladungen können andere Parameter haben: dann keine Aussage. NodeType nennt nur die erste Überladung,
+      // bei Methoden fehlen die übrigen in Overloads; CallCandidates zählt alle Deklarationen.
       if (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
         TIndexSymbolKind.Constructor_]) and (Length(mSymbol.Overloads) = 0) and
-        (Length(mSymbol.VariantParams) <= 1) then
+        (Length(mSymbol.VariantParams) <= 1) and
+        (Length(Resolver.CallCandidates(AContext.Tree, FileName, mCallee)) <= 1) then
       begin
         ReportVarArguments(ANode, VarParameters(mSymbol.Signature));
       end;

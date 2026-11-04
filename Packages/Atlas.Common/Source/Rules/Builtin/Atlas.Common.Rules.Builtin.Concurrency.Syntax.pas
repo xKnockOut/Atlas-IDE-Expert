@@ -82,7 +82,6 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Derived;
 
 function InList(const AItems: array of string; const AText: string): Boolean;
