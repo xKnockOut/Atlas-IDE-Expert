@@ -413,6 +413,12 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Duplicates.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.EmptyRoutines.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Shared.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Overloads.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Duplicates.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.TypeSizes.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.VariantRecords.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Defaults.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.pas"/>
