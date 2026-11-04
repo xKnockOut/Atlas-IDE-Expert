@@ -248,93 +248,121 @@ end;
 
 { TAtlasSymbolPathAnswer }
 
-class function TAtlasSymbolPathAnswer.Parse(const AAnswer: string; out AModel: TAtlasSymbolPathAnswer): Boolean;
+function StepsOf(ASteps: TJSONArray): TArray<TAtlasSymbolPathStep>;
 var
-  Root: TJSONValue;
-  Data, RouteObject: TJSONObject;
-  Routes, Steps: TJSONArray;
-  Item, StepItem: TJSONValue;
-  Route: TAtlasSymbolPathRoute;
-  Status: TAtlasSymbolPathStatus;
+  mItem: TJSONValue;
 begin
-  AModel := Default(TAtlasSymbolPathAnswer);
-  Result := False;
+  Result := nil;
+  if ASteps <> nil then
+  begin
+    for mItem in ASteps do
+    begin
+      if mItem is TJSONObject then
+      begin
+        Result := Result + [StepOf(TJSONObject(mItem))];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Wege der Antwort; False, wenn einer beschädigt ist (ein Weg mit n Knoten hat n - 1 Schritte).
+/// </summary>
+function RoutesOf(ARoutes: TJSONArray; var AModel: TAtlasSymbolPathAnswer): Boolean;
+var
+  mItem: TJSONValue;
+  mRoute: TAtlasSymbolPathRoute;
+begin
+  Result := True;
+  if ARoutes = nil then
+  begin
+    Exit;
+  end;
+  for mItem in ARoutes do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mRoute := Default(TAtlasSymbolPathRoute);
+      mRoute.Nodes := NodesOf(ArrayOf(TJSONObject(mItem), 'nodes'));
+      mRoute.Steps := StepsOf(ArrayOf(TJSONObject(mItem), 'steps'));
+      Result := Length(mRoute.Nodes) = Length(mRoute.Steps) + 1;
+      if not Result then
+      begin
+        Exit;
+      end;
+      AModel.Routes := AModel.Routes + [mRoute];
+    end;
+  end;
+end;
+
+/// <summary>Felder einer eingeschalteten Antwort; False bei unbekanntem Status oder beschädigtem Weg.</summary>
+function ReadAnswer(AData: TJSONObject; var AModel: TAtlasSymbolPathAnswer): Boolean;
+var
+  mStatus: TAtlasSymbolPathStatus;
+begin
+  Result := StatusOf(StringOf(AData, 'status'), mStatus);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AModel.Status := mStatus;
+  AModel.From := StringOf(AData, 'from');
+  AModel.To_ := StringOf(AData, 'to');
+  AModel.MoreRoutes := BoolOf(AData, 'moreRoutes');
+  AModel.MaxSteps := IntegerOf(AData, 'maxSteps');
+  AModel.SearchedSteps := IntegerOf(AData, 'searchedSteps');
+  AModel.Visited := IntegerOf(AData, 'visited');
+  AModel.ElapsedMs := IntegerOf(AData, 'elapsedMs');
+  AModel.AbortReason := StringOf(AData, 'abortReason');
+  AModel.Subject := StringOf(AData, 'subject');
+  AModel.CallsIncomplete := BoolOf(AData, 'callsIncomplete');
+  AModel.Candidates := NodesOf(ArrayOf(AData, 'candidates'));
+  Result := RoutesOf(ArrayOf(AData, 'routes'), AModel);
+end;
+
+function ParsedObject(const AAnswer: string): TJSONObject;
+var
+  mRoot: TJSONValue;
+begin
+  Result := nil;
   if Trim(AAnswer) = '' then
   begin
     Exit;
   end;
   try
-    Root := TJSONObject.ParseJSONValue(AAnswer);
+    mRoot := TJSONObject.ParseJSONValue(AAnswer);
   except
     on EJSONException do
-      Root := nil;
+      mRoot := nil;
   end;
-  if not (Root is TJSONObject) then
+  if mRoot is TJSONObject then
   begin
-    Root.Free;
+    Result := TJSONObject(mRoot);
+  end
+  else
+  begin
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasSymbolPathAnswer.Parse(const AAnswer: string; out AModel: TAtlasSymbolPathAnswer): Boolean;
+var
+  mData: TJSONObject;
+begin
+  AModel := Default(TAtlasSymbolPathAnswer);
+  Result := False;
+  mData := ParsedObject(AAnswer);
+  if mData = nil then
+  begin
     Exit;
   end;
   try
-    Data := TJSONObject(Root);
-    if not (Data.GetValue('enabled') is TJSONBool) then
+    if mData.GetValue('enabled') is TJSONBool then
     begin
-      Exit;
+      AModel.Enabled := BoolOf(mData, 'enabled');
+      Result := not AModel.Enabled or ReadAnswer(mData, AModel);
     end;
-    AModel.Enabled := BoolOf(Data, 'enabled');
-    if not AModel.Enabled then
-    begin
-      Exit(True);
-    end;
-    if not StatusOf(StringOf(Data, 'status'), Status) then
-    begin
-      Exit;
-    end;
-    AModel.Status := Status;
-    AModel.From := StringOf(Data, 'from');
-    AModel.To_ := StringOf(Data, 'to');
-    AModel.MoreRoutes := BoolOf(Data, 'moreRoutes');
-    AModel.MaxSteps := IntegerOf(Data, 'maxSteps');
-    AModel.SearchedSteps := IntegerOf(Data, 'searchedSteps');
-    AModel.Visited := IntegerOf(Data, 'visited');
-    AModel.ElapsedMs := IntegerOf(Data, 'elapsedMs');
-    AModel.AbortReason := StringOf(Data, 'abortReason');
-    AModel.Subject := StringOf(Data, 'subject');
-    AModel.CallsIncomplete := BoolOf(Data, 'callsIncomplete');
-    AModel.Candidates := NodesOf(ArrayOf(Data, 'candidates'));
-    Routes := ArrayOf(Data, 'routes');
-    if Routes <> nil then
-    begin
-      for Item in Routes do
-      begin
-        if not (Item is TJSONObject) then
-        begin
-          Continue;
-        end;
-        RouteObject := TJSONObject(Item);
-        Route := Default(TAtlasSymbolPathRoute);
-        Route.Nodes := NodesOf(ArrayOf(RouteObject, 'nodes'));
-        Steps := ArrayOf(RouteObject, 'steps');
-        if Steps <> nil then
-        begin
-          for StepItem in Steps do
-          begin
-            if StepItem is TJSONObject then
-            begin
-              Route.Steps := Route.Steps + [StepOf(TJSONObject(StepItem))];
-            end;
-          end;
-        end;
-        // Ein Weg mit n Knoten hat n - 1 Schritte; sonst ist die Antwort beschädigt.
-        if Length(Route.Nodes) <> Length(Route.Steps) + 1 then
-        begin
-          Exit;
-        end;
-        AModel.Routes := AModel.Routes + [Route];
-      end;
-    end;
-    Result := True;
   finally
-    Root.Free;
+    mData.Free;
   end;
 end;
 
@@ -347,70 +375,73 @@ begin
   end;
 end;
 
+function PlaceRow(AKind: TAtlasSymbolPathRowKind; ARoute, AIndex: Integer;
+  const ANode: TAtlasSymbolPathNode): TAtlasSymbolPathRow;
+begin
+  Result := Default(TAtlasSymbolPathRow);
+  Result.Kind := AKind;
+  Result.Route := ARoute;
+  Result.Index := AIndex;
+  Result.FileName := ANode.FileName;
+  Result.Line := ANode.Line;
+  Result.Character := ANode.Character;
+end;
+
+/// <summary>Schritt AIndex des Wegs: an seiner Stelle, ohne eigene an der des nächsten Knotens.</summary>
+function StepRow(const ARoute: TAtlasSymbolPathRoute; ARouteIndex, AIndex: Integer): TAtlasSymbolPathRow;
+begin
+  Result := PlaceRow(TAtlasSymbolPathRowKind.Step, ARouteIndex, AIndex, ARoute.Nodes[AIndex + 1]);
+  Result.Inferred := ARoute.Steps[AIndex].Inferred;
+  if ARoute.Steps[AIndex].FileName <> '' then
+  begin
+    Result.FileName := ARoute.Steps[AIndex].FileName;
+    Result.Line := ARoute.Steps[AIndex].Line;
+    Result.Character := ARoute.Steps[AIndex].Character;
+  end;
+end;
+
+function RouteRows(const ARoute: TAtlasSymbolPathRoute; ARouteIndex: Integer;
+  AWithHeader: Boolean): TArray<TAtlasSymbolPathRow>;
+var
+  mIndex: Integer;
+  mHeader: TAtlasSymbolPathRow;
+begin
+  Result := nil;
+  if AWithHeader then
+  begin
+    mHeader := Default(TAtlasSymbolPathRow);
+    mHeader.Kind := TAtlasSymbolPathRowKind.Header;
+    mHeader.Route := ARouteIndex;
+    mHeader.Index := -1;
+    Result := [mHeader];
+  end;
+  for mIndex := 0 to High(ARoute.Nodes) do
+  begin
+    Result := Result + [PlaceRow(TAtlasSymbolPathRowKind.Node, ARouteIndex, mIndex, ARoute.Nodes[mIndex])];
+    if mIndex <= High(ARoute.Steps) then
+    begin
+      Result := Result + [StepRow(ARoute, ARouteIndex, mIndex)];
+    end;
+  end;
+end;
+
 function TAtlasSymbolPathAnswer.Rows: TArray<TAtlasSymbolPathRow>;
 var
-  RouteIndex, Index: Integer;
-  Row: TAtlasSymbolPathRow;
-  Route: TAtlasSymbolPathRoute;
+  mIndex: Integer;
 begin
   Result := nil;
   if Status = TAtlasSymbolPathStatus.Ambiguous then
   begin
-    for Index := 0 to High(Candidates) do
+    for mIndex := 0 to High(Candidates) do
     begin
-      Row := Default(TAtlasSymbolPathRow);
-      Row.Kind := TAtlasSymbolPathRowKind.Candidate;
-      Row.Index := Index;
-      Row.FileName := Candidates[Index].FileName;
-      Row.Line := Candidates[Index].Line;
-      Row.Character := Candidates[Index].Character;
-      Result := Result + [Row];
+      Result := Result + [PlaceRow(TAtlasSymbolPathRowKind.Candidate, 0, mIndex, Candidates[mIndex])];
     end;
-    Exit;
-  end;
-  for RouteIndex := 0 to High(Routes) do
+  end
+  else
   begin
-    Route := Routes[RouteIndex];
-    if Length(Routes) > 1 then
+    for mIndex := 0 to High(Routes) do
     begin
-      Row := Default(TAtlasSymbolPathRow);
-      Row.Kind := TAtlasSymbolPathRowKind.Header;
-      Row.Route := RouteIndex;
-      Row.Index := -1;
-      Result := Result + [Row];
-    end;
-    for Index := 0 to High(Route.Nodes) do
-    begin
-      Row := Default(TAtlasSymbolPathRow);
-      Row.Kind := TAtlasSymbolPathRowKind.Node;
-      Row.Route := RouteIndex;
-      Row.Index := Index;
-      Row.FileName := Route.Nodes[Index].FileName;
-      Row.Line := Route.Nodes[Index].Line;
-      Row.Character := Route.Nodes[Index].Character;
-      Result := Result + [Row];
-      if Index > High(Route.Steps) then
-      begin
-        Continue;
-      end;
-      Row := Default(TAtlasSymbolPathRow);
-      Row.Kind := TAtlasSymbolPathRowKind.Step;
-      Row.Route := RouteIndex;
-      Row.Index := Index;
-      Row.Inferred := Route.Steps[Index].Inferred;
-      if Route.Steps[Index].FileName <> '' then
-      begin
-        Row.FileName := Route.Steps[Index].FileName;
-        Row.Line := Route.Steps[Index].Line;
-        Row.Character := Route.Steps[Index].Character;
-      end
-      else
-      begin
-        Row.FileName := Route.Nodes[Index + 1].FileName;
-        Row.Line := Route.Nodes[Index + 1].Line;
-        Row.Character := Route.Nodes[Index + 1].Character;
-      end;
-      Result := Result + [Row];
+      Result := Result + RouteRows(Routes[mIndex], mIndex, Length(Routes) > 1);
     end;
   end;
 end;

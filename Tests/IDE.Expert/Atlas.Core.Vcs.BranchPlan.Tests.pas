@@ -152,7 +152,6 @@ type
     Version: string;
     FolderVersions: TArray<string>;
     constructor Create(AKind: TAtlasVcsKind);
-    class function Has(const AList: TArray<string>; const AName: string): Boolean; static;
     { IAtlasVersionControl }
     function Kind: TAtlasVcsKind;
     function WorkingCopy: TAtlasVcsWorkingCopy;
@@ -228,7 +227,8 @@ begin
   ExternalsOutcome := TAtlasVcsOutcome.Failed;
 end;
 
-class function TPlanVcs.Has(const AList: TArray<string>; const AName: string): Boolean;
+/// <summary>Ob AName in AList vorkommt.</summary>
+function ListHas(const AList: TArray<string>; const AName: string): Boolean;
 var
   mName: string;
 begin
@@ -288,7 +288,7 @@ end;
 function TPlanVcs.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['exists ' + AName];
-  AExists := Has(LocalBranches, AName);
+  AExists := ListHas(LocalBranches, AName);
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -348,7 +348,7 @@ end;
 function TPlanVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['remote ' + AName];
-  AExists := Has(RemoteBranches, AName);
+  AExists := ListHas(RemoteBranches, AName);
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -450,7 +450,7 @@ begin
   Calls := Calls + ['resolve ' + ARef];
   ARevision := '';
   Result := TAtlasVcsOutcome.Failed;
-  if Has(Refs, ARef) then
+  if ListHas(Refs, ARef) then
   begin
     ARevision := 'abc123';
     Result := TAtlasVcsOutcome.Ok;
@@ -1097,7 +1097,7 @@ begin
   Assert.AreEqual('', mFacts.SvnExternals[2].WorkingRevision, 'svnversion scheitert: unbekannt');
   Assert.IsTrue(mFacts.SvnExternals[2].Foreign);
   Assert.IsFalse(mFacts.SvnExternals[0].IsFile, 'Ordner gibt es hier nicht: kein Datei-External');
-  Assert.IsTrue(TPlanVcs.Has(mFake.Calls, 'svnversion Packages/Basis'));
+  Assert.IsTrue(ListHas(mFake.Calls, 'svnversion Packages/Basis'));
   // Ohne lesbare Externals: wie vor #1291 der Hinweis aus HasExternals.
   mFake.ExternalsOutcome := TAtlasVcsOutcome.Failed;
   mFake.Externals := True;

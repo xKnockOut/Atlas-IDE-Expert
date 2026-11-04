@@ -158,6 +158,40 @@ end;
 
 { TTypeCompatibility }
 
+/// <summary>Zuweisung an einen eingebauten Typ der Art ATarget aus ASource (Other, wenn offen) unverträglich?
+/// ASourceObject: Klasse, Interface oder Aufzählung.</summary>
+function BuiltinIncompatible(ATarget, ASource: TExpressionCategory; ASourceObject, AUntypedText: Boolean): Boolean;
+begin
+  Result := False;
+  if ASourceObject then
+  begin
+    Exit(ATarget in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
+      TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_]);
+  end;
+  case ATarget of
+    TExpressionCategory.Integer_:
+      Result := ASource in [TExpressionCategory.Float, TExpressionCategory.Currency_, TExpressionCategory.Boolean_,
+        TExpressionCategory.Char_, TExpressionCategory.String_, TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
+    TExpressionCategory.Float, TExpressionCategory.Currency_:
+      Result := ASource in [TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_,
+        TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
+    TExpressionCategory.Boolean_:
+      Result := ASource in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
+        TExpressionCategory.Char_, TExpressionCategory.String_, TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
+    TExpressionCategory.Char_:
+      // Eine untypisierte Konstante 'a' ist auch ein Zeichen.
+      Result := (ASource in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
+        TExpressionCategory.Boolean_, TExpressionCategory.Nil_, TExpressionCategory.Pointer_]) or
+        ((ASource = TExpressionCategory.String_) and not AUntypedText);
+    TExpressionCategory.String_:
+      // PChar und nil gehen in einen String; Mengen bleiben offen.
+      Result := ASource in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
+        TExpressionCategory.Boolean_];
+  else
+    // Zeiger, Variant, Mengen: offen.
+  end;
+end;
+
 class function TTypeCompatibility.AssignIncompatible(const ATarget, ASource: TValueType): Boolean;
 var
   mSource: TExpressionCategory;
@@ -182,38 +216,7 @@ begin
   end;
   case ATarget.Kind of
     TValueKind.Builtin:
-      begin
-        if mSourceObject then
-        begin
-          Exit(ATarget.Category in [TExpressionCategory.Integer_, TExpressionCategory.Float,
-            TExpressionCategory.Currency_, TExpressionCategory.Boolean_, TExpressionCategory.Char_,
-            TExpressionCategory.String_]);
-        end;
-        case ATarget.Category of
-          TExpressionCategory.Integer_:
-            Result := mSource in [TExpressionCategory.Float, TExpressionCategory.Currency_,
-              TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_,
-              TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
-          TExpressionCategory.Float, TExpressionCategory.Currency_:
-            Result := mSource in [TExpressionCategory.Boolean_, TExpressionCategory.Char_,
-              TExpressionCategory.String_, TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
-          TExpressionCategory.Boolean_:
-            Result := mSource in [TExpressionCategory.Integer_, TExpressionCategory.Float,
-              TExpressionCategory.Currency_, TExpressionCategory.Char_, TExpressionCategory.String_,
-              TExpressionCategory.Nil_, TExpressionCategory.Pointer_];
-          TExpressionCategory.Char_:
-            // Eine untypisierte Konstante 'a' ist auch ein Zeichen.
-            Result := (mSource in [TExpressionCategory.Integer_, TExpressionCategory.Float,
-              TExpressionCategory.Currency_, TExpressionCategory.Boolean_, TExpressionCategory.Nil_,
-              TExpressionCategory.Pointer_]) or ((mSource = TExpressionCategory.String_) and not ASource.UntypedText);
-          TExpressionCategory.String_:
-            // PChar und nil gehen in einen String; Mengen bleiben offen.
-            Result := mSource in [TExpressionCategory.Integer_, TExpressionCategory.Float,
-              TExpressionCategory.Currency_, TExpressionCategory.Boolean_];
-        else
-          // Zeiger, Variant, Mengen: offen.
-        end;
-      end;
+      Result := BuiltinIncompatible(ATarget.Category, mSource, mSourceObject, ASource.UntypedText);
     TValueKind.ClassLike:
       Result := (mSource in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_,
         TExpressionCategory.Boolean_, TExpressionCategory.Char_, TExpressionCategory.String_]) or
@@ -231,16 +234,69 @@ begin
   end;
 end;
 
-class function TTypeCompatibility.OperatorFit(const AOperator: string; const ALeft, ARight: TValueType): TOperatorFit;
+/// <summary>Zwei Mengen: [1] + ['a'] aus Zahlen und aus Zeichen ist unverträglich (wie E2010).</summary>
+function SetFit(const ALeft, ARight: TValueType): TOperatorFit;
+const
+  cOrdinal = [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_];
 var
-  mLeftElement, mRightElement: TValueType;
+  mLeft, mRight: TValueType;
+begin
+  Result := TOperatorFit.Fits;
+  mLeft := TValueType.FromBuiltin(TTypeCompatibility.SetElement(ALeft.Name));
+  mRight := TValueType.FromBuiltin(TTypeCompatibility.SetElement(ARight.Name));
+  if IsDecided(mLeft) and IsDecided(mRight) and (mLeft.Category in cOrdinal) and
+    (mRight.Category in cOrdinal) and (mLeft.Category <> mRight.Category) then
+  begin
+    Result := TOperatorFit.Incompatible;
+  end;
+end;
+
+/// <summary>string + Integer: + ist für beide definiert, aber nicht zusammen (wie E2010). Char + Integer bleibt offen.</summary>
+function StringPlusNumber(const AOperator: string; ALeft, ARight: TExpressionCategory): Boolean;
+begin
+  Result := (AOperator = '+') and (((ALeft = TExpressionCategory.String_) and IsNumeric(ARight)) or
+    (IsNumeric(ALeft) and (ARight = TExpressionCategory.String_)));
+end;
+
+/// <summary>Beide Seiten haben die Kategorie ACategory.</summary>
+function BothOf(ALeft, ARight, ACategory: TExpressionCategory): Boolean;
+begin
+  Result := (ALeft = ACategory) and (ARight = ACategory);
+end;
+
+/// <summary>AOperator ist für beide Seiten definiert: passen sie zusammen?</summary>
+function DefinedFit(const AOperator: string; const ALeft, ARight: TValueType): TOperatorFit;
+var
+  mLeft, mRight: TExpressionCategory;
+begin
+  mLeft := ALeft.Category;
+  mRight := ARight.Category;
+  // div, mod, and … nur mit Ganzzahlen; die Gleitkommaseite ist vorher schon ausgeschieden.
+  if (IsNumeric(mLeft) and IsNumeric(mRight)) or BothOf(mLeft, mRight, TExpressionCategory.Boolean_) or
+    (IsText(mLeft) and IsText(mRight)) then
+  begin
+    Result := TOperatorFit.Fits;
+  end
+  else if StringPlusNumber(AOperator, mLeft, mRight) then
+  begin
+    Result := TOperatorFit.Incompatible;
+  end
+  else if BothOf(mLeft, mRight, TExpressionCategory.Set_) then
+  begin
+    Result := SetFit(ALeft, ARight);
+  end
+  else
+  begin
+    // Übrige Mischungen (Integer and Boolean, Menge + Zahl): offen.
+    Result := TOperatorFit.Unknown;
+  end;
+end;
+
+class function TTypeCompatibility.OperatorFit(const AOperator: string; const ALeft, ARight: TValueType): TOperatorFit;
 begin
   Result := TOperatorFit.Unknown;
-  if not IsDecided(ALeft) or not IsDecided(ARight) then
-  begin
-    Exit;
-  end;
-  if not MatchStr(AOperator, ['+', '-', '*', '/', 'div', 'mod', 'and', 'or', 'xor', 'shl', 'shr']) then
+  if not IsDecided(ALeft) or not IsDecided(ARight) or
+    not MatchStr(AOperator, ['+', '-', '*', '/', 'div', 'mod', 'and', 'or', 'xor', 'shl', 'shr']) then
   begin
     Exit;
   end;
@@ -252,43 +308,12 @@ begin
   end;
   if not OperatorDefined(AOperator, ALeft.Category) or not OperatorDefined(AOperator, ARight.Category) then
   begin
-    Exit(TOperatorFit.NotApplicable);
-  end;
-  if IsNumeric(ALeft.Category) and IsNumeric(ARight.Category) then
+    Result := TOperatorFit.NotApplicable;
+  end
+  else
   begin
-    // div, mod, and … nur mit Ganzzahlen; die Gleitkommaseite ist oben schon ausgeschieden.
-    Result := TOperatorFit.Fits;
-    Exit;
+    Result := DefinedFit(AOperator, ALeft, ARight);
   end;
-  if (ALeft.Category = TExpressionCategory.Boolean_) and (ARight.Category = TExpressionCategory.Boolean_) then
-  begin
-    Exit(TOperatorFit.Fits);
-  end;
-  if IsText(ALeft.Category) and IsText(ARight.Category) then
-  begin
-    Exit(TOperatorFit.Fits);
-  end;
-  // string + Integer: + ist für beide definiert, aber nicht zusammen (wie E2010). Char + Integer bleibt offen.
-  if (AOperator = '+') and (((ALeft.Category = TExpressionCategory.String_) and IsNumeric(ARight.Category)) or
-    (IsNumeric(ALeft.Category) and (ARight.Category = TExpressionCategory.String_))) then
-  begin
-    Exit(TOperatorFit.Incompatible);
-  end;
-  if (ALeft.Category = TExpressionCategory.Set_) and (ARight.Category = TExpressionCategory.Set_) then
-  begin
-    // Mengen aus Zahlen und aus Zeichen: [1] + ['a'] (wie E2010).
-    mLeftElement := TValueType.FromBuiltin(SetElement(ALeft.Name));
-    mRightElement := TValueType.FromBuiltin(SetElement(ARight.Name));
-    if IsDecided(mLeftElement) and IsDecided(mRightElement) and
-      (mLeftElement.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) and
-      (mRightElement.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) and
-      (mLeftElement.Category <> mRightElement.Category) then
-    begin
-      Exit(TOperatorFit.Incompatible);
-    end;
-    Exit(TOperatorFit.Fits);
-  end;
-  // Übrige Mischungen (Integer and Boolean, Menge + Zahl): offen.
 end;
 
 class function TTypeCompatibility.UnaryNotApplicable(const AOperator: string; const AOperand: TValueType): Boolean;

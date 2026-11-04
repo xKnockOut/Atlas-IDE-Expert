@@ -71,7 +71,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Text.Chars;
 
 const
   CommandCalls: array[0..7] of string = ('ShellExecute', 'ShellExecuteA', 'ShellExecuteW', 'ShellExecuteEx',
@@ -223,6 +224,79 @@ begin
   Result := StringReplace(Copy(AToken.Text, 2, Length(AToken.Text) - 2), '''''', '''', [rfReplaceAll]);
 end;
 
+/// <summary>Ist AToken eines der Schlüsselwörter AWords?</summary>
+function IsAnyKeyword(const AToken: TPascalToken; const AWords: array of string): Boolean;
+var
+  mWord: string;
+begin
+  for mWord in AWords do
+  begin
+    if AToken.IsKeyword(mWord) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Ist der Bereich ARange (erstes und letztes Token) genau ein String-Literal?</summary>
+function IsLiteralPart(const ATokens: TArray<TPascalToken>; const ARange: TArray<Integer>): Boolean;
+begin
+  Result := (ARange[0] = ARange[1]) and (ATokens[ARange[0]].Kind = TPascalTokenKind.StringLiteral);
+end;
+
+/// <summary>Ist das Programm (drittes Argument von ShellExecute) ein festes Literal, das keine Shell ist?</summary>
+function IsFixedProgram(const ATokens: TArray<TPascalToken>; const AArgs: TArray<TArray<Integer>>): Boolean;
+begin
+  Result := (Length(AArgs) >= 4) and IsLiteralPart(ATokens, AArgs[2]) and
+    not IsOneOf(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), ShellPrograms);
+end;
+
+/// <summary>Glieder der Verkettung ATokens[AFirst..ALast] auf oberster Ebene; False bei offener Klammer.</summary>
+function ConcatParts(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
+  out AParts: TArray<TArray<Integer>>): Boolean;
+var
+  mIndex, mPart: Integer;
+begin
+  AParts := nil;
+  mIndex := AFirst;
+  mPart := AFirst;
+  while mIndex <= ALast do
+  begin
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
+    begin
+      mIndex := MatchingParen(ATokens, mIndex);
+    end
+    else if ATokens[mIndex].IsSymbol('+') then
+    begin
+      AParts := AParts + [TArray<Integer>.Create(mPart, mIndex - 1)];
+      mPart := mIndex + 1;
+    end;
+    if mIndex < 0 then
+    begin
+      Exit(False);
+    end;
+    Inc(mIndex);
+  end;
+  AParts := AParts + [TArray<Integer>.Create(mPart, ALast)];
+  Result := True;
+end;
+
+/// <summary>Ist das Glied AIndex ein Literal oder ein Wert zwischen zwei Literalen, die mit " enden bzw.
+/// beginnen?</summary>
+function QuotedPart(const ATokens: TArray<TPascalToken>; const AParts: TArray<TArray<Integer>>;
+  AIndex: Integer): Boolean;
+begin
+  if IsLiteralPart(ATokens, AParts[AIndex]) then
+  begin
+    Exit(True);
+  end;
+  Result := (AIndex > 0) and (AIndex < High(AParts)) and IsLiteralPart(ATokens, AParts[AIndex - 1]) and
+    IsLiteralPart(ATokens, AParts[AIndex + 1]);
+  Result := Result and EndsStr('"', LiteralValue(ATokens[AParts[AIndex - 1][0]])) and
+    StartsStr('"', LiteralValue(ATokens[AParts[AIndex + 1][0]]));
+end;
+
 /// <summary>
 /// ShellExecute mit festem Programm, das keine Shell ist, und Parametern, deren eingesetzte Werte alle in
 /// Anführungszeichen stehen ('/select,"' + Pfad + '"'): Kein Befehlsinterpreter wertet die Parameter aus, und ein
@@ -230,78 +304,38 @@ end;
 /// </summary>
 function QuotedForFixedProgram(const ATokens: TArray<TPascalToken>; const AArgs: TArray<TArray<Integer>>): Boolean;
 var
-  First, Last, Index, Part: Integer;
-  Parts: TArray<TArray<Integer>>;
-
-  function IsLiteral(const ARange: TArray<Integer>): Boolean;
-  begin
-    Result := (ARange[0] = ARange[1]) and (ATokens[ARange[0]].Kind = TPascalTokenKind.StringLiteral);
-  end;
-
+  mFirst, mLast, mIndex: Integer;
+  mParts: TArray<TArray<Integer>>;
 begin
-  Result := False;
-  if (Length(AArgs) < 4) or (AArgs[2][0] <> AArgs[2][1]) or
-    (ATokens[AArgs[2][0]].Kind <> TPascalTokenKind.StringLiteral) or
-    IsOneOf(ExtractFileName(LiteralValue(ATokens[AArgs[2][0]])), ShellPrograms) then
+  if not IsFixedProgram(ATokens, AArgs) then
   begin
-    Exit;
+    Exit(False);
   end;
-  First := AArgs[3][0];
-  Last := AArgs[3][1];
+  mFirst := AArgs[3][0];
+  mLast := AArgs[3][1];
   // PChar(…) um die Parameter.
-  if IsOneOf(ATokens[First].Text, ['PChar', 'PWideChar']) and (First < Last) and ATokens[First + 1].IsSymbol('(') and
-    (MatchingParen(ATokens, First + 1) = Last) then
+  if IsOneOf(ATokens[mFirst].Text, ['PChar', 'PWideChar']) and (mFirst < mLast) and
+    ATokens[mFirst + 1].IsSymbol('(') and (MatchingParen(ATokens, mFirst + 1) = mLast) then
   begin
-    Inc(First, 2);
-    Dec(Last);
+    Inc(mFirst, 2);
+    Dec(mLast);
   end;
-  // Glieder der Verkettung auf oberster Ebene.
-  Parts := nil;
-  Index := First;
-  Part := First;
-  while Index <= Last do
+  Result := ConcatParts(ATokens, mFirst, mLast, mParts);
+  mIndex := 0;
+  while Result and (mIndex <= High(mParts)) do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-    begin
-      Index := MatchingParen(ATokens, Index);
-    end
-    else if ATokens[Index].IsSymbol('+') then
-    begin
-      Parts := Parts + [TArray<Integer>.Create(Part, Index - 1)];
-      Part := Index + 1;
-    end;
-    if Index < 0 then
-    begin
-      Exit;
-    end;
-    Inc(Index);
+    Result := QuotedPart(ATokens, mParts, mIndex);
+    Inc(mIndex);
   end;
-  Parts := Parts + [TArray<Integer>.Create(Part, Last)];
-  for Index := 0 to High(Parts) do
-  begin
-    if not IsLiteral(Parts[Index]) and ((Index = 0) or (Index = High(Parts)) or not IsLiteral(Parts[Index - 1]) or
-      not IsLiteral(Parts[Index + 1]) or not EndsStr('"', LiteralValue(ATokens[Parts[Index - 1][0]])) or
-      not StartsStr('"', LiteralValue(ATokens[Parts[Index + 1][0]]))) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := True;
 end;
 
 /// <summary>Anfang der Anweisung vor AIndex: Token nach ";", begin, then, else, do; sonst 0.</summary>
 function StatementStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex;
-  while Result > 0 do
+  while (Result > 0) and not ATokens[Result - 1].IsSymbol(';') and not IsAnyKeyword(ATokens[Result - 1],
+    ['begin', 'then', 'else', 'do', 'try', 'finally', 'except']) do
   begin
-    if ATokens[Result - 1].IsSymbol(';') or ATokens[Result - 1].IsKeyword('begin') or
-      ATokens[Result - 1].IsKeyword('then') or ATokens[Result - 1].IsKeyword('else') or
-      ATokens[Result - 1].IsKeyword('do') or ATokens[Result - 1].IsKeyword('try') or
-      ATokens[Result - 1].IsKeyword('finally') or ATokens[Result - 1].IsKeyword('except') then
-    begin
-      Exit;
-    end;
     Dec(Result);
   end;
 end;
@@ -339,37 +373,51 @@ begin
     'Befehl aus zusammengesetztem Text (Befehlsinjektion)');
 end;
 
+/// <summary>Steht bei AIndex ein Aufruf eines Befehls (CommandCalls) mit Klammer?</summary>
+function IsCommandCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and IsOneOf(ATokens[AIndex].Text, CommandCalls) and
+    ATokens[AIndex + 1].IsSymbol('(');
+end;
+
+/// <summary>Hat der Befehlsaufruf bei AIndex (Klammer bis AClose) ein zusammengesetztes Argument?</summary>
+function HasComposedCommand(const ATokens: TArray<TPascalToken>; AIndex, AClose: Integer): Boolean;
+var
+  mArgs: TArray<TArray<Integer>>;
+  mArgument: TArray<Integer>;
+begin
+  mArgs := Arguments(ATokens, AIndex + 1, AClose);
+  if StartsText('ShellExecute', ATokens[AIndex].Text) and QuotedForFixedProgram(ATokens, mArgs) then
+  begin
+    Exit(False);
+  end;
+  for mArgument in mArgs do
+  begin
+    if IsComposed(ATokens, mArgument[0], mArgument[1]) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TSecurityCommandInjectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Close: Integer;
-  Argument: TArray<Integer>;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mClose: Integer;
 begin
-  Tokens := CodeTokens(AContext);
-  for Index := 0 to High(Tokens) - 1 do
+  mTokens := CodeTokens(AContext);
+  for mIndex := 0 to High(mTokens) - 1 do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and IsOneOf(Tokens[Index].Text, CommandCalls) and
-      Tokens[Index + 1].IsSymbol('(') then
+    if not IsCommandCall(mTokens, mIndex) then
     begin
-      Close := MatchingParen(Tokens, Index + 1);
-      if Close < 0 then
-      begin
-        Continue;
-      end;
-      if StartsText('ShellExecute', Tokens[Index].Text) and
-        QuotedForFixedProgram(Tokens, Arguments(Tokens, Index + 1, Close)) then
-      begin
-        Continue;
-      end;
-      for Argument in Arguments(Tokens, Index + 1, Close) do
-      begin
-        if IsComposed(Tokens, Argument[0], Argument[1]) then
-        begin
-          AReport.Add(TokenRange(Tokens[Index]), Format('%s mit zusammengesetztem Argument: Eingaben könnten ' +
-            'weitere Befehle einschleusen', [Tokens[Index].Text]), TRuleConfidence.Medium);
-          Break;
-        end;
-      end;
+      Continue;
+    end;
+    mClose := MatchingParen(mTokens, mIndex + 1);
+    if (mClose >= 0) and HasComposedCommand(mTokens, mIndex, mClose) then
+    begin
+      AReport.Add(TokenRange(mTokens[mIndex]), Format('%s mit zusammengesetztem Argument: Eingaben könnten ' +
+        'weitere Befehle einschleusen', [mTokens[mIndex].Text]), TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -382,50 +430,56 @@ begin
     'Dateizugriff mit Pfad aus Eingabedaten (Pfad-Traversal)', True);
 end;
 
+/// <summary>Nennt AIndex einen Dateizugriff (FileCalls, TFileStream.Create)?</summary>
+function IsFileCallName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := IsOneOf(ATokens[AIndex].Text, FileCalls) or (SameText(ATokens[AIndex].Text, 'Create') and (AIndex >= 2) and
+    SameText(ATokens[AIndex - 2].Text, 'TFileStream'));
+end;
+
+/// <summary>Steht bei AIndex ein Dateizugriff mit Klammer?</summary>
+function IsFileCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and ATokens[AIndex + 1].IsSymbol('(') and
+    IsFileCallName(ATokens, AIndex);
+end;
+
+/// <summary>Nennt ATokens[AFirst..ALast] Eingabedaten, ohne den Pfad zu prüfen (GetFullPath …)?</summary>
+function UncheckedInput(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  mInner: Integer;
+  mFromInput, mChecked: Boolean;
+begin
+  mFromInput := False;
+  mChecked := False;
+  for mInner := AFirst to ALast do
+  begin
+    if ATokens[mInner].Kind = TPascalTokenKind.Identifier then
+    begin
+      mFromInput := mFromInput or IsOneOf(ATokens[mInner].Text, InputMarkers);
+      mChecked := mChecked or IsOneOf(ATokens[mInner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']);
+    end;
+  end;
+  Result := mFromInput and not mChecked;
+end;
+
 procedure TSecurityPathTraversalRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Close, Inner: Integer;
-  IsFileCall, FromInput, Checked: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mClose: Integer;
 begin
-  Tokens := CodeTokens(AContext);
-  for Index := 0 to High(Tokens) - 1 do
+  mTokens := CodeTokens(AContext);
+  for mIndex := 0 to High(mTokens) - 1 do
   begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not Tokens[Index + 1].IsSymbol('(') then
+    if not IsFileCall(mTokens, mIndex) then
     begin
       Continue;
     end;
-    IsFileCall := IsOneOf(Tokens[Index].Text, FileCalls) or
-      (SameText(Tokens[Index].Text, 'Create') and (Index >= 2) and SameText(Tokens[Index - 2].Text, 'TFileStream'));
-    if not IsFileCall then
+    mClose := MatchingParen(mTokens, mIndex + 1);
+    if (mClose >= 0) and UncheckedInput(mTokens, mIndex + 2, mClose - 1) then
     begin
-      Continue;
-    end;
-    Close := MatchingParen(Tokens, Index + 1);
-    if Close < 0 then
-    begin
-      Continue;
-    end;
-    FromInput := False;
-    Checked := False;
-    for Inner := Index + 2 to Close - 1 do
-    begin
-      if Tokens[Inner].Kind = TPascalTokenKind.Identifier then
-      begin
-        if IsOneOf(Tokens[Inner].Text, InputMarkers) then
-        begin
-          FromInput := True;
-        end;
-        if IsOneOf(Tokens[Inner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']) then
-        begin
-          Checked := True;
-        end;
-      end;
-    end;
-    if FromInput and not Checked then
-    begin
-      AReport.Add(TokenRange(Tokens[Index]), Format('%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." ' +
-        'könnte Dateien außerhalb des erwarteten Ordners erreichen', [Tokens[Index].Text]), TRuleConfidence.Medium);
+      AReport.Add(TokenRange(mTokens[mIndex]), Format('%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." ' +
+        'könnte Dateien außerhalb des erwarteten Ordners erreichen', [mTokens[mIndex].Text]), TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -473,86 +527,110 @@ begin
     'TLS-Zertifikatsprüfung abgeschaltet');
 end;
 
+type
+  /// <summary>Kopf der aktuellen Routine (bis zum ersten ";" nach der Parameterliste).</summary>
+  THeaderTracker = record
+    Header: string;
+    Depth: Integer;
+    InHeader: Boolean;
+    /// <summary>Nimmt AToken auf; True, solange es zum Kopf gehört.</summary>
+    function Feed(const AToken: TPascalToken): Boolean;
+  end;
+
+function THeaderTracker.Feed(const AToken: TPascalToken): Boolean;
+begin
+  if AToken.IsKeyword('procedure') or AToken.IsKeyword('function') then
+  begin
+    Header := '';
+    Depth := 0;
+    InHeader := True;
+  end;
+  Result := InHeader;
+  if not InHeader then
+  begin
+    Exit;
+  end;
+  Header := Header + ' ' + AToken.Text;
+  if AToken.IsSymbol('(') then
+  begin
+    Inc(Depth);
+  end
+  else if AToken.IsSymbol(')') then
+  begin
+    Dec(Depth);
+  end
+  else if (Depth = 0) and AToken.IsSymbol(';') then
+  begin
+    InHeader := False;
+  end;
+end;
+
+/// <summary>Indy: SSLOptions.VerifyMode := [];</summary>
+function IsClearedVerifyMode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := SameText(ATokens[AIndex].Text, 'VerifyMode') and ATokens[AIndex + 1].IsSymbol(':=') and
+    ATokens[AIndex + 2].IsSymbol('[') and ATokens[AIndex + 3].IsSymbol(']');
+end;
+
+/// <summary>X := True; bei AIndex?</summary>
+function IsTrueAssignment(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := ATokens[AIndex + 1].IsSymbol(':=') and SameText(ATokens[AIndex + 2].Text, 'True') and
+    (ATokens[AIndex + 3].IsSymbol(';') or ATokens[AIndex + 3].IsKeyword('end'));
+end;
+
+/// <summary>Steht die Anweisung bei AIndex für sich und ohne vorherige Bedingung im Rumpf?</summary>
+function IsUnconditional(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mInner: Integer;
+begin
+  if (StatementStart(ATokens, AIndex) <> AIndex) or ((AIndex > 0) and
+    IsAnyKeyword(ATokens[AIndex - 1], ['then', 'else'])) then
+  begin
+    Exit(False);
+  end;
+  // Steht vorher im Rumpf eine Bedingung, wird geprüft.
+  mInner := AIndex - 1;
+  while (mInner > 0) and not IsAnyKeyword(ATokens[mInner], ['procedure', 'function', 'if', 'case']) do
+  begin
+    Dec(mInner);
+  end;
+  Result := (mInner <= 0) or not IsAnyKeyword(ATokens[mInner], ['if', 'case']);
+end;
+
+/// <summary>Akzeptiert die Zuweisung bei AIndex im Prüf-Handler mit dem Kopf AHeader jedes Zertifikat?</summary>
+function AcceptsAll(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AHeader: string): Boolean;
+begin
+  Result := (IsOneOf(ATokens[AIndex].Text, ['Accepted', 'AAccepted']) and ContainsText(AHeader, 'Certificate')) or
+    (SameText(ATokens[AIndex].Text, 'Result') and (ContainsText(AHeader, 'TIdX509') or
+    ContainsText(AHeader, 'VerifyPeer')));
+end;
+
 procedure TSecurityTlsVerificationDisabledRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Inner, Start, Depth: Integer;
-  Header: string;
-  InHeader: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mTracker: THeaderTracker;
 begin
-  Tokens := CodeTokens(AContext);
-  Header := '';
-  Depth := 0;
-  InHeader := False;
-  for Index := 0 to High(Tokens) do
+  mTokens := CodeTokens(AContext);
+  mTracker := Default(THeaderTracker);
+  for mIndex := 0 to High(mTokens) do
   begin
-    // Kopf der aktuellen Routine merken (bis zum ersten ";" nach der Parameterliste).
-    if Tokens[Index].IsKeyword('procedure') or Tokens[Index].IsKeyword('function') then
-    begin
-      Header := '';
-      Depth := 0;
-      InHeader := True;
-    end;
-    if InHeader then
-    begin
-      Header := Header + ' ' + Tokens[Index].Text;
-      if Tokens[Index].IsSymbol('(') then
-      begin
-        Inc(Depth);
-      end
-      else if Tokens[Index].IsSymbol(')') then
-      begin
-        Dec(Depth);
-      end
-      else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
-      begin
-        InHeader := False;
-      end;
-      Continue;
-    end;
-    if Index + 3 > High(Tokens) then
+    if mTracker.Feed(mTokens[mIndex]) or (mIndex + 3 > High(mTokens)) then
     begin
       Continue;
     end;
-    // Indy: SSLOptions.VerifyMode := [];
-    if SameText(Tokens[Index].Text, 'VerifyMode') and Tokens[Index + 1].IsSymbol(':=') and
-      Tokens[Index + 2].IsSymbol('[') and Tokens[Index + 3].IsSymbol(']') then
+    if IsClearedVerifyMode(mTokens, mIndex) then
     begin
-      AReport.Add(TokenRange(Tokens[Index]), 'VerifyMode := [] schaltet die Prüfung des Serverzertifikats ab',
+      AReport.Add(TokenRange(mTokens[mIndex]), 'VerifyMode := [] schaltet die Prüfung des Serverzertifikats ab',
         TRuleConfidence.High);
-      Continue;
-    end;
+    end
     // Accepted := True bzw. Result := True ohne Bedingung in einem Prüf-Handler.
-    if Tokens[Index + 1].IsSymbol(':=') and SameText(Tokens[Index + 2].Text, 'True') and
-      (Tokens[Index + 3].IsSymbol(';') or Tokens[Index + 3].IsKeyword('end')) then
+    else if IsTrueAssignment(mTokens, mIndex) and IsUnconditional(mTokens, mIndex) and
+      AcceptsAll(mTokens, mIndex, mTracker.Header) then
     begin
-      Start := StatementStart(Tokens, Index);
-      if (Start <> Index) or ((Index > 0) and (Tokens[Index - 1].IsKeyword('then') or
-        Tokens[Index - 1].IsKeyword('else'))) then
-      begin
-        Continue;
-      end;
-      // Steht vorher im Rumpf eine Bedingung, wird geprüft.
-      Inner := Index - 1;
-      while (Inner > 0) and not (Tokens[Inner].IsKeyword('procedure') or Tokens[Inner].IsKeyword('function')) do
-      begin
-        if Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case') then
-        begin
-          Break;
-        end;
-        Dec(Inner);
-      end;
-      if (Inner > 0) and (Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case')) then
-      begin
-        Continue;
-      end;
-      if (IsOneOf(Tokens[Index].Text, ['Accepted', 'AAccepted']) and ContainsText(Header, 'Certificate')) or
-        (SameText(Tokens[Index].Text, 'Result') and (ContainsText(Header, 'TIdX509') or
-        ContainsText(Header, 'VerifyPeer'))) then
-      begin
-        AReport.Add(TokenRange(Tokens[Index]), 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung',
-          TRuleConfidence.High);
-      end;
+      AReport.Add(TokenRange(mTokens[mIndex]), 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung',
+        TRuleConfidence.High);
     end;
   end;
 end;
@@ -564,62 +642,74 @@ begin
   Result := TRuleDescriptor.Create('security-insecure-http', TRuleSeverity.Hint, 'Unverschlüsselte http://-URL');
 end;
 
+/// <summary>Gilt das http:// bei AOffset nicht als Ziel (kein Rechnername, Ausnahme aus HttpExceptions)?</summary>
+function IsExceptedUrl(const ALower: string; AOffset: Integer): Boolean;
+var
+  mException: string;
+begin
+  Result := not CharInSet(Copy(ALower + ' ', AOffset + Length('http://'), 1)[1], ['a'..'z', '0'..'9', '[']);
+  for mException in HttpExceptions do
+  begin
+    if Copy(ALower, AOffset, Length(mException)) = mException then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Erste URL mit Rechnernamen: Ein bloßes 'http://' (StartsText('http://', Url), Hilfetext "http:// oder
+/// https://") nennt kein Ziel (#1109). 0 ohne.</summary>
+function FirstHostUrl(const ALower: string): Integer;
+begin
+  Result := Pos('http://', ALower);
+  while (Result > 0) and IsExceptedUrl(ALower, Result) do
+  begin
+    Result := PosEx('http://', ALower, Result + 1);
+  end;
+end;
+
+/// <summary>Meldet das http:// bei AOffset im Literal AToken, einzeilig mit Korrektur.</summary>
+procedure ReportHttp(const AReport: IRuleReport; const AToken: TPascalToken; AOffset: Integer);
+var
+  mStart: TTextPosition;
+  mRange: TTextRange;
+begin
+  // Einzeilige Strings: Spalte des "http://" im Token.
+  if AToken.StartPos.Line <> AToken.EndPos.Line then
+  begin
+    AReport.Add(TokenRange(AToken), 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium);
+    Exit;
+  end;
+  mStart := TTextPosition.Create(AToken.StartPos.Line, AToken.StartPos.Character + AOffset - 1);
+  mRange := TTextRange.Create(mStart.Line, mStart.Character, mStart.Line, mStart.Character + Length('http://'));
+  AReport.Add(mRange, 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium,
+    [TRuleFix.Create('http:// durch https:// ersetzen', [TRuleEdit.Create(mRange, Copy(AToken.Text, AOffset, 4) +
+    's://')])]);
+end;
+
 procedure TSecurityInsecureHttpRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Offset: Integer;
-  Lower: string;
-  Excepted: Boolean;
-  Exception_: string;
-  Start: TTextPosition;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mOffset: Integer;
+  mLower: string;
 begin
-  Tokens := CodeTokens(AContext);
-  for Index := 0 to High(Tokens) do
+  mTokens := CodeTokens(AContext);
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+    if mTokens[mIndex].Kind <> TPascalTokenKind.StringLiteral then
     begin
       Continue;
     end;
-    Lower := LowerCase(Tokens[Index].Text);
-    if Pos('xmlns', Lower) > 0 then
+    mLower := LowerCase(mTokens[mIndex].Text);
+    mOffset := 0;
+    if Pos('xmlns', mLower) = 0 then
     begin
-      Continue;
+      mOffset := FirstHostUrl(mLower);
     end;
-    // Erste URL mit Rechnernamen: Ein bloßes 'http://' (StartsText('http://', Url), Hilfetext "http:// oder
-    // https://") nennt kein Ziel (#1109).
-    Offset := Pos('http://', Lower);
-    while Offset > 0 do
+    if mOffset > 0 then
     begin
-      Excepted := not CharInSet(Copy(Lower + ' ', Offset + Length('http://'), 1)[1], ['a'..'z', '0'..'9', '[']);
-      for Exception_ in HttpExceptions do
-      begin
-        if Copy(Lower, Offset, Length(Exception_)) = Exception_ then
-        begin
-          Excepted := True;
-        end;
-      end;
-      if not Excepted then
-      begin
-        Break;
-      end;
-      Offset := PosEx('http://', Lower, Offset + 1);
+      ReportHttp(AReport, mTokens[mIndex], mOffset);
     end;
-    if Offset = 0 then
-    begin
-      Continue;
-    end;
-    // Einzeilige Strings: Spalte des "http://" im Token.
-    if Tokens[Index].StartPos.Line <> Tokens[Index].EndPos.Line then
-    begin
-      AReport.Add(TokenRange(Tokens[Index]), 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium);
-      Continue;
-    end;
-    Start := TTextPosition.Create(Tokens[Index].StartPos.Line, Tokens[Index].StartPos.Character + Offset - 1);
-    AReport.Add(TTextRange.Create(Start.Line, Start.Character, Start.Line, Start.Character + Length('http://')),
-      'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium,
-      [TRuleFix.Create('http:// durch https:// ersetzen',
-      [TRuleEdit.Create(TTextRange.Create(Start.Line, Start.Character, Start.Line, Start.Character + Length('http://')),
-      Copy(Tokens[Index].Text, Offset, 4) + 's://')])]);
   end;
 end;
 
@@ -683,77 +773,145 @@ const
   // Bezeichner, die Benutzereingaben liefern: TEdit.Text, TMemo.Lines, ParamStr, Webanfragen.
   UserInputs: array[0..5] of string = ('Text', 'Lines', 'ParamStr', 'Request', 'QueryFields', 'ContentFields');
 
+/// <summary>Änderung der Klammertiefe: +1 bei "(" und "[", -1 bei ")" und "]".</summary>
+function BracketDelta(const AToken: TPascalToken): Integer;
+begin
+  Result := 0;
+  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Result := 1;
+  end
+  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Steht bei AIndex ein Konstantenname (Name = bzw. Name: in einem Konstantenabschnitt)?</summary>
+function IsConstantName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
+    (ATokens[AIndex + 1].IsSymbol('=') or ATokens[AIndex + 1].IsSymbol(':')) and
+    ((AIndex = 0) or not ATokens[AIndex - 1].IsSymbol('.'));
+end;
+
 /// <summary>Namen aus const- und resourcestring-Abschnitten der Datei.</summary>
 function ConstantNames(const ATokens: TArray<TPascalToken>): TArray<string>;
 var
-  Index, Depth: Integer;
-  InConst: Boolean;
+  mIndex, mDepth, mDelta: Integer;
+  mInConst: Boolean;
 begin
   Result := nil;
-  InConst := False;
-  Depth := 0;
-  for Index := 0 to High(ATokens) - 1 do
+  mInConst := False;
+  mDepth := 0;
+  for mIndex := 0 to High(ATokens) - 1 do
   begin
     // "const" in Parameterlisten ist kein Konstantenabschnitt.
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-    begin
-      Inc(Depth);
-    end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-    begin
-      Dec(Depth);
-    end
-    else if Depth > 0 then
+    mDelta := BracketDelta(ATokens[mIndex]);
+    mDepth := mDepth + mDelta;
+    if (mDelta <> 0) or (mDepth > 0) then
     begin
       Continue;
-    end
-    else if ATokens[Index].IsKeyword('const') or ATokens[Index].IsKeyword('resourcestring') then
+    end;
+    if IsAnyKeyword(ATokens[mIndex], ['const', 'resourcestring']) then
     begin
-      InConst := True;
+      mInConst := True;
     end
-    else if ATokens[Index].IsKeyword('var') or ATokens[Index].IsKeyword('type') or
-      ATokens[Index].IsKeyword('begin') or ATokens[Index].IsKeyword('procedure') or
-      ATokens[Index].IsKeyword('function') or ATokens[Index].IsKeyword('implementation') then
+    else if IsAnyKeyword(ATokens[mIndex], ['var', 'type', 'begin', 'procedure', 'function', 'implementation']) then
     begin
-      InConst := False;
+      mInConst := False;
     end
-    else if InConst and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
-      (ATokens[Index + 1].IsSymbol('=') or ATokens[Index + 1].IsSymbol(':')) and
-      ((Index = 0) or not ATokens[Index - 1].IsSymbol('.')) then
+    else if mInConst and IsConstantName(ATokens, mIndex) then
     begin
-      Result := Result + [ATokens[Index].Text];
+      Result := Result + [ATokens[mIndex].Text];
     end;
   end;
+end;
+
+/// <summary>Enthält AText (klein) das Wort AWord als ganzes Wort?</summary>
+function ContainsWord(const AText, AWord: string): Boolean;
+var
+  mStart, mAfter: Integer;
+begin
+  mStart := Pos(AWord, AText);
+  while mStart > 0 do
+  begin
+    mAfter := mStart + Length(AWord);
+    if ((mStart = 1) or not TTextChars.IsAsciiIdentChar(AText[mStart - 1])) and ((mAfter > Length(AText)) or
+      not TTextChars.IsAsciiIdentChar(AText[mAfter])) then
+    begin
+      Exit(True);
+    end;
+    mStart := PosEx(AWord, AText, mStart + 1);
+  end;
+  Result := False;
+end;
+
+/// <summary>Enthält AText (klein) ein SQL-Schlüsselwort als ganzes Wort?</summary>
+function HasSqlKeyword(const AText: string): Boolean;
+var
+  mWord: string;
+begin
+  for mWord in SqlKeywords do
+  begin
+    if ContainsWord(AText, mWord) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Enthält ein String-Literal in ATokens[AFirst..ALast] ein SQL-Schlüsselwort als ganzes Wort?</summary>
 function HasSqlLiteral(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
-  Index, Start, After: Integer;
-  Text, Word: string;
+  mIndex: Integer;
 begin
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if ATokens[Index].Kind = TPascalTokenKind.StringLiteral then
+    if (ATokens[mIndex].Kind = TPascalTokenKind.StringLiteral) and
+      HasSqlKeyword(LowerCase(LiteralValue(ATokens[mIndex]))) then
     begin
-      Text := LowerCase(LiteralValue(ATokens[Index]));
-      for Word in SqlKeywords do
-      begin
-        Start := Pos(Word, Text);
-        while Start > 0 do
-        begin
-          After := Start + Length(Word);
-          if ((Start = 1) or not CharInSet(Text[Start - 1], ['a'..'z', '0'..'9', '_'])) and
-            ((After > Length(Text)) or not CharInSet(Text[After], ['a'..'z', '0'..'9', '_'])) then
-          begin
-            Exit(True);
-          end;
-          Start := PosEx(Word, Text, Start + 1);
-        end;
-      end;
+      Exit(True);
     end;
   end;
   Result := False;
+end;
+
+type
+  /// <summary>Befund über einen SQL-Ausdruck: verkettet, mit Variablen, aus Benutzereingaben.</summary>
+  TSqlComposition = record
+    Joined: Boolean;
+    Variable: Boolean;
+    FromInput: Boolean;
+  end;
+
+/// <summary>Bezeichner bei AIndex im SQL-Ausdruck bis ALast auswerten; überspringt sichere Umwandlungen.</summary>
+procedure NoteSqlIdentifier(const ATokens: TArray<TPascalToken>; var AIndex: Integer; ALast: Integer;
+  const AConstants: TArray<string>; var AComposition: TSqlComposition);
+var
+  mText: string;
+  mClose: Integer;
+begin
+  mText := ATokens[AIndex].Text;
+  if IsOneOf(mText, SafeConversions) and (AIndex < ALast) and ATokens[AIndex + 1].IsSymbol('(') then
+  begin
+    // IntToStr(Id), QuotedStr(Name): Inhalt überspringen.
+    mClose := MatchingParen(ATokens, AIndex + 1);
+    if mClose > 0 then
+    begin
+      AIndex := mClose;
+    end;
+  end
+  else if IsOneOf(mText, ['Format', 'Concat']) then
+  begin
+    AComposition.Joined := True;
+  end
+  else if not IsOneOf(mText, AConstants) and not IsOneOf(mText, ['string', 'nil', 'sLineBreak']) then
+  begin
+    AComposition.Variable := True;
+    AComposition.FromInput := AComposition.FromInput or IsOneOf(mText, UserInputs);
+  end;
 end;
 
 /// <summary>Ist der SQL-Ausdruck ATokens[AFirst..ALast] aus Nicht-Konstanten zusammengesetzt?
@@ -761,118 +919,106 @@ end;
 function IsComposedSql(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
   const AConstants: TArray<string>; out AFromInput: Boolean): Boolean;
 var
-  Index, Close: Integer;
-  Joined, Variable: Boolean;
+  mIndex: Integer;
+  mComposition: TSqlComposition;
 begin
-  Joined := False;
-  Variable := False;
-  AFromInput := False;
-  Index := AFirst;
-  while Index <= ALast do
+  mComposition := Default(TSqlComposition);
+  mIndex := AFirst;
+  while mIndex <= ALast do
   begin
-    if ATokens[Index].IsSymbol('+') then
+    if ATokens[mIndex].IsSymbol('+') then
     begin
-      Joined := True;
+      mComposition.Joined := True;
     end
-    else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
+    else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      if IsOneOf(ATokens[Index].Text, SafeConversions) and (Index < ALast) and ATokens[Index + 1].IsSymbol('(') then
-      begin
-        // IntToStr(Id), QuotedStr(Name): Inhalt überspringen.
-        Close := MatchingParen(ATokens, Index + 1);
-        if Close > 0 then
-        begin
-          Index := Close;
-        end;
-      end
-      else if IsOneOf(ATokens[Index].Text, ['Format', 'Concat']) then
-      begin
-        Joined := True;
-      end
-      else if not IsOneOf(ATokens[Index].Text, AConstants) and
-        not IsOneOf(ATokens[Index].Text, ['string', 'nil', 'sLineBreak']) then
-      begin
-        Variable := True;
-        if IsOneOf(ATokens[Index].Text, UserInputs) then
-        begin
-          AFromInput := True;
-        end;
-      end;
+      NoteSqlIdentifier(ATokens, mIndex, ALast, AConstants, mComposition);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Joined and Variable;
+  AFromInput := mComposition.FromInput;
+  Result := mComposition.Joined and mComposition.Variable;
+end;
+
+/// <summary>Steht bei AIndex AOwner.AName (SQL.Text, SQL.Add)?</summary>
+function IsMemberOf(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AOwner, AName: string): Boolean;
+begin
+  Result := SameText(ATokens[AIndex].Text, AName) and (AIndex >= 2) and ATokens[AIndex - 1].IsSymbol('.') and
+    SameText(ATokens[AIndex - 2].Text, AOwner);
+end;
+
+/// <summary>SQL.Text := …, CommandText := …</summary>
+function IsSqlTextTarget(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (IsMemberOf(ATokens, AIndex, 'SQL', 'Text') or SameText(ATokens[AIndex].Text, 'CommandText')) and
+    ATokens[AIndex + 1].IsSymbol(':=');
+end;
+
+/// <summary>SQL.Add(…), ExecSQL(…), Open(…)</summary>
+function IsSqlCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := ATokens[AIndex + 1].IsSymbol('(') and (IsMemberOf(ATokens, AIndex, 'SQL', 'Add') or
+    (IsOneOf(ATokens[AIndex].Text, SqlCalls) and (AIndex >= 1) and ATokens[AIndex - 1].IsSymbol('.')));
+end;
+
+/// <summary>Bereich des SQL-Texts zur Senke bei AIndex; False ohne.</summary>
+function SqlRange(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AFirst, ALast: Integer): Boolean;
+var
+  mClose: Integer;
+  mArgs: TArray<TArray<Integer>>;
+begin
+  AFirst := -1;
+  ALast := -1;
+  if IsSqlTextTarget(ATokens, AIndex) then
+  begin
+    AFirst := AIndex + 2;
+    ALast := StatementEnd(ATokens, AFirst) - 1;
+  end
+  else if IsSqlCall(ATokens, AIndex) then
+  begin
+    mClose := MatchingParen(ATokens, AIndex + 1);
+    if mClose >= 0 then
+    begin
+      mArgs := Arguments(ATokens, AIndex + 1, mClose);
+    end;
+    // Nur das erste Argument ist der SQL-Text; weitere sind Parameterwerte.
+    if (mClose >= 0) and (mArgs <> nil) then
+    begin
+      AFirst := mArgs[0][0];
+      ALast := mArgs[0][1];
+    end;
+  end;
+  Result := (AFirst >= 0) and (ALast >= AFirst);
 end;
 
 procedure TSecuritySqlInjectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Constants: TArray<string>;
-  Index, First, Last, Close: Integer;
-  Sink: TPascalToken;
-  FromInput: Boolean;
-  Confidence: TRuleConfidence;
-  Argument: TArray<Integer>;
+  mTokens: TArray<TPascalToken>;
+  mConstants: TArray<string>;
+  mIndex, mFirst, mLast: Integer;
+  mFromInput: Boolean;
+  mConfidence: TRuleConfidence;
 begin
-  Tokens := CodeTokens(AContext);
-  Constants := ConstantNames(Tokens);
-  for Index := 0 to High(Tokens) - 2 do
+  mTokens := CodeTokens(AContext);
+  mConstants := ConstantNames(mTokens);
+  for mIndex := 0 to High(mTokens) - 2 do
   begin
-    if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+    if (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or not SqlRange(mTokens, mIndex, mFirst, mLast) or
+      not IsComposedSql(mTokens, mFirst, mLast, mConstants, mFromInput) then
     begin
       Continue;
     end;
-    First := -1;
-    Last := -1;
-    Sink := Tokens[Index];
-    // SQL.Text := …, CommandText := …
-    if ((SameText(Tokens[Index].Text, 'Text') and (Index >= 2) and Tokens[Index - 1].IsSymbol('.') and
-      SameText(Tokens[Index - 2].Text, 'SQL')) or SameText(Tokens[Index].Text, 'CommandText')) and
-      Tokens[Index + 1].IsSymbol(':=') then
-    begin
-      First := Index + 2;
-      Last := StatementEnd(Tokens, First) - 1;
-    end
-    // SQL.Add(…), ExecSQL(…), Open(…)
-    else if Tokens[Index + 1].IsSymbol('(') and ((SameText(Tokens[Index].Text, 'Add') and (Index >= 2) and
-      Tokens[Index - 1].IsSymbol('.') and SameText(Tokens[Index - 2].Text, 'SQL')) or
-      (IsOneOf(Tokens[Index].Text, SqlCalls) and (Index >= 1) and Tokens[Index - 1].IsSymbol('.'))) then
-    begin
-      Close := MatchingParen(Tokens, Index + 1);
-      if Close < 0 then
-      begin
-        Continue;
-      end;
-      for Argument in Arguments(Tokens, Index + 1, Close) do
-      begin
-        // Nur das erste Argument ist der SQL-Text; weitere sind Parameterwerte.
-        First := Argument[0];
-        Last := Argument[1];
-        Break;
-      end;
-    end;
-    if (First < 0) or (Last < First) then
+    if IsOneOf(mTokens[mIndex].Text, GenericSqlCalls) and not HasSqlLiteral(mTokens, mFirst, mLast) then
     begin
       Continue;
     end;
-    if not IsComposedSql(Tokens, First, Last, Constants, FromInput) then
+    mConfidence := TRuleConfidence.Medium;
+    if mFromInput then
     begin
-      Continue;
+      mConfidence := TRuleConfidence.High;
     end;
-    if IsOneOf(Sink.Text, GenericSqlCalls) and not HasSqlLiteral(Tokens, First, Last) then
-    begin
-      Continue;
-    end;
-    if FromInput then
-    begin
-      Confidence := TRuleConfidence.High;
-    end
-    else
-    begin
-      Confidence := TRuleConfidence.Medium;
-    end;
-    AReport.Add(TokenRange(Sink), 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL einschleusen. ' +
-      'Parameter verwenden (:Name, ParamByName)', Confidence);
+    AReport.Add(TokenRange(mTokens[mIndex]), 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL ' +
+      'einschleusen. Parameter verwenden (:Name, ParamByName)', mConfidence);
   end;
 end;
 

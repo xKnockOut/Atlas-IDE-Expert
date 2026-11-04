@@ -135,12 +135,53 @@ begin
   end;
 end;
 
+/// <summary>Gruppe der Ereignisarten mit „häufige ausnehmen“ (AExcluded) oben in ADialog.</summary>
+function CreateCategories(ADialog: TAtlasEventBreakDialog; const AExcluded: string): TGroupBox;
+var
+  mCategory: TAtlasEventCategory;
+  mTop: Integer;
+begin
+  Result := TGroupBox.Create(ADialog);
+  Result.Parent := ADialog;
+  Result.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCategories);
+  Result.SetBounds(ADialog.ScaleValue(DialogGap), ADialog.ScaleValue(DialogGap),
+    ADialog.ClientWidth - 2 * ADialog.ScaleValue(DialogGap), 0);
+  mTop := ADialog.ScaleValue(20);
+  for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+  begin
+    ADialog.FCategories[mCategory] := ADialog.AddCheck(Result, CategoryText(mCategory));
+    ADialog.FCategories[mCategory].Top := mTop;
+    Inc(mTop, ADialog.ScaleValue(22));
+  end;
+  ADialog.FFrequent := ADialog.AddCheck(Result, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFrequent,
+    [AExcluded]));
+  ADialog.FFrequent.Top := mTop + ADialog.ScaleValue(4);
+  Result.Height := ADialog.FFrequent.Top + ADialog.ScaleValue(30);
+end;
+
+/// <summary>Leiste mit „OK“ und „Abbrechen“ unten in ADialog.</summary>
+function CreateButtons(ADialog: TAtlasEventBreakDialog): TPanel;
+begin
+  Result := TPanel.Create(ADialog);
+  Result.Parent := ADialog;
+  Result.Align := alBottom;
+  Result.Height := ADialog.ScaleValue(44);
+  Result.BevelOuter := bvNone;
+  ADialog.FCancel := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel),
+    ADialog.CancelClick);
+  ADialog.FCancel.Cancel := True;
+  ADialog.FCancel.Left := Result.ClientWidth - ADialog.FCancel.Width - ADialog.ScaleValue(DialogGap);
+  ADialog.FOk := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk),
+    ADialog.OkClick);
+  ADialog.FOk.Default := True;
+  ADialog.FOk.Left := ADialog.FCancel.Left - ADialog.FOk.Width - ADialog.ScaleValue(DialogGap);
+end;
+
 { TAtlasEventBreakDialog }
 
 constructor TAtlasEventBreakDialog.CreateDialog(AOwner: TComponent; const AChoice: TAtlasEventChoice;
   const AForms: TArray<string>; const AExcluded: string; const ACount: TAtlasEventBreakCount);
 var
-  Category: TAtlasEventCategory;
   Group: TGroupBox;
   Bottom: TPanel;
   Heading: TLabel;
@@ -158,20 +199,7 @@ begin
   Font.Size := 9;
   ClientWidth := ScaleValue(DialogWidth);
 
-  Group := TGroupBox.Create(Self);
-  Group.Parent := Self;
-  Group.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCategories);
-  Group.SetBounds(ScaleValue(DialogGap), ScaleValue(DialogGap), ClientWidth - 2 * ScaleValue(DialogGap), 0);
-  Top := ScaleValue(20);
-  for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
-  begin
-    FCategories[Category] := AddCheck(Group, CategoryText(Category));
-    FCategories[Category].Top := Top;
-    Inc(Top, ScaleValue(22));
-  end;
-  FFrequent := AddCheck(Group, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFrequent, [AExcluded]));
-  FFrequent.Top := Top + ScaleValue(4);
-  Group.Height := FFrequent.Top + ScaleValue(30);
+  Group := CreateCategories(Self, AExcluded);
 
   Heading := TLabel.Create(Self);
   Heading.Parent := Self;
@@ -200,17 +228,7 @@ begin
   FCount.SetBounds(ScaleValue(DialogGap), FOne.Top + ScaleValue(32), ClientWidth - 2 * ScaleValue(DialogGap), 0);
   FCount.AutoSize := True;
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
-  FCancel := AddButton(Bottom, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel), CancelClick);
-  FCancel.Cancel := True;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(DialogGap);
-  FOk := AddButton(Bottom, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk), OkClick);
-  FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(DialogGap);
+  Bottom := CreateButtons(Self);
   ClientHeight := FCount.Top + ScaleValue(28) + Bottom.Height;
 end;
 

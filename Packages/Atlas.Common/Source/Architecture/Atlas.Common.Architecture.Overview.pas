@@ -342,7 +342,10 @@ uses
   System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Architecture.Louvain;
+  Atlas.Common.Architecture.Louvain,
+  Atlas.Common.Architecture.Overview.Foundations,
+  Atlas.Common.Architecture.Overview.Naming,
+  Atlas.Common.Architecture.Overview.Splitting;
 
 function ContainsInt(AValue: Integer; const AValues: TArray<Integer>): Boolean;
 var
@@ -356,6 +359,180 @@ begin
     end;
   end;
   Result := False;
+end;
+
+/// <summary>AUnit (Nummer AIndex) ist zentraler als AOther (Nummer AOtherIndex): mehr Verbindungen insgesamt,
+/// dann mehr direkte, dann die kleinere Nummer.</summary>
+function MoreCentral(const AUnit, AOther: TOverviewUnit; AIndex, AOtherIndex: Integer): Boolean;
+begin
+  if AUnit.Total <> AOther.Total then
+  begin
+    Exit(AUnit.Total > AOther.Total);
+  end;
+  if AUnit.Direct <> AOther.Direct then
+  begin
+    Exit(AUnit.Direct > AOther.Direct);
+  end;
+  Result := AIndex < AOtherIndex;
+end;
+
+/// <summary>Die Nummern 0..ACount-1.</summary>
+function AllIndices(ACount: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, ACount);
+  for mIndex := 0 to ACount - 1 do
+  begin
+    Result[mIndex] := mIndex;
+  end;
+end;
+
+/// <summary>AMembers nach Zentralität sortieren: die zentralste Unit zuerst.</summary>
+procedure SortByCentrality(const AUnits: TArray<TOverviewUnit>; var AMembers: TArray<Integer>);
+var
+  mUnits: TArray<TOverviewUnit>;
+begin
+  mUnits := AUnits;
+  TArray.Sort<Integer>(AMembers, TComparer<Integer>.Construct(
+    function(const ALeft, ARight: Integer): Integer
+    begin
+      if ALeft = ARight then
+      begin
+        Result := 0;
+      end
+      else if MoreCentral(mUnits[ALeft], mUnits[ARight], ALeft, ARight) then
+      begin
+        Result := -1;
+      end
+      else
+      begin
+        Result := 1;
+      end;
+    end));
+end;
+
+/// <summary>Gewicht einer Kante für Louvain: interface schwerer als implementation.</summary>
+function EdgeWeight(const AEdge: TOverviewEdge): Integer;
+begin
+  if AEdge.Section = TUsesSection.Interface_ then
+  begin
+    Result := TArchitectureAnalyzer.InterfaceWeight;
+  end
+  else
+  begin
+    Result := TArchitectureAnalyzer.ImplementationWeight;
+  end;
+end;
+
+/// <summary>Die Kanten als Louvain-Kanten (A = Quelle, B = Ziel), in derselben Reihenfolge.</summary>
+function LouvainEdges(const AEdges: TArray<TOverviewEdge>): TArray<TLouvainEdge>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AEdges));
+  for mIndex := 0 to High(AEdges) do
+  begin
+    Result[mIndex].A := AEdges[mIndex].Source;
+    Result[mIndex].B := AEdges[mIndex].Target;
+    Result[mIndex].Weight := EdgeWeight(AEdges[mIndex]);
+  end;
+end;
+
+/// <summary>Zahl der Gruppen: größte Nummer + 1.</summary>
+function CommunityCount(const ACommunities: TArray<Integer>): Integer;
+var
+  mMember: Integer;
+begin
+  Result := 0;
+  for mMember in ACommunities do
+  begin
+    Result := Max(Result, mMember + 1);
+  end;
+end;
+
+/// <summary>Units ohne Kante bilden bei Louvain je eine eigene Gruppe; sie kommen in eine Sammelgruppe. Danach
+/// fortlaufend nummeriert. Ergebnis: Nummer der Sammelgruppe; -1 ohne.</summary>
+function MergeIsolated(const AEdges: TArray<TOverviewEdge>; var ACommunities: TArray<Integer>): Integer;
+var
+  mDegree: TArray<Integer>;
+  mEdge: TOverviewEdge;
+  mIndex, mFirst: Integer;
+begin
+  SetLength(mDegree, Length(ACommunities));
+  for mEdge in AEdges do
+  begin
+    Inc(mDegree[mEdge.Source]);
+    Inc(mDegree[mEdge.Target]);
+  end;
+  mFirst := -1;
+  for mIndex := 0 to High(ACommunities) do
+  begin
+    if mDegree[mIndex] <> 0 then
+    begin
+      Continue;
+    end;
+    if mFirst < 0 then
+    begin
+      mFirst := mIndex;
+    end;
+    ACommunities[mIndex] := ACommunities[mFirst];
+  end;
+  TFoundationSeparation.Renumber(ACommunities);
+  Result := -1;
+  if mFirst >= 0 then
+  begin
+    Result := ACommunities[mFirst];
+  end;
+end;
+
+/// <summary>Gruppe der ersten Fundament-Unit (#1365); -1 ohne.</summary>
+function FoundationGroup(const AInFoundation: TArray<Boolean>; const ACommunities: TArray<Integer>): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Min(High(AInFoundation), High(ACommunities)) do
+  begin
+    if AInFoundation[mIndex] then
+    begin
+      Exit(ACommunities[mIndex]);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Units je Gruppe, nach Nummer (= nach Name).</summary>
+function GroupsOf(const ACommunities: TArray<Integer>): TArray<TArray<Integer>>;
+var
+  mSizes: TArray<Integer>;
+  mIndex, mMember: Integer;
+begin
+  SetLength(mSizes, CommunityCount(ACommunities));
+  for mMember in ACommunities do
+  begin
+    Inc(mSizes[mMember]);
+  end;
+  SetLength(Result, Length(mSizes));
+  for mIndex := 0 to High(mSizes) do
+  begin
+    SetLength(Result[mIndex], mSizes[mIndex]);
+    mSizes[mIndex] := 0;
+  end;
+  for mIndex := 0 to High(ACommunities) do
+  begin
+    Result[ACommunities[mIndex]][mSizes[ACommunities[mIndex]]] := mIndex;
+    Inc(mSizes[ACommunities[mIndex]]);
+  end;
+end;
+
+/// <summary>Zusammenhalt: Kanten innen / (innen + nach außen); 1 ohne Kanten.</summary>
+function SubsystemCohesion(const ASubsystem: TOverviewSubsystem): Double;
+begin
+  Result := 1;
+  if ASubsystem.InnerEdges + ASubsystem.OuterEdges > 0 then
+  begin
+    Result := ASubsystem.InnerEdges / (ASubsystem.InnerEdges + ASubsystem.OuterEdges);
+  end;
 end;
 
 { TArchitectureGrouping }
@@ -503,49 +680,71 @@ begin
   end;
 end;
 
+/// <summary>Nummern der Zyklen, zu deren Komponente AUnit gehört.</summary>
+function CyclesWith(const ACycles: TArray<TOverviewCycle>; AUnit: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ACycles) do
+  begin
+    if ContainsInt(AUnit, ACycles[mIndex].Component) then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Nummern der Querverbindungen, die bei AUnit beginnen oder enden.</summary>
+function CrossLinksWith(const ALinks: TArray<TOverviewCrossLink>; AUnit: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ALinks) do
+  begin
+    if (ALinks[mIndex].Edge.Source = AUnit) or (ALinks[mIndex].Edge.Target = AUnit) then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Nummer des (letzten) Ausreißers zu AUnit; -1 ohne.</summary>
+function OutlierOf(const AOutliers: TArray<TOverviewOutlier>; AUnit: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AOutliers) do
+  begin
+    if AOutliers[mIndex].Unit_ = AUnit then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
 function TArchitectureOverview.Profile(AUnit: Integer): TOverviewProfile;
 var
-  Edge: TOverviewEdge;
-  Index, Member: Integer;
+  mEdge: TOverviewEdge;
 begin
   Result := Default(TOverviewProfile);
   Result.Unit_ := AUnit;
-  Result.Outlier := -1;
-  for Edge in Edges do
+  for mEdge in Edges do
   begin
-    if (Edge.Source = AUnit) and not ContainsInt(Edge.Target, Result.DependsOn) then
+    if (mEdge.Source = AUnit) and not ContainsInt(mEdge.Target, Result.DependsOn) then
     begin
-      Result.DependsOn := Result.DependsOn + [Edge.Target];
+      Result.DependsOn := Result.DependsOn + [mEdge.Target];
     end;
-    if (Edge.Target = AUnit) and not ContainsInt(Edge.Source, Result.UsedBy) then
+    if (mEdge.Target = AUnit) and not ContainsInt(mEdge.Source, Result.UsedBy) then
     begin
-      Result.UsedBy := Result.UsedBy + [Edge.Source];
+      Result.UsedBy := Result.UsedBy + [mEdge.Source];
     end;
   end;
-  for Index := 0 to High(Cycles) do
-  begin
-    for Member in Cycles[Index].Component do
-    begin
-      if Member = AUnit then
-      begin
-        Result.Cycles := Result.Cycles + [Index];
-      end;
-    end;
-  end;
-  for Index := 0 to High(CrossLinks) do
-  begin
-    if (CrossLinks[Index].Edge.Source = AUnit) or (CrossLinks[Index].Edge.Target = AUnit) then
-    begin
-      Result.CrossLinks := Result.CrossLinks + [Index];
-    end;
-  end;
-  for Index := 0 to High(Outliers) do
-  begin
-    if Outliers[Index].Unit_ = AUnit then
-    begin
-      Result.Outlier := Index;
-    end;
-  end;
+  Result.Cycles := CyclesWith(Cycles, AUnit);
+  Result.CrossLinks := CrossLinksWith(CrossLinks, AUnit);
+  Result.Outlier := OutlierOf(Outliers, AUnit);
 end;
 
 function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
@@ -636,28 +835,6 @@ begin
   Result := Copy(Parts, 0, Length(Parts) - 1);
 end;
 
-/// <summary>Gruppennummern fortlaufend ab 0 in der Reihenfolge des ersten Auftretens.</summary>
-procedure Renumber(var AValues: TArray<Integer>);
-var
-  Map: TDictionary<Integer, Integer>;
-  Index, Number: Integer;
-begin
-  Map := TDictionary<Integer, Integer>.Create;
-  try
-    for Index := 0 to High(AValues) do
-    begin
-      if not Map.TryGetValue(AValues[Index], Number) then
-      begin
-        Number := Map.Count;
-        Map.Add(AValues[Index], Number);
-      end;
-      AValues[Index] := Number;
-    end;
-  finally
-    Map.Free;
-  end;
-end;
-
 type
   TAnalysis = class
   private
@@ -673,10 +850,6 @@ type
     FPartKey: TArray<string>;
     /// <summary>Je Teilsystem seine Familie: Nummer des ersten Teils des ursprünglichen Teilsystems (#1364).</summary>
     FFamily: TArray<Integer>;
-    /// <summary>Je Unit die Nummern ihrer Kanten in FResult.Edges (beide Richtungen, ohne Schleifen).</summary>
-    FIncident: TArray<TArray<Integer>>;
-    /// <summary>Je Unit die Stelle im gerade untersuchten Teilsystem; -1 außerhalb.</summary>
-    FLocal: TArray<Integer>;
     /// <summary>Je Unit: gehört ins Teilsystem „Fundament“ (#1365, nur Foundations = Separate).</summary>
     FInFoundation: TArray<Boolean>;
     /// <summary>Nummer des Teilsystems „Fundament“; -1 ohne.</summary>
@@ -686,21 +859,27 @@ type
     procedure Measure;
     procedure Group;
     procedure SeparateFoundations(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>);
-    function InFoundation(AUnit: Integer): Boolean;
     function IsFoundation(ASubsystem: Integer): Boolean;
-    procedure Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
-    function NeedsSplit(const AMembers: TArray<Integer>): Boolean;
-    function SplitMembers(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
-    function SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
+    procedure Split(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>; AIsolated: Integer);
+    procedure BuildSubsystems(const ACommunities: TArray<Integer>);
+    procedure CountSubsystemEdges;
+    procedure FinishSubsystems(AIsolated: Integer);
     procedure NameSubsystems;
+    procedure NameSubsystem(AIndex: Integer; const AParts: TArray<TArray<string>>;
+      const AFamilies: TArray<TArray<Integer>>; const AGlobal: TDictionary<string, Integer>);
+    function NameOf(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>;
+      const ACounts: TDictionary<string, Integer>; ATotal: Integer; out AKey: string): string;
     procedure AssignColors;
     procedure CollectAssignments;
     procedure FindOutliers;
     procedure CollectCycles;
     procedure CollectCrossLinks;
+    function CrossLinkOf(AUnit: Integer; const AGraphEdge: TUsesEdge; const APairs: TArray<TArray<Integer>>;
+      out ALink: TOverviewCrossLink): Boolean;
+    function EdgeRival(const AAssignment: TOverviewAssignment; AOwn: Integer): Integer;
+    function NamespaceRival(AUnit, AOwn: Integer): Integer;
     procedure SortSubsystems;
     function Locate(var AEdge: TOverviewEdge; const AGraphEdge: TUsesEdge): Boolean;
-    function Weight(const AEdge: TOverviewEdge): Integer;
   public
     constructor Create(AGraph: TUsesGraph; ALocator: TUsesLocator; const AGrouping: TArchitectureGrouping);
     function Run(ACentralCount: Integer): TArchitectureOverview;
@@ -715,26 +894,9 @@ begin
   FFoundation := -1;
 end;
 
-function TAnalysis.InFoundation(AUnit: Integer): Boolean;
-begin
-  Result := (AUnit >= 0) and (AUnit < Length(FInFoundation)) and FInFoundation[AUnit];
-end;
-
 function TAnalysis.IsFoundation(ASubsystem: Integer): Boolean;
 begin
   Result := (FFoundation >= 0) and (ASubsystem = FFoundation);
-end;
-
-function TAnalysis.Weight(const AEdge: TOverviewEdge): Integer;
-begin
-  if AEdge.Section = TUsesSection.Interface_ then
-  begin
-    Result := TArchitectureAnalyzer.InterfaceWeight;
-  end
-  else
-  begin
-    Result := TArchitectureAnalyzer.ImplementationWeight;
-  end;
 end;
 
 procedure TAnalysis.CollectUnits;
@@ -799,7 +961,6 @@ procedure TAnalysis.Measure;
 var
   Index, Count: Integer;
   Item: TOverviewUnit;
-  Order: TList<Integer>;
   Ratio: Double;
 begin
   for Index := 0 to High(FResult.Units) do
@@ -825,167 +986,92 @@ begin
     end;
     FResult.Units[Index] := Item;
   end;
-  Order := TList<Integer>.Create;
-  try
-    for Index := 0 to High(FResult.Units) do
-    begin
-      Order.Add(Index);
-    end;
-    Order.Sort(TComparer<Integer>.Construct(
-      function(const ALeft, ARight: Integer): Integer
-      begin
-        Result := FResult.Units[ARight].Total - FResult.Units[ALeft].Total;
-        if Result = 0 then
-        begin
-          Result := FResult.Units[ARight].Direct - FResult.Units[ALeft].Direct;
-        end;
-        if Result = 0 then
-        begin
-          Result := ALeft - ARight;
-        end;
-      end));
-    FResult.Central := Order.ToArray;
-  finally
-    Order.Free;
-  end;
+  FResult.Central := AllIndices(Length(FResult.Units));
+  SortByCentrality(FResult.Units, FResult.Central);
 end;
 
 procedure TAnalysis.Group;
 var
-  Edges: TArray<TLouvainEdge>;
-  Edge: TOverviewEdge;
-  Item: TLouvainEdge;
-  Communities: TArray<Integer>;
-  Index, Count, Member, Isolated: Integer;
-  Degree: TArray<Integer>;
-  Subsystem: TOverviewSubsystem;
+  mEdges: TArray<TLouvainEdge>;
+  mCommunities: TArray<Integer>;
+  mIsolated: Integer;
 begin
-  SetLength(Edges, Length(FResult.Edges));
-  Count := 0;
-  for Edge in FResult.Edges do
-  begin
-    Item.A := Edge.Source;
-    Item.B := Edge.Target;
-    Item.Weight := Weight(Edge);
-    Edges[Count] := Item;
-    Inc(Count);
-  end;
-  Communities := TLouvain.Communities(Length(FResult.Units), Edges, FGrouping.Resolution);
+  mEdges := LouvainEdges(FResult.Edges);
+  mCommunities := TLouvain.Communities(Length(FResult.Units), mEdges, FGrouping.Resolution);
   if FGrouping.Foundations <> TArchitectureFoundations.Group then
   begin
-    SeparateFoundations(Edges, Communities);
+    SeparateFoundations(mEdges, mCommunities);
   end;
-  // Units ohne Kante bilden bei Louvain je eine eigene Gruppe; sie kommen in eine Sammelgruppe.
-  SetLength(Degree, Length(FResult.Units));
-  for Edge in FResult.Edges do
-  begin
-    Inc(Degree[Edge.Source]);
-    Inc(Degree[Edge.Target]);
-  end;
-  Isolated := -1;
-  for Index := 0 to High(Communities) do
-  begin
-    if Degree[Index] = 0 then
-    begin
-      if Isolated < 0 then
-      begin
-        Isolated := Communities[Index];
-      end;
-      Communities[Index] := Isolated;
-    end;
-  end;
-  Renumber(Communities);
-  if Isolated >= 0 then
-  begin
-    for Index := 0 to High(Communities) do
-    begin
-      if Degree[Index] = 0 then
-      begin
-        Isolated := Communities[Index];
-        Break;
-      end;
-    end;
-  end;
-  for Index := 0 to High(Communities) do
-  begin
-    if InFoundation(Index) then
-    begin
-      FFoundation := Communities[Index];
-      Break;
-    end;
-  end;
+  mIsolated := MergeIsolated(FResult.Edges, mCommunities);
+  FFoundation := FoundationGroup(FInFoundation, mCommunities);
   // Die Nachteilung lässt die Nummer ungeteilter Gruppen (also auch des Fundaments) stehen.
-  Split(Communities, Isolated);
-  Count := 0;
-  for Member in Communities do
+  Split(mEdges, mCommunities, mIsolated);
+  BuildSubsystems(mCommunities);
+  CountSubsystemEdges;
+  FinishSubsystems(mIsolated);
+end;
+
+procedure TAnalysis.BuildSubsystems(const ACommunities: TArray<Integer>);
+var
+  mIndex: Integer;
+begin
+  SetLength(FResult.Subsystems, CommunityCount(ACommunities));
+  for mIndex := 0 to High(FResult.Subsystems) do
   begin
-    Count := Max(Count, Member + 1);
+    FResult.Subsystems[mIndex] := Default(TOverviewSubsystem);
+    FResult.Subsystems[mIndex].Central := -1;
   end;
-  SetLength(FResult.Subsystems, Count);
-  for Index := 0 to Count - 1 do
+  for mIndex := 0 to High(FResult.Units) do
   begin
-    Subsystem := Default(TOverviewSubsystem);
-    Subsystem.Central := -1;
-    FResult.Subsystems[Index] := Subsystem;
+    FResult.Units[mIndex].Subsystem := ACommunities[mIndex];
+    FResult.Subsystems[ACommunities[mIndex]].Units := FResult.Subsystems[ACommunities[mIndex]].Units + [mIndex];
   end;
-  for Index := 0 to High(FResult.Units) do
+end;
+
+procedure TAnalysis.CountSubsystemEdges;
+var
+  mEdge: TOverviewEdge;
+  mSource, mTarget: Integer;
+begin
+  for mEdge in FResult.Edges do
   begin
-    FResult.Units[Index].Subsystem := Communities[Index];
-    FResult.Subsystems[Communities[Index]].Units := FResult.Subsystems[Communities[Index]].Units + [Index];
-  end;
-  for Edge in FResult.Edges do
-  begin
-    if FResult.Units[Edge.Source].Subsystem = FResult.Units[Edge.Target].Subsystem then
+    mSource := FResult.Units[mEdge.Source].Subsystem;
+    mTarget := FResult.Units[mEdge.Target].Subsystem;
+    if mSource = mTarget then
     begin
-      Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].InnerEdges);
+      Inc(FResult.Subsystems[mSource].InnerEdges);
     end
-    else if IsFoundation(FResult.Units[Edge.Source].Subsystem) or IsFoundation(FResult.Units[Edge.Target].Subsystem) then
+    else if not IsFoundation(mSource) and not IsFoundation(mTarget) then
     begin
       // Kanten ins Fundament (#1365) gehen nicht in den Zusammenhalt ein.
-      Continue;
-    end
-    else
-    begin
-      Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].OuterEdges);
-      Inc(FResult.Subsystems[FResult.Units[Edge.Target].Subsystem].OuterEdges);
+      Inc(FResult.Subsystems[mSource].OuterEdges);
+      Inc(FResult.Subsystems[mTarget].OuterEdges);
     end;
   end;
-  for Index := 0 to High(FResult.Subsystems) do
+end;
+
+procedure TAnalysis.FinishSubsystems(AIsolated: Integer);
+var
+  mIndex: Integer;
+  mSubsystem: TOverviewSubsystem;
+begin
+  for mIndex := 0 to High(FResult.Subsystems) do
   begin
-    Subsystem := FResult.Subsystems[Index];
-    Subsystem.Isolated := Index = Isolated;
-    Subsystem.Foundation := IsFoundation(Index);
-    if Subsystem.Foundation then
+    mSubsystem := FResult.Subsystems[mIndex];
+    mSubsystem.Isolated := mIndex = AIsolated;
+    mSubsystem.Foundation := IsFoundation(mIndex);
+    mSubsystem.Cohesion := 0;
+    if not mSubsystem.Foundation then
     begin
-      Subsystem.Cohesion := 0;
-    end
-    else if Subsystem.InnerEdges + Subsystem.OuterEdges > 0 then
-    begin
-      Subsystem.Cohesion := Subsystem.InnerEdges / (Subsystem.InnerEdges + Subsystem.OuterEdges);
-    end
-    else
-    begin
-      Subsystem.Cohesion := 1;
+      mSubsystem.Cohesion := SubsystemCohesion(mSubsystem);
     end;
     // Units nach gesamt abhängig absteigend; die erste ist die zentrale.
-    TArray.Sort<Integer>(Subsystem.Units, TComparer<Integer>.Construct(
-      function(const ALeft, ARight: Integer): Integer
-      begin
-        Result := FResult.Units[ARight].Total - FResult.Units[ALeft].Total;
-        if Result = 0 then
-        begin
-          Result := FResult.Units[ARight].Direct - FResult.Units[ALeft].Direct;
-        end;
-        if Result = 0 then
-        begin
-          Result := ALeft - ARight;
-        end;
-      end));
-    if Subsystem.Units <> nil then
+    SortByCentrality(FResult.Units, mSubsystem.Units);
+    if mSubsystem.Units <> nil then
     begin
-      Subsystem.Central := Subsystem.Units[0];
+      mSubsystem.Central := mSubsystem.Units[0];
     end;
-    FResult.Subsystems[Index] := Subsystem;
+    FResult.Subsystems[mIndex] := mSubsystem;
   end;
 end;
 
@@ -1036,710 +1122,230 @@ end;
 
 procedure TAnalysis.SeparateFoundations(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>);
 var
-  Count, Index, Unit_, Other, Best, Next, Total, Largest, Number: Integer;
-  Candidate, Foundation, Follower, Assigned_: TArray<Boolean>;
-  Degree, ReducedDegree, Follow, Probe, Second: TArray<Integer>;
-  Weights: TArray<Double>;
-  Incoming: TArray<TArray<Integer>>;
-  Edge: TLouvainEdge;
-  Spread: TDictionary<Integer, Integer>;
-  Pass: Integer;
-  Changed, Any, Same: Boolean;
-
-  /// <summary>Gemeinschaft mit dem größten Gewicht in Weights (Gleichstand: kleinere Nummer); -1 ohne.</summary>
-  function Heaviest: Integer;
-  var
-    mCommunity: Integer;
-  begin
-    Result := -1;
-    for mCommunity := 0 to High(Weights) do
-    begin
-      if (Weights[mCommunity] > 0) and ((Result < 0) or (Weights[mCommunity] > Weights[Result])) then
-      begin
-        Result := mCommunity;
-      end;
-    end;
-  end;
-
-  /// <summary>Louvain ohne die Units AExcluded und ihre Kanten, fortlaufend nummeriert; ADegree: Kanten je Unit
-  /// im verbleibenden Graphen.</summary>
-  function Without(const AExcluded: TArray<Boolean>; out ADegree: TArray<Integer>): TArray<Integer>;
-  var
-    mReduced: TList<TLouvainEdge>;
-    mEdge: TLouvainEdge;
-  begin
-    SetLength(ADegree, Count);
-    mReduced := TList<TLouvainEdge>.Create;
-    try
-      for mEdge in AEdges do
-      begin
-        if not AExcluded[mEdge.A] and not AExcluded[mEdge.B] then
-        begin
-          mReduced.Add(mEdge);
-          Inc(ADegree[mEdge.A]);
-          Inc(ADegree[mEdge.B]);
-        end;
-      end;
-      Result := TLouvain.Communities(Count, mReduced.ToArray, FGrouping.Resolution);
-    finally
-      mReduced.Free;
-    end;
-    Renumber(Result);
-  end;
-
+  mSeparation: TFoundationSeparation;
+  mSettings: TFoundationSettings;
+  mRoles: TArray<Boolean>;
+  mUnit: Integer;
 begin
-  Count := Length(FResult.Units);
-  SetLength(Candidate, Count);
-  SetLength(Foundation, Count);
-  SetLength(Incoming, Count);
-  SetLength(Degree, Count);
-  for Index := 0 to High(AEdges) do
+  SetLength(mRoles, Length(FResult.Units));
+  for mUnit := 0 to High(mRoles) do
   begin
-    Incoming[AEdges[Index].B] := Incoming[AEdges[Index].B] + [Index];
-    Inc(Degree[AEdges[Index].A]);
-    Inc(Degree[AEdges[Index].B]);
+    mRoles[mUnit] := FResult.Units[mUnit].Role = TOverviewUnitRole.Foundation;
   end;
-  // Kandidaten: Rolle Fundament. Ihre Verteilung zählt in einem Lauf ohne sie, denn im ersten Lauf ziehen sie ihre
-  // Abhängigen ja gerade zusammen.
-  Any := False;
-  for Unit_ := 0 to Count - 1 do
-  begin
-    Candidate[Unit_] := (FResult.Units[Unit_].Role = TOverviewUnitRole.Foundation) and (Length(Incoming[Unit_]) > 0);
-    Any := Any or Candidate[Unit_];
-  end;
-  if not Any then
-  begin
-    Exit;
-  end;
-  Probe := Without(Candidate, ReducedDegree);
-  // Übergreifend: Abhängige (ohne Kandidaten und ohne Units, die nur an Kandidaten hängen) in mindestens drei
-  // Teilsystemen oder höchstens 60 % im größten.
-  Any := False;
-  Spread := TDictionary<Integer, Integer>.Create;
+  mSettings.Resolution := FGrouping.Resolution;
+  mSettings.Separate := FGrouping.Foundations = TArchitectureFoundations.Separate;
+  mSettings.MinSpread := TArchitectureGrouping.FoundationMinSpread;
+  mSettings.MaxOwnPercent := TArchitectureGrouping.FoundationMaxOwnPercent;
+  mSeparation := TFoundationSeparation.Create(Length(FResult.Units), AEdges, mSettings);
   try
-    for Unit_ := 0 to Count - 1 do
-    begin
-      if not Candidate[Unit_] then
-      begin
-        Continue;
-      end;
-      Spread.Clear;
-      Total := 0;
-      for Index in Incoming[Unit_] do
-      begin
-        Other := AEdges[Index].A;
-        if Candidate[Other] or (ReducedDegree[Other] = 0) then
-        begin
-          Continue;
-        end;
-        Inc(Total);
-        if not Spread.TryGetValue(Probe[Other], Number) then
-        begin
-          Number := 0;
-        end;
-        Spread.AddOrSetValue(Probe[Other], Number + 1);
-      end;
-      if Total = 0 then
-      begin
-        Continue;
-      end;
-      Largest := 0;
-      for Number in Spread.Values do
-      begin
-        Largest := Max(Largest, Number);
-      end;
-      Foundation[Unit_] := (Spread.Count >= TArchitectureGrouping.FoundationMinSpread) or
-        (Largest * 100 <= TArchitectureGrouping.FoundationMaxOwnPercent * Total);
-      Any := Any or Foundation[Unit_];
-    end;
+    mSeparation.Run(mRoles, ACommunities, FInFoundation);
   finally
-    Spread.Free;
+    mSeparation.Free;
   end;
-  if not Any then
-  begin
-    Exit;
-  end;
-  // Zweiter Lauf ohne die übergreifenden Fundamente und ohne ihre Kanten (sind es alle Kandidaten, ist es der Lauf
-  // von eben).
-  Same := True;
-  for Unit_ := 0 to Count - 1 do
-  begin
-    Same := Same and (Candidate[Unit_] = Foundation[Unit_]);
-  end;
-  if Same then
-  begin
-    Second := Probe;
-  end
-  else
-  begin
-    Second := Without(Foundation, ReducedDegree);
-  end;
-  Next := 0;
-  for Index in Second do
-  begin
-    Next := Max(Next, Index + 1);
-  end;
-  // Units, deren einzige Kanten zu Fundamenten führen, folgen dem Fundament mit dem größten Gewicht.
-  SetLength(Follower, Count);
-  SetLength(Follow, Count);
-  SetLength(Weights, Count);
-  for Unit_ := 0 to Count - 1 do
-  begin
-    Follow[Unit_] := -1;
-    if Foundation[Unit_] or (Degree[Unit_] = 0) or (ReducedDegree[Unit_] > 0) then
-    begin
-      Continue;
-    end;
-    for Index := 0 to Count - 1 do
-    begin
-      Weights[Index] := 0;
-    end;
-    for Edge in AEdges do
-    begin
-      if Edge.A = Unit_ then
-      begin
-        Weights[Edge.B] := Weights[Edge.B] + Edge.Weight;
-      end
-      else if Edge.B = Unit_ then
-      begin
-        Weights[Edge.A] := Weights[Edge.A] + Edge.Weight;
-      end;
-    end;
-    for Other := 0 to Count - 1 do
-    begin
-      if Foundation[Other] and (Weights[Other] > 0) and
-        ((Follow[Unit_] < 0) or (Weights[Other] > Weights[Follow[Unit_]])) then
-      begin
-        Follow[Unit_] := Other;
-      end;
-    end;
-    Follower[Unit_] := Follow[Unit_] >= 0;
-  end;
-  if FGrouping.Foundations = TArchitectureFoundations.Separate then
-  begin
-    SetLength(FInFoundation, Count);
-    for Unit_ := 0 to Count - 1 do
-    begin
-      if Foundation[Unit_] or Follower[Unit_] then
-      begin
-        Second[Unit_] := Next;
-        FInFoundation[Unit_] := True;
-      end;
-    end;
-  end
-  else
-  begin
-    // Anhängen: in das Teilsystem, aus dem die meisten Abhängigen stammen (gewichtet, Gleichstand: kleinere
-    // Nummer). Fundamente, die nur Fundamente verwenden, folgen ihren Abhängigen, sobald diese zugeordnet sind;
-    // solche ohne zugeordnete Abhängige zuletzt den Units, die sie verwenden.
-    SetLength(Assigned_, Count);
-    for Unit_ := 0 to Count - 1 do
-    begin
-      Assigned_[Unit_] := not Foundation[Unit_] and not Follower[Unit_];
-    end;
-    SetLength(Weights, Next);
-    for Pass := 0 to 1 do
-      repeat
-        Changed := False;
-        for Unit_ := 0 to Count - 1 do
-        begin
-          if not Foundation[Unit_] or Assigned_[Unit_] then
-          begin
-            Continue;
-          end;
-          for Index := 0 to High(Weights) do
-          begin
-            Weights[Index] := 0;
-          end;
-          for Index in Incoming[Unit_] do
-          begin
-            if Assigned_[AEdges[Index].A] then
-            begin
-              Weights[Second[AEdges[Index].A]] := Weights[Second[AEdges[Index].A]] + AEdges[Index].Weight;
-            end;
-          end;
-          if Pass = 1 then
-          begin
-            for Edge in AEdges do
-            begin
-              if (Edge.A = Unit_) and Assigned_[Edge.B] then
-              begin
-                Weights[Second[Edge.B]] := Weights[Second[Edge.B]] + Edge.Weight;
-              end;
-            end;
-          end;
-          Best := Heaviest;
-          if Best < 0 then
-          begin
-            Continue;
-          end;
-          Second[Unit_] := Best;
-          Assigned_[Unit_] := True;
-          Changed := True;
-        end;
-      until not Changed;
-    // Ohne jede Zuordnung (nur Kanten unter solchen Fundamenten): je ein eigenes Teilsystem.
-    for Unit_ := 0 to Count - 1 do
-    begin
-      if Foundation[Unit_] and not Assigned_[Unit_] then
-      begin
-        Second[Unit_] := Next;
-        Inc(Next);
-      end;
-    end;
-    for Unit_ := 0 to Count - 1 do
-    begin
-      if Follower[Unit_] then
-      begin
-        Second[Unit_] := Second[Follow[Unit_]];
-      end;
-    end;
-  end;
-  ACommunities := Second;
 end;
 
-procedure TAnalysis.Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
+/// <summary>Entscheidung der Nachteilung nach AGrouping bei ATotal Units im Projekt.</summary>
+function SplitDecision(const AGrouping: TArchitectureGrouping; ATotal: Integer): TSplitDecision;
 var
-  Groups: TArray<TArray<Integer>>;
-  Sizes: TArray<Integer>;
-  Count, Index, Member: Integer;
-  Edge: TOverviewEdge;
+  mGrouping: TArchitectureGrouping;
 begin
-  Count := 0;
-  for Member in ACommunities do
-  begin
-    Count := Max(Count, Member + 1);
-  end;
-  // Kanten je Unit für Zusammenhalt und Teilgraphen.
-  SetLength(Sizes, Length(FResult.Units));
-  for Edge in FResult.Edges do
-  begin
-    if Edge.Source <> Edge.Target then
+  mGrouping := AGrouping;
+  Result :=
+    function(ASize: Integer; ACohesion: Double): Boolean
     begin
-      Inc(Sizes[Edge.Source]);
-      Inc(Sizes[Edge.Target]);
+      Result := mGrouping.NeedsSplit(ASize, ATotal, ACohesion);
     end;
-  end;
-  SetLength(FIncident, Length(FResult.Units));
-  for Index := 0 to High(FIncident) do
-  begin
-    SetLength(FIncident[Index], Sizes[Index]);
-    Sizes[Index] := 0;
-  end;
-  for Index := 0 to High(FResult.Edges) do
-  begin
-    Edge := FResult.Edges[Index];
-    if Edge.Source = Edge.Target then
+end;
+
+/// <summary>Teilfunktion für SplitGroups über ASplitter.</summary>
+function SplitFuncOf(ASplitter: TSubsystemSplitter): TArchitectureSplitFunc;
+begin
+  Result :=
+    function(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean
     begin
-      Continue;
+      Result := ASplitter.SplitGroup(AMembers, AParts);
     end;
-    FIncident[Edge.Source][Sizes[Edge.Source]] := Index;
-    Inc(Sizes[Edge.Source]);
-    FIncident[Edge.Target][Sizes[Edge.Target]] := Index;
-    Inc(Sizes[Edge.Target]);
-  end;
-  SetLength(FLocal, Length(FResult.Units));
-  for Index := 0 to High(FLocal) do
+end;
+
+procedure TAnalysis.Split(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>; AIsolated: Integer);
+var
+  mSettings: TSplitSettings;
+  mSplitter: TSubsystemSplitter;
+  mGroups: TArray<TArray<Integer>>;
+  mIndex, mMember: Integer;
+begin
+  mSettings.Resolution := FGrouping.Resolution;
+  // Zusammenhalt erst rechnen, wenn er zählt.
+  mSettings.CohesionMinUnits := MaxInt;
+  if FGrouping.MinCohesion > 0 then
   begin
-    FLocal[Index] := -1;
+    mSettings.CohesionMinUnits := TArchitectureGrouping.LooseMinUnits;
   end;
+  mSettings.Decision := SplitDecision(FGrouping, Length(FResult.Units));
   // Units nach Nummer (= nach Name): dieselbe Startreihenfolge wie im ersten Lauf.
-  SetLength(Sizes, Count);
-  for Index := 0 to Count - 1 do
-  begin
-    Sizes[Index] := 0;
-  end;
-  for Member in ACommunities do
-  begin
-    Inc(Sizes[Member]);
-  end;
-  SetLength(Groups, Count);
-  for Index := 0 to Count - 1 do
-  begin
-    SetLength(Groups[Index], Sizes[Index]);
-    Sizes[Index] := 0;
-  end;
-  for Index := 0 to High(ACommunities) do
-  begin
-    Groups[ACommunities[Index]][Sizes[ACommunities[Index]]] := Index;
-    Inc(Sizes[ACommunities[Index]]);
-  end;
-  Groups := TArchitectureAnalyzer.SplitGroups(Groups, AIsolated, TArchitectureGrouping.SplitDepth, SplitGroup,
-    FFamily);
-  for Index := 0 to High(Groups) do
-  begin
-    for Member in Groups[Index] do
-    begin
-      ACommunities[Member] := Index;
-    end;
-  end;
-end;
-
-function TAnalysis.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
-begin
-  AParts := nil;
-  // Das Fundament (#1365) bleibt ganz.
-  Result := (Length(AMembers) > 0) and not InFoundation(AMembers[0]) and NeedsSplit(AMembers) and
-    SplitMembers(AMembers, AParts);
-end;
-
-function TAnalysis.NeedsSplit(const AMembers: TArray<Integer>): Boolean;
-var
-  Inner, Outer, Member, EdgeIndex, Other: Integer;
-  Edge: TOverviewEdge;
-  Cohesion: Double;
-begin
-  // Zusammenhalt wie in Group: Kanten innen / (innen + nach außen); erst rechnen, wenn er zählt.
-  Cohesion := 1;
-  if (FGrouping.MinCohesion > 0) and (Length(AMembers) >= TArchitectureGrouping.LooseMinUnits) then
-  begin
-    for Member in AMembers do
-    begin
-      FLocal[Member] := 0;
-    end;
-    Inner := 0;
-    Outer := 0;
-    for Member in AMembers do
-    begin
-      for EdgeIndex in FIncident[Member] do
-      begin
-        Edge := FResult.Edges[EdgeIndex];
-        if Edge.Source = Member then
-        begin
-          Other := Edge.Target;
-        end
-        else
-        begin
-          Other := Edge.Source;
-        end;
-        // Kanten ins Fundament zählen wie in Group nicht mit.
-        if InFoundation(Other) then
-        begin
-          Continue;
-        end;
-        if FLocal[Other] >= 0 then
-        begin
-          Inc(Inner);
-        end
-        else
-        begin
-          Inc(Outer);
-        end;
-      end;
-    end;
-    for Member in AMembers do
-    begin
-      FLocal[Member] := -1;
-    end;
-    // Innere Kanten stehen bei beiden Enden.
-    Inner := Inner div 2;
-    if Inner + Outer > 0 then
-    begin
-      Cohesion := Inner / (Inner + Outer);
-    end;
-  end;
-  Result := FGrouping.NeedsSplit(Length(AMembers), Length(FResult.Units), Cohesion);
-end;
-
-function TAnalysis.SplitMembers(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
-var
-  Edges: TList<TLouvainEdge>;
-  Item: TLouvainEdge;
-  Degree, Local, Sizes: TArray<Integer>;
-  Numbers: TDictionary<Integer, Integer>;
-  Position, EdgeIndex, Number, Largest: Integer;
-  Edge: TOverviewEdge;
-begin
-  AParts := nil;
-  SetLength(Degree, Length(AMembers));
-  for Position := 0 to High(AMembers) do
-  begin
-    FLocal[AMembers[Position]] := Position;
-  end;
-  Edges := TList<TLouvainEdge>.Create;
+  mSplitter := TSubsystemSplitter.Create(Length(FResult.Units), AEdges, FInFoundation, mSettings);
   try
-    for Position := 0 to High(AMembers) do
-    begin
-      for EdgeIndex in FIncident[AMembers[Position]] do
-      begin
-        Edge := FResult.Edges[EdgeIndex];
-        // Jede Kante einmal, bei ihrer Quelle; nur Kanten innerhalb des Teilsystems.
-        if (Edge.Source <> AMembers[Position]) or (FLocal[Edge.Target] < 0) then
-        begin
-          Continue;
-        end;
-        Item.A := Position;
-        Item.B := FLocal[Edge.Target];
-        Item.Weight := Weight(Edge);
-        Edges.Add(Item);
-        Inc(Degree[Item.A]);
-        Inc(Degree[Item.B]);
-      end;
-    end;
-    Local := TLouvain.Communities(Length(AMembers), Edges.ToArray, FGrouping.Resolution);
+    mGroups := TArchitectureAnalyzer.SplitGroups(GroupsOf(ACommunities), AIsolated, TArchitectureGrouping.SplitDepth,
+      SplitFuncOf(mSplitter), FFamily);
   finally
-    Edges.Free;
-    for Position := 0 to High(AMembers) do
-    begin
-      FLocal[AMembers[Position]] := -1;
-    end;
+    mSplitter.Free;
   end;
-  // Teile fortlaufend in der Reihenfolge der Units; Units ohne Kante im Teilgraphen zählen nicht mit.
-  Numbers := TDictionary<Integer, Integer>.Create;
-  try
-    for Position := 0 to High(Local) do
-    begin
-      if Degree[Position] = 0 then
-      begin
-        Local[Position] := -1;
-        Continue;
-      end;
-      if not Numbers.TryGetValue(Local[Position], Number) then
-      begin
-        Number := Numbers.Count;
-        Numbers.Add(Local[Position], Number);
-      end;
-      Local[Position] := Number;
-    end;
-    Result := Numbers.Count > 1;
-    if not Result then
-    begin
-      Exit;
-    end;
-    SetLength(Sizes, Numbers.Count);
-  finally
-    Numbers.Free;
-  end;
-  for Number in Local do
+  for mIndex := 0 to High(mGroups) do
   begin
-    if Number >= 0 then
+    for mMember in mGroups[mIndex] do
     begin
-      Inc(Sizes[Number]);
-    end;
-  end;
-  // Units ohne Kante im Teilgraphen bleiben beim größten Teil (keine Teile aus einer einzelnen Unit).
-  Largest := 0;
-  for Number := 1 to High(Sizes) do
-  begin
-    if Sizes[Number] > Sizes[Largest] then
-    begin
-      Largest := Number;
-    end;
-  end;
-  SetLength(AParts, Length(Sizes));
-  for Position := 0 to High(Local) do
-  begin
-    if Local[Position] < 0 then
-    begin
-      Local[Position] := Largest;
-    end;
-    AParts[Local[Position]] := AParts[Local[Position]] + [AMembers[Position]];
-  end;
-end;
-
-/// <summary>Je Namensraum-Abschnitt (klein) die Zahl der Units aus AMembers, die ihn tragen (je Unit einmal).
-/// </summary>
-function PartCounts(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>): TDictionary<string, Integer>;
-var
-  Member, Count: Integer;
-  Part, Key: string;
-  Seen: TArray<string>;
-begin
-  Result := TDictionary<string, Integer>.Create;
-  for Member in AMembers do
-  begin
-    Seen := nil;
-    for Part in AParts[Member] do
-    begin
-      Key := LowerCase(Part);
-      if IndexStr(Key, Seen) >= 0 then
-      begin
-        Continue;
-      end;
-      Seen := Seen + [Key];
-      if not Result.TryGetValue(Key, Count) then
-      begin
-        Count := 0;
-      end;
-      Result.AddOrSetValue(Key, Count + 1);
+      ACommunities[mMember] := mIndex;
     end;
   end;
 end;
 
-/// <summary>Bester Namensraum-Abschnitt einer Gruppe: Häufigkeit in der Gruppe mal log(ATotal / Häufigkeit in
-/// AGlobal); '' ohne Abschnitt mit Gewinn. AGlobal zählt über das ganze Projekt bzw. bei Teilen eines
-/// nachgeteilten Teilsystems über dessen Units (#1364).</summary>
-function BestPart(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>; const AGlobal:
-  TDictionary<string, Integer>; ATotal: Integer; out AScore: Double): string;
+/// <summary>Name der zentralsten Unit aus AMembers; '' ohne Units.</summary>
+function CentralName(const AUnits: TArray<TOverviewUnit>; const AMembers: TArray<Integer>): string;
 var
-  Local: TDictionary<string, Integer>;
-  Global_: Integer;
-  Key: string;
-  Keys: TArray<string>;
-  Score: Double;
+  mMember, mCentral: Integer;
 begin
+  mCentral := -1;
+  for mMember in AMembers do
+  begin
+    if (mCentral < 0) or MoreCentral(AUnits[mMember], AUnits[mCentral], mMember, mCentral) then
+    begin
+      mCentral := mMember;
+    end;
+  end;
   Result := '';
-  AScore := 0;
-  Local := PartCounts(AParts, AMembers);
-  try
-    Keys := Local.Keys.ToArray;
-    TArray.Sort<string>(Keys);
-    for Key in Keys do
-    begin
-      if not AGlobal.TryGetValue(Key, Global_) or (Global_ <= 0) then
-      begin
-        Continue;
-      end;
-      Score := Local[Key] * Ln(ATotal / Global_);
-      if Score > AScore + 1E-9 then
-      begin
-        AScore := Score;
-        Result := Key;
-      end;
-    end;
-  finally
-    Local.Free;
+  if mCentral >= 0 then
+  begin
+    Result := AUnits[mCentral].Name;
   end;
 end;
 
-/// <summary>Schreibweise eines Abschnitts, wie er in den Units der Gruppe steht.</summary>
-function PartCaption(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>; const AKey: string): string;
+/// <summary>Namensraum-Abschnitte je Unit.</summary>
+function UnitParts(const AUnits: TArray<TOverviewUnit>): TArray<TArray<string>>;
 var
-  Member: Integer;
-  Part: string;
+  mIndex: Integer;
 begin
-  for Member in AMembers do
+  SetLength(Result, Length(AUnits));
+  for mIndex := 0 to High(AUnits) do
   begin
-    for Part in AParts[Member] do
+    Result[mIndex] := TArchitectureAnalyzer.NamespaceParts(AUnits[mIndex].Name);
+  end;
+end;
+
+/// <summary>Units je Familie (ursprüngliches Teilsystem vor der Nachteilung, #1364), nach Familiennummer.
+/// </summary>
+function FamilyUnits(const ASubsystems: TArray<TOverviewSubsystem>; const AFamily: TArray<Integer>)
+  : TArray<TArray<Integer>>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ASubsystems));
+  for mIndex := 0 to High(ASubsystems) do
+  begin
+    Result[AFamily[mIndex]] := Result[AFamily[mIndex]] + ASubsystems[mIndex].Units;
+  end;
+end;
+
+/// <summary>Teilsystem AIndex teilt seine Familie mit einem anderen (Teil eines nachgeteilten Teilsystems).
+/// </summary>
+function IsSplitPart(const AFamily: TArray<Integer>; AIndex: Integer): Boolean;
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to High(AFamily) do
+  begin
+    if (mOther <> AIndex) and (AFamily[mOther] = AFamily[AIndex]) then
     begin
-      if SameText(Part, AKey) then
-      begin
-        Exit(Part);
-      end;
+      Exit(True);
     end;
   end;
-  Result := AKey;
+  Result := False;
+end;
+
+function TAnalysis.NameOf(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>;
+  const ACounts: TDictionary<string, Integer>; ATotal: Integer; out AKey: string): string;
+var
+  mScore: Double;
+begin
+  AKey := TSubsystemNaming.BestPart(AParts, AMembers, ACounts, ATotal, mScore);
+  if AKey <> '' then
+  begin
+    Result := TSubsystemNaming.PartCaption(AParts, AMembers, AKey);
+  end
+  else
+  begin
+    Result := CentralName(FResult.Units, AMembers);
+  end;
+end;
+
+procedure TAnalysis.NameSubsystem(AIndex: Integer; const AParts: TArray<TArray<string>>;
+  const AFamilies: TArray<TArray<Integer>>; const AGlobal: TDictionary<string, Integer>);
+var
+  mKey, mParentKey: string;
+  mCounts: TDictionary<string, Integer>;
+  mFamily: TArray<Integer>;
+begin
+  mKey := '';
+  if FResult.Subsystems[AIndex].Isolated then
+  begin
+    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.IsolatedName;
+  end
+  else if FResult.Subsystems[AIndex].Foundation then
+  begin
+    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.FoundationName;
+  end
+  else if IsSplitPart(FFamily, AIndex) then
+  begin
+    // Teil eines nachgeteilten Teilsystems: Abschnitt, der es innerhalb des ursprünglichen unterscheidet.
+    mFamily := AFamilies[FFamily[AIndex]];
+    mCounts := TSubsystemNaming.PartCounts(AParts, mFamily);
+    try
+      FResult.Subsystems[AIndex].Name := NameOf(AParts, FResult.Subsystems[AIndex].Units, mCounts, Length(mFamily),
+        mKey);
+    finally
+      mCounts.Free;
+    end;
+    FResult.Subsystems[AIndex].Parent := NameOf(AParts, mFamily, AGlobal, Length(FResult.Units), mParentKey);
+  end
+  else
+  begin
+    FResult.Subsystems[AIndex].Name := NameOf(AParts, FResult.Subsystems[AIndex].Units, AGlobal,
+      Length(FResult.Units), mKey);
+  end;
+  FNamedByPart[AIndex] := mKey <> '';
+  FPartKey[AIndex] := mKey;
 end;
 
 procedure TAnalysis.NameSubsystems;
 var
-  Parts: TArray<TArray<string>>;
-  Global_, Family: TDictionary<string, Integer>;
-  Index, Suffix, Other: Integer;
-  Key, ParentKey, Name: string;
-  All: TArray<Integer>;
-  FamilyUnits: TArray<TArray<Integer>>;
-  FamilySize: TArray<Integer>;
-  Score: Double;
-  Taken: Boolean;
-
-  /// <summary>Name aus dem besten Abschnitt von AMembers gegen ACounts, sonst die zentralste Unit.</summary>
-  function NameOf(const AMembers: TArray<Integer>; const ACounts: TDictionary<string, Integer>; ATotal: Integer;
-    out AKey: string): string;
-  var
-    mMember, mCentral: Integer;
-  begin
-    AKey := BestPart(Parts, AMembers, ACounts, ATotal, Score);
-    if AKey <> '' then
-    begin
-      Exit(PartCaption(Parts, AMembers, AKey));
-    end;
-    mCentral := -1;
-    for mMember in AMembers do
-    begin
-      if (mCentral < 0) or (FResult.Units[mMember].Total > FResult.Units[mCentral].Total) or
-        ((FResult.Units[mMember].Total = FResult.Units[mCentral].Total) and
-        ((FResult.Units[mMember].Direct > FResult.Units[mCentral].Direct) or
-        ((FResult.Units[mMember].Direct = FResult.Units[mCentral].Direct) and (mMember < mCentral)))) then
-      begin
-        mCentral := mMember;
-      end;
-    end;
-    if mCentral >= 0 then
-    begin
-      Result := FResult.Units[mCentral].Name;
-    end
-    else
-    begin
-      Result := '';
-    end;
-  end;
-
+  mParts: TArray<TArray<string>>;
+  mFamilies: TArray<TArray<Integer>>;
+  mGlobal: TDictionary<string, Integer>;
+  mNames: TArray<string>;
+  mIndex: Integer;
 begin
   SetLength(FNamedByPart, Length(FResult.Subsystems));
   SetLength(FPartKey, Length(FResult.Subsystems));
-  SetLength(Parts, Length(FResult.Units));
-  SetLength(All, Length(FResult.Units));
-  for Index := 0 to High(FResult.Units) do
-  begin
-    Parts[Index] := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
-    All[Index] := Index;
-  end;
-  // Units je Familie (ursprüngliches Teilsystem vor der Nachteilung, #1364).
-  SetLength(FamilyUnits, Length(FResult.Subsystems));
-  SetLength(FamilySize, Length(FResult.Subsystems));
-  for Index := 0 to High(FResult.Subsystems) do
-  begin
-    FamilyUnits[FFamily[Index]] := FamilyUnits[FFamily[Index]] + FResult.Subsystems[Index].Units;
-    Inc(FamilySize[FFamily[Index]]);
-  end;
-  Global_ := PartCounts(Parts, All);
+  mParts := UnitParts(FResult.Units);
+  mFamilies := FamilyUnits(FResult.Subsystems, FFamily);
+  mGlobal := TSubsystemNaming.PartCounts(mParts, AllIndices(Length(FResult.Units)));
   try
-    for Index := 0 to High(FResult.Subsystems) do
+    for mIndex := 0 to High(FResult.Subsystems) do
     begin
-      Key := '';
-      if FResult.Subsystems[Index].Isolated then
-      begin
-        Name := TArchitectureAnalyzer.IsolatedName;
-      end
-      else if FResult.Subsystems[Index].Foundation then
-      begin
-        Name := TArchitectureAnalyzer.FoundationName;
-      end
-      else if FamilySize[FFamily[Index]] > 1 then
-      begin
-        // Teil eines nachgeteilten Teilsystems: Abschnitt, der es innerhalb des ursprünglichen unterscheidet.
-        Family := PartCounts(Parts, FamilyUnits[FFamily[Index]]);
-        try
-          Name := NameOf(FResult.Subsystems[Index].Units, Family, Length(FamilyUnits[FFamily[Index]]), Key);
-        finally
-          Family.Free;
-        end;
-        FResult.Subsystems[Index].Parent := NameOf(FamilyUnits[FFamily[Index]], Global_, Length(FResult.Units),
-          ParentKey);
-      end
-      else
-      begin
-        Name := NameOf(FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Key);
-      end;
-      FNamedByPart[Index] := Key <> '';
-      FPartKey[Index] := Key;
-      FResult.Subsystems[Index].Name := Name;
+      NameSubsystem(mIndex, mParts, mFamilies, mGlobal);
     end;
   finally
-    Global_.Free;
+    mGlobal.Free;
   end;
   // Doppelte Namen eindeutig machen: "Index", "Index 2" (in der Reihenfolge der Teilsysteme).
-  for Index := 1 to High(FResult.Subsystems) do
+  SetLength(mNames, Length(FResult.Subsystems));
+  for mIndex := 0 to High(FResult.Subsystems) do
   begin
-    Name := FResult.Subsystems[Index].Name;
-    Suffix := 1;
-    repeat
-      Taken := False;
-      for Other := 0 to Index - 1 do
-      begin
-        if SameText(FResult.Subsystems[Other].Name, Name) then
-        begin
-          Taken := True;
-        end;
-      end;
-      if Taken then
-      begin
-        Inc(Suffix);
-        Name := FResult.Subsystems[Index].Name + ' ' + IntToStr(Suffix);
-      end;
-    until not Taken;
-    FResult.Subsystems[Index].Name := Name;
+    mNames[mIndex] := FResult.Subsystems[mIndex].Name;
+  end;
+  TSubsystemNaming.MakeUnique(mNames);
+  for mIndex := 0 to High(FResult.Subsystems) do
+  begin
+    FResult.Subsystems[mIndex].Name := mNames[mIndex];
   end;
 end;
 
@@ -1789,74 +1395,88 @@ begin
   end;
 end;
 
+/// <summary>Je Unit und Teilsystem der Gegenseite die Kanten im interface (AInterfaces) bzw. in der
+/// implementation (AImplementations), beide Richtungen.</summary>
+procedure CountEdgesBySubsystem(const AOverview: TArchitectureOverview;
+  out AInterfaces, AImplementations: TArray<TArray<Integer>>);
+var
+  mEdge: TOverviewEdge;
+  mIndex, mSource, mTarget: Integer;
+begin
+  SetLength(AInterfaces, Length(AOverview.Units));
+  SetLength(AImplementations, Length(AOverview.Units));
+  for mIndex := 0 to High(AOverview.Units) do
+  begin
+    SetLength(AInterfaces[mIndex], Length(AOverview.Subsystems));
+    SetLength(AImplementations[mIndex], Length(AOverview.Subsystems));
+  end;
+  for mEdge in AOverview.Edges do
+  begin
+    mSource := AOverview.Units[mEdge.Source].Subsystem;
+    mTarget := AOverview.Units[mEdge.Target].Subsystem;
+    if mEdge.Section = TUsesSection.Interface_ then
+    begin
+      Inc(AInterfaces[mEdge.Source][mTarget]);
+      Inc(AInterfaces[mEdge.Target][mSource]);
+    end
+    else
+    begin
+      Inc(AImplementations[mEdge.Source][mTarget]);
+      Inc(AImplementations[mEdge.Target][mSource]);
+    end;
+  end;
+end;
+
+/// <summary>Zeilen der Zuordnung einer Unit im Teilsystem AOwn: das eigene und jedes mit Kanten.</summary>
+function AssignmentRows(const AOverview: TArchitectureOverview; AOwn: Integer;
+  const AInterfaces, AImplementations: TArray<Integer>): TArray<TOverviewAssignmentRow>;
+var
+  mRow: TOverviewAssignmentRow;
+  mSubsystem: Integer;
+begin
+  Result := nil;
+  for mSubsystem := 0 to High(AOverview.Subsystems) do
+  begin
+    if (mSubsystem <> AOwn) and (AInterfaces[mSubsystem] = 0) and (AImplementations[mSubsystem] = 0) then
+    begin
+      Continue;
+    end;
+    mRow := Default(TOverviewAssignmentRow);
+    mRow.Subsystem := mSubsystem;
+    mRow.Interfaces := AInterfaces[mSubsystem];
+    mRow.Implementations := AImplementations[mSubsystem];
+    mRow.Sum := mRow.Interfaces * TArchitectureAnalyzer.InterfaceWeight +
+      mRow.Implementations * TArchitectureAnalyzer.ImplementationWeight;
+    // Kanten zum Fundament zählen bei der Zuordnung nicht (#1365); im Fundament selbst zählen sie.
+    mRow.Counts := not AOverview.Subsystems[mSubsystem].Foundation or AOverview.Subsystems[AOwn].Foundation;
+    Result := Result + [mRow];
+  end;
+end;
+
 class function TArchitectureAnalyzer.Assignments(const AOverview: TArchitectureOverview):
   TArray<TOverviewAssignment>;
 var
   mInterfaces, mImplementations: TArray<TArray<Integer>>;
   mNames: TArray<string>;
-  mRows: TArray<TOverviewAssignmentRow>;
-  mEdge: TOverviewEdge;
-  mIndex, mSubsystem, mCount, mOwn: Integer;
-
-  procedure Count(AUnit, ASubsystem: Integer; AInterface: Boolean);
-  begin
-    if AInterface then
-    begin
-      Inc(mInterfaces[AUnit][ASubsystem]);
-    end
-    else
-    begin
-      Inc(mImplementations[AUnit][ASubsystem]);
-    end;
-  end;
-
+  mIndex, mOwn: Integer;
 begin
-  SetLength(mInterfaces, Length(AOverview.Units));
-  SetLength(mImplementations, Length(AOverview.Units));
-  for mIndex := 0 to High(AOverview.Units) do
-  begin
-    SetLength(mInterfaces[mIndex], Length(AOverview.Subsystems));
-    SetLength(mImplementations[mIndex], Length(AOverview.Subsystems));
-  end;
-  for mEdge in AOverview.Edges do
-  begin
-    Count(mEdge.Source, AOverview.Units[mEdge.Target].Subsystem, mEdge.Section = TUsesSection.Interface_);
-    Count(mEdge.Target, AOverview.Units[mEdge.Source].Subsystem, mEdge.Section = TUsesSection.Interface_);
-  end;
+  CountEdgesBySubsystem(AOverview, mInterfaces, mImplementations);
   SetLength(mNames, Length(AOverview.Subsystems));
-  for mSubsystem := 0 to High(AOverview.Subsystems) do
+  for mIndex := 0 to High(AOverview.Subsystems) do
   begin
-    mNames[mSubsystem] := AOverview.Subsystems[mSubsystem].Name;
+    mNames[mIndex] := AOverview.Subsystems[mIndex].Name;
   end;
   SetLength(Result, Length(AOverview.Units));
-  SetLength(mRows, Length(AOverview.Subsystems));
   for mIndex := 0 to High(AOverview.Units) do
   begin
     mOwn := AOverview.Units[mIndex].Subsystem;
-    mCount := 0;
     if (mOwn < 0) or (mOwn > High(AOverview.Subsystems)) then
     begin
       Result[mIndex] := AssignmentOf(nil, -1, mNames);
       Continue;
     end;
-    for mSubsystem := 0 to High(AOverview.Subsystems) do
-    begin
-      if (mSubsystem <> mOwn) and (mInterfaces[mIndex][mSubsystem] = 0) and
-        (mImplementations[mIndex][mSubsystem] = 0) then
-      begin
-        Continue;
-      end;
-      mRows[mCount].Subsystem := mSubsystem;
-      mRows[mCount].Interfaces := mInterfaces[mIndex][mSubsystem];
-      mRows[mCount].Implementations := mImplementations[mIndex][mSubsystem];
-      mRows[mCount].Sum := mRows[mCount].Interfaces * InterfaceWeight +
-        mRows[mCount].Implementations * ImplementationWeight;
-      // Kanten zum Fundament zählen bei der Zuordnung nicht (#1365); im Fundament selbst zählen sie.
-      mRows[mCount].Counts := not AOverview.Subsystems[mSubsystem].Foundation or
-        AOverview.Subsystems[mOwn].Foundation;
-      Inc(mCount);
-    end;
-    Result[mIndex] := AssignmentOf(Copy(mRows, 0, mCount), mOwn, mNames);
+    Result[mIndex] := AssignmentOf(AssignmentRows(AOverview, mOwn, mInterfaces[mIndex], mImplementations[mIndex]),
+      mOwn, mNames);
     // Ins Fundament kommt eine Unit nach der Regel FoundationRule, nicht nach ihren Kanten: nie knapp.
     if AOverview.Subsystems[mOwn].Foundation then
     begin
@@ -1887,87 +1507,114 @@ begin
   end;
 end;
 
+/// <summary>ARow schlägt das bisher beste Teilsystem ABest (ABestEdges Kanten): mehr Kanten, bei Gleichstand
+/// gegen ein fremdes Teilsystem die kleinere Nummer.</summary>
+function BeatsBest(const ARow: TOverviewAssignmentRow; ABest, ABestEdges, AOwn: Integer): Boolean;
+begin
+  if ARow.Edges <> ABestEdges then
+  begin
+    Exit(ARow.Edges > ABestEdges);
+  end;
+  Result := (ABest <> AOwn) and (ARow.Subsystem < ABest);
+end;
+
+/// <summary>Einer der Abschnitte AParts ist AKey (ohne Groß-/Kleinschreibung).</summary>
+function HasPart(const AParts: TArray<string>; const AKey: string): Boolean;
+var
+  mPart: string;
+begin
+  for mPart in AParts do
+  begin
+    if SameText(mPart, AKey) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TAnalysis.EdgeRival(const AAssignment: TOverviewAssignment; AOwn: Integer): Integer;
+var
+  mRow: TOverviewAssignmentRow;
+  mBestEdges: Integer;
+begin
+  Result := AOwn;
+  mBestEdges := EdgesTo(AAssignment, AOwn);
+  for mRow in AAssignment.Rows do
+  begin
+    if (mRow.Subsystem <> AOwn) and not IsFoundation(mRow.Subsystem) and
+      BeatsBest(mRow, Result, mBestEdges, AOwn) then
+    begin
+      Result := mRow.Subsystem;
+      mBestEdges := mRow.Edges;
+    end;
+  end;
+  if Result = AOwn then
+  begin
+    Result := -1;
+  end;
+end;
+
+function TAnalysis.NamespaceRival(AUnit, AOwn: Integer): Integer;
+var
+  mParts: TArray<string>;
+  mSubsystem: Integer;
+begin
+  mParts := TArchitectureAnalyzer.NamespaceParts(FResult.Units[AUnit].Name);
+  if not FNamedByPart[AOwn] or HasPart(mParts, FPartKey[AOwn]) then
+  begin
+    Exit(-1);
+  end;
+  for mSubsystem := 0 to High(FResult.Subsystems) do
+  begin
+    if (mSubsystem = AOwn) or not FNamedByPart[mSubsystem] or (Length(FResult.Subsystems[mSubsystem].Units) < 2) or
+      IsFoundation(mSubsystem) then
+    begin
+      Continue;
+    end;
+    if HasPart(mParts, FPartKey[mSubsystem]) then
+    begin
+      Exit(mSubsystem);
+    end;
+  end;
+  Result := -1;
+end;
+
 procedure TAnalysis.FindOutliers;
 var
   mAssignment: TOverviewAssignment;
-  mRow: TOverviewAssignmentRow;
-  Index, Own, Best, Subsystem: Integer;
-  Outlier: TOverviewOutlier;
-  Parts: TArray<string>;
-  Part: string;
-  NameOwn: Boolean;
-  mBestEdges: Integer;
+  mIndex, mOwn: Integer;
+  mOutlier: TOverviewOutlier;
 begin
-  for Index := 0 to High(FResult.Units) do
+  for mIndex := 0 to High(FResult.Units) do
   begin
-    Own := FResult.Units[Index].Subsystem;
+    mOwn := FResult.Units[mIndex].Subsystem;
     // Ausreißer nur unter den übrigen Teilsystemen (#1365): weder aus dem Fundament noch dorthin.
-    if IsFoundation(Own) then
+    if IsFoundation(mOwn) then
     begin
       Continue;
     end;
-    mAssignment := FResult.Assignments[Index];
-    Outlier := Default(TOverviewOutlier);
-    Outlier.Unit_ := Index;
-    Outlier.Suggested := -1;
+    mAssignment := FResult.Assignments[mIndex];
+    mOutlier := Default(TOverviewOutlier);
+    mOutlier.Unit_ := mIndex;
     // Nach Kanten (ungewichtet): ein anderes Teilsystem mit mehr Kanten als das eigene, bei Gleichstand das mit
     // der kleineren Nummer.
-    Best := Own;
-    mBestEdges := EdgesTo(mAssignment, Own);
-    for mRow in mAssignment.Rows do
-    begin
-      if (mRow.Subsystem <> Own) and not IsFoundation(mRow.Subsystem) and ((mRow.Edges > mBestEdges) or
-        ((mRow.Edges = mBestEdges) and (Best <> Own) and (mRow.Subsystem < Best))) then
-      begin
-        Best := mRow.Subsystem;
-        mBestEdges := mRow.Edges;
-      end;
-    end;
-    if Best <> Own then
-    begin
-      Outlier.Suggested := Best;
-      Outlier.Reason := TOverviewOutlierReason.Edges;
-    end
-    else
+    mOutlier.Suggested := EdgeRival(mAssignment, mOwn);
+    mOutlier.Reason := TOverviewOutlierReason.Edges;
+    if mOutlier.Suggested < 0 then
     begin
       // Nach Namensraum: Die Unit trägt nicht den Namen ihres Teilsystems, aber den eines anderen. Nur wenn
       // beide Namen aus Namensraum-Abschnitten stammen.
-      Parts := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
-      NameOwn := False;
-      for Part in Parts do
-      begin
-        if SameText(Part, FPartKey[Own]) then
-        begin
-          NameOwn := True;
-        end;
-      end;
-      if not NameOwn and FNamedByPart[Own] then
-      begin
-        for Subsystem := 0 to High(FResult.Subsystems) do
-        begin
-          if (Subsystem = Own) or not FNamedByPart[Subsystem] or (Length(FResult.Subsystems[Subsystem].Units) < 2) or
-            IsFoundation(Subsystem) then
-          begin
-            Continue;
-          end;
-          for Part in Parts do
-          begin
-            if SameText(Part, FPartKey[Subsystem]) and (Outlier.Suggested < 0) then
-            begin
-              Outlier.Suggested := Subsystem;
-              Outlier.Reason := TOverviewOutlierReason.Namespace;
-            end;
-          end;
-        end;
-      end;
+      mOutlier.Suggested := NamespaceRival(mIndex, mOwn);
+      mOutlier.Reason := TOverviewOutlierReason.Namespace;
     end;
-    if Outlier.Suggested < 0 then
+    if mOutlier.Suggested < 0 then
     begin
       Continue;
     end;
-    Outlier.Inside := EdgesTo(mAssignment, Own);
-    Outlier.Toward := EdgesTo(mAssignment, Outlier.Suggested);
-    FResult.Outliers := FResult.Outliers + [Outlier];
+    mOutlier.Inside := EdgesTo(mAssignment, mOwn);
+    mOutlier.Toward := EdgesTo(mAssignment, mOutlier.Suggested);
+    FResult.Outliers := FResult.Outliers + [mOutlier];
   end;
 end;
 
@@ -2015,70 +1662,94 @@ begin
   end;
 end;
 
-procedure TAnalysis.CollectCrossLinks;
+/// <summary>Je Paar von Teilsystemen (Quelle, Ziel) die Zahl der Kanten zwischen ihnen.</summary>
+function SubsystemPairs(const AOverview: TArchitectureOverview): TArray<TArray<Integer>>;
 var
-  Count: Integer;
-  Pairs: TArray<TArray<Integer>>;
-  Index, From_, To_: Integer;
-  GraphEdge: TUsesEdge;
-  Edge: TOverviewEdge;
-  Link: TOverviewCrossLink;
+  mIndex, mFrom, mTo: Integer;
+  mEdge: TOverviewEdge;
 begin
-  Count := Length(FResult.Subsystems);
-  SetLength(Pairs, Count);
-  for Index := 0 to Count - 1 do
+  SetLength(Result, Length(AOverview.Subsystems));
+  for mIndex := 0 to High(Result) do
   begin
-    SetLength(Pairs[Index], Count);
+    SetLength(Result[mIndex], Length(AOverview.Subsystems));
   end;
-  for Edge in FResult.Edges do
+  for mEdge in AOverview.Edges do
   begin
-    From_ := FResult.Units[Edge.Source].Subsystem;
-    To_ := FResult.Units[Edge.Target].Subsystem;
-    if From_ <> To_ then
+    mFrom := AOverview.Units[mEdge.Source].Subsystem;
+    mTo := AOverview.Units[mEdge.Target].Subsystem;
+    if mFrom <> mTo then
     begin
-      Inc(Pairs[From_][To_]);
+      Inc(Result[mFrom][mTo]);
     end;
   end;
-  // In Quelltextreihenfolge je Unit (Units nach Name), damit die Liste stabil bleibt.
-  for Index := 0 to High(FResult.Units) do
+end;
+
+/// <summary>Grund der Querverbindung mit AForward Kanten hin und ABackward zurück; False = keine.</summary>
+function CrossReason(AForward, ABackward: Integer; out AReason: TOverviewCrossReason): Boolean;
+begin
+  Result := True;
+  if AForward + ABackward <= TArchitectureAnalyzer.RareLimit then
   begin
-    for GraphEdge in FGraph.Node(FResult.Units[Index].Node).Outgoing do
+    AReason := TOverviewCrossReason.Rare;
+  end
+  else if AForward < ABackward then
+  begin
+    AReason := TOverviewCrossReason.AgainstDirection;
+  end
+  else
+  begin
+    AReason := TOverviewCrossReason.Rare;
+    Result := False;
+  end;
+end;
+
+function TAnalysis.CrossLinkOf(AUnit: Integer; const AGraphEdge: TUsesEdge; const APairs: TArray<TArray<Integer>>;
+  out ALink: TOverviewCrossLink): Boolean;
+var
+  mFrom, mTo: Integer;
+  mEdge: TOverviewEdge;
+begin
+  ALink := Default(TOverviewCrossLink);
+  mFrom := FResult.Units[AUnit].Subsystem;
+  mTo := FResult.Units[FUnitOf[AGraphEdge.Target]].Subsystem;
+  // Kanten ins Fundament (#1365) sind gewollt, keine Querverbindung.
+  if (mFrom = mTo) or IsFoundation(mFrom) or IsFoundation(mTo) then
+  begin
+    Exit(False);
+  end;
+  ALink.FromSubsystem := mFrom;
+  ALink.ToSubsystem := mTo;
+  ALink.Forward := APairs[mFrom][mTo];
+  ALink.Backward := APairs[mTo][mFrom];
+  Result := CrossReason(ALink.Forward, ALink.Backward, ALink.Reason);
+  if Result then
+  begin
+    mEdge := Default(TOverviewEdge);
+    mEdge.Source := AUnit;
+    mEdge.Target := FUnitOf[AGraphEdge.Target];
+    mEdge.Section := AGraphEdge.Section;
+    Locate(mEdge, AGraphEdge);
+    ALink.Edge := mEdge;
+  end;
+end;
+
+procedure TAnalysis.CollectCrossLinks;
+var
+  mPairs: TArray<TArray<Integer>>;
+  mIndex: Integer;
+  mGraphEdge: TUsesEdge;
+  mLink: TOverviewCrossLink;
+begin
+  mPairs := SubsystemPairs(FResult);
+  // In Quelltextreihenfolge je Unit (Units nach Name), damit die Liste stabil bleibt.
+  for mIndex := 0 to High(FResult.Units) do
+  begin
+    for mGraphEdge in FGraph.Node(FResult.Units[mIndex].Node).Outgoing do
     begin
-      if FUnitOf[GraphEdge.Target] < 0 then
+      if (FUnitOf[mGraphEdge.Target] >= 0) and CrossLinkOf(mIndex, mGraphEdge, mPairs, mLink) then
       begin
-        Continue;
+        FResult.CrossLinks := FResult.CrossLinks + [mLink];
       end;
-      From_ := FResult.Units[Index].Subsystem;
-      To_ := FResult.Units[FUnitOf[GraphEdge.Target]].Subsystem;
-      // Kanten ins Fundament (#1365) sind gewollt, keine Querverbindung.
-      if (From_ = To_) or IsFoundation(From_) or IsFoundation(To_) then
-      begin
-        Continue;
-      end;
-      Link := Default(TOverviewCrossLink);
-      Link.FromSubsystem := From_;
-      Link.ToSubsystem := To_;
-      Link.Forward := Pairs[From_][To_];
-      Link.Backward := Pairs[To_][From_];
-      if Link.Forward + Link.Backward <= TArchitectureAnalyzer.RareLimit then
-      begin
-        Link.Reason := TOverviewCrossReason.Rare;
-      end
-      else if Link.Forward < Link.Backward then
-      begin
-        Link.Reason := TOverviewCrossReason.AgainstDirection;
-      end
-      else
-      begin
-        Continue;
-      end;
-      Edge := Default(TOverviewEdge);
-      Edge.Source := Index;
-      Edge.Target := FUnitOf[GraphEdge.Target];
-      Edge.Section := GraphEdge.Section;
-      Locate(Edge, GraphEdge);
-      Link.Edge := Edge;
-      FResult.CrossLinks := FResult.CrossLinks + [Link];
     end;
   end;
 end;

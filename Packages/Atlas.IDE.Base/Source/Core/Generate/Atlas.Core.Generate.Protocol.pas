@@ -154,13 +154,79 @@ begin
   Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
 end;
 
+function PlacesOf(const AValue: TJSONValue): TArray<string>;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mValue in TJSONArray(AValue) do
+  begin
+    if mValue is TJSONString then
+    begin
+      Result := Result + [TJSONString(mValue).Value];
+    end;
+  end;
+end;
+
+/// <summary>Gruppe eines Serverbefehls; „Zuletzt“, „Vorlagen“ und Unbekanntes landen unter „Erzeugen“.</summary>
+function ServerGroupOf(const AText: string): TAtlasGenerateGroup;
+begin
+  if not TAtlasGenerateOptions.TryParseGroup(AText, Result) or (Result = TAtlasGenerateGroup.Recent) or
+    (Result = TAtlasGenerateGroup.Templates) then
+  begin
+    Result := TAtlasGenerateGroup.Generate;
+  end;
+end;
+
+function ArgumentOf(const AText: string): TAtlasGenerateArgument;
+begin
+  if SameText(AText, 'required') then
+  begin
+    Result := TAtlasGenerateArgument.Required;
+  end
+  else if SameText(AText, 'optional') then
+  begin
+    Result := TAtlasGenerateArgument.Optional;
+  end
+  else
+  begin
+    Result := TAtlasGenerateArgument.None;
+  end;
+end;
+
+/// <summary>Eintrag aus einem Element von „commands“; False ohne Objekt oder Namen.</summary>
+function TryMenuEntry(const AValue: TJSONValue; out AEntry: TAtlasGenerateEntry): Boolean;
+var
+  mItem: TJSONObject;
+begin
+  Result := (AValue is TJSONObject) and (StringOf(TJSONObject(AValue), 'name') <> '');
+  if not Result then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AValue);
+  AEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Slash, ServerGroupOf(StringOf(mItem, 'group')),
+    StringOf(mItem, 'name'), StringOf(mItem, 'summary'));
+  AEntry.Detail := StringOf(mItem, 'summary');
+  AEntry.Example := StringOf(mItem, 'example');
+  AEntry.Argument := ArgumentOf(StringOf(mItem, 'argument'));
+  AEntry.HasChoices := FlagOf(mItem, 'choices');
+  AEntry.Multi := FlagOf(mItem, 'multi');
+  AEntry.Separator := StringOf(mItem, 'separator');
+  if AEntry.Separator = '' then
+  begin
+    AEntry.Separator := ' ';
+  end;
+end;
 class function TAtlasGenerateProtocol.ParseMenu(const AValue: TJSONValue): TAtlasGenerateServerMenu;
 var
-  Root, Item: TJSONObject;
+  Root: TJSONObject;
   Value: TJSONValue;
   Entry: TAtlasGenerateEntry;
-  Group: TAtlasGenerateGroup;
-  Argument: string;
 begin
   Result := Default(TAtlasGenerateServerMenu);
   Result.Places := nil;
@@ -171,61 +237,16 @@ begin
   end;
   Root := TJSONObject(AValue);
   Result.Enabled := FlagOf(Root, 'enabled');
-  if Root.GetValue('places') is TJSONArray then
+  Result.Places := PlacesOf(Root.GetValue('places'));
+  if Root.GetValue('commands') is TJSONArray then
   begin
-    for Value in TJSONArray(Root.GetValue('places')) do
+    for Value in TJSONArray(Root.GetValue('commands')) do
     begin
-      if Value is TJSONString then
+      if TryMenuEntry(Value, Entry) then
       begin
-        Result.Places := Result.Places + [TJSONString(Value).Value];
+        Result.Entries := Result.Entries + [Entry];
       end;
     end;
-  end;
-  if not (Root.GetValue('commands') is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for Value in TJSONArray(Root.GetValue('commands')) do
-  begin
-    if not (Value is TJSONObject) then
-    begin
-      Continue;
-    end;
-    Item := TJSONObject(Value);
-    if StringOf(Item, 'name') = '' then
-    begin
-      Continue;
-    end;
-    if not TAtlasGenerateOptions.TryParseGroup(StringOf(Item, 'group'), Group) or
-      (Group = TAtlasGenerateGroup.Recent) or (Group = TAtlasGenerateGroup.Templates) then
-    begin
-      Group := TAtlasGenerateGroup.Generate;
-    end;
-    Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Slash, Group, StringOf(Item, 'name'),
-      StringOf(Item, 'summary'));
-    Entry.Detail := StringOf(Item, 'summary');
-    Entry.Example := StringOf(Item, 'example');
-    Argument := StringOf(Item, 'argument');
-    if SameText(Argument, 'required') then
-    begin
-      Entry.Argument := TAtlasGenerateArgument.Required;
-    end
-    else if SameText(Argument, 'optional') then
-    begin
-      Entry.Argument := TAtlasGenerateArgument.Optional;
-    end
-    else
-    begin
-      Entry.Argument := TAtlasGenerateArgument.None;
-    end;
-    Entry.HasChoices := FlagOf(Item, 'choices');
-    Entry.Multi := FlagOf(Item, 'multi');
-    Entry.Separator := StringOf(Item, 'separator');
-    if Entry.Separator = '' then
-    begin
-      Entry.Separator := ' ';
-    end;
-    Result.Entries := Result.Entries + [Entry];
   end;
 end;
 

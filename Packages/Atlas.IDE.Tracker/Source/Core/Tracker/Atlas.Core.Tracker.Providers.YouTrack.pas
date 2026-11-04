@@ -73,6 +73,7 @@
 //   {"text": …}; der Kommentar bettet die Bilder ein (![](Name)) und
 //   verweist auf die übrigen Dateien ([Name](Name)).
 
+
 interface
 
 uses
@@ -80,6 +81,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Attach;
@@ -89,135 +91,10 @@ type
     IAtlasTrackerTimeWriter, IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards,
     IAtlasTrackerWorkDays, IAtlasTrackerPeople, IAtlasTrackerAttach)
   public const
-    ProviderName = 'youtrack';
-    Query = 'for: me #Unresolved';
-    Fields = 'idReadable,numberInProject,summary,customFields(name,value(name,presentation,login,fullName))';
-    LocalePath = '/api/admin/globalSettings/localeSettings?fields=locale(id,language,locale)';
-    /// <summary>Felder der Vorschau (#1264) ohne Kommentare.</summary>
-    DetailFields = 'idReadable,numberInProject,summary,description,created,updated,' +
-      'customFields(name,value(name,presentation,login,fullName)),tags(name),' +
-      'attachments(name,size,url,mimeType,removed),' +
-      'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
-      'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
-    CommentFields = 'comments(text,created,deleted,author(login,fullName))';
-    /// <summary>Felder der Projekte für die Klapplisten (#1266).</summary>
-    ProjectFields = 'shortName,customFields(field(name,fieldType(id)),bundle(values(name,archived)))';
-    /// <summary>Höchstens so viele Werte je Klappliste.</summary>
-    MaxValues = 200;
-    /// <summary>Felder der Zeiterfassung eines Projekts (#1267).</summary>
-    TimeSettingsFields = 'enabled,workItemTypes(name)';
-    /// <summary>Felder der Linktypen (#1279).</summary>
-    LinkTypeFields = 'id,name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
-      'localizedTargetToSource,aggregation';
-    /// <summary>Felder der VCS-Änderungen (#1269).</summary>
-    VcsChangeFields = 'version,text,date,user(login,fullName)';
-    /// <summary>Felder der Änderungsabfrage (#1271).</summary>
-    ChangeIssueFields = 'idReadable,summary,updated';
-    ActivityFields = 'timestamp,author(login,fullName),category(id),field(name),' +
-      'added(id,name,login,fullName,text,presentation)';
-    ActivityCategories = 'CommentsCategory,CustomFieldCategory';
-    /// <summary>Höchstens so viele geänderte Issues je Abfrage bekommen ihre Einzelheiten.</summary>
-    MaxChangedIssues = 20;
+    ProviderName = TAtlasYouTrackApi.ProviderName;
+    Query = TAtlasYouTrackApi.DefaultQuery;
+    MaxValues = TAtlasYouTrackApi.MaxValues;
   public
-    class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
-    /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
-    class function FullQuery(const ATarget: TAtlasTrackerTarget): string; static;
-    /// <summary>Freitextsuche der Palette (#1270): "project: &lt;Kürzel&gt; &lt;Text&gt;" ohne die Abfrage der Einstellungen;
-    /// '' ohne Server oder Text.</summary>
-    class function TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string;
-      static;
-    /// <summary>Ein Issue mit den Feldern der Liste (#1270); '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function LookupUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
-    /// <summary>Antwort von /api/issues; False bei ungültigem JSON.</summary>
-    class function ParseIssues(const AJson: string; AMax: Integer;
-      out AIssues: TArray<TAtlasTrackerIssue>): Boolean; static;
-    /// <summary>Fehler zu einem HTTP-Status außer 200.</summary>
-    class function ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError; static;
-    /// <summary>Adresse der Vorschau eines Issues; '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function DetailsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string; AComments: Boolean): string;
-      static;
-    /// <summary>Antwort von /api/issues/&lt;Kennung&gt;; False bei ungültigem JSON bzw. ohne Kennung.</summary>
-    class function ParseDetails(const AJson: string; const ATarget: TAtlasTrackerTarget; AComments: Boolean;
-      out ADetails: TAtlasTrackerDetails): Boolean; static;
-    /// <summary>Name bzw. Wert für einen Befehl: mit Leerzeichen oder Klammern in geschweiften Klammern.</summary>
-    class function CommandWord(const AText: string): string; static;
-    /// <summary>Befehl zu AChange ohne Kommentar ("State {In Arbeit} Assignee me"); '' = nur Kommentar.</summary>
-    class function CommandQuery(const AChange: TAtlasTrackerWrite): string; static;
-    /// <summary>Inhalt für /api/commands.</summary>
-    class function CommandJson(const AKey, AQuery, AComment: string): string; static;
-    /// <summary>Inhalt für …/comments: {"text": AText}.</summary>
-    class function CommentJson(const AText: string): string; static;
-    /// <summary>Fehlertext aus einer Antwort ("error_description", sonst "error"); '' ohne.</summary>
-    class function ErrorMessage(const AJson: string): string; static;
-    /// <summary>Werte aus /api/admin/projects (AProject = Kürzel; '' = alle Projekte) bzw. ohne Projekt aus
-    /// /api/admin/customFieldSettings/customFields; False bei ungültigem JSON.</summary>
-    class function ParseFieldValues(const AJson, AProject: string; AKind: TAtlasTrackerValueKind; const AField: string;
-      out AValues: TArray<string>): Boolean; static;
-    /// <summary>Anmeldenamen aus /api/users; False bei ungültigem JSON.</summary>
-    class function ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean; static;
-    /// <summary>Projektkürzel aus der Kennung ("ATL-123" → "ATL"); '' ohne Bindestrich.</summary>
-    class function ProjectOfKey(const AKey: string): string; static;
-    /// <summary>Körper für timeTracking/workItems (#1267); "date" = Mittag des Tages in UTC (Millisekunden), damit
-    /// der Tag in jeder Zeitzone stimmt.</summary>
-    class function WorkItemJson(const AItem: TAtlasTrackerWorkItem): string; static;
-    /// <summary>{"enabled": …, "workItemTypes": [{"name": …}]} bzw. eine Liste [{"name": …}] (AList).</summary>
-    class function ParseTimeSettings(const AJson: string; AList: Boolean;
-      out ASettings: TAtlasTrackerTimeSettings): Boolean; static;
-    /// <summary>Die Buchung scheiterte, weil die Zeiterfassung im Projekt aus ist (400 mit Hinweis darauf).
-    /// </summary>
-    class function TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean; static;
-    /// <summary>Adresse zum Lesen (AFields "idReadable,description") bzw. Schreiben ("idReadable") der
-    /// Beschreibung (#1273); '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function IssueUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFields: string): string; static;
-    /// <summary>"description" ungekürzt ('' bei null); False bei ungültigem JSON bzw. ohne "idReadable".</summary>
-    class function ParseDescription(const AJson: string; out AText: string): Boolean; static;
-    /// <summary>Inhalt des POST: {"description": AText}.</summary>
-    class function DescriptionJson(const AText: string): string; static;
-    /// <summary>Adresse der Linktypen; '' ohne Server.</summary>
-    class function LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string; static;
-    /// <summary>Linktyp aus /api/issueLinkTypes, mit dem ein Link am Issue im Pfad die Art AKind ergibt: AId
-    /// samt Richtung ("80-1s", "81-2t"). Typen mit bekanntem Namen gehen vor. False ohne passenden Typ.</summary>
-    class function ParseLinkType(const AJson: string; AKind: TAtlasTrackerLinkKind; out AId: string): Boolean;
-      static;
-    /// <summary>Projekt-ID aus /api/issues/&lt;Kennung&gt;?fields=project(id); False ohne.</summary>
-    class function ParseProjectId(const AJson: string; out AId: string): Boolean; static;
-    /// <summary>Inhalt für POST /api/issues.</summary>
-    class function NewIssueBody(const AProjectId, ATitle, ADescription: string): string; static;
-    /// <summary>Inhalt für POST …/links/&lt;Typ&gt;/issues.</summary>
-    class function LinkBody(const AKey: string): string; static;
-    /// <summary>Kennung des angelegten Issues aus der Antwort von POST /api/issues; '' ohne.</summary>
-    class function ParseCreatedKey(const AJson: string): string; static;
-    /// <summary>Suche nach Benutzern für Erwähnungen (#1278); '' ohne Server.</summary>
-    class function UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string; static;
-    /// <summary>Antwort von /api/users mit login und fullName, ohne gesperrte (#1278); False bei ungültigem JSON.
-    /// </summary>
-    class function ParseUserList(const AJson: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean; static;
-    /// <summary>Adresse der VCS-Änderungen eines Issues (#1269); '' bei ungültiger Kennung oder ohne Server.
-    /// </summary>
-    class function VcsChangesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
-    /// <summary>Antwort von …/vcsChanges, neueste zuerst; False bei ungültigem JSON.</summary>
-    class function ParseVcsChanges(const AJson: string; out AChanges: TArray<TAtlasTrackerVcsChange>): Boolean;
-      static;
-    /// <summary>Umfang als Suchausdruck (#1271), z. B. "(for: me or reporter: me)".</summary>
-    class function ScopeQuery(AScope: TAtlasTrackerNotifyScope): string; static;
-    /// <summary>Adresse der geänderten Issues ab ASince (UTC) im Umfang AScope; '' ohne Server.</summary>
-    class function ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
-      AScope: TAtlasTrackerNotifyScope): string; static;
-    /// <summary>Antwort der geänderten Issues: Kennung, Titel und Zeit, nur nach ASince. False bei ungültigem JSON.
-    /// </summary>
-    class function ParseChangedIssues(const AJson: string; ASince: TDateTime;
-      out AIssues: TArray<TAtlasTrackerChange>): Boolean; static;
-    /// <summary>Adresse der Aktivitäten von AKey nach ASince; '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string; ASince: TDateTime): string;
-      static;
-    /// <summary>Antwort von /activities als Änderungen an AKey (ATitle): Kommentare, Zuständig (AMe: an mich?) und
-    /// Zustand nach ASince; andere Felder entfallen. False bei ungültigem JSON.</summary>
-    class function ParseActivities(const AJson, AKey, ATitle, AMe: string; ASince: TDateTime;
-      out AChanges: TArray<TAtlasTrackerChange>): Boolean; static;
-    /// <summary>Adresse zum Hochladen von Anhängen (#1276); '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function AttachmentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
-    /// <summary>Adresse für einen neuen Kommentar (#1276); '' bei ungültiger Kennung oder ohne Server.</summary>
-    class function CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -232,9 +109,8 @@ type
     function SentQuery(const ATarget: TAtlasTrackerTarget): string;
     function ParseList(const AText: string; AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
     function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
-    function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Details(const ACall: TAtlasTrackerCall; const AKey: string; AComments: Boolean;
+      out ADetails: TAtlasTrackerDetails; out AError: TAtlasCiFetchError): Boolean;
     { IAtlasTrackerWriter }
     function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
@@ -253,29 +129,24 @@ type
     function UpdateDescription(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       const AKey, AText: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
     { IAtlasTrackerLinkWriter }
-    function CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
-      out AError: TAtlasCiFetchError): Boolean;
-    function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
-      out AError: TAtlasCiFetchError): Boolean;
+    function CreateSubtask(const ACall: TAtlasTrackerCall; const AParentKey, ATitle,
+      ADescription: string; out AKey: string; out AError: TAtlasCiFetchError): Boolean;
+    function AddLink(const ACall: TAtlasTrackerCall; const AKey: string; AKind: TAtlasTrackerLinkKind;
+      const AOtherKey: string; out AError: TAtlasCiFetchError): Boolean;
     { IAtlasTrackerBoards (#1272): über TAtlasYouTrackBoards }
-    function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+    function LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
       out AError: TAtlasCiFetchError): Boolean;
-    function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-      ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    function MoveCard(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
     { IAtlasTrackerWorkDays (#1277): über TAtlasYouTrackBoards }
     function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
       out ADays: TArray<Integer>): Boolean;
-    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
+    function Search(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+      out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
     { IAtlasTrackerPeople }
-    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+    function Users(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+      out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
     function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
     function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
@@ -289,676 +160,32 @@ type
     function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
-  // Agile Boards von YouTrack (#1272), ohne VCL und Open Tools API.
-  // - Boards: GET /api/agiles mit Spalten (columnSettings: Spaltenfeld, je
-  //   Spalte die Werte des Feldes wie auf dem Board des Servers, auch deutsche).
-  //   Gewählt wird das Board ABoardId, sonst das erste mit dem Projekt des
-  //   Ziels, sonst das erste.
-  // - Sprints: GET /api/agiles/<id>/sprints; Karten aus
-  //   GET /api/agiles/<id>/sprints/<sprint|current> mit den Issues.
-  // - Eine Karte liest Kennung, Titel und Verknüpfungen über
-  //   TAtlasYouTrackTracker.ParseDetails (Schloss über TAtlasTrackerLinks.Locked,
-  //   #1279), die Checkliste aus der Beschreibung (#1273), den Wert des
-  //   Spaltenfeldes, den Anmeldenamen des Zuständigen und die Farbe der
-  //   Priorität.
-  // - Verschieben: ein Befehl über TAtlasYouTrackTracker.Apply (#1266) mit dem
-  //   Spaltenfeld und dem ersten Wert der Zielspalte, Kommentar im selben
-  //   Befehl.
-  // - Sprint-Kachel (#1277): Schätzfeld des Boards (estimationField, Zahl bzw.
-  //   Zeitraum in Stunden), Zeitpunkt der Erledigung (resolved) und die
-  //   Arbeitstage aus GET /api/admin/timeTrackingSettings/workTimeSettings
-  //   (workDays, 1 = Montag … 7 = Sonntag; ohne Recht bleibt Mo–Fr).
-  TAtlasYouTrackBoards = class(TInterfacedObject, IAtlasTrackerBoards, IAtlasTrackerWorkDays)
-  public const
-    AgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,' +
-      'fieldValues(name))),currentSprint(id),estimationField(name)';
-    SprintFields = 'id,name,start,finish,archived';
-    WorkDaysPath = '/api/admin/timeTrackingSettings/workTimeSettings?fields=workDays';
-    /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
-    /// (Schätzung als Zeitraum, #1277).</summary>
-    CardFields = 'idReadable,numberInProject,summary,description,resolved,' +
-      'customFields(name,value(name,presentation,login,fullName,minutes,color(background))),' +
-      'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
-      'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
-  public
-    class function AgilesUrl(const ATarget: TAtlasTrackerTarget): string; static;
-    class function SprintsUrl(const ATarget: TAtlasTrackerTarget; const ABoardId: string): string; static;
-    /// <summary>ASprintId '' = "current".</summary>
-    class function SprintUrl(const ATarget: TAtlasTrackerTarget; const ABoardId, ASprintId: string): string; static;
-    /// <summary>Antwort von /api/agiles: Boards zur Auswahl und das gewählte mit Spalten und Feld in ASnapshot;
-    /// ACurrentSprint = ID des aktuellen Sprints. False bei ungültigem JSON oder ohne Board.</summary>
-    class function ParseAgiles(const AJson, ABoardId, AProject: string; var ASnapshot: TAtlasBoardSnapshot;
-      out ACurrentSprint: string): Boolean; static;
-    /// <summary>Antwort von …/sprints; False bei ungültigem JSON.</summary>
-    class function ParseSprints(const AJson: string; out ASprints: TArray<TAtlasBoardSprint>): Boolean; static;
-    /// <summary>Antwort von …/sprints/&lt;id&gt;: Sprint und Karten in ASnapshot (Spaltenfeld ASnapshot.Field).
-    /// False bei ungültigem JSON.</summary>
-    class function ParseSprint(const AJson: string; const ATarget: TAtlasTrackerTarget;
-      var ASnapshot: TAtlasBoardSnapshot): Boolean; static;
-    /// <summary>Antwort von workTimeSettings: Arbeitstage (1 = Montag … 7 = Sonntag); False ohne gültige.</summary>
-    class function ParseWorkDays(const AJson: string; out ADays: TArray<Integer>): Boolean; static;
-    /// <summary>Board im Browser: …/agiles/&lt;Board&gt;/&lt;Sprint|current&gt;.</summary>
-    class function BoardPage(const ATarget: TAtlasTrackerTarget; const ABoardId, ASprintId: string): string; static;
-    { IAtlasTrackerBoards }
-    function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
-      out AError: TAtlasCiFetchError): Boolean;
-    function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-      ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-    { IAtlasTrackerWorkDays }
-    function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
-      out ADays: TArray<Integer>): Boolean;
-  end;
-
 implementation
 
 uses
-  System.Classes,
-  System.DateUtils,
   System.Diagnostics,
   System.Generics.Collections,
-  System.Generics.Defaults,
-  System.JSON,
   System.Math,
-  System.StrUtils,
-  Atlas.Core.Tracker.TimeLog,
+  System.JSON,
   Atlas.Text.Uris,
-  Atlas.Core.Tracker.Templates,
-  Atlas.Core.Tracker.Links,
-  Atlas.Core.Tracker.Checklist;
+  Atlas.Core.Tracker.Internals.YouTrackJson,
+  Atlas.Core.Tracker.YouTrackParse,
+  Atlas.Core.Tracker.YouTrackBoards;
 
-function TextOf(AObject: TJSONObject; const AName: string): string;
-var
-  Value: TJSONValue;
+function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
-  Result := '';
-  Value := AObject.Values[AName];
-  if Value is TJSONString then
-  begin
-    Result := TJSONString(Value).Value;
-  end;
+  Result := TAtlasYouTrackApi.IssuePage(ATarget, AKey);
 end;
 
-function Shorten(const AText: string; AMax: Integer): string;
+function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 begin
-  Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(Result) > AMax then
-  begin
-    Result := Copy(Result, 1, AMax - 1) + '…';
-  end;
-end;
-
-/// <summary>Name eines Werts: "name", sonst "presentation"; bei einer Liste die Namen mit ", ".</summary>
-function ValueText(AValue: TJSONValue): string;
-var
-  Item: TJSONValue;
-  Part: string;
-begin
-  Result := '';
-  if AValue is TJSONObject then
-  begin
-    Result := TextOf(TJSONObject(AValue), 'name');
-    if Result = '' then
-    begin
-      Result := TextOf(TJSONObject(AValue), 'presentation');
-    end;
-    // Benutzer (Zuständig, #1264).
-    if Result = '' then
-    begin
-      Result := TextOf(TJSONObject(AValue), 'fullName');
-    end;
-    if Result = '' then
-    begin
-      Result := TextOf(TJSONObject(AValue), 'login');
-    end;
-  end
-  else if AValue is TJSONString then
-  begin
-    Result := TJSONString(AValue).Value;
-  end
-  else if AValue is TJSONArray then
-  begin
-    for Item in TJSONArray(AValue) do
-    begin
-      Part := ValueText(Item);
-      if Part = '' then
-      begin
-        Continue;
-      end;
-      if Result <> '' then
-      begin
-        Result := Result + ', ';
-      end;
-      Result := Result + Part;
-    end;
-  end;
-  Result := Shorten(Result, 60);
-end;
-
-function IsOneOf(const AName: string; const ANames: array of string): Boolean;
-var
-  Name: string;
-begin
-  Result := False;
-  for Name in ANames do
-  begin
-    if SameText(AName, Name) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-{ TAtlasYouTrackTracker }
-
-class function TAtlasYouTrackTracker.FullQuery(const ATarget: TAtlasTrackerTarget): string;
-var
-  Project: string;
-begin
-  Result := ATarget.Query;
-  if Result = '' then
-  begin
-    Result := TAtlasTrackerTemplates.DefaultQuery(ProviderName, ATarget.Language);
-  end;
-  if Result = '' then
-  begin
-    Result := Query;
-  end;
-  Project := ATarget.Project;
-  if Project = '' then
-  begin
-    Exit;
-  end;
-  // Kürzel mit Leerzeichen oder Sonderzeichen in geschweiften Klammern, wie in der Oberfläche.
-  if Pos(' ', Project) > 0 then
-  begin
-    Project := '{' + Project + '}';
-  end;
-  Result := 'project: ' + Project + ' ' + Result;
-end;
-
-class function TAtlasYouTrackTracker.IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
-var
-  Limit: Integer;
-begin
-  Result := '';
-  if ATarget.Server = '' then
-  begin
-    Exit;
-  end;
-  Limit := AMax;
-  if Limit < 1 then
-  begin
-    Limit := 1;
-  end;
-  if Limit > 100 then
-  begin
-    Limit := 100;
-  end;
-  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(FullQuery(ATarget)) + '&fields=' +
-    TTextUris.PercentEncode(Fields) + '&$top=' + IntToStr(Limit);
-end;
-
-class function TAtlasYouTrackTracker.TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
-  AMax: Integer): string;
-var
-  mTarget: TAtlasTrackerTarget;
-begin
-  Result := '';
-  if Trim(AText) = '' then
-  begin
-    Exit;
-  end;
-  // Der Suchtext ersetzt die Abfrage der Einstellungen; "project: …" setzt FullQuery davor.
-  mTarget := ATarget;
-  mTarget.Query := Trim(AText);
-  Result := IssuesUrl(mTarget, AMax);
-end;
-
-/// <summary>Ein Eintrag von /api/issues mit den Feldern aus Fields; False ohne Kennung.</summary>
-function IssueOf(AItem: TJSONObject; out AIssue: TAtlasTrackerIssue): Boolean;
-var
-  mCustom, mField, mNumberValue: TJSONValue;
-  mFieldName, mText: string;
-  mNumber: Int64;
-begin
-  AIssue := TAtlasTrackerIssue.Empty;
-  AIssue.Key := Trim(TextOf(AItem, 'idReadable'));
-  Result := AIssue.Key <> '';
-  if not Result then
-  begin
-    Exit;
-  end;
-  mNumberValue := AItem.Values['numberInProject'];
-  if (mNumberValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mNumberValue).Value, mNumber) and (mNumber > 0) and
-    (mNumber <= MaxInt) then
-  begin
-    AIssue.Number := Integer(mNumber);
-  end;
-  AIssue.Title := Shorten(TextOf(AItem, 'summary'), TAtlasTrackerIssue.MaxTitle);
-  mCustom := AItem.Values['customFields'];
-  if mCustom is TJSONArray then
-  begin
-    for mField in TJSONArray(mCustom) do
-    begin
-      if not (mField is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mFieldName := Trim(TextOf(TJSONObject(mField), 'name'));
-      mText := ValueText(TJSONObject(mField).Values['value']);
-      if mText = '' then
-      begin
-        Continue;
-      end;
-      if IsOneOf(mFieldName, ['State', 'Status', 'Zustand']) and (AIssue.State = '') then
-      begin
-        AIssue.State := mText;
-      end
-      else if IsOneOf(mFieldName, ['Priority', 'Priorität']) and (AIssue.Priority = '') then
-      begin
-        AIssue.Priority := mText;
-      end
-      else if IsOneOf(mFieldName, ['Sprint', 'Sprints', 'Board']) and (AIssue.Sprint = '') then
-      begin
-        AIssue.Sprint := mText;
-      end
-      // Dieselben Namen wie in der Vorschau (#1264).
-      else if IsOneOf(mFieldName, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) and
-        (AIssue.Assignee = '') then
-      begin
-        AIssue.Assignee := mText;
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseIssues(const AJson: string; AMax: Integer;
-  out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
-var
-  Value, Item: TJSONValue;
-  Issue: TAtlasTrackerIssue;
-begin
-  AIssues := nil;
-  Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (Value is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for Item in TJSONArray(Value) do
-    begin
-      if Length(AIssues) >= AMax then
-      begin
-        Break;
-      end;
-      if (Item is TJSONObject) and IssueOf(TJSONObject(Item), Issue) then
-      begin
-        AIssues := AIssues + [Issue];
-      end;
-    end;
-  finally
-    Value.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
-begin
-  case AStatus of
-    401, 403:
-      Result := TAtlasCiFetchError.Unauthorized;
-    404:
-      Result := TAtlasCiFetchError.NotFound;
-    400:
-      Result := TAtlasCiFetchError.Invalid;
-  else
-    Result := TAtlasCiFetchError.Server;
-  end;
-end;
-
-function ValidKey(const AKey: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AKey <> '';
-  for mIndex := 1 to Length(AKey) do
-  begin
-    if not CharInSet(AKey[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
-/// <summary>Millisekunden seit 1970 (YouTrack) als UTC; 0 ohne.</summary>
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mValue: TJSONValue;
-  mMs: Int64;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mMs) and (mMs > 0) then
-  begin
-    Result := UnixToDateTime(mMs div 1000, True) + (mMs mod 1000) / MSecsPerDay;
-  end;
-end;
-
-function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.Values[AName];
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function Limited(const AText: string): string;
-begin
-  Result := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
-end;
-
-function FirstText(AObject: TJSONObject; const AName, AFallback: string): string;
-begin
-  Result := TextOf(AObject, AName);
-  if Result = '' then
-  begin
-    Result := TextOf(AObject, AFallback);
-  end;
-end;
-
-/// <summary>Art eines Links (#1279) aus dem Linktyp: englische und lokalisierte Namen und Beschriftungen.</summary>
-function TypeKind(AType: TJSONObject; const ADirection: string): TAtlasTrackerLinkKind;
-var
-  mAggregation: Boolean;
-begin
-  mAggregation := BoolOf(AType, 'aggregation');
-  Result := TAtlasTrackerLinks.YouTrackKind(TextOf(AType, 'name'), TextOf(AType, 'sourceToTarget'),
-    TextOf(AType, 'targetToSource'), ADirection, mAggregation);
-  if Result = TAtlasTrackerLinkKind.Other then
-  begin
-    Result := TAtlasTrackerLinks.YouTrackKind(TextOf(AType, 'localizedName'),
-      TextOf(AType, 'localizedSourceToTarget'), TextOf(AType, 'localizedTargetToSource'), ADirection, mAggregation);
-  end;
-end;
-
-/// <summary>Zustand eines verknüpften Issues aus customFields (State, Status, Zustand); '' ohne.</summary>
-function StateOf(AIssue: TJSONObject): string;
-var
-  mFields, mField: TJSONValue;
-begin
-  Result := '';
-  mFields := AIssue.Values['customFields'];
-  if not (mFields is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mField in TJSONArray(mFields) do
-  begin
-    if (mField is TJSONObject) and IsOneOf(TextOf(TJSONObject(mField), 'name'), ['State', 'Status', 'Zustand']) then
-    begin
-      Result := ValueText(TJSONObject(mField).Values['value']);
-      if Result <> '' then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.LookupUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-begin
-  Result := '';
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
-  begin
-    Exit;
-  end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(Fields);
-end;
-
-class function TAtlasYouTrackTracker.DetailsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
-  AComments: Boolean): string;
-var
-  mFields: string;
-begin
-  Result := '';
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
-  begin
-    Exit;
-  end;
-  mFields := DetailFields;
-  if AComments then
-  begin
-    mFields := mFields + ',' + CommentFields;
-  end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(mFields);
-end;
-
-class function TAtlasYouTrackTracker.ParseDetails(const AJson: string; const ATarget: TAtlasTrackerTarget;
-  AComments: Boolean; out ADetails: TAtlasTrackerDetails): Boolean;
-var
-  mValue, mItem, mField, mIssue, mSize: TJSONValue;
-  mRoot, mObject, mType: TJSONObject;
-  mName, mText, mUrl, mDirection, mRelation, mServer: string;
-  mNumber: Int64;
-  mComment: TAtlasTrackerComment;
-  mAttachment: TAtlasTrackerAttachment;
-  mLink: TAtlasTrackerLink;
-  mKind: TAtlasTrackerLinkKind;
-begin
-  ADetails := TAtlasTrackerDetails.Empty;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mRoot := TJSONObject(mValue);
-    ADetails.Key := Trim(TextOf(mRoot, 'idReadable'));
-    if ADetails.Key = '' then
-    begin
-      Exit;
-    end;
-    mItem := mRoot.Values['numberInProject'];
-    if (mItem is TJSONNumber) and TryStrToInt64(TJSONNumber(mItem).Value, mNumber) and (mNumber > 0) and
-      (mNumber <= MaxInt) then
-    begin
-      ADetails.Number := Integer(mNumber);
-    end;
-    ADetails.Title := Shorten(TextOf(mRoot, 'summary'), 500);
-    ADetails.Description := Limited(TextOf(mRoot, 'description'));
-    ADetails.Created := TimeOf(mRoot, 'created');
-    ADetails.Updated := TimeOf(mRoot, 'updated');
-    mServer := ATarget.Server;
-    mItem := mRoot.Values['customFields'];
-    if mItem is TJSONArray then
-    begin
-      for mField in TJSONArray(mItem) do
-      begin
-        if not (mField is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mName := Trim(TextOf(TJSONObject(mField), 'name'));
-        mText := ValueText(TJSONObject(mField).Values['value']);
-        if mText = '' then
-        begin
-          Continue;
-        end;
-        if IsOneOf(mName, ['State', 'Status', 'Zustand']) and (ADetails.State = '') then
-        begin
-          ADetails.State := mText;
-        end
-        else if IsOneOf(mName, ['Priority', 'Priorität']) and (ADetails.Priority = '') then
-        begin
-          ADetails.Priority := mText;
-        end
-        else if IsOneOf(mName, ['Type', 'Typ']) and (ADetails.Kind = '') then
-        begin
-          ADetails.Kind := mText;
-        end
-        else if IsOneOf(mName, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) and
-          (ADetails.Assignee = '') then
-        begin
-          ADetails.Assignee := mText;
-        end
-        else if IsOneOf(mName, ['Sprint', 'Sprints', 'Board', 'Fix versions', 'Fix version', 'Meilenstein']) and
-          (ADetails.Sprint = '') then
-        begin
-          ADetails.Sprint := mText;
-        end;
-      end;
-    end;
-    mItem := mRoot.Values['tags'];
-    if mItem is TJSONArray then
-    begin
-      for mField in TJSONArray(mItem) do
-      begin
-        if mField is TJSONObject then
-        begin
-          mText := Shorten(TextOf(TJSONObject(mField), 'name'), 60);
-          if mText <> '' then
-          begin
-            ADetails.Labels := ADetails.Labels + [mText];
-          end;
-        end;
-      end;
-    end;
-    mItem := mRoot.Values['attachments'];
-    if mItem is TJSONArray then
-    begin
-      for mField in TJSONArray(mItem) do
-      begin
-        if not (mField is TJSONObject) or BoolOf(TJSONObject(mField), 'removed') then
-        begin
-          Continue;
-        end;
-        if Length(ADetails.Attachments) >= TAtlasTrackerDetails.MaxAttachments then
-        begin
-          Break;
-        end;
-        mObject := TJSONObject(mField);
-        mAttachment := Default(TAtlasTrackerAttachment);
-        mAttachment.Name := Shorten(TextOf(mObject, 'name'), 200);
-        mAttachment.MimeType := TextOf(mObject, 'mimeType');
-        mAttachment.Size := -1;
-        mSize := mObject.Values['size'];
-        if (mSize is TJSONNumber) and TryStrToInt64(TJSONNumber(mSize).Value, mNumber) and (mNumber >= 0) then
-        begin
-          mAttachment.Size := mNumber;
-        end;
-        // Signierte Adresse relativ zum Server ("/youtrack/api/files/…?sign=…").
-        mUrl := TextOf(mObject, 'url');
-        if StartsStr('/', mUrl) and (mServer <> '') then
-        begin
-          mUrl := mServer + mUrl;
-        end;
-        mAttachment.Url := mUrl;
-        mAttachment.External := not SameText(TAtlasTrackerTarget.Create('', mUrl, '', '').Server, mServer);
-        if (mAttachment.Name <> '') and (mUrl <> '') then
-        begin
-          ADetails.Attachments := ADetails.Attachments + [mAttachment];
-        end;
-      end;
-    end;
-    mItem := mRoot.Values['links'];
-    if mItem is TJSONArray then
-    begin
-      for mField in TJSONArray(mItem) do
-      begin
-        if not (mField is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mObject := TJSONObject(mField);
-        mDirection := UpperCase(TextOf(mObject, 'direction'));
-        mRelation := '';
-        mKind := TAtlasTrackerLinkKind.Other;
-        if mObject.Values['linkType'] is TJSONObject then
-        begin
-          mType := TJSONObject(mObject.Values['linkType']);
-          // Beschriftung in der Sprache der Oberfläche, sonst die englische.
-          if mDirection = 'INWARD' then
-          begin
-            mRelation := FirstText(mType, 'localizedTargetToSource', 'targetToSource');
-          end
-          else
-          begin
-            mRelation := FirstText(mType, 'localizedSourceToTarget', 'sourceToTarget');
-          end;
-          if mRelation = '' then
-          begin
-            mRelation := FirstText(mType, 'localizedName', 'name');
-          end;
-          mKind := TypeKind(mType, mDirection);
-        end;
-        if not (mObject.Values['issues'] is TJSONArray) then
-        begin
-          Continue;
-        end;
-        for mIssue in TJSONArray(mObject.Values['issues']) do
-        begin
-          if not (mIssue is TJSONObject) or (Length(ADetails.Links) >= TAtlasTrackerDetails.MaxLinks) then
-          begin
-            Continue;
-          end;
-          mLink := Default(TAtlasTrackerLink);
-          mLink.Key := Trim(TextOf(TJSONObject(mIssue), 'idReadable'));
-          mLink.Title := Shorten(TextOf(TJSONObject(mIssue), 'summary'), 200);
-          mLink.Relation := Shorten(mRelation, 60);
-          mLink.Kind := mKind;
-          // Zustand (#1279): resolved ist null, solange das Issue offen ist; fehlt das Feld, bleibt er unbekannt.
-          mLink.StateKnown := TJSONObject(mIssue).Values['resolved'] <> nil;
-          mLink.Resolved := TJSONObject(mIssue).Values['resolved'] is TJSONNumber;
-          mLink.State := StateOf(TJSONObject(mIssue));
-          // Gleicher Tracker: öffnet im Fenster.
-          mLink.Local := ValidKey(mLink.Key);
-          if mLink.Key <> '' then
-          begin
-            ADetails.Links := ADetails.Links + [mLink];
-          end;
-        end;
-      end;
-    end;
-    ADetails.CommentsLoaded := AComments;
-    mItem := mRoot.Values['comments'];
-    if AComments and (mItem is TJSONArray) then
-    begin
-      for mField in TJSONArray(mItem) do
-      begin
-        if not (mField is TJSONObject) or BoolOf(TJSONObject(mField), 'deleted') then
-        begin
-          Continue;
-        end;
-        mObject := TJSONObject(mField);
-        mComment := Default(TAtlasTrackerComment);
-        mComment.Text := Limited(TextOf(mObject, 'text'));
-        mComment.Created := TimeOf(mObject, 'created');
-        if mObject.Values['author'] is TJSONObject then
-        begin
-          mComment.Author := Shorten(ValueText(mObject.Values['author']), 80);
-        end;
-        ADetails.Comments := ADetails.Comments + [mComment];
-      end;
-    end;
-    // Nur die neuesten MaxComments.
-    if Length(ADetails.Comments) > TAtlasTrackerDetails.MaxComments then
-    begin
-      ADetails.Comments := Copy(ADetails.Comments, Length(ADetails.Comments) - TAtlasTrackerDetails.MaxComments,
-        TAtlasTrackerDetails.MaxComments);
-    end;
-    Result := True;
-  finally
-    mValue.Free;
-  end;
+  Result := TAtlasYouTrackApi.ApplyChange(ATarget, ATransport, AKey, AChange, ATimeoutMs);
 end;
 
 function TAtlasYouTrackTracker.Name: string;
 begin
-  Result := ProviderName;
+  Result := TAtlasYouTrackApi.ProviderName;
 end;
 
 function TAtlasYouTrackTracker.Caption: string;
@@ -990,42 +217,21 @@ begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if not ATransport.Get(IssuesUrl(ATarget, AMax), ATimeoutMs, Status, Text, AError) then
+  if not ATransport.Get(TAtlasYouTrackApi.IssuesUrl(ATarget, AMax), ATimeoutMs, Status, Text, AError) then
   begin
     Exit;
   end;
   if Status <> 200 then
   begin
-    AError := ErrorOfStatus(Status);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(Status);
     Exit;
   end;
-  if not ParseIssues(Text, AMax, AIssues) then
+  if not TAtlasYouTrackParse.ParseIssues(Text, AMax, AIssues) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
   Result := True;
-end;
-
-function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-var
-  Key: string;
-  Index: Integer;
-begin
-  Result := '';
-  Key := Trim(AKey);
-  if (ATarget.Server = '') or (Key = '') then
-  begin
-    Exit;
-  end;
-  for Index := 1 to Length(Key) do
-  begin
-    if not CharInSet(Key[Index], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := ATarget.Url + '/issue/' + Key;
 end;
 
 function TAtlasYouTrackTracker.PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
@@ -1044,18 +250,18 @@ end;
 
 function TAtlasYouTrackTracker.ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
 begin
-  Result := IssuesUrl(ATarget, AMax);
+  Result := TAtlasYouTrackApi.IssuesUrl(ATarget, AMax);
 end;
 
 function TAtlasYouTrackTracker.SentQuery(const ATarget: TAtlasTrackerTarget): string;
 begin
-  Result := FullQuery(ATarget);
+  Result := TAtlasYouTrackApi.FullQuery(ATarget);
 end;
 
 function TAtlasYouTrackTracker.ParseList(const AText: string; AMax: Integer;
   out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
 begin
-  Result := ParseIssues(AText, AMax, AIssues);
+  Result := TAtlasYouTrackParse.ParseIssues(AText, AMax, AIssues);
 end;
 
 function TAtlasYouTrackTracker.LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
@@ -1063,13 +269,12 @@ begin
   Result := '';
   if ATarget.Server <> '' then
   begin
-    Result := ATarget.Url + LocalePath;
+    Result := ATarget.Url + TAtlasYouTrackApi.LocalePath;
   end;
 end;
 
-function TAtlasYouTrackTracker.Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey: string; AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
-  out AError: TAtlasCiFetchError): Boolean;
+function TAtlasYouTrackTracker.Details(const ACall: TAtlasTrackerCall; const AKey: string; AComments: Boolean;
+  out ADetails: TAtlasTrackerDetails; out AError: TAtlasCiFetchError): Boolean;
 var
   mStatus: Integer;
   mText, mUrl: string;
@@ -1077,394 +282,28 @@ begin
   ADetails := TAtlasTrackerDetails.Empty;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := DetailsUrl(ATarget, AKey, AComments);
-  if (mUrl = '') or (ATransport = nil) then
+  mUrl := TAtlasYouTrackApi.DetailsUrl(ACall.Target, AKey, AComments);
+  if (mUrl = '') or (ACall.Transport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  if not ACall.Transport.Get(mUrl, ACall.TimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
   if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not ParseDetails(mText, ATarget, AComments, ADetails) then
+  if not TAtlasYouTrackParse.ParseDetails(mText, ACall.Target, AComments, ADetails) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  ADetails.Page := IssuePage(ATarget, ADetails.Key);
+  ADetails.Page := TAtlasYouTrackApi.IssuePage(ACall.Target, ADetails.Key);
   Result := True;
-end;
-
-{ IAtlasTrackerWriter (#1266) }
-
-class function TAtlasYouTrackTracker.CommandWord(const AText: string): string;
-var
-  mIndex: Integer;
-  mPlain: Boolean;
-begin
-  Result := Trim(AText);
-  mPlain := Result <> '';
-  for mIndex := 1 to Length(Result) do
-  begin
-    if (Ord(Result[mIndex]) < 128) and
-      not CharInSet(Result[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.', '@']) then
-    begin
-      mPlain := False;
-    end;
-  end;
-  // Umlaute stehen in der Oberfläche ohne Klammern; Leerzeichen und Satzzeichen brauchen sie.
-  if not mPlain then
-  begin
-    Result := '{' + StringReplace(StringReplace(Result, '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]) + '}';
-  end;
-end;
-
-class function TAtlasYouTrackTracker.CommandQuery(const AChange: TAtlasTrackerWrite): string;
-var
-  mField: string;
-begin
-  Result := '';
-  if Trim(AChange.State) <> '' then
-  begin
-    mField := Trim(AChange.StateField);
-    if mField = '' then
-    begin
-      mField := 'State';
-    end;
-    Result := CommandWord(mField) + ' ' + CommandWord(AChange.State);
-  end;
-  if AChange.Assign = TAtlasTrackerAssign.Keep then
-  begin
-    Exit;
-  end;
-  if (AChange.Assign = TAtlasTrackerAssign.User) and (Trim(AChange.Assignee) = '') then
-  begin
-    Exit;
-  end;
-  mField := Trim(AChange.AssigneeField);
-  if mField = '' then
-  begin
-    mField := 'Assignee';
-  end;
-  if Result <> '' then
-  begin
-    Result := Result + ' ';
-  end;
-  if AChange.Assign = TAtlasTrackerAssign.Me then
-  begin
-    Result := Result + CommandWord(mField) + ' me';
-  end
-  else
-  begin
-    Result := Result + CommandWord(mField) + ' ' + CommandWord(AChange.Assignee);
-  end;
-end;
-
-class function TAtlasYouTrackTracker.CommandJson(const AKey, AQuery, AComment: string): string;
-var
-  mObject, mIssue: TJSONObject;
-  mIssues: TJSONArray;
-begin
-  mObject := TJSONObject.Create;
-  try
-    mObject.AddPair('query', AQuery);
-    mIssues := TJSONArray.Create;
-    mIssue := TJSONObject.Create;
-    mIssue.AddPair('idReadable', Trim(AKey));
-    mIssues.AddElement(mIssue);
-    mObject.AddPair('issues', mIssues);
-    if Trim(AComment) <> '' then
-    begin
-      mObject.AddPair('comment', AComment);
-    end;
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.CommentJson(const AText: string): string;
-var
-  mObject: TJSONObject;
-begin
-  mObject := TJSONObject.Create;
-  try
-    mObject.AddPair('text', AText);
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ErrorMessage(const AJson: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if mValue is TJSONObject then
-    begin
-      Result := TextOf(TJSONObject(mValue), 'error_description');
-      if Result = '' then
-      begin
-        Result := TextOf(TJSONObject(mValue), 'error');
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-  Result := Shorten(Result, 300);
-end;
-
-function FieldTypeOf(AField: TJSONObject): string;
-var
-  mType: TJSONValue;
-begin
-  Result := '';
-  mType := AField.Values['fieldType'];
-  if mType is TJSONObject then
-  begin
-    Result := LowerCase(TextOf(TJSONObject(mType), 'id'));
-  end;
-end;
-
-function KindMatches(const AType: string; AKind: TAtlasTrackerValueKind): Boolean;
-begin
-  case AKind of
-    TAtlasTrackerValueKind.StateFields, TAtlasTrackerValueKind.States:
-      Result := AType.StartsWith('state');
-    TAtlasTrackerValueKind.UserFields:
-      Result := AType.StartsWith('user');
-  else
-    Result := False;
-  end;
-end;
-
-procedure AddValue(var AValues: TArray<string>; const AText: string);
-var
-  mItem: string;
-begin
-  if (Trim(AText) = '') or (Length(AValues) >= TAtlasYouTrackTracker.MaxValues) then
-  begin
-    Exit;
-  end;
-  for mItem in AValues do
-  begin
-    if SameText(mItem, Trim(AText)) then
-    begin
-      Exit;
-    end;
-  end;
-  AValues := AValues + [Trim(AText)];
-end;
-
-/// <summary>Ein Eintrag von customFields eines Projekts: {"field": {...}, "bundle": {"values": [...]}}.</summary>
-procedure AddProjectField(AEntry: TJSONObject; AKind: TAtlasTrackerValueKind; const AField: string;
-  var AValues: TArray<string>);
-var
-  mField, mBundle, mItems, mItem: TJSONValue;
-  mName: string;
-begin
-  mField := AEntry.Values['field'];
-  if not (mField is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mName := TextOf(TJSONObject(mField), 'name');
-  if not KindMatches(FieldTypeOf(TJSONObject(mField)), AKind) then
-  begin
-    Exit;
-  end;
-  if AKind <> TAtlasTrackerValueKind.States then
-  begin
-    AddValue(AValues, mName);
-    Exit;
-  end;
-  if (AField <> '') and not SameText(mName, AField) then
-  begin
-    Exit;
-  end;
-  mBundle := AEntry.Values['bundle'];
-  if not (mBundle is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mItems := TJSONObject(mBundle).Values['values'];
-  if mItems is TJSONArray then
-  begin
-    for mItem in TJSONArray(mItems) do
-    begin
-      if (mItem is TJSONObject) and not BoolOf(TJSONObject(mItem), 'archived') then
-      begin
-        AddValue(AValues, TextOf(TJSONObject(mItem), 'name'));
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseFieldValues(const AJson, AProject: string; AKind: TAtlasTrackerValueKind;
-  const AField: string; out AValues: TArray<string>): Boolean;
-var
-  mValue, mProject, mFields, mEntry: TJSONValue;
-begin
-  AValues := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for mProject in TJSONArray(mValue) do
-    begin
-      if not (mProject is TJSONObject) then
-      begin
-        Continue;
-      end;
-      // Liste der Projekte: nur das eigene; Liste der Felder (ohne Projekt): Einträge sind die Felder selbst.
-      mFields := TJSONObject(mProject).Values['customFields'];
-      if mFields is TJSONArray then
-      begin
-        if (AProject <> '') and not SameText(TextOf(TJSONObject(mProject), 'shortName'), AProject) then
-        begin
-          Continue;
-        end;
-        for mEntry in TJSONArray(mFields) do
-        begin
-          if mEntry is TJSONObject then
-          begin
-            AddProjectField(TJSONObject(mEntry), AKind, AField, AValues);
-          end;
-        end;
-      end
-      else if (AKind <> TAtlasTrackerValueKind.States) and
-        KindMatches(FieldTypeOf(TJSONObject(mProject)), AKind) then
-      begin
-        AddValue(AValues, TextOf(TJSONObject(mProject), 'name'));
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean;
-var
-  mValue, mItem: TJSONValue;
-begin
-  AValues := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if (mItem is TJSONObject) and not BoolOf(TJSONObject(mItem), 'banned') then
-      begin
-        AddValue(AValues, TextOf(TJSONObject(mItem), 'login'));
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
-  AMax: Integer): string;
-var
-  mLimit: Integer;
-begin
-  Result := '';
-  if ATarget.Server = '' then
-  begin
-    Exit;
-  end;
-  // Etwas mehr als gezeigt: Gesperrte fallen heraus.
-  mLimit := EnsureRange(AMax * 2, 1, MaxValues);
-  Result := ATarget.Url + '/api/users?query=' + TTextUris.PercentEncode(Trim(AText)) + '&fields=' +
-    TTextUris.PercentEncode('login,fullName,banned') + '&$top=' + IntToStr(mLimit);
-end;
-
-class function TAtlasYouTrackTracker.ParseUserList(const AJson: string;
-  out AUsers: TArray<TAtlasTrackerUser>): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mLogin: string;
-begin
-  AUsers := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) or BoolOf(TJSONObject(mItem), 'banned') then
-      begin
-        Continue;
-      end;
-      mLogin := Trim(TextOf(TJSONObject(mItem), 'login'));
-      if mLogin <> '' then
-      begin
-        AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin, Shorten(TextOf(TJSONObject(mItem), 'fullName'), 80))];
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-var
-  mSend: IAtlasCiSend;
-  mQuery, mUrl, mBody: string;
-  mResponse: TAtlasCiResponse;
-begin
-  Result := TAtlasTrackerWriteResult.Ok;
-  if not AChange.HasWork then
-  begin
-    Exit;
-  end;
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  end;
-  mQuery := CommandQuery(AChange);
-  if mQuery = '' then
-  begin
-    mUrl := ATarget.Url + '/api/issues/' + Trim(AKey) + '/comments?fields=id';
-    mBody := CommentJson(AChange.Comment);
-  end
-  else
-  begin
-    mUrl := ATarget.Url + '/api/commands';
-    mBody := CommandJson(AKey, mQuery, AChange.Comment);
-  end;
-  if not mSend.Send('POST', mUrl, mBody, ATimeoutMs, mResponse) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
-  end;
-  if (mResponse.Status < 200) or (mResponse.Status > 299) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
-      ErrorMessage(mResponse.Text));
-  end;
 end;
 
 function TAtlasYouTrackTracker.Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -1485,16 +324,16 @@ begin
   if AKind = TAtlasTrackerValueKind.Users then
   begin
     mUrl := ATarget.Url + '/api/users?fields=' + TTextUris.PercentEncode('login,banned') + '&$top=' +
-      IntToStr(MaxValues);
+      IntToStr(TAtlasYouTrackApi.MaxValues);
   end
   else if (ATarget.Project = '') and (AKind <> TAtlasTrackerValueKind.States) then
   begin
     mUrl := ATarget.Url + '/api/admin/customFieldSettings/customFields?fields=' +
-      TTextUris.PercentEncode('name,fieldType(id)') + '&$top=' + IntToStr(MaxValues);
+      TTextUris.PercentEncode('name,fieldType(id)') + '&$top=' + IntToStr(TAtlasYouTrackApi.MaxValues);
   end
   else
   begin
-    mUrl := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(ProjectFields) + '&$top=500';
+    mUrl := ATarget.Url + '/api/admin/projects?fields=' + TTextUris.PercentEncode(TAtlasYouTrackApi.ProjectFields) + '&$top=500';
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
   begin
@@ -1502,15 +341,15 @@ begin
   end;
   if mStatus <> 200 then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus, TAtlasYouTrackApi.ErrorMessage(mText)));
   end;
   if AKind = TAtlasTrackerValueKind.Users then
   begin
-    mOk := ParseUsers(mText, AValues);
+    mOk := TAtlasYouTrackParse.ParseUsers(mText, AValues);
   end
   else
   begin
-    mOk := ParseFieldValues(mText, ATarget.Project, AKind, Trim(AField), AValues);
+    mOk := TAtlasYouTrackParse.ParseFieldValues(mText, ATarget.Project, AKind, Trim(AField), AValues);
   end;
   if not mOk then
   begin
@@ -1518,102 +357,9 @@ begin
   end;
 end;
 
-{ IAtlasTrackerTimeWriter (#1267) }
-
-class function TAtlasYouTrackTracker.ProjectOfKey(const AKey: string): string;
-var
-  mDash: Integer;
-begin
-  Result := '';
-  mDash := LastDelimiter('-', Trim(AKey));
-  if mDash > 1 then
-  begin
-    Result := Copy(Trim(AKey), 1, mDash - 1);
-  end;
-end;
-
-class function TAtlasYouTrackTracker.WorkItemJson(const AItem: TAtlasTrackerWorkItem): string;
-var
-  mObject, mDuration, mType: TJSONObject;
-begin
-  mObject := TJSONObject.Create;
-  try
-    mDuration := TJSONObject.Create;
-    mDuration.AddPair('presentation', TAtlasTimeRounding.Presentation(AItem.Minutes));
-    mObject.AddPair('duration', mDuration);
-    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + 0.5, True) * 1000));
-    if AItem.WorkType <> '' then
-    begin
-      mType := TJSONObject.Create;
-      mType.AddPair('name', AItem.WorkType);
-      mObject.AddPair('type', mType);
-    end;
-    if Trim(AItem.Text) <> '' then
-    begin
-      mObject.AddPair('text', AItem.Text);
-    end;
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseTimeSettings(const AJson: string; AList: Boolean;
-  out ASettings: TAtlasTrackerTimeSettings): Boolean;
-var
-  mValue, mTypes, mItem: TJSONValue;
-begin
-  ASettings.Enabled := True;
-  ASettings.WorkTypes := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if AList then
-    begin
-      if not (mValue is TJSONArray) then
-      begin
-        Exit;
-      end;
-      mTypes := mValue;
-    end
-    else
-    begin
-      if not (mValue is TJSONObject) then
-      begin
-        Exit;
-      end;
-      ASettings.Enabled := BoolOf(TJSONObject(mValue), 'enabled');
-      mTypes := TJSONObject(mValue).Values['workItemTypes'];
-    end;
-    if (mTypes <> nil) and not (mTypes is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    if mTypes <> nil then
-    begin
-      for mItem in TJSONArray(mTypes) do
-      begin
-        if mItem is TJSONObject then
-        begin
-          AddValue(ASettings.WorkTypes, TextOf(TJSONObject(mItem), 'name'));
-        end;
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
-begin
-  Result := (AResult.Status = 400) and (ContainsText(AResult.Message, 'time tracking') or
-    ContainsText(AResult.Message, 'timetracking') or ContainsText(AResult.Message, 'Zeiterfassung'));
-end;
-
 function TAtlasYouTrackTracker.IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
 begin
-  Result := TimeTrackingOff(AResult);
+  Result := TAtlasYouTrackApi.TimeTrackingOff(AResult);
 end;
 
 function TAtlasYouTrackTracker.TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -1626,20 +372,20 @@ begin
   ASettings.Enabled := True;
   ASettings.WorkTypes := nil;
   Result := TAtlasTrackerWriteResult.Ok;
-  mProject := ProjectOfKey(AKey);
+  mProject := TAtlasYouTrackApi.ProjectOfKey(AKey);
   if (ATarget.Server = '') or (ATransport = nil) or (mProject = '') then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
   mUrl := ATarget.Url + '/api/admin/projects/' + TTextUris.PercentEncode(mProject) + '/timeTrackingSettings?fields=' +
-    TTextUris.PercentEncode(TimeSettingsFields);
+    TTextUris.PercentEncode(TAtlasYouTrackApi.TimeSettingsFields);
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
   end;
   if mStatus = 200 then
   begin
-    if not ParseTimeSettings(mText, False, ASettings) then
+    if not TAtlasYouTrackParse.ParseTimeSettings(mText, False, ASettings) then
     begin
       Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
     end;
@@ -1647,12 +393,12 @@ begin
   end;
   if (mStatus <> 403) and (mStatus <> 404) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mStatus), mStatus, TAtlasYouTrackApi.ErrorMessage(mText)));
   end;
   // Ohne Leserecht auf das Projekt: Zeiterfassung gilt als an, Arbeitstypen allgemein (sonst frei).
-  mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(MaxValues);
+  mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(TAtlasYouTrackApi.MaxValues);
   if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
-    not ParseTimeSettings(mText, True, ASettings) then
+    not TAtlasYouTrackParse.ParseTimeSettings(mText, True, ASettings) then
   begin
     ASettings.WorkTypes := nil;
   end;
@@ -1668,61 +414,20 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
+  if (ATarget.Server = '') or not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
   Result := TAtlasTrackerWriteResult.Ok;
   if not mSend.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/timeTracking/workItems?fields=id',
-    WorkItemJson(AItem), ATimeoutMs, mResponse) then
+    TAtlasYouTrackBodies.WorkItemJson(AItem), ATimeoutMs, mResponse) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
   if (mResponse.Status < 200) or (mResponse.Status > 299) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
-      ErrorMessage(mResponse.Text));
-  end;
-end;
-
-class function TAtlasYouTrackTracker.IssueUrl(const ATarget: TAtlasTrackerTarget; const AKey,
-  AFields: string): string;
-begin
-  Result := '';
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
-  begin
-    Exit;
-  end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(AFields);
-end;
-
-class function TAtlasYouTrackTracker.ParseDescription(const AJson: string; out AText: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AText := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := (mValue is TJSONObject) and (TextOf(TJSONObject(mValue), 'idReadable') <> '');
-    if Result then
-    begin
-      AText := TextOf(TJSONObject(mValue), 'description');
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.DescriptionJson(const AText: string): string;
-var
-  mObject: TJSONObject;
-begin
-  mObject := TJSONObject.Create;
-  try
-    mObject.AddPair('description', AText);
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
+      TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
   end;
 end;
 
@@ -1735,7 +440,7 @@ begin
   AText := '';
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := IssueUrl(ATarget, AKey, 'idReadable,description');
+  mUrl := TAtlasYouTrackApi.IssueUrl(ATarget, AKey, 'idReadable,description');
   if (mUrl = '') or (ATransport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
@@ -1747,10 +452,10 @@ begin
   end;
   if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not ParseDescription(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
+  if not TAtlasYouTrackParse.ParseDescription(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
   begin
     AText := '';
     AError := TAtlasCiFetchError.Invalid;
@@ -1769,7 +474,7 @@ var
 begin
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := IssueUrl(ATarget, AKey, 'idReadable');
+  mUrl := TAtlasYouTrackApi.IssueUrl(ATarget, AKey, 'idReadable');
   if (mUrl = '') or not Supports(ATransport, IAtlasCiSend, mSend) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
@@ -1780,230 +485,128 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  if not mSend.Send('POST', mUrl, DescriptionJson(AText), ATimeoutMs, mResponse) then
+  if not mSend.Send('POST', mUrl, TAtlasYouTrackBodies.DescriptionJson(AText), ATimeoutMs, mResponse) then
   begin
     AError := mResponse.Error;
     Exit;
   end;
   if mResponse.Status <> 200 then
   begin
-    AError := ErrorOfStatus(mResponse.Status);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   Result := True;
 end;
 
-{ Verknüpfungen (#1279) }
-
-class function TAtlasYouTrackTracker.LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string;
+/// <summary>Derselbe Aufruf mit der restlichen Zeit seit AWatch.</summary>
+function Later(const ACall: TAtlasTrackerCall; const AWatch: TStopwatch): TAtlasTrackerCall;
 begin
-  Result := '';
-  if ATarget.Server <> '' then
-  begin
-    Result := ATarget.Url + '/api/issueLinkTypes?fields=' + TTextUris.PercentEncode(LinkTypeFields);
-  end;
+  Result := TAtlasTrackerCall.Create(ACall.Target, ACall.Transport, TAtlasYouTrackApi.Rest(AWatch, ACall.TimeoutMs));
 end;
 
-class function TAtlasYouTrackTracker.ParseLinkType(const AJson: string; AKind: TAtlasTrackerLinkKind;
-  out AId: string): Boolean;
-const
-  KnownLinkTypes: array[0..3] of string = ('Depend', 'Subtask', 'Abhängigkeit', 'Unteraufgabe');
-  Directions: array[0..1] of string = ('OUTWARD', 'INWARD');
-  Suffixes: array[0..1] of string = ('s', 't');
+/// <summary>POST an AUrl; True bei 200 oder 201 mit der Antwort in AText, sonst AError.</summary>
+function PostCreated(const ACall: TAtlasTrackerCall; const AUrl, ABody: string; out AText: string;
+  out AError: TAtlasCiFetchError): Boolean;
 var
-  mValue, mItem: TJSONValue;
-  mType: TJSONObject;
-  mPass, mSide: Integer;
-  mId: string;
+  mPost: IAtlasCiSend;
+  mResponse: TAtlasCiResponse;
 begin
-  AId := '';
+  AText := '';
   Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    // Erst die Typen mit bekanntem Namen (Depend, Subtask), dann alle, deren Beschriftungen passen.
-    for mPass := 0 to 1 do
-    begin
-      for mItem in TJSONArray(mValue) do
-      begin
-        if not (mItem is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mType := TJSONObject(mItem);
-        mId := TextOf(mType, 'id');
-        if mId = '' then
-        begin
-          Continue;
-        end;
-        if (mPass = 0) and not IsOneOf(TextOf(mType, 'name'), KnownLinkTypes) then
-        begin
-          Continue;
-        end;
-        for mSide := 0 to 1 do
-        begin
-          if TypeKind(mType, Directions[mSide]) = AKind then
-          begin
-            AId := mId + Suffixes[mSide];
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseProjectId(const AJson: string; out AId: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AId := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if (mValue is TJSONObject) and (TJSONObject(mValue).Values['project'] is TJSONObject) then
-    begin
-      AId := TextOf(TJSONObject(TJSONObject(mValue).Values['project']), 'id');
-    end;
-  finally
-    mValue.Free;
-  end;
-  Result := AId <> '';
-end;
-
-class function TAtlasYouTrackTracker.NewIssueBody(const AProjectId, ATitle, ADescription: string): string;
-var
-  mRoot, mProject: TJSONObject;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mProject := TJSONObject.Create;
-    mProject.AddPair('id', AProjectId);
-    mRoot.AddPair('project', mProject);
-    mRoot.AddPair('summary', Trim(ATitle));
-    if Trim(ADescription) <> '' then
-    begin
-      mRoot.AddPair('description', ADescription);
-    end;
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.LinkBody(const AKey: string): string;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('idReadable', Trim(AKey));
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ParseCreatedKey(const AJson: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if mValue is TJSONObject then
-    begin
-      Result := Trim(TextOf(TJSONObject(mValue), 'idReadable'));
-    end;
-  finally
-    mValue.Free;
-  end;
-  if not ValidKey(Result) then
+  AError := TAtlasCiFetchError.NotConfigured;
+  if not Supports(ACall.Transport, IAtlasCiSend, mPost) then
   begin
-    Result := '';
+    Exit;
   end;
-end;
-
-function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
-begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
+  if not mPost.Send('POST', AUrl, ABody, ACall.TimeoutMs, mResponse) then
   begin
-    Result := Integer(mRest);
+    AError := mResponse.Error;
+  end
+  else if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
+  begin
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status);
+  end
+  else
+  begin
+    AText := mResponse.Text;
+    AError := TAtlasCiFetchError.None;
+    Result := True;
   end;
 end;
 
 /// <summary>Link des Issues AKey (Linktyp mit Richtung AType) auf AOtherKey anlegen.</summary>
-function PostLink(const ATarget: TAtlasTrackerTarget; const APost: IAtlasCiSend; const AKey, AType, AOtherKey: string;
-  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+function PostLink(const ACall: TAtlasTrackerCall; const AKey, AType, AOtherKey: string;
+  out AError: TAtlasCiFetchError): Boolean;
 var
-  mResponse: TAtlasCiResponse;
+  mText: string;
 begin
-  Result := False;
-  if not APost.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType + '/issues?fields=id',
-    TAtlasYouTrackTracker.LinkBody(AOtherKey), ATimeoutMs, mResponse) then
-  begin
-    AError := mResponse.Error;
-    Exit;
-  end;
-  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
-  begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mResponse.Status);
-    Exit;
-  end;
-  AError := TAtlasCiFetchError.None;
-  Result := True;
+  Result := PostCreated(ACall, ACall.Target.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType +
+    '/issues?fields=id', TAtlasYouTrackBodies.LinkBody(AOtherKey), mText, AError);
 end;
 
 /// <summary>Linktyp mit Richtung für AKind ("80-1s"); False mit AError ohne passenden Typ.</summary>
-function FindLinkType(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  AKind: TAtlasTrackerLinkKind; ATimeoutMs: Integer; out AType: string; out AError: TAtlasCiFetchError): Boolean;
+function FindLinkType(const ACall: TAtlasTrackerCall; AKind: TAtlasTrackerLinkKind; out AType: string;
+  out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
   mText: string;
 begin
   AType := '';
-  Result := False;
-  if not ATransport.Get(TAtlasYouTrackTracker.LinkTypesUrl(ATarget), ATimeoutMs, mStatus, mText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  if not TAtlasYouTrackTracker.ParseLinkType(mText, AKind, AType) then
+  Result := TAtlasYouTrackApi.GetText(ACall.Transport, TAtlasYouTrackApi.LinkTypesUrl(ACall.Target), ACall.TimeoutMs,
+    mText, AError);
+  if Result and not TAtlasYouTrackParse.ParseLinkType(mText, AKind, AType) then
   begin
     AError := TAtlasCiFetchError.Invalid;
-    Exit;
+    Result := False;
   end;
-  AError := TAtlasCiFetchError.None;
-  Result := True;
 end;
 
-function TAtlasYouTrackTracker.CreateSubtask(const ATarget: TAtlasTrackerTarget;
-  const ATransport: IAtlasCiTransport; const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer;
-  out AKey: string; out AError: TAtlasCiFetchError): Boolean;
+/// <summary>Projekt des übergeordneten Issues: die Unteraufgabe liegt im selben.</summary>
+function ParentProject(const ACall: TAtlasTrackerCall; const AParentKey: string; out AProject: string;
+  out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiSend;
+  mText: string;
+begin
+  AProject := '';
+  Result := TAtlasYouTrackApi.GetText(ACall.Transport, ACall.Target.Url + '/api/issues/' + Trim(AParentKey) +
+    '?fields=' + TTextUris.PercentEncode('id,project(id)'), ACall.TimeoutMs, mText, AError);
+  if Result and not TAtlasYouTrackParse.ParseProjectId(mText, AProject) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Result := False;
+  end;
+end;
+
+/// <summary>Issue im Projekt AProject anlegen; AKey ist seine Kennung.</summary>
+function CreateIssue(const ACall: TAtlasTrackerCall; const AProject, ATitle, ADescription: string; out AKey: string;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mText: string;
+begin
+  AKey := '';
+  Result := PostCreated(ACall, ACall.Target.Url + '/api/issues?fields=idReadable',
+    TAtlasYouTrackBodies.NewIssueBody(AProject, ATitle, ADescription), mText, AError);
+  if Result then
+  begin
+    AKey := TAtlasYouTrackParse.ParseCreatedKey(mText);
+  end;
+  if Result and (AKey = '') then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Result := False;
+  end;
+end;
+
+function TAtlasYouTrackTracker.CreateSubtask(const ACall: TAtlasTrackerCall; const AParentKey, ATitle,
+  ADescription: string; out AKey: string; out AError: TAtlasCiFetchError): Boolean;
+var
   mWatch: TStopwatch;
-  mStatus: Integer;
-  mText, mProject, mType: string;
-  mResponse: TAtlasCiResponse;
+  mProject, mType: string;
 begin
   AKey := '';
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) or
-    not ValidKey(Trim(AParentKey)) then
+  if (ACall.Target.Server = '') or (ACall.Transport = nil) or not Supports(ACall.Transport, IAtlasCiSend) or
+    not TAtlasYouTrackJson.ValidKey(Trim(AParentKey)) then
   begin
     Exit;
   end;
@@ -2013,641 +616,52 @@ begin
     Exit;
   end;
   mWatch := TStopwatch.StartNew;
-  // Projekt des übergeordneten Issues: die Unteraufgabe liegt im selben.
-  if not ATransport.Get(ATarget.Url + '/api/issues/' + Trim(AParentKey) + '?fields=' +
-    TTextUris.PercentEncode('id,project(id)'), ATimeoutMs, mStatus, mText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  if not ParseProjectId(mText, mProject) then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-    Exit;
-  end;
   // Linktyp vor dem Anlegen: ohne Subtask-Typ entsteht kein loses Issue.
-  if not FindLinkType(ATarget, ATransport, TAtlasTrackerLinkKind.Subtask, Rest(mWatch, ATimeoutMs), mType,
-    AError) then
-  begin
-    Exit;
-  end;
-  if not mPost.Send('POST', ATarget.Url + '/api/issues?fields=idReadable', NewIssueBody(mProject, ATitle,
-    ADescription), Rest(mWatch, ATimeoutMs), mResponse) then
-  begin
-    AError := mResponse.Error;
-    Exit;
-  end;
-  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
-  begin
-    AError := ErrorOfStatus(mResponse.Status);
-    Exit;
-  end;
-  AKey := ParseCreatedKey(mResponse.Text);
-  if AKey = '' then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-    Exit;
-  end;
-  Result := PostLink(ATarget, mPost, AParentKey, mType, AKey, Rest(mWatch, ATimeoutMs), AError);
+  Result := ParentProject(ACall, AParentKey, mProject, AError) and
+    FindLinkType(Later(ACall, mWatch), TAtlasTrackerLinkKind.Subtask, mType, AError) and
+    CreateIssue(Later(ACall, mWatch), mProject, ATitle, ADescription, AKey, AError) and
+    PostLink(Later(ACall, mWatch), AParentKey, mType, AKey, AError);
 end;
 
-function TAtlasYouTrackTracker.AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey: string; AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
-  out AError: TAtlasCiFetchError): Boolean;
+function TAtlasYouTrackTracker.AddLink(const ACall: TAtlasTrackerCall; const AKey: string;
+  AKind: TAtlasTrackerLinkKind; const AOtherKey: string; out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiSend;
   mWatch: TStopwatch;
   mType: string;
 begin
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
+  if (ACall.Target.Server = '') or (ACall.Transport = nil) or not Supports(ACall.Transport, IAtlasCiSend) then
   begin
     Exit;
   end;
   if not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks]) or
-    not ValidKey(Trim(AKey)) or not ValidKey(Trim(AOtherKey)) or SameText(Trim(AKey), Trim(AOtherKey)) then
+    not TAtlasYouTrackJson.ValidKey(Trim(AKey)) or not TAtlasYouTrackJson.ValidKey(Trim(AOtherKey)) or SameText(Trim(AKey), Trim(AOtherKey)) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
   mWatch := TStopwatch.StartNew;
-  if not FindLinkType(ATarget, ATransport, AKind, ATimeoutMs, mType, AError) then
-  begin
-    Exit;
-  end;
-  Result := PostLink(ATarget, mPost, AKey, mType, AOtherKey, Rest(mWatch, ATimeoutMs), AError);
+  Result := FindLinkType(ACall, AKind, mType, AError) and PostLink(Later(ACall, mWatch), AKey, mType, AOtherKey, AError);
 end;
 
-{ Board (#1272) }
 
-function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.Values[AName];
-  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-end;
-
-function ValidId(const AId: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AId <> '';
-  for mIndex := 1 to Length(AId) do
-  begin
-    if not CharInSet(AId[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
-{ TAtlasYouTrackBoards }
-
-class function TAtlasYouTrackBoards.AgilesUrl(const ATarget: TAtlasTrackerTarget): string;
-begin
-  Result := '';
-  if ATarget.Server <> '' then
-  begin
-    Result := ATarget.Url + '/api/agiles?fields=' + TTextUris.PercentEncode(AgileFields) + '&$top=' +
-      IntToStr(TAtlasBoardSnapshot.MaxBoards);
-  end;
-end;
-
-class function TAtlasYouTrackBoards.SprintsUrl(const ATarget: TAtlasTrackerTarget; const ABoardId: string): string;
-begin
-  Result := '';
-  if (ATarget.Server <> '') and ValidId(ABoardId) then
-  begin
-    Result := ATarget.Url + '/api/agiles/' + ABoardId + '/sprints?fields=' + TTextUris.PercentEncode(SprintFields) +
-      '&$top=' + IntToStr(TAtlasBoardSnapshot.MaxSprints);
-  end;
-end;
-
-class function TAtlasYouTrackBoards.SprintUrl(const ATarget: TAtlasTrackerTarget;
-  const ABoardId, ASprintId: string): string;
-var
-  mSprint: string;
-begin
-  Result := '';
-  mSprint := Trim(ASprintId);
-  if mSprint = '' then
-  begin
-    mSprint := 'current';
-  end;
-  if (ATarget.Server <> '') and ValidId(ABoardId) and ValidId(mSprint) then
-  begin
-    Result := ATarget.Url + '/api/agiles/' + ABoardId + '/sprints/' + mSprint + '?fields=' +
-      TTextUris.PercentEncode(SprintFields + ',issues(' + CardFields + ')');
-  end;
-end;
-
-function HasProject(ABoard: TJSONObject; const AProject: string): Boolean;
-var
-  mItem: TJSONValue;
-begin
-  Result := False;
-  if (AProject = '') or not (ABoard.Values['projects'] is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(ABoard.Values['projects']) do
-  begin
-    if (mItem is TJSONObject) and SameText(TextOf(TJSONObject(mItem), 'shortName'), AProject) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-/// <summary>Spalten und Feld eines Boards aus columnSettings.</summary>
-procedure ReadColumns(ABoard: TJSONObject; var ASnapshot: TAtlasBoardSnapshot);
-var
-  mSettings, mItem, mValue: TJSONValue;
-  mColumn: TJSONObject;
-  mValues: TArray<string>;
-  mName: string;
-begin
-  ASnapshot.Columns := nil;
-  ASnapshot.Field := '';
-  mSettings := ABoard.Values['columnSettings'];
-  if not (mSettings is TJSONObject) then
-  begin
-    Exit;
-  end;
-  if TJSONObject(mSettings).Values['field'] is TJSONObject then
-  begin
-    ASnapshot.Field := TextOf(TJSONObject(TJSONObject(mSettings).Values['field']), 'name');
-  end;
-  if not (TJSONObject(mSettings).Values['columns'] is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(TJSONObject(mSettings).Values['columns']) do
-  begin
-    if not (mItem is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mColumn := TJSONObject(mItem);
-    mValues := nil;
-    if mColumn.Values['fieldValues'] is TJSONArray then
-    begin
-      for mValue in TJSONArray(mColumn.Values['fieldValues']) do
-      begin
-        if (mValue is TJSONObject) and (TextOf(TJSONObject(mValue), 'name') <> '') then
-        begin
-          mValues := mValues + [TextOf(TJSONObject(mValue), 'name')];
-        end;
-      end;
-    end;
-    // presentation fasst mehrere Werte zusammen ("Offen, Nachgefragt"); ohne sie der erste Wert.
-    mName := TextOf(mColumn, 'presentation');
-    if (mName = '') and (Length(mValues) > 0) then
-    begin
-      mName := mValues[0];
-    end;
-    ASnapshot.Columns := ASnapshot.Columns + [TAtlasBoardColumn.Create(mName, mValues, '',
-      FlagOf(mColumn, 'isResolved'))];
-  end;
-end;
-
-class function TAtlasYouTrackBoards.ParseAgiles(const AJson, ABoardId, AProject: string;
-  var ASnapshot: TAtlasBoardSnapshot; out ACurrentSprint: string): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mBoard, mChosen, mByProject: TJSONObject;
-  mId: string;
-begin
-  ACurrentSprint := '';
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    ASnapshot.Boards := nil;
-    mChosen := nil;
-    mByProject := nil;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) or (Length(ASnapshot.Boards) >= TAtlasBoardSnapshot.MaxBoards) then
-      begin
-        Continue;
-      end;
-      mBoard := TJSONObject(mItem);
-      mId := TextOf(mBoard, 'id');
-      if not ValidId(mId) then
-      begin
-        Continue;
-      end;
-      ASnapshot.Boards := ASnapshot.Boards + [TAtlasBoardRef.Create(mId, TextOf(mBoard, 'name'))];
-      if (ABoardId <> '') and SameText(mId, ABoardId) then
-      begin
-        mChosen := mBoard;
-      end;
-      if (mByProject = nil) and HasProject(mBoard, AProject) then
-      begin
-        mByProject := mBoard;
-      end;
-    end;
-    if mChosen = nil then
-    begin
-      mChosen := mByProject;
-    end;
-    if (mChosen = nil) and (TJSONArray(mValue).Count > 0) then
-    begin
-      for mItem in TJSONArray(mValue) do
-      begin
-        if (mItem is TJSONObject) and ValidId(TextOf(TJSONObject(mItem), 'id')) then
-        begin
-          mChosen := TJSONObject(mItem);
-          Break;
-        end;
-      end;
-    end;
-    if mChosen = nil then
-    begin
-      Exit;
-    end;
-    ASnapshot.Kind := TAtlasBoardKind.Agile;
-    ASnapshot.Board := TAtlasBoardRef.Create(TextOf(mChosen, 'id'), TextOf(mChosen, 'name'));
-    ReadColumns(mChosen, ASnapshot);
-    ASnapshot.PointsField := '';
-    if mChosen.Values['estimationField'] is TJSONObject then
-    begin
-      ASnapshot.PointsField := TextOf(TJSONObject(mChosen.Values['estimationField']), 'name');
-    end;
-    if mChosen.Values['currentSprint'] is TJSONObject then
-    begin
-      ACurrentSprint := TextOf(TJSONObject(mChosen.Values['currentSprint']), 'id');
-    end;
-    Result := True;
-  finally
-    mValue.Free;
-  end;
-end;
-
-function SprintOf(AObject: TJSONObject): TAtlasBoardSprint;
-begin
-  Result := Default(TAtlasBoardSprint);
-  Result.Id := TextOf(AObject, 'id');
-  Result.Name := TextOf(AObject, 'name');
-  Result.Start := TimeOf(AObject, 'start');
-  Result.Finish := TimeOf(AObject, 'finish');
-  Result.Archived := FlagOf(AObject, 'archived');
-end;
-
-class function TAtlasYouTrackBoards.ParseSprints(const AJson: string;
-  out ASprints: TArray<TAtlasBoardSprint>): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mSprint: TAtlasBoardSprint;
-begin
-  ASprints := nil;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := mValue is TJSONArray;
-    if not Result then
-    begin
-      Exit;
-    end;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) or (Length(ASprints) >= TAtlasBoardSnapshot.MaxSprints) then
-      begin
-        Continue;
-      end;
-      mSprint := SprintOf(TJSONObject(mItem));
-      if ValidId(mSprint.Id) then
-      begin
-        ASprints := ASprints + [mSprint];
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-/// <summary>Schätzung: Zahl (Story Points) bzw. Zeitraum ({"minutes": …}) in Stunden.</summary>
-procedure ReadPoints(AValue: TJSONValue; var ACard: TAtlasBoardCard);
-var
-  mMinutes: TJSONValue;
-begin
-  if AValue is TJSONNumber then
-  begin
-    ACard.Points := TJSONNumber(AValue).AsDouble;
-    ACard.HasPoints := True;
-  end
-  else if AValue is TJSONObject then
-  begin
-    mMinutes := TJSONObject(AValue).Values['minutes'];
-    if mMinutes is TJSONNumber then
-    begin
-      ACard.Points := TJSONNumber(mMinutes).AsDouble / 60;
-      ACard.HasPoints := True;
-    end;
-  end;
-end;
-
-/// <summary>Spaltenwert, Zuständige (Anmeldename), Prioritätsfarbe und Schätzung (APoints) aus customFields.
-/// </summary>
-procedure ReadFields(AIssue: TJSONObject; const AField, APoints: string; var ACard: TAtlasBoardCard);
-var
-  mItem, mValue, mColor: TJSONValue;
-  mField: TJSONObject;
-  mName, mLogin: string;
-begin
-  if not (AIssue.Values['customFields'] is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AIssue.Values['customFields']) do
-  begin
-    if not (mItem is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mField := TJSONObject(mItem);
-    mName := Trim(TextOf(mField, 'name'));
-    mValue := mField.Values['value'];
-    if (AField <> '') and SameText(mName, AField) and (mValue is TJSONObject) then
-    begin
-      ACard.State := TextOf(TJSONObject(mValue), 'name');
-    end
-    else if (APoints <> '') and SameText(mName, APoints) then
-    begin
-      ReadPoints(mValue, ACard);
-    end
-    else if IsOneOf(mName, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) and
-      (mValue is TJSONObject) then
-    begin
-      mLogin := TextOf(TJSONObject(mValue), 'login');
-      if mLogin <> '' then
-      begin
-        ACard.Logins := ACard.Logins + [mLogin];
-      end;
-    end
-    else if IsOneOf(mName, ['Priority', 'Priorität']) and (mValue is TJSONObject) then
-    begin
-      mColor := TJSONObject(mValue).Values['color'];
-      if mColor is TJSONObject then
-      begin
-        ACard.PriorityColor := TextOf(TJSONObject(mColor), 'background');
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackBoards.ParseSprint(const AJson: string; const ATarget: TAtlasTrackerTarget;
-  var ASnapshot: TAtlasBoardSnapshot): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mRoot, mIssue: TJSONObject;
-  mDetails: TAtlasTrackerDetails;
-  mCard: TAtlasBoardCard;
-  mProvider: IAtlasTrackerProvider;
-begin
-  Result := False;
-  mProvider := TAtlasYouTrackTracker.Create;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mRoot := TJSONObject(mValue);
-    ASnapshot.Sprint := SprintOf(mRoot);
-    ASnapshot.Cards := nil;
-    if mRoot.Values['issues'] is TJSONArray then
-    begin
-      for mItem in TJSONArray(mRoot.Values['issues']) do
-      begin
-        if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
-        begin
-          Continue;
-        end;
-        mIssue := TJSONObject(mItem);
-        // Dieselbe Auswertung wie die Vorschau: Titel, Felder, Beschreibung und Verknüpfungen.
-        if not TAtlasYouTrackTracker.ParseDetails(mIssue.ToJSON, ATarget, False, mDetails) then
-        begin
-          Continue;
-        end;
-        mCard := Default(TAtlasBoardCard);
-        mCard.Key := mDetails.Key;
-        mCard.Number := mDetails.Number;
-        mCard.Title := Copy(mDetails.Title, 1, TAtlasBoardCard.MaxTitle);
-        mCard.Assignee := mDetails.Assignee;
-        mCard.Priority := mDetails.Priority;
-        mCard.Checklist := TAtlasTrackerChecklist.Progress(mDetails.Description);
-        mCard.Locked := TAtlasTrackerLinks.Locked(mDetails);
-        mCard.Page := mProvider.IssuePage(ATarget, mDetails.Key);
-        mCard.ResolvedAt := TimeOf(mIssue, 'resolved');
-        ReadFields(mIssue, ASnapshot.Field, ASnapshot.PointsField, mCard);
-        ASnapshot.Cards := ASnapshot.Cards + [mCard];
-      end;
-    end;
-    Result := True;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackBoards.ParseWorkDays(const AJson: string; out ADays: TArray<Integer>): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mDay: Integer;
-begin
-  ADays := nil;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if (mValue is TJSONObject) and (TJSONObject(mValue).Values['workDays'] is TJSONArray) then
-    begin
-      for mItem in TJSONArray(TJSONObject(mValue).Values['workDays']) do
-      begin
-        if (mItem is TJSONNumber) and TryStrToInt(TJSONNumber(mItem).Value, mDay) and (mDay >= 1) and (mDay <= 7) then
-        begin
-          ADays := ADays + [mDay];
-        end;
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-  Result := Length(ADays) > 0;
-end;
-
-class function TAtlasYouTrackBoards.BoardPage(const ATarget: TAtlasTrackerTarget;
-  const ABoardId, ASprintId: string): string;
-var
-  mSprint: string;
-begin
-  Result := '';
-  mSprint := Trim(ASprintId);
-  if mSprint = '' then
-  begin
-    mSprint := 'current';
-  end;
-  if (ATarget.Server <> '') and ValidId(ABoardId) and ValidId(mSprint) then
-  begin
-    Result := ATarget.Url + '/agiles/' + ABoardId + '/' + mSprint;
-  end;
-end;
-
-/// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
-function GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mStatus: Integer;
-begin
-  Result := False;
-  AText := '';
-  if AUrl = '' then
-  begin
-    AError := TAtlasCiFetchError.NotConfigured;
-    Exit;
-  end;
-  if not ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  Result := True;
-end;
-
-function TAtlasYouTrackBoards.LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mWatch: TStopwatch;
-  mText, mCurrent, mSprint: string;
-  mValue: TJSONValue;
-  mError: TAtlasCiFetchError;
-  mSprints: TArray<TAtlasBoardSprint>;
-begin
-  ASnapshot := TAtlasBoardSnapshot.Empty;
-  AError := TAtlasCiFetchError.None;
-  Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) then
-  begin
-    AError := TAtlasCiFetchError.NotConfigured;
-    Exit;
-  end;
-  mWatch := TStopwatch.StartNew;
-  if not GetText(ATransport, AgilesUrl(ATarget), ATimeoutMs, mText, AError) then
-  begin
-    Exit;
-  end;
-  if not ParseAgiles(mText, ABoardId, ATarget.Project, ASnapshot, mCurrent) then
-  begin
-    // Leere Liste: kein Board für dieses Konto.
-    AError := TAtlasCiFetchError.NotFound;
-    if Pos('[', mText) = 0 then
-    begin
-      AError := TAtlasCiFetchError.Invalid;
-    end;
-    Exit;
-  end;
-  if GetText(ATransport, SprintsUrl(ATarget, ASnapshot.Board.Id), Rest(mWatch, ATimeoutMs), mText, mError) and
-    ParseSprints(mText, mSprints) then
-  begin
-    ASnapshot.Sprints := mSprints;
-  end;
-  // Gewählter Sprint, sonst der aktuelle des Boards.
-  mSprint := Trim(ASprintId);
-  if mSprint = '' then
-  begin
-    mSprint := mCurrent;
-  end;
-  if not GetText(ATransport, SprintUrl(ATarget, ASnapshot.Board.Id, mSprint), Rest(mWatch, ATimeoutMs), mText,
-    AError) then
-  begin
-    Exit;
-  end;
-  if not ParseSprint(mText, ATarget, ASnapshot) then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-    Exit;
-  end;
-  ASnapshot.Page := BoardPage(ATarget, ASnapshot.Board.Id, ASnapshot.Sprint.Id);
-  // Eigener Anmeldename für „Nur meine“; ohne ihn filtert das Board nicht.
-  if GetText(ATransport, ATarget.Url + '/api/users/me?fields=login', Rest(mWatch, ATimeoutMs), mText, mError) then
-  begin
-    mValue := TJSONObject.ParseJSONValue(mText);
-    try
-      if mValue is TJSONObject then
-      begin
-        ASnapshot.Me := TextOf(TJSONObject(mValue), 'login');
-      end;
-    finally
-      mValue.Free;
-    end;
-  end;
-  Result := True;
-end;
-
-function TAtlasYouTrackBoards.MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-  ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-var
-  mChange: TAtlasTrackerWrite;
-  mWriter: IAtlasTrackerWriter;
-begin
-  if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) or (Length(ASnapshot.Columns[AColumn].Values) = 0) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
-  end;
-  // Derselbe Schreibweg wie „Beginnen“ und „Beenden“ (#1266): ein Befehl mit Feld, Wert und Kommentar.
-  mChange := TAtlasTrackerWrite.Empty;
-  mChange.StateField := ASnapshot.Field;
-  mChange.State := ASnapshot.Columns[AColumn].Values[0];
-  mChange.Comment := AComment;
-  mWriter := TAtlasYouTrackTracker.Create;
-  Result := mWriter.Apply(ATarget, ATransport, ACard.Key, mChange, ATimeoutMs);
-end;
-
-function TAtlasYouTrackBoards.WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  ATimeoutMs: Integer; out ADays: TArray<Integer>): Boolean;
-var
-  mText: string;
-  mError: TAtlasCiFetchError;
-begin
-  ADays := nil;
-  // Braucht oft Administratorrechte; ohne Antwort bleibt die Vorgabe Mo–Fr beim Aufrufer.
-  Result := (ATarget.Server <> '') and (ATransport <> nil) and
-    GetText(ATransport, ATarget.Url + WorkDaysPath, ATimeoutMs, mText, mError) and ParseWorkDays(mText, ADays);
-end;
-
-{ TAtlasYouTrackTracker: IAtlasTrackerBoards }
-
-function TAtlasYouTrackTracker.LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+function TAtlasYouTrackTracker.LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
   out AError: TAtlasCiFetchError): Boolean;
 var
   mBoards: IAtlasTrackerBoards;
 begin
   mBoards := TAtlasYouTrackBoards.Create;
-  Result := mBoards.LoadBoard(ATarget, ATransport, ABoardId, ASprintId, ATimeoutMs, ASnapshot, AError);
+  Result := mBoards.LoadBoard(ARequest, ASnapshot, AError);
 end;
 
-function TAtlasYouTrackTracker.MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-  ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+function TAtlasYouTrackTracker.MoveCard(const AMove: TAtlasBoardMove;
+  const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
 var
   mBoards: IAtlasTrackerBoards;
 begin
   mBoards := TAtlasYouTrackBoards.Create;
-  Result := mBoards.MoveCard(ATarget, ATransport, ASnapshot, ACard, AColumn, AComment, ATimeoutMs);
+  Result := mBoards.MoveCard(AMove, ASnapshot);
 end;
 
 function TAtlasYouTrackTracker.WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -2659,9 +673,8 @@ begin
   Result := mWorkDays.WorkDays(ATarget, ATransport, ATimeoutMs, ADays);
 end;
 
-function TAtlasYouTrackTracker.Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AText: string; ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>;
-  out AError: TAtlasCiFetchError): Boolean;
+function TAtlasYouTrackTracker.Search(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+  out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
 var
   mUrl, mText: string;
   mStatus: Integer;
@@ -2669,22 +682,22 @@ begin
   AIssues := nil;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := TextSearchUrl(ATarget, AText, AMax);
-  if not ATarget.Configured or (mUrl = '') or (ATransport = nil) then
+  mUrl := TAtlasYouTrackApi.TextSearchUrl(ACall.Target, AText, AMax);
+  if not ACall.Target.Configured or (mUrl = '') or (ACall.Transport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  if not ACall.Transport.Get(mUrl, ACall.TimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
   if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not ParseIssues(mText, AMax, AIssues) then
+  if not TAtlasYouTrackParse.ParseIssues(mText, AMax, AIssues) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
@@ -2702,7 +715,7 @@ begin
   AIssue := TAtlasTrackerIssue.Empty;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := LookupUrl(ATarget, AKey);
+  mUrl := TAtlasYouTrackApi.LookupUrl(ATarget, AKey);
   if (mUrl = '') or (ATransport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
@@ -2714,12 +727,12 @@ begin
   end;
   if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
   mValue := TJSONObject.ParseJSONValue(mText);
   try
-    Result := (mValue is TJSONObject) and IssueOf(TJSONObject(mValue), AIssue);
+    Result := (mValue is TJSONObject) and TAtlasYouTrackParse.IssueOf(TJSONObject(mValue), AIssue);
   finally
     mValue.Free;
   end;
@@ -2729,9 +742,8 @@ begin
   end;
 end;
 
-function TAtlasYouTrackTracker.Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AText: string; ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>;
-  out AError: TAtlasCiFetchError): Boolean;
+function TAtlasYouTrackTracker.Users(const ACall: TAtlasTrackerCall; const AText: string; AMax: Integer;
+  out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
 var
   mUrl, mText: string;
   mStatus: Integer;
@@ -2740,22 +752,22 @@ begin
   AUsers := nil;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := UsersUrl(ATarget, AText, AMax);
-  if (mUrl = '') or (ATransport = nil) then
+  mUrl := TAtlasYouTrackApi.UsersUrl(ACall.Target, AText, AMax);
+  if (mUrl = '') or (ACall.Transport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  if not ACall.Transport.Get(mUrl, ACall.TimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
   if mStatus <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     Exit;
   end;
-  if not ParseUserList(mText, mUsers) then
+  if not TAtlasYouTrackParse.ParseUserList(mText, mUsers) then
   begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
@@ -2765,92 +777,31 @@ begin
   Result := True;
 end;
 
-class function TAtlasYouTrackTracker.VcsChangesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+/// <summary>Antwort von …/vcsChanges. Ohne VCS-Anbindung gibt es die Liste nicht (404): leer, kein Fehler.
+/// </summary>
+function ReadVcsChanges(AStatus: Integer; const AText: string; var ADevelopment: TAtlasTrackerDevelopment;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mChanges: TArray<TAtlasTrackerVcsChange>;
 begin
-  Result := '';
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
+  AError := TAtlasCiFetchError.None;
+  Result := AStatus = 404;
+  if Result then
   begin
     Exit;
   end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/vcsChanges?fields=' +
-    TTextUris.PercentEncode(VcsChangeFields) + '&$top=' + IntToStr(TAtlasTrackerDevelopment.MaxChanges);
-end;
-
-class function TAtlasYouTrackTracker.ParseVcsChanges(const AJson: string;
-  out AChanges: TArray<TAtlasTrackerVcsChange>): Boolean;
-var
-  mValue, mItem, mUser: TJSONValue;
-  mChange: TAtlasTrackerVcsChange;
-  mText: string;
-  mBreak: Integer;
-  mList: TList<TAtlasTrackerVcsChange>;
-begin
-  AChanges := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  mList := TList<TAtlasTrackerVcsChange>.Create;
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
+  if AStatus <> 200 then
+  begin
+    AError := TAtlasYouTrackApi.ErrorOfStatus(AStatus);
+  end
+  else if TAtlasYouTrackParse.ParseVcsChanges(AText, mChanges) then
+  begin
+    ADevelopment.Changes := mChanges;
     Result := True;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mChange := Default(TAtlasTrackerVcsChange);
-      mChange.Version := Trim(TextOf(TJSONObject(mItem), 'version'));
-      mText := StringReplace(TextOf(TJSONObject(mItem), 'text'), #13, '', [rfReplaceAll]);
-      mBreak := Pos(#10, mText);
-      if mBreak > 0 then
-      begin
-        mText := Copy(mText, 1, mBreak - 1);
-      end;
-      mChange.Text := Shorten(mText, TAtlasTrackerIssue.MaxTitle);
-      mChange.Date := TimeOf(TJSONObject(mItem), 'date');
-      mUser := TJSONObject(mItem).Values['user'];
-      if mUser is TJSONObject then
-      begin
-        mChange.Author := TextOf(TJSONObject(mUser), 'fullName');
-        if mChange.Author = '' then
-        begin
-          mChange.Author := TextOf(TJSONObject(mUser), 'login');
-        end;
-      end;
-      if (mChange.Version = '') and (mChange.Text = '') then
-      begin
-        Continue;
-      end;
-      mList.Add(mChange);
-    end;
-    // Neueste zuerst; bei gleicher Zeit nach Version, damit die Reihenfolge feststeht.
-    mList.Sort(TComparer<TAtlasTrackerVcsChange>.Construct(
-      function(const ALeft, ARight: TAtlasTrackerVcsChange): Integer
-      begin
-        if ALeft.Date > ARight.Date then
-        begin
-          Result := -1;
-        end
-        else if ALeft.Date < ARight.Date then
-        begin
-          Result := 1;
-        end
-        else
-        begin
-          Result := CompareStr(ALeft.Version, ARight.Version);
-        end;
-      end));
-    if mList.Count > TAtlasTrackerDevelopment.MaxChanges then
-    begin
-      mList.Count := TAtlasTrackerDevelopment.MaxChanges;
-    end;
-    AChanges := mList.ToArray;
-  finally
-    mList.Free;
-    mValue.Free;
+  end
+  else
+  begin
+    AError := TAtlasCiFetchError.Invalid;
   end;
 end;
 
@@ -2860,213 +811,62 @@ function TAtlasYouTrackTracker.Development(const ATarget: TAtlasTrackerTarget; c
 var
   mStatus: Integer;
   mText, mUrl: string;
-  mChanges: TArray<TAtlasTrackerVcsChange>;
 begin
   ADevelopment := TAtlasTrackerDevelopment.Empty;
-  AError := TAtlasCiFetchError.None;
+  AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  mUrl := VcsChangesUrl(ATarget, AKey);
-  if (mUrl = '') or (ATransport = nil) then
-  begin
-    AError := TAtlasCiFetchError.NotConfigured;
-    Exit;
-  end;
-  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+  mUrl := TAtlasYouTrackApi.VcsChangesUrl(ATarget, AKey);
+  if (mUrl = '') or (ATransport = nil) or not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
   begin
     Exit;
   end;
-  // Ohne VCS-Anbindung gibt es die Liste nicht: leer, kein Fehler.
-  if mStatus = 404 then
-  begin
-    AError := TAtlasCiFetchError.None;
-    Exit(True);
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  if not ParseVcsChanges(mText, mChanges) then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-    Exit;
-  end;
-  ADevelopment.Changes := mChanges;
-  AError := TAtlasCiFetchError.None;
-  Result := True;
+  Result := ReadVcsChanges(mStatus, mText, ADevelopment, AError);
 end;
 
-/// <summary>Millisekunden seit 1970 zu einer UTC-Zeit.</summary>
-function MsOf(ATime: TDateTime): Int64;
-begin
-  Result := Round((ATime - UnixDateDelta) * MSecsPerDay);
-end;
-
-class function TAtlasYouTrackTracker.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
-begin
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := 'for: me';
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(for: me or reporter: me or has: star)';
-  else
-    Result := '(for: me or reporter: me)';
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
-  AScope: TAtlasTrackerNotifyScope): string;
+/// <summary>Seit APoll.Since geänderte Issues; False mit AError.</summary>
+function ChangedIssues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+  const APoll: TAtlasTrackerPoll; out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
 var
-  mQuery: string;
-begin
-  Result := '';
-  if ATarget.Server = '' then
-  begin
-    Exit;
-  end;
-  // Einen Tag früher: Der Server wertet den Tag in seiner Zeitzone; genau gefiltert wird mit "updated".
-  mQuery := ScopeQuery(AScope) + ' updated: ' + FormatDateTime('yyyy"-"mm"-"dd', ASince - 1) + ' .. *';
-  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(mQuery) + '&fields=' +
-    TTextUris.PercentEncode(ChangeIssueFields) + '&$top=' + IntToStr(MaxChangedIssues * 2);
-end;
-
-class function TAtlasYouTrackTracker.ParseChangedIssues(const AJson: string; ASince: TDateTime;
-  out AIssues: TArray<TAtlasTrackerChange>): Boolean;
-var
-  mValue, mItem: TJSONValue;
-  mIssue: TAtlasTrackerChange;
+  mText: string;
 begin
   AIssues := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mIssue := TAtlasTrackerChange.Create(Trim(TextOf(TJSONObject(mItem), 'idReadable')),
-        TAtlasTrackerChangeKind.Other, '', TimeOf(TJSONObject(mItem), 'updated'));
-      mIssue.Title := Shorten(TextOf(TJSONObject(mItem), 'summary'), TAtlasTrackerIssue.MaxTitle);
-      if ValidKey(mIssue.Key) and (mIssue.Time > ASince) then
-      begin
-        AIssues := AIssues + [mIssue];
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
-  ASince: TDateTime): string;
-begin
-  Result := '';
-  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
+  Result := TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ChangedIssuesUrl(ATarget, APoll.Since,
+    APoll.Scope), ATimeoutMs, mText, AError);
+  if Result and not TAtlasYouTrackParse.ParseChangedIssues(mText, APoll.Since, AIssues) then
   begin
-    Exit;
+    AError := TAtlasCiFetchError.Invalid;
+    Result := False;
   end;
-  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/activities?categories=' + ActivityCategories +
-    '&start=' + IntToStr(MsOf(ASince) + 1) + '&fields=' + TTextUris.PercentEncode(ActivityFields) + '&$top=100';
 end;
 
-class function TAtlasYouTrackTracker.ParseActivities(const AJson, AKey, ATitle, AMe: string; ASince: TDateTime;
-  out AChanges: TArray<TAtlasTrackerChange>): Boolean;
+/// <summary>Aktivitäten eines geänderten Issues. Ohne Zeit (ARestMs) oder Antwort meldet sich das Issue ohne
+/// Einzelheiten (die Zeit des Issues bleibt der Stand).</summary>
+function IssueActivities(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AIssue: TAtlasTrackerChange; const APoll: TAtlasTrackerPoll; ARestMs: Integer): TArray<TAtlasTrackerChange>;
 var
-  mValue, mItem, mAdded, mEntry: TJSONValue;
-  mObject, mAuthor: TJSONObject;
-  mCategory, mField, mLogin: string;
-  mChange: TAtlasTrackerChange;
-  mKind: TAtlasTrackerChangeKind;
+  mText: string;
+  mIgnored: TAtlasCiFetchError;
 begin
-  AChanges := nil;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if not (mValue is TJSONArray) then
+  if (ARestMs <= 0) or not TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ActivitiesUrl(ATarget, AIssue.Key,
+    APoll.Since), ARestMs, mText, mIgnored) or not TAtlasYouTrackParse.ParseActivities(mText, AIssue.Key,
+    AIssue.Title, APoll.Me, APoll.Since, Result) then
+  begin
+    Result := [AIssue];
+  end;
+end;
+
+/// <summary>Späteste Zeit aus ALatest und AChanges.</summary>
+function LatestOf(const AChanges: TArray<TAtlasTrackerChange>; ALatest: TDateTime): TDateTime;
+var
+  mChange: TAtlasTrackerChange;
+begin
+  Result := ALatest;
+  for mChange in AChanges do
+  begin
+    if mChange.Time > Result then
     begin
-      Exit;
+      Result := mChange.Time;
     end;
-    Result := True;
-    for mItem in TJSONArray(mValue) do
-    begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mObject := TJSONObject(mItem);
-      mAdded := mObject.Values['added'];
-      // Entfernte Kommentare und geleerte Felder melden nichts.
-      if not (mAdded is TJSONArray) or (TJSONArray(mAdded).Count = 0) then
-      begin
-        Continue;
-      end;
-      mCategory := '';
-      if mObject.Values['category'] is TJSONObject then
-      begin
-        mCategory := TextOf(TJSONObject(mObject.Values['category']), 'id');
-      end;
-      mField := '';
-      if mObject.Values['field'] is TJSONObject then
-      begin
-        mField := Trim(TextOf(TJSONObject(mObject.Values['field']), 'name'));
-      end;
-      if SameText(mCategory, 'CommentsCategory') then
-      begin
-        mKind := TAtlasTrackerChangeKind.Comment;
-      end
-      else if IsOneOf(mField, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) then
-      begin
-        mKind := TAtlasTrackerChangeKind.Assigned;
-      end
-      else if IsOneOf(mField, ['State', 'Status', 'Zustand']) then
-      begin
-        mKind := TAtlasTrackerChangeKind.State;
-      end
-      else
-      begin
-        Continue;
-      end;
-      mChange := TAtlasTrackerChange.Create(AKey, mKind, '', TimeOf(mObject, 'timestamp'));
-      if mChange.Time <= ASince then
-      begin
-        Continue;
-      end;
-      mChange.Title := ATitle;
-      if mObject.Values['author'] is TJSONObject then
-      begin
-        mAuthor := TJSONObject(mObject.Values['author']);
-        mChange.Author := Trim(TextOf(mAuthor, 'login'));
-        mChange.AuthorName := Shorten(TextOf(mAuthor, 'fullName'), 80);
-      end;
-      if mKind <> TAtlasTrackerChangeKind.Comment then
-      begin
-        mChange.Value := ValueText(mAdded);
-        if mKind = TAtlasTrackerChangeKind.Assigned then
-        begin
-          for mEntry in TJSONArray(mAdded) do
-          begin
-            if mEntry is TJSONObject then
-            begin
-              mLogin := TextOf(TJSONObject(mEntry), 'login');
-              if (AMe <> '') and SameText(mLogin, AMe) then
-              begin
-                mChange.ToMe := True;
-              end;
-            end;
-          end;
-        end;
-      end;
-      AChanges := AChanges + [mChange];
-    end;
-  finally
-    mValue.Free;
   end;
 end;
 
@@ -3075,81 +875,27 @@ function TAtlasYouTrackTracker.Changes(const ATarget: TAtlasTrackerTarget; const
   out AError: TAtlasCiFetchError): Boolean;
 var
   mWatch: TStopwatch;
-  mStatus, mIndex, mRest: Integer;
-  mText: string;
-  mIssues, mFound: TArray<TAtlasTrackerChange>;
-  mIgnored: TAtlasCiFetchError;
+  mIndex: Integer;
+  mIssues: TArray<TAtlasTrackerChange>;
 begin
   AChanges := nil;
-  AError := TAtlasCiFetchError.None;
+  AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) then
-  begin
-    AError := TAtlasCiFetchError.NotConfigured;
-    Exit;
-  end;
   mWatch := TStopwatch.StartNew;
-  if not ATransport.Get(ChangedIssuesUrl(ATarget, APoll.Since, APoll.Scope), ATimeoutMs, mStatus, mText, AError) then
+  if (ATarget.Server = '') or (ATransport = nil) or
+    not ChangedIssues(ATarget, ATransport, ATimeoutMs, APoll, mIssues, AError) then
   begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  if not ParseChangedIssues(mText, APoll.Since, mIssues) then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
   Result := True;
-  for mIndex := 0 to High(mIssues) do
+  APoll.Latest := LatestOf(mIssues, APoll.Latest);
+  for mIndex := 0 to Min(High(mIssues), TAtlasYouTrackApi.MaxChangedIssues - 1) do
   begin
-    if mIssues[mIndex].Time > APoll.Latest then
-    begin
-      APoll.Latest := mIssues[mIndex].Time;
-    end;
-    if mIndex >= MaxChangedIssues then
-    begin
-      Continue;
-    end;
-    mRest := ATimeoutMs - Integer(mWatch.ElapsedMilliseconds);
-    // Zeit aufgebraucht: Das Issue meldet sich ohne Einzelheiten (die Zeit des Issues bleibt der Stand).
-    if (mRest <= 0) or not ATransport.Get(ActivitiesUrl(ATarget, mIssues[mIndex].Key, APoll.Since), mRest, mStatus,
-      mText, mIgnored) or (mStatus <> 200) or not ParseActivities(mText, mIssues[mIndex].Key, mIssues[mIndex].Title,
-      APoll.Me, APoll.Since, mFound) then
-    begin
-      mFound := [mIssues[mIndex]];
-    end;
-    AChanges := AChanges + mFound;
+    AChanges := AChanges + IssueActivities(ATarget, ATransport, mIssues[mIndex], APoll,
+      ATimeoutMs - Integer(mWatch.ElapsedMilliseconds));
   end;
   // Auch eine Aktivität, die der Server später stempelt als das Issue, kommt nicht noch einmal.
-  for mIndex := 0 to High(AChanges) do
-  begin
-    if AChanges[mIndex].Time > APoll.Latest then
-    begin
-      APoll.Latest := AChanges[mIndex].Time;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackTracker.AttachmentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-begin
-  Result := '';
-  if (ATarget.Server <> '') and ValidKey(Trim(AKey)) then
-  begin
-    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/attachments?fields=id,name';
-  end;
-end;
-
-class function TAtlasYouTrackTracker.CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-begin
-  Result := '';
-  if (ATarget.Server <> '') and ValidKey(Trim(AKey)) then
-  begin
-    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/comments?fields=id';
-  end;
+  APoll.Latest := LatestOf(AChanges, APoll.Latest);
 end;
 
 function TAtlasYouTrackTracker.CanUpload: Boolean;
@@ -3167,7 +913,7 @@ begin
   AError := mResponse.Error;
   if not Result and (mResponse.Status <> 0) then
   begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mResponse.Status);
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status);
   end;
 end;
 
@@ -3177,14 +923,14 @@ var
   mBoundary: string;
 begin
   mBoundary := TAtlasAttachMultipart.NewBoundary;
-  Result := PostTo(ASend, AttachmentsUrl(ATarget, AKey), TAtlasAttachMultipart.ContentType(mBoundary),
+  Result := PostTo(ASend, TAtlasYouTrackApi.AttachmentsUrl(ATarget, AKey), TAtlasAttachMultipart.ContentType(mBoundary),
     TAtlasAttachMultipart.Build(mBoundary, AFiles), ATimeoutMs, AError);
 end;
 
 function TAtlasYouTrackTracker.Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey,
   AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
 begin
-  Result := PostTo(ASend, CommentsUrl(ATarget, AKey), 'application/json',
+  Result := PostTo(ASend, TAtlasYouTrackApi.CommentsUrl(ATarget, AKey), 'application/json',
     TAtlasAttachComment.JsonBody('text', AMarkdown), ATimeoutMs, AError);
 end;
 

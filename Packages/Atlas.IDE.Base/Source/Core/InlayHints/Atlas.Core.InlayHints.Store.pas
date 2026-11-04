@@ -76,6 +76,13 @@ type
       Defines: TArray<TAtlasInlayHint>;
       Chars: TArray<TAtlasInlayHint>;
       Methods: TArray<TAtlasInlayHint>;
+      procedure PutEnd(const AHint: TAtlasInlayHint);
+      /// <summary>Typmarke, Include-Symbole, Steuerzeichen oder Methode ohne Self.</summary>
+      procedure PutMarker(const AHint: TAtlasInlayHint);
+      procedure PutParameter(const AHint: TAtlasInlayHint);
+      /// <summary>AHint übernehmen, wenn er in AFrom..ATo liegt und passt.</summary>
+      procedure PutHint(const AHint: TAtlasInlayHint; AFrom, ATo: Integer);
+      procedure Sort;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -165,10 +172,23 @@ begin
   Result := TTextLines.SplitLines(AText);
 end;
 
+/// <summary>Steht ab AIndex (1-basiert) True, False oder nil?</summary>
+function IsLiteralWord(const ALine: string; AIndex: Integer): Boolean;
+var
+  mStop: Integer;
+  mWord: string;
+begin
+  mStop := AIndex;
+  while (mStop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[mStop]) do
+  begin
+    Inc(mStop);
+  end;
+  mWord := LowerCase(Copy(ALine, AIndex, mStop - AIndex));
+  Result := (mWord = 'true') or (mWord = 'false') or (mWord = 'nil');
+end;
 class function TAtlasInlayHintStore.IsLiteralAt(const ALine: string; ACharacter: Integer): Boolean;
 var
-  Index, Stop: Integer;
-  Word: string;
+  Index: Integer;
   Next: Char;
 begin
   Result := False;
@@ -187,22 +207,15 @@ begin
     Next := ALine[Index + 1];
   end;
   case ALine[Index] of
-    '''':
-      Exit(True);
-    '0'..'9':
-      Exit(True);
+    '''', '0'..'9':
+      Result := True;
     '#', '$', '%':
-      Exit(CharInSet(Next, ['0'..'9', 'A'..'F', 'a'..'f', '$']));
+      Result := CharInSet(Next, ['0'..'9', 'A'..'F', 'a'..'f', '$']);
     '-', '+':
-      Exit(CharInSet(Next, ['0'..'9', '$', '%']));
+      Result := CharInSet(Next, ['0'..'9', '$', '%']);
+  else
+    Result := IsLiteralWord(ALine, Index);
   end;
-  Stop := Index;
-  while (Stop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Stop]) do
-  begin
-    Inc(Stop);
-  end;
-  Word := LowerCase(Copy(ALine, Index, Stop - Index));
-  Result := (Word = 'true') or (Word = 'false') or (Word = 'nil');
 end;
 
 function TAtlasInlayHintStore.Find(const AFileName: string): TEntry;
@@ -290,14 +303,112 @@ begin
   AList := AList + [AHint];
 end;
 
+function HintOrder(const ALeft, ARight: TAtlasInlayHint): Integer;
+begin
+  Result := ALeft.Line - ARight.Line;
+  if Result = 0 then
+  begin
+    Result := ALeft.Character - ARight.Character;
+  end;
+end;
+
+{ TAtlasInlayHintStore.TEntry }
+
+procedure TAtlasInlayHintStore.TEntry.PutEnd(const AHint: TAtlasInlayHint);
+var
+  mKnown: TAtlasInlayHint;
+  mDuplicate: Boolean;
+begin
+  // Endmarke (#620): nur ohne Kommentar hinter dem end, jede Zeile einmal.
+  if TAtlasInlayHintStore.HasCommentAfter(Lines[AHint.Line], AHint.Character) then
+  begin
+    Exit;
+  end;
+  mDuplicate := False;
+  for mKnown in Ends do
+  begin
+    mDuplicate := mDuplicate or (mKnown.Line = AHint.Line);
+  end;
+  if not mDuplicate then
+  begin
+    Ends := Ends + [AHint];
+  end;
+end;
+
+procedure TAtlasInlayHintStore.TEntry.PutMarker(const AHint: TAtlasInlayHint);
+begin
+  // Typmarke (#453), Include-Symbole (#860), Steuerzeichen (#862) und Methoden ohne Self (#686): jede Stelle
+  // einmal.
+  if AHint.TypeHint then
+  begin
+    AddOnce(Types, AHint);
+  end
+  else if AHint.DefineHint then
+  begin
+    AddOnce(Defines, AHint);
+  end
+  else if AHint.MethodHint then
+  begin
+    AddOnce(Methods, AHint);
+  end
+  else
+  begin
+    AddOnce(Chars, AHint);
+  end;
+end;
+
+procedure TAtlasInlayHintStore.TEntry.PutParameter(const AHint: TAtlasInlayHint);
+var
+  mLine: string;
+begin
+  mLine := Lines[AHint.Line];
+  // Nur Parameternamen vor Literalen, die am Zeilenende noch etwas sagen. Überlappende Abrufe liefern
+  // dieselben Hinweise noch einmal.
+  if TAtlasInlayHintStore.IsLiteralAt(mLine, AHint.Character) and
+    not TAtlasInlayHintStore.IsVagueName(AHint.Name) and
+    not TAtlasInlayHintStore.IsSoleArgument(mLine, AHint.Character) and
+    not ContainsText(TAtlasInlayHintStore.ArgumentAt(mLine, AHint.Character), AHint.Name) then
+  begin
+    AddOnce(Hints, AHint);
+  end;
+end;
+
+procedure TAtlasInlayHintStore.TEntry.PutHint(const AHint: TAtlasInlayHint; AFrom, ATo: Integer);
+begin
+  if (AHint.Line < AFrom) or (AHint.Line > ATo) or (AHint.Line > High(Lines)) or (AHint.Name = '') then
+  begin
+    Exit;
+  end;
+  if AHint.EndLabel then
+  begin
+    PutEnd(AHint);
+  end
+  else if AHint.TypeHint or AHint.DefineHint or AHint.CharHint or AHint.MethodHint then
+  begin
+    PutMarker(AHint);
+  end
+  else
+  begin
+    PutParameter(AHint);
+  end;
+end;
+
+procedure TAtlasInlayHintStore.TEntry.Sort;
+var
+  mOrder: IComparer<TAtlasInlayHint>;
+begin
+  mOrder := TComparer<TAtlasInlayHint>.Construct(HintOrder);
+  TArray.Sort<TAtlasInlayHint>(Hints, mOrder);
+  TArray.Sort<TAtlasInlayHint>(Types, mOrder);
+  TArray.Sort<TAtlasInlayHint>(Defines, mOrder);
+  TArray.Sort<TAtlasInlayHint>(Chars, mOrder);
+end;
 procedure TAtlasInlayHintStore.Put(const AFileName, AText: string; AFrom, ATo: Integer;
   const AHints: TArray<TAtlasInlayHint>);
 var
   Entry: TEntry;
   Line: Integer;
-  Hint, Known: TAtlasInlayHint;
-  Duplicate: Boolean;
-  Order: IComparer<TAtlasInlayHint>;
+  Hint: TAtlasInlayHint;
 begin
   Entry := Find(AFileName);
   if (Entry = nil) or (Entry.Text <> AText) then
@@ -313,86 +424,9 @@ begin
   end;
   for Hint in AHints do
   begin
-    // Endmarke (#620): nur ohne Kommentar hinter dem end, jede Zeile einmal.
-    if Hint.EndLabel then
-    begin
-      if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
-        HasCommentAfter(Entry.Lines[Hint.Line], Hint.Character) then
-      begin
-        Continue;
-      end;
-      Duplicate := False;
-      for Known in Entry.Ends do
-      begin
-        Duplicate := Duplicate or (Known.Line = Hint.Line);
-      end;
-      if not Duplicate then
-      begin
-        Entry.Ends := Entry.Ends + [Hint];
-      end;
-      Continue;
-    end;
-    // Typmarke (#453), Include-Symbole (#860), Steuerzeichen (#862) und Methoden ohne Self (#686): jede Stelle
-    // einmal.
-    if Hint.TypeHint or Hint.DefineHint or Hint.CharHint or Hint.MethodHint then
-    begin
-      if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
-      begin
-        Continue;
-      end;
-      if Hint.TypeHint then
-      begin
-        AddOnce(Entry.Types, Hint);
-      end
-      else if Hint.DefineHint then
-      begin
-        AddOnce(Entry.Defines, Hint);
-      end
-      else if Hint.MethodHint then
-      begin
-        AddOnce(Entry.Methods, Hint);
-      end
-      else
-      begin
-        AddOnce(Entry.Chars, Hint);
-      end;
-      Continue;
-    end;
-    if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
-      not IsLiteralAt(Entry.Lines[Hint.Line], Hint.Character) then
-    begin
-      Continue;
-    end;
-    // Nur Hinweise, die am Zeilenende noch etwas sagen.
-    if IsVagueName(Hint.Name) or IsSoleArgument(Entry.Lines[Hint.Line], Hint.Character) or
-      ContainsText(ArgumentAt(Entry.Lines[Hint.Line], Hint.Character), Hint.Name) then
-    begin
-      Continue;
-    end;
-    // Überlappende Abrufe liefern dieselben Hinweise noch einmal.
-    Duplicate := False;
-    for Known in Entry.Hints do
-    begin
-      Duplicate := Duplicate or ((Known.Line = Hint.Line) and (Known.Character = Hint.Character));
-    end;
-    if not Duplicate then
-    begin
-      Entry.Hints := Entry.Hints + [Hint];
-    end;
+    Entry.PutHint(Hint, AFrom, ATo);
   end;
-  Order := TComparer<TAtlasInlayHint>.Construct(
-    function(const ALeft, ARight: TAtlasInlayHint): Integer
-    begin
-      Result := ALeft.Line - ARight.Line;
-      if Result = 0 then
-      begin
-        Result := ALeft.Character - ARight.Character;
-      end;
-    end);
-  TArray.Sort<TAtlasInlayHint>(Entry.Hints, Order);
-  TArray.Sort<TAtlasInlayHint>(Entry.Types, Order);
-  TArray.Sort<TAtlasInlayHint>(Entry.Defines, Order);
-  TArray.Sort<TAtlasInlayHint>(Entry.Chars, Order);
+  Entry.Sort;
 end;
 
 /// <summary>Namen der Hinweise aus AHints in ALine, in Reihenfolge.</summary>

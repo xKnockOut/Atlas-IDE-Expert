@@ -192,7 +192,8 @@ begin
   begin
     Exit;
   end;
-  if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, 'Base', nil, Info, Reason) then
+  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), 'Base', nil, Info,
+    Reason) then
   begin
     Exit;
   end;
@@ -221,7 +222,7 @@ var
   Entry: TJSONObject;
   Need: Integer;
 begin
-  if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, AContext.NameSuffix,
+  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), AContext.NameSuffix,
     NameCheck(ATree, AContext.Index), Info, Reason) then
   begin
     raise Failed(Reason);
@@ -357,8 +358,8 @@ begin
   begin
     raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [UnitName]));
   end;
-  if not TExtractSuperclass.Plan(ATree, AText, APosition.Line, Request, InterfaceCheck(ATree, AContext.Index),
-    NameCheck(ATree, AContext.Index), Plan, Reason) then
+  if not TExtractSuperclass.Plan(TClassSource.Create(ATree, AText, APosition.Line), Request,
+    InterfaceCheck(ATree, AContext.Index), NameCheck(ATree, AContext.Index), Plan, Reason) then
   begin
     raise Failed(Reason);
   end;

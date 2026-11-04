@@ -224,124 +224,239 @@ begin
   Result := '';
 end;
 
+/// <summary>Zeile entfernt (Rückgängig, #721): zurück zum Vorgabewert der Deklaration.</summary>
+function ResetValue(AInstance: TObject; AProp: PPropInfo; const APath: string; ACheckOnly: Boolean): string;
+var
+  mKind: TTypeKind;
+begin
+  Result := '';
+  mKind := AProp^.PropType^.Kind;
+  if (mKind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet]) and (AProp^.Default <> NoDefaultValue) then
+  begin
+    if not ACheckOnly then
+    begin
+      SetOrdProp(AInstance, AProp, AProp^.Default);
+    end;
+  end
+  else if mKind in [tkString, tkLString, tkWString, tkUString] then
+  begin
+    if not ACheckOnly then
+    begin
+      SetStrProp(AInstance, AProp, '');
+    end;
+  end
+  else
+  begin
+    Result := Format('%s hat keinen Vorgabewert', [APath]);
+  end;
+end;
+
+function AssignString(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mText: string;
+begin
+  Result := '';
+  if not TAtlasFormChanges.StringValue(AChange.Value, mText) then
+  begin
+    Result := Format('%s: kein String-Wert', [AChange.PropertyPath]);
+  end
+  else if not ACheckOnly then
+  begin
+    SetStrProp(AInstance, AProp, mText);
+  end;
+end;
+
+/// <summary>Ganzzahl oder Bezeichner wie clRed oder crHandPoint.</summary>
+function AssignInteger(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mNumber: Integer;
+  mIdentToInt: TIdentToInt;
+begin
+  Result := '';
+  if not TryStrToInt(AChange.Value, mNumber) then
+  begin
+    mIdentToInt := FindIdentToInt(AProp^.PropType^);
+    if not Assigned(mIdentToInt) or not mIdentToInt(AChange.Value, mNumber) then
+    begin
+      Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+    end;
+  end;
+  if not ACheckOnly then
+  begin
+    SetOrdProp(AInstance, AProp, mNumber);
+  end;
+end;
+
+function AssignInt64(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mNumber: Int64;
+begin
+  Result := '';
+  if not TryStrToInt64(AChange.Value, mNumber) then
+  begin
+    Result := Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]);
+  end
+  else if not ACheckOnly then
+  begin
+    SetInt64Prop(AInstance, AProp, mNumber);
+  end;
+end;
+
+function AssignEnumeration(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mNumber: Integer;
+begin
+  Result := '';
+  mNumber := GetEnumValue(AProp^.PropType^, AChange.Value);
+  if mNumber < 0 then
+  begin
+    Result := Format('%s: unbekannter Wert %s', [AChange.PropertyPath, AChange.Value]);
+  end
+  else if not ACheckOnly then
+  begin
+    SetOrdProp(AInstance, AProp, mNumber);
+  end;
+end;
+
+function AssignSet(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mNumber: Integer;
+begin
+  Result := '';
+  try
+    mNumber := StringToSet(AProp, AChange.Value);
+  except
+    on EPropertyConvertError do
+      Exit(Format('%s: unbekanntes Element in %s', [AChange.PropertyPath, AChange.Value]));
+  end;
+  if not ACheckOnly then
+  begin
+    SetOrdProp(AInstance, AProp, mNumber);
+  end;
+end;
+
+function AssignFloat(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  mFloat: Double;
+begin
+  Result := '';
+  if not TryStrToFloat(AChange.Value, mFloat, TFormatSettings.Invariant) then
+  begin
+    Result := Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]);
+  end
+  else if not ACheckOnly then
+  begin
+    SetFloatProp(AInstance, AProp, mFloat);
+  end;
+end;
+
 /// <summary>DFM-Wert aus AChange in die Eigenschaft; mit ACheckOnly nur prüfen. '' oder der Grund.</summary>
 function AssignValue(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
   ACheckOnly: Boolean): string;
-var
-  Text: string;
-  Number: Integer;
-  Number64: Int64;
-  Float: Double;
-  IdentToInt: TIdentToInt;
-  Kind: TTypeKind;
 begin
-  Result := '';
-  Kind := AProp^.PropType^.Kind;
   if AChange.Removed then
   begin
-    // Zeile entfernt (Rückgängig, #721): zurück zum Vorgabewert der Deklaration.
-    if Kind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet] then
-    begin
-      if AProp^.Default = NoDefaultValue then
-      begin
-        Exit(Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]));
-      end;
-      if not ACheckOnly then
-      begin
-        SetOrdProp(AInstance, AProp, AProp^.Default);
-      end;
-    end
-    else if Kind in [tkString, tkLString, tkWString, tkUString] then
-    begin
-      if not ACheckOnly then
-      begin
-        SetStrProp(AInstance, AProp, '');
-      end;
-    end
-    else
-    begin
-      Result := Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]);
-    end;
-    Exit;
+    Exit(ResetValue(AInstance, AProp, AChange.PropertyPath, ACheckOnly));
   end;
-  case Kind of
+  case AProp^.PropType^.Kind of
     tkString, tkLString, tkWString, tkUString:
-      begin
-        if not TAtlasFormChanges.StringValue(AChange.Value, Text) then
-        begin
-          Exit(Format('%s: kein String-Wert', [AChange.PropertyPath]));
-        end;
-        if not ACheckOnly then
-        begin
-          SetStrProp(AInstance, AProp, Text);
-        end;
-      end;
+      Result := AssignString(AInstance, AProp, AChange, ACheckOnly);
     tkInteger:
-      begin
-        if not TryStrToInt(AChange.Value, Number) then
-        begin
-          // Bezeichner wie clRed oder crHandPoint.
-          IdentToInt := FindIdentToInt(AProp^.PropType^);
-          if not Assigned(IdentToInt) or not IdentToInt(AChange.Value, Number) then
-          begin
-            Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
-          end;
-        end;
-        if not ACheckOnly then
-        begin
-          SetOrdProp(AInstance, AProp, Number);
-        end;
-      end;
+      Result := AssignInteger(AInstance, AProp, AChange, ACheckOnly);
     tkInt64:
-      begin
-        if not TryStrToInt64(AChange.Value, Number64) then
-        begin
-          Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
-        end;
-        if not ACheckOnly then
-        begin
-          SetInt64Prop(AInstance, AProp, Number64);
-        end;
-      end;
+      Result := AssignInt64(AInstance, AProp, AChange, ACheckOnly);
     tkEnumeration:
-      begin
-        Number := GetEnumValue(AProp^.PropType^, AChange.Value);
-        if Number < 0 then
-        begin
-          Exit(Format('%s: unbekannter Wert %s', [AChange.PropertyPath, AChange.Value]));
-        end;
-        if not ACheckOnly then
-        begin
-          SetOrdProp(AInstance, AProp, Number);
-        end;
-      end;
+      Result := AssignEnumeration(AInstance, AProp, AChange, ACheckOnly);
     tkSet:
-      begin
-        try
-          Number := StringToSet(AProp, AChange.Value);
-        except
-          on EPropertyConvertError do
-            Exit(Format('%s: unbekanntes Element in %s', [AChange.PropertyPath, AChange.Value]));
-        end;
-        if not ACheckOnly then
-        begin
-          SetOrdProp(AInstance, AProp, Number);
-        end;
-      end;
+      Result := AssignSet(AInstance, AProp, AChange, ACheckOnly);
     tkFloat:
-      begin
-        if not TryStrToFloat(AChange.Value, Float, TFormatSettings.Invariant) then
-        begin
-          Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
-        end;
-        if not ACheckOnly then
-        begin
-          SetFloatProp(AInstance, AProp, Float);
-        end;
-      end;
+      Result := AssignFloat(AInstance, AProp, AChange, ACheckOnly);
   else
     Result := Format('%s: Typ wird im Designer nicht gesetzt', [AChange.PropertyPath]);
   end;
+end;
+
+/// <summary>Komponente AName unter ARoot; '' ist die Wurzel selbst.</summary>
+function ComponentOf(ARoot: TComponent; const AName: string): TComponent;
+begin
+  Result := ARoot;
+  if AName <> '' then
+  begin
+    Result := ARoot.FindComponent(AName);
+  end;
+end;
+
+/// <summary>Ziele der Ereignis-Zuordnungen; '' oder der Grund.</summary>
+function CheckEvents(ARoot: TComponent; const ADesigner: IDesigner; const AChanges: TArray<TAtlasFormEventChange>;
+  out ATargets: TArray<TComponent>; out AProperties: TArray<PPropInfo>): string;
+var
+  mChange: TAtlasFormEventChange;
+  mComponent: TComponent;
+  mPropInfo: PPropInfo;
+begin
+  ATargets := nil;
+  AProperties := nil;
+  for mChange in AChanges do
+  begin
+    mComponent := ComponentOf(ARoot, mChange.Component);
+    if mComponent = nil then
+    begin
+      Exit(Format('Komponente %s nicht gefunden', [mChange.Component]));
+    end;
+    mPropInfo := GetPropInfo(mComponent, mChange.EventName);
+    if (mPropInfo = nil) or (mPropInfo^.PropType^.Kind <> tkMethod) then
+    begin
+      Exit(Format('%s.%s ist kein Ereignis', [mComponent.Name, mChange.EventName]));
+    end;
+    // Die Unit ist schon geändert; der Handler muss dort unter dem neuen Namen stehen.
+    if not ADesigner.MethodExists(mChange.NewHandler) then
+    begin
+      Exit(Format('Methode %s fehlt in der Unit', [mChange.NewHandler]));
+    end;
+    ATargets := ATargets + [mComponent];
+    AProperties := AProperties + [mPropInfo];
+  end;
+  Result := '';
+end;
+
+/// <summary>Ziele der Eigenschaften, Werte geprüft; '' oder der Grund.</summary>
+function CheckProperties(ARoot: TComponent; const AProperties: TArray<TAtlasFormPropertyChange>;
+  out ATargets: TArray<TObject>; out AProps: TArray<PPropInfo>): string;
+var
+  mProp: TAtlasFormPropertyChange;
+  mComponent: TComponent;
+  mInstance: TObject;
+  mPropInfo: PPropInfo;
+  mReason: string;
+begin
+  ATargets := nil;
+  AProps := nil;
+  for mProp in AProperties do
+  begin
+    mComponent := ComponentOf(ARoot, mProp.Component);
+    if mComponent = nil then
+    begin
+      Exit(Format('Komponente %s nicht gefunden', [mProp.Component]));
+    end;
+    mReason := ResolveProperty(mComponent, mProp.PropertyPath, mInstance, mPropInfo);
+    if mReason = '' then
+    begin
+      mReason := AssignValue(mInstance, mPropInfo, mProp, True);
+    end;
+    if mReason <> '' then
+    begin
+      Exit(Format('%s: %s', [mComponent.Name, mReason]));
+    end;
+    ATargets := ATargets + [mInstance];
+    AProps := AProps + [mPropInfo];
+  end;
+  Result := '';
 end;
 
 { TAtlasIdeForms.TNotification }
@@ -602,102 +717,48 @@ end;
 class function TAtlasIdeForms.Apply(const AFileName: string; const AChanges: TArray<TAtlasFormEventChange>;
   const AProperties: TArray<TAtlasFormPropertyChange>): string;
 var
-  Editor: IOTAFormEditor;
-  Designer: IDesigner;
-  Root, Component: TComponent;
-  Targets: TArray<TComponent>;
-  Properties, ValueProps: TArray<PPropInfo>;
-  ValueTargets: TArray<TObject>;
-  PropInfo: PPropInfo;
-  Instance: TObject;
-  Change: TAtlasFormEventChange;
-  Prop: TAtlasFormPropertyChange;
-  Index: Integer;
-  Reason: string;
+  mEditor: IOTAFormEditor;
+  mDesigner: IDesigner;
+  mRoot: TComponent;
+  mTargets: TArray<TComponent>;
+  mProperties, mValueProps: TArray<PPropInfo>;
+  mValueTargets: TArray<TObject>;
+  mIndex: Integer;
 begin
-  Editor := EditorOf(AFileName);
-  Root := RootOf(Editor);
-  Designer := DesignerOf(Editor);
-  if (Root = nil) or (Designer = nil) then
+  mEditor := EditorOf(AFileName);
+  mRoot := RootOf(mEditor);
+  mDesigner := DesignerOf(mEditor);
+  if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit('Formular ist nicht mehr offen');
   end;
   // Erst alles prüfen, dann setzen: Entweder alle Zuordnungen oder keine.
-  Targets := nil;
-  Properties := nil;
-  for Change in AChanges do
+  Result := CheckEvents(mRoot, mDesigner, AChanges, mTargets, mProperties);
+  if Result = '' then
   begin
-    if Change.Component = '' then
-    begin
-      Component := Root;
-    end
-    else
-    begin
-      Component := Root.FindComponent(Change.Component);
-    end;
-    if Component = nil then
-    begin
-      Exit(Format('Komponente %s nicht gefunden', [Change.Component]));
-    end;
-    PropInfo := GetPropInfo(Component, Change.EventName);
-    if (PropInfo = nil) or (PropInfo^.PropType^.Kind <> tkMethod) then
-    begin
-      Exit(Format('%s.%s ist kein Ereignis', [Component.Name, Change.EventName]));
-    end;
-    // Die Unit ist schon geändert; der Handler muss dort unter dem neuen Namen stehen.
-    if not Designer.MethodExists(Change.NewHandler) then
-    begin
-      Exit(Format('Methode %s fehlt in der Unit', [Change.NewHandler]));
-    end;
-    Targets := Targets + [Component];
-    Properties := Properties + [PropInfo];
+    Result := CheckProperties(mRoot, AProperties, mValueTargets, mValueProps);
   end;
-  ValueTargets := nil;
-  ValueProps := nil;
-  for Prop in AProperties do
+  if Result <> '' then
   begin
-    if Prop.Component = '' then
-    begin
-      Component := Root;
-    end
-    else
-    begin
-      Component := Root.FindComponent(Prop.Component);
-    end;
-    if Component = nil then
-    begin
-      Exit(Format('Komponente %s nicht gefunden', [Prop.Component]));
-    end;
-    Reason := ResolveProperty(Component, Prop.PropertyPath, Instance, PropInfo);
-    if Reason = '' then
-    begin
-      Reason := AssignValue(Instance, PropInfo, Prop, True);
-    end;
-    if Reason <> '' then
-    begin
-      Exit(Format('%s: %s', [Component.Name, Reason]));
-    end;
-    ValueTargets := ValueTargets + [Instance];
-    ValueProps := ValueProps + [PropInfo];
+    Exit;
   end;
-  for Index := 0 to High(AChanges) do
+  for mIndex := 0 to High(AChanges) do
   begin
-    SetMethodProp(Targets[Index], Properties[Index], Designer.CreateMethod(AChanges[Index].NewHandler,
-      GetTypeData(Properties[Index]^.PropType^)));
+    SetMethodProp(mTargets[mIndex], mProperties[mIndex], mDesigner.CreateMethod(AChanges[mIndex].NewHandler,
+      GetTypeData(mProperties[mIndex]^.PropType^)));
   end;
-  for Index := 0 to High(AProperties) do
+  for mIndex := 0 to High(AProperties) do
   begin
-    AssignValue(ValueTargets[Index], ValueProps[Index], AProperties[Index], False);
+    AssignValue(mValueTargets[mIndex], mValueProps[mIndex], AProperties[mIndex], False);
   end;
   if (Length(AChanges) > 0) or (Length(AProperties) > 0) then
   begin
-    Designer.Modified;
+    mDesigner.Modified;
     if FCurrent <> nil then
     begin
       FCurrent.Changed;
     end;
   end;
-  Result := '';
 end;
 
 end.

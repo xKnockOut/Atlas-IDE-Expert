@@ -170,7 +170,7 @@ end;
 
 function TAtlasIdeDiscover.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Discover, TAtlasWelcomeDiscoverFrame.TitleText, Order,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Discover, TAtlasDiscoverTexts.TitleText, Order,
     TAtlasWelcomeColumn.Right,
     function: Boolean
     begin

@@ -850,7 +850,7 @@ function TAtlasIdeIssuePreview.StaleText(const ADetails: TAtlasTrackerDetails; c
 var
   mWhen: string;
 begin
-  mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched));
+  mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched), FormatSettings);
   if AReason = '' then
   begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen]);
@@ -1075,8 +1075,8 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mProvider.Details(AEntry.Target, mTransport, AEntry.Key, mComments, TAtlasIssuePreview.TimeoutMs,
-          mResult, mError);
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(AEntry.Target, mTransport, TAtlasIssuePreview.TimeoutMs),
+          AEntry.Key, mComments, mResult, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -1505,8 +1505,8 @@ begin
       mResult := TAtlasTrackerDetails.Empty;
       mOk := False;
       try
-        mOk := mProvider.Details(mEntry.Target, mTransport, mEntry.Key, mComments, TAtlasIssuePreview.TimeoutMs,
-          mResult, mError);
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.TimeoutMs),
+          mEntry.Key, mComments, mResult, mError);
       except
         on Exception do
           mOk := False;
@@ -1606,8 +1606,8 @@ begin
     function(const AWriter: IAtlasTrackerLinkWriter; const ATransport: IAtlasCiTransport; out AKey: string;
       out AError: TAtlasCiFetchError): Boolean
     begin
-      Result := AWriter.CreateSubtask(mTarget, ATransport, mParent, mTitle, mDescription, WriteTimeoutMs, AKey,
-        AError);
+      Result := AWriter.CreateSubtask(TAtlasTrackerCall.Create(mTarget, ATransport, WriteTimeoutMs), mParent, mTitle,
+        mDescription, AKey, AError);
     end,
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
     begin
@@ -1660,7 +1660,8 @@ begin
       out AError: TAtlasCiFetchError): Boolean
     begin
       AKey := mOther;
-      Result := AWriter.AddLink(mTarget, ATransport, mKey, mKind, mOther, WriteTimeoutMs, AError);
+      Result := AWriter.AddLink(TAtlasTrackerCall.Create(mTarget, ATransport, WriteTimeoutMs), mKey, mKind, mOther,
+        AError);
     end,
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
     begin
@@ -1816,7 +1817,8 @@ begin
       mDetails := TAtlasTrackerDetails.Empty;
       mOk := False;
       try
-        mOk := mProvider.Details(mTarget, mTransport, mKey, False, BlockedTimeoutMs, mDetails, mError);
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(mTarget, mTransport, BlockedTimeoutMs), mKey, False,
+          mDetails, mError);
       except
         on E: Exception do
         begin
@@ -1979,7 +1981,8 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mProvider.Details(ATarget, mTransport, AKey, False, TAtlasIssuePreview.TimeoutMs, mResult, mError);
+        mOk := mProvider.Details(TAtlasTrackerCall.Create(ATarget, mTransport, TAtlasIssuePreview.TimeoutMs), AKey,
+          False, mResult, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do

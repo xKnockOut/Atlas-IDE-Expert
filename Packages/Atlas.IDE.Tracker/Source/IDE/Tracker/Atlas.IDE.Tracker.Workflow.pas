@@ -511,8 +511,8 @@ begin
   begin
     mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.FieldEnd);
   end;
-  ADialog.CommentEditor.Enhanced := mAssist <> nil;
-  ADialog.CommentEditor.Bind(mAssist);
+  ADialog.Parts.Editor.Enhanced := mAssist <> nil;
+  ADialog.Parts.Editor.Bind(mAssist);
 end;
 
 procedure TAtlasIdeTrackerSync.LoadEndValues(const AProvider: IAtlasTrackerProvider;

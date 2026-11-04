@@ -53,7 +53,7 @@ const
     '"FixCase":{"type":"boolean","x-page":"Editor","x-caption":"ohne Schnellschalter"},' +
     '"VisibleRows":{"type":"integer","x-page":"Editor","x-quickToggle":true},' +
     '"PairGuides":{"type":"boolean","x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"description":"Blocklinien"}' +
+      '"description":"Blocklinien","x-description-en":"Block guides"}' +
     '}}';
   Project =
     '{"properties":{' +
@@ -97,14 +97,122 @@ begin
   Toggles := TAtlasQuickToggles.Build(Catalog, '', True);
   Assert.AreEqual('Bracket colors', Toggles[0].Caption);
   Assert.AreEqual('Hover', Toggles[2].Caption);
+  // Ohne x-captionEn die englische Beschreibung (#1458).
+  Assert.AreEqual('Block guides', Toggles[1].Caption);
   Assert.AreEqual(0, Integer(Length(TAtlasQuickToggles.Build('kein JSON', ''))));
+end;
+
+/// <summary>Projektdatei .atlas (#486) und folgende Schalter.</summary>
+procedure AssertTeamFileAndGenerateToggles(const AToggles: TArray<TAtlasQuickToggle>);
+var
+  mToggle: TAtlasQuickToggle;
+begin
+  // Projektdatei .atlas (#486): eigener Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TeamFile', mToggle));
+  Assert.AreEqual('Allgemein', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Settings', mToggle.Feature);
+  // Builds für Claude Code (#261): Schalter auf der Seite Compiler, keine Zeichnung.
+  // Tests ausführen (#69): Code Lens zeichnet im Editor, Befehle und Lauf nach dem Build nicht.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'CodeLensTests', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsTrue(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TestRun', mToggle));
+  Assert.AreEqual('Compiler', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TestsAfterBuild', mToggle));
+  Assert.IsFalse(TAtlasQuickToggles.Find(AToggles, 'BuildZeroHints', mToggle), 'ohne x-quickToggle');
+  // Startprofile (#575): Befehl und Statusfeld je ein Schalter auf der Seite Compiler, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'StartProfiles', mToggle));
+  Assert.AreEqual('Compiler', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'StartProfilesStatusField', mToggle));
+  Assert.AreEqual('Compiler', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  // Test debuggen (#585): eigener Schalter für Befehl, Kontextmenü und Marke auf der Seite Debuggen; der
+  // Haltepunkt am Anfang ist kein Schnellschalter.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TestDebug', mToggle));
+  Assert.AreEqual('Debuggen', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+  Assert.IsFalse(TAtlasQuickToggles.Find(AToggles, 'TestBreakAtStart', mToggle), 'ohne x-quickToggle');
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'McpBuild', mToggle));
+  Assert.AreEqual('Compiler', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+  // Beim Öffnen einmal bauen (build.onOpen): Schalter auf der Seite Compiler, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'BuildOnOpen', mToggle));
+  Assert.AreEqual('Compiler', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+  // Befehl (#68): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TodoList', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Palette', mToggle.Feature);
+  // Befehl (#97): eigener Schalter je Palettenbefehl, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'BaselineUpdate', mToggle));
+  Assert.AreEqual('Editor', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Palette', mToggle.Feature);
+  // Release-Build-Wächter samt Befehl (#533): eigener Schalter auf der Seite Release-Build, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'ReleaseGuard', mToggle));
+  Assert.AreEqual('Release-Build', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('Build', mToggle.Feature);
+end;
+
+/// <summary>Einrichtungskarte (#759), Atlas.CiLogin (#763) und folgende Schalter.</summary>
+procedure AssertSetupAndLoginToggles(const AToggles: TArray<TAtlasQuickToggle>);
+var
+  mToggle: TAtlasQuickToggle;
+  mValue: Boolean;
+begin
+  // Einrichtungskarte und Befehl Atlas.ProjectSetup (#759): eigener Schalter auf der Seite Willkommensseite.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'WelcomePageProjectSetup', mToggle));
+  Assert.AreEqual('Willkommensseite', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('WelcomePage', mToggle.Feature);
+  // Befehl Atlas.CiLogin (#763): eigener Schalter auf der Seite Willkommensseite, Vorgabe an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'CiLogin', mToggle));
+  Assert.AreEqual('Willkommensseite', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('WelcomePage', mToggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'CiLogin', mValue));
+  Assert.IsTrue(mValue);
+  // Schnellaktionen der Willkommensseite (#764): eigener Schalter, Vorgabe an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'WelcomePageQuickActions', mToggle));
+  Assert.AreEqual('Willkommensseite', mToggle.Page);
+  Assert.IsFalse(mToggle.Drawing);
+  Assert.AreEqual('WelcomePage', mToggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageQuickActions', mValue));
+  Assert.IsTrue(mValue);
+  // Issue-Tracker (#765): Bereich standardmäßig aus, Befehl für den Zugang an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'WelcomePageIssues', mToggle));
+  Assert.AreEqual('Willkommensseite', mToggle.Page);
+  Assert.AreEqual('WelcomePage', mToggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageIssues', mValue));
+  Assert.IsFalse(mValue);
+  Assert.IsTrue(TAtlasQuickToggles.Find(AToggles, 'TrackerLogin', mToggle));
+  // Seit #1280 auf der eigenen Seite Issue-Tracker (issues.login).
+  Assert.AreEqual('Issue-Tracker', mToggle.Page);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'TrackerLogin', mValue));
+  Assert.IsTrue(mValue);
+  // Jeder Schalter ist eine Einstellung des Plugins.
+  for mToggle in AToggles do
+  begin
+    Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, mToggle.Key, mValue), mToggle.Key);
+    Assert.IsTrue(mToggle.Caption <> '', mToggle.Key);
+    Assert.IsTrue(mToggle.Page <> '', mToggle.Key);
+  end;
 end;
 
 procedure TAtlasQuickTogglesTests.RealCatalogsContainAcceptanceSwitches;
 var
   Toggles: TArray<TAtlasQuickToggle>;
   Toggle: TAtlasQuickToggle;
-  Value: Boolean;
 begin
   Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson);
   // Abnahme: mindestens Klammerfarben (#514) und Blocklinien.
@@ -159,98 +267,8 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
-  // Projektdatei .atlas (#486): eigener Schalter auf der Seite Allgemein, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TeamFile', Toggle));
-  Assert.AreEqual('Allgemein', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Settings', Toggle.Feature);
-  // Builds für Claude Code (#261): Schalter auf der Seite Compiler, keine Zeichnung.
-  // Tests ausführen (#69): Code Lens zeichnet im Editor, Befehle und Lauf nach dem Build nicht.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensTests', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsTrue(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestRun', Toggle));
-  Assert.AreEqual('Compiler', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestsAfterBuild', Toggle));
-  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'BuildZeroHints', Toggle), 'ohne x-quickToggle');
-  // Startprofile (#575): Befehl und Statusfeld je ein Schalter auf der Seite Compiler, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfiles', Toggle));
-  Assert.AreEqual('Compiler', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfilesStatusField', Toggle));
-  Assert.AreEqual('Compiler', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  // Test debuggen (#585): eigener Schalter für Befehl, Kontextmenü und Marke auf der Seite Debuggen; der
-  // Haltepunkt am Anfang ist kein Schnellschalter.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestDebug', Toggle));
-  Assert.AreEqual('Debuggen', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'TestBreakAtStart', Toggle), 'ohne x-quickToggle');
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'McpBuild', Toggle));
-  Assert.AreEqual('Compiler', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  // Beim Öffnen einmal bauen (build.onOpen): Schalter auf der Seite Compiler, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BuildOnOpen', Toggle));
-  Assert.AreEqual('Compiler', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  // Befehl (#68): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TodoList', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Palette', Toggle.Feature);
-  // Befehl (#97): eigener Schalter je Palettenbefehl, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BaselineUpdate', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Palette', Toggle.Feature);
-  // Release-Build-Wächter samt Befehl (#533): eigener Schalter auf der Seite Release-Build, keine Zeichnung.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ReleaseGuard', Toggle));
-  Assert.AreEqual('Release-Build', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('Build', Toggle.Feature);
-  // Einrichtungskarte und Befehl Atlas.ProjectSetup (#759): eigener Schalter auf der Seite Willkommensseite.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageProjectSetup', Toggle));
-  Assert.AreEqual('Willkommensseite', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('WelcomePage', Toggle.Feature);
-  // Befehl Atlas.CiLogin (#763): eigener Schalter auf der Seite Willkommensseite, Vorgabe an.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CiLogin', Toggle));
-  Assert.AreEqual('Willkommensseite', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('WelcomePage', Toggle.Feature);
-  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'CiLogin', Value));
-  Assert.IsTrue(Value);
-  // Schnellaktionen der Willkommensseite (#764): eigener Schalter, Vorgabe an.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageQuickActions', Toggle));
-  Assert.AreEqual('Willkommensseite', Toggle.Page);
-  Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('WelcomePage', Toggle.Feature);
-  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageQuickActions', Value));
-  Assert.IsTrue(Value);
-  // Issue-Tracker (#765): Bereich standardmäßig aus, Befehl für den Zugang an.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageIssues', Toggle));
-  Assert.AreEqual('Willkommensseite', Toggle.Page);
-  Assert.AreEqual('WelcomePage', Toggle.Feature);
-  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageIssues', Value));
-  Assert.IsFalse(Value);
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TrackerLogin', Toggle));
-  // Seit #1280 auf der eigenen Seite Issue-Tracker (issues.login).
-  Assert.AreEqual('Issue-Tracker', Toggle.Page);
-  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'TrackerLogin', Value));
-  Assert.IsTrue(Value);
-  // Jeder Schalter ist eine Einstellung des Plugins.
-  for Toggle in Toggles do
-  begin
-    Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, Toggle.Key, Value), Toggle.Key);
-    Assert.IsTrue(Toggle.Caption <> '', Toggle.Key);
-    Assert.IsTrue(Toggle.Page <> '', Toggle.Key);
-  end;
+  AssertTeamFileAndGenerateToggles(Toggles);
+  AssertSetupAndLoginToggles(Toggles);
 end;
 
 procedure TAtlasQuickTogglesTests.FlagsByName;

@@ -48,12 +48,21 @@ type
     Method: Boolean;
   end;
 
+  /// <summary>Zeilen First..Last (0-basiert); MethodLine: Cursorzeile ohne Markierung, -1 mit Markierung.</summary>
+  TAtlasLineSelection = record
+    First: Integer;
+    Last: Integer;
+    MethodLine: Integer;
+    class function Create(AFirst, ALast, AMethodLine: Integer): TAtlasLineSelection; static;
+  end;
+
   TAtlasLineMover = class
   public
-    /// <summary>Verschieben bzw. Duplizieren der Zeilen AFirst..ALast von AText. AMethodLine: Cursorzeile ohne
-    /// Markierung (-1 mit Markierung); steht sie auf einem Methodenkopf, gilt die ganze Methode. AIndent:
-    /// Einrückungsweite. False, wenn nichts geht (erste bzw. letzte Zeile, keine Nachbarmethode).</summary>
-    class function Compute(const AText: string; AFirst, ALast, AMethodLine: Integer; AKind: TAtlasLineMoveKind;
+    /// <summary>Verschieben bzw. Duplizieren der Zeilen ASelection.First..Last von AText. Steht
+    /// ASelection.MethodLine (Cursorzeile ohne Markierung, -1 mit Markierung) auf einem Methodenkopf, gilt die ganze
+    /// Methode. AIndent: Einrückungsweite. False, wenn nichts geht (erste bzw. letzte Zeile, keine Nachbarmethode).
+    /// </summary>
+    class function Compute(const AText: string; const ASelection: TAtlasLineSelection; AKind: TAtlasLineMoveKind;
       AIndent: Integer; out AMove: TAtlasLineMove): Boolean; static;
     /// <summary>AMove auf ALines angewandt.</summary>
     class function Apply(const ALines: TArray<string>; const AMove: TAtlasLineMove): TArray<string>; static;
@@ -80,6 +89,30 @@ type
   TSpan = record
     First: Integer;
     Last: Integer;
+  end;
+
+  TLineMoveJob = record
+  private
+    FText: string;
+    FLines: TArray<string>;
+    FSelection: TAtlasLineSelection;
+    FKind: TAtlasLineMoveKind;
+    FIndent: Integer;
+    FMove: TAtlasLineMove;
+    /// <summary>Methode samt der Kommentarzeilen direkt darüber.</summary>
+    function SpanOf(const APlace: TAtlasMethodPlace): TSpan;
+    /// <summary>Implementierungen in Textreihenfolge; ACurrent: die mit dem Cursor auf dem Kopf, -1 ohne.</summary>
+    function MethodBodies(out ACurrent: Integer): TArray<TAtlasMethodPlace>;
+    procedure FillMethodMove(const AUpper, ALower: TSpan);
+    /// <summary>Ganze Methode an der Nachbarmethode vorbei.</summary>
+    function MoveMethod(const ABodies: TArray<TAtlasMethodPlace>; ACurrent: Integer): Boolean;
+    procedure Duplicate(const ABlock: TArray<string>);
+    /// <summary>Zeilen mit der Nachbarzeile tauschen, Einzug nach den Blöcken der Nachbarzeile.</summary>
+    function MoveLines(var ABlock: TArray<string>): Boolean;
+    function MoveSelection: Boolean;
+  public
+    function Run(const AText: string; const ASelection: TAtlasLineSelection; AKind: TAtlasLineMoveKind;
+      AIndent: Integer; out AMove: TAtlasLineMove): Boolean;
   end;
 
 function LinesOf(const AText: string): TArray<string>;
@@ -145,66 +178,325 @@ begin
   end;
 end;
 
+function CharAt(const AText: string; AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(AText)) then
+  begin
+    Result := AText[AIndex];
+  end;
+end;
+
+/// <summary>Zeilenkommentar ab AIndex: Stelle des Zeilenumbruchs bzw. hinter dem Text.</summary>
+function LineCommentEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] <> #10) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>{ … } ab AIndex: Stelle hinter "}"; AClosed = False ohne "}".</summary>
+function BraceCommentEnd(const AText: string; AIndex: Integer; out AClosed: Boolean): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] <> '}') do
+  begin
+    Inc(Result);
+  end;
+  AClosed := Result <= Length(AText);
+  Inc(Result);
+end;
+
+/// <summary>(* … *) ab AIndex: Stelle hinter "*)"; AClosed = False ohne "*)".</summary>
+function ParenCommentEnd(const AText: string; AIndex: Integer; out AClosed: Boolean): Integer;
+begin
+  Result := AIndex + 2;
+  while (Result < Length(AText)) and not ((AText[Result] = '*') and (AText[Result + 1] = ')')) do
+  begin
+    Inc(Result);
+  end;
+  AClosed := Result < Length(AText);
+  Inc(Result, 2);
+end;
+
+/// <summary>Leerraum oder Kommentar ab AIndex überspringen; AOk = False bei anderem Text, Direktiven und offenen
+/// Kommentaren.</summary>
+function SkipTrivia(const AText: string; AIndex: Integer; out AOk: Boolean): Integer;
+var
+  mChar, mNext: Char;
+begin
+  mChar := AText[AIndex];
+  mNext := CharAt(AText, AIndex + 1);
+  AOk := True;
+  if CharInSet(mChar, [' ', #9, #10, #13]) then
+  begin
+    Result := AIndex + 1;
+  end
+  else if (mChar = '/') and (mNext = '/') then
+  begin
+    Result := LineCommentEnd(AText, AIndex);
+  end
+  else if (mChar = '{') and (mNext <> '$') then
+  begin
+    Result := BraceCommentEnd(AText, AIndex, AOk);
+  end
+  else if (mChar = '(') and (mNext = '*') and (CharAt(AText, AIndex + 2) <> '$') then
+  begin
+    Result := ParenCommentEnd(AText, AIndex, AOk);
+  end
+  else
+  begin
+    AOk := False;
+    Result := AIndex;
+  end;
+end;
+
+{ TAtlasLineSelection }
+
+class function TAtlasLineSelection.Create(AFirst, ALast, AMethodLine: Integer): TAtlasLineSelection;
+begin
+  Result.First := AFirst;
+  Result.Last := ALast;
+  Result.MethodLine := AMethodLine;
+end;
+
+{ TLineMoveJob }
+
+function TLineMoveJob.SpanOf(const APlace: TAtlasMethodPlace): TSpan;
+const
+  // Mehrzeilige Kommentare über einer Methode sind kurz; weiter oben zu suchen kostet nur Zeit.
+  cMaxCommentLines = 60;
+var
+  mLine: Integer;
+begin
+  // Methode samt der Kommentarzeilen direkt darüber (ohne Leerzeile dazwischen).
+  Result.First := APlace.FirstLine;
+  Result.Last := APlace.LastLine;
+  mLine := APlace.FirstLine - 1;
+  while (mLine >= 0) and (mLine >= APlace.FirstLine - cMaxCommentLines) and (Trim(FLines[mLine]) <> '') do
+  begin
+    if TAtlasLineMover.IsCommentOnly(Joined(FLines, mLine, APlace.FirstLine - 1)) then
+    begin
+      Result.First := mLine;
+    end;
+    Dec(mLine);
+  end;
+end;
+
+function TLineMoveJob.MethodBodies(out ACurrent: Integer): TArray<TAtlasMethodPlace>;
+var
+  mPlaces: TArray<TAtlasMethodPlace>;
+  mPlace: TAtlasMethodPlace;
+begin
+  Result := nil;
+  ACurrent := -1;
+  mPlaces := TAtlasMethodToggle.Places(FText);
+  for mPlace in mPlaces do
+  begin
+    if mPlace.IsBody then
+    begin
+      if (FSelection.MethodLine >= mPlace.FirstLine) and (FSelection.MethodLine <= mPlace.Line) then
+      begin
+        ACurrent := Length(Result);
+      end;
+      Result := Result + [mPlace];
+    end;
+  end;
+end;
+
+procedure TLineMoveJob.FillMethodMove(const AUpper, ALower: TSpan);
+var
+  mCount: Integer;
+begin
+  FMove.StartLine := AUpper.First;
+  FMove.OldCount := ALower.Last - AUpper.First + 1;
+  FMove.Lines := LineRange(FLines, ALower.First, ALower.Last) + LineRange(FLines, AUpper.Last + 1, ALower.First - 1) +
+    LineRange(FLines, AUpper.First, AUpper.Last);
+  if FKind = TAtlasLineMoveKind.MoveDown then
+  begin
+    FMove.LineShift := ALower.Last - AUpper.Last;
+    FMove.OldFirstLine := AUpper.First;
+    FMove.FirstLine := AUpper.First + FMove.LineShift;
+    FMove.LastLine := ALower.Last;
+    mCount := AUpper.Last - AUpper.First + 1;
+  end
+  else
+  begin
+    FMove.LineShift := AUpper.First - ALower.First;
+    FMove.OldFirstLine := ALower.First;
+    FMove.FirstLine := AUpper.First;
+    FMove.LastLine := AUpper.First + ALower.Last - ALower.First;
+    mCount := ALower.Last - ALower.First + 1;
+  end;
+  SetLength(FMove.IndentShift, mCount);
+end;
+
+function TLineMoveJob.MoveMethod(const ABodies: TArray<TAtlasMethodPlace>; ACurrent: Integer): Boolean;
+var
+  mNeighbor: Integer;
+  mUpper, mLower: TSpan;
+begin
+  // Auch ohne Nachbarmethode gesetzt: Der Aufrufer meldet dann, warum nichts passiert.
+  FMove.Method := True;
+  mNeighbor := ACurrent + 1;
+  if FKind = TAtlasLineMoveKind.MoveUp then
+  begin
+    mNeighbor := ACurrent - 1;
+  end;
+  Result := (mNeighbor >= 0) and (mNeighbor <= High(ABodies));
+  if Result then
+  begin
+    if mNeighbor < ACurrent then
+    begin
+      mUpper := SpanOf(ABodies[mNeighbor]);
+      mLower := SpanOf(ABodies[ACurrent]);
+    end
+    else
+    begin
+      mUpper := SpanOf(ABodies[ACurrent]);
+      mLower := SpanOf(ABodies[mNeighbor]);
+    end;
+    // Dazwischen nur Leerzeilen und Kommentare, sonst würde die Methode über Code wandern.
+    Result := (mLower.First > mUpper.Last) and ((mLower.First - mUpper.Last <= 1) or
+      TAtlasLineMover.IsCommentOnly(Joined(FLines, mUpper.Last + 1, mLower.First - 1)));
+    if Result then
+    begin
+      FillMethodMove(mUpper, mLower);
+    end;
+  end;
+end;
+
+procedure TLineMoveJob.Duplicate(const ABlock: TArray<string>);
+begin
+  FMove.Lines := ABlock;
+  if FKind = TAtlasLineMoveKind.DuplicateUp then
+  begin
+    FMove.StartLine := FSelection.First;
+    FMove.FirstLine := FSelection.First;
+    FMove.LineShift := 0;
+  end
+  else
+  begin
+    FMove.StartLine := FSelection.Last + 1;
+    FMove.FirstLine := FSelection.Last + 1;
+    FMove.LineShift := Length(ABlock);
+  end;
+end;
+
+function TLineMoveJob.MoveLines(var ABlock: TArray<string>): Boolean;
+var
+  mBlocks: TArray<TAtlasPairBlock>;
+  mNeighbor, mLevels, mIndex: Integer;
+begin
+  mNeighbor := FSelection.Last + 1;
+  if FKind = TAtlasLineMoveKind.MoveUp then
+  begin
+    mNeighbor := FSelection.First - 1;
+  end;
+  Result := (mNeighbor >= 0) and (mNeighbor <= High(FLines));
+  if Result then
+  begin
+    TAtlasPairs.Analyze(FText, mBlocks);
+    mLevels := NetDepth(mBlocks, mNeighbor);
+    if FKind = TAtlasLineMoveKind.MoveUp then
+    begin
+      mLevels := -mLevels;
+    end;
+    for mIndex := 0 to High(ABlock) do
+    begin
+      ABlock[mIndex] := TAtlasLineMover.Reindent(ABlock[mIndex], mLevels, FIndent);
+      FMove.IndentShift[mIndex] := Length(ABlock[mIndex]) - Length(FLines[FSelection.First + mIndex]);
+    end;
+    FMove.OldCount := Length(ABlock) + 1;
+    if FKind = TAtlasLineMoveKind.MoveUp then
+    begin
+      FMove.StartLine := mNeighbor;
+      FMove.Lines := ABlock + TArray<string>.Create(FLines[mNeighbor]);
+      FMove.LineShift := -1;
+    end
+    else
+    begin
+      FMove.StartLine := FSelection.First;
+      FMove.Lines := TArray<string>.Create(FLines[mNeighbor]) + ABlock;
+      FMove.LineShift := 1;
+    end;
+    FMove.FirstLine := FSelection.First + FMove.LineShift;
+  end;
+end;
+
+function TLineMoveJob.MoveSelection: Boolean;
+var
+  mBlock: TArray<string>;
+begin
+  mBlock := LineRange(FLines, FSelection.First, FSelection.Last);
+  FMove.OldFirstLine := FSelection.First;
+  SetLength(FMove.IndentShift, Length(mBlock));
+  Result := True;
+  if FKind in [TAtlasLineMoveKind.DuplicateUp, TAtlasLineMoveKind.DuplicateDown] then
+  begin
+    Duplicate(mBlock);
+  end
+  else
+  begin
+    Result := MoveLines(mBlock);
+  end;
+  if Result then
+  begin
+    FMove.LastLine := FMove.FirstLine + Length(mBlock) - 1;
+  end;
+end;
+
+function TLineMoveJob.Run(const AText: string; const ASelection: TAtlasLineSelection; AKind: TAtlasLineMoveKind;
+  AIndent: Integer; out AMove: TAtlasLineMove): Boolean;
+var
+  mBodies: TArray<TAtlasMethodPlace>;
+  mCurrent: Integer;
+begin
+  FMove := Default(TAtlasLineMove);
+  FText := AText;
+  FLines := LinesOf(AText);
+  FSelection := ASelection;
+  FKind := AKind;
+  FIndent := AIndent;
+  if FIndent < 1 then
+  begin
+    FIndent := 2;
+  end;
+  Result := False;
+  if (ASelection.First >= 0) and (ASelection.Last >= ASelection.First) and (ASelection.Last <= High(FLines)) then
+  begin
+    // Ganze Methode, wenn der Cursor ohne Markierung auf ihrem Kopf steht.
+    mCurrent := -1;
+    if (ASelection.MethodLine >= 0) and (AKind in [TAtlasLineMoveKind.MoveUp, TAtlasLineMoveKind.MoveDown]) then
+    begin
+      mBodies := MethodBodies(mCurrent);
+    end;
+    if mCurrent >= 0 then
+    begin
+      Result := MoveMethod(mBodies, mCurrent);
+    end
+    else
+    begin
+      Result := MoveSelection;
+    end;
+  end;
+  AMove := FMove;
+end;
+
 { TAtlasLineMover }
 
 class function TAtlasLineMover.IsCommentOnly(const AText: string): Boolean;
 var
-  Index, Count: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  Count := Length(AText);
-  while Index <= Count do
-  begin
-    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-    begin
-      Inc(Index);
-    end
-    else if (AText[Index] = '/') and (Index < Count) and (AText[Index + 1] = '/') then
-    begin
-      while (Index <= Count) and (AText[Index] <> #10) do
-      begin
-        Inc(Index);
-      end;
-    end
-    else if AText[Index] = '{' then
-    begin
-      if (Index < Count) and (AText[Index + 1] = '$') then
-      begin
-        Exit(False);
-      end;
-      while (Index <= Count) and (AText[Index] <> '}') do
-      begin
-        Inc(Index);
-      end;
-      if Index > Count then
-      begin
-        Exit(False);
-      end;
-      Inc(Index);
-    end
-    else if (AText[Index] = '(') and (Index < Count) and (AText[Index + 1] = '*') then
-    begin
-      if (Index + 1 < Count) and (AText[Index + 2] = '$') then
-      begin
-        Exit(False);
-      end;
-      Inc(Index, 2);
-      while (Index < Count) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
-      begin
-        Inc(Index);
-      end;
-      if Index >= Count then
-      begin
-        Exit(False);
-      end;
-      Inc(Index, 2);
-    end
-    else
-    begin
-      Exit(False);
-    end;
-  end;
+  mIndex := 1;
   Result := True;
+  while Result and (mIndex <= Length(AText)) do
+  begin
+    mIndex := SkipTrivia(AText, mIndex, Result);
+  end;
 end;
 
 class function TAtlasLineMover.Reindent(const ALine: string; ALevels, AIndent: Integer): string;
@@ -243,184 +535,13 @@ begin
   Result := Copy(ALine, Index, MaxInt);
 end;
 
-class function TAtlasLineMover.Compute(const AText: string; AFirst, ALast, AMethodLine: Integer;
+class function TAtlasLineMover.Compute(const AText: string; const ASelection: TAtlasLineSelection;
   AKind: TAtlasLineMoveKind; AIndent: Integer; out AMove: TAtlasLineMove): Boolean;
 var
-  Lines, Block: TArray<string>;
-  Blocks: TArray<TAtlasPairBlock>;
-  Places, Bodies: TArray<TAtlasMethodPlace>;
-  Place: TAtlasMethodPlace;
-  Upper, Lower: TSpan;
-  Index, Current, Neighbor, Levels, Count: Integer;
-
-  /// <summary>Methode samt der Kommentarzeilen direkt darüber (ohne Leerzeile dazwischen).</summary>
-  function SpanOf(const APlace: TAtlasMethodPlace): TSpan;
-  const
-    // Mehrzeilige Kommentare über einer Methode sind kurz; weiter oben zu suchen kostet nur Zeit.
-    MaxCommentLines = 60;
-  var
-    Line: Integer;
-  begin
-    Result.First := APlace.FirstLine;
-    Result.Last := APlace.LastLine;
-    Line := APlace.FirstLine - 1;
-    while (Line >= 0) and (Line >= APlace.FirstLine - MaxCommentLines) and (Trim(Lines[Line]) <> '') do
-    begin
-      if IsCommentOnly(Joined(Lines, Line, APlace.FirstLine - 1)) then
-      begin
-        Result.First := Line;
-      end;
-      Dec(Line);
-    end;
-  end;
-
+  mJob: TLineMoveJob;
 begin
-  AMove := Default(TAtlasLineMove);
-  Result := False;
-  Lines := LinesOf(AText);
-  if AIndent < 1 then
-  begin
-    AIndent := 2;
-  end;
-  if (AFirst < 0) or (ALast < AFirst) or (ALast > High(Lines)) then
-  begin
-    Exit;
-  end;
-  // Ganze Methode, wenn der Cursor ohne Markierung auf ihrem Kopf steht.
-  if (AMethodLine >= 0) and (AKind in [TAtlasLineMoveKind.MoveUp, TAtlasLineMoveKind.MoveDown]) then
-  begin
-    Places := TAtlasMethodToggle.Places(AText);
-    Bodies := nil;
-    Current := -1;
-    for Place in Places do
-    begin
-      if Place.IsBody then
-      begin
-        if (AMethodLine >= Place.FirstLine) and (AMethodLine <= Place.Line) then
-        begin
-          Current := Length(Bodies);
-        end;
-        Bodies := Bodies + [Place];
-      end;
-    end;
-    if Current >= 0 then
-    begin
-      // Auch ohne Nachbarmethode gesetzt: Der Aufrufer meldet dann, warum nichts passiert.
-      AMove.Method := True;
-      if AKind = TAtlasLineMoveKind.MoveUp then
-      begin
-        Neighbor := Current - 1;
-      end
-      else
-      begin
-        Neighbor := Current + 1;
-      end;
-      if (Neighbor < 0) or (Neighbor > High(Bodies)) then
-      begin
-        Exit;
-      end;
-      if Neighbor < Current then
-      begin
-        Upper := SpanOf(Bodies[Neighbor]);
-        Lower := SpanOf(Bodies[Current]);
-      end
-      else
-      begin
-        Upper := SpanOf(Bodies[Current]);
-        Lower := SpanOf(Bodies[Neighbor]);
-      end;
-      // Dazwischen nur Leerzeilen und Kommentare, sonst würde die Methode über Code wandern.
-      if (Lower.First <= Upper.Last) or
-        ((Lower.First - Upper.Last > 1) and not IsCommentOnly(Joined(Lines, Upper.Last + 1, Lower.First - 1))) then
-      begin
-        Exit;
-      end;
-      AMove.StartLine := Upper.First;
-      AMove.OldCount := Lower.Last - Upper.First + 1;
-      AMove.Lines := LineRange(Lines, Lower.First, Lower.Last) + LineRange(Lines, Upper.Last + 1, Lower.First - 1) +
-        LineRange(Lines, Upper.First, Upper.Last);
-      if AKind = TAtlasLineMoveKind.MoveDown then
-      begin
-        AMove.LineShift := Lower.Last - Upper.Last;
-        AMove.OldFirstLine := Upper.First;
-        AMove.FirstLine := Upper.First + AMove.LineShift;
-        AMove.LastLine := Lower.Last;
-        Count := Upper.Last - Upper.First + 1;
-      end
-      else
-      begin
-        AMove.LineShift := Upper.First - Lower.First;
-        AMove.OldFirstLine := Lower.First;
-        AMove.FirstLine := Upper.First;
-        AMove.LastLine := Upper.First + Lower.Last - Lower.First;
-        Count := Lower.Last - Lower.First + 1;
-      end;
-      SetLength(AMove.IndentShift, Count);
-      Exit(True);
-    end;
-  end;
-  Block := LineRange(Lines, AFirst, ALast);
-  Count := Length(Block);
-  AMove.OldFirstLine := AFirst;
-  SetLength(AMove.IndentShift, Count);
-  case AKind of
-    TAtlasLineMoveKind.DuplicateUp:
-      begin
-        AMove.StartLine := AFirst;
-        AMove.Lines := Block;
-        AMove.FirstLine := AFirst;
-        AMove.LineShift := 0;
-      end;
-    TAtlasLineMoveKind.DuplicateDown:
-      begin
-        AMove.StartLine := ALast + 1;
-        AMove.Lines := Block;
-        AMove.FirstLine := ALast + 1;
-        AMove.LineShift := Count;
-      end;
-  else
-    begin
-      if AKind = TAtlasLineMoveKind.MoveUp then
-      begin
-        Neighbor := AFirst - 1;
-      end
-      else
-      begin
-        Neighbor := ALast + 1;
-      end;
-      if (Neighbor < 0) or (Neighbor > High(Lines)) then
-      begin
-        Exit;
-      end;
-      TAtlasPairs.Analyze(AText, Blocks);
-      Levels := NetDepth(Blocks, Neighbor);
-      if AKind = TAtlasLineMoveKind.MoveUp then
-      begin
-        Levels := -Levels;
-      end;
-      for Index := 0 to Count - 1 do
-      begin
-        Block[Index] := Reindent(Block[Index], Levels, AIndent);
-        AMove.IndentShift[Index] := Length(Block[Index]) - Length(Lines[AFirst + Index]);
-      end;
-      AMove.OldCount := Count + 1;
-      if AKind = TAtlasLineMoveKind.MoveUp then
-      begin
-        AMove.StartLine := Neighbor;
-        AMove.Lines := Block + [Lines[Neighbor]];
-        AMove.LineShift := -1;
-      end
-      else
-      begin
-        AMove.StartLine := AFirst;
-        AMove.Lines := [Lines[Neighbor]] + Block;
-        AMove.LineShift := 1;
-      end;
-      AMove.FirstLine := AFirst + AMove.LineShift;
-    end;
-  end;
-  AMove.LastLine := AMove.FirstLine + Count - 1;
-  Result := True;
+  mJob := Default(TLineMoveJob);
+  Result := mJob.Run(AText, ASelection, AKind, AIndent, AMove);
 end;
 
 class function TAtlasLineMover.Apply(const ALines: TArray<string>; const AMove: TAtlasLineMove): TArray<string>;

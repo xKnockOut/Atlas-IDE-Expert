@@ -82,6 +82,9 @@ type
     FColor: string;
     procedure TimerTick(Sender: TObject);
     procedure Update;
+    procedure Forget;
+    procedure ApplyStyle(const AStyleText, AColorText: string);
+    function Settled(const ASnapshot: TAtlasEditorSnapshot): Boolean;
     procedure Clear;
     procedure Ask(const AText: string; ATargets: TAtlasReassignedTargets);
     procedure Accept(ARequest: Integer; const AFileName, AText: string;
@@ -117,7 +120,8 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeReassigned.TEvents }
 
@@ -252,138 +256,164 @@ begin
   end;
 end;
 
-procedure TAtlasIdeReassigned.Update;
+/// <summary>Linien und gemerkten Stand verwerfen.</summary>
+procedure TAtlasIdeReassigned.Forget;
 var
-  View: IOTAEditView;
-  Snapshot: TAtlasEditorSnapshot;
-  TargetsText, StyleText, ColorText, Key: string;
-  Targets: TAtlasReassignedTargets;
-  Style: TAtlasReassignedStyle;
-  Had: Boolean;
-  Moment: Cardinal;
+  mHad: Boolean;
 begin
-  View := nil;
-  if TAtlasIdeSettings.ReassignedOn(TargetsText, StyleText, ColorText) and
-    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
+  mHad := FSet.HasUses;
+  Clear;
+  if mHad then
   begin
-    View := TAtlasEditorBuffer.ActiveView;
+    Invalidate;
   end;
-  Had := FSet.HasUses;
-  if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
+end;
+
+/// <summary>Neue Linienart oder Farbe: neu zeichnen.</summary>
+procedure TAtlasIdeReassigned.ApplyStyle(const AStyleText, AColorText: string);
+var
+  mStyle: TAtlasReassignedStyle;
+begin
+  mStyle := TAtlasReassignedNames.StyleOf(AStyleText);
+  if (mStyle = FStyle) and (AColorText = FColor) then
   begin
-    // Aus oder kein Quelltext vorn: nichts zeigen, beim Wiederkommen neu fragen.
-    if View = nil then
-    begin
-      Clear;
-      if Had then
-      begin
-        Invalidate;
-      end;
-    end;
     Exit;
   end;
-  Style := TAtlasReassignedNames.StyleOf(StyleText);
-  if (Style <> FStyle) or (ColorText <> FColor) then
+  FStyle := mStyle;
+  FColor := AColorText;
+  if FSet.HasUses then
   begin
-    FStyle := Style;
-    FColor := ColorText;
-    if Had then
-    begin
-      Invalidate;
-    end;
+    Invalidate;
   end;
-  Snapshot := TAtlasEditorSnapshots.Get(View);
-  Moment := GetTickCount;
-  if (Snapshot.Version <> FVersion) or not SameText(Snapshot.FileName, FFileName) then
+end;
+
+/// <summary>Steht der Text aus ASnapshot seit der Tipp-Pause still und ist keine Wartezeit offen?</summary>
+function TAtlasIdeReassigned.Settled(const ASnapshot: TAtlasEditorSnapshot): Boolean;
+var
+  mMoment: Cardinal;
+begin
+  mMoment := GetTickCount;
+  Result := (ASnapshot.Version = FVersion) and SameText(ASnapshot.FileName, FFileName);
+  if not Result then
   begin
     // Die Linien bleiben stehen (PaintLine prüft je Zeile den Text); gefragt wird nach der Tipp-Pause.
-    FFileName := Snapshot.FileName;
-    FVersion := Snapshot.Version;
-    FChangedAt := Moment;
+    FFileName := ASnapshot.FileName;
+    FVersion := ASnapshot.Version;
+    FChangedAt := mMoment;
     Exit;
   end;
-  if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
+  Result := (mMoment - FChangedAt >= QuietMs) and (mMoment >= FRetryAt);
+end;
+
+procedure TAtlasIdeReassigned.Update;
+var
+  mView: IOTAEditView;
+  mSnapshot: TAtlasEditorSnapshot;
+  mTargetsText, mStyleText, mColorText, mKey: string;
+  mTargets: TAtlasReassignedTargets;
+begin
+  mView := nil;
+  if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
+    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
+  begin
+    mView := TAtlasEditorBuffer.ActiveView;
+  end;
+  if mView = nil then
+  begin
+    // Aus oder kein Editor vorn: nichts zeigen, beim Wiederkommen neu fragen.
+    Forget;
+    Exit;
+  end;
+  // Kein Quelltext vorn: Die Linien der Quelldatei bleiben.
+  if (mView.Buffer = nil) or not IsSource(mView.Buffer.FileName) then
   begin
     Exit;
   end;
-  Targets := TAtlasReassignedNames.ParseTargets(TargetsText);
-  Key := Format('%s|%d|%s', [FFileName, FVersion, TAtlasReassignedNames.TargetsText(Targets)]);
-  if Key = FAskedKey then
+  ApplyStyle(mStyleText, mColorText);
+  mSnapshot := TAtlasEditorSnapshots.Get(mView);
+  if not Settled(mSnapshot) then
   begin
     Exit;
   end;
-  FAskedKey := Key;
-  FTabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
-  Ask(Snapshot.Text, Targets);
+  mTargets := TAtlasReassignedNames.ParseTargets(mTargetsText);
+  mKey := Format('%s|%d|%s', [FFileName, FVersion, TAtlasReassignedNames.TargetsText(mTargets)]);
+  if mKey <> FAskedKey then
+  begin
+    FAskedKey := mKey;
+    FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+    Ask(mSnapshot.Text, mTargets);
+  end;
+end;
+
+/// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
+function Asker(ASession: TLspSession; const AArguments: string; ARequest: Integer;
+  const AFileName, AText: string): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mAnswer: TJSONValue;
+      mFound: TAtlasReassignedSet;
+      mFailed: Boolean;
+    begin
+      mFound := Default(TAtlasReassignedSet);
+      mFailed := False;
+      try
+        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.Command, AArguments, TAtlasIdeReassigned.TimeoutMs);
+        try
+          mFound := TAtlasReassignedSet.FromJson(mAnswer);
+        finally
+          mAnswer.Free;
+        end;
+      except
+        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
+        mFailed := True;
+      end;
+      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
+      TAtlasMainThread.Queue(TAtlasFeature.Reassigned,
+        procedure
+        begin
+          if TAtlasIdeReassigned.FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.Reassigned,
+              procedure
+              begin
+                if TAtlasIdeReassigned.FInstance <> nil then
+                begin
+                  TAtlasIdeReassigned.FInstance.Accept(ARequest, AFileName, AText, mFound, mFailed);
+                end;
+              end);
+          end;
+        end);
+    end);
 end;
 
 procedure TAtlasIdeReassigned.Ask(const AText: string; ATargets: TAtlasReassignedTargets);
 var
-  Session: TLspSession;
-  FileName, Arguments, Text: string;
-  Request: Integer;
-  Worker: TThread;
+  mSession: TLspSession;
+  mWorker: TThread;
 begin
   if not Assigned(FSession) then
   begin
     Exit;
   end;
-  Session := FSession();
-  if Session = nil then
+  mSession := FSession();
+  if mSession = nil then
   begin
     // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
     FAskedKey := '';
     FRetryAt := GetTickCount + RetryMs;
     Exit;
   end;
-  FileName := FFileName;
-  Text := AText;
-  Arguments := TAtlasReassigned.Arguments(TLspSession.PathToUri(FileName), ATargets);
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  Session.Sync(FileName, AText);
+  mSession.Sync(FFileName, AText);
   ReapWorkers(False);
   Inc(FRequest);
-  Request := FRequest;
-  Worker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Answer: TJSONValue;
-      Found: TAtlasReassignedSet;
-      Failed: Boolean;
-    begin
-      Found := Default(TAtlasReassignedSet);
-      Failed := False;
-      try
-        Answer := Session.RunCommand(Command, Arguments, TimeoutMs);
-        try
-          Found := TAtlasReassignedSet.FromJson(Answer);
-        finally
-          Answer.Free;
-        end;
-      except
-        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
-        Failed := True;
-      end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
-      TAtlasMainThread.Queue(TAtlasFeature.Reassigned,
-        procedure
-        begin
-          if FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.Reassigned,
-              procedure
-              begin
-                if FInstance <> nil then
-                begin
-                  FInstance.Accept(Request, FileName, Text, Found, Failed);
-                end;
-              end);
-          end;
-        end);
-    end);
-  Worker.FreeOnTerminate := False;
-  FWorkers.Add(Worker);
-  Worker.Start;
+  mWorker := Asker(mSession, TAtlasReassigned.Arguments(TLspSession.PathToUri(FFileName), ATargets), FRequest,
+    FFileName, AText);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
 end;
 
 procedure TAtlasIdeReassigned.Accept(ARequest: Integer; const AFileName, AText: string;
@@ -461,8 +491,8 @@ begin
         Canvas.LineTo(Part.X2, Part.Y2);
       end;
       Mark := TRect.Create(First.Left, Baseline - 2 * Step, Max(Last.Left, First.Left + 1), Rect.Bottom);
-      TAtlasIdeElements.Painted(TAtlasDrawnElement.Reassigned, Context.FileName, Context.LogicalLineNum - 1, AText,
-        Mark, Context.EditView.TopRow, Rect.Height);
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.Reassigned, Context.FileName,
+        Context.LogicalLineNum - 1, AText), Mark, Context.EditView.TopRow, Rect.Height);
     end;
   finally
     RestoreDC(DC, Saved);
@@ -472,45 +502,27 @@ end;
 procedure TAtlasIdeReassigned.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Found: TArray<TAtlasReassignedUse>;
-  Text: string;
-  Line: Integer;
+  mFound: TArray<TAtlasReassignedUse>;
+  mLine: Integer;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FSet.HasUses or
-    TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
+  if not FSet.HasUses or TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
   begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FShownFile) or
+    // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht (sonst kommt nach der Tipp-Pause eine neue
+    // Antwort).
+    if not TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FShownFile, FLines, mLine) or
       TAtlasIdeElements.FileHidden(TAtlasDrawnElement.Reassigned, Context.FileName) then
     begin
       Exit;
     end;
-    LineState := Context.LineState;
-    if LineState = nil then
+    mFound := FSet.UsesAt(mLine);
+    if Length(mFound) > 0 then
     begin
-      Exit;
+      PaintUses(Rect, Context, FLines[mLine], mFound, TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2,
+        Rect.Top + 1));
     end;
-    Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line >= Length(FLines)) then
-    begin
-      Exit;
-    end;
-    Found := FSet.UsesAt(Line);
-    if Length(Found) = 0 then
-    begin
-      Exit;
-    end;
-    Text := FLines[Line];
-    // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht (sonst kommt nach der Tipp-Pause eine neue
-    // Antwort).
-    if TrimRight(LineState.Text) <> TrimRight(Text) then
-    begin
-      Exit;
-    end;
-    PaintUses(Rect, Context, Text, Found, TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Reassigned, E);

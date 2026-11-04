@@ -15,6 +15,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.JSON,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Files.DataFile;
 
@@ -41,6 +42,8 @@ type
     /// <summary>Übernimmt AText; False, wenn es kein Objekt ist oder "entries"/"recent" die falsche Form haben.
     /// </summary>
     function Parse(const AText: string): Boolean;
+    procedure ReadEntries(AItems: TJSONArray);
+    procedure ReadRecent(ARecent: TJSONObject);
   public
     /// <summary>Schlüssel "typ|member" in Kleinbuchstaben; auch für die Favoriten (#458).</summary>
     class function KeyOf(const AItem: TAtlasCompletionItem): string; static;
@@ -68,7 +71,6 @@ implementation
 
 uses
   System.Math,
-  System.JSON,
   System.Generics.Defaults;
 
 { TAtlasUsage }
@@ -187,60 +189,67 @@ begin
   FChanged := True;
 end;
 
+procedure TAtlasUsage.ReadEntries(AItems: TJSONArray);
+var
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mEntry: TEntry;
+begin
+  for mValue in AItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject(mValue);
+    mEntry.Count := mItem.GetValue<Integer>('count', 0);
+    mEntry.Last := mItem.GetValue<Int64>('last', 0);
+    if mItem.GetValue<string>('key', '') <> '' then
+    begin
+      FEntries.AddOrSetValue(mItem.GetValue<string>('key', ''), mEntry);
+    end;
+    FClock := Max(FClock, mEntry.Last);
+  end;
+end;
+
+procedure TAtlasUsage.ReadRecent(ARecent: TJSONObject);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in ARecent do
+  begin
+    FRecent.AddOrSetValue(mPair.JsonString.Value, mPair.JsonValue.Value);
+  end;
+end;
+
 function TAtlasUsage.Parse(const AText: string): Boolean;
 var
-  Root: TJSONValue;
-  Items: TJSONValue;
-  Value: TJSONValue;
-  Item: TJSONObject;
-  Entry: TEntry;
-  Recent: TJSONValue;
-  Pair: TJSONPair;
+  mRoot, mItems, mRecent: TJSONValue;
 begin
   Result := False;
-  Root := TJSONObject.ParseJSONValue(AText);
-  if Root = nil then
-  begin
-    Exit;
-  end;
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Items := TJSONObject(Root).GetValue('entries');
-    Recent := TJSONObject(Root).GetValue('recent');
-    if ((Items <> nil) and not (Items is TJSONArray)) or ((Recent <> nil) and not (Recent is TJSONObject)) then
+    mItems := TJSONObject(mRoot).GetValue('entries');
+    mRecent := TJSONObject(mRoot).GetValue('recent');
+    if ((mItems <> nil) and not (mItems is TJSONArray)) or ((mRecent <> nil) and not (mRecent is TJSONObject)) then
     begin
       Exit;
     end;
     Result := True;
-    if Items <> nil then
+    if mItems <> nil then
     begin
-      for Value in TJSONArray(Items) do
-      begin
-        if Value is TJSONObject then
-        begin
-          Item := TJSONObject(Value);
-          Entry.Count := Item.GetValue<Integer>('count', 0);
-          Entry.Last := Item.GetValue<Int64>('last', 0);
-          if Item.GetValue<string>('key', '') <> '' then
-          begin
-            FEntries.AddOrSetValue(Item.GetValue<string>('key', ''), Entry);
-          end;
-          FClock := Max(FClock, Entry.Last);
-        end;
-      end;
+      ReadEntries(TJSONArray(mItems));
     end;
-    if Recent <> nil then
+    if mRecent <> nil then
     begin
-      for Pair in TJSONObject(Recent) do
-      begin
-        FRecent.AddOrSetValue(Pair.JsonString.Value, Pair.JsonValue.Value);
-      end;
+      ReadRecent(TJSONObject(mRecent));
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

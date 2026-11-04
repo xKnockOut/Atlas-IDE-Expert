@@ -82,9 +82,8 @@ begin
   FBar.Parent := FForm;
   FBar.Align := alBottom;
   FBar.HandleNeeded;
-  FBar.ItemCaptions := TArray<string>.Create('Status', 'Meldungen', 'Live-Prüfung', 'Methode');
-  FBar.CustomizeCaption := 'Leiste anpassen …';
-  FBar.HideCaption := 'Statusleiste ausblenden';
+  FBar.Texts := TAtlasStatusBarTexts.Create(TArray<string>.Create('Status', 'Meldungen', 'Live-Prüfung', 'Methode'),
+    'Leiste anpassen …', 'Statusleiste ausblenden');
 end;
 
 procedure TAtlasEditorStatusBarTests.TearDown;
@@ -140,88 +139,118 @@ begin
   Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Status).IsEmpty);
 end;
 
-procedure TAtlasEditorStatusBarTests.ClicksReachTheirEvents;
-var
-  StatusAt: TPoint;
-  Kind: TAtlasFindingKind;
-  KindHit, Opened, MethodHit, Rechecked: Integer;
-  View: TAtlasStatusBarView;
-  P: TPoint;
+type
+  /// <summary>Hält fest, welche Ereignisse der Leiste ankamen.</summary>
+  TStatusBarClickProbe = class
+  public
+    FStatusAt: TPoint;
+    FKind: TAtlasFindingKind;
+    FKindHit: Integer;
+    FOpened: Integer;
+    FMethodHit: Integer;
+    FRechecked: Integer;
+  end;
+
+/// <summary>Hängt die Ereignisse der Leiste an die Probe.</summary>
+procedure WireStatusBarClicks(const ABar: TAtlasEditorStatusBar; const AProbe: TStatusBarClickProbe);
 begin
-  StatusAt := Point(-1, -1);
-  Kind := TAtlasFindingKind.Info;
-  KindHit := 0;
-  Opened := 0;
-  MethodHit := 0;
-  Rechecked := 0;
-  FBar.OnLiveCheck :=
+  AProbe.FStatusAt := Point(-1, -1);
+  AProbe.FKind := TAtlasFindingKind.Info;
+  ABar.OnLiveCheck :=
     procedure
     begin
-      Inc(Rechecked);
+      Inc(AProbe.FRechecked);
     end;
-  FBar.OnStatus :=
+  ABar.OnStatus :=
     procedure(APoint: TPoint)
     begin
-      StatusAt := APoint;
+      AProbe.FStatusAt := APoint;
     end;
-  FBar.OnFinding :=
+  ABar.OnFinding :=
     procedure(AKind: TAtlasFindingKind)
     begin
-      Kind := AKind;
-      Inc(KindHit);
+      AProbe.FKind := AKind;
+      Inc(AProbe.FKindHit);
     end;
-  FBar.OnFindingsOpen :=
+  ABar.OnFindingsOpen :=
     procedure
     begin
-      Inc(Opened);
+      Inc(AProbe.FOpened);
     end;
-  FBar.OnMethod :=
+  ABar.OnMethod :=
     procedure
     begin
-      Inc(MethodHit);
+      Inc(AProbe.FMethodHit);
     end;
-  FBar.SetView(Sample);
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Status));
-  FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Status).TopLeft).X, StatusAt.X,
-    'Statusfenster an der Leiste');
-  P := Middle(FBar.KindRect(TAtlasFindingKind.Warning));
-  FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(1, KindHit);
-  Assert.IsTrue(Kind = TAtlasFindingKind.Warning, 'Warnung');
-  P := Middle(FBar.KindRect(TAtlasFindingKind.Error));
-  FBar.DoubleClickAt(P.X, P.Y);
-  Assert.AreEqual(1, Opened, 'Doppelklick öffnet „Atlas-Prüfung“');
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Method));
-  FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(1, MethodHit);
+end;
+
+/// <summary>Ohne Methode, Doppelklick auf Status und Live-Prüfung, Klick auf die Live-Prüfung.</summary>
+procedure AssertStatusBarLaterClicks(const ABar: TAtlasEditorStatusBar; const AProbe: TStatusBarClickProbe);
+var
+  mView: TAtlasStatusBarView;
+  mPoint: TPoint;
+begin
   // Ohne Methode am Cursor springt nichts.
-  View := Sample;
-  View.MethodFound := False;
-  View.MethodName := 'keine Methode';
-  FBar.SetView(View);
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Method));
-  FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(1, MethodHit, 'keine Methode');
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.LiveCheck));
-  FBar.DoubleClickAt(P.X, P.Y);
-  Assert.AreEqual(1, Opened, 'nur auf den Zählern');
+  mView := Sample;
+  mView.MethodFound := False;
+  mView.MethodName := 'keine Methode';
+  ABar.SetView(mView);
+  mPoint := Middle(ABar.PartRect(TAtlasStatusBarPart.Method));
+  ABar.ClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual(1, AProbe.FMethodHit, 'keine Methode');
+  mPoint := Middle(ABar.PartRect(TAtlasStatusBarPart.LiveCheck));
+  ABar.DoubleClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual(1, AProbe.FOpened, 'nur auf den Zählern');
   // Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356), ohne Hook nichts.
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Status));
-  FBar.DoubleClickAt(P.X, P.Y);
-  Assert.AreEqual(1, Opened, 'Status öffnet nicht „Atlas-Prüfung“');
-  FBar.OnStatusOpen :=
+  mPoint := Middle(ABar.PartRect(TAtlasStatusBarPart.Status));
+  ABar.DoubleClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual(1, AProbe.FOpened, 'Status öffnet nicht „Atlas-Prüfung“');
+  ABar.OnStatusOpen :=
     procedure
     begin
-      Inc(Opened, 10);
+      Inc(AProbe.FOpened, 10);
     end;
-  FBar.DoubleClickAt(P.X, P.Y);
-  Assert.AreEqual(11, Opened, 'Fenster „Atlas-Server“');
-  FBar.OnStatusOpen := nil;
+  ABar.DoubleClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual(11, AProbe.FOpened, 'Fenster „Atlas-Server“');
+  ABar.OnStatusOpen := nil;
   // Klick auf die Live-Prüfung prüft alle Units neu (#1231).
-  P := Middle(FBar.PartRect(TAtlasStatusBarPart.LiveCheck));
-  FBar.ClickAt(P.X, P.Y);
-  Assert.AreEqual(1, Rechecked, 'Live-Prüfung');
+  mPoint := Middle(ABar.PartRect(TAtlasStatusBarPart.LiveCheck));
+  ABar.ClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual(1, AProbe.FRechecked, 'Live-Prüfung');
+end;
+
+procedure TAtlasEditorStatusBarTests.ClicksReachTheirEvents;
+var
+  mProbe: TStatusBarClickProbe;
+  mPoint: TPoint;
+begin
+  mProbe := TStatusBarClickProbe.Create;
+  try
+    WireStatusBarClicks(FBar, mProbe);
+    FBar.SetView(Sample);
+    mPoint := Middle(FBar.PartRect(TAtlasStatusBarPart.Status));
+    FBar.ClickAt(mPoint.X, mPoint.Y);
+    Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Status).TopLeft).X, mProbe.FStatusAt.X,
+      'Statusfenster an der Leiste');
+    mPoint := Middle(FBar.KindRect(TAtlasFindingKind.Warning));
+    FBar.ClickAt(mPoint.X, mPoint.Y);
+    Assert.AreEqual(1, mProbe.FKindHit);
+    Assert.IsTrue(mProbe.FKind = TAtlasFindingKind.Warning, 'Warnung');
+    mPoint := Middle(FBar.KindRect(TAtlasFindingKind.Error));
+    FBar.DoubleClickAt(mPoint.X, mPoint.Y);
+    Assert.AreEqual(1, mProbe.FOpened, 'Doppelklick öffnet „Atlas-Prüfung“');
+    mPoint := Middle(FBar.PartRect(TAtlasStatusBarPart.Method));
+    FBar.ClickAt(mPoint.X, mPoint.Y);
+    Assert.AreEqual(1, mProbe.FMethodHit);
+    AssertStatusBarLaterClicks(FBar, mProbe);
+  finally
+    FBar.OnLiveCheck := nil;
+    FBar.OnStatus := nil;
+    FBar.OnFinding := nil;
+    FBar.OnFindingsOpen := nil;
+    FBar.OnMethod := nil;
+    mProbe.Free;
+  end;
 end;
 
 procedure TAtlasEditorStatusBarTests.HintsAndMenu;

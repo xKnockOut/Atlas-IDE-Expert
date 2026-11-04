@@ -79,6 +79,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Commands,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Architecture.Frame,
@@ -113,6 +114,13 @@ type
     /// </summary>
     FRename: Boolean;
     procedure Wire(AFrame: TAtlasArchitectureFrame);
+    /// <summary>Knöpfe Aktualisieren, Speichern und Vergleichen.</summary>
+    procedure WireCommands(AFrame: TAtlasArchitectureFrame);
+    /// <summary>Umfang, Bibliotheks-Units, Feinheit und „Teilsysteme neu benennen“.</summary>
+    procedure WireOptions(AFrame: TAtlasArchitectureFrame);
+    /// <summary>Antwort auf die Anfrage ARequest im Hauptthread zeigen.</summary>
+    procedure ShowAnswer(ARequest: Integer; AParsed, AEnabled: Boolean; const AModel: TAtlasArchitectureModel);
+    function AnswerHandler(ARequest: Integer): TProc<string>;
     function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
     procedure ChangeLibrary(AValue: Boolean);
@@ -192,12 +200,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TArchitectureState.Wire(AFrame: TAtlasArchitectureFrame);
+procedure TArchitectureState.WireCommands(AFrame: TAtlasArchitectureFrame);
 begin
-  AFrame.ScopeValue := FScope;
-  AFrame.IncludeLibrary := FIncludeLibrary;
-  AFrame.ResolutionValue := FResolution;
-  AFrame.ShowResolution := FShowResolution;
   AFrame.OnRefresh :=
     procedure
     begin
@@ -236,6 +240,10 @@ begin
           ClearComparison;
         end);
     end;
+end;
+
+procedure TArchitectureState.WireOptions(AFrame: TAtlasArchitectureFrame);
+begin
   AFrame.OnScopeChanged :=
     procedure(AScope: string)
     begin
@@ -264,6 +272,16 @@ begin
           RenameSubsystems;
         end);
     end;
+end;
+
+procedure TArchitectureState.Wire(AFrame: TAtlasArchitectureFrame);
+begin
+  AFrame.ScopeValue := FScope;
+  AFrame.IncludeLibrary := FIncludeLibrary;
+  AFrame.ResolutionValue := FResolution;
+  AFrame.ShowResolution := FShowResolution;
+  WireCommands(AFrame);
+  WireOptions(AFrame);
   AFrame.OnOpenUnit :=
     procedure(AFileName: string)
     begin
@@ -395,6 +413,54 @@ begin
   Refresh;
 end;
 
+function TArchitectureState.AnswerHandler(ARequest: Integer): TProc<string>;
+begin
+  Result :=
+    procedure(AAnswer: string)
+    var
+      mModel: TAtlasArchitectureModel;
+      mEnabled, mParsed: Boolean;
+    begin
+      // Im Hintergrund lesen: Bei einigen tausend Units dauert das spürbar.
+      mParsed := TAtlasArchitectureModel.Parse(AAnswer, mModel, mEnabled);
+      TAtlasMainThread.Queue(TAtlasFeature.Architecture,
+        procedure
+        begin
+          ShowAnswer(ARequest, mParsed, mEnabled, mModel);
+        end);
+    end;
+end;
+
+procedure TArchitectureState.ShowAnswer(ARequest: Integer; AParsed, AEnabled: Boolean;
+  const AModel: TAtlasArchitectureModel);
+var
+  mCurrent: TAtlasArchitectureFrame;
+begin
+  if (TAtlasIdeArchitecture.FState <> Self) or (ARequest <> FRequest) then
+  begin
+    Exit;
+  end;
+  FPending := False;
+  mCurrent := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mCurrent = nil then
+  begin
+    Exit;
+  end;
+  if not AParsed then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False);
+  end
+  else if not AEnabled then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False);
+  end
+  else
+  begin
+    mCurrent.SetModel(AModel);
+    ApplyRoute;
+  end;
+end;
+
 procedure TArchitectureState.Refresh;
 var
   Frame: TAtlasArchitectureFrame;
@@ -418,44 +484,7 @@ begin
   mArguments := TAtlasArchitectureCommands.Arguments(Uri, Options);
   // Neu benennen gilt einmal; der Server legt das Ergebnis als vorigen Stand ab (#1367).
   FRename := False;
-  if not FRun(TAtlasArchitectureCommands.Command, mArguments, TimeoutMs,
-    procedure(AAnswer: string)
-    var
-      Model: TAtlasArchitectureModel;
-      Enabled, Parsed: Boolean;
-    begin
-      // Im Hintergrund lesen: Bei einigen tausend Units dauert das spürbar.
-      Parsed := TAtlasArchitectureModel.Parse(AAnswer, Model, Enabled);
-      TAtlasMainThread.Queue(TAtlasFeature.Architecture,
-        procedure
-        var
-          Current: TAtlasArchitectureFrame;
-        begin
-          if (TAtlasIdeArchitecture.FState <> Self) or (Request <> FRequest) then
-          begin
-            Exit;
-          end;
-          FPending := False;
-          Current := TAtlasIdeArchitectureWindow.ExistingFrame;
-          if Current = nil then
-          begin
-            Exit;
-          end;
-          if not Parsed then
-          begin
-            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False);
-          end
-          else if not Enabled then
-          begin
-            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False);
-          end
-          else
-          begin
-            Current.SetModel(Model);
-            ApplyRoute;
-          end;
-        end);
-    end) then
+  if not FRun(TAtlasArchitectureCommands.Command, mArguments, TimeoutMs, AnswerHandler(Request)) then
   begin
     FPending := False;
     Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
@@ -532,11 +561,11 @@ begin
   end;
   if Frame.Model.RouteOf(FRoute, Units, Edges) then
   begin
-    Frame.Map.ShowRoute(Units, Edges);
+    Frame.Map.State.ShowRoute(Units, Edges);
   end
   else
   begin
-    Frame.Map.ClearPath;
+    Frame.Map.State.ClearPath;
   end;
   FRoute := nil;
   // Die Karte zeigen, nicht eine Tabelle.

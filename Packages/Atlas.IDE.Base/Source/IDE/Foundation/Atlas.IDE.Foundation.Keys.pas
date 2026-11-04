@@ -264,44 +264,55 @@ begin
   FWatch := nil;
 end;
 
-class function TAtlasIdeKeys.Owner(AShortCut: Word): string;
+/// <summary>Liegt AShortCut als Haupt- oder Zweittaste auf AAction?</summary>
+function HasShortCut(AAction: TCustomAction; AShortCut: Word): Boolean;
 var
-  Services: INTAServices;
-  Index, Secondary: Integer;
-  Action: TCustomAction;
+  mSecondary: Integer;
+begin
+  Result := AAction.ShortCut = AShortCut;
+  for mSecondary := 0 to AAction.SecondaryShortCuts.Count - 1 do
+  begin
+    Result := Result or (AAction.SecondaryShortCuts.ShortCuts[mSecondary] = AShortCut);
+  end;
+end;
+
+/// <summary>Name der IDE-Aktion (nicht von Atlas) mit AShortCut; '' ohne.</summary>
+function ActionOwner(AShortCut: Word): string;
+var
+  mServices: INTAServices;
+  mIndex: Integer;
+  mAction: TCustomAction;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
+  begin
+    if mServices.ActionList.Actions[mIndex] is TCustomAction then
+    begin
+      mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
+      if not SameText(mAction.Category, 'Atlas') and HasShortCut(mAction, AShortCut) then
+      begin
+        Exit(StripHotkey(mAction.Caption));
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasIdeKeys.Owner(AShortCut: Word): string;
 begin
   Result := '';
   if AShortCut = 0 then
   begin
     Exit;
   end;
-  if Supports(BorlandIDEServices, INTAServices, Services) and (Services.ActionList <> nil) then
+  Result := ActionOwner(AShortCut);
+  if Result = '' then
   begin
-    for Index := 0 to Services.ActionList.ActionCount - 1 do
-    begin
-      if not (Services.ActionList.Actions[Index] is TCustomAction) then
-      begin
-        Continue;
-      end;
-      Action := TCustomAction(Services.ActionList.Actions[Index]);
-      if SameText(Action.Category, 'Atlas') then
-      begin
-        Continue;
-      end;
-      if Action.ShortCut = AShortCut then
-      begin
-        Exit(StripHotkey(Action.Caption));
-      end;
-      for Secondary := 0 to Action.SecondaryShortCuts.Count - 1 do
-      begin
-        if Action.SecondaryShortCuts.ShortCuts[Secondary] = AShortCut then
-        begin
-          Exit(StripHotkey(Action.Caption));
-        end;
-      end;
-    end;
+    Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
   end;
-  Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
 end;
 
 class function TAtlasIdeKeys.Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean;

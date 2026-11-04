@@ -263,6 +263,7 @@ end;
 procedure TPeekState.Watch(Sender: TObject);
 var
   View: IOTAEditView;
+  Stale: Boolean;
 begin
   try
     if not Window.IsShown then
@@ -271,9 +272,11 @@ begin
       Exit;
     end;
     View := TopView;
-    if not Application.Active or (View = nil) or (Pointer(View) <> ShownView) or
-      (View.CursorPos.Line <> ShownCursor.Line) or (View.CursorPos.Col <> ShownCursor.Col) or
-      (View.TopRow <> ShownTop) then
+    // Weg, sobald sich Ansicht, Cursor oder Bildlauf ändern.
+    Stale := not Application.Active or (View = nil) or (Pointer(View) <> ShownView);
+    Stale := Stale or (View.CursorPos.Line <> ShownCursor.Line) or (View.CursorPos.Col <> ShownCursor.Col) or
+      (View.TopRow <> ShownTop);
+    if Stale then
     begin
       Hide;
     end;
@@ -386,71 +389,76 @@ begin
   end;
 end;
 
-function DefinitionEntries(ASession: TLspSession; const ADeclaration: TAtlasPeekPlace): TArray<TAtlasPeekEntry>;
-var
-  Places: TArray<TAtlasPeekPlace>;
-  Targets: TArray<TAtlasPeekTarget>;
-  Cache: TLineCache;
-  Index, Tabs: Integer;
-  Lines: TArray<string>;
-  Show: Boolean;
+/// <summary>Überladungen an der Deklaration; ohne Antwort nur die Deklaration selbst.</summary>
+function DeclarationPlaces(ASession: TLspSession; const ADeclaration: TAtlasPeekPlace): TArray<TAtlasPeekPlace>;
 begin
-  Result := nil;
-  Places := nil;
   try
-    Places := TAtlasPeek.Overloads(ASession.DocumentSymbols(ADeclaration.FileName, SymbolTimeoutMs),
+    Result := TAtlasPeek.Overloads(ASession.DocumentSymbols(ADeclaration.FileName, SymbolTimeoutMs),
       ADeclaration.Line);
   except
     on ELspClientError do
-      Places := nil;
+      Result := nil;
   end;
-  if Length(Places) = 0 then
+  if Length(Result) = 0 then
   begin
-    Places := [ADeclaration];
+    Result := [ADeclaration];
   end;
-  Targets := TAtlasPeek.Pair(Places,
+end;
+
+/// <summary>Zu jeder Stelle die Implementierung über textDocument/definition.</summary>
+function PairDefinitions(ASession: TLspSession; const APlaces: TArray<TAtlasPeekPlace>): TArray<TAtlasPeekTarget>;
+begin
+  Result := TAtlasPeek.Pair(APlaces,
     function(const APlace: TAtlasPeekPlace; out ATarget: TAtlasPeekPlace): Boolean
     var
-      Found: TArray<TLspLocation>;
+      mFound: TArray<TLspLocation>;
     begin
       Result := False;
       try
-        Found := ASession.Definitions(APlace.FileName, APlace.Line, APlace.Character);
+        mFound := ASession.Definitions(APlace.FileName, APlace.Line, APlace.Character);
       except
         on ELspClientError do
-          Found := nil;
+          mFound := nil;
       end;
-      if Length(Found) > 0 then
+      if Length(mFound) > 0 then
       begin
-        ATarget := ToPlace(Found[0]);
+        ATarget := ToPlace(mFound[0]);
         Result := True;
       end;
     end);
-  Show := TAtlasIdeSettings.Current.PeekShowImplementation;
-  Tabs := TabWidth;
-  Cache := TLineCache.Create;
+end;
+
+function DefinitionEntries(ASession: TLspSession; const ADeclaration: TAtlasPeekPlace): TArray<TAtlasPeekEntry>;
+var
+  mTargets: TArray<TAtlasPeekTarget>;
+  mCache: TLineCache;
+  mIndex, mTabs: Integer;
+  mLines, mBody: TArray<string>;
+  mShow: Boolean;
+begin
+  mTargets := PairDefinitions(ASession, DeclarationPlaces(ASession, ADeclaration));
+  mShow := TAtlasIdeSettings.Current.PeekShowImplementation;
+  mTabs := TabWidth;
+  mCache := TLineCache.Create;
   try
-    SetLength(Result, Length(Targets));
-    for Index := 0 to High(Targets) do
+    SetLength(Result, Length(mTargets));
+    for mIndex := 0 to High(mTargets) do
     begin
-      Lines := Cache.Lines(Targets[Index].Place.FileName);
-      Result[Index].Target := Targets[Index];
-      if (Targets[Index].Place.Line >= 0) and (Targets[Index].Place.Line <= High(Lines)) then
+      mLines := mCache.Lines(mTargets[mIndex].Place.FileName);
+      Result[mIndex].Target := mTargets[mIndex];
+      if (mTargets[mIndex].Place.Line >= 0) and (mTargets[mIndex].Place.Line <= High(mLines)) then
       begin
-        Result[Index].Excerpt := TAtlasPeek.Excerpt(Lines[Targets[Index].Place.Line]);
+        Result[mIndex].Excerpt := TAtlasPeek.Excerpt(mLines[mTargets[mIndex].Place.Line]);
       end;
-      if Targets[Index].HasBody then
+      mBody := nil;
+      if mTargets[mIndex].HasBody then
       begin
-        Result[Index].Rows := TAtlasPeek.DefinitionRows(Targets[Index], Lines,
-          Cache.Lines(Targets[Index].Body.FileName), Show, Tabs);
-      end
-      else
-      begin
-        Result[Index].Rows := TAtlasPeek.DefinitionRows(Targets[Index], Lines, nil, Show, Tabs);
+        mBody := mCache.Lines(mTargets[mIndex].Body.FileName);
       end;
+      Result[mIndex].Rows := TAtlasPeek.DefinitionRows(mTargets[mIndex], mLines, mBody, mShow, mTabs);
     end;
   finally
-    Cache.Free;
+    mCache.Free;
   end;
 end;
 
@@ -489,51 +497,80 @@ begin
   end;
 end;
 
+type
+  /// <summary>Bezeichner am Cursor: Datei, Name und Stelle (0-basiert).</summary>
+  TPeekSpot = record
+    FileName: string;
+    Name: string;
+    Line: Integer;
+    Character: Integer;
+  end;
+
+/// <summary>Einträge und Titel für AMode; Ausnahme ELspClientError, wenn der Server nicht antwortet.</summary>
+function PeekEntries(ACurrent: TLspSession; AMode: TAtlasPeekMode; const ASpot: TPeekSpot;
+  out ATitle: string): TArray<TAtlasPeekEntry>;
+var
+  mFound: TArray<TLspLocation>;
+begin
+  Result := nil;
+  if AMode = TAtlasPeekMode.Definition then
+  begin
+    mFound := ACurrent.Declarations(ASpot.FileName, ASpot.Line, ASpot.Character);
+    if Length(mFound) > 0 then
+    begin
+      Result := DefinitionEntries(ACurrent, ToPlace(mFound[0]));
+    end;
+    ATitle := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleDefinition, [ASpot.Name]);
+  end
+  else
+  begin
+    mFound := ACurrent.References(ASpot.FileName, ASpot.Line, ASpot.Character);
+    Result := ReferenceEntries(mFound);
+    ATitle := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleReferences, [ASpot.Name, Length(mFound)]);
+  end;
+end;
+
+procedure SayNothingFound(AMode: TAtlasPeekMode; const AName: string);
+begin
+  if AMode = TAtlasPeekMode.Definition then
+  begin
+    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoDefinition, [AName]));
+  end
+  else
+  begin
+    TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoReferences, [AName]));
+  end;
+end;
+
 procedure Run(AMode: TAtlasPeekMode);
 var
-  Owner: TPeekState;
-  Current: TLspSession;
-  FileName, Name, Title: string;
-  Line, Character: Integer;
-  Found: TArray<TLspLocation>;
-  Entries: TArray<TAtlasPeekEntry>;
-  Cursor: TCursor;
+  mOwner: TPeekState;
+  mCurrent: TLspSession;
+  mSpot: TPeekSpot;
+  mTitle: string;
+  mEntries: TArray<TAtlasPeekEntry>;
+  mCursor: TCursor;
 begin
-  Owner := State;
-  if (Owner = nil) or not TAtlasIdeSettings.Current.Peek then
+  mOwner := State;
+  if (mOwner = nil) or not TAtlasIdeSettings.Current.Peek then
   begin
     Exit;
   end;
-  Owner.Hide;
-  if not TAtlasIdeResults.AtCursor(FileName, Line, Character, Name) then
+  mOwner.Hide;
+  mCurrent := nil;
+  if TAtlasIdeResults.AtCursor(mSpot.FileName, mSpot.Line, mSpot.Character, mSpot.Name) then
+  begin
+    mCurrent := TAtlasIdeResults.Session;
+  end;
+  if mCurrent = nil then
   begin
     Exit;
   end;
-  Current := TAtlasIdeResults.Session;
-  if Current = nil then
-  begin
-    Exit;
-  end;
-  Entries := nil;
-  Cursor := Screen.Cursor;
+  mCursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   try
     try
-      if AMode = TAtlasPeekMode.Definition then
-      begin
-        Found := Current.Declarations(FileName, Line, Character);
-        if Length(Found) > 0 then
-        begin
-          Entries := DefinitionEntries(Current, ToPlace(Found[0]));
-        end;
-        Title := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleDefinition, [Name]);
-      end
-      else
-      begin
-        Found := Current.References(FileName, Line, Character);
-        Entries := ReferenceEntries(Found);
-        Title := TAtlasStrings.Fmt(TAtlasTextId.PeekTitleReferences, [Name, Length(Found)]);
-      end;
+      mEntries := PeekEntries(mCurrent, AMode, mSpot, mTitle);
     except
       on E: ELspClientError do
       begin
@@ -542,21 +579,16 @@ begin
       end;
     end;
   finally
-    Screen.Cursor := Cursor;
+    Screen.Cursor := mCursor;
   end;
-  if Length(Entries) = 0 then
+  if Length(mEntries) = 0 then
   begin
-    if AMode = TAtlasPeekMode.Definition then
-    begin
-      TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoDefinition, [Name]));
-    end
-    else
-    begin
-      TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.PeekNoReferences, [Name]));
-    end;
-    Exit;
+    SayNothingFound(AMode, mSpot.Name);
+  end
+  else
+  begin
+    mOwner.Show(TAtlasPeekView.Create(AMode, mTitle, mEntries));
   end;
-  Owner.Show(TAtlasPeekView.Create(AMode, Title, Entries));
 end;
 
 { TAtlasIdePeek }

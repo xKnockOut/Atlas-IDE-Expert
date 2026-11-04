@@ -281,135 +281,154 @@ begin
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
-    TAtlasGenerateWindow.EntryCaption(AEntry));
+    TAtlasGenerateTexts.EntryCaption(AEntry));
   if Outcome.Error <> '' then
   begin
     ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
   end;
 end;
 
-class procedure TAtlasIdeGenerate.Show(const AGroups: TArray<TAtlasGenerateGroup>);
+type
+  /// <summary>Was das Menü zeigt: Einträge und die Quellen, auf die Code-Aktionen und Vorlagen verweisen.</summary>
+  TMenuContent = record
+    Entries: TArray<TAtlasGenerateEntry>;
+    Actions: TArray<TLspCodeAction>;
+    Snippets: TAtlasSnippetList;
+  end;
+
+/// <summary>Vorderste Ansicht und laufender Server; sonst eine Meldung und False.</summary>
+function ReadyToShow(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
 var
-  Settings: TAtlasPluginSettings;
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Running: TLspSession;
-  FileName, Text: string;
-  Lines: TArray<string>;
-  Spot: TAtlasGenerateSpot;
-  Range: TLspRange;
-  Options: TAtlasGenerateOptions;
-  Answer: TJSONValue;
-  Menu: TAtlasGenerateServerMenu;
-  Actions: TArray<TLspCodeAction>;
-  Snippets: TAtlasSnippetList;
-  Entries: TArray<TAtlasGenerateEntry>;
-  Index: Integer;
-  Window: TAtlasGenerateWindow;
-  Caret, Area: TRect;
+  mEditors: IOTAEditorServices;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  if not Settings.GenerateMenu then
+  Result := False;
+  AView := nil;
+  ASession := nil;
+  if not TAtlasIdeSettings.Current.GenerateMenu then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.GenerateMenuOff));
+    TAtlasIdeGenerate.Say(TAtlasStrings.Text(TAtlasTextId.GenerateMenuOff));
     Exit;
   end;
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    View := Editors.TopView;
+    AView := mEditors.TopView;
   end;
-  if (View = nil) or (View.Buffer = nil) then
+  if (AView = nil) or (AView.Buffer = nil) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    TAtlasIdeGenerate.Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  Running := Session;
-  if Running = nil then
+  ASession := TAtlasIdeGenerate.Session;
+  Result := ASession <> nil;
+  if not Result then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
+    TAtlasIdeGenerate.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
   end;
-  FileName := View.Buffer.FileName;
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  Running.Sync(FileName, Text);
-  Lines := TTextLines.SplitLines(Text);
-  SpotOf(View, Lines, TAtlasEditorBuffer.TabWidth(View.Buffer), Spot, Range);
-  Options := TAtlasGenerateOptions.Create(Settings.GenerateMenuGroups, Settings.GenerateMenuHidden,
-    Settings.GenerateMenuRecentFirst, Settings.GenerateMenuShowCommandNames);
+end;
+
+/// <summary>Eingestellte Gruppen; mit AGroups nur diese.</summary>
+function MenuOptions(const AGroups: TArray<TAtlasGenerateGroup>): TAtlasGenerateOptions;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasGenerateOptions.Create(mSettings.GenerateMenuGroups, mSettings.GenerateMenuHidden,
+    mSettings.GenerateMenuRecentFirst, mSettings.GenerateMenuShowCommandNames);
   if Length(AGroups) > 0 then
   begin
-    Options := Options.Only(AGroups);
+    Result := Result.Only(AGroups);
   end;
-  Entries := nil;
-  Actions := nil;
-  Snippets := nil;
-  Screen.Cursor := crHourGlass;
+end;
+
+/// <summary>Orte und Schnellbefehle vom Server; False mit Meldung, wenn er nicht antwortet.</summary>
+function ServerMenu(ASession: TLspSession; const ASpot: TAtlasGenerateSpot;
+  out AMenu: TAtlasGenerateServerMenu): Boolean;
+var
+  mAnswer: TJSONValue;
+begin
+  AMenu := Default(TAtlasGenerateServerMenu);
   try
-    // Orte und Schnellbefehle; die Orte braucht auch die Gruppe Vorlagen.
-    try
-      Answer := Running.RunCommand(TAtlasGenerateProtocol.MenuCommand, TAtlasGenerateProtocol.MenuArguments(Spot),
-        CommandTimeoutMs);
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-    try
-      Menu := TAtlasGenerateProtocol.ParseMenu(Answer);
-    finally
-      Answer.Free;
-    end;
-    // slashCommands aus: keine Schnellbefehle, Vorlagen und Code-Aktionen bleiben.
-    if Menu.Enabled then
+    mAnswer := ASession.RunCommand(TAtlasGenerateProtocol.MenuCommand, TAtlasGenerateProtocol.MenuArguments(ASpot),
+      CommandTimeoutMs);
+  except
+    on E: ELspClientError do
     begin
-      Entries := Menu.Entries;
+      TAtlasIdeGenerate.Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateFailed, [E.Message]));
+      Exit(False);
     end;
-    if Options.HasGroup(TAtlasGenerateGroup.Generate) then
-    begin
-      try
-        Actions := Running.CodeActions(FileName, Range);
-      except
-        on E: ELspClientError do
-        begin
-          TAtlasGuard.Log('Erzeugen-Menü: Code-Aktionen fehlen (' + E.Message + ')');
-          Actions := nil;
-        end;
-      end;
-      Entries := Entries + TAtlasGenerateProtocol.FromActions(Actions);
-    end;
-    if Options.HasGroup(TAtlasGenerateGroup.Templates) and Assigned(FSnippets) then
-    begin
-      Snippets := FSnippets();
-      Entries := Entries + TAtlasGenerateProtocol.FromSnippets(Snippets, Menu.Places);
-    end;
+  end;
+  try
+    AMenu := TAtlasGenerateProtocol.ParseMenu(mAnswer);
   finally
-    Screen.Cursor := crDefault;
+    mAnswer.Free;
   end;
-  // Beschriftungen in der Sprache der Oberfläche; filtert das Fenster mit.
-  for Index := 0 to High(Entries) do
+  Result := True;
+end;
+
+/// <summary>Code-Aktionen der Art refactor im Bereich; nil, wenn der Server sie nicht liefert.</summary>
+function RefactorActions(ASession: TLspSession; const AFileName: string; const ARange: TLspRange):
+  TArray<TLspCodeAction>;
+begin
+  try
+    Result := ASession.CodeActions(AFileName, ARange);
+  except
+    on E: ELspClientError do
+    begin
+      TAtlasGuard.Log('Erzeugen-Menü: Code-Aktionen fehlen (' + E.Message + ')');
+      Result := nil;
+    end;
+  end;
+end;
+
+/// <summary>Einträge aller Gruppen sammeln: Schnellbefehle, Code-Aktionen, Vorlagen; False, wenn der Server nicht
+/// antwortet.</summary>
+function CollectMenu(ASession: TLspSession; const AFileName: string; const ASpot: TAtlasGenerateSpot;
+  const ARange: TLspRange; const AOptions: TAtlasGenerateOptions; out AContent: TMenuContent): Boolean;
+var
+  mMenu: TAtlasGenerateServerMenu;
+begin
+  AContent := Default(TMenuContent);
+  // Orte und Schnellbefehle; die Orte braucht auch die Gruppe Vorlagen.
+  Result := ServerMenu(ASession, ASpot, mMenu);
+  if not Result then
   begin
-    Entries[Index].Caption := TAtlasGenerateWindow.EntryCaption(Entries[Index]);
+    Exit;
   end;
-  LoadRecent;
-  Window := TAtlasGenerateWindow.CreateMenu(Application, Entries, Options, FRecent, TAtlasIdeStyle.Colors);
-  Window.OnChoices :=
+  // slashCommands aus: keine Schnellbefehle, Vorlagen und Code-Aktionen bleiben.
+  if mMenu.Enabled then
+  begin
+    AContent.Entries := mMenu.Entries;
+  end;
+  if AOptions.HasGroup(TAtlasGenerateGroup.Generate) then
+  begin
+    AContent.Actions := RefactorActions(ASession, AFileName, ARange);
+    AContent.Entries := AContent.Entries + TAtlasGenerateProtocol.FromActions(AContent.Actions);
+  end;
+  if AOptions.HasGroup(TAtlasGenerateGroup.Templates) and Assigned(TAtlasIdeGenerate.FSnippets) then
+  begin
+    AContent.Snippets := TAtlasIdeGenerate.FSnippets();
+    AContent.Entries := AContent.Entries + TAtlasGenerateProtocol.FromSnippets(AContent.Snippets, mMenu.Places);
+  end;
+end;
+
+/// <summary>Auswahl-Liste eines Eintrags über atlas.server.slashChoices; nil ohne Server oder Antwort.</summary>
+function ChoicesFor(const ASpot: TAtlasGenerateSpot): TAtlasGenerateChoicesFunc;
+begin
+  Result :=
     function(const AEntry: TAtlasGenerateEntry): TArray<string>
     var
-      Current: TLspSession;
-      Found: TJSONValue;
+      mCurrent: TLspSession;
+      mFound: TJSONValue;
     begin
       Result := nil;
-      Current := Session;
-      if Current = nil then
+      mCurrent := TAtlasIdeGenerate.Session;
+      if mCurrent = nil then
       begin
         Exit;
       end;
       try
-        Found := Current.RunCommand(TAtlasGenerateProtocol.ChoicesCommand,
-          TAtlasGenerateProtocol.ChoicesArguments(Spot, AEntry.Name), CommandTimeoutMs);
+        mFound := mCurrent.RunCommand(TAtlasGenerateProtocol.ChoicesCommand,
+          TAtlasGenerateProtocol.ChoicesArguments(ASpot, AEntry.Name), CommandTimeoutMs);
       except
         on E: ELspClientError do
         begin
@@ -418,83 +437,145 @@ begin
         end;
       end;
       try
-        Result := TAtlasGenerateProtocol.ParseChoices(Found);
+        Result := TAtlasGenerateProtocol.ParseChoices(mFound);
       finally
-        Found.Free;
+        mFound.Free;
       end;
     end;
-  Window.OnHide :=
-    procedure(const AEntry: TAtlasGenerateEntry)
-    var
-      Next: TAtlasPluginSettings;
+end;
+
+/// <summary>Eintrag ausblenden: keys.generateMenu.hidden speichern.</summary>
+procedure HideEntry(const AEntry: TAtlasGenerateEntry);
+var
+  mNext: TAtlasPluginSettings;
+begin
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(mNext.GenerateMenuHidden, AEntry.Id);
+  TAtlasIdeSettings.Update(mNext);
+  TAtlasIdeGenerate.Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+end;
+
+/// <summary>Gewählten Eintrag ausführen: Schnellbefehl, Vorlage oder Code-Aktion.</summary>
+procedure ExecuteEntry(const AView: IOTAEditView; const ASpot: TAtlasGenerateSpot; const AContent: TMenuContent;
+  const AEntry: TAtlasGenerateEntry; const AArgument: string);
+var
+  mCurrent: TLspSession;
+begin
+  if (AView = nil) or (AView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeGenerate.Remember(AEntry);
+  case AEntry.Kind of
+    TAtlasGenerateKind.Slash:
+      begin
+        mCurrent := TAtlasIdeGenerate.Session;
+        if mCurrent = nil then
+        begin
+          TAtlasIdeGenerate.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+          Exit;
+        end;
+        RunSlash(AView, mCurrent, ASpot, AEntry, AArgument,
+          procedure(AText: string)
+          begin
+            TAtlasIdeGenerate.Say(AText);
+          end);
+      end;
+    TAtlasGenerateKind.Snippet:
+      if Assigned(TAtlasIdeGenerate.FInsertSnippet) and (AEntry.Source >= 0) and
+        (AEntry.Source <= High(AContent.Snippets)) then
+      begin
+        TAtlasIdeGenerate.FInsertSnippet(AView, AContent.Snippets[AEntry.Source]);
+      end;
+  else
+    if Assigned(TAtlasIdeGenerate.FApplyAction) and (AEntry.Source >= 0) and
+      (AEntry.Source <= High(AContent.Actions)) then
     begin
-      Next := TAtlasIdeSettings.Stored;
-      Next.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(Next.GenerateMenuHidden, AEntry.Id);
-      TAtlasIdeSettings.Update(Next);
-      Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+      TAtlasIdeGenerate.FApplyAction(AContent.Actions[AEntry.Source]);
     end;
-  Window.OnExecute :=
+  end;
+end;
+
+/// <summary>Ausführen erst nach dem Schließen des Fensters, abgesichert über die Funktion Erzeugen.</summary>
+function ExecuteFor(const AView: IOTAEditView; const ASpot: TAtlasGenerateSpot; const AContent: TMenuContent):
+  TAtlasGenerateExecuteProc;
+begin
+  Result :=
     procedure(const AEntry: TAtlasGenerateEntry; const AArgument: string)
     var
-      Entry: TAtlasGenerateEntry;
-      Argument: string;
+      mEntry: TAtlasGenerateEntry;
+      mArgument: string;
     begin
-      Entry := AEntry;
-      Argument := AArgument;
+      mEntry := AEntry;
+      mArgument := AArgument;
       TAtlasGuard.Run(TAtlasFeature.Generate,
         procedure
-        var
-          Current: TLspSession;
         begin
-          if (View = nil) or (View.Buffer = nil) then
-          begin
-            Exit;
-          end;
-          Remember(Entry);
-          case Entry.Kind of
-            TAtlasGenerateKind.Slash:
-              begin
-                Current := Session;
-                if Current = nil then
-                begin
-                  Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-                  Exit;
-                end;
-                RunSlash(View, Current, Spot, Entry, Argument,
-                  procedure(AText: string)
-                  begin
-                    Say(AText);
-                  end);
-              end;
-            TAtlasGenerateKind.Snippet:
-              if Assigned(FInsertSnippet) and (Entry.Source >= 0) and (Entry.Source <= High(Snippets)) then
-              begin
-                FInsertSnippet(View, Snippets[Entry.Source]);
-              end;
-          else
-            if Assigned(FApplyAction) and (Entry.Source >= 0) and (Entry.Source <= High(Actions)) then
-            begin
-              FApplyAction(Actions[Entry.Source]);
-            end;
-          end;
+          ExecuteEntry(AView, ASpot, AContent, mEntry, mArgument);
         end);
     end;
-  if CaretRect(Caret) then
+end;
+
+/// <summary>Am Caret zeigen; ohne Caret über dem Hauptfenster bzw. dem Arbeitsbereich.</summary>
+procedure ShowMenuWindow(AWindow: TAtlasGenerateWindow);
+var
+  mCaret, mArea: TRect;
+begin
+  if CaretRect(mCaret) then
   begin
-    Window.ShowAt(Caret);
-  end
-  else
-  begin
-    if Application.MainForm <> nil then
-    begin
-      Area := Application.MainForm.BoundsRect;
-    end
-    else
-    begin
-      Area := Screen.WorkAreaRect;
-    end;
-    Window.ShowOver(Area);
+    AWindow.ShowAt(mCaret);
+    Exit;
   end;
+  mArea := Screen.WorkAreaRect;
+  if Application.MainForm <> nil then
+  begin
+    mArea := Application.MainForm.BoundsRect;
+  end;
+  AWindow.ShowOver(mArea);
+end;
+
+class procedure TAtlasIdeGenerate.Show(const AGroups: TArray<TAtlasGenerateGroup>);
+var
+  mView: IOTAEditView;
+  mRunning: TLspSession;
+  mText: string;
+  mSpot: TAtlasGenerateSpot;
+  mRange: TLspRange;
+  mOptions: TAtlasGenerateOptions;
+  mContent: TMenuContent;
+  mIndex: Integer;
+  mWindow: TAtlasGenerateWindow;
+  mCollected: Boolean;
+begin
+  if not ReadyToShow(mView, mRunning) then
+  begin
+    Exit;
+  end;
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mRunning.Sync(mView.Buffer.FileName, mText);
+  SpotOf(mView, TTextLines.SplitLines(mText), TAtlasEditorBuffer.TabWidth(mView.Buffer), mSpot, mRange);
+  mOptions := MenuOptions(AGroups);
+  Screen.Cursor := crHourGlass;
+  try
+    mCollected := CollectMenu(mRunning, mView.Buffer.FileName, mSpot, mRange, mOptions, mContent);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if not mCollected then
+  begin
+    Exit;
+  end;
+  // Beschriftungen in der Sprache der Oberfläche; filtert das Fenster mit.
+  for mIndex := 0 to High(mContent.Entries) do
+  begin
+    mContent.Entries[mIndex].Caption := TAtlasGenerateTexts.EntryCaption(mContent.Entries[mIndex]);
+  end;
+  LoadRecent;
+  mWindow := TAtlasGenerateWindow.CreateMenu(Application, mContent.Entries, mOptions, FRecent, TAtlasIdeStyle.Colors);
+  mWindow.OnChoices := ChoicesFor(mSpot);
+  mWindow.OnHide := HideEntry;
+  mWindow.OnExecute := ExecuteFor(mView, mSpot, mContent);
+  ShowMenuWindow(mWindow);
 end;
 
 end.

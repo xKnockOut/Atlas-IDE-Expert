@@ -271,115 +271,124 @@ begin
   end;
 end;
 
-class procedure TStepCalls.CollectStatement(AStatement: TSyntaxNode; ALine: Integer; APartial: Boolean;
-  var ASites: TArray<TStepCallSite>);
-var
-  Index: Integer;
-  Child: TSyntaxNode;
+const
+  // Teile einer Anweisung, die selbst Anweisungen enthalten.
+  cNestedKinds = [TSyntaxKind.Block, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.ExceptBlock,
+    TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler];
+
+/// <summary>Zuweisung: rechte Seite zuerst, dann das Ziel (Empfänger, Setter).</summary>
+procedure CollectAssign(AStatement: TSyntaxNode; var ASites: TArray<TStepCallSite>);
 begin
-  if AStatement.Kind = TSyntaxKind.AssignStatement then
+  if AStatement.ChildCount > 1 then
   begin
-    // Rechte Seite zuerst, dann das Ziel (Empfänger, Setter).
-    if AStatement.ChildCount > 1 then
-    begin
-      Visit(AStatement[1], ASites);
-    end;
-    if AStatement.ChildCount > 0 then
-    begin
-      VisitTarget(AStatement[0], ASites);
-    end;
-    Exit;
+    TStepCalls.Visit(AStatement[1], ASites);
   end;
-  for Index := 0 to AStatement.ChildCount - 1 do
+  if AStatement.ChildCount > 0 then
   begin
-    Child := AStatement[Index];
-    if Child.Kind in ExpressionKinds then
-    begin
-      if not APartial or ((Child.StartPos.Line <= ALine) and (Child.EndPos.Line >= ALine)) then
-      begin
-        Visit(Child, ASites);
-      end;
-    end
-    else if APartial then
-    begin
-      Continue;
-    end
-    else if Child.Kind in StatementKinds then
-    begin
-      // Nur, was in derselben Zeile beginnt: if A then B; zählt B mit.
-      if Child.StartPos.Line = AStatement.StartPos.Line then
-      begin
-        CollectStatement(Child, ALine, False, ASites);
-      end;
-    end
-    else if Child.Kind in [TSyntaxKind.Block, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.ExceptBlock,
-      TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler] then
-    begin
-      if Child.StartPos.Line = AStatement.StartPos.Line then
-      begin
-        CollectStatement(Child, ALine, False, ASites);
-      end;
-    end;
+    TStepCalls.VisitTarget(AStatement[0], ASites);
   end;
 end;
 
-class function TStepCalls.Find(ATree: TSyntaxTree; ALine: Integer; out AStatement: TStepStatement): Boolean;
-var
-  Starting, Containing: TSyntaxNode;
+/// <summary>Aufrufe aus dem Teil AChild der Anweisung AStatement; APartial: nur Ausdrücke über ALine.</summary>
+procedure CollectChild(AStatement, AChild: TSyntaxNode; ALine: Integer; APartial: Boolean;
+  var ASites: TArray<TStepCallSite>);
 begin
-  AStatement := Default(TStepStatement);
-  AStatement.FollowLine := -1;
-  Result := False;
-  if (ATree = nil) or (ATree.Root = nil) then
+  if AChild.Kind in TStepCalls.ExpressionKinds then
   begin
+    if not APartial or ((AChild.StartPos.Line <= ALine) and (AChild.EndPos.Line >= ALine)) then
+    begin
+      TStepCalls.Visit(AChild, ASites);
+    end;
+  end
+  // Nur, was in derselben Zeile beginnt: if A then B; zählt B mit.
+  else if not APartial and ((AChild.Kind in TStepCalls.StatementKinds) or (AChild.Kind in cNestedKinds)) and
+    (AChild.StartPos.Line = AStatement.StartPos.Line) then
+  begin
+    TStepCalls.CollectStatement(AChild, ALine, False, ASites);
+  end;
+end;
+
+class procedure TStepCalls.CollectStatement(AStatement: TSyntaxNode; ALine: Integer; APartial: Boolean;
+  var ASites: TArray<TStepCallSite>);
+var
+  mIndex: Integer;
+begin
+  if AStatement.Kind = TSyntaxKind.AssignStatement then
+  begin
+    CollectAssign(AStatement, ASites);
     Exit;
   end;
-  Starting := nil;
-  Containing := nil;
+  for mIndex := 0 to AStatement.ChildCount - 1 do
+  begin
+    CollectChild(AStatement, AStatement[mIndex], ALine, APartial, ASites);
+  end;
+end;
+
+/// <summary>Äußerste Anweisung, die in ALine beginnt (AStarting), und innerste, die ALine enthält (AContaining).</summary>
+procedure StatementsAt(ATree: TSyntaxTree; ALine: Integer; out AStarting, AContaining: TSyntaxNode);
+var
+  mStarting, mContaining: TSyntaxNode;
+begin
+  mStarting := nil;
+  mContaining := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
-      if not Result then
-      begin
-        Exit;
-      end;
-      if ANode.Kind in StatementKinds then
+      if Result and (ANode.Kind in TStepCalls.StatementKinds) then
       begin
         // Vorordnung: Die erste, die in der Zeile beginnt, ist die äußerste.
-        if (Starting = nil) and (ANode.StartPos.Line = ALine) then
+        if (mStarting = nil) and (ANode.StartPos.Line = ALine) then
         begin
-          Starting := ANode;
+          mStarting := ANode;
         end;
-        Containing := ANode;
+        mContaining := ANode;
       end;
     end);
-  if Starting <> nil then
+  AStarting := mStarting;
+  AContaining := mContaining;
+end;
+
+/// <summary>Anweisungen ab AStarting in ALine; weitere derselben Zeile (A; B;) laufen im selben Schritt.</summary>
+procedure CollectLine(AStarting: TSyntaxNode; ALine: Integer; var AStatement: TStepStatement);
+var
+  mLast, mNext: TSyntaxNode;
+begin
+  AStatement.Node := AStarting;
+  TStepCalls.CollectStatement(AStarting, ALine, False, AStatement.Sites);
+  mLast := AStarting;
+  mNext := TStepCalls.NextStatement(mLast);
+  while (mNext <> nil) and (mNext.StartPos.Line = ALine) do
   begin
-    AStatement.Node := Starting;
-    CollectStatement(Starting, ALine, False, AStatement.Sites);
-    // Weitere Anweisungen derselben Zeile (A; B;) laufen im selben Schritt.
-    Containing := NextStatement(Starting);
-    while (Containing <> nil) and (Containing.StartPos.Line = ALine) do
-    begin
-      CollectStatement(Containing, ALine, False, AStatement.Sites);
-      Starting := Containing;
-      Containing := NextStatement(Starting);
-    end;
-    AStatement.FollowLine := FollowLine(Starting);
-    Exit(True);
-  end
-  else if Containing <> nil then
-  begin
-    AStatement.Node := Containing;
-    CollectStatement(Containing, ALine, not (Containing.Kind in SimpleKinds), AStatement.Sites);
-  end
-  else
-  begin
-    Exit;
+    TStepCalls.CollectStatement(mNext, ALine, False, AStatement.Sites);
+    mLast := mNext;
+    mNext := TStepCalls.NextStatement(mLast);
   end;
-  AStatement.FollowLine := FollowLine(AStatement.Node);
-  Result := True;
+  AStatement.FollowLine := TStepCalls.FollowLine(mLast);
+end;
+
+class function TStepCalls.Find(ATree: TSyntaxTree; ALine: Integer; out AStatement: TStepStatement): Boolean;
+var
+  mStarting, mContaining: TSyntaxNode;
+begin
+  AStatement := Default(TStepStatement);
+  AStatement.FollowLine := -1;
+  if (ATree = nil) or (ATree.Root = nil) then
+  begin
+    Exit(False);
+  end;
+  StatementsAt(ATree, ALine, mStarting, mContaining);
+  if mStarting <> nil then
+  begin
+    CollectLine(mStarting, ALine, AStatement);
+  end
+  else if mContaining <> nil then
+  begin
+    AStatement.Node := mContaining;
+    CollectStatement(mContaining, ALine, not (mContaining.Kind in SimpleKinds), AStatement.Sites);
+    AStatement.FollowLine := FollowLine(mContaining);
+  end;
+  Result := AStatement.Node <> nil;
 end;
 
 class function TStepCalls.FirstStatement(ANode: TSyntaxNode): TSyntaxNode;
@@ -446,61 +455,104 @@ begin
   end;
 end;
 
+/// <summary>Ende des Rumpfs von AParent, bevor die nächste Anweisung zählt: True, wenn damit entschieden.</summary>
+function HeadFollow(AParent: TSyntaxNode; out ALine: Integer): Boolean;
+begin
+  ALine := -1;
+  case AParent.Kind of
+    TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
+      begin
+        // Ende des Rumpfs: Die Schleife prüft wieder im Kopf.
+        ALine := AParent.StartPos.Line;
+        Result := True;
+      end;
+    TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Ende des try-Teils ACurrent: Der finally-Teil läuft als Nächstes.</summary>
+function FinallyFollow(ATry, ACurrent: TSyntaxNode; out ALine: Integer): Boolean;
+var
+  mPart, mFirst: TSyntaxNode;
+begin
+  ALine := -1;
+  mPart := ATry.FindChild(TSyntaxKind.FinallyBlock);
+  mFirst := nil;
+  if (mPart <> nil) and (ACurrent.Kind <> TSyntaxKind.FinallyBlock) then
+  begin
+    mFirst := TStepCalls.FirstStatement(mPart);
+  end;
+  Result := mFirst <> nil;
+  if Result then
+  begin
+    ALine := mFirst.StartPos.Line;
+  end;
+end;
+
+/// <summary>Letzte Anweisung ACurrent in AParent ohne Nachfolger: True, wenn damit entschieden.</summary>
+function TailFollow(AParent, ACurrent: TSyntaxNode; out ALine: Integer): Boolean;
+begin
+  ALine := -1;
+  Result := False;
+  case AParent.Kind of
+    TSyntaxKind.Block:
+      if (AParent.Parent <> nil) and (AParent.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod])
+      then
+      begin
+        // Ende der Routine: Ihr end trägt Code (Aufräumen, Rücksprung).
+        ALine := AParent.EndPos.Line;
+        Result := True;
+      end;
+    TSyntaxKind.RepeatStatement:
+      if (AParent.ChildCount > 0) and (AParent[AParent.ChildCount - 1].Kind in TStepCalls.ExpressionKinds) then
+      begin
+        ALine := AParent[AParent.ChildCount - 1].StartPos.Line;
+        Result := True;
+      end;
+    TSyntaxKind.TryStatement:
+      Result := FinallyFollow(AParent, ACurrent, ALine);
+    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
+      Result := True;
+  else
+    // Übrige Arten: nichts zu tun.
+  end;
+end;
+
+/// <summary>Ein Schritt nach außen von ACurrent: True, wenn die Folgezeile ALine (auch -1) feststeht.</summary>
+function StepFollow(ACurrent: TSyntaxNode; out ALine: Integer): Boolean;
+var
+  mParent, mNext: TSyntaxNode;
+begin
+  mParent := ACurrent.Parent;
+  if HeadFollow(mParent, ALine) then
+  begin
+    Exit(True);
+  end;
+  mNext := TStepCalls.NextStatement(ACurrent);
+  if mNext <> nil then
+  begin
+    ALine := mNext.StartPos.Line;
+    Exit(True);
+  end;
+  Result := TailFollow(mParent, ACurrent, ALine);
+end;
+
 class function TStepCalls.FollowLine(AStatement: TSyntaxNode): Integer;
 var
-  Current, Parent, Next, Part: TSyntaxNode;
+  mCurrent: TSyntaxNode;
 begin
   Result := -1;
-  Current := AStatement;
-  while (Current <> nil) and (Current.Parent <> nil) do
+  mCurrent := AStatement;
+  while (mCurrent <> nil) and (mCurrent.Parent <> nil) do
   begin
-    Parent := Current.Parent;
-    case Parent.Kind of
-      TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
-        // Ende des Rumpfs: Die Schleife prüft wieder im Kopf.
-        Exit(Parent.StartPos.Line);
-      TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
-        Exit;
-    else
-      // Übrige Arten: nichts zu tun.
-    end;
-    Next := NextStatement(Current);
-    if Next <> nil then
+    if StepFollow(mCurrent, Result) then
     begin
-      Exit(Next.StartPos.Line);
+      Exit;
     end;
-    case Parent.Kind of
-      TSyntaxKind.Block:
-        if (Parent.Parent <> nil) and (Parent.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod])
-        then
-        begin
-          // Ende der Routine: Ihr end trägt Code (Aufräumen, Rücksprung).
-          Exit(Parent.EndPos.Line);
-        end;
-      TSyntaxKind.RepeatStatement:
-        if (Parent.ChildCount > 0) and (Parent[Parent.ChildCount - 1].Kind in ExpressionKinds) then
-        begin
-          Exit(Parent[Parent.ChildCount - 1].StartPos.Line);
-        end;
-      TSyntaxKind.TryStatement:
-        begin
-          // Ende des try-Teils: Der finally-Teil läuft als Nächstes.
-          Part := Parent.FindChild(TSyntaxKind.FinallyBlock);
-          if (Part <> nil) and (Current.Kind <> TSyntaxKind.FinallyBlock) then
-          begin
-            Next := FirstStatement(Part);
-            if Next <> nil then
-            begin
-              Exit(Next.StartPos.Line);
-            end;
-          end;
-        end;
-      TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
-        Exit;
-    else
-      // Übrige Arten: nichts zu tun.
-    end;
-    Current := Parent;
+    mCurrent := mCurrent.Parent;
   end;
 end;
 

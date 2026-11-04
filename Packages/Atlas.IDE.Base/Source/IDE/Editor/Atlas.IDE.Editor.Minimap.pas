@@ -14,17 +14,11 @@
 //   (gemeinsam mit Gliederung, Brotkrumen und mitlaufendem Kopf), Marken über
 //   TAtlasIdeOverviewRuler.CollectMarks (Befunde, Treffer des markierten
 //   Texts, Änderungen).
-// - Faltung: Die Open Tools API meldet gefaltete Bereiche nicht. PaintLine
-//   merkt sich je gemalter Bildschirmzeile die Editorzeile;
-//   TAtlasMinimap.Folds erkennt daraus gefaltete und wieder aufgeklappte
-//   Bereiche. Ändert sich die Zeilenzahl, gelten die Bereiche als unbekannt.
+// - Faltung: Atlas.IDE.Editor.MinimapFolds (aus den gemalten Zeilen).
 // - Ziehen setzt die oberste Zeile (SetTopLeft), ein Klick springt
 //   (TAtlasIdeNavigation) oder scrollt nur (editor.minimap.clickJumps).
-// - Minimap der IDE: Ist neben der Atlas-Minimap ein sichtbares Steuerelement
-//   mit „Minimap“ im Klassennamen im Editorfenster, kommt einmal (gemerkt in
-//   MinimapNoticeShown) der Hinweis „Zwei Minimaps sichtbar“ mit „IDE-Minimap
-//   ausblenden“ (für diese Sitzung) und „Atlas-Minimap aus“. Eine Schnittstelle
-//   zum Abfragen oder Abschalten bietet die Open Tools API nicht.
+// - Minimap der IDE: Hinweis „Zwei Minimaps sichtbar“ über
+//   Atlas.IDE.Editor.MinimapNotice.
 // - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
 //   IDE und Abbau übernimmt TAtlasEditorBarHost (#1248).
 // editor.minimap oder experimental.enabled aus: alle Streifen weg, kein
@@ -54,23 +48,15 @@ uses
   System.Types,
   System.Math,
   Vcl.Controls,
-  Vcl.Forms,
   Vcl.ExtCtrls,
   ToolsAPI,
-  ToolsAPI.Editor,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap,
-  Atlas.UI.Strings,
-  Atlas.UI.Popup.Window,
-  Atlas.UI.Notifications.Notice,
   Atlas.UI.Editor.Minimap,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -79,29 +65,21 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
-  Atlas.IDE.Editor.OverviewRuler;
+  Atlas.IDE.Editor.OverviewRuler,
+  Atlas.IDE.Editor.MinimapFolds,
+  Atlas.IDE.Editor.MinimapNotice;
 
 const
   TickMs = 100;
   /// <summary>Tipp-Pause, bevor der Text neu zerlegt wird.</summary>
   QuietMs = 300;
-  /// <summary>So tief sucht der Hinweis die Minimap der IDE im Editorfenster.</summary>
-  MaxSearchDepth = 6;
 
 type
-  TEvents = class(TNTACodeEditorNotifier)
-  protected
-    function AllowedEvents: TCodeEditorEvents; override;
-    function AllowedLineStages: TPaintLineStages; override;
-  end;
-
   TMinimapState = class
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
-    FEvents: TEvents;
-    FEventsRef: INTACodeEditorEvents;
-    FIndex: Integer;
+    FFolds: TAtlasIdeMinimapFolds;
     FOptions: TAtlasMinimapOptions;
     FColorsSet: Boolean;
     // Inhalt der Ansicht vorn.
@@ -124,36 +102,22 @@ type
     FTerm: string;
     FTermVersion: Cardinal;
     FSearchLines: TArray<Integer>;
-    // Faltung aus den gemalten Zeilen.
-    FFolds: TAtlasMinimapFolds;
-    FFoldLines: Integer;
-    FPainted: TArray<TAtlasMinimapPainted>;
-    FPaintedTop: Integer;
-    FPaintedFile: string;
-    FRowHeight: Integer;
     // Hinweis bei sichtbarer IDE-Minimap.
-    FNotice: TAtlasNoticeWindow;
-    FHideIde: Boolean;
+    FNotice: TAtlasIdeMinimapNotice;
     procedure Tick(Sender: TObject);
     function ActiveMinimap: TAtlasMinimapView;
     function CreateView: TAtlasMinimapView;
     procedure Place(AView: TAtlasMinimapView; AParent: TWinControl);
-    procedure PlaceView(AView: TAtlasMinimapView);
     procedure Update;
     procedure UpdateContent(const AView: IOTAEditView; AMinimap: TAtlasMinimapView);
     procedure StartWorker(const AText: string; AVersion: Cardinal; AMaxColumn, ATabWidth: Integer);
     procedure Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal; const ALines: TArray<string>;
       const ARuns: TAtlasMinimapLines);
-    procedure UpdateFolds(AMinimap: TAtlasMinimapView; ALineCount: Integer);
     procedure UpdateMarks(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
     procedure Scroll(AMinimap: TAtlasMinimapView; ATopLine: Integer);
     procedure Jump(AMinimap: TAtlasMinimapView; ALine: Integer);
-    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    function IdeMinimap(AParent: TWinControl): TControl;
-    procedure CheckIdeMinimap(AMinimap: TAtlasMinimapView);
+    procedure UpdateOutline(const AView: IOTAEditView; AMinimap: TAtlasMinimapView);
     procedure HideIdeMinimap;
-    procedure TurnOff;
   public
     constructor Create;
     destructor Destroy; override;
@@ -163,13 +127,8 @@ type
   end;
 
 function CurrentOptions: TAtlasMinimapOptions;
-var
-  Settings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasMinimap.Options(Settings.MinimapRender, Settings.MinimapSide, Settings.MinimapShowSlider,
-    Settings.MinimapWidth, Settings.MinimapScale, Settings.MinimapMaxColumn, Settings.MinimapSectionHeaders,
-    Settings.MinimapHighlightMethod, Settings.MinimapMarkers, Settings.MinimapClickJumps);
+  Result := TAtlasMinimap.Options(TAtlasIdeSettings.Current);
 end;
 
 function SameOptions(const A, B: TAtlasMinimapOptions): Boolean;
@@ -179,27 +138,76 @@ begin
     (A.HighlightMethod = B.HighlightMethod) and (A.Markers = B.Markers) and (A.ClickJumps = B.ClickJumps);
 end;
 
-{ TEvents }
-
-function TEvents.AllowedEvents: TCodeEditorEvents;
+/// <summary>Minimap an den Rand ASide ihres Eltern-Steuerelements.</summary>
+procedure PlaceView(AView: TAtlasMinimapView; ASide: TAtlasMinimapSide);
+var
+  Parent: TWinControl;
 begin
-  Result := [cevPaintLineEvents];
+  Parent := AView.Parent;
+  if Parent = nil then
+  begin
+    Exit;
+  end;
+  // Zuerst ganz an den Rand, dann ausrichten: so steht die Minimap außen.
+  AView.Align := alNone;
+  if ASide = TAtlasMinimapSide.Left then
+  begin
+    AView.Left := -AView.Width;
+    AView.Align := alLeft;
+  end
+  else
+  begin
+    AView.Left := Parent.ClientWidth;
+    AView.Align := alRight;
+  end;
 end;
 
-function TEvents.AllowedLineStages: TPaintLineStages;
+/// <summary>Atlas-Minimap ausschalten (Knopf im Hinweis).</summary>
+procedure TurnOff;
+var
+  mSettings: TAtlasPluginSettings;
 begin
-  Result := [plsEndPaint];
+  mSettings := TAtlasIdeSettings.Stored;
+  mSettings.Minimap := False;
+  TAtlasIdeSettings.Update(mSettings);
+  // Nach dem laufenden Ereignis: der Zustand gibt sich dabei selbst frei.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Minimap,
+    procedure
+    begin
+      TAtlasIdeMinimap.ApplySettings;
+    end);
+end;
+
+/// <summary>Knöpfe des Hinweises; sie wirken nur, solange die Minimap läuft.</summary>
+function HideIdeAction: TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if TAtlasIdeMinimap.FState <> nil then
+      begin
+        TMinimapState(TAtlasIdeMinimap.FState).HideIdeMinimap;
+      end;
+    end;
+end;
+
+function TurnOffAction: TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if TAtlasIdeMinimap.FState <> nil then
+      begin
+        TurnOff;
+      end;
+    end;
 end;
 
 { TMinimapState }
 
 constructor TMinimapState.Create;
-var
-  Services: INTACodeEditorServices;
 begin
   inherited Create;
-  FIndex := -1;
-  FPaintedTop := -1;
   FTabWidth := 4;
   FHost := TAtlasEditorBarHost.Create('Minimap', TAtlasFeature.Minimap,
     function(AEditorParent: TWinControl): TControl
@@ -216,13 +224,8 @@ begin
       Removed(ABar);
     end;
   FOptions := CurrentOptions;
-  FEvents := TEvents.Create;
-  FEventsRef := FEvents;
-  FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-  begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
-  end;
+  FFolds := TAtlasIdeMinimapFolds.Create;
+  FNotice := TAtlasIdeMinimapNotice.Create(HideIdeAction(), TurnOffAction());
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -230,17 +233,10 @@ begin
 end;
 
 destructor TMinimapState.Destroy;
-var
-  Services: INTACodeEditorServices;
 begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-  begin
-    Services.RemoveEditorEventsNotifier(FIndex);
-  end;
-  FEvents.OnEditorPaintLine := nil;
-  FEventsRef := nil;
+  FreeAndNil(FFolds);
   // Ein laufender Zerleger meldet sich über die Warteschlange; Inc verwirft sein Ergebnis.
   Inc(FRequest);
   if FWorker <> nil then
@@ -280,7 +276,7 @@ begin
     procedure(ABar: TControl)
     begin
       TAtlasMinimapView(ABar).SetOptions(FOptions);
-      PlaceView(TAtlasMinimapView(ABar));
+      PlaceView(TAtlasMinimapView(ABar), FOptions.Side);
     end);
 end;
 
@@ -305,30 +301,7 @@ begin
     Exit;
   end;
   AView.Parent := AParent;
-  PlaceView(AView);
-end;
-
-procedure TMinimapState.PlaceView(AView: TAtlasMinimapView);
-var
-  Parent: TWinControl;
-begin
-  Parent := AView.Parent;
-  if Parent = nil then
-  begin
-    Exit;
-  end;
-  // Zuerst ganz an den Rand, dann ausrichten: so steht die Minimap außen.
-  AView.Align := alNone;
-  if FOptions.Side = TAtlasMinimapSide.Left then
-  begin
-    AView.Left := -AView.Width;
-    AView.Align := alLeft;
-  end
-  else
-  begin
-    AView.Left := Parent.ClientWidth;
-    AView.Align := alRight;
-  end;
+  PlaceView(AView, FOptions.Side);
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
@@ -450,9 +423,7 @@ begin
     FVersion := Snapshot.Version;
     FLines := nil;
     FRuns := nil;
-    FFolds := nil;
-    FFoldLines := 0;
-    FPainted := nil;
+    FFolds.Reset;
     FTermVersion := 0;
     FStamp := 0;
     AMinimap.SetFolds(nil);
@@ -473,22 +444,6 @@ begin
     FTabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
     StartWorker(Snapshot.Text, FVersion, FOptions.MaxColumn, FTabWidth);
   end;
-end;
-
-procedure TMinimapState.UpdateFolds(AMinimap: TAtlasMinimapView; ALineCount: Integer);
-begin
-  // Andere Zeilenzahl: Die bekannten Bereiche stimmen nicht mehr.
-  if ALineCount <> FFoldLines then
-  begin
-    FFolds := nil;
-    FFoldLines := ALineCount;
-  end;
-  if (FPainted <> nil) and SameText(FPaintedFile, FFileName) then
-  begin
-    FFolds := TAtlasMinimap.Folds(FFolds, FPainted, FRowHeight, ALineCount);
-  end;
-  FPainted := nil;
-  AMinimap.SetFolds(FFolds);
 end;
 
 procedure TMinimapState.UpdateMarks(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
@@ -525,7 +480,6 @@ procedure TMinimapState.Update;
 var
   Minimap: TAtlasMinimapView;
   View: IOTAEditView;
-  Snapshot: TAtlasOutlineSnapshot;
   LineCount: Integer;
 begin
   ApplySettings;
@@ -550,23 +504,32 @@ begin
     FStamp := 0;
   end;
   UpdateContent(View, Minimap);
-  UpdateFolds(Minimap, LineCount);
+  Minimap.SetFolds(FFolds.Update(FFileName, LineCount));
   if not Minimap.SliderDragging then
   begin
     Minimap.SetView(View.TopRow - 1, View.BottomRow - 1, View.CursorPos.Line - 1);
   end;
-  if FOptions.SectionHeaders or FOptions.HighlightMethod then
-  begin
-    Snapshot := TAtlasIdeOutlineCache.Refresh(View);
-    if (Snapshot.Status = TAtlasOutlineStatus.Ready) and SameText(Snapshot.FileName, FFileName) and
-      (Snapshot.Stamp <> FStamp) then
-    begin
-      FStamp := Snapshot.Stamp;
-      Minimap.SetOutline(Snapshot.Nodes);
-    end;
-  end;
+  UpdateOutline(View, Minimap);
   UpdateMarks(View, Minimap, LineCount);
-  CheckIdeMinimap(Minimap);
+  FNotice.Check(Minimap);
+end;
+
+/// <summary>Überschriften und Routine am Cursor aus der Gliederung, wenn sie neu ist.</summary>
+procedure TMinimapState.UpdateOutline(const AView: IOTAEditView; AMinimap: TAtlasMinimapView);
+var
+  mSnapshot: TAtlasOutlineSnapshot;
+begin
+  if not FOptions.SectionHeaders and not FOptions.HighlightMethod then
+  begin
+    Exit;
+  end;
+  mSnapshot := TAtlasIdeOutlineCache.Refresh(AView);
+  if (mSnapshot.Status = TAtlasOutlineStatus.Ready) and SameText(mSnapshot.FileName, FFileName) and
+    (mSnapshot.Stamp <> FStamp) then
+  begin
+    FStamp := mSnapshot.Stamp;
+    AMinimap.SetOutline(mSnapshot.Nodes);
+  end;
 end;
 
 procedure TMinimapState.Scroll(AMinimap: TAtlasMinimapView; ATopLine: Integer);
@@ -598,219 +561,20 @@ begin
   TAtlasIdeNavigation.GoToLocation(View.Buffer.FileName, ALine, 0);
 end;
 
-procedure TMinimapState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  View: IOTAEditView;
-  Top, Index: Integer;
-begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
-  begin
-    Exit;
-  end;
-  try
-    View := Context.EditView;
-    if (View = nil) or (View.Buffer = nil) then
-    begin
-      Exit;
-    end;
-    // Nur Zeilen derselben Bildlaufstellung lassen sich vergleichen.
-    Top := View.TopRow;
-    if (Top <> FPaintedTop) or not SameText(Context.FileName, FPaintedFile) then
-    begin
-      FPainted := nil;
-      FPaintedTop := Top;
-      FPaintedFile := Context.FileName;
-    end;
-    FRowHeight := Rect.Bottom - Rect.Top;
-    for Index := 0 to High(FPainted) do
-    begin
-      if FPainted[Index].Top = Rect.Top then
-      begin
-        FPainted[Index].Line := Context.LogicalLineNum - 1;
-        Exit;
-      end;
-    end;
-    // Höchstens eine Bildschirmseite merken.
-    if Length(FPainted) < 1000 then
-    begin
-      FPainted := FPainted + [TAtlasMinimapPainted.Create(Rect.Top, Context.LogicalLineNum - 1)];
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Minimap, E);
-  end;
-end;
-
-function TMinimapState.IdeMinimap(AParent: TWinControl): TControl;
-
-  function Find(AControl: TWinControl; ADepth: Integer): TControl;
-  var
-    Index: Integer;
-    Child: TControl;
-  begin
-    Result := nil;
-    if ADepth > MaxSearchDepth then
-    begin
-      Exit;
-    end;
-    for Index := 0 to AControl.ControlCount - 1 do
-    begin
-      Child := AControl.Controls[Index];
-      if (Child is TAtlasMinimapView) or not Child.Visible then
-      begin
-        Continue;
-      end;
-      if Pos('MINIMAP', UpperCase(Child.ClassName)) > 0 then
-      begin
-        Exit(Child);
-      end;
-      if Child is TWinControl then
-      begin
-        Result := Find(TWinControl(Child), ADepth + 1);
-        if Result <> nil then
-        begin
-          Exit;
-        end;
-      end;
-    end;
-  end;
-
-var
-  Form: TCustomForm;
-begin
-  Result := nil;
-  if AParent = nil then
-  begin
-    Exit;
-  end;
-  Form := GetParentForm(AParent);
-  if Form <> nil then
-  begin
-    Result := Find(Form, 0);
-  end
-  else
-  begin
-    Result := Find(AParent, 0);
-  end;
-end;
-
-procedure TMinimapState.CheckIdeMinimap(AMinimap: TAtlasMinimapView);
-var
-  Ide: TControl;
-  Settings: TAtlasPluginSettings;
-  Actions: TArray<TAtlasNotificationAction>;
-  Action: TAtlasNotificationAction;
-  Area: TRect;
-  Title, Text: string;
-begin
-  Settings := TAtlasIdeSettings.Stored;
-  // Schon gezeigt und nichts auszublenden: den Fensterbaum nicht durchsuchen.
-  if Settings.MinimapNoticeShown and not FHideIde then
-  begin
-    Exit;
-  end;
-  Ide := IdeMinimap(AMinimap.Parent);
-  if (Ide <> nil) and FHideIde then
-  begin
-    Ide.Visible := False;
-    Exit;
-  end;
-  if not TAtlasMinimap.ShouldNotice(AMinimap.Visible, Ide <> nil, Settings.MinimapNoticeShown) then
-  begin
-    Exit;
-  end;
-  // Nur einmal: gleich merken, auch wenn der Hinweis nur gesammelt wird.
-  Settings.MinimapNoticeShown := True;
-  TAtlasIdeSettings.Update(Settings);
-  Title := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle);
-  Text := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeText);
-  Action.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapHideIde);
-  Action.Run :=
-    procedure
-    begin
-      if TAtlasIdeMinimap.FState <> nil then
-      begin
-        TMinimapState(TAtlasIdeMinimap.FState).HideIdeMinimap;
-      end;
-    end;
-  Actions := [Action];
-  Action.Caption := TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff);
-  Action.Run :=
-    procedure
-    begin
-      if TAtlasIdeMinimap.FState <> nil then
-      begin
-        TMinimapState(TAtlasIdeMinimap.FState).TurnOff;
-      end;
-    end;
-  Actions := Actions + [Action];
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Minimap, TAtlasNotificationSeverity.Info,
-    Title, Text, Actions) <> TAtlasNotificationMode.Show then
-  begin
-    Exit;
-  end;
-  if FNotice = nil then
-  begin
-    FNotice := TAtlasNoticeWindow.Create(nil);
-  end;
-  FNotice.OnAction :=
-    procedure(AIndex: Integer)
-    begin
-      if TAtlasIdeMinimap.FState = nil then
-      begin
-        Exit;
-      end;
-      if AIndex = 0 then
-      begin
-        TMinimapState(TAtlasIdeMinimap.FState).HideIdeMinimap;
-      end
-      else if AIndex = 1 then
-      begin
-        TMinimapState(TAtlasIdeMinimap.FState).TurnOff;
-      end;
-    end;
-  Area := Screen.WorkAreaRect;
-  if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
-  end;
-  FNotice.Colors := TAtlasIdeStyle.Colors;
-  FNotice.SetScaling(TAtlasPopupWindow.MonitorPPI(Area.BottomRight), 1, '', 10);
-  FNotice.ShowNotice(Title, Text, [TAtlasStrings.Text(TAtlasTextId.MinimapHideIde),
-    TAtlasStrings.Text(TAtlasTextId.MinimapTurnOff)], Area);
-end;
-
 procedure TMinimapState.HideIdeMinimap;
 begin
   // Für diese Sitzung; die Einstellung der IDE bleibt.
-  FHideIde := True;
+  FNotice.HideIde := True;
   FHost.ForEach(
     procedure(ABar: TControl)
     var
-      Ide: TControl;
+      mIde: TControl;
     begin
-      Ide := IdeMinimap(ABar.Parent);
-      if Ide <> nil then
+      mIde := TAtlasIdeMinimapNotice.IdeMinimap(ABar.Parent);
+      if mIde <> nil then
       begin
-        Ide.Visible := False;
+        mIde.Visible := False;
       end;
-    end);
-end;
-
-procedure TMinimapState.TurnOff;
-var
-  Settings: TAtlasPluginSettings;
-begin
-  Settings := TAtlasIdeSettings.Stored;
-  Settings.Minimap := False;
-  TAtlasIdeSettings.Update(Settings);
-  // Nach dem laufenden Ereignis: der Zustand gibt sich dabei selbst frei.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Minimap,
-    procedure
-    begin
-      TAtlasIdeMinimap.ApplySettings;
     end);
 end;
 

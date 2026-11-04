@@ -18,47 +18,80 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Documentation.Layout;
+  Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset;
 
 type
-  TAtlasDocView = class
+  /// <summary>Schriften der Doku: Editorschrift (Mono), Beschriftung (UI) und daraus je Art, Fett, Kursiv und
+  /// Kapitälchen eine eigene Schrift; dazu die Zeilenhöhen und die DPI.</summary>
+  TAtlasDocFontSet = class
   private
-    FLayout: TAtlasDocLayout;
     FMono: TFont;
     FUI: TFont;
     FFonts: array[TAtlasDocFont, Boolean, Boolean, Boolean] of TFont;
-    FDoc: TAtlasDoc;
-    FSignature: TAtlasDocSignature;
-    FLabels: TAtlasDocLabels;
-    FExpanded: Boolean;
-    FMetrics: TAtlasDocMetrics;
     FMonoHeight: Integer;
     FUIHeight: Integer;
     FSmallHeight: Integer;
     FPPI: Integer;
-    FWidth: Integer;
-    FViewport: Integer;
-    FScroll: Integer;
-    FAnchor: Integer;
-    FCaret: Integer;
-    FSelecting: Boolean;
-    FHotLink: Integer;
-    function FontOf(const AFace: TAtlasDocFace): TFont;
-    function FaceHeight(const AFace: TAtlasDocFace): Integer;
-    function TextWidth(ACanvas: TCanvas; const AText: string; const AFace: TAtlasDocFace): Integer;
-    function MeasureOn(ACanvas: TCanvas): TAtlasDocMeasure;
-    function Scale(AValue: Integer): Integer;
     procedure FreeFonts;
-    procedure ClampScroll;
-    procedure Relayout(ACanvas: TCanvas);
+    function HeightOf(ACanvas: TCanvas; const AFace: TAtlasDocFace): Integer;
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Setzt ADoc für die Breite AWidth; AMono ist die Editorschrift, AUI die der Beschriftungen,
-    /// ASignature ordnet die Parameter, AExpanded = aufgeklappt. Danach zeigt der Ausschnitt alles
-    /// (Height = volle Höhe), bis FitHeight ihn begrenzt.</summary>
-    procedure Build(ACanvas: TCanvas; const ADoc: TAtlasDoc; AWidth: Integer; AMono, AUI: TFont; APPI: Integer;
-      const ALabels: TAtlasDocLabels; const ASignature: TAtlasDocSignature; AExpanded: Boolean);
+    /// <summary>Übernimmt AMono und AUI für APPI und misst die Zeilenhöhen auf ACanvas.</summary>
+    procedure Assign(ACanvas: TCanvas; AMono, AUI: TFont; APPI: Integer);
+    function FontOf(const AFace: TAtlasDocFace): TFont;
+    function FaceHeight(const AFace: TAtlasDocFace): Integer;
+    function TextWidth(ACanvas: TCanvas; const AText: string; const AFace: TAtlasDocFace): Integer;
+    /// <summary>Messfunktion für den Satz auf ACanvas.</summary>
+    function MeasureOn(ACanvas: TCanvas): TAtlasDocMeasure;
+    function Scale(AValue: Integer): Integer;
+    /// <summary>Höhe einer Textzeile in der Beschriftung samt Abstand.</summary>
+    function LineStep: Integer;
+    property PPI: Integer read FPPI;
+    property MonoHeight: Integer read FMonoHeight;
+    property UIHeight: Integer read FUIHeight;
+  end;
+
+  /// <summary>Schriften für TAtlasDocView.Build: Editorschrift, Beschriftung und DPI.</summary>
+  TAtlasDocFonts = record
+    Mono: TFont;
+    UI: TFont;
+    PPI: Integer;
+    class function Create(AMono, AUI: TFont; APPI: Integer): TAtlasDocFonts; static;
+  end;
+
+  /// <summary>Markierung mit der Maus: Anfang und Ende als Textposition (-1 ohne), Active beim Ziehen.</summary>
+  TAtlasDocSelection = record
+    Anchor: Integer;
+    Caret: Integer;
+    Active: Boolean;
+    class function None: TAtlasDocSelection; static;
+  end;
+
+  TAtlasDocView = class
+  private
+    FLayout: TAtlasDocLayout;
+    FFonts: TAtlasDocFontSet;
+    FContent: TAtlasDocContent;
+    FLabels: TAtlasDocLabels;
+    FMetrics: TAtlasDocMetrics;
+    FWidth: Integer;
+    FViewport: Integer;
+    FScroll: Integer;
+    FSelection: TAtlasDocSelection;
+    FHotLink: Integer;
+    procedure ClampScroll;
+    procedure Relayout(ACanvas: TCanvas);
+    procedure PaintThumb(ACanvas: TCanvas; const AColors: TAtlasColors; ALeft, ATop: Integer);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Setzt AContent (Doku, Ordnung der Parameter, aufgeklappt) für die Breite AWidth; AFonts nennt
+    /// Editorschrift, Beschriftung und DPI. Danach zeigt der Ausschnitt alles (Height = volle Höhe), bis
+    /// FitHeight ihn begrenzt.</summary>
+    procedure Build(ACanvas: TCanvas; const AContent: TAtlasDocContent; AWidth: Integer; const AFonts: TAtlasDocFonts;
+      const ALabels: TAtlasDocLabels);
     /// <summary>Klappt auf bzw. zu und setzt neu; liefert den neuen Zustand.</summary>
     function Toggle(ACanvas: TCanvas): Boolean;
     procedure Clear;
@@ -84,12 +117,12 @@ type
     function HasSelection: Boolean;
     function SelectedText: string;
     property Layout: TAtlasDocLayout read FLayout;
-    property Expanded: Boolean read FExpanded;
+    property Expanded: Boolean read FContent.Expanded;
     property Width: Integer read FWidth;
     /// <summary>Höhe des Ausschnitts.</summary>
     property Height: Integer read FViewport;
     property Scroll: Integer read FScroll;
-    property Selecting: Boolean read FSelecting;
+    property Selecting: Boolean read FSelection.Active;
     /// <summary>Hervorgehobener Link (Maus darüber); -1 ohne.</summary>
     property HotLink: Integer read FHotLink write FHotLink;
   end;
@@ -102,20 +135,35 @@ uses
   System.Math,
   Atlas.UI.Popup.Window;
 
-{ TAtlasDocView }
+{ TAtlasDocFonts }
 
-constructor TAtlasDocView.Create;
+class function TAtlasDocFonts.Create(AMono, AUI: TFont; APPI: Integer): TAtlasDocFonts;
+begin
+  Result.Mono := AMono;
+  Result.UI := AUI;
+  Result.PPI := APPI;
+end;
+
+{ TAtlasDocSelection }
+
+class function TAtlasDocSelection.None: TAtlasDocSelection;
+begin
+  Result.Anchor := -1;
+  Result.Caret := -1;
+  Result.Active := False;
+end;
+
+{ TAtlasDocFontSet }
+
+constructor TAtlasDocFontSet.Create;
 begin
   inherited Create;
   FMono := TFont.Create;
   FUI := TFont.Create;
   FPPI := 96;
-  FAnchor := -1;
-  FCaret := -1;
-  FHotLink := -1;
 end;
 
-destructor TAtlasDocView.Destroy;
+destructor TAtlasDocFontSet.Destroy;
 begin
   FreeFonts;
   FMono.Free;
@@ -123,34 +171,65 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasDocView.FreeFonts;
+procedure TAtlasDocFontSet.FreeFonts;
 var
-  Font: TAtlasDocFont;
-  Bold, Italic, Small: Boolean;
+  mFont: TAtlasDocFont;
+  mBold, mItalic, mSmall: Boolean;
 begin
-  for Font := Low(TAtlasDocFont) to High(TAtlasDocFont) do
+  for mFont := Low(TAtlasDocFont) to High(TAtlasDocFont) do
   begin
-    for Bold := False to True do
+    for mBold := False to True do
     begin
-      for Italic := False to True do
+      for mItalic := False to True do
       begin
-        for Small := False to True do
+        for mSmall := False to True do
         begin
-          FreeAndNil(FFonts[Font, Bold, Italic, Small]);
+          FreeAndNil(FFonts[mFont, mBold, mItalic, mSmall]);
         end;
       end;
     end;
   end;
 end;
 
-function TAtlasDocView.Scale(AValue: Integer): Integer;
+function TAtlasDocFontSet.HeightOf(ACanvas: TCanvas; const AFace: TAtlasDocFace): Integer;
+var
+  mSize: TSize;
+  mOld: HGDIOBJ;
+begin
+  mOld := SelectObject(ACanvas.Handle, FontOf(AFace).Handle);
+  try
+    GetTextExtentPoint32(ACanvas.Handle, 'Wg', 2, mSize);
+  finally
+    SelectObject(ACanvas.Handle, mOld);
+  end;
+  Result := mSize.cy;
+end;
+
+procedure TAtlasDocFontSet.Assign(ACanvas: TCanvas; AMono, AUI: TFont; APPI: Integer);
+begin
+  FreeFonts;
+  FMono.Assign(AMono);
+  FUI.Assign(AUI);
+  FPPI := Max(APPI, 1);
+  // Zeilenhöhen aus den Schriften selbst.
+  FMonoHeight := HeightOf(ACanvas, TAtlasDocFace.Create(TAtlasDocFont.Mono));
+  FUIHeight := HeightOf(ACanvas, TAtlasDocFace.Create(TAtlasDocFont.UI));
+  FSmallHeight := HeightOf(ACanvas, TAtlasDocFace.Heading);
+end;
+
+function TAtlasDocFontSet.Scale(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, FPPI, 96);
 end;
 
-function TAtlasDocView.FontOf(const AFace: TAtlasDocFace): TFont;
+function TAtlasDocFontSet.LineStep: Integer;
+begin
+  Result := FUIHeight + Scale(2);
+end;
+
+function TAtlasDocFontSet.FontOf(const AFace: TAtlasDocFace): TFont;
 var
-  Style: TFontStyles;
+  mStyle: TFontStyles;
 begin
   Result := FFonts[AFace.Font, AFace.Bold, AFace.Italic, AFace.Small];
   if Result <> nil then
@@ -166,16 +245,16 @@ begin
   begin
     Result.Assign(FUI);
   end;
-  Style := [];
+  mStyle := [];
   if AFace.Bold then
   begin
-    Include(Style, fsBold);
+    Include(mStyle, fsBold);
   end;
   if AFace.Italic then
   begin
-    Include(Style, fsItalic);
+    Include(mStyle, fsItalic);
   end;
-  Result.Style := Style;
+  Result.Style := mStyle;
   // Überschriften in Kapitälchen: Großbuchstaben etwas kleiner.
   if AFace.Small then
   begin
@@ -184,7 +263,7 @@ begin
   FFonts[AFace.Font, AFace.Bold, AFace.Italic, AFace.Small] := Result;
 end;
 
-function TAtlasDocView.FaceHeight(const AFace: TAtlasDocFace): Integer;
+function TAtlasDocFontSet.FaceHeight(const AFace: TAtlasDocFace): Integer;
 begin
   if AFace.Font = TAtlasDocFont.Mono then
   begin
@@ -200,97 +279,90 @@ begin
   end;
 end;
 
-function TAtlasDocView.TextWidth(ACanvas: TCanvas; const AText: string; const AFace: TAtlasDocFace): Integer;
+function TAtlasDocFontSet.TextWidth(ACanvas: TCanvas; const AText: string; const AFace: TAtlasDocFace): Integer;
 var
-  Size: TSize;
-  Old: HGDIOBJ;
+  mSize: TSize;
+  mOld: HGDIOBJ;
 begin
   if AText = '' then
   begin
     Exit(0);
   end;
-  Old := SelectObject(ACanvas.Handle, FontOf(AFace).Handle);
+  mOld := SelectObject(ACanvas.Handle, FontOf(AFace).Handle);
   try
-    GetTextExtentPoint32(ACanvas.Handle, PChar(AText), Length(AText), Size);
+    GetTextExtentPoint32(ACanvas.Handle, PChar(AText), Length(AText), mSize);
   finally
-    SelectObject(ACanvas.Handle, Old);
+    SelectObject(ACanvas.Handle, mOld);
   end;
-  Result := Size.cx;
+  Result := mSize.cx;
 end;
 
-function TAtlasDocView.MeasureOn(ACanvas: TCanvas): TAtlasDocMeasure;
+function TAtlasDocFontSet.MeasureOn(ACanvas: TCanvas): TAtlasDocMeasure;
 var
-  View: TAtlasDocView;
-  Canvas: TCanvas;
+  mFonts: TAtlasDocFontSet;
+  mCanvas: TCanvas;
 begin
-  View := Self;
-  Canvas := ACanvas;
+  mFonts := Self;
+  mCanvas := ACanvas;
   Result :=
     function(const AText: string; const AFace: TAtlasDocFace): Integer
     begin
-      Result := View.TextWidth(Canvas, AText, AFace);
+      Result := mFonts.TextWidth(mCanvas, AText, AFace);
     end;
 end;
 
-procedure TAtlasDocView.Build(ACanvas: TCanvas; const ADoc: TAtlasDoc; AWidth: Integer; AMono, AUI: TFont;
-  APPI: Integer; const ALabels: TAtlasDocLabels; const ASignature: TAtlasDocSignature; AExpanded: Boolean);
-var
-  Size: TSize;
-  Old: HGDIOBJ;
+{ TAtlasDocView }
+
+constructor TAtlasDocView.Create;
 begin
-  FreeFonts;
-  FMono.Assign(AMono);
-  FUI.Assign(AUI);
-  FPPI := Max(APPI, 1);
+  inherited Create;
+  FFonts := TAtlasDocFontSet.Create;
+  FSelection := TAtlasDocSelection.None;
+  FHotLink := -1;
+end;
+
+destructor TAtlasDocView.Destroy;
+begin
+  FFonts.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasDocView.Build(ACanvas: TCanvas; const AContent: TAtlasDocContent; AWidth: Integer;
+  const AFonts: TAtlasDocFonts; const ALabels: TAtlasDocLabels);
+begin
+  FFonts.Assign(ACanvas, AFonts.Mono, AFonts.UI, AFonts.PPI);
   FWidth := Max(AWidth, 1);
-  // Zeilenhöhen aus den Schriften selbst.
-  Old := SelectObject(ACanvas.Handle, FontOf(TAtlasDocFace.Create(TAtlasDocFont.Mono)).Handle);
-  GetTextExtentPoint32(ACanvas.Handle, 'Wg', 2, Size);
-  FMonoHeight := Size.cy;
-  SelectObject(ACanvas.Handle, FontOf(TAtlasDocFace.Create(TAtlasDocFont.UI)).Handle);
-  GetTextExtentPoint32(ACanvas.Handle, 'Wg', 2, Size);
-  FUIHeight := Size.cy;
-  SelectObject(ACanvas.Handle, FontOf(TAtlasDocFace.Heading).Handle);
-  GetTextExtentPoint32(ACanvas.Handle, 'Wg', 2, Size);
-  FSmallHeight := Size.cy;
-  SelectObject(ACanvas.Handle, Old);
-  FMetrics := TAtlasDocMetrics.Create(FUIHeight + Scale(2), FMonoHeight + Scale(2), FPPI / 96);
-  FDoc := ADoc;
-  FSignature := ASignature;
+  FMetrics := TAtlasDocMetrics.Create(FFonts.LineStep, FFonts.MonoHeight + FFonts.Scale(2), FFonts.PPI / 96);
+  FContent := AContent;
   FLabels := ALabels;
-  FExpanded := AExpanded;
   Relayout(ACanvas);
   FScroll := 0;
 end;
 
 procedure TAtlasDocView.Relayout(ACanvas: TCanvas);
 begin
-  FLayout := TAtlasDocLayout.Build(FDoc, FWidth, FMetrics, MeasureOn(ACanvas), FLabels, FSignature, FExpanded);
+  FLayout := TAtlasDocTypeset.Build(FContent, FWidth, FMetrics, FFonts.MeasureOn(ACanvas), FLabels);
   FViewport := FLayout.Height;
   ClampScroll;
-  FAnchor := -1;
-  FCaret := -1;
-  FSelecting := False;
+  FSelection := TAtlasDocSelection.None;
   FHotLink := -1;
 end;
 
 function TAtlasDocView.Toggle(ACanvas: TCanvas): Boolean;
 begin
-  FExpanded := not FLayout.Expanded;
+  FContent.Expanded := not FLayout.Expanded;
   Relayout(ACanvas);
-  Result := FExpanded;
+  Result := FContent.Expanded;
 end;
 
 procedure TAtlasDocView.Clear;
 begin
   FLayout := Default(TAtlasDocLayout);
-  FDoc := Default(TAtlasDoc);
-  FSignature := Default(TAtlasDocSignature);
+  FContent.Doc := Default(TAtlasDoc);
+  FContent.Signature := Default(TAtlasDocSignature);
   FViewport := 0;
   FScroll := 0;
-  FAnchor := -1;
-  FCaret := -1;
-  FSelecting := False;
+  FSelection := TAtlasDocSelection.None;
   FHotLink := -1;
 end;
 
@@ -326,17 +398,17 @@ end;
 
 function TAtlasDocView.WheelStep: Integer;
 begin
-  Result := 3 * (FUIHeight + Scale(2));
+  Result := 3 * FFonts.LineStep;
 end;
 
 function TAtlasDocView.ScrollBy(ADelta: Integer): Boolean;
 var
-  Old: Integer;
+  mOld: Integer;
 begin
-  Old := FScroll;
+  mOld := FScroll;
   Inc(FScroll, ADelta);
   ClampScroll;
-  Result := FScroll <> Old;
+  Result := FScroll <> mOld;
 end;
 
 function TAtlasDocView.LinkAt(AX, AY: Integer): Integer;
@@ -355,50 +427,48 @@ end;
 
 procedure TAtlasDocView.StartSelection(ACanvas: TCanvas; AX, AY: Integer);
 begin
-  FAnchor := FLayout.PositionAt(AX, AY + FScroll, MeasureOn(ACanvas));
-  FCaret := FAnchor;
-  FSelecting := True;
+  FSelection.Anchor := FLayout.PositionAt(AX, AY + FScroll, FFonts.MeasureOn(ACanvas));
+  FSelection.Caret := FSelection.Anchor;
+  FSelection.Active := True;
 end;
 
 procedure TAtlasDocView.ExtendSelection(ACanvas: TCanvas; AX, AY: Integer);
 begin
-  if not FSelecting then
+  if not FSelection.Active then
   begin
     Exit;
   end;
   if AY < 0 then
   begin
-    ScrollBy(-(FUIHeight + Scale(2)));
+    ScrollBy(-FFonts.LineStep);
   end
   else if AY >= FViewport then
   begin
-    ScrollBy(FUIHeight + Scale(2));
+    ScrollBy(FFonts.LineStep);
   end;
-  FCaret := FLayout.PositionAt(AX, AY + FScroll, MeasureOn(ACanvas));
+  FSelection.Caret := FLayout.PositionAt(AX, AY + FScroll, FFonts.MeasureOn(ACanvas));
 end;
 
 procedure TAtlasDocView.EndSelection;
 begin
-  FSelecting := False;
+  FSelection.Active := False;
 end;
 
 procedure TAtlasDocView.ClearSelection;
 begin
-  FAnchor := -1;
-  FCaret := -1;
-  FSelecting := False;
+  FSelection := TAtlasDocSelection.None;
 end;
 
 function TAtlasDocView.HasSelection: Boolean;
 begin
-  Result := (FAnchor >= 0) and (FCaret >= 0) and (FAnchor <> FCaret);
+  Result := (FSelection.Anchor >= 0) and (FSelection.Caret >= 0) and (FSelection.Anchor <> FSelection.Caret);
 end;
 
 function TAtlasDocView.SelectedText: string;
 begin
   if HasSelection then
   begin
-    Result := FLayout.Selected(FAnchor, FCaret);
+    Result := FLayout.Selected(FSelection.Anchor, FSelection.Caret);
   end
   else
   begin
@@ -428,140 +498,213 @@ begin
   end;
 end;
 
+type
+  /// <summary>Zeichnen der Zeilen eines Ausschnitts: Zielfläche, Farben, Satz und Markierung.</summary>
+  TAtlasDocPainter = record
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Fonts: TAtlasDocFontSet;
+    Layout: TAtlasDocLayout;
+    Measure: TAtlasDocMeasure;
+    Left: Integer;
+    Top: Integer;
+    Width: Integer;
+    Scroll: Integer;
+    /// <summary>Höhe des Ausschnitts.</summary>
+    Viewport: Integer;
+    Pad: Integer;
+    HotLink: Integer;
+    Selected: Boolean;
+    From: Integer;
+    Till: Integer;
+    /// <summary>Codefläche: schattiert und gerahmt über aufeinanderfolgende Codezeilen.</summary>
+    procedure Shade(AIndex, AY: Integer);
+    /// <summary>Überschrift: Linie von hinter dem Text bis zum rechten Rand.</summary>
+    procedure Rule(const ALine: TAtlasDocLine; AY: Integer);
+    procedure Underline(const ASpan: TAtlasDocSpan; ASpanTop: Integer);
+    procedure Span(const ASpan: TAtlasDocSpan; const ALine: TAtlasDocLine; AY: Integer);
+    procedure Line(AIndex: Integer);
+  end;
+
+procedure TAtlasDocPainter.Shade(AIndex, AY: Integer);
+var
+  mLine: TAtlasDocLine;
+  mFirst, mLast: Boolean;
+  mTop, mBottom: Integer;
+begin
+  mLine := Layout.Lines[AIndex];
+  mFirst := (AIndex = 0) or not Layout.Lines[AIndex - 1].Shaded;
+  mLast := (AIndex = High(Layout.Lines)) or not Layout.Lines[AIndex + 1].Shaded;
+  mTop := AY;
+  if mFirst then
+  begin
+    Dec(mTop, Pad);
+  end;
+  mBottom := AY + mLine.Height + Pad;
+  if not mLast then
+  begin
+    mBottom := Top + Layout.Lines[AIndex + 1].Top - Scroll;
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Gutter);
+  Canvas.FillRect(Rect(Left + mLine.ShadeLeft, mTop, Left + Width, mBottom));
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Color := ToColor(Colors.Line);
+  Canvas.MoveTo(Left + mLine.ShadeLeft, mTop);
+  Canvas.LineTo(Left + mLine.ShadeLeft, mBottom);
+  Canvas.MoveTo(Left + Width - 1, mTop);
+  Canvas.LineTo(Left + Width - 1, mBottom);
+  if mFirst then
+  begin
+    Canvas.MoveTo(Left + mLine.ShadeLeft, mTop);
+    Canvas.LineTo(Left + Width, mTop);
+  end;
+  if mLast then
+  begin
+    Canvas.MoveTo(Left + mLine.ShadeLeft, mBottom - 1);
+    Canvas.LineTo(Left + Width, mBottom - 1);
+  end;
+end;
+
+procedure TAtlasDocPainter.Rule(const ALine: TAtlasDocLine; AY: Integer);
+begin
+  if not ALine.Rule or (ALine.RuleFrom >= Width) then
+  begin
+    Exit;
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Color := ToColor(Colors.Line);
+  Canvas.MoveTo(Left + ALine.RuleFrom, AY + ALine.Height div 2);
+  Canvas.LineTo(Left + Width, AY + ALine.Height div 2);
+end;
+
+procedure TAtlasDocPainter.Underline(const ASpan: TAtlasDocSpan; ASpanTop: Integer);
+var
+  mHot: Boolean;
+begin
+  mHot := (ASpan.Link >= 0) and (ASpan.Link = HotLink);
+  if not ASpan.Underline and not mHot then
+  begin
+    Exit;
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Color := ToColor(ColorOf(Colors, ASpan.Color));
+  Canvas.Pen.Width := 1;
+  if mHot then
+  begin
+    Canvas.Pen.Width := Max(2, Fonts.Scale(2));
+  end;
+  Canvas.MoveTo(Left + ASpan.Left, ASpanTop + Fonts.FaceHeight(ASpan.Face));
+  Canvas.LineTo(Left + ASpan.Right, ASpanTop + Fonts.FaceHeight(ASpan.Face));
+  Canvas.Pen.Width := 1;
+end;
+
+procedure TAtlasDocPainter.Span(const ASpan: TAtlasDocSpan; const ALine: TAtlasDocLine; AY: Integer);
+var
+  mSpanTop, mSelLeft, mSelRight: Integer;
+begin
+  mSpanTop := AY + (ALine.Height - Fonts.FaceHeight(ASpan.Face)) div 2;
+  if ASpan.Pill then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Colors.AccentSoft);
+    Canvas.Pen.Style := psClear;
+    Canvas.RoundRect(Left + ASpan.Left, mSpanTop, Left + ASpan.Right, mSpanTop + Fonts.FaceHeight(ASpan.Face),
+      Fonts.Scale(6), Fonts.Scale(6));
+    Canvas.Pen.Style := psSolid;
+  end;
+  if Selected and Layout.SpanRange(ASpan, From, Till, Measure, mSelLeft, mSelRight) then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Colors.Selection);
+    Canvas.FillRect(Rect(Left + mSelLeft, AY, Left + mSelRight, AY + ALine.Height));
+  end;
+  Canvas.Font := Fonts.FontOf(ASpan.Face);
+  Canvas.Font.Color := ToColor(ColorOf(Colors, ASpan.Color));
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(Left + ASpan.Left + ASpan.Pad, mSpanTop, ASpan.Text);
+  Underline(ASpan, mSpanTop);
+end;
+
+procedure TAtlasDocPainter.Line(AIndex: Integer);
+var
+  mLine: TAtlasDocLine;
+  mSpan: TAtlasDocSpan;
+  mY: Integer;
+begin
+  mLine := Layout.Lines[AIndex];
+  mY := Top + mLine.Top - Scroll;
+  if (mY + mLine.Height + Pad < Top) or (mY - Pad > Top + Viewport) then
+  begin
+    Exit;
+  end;
+  if mLine.Shaded then
+  begin
+    Shade(AIndex, mY);
+  end;
+  Rule(mLine, mY);
+  for mSpan in mLine.Spans do
+  begin
+    Span(mSpan, mLine, mY);
+  end;
+end;
+
 procedure TAtlasDocView.Paint(ACanvas: TCanvas; const AColors: TAtlasColors; ALeft, ATop: Integer);
 var
-  Saved, Y, SpanTop, From, Till, SelLeft, SelRight, Track, Thumb, ThumbTop, Index, Pad, ShadeTop,
-    ShadeBottom: Integer;
-  Line: TAtlasDocLine;
-  FirstShaded, LastShaded: Boolean;
-  Span: TAtlasDocSpan;
-  Measure: TAtlasDocMeasure;
-  Selected: Boolean;
+  mSaved, mIndex: Integer;
+  mPainter: TAtlasDocPainter;
 begin
   if FLayout.IsEmpty or (FViewport <= 0) then
   begin
     Exit;
   end;
-  Measure := MeasureOn(ACanvas);
-  Selected := HasSelection;
-  From := Min(FAnchor, FCaret);
-  Till := Max(FAnchor, FCaret);
-  Saved := SaveDC(ACanvas.Handle);
+  mPainter := Default(TAtlasDocPainter);
+  mPainter.Canvas := ACanvas;
+  mPainter.Colors := AColors;
+  mPainter.Fonts := FFonts;
+  mPainter.Layout := FLayout;
+  mPainter.Measure := FFonts.MeasureOn(ACanvas);
+  mPainter.Left := ALeft;
+  mPainter.Top := ATop;
+  mPainter.Width := FWidth;
+  mPainter.Scroll := FScroll;
+  mPainter.Viewport := FViewport;
+  mPainter.Pad := FFonts.Scale(3);
+  mPainter.HotLink := FHotLink;
+  mPainter.Selected := HasSelection;
+  mPainter.From := Min(FSelection.Anchor, FSelection.Caret);
+  mPainter.Till := Max(FSelection.Anchor, FSelection.Caret);
+  mSaved := SaveDC(ACanvas.Handle);
   try
-    IntersectClipRect(ACanvas.Handle, ALeft, ATop, ALeft + FWidth + Scale(2), ATop + FViewport);
-    Pad := Scale(3);
-    for Index := 0 to High(FLayout.Lines) do
+    IntersectClipRect(ACanvas.Handle, ALeft, ATop, ALeft + FWidth + FFonts.Scale(2), ATop + FViewport);
+    for mIndex := 0 to High(FLayout.Lines) do
     begin
-      Line := FLayout.Lines[Index];
-      Y := ATop + Line.Top - FScroll;
-      if (Y + Line.Height + Pad < ATop) or (Y - Pad > ATop + FViewport) then
-      begin
-        Continue;
-      end;
-      // Codefläche: schattiert und gerahmt über aufeinanderfolgende Codezeilen.
-      if Line.Shaded then
-      begin
-        FirstShaded := (Index = 0) or not FLayout.Lines[Index - 1].Shaded;
-        LastShaded := (Index = High(FLayout.Lines)) or not FLayout.Lines[Index + 1].Shaded;
-        ShadeTop := Y;
-        if FirstShaded then
-        begin
-          Dec(ShadeTop, Pad);
-        end;
-        ShadeBottom := Y + Line.Height;
-        if LastShaded then
-        begin
-          Inc(ShadeBottom, Pad);
-        end
-        else
-        begin
-          ShadeBottom := ATop + FLayout.Lines[Index + 1].Top - FScroll;
-        end;
-        ACanvas.Brush.Style := bsSolid;
-        ACanvas.Brush.Color := ToColor(AColors.Gutter);
-        ACanvas.FillRect(Rect(ALeft + Line.ShadeLeft, ShadeTop, ALeft + FWidth, ShadeBottom));
-        ACanvas.Pen.Style := psSolid;
-        ACanvas.Pen.Width := 1;
-        ACanvas.Pen.Color := ToColor(AColors.Line);
-        ACanvas.MoveTo(ALeft + Line.ShadeLeft, ShadeTop);
-        ACanvas.LineTo(ALeft + Line.ShadeLeft, ShadeBottom);
-        ACanvas.MoveTo(ALeft + FWidth - 1, ShadeTop);
-        ACanvas.LineTo(ALeft + FWidth - 1, ShadeBottom);
-        if FirstShaded then
-        begin
-          ACanvas.MoveTo(ALeft + Line.ShadeLeft, ShadeTop);
-          ACanvas.LineTo(ALeft + FWidth, ShadeTop);
-        end;
-        if LastShaded then
-        begin
-          ACanvas.MoveTo(ALeft + Line.ShadeLeft, ShadeBottom - 1);
-          ACanvas.LineTo(ALeft + FWidth, ShadeBottom - 1);
-        end;
-      end;
-      // Überschrift: Linie von hinter dem Text bis zum rechten Rand.
-      if Line.Rule and (Line.RuleFrom < FWidth) then
-      begin
-        ACanvas.Pen.Style := psSolid;
-        ACanvas.Pen.Width := 1;
-        ACanvas.Pen.Color := ToColor(AColors.Line);
-        ACanvas.MoveTo(ALeft + Line.RuleFrom, Y + Line.Height div 2);
-        ACanvas.LineTo(ALeft + FWidth, Y + Line.Height div 2);
-      end;
-      for Span in Line.Spans do
-      begin
-        SpanTop := Y + (Line.Height - FaceHeight(Span.Face)) div 2;
-        if Span.Pill then
-        begin
-          ACanvas.Brush.Style := bsSolid;
-          ACanvas.Brush.Color := ToColor(AColors.AccentSoft);
-          ACanvas.Pen.Style := psClear;
-          ACanvas.RoundRect(ALeft + Span.Left, SpanTop, ALeft + Span.Right, SpanTop + FaceHeight(Span.Face),
-            Scale(6), Scale(6));
-          ACanvas.Pen.Style := psSolid;
-        end;
-        if Selected and FLayout.SpanRange(Span, From, Till, Measure, SelLeft, SelRight) then
-        begin
-          ACanvas.Brush.Style := bsSolid;
-          ACanvas.Brush.Color := ToColor(AColors.Selection);
-          ACanvas.FillRect(Rect(ALeft + SelLeft, Y, ALeft + SelRight, Y + Line.Height));
-        end;
-        ACanvas.Font := FontOf(Span.Face);
-        ACanvas.Font.Color := ToColor(ColorOf(AColors, Span.Color));
-        ACanvas.Brush.Style := bsClear;
-        ACanvas.TextOut(ALeft + Span.Left + Span.Pad, SpanTop, Span.Text);
-        if Span.Underline or ((Span.Link >= 0) and (Span.Link = FHotLink)) then
-        begin
-          ACanvas.Pen.Style := psSolid;
-          ACanvas.Pen.Color := ToColor(ColorOf(AColors, Span.Color));
-          if (Span.Link >= 0) and (Span.Link = FHotLink) then
-          begin
-            ACanvas.Pen.Width := Max(2, Scale(2));
-          end
-          else
-          begin
-            ACanvas.Pen.Width := 1;
-          end;
-          ACanvas.MoveTo(ALeft + Span.Left, SpanTop + FaceHeight(Span.Face));
-          ACanvas.LineTo(ALeft + Span.Right, SpanTop + FaceHeight(Span.Face));
-          ACanvas.Pen.Width := 1;
-        end;
-      end;
+      mPainter.Line(mIndex);
     end;
   finally
-    RestoreDC(ACanvas.Handle, Saved);
+    RestoreDC(ACanvas.Handle, mSaved);
     // RestoreDC wählt die alten Objekte; TCanvas soll Schrift, Stift und Pinsel neu wählen.
     ACanvas.Refresh;
   end;
-  // Lage im Text: schmaler Balken rechts neben dem Ausschnitt.
-  if CanScroll then
-  begin
-    Track := FViewport;
-    Thumb := Max(Scale(16), MulDiv(Track, FViewport, FLayout.Height));
-    ThumbTop := ATop + MulDiv(Track - Thumb, FScroll, Max(1, FLayout.Height - FViewport));
-    TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + Scale(4), ThumbTop, ALeft + FWidth + Scale(7), ThumbTop + Thumb),
-      AColors, 0);
-  end;
+  PaintThumb(ACanvas, AColors, ALeft, ATop);
   ACanvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasDocView.PaintThumb(ACanvas: TCanvas; const AColors: TAtlasColors; ALeft, ATop: Integer);
+var
+  mThumb, mThumbTop: Integer;
+begin
+  // Lage im Text: schmaler Balken rechts neben dem Ausschnitt.
+  if not CanScroll then
+  begin
+    Exit;
+  end;
+  mThumb := Max(FFonts.Scale(16), MulDiv(FViewport, FViewport, FLayout.Height));
+  mThumbTop := ATop + MulDiv(FViewport - mThumb, FScroll, Max(1, FLayout.Height - FViewport));
+  TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + FFonts.Scale(4), mThumbTop, ALeft + FWidth + FFonts.Scale(7),
+    mThumbTop + mThumb), AColors, 0);
 end;
 
 end.

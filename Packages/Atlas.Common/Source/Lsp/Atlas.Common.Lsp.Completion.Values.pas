@@ -215,7 +215,7 @@ begin
   Result := ALookup.Resolver.ResolveChain(ALookup.Tree, ALookup.FileName, ATypeName.Split(['.']), AOffset);
   // Eingebaute Typen (Integer, string) stehen nicht im Index: nicht danach suchen (Code-Review P-12).
   if (Result.Found and Result.IsType) or (ALookup.Index = nil) or (Pos('.', ATypeName) > 0) or
-    TNameResolver.IsBuiltinTypeName(ATypeName) then
+    TResolverText.IsBuiltinTypeName(ATypeName) then
   begin
     Exit;
   end;
@@ -445,7 +445,7 @@ end;
 function IsImportableName(const ATypeName: string): Boolean;
 begin
   Result := (ATypeName <> '') and (Pos('<', ATypeName) = 0) and (Pos('.', ATypeName) = 0) and
-    (Pos('{', ATypeName) = 0) and not TNameResolver.IsBuiltinTypeName(ATypeName);
+    (Pos('{', ATypeName) = 0) and not TResolverText.IsBuiltinTypeName(ATypeName);
 end;
 
 /// <summary>Ein Typ aus einer anderen Unit, die ATree noch nicht einbindet.</summary>
@@ -984,11 +984,12 @@ var
   mIndex, mDepth: Integer;
   mTyped: TResolvedSymbol;
 begin
-  Result := ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, AContext.Names, AContext.Offset);
+  Result := ARequest.Resolver.Candidates.MemberCandidates(ARequest.Tree, ARequest.FileName, AContext.Names,
+    AContext.Offset);
   for mIndex := 0 to High(Result) do
   begin
     if (Result[mIndex].SymbolKind = TIndexSymbolKind.Property_) and (Result[mIndex].TypeName = '') and
-      ARequest.Resolver.TypedProperty(AType, Result[mIndex].Name, mTyped, mDepth) then
+      ARequest.Resolver.Queries.TypedProperty(AType, Result[mIndex].Name, mTyped, mDepth) then
     begin
       mTyped.Visibility := Result[mIndex].Visibility;
       mTyped.Depth := mDepth;
@@ -1065,8 +1066,7 @@ end;
 function AssignSite(ARequest: TCompletionRequest; out AContext: TCompletionContext; out AType: TResolvedSymbol;
   out ALineText: string): Boolean;
 var
-  mOwner: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mChain: TResolvedChainType;
 begin
   AContext := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
   ALineText := ARequest.LineText(ARequest.Position.Line);
@@ -1076,7 +1076,8 @@ begin
     (Trim(Copy(ALineText, ARequest.Position.Character + 1, MaxInt)) = '') and
     AtStatementStart(ARequest.Tree.Tokens, AContext.ChainStart);
   Result := Result and ARequest.Resolver.ChainType(ARequest.Tree, ARequest.FileName, AContext.Names,
-    AContext.Offset, mOwner, AType, mTypeFound) and mTypeFound and IsAssignableOwner(AContext, mOwner, AType);
+    AContext.Offset, mChain) and mChain.TypeFound and IsAssignableOwner(AContext, mChain.Owner, mChain.TypeInfo);
+  AType := mChain.TypeInfo;
 end;
 
 /// <summary>Text des Eintrags: Liste mit Kontrollkästchen, Platzhalter oder Klartext.</summary>

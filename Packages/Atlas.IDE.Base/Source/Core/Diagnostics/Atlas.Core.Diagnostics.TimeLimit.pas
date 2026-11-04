@@ -39,6 +39,12 @@ type
       // Unter FLock: fertig mit dem aktuellen Aufruf bzw. vom Aufrufer aufgegeben.
       FFinished: Boolean;
       FAbandoned: Boolean;
+      /// <summary>Wartet auf den nächsten Auftrag; False bei Ende oder Herunterfahren.</summary>
+      function WaitForStart: Boolean;
+      /// <summary>Führt FProc aus; Fehlertext oder ''.</summary>
+      function RunCurrent: string;
+      /// <summary>Meldet den Aufruf fertig; True, wenn der Aufrufer aufgegeben hatte.</summary>
+      function Finish(const AError: string): Boolean;
     protected
       procedure Execute; override;
     public
@@ -99,56 +105,70 @@ begin
   FStart.Free;
 end;
 
-procedure TAtlasTimeLimit.TWorker.Execute;
-var
-  Proc: TProc;
-  Error: string;
-  Abandoned: Boolean;
+function TAtlasTimeLimit.TWorker.WaitForStart: Boolean;
 begin
+  Result := False;
   while not Terminated do
   begin
-    if TAtlasShutdown.WaitFor(FStart, 1000) <> wrSignaled then
+    if TAtlasShutdown.WaitFor(FStart, 1000) = wrSignaled then
     begin
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      Continue;
+      Exit(not Terminated);
     end;
-    if Terminated then
+    if TAtlasShutdown.Signalled then
     begin
       Exit;
     end;
-    Proc := FProc;
-    Error := '';
-    try
-      if Assigned(Proc) then
-      begin
-        Proc();
-      end;
-    except
-      on E: Exception do
-        Error := E.ClassName + ': ' + E.Message;
+  end;
+end;
+
+function TAtlasTimeLimit.TWorker.RunCurrent: string;
+var
+  mProc: TProc;
+begin
+  Result := '';
+  mProc := FProc;
+  try
+    if Assigned(mProc) then
+    begin
+      mProc();
     end;
-    Proc := nil;
+  except
+    on E: Exception do
+    begin
+      Result := E.ClassName + ': ' + E.Message;
+    end;
+  end;
+end;
+
+function TAtlasTimeLimit.TWorker.Finish(const AError: string): Boolean;
+begin
+  TAtlasTimeLimit.FLock.Enter;
+  try
+    FProc := nil;
+    FError := AError;
+    FFinished := True;
+    Result := FAbandoned;
+    FAbandoned := False;
+    FDone.SetEvent;
+  finally
+    TAtlasTimeLimit.FLock.Leave;
+  end;
+end;
+
+procedure TAtlasTimeLimit.TWorker.Execute;
+var
+  mError: string;
+begin
+  while WaitForStart do
+  begin
+    mError := RunCurrent;
     // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
     if Terminated then
     begin
       Exit;
     end;
-    TAtlasTimeLimit.FLock.Enter;
-    try
-      FProc := nil;
-      FError := Error;
-      FFinished := True;
-      Abandoned := FAbandoned;
-      FAbandoned := False;
-      FDone.SetEvent;
-    finally
-      TAtlasTimeLimit.FLock.Leave;
-    end;
     // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
-    if Abandoned then
+    if Finish(mError) then
     begin
       TAtlasTimeLimit.Release(Self);
     end;

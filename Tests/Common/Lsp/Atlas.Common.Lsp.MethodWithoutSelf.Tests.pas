@@ -163,11 +163,13 @@ begin
   Context.Files := [KundenFile, AufruferFile];
   Context.ReadText := ReadFile;
   Context.WithStatic := True;
+  Context.Conversion := AConversion;
+  Context.Style := TFormatStyle.Default;
   Tree := TPascalParser.Parse(Kunden);
   Resolver := TNameResolver.Create(AIndex);
   try
     Result := TLspMethodWithoutSelf.Execute(Resolver, Tree, KundenFile, Kunden, TTextPosition.Create(ALine,
-      ACharacter), AConversion, Context, TFormatStyle.Default);
+      ACharacter), Context);
   finally
     Resolver.Free;
     Tree.Free;
