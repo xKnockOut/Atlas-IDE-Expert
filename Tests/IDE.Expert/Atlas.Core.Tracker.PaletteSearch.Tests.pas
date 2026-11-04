@@ -379,14 +379,16 @@ begin
     Fixture('GitHub', 'search-issues.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
     Fixture('GitHub', 'issue-details.json'));
-  Assert.IsTrue(mProvider.Search(GitHubTarget, mTransportRef, 'Willkommensseite', 5000, 20, mIssues, mError));
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 20,
+    mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.None);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
   Assert.AreEqual(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
   Assert.AreEqual(3, Integer(Length(mIssues)), 'ohne Pull Requests');
   Assert.AreEqual('#753', mIssues[0].Key);
   Assert.AreEqual('beispiel', mIssues[0].Assignee);
-  Assert.IsTrue(mProvider.Search(GitHubTarget, mTransportRef, 'Willkommensseite', 5000, 1, mIssues, mError));
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 1,
+    mIssues, mError));
   Assert.AreEqual(1, Integer(Length(mIssues)), 'höchstens AMax');
   Assert.IsTrue(mProvider.Lookup(GitHubTarget, mTransportRef, '#753', 5000, mIssue, mError));
   Assert.AreEqual('#753', mIssue.Key);
@@ -412,7 +414,8 @@ begin
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?query=', 200, Fixture('YouTrack', 'issues.json'));
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-12?', 200,
     Fixture('YouTrack', 'issue-lookup.json'));
-  Assert.IsTrue(mProvider.Search(YouTrackTarget, mTransportRef, 'Tracker', 5000, 20, mIssues, mError));
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'Tracker', 20,
+    mIssues, mError));
   Assert.AreEqual(TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
   Assert.AreEqual('ATL-123', mIssues[0].Key);
   Assert.AreEqual('In Progress', mIssues[0].State);
@@ -441,8 +444,8 @@ begin
   mTransport := TSearchTransport.Create;
   mTransportRef := mTransport;
   // Ohne Projekt bzw. ohne Transport: keine Anfrage.
-  Assert.IsFalse(mGitHub.Search(TAtlasTrackerTarget.Create('github', '', '', ''), mTransportRef, 'x', 5000, 20,
-    mIssues, mError));
+  Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(TAtlasTrackerTarget.Create('github', '', '', ''),
+    mTransportRef, 5000), 'x', 20, mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
   Assert.IsFalse(mYouTrack.Lookup(YouTrackTarget, nil, 'ATL-1', 5000, mIssue, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
@@ -452,7 +455,7 @@ begin
   // Antworten des Servers.
   mTransport.Answer('https://api.github.com/search/', 401, '{"message":"Bad credentials"}');
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-9?', 200, 'kein JSON');
-  Assert.IsFalse(mGitHub.Search(GitHubTarget, mTransportRef, 'x', 5000, 20, mIssues, mError));
+  Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'x', 20, mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
   Assert.IsFalse(mGitHub.Lookup(GitHubTarget, mTransportRef, '#99', 5000, mIssue, mError), 'unbekannte Adresse');
   Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
@@ -461,7 +464,8 @@ begin
   Assert.AreEqual('', mIssue.Key);
   // Zeitgrenze des Transports kommt unverändert an.
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
-  Assert.IsFalse(mYouTrack.Search(YouTrackTarget, mTransportRef, 'x', 5000, 20, mIssues, mError));
+  Assert.IsFalse(mYouTrack.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'x', 20, mIssues,
+    mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
   Assert.AreEqual(0, Integer(Length(mIssues)));
 end;

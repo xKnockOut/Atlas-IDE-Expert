@@ -68,12 +68,9 @@ type
     class function ParseIssues(const AJson: string; const ATarget: TAtlasTrackerTarget;
       var ASnapshot: TAtlasBoardSnapshot): Boolean; static;
     { IAtlasTrackerBoards }
-    function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+    function LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
       out AError: TAtlasCiFetchError): Boolean;
-    function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-      ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    function MoveCard(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
   end;
 
 implementation
@@ -325,107 +322,142 @@ begin
   end;
 end;
 
-/// <summary>Spalten, Feld, Schätzfeld und Sprints aus fields.</summary>
-procedure ReadFields(AProject: TJSONObject; var ASnapshot: TAtlasBoardSnapshot; out AIteration, APriority: string);
+/// <summary>Sprints einer Liste von Iterationen anhängen; AArchived für abgeschlossene.</summary>
+procedure AddIterations(AList: TJSONValue; AArchived: Boolean; var ASprints: TArray<TAtlasBoardSprint>);
 var
-  mNodes, mOptions: TJSONArray;
-  mItem, mOption: TJSONValue;
-  mField, mChosen, mFirst, mConfig: TJSONObject;
+  mOption: TJSONValue;
   mSprint: TAtlasBoardSprint;
+begin
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mOption in TJSONArray(AList) do
+  begin
+    if mOption is TJSONObject then
+    begin
+      mSprint := IterationOf(TJSONObject(mOption));
+      mSprint.Archived := AArchived;
+      ASprints := ASprints + [mSprint];
+    end;
+  end;
+end;
+
+/// <summary>Sprints eines Iterationsfelds: laufende und künftige, dann abgeschlossene.</summary>
+function SprintsOf(AConfig: TJSONObject): TArray<TAtlasBoardSprint>;
+begin
+  Result := nil;
+  AddIterations(AConfig.Values['iterations'], False, Result);
+  AddIterations(AConfig.Values['completedIterations'], True, Result);
+  Result := Copy(Result, 0, TAtlasBoardSnapshot.MaxSprints);
+end;
+
+/// <summary>Spalten aus den Optionen eines Auswahlfelds.</summary>
+function OptionColumnsOf(AField: TJSONObject): TArray<TAtlasBoardColumn>;
+var
+  mOption: TJSONValue;
   mName: string;
 begin
-  AIteration := '';
-  APriority := '';
-  mChosen := nil;
-  mFirst := nil;
+  Result := nil;
+  for mOption in TJSONArray(AField.Values['options']) do
+  begin
+    if not (mOption is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mName := TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'name');
+    if mName <> '' then
+    begin
+      Result := Result + [TAtlasBoardColumn.Create(mName, TArray<string>.Create(mName),
+        TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'id'), TAtlasGitHubApi.ClosesIssue(mName))];
+    end;
+  end;
+end;
+
+type
+  /// <summary>Was ReadFields beim Durchgehen der Felder findet.</summary>
+  TFieldScan = record
+    Iteration: string;
+    Priority: string;
+    /// <summary>Feld „Status“.</summary>
+    Chosen: TJSONObject;
+    /// <summary>Erstes andere Auswahlfeld außer der Priorität.</summary>
+    First: TJSONObject;
+  end;
+
+/// <summary>Auswahlfeld: „Status“ geht vor, sonst das erste außer der Priorität; diese gibt den Farbbalken.
+/// </summary>
+procedure ScanOptionField(AField: TJSONObject; const AName: string; var AScan: TFieldScan);
+begin
+  if SameText(AName, 'Priority') or SameText(AName, 'Priorität') then
+  begin
+    AScan.Priority := AName;
+  end
+  else if SameText(AName, 'Status') then
+  begin
+    AScan.Chosen := AField;
+  end
+  else if (AScan.Chosen = nil) and (AScan.First = nil) then
+  begin
+    AScan.First := AField;
+  end;
+end;
+
+/// <summary>Ein Feld: Auswahl, Schätzung (#1277) oder Iteration.</summary>
+procedure ScanField(AField: TJSONObject; var ASnapshot: TAtlasBoardSnapshot; var AScan: TFieldScan);
+var
+  mName: string;
+begin
+  mName := TAtlasGitHubJson.TextOf(AField, 'name');
+  if AField.Values['options'] is TJSONArray then
+  begin
+    ScanOptionField(AField, mName, AScan);
+  end
+  else if (ASnapshot.PointsField = '') and SameText(TAtlasGitHubJson.TextOf(AField, 'dataType'), 'NUMBER') and
+    IsPointsName(mName) then
+  begin
+    ASnapshot.PointsField := mName;
+  end
+  else if (AScan.Iteration = '') and (AField.Values['configuration'] is TJSONObject) then
+  begin
+    AScan.Iteration := mName;
+    ASnapshot.Sprints := SprintsOf(TJSONObject(AField.Values['configuration']));
+  end;
+end;
+
+/// <summary>Spalten, Feld, Schätzfeld und Sprints aus fields; Ergebnis: Namen von Iterations- und
+/// Prioritätsfeld.</summary>
+function ReadFields(AProject: TJSONObject; var ASnapshot: TAtlasBoardSnapshot): TFieldScan;
+var
+  mNodes: TJSONArray;
+  mItem: TJSONValue;
+  mScan: TFieldScan;
+begin
+  mScan := Default(TFieldScan);
   ASnapshot.Columns := nil;
   ASnapshot.Sprints := nil;
   ASnapshot.PointsField := '';
   mNodes := NodesOf(AProject, 'fields');
-  if mNodes = nil then
+  if mNodes <> nil then
   begin
-    Exit;
-  end;
-  for mItem in mNodes do
-  begin
-    if not (mItem is TJSONObject) then
+    for mItem in mNodes do
     begin
-      Continue;
-    end;
-    mField := TJSONObject(mItem);
-    mName := TAtlasGitHubJson.TextOf(mField, 'name');
-    if mField.Values['options'] is TJSONArray then
-    begin
-      // Auswahlfeld: „Status“ geht vor, sonst das erste außer der Priorität; diese gibt den Farbbalken.
-      if SameText(mName, 'Priority') or SameText(mName, 'Priorität') then
+      if mItem is TJSONObject then
       begin
-        APriority := mName;
-      end
-      else if SameText(mName, 'Status') then
-      begin
-        mChosen := mField;
-      end
-      else if (mChosen = nil) and (mFirst = nil) then
-      begin
-        mFirst := mField;
+        ScanField(TJSONObject(mItem), ASnapshot, mScan);
       end;
-    end
-    else if (ASnapshot.PointsField = '') and SameText(TAtlasGitHubJson.TextOf(mField, 'dataType'), 'NUMBER') and
-      IsPointsName(mName) then
-    begin
-      ASnapshot.PointsField := mName;
-    end
-    else if (AIteration = '') and (mField.Values['configuration'] is TJSONObject) then
-    begin
-      AIteration := mName;
-      mConfig := TJSONObject(mField.Values['configuration']);
-      // Laufende und künftige, dann abgeschlossene.
-      if mConfig.Values['iterations'] is TJSONArray then
-      begin
-        for mOption in TJSONArray(mConfig.Values['iterations']) do
-        begin
-          if mOption is TJSONObject then
-          begin
-            ASnapshot.Sprints := ASnapshot.Sprints + [IterationOf(TJSONObject(mOption))];
-          end;
-        end;
-      end;
-      if mConfig.Values['completedIterations'] is TJSONArray then
-      begin
-        for mOption in TJSONArray(mConfig.Values['completedIterations']) do
-        begin
-          if mOption is TJSONObject then
-          begin
-            mSprint := IterationOf(TJSONObject(mOption));
-            mSprint.Archived := True;
-            ASnapshot.Sprints := ASnapshot.Sprints + [mSprint];
-          end;
-        end;
-      end;
-      ASnapshot.Sprints := Copy(ASnapshot.Sprints, 0, TAtlasBoardSnapshot.MaxSprints);
     end;
   end;
-  if mChosen = nil then
+  Result := mScan;
+  if mScan.Chosen = nil then
   begin
-    mChosen := mFirst;
+    mScan.Chosen := mScan.First;
   end;
-  if mChosen = nil then
+  if mScan.Chosen <> nil then
   begin
-    Exit;
-  end;
-  ASnapshot.Field := TAtlasGitHubJson.TextOf(mChosen, 'name');
-  ASnapshot.FieldId := TAtlasGitHubJson.TextOf(mChosen, 'id');
-  mOptions := TJSONArray(mChosen.Values['options']);
-  for mOption in mOptions do
-  begin
-    if (mOption is TJSONObject) and (TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'name') <> '') then
-    begin
-      ASnapshot.Columns := ASnapshot.Columns + [TAtlasBoardColumn.Create(TAtlasGitHubJson.TextOf(TJSONObject(mOption),
-        'name'),
-        TArray<string>.Create(TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'name')),
-          TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'id'),
-        TAtlasGitHubApi.ClosesIssue(TAtlasGitHubJson.TextOf(TJSONObject(mOption), 'name')))];
-    end;
+    ASnapshot.Field := TAtlasGitHubJson.TextOf(mScan.Chosen, 'name');
+    ASnapshot.FieldId := TAtlasGitHubJson.TextOf(mScan.Chosen, 'id');
+    ASnapshot.Columns := OptionColumnsOf(mScan.Chosen);
   end;
 end;
 
@@ -479,21 +511,153 @@ begin
   end;
 end;
 
+/// <summary>Sprint ASprintId, sonst der aktuelle nach ANow; leer ohne Sprints.</summary>
+function ChosenSprint(const ASnapshot: TAtlasBoardSnapshot; const ASprintId: string;
+  ANow: TDateTime): TAtlasBoardSprint;
+var
+  mIndex, mSprint: Integer;
+begin
+  Result := Default(TAtlasBoardSprint);
+  mSprint := -1;
+  for mIndex := 0 to High(ASnapshot.Sprints) do
+  begin
+    if (ASprintId <> '') and SameText(ASnapshot.Sprints[mIndex].Id, ASprintId) then
+    begin
+      mSprint := mIndex;
+    end;
+  end;
+  if mSprint < 0 then
+  begin
+    mSprint := TAtlasTrackerBoard.CurrentSprint(ASnapshot.Sprints, ANow);
+  end;
+  if mSprint >= 0 then
+  begin
+    Result := ASnapshot.Sprints[mSprint];
+  end;
+end;
+
+/// <summary>Name des Feldes eines Feldwerts; '' ohne.</summary>
+function FieldNameOf(AValue: TJSONObject): string;
+var
+  mField: TJSONObject;
+begin
+  Result := '';
+  mField := ObjectAt(AValue, ['field']);
+  if mField <> nil then
+  begin
+    Result := TAtlasGitHubJson.TextOf(mField, 'name');
+  end;
+end;
+
+/// <summary>Ein Feldwert einer Karte: Iteration (AIteration), Schätzung, Status oder Priorität.</summary>
+procedure ReadFieldValue(AValue: TJSONObject; const ASnapshot: TAtlasBoardSnapshot; const AScan: TFieldScan;
+  var ACard: TAtlasBoardCard; var AIteration: string);
+var
+  mName: string;
+begin
+  mName := FieldNameOf(AValue);
+  if AValue.Values['iterationId'] is TJSONString then
+  begin
+    if SameText(mName, AScan.Iteration) then
+    begin
+      AIteration := TAtlasGitHubJson.TextOf(AValue, 'iterationId');
+    end;
+  end
+  else if AValue.Values['number'] is TJSONNumber then
+  begin
+    if (ASnapshot.PointsField <> '') and SameText(mName, ASnapshot.PointsField) then
+    begin
+      ACard.Points := TJSONNumber(AValue.Values['number']).AsDouble;
+      ACard.HasPoints := True;
+    end;
+  end
+  else if SameText(mName, ASnapshot.Field) then
+  begin
+    ACard.State := TAtlasGitHubJson.TextOf(AValue, 'name');
+  end
+  else if (AScan.Priority <> '') and SameText(mName, AScan.Priority) then
+  begin
+    ACard.Priority := TAtlasGitHubJson.TextOf(AValue, 'name');
+  end;
+end;
+
+/// <summary>Karte aus einem Eintrag des Projekts; False für Pull Requests und Entwürfe (ohne Inhalt) und, mit
+/// Iterationen, für Karten außerhalb des Sprints.</summary>
+function ProjectCardOf(AEntry: TJSONObject; const AProject: string; const ASnapshot: TAtlasBoardSnapshot;
+  const AScan: TFieldScan; out ACard: TAtlasBoardCard): Boolean;
+var
+  mIssue: TJSONObject;
+  mValues: TJSONArray;
+  mValue: TJSONValue;
+  mIteration: string;
+begin
+  ACard := Default(TAtlasBoardCard);
+  mIssue := ObjectAt(AEntry, ['content']);
+  Result := (mIssue <> nil) and (TAtlasGitHubJson.IntOf(mIssue, 'number') > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ACard.ItemId := TAtlasGitHubJson.TextOf(AEntry, 'id');
+  ACard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
+  ACard.Key := KeyOf(mIssue, AProject);
+  ACard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.MaxTitle);
+  ACard.Page := TAtlasGitHubJson.TextOf(mIssue, 'url');
+  ACard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
+  ACard.ResolvedAt := TimeOfText(TAtlasGitHubJson.TextOf(mIssue, 'closedAt'));
+  ReadAssignees(mIssue.Values['assignees'], ACard);
+  mIteration := '';
+  mValues := NodesOf(AEntry, 'fieldValues');
+  if mValues <> nil then
+  begin
+    for mValue in mValues do
+    begin
+      if mValue is TJSONObject then
+      begin
+        ReadFieldValue(TJSONObject(mValue), ASnapshot, AScan, ACard, mIteration);
+      end;
+    end;
+  end;
+  // Mit Iterationen nur die Karten des Sprints.
+  Result := (ASnapshot.Sprint.Id = '') or SameText(mIteration, ASnapshot.Sprint.Id);
+end;
+
+/// <summary>Karten aus items, höchstens TAtlasBoardSnapshot.MaxCards.</summary>
+procedure ReadProjectCards(AProject: TJSONObject; const ATarget: TAtlasTrackerTarget; const AScan: TFieldScan;
+  var ASnapshot: TAtlasBoardSnapshot);
+var
+  mNodes: TJSONArray;
+  mItem: TJSONValue;
+  mCard: TAtlasBoardCard;
+begin
+  ASnapshot.Cards := nil;
+  mNodes := NodesOf(AProject, 'items');
+  if mNodes = nil then
+  begin
+    Exit;
+  end;
+  for mItem in mNodes do
+  begin
+    if (mItem is TJSONObject) and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.MaxCards)
+      and ProjectCardOf(TJSONObject(mItem), ATarget.Project, ASnapshot, AScan, mCard) then
+    begin
+      ASnapshot.Cards := ASnapshot.Cards + [mCard];
+    end;
+  end;
+end;
+
 class function TAtlasGitHubBoards.ParseProject(const AJson: string; const ATarget: TAtlasTrackerTarget;
   const ASprintId: string; ANow: TDateTime; var ASnapshot: TAtlasBoardSnapshot): Boolean;
 var
-  mValue, mItem, mField: TJSONValue;
-  mProject, mEntry, mIssue, mFieldName: TJSONObject;
-  mNodes, mValues: TJSONArray;
-  mIteration, mPriority, mItemIteration, mName: string;
-  mSprint, mIndex: Integer;
-  mCard: TAtlasBoardCard;
+  mValue: TJSONValue;
+  mProject: TJSONObject;
+  mScan: TFieldScan;
 begin
-  Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
     mProject := ObjectAt(mValue, ['data', 'node']);
-    if (mProject = nil) or (TAtlasGitHubJson.TextOf(mProject, 'id') = '') then
+    Result := (mProject <> nil) and (TAtlasGitHubJson.TextOf(mProject, 'id') <> '');
+    if not Result then
     begin
       Exit;
     end;
@@ -501,101 +665,10 @@ begin
     ASnapshot.ProjectId := TAtlasGitHubJson.TextOf(mProject, 'id');
     ASnapshot.Board := TAtlasBoardRef.Create(ASnapshot.ProjectId, TAtlasGitHubJson.TextOf(mProject, 'title'));
     ASnapshot.Page := TAtlasGitHubJson.TextOf(mProject, 'url');
-    ReadFields(mProject, ASnapshot, mIteration, mPriority);
+    mScan := ReadFields(mProject, ASnapshot);
     // Sprint: gewählt, sonst der aktuelle.
-    ASnapshot.Sprint := Default(TAtlasBoardSprint);
-    mSprint := -1;
-    for mIndex := 0 to High(ASnapshot.Sprints) do
-    begin
-      if (ASprintId <> '') and SameText(ASnapshot.Sprints[mIndex].Id, ASprintId) then
-      begin
-        mSprint := mIndex;
-      end;
-    end;
-    if mSprint < 0 then
-    begin
-      mSprint := TAtlasTrackerBoard.CurrentSprint(ASnapshot.Sprints, ANow);
-    end;
-    if mSprint >= 0 then
-    begin
-      ASnapshot.Sprint := ASnapshot.Sprints[mSprint];
-    end;
-    ASnapshot.Cards := nil;
-    mNodes := NodesOf(mProject, 'items');
-    if mNodes <> nil then
-    begin
-      for mItem in mNodes do
-      begin
-        if not (mItem is TJSONObject) or (Length(ASnapshot.Cards) >= TAtlasBoardSnapshot.MaxCards) then
-        begin
-          Continue;
-        end;
-        mEntry := TJSONObject(mItem);
-        mIssue := ObjectAt(mEntry, ['content']);
-        // Nur Issues; Pull Requests und Entwürfe haben hier keinen Inhalt.
-        if (mIssue = nil) or (TAtlasGitHubJson.IntOf(mIssue, 'number') <= 0) then
-        begin
-          Continue;
-        end;
-        mCard := Default(TAtlasBoardCard);
-        mCard.ItemId := TAtlasGitHubJson.TextOf(mEntry, 'id');
-        mCard.Number := TAtlasGitHubJson.IntOf(mIssue, 'number');
-        mCard.Key := KeyOf(mIssue, ATarget.Project);
-        mCard.Title := Copy(TAtlasGitHubJson.TextOf(mIssue, 'title'), 1, TAtlasBoardCard.MaxTitle);
-        mCard.Page := TAtlasGitHubJson.TextOf(mIssue, 'url');
-        mCard.Checklist := TAtlasTrackerChecklist.Progress(TAtlasGitHubJson.TextOf(mIssue, 'body'));
-        mCard.ResolvedAt := TimeOfText(TAtlasGitHubJson.TextOf(mIssue, 'closedAt'));
-        ReadAssignees(mIssue.Values['assignees'], mCard);
-        mItemIteration := '';
-        mValues := NodesOf(mEntry, 'fieldValues');
-        if mValues <> nil then
-        begin
-          for mField in mValues do
-          begin
-            if not (mField is TJSONObject) then
-            begin
-              Continue;
-            end;
-            mFieldName := ObjectAt(mField, ['field']);
-            mName := '';
-            if mFieldName <> nil then
-            begin
-              mName := TAtlasGitHubJson.TextOf(mFieldName, 'name');
-            end;
-            if TJSONObject(mField).Values['iterationId'] is TJSONString then
-            begin
-              if SameText(mName, mIteration) then
-              begin
-                mItemIteration := TAtlasGitHubJson.TextOf(TJSONObject(mField), 'iterationId');
-              end;
-            end
-            else if TJSONObject(mField).Values['number'] is TJSONNumber then
-            begin
-              if (ASnapshot.PointsField <> '') and SameText(mName, ASnapshot.PointsField) then
-              begin
-                mCard.Points := TJSONNumber(TJSONObject(mField).Values['number']).AsDouble;
-                mCard.HasPoints := True;
-              end;
-            end
-            else if SameText(mName, ASnapshot.Field) then
-            begin
-              mCard.State := TAtlasGitHubJson.TextOf(TJSONObject(mField), 'name');
-            end
-            else if (mPriority <> '') and SameText(mName, mPriority) then
-            begin
-              mCard.Priority := TAtlasGitHubJson.TextOf(TJSONObject(mField), 'name');
-            end;
-          end;
-        end;
-        // Mit Iterationen nur die Karten des Sprints.
-        if (ASnapshot.Sprint.Id <> '') and not SameText(mItemIteration, ASnapshot.Sprint.Id) then
-        begin
-          Continue;
-        end;
-        ASnapshot.Cards := ASnapshot.Cards + [mCard];
-      end;
-    end;
-    Result := True;
+    ASnapshot.Sprint := ChosenSprint(ASnapshot, ASprintId, ANow);
+    ReadProjectCards(mProject, ATarget, mScan, ASnapshot);
   finally
     mValue.Free;
   end;
@@ -670,24 +743,6 @@ begin
   Result := AError = TAtlasCiFetchError.None;
 end;
 
-function GetText(const ATransport: IAtlasCiTransport; const AUrl: string; ATimeoutMs: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mStatus: Integer;
-begin
-  Result := False;
-  if not ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError) then
-  begin
-    Exit;
-  end;
-  if mStatus <> 200 then
-  begin
-    AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
-    Exit;
-  end;
-  Result := True;
-end;
-
 /// <summary>Ohne Projekt: Spalten Offen und Geschlossen, Karten aus /issues, Anmeldename aus /user.</summary>
 function LoadRepository(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const AWatch: TStopwatch; ATimeoutMs: Integer; var ASnapshot: TAtlasBoardSnapshot;
@@ -712,7 +767,8 @@ begin
     SetLength(ASnapshot.Page, Length(ASnapshot.Page) - Length('/1'));
   end;
   mBase := TAtlasGitHubApi.Base(ATarget) + '/repos/' + ATarget.Project + '/issues';
-  if not GetText(ATransport, mBase + '?state=open&per_page=100', TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mText,
+  if not TAtlasGitHubApi.GetText(ATransport, mBase + '?state=open&per_page=100', TAtlasGitHubApi.Remaining(AWatch,
+    ATimeoutMs), mText,
     AError) then
   begin
     Exit;
@@ -722,12 +778,13 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  if GetText(ATransport, mBase + '?state=closed&sort=updated&per_page=' + IntToStr(TAtlasGitHubBoards.MaxClosed),
+  if TAtlasGitHubApi.GetText(ATransport,
+    mBase + '?state=closed&sort=updated&per_page=' + IntToStr(TAtlasGitHubBoards.MaxClosed),
     TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mText, mError) then
   begin
     TAtlasGitHubBoards.ParseIssues(mText, ATarget, ASnapshot);
   end;
-  if (ASnapshot.Me = '') and GetText(ATransport, TAtlasGitHubApi.Base(ATarget) + '/user',
+  if (ASnapshot.Me = '') and TAtlasGitHubApi.GetText(ATransport, TAtlasGitHubApi.Base(ATarget) + '/user',
     TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mText, mError) then
   begin
     mValue := TJSONObject.ParseJSONValue(mText);
@@ -743,123 +800,138 @@ begin
   Result := True;
 end;
 
-function TAtlasGitHubBoards.LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+/// <summary>Das gewählte Projekt (ABoardId, sonst das erste) aus ASnapshot.Boards; '' ohne Projekte.</summary>
+function ChosenProject(const ASnapshot: TAtlasBoardSnapshot; const ABoardId: string): string;
+var
+  mBoard: TAtlasBoardRef;
+begin
+  Result := '';
+  for mBoard in ASnapshot.Boards do
+  begin
+    if (ABoardId <> '') and SameText(mBoard.Id, ABoardId) then
+    begin
+      Result := mBoard.Id;
+    end;
+  end;
+  if (Result = '') and (Length(ASnapshot.Boards) > 0) then
+  begin
+    Result := ASnapshot.Boards[0].Id;
+  end;
+end;
+
+/// <summary>Projekte des Repositorys über GraphQL lesen und eins wählen; '' ohne (dann AError: warum).</summary>
+function LoadProjectId(const ARequest: TAtlasBoardRequest; const ASend: IAtlasCiSend; const AUrl: string;
+  var ASnapshot: TAtlasBoardSnapshot; out AError: TAtlasCiFetchError): string;
+var
+  mText, mOwner, mName: string;
+  mAt: Integer;
+begin
+  Result := '';
+  AError := TAtlasCiFetchError.None;
+  mAt := Pos('/', ARequest.Target.Project);
+  mOwner := Copy(ARequest.Target.Project, 1, mAt - 1);
+  mName := Copy(ARequest.Target.Project, mAt + 1, MaxInt);
+  if Query(ASend, AUrl, TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.ProjectsQuery, ['owner', mOwner, 'name',
+    mName]), ARequest.TimeoutMs, mText, AError) and TAtlasGitHubBoards.ParseProjects(mText, ASnapshot) then
+  begin
+    Result := ChosenProject(ASnapshot, ARequest.BoardId);
+  end;
+end;
+
+function TAtlasGitHubBoards.LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
   out AError: TAtlasCiFetchError): Boolean;
 var
   mWatch: TStopwatch;
   mSend: IAtlasCiSend;
-  mUrl, mText, mOwner, mName, mProject: string;
-  mIndex: Integer;
+  mUrl, mText, mProject: string;
   mError: TAtlasCiFetchError;
 begin
   ASnapshot := TAtlasBoardSnapshot.Empty;
   AError := TAtlasCiFetchError.None;
   Result := False;
-  mUrl := GraphQlUrl(ATarget);
-  mIndex := Pos('/', ATarget.Project);
-  if (mUrl = '') or (mIndex <= 1) or (ATransport = nil) then
+  mUrl := GraphQlUrl(ARequest.Target);
+  if (mUrl = '') or (Pos('/', ARequest.Target.Project) <= 1) or (ARequest.Transport = nil) then
   begin
     AError := TAtlasCiFetchError.NotConfigured;
     Exit;
   end;
-  mOwner := Copy(ATarget.Project, 1, mIndex - 1);
-  mName := Copy(ATarget.Project, mIndex + 1, MaxInt);
   mWatch := TStopwatch.StartNew;
   // GraphQL braucht POST; ohne Schreibweg bleibt nur die Liste ohne Projekt.
   mProject := '';
   mError := TAtlasCiFetchError.None;
-  if Supports(ATransport, IAtlasCiSend, mSend) and Query(mSend, mUrl,
-    GraphQlBody(ProjectsQuery, ['owner', mOwner, 'name', mName]), ATimeoutMs, mText, mError) and
-    ParseProjects(mText, ASnapshot) then
+  if Supports(ARequest.Transport, IAtlasCiSend, mSend) then
   begin
-    for mIndex := 0 to High(ASnapshot.Boards) do
-    begin
-      if (ABoardId <> '') and SameText(ASnapshot.Boards[mIndex].Id, ABoardId) then
-      begin
-        mProject := ASnapshot.Boards[mIndex].Id;
-      end;
-    end;
-    if (mProject = '') and (Length(ASnapshot.Boards) > 0) then
-    begin
-      mProject := ASnapshot.Boards[0].Id;
-    end;
+    mProject := LoadProjectId(ARequest, mSend, mUrl, ASnapshot, mError);
   end;
   if mProject = '' then
   begin
-    Result := LoadRepository(ATarget, ATransport, mWatch, ATimeoutMs, ASnapshot, AError);
+    Result := LoadRepository(ARequest.Target, ARequest.Transport, mWatch, ARequest.TimeoutMs, ASnapshot, AError);
     ASnapshot.ProjectsDenied := mError = TAtlasCiFetchError.Unauthorized;
-    Exit;
-  end;
-  if not Query(mSend, mUrl, GraphQlBody(ProjectQuery, ['id', mProject]), TAtlasGitHubApi.Remaining(mWatch,
-    ATimeoutMs), mText, AError) then
+  end
+  else if Query(mSend, mUrl, GraphQlBody(ProjectQuery, ['id', mProject]), TAtlasGitHubApi.Remaining(mWatch,
+    ARequest.TimeoutMs), mText, AError) then
   begin
-    Exit;
+    Result := ParseProject(mText, ARequest.Target, ARequest.SprintId, TTimeZone.Local.ToUniversalTime(Now),
+      ASnapshot);
+    if not Result then
+    begin
+      AError := TAtlasCiFetchError.Invalid;
+    end;
   end;
-  if not ParseProject(mText, ATarget, ASprintId, TTimeZone.Local.ToUniversalTime(Now), ASnapshot) then
-  begin
-    AError := TAtlasCiFetchError.Invalid;
-    Exit;
-  end;
-  Result := True;
 end;
 
-function TAtlasGitHubBoards.MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
+/// <summary>Ergebnis einer GraphQL-Antwort auf einen Schreibzugriff: Fehler bei fehlender Antwort, anderem
+/// Status als 200 bzw. "errors", sonst Ok.</summary>
+function GraphQlWriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
+var
+  mError: TAtlasCiFetchError;
+  mMessage: string;
+begin
+  if ASent and (AResponse.Status <> 200) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(AResponse.Status), AResponse.Status,
+      TAtlasGitHubApi.ErrorMessage(AResponse.Text)));
+  end;
+  Result := TAtlasGitHubApi.WriteResult(ASent, AResponse);
+  if Result.Succeeded then
+  begin
+    mError := TAtlasGitHubBoards.GraphQlError(AResponse.Text, mMessage);
+    if mError <> TAtlasCiFetchError.None then
+    begin
+      Result := TAtlasTrackerWriteResult.Failed(mError, AResponse.Status, mMessage);
+    end;
+  end;
+end;
+
+/// <summary>Projekt: Feld „Status“ des Eintrags auf die Option der Spalte setzen.</summary>
+function MoveInProject(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot; const ASend: IAtlasCiSend;
   ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
-  mWatch: TStopwatch;
-  mSend: IAtlasCiSend;
-  mUrl, mMessage, mBody: string;
-  mResponse: TAtlasCiResponse;
-  mError: TAtlasCiFetchError;
   mColumn: TAtlasBoardColumn;
+  mBody: string;
+  mResponse: TAtlasCiResponse;
 begin
-  if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) then
+  mColumn := ASnapshot.Columns[AMove.Column];
+  if (mColumn.OptionId = '') or (AMove.Card.ItemId = '') or (ASnapshot.FieldId = '') then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  if not Supports(ATransport, IAtlasCiSend, mSend) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  end;
-  mColumn := ASnapshot.Columns[AColumn];
-  mWatch := TStopwatch.StartNew;
-  // Zuerst der Kommentar (#1266): Fehlen die Schreibrechte, ändert sich nichts. Nur im Repository des Ziels.
-  if (Trim(AComment) <> '') and (Copy(ACard.Key, 1, 1) = '#') then
-  begin
-    Result := TAtlasGitHubApi.PostComment(ATarget, mSend, ACard.Key, AComment, ATimeoutMs);
-    if not Result.Succeeded then
-    begin
-      Exit;
-    end;
-  end;
-  if ASnapshot.Kind = TAtlasBoardKind.Project then
-  begin
-    if (mColumn.OptionId = '') or (ACard.ItemId = '') or (ASnapshot.FieldId = '') then
-    begin
-      Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
-    end;
-    mBody := GraphQlBody(MoveMutation, ['project', ASnapshot.ProjectId, 'item', ACard.ItemId, 'field',
-      ASnapshot.FieldId, 'option', mColumn.OptionId]);
-    if not mSend.Send('POST', GraphQlUrl(ATarget), mBody, TAtlasGitHubApi.Remaining(mWatch, ATimeoutMs), mResponse) then
-    begin
-      Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
-    end;
-    if mResponse.Status <> 200 then
-    begin
-      Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
-        TAtlasGitHubApi.ErrorMessage(mResponse.Text)));
-    end;
-    mError := GraphQlError(mResponse.Text, mMessage);
-    if mError <> TAtlasCiFetchError.None then
-    begin
-      Exit(TAtlasTrackerWriteResult.Failed(mError, mResponse.Status, mMessage));
-    end;
-    Exit(TAtlasTrackerWriteResult.Ok);
-  end;
-  // Ohne Projekt: Zustand des Issues.
-  mUrl := TAtlasGitHubApi.IssueApiUrl(ATarget, ACard.Key);
+  mBody := TAtlasGitHubBoards.GraphQlBody(TAtlasGitHubBoards.MoveMutation, ['project', ASnapshot.ProjectId, 'item',
+    AMove.Card.ItemId, 'field', ASnapshot.FieldId, 'option', mColumn.OptionId]);
+  Result := GraphQlWriteResult(ASend.Send('POST', TAtlasGitHubBoards.GraphQlUrl(AMove.Target), mBody, ATimeoutMs,
+    mResponse), mResponse);
+end;
+
+/// <summary>Ohne Projekt: Zustand des Issues nach der Spalte (offen oder geschlossen).</summary>
+function MoveInRepository(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot;
+  const ASend: IAtlasCiSend; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mColumn: TAtlasBoardColumn;
+  mUrl, mBody: string;
+  mResponse: TAtlasCiResponse;
+begin
+  mColumn := ASnapshot.Columns[AMove.Column];
+  mUrl := TAtlasGitHubApi.IssueApiUrl(AMove.Target, AMove.Card.Key);
   if (mUrl = '') or (Length(mColumn.Values) = 0) then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
@@ -869,16 +941,42 @@ begin
   begin
     mBody := '{"state":"closed"}';
   end;
-  if not mSend.Send('PATCH', mUrl, mBody, TAtlasGitHubApi.Remaining(mWatch, ATimeoutMs), mResponse) then
+  Result := TAtlasGitHubApi.WriteResult(ASend.Send('PATCH', mUrl, mBody, ATimeoutMs, mResponse), mResponse);
+end;
+
+function TAtlasGitHubBoards.MoveCard(const AMove: TAtlasBoardMove;
+  const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
+var
+  mWatch: TStopwatch;
+  mSend: IAtlasCiSend;
+begin
+  if (AMove.Column < 0) or (AMove.Column > High(ASnapshot.Columns)) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   end;
-  if not TAtlasGitHubApi.Answered(mResponse.Status) then
+  if not Supports(AMove.Transport, IAtlasCiSend, mSend) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
-      TAtlasGitHubApi.ErrorMessage(mResponse.Text)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
   end;
+  mWatch := TStopwatch.StartNew;
   Result := TAtlasTrackerWriteResult.Ok;
+  // Zuerst der Kommentar (#1266): Fehlen die Schreibrechte, ändert sich nichts. Nur im Repository des Ziels.
+  if (Trim(AMove.Comment) <> '') and (Copy(AMove.Card.Key, 1, 1) = '#') then
+  begin
+    Result := TAtlasGitHubApi.PostComment(AMove.Target, mSend, AMove.Card.Key, AMove.Comment, AMove.TimeoutMs);
+  end;
+  if not Result.Succeeded then
+  begin
+    Exit;
+  end;
+  if ASnapshot.Kind = TAtlasBoardKind.Project then
+  begin
+    Result := MoveInProject(AMove, ASnapshot, mSend, TAtlasGitHubApi.Remaining(mWatch, AMove.TimeoutMs));
+  end
+  else
+  begin
+    Result := MoveInRepository(AMove, ASnapshot, mSend, TAtlasGitHubApi.Remaining(mWatch, AMove.TimeoutMs));
+  end;
 end;
 
 end.

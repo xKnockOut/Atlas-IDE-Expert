@@ -455,8 +455,8 @@ begin
         end
         else
         begin
-          mOk := mProvider.Search(mTarget, mTransport, AQuery.Text, TAtlasIssuePaletteSearch.TimeoutMs,
-            TAtlasIssuePaletteSearch.MaxResults, mIssues, mError);
+          mOk := mProvider.Search(TAtlasTrackerCall.Create(mTarget, mTransport, TAtlasIssuePaletteSearch.TimeoutMs),
+            AQuery.Text, TAtlasIssuePaletteSearch.MaxResults, mIssues, mError);
         end;
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.

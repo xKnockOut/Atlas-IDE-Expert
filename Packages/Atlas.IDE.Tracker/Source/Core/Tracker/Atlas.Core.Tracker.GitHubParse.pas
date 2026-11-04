@@ -134,81 +134,107 @@ uses
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubJson;
 
+/// <summary>Name eines Labels (Objekt mit "name" oder Text), gekürzt; '' ohne.</summary>
+function LabelNameOf(AValue: TJSONValue): string;
+begin
+  Result := '';
+  if AValue is TJSONObject then
+  begin
+    Result := Trim(TAtlasGitHubJson.TextOf(TJSONObject(AValue), 'name'));
+  end
+  else if AValue is TJSONString then
+  begin
+    Result := Trim(TJSONString(AValue).Value);
+  end;
+  if Result <> '' then
+  begin
+    Result := TAtlasGitHubJson.Shorten(Result, 40);
+  end;
+end;
+
+/// <summary>Labels eines Issues, höchstens AMax.</summary>
+function IssueLabelsOf(ALabels: TJSONValue; AMax: Integer): TArray<string>;
+var
+  mValue: TJSONValue;
+  mName: string;
+begin
+  Result := nil;
+  if not (ALabels is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mValue in TJSONArray(ALabels) do
+  begin
+    if Length(Result) >= AMax then
+    begin
+      Break;
+    end;
+    mName := LabelNameOf(mValue);
+    if mName <> '' then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
+/// <summary>Ein Eintrag von /search/issues; False für Pull Requests und Einträge ohne Nummer.</summary>
+function SearchIssueOf(AItem: TJSONValue; out AIssue: TAtlasTrackerIssue): Boolean;
+var
+  mItem: TJSONObject;
+begin
+  AIssue := TAtlasTrackerIssue.Empty;
+  // Die Suche liefert auch Pull Requests; die gehören nicht in die Liste.
+  Result := (AItem is TJSONObject) and (TJSONObject(AItem).Values['pull_request'] = nil);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AItem);
+  AIssue.Number := TAtlasGitHubJson.IntOf(mItem, 'number');
+  Result := AIssue.Number > 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  AIssue.Key := '#' + IntToStr(AIssue.Number);
+  AIssue.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mItem, 'title'), TAtlasTrackerIssue.MaxTitle);
+  AIssue.State := TAtlasGitHubJson.TextOf(mItem, 'state');
+  AIssue.Assignee := TAtlasGitHubJson.AssigneesOf(mItem);
+  AIssue.Labels := IssueLabelsOf(mItem.Values['labels'], TAtlasTrackerIssue.MaxLabels);
+end;
+
 class function TAtlasGitHubParse.ParseIssues(const AJson: string; AMax: Integer;
   out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
 var
-  Value, Items, Item, Labels, LabelValue: TJSONValue;
-  Issue: TAtlasTrackerIssue;
-  LabelName: string;
+  mValue, mItems, mItem: TJSONValue;
+  mIssue: TAtlasTrackerIssue;
 begin
   AIssues := nil;
-  Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONObject) then
+    mItems := nil;
+    if mValue is TJSONObject then
+    begin
+      mItems := TJSONObject(mValue).Values['items'];
+    end;
+    Result := mItems is TJSONArray;
+    if not Result then
     begin
       Exit;
     end;
-    Items := TJSONObject(Value).Values['items'];
-    if not (Items is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    for Item in TJSONArray(Items) do
+    for mItem in TJSONArray(mItems) do
     begin
       if Length(AIssues) >= AMax then
       begin
         Break;
       end;
-      if not (Item is TJSONObject) then
+      if SearchIssueOf(mItem, mIssue) then
       begin
-        Continue;
+        AIssues := AIssues + [mIssue];
       end;
-      // Die Suche liefert auch Pull Requests; die gehören nicht in die Liste.
-      if TJSONObject(Item).Values['pull_request'] <> nil then
-      begin
-        Continue;
-      end;
-      Issue := TAtlasTrackerIssue.Empty;
-      Issue.Number := TAtlasGitHubJson.IntOf(TJSONObject(Item), 'number');
-      if Issue.Number <= 0 then
-      begin
-        Continue;
-      end;
-      Issue.Key := '#' + IntToStr(Issue.Number);
-      Issue.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(Item), 'title'),
-        TAtlasTrackerIssue.MaxTitle);
-      Issue.State := TAtlasGitHubJson.TextOf(TJSONObject(Item), 'state');
-      Issue.Assignee := TAtlasGitHubJson.AssigneesOf(TJSONObject(Item));
-      Labels := TJSONObject(Item).Values['labels'];
-      if Labels is TJSONArray then
-      begin
-        for LabelValue in TJSONArray(Labels) do
-        begin
-          if Length(Issue.Labels) >= TAtlasTrackerIssue.MaxLabels then
-          begin
-            Break;
-          end;
-          LabelName := '';
-          if LabelValue is TJSONObject then
-          begin
-            LabelName := Trim(TAtlasGitHubJson.TextOf(TJSONObject(LabelValue), 'name'));
-          end
-          else if LabelValue is TJSONString then
-          begin
-            LabelName := Trim(TJSONString(LabelValue).Value);
-          end;
-          if LabelName <> '' then
-          begin
-            Issue.Labels := Issue.Labels + [TAtlasGitHubJson.Shorten(LabelName, 40)];
-          end;
-        end;
-      end;
-      AIssues := AIssues + [Issue];
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -271,48 +297,49 @@ begin
   end;
 end;
 
+/// <summary>Das Wort vor Stelle AIndex (Leerzeichen und ":" übersprungen); '' ohne.</summary>
+function WordBefore(const ALower: string; AIndex: Integer): string;
+var
+  mStart, mStop: Integer;
+begin
+  mStart := AIndex - 1;
+  while (mStart >= 1) and CharInSet(ALower[mStart], [' ', ':', #9]) do
+  begin
+    Dec(mStart);
+  end;
+  mStop := mStart;
+  while (mStart >= 1) and CharInSet(ALower[mStart], ['a'..'z']) do
+  begin
+    Dec(mStart);
+  end;
+  Result := Copy(ALower, mStart + 1, mStop - mStart);
+end;
+
+/// <summary>„close(s|d)“, „fix(es|ed)“ oder „resolve(s|d)“.</summary>
+function IsClosingWord(const AWord: string): Boolean;
+const
+  cWords: array[0..8] of string = ('close', 'closes', 'closed', 'fix', 'fixes', 'fixed', 'resolve', 'resolves',
+    'resolved');
+begin
+  Result := (AWord <> '') and (IndexStr(AWord, cWords) >= 0);
+end;
+
 /// <summary>„close(s|d)“, „fix(es|ed)“ oder „resolve(s|d)“, optional „:“, dann „#N“ ohne weitere Ziffer.</summary>
 function TextClosesIssue(const AText: string; ANumber: Integer): Boolean;
-const
-  Words: array[0..8] of string = ('close', 'closes', 'closed', 'fix', 'fixes', 'fixed', 'resolve', 'resolves',
-    'resolved');
 var
-  Lower, Mark: string;
-  Index, Start, Stop: Integer;
-  Word: string;
+  mLower, mMark: string;
+  mIndex, mStop: Integer;
 begin
   Result := False;
-  Lower := LowerCase(AText);
-  Mark := '#' + IntToStr(ANumber);
-  Index := Pos(Mark, Lower);
-  while Index > 0 do
+  mLower := LowerCase(AText);
+  mMark := '#' + IntToStr(ANumber);
+  mIndex := Pos(mMark, mLower);
+  while (mIndex > 0) and not Result do
   begin
-    Stop := Index + Length(Mark);
-    if (Stop > Length(Lower)) or not CharInSet(Lower[Stop], ['0'..'9']) then
-    begin
-      // Rückwärts: Leerzeichen und ":" überspringen, dann das Wort davor.
-      Start := Index - 1;
-      while (Start >= 1) and CharInSet(Lower[Start], [' ', ':', #9]) do
-      begin
-        Dec(Start);
-      end;
-      Stop := Start;
-      while (Start >= 1) and CharInSet(Lower[Start], ['a'..'z']) do
-      begin
-        Dec(Start);
-      end;
-      if Stop > Start then
-      begin
-        for Word in Words do
-        begin
-          if Copy(Lower, Start + 1, Stop - Start) = Word then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    Index := Pos(Mark, Lower, Index + 1);
+    mStop := mIndex + Length(mMark);
+    Result := ((mStop > Length(mLower)) or not CharInSet(mLower[mStop], ['0'..'9']))
+      and IsClosingWord(WordBefore(mLower, mIndex));
+    mIndex := Pos(mMark, mLower, mIndex + 1);
   end;
 end;
 
@@ -471,73 +498,65 @@ begin
   end;
 end;
 
+/// <summary>"state", bei "closed" mit Grund ("completed", "not_planned") wie in der Oberfläche.</summary>
+function DetailsStateOf(ARoot: TJSONObject): string;
+var
+  mReason: string;
+begin
+  Result := TAtlasGitHubJson.TextOf(ARoot, 'state');
+  mReason := TAtlasGitHubJson.TextOf(ARoot, 'state_reason');
+  if (Result = 'closed') and (mReason <> '') and (mReason <> 'completed') then
+  begin
+    Result := Result + ' (' + StringReplace(mReason, '_', ' ', [rfReplaceAll]) + ')';
+  end;
+end;
+
+/// <summary>Feld AField des Unterobjekts AObject, gekürzt auf AMax; '' ohne.</summary>
+function NestedText(ARoot: TJSONObject; const AObject, AField: string; AMax: Integer): string;
+begin
+  Result := '';
+  if ARoot.Values[AObject] is TJSONObject then
+  begin
+    Result := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(ARoot.Values[AObject]), AField), AMax);
+  end;
+end;
+
+/// <summary>Felder eines Issues aus /issues/&lt;n&gt; nach ADetails (Nummer schon gesetzt).</summary>
+procedure ReadDetails(ARoot: TJSONObject; var ADetails: TAtlasTrackerDetails);
+begin
+  ADetails.Key := '#' + IntToStr(ADetails.Number);
+  ADetails.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(ARoot, 'title'), 500);
+  ADetails.Description := TAtlasGitHubJson.Limited(TAtlasGitHubJson.TextOf(ARoot, 'body'));
+  ADetails.State := DetailsStateOf(ARoot);
+  ADetails.Created := TAtlasGitHubJson.TimeOf(ARoot, 'created_at');
+  ADetails.Updated := TAtlasGitHubJson.TimeOf(ARoot, 'updated_at');
+  ADetails.Labels := IssueLabelsOf(ARoot.Values['labels'], MaxInt);
+  ADetails.Assignee := TAtlasGitHubJson.AssigneesOf(ARoot);
+  ADetails.Sprint := NestedText(ARoot, 'milestone', 'title', 60);
+  // Issue-Typen (Bug, Feature …) der Organisation.
+  ADetails.Kind := NestedText(ARoot, 'type', 'name', 40);
+end;
+
 class function TAtlasGitHubParse.ParseDetails(const AJson: string; out ADetails: TAtlasTrackerDetails;
   out ACommentCount: Integer): Boolean;
 var
-  mValue, mItem, mEntry: TJSONValue;
-  mRoot: TJSONObject;
-  mText, mReason: string;
+  mValue: TJSONValue;
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   ACommentCount := 0;
   Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (mValue is TJSONObject) then
+    if mValue is TJSONObject then
     begin
-      Exit;
+      ADetails.Number := TAtlasGitHubJson.IntOf(TJSONObject(mValue), 'number');
+      Result := ADetails.Number > 0;
     end;
-    mRoot := TJSONObject(mValue);
-    ADetails.Number := TAtlasGitHubJson.IntOf(mRoot, 'number');
-    if ADetails.Number <= 0 then
+    if Result then
     begin
-      Exit;
+      ReadDetails(TJSONObject(mValue), ADetails);
+      ACommentCount := TAtlasGitHubJson.IntOf(TJSONObject(mValue), 'comments');
     end;
-    ADetails.Key := '#' + IntToStr(ADetails.Number);
-    ADetails.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mRoot, 'title'), 500);
-    ADetails.Description := TAtlasGitHubJson.Limited(TAtlasGitHubJson.TextOf(mRoot, 'body'));
-    // "closed" mit Grund ("completed", "not_planned") wie in der Oberfläche.
-    ADetails.State := TAtlasGitHubJson.TextOf(mRoot, 'state');
-    mReason := TAtlasGitHubJson.TextOf(mRoot, 'state_reason');
-    if (ADetails.State = 'closed') and (mReason <> '') and (mReason <> 'completed') then
-    begin
-      ADetails.State := ADetails.State + ' (' + StringReplace(mReason, '_', ' ', [rfReplaceAll]) + ')';
-    end;
-    ADetails.Created := TAtlasGitHubJson.TimeOf(mRoot, 'created_at');
-    ADetails.Updated := TAtlasGitHubJson.TimeOf(mRoot, 'updated_at');
-    ACommentCount := TAtlasGitHubJson.IntOf(mRoot, 'comments');
-    mItem := mRoot.Values['labels'];
-    if mItem is TJSONArray then
-    begin
-      for mEntry in TJSONArray(mItem) do
-      begin
-        mText := '';
-        if mEntry is TJSONObject then
-        begin
-          mText := Trim(TAtlasGitHubJson.TextOf(TJSONObject(mEntry), 'name'));
-        end
-        else if mEntry is TJSONString then
-        begin
-          mText := Trim(TJSONString(mEntry).Value);
-        end;
-        if mText <> '' then
-        begin
-          ADetails.Labels := ADetails.Labels + [TAtlasGitHubJson.Shorten(mText, 40)];
-        end;
-      end;
-    end;
-    ADetails.Assignee := TAtlasGitHubJson.AssigneesOf(mRoot);
-    if mRoot.Values['milestone'] is TJSONObject then
-    begin
-      ADetails.Sprint := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(mRoot.Values['milestone']),
-        'title'), 60);
-    end;
-    // Issue-Typen (Bug, Feature …) der Organisation.
-    if mRoot.Values['type'] is TJSONObject then
-    begin
-      ADetails.Kind := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(mRoot.Values['type']), 'name'), 40);
-    end;
-    Result := True;
   finally
     mValue.Free;
   end;
@@ -575,90 +594,106 @@ begin
   end;
 end;
 
+/// <summary>Verknüpfung auf ein Issue aus einer Antwort der API: Schlüssel (mit ARepository, wenn es nicht
+/// AProject ist), Titel, Zustand (#1279) und Seite; False ohne Nummer.</summary>
+function IssueLinkOf(AIssue: TJSONObject; const ARepository, AProject: string; out ALink: TAtlasTrackerLink): Boolean;
+var
+  mNumber: Integer;
+  mPage: string;
+begin
+  ALink := Default(TAtlasTrackerLink);
+  mNumber := TAtlasGitHubJson.IntOf(AIssue, 'number');
+  Result := mNumber > 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  ALink.Local := (ARepository = '') or SameText(ARepository, AProject);
+  ALink.Key := '#' + IntToStr(mNumber);
+  if not ALink.Local then
+  begin
+    ALink.Key := ARepository + ALink.Key;
+  end;
+  ALink.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(AIssue, 'title'), 200);
+  ALink.State := TAtlasGitHubJson.TextOf(AIssue, 'state');
+  ALink.StateKnown := ALink.State <> '';
+  ALink.Resolved := SameText(ALink.State, 'closed');
+  // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
+  mPage := TAtlasGitHubJson.TextOf(AIssue, 'html_url');
+  if StartsText('https://', mPage) then
+  begin
+    ALink.Page := mPage;
+  end;
+end;
+
+/// <summary>Das Issue eines Eintrags "cross-referenced" der Zeitleiste; nil sonst.</summary>
+function CrossReferencedIssue(AItem: TJSONValue): TJSONObject;
+var
+  mSource: TJSONValue;
+begin
+  Result := nil;
+  if not (AItem is TJSONObject) or (TAtlasGitHubJson.TextOf(TJSONObject(AItem), 'event') <> 'cross-referenced') then
+  begin
+    Exit;
+  end;
+  mSource := TJSONObject(AItem).Values['source'];
+  if (mSource is TJSONObject) and (TJSONObject(mSource).Values['issue'] is TJSONObject) then
+  begin
+    Result := TJSONObject(TJSONObject(mSource).Values['issue']);
+  end;
+end;
+
+/// <summary>Verweis aus der Zeitleiste: Pull Request oder Erwähnung; False ohne Nummer.</summary>
+function TimelineLinkOf(AIssue: TJSONObject; const AProject: string; out ALink: TAtlasTrackerLink): Boolean;
+begin
+  Result := IssueLinkOf(AIssue, NestedText(AIssue, 'repository', 'full_name', MaxInt), AProject, ALink);
+  if AIssue.Values['pull_request'] <> nil then
+  begin
+    ALink.Relation := 'pull request';
+    ALink.Kind := TAtlasTrackerLinkKind.PullRequest;
+  end
+  else
+  begin
+    ALink.Relation := 'cross-referenced';
+    ALink.Kind := TAtlasTrackerLinkKind.Mentioned;
+  end;
+end;
+
+/// <summary>ALinks enthält schon einen Eintrag mit Schlüssel AKey.</summary>
+function HasLinkKey(const ALinks: TArray<TAtlasTrackerLink>; const AKey: string): Boolean;
+var
+  mLink: TAtlasTrackerLink;
+begin
+  Result := False;
+  for mLink in ALinks do
+  begin
+    if SameText(mLink.Key, AKey) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 class function TAtlasGitHubParse.ParseTimeline(const AJson, AProject: string;
   out ALinks: TArray<TAtlasTrackerLink>): Boolean;
 var
-  mValue, mItem, mSource, mIssue: TJSONValue;
+  mValue, mItem: TJSONValue;
+  mIssue: TJSONObject;
   mLink: TAtlasTrackerLink;
-  mRepository, mPage: string;
-  mNumber, mIndex: Integer;
-  mKnown: Boolean;
 begin
   ALinks := nil;
-  Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (mValue is TJSONArray) then
+    Result := mValue is TJSONArray;
+    if not Result then
     begin
       Exit;
     end;
-    Result := True;
     for mItem in TJSONArray(mValue) do
     begin
-      if not (mItem is TJSONObject) or (TAtlasGitHubJson.TextOf(TJSONObject(mItem), 'event') <> 'cross-referenced') then
-      begin
-        Continue;
-      end;
-      mSource := TJSONObject(mItem).Values['source'];
-      if not (mSource is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mIssue := TJSONObject(mSource).Values['issue'];
-      if not (mIssue is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mNumber := TAtlasGitHubJson.IntOf(TJSONObject(mIssue), 'number');
-      if mNumber <= 0 then
-      begin
-        Continue;
-      end;
-      mRepository := '';
-      if TJSONObject(mIssue).Values['repository'] is TJSONObject then
-      begin
-        mRepository := TAtlasGitHubJson.TextOf(TJSONObject(TJSONObject(mIssue).Values['repository']), 'full_name');
-      end;
-      mLink := Default(TAtlasTrackerLink);
-      mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
-      if mLink.Local then
-      begin
-        mLink.Key := '#' + IntToStr(mNumber);
-      end
-      else
-      begin
-        mLink.Key := mRepository + '#' + IntToStr(mNumber);
-      end;
-      mLink.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(TJSONObject(mIssue), 'title'), 200);
-      if TJSONObject(mIssue).Values['pull_request'] <> nil then
-      begin
-        mLink.Relation := 'pull request';
-        mLink.Kind := TAtlasTrackerLinkKind.PullRequest;
-      end
-      else
-      begin
-        mLink.Relation := 'cross-referenced';
-        mLink.Kind := TAtlasTrackerLinkKind.Mentioned;
-      end;
-      // Zustand (#1279) steht im Eintrag.
-      mLink.State := TAtlasGitHubJson.TextOf(TJSONObject(mIssue), 'state');
-      mLink.StateKnown := mLink.State <> '';
-      mLink.Resolved := SameText(mLink.State, 'closed');
-      // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
-      mPage := TAtlasGitHubJson.TextOf(TJSONObject(mIssue), 'html_url');
-      if StartsText('https://', mPage) then
-      begin
-        mLink.Page := mPage;
-      end;
-      mKnown := False;
-      for mIndex := 0 to High(ALinks) do
-      begin
-        if SameText(ALinks[mIndex].Key, mLink.Key) then
-        begin
-          mKnown := True;
-        end;
-      end;
-      if not mKnown and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+      mIssue := CrossReferencedIssue(mItem);
+      if (mIssue <> nil) and TimelineLinkOf(mIssue, AProject, mLink) and not HasLinkKey(ALinks, mLink.Key)
+        and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
       begin
         ALinks := ALinks + [mLink];
       end;
@@ -668,54 +703,67 @@ begin
   end;
 end;
 
+/// <summary>Anhang aus einem Markdown-Link auf …/user-attachments/files/ (im Browser); False für andere Links.
+/// </summary>
+function FileAttachmentOf(const ALink: TAtlasMarkdownLink; out AAttachment: TAtlasTrackerAttachment): Boolean;
+begin
+  AAttachment := Default(TAtlasTrackerAttachment);
+  Result := StartsText('https://', ALink.Url) and (Pos('/user-attachments/files/', ALink.Url) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AAttachment.Name := TAtlasGitHubJson.Shorten(ALink.Text, 200);
+  if AAttachment.Name = '' then
+  begin
+    AAttachment.Name := Copy(ALink.Url, LastDelimiter('/', ALink.Url) + 1, 200);
+  end;
+  AAttachment.Size := -1;
+  AAttachment.Url := ALink.Url;
+  AAttachment.External := True;
+end;
+
+/// <summary>AAttachments enthält schon einen Anhang mit Adresse AUrl.</summary>
+function HasAttachmentUrl(const AAttachments: TArray<TAtlasTrackerAttachment>; const AUrl: string): Boolean;
+var
+  mAttachment: TAtlasTrackerAttachment;
+begin
+  Result := False;
+  for mAttachment in AAttachments do
+  begin
+    if mAttachment.Url = AUrl then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Dateien aus AText an AAttachments anhängen, ohne doppelte, höchstens MaxAttachments.</summary>
+procedure AddFileAttachments(const AText: string; var AAttachments: TArray<TAtlasTrackerAttachment>);
+var
+  mLink: TAtlasMarkdownLink;
+  mAttachment: TAtlasTrackerAttachment;
+begin
+  for mLink in TAtlasTrackerMarkdown.Links(AText) do
+  begin
+    if (Length(AAttachments) < TAtlasTrackerDetails.MaxAttachments) and FileAttachmentOf(mLink, mAttachment)
+      and not HasAttachmentUrl(AAttachments, mAttachment.Url) then
+    begin
+      AAttachments := AAttachments + [mAttachment];
+    end;
+  end;
+end;
+
 class function TAtlasGitHubParse.FileAttachments(
   const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>;
 var
-  mTexts: TArray<string>;
-  mText: string;
   mComment: TAtlasTrackerComment;
-  mLink: TAtlasMarkdownLink;
-  mAttachment: TAtlasTrackerAttachment;
-  mIndex: Integer;
-  mKnown: Boolean;
 begin
   Result := nil;
-  mTexts := TArray<string>.Create(ADetails.Description);
+  AddFileAttachments(ADetails.Description, Result);
   for mComment in ADetails.Comments do
   begin
-    mTexts := mTexts + [mComment.Text];
-  end;
-  for mText in mTexts do
-  begin
-    for mLink in TAtlasTrackerMarkdown.Links(mText) do
-    begin
-      if not StartsText('https://', mLink.Url) or (Pos('/user-attachments/files/', mLink.Url) = 0) then
-      begin
-        Continue;
-      end;
-      mKnown := False;
-      for mIndex := 0 to High(Result) do
-      begin
-        if Result[mIndex].Url = mLink.Url then
-        begin
-          mKnown := True;
-        end;
-      end;
-      if mKnown or (Length(Result) >= TAtlasTrackerDetails.MaxAttachments) then
-      begin
-        Continue;
-      end;
-      mAttachment := Default(TAtlasTrackerAttachment);
-      mAttachment.Name := TAtlasGitHubJson.Shorten(mLink.Text, 200);
-      if mAttachment.Name = '' then
-      begin
-        mAttachment.Name := Copy(mLink.Url, LastDelimiter('/', mLink.Url) + 1, 200);
-      end;
-      mAttachment.Size := -1;
-      mAttachment.Url := mLink.Url;
-      mAttachment.External := True;
-      Result := Result + [mAttachment];
-    end;
+    AddFileAttachments(mComment.Text, Result);
   end;
 end;
 
@@ -869,62 +917,58 @@ end;
 class function TAtlasGitHubParse.ParseRelated(const AJson, AProject: string; AKind: TAtlasTrackerLinkKind;
   out ALinks: TArray<TAtlasTrackerLink>): Boolean;
 const
-  Relations: array[TAtlasTrackerLinkKind] of string = ('', 'blocked by', 'blocking', 'sub-issue', 'parent', '', '',
+  cRelations: array[TAtlasTrackerLinkKind] of string = ('', 'blocked by', 'blocking', 'sub-issue', 'parent', '', '',
     '', 'cross-referenced', 'pull request');
 var
   mValue, mItem: TJSONValue;
-  mIssue: TJSONObject;
   mLink: TAtlasTrackerLink;
-  mNumber: Integer;
-  mRepository, mPage: string;
 begin
   ALinks := nil;
-  Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (mValue is TJSONArray) then
+    Result := mValue is TJSONArray;
+    if not Result then
     begin
       Exit;
     end;
-    Result := True;
     for mItem in TJSONArray(mValue) do
     begin
-      if not (mItem is TJSONObject) or (Length(ALinks) >= TAtlasTrackerDetails.MaxLinks) then
+      if (mItem is TJSONObject) and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks)
+        and IssueLinkOf(TJSONObject(mItem), RepositoryOf(TJSONObject(mItem)), AProject, mLink) then
       begin
-        Continue;
+        mLink.Kind := AKind;
+        mLink.Relation := cRelations[AKind];
+        ALinks := ALinks + [mLink];
       end;
-      mIssue := TJSONObject(mItem);
-      mNumber := TAtlasGitHubJson.IntOf(mIssue, 'number');
-      if mNumber <= 0 then
-      begin
-        Continue;
-      end;
-      mRepository := RepositoryOf(mIssue);
-      mLink := Default(TAtlasTrackerLink);
-      mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
-      if mLink.Local then
-      begin
-        mLink.Key := '#' + IntToStr(mNumber);
-      end
-      else
-      begin
-        mLink.Key := mRepository + '#' + IntToStr(mNumber);
-      end;
-      mLink.Title := TAtlasGitHubJson.Shorten(TAtlasGitHubJson.TextOf(mIssue, 'title'), 200);
-      mLink.Kind := AKind;
-      mLink.Relation := Relations[AKind];
-      mLink.State := TAtlasGitHubJson.TextOf(mIssue, 'state');
-      mLink.StateKnown := mLink.State <> '';
-      mLink.Resolved := SameText(mLink.State, 'closed');
-      mPage := TAtlasGitHubJson.TextOf(mIssue, 'html_url');
-      if StartsText('https://', mPage) then
-      begin
-        mLink.Page := mPage;
-      end;
-      ALinks := ALinks + [mLink];
     end;
   finally
     mValue.Free;
+  end;
+end;
+
+/// <summary>ALink in ALinks übernehmen, wenn derselbe Schlüssel dort steht: True, wenn er dieselbe Art hat
+/// oder eine Erwähnung war (die der genaueren Art weicht).</summary>
+function MergedIntoKnown(var ALinks: TArray<TAtlasTrackerLink>; const ALink: TAtlasTrackerLink): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to High(ALinks) do
+  begin
+    if not SameText(ALinks[mIndex].Key, ALink.Key) then
+    begin
+      Continue;
+    end;
+    Result := ALinks[mIndex].Kind = ALink.Kind;
+    if not Result and (ALinks[mIndex].Kind in [TAtlasTrackerLinkKind.Mentioned, TAtlasTrackerLinkKind.Other]) then
+    begin
+      ALinks[mIndex] := ALink;
+      Result := True;
+    end;
+    if Result then
+    begin
+      Exit;
+    end;
   end;
 end;
 
@@ -932,33 +976,10 @@ class procedure TAtlasGitHubParse.MergeLinks(var ALinks: TArray<TAtlasTrackerLin
   const ANew: TArray<TAtlasTrackerLink>);
 var
   mLink: TAtlasTrackerLink;
-  mIndex: Integer;
-  mDone: Boolean;
 begin
   for mLink in ANew do
   begin
-    mDone := False;
-    for mIndex := 0 to High(ALinks) do
-    begin
-      if SameText(ALinks[mIndex].Key, mLink.Key) then
-      begin
-        if ALinks[mIndex].Kind = mLink.Kind then
-        begin
-          mDone := True;
-        end
-        // Die Erwähnung desselben Issues weicht der genaueren Art.
-        else if ALinks[mIndex].Kind in [TAtlasTrackerLinkKind.Mentioned, TAtlasTrackerLinkKind.Other] then
-        begin
-          ALinks[mIndex] := mLink;
-          mDone := True;
-        end;
-        if mDone then
-        begin
-          Break;
-        end;
-      end;
-    end;
-    if not mDone and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+    if not MergedIntoKnown(ALinks, mLink) and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
     begin
       ALinks := ALinks + [mLink];
     end;
@@ -1114,63 +1135,65 @@ begin
   end;
 end;
 
+/// <summary>Ereignis assigned, closed oder reopened als Änderung an AThread; False für andere.</summary>
+function EventChangeOf(AEvent: TJSONObject; const AThread: TAtlasGitHubThread; const AMe: string; ATime: TDateTime;
+  out AChange: TAtlasTrackerChange): Boolean;
+var
+  mEvent, mActor: string;
+begin
+  mEvent := LowerCase(TAtlasGitHubJson.TextOf(AEvent, 'event'));
+  mActor := TAtlasGitHubJson.LoginOf(AEvent.Values['actor']);
+  Result := True;
+  if mEvent = 'assigned' then
+  begin
+    AChange := TAtlasGitHubParse.ChangeOf(AThread, TAtlasTrackerChangeKind.Assigned, mActor, ATime);
+    AChange.Value := TAtlasGitHubJson.LoginOf(AEvent.Values['assignee']);
+    AChange.ToMe := (AMe <> '') and SameText(AChange.Value, AMe);
+  end
+  else if mEvent = 'closed' then
+  begin
+    // Zustand wie bei GitHub; die Oberfläche übersetzt "closed" und "open".
+    AChange := TAtlasGitHubParse.ChangeOf(AThread, TAtlasTrackerChangeKind.State, mActor, ATime);
+    AChange.Value := 'closed';
+  end
+  else if mEvent = 'reopened' then
+  begin
+    AChange := TAtlasGitHubParse.ChangeOf(AThread, TAtlasTrackerChangeKind.State, mActor, ATime);
+    AChange.Value := 'open';
+  end
+  else
+  begin
+    AChange := Default(TAtlasTrackerChange);
+    Result := False;
+  end;
+end;
+
 class function TAtlasGitHubParse.ParseEventChanges(const AJson: string; const AThread: TAtlasGitHubThread;
   const AMe: string; ASince: TDateTime; out AChanges: TArray<TAtlasTrackerChange>): Boolean;
 var
   mValue, mItem: TJSONValue;
-  mObject: TJSONObject;
-  mEvent: string;
   mChange: TAtlasTrackerChange;
   mTime: TDateTime;
 begin
   AChanges := nil;
-  Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (mValue is TJSONArray) then
+    Result := mValue is TJSONArray;
+    if not Result then
     begin
       Exit;
     end;
-    Result := True;
     for mItem in TJSONArray(mValue) do
     begin
       if not (mItem is TJSONObject) then
       begin
         Continue;
       end;
-      mObject := TJSONObject(mItem);
-      mTime := TAtlasGitHubJson.TimeOf(mObject, 'created_at');
-      if mTime <= ASince then
+      mTime := TAtlasGitHubJson.TimeOf(TJSONObject(mItem), 'created_at');
+      if (mTime > ASince) and EventChangeOf(TJSONObject(mItem), AThread, AMe, mTime, mChange) then
       begin
-        Continue;
+        AChanges := AChanges + [mChange];
       end;
-      mEvent := LowerCase(TAtlasGitHubJson.TextOf(mObject, 'event'));
-      if mEvent = 'assigned' then
-      begin
-        mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.Assigned,
-          TAtlasGitHubJson.LoginOf(mObject.Values['actor']), mTime);
-        mChange.Value := TAtlasGitHubJson.LoginOf(mObject.Values['assignee']);
-        mChange.ToMe := (AMe <> '') and SameText(mChange.Value, AMe);
-      end
-      else if (mEvent = 'closed') or (mEvent = 'reopened') then
-      begin
-        mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.State, TAtlasGitHubJson.LoginOf(mObject.Values['actor']),
-          mTime);
-        // Zustand wie bei GitHub; die Oberfläche übersetzt "closed" und "open".
-        if mEvent = 'closed' then
-        begin
-          mChange.Value := 'closed';
-        end
-        else
-        begin
-          mChange.Value := 'open';
-        end;
-      end
-      else
-      begin
-        Continue;
-      end;
-      AChanges := AChanges + [mChange];
     end;
   finally
     mValue.Free;
