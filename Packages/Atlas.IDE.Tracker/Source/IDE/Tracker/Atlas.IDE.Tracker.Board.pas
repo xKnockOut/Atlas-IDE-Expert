@@ -574,8 +574,8 @@ begin
   end;
 end;
 
-/// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
-/// </summary>
+/// <summary>Darf ACard nach AColumn; verbietet es der Workflow des Trackers, nennt die Statuszeile von AFrame die
+/// erlaubten Übergänge.</summary>
 function Movable(AFrame: TAtlasBoardFrame; const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean;
 var
   mCard: TAtlasBoardCard;
@@ -600,6 +600,8 @@ begin
   end;
 end;
 
+/// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
+/// </summary>
 function MoveAllowed(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; ACard, AColumn: Integer;
   out AJob: TMoveJob): Boolean;
 begin
@@ -780,8 +782,6 @@ begin
   end;
 end;
 
-/// <summary>Darf ACard nach AColumn; verbietet es der Workflow des Trackers, nennt die Statuszeile von AFrame die
-/// erlaubten Übergänge.</summary>
 /// <summary>Text der Statuszeile, wenn das Verschieben scheiterte.</summary>
 function MoveFailedText(const ACard: TAtlasBoardCard; const AResult: TAtlasTrackerWriteResult): string;
 begin
