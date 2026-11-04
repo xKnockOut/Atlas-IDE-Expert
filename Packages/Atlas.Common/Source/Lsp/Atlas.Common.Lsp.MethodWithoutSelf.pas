@@ -36,6 +36,9 @@ type
     ReadText: TReferenceReadText;
     /// <summary>refactoring.methodKindStatic.</summary>
     WithStatic: Boolean;
+    /// <summary>Umwandlung (TMethodWithoutSelf.ConversionName).</summary>
+    Conversion: string;
+    Style: TFormatStyle;
   end;
 
   TLspMethodWithoutSelf = class
@@ -54,8 +57,7 @@ type
     /// <summary>Antwort auf atlas.server.methodKind; EJsonRpcError mit dem Grund, wenn es nicht geht. Der Aufrufer
     /// übernimmt das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; const AConversion: string; const AContext: TMethodKindContext;
-      const AStyle: TFormatStyle): TJSONObject; static;
+      const APosition: TTextPosition; const AContext: TMethodKindContext): TJSONObject; static;
     /// <summary>Stellen der Marken in ARange: Ende des Kopfs je Methode ohne Self.</summary>
     class function Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const ALookup: TMethodLookup): TArray<TTextPosition>; static;
@@ -152,6 +154,33 @@ type
     destructor Destroy; override;
   end;
 
+  /// <summary>Eine Umwandlung: Ziel, Verwendungen in allen Dateien und Ergebnis.</summary>
+  TMethodKindRun = class
+  private
+    FResolver: TNameResolver;
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FText: string;
+    FContext: TMethodKindContext;
+    FLookup: TMethodLookup;
+    FTarget: TMethodTarget;
+    FDeclaring: TMethodSource;
+    FLines: TLineTable;
+    FFiles: TObjectList<TUseFile>;
+    function UseFileOf(const AFileName: string; out AUseFile: TUseFile): Boolean;
+    procedure AddUse(const ALocation: TReferenceLocation);
+  public
+    constructor Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+      const AContext: TMethodKindContext);
+    destructor Destroy; override;
+    /// <summary>Methode an APosition; EJsonRpcError, wenn sie sich nicht umwandeln lässt.</summary>
+    procedure FindTarget(const APosition: TTextPosition);
+    /// <summary>Verwendungen aus der Referenzsuche, nach Dateien.</summary>
+    procedure CollectUses;
+    function Convert(const APosition: TTextPosition; AConversion: TMethodConversion): TMethodResult;
+    property Target: TMethodTarget read FTarget;
+  end;
+
 destructor TUseFile.Destroy;
 begin
   if OwnsTree then
@@ -161,133 +190,190 @@ begin
   inherited;
 end;
 
-class function TLspMethodWithoutSelf.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; const AConversion: string;
-  const AContext: TMethodKindContext; const AStyle: TFormatStyle): TJSONObject;
-var
-  Conversion: TMethodConversion;
-  Target: TMethodTarget;
-  Reason, Text, Warning: string;
-  Locations: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Files: TArray<TUseFile>;
-  UseFile: TUseFile;
-  Found: Boolean;
-  Others: TArray<TMethodSource>;
-  Declaring: TMethodSource;
-  Converted: TMethodResult;
-  Item: TMethodFileEdits;
-  Changes, Warnings: TJSONArray;
-  Edit, Annotation, Annotations: TJSONObject;
-  Places: Integer;
-  MethodLookup: TMethodLookup;
-  Lines: TLineTable;
+{ TMethodKindRun }
+
+constructor TMethodKindRun.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+  const AContext: TMethodKindContext);
 begin
-  if not TMethodWithoutSelf.ConversionOf(AConversion, Conversion) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Umwandlung "%s"', [AConversion]));
-  end;
-  AResolver.PinTree(ATree, AFileName);
+  inherited Create;
+  FResolver := AResolver;
+  FTree := ATree;
+  FFileName := AFileName;
+  FText := AText;
+  FContext := AContext;
+  FFiles := TObjectList<TUseFile>.Create(True);
+end;
+
+destructor TMethodKindRun.Destroy;
+begin
+  FFiles.Free;
+  inherited;
+end;
+
+procedure TMethodKindRun.FindTarget(const APosition: TTextPosition);
+var
+  mReason: string;
+  mFound: Boolean;
+begin
+  FResolver.PinTree(FTree, FFileName);
   try
-    MethodLookup := Lookup(AResolver, ATree, AFileName, AContext.ReadText);
-    if not TMethodWithoutSelf.Target(AText, ATree, APosition, MethodLookup, Target, Reason) then
-    begin
-      raise Fail('Umwandeln geht nicht: ' + Reason);
-    end;
+    FLookup := TLspMethodWithoutSelf.Lookup(FResolver, FTree, FFileName, FContext.ReadText);
+    mFound := TMethodWithoutSelf.Target(FText, FTree, APosition, FLookup, FTarget, mReason);
   finally
-    AResolver.UnpinTree;
+    FResolver.UnpinTree;
   end;
-  Locations := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Target.NamePosition, False,
-    AContext.Files, AContext.ReadText);
-  Files := nil;
+  if not mFound then
+  begin
+    raise Fail('Umwandeln geht nicht: ' + mReason);
+  end;
+end;
+
+function TMethodKindRun.UseFileOf(const AFileName: string; out AUseFile: TUseFile): Boolean;
+var
+  mUseFile: TUseFile;
+begin
+  for mUseFile in FFiles do
+  begin
+    if SameText(mUseFile.Source.FileName, AFileName) then
+    begin
+      AUseFile := mUseFile;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TMethodKindRun.AddUse(const ALocation: TReferenceLocation);
+var
+  mUseFile: TUseFile;
+  mText: string;
+begin
+  if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
+  begin
+    raise Fail(Format('Umwandeln geht nicht: %s steht in %s', [FTarget.Name, ExtractFileName(ALocation.FileName)]));
+  end;
+  if SameText(ALocation.FileName, FFileName) then
+  begin
+    FDeclaring.Offsets := FDeclaring.Offsets + [FLines.OffsetAt(ALocation.Range.StartPos)];
+  end
+  else if UseFileOf(ALocation.FileName, mUseFile) then
+  begin
+    mUseFile.Source.Offsets := mUseFile.Source.Offsets + [mUseFile.Lines.OffsetAt(ALocation.Range.StartPos)];
+  end
+  else if Assigned(FContext.ReadText) and FContext.ReadText(ALocation.FileName, mText) then
+  begin
+    mUseFile := TUseFile.Create;
+    FFiles.Add(mUseFile);
+    mUseFile.OwnsTree := True;
+    mUseFile.Lines := TLineTable.Build(mText);
+    mUseFile.Source := TMethodSource.Create(ALocation.FileName, mText, TSyntaxTreeCache.Parse(mText),
+      [mUseFile.Lines.OffsetAt(ALocation.Range.StartPos)]);
+  end
+  else
+  begin
+    raise Fail(Format('Umwandeln geht nicht: %s lässt sich nicht lesen', [ExtractFileName(ALocation.FileName)]));
+  end;
+end;
+
+procedure TMethodKindRun.CollectUses;
+var
+  mLocation: TReferenceLocation;
+begin
+  FDeclaring := TMethodSource.Create(FFileName, FText, FTree, nil);
+  FLines := TLineTable.Build(FText);
+  for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, FFileName, FTarget.NamePosition, False,
+    FContext.Files, FContext.ReadText) do
+  begin
+    AddUse(mLocation);
+  end;
+end;
+
+function TMethodKindRun.Convert(const APosition: TTextPosition; AConversion: TMethodConversion): TMethodResult;
+var
+  mOthers: TArray<TMethodSource>;
+  mUseFile: TUseFile;
+  mReason: string;
+  mDone: Boolean;
+begin
+  mOthers := nil;
+  for mUseFile in FFiles do
+  begin
+    mOthers := mOthers + [mUseFile.Source];
+  end;
+  FResolver.PinTree(FTree, FFileName);
   try
-    Declaring := TMethodSource.Create(AFileName, AText, ATree, nil);
-    Lines := TLineTable.Build(AText);
-    for Location in Locations do
-    begin
-      if MatchText(ExtractFileExt(Location.FileName), ['.dfm', '.fmx']) then
-      begin
-        raise Fail(Format('Umwandeln geht nicht: %s steht in %s', [Target.Name, ExtractFileName(Location.FileName)]));
-      end;
-      if SameText(Location.FileName, AFileName) then
-      begin
-        Declaring.Offsets := Declaring.Offsets + [Lines.OffsetAt(Location.Range.StartPos)];
-        Continue;
-      end;
-      Found := False;
-      for UseFile in Files do
-      begin
-        if SameText(UseFile.Source.FileName, Location.FileName) then
-        begin
-          UseFile.Source.Offsets := UseFile.Source.Offsets + [UseFile.Lines.OffsetAt(Location.Range.StartPos)];
-          Found := True;
-        end;
-      end;
-      if Found then
-      begin
-        Continue;
-      end;
-      if not Assigned(AContext.ReadText) or not AContext.ReadText(Location.FileName, Text) then
-      begin
-        raise Fail(Format('Umwandeln geht nicht: %s lässt sich nicht lesen', [ExtractFileName(Location.FileName)]));
-      end;
-      UseFile := TUseFile.Create;
-      Files := Files + [UseFile];
-      UseFile.OwnsTree := True;
-      UseFile.Lines := TLineTable.Build(Text);
-      UseFile.Source := TMethodSource.Create(Location.FileName, Text, TSyntaxTreeCache.Parse(Text),
-        [UseFile.Lines.OffsetAt(Location.Range.StartPos)]);
-    end;
-    Others := nil;
-    for UseFile in Files do
-    begin
-      Others := Others + [UseFile.Source];
-    end;
-    AResolver.PinTree(ATree, AFileName);
-    try
-      if not TMethodWithoutSelf.Execute(Declaring, Others, APosition, Conversion, AContext.WithStatic, MethodLookup, AStyle,
-        Converted, Reason) then
-      begin
-        raise Fail('Umwandeln geht nicht: ' + Reason);
-      end;
-    finally
-      AResolver.UnpinTree;
-    end;
+    mDone := TMethodWithoutSelf.Execute(FDeclaring, mOthers, APosition, AConversion, FContext.WithStatic, FLookup,
+      FContext.Style, Result, mReason);
   finally
-    for UseFile in Files do
-    begin
-      UseFile.Free;
-    end;
+    FResolver.UnpinTree;
   end;
-  Places := 0;
-  Changes := TJSONArray.Create;
-  for Item in Converted.Files do
+  if not mDone then
   begin
-    Changes.AddElement(EditsJson(TDocumentUris.FromPath(Item.FileName), Item.Edits));
-    Inc(Places, Length(Item.Edits));
+    raise Fail('Umwandeln geht nicht: ' + mReason);
   end;
-  Annotation := TJSONObject.Create;
-  Annotation.AddPair('label', Target.Title(Conversion));
-  Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%s: %d Aufrufe in %d Dateien', [Target.Name, Converted.Calls,
-    Length(Converted.Files)]));
-  Annotations := TJSONObject.Create;
-  Annotations.AddPair(AnnotationId, Annotation);
-  Edit := TJSONObject.Create;
-  Edit.AddPair('documentChanges', Changes);
-  Edit.AddPair('changeAnnotations', Annotations);
-  Warnings := TJSONArray.Create;
-  for Warning in Converted.Warnings do
+end;
+
+/// <summary>Antwort auf atlas.server.methodKind aus dem Ergebnis AConverted.</summary>
+function Answer(const ATitle, AName: string; const AConverted: TMethodResult): TJSONObject;
+var
+  mItem: TMethodFileEdits;
+  mChanges, mWarnings: TJSONArray;
+  mEdit, mAnnotation, mAnnotations: TJSONObject;
+  mPlaces: Integer;
+  mWarning: string;
+begin
+  mPlaces := 0;
+  mChanges := TJSONArray.Create;
+  for mItem in AConverted.Files do
   begin
-    Warnings.Add(Warning);
+    mChanges.AddElement(EditsJson(TDocumentUris.FromPath(mItem.FileName), mItem.Edits));
+    Inc(mPlaces, Length(mItem.Edits));
+  end;
+  mAnnotation := TJSONObject.Create;
+  mAnnotation.AddPair('label', ATitle);
+  mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+  mAnnotation.AddPair('description', Format('%s: %d Aufrufe in %d Dateien', [AName, AConverted.Calls,
+    Length(AConverted.Files)]));
+  mAnnotations := TJSONObject.Create;
+  mAnnotations.AddPair(TLspMethodWithoutSelf.AnnotationId, mAnnotation);
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('documentChanges', mChanges);
+  mEdit.AddPair('changeAnnotations', mAnnotations);
+  mWarnings := TJSONArray.Create;
+  for mWarning in AConverted.Warnings do
+  begin
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Result.AddPair('warnings', Warnings);
-  Result.AddPair('places', TJSONNumber.Create(Places));
-  Result.AddPair('files', TJSONNumber.Create(Length(Converted.Files)));
-  Result.AddPair('calls', TJSONNumber.Create(Converted.Calls));
-  Result.AddPair('preview', Converted.Preview);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('warnings', mWarnings);
+  Result.AddPair('places', TJSONNumber.Create(mPlaces));
+  Result.AddPair('files', TJSONNumber.Create(Length(AConverted.Files)));
+  Result.AddPair('calls', TJSONNumber.Create(AConverted.Calls));
+  Result.AddPair('preview', AConverted.Preview);
+end;
+
+class function TLspMethodWithoutSelf.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName, AText: string; const APosition: TTextPosition; const AContext: TMethodKindContext): TJSONObject;
+var
+  mConversion: TMethodConversion;
+  mRun: TMethodKindRun;
+  mConverted: TMethodResult;
+begin
+  if not TMethodWithoutSelf.ConversionOf(AContext.Conversion, mConversion) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Umwandlung "%s"',
+      [AContext.Conversion]));
+  end;
+  mRun := TMethodKindRun.Create(AResolver, ATree, AFileName, AText, AContext);
+  try
+    mRun.FindTarget(APosition);
+    mRun.CollectUses;
+    mConverted := mRun.Convert(APosition, mConversion);
+    Result := Answer(mRun.Target.Title(mConversion), mRun.Target.Name, mConverted);
+  finally
+    mRun.Free;
+  end;
 end;
 
 class function TLspMethodWithoutSelf.Markers(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;

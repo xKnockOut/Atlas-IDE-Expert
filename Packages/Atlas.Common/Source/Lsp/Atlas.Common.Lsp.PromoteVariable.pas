@@ -25,6 +25,14 @@ uses
   Atlas.Common.Lsp.References;
 
 type
+  /// <summary>Was atlas.server.promoteVariable braucht außer Baum, Text und Stelle.</summary>
+  TPromoteVariableContext = record
+    Lookup: TPromoteLookup;
+    Style: TFormatStyle;
+    /// <summary>Name des neuen Felds bzw. der Variablen.</summary>
+    NewName: string;
+  end;
+
   TLspPromoteVariable = class
   public const
     ClientCommand = 'atlas.promoteVariable';
@@ -40,7 +48,7 @@ type
     /// <summary>Antwort auf atlas.server.promoteVariable; EJsonRpcError mit dem Grund, wenn es nicht geht. Der
     /// Aufrufer übernimmt das Objekt.</summary>
     class function Execute(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
-      const AName: string; const ALookup: TPromoteLookup; const AStyle: TFormatStyle): TJSONObject; static;
+      const AContext: TPromoteVariableContext): TJSONObject; static;
   end;
 
 implementation
@@ -114,14 +122,14 @@ begin
 end;
 
 class function TLspPromoteVariable.Execute(ATree: TSyntaxTree; const AText, AUri: string;
-  const APosition: TTextPosition; const AName: string; const ALookup: TPromoteLookup;
-  const AStyle: TFormatStyle): TJSONObject;
+  const APosition: TTextPosition; const AContext: TPromoteVariableContext): TJSONObject;
 var
   Promoted: TPromoteResult;
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TPromoteVariable.Execute(AText, ATree, APosition, ALookup, AStyle, AName, Promoted, Reason) then
+  if not TPromoteVariable.Execute(AText, ATree, APosition, AContext.Lookup, AContext.Style, AContext.NewName,
+    Promoted, Reason) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
   end;
