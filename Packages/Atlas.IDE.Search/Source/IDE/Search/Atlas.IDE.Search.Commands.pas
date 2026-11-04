@@ -360,7 +360,7 @@ begin
     FHost.ForEach(
       procedure(ABar: TControl)
       begin
-        TAtlasSearchBar(ABar).ListVisible := mListed;
+        TAtlasSearchBar(ABar).SetListVisible(mListed);
         TAtlasSearchBar(ABar).Features := Features;
       end);
   end;
@@ -409,48 +409,48 @@ begin
   mBar := TAtlasSearchBar.Create(nil);
   Result := mBar;
   mBar.Visible := False;
-  mBar.OnQueryChanged := Guarded(mBar,
+  mBar.Events.OnQueryChanged := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchSteps.Sync(True);
     end);
-  mBar.OnStep := GuardedStep(mBar,
+  mBar.Events.OnStep := GuardedStep(mBar,
     procedure(ABackward: Boolean)
     begin
       BarStep(ABackward);
     end);
-  mBar.OnList := Guarded(mBar,
+  mBar.Events.OnList := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchSteps.List;
     end);
-  mBar.OnClose := Guarded(mBar, CloseBar);
-  mBar.OnReplace := Guarded(mBar,
+  mBar.Events.OnClose := Guarded(mBar, CloseBar);
+  mBar.Events.OnReplace := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchReplacing.Replace;
     end);
-  mBar.OnReplaceAll := Guarded(mBar,
+  mBar.Events.OnReplaceAll := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchReplacing.ReplaceAll;
     end);
-  mBar.OnChoose := Guarded(mBar,
+  mBar.Events.OnChoose := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchReplacing.Choose;
     end);
-  mBar.OnCancel := Guarded(mBar,
+  mBar.Events.OnCancel := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchReplacing.Cancel;
     end);
-  mBar.OnReplaceShown := Guarded(mBar,
+  mBar.Events.OnReplaceShown := Guarded(mBar,
     procedure
     begin
       TAtlasIdeSearchCounter.Preview;
     end);
-  mBar.OnControlEnter :=
+  mBar.Events.OnControlEnter :=
     procedure(AControl: TWinControl)
     begin
       if mBar = TAtlasIdeSearchSession.Bar then
@@ -529,7 +529,7 @@ begin
     TAtlasIdeSearchSession.Bar.Visible := False;
   end;
   TAtlasIdeSearchSession.Bar := mBar;
-  mBar.ListVisible := TAtlasIdeSettings.Current.SearchResultsInMessages;
+  mBar.SetListVisible(TAtlasIdeSettings.Current.SearchResultsInMessages);
   mBar.Features := Features;
   // Strg+H mit, Strg+F ohne Ersetzen-Zeile.
   mBar.ReplaceShown := AReplace;
