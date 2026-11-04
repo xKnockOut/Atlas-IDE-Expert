@@ -928,6 +928,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Search.Bar` | `UI/Search/Atlas.UI.Search.Bar.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.ReplaceFrame` | `UI/Search/Atlas.UI.Search.ReplaceFrame.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.Strings` | `UI/Search/Atlas.UI.Search.Strings.pas` | Texte des Moduls (Suche), Sprache von Base, #1455 |
+| `Atlas.UI.UnitSearch.Data` | `UI/UnitSearch/Atlas.UI.UnitSearch.Data.pas` | Ordner `UI/UnitSearch` |
+| `Atlas.UI.UnitSearch.Painter` | `UI/UnitSearch/Atlas.UI.UnitSearch.Painter.pas` | Ordner `UI/UnitSearch` |
 | `Atlas.UI.UnitSearch.Window` | `UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas` | Ordner `UI/UnitSearch` |
 
 ## Atlas.IDE.Rules

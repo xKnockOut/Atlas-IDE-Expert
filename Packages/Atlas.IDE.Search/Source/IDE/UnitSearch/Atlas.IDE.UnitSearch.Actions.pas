@@ -19,7 +19,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.UseUnit,
-  Atlas.UI.UnitSearch.Window;
+  Atlas.UI.UnitSearch.Data;
 
 type
   TAtlasIdeUnitSearchActions = class
