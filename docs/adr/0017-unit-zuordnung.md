@@ -737,6 +737,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssueContext.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueLookups` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLookups.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueChecklists` | `IDE/Tracker/Atlas.IDE.Tracker.IssueChecklists.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueLinkWrites` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLinkWrites.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueMedia` | `IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueComments` | `IDE/Tracker/Atlas.IDE.Tracker.IssueComments.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
