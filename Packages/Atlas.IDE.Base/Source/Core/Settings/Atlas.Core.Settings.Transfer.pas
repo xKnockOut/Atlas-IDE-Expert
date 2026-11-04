@@ -1280,7 +1280,6 @@ begin
   end;
 end;
 
-/// <summary>Wert für AEntry umrechnen: 0/1 für Wahrheitswerte, Pfadmakros ausschreiben.</summary>
 /// <summary>Umrechnung älterer Werte; False, wenn AValue keine braucht.</summary>
 function MigratedValue(const AEntry: TAtlasCatalogEntry; AValue: TJSONValue; out AJson: string): Boolean;
 begin
@@ -1311,6 +1310,7 @@ begin
   end;
 end;
 
+/// <summary>Wert für AEntry umrechnen: 0/1 für Wahrheitswerte, Pfadmakros ausschreiben.</summary>
 function Migrate(const AEntry: TAtlasCatalogEntry; const AJson: string; const AFolders: TUserFolders;
   var AMigrated: Boolean): string;
 var
