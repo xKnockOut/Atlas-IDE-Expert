@@ -78,12 +78,12 @@ procedure TAtlasTrackerTimeDialogTests.QuestionAndRoundedDuration;
 var
   mDialog: TAtlasTrackerTimeDialog;
 begin
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 87 * 60, 5, Day, 'Parser repariert',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 87 * 60, 5, Day,
+    'Parser repariert', TAtlasTimeBookMode.WorkItem));
   try
-    Assert.AreEqual('1 h 25 min auf ATL-123 buchen?', mDialog.Question.Caption);
-    Assert.AreEqual('1:25', mDialog.DurationEdit.Text, 'auf 5 Minuten gerundet');
-    Assert.AreEqual('Parser repariert', mDialog.TextMemo.Text);
+    Assert.AreEqual('1 h 25 min auf ATL-123 buchen?', mDialog.Parts.Question.Caption);
+    Assert.AreEqual('1:25', mDialog.Parts.Duration.Text, 'auf 5 Minuten gerundet');
+    Assert.AreEqual('Parser repariert', mDialog.Parts.Text.Text);
     Assert.AreEqual(Ord(TAtlasTimeDecision.Later), Ord(mDialog.Decision), 'ohne Klick: später');
   finally
     mDialog.Free;
@@ -95,13 +95,13 @@ var
   mDialog: TAtlasTrackerTimeDialog;
   mItem: TAtlasTrackerWorkItem;
 begin
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 60 * 60, 5, Day, '',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 60 * 60, 5, Day, '',
+    TAtlasTimeBookMode.WorkItem));
   try
     mDialog.SetWorkTypes(TArray<string>.Create('Entwicklung', 'Test'));
-    mDialog.DurationEdit.Text := '1 h 30 min';
-    mDialog.WorkTypeBox.Value := ' Entwicklung ';
-    mDialog.TextMemo.Text := 'Zeile 1'#13#10'Zeile 2';
+    mDialog.Parts.Duration.Text := '1 h 30 min';
+    mDialog.Parts.WorkType.Value := ' Entwicklung ';
+    mDialog.Parts.Text.Text := 'Zeile 1'#13#10'Zeile 2';
     Assert.IsTrue(mDialog.Item(mItem));
     Assert.AreEqual(90, mItem.Minutes);
     Assert.AreEqual('Entwicklung', mItem.WorkType);
@@ -118,18 +118,18 @@ var
   mCalls: Integer;
 begin
   mCalls := 0;
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 30 * 60, 5, Day, '',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 30 * 60, 5, Day, '',
+    TAtlasTimeBookMode.WorkItem));
   try
     mDialog.OnBook :=
       procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
       begin
         Inc(mCalls);
       end;
-    mDialog.DurationEdit.Text := 'viel';
-    mDialog.BookButton.Click;
+    mDialog.Parts.Duration.Text := 'viel';
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(0, mCalls);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), mDialog.Note.Caption);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), mDialog.Parts.Note.Caption);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult));
   finally
     mDialog.Free;
@@ -145,8 +145,8 @@ var
 begin
   mCalls := 0;
   mPending := nil;
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 85 * 60, 5, Day, 'Text',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 85 * 60, 5, Day, 'Text',
+    TAtlasTimeBookMode.WorkItem));
   try
     mDialog.OnBook :=
       procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
@@ -155,19 +155,19 @@ begin
         mBooked := AItem;
         mPending := ADone;
       end;
-    mDialog.BookButton.Click;
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(1, mCalls);
     Assert.AreEqual(85, mBooked.Minutes);
     Assert.IsTrue(mDialog.Sending);
-    Assert.IsFalse(mDialog.LaterButton.Enabled, 'während der Buchung nicht schließen');
-    mDialog.BookButton.Click;
+    Assert.IsFalse(mDialog.Parts.Later.Enabled, 'während der Buchung nicht schließen');
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(1, mCalls, 'keine zweite Buchung');
     mPending(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Unauthorized, 403, ''));
     Assert.IsFalse(mDialog.Sending);
-    Assert.AreEqual('Keine Schreibrechte für ATL-123 (403).', mDialog.Note.Caption);
+    Assert.AreEqual('Keine Schreibrechte für ATL-123 (403).', mDialog.Parts.Note.Caption);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'Dialog bleibt offen');
     Assert.AreEqual(1, mCalls, 'nichts wird wiederholt');
-    mDialog.BookButton.Click;
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(2, mCalls);
     mPending(TAtlasTrackerWriteResult.Ok);
     Assert.IsTrue(mDialog.Sent);
@@ -186,8 +186,8 @@ var
   mPending: TAtlasTrackerSendDone;
 begin
   mPending := nil;
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 30 * 60, 5, Day, '',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 30 * 60, 5, Day, '',
+    TAtlasTimeBookMode.WorkItem));
   try
     mDialog.OnBook :=
       procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
@@ -199,13 +199,13 @@ begin
       begin
         Result := AResult.Status = 400;
       end;
-    mDialog.BookButton.Click;
+    mDialog.Parts.Book.Click;
     mPending(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 400, 'Time tracking is disabled'));
     Assert.IsTrue(mDialog.TrackingOff);
-    Assert.IsFalse(mDialog.BookButton.Enabled);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), mDialog.Note.Caption);
-    Assert.IsTrue(mDialog.LaterButton.Enabled, 'Später bleibt');
-    Assert.IsTrue(mDialog.DiscardButton.Enabled, 'Verwerfen bleibt');
+    Assert.IsFalse(mDialog.Parts.Book.Enabled);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), mDialog.Parts.Note.Caption);
+    Assert.IsTrue(mDialog.Parts.Later.Enabled, 'Später bleibt');
+    Assert.IsTrue(mDialog.Parts.Discard.Enabled, 'Verwerfen bleibt');
   finally
     mDialog.Free;
   end;
@@ -218,7 +218,8 @@ var
   mCalls: Integer;
 begin
   mCalls := 0;
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, '#753', 45 * 60, 5, Day, '', TAtlasTimeBookMode.Comment);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('#753', 45 * 60, 5, Day, '',
+    TAtlasTimeBookMode.Comment));
   try
     mDialog.OnBook :=
       procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
@@ -226,15 +227,16 @@ begin
         Inc(mCalls);
         ADone(TAtlasTrackerWriteResult.Ok);
       end;
-    Assert.IsFalse(mDialog.AsCommentCheck.Checked, 'Vorgabe aus');
-    mDialog.BookButton.Click;
+    Assert.IsFalse(mDialog.Parts.AsComment.Checked, 'Vorgabe aus');
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(0, mCalls, 'ohne Häkchen nichts gesendet');
     Assert.AreEqual(Ord(TAtlasTimeDecision.Booked), Ord(mDialog.Decision));
     Assert.IsFalse(mDialog.Sent, 'nur lokal vermerkt');
   finally
     mDialog.Free;
   end;
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, '#753', 45 * 60, 5, Day, '', TAtlasTimeBookMode.Comment);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('#753', 45 * 60, 5, Day, '',
+    TAtlasTimeBookMode.Comment));
   try
     mDialog.OnBook :=
       procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
@@ -242,8 +244,8 @@ begin
         Inc(mCalls);
         ADone(TAtlasTrackerWriteResult.Ok);
       end;
-    mDialog.AsCommentCheck.Checked := True;
-    mDialog.BookButton.Click;
+    mDialog.Parts.AsComment.Checked := True;
+    mDialog.Parts.Book.Click;
     Assert.AreEqual(1, mCalls, 'mit Häkchen als Kommentar');
     Assert.IsTrue(mDialog.Sent);
   finally
@@ -255,12 +257,12 @@ procedure TAtlasTrackerTimeDialogTests.DiscardAndLater;
 var
   mDialog: TAtlasTrackerTimeDialog;
 begin
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, 'ATL-123', 30 * 60, 5, Day, '',
-    TAtlasTimeBookMode.WorkItem);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, TAtlasTimeRequest.Create('ATL-123', 30 * 60, 5, Day, '',
+    TAtlasTimeBookMode.WorkItem));
   try
-    Assert.AreEqual(Integer(mrCancel), Integer(mDialog.LaterButton.ModalResult));
-    Assert.IsTrue(mDialog.LaterButton.Cancel, 'Esc = Später');
-    mDialog.DiscardButton.Click;
+    Assert.AreEqual(Integer(mrCancel), Integer(mDialog.Parts.Later.ModalResult));
+    Assert.IsTrue(mDialog.Parts.Later.Cancel, 'Esc = Später');
+    mDialog.Parts.Discard.Click;
     Assert.AreEqual(Ord(TAtlasTimeDecision.Discarded), Ord(mDialog.Decision));
     Assert.AreEqual(Integer(mrAbort), Integer(mDialog.ModalResult));
   finally
