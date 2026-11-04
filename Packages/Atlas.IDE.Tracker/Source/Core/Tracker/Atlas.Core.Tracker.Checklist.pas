@@ -99,45 +99,51 @@ end;
 
 { Zeilen }
 
+/// <summary>Erste Stelle ab AIndex, die nicht in AChars liegt.</summary>
+function SkipChars(const ALine: string; AIndex: Integer; const AChars: TSysCharSet): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(ALine)) and CharInSet(ALine[Result], AChars) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Stelle hinter dem Listenpunkt ("-", "*", "+", "1." oder "1)") ab AIndex; 0 ohne.</summary>
+function AfterBullet(const ALine: string; AIndex: Integer): Integer;
+begin
+  Result := 0;
+  if AIndex > Length(ALine) then
+  begin
+    Exit;
+  end;
+  if CharInSet(ALine[AIndex], ['-', '*', '+']) then
+  begin
+    Exit(AIndex + 1);
+  end;
+  if not CharInSet(ALine[AIndex], ['0'..'9']) then
+  begin
+    Exit;
+  end;
+  AIndex := SkipChars(ALine, AIndex, ['0'..'9']);
+  if (AIndex <= Length(ALine)) and CharInSet(ALine[AIndex], ['.', ')']) then
+  begin
+    Result := AIndex + 1;
+  end;
+end;
+
 /// <summary>Stelle (1-basiert) des "[" vor dem Kästchen in einer Zeile mit Listenpunkt; 0 ohne.</summary>
 function BoxPosition(const ALine: string): Integer;
 var
   mIndex: Integer;
 begin
   Result := 0;
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  if mIndex > Length(ALine) then
+  mIndex := AfterBullet(ALine, SkipChars(ALine, 1, [' ', #9]));
+  if mIndex = 0 then
   begin
     Exit;
   end;
-  if CharInSet(ALine[mIndex], ['-', '*', '+']) then
-  begin
-    Inc(mIndex);
-  end
-  else
-  begin
-    if not CharInSet(ALine[mIndex], ['0'..'9']) then
-    begin
-      Exit;
-    end;
-    while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], ['0'..'9']) do
-    begin
-      Inc(mIndex);
-    end;
-    if (mIndex > Length(ALine)) or not CharInSet(ALine[mIndex], ['.', ')']) then
-    begin
-      Exit;
-    end;
-    Inc(mIndex);
-  end;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
+  mIndex := SkipChars(ALine, mIndex, [' ', #9]);
   if (mIndex + 2 <= Length(ALine)) and (ALine[mIndex] = '[') and (ALine[mIndex + 2] = ']') and
     CharInSet(ALine[mIndex + 1], [' ', 'x', 'X']) then
   begin

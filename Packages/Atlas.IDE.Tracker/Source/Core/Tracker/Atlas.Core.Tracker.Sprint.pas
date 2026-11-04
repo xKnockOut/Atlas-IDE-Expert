@@ -517,12 +517,71 @@ begin
   end;
 end;
 
+/// <summary>Erledigt im Team und „meine“ Karten (offen bzw. erledigt) zum Zeitpunkt ANow.</summary>
+procedure CountCards(var AView: TAtlasSprintView; const ASnapshot: TAtlasBoardSnapshot; ANow: TDateTime;
+  AUsesPoints: Boolean);
+var
+  mCard: Integer;
+  mDone: Boolean;
+begin
+  for mCard := 0 to High(ASnapshot.Cards) do
+  begin
+    mDone := TAtlasTrackerSprint.DoneAt(ASnapshot, mCard, ANow) > 0;
+    if mDone then
+    begin
+      AView.TeamDone := AView.TeamDone + TAtlasTrackerSprint.Weight(ASnapshot.Cards[mCard], AUsesPoints);
+    end;
+    if not AView.MineKnown or not TAtlasTrackerBoard.Mine(ASnapshot.Cards[mCard], ASnapshot.Me) then
+    begin
+      Continue;
+    end;
+    if mDone then
+    begin
+      AView.MineDone := AView.MineDone + [ASnapshot.Cards[mCard].Issue];
+    end
+    else
+    begin
+      AView.MineOpen := AView.MineOpen + [ASnapshot.Cards[mCard].Issue];
+    end;
+  end;
+end;
+
+/// <summary>Velocity der früheren Sprints und Vergleich mit dem Vorsprint (dem letzten in APrevious).</summary>
+procedure AddPrevious(var AView: TAtlasSprintView; const ASummary: TAtlasSprintSummary;
+  const APrevious: TArray<TAtlasSprintSummary>);
+var
+  mLast: TAtlasSprintSummary;
+  mScale: Double;
+begin
+  for mLast in APrevious do
+  begin
+    AView.Velocity := AView.Velocity + [mLast.Velocity];
+    AView.VelocityNames := AView.VelocityNames + [mLast.Name];
+  end;
+  if Length(APrevious) = 0 then
+  begin
+    Exit;
+  end;
+  mLast := APrevious[High(APrevious)];
+  mScale := ASummary.Total;
+  if mScale <= 0 then
+  begin
+    mScale := mLast.Total;
+  end;
+  AView.Previous := TAtlasTrackerSprint.Normalized(mLast, ASummary.Days, mScale);
+  AView.HasPrevious := Length(AView.Previous) > 0;
+  AView.PreviousName := mLast.Name;
+  if AView.HasPrevious and (ASummary.Days > 0) then
+  begin
+    AView.PreviousDone := mLast.DoneAt(AView.Today / ASummary.Days);
+  end;
+end;
+
 class function TAtlasTrackerSprint.View(const ASnapshot: TAtlasBoardSnapshot; const ACalendar: TAtlasSprintCalendar;
   ANow: TDateTime; const APrevious: TArray<TAtlasSprintSummary>): TAtlasSprintView;
 var
-  mSummary, mLast: TAtlasSprintSummary;
-  mCard: Integer;
-  mScale: Double;
+  mSummary: TAtlasSprintSummary;
+  mDay: Integer;
 begin
   Result := Default(TAtlasSprintView);
   Result.Fetched := ASnapshot.Fetched;
@@ -540,58 +599,19 @@ begin
   Result.Total := mSummary.Total;
   // Zahlen „meine …“ als Anzahl; ohne Anmeldename unbekannt.
   Result.MineKnown := Trim(ASnapshot.Me) <> '';
-  for mCard := 0 to High(ASnapshot.Cards) do
-  begin
-    if DoneAt(ASnapshot, mCard, ANow) > 0 then
-    begin
-      Result.TeamDone := Result.TeamDone + Weight(ASnapshot.Cards[mCard], mSummary.UsesPoints);
-    end;
-    if not Result.MineKnown or not TAtlasTrackerBoard.Mine(ASnapshot.Cards[mCard], ASnapshot.Me) then
-    begin
-      Continue;
-    end;
-    if DoneAt(ASnapshot, mCard, ANow) > 0 then
-    begin
-      Result.MineDone := Result.MineDone + [ASnapshot.Cards[mCard].Issue];
-    end
-    else
-    begin
-      Result.MineOpen := Result.MineOpen + [ASnapshot.Cards[mCard].Issue];
-    end;
-  end;
+  CountCards(Result, ASnapshot, ANow, mSummary.UsesPoints);
   Result.TeamLeft := Max(0, Result.Total - Result.TeamDone);
   SetLength(Result.Actual, Length(mSummary.Done));
-  for mCard := 0 to High(mSummary.Done) do
+  for mDay := 0 to High(mSummary.Done) do
   begin
-    Result.Actual[mCard] := Max(0, mSummary.Total - mSummary.Done[mCard]);
+    Result.Actual[mDay] := Max(0, mSummary.Total - mSummary.Done[mDay]);
   end;
   if Length(mSummary.Done) > 0 then
   begin
     Result.DoneToday := mSummary.Done[High(mSummary.Done)];
   end;
   Result.Ideal := Ideal(mSummary.Total, mSummary.Days);
-  for mLast in APrevious do
-  begin
-    Result.Velocity := Result.Velocity + [mLast.Velocity];
-    Result.VelocityNames := Result.VelocityNames + [mLast.Name];
-  end;
-  if Length(APrevious) = 0 then
-  begin
-    Exit;
-  end;
-  mLast := APrevious[High(APrevious)];
-  mScale := mSummary.Total;
-  if mScale <= 0 then
-  begin
-    mScale := mLast.Total;
-  end;
-  Result.Previous := Normalized(mLast, mSummary.Days, mScale);
-  Result.HasPrevious := Length(Result.Previous) > 0;
-  Result.PreviousName := mLast.Name;
-  if Result.HasPrevious and (mSummary.Days > 0) then
-  begin
-    Result.PreviousDone := mLast.DoneAt(Result.Today / mSummary.Days);
-  end;
+  AddPrevious(Result, mSummary, APrevious);
 end;
 
 class function TAtlasTrackerSprint.SummaryToJson(const ASummary: TAtlasSprintSummary): string;
