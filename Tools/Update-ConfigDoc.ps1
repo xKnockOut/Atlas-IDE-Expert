@@ -71,7 +71,8 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
 $PluginSchemaPath = Join-Path $Root 'schemas/atlas-plugin.schema.json'
 $PluginSchema = Get-Content -Raw -Encoding utf8 $PluginSchemaPath | ConvertFrom-Json -AsHashtable
-$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
+# TAtlasPluginSettings und seine Bereichs-Units Atlas.Core.Settings.Plugin.<Bereich> (Records je x-area).
+$PluginFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 $ProfileFolder = Join-Path $Root 'Setup/Profile'
 
 function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $null -ne $Node[$Key] }
@@ -600,11 +601,24 @@ function Check-English([string] $Where, $Node) {
 Check-English '' $Schema
 
 # --- Wächter: Katalog der Plugin-Einstellungen (#723) ---
-$PluginText = [IO.File]::ReadAllText($PluginPath, $Utf8)
-$SaveNames = @([regex]::Matches($PluginText, "Write(?:Integer|String)\('(\w+)'") | ForEach-Object { $_.Groups[1].Value })
+# Jeder Wert steht genau einmal in Exchange seines Bereichs: AIo.Flag/Number/Text/TrimmedText('Name', …).
+$SaveNames = [Collections.Generic.List[string]]::new()
 $CatalogNames = @($PluginSchema['properties'].Keys)
-foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings.Save fehlt in schemas/atlas-plugin.schema.json") } }
-foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings.Save nicht geschrieben") } }
+foreach ($AreaFile in Get-ChildItem -Path $PluginFolder -Filter 'Atlas.Core.Settings.Plugin.*.pas') {
+    $AreaUnit = $AreaFile.BaseName.Substring('Atlas.Core.Settings.Plugin.'.Length)
+    $AreaText = [IO.File]::ReadAllText($AreaFile.FullName, $Utf8)
+    foreach ($Match in [regex]::Matches($AreaText, "AIo\.(?:Flag|Number|Text|TrimmedText)\('(\w+)'")) {
+        $Name = $Match.Groups[1].Value
+        $SaveNames.Add($Name)
+        $Area = $PluginSchema['properties'][$Name]['x-area']
+        if (($CatalogNames -ccontains $Name) -and ($Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)) -cne $AreaUnit) {
+            $Problems.Add("Plugin-Katalog: ""$Name"" steht in Atlas.Core.Settings.Plugin.$AreaUnit, gehört nach x-area ""$Area""")
+        }
+    }
+}
+foreach ($Name in ($SaveNames | Group-Object | Where-Object Count -gt 1).Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird mehrfach gelesen und geschrieben") }
+foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings (Exchange der Bereiche) fehlt in schemas/atlas-plugin.schema.json") } }
+foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings (Exchange der Bereiche) nicht gelesen und geschrieben") } }
 $SeenKeys = @{}
 foreach ($Name in $CatalogNames) {
     $P = $PluginSchema['properties'][$Name]
