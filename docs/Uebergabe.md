@@ -1,5 +1,10 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Suche unter Delphi 12 schaltete sich ab (04.11.2026, PR #1668 nach Pilot-2.0.0-beta.1, PR #1669 nach release/1.2)
+- Log von Marcos Delphi-12-Rechner (1.2.0): jedes Strg+F `EInvalidOperation: Element 'TAtlasSearchBar' hat kein übergeordnetes Fenster`, nach drei Versuchen Sicherung „Atlas-Suche abgeschaltet“.
+- Ursache: `TAtlasIdeSearch.CreateBar` setzt `Features` vor `Place`; `UpdateStates` las `FScope.ItemIndex`/`FLevel.Items.Count`, die ComboBox legt dafür unter Delphi 12 ein Fenster an. Fix: `SelectedScope`/`SelectedLevel` lesen ohne Fenster `FQuery`, Stufen über `FLevels`. Test `FeaturesBeforeWindowNeedNoWindow`.
+- Offen: Delphi-Build 0/0/0 und Handtest unter Delphi 12. Nebenbefund ohne Änderung: Modultasten (Strg+F) laufen unter der Sicherung `EditorCommands`; ist sie ausgelöst, gibt `TBinding.Pressed` trotzdem `krHandled` zurück und Strg+F tut gar nichts (auch nicht die IDE-Suche).
+
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
 - Projektgruppe `Atlas.groupproj`: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).

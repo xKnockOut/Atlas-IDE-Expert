@@ -31,6 +31,10 @@ type
     procedure SelectionScopeOnlyWithSelection;
     [Test]
     procedure PrepareBeforeWindowIsAppliedWithWindow;
+    /// <summary>Delphi 12: Features vor dem Einhängen (CreateBar) legte für ItemIndex ein Fenster an und scheiterte
+    /// ohne Eltern; nach drei Versuchen schaltete die Sicherung die Suche ab.</summary>
+    [Test]
+    procedure FeaturesBeforeWindowNeedNoWindow;
     [Test]
     procedure KeysCallTheEvents;
     [Test]
@@ -189,6 +193,35 @@ begin
     Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count));
     Assert.AreEqual('Open', Bar.TextEdit.Text);
     Assert.AreEqual(0, Bar.LevelBox.ItemIndex, 'zu hohe Stufe fällt auf die innerste');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasSearchBarTests.FeaturesBeforeWindowNeedNoWindow;
+var
+  Host: TForm;
+  Bar: TAtlasSearchBar;
+begin
+  Host := NewHost;
+  try
+    // Wie TAtlasIdeSearch.CreateBar: ohne Eltern anlegen, Teile setzen, erst danach einhängen.
+    Bar := TAtlasSearchBar.Create(Host);
+    Bar.Features := TAtlasSearchBarFeatures.Create(True, True, True);
+    Assert.IsFalse(Bar.HandleAllocated, 'Features darf kein Fenster anlegen');
+    Assert.IsFalse(Bar.ScopeBox.HandleAllocated, 'auch nicht für die Bereichsliste');
+    Assert.IsFalse(Bar.LevelBox.HandleAllocated, 'auch nicht für die Stufenliste');
+    Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Bar.Query.Scope), 'ohne Fenster der Bereich der Vorgabe');
+    Bar.Prepare(SampleQuery, ['procedure Outer;', 'procedure Inner;'], False);
+    Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Bar.Query.Scope), 'ohne Fenster der vorbereitete Bereich');
+    Assert.AreEqual(1, Bar.Query.Level, 'ohne Fenster die vorbereitete Stufe');
+    Assert.IsFalse(Bar.HandleAllocated, 'Query darf kein Fenster anlegen');
+    Bar.Parent := Host;
+    Bar.HandleNeeded;
+    Assert.AreEqual(5, Integer(Bar.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
+    Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Bar.Query.Scope));
+    Assert.AreEqual(1, Bar.LevelBox.ItemIndex);
+    Assert.IsTrue(Bar.LevelBox.Visible, 'Stufe sichtbar bei Bereich Methode');
   finally
     Host.Free;
   end;

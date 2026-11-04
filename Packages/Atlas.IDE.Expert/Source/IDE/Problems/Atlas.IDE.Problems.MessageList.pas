@@ -5,7 +5,7 @@
 // Compilermeldungen stehen schon im Reiter „Build“ und fehlen hier. Neu
 // aufgebaut wird nur, wenn sich der Inhalt geändert hat; höchstens MaxEntries
 // Zeilen. Die Gruppe wird nicht nach vorn geholt. Ist die Liste abgeschaltet
-// (Problems oder ProblemsList aus), verschwindet der Reiter ganz.
+// (Problems oder ProblemsMessageList aus), verschwindet der Reiter ganz.
 
 interface
 
