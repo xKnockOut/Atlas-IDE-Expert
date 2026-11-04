@@ -1,7 +1,8 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
-  "exclude": ["Tools/Linux/Compat/**"],
+  "exclude": ["Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
+    "Tests/Referenzprojekt/**", "Tests/**/*Golden.pas", "Setup/Beispiele/**"],
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",
