@@ -162,6 +162,38 @@ begin
     'end;'));
 end;
 
+const
+  /// <summary>Eingabe ohne Einrückung der Abschnitte und des Klassenrumpfs.</summary>
+  cSectionsUnindented =
+    'unit U;' + LF +
+    LF +
+    'interface' + LF +
+    LF +
+    'uses' + LF +
+    'A, B;' + LF +
+    LF +
+    'type' + LF +
+    'TX = class' + LF +
+    '    private' + LF +
+    'FA: Integer;' + LF +
+    'public' + LF +
+    'procedure P;' + LF +
+    'end;' + LF +
+    LF +
+    'const' + LF +
+    '    C = 1;' + LF +
+    LF +
+    'implementation' + LF +
+    LF +
+    'procedure TX.P;' + LF +
+    'var' + LF +
+    'I: Integer;' + LF +
+    'begin' + LF +
+    'I := C;' + LF +
+    'end;' + LF +
+    LF +
+    'end.';
+
 procedure TBlockIndenterTests.IndentsSectionsAndClassBody;
 begin
   Assert.AreEqual(
@@ -193,35 +225,7 @@ begin
     'end;' + LF +
     LF +
     'end.',
-    Formatted(
-    'unit U;' + LF +
-    LF +
-    'interface' + LF +
-    LF +
-    'uses' + LF +
-    'A, B;' + LF +
-    LF +
-    'type' + LF +
-    'TX = class' + LF +
-    '    private' + LF +
-    'FA: Integer;' + LF +
-    'public' + LF +
-    'procedure P;' + LF +
-    'end;' + LF +
-    LF +
-    'const' + LF +
-    '    C = 1;' + LF +
-    LF +
-    'implementation' + LF +
-    LF +
-    'procedure TX.P;' + LF +
-    'var' + LF +
-    'I: Integer;' + LF +
-    'begin' + LF +
-    'I := C;' + LF +
-    'end;' + LF +
-    LF +
-    'end.'));
+    Formatted(cSectionsUnindented));
 end;
 
 procedure TBlockIndenterTests.KeepsContinuationOffset;

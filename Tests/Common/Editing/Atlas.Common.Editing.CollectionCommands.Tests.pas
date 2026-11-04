@@ -294,7 +294,7 @@ var
 begin
   // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen (#109): beide in den var-Abschnitt.
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(RoutineUnit, ['/filter Kunden Aktiv']),
-    TTextPosition.Create(15, 0), nil, nil, Edits, nil, '19.0'));
+    TTextPosition.Create(15, 0), TSlashEnvironment.Create(nil, nil, nil, '19.0', '', nil), Edits));
   Text := Apply(Format(RoutineUnit, ['/filter Kunden Aktiv']), Edits);
   Assert.IsTrue(Parses(Text), Text);
   Assert.Contains(Text, 'procedure P(Kunden: TList<TKunde>);'#10'var'#10'  Treffer: TList<TKunde>;'#10 +

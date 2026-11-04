@@ -204,10 +204,10 @@ class function TAtlasTrackerTimeListDialog.RowText(const AItem: TAtlasTimeOpen):
 var
   mDays: string;
 begin
-  mDays := DateToStr(AItem.FirstDay);
+  mDays := DateToStr(AItem.FirstDay, FormatSettings);
   if AItem.LastDay <> AItem.FirstDay then
   begin
-    mDays := mDays + ' – ' + DateToStr(AItem.LastDay);
+    mDays := mDays + ' – ' + DateToStr(AItem.LastDay, FormatSettings);
   end;
   Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeOpenRow, [AItem.Issue.Key,
     TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(AItem.Seconds, 1)), mDays]);

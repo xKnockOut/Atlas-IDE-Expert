@@ -551,6 +551,65 @@ begin
     Reason, Done), Reason);
 end;
 
+/// <summary>Einbetten lehnt direkte, doppelte, öffentliche und verdeckte Aufrufer ab.</summary>
+procedure AssertEmbedRefusesCallers;
+var
+  mText, mReason, mDone: string;
+  mAction: TCodeAction;
+begin
+  // Direkt aufgerufen.
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+    'procedure TFoo.Run;',
+    'begin',
+    '  Tick;',
+    'end;',
+    '',
+    'procedure TFoo.Tick;',
+    'begin',
+    'end;']));
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
+  // Zweimal übergeben.
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+    'procedure TFoo.Run;',
+    'begin',
+    '  TThread.Queue(nil, Tick);',
+    '  TThread.Queue(nil, Tick);',
+    'end;',
+    '',
+    'procedure TFoo.Tick;',
+    'begin',
+    'end;']));
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
+  Assert.IsTrue(Pos('genau eine', mReason) > 0, mReason);
+  // Öffentlich.
+  mText := ClassUnit(Lines(['  public', '    procedure Run;', '    procedure Tick;']), Lines([
+    'procedure TFoo.Run;',
+    'begin',
+    '  TThread.Queue(nil, Tick);',
+    'end;',
+    '',
+    'procedure TFoo.Tick;',
+    'begin',
+    'end;']));
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
+  // Ein lokaler Name des Aufrufers verdeckte FCount.
+  mText := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
+    'procedure TFoo.Run;',
+    'var',
+    '  FCount: Integer;',
+    'begin',
+    '  FCount := 0;',
+    '  TThread.Queue(nil, Tick);',
+    'end;',
+    '',
+    'procedure TFoo.Tick;',
+    'begin',
+    '  Inc(FCount);',
+    'end;']));
+  Assert.IsFalse(EmbedAt(mText, 'TFoo.Tick', TProcTypeKind.Reference, mAction, mReason, mDone));
+  Assert.IsTrue(Pos('FCount', mReason) > 0, mReason);
+end;
+
 procedure TAnonymousMethodsTests.EmbedRefusals;
 var
   Text, Reason, Done: string;
@@ -587,57 +646,7 @@ begin
   finally
     Tree.Free;
   end;
-  // Direkt aufgerufen.
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
-    'procedure TFoo.Run;',
-    'begin',
-    '  Tick;',
-    'end;',
-    '',
-    'procedure TFoo.Tick;',
-    'begin',
-    'end;']));
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.Reference, Action, Reason, Done));
-  // Zweimal übergeben.
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
-    'procedure TFoo.Run;',
-    'begin',
-    '  TThread.Queue(nil, Tick);',
-    '  TThread.Queue(nil, Tick);',
-    'end;',
-    '',
-    'procedure TFoo.Tick;',
-    'begin',
-    'end;']));
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.Reference, Action, Reason, Done));
-  Assert.IsTrue(Pos('genau eine', Reason) > 0, Reason);
-  // Öffentlich.
-  Text := ClassUnit(Lines(['  public', '    procedure Run;', '    procedure Tick;']), Lines([
-    'procedure TFoo.Run;',
-    'begin',
-    '  TThread.Queue(nil, Tick);',
-    'end;',
-    '',
-    'procedure TFoo.Tick;',
-    'begin',
-    'end;']));
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.Reference, Action, Reason, Done));
-  // Ein lokaler Name des Aufrufers verdeckte FCount.
-  Text := ClassUnit(Lines(['    procedure Run;', '    procedure Tick;']), Lines([
-    'procedure TFoo.Run;',
-    'var',
-    '  FCount: Integer;',
-    'begin',
-    '  FCount := 0;',
-    '  TThread.Queue(nil, Tick);',
-    'end;',
-    '',
-    'procedure TFoo.Tick;',
-    'begin',
-    '  Inc(FCount);',
-    'end;']));
-  Assert.IsFalse(EmbedAt(Text, 'TFoo.Tick', TProcTypeKind.Reference, Action, Reason, Done));
-  Assert.IsTrue(Pos('FCount', Reason) > 0, Reason);
+  AssertEmbedRefusesCallers;
 end;
 
 procedure TAnonymousMethodsTests.KindOfTypeText;
