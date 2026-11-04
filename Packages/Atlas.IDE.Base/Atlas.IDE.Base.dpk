@@ -308,6 +308,8 @@ contains
   Atlas.UI.Editor.Bar in 'Source\UI\Editor\Atlas.UI.Editor.Bar.pas',
   Atlas.UI.Editor.Minimap in 'Source\UI\Editor\Atlas.UI.Editor.Minimap.pas',
   Atlas.IDE.Editor.Minimap in 'Source\IDE\Editor\Atlas.IDE.Editor.Minimap.pas',
+  Atlas.IDE.Editor.MinimapFolds in 'Source\IDE\Editor\Atlas.IDE.Editor.MinimapFolds.pas',
+  Atlas.IDE.Editor.MinimapNotice in 'Source\IDE\Editor\Atlas.IDE.Editor.MinimapNotice.pas',
   Atlas.Core.Editor.SnapshotPolicy in 'Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas',
   Atlas.Core.Editor.CloseRules in 'Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas',
   Atlas.Core.Editor.Guides in 'Source\Core\Editor\Atlas.Core.Editor.Guides.pas',
