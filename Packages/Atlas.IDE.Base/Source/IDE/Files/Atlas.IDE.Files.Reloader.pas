@@ -62,6 +62,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Atlas.UI.Strings,
@@ -247,19 +248,52 @@ begin
   Result := Current = Disk;
 end;
 
-function TAtlasFileReloader.Reload(const AFileName: string): Boolean;
 type
+  /// <summary>Stand einer Editoransicht vor dem Neuladen.</summary>
   TViewState = record
     Cursor: TOTAEditPos;
     TopRow: Integer;
     LeftColumn: Integer;
   end;
+
+function SaveViews(const AEditor: IOTASourceEditor): TArray<TViewState>;
+var
+  mView: IOTAEditView;
+  mIndex: Integer;
+begin
+  SetLength(Result, AEditor.EditViewCount);
+  for mIndex := 0 to High(Result) do
+  begin
+    mView := AEditor.EditViews[mIndex];
+    Result[mIndex].Cursor := mView.CursorPos;
+    Result[mIndex].TopRow := mView.TopRow;
+    Result[mIndex].LeftColumn := mView.LeftColumn;
+  end;
+end;
+
+procedure RestoreViews(const AEditor: IOTASourceEditor; const AStates: TArray<TViewState>);
+var
+  mView: IOTAEditView;
+  mIndex: Integer;
+begin
+  if AEditor = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to Min(AEditor.EditViewCount - 1, High(AStates)) do
+  begin
+    mView := AEditor.EditViews[mIndex];
+    mView.SetTopLeft(AStates[mIndex].TopRow, AStates[mIndex].LeftColumn);
+    mView.CursorPos := AStates[mIndex].Cursor;
+    mView.Paint;
+  end;
+end;
+
+function TAtlasFileReloader.Reload(const AFileName: string): Boolean;
 var
   Module: IOTAModule;
   Editor: IOTASourceEditor;
   States: TArray<TViewState>;
-  View: IOTAEditView;
-  Index: Integer;
 begin
   Result := False;
   Module := FindModule(AFileName);
@@ -285,31 +319,11 @@ begin
   begin
     Exit;
   end;
-  SetLength(States, Editor.EditViewCount);
-  for Index := 0 to High(States) do
-  begin
-    View := Editor.EditViews[Index];
-    States[Index].Cursor := View.CursorPos;
-    States[Index].TopRow := View.TopRow;
-    States[Index].LeftColumn := View.LeftColumn;
-  end;
+  States := SaveViews(Editor);
   Module.Refresh(True);
   // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen (P-04).
   TAtlasEditorSnapshots.Invalidate(AFileName);
-  Editor := SourceEditorOf(Module);
-  if Editor <> nil then
-  begin
-    for Index := 0 to Editor.EditViewCount - 1 do
-    begin
-      if Index <= High(States) then
-      begin
-        View := Editor.EditViews[Index];
-        View.SetTopLeft(States[Index].TopRow, States[Index].LeftColumn);
-        View.CursorPos := States[Index].Cursor;
-        View.Paint;
-      end;
-    end;
-  end;
+  RestoreViews(SourceEditorOf(Module), States);
   Result := True;
 end;
 
@@ -392,81 +406,102 @@ begin
     end);
 end;
 
+/// <summary>Eigene Änderungen behalten: Hinweis mit „Vergleichen“, bei „einblenden“ der Unterschied (#536).</summary>
+procedure NotifyKept(const ACenter: IAtlasNotificationCenter; const AFileName: string);
+var
+  mName: string;
+begin
+  mName := ExtractFileName(AFileName);
+  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [mName]),
+    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [mName]),
+    [TAtlasFileReloader.CompareAction(AFileName)]) = TAtlasNotificationMode.Show then
+  begin
+    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [mName]));
+    TAtlasFileReloader.ShowDiff(AFileName, False);
+  end;
+end;
+
+procedure NotifyDeleted(const ACenter: IAtlasNotificationCenter; const AFileName: string);
+var
+  mName: string;
+begin
+  mName := ExtractFileName(AFileName);
+  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [mName]), AFileName) =
+    TAtlasNotificationMode.Show then
+  begin
+    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [mName]));
+  end;
+end;
+
+/// <summary>Ein Hinweis für alle neu geladenen Dateien; bei „einblenden“ auch im Meldungsfenster.</summary>
+procedure NotifyReloaded(const ACenter: IAtlasNotificationCenter; const AReloaded: TArray<string>);
+var
+  mName, mNames: string;
+begin
+  mNames := '';
+  for mName in AReloaded do
+  begin
+    if mNames <> '' then
+    begin
+      mNames := mNames + ', ';
+    end;
+    mNames := mNames + ExtractFileName(mName);
+  end;
+  if ACenter.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Info,
+    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
+    TAtlasNotificationMode.Show then
+  begin
+    TAtlasFileReloader.AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(AReloaded)]));
+    for mName in AReloaded do
+    begin
+      TAtlasFileReloader.AddMessage('    ' + mName);
+    end;
+  end;
+end;
+
 procedure TAtlasFileReloader.Process(const ADecisions: TArray<TAtlasReloadDecision>);
 var
   Decision: TAtlasReloadDecision;
   Reloaded: TArray<string>;
-  Name, FileName, Names: string;
   Activity: IInterface;
   Center: IAtlasNotificationCenter;
-  Mode: TAtlasNotificationMode;
+  Active: Boolean;
 begin
   Activity := TAtlasActivity.Scope('Dateien neu laden');
   Center := TAtlasNotificationCenter.Default;
   Reloaded := nil;
-  if Assigned(FReport) and TAtlasIdeSettings.Current.ReloadExternal then
+  Active := TAtlasIdeSettings.Current.ReloadExternal;
+  for Decision in ADecisions do
   begin
-    for Decision in ADecisions do
+    if Assigned(FReport) and Active then
     begin
       FReport(Format('Extern geändert: %s (%s)', [Decision.FileName,
         TAtlasExternalChanges.ActionText(Decision.Action)]));
     end;
   end;
   for Decision in ADecisions do
-    case Decision.Action of
-      TAtlasReloadAction.Reload:
-        if Reload(Decision.FileName) then
-        begin
-          Reloaded := Reloaded + [Decision.FileName];
-        end;
-      TAtlasReloadAction.KeepModified:
-        if TAtlasIdeSettings.Current.ReloadExternal then
-        begin
-          FileName := Decision.FileName;
-          Name := ExtractFileName(FileName);
-          Mode := Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
-            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [Name]),
-            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [Name]), [CompareAction(FileName)]);
-          // Unterschied bei Dateien mit eigenen Änderungen (#536), nur bei „einblenden“.
-          if Mode = TAtlasNotificationMode.Show then
-          begin
-            AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [Name]));
-            ShowDiff(FileName, False);
-          end;
-        end;
-      TAtlasReloadAction.Deleted:
-        if TAtlasIdeSettings.Current.ReloadExternal then
-        begin
-          Name := ExtractFileName(Decision.FileName);
-          if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
-            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [Name]), Decision.FileName) =
-            TAtlasNotificationMode.Show then
-          begin
-            AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [Name]));
-          end;
-        end;
+  begin
+    if Decision.Action = TAtlasReloadAction.Reload then
+    begin
+      if Reload(Decision.FileName) then
+      begin
+        Reloaded := Reloaded + [Decision.FileName];
+      end;
+    end
+    else if Active and (Decision.Action = TAtlasReloadAction.KeepModified) then
+    begin
+      NotifyKept(Center, Decision.FileName);
+    end
+    else if Active and (Decision.Action = TAtlasReloadAction.Deleted) then
+    begin
+      NotifyDeleted(Center, Decision.FileName);
     end;
+  end;
   if Length(Reloaded) > 0 then
   begin
-    Names := '';
-    for Name in Reloaded do
-    begin
-      if Names <> '' then
-      begin
-        Names := Names + ', ';
-      end;
-      Names := Names + ExtractFileName(Name);
-    end;
-    if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Info,
-      TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(Reloaded)]), Names) =
-      TAtlasNotificationMode.Show then
-    begin
-      AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
-      for Name in Reloaded do
-      begin
-        AddMessage('    ' + Name);
-      end;
-    end;
+    NotifyReloaded(Center, Reloaded);
   end;
 end;
 

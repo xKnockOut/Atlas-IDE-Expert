@@ -101,63 +101,61 @@ begin
   end;
 end;
 
+/// <summary>Byte einer Escape-Folge ab AIndex (Zeichen nach dem Backslash): drei Oktalziffern, \t, \n, \r oder
+/// das Zeichen selbst. AIndex steht danach auf dem letzten Zeichen der Folge.</summary>
+function EscapedByte(const APath: string; var AIndex: Integer): Byte;
+begin
+  if CharInSet(APath[AIndex], ['0'..'7']) and (AIndex + 2 < Length(APath)) then
+  begin
+    Result := (Ord(APath[AIndex]) - Ord('0')) * 64 + (Ord(APath[AIndex + 1]) - Ord('0')) * 8 +
+      Ord(APath[AIndex + 2]) - Ord('0');
+    Inc(AIndex, 2);
+    Exit;
+  end;
+  case APath[AIndex] of
+    't':
+      Result := 9;
+    'n':
+      Result := 10;
+    'r':
+      Result := 13;
+  else
+    Result := Byte(Ord(APath[AIndex]));
+  end;
+end;
+
 class function TChangedFiles.UnquotePath(const APath: string): string;
 var
-  Bytes: TBytes;
-  Index, Count: Integer;
-  Extra: Byte;
-
-  procedure Add(AByte: Byte);
-  begin
-    Bytes[Count] := AByte;
-    Inc(Count);
-  end;
-
+  mBytes: TBytes;
+  mIndex: Integer;
 begin
   if (Length(APath) < 2) or (APath[1] <> '"') or (APath[Length(APath)] <> '"') then
   begin
     Exit(APath);
   end;
-  SetLength(Bytes, Length(APath) * 3);
-  Count := 0;
-  Index := 2;
-  while Index < Length(APath) do
+  mBytes := nil;
+  mIndex := 2;
+  while mIndex < Length(APath) do
   begin
-    if (APath[Index] = '\') and (Index + 1 < Length(APath)) then
+    if (APath[mIndex] = '\') and (mIndex + 1 < Length(APath)) then
     begin
-      Inc(Index);
-      if CharInSet(APath[Index], ['0'..'7']) and (Index + 2 < Length(APath)) then
-      begin
-        Add((Ord(APath[Index]) - Ord('0')) * 64 + (Ord(APath[Index + 1]) - Ord('0')) * 8 +
-          Ord(APath[Index + 2]) - Ord('0'));
-        Inc(Index, 2);
-      end
-      else
-        case APath[Index] of
-          't': Add(9);
-          'n': Add(10);
-          'r': Add(13);
-        else
-          Add(Ord(APath[Index]));
-        end;
+      Inc(mIndex);
+      mBytes := mBytes + [EscapedByte(APath, mIndex)];
     end
-    else if Ord(APath[Index]) < 128 then
+    else if Ord(APath[mIndex]) < 128 then
     begin
-      Add(Ord(APath[Index]));
+      mBytes := mBytes + [Byte(Ord(APath[mIndex]))];
     end
     else
     begin
       // Zeichen außerhalb von ASCII ohne Oktalfolge: als UTF-8 übernehmen.
-      for Extra in TEncoding.UTF8.GetBytes(string(APath[Index])) do
-      begin
-        Add(Extra);
-      end;
+      mBytes := mBytes + TEncoding.UTF8.GetBytes(string(APath[mIndex]));
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  SetLength(Bytes, Count);
-  Result := TEncoding.UTF8.GetString(Bytes);
+  Result := TEncoding.UTF8.GetString(mBytes);
 end;
+
 
 class function TChangedFiles.ParseNameStatus(const ALines: TArray<string>): TArray<string>;
 var
@@ -190,72 +188,83 @@ begin
   end;
 end;
 
+/// <summary>Neue Zeilen aus "@@ -a[,b] +c[,d] @@": AStart = c, ACount = d (fehlt = 1); False ohne "+c".</summary>
+function HunkRange(const ALine: string; out AStart, ACount: Integer): Boolean;
+var
+  mPlus, mSpace, mComma: Integer;
+  mHeader: string;
+begin
+  AStart := 0;
+  ACount := 0;
+  mPlus := Pos(' +', ALine);
+  mSpace := PosEx(' ', ALine, mPlus + 2);
+  Result := (mPlus > 0) and (mSpace > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mHeader := Copy(ALine, mPlus + 2, mSpace - mPlus - 2);
+  mComma := Pos(',', mHeader);
+  if mComma > 0 then
+  begin
+    AStart := StrToIntDef(Copy(mHeader, 1, mComma - 1), 0);
+    ACount := StrToIntDef(Copy(mHeader, mComma + 1, MaxInt), 0);
+  end
+  else
+  begin
+    AStart := StrToIntDef(mHeader, 0);
+    ACount := 1;
+  end;
+end;
+
+/// <summary>Neue Zeilen AStart .. AStart+ACount-1 (1-basiert) als Bereich; ACount = 0 nennt die Zeile AStart, hinter
+/// der Zeilen nur entfernt wurden (0 am Dateianfang).</summary>
+procedure AddHunk(var AItem: TChangedLines; AStart, ACount: Integer);
+var
+  mSpan: TLineSpan;
+begin
+  if (ACount = 0) and (AStart >= 0) then
+  begin
+    AItem.Gaps := AItem.Gaps + [AStart];
+  end
+  else if (ACount > 0) and (AStart > 0) then
+  begin
+    mSpan.First := AStart - 1;
+    mSpan.Last := AStart + ACount - 2;
+    AItem.Spans := AItem.Spans + [mSpan];
+  end;
+end;
+
 class function TChangedFiles.ParseHunks(const ALines: TArray<string>): TArray<TChangedLines>;
 var
-  Line, Header: string;
-  Current: Integer;
-  Plus, Space, Comma, Start, Count: Integer;
-  Span: TLineSpan;
-  Item: TChangedLines;
+  mLine, mHeader: string;
+  mCurrent, mStart, mCount: Integer;
+  mItem: TChangedLines;
 begin
   Result := nil;
-  Current := -1;
-  for Line in ALines do
+  mCurrent := -1;
+  for mLine in ALines do
   begin
-    if StartsStr('+++ ', Line) then
+    if StartsStr('+++ ', mLine) then
     begin
-      Current := -1;
+      mCurrent := -1;
       // "+++ b/Pfad", "+++ "b/Pfad"" bzw. "+++ /dev/null" bei gelöschten Dateien
-      Header := UnquotePath(Copy(Line, Length('+++ ') + 1, MaxInt));
-      if StartsStr('b/', Header) then
+      mHeader := UnquotePath(Copy(mLine, Length('+++ ') + 1, MaxInt));
+      if StartsStr('b/', mHeader) then
       begin
-        Item := Default(TChangedLines);
-        Item.Path := Copy(Header, Length('b/') + 1, MaxInt);
-        Result := Result + [Item];
-        Current := High(Result);
+        mItem := Default(TChangedLines);
+        mItem.Path := Copy(mHeader, Length('b/') + 1, MaxInt);
+        Result := Result + [mItem];
+        mCurrent := High(Result);
       end;
     end
-    else if StartsStr('@@ ', Line) and (Current >= 0) then
+    else if StartsStr('@@ ', mLine) and (mCurrent >= 0) and HunkRange(mLine, mStart, mCount) then
     begin
-      // @@ -a[,b] +c[,d] @@: neue Zeilen c .. c+d-1 (1-basiert), d fehlt = 1, d = 0 nur gelöscht
-      Plus := Pos(' +', Line);
-      if Plus = 0 then
-      begin
-        Continue;
-      end;
-      Space := PosEx(' ', Line, Plus + 2);
-      if Space = 0 then
-      begin
-        Continue;
-      end;
-      Header := Copy(Line, Plus + 2, Space - Plus - 2);
-      Comma := Pos(',', Header);
-      if Comma > 0 then
-      begin
-        Start := StrToIntDef(Copy(Header, 1, Comma - 1), 0);
-        Count := StrToIntDef(Copy(Header, Comma + 1, MaxInt), 0);
-      end
-      else
-      begin
-        Start := StrToIntDef(Header, 0);
-        Count := 1;
-      end;
-      // Nur entfernt: "+c,0" nennt die Zeile c, hinter der sie fehlen (c = 0 am Dateianfang).
-      if (Count = 0) and (Start >= 0) then
-      begin
-        Result[Current].Gaps := Result[Current].Gaps + [Start];
-        Continue;
-      end;
-      if (Count <= 0) or (Start <= 0) then
-      begin
-        Continue;
-      end;
-      Span.First := Start - 1;
-      Span.Last := Start + Count - 2;
-      Result[Current].Spans := Result[Current].Spans + [Span];
+      AddHunk(Result[mCurrent], mStart, mCount);
     end;
   end;
 end;
+
 
 /// <summary>Pfad ab Spalte 9 bei Status in Spalte 1 aus AStates; '' sonst.</summary>
 function SvnPath(const ALine: string; const AStates: string): string;
@@ -303,182 +312,274 @@ begin
   end;
 end;
 
+type
+  /// <summary>Zustand beim Lesen von "svn diff": aktuelle Datei, nächste neue Zeile (0-basiert, -1 außerhalb eines
+  /// Hunks) und Anfang entfernter Zeilen ohne "+" dahinter.</summary>
+  TSvnDiffReader = record
+    FItems: TArray<TChangedLines>;
+    FCurrent: Integer;
+    FNewLine: Integer;
+    FRemovedAt: Integer;
+    procedure Init;
+    procedure FlushRemoved;
+    procedure StartFile(const ALine: string);
+    procedure StartHunk(const ALine: string);
+    procedure AddLine;
+    procedure ReadBody(const ALine: string);
+    procedure ReadLine(const ALine: string);
+  end;
+
+/// <summary>Erste neue Zeile (0-basiert) aus "@@ -a,b +c,d @@"; -1 ohne "+c", 0 bei leerer neuer Fassung.</summary>
+function SvnHunkStart(const ALine: string): Integer;
+var
+  mPlus, mSpace, mComma: Integer;
+  mHeader: string;
+begin
+  Result := -1;
+  mPlus := Pos(' +', ALine);
+  mSpace := PosEx(' ', ALine, mPlus + 2);
+  if (mPlus = 0) or (mSpace = 0) then
+  begin
+    Exit;
+  end;
+  mHeader := Copy(ALine, mPlus + 2, mSpace - mPlus - 2);
+  mComma := Pos(',', mHeader);
+  if mComma > 0 then
+  begin
+    mHeader := Copy(mHeader, 1, mComma - 1);
+  end;
+  Result := StrToIntDef(mHeader, -1) - 1;
+  // "+0,0": Die neue Fassung ist leer.
+  if Result = -1 then
+  begin
+    Result := 0;
+  end;
+end;
+
+{ TSvnDiffReader }
+
+procedure TSvnDiffReader.Init;
+begin
+  FItems := nil;
+  FCurrent := -1;
+  FNewLine := -1;
+  FRemovedAt := -1;
+end;
+
+// Nur entfernte Zeilen (ohne "+" dahinter) als Lücke vor FNewLine, wie "+c,0" bei Git (#1353).
+procedure TSvnDiffReader.FlushRemoved;
+begin
+  if (FRemovedAt >= 0) and (FCurrent >= 0) then
+  begin
+    FItems[FCurrent].Gaps := FItems[FCurrent].Gaps + [FRemovedAt];
+  end;
+  FRemovedAt := -1;
+end;
+
+procedure TSvnDiffReader.StartFile(const ALine: string);
+var
+  mHeader: string;
+  mItem: TChangedLines;
+begin
+  FlushRemoved;
+  // "+++ Src/Kunde.pas	(working copy)"
+  mHeader := Copy(ALine, Length('+++ ') + 1, MaxInt);
+  if Pos(#9, mHeader) > 0 then
+  begin
+    mHeader := Copy(mHeader, 1, Pos(#9, mHeader) - 1);
+  end;
+  mItem := Default(TChangedLines);
+  mItem.Path := Trim(mHeader);
+  FItems := FItems + [mItem];
+  FCurrent := High(FItems);
+  FNewLine := -1;
+end;
+
+procedure TSvnDiffReader.StartHunk(const ALine: string);
+begin
+  FlushRemoved;
+  FNewLine := SvnHunkStart(ALine);
+end;
+
+procedure TSvnDiffReader.AddLine;
+var
+  mSpan: TLineSpan;
+  mLast: Integer;
+begin
+  FRemovedAt := -1;
+  mLast := High(FItems[FCurrent].Spans);
+  // Benachbarte Zeilen zu einem Bereich zusammenfassen.
+  if (mLast >= 0) and (FItems[FCurrent].Spans[mLast].Last = FNewLine - 1) then
+  begin
+    FItems[FCurrent].Spans[mLast].Last := FNewLine;
+  end
+  else
+  begin
+    mSpan.First := FNewLine;
+    mSpan.Last := FNewLine;
+    FItems[FCurrent].Spans := FItems[FCurrent].Spans + [mSpan];
+  end;
+  Inc(FNewLine);
+end;
+
+procedure TSvnDiffReader.ReadBody(const ALine: string);
+begin
+  case ALine[1] of
+    ' ':
+      begin
+        FlushRemoved;
+        Inc(FNewLine);
+      end;
+    '+':
+      begin
+        AddLine;
+      end;
+    '-':
+      begin
+        if FRemovedAt < 0 then
+        begin
+          FRemovedAt := FNewLine;
+        end;
+      end;
+    '\':
+      begin
+      end;
+  else
+    begin
+      FlushRemoved;
+      FNewLine := -1;
+    end;
+  end;
+end;
+
+procedure TSvnDiffReader.ReadLine(const ALine: string);
+begin
+  if StartsStr('+++ ', ALine) then
+  begin
+    StartFile(ALine);
+  end
+  else if StartsStr('@@ ', ALine) and (FCurrent >= 0) then
+  begin
+    StartHunk(ALine);
+  end
+  else if (FCurrent >= 0) and (FNewLine >= 0) and (ALine <> '') then
+  begin
+    ReadBody(ALine);
+  end;
+end;
+
 class function TChangedFiles.ParseSvnDiff(const ALines: TArray<string>): TArray<TChangedLines>;
 var
-  Line, Header: string;
-  Current, NewLine, Plus, Space, Comma, mRemovedAt: Integer;
-  Span: TLineSpan;
-  Item: TChangedLines;
-
-  // Nur entfernte Zeilen (ohne "+" dahinter) als Lücke vor NewLine, wie "+c,0" bei Git (#1353).
-  procedure FlushRemoved;
-  begin
-    if (mRemovedAt >= 0) and (Current >= 0) then
-    begin
-      Result[Current].Gaps := Result[Current].Gaps + [mRemovedAt];
-    end;
-    mRemovedAt := -1;
-  end;
-
+  mReader: TSvnDiffReader;
+  mLine: string;
 begin
-  Result := nil;
-  Current := -1;
-  NewLine := -1;
-  mRemovedAt := -1;
-  for Line in ALines do
+  mReader.Init;
+  for mLine in ALines do
   begin
-    if StartsStr('+++ ', Line) then
-    begin
-      FlushRemoved;
-      // "+++ Src/Kunde.pas	(working copy)"
-      Header := Copy(Line, Length('+++ ') + 1, MaxInt);
-      if Pos(#9, Header) > 0 then
-      begin
-        Header := Copy(Header, 1, Pos(#9, Header) - 1);
-      end;
-      Item := Default(TChangedLines);
-      Item.Path := Trim(Header);
-      Result := Result + [Item];
-      Current := High(Result);
-      NewLine := -1;
-    end
-    else if StartsStr('@@ ', Line) and (Current >= 0) then
-    begin
-      FlushRemoved;
-      Plus := Pos(' +', Line);
-      Space := PosEx(' ', Line, Plus + 2);
-      NewLine := -1;
-      if (Plus > 0) and (Space > 0) then
-      begin
-        Header := Copy(Line, Plus + 2, Space - Plus - 2);
-        Comma := Pos(',', Header);
-        if Comma > 0 then
-        begin
-          Header := Copy(Header, 1, Comma - 1);
-        end;
-        NewLine := StrToIntDef(Header, -1) - 1;
-        // "+0,0": Die neue Fassung ist leer.
-        if NewLine = -1 then
-        begin
-          NewLine := 0;
-        end;
-      end;
-    end
-    else if (Current >= 0) and (NewLine >= 0) and (Line <> '') then
-      case Line[1] of
-        ' ':
-          begin
-            FlushRemoved;
-            Inc(NewLine);
-          end;
-        '+':
-          begin
-            mRemovedAt := -1;
-            // Benachbarte Zeilen zu einem Bereich zusammenfassen.
-            if (Length(Result[Current].Spans) > 0) and
-              (Result[Current].Spans[High(Result[Current].Spans)].Last = NewLine - 1) then
-            begin
-              Result[Current].Spans[High(Result[Current].Spans)].Last := NewLine;
-            end
-            else
-            begin
-              Span.First := NewLine;
-              Span.Last := NewLine;
-              Result[Current].Spans := Result[Current].Spans + [Span];
-            end;
-            Inc(NewLine);
-          end;
-        '-':
-          if mRemovedAt < 0 then
-          begin
-            mRemovedAt := NewLine;
-          end;
-        '\':
-          ;
-      else
-        begin
-          FlushRemoved;
-          NewLine := -1;
-        end;
-      end;
+    mReader.ReadLine(mLine);
   end;
-  FlushRemoved;
+  mReader.FlushRemoved;
+  Result := mReader.FItems;
+end;
+
+/// <summary>Position hinter "{$" bzw. "(*$" an AIndex; 0, wenn dort keine Direktive beginnt.</summary>
+function DirectiveBody(const AUpper: string; AIndex: Integer): Integer;
+begin
+  Result := 0;
+  if (AUpper[AIndex] = '{') and (Copy(AUpper, AIndex + 1, 1) = '$') then
+  begin
+    Result := AIndex + 2;
+  end
+  else if Copy(AUpper, AIndex, 3) = '(*$' then
+  begin
+    Result := AIndex + 3;
+  end;
+end;
+
+/// <summary>Steht an AIndex ein Leerzeichen oder Tabulator?</summary>
+function IsBlank(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex <= Length(AText)) and CharInSet(AText[AIndex], [' ', #9]);
+end;
+
+/// <summary>Anfang des Arguments von $I bzw. $INCLUDE ab ABody; 0 bei anderen Direktiven und bei den Schaltern
+/// $I+ und $I-.</summary>
+function IncludeArgument(const AUpper: string; ABody: Integer): Integer;
+var
+  mAt: Integer;
+begin
+  Result := 0;
+  mAt := ABody;
+  if Copy(AUpper, mAt, 7) = 'INCLUDE' then
+  begin
+    Inc(mAt, 7);
+  end
+  else if (Copy(AUpper, mAt, 1) = 'I') and IsBlank(AUpper, mAt + 1) then
+  begin
+    Inc(mAt);
+  end
+  else
+  begin
+    Exit;
+  end;
+  if not IsBlank(AUpper, mAt) then
+  begin
+    Exit;
+  end;
+  while IsBlank(AUpper, mAt) do
+  begin
+    Inc(mAt);
+  end;
+  if (mAt <= Length(AUpper)) and not CharInSet(AUpper[mAt], ['+', '-']) then
+  begin
+    Result := mAt;
+  end;
+end;
+
+/// <summary>Ende (ausschließlich) des Include-Namens ab AStart; bei einem Namen in Hochkommas steht AStart danach
+/// hinter dem öffnenden.</summary>
+function IncludeNameEnd(const AText: string; var AStart: Integer): Integer;
+begin
+  if AText[AStart] = '''' then
+  begin
+    Inc(AStart);
+    Exit(PosEx('''', AText, AStart));
+  end;
+  Result := AStart;
+  while (Result <= Length(AText)) and not CharInSet(AText[Result], [' ', #9, '}', '*', #10, #13]) do
+  begin
+    Inc(Result);
+  end;
 end;
 
 class function TChangedFiles.IncludeNames(const AText: string): TArray<string>;
 var
-  Upper, Name: string;
-  Index, Start, Stop: Integer;
-  Quoted: Boolean;
+  mUpper: string;
+  mIndex, mStart, mStop: Integer;
 begin
   Result := nil;
-  Upper := UpperCase(AText);
-  Index := 1;
-  while Index <= Length(Upper) do
+  mUpper := UpperCase(AText);
+  mIndex := 1;
+  while mIndex <= Length(mUpper) do
   begin
-    if (Upper[Index] = '{') and (Copy(Upper, Index + 1, 1) = '$') then
+    mStart := DirectiveBody(mUpper, mIndex);
+    if mStart = 0 then
     begin
-      Start := Index + 2;
-    end
-    else if (Copy(Upper, Index, 3) = '(*$') then
-    begin
-      Start := Index + 3;
-    end
-    else
-    begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    Index := Start;
-    if Copy(Upper, Start, 7) = 'INCLUDE' then
-    begin
-      Start := Start + 7;
-    end
-    else if (Copy(Upper, Start, 1) = 'I') and (Copy(Upper, Start + 1, 1) <> '') and
-      CharInSet(Upper[Start + 1], [' ', #9]) then
-    begin
-      Start := Start + 1;
-    end
-    else
+    mIndex := mStart;
+    mStart := IncludeArgument(mUpper, mStart);
+    if mStart = 0 then
     begin
       Continue;
     end;
-    if (Start > Length(Upper)) or not CharInSet(Upper[Start], [' ', #9]) then
+    mStop := IncludeNameEnd(AText, mStart);
+    if mStop > mStart then
     begin
-      Continue;
+      Result := Result + [Copy(AText, mStart, mStop - mStart)];
+      mIndex := mStop;
     end;
-    while (Start <= Length(Upper)) and CharInSet(Upper[Start], [' ', #9]) do
-    begin
-      Inc(Start);
-    end;
-    if (Start > Length(Upper)) or CharInSet(Upper[Start], ['+', '-']) then
-    begin
-      Continue;
-    end;
-    Quoted := Upper[Start] = '''';
-    if Quoted then
-    begin
-      Inc(Start);
-      Stop := PosEx('''', AText, Start);
-    end
-    else
-    begin
-      Stop := Start;
-      while (Stop <= Length(AText)) and not CharInSet(AText[Stop], [' ', #9, '}', '*', #10, #13]) do
-      begin
-        Inc(Stop);
-      end;
-    end;
-    if Stop <= Start then
-    begin
-      Continue;
-    end;
-    Name := Copy(AText, Start, Stop - Start);
-    if Name <> '' then
-    begin
-      Result := Result + [Name];
-    end;
-    Index := Stop;
   end;
 end;
 
@@ -513,61 +614,85 @@ begin
   Result := SameText(Name, BaseName(AIncludeFile));
 end;
 
+/// <summary>Wählt eine Änderung an AChanged alle Dateien? Projekt- und Konfigurationsdateien.</summary>
+function ChangesAll(const AChanged: string): Boolean;
+begin
+  Result := MatchText(ExtractFileExt(AChanged), ['.dproj', '.dpk', '.dpr']) or
+    SameText(ExtractFileName(AChanged), 'atlas.json');
+end;
+
+/// <summary>Betrifft die Änderung an AChanged ACandidate direkt: dieselbe Datei oder ihr Formular?</summary>
+function DirectlyAffected(const ACandidate, AChanged: string): Boolean;
+begin
+  Result := (Normalize(ACandidate) = Normalize(AChanged)) or
+    (MatchText(ExtractFileExt(AChanged), ['.dfm', '.fmx']) and (WithoutExt(ACandidate) = WithoutExt(AChanged)));
+end;
+
+/// <summary>Bindet ACandidate eine der geänderten Include-Dateien AIncludes ein?</summary>
+function IncludesAny(const ACandidate: string; const AIncludes: TArray<string>;
+  const AIncludeNamesOf: TIncludeNamesOf): Boolean;
+var
+  mName, mInclude: string;
+begin
+  for mName in AIncludeNamesOf(ACandidate) do
+  begin
+    for mInclude in AIncludes do
+    begin
+      if IncludeMatches(mName, mInclude) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Markiert in AWanted die Kandidaten, die die Änderung an AChanged direkt betrifft.</summary>
+procedure MarkAffected(const ACandidates: TArray<string>; const AChanged: string; var AWanted: TArray<Boolean>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ACandidates) do
+  begin
+    if DirectlyAffected(ACandidates[mIndex], AChanged) then
+    begin
+      AWanted[mIndex] := True;
+    end;
+  end;
+end;
+
 class function TChangedFiles.Select(const AChanged, ACandidates: TArray<string>;
   const AIncludeNamesOf: TIncludeNamesOf): TArray<string>;
 var
-  Changed, Ext, IncludeName: string;
-  Includes: TArray<string>;
-  Wanted: TArray<Boolean>;
-  Index: Integer;
+  mChanged: string;
+  mIncludes: TArray<string>;
+  mWanted: TArray<Boolean>;
+  mIndex: Integer;
 begin
-  SetLength(Wanted, Length(ACandidates));
-  Includes := nil;
-  for Changed in AChanged do
+  SetLength(mWanted, Length(ACandidates));
+  mIncludes := nil;
+  for mChanged in AChanged do
   begin
-    Ext := LowerCase(ExtractFileExt(Changed));
-    if MatchText(Ext, ['.dproj', '.dpk', '.dpr']) or SameText(ExtractFileName(Changed), 'atlas.json') then
+    if ChangesAll(mChanged) then
     begin
       Exit(Copy(ACandidates));
     end;
-    if MatchText(Ext, ['.inc']) then
+    if SameText(ExtractFileExt(mChanged), '.inc') then
     begin
-      Includes := Includes + [Changed];
+      mIncludes := mIncludes + [mChanged];
     end;
-    for Index := 0 to High(ACandidates) do
-    begin
-      if (Normalize(ACandidates[Index]) = Normalize(Changed)) or
-        (MatchText(Ext, ['.dfm', '.fmx']) and (WithoutExt(ACandidates[Index]) = WithoutExt(Changed))) then
-      begin
-        Wanted[Index] := True;
-      end;
-    end;
-  end;
-  if (Includes <> nil) and Assigned(AIncludeNamesOf) then
-  begin
-    for Index := 0 to High(ACandidates) do
-    begin
-      if not Wanted[Index] then
-      begin
-        for IncludeName in AIncludeNamesOf(ACandidates[Index]) do
-        begin
-          for Changed in Includes do
-          begin
-            if IncludeMatches(IncludeName, Changed) then
-            begin
-              Wanted[Index] := True;
-            end;
-          end;
-        end;
-      end;
-    end;
+    MarkAffected(ACandidates, mChanged, mWanted);
   end;
   Result := nil;
-  for Index := 0 to High(ACandidates) do
+  for mIndex := 0 to High(ACandidates) do
   begin
-    if Wanted[Index] then
+    if not mWanted[mIndex] and (mIncludes <> nil) and Assigned(AIncludeNamesOf) then
     begin
-      Result := Result + [ACandidates[Index]];
+      mWanted[mIndex] := IncludesAny(ACandidates[mIndex], mIncludes, AIncludeNamesOf);
+    end;
+    if mWanted[mIndex] then
+    begin
+      Result := Result + [ACandidates[mIndex]];
     end;
   end;
 end;

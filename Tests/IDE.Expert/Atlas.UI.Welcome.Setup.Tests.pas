@@ -142,31 +142,31 @@ begin
   try
     Card := SetupCard;
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.AreEqual('XmlInspector für Atlas einrichten', TAtlasWelcomeSetupFrame.TitleText(Card));
+    Assert.AreEqual('XmlInspector für Atlas einrichten', TAtlasSetupTexts.TitleText(Card));
     Assert.AreEqual('Projekt gefunden, keine atlas.json',
-      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Found, Card, 0));
-    Assert.AreEqual('atlas.json anlegen', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Config, Card, 0));
-    Assert.AreEqual('Baseline erzeugen', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Baseline, Card, 0));
+      TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Found, Card, 0));
+    Assert.AreEqual('atlas.json anlegen', TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Config, Card, 0));
+    Assert.AreEqual('Baseline erzeugen', TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Baseline, Card, 0));
     Assert.AreEqual('Suchpfade und Defines prüfen',
-      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Paths, Card, 0));
-    Assert.AreEqual('Bestehendes Projekt', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.Existing));
-    Assert.AreEqual('Neues Projekt, streng', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.NewStrict));
-    Assert.AreEqual('Altprojekt mit Baseline', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.Legacy));
-    Assert.AreEqual('Starten', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Baseline));
-    Assert.AreEqual('Prüfen', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Paths));
+      TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Paths, Card, 0));
+    Assert.AreEqual('Bestehendes Projekt', TAtlasSetupTexts.TemplateCaption(TAtlasSetupTemplate.Existing));
+    Assert.AreEqual('Neues Projekt, streng', TAtlasSetupTexts.TemplateCaption(TAtlasSetupTemplate.NewStrict));
+    Assert.AreEqual('Altprojekt mit Baseline', TAtlasSetupTexts.TemplateCaption(TAtlasSetupTemplate.Legacy));
+    Assert.AreEqual('Starten', TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Baseline));
+    Assert.AreEqual('Prüfen', TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Paths));
     Assert.AreEqual('Für dieses Projekt nicht mehr fragen',
-      TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Dismiss));
-    Assert.AreEqual('Testklasse', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.NewTest));
+      TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Dismiss));
+    Assert.AreEqual('Testklasse', TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.NewTest));
     Card.Facts.ConfigExists := True;
     Card.ConfigName := 'atlas.json';
-    Assert.AreEqual('Projekt gefunden', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Found, Card, 0));
-    Assert.AreEqual('atlas.json vorhanden', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Config, Card, 0));
+    Assert.AreEqual('Projekt gefunden', TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Found, Card, 0));
+    Assert.AreEqual('atlas.json vorhanden', TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Config, Card, 0));
     Card.ShowCard := False;
-    Assert.AreEqual('Neu mit Atlas', TAtlasWelcomeSetupFrame.TitleText(Card));
+    Assert.AreEqual('Neu mit Atlas', TAtlasSetupTexts.TitleText(Card));
     TAtlasStrings.Language := TAtlasLanguage.English;
     Card.ShowCard := True;
-    Assert.AreEqual('Set up XmlInspector for Atlas', TAtlasWelcomeSetupFrame.TitleText(Card));
-    Assert.AreEqual('Test class', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.NewTest));
+    Assert.AreEqual('Set up XmlInspector for Atlas', TAtlasSetupTexts.TitleText(Card));
+    Assert.AreEqual('Test class', TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.NewTest));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -258,15 +258,15 @@ begin
   mLine.Line := 12;
   mLine.Count := 1;
   Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12',
-    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+    TAtlasSetupTexts.FindingCaption(mLine));
   mLine.Count := 3;
   Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12 (3×)',
-    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+    TAtlasSetupTexts.FindingCaption(mLine));
   mLine.Kind := TAtlasSetupFindingKind.UndefinedDefine;
   mLine.Name := 'USE_XML';
   mLine.Count := 1;
   Assert.AreEqual('Define „USE_XML“ ohne Quelle – Src\Main.pas, Zeile 12',
-    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+    TAtlasSetupTexts.FindingCaption(mLine));
 end;
 /// <summary>Einrichtungskarte mit 9 fehlenden Units und einem Define ohne Quelle.</summary>
 function SetupCardWithFindings: TAtlasSetupCard;
@@ -357,12 +357,12 @@ begin
     Line.Uncertain := True;
     Line.Macros := '$(MYLIB)';
     Assert.AreEqual('Unit „Lib.Core“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
-      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasSetupTexts.FindingCaption(Line));
     Line.Project := 'App';
     Line.Kind := TAtlasSetupFindingKind.UndefinedDefine;
     Line.Name := 'USE_LIB';
     Assert.AreEqual('App: Define „USE_LIB“ ohne Quelle (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
-      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasSetupTexts.FindingCaption(Line));
     Card := SetupCard;
     Card.GroupProjects := 3;
     Card.GroupChecked := 1;
@@ -373,13 +373,13 @@ begin
     Assert.AreEqual('1 von 3 Projekten der Gruppe geprüft' + sLineBreak +
       '2 Units nicht gefunden, 0 Defines ohne Quelle (5 Dateien geprüft)' + sLineBreak +
       'Davon unsicher: 1 (Suchpfad mit unbekanntem Makro $(MYLIB) übersprungen)',
-      TAtlasWelcomeSetupFrame.PathsCaption(Card));
+      TAtlasSetupTexts.PathsCaption(Card));
     // Fehler gehen vor.
     Card.Paths := TAtlasSetupRun.Failed;
     Card.PathsError := 'kaputt';
-    Assert.AreEqual('kaputt', TAtlasWelcomeSetupFrame.PathsCaption(Card));
+    Assert.AreEqual('kaputt', TAtlasSetupTexts.PathsCaption(Card));
     // Einzelprojekt ohne Prüfung: nichts.
-    Assert.AreEqual('', TAtlasWelcomeSetupFrame.PathsCaption(SetupCard));
+    Assert.AreEqual('', TAtlasSetupTexts.PathsCaption(SetupCard));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -517,11 +517,11 @@ begin
     Card.Baseline := TAtlasSetupRun.Running;
     Card.BaselineStarted := 1000;
     Assert.AreEqual('Baseline wird erzeugt … 12 s',
-      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Baseline, Card, 13500));
+      TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Baseline, Card, 13500));
     Card.Paths := TAtlasSetupRun.Running;
     Card.PathsStarted := 1000;
     Assert.AreEqual('Suchpfade und Defines werden geprüft … 2 s',
-      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Paths, Card, 3000));
+      TAtlasSetupTexts.StepCaption(TAtlasSetupStep.Paths, Card, 3000));
     Fake := TFakeSetup.Create;
     Fake.Card_ := Card;
     Fake.Card_.BaselineStarted := TThread.GetTickCount64;

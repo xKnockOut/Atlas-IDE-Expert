@@ -35,41 +35,48 @@ implementation
 uses
   System.Math;
 
-class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
+/// <summary>Ansicht des aktuellen Moduls; bei mehreren Fenstern die zuletzt benutzte.</summary>
+function CurrentModuleView: IOTAEditView;
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Source: IOTASourceEditor;
-  Editors: IOTAEditorServices;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mSource: IOTASourceEditor;
+  mEditors: IOTAEditorServices;
+  mIndex: Integer;
 begin
   Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mModule := mModules.CurrentModule;
+  mIndex := 0;
+  while (Result = nil) and (mModule <> nil) and (mIndex < mModule.ModuleFileCount) do
+  begin
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mSource) and (mSource.EditViewCount > 0) then
+    begin
+      Result := mSource.EditViews[0];
+    end;
+    Inc(mIndex);
+  end;
+  // Die zuletzt benutzte Ansicht, falls die Datei in mehreren Fenstern offen ist.
+  if (Result <> nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and
+    (mEditors.TopView <> nil) and (mEditors.TopView.Buffer = Result.Buffer) then
+  begin
+    Result := mEditors.TopView;
+  end;
+end;
+
+class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
+begin
   // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
   // (Befehl aus Palette, Hauptmenü oder einem angedockten Fenster).
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  Result := CurrentModuleView;
+  if (Result = nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Module := Modules.CurrentModule;
-    if Module <> nil then
-    begin
-      for Index := 0 to Module.ModuleFileCount - 1 do
-      begin
-        if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Source) and (Source.EditViewCount > 0) then
-        begin
-          Result := Source.EditViews[0];
-          // Die zuletzt benutzte Ansicht, falls die Datei in mehreren Fenstern offen ist.
-          if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopView <> nil) and
-            (Editors.TopView.Buffer = Result.Buffer) then
-          begin
-            Result := Editors.TopView;
-          end;
-          Exit;
-        end;
-      end;
-    end;
-  end;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-  begin
-    Result := Editors.TopView;
+    Result := mEditors.TopView;
   end;
 end;
 

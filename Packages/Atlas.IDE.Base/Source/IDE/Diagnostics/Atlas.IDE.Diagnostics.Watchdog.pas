@@ -39,6 +39,8 @@ type
       FOwner: TAtlasWatchdog;
       /// <summary>Eigener Rahmen je Bericht: Der Thread arbeitet weiter, während der Hauptthread meldet.</summary>
       procedure Report(const AHang: TAtlasHang; const AAddresses: TArray<UInt64>);
+      /// <summary>Wartet auf die Antwort zu ASeq; hält dabei einmal den Hänger fest (True).</summary>
+      function AwaitPong(ASeq: Integer; ASentAt: Int64; out AHang: TAtlasHang): Boolean;
     protected
       procedure Execute; override;
     end;
@@ -92,10 +94,28 @@ function InternalGetWindowText(hWnd: HWND; pString: PWideChar; cchMaxCount: Inte
 
 { TAtlasWatchdog.TWatchThread }
 
+function TAtlasWatchdog.TWatchThread.AwaitPong(ASeq: Integer; ASentAt: Int64; out AHang: TAtlasHang): Boolean;
+begin
+  Result := False;
+  AHang := Default(TAtlasHang);
+  while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> ASeq) do
+  begin
+    FOwner.FWake.WaitFor(25);
+    if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
+    begin
+      Result := True;
+      AHang.At := Now;
+      AHang.Activity := TAtlasActivity.Current;
+      AHang.Window := ForegroundWindowText;
+      FOwner.Capture;
+    end;
+  end;
+end;
+
 procedure TAtlasWatchdog.TWatchThread.Execute;
 var
   Seq: Integer;
-  SentAt, Waited: Int64;
+  SentAt: Int64;
   Captured: Boolean;
   Hang: TAtlasHang;
 begin
@@ -116,21 +136,7 @@ begin
         FOwner.FWake.WaitFor(PeriodMs);
         Continue;
       end;
-      Captured := False;
-      Hang := Default(TAtlasHang);
-      while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> Seq) do
-      begin
-        FOwner.FWake.WaitFor(25);
-        Waited := NowMs - SentAt;
-        if not Captured and (Waited >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
-        begin
-          Captured := True;
-          Hang.At := Now;
-          Hang.Activity := TAtlasActivity.Current;
-          Hang.Window := ForegroundWindowText;
-          FOwner.Capture;
-        end;
-      end;
+      Captured := AwaitPong(Seq, SentAt, Hang);
       if Terminated then
       begin
         Break;

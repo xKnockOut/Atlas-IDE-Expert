@@ -20,6 +20,18 @@ uses
   Atlas.Core.Vcs.Contract;
 
 type
+  /// <summary>Art eines Compiles für RecordCompile: Hintergrundprüfung (#548) oder Build mit Art, Konfiguration
+  /// und Plattform.</summary>
+  TAtlasProjectCompileRun = record
+    Background: Boolean;
+    Succeeded: Boolean;
+    Kind: string;
+    Configuration: string;
+    Platform: string;
+    class function Create(ABackground, ASucceeded: Boolean; const AKind, AConfiguration,
+      APlatform: string): TAtlasProjectCompileRun; static;
+  end;
+
   TAtlasProjectRecording = class
   public const
     /// <summary>Zeitlimit je Aufruf (Head, Changes); zusammen 2 s je Projekt.</summary>
@@ -30,11 +42,10 @@ type
     /// plus Reserve).</summary>
     VcsQueryLimitMs = 5000;
   public
-    /// <summary>Ergebnis eines Compiles in die Zusammenfassung: ABackground (Hintergrundprüfung, #548) setzt
+    /// <summary>Ergebnis eines Compiles in die Zusammenfassung: ARun.Background (Hintergrundprüfung, #548) setzt
     /// "check", sonst "build". Fehler zählen mit schweren Fehlern (Fatal).</summary>
     class procedure RecordCompile(var ASummary: TAtlasProjectSummary;
-      const AMessages: TArray<TAtlasCompilerMessage>; ABackground, ASucceeded: Boolean;
-      const AKind, AConfiguration, APlatform: string; ANowUtc: TDateTime); static;
+      const AMessages: TArray<TAtlasCompilerMessage>; const ARun: TAtlasProjectCompileRun; ANowUtc: TDateTime); static;
     /// <summary>Head und Änderungen abfragen (startet Prozesse: nur im Hintergrund). True mit AState, wenn das
     /// Ergebnis gilt (auch „none“); False bei Fehler, Zeitüberschreitung oder fehlendem Programm.</summary>
     class function Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
@@ -58,11 +69,22 @@ type
 
 implementation
 
+{ TAtlasProjectCompileRun }
+
+class function TAtlasProjectCompileRun.Create(ABackground, ASucceeded: Boolean; const AKind, AConfiguration,
+  APlatform: string): TAtlasProjectCompileRun;
+begin
+  Result.Background := ABackground;
+  Result.Succeeded := ASucceeded;
+  Result.Kind := AKind;
+  Result.Configuration := AConfiguration;
+  Result.Platform := APlatform;
+end;
+
 { TAtlasProjectRecording }
 
 class procedure TAtlasProjectRecording.RecordCompile(var ASummary: TAtlasProjectSummary;
-  const AMessages: TArray<TAtlasCompilerMessage>; ABackground, ASucceeded: Boolean;
-  const AKind, AConfiguration, APlatform: string; ANowUtc: TDateTime);
+  const AMessages: TArray<TAtlasCompilerMessage>; const ARun: TAtlasProjectCompileRun; ANowUtc: TDateTime);
 var
   Message: TAtlasCompilerMessage;
   Errors, Warnings, Hints: Integer;
@@ -94,7 +116,7 @@ begin
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
-  if ABackground then
+  if ARun.Background then
   begin
     ASummary.Check := TAtlasProjectCheck.Empty;
     ASummary.Check.Known := True;
@@ -106,10 +128,10 @@ begin
   ASummary.Build := TAtlasProjectBuild.Empty;
   ASummary.Build.Known := True;
   ASummary.Build.At := ANowUtc;
-  ASummary.Build.Kind := AKind;
-  ASummary.Build.Configuration := AConfiguration;
-  ASummary.Build.Platform := APlatform;
-  ASummary.Build.Succeeded := ASucceeded;
+  ASummary.Build.Kind := ARun.Kind;
+  ASummary.Build.Configuration := ARun.Configuration;
+  ASummary.Build.Platform := ARun.Platform;
+  ASummary.Build.Succeeded := ARun.Succeeded;
   ASummary.Build.Errors := Errors;
   ASummary.Build.Warnings := Warnings;
   ASummary.Build.Hints := Hints;

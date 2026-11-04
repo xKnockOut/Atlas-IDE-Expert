@@ -134,79 +134,110 @@ end;
 
 { /guard }
 
+/// <summary>Zeilen AFirst..ALast, mit Leerzeichen verbunden.</summary>
+function HeaderText(ASource: TCommandSource; AFirst, ALast: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to ALast do
+  begin
+    Result := Result + ' ' + ASource.Lines[mIndex];
+  end;
+end;
+
+/// <summary>Rumpf ABlock in Kleinbuchstaben ohne Leerzeichen, für die Suche nach vorhandenen Prüfungen.</summary>
+function CompactBody(ASource: TCommandSource; ABlock: TSyntaxNode): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := ABlock.StartPos.Line to ABlock.EndPos.Line do
+  begin
+    Result := Result + ' ' + LowerCase(StringReplace(ASource.Lines[mIndex], ' ', '', [rfReplaceAll]));
+  end;
+end;
+
+/// <summary>Braucht AParameter eine Prüfung: gewählt (oder kein Name angegeben), kann nil sein und wird im Rumpf
+/// ABody noch nicht geprüft?</summary>
+function NeedsGuard(ASource: TCommandSource; const AContext: TSlashContext; const AParameter: TGuardParameter;
+  const ABody: string): Boolean;
+var
+  mName: string;
+begin
+  mName := LowerCase(AParameter.Name);
+  Result := ((AContext.Arguments = '') or SameText(AParameter.Name, AContext.Arguments)) and
+    IsNilable(ASource, AContext.Index, AParameter.TypeName) and (Pos('assigned(' + mName + ')', ABody) = 0) and
+    (Pos(mName + '=nil', ABody) = 0);
+end;
+
+/// <summary>Prüfzeilen für alle Parameter der Routine, die eine brauchen; '' ohne.</summary>
+function GuardChecks(ASource: TCommandSource; const AContext: TSlashContext; ARoutine, ABlock: TSyntaxNode): string;
+var
+  mBody, mIndent: string;
+  mParameter: TGuardParameter;
+begin
+  Result := '';
+  mBody := CompactBody(ASource, ABlock);
+  mIndent := ASource.Indent(ABlock.StartPos.Line) + '  ';
+  for mParameter in RoutineParameters(RoutineSignature(HeaderText(ASource, ARoutine.StartPos.Line,
+    ABlock.StartPos.Line - 1))) do
+  begin
+    if not NeedsGuard(ASource, AContext, mParameter, mBody) then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ASource.LineBreak;
+    end;
+    Result := Result + mIndent + Format('if not Assigned(%s) then', [mParameter.Name]) + ASource.LineBreak +
+      mIndent + Format('  raise EArgumentNilException.Create(%s);', [QuotedStr(mParameter.Name)]);
+  end;
+end;
+
+function NoGuardReason(const AArguments: string): string;
+begin
+  Result := 'Keine ungeprüften Objekt-, Interface- oder Zeigerparameter';
+  if AArguments <> '' then
+  begin
+    Result := AArguments + ' ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter';
+  end;
+end;
+
 function ExecuteGuard(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine, Block: TSyntaxNode;
-  Header, Body, Checks, Indent: string;
-  Parameter: TGuardParameter;
-  Index: Integer;
-  UsesEdit: TTextEdit;
+  mSource: TCommandSource;
+  mRoutine, mBlock: TSyntaxNode;
+  mChecks: string;
+  mUsesEdit: TTextEdit;
 begin
   AEdits := nil;
   if (AContext.Arguments <> '') and not IsValidIdent(AContext.Arguments) then
   begin
     Exit(Fail('Erwartet wird /guard [Parametername]', AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail('/guard gilt nur im Rumpf einer Routine', AReason));
     end;
-    Block := Routine.FindChild(TSyntaxKind.Block);
-    Header := '';
-    for Index := Routine.StartPos.Line to Block.StartPos.Line - 1 do
+    mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+    mChecks := GuardChecks(mSource, AContext, mRoutine, mBlock);
+    if mChecks = '' then
     begin
-      Header := Header + ' ' + Source.Lines[Index];
+      Exit(Fail(NoGuardReason(AContext.Arguments), AReason));
     end;
-    Body := '';
-    for Index := Block.StartPos.Line to Block.EndPos.Line do
+    AEdits := [mSource.AfterLine(mBlock.StartPos.Line, mChecks), mSource.RemoveCommand];
+    if AddSysUtils(mSource, AContext, mRoutine.StartPos.Line, mUsesEdit) then
     begin
-      Body := Body + ' ' + LowerCase(StringReplace(Source.Lines[Index], ' ', '', [rfReplaceAll]));
-    end;
-    Indent := Source.Indent(Block.StartPos.Line) + '  ';
-    Checks := '';
-    for Parameter in RoutineParameters(RoutineSignature(Header)) do
-    begin
-      if (AContext.Arguments <> '') and not SameText(Parameter.Name, AContext.Arguments) then
-      begin
-        Continue;
-      end;
-      if not IsNilable(Source, AContext.Index, Parameter.TypeName) then
-      begin
-        Continue;
-      end;
-      // Vorhandene Prüfung nicht verdoppeln.
-      if (Pos('assigned(' + LowerCase(Parameter.Name) + ')', Body) > 0) or
-        (Pos(LowerCase(Parameter.Name) + '=nil', Body) > 0) then
-      begin
-        Continue;
-      end;
-      if Checks <> '' then
-      begin
-        Checks := Checks + Source.LineBreak;
-      end;
-      Checks := Checks + Indent + Format('if not Assigned(%s) then', [Parameter.Name]) + Source.LineBreak + Indent +
-        Format('  raise EArgumentNilException.Create(%s);', [QuotedStr(Parameter.Name)]);
-    end;
-    if Checks = '' then
-    begin
-      if AContext.Arguments <> '' then
-      begin
-        Exit(Fail(AContext.Arguments + ' ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter', AReason));
-      end;
-      Exit(Fail('Keine ungeprüften Objekt-, Interface- oder Zeigerparameter', AReason));
-    end;
-    AEdits := [Source.AfterLine(Block.StartPos.Line, Checks), Source.RemoveCommand];
-    if AddSysUtils(Source, AContext, Routine.StartPos.Line, UsesEdit) then
-    begin
-      AEdits := AEdits + [UsesEdit];
+      AEdits := AEdits + [mUsesEdit];
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
