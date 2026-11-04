@@ -139,15 +139,62 @@ var
   Value: TJSONValue;
 begin
   Value := AObject.GetValue(AName);
-  Result := ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or ((Value is TJSONString) and SameText(Trim(TJSONString(Value).Value), 'true'));
+  Result := ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or
+    ((Value is TJSONString) and SameText(Trim(TJSONString(Value).Value), 'true'));
+end;
+
+/// <summary>Eintrag aus AObject; Title '' bei einem unbrauchbaren Eintrag.</summary>
+function ItemFrom(AObject: TJSONObject): TAtlasWhatsNewItem;
+begin
+  Result := Default(TAtlasWhatsNewItem);
+  Result.Title := Text(AObject, 'title');
+  Result.Text := Text(AObject, 'text');
+  Result.Setting := Text(AObject, 'setting');
+  Result.Key := Text(AObject, 'key');
+  Result.Command := Text(AObject, 'command');
+  Result.Sample := Text(AObject, 'sample');
+  Result.Line := Number(AObject, 'line');
+  Result.Experimental := Flag(AObject, 'experimental');
+end;
+
+/// <summary>Version aus AValue mit ihren Einträgen (nur solche mit Titel); False ohne Version oder Einträge.
+/// </summary>
+function TryVersionFrom(AValue: TJSONValue; out AVersion: TAtlasWhatsNewVersion): Boolean;
+var
+  mItems, mItemValue: TJSONValue;
+  mItem: TAtlasWhatsNewItem;
+begin
+  AVersion := Default(TAtlasWhatsNewVersion);
+  Result := False;
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  AVersion.Version := Text(TJSONObject(AValue), 'version');
+  mItems := TJSONObject(AValue).GetValue('items');
+  if (AVersion.Version = '') or not (mItems is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItemValue in TJSONArray(mItems) do
+  begin
+    if mItemValue is TJSONObject then
+    begin
+      mItem := ItemFrom(TJSONObject(mItemValue));
+      if mItem.Title <> '' then
+      begin
+        AVersion.Items := AVersion.Items + [mItem];
+      end;
+    end;
+  end;
+  Result := Length(AVersion.Items) > 0;
 end;
 
 class function TAtlasWhatsNew.Parse(const AJson: string): TAtlasWhatsNewVersions;
 var
-  Root, Versions, Items: TJSONValue;
-  VersionValue, ItemValue: TJSONValue;
+  Root, Versions: TJSONValue;
+  VersionValue: TJSONValue;
   Version: TAtlasWhatsNewVersion;
-  Item: TAtlasWhatsNewItem;
   List: TList<TAtlasWhatsNewVersion>;
 begin
   Result := nil;
@@ -171,38 +218,7 @@ begin
     end;
     for VersionValue in TJSONArray(Versions) do
     begin
-      if not (VersionValue is TJSONObject) then
-      begin
-        Continue;
-      end;
-      Version := Default(TAtlasWhatsNewVersion);
-      Version.Version := Text(TJSONObject(VersionValue), 'version');
-      Items := TJSONObject(VersionValue).GetValue('items');
-      if (Version.Version = '') or not (Items is TJSONArray) then
-      begin
-        Continue;
-      end;
-      for ItemValue in TJSONArray(Items) do
-      begin
-        if not (ItemValue is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Item := Default(TAtlasWhatsNewItem);
-        Item.Title := Text(TJSONObject(ItemValue), 'title');
-        Item.Text := Text(TJSONObject(ItemValue), 'text');
-        Item.Setting := Text(TJSONObject(ItemValue), 'setting');
-        Item.Key := Text(TJSONObject(ItemValue), 'key');
-        Item.Command := Text(TJSONObject(ItemValue), 'command');
-        Item.Sample := Text(TJSONObject(ItemValue), 'sample');
-        Item.Line := Number(TJSONObject(ItemValue), 'line');
-        Item.Experimental := Flag(TJSONObject(ItemValue), 'experimental');
-        if Item.Title <> '' then
-        begin
-          Version.Items := Version.Items + [Item];
-        end;
-      end;
-      if Length(Version.Items) > 0 then
+      if TryVersionFrom(VersionValue, Version) then
       begin
         List.Add(Version);
       end;
@@ -305,55 +321,57 @@ begin
   Result := 0;
 end;
 
+/// <summary>AParts auf drei Teile aufgefüllt: "1.1" und "1.1.0" sind gleich.</summary>
+function Padded(const AParts: TArray<string>): TArray<string>;
+begin
+  Result := AParts;
+  while Length(Result) < 3 do
+  begin
+    Result := Result + ['0'];
+  end;
+end;
+
+/// <summary>Vorabversionen vergleichen; eine Vorabversion steht vor der fertigen Version ('').</summary>
+function ComparePre(const APreA, APreB: string): Integer;
+begin
+  if (APreA = '') and (APreB = '') then
+  begin
+    Result := 0;
+  end
+  else if APreA = '' then
+  begin
+    Result := 1;
+  end
+  else if APreB = '' then
+  begin
+    Result := -1;
+  end
+  else
+  begin
+    Result := CompareParts(APreA.Split(['.']), APreB.Split(['.']), False);
+  end;
+end;
+
 class function TAtlasWhatsNew.CompareVersions(const A, B: string): Integer;
 var
   CoreA, PreA, CoreB, PreB: string;
-  PartsA, PartsB: TArray<string>;
 begin
   if Trim(A) = Trim(B) then
   begin
     Exit(0);
   end;
-  if Trim(A) = '' then
+  // Ohne Version steht vor jeder Version.
+  if (Trim(A) = '') or (Trim(B) = '') then
   begin
-    Exit(-1);
-  end;
-  if Trim(B) = '' then
-  begin
-    Exit(1);
+    Exit(Ord(Trim(A) <> '') - Ord(Trim(B) <> ''));
   end;
   SplitVersion(A, CoreA, PreA);
   SplitVersion(B, CoreB, PreB);
-  PartsA := CoreA.Split(['.']);
-  PartsB := CoreB.Split(['.']);
-  // "1.1" und "1.1.0" sind gleich.
-  while Length(PartsA) < 3 do
+  Result := CompareParts(Padded(CoreA.Split(['.'])), Padded(CoreB.Split(['.'])), True);
+  if Result = 0 then
   begin
-    PartsA := PartsA + ['0'];
+    Result := ComparePre(PreA, PreB);
   end;
-  while Length(PartsB) < 3 do
-  begin
-    PartsB := PartsB + ['0'];
-  end;
-  Result := CompareParts(PartsA, PartsB, True);
-  if Result <> 0 then
-  begin
-    Exit;
-  end;
-  if (PreA = '') and (PreB = '') then
-  begin
-    Exit(0);
-  end;
-  // Vorabversion vor der fertigen Version.
-  if PreA = '' then
-  begin
-    Exit(1);
-  end;
-  if PreB = '' then
-  begin
-    Exit(-1);
-  end;
-  Result := CompareParts(PreA.Split(['.']), PreB.Split(['.']), False);
 end;
 
 class function TAtlasWhatsNew.Between(const AVersions: TAtlasWhatsNewVersions;
@@ -399,55 +417,66 @@ begin
   end;
 end;
 
+/// <summary>Index der Version AVersion in AVersions; fehlt sie, kommt sie leer vor die erste ältere Version
+/// (neueste zuerst).</summary>
+function VersionSlot(var AVersions: TAtlasWhatsNewVersions; const AVersion: string): Integer;
+var
+  mIndex: Integer;
+  mAdded: TAtlasWhatsNewVersion;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AVersions) do
+  begin
+    if TAtlasWhatsNew.CompareVersions(AVersions[mIndex].Version, AVersion) = 0 then
+    begin
+      Result := mIndex;
+    end;
+  end;
+  if Result >= 0 then
+  begin
+    Exit;
+  end;
+  mAdded := Default(TAtlasWhatsNewVersion);
+  mAdded.Version := AVersion;
+  Result := Length(AVersions);
+  for mIndex := High(AVersions) downto 0 do
+  begin
+    if TAtlasWhatsNew.CompareVersions(AVersions[mIndex].Version, AVersion) < 0 then
+    begin
+      Result := mIndex;
+    end;
+  end;
+  Insert(mAdded, AVersions, Result);
+end;
+
+/// <summary>Steht ein Eintrag mit ATitle (ohne Groß-/Kleinschreibung) in AItems?</summary>
+function HasTitle(const AItems: TArray<TAtlasWhatsNewItem>; const ATitle: string): Boolean;
+var
+  mKnown: TAtlasWhatsNewItem;
+begin
+  Result := False;
+  for mKnown in AItems do
+  begin
+    Result := Result or SameText(mKnown.Title, ATitle);
+  end;
+end;
+
 class function TAtlasWhatsNew.WithItems(const AVersions: TAtlasWhatsNewVersions; const AVersion: string;
   const AItems: TArray<TAtlasWhatsNewItem>): TAtlasWhatsNewVersions;
 var
-  Index, Target: Integer;
-  Item, Known: TAtlasWhatsNewItem;
-  Found: Boolean;
-  Added: TAtlasWhatsNewVersion;
+  Target: Integer;
+  Item: TAtlasWhatsNewItem;
 begin
   Result := Copy(AVersions);
   if (AVersion = '') or (Length(AItems) = 0) then
   begin
     Exit;
   end;
-  Target := -1;
-  for Index := 0 to High(Result) do
-  begin
-    if CompareVersions(Result[Index].Version, AVersion) = 0 then
-    begin
-      Target := Index;
-    end;
-  end;
-  if Target < 0 then
-  begin
-    Added.Version := AVersion;
-    Added.Items := nil;
-    // Neueste zuerst: vor die erste ältere Version.
-    Target := Length(Result);
-    for Index := High(Result) downto 0 do
-    begin
-      if CompareVersions(Result[Index].Version, AVersion) < 0 then
-      begin
-        Target := Index;
-      end;
-    end;
-    Insert(Added, Result, Target);
-  end;
+  Target := VersionSlot(Result, AVersion);
   Result[Target].Items := Copy(Result[Target].Items);
   for Item in AItems do
   begin
-    if Item.Title = '' then
-    begin
-      Continue;
-    end;
-    Found := False;
-    for Known in Result[Target].Items do
-    begin
-      Found := Found or SameText(Known.Title, Item.Title);
-    end;
-    if not Found then
+    if (Item.Title <> '') and not HasTitle(Result[Target].Items, Item.Title) then
     begin
       Result[Target].Items := Result[Target].Items + [Item];
     end;

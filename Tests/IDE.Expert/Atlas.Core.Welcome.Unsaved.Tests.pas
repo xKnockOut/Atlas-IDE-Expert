@@ -525,6 +525,7 @@ var
   mState, mRead: TAtlasUnsavedState;
   mFound: TAtlasUnsavedItem;
   mSummary: TAtlasProjectSummary;
+  mQuery: TAtlasUnsavedQuery;
 begin
   mFake := TFakeSvnStatus.Create;
   mVcs := mFake;
@@ -537,7 +538,9 @@ begin
     Change(VcsFullPath(Root, 'Packages/Drucken/A.pas'), TAtlasVcsChangeKind.Modified),
     Change(VcsFullPath(Root, 'Packages/Drucken/B.pas'), TAtlasVcsChangeKind.Untracked),
     Change(VcsFullPath(Root, 'Packages/Drucken/K.pas'), TAtlasVcsChangeKind.Conflicted)];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, True, mState));
+  mQuery := TAtlasUnsavedQuery.Create('', NowUtc, nil, nil);
+  mQuery.WorkingCopies := True;
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mQuery, mState));
   Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
   Assert.AreEqual(3, Integer(mFound.Count), 'Summe aller Arbeitskopien');
   Assert.AreEqual(2, Integer(Length(mFound.Places)));
@@ -559,7 +562,8 @@ begin
   Assert.AreEqual(2, mFound.Places[1].Count);
   // Abgeschaltet (vcs.externals.show aus): keine weitere Abfrage, keine Anteile.
   mFake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, False, mState));
+  mQuery.WorkingCopies := False;
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mQuery, mState));
   Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
   Assert.AreEqual(0, Integer(Length(mFound.Places)));
   Assert.IsFalse(string.Join(',', mFake.Calls).Contains('status'));

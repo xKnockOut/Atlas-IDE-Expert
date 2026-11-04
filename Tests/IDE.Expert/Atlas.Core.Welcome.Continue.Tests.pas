@@ -717,27 +717,27 @@ begin
   Fake.FHead.Branch := 'feature/42-kasse';
   Fake.FHead.Upstream := '';
   Fake.FKnown := ['origin/develop'];
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsTrue(Found.Available);
   Assert.AreEqual('origin/develop', Found.Upstream);
   Assert.IsTrue(Fake.Called('incoming origin/develop'));
   // Nur lokal vorhanden: der lokale Hauptbranch.
   Fake.FKnown := ['develop'];
   Fake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.AreEqual('develop', Found.Upstream);
   // Auf dem Hauptbranch selbst und ohne Hauptbranch: kein Abschnitt wie bisher.
   Fake.FHead.Branch := 'develop';
   Fake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsFalse(Found.Available);
   Assert.IsFalse(Fake.CalledStarting('incoming'));
   Fake.FHead.Branch := 'feature/42-kasse';
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), '', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), '',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsFalse(Found.Available);
 end;
 

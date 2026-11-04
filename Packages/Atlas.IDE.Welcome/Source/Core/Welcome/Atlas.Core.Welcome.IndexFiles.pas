@@ -240,115 +240,149 @@ begin
   Result := ReadEntries(AData, True, Reason);
 end;
 
+function HasMagic(const AData: TBytes): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(AData) >= Length(Magic);
+  mIndex := Low(Magic);
+  while Result and (mIndex <= High(Magic)) do
+  begin
+    Result := AData[mIndex] = Magic[mIndex];
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Liest die gespeicherte Prüfsumme und vergleicht sie mit der des Rests.</summary>
+function ChecksumMatches(var AReader: TReader): Boolean;
+var
+  mIndex: Integer;
+  mStored: Cardinal;
+begin
+  if AReader.Position + ChecksumSize > AReader.Limit then
+  begin
+    Fail;
+  end;
+  mStored := 0;
+  for mIndex := ChecksumSize - 1 downto 0 do
+  begin
+    mStored := (mStored shl 8) or AReader.Data[AReader.Position + mIndex];
+  end;
+  Inc(AReader.Position, ChecksumSize);
+  Result := mStored = ChecksumOf(AReader.Data, AReader.Position, Length(AReader.Data));
+end;
+
+function ReadStrings(var AReader: TReader): TArray<string>;
+var
+  mIndex, mSize: Integer;
+begin
+  SetLength(Result, AReader.ReadCount);
+  for mIndex := 0 to High(Result) do
+  begin
+    mSize := AReader.ReadCount;
+    if AReader.Position + mSize > AReader.Limit then
+    begin
+      Fail;
+    end;
+    Result[mIndex] := TEncoding.UTF8.GetString(AReader.Data, AReader.Position, mSize);
+    Inc(AReader.Position, mSize);
+  end;
+end;
+
+/// <summary>Ein Unit-Eintrag; liefert seine Flags. Alles außer Name und Datei wird übersprungen.</summary>
+function ReadEntry(var AReader: TReader; const AStrings: TArray<string>; out AEntry: TAtlasIndexFile): Integer;
+var
+  mPart: Integer;
+begin
+  AEntry.UnitName := AReader.ReadString(AStrings);
+  AEntry.FileName := AReader.ReadString(AStrings);
+  AReader.ReadVar; // Zeitstempel
+  AReader.ReadVar; // Hash
+  Result := AReader.ReadCount;
+  AReader.SkipList; // uses (interface)
+  AReader.SkipList; // uses (implementation)
+  AReader.SkipList; // Include-Dateien
+  AReader.SkipList; // Include-Zeitstempel
+  for mPart := 1 to 6 do
+  begin
+    AReader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
+  end;
+  AReader.SkipList; // Hinweise im Unit-Kopf (#1018)
+  AReader.ReadVar; // Grund hinter deprecated
+  AReader.SkipList; // Begründungen der Unit (#1123)
+  AReader.ReadVar; // Symbolzahl
+  AReader.ReadVar; // nicht verfügbar
+  AReader.Skip(AReader.ReadCount); // Symbolblock
+  AReader.ReadVar; // Verwendungszahl
+  AReader.Skip(AReader.ReadCount); // Verwendungsblock
+  if AEntry.FileName = '' then
+  begin
+    Fail;
+  end;
+end;
+
+/// <summary>Einträge nach Prüfsumme; wirft EIndexFormat bei kaputtem Inhalt.</summary>
+function ReadUnits(var AReader: TReader; AWithLibrary: Boolean): TArray<TAtlasIndexFile>;
+var
+  mStrings: TArray<string>;
+  mFound: TList<TAtlasIndexFile>;
+  mIndex: Integer;
+  mEntry: TAtlasIndexFile;
+begin
+  mStrings := ReadStrings(AReader);
+  mFound := TList<TAtlasIndexFile>.Create;
+  try
+    for mIndex := 1 to AReader.ReadCount do
+    begin
+      if ((ReadEntry(AReader, mStrings, mEntry) and FlagLibrary) = 0) or AWithLibrary then
+      begin
+        mFound.Add(mEntry);
+      end;
+    end;
+    if AReader.Position <> AReader.Limit then
+    begin
+      Fail;
+    end;
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
+  end;
+end;
+
 class function TAtlasWelcomeIndexFiles.ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
   out AReason: string): TArray<TAtlasIndexFile>;
 var
-  Reader: TReader;
-  Strings: TArray<string>;
-  Found: TList<TAtlasIndexFile>;
-  Index, Count, Size, Flags, Part: Integer;
-  Stored: Cardinal;
-  Entry: TAtlasIndexFile;
+  mReader: TReader;
 begin
   Result := nil;
   AReason := 'kein Atlas-Index (Kopf fehlt)';
-  if Length(AData) < Length(Magic) then
+  if not HasMagic(AData) then
   begin
     Exit;
   end;
-  for Index := Low(Magic) to High(Magic) do
-  begin
-    if AData[Index] <> Magic[Index] then
-    begin
-      Exit;
-    end;
-  end;
-  Reader.Data := AData;
-  Reader.Position := Length(Magic);
-  Reader.Limit := Length(AData);
-  Found := TList<TAtlasIndexFile>.Create;
+  mReader.Data := AData;
+  mReader.Position := Length(Magic);
+  mReader.Limit := Length(AData);
   try
-    try
-      if Reader.ReadVar <> FormatVersion then
-      begin
-        AReason := 'andere Formatversion';
-        Exit;
-      end;
-      if Reader.Position + ChecksumSize > Reader.Limit then
-      begin
-        Fail;
-      end;
-      Stored := 0;
-      for Index := ChecksumSize - 1 downto 0 do
-      begin
-        Stored := (Stored shl 8) or AData[Reader.Position + Index];
-      end;
-      Inc(Reader.Position, ChecksumSize);
-      if Stored <> ChecksumOf(AData, Reader.Position, Length(AData)) then
-      begin
-        AReason := 'Prüfsumme stimmt nicht';
-        Exit;
-      end;
-      Count := Reader.ReadCount;
-      SetLength(Strings, Count);
-      for Index := 0 to Count - 1 do
-      begin
-        Size := Reader.ReadCount;
-        if Reader.Position + Size > Reader.Limit then
-        begin
-          Fail;
-        end;
-        Strings[Index] := TEncoding.UTF8.GetString(AData, Reader.Position, Size);
-        Inc(Reader.Position, Size);
-      end;
-      Count := Reader.ReadCount;
-      for Index := 0 to Count - 1 do
-      begin
-        Entry.UnitName := Reader.ReadString(Strings);
-        Entry.FileName := Reader.ReadString(Strings);
-        Reader.ReadVar; // Zeitstempel
-        Reader.ReadVar; // Hash
-        Flags := Reader.ReadCount;
-        Reader.SkipList; // uses (interface)
-        Reader.SkipList; // uses (implementation)
-        Reader.SkipList; // Include-Dateien
-        Reader.SkipList; // Include-Zeitstempel
-        for Part := 1 to 6 do
-        begin
-          Reader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
-        end;
-        Reader.SkipList; // Hinweise im Unit-Kopf (#1018)
-        Reader.ReadVar; // Grund hinter deprecated
-        Reader.SkipList; // Begründungen der Unit (#1123)
-        Reader.ReadVar; // Symbolzahl
-        Reader.ReadVar; // nicht verfügbar
-        Reader.Skip(Reader.ReadCount); // Symbolblock
-        Reader.ReadVar; // Verwendungszahl
-        Reader.Skip(Reader.ReadCount); // Verwendungsblock
-        if Entry.FileName = '' then
-        begin
-          Fail;
-        end;
-        if AWithLibrary or ((Flags and FlagLibrary) = 0) then
-        begin
-          Found.Add(Entry);
-        end;
-      end;
-      if Reader.Position <> Reader.Limit then
-      begin
-        Fail;
-      end;
+    if mReader.ReadVar <> FormatVersion then
+    begin
+      AReason := 'andere Formatversion';
+    end
+    else if not ChecksumMatches(mReader) then
+    begin
+      AReason := 'Prüfsumme stimmt nicht';
+    end
+    else
+    begin
+      Result := ReadUnits(mReader, AWithLibrary);
       AReason := '';
-      Result := Found.ToArray;
-    except
-      on EIndexFormat do
-      begin
-        Result := nil;
-        AReason := 'Inhalt beschädigt';
-      end;
     end;
-  finally
-    Found.Free;
+  except
+    on EIndexFormat do
+    begin
+      Result := nil;
+      AReason := 'Inhalt beschädigt';
+    end;
   end;
 end;
 
@@ -508,61 +542,60 @@ begin
   inherited;
 end;
 
+/// <summary>Cache AFileName mit Zeitstempel AStamp lesen; gesperrt oder verschwunden ergibt keine Units.</summary>
+function LoadProject(const AFileName: string; AStamp: TDateTime): TAtlasIndexProject;
+begin
+  Result := Default(TAtlasIndexProject);
+  Result.CacheFile := AFileName;
+  Result.Stamp := AStamp;
+  try
+    Result.Files := TAtlasWelcomeIndexFiles.Read(ReadBytes(AFileName));
+  except
+    // Gesperrt oder verschwunden: beim nächsten Mal erneut versuchen.
+    on EStreamError do
+      Result.Files := nil;
+    on EInOutError do
+      Result.Files := nil;
+  end;
+  Result.MainFile := TAtlasWelcomeIndexFiles.MainFileOf(Result.Files);
+end;
+
 procedure TAtlasIndexProjects.Refresh;
 var
-  FileName, Key: string;
-  Seen: TDictionary<string, Boolean>;
-  Known: TAtlasIndexProject;
-  Project: TAtlasIndexProject;
-  Stamp: TDateTime;
-  Keys: TArray<string>;
+  mFileName, mKey: string;
+  mSeen: TDictionary<string, Boolean>;
+  mKnown, mProject: TAtlasIndexProject;
+  mStamp: TDateTime;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for FileName in TAtlasWelcomeIndexFiles.CacheFiles(FRoot) do
+    for mFileName in TAtlasWelcomeIndexFiles.CacheFiles(FRoot) do
     begin
-      Key := AnsiUpperCase(FileName);
-      Seen.AddOrSetValue(Key, True);
-      if not FileAge(FileName, Stamp) then
+      mKey := AnsiUpperCase(mFileName);
+      mSeen.AddOrSetValue(mKey, True);
+      if not FileAge(mFileName, mStamp) or (FProjects.TryGetValue(mKey, mKnown) and (mKnown.Stamp = mStamp)) then
       begin
         Continue;
       end;
-      if FProjects.TryGetValue(Key, Known) and (Known.Stamp = Stamp) then
+      mProject := LoadProject(mFileName, mStamp);
+      if mProject.MainFile = '' then
       begin
-        Continue;
-      end;
-      Project := Default(TAtlasIndexProject);
-      Project.CacheFile := FileName;
-      Project.Stamp := Stamp;
-      try
-        Project.Files := TAtlasWelcomeIndexFiles.Read(ReadBytes(FileName));
-      except
-        // Gesperrt oder verschwunden: beim nächsten Mal erneut versuchen.
-        on EStreamError do
-          Project.Files := nil;
-        on EInOutError do
-          Project.Files := nil;
-      end;
-      Project.MainFile := TAtlasWelcomeIndexFiles.MainFileOf(Project.Files);
-      if Project.MainFile = '' then
-      begin
-        FProjects.Remove(Key);
+        FProjects.Remove(mKey);
       end
       else
       begin
-        FProjects.AddOrSetValue(Key, Project);
+        FProjects.AddOrSetValue(mKey, mProject);
       end;
     end;
-    Keys := FProjects.Keys.ToArray;
-    for Key in Keys do
+    for mKey in FProjects.Keys.ToArray do
     begin
-      if not Seen.ContainsKey(Key) then
+      if not mSeen.ContainsKey(mKey) then
       begin
-        FProjects.Remove(Key);
+        FProjects.Remove(mKey);
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 

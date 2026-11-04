@@ -1089,7 +1089,7 @@ begin
         FetchVcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.FetchTimeoutMs);
       end;
       Ok := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.CallTimeoutMs),
-        FetchVcs, Project, MainBranch, State, Stamp, Found);
+        FetchVcs, TAtlasContinueProbe.Create(Project, MainBranch, State, Stamp), Found);
     end,
     procedure
     begin

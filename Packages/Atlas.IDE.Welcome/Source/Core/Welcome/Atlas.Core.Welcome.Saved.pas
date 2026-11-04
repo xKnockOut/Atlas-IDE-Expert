@@ -328,13 +328,62 @@ begin
   Result := (Index <= Length(Text)) and (Text[Index] = '=');
 end;
 
+/// <summary>Erste Deklaration und erste Implementierung der Methode bzw. Routine AWanted in AText; -1 ohne.
+/// </summary>
+procedure FindMethod(const AText, AWanted: string; out ADeclaration, ABody: Integer);
+var
+  mPlace: TAtlasMethodPlace;
+begin
+  ADeclaration := -1;
+  ABody := -1;
+  for mPlace in TAtlasMethodToggle.Places(AText) do
+  begin
+    if not SameText(mPlace.Name, AWanted) then
+    begin
+      Continue;
+    end;
+    if not mPlace.IsBody and (ADeclaration < 0) then
+    begin
+      ADeclaration := mPlace.Line;
+    end
+    else if mPlace.IsBody and (ABody < 0) then
+    begin
+      ABody := mPlace.Line;
+    end;
+  end;
+end;
+
+/// <summary>Zeile von AMember (Eigenschaft, Feld, Ereignis) in der Deklaration von ATypeName; -1 ohne.</summary>
+function MemberLine(const AText, ATypeName, AMember: string): Integer;
+var
+  mLines: TArray<string>;
+  mIndex, mLine: Integer;
+begin
+  Result := -1;
+  mLines := AText.Replace(#13, '').Split([#10]);
+  mIndex := 0;
+  while (mIndex <= High(mLines)) and not IsTypeHead(mLines[mIndex], ATypeName) do
+  begin
+    Inc(mIndex);
+  end;
+  for mLine := mIndex + 1 to High(mLines) do
+  begin
+    if HasWord(mLines[mLine], AMember) then
+    begin
+      Exit(mLine);
+    end;
+    // Ende der Deklaration.
+    if SameText(Trim(mLines[mLine]), 'end;') then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
 class function TAtlasWelcomeSaved.DeclarationLine(const AText, ATypeName, AMember: string): Integer;
 var
-  Places: TArray<TAtlasMethodPlace>;
-  Place: TAtlasMethodPlace;
   Wanted: string;
-  Lines: TArray<string>;
-  Index, Body, Line: Integer;
+  Declaration, Body: Integer;
 begin
   Result := -1;
   if Trim(AMember) = '' then
@@ -347,47 +396,17 @@ begin
     Wanted := ATypeName + '.' + AMember;
   end;
   // Methoden und Routinen: zuerst die Deklaration, sonst die Implementierung.
-  Places := TAtlasMethodToggle.Places(AText);
-  Body := -1;
-  for Place in Places do
-  begin
-    if SameText(Place.Name, Wanted) then
-    begin
-      if not Place.IsBody then
-      begin
-        Exit(Place.Line);
-      end;
-      if Body < 0 then
-      begin
-        Body := Place.Line;
-      end;
-    end;
-  end;
+  FindMethod(AText, Wanted, Declaration, Body);
+  Result := Declaration;
   // Eigenschaften, Felder und Ereignisse: in der Deklaration des Typs.
-  if ATypeName <> '' then
+  if (Result < 0) and (ATypeName <> '') then
   begin
-    Lines := AText.Replace(#13, '').Split([#10]);
-    for Index := 0 to High(Lines) do
-    begin
-      if IsTypeHead(Lines[Index], ATypeName) then
-      begin
-        for Line := Index + 1 to High(Lines) do
-        begin
-          if HasWord(Lines[Line], AMember) then
-          begin
-            Exit(Line);
-          end;
-          // Ende der Deklaration.
-          if SameText(Trim(Lines[Line]), 'end;') then
-          begin
-            Break;
-          end;
-        end;
-        Break;
-      end;
-    end;
+    Result := MemberLine(AText, ATypeName, AMember);
   end;
-  Result := Body;
+  if Result < 0 then
+  begin
+    Result := Body;
+  end;
 end;
 
 class function TAtlasWelcomeSaved.ResolvePath(const AFolder, ARelative: string): string;

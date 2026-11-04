@@ -92,6 +92,9 @@ type
 
 implementation
 
+uses
+  System.Math;
+
 { TAtlasHostItem }
 
 class function TAtlasHostItem.Create(const APluginId: string; ARow, AColumn, ARowSpan,
@@ -274,15 +277,66 @@ begin
   Result := False;
 end;
 
+/// <summary>Belegte Zeilen von AItems; Bereiche, die über ARows hinausragen, vergrößern das Raster.</summary>
+function CoveredRows(const AItems: TArray<TAtlasHostItem>; ARows: Integer): TArray<Boolean>;
+var
+  mItem: TAtlasHostItem;
+  mRow, mLast: Integer;
+begin
+  mLast := ARows;
+  for mItem in AItems do
+  begin
+    mLast := Max(mLast, mItem.Row + mItem.RowSpan);
+  end;
+  SetLength(Result, mLast);
+  for mRow := 0 to mLast - 1 do
+  begin
+    Result[mRow] := False;
+  end;
+  for mItem in AItems do
+  begin
+    for mRow := Max(0, mItem.Row) to mItem.Row + mItem.RowSpan - 1 do
+    begin
+      Result[mRow] := True;
+    end;
+  end;
+end;
+
+/// <summary>Leere Zeilen von ALayout fallen weg, die folgenden rücken nach.</summary>
+procedure CompactRows(var ALayout: TAtlasHostLayout);
+var
+  mCovered: TArray<Boolean>;
+  mNewRow: TArray<Integer>;
+  mRow, mCount, mIndex: Integer;
+begin
+  mCovered := CoveredRows(ALayout.Items, ALayout.Rows);
+  SetLength(mNewRow, Length(mCovered));
+  mCount := 0;
+  for mRow := 0 to High(mCovered) do
+  begin
+    mNewRow[mRow] := mCount;
+    if mCovered[mRow] then
+    begin
+      Inc(mCount);
+    end;
+  end;
+  for mIndex := 0 to High(ALayout.Items) do
+  begin
+    if ALayout.Items[mIndex].Row >= 0 then
+    begin
+      ALayout.Items[mIndex].Row := mNewRow[ALayout.Items[mIndex].Row];
+    end;
+  end;
+  ALayout.Rows := mCount;
+end;
+
 function TAtlasHostLayout.WithoutAtlas(const APrefix: string): TAtlasHostLayout;
 var
   Item: TAtlasHostItem;
   Id: string;
-  Covered: TArray<Boolean>;
-  NewRow: TArray<Integer>;
-  Row, Count, Last, Index: Integer;
 begin
   Result.Columns := Columns;
+  Result.Rows := Rows;
   Result.Items := nil;
   for Item in Items do
   begin
@@ -299,49 +353,7 @@ begin
       Result.Available := Result.Available + [Id];
     end;
   end;
-  // Belegte Zeilen bestimmen; Bereiche, die über das Raster hinausragen, vergrößern es.
-  Last := Rows;
-  for Item in Result.Items do
-  begin
-    if Item.Row + Item.RowSpan > Last then
-    begin
-      Last := Item.Row + Item.RowSpan;
-    end;
-  end;
-  SetLength(Covered, Last);
-  for Row := 0 to Last - 1 do
-  begin
-    Covered[Row] := False;
-  end;
-  for Item in Result.Items do
-  begin
-    for Row := Item.Row to Item.Row + Item.RowSpan - 1 do
-    begin
-      if Row >= 0 then
-      begin
-        Covered[Row] := True;
-      end;
-    end;
-  end;
-  // Neue Zeile je alter: Leere Zeilen fallen weg, die folgenden rücken nach.
-  SetLength(NewRow, Last);
-  Count := 0;
-  for Row := 0 to Last - 1 do
-  begin
-    NewRow[Row] := Count;
-    if Covered[Row] then
-    begin
-      Inc(Count);
-    end;
-  end;
-  for Index := 0 to High(Result.Items) do
-  begin
-    if Result.Items[Index].Row >= 0 then
-    begin
-      Result.Items[Index].Row := NewRow[Result.Items[Index].Row];
-    end;
-  end;
-  Result.Rows := Count;
+  CompactRows(Result);
 end;
 
 function TAtlasHostLayout.WithAtlasOnTop(const ABoardId, APrefix: string): TAtlasHostLayout;

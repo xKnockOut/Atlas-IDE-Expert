@@ -414,28 +414,30 @@ end;
 
 procedure TAtlasWelcomeFlowTests.DropTargetAndInsertLine;
 var
-  Items: TArray<TAtlasWelcomePlaced>;
-  Column, Left, Top, Width: Integer;
-  Before: string;
+  mItems: TArray<TAtlasWelcomePlaced>;
+  mArea: TAtlasWelcomeArea;
+  mDrop: TAtlasWelcomeDrop;
+  mLine: TAtlasWelcomeInsertLine;
 begin
-  Items := Placed;
+  mItems := Placed;
+  mArea := TAtlasWelcomeArea.Create(ClientWidth, Gap, MinWidth);
   // Über der Mitte von b in der rechten Spalte: davor.
-  TAtlasWelcomeFlow.DropTarget(FlowCells, Items, ClientWidth, Gap, MinWidth, 250, 20, 'a', Column, Before);
-  Assert.AreEqual(1, Column);
-  Assert.AreEqual('b', Before);
+  mDrop := TAtlasWelcomeFlow.DropTarget(FlowCells, mItems, mArea, 250, 20, 'a');
+  Assert.AreEqual(1, mDrop.Column);
+  Assert.AreEqual('b', mDrop.Before);
   // Darunter: ans Ende.
-  TAtlasWelcomeFlow.DropTarget(FlowCells, Items, ClientWidth, Gap, MinWidth, 250, 200, 'a', Column, Before);
-  Assert.AreEqual('', Before);
+  mDrop := TAtlasWelcomeFlow.DropTarget(FlowCells, mItems, mArea, 250, 200, 'a');
+  Assert.AreEqual('', mDrop.Before);
   // Der gezogene Bereich selbst zählt nicht.
-  TAtlasWelcomeFlow.DropTarget(FlowCells, Items, ClientWidth, Gap, MinWidth, 20, 20, 'a', Column, Before);
-  Assert.AreEqual(0, Column);
-  Assert.AreEqual('w', Before);
-  TAtlasWelcomeFlow.InsertLine(FlowCells, Items, ClientWidth, Gap, MinWidth, 1, 'b', Left, Top, Width);
-  Assert.AreEqual(212, Left);
-  Assert.AreEqual(Gap - Gap div 2, Top);
-  Assert.AreEqual(188, Width);
-  TAtlasWelcomeFlow.InsertLine(FlowCells, Items, ClientWidth, Gap, MinWidth, 0, '', Left, Top, Width);
-  Assert.AreEqual(Gap + 100 + Gap + 40 + Gap div 2, Top, 'unter dem letzten Bereich');
+  mDrop := TAtlasWelcomeFlow.DropTarget(FlowCells, mItems, mArea, 20, 20, 'a');
+  Assert.AreEqual(0, mDrop.Column);
+  Assert.AreEqual('w', mDrop.Before);
+  mLine := TAtlasWelcomeFlow.InsertLine(FlowCells, mItems, mArea, 1, 'b');
+  Assert.AreEqual(212, mLine.Left);
+  Assert.AreEqual(Gap - Gap div 2, mLine.Top);
+  Assert.AreEqual(188, mLine.Width);
+  mLine := TAtlasWelcomeFlow.InsertLine(FlowCells, mItems, mArea, 0, '');
+  Assert.AreEqual(Gap + 100 + Gap + 40 + Gap div 2, mLine.Top, 'unter dem letzten Bereich');
 end;
 
 procedure TAtlasWelcomeFlowTests.FitsColumnsToWidth;
