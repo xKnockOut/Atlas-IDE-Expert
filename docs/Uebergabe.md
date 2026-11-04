@@ -1,5 +1,13 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde in Builtin Unicode bis XmlDoc (04.11.2026, Branch `claude/project-thread-i109zh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Builtin.Unicode`, `Units`, `Unresolved`, `Unused`, `Visibility` und `XmlDoc` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen diesen Units und ihren Teilunits (PRs #1598, #1610 und der PR für Unicode und XmlDoc).
+- Muster: geschachtelte Routinen der großen `Check`-Methoden wurden zu Arbeitsklassen im implementation-Teil (`T<Regel>Check` mit Feldern statt eingefangener Locals), lange Bedingungen und Schleifen zu eigenen Funktionen.
+- Aufgeteilt: `Builtin.Unused` in `Unused.Shared` (gemeinsame Hilfen, auch für Naming und Inheritance), `Unused.Duplicates` (duplicate-assignment) und `Unused.EmptyRoutines` (empty-routine); `Builtin.XmlDoc` in `XmlDoc.Scanner` (strenger XML-Scanner `TDocScanner`, eigene Tests `TDocScannerTests`). Registriert wird weiter über `RegisterUnusedRules` bzw. `RegisterXmlDocRules`, in derselben Reihenfolge.
+- Unicode: `TRunBuilder` fasst Treffer für Unit und Formulardatei zusammen, `TFormRunScanner` liest die Formulardatei, `TFormCharCheck` meldet dort; `LatinOf` liest die Tabelle `cConfusableChars`/`cConfusableLatin` statt eines case.
+- Getestet: FPC (Convert-ForFpc) Unicode 41/41, XmlDoc 13/13, Unused samt Flow 87/87, Visibility 17/17, Unresolved samt UnresolvedNames 43/43, Units 24/24, Naming samt Inheritance 66/66. Nicht mit Delphi übersetzt; Prüfskripte (pwsh) laufen nur in der CI.
+- Offen: Naming und Inheritance haben eigene Metrik-Befunde, die zu anderen Threads gehören.
+
 ## Atlas-Befunde in Atlas.Common/Source/Pascal (02.–04.11.2026, Branch `claude/project-thread-00efjt` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle 127 Befunde (Metriken an, Grenzwerte unverändert) in `Packages/Atlas.Common/Source/Pascal`; Stand jetzt 0 Befunde in allen 26 Units. PRs #1546 (kleine Units), #1572 (CompilerSwitches, Lexer, XmlDoc, Präprozessor), Parser im Folge-PR.
 - Präprozessor: `$IF`-Auswerter in `Pascal.Preprocessor.Expressions` (`TExpressionEvaluator` mit eigenen `TExpressionSettings`); `TConditionValue`, `TConditionPart`, `TDeclaredFunc` stehen jetzt in `Pascal.Contract`.

@@ -219,6 +219,20 @@ begin
   end;
 end;
 
+/// <summary>Quellen der Pfadsuche über den Graphen des Dienstes.</summary>
+function SourcesOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
+  const AReadText: TSymbolPathReadText; const AEnsureUnit: TEnsureUnitFunc;
+  const ANamespaces: TArray<string>): TSymbolPathSources;
+begin
+  Result := Default(TSymbolPathSources);
+  Result.Index := AIndex;
+  Result.Graphs := AGraphs;
+  Result.Locator := ALocator;
+  Result.ReadText := AReadText;
+  Result.EnsureUnit := AEnsureUnit;
+  Result.Namespaces := ANamespaces;
+end;
+
 function TLspSymbolPath.Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Params, Answer: TJSONObject;
@@ -255,7 +269,8 @@ begin
         FGraphs.SetOptions(GraphOptions(Namespaces));
       end;
       Token := ACancellation;
-      Found := TSymbolPathSearch.Run(FIndex, FGraphs, FLocator, FReadText, FEnsureUnit, Namespaces, Search,
+      Found := TSymbolPathSearch.Run(SourcesOf(FIndex, FGraphs, FLocator, FReadText, FEnsureUnit, Namespaces),
+        Search,
         function: Boolean
         begin
           Result := (Token <> nil) and Token.IsCancellationRequested;

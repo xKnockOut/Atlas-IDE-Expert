@@ -224,13 +224,43 @@ begin
     [AppFile, ServiceFile, MainFile], [FormFile])];
 end;
 
+/// <summary>Vorgaben oder die atlas.json des Szenarios.</summary>
+function ScenarioSettings(const AConfig: string): TServerSettings;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  if AConfig = '' then
+  begin
+    Result := TServerSettings.Default;
+  end
+  else
+  begin
+    Result := TConfigurationParser.Parse(AConfig, mIssues);
+  end;
+end;
+
+/// <summary>Index über die Units des Szenarios; ATexts nimmt alle Dateien nach Namen auf.</summary>
+function IndexScenario(const AScenario: TScenario; const ATexts: TDictionary<string, string>): ISymbolIndex;
+var
+  mEntry: TTestFile;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText(SystemText, 'C:\BDS\source\System.pas', nil));
+  for mEntry in AScenario.Files do
+  begin
+    ATexts.AddOrSetValue(UpperCase(mEntry.Name), mEntry.Text);
+    if not SameText(ExtractFileExt(mEntry.Name), '.dfm') then
+    begin
+      Result.AddUnit(TIndexExtractor.ExtractText(mEntry.Text, mEntry.Name, nil, nil, True));
+    end;
+  end;
+end;
+
 function Run(const AScenario: TScenario; const ACheck: string): TArray<TRuleFinding>;
 var
   Texts: TDictionary<string, string>;
   Index: ISymbolIndex;
-  Entry: TTestFile;
   Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
   Context: TRuleContext;
   Tree: TSyntaxTree;
   Unreadable: string;
@@ -240,24 +270,8 @@ begin
   Incomplete := AScenario.Incomplete;
   Texts := TDictionary<string, string>.Create;
   try
-    Index := TSymbolIndex.Create;
-    Index.AddUnit(TIndexExtractor.ExtractText(SystemText, 'C:\BDS\source\System.pas', nil));
-    for Entry in AScenario.Files do
-    begin
-      Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
-      if not SameText(ExtractFileExt(Entry.Name), '.dfm') then
-      begin
-        Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil, nil, True));
-      end;
-    end;
-    if AScenario.Config = '' then
-    begin
-      Settings := TServerSettings.Default;
-    end
-    else
-    begin
-      Settings := TConfigurationParser.Parse(AScenario.Config, Issues);
-    end;
+    Index := IndexScenario(AScenario, Texts);
+    Settings := ScenarioSettings(AScenario.Config);
     Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       Context := Default(TRuleContext);

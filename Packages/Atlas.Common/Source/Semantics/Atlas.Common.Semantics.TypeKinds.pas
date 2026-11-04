@@ -94,6 +94,59 @@ begin
   end;
 end;
 
+type
+  TTypeTextPrefix = record
+    Prefix: string;
+    Kind: TResolvedTypeKind;
+  end;
+
+const
+  // Reihenfolge wie die Prüfung: der erste passende Anfang entscheidet.
+  cTypeTextPrefixes: array[0..9] of TTypeTextPrefix = (
+    (Prefix: '^'; Kind: TResolvedTypeKind.Pointer_),
+    (Prefix: 'class of '; Kind: TResolvedTypeKind.ClassReference),
+    (Prefix: 'set of '; Kind: TResolvedTypeKind.Set_),
+    (Prefix: 'array'; Kind: TResolvedTypeKind.Array_),
+    (Prefix: 'packed array'; Kind: TResolvedTypeKind.Array_),
+    (Prefix: 'procedure'; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'function'; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'reference to '; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'file of '; Kind: TResolvedTypeKind.File_),
+    (Prefix: 'string['; Kind: TResolvedTypeKind.String_));
+
+/// <summary>Art nach dem Anfang von AText ("^", "class of ", "set of " ...); False ohne passenden Anfang.</summary>
+function KindOfPrefix(const AText: string; out AKind: TResolvedTypeKind): Boolean;
+var
+  mPrefix: TTypeTextPrefix;
+begin
+  for mPrefix in cTypeTextPrefixes do
+  begin
+    if StartsText(mPrefix.Prefix, AText) then
+    begin
+      AKind := mPrefix.Kind;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Art eines Typtexts ohne passenden Anfang: Dateityp, Aufzählung oder eingebauter Name.</summary>
+function KindOfWord(const AText: string): TResolvedTypeKind;
+begin
+  if SameText(AText, 'file') or SameText(AText, 'Text') or SameText(AText, 'TextFile') then
+  begin
+    Result := TResolvedTypeKind.File_;
+  end
+  else if StartsStr('(', AText) then
+  begin
+    Result := TResolvedTypeKind.Enumeration;
+  end
+  else
+  begin
+    Result := TResolvedTypeKinds.OfBuiltin(AText);
+  end;
+end;
+
 class function TResolvedTypeKinds.OfText(const ATypeText: string): TResolvedTypeKind;
 var
   mText: string;
@@ -106,42 +159,12 @@ begin
   end;
   if mText = '' then
   begin
-    Exit(TResolvedTypeKind.Unknown);
-  end;
-  if StartsStr('^', mText) then
+    Result := TResolvedTypeKind.Unknown;
+  end
+  else if not KindOfPrefix(mText, Result) then
   begin
-    Exit(TResolvedTypeKind.Pointer_);
+    Result := KindOfWord(mText);
   end;
-  if StartsText('class of ', mText) then
-  begin
-    Exit(TResolvedTypeKind.ClassReference);
-  end;
-  if StartsText('set of ', mText) then
-  begin
-    Exit(TResolvedTypeKind.Set_);
-  end;
-  if StartsText('array', mText) or StartsText('packed array', mText) then
-  begin
-    Exit(TResolvedTypeKind.Array_);
-  end;
-  if StartsText('procedure', mText) or StartsText('function', mText) or StartsText('reference to ', mText) then
-  begin
-    Exit(TResolvedTypeKind.Procedure_);
-  end;
-  if SameText(mText, 'file') or StartsText('file of ', mText) or SameText(mText, 'Text') or
-    SameText(mText, 'TextFile') then
-  begin
-    Exit(TResolvedTypeKind.File_);
-  end;
-  if StartsText('string[', mText) then
-  begin
-    Exit(TResolvedTypeKind.String_);
-  end;
-  if StartsStr('(', mText) then
-  begin
-    Exit(TResolvedTypeKind.Enumeration);
-  end;
-  Result := OfBuiltin(mText);
 end;
 
 class function TResolvedTypeKinds.OfType(const AType: TResolvedSymbol): TResolvedTypeKind;
