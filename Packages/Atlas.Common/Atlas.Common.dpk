@@ -40,6 +40,7 @@ requires
 contains
   Atlas.Common.Product.Version in 'Source\Product\Atlas.Common.Product.Version.pas',
   Atlas.Common.Logging.Contract in 'Source\Logging\Atlas.Common.Logging.Contract.pas',
+  Atlas.Common.Localization.Texts in 'Source\Localization\Atlas.Common.Localization.Texts.pas',
   Atlas.Common.Logging.Providers.Logger in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas',
   Atlas.Common.Logging.RotatingFileStream in 'Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas',
   Atlas.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas',

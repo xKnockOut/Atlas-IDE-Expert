@@ -26,6 +26,9 @@ type
     FGlobalSettings: string;
     /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor. Unter der Sperre.</summary>
     FLooseSettings: TServerSettings;
+    /// <summary>Sprache des Clients aus initialize (#1458); '' ohne Angabe.</summary>
+    FClientLocale: string;
+    procedure SetLoose(const ASettings: TServerSettings);
   public
     constructor Create(AWorkspaces: TShellWorkspaceRegistry; const ALanguageLevelFor: TShellSettingsLanguageFunc);
     /// <summary>Einstellungen des Arbeitsbereichs zur Datei, ohne Arbeitsbereich global und Editor. Sperrt
@@ -41,6 +44,9 @@ type
     procedure SetEditorSettings(const AText: string);
     /// <summary>Setzt die globale Ebene und berechnet Loose neu; False, wenn der Text gleich blieb.</summary>
     function SetGlobalSettings(const AText: string): Boolean;
+    /// <summary>Sprache des Clients aus initialize (#1458); gilt ab dem nächsten Berechnen von Loose, daher vor
+    /// SetEditorSettings setzen.</summary>
+    procedure SetClientLocale(const ALocale: string);
     function Highlight(const AUri: string): THighlightSettings;
     /// <summary>Inlay-Hinweise; die Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
     /// </summary>
@@ -61,6 +67,7 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Localization.Texts,
   Shell.Workspace;
 
 constructor TShellSettings.Create(AWorkspaces: TShellWorkspaceRegistry;
@@ -107,6 +114,24 @@ begin
   end;
 end;
 
+/// <summary>Neue Einstellungen ohne Arbeitsbereich; wählt die Sprache der Texte (#1458): language ist global
+/// (settings.json bzw. Editor), sonst die Sprache des Clients.</summary>
+procedure TShellSettings.SetLoose(const ASettings: TServerSettings);
+begin
+  TAtlasLocale.Use(TAtlasLocale.Resolve(ASettings.Language, FClientLocale));
+  System.TMonitor.Enter(FWorkspaces.Lock);
+  try
+    FLooseSettings := ASettings;
+  finally
+    System.TMonitor.Exit(FWorkspaces.Lock);
+  end;
+end;
+
+procedure TShellSettings.SetClientLocale(const ALocale: string);
+begin
+  FClientLocale := ALocale;
+end;
+
 function TShellSettings.Loose: TServerSettings;
 begin
   Result := FLooseSettings;
@@ -131,10 +156,10 @@ begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
     FEditorSettings := AText;
-    FLooseSettings := mSettings;
   finally
     System.TMonitor.Exit(FWorkspaces.Lock);
   end;
+  SetLoose(mSettings);
 end;
 
 function TShellSettings.SetGlobalSettings(const AText: string): Boolean;
@@ -149,12 +174,7 @@ begin
   end;
   FGlobalSettings := AText;
   mSettings := TConfigurationParser.Parse(TConfigurationScopes.Effective(AText, EditorSettings, ''), mIssues);
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    FLooseSettings := mSettings;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
+  SetLoose(mSettings);
 end;
 
 function TShellSettings.Highlight(const AUri: string): THighlightSettings;
