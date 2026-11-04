@@ -34,6 +34,10 @@ type
     [Test]
     procedure FormatWithoutSettings;
     [Test]
+    procedure FormatWithoutSettingsOwnRoutineInOtherUnit;
+    [Test]
+    procedure FormatWithoutSettingsOwnRoutineInSameUnit;
+    [Test]
     procedure LocaleSpecifiers;
     [Test]
     procedure ManagedRawMemoryIssueExample;
@@ -130,6 +134,9 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
 function InRoutine(const AVars, ABody: string): string;
@@ -271,6 +278,70 @@ begin
     '  S := FormatFloat(''000'', X);'));
   Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create, InRoutine('  X: Double;',
     '  S := FormatDateTime(''hh:nn'', Now);'#10'  S := FormatFloat(''0.0'', X);')))));
+end;
+
+/// <summary>Unit Fall mit AUses, die in einer Routine Format('%.2f', [X]) aufruft.</summary>
+function FormatCaller(const AUses, ACall: string): string;
+begin
+  Result := 'unit Fall;'#10'interface'#10'implementation'#10'uses'#10'  ' + AUses + ';'#10 +
+    'procedure Zeigen(X: Double);'#10'var'#10'  S: string;'#10'begin'#10'  S := ' + ACall + ';'#10'end;'#10'end.';
+end;
+
+/// <summary>Index mit der Unit Werkzeuge (eigenes Format und FloatToStr mit TFormatSettings im Rumpf) und, mit
+/// AWithSysUtils, einem Ausschnitt von System.SysUtils.</summary>
+function ToolsIndex(AWithSysUtils: Boolean): ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Werkzeuge;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+    'function FloatToStr(AValue: Extended): string;'#10'implementation'#10'end.', 'C:\Projekt\Werkzeuge.pas', nil));
+  if AWithSysUtils then
+  begin
+    Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10 +
+      'function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+      'function FloatToStr(AValue: Extended): string;'#10'implementation'#10'end.',
+      'C:\BDS\source\rtl\sys\System.SysUtils.pas', nil));
+  end;
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInOtherUnit;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Marcos Fall: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie steht in
+  // uses nach System.SysUtils und verdeckt damit die RTL.
+  mIndex := ToolsIndex(True);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'FloatToStr(X)'), mIndex, '', 'Fall.pas'))));
+  // Steht System.SysUtils danach, ruft der Compiler die RTL: mit und ohne System.SysUtils im Index.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, System.SysUtils', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, SysUtils', 'Format(''%.2f'', [X])'), ToolsIndex(False), '', 'Fall.pas'))));
+  // Ausdrücklich die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'System.SysUtils.Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  // Ohne Werkzeuge bleibt es die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInSameUnit;
+begin
+  // Routine der eigenen Unit und Methode der eigenen Klasse verdecken die RTL auch ohne Index.
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10'implementation'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
+    '  Result := System.SysUtils.Format(AFormat, AArgs, TFormatSettings.Invariant);'#10'end;'#10 +
+    'procedure P(X: Double);'#10'begin'#10'  Format(''%.2f'', [X]);'#10'end;'#10'end.');
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, 'unit U;'#10'interface'#10'type'#10'  TBericht = class'#10 +
+    '    function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+    '    procedure Schreiben(X: Double);'#10'  end;'#10'implementation'#10 +
+    'function TBericht.Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
+    '  Result := AFormat;'#10'end;'#10'procedure TBericht.Schreiben(X: Double);'#10'begin'#10 +
+    '  Format(''%.2f'', [X]);'#10'end;'#10'end.');
 end;
 
 procedure TRtlTypePatternRulesTests.LocaleSpecifiers;
