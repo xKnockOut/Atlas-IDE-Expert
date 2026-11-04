@@ -355,11 +355,17 @@ end;
 function DetailText(const AItem: TAtlasCompletionItem): string;
 begin
   if AItem.UsesElsewhere = 'interface' then
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesInInterface)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInInterface);
+  end
   else if AItem.UsesElsewhere = 'implementation' then
-    Result := TAtlasStrings.Text(TAtlasTextId.UsesInImplementation)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInImplementation);
+  end
   else
+  begin
     Result := TAtlasItemPresentation.Detail(AItem);
+  end;
 end;
 
 { TAtlasCompletionPopup }
@@ -397,11 +403,17 @@ end;
 function TAtlasCompletionPopup.PanelWidth: Integer;
 begin
   if not FPanelShown then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else if Collapsed then
-    Result := Scale(CollapsedPanelWidth)
+  begin
+    Result := Scale(CollapsedPanelWidth);
+  end
   else
+  begin
     Result := Scale(FPanelWidthSetting);
+  end;
 end;
 
 function TAtlasCompletionPopup.ListWidth: Integer;
@@ -417,9 +429,13 @@ end;
 function TAtlasCompletionPopup.ListLeft: Integer;
 begin
   if FPanelShown and FPanelLeft then
-    Result := PanelWidth
+  begin
+    Result := PanelWidth;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function TAtlasCompletionPopup.ListRight: Integer;
@@ -430,15 +446,21 @@ end;
 function TAtlasCompletionPopup.ListHeight: Integer;
 begin
   if FShowingEmpty then
-    Result := 2 * Pad + ChipsHeight + SyntaxHeight + 2 * RowHeight + FooterHeight
+  begin
+    Result := 2 * Pad + ChipsHeight + SyntaxHeight + 2 * RowHeight + FooterHeight;
+  end
   else
+  begin
     Result := 2 * Pad + ChipsHeight + SyntaxHeight + RowCount * RowHeight + FooterHeight;
+  end;
 end;
 
 function TAtlasCompletionPopup.PanelHeight: Integer;
 begin
   if not FPanelShown or Collapsed then
+  begin
     Exit(0);
+  end;
   FDetailView.MaxHeight := PanelCap;
   Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
   Canvas.Font := Font;
@@ -447,9 +469,13 @@ end;
 function TAtlasCompletionPopup.PanelRect: TRect;
 begin
   if FPanelLeft then
-    Result := Rect(0, 0, PanelWidth, ClientHeight)
+  begin
+    Result := Rect(0, 0, PanelWidth, ClientHeight);
+  end
   else
+  begin
     Result := Rect(ListRight, 0, ListRight + PanelWidth, ClientHeight);
+  end;
 end;
 
 function TAtlasCompletionPopup.PanelCap: Integer;
@@ -474,9 +500,13 @@ procedure TAtlasCompletionPopup.Relayout;
 begin
   // Mit Panel wächst die Höhe nur, damit das Fenster beim Blättern nicht springt.
   if FPanelShown then
-    FSessionHeight := Max(FSessionHeight, Max(ListHeight, PanelHeight))
+  begin
+    FSessionHeight := Max(FSessionHeight, Max(ListHeight, PanelHeight));
+  end
   else
+  begin
     FSessionHeight := ListHeight;
+  end;
   PlaceAt(ListWidth, FSessionHeight);
 end;
 
@@ -484,19 +514,27 @@ procedure TAtlasCompletionPopup.ShowDetails(const ADetails: TAtlasItemDetails);
 begin
   FDetailView.Details := ADetails;
   if not FPanelShown and ADetails.IsEmpty then
+  begin
     Exit;
+  end;
   FPanelShown := True;
   if IsShown then
+  begin
     Relayout;
+  end;
   Invalidate;
 end;
 
 function TAtlasCompletionPopup.Dim(AColor: TAtlasColor): TAtlasColor;
 begin
   if FDimRow then
-    Result := TAtlasColorMath.Mix(AColor, Colors.Surface, 0.62)
+  begin
+    Result := TAtlasColorMath.Mix(AColor, Colors.Surface, 0.62);
+  end
   else
+  begin
     Result := AColor;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.CMFontChanged(var Message: TMessage);
@@ -517,7 +555,9 @@ var
 begin
   // Dichte zusätzlich prüfen: Scale hängt an PPI, auch wenn die Schrift gleich bleibt.
   if FMetricsValid and (FMetricsPPI = PPI) then
+  begin
     Exit;
+  end;
   Canvas.Font := UIFont;
   UIHeight := Canvas.TextHeight('Wg');
   Canvas.Font := Font;
@@ -531,7 +571,9 @@ end;
 function TAtlasCompletionPopup.ChipsHeight: Integer;
 begin
   if not FChipsVisible or FShowingEmpty then
+  begin
     Exit(0);
+  end;
   EnsureMetrics;
   Result := FChipsHeight;
 end;
@@ -539,7 +581,9 @@ end;
 function TAtlasCompletionPopup.SyntaxHeight: Integer;
 begin
   if FSyntax.Trust = TAtlasSyntaxTrust.Sure then
+  begin
     Exit(0);
+  end;
   EnsureMetrics;
   Result := FChipsHeight;
 end;
@@ -547,9 +591,13 @@ end;
 function TAtlasCompletionPopup.SyntaxLead: string;
 begin
   if FSyntax.Trust = TAtlasSyntaxTrust.Unknown then
-    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxUnknown)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SyntaxUnknown);
+  end
   else
+  begin
     Result := TAtlasStrings.Text(TAtlasTextId.SyntaxLimited);
+  end;
 end;
 
 function TAtlasCompletionPopup.SyntaxLineText: string;
@@ -574,7 +622,9 @@ begin
     Canvas.Font := Font;
   end;
   if IsShown then
+  begin
     Relayout;
+  end;
   Invalidate;
 end;
 
@@ -586,7 +636,9 @@ var
 begin
   FSyntaxLink := Rect(0, 0, 0, 0);
   if SyntaxHeight = 0 then
+  begin
     Exit;
+  end;
   Bar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
     Pad + ChipsHeight + SyntaxHeight - Scale(2));
   FillRounded(Bar, Colors.WarnSoft, TAtlasDraw.ChipRadius);
@@ -621,8 +673,12 @@ begin
   // Nur sinnvoll, wenn es mehr als eine Art gibt.
   Shown := 0;
   for Chip := Succ(TAtlasChip.All) to High(TAtlasChip) do
+  begin
     if ACounts[Chip] > 0 then
+    begin
       Inc(Shown);
+    end;
+  end;
   FChipsVisible := AVisible and (Shown >= 2);
 end;
 
@@ -636,7 +692,9 @@ begin
   FChipRects := nil;
   FChipKinds := nil;
   if ChipsHeight = 0 then
+  begin
     Exit;
+  end;
   Canvas.Font := UIFont;
   mHeight := Canvas.TextHeight('Wg') + Scale(4);
   mTop := Pad + (ChipsHeight - mHeight) div 2;
@@ -644,13 +702,17 @@ begin
   for Chip := Low(TAtlasChip) to High(TAtlasChip) do
   begin
     if (Chip <> TAtlasChip.All) and (FChipCounts[Chip] = 0) then
+    begin
       Continue;
+    end;
     mText := Format('%s %d', [TAtlasStrings.Text(TAtlasTextId(Ord(TAtlasTextId.ChipAll) + Ord(Chip))),
       FChipCounts[Chip]]);
     Canvas.Font := UIFont;
     Box := Rect(X, mTop, X + Canvas.TextWidth(mText) + Scale(14), mTop + mHeight);
     if Box.Right > ListRight - Pad then
+    begin
       Break;
+    end;
     if Chip = FChip then
     begin
       FrameRounded(Box, Colors.Accent, 9, ToColor(Colors.AccentSoft));
@@ -678,23 +740,37 @@ var
 begin
   // Hinweis zu den Favoriten (#458) hat Vorrang.
   if FNotice <> '' then
+  begin
     Exit(FNotice);
+  end;
   // uses-Abschnitt (#469): welche Units schon eingebunden sind und deshalb fehlen.
   if Length(TAtlasItemPresentation.UsesHidden(FItems)) > 0 then
+  begin
     Exit(TAtlasStrings.UsesHidden(TAtlasItemPresentation.UsesHidden(FItems)));
+  end;
   // Nach "inherited " (#482): welche abstrakten Vorfahrmethoden fehlen.
   if Length(TAtlasItemPresentation.InheritedAbstract(FItems)) > 0 then
+  begin
     Exit(TAtlasStrings.InheritedAbstract(TAtlasItemPresentation.InheritedAbstract(FItems)));
+  end;
   // Gleichnamige Bezeichner (#475): ausgeblendete FireMonkey-Varianten.
   if Length(TAtlasItemPresentation.SameNameHidden(FItems)) > 0 then
+  begin
     Exit(TAtlasStrings.Fmt(TAtlasTextId.SameNameHiddenFooter,
       [string.Join(', ', TAtlasItemPresentation.SameNameHidden(FItems))]));
+  end;
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
+  begin
     Exit;
+  end;
   for Index in FOrder do
+  begin
     if (Index >= 0) and (FItems[Index].Condition <> '') then
+    begin
       Exit(TAtlasStrings.Fmt(TAtlasTextId.TargetFooter, [FTarget]));
+    end;
+  end;
 end;
 
 function TAtlasCompletionPopup.CountText: string;
@@ -703,24 +779,40 @@ var
 begin
   // Mengenmodus (#448): wie viele Werte angehakt sind.
   if TAtlasCompletionSets.Active(FItems) then
+  begin
     Exit(TAtlasStrings.Fmt(TAtlasTextId.SetChosen, [TAtlasCompletionSets.CheckedCount(FItems)]));
+  end;
   Fitting := 0;
   for Index in FOrder do
+  begin
     if (Index >= 0) and FItems[Index].Fits and not FItems[Index].IsAction then
+    begin
       Inc(Fitting);
+    end;
+  end;
   if TAtlasRanking.OnlyTypos(FOrder) or (FRestFrom = 0) then
+  begin
     // Nur ähnliche Namen (#485) bzw. nur der Rest (#497): kein echter Treffer für das Getippte.
-    Result := TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FPattern])
+    Result := TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FPattern]);
+  end
   else if FRestFrom > 0 then
+  begin
     // Treffer, darunter der gedämpfte Rest (#497).
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountHitsRest, [TAtlasRanking.ItemCount(Copy(FOrder, 0, FRestFrom)),
-      TAtlasRanking.ItemCount(Copy(FOrder, FRestFrom, MaxInt))])
+      TAtlasRanking.ItemCount(Copy(FOrder, FRestFrom, MaxInt))]);
+  end
   else if Fitting > 0 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [Fitting, TAtlasRanking.ItemCount(FOrder)])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [Fitting, TAtlasRanking.ItemCount(FOrder)]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountOf, [TAtlasRanking.ItemCount(FOrder), Length(FItems)]);
+  end;
   if FLimited then
+  begin
     Result := TAtlasStrings.Text(TAtlasTextId.CompletionLimited) + ' · ' + Result;
+  end;
 end;
 
 function TAtlasCompletionPopup.HeaderText(APosition: Integer): string;
@@ -732,67 +824,105 @@ begin
   mText := TAtlasStrings.Text(TAtlasTextId.InheritedPlain);
   // Tippfehler-Treffer (#485).
   if FOrder[APosition] = TAtlasRanking.TypoHeader then
-    mText := TAtlasStrings.Text(TAtlasTextId.DidYouMean)
+  begin
+    mText := TAtlasStrings.Text(TAtlasTextId.DidYouMean);
+  end
   // Rest der Liste ohne Treffer (#497).
   else if FOrder[APosition] = TAtlasRanking.RestHeader then
-    mText := TAtlasStrings.Text(TAtlasTextId.CompletionRestHeader)
+  begin
+    mText := TAtlasStrings.Text(TAtlasTextId.CompletionRestHeader);
+  end
   // Unbekannter Name (#471): „TotalCount ist unbekannt“.
   else if (FOrder[APosition] = TAtlasRanking.UnknownHeader) and (APosition < High(FOrder)) and
     (FOrder[APosition + 1] >= 0) then
-    mText := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown])
+  begin
+    mText := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown]);
+  end
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
     // Sender mit Typumwandlung (#480): „Sender ist TButton · btnSave, btnLoad“ über der Liste; weitere
     // Überschriften darin sind die der geerbten Gruppen.
     if (APosition = 0) and (FItems[FOrder[APosition + 1]].Sender <> '') then
+    begin
       mText := TAtlasStrings.Fmt(TAtlasTextId.SenderHeader, [FItems[FOrder[APosition + 1]].Sender,
-        FItems[FOrder[APosition + 1]].SenderOf])
+        FItems[FOrder[APosition + 1]].SenderOf]);
+    end
     // Typargumente (#450): „T: class · nur Klassen“.
     else if FItems[FOrder[APosition + 1]].TypeParam <> '' then
+    begin
       mText := TAtlasStrings.TypeArgHeading(FItems[FOrder[APosition + 1]].TypeParam,
-        FItems[FOrder[APosition + 1]].Constraint, FItems[FOrder[APosition + 1]].ConstraintHint)
+        FItems[FOrder[APosition + 1]].Constraint, FItems[FOrder[APosition + 1]].ConstraintHint);
+    end
     // uses-Abschnitt (#469): Projekt, RTL/VCL, Drittanbieter.
     else if FItems[FOrder[APosition + 1]].UsesGroup = 'project' then
-      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupProject)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupProject);
+    end
     else if FItems[FOrder[APosition + 1]].UsesGroup = 'rtl' then
-      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupRtl)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupRtl);
+    end
     else if FItems[FOrder[APosition + 1]].UsesGroup = 'library' then
-      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupLibrary)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.UsesGroupLibrary);
+    end
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
     else if FItems[FOrder[APosition + 1]].Form <> '' then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
+    begin
+      mText := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form]);
+    end
     // Alle Felder zuweisen (#491): „Alle Felder zuweisen · TOptions“.
     else if FItems[FOrder[APosition + 1]].Assign then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.AssignHeader, [FItems[FOrder[APosition + 1]].SetOf])
+    begin
+      mText := TAtlasStrings.Fmt(TAtlasTextId.AssignHeader, [FItems[FOrder[APosition + 1]].SetOf]);
+    end
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
     else if FItems[FOrder[APosition + 1]].Batch then
-      mText := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf])
+    begin
+      mText := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf]);
+    end
     // Exception-Klassen nach "on E: " (#483): „Aus dem try-Block“ und „Allgemein“.
     else if FItems[FOrder[APosition + 1]].ExceptionGroup = 'try' then
-      mText := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupTry)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupTry);
+    end
     else if FItems[FOrder[APosition + 1]].ExceptionGroup = 'general' then
-      mText := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupGeneral)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.ExceptionGroupGeneral);
+    end
     else if FItems[FOrder[APosition + 1]].SetOf <> '' then
     begin
       // Mengenmodus (#448): „TAnchors · Menge von TAnchorKind“, bei "X in [" nur „Menge von …“.
       if FItems[FOrder[APosition + 1]].ExpectedType.StartsWith('set of ') then
-        mText := TAtlasStrings.Fmt(TAtlasTextId.SetHeaderPlain, [FItems[FOrder[APosition + 1]].SetOf])
+      begin
+        mText := TAtlasStrings.Fmt(TAtlasTextId.SetHeaderPlain, [FItems[FOrder[APosition + 1]].SetOf]);
+      end
       else
+      begin
         mText := TAtlasStrings.Fmt(TAtlasTextId.SetHeader, [FItems[FOrder[APosition + 1]].ExpectedType,
           FItems[FOrder[APosition + 1]].SetOf]);
+      end;
     end
     else if FItems[FOrder[APosition + 1]].ExpectedType <> '' then
     begin
       if FItems[FOrder[APosition + 1]].Fits then
-        mText := TAtlasStrings.Fmt(TAtlasTextId.FitsType, [FItems[FOrder[APosition + 1]].ExpectedType])
+      begin
+        mText := TAtlasStrings.Fmt(TAtlasTextId.FitsType, [FItems[FOrder[APosition + 1]].ExpectedType]);
+      end
       else
+      begin
         mText := TAtlasStrings.Text(TAtlasTextId.OtherGroup);
+      end;
     end
     // Direkt nach den Komponenten des Formulars (#455) beginnt die übrige Liste.
     else if (APosition > 0) and (FOrder[APosition - 1] >= 0) and (FItems[FOrder[APosition - 1]].Form <> '') then
-      mText := TAtlasStrings.Text(TAtlasTextId.OtherGroup)
+    begin
+      mText := TAtlasStrings.Text(TAtlasTextId.OtherGroup);
+    end
     else if FItems[FOrder[APosition + 1]].DeclaringClass <> '' then
+    begin
       mText := TAtlasStrings.Fmt(TAtlasTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
+    end;
   end;
   Result := mText;
 end;
@@ -815,18 +945,24 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
   if ARow >= Length(FTruncated) then
+  begin
     SetLength(FTruncated, ARow + 1);
+  end;
   FTruncated[ARow] := False;
 end;
 
 procedure TAtlasCompletionPopup.SetOverload(AIndex, ACount: Integer);
 begin
   if (FDetailView.OverloadIndex = AIndex) and (FDetailView.OverloadCount = ACount) then
+  begin
     Exit;
+  end;
   FDetailView.OverloadIndex := AIndex;
   FDetailView.OverloadCount := ACount;
   if IsShown and FPanelShown then
+  begin
     Relayout;
+  end;
   Invalidate;
 end;
 
@@ -834,9 +970,13 @@ procedure TAtlasCompletionPopup.TogglePanel;
 begin
   FPanelCollapsed := not FPanelCollapsed;
   if Assigned(FOnPanelToggled) then
+  begin
     FOnPanelToggled(FPanelCollapsed);
+  end;
   if IsShown then
+  begin
     Relayout;
+  end;
   Invalidate;
 end;
 
@@ -844,7 +984,9 @@ procedure TAtlasCompletionPopup.ClearDetails;
 begin
   FDetailView.Details := Default(TAtlasItemDetails);
   if FPanelShown then
+  begin
     Invalidate;
+  end;
 end;
 
 function TAtlasCompletionPopup.Pad: Integer;
@@ -890,20 +1032,30 @@ end;
 function TAtlasCompletionPopup.RowAt(AX, AY: Integer): Integer;
 begin
   if (AY < ListTop) or (AX < ListLeft) or (AX >= ListRight) then
+  begin
     Exit(-1);
+  end;
   Result := FTop + (AY - ListTop) div RowHeight;
   if (Result < FTop) or (Result >= Min(FTop + RowCount, Length(FOrder))) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.EnsureSelectedVisible;
 begin
   if FSelected < 0 then
+  begin
     Exit;
+  end;
   if FSelected < FTop then
-    FTop := FSelected
+  begin
+    FTop := FSelected;
+  end
   else if FSelected >= FTop + FVisibleRows then
+  begin
     FTop := FSelected - FVisibleRows + 1;
+  end;
   FTop := EnsureRange(FTop, 0, Max(0, Length(FOrder) - FVisibleRows));
 end;
 
@@ -920,8 +1072,12 @@ var
 begin
   Result := nil;
   for mTag in TAtlasItemPresentation.Tags(AItem) do
+  begin
     if FShowVariantBranch or (mTag.Id <> TAtlasTagId.VariantBranch) then
+    begin
       Result := Result + [mTag];
+    end;
+  end;
 end;
 
 function TAtlasCompletionPopup.MeasureWidth: Integer;
@@ -938,22 +1094,32 @@ begin
   for Position := 0 to Count - 1 do
   begin
     if TAtlasRanking.IsHeader(FOrder[Position]) then
+    begin
       Continue;
+    end;
     Item := FItems[FOrder[Position]];
     mWidth := Canvas.TextWidth(Item.Name);
     Detail := DetailText(Item);
     if Detail <> '' then
+    begin
       Inc(mWidth, Scale(12) + Canvas.TextWidth(Detail));
+    end;
     for mTag in ItemTags(Item) do
+    begin
       Inc(mWidth, Scale(6) + TagWidth(mTag));
+    end;
     Widest := Max(Widest, mWidth);
   end;
   // Badge (7 + 24 + 9), rechter Rand der Zeile (7), Ränder und Scrollleiste.
   Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
   if TAtlasCompletionSets.Active(FItems) then
+  begin
     Inc(Widest, Scale(CheckWidth));
+  end;
   if FFavoritesEnabled then
+  begin
     Inc(Widest, Scale(StarWidth));
+  end;
   Canvas.Font := UIFont;
   Widest := Max(Widest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
@@ -980,25 +1146,39 @@ begin
   FAutoCollapsed := False;
   FPanelLeft := False;
   if FPanelShown then
+  begin
     if mLeft + AListWidth + PanelWidth > Area.Right then
+    begin
       if mLeft - PanelWidth >= Area.Left then
-        FPanelLeft := True
+      begin
+        FPanelLeft := True;
+      end
       else if not FPanelCollapsed then
       begin
         FAutoCollapsed := True;
         FPanelLeft := mLeft + AListWidth + PanelWidth > Area.Right;
       end;
+    end;
+  end;
   mWidth := AListWidth + PanelWidth;
   if FPanelLeft then
+  begin
     Dec(mLeft, PanelWidth);
+  end;
   Bounds := TRect.Create(Point(mLeft, FAnchor.Bottom + 2), mWidth, AHeight);
   // Unten kein Platz: über die Zeile.
   if Bounds.Bottom > Area.Bottom then
+  begin
     Bounds.SetLocation(Bounds.Left, FAnchor.Top - AHeight - 2);
+  end;
   if Bounds.Right > Area.Right then
+  begin
     Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+  end;
   if Bounds.Top < Area.Top then
+  begin
     Bounds.SetLocation(Bounds.Left, Area.Top);
+  end;
   ShowAt(Bounds);
 end;
 
@@ -1013,7 +1193,9 @@ begin
     (APattern = FPattern) and IsShown;
   // Weitertippen verwirft den Hinweis der Fußzeile (#458).
   if APattern <> FPattern then
+  begin
     FNotice := '';
+  end;
   FShowingEmpty := False;
   FItems := AItems;
   FOrder := AOrder;
@@ -1021,22 +1203,30 @@ begin
   FPattern := APattern;
   FRestFrom := -1;
   for Index := 0 to High(FOrder) do
+  begin
     if FOrder[Index] = TAtlasRanking.RestHeader then
     begin
       FRestFrom := Index;
       Break;
     end;
+  end;
   EnsureSelectedVisible;
   if SameList then
-    Relayout
+  begin
+    Relayout;
+  end
   else
+  begin
     PlaceAndShow;
+  end;
   AnnounceSelected;
   // UI Automation (#447): neue Einträge melden, dann den gewählten.
   if AccessibleList <> nil then
   begin
     if not SameList then
+    begin
       AccessibleList.ItemsChanged;
+    end;
     AccessibleList.SelectionChanged;
   end;
 end;
@@ -1079,13 +1269,17 @@ var
   Kind: string;
 begin
   if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
+  begin
     Exit;
+  end;
   Kind := KindText(FItems[FOrder[FSelected]].Kind);
   // Angeheftet (#458) mit ansagen.
   if FItems[FOrder[FSelected]].Favorite then
   begin
     if Kind <> '' then
+    begin
       Kind := Kind + ', ';
+    end;
     Kind := Kind + TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
   end;
   Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], Kind,
@@ -1096,7 +1290,9 @@ procedure TAtlasCompletionPopup.ShowNotice(const AText: string);
 begin
   FNotice := AText;
   if AText <> '' then
+  begin
     Announce(AText);
+  end;
   Invalidate;
 end;
 
@@ -1133,7 +1329,9 @@ begin
   FEmptyTotal := ATotal;
   FShowingEmpty := True;
   if AccessibleList <> nil then
+  begin
     AccessibleList.ItemsChanged;
+  end;
   Canvas.Font := UIFont;
   FSessionWidth := Max(FSessionWidth, Max(Scale(MinWidth),
     Canvas.TextWidth(TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [APrefix])) + Scale(32)));
@@ -1181,14 +1379,22 @@ var
 begin
   DrawSyntax;
   if FEmptyPrefix <> '' then
-    DrawLine(0, TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FEmptyPrefix]), Colors.Text)
+  begin
+    DrawLine(0, TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FEmptyPrefix]), Colors.Text);
+  end
   else
+  begin
     DrawLine(0, TAtlasStrings.Text(TAtlasTextId.NoSuggestions), Colors.Text);
+  end;
   // Unvollständiger Code (#457): statt des Tipps zur Rücktaste der Fehler.
   if (FSyntax.Trust <> TAtlasSyntaxTrust.Sure) and (FSyntax.Message <> '') then
-    DrawLine(1, FSyntax.Message, Colors.Muted)
+  begin
+    DrawLine(1, FSyntax.Message, Colors.Muted);
+  end
   else if FEmptyPrefix <> '' then
+  begin
     DrawLine(1, TAtlasStrings.Text(TAtlasTextId.BackspaceWidens), Colors.Muted);
+  end;
   Canvas.Brush.Style := bsSolid;
   DrawFooter(TAtlasStrings.Text(TAtlasTextId.EscCloses), TAtlasStrings.Fmt(TAtlasTextId.CountOf, [0, FEmptyTotal]));
 end;
@@ -1229,17 +1435,25 @@ begin
   begin
     // Gekürzt ohne Hervorhebung: Die Positionen passen nicht mehr zur Ellipse.
     if FActionRow then
-      Canvas.Font.Color := ToColor(Colors.Accent)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Accent);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(Dim(Colors.Text));
+    end;
     Part := Rect(ALeft, ARow.Top, ARight, ARow.Bottom);
     DrawText(Canvas.Handle, PChar(AName), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Exit;
   end;
   SetLength(Marks, Length(AName) + 1);
   for Position in TAtlasItemPresentation.Highlights(FPattern, AName) do
+  begin
     if (Position >= 1) and (Position <= Length(AName)) then
+    begin
       Marks[Position] := True;
+    end;
+  end;
   // Läufe gleicher Hervorhebung nacheinander zeichnen.
   X := ALeft;
   Index := 1;
@@ -1247,7 +1461,9 @@ begin
   begin
     Run := Index;
     while (Run < Length(AName)) and (Marks[Run + 1] = Marks[Index]) do
+    begin
       Inc(Run);
+    end;
     mText := Copy(AName, Index, Run - Index + 1);
     if Marks[Index] then
     begin
@@ -1289,7 +1505,9 @@ begin
   Canvas.Font := UIFont;
   // Warnfläche (#481): „verdeckt …“ fällt auch ohne Farbsehen auf.
   if ATag.Filled and (ATag.Kind = TAtlasTagKind.Warn) then
+  begin
     FillRounded(Box, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+  end;
   FrameRounded(Box, Line, TAtlasDraw.ChipRadius);
   Canvas.Font.Color := ToColor(TextColor);
   Canvas.Brush.Style := bsClear;
@@ -1338,9 +1556,13 @@ begin
   for Index := 0 to 9 do
   begin
     if Odd(Index) then
-      Radius := Inner
+    begin
+      Radius := Inner;
+    end
     else
+    begin
       Radius := Outer;
+    end;
     Angle := -Pi / 2 + Index * Pi / 5;
     Points[Index] := Point(CenterX + Round(Radius * Cos(Angle)), CenterY + Round(Radius * Sin(Angle)));
   end;
@@ -1366,14 +1588,20 @@ var
 begin
   Result := -1;
   if not FFavoritesEnabled or FShowingEmpty then
+  begin
     Exit;
+  end;
   Result := RowAt(AX, AY);
   if (Result < 0) or TAtlasRanking.IsHeader(FOrder[Result]) or
     not TAtlasFavorites.CanPin(FItems[FOrder[Result]]) then
+  begin
     Exit(-1);
+  end;
   Row := RowRect(Result - FTop);
   if (AX < Row.Left) or (AX >= Row.Left + Scale(StarWidth + 3)) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.DrawRow(ARow, APosition: Integer);
@@ -1407,9 +1635,13 @@ begin
   if FFavoritesEnabled then
   begin
     if Item.Favorite then
-      DrawStar(Row, True)
+    begin
+      DrawStar(Row, True);
+    end
     else if (APosition = FHoverPosition) and TAtlasFavorites.CanPin(Item) then
+    begin
       DrawStar(Row, False);
+    end;
     Inc(Row.Left, Scale(StarWidth));
   end;
   // Mengenmodus (#448): Kontrollkästchen vor dem Badge.
@@ -1428,7 +1660,9 @@ begin
   Tags := ItemTags(Item);
   TagsWidth := 0;
   for mTag in Tags do
+  begin
     Inc(TagsWidth, TagWidth(mTag) + Gap);
+  end;
   Detail := DetailText(Item);
   Canvas.Font := Font;
   DetailWidth := 0;
@@ -1437,7 +1671,9 @@ begin
   begin
     DetailWidth := Min(Canvas.TextWidth(Detail), Space - NameWidth - TagsWidth - Scale(12));
     if DetailWidth < Scale(40) then
+    begin
       DetailWidth := 0;
+    end;
   end;
   Truncated := (Detail <> '') and (DetailWidth < Canvas.TextWidth(Detail));
   // Rechts: Detail ganz außen, Tags davor.
@@ -1467,7 +1703,9 @@ begin
   FActionRow := False;
   Canvas.Brush.Style := bsSolid;
   if ARow >= Length(FTruncated) then
+  begin
     SetLength(FTruncated, ARow + 1);
+  end;
   FTruncated[ARow] := Truncated or (NameLeft + NameWidth > X - Gap);
   FDimRow := False;
 end;
@@ -1495,14 +1733,18 @@ function TAtlasCompletionPopup.AccessibleList: TAtlasAccessibleList;
 begin
   Result := nil;
   if AccessibleObject is TAtlasAccessibleList then
+  begin
     Result := TAtlasAccessibleList(AccessibleObject);
+  end;
 end;
 
 function TAtlasCompletionPopup.AccessibleCount: Integer;
 begin
   Result := 0;
   if not FShowingEmpty and IsShown then
+  begin
     Result := Length(FOrder);
+  end;
 end;
 
 function TAtlasCompletionPopup.AccessibleSelected: Integer;
@@ -1519,9 +1761,13 @@ end;
 function TAtlasCompletionPopup.AccessibleName(APosition: Integer): string;
 begin
   if TAtlasRanking.IsHeader(FOrder[APosition]) then
-    Result := HeaderText(APosition)
+  begin
+    Result := HeaderText(APosition);
+  end
   else
+  begin
     Result := FItems[FOrder[APosition]].Name;
+  end;
 end;
 
 function TAtlasCompletionPopup.AccessibleStatus(APosition: Integer): string;
@@ -1531,20 +1777,32 @@ var
 begin
   Result := '';
   if TAtlasRanking.IsHeader(FOrder[APosition]) then
+  begin
     Exit;
+  end;
   // Dieselben Angaben wie die Tags der Zeile; nicht nur Farbe (#447).
   for mTag in ItemTags(FItems[FOrder[APosition]]) do
+  begin
     if Result = '' then
-      Result := mTag.Text
+    begin
+      Result := mTag.Text;
+    end
     else
+    begin
       Result := Result + ', ' + mTag.Text;
+    end;
+  end;
   if FItems[FOrder[APosition]].Favorite then
   begin
     Status := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
     if Result <> '' then
-      Result := Status + ', ' + Result
+    begin
+      Result := Status + ', ' + Result;
+    end
     else
+    begin
       Result := Status;
+    end;
   end;
 end;
 
@@ -1552,7 +1810,9 @@ function TAtlasCompletionPopup.AccessibleHelp(APosition: Integer): string;
 begin
   Result := '';
   if not TAtlasRanking.IsHeader(FOrder[APosition]) then
+  begin
     Result := DetailText(FItems[FOrder[APosition]]);
+  end;
 end;
 
 function TAtlasCompletionPopup.AccessibleIsHeader(APosition: Integer): Boolean;
@@ -1577,7 +1837,9 @@ procedure TAtlasCompletionPopup.AccessibleSelect(APosition: Integer);
 begin
   // Wie ein Klick auf die Zeile: Der Controller wählt und zeigt die Liste neu.
   if Assigned(FOnSelect) then
+  begin
     FOnSelect(APosition);
+  end;
 end;
 
 procedure TAtlasCompletionPopup.DrawScrollBar;
@@ -1588,7 +1850,9 @@ begin
   Total := Length(FOrder);
   mVisible := RowCount;
   if Total <= mVisible then
+  begin
     Exit;
+  end;
   Track := Rect(ListRight - Pad - Scale(5), ListTop + Scale(2), ListRight - Pad - Scale(1),
     ListTop + mVisible * RowHeight - Scale(2));
   ThumbHeight := Max(Scale(16), Track.Height * mVisible div Total);
@@ -1615,40 +1879,64 @@ begin
   Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   if FShowingEmpty then
-    PaintEmpty
+  begin
+    PaintEmpty;
+  end
   else
   begin
     DrawChips;
     DrawSyntax;
     for Row := 0 to RowCount - 1 do
+    begin
       if FTop + Row < Length(FOrder) then
+      begin
         if TAtlasRanking.IsHeader(FOrder[FTop + Row]) then
-          DrawHeader(Row, FTop + Row)
+        begin
+          DrawHeader(Row, FTop + Row);
+        end
         else
+        begin
           DrawRow(Row, FTop + Row);
+        end;
+      end;
+    end;
     DrawScrollBar;
     if TAtlasCompletionSets.Active(FItems) then
-      DrawFooter(TAtlasStrings.Text(TAtlasTextId.SetFooterKeys), CountText)
+    begin
+      DrawFooter(TAtlasStrings.Text(TAtlasTextId.SetFooterKeys), CountText);
+    end
     // Freigabe absichern (#489).
     else if TAtlasItemPresentation.Guarding(FItems) then
-      DrawFooter(TAtlasStrings.Text(TAtlasTextId.GuardFooterKeys), '')
+    begin
+      DrawFooter(TAtlasStrings.Text(TAtlasTextId.GuardFooterKeys), '');
+    end
     // Feld- und Parameternamen (#461): die SQL-Anweisung als Quellenangabe.
     else if TAtlasItemPresentation.DataSource(FItems) <> '' then
+    begin
       DrawFooter(TAtlasStrings.Fmt(TAtlasTextId.DataSourceFooter, [TAtlasItemPresentation.DataSource(FItems)]),
-        CountText)
+        CountText);
+    end
     // Typargumente (#450): „Ausgeblendet: Records, Aufzählungen“.
     else if TAtlasItemPresentation.HiddenKinds(FItems) <> '' then
-      DrawFooter(TAtlasStrings.TypeArgHidden(TAtlasItemPresentation.HiddenKinds(FItems)), CountText)
+    begin
+      DrawFooter(TAtlasStrings.TypeArgHidden(TAtlasItemPresentation.HiddenKinds(FItems)), CountText);
+    end
     else
+    begin
       // Tasten, oder das aktive Ziel bei Einträgen mit Bedingung (#476).
       DrawFooter(FooterLeftText, CountText);
+    end;
   end;
   if FPanelShown then
+  begin
     PaintPanel;
+  end;
   DrawGrip;
   PaintBorder;
   if Timings <> nil then
+  begin
     Timings.Drawn(TAtlasQueryTimings.MsSince(Stamp));
+  end;
 end;
 
 procedure TAtlasCompletionPopup.PaintPanel;
@@ -1663,9 +1951,13 @@ begin
   Canvas.FillRect(Panel);
   // Trennlinie zur Liste.
   if FPanelLeft then
-    Edge := Panel.Right - 1
+  begin
+    Edge := Panel.Right - 1;
+  end
   else
+  begin
     Edge := Panel.Left;
+  end;
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(Edge, 0);
@@ -1679,9 +1971,13 @@ begin
     Canvas.Brush.Style := bsClear;
     Bar := Rect(Panel.Left, Scale(6), Panel.Right, Scale(6) + Canvas.TextHeight('Wg'));
     if FPanelLeft then
-      Arrow := '‹'
+    begin
+      Arrow := '‹';
+    end
     else
+    begin
       Arrow := '›';
+    end;
     DrawText(Canvas.Handle, PChar(Arrow), -1, Bar, DT_CENTER or DT_SINGLELINE or DT_NOPREFIX);
     Canvas.Font.Style := [];
   end
@@ -1701,7 +1997,9 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   // Zeilenangabe der Warnleiste (#457).
   if PtInRect(FSyntaxLink, Point(X, Y)) and Assigned(FOnSyntaxLine) then
   begin
@@ -1755,6 +2053,7 @@ begin
   end;
   // Pfeile der Überladungen im Panel (#425).
   if FPanelShown and not Collapsed and Assigned(FOnOverload) then
+  begin
     if PtInRect(FDetailView.PreviousRect, Point(X, Y)) then
     begin
       FOnOverload(-1);
@@ -1765,6 +2064,7 @@ begin
       FOnOverload(1);
       Exit;
     end;
+  end;
   // XMLDoc im Panel (#654): Verweis bzw. Link, sonst Beginn einer Markierung.
   if DocActive then
   begin
@@ -1775,12 +2075,16 @@ begin
       if FDetailView.Doc.Link(Index).Kind = TAtlasDocLinkKind.Toggle then
       begin
         if not FDetailView.ToggleDoc(Canvas) then
+        begin
           FSessionHeight := 0;
+        end;
         Relayout;
         Invalidate;
       end
       else if Assigned(FOnDocLink) then
+      begin
         FOnDocLink(FDetailView.Doc.Link(Index), ssCtrl in Shift);
+      end;
       Exit;
     end;
     if FDetailView.InDoc(X, Y) then
@@ -1797,23 +2101,31 @@ begin
   end;
   // Klick auf einen Chip (#422).
   for Index := 0 to High(FChipRects) do
+  begin
     if PtInRect(FChipRects[Index], Point(X, Y)) then
     begin
       if Assigned(FOnChip) then
+      begin
         FOnChip(FChipKinds[Index]);
+      end;
       Exit;
     end;
+  end;
   // Stern einer Zeile (#458): anheften bzw. lösen, die Auswahl bleibt.
   Position := StarAt(X, Y);
   if Position >= 0 then
   begin
     if Assigned(FOnFavorite) then
+    begin
       FOnFavorite(Position);
+    end;
     Exit;
   end;
   Position := RowAt(X, Y);
   if (Position >= 0) and Assigned(FOnSelect) then
+  begin
     FOnSelect(Position);
+  end;
 end;
 
 procedure TAtlasCompletionPopup.DblClick;
@@ -1834,7 +2146,9 @@ begin
     Exit;
   end;
   if (FSelected >= 0) and Assigned(FOnAccept) then
+  begin
     FOnAccept(FSelected);
+  end;
 end;
 
 procedure TAtlasCompletionPopup.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -1847,10 +2161,14 @@ begin
   begin
     mWidth := Logical(FDragStartWidth + FDragSign * (Mouse.CursorPos.X - FDragStartX));
     if FDrag = TAtlasDragKind.ListWidth then
-      FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, MaxWidth)
+    begin
+      FManualListWidth := TAtlasPopupWidth.Fit(mWidth, MinWidth, MaxWidth);
+    end
     else
+    begin
       FPanelWidthSetting := TAtlasPopupWidth.Fit(mWidth, TAtlasPopupWidth.MinPanelWidth,
         TAtlasPopupWidth.MaxPanelWidth);
+    end;
     Relayout;
     Invalidate;
     Exit;
@@ -1869,11 +2187,17 @@ begin
   else
     if (DocActive and (FDetailView.DocLinkAt(X, Y) >= 0)) or (StarAt(X, Y) >= 0) or
       PtInRect(FSyntaxLink, Point(X, Y)) then
-      Cursor := crHandPoint
+    begin
+      Cursor := crHandPoint;
+    end
     else if DocActive and FDetailView.InDoc(X, Y) then
-      Cursor := crIBeam
+    begin
+      Cursor := crIBeam;
+    end
     else
+    begin
       Cursor := crDefault;
+    end;
   end;
   if DocActive and (FDetailView.DocLinkAt(X, Y) <> FDetailView.Doc.HotLink) then
   begin
@@ -1882,13 +2206,17 @@ begin
   end;
   Position := RowAt(X, Y);
   if Position = FHoverPosition then
+  begin
     Exit;
+  end;
   HideTip;
   FHoverPosition := Position;
   FTipTimer.Enabled := Position >= 0;
   // Der leere Stern (#458) folgt der Maus.
   if FFavoritesEnabled then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -1900,7 +2228,9 @@ begin
     Invalidate;
   end;
   if FDrag = TAtlasDragKind.None then
+  begin
     Exit;
+  end;
   FDrag := TAtlasDragKind.None;
   WidthsChanged;
 end;
@@ -1908,7 +2238,9 @@ end;
 procedure TAtlasCompletionPopup.WidthsChanged;
 begin
   if Assigned(FOnWidthsChanged) then
+  begin
     FOnWidthsChanged(FManualListWidth, FPanelWidthSetting);
+  end;
 end;
 
 function TAtlasCompletionPopup.HitArea(AX, AY: Integer): TAtlasHitArea;
@@ -1920,25 +2252,39 @@ begin
   if AX >= ClientWidth - Zone then
   begin
     if AY >= ClientHeight - Scale(16) then
-      Result := TAtlasHitArea.Grip
+    begin
+      Result := TAtlasHitArea.Grip;
+    end
     else
+    begin
       Result := TAtlasHitArea.Edge;
+    end;
     Exit;
   end;
   if not FPanelShown then
+  begin
     Exit;
+  end;
   if Collapsed then
   begin
     if PtInRect(PanelRect, Point(AX, AY)) then
+    begin
       Result := TAtlasHitArea.PanelBar;
+    end;
     Exit;
   end;
   if FPanelLeft then
-    Boundary := PanelWidth
+  begin
+    Boundary := PanelWidth;
+  end
   else
+  begin
     Boundary := ListRight;
+  end;
   if Abs(AX - Boundary) <= Zone then
+  begin
     Result := TAtlasHitArea.Splitter;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.DrawGrip;
@@ -1953,9 +2299,13 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.6));
   for Row := 0 to 2 do
+  begin
     for Column := 0 to 2 - Row do
+    begin
       Canvas.FillRect(Rect(Right - (Column + 1) * Step + Step - Size, Bottom - (Row + 1) * Step + Step - Size,
         Right - Column * Step, Bottom - Row * Step));
+    end;
+  end;
 end;
 
 procedure TAtlasCompletionPopup.CMMouseLeave(var Message: TMessage);
@@ -1963,7 +2313,9 @@ begin
   inherited;
   HideTip;
   if FFavoritesEnabled and (FHoverPosition >= 0) then
+  begin
     Invalidate;
+  end;
   FHoverPosition := -1;
 end;
 
@@ -1985,14 +2337,20 @@ begin
   Row := FHoverPosition - FTop;
   if not IsShown or (FHoverPosition < 0) or (FHoverPosition >= Length(FOrder)) or (Row < 0) or
     (Row >= Length(FTruncated)) or not FTruncated[Row] or TAtlasRanking.IsHeader(FOrder[FHoverPosition]) then
+  begin
     Exit;
+  end;
   Item := FItems[FOrder[FHoverPosition]];
   mText := Item.Name;
   Detail := DetailText(Item);
   if Detail <> '' then
+  begin
     mText := mText + '   ' + Detail;
+  end;
   for mTag in ItemTags(Item) do
+  begin
     mText := mText + '   [' + TagText(mTag) + ']';
+  end;
   FTip.Colors := Colors;
   FTip.SetScaling(PPI, 1, Font.Name, Font.Size);
   Area := RowRect(Row);
@@ -2007,16 +2365,24 @@ begin
   if DocActive and FDetailView.Doc.CanScroll and PtInRect(PanelRect, ScreenToClient(MousePos)) then
   begin
     if WheelDelta > 0 then
-      FDetailView.ScrollDoc(-Max(1, WheelDelta div WHEEL_DELTA))
+    begin
+      FDetailView.ScrollDoc(-Max(1, WheelDelta div WHEEL_DELTA));
+    end
     else
+    begin
       FDetailView.ScrollDoc(Max(1, -WheelDelta div WHEEL_DELTA));
+    end;
     Invalidate;
     Exit;
   end;
   if WheelDelta > 0 then
-    FTop := Max(0, FTop - 3)
+  begin
+    FTop := Max(0, FTop - 3);
+  end
   else
+  begin
     FTop := Min(Max(0, Length(FOrder) - FVisibleRows), FTop + 3);
+  end;
   Invalidate;
 end;
 

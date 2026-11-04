@@ -93,14 +93,18 @@ function RunCommand(const ACommand, AArgumentsJson: string): TJSONValue;
 begin
   Result := nil;
   if Assigned(TAtlasProjectSettings.Command) then
+  begin
     Result := TAtlasProjectSettings.Command(ACommand, AArgumentsJson);
+  end;
 end;
 
 /// <summary>Datei lesen; Kodierung und BOM merkt sich AContent. Neue Dateien: UTF-8 ohne BOM.</summary>
 function LoadContent(const AFileName: string): TAtlasTextFileContent;
 begin
   if (AFileName <> '') and TFile.Exists(AFileName) then
-    Result := TAtlasTextFile.Load(AFileName)
+  begin
+    Result := TAtlasTextFile.Load(AFileName);
+  end
   else
   begin
     Result := Default(TAtlasTextFileContent);
@@ -117,10 +121,14 @@ var
 begin
   Result := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Project := Modules.GetActiveProject;
   if Project <> nil then
+  begin
     Result := Project.FileName;
+  end;
 end;
 
 class function TAtlasProjectSettings.SettingsFile: string;
@@ -130,7 +138,9 @@ begin
   Result := '';
   Project := ActiveProject;
   if Project <> '' then
+  begin
     Result := TPath.Combine(ExtractFileDir(Project), TAtlasSettingsFiles.ProjectName);
+  end;
 end;
 
 class function TAtlasProjectSettings.GlobalFile: string;
@@ -145,7 +155,9 @@ begin
   Result := '';
   AHasBom := False;
   if (AFileName = '') or not TFile.Exists(AFileName) then
+  begin
     Exit;
+  end;
   Content := TAtlasTextFile.Load(AFileName);
   AHasBom := Content.Encoding = TAtlasTextEncoding.Utf8Bom;
   Result := Content.Text;
@@ -166,11 +178,15 @@ begin
   FileName := SettingsFile;
   Result := FileName <> '';
   if not Result then
+  begin
     Exit;
+  end;
   Content := LoadContent(FileName);
   NewText := TAtlasJsonText.SetValue(Content.Text, APath, AJson);
   if NewText = Content.Text then
+  begin
     Exit;
+  end;
   Content.Text := NewText;
   TAtlasTextFile.Save(FileName, Content);
 end;
@@ -197,8 +213,12 @@ begin
           Keys.Clear;
           Registry.GetKeyNames(Keys);
           for Key in Keys do
+          begin
             if (Key <> '') and CharInSet(Key[1], ['0'..'9']) then
+            begin
               Result := Result + [Key];
+            end;
+          end;
         end;
       finally
         Registry.Free;
@@ -229,7 +249,9 @@ var
 begin
   FileName := GlobalFile;
   if FileName <> '' then
+  begin
     ExecuteFile(FileName, True, '');
+  end;
 end;
 
 class procedure TAtlasProjectSettings.ShowRule(const ARuleId: string);
@@ -239,12 +261,16 @@ begin
   // Im Projekt, wenn eins aktiv ist: Dort wirkt die Einstellung für diesen Befund; sonst global.
   FileName := SettingsFile;
   if FileName <> '' then
-    ExecuteFile(FileName, False, ARuleId)
+  begin
+    ExecuteFile(FileName, False, ARuleId);
+  end
   else
   begin
     FileName := GlobalFile;
     if FileName <> '' then
+    begin
       ExecuteFile(FileName, True, ARuleId);
+    end;
   end;
 end;
 
@@ -264,22 +290,32 @@ var
   Actions: IOTAActionServices;
 begin
   if AGlobal then
-    Title := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle)
+  begin
+    Title := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+  end
   else
+  begin
     Title := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle);
+  end;
   Content := LoadContent(AFileName);
   Root := TAtlasJsonText.Parse(Content.Text);
   try
     if (Root = nil) and (Trim(Content.Text) <> '') then
     begin
       if AGlobal then
+      begin
         MessageBox(Application.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.GlobalSettingsInvalid)), PChar(Title),
-          MB_ICONWARNING or MB_OK)
+          MB_ICONWARNING or MB_OK);
+      end
       else
+      begin
         MessageBox(Application.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsInvalid)), PChar(Title),
           MB_ICONWARNING or MB_OK);
+      end;
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Actions.OpenFile(AFileName);
+      end;
       Exit;
     end;
   finally
@@ -301,13 +337,19 @@ begin
   Project := ActiveProject;
   DprojText := '';
   if SameText(ExtractFileExt(Project), '.dproj') and TFile.Exists(Project) then
+  begin
     DprojText := LoadContent(Project).Text;
+  end;
   OpenFile := False;
   // Namen und Kategorien der Regeln in der Sprache der Oberfläche (#446).
   if TAtlasStrings.Language = TAtlasLanguage.English then
-    Catalog := RunCommand(CatalogCommand, '["en"]')
+  begin
+    Catalog := RunCommand(CatalogCommand, '["en"]');
+  end
   else
+  begin
     Catalog := RunCommand(CatalogCommand, '["de"]');
+  end;
   Model := TAtlasSettingsModel.Create(Fields, Content.Text, GlobalText, AGlobal);
   try
     Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, AFileName);
@@ -315,14 +357,18 @@ begin
       Dialog.Catalog := Catalog;
       Dialog.ServerChecks := Catalog <> nil;
       if ARuleId <> '' then
+      begin
         Dialog.SelectRule(ARuleId);
+      end;
       if not AGlobal then
       begin
         Dialog.ProjectHint := ExtractFileName(Project);
         // Die IDE sendet ihre Auswahl laufend an den Server (selectBuild, #46, #615).
         if TAtlasIdeBuildTarget.Read(Target) then
+        begin
           Dialog.BuildHint := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBuildOverride,
             [Target.Config, Target.Platform]);
+        end;
       end;
       Dialog.OnChoices :=
         function(const APath: string): TArray<TAtlasSettingChoice>
@@ -331,21 +377,33 @@ begin
         begin
           Result := nil;
           if APath = 'delphiVersion' then
-            Result := TAtlasSettingChoices.DelphiVersions(InstalledVersions)
+          begin
+            Result := TAtlasSettingChoices.DelphiVersions(InstalledVersions);
+          end
           else if APath = 'minDelphiVersion' then
-            Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions)
+          begin
+            Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
+          end
           else if APath = 'config' then
-            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojConfigs(DprojText))
+          begin
+            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojConfigs(DprojText));
+          end
           else if APath = 'platform' then
-            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojPlatforms(DprojText))
+          begin
+            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojPlatforms(DprojText));
+          end
           else if (APath = 'project') and (Project <> '') and not AGlobal then
+          begin
             Result := TAtlasSettingChoices.FromTexts([ExtractRelativePath(IncludeTrailingPathDelimiter(
-              ExtractFileDir(AFileName)), Project)])
+              ExtractFileDir(AFileName)), Project)]);
+          end
           else if (APath = 'profile') or (APath = 'testProfile') then
           begin
             Profiles := Model.IndexOf('profiles');
             if Profiles >= 0 then
+            begin
               Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.Profiles(Model.Effective(Profiles)));
+            end;
           end;
         end;
       Dialog.OnValidate :=
@@ -362,7 +420,9 @@ begin
             Answer.Free;
           end;
           if not AChecked then
+          begin
             TAtlasSettingsValidation.Syntax(AText, Result);
+          end;
         end;
       Dialog.OnOpenFile :=
         procedure

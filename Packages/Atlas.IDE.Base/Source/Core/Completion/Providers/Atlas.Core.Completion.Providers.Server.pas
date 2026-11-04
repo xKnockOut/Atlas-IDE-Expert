@@ -163,9 +163,15 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for Value in TJSONArray(AValue) do
+    begin
       if Value is TJSONString then
+      begin
         Result := Result + [TJSONString(Value).Value];
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
@@ -188,12 +194,18 @@ begin
   // documentation: string oder MarkupContent.
   Documentation := AItem.GetValue('documentation');
   if Documentation is TJSONString then
-    Result.Documentation := TJSONString(Documentation).Value
+  begin
+    Result.Documentation := TJSONString(Documentation).Value;
+  end
   else if Documentation is TJSONObject then
+  begin
     Result.Documentation := TJSONObject(Documentation).GetValue<string>('value', '');
+  end;
   // data unverändert für completionItem/resolve aufheben.
   if AItem.GetValue('data') <> nil then
+  begin
     Result.ResolveData := AItem.GetValue('data').ToJSON;
+  end;
   // Herkunft, Vererbungstiefe, Helper und Überladungen (#419, #425, #456).
   if AItem.GetValue('data') is TJSONObject then
   begin
@@ -209,16 +221,28 @@ begin
     Result.DeclaringUnit := Data.GetValue<string>('unit', '');
     Value := Data.GetValue('hides');
     if Value is TJSONArray then
+    begin
       for Value in TJSONArray(Data.GetValue('hides')) do
+      begin
         if Value is TJSONString then
+        begin
           Result.Hides := Result.Hides + [TJSONString(Value).Value];
+        end;
+      end;
+    end;
     // Mitglied eines with-Objekts (#481).
     Result.WithOrigin := Data.GetValue<string>('withOrigin', '');
     Value := Data.GetValue('withShadows');
     if Value is TJSONArray then
+    begin
       for Value in TJSONArray(Data.GetValue('withShadows')) do
+      begin
         if Value is TJSONString then
+        begin
           Result.WithShadows := Result.WithShadows + [TJSONString(Value).Value];
+        end;
+      end;
+    end;
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
@@ -240,7 +264,9 @@ begin
     Result.Checked := Data.GetValue('checked') is TJSONTrue;
     if (Result.SetOf <> '') and not ((Data.GetValue('setRange') is TJSONObject) and
       RangeFromLsp(TJSONObject(Data.GetValue('setRange')), Result.SetRange)) then
+    begin
       Result.SetOf := '';
+    end;
     // case vervollständigen (#449).
     Result.Pinned := Data.GetValue('pinned') is TJSONTrue;
     Result.Count := Data.GetValue<Integer>('count', 0);
@@ -257,19 +283,27 @@ begin
     Result.Conversion := Data.GetValue<string>('conversion', '');
     Result.ConvertFrom := Data.GetValue<string>('convertFrom', '');
     if Result.Conversion <> '' then
+    begin
       Result.FilterText := Result.ConvertFrom;
+    end;
     Result.Lossy := Data.GetValue<string>('lossy', '');
     // Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.
     if Data.GetValue('assign') is TJSONArray then
+    begin
       for Value in TJSONArray(Data.GetValue('assign')) do
+      begin
         if Value is TJSONObject then
         begin
           Assignment.Name := TJSONObject(Value).GetValue<string>('name', '');
           Assignment.Detail := TJSONObject(Value).GetValue<string>('detail', '');
           Assignment.Text := TJSONObject(Value).GetValue<string>('text', '');
           if Assignment.Name <> '' then
+          begin
             Result.Assignments := Result.Assignments + [Assignment];
+          end;
         end;
+      end;
+    end;
     // Feld- und Parameternamen (#461).
     Result.DataSet := Data.GetValue<string>('dataSet', '');
     Result.DataSource := Data.GetValue<string>('dataSource', '');
@@ -290,7 +324,9 @@ begin
     // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
     Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
     if Data.GetValue<string>('usesFilter', '') <> '' then
+    begin
       Result.FilterText := Data.GetValue<string>('usesFilter', '');
+    end;
     Result.UsesElsewhere := Data.GetValue<string>('usesElsewhere', '');
     Result.UsesCycle := Data.GetValue<string>('usesCycle', '');
     Result.UsesTypes := StringsOf(Data.GetValue('usesTypes'));
@@ -309,7 +345,9 @@ begin
     Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
+    begin
       for Value in TJSONArray(Overloads) do
+      begin
         if Value is TJSONObject then
         begin
           // Gleiche Datei, andere Position: ein data je Überladung für completionItem/resolve.
@@ -325,6 +363,8 @@ begin
             Twin.Free;
           end;
         end;
+      end;
+    end;
   end;
   // textEdit (#188): ersetzt mehr als das getippte Wort, etwa den Ausdruck vor dem Punkt.
   // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen. Ausnahme: Der Hinweis
@@ -337,9 +377,15 @@ begin
   end;
   Edits := AItem.GetValue('additionalTextEdits');
   if Edits is TJSONArray then
+  begin
     for Value in TJSONArray(Edits) do
+    begin
       if (Value is TJSONObject) and EditFromLsp(TJSONObject(Value), Edit) then
+      begin
         Result.AdditionalEdits := Result.AdditionalEdits + [Edit];
+      end;
+    end;
+  end;
   // Bis #405 "Unit eingebunden" liefert: Ein Eintrag mit uses-Ergänzung (#180) kommt aus
   // einer noch nicht eingebundenen Unit. Einträge mit data.action (override, neue Methode;
   // #443, #444) ergänzen Code statt uses.
@@ -350,24 +396,38 @@ begin
     (TJSONNumber(AItem.GetValue('insertTextFormat')).AsInt = 2) then
   begin
     if Result.HasTextEdit then
-      Result.Snippet := TAtlasSnippets.FromLsp(Result.TextEdit.NewText)
+    begin
+      Result.Snippet := TAtlasSnippets.FromLsp(Result.TextEdit.NewText);
+    end
     else if Result.InsertText <> '' then
-      Result.Snippet := TAtlasSnippets.FromLsp(Result.InsertText)
+    begin
+      Result.Snippet := TAtlasSnippets.FromLsp(Result.InsertText);
+    end
     else
+    begin
       Result.Snippet := TAtlasSnippets.FromLsp(Result.Name);
+    end;
   end;
   if Result.Snippet = '' then
+  begin
     Result.LinkedEdits := False;
+  end;
   if Result.LinkedEdits then
+  begin
     for Index := 0 to High(Result.AdditionalEdits) do
+    begin
       Result.AdditionalEdits[Index].NewText := TAtlasSnippets.FromLsp(Result.AdditionalEdits[Index].NewText);
+    end;
+  end;
   // Befehl nach dem Übernehmen (#473), etwa den resourcestring in eine andere Unit schreiben.
   if AItem.GetValue('command') is TJSONObject then
   begin
     Result.Command := TJSONObject(AItem.GetValue('command')).GetValue<string>('command', '');
     Result.CommandArguments := '[]';
     if TJSONObject(AItem.GetValue('command')).GetValue('arguments') is TJSONArray then
+    begin
       Result.CommandArguments := TJSONObject(AItem.GetValue('command')).GetValue('arguments').ToJSON;
+    end;
   end;
 end;
 
@@ -377,9 +437,13 @@ class function TAtlasServerCompletionProvider.Plain(const AItem: TAtlasCompletio
   begin
     // Zeilenumbrüche wie geliefert: Der Server schreibt die des Dokuments.
     if Pos(#13#10, AText) > 0 then
-      Result := TAtlasSnippets.Expand(AText, '', #13#10).Text
+    begin
+      Result := TAtlasSnippets.Expand(AText, '', #13#10).Text;
+    end
     else
+    begin
       Result := TAtlasSnippets.Expand(AText, '', #10).Text;
+    end;
   end;
 
 var
@@ -387,12 +451,20 @@ var
 begin
   Result := AItem;
   if Result.HasTextEdit then
-    Result.TextEdit.NewText := Expanded(Result.Snippet)
+  begin
+    Result.TextEdit.NewText := Expanded(Result.Snippet);
+  end
   else
+  begin
     Result.InsertText := Expanded(Result.Snippet);
+  end;
   if Result.LinkedEdits then
+  begin
     for Index := 0 to High(Result.AdditionalEdits) do
+    begin
       Result.AdditionalEdits[Index].NewText := Expanded(Result.AdditionalEdits[Index].NewText);
+    end;
+  end;
   Result.Snippet := '';
   Result.LinkedEdits := False;
 end;
@@ -406,17 +478,27 @@ begin
   Result.Line := -1;
   Result.Character := -1;
   if not (AResponse is TJSONObject) then
+  begin
     Exit;
+  end;
   Notice := TJSONObject(AResponse).GetValue('syntaxNotice');
   if not (Notice is TJSONObject) then
+  begin
     Exit;
+  end;
   Trust := TJSONObject(Notice).GetValue<string>('trust', '');
   if Trust = 'limited' then
-    Result.Trust := TAtlasSyntaxTrust.Limited
+  begin
+    Result.Trust := TAtlasSyntaxTrust.Limited;
+  end
   else if Trust = 'unknown' then
-    Result.Trust := TAtlasSyntaxTrust.Unknown
+  begin
+    Result.Trust := TAtlasSyntaxTrust.Unknown;
+  end
   else
+  begin
     Exit;
+  end;
   Result.Line := TJSONObject(Notice).GetValue<Integer>('line', -1);
   Result.Character := TJSONObject(Notice).GetValue<Integer>('character', -1);
   Result.Message := TJSONObject(Notice).GetValue<string>('message', '');
@@ -433,10 +515,16 @@ begin
   // completion.anonymousMethods) und "EFoo.Create('')" nach raise (#483, completion.exceptionClasses) bleiben ohne
   // Platzhalter.
   for Item in AItems do
+  begin
     if (Item.Snippet = '') or Item.Postfix then
-      Result := Result + [Item]
+    begin
+      Result := Result + [Item];
+    end
     else if Item.IsAction or (Item.MethodRef <> '') or (Item.ExceptionGroup <> '') then
+    begin
       Result := Result + [Plain(Item)];
+    end;
+  end;
 end;
 
 class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems;
@@ -452,27 +540,37 @@ var
 begin
   Result := nil;
   if AResponse is TJSONObject then
-    Items := TJSONObject(AResponse).GetValue('items')
+  begin
+    Items := TJSONObject(AResponse).GetValue('items');
+  end
   else
+  begin
     Items := AResponse;
+  end;
   if not (Items is TJSONArray) then
+  begin
     Exit;
+  end;
   // Einmal anlegen statt je Eintrag anzuhängen: Das kopierte bei 1000 Einträgen die ganze Liste jedes Mal (#616).
   SetLength(Result, TJSONArray(Items).Count);
   Count := 0;
   for Index := 0 to TJSONArray(Items).Count - 1 do
+  begin
     if TJSONArray(Items).Items[Index] is TJSONObject then
     begin
       Result[Count] := ItemFromLsp(TJSONObject(TJSONArray(Items).Items[Index]), AFirstRank + Index);
       Inc(Count);
     end;
+  end;
   SetLength(Result, Count);
 end;
 
 procedure TAtlasServerCompletionProvider.Log(const AMessage: string);
 begin
   if Assigned(FOnLog) then
+  begin
     FOnLog(AMessage);
+  end;
 end;
 
 function TAtlasServerCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
@@ -482,12 +580,16 @@ begin
   AData := nil;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   Result := (Session <> nil) and (AContext.FileName <> '');
   if not Result then
   begin
     if Session = nil then
+    begin
       Log('Vervollständigung: kein Server verbunden');
+    end;
     Exit;
   end;
   // Sync ist threadsicher (FDocLock in TLspSession); hier im Zeitlimit-Arbeiter.
@@ -517,23 +619,33 @@ begin
       Items: TAtlasCompletionItems;
     begin
       if not (AValue is TJSONArray) then
+      begin
         Exit;
+      end;
       Items := ItemsFromLsp(AValue, NextRank);
       Inc(NextRank, TJSONArray(AValue).Count);
       // completion.snippets aus (#51): wie ohne die Funktion.
       if not mSnippets then
+      begin
         Items := WithoutSnippets(Items);
+      end;
       Emit(Items);
     end);
   try
     // Ohne Antwort bleibt die Liste leer; das Zeitlimit ist FTimeoutMs.
     if Response = nil then
+    begin
       Log(Format('Vervollständigung: keine Antwort nach %d ms (%d Teilergebnisse)',
-        [Watch.ElapsedMilliseconds, NextRank]))
+        [Watch.ElapsedMilliseconds, NextRank]));
+    end
     else
+    begin
       Log(Format('Vervollständigung: Antwort nach %d ms', [Watch.ElapsedMilliseconds]));
+    end;
     if ACancelled() then
+    begin
       Exit(nil);
+    end;
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
     // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
     AState.Incomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
@@ -541,7 +653,9 @@ begin
     AState.Syntax := SyntaxNoticeOf(Response);
     Result := ItemsFromLsp(Response, NextRank);
     if not mSnippets then
+    begin
       Result := WithoutSnippets(Result);
+    end;
   finally
     Response.Free;
   end;
@@ -553,9 +667,13 @@ var
 begin
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
-    Result := TJSONString(Value).Value
+  begin
+    Result := TJSONString(Value).Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function EntriesOf(AObject: TJSONObject; const AName: string): TArray<TAtlasDocEntry>;
@@ -566,14 +684,18 @@ begin
   Result := nil;
   Value := AObject.GetValue(AName);
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Value) do
+  begin
     if Item is TJSONObject then
     begin
       Entry.Name := StringOf(TJSONObject(Item), 'name');
       Entry.Text := StringOf(TJSONObject(Item), 'text');
       Result := Result + [Entry];
     end;
+  end;
 end;
 
 class function TAtlasServerCompletionProvider.DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails;
@@ -583,11 +705,15 @@ var
 begin
   Result := Default(TAtlasItemDetails);
   if not (AResponse is TJSONObject) then
+  begin
     Exit;
+  end;
   Data := TJSONObject(AResponse).GetValue('data');
   Atlas := nil;
   if Data is TJSONObject then
+  begin
     Atlas := TJSONObject(Data).GetValue('atlas');
+  end;
   if Atlas is TJSONObject then
   begin
     Result.Declaration := StringOf(TJSONObject(Atlas), 'declaration');
@@ -607,18 +733,28 @@ begin
       TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
     Directives := TJSONObject(Atlas).GetValue('directives');
     if Directives is TJSONArray then
+    begin
       for Item in TJSONArray(Directives) do
+      begin
         if Item is TJSONString then
+        begin
           Result.Directives := Result.Directives + [TJSONString(Item).Value];
+        end;
+      end;
+    end;
     Exit;
   end;
   // Andere Server: detail als Deklaration, documentation als Beschreibung.
   Result.Declaration := StringOf(TJSONObject(AResponse), 'detail');
   Documentation := TJSONObject(AResponse).GetValue('documentation');
   if Documentation is TJSONString then
-    Result.Summary := TJSONString(Documentation).Value
+  begin
+    Result.Summary := TJSONString(Documentation).Value;
+  end
   else if Documentation is TJSONObject then
+  begin
     Result.Summary := StringOf(TJSONObject(Documentation), 'value');
+  end;
 end;
 
 function TAtlasServerCompletionProvider.Resolve(const AItem: TAtlasCompletionItem;
@@ -637,18 +773,26 @@ var
 begin
   Result := False;
   if AItem.ResolveData = '' then
+  begin
     Exit;
+  end;
   Hides := AItem.Hides;
   WithOrigin := AItem.WithOrigin;
   LossyFrom := AItem.Lossy;
   LossyTo := '';
   if LossyFrom <> '' then
+  begin
     LossyTo := AItem.ExpectedType;
+  end;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
+  begin
     Exit;
+  end;
   // Nur label und data: mehr braucht der Server nicht.
   Item := TJSONObject.Create;
   try
@@ -685,7 +829,9 @@ begin
         begin
           if AliveToken.Alive and (AliveRef <> nil) and
             (TInterlocked.CompareExchange(Provider.FResolveGeneration, 0, 0) = Generation) then
+          begin
             Callback(Details);
+          end;
         end);
     end);
   Result := True;

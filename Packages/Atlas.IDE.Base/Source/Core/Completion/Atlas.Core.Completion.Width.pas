@@ -46,7 +46,9 @@ class function TAtlasPopupWidth.Effective(AManual, AAuto: Integer): Integer;
 begin
   Result := AAuto;
   if AManual > 0 then
+  begin
     Result := AManual;
+  end;
 end;
 
 end.
