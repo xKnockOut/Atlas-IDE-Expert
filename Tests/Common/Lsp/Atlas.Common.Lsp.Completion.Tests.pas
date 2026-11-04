@@ -96,7 +96,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.Context;
 
 procedure TLspCompletionTests.Setup;
 begin
@@ -403,7 +404,7 @@ begin
     try
       Found := '';
       for Symbol in FResolver.Candidates.ScopeCandidates(Tree, HauptFile,
-        TLspCompletion.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
+        TCompletionContexts.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
       begin
         Found := Found + Symbol.Name + ' ';
       end;

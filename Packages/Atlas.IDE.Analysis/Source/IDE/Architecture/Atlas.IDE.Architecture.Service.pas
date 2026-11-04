@@ -569,7 +569,7 @@ begin
   end;
   FRoute := nil;
   // Die Karte zeigen, nicht eine Tabelle.
-  Frame.Pages.ActivePageIndex := 0;
+  Frame.Parts.Pages.ActivePageIndex := 0;
 end;
 
 procedure TArchitectureState.ApplySettings;
@@ -634,9 +634,9 @@ begin
   end;
   // Beim ersten Öffnen rechnen; danach nur auf „Neu berechnen“ (die Karte bleibt stehen, während man springt).
   TArchitectureState(FState).EnsureData;
-  if Frame.Filter.CanFocus then
+  if Frame.Parts.Filter.CanFocus then
   begin
-    Frame.Filter.SetFocus;
+    Frame.Parts.Filter.SetFocus;
   end;
 end;
 

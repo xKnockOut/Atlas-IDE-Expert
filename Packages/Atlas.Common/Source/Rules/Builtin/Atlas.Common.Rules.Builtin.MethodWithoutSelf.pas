@@ -40,7 +40,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.MethodWithoutSelf;
+  Atlas.Common.Editing.MethodWithoutSelf,
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
 
 const
   MethodWithoutSelfRuleId = 'method-without-self';
@@ -123,8 +124,9 @@ var
 begin
   Result := nil;
   if not TMethodWithoutSelf.Execute(TMethodSource.Create(AFileName, AContext.Text, AContext.Tree,
-    NameOffsets(AContext.Tree, ATarget.Name)), nil, ATarget.NamePosition, TMethodConversion.ClassMethod,
-    AContext.MethodKindStatic, ALookup, AContext.Formatting, mConverted, mReason) then
+    NameOffsets(AContext.Tree, ATarget.Name)), nil, TMethodRequest.Create(ATarget.NamePosition,
+    TMethodConversion.ClassMethod, AContext.MethodKindStatic, ALookup, AContext.Formatting), mConverted,
+    mReason) then
   begin
     Exit;
   end;

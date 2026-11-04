@@ -80,75 +80,84 @@ begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleSelectionRange);
 end;
 
+/// <summary>Token unter dem Cursor AOffset, auch Kommentare und Strings. Zwischen zwei Token gewinnt das rechte,
+/// außer es ist ein Satzzeichen wie ";".</summary>
+function TokenAt(ATree: TSyntaxTree; AOffset: Integer; out ABest: TPascalToken): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  ABest := Default(TPascalToken);
+  Result := False;
+  for mToken in ATree.Tokens do
+  begin
+    if mToken.Offset > AOffset then
+    begin
+      Break;
+    end;
+    if AOffset < mToken.Offset + Length(mToken.Text) then
+    begin
+      if not (Result and (mToken.Kind = TPascalTokenKind.Symbol) and (ABest.Kind <> TPascalTokenKind.Symbol)) then
+      begin
+        ABest := mToken;
+      end;
+      Exit(True);
+    end;
+    if AOffset = mToken.Offset + Length(mToken.Text) then
+    begin
+      ABest := mToken;
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Pfad von der Wurzel zum innersten Knoten, der AStart bis AEnd umschließt.</summary>
+function PathTo(ATree: TSyntaxTree; AStart, AEnd: Integer): TArray<TSyntaxNode>;
+var
+  mPath: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  mPath := TList<TSyntaxNode>.Create;
+  try
+    mNode := ATree.Root;
+    while mNode <> nil do
+    begin
+      mPath.Add(mNode);
+      mNode := ChildAround(mNode, AStart, AEnd);
+    end;
+    Result := mPath.ToArray;
+  finally
+    mPath.Free;
+  end;
+end;
+
 class function TLspSelectionRanges.RangesAt(ATree: TSyntaxTree; AOffset: Integer): TArray<TTextRange>;
 var
-  Token: TPascalToken;
-  Best: TPascalToken;
-  Found: Boolean;
-  Path: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
-  InnerStart: Integer;
-  InnerEnd: Integer;
+  mBest: TPascalToken;
+  mPath: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mInnerStart, mInnerEnd: Integer;
 begin
   Result := nil;
-  // Innerster Bereich: das Token unter dem Cursor, auch Kommentare und Strings.
-  // Zwischen zwei Token gewinnt das rechte, außer es ist ein Satzzeichen wie ";".
-  Best := Default(TPascalToken);
-  Found := False;
-  for Token in ATree.Tokens do
+  mInnerStart := AOffset;
+  mInnerEnd := AOffset;
+  // Innerster Bereich: das Token unter dem Cursor.
+  if TokenAt(ATree, AOffset, mBest) then
   begin
-    if Token.Offset > AOffset then
-    begin
-      Break;
-    end;
-    if AOffset < Token.Offset + Length(Token.Text) then
-    begin
-      if not (Found and (Token.Kind = TPascalTokenKind.Symbol) and (Best.Kind <> TPascalTokenKind.Symbol)) then
-      begin
-        Best := Token;
-      end;
-      Found := True;
-      Break;
-    end;
-    if AOffset = Token.Offset + Length(Token.Text) then
-    begin
-      Best := Token;
-      Found := True;
-    end;
+    AddRange(Result, TTextRange.Create(mBest.StartPos, mBest.EndPos));
+    mInnerStart := mBest.Offset;
+    mInnerEnd := mBest.Offset + Length(mBest.Text);
   end;
-  InnerStart := AOffset;
-  InnerEnd := AOffset;
-  if Found then
+  mPath := PathTo(ATree, mInnerStart, mInnerEnd);
+  for mIndex := High(mPath) downto 0 do
   begin
-    AddRange(Result, TTextRange.Create(Best.StartPos, Best.EndPos));
-    InnerStart := Best.Offset;
-    InnerEnd := Best.Offset + Length(Best.Text);
-  end;
-
-  // Pfad von der Wurzel zum innersten Knoten, der das Token umschließt.
-  Path := TList<TSyntaxNode>.Create;
-  try
-    Node := ATree.Root;
-    while Node <> nil do
+    mNode := mPath[mIndex];
+    // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
+    if (mNode.StartOffset <= mInnerStart) and (mNode.EndOffset >= mInnerEnd) then
     begin
-      Path.Add(Node);
-      Node := ChildAround(Node, InnerStart, InnerEnd);
+      AddRange(Result, TTextRange.Create(mNode.StartPos, mNode.EndPos));
+      mInnerStart := mNode.StartOffset;
+      mInnerEnd := mNode.EndOffset;
     end;
-    for Index := Path.Count - 1 downto 0 do
-    begin
-      Node := Path[Index];
-      // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
-      if (Node.StartOffset > InnerStart) or (Node.EndOffset < InnerEnd) then
-      begin
-        Continue;
-      end;
-      AddRange(Result, TTextRange.Create(Node.StartPos, Node.EndPos));
-      InnerStart := Node.StartOffset;
-      InnerEnd := Node.EndOffset;
-    end;
-  finally
-    Path.Free;
   end;
 end;
 

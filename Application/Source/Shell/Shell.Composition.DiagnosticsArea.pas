@@ -231,10 +231,10 @@ end;
 procedure TShellDiagnosticsArea.ApplyClientCapabilities(const AInitializeParams: TJSONObject;
   ACapabilities: TJSONObject);
 begin
-  if TLspPullDiagnostics.ClientSupportsPull(AInitializeParams) then
+  if TLspPullProtocol.ClientSupportsPull(AInitializeParams) then
   begin
-    ACapabilities.AddPair('diagnosticProvider', TLspPullDiagnostics.Capability);
-    FPull.RefreshSupport := TLspPullDiagnostics.ClientSupportsRefresh(AInitializeParams);
+    ACapabilities.AddPair('diagnosticProvider', TLspPullProtocol.Capability);
+    FPull.RefreshSupport := TLspPullProtocol.ClientSupportsRefresh(AInitializeParams);
     FSyntax.PullMode := True;
   end;
 end;

@@ -80,7 +80,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Tracker.IssueLookups;
 
 type
   /// <summary>Alles für einen Lauf des Befehls.</summary>
@@ -354,7 +355,7 @@ begin
     mDetails := TAtlasTrackerDetails.Empty;
     if APreview <> nil then
     begin
-      AKnown[mIndex] := APreview.Peek(mMatch.IssueTarget(AOwner.FListTarget), mMatch.IssueKey, mDetails);
+      AKnown[mIndex] := APreview.Lookups.Peek(mMatch.IssueTarget(AOwner.FListTarget), mMatch.IssueKey, mDetails);
     end;
     Result[mIndex].Id := mIndex;
     Result[mIndex].Text := AOwner.IssueText(mIndex, AKnown[mIndex], mDetails);
@@ -375,8 +376,8 @@ begin
   for mIndex := 0 to High(AOwner.FListResult.Issues) do
   begin
     mMatch := AOwner.FListResult.Issues[mIndex].Match;
-    if AKnown[mIndex] and APreview.Peek(mMatch.IssueTarget(AOwner.FListTarget), mMatch.IssueKey, mDetails) and
-      TAtlasIdeIssuePreview.Fresh(mDetails) then
+    if AKnown[mIndex] and APreview.Lookups.Peek(mMatch.IssueTarget(AOwner.FListTarget), mMatch.IssueKey, mDetails) and
+      TAtlasIdeIssueLookups.Fresh(mDetails) then
     begin
       Continue;
     end;
@@ -431,7 +432,7 @@ begin
   // Eigene Routine: Jede Rückmeldung fängt ihr eigenes AId ein (nicht die Schleifenvariable).
   mMatch := FListResult.Issues[AId].Match;
   mSerial := FSerialOf;
-  APreview.Lookup(mMatch.IssueTarget(FListTarget), mMatch.IssueKey,
+  APreview.Lookups.Lookup(mMatch.IssueTarget(FListTarget), mMatch.IssueKey,
     procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
     begin
       if ASucceeded and (FInstance <> nil) and (FInstance.FSerialOf = mSerial) and (FInstance.FList = AList) and

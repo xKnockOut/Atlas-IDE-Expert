@@ -24,6 +24,16 @@ uses
   Atlas.Common.Semantics.NameResolver;
 
 type
+  /// <summary>Stelle, deren Symbol gesucht wird.</summary>
+  TQualifiedNameRequest = record
+    FileName: string;
+    Position: TTextPosition;
+    /// <summary>Mit Parametertypen bei Routinen.</summary>
+    WithParameters: Boolean;
+    class function Create(const AFileName: string; const APosition: TTextPosition;
+      AWithParameters: Boolean): TQualifiedNameRequest; static;
+  end;
+
   TQualifiedNames = class
   public const
     Command = 'atlas.server.qualifiedName';
@@ -32,10 +42,10 @@ type
     /// sie liefern die umgebenden Routinen lokaler Symbole.</summary>
     class function Compose(const ASymbol: TResolvedSymbol; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; AWithParameters: Boolean): string; static;
-    /// <summary>Qualifizierter Name des Symbols an APosition; False mit AError, wenn dort keins steht.</summary>
+    /// <summary>Qualifizierter Name des Symbols an der Stelle ARequest; False mit AError, wenn dort keins steht.
+    /// </summary>
     class function At(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; AWithParameters: Boolean; out AName,
-      AError: string): Boolean; static;
+      const ARequest: TQualifiedNameRequest; out AName, AError: string): Boolean; static;
     /// <summary>Befehl atlas.server.qualifiedName mit den Argumenten URI, Position {line, character} und
     /// optional true für Parametertypen. Ergebnis ist der Name als String; EJsonRpcError ohne Symbol.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -131,53 +141,120 @@ begin
     end) <> nil;
 end;
 
+/// <summary>Bezeichner AIndex samt der Teile davor und danach, die mit Punkten anschließen.</summary>
+function DottedName(const ATokens: TArray<TPascalToken>; AIndex: Integer): string;
+var
+  mFirst, mLast, mPart: Integer;
+begin
+  mFirst := AIndex;
+  while (mFirst >= 2) and ATokens[mFirst - 1].IsSymbol('.') and
+    (ATokens[mFirst - 2].Kind = TPascalTokenKind.Identifier) do
+  begin
+    Dec(mFirst, 2);
+  end;
+  mLast := AIndex;
+  while (mLast + 2 <= High(ATokens)) and ATokens[mLast + 1].IsSymbol('.') and
+    (ATokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
+  begin
+    Inc(mLast, 2);
+  end;
+  Result := '';
+  for mPart := mFirst to mLast do
+  begin
+    Result := Result + ATokens[mPart].Text;
+  end;
+end;
+
 /// <summary>Vollständiger Unit-Name (mit Punkten) aus einer uses-Liste an APosition; '' ohne.</summary>
 function UsesUnitAt(ATree: TSyntaxTree; const APosition: TTextPosition): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, First, Last, Part: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := '';
   if (ATree.Root = nil) or not InUses(ATree.Root, APosition) then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and (Tokens[Index].StartPos.Line = APosition.Line) and
-      (Tokens[Index].StartPos.Character <= APosition.Character) and
-      (Tokens[Index].EndPos.Character >= APosition.Character) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and (mTokens[mIndex].StartPos.Line = APosition.Line) and
+      (mTokens[mIndex].StartPos.Character <= APosition.Character) and
+      (mTokens[mIndex].EndPos.Character >= APosition.Character) then
     begin
-      First := Index;
-      while (First >= 2) and Tokens[First - 1].IsSymbol('.') and
-        (Tokens[First - 2].Kind = TPascalTokenKind.Identifier) do
-      begin
-        Dec(First, 2);
-      end;
-      Last := Index;
-      while (Last + 2 <= High(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
-        (Tokens[Last + 2].Kind = TPascalTokenKind.Identifier) do
-      begin
-        Inc(Last, 2);
-      end;
-      for Part := First to Last do
-      begin
-        Result := Result + Tokens[Part].Text;
-      end;
-      Exit;
+      Exit(DottedName(mTokens, mIndex));
     end;
+  end;
+end;
+
+/// <summary>Ist ASymbol in der Datei AFileName mit dem Baum ATree deklariert?</summary>
+function InOwnFile(const ASymbol: TResolvedSymbol; ATree: TSyntaxTree; const AFileName: string): Boolean;
+begin
+  Result := (ATree <> nil) and SameText(ASymbol.FileName, AFileName);
+end;
+
+/// <summary>Index der Unit von ASymbol: die eigene Datei frisch aus dem Baum, andere aus dem Index.</summary>
+function UnitOf(const ASymbol: TResolvedSymbol; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; out AUnit: TUnitIndex): Boolean;
+begin
+  if InOwnFile(ASymbol, ATree, AFileName) then
+  begin
+    AUnit := TIndexExtractor.Extract(ATree, AFileName);
+    Exit(True);
+  end;
+  Result := (AIndex <> nil) and (ASymbol.FileName <> '') and AIndex.FindFile(ASymbol.FileName, AUnit);
+end;
+
+/// <summary>Umgebende Typen von ASymbol, je mit ihren Typparametern und führendem Punkt.</summary>
+function ContainerPath(const ASymbol: TResolvedSymbol; const AUnit: TUnitIndex; AFound: Boolean): string;
+var
+  mContainer, mPart: string;
+begin
+  Result := '';
+  mContainer := '';
+  for mPart in ASymbol.Container.Split(['.']) do
+  begin
+    Result := Result + '.' + WithTypeParams(AUnit, AFound, mContainer, mPart);
+    if mContainer <> '' then
+    begin
+      mContainer := mContainer + '.';
+    end;
+    mContainer := mContainer + mPart;
+  end;
+end;
+
+/// <summary>Lokale Symbole: umgebende Routinen mit führendem Punkt, z. B. .Aussen.Innen oder .TFoo.Bar.</summary>
+function RoutinePath(const ASymbol: TResolvedSymbol; ATree: TSyntaxTree): string;
+var
+  mRoutine: string;
+begin
+  Result := '';
+  for mRoutine in EnclosingRoutines(ATree.Root, ASymbol.SelectionRange.StartPos) do
+  begin
+    Result := Result + '.' + mRoutine;
+  end;
+end;
+
+/// <summary>Name von ASymbol samt Typparametern.</summary>
+function NameOf(const ASymbol: TResolvedSymbol; const AUnit: TUnitIndex; AFound: Boolean): string;
+begin
+  Result := ASymbol.Name;
+  if ASymbol.IsType then
+  begin
+    Result := WithTypeParams(AUnit, AFound, ASymbol.Container, Result);
+  end
+  else if ASymbol.TypeParams <> '' then
+  begin
+    Result := Result + '<' + StringReplace(ASymbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>';
   end;
 end;
 
 class function TQualifiedNames.Compose(const ASymbol: TResolvedSymbol; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; AWithParameters: Boolean): string;
 var
-  UnitIndex: TUnitIndex;
-  Found: Boolean;
-  Parts: TArray<string>;
-  Container, Name, Routine: string;
-  Index: Integer;
+  mUnit: TUnitIndex;
+  mFound: Boolean;
 begin
   if ASymbol.Kind = TResolvedKind.UnitName then
   begin
@@ -187,57 +264,21 @@ begin
   begin
     Exit('System.' + ASymbol.Name);
   end;
-  // Die eigene Datei frisch aus dem Baum, andere aus dem Index.
-  if (ATree <> nil) and SameText(ASymbol.FileName, AFileName) then
-  begin
-    UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
-    Found := True;
-  end
-  else
-  begin
-    Found := (AIndex <> nil) and (ASymbol.FileName <> '') and AIndex.FindFile(ASymbol.FileName, UnitIndex);
-  end;
+  mFound := UnitOf(ASymbol, AIndex, ATree, AFileName, mUnit);
   Result := ASymbol.UnitName;
-  // Umgebende Typen, je mit ihren Typparametern.
-  Container := '';
   if ASymbol.Container <> '' then
   begin
-    Parts := ASymbol.Container.Split(['.']);
-    for Index := 0 to High(Parts) do
-    begin
-      Result := Result + '.' + WithTypeParams(UnitIndex, Found, Container, Parts[Index]);
-      if Container <> '' then
-      begin
-        Container := Container + '.';
-      end;
-      Container := Container + Parts[Index];
-    end;
+    Result := Result + ContainerPath(ASymbol, mUnit, mFound);
   end
-  else if (ATree <> nil) and SameText(ASymbol.FileName, AFileName) then
+  else if InOwnFile(ASymbol, ATree, AFileName) then
   begin
-    // Lokale Symbole: umgebende Routinen, z. B. Unit.Aussen.Innen oder Unit.TFoo.Bar.Zaehler.
-    for Routine in EnclosingRoutines(ATree.Root, ASymbol.SelectionRange.StartPos) do
-    begin
-      Result := Result + '.' + Routine;
-    end;
+    Result := Result + RoutinePath(ASymbol, ATree);
   end;
-  Name := ASymbol.Name;
-  if ASymbol.IsType then
+  if Result <> '' then
   begin
-    Name := WithTypeParams(UnitIndex, Found, ASymbol.Container, Name);
-  end
-  else if ASymbol.TypeParams <> '' then
-  begin
-    Name := Name + '<' + StringReplace(ASymbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>';
+    Result := Result + '.';
   end;
-  if Result = '' then
-  begin
-    Result := Name;
-  end
-  else
-  begin
-    Result := Result + '.' + Name;
-  end;
+  Result := Result + NameOf(ASymbol, mUnit, mFound);
   if AWithParameters and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
     TIndexSymbolKind.Routine]) then
   begin
@@ -245,56 +286,76 @@ begin
   end;
 end;
 
-class function TQualifiedNames.At(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; AWithParameters: Boolean; out AName,
-  AError: string): Boolean;
+/// <summary>Deklaration der Datei an APosition (auch die richtige Überladung); False ohne.</summary>
+function DeclarationAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out ASymbol: TResolvedSymbol): Boolean;
 var
-  Symbol: TResolvedSymbol;
-  UnitIndex: TUnitIndex;
-  Declared: TIndexSymbol;
+  mUnit: TUnitIndex;
+  mDeclared: TIndexSymbol;
 begin
-  AName := '';
+  ASymbol := Default(TResolvedSymbol);
+  mUnit := TIndexExtractor.Extract(ATree, AFileName);
+  for mDeclared in mUnit.Symbols do
+  begin
+    if (mDeclared.SelectionRange.StartPos.Line = APosition.Line) and
+      (mDeclared.SelectionRange.StartPos.Character <= APosition.Character) and
+      (mDeclared.SelectionRange.EndPos.Character >= APosition.Character) then
+    begin
+      ASymbol.Kind := TResolvedKind.Symbol;
+      ASymbol.Name := mDeclared.Name;
+      ASymbol.UnitName := mUnit.UnitName;
+      ASymbol.FileName := AFileName;
+      ASymbol.Range := mDeclared.Range;
+      ASymbol.SelectionRange := mDeclared.SelectionRange;
+      ASymbol.SymbolKind := mDeclared.Kind;
+      ASymbol.Container := mDeclared.Container;
+      ASymbol.TypeParams := mDeclared.TypeParams;
+      ASymbol.ParamTypes := mDeclared.ParamTypes;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+{ TQualifiedNameRequest }
+
+class function TQualifiedNameRequest.Create(const AFileName: string; const APosition: TTextPosition;
+  AWithParameters: Boolean): TQualifiedNameRequest;
+begin
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.WithParameters := AWithParameters;
+end;
+
+{ TQualifiedNames }
+
+class function TQualifiedNames.At(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ARequest: TQualifiedNameRequest; out AName, AError: string): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
   AError := '';
   // Unit-Namen in uses stehen für sich.
-  AName := UsesUnitAt(ATree, APosition);
+  AName := UsesUnitAt(ATree, ARequest.Position);
   if AName <> '' then
   begin
     Exit(True);
   end;
-  // Auf einer Deklaration der Datei genau diese (auch die richtige Überladung), sonst die Namensauflösung.
-  Symbol := Default(TResolvedSymbol);
-  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
-  for Declared in UnitIndex.Symbols do
+  // Auf einer Deklaration der Datei genau diese, sonst die Namensauflösung.
+  if not DeclarationAt(ATree, ARequest.FileName, ARequest.Position, mSymbol) then
   begin
-    if (Declared.SelectionRange.StartPos.Line = APosition.Line) and
-      (Declared.SelectionRange.StartPos.Character <= APosition.Character) and
-      (Declared.SelectionRange.EndPos.Character >= APosition.Character) then
-    begin
-      Symbol.Kind := TResolvedKind.Symbol;
-      Symbol.Name := Declared.Name;
-      Symbol.UnitName := UnitIndex.UnitName;
-      Symbol.FileName := AFileName;
-      Symbol.Range := Declared.Range;
-      Symbol.SelectionRange := Declared.SelectionRange;
-      Symbol.SymbolKind := Declared.Kind;
-      Symbol.Container := Declared.Container;
-      Symbol.TypeParams := Declared.TypeParams;
-      Symbol.ParamTypes := Declared.ParamTypes;
-      Break;
-    end;
+    mSymbol := AResolver.Resolve(ATree, ARequest.FileName, ARequest.Position);
   end;
-  if not Symbol.Found then
+  Result := mSymbol.Found;
+  if Result then
   begin
-    Symbol := AResolver.Resolve(ATree, AFileName, APosition);
-  end;
-  if not Symbol.Found then
+    AName := Compose(mSymbol, AIndex, ATree, ARequest.FileName, ARequest.WithParameters);
+  end
+  else
   begin
-    AError := Format('An Zeile %d, Spalte %d steht kein bekanntes Symbol', [APosition.Line + 1,
-      APosition.Character + 1]);
-    Exit(False);
+    AError := Format('An Zeile %d, Spalte %d steht kein bekanntes Symbol', [ARequest.Position.Line + 1,
+      ARequest.Position.Character + 1]);
   end;
-  AName := Compose(Symbol, AIndex, ATree, AFileName, AWithParameters);
-  Result := True;
 end;
 
 class function TQualifiedNames.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -321,8 +382,8 @@ begin
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
     Resolver.Namespaces := ANamespaces;
-    if not At(Resolver, AIndex, Shared.Tree, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(AArguments.Items[1]), WithParameters, Name, Error) then
+    if not At(Resolver, AIndex, Shared.Tree, TQualifiedNameRequest.Create(TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(AArguments.Items[1]), WithParameters), Name, Error) then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
     end;
