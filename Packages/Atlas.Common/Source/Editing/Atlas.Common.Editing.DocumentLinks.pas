@@ -87,88 +87,108 @@ begin
   ALinks := ALinks + [Link];
 end;
 
+/// <summary>Großgeschriebener Name der Direktive in {$…} bzw. (*$…*); '' bei anderen Kommentaren. AIndex steht
+/// danach hinter dem Namen.</summary>
+function DirectiveWord(const AText: string; out AIndex: Integer): string;
+var
+  mStart: Integer;
+begin
+  Result := '';
+  AIndex := 0;
+  if StartsText('{$', AText) then
+  begin
+    AIndex := 3;
+  end
+  else if StartsText('(*$', AText) then
+  begin
+    AIndex := 4;
+  end;
+  if AIndex = 0 then
+  begin
+    Exit;
+  end;
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and CharInSet(AText[AIndex], ['A'..'Z', 'a'..'z']) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := UpperCase(Copy(AText, mStart, AIndex - mStart));
+end;
+
+function IsIncludeWord(const AWord: string): Boolean;
+begin
+  Result := (AWord = 'I') or (AWord = 'INCLUDE');
+end;
+
+/// <summary>Direktive mit Dateiname: $I, $INCLUDE, $R oder $RESOURCE, gefolgt von Leerraum ({$I+} und {$R-}
+/// sind Schalter).</summary>
+function IsFileDirective(const AText, AWord: string; AIndex: Integer): Boolean;
+begin
+  Result := (IsIncludeWord(AWord) or (AWord = 'R') or (AWord = 'RESOURCE')) and (AIndex <= Length(AText)) and
+    CharInSet(AText[AIndex], [' ', #9]);
+end;
+
+/// <summary>Dateiname ab AIndex: in '…' oder bis zum ersten Zeichen, das in Pfaden nicht vorkommt.
+/// AStart..AStop - 1 ist der Name; False ohne schließendes Anführungszeichen.</summary>
+function FileNameSpan(const AText: string; AIndex: Integer; out AStart, AStop: Integer): Boolean;
+begin
+  while (AIndex <= Length(AText)) and CharInSet(AText[AIndex], [' ', #9]) do
+  begin
+    Inc(AIndex);
+  end;
+  if (AIndex <= Length(AText)) and (AText[AIndex] = '''') then
+  begin
+    AStart := AIndex + 1;
+    AStop := PosEx('''', AText, AStart);
+    Exit(AStop > 0);
+  end;
+  AStart := AIndex;
+  AStop := AStart;
+  while (AStop <= Length(AText)) and IsPathChar(AText[AStop]) do
+  begin
+    Inc(AStop);
+  end;
+  // Das Ende von (*$I datei*) gehört nicht zum Namen.
+  if (AStop - AStart >= 2) and (Copy(AText, AStop - 2, 2) = '*)') then
+  begin
+    Dec(AStop, 2);
+  end;
+  Result := True;
+end;
+
+/// <summary>Sucht die Datei wie Präprozessor und Index (#264): $I ergänzt ".inc"/".pas".</summary>
+function ResolveFile(const AName: string; AInclude: Boolean; const AFileName: string;
+  const ASearchPaths: TArray<string>; const AFileExists: TFileExistsFunc; out APath: string): Boolean;
+var
+  mName: string;
+begin
+  // {$R *.dfm}: "*" ist der Dateiname der Unit ohne Endung.
+  mName := StringReplace(AName, '*', ChangeFileExt(ExtractFileName(AFileName), ''), [rfReplaceAll]);
+  if AInclude then
+  begin
+    Result := TIncludeFiles.FindInclude(mName, AFileName, ASearchPaths, AFileExists, APath);
+  end
+  else
+  begin
+    Result := TIncludeFiles.FindFile(mName, ExtractFileDir(AFileName), ASearchPaths, AFileExists, APath);
+  end;
+end;
+
 procedure FindDirectiveLink(const AToken: TPascalToken; const AFileName: string;
   const ASearchPaths: TArray<string>; const AFileExists: TFileExistsFunc; var ALinks: TArray<TDocumentLink>);
 var
-  Text, Name, Word, Path: string;
-  I, Start, Stop: Integer;
-  Found: Boolean;
+  mWord, mName, mPath: string;
+  mIndex, mStart, mStop: Integer;
 begin
-  Text := AToken.Text;
-  // {$ oder (*$
-  if StartsText('{$', Text) then
-  begin
-    I := 3;
-  end
-  else if StartsText('(*$', Text) then
-  begin
-    I := 4;
-  end
-  else
+  mWord := DirectiveWord(AToken.Text, mIndex);
+  if not IsFileDirective(AToken.Text, mWord, mIndex) or not FileNameSpan(AToken.Text, mIndex, mStart, mStop) then
   begin
     Exit;
   end;
-  Start := I;
-  while (I <= Length(Text)) and CharInSet(Text[I], ['A'..'Z', 'a'..'z']) do
+  mName := Copy(AToken.Text, mStart, mStop - mStart);
+  if (mName <> '') and ResolveFile(mName, IsIncludeWord(mWord), AFileName, ASearchPaths, AFileExists, mPath) then
   begin
-    Inc(I);
-  end;
-  Word := UpperCase(Copy(Text, Start, I - Start));
-  if not ((Word = 'I') or (Word = 'INCLUDE') or (Word = 'R') or (Word = 'RESOURCE')) then
-  begin
-    Exit;
-  end;
-  // {$I+} und {$R-} sind Schalter, keine Dateien.
-  if (I > Length(Text)) or not CharInSet(Text[I], [' ', #9]) then
-  begin
-    Exit;
-  end;
-  while (I <= Length(Text)) and CharInSet(Text[I], [' ', #9]) do
-  begin
-    Inc(I);
-  end;
-  if (I <= Length(Text)) and (Text[I] = '''') then
-  begin
-    Start := I + 1;
-    Stop := PosEx('''', Text, Start);
-    if Stop = 0 then
-    begin
-      Exit;
-    end;
-  end
-  else
-  begin
-    Start := I;
-    Stop := Start;
-    while (Stop <= Length(Text)) and IsPathChar(Text[Stop]) do
-    begin
-      Inc(Stop);
-    end;
-    // Das Ende von (*$I datei*) gehört nicht zum Namen.
-    if (Stop - Start >= 2) and (Copy(Text, Stop - 2, 2) = '*)') then
-    begin
-      Dec(Stop, 2);
-    end;
-  end;
-  Name := Copy(Text, Start, Stop - Start);
-  if Name = '' then
-  begin
-    Exit;
-  end;
-  // {$R *.dfm}: "*" ist der Dateiname der Unit ohne Endung.
-  Name := StringReplace(Name, '*', ChangeFileExt(ExtractFileName(AFileName), ''), [rfReplaceAll]);
-  // Dieselbe Suche wie Präprozessor und Index (#264): $I ergänzt ".inc"/".pas".
-  if (Word = 'I') or (Word = 'INCLUDE') then
-  begin
-    Found := TIncludeFiles.FindInclude(Name, AFileName, ASearchPaths, AFileExists, Path);
-  end
-  else
-  begin
-    Found := TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path);
-  end;
-  if Found then
-  begin
-    AddLink(ALinks, RangeIn(AToken, Start, Stop - Start), Path, False);
+    AddLink(ALinks, RangeIn(AToken, mStart, mStop - mStart), mPath, False);
   end;
 end;
 
