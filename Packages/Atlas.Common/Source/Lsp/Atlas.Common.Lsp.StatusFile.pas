@@ -98,7 +98,6 @@ begin
   end;
 end;
 
-/// <summary>Liest eine Statusdatei; False bei unlesbarem oder unvollständigem Inhalt.</summary>
 /// <summary>Texte der Einträge in roots von AObject.</summary>
 function RootsOf(AObject: TJSONObject): TArray<string>;
 var
@@ -137,6 +136,7 @@ begin
   end;
 end;
 
+/// <summary>Liest eine Statusdatei; False bei unlesbarem oder unvollständigem Inhalt.</summary>
 function ReadEntry(const AFileName: string; out APid: Cardinal; out AWritten: TDateTime;
   out ARoots: TArray<string>; out AStatus: string): Boolean;
 var
