@@ -168,26 +168,26 @@ begin
     '{"capabilities":{"textDocument":{"diagnostic":{}},"workspace":{"diagnostics":{"refreshSupport":true}}}}')
     as TJSONObject;
   try
-    Assert.IsTrue(TLspPullDiagnostics.ClientSupportsPull(Params));
-    Assert.IsTrue(TLspPullDiagnostics.ClientSupportsRefresh(Params));
+    Assert.IsTrue(TLspPullProtocol.ClientSupportsPull(Params));
+    Assert.IsTrue(TLspPullProtocol.ClientSupportsRefresh(Params));
   finally
     Params.Free;
   end;
   Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{}}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspPullDiagnostics.ClientSupportsPull(Params));
-    Assert.IsFalse(TLspPullDiagnostics.ClientSupportsRefresh(Params));
+    Assert.IsFalse(TLspPullProtocol.ClientSupportsPull(Params));
+    Assert.IsFalse(TLspPullProtocol.ClientSupportsRefresh(Params));
   finally
     Params.Free;
   end;
-  Assert.IsFalse(TLspPullDiagnostics.ClientSupportsPull(nil));
+  Assert.IsFalse(TLspPullProtocol.ClientSupportsPull(nil));
 end;
 
 procedure TLspPullDiagnosticsTests.OffersWorkspaceDiagnostics;
 var
   Capability: TJSONObject;
 begin
-  Capability := TLspPullDiagnostics.Capability;
+  Capability := TLspPullProtocol.Capability;
   try
     Assert.IsTrue(Capability.GetValue<Boolean>('workspaceDiagnostics'));
     Assert.IsTrue(Capability.GetValue<Boolean>('interFileDependencies'));
@@ -204,7 +204,7 @@ var
 begin
   Fixture.Init;
   try
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '');
+    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', nil);
     try
       Assert.AreEqual('full', Report.GetValue<string>('kind'));
       Assert.AreEqual(0, Report.GetValue<TJSONArray>('items').Count);
@@ -212,7 +212,7 @@ begin
     finally
       Report.Free;
     end;
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), ResultId);
+    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), ResultId, nil);
     try
       Assert.AreEqual('unchanged', Report.GetValue<string>('kind'));
       Assert.IsNull(Report.GetValue('items'));
@@ -232,7 +232,7 @@ var
 begin
   Fixture.Init;
   try
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
     try
       Assert.IsTrue(Report.GetValue<TJSONArray>('items').Count > 0, 'Syntaxfehler der geschlossenen Datei');
       ResultId := Report.GetValue<string>('resultId');
@@ -240,7 +240,7 @@ begin
       Report.Free;
     end;
     Fixture.Pull.Changed;
-    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), ResultId);
+    Report := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), ResultId, nil);
     try
       Assert.AreEqual('full', Report.GetValue<string>('kind'));
     finally
@@ -393,8 +393,8 @@ var
 begin
   Fixture.Init;
   try
-    First := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
-    Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+    First := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
+    Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
     try
       Assert.AreEqual(1, Fixture.Pull.Computed, 'einmal geprüft');
       Assert.AreEqual('full', Second.GetValue<string>('kind'));
@@ -402,7 +402,7 @@ begin
       // Neue Generation: wieder prüfen.
       Fixture.Pull.Changed;
       Second.Free;
-      Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+      Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', nil);
       Assert.AreEqual(2, Fixture.Pull.Computed, 'nach Changed neu geprüft');
     finally
       Second.Free;
@@ -535,11 +535,11 @@ end;
 
 procedure TLspPullDiagnosticsTests.LongPollFollowsRequestTimeout;
 begin
-  Assert.AreEqual<Cardinal>(8000, TLspPullDiagnostics.LongPollMs(10000, 10000));
-  Assert.AreEqual<Cardinal>(10000, TLspPullDiagnostics.LongPollMs(10000, 60000));
-  Assert.AreEqual<Cardinal>(500, TLspPullDiagnostics.LongPollMs(10000, 1000));
-  Assert.AreEqual<Cardinal>(10000, TLspPullDiagnostics.LongPollMs(10000, 0));
-  Assert.AreEqual<Cardinal>(0, TLspPullDiagnostics.LongPollMs(0, 10000));
+  Assert.AreEqual<Cardinal>(8000, TLspPullProtocol.LongPollMs(10000, 10000));
+  Assert.AreEqual<Cardinal>(10000, TLspPullProtocol.LongPollMs(10000, 60000));
+  Assert.AreEqual<Cardinal>(500, TLspPullProtocol.LongPollMs(10000, 1000));
+  Assert.AreEqual<Cardinal>(10000, TLspPullProtocol.LongPollMs(10000, 0));
+  Assert.AreEqual<Cardinal>(0, TLspPullProtocol.LongPollMs(0, 10000));
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceWaitEndsBeforeRequestTimeout;
@@ -752,7 +752,7 @@ begin
     finally
       Result_.Free;
     end;
-    Assert.AreEqual(1, Pull.Skipped);
+    Assert.AreEqual(1, Pull.Check.Skipped);
     Assert.Contains(Logged.Text, 'unit#1 übersprungen (EArgumentException)');
     Assert.DoesNotContain(Logged.Text, 'Kaputt.pas');
   finally
@@ -819,7 +819,7 @@ begin
   Fixture.Init(Rules);
   try
     // Über der Frist (#1220): Die Datei kommt ans Ende des Laufs und wird ohne Frist zu Ende geprüft.
-    Fixture.Pull.FileLimitMs := 50;
+    Fixture.Pull.Check.FileLimitMs := 50;
     Fixture.Pull.WorkspaceReport(nil, Token).Free;
     Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
     Answer := Fixture.Pull.WorkspaceReport(nil, Token);

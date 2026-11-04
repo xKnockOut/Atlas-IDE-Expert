@@ -310,7 +310,7 @@ begin
   mSettings := Settings(AUri);
   if TryOpen(AUri, mSettings.PropertyFromAccessors, mDocument) then
   begin
-    Result := TLspPropertyFromAccessors.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+    Result := TLspPropertyFromAccessors.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
       AUri, APosition, PropertyOptionsOf(mSettings), ReplaceCallsOf(mSettings));
   end;
 end;
@@ -335,6 +335,7 @@ begin
   mContext := Default(TPropertyFromAccessorsContext);
   mContext.Index := Index;
   mContext.Options := PropertyOptionsOf(mSettings);
+  mContext.ReplaceCalls := mReplaceCalls;
   if mReplaceCalls or (mContext.Options.Hiding <> TAccessorHiding.Off) then
   begin
     mContext.Files := ProjectFiles;
@@ -343,8 +344,7 @@ begin
   mResolver := NewResolver;
   try
     mAnswer := TLspPropertyFromAccessors.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mReplaceCalls,
-      mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
