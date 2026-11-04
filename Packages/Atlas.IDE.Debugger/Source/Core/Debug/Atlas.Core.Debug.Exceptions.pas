@@ -45,8 +45,11 @@ type
     Ignored: Boolean;
     /// <summary>Aufrufstapel des letzten Auftretens (#578: Anzeige im Fenster, Kopieren).</summary>
     Frames: TAtlasDebugFrames;
+    /// <summary>Exception ohne Ort; den Ort setzt At.</summary>
     class function Create(ATime: TDateTime; const AClass, AMessage: string; AThreadId: Cardinal;
-      const AThreadName, AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException; static;
+      const AThreadName: string): TAtlasDebugException; static;
+    /// <summary>Kopie mit dem Ort: Datei, Zeile (1-basiert, 0 = unbekannt) und Routine.</summary>
+    function At(const AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException;
     /// <summary>Schlüssel für „gleiche Exception am gleichen Ort“: Klasse, Datei und Zeile ohne Groß/klein.
     /// </summary>
     function Key: string;
@@ -128,7 +131,7 @@ uses
 { TAtlasDebugException }
 
 class function TAtlasDebugException.Create(ATime: TDateTime; const AClass, AMessage: string; AThreadId: Cardinal;
-  const AThreadName, AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException;
+  const AThreadName: string): TAtlasDebugException;
 begin
   Result := Default(TAtlasDebugException);
   Result.FirstTime := ATime;
@@ -137,10 +140,16 @@ begin
   Result.Message := AMessage;
   Result.ThreadId := AThreadId;
   Result.ThreadName := AThreadName;
+  Result.Count := 1;
+end;
+
+function TAtlasDebugException.At(const AFileName: string; ALine: Integer; const ARoutine: string):
+  TAtlasDebugException;
+begin
+  Result := Self;
   Result.FileName := AFileName;
   Result.Line := ALine;
   Result.Routine := ARoutine;
-  Result.Count := 1;
 end;
 
 function TAtlasDebugException.Key: string;
