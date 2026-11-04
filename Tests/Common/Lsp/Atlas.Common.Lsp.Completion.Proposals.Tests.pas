@@ -105,7 +105,8 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.FuzzyMatch,
-  Atlas.Common.Lsp.CompletionCollector;
+  Atlas.Common.Lsp.CompletionCollector,
+  Atlas.Common.Lsp.Completion.Details;
 
 procedure TLspCompletionProposalTests.WarmUpFirstUse;
 begin
@@ -139,7 +140,7 @@ var
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHilfen, 'C:\P\Hilfen.pas', nil));
   // Detailpanel: „TTextHelper · Hilfen“ (Zeile 10: function Laenge).
-  Details := TLspCompletion.Details(FIndex, 'C:\P\Hilfen.pas', UnitHilfen, TTextPosition.Create(10, 13));
+  Details := TCompletionDetails.Details(FIndex, 'C:\P\Hilfen.pas', UnitHilfen, TTextPosition.Create(10, 13));
   try
     Assert.AreEqual('TTextHelper', Details.GetValue<string>('container'));
     // TJSONBool.Create(True) ist kein TJSONTrue; erst der Parser erzeugt diese Klasse.

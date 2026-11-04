@@ -588,6 +588,8 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Slash.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
