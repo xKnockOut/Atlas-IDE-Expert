@@ -13,9 +13,9 @@
 // „hängt ab von“ (#1279), Rahmen in Akzentfarbe beim aktuellen Issue (#765).
 // Schmaler als 360 px: Spalten untereinander als einklappbare Gruppen (Klick
 // auf die Kopfzeile). Ziehen einer Karte in eine andere Spalte meldet
-// OnMove; die IDE-Schicht fragt nach, schreibt und ruft danach MoveCard
-// (sofort sichtbar) bzw. RevertMove (springt zurück). Klick meldet OnOpen,
-// Doppelklick OnStart, Rechtsklick zeigt das Kontextmenü (Beginnen,
+// Events.Move; die IDE-Schicht fragt nach, schreibt und ruft danach MoveCard
+// (sofort sichtbar) bzw. RevertMove (springt zurück). Klick meldet Events.Open,
+// Doppelklick Events.Start, Rechtsklick zeigt das Kontextmenü (Beginnen,
 // Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen). Mit
 // CanDrag = False (ohne Netz) lässt sich nichts ziehen. Filter „Nur meine“
 // und Suche wirken lokal. Netz, Zwischenspeicher und Schreiben liegen in der
@@ -94,6 +94,17 @@ type
   TAtlasBoardCardEvent = reference to procedure(ACard: Integer);
   TAtlasBoardMoveEvent = reference to procedure(ACard, AColumn: Integer);
 
+  /// <summary>Ereignisse der Zeichenfläche; nil = nichts.</summary>
+  TAtlasBoardViewEvents = record
+    Open: TAtlasBoardCardEvent;
+    Start: TAtlasBoardCardEvent;
+    Move: TAtlasBoardMoveEvent;
+    /// <summary>Rechtsklick auf eine Karte; Punkt in Bildschirmkoordinaten.</summary>
+    Context: TProc<Integer, TPoint>;
+    /// <summary>Beschriftung einer Spalte (Board-Nummer, -1 = ohne Spalte).</summary>
+    ColumnName: TFunc<Integer, string>;
+  end;
+
   /// <summary>Zeichenfläche des Boards: Spalten, Karten, Ziehen.</summary>
   TAtlasBoardView = class(TCustomControl)
   public const
@@ -112,14 +123,10 @@ type
     FDragging: Boolean;
     FDragPoint: TPoint;
     FDropColumn: Integer;
-    FOnOpen: TAtlasBoardCardEvent;
-    FOnStart: TAtlasBoardCardEvent;
-    FOnMove: TAtlasBoardMoveEvent;
-    FOnContext: TProc<Integer, TPoint>;
-    FColumnName: TFunc<Integer, string>;
+    FEvents: TAtlasBoardViewEvents;
     function Metrics: TAtlasBoardMetrics;
     procedure PaintCard(const APlace: TAtlasBoardPlace; const ABounds: TRect; AGhost: Boolean);
-    function PriorityColor(const ACard: TAtlasBoardCard): TColor;
+    procedure PaintColumn(AIndex: Integer);
     procedure CancelDrag;
     procedure CMMouseLeave(var AMessage: TMessage); message CM_MOUSELEAVE;
   protected
@@ -142,29 +149,45 @@ type
     property Colors: TAtlasColors read FColors write FColors;
     property ActiveKey: string read FActiveKey write FActiveKey;
     property CanDrag: Boolean read FCanDrag write FCanDrag;
-    property OnOpen: TAtlasBoardCardEvent read FOnOpen write FOnOpen;
-    property OnStart: TAtlasBoardCardEvent read FOnStart write FOnStart;
-    property OnMove: TAtlasBoardMoveEvent read FOnMove write FOnMove;
-    /// <summary>Rechtsklick auf eine Karte; Punkt in Bildschirmkoordinaten.</summary>
-    property OnContext: TProc<Integer, TPoint> read FOnContext write FOnContext;
-    /// <summary>Beschriftung einer Spalte (Board-Nummer, -1 = ohne Spalte).</summary>
-    property ColumnName: TFunc<Integer, string> read FColumnName write FColumnName;
+    property Events: TAtlasBoardViewEvents read FEvents write FEvents;
+  end;
+
+  /// <summary>Ereignisse des Frames; nil = nichts.</summary>
+  TAtlasBoardFrameEvents = record
+    Open: TAtlasBoardCardEvent;
+    Start: TAtlasBoardCardEvent;
+    Browse: TAtlasBoardCardEvent;
+    Assign: TAtlasBoardCardEvent;
+    Move: TAtlasBoardMoveEvent;
+    Refresh: TProc;
+    /// <summary>Anderes Board gewählt (ID).</summary>
+    Board: TProc<string>;
+    /// <summary>Anderer Sprint gewählt (ID).</summary>
+    Sprint: TProc<string>;
+    OnlyMine: TProc<Boolean>;
+    /// <summary>Fenster geschlossen bzw. versteckt.</summary>
+    Hidden: TProc;
+  end;
+
+  /// <summary>Steuerelemente des Frames; sie gehören dem Frame.</summary>
+  TAtlasBoardFrameParts = record
+    Head: TFlowPanel;
+    Boards: TComboBox;
+    Sprints: TComboBox;
+    Mine: TSpeedButton;
+    All: TSpeedButton;
+    Search: TEdit;
+    Refresh: TButton;
+    Status: TLabel;
+    Scroll: TScrollBox;
+    View: TAtlasBoardView;
+    Empty: TLabel;
+    Menu: TPopupMenu;
   end;
 
   TAtlasBoardFrame = class(TFrame)
   private
-    FHead: TFlowPanel;
-    FBoards: TComboBox;
-    FSprints: TComboBox;
-    FMine: TSpeedButton;
-    FAll: TSpeedButton;
-    FSearch: TEdit;
-    FRefreshButton: TButton;
-    FStatus: TLabel;
-    FScroll: TScrollBox;
-    FView: TAtlasBoardView;
-    FEmpty: TLabel;
-    FMenu: TPopupMenu;
+    FParts: TAtlasBoardFrameParts;
     FMenuCard: Integer;
     FColors: TAtlasColors;
     FSnapshot: TAtlasBoardSnapshot;
@@ -173,32 +196,15 @@ type
     FOnlyMine: Boolean;
     FBoardIds: TArray<string>;
     FSprintIds: TArray<string>;
-    FOnOpen: TAtlasBoardCardEvent;
-    FOnStart: TAtlasBoardCardEvent;
-    FOnBrowse: TAtlasBoardCardEvent;
-    FOnAssign: TAtlasBoardCardEvent;
-    FOnMove: TAtlasBoardMoveEvent;
-    FOnRefresh: TProc;
-    FOnBoard: TProc<string>;
-    FOnSprint: TProc<string>;
-    FOnOnlyMine: TProc<Boolean>;
-    FOnHidden: TProc;
-    function AddMenu(const ACaption: string; AHandler: TNotifyEvent): TMenuItem;
+    FEvents: TAtlasBoardFrameEvents;
     procedure UpdateView;
-    /// <summary>Innenbreite der Scrollbox; ohne Fenster ihre Breite (ClientWidth bräuchte ein Handle).</summary>
-    function ScrollWidth: Integer;
-    procedure FillChoices;
-    procedure BoardChange(Sender: TObject);
-    procedure SprintChange(Sender: TObject);
-    procedure MineClick(Sender: TObject);
-    procedure SearchChange(Sender: TObject);
-    procedure RefreshClick(Sender: TObject);
+    /// <summary>Board, Sprint oder Suche geändert.</summary>
+    procedure ChoiceChange(Sender: TObject);
+    /// <summary>„Nur meine“, „Alle“ oder „Aktualisieren“.</summary>
+    procedure ButtonClick(Sender: TObject);
     procedure ScrollResize(Sender: TObject);
-    procedure MenuStart(Sender: TObject);
-    procedure MenuPreview(Sender: TObject);
-    procedure MenuBrowse(Sender: TObject);
-    procedure MenuCopy(Sender: TObject);
-    procedure MenuAssign(Sender: TObject);
+    /// <summary>Eintrag des Kontextmenüs (Tag: TBoardMenu).</summary>
+    procedure MenuClick(Sender: TObject);
     procedure CMShowingChanged(var AMessage: TMessage); message CM_SHOWINGCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
@@ -218,7 +224,7 @@ type
     procedure SetActiveKey(const AKey: string);
     /// <summary>Ziehen erlaubt (Verbindung und Schreibweg da).</summary>
     procedure SetCanDrag(AValue: Boolean);
-    /// <summary>Umschalter „Nur meine“/„Alle“ ohne OnOnlyMine.</summary>
+    /// <summary>Umschalter „Nur meine“/„Alle“ ohne OnlyMine-Ereignis.</summary>
     procedure SetOnlyMine(AValue: Boolean);
     /// <summary>Karten nach Filter und Suche.</summary>
     function VisibleCards: TArray<Integer>;
@@ -229,26 +235,9 @@ type
     property Snapshot: TAtlasBoardSnapshot read FSnapshot;
     property HasSnapshot: Boolean read FHasSnapshot;
     property OnlyMine: Boolean read FOnlyMine;
-    property View: TAtlasBoardView read FView;
-    property BoardBox: TComboBox read FBoards;
-    property SprintBox: TComboBox read FSprints;
-    property SearchEdit: TEdit read FSearch;
-    property MineButton: TSpeedButton read FMine;
-    property AllButton: TSpeedButton read FAll;
-    property EmptyLabel: TLabel read FEmpty;
-    property OnOpen: TAtlasBoardCardEvent read FOnOpen write FOnOpen;
-    property OnStart: TAtlasBoardCardEvent read FOnStart write FOnStart;
-    property OnBrowse: TAtlasBoardCardEvent read FOnBrowse write FOnBrowse;
-    property OnAssign: TAtlasBoardCardEvent read FOnAssign write FOnAssign;
-    property OnMove: TAtlasBoardMoveEvent read FOnMove write FOnMove;
-    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
-    /// <summary>Anderes Board gewählt (ID).</summary>
-    property OnBoard: TProc<string> read FOnBoard write FOnBoard;
-    /// <summary>Anderer Sprint gewählt (ID).</summary>
-    property OnSprint: TProc<string> read FOnSprint write FOnSprint;
-    property OnOnlyMine: TProc<Boolean> read FOnOnlyMine write FOnOnlyMine;
-    /// <summary>Fenster geschlossen bzw. versteckt.</summary>
-    property OnHidden: TProc read FOnHidden write FOnHidden;
+    property View: TAtlasBoardView read FParts.View;
+    property Parts: TAtlasBoardFrameParts read FParts;
+    property Events: TAtlasBoardFrameEvents read FEvents write FEvents;
   end;
 
 /// <summary>"#rrggbb" als Farbe; False bei anderem Text.</summary>
@@ -324,23 +313,64 @@ begin
   end;
 end;
 
+/// <summary>Spalten in Anzeigereihenfolge: die des Boards, dahinter -1, wenn Karten ohne Spalte sichtbar sind.
+/// </summary>
+function ColumnsOf(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ASnapshot.Columns) do
+  begin
+    Result := Result + [mIndex];
+  end;
+  if Length(TAtlasTrackerBoard.ColumnCards(ASnapshot, AVisible, -1)) > 0 then
+  begin
+    Result := Result + [-1];
+  end;
+end;
+
+/// <summary>Breite einer Spalte: schmal die ganze Fläche, sonst gleichmäßig, mindestens ColumnWidth.</summary>
+function ColumnWidthOf(AWidth, ACount: Integer; ANarrow: Boolean; const AMetrics: TAtlasBoardMetrics): Integer;
+begin
+  if ANarrow then
+  begin
+    Result := Max(AWidth - 2 * AMetrics.Gap, 1);
+  end
+  else
+  begin
+    Result := Max(AMetrics.ColumnWidth, (AWidth - (ACount + 1) * AMetrics.Gap) div ACount);
+  end;
+end;
+
+/// <summary>Karten ACards der Spalte AColumn untereinander unter AColumnBox.Top, zwischen AColumnBox.Left und
+/// .Right; Ergebnis: Unterkante der letzten Karte (ohne Karten AColumnBox.Top).</summary>
+function PlaceCards(var ALayout: TAtlasBoardLayout; const ACards: TArray<Integer>; AColumn: Integer;
+  const AColumnBox: TRect; const AMetrics: TAtlasBoardMetrics): Integer;
+var
+  mCard: Integer;
+  mPlace: TAtlasBoardPlace;
+begin
+  Result := AColumnBox.Top;
+  for mCard in ACards do
+  begin
+    mPlace.Card := mCard;
+    mPlace.Column := AColumn;
+    mPlace.Bounds := Rect(AColumnBox.Left + 4, Result + AMetrics.Gap div 2, AColumnBox.Right - 4,
+      Result + AMetrics.Gap div 2 + AMetrics.CardHeight);
+    ALayout.Places := ALayout.Places + [mPlace];
+    Result := mPlace.Bounds.Bottom;
+  end;
+end;
+
 class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
   AWidth: Integer; const ACollapsed: TArray<Integer>; const AMetrics: TAtlasBoardMetrics): TAtlasBoardLayout;
 var
   mIndex, mCount, mColumnWidth, mLeft, mTop, mBottom: Integer;
   mCards: TArray<Integer>;
-  mCard: Integer;
-  mPlace: TAtlasBoardPlace;
 begin
   Result := Default(TAtlasBoardLayout);
-  for mIndex := 0 to High(ASnapshot.Columns) do
-  begin
-    Result.Columns := Result.Columns + [mIndex];
-  end;
-  if Length(TAtlasTrackerBoard.ColumnCards(ASnapshot, AVisible, -1)) > 0 then
-  begin
-    Result.Columns := Result.Columns + [-1];
-  end;
+  Result.Columns := ColumnsOf(ASnapshot, AVisible);
   mCount := Length(Result.Columns);
   SetLength(Result.Headers, mCount);
   SetLength(Result.Areas, mCount);
@@ -350,14 +380,7 @@ begin
   begin
     Exit;
   end;
-  if Result.Narrow then
-  begin
-    mColumnWidth := Max(AWidth - 2 * AMetrics.Gap, 1);
-  end
-  else
-  begin
-    mColumnWidth := Max(AMetrics.ColumnWidth, (AWidth - (mCount + 1) * AMetrics.Gap) div mCount);
-  end;
+  mColumnWidth := ColumnWidthOf(AWidth, mCount, Result.Narrow, AMetrics);
   mLeft := AMetrics.Gap;
   mTop := AMetrics.Gap;
   for mIndex := 0 to mCount - 1 do
@@ -372,15 +395,8 @@ begin
     mBottom := mTop + AMetrics.Header;
     if not (Result.Narrow and Contains(ACollapsed, Result.Columns[mIndex])) then
     begin
-      for mCard in mCards do
-      begin
-        mPlace.Card := mCard;
-        mPlace.Column := Result.Columns[mIndex];
-        mPlace.Bounds := Rect(mLeft + 4, mBottom + AMetrics.Gap div 2, mLeft + mColumnWidth - 4,
-          mBottom + AMetrics.Gap div 2 + AMetrics.CardHeight);
-        Result.Places := Result.Places + [mPlace];
-        mBottom := mPlace.Bounds.Bottom;
-      end;
+      mBottom := PlaceCards(Result, mCards, Result.Columns[mIndex], Rect(mLeft, mBottom, mLeft + mColumnWidth,
+        mBottom), AMetrics);
     end;
     // Leere Spalte: Platz zum Ablegen.
     mBottom := Max(mBottom + AMetrics.Gap div 2, mTop + AMetrics.Header + AMetrics.CardHeight div 2);
@@ -395,11 +411,8 @@ begin
       mLeft := mLeft + mColumnWidth + AMetrics.Gap;
     end;
   end;
-  if Result.Narrow then
-  begin
-    Result.Width := AWidth;
-  end
-  else
+  Result.Width := AWidth;
+  if not Result.Narrow then
   begin
     Result.Width := Max(AWidth, mLeft);
   end;
@@ -528,7 +541,7 @@ begin
   FCollapsed := FCollapsed + [AColumn];
 end;
 
-function TAtlasBoardView.PriorityColor(const ACard: TAtlasBoardCard): TColor;
+function PriorityColor(const ACard: TAtlasBoardCard; const AColors: TAtlasColors): TColor;
 begin
   if TryWebColor(ACard.PriorityColor, Result) then
   begin
@@ -536,110 +549,184 @@ begin
   end;
   case TAtlasTrackerBoard.PriorityLevel(ACard.Priority) of
     4:
-      Result := ToColor(FColors.Error);
+      Result := ToColor(AColors.Error);
     3:
-      Result := ToColor(FColors.Warn);
+      Result := ToColor(AColors.Warn);
     2:
-      Result := ToColor(FColors.Accent);
+      Result := ToColor(AColors.Accent);
     1:
-      Result := ToColor(FColors.Muted);
+      Result := ToColor(AColors.Muted);
   else
-    Result := ToColor(FColors.Line);
+    Result := ToColor(AColors.Line);
+  end;
+end;
+
+/// <summary>Rahmen der Karte (aktuelles Issue in Akzentfarbe, gezogen gepunktet) und Farbbalken der Priorität.
+/// </summary>
+procedure PaintCardFrame(ACanvas: TCanvas; const AColors: TAtlasColors; const ABounds: TRect; AActive,
+  AGhost: Boolean; APriority: TColor);
+begin
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := ToColor(AColors.Surface);
+  ACanvas.Pen.Color := ToColor(AColors.Line);
+  ACanvas.Pen.Width := 1;
+  if AActive then
+  begin
+    ACanvas.Pen.Color := ToColor(AColors.Accent);
+    ACanvas.Pen.Width := 2;
+  end;
+  ACanvas.Pen.Style := psSolid;
+  if AGhost then
+  begin
+    ACanvas.Pen.Style := psDot;
+  end;
+  ACanvas.Rectangle(ABounds);
+  ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Brush.Color := APriority;
+  ACanvas.FillRect(Rect(ABounds.Left + 1, ABounds.Top + 1, ABounds.Left + 5, ABounds.Bottom - 1));
+  ACanvas.Brush.Style := bsClear;
+end;
+
+/// <summary>Kürzel des Zuständigen rechts oben bis ARight; Ergebnis: neuer rechter Rand.</summary>
+function PaintAssignee(ACanvas: TCanvas; const AColors: TAtlasColors; const AMark: string; ARight, ATop,
+  ALine: Integer): Integer;
+var
+  mText: TRect;
+begin
+  ACanvas.Font.Style := [fsBold];
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := ToColor(AColors.AccentSoft);
+  mText := Rect(ARight - ACanvas.TextWidth(AMark) - 6, ATop, ARight, ATop + ALine);
+  ACanvas.FillRect(mText);
+  ACanvas.Font.Color := ToColor(AColors.Text);
+  DrawText(ACanvas.Handle, PChar(AMark), Length(AMark), mText, DT_CENTER or DT_SINGLELINE or DT_VCENTER);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Style := [];
+  ACanvas.Font.Color := ToColor(AColors.Muted);
+  Result := mText.Left - 6;
+end;
+
+/// <summary>Text AMark rechtsbündig bis ARight; Ergebnis: neuer rechter Rand.</summary>
+function PaintMark(ACanvas: TCanvas; const AMark: string; ARight, ATop, ALine: Integer): Integer;
+var
+  mText: TRect;
+begin
+  mText := Rect(ARight - ACanvas.TextWidth(AMark), ATop, ARight, ATop + ALine);
+  DrawText(ACanvas.Handle, PChar(AMark), Length(AMark), mText, DT_RIGHT or DT_SINGLELINE);
+  Result := mText.Left - 6;
+end;
+
+/// <summary>Kopfzeile rechts: Kürzel, Checkliste, Schloss; Ergebnis: Platz für die Kennung bis hier.</summary>
+function PaintMarks(ACanvas: TCanvas; const AColors: TAtlasColors; const ACard: TAtlasBoardCard;
+  const ABounds: TRect; ALine: Integer): Integer;
+var
+  mMark: string;
+begin
+  Result := ABounds.Right - 6;
+  ACanvas.Font.Style := [];
+  ACanvas.Font.Color := ToColor(AColors.Muted);
+  mMark := TAtlasTrackerBoard.Initials(ACard.Assignee);
+  if mMark <> '' then
+  begin
+    Result := PaintAssignee(ACanvas, AColors, mMark, Result, ABounds.Top + 4, ALine);
+  end;
+  if ACard.Checklist.Any then
+  begin
+    if ACard.Checklist.Done = ACard.Checklist.Total then
+    begin
+      ACanvas.Font.Color := ToColor(AColors.Add);
+    end;
+    Result := PaintMark(ACanvas, ACard.Checklist.Text, Result, ABounds.Top + 4, ALine);
+    ACanvas.Font.Color := ToColor(AColors.Muted);
+  end;
+  if ACard.Locked then
+  begin
+    Result := PaintMark(ACanvas, '⛔', Result, ABounds.Top + 4, ALine);
   end;
 end;
 
 procedure TAtlasBoardView.PaintCard(const APlace: TAtlasBoardPlace; const ABounds: TRect; AGhost: Boolean);
 var
   mCard: TAtlasBoardCard;
-  mRect, mText: TRect;
+  mText: TRect;
   mLine, mRight: Integer;
-  mMark: string;
 begin
   mCard := FSnapshot.Cards[APlace.Card];
-  mRect := ABounds;
   mLine := Canvas.TextHeight('Ag');
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  if SameText(mCard.Key, FActiveKey) then
-  begin
-    Canvas.Pen.Color := ToColor(FColors.Accent);
-    Canvas.Pen.Width := 2;
-  end
-  else
-  begin
-    Canvas.Pen.Color := ToColor(FColors.Line);
-    Canvas.Pen.Width := 1;
-  end;
-  if AGhost then
-  begin
-    Canvas.Pen.Style := psDot;
-  end
-  else
-  begin
-    Canvas.Pen.Style := psSolid;
-  end;
-  Canvas.Rectangle(mRect);
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Width := 1;
-  // Priorität als Farbbalken links.
-  Canvas.Brush.Color := PriorityColor(mCard);
-  Canvas.FillRect(Rect(mRect.Left + 1, mRect.Top + 1, mRect.Left + 5, mRect.Bottom - 1));
-  Canvas.Brush.Style := bsClear;
+  PaintCardFrame(Canvas, FColors, ABounds, SameText(mCard.Key, FActiveKey), AGhost, PriorityColor(mCard, FColors));
   // Kopfzeile: Kennung links; rechts Kürzel, Checkliste, Schloss.
-  mRight := mRect.Right - 6;
-  Canvas.Font.Style := [];
-  Canvas.Font.Color := ToColor(FColors.Muted);
-  mMark := TAtlasTrackerBoard.Initials(mCard.Assignee);
-  if mMark <> '' then
-  begin
-    Canvas.Font.Style := [fsBold];
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.AccentSoft);
-    mText := Rect(mRight - Canvas.TextWidth(mMark) - 6, mRect.Top + 4, mRight, mRect.Top + 4 + mLine);
-    Canvas.FillRect(mText);
-    Canvas.Font.Color := ToColor(FColors.Text);
-    DrawText(Canvas.Handle, PChar(mMark), Length(mMark), mText, DT_CENTER or DT_SINGLELINE or DT_VCENTER);
-    Canvas.Brush.Style := bsClear;
-    mRight := mText.Left - 6;
-    Canvas.Font.Style := [];
-    Canvas.Font.Color := ToColor(FColors.Muted);
-  end;
-  if mCard.Checklist.Any then
-  begin
-    mMark := mCard.Checklist.Text;
-    mText := Rect(mRight - Canvas.TextWidth(mMark), mRect.Top + 4, mRight, mRect.Top + 4 + mLine);
-    if mCard.Checklist.Done = mCard.Checklist.Total then
-    begin
-      Canvas.Font.Color := ToColor(FColors.Add);
-    end;
-    DrawText(Canvas.Handle, PChar(mMark), Length(mMark), mText, DT_RIGHT or DT_SINGLELINE);
-    Canvas.Font.Color := ToColor(FColors.Muted);
-    mRight := mText.Left - 6;
-  end;
-  if mCard.Locked then
-  begin
-    mMark := '⛔';
-    mText := Rect(mRight - Canvas.TextWidth(mMark), mRect.Top + 4, mRight, mRect.Top + 4 + mLine);
-    DrawText(Canvas.Handle, PChar(mMark), Length(mMark), mText, DT_RIGHT or DT_SINGLELINE);
-    mRight := mText.Left - 6;
-  end;
+  mRight := PaintMarks(Canvas, FColors, mCard, ABounds, mLine);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(FColors.Accent);
-  mText := Rect(mRect.Left + 10, mRect.Top + 4, Max(mRight, mRect.Left + 10), mRect.Top + 4 + mLine);
+  mText := Rect(ABounds.Left + 10, ABounds.Top + 4, Max(mRight, ABounds.Left + 10), ABounds.Top + 4 + mLine);
   DrawText(Canvas.Handle, PChar(mCard.Key), Length(mCard.Key), mText, DT_LEFT or DT_SINGLELINE or DT_END_ELLIPSIS);
   // Titel in zwei Zeilen.
   Canvas.Font.Style := [];
   Canvas.Font.Color := ToColor(FColors.Text);
-  mText := Rect(mRect.Left + 10, mRect.Top + 8 + mLine, mRect.Right - 6, mRect.Top + 8 + 3 * mLine);
+  mText := Rect(ABounds.Left + 10, ABounds.Top + 8 + mLine, ABounds.Right - 6, ABounds.Top + 8 + 3 * mLine);
   DrawText(Canvas.Handle, PChar(mCard.Title), Length(mCard.Title), mText,
     DT_LEFT or DT_WORDBREAK or DT_END_ELLIPSIS or DT_EDITCONTROL or DT_NOPREFIX);
 end;
 
+/// <summary>Kopfzeile einer Spalte: „NAME (n)“, schmal mit Pfeil zum Auf- und Zuklappen.</summary>
+function ColumnTitle(AView: TAtlasBoardView; AIndex: Integer): string;
+var
+  mColumn: Integer;
+  mName: string;
+begin
+  mColumn := AView.FLayout.Columns[AIndex];
+  mName := '';
+  if Assigned(AView.FEvents.ColumnName) then
+  begin
+    mName := AView.FEvents.ColumnName(mColumn);
+  end;
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount,
+    [AnsiUpperCase(mName), AView.FLayout.Counts[AIndex]]);
+  if not AView.FLayout.Narrow then
+  begin
+    Exit;
+  end;
+  if AView.Collapsed(mColumn) then
+  begin
+    Result := '▸ ' + Result;
+  end
+  else
+  begin
+    Result := '▾ ' + Result;
+  end;
+end;
+
+procedure TAtlasBoardView.PaintColumn(AIndex: Integer);
+var
+  mColumn: Integer;
+  mText: string;
+  mRect: TRect;
+begin
+  mColumn := FLayout.Columns[AIndex];
+  // Fläche der Spalte; Ziel beim Ziehen hervorgehoben.
+  Canvas.Brush.Color := ToColor(FColors.Gutter);
+  if FDragging and (mColumn = FDropColumn) and TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, mColumn) then
+  begin
+    Canvas.Brush.Color := ToColor(FColors.Selection);
+  end;
+  Canvas.FillRect(FLayout.Areas[AIndex]);
+  mText := ColumnTitle(Self, AIndex);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(FColors.Muted);
+  mRect := FLayout.Headers[AIndex];
+  InflateRect(mRect, -ScaleValue(6), 0);
+  DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect,
+    DT_LEFT or DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
+  Canvas.Font.Style := [];
+  Canvas.Brush.Style := bsSolid;
+end;
+
 procedure TAtlasBoardView.Paint;
 var
-  mIndex, mColumn: Integer;
+  mIndex: Integer;
   mPlace: TAtlasBoardPlace;
-  mText, mName: string;
   mRect: TRect;
 begin
   Canvas.Font := Font;
@@ -648,44 +735,7 @@ begin
   Canvas.FillRect(ClientRect);
   for mIndex := 0 to High(FLayout.Columns) do
   begin
-    mColumn := FLayout.Columns[mIndex];
-    // Fläche der Spalte; Ziel beim Ziehen hervorgehoben.
-    if FDragging and (mColumn = FDropColumn) and TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, mColumn) then
-    begin
-      Canvas.Brush.Color := ToColor(FColors.Selection);
-    end
-    else
-    begin
-      Canvas.Brush.Color := ToColor(FColors.Gutter);
-    end;
-    Canvas.FillRect(FLayout.Areas[mIndex]);
-    mName := '';
-    if Assigned(FColumnName) then
-    begin
-      mName := FColumnName(mColumn);
-    end;
-    mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount,
-      [AnsiUpperCase(mName), FLayout.Counts[mIndex]]);
-    if FLayout.Narrow then
-    begin
-      if Collapsed(mColumn) then
-      begin
-        mText := '▸ ' + mText;
-      end
-      else
-      begin
-        mText := '▾ ' + mText;
-      end;
-    end;
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := ToColor(FColors.Muted);
-    mRect := FLayout.Headers[mIndex];
-    InflateRect(mRect, -ScaleValue(6), 0);
-    DrawText(Canvas.Handle, PChar(mText), Length(mText), mRect,
-      DT_LEFT or DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
-    Canvas.Font.Style := [];
-    Canvas.Brush.Style := bsSolid;
+    PaintColumn(mIndex);
   end;
   for mPlace in FLayout.Places do
   begin
@@ -712,9 +762,9 @@ begin
   mCard := FLayout.CardAt(Point(X, Y));
   if Button = mbRight then
   begin
-    if (mCard >= 0) and Assigned(FOnContext) then
+    if (mCard >= 0) and Assigned(FEvents.Context) then
     begin
-      FOnContext(mCard, ClientToScreen(Point(X, Y)));
+      FEvents.Context(mCard, ClientToScreen(Point(X, Y)));
     end;
     Exit;
   end;
@@ -785,14 +835,14 @@ begin
   end;
   if mDragging then
   begin
-    if TAtlasTrackerBoard.CanMove(FSnapshot, mCard, mColumn) and Assigned(FOnMove) then
+    if TAtlasTrackerBoard.CanMove(FSnapshot, mCard, mColumn) and Assigned(FEvents.Move) then
     begin
-      FOnMove(mCard, mColumn);
+      FEvents.Move(mCard, mColumn);
     end;
   end
-  else if (FLayout.CardAt(Point(X, Y)) = mCard) and Assigned(FOnOpen) then
+  else if (FLayout.CardAt(Point(X, Y)) = mCard) and Assigned(FEvents.Open) then
   begin
-    FOnOpen(mCard);
+    FEvents.Open(mCard);
   end;
 end;
 
@@ -802,9 +852,9 @@ var
 begin
   inherited;
   mCard := FLayout.CardAt(ScreenToClient(Mouse.CursorPos));
-  if (mCard >= 0) and Assigned(FOnStart) then
+  if (mCard >= 0) and Assigned(FEvents.Start) then
   begin
-    FOnStart(mCard);
+    FEvents.Start(mCard);
   end;
 end;
 
@@ -861,169 +911,190 @@ end;
 
 { TAtlasBoardFrame }
 
+type
+  /// <summary>Einträge des Kontextmenüs einer Karte (Tag).</summary>
+  {$SCOPEDENUMS ON}
+  TBoardMenu = (Start, Preview, Browse, Copy, Assign);
+  {$SCOPEDENUMS OFF}
+
+function AddCombo(AFrame: TAtlasBoardFrame; AWidth: Integer; const AHint: string): TComboBox;
+begin
+  Result := TComboBox.Create(AFrame);
+  Result.Parent := AFrame.FParts.Head;
+  Result.Style := csDropDownList;
+  Result.Width := AFrame.ScaleValue(AWidth);
+  Result.Hint := AHint;
+  Result.ShowHint := True;
+  Result.AlignWithMargins := True;
+  Result.OnChange := AFrame.ChoiceChange;
+end;
+
+function AddToggle(AFrame: TAtlasBoardFrame; AWidth: Integer; const ACaption: string): TSpeedButton;
+begin
+  Result := TSpeedButton.Create(AFrame);
+  Result.Parent := AFrame.FParts.Head;
+  Result.Caption := ACaption;
+  Result.GroupIndex := 1;
+  Result.Flat := True;
+  Result.Width := AFrame.ScaleValue(AWidth);
+  Result.Height := AFrame.ScaleValue(23);
+  Result.AlignWithMargins := True;
+  Result.OnClick := AFrame.ButtonClick;
+end;
+
+/// <summary>Kopfleiste: Board, Sprint, „Nur meine“/„Alle“, Suche, Aktualisieren.</summary>
+procedure AddHead(AFrame: TAtlasBoardFrame);
+begin
+  AFrame.FParts.Head := TFlowPanel.Create(AFrame);
+  AFrame.FParts.Head.Parent := AFrame;
+  AFrame.FParts.Head.Align := alTop;
+  AFrame.FParts.Head.AutoSize := True;
+  AFrame.FParts.Head.BevelOuter := bvNone;
+  AFrame.FParts.Head.AlignWithMargins := True;
+  AFrame.FParts.Head.Margins.SetBounds(4, 4, 4, 0);
+  AFrame.FParts.Boards := AddCombo(AFrame, 150, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardBoardHint));
+  AFrame.FParts.Sprints := AddCombo(AFrame, 130, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSprintHint));
+  AFrame.FParts.Mine := AddToggle(AFrame, 80, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardOnlyMine));
+  AFrame.FParts.Mine.Down := True;
+  AFrame.FParts.All := AddToggle(AFrame, 50, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardAll));
+  AFrame.FParts.Search := TEdit.Create(AFrame);
+  AFrame.FParts.Search.Parent := AFrame.FParts.Head;
+  AFrame.FParts.Search.Width := AFrame.ScaleValue(150);
+  AFrame.FParts.Search.TextHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSearchHint);
+  AFrame.FParts.Search.AlignWithMargins := True;
+  AFrame.FParts.Search.OnChange := AFrame.ChoiceChange;
+  AFrame.FParts.Refresh := TButton.Create(AFrame);
+  AFrame.FParts.Refresh.Parent := AFrame.FParts.Head;
+  AFrame.FParts.Refresh.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardRefresh);
+  AFrame.FParts.Refresh.Width := AFrame.ScaleValue(90);
+  AFrame.FParts.Refresh.AlignWithMargins := True;
+  AFrame.FParts.Refresh.OnClick := AFrame.ButtonClick;
+end;
+
+/// <summary>Ereignisse der Zeichenfläche an die des Frames weiterreichen.</summary>
+function ViewEvents(AFrame: TAtlasBoardFrame): TAtlasBoardViewEvents;
+begin
+  Result := Default(TAtlasBoardViewEvents);
+  Result.ColumnName :=
+    function(AColumn: Integer): string
+    begin
+      Result := AFrame.ColumnCaption(AColumn);
+    end;
+  Result.Open :=
+    procedure(ACard: Integer)
+    begin
+      if Assigned(AFrame.FEvents.Open) then
+      begin
+        AFrame.FEvents.Open(ACard);
+      end;
+    end;
+  Result.Start :=
+    procedure(ACard: Integer)
+    begin
+      if Assigned(AFrame.FEvents.Start) then
+      begin
+        AFrame.FEvents.Start(ACard);
+      end;
+    end;
+  Result.Move :=
+    procedure(ACard, AColumn: Integer)
+    begin
+      if Assigned(AFrame.FEvents.Move) then
+      begin
+        AFrame.FEvents.Move(ACard, AColumn);
+      end;
+    end;
+  Result.Context :=
+    procedure(ACard: Integer; APoint: TPoint)
+    begin
+      AFrame.FMenuCard := ACard;
+      AFrame.FParts.Menu.Popup(APoint.X, APoint.Y);
+    end;
+end;
+
+/// <summary>Statuszeile, Fläche mit Zeichenfläche und Hinweis.</summary>
+procedure AddBody(AFrame: TAtlasBoardFrame);
+begin
+  AFrame.FParts.Status := TLabel.Create(AFrame);
+  AFrame.FParts.Status.Parent := AFrame;
+  AFrame.FParts.Status.Align := alTop;
+  AFrame.FParts.Status.AlignWithMargins := True;
+  AFrame.FParts.Status.Margins.SetBounds(8, 2, 8, 2);
+  AFrame.FParts.Status.WordWrap := True;
+  AFrame.FParts.Status.Visible := False;
+  AFrame.FParts.Status.Top := AFrame.FParts.Head.Top + AFrame.FParts.Head.Height + 1;
+  AFrame.FParts.Scroll := TScrollBox.Create(AFrame);
+  AFrame.FParts.Scroll.Parent := AFrame;
+  AFrame.FParts.Scroll.Align := alClient;
+  AFrame.FParts.Scroll.BorderStyle := bsNone;
+  AFrame.FParts.Scroll.HorzScrollBar.Tracking := True;
+  AFrame.FParts.Scroll.VertScrollBar.Tracking := True;
+  AFrame.FParts.Scroll.OnResize := AFrame.ScrollResize;
+  AFrame.FParts.View := TAtlasBoardView.Create(AFrame);
+  AFrame.FParts.View.Parent := AFrame.FParts.Scroll;
+  AFrame.FParts.View.Events := ViewEvents(AFrame);
+  AFrame.FParts.Empty := TLabel.Create(AFrame);
+  AFrame.FParts.Empty.Parent := AFrame.FParts.Scroll;
+  AFrame.FParts.Empty.AutoSize := False;
+  AFrame.FParts.Empty.Alignment := taCenter;
+  AFrame.FParts.Empty.WordWrap := True;
+  AFrame.FParts.Empty.SetBounds(0, AFrame.ScaleValue(40), AFrame.ScaleValue(300), AFrame.ScaleValue(60));
+  AFrame.FParts.Empty.Visible := False;
+end;
+
+function AddMenu(AFrame: TAtlasBoardFrame; AId: TAtlasTrackerTextId; ACommand: TBoardMenu): TMenuItem;
+begin
+  Result := TMenuItem.Create(AFrame.FParts.Menu);
+  Result.Caption := TAtlasTrackerStrings.Text(AId);
+  Result.Tag := Ord(ACommand);
+  Result.OnClick := AFrame.MenuClick;
+  AFrame.FParts.Menu.Items.Add(Result);
+end;
+
 constructor TAtlasBoardFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
   FOnlyMine := True;
-  FHead := TFlowPanel.Create(Self);
-  FHead.Parent := Self;
-  FHead.Align := alTop;
-  FHead.AutoSize := True;
-  FHead.BevelOuter := bvNone;
-  FHead.AlignWithMargins := True;
-  FHead.Margins.SetBounds(4, 4, 4, 0);
-  FBoards := TComboBox.Create(Self);
-  FBoards.Parent := FHead;
-  FBoards.Style := csDropDownList;
-  FBoards.Width := ScaleValue(150);
-  FBoards.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardBoardHint);
-  FBoards.ShowHint := True;
-  FBoards.AlignWithMargins := True;
-  FBoards.OnChange := BoardChange;
-  FSprints := TComboBox.Create(Self);
-  FSprints.Parent := FHead;
-  FSprints.Style := csDropDownList;
-  FSprints.Width := ScaleValue(130);
-  FSprints.Hint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSprintHint);
-  FSprints.ShowHint := True;
-  FSprints.AlignWithMargins := True;
-  FSprints.OnChange := SprintChange;
-  FMine := TSpeedButton.Create(Self);
-  FMine.Parent := FHead;
-  FMine.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardOnlyMine);
-  FMine.GroupIndex := 1;
-  FMine.Down := True;
-  FMine.Flat := True;
-  FMine.Width := ScaleValue(80);
-  FMine.Height := ScaleValue(23);
-  FMine.AlignWithMargins := True;
-  FMine.OnClick := MineClick;
-  FAll := TSpeedButton.Create(Self);
-  FAll.Parent := FHead;
-  FAll.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardAll);
-  FAll.GroupIndex := 1;
-  FAll.Flat := True;
-  FAll.Width := ScaleValue(50);
-  FAll.Height := ScaleValue(23);
-  FAll.AlignWithMargins := True;
-  FAll.OnClick := MineClick;
-  FSearch := TEdit.Create(Self);
-  FSearch.Parent := FHead;
-  FSearch.Width := ScaleValue(150);
-  FSearch.TextHint := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardSearchHint);
-  FSearch.AlignWithMargins := True;
-  FSearch.OnChange := SearchChange;
-  FRefreshButton := TButton.Create(Self);
-  FRefreshButton.Parent := FHead;
-  FRefreshButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardRefresh);
-  FRefreshButton.Width := ScaleValue(90);
-  FRefreshButton.AlignWithMargins := True;
-  FRefreshButton.OnClick := RefreshClick;
-  FStatus := TLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alTop;
-  FStatus.AlignWithMargins := True;
-  FStatus.Margins.SetBounds(8, 2, 8, 2);
-  FStatus.WordWrap := True;
-  FStatus.Visible := False;
-  FStatus.Top := FHead.Top + FHead.Height + 1;
-  FScroll := TScrollBox.Create(Self);
-  FScroll.Parent := Self;
-  FScroll.Align := alClient;
-  FScroll.BorderStyle := bsNone;
-  FScroll.HorzScrollBar.Tracking := True;
-  FScroll.VertScrollBar.Tracking := True;
-  FScroll.OnResize := ScrollResize;
-  FView := TAtlasBoardView.Create(Self);
-  FView.Parent := FScroll;
-  FView.ColumnName :=
-    function(AColumn: Integer): string
-    begin
-      Result := ColumnCaption(AColumn);
-    end;
-  FView.OnOpen :=
-    procedure(ACard: Integer)
-    begin
-      if Assigned(FOnOpen) then
-      begin
-        FOnOpen(ACard);
-      end;
-    end;
-  FView.OnStart :=
-    procedure(ACard: Integer)
-    begin
-      if Assigned(FOnStart) then
-      begin
-        FOnStart(ACard);
-      end;
-    end;
-  FView.OnMove :=
-    procedure(ACard, AColumn: Integer)
-    begin
-      if Assigned(FOnMove) then
-      begin
-        FOnMove(ACard, AColumn);
-      end;
-    end;
-  FView.OnContext :=
-    procedure(ACard: Integer; APoint: TPoint)
-    begin
-      FMenuCard := ACard;
-      FMenu.Popup(APoint.X, APoint.Y);
-    end;
-  FEmpty := TLabel.Create(Self);
-  FEmpty.Parent := FScroll;
-  FEmpty.AutoSize := False;
-  FEmpty.Alignment := taCenter;
-  FEmpty.WordWrap := True;
-  FEmpty.SetBounds(0, ScaleValue(40), ScaleValue(300), ScaleValue(60));
-  FEmpty.Visible := False;
-  FMenu := TPopupMenu.Create(Self);
-  AddMenu(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMenuStart), MenuStart).Default := True;
-  AddMenu(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMenuPreview), MenuPreview);
-  AddMenu(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMenuBrowse), MenuBrowse);
-  AddMenu(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMenuCopy), MenuCopy);
-  AddMenu(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMenuAssign), MenuAssign);
+  AddHead(Self);
+  AddBody(Self);
+  FParts.Menu := TPopupMenu.Create(Self);
+  AddMenu(Self, TAtlasTrackerTextId.BoardMenuStart, TBoardMenu.Start).Default := True;
+  AddMenu(Self, TAtlasTrackerTextId.BoardMenuPreview, TBoardMenu.Preview);
+  AddMenu(Self, TAtlasTrackerTextId.BoardMenuBrowse, TBoardMenu.Browse);
+  AddMenu(Self, TAtlasTrackerTextId.BoardMenuCopy, TBoardMenu.Copy);
+  AddMenu(Self, TAtlasTrackerTextId.BoardMenuAssign, TBoardMenu.Assign);
 end;
 
 destructor TAtlasBoardFrame.Destroy;
 begin
-  if Assigned(FOnHidden) then
+  if Assigned(FEvents.Hidden) then
   begin
-    FOnHidden();
+    FEvents.Hidden();
   end;
-  FOnHidden := nil;
+  FEvents := Default(TAtlasBoardFrameEvents);
   inherited;
-end;
-
-function TAtlasBoardFrame.AddMenu(const ACaption: string; AHandler: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AHandler;
-  FMenu.Items.Add(Result);
 end;
 
 procedure TAtlasBoardFrame.CMShowingChanged(var AMessage: TMessage);
 begin
   inherited;
   // Das X versteckt die Form samt Frame: wie Schließen.
-  if not Showing and Assigned(FOnHidden) then
+  if not Showing and Assigned(FEvents.Hidden) then
   begin
-    FOnHidden();
+    FEvents.Hidden();
   end;
 end;
 
 procedure TAtlasBoardFrame.ApplyColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
-  FView.Colors := AColors;
-  FScroll.Color := ToColor(AColors.Surface);
-  FScroll.ParentBackground := False;
-  FEmpty.Font.Color := ToColor(AColors.Muted);
-  FStatus.Font.Color := ToColor(AColors.Muted);
-  FView.Invalidate;
+  FParts.View.Colors := AColors;
+  FParts.Scroll.Color := ToColor(AColors.Surface);
+  FParts.Scroll.ParentBackground := False;
+  FParts.Empty.Font.Color := ToColor(AColors.Muted);
+  FParts.Status.Font.Color := ToColor(AColors.Muted);
+  FParts.View.Invalidate;
 end;
 
 function TAtlasBoardFrame.ColumnCaption(AColumn: Integer): string;
@@ -1049,7 +1120,7 @@ end;
 
 function TAtlasBoardFrame.VisibleCards: TArray<Integer>;
 begin
-  Result := TAtlasTrackerBoard.Visible(FSnapshot, FOnlyMine, FSearch.Text);
+  Result := TAtlasTrackerBoard.Visible(FSnapshot, FOnlyMine, FParts.Search.Text);
 end;
 
 function TAtlasBoardFrame.Card(AIndex: Integer): TAtlasBoardCard;
@@ -1061,15 +1132,16 @@ begin
   end;
 end;
 
-function TAtlasBoardFrame.ScrollWidth: Integer;
+/// <summary>Innenbreite der Scrollbox; ohne Fenster ihre Breite (ClientWidth bräuchte ein Handle).</summary>
+function ScrollWidth(AScroll: TScrollBox): Integer;
 begin
-  if FScroll.HandleAllocated then
+  if AScroll.HandleAllocated then
   begin
-    Result := FScroll.ClientWidth;
+    Result := AScroll.ClientWidth;
   end
   else
   begin
-    Result := FScroll.Width;
+    Result := AScroll.Width;
   end;
 end;
 
@@ -1078,85 +1150,107 @@ var
   mVisible: TArray<Integer>;
 begin
   mVisible := VisibleCards;
-  FView.SetData(FSnapshot, mVisible);
-  FView.Visible := FHasSnapshot;
-  FView.Relayout(ScrollWidth);
+  FParts.View.SetData(FSnapshot, mVisible);
+  FParts.View.Visible := FHasSnapshot;
+  FParts.View.Relayout(ScrollWidth(FParts.Scroll));
   if FHasSnapshot and (Length(mVisible) = 0) then
   begin
     if FOnlyMine and (Length(FSnapshot.Cards) > 0) then
     begin
-      FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmptyMine);
+      FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmptyMine);
     end
     else
     begin
-      FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmpty);
+      FParts.Empty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmpty);
     end;
-    FEmpty.Visible := True;
-    FEmpty.Top := FView.Height + ScaleValue(8);
+    FParts.Empty.Visible := True;
+    FParts.Empty.Top := FParts.View.Height + ScaleValue(8);
   end
   else if FHasSnapshot then
   begin
-    FEmpty.Visible := False;
+    FParts.Empty.Visible := False;
   end;
-  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
+  FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
 end;
 
-procedure TAtlasBoardFrame.FillChoices;
+/// <summary>Namen ANames in ABox; gewählt ist der Eintrag, dessen ID in AIds ASelected ist.</summary>
+procedure FillBox(ABox: TComboBox; const ANames, AIds: TArray<string>; const ASelected: string);
 var
   mIndex: Integer;
-  mText: string;
+begin
+  ABox.Items.BeginUpdate;
+  try
+    ABox.Items.Clear;
+    for mIndex := 0 to High(ANames) do
+    begin
+      ABox.Items.Add(ANames[mIndex]);
+      if SameText(AIds[mIndex], ASelected) then
+      begin
+        ABox.ItemIndex := mIndex;
+      end;
+    end;
+  finally
+    ABox.Items.EndUpdate;
+  end;
+end;
+
+/// <summary>Namen und IDs der Boards ABoards.</summary>
+procedure BoardLists(const ABoards: TArray<TAtlasBoardRef>; out ANames, AIds: TArray<string>);
+var
+  mBoard: TAtlasBoardRef;
+begin
+  ANames := nil;
+  AIds := nil;
+  for mBoard in ABoards do
+  begin
+    ANames := ANames + [mBoard.Name];
+    AIds := AIds + [mBoard.Id];
+  end;
+end;
+
+/// <summary>Namen und IDs der Sprints ASprints.</summary>
+procedure SprintLists(const ASprints: TArray<TAtlasBoardSprint>; out ANames, AIds: TArray<string>);
+var
+  mSprint: TAtlasBoardSprint;
+begin
+  ANames := nil;
+  AIds := nil;
+  for mSprint in ASprints do
+  begin
+    ANames := ANames + [mSprint.Name];
+    AIds := AIds + [mSprint.Id];
+  end;
+end;
+
+/// <summary>Klapplisten Board und Sprint aus dem Stand.</summary>
+procedure FillChoices(AFrame: TAtlasBoardFrame);
+var
+  mSprints: TComboBox;
+  mNames: TArray<string>;
 begin
   // Klapplisten brauchen ein Fenster; ohne Form bleibt die Auswahl leer (Tests).
-  if GetParentForm(Self) = nil then
+  if GetParentForm(AFrame) = nil then
   begin
     Exit;
   end;
-  FFilling := True;
+  AFrame.FFilling := True;
   try
-    FBoards.Items.BeginUpdate;
-    try
-      FBoards.Items.Clear;
-      FBoardIds := nil;
-      for mIndex := 0 to High(FSnapshot.Boards) do
-      begin
-        FBoards.Items.Add(FSnapshot.Boards[mIndex].Name);
-        FBoardIds := FBoardIds + [FSnapshot.Boards[mIndex].Id];
-        if SameText(FSnapshot.Boards[mIndex].Id, FSnapshot.Board.Id) then
-        begin
-          FBoards.ItemIndex := mIndex;
-        end;
-      end;
-    finally
-      FBoards.Items.EndUpdate;
-    end;
+    BoardLists(AFrame.FSnapshot.Boards, mNames, AFrame.FBoardIds);
+    FillBox(AFrame.FParts.Boards, mNames, AFrame.FBoardIds, AFrame.FSnapshot.Board.Id);
     // Eine Auswahl nur, wenn es mehrere Boards gibt.
-    FBoards.Visible := Length(FSnapshot.Boards) > 1;
-    FSprints.Items.BeginUpdate;
-    try
-      FSprints.Items.Clear;
-      FSprintIds := nil;
-      for mIndex := 0 to High(FSnapshot.Sprints) do
-      begin
-        mText := FSnapshot.Sprints[mIndex].Name;
-        FSprints.Items.Add(mText);
-        FSprintIds := FSprintIds + [FSnapshot.Sprints[mIndex].Id];
-        if SameText(FSnapshot.Sprints[mIndex].Id, FSnapshot.Sprint.Id) then
-        begin
-          FSprints.ItemIndex := mIndex;
-        end;
-      end;
-      if (FSprints.ItemIndex < 0) and (FSnapshot.Sprint.Name <> '') then
-      begin
-        FSprints.Items.Add(FSnapshot.Sprint.Name);
-        FSprintIds := FSprintIds + [FSnapshot.Sprint.Id];
-        FSprints.ItemIndex := FSprints.Items.Count - 1;
-      end;
-    finally
-      FSprints.Items.EndUpdate;
+    AFrame.FParts.Boards.Visible := Length(AFrame.FSnapshot.Boards) > 1;
+    mSprints := AFrame.FParts.Sprints;
+    SprintLists(AFrame.FSnapshot.Sprints, mNames, AFrame.FSprintIds);
+    FillBox(mSprints, mNames, AFrame.FSprintIds, AFrame.FSnapshot.Sprint.Id);
+    if (mSprints.ItemIndex < 0) and (AFrame.FSnapshot.Sprint.Name <> '') then
+    begin
+      mSprints.Items.Add(AFrame.FSnapshot.Sprint.Name);
+      AFrame.FSprintIds := AFrame.FSprintIds + [AFrame.FSnapshot.Sprint.Id];
+      mSprints.ItemIndex := mSprints.Items.Count - 1;
     end;
-    FSprints.Visible := FSprints.Items.Count > 0;
+    mSprints.Visible := mSprints.Items.Count > 0;
   finally
-    FFilling := False;
+    AFrame.FFilling := False;
   end;
 end;
 
@@ -1164,8 +1258,8 @@ procedure TAtlasBoardFrame.SetSnapshot(const ASnapshot: TAtlasBoardSnapshot; con
 begin
   FSnapshot := ASnapshot;
   FHasSnapshot := True;
-  FEmpty.Visible := False;
-  FillChoices;
+  FParts.Empty.Visible := False;
+  FillChoices(Self);
   SetStatus(AStatus);
   UpdateView;
 end;
@@ -1174,32 +1268,32 @@ procedure TAtlasBoardFrame.ShowNotice(const AText: string);
 begin
   FHasSnapshot := False;
   FSnapshot := TAtlasBoardSnapshot.Empty;
-  FView.SetData(FSnapshot, nil);
-  FView.Visible := False;
-  FEmpty.Caption := AText;
-  FEmpty.Top := ScaleValue(40);
-  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
-  FEmpty.Visible := AText <> '';
+  FParts.View.SetData(FSnapshot, nil);
+  FParts.View.Visible := False;
+  FParts.Empty.Caption := AText;
+  FParts.Empty.Top := ScaleValue(40);
+  FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
+  FParts.Empty.Visible := AText <> '';
 end;
 
 procedure TAtlasBoardFrame.SetStatus(const AText: string);
 begin
-  FStatus.Caption := AText;
-  FStatus.Visible := AText <> '';
+  FParts.Status.Caption := AText;
+  FParts.Status.Visible := AText <> '';
 end;
 
 function TAtlasBoardFrame.StatusText: string;
 begin
   Result := '';
-  if FStatus.Visible then
+  if FParts.Status.Visible then
   begin
-    Result := FStatus.Caption;
+    Result := FParts.Status.Caption;
   end;
 end;
 
 procedure TAtlasBoardFrame.SetLoading(AValue: Boolean);
 begin
-  FRefreshButton.Enabled := not AValue;
+  FParts.Refresh.Enabled := not AValue;
   if AValue then
   begin
     SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardLoading));
@@ -1236,76 +1330,76 @@ end;
 
 procedure TAtlasBoardFrame.SetActiveKey(const AKey: string);
 begin
-  FView.ActiveKey := AKey;
-  FView.Invalidate;
+  FParts.View.ActiveKey := AKey;
+  FParts.View.Invalidate;
 end;
 
 procedure TAtlasBoardFrame.SetCanDrag(AValue: Boolean);
 begin
-  FView.CanDrag := AValue;
+  FParts.View.CanDrag := AValue;
 end;
 
 procedure TAtlasBoardFrame.SetOnlyMine(AValue: Boolean);
 begin
   FOnlyMine := AValue;
-  FMine.Down := AValue;
-  FAll.Down := not AValue;
+  FParts.Mine.Down := AValue;
+  FParts.All.Down := not AValue;
   if FHasSnapshot then
   begin
     UpdateView;
   end;
 end;
 
-procedure TAtlasBoardFrame.BoardChange(Sender: TObject);
+/// <summary>Gewählte ID aus ABox; False beim Füllen oder ohne Auswahl.</summary>
+function ChosenId(AFrame: TAtlasBoardFrame; ABox: TComboBox; const AIds: TArray<string>; out AId: string): Boolean;
 begin
-  if FFilling or (FBoards.ItemIndex < 0) or (FBoards.ItemIndex > High(FBoardIds)) then
+  AId := '';
+  Result := not AFrame.FFilling and (ABox.ItemIndex >= 0) and (ABox.ItemIndex <= High(AIds));
+  if Result then
   begin
-    Exit;
-  end;
-  if Assigned(FOnBoard) then
-  begin
-    FOnBoard(FBoardIds[FBoards.ItemIndex]);
+    AId := AIds[ABox.ItemIndex];
   end;
 end;
 
-procedure TAtlasBoardFrame.SprintChange(Sender: TObject);
+procedure TAtlasBoardFrame.ChoiceChange(Sender: TObject);
+var
+  mId: string;
 begin
-  if FFilling or (FSprints.ItemIndex < 0) or (FSprints.ItemIndex > High(FSprintIds)) then
+  if Sender = FParts.Search then
   begin
-    Exit;
-  end;
-  if Assigned(FOnSprint) then
+    if FHasSnapshot then
+    begin
+      UpdateView;
+    end;
+  end
+  else if (Sender = FParts.Boards) and ChosenId(Self, FParts.Boards, FBoardIds, mId) and
+    Assigned(FEvents.Board) then
   begin
-    FOnSprint(FSprintIds[FSprints.ItemIndex]);
+    FEvents.Board(mId);
+  end
+  else if (Sender = FParts.Sprints) and ChosenId(Self, FParts.Sprints, FSprintIds, mId) and
+    Assigned(FEvents.Sprint) then
+  begin
+    FEvents.Sprint(mId);
   end;
 end;
 
-procedure TAtlasBoardFrame.MineClick(Sender: TObject);
+procedure TAtlasBoardFrame.ButtonClick(Sender: TObject);
 begin
-  if FMine.Down = FOnlyMine then
+  if Sender = FParts.Refresh then
   begin
-    Exit;
-  end;
-  SetOnlyMine(FMine.Down);
-  if Assigned(FOnOnlyMine) then
+    if Assigned(FEvents.Refresh) then
+    begin
+      FEvents.Refresh();
+    end;
+  end
+  else if FParts.Mine.Down <> FOnlyMine then
   begin
-    FOnOnlyMine(FOnlyMine);
-  end;
-end;
-
-procedure TAtlasBoardFrame.SearchChange(Sender: TObject);
-begin
-  if FHasSnapshot then
-  begin
-    UpdateView;
-  end;
-end;
-
-procedure TAtlasBoardFrame.RefreshClick(Sender: TObject);
-begin
-  if Assigned(FOnRefresh) then
-  begin
-    FOnRefresh();
+    SetOnlyMine(FParts.Mine.Down);
+    if Assigned(FEvents.OnlyMine) then
+    begin
+      FEvents.OnlyMine(FOnlyMine);
+    end;
   end;
 end;
 
@@ -1313,48 +1407,37 @@ procedure TAtlasBoardFrame.ScrollResize(Sender: TObject);
 begin
   if FHasSnapshot then
   begin
-    FView.Relayout(ScrollWidth);
+    FParts.View.Relayout(ScrollWidth(FParts.Scroll));
   end;
-  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
+  FParts.Empty.Width := Max(ScrollWidth(FParts.Scroll), ScaleValue(100));
 end;
 
-procedure TAtlasBoardFrame.MenuStart(Sender: TObject);
+procedure FireCard(const AEvent: TAtlasBoardCardEvent; ACard: Integer);
 begin
-  if Assigned(FOnStart) then
+  if Assigned(AEvent) then
   begin
-    FOnStart(FMenuCard);
-  end;
-end;
-
-procedure TAtlasBoardFrame.MenuPreview(Sender: TObject);
-begin
-  if Assigned(FOnOpen) then
-  begin
-    FOnOpen(FMenuCard);
+    AEvent(ACard);
   end;
 end;
 
-procedure TAtlasBoardFrame.MenuBrowse(Sender: TObject);
+procedure TAtlasBoardFrame.MenuClick(Sender: TObject);
 begin
-  if Assigned(FOnBrowse) then
-  begin
-    FOnBrowse(FMenuCard);
-  end;
-end;
-
-procedure TAtlasBoardFrame.MenuCopy(Sender: TObject);
-begin
-  if (FMenuCard >= 0) and (FMenuCard <= High(FSnapshot.Cards)) then
-  begin
-    Clipboard.AsText := FSnapshot.Cards[FMenuCard].Key;
-  end;
-end;
-
-procedure TAtlasBoardFrame.MenuAssign(Sender: TObject);
-begin
-  if Assigned(FOnAssign) then
-  begin
-    FOnAssign(FMenuCard);
+  case TBoardMenu(TMenuItem(Sender).Tag) of
+    TBoardMenu.Start:
+      FireCard(FEvents.Start, FMenuCard);
+    TBoardMenu.Preview:
+      FireCard(FEvents.Open, FMenuCard);
+    TBoardMenu.Browse:
+      FireCard(FEvents.Browse, FMenuCard);
+    TBoardMenu.Copy:
+      begin
+        if (FMenuCard >= 0) and (FMenuCard <= High(FSnapshot.Cards)) then
+        begin
+          Clipboard.AsText := FSnapshot.Cards[FMenuCard].Key;
+        end;
+      end;
+    TBoardMenu.Assign:
+      FireCard(FEvents.Assign, FMenuCard);
   end;
 end;
 

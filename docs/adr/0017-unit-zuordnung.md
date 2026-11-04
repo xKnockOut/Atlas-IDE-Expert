@@ -264,9 +264,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Matching` | `Core/Projects/Atlas.Core.Projects.Matching.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.PathCheck.Scan` | `Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
 | `Atlas.Core.Projects.Setup` | `Core/Projects/Atlas.Core.Projects.Setup.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.Summary.Json` | `Core/Projects/Atlas.Core.Projects.Summary.Json.pas` | Ordner `Core/Projects` |
+| `Atlas.Core.Projects.Summary.Sections` | `Core/Projects/Atlas.Core.Projects.Summary.Sections.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Todos` | `Core/Projects/Atlas.Core.Projects.Todos.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Trends` | `Core/Projects/Atlas.Core.Projects.Trends.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.UnitRename` | `Core/Projects/Atlas.Core.Projects.UnitRename.pas` | Ordner `Core/Projects` |
@@ -374,13 +377,25 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.Commands.KeyList` | `IDE/Commands/Atlas.IDE.Commands.KeyList.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.KeysEditing` | `IDE/Commands/Atlas.IDE.Commands.KeysEditing.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.KeysNavigation` | `IDE/Commands/Atlas.IDE.Commands.KeysNavigation.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Bindings` | `IDE/Commands/Atlas.IDE.Commands.Bindings.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.ContextMenu` | `IDE/Commands/Atlas.IDE.Commands.ContextMenu.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.EditorContext` | `IDE/Commands/Atlas.IDE.Commands.EditorContext.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.EditorSelection` | `IDE/Commands/Atlas.IDE.Commands.EditorSelection.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.EditorServer` | `IDE/Commands/Atlas.IDE.Commands.EditorServer.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.ClientCommands` | `IDE/Commands/Atlas.IDE.Commands.ClientCommands.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.EditorActions` | `IDE/Commands/Atlas.IDE.Commands.EditorActions.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.EditorMenu` | `IDE/Commands/Atlas.IDE.Commands.EditorMenu.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Editor` | `IDE/Commands/Atlas.IDE.Commands.Editor.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.KeyMap` | `IDE/Commands/Atlas.IDE.Commands.KeyMap.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.MainMenu` | `IDE/Commands/Atlas.IDE.Commands.MainMenu.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.MenuActions` | `IDE/Commands/Atlas.IDE.Commands.MenuActions.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.MenuModules` | `IDE/Commands/Atlas.IDE.Commands.MenuModules.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Palette` | `IDE/Commands/Atlas.IDE.Commands.Palette.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.QuickOpen` | `IDE/Commands/Atlas.IDE.Commands.QuickOpen.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.ShortcutKeys` | `IDE/Commands/Atlas.IDE.Commands.ShortcutKeys.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.ShortcutTips` | `IDE/Commands/Atlas.IDE.Commands.ShortcutTips.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Usage` | `IDE/Commands/Atlas.IDE.Commands.Usage.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Completion.Editor` | `IDE/Completion/Atlas.IDE.Completion.Editor.pas` | Ordner `IDE/Completion` |
@@ -455,6 +470,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.Unwrap` | `IDE/Editor/Atlas.IDE.Editor.Unwrap.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.WorkspaceEdit` | `IDE/Editor/Atlas.IDE.Editor.WorkspaceEdit.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.WrapSelection` | `IDE/Editor/Atlas.IDE.Editor.WrapSelection.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.EditorToolbar.FindMethod` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.FindMethod.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.EditorToolbar.Service` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.Service.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.EditInbox` | `IDE/Files/Atlas.IDE.Files.EditInbox.pas` | Ordner `IDE/Files` |

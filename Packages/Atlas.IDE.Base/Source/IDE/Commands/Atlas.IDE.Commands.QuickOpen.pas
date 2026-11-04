@@ -346,15 +346,140 @@ type
     Open: TArray<string>;
   end;
 
-function Query(AWindow: TWindowState; const APattern: string): TArray<TAtlasCommand>;
+/// <summary>Treffer unter den Dateien; solange die Liste entsteht und leer ist, ein Hinweis.</summary>
+function FileResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
 var
-  Parsed: TAtlasQuickOpenQuery;
   Files: TAtlasQuickOpenFiles;
+  Index: Integer;
+  Line: Integer;
+begin
+  Result := nil;
+  Files := State.List.Files;
+  if (Length(Files) = 0) and State.List.Building then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenBuilding), '', '')];
+    Exit;
+  end;
+  Line := -1;
+  if AParsed.Line > 0 then
+  begin
+    Line := AParsed.Line - 1;
+  end;
+  for Index in TAtlasQuickOpen.Order(Files, AParsed.Text, AWindow.Open, State.Recent) do
+  begin
+    Result := Result + [Target(Files[Index].FileName, Line, 0, Files[Index].Name,
+      ExtractFileDir(Files[Index].RelativePath), OriginText(Files[Index].Origin))];
+  end;
+end;
+
+/// <summary>Sprung zu einer Zeile der obersten Datei; ohne Editor oder Zeile ein Hinweis.</summary>
+function LineResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+begin
+  if AWindow.Top = '' then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+  end
+  else if AParsed.Line = 0 then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenLineHint), ExtractFileName(AWindow.Top), '')];
+  end
+  else
+  begin
+    Result := [Target(AWindow.Top, AParsed.Line - 1, 0,
+      TAtlasStrings.Fmt(TAtlasTextId.QuickOpenLine, [AParsed.Line]), ExtractFileName(AWindow.Top), '')];
+  end;
+end;
+
+/// <summary>Symbole der obersten Datei, beim ersten Mal vom Server gelesen und dann im Fenster gemerkt.</summary>
+procedure ReadFileSymbols(AWindow: TWindowState);
+var
+  Current: TLspSession;
+begin
+  if AWindow.FileSymbolsRead then
+  begin
+    Exit;
+  end;
+  AWindow.FileSymbolsRead := True;
+  Current := TAtlasIdeQuickOpen.Session;
+  if Current = nil then
+  begin
+    Exit;
+  end;
+  try
+    AWindow.FileSymbols := Current.DocumentSymbols(AWindow.Top, SymbolTimeoutMs);
+  except
+    on ELspClientError do
+      AWindow.FileSymbols := nil;
+  end;
+end;
+
+/// <summary>Treffer unter den Symbolen der obersten Datei; ohne Editor ein Hinweis.</summary>
+function FileSymbolResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+var
   Symbols: TArray<TAtlasSymbol>;
   Names: TArray<string>;
   Index: Integer;
+begin
+  Result := nil;
+  if AWindow.Top = '' then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+    Exit;
+  end;
+  ReadFileSymbols(AWindow);
+  Symbols := AWindow.FileSymbols;
+  SetLength(Names, Length(Symbols));
+  for Index := 0 to High(Symbols) do
+  begin
+    Names[Index] := Symbols[Index].Name;
+  end;
+  for Index in TAtlasQuickOpen.OrderSymbols(Names, AParsed.Text) do
+  begin
+    Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line,
+      Symbols[Index].Character, Symbols[Index].Name, Symbols[Index].Container,
+      TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
+  end;
+end;
+
+/// <summary>Zweite Zeile eines Projektsymbols: Container und Datei, ohne Container nur die Datei.</summary>
+function SymbolPlace(const ASymbol: TAtlasSymbol): string;
+begin
+  Result := ExtractFileName(ASymbol.FileName);
+  if ASymbol.Container <> '' then
+  begin
+    Result := ASymbol.Container + ' · ' + Result;
+  end;
+end;
+
+/// <summary>Symbole des ganzen Projekts vom Server; leer ohne Sitzung oder Suchtext.</summary>
+function ProjectSymbolResults(const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+var
   Current: TLspSession;
-  Line: Integer;
+  Symbols: TArray<TAtlasSymbol>;
+  Index: Integer;
+begin
+  Result := nil;
+  Current := TAtlasIdeQuickOpen.Session;
+  if (Current = nil) or (AParsed.Text = '') then
+  begin
+    Exit;
+  end;
+  try
+    Symbols := Current.WorkspaceSymbols(AParsed.Text, SymbolTimeoutMs);
+  except
+    on ELspClientError do
+      Symbols := nil;
+  end;
+  for Index := 0 to Min(High(Symbols), TAtlasQuickOpen.MaxResults - 1) do
+  begin
+    Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line, Symbols[Index].Character,
+      Symbols[Index].Name, SymbolPlace(Symbols[Index]), TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
+  end;
+end;
+
+function Query(AWindow: TWindowState; const APattern: string): TArray<TAtlasCommand>;
+var
+  Parsed: TAtlasQuickOpenQuery;
 begin
   Result := nil;
   Parsed := TAtlasQuickOpenQuery.Parse(APattern);
@@ -369,101 +494,13 @@ begin
   end;
   case Parsed.Mode of
     TAtlasQuickOpenMode.Files:
-      begin
-        Files := State.List.Files;
-        if (Length(Files) = 0) and State.List.Building then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenBuilding), '', '')];
-          Exit;
-        end;
-        Line := -1;
-        if Parsed.Line > 0 then
-        begin
-          Line := Parsed.Line - 1;
-        end;
-        for Index in TAtlasQuickOpen.Order(Files, Parsed.Text, AWindow.Open, State.Recent) do
-        begin
-          Result := Result + [Target(Files[Index].FileName, Line, 0, Files[Index].Name,
-            ExtractFileDir(Files[Index].RelativePath), OriginText(Files[Index].Origin))];
-        end;
-      end;
+      Result := FileResults(AWindow, Parsed);
     TAtlasQuickOpenMode.Line:
-      begin
-        if AWindow.Top = '' then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
-          Exit;
-        end;
-        if Parsed.Line = 0 then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenLineHint), ExtractFileName(AWindow.Top), '')];
-          Exit;
-        end;
-        Result := [Target(AWindow.Top, Parsed.Line - 1, 0,
-          TAtlasStrings.Fmt(TAtlasTextId.QuickOpenLine, [Parsed.Line]), ExtractFileName(AWindow.Top), '')];
-      end;
+      Result := LineResults(AWindow, Parsed);
     TAtlasQuickOpenMode.FileSymbols:
-      begin
-        if AWindow.Top = '' then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
-          Exit;
-        end;
-        if not AWindow.FileSymbolsRead then
-        begin
-          AWindow.FileSymbolsRead := True;
-          Current := TAtlasIdeQuickOpen.Session;
-          if Current <> nil then
-            try
-              AWindow.FileSymbols := Current.DocumentSymbols(AWindow.Top, SymbolTimeoutMs);
-            except
-              on ELspClientError do
-                AWindow.FileSymbols := nil;
-            end;
-        end;
-        Symbols := AWindow.FileSymbols;
-        SetLength(Names, Length(Symbols));
-        for Index := 0 to High(Symbols) do
-        begin
-          Names[Index] := Symbols[Index].Name;
-        end;
-        for Index in TAtlasQuickOpen.OrderSymbols(Names, Parsed.Text) do
-        begin
-          Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line,
-            Symbols[Index].Character, Symbols[Index].Name, Symbols[Index].Container,
-            TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
-        end;
-      end;
+      Result := FileSymbolResults(AWindow, Parsed);
     TAtlasQuickOpenMode.ProjectSymbols:
-      begin
-        Current := TAtlasIdeQuickOpen.Session;
-        if (Current = nil) or (Parsed.Text = '') then
-        begin
-          Exit;
-        end;
-        try
-          Symbols := Current.WorkspaceSymbols(Parsed.Text, SymbolTimeoutMs);
-        except
-          on ELspClientError do
-            Symbols := nil;
-        end;
-        for Index := 0 to Min(High(Symbols), TAtlasQuickOpen.MaxResults - 1) do
-        begin
-          Line := Symbols[Index].Line;
-          if Symbols[Index].Container <> '' then
-          begin
-            Result := Result + [Target(Symbols[Index].FileName, Line, Symbols[Index].Character,
-              Symbols[Index].Name, Symbols[Index].Container + ' · ' + ExtractFileName(Symbols[Index].FileName),
-              TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
-          end
-          else
-          begin
-            Result := Result + [Target(Symbols[Index].FileName, Line, Symbols[Index].Character,
-              Symbols[Index].Name, ExtractFileName(Symbols[Index].FileName),
-              TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
-          end;
-        end;
-      end;
+      Result := ProjectSymbolResults(Parsed);
   end;
 end;
 

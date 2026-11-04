@@ -61,6 +61,7 @@ type
     FBarRows: Integer;
     procedure SetSource(const AValue: IAtlasStateSource);
     procedure BoxPaint(Sender: TObject);
+    procedure PaintRow(ACanvas: TCanvas; AIndex, ARight: Integer; ATextColor, AMutedColor: TColor);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure ButtonClick(Sender: TObject);
@@ -324,57 +325,62 @@ end;
 
 procedure TAtlasWelcomeStateFrame.BoxPaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Index, mLeft, mTop, Dot, TextTop, DetailWidth, Right: Integer;
-  Row: TAtlasStateRow;
-  mText, Detail: string;
-  TextColor, MutedColor: TColor;
-  TextRect: TRect;
+  mCanvas: TCanvas;
+  mIndex: Integer;
+  mTextColor, mMutedColor: TColor;
 begin
-  Canvas := FBox.Canvas;
-  Canvas.Font.Assign(Font);
+  mCanvas := FBox.Canvas;
+  mCanvas.Font.Assign(Font);
   // Farben des IDE-Themas (hell oder dunkel).
-  TextColor := StyleServices(Self).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  Dot := ScaleValue(DotSize);
-  Right := FBox.Width - ScaleValue(Indent);
-  for Index := 0 to High(FRows) do
+  mTextColor := StyleServices(Self).GetSystemColor(clWindowText);
+  mMutedColor := StyleServices(Self).GetSystemColor(clGrayText);
+  for mIndex := 0 to High(FRows) do
   begin
-    Row := FRows[Index];
-    mTop := RowTop(Index);
-    mLeft := ScaleValue(Indent);
-    TextTop := mTop + (ScaleValue(RowHeight) - Canvas.TextHeight('Wg')) div 2;
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := DotColor(Row.State);
-    Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - Dot) div 2, mLeft + Dot,
-      mTop + (ScaleValue(RowHeight) - Dot) div 2 + Dot);
-    Canvas.Brush.Style := bsClear;
-    Inc(mLeft, Dot + ScaleValue(6));
-    // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
-    Detail := DetailText(Row);
-    DetailWidth := 0;
-    if Detail <> '' then
-    begin
-      Canvas.Font.Color := MutedColor;
-      DetailWidth := Canvas.TextWidth(Detail);
-      Canvas.TextOut(Right - DetailWidth, TextTop, Detail);
-      Inc(DetailWidth, ScaleValue(8));
-    end;
-    Canvas.Font.Color := TextColor;
-    if Row.HasAction then
-    begin
-      Canvas.Font.Style := [fsUnderline];
-    end
-    else
-    begin
-      Canvas.Font.Style := [];
-    end;
-    mText := RowText(Row);
-    TextRect := Rect(mLeft, TextTop, Max(mLeft, Right - DetailWidth), TextTop + Canvas.TextHeight('Wg'));
-    Canvas.TextRect(TextRect, mText, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
-    Canvas.Font.Style := [];
+    PaintRow(mCanvas, mIndex, FBox.Width - ScaleValue(Indent), mTextColor, mMutedColor);
   end;
+end;
+
+procedure TAtlasWelcomeStateFrame.PaintRow(ACanvas: TCanvas; AIndex, ARight: Integer; ATextColor, AMutedColor: TColor);
+var
+  mLeft, mTop, mDot, mTextTop, mDetailWidth: Integer;
+  mRow: TAtlasStateRow;
+  mDetail: string;
+  mTextRect: TRect;
+begin
+  mRow := FRows[AIndex];
+  mDot := ScaleValue(DotSize);
+  mTop := RowTop(AIndex);
+  mLeft := ScaleValue(Indent);
+  mTextTop := mTop + (ScaleValue(RowHeight) - ACanvas.TextHeight('Wg')) div 2;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := DotColor(mRow.State);
+  ACanvas.Pen.Color := ACanvas.Brush.Color;
+  ACanvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - mDot) div 2, mLeft + mDot,
+    mTop + (ScaleValue(RowHeight) - mDot) div 2 + mDot);
+  ACanvas.Brush.Style := bsClear;
+  Inc(mLeft, mDot + ScaleValue(6));
+  // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
+  mDetail := DetailText(mRow);
+  mDetailWidth := 0;
+  if mDetail <> '' then
+  begin
+    ACanvas.Font.Color := AMutedColor;
+    mDetailWidth := ACanvas.TextWidth(mDetail);
+    ACanvas.TextOut(ARight - mDetailWidth, mTextTop, mDetail);
+    Inc(mDetailWidth, ScaleValue(8));
+  end;
+  ACanvas.Font.Color := ATextColor;
+  if mRow.HasAction then
+  begin
+    ACanvas.Font.Style := [fsUnderline];
+  end
+  else
+  begin
+    ACanvas.Font.Style := [];
+  end;
+  mTextRect := Rect(mLeft, mTextTop, Max(mLeft, ARight - mDetailWidth), mTextTop + ACanvas.TextHeight('Wg'));
+  ACanvas.TextRect(mTextRect, RowText(mRow), [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
+  ACanvas.Font.Style := [];
 end;
 
 function TAtlasWelcomeStateFrame.HitTest(Y: Integer): Integer;

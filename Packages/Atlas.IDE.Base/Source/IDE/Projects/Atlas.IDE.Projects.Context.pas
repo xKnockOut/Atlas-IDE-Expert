@@ -220,6 +220,40 @@ begin
   end;
 end;
 
+/// <summary>Umgebungsvariablen der IDE-Optionen unter ABaseKey in AMacros; nichts ohne Schlüssel.</summary>
+procedure AddIdeEnvironment(var AMacros: TAtlasPathMacros; const ABaseKey: string);
+var
+  Registry: TRegistry;
+  Names: TStringList;
+  Name: string;
+begin
+  if ABaseKey = '' then
+  begin
+    Exit;
+  end;
+  Registry := TRegistry.Create(KEY_READ);
+  Names := TStringList.Create;
+  try
+    Registry.RootKey := HKEY_CURRENT_USER;
+    if Registry.OpenKeyReadOnly(ABaseKey + '\Environment Variables') then
+    begin
+      Registry.GetValueNames(Names);
+      for Name in Names do
+      begin
+        try
+          AMacros.Add(Name, Registry.ReadString(Name));
+        except
+          on Exception do
+            ; // Kein Text (etwa REG_DWORD): übergehen.
+        end;
+      end;
+    end;
+  finally
+    Names.Free;
+    Registry.Free;
+  end;
+end;
+
 procedure ReadNaming(var AContext: TAtlasProjectContext);
 var
   Team: TAtlasTeamSettings;
@@ -271,9 +305,7 @@ end;
 
 class function TAtlasIdeProjectContext.Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros;
 var
-  Registry: TRegistry;
-  Names: TStringList;
-  Name, BaseKey, Studio: string;
+  Studio: string;
   Services: IOTAServices;
 begin
   Result := TAtlasPathMacros.Create(
@@ -281,30 +313,8 @@ begin
     begin
       Result := GetEnvironmentVariable(AName);
     end);
-  BaseKey := BaseRegistryKey;
   // Umgebungsvariablen aus den IDE-Optionen (Tools › Optionen › Umgebungsvariablen) gehen allem vor.
-  if BaseKey <> '' then
-  begin
-    Registry := TRegistry.Create(KEY_READ);
-    Names := TStringList.Create;
-    try
-      Registry.RootKey := HKEY_CURRENT_USER;
-      if Registry.OpenKeyReadOnly(BaseKey + '\Environment Variables') then
-      begin
-        Registry.GetValueNames(Names);
-        for Name in Names do
-          try
-            Result.Add(Name, Registry.ReadString(Name));
-          except
-            on Exception do
-              ; // Kein Text (etwa REG_DWORD): übergehen.
-          end;
-      end;
-    finally
-      Names.Free;
-      Registry.Free;
-    end;
-  end;
+  AddIdeEnvironment(Result, BaseRegistryKey);
   // Ordner der laufenden IDE.
   if Supports(BorlandIDEServices, IOTAServices, Services) then
   begin

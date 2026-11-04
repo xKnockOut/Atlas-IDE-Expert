@@ -332,6 +332,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TextChanges.pas"/>
@@ -430,6 +431,10 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.General.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlPatterns.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tokens.pas"/>

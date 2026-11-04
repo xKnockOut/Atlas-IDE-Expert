@@ -81,6 +81,9 @@ type
     /// <summary>#763: letzter Abruf vom Build-Server samt Testbericht; unbekannte Felder bleiben.</summary>
     [Test]
     procedure CiRoundTripAndMatches;
+    /// <summary>Feldleser und Abschnitte ohne Datei: fehlende Abschnitte bleiben unbekannt.</summary>
+    [Test]
+    procedure FieldHelpersAndSectionsWithoutObject;
   end;
 
 implementation
@@ -93,7 +96,9 @@ uses
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Core.Projects.Summary.Sections;
 
 const
   Project = 'C:\Projekte\Demo.dproj';
@@ -925,6 +930,19 @@ begin
   Assert.IsTrue(Summary.Hidden);
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
+end;
+
+procedure TAtlasProjectSummaryTests.FieldHelpersAndSectionsWithoutObject;
+begin
+  Assert.AreEqual('', TextOf(nil, 'project'));
+  Assert.AreEqual(7, NumberOf(nil, 'errors', 7));
+  Assert.IsFalse(FlagOf(nil, 'hidden'));
+  Assert.AreEqual('2026-10-15T09:30:05Z', SummaryTimeText(SummaryTimeOf('2026-10-15 09:30:05')));
+  Assert.IsTrue(SummaryTimeOf('2026-10-15X09:30:05Z') = 0, 'Trenner');
+  Assert.IsFalse(TAtlasSummarySections.SetupOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.TestsOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.ReleaseOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.CiOf(nil).Known);
 end;
 
 initialization

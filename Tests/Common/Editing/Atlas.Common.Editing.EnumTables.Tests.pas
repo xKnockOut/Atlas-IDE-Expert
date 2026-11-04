@@ -81,8 +81,8 @@ var
 begin
   Tree := TPascalParser.Parse(ASource);
   try
-    Assert.IsTrue(TEnumTables.CreateTable(ASource, Tree, TTextPosition.Create(3, 4), AName, APlacement, AResource,
-      Edits, Reason), Reason);
+    Assert.IsTrue(TEnumTables.CreateTable(ASource, Tree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create(AName, APlacement, AResource), Edits, Reason), Reason);
     Result := TChangeSignature.ApplyEdits(ASource, Edits);
   finally
     Tree.Free;
@@ -174,19 +174,19 @@ var
 begin
   Tree := TPascalParser.Parse(Fixed);
   try
-    Assert.IsFalse(TEnumTables.CreateTable(Fixed, Tree, TTextPosition.Create(3, 4), 'CNames',
-      TEnumTablePlacement.AfterType, False, Edits, Reason));
+    Assert.IsFalse(TEnumTables.CreateTable(Fixed, Tree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('CNames', TEnumTablePlacement.AfterType, False), Edits, Reason));
     Assert.IsTrue(Pos('festen Werten', Reason) > 0, Reason);
   finally
     Tree.Free;
   end;
   Tree := TPascalParser.Parse(Unit_);
   try
-    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4), 'TOther',
-      TEnumTablePlacement.AfterType, False, Edits, Reason));
+    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('TOther', TEnumTablePlacement.AfterType, False), Edits, Reason));
     Assert.IsTrue(Pos('schon vergeben', Reason) > 0, Reason);
-    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4), 'begin',
-      TEnumTablePlacement.AfterType, False, Edits, Reason));
+    Assert.IsFalse(TEnumTables.CreateTable(Unit_, Tree, TTextPosition.Create(3, 4),
+      TEnumTableRequest.Create('begin', TEnumTablePlacement.AfterType, False), Edits, Reason));
   finally
     Tree.Free;
   end;

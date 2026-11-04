@@ -104,52 +104,52 @@ begin
     // Abnahme: SVN-Projekt mit 2 geänderten Dateien.
     Row := UnsavedRow('Svn', TAtlasUnsavedKind.Changes, 2, IncHour(NowUtc, -3));
     Row.Item.Modified := 2;
-    Assert.AreEqual('2 Dateien geändert', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
-    Assert.AreEqual('2 Dateien geändert · seit 3 Std.', TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
-    Assert.AreEqual('Ansehen', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
-    Assert.AreEqual('Svn · main', TAtlasWelcomeUnsavedFrame.TitleText(Row));
+    Assert.AreEqual('2 Dateien geändert', TAtlasUnsavedTexts.WhatText(Row.Item));
+    Assert.AreEqual('2 Dateien geändert · seit 3 Std.', TAtlasUnsavedTexts.DetailText(Row, NowUtc));
+    Assert.AreEqual('Ansehen', TAtlasUnsavedTexts.ButtonText(Row.Item));
+    Assert.AreEqual('Svn · main', TAtlasUnsavedTexts.TitleText(Row));
     // #1292: Anteile je Arbeitskopie hinter der Summe.
     Row.Item.Places := [TAtlasUnsavedPlace.Create('', 1), TAtlasUnsavedPlace.Create('Packages/Drucken', 1)];
     Assert.AreEqual('2 Dateien geändert (Svn 1 · Packages\Drucken 1) · seit 3 Std.',
-      TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
+      TAtlasUnsavedTexts.DetailText(Row, NowUtc));
     Row.Item.Places := nil;
     Row.Item.Count := 1;
     Row.Item.Modified := 1;
-    Assert.AreEqual('1 Datei geändert', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
+    Assert.AreEqual('1 Datei geändert', TAtlasUnsavedTexts.WhatText(Row.Item));
     // Gemischt: geändert, neu, gelöscht.
     Row.Item.Count := 4;
     Row.Item.Modified := 2;
     Row.Item.Added := 1;
     Row.Item.Deleted := 1;
-    Assert.AreEqual('4 Dateien: 2 geändert, 1 neu, 1 gelöscht', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
+    Assert.AreEqual('4 Dateien: 2 geändert, 1 neu, 1 gelöscht', TAtlasUnsavedTexts.WhatText(Row.Item));
     Row := UnsavedRow('Git', TAtlasUnsavedKind.Commits, 3, IncDay(NowUtc, -2));
     Row.Item.Branches := ['main'];
     Assert.AreEqual('3 Commits nicht gepusht (main) · seit 2 Tagen',
-      TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
-    Assert.AreEqual('Push …', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
+      TAtlasUnsavedTexts.DetailText(Row, NowUtc));
+    Assert.AreEqual('Push …', TAtlasUnsavedTexts.ButtonText(Row.Item));
     Row := UnsavedRow('Git', TAtlasUnsavedKind.NoUpstream, 1, 0);
     Row.Item.Branches := ['feature/x'];
     Row.Item.Commits := 2;
     Assert.AreEqual('Branch feature/x ohne Upstream, 2 Commits nur lokal',
-      TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc), 'ohne Alter keine Zeitangabe');
-    Assert.AreEqual('Push …', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
+      TAtlasUnsavedTexts.DetailText(Row, NowUtc), 'ohne Alter keine Zeitangabe');
+    Assert.AreEqual('Push …', TAtlasUnsavedTexts.ButtonText(Row.Item));
     Row := UnsavedRow('Git', TAtlasUnsavedKind.Conflicts, 2, 0);
-    Assert.AreEqual('2 Dateien im Konflikt', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
-    Assert.AreEqual('Ansehen', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
+    Assert.AreEqual('2 Dateien im Konflikt', TAtlasUnsavedTexts.WhatText(Row.Item));
+    Assert.AreEqual('Ansehen', TAtlasUnsavedTexts.ButtonText(Row.Item));
     Row := UnsavedRow('Git', TAtlasUnsavedKind.Stashes, 1, IncMinute(NowUtc, -20));
     Row.Item.Name := 'Versuch';
-    Assert.StartsWith('Stash „Versuch“ vom ', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
-    Assert.EndsWith(' · seit 20 Min.', TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
-    Assert.AreEqual('Ansehen', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
-    Assert.AreEqual('seit 1 Tag', TAtlasWelcomeUnsavedFrame.AgeText(IncHour(NowUtc, -30), NowUtc));
-    Assert.AreEqual('', TAtlasWelcomeUnsavedFrame.AgeText(0, NowUtc));
-    Assert.IsTrue(TAtlasWelcomeUnsavedFrame.LevelColor(TAtlasUnsavedLevel.Fresh) <>
-      TAtlasWelcomeUnsavedFrame.LevelColor(TAtlasUnsavedLevel.Alert), 'rot ist nicht grün');
-    Assert.IsTrue(TAtlasWelcomeUnsavedFrame.LevelColor(TAtlasUnsavedLevel.Warning) <>
-      TAtlasWelcomeUnsavedFrame.LevelColor(TAtlasUnsavedLevel.Alert), 'gelb ist nicht rot');
-    Assert.Contains(TAtlasWelcomeUnsavedFrame.HintFor(Row), 'C:\P\Git.dproj');
+    Assert.StartsWith('Stash „Versuch“ vom ', TAtlasUnsavedTexts.WhatText(Row.Item));
+    Assert.EndsWith(' · seit 20 Min.', TAtlasUnsavedTexts.DetailText(Row, NowUtc));
+    Assert.AreEqual('Ansehen', TAtlasUnsavedTexts.ButtonText(Row.Item));
+    Assert.AreEqual('seit 1 Tag', TAtlasUnsavedTexts.AgeText(IncHour(NowUtc, -30), NowUtc));
+    Assert.AreEqual('', TAtlasUnsavedTexts.AgeText(0, NowUtc));
+    Assert.IsTrue(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Fresh) <>
+      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert), 'rot ist nicht grün');
+    Assert.IsTrue(TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Warning) <>
+      TAtlasUnsavedTexts.LevelColor(TAtlasUnsavedLevel.Alert), 'gelb ist nicht rot');
+    Assert.Contains(TAtlasUnsavedTexts.HintFor(Row), 'C:\P\Git.dproj');
     TAtlasStrings.Language := TAtlasLanguage.English;
-    Assert.AreEqual('View', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
+    Assert.AreEqual('View', TAtlasUnsavedTexts.ButtonText(Row.Item));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -164,12 +164,12 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     View := Default(TAtlasUnsavedView);
     View.Known := True;
-    Assert.AreEqual('Alles gesichert', TAtlasWelcomeUnsavedFrame.EmptyText(View));
+    Assert.AreEqual('Alles gesichert', TAtlasUnsavedTexts.EmptyText(View));
     View.Known := False;
     View.Querying := True;
-    Assert.AreEqual('Versionsverwaltung wird abgefragt …', TAtlasWelcomeUnsavedFrame.EmptyText(View));
+    Assert.AreEqual('Versionsverwaltung wird abgefragt …', TAtlasUnsavedTexts.EmptyText(View));
     View.Hidden := 2;
-    Assert.StartsWith('Nichts zu zeigen (2 ', TAtlasWelcomeUnsavedFrame.EmptyText(View));
+    Assert.StartsWith('Nichts zu zeigen (2 ', TAtlasUnsavedTexts.EmptyText(View));
   finally
     TAtlasStrings.Language := Saved;
   end;
