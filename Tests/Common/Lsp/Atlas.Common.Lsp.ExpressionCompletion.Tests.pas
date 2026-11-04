@@ -32,6 +32,9 @@ type
     /// <summary>Beschriftungen der Einträge, durch Komma getrennt und mit Komma eingefasst.</summary>
     class function Labels(AAnswer: TJSONObject): string; static;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -81,6 +84,16 @@ const
     'end.';
 
 { TLspExpressionCompletionTests }
+
+procedure TLspExpressionCompletionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersLocalsAndParameters;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspExpressionCompletionTests.Setup;
 begin

@@ -24,6 +24,9 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -93,6 +96,16 @@ begin
     AControl := AControl.Parent;
   end;
   Result := TTabSheet(AControl);
+end;
+
+procedure TWelcomeSettingsSectionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    SettingsRoundTrip;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TWelcomeSettingsSectionTests.Setup;
