@@ -261,8 +261,8 @@ end;
 
 function TSafeDeletePlan.References(const APosition: TTextPosition): TArray<TReferenceLocation>;
 begin
-  Result := TLspReferences.Find(FResolver, FContext.Index, FTree, FFileName, APosition, False, FContext.Files,
-    FContext.ReadText);
+  Result := TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName, APosition,
+    False, FContext.Files, FContext.ReadText));
 end;
 
 function TSafeDeletePlan.IsOwn(const AFileName: string; const APosition: TTextPosition): Boolean;

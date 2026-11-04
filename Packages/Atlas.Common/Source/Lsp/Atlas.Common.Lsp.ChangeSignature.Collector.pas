@@ -1039,8 +1039,9 @@ begin
         Continue;
       end;
       mUnit := Source(mMember.FileName);
-      for mLocation in TLspReferences.Find(FSource.Resolver, FSource.Index, mUnit.Tree, mMember.FileName,
-        mUnit.Tokens[mMember.Decl.NameToken].StartPos, True, FSource.Files, FSource.ReadText, FSource.Cancellation) do
+      for mLocation in TLspReferences.Find(FSource.Resolver, FSource.Index, mUnit.Tree,
+        TReferenceSearch.Create(mMember.FileName, mUnit.Tokens[mMember.Decl.NameToken].StartPos, True, FSource.Files,
+        FSource.ReadText), FSource.Cancellation) do
       begin
         if not mSeen.ContainsKey(UseKey(mLocation)) and not IsHeaderName(mLocation.FileName,
           mLocation.Range.StartPos) then

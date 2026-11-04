@@ -30,7 +30,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
-  Atlas.IDE.Tracker.IssuePreview;
+  Atlas.IDE.Tracker.IssueContext;
 
 type
   TAtlasIssueAttachHooks = record

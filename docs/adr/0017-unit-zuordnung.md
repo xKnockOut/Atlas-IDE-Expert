@@ -737,6 +737,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.CommentAssist` | `IDE/Tracker/Atlas.IDE.Tracker.CommentAssist.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Composition` | `IDE/Tracker/Atlas.IDE.Tracker.Composition.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Development` | `IDE/Tracker/Atlas.IDE.Tracker.Development.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssueContext.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueLookups` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLookups.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueChecklists` | `IDE/Tracker/Atlas.IDE.Tracker.IssueChecklists.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueLinkWrites` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLinkWrites.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueMedia` | `IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueComments` | `IDE/Tracker/Atlas.IDE.Tracker.IssueComments.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
@@ -768,6 +774,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.DocBox` | `UI/Tracker/Atlas.UI.Tracker.DocBox.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.EndDialog` | `UI/Tracker/Atlas.UI.Tracker.EndDialog.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.ImageMarkup` | `UI/Tracker/Atlas.UI.Tracker.ImageMarkup.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.IssueBoxes` | `UI/Tracker/Atlas.UI.Tracker.IssueBoxes.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
@@ -920,6 +927,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Query.Service` | `IDE/Query/Atlas.IDE.Query.Service.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Query.Window` | `IDE/Query/Atlas.IDE.Query.Window.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Search.Commands` | `IDE/Search/Atlas.IDE.Search.Commands.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.AcrossFiles` | `IDE/Search/Atlas.IDE.Search.AcrossFiles.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Counter` | `IDE/Search/Atlas.IDE.Search.Counter.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Editor` | `IDE/Search/Atlas.IDE.Search.Editor.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.HistoryFile` | `IDE/Search/Atlas.IDE.Search.HistoryFile.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Painter` | `IDE/Search/Atlas.IDE.Search.Painter.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Replacing` | `IDE/Search/Atlas.IDE.Search.Replacing.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Session` | `IDE/Search/Atlas.IDE.Search.Session.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Stepping` | `IDE/Search/Atlas.IDE.Search.Stepping.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.Composition` | `IDE/Search/Atlas.IDE.Search.Composition.pas` | Anmeldung des Moduls `atlas.search`, #1455 |
 | `Atlas.IDE.Search.FileSearch` | `IDE/Search/Atlas.IDE.Search.FileSearch.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.MessageList` | `IDE/Search/Atlas.IDE.Search.MessageList.pas` | Ordner `IDE/Search` |

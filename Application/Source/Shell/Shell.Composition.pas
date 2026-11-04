@@ -119,16 +119,10 @@ type
     FDeriveWorkspaces: Boolean;
     /// <summary>Teil von Create (S-02): Teilwurzel Protokoll mit Verteiler, Watchdog und Lebenszyklus.</summary>
     procedure WireProtocol;
-    /// <summary>Fähigkeiten für initialize; Pull-Diagnosen nur für Clients, die sie können.</summary>
-    function LifecycleCapabilities: TJSONObject;
     /// <summary>Schickt eine Benachrichtigung an den Client.</summary>
     procedure NotifyClient(const AMethod: string; AParams: TJSONObject);
-    /// <summary>Schreibt AText ins Debug-Protokoll.</summary>
-    procedure LogDebug(const AText: string);
     /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
     procedure WireDocuments;
-    /// <summary>Anonyme Bezeichnung einer Unit im Diagnoselog (#1094); 'unit', solange es fehlt.</summary>
-    function DiagnosticsFileLabel(const AFileName: string): string;
     /// <summary>Zeitlimit einer Anfrage aus den Einstellungen; vor der Sitzung die Vorgabe.</summary>
     function CurrentRequestTimeout: Cardinal;
     /// <summary>Teil von WireDocuments (#1355): Absturzfälle und Sicherheitsnetz mit Dokumenten, Einstellungen
@@ -156,16 +150,12 @@ type
     procedure WireCode;
     /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
     procedure WireAnalysis;
-    /// <summary>Offene Dokumente bald neu prüfen.</summary>
-    procedure RefreshDiagnosticsLater;
     /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
     procedure WireCommands;
     /// <summary>Teil von WireCommands: Status-Dienste, die nur die Komposition kennt.</summary>
     procedure CommandStatus(var AServices: TShellStatusServices);
     /// <summary>Teil von WireCommands: Server-Befehle, die nur die Komposition kennt.</summary>
     procedure CommandServer(var AServices: TShellServerCommandServices);
-    /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter FCore.Workspaces.Lock auf.</summary>
-    procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
     /// <summary>Nach initialized: Client, Einstellungen, Beobachtung und erste Arbeitsbereiche.</summary>
@@ -179,15 +169,8 @@ type
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
-    /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
-    /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
-    function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
-    /// <summary>Teil von FreeFeatures: Analyse, Übersichten und Baselines.</summary>
-    procedure FreeAnalysisFeatures;
-    /// <summary>Teil von FreeFeatures: Vervollständigung, Code-Aktionen, Befehle, IDE und Protokoll.</summary>
-    procedure FreeCodeFeatures;
   public const
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
@@ -217,9 +200,6 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.Uris,
   Shell.Bootstrap,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Lsp.StatusFile,
@@ -270,15 +250,14 @@ var
 begin
   mServices.Logger := FChannel.Logger;
   mServices.TimeoutMs := RequestTimeoutMs;
-  mServices.Capabilities := LifecycleCapabilities;
+  mServices.Capabilities :=
+    function: TJSONObject
+    begin
+      Result := TShellCapabilities.Build;
+      // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
+      FDiagnosticsArea.ApplyClientCapabilities(FProtocol.Lifecycle.InitializeParams, Result);
+    end;
   FProtocol := TShellProtocol.Create(mServices);
-end;
-
-function TServerComposition.LifecycleCapabilities: TJSONObject;
-begin
-  Result := TShellCapabilities.Build;
-  // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-  FDiagnosticsArea.ApplyClientCapabilities(FProtocol.Lifecycle.InitializeParams, Result);
 end;
 
 procedure TServerComposition.NotifyClient(const AMethod: string; AParams: TJSONObject);
@@ -291,11 +270,6 @@ begin
   finally
     mNotification.Free;
   end;
-end;
-
-procedure TServerComposition.LogDebug(const AText: string);
-begin
-  FChannel.Logger.Debug(AText);
 end;
 
 function TServerComposition.CurrentRequestTimeout: Cardinal;
@@ -405,19 +379,18 @@ begin
       Result := FCompile.Results.MessagesFor(AFileName);
     end;
   mServices.UsesContext := UsesContextFor;
-  // Das Diagnoselog entsteht erst später.
-  mServices.FileLabel := DiagnosticsFileLabel;
+  // Das Diagnoselog entsteht erst mit der Sitzung; bis dahin heißt jede Datei 'unit' (#1094).
+  mServices.FileLabel :=
+    function(const AFileName: string): string
+    begin
+      Result := 'unit';
+      if FSession <> nil then
+      begin
+        Result := FSession.FileLabel(AFileName);
+      end;
+    end;
   mServices.RequestTimeout := CurrentRequestTimeout;
   FDiagnosticsArea := TShellDiagnosticsArea.Create(mServices);
-end;
-
-function TServerComposition.DiagnosticsFileLabel(const AFileName: string): string;
-begin
-  Result := 'unit';
-  if FSession <> nil then
-  begin
-    Result := FSession.FileLabel(AFileName);
-  end;
 end;
 
 function TServerComposition.Index: ISymbolIndex;
@@ -718,9 +691,17 @@ begin
     begin
       Result := FIdeArea.Ide.Project.Find(AProjectFile, AContext);
     end;
-  mServices.VisitWorkspaces := VisitWorkspaces;
+  mServices.VisitWorkspaces :=
+    procedure(const AVisit: TShellWorkspacesProc)
+    begin
+      FCore.Workspaces.Visit(AVisit);
+    end;
   mServices.Notify := NotifyClient;
-  mServices.Log := LogDebug;
+  mServices.Log :=
+    procedure(const AText: string)
+    begin
+      FChannel.Logger.Debug(AText);
+    end;
   FCodeArea := TShellCodeArea.Create(FCore, mServices);
 end;
 
@@ -733,17 +714,21 @@ begin
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := Index;
-  mServices.FormatRoutinesFor := FormatRoutinesFor;
+  // Closure: Die Teilwurzel IDE entsteht erst in WireIde.
+  mServices.FormatRoutinesFor :=
+    function(const AUri: string): TArray<TFormatRoutine>
+    begin
+      Result := FIdeArea.FormatRoutinesFor(AUri);
+    end;
   mServices.UsesContextFor := UsesContextFor;
-  mServices.RefreshLater := RefreshDiagnosticsLater;
+  mServices.RefreshLater :=
+    procedure
+    begin
+      FDiagnosticsArea.Syntax.RefreshLater;
+    end;
   mServices.TestUnitContext := TestUnitContextFor;
   mServices.RequestTimeout := CurrentRequestTimeout;
   FAnalysisArea := TShellAnalysisArea.Create(FCore, mServices);
-end;
-
-procedure TServerComposition.RefreshDiagnosticsLater;
-begin
-  FDiagnosticsArea.Syntax.RefreshLater;
 end;
 
 procedure TServerComposition.WireCommands;
@@ -839,11 +824,6 @@ begin
       FDiagnosticsArea.Pull.Changed;
     end;
 end;
-procedure TServerComposition.VisitWorkspaces(const AVisit: TShellWorkspacesProc);
-begin
-  FCore.Workspaces.Visit(AVisit);
-end;
-
 procedure TServerComposition.WireIde;
 var
   mServices: TShellIdeAreaServices;
@@ -1006,17 +986,7 @@ begin
   FreeAndNil(FCore);
   FreeAndNil(FIndexArea);
   // Danach die Features in umgekehrter Reihenfolge ihrer Gruppen; Protokoll und Absturzfälle zuletzt.
-  FreeAnalysisFeatures;
-  FreeCodeFeatures;
-end;
-
-procedure TServerComposition.FreeAnalysisFeatures;
-begin
   FreeAndNil(FAnalysisArea);
-end;
-
-procedure TServerComposition.FreeCodeFeatures;
-begin
   FreeAndNil(FCodeArea);
   FreeAndNil(FCommandArea);
   // Nach allen Nutzern des Hosts der Schnellbefehle: Er ruft dessen Methoden.
@@ -1045,29 +1015,6 @@ function TServerComposition.UsesContextFor(const AUri: string; out AContext: TUs
 begin
   AContext := Default(TUsesContext);
   Result := (FCodeArea <> nil) and FCodeArea.UsesContextFor(AUri, AContext);
-end;
-
-function TServerComposition.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
-var
-  Workspace: TShellWorkspace;
-  Project: TProjectInfo;
-  Context: TIdeProjectContext;
-  Name: string;
-begin
-  Result := TFormatRoutines.Defaults;
-  for Name in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, FCore.Settings.SettingsFor(AUri)), 'formatMethods',
-    nil) do
-  begin
-    if Trim(Name) <> '' then
-    begin
-      Result := Result + [TFormatRoutines.Custom(Name, -1)];
-    end;
-  end;
-  Workspace := FCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeArea.Ide.Project.Find(Project.FileName, Context) then
-  begin
-    Result := Result + Context.FormatFunctions;
-  end;
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;

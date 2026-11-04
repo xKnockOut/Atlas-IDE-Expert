@@ -818,8 +818,8 @@ begin
   begin
     Exit;
   end;
-  Result := TLspReferences.Find(FResolver, FIndex, Tree, ASymbol.FileName, ASymbol.Position, True, FFiles, FReadText,
-    FCancellation);
+  Result := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(ASymbol.FileName, ASymbol.Position,
+    True, FFiles, FReadText), FCancellation);
 end;
 
 procedure TDataFlowRun.AddSource(var ANode: TDataFlowNode; const ASymbol: TDataFlowSymbol);

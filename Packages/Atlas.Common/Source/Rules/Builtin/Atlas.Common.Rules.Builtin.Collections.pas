@@ -138,6 +138,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists;
 
 { TLegacyCollectionType }
