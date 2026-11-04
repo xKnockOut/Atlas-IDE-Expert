@@ -393,8 +393,8 @@ begin
       try
         AResolver.PinTree(Tree, AFileName);
         try
-          if not TMoveClass.Plan(AFileName, Plan.Text, Tree, TTextPosition.Create(Plan.BaseLine, 0), UnitName,
-            TLspMoveClass.Lookup(AResolver), Move, Reason) then
+          if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, Plan.Text, Tree),
+            TTextPosition.Create(Plan.BaseLine, 0), UnitName, TLspMoveClass.Lookup(AResolver), Move, Reason) then
           begin
             raise Failed(Format('Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s', [Reason]));
           end;

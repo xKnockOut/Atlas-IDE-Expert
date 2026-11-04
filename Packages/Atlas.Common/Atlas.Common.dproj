@@ -323,6 +323,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.Embed.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
