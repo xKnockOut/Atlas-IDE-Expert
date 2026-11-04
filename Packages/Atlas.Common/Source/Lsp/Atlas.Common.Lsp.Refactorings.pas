@@ -8,7 +8,7 @@
 //   - Typen eines Ausdrucks über einen Probetext mit "var AtlasProbe := …"
 //     und die Typableitung der Inlay Hints (#453), mit eigener
 //     Namensauflösung je Probe (der Probebaum lebt nur kurz).
-//   - Aufzählungswerte über TLspCompletion.CaseValues (#448).
+//   - Aufzählungswerte über TCompletionValues.CaseValues (#448).
 //   - Herkunft über TNameResolver.WithMember.
 // Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
 // denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
@@ -122,6 +122,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Lsp.Completion.Values,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Parser,
@@ -282,6 +284,18 @@ begin
     end;
 end;
 
+/// <summary>Was TCompletionValues.CaseValues zum Auflösen der Aufzählung braucht.</summary>
+function CaseLookup(AResolver: TNameResolver; const AContext: TRefactoringContext; ATree: TSyntaxTree;
+  const AText: string): TEnumLookup;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AContext.Index;
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.FileName := AContext.FileName;
+  Result.ReadText := AContext.ReadText;
+end;
+
 class function TLspRefactorings.CaseAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean;
 var
@@ -297,8 +311,7 @@ begin
   Result := False;
   CaseNode := TCaseCompletion.CaseAt(ATree, APosition);
   if (CaseNode = nil) or not TCaseCompletion.OfPosition(ATree, CaseNode, OfPos) or
-    not TLspCompletion.CaseValues(AResolver, AContext.Index, ATree, AText, AContext.FileName, OfPos,
-    AContext.ReadText, Values, Prefix) or
+    not TCompletionValues.CaseValues(CaseLookup(AResolver, AContext, ATree, AText), OfPos, Values, Prefix) or
     not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Edits, Count, HasElse) then
   begin
     Exit;
@@ -430,7 +443,7 @@ begin
     TCallContext.Condition:
       Plan.ResultType := 'Boolean';
   else
-    Plan.ResultType := TLspCompletion.ExpectedType(AResolver, ATree, AContext.FileName, Site.NameRange.StartPos);
+    Plan.ResultType := TCompletionContexts.ExpectedType(AResolver, ATree, AContext.FileName, Site.NameRange.StartPos);
     if (Plan.ResultType = '') and (Site.Target <> '') then
     begin
       Probed := ProbeOf(Site.Target);
