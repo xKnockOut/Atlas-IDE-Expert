@@ -844,7 +844,8 @@ begin
   try
     mCount := 0;
     for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root,
-      AFileName), mNewText, TFileChecker.ProjectOf(FCheckProject, AFileName), mSource, mScopes) do
+      AFileName), mNewText,
+      TCheckOrigin.Make(TFileChecker.ProjectOf(FCheckProject, AFileName), mSource), mScopes) do
     begin
       Inc(mCount);
       if mCount <= MaxFindings then
