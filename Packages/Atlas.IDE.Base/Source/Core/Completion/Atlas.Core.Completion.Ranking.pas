@@ -143,8 +143,12 @@ var
 begin
   Result := TAtlasListMode.Filter;
   for Mode := Low(TAtlasListMode) to High(TAtlasListMode) do
+  begin
     if SameText(Trim(AName), ModeNames[Mode]) then
+    begin
       Result := Mode;
+    end;
+  end;
 end;
 
 class function TAtlasListModes.ScopeOf(const AName: string): TAtlasListScope;
@@ -153,8 +157,12 @@ var
 begin
   Result := TAtlasListScope.Members;
   for Scope := Low(TAtlasListScope) to High(TAtlasListScope) do
+  begin
     if SameText(Trim(AName), ScopeNames[Scope]) then
+    begin
       Result := Scope;
+    end;
+  end;
 end;
 
 { TAtlasRanking }
@@ -188,29 +196,43 @@ end;
 function NameOf(const AItem: TAtlasCompletionItem): string;
 begin
   if AItem.FilterText <> '' then
-    Result := AItem.FilterText
+  begin
+    Result := AItem.FilterText;
+  end
   else
+  begin
     Result := AItem.Name;
+  end;
 end;
 
 /// <summary>Bereichsstufe zum Sortieren (#488): ohne Angabe hinter allen Stufen.</summary>
 function ScopeRank(const AItem: TAtlasCompletionItem): Integer;
 begin
   if AItem.Scope > 0 then
-    Result := AItem.Scope
+  begin
+    Result := AItem.Scope;
+  end
   else
+  begin
     Result := 9;
+  end;
 end;
 
 /// <summary>Gruppe im uses-Abschnitt (#469): 0 = Projekt (oder keine), 1 = RTL/VCL, 2 = Drittanbieter.</summary>
 function UsesRank(const AItem: TAtlasCompletionItem): Integer;
 begin
   if AItem.UsesGroup = 'rtl' then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if AItem.UsesGroup = 'library' then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Gleichnamige Varianten aus anderen Units (#475) direkt hinter die aktive, in ihrer Reihenfolge; ohne
@@ -226,26 +248,40 @@ begin
   Moved := TList<Integer>.Create;
   try
     for Index in AFound do
+    begin
       if AItems[Index].SameNameActive then
+      begin
         Actives.AddOrSetValue(UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit), True);
+      end;
+    end;
     if Actives.Count = 0 then
+    begin
       Exit;
+    end;
     for Index in AFound do
     begin
       if AItems[Index].SameNameOf <> '' then
       begin
         if not Actives.ContainsKey(UpperCase(AItems[Index].Name + #0 + AItems[Index].SameNameOf)) then
+        begin
           Moved.Add(Index);
+        end;
         Continue;
       end;
       Moved.Add(Index);
       if not AItems[Index].SameNameActive then
+      begin
         Continue;
+      end;
       Key := UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit);
       for Variant in AFound do
+      begin
         if (AItems[Variant].SameNameOf <> '') and
           (UpperCase(AItems[Variant].Name + #0 + AItems[Variant].SameNameOf) = Key) then
+        begin
           Moved.Add(Variant);
+        end;
+      end;
     end;
     AFound.Clear;
     AFound.AddRange(Moved);
@@ -260,13 +296,21 @@ end;
 function InheritedRank(const AItem: TAtlasCompletionItem): Integer;
 begin
   if AItem.InheritedMatch = 'same' then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else if AItem.InheritedMatch = 'overload' then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if AItem.InheritedMatch = 'other' then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else
+  begin
     Result := 3;
+  end;
 end;
 
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
@@ -275,11 +319,17 @@ begin
   // Gruppen nur, wenn etwas passt: Teilergebnisse (#616) behalten den erwarteten Typ, auch wenn erst ein
   // späteres Teil einen passenden Eintrag bringt.
   if not AAnyFits or (AItem.ExpectedType = '') then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else if AItem.Fits then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 1;
+  end;
 end;
 
 class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
@@ -303,26 +353,40 @@ begin
   Items := AItems;
   SetLength(Shown, Length(Items));
   for Index in AShown do
+  begin
     if Index >= 0 then
+    begin
       Shown[Index] := True;
+    end;
+  end;
   Rest := TList<Integer>.Create;
   try
     for Index := 0 to High(Items) do
+    begin
       if not Shown[Index] and (AScores[Index] = TAtlasCompletionMatcher.NoMatch) and
         TAtlasRanking.Matches(Items[Index], AOptions.Chip) and not Items[Index].IsAction and
         (Items[Index].Conversion = '') and
         not Items[Index].Hint and not Items[Index].Pinned and (Items[Index].Unknown = '') then
+      begin
         Rest.Add(Index);
+      end;
+    end;
     Rest.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
+        begin
           Result := Items[A].Rank - Items[B].Rank;
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Name, Items[B].Name);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := Rest.ToArray;
   finally
@@ -340,16 +404,24 @@ var
 begin
   Any := False;
   for Index := 0 to High(AItems) do
+  begin
     if AItems[Index].Conversion <> '' then
+    begin
       Any := True;
+    end;
+  end;
   if not Any then
+  begin
     Exit(AOrder);
+  end;
   SetLength(Placed, Length(AItems));
   Result := nil;
   for Index in AOrder do
   begin
     if Index >= 0 then
+    begin
       for Conversion := 0 to High(AItems) do
+      begin
         if not Placed[Conversion] and (AItems[Conversion].Conversion <> '') and
           SameText(AItems[Conversion].ConvertFrom, AItems[Index].Name) and
           TAtlasRanking.Matches(AItems[Conversion], AOptions.Chip) then
@@ -358,6 +430,8 @@ begin
           Result := Result + [Conversion];
           Break;
         end;
+      end;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -384,11 +458,13 @@ begin
   NoPattern := APattern = '';
   AnyFits := False;
   for Index := 0 to High(Items) do
+  begin
     if Items[Index].Fits then
     begin
       AnyFits := True;
       Break;
     end;
+  end;
   Found := TList<Integer>.Create;
   Ordered := TList<Integer>.Create;
   try
@@ -397,15 +473,25 @@ begin
       Scores[Index] := TAtlasCompletionMatcher.NoMatch;
       // Umwandlungen (#490) setzt WithConversions vor ihr Original.
       if not TAtlasRanking.Matches(Items[Index], Options.Chip) or (Items[Index].Conversion <> '') then
+      begin
         Continue;
+      end;
       if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint or Items[Index].ByType then
-        Scores[Index] := 0
+      begin
+        Scores[Index] := 0;
+      end
       else
+      begin
         Scores[Index] := TAtlasCompletionMatcher.Score(APattern, NameOf(Items[Index]));
+      end;
       if Scores[Index] = TAtlasCompletionMatcher.NoMatch then
+      begin
         Continue;
+      end;
       if Assigned(Options.Boost) then
+      begin
         Boosts[Index] := EnsureRange(Options.Boost(Index), 0, 99);
+      end;
       Found.Add(Index);
     end;
     Found.Sort(TComparer<Integer>.Construct(
@@ -414,65 +500,109 @@ begin
         // Angeheftete Favoriten (#458) vor allem anderen.
         Result := Ord(Items[B].Favorite) - Ord(Items[A].Favorite);
         if Result = 0 then
+        begin
           Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
+        end;
         if Result = 0 then
+        begin
           Result := Ord(Items[B].Form <> '') - Ord(Items[A].Form <> '');
+        end;
         if (Result = 0) and (Items[A].Form <> '') then
+        begin
           Result := Ord(Items[A].ByType) - Ord(Items[B].ByType);
+        end;
         if Result = 0 then
+        begin
           Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
+        end;
         if Result = 0 then
+        begin
           Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        end;
         // Echte Mitglieder immer vor Postfix-Vorlagen (#188).
         if Result = 0 then
+        begin
           Result := Ord(Items[A].Postfix) - Ord(Items[B].Postfix);
+        end;
         // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
         if Result = 0 then
+        begin
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
+        end;
         if Result = 0 then
+        begin
           Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
+        end;
         // Vollständige inherited-Aufrufe vor den Namen der Vorfahrmethoden (#482).
         if Result = 0 then
+        begin
           Result := InheritedRank(Items[A]) - InheritedRank(Items[B]);
+        end;
         // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern.
         if Result = 0 then
+        begin
           Result := UsesRank(Items[A]) - UsesRank(Items[B]);
+        end;
         // Aufzählungswerte vor den übrigen passenden Einträgen, ohne Präfix in Deklarationsreihenfolge (#448).
         if Result = 0 then
+        begin
           Result := Ord(Items[B].Ordinal > 0) - Ord(Items[A].Ordinal > 0);
+        end;
         if (Result = 0) and (Items[A].Ordinal > 0) and NoPattern then
+        begin
           Result := Items[A].Ordinal - Items[B].Ordinal;
+        end;
         if Result <> 0 then
+        begin
           Exit;
+        end;
         if Grouped then
         begin
           // Ohne Präfix: nach Bereich (lokal vor Parameter vor Feld …, #488), dann Gruppen nach Tiefe,
           // darin Gelerntes zuerst.
           Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
           if Result = 0 then
+          begin
             Result := Items[A].Depth - Items[B].Depth;
+          end;
           if (Result = 0) and (Items[A].Depth > 0) then
+          begin
             Result := CompareText(Items[A].DeclaringClass, Items[B].DeclaringClass);
+          end;
           if Result = 0 then
+          begin
             Result := Boosts[B] - Boosts[A];
+          end;
         end
         else
         begin
           // Güte, dann Bereich (#488), dann Gelerntes (#418).
           Result := Scores[B] - Scores[A];
           if Result = 0 then
+          begin
             Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
+          end;
           if Result = 0 then
+          begin
             Result := Boosts[B] - Boosts[A];
+          end;
           if (Result = 0) and Options.GroupInherited then
+          begin
             Result := Items[A].Depth - Items[B].Depth;
+          end;
         end;
         if Result = 0 then
+        begin
           Result := Items[A].Rank - Items[B].Rank;
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Name, Items[B].Name);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     MoveVariants(Items, Found);
     // In einer Liste sammeln: Anhängen an das Array kopierte es bei jedem Eintrag (#616).
@@ -482,7 +612,9 @@ begin
     // Favoriten (#458) stehen vorne und ohne Überschrift; die übrigen Gruppen beginnen bei First.
     First := 0;
     while (First < Found.Count) and Items[Found[First]].Favorite do
+    begin
       Inc(First);
+    end;
     for Position := 0 to Found.Count - 1 do
     begin
       Index := Found[Position];
@@ -495,35 +627,51 @@ begin
       if Items[Index].Unknown <> '' then
       begin
         if (Position = First) or (Items[Found[Position - 1]].Unknown = '') then
+        begin
           Ordered.Add(UnknownHeader);
+        end;
       end
       else if Items[Index].Form <> '' then
       begin
         if (Position = First) or (Items[Found[Position - 1]].Form = '') then
+        begin
           Ordered.Add(Header);
+        end;
       end
       else if (Items[Index].Sender <> '') and (Position = First) then
-        Ordered.Add(Header)
+      begin
+        Ordered.Add(Header);
+      end
       // Typargumente (#450): eine Überschrift mit dem Constraint über der Liste.
       else if (Items[Index].TypeParam <> '') and (Position = First) then
-        Ordered.Add(Header)
+      begin
+        Ordered.Add(Header);
+      end
       // uses-Abschnitt (#469): eine Überschrift je Gruppe (Projekt, RTL/VCL, Drittanbieter).
       else if Items[Index].UsesGroup <> '' then
       begin
         if (Position = First) or (Items[Found[Position - 1]].UsesGroup <> Items[Index].UsesGroup) then
+        begin
           Ordered.Add(Header);
+        end;
       end
       // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
       else if (Position > First) and (Items[Found[Position - 1]].Form <> '') then
-        Ordered.Add(Header)
+      begin
+        Ordered.Add(Header);
+      end
       else if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin
         if GroupOf(Items[Index], AnyFits) <> Group then
+        begin
           Ordered.Add(Header);
+        end;
       end
       else if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
         not SameText(Items[Index].DeclaringClass, Container)) then
+      begin
         Ordered.Add(Header);
+      end;
       Group := GroupOf(Items[Index], AnyFits);
       Depth := Items[Index].Depth;
       Container := Items[Index].DeclaringClass;
@@ -534,14 +682,18 @@ begin
     // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
     Unknown := Length(Result);
     for Position := 0 to High(Result) do
+    begin
       if Result[Position] = UnknownHeader then
       begin
         Unknown := Position;
         Break;
       end;
+    end;
     if (ItemCount(Copy(Result, 0, Unknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
+    begin
       Result := Copy(Result, 0, Unknown) + Typos(Items, APattern, Options, Scores, Boosts) +
         Copy(Result, Unknown, MaxInt);
+    end;
     // Rest der Liste (#497): hinter Treffern und Tippfehlern, vor dem unbekannten Namen.
     if (Options.ListMode <> TAtlasListMode.Filter) and not NoPattern then
     begin
@@ -550,11 +702,13 @@ begin
       begin
         Unknown := Length(Result);
         for Position := 0 to High(Result) do
+        begin
           if Result[Position] = UnknownHeader then
           begin
             Unknown := Position;
             Break;
           end;
+        end;
         if Options.ListMode = TAtlasListMode.Rest then
         begin
           ARestStart := Unknown + 1;
@@ -594,25 +748,37 @@ begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
       if Items[Index].IsAction or not Matches(Items[Index], AOptions.Chip) or (Items[Index].Conversion <> '') or
         (AScores[Index] <> TAtlasCompletionMatcher.NoMatch) then
+      begin
         Continue;
+      end;
       Distances[Index] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(Items[Index]));
       if Distances[Index] <= Limit then
+      begin
         Candidates.Add(Index);
+      end;
     end;
     if Candidates.Count = 0 then
+    begin
       Exit;
+    end;
     Candidates.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         Result := Distances[A] - Distances[B];
         if Result = 0 then
+        begin
           Result := Boosts[B] - Boosts[A];
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Name, Items[B].Name);
+        end;
       end));
     Result := [TypoHeader];
     for Index := 0 to Min(Candidates.Count, MaxTypos) - 1 do
+    begin
       Result := Result + [Candidates[Index]];
+    end;
   finally
     Candidates.Free;
   end;
@@ -625,16 +791,22 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Chip := Low(TAtlasChip) to High(TAtlasChip) do
+  begin
     Result[Chip] := 0;
+  end;
   // Umwandlungen (#490) zählen nicht doppelt.
   for Item in AItems do
+  begin
     if (Item.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(Item)) <>
       TAtlasCompletionMatcher.NoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
       if ChipOf(Item) <> TAtlasChip.All then
+      begin
         Inc(Result[ChipOf(Item)]);
+      end;
     end;
+  end;
 end;
 
 class function TAtlasRanking.ItemCount(const AOrder: TArray<Integer>): Integer;
@@ -643,8 +815,12 @@ var
 begin
   Result := 0;
   for Index in AOrder do
+  begin
     if not IsHeader(Index) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;

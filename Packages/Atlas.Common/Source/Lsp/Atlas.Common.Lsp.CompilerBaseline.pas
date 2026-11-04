@@ -83,6 +83,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
@@ -198,15 +199,25 @@ begin
   end;
 end;
 
+/// <summary>Treffer zur Meldung AMessage am Anfang ihrer Zeile.</summary>
+function FindingOf(const AMessage: TLspCompilerMessage): TRuleFinding;
+var
+  mLine: Integer;
+begin
+  mLine := Max(AMessage.Line - 1, 0);
+  Result := Default(TRuleFinding);
+  Result.RuleId := LowerCase(AMessage.Code);
+  Result.Range := TTextRange.Create(TTextPosition.Create(mLine, 0), TTextPosition.Create(mLine, 0));
+end;
+
 function TLspCompilerBaseline.SourcesOf(const ARoot: string; const AMessages: TArray<TLspCompilerMessage>;
   out AOwner, ASlot: TArray<Integer>): TArray<TBaselineSource>;
 var
   ByPath: TDictionary<string, Integer>;
   Unreadable: TDictionary<string, Boolean>;
-  Index, Owner, Line: Integer;
+  Index, Owner: Integer;
   Relative, Key, Text: string;
   Source: TBaselineSource;
-  Finding: TRuleFinding;
 begin
   Result := nil;
   SetLength(AOwner, Length(AMessages));
@@ -242,17 +253,9 @@ begin
         Result := Result + [Source];
         ByPath.Add(Key, Owner);
       end;
-      Line := AMessages[Index].Line - 1;
-      if Line < 0 then
-      begin
-        Line := 0;
-      end;
-      Finding := Default(TRuleFinding);
-      Finding.RuleId := LowerCase(AMessages[Index].Code);
-      Finding.Range := TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line, 0));
       AOwner[Index] := Owner;
       ASlot[Index] := Length(Result[Owner].Findings);
-      Result[Owner].Findings := Result[Owner].Findings + [Finding];
+      Result[Owner].Findings := Result[Owner].Findings + [FindingOf(AMessages[Index])];
     end;
   finally
     Unreadable.Free;

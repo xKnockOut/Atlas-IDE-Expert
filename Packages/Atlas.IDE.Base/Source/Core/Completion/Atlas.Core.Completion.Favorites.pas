@@ -127,7 +127,9 @@ end;
 function StampText(AValue: TDateTime): string;
 begin
   if AValue <= 0 then
+  begin
     Exit('');
+  end;
   Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss', AValue);
 end;
 
@@ -138,11 +140,15 @@ begin
   AValue := 0;
   Result := Length(AText) >= AStart + ACount - 1;
   if not Result then
+  begin
     Exit;
+  end;
   for Index := AStart to AStart + ACount - 1 do
   begin
     if not CharInSet(AText[Index], ['0'..'9']) then
+    begin
       Exit(False);
+    end;
     AValue := AValue * 10 + Word(Ord(AText[Index]) - Ord('0'));
   end;
 end;
@@ -156,12 +162,18 @@ begin
   Result := 0;
   if (Length(AText) < 19) or (AText[5] <> '-') or (AText[8] <> '-') or (AText[11] <> 'T') or (AText[14] <> ':') or
     (AText[17] <> ':') then
+  begin
     Exit;
+  end;
   if not (TryDigits(AText, 1, 4, Year) and TryDigits(AText, 6, 2, Month) and TryDigits(AText, 9, 2, Day) and
     TryDigits(AText, 12, 2, Hour) and TryDigits(AText, 15, 2, Minute) and TryDigits(AText, 18, 2, Second)) then
+  begin
     Exit;
+  end;
   if TryEncodeDate(Year, Month, Day, DatePart) and TryEncodeTime(Hour, Minute, Second, 0, TimePart) then
+  begin
     Result := DatePart + TimePart;
+  end;
 end;
 
 { TAtlasFavorite }
@@ -174,9 +186,13 @@ end;
 function TAtlasFavorite.DisplayName: string;
 begin
   if TypeName = '' then
-    Result := Member
+  begin
+    Result := Member;
+  end
   else
+  begin
     Result := TypeName + '.' + Member;
+  end;
 end;
 
 { TAtlasFavorites }
@@ -197,7 +213,9 @@ class function TAtlasFavorites.TypeNameOf(const AItem: TAtlasCompletionItem): st
 begin
   Result := AItem.DeclaringClass;
   if Result = '' then
+  begin
     Result := AItem.DeclaringUnit;
+  end;
 end;
 
 class function TAtlasFavorites.KeyOf(const AItem: TAtlasCompletionItem): string;
@@ -221,8 +239,12 @@ var
   Kind: TAtlasItemKind;
 begin
   for Kind := Low(TAtlasItemKind) to High(TAtlasItemKind) do
+  begin
     if SameText(KindNames[Kind], AName) then
+    begin
       Exit(Kind);
+    end;
+  end;
   Result := TAtlasItemKind.Unknown;
 end;
 
@@ -231,8 +253,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to FItems.Count - 1 do
+  begin
     if FItems[Index].Key = AKey then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -242,8 +268,12 @@ var
 begin
   Result := 0;
   for Favorite in FItems do
+  begin
     if LowerCase(Favorite.TypeName) = ATypeKey then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasFavorites.TryAdd(const AFavorite: TAtlasFavorite): Boolean;
@@ -251,7 +281,9 @@ begin
   Result := (Trim(AFavorite.Member) <> '') and (IndexOf(AFavorite.Key) < 0) and
     (TypeCount(LowerCase(AFavorite.TypeName)) < MaxPerType);
   if Result then
+  begin
     FItems.Add(AFavorite);
+  end;
 end;
 
 function TAtlasFavorites.IsFavorite(const AItem: TAtlasCompletionItem): Boolean;
@@ -280,7 +312,9 @@ var
   Favorite: TAtlasFavorite;
 begin
   if not CanPin(AItem) then
+  begin
     Exit(TAtlasFavoriteToggle.NotAllowed);
+  end;
   Index := IndexOf(KeyOf(AItem));
   if Index >= 0 then
   begin
@@ -297,7 +331,9 @@ begin
   Favorite.Added := AAdded;
   // Ein sechster ersetzt nichts (#458): erst einen anderen lösen.
   if not TryAdd(Favorite) then
+  begin
     Exit(TAtlasFavoriteToggle.Full);
+  end;
   FChanged := True;
   Result := TAtlasFavoriteToggle.Added;
 end;
@@ -309,7 +345,9 @@ begin
   Index := IndexOf(LowerCase(AKey));
   Result := Index >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   FItems.Delete(Index);
   FChanged := True;
 end;
@@ -317,7 +355,9 @@ end;
 procedure TAtlasFavorites.Clear;
 begin
   if FItems.Count > 0 then
+  begin
     FChanged := True;
+  end;
   FItems.Clear;
 end;
 
@@ -372,18 +412,26 @@ begin
   // Ungültiges JSON ergibt nil; was damit geschieht, entscheidet der Aufrufer (TAtlasDataFile.Load).
   Root := TJSONObject.ParseJSONValue(AJson);
   if Root = nil then
+  begin
     Exit;
+  end;
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     List := TJSONObject(Root).GetValue('favorites');
     if not (List is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := True;
     for Value in TJSONArray(List) do
     begin
       if not (Value is TJSONObject) then
+      begin
         Continue;
+      end;
       Entry := TJSONObject(Value);
       Favorite := Default(TAtlasFavorite);
       Favorite.TypeName := Entry.GetValue<string>('type', '');
@@ -410,17 +458,23 @@ begin
       Result := Parse(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   // Unbrauchbarer Inhalt bleibt nicht halb geladen stehen.
   if Result <> TAtlasDataLoad.Loaded then
+  begin
     FItems.Clear;
+  end;
 end;
 
 function TAtlasFavorites.SaveToFile(const AFileName: string): Boolean;
 begin
   Result := not SameFileName(AFileName, FKept);
   if not Result then
+  begin
     Exit;
+  end;
   TAtlasDataFile.Write(AFileName, ToJson);
   FChanged := False;
 end;

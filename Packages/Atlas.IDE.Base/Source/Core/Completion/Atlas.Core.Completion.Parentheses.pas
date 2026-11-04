@@ -68,11 +68,15 @@ var
 begin
   ARemoveAt := -1;
   if not Active then
+  begin
     Exit;
+  end;
   // Erste Abweichung (0-basiert).
   Index := 0;
   while (Index < Length(Text)) and (Index < Length(ANew)) and (Text[Index + 1] = ANew[Index + 1]) do
+  begin
     Inc(Index);
+  end;
   if Length(ANew) = Length(Text) + 1 then
   begin
     // Ein Zeichen eingefügt; nur gültig, wenn der Rest gleich ist.
@@ -84,7 +88,9 @@ begin
     // Gleiche Zeichen davor: Die Einfügung kann irgendwo in dieser Folge liegen ("()" + ")" = "())").
     RunStart := Index;
     while (RunStart > 0) and (ANew[RunStart] = ANew[Index + 1]) do
+    begin
       Dec(RunStart);
+    end;
     if (ANew[Index + 1] = ')') and (Close >= RunStart) and (Close <= Index) then
     begin
       // ")" direkt vor der automatischen: eine der Klammern hinter dem Cursor entfernen.
@@ -93,7 +99,9 @@ begin
       Exit;
     end;
     if Index <= Close then
+    begin
       Inc(Close);
+    end;
   end
   else if Length(ANew) = Length(Text) - 1 then
   begin
@@ -105,14 +113,18 @@ begin
     // Gelöscht in einer Folge gleicher Zeichen, zu der die automatische Klammer gehört: nicht eindeutig, aufhören.
     RunStart := Index;
     while (RunStart > 0) and (Text[RunStart] = Text[Index + 1]) do
+    begin
       Dec(RunStart);
+    end;
     if (Close >= RunStart) and (Close <= Index) and (Text[Index + 1] = ')') then
     begin
       Stop;
       Exit;
     end;
     if Index < Close then
+    begin
       Dec(Close);
+    end;
   end
   else if ANew <> Text then
   begin
@@ -121,7 +133,9 @@ begin
   end;
   Text := ANew;
   if (Close < 0) or (Close >= Length(Text)) or (Text[Close + 1] <> ')') then
+  begin
     Stop;
+  end;
 end;
 
 { TAtlasParentheses }
@@ -141,20 +155,32 @@ var
 begin
   Result := False;
   if (ACharacter < 2) or (ACharacter > Length(ALine)) or (ALine[ACharacter] <> '(') then
+  begin
     Exit;
+  end;
   Start := ACharacter - 1;
   while (Start >= 1) and CharInSet(ALine[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
     Dec(Start);
+  end;
   Word := Copy(ALine, Start + 1, ACharacter - 1 - Start);
   if (Word = '') or CharInSet(Word[1], ['0'..'9']) then
+  begin
     Exit;
+  end;
   for Index := Low(Keywords) to High(Keywords) do
+  begin
     if SameText(Word, Keywords[Index]) then
+    begin
       Exit;
+    end;
+  end;
   // Kein Kommentar und kein String davor in der Zeile.
   if (Pos('//', Copy(ALine, 1, Start)) > 0) or Odd(Length(Copy(ALine, 1, Start)) -
     Length(StringReplace(Copy(ALine, 1, Start), '''', '', [rfReplaceAll]))) then
+  begin
     Exit;
+  end;
   Result := True;
 end;
 

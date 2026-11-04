@@ -115,20 +115,30 @@ uses
 function BoolJson(AValue: Boolean): string;
 begin
   if AValue then
-    Result := 'true'
+  begin
+    Result := 'true';
+  end
   else
+  begin
     Result := 'false';
+  end;
 end;
 
 function CaptionOf(ASchema: TJSONObject; AEnglish: Boolean): string;
 begin
   Result := '';
   if AEnglish then
+  begin
     Result := ASchema.GetValue<string>('x-captionEn', '');
+  end;
   if Result = '' then
+  begin
     Result := ASchema.GetValue<string>('x-caption', '');
+  end;
   if Result = '' then
+  begin
     Result := ASchema.GetValue<string>('description', '');
+  end;
 end;
 
 function IsTrue(ASchema: TJSONObject; const AName: string): Boolean;
@@ -161,25 +171,39 @@ begin
   Root := TJSONObject.ParseJSONValue(ASchemaJson);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Properties := TJSONObject(Root).GetValue('properties');
     if not (Properties is TJSONObject) then
+    begin
       Exit;
+    end;
     for Pair in TJSONObject(Properties) do
     begin
       if not (Pair.JsonValue is TJSONObject) then
+      begin
         Continue;
+      end;
       Page := TJSONObject(Pair.JsonValue).GetValue<string>('x-page', '');
       Scope := TJSONObject(Pair.JsonValue).GetValue<string>('x-scope', '');
       if IsBoolean(TJSONObject(Pair.JsonValue)) and IsTrue(TJSONObject(Pair.JsonValue), 'x-quickToggle') then
+      begin
         AVisit(Pair.JsonString.Value, Page, Scope, TJSONObject(Pair.JsonValue));
+      end;
       Children := TJSONObject(Pair.JsonValue).GetValue('properties');
       if Children is TJSONObject then
+      begin
         for Sub in TJSONObject(Children) do
+        begin
           if (Sub.JsonValue is TJSONObject) and IsBoolean(TJSONObject(Sub.JsonValue)) and
             IsTrue(TJSONObject(Sub.JsonValue), 'x-quickToggle') then
+          begin
             AVisit(Pair.JsonString.Value + '.' + Sub.JsonString.Value, Page,
               TJSONObject(Sub.JsonValue).GetValue<string>('x-scope', Scope), TJSONObject(Sub.JsonValue));
+          end;
+        end;
+      end;
     end;
   finally
     Root.Free;
@@ -193,11 +217,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Overrides) do
+  begin
     if SameText(Overrides[Index].Key, AKey) then
     begin
       Overrides[Index] := TPair<string, Boolean>.Create(Overrides[Index].Key, AValue);
       Exit;
     end;
+  end;
   Overrides := Overrides + [TPair<string, Boolean>.Create(AKey, AValue)];
 end;
 
@@ -206,8 +232,12 @@ var
   Index: Integer;
 begin
   for Index := High(Overrides) downto 0 do
+  begin
     if SameText(Overrides[Index].Key, AKey) then
+    begin
       Delete(Overrides, Index, 1);
+    end;
+  end;
 end;
 
 function TAtlasToggleSession.TryGet(const AKey: string; out AValue: Boolean): Boolean;
@@ -216,11 +246,13 @@ var
 begin
   AValue := False;
   for Pair in Overrides do
+  begin
     if SameText(Pair.Key, AKey) then
     begin
       AValue := Pair.Value;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -232,11 +264,19 @@ var
 begin
   Result := AStored;
   for Pair in Overrides do
+  begin
     TAtlasQuickToggles.SetFlag(Result, Pair.Key, Pair.Value);
+  end;
   if AllOff then
+  begin
     for Toggle in AToggles do
+    begin
       if Toggle.Drawing then
+      begin
         TAtlasQuickToggles.SetFlag(Result, Toggle.Key, False);
+      end;
+    end;
+  end;
 end;
 
 { TAtlasQuickToggles }
@@ -287,18 +327,24 @@ begin
       Key := ASchema.GetValue<string>('x-plugin', '');
       // Ohne Plugin-Einstellung gibt es keinen globalen Wert, den der Schalter schreiben könnte.
       if Key = '' then
+      begin
         Exit;
+      end;
       // Globale Schlüssel gelten in atlas.json nicht (#227): kein Ziel „Projekt“.
       ProjectPath := APath;
       if AScope = 'global' then
+      begin
         ProjectPath := '';
+      end;
       for Index := 0 to High(List) do
+      begin
         if SameText(List[Index].Key, Key) then
         begin
           List[Index].ProjectPath := ProjectPath;
           List[Index].Experimental := List[Index].Experimental or IsTrue(ASchema, 'x-experimental');
           Exit;
         end;
+      end;
       Toggle := Default(TAtlasQuickToggle);
       Toggle.Key := Key;
       Toggle.Page := APage;
@@ -312,7 +358,9 @@ begin
   // Nach Seiten ordnen, Reihenfolge der Seiten wie ihr erstes Auftreten.
   Ordered := nil;
   for Group in Groups(List) do
+  begin
     Ordered := Ordered + Group.Toggles;
+  end;
   Result := Ordered;
 end;
 
@@ -327,8 +375,12 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Page, Toggle.Page) then
+      begin
         Found := Index;
+      end;
+    end;
     if Found < 0 then
     begin
       Group.Page := Toggle.Page;
@@ -347,11 +399,13 @@ var
 begin
   AToggle := Default(TAtlasQuickToggle);
   for Toggle in AToggles do
+  begin
     if SameText(Toggle.Key, AKey) then
     begin
       AToggle := Toggle;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -374,11 +428,17 @@ begin
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Result := Store.HasInteger(AKey);
   if not Result then
+  begin
     Exit;
+  end;
   if AValue then
-    Store.WriteInteger(AKey, 1)
+  begin
+    Store.WriteInteger(AKey, 1);
+  end
   else
+  begin
     Store.WriteInteger(AKey, 0);
+  end;
   ASettings.Load(Store);
 end;
 
@@ -391,12 +451,16 @@ begin
   AValue := False;
   Result := False;
   if (AProject = nil) or (APath = '') then
+  begin
     Exit;
+  end;
   Current := AProject;
   for Segment in APath.Split(['.']) do
   begin
     if not (Current is TJSONObject) then
+    begin
       Exit;
+    end;
     Current := TJSONObject(Current).GetValue(Segment);
   end;
   if Current is TJSONBool then
@@ -422,10 +486,14 @@ begin
     GetFlag(AStored, Toggle.Key, Item.Checked);
     Item.Project := ProjectValue(AProject, Toggle.ProjectPath, Value);
     if Item.Project then
+    begin
       Item.Checked := Value;
+    end;
     Item.Session := ASession.TryGet(Toggle.Key, Value);
     if Item.Session then
+    begin
       Item.Checked := Value;
+    end;
     Result := Result + [Item];
   end;
 end;

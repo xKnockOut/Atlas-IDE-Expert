@@ -193,6 +193,7 @@ var
   mResolver: TNameResolver;
   mSettings: TRefactoringSettings;
   mFileName: string;
+  mRequest: TAnonymousMethodRequest;
 begin
   Result := nil;
   mSettings := Settings(AUri);
@@ -206,9 +207,14 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      Result := TLspAnonymousMethods.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
-        TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader),
-        TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture), FormatStyle(AUri));
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := AUri;
+      mRequest.Position := APosition;
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(AUri);
+      Result := TLspAnonymousMethods.Actions(mRequest);
     finally
       mResolver.UnpinTree;
     end;
@@ -225,6 +231,7 @@ var
   mResolver: TNameResolver;
   mAnswer: TJSONObject;
   mSettings: TRefactoringSettings;
+  mRequest: TAnonymousMethodRequest;
 begin
   // Argumente: URI, Position, Name.
   Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
@@ -238,10 +245,14 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      mAnswer := TLspAnonymousMethods.Execute(mShared.Tree, mDocument.Text, mUri,
-        TLspPositions.ReadPosition(AArguments.Items[1]), Trim(AArguments.Items[2].Value),
-        TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader),
-        TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture), FormatStyle(mUri));
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := mUri;
+      mRequest.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(mUri);
+      mAnswer := TLspAnonymousMethods.Execute(mRequest, Trim(AArguments.Items[2].Value));
     finally
       mResolver.UnpinTree;
     end;

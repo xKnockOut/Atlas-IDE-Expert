@@ -173,7 +173,9 @@ uses
 procedure TAtlasIdeDebugExceptions.TListener.DebugStarted;
 begin
   if not TAtlasIdeSettings.Current.DebugExceptionHistory then
+  begin
     Exit;
+  end;
   FHistory.StartSession;
   FDialog.NewSession;
   FStatusLogged := False;
@@ -188,12 +190,18 @@ procedure TAtlasIdeDebugExceptions.TListener.DebugStopped(AStop: TAtlasDebugStop
 begin
   // Schon über den Dialog aufgenommen (EarlyFound): nicht doppelt.
   if FEarlyStop = TAtlasIdeDebugSession.StopCount then
+  begin
     Exit;
+  end;
   // Ein Halt ohne Dialog (Haltepunkt, Schritt): solange er steht, nicht weiter nach dem Dialog suchen.
   if FDialog.Armed then
+  begin
     FDialog.Cancel;
+  end;
   if (AStop = TAtlasDebugStop.Paused) or not TAtlasIdeSettings.Current.DebugExceptionHistory then
+  begin
     Exit;
+  end;
   Captured(AStop = TAtlasDebugStop.Fault);
 end;
 
@@ -228,10 +236,14 @@ class procedure TAtlasIdeDebugExceptions.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
   if FHistory = nil then
+  begin
     FHistory := TAtlasDebugExceptionHistory.Create;
+  end;
   FIgnore := TAtlasDebugIgnoreList.Load(Folder);
   if FDialog = nil then
+  begin
     FDialog := TAtlasIdeExceptionDialog.Create;
+  end;
   FDialog.MayHide := FMayHide;
   if FRetry = nil then
   begin
@@ -239,7 +251,9 @@ begin
     FRetry.Enabled := False;
     FRetry.Interval := 100;
     if FTicker = nil then
+    begin
       FTicker := TTicker.Create;
+    end;
     FRetry.OnTimer := FTicker.Tick;
   end;
   TAtlasIdeDebugExceptionsWindow.OnFrame :=
@@ -259,7 +273,9 @@ end;
 class procedure TAtlasIdeDebugExceptions.Release;
 begin
   if FListener <> nil then
+  begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
   FListener := nil;
   FOnException := nil;
   FHasPending := False;
@@ -299,7 +315,9 @@ var
   Frame: TAtlasDebugExceptionsFrame;
 begin
   if not TAtlasIdeSettings.Current.DebugExceptionHistory then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeDebugExceptionsWindow.Show;
   if Frame <> nil then
   begin
@@ -314,7 +332,9 @@ var
 begin
   Result := 0;
   if not Assigned(AHandler) then
+  begin
     Exit;
+  end;
   Inc(FNextHandle);
   Entry.Handle := FNextHandle;
   Entry.Handler := AHandler;
@@ -327,8 +347,12 @@ var
   Index: Integer;
 begin
   for Index := High(FOnException) downto 0 do
+  begin
     if FOnException[Index].Handle = AHandle then
+    begin
       Delete(FOnException, Index, 1);
+    end;
+  end;
 end;
 
 class function TAtlasIdeDebugExceptions.History: TAtlasDebugExceptionHistory;
@@ -362,7 +386,9 @@ class procedure TAtlasIdeDebugExceptions.SetDialogMayHide(const AMayHide: TAtlas
 begin
   FMayHide := AMayHide;
   if FDialog <> nil then
+  begin
     FDialog.MayHide := AMayHide;
+  end;
 end;
 
 class procedure TAtlasIdeDebugExceptions.IgnoreClass(const AClass: string);
@@ -379,11 +405,15 @@ begin
   Result := (AProject <> '') and (AFileName <> '') and (ALine > 0) and
     List.AddLocation(AProject, AClass, AFileName, ALine);
   if not Result then
+  begin
     Exit;
+  end;
   SaveIgnoreList(List);
   if Assigned(FMessage) then
+  begin
     FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerIgnoredLocationSaid,
       [AClass, ExtractFileName(AFileName) + ':' + IntToStr(ALine)]));
+  end;
 end;
 
 class function TAtlasIdeDebugExceptions.LocationsActive: Boolean;
@@ -405,9 +435,13 @@ begin
   Process := TAtlasIdeDebugSession.Process;
   try
     if (Thread <> nil) and TAtlasDebugExceptionText.Parse(Thread.GetStatusString, AClass, AMessage) then
-      Source := 'Thread'
+    begin
+      Source := 'Thread';
+    end
     else if (Process <> nil) and TAtlasDebugExceptionText.Parse(Process.GetStatusString, AClass, AMessage) then
+    begin
       Source := 'Prozess';
+    end;
   except
     // Ältere Debugger ohne Zustandstexte.
     AClass := '';
@@ -433,7 +467,9 @@ var
 begin
   Thread := TAtlasIdeDebugSession.StoppedThread;
   if Thread = nil then
+  begin
     Exit;
+  end;
   // Ein noch offener Halt (kein Dialog, kein Weiterlaufen dazwischen) zuerst abschließen.
   if FHasPending then
   begin
@@ -443,14 +479,20 @@ begin
   end;
   StatusTexts(ExceptionClass, Message);
   if ExceptionClass = '' then
+  begin
     if AFault then
-      ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFault)
+    begin
+      ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFault);
+    end
     else
+    begin
       ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsUnknownClass);
+    end;
+  end;
   FPending := Default(TAtlasDebugExceptionStop);
   FPending.Stop := TAtlasIdeDebugSession.StopCount;
   FPending.Exception := TAtlasDebugException.Create(Now, ExceptionClass, Message, Thread.GetOSThreadID,
-    TAtlasIdeDebugSession.ThreadName(Thread), '', 0, '');
+    TAtlasIdeDebugSession.ThreadName(Thread));
   FHasPending := True;
   FDialogDone := False;
   FStackDone := False;
@@ -462,7 +504,9 @@ end;
 class procedure TAtlasIdeDebugExceptions.ArmDialog;
 begin
   if (FDialog <> nil) and TAtlasIdeSettings.Current.DebugExceptionHistory then
+  begin
     FDialog.Arm(EarlyFound);
+  end;
 end;
 
 class procedure TAtlasIdeDebugExceptions.EarlyFound(const AScan: TAtlasDebugDialogScan);
@@ -471,7 +515,9 @@ var
 begin
   Thread := TAtlasIdeDebugSession.StoppedThread;
   if Thread = nil then
+  begin
     Exit;
+  end;
   if FHasPending then
   begin
     FDialogDone := True;
@@ -483,7 +529,7 @@ begin
   FPending := Default(TAtlasDebugExceptionStop);
   FPending.Stop := FEarlyStop;
   FPending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
-    Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread), '', 0, '');
+    Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread));
   FHasPending := True;
   FDialogDone := False;
   FStackDone := False;
@@ -530,7 +576,9 @@ begin
           FPending.Exception.Routine := Frames[Index].Routine;
         end
         else if Frames <> nil then
+        begin
           FPending.Exception.Routine := Frames[0].Routine;
+        end;
       end;
   end;
   FStackDone := True;
@@ -548,13 +596,17 @@ class procedure TAtlasIdeDebugExceptions.RetryTick;
 begin
   FRetry.Enabled := False;
   if FHasPending and not FStackDone then
+  begin
     ReadStack;
+  end;
 end;
 
 class procedure TAtlasIdeDebugExceptions.DialogFound(const AScan: TAtlasDebugDialogScan);
 begin
   if not FHasPending then
+  begin
     Exit;
+  end;
   FPending.Dialog := AScan;
   FPending.Exception.ExceptionClass := AScan.ExceptionClass;
   FPending.Exception.Message := AScan.Message;
@@ -565,7 +617,9 @@ end;
 class procedure TAtlasIdeDebugExceptions.DialogTimeout;
 begin
   if not FHasPending then
+  begin
     Exit;
+  end;
   FDialogDone := True;
   Finish;
 end;
@@ -578,7 +632,9 @@ var
   Auto: TAtlasDebugAutoContinue;
 begin
   if not FHasPending or not FDialogDone or not FStackDone then
+  begin
     Exit;
+  end;
   FHasPending := False;
   Done := FPending;
   // Klasse bzw. Ort auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
@@ -589,16 +645,22 @@ begin
   begin
     // Ohne erkannten Dialog (keiner erschienen oder nicht lesbar) steht der Prozess nur: direkt fortsetzen.
     if Done.Dialog.HasException then
-      Done.Continued := Done.Dialog.CanContinue and FDialog.ContinueFound
+    begin
+      Done.Continued := Done.Dialog.CanContinue and FDialog.ContinueFound;
+    end
     else
+    begin
       Done.Continued := (TAtlasIdeDebugSession.StopCount = Done.Stop) and TAtlasIdeDebugSession.Resume;
+    end;
     Done.Exception.Ignored := Done.Continued;
   end;
   FHistory.Add(Done.Exception);
   RefreshWindow;
   Handlers := FOnException;
   for Entry in Handlers do
+  begin
     CallHandler(Entry.Handler, Done);
+  end;
 end;
 
 /// <summary>Eigene Routine: Jeder Aufruf braucht seine eigene gefangene Variable.</summary>
@@ -622,23 +684,37 @@ var
 begin
   List := FIgnore;
   if AIgnore then
-    Changed := List.AddClass(AClass)
+  begin
+    Changed := List.AddClass(AClass);
+  end
   else
+  begin
     Changed := List.RemoveClass(AClass);
+  end;
   if not Changed then
+  begin
     Exit;
+  end;
   SaveIgnoreList(List);
   if Assigned(FMessage) then
+  begin
     if AIgnore then
-      FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsIgnoredClassSaid, [AClass]))
+    begin
+      FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsIgnoredClassSaid, [AClass]));
+    end
     else
+    begin
       FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStopAgainSaid, [AClass]));
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeDebugExceptions.WireFrame(AFrame: TAtlasDebugExceptionsFrame);
 begin
   if AFrame = nil then
+  begin
     Exit;
+  end;
   AFrame.OnOpen :=
     procedure(AException: TAtlasDebugException)
     var
@@ -646,9 +722,13 @@ begin
     begin
       Path := TAtlasIdeDebugSources.Resolve(AException.FileName);
       if Path <> '' then
-        TAtlasIdeNavigation.GoToLocation(Path, AException.Line - 1, 0)
+      begin
+        TAtlasIdeNavigation.GoToLocation(Path, AException.Line - 1, 0);
+      end
       else if Assigned(FMessage) then
+      begin
         FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsNoSource, [AException.FileName]));
+      end;
     end;
   // Rahmen aus dem Aufrufstapel (#578): Pfad ist schon aufgelöst.
   AFrame.OnOpenFrame :=
@@ -670,7 +750,9 @@ begin
     procedure
     begin
       if FHistory <> nil then
+      begin
         FHistory.Clear;
+      end;
       RefreshWindow;
     end;
   AFrame.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;

@@ -243,12 +243,16 @@ begin
   Result := TAtlasVcsProjectContext.Empty;
   Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
   if Result.ProjectFile = '' then
+  begin
     Exit;
+  end;
   Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
   mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
   if mTeam.Vcs.Configured then
+  begin
     Result.Team := [TAtlasVcsProjectMapping.FromTeamFile(Result.ProjectFile, mTeam.Vcs.Provider,
       mTeam.Vcs.MainBranch)];
+  end;
 end;
 
 
@@ -288,12 +292,16 @@ begin
   for Index := 0 to AParent.ControlCount - 1 do
   begin
     if AParent.Controls[Index] is TTreeView then
+    begin
       Exit(TTreeView(AParent.Controls[Index]));
+    end;
     if AParent.Controls[Index] is TWinControl then
     begin
       Result := FindTree(TWinControl(AParent.Controls[Index]));
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
   end;
 end;
@@ -313,12 +321,17 @@ begin
     end;
     Form := Screen.ActiveCustomForm;
     if (Form = nil) or not (fsModal in Form.FormState) then
+    begin
       Exit;
+    end;
     Tree := FindTree(Form);
     if Tree = nil then
+    begin
       Exit;
+    end;
     // Die Seite heißt „Atlas“ (GetCaption) und hängt unter „Drittanbieter“, nicht oben im Baum.
     for Node in Tree.Items do
+    begin
       if SameText(Node.Text, 'Atlas') and (Node.Parent <> nil) then
       begin
         Stop;
@@ -326,11 +339,16 @@ begin
         Tree.Selected := Node;
         Exit;
       end;
+    end;
     // Nicht gefunden: Delphi 13 legt die Unterseiten erst beim Aufklappen an ("Fremdhersteller" zu). Obere
     // Zweige aufklappen und beim nächsten Takt erneut suchen, statt aufzugeben.
     for Node in Tree.Items do
+    begin
       if (Node.Parent = nil) and Node.HasChildren and not Node.Expanded then
+      begin
         Node.Expand(False);
+      end;
+    end;
   except
     on E: Exception do
     begin
@@ -345,7 +363,9 @@ function HookText(const AHook: TFunc<string>): string;
 begin
   Result := '';
   if Assigned(AHook) then
+  begin
     Result := AHook();
+  end;
 end;
 
 function ServerExe: string;
@@ -361,12 +381,16 @@ var
 begin
   Result := '';
   if TAtlasProjectSettings.SettingsFile = '' then
+  begin
     Exit;
+  end;
   Folder := ExtractFileDir(TAtlasProjectSettings.SettingsFile);
   Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.FileName;
   if not FileExists(Result) and FileExists(IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName)
   then
+  begin
     Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName;
+  end;
 end;
 
 function BaselineText: string;
@@ -376,12 +400,18 @@ var
 begin
   FileName := BaselineFile;
   if FileName = '' then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+  end;
   if not FileExists(FileName) then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  end;
   Count := TAtlasBaselineInfo.Count(TFile.ReadAllText(FileName, TEncoding.UTF8), Entries);
   if Count < 0 then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  end;
   Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
 end;
 
@@ -394,9 +424,13 @@ begin
   Result := '';
   Folder := ExtractFileDir(TAtlasProjectSettings.ActiveProject);
   if not TAtlasServerTool.Run(ServerExe, AArguments, Folder, ATimeoutMs, AOutput, Code, Error) then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error]);
+  end
   else if Code = 3 then
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
+  end;
 end;
 
 { TAtlasAddInOptions }
@@ -416,18 +450,22 @@ begin
   if not Assigned(Hooks.Command) then
   begin
     if FPage <> nil then
+    begin
       FPage.IndexAnswered(Text(nil));
+    end;
     Exit;
   end;
   Hooks.Command(ACommand,
     procedure(AAnswer: TJSONValue)
     begin
       if (Keep <> nil) and (Owner.FPage <> nil) and (Owner.FGeneration = Generation) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Settings,
           procedure
           begin
             Owner.FPage.IndexAnswered(Text(AAnswer));
           end);
+      end;
     end);
 end;
 
@@ -481,22 +519,30 @@ begin
       Output: string;
     begin
       if TAtlasProjectSettings.ActiveProject = '' then
+      begin
         Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+      end;
       Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
         TAtlasServerTool.CheckTimeoutMs, Output);
       if Result = '' then
+      begin
         Result := BaselineText;
+      end;
     end;
   FPage.OnBaselineDelete :=
     function: string
     begin
       if (BaselineFile <> '') and FileExists(BaselineFile) then
+      begin
         TFile.Delete(BaselineFile);
+      end;
       Result := BaselineText;
     end;
   // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
   if PendingReveal <> '' then
+  begin
     FPage.Reveal(PendingReveal);
+  end;
   // Angeheftete Favoriten (#458): Liste und Entfernen.
   FPage.OnRemoveFavorites :=
     procedure(AKeys: TArray<string>)
@@ -517,7 +563,9 @@ begin
     begin
       Result := nil;
       if Assigned(Hooks.ToolbarCommands) then
+      begin
         Result := Hooks.ToolbarCommands();
+      end;
     end;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
   FPage.OnIndexMetrics :=
@@ -536,9 +584,13 @@ begin
         function(AAnswer: TJSONValue): string
         begin
           if AAnswer <> nil then
-            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding)
+          begin
+            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding);
+          end
           else
+          begin
             Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+          end;
         end);
     end;
   FPage.OnIndexClear :=
@@ -548,9 +600,13 @@ begin
         function(AAnswer: TJSONValue): string
         begin
           if AAnswer <> nil then
-            Result := TLspIndexStatus.ClearedText(AAnswer)
+          begin
+            Result := TLspIndexStatus.ClearedText(AAnswer);
+          end
           else
+          begin
             Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+          end;
         end);
     end;
   // Projektdatei .atlas (#486): Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt sie an.
@@ -594,7 +650,9 @@ begin
   end;
   // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
   if PendingVcsServer <> '' then
+  begin
     FPage.RevealVcsServer(PendingVcsServer);
+  end;
 end;
 
 procedure TAtlasAddInOptions.ConnectVcs;
@@ -626,7 +684,9 @@ begin
         begin
           // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+          begin
             mOwner.FPage.VcsCheckDone(ACheck);
+          end;
         end) then
       begin
         // Nichts gestartet (Versionsverwaltung noch nicht bereit): Zustand ohne Prozess.
@@ -643,12 +703,16 @@ begin
       mProject := TAtlasIdeTeamFile.ActiveProject;
       mGroup := '';
       if mProject <> '' then
+      begin
         mGroup := TAtlasIdeFiles.GroupOfProject(mProject);
+      end;
       TAtlasIdeVcs.QueryProject(mProject, mGroup,
         procedure(AState: TAtlasVcsProjectState)
         begin
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+          begin
             mOwner.FPage.VcsProjectDone(AState);
+          end;
         end);
     end;
   // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
@@ -673,7 +737,9 @@ begin
         procedure
         begin
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+          begin
             mOwner.CheckVcsServer(mFolder);
+          end;
         end);
     end;
 end;
@@ -694,9 +760,13 @@ begin
     begin
       // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
       if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+      begin
         mOwner.FPage.VcsServerDone(mFolder, ACheck);
+      end;
     end) then
+  begin
     FPage.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
+  end;
 end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
@@ -719,6 +789,7 @@ begin
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
     // die Atlas abgeschaltet hatte. Sonst zeigt sie ab dem nächsten Start wieder beide Tooltips.
     if Accepted then
+    begin
       TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
         procedure
         begin
@@ -728,6 +799,7 @@ begin
               TAtlasIdeStructureSwitch.Sync;
             end);
         end);
+    end;
     FPage := nil;
   except
     on E: Exception do
@@ -777,7 +849,9 @@ begin
     FPage := AFrame as TAtlasSnippetsPage;
     Ide := nil;
     if TAtlasIdeSettings.Current.ImportIdeTemplates then
+    begin
       Ide := TAtlasLiveTemplates.LoadFolder(HookText(Hooks.IdeTemplateFolder), Stats);
+    end;
     Own := TAtlasSnippets.LoadFolder(HookText(Hooks.SnippetFolder), Errors);
     FPage.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, Ide, Own));
   except
@@ -790,7 +864,9 @@ procedure TAtlasSnippetOptions.DialogClosed(Accepted: Boolean);
 begin
   try
     if Accepted and (FPage <> nil) and (FPage.Catalog <> nil) and FPage.Catalog.Modified then
+    begin
       FPage.Catalog.Save(HookText(Hooks.SnippetFolder));
+    end;
     FPage := nil;
   except
     on E: Exception do
@@ -804,7 +880,9 @@ var
 begin
   Result := True;
   if FPage = nil then
+  begin
     Exit;
+  end;
   Message := FPage.Validate;
   if Message <> '' then
   begin
@@ -935,17 +1013,23 @@ begin
         Output: string;
       begin
         if TAtlasProjectSettings.ActiveProject = '' then
+        begin
           Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+        end;
         Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
           TAtlasServerTool.CheckTimeoutMs, Output);
         if Result = '' then
+        begin
           Result := BaselineText;
+        end;
       end;
     FPage.OnBaselineDelete :=
       function: string
       begin
         if (BaselineFile <> '') and FileExists(BaselineFile) then
+        begin
           TFile.Delete(BaselineFile);
+        end;
         Result := BaselineText;
       end;
     FPage.OnSuppressions :=
@@ -971,13 +1055,19 @@ begin
             Exit;
           end;
           for Row in TAtlasBaselineInfo.Suppressions(TFile.ReadAllText(OutputFile, TEncoding.UTF8)) do
+          begin
             Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.ServerPageSuppressionRow,
               [Row.Rule, Row.Total, Row.Unused, Row.Files])];
+          end;
           if Length(Result) = 0 then
+          begin
             Result := [TAtlasStrings.Text(TAtlasTextId.ServerPageSuppressionsNone)];
+          end;
         finally
           if FileExists(OutputFile) then
+          begin
             TFile.Delete(OutputFile);
+          end;
         end;
       end;
     FPage.OnClearCache :=
@@ -987,9 +1077,13 @@ begin
       begin
         Result := RunTool('--clear-cache', TAtlasServerTool.ShortTimeoutMs, Output);
         if Result = '' then
+        begin
           Result := Trim(Output);
+        end;
         if Result = '' then
+        begin
           Result := TAtlasStrings.Text(TAtlasTextId.ServerPageToolDone);
+        end;
       end;
     FPage.Refresh;
   except
@@ -1045,13 +1139,21 @@ begin
   if Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
   begin
     if SnippetOptions <> nil then
+    begin
       Services.UnregisterAddInOptions(SnippetOptions);
+    end;
     if KeysOptions <> nil then
+    begin
       Services.UnregisterAddInOptions(KeysOptions);
+    end;
     if ServerOptions <> nil then
+    begin
       Services.UnregisterAddInOptions(ServerOptions);
+    end;
     if Options <> nil then
+    begin
       Services.UnregisterAddInOptions(Options);
+    end;
   end;
   SnippetOptions := nil;
   KeysOptions := nil;
@@ -1079,12 +1181,16 @@ var
   begin
     Result := nil;
     if SameText(AItem.Name, ItemName) then
+    begin
       Exit(AItem);
+    end;
     for Child := 0 to AItem.Count - 1 do
     begin
       Result := FindItem(AItem.Items[Child]);
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
   end;
 
@@ -1093,14 +1199,20 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, INTAServices, Services) then
+  begin
     Exit;
+  end;
   if Services.ActionList <> nil then
+  begin
     for Index := 0 to Services.ActionList.ActionCount - 1 do
+    begin
       if SameText(Services.ActionList.Actions[Index].Name, ActionName) then
       begin
         Services.ActionList.Actions[Index].Execute;
         Exit(True);
       end;
+    end;
+  end;
   if Services.MainMenu <> nil then
   begin
     Item := FindItem(Services.MainMenu.Items);
@@ -1122,7 +1234,9 @@ begin
   Result := Supports(BorlandIDEServices, IOTAServices, Services) and (Services.GetEnvironmentOptions <> nil) and
     Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Environment);
   if Result then
+  begin
     Environment.EditOptions('', Options.GetCaption);
+  end;
 end;
 
 class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
@@ -1133,21 +1247,29 @@ end;
 class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);
 begin
   if Options = nil then
+  begin
     Exit;
+  end;
   PendingReveal := AKey;
   if Selector = nil then
+  begin
     Selector := TAtlasOptionsSelector.Create;
+  end;
   // Der Dialog ist modal: Der Zeitgeber wählt die Seite, während er offen ist (nur noch Rückfall).
   Selector.Start;
   try
     // Offizieller Weg: Dialog gleich auf der Seite „Atlas“ unter „Fremdhersteller“ (leere Area). Die Seite zeigt
     // beim Anlegen PendingReveal. Der Baum von Delphi 13 ist kein TTreeView mehr; die Suche darin fand nichts.
     if not EditAtlasOptions then
+    begin
       RunOptionsDialog;
+    end;
   finally
     // Modal: Hier ist der Dialog wieder zu. Nicht gefunden oder geschlossen: nichts mehr vormerken.
     if Selector <> nil then
+    begin
       Selector.Stop;
+    end;
     PendingReveal := '';
   end;
 end;

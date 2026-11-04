@@ -38,13 +38,21 @@ begin
   begin
     Name := Trim(Part);
     if Name = '' then
+    begin
       Continue;
+    end;
     Found := False;
     for Existing in Result do
+    begin
       if SameText(Existing, Name) then
+      begin
         Found := True;
+      end;
+    end;
     if not Found then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
