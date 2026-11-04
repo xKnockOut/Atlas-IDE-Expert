@@ -82,6 +82,47 @@ type
     Hits: TArray<TSyntaxNode>;
   end;
 
+  TDeclarationKinds = set of TSyntaxKind;
+
+/// <summary>Deklariert ARoutine (ohne eingebettete Routinen, die eigene Variablen haben) AName als eines der
+/// Elemente AKinds?</summary>
+function RoutineDeclares(ARoutine: TSyntaxNode; const AName: string; const AKinds: TDeclarationKinds): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (Bericht M1); mPending hält die Knoten, deren Kinder noch zu prüfen sind.
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoutine);
+    while not Result and (mPending.Count > 0) do
+    begin
+      mNode := mPending.Pop;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mChild := mNode[mIndex];
+        if mChild.Kind <> TSyntaxKind.RoutineDecl then
+        begin
+          Result := Result or ((mChild.Kind in AKinds) and ListsName(mChild.Name, AName));
+          mPending.Push(mChild);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Ist AStatement ein if in einem Anweisungsblock mit der Bedingung ACondition?</summary>
+function IsIfInBlock(AStatement, ACondition: TSyntaxNode): Boolean;
+begin
+  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.IfStatement) and (AStatement.ChildCount > 0);
+  Result := Result and (AStatement[0] = ACondition) and (AStatement.Parent <> nil) and
+    (AStatement.Parent.Kind = TSyntaxKind.Block);
+end;
+
 function TStringListUnsortedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('stringlist-unsorted', TRuleSeverity.Warning,
@@ -119,48 +160,6 @@ var
     end;
   end;
 
-  // Deklariert die Routine AName als Variable (var-Abschnitt oder Inline-Variable)?
-  function DeclaresLocal(ANode: TSyntaxNode; const AName: string): Boolean;
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node, Child: TSyntaxNode;
-    Index: Integer;
-    Name: string;
-  begin
-    // Iterativ (Bericht M1); Pending hält die Knoten, deren Kinder noch zu prüfen sind.
-    Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Child := Node[Index];
-          // Eingebettete Routinen haben eigene Variablen.
-          if Child.Kind = TSyntaxKind.RoutineDecl then
-          begin
-            Continue;
-          end;
-          if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
-          begin
-            for Name in SplitString(Child.Name, ',') do
-            begin
-              if SameText(Trim(Name), AName) then
-              begin
-                Exit(True);
-              end;
-            end;
-          end;
-          Pending.Push(Child);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
   // Schlüssel der Liste an ANode: Routine und Name für lokale Variablen, sonst der Feldname.
   function KeyOf(ANode: TSyntaxNode; const AName: string): string;
   var
@@ -172,7 +171,7 @@ var
     begin
       Routine := Routines[Index];
       if (Routine.StartOffset <= ANode.StartOffset) and (Routine.EndOffset >= ANode.EndOffset) and
-        DeclaresLocal(Routine, AName) then
+        RoutineDeclares(Routine, AName, [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) then
       begin
         Exit(IntToStr(Routine.StartOffset) + ':' + LowerCase(AName));
       end;
@@ -326,10 +325,48 @@ var
     end;
   end;
 
-  procedure VisitNode(ANode: TSyntaxNode);
+  procedure VisitInlineVar(ANode: TSyntaxNode);
+  var
+    Value: TSyntaxNode;
+  begin
+    if (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) then
+    begin
+      Value := ANode[ANode.ChildCount - 1];
+      NoteEscape(Value);
+      NoteCreation(ANode, FactIndex(KeyOf(ANode, Trim(ANode.Name))), Value);
+    end;
+  end;
+
+  procedure VisitCall(ANode: TSyntaxNode);
   var
     Index: Integer;
-    Value: TSyntaxNode;
+  begin
+    if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
+    begin
+      VisitMember(ANode[0], ANode);
+    end;
+    // Als Argument übergeben: der Aufgerufene kann sortieren.
+    if not MatchText(ANode.Name, NonEscapingCalls) then
+    begin
+      for Index := 1 to ANode.ChildCount - 1 do
+      begin
+        NoteEscape(ANode[Index]);
+      end;
+    end;
+  end;
+
+  // with X do Sorted := True ist nicht nachvollziehbar: als sortiert betrachten.
+  procedure VisitWith(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ANode.ChildCount - 2 do
+    begin
+      NoteEscape(ANode[Index]);
+    end;
+  end;
+
+  procedure VisitNode(ANode: TSyntaxNode);
   begin
     case ANode.Kind of
       TSyntaxKind.AssignStatement:
@@ -338,38 +375,16 @@ var
           VisitAssign(ANode);
         end;
       TSyntaxKind.InlineVar:
-        if (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) then
-        begin
-          Value := ANode[ANode.ChildCount - 1];
-          NoteEscape(Value);
-          NoteCreation(ANode, FactIndex(KeyOf(ANode, Trim(ANode.Name))), Value);
-        end;
+        VisitInlineVar(ANode);
       TSyntaxKind.Call:
-        begin
-          if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
-          begin
-            VisitMember(ANode[0], ANode);
-          end;
-          // Als Argument übergeben: der Aufgerufene kann sortieren.
-          if not MatchText(ANode.Name, NonEscapingCalls) then
-          begin
-            for Index := 1 to ANode.ChildCount - 1 do
-            begin
-              NoteEscape(ANode[Index]);
-            end;
-          end;
-        end;
+        VisitCall(ANode);
       TSyntaxKind.CallStatement:
         if (ANode.ChildCount = 1) and (ANode[0].Kind = TSyntaxKind.MemberAccess) then
         begin
           VisitMember(ANode[0], nil);
         end;
       TSyntaxKind.WithStatement:
-        // with X do Sorted := True ist nicht nachvollziehbar: als sortiert betrachten.
-        for Index := 0 to ANode.ChildCount - 2 do
-        begin
-          NoteEscape(ANode[Index]);
-        end;
+        VisitWith(ANode);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -467,8 +482,7 @@ var
   begin
     Result := nil;
     Statement := AFind.Parent;
-    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.IfStatement) or (Statement.ChildCount = 0) or
-      (Statement[0] <> AFind) or (Statement.Parent = nil) or (Statement.Parent.Kind <> TSyntaxKind.Block) then
+    if not IsIfInBlock(Statement, AFind) then
     begin
       Exit;
     end;
@@ -537,42 +551,78 @@ const
 /// <summary>Deklariert die Routine ARoutine AName lokal (Variable, Parameter)? Sonst ist es ein Feld der Klasse
 /// oder global.</summary>
 function DeclaredLocally(ARoutine: TSyntaxNode; const AName: string): Boolean;
-var
-  Pending: TStack<TSyntaxNode>;
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Name: string;
 begin
-  // Iterativ (Bericht M1); Pending hält die Knoten, deren Kinder noch zu prüfen sind.
-  Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
-  try
-    Pending.Push(ARoutine);
-    while Pending.Count > 0 do
-    begin
-      Node := Pending.Pop;
-      for Index := Node.ChildCount - 1 downto 0 do
-      begin
-        Child := Node[Index];
-        if Child.Kind = TSyntaxKind.RoutineDecl then
+  Result := RoutineDeclares(ARoutine, AName, [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter]);
+end;
+
+/// <summary>Name des Dictionarys: X oder Self.X; sonst ''.</summary>
+function DictionaryName(ADict: TSyntaxNode): string;
+begin
+  Result := '';
+  if ADict.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := ADict.Name;
+  end
+  else if (ADict.Kind = TSyntaxKind.MemberAccess) and (ADict.ChildCount = 1) and
+    (ADict[0].Kind = TSyntaxKind.Identifier) and SameText(ADict[0].Name, 'Self') then
+  begin
+    Result := ADict.Name;
+  end;
+end;
+
+/// <summary>TDictionary&lt;K, V&gt; bzw. TObjectDictionary&lt;K, V&gt;? AOpen ist die Stelle von "&lt;".</summary>
+function IsDictionaryType(const ATypeName: string; out AOpen: Integer): Boolean;
+begin
+  AOpen := Pos('<', ATypeName);
+  Result := (AOpen > 0) and MatchText(Trim(Copy(ATypeName, 1, AOpen - 1)), ['TDictionary', 'TObjectDictionary',
+    'System.Generics.Collections.TDictionary', 'System.Generics.Collections.TObjectDictionary']);
+end;
+
+/// <summary>Zweites Typargument von T&lt;K, V&gt; ab dem "&lt;" bei AOpen; '' ohne zweites Argument oder ohne
+/// "&gt;".</summary>
+function SecondTypeArgument(const ATypeName: string; AOpen: Integer): string;
+var
+  mIndex, mDepth, mComma: Integer;
+begin
+  Result := '';
+  mDepth := 0;
+  mComma := 0;
+  mIndex := AOpen + 1;
+  while (mIndex <= Length(ATypeName)) and (mDepth >= 0) do
+  begin
+    case ATypeName[mIndex] of
+      '<':
+        Inc(mDepth);
+      '>':
+        Dec(mDepth);
+      ',':
+        if mDepth = 0 then
         begin
-          Continue;
+          mComma := mIndex;
         end;
-        if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
-        begin
-          for Name in SplitString(Child.Name, ',') do
-          begin
-            if SameText(Trim(Name), AName) then
-            begin
-              Exit(True);
-            end;
-          end;
-        end;
-        Pending.Push(Child);
-      end;
+    else
+      // Übrige Zeichen bewusst ohne Wirkung.
     end;
-  finally
-    Pending.Free;
+    Inc(mIndex);
+  end;
+  // mIndex steht hinter dem schließenden ">".
+  if (mDepth < 0) and (mComma > 0) then
+  begin
+    Result := Trim(Copy(ATypeName, mComma + 1, mIndex - mComma - 2));
+  end;
+end;
+
+/// <summary>Legt die Kinder von ANode, die vor AOffset beginnen, rückwärts auf APending.</summary>
+procedure PushChildrenBefore(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode; AOffset: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    if ANode[mIndex].StartOffset < AOffset then
+    begin
+      APending.Push(ANode[mIndex]);
+    end;
   end;
 end;
 
@@ -655,58 +705,23 @@ var
   // Wertetyp V aus TDictionary<K, V> bzw. TObjectDictionary<K, V>; '' wenn ADict kein Dictionary ist.
   function ValueType(ADict: TSyntaxNode): string;
   var
-    Name, TypeName: string;
-    Open, Depth, Index, Comma: Integer;
+    mName, mTypeName: string;
+    mOpen: Integer;
   begin
     Result := '';
-    if ADict.Kind = TSyntaxKind.Identifier then
-    begin
-      Name := ADict.Name;
-    end
-    else if (ADict.Kind = TSyntaxKind.MemberAccess) and (ADict.ChildCount = 1) and
-      (ADict[0].Kind = TSyntaxKind.Identifier) and SameText(ADict[0].Name, 'Self') then
-    begin
-      Name := ADict.Name;
-    end
-    else
+    mName := DictionaryName(ADict);
+    if mName = '' then
     begin
       Exit;
     end;
-    TypeName := Types.DeclaredType(Name, ADict.StartPos);
-    if (TypeName <> '') and (Pos('<', TypeName) = 0) then
+    mTypeName := Types.DeclaredType(mName, ADict.StartPos);
+    if (mTypeName <> '') and (Pos('<', mTypeName) = 0) then
     begin
-      TypeName := AliasOf(AContext.Tree.Root, TypeName);
+      mTypeName := AliasOf(AContext.Tree.Root, mTypeName);
     end;
-    Open := Pos('<', TypeName);
-    if (Open = 0) or not MatchText(Trim(Copy(TypeName, 1, Open - 1)), ['TDictionary', 'TObjectDictionary',
-      'System.Generics.Collections.TDictionary', 'System.Generics.Collections.TObjectDictionary']) then
+    if IsDictionaryType(mTypeName, mOpen) then
     begin
-      Exit;
-    end;
-    Depth := 0;
-    Comma := 0;
-    for Index := Open + 1 to Length(TypeName) do
-    begin
-      if TypeName[Index] = '<' then
-      begin
-        Inc(Depth);
-      end
-      else if TypeName[Index] = '>' then
-      begin
-        if Depth = 0 then
-        begin
-          if Comma > 0 then
-          begin
-            Result := Trim(Copy(TypeName, Comma + 1, Index - Comma - 1));
-          end;
-          Exit;
-        end;
-        Dec(Depth);
-      end
-      else if (TypeName[Index] = ',') and (Depth = 0) then
-      begin
-        Comma := Index;
-      end;
+      Result := SecondTypeArgument(mTypeName, mOpen);
     end;
   end;
 
@@ -791,6 +806,13 @@ var
     Names: TArray<string>;
     Changed: Boolean;
 
+    // Stammt ASource (bei ANode) aus Keys, aus einem schon bekannten Namen oder als for-in aus einem Dictionary?
+    function DerivesFromKeys(ANode, ASource: TSyntaxNode): Boolean;
+    begin
+      Result := MentionsKeys(ASource) or MentionsAny(ASource, Names) or
+        ((ANode.Kind = TSyntaxKind.ForInStatement) and (ValueType(ASource) <> ''));
+    end;
+
     procedure Collect(ANode: TSyntaxNode);
     var
       Pending: TStack<TSyntaxNode>;
@@ -819,8 +841,7 @@ var
             Name := Node[0].Name;
             Source := Node[1];
           end;
-          if (Source <> nil) and not MatchText(Name, Names) and (MentionsKeys(Source) or MentionsAny(Source, Names) or
-            ((Node.Kind = TSyntaxKind.ForInStatement) and (ValueType(Source) <> ''))) then
+          if (Source <> nil) and not MatchText(Name, Names) and DerivesFromKeys(Node, Source) then
           begin
             Names := Names + [Name];
             Changed := True;
@@ -844,71 +865,81 @@ var
     Result := Names;
   end;
 
+  // Add, AddOrSetValue oder TryAdd auf ADict?
+  function IsFillCall(ANode: TSyntaxNode; const ADict: string): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1);
+    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryFills);
+  end;
+
+  // ADict[K] := …, aber nicht der geprüfte Zugriff AAccess selbst?
+  function IsIndexWrite(ANode, AAccess: TSyntaxNode; const ADict: string): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ANode[0] <> AAccess) and
+      (ANode[0].Kind = TSyntaxKind.IndexAccess);
+    Result := Result and (ANode[0].ChildCount = 2) and (Key(ANode[0][0]) = ADict);
+  end;
+
+  // Übergibt der Aufruf ANode das Dictionary ADict als Argument?
+  function PassesAsArgument(ANode: TSyntaxNode; const ADict: string): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    Result := False;
+    mIndex := 1;
+    while not Result and (ANode.Kind = TSyntaxKind.Call) and (mIndex < ANode.ChildCount) do
+    begin
+      Result := Key(ANode[mIndex]) = ADict;
+      Inc(mIndex);
+    end;
+  end;
+
   // Füllt ANode das Dictionary ADict (Add, AddOrSetValue, Dict[K] := …) oder übergibt es einer Routine, die es
   // füllen kann (ReadProperties(…, Infos), #1109)?
   function Fills(ANode, AAccess: TSyntaxNode; const ADict: string): Boolean;
+  begin
+    Result := IsFillCall(ANode, ADict) or IsIndexWrite(ANode, AAccess, ADict) or PassesAsArgument(ANode, ADict);
+  end;
+
+  // Füllt ein Knoten in ALoop hinter AAccess das Dictionary ADict?
+  function FillsAfter(ALoop, AAccess: TSyntaxNode; const ADict: string): Boolean;
   var
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := False;
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
-      (ANode[0].ChildCount = 1) and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryFills) then
-    begin
-      Exit(True);
-    end;
-    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ANode[0] <> AAccess) and
-      (ANode[0].Kind = TSyntaxKind.IndexAccess) and (ANode[0].ChildCount = 2) and (Key(ANode[0][0]) = ADict) then
-    begin
-      Exit(True);
-    end;
-    if ANode.Kind = TSyntaxKind.Call then
-    begin
-      for Index := 1 to ANode.ChildCount - 1 do
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ALoop);
+      while not Result and (mPending.Count > 0) do
       begin
-        if Key(ANode[Index]) = ADict then
+        mNode := mPending.Pop;
+        Result := (mNode.StartOffset > AAccess.EndOffset) and Fills(mNode, AAccess, ADict);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Exit(True);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
+    finally
+      mPending.Free;
     end;
   end;
 
   // Füllt eine Schleife um AAccess ADict, auch hinter dem Zugriff? Dann füllt ein früherer Durchlauf
-  // (Nachordnung mit Merktabelle: die Kinder vor dem Knoten, auch über eine innere for-Schleife, #1109).
+  // (die Kinder vor dem Knoten, auch über eine innere for-Schleife, #1109).
   function FilledInLoop(AScope, AAccess: TSyntaxNode; const ADict: string): Boolean;
   var
-    Loop, Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
-    Index: Integer;
+    mLoop: TSyntaxNode;
   begin
     Result := False;
-    Loop := AAccess.Parent;
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      while (Loop <> nil) and (Loop <> AScope) do
-      begin
-        if Loop.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
-          TSyntaxKind.ForInStatement] then
-        begin
-          Pending.Clear;
-          Pending.Push(Loop);
-          while Pending.Count > 0 do
-          begin
-            Node := Pending.Pop;
-            if (Node.StartOffset > AAccess.EndOffset) and Fills(Node, AAccess, ADict) then
-            begin
-              Exit(True);
-            end;
-            for Index := Node.ChildCount - 1 downto 0 do
-            begin
-              Pending.Push(Node[Index]);
-            end;
-          end;
-        end;
-        Loop := Loop.Parent;
-      end;
-    finally
-      Pending.Free;
+    mLoop := AAccess.Parent;
+    while not Result and (mLoop <> nil) and (mLoop <> AScope) do
+    begin
+      Result := (mLoop.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+        TSyntaxKind.ForInStatement]) and FillsAfter(mLoop, AAccess, ADict);
+      mLoop := mLoop.Parent;
     end;
   end;
 
@@ -950,51 +981,35 @@ var
     end;
   end;
 
+  // ContainsKey oder TryGetValue auf ADict mit dem Schlüssel AKey?
+  function ChecksKey(ANode: TSyntaxNode; const ADict, AKey: string): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount >= 2) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and (ANode[0].ChildCount = 1);
+    Result := Result and (Key(ANode[0][0]) = ADict) and MatchText(ANode.Name, DictionaryKeyChecks) and
+      (Key(ANode[1]) = AKey);
+  end;
+
   // ContainsKey/TryGetValue mit demselben Schlüssel oder Add, AddOrSetValue, Dict[K] := … vor AAccess.
   function Checked(AScope, AAccess: TSyntaxNode; const ADict, AKey: string): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Index: Integer;
-    Node, Callee: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
-    if FilledInLoop(AScope, AAccess, ADict) then
-    begin
-      Exit(True);
-    end;
+    Result := FilledInLoop(AScope, AAccess, ADict);
     // Iterativ (Bericht M1); Kinder ab dem Ende des Zugriffs bleiben wie zuvor aus.
-    Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(AScope);
-      while Pending.Count > 0 do
+      mPending.Push(AScope);
+      while not Result and (mPending.Count > 0) do
       begin
-        Node := Pending.Pop;
-        if Node.StartOffset < AAccess.StartOffset then
-        begin
-          if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount >= 2) and
-            (Node[0].Kind = TSyntaxKind.MemberAccess) and (Node[0].ChildCount = 1) then
-          begin
-            Callee := Node[0];
-            if (Key(Callee[0]) = ADict) and MatchText(Node.Name, DictionaryKeyChecks) and (Key(Node[1]) = AKey) then
-            begin
-              Exit(True);
-            end;
-          end;
-          if Fills(Node, AAccess, ADict) then
-          begin
-            Exit(True);
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          if Node[Index].StartOffset < AAccess.EndOffset then
-          begin
-            Pending.Push(Node[Index]);
-          end;
-        end;
+        mNode := mPending.Pop;
+        Result := (mNode.StartOffset < AAccess.StartOffset) and (ChecksKey(mNode, ADict, AKey) or
+          Fills(mNode, AAccess, ADict));
+        PushChildrenBefore(mPending, mNode, AAccess.EndOffset);
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1027,10 +1042,7 @@ var
   begin
     Result := nil;
     Statement := AAccess.Parent;
-    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
-      (Statement[1] <> AAccess) or (Statement.Parent = nil) or not (Statement.Parent.Kind in [TSyntaxKind.Block,
-      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
-      TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+    if not IsListedAssignment(Statement, AAccess) then
     begin
       Exit;
     end;

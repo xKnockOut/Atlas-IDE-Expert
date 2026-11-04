@@ -41,6 +41,9 @@ function DeclaredTypeAt(ATypes: TDeclaredTypes; const ATokens: TTokens; AIndex: 
 /// <summary>Einfacher Bezeichner: kein Teil einer Kette A.B und kein Aufruf.</summary>
 function IsPlainIdentifier(const ATokens: TTokens; AIndex: Integer): Boolean;
 
+/// <summary>Ist AStatement die Zuweisung "X := ACall" direkt in einer Anweisungsliste?</summary>
+function IsListedAssignment(AStatement, ACall: TSyntaxNode): Boolean;
+
 /// <summary>Steht AName in der kommagetrennten Namensliste AList (Name einer Deklaration "A, B")?</summary>
 function ListsName(const AList, AName: string): Boolean;
 
@@ -156,6 +159,15 @@ begin
   Result := not ((Prev >= 0) and (ATokens[Prev].IsSymbol('.') or ATokens[Prev].IsSymbol('@'))) and
     not ((Next <= High(ATokens)) and (ATokens[Next].IsSymbol('.') or ATokens[Next].IsSymbol('(') or
     ATokens[Next].IsSymbol('[') or ATokens[Next].IsSymbol('^')));
+end;
+
+function IsListedAssignment(AStatement, ACall: TSyntaxNode): Boolean;
+begin
+  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.AssignStatement) and
+    (AStatement.ChildCount = 2) and (AStatement[1] = ACall) and (AStatement.Parent <> nil);
+  Result := Result and (AStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+    TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
+    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]);
 end;
 
 function ListsName(const AList, AName: string): Boolean;
