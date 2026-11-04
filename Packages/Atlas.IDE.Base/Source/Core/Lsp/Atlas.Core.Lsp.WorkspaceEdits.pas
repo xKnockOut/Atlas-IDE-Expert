@@ -143,7 +143,9 @@ var
 begin
   Result := 0;
   for FileEdits in Files do
+  begin
     Inc(Result, Length(FileEdits.Edits));
+  end;
 end;
 
 function TLspWorkspaceEdit.IsEmpty: Boolean;
@@ -157,8 +159,12 @@ var
 begin
   Result := '';
   for FileEdits in Files do
+  begin
     if SameText(ExtractFileExt(FileEdits.FileName), '.dproj') then
+    begin
       Exit(FileEdits.FileName);
+    end;
+  end;
 end;
 
 function TLspWorkspaceEdit.WithoutProject(const AProject: string): TLspWorkspaceEdit;
@@ -168,10 +174,14 @@ begin
   Result := Self;
   Result.Files := nil;
   for FileEdits in Files do
+  begin
     if not SameText(FileEdits.FileName, AProject) and
       not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpr')) and
       not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpk')) then
+    begin
       Result.Files := Result.Files + [FileEdits];
+    end;
+  end;
 end;
 
 { TLspFileOperation }
@@ -183,28 +193,46 @@ var
 begin
   AResult := Default(TLspFileOperation);
   if not AValue.TryGetValue<string>('kind', Kind) then
+  begin
     Exit(False);
+  end;
   if Kind = 'create' then
-    AResult.Kind := TLspFileOperationKind.Create
+  begin
+    AResult.Kind := TLspFileOperationKind.Create;
+  end
   else if Kind = 'rename' then
-    AResult.Kind := TLspFileOperationKind.Rename
+  begin
+    AResult.Kind := TLspFileOperationKind.Rename;
+  end
   else if Kind = 'delete' then
-    AResult.Kind := TLspFileOperationKind.Delete
+  begin
+    AResult.Kind := TLspFileOperationKind.Delete;
+  end
   else
+  begin
     Exit(False);
+  end;
   if AResult.Kind = TLspFileOperationKind.Rename then
   begin
     if not AValue.TryGetValue<string>('oldUri', Uri) or not AValue.TryGetValue<string>('newUri', NewUri) then
+    begin
       Exit(False);
+    end;
     AResult.NewFileName := TLspUris.ToPath(NewUri);
     if AResult.NewFileName = '' then
+    begin
       Exit(False);
+    end;
   end
   else if not AValue.TryGetValue<string>('uri', Uri) then
+  begin
     Exit(False);
+  end;
   AResult.FileName := TLspUris.ToPath(Uri);
   if AResult.FileName = '' then
+  begin
     Exit(False);
+  end;
   if AValue.TryGetValue<TJSONObject>('options', Options) then
   begin
     Options.TryGetValue<Boolean>('overwrite', AResult.Overwrite);
@@ -214,7 +242,9 @@ begin
   end;
   // overwrite gewinnt über ignoreIfExists (LSP 3.17).
   if AResult.Overwrite then
+  begin
     AResult.IgnoreIfExists := False;
+  end;
   Result := True;
 end;
 
@@ -226,10 +256,16 @@ begin
   AFile.FileName := TLspUris.ToPath(AUri);
   AFile.Edits := nil;
   if (AFile.FileName = '') or (AEdits = nil) then
+  begin
     Exit(False);
+  end;
   for Item in AEdits do
+  begin
     if TLspTextEdit.FromJson(Item, Edit) then
+    begin
       AFile.Edits := AFile.Edits + [Edit];
+    end;
+  end;
   Result := Length(AFile.Edits) > 0;
 end;
 
@@ -249,10 +285,14 @@ var
 begin
   Result := Default(TLspWorkspaceEdit);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Edit := TJSONObject(AValue);
   if Edit.TryGetValue<TJSONArray>('atlasUnchanged', Unchanged) then
+  begin
     for Item in Unchanged do
+    begin
       if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
       begin
         Place.FileName := TLspUris.ToPath(Uri);
@@ -261,32 +301,48 @@ begin
         Place.Confidence := TAtlasConfidence.FromJson(Item);
         Result.Unchanged := Result.Unchanged + [Place];
       end;
+    end;
+  end;
   // documentChanges hat Vorrang, wenn der Server beides schickt.
   if Edit.TryGetValue<TJSONArray>('documentChanges', DocumentChanges) then
   begin
     for Item in DocumentChanges do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       if TJSONObject(Item).GetValue('kind') <> nil then
       begin
         if TLspFileOperation.FromJson(TJSONObject(Item), Operation) then
-          Result.Operations := Result.Operations + [Operation]
+        begin
+          Result.Operations := Result.Operations + [Operation];
+        end
         else
+        begin
           Inc(Result.Unsupported);
+        end;
         Continue;
       end;
       if TJSONObject(Item).TryGetValue<TJSONObject>('textDocument', Document) and
         Document.TryGetValue<string>('uri', Uri) and TJSONObject(Item).TryGetValue<TJSONArray>('edits', Edits) and
         ReadEdits(Uri, Edits, FileEdits) then
+      begin
         Result.Files := Result.Files + [FileEdits];
+      end;
     end;
     Exit;
   end;
   if Edit.TryGetValue<TJSONObject>('changes', Changes) then
+  begin
     for Pair in Changes do
+    begin
       if (Pair.JsonValue is TJSONArray) and ReadEdits(Pair.JsonString.Value, TJSONArray(Pair.JsonValue), FileEdits) then
+      begin
         Result.Files := Result.Files + [FileEdits];
+      end;
+    end;
+  end;
 end;
 
 { TLspEdits }
@@ -311,27 +367,35 @@ begin
   for Index := 0 to High(AEdits) do
   begin
     if (AEdits[Index].StartPos.Line > LastLine) or (AEdits[Index].EndPos.Line > LastLine) then
+    begin
       raise ELspEditError.CreateFmt('Änderung in Zeile %d, der Text hat nur %d Zeilen',
         [AEdits[Index].EndPos.Line + 1, LastLine + 1]);
+    end;
     Items[Index].Range.StartOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].StartPos);
     Items[Index].Range.EndOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].EndPos);
     Items[Index].Range.NewText := AEdits[Index].NewText;
     Items[Index].Index := Index;
     if Items[Index].Range.EndOffset < Items[Index].Range.StartOffset then
+    begin
       raise ELspEditError.CreateFmt('Änderung %d endet vor ihrem Anfang', [Index + 1]);
+    end;
   end;
   TArray.Sort<TIndexedRange>(Items, TComparer<TIndexedRange>.Construct(
     function(const A, B: TIndexedRange): Integer
     begin
       Result := A.Range.StartOffset - B.Range.StartOffset;
       if Result = 0 then
+      begin
         Result := A.Index - B.Index;
+      end;
     end));
   SetLength(Result, Length(Items));
   for Index := 0 to High(Items) do
   begin
     if (Index > 0) and (Items[Index].Range.StartOffset < Items[Index - 1].Range.EndOffset) then
+    begin
       raise ELspEditError.Create('Änderungen überlappen sich');
+    end;
     Result[Index] := Items[Index].Range;
   end;
 end;

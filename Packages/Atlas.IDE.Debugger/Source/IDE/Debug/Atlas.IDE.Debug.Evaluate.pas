@@ -224,25 +224,33 @@ const
 procedure TAtlasIdeDebugEvaluate.TListener.DebugStarted;
 begin
   if FInstance <> nil then
+  begin
     FInstance.SyncPinned;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
   if FInstance <> nil then
+  begin
     FInstance.Stopped;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.TListener.DebugResumed;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Resumed;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.TListener.DebugEnded;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Ended;
+  end;
 end;
 
 { TAtlasIdeDebugEvaluate.TEvaluateHook }
@@ -270,13 +278,17 @@ procedure TAtlasIdeDebugEvaluate.TEvaluateHook.Notification(AComponent: TCompone
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FAction) then
+  begin
     FAction := nil;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.TEvaluateHook.Execute(Sender: TObject);
 begin
   if FBypass or (FAction = nil) then
+  begin
     Exit;
+  end;
   if TAtlasIdeDebugEvaluate.Intercepts then
   begin
     TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.ShowWindow);
@@ -288,7 +300,9 @@ end;
 procedure TAtlasIdeDebugEvaluate.TEvaluateHook.RunOriginal;
 begin
   if FAction = nil then
+  begin
     Exit;
+  end;
   if Assigned(FOriginal) then
   begin
     FOriginal(FAction);
@@ -301,7 +315,9 @@ begin
     FAction.Execute;
   finally
     if FAction <> nil then
+    begin
       FAction.OnExecute := Execute;
+    end;
     FBypass := False;
   end;
 end;
@@ -367,7 +383,9 @@ begin
   ApplySettings;
   // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
   if TAtlasIdeDebugSession.StoppedThread <> nil then
+  begin
     FInstance.Stopped;
+  end;
 end;
 
 class procedure TAtlasIdeDebugEvaluate.Release;
@@ -375,16 +393,22 @@ var
   Instance: TAtlasIdeDebugEvaluate;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Instance := FInstance;
   FInstance := nil;
   TAtlasIdeDebugDialogCompletion.OwnField := nil;
   if Instance.FListener <> nil then
+  begin
     TAtlasIdeDebugSession.RemoveListener(Instance.FListener);
+  end;
   Instance.FListener := nil;
   // Der Frame zeigt die Liste der Instanz: erst lösen, dann Fenster und Instanz freigeben.
   if Frame <> nil then
+  begin
     Frame.SetList(nil);
+  end;
   TAtlasIdeDebugEvaluateWindow.Release;
   Instance.Free;
 end;
@@ -412,7 +436,9 @@ end;
 class procedure TAtlasIdeDebugEvaluate.ApplySettings;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   if not Enabled then
   begin
     FInstance.RemoveHook;
@@ -420,9 +446,13 @@ begin
     Exit;
   end;
   if TAtlasIdeSettings.Current.DebugEvaluateReplaceCtrlF7 then
-    FInstance.InstallHook
+  begin
+    FInstance.InstallHook;
+  end
   else
+  begin
     FInstance.RemoveHook;
+  end;
 end;
 
 class procedure TAtlasIdeDebugEvaluate.ThemeChanged;
@@ -441,12 +471,16 @@ var
   Expression: string;
 begin
   if (FInstance = nil) or not Enabled then
+  begin
     Exit;
+  end;
   // Vor dem Zeigen lesen: Danach hat das Fenster den Fokus, nicht mehr der Editor.
   Expression := CursorExpression;
   Shown := TAtlasIdeDebugEvaluateWindow.Show;
   if Shown = nil then
+  begin
     Exit;
+  end;
   WireFrame(Shown);
   FInstance.SyncPinned;
   Shown.FocusInput(Expression);
@@ -457,10 +491,14 @@ var
   Shown: TAtlasDebugEvaluateFrame;
 begin
   if (FInstance = nil) or not Enabled or (Trim(AExpression) = '') then
+  begin
     Exit;
+  end;
   Shown := TAtlasIdeDebugEvaluateWindow.Show;
   if Shown = nil then
+  begin
     Exit;
+  end;
   WireFrame(Shown);
   FInstance.SyncPinned;
   FInstance.Add(AExpression, False);
@@ -478,36 +516,48 @@ begin
   // Nicht angehängt (Strg+F7 bleibt bei der IDE): die Aktion direkt.
   Action := FindEvaluateAction;
   if Action <> nil then
+  begin
     Action.Execute;
+  end;
 end;
 
 class procedure TAtlasIdeDebugEvaluate.WireFrame(AFrame: TAtlasDebugEvaluateFrame);
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   AFrame.OnAdd :=
     procedure(AExpression: string)
     begin
       if FInstance <> nil then
+      begin
         FInstance.Add(AExpression, False);
+      end;
     end;
   AFrame.OnPinExpression :=
     procedure(AExpression: string)
     begin
       if FInstance <> nil then
+      begin
         FInstance.Add(AExpression, True);
+      end;
     end;
   AFrame.OnPin :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if FInstance <> nil then
+      begin
         FInstance.TogglePin(ANode);
+      end;
     end;
   AFrame.OnDelete :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if FInstance <> nil then
+      begin
         FInstance.Delete(ANode);
+      end;
     end;
   AFrame.OnExpand :=
     procedure(ANode: TAtlasEvalNode)
@@ -520,20 +570,26 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             FInstance.Expand(Key);
+          end;
         end);
     end;
   AFrame.OnModify :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if FInstance <> nil then
+      begin
         FInstance.Modify(ANode);
+      end;
     end;
   AFrame.OnLines :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if FInstance <> nil then
+      begin
         FInstance.FetchLines(ANode);
+      end;
     end;
   AFrame.OnHistory :=
     function: TArray<string>
@@ -549,7 +605,9 @@ begin
     procedure(AValue: Boolean)
     begin
       if FInstance <> nil then
+      begin
         FInstance.SetSideEffects(AValue);
+      end;
     end;
   AFrame.OnIdeDialog :=
     procedure
@@ -567,10 +625,14 @@ begin
   // Beim Debuggen das gestartete Projekt, sonst das aktive.
   Result := TAtlasIdeDebugSession.LaunchProject;
   if Result <> '' then
+  begin
     Exit;
+  end;
   Project := GetActiveProject;
   if Project <> nil then
+  begin
     Result := Project.FileName;
+  end;
 end;
 
 class function TAtlasIdeDebugEvaluate.StoreFile(const AName: string): string;
@@ -587,20 +649,28 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
     Exit;
+  end;
   for Name in EvaluateActionNames do
+  begin
     for Index := 0 to Services.ActionList.ActionCount - 1 do
     begin
       Action := Services.ActionList.Actions[Index];
       if SameText(Action.Name, Name) then
+      begin
         Exit(Action);
+      end;
     end;
+  end;
   // Ersatz: die Aktion mit Strg+F7.
   for Index := 0 to Services.ActionList.ActionCount - 1 do
   begin
     Action := Services.ActionList.Actions[Index];
     if (Action is TCustomAction) and (TCustomAction(Action).ShortCut = ShortCut(VK_F7, [ssCtrl])) then
+    begin
       Exit(Action);
+    end;
   end;
 end;
 
@@ -609,7 +679,9 @@ var
   Action: TContainedAction;
 begin
   if FHook <> nil then
+  begin
     Exit;
+  end;
   Action := FindEvaluateAction;
   if Action = nil then
   begin
@@ -635,13 +707,17 @@ begin
   Result := '';
   View := TAtlasEditorBuffer.ActiveView;
   if View = nil then
+  begin
     Exit;
+  end;
   Block := View.Block;
   if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
   begin
     Result := Trim(Block.Text);
     if Result <> '' then
+    begin
       Exit;
+    end;
   end;
   Cursor := View.CursorPos;
   Line := TAtlasEditorBuffer.LineText(View, Cursor.Line);
@@ -657,13 +733,17 @@ begin
   // Bekannter Text für „kein Zugriff“ (#840): kennzeichnen; die Ursache erklärt der Hover.
   Caption := TAtlasIdeDebugUnavailable.InlineCaption;
   if (Caption <> '') and TAtlasDebugUnavailable.IsUnavailable(AValue.Text, TAtlasIdeDebugUnavailable.Patterns) then
+  begin
     Result := Caption + ' ' + Result;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.LoadStores;
 begin
   if FStoreLoaded then
+  begin
     Exit;
+  end;
   FStoreLoaded := True;
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
   FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(StoreFile(HistoryFileName),
@@ -684,7 +764,9 @@ procedure TAtlasIdeDebugEvaluate.SaveStore(AStore: TAtlasExpressionHistory; cons
   AKept: Boolean);
 begin
   if AKept then
+  begin
     Exit;
+  end;
   try
     TAtlasDataFile.Write(StoreFile(AFileName), AStore.ToText);
   except
@@ -703,25 +785,37 @@ begin
   LoadStores;
   Project := CurrentProject;
   if SameText(Project, FProject) and (FProject <> '') then
+  begin
     Exit;
+  end;
   FProject := Project;
   // Festgeheftete Zeilen des vorigen Projekts weg, die des neuen in ihrer Reihenfolge (älteste zuerst) dazu.
   for Index := FList.Count - 1 downto 0 do
+  begin
     if FList.Roots[Index].Pinned then
+    begin
       FList.Delete(Index);
+    end;
+  end;
   Pinned := FPinned.Items(Project);
   for Index := High(Pinned) downto 0 do
   begin
     Node := FList.Add(Pinned[Index]);
     if Node = nil then
+    begin
       Continue;
+    end;
     Node.Pinned := True;
     if not StillStopped then
+    begin
       Node.State := TAtlasEvalState.Unavailable;
+    end;
   end;
   Refresh;
   if StillStopped then
+  begin
     StartEvaluate;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.Refresh;
@@ -730,7 +824,9 @@ var
 begin
   Current := Frame;
   if Current <> nil then
+  begin
     Current.Refresh;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.EndInternal;
@@ -750,7 +846,9 @@ end;
 procedure TAtlasIdeDebugEvaluate.CancelWork;
 begin
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   FEvaluator.Cancel;
   FLinesEvaluator.Cancel;
   EndInternal;
@@ -771,16 +869,22 @@ procedure TAtlasIdeDebugEvaluate.Stopped;
 begin
   CancelWork;
   if not Enabled then
+  begin
     Exit;
+  end;
   FList.BeginStop;
   if Frame <> nil then
+  begin
     Frame.InvalidateLines;
+  end;
   FStop := TAtlasIdeDebugSession.StopCount;
   FRetries := 0;
   FPhase := TPhase.Location;
   Refresh;
   if ReadLocation then
+  begin
     StartEvaluate;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.Resumed;
@@ -830,7 +934,9 @@ end;
 procedure TAtlasIdeDebugEvaluate.StartEvaluate;
 begin
   if not StillStopped then
+  begin
     Exit;
+  end;
   FPhase := TPhase.Evaluate;
   FTimer.Interval := TickMs;
   FTimer.Enabled := True;
@@ -849,9 +955,13 @@ begin
         begin
           FTimer.Enabled := False;
           if not StillStopped or (TAtlasIdeDebugSession.StopCount <> FStop) then
-            FPhase := TPhase.Idle
+          begin
+            FPhase := TPhase.Idle;
+          end
           else if ReadLocation then
+          begin
             StartEvaluate;
+          end;
         end;
       TPhase.Evaluate:
         EvaluateSlice;
@@ -896,7 +1006,9 @@ begin
   if FDeferredKey <> '' then
   begin
     if GetTickCount - FWaitAt < DeferredTimeoutMs then
+    begin
       Exit;
+    end;
     FEvaluator.Cancel;
     if FInternal then
     begin
@@ -906,7 +1018,9 @@ begin
     Node := FList.Find(FDeferredKey);
     FDeferredKey := '';
     if Node <> nil then
+    begin
       FList.SetResult(Node, False, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout));
+    end;
     Refresh;
   end;
   Changed := False;
@@ -915,7 +1029,9 @@ begin
   for Node in Pending do
   begin
     if GetTickCount - StartedAt >= SliceMs then
+    begin
       Break;
+    end;
     // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
     Value := Default(TAtlasDebugValue);
     TAtlasIdeDebugSession.BeginInternal;
@@ -953,7 +1069,9 @@ begin
     FPhase := TPhase.Idle;
   end;
   if Changed then
+  begin
     Refresh;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.DeferredDone(const AValue: TAtlasDebugValue);
@@ -961,7 +1079,9 @@ var
   Node: TAtlasEvalNode;
 begin
   if FDeferredKey = '' then
+  begin
     Exit;
+  end;
   if FInternal then
   begin
     FInternal := False;
@@ -970,7 +1090,9 @@ begin
   Node := FList.Find(FDeferredKey);
   FDeferredKey := '';
   if Node <> nil then
+  begin
     PutValue(Node, AValue);
+  end;
   Refresh;
 end;
 
@@ -982,23 +1104,35 @@ begin
   LoadStores;
   Node := FList.Add(AExpression);
   if Node = nil then
+  begin
     Exit;
+  end;
   Project := CurrentProject;
   if FHistory.Add(Project, Node.Expression) then
+  begin
     SaveStore(FHistory, HistoryFileName, 'Verlauf des Fensters „Auswerten“', FHistoryKept);
+  end;
   if APinned then
   begin
     Node.Pinned := True;
     if FPinned.Add(Project, Node.Expression) then
+    begin
       SaveStore(FPinned, PinnedFileName, 'Festgeheftete Ausdrücke', FPinnedKept);
+    end;
   end;
   if not StillStopped then
+  begin
     Node.State := TAtlasEvalState.Unavailable;
+  end;
   Refresh;
   if Frame <> nil then
+  begin
     Frame.Select(Node.Key);
+  end;
   if StillStopped and (FPhase = TPhase.Idle) then
+  begin
     StartEvaluate;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.Delete(ANode: TAtlasEvalNode);
@@ -1007,9 +1141,13 @@ var
 begin
   Index := FList.IndexOf(ANode);
   if Index < 0 then
+  begin
     Exit;
+  end;
   if ANode.Pinned and FPinned.Remove(CurrentProject, ANode.Expression) then
+  begin
     SaveStore(FPinned, PinnedFileName, 'Festgeheftete Ausdrücke', FPinnedKept);
+  end;
   // Läuft gerade die Auswertung dieser Zeile oder eines ihrer Felder: verwerfen, sonst kommt sie ins Leere.
   if (FDeferredKey <> '') and ((FDeferredKey = ANode.Key) or FDeferredKey.StartsWith(ANode.Key + #1)) then
   begin
@@ -1040,11 +1178,17 @@ begin
   Project := CurrentProject;
   ANode.Pinned := not ANode.Pinned;
   if ANode.Pinned then
-    Changed := FPinned.Add(Project, ANode.Expression)
+  begin
+    Changed := FPinned.Add(Project, ANode.Expression);
+  end
   else
+  begin
     Changed := FPinned.Remove(Project, ANode.Expression);
+  end;
   if Changed then
+  begin
     SaveStore(FPinned, PinnedFileName, 'Festgeheftete Ausdrücke', FPinnedKept);
+  end;
   Refresh;
 end;
 
@@ -1060,11 +1204,15 @@ var
 begin
   Node := FList.Find(AKey);
   if (Node = nil) or Node.ChildrenLoaded then
+  begin
     Exit;
+  end;
   Node.Expanded := True;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if (Session = nil) or (FFileName = '') or (Node.Expression = '') then
   begin
     // Ohne Server bzw. ohne Quelltext am Halt: Teile des Ergebnis-Strings.
@@ -1076,7 +1224,9 @@ begin
   // Im Hauptthread abgleichen: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   Buffer := TAtlasIdeFiles.BufferOf(FileName);
   if Buffer <> nil then
-    Source := TAtlasEditorBuffer.Text(Buffer)
+  begin
+    Source := TAtlasEditorBuffer.Text(Buffer);
+  end
   else
     try
       Source := TAtlasTextFile.LoadText(FileName);
@@ -1114,12 +1264,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.Debugger,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.AcceptFields(Request, AKey, Fields);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -1133,13 +1287,19 @@ var
 begin
   // Antwort eines früheren Halts bzw. für eine entfernte Zeile: verwerfen.
   if ARequest <> FRequest then
+  begin
     Exit;
+  end;
   Node := FList.Find(AKey);
   // Felder des Index ersetzen Teile, die der Wert inzwischen geliefert hat (SetResult bei aufgeklapptem Knoten).
   if (Node = nil) or (Node.ChildrenLoaded and not Node.FromParts) then
+  begin
     Exit;
+  end;
   if Length(AFields) > 0 then
-    FList.SetFields(Node, AFields)
+  begin
+    FList.SetFields(Node, AFields);
+  end
   else if not Node.ChildrenLoaded and not FList.SetParts(Node) then
   begin
     // Weder Felder noch Teile: aufgeklappt mit „(keine Felder)“.
@@ -1147,7 +1307,9 @@ begin
   end;
   Refresh;
   if StillStopped and (FPhase = TPhase.Idle) and (Length(FList.Pending) > 0) then
+  begin
     StartEvaluate;
+  end;
 end;
 
 /// <summary>ANode und seine Felder neu auswerten; Teile entstehen aus dem neuen Wert.</summary>
@@ -1156,11 +1318,17 @@ var
   Index: Integer;
 begin
   if ANode.FromParts then
+  begin
     ANode.ClearChildren;
+  end;
   if ANode.Expression <> '' then
+  begin
     ANode.State := TAtlasEvalState.Pending;
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     MarkPending(ANode.Children[Index]);
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.Modify(ANode: TAtlasEvalNode);
@@ -1169,33 +1337,47 @@ var
   Node: TAtlasEvalNode;
 begin
   if (ANode.Expression = '') or (ANode.State <> TAtlasEvalState.Value) or not StillStopped then
+  begin
     Exit;
+  end;
   Key := ANode.Key;
   Expression := ANode.Expression;
   NewValue := ANode.Value;
   if not InputQuery(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateModifyTitle),
     TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyPrompt, [Expression]), NewValue) then
+  begin
     Exit;
+  end;
   // Der Dialog ist modal: Danach kann der Knoten weg sein.
   if not StillStopped then
+  begin
     Exit;
+  end;
   TAtlasIdeDebugSession.BeginInternal;
   try
     if not TAtlasIdeDebugValues.Modify(Expression, FFileName, FLine + 1, NewValue, Outcome) then
+    begin
       MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyFailed, [Expression, Outcome]), mtWarning,
         [mbOK], 0);
+    end;
   finally
     TAtlasIdeDebugSession.EndInternal;
   end;
   // Neu auswerten; geändert gegenüber dem letzten Halt ist der Wert dann auch markiert.
   Node := FList.Find(Key);
   if Node <> nil then
+  begin
     MarkPending(Node);
+  end;
   if Frame <> nil then
+  begin
     Frame.InvalidateLines;
+  end;
   Refresh;
   if FPhase = TPhase.Idle then
+  begin
     StartEvaluate;
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.FetchLines(ANode: TAtlasEvalNode);
@@ -1228,7 +1410,9 @@ begin
     end;
   end;
   if Value.State <> TAtlasDebugValueState.Pending then
+  begin
     LinesDone(Value);
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.LinesDone(const AValue: TAtlasDebugValue);
@@ -1243,7 +1427,9 @@ begin
   Key := FLinesKey;
   FLinesKey := '';
   if (Key <> '') and (Frame <> nil) then
+  begin
     Frame.SetLines(Key, AValue.State = TAtlasDebugValueState.Value, AValue.Text);
+  end;
 end;
 
 procedure TAtlasIdeDebugEvaluate.SetSideEffects(AValue: Boolean);
@@ -1263,25 +1449,35 @@ var
       Exit;
     end;
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       Collect(ANode.Children[Index]);
+    end;
   end;
 
 var
   Index: Integer;
 begin
   if FSideEffects = AValue then
+  begin
     Exit;
+  end;
   FSideEffects := AValue;
   if not StillStopped then
+  begin
     Exit;
+  end;
   Reload := TList<string>.Create;
   try
     for Index := 0 to FList.Count - 1 do
+    begin
       Collect(FList.Roots[Index]);
+    end;
     // Mit oder ohne Funktionsaufrufe kann ein anderer Wert herauskommen: neu auswerten, Felder neu holen.
     Stopped;
     for Key in Reload do
+    begin
       Expand(Key);
+    end;
   finally
     Reload.Free;
   end;
@@ -1292,14 +1488,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 end.

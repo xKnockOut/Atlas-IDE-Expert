@@ -93,72 +93,101 @@ begin
   Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
 end;
 
+/// <summary>Index der schließenden Klammer zur öffnenden an AIndex (oder das letzte Token).</summary>
+function ClosingParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AIndex;
+  mDepth := 0;
+  repeat
+    if ATokens[Result].IsSymbol('(') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol(')') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth <> 0 then
+    begin
+      Inc(Result);
+    end;
+  until (mDepth = 0) or (Result >= High(ATokens));
+end;
+
+/// <summary>Eintrag ab dem Bezeichner an AIndex; AIndex steht danach auf seinem letzten Token.</summary>
+function ReadEntry(const AContext: TRuleContext; const ATokens: TArray<TPascalToken>;
+  var AIndex: Integer): TExportEntry;
+var
+  mListStart: Integer;
+begin
+  Result := Default(TExportEntry);
+  Result.Name := ATokens[AIndex].Text;
+  Result.Token := ATokens[AIndex];
+  // Unit.Routine: der letzte Teil zählt.
+  while (AIndex + 2 <= High(ATokens)) and ATokens[AIndex + 1].IsSymbol('.') and
+    (ATokens[AIndex + 2].Kind = TPascalTokenKind.Identifier) do
+  begin
+    Inc(AIndex, 2);
+    Result.Name := ATokens[AIndex].Text;
+    Result.Token := ATokens[AIndex];
+  end;
+  if (AIndex + 1 <= High(ATokens)) and ATokens[AIndex + 1].IsSymbol('(') then
+  begin
+    mListStart := AIndex + 1;
+    AIndex := ClosingParen(ATokens, mListStart);
+    Result.Parameters := Normalized(Copy(AContext.Text, ATokens[mListStart].Offset + 1,
+      ATokens[AIndex].Offset + Length(ATokens[AIndex].Text) - ATokens[mListStart].Offset));
+  end;
+end;
+
+/// <summary>Einträge des exports-Abschnitts ab AIndex bis zum ";" an AEntries anhängen; AIndex steht danach auf
+/// dem ";".</summary>
+procedure ReadExports(const AContext: TRuleContext; const ATokens: TArray<TPascalToken>; var AIndex: Integer;
+  var AEntries: TArray<TExportEntry>);
+var
+  mExpect: Boolean;
+begin
+  mExpect := True;
+  while (AIndex <= High(ATokens)) and not ATokens[AIndex].IsSymbol(';') do
+  begin
+    if IsTrivia(ATokens[AIndex]) then
+    begin
+      // Kommentare und Direktiven zwischen den Einträgen überspringen.
+    end
+    else if ATokens[AIndex].IsSymbol(',') then
+    begin
+      mExpect := True;
+    end
+    else if mExpect and (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) then
+    begin
+      mExpect := False;
+      AEntries := AEntries + [ReadEntry(AContext, ATokens, AIndex)];
+    end;
+    Inc(AIndex);
+  end;
+end;
+
 /// <summary>Einträge aller exports-Abschnitte aus den Token.</summary>
 function ExportEntries(const AContext: TRuleContext): TArray<TExportEntry>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth, ListStart: Integer;
-  Entry: TExportEntry;
-  Expect: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := nil;
-  Tokens := AContext.Tree.Tokens;
-  Index := 0;
-  while Index <= High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  mIndex := 0;
+  while mIndex <= High(mTokens) do
   begin
-    if not Tokens[Index].IsKeyword('exports') then
+    if mTokens[mIndex].IsKeyword('exports') then
     begin
-      Inc(Index);
-      Continue;
-    end;
-    Inc(Index);
-    Expect := True;
-    while (Index <= High(Tokens)) and not Tokens[Index].IsSymbol(';') do
+      Inc(mIndex);
+      ReadExports(AContext, mTokens, mIndex, Result);
+    end
+    else
     begin
-      if IsTrivia(Tokens[Index]) then
-      begin
-        Inc(Index);
-        Continue;
-      end;
-      if Tokens[Index].IsSymbol(',') then
-      begin
-        Expect := True;
-      end
-      else if Expect and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
-      begin
-        Expect := False;
-        Entry := Default(TExportEntry);
-        Entry.Name := Tokens[Index].Text;
-        Entry.Token := Tokens[Index];
-        // Unit.Routine: der letzte Teil zählt.
-        while (Index + 2 <= High(Tokens)) and Tokens[Index + 1].IsSymbol('.') and
-          (Tokens[Index + 2].Kind = TPascalTokenKind.Identifier) do
-        begin
-          Inc(Index, 2);
-          Entry.Name := Tokens[Index].Text;
-          Entry.Token := Tokens[Index];
-        end;
-        if (Index + 1 <= High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
-        begin
-          ListStart := Index + 1;
-          Depth := 0;
-          repeat
-            Inc(Index);
-            if Tokens[Index].IsSymbol('(') then
-            begin
-              Inc(Depth);
-            end
-            else if Tokens[Index].IsSymbol(')') then
-            begin
-              Dec(Depth);
-            end;
-          until (Depth = 0) or (Index = High(Tokens));
-          Entry.Parameters := Normalized(Copy(AContext.Text, Tokens[ListStart].Offset + 1,
-            Tokens[Index].Offset + Length(Tokens[Index].Text) - Tokens[ListStart].Offset));
-        end;
-        Result := Result + [Entry];
-      end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
 end;
@@ -233,79 +262,124 @@ begin
     (Pos('{', AInterface[0].Name) > 0));
 end;
 
+function KindOf(const AContext: TRuleContext; const ATypeName: string; ADepth: Integer): TExportTypeKind; forward;
+
+/// <summary>Name ohne Typparameter und Unit ("System.SysUtils.TBytes" wird "TBytes").</summary>
+function BareTypeName(const ATypeName: string): string;
+begin
+  Result := Trim(ATypeName);
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
+  end;
+  if LastDelimiter('.', Result) > 0 then
+  begin
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Art des Typs ATypeName ohne Deklaration: Strings und dynamische Arrays aus System.</summary>
+function SystemKind(const AName: string): TExportTypeKind;
+begin
+  Result := TExportTypeKind.Safe;
+  if MatchText(AName, ManagedStrings) then
+  begin
+    Result := TExportTypeKind.ManagedString;
+  end
+  else if MatchText(AName, DynamicArrays) or EndsText('DynArray', AName) then
+  begin
+    Result := TExportTypeKind.DynamicArray;
+  end;
+end;
+
+/// <summary>Bestimmt das Kind AChild einer Typdeklaration AName die Art (AKind)?</summary>
+function ChildKind(const AContext: TRuleContext; AChild: TSyntaxNode; const AName: string; ADepth: Integer;
+  out AKind: TExportTypeKind): Boolean;
+begin
+  AKind := TExportTypeKind.Safe;
+  case AChild.Kind of
+    TSyntaxKind.ClassType:
+      AKind := TExportTypeKind.ObjectType;
+    TSyntaxKind.ArrayType:
+      // array of X ist dynamisch, array[0..3] of X nicht.
+      if Pos('[', NodeText(AContext.Text, AChild)) = 0 then
+      begin
+        AKind := TExportTypeKind.DynamicArray;
+      end;
+    TSyntaxKind.InterfaceType:
+      if not HasGuid(AContext.Text, AChild) then
+      begin
+        AKind := TExportTypeKind.InterfaceWithoutGuid;
+      end;
+    TSyntaxKind.TypeReference:
+      // Alias: TNamen = string
+      if (ADepth < 8) and not SameText(AChild.Name, AName) then
+      begin
+        AKind := KindOf(AContext, NodeText(AContext.Text, AChild), ADepth + 1);
+        Exit(True);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+  Result := AKind <> TExportTypeKind.Safe;
+end;
+
+/// <summary>Art des in der Datei deklarierten Typs ADecl (Name AName).</summary>
+function DeclKind(const AContext: TRuleContext; ADecl: TSyntaxNode; const AName: string;
+  ADepth: Integer): TExportTypeKind;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ADecl.ChildCount - 1 do
+  begin
+    if ChildKind(AContext, ADecl[mIndex], AName, ADepth, Result) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := TExportTypeKind.Safe;
+end;
+
+/// <summary>Ist AName eine Klasse aus der RTL oder dem Index?</summary>
+function IsExternalClass(const AContext: TRuleContext; const AName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := MatchText(AName, KnownClasses);
+  if Result or (AContext.Index = nil) then
+  begin
+    Exit;
+  end;
+  for mLocation in AContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Art des Typs ATypeName an der Grenze einer DLL; Safe, wenn er sicher ist oder sich nicht sicher
 /// bestimmen lässt. ADepth begrenzt Alias-Ketten.</summary>
 function KindOf(const AContext: TRuleContext; const ATypeName: string; ADepth: Integer): TExportTypeKind;
 var
-  Name: string;
-  Decl, Child: TSyntaxNode;
-  Location: TSymbolLocation;
-  Index: Integer;
+  mName: string;
+  mDecl: TSyntaxNode;
 begin
-  Result := TExportTypeKind.Safe;
-  Name := Trim(ATypeName);
-  if Pos('<', Name) > 0 then
+  mName := BareTypeName(ATypeName);
+  Result := SystemKind(mName);
+  if Result <> TExportTypeKind.Safe then
   begin
-    Name := Trim(Copy(Name, 1, Pos('<', Name) - 1));
-  end;
-  // System.string, System.SysUtils.TBytes
-  if LastDelimiter('.', Name) > 0 then
-  begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  end;
-  if MatchText(Name, ManagedStrings) then
-  begin
-    Exit(TExportTypeKind.ManagedString);
-  end;
-  if MatchText(Name, DynamicArrays) or EndsText('DynArray', Name) then
-  begin
-    Exit(TExportTypeKind.DynamicArray);
-  end;
-  Decl := FileTypeDecl(AContext.Tree, Name);
-  if Decl <> nil then
-  begin
-    for Index := 0 to Decl.ChildCount - 1 do
-    begin
-      Child := Decl[Index];
-      case Child.Kind of
-        TSyntaxKind.ClassType:
-          Exit(TExportTypeKind.ObjectType);
-        TSyntaxKind.ArrayType:
-          // array of X ist dynamisch, array[0..3] of X nicht.
-          if Pos('[', NodeText(AContext.Text, Child)) = 0 then
-          begin
-            Exit(TExportTypeKind.DynamicArray);
-          end;
-        TSyntaxKind.InterfaceType:
-          if not HasGuid(AContext.Text, Child) then
-          begin
-            Exit(TExportTypeKind.InterfaceWithoutGuid);
-          end;
-        TSyntaxKind.TypeReference:
-          // Alias: TNamen = string
-          if (ADepth < 8) and not SameText(Child.Name, Name) then
-          begin
-            Exit(KindOf(AContext, NodeText(AContext.Text, Child), ADepth + 1));
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-    end;
     Exit;
   end;
-  if MatchText(Name, KnownClasses) then
+  mDecl := FileTypeDecl(AContext.Tree, mName);
+  if mDecl <> nil then
   begin
-    Exit(TExportTypeKind.ObjectType);
-  end;
-  if AContext.Index <> nil then
+    Result := DeclKind(AContext, mDecl, mName, ADepth);
+  end
+  else if IsExternalClass(AContext, mName) then
   begin
-    for Location in AContext.Index.FindSymbols(Name) do
-    begin
-      if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.ClassType) then
-      begin
-        Exit(TExportTypeKind.ObjectType);
-      end;
-    end;
+    Result := TExportTypeKind.ObjectType;
   end;
 end;
 
@@ -383,157 +457,229 @@ begin
     'Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar');
 end;
 
+/// <summary>Köpfe der Gruppe zum Eintrag AEntry: Überladungen wählt die Parameterliste im exports-Eintrag;
+/// Köpfe ohne Liste (Rumpf zu einer Deklaration im interface) gehören zu jeder. AMain: der erste Kopf mit
+/// Liste, sonst der erste.</summary>
+function GroupOf(const AText: string; const AEntry: TExportEntry; const AHeaders: TArray<TSyntaxNode>;
+  out AMain: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mHeader: TSyntaxNode;
+  mText: string;
+begin
+  Result := nil;
+  AMain := nil;
+  for mHeader in AHeaders do
+  begin
+    mText := ParameterText(AText, mHeader);
+    if (AEntry.Parameters = '') or (mText = '') or (mText = AEntry.Parameters) then
+    begin
+      Result := Result + [mHeader];
+      if (AMain = nil) and (mText <> '') then
+      begin
+        AMain := mHeader;
+      end;
+    end;
+  end;
+  if (AMain = nil) and (Result <> nil) then
+  begin
+    AMain := Result[0];
+  end;
+end;
+
+/// <summary>Haben alle Köpfe der Gruppe mit Liste dieselbe wie AMain? Ohne Liste im Eintrag muss die Routine
+/// eindeutig sein.</summary>
+function Unambiguous(const AText: string; const AGroup: TArray<TSyntaxNode>; AMain: TSyntaxNode): Boolean;
+var
+  mHeader: TSyntaxNode;
+  mText, mOther: string;
+begin
+  mText := ParameterText(AText, AMain);
+  for mHeader in AGroup do
+  begin
+    mOther := ParameterText(AText, mHeader);
+    if (mOther <> '') and (mOther <> mText) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Nennt ein Kopf der Gruppe eine Aufrufkonvention?</summary>
+function HasConvention(const AGroup: TArray<TSyntaxNode>): Boolean;
+var
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+begin
+  for mHeader in AGroup do
+  begin
+    for mIndex := 0 to mHeader.ChildCount - 1 do
+    begin
+      if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(mHeader[mIndex].Name, CallingConventions) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+type
+  /// <summary>Probleme einer exportierten Routine für die Meldung.</summary>
+  TExportProblems = record
+    Parts: TArray<string>;
+    /// <summary>Strings oder dynamische Arrays: Speicher des Delphi-Speichermanagers.</summary>
+    Memory: Boolean;
+    IsFunction: Boolean;
+  end;
+
+/// <summary>Art des Typverweises ATypeRef; Strings und dynamische Arrays sind mit AAllowStrings sicher.</summary>
+function BoundaryKind(const AContext: TRuleContext; ATypeRef: TSyntaxNode; AAllowStrings: Boolean): TExportTypeKind;
+begin
+  Result := KindOf(AContext, NodeText(AContext.Text, ATypeRef), 0);
+  if AAllowStrings and (Result in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]) then
+  begin
+    Result := TExportTypeKind.Safe;
+  end;
+end;
+
+/// <summary>Ergebnis: der Typverweis direkt im Kopf AMain.</summary>
+procedure CollectResult(const AContext: TRuleContext; AMain: TSyntaxNode; AAllowStrings: Boolean;
+  var AProblems: TExportProblems);
+var
+  mTypeRef: TSyntaxNode;
+  mKind: TExportTypeKind;
+begin
+  mTypeRef := AMain.FindChild(TSyntaxKind.TypeReference);
+  if mTypeRef = nil then
+  begin
+    Exit;
+  end;
+  AProblems.IsFunction := True;
+  mKind := BoundaryKind(AContext, mTypeRef, AAllowStrings);
+  if mKind <> TExportTypeKind.Safe then
+  begin
+    AProblems.Parts := AProblems.Parts + [Format('gibt %s zurück', [Described(NodeText(AContext.Text, mTypeRef),
+      mKind)])];
+  end;
+  AProblems.Memory := mKind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray];
+end;
+
+procedure CollectParameter(const AContext: TRuleContext; AParameter: TSyntaxNode; AAllowStrings: Boolean;
+  var AProblems: TExportProblems);
+var
+  mTypeRef: TSyntaxNode;
+  mKind: TExportTypeKind;
+  mName: string;
+begin
+  mTypeRef := AParameter.FindChild(TSyntaxKind.TypeReference);
+  if (AParameter.Kind <> TSyntaxKind.Parameter) or (mTypeRef = nil) then
+  begin
+    Exit;
+  end;
+  mKind := BoundaryKind(AContext, mTypeRef, AAllowStrings);
+  if mKind = TExportTypeKind.Safe then
+  begin
+    Exit;
+  end;
+  for mName in AParameter.Name.Split([',']) do
+  begin
+    AProblems.Parts := AProblems.Parts + [Format('hat den Parameter %s: %s', [Trim(mName),
+      Described(NodeText(AContext.Text, mTypeRef), mKind)])];
+  end;
+  AProblems.Memory := AProblems.Memory or (mKind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]);
+end;
+
+function ProblemsOf(const AContext: TRuleContext; AMain: TSyntaxNode; AAllowStrings,
+  AConvention: Boolean): TExportProblems;
+var
+  mParameters: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := Default(TExportProblems);
+  CollectResult(AContext, AMain, AAllowStrings, Result);
+  mParameters := AMain.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
+  begin
+    for mIndex := 0 to mParameters.ChildCount - 1 do
+    begin
+      CollectParameter(AContext, mParameters[mIndex], AAllowStrings, Result);
+    end;
+  end;
+  if not AConvention then
+  begin
+    Result.Parts := Result.Parts + ['hat keine Aufrufkonvention'];
+  end;
+end;
+
+function MessageOf(const AProblems: TExportProblems): string;
+begin
+  Result := 'Exportierte Prozedur ';
+  if AProblems.IsFunction then
+  begin
+    Result := 'Exportierte Funktion ';
+  end;
+  Result := Result + Joined(AProblems.Parts);
+  if AProblems.Memory then
+  begin
+    Result := Result + '; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.';
+  end
+  else
+  begin
+    Result := Result + '; Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab.';
+  end;
+end;
+
+/// <summary>Korrektur: stdcall in jedem Kopf der Gruppe.</summary>
+function StdcallFix(const AGroup: TArray<TSyntaxNode>): TArray<TRuleFix>;
+var
+  mHeader: TSyntaxNode;
+  mEdits: TArray<TRuleEdit>;
+begin
+  mEdits := nil;
+  for mHeader in AGroup do
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mHeader.EndPos, mHeader.EndPos), ' stdcall;')];
+  end;
+  // Ändert die Schnittstelle für vorhandene Aufrufer: nur einzeln.
+  Result := [TRuleFix.Create('Aufrufkonvention stdcall ergänzen', mEdits, False)];
+end;
+
 procedure TDllExportUnsafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Entry: TExportEntry;
-  Headers, Group: TArray<TSyntaxNode>;
-  Header, Main, Child, Parameters, TypeRef: TSyntaxNode;
-  Index: Integer;
-  Text, Name, Message: string;
-  Convention, Memory, AllowStrings, IsFunction: Boolean;
-  Kind: TExportTypeKind;
-  Parts: TArray<string>;
-  Edits: TArray<TRuleEdit>;
-  Fixes: TArray<TRuleFix>;
+  mEntry: TExportEntry;
+  mGroup: TArray<TSyntaxNode>;
+  mMain: TSyntaxNode;
+  mAllowStrings, mConvention: Boolean;
+  mProblems: TExportProblems;
+  mFixes: TArray<TRuleFix>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  AllowStrings := TRuleOptions.Bool(AContext.Options, 'allowShareMem', True) and UsesShareMem(AContext.Tree);
-  for Entry in ExportEntries(AContext) do
+  mAllowStrings := TRuleOptions.Bool(AContext.Options, 'allowShareMem', True) and UsesShareMem(AContext.Tree);
+  for mEntry in ExportEntries(AContext) do
   begin
-    Headers := RoutineHeaders(AContext.Tree, Entry.Name);
-    // Überladungen: die Parameterliste im exports-Eintrag wählt; Köpfe ohne Liste (Rumpf zu einer Deklaration
-    // im interface) gehören zu jeder.
-    Group := nil;
-    Main := nil;
-    for Header in Headers do
-    begin
-      Text := ParameterText(AContext.Text, Header);
-      if (Entry.Parameters = '') or (Text = '') or (Text = Entry.Parameters) then
-      begin
-        Group := Group + [Header];
-        if (Main = nil) and (Text <> '') then
-        begin
-          Main := Header;
-        end;
-      end;
-    end;
+    mGroup := GroupOf(AContext.Text, mEntry, RoutineHeaders(AContext.Tree, mEntry.Name), mMain);
     // Routine aus einer anderen Unit: hier nicht zu beurteilen.
-    if Group = nil then
+    if (mGroup = nil) or not Unambiguous(AContext.Text, mGroup, mMain) then
     begin
       Continue;
     end;
-    if Main = nil then
-    begin
-      Main := Group[0];
-    end;
-    // Ohne Liste im Eintrag muss die Routine eindeutig sein.
-    Text := ParameterText(AContext.Text, Main);
-    for Header in Group do
-    begin
-      if (ParameterText(AContext.Text, Header) <> '') and (ParameterText(AContext.Text, Header) <> Text) then
-      begin
-        Main := nil;
-      end;
-    end;
-    if Main = nil then
+    mConvention := HasConvention(mGroup);
+    mProblems := ProblemsOf(AContext, mMain, mAllowStrings, mConvention);
+    if mProblems.Parts = nil then
     begin
       Continue;
     end;
-    Convention := False;
-    for Header in Group do
+    mFixes := nil;
+    if not mConvention then
     begin
-      for Index := 0 to Header.ChildCount - 1 do
-      begin
-        if (Header[Index].Kind = TSyntaxKind.Directive) and MatchText(Header[Index].Name, CallingConventions) then
-        begin
-          Convention := True;
-        end;
-      end;
+      mFixes := StdcallFix(mGroup);
     end;
-    Parts := nil;
-    Memory := False;
-    IsFunction := False;
-    // Ergebnis: der Typverweis direkt im Kopf
-    TypeRef := Main.FindChild(TSyntaxKind.TypeReference);
-    if TypeRef <> nil then
-    begin
-      IsFunction := True;
-      Kind := KindOf(AContext, NodeText(AContext.Text, TypeRef), 0);
-      if (Kind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]) and AllowStrings then
-      begin
-        Kind := TExportTypeKind.Safe;
-      end;
-      if Kind <> TExportTypeKind.Safe then
-      begin
-        Parts := Parts + [Format('gibt %s zurück', [Described(NodeText(AContext.Text, TypeRef), Kind)])];
-      end;
-      Memory := Kind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray];
-    end;
-    Parameters := Main.FindChild(TSyntaxKind.Parameters);
-    if Parameters <> nil then
-    begin
-      for Index := 0 to Parameters.ChildCount - 1 do
-      begin
-        Child := Parameters[Index];
-        TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
-        if (Child.Kind <> TSyntaxKind.Parameter) or (TypeRef = nil) then
-        begin
-          Continue;
-        end;
-        Kind := KindOf(AContext, NodeText(AContext.Text, TypeRef), 0);
-        if (Kind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]) and AllowStrings then
-        begin
-          Kind := TExportTypeKind.Safe;
-        end;
-        if Kind = TExportTypeKind.Safe then
-        begin
-          Continue;
-        end;
-        for Name in Child.Name.Split([',']) do
-        begin
-          Parts := Parts + [Format('hat den Parameter %s: %s', [Trim(Name),
-            Described(NodeText(AContext.Text, TypeRef), Kind)])];
-        end;
-        Memory := Memory or (Kind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]);
-      end;
-    end;
-    if not Convention then
-    begin
-      Parts := Parts + ['hat keine Aufrufkonvention'];
-    end;
-    if Parts = nil then
-    begin
-      Continue;
-    end;
-    Message := 'Exportierte Prozedur ';
-    if IsFunction then
-    begin
-      Message := 'Exportierte Funktion ';
-    end;
-    Message := Message + Joined(Parts);
-    if Memory then
-    begin
-      Message := Message + '; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.';
-    end
-    else
-    begin
-      Message := Message + '; Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab.';
-    end;
-    Fixes := nil;
-    if not Convention then
-    begin
-      Edits := nil;
-      for Header in Group do
-      begin
-        Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Header.EndPos, Header.EndPos), ' stdcall;')];
-      end;
-      // Ändert die Schnittstelle für vorhandene Aufrufer: nur einzeln.
-      Fixes := [TRuleFix.Create('Aufrufkonvention stdcall ergänzen', Edits, False)];
-    end;
-    AReport.Add(TTextRange.Create(Entry.Token.StartPos, Entry.Token.EndPos), Message, TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(mEntry.Token.StartPos, mEntry.Token.EndPos), MessageOf(mProblems),
+      TRuleConfidence.High, mFixes);
   end;
 end;
 

@@ -113,10 +113,14 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   Process := Debugger.CurrentProcess;
   if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  begin
     Exit;
+  end;
   Result := Process.CurrentThread;
 end;
 
@@ -150,7 +154,9 @@ begin
   Result := False;
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   FillChar(Buffer, SizeOf(Buffer), 0);
   try
     Code := Thread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, SideEffects(AEvaluation), '',
@@ -173,7 +179,9 @@ begin
         try
           StartedAt := GetTickCount64;
           while not Waiter.Done and (GetTickCount64 - StartedAt < UInt64(ATimeoutMs)) do
+          begin
             Debugger.ProcessDebugEvents;
+          end;
         finally
           try
             Thread.RemoveNotifier(Index);
@@ -183,7 +191,9 @@ begin
         end;
         Result := Waiter.Done and (Waiter.ReturnCode = 0);
         if Result then
+        begin
           AText := Waiter.Text;
+        end;
       end;
   end;
 end;
@@ -197,10 +207,14 @@ begin
   ABytes := nil;
   Result := False;
   if (AAddress = 0) or (ACount <= 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   Process := Debugger.CurrentProcess;
   if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  begin
     Exit;
+  end;
   SetLength(ABytes, ACount);
   Offset := 0;
   try
@@ -208,9 +222,13 @@ begin
     begin
       Count := ACount - Offset;
       if Count > ChunkSize then
+      begin
         Count := ChunkSize;
+      end;
       if Process.ReadProcessMemory(AAddress + UInt64(Offset), Count, ABytes[Offset]) <> Count then
+      begin
         Exit;
+      end;
       Inc(Offset, Count);
     end;
   except
@@ -225,7 +243,9 @@ var
   Deadline: UInt64;
 begin
   if ABudgetMs < 1 then
+  begin
     ABudgetMs := 1;
+  end;
   Deadline := GetTickCount64 + UInt64(ABudgetMs);
   Result.Eval :=
     function(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation; out AText: string): Boolean

@@ -368,106 +368,141 @@ begin
   ADispatcher.RegisterConcurrentRequest(Method, Handle);
 end;
 
+/// <summary>Ist AResolved nicht aufgelöst und steht APosition auf dem Namen einer Deklaration (Methode in der
+/// Klasse, Typname), wird AResolved zu dieser Deklaration.</summary>
+procedure ResolveDeclaration(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  var AResolved: TResolvedSymbol);
+var
+  mSymbol: TIndexSymbol;
+begin
+  if AResolved.Kind <> TResolvedKind.None then
+  begin
+    Exit;
+  end;
+  for mSymbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
+  begin
+    if Within(APosition, mSymbol.SelectionRange) then
+    begin
+      AResolved.Kind := TResolvedKind.Symbol;
+      AResolved.Name := mSymbol.Name;
+      AResolved.Container := mSymbol.Container;
+      AResolved.SymbolKind := mSymbol.Kind;
+      AResolved.FileName := AFileName;
+      AResolved.Range := mSymbol.Range;
+      AResolved.SelectionRange := mSymbol.SelectionRange;
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Erste Deklaration der Routine AName in AContainer.</summary>
+function FindDeclaration(const AUnit: TUnitIndex; const AContainer, AName: string; out ASymbol: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName) then
+    begin
+      ASymbol := mSymbol;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Rumpf der Routine AName im Nachfahren ATypeName, sonst ihre Deklaration (z. B. abstrakt wiederholt).
+/// </summary>
+procedure AddDescendantTarget(AList: TList<TDefinitionTarget>; const AUnit: TUnitIndex;
+  const ATypeName, AName: string);
+var
+  mSymbol: TIndexSymbol;
+begin
+  if FindBody(AUnit, ATypeName, AName, mSymbol) or FindDeclaration(AUnit, ATypeName, AName, mSymbol) then
+  begin
+    AList.Add(Target(AUnit.FileName, mSymbol.Range, mSymbol.SelectionRange));
+  end;
+end;
+
+/// <summary>Ziele der Methode AResolved: ihr eigener Rumpf und die Überschreibungen in den Nachfahren.</summary>
+procedure AddMethodTargets(AList: TList<TDefinitionTarget>; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const AResolved: TResolvedSymbol);
+var
+  mBody: TIndexSymbol;
+  mOwnerUnit, mDescendantUnit: TUnitIndex;
+  mLocation: TSymbolLocation;
+begin
+  // Eigener Rumpf (fehlt bei abstrakten und Interface-Methoden).
+  if OwnerUnitOf(AIndex, ATree, AFileName, AResolved.FileName, mOwnerUnit) and
+    FindBody(mOwnerUnit, AResolved.Container, AResolved.Name, mBody) then
+  begin
+    AList.Add(Target(mOwnerUnit.FileName, mBody.Range, mBody.SelectionRange));
+  end;
+  for mLocation in AllDescendants(AIndex, AResolved.Container) do
+  begin
+    if AList.Count >= TLspImplementations.MaxTargets then
+    begin
+      Break;
+    end;
+    if OwnerUnitOf(AIndex, ATree, AFileName, mLocation.FileName, mDescendantUnit) then
+    begin
+      AddDescendantTarget(AList, mDescendantUnit, mLocation.Symbol.QualifiedName, AResolved.Name);
+    end;
+  end;
+end;
+
+/// <summary>Ziele zu AResolved: Nachfahren eines Typs bzw. Rümpfe einer Methode.</summary>
+procedure AddTargets(AList: TList<TDefinitionTarget>; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const AResolved: TResolvedSymbol);
+var
+  mLocation: TSymbolLocation;
+begin
+  if AResolved.SymbolKind in TypeKinds then
+  begin
+    for mLocation in AllDescendants(AIndex, AResolved.QualifiedName) do
+    begin
+      AList.Add(Target(mLocation.FileName, mLocation.Symbol.Range, mLocation.Symbol.SelectionRange));
+    end;
+  end
+  else if (AResolved.SymbolKind in RoutineKinds) and (AResolved.Container <> '') then
+  begin
+    AddMethodTargets(AList, AIndex, ATree, AFileName, AResolved);
+  end;
+end;
+
 class function TLspImplementations.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>;
 var
-  TokenIndex: Integer;
-  Resolved: TResolvedSymbol;
-  Symbol, Body: TIndexSymbol;
-  OwnerUnit, DescendantUnit: TUnitIndex;
-  Location: TSymbolLocation;
-  TypeName: string;
-  List: TList<TDefinitionTarget>;
+  mTokenIndex: Integer;
+  mResolved: TResolvedSymbol;
+  mList: TList<TDefinitionTarget>;
 begin
   Result := nil;
   if ATree = nil then
   begin
     Exit;
   end;
-  TokenIndex := TokenIndexAt(ATree.Tokens, APosition);
-  if (TokenIndex >= 0) and ATree.Tokens[TokenIndex].IsKeyword('inherited') then
+  mTokenIndex := TokenIndexAt(ATree.Tokens, APosition);
+  if (mTokenIndex >= 0) and ATree.Tokens[mTokenIndex].IsKeyword('inherited') then
   begin
-    Exit(InheritedTargets(AResolver, AIndex, ATree, AFileName, TokenIndex));
+    Exit(InheritedTargets(AResolver, AIndex, ATree, AFileName, mTokenIndex));
   end;
-
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
-  // Name einer Deklaration (Methode in der Klasse, Typname): die Deklaration selbst.
-  if Resolved.Kind = TResolvedKind.None then
-  begin
-    for Symbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
-    begin
-      if Within(APosition, Symbol.SelectionRange) then
-      begin
-        Resolved.Kind := TResolvedKind.Symbol;
-        Resolved.Name := Symbol.Name;
-        Resolved.Container := Symbol.Container;
-        Resolved.SymbolKind := Symbol.Kind;
-        Resolved.FileName := AFileName;
-        Resolved.Range := Symbol.Range;
-        Resolved.SelectionRange := Symbol.SelectionRange;
-        Break;
-      end;
-    end;
-  end;
-  if Resolved.Kind <> TResolvedKind.Symbol then
+  mResolved := AResolver.Resolve(ATree, AFileName, APosition);
+  ResolveDeclaration(ATree, AFileName, APosition, mResolved);
+  if mResolved.Kind <> TResolvedKind.Symbol then
   begin
     Exit;
   end;
-
-  List := TList<TDefinitionTarget>.Create;
+  mList := TList<TDefinitionTarget>.Create;
   try
-    if Resolved.SymbolKind in TypeKinds then
+    AddTargets(mList, AIndex, ATree, AFileName, mResolved);
+    if mList.Count > MaxTargets then
     begin
-      for Location in AllDescendants(AIndex, Resolved.QualifiedName) do
-      begin
-        List.Add(Target(Location.FileName, Location.Symbol.Range, Location.Symbol.SelectionRange));
-      end;
-    end
-    else if (Resolved.SymbolKind in RoutineKinds) and (Resolved.Container <> '') then
-    begin
-      // Eigener Rumpf (fehlt bei abstrakten und Interface-Methoden).
-      if OwnerUnitOf(AIndex, ATree, AFileName, Resolved.FileName, OwnerUnit) and
-        FindBody(OwnerUnit, Resolved.Container, Resolved.Name, Body) then
-      begin
-        List.Add(Target(OwnerUnit.FileName, Body.Range, Body.SelectionRange));
-      end;
-      for Location in AllDescendants(AIndex, Resolved.Container) do
-      begin
-        if List.Count >= MaxTargets then
-        begin
-          Break;
-        end;
-        if not OwnerUnitOf(AIndex, ATree, AFileName, Location.FileName, DescendantUnit) then
-        begin
-          Continue;
-        end;
-        TypeName := Location.Symbol.QualifiedName;
-        if FindBody(DescendantUnit, TypeName, Resolved.Name, Body) then
-        begin
-          List.Add(Target(DescendantUnit.FileName, Body.Range, Body.SelectionRange));
-        end
-        else
-        begin
-          // Nur deklariert (z. B. abstrakt wiederholt): die Deklaration.
-          for Symbol in DescendantUnit.Symbols do
-          begin
-            if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, TypeName) and
-              SameText(Symbol.Name, Resolved.Name) then
-            begin
-              List.Add(Target(DescendantUnit.FileName, Symbol.Range, Symbol.SelectionRange));
-              Break;
-            end;
-          end;
-        end;
-      end;
+      mList.Count := MaxTargets;
     end;
-    if List.Count > MaxTargets then
-    begin
-      List.Count := MaxTargets;
-    end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 

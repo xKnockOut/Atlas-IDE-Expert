@@ -89,6 +89,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>

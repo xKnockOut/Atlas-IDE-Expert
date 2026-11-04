@@ -98,7 +98,9 @@ procedure TBoxWatch.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited;
   if (Operation = opRemove) and (FOwner <> nil) and (AComponent is TAtlasWelcomeSearchBox) then
+  begin
     FOwner.FBoxes.Remove(TAtlasWelcomeSearchBox(AComponent));
+  end;
 end;
 
 { TAtlasIdeWelcomeSearch }
@@ -146,13 +148,19 @@ var
 begin
   Result := nil;
   if not ARegistry.OpenKeyReadOnly('\' + AKey) then
+  begin
     Exit;
+  end;
   Names := TStringList.Create;
   try
     ARegistry.GetValueNames(Names);
     for Name in Names do
+    begin
       if ARegistry.GetDataType(Name) in [rdString, rdExpandString] then
+      begin
         Result := Result + [TPair<string, string>.Create(Name, ARegistry.ReadString(Name))];
+      end;
+    end;
   finally
     Names.Free;
     ARegistry.CloseKey;
@@ -169,18 +177,24 @@ begin
   Result := nil;
   Base := TAtlasIdeRegistryAccess.IdeBaseKey;
   if Base = '' then
+  begin
     Exit;
+  end;
   Registry := TRegistry.Create(KEY_READ);
   Seen := TDictionary<string, Boolean>.Create;
   try
     Registry.RootKey := HKEY_CURRENT_USER;
     for Key in AKeys do
+    begin
       for Project in TAtlasWelcomeSearch.RecentProjects(ReadProjectValues(Registry, Base + '\' + Key)) do
+      begin
         if not Seen.ContainsKey(AnsiUpperCase(Project)) then
         begin
           Seen.Add(AnsiUpperCase(Project), True);
           Result := Result + [Project];
         end;
+      end;
+    end;
   finally
     Seen.Free;
     Registry.Free;
@@ -211,7 +225,9 @@ var
     // Ein Projekt zählt einmal, egal ob als .dproj oder .dpr bekannt.
     Key := AnsiUpperCase(ChangeFileExt(AFileName, ''));
     if Seen.ContainsKey(Key) then
+    begin
       Exit;
+    end;
     Seen.Add(Key, True);
     Result := Result + [AFileName];
   end;
@@ -221,13 +237,23 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     for Project in RecentProjects do
+    begin
       if not SameText(ExtractFileExt(Project), '.groupproj') then
+      begin
         Add(Project);
+      end;
+    end;
     for Cached in FIndex.Projects do
+    begin
       if FileExists(ChangeFileExt(Cached.MainFile, '.dproj')) then
-        Add(ChangeFileExt(Cached.MainFile, '.dproj'))
+      begin
+        Add(ChangeFileExt(Cached.MainFile, '.dproj'));
+      end
       else
+      begin
         Add(Cached.MainFile);
+      end;
+    end;
   finally
     Seen.Free;
   end;
@@ -260,8 +286,10 @@ begin
   // Projekte: Favoriten und zuletzt geöffnete, Gruppen eingeschlossen.
   Recent := RecentProjects;
   for Project in Recent do
+  begin
     Result := Result + [TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Projects,
       ChangeFileExt(ExtractFileName(Project), ''), ExtractFileDir(Project), Project)];
+  end;
   // Dateien der Projekte, zuletzt geöffnete zuerst; jede Datei einmal.
   Seen := TDictionary<string, Boolean>.Create;
   try
@@ -271,16 +299,22 @@ begin
       Files := FIndex.FilesOf(Project);
       // Projekte nur mit Cache, aber nicht in der Liste der IDE: trotzdem als Projekt anbieten.
       if (Length(Files) > 0) and (IndexText(Project, Recent) < 0) then
+      begin
         Result := Result + [TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Projects, ProjectName,
           ExtractFileDir(Project), Project)];
+      end;
       for Entry in Files do
       begin
         if not SameText(ExtractFileExt(Entry.FileName), '.pas') or Seen.ContainsKey(AnsiUpperCase(Entry.FileName)) then
+        begin
           Continue;
+        end;
         Seen.Add(AnsiUpperCase(Entry.FileName), True);
         Detail := ProjectName;
         if TAtlasWelcomeIndexFiles.FormOf(Entry.FileName) <> '' then
+        begin
           Detail := Detail + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchForm);
+        end;
         Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, ExtractFileName(Entry.FileName), Detail,
           Entry.FileName);
         Hit.Project := Project;
@@ -295,7 +329,9 @@ begin
   begin
     Session := TAtlasIdeResults.Session;
     if Session = nil then
-      ASymbolHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchNoServer)
+    begin
+      ASymbolHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchNoServer);
+    end
     else if Length(Trim(APattern)) >= 2 then
     begin
       try
@@ -309,7 +345,9 @@ begin
       begin
         Detail := ExtractFileName(Symbol.FileName);
         if Symbol.Container <> '' then
+        begin
           Detail := Symbol.Container + ' · ' + Detail;
+        end;
         Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, Symbol.Name, Detail, Symbol.FileName);
         Hit.Line := Symbol.Line;
         Hit.Character := Symbol.Character;
@@ -320,6 +358,7 @@ begin
   end;
   // Atlas-Befehle; auch über ihre Kennung auffindbar ("wel" → Atlas.WelcomeStart).
   if Assigned(FCommands) then
+  begin
     for Command in FCommands() do
     begin
       Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Commands,
@@ -327,6 +366,7 @@ begin
       Hit.Alias := StringReplace(Command.Id, 'Atlas.', '', []);
       Result := Result + [Hit];
     end;
+  end;
 end;
 
 function TAtlasIdeWelcomeSearch.Query(const APattern: string): TArray<TAtlasWelcomeSearchResult>;
@@ -360,21 +400,31 @@ begin
       Actions: IOTAActionServices;
     begin
       if not Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Exit;
+      end;
       case AHit.Group of
         TAtlasWelcomeSearchGroup.Projects:
           Actions.OpenProject(AHit.Target, True);
         TAtlasWelcomeSearchGroup.Commands:
           if Assigned(FRun) then
+          begin
             FRun(AHit.Target);
+          end;
       else
         begin
           if (AHit.Project <> '') and FileExists(AHit.Project) and not ProjectOpen(AHit.Project) then
+          begin
             Actions.OpenProject(AHit.Project, True);
+          end;
           if AHit.Line >= 0 then
-            TAtlasIdeResults.Open(AHit.Target, AHit.Line, AHit.Character)
+          begin
+            TAtlasIdeResults.Open(AHit.Target, AHit.Line, AHit.Character);
+          end
           else
+          begin
             TAtlasIdeNavigation.ShowFile(AHit.Target);
+          end;
         end;
       end;
     end);
@@ -383,7 +433,9 @@ end;
 procedure TAtlasIdeWelcomeSearch.Attach(ABox: TAtlasWelcomeSearchBox);
 begin
   if ABox = nil then
+  begin
     Exit;
+  end;
   if FBoxes.IndexOf(ABox) < 0 then
   begin
     FBoxes.Add(ABox);
@@ -411,7 +463,9 @@ begin
   for Box in FBoxes do
   begin
     if not Box.Showing or not Box.Edit.CanFocus then
+    begin
       Continue;
+    end;
     // Innerste Form, nicht die oberste: Angedockt ist die oberste Form von
     // „Atlas-Start“ das Hauptfenster der IDE; die Taste gehört Atlas daher
     // nur, wenn der Fokus im Fenster selbst liegt, sonst bliebe Strg+E im
@@ -420,10 +474,14 @@ begin
     // Willkommensseite der sichtbare Reiter ist.
     Form := GetParentForm(Box, False);
     if Form = nil then
+    begin
       Continue;
+    end;
     if (Form = Screen.ActiveCustomForm) or
       ((Screen.ActiveControl <> nil) and Form.ContainsControl(Screen.ActiveControl)) then
+    begin
       Exit(Box);
+    end;
   end;
 end;
 
@@ -433,15 +491,23 @@ var
   Box: TAtlasWelcomeSearchBox;
 begin
   if ((Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN)) or (FBoxes.Count = 0) then
+  begin
     Exit;
+  end;
   Key := TShortCut(TAtlasIdeSettings.Current.WelcomePageSearchKey);
   if (Key = 0) or not TAtlasIdeSettings.Current.WelcomePageSearch then
+  begin
     Exit;
+  end;
   if ShortCut(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam)) <> Key then
+  begin
     Exit;
+  end;
   Box := ActiveBox;
   if Box = nil then
+  begin
     Exit;
+  end;
   Box.FocusSearch;
   Handled := True;
 end;

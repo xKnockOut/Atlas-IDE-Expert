@@ -120,7 +120,9 @@ begin
   // Vor dem Entladen abmelden, sonst greift die IDE auf freigegebene Aktionen zu.
   if FRegistered and Supports(BorlandIDEServices, IOTAEditorServices, Services) and
     (Services.GetEditorLocalMenu <> nil) then
+  begin
     Services.GetEditorLocalMenu.UnregisterActionList(Category);
+  end;
   FActions.Free;
   inherited;
 end;
@@ -198,9 +200,12 @@ var
   mSeen: Boolean;
 begin
   if Length(FModuleIds) = 0 then
+  begin
     Exit;
+  end;
   mCommands := nil;
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.EditorContext) do
+  begin
     if mEntry.CommandId = '-' then
     begin
       mCommand := Default(TAtlasModuleCommand);
@@ -209,20 +214,28 @@ begin
       mCommands := mCommands + [mCommand];
     end
     else if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
+    begin
       mCommands := mCommands + [mCommand];
+    end;
+  end;
   if Length(mCommands) > Length(FModuleIds) then
+  begin
     TAtlasGuard.Log(Format('Kontextmenü: %d Einträge der Module, nur %d Plätze',
       [Length(mCommands), Length(FModuleIds)]));
+  end;
   // Sichtbarkeit: Befehle nach Visible, Trennlinien nur zwischen sichtbaren Befehlen.
   SetLength(mVisible, Length(mCommands));
   mSeen := False;
   mLast := -1;
   for mIndex := 0 to High(mCommands) do
+  begin
     if mCommands[mIndex].Id = '-' then
     begin
       mVisible[mIndex] := False;
       if mSeen then
+      begin
         mLast := mIndex;
+      end;
     end
     else
     begin
@@ -230,16 +243,21 @@ begin
       if mVisible[mIndex] then
       begin
         if mLast >= 0 then
+        begin
           mVisible[mLast] := True;
+        end;
         mLast := -1;
         mSeen := True;
       end;
     end;
+  end;
   for mIndex := 0 to Min(High(FEntries), High(FItems)) do
   begin
     mSlot := FEntries[mIndex].Slot;
     if (mSlot < 0) or not (FItems[mIndex] is TAction) then
+    begin
       Continue;
+    end;
     if mSlot > High(mCommands) then
     begin
       FModuleIds[mSlot] := '';
@@ -253,7 +271,9 @@ begin
     begin
       mKey := mCommand.Key();
       if mKey <> 0 then
+      begin
         mCaption := mCaption + #9 + ShortCutToText(TShortCut(mKey));
+      end;
     end;
     TAction(FItems[mIndex]).Caption := mCaption;
     TAction(FItems[mIndex]).Visible := mVisible[mSlot];
@@ -265,8 +285,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to Min(High(FEntries), High(FItems)) do
+  begin
     if Assigned(FEntries[Index].Visible) and (FItems[Index] is TAction) then
+    begin
       TAction(FItems[Index]).Visible := FEntries[Index].Visible();
+    end;
+  end;
   UpdateModuleSlots;
 end;
 
@@ -276,10 +300,14 @@ var
 begin
   Result := FEntries[AIndex].Caption;
   if not Assigned(FEntries[AIndex].Key) then
+  begin
     Exit;
+  end;
   Key := FEntries[AIndex].Key();
   if Key <> 0 then
+  begin
     Result := Result + #9 + ShortCutToText(TShortCut(Key));
+  end;
 end;
 
 procedure TAtlasIdeContextMenu.Register;
@@ -290,7 +318,9 @@ var
 begin
   if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, Services) or
     (Services.GetEditorLocalMenu = nil) then
+  begin
     Exit;
+  end;
   // Elternaktion zuerst, die Einträge direkt danach (so verlangt es INTAEditorLocalMenu).
   Root := TAction.Create(FActions);
   Root.ActionList := FActions;
@@ -310,7 +340,9 @@ begin
     end;
     // Plätze der Module bleiben aus, bis UpdateModuleSlots sie belegt.
     if FEntries[Index].Slot >= 0 then
+    begin
       Item.Visible := False;
+    end;
   end;
   UpdateVisibility;
   Services.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
@@ -341,22 +373,32 @@ begin
   // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
   Action := nil;
   if (Sender is TBasicAction) and (TBasicAction(Sender).Owner = FActions) then
-    Action := TBasicAction(Sender)
+  begin
+    Action := TBasicAction(Sender);
+  end
   else if (Sender is TMenuItem) and (TMenuItem(Sender).Action <> nil) and
     (TMenuItem(Sender).Action.Owner = FActions) then
+  begin
     Action := TMenuItem(Sender).Action;
+  end;
   if Action = nil then
   begin
     if Sender = nil then
-      TAtlasGuard.Log('Kontextmenü: Aufruf ohne Absender')
+    begin
+      TAtlasGuard.Log('Kontextmenü: Aufruf ohne Absender');
+    end
     else
+    begin
       TAtlasGuard.Log('Kontextmenü: unbekannter Absender ' + Sender.ClassName);
+    end;
     Exit;
   end;
   // Nicht über Tag: Die IDE setzt ihn beim Einbinden ins Kontextmenü selbst (Protokoll: „Eintrag 30“).
   Index := High(FItems);
   while (Index >= 0) and (FItems[Index] <> Action) do
+  begin
     Dec(Index);
+  end;
   if (Index >= 0) and (Index <= High(FEntries)) and (FEntries[Index].Slot >= 0) then
   begin
     RunModuleSlot(FEntries[Index].Slot);
@@ -368,7 +410,9 @@ begin
     Exit;
   end;
   if FEntries[Index].Id <> '' then
+  begin
     TAtlasIdeShortcutTips.Invoked(FEntries[Index].Id);
+  end;
   TAtlasGuard.Run(FEntries[Index].Feature, FEntries[Index].Proc);
 end;
 

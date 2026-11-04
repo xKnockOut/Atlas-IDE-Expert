@@ -94,9 +94,13 @@ var
 begin
   Result := '';
   if SHGetFolderPath(0, CSIDL_DESKTOPDIRECTORY, 0, 0, @Buffer[0]) = S_OK then
+  begin
     Result := Buffer;
+  end;
   if Result = '' then
+  begin
     Result := TPath.GetDocumentsPath;
+  end;
 end;
 
 { TAtlasIdeHelp }
@@ -150,7 +154,9 @@ var
   Next: TAtlasWelcomeSection;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   Next := Section;
   // Nur beim ersten Mal (oder nach einem Sprachwechsel) anmelden: Add meldet allen Beobachtern.
   if Next.Title <> FTitle then
@@ -189,7 +195,9 @@ begin
     procedure
     begin
       if not Active then
+      begin
         Exit;
+      end;
       OpenTarget(DocsTarget);
     end);
 end;
@@ -200,7 +208,9 @@ begin
     procedure
     begin
       if Active and KeysAvailable then
+      begin
         FShowKeys();
+      end;
     end);
 end;
 
@@ -210,7 +220,9 @@ begin
     procedure
     begin
       if Active then
+      begin
         OpenTarget(TAtlasHelp.DonateUrl);
+      end;
     end);
 end;
 
@@ -218,7 +230,9 @@ class function TAtlasIdeHelp.ReportFolder: string;
 begin
   Result := TAtlasIdeSettings.Current.WelcomePageHelpReportFolder;
   if Result = '' then
+  begin
     Result := DesktopFolder;
+  end;
 end;
 
 class function TAtlasIdeHelp.PackageInput: TAtlasPackageInput;
@@ -250,7 +264,9 @@ begin
       Actions: TAtlasReportActions;
     begin
       if not Active then
+      begin
         Exit;
+      end;
       Actions := Default(TAtlasReportActions);
       Actions.ShowFile :=
         procedure(AFileName: string)
@@ -268,7 +284,9 @@ begin
         begin
           // Nur Webadressen; der Dialog hat sie schon geprüft.
           if TAtlasDiagnosticPackage.IsWebUrl(AUrl) then
+          begin
             OpenTarget(AUrl);
+          end;
         end;
       TAtlasGuard.Log('Problem melden (#766): Dialog geöffnet');
       TAtlasReportDialog.Execute(PackageInput, ReportFolder, TAtlasIdeSettings.Current.WelcomePageHelpReportUrl,

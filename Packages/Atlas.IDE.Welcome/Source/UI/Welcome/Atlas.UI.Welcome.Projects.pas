@@ -251,7 +251,9 @@ var
 begin
   SetLength(Result, Length(FEntries));
   for Index := 0 to High(FEntries) do
+  begin
     Result[Index] := FEntries[Index].Project;
+  end;
 end;
 
 procedure TAtlasWelcomeProjectsFrame.QuickOpenRow(ARow: Integer);
@@ -261,7 +263,9 @@ var
 begin
   // Enter ohne Knopf öffnet (wie Doppelklick bzw. Klick ohne Projektverlauf).
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -278,7 +282,9 @@ var
 begin
   // Mit Projektverlauf (#758) wählen die Pfeiltasten auch das Projekt des Verlaufs.
   if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) or not FSource.Selectable then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[ARow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -293,7 +299,9 @@ var
   Position: TPoint;
 begin
   if (ARow < 0) or (ARow > High(FEntries)) then
+  begin
     Exit;
+  end;
   Position := FBox.ClientToScreen(Point(ScaleValue(Indent), RowTop(ARow) + ScaleValue(RowHeight) div 2));
   FMenu.PopupComponent := FBox;
   FMenu.Popup(Position.X, Position.Y);
@@ -304,7 +312,9 @@ begin
   FSource := AValue;
   UpdateContent;
   if FSource <> nil then
+  begin
     FSource.Shown;
+  end;
 end;
 
 procedure TAtlasWelcomeProjectsFrame.UpdateContent;
@@ -314,10 +324,14 @@ begin
   Count := Length(FEntries);
   FEntries := nil;
   if FSource <> nil then
+  begin
     FEntries := FSource.Entries;
+  end;
   SetLength(FPills, Length(FEntries));
   for Index := 0 to High(FEntries) do
+  begin
     FPills[Index] := TAtlasWelcomeProjects.Pills(FEntries[Index]);
+  end;
   // Die Rechtecke der Marken entstehen beim Zeichnen: Erst dann gibt es eine Zeichenfläche.
   FPillRects := nil;
   FHintKey := '';
@@ -326,7 +340,9 @@ begin
   inherited;
   // Andere Anzahl Zeilen: Der Frame „Atlas“ ordnet die Spalten neu.
   if Count <> Length(FEntries) then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeProjectsFrame.BodyHeight: Integer;
@@ -335,7 +351,9 @@ var
 begin
   Rows := Length(FEntries);
   if Rows < 1 then
+  begin
     Rows := 1;
+  end;
   Result := Rows * ScaleValue(RowHeight) + ScaleValue(Indent);
 end;
 
@@ -381,7 +399,9 @@ class function TAtlasWelcomeProjectsFrame.LocalText(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc <= 0 then
+  begin
     Exit;
+  end;
   Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
 end;
 
@@ -389,13 +409,19 @@ class function TAtlasWelcomeProjectsFrame.DetailText(const AEntry: TAtlasProject
 begin
   Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, PathLength);
   if AEntry.Summary.LastOpened > 0 then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsOpened,
       [LocalText(AEntry.Summary.LastOpened)]);
+  end;
   if AEntry.VcsQuerying and not AEntry.Summary.Vcs.InWorkingCopy then
-    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsQuerying)
+  begin
+    Result := Result + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsQuerying);
+  end
   else if AEntry.VcsStale and (AEntry.Summary.Vcs.At > 0) then
+  begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale,
       [LocalText(AEntry.Summary.Vcs.At)]);
+  end;
 end;
 
 class function TAtlasWelcomeProjectsFrame.HintFor(const AEntry: TAtlasProjectEntry): string;
@@ -411,8 +437,10 @@ var
   procedure AddFirst(const ALocation: TAtlasProjectLocation);
   begin
     if not ALocation.IsEmpty then
+    begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintFirst,
         [ExtractFileName(ALocation.FileName), ALocation.Line, Trim(ALocation.Code + ' ' + ALocation.Text)]));
+    end;
   end;
 
 begin
@@ -425,12 +453,18 @@ begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintVcs,
         [UpperCase(Summary.Vcs.Kind), AEntry.Branch, Summary.Vcs.Revision]));
       if Summary.Vcs.Changed >= 0 then
+      begin
         Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintChanged, [Summary.Vcs.Changed]));
+      end;
       if (Summary.Vcs.Ahead >= 0) and (Summary.Vcs.Behind >= 0) then
+      begin
         Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintSync,
           [Summary.Vcs.Ahead, Summary.Vcs.Behind]));
+      end;
       if AEntry.VcsStale and (Summary.Vcs.At > 0) then
+      begin
         Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale, [LocalText(Summary.Vcs.At)]));
+      end;
     end;
     if Summary.Build.Known then
     begin
@@ -440,7 +474,9 @@ begin
       AddFirst(Summary.Build.First);
     end
     else
+    begin
       Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintNoBuild));
+    end;
     if Summary.Check.Known then
     begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintCheck, [LocalText(Summary.Check.At),
@@ -448,11 +484,17 @@ begin
       AddFirst(Summary.Check.First);
     end;
     if Summary.Rules.Known then
+    begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsHintRules, [Summary.Rules.NewHits]));
+    end;
     if ASelectable then
-      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect))
+    begin
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect));
+    end
     else
+    begin
       Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -580,7 +622,9 @@ begin
     begin
       Right := FBox.Width - ScaleValue(Indent);
       if Length(FPillRects[Row]) > 0 then
+      begin
         Right := FPillRects[Row][0].Left - ScaleValue(PillGap);
+      end;
       QuickRect := Rect(Right - Canvas.TextWidth(mText) - 2 * ScaleValue(PillPadding), mTop + ScaleValue(3), Right,
         mTop + ScaleValue(3) + ScaleValue(PillHeight));
       Canvas.Brush.Style := bsSolid;
@@ -605,9 +649,13 @@ begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := clWhite;
       if Pill.Clickable then
-        Canvas.Font.Style := [fsUnderline]
+      begin
+        Canvas.Font.Style := [fsUnderline];
+      end
       else
+      begin
         Canvas.Font.Style := [];
+      end;
       mText := PillText(Pill);
       Canvas.TextOut(PillRect.Left + ScaleValue(PillPadding),
         PillRect.Top + (PillRect.Height - Canvas.TextHeight(mText)) div 2, mText);
@@ -622,8 +670,12 @@ begin
   // SVN: „aktualisiert …“ statt „holt …“.
   Result := False;
   for Button in FQuick.ButtonsOf(ARow) do
+  begin
     if Button.Action = TAtlasQuickAction.Pull then
+    begin
       Result := Button.Update;
+    end;
+  end;
 end;
 
 function TAtlasWelcomeProjectsFrame.HitTest(X, Y: Integer): TAtlasProjectsHit;
@@ -633,7 +685,9 @@ begin
   Result.Row := -1;
   Result.Pill := -1;
   if (Y < RowTop(0)) or (Length(FEntries) = 0) then
+  begin
     Exit;
+  end;
   Result.Row := (Y - RowTop(0)) div ScaleValue(RowHeight);
   if Result.Row > High(FEntries) then
   begin
@@ -641,10 +695,16 @@ begin
     Exit;
   end;
   if Result.Row > High(FPillRects) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FPillRects[Result.Row]) do
+  begin
     if FPillRects[Result.Row][Index].Contains(Point(X, Y)) then
+    begin
       Result.Pill := Index;
+    end;
+  end;
 end;
 
 procedure TAtlasWelcomeProjectsFrame.ClickAt(const AHit: TAtlasProjectsHit);
@@ -655,13 +715,17 @@ var
   Jump, Choose: Boolean;
 begin
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[AHit.Row].Project;
   Jump := (AHit.Pill >= 0) and (AHit.Pill <= High(FPills[AHit.Row])) and FPills[AHit.Row][AHit.Pill].Clickable;
   Target := Default(TAtlasProjectLocation);
   if Jump then
+  begin
     Target := FPills[AHit.Row][AHit.Pill].Target;
+  end;
   // Mit Projektverlauf wählt der Klick (#758); rote Marken springen weiter zur Meldung.
   Choose := not Jump and mSource.Selectable;
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
@@ -669,11 +733,17 @@ begin
     procedure
     begin
       if Jump then
-        mSource.OpenAt(Project, Target)
+      begin
+        mSource.OpenAt(Project, Target);
+      end
       else if Choose then
-        mSource.Select(Project)
+      begin
+        mSource.Select(Project);
+      end
       else
+      begin
         mSource.Open(Project);
+      end;
     end);
 end;
 
@@ -684,7 +754,9 @@ var
 begin
   // Ohne Auswahl öffnet schon der einfache Klick; ein zweites Öffnen wäre doppelt.
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) or not FSource.Selectable then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[AHit.Row].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -701,11 +773,17 @@ var
 begin
   Result := -1;
   if (FSource = nil) or not FSource.Selectable or (Length(FEntries) = 0) then
+  begin
     Exit;
+  end;
   Wanted := TAtlasProjectSummaries.NormalizedPath(FSource.Selected);
   for Row := 0 to High(FEntries) do
+  begin
     if TAtlasProjectSummaries.NormalizedPath(FEntries[Row].Project) = Wanted then
+    begin
       Exit(Row);
+    end;
+  end;
   // Ohne (gültige) Auswahl zeigt der Verlauf das oberste Projekt.
   Result := 0;
 end;
@@ -720,17 +798,27 @@ begin
   Hit := HitTest(X, Y);
   FQuick.MouseMove(Hit.Row, X, Y);
   if Hit.Row >= 0 then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if not FQuick.HitTest(X, Y, QuickRow, QuickButton, OnMenu) then
+  begin
     QuickButton := -1;
+  end;
   Key := Format('%d/%d', [Hit.Row, QuickButton]);
   if Key = FHintKey then
+  begin
     Exit;
+  end;
   FHintKey := Key;
   if (QuickButton >= 0) and FQuick.HintAt(X, Y, mHint) then
-    FBox.Hint := mHint
+  begin
+    FBox.Hint := mHint;
+  end
   else if Hit.Row >= 0 then
   begin
     FBox.Hint := HintFor(FEntries[Hit.Row], (FSource <> nil) and FSource.Selectable);
@@ -739,16 +827,24 @@ begin
     begin
       State := TAtlasQuickActionsBar.StateText(FQuick.StateOf(Hit.Row), FQuick.NowMs, IsUpdateRow(Hit.Row));
       if (State <> '') and (FQuick.StateOf(Hit.Row).Detail <> '') then
+      begin
         State := State + ': ' + FQuick.StateOf(Hit.Row).Detail;
+      end;
       if State <> '' then
+      begin
         FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintState,
           [State]);
+      end;
       if FQuick.Active then
+      begin
         FBox.Hint := FBox.Hint + sLineBreak + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintKeys);
+      end;
     end;
   end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -764,7 +860,9 @@ begin
   // Der zweite Klick eines Doppelklicks wählt nicht noch einmal: BoxDblClick öffnet. Knöpfe der Schnellaktionen
   // (#764) handeln selbst.
   if (Button = mbLeft) and not FDoubleDown and not FQuick.ClickAt(X, Y) then
+  begin
     ClickAt(HitTest(X, Y));
+  end;
   FDoubleDown := False;
 end;
 
@@ -784,7 +882,9 @@ var
 begin
   // Doppelklick auf einen Knopf öffnet nicht zusätzlich das Projekt.
   if FQuick.HitTest(FLastMouse.X, FLastMouse.Y, QuickRow, QuickButton, OnMenu) then
+  begin
     Exit;
+  end;
   DoubleClickAt(HitTest(FLastMouse.X, FLastMouse.Y));
 end;
 
@@ -810,7 +910,9 @@ var
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -826,7 +928,9 @@ var
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -842,7 +946,9 @@ var
   mProject: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   mProject := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -858,7 +964,9 @@ var
   mProject: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   mProject := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
@@ -874,7 +982,9 @@ var
   Project: string;
 begin
   if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Project := FEntries[FMenuRow].Project;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,

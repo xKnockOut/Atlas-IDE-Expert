@@ -44,11 +44,16 @@ type
     EndStates: TArray<string>;
     /// <summary>Kommentarvorlage beim Beenden.</summary>
     EndComment: string;
-    /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben, AEndStates ist eine Liste mit
-    /// Komma, Semikolon oder Zeilenumbruch.</summary>
-    class function Create(ASyncState: Boolean; const AStateField, AAssigneeField, AStartState: string;
-      AAssignOnStart: Boolean; const AStartComment, AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
+    /// WithStart und WithEnd.</summary>
+    class function Create(ASyncState: Boolean; const AStateField, AAssigneeField: string): TAtlasTrackerSyncOptions;
       static;
+    /// <summary>Kopie mit den Werten beim Beginnen.</summary>
+    function WithStart(const AStartState: string; AAssignOnStart: Boolean;
+      const AStartComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit den Werten beim Beenden; AEndStates ist eine Liste mit Komma, Semikolon oder
+    /// Zeilenumbruch.</summary>
+    function WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
     /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
     function HasStartWork: Boolean;
   end;
@@ -143,10 +148,10 @@ uses
 
 { TAtlasTrackerSyncOptions }
 
-class function TAtlasTrackerSyncOptions.Create(ASyncState: Boolean; const AStateField, AAssigneeField,
-  AStartState: string; AAssignOnStart: Boolean; const AStartComment, AEndStates,
-  AEndComment: string): TAtlasTrackerSyncOptions;
+class function TAtlasTrackerSyncOptions.Create(ASyncState: Boolean; const AStateField,
+  AAssigneeField: string): TAtlasTrackerSyncOptions;
 begin
+  Result := Default(TAtlasTrackerSyncOptions);
   Result.SyncState := ASyncState;
   Result.StateField := Trim(AStateField);
   if Result.StateField = '' then
@@ -158,9 +163,20 @@ begin
   begin
     Result.AssigneeField := TAtlasTrackerWorkflow.DefaultAssigneeField;
   end;
+end;
+
+function TAtlasTrackerSyncOptions.WithStart(const AStartState: string; AAssignOnStart: Boolean;
+  const AStartComment: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
   Result.StartState := Trim(AStartState);
   Result.AssignOnStart := AAssignOnStart;
   Result.StartComment := AStartComment;
+end;
+
+function TAtlasTrackerSyncOptions.WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
   Result.EndStates := TAtlasTrackerWorkflow.ParseList(AEndStates);
   Result.EndComment := AEndComment;
 end;

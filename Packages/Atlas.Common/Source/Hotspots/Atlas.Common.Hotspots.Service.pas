@@ -90,6 +90,8 @@ type
       out ARoutines: TArray<TRoutineMetrics>): THotspotTextState;
     procedure ApplyTrends(const AVcs: IHotspotVcs; var AEntries: TArray<THotspotEntry>; ACount: Integer;
       ADate: TDateTime);
+    /// <summary>Commits des Zeilenbereichs von AEntry, gemerkt in FLineLogs.</summary>
+    function LineCommits(const AVcs: IHotspotVcs; const AEntry: THotspotEntry): TArray<THotspotLineCommit>;
     function MethodEntries(const AVcs: IHotspotVcs; const ARequest: THotspotRequest;
       const AUnits: TArray<THotspotEntry>; const ARoutines: TDictionary<string, TArray<TRoutineMetrics>>):
       TArray<THotspotEntry>;
@@ -312,79 +314,98 @@ begin
   FSince := mSince;
 end;
 
-function THotspotService.ScopeUnits(const ARequest: THotspotRequest; const AVcsRoot: string;
-  AEdges: TDictionary<Int64, Boolean>): TArray<THotspotUnit>;
+/// <summary>Projekt-Units aus AUnits ohne Bibliotheken und Packages; mit AFiles nur diese Dateien.</summary>
+function SelectUnits(const AUnits: TArray<TUnitIndex>; const AFiles: TArray<string>): TArray<TUnitIndex>;
 var
-  mUnits, mSelected: TArray<TUnitIndex>;
-  mItem: TUnitIndex;
   mInScope: TDictionary<string, Boolean>;
-  mFileName, mRelative: string;
-  mOptions: TUsesGraphOptions;
-  mGraph: TUsesGraph;
-  mNode, mIndex, mTarget: Integer;
-  mNodeToUnit: TDictionary<Integer, Integer>;
-  mList: TList<THotspotUnit>;
-  mUnit: THotspotUnit;
-  mCount: Int64;
+  mFileName: string;
+  mItem: TUnitIndex;
 begin
-  mUnits := FIndex.Units;
+  Result := nil;
   mInScope := TDictionary<string, Boolean>.Create;
   try
-    for mFileName in ARequest.Files do
+    for mFileName in AFiles do
     begin
       mInScope.AddOrSetValue(LowerCase(mFileName), True);
     end;
-    mSelected := nil;
-    for mItem in mUnits do
+    for mItem in AUnits do
     begin
-      if mItem.Library_ or SameText(ExtractFileExt(mItem.FileName), '.dpk') then
+      if not mItem.Library_ and not SameText(ExtractFileExt(mItem.FileName), '.dpk') and
+        ((mInScope.Count = 0) or mInScope.ContainsKey(LowerCase(mItem.FileName))) then
       begin
-        Continue;
+        Result := Result + [mItem];
       end;
-      if (mInScope.Count > 0) and not mInScope.ContainsKey(LowerCase(mItem.FileName)) then
-      begin
-        Continue;
-      end;
-      mSelected := mSelected + [mItem];
     end;
   finally
     mInScope.Free;
   end;
-  mOptions := TUsesGraphOptions.Default;
-  mOptions.IncludeLibrary := False;
-  mOptions.Exclude := ARequest.Exclude;
-  mOptions.Root := ARequest.Root;
-  mOptions.Namespaces := ARequest.Namespaces;
-  mGraph := TUsesGraph.Create(mSelected, mOptions);
+end;
+
+function GraphOptions(const ARequest: THotspotRequest): TUsesGraphOptions;
+begin
+  Result := TUsesGraphOptions.Default;
+  Result.IncludeLibrary := False;
+  Result.Exclude := ARequest.Exclude;
+  Result.Root := ARequest.Root;
+  Result.Namespaces := ARequest.Namespaces;
+end;
+
+/// <summary>Units des Graphen unter AVcsRoot in AList; ANodeToUnit ordnet Knoten ihrem Index darin zu.</summary>
+procedure CollectGraphUnits(AGraph: TUsesGraph; const AVcsRoot: string; ANodeToUnit: TDictionary<Integer, Integer>;
+  AList: TList<THotspotUnit>);
+var
+  mNode: Integer;
+  mRelative: string;
+  mUnit: THotspotUnit;
+begin
+  for mNode in AGraph.SortedNodes do
+  begin
+    if RelativePath(AVcsRoot, AGraph.Node(mNode).FileName, mRelative) then
+    begin
+      mUnit.UnitName := AGraph.Node(mNode).UnitName;
+      mUnit.FileName := AGraph.Node(mNode).FileName;
+      mUnit.Path := mRelative;
+      ANodeToUnit.Add(mNode, AList.Count);
+      AList.Add(mUnit);
+    end;
+  end;
+end;
+
+/// <summary>uses-Kanten zwischen den Units aus ANodeToUnit als EdgeKey in AEdges.</summary>
+procedure CollectEdges(AGraph: TUsesGraph; ANodeToUnit: TDictionary<Integer, Integer>;
+  AEdges: TDictionary<Int64, Boolean>);
+var
+  mNode, mIndex, mTarget, mTargetIndex: Integer;
+begin
+  for mNode in AGraph.SortedNodes do
+  begin
+    if not ANodeToUnit.TryGetValue(mNode, mIndex) then
+    begin
+      Continue;
+    end;
+    for mTarget in AGraph.DirectDependencies(mNode, AllUsesSections) do
+    begin
+      if ANodeToUnit.TryGetValue(mTarget, mTargetIndex) then
+      begin
+        AEdges.AddOrSetValue(EdgeKey(mIndex, mTargetIndex, ANodeToUnit.Count), True);
+      end;
+    end;
+  end;
+end;
+
+function THotspotService.ScopeUnits(const ARequest: THotspotRequest; const AVcsRoot: string;
+  AEdges: TDictionary<Int64, Boolean>): TArray<THotspotUnit>;
+var
+  mGraph: TUsesGraph;
+  mNodeToUnit: TDictionary<Integer, Integer>;
+  mList: TList<THotspotUnit>;
+begin
+  mGraph := TUsesGraph.Create(SelectUnits(FIndex.Units, ARequest.Files), GraphOptions(ARequest));
   mNodeToUnit := TDictionary<Integer, Integer>.Create;
   mList := TList<THotspotUnit>.Create;
   try
-    for mNode in mGraph.SortedNodes do
-    begin
-      if not RelativePath(AVcsRoot, mGraph.Node(mNode).FileName, mRelative) then
-      begin
-        Continue;
-      end;
-      mUnit.UnitName := mGraph.Node(mNode).UnitName;
-      mUnit.FileName := mGraph.Node(mNode).FileName;
-      mUnit.Path := mRelative;
-      mNodeToUnit.Add(mNode, mList.Count);
-      mList.Add(mUnit);
-    end;
-    mCount := mList.Count;
-    for mNode in mGraph.SortedNodes do
-    begin
-      if mNodeToUnit.TryGetValue(mNode, mIndex) then
-      begin
-        for mTarget in mGraph.DirectDependencies(mNode, AllUsesSections) do
-        begin
-          if mNodeToUnit.ContainsKey(mTarget) then
-          begin
-            AEdges.AddOrSetValue(EdgeKey(mIndex, mNodeToUnit[mTarget], mCount), True);
-          end;
-        end;
-      end;
-    end;
+    CollectGraphUnits(mGraph, AVcsRoot, mNodeToUnit, mList);
+    CollectEdges(mGraph, mNodeToUnit, AEdges);
     Result := mList.ToArray;
   finally
     mList.Free;
@@ -437,48 +458,54 @@ begin
   Result := mPast.State;
 end;
 
+/// <summary>Kognitive Komplexität der Methode AMethod in ARoutines; -2, wenn es sie nicht gab.</summary>
+function MethodComplexity(const ARoutines: TArray<TRoutineMetrics>; const AMethod: string): Integer;
+var
+  mRoutine: TRoutineMetrics;
+begin
+  for mRoutine in ARoutines do
+  begin
+    if SameText(mRoutine.Name, AMethod) then
+    begin
+      Exit(mRoutine.Values[TMetricKind.Cognitive]);
+    end;
+  end;
+  Result := -2;
+end;
+
+/// <summary>Komplexität damals für THotspotAnalyzer.TrendOf: -2 gab es nicht, -1 unbekannt.</summary>
+function PastComplexity(AState: THotspotTextState; const ARoutines: TArray<TRoutineMetrics>;
+  const AMethod: string): Integer;
+begin
+  if AState = THotspotTextState.Missing then
+  begin
+    Result := -2;
+  end
+  else if AState = THotspotTextState.Unknown then
+  begin
+    Result := -1;
+  end
+  else if AMethod = '' then
+  begin
+    Result := HotspotComplexity(ARoutines);
+  end
+  else
+  begin
+    Result := MethodComplexity(ARoutines, AMethod);
+  end;
+end;
+
 procedure THotspotService.ApplyTrends(const AVcs: IHotspotVcs; var AEntries: TArray<THotspotEntry>; ACount: Integer;
   ADate: TDateTime);
 var
   mIndex, mPast: Integer;
   mRoutines: TArray<TRoutineMetrics>;
-  mRoutine: TRoutineMetrics;
-  mFound: Boolean;
   mState: THotspotTextState;
 begin
   for mIndex := 0 to Min(ACount, Length(AEntries)) - 1 do
   begin
     mState := PastRoutines(AVcs, AEntries[mIndex].Path, ADate, mRoutines);
-    if mState = THotspotTextState.Missing then
-    begin
-      mPast := -2;
-    end
-    else if mState = THotspotTextState.Unknown then
-    begin
-      mPast := -1;
-    end
-    else if AEntries[mIndex].Method = '' then
-    begin
-      mPast := HotspotComplexity(mRoutines);
-    end
-    else
-    begin
-      mFound := False;
-      mPast := -2;
-      for mRoutine in mRoutines do
-      begin
-        if SameText(mRoutine.Name, AEntries[mIndex].Method) then
-        begin
-          mPast := mRoutine.Values[TMetricKind.Cognitive];
-          mFound := True;
-          Break;
-        end;
-      end;
-      if not mFound then
-      begin
-        mPast := -2;
-      end;
-    end;
+    mPast := PastComplexity(mState, mRoutines, AEntries[mIndex].Method);
     AEntries[mIndex].Trend := THotspotAnalyzer.TrendOf(AEntries[mIndex].Complexity, mPast);
     AEntries[mIndex].PastComplexity := Max(mPast, -1);
   end;
@@ -490,89 +517,153 @@ type
     Weight: Double;
   end;
 
+/// <summary>Größte Zahl Änderungen der Units, mindestens 1.</summary>
+function MaxUnitChanges(const AUnits: TArray<THotspotEntry>): Integer;
+var
+  mUnit: THotspotEntry;
+begin
+  Result := 1;
+  for mUnit in AUnits do
+  begin
+    Result := Max(Result, mUnit.Changes.Changes);
+  end;
+end;
+
+/// <summary>Kandidat für die Methode ARoutine aus AUnit; Gewicht = Anteil der Änderungen × Komplexität.</summary>
+function MethodCandidate(const AUnit: THotspotEntry; const ARoutine: TRoutineMetrics;
+  AMaxChanges: Integer): TMethodCandidate;
+begin
+  Result.Entry := Default(THotspotEntry);
+  Result.Entry.UnitName := AUnit.UnitName;
+  Result.Entry.Path := AUnit.Path;
+  Result.Entry.FileName := AUnit.FileName;
+  Result.Entry.Method := ARoutine.Name;
+  Result.Entry.Line := ARoutine.Range.StartPos.Line + 1;
+  Result.Entry.EndLine := ARoutine.Range.EndPos.Line + 1;
+  Result.Entry.Complexity := ARoutine.Values[TMetricKind.Cognitive];
+  Result.Entry.Lines := Result.Entry.EndLine - Result.Entry.Line + 1;
+  Result.Entry.PastComplexity := -1;
+  Result.Weight := (AUnit.Changes.Changes / AMaxChanges) * Result.Entry.Complexity;
+end;
+
+/// <summary>Kandidaten aller Methoden mit Komplexität über 0 aus den Units in ARoutines.</summary>
+procedure CollectCandidates(ACandidates: TList<TMethodCandidate>; const AUnits: TArray<THotspotEntry>;
+  const ARoutines: TDictionary<string, TArray<TRoutineMetrics>>);
+var
+  mMaxChanges: Integer;
+  mUnit: THotspotEntry;
+  mRoutines: TArray<TRoutineMetrics>;
+  mRoutine: TRoutineMetrics;
+begin
+  mMaxChanges := MaxUnitChanges(AUnits);
+  for mUnit in AUnits do
+  begin
+    if not ARoutines.TryGetValue(LowerCase(mUnit.Path), mRoutines) then
+    begin
+      Continue;
+    end;
+    for mRoutine in TopLevel(mRoutines) do
+    begin
+      if mRoutine.Values[TMetricKind.Cognitive] > 0 then
+      begin
+        ACandidates.Add(MethodCandidate(mUnit, mRoutine, mMaxChanges));
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Schwerste zuerst, dann nach Pfad und Zeile.</summary>
+function CompareCandidates(const ALeft, ARight: TMethodCandidate): Integer;
+begin
+  Result := CompareValue(ARight.Weight, ALeft.Weight);
+  if Result = 0 then
+  begin
+    Result := CompareText(ALeft.Entry.Path, ARight.Entry.Path);
+  end;
+  if Result = 0 then
+  begin
+    Result := ALeft.Entry.Line - ARight.Entry.Line;
+  end;
+end;
+
+function THotspotService.LineCommits(const AVcs: IHotspotVcs; const AEntry: THotspotEntry):
+  TArray<THotspotLineCommit>;
+var
+  mKey: string;
+begin
+  mKey := LowerCase(AEntry.Path) + #1 + IntToStr(AEntry.Line) + #1 + IntToStr(AEntry.EndLine);
+  if FLineLogs.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Inc(FLineLogReads);
+  if not AVcs.LineLog(AEntry.FileName, AEntry.Line, AEntry.EndLine, FSince, Result) then
+  begin
+    Result := nil;
+  end;
+  FLineLogs.AddOrSetValue(mKey, Result);
+end;
+
 function THotspotService.MethodEntries(const AVcs: IHotspotVcs; const ARequest: THotspotRequest;
   const AUnits: TArray<THotspotEntry>;
   const ARoutines: TDictionary<string, TArray<TRoutineMetrics>>): TArray<THotspotEntry>;
 var
   mCandidates: TList<TMethodCandidate>;
-  mCandidate: TMethodCandidate;
-  mUnit: THotspotEntry;
-  mRoutine: TRoutineMetrics;
-  mRoutines: TArray<TRoutineMetrics>;
-  mMaxChanges, mIndex: Integer;
+  mEntry: THotspotEntry;
+  mIndex: Integer;
   mEntries: TArray<THotspotEntry>;
-  mCommits: TArray<THotspotLineCommit>;
-  mKey: string;
 begin
-  mMaxChanges := 1;
-  for mUnit in AUnits do
-  begin
-    mMaxChanges := Max(mMaxChanges, mUnit.Changes.Changes);
-  end;
+  mEntries := nil;
   mCandidates := TList<TMethodCandidate>.Create;
   try
-    for mUnit in AUnits do
-    begin
-      if not ARoutines.TryGetValue(LowerCase(mUnit.Path), mRoutines) then
-      begin
-        Continue;
-      end;
-      for mRoutine in TopLevel(mRoutines) do
-      begin
-        if mRoutine.Values[TMetricKind.Cognitive] <= 0 then
-        begin
-          Continue;
-        end;
-        mCandidate.Entry := Default(THotspotEntry);
-        mCandidate.Entry.UnitName := mUnit.UnitName;
-        mCandidate.Entry.Path := mUnit.Path;
-        mCandidate.Entry.FileName := mUnit.FileName;
-        mCandidate.Entry.Method := mRoutine.Name;
-        mCandidate.Entry.Line := mRoutine.Range.StartPos.Line + 1;
-        mCandidate.Entry.EndLine := mRoutine.Range.EndPos.Line + 1;
-        mCandidate.Entry.Complexity := mRoutine.Values[TMetricKind.Cognitive];
-        mCandidate.Entry.Lines := mCandidate.Entry.EndLine - mCandidate.Entry.Line + 1;
-        mCandidate.Entry.PastComplexity := -1;
-        mCandidate.Weight := (mUnit.Changes.Changes / mMaxChanges) * mCandidate.Entry.Complexity;
-        mCandidates.Add(mCandidate);
-      end;
-    end;
+    CollectCandidates(mCandidates, AUnits, ARoutines);
     mCandidates.Sort(TComparer<TMethodCandidate>.Construct(
       function(const ALeft, ARight: TMethodCandidate): Integer
       begin
-        Result := CompareValue(ARight.Weight, ALeft.Weight);
-        if Result = 0 then
-        begin
-          Result := CompareText(ALeft.Entry.Path, ARight.Entry.Path);
-        end;
-        if Result = 0 then
-        begin
-          Result := ALeft.Entry.Line - ARight.Entry.Line;
-        end;
+        Result := CompareCandidates(ALeft, ARight);
       end));
-    mEntries := nil;
     for mIndex := 0 to Min(ARequest.Options.MethodCandidates, mCandidates.Count) - 1 do
     begin
-      mCandidate := mCandidates[mIndex];
-      mKey := LowerCase(mCandidate.Entry.Path) + #1 + IntToStr(mCandidate.Entry.Line) + #1 +
-        IntToStr(mCandidate.Entry.EndLine);
-      if not FLineLogs.TryGetValue(mKey, mCommits) then
-      begin
-        Inc(FLineLogReads);
-        if not AVcs.LineLog(mCandidate.Entry.FileName, mCandidate.Entry.Line, mCandidate.Entry.EndLine, FSince,
-          mCommits) then
-        begin
-          mCommits := nil;
-        end;
-        FLineLogs.AddOrSetValue(mKey, mCommits);
-      end;
-      mCandidate.Entry.Changes := THotspotAnalyzer.LineChanges(mCommits);
-      mEntries := mEntries + [mCandidate.Entry];
+      mEntry := mCandidates[mIndex].Entry;
+      mEntry.Changes := THotspotAnalyzer.LineChanges(LineCommits(AVcs, mEntry));
+      mEntries := mEntries + [mEntry];
     end;
   finally
     mCandidates.Free;
   end;
   Result := THotspotAnalyzer.Rank(mEntries);
+end;
+
+/// <summary>Kopf des Ergebnisses ohne Einträge.</summary>
+function NewResult(const ARequest: THotspotRequest; const AVcs: IHotspotVcs; ASince: TDateTime; ACommits: Integer;
+  AGeneration: Int64): THotspotResult;
+begin
+  Result := Default(THotspotResult);
+  Result.Title := ARequest.Title;
+  Result.Root := AVcs.Root;
+  Result.Kind := AVcs.Kind;
+  Result.Head := AVcs.Head;
+  Result.Months := ARequest.Options.Months;
+  Result.Since := ASince;
+  Result.Commits := ACommits;
+  Result.Level := ARequest.Level;
+  Result.Generation := AGeneration;
+end;
+
+/// <summary>Eintrag der Rangliste für die Unit AUnit mit Text AText.</summary>
+function UnitEntry(const AUnit: THotspotUnit; const AChanges: THotspotChanges;
+  const ARoutines: TArray<TRoutineMetrics>; const AText: string): THotspotEntry;
+begin
+  Result := Default(THotspotEntry);
+  Result.UnitName := AUnit.UnitName;
+  Result.Path := AUnit.Path;
+  Result.FileName := AUnit.FileName;
+  Result.Line := 1;
+  Result.Changes := AChanges;
+  Result.Complexity := HotspotComplexity(ARoutines);
+  Result.Lines := LineCount(AText);
+  Result.EndLine := Result.Lines;
+  Result.PastComplexity := -1;
 end;
 
 function THotspotService.Compute(const ARequest: THotspotRequest; const AVcs: IHotspotVcs; ANow: TDateTime;
@@ -582,23 +673,13 @@ var
   mEdges: TDictionary<Int64, Boolean>;
   mChanges: TArray<THotspotChanges>;
   mEntries: TArray<THotspotEntry>;
-  mEntry: THotspotEntry;
   mRoutines: TArray<TRoutineMetrics>;
   mAllRoutines: TDictionary<string, TArray<TRoutineMetrics>>;
   mIndex: Integer;
   mText: string;
   mTrendDate: TDateTime;
 begin
-  Result := Default(THotspotResult);
-  Result.Title := ARequest.Title;
-  Result.Root := AVcs.Root;
-  Result.Kind := AVcs.Kind;
-  Result.Head := AVcs.Head;
-  Result.Months := ARequest.Options.Months;
-  Result.Since := FSince;
-  Result.Commits := Length(FHistory);
-  Result.Level := ARequest.Level;
-  Result.Generation := AGeneration;
+  Result := NewResult(ARequest, AVcs, FSince, Length(FHistory), AGeneration);
   mEdges := TDictionary<Int64, Boolean>.Create;
   mAllRoutines := TDictionary<string, TArray<TRoutineMetrics>>.Create;
   try
@@ -607,27 +688,13 @@ begin
     mEntries := nil;
     for mIndex := 0 to High(mUnits) do
     begin
-      if mChanges[mIndex].Changes = 0 then
-      begin
-        Continue;
-      end;
-      if not (Assigned(FReadText) and FReadText(mUnits[mIndex].FileName, mText)) then
+      if (mChanges[mIndex].Changes = 0) or not (Assigned(FReadText) and FReadText(mUnits[mIndex].FileName, mText)) then
       begin
         Continue;
       end;
       mRoutines := FMetrics.FileRoutines(mUnits[mIndex].FileName, mText);
       mAllRoutines.AddOrSetValue(LowerCase(mUnits[mIndex].Path), mRoutines);
-      mEntry := Default(THotspotEntry);
-      mEntry.UnitName := mUnits[mIndex].UnitName;
-      mEntry.Path := mUnits[mIndex].Path;
-      mEntry.FileName := mUnits[mIndex].FileName;
-      mEntry.Line := 1;
-      mEntry.Changes := mChanges[mIndex];
-      mEntry.Complexity := HotspotComplexity(mRoutines);
-      mEntry.Lines := LineCount(mText);
-      mEntry.EndLine := mEntry.Lines;
-      mEntry.PastComplexity := -1;
-      mEntries := mEntries + [mEntry];
+      mEntries := mEntries + [UnitEntry(mUnits[mIndex], mChanges[mIndex], mRoutines, mText)];
     end;
     Result.Units := THotspotAnalyzer.Rank(mEntries);
     mTrendDate := IncMonth(ANow, -ARequest.Options.TrendMonths);
