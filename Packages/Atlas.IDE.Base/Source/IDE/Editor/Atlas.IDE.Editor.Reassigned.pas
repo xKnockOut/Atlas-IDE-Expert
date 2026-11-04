@@ -491,8 +491,8 @@ begin
         Canvas.LineTo(Part.X2, Part.Y2);
       end;
       Mark := TRect.Create(First.Left, Baseline - 2 * Step, Max(Last.Left, First.Left + 1), Rect.Bottom);
-      TAtlasIdeElements.Painted(TAtlasDrawnElement.Reassigned, Context.FileName, Context.LogicalLineNum - 1, AText,
-        Mark, Context.EditView.TopRow, Rect.Height);
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.Reassigned, Context.FileName,
+        Context.LogicalLineNum - 1, AText), Mark, Context.EditView.TopRow, Rect.Height);
     end;
   finally
     RestoreDC(DC, Saved);

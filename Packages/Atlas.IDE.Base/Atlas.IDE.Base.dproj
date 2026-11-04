@@ -202,6 +202,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Baseline.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Trends.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.PathCheck.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.PathCheck.Scan.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Contract.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
@@ -484,6 +485,8 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Vcs.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>

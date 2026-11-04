@@ -270,6 +270,66 @@ begin
   end;
 end;
 
+type
+  /// <summary>Fragt je Pfad einer Grundlinie nur einmal, ob die Datei fehlt: Eine Datei hat oft viele
+  /// Einträge.</summary>
+  TBaselineFileCheck = class
+  private
+    FFolder: string;
+    FExists: TAtlasBaselineFileExists;
+    FGone: TDictionary<string, Boolean>;
+  public
+    constructor Create(const AFolder: string; const AExists: TAtlasBaselineFileExists);
+    destructor Destroy; override;
+    /// <summary>True, wenn die Datei zu APath (relativ zu AFolder, „/“ erlaubt) fehlt; False ohne Pfad oder
+    /// ohne AExists.</summary>
+    function Gone(const APath: string): Boolean;
+  end;
+
+constructor TBaselineFileCheck.Create(const AFolder: string; const AExists: TAtlasBaselineFileExists);
+begin
+  inherited Create;
+  FFolder := AFolder;
+  FExists := AExists;
+  FGone := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TBaselineFileCheck.Destroy;
+begin
+  FGone.Free;
+  inherited;
+end;
+
+function TBaselineFileCheck.Gone(const APath: string): Boolean;
+var
+  Key: string;
+begin
+  Result := False;
+  if (APath = '') or not Assigned(FExists) then
+  begin
+    Exit;
+  end;
+  // Wie SameText: nur ASCII ohne Groß- und Kleinschreibung.
+  Key := UpperCase(APath);
+  if not FGone.TryGetValue(Key, Result) then
+  begin
+    Result := not FExists(Joined(FFolder, StringReplace(APath, '/', '\', [rfReplaceAll])));
+    FGone.Add(Key, Result);
+  end;
+end;
+
+/// <summary>Anzahl (Vorgabe 1) und Pfad eines Eintrags aus findings.</summary>
+procedure ReadBaselineEntry(AItem: TJSONValue; out ACount: Integer; out APath: string);
+begin
+  ACount := 1;
+  APath := '';
+  if AItem is TJSONObject then
+  begin
+    ACount := NumberOf(TJSONObject(AItem), 'count', 1);
+    APath := TextOf(TJSONObject(AItem), 'path');
+  end;
+end;
+
 class function TAtlasProjectBaselines.StateOfText(const AFolder, AText: string;
   const AExists: TAtlasBaselineFileExists): TAtlasBaselineState;
 var
@@ -277,17 +337,13 @@ var
   Findings, Item: TJSONValue;
   Path: string;
   Count: Integer;
-  Known: TArray<string>;
-  Missing: TArray<string>;
-  Index: Integer;
-  Found, Gone: Boolean;
+  Check: TBaselineFileCheck;
 begin
   Result := Default(TAtlasBaselineState);
   Result.Orphans := nil;
   Result.Exists := True;
-  Known := nil;
-  Missing := nil;
   Root := ParseObject(AText);
+  Check := TBaselineFileCheck.Create(AFolder, AExists);
   try
     if Root = nil then
     begin
@@ -302,49 +358,15 @@ begin
     for Item in TJSONArray(Findings) do
     begin
       Inc(Result.Entries);
-      Count := 1;
-      Path := '';
-      if Item is TJSONObject then
-      begin
-        Count := NumberOf(TJSONObject(Item), 'count', 1);
-        Path := TextOf(TJSONObject(Item), 'path');
-      end;
+      ReadBaselineEntry(Item, Count, Path);
       Inc(Result.Hits, Count);
-      if (Path = '') or not Assigned(AExists) then
-      begin
-        Continue;
-      end;
-      // Jeden Pfad nur einmal prüfen: Eine Datei hat oft viele Einträge.
-      Found := False;
-      Gone := False;
-      for Index := 0 to High(Known) do
-      begin
-        if SameText(Known[Index], Path) then
-        begin
-          Found := True;
-          Gone := Missing[Index] <> '';
-          Break;
-        end;
-      end;
-      if not Found then
-      begin
-        Gone := not AExists(Joined(AFolder, StringReplace(Path, '/', '\', [rfReplaceAll])));
-        Known := Known + [Path];
-        if Gone then
-        begin
-          Missing := Missing + [Path];
-        end
-        else
-        begin
-          Missing := Missing + [''];
-        end;
-      end;
-      if Gone then
+      if Check.Gone(Path) then
       begin
         AddOrphan(Result.Orphans, Path, Count);
       end;
     end;
   finally
+    Check.Free;
     Root.Free;
   end;
 end;
@@ -407,18 +429,47 @@ begin
   end;
 end;
 
-class function TAtlasProjectBaselines.FromServer(const AJson: string; out AUpdate: TAtlasBaselineUpdate): Boolean;
+/// <summary>Liest orphaned der Serverantwort: Einträge ohne Datei und ihre Anzahl.</summary>
+procedure ReadServerOrphans(ARoot: TJSONObject; var AUpdate: TAtlasBaselineUpdate);
 var
-  Root, Orphaned: TJSONObject;
+  Orphaned: TJSONObject;
   Entries, Item: TJSONValue;
   Path: string;
 begin
+  if not (ARoot.GetValue('orphaned') is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Orphaned := TJSONObject(ARoot.GetValue('orphaned'));
+  Entries := Orphaned.GetValue('entries');
+  if Entries is TJSONArray then
+  begin
+    for Item in TJSONArray(Entries) do
+    begin
+      Path := '';
+      if Item is TJSONObject then
+      begin
+        Path := TextOf(TJSONObject(Item), 'path');
+      end;
+      if Path <> '' then
+      begin
+        AddOrphan(AUpdate.Orphans, Path, NumberOf(TJSONObject(Item), 'count', 1));
+      end;
+    end;
+  end;
+  AUpdate.OrphanCount := NumberOf(Orphaned, 'count', 0);
+end;
+
+class function TAtlasProjectBaselines.FromServer(const AJson: string; out AUpdate: TAtlasBaselineUpdate): Boolean;
+var
+  Root: TJSONObject;
+begin
   AUpdate := Default(TAtlasBaselineUpdate);
   AUpdate.Orphans := nil;
-  Result := False;
   Root := ParseObject(AJson);
   try
-    if (Root = nil) or not (Root.GetValue('total') is TJSONNumber) or (TextOf(Root, 'file') = '') then
+    Result := (Root <> nil) and (Root.GetValue('total') is TJSONNumber) and (TextOf(Root, 'file') <> '');
+    if not Result then
     begin
       Exit;
     end;
@@ -432,31 +483,7 @@ begin
     AUpdate.Removed := NumberOf(Root, 'removed', 0);
     AUpdate.Unchanged := NumberOf(Root, 'unchanged', 0);
     AUpdate.Completed := NumberOf(Root, 'completed', 0);
-    Orphaned := nil;
-    if Root.GetValue('orphaned') is TJSONObject then
-    begin
-      Orphaned := TJSONObject(Root.GetValue('orphaned'));
-    end;
-    if Orphaned <> nil then
-    begin
-      Entries := Orphaned.GetValue('entries');
-      if Entries is TJSONArray then
-      begin
-        for Item in TJSONArray(Entries) do
-        begin
-          if Item is TJSONObject then
-          begin
-            Path := TextOf(TJSONObject(Item), 'path');
-            if Path <> '' then
-            begin
-              AddOrphan(AUpdate.Orphans, Path, NumberOf(TJSONObject(Item), 'count', 1));
-            end;
-          end;
-        end;
-      end;
-      AUpdate.OrphanCount := NumberOf(Orphaned, 'count', 0);
-    end;
-    Result := True;
+    ReadServerOrphans(Root, AUpdate);
   finally
     Root.Free;
   end;

@@ -1,4 +1,10 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
+﻿## Atlas-Befunde in Base Lsp und Projects (03.–04.11.2026, Branch `claude/project-thread-jk1s72` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/{Core,IDE,UI}/{Lsp,Projects}` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde. PRs #1638 (Lsp) und #1674 (Projects).
+- Lsp: `TLspSession` ist eine Klassenkette über vier Units (`Session.Json` → `Session.Base` → `Session.Requests` → `Session`); die Typen stehen als Aliase in `Atlas.Core.Lsp.Session`. `OnTypeFormatting` nimmt `TLspFormatOptions`.
+- Projects: Scanner von PathCheck in `Atlas.Core.Projects.PathCheck.Scan`, Abschnitte setup/tests/release/ci in `Atlas.Core.Projects.Summary.Sections`, Feldleser und Zeiten in `Atlas.Core.Projects.Summary.Json` (Typen als Aliase in den alten Units). `RecordCompile` nimmt `TAtlasProjectCompileRun`.
+- Geprüft: FPC-Tests der Core-Units grün (Abweichungen nur wie auf dem Basiszweig: LspClient 3, Session 2 AV, Recording übersetzt unter FPC nicht). VCL-Units nur von Hand und mit Atlas geprüft; Delphi-Build offen.
+
+# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.

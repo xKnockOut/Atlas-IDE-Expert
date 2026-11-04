@@ -30,6 +30,16 @@ type
   /// <summary>Wo die neue Tabelle steht.</summary>
   TEnumTablePlacement = (AfterType, InImplementation);
 
+  /// <summary>Name, Ort und Art der neuen Tabelle.</summary>
+  TEnumTableRequest = record
+    Name: string;
+    Placement: TEnumTablePlacement;
+    /// <summary>Texte als resourcestrings, die Tabelle als array of PResStringRec.</summary>
+    ResourceStrings: Boolean;
+    class function Create(const AName: string; APlacement: TEnumTablePlacement;
+      AResourceStrings: Boolean): TEnumTableRequest; static;
+  end;
+
   /// <summary>Art des Elementtyps einer Tabelle, für den Wert neuer Einträge.</summary>
   TEnumTableElement = (Text, Number, Float, Boolean_, Char_, Pointer_, Enum, ResourceString_, Other);
 
@@ -101,10 +111,9 @@ type
     /// <summary>Aufzählungstyp, in dessen Deklaration APosition liegt.</summary>
     class function Target(ATree: TSyntaxTree; const APosition: TTextPosition; out ATarget: TEnumTarget;
       out AReason: string): Boolean; static;
-    /// <summary>Änderungen für die Tabelle AName; False mit Grund.</summary>
+    /// <summary>Änderungen für die Tabelle nach ARequest; False mit Grund.</summary>
     class function CreateTable(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const AName: string; APlacement: TEnumTablePlacement; AResourceStrings: Boolean;
-      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; static;
+      const ARequest: TEnumTableRequest; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; static;
     /// <summary>Alle Tabellen der Datei.</summary>
     class function Tables(ATree: TSyntaxTree): TArray<TEnumTable>; static;
     /// <summary>Tabelle, in deren Deklaration APosition liegt.</summary>
@@ -145,6 +154,16 @@ begin
   begin
     Delete(Result, 1, 1);
   end;
+end;
+
+{ TEnumTableRequest }
+
+class function TEnumTableRequest.Create(const AName: string; APlacement: TEnumTablePlacement;
+  AResourceStrings: Boolean): TEnumTableRequest;
+begin
+  Result.Name := AName;
+  Result.Placement := APlacement;
+  Result.ResourceStrings := AResourceStrings;
 end;
 
 { TEnumTableValues }
@@ -225,62 +244,76 @@ begin
   Result := Copy(ANames[0], 1, Length_);
 end;
 
+/// <summary>Großbuchstabe an AAt nach Großbuchstaben, vor einem Kleinbuchstaben (HTTPError: E).</summary>
+function IsAcronymEnd(const AText: string; AAt: Integer): Boolean;
+begin
+  Result := AText[AAt - 1].IsUpper and (AAt < Length(AText)) and AText[AAt + 1].IsLower;
+end;
+
+/// <summary>Wortgrenze vor AAt: klein → groß, oder groß → groß+klein (HTTPError → HTTP Error).</summary>
+function IsWordBreak(const AText: string; AAt: Integer): Boolean;
+begin
+  Result := AText[AAt].IsUpper and (AText[AAt - 1].IsLower or AText[AAt - 1].IsDigit or IsAcronymEnd(AText, AAt));
+end;
+
+/// <summary>AText an Leerzeichen und CamelCase-Grenzen getrennt (Teile können Leerzeichen enthalten).</summary>
+function CamelWords(const AText: string): TArray<string>;
+var
+  mIndex, mStart: Integer;
+begin
+  Result := nil;
+  mStart := 1;
+  for mIndex := 2 to Length(AText) do
+  begin
+    if (AText[mIndex] <> ' ') and (AText[mIndex - 1] <> ' ') and IsWordBreak(AText, mIndex) then
+    begin
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex;
+    end;
+  end;
+  Result := Result + [Copy(AText, mStart, MaxInt)];
+end;
+
+/// <summary>Abkürzungen (HTTP) bleiben groß, sonst nur das erste Wort mit großem Anfang.</summary>
+function WordCase(const AWord: string; AFirst: Boolean): string;
+begin
+  Result := AWord;
+  if (Length(AWord) > 1) and (UpperCase(AWord) = AWord) then
+  begin
+    Exit;
+  end;
+  if AFirst then
+  begin
+    Result := UpperCase(Copy(AWord, 1, 1)) + LowerCase(Copy(AWord, 2, MaxInt));
+  end
+  else
+  begin
+    Result := LowerCase(AWord);
+  end;
+end;
+
 class function TEnumTables.DisplayText(const AName, APrefix: string): string;
 var
-  Rest, Word: string;
-  Words: TArray<string>;
-  Index, Start: Integer;
-
-  function Breaks(AAt: Integer): Boolean;
-  begin
-    // Wortgrenze vor AAt: klein → groß, oder groß → groß+klein (HTTPError → HTTP Error), Unterstrich.
-    Result := (Rest[AAt].IsUpper and (Rest[AAt - 1].IsLower or Rest[AAt - 1].IsDigit)) or
-      (Rest[AAt].IsUpper and Rest[AAt - 1].IsUpper and (AAt < Length(Rest)) and Rest[AAt + 1].IsLower);
-  end;
-
+  mRest, mWord, mText: string;
 begin
-  Rest := AName;
-  if (APrefix <> '') and StartsStr(APrefix, Rest) then
+  mRest := AName;
+  if (APrefix <> '') and StartsStr(APrefix, mRest) then
   begin
-    Delete(Rest, 1, Length(APrefix));
+    Delete(mRest, 1, Length(APrefix));
   end;
-  Rest := StringReplace(Rest, '_', ' ', [rfReplaceAll]);
-  Words := nil;
-  Start := 1;
-  for Index := 2 to Length(Rest) do
-  begin
-    if (Rest[Index] <> ' ') and (Rest[Index - 1] <> ' ') and Breaks(Index) then
-    begin
-      Words := Words + [Copy(Rest, Start, Index - Start)];
-      Start := Index;
-    end;
-  end;
-  Words := Words + [Copy(Rest, Start, MaxInt)];
   Result := '';
-  for Index := 0 to High(Words) do
+  for mWord in CamelWords(StringReplace(mRest, '_', ' ', [rfReplaceAll])) do
   begin
-    Word := Trim(Words[Index]);
-    if Word = '' then
+    mText := Trim(mWord);
+    if mText = '' then
     begin
       Continue;
-    end;
-    // Abkürzungen (HTTP) bleiben groß, sonst nur das erste Wort mit großem Anfang.
-    if (Length(Word) = 1) or (UpperCase(Word) <> Word) then
-    begin
-      if Result = '' then
-      begin
-        Word := UpperCase(Copy(Word, 1, 1)) + LowerCase(Copy(Word, 2, MaxInt));
-      end
-      else
-      begin
-        Word := LowerCase(Word);
-      end;
     end;
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Word;
+    Result := Result + WordCase(mText, Result = '');
   end;
 end;
 
@@ -422,38 +455,16 @@ begin
   Result := Result + ');';
 end;
 
-class function TEnumTables.CreateTable(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const AName: string; APlacement: TEnumTablePlacement; AResourceStrings: Boolean; out AEdits: TArray<TTextEdit>;
-  out AReason: string): Boolean;
+/// <summary>Deklaration des Aufzählungstyps, in der APosition liegt; nil ohne.</summary>
+function EnumDeclAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
-  Info: TEnumTarget;
-  Decl, Section, Implementation_, UsesNode: TSyntaxNode;
-  Lines: TLineTable;
-  Taken, Items, Resources: TArray<string>;
-  Prefix, LineBreak, Indent, Text, ResourceName_, Name: string;
-  Offset, Index: Integer;
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
-  AEdits := nil;
-  if not Target(ATree, APosition, Info, AReason) then
-  begin
-    Exit(False);
-  end;
-  if not IsIdentifier(AName) then
-  begin
-    Exit(Fail(Format('%s ist kein gültiger Name', [AName]), AReason));
-  end;
-  Taken := DeclaredNames(ATree);
-  if IndexText(AName, Taken) >= 0 then
-  begin
-    Exit(Fail(Format('Der Name %s ist schon vergeben', [AName]), AReason));
-  end;
-  Lines := TLineTable.Build(AText);
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Decl := ATree.Root.Search(
+  mPosition := APosition;
+  Result := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      if not Contains(ANode, APosition) then
+      if not Contains(ANode, mPosition) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
@@ -463,76 +474,169 @@ begin
       end;
       Result := TSyntaxSearchStep.Descend;
     end);
-  Section := Decl.Parent;
-  Indent := TTextLines.IndentOf(AText, Lines.PositionAt(Section.StartOffset).Line);
-  Prefix := CommonPrefix(Info.Names);
+end;
+
+/// <summary>Grund, warum AName nicht als Name der Tabelle taugt; '' wenn er passt.</summary>
+function NameError(const AName: string; const ATaken: TArray<string>): string;
+begin
+  Result := '';
+  if not IsIdentifier(AName) then
+  begin
+    Result := Format('%s ist kein gültiger Name', [AName]);
+  end
+  else if IndexText(AName, ATaken) >= 0 then
+  begin
+    Result := Format('Der Name %s ist schon vergeben', [AName]);
+  end;
+end;
+
+type
+  /// <summary>Text der neuen Tabelle samt resourcestrings.</summary>
+  TTableDraft = record
+    Info: TEnumTarget;
+    Request: TEnumTableRequest;
+    Prefix: string;
+    Indent: string;
+    LineBreak: string;
+    Items: TArray<string>;
+    Resources: TArray<string>;
+    /// <summary>Einträge und resourcestring-Namen; False mit Grund, wenn ein Name schon vergeben ist.</summary>
+    function CollectItems(const ATaken: TArray<string>; out AReason: string): Boolean;
+    /// <summary>resourcestring-Abschnitt (falls gewünscht) und const-Abschnitt mit der Tabelle.</summary>
+    function Declaration: string;
+  end;
+
+function TTableDraft.CollectItems(const ATaken: TArray<string>; out AReason: string): Boolean;
+var
+  mName, mResource: string;
+begin
+  AReason := '';
   Items := nil;
   Resources := nil;
-  for Name in Info.Names do
+  for mName in Info.Names do
   begin
-    if AResourceStrings then
+    if not Request.ResourceStrings then
     begin
-      ResourceName_ := ResourceName(Info.TypeName, Name, Prefix);
-      if IndexText(ResourceName_, Taken + Resources) >= 0 then
-      begin
-        Exit(Fail(Format('Der Name %s ist schon vergeben', [ResourceName_]), AReason));
-      end;
-      Resources := Resources + [ResourceName_];
-      Items := Items + ['@' + ResourceName_];
-    end
-    else
-    begin
-      Items := Items + [QuotedStr(DisplayText(Name, Prefix))];
+      Items := Items + [QuotedStr(TEnumTables.DisplayText(mName, Prefix))];
+      Continue;
     end;
+    mResource := TEnumTables.ResourceName(Info.TypeName, mName, Prefix);
+    if IndexText(mResource, ATaken + Resources) >= 0 then
+    begin
+      Exit(Fail(Format('Der Name %s ist schon vergeben', [mResource]), AReason));
+    end;
+    Resources := Resources + [mResource];
+    Items := Items + ['@' + mResource];
   end;
-  Text := '';
-  if AResourceStrings then
-  begin
-    Text := Indent + 'resourcestring';
-    for Index := 0 to High(Resources) do
-    begin
-      Text := Text + LineBreak + Indent + '  ' + Resources[Index] + ' = ' +
-        QuotedStr(DisplayText(Info.Names[Index], Prefix)) + ';';
-    end;
-    Text := Text + LineBreak + LineBreak + Indent + 'const' + LineBreak +
-      Joined(AName + ': array[' + Info.TypeName + '] of PResStringRec = ', Items, Indent + '  ', LineBreak);
-  end
-  else
-  begin
-    Text := Indent + 'const' + LineBreak + Joined(AName + ': array[' + Info.TypeName + '] of string = ', Items,
-      Indent + '  ', LineBreak);
-  end;
-  if (APlacement = TEnumTablePlacement.AfterType) or not Info.InInterface then
-  begin
-    // Direkt hinter der Deklaration; folgen im Abschnitt weitere Typen, beginnt für sie ein neuer.
-    Offset := Lines.LineContentEnd(Lines.PositionAt(Decl.EndOffset).Line);
-    Text := LineBreak + LineBreak + Text;
-    if Section[Section.ChildCount - 1] <> Decl then
-    begin
-      Text := Text + LineBreak + LineBreak + Indent + 'type';
-    end;
-  end
-  else
-  begin
-    Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    if Implementation_ = nil then
-    begin
-      Exit(Fail('Die Unit hat keinen implementation-Teil', AReason));
-    end;
-    UsesNode := Implementation_.FindChild(TSyntaxKind.UsesClause);
-    if UsesNode <> nil then
-    begin
-      Offset := Lines.LineContentEnd(Lines.PositionAt(UsesNode.EndOffset).Line);
-    end
-    else
-    begin
-      Offset := Lines.LineContentEnd(Lines.PositionAt(Implementation_.StartOffset).Line);
-    end;
-    Text := LineBreak + LineBreak + Text;
-  end;
-  Position := Lines.PositionAt(Offset);
-  AEdits := [TTextEdit.Create(TTextRange.Create(Position, Position), Text)];
   Result := True;
+end;
+
+function TTableDraft.Declaration: string;
+var
+  mIndex: Integer;
+begin
+  if not Request.ResourceStrings then
+  begin
+    Exit(Indent + 'const' + LineBreak + Joined(Request.Name + ': array[' + Info.TypeName + '] of string = ', Items,
+      Indent + '  ', LineBreak));
+  end;
+  Result := Indent + 'resourcestring';
+  for mIndex := 0 to High(Resources) do
+  begin
+    Result := Result + LineBreak + Indent + '  ' + Resources[mIndex] + ' = ' +
+      QuotedStr(TEnumTables.DisplayText(Info.Names[mIndex], Prefix)) + ';';
+  end;
+  Result := Result + LineBreak + LineBreak + Indent + 'const' + LineBreak +
+    Joined(Request.Name + ': array[' + Info.TypeName + '] of PResStringRec = ', Items, Indent + '  ', LineBreak);
+end;
+
+/// <summary>Einfügen direkt hinter der Deklaration ADecl; folgen im Abschnitt weitere Typen, beginnt für sie ein
+/// neuer Typabschnitt.</summary>
+function AfterTypeEdit(const ALines: TLineTable; ADecl: TSyntaxNode; const ADraft: TTableDraft): TTextEdit;
+var
+  mPosition: TTextPosition;
+  mText: string;
+begin
+  mPosition := ALines.PositionAt(ALines.LineContentEnd(ALines.PositionAt(ADecl.EndOffset).Line));
+  mText := ADraft.LineBreak + ADraft.LineBreak + ADraft.Declaration;
+  if ADecl.Parent[ADecl.Parent.ChildCount - 1] <> ADecl then
+  begin
+    mText := mText + ADraft.LineBreak + ADraft.LineBreak + ADraft.Indent + 'type';
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(mPosition, mPosition), mText);
+end;
+
+/// <summary>Stelle im implementation-Teil hinter dessen uses bzw. hinter "implementation"; False ohne
+/// implementation-Teil.</summary>
+function ImplementationOffset(ATree: TSyntaxTree; const ALines: TLineTable; out AOffset: Integer): Boolean;
+var
+  mSection, mUses: TSyntaxNode;
+begin
+  AOffset := 0;
+  mSection := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  Result := mSection <> nil;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mUses := mSection.FindChild(TSyntaxKind.UsesClause);
+  if mUses <> nil then
+  begin
+    AOffset := ALines.LineContentEnd(ALines.PositionAt(mUses.EndOffset).Line);
+  end
+  else
+  begin
+    AOffset := ALines.LineContentEnd(ALines.PositionAt(mSection.StartOffset).Line);
+  end;
+end;
+
+class function TEnumTables.CreateTable(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ARequest: TEnumTableRequest; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mDraft: TTableDraft;
+  mTaken: TArray<string>;
+  mLines: TLineTable;
+  mDecl: TSyntaxNode;
+  mOffset: Integer;
+  mPosition: TTextPosition;
+begin
+  AEdits := nil;
+  mDraft := Default(TTableDraft);
+  mDraft.Request := ARequest;
+  Result := Target(ATree, APosition, mDraft.Info, AReason);
+  if Result then
+  begin
+    mTaken := DeclaredNames(ATree);
+    AReason := NameError(ARequest.Name, mTaken);
+    Result := AReason = '';
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mLines := TLineTable.Build(AText);
+  mDecl := EnumDeclAt(ATree, APosition);
+  mDraft.LineBreak := TTextLines.LineBreakOf(AText);
+  mDraft.Indent := TTextLines.IndentOf(AText, mLines.PositionAt(mDecl.Parent.StartOffset).Line);
+  mDraft.Prefix := CommonPrefix(mDraft.Info.Names);
+  if not mDraft.CollectItems(mTaken, AReason) then
+  begin
+    Exit(False);
+  end;
+  if (ARequest.Placement = TEnumTablePlacement.AfterType) or not mDraft.Info.InInterface then
+  begin
+    AEdits := [AfterTypeEdit(mLines, mDecl, mDraft)];
+  end
+  else if ImplementationOffset(ATree, mLines, mOffset) then
+  begin
+    mPosition := mLines.PositionAt(mOffset);
+    AEdits := [TTextEdit.Create(TTextRange.Create(mPosition, mPosition),
+      mDraft.LineBreak + mDraft.LineBreak + mDraft.Declaration)];
+  end
+  else
+  begin
+    Exit(Fail('Die Unit hat keinen implementation-Teil', AReason));
+  end;
 end;
 
 function TableOf(ANode: TSyntaxNode; out ATable: TEnumTable): Boolean;
@@ -646,106 +750,139 @@ type
     IsLine: Boolean;
   end;
 
-/// <summary>Kommentare im Text zwischen zwei Einträgen [AStart, AStop); AHasPrevious/AHasNext: gibt es die Einträge
-/// davor und danach. Vor dem Komma gehört ein Kommentar zum vorigen Eintrag, dahinter zum nächsten, außer es folgt
-/// ein Zeilenumbruch vor dem nächsten Eintrag (Zeilenkommentar hinter "'New',").</summary>
-function GapComments(const AText: string; AStart, AStop: Integer; AHasPrevious, AHasNext: Boolean;
-  out AComma: Integer): TArray<TGapComment>;
+  /// <summary>Text zwischen zwei Einträgen [Start, Stop); HasPrevious/HasNext: gibt es die Einträge davor und
+  /// danach.</summary>
+  TGap = record
+    Start: Integer;
+    Stop: Integer;
+    HasPrevious: Boolean;
+    HasNext: Boolean;
+    class function Create(AStart, AStop: Integer; AHasPrevious, AHasNext: Boolean): TGap; static;
+    /// <summary>Gehört der Kommentar, der bei ACommentStop endet, zum vorigen Eintrag? Vor dem Komma ja,
+    /// dahinter nur, wenn ein Zeilenumbruch vor dem nächsten Eintrag folgt (Zeilenkommentar hinter "'New',").
+    /// </summary>
+    function ToPrevious(const AText: string; ACommentStop: Integer; AAfterComma: Boolean): Boolean;
+  end;
+
+class function TGap.Create(AStart, AStop: Integer; AHasPrevious, AHasNext: Boolean): TGap;
+begin
+  Result.Start := AStart;
+  Result.Stop := AStop;
+  Result.HasPrevious := AHasPrevious;
+  Result.HasNext := AHasNext;
+end;
+
+function TGap.ToPrevious(const AText: string; ACommentStop: Integer; AAfterComma: Boolean): Boolean;
 var
-  Index, Stop: Integer;
-  Comment: TGapComment;
-  AfterComma: Boolean;
+  mTail: string;
+begin
+  if not HasNext then
+  begin
+    Result := True;
+  end
+  else if not HasPrevious then
+  begin
+    Result := False;
+  end
+  else if not AAfterComma then
+  begin
+    Result := True;
+  end
+  else
+  begin
+    mTail := Copy(AText, ACommentStop + 1, Stop - ACommentStop);
+    Result := (Pos(#10, mTail) > 0) or (Pos(#13, mTail) > 0);
+  end;
+end;
+
+/// <summary>Ende des geschlossenen Kommentars: Position des Schlusszeichens plus AExtra; AStop ohne.</summary>
+function ClosedEnd(APosition, AExtra, AStop: Integer): Integer;
+begin
+  Result := AStop;
+  if APosition > 0 then
+  begin
+    Result := APosition + AExtra;
+  end;
+end;
+
+/// <summary>Ende des Kommentars, der an AIndex (0-basiert) beginnt, höchstens AStop; -1 ohne Kommentar.</summary>
+function CommentEnd(const AText: string; AIndex, AStop: Integer; out AIsLine: Boolean): Integer;
+begin
+  AIsLine := False;
+  Result := -1;
+  if AText[AIndex + 1] = '{' then
+  begin
+    Result := ClosedEnd(PosEx('}', AText, AIndex + 2), 0, AStop);
+  end
+  else if (AText[AIndex + 1] = '(') and (AIndex + 1 < AStop) and (AText[AIndex + 2] = '*') then
+  begin
+    Result := ClosedEnd(PosEx('*)', AText, AIndex + 3), 1, AStop);
+  end
+  else if (AText[AIndex + 1] = '/') and (AIndex + 1 < AStop) and (AText[AIndex + 2] = '/') then
+  begin
+    Result := AIndex + 1;
+    while (Result < AStop) and not CharInSet(AText[Result + 1], [#13, #10]) do
+    begin
+      Inc(Result);
+    end;
+    AIsLine := True;
+  end;
+  if Result > AStop then
+  begin
+    Result := AStop;
+  end;
+end;
+
+/// <summary>Kommentare in der Lücke AGap; AComma: Stelle des Kommatas darin, -1 ohne.</summary>
+function GapComments(const AText: string; const AGap: TGap; out AComma: Integer): TArray<TGapComment>;
+var
+  mIndex, mStop: Integer;
+  mComment: TGapComment;
 begin
   Result := nil;
   AComma := -1;
-  AfterComma := False;
-  Index := AStart;
-  while Index < AStop do
+  mIndex := AGap.Start;
+  while mIndex < AGap.Stop do
   begin
-    Stop := -1;
-    Comment := Default(TGapComment);
-    if AText[Index + 1] = ',' then
+    mComment := Default(TGapComment);
+    mStop := CommentEnd(AText, mIndex, AGap.Stop, mComment.IsLine);
+    if AText[mIndex + 1] = ',' then
     begin
-      AComma := Index;
-      AfterComma := True;
-      Inc(Index);
-      Continue;
-    end;
-    if AText[Index + 1] = '{' then
-    begin
-      Stop := PosEx('}', AText, Index + 2);
-      if Stop = 0 then
-      begin
-        Stop := AStop;
-      end;
+      AComma := mIndex;
+      Inc(mIndex);
     end
-    else if (AText[Index + 1] = '(') and (Index + 1 < AStop) and (AText[Index + 2] = '*') then
+    else if mStop < 0 then
     begin
-      Stop := PosEx('*)', AText, Index + 3);
-      if Stop = 0 then
-      begin
-        Stop := AStop;
-      end
-      else
-      begin
-        Inc(Stop);
-      end;
-    end
-    else if (AText[Index + 1] = '/') and (Index + 1 < AStop) and (AText[Index + 2] = '/') then
-    begin
-      Stop := Index + 1;
-      while (Stop < AStop) and not CharInSet(AText[Stop + 1], [#13, #10]) do
-      begin
-        Inc(Stop);
-      end;
-      Comment.IsLine := True;
-    end;
-    if Stop < 0 then
-    begin
-      Inc(Index);
-      Continue;
-    end;
-    if Stop > AStop then
-    begin
-      Stop := AStop;
-    end;
-    Comment.Text := Copy(AText, Index + 1, Stop - Index);
-    if not AHasNext then
-    begin
-      Comment.ToPrevious := True;
-    end
-    else if not AHasPrevious then
-    begin
-      Comment.ToPrevious := False;
-    end
-    else if not AfterComma then
-    begin
-      Comment.ToPrevious := True;
+      Inc(mIndex);
     end
     else
     begin
-      Comment.ToPrevious := (PosEx(#10, Copy(AText, Stop + 1, AStop - Stop)) > 0) or
-        (Pos(#13, Copy(AText, Stop + 1, AStop - Stop)) > 0);
+      mComment.Text := Copy(AText, mIndex + 1, mStop - mIndex);
+      mComment.ToPrevious := AGap.ToPrevious(AText, mStop, AComma >= 0);
+      Result := Result + [mComment];
+      mIndex := mStop;
     end;
-    Result := Result + [Comment];
-    Index := Stop;
   end;
+end;
+
+/// <summary>Buchstabe, Ziffer oder Unterstrich an AIndex (False außerhalb von AText).</summary>
+function IsNamePartAt(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 1) and (AIndex <= Length(AText)) and (AText[AIndex].IsLetterOrDigit or (AText[AIndex] = '_'));
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Pos(LowerCase(AWord), LowerCase(AText));
-  while Index > 0 do
+  mIndex := Pos(LowerCase(AWord), LowerCase(AText));
+  while mIndex > 0 do
   begin
-    if ((Index = 1) or not (AText[Index - 1].IsLetterOrDigit or (AText[Index - 1] = '_'))) and
-      ((Index + Length(AWord) > Length(AText)) or not (AText[Index + Length(AWord)].IsLetterOrDigit or
-      (AText[Index + Length(AWord)] = '_'))) then
+    if not IsNamePartAt(AText, mIndex - 1) and not IsNamePartAt(AText, mIndex + Length(AWord)) then
     begin
       Exit(True);
     end;
-    Index := PosEx(LowerCase(AWord), LowerCase(AText), Index + 1);
+    mIndex := PosEx(LowerCase(AWord), LowerCase(AText), mIndex + 1);
   end;
   Result := False;
 end;
@@ -760,80 +897,123 @@ begin
   end;
 end;
 
-/// <summary>Element, zu dem der Eintrag AEntry passt; -1 ohne. AStrong: über einen Kommentar.</summary>
-function MatchOf(AEntry: TSyntaxNode; const AComments: TArray<string>; const ANames, ATexts: TArray<string>;
-  const APrefix: string; out AStrong: Boolean): Integer;
+/// <summary>Element, dessen Name in einem der Kommentare steht; -1 ohne.</summary>
+function CommentMatch(const AComments, ANames: TArray<string>): Integer;
 var
-  Index, Best, BestLength: Integer;
-  Comment, Value, Identifier, Rest: string;
-  Candidates: TArray<TSyntaxNode>;
-  Candidate: TSyntaxNode;
+  mComment: string;
+  mIndex: Integer;
 begin
-  AStrong := True;
-  for Comment in AComments do
+  for mComment in AComments do
   begin
-    for Index := 0 to High(ANames) do
+    for mIndex := 0 to High(ANames) do
     begin
-      if HasWord(Comment, ANames[Index]) then
+      if HasWord(mComment, ANames[mIndex]) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
   end;
-  AStrong := False;
-  // Texte im Eintrag selbst oder in einem Record (A: 'Neu'; B: 1).
-  Candidates := [AEntry];
+  Result := -1;
+end;
+
+/// <summary>Element mit dem Namen oder Text AValue; -1 ohne.</summary>
+function NameOrTextIndex(const AValue: string; const ANames, ATexts: TArray<string>): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ANames) do
+  begin
+    if SameText(AValue, ATexts[mIndex]) or SameText(AValue, ANames[mIndex]) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Element zu einem Text im Eintrag selbst oder in einem Record (A: 'Neu'; B: 1); -1 ohne.</summary>
+function LiteralMatch(AEntry: TSyntaxNode; const ANames, ATexts: TArray<string>): Integer;
+var
+  mCandidates: TArray<TSyntaxNode>;
+  mCandidate: TSyntaxNode;
+  mIndex: Integer;
+  mValue: string;
+begin
+  mCandidates := [AEntry];
   if AEntry.Kind = TSyntaxKind.ParenExpr then
   begin
-    for Index := 0 to AEntry.ChildCount - 1 do
+    for mIndex := 0 to AEntry.ChildCount - 1 do
     begin
-      Candidates := Candidates + [AEntry[Index]];
+      mCandidates := mCandidates + [AEntry[mIndex]];
     end;
   end;
-  for Candidate in Candidates do
+  Result := -1;
+  for mCandidate in mCandidates do
   begin
-    if LiteralText(Candidate, Value) then
+    if (Result < 0) and LiteralText(mCandidate, mValue) then
     begin
-      for Index := 0 to High(ANames) do
-      begin
-        if SameText(Trim(Value), ATexts[Index]) or SameText(Trim(Value), ANames[Index]) then
-        begin
-          Exit(Index);
-        end;
-      end;
+      Result := NameOrTextIndex(Trim(mValue), ANames, ATexts);
     end;
   end;
-  // Bezeichner: @SOrderStatePaid, osPaid.
-  Identifier := '';
+end;
+
+/// <summary>Bezeichner im Eintrag: @SOrderStatePaid, osPaid; '' ohne.</summary>
+function IdentifierOf(AEntry: TSyntaxNode): string;
+begin
+  Result := '';
   if (AEntry.Kind = TSyntaxKind.AddressOf) and (AEntry.ChildCount = 1) and
     (AEntry[0].Kind = TSyntaxKind.Identifier) then
   begin
-    Identifier := AEntry[0].Name;
+    Result := AEntry[0].Name;
   end
   else if AEntry.Kind = TSyntaxKind.Identifier then
   begin
-    Identifier := AEntry.Name;
+    Result := AEntry.Name;
   end;
-  if Identifier = '' then
+end;
+
+/// <summary>Element namens AIdentifier, sonst das mit dem längsten Namensrest (ohne APrefix) am Ende von
+/// AIdentifier; -1 ohne.</summary>
+function IdentifierMatch(const AIdentifier: string; const ANames: TArray<string>; const APrefix: string): Integer;
+var
+  mIndex, mBestLength: Integer;
+  mRest: string;
+begin
+  Result := -1;
+  if AIdentifier = '' then
   begin
-    Exit(-1);
+    Exit;
   end;
-  Best := -1;
-  BestLength := 0;
-  for Index := 0 to High(ANames) do
+  mBestLength := 0;
+  for mIndex := 0 to High(ANames) do
   begin
-    if SameText(Identifier, ANames[Index]) then
+    if SameText(AIdentifier, ANames[mIndex]) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    Rest := Copy(ANames[Index], Length(APrefix) + 1, MaxInt);
-    if (Rest <> '') and EndsText(Rest, Identifier) and (Length(Rest) > BestLength) then
+    mRest := Copy(ANames[mIndex], Length(APrefix) + 1, MaxInt);
+    if (mRest <> '') and EndsText(mRest, AIdentifier) and (Length(mRest) > mBestLength) then
     begin
-      Best := Index;
-      BestLength := Length(Rest);
+      Result := mIndex;
+      mBestLength := Length(mRest);
     end;
   end;
-  Result := Best;
+end;
+
+/// <summary>Element, zu dem der Eintrag AEntry passt; -1 ohne. AStrong: über einen Kommentar.</summary>
+function MatchOf(AEntry: TSyntaxNode; const AComments: TArray<string>; const ANames, ATexts: TArray<string>;
+  const APrefix: string; out AStrong: Boolean): Integer;
+begin
+  Result := CommentMatch(AComments, ANames);
+  AStrong := Result >= 0;
+  if Result < 0 then
+  begin
+    Result := LiteralMatch(AEntry, ANames, ATexts);
+  end;
+  if Result < 0 then
+  begin
+    Result := IdentifierMatch(IdentifierOf(AEntry), ANames, APrefix);
+  end;
 end;
 
 /// <summary>Zuordnung Eintrag → Element, nur aufsteigend (längste aufsteigende Folge), sonst -1.</summary>
@@ -915,395 +1095,546 @@ begin
     end);
 end;
 
+/// <summary>Texte der Elemente, wie DisplayText sie bildet.</summary>
+function DisplayTexts(const ANames: TArray<string>; const APrefix: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in ANames do
+  begin
+    Result := Result + [TEnumTables.DisplayText(mName, APrefix)];
+  end;
+end;
+
+/// <summary>Ist einer der Kommentare ein Zeilenkommentar?</summary>
+function HasLineComment(const AComments: TArray<string>): Boolean;
+var
+  mComment: string;
+begin
+  Result := False;
+  for mComment in AComments do
+  begin
+    Result := Result or StartsStr('//', mComment);
+  end;
+end;
+
+/// <summary>Ist das Element von AMatches[AEntry] schon einem früheren Eintrag zugeordnet?</summary>
+function UsedBefore(const AMatches: TArray<Integer>; AEntry: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to AEntry - 1 do
+  begin
+    Result := Result or ((AMatches[AEntry] >= 0) and (AMatches[mIndex] = AMatches[AEntry]));
+  end;
+end;
+
+/// <summary>Nächster zugeordneter Eintrag hinter AEntry; Length(AAligned) ohne.</summary>
+function NextAligned(const AAligned: TArray<Integer>; AEntry: Integer): Integer;
+begin
+  Result := AEntry + 1;
+  while (Result <= High(AAligned)) and (AAligned[Result] < 0) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Steht jeder Eintrag außer dem ersten am Anfang seiner Zeile (mindestens zwei Einträge)?</summary>
+function IsMultiLine(const AText: string; AValue: TSyntaxNode): Boolean;
+var
+  mEntry: Integer;
+begin
+  Result := AValue.ChildCount >= 2;
+  for mEntry := 1 to AValue.ChildCount - 1 do
+  begin
+    Result := Result and StartsLine(AText, AValue[mEntry].StartOffset);
+  end;
+end;
+
+type
+  /// <summary>Ein neuer resourcestring hinter dem des Nachbarn; mehrere an derselben Stelle gesammelt, damit sie
+  /// in Reihenfolge stehen.</summary>
+  TPendingResource = record
+    Offset: Integer;
+    Text: string;
+  end;
+
+  /// <summary>Bringt den Klammerwert einer Tabelle auf die Elemente (TEnumTables.Repair).</summary>
+  TTableRepairer = class
+  strict private
+    FText: string;
+    FTree: TSyntaxTree;
+    FValue: TSyntaxNode;
+    FNames: TArray<string>;
+    FValues: TEnumTableValues;
+    FLines: TLineTable;
+    FCount: Integer;
+    FPrefix: string;
+    FLineBreak: string;
+    FIndent: string;
+    FLineComments: Boolean;
+    FMultiLine: Boolean;
+    FTaken: TArray<string>;
+    FResources: TArray<TPendingResource>;
+    FRepair: TEnumTableRepair;
+    function Entries(AIndex: Integer): TSyntaxNode;
+    function At(AOffset: Integer): TTextPosition;
+    procedure AddEdit(AStart, AStop: Integer; const ANewText: string);
+    procedure AddResource(AOffset: Integer; const ANewText: string);
+    function ResourceValue(const AName: string; ANeighbor: Integer): string;
+    function ValueFor(const AName: string; ANeighbor: Integer): string;
+    function WithComment(const AEntry, AName: string): string;
+    procedure InsertInline(AAfter: Integer; const ANew: TArray<string>);
+    procedure InsertBefore(AEntry: Integer; const ANew, ANewNames: TArray<string>);
+    procedure InsertFirst(const ANew, ANewNames: TArray<string>);
+    procedure InsertLast(AAfter: Integer; const ANew, ANewNames: TArray<string>);
+    /// <summary>Fügt die Werte ANew nach dem Eintrag AAfter (-1: vor dem ersten) ein.</summary>
+    procedure Insert(AAfter: Integer; const ANew, ANewNames: TArray<string>);
+    procedure RemoveAtEnd(AFirst, ALast: Integer);
+    /// <summary>Entfernt die Einträge AFirst..ALast.</summary>
+    procedure Remove(AFirst, ALast: Integer);
+    function GapAt(AGap: Integer): TGap;
+    function EntryComments: TArray<TArray<string>>;
+    function Matches(const AComments: TArray<TArray<string>>): TArray<Integer>;
+    procedure AddMissing(AFirstName, ALastName, AAfter, ANextEntry: Integer);
+    procedure RepairGap(APreviousName, APreviousEntry, ANextName, ANextEntry: Integer);
+    procedure RepairGaps(const AAligned: TArray<Integer>);
+  public
+    constructor Create(const AText: string; ATree: TSyntaxTree; AValue: TSyntaxNode; const ANames: TArray<string>;
+      const AValues: TEnumTableValues);
+    function Run(out ARepair: TEnumTableRepair): Boolean;
+  end;
+
+constructor TTableRepairer.Create(const AText: string; ATree: TSyntaxTree; AValue: TSyntaxNode;
+  const ANames: TArray<string>; const AValues: TEnumTableValues);
+begin
+  inherited Create;
+  FText := AText;
+  FTree := ATree;
+  FValue := AValue;
+  FNames := ANames;
+  FValues := AValues;
+  FCount := AValue.ChildCount;
+end;
+
+function TTableRepairer.Entries(AIndex: Integer): TSyntaxNode;
+begin
+  Result := FValue[AIndex];
+end;
+
+function TTableRepairer.At(AOffset: Integer): TTextPosition;
+begin
+  Result := FLines.PositionAt(AOffset);
+end;
+
+procedure TTableRepairer.AddEdit(AStart, AStop: Integer; const ANewText: string);
+begin
+  FRepair.Edits := FRepair.Edits + [TTextEdit.Create(TTextRange.Create(At(AStart), At(AStop)), ANewText)];
+end;
+
+procedure TTableRepairer.AddResource(AOffset: Integer; const ANewText: string);
+var
+  mItem: Integer;
+  mResource: TPendingResource;
+begin
+  for mItem := 0 to High(FResources) do
+  begin
+    if FResources[mItem].Offset = AOffset then
+    begin
+      FResources[mItem].Text := FResources[mItem].Text + ANewText;
+      Exit;
+    end;
+  end;
+  mResource.Offset := AOffset;
+  mResource.Text := ANewText;
+  FResources := FResources + [mResource];
+end;
+
+function TTableRepairer.ResourceValue(const AName: string; ANeighbor: Integer): string;
+var
+  mNode: TSyntaxNode;
+  mName: string;
+begin
+  // Neuer resourcestring hinter dem des Nachbarn; ohne ihn ein nil-Platzhalter.
+  mNode := nil;
+  if (ANeighbor >= 0) and (Entries(ANeighbor).Kind = TSyntaxKind.AddressOf) and (Entries(ANeighbor).ChildCount = 1) then
+  begin
+    mNode := ResourceDecl(FTree, Entries(ANeighbor)[0].Name);
+  end;
+  if mNode = nil then
+  begin
+    Exit('nil {TODO ' + AName + '}');
+  end;
+  if FTaken = nil then
+  begin
+    FTaken := DeclaredNames(FTree);
+  end;
+  mName := TResourceStrings.UniqueName(TEnumTables.ResourceName(FValues.IndexType, AName, FPrefix), FTaken);
+  FTaken := FTaken + [mName];
+  AddResource(FLines.LineContentEnd(At(mNode.EndOffset).Line), FLineBreak +
+    TTextLines.IndentOf(FText, At(mNode.StartOffset).Line) + mName + ' = ' +
+    QuotedStr(TEnumTables.DisplayText(AName, FPrefix)) + ';');
+  Result := '@' + mName;
+end;
+
+function TTableRepairer.ValueFor(const AName: string; ANeighbor: Integer): string;
+var
+  mTodo: string;
+begin
+  mTodo := ' {TODO ' + AName + '}';
+  case FValues.Element of
+    TEnumTableElement.Text:
+      Result := QuotedStr(TEnumTables.DisplayText(AName, FPrefix));
+    TEnumTableElement.Number:
+      Result := '0' + mTodo;
+    TEnumTableElement.Float:
+      Result := '0.0' + mTodo;
+    TEnumTableElement.Boolean_:
+      Result := 'False' + mTodo;
+    TEnumTableElement.Char_:
+      Result := '#0' + mTodo;
+    TEnumTableElement.Pointer_:
+      Result := 'nil' + mTodo;
+    TEnumTableElement.Enum:
+      Result := 'Low(' + FValues.ElementType + ')' + mTodo;
+    TEnumTableElement.ResourceString_:
+      Result := ResourceValue(AName, ANeighbor);
+  else
+    // Kopie des Nachbarn als Muster (Records, eigene Typen).
+    Result := 'Default' + mTodo;
+    if ANeighbor >= 0 then
+    begin
+      Result := Copy(FText, Entries(ANeighbor).StartOffset + 1, Entries(ANeighbor).EndOffset -
+        Entries(ANeighbor).StartOffset) + mTodo;
+    end;
+  end;
+end;
+
+function TTableRepairer.WithComment(const AEntry, AName: string): string;
+begin
+  Result := AEntry;
+  if FLineComments and FMultiLine then
+  begin
+    Result := Result + ' // ' + AName;
+  end;
+end;
+
+procedure TTableRepairer.InsertInline(AAfter: Integer; const ANew: TArray<string>);
+begin
+  if AAfter >= 0 then
+  begin
+    AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ', ' + string.Join(', ', ANew));
+  end
+  else
+  begin
+    AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, string.Join(', ', ANew) + ', ');
+  end;
+end;
+
+procedure TTableRepairer.InsertBefore(AEntry: Integer; const ANew, ANewNames: TArray<string>);
+var
+  mItem, mStart: Integer;
+  mText: string;
+begin
+  // Vor die Zeile des Eintrags AEntry.
+  mText := '';
+  for mItem := 0 to High(ANew) do
+  begin
+    mText := mText + FIndent + WithComment(ANew[mItem] + ',', ANewNames[mItem]) + FLineBreak;
+  end;
+  mStart := FLines.LineStart(At(Entries(AEntry).StartOffset).Line);
+  AddEdit(mStart, mStart, mText);
+end;
+
+procedure TTableRepairer.InsertFirst(const ANew, ANewNames: TArray<string>);
+var
+  mItem, mStart: Integer;
+  mText: string;
+begin
+  mText := '';
+  for mItem := 0 to High(ANew) do
+  begin
+    mText := mText + WithComment(ANew[mItem] + ',', ANewNames[mItem]) + FLineBreak + FIndent;
+  end;
+  if StartsLine(FText, Entries(0).StartOffset) then
+  begin
+    mStart := FLines.LineStart(At(Entries(0).StartOffset).Line);
+    AddEdit(mStart, mStart, FIndent + Copy(mText, 1, Length(mText) - Length(FIndent)));
+  end
+  else
+  begin
+    AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, mText);
+  end;
+end;
+
+procedure TTableRepairer.InsertLast(AAfter: Integer; const ANew, ANewNames: TArray<string>);
+var
+  mItem, mEnd, mLineEnd: Integer;
+  mText, mClose: string;
+begin
+  // Hinter den letzten Eintrag: Komma an ihn, neue Zeilen dahinter.
+  mEnd := Entries(AAfter).EndOffset;
+  mLineEnd := FLines.LineContentEnd(At(mEnd).Line);
+  mText := '';
+  if FValue.EndOffset - 1 < mLineEnd then
+  begin
+    for mItem := 0 to High(ANew) do
+    begin
+      mText := mText + ',' + FLineBreak + FIndent + ANew[mItem];
+    end;
+    AddEdit(mEnd, mEnd, mText);
+    Exit;
+  end;
+  for mItem := 0 to High(ANew) do
+  begin
+    mClose := '';
+    if mItem < High(ANew) then
+    begin
+      mClose := ',';
+    end;
+    mText := mText + FLineBreak + FIndent + WithComment(ANew[mItem] + mClose, ANewNames[mItem]);
+  end;
+  // Ein Eintrag an derselben Stelle: Reihenfolge gleicher Stellen ist nicht festgelegt.
+  if mLineEnd = mEnd then
+  begin
+    AddEdit(mLineEnd, mLineEnd, ',' + mText);
+  end
+  else
+  begin
+    AddEdit(mEnd, mEnd, ',');
+    AddEdit(mLineEnd, mLineEnd, mText);
+  end;
+end;
+
+procedure TTableRepairer.Insert(AAfter: Integer; const ANew, ANewNames: TArray<string>);
+begin
+  if not FMultiLine then
+  begin
+    InsertInline(AAfter, ANew);
+  end
+  else if (AAfter >= 0) and (AAfter < FCount - 1) then
+  begin
+    InsertBefore(AAfter + 1, ANew, ANewNames);
+  end
+  else if AAfter < 0 then
+  begin
+    InsertFirst(ANew, ANewNames);
+  end
+  else
+  begin
+    InsertLast(AAfter, ANew, ANewNames);
+  end;
+end;
+
+procedure TTableRepairer.RemoveAtEnd(AFirst, ALast: Integer);
+var
+  mComma: Integer;
+begin
+  // Am Ende: das Komma hinter dem vorigen Eintrag fällt mit weg.
+  GapComments(FText, TGap.Create(Entries(AFirst - 1).EndOffset, Entries(AFirst).StartOffset, True, True), mComma);
+  if not FMultiLine or (mComma < 0) then
+  begin
+    AddEdit(Entries(AFirst - 1).EndOffset, Entries(ALast).EndOffset, '');
+    Exit;
+  end;
+  AddEdit(mComma, mComma + 1, '');
+  if (FValue.EndOffset - 1) < FLines.LineContentEnd(At(Entries(ALast).EndOffset).Line) then
+  begin
+    AddEdit(Entries(AFirst).StartOffset, FValue.EndOffset - 1, '');
+  end
+  else
+  begin
+    AddEdit(FLines.LineContentEnd(At(Entries(AFirst).StartOffset).Line - 1),
+      FLines.LineContentEnd(At(Entries(ALast).EndOffset).Line), '');
+  end;
+end;
+
+procedure TTableRepairer.Remove(AFirst, ALast: Integer);
+var
+  mItem: Integer;
+begin
+  for mItem := AFirst to ALast do
+  begin
+    FRepair.Removed := FRepair.Removed + [Copy(FText, Entries(mItem).StartOffset + 1, Entries(mItem).EndOffset -
+      Entries(mItem).StartOffset)];
+  end;
+  if ALast >= FCount - 1 then
+  begin
+    RemoveAtEnd(AFirst, ALast);
+  end
+  else if FMultiLine and StartsLine(FText, Entries(AFirst).StartOffset) then
+  begin
+    AddEdit(FLines.LineStart(At(Entries(AFirst).StartOffset).Line),
+      FLines.LineStart(At(Entries(ALast + 1).StartOffset).Line), '');
+  end
+  else
+  begin
+    AddEdit(Entries(AFirst).StartOffset, Entries(ALast + 1).StartOffset, '');
+  end;
+end;
+
+function TTableRepairer.GapAt(AGap: Integer): TGap;
+begin
+  if AGap = 0 then
+  begin
+    Result := TGap.Create(FValue.StartOffset + 1, Entries(0).StartOffset, False, True);
+  end
+  else if AGap = FCount then
+  begin
+    Result := TGap.Create(Entries(FCount - 1).EndOffset, FValue.EndOffset - 1, True, False);
+  end
+  else
+  begin
+    Result := TGap.Create(Entries(AGap - 1).EndOffset, Entries(AGap).StartOffset, True, True);
+  end;
+end;
+
+function TTableRepairer.EntryComments: TArray<TArray<string>>;
+var
+  mGap, mComma: Integer;
+  mComment: TGapComment;
+begin
+  SetLength(Result, FCount);
+  for mGap := 0 to FCount do
+  begin
+    for mComment in GapComments(FText, GapAt(mGap), mComma) do
+    begin
+      if mComment.ToPrevious then
+      begin
+        Result[mGap - 1] := Result[mGap - 1] + [mComment.Text];
+      end
+      else
+      begin
+        Result[mGap] := Result[mGap] + [mComment.Text];
+      end;
+    end;
+  end;
+end;
+
+function TTableRepairer.Matches(const AComments: TArray<TArray<string>>): TArray<Integer>;
+var
+  mTexts: TArray<string>;
+  mEntry: Integer;
+  mStrong: Boolean;
+begin
+  mTexts := DisplayTexts(FNames, FPrefix);
+  SetLength(Result, FCount);
+  for mEntry := 0 to FCount - 1 do
+  begin
+    Result[mEntry] := MatchOf(Entries(mEntry), AComments[mEntry], FNames, mTexts, FPrefix, mStrong);
+    FLineComments := FLineComments or (mStrong and HasLineComment(AComments[mEntry]));
+    // Jedes Element nur einmal.
+    if UsedBefore(Result, mEntry) then
+    begin
+      Result[mEntry] := -1;
+    end;
+  end;
+end;
+
+procedure TTableRepairer.AddMissing(AFirstName, ALastName, AAfter, ANextEntry: Integer);
+var
+  mIndex, mNeighbor: Integer;
+  mValues, mNames: TArray<string>;
+begin
+  mNeighbor := AAfter;
+  if AAfter < 0 then
+  begin
+    mNeighbor := ANextEntry;
+  end;
+  mValues := nil;
+  mNames := nil;
+  for mIndex := AFirstName to ALastName do
+  begin
+    mValues := mValues + [ValueFor(FNames[mIndex], mNeighbor)];
+    mNames := mNames + [FNames[mIndex]];
+  end;
+  FRepair.Added := FRepair.Added + mNames;
+  Insert(AAfter, mValues, mNames);
+end;
+
+procedure TTableRepairer.RepairGap(APreviousName, APreviousEntry, ANextName, ANextEntry: Integer);
+var
+  mKept, mMissing: Integer;
+begin
+  mKept := ANextEntry - APreviousEntry - 1;
+  mMissing := ANextName - APreviousName - 1;
+  if (mKept > 0) and (mMissing > 0) and (mKept <> mMissing) then
+  begin
+    FRepair.Uncertain := True;
+  end;
+  if mMissing > mKept then
+  begin
+    AddMissing(APreviousName + 1 + mKept, ANextName - 1, APreviousEntry + mKept, ANextEntry);
+  end
+  else if mKept > mMissing then
+  begin
+    Remove(APreviousEntry + 1 + mMissing, ANextEntry - 1);
+  end;
+end;
+
+procedure TTableRepairer.RepairGaps(const AAligned: TArray<Integer>);
+var
+  mPreviousName, mPreviousEntry, mNextName, mNextEntry: Integer;
+begin
+  // Lücken zwischen zugeordneten Einträgen: der Reihe nach, Rest einfügen bzw. entfernen.
+  mPreviousName := -1;
+  mPreviousEntry := -1;
+  while mPreviousEntry < FCount do
+  begin
+    mNextEntry := NextAligned(AAligned, mPreviousEntry);
+    mNextName := Length(FNames);
+    if mNextEntry < FCount then
+    begin
+      mNextName := AAligned[mNextEntry];
+    end;
+    RepairGap(mPreviousName, mPreviousEntry, mNextName, mNextEntry);
+    mPreviousName := mNextName;
+    mPreviousEntry := mNextEntry;
+  end;
+end;
+
+function TTableRepairer.Run(out ARepair: TEnumTableRepair): Boolean;
+var
+  mAligned: TArray<Integer>;
+  mResource: TPendingResource;
+begin
+  FRepair := Default(TEnumTableRepair);
+  Result := (FValue.Kind = TSyntaxKind.ParenExpr) and (FCount > 0) and (FNames <> nil);
+  if Result then
+  begin
+    FLines := TLineTable.Build(FText);
+    FLineBreak := TTextLines.LineBreakOf(FText);
+    FPrefix := TEnumTables.CommonPrefix(FNames);
+    mAligned := Increasing(Matches(EntryComments));
+    FMultiLine := IsMultiLine(FText, FValue);
+    FIndent := '';
+    if FMultiLine then
+    begin
+      FIndent := TTextLines.IndentOf(FText, At(Entries(1).StartOffset).Line);
+    end;
+    RepairGaps(mAligned);
+    for mResource in FResources do
+    begin
+      AddEdit(mResource.Offset, mResource.Offset, mResource.Text);
+    end;
+    Result := FRepair.Edits <> nil;
+  end;
+  ARepair := FRepair;
+end;
+
 class function TEnumTables.Repair(const AText: string; ATree: TSyntaxTree; AValue: TSyntaxNode;
   const ANames: TArray<string>; const AValues: TEnumTableValues; out ARepair: TEnumTableRepair): Boolean;
 var
-  Lines: TLineTable;
-  Count, Total, Index, Entry, Gap, PreviousName, PreviousEntry, NextName, NextEntry, Kept, Missing, Comma: Integer;
-  Prefix, LineBreak, Indent, Value, ResourceName_: string;
-  Texts, Comments, NewValues: TArray<string>;
-  EntryComments: TArray<TArray<string>>;
-  Matches, Aligned: TArray<Integer>;
-  LineComments, MultiLine, Strong: Boolean;
-  Gaps: TArray<TGapComment>;
-  GapComment: TGapComment;
-  Taken: TArray<string>;
-  ResourceNode: TSyntaxNode;
-  ResourceIndent: string;
-  /// <summary>Neue resourcestrings je Stelle, gesammelt, damit mehrere an derselben Stelle in Reihenfolge stehen.
-  /// </summary>
-  ResourceOffsets: TArray<Integer>;
-  ResourceTexts: TArray<string>;
-
-  function Entries(AIndex: Integer): TSyntaxNode;
-  begin
-    Result := AValue[AIndex];
-  end;
-
-  function At(AOffset: Integer): TTextPosition;
-  begin
-    Result := Lines.PositionAt(AOffset);
-  end;
-
-  procedure AddEdit(AStart, AStop: Integer; const ANewText: string);
-  begin
-    ARepair.Edits := ARepair.Edits + [TTextEdit.Create(TTextRange.Create(At(AStart), At(AStop)), ANewText)];
-  end;
-
-  procedure AddResource(AOffset: Integer; const ANewText: string);
-  var
-    Item: Integer;
-  begin
-    for Item := 0 to High(ResourceOffsets) do
-    begin
-      if ResourceOffsets[Item] = AOffset then
-      begin
-        ResourceTexts[Item] := ResourceTexts[Item] + ANewText;
-        Exit;
-      end;
-    end;
-    ResourceOffsets := ResourceOffsets + [AOffset];
-    ResourceTexts := ResourceTexts + [ANewText];
-  end;
-
-  function ValueFor(const AName: string; ANeighbor: Integer): string;
-  var
-    Todo: string;
-  begin
-    Todo := ' {TODO ' + AName + '}';
-    case AValues.Element of
-      TEnumTableElement.Text:
-        Result := QuotedStr(DisplayText(AName, Prefix));
-      TEnumTableElement.Number:
-        Result := '0' + Todo;
-      TEnumTableElement.Float:
-        Result := '0.0' + Todo;
-      TEnumTableElement.Boolean_:
-        Result := 'False' + Todo;
-      TEnumTableElement.Char_:
-        Result := '#0' + Todo;
-      TEnumTableElement.Pointer_:
-        Result := 'nil' + Todo;
-      TEnumTableElement.Enum:
-        Result := 'Low(' + AValues.ElementType + ')' + Todo;
-      TEnumTableElement.ResourceString_:
-        begin
-          // Neuer resourcestring hinter dem des Nachbarn; ohne ihn ein nil-Platzhalter.
-          ResourceNode := nil;
-          if (ANeighbor >= 0) and (Entries(ANeighbor).Kind = TSyntaxKind.AddressOf) and
-            (Entries(ANeighbor).ChildCount = 1) then
-          begin
-            ResourceNode := ResourceDecl(ATree, Entries(ANeighbor)[0].Name);
-          end;
-          if ResourceNode = nil then
-          begin
-            Exit('nil' + Todo);
-          end;
-          if Taken = nil then
-          begin
-            Taken := DeclaredNames(ATree);
-          end;
-          ResourceName_ := TResourceStrings.UniqueName(ResourceName(AValues.IndexType, AName, Prefix), Taken);
-          Taken := Taken + [ResourceName_];
-          ResourceIndent := TTextLines.IndentOf(AText, At(ResourceNode.StartOffset).Line);
-          AddResource(Lines.LineContentEnd(At(ResourceNode.EndOffset).Line), LineBreak + ResourceIndent +
-            ResourceName_ + ' = ' + QuotedStr(DisplayText(AName, Prefix)) + ';');
-          Result := '@' + ResourceName_;
-        end;
-    else
-      // Kopie des Nachbarn als Muster (Records, eigene Typen).
-      if ANeighbor >= 0 then
-      begin
-        Result := Copy(AText, Entries(ANeighbor).StartOffset + 1, Entries(ANeighbor).EndOffset -
-          Entries(ANeighbor).StartOffset) + Todo;
-      end
-      else
-      begin
-        Result := 'Default' + Todo;
-      end;
-    end;
-  end;
-
-  function WithComment(const AText_, AName: string): string;
-  begin
-    Result := AText_;
-    if LineComments and MultiLine then
-    begin
-      Result := Result + ' // ' + AName;
-    end;
-  end;
-
-  /// <summary>Fügt die Werte ANew nach dem Eintrag AAfter (-1: vor dem ersten) ein.</summary>
-  procedure Insert(AAfter: Integer; const ANew, ANewNames: TArray<string>);
-  var
-    Item: Integer;
-    Text_, Close: string;
-    LineEnd, CloseOffset: Integer;
-  begin
-    if not MultiLine then
-    begin
-      if AAfter >= 0 then
-      begin
-        AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ', ' + string.Join(', ', ANew));
-      end
-      else
-      begin
-        AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, string.Join(', ', ANew) + ', ');
-      end;
-      Exit;
-    end;
-    if (AAfter >= 0) and (AAfter < Count - 1) then
-    begin
-      // Vor die Zeile des nächsten Eintrags.
-      Text_ := '';
-      for Item := 0 to High(ANew) do
-      begin
-        Text_ := Text_ + Indent + WithComment(ANew[Item] + ',', ANewNames[Item]) + LineBreak;
-      end;
-      AddEdit(Lines.LineStart(At(Entries(AAfter + 1).StartOffset).Line),
-        Lines.LineStart(At(Entries(AAfter + 1).StartOffset).Line), Text_);
-    end
-    else if AAfter < 0 then
-    begin
-      Text_ := '';
-      for Item := 0 to High(ANew) do
-      begin
-        Text_ := Text_ + WithComment(ANew[Item] + ',', ANewNames[Item]) + LineBreak + Indent;
-      end;
-      if StartsLine(AText, Entries(0).StartOffset) then
-      begin
-        AddEdit(Lines.LineStart(At(Entries(0).StartOffset).Line), Lines.LineStart(At(Entries(0).StartOffset).Line),
-          Indent + Copy(Text_, 1, Length(Text_) - Length(Indent)));
-      end
-      else
-      begin
-        AddEdit(Entries(0).StartOffset, Entries(0).StartOffset, Text_);
-      end;
-    end
-    else
-    begin
-      // Hinter den letzten Eintrag: Komma an ihn, neue Zeilen dahinter.
-      CloseOffset := AValue.EndOffset - 1;
-      LineEnd := Lines.LineContentEnd(At(Entries(AAfter).EndOffset).Line);
-      if CloseOffset < LineEnd then
-      begin
-        Text_ := '';
-        for Item := 0 to High(ANew) do
-        begin
-          Text_ := Text_ + ',' + LineBreak + Indent + ANew[Item];
-        end;
-        AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, Text_);
-      end
-      else
-      begin
-        Text_ := '';
-        for Item := 0 to High(ANew) do
-        begin
-          Close := '';
-          if Item < High(ANew) then
-          begin
-            Close := ',';
-          end;
-          Text_ := Text_ + LineBreak + Indent + WithComment(ANew[Item] + Close, ANewNames[Item]);
-        end;
-        // Ein Eintrag an derselben Stelle: Reihenfolge gleicher Stellen ist nicht festgelegt.
-        if LineEnd = Entries(AAfter).EndOffset then
-        begin
-          AddEdit(LineEnd, LineEnd, ',' + Text_);
-        end
-        else
-        begin
-          AddEdit(Entries(AAfter).EndOffset, Entries(AAfter).EndOffset, ',');
-          AddEdit(LineEnd, LineEnd, Text_);
-        end;
-      end;
-    end;
-  end;
-
-  /// <summary>Entfernt die Einträge AFirst..ALast.</summary>
-  procedure Remove(AFirst, ALast: Integer);
-  var
-    Item, CommaAt: Integer;
-  begin
-    for Item := AFirst to ALast do
-    begin
-      ARepair.Removed := ARepair.Removed + [Copy(AText, Entries(Item).StartOffset + 1, Entries(Item).EndOffset -
-        Entries(Item).StartOffset)];
-    end;
-    if ALast < Count - 1 then
-    begin
-      if MultiLine and StartsLine(AText, Entries(AFirst).StartOffset) then
-      begin
-        AddEdit(Lines.LineStart(At(Entries(AFirst).StartOffset).Line),
-          Lines.LineStart(At(Entries(ALast + 1).StartOffset).Line), '');
-      end
-      else
-      begin
-        AddEdit(Entries(AFirst).StartOffset, Entries(ALast + 1).StartOffset, '');
-      end;
-      Exit;
-    end;
-    // Am Ende: das Komma hinter dem vorigen Eintrag fällt mit weg.
-    GapComments(AText, Entries(AFirst - 1).EndOffset, Entries(AFirst).StartOffset, True, True, CommaAt);
-    if not MultiLine or (CommaAt < 0) then
-    begin
-      AddEdit(Entries(AFirst - 1).EndOffset, Entries(ALast).EndOffset, '');
-      Exit;
-    end;
-    AddEdit(CommaAt, CommaAt + 1, '');
-    if (AValue.EndOffset - 1) < Lines.LineContentEnd(At(Entries(ALast).EndOffset).Line) then
-    begin
-      AddEdit(Entries(AFirst).StartOffset, AValue.EndOffset - 1, '');
-    end
-    else
-    begin
-      AddEdit(Lines.LineContentEnd(At(Entries(AFirst).StartOffset).Line - 1),
-        Lines.LineContentEnd(At(Entries(ALast).EndOffset).Line), '');
-    end;
-  end;
-
+  mRepairer: TTableRepairer;
 begin
-  ARepair := Default(TEnumTableRepair);
-  Result := False;
-  Count := AValue.ChildCount;
-  Total := Length(ANames);
-  if (AValue.Kind <> TSyntaxKind.ParenExpr) or (Count = 0) or (Total = 0) then
-  begin
-    Exit;
+  mRepairer := TTableRepairer.Create(AText, ATree, AValue, ANames, AValues);
+  try
+    Result := mRepairer.Run(ARepair);
+  finally
+    mRepairer.Free;
   end;
-  ResourceOffsets := nil;
-  ResourceTexts := nil;
-  Taken := nil;
-  Lines := TLineTable.Build(AText);
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Prefix := CommonPrefix(ANames);
-  Texts := nil;
-  for Index := 0 to Total - 1 do
-  begin
-    Texts := Texts + [DisplayText(ANames[Index], Prefix)];
-  end;
-  // Kommentare je Eintrag.
-  SetLength(EntryComments, Count);
-  LineComments := False;
-  for Gap := 0 to Count do
-  begin
-    if Gap = 0 then
-    begin
-      Gaps := GapComments(AText, AValue.StartOffset + 1, Entries(0).StartOffset, False, True, Comma);
-    end
-    else if Gap = Count then
-    begin
-      Gaps := GapComments(AText, Entries(Count - 1).EndOffset, AValue.EndOffset - 1, True, False, Comma);
-    end
-    else
-    begin
-      Gaps := GapComments(AText, Entries(Gap - 1).EndOffset, Entries(Gap).StartOffset, True, True, Comma);
-    end;
-    for GapComment in Gaps do
-    begin
-      if GapComment.ToPrevious then
-      begin
-        EntryComments[Gap - 1] := EntryComments[Gap - 1] + [GapComment.Text];
-      end
-      else
-      begin
-        EntryComments[Gap] := EntryComments[Gap] + [GapComment.Text];
-      end;
-    end;
-  end;
-  SetLength(Matches, Count);
-  for Entry := 0 to Count - 1 do
-  begin
-    Matches[Entry] := MatchOf(Entries(Entry), EntryComments[Entry], ANames, Texts, Prefix, Strong);
-    if Strong then
-    begin
-      for Value in EntryComments[Entry] do
-      begin
-        if StartsStr('//', Value) then
-        begin
-          LineComments := True;
-        end;
-      end;
-    end;
-    // Jedes Element nur einmal.
-    for Index := 0 to Entry - 1 do
-    begin
-      if (Matches[Entry] >= 0) and (Matches[Index] = Matches[Entry]) then
-      begin
-        Matches[Entry] := -1;
-      end;
-    end;
-  end;
-  Aligned := Increasing(Matches);
-  MultiLine := Count >= 2;
-  for Entry := 1 to Count - 1 do
-  begin
-    if not StartsLine(AText, Entries(Entry).StartOffset) then
-    begin
-      MultiLine := False;
-    end;
-  end;
-  Indent := '';
-  if MultiLine then
-  begin
-    Indent := TTextLines.IndentOf(AText, At(Entries(1).StartOffset).Line);
-  end;
-  // Lücken zwischen zugeordneten Einträgen: der Reihe nach, Rest einfügen bzw. entfernen.
-  PreviousName := -1;
-  PreviousEntry := -1;
-  while PreviousEntry < Count do
-  begin
-    NextEntry := PreviousEntry + 1;
-    while (NextEntry < Count) and (Aligned[NextEntry] < 0) do
-    begin
-      Inc(NextEntry);
-    end;
-    if NextEntry < Count then
-    begin
-      NextName := Aligned[NextEntry];
-    end
-    else
-    begin
-      NextName := Total;
-    end;
-    Kept := NextEntry - PreviousEntry - 1;
-    Missing := NextName - PreviousName - 1;
-    if (Kept > 0) and (Missing > 0) and (Kept <> Missing) then
-    begin
-      ARepair.Uncertain := True;
-    end;
-    if Missing > Kept then
-    begin
-      NewValues := nil;
-      Comments := nil;
-      for Index := PreviousName + 1 + Kept to NextName - 1 do
-      begin
-        if PreviousEntry + Kept >= 0 then
-        begin
-          Entry := PreviousEntry + Kept;
-        end
-        else
-        begin
-          Entry := NextEntry;
-        end;
-        NewValues := NewValues + [ValueFor(ANames[Index], Entry)];
-        Comments := Comments + [ANames[Index]];
-        ARepair.Added := ARepair.Added + [ANames[Index]];
-      end;
-      Insert(PreviousEntry + Kept, NewValues, Comments);
-    end
-    else if Kept > Missing then
-    begin
-      Remove(PreviousEntry + 1 + Missing, NextEntry - 1);
-    end;
-    PreviousName := NextName;
-    PreviousEntry := NextEntry;
-  end;
-  for Index := 0 to High(ResourceOffsets) do
-  begin
-    AddEdit(ResourceOffsets[Index], ResourceOffsets[Index], ResourceTexts[Index]);
-  end;
-  Result := ARepair.Edits <> nil;
 end;
 
 end.

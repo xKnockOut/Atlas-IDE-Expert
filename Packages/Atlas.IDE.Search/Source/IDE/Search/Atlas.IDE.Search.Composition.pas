@@ -144,8 +144,8 @@ end;
 function QueryRequest(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
   const ADone: TProc<string>): Boolean;
 begin
-  Result := TAtlasIdeHost.RunRequestAsync(GScope, TAtlasFeature.Query, AMethod, AParamsJson, ATimeoutMs,
-    ACancelled, ADone);
+  Result := TAtlasIdeHost.RunRequestAsync(GScope, TAtlasFeature.Query,
+    TAtlasServerRequest.Create(AMethod, AParamsJson, ATimeoutMs, ACancelled), ADone);
 end;
 
 /// <summary>Symbolnamen hinter APredicate für die Vervollständigung der Abfrage; nur mit laufendem Server.</summary>
