@@ -49,8 +49,8 @@
     Modulgrenzen (#1455, ADR 0017): Welche Unit des Plugins in welches
     Package gehört, steht als Daten in docs/adr/0017-unit-zuordnung.md
     (Ordnertabelle, Einzelzeilen je Package). Jede Unit braucht dort eine
-    Zeile. Verboten sind Base -> Modul, Base -> Atlas.IDE.Contracts,
-    Modul -> anderes Modul und Contracts -> Base oder Modul. Befristete
+    Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
+    Verträge zwischen Modulen liegen in Base (Source/Contracts). Befristete
     Ausnahmen und bekannte Verstöße stehen im Abschnitt "Grenzen zwischen
     Base, Modulen und Verträgen"; bekannte Verstöße werden bei jedem Lauf
     genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
@@ -100,7 +100,7 @@ $LegacyWindowsUnits = @(
 )
 
 # Plugin-Packages (#1456, ADR 0017): Base ist Atlas.IDE.Base; jedes weitere
-# Packages/Atlas.IDE.* ist ein Modul oder die Verträge (Atlas.IDE.Contracts) mit eigenen Quellen unter Source.
+# Packages/Atlas.IDE.* ist ein Modul mit eigenen Quellen unter Source. Die Verträge zwischen Modulen liegen in Base.
 $PluginBaseFolder = 'Atlas.IDE.Base'
 $PluginFolders = @($PluginBaseFolder)
 foreach ($dir in @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' | Sort-Object Name)) {
@@ -146,10 +146,9 @@ $Packages = @(
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
-# Module requiren Base und die Verträge, die Verträge nur rtl und vcl (ADR 0017, Regel 9).
+# Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (ADR 0017, Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
-    $requires = @('rtl', 'vcl')
-    if ($folder -ne 'Atlas.IDE.Contracts') { $requires += @('vclwinx', 'designide', $PluginBaseFolder, 'Atlas.IDE.Contracts') }
+    $requires = @('rtl', 'vcl', 'vclwinx', 'designide', $PluginBaseFolder)
     $Packages += @{
         Name             = $folder
         Path             = "Packages/$folder"
@@ -591,10 +590,9 @@ if (Test-Path $PluginSource) {
 
 # Modulgrenzen (#1455, ADR 0017): Die Zuordnung der Units zu Packages steht als Daten in
 # docs/adr/0017-unit-zuordnung.md (Ordnertabelle, Einzelzeilen je Package, Ausnahmen und bekannte Verstöße).
-# Verboten: Base -> Modul, Base -> Contracts, Modul -> anderes Modul, Contracts -> Base oder Modul.
-# Erlaubt: Modul -> Base, Modul -> Contracts und alles innerhalb eines Packages.
+# Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
+# Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
 $BasePackage = 'Atlas.IDE.Base'
-$ContractsPackage = 'Atlas.IDE.Contracts'
 $AssignmentFile = 'docs/adr/0017-unit-zuordnung.md'
 $BoundarySection = 'Grenzen zwischen Base, Modulen und Verträgen'
 $KnownReport = @()
@@ -645,7 +643,7 @@ function Read-ModuleAssignment([string] $Path) {
         }
     }
     if ($result.Default -eq '') { $result.Problems += "${AssignmentFile}: Ordnertabelle ohne Zeile für alle übrigen Ordner" }
-    foreach ($name in @($BasePackage, $ContractsPackage)) {
+    foreach ($name in @($BasePackage)) {
         if ($result.Packages -notcontains $name) { $result.Problems += "${AssignmentFile}: Abschnitt ## $name fehlt" }
     }
     return $result
@@ -653,7 +651,7 @@ function Read-ModuleAssignment([string] $Path) {
 
 function Get-FolderPackage($Map, [string] $Relative, [string] $Folder = '') {
     # Package nach dem Ordner unter Packages (#1456, package-first), in Base nach der Ordnertabelle:
-    # <Schicht>/<Ordner>/… oder direkt unter Source/ (Contracts).
+    # <Schicht>/<Ordner>/… oder direkt unter Source/ (Contracts von Base).
     if ($Folder -ne '' -and $Folder -ne $PluginBaseFolder) { return $Folder }
     $parts = $Relative.Split('/')
     if ($parts.Count -ge 3 -and @('Core', 'IDE', 'UI') -contains $parts[0] -and $Map.Folders.ContainsKey($parts[1])) {
@@ -741,17 +739,11 @@ elseif (Test-Path $PluginSource) {
             $to = Get-AssignedPackage $unit.Name
             if ($to -eq $from) { continue }
             $reason = ''
-            if ($from -eq $BasePackage -and $to -eq $ContractsPackage) {
-                $reason = "Base verwendet keinen Vertrag aus $ContractsPackage (Base requiret Contracts nicht)"
-            }
-            elseif ($from -eq $BasePackage) {
+            if ($from -eq $BasePackage) {
                 $reason = "Base verwendet kein Modul ($to); über einen Vertrag oder eine Anmeldung lösen"
             }
-            elseif ($from -eq $ContractsPackage) {
-                $reason = "$ContractsPackage verwendet weder Base noch Module ($to); Verträge requiren nur rtl und vcl"
-            }
-            elseif ($to -ne $BasePackage -and $to -ne $ContractsPackage) {
-                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über $ContractsPackage"
+            elseif ($to -ne $BasePackage) {
+                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über einen Vertrag in Base (Source/Contracts)"
             }
             if ($reason -eq '') { continue }
             $entry = Find-BoundaryEntry $map.Allowed $name $unit.Name $to

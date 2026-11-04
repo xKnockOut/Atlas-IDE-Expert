@@ -14,7 +14,7 @@
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
 //   Tooltip,
 // - für andere Module den Bericht über die Debug-Sitzung
-//   (IAtlasDebugReportSource, Atlas.IDE.Contracts).
+//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport).
 // Das erste Teil („DebugCommands“, ab dem abgesicherten Start) installiert
 // „Gezielt hineinspringen“, „Beim nächsten Ereignis anhalten“ und die Befehle
 // des Schrittfilters; es stoppt als letztes, nimmt sie zurück und hängt F7 ab

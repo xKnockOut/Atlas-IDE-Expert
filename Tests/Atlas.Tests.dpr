@@ -1036,7 +1036,7 @@ uses
   Atlas.UI.Tracker.NewIssueDialog.Tests in 'IDE.Expert\Atlas.UI.Tracker.NewIssueDialog.Tests.pas',
   Atlas.UI.Tracker.SprintTile in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SprintTile.pas',
   Atlas.UI.Tracker.SprintTile.Tests in 'IDE.Expert\Atlas.UI.Tracker.SprintTile.Tests.pas',
-  Atlas.IDE.Contracts.WelcomeTiles in '..\Packages\Atlas.IDE.Contracts\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas',
+  Atlas.IDE.Contracts.WelcomeTiles in '..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas',
   Atlas.IDE.Welcome.Tiles in '..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas',
   Atlas.IDE.Welcome.Tiles.Tests in 'IDE.Expert\Atlas.IDE.Welcome.Tiles.Tests.pas',
   Atlas.UI.Status.Window in '..\Packages\Atlas.IDE.Base\Source\UI\Status\Atlas.UI.Status.Window.pas',

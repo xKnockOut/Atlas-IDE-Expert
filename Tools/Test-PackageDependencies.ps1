@@ -10,7 +10,7 @@
     verbotenem uses, fehlende oder veraltete Zeile der Zuordnung, Abweichung
     ohne Begründung, behobener bekannter Verstoß) und erwartet, dass das
     Skript scheitert und den Verstoß nennt. Erlaubte Verweise (Modul -> Base,
-    Modul -> Contracts) müssen bestehen. Nach jedem Fall wird die Kopie
+    auch auf die Verträge in Base) müssen bestehen. Nach jedem Fall wird die Kopie
     zurückgesetzt.
 
 .EXAMPLE
@@ -119,7 +119,7 @@ function Test-Passes([string] $Name, [scriptblock] $Change) {
 try {
     Test-Passes 'Unveränderter Stand' {}
 
-    Test-Passes 'Modul verwendet Base und Contracts' {
+    Test-Passes 'Modul verwendet Base und einen Vertrag aus Base' {
         Add-Assigned 'Atlas.IDE.Debugger' 'IDE/Debug' 'Atlas.IDE.Debug.Probe' @('Atlas.Core.Projects.Vcs', 'Atlas.IDE.Contracts.Rules')
     }
 
@@ -127,16 +127,12 @@ try {
         Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Probe' @('Atlas.Core.Tracker.Contract')
     }
 
-    Test-Fails 'Base verwendet einen Vertrag' 'Base verwendet keinen Vertrag aus Atlas.IDE.Contracts' {
+    Test-Passes 'Base verwendet einen eigenen Vertrag' {
         Add-Assigned 'Atlas.IDE.Base' 'IDE/Settings' 'Atlas.IDE.Settings.Probe' @('Atlas.IDE.Contracts.Rules')
     }
 
     Test-Fails 'Modul verwendet ein anderes Modul' 'Modul Atlas.IDE.Debugger verwendet kein anderes Modul (Atlas.IDE.Tracker)' {
         Add-Assigned 'Atlas.IDE.Debugger' 'Core/Debug' 'Atlas.Core.Debug.Probe' @('Atlas.Core.Tracker.Contract')
-    }
-
-    Test-Fails 'Vertrag verwendet Base' 'Atlas.IDE.Contracts verwendet weder Base noch Module (Atlas.IDE.Base)' {
-        Add-Assigned 'Atlas.IDE.Contracts' 'Contracts' 'Atlas.IDE.Contracts.Probe' @('Atlas.Core.Projects.Vcs')
     }
 
     Test-Fails 'Ausnahme der Kompositionswurzel gilt nur für sie' 'Base verwendet kein Modul (Atlas.IDE.Welcome)' {

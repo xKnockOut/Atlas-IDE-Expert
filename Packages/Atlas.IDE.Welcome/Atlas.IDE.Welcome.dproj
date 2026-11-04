@@ -93,7 +93,6 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
-        <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
