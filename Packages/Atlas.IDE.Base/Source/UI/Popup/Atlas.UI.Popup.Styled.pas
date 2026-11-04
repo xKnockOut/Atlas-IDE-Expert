@@ -60,8 +60,8 @@ type
     class function Create(const AText: string): TAtlasStyledText; static;
     /// <summary>Breite von Text[AFrom..ATill) in der Schrift von ACanvas.</summary>
     function Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;
-    /// <summary>Zeichnet Text[AFrom..ATill) ab AX in der Zeile ARow; AX steht danach hinter dem Text.</summary>
-    /// <summary>ARange: X = AFrom, Y = ATill (wie die Zeilen von WrapAtSpaces).</summary>
+    /// <summary>Zeichnet Text[AFrom..ATill) ab AX in der Zeile ARow; AX steht danach hinter dem Text.
+    /// ARange: X = AFrom, Y = ATill (wie die Zeilen von WrapAtSpaces).</summary>
     procedure Draw(const ATarget: TAtlasStyledTarget; const ARange: TPoint; var AX: Integer; const ARow: TRect;
       ADimmed: Boolean);
     /// <summary>Breiten aller Präfixe: Ergebnis[i] = Breite von Text[0..i), Länge Length(Text) + 1.</summary>

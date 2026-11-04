@@ -254,32 +254,32 @@ begin
       FOpened := AFileName;
       FLine := ALine;
     end;
-  Frame.OnShowRoute :=
+  Frame.Path.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
     begin
       FRoute := AUnits;
     end;
   Answer := Sample;
-  Frame.ShowSymbolPath('Weg', Answer, True);
-  Assert.IsTrue(Frame.ShowsPath);
+  Frame.Path.Show('Weg', Answer, True);
+  Assert.IsTrue(Frame.Path.Shows);
   Assert.IsFalse(Frame.Tree.Visible);
-  Assert.AreEqual(TAtlasSymbolPathChain.StatusText(Answer), Frame.PathStatus.Caption);
-  Assert.IsTrue(Frame.PathMapButton.Visible);
-  Frame.PathMapButton.Click;
+  Assert.AreEqual(TAtlasSymbolPathChain.StatusText(Answer), Frame.Path.Status.Caption);
+  Assert.IsTrue(Frame.Path.MapButton.Visible);
+  Frame.Path.MapButton.Click;
   Assert.AreEqual('uKundenForm,uRepoIntf,uKundenRepo', string.Join(',', FRoute));
   // Doppelklick in der Kette geht an OnOpen des Ergebnisfensters.
-  Frame.PathChain.Selected := 6;
-  TAtlasSymbolPathChainAccess(Frame.PathChain).DblClick;
+  Frame.Path.Chain.Selected := 6;
+  TAtlasSymbolPathChainAccess(Frame.Path.Chain).DblClick;
   Assert.AreEqual('C:\P\uKundenRepo.pas', FOpened);
   // Ohne Architekturübersicht kein Knopf; Hinweis ohne Kette.
-  Frame.ShowSymbolPath('Weg', Answer, False);
-  Assert.IsFalse(Frame.PathMapButton.Visible);
-  Frame.ShowSymbolPathMessage('Weg', 'Suche …');
-  Assert.AreEqual('Suche …', Frame.PathStatus.Caption);
-  Assert.AreEqual(0, Integer(Length(Frame.PathChain.Rows)));
+  Frame.Path.Show('Weg', Answer, False);
+  Assert.IsFalse(Frame.Path.MapButton.Visible);
+  Frame.Path.ShowText('Weg', 'Suche …');
+  Assert.AreEqual('Suche …', Frame.Path.Status.Caption);
+  Assert.AreEqual(0, Integer(Length(Frame.Path.Chain.Rows)));
   // Andere Listen zeigen wieder den Baum.
-  Frame.ShowEntries('Referenzen', nil);
-  Assert.IsFalse(Frame.ShowsPath);
+  Frame.Entries.Show('Referenzen', nil);
+  Assert.IsFalse(Frame.Path.Shows);
   Assert.IsTrue(Frame.Tree.Visible);
 end;
 
