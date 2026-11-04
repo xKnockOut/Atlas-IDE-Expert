@@ -121,7 +121,8 @@ var
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TPromoteVariable.Execute(AText, ATree, APosition, ALookup, AStyle, AName, Promoted, Reason) then
+  if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, ALookup, AStyle, AName), Promoted,
+    Reason) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
   end;

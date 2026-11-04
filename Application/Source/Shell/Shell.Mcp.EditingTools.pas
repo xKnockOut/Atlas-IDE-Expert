@@ -18,6 +18,7 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Rules.Builtin;
@@ -62,7 +63,8 @@ begin
   begin
     raise EMcpToolError.Create('Argument "line" fehlt');
   end;
-  Result := AContext.Edit.ApplyCodeAction(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, FileName, Line,
+  Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Create(BuiltinRules,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), FileName, Line,
     TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
 end;
 
@@ -112,7 +114,8 @@ begin
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
-  Result := AContext.Edit.FixFindings(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, mRules,
+  Result := AContext.Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, mRules,
     TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
 end;
 
