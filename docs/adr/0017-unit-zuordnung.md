@@ -400,6 +400,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Commands.ShortcutTips` | `IDE/Commands/Atlas.IDE.Commands.ShortcutTips.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Usage` | `IDE/Commands/Atlas.IDE.Commands.Usage.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Completion.Editor` | `IDE/Completion/Atlas.IDE.Completion.Editor.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorState` | `IDE/Completion/Atlas.IDE.Completion.EditorState.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorSnippets` | `IDE/Completion/Atlas.IDE.Completion.EditorSnippets.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorOpen` | `IDE/Completion/Atlas.IDE.Completion.EditorOpen.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorCommit` | `IDE/Completion/Atlas.IDE.Completion.EditorCommit.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.Favorites` | `IDE/Completion/Atlas.IDE.Completion.Favorites.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.History` | `IDE/Completion/Atlas.IDE.Completion.History.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.Placeholders` | `IDE/Completion/Atlas.IDE.Completion.Placeholders.pas` | Ordner `IDE/Completion` |
