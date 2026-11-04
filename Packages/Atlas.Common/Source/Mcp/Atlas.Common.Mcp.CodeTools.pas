@@ -282,8 +282,8 @@ begin
     mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       mResolver.Namespaces := FNamespaces;
-      Result := TLspReferences.Find(mResolver, FIndex, mTree, ALocation.FileName,
-        ALocation.Symbol.SelectionRange.StartPos, False, mFiles, FReadText, SettingsOf(ALocation.FileName), nil);
+      Result := TLspReferences.Find(mResolver, FIndex, mTree, TReferenceSearch.Create(ALocation.FileName,
+        ALocation.Symbol.SelectionRange.StartPos, False, mFiles, FReadText), SettingsOf(ALocation.FileName), nil);
     finally
       mResolver.Free;
     end;

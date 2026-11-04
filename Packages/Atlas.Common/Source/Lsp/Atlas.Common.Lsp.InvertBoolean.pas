@@ -782,8 +782,8 @@ var
   mToken: Integer;
 begin
   mOrigin := ReadableSource(AFileName);
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, mOrigin.Tree, AFileName, APosition, True,
-    FContext.Files, FContext.ReadText) do
+  for mLocation in TLspReferences.Find(FResolver, FContext.Index, mOrigin.Tree, TReferenceSearch.Create(AFileName,
+    APosition, True, FContext.Files, FContext.ReadText)) do
   begin
     if not ReferenceToken(mLocation, mUnit, mToken) then
     begin
