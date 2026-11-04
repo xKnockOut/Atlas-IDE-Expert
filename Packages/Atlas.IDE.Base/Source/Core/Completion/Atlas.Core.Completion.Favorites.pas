@@ -153,26 +153,39 @@ begin
   end;
 end;
 
+/// <summary>Trennzeichen eines Zeitstempels "yyyy-mm-ddThh:nn:ss" passen.</summary>
+function StampShape(const AText: string): Boolean;
+begin
+  Result := (Length(AText) >= 19) and
+    (Copy(AText, 5, 1) + Copy(AText, 8, 1) + Copy(AText, 11, 1) + Copy(AText, 14, 1) + Copy(AText, 17, 1) = '--T::');
+end;
+
+function TryDateDigits(const AText: string; out AYear, AMonth, ADay: Word): Boolean;
+begin
+  Result := TryDigits(AText, 1, 4, AYear) and TryDigits(AText, 6, 2, AMonth) and TryDigits(AText, 9, 2, ADay);
+end;
+
+function TryTimeDigits(const AText: string; out AHour, AMinute, ASecond: Word): Boolean;
+begin
+  Result := TryDigits(AText, 12, 2, AHour) and TryDigits(AText, 15, 2, AMinute) and
+    TryDigits(AText, 18, 2, ASecond);
+end;
+
 /// <summary>Liest "yyyy-mm-ddThh:nn:ss"; 0 bei allem anderen.</summary>
 function ParseStamp(const AText: string): TDateTime;
 var
-  Year, Month, Day, Hour, Minute, Second: Word;
-  DatePart, TimePart: TDateTime;
+  mYear, mMonth, mDay, mHour, mMinute, mSecond: Word;
+  mDate, mTime: TDateTime;
 begin
   Result := 0;
-  if (Length(AText) < 19) or (AText[5] <> '-') or (AText[8] <> '-') or (AText[11] <> 'T') or (AText[14] <> ':') or
-    (AText[17] <> ':') then
+  if not StampShape(AText) or not TryDateDigits(AText, mYear, mMonth, mDay) or
+    not TryTimeDigits(AText, mHour, mMinute, mSecond) then
   begin
     Exit;
   end;
-  if not (TryDigits(AText, 1, 4, Year) and TryDigits(AText, 6, 2, Month) and TryDigits(AText, 9, 2, Day) and
-    TryDigits(AText, 12, 2, Hour) and TryDigits(AText, 15, 2, Minute) and TryDigits(AText, 18, 2, Second)) then
+  if TryEncodeDate(mYear, mMonth, mDay, mDate) and TryEncodeTime(mHour, mMinute, mSecond, 0, mTime) then
   begin
-    Exit;
-  end;
-  if TryEncodeDate(Year, Month, Day, DatePart) and TryEncodeTime(Hour, Minute, Second, 0, TimePart) then
-  begin
-    Result := DatePart + TimePart;
+    Result := mDate + mTime;
   end;
 end;
 

@@ -25,6 +25,13 @@ type
     /// <summary>Neue Fassung ANew der Zeile: Lage nachführen. ARemoveAt: 0-basierter Index einer zu
     /// entfernenden ")" (die automatische nach einer getippten), sonst -1.</summary>
     procedure Update(const ANew: string; out ARemoveAt: Integer);
+  private
+    function FirstDifference(const ANew: string): Integer;
+    /// <summary>Ein Zeichen an AIndex eingefügt: Lage nachführen; False beendet die Verfolgung (ARemoveAt: zu
+    /// entfernende ")" oder -1).</summary>
+    function Inserted(const ANew: string; AIndex: Integer; out ARemoveAt: Integer): Boolean;
+    /// <summary>Ein Zeichen an AIndex gelöscht: Lage nachführen; False beendet die Verfolgung.</summary>
+    function Deleted(const ANew: string; AIndex: Integer): Boolean;
   end;
 
   TAtlasParentheses = class
@@ -41,6 +48,15 @@ implementation
 uses
   System.SysUtils;
 
+/// <summary>Anfang (0-basiert) der Folge gleicher Zeichen, die an AIndex (0-basiert) in AText endet.</summary>
+function RunStart(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result > 0) and (AText[Result] = AText[AIndex + 1]) do
+  begin
+    Dec(Result);
+  end;
+end;
 { TAtlasAutoParen }
 
 class function TAtlasAutoParen.Start(ALine, AClose: Integer; const AText: string): TAtlasAutoParen;
@@ -62,9 +78,65 @@ begin
   Text := '';
 end;
 
+function TAtlasAutoParen.FirstDifference(const ANew: string): Integer;
+begin
+  Result := 0;
+  while (Result < Length(Text)) and (Result < Length(ANew)) and (Text[Result + 1] = ANew[Result + 1]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function TAtlasAutoParen.Inserted(const ANew: string; AIndex: Integer; out ARemoveAt: Integer): Boolean;
+var
+  mRunStart: Integer;
+begin
+  ARemoveAt := -1;
+  // Ein Zeichen eingefügt; nur gültig, wenn der Rest gleich ist.
+  if Copy(ANew, AIndex + 2, MaxInt) <> Copy(Text, AIndex + 1, MaxInt) then
+  begin
+    Exit(False);
+  end;
+  // Gleiche Zeichen davor: Die Einfügung kann irgendwo in dieser Folge liegen ("()" + ")" = "())").
+  mRunStart := RunStart(ANew, AIndex);
+  if (ANew[AIndex + 1] = ')') and (Close >= mRunStart) and (Close <= AIndex) then
+  begin
+    // ")" direkt vor der automatischen: eine der Klammern hinter dem Cursor entfernen.
+    ARemoveAt := Close + 1;
+    Exit(False);
+  end;
+  if AIndex <= Close then
+  begin
+    Inc(Close);
+  end;
+  Result := True;
+end;
+
+function TAtlasAutoParen.Deleted(const ANew: string; AIndex: Integer): Boolean;
+var
+  mRunStart: Integer;
+begin
+  if Copy(ANew, AIndex + 1, MaxInt) <> Copy(Text, AIndex + 2, MaxInt) then
+  begin
+    Exit(False);
+  end;
+  // Gelöscht in einer Folge gleicher Zeichen, zu der die automatische Klammer gehört: nicht eindeutig, aufhören.
+  mRunStart := RunStart(Text, AIndex);
+  if (Close >= mRunStart) and (Close <= AIndex) and (Text[AIndex + 1] = ')') then
+  begin
+    Exit(False);
+  end;
+  if AIndex < Close then
+  begin
+    Dec(Close);
+  end;
+  Result := True;
+end;
+
 procedure TAtlasAutoParen.Update(const ANew: string; out ARemoveAt: Integer);
 var
-  Index, RunStart: Integer;
+  mIndex: Integer;
+  mKeep: Boolean;
 begin
   ARemoveAt := -1;
   if not Active then
@@ -72,67 +144,24 @@ begin
     Exit;
   end;
   // Erste Abweichung (0-basiert).
-  Index := 0;
-  while (Index < Length(Text)) and (Index < Length(ANew)) and (Text[Index + 1] = ANew[Index + 1]) do
-  begin
-    Inc(Index);
-  end;
+  mIndex := FirstDifference(ANew);
   if Length(ANew) = Length(Text) + 1 then
   begin
-    // Ein Zeichen eingefügt; nur gültig, wenn der Rest gleich ist.
-    if Copy(ANew, Index + 2, MaxInt) <> Copy(Text, Index + 1, MaxInt) then
-    begin
-      Stop;
-      Exit;
-    end;
-    // Gleiche Zeichen davor: Die Einfügung kann irgendwo in dieser Folge liegen ("()" + ")" = "())").
-    RunStart := Index;
-    while (RunStart > 0) and (ANew[RunStart] = ANew[Index + 1]) do
-    begin
-      Dec(RunStart);
-    end;
-    if (ANew[Index + 1] = ')') and (Close >= RunStart) and (Close <= Index) then
-    begin
-      // ")" direkt vor der automatischen: eine der Klammern hinter dem Cursor entfernen.
-      ARemoveAt := Close + 1;
-      Stop;
-      Exit;
-    end;
-    if Index <= Close then
-    begin
-      Inc(Close);
-    end;
+    mKeep := Inserted(ANew, mIndex, ARemoveAt);
   end
   else if Length(ANew) = Length(Text) - 1 then
   begin
-    if Copy(ANew, Index + 1, MaxInt) <> Copy(Text, Index + 2, MaxInt) then
-    begin
-      Stop;
-      Exit;
-    end;
-    // Gelöscht in einer Folge gleicher Zeichen, zu der die automatische Klammer gehört: nicht eindeutig, aufhören.
-    RunStart := Index;
-    while (RunStart > 0) and (Text[RunStart] = Text[Index + 1]) do
-    begin
-      Dec(RunStart);
-    end;
-    if (Close >= RunStart) and (Close <= Index) and (Text[Index + 1] = ')') then
-    begin
-      Stop;
-      Exit;
-    end;
-    if Index < Close then
-    begin
-      Dec(Close);
-    end;
+    mKeep := Deleted(ANew, mIndex);
   end
-  else if ANew <> Text then
+  else
   begin
-    Stop;
-    Exit;
+    mKeep := ANew = Text;
   end;
-  Text := ANew;
-  if (Close < 0) or (Close >= Length(Text)) or (Text[Close + 1] <> ')') then
+  if mKeep then
+  begin
+    Text := ANew;
+  end;
+  if not mKeep or (Close < 0) or (Close >= Length(Text)) or (Text[Close + 1] <> ')') then
   begin
     Stop;
   end;
