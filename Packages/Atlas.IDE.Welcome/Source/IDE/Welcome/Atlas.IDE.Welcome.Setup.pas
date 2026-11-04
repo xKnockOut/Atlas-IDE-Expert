@@ -350,7 +350,7 @@ end;
 
 function TAtlasIdeSetup.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Setup, TAtlasWelcomeSetupFrame.TitleText(Card), Order,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Setup, TAtlasSetupTexts.TitleText(Card), Order,
     TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
@@ -627,7 +627,7 @@ begin
         if not TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues) then
         begin
           Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
-            [TAtlasWelcomeSetupFrame.TemplateCaption(Template), string.Join('; ', Issues)]));
+            [TAtlasSetupTexts.TemplateCaption(Template), string.Join('; ', Issues)]));
           Exit;
         end;
       end;
@@ -635,7 +635,7 @@ begin
       Text := StringReplace(StringReplace(Text, #13#10, #10, [rfReplaceAll]), #10, #13#10, [rfReplaceAll]);
       ConfigFile := TAtlasProjectSetups.ConfigTarget(Project);
       if not TAtlasSetupPreviewDialog.Confirm(ExtractFileName(ConfigFile), ExtractFileName(Project),
-        TAtlasWelcomeSetupFrame.TemplateCaption(Template), Text, nil) then
+        TAtlasSetupTexts.TemplateCaption(Template), Text, nil) then
       begin
         Exit;
       end;

@@ -172,22 +172,22 @@ begin
   Saved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Assert.AreEqual('Build 0/0/0', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('Build 0/0/0', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Good, 0, 0, 0)));
-    Assert.AreEqual('Build 0/3/1', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('Build 0/3/1', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Warning, 0, 3, 1)));
-    Assert.AreEqual('2 Fehler', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('2 Fehler', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.BuildErrors, TAtlasProjectPillLevel.Error, 2, 0, 0)));
-    Assert.AreEqual('Prüfung: 1 Fehler', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('Prüfung: 1 Fehler', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.CheckErrors, TAtlasProjectPillLevel.Error, 1, 0, 0)));
-    Assert.AreEqual('3 geändert', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('3 geändert', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.Changes, TAtlasProjectPillLevel.Warning, 3, 0, 0)));
-    Assert.AreEqual(#$2191'1 '#$2193'2', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual(#$2191'1 '#$2193'2', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.Sync, TAtlasProjectPillLevel.Neutral, 1, 2, 0)));
-    Assert.AreEqual('5 neue Treffer', TAtlasWelcomeProjectsFrame.PillText(
+    Assert.AreEqual('5 neue Treffer', TAtlasProjectsTexts.PillText(
       TAtlasProjectPill.Create(TAtlasProjectPillKind.Rules, TAtlasProjectPillLevel.Warning, 5, 0, 0)));
-    Assert.AreNotEqual(Integer(TAtlasWelcomeProjectsFrame.PillColor(TAtlasProjectPillLevel.Good)),
-      Integer(TAtlasWelcomeProjectsFrame.PillColor(TAtlasProjectPillLevel.Error)));
+    Assert.AreNotEqual(Integer(TAtlasProjectsTexts.PillColor(TAtlasProjectPillLevel.Good)),
+      Integer(TAtlasProjectsTexts.PillColor(TAtlasProjectPillLevel.Error)));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -229,20 +229,20 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Item := ProjectEntry('C:\P\Zwei.dproj', 2);
-    Detail := TAtlasWelcomeProjectsFrame.DetailText(Item);
+    Detail := TAtlasProjectsTexts.DetailText(Item);
     Assert.Contains(Detail, 'C:\P\Zwei.dproj');
     Assert.Contains(Detail, 'Stand vom', 'gespeicherter Stand');
     Item.VcsFresh := True;
-    Assert.IsFalse(TAtlasWelcomeProjectsFrame.DetailText(Item).Contains('Stand vom'), 'frisch abgefragt');
-    Hint := TAtlasWelcomeProjectsFrame.HintFor(Item);
+    Assert.IsFalse(TAtlasProjectsTexts.DetailText(Item).Contains('Stand vom'), 'frisch abgefragt');
+    Hint := TAtlasProjectsTexts.HintFor(Item);
     Assert.Contains(Hint, 'main');
     Assert.Contains(Hint, '2 Fehler');
     Assert.Contains(Hint, 'Main.pas (12)');
     Assert.Contains(Hint, 'E2003');
     Item.Summary.Build := TAtlasProjectBuild.Empty;
-    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Item),
+    Assert.Contains(TAtlasProjectsTexts.HintFor(Item),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintNoBuild));
-    Assert.AreEqual('', TAtlasWelcomeProjectsFrame.LocalText(0));
+    Assert.AreEqual('', TAtlasProjectsTexts.LocalText(0));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -273,11 +273,11 @@ begin
     Hit.Row := 0;
     Hit.Pill := 0;
     Frame.ClickAt(Hit);
-    Frame.MenuRow := 1;
-    Frame.OpenFolderItem.Click;
-    Frame.CreateBranchItem.Click;
-    Frame.RemoveItem.Click;
-    Frame.WorkingCopiesItem.Click;
+    Frame.Menu.Row := 1;
+    Frame.Menu.OpenFolderItem.Click;
+    Frame.Menu.CreateBranchItem.Click;
+    Frame.Menu.RemoveItem.Click;
+    Frame.Menu.WorkingCopiesItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
     Assert.AreEqual(7, Integer(Length(Fake.Calls)));
@@ -291,10 +291,10 @@ begin
     // „Arbeitskopien …“ (#1292) ebenso; sichtbar nur mit vcs.externals.show.
     Assert.AreEqual('copies C:\P\Zwei.dproj', Fake.Calls[6]);
     Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsFalse(Frame.WorkingCopiesItem.Visible);
+    Assert.IsFalse(Frame.Menu.WorkingCopiesItem.Visible);
     Fake.FWorkingCopies := True;
     Frame.Menu.OnPopup(Frame.Menu);
-    Assert.IsTrue(Frame.WorkingCopiesItem.Visible);
+    Assert.IsTrue(Frame.Menu.WorkingCopiesItem.Visible);
   finally
     Host.Free;
   end;
@@ -402,8 +402,8 @@ begin
     Hit.Row := 0;
     Hit.Pill := -1;
     Frame.DoubleClickAt(Hit);
-    Frame.MenuRow := 1;
-    Frame.OpenItem.Click;
+    Frame.Menu.Row := 1;
+    Frame.Menu.OpenItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
     Assert.AreEqual(4, Integer(Length(Fake.Calls)));
@@ -414,9 +414,9 @@ begin
     Assert.AreEqual(1, Frame.SelectedRow);
     Fake.FSelected := 'c:/p/eins.DPROJ';
     Assert.AreEqual(0, Frame.SelectedRow, 'Schreibweise egal');
-    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], True),
+    Assert.Contains(TAtlasProjectsTexts.HintFor(Fake.FEntries[0], True),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintSelect));
-    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], False),
+    Assert.Contains(TAtlasProjectsTexts.HintFor(Fake.FEntries[0], False),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsHintClick));
   finally
     Host.Free;
