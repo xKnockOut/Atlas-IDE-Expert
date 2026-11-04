@@ -182,6 +182,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Lens.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.RecursionGutter.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterColumn.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterColumnState.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SelectionMatches.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ServerEdit.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExitPoints.pas"/>

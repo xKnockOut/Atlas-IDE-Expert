@@ -139,6 +139,7 @@ contains
   Atlas.IDE.Editor.Lens in 'Source\IDE\Editor\Atlas.IDE.Editor.Lens.pas',
   Atlas.IDE.Editor.RecursionGutter in 'Source\IDE\Editor\Atlas.IDE.Editor.RecursionGutter.pas',
   Atlas.IDE.Editor.GutterColumn in 'Source\IDE\Editor\Atlas.IDE.Editor.GutterColumn.pas',
+  Atlas.IDE.Editor.GutterColumnState in 'Source\IDE\Editor\Atlas.IDE.Editor.GutterColumnState.pas',
   Atlas.IDE.Editor.SelectionMatches in 'Source\IDE\Editor\Atlas.IDE.Editor.SelectionMatches.pas',
   Atlas.IDE.Editor.ServerEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.ServerEdit.pas',
   Atlas.IDE.Editor.ExitPoints in 'Source\IDE\Editor\Atlas.IDE.Editor.ExitPoints.pas',
