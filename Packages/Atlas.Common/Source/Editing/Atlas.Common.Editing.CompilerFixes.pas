@@ -240,17 +240,18 @@ begin
     end));
 end;
 
-function AddUnitFix(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
-  const AUnit: string; APreferred: Boolean; const ATitle: string; out AFix: TCompilerFix): Boolean;
+/// <summary>Korrektur "uses AUnit ergänzen" an AFixes anhängen; die erste in AFixes ist die bevorzugte.
+/// </summary>
+procedure AddUnitFix(const AText: string; ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
+  const AUnit, ATitle: string; var AFixes: TArray<TCompilerFix>);
 var
-  Edit: TTextEdit;
-  Offset: Integer;
+  mEdit: TTextEdit;
+  mOffset: Integer;
 begin
-  Offset := OffsetOf(AText, AMessage.Line);
-  Result := (Offset >= 0) and TUsesClauses.AddUnit(ATokens, Offset, AUnit, TTextLines.LineBreakOf(AText), Edit);
-  if Result then
+  mOffset := OffsetOf(AText, AMessage.Line);
+  if (mOffset >= 0) and TUsesClauses.AddUnit(ATokens, mOffset, AUnit, TTextLines.LineBreakOf(AText), mEdit) then
   begin
-    AFix := Fix(AMessage.Code, ATitle, [Edit], APreferred);
+    AFixes := AFixes + [Fix(AMessage.Code, ATitle, [mEdit], Length(AFixes) = 0)];
   end;
 end;
 
@@ -264,7 +265,6 @@ function H2443Fixes(const AText: string; ATokens: TArray<TPascalToken>; const AM
 var
   Names: TArray<string>;
   UnitName: string;
-  Item: TCompilerFix;
 begin
   Result := nil;
   Names := TCompilerFixes.QuotedNames(AMessage.Text);
@@ -277,11 +277,15 @@ begin
   begin
     Exit;
   end;
-  if AddUnitFix(AText, ATokens, AMessage, UnitName, True, Format('uses %s ergänzen (%s)', [UnitName,
-    AMessage.Code]), Item) then
-  begin
-    Result := [Item];
-  end;
+  AddUnitFix(AText, ATokens, AMessage, UnitName, Format('uses %s ergänzen (%s)', [UnitName, AMessage.Code]),
+    Result);
+end;
+
+/// <summary>AToken ist der Bezeichner AName in der Zeile der Meldung.</summary>
+function IsNameOnLine(const AToken: TPascalToken; const AMessage: TFixMessage; const AName: string): Boolean;
+begin
+  Result := (AToken.StartPos.Line = AMessage.Line) and (AToken.Kind = TPascalTokenKind.Identifier) and
+    SameText(AToken.Text, AName);
 end;
 
 function E2003Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
@@ -289,7 +293,6 @@ function E2003Fixes(const AText: string; ATokens: TArray<TPascalToken>; ATree: T
 var
   Names, Units: TArray<string>;
   Name, UnitName: string;
-  Item: TCompilerFix;
   Token: TPascalToken;
   Position: TTextPosition;
   Found: Boolean;
@@ -306,8 +309,7 @@ begin
   Position := TTextPosition.Create(AMessage.Line, 0);
   for Token in ATokens do
   begin
-    if (Token.StartPos.Line = AMessage.Line) and (Token.Kind = TPascalTokenKind.Identifier) and
-      SameText(Token.Text, Name) and ((AMessage.Column < 0) or not Found or
+    if IsNameOnLine(Token, AMessage, Name) and ((AMessage.Column < 0) or not Found or
       (Token.StartPos.Character <= AMessage.Column)) then
     begin
       Position := Token.StartPos;
@@ -322,11 +324,8 @@ begin
     AContext.Namespaces));
   for UnitName in Units do
   begin
-    if AddUnitFix(AText, ATokens, AMessage, UnitName, Length(Result) = 0, Format('uses %s ergänzen (%s: %s)',
-      [UnitName, AMessage.Code, Name]), Item) then
-    begin
-      Result := Result + [Item];
-    end;
+    AddUnitFix(AText, ATokens, AMessage, UnitName, Format('uses %s ergänzen (%s: %s)', [UnitName, AMessage.Code,
+      Name]), Result);
   end;
 end;
 
@@ -510,75 +509,103 @@ begin
     LineBreak + Indent + Format('Result := Default(%s);', [TypeText]))], True)];
 end;
 
-function StringCastFixes(ATree: TSyntaxTree; const AMessage: TFixMessage): TArray<TCompilerFix>;
+/// <summary>Rechte Seiten der Zuweisungen in Zeile ALine.</summary>
+function AssignmentValues(ATree: TSyntaxTree; ALine: Integer): TArray<TSyntaxNode>;
 var
-  Names: TArray<string>;
-  Target: string;
-  Candidates: TArray<TSyntaxNode>;
-  Node, Chosen: TSyntaxNode;
-  Index: Integer;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  Names := TCompilerFixes.QuotedNames(AMessage.Text);
-  if Length(Names) < 2 then
+  for mNode in NodesOnLine(ATree.Root, ALine, TSyntaxKind.AssignStatement) do
   begin
-    Exit;
-  end;
-  Target := Names[High(Names)];
-  // Kandidaten: rechte Seiten von Zuweisungen und Argumente von Aufrufen in der Zeile.
-  Candidates := nil;
-  for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
-  begin
-    if Node.ChildCount >= 2 then
+    if mNode.ChildCount >= 2 then
     begin
-      Candidates := Candidates + [Node[1]];
+      Result := Result + [mNode[1]];
     end;
   end;
-  for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.Call) do
+end;
+
+/// <summary>Argumente der Aufrufe, die in Zeile ALine beginnen.</summary>
+function CallArguments(ATree: TSyntaxTree; ALine: Integer): TArray<TSyntaxNode>;
+var
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mNode in NodesOnLine(ATree.Root, ALine, TSyntaxKind.Call) do
   begin
-    for Index := 1 to Node.ChildCount - 1 do
+    for mIndex := 1 to mNode.ChildCount - 1 do
     begin
-      if Node[Index].StartPos.Line = AMessage.Line then
+      if mNode[mIndex].StartPos.Line = ALine then
       begin
-        Candidates := Candidates + [Node[Index]];
+        Result := Result + [mNode[mIndex]];
       end;
     end;
   end;
-  Chosen := nil;
+end;
+
+/// <summary>ANode reicht über die Spalte der Meldung.</summary>
+function CoversColumn(ANode: TSyntaxNode; const AMessage: TFixMessage): Boolean;
+begin
+  Result := (ANode.StartPos.Character <= AMessage.Column) and ((ANode.EndPos.Line > AMessage.Line) or
+    (AMessage.Column <= ANode.EndPos.Character));
+end;
+
+/// <summary>Kürzester Kandidat über der Spalte der Meldung; nil ohne.</summary>
+function SmallestAt(const ACandidates: TArray<TSyntaxNode>; const AMessage: TFixMessage): TSyntaxNode;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  for mNode in ACandidates do
+  begin
+    if CoversColumn(mNode, AMessage) and ((Result = nil) or
+      (mNode.EndOffset - mNode.StartOffset < Result.EndOffset - Result.StartOffset)) then
+    begin
+      Result := mNode;
+    end;
+  end;
+end;
+
+/// <summary>Ausdruck, der umgewandelt werden soll: rechte Seite einer Zuweisung oder Argument eines Aufrufs in der
+/// Zeile; ohne Spalte nur eindeutig (genau eine Zuweisung in der Zeile). nil ohne.</summary>
+function CastTarget(ATree: TSyntaxTree; const AMessage: TFixMessage): TSyntaxNode;
+var
+  mCandidates: TArray<TSyntaxNode>;
+begin
+  mCandidates := AssignmentValues(ATree, AMessage.Line);
   if AMessage.Column >= 0 then
   begin
-    for Node in Candidates do
-    begin
-      if (Node.StartPos.Character <= AMessage.Column) and ((Node.EndPos.Line > AMessage.Line) or
-        (AMessage.Column <= Node.EndPos.Character)) and ((Chosen = nil) or
-        (Node.EndOffset - Node.StartOffset < Chosen.EndOffset - Chosen.StartOffset)) then
-      begin
-        Chosen := Node;
-      end;
-    end;
+    Result := SmallestAt(mCandidates + CallArguments(ATree, AMessage.Line), AMessage);
+  end
+  else if Length(mCandidates) = 1 then
+  begin
+    Result := mCandidates[0];
   end
   else
   begin
-    // Ohne Spalte nur eindeutig: genau eine Zuweisung in der Zeile.
-    Candidates := nil;
-    for Node in NodesOnLine(ATree.Root, AMessage.Line, TSyntaxKind.AssignStatement) do
-    begin
-      if Node.ChildCount >= 2 then
-      begin
-        Candidates := Candidates + [Node[1]];
-      end;
-    end;
-    if Length(Candidates) = 1 then
-    begin
-      Chosen := Candidates[0];
-    end;
+    Result := nil;
   end;
-  if Chosen = nil then
+end;
+
+function StringCastFixes(ATree: TSyntaxTree; const AMessage: TFixMessage): TArray<TCompilerFix>;
+var
+  mNames: TArray<string>;
+  mTarget: string;
+  mChosen: TSyntaxNode;
+begin
+  Result := nil;
+  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  if Length(mNames) < 2 then
   begin
     Exit;
   end;
-  Result := [Fix(AMessage.Code, Format('Explizit umwandeln: %s(…) (%s)', [Target, AMessage.Code]),
-    [Insertion(Chosen.StartPos, Target + '('), Insertion(Chosen.EndPos, ')')], True)];
+  mTarget := mNames[High(mNames)];
+  mChosen := CastTarget(ATree, AMessage);
+  if mChosen <> nil then
+  begin
+    Result := [Fix(AMessage.Code, Format('Explizit umwandeln: %s(…) (%s)', [mTarget, AMessage.Code]),
+      [Insertion(mChosen.StartPos, mTarget + '('), Insertion(mChosen.EndPos, ')')], True)];
+  end;
 end;
 
 class function TCompilerFixes.Fixes(const AText: string; ATree: TSyntaxTree; const AMessage: TFixMessage;
@@ -623,6 +650,13 @@ begin
   end;
 end;
 
+/// <summary>AEdit beginnt dort, wo AOther endet, und ist keine bloße Einfügung.</summary>
+function StartsAtEndOf(const AEdit, AOther: TTextEdit): Boolean;
+begin
+  Result := (Compare(AEdit.Range.StartPos, AOther.Range.EndPos) = 0) and
+    (Compare(AEdit.Range.StartPos, AEdit.Range.EndPos) <> 0);
+end;
+
 /// <summary>Überschneidet sich AEdit mit einer Änderung aus AEdits? Zwei Einfügungen an verschiedenen Stellen
 /// nicht, an derselben schon (die Reihenfolge wäre offen).</summary>
 function Overlaps(const AEdit: TTextEdit; const AEdits: TArray<TTextEdit>): Boolean;
@@ -632,11 +666,8 @@ begin
   for Other in AEdits do
   begin
     if (Compare(AEdit.Range.StartPos, Other.Range.EndPos) <= 0) and
-      (Compare(Other.Range.StartPos, AEdit.Range.EndPos) <= 0) and
-      not ((Compare(AEdit.Range.StartPos, Other.Range.EndPos) = 0) and
-      (Compare(AEdit.Range.StartPos, AEdit.Range.EndPos) <> 0)) and
-      not ((Compare(Other.Range.StartPos, AEdit.Range.EndPos) = 0) and
-      (Compare(Other.Range.StartPos, Other.Range.EndPos) <> 0)) then
+      (Compare(Other.Range.StartPos, AEdit.Range.EndPos) <= 0) and not StartsAtEndOf(AEdit, Other) and
+      not StartsAtEndOf(Other, AEdit) then
     begin
       Exit(True);
     end;
@@ -658,72 +689,95 @@ begin
   Result := False;
 end;
 
+/// <summary>Units aus den Meldungen mit ACode, jede einmal.</summary>
+function MessageUnits(const AMessages: TArray<TFixMessage>; const ACode: string): TArray<string>;
+var
+  mMessage: TFixMessage;
+  mNames: TArray<string>;
+begin
+  Result := nil;
+  for mMessage in AMessages do
+  begin
+    if mMessage.Code <> ACode then
+    begin
+      Continue;
+    end;
+    mNames := TCompilerFixes.QuotedNames(mMessage.Text);
+    if (Length(mNames) >= 2) and (IndexText(mNames[High(mNames)], Result) < 0) then
+    begin
+      Result := Result + [mNames[High(mNames)]];
+    end;
+  end;
+end;
+
+/// <summary>H2443: Alle Units in einem Schritt, jede einmal; AddUnits verteilt sie auf interface und
+/// implementation. Liefert die Zahl der ergänzten Units, 0 ohne.</summary>
+function FixAllUnits(const AText: string; ATree: TSyntaxTree; const AMessages: TArray<TFixMessage>;
+  const AContext: TCompilerFixContext; out AEdits: TArray<TTextEdit>): Integer;
+var
+  mUnits, mAdded: TArray<string>;
+begin
+  Result := 0;
+  AEdits := nil;
+  mUnits := MessageUnits(AMessages, 'H2443');
+  if (Length(mUnits) >= 2) and TUsesActions.AddUnits(ATree.Tokens, TUsesAddRequest.Create(mUnits,
+    AContext.Declaring, AContext.Namespaces, TTextLines.LineBreakOf(AText)), AEdits, mAdded) then
+  begin
+    Result := Length(mAdded);
+  end;
+end;
+
+/// <summary>Je Meldung mit ACode nur die erste (bevorzugte) Korrektur, ohne Überschneidung mit schon gesammelten.
+/// Liefert die Zahl der übernommenen Korrekturen.</summary>
+function FixAllMessages(const AText: string; ATree: TSyntaxTree; const AMessages: TArray<TFixMessage>;
+  const ACode: string; const AContext: TCompilerFixContext; out AEdits: TArray<TTextEdit>): Integer;
+var
+  mMessage: TFixMessage;
+  mFixes: TArray<TCompilerFix>;
+begin
+  Result := 0;
+  AEdits := nil;
+  for mMessage in AMessages do
+  begin
+    if mMessage.Code <> ACode then
+    begin
+      Continue;
+    end;
+    mFixes := TCompilerFixes.Fixes(AText, ATree, mMessage, AContext);
+    if (mFixes <> nil) and not OverlapsAny(mFixes[0].Edits, AEdits) then
+    begin
+      AEdits := AEdits + mFixes[0].Edits;
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TCompilerFixes.FixAll(const AText: string; ATree: TSyntaxTree;
   const AMessages: TArray<TFixMessage>; const ACode: string; const AContext: TCompilerFixContext;
   out AFix: TCompilerFix): Boolean;
 var
-  Message: TFixMessage;
-  Edits: TArray<TTextEdit>;
-  Units, Added, Names: TArray<string>;
-  Count: Integer;
-  Code: string;
-  mFixes: TArray<TCompilerFix>;
+  mEdits: TArray<TTextEdit>;
+  mCount: Integer;
+  mCode: string;
 begin
   AFix := Default(TCompilerFix);
-  Code := UpperCase(Trim(ACode));
-  Result := False;
-  if (ATree = nil) or not CanFixAll(Code) then
+  mCode := UpperCase(Trim(ACode));
+  if (ATree = nil) or not CanFixAll(mCode) then
   begin
-    Exit;
+    Exit(False);
   end;
-  Edits := nil;
-  Count := 0;
-  if Code = 'H2443' then
+  if mCode = 'H2443' then
   begin
-    // Alle Units in einem Schritt, jede einmal; AddUnits verteilt sie auf interface und implementation.
-    Units := nil;
-    for Message in AMessages do
-    begin
-      if Message.Code = Code then
-      begin
-        Names := QuotedNames(Message.Text);
-        if (Length(Names) >= 2) and (IndexText(Names[High(Names)], Units) < 0) then
-        begin
-          Units := Units + [Names[High(Names)]];
-        end;
-      end;
-    end;
-    if Length(Units) < 2 then
-    begin
-      Exit;
-    end;
-    if not TUsesActions.AddUnits(ATree.Tokens, TUsesAddRequest.Create(Units, AContext.Declaring,
-      AContext.Namespaces, TTextLines.LineBreakOf(AText)), Edits, Added) then
-    begin
-      Exit;
-    end;
-    Count := Length(Added);
+    mCount := FixAllUnits(AText, ATree, AMessages, AContext, mEdits);
   end
   else
   begin
-    for Message in AMessages do
-    begin
-      if Message.Code = Code then
-      begin
-        // Nur die erste (bevorzugte) Korrektur je Meldung, ohne Überschneidung mit schon gesammelten.
-        mFixes := Fixes(AText, ATree, Message, AContext);
-        if (mFixes <> nil) and not OverlapsAny(mFixes[0].Edits, Edits) then
-        begin
-          Edits := Edits + mFixes[0].Edits;
-          Inc(Count);
-        end;
-      end;
-    end;
+    mCount := FixAllMessages(AText, ATree, AMessages, mCode, AContext, mEdits);
   end;
-  Result := Count >= 2;
+  Result := mCount >= 2;
   if Result then
   begin
-    AFix := Fix(Code, Format('Alle %s in der Datei beheben (%d)', [Code, Count]), Edits, False);
+    AFix := Fix(mCode, Format('Alle %s in der Datei beheben (%d)', [mCode, mCount]), mEdits, False);
   end;
 end;
 

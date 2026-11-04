@@ -34,7 +34,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 function Overlaps(const A, B: TTextRange): Boolean;
 
@@ -98,130 +99,157 @@ begin
   end;
 end;
 
+/// <summary>Schnellkorrektur zu AFix an AFinding; AFirst macht sie zur bevorzugten, wenn sie keine Alternative
+/// ist.</summary>
+function FixAction(const AFinding: TRuleFinding; const AFix: TRuleFix; AFirst: Boolean): TCodeAction;
+begin
+  Result := Default(TCodeAction);
+  Result.Title := AFix.Title;
+  Result.Kind := QuickFixKind;
+  AddFixEdits(Result, AFix);
+  // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe; mit Parameter-Hint (#1007).
+  if AFix.HasJump and AFix.OpensSignature then
+  begin
+    Result.Command := ShowSignatureHelpCommand;
+  end
+  else if AFix.HasJump then
+  begin
+    Result.Command := GoToPositionCommand;
+  end;
+  if AFix.HasJump then
+  begin
+    Result.CommandArguments := [IntToStr(AFix.JumpTo.Line), IntToStr(AFix.JumpTo.Character)];
+  end;
+  // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
+  if AFix.ShowsUnitRelations then
+  begin
+    Result.Command := ShowUnitRelationsCommand;
+  end;
+  Result.IsPreferred := AFirst and not AFix.Alternative;
+  Result.RuleId := AFinding.RuleId;
+  Result.DiagnosticRange := AFinding.Range;
+  // Fenster „Atlas-Prüfung“ und Befund-Hover suchen die Schnellkorrektur über das Tag (#909).
+  if Result.IsPreferred then
+  begin
+    Result.Tag := RuleFixTag;
+  end;
+end;
+
+/// <summary>"Für diese Zeile/Datei unterdrücken" zu AFinding. Syntaxfehler und Sprachmerkmale (#1126) laufen nicht
+/// über die Engine, ein lsp-ignore wirkt dort nicht; Sprachmerkmale für neuere Versionen gehören in
+/// {$IF CompilerVersion >= …}.</summary>
+function SuppressActions(const AFinding: TRuleFinding; const AText: string): TArray<TCodeAction>;
+var
+  mAction: TCodeAction;
+begin
+  Result := nil;
+  if MatchText(AFinding.RuleId, ['unused-suppression', 'syntax', 'language-feature']) then
+  begin
+    Exit;
+  end;
+  mAction := Default(TCodeAction);
+  mAction.Title := Format('"%s" für diese Zeile unterdrücken', [AFinding.RuleId]);
+  mAction.Kind := QuickFixKind;
+  mAction.Edits := [TCodeActions.SuppressLine(AText, AFinding.Range.StartPos.Line, AFinding.RuleId)];
+  mAction.RuleId := AFinding.RuleId;
+  mAction.DiagnosticRange := AFinding.Range;
+  mAction.Tag := RuleSuppressLineTag;
+  Result := Result + [mAction];
+  mAction.Title := Format('"%s" für diese Datei unterdrücken', [AFinding.RuleId]);
+  mAction.Edits := [TCodeActions.SuppressFile(AText, AFinding.RuleId)];
+  mAction.Tag := RuleSuppressFileTag;
+  Result := Result + [mAction];
+end;
+
 { TRuleCodeActions }
 
 class function TRuleCodeActions.ForFindings(const AFindings: TArray<TRuleFinding>; const AText: string;
   const ARange: TTextRange): TArray<TCodeAction>;
 var
-  Finding: TRuleFinding;
-  Fix: TRuleFix;
-  Action: TCodeAction;
-  First: Boolean;
+  mFinding: TRuleFinding;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if (Finding.Range.EndPos.Line < ARange.StartPos.Line) or (Finding.Range.StartPos.Line > ARange.EndPos.Line) then
+    if (mFinding.Range.EndPos.Line >= ARange.StartPos.Line) and (mFinding.Range.StartPos.Line <= ARange.EndPos.Line)
+      then
     begin
-      Continue;
-    end;
-    First := True;
-    for Fix in Finding.Fixes do
-    begin
-      Action := Default(TCodeAction);
-      Action.Title := Fix.Title;
-      Action.Kind := QuickFixKind;
-      AddFixEdits(Action, Fix);
-      // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe; mit Parameter-Hint (#1007).
-      if Fix.HasJump then
+      for mIndex := 0 to High(mFinding.Fixes) do
       begin
-        Action.Command := GoToPositionCommand;
-        if Fix.OpensSignature then
-        begin
-          Action.Command := ShowSignatureHelpCommand;
-        end;
-        Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
+        Result := Result + [FixAction(mFinding, mFinding.Fixes[mIndex], mIndex = 0)];
       end;
-      // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
-      if Fix.ShowsUnitRelations then
-      begin
-        Action.Command := ShowUnitRelationsCommand;
-      end;
-      Action.IsPreferred := First and not Fix.Alternative;
-      Action.RuleId := Finding.RuleId;
-      Action.DiagnosticRange := Finding.Range;
-      // Fenster „Atlas-Prüfung“ und Befund-Hover suchen die Schnellkorrektur über das Tag (#909).
-      if Action.IsPreferred then
-      begin
-        Action.Tag := RuleFixTag;
-      end;
-      Result := Result + [Action];
-      First := False;
+      Result := Result + SuppressActions(mFinding, AText);
     end;
-    // Syntaxfehler und Sprachmerkmale (#1126) laufen nicht über die Engine, ein lsp-ignore wirkt dort nicht;
-    // Sprachmerkmale für neuere Versionen gehören in {$IF CompilerVersion >= …}.
-    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') or
-      SameText(Finding.RuleId, 'language-feature') then
-    begin
-      Continue;
-    end;
-    Action := Default(TCodeAction);
-    Action.Title := Format('"%s" für diese Zeile unterdrücken', [Finding.RuleId]);
-    Action.Kind := QuickFixKind;
-    Action.Edits := [TCodeActions.SuppressLine(AText, Finding.Range.StartPos.Line, Finding.RuleId)];
-    Action.RuleId := Finding.RuleId;
-    Action.DiagnosticRange := Finding.Range;
-    Action.Tag := RuleSuppressLineTag;
-    Result := Result + [Action];
-    Action.Title := Format('"%s" für diese Datei unterdrücken', [Finding.RuleId]);
-    Action.Edits := [TCodeActions.SuppressFile(AText, Finding.RuleId)];
-    Action.Tag := RuleSuppressFileTag;
-    Result := Result + [Action];
   end;
+end;
+
+/// <summary>Die erste sichere Korrektur von AFinding, die nur das Dokument oder eine Datei ändert; Korrekturen
+/// über mehrere Dateien (#1105) nie beim Speichern.</summary>
+function FirstSafeFix(const AFinding: TRuleFinding; out AFix: TRuleFix): Boolean;
+var
+  mFix: TRuleFix;
+begin
+  Result := False;
+  for mFix in AFinding.Fixes do
+  begin
+    if mFix.Safe and (mFix.OtherFiles = nil) then
+    begin
+      AFix := mFix;
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Schon gesammelte Änderungen an AFileName: das Dokument ('') oder z. B. die Formulardatei (#309).</summary>
+function ExistingEdits(const AAction: TCodeAction; const AFileName: string): TArray<TTextEdit>;
+var
+  mTarget: Integer;
+begin
+  Result := nil;
+  mTarget := FileEditsIndex(AAction, AFileName);
+  if AFileName = '' then
+  begin
+    Result := AAction.Edits;
+  end
+  else if mTarget >= 0 then
+  begin
+    Result := AAction.FileEdits[mTarget].Edits;
+  end;
+end;
+
+/// <summary>Überlappt keine Änderung aus AEdits eine aus AExisting?</summary>
+function Fits(const AEdits, AExisting: TArray<TTextEdit>): Boolean;
+var
+  mEdit, mTaken: TTextEdit;
+begin
+  for mEdit in AEdits do
+  begin
+    for mTaken in AExisting do
+    begin
+      if Overlaps(mEdit.Range, mTaken.Range) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+  Result := True;
 end;
 
 class function TRuleCodeActions.FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
 var
-  Finding: TRuleFinding;
-  Fix: TRuleFix;
-  Edit, Taken: TTextEdit;
-  Fits: Boolean;
-  Target: Integer;
-  Existing: TArray<TTextEdit>;
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
 begin
   AAction := Default(TCodeAction);
   AAction.Title := 'Alle sicheren Korrekturen anwenden';
   AAction.Kind := FixAllKind;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    for Fix in Finding.Fixes do
+    // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
+    if FirstSafeFix(mFinding, mFix) and Fits(mFix.Edits, ExistingEdits(AAction, mFix.FileName)) then
     begin
-      // Korrekturen über mehrere Dateien (#1105) nie beim Speichern.
-      if not Fix.Safe or (Fix.OtherFiles <> nil) then
-      begin
-        Continue;
-      end;
-      // Überlappung je Datei: das Dokument oder z. B. die Formulardatei (#309).
-      Target := FileEditsIndex(AAction, Fix.FileName);
-      if Fix.FileName = '' then
-      begin
-        Existing := AAction.Edits;
-      end
-      else if Target >= 0 then
-      begin
-        Existing := AAction.FileEdits[Target].Edits;
-      end
-      else
-      begin
-        Existing := nil;
-      end;
-      Fits := True;
-      for Edit in Fix.Edits do
-      begin
-        for Taken in Existing do
-        begin
-          if Overlaps(Edit.Range, Taken.Range) then
-          begin
-            Fits := False;
-          end;
-        end;
-      end;
-      // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
-      if Fits then
-      begin
-        AddFixEdits(AAction, Fix);
-      end;
-      Break;
+      AddFixEdits(AAction, mFix);
     end;
   end;
   Result := (AAction.Edits <> nil) or (AAction.FileEdits <> nil);

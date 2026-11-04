@@ -643,12 +643,12 @@ end;
 procedure TAtlasIdeCodeLinks.ShowState(const AKey: string; AState: TAtlasIssueTipState;
   const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
-    TAtlasIdeIssuePreview.Active, mTitle, mText);
+  mText := TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
+    TAtlasIdeIssuePreview.Active);
   FTipKey := AKey;
-  FTip.ShowNote(mTitle, mText, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(AKey, mText, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
 end;
 
 procedure TAtlasIdeCodeLinks.ShowTip(const AHit: THit);

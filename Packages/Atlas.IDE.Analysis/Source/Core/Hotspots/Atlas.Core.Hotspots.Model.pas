@@ -270,12 +270,45 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + StringReplace(APath, '/', PathDelim, [rfReplaceAll]);
 end;
 
-function ReadEntries(const AArray: TJSONArray; const ARoot: string): TArray<TAtlasHotspotEntry>;
+function ReadNames(const AArray: TJSONArray): TArray<string>;
 var
-  mIndex, mInner: Integer;
-  mItem, mCommit: TJSONObject;
-  mNames, mHistory: TJSONArray;
-  mEntry: TAtlasHotspotEntry;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AArray = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    if AArray.Items[mIndex] is TJSONString then
+    begin
+      Result := Result + [AArray.Items[mIndex].Value];
+    end;
+  end;
+end;
+
+function ReadCommit(const AValue: TJSONValue): TAtlasHotspotCommit;
+var
+  mCommit: TJSONObject;
+begin
+  Result := Default(TAtlasHotspotCommit);
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mCommit := TJSONObject(AValue);
+  Result.Revision := TextOf(mCommit, 'revision');
+  Result.Author := TextOf(mCommit, 'author');
+  Result.Date := TextOf(mCommit, 'date');
+  Result.Summary := TextOf(mCommit, 'summary');
+  Result.Added := IntOf(mCommit, 'added', -1);
+  Result.Deleted := IntOf(mCommit, 'deleted', -1);
+end;
+
+function ReadHistory(const AArray: TJSONArray): TArray<TAtlasHotspotCommit>;
+var
+  mIndex: Integer;
 begin
   Result := nil;
   if AArray = nil then
@@ -285,59 +318,53 @@ begin
   SetLength(Result, AArray.Count);
   for mIndex := 0 to AArray.Count - 1 do
   begin
-    mEntry := Default(TAtlasHotspotEntry);
-    if AArray.Items[mIndex] is TJSONObject then
-    begin
-      mItem := TJSONObject(AArray.Items[mIndex]);
-      mEntry.UnitName := TextOf(mItem, 'unit');
-      mEntry.Path := TextOf(mItem, 'path');
-      mEntry.FileName := FullPath(ARoot, mEntry.Path);
-      mEntry.Method := TextOf(mItem, 'method');
-      mEntry.Line := IntOf(mItem, 'line', 1);
-      mEntry.EndLine := IntOf(mItem, 'endLine', mEntry.Line);
-      mEntry.Changes := IntOf(mItem, 'changes', 0);
-      mEntry.Authors := IntOf(mItem, 'authors', 0);
-      mNames := ArrayOf(mItem, 'authorNames');
-      if mNames <> nil then
-      begin
-        for mInner := 0 to mNames.Count - 1 do
-        begin
-          if mNames.Items[mInner] is TJSONString then
-          begin
-            mEntry.AuthorNames := mEntry.AuthorNames + [mNames.Items[mInner].Value];
-          end;
-        end;
-      end;
-      mEntry.Added := IntOf(mItem, 'added', -1);
-      mEntry.Deleted := IntOf(mItem, 'deleted', -1);
-      mEntry.LastChange := TextOf(mItem, 'lastChange');
-      mEntry.Complexity := IntOf(mItem, 'complexity', 0);
-      mEntry.Lines := IntOf(mItem, 'lines', 0);
-      mEntry.PastComplexity := IntOf(mItem, 'pastComplexity', -1);
-      mEntry.Trend := TextOf(mItem, 'trend');
-      mEntry.Score := FloatOf(mItem, 'score');
-      mHistory := ArrayOf(mItem, 'history');
-      if mHistory <> nil then
-      begin
-        SetLength(mEntry.History, mHistory.Count);
-        for mInner := 0 to mHistory.Count - 1 do
-        begin
-          mEntry.History[mInner] := Default(TAtlasHotspotCommit);
-          if not (mHistory.Items[mInner] is TJSONObject) then
-          begin
-            Continue;
-          end;
-          mCommit := TJSONObject(mHistory.Items[mInner]);
-          mEntry.History[mInner].Revision := TextOf(mCommit, 'revision');
-          mEntry.History[mInner].Author := TextOf(mCommit, 'author');
-          mEntry.History[mInner].Date := TextOf(mCommit, 'date');
-          mEntry.History[mInner].Summary := TextOf(mCommit, 'summary');
-          mEntry.History[mInner].Added := IntOf(mCommit, 'added', -1);
-          mEntry.History[mInner].Deleted := IntOf(mCommit, 'deleted', -1);
-        end;
-      end;
-    end;
-    Result[mIndex] := mEntry;
+    Result[mIndex] := ReadCommit(AArray.Items[mIndex]);
+  end;
+end;
+
+function ReadEntry(const AValue: TJSONValue; const ARoot: string): TAtlasHotspotEntry;
+var
+  mItem: TJSONObject;
+begin
+  Result := Default(TAtlasHotspotEntry);
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AValue);
+  Result.UnitName := TextOf(mItem, 'unit');
+  Result.Path := TextOf(mItem, 'path');
+  Result.FileName := FullPath(ARoot, Result.Path);
+  Result.Method := TextOf(mItem, 'method');
+  Result.Line := IntOf(mItem, 'line', 1);
+  Result.EndLine := IntOf(mItem, 'endLine', Result.Line);
+  Result.Changes := IntOf(mItem, 'changes', 0);
+  Result.Authors := IntOf(mItem, 'authors', 0);
+  Result.AuthorNames := ReadNames(ArrayOf(mItem, 'authorNames'));
+  Result.Added := IntOf(mItem, 'added', -1);
+  Result.Deleted := IntOf(mItem, 'deleted', -1);
+  Result.LastChange := TextOf(mItem, 'lastChange');
+  Result.Complexity := IntOf(mItem, 'complexity', 0);
+  Result.Lines := IntOf(mItem, 'lines', 0);
+  Result.PastComplexity := IntOf(mItem, 'pastComplexity', -1);
+  Result.Trend := TextOf(mItem, 'trend');
+  Result.Score := FloatOf(mItem, 'score');
+  Result.History := ReadHistory(ArrayOf(mItem, 'history'));
+end;
+
+function ReadEntries(const AArray: TJSONArray; const ARoot: string): TArray<TAtlasHotspotEntry>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AArray = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, AArray.Count);
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    Result[mIndex] := ReadEntry(AArray.Items[mIndex], ARoot);
   end;
 end;
 
@@ -371,88 +398,101 @@ end;
 
 { TAtlasHotspotModel }
 
+function ReadPair(const AValue: TJSONValue; const ARoot: string): TAtlasHotspotPair;
+var
+  mItem, mFirst, mSecond: TJSONObject;
+begin
+  Result := Default(TAtlasHotspotPair);
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AValue);
+  mFirst := ObjectOf(mItem, 'first');
+  mSecond := ObjectOf(mItem, 'second');
+  Result.FirstUnit := TextOf(mFirst, 'unit');
+  Result.FirstPath := TextOf(mFirst, 'path');
+  Result.FirstFile := FullPath(ARoot, Result.FirstPath);
+  Result.SecondUnit := TextOf(mSecond, 'unit');
+  Result.SecondPath := TextOf(mSecond, 'path');
+  Result.SecondFile := FullPath(ARoot, Result.SecondPath);
+  Result.Shared := IntOf(mItem, 'shared', 0);
+  Result.FirstChanges := IntOf(mItem, 'firstChanges', 0);
+  Result.SecondChanges := IntOf(mItem, 'secondChanges', 0);
+  Result.Ratio := FloatOf(mItem, 'ratio');
+end;
+
+function ReadCoupling(const AArray: TJSONArray; const ARoot: string): TArray<TAtlasHotspotPair>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AArray = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, AArray.Count);
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    Result[mIndex] := ReadPair(AArray.Items[mIndex], ARoot);
+  end;
+end;
+
+/// <summary>Daten der Auswertung; False ohne Daten oder bei einem anderen Format.</summary>
+function ReadData(const AData: TJSONObject; var AModel: TAtlasHotspotModel): Boolean;
+begin
+  Result := (AData <> nil) and (IntOf(AData, 'format', 0) = TAtlasHotspotModel.Format);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AModel.Title := TextOf(AData, 'title');
+  AModel.Vcs := TextOf(AData, 'vcs');
+  AModel.Head := TextOf(AData, 'head');
+  AModel.Months := IntOf(AData, 'months', 0);
+  AModel.Since := TextOf(AData, 'since');
+  AModel.Commits := IntOf(AData, 'commits', 0);
+  AModel.Level := TextOf(AData, 'level');
+  AModel.Units := ReadEntries(ArrayOf(AData, 'units'), AModel.Root);
+  AModel.Methods := ReadEntries(ArrayOf(AData, 'methods'), AModel.Root);
+  AModel.Coupling := ReadCoupling(ArrayOf(AData, 'coupling'), AModel.Root);
+end;
+
+function ReadAnswer(const AAnswer: TJSONObject; var AModel: TAtlasHotspotModel; var AEnabled, AHasVcs: Boolean;
+  var AMessage: string): Boolean;
+begin
+  if not (AAnswer.GetValue('enabled') is TJSONBool) then
+  begin
+    Exit(False);
+  end;
+  AEnabled := FlagOf(AAnswer, 'enabled');
+  if not AEnabled then
+  begin
+    Exit(True);
+  end;
+  AHasVcs := FlagOf(AAnswer, 'vcs');
+  if not AHasVcs then
+  begin
+    AMessage := TextOf(AAnswer, 'message');
+    Exit(AAnswer.GetValue('vcs') is TJSONBool);
+  end;
+  AModel.Root := TextOf(AAnswer, 'root');
+  AModel.Pending := FlagOf(AAnswer, 'pending');
+  Result := AModel.Pending or ReadData(ObjectOf(AAnswer, 'data'), AModel);
+end;
+
 class function TAtlasHotspotModel.Parse(const AAnswer: string; out AModel: TAtlasHotspotModel;
   out AEnabled, AHasVcs: Boolean; out AMessage: string): Boolean;
 var
   mRoot: TJSONValue;
-  mAnswer, mData, mItem, mFirst, mSecond: TJSONObject;
-  mItems: TJSONArray;
-  mIndex: Integer;
 begin
   AModel := Default(TAtlasHotspotModel);
   AEnabled := False;
   AHasVcs := False;
   AMessage := '';
-  Result := False;
   mRoot := TJSONObject.ParseJSONValue(AAnswer);
   try
-    if not (mRoot is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mAnswer := TJSONObject(mRoot);
-    if not (mAnswer.GetValue('enabled') is TJSONBool) then
-    begin
-      Exit;
-    end;
-    AEnabled := FlagOf(mAnswer, 'enabled');
-    if not AEnabled then
-    begin
-      Exit(True);
-    end;
-    AHasVcs := FlagOf(mAnswer, 'vcs');
-    if not AHasVcs then
-    begin
-      AMessage := TextOf(mAnswer, 'message');
-      Exit(mAnswer.GetValue('vcs') is TJSONBool);
-    end;
-    AModel.Root := TextOf(mAnswer, 'root');
-    if FlagOf(mAnswer, 'pending') then
-    begin
-      AModel.Pending := True;
-      Exit(True);
-    end;
-    mData := ObjectOf(mAnswer, 'data');
-    if (mData = nil) or (IntOf(mData, 'format', 0) <> Format) then
-    begin
-      Exit;
-    end;
-    AModel.Title := TextOf(mData, 'title');
-    AModel.Vcs := TextOf(mData, 'vcs');
-    AModel.Head := TextOf(mData, 'head');
-    AModel.Months := IntOf(mData, 'months', 0);
-    AModel.Since := TextOf(mData, 'since');
-    AModel.Commits := IntOf(mData, 'commits', 0);
-    AModel.Level := TextOf(mData, 'level');
-    AModel.Units := ReadEntries(ArrayOf(mData, 'units'), AModel.Root);
-    AModel.Methods := ReadEntries(ArrayOf(mData, 'methods'), AModel.Root);
-    mItems := ArrayOf(mData, 'coupling');
-    if mItems <> nil then
-    begin
-      SetLength(AModel.Coupling, mItems.Count);
-      for mIndex := 0 to mItems.Count - 1 do
-      begin
-        AModel.Coupling[mIndex] := Default(TAtlasHotspotPair);
-        if not (mItems.Items[mIndex] is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mItem := TJSONObject(mItems.Items[mIndex]);
-        mFirst := ObjectOf(mItem, 'first');
-        mSecond := ObjectOf(mItem, 'second');
-        AModel.Coupling[mIndex].FirstUnit := TextOf(mFirst, 'unit');
-        AModel.Coupling[mIndex].FirstPath := TextOf(mFirst, 'path');
-        AModel.Coupling[mIndex].FirstFile := FullPath(AModel.Root, AModel.Coupling[mIndex].FirstPath);
-        AModel.Coupling[mIndex].SecondUnit := TextOf(mSecond, 'unit');
-        AModel.Coupling[mIndex].SecondPath := TextOf(mSecond, 'path');
-        AModel.Coupling[mIndex].SecondFile := FullPath(AModel.Root, AModel.Coupling[mIndex].SecondPath);
-        AModel.Coupling[mIndex].Shared := IntOf(mItem, 'shared', 0);
-        AModel.Coupling[mIndex].FirstChanges := IntOf(mItem, 'firstChanges', 0);
-        AModel.Coupling[mIndex].SecondChanges := IntOf(mItem, 'secondChanges', 0);
-        AModel.Coupling[mIndex].Ratio := FloatOf(mItem, 'ratio');
-      end;
-    end;
-    Result := True;
+    Result := (mRoot is TJSONObject) and ReadAnswer(TJSONObject(mRoot), AModel, AEnabled, AHasVcs, AMessage);
   finally
     mRoot.Free;
   end;
