@@ -52,44 +52,35 @@ const
   ApplyCommand = 'atlas.server.disableWarning';
   TimeoutMs = 10000;
 
-class procedure TAtlasIdeDisableWarning.Execute(ASession: TLspSession; const AArgumentsJson: string;
-  APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
-var
-  Request: TAtlasDisableWarningRequest;
-  Reason: string;
-  Answer: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  AllWarnings: Boolean;
-  Outcome: TAtlasWorkspaceEditResult;
+/// <summary>Fragt nach dem Grund, wenn ARequest es verlangt; False bei Abbruch.</summary>
+function AskReason(const ARequest: TAtlasDisableWarningRequest; out AReason: string): Boolean;
 begin
-  if ASession = nil then
-  begin
-    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  if not TAtlasDisableWarningRequest.TryParse(AArgumentsJson, Request) then
-  begin
-    Exit;
-  end;
-  Reason := '';
-  if Request.AskReason and not InputQuery(TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle),
-    TAtlasStrings.Text(TAtlasTextId.DisableWarningReasonPrompt), Reason) then
-  begin
-    Exit;
-  end;
+  AReason := '';
+  Result := not ARequest.AskReason or InputQuery(TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle),
+    TAtlasStrings.Text(TAtlasTextId.DisableWarningReasonPrompt), AReason);
+end;
+
+/// <summary>Lässt den Server die Änderung berechnen; False, wenn er scheitert (Meldung über AMessage) oder
+/// nichts zu ändern ist.</summary>
+function FetchEdit(ASession: TLspSession; const ARequest: TAtlasDisableWarningRequest; const AReason: string;
+  const AMessage: TProc<string>; out AEdit: TLspWorkspaceEdit; out AAllWarnings: Boolean): Boolean;
+var
+  mAnswer: TJSONValue;
+begin
+  Result := False;
+  AEdit := TLspWorkspaceEdit.FromJson(nil);
+  AAllWarnings := False;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
-  AllWarnings := False;
   try
-    Answer := ASession.RunCommand(ApplyCommand, Request.ApplyArguments(Reason), TimeoutMs);
+    mAnswer := ASession.RunCommand(ApplyCommand, ARequest.ApplyArguments(AReason), TimeoutMs);
     try
-      Edit := TLspWorkspaceEdit.FromJson(nil);
-      if Answer is TJSONObject then
+      if mAnswer is TJSONObject then
       begin
-        Edit := TLspWorkspaceEdit.FromJson(TJSONObject(Answer).GetValue('edit'));
-        AllWarnings := TJSONObject(Answer).GetValue<Boolean>('allWarnings', False);
+        AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
+        AAllWarnings := TJSONObject(mAnswer).GetValue<Boolean>('allWarnings', False);
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
   except
     on E: ELspClientError do
@@ -98,76 +89,130 @@ begin
       Exit;
     end;
   end;
-  if Edit.IsEmpty then
+  Result := not AEdit.IsEmpty;
+end;
+
+/// <summary>Meldet das Ergebnis der angewendeten Änderung.</summary>
+procedure ReportOutcome(const ARequest: TAtlasDisableWarningRequest; const AOutcome: TAtlasWorkspaceEditResult;
+  AAllWarnings: Boolean; const AMessage: TProc<string>);
+begin
+  if AOutcome.Error <> '' then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [AOutcome.Error]));
+    Exit;
+  end;
+  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningDone, [ARequest.Code,
+    ExtractFileName(TLspSession.UriToPath(ARequest.Uri))]));
+  if AAllWarnings then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningAllWarnings, [ARequest.Code]));
+  end;
+  if AOutcome.Written > 0 then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [AOutcome.Written]));
+  end;
+end;
+
+/// <summary>Fragt, ob die Warnung im ganzen Projekt AProject aus sein soll.</summary>
+function ConfirmProject(const ARequest: TAtlasDisableWarningProject; const AProject: IOTAProject): Boolean;
+begin
+  Result := MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectConfirm, [ARequest.Code,
+    ARequest.Identifier, ExtractFileName(AProject.FileName), ARequest.OptionName]), mtConfirmation, [mbYes, mbNo],
+    0) = mrYes;
+end;
+
+/// <summary>Basiskonfiguration von AProject oder nil.</summary>
+function BaseConfiguration(const AProject: IOTAProject): IOTABuildConfiguration;
+var
+  mConfigurations: IOTAProjectOptionsConfigurations;
+begin
+  Result := nil;
+  if Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
+  begin
+    Result := mConfigurations.BaseConfiguration;
+  end;
+end;
+
+/// <summary>Schaltet die Warnung in ABase ab; False mit Meldung, wenn die IDE das ablehnt.</summary>
+function SwitchOff(const ABase: IOTABuildConfiguration; const AProject: IOTAProject;
+  const ARequest: TAtlasDisableWarningProject; const AMessage: TProc<string>): Boolean;
+begin
+  Result := False;
+  try
+    ABase.SetValue(ARequest.OptionName, AtlasWarningOptionOff);
+    AProject.MarkModified;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [ARequest.Code, E.Message]));
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeDisableWarning.Execute(ASession: TLspSession; const AArgumentsJson: string;
+  APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
+var
+  mRequest: TAtlasDisableWarningRequest;
+  mReason: string;
+  mEdit: TLspWorkspaceEdit;
+  mAllWarnings: Boolean;
+begin
+  if ASession = nil then
+  begin
+    AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  if not TAtlasDisableWarningRequest.TryParse(AArgumentsJson, mRequest) then
   begin
     Exit;
   end;
-  // Ein Rückgängig-Schritt: beide Schalter in einer Änderung der Datei.
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle));
-  if Outcome.Error <> '' then
+  if not AskReason(mRequest, mReason) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningDone, [Request.Code,
-    ExtractFileName(TLspSession.UriToPath(Request.Uri))]));
-  if AllWarnings then
+  if FetchEdit(ASession, mRequest, mReason, AMessage, mEdit, mAllWarnings) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningAllWarnings, [Request.Code]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+    // Ein Rückgängig-Schritt: beide Schalter in einer Änderung der Datei.
+    ReportOutcome(mRequest, TAtlasIdeWorkspaceEdit.Apply(mEdit, APolicy,
+      TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle)), mAllWarnings, AMessage);
   end;
 end;
 
 class procedure TAtlasIdeDisableWarning.ExecuteProject(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
-  Request: TAtlasDisableWarningProject;
-  FileName: string;
-  Project: IOTAProject;
-  Configurations: IOTAProjectOptionsConfigurations;
-  Base: IOTABuildConfiguration;
+  mRequest: TAtlasDisableWarningProject;
+  mFileName: string;
+  mProject: IOTAProject;
+  mBase: IOTABuildConfiguration;
 begin
-  if not TAtlasDisableWarningProject.TryParse(AArgumentsJson, Request) then
+  if not TAtlasDisableWarningProject.TryParse(AArgumentsJson, mRequest) then
   begin
     Exit;
   end;
-  FileName := TLspSession.UriToPath(Request.Uri);
-  Project := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ProjectOfFile(FileName));
-  if Project = nil then
+  mFileName := TLspSession.UriToPath(mRequest.Uri);
+  mProject := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ProjectOfFile(mFileName));
+  if mProject = nil then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningNoProject, [ExtractFileName(FileName)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningNoProject, [ExtractFileName(mFileName)]));
     Exit;
   end;
-  if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectConfirm, [Request.Code, Request.Identifier,
-    ExtractFileName(Project.FileName), Request.OptionName]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if not ConfirmProject(mRequest, mProject) then
   begin
     Exit;
   end;
-  Base := nil;
-  if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  mBase := BaseConfiguration(mProject);
+  if mBase = nil then
   begin
-    Base := Configurations.BaseConfiguration;
-  end;
-  if Base = nil then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [Request.Code,
-      ExtractFileName(Project.FileName)]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [mRequest.Code,
+      ExtractFileName(mProject.FileName)]));
     Exit;
   end;
-  try
-    Base.SetValue(Request.OptionName, AtlasWarningOptionOff);
-    Project.MarkModified;
-  except
-    on E: Exception do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [Request.Code, E.Message]));
-      Exit;
-    end;
+  if SwitchOff(mBase, mProject, mRequest, AMessage) then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectDone, [mRequest.Code,
+      ExtractFileName(mProject.FileName), mRequest.OptionName]));
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectDone, [Request.Code,
-    ExtractFileName(Project.FileName), Request.OptionName]));
 end;
 
 end.

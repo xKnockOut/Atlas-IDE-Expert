@@ -692,6 +692,8 @@ end;
 /// <summary>ARect am Bezugselement ARef ausgerichtet.</summary>
 function AlignedTo(AKind: TAtlasAlignKind; const ARef, ARect: TRect): TRect;
 begin
+  // Ohne Bezugselement (Mitte im Elternelement, Abstände): in TAtlasDesignerAlign.Apply erledigt.
+  Result := ARect;
   case AKind of
     TAtlasAlignKind.Lefts:
       Result := Moved(ARect, ARef.Left, ARect.Top);
@@ -709,10 +711,9 @@ begin
       Result := Rect(ARect.Left, ARect.Top, ARect.Left + ARef.Width, ARect.Bottom);
     TAtlasAlignKind.SameHeight:
       Result := Rect(ARect.Left, ARect.Top, ARect.Right, ARect.Top + ARef.Height);
-    // Ohne Bezugselement: in TAtlasDesignerAlign.Apply erledigt.
     TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.CenterInParentV, TAtlasAlignKind.SpaceH,
     TAtlasAlignKind.SpaceV:
-      Result := ARect;
+      ;
   end;
 end;
 
