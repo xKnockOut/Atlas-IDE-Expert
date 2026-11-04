@@ -235,59 +235,74 @@ begin
   end;
 end;
 
+/// <summary>Schlüssel einer aktiven Variante: Name und Unit.</summary>
+function ActiveKey(const AItem: TAtlasCompletionItem): string;
+begin
+  Result := UpperCase(AItem.Name + #0 + AItem.DeclaringUnit);
+end;
+
+/// <summary>Schlüssel der aktiven Variante, zu der AItem gehört.</summary>
+function OriginKey(const AItem: TAtlasCompletionItem): string;
+begin
+  Result := UpperCase(AItem.Name + #0 + AItem.SameNameOf);
+end;
+
+/// <summary>Hängt die Varianten zur aktiven mit dem Schlüssel AKey in ihrer Reihenfolge an AMoved.</summary>
+procedure AddVariants(const AItems: TAtlasCompletionItems; AFound, AMoved: TList<Integer>; const AKey: string);
+var
+  mVariant: Integer;
+begin
+  for mVariant in AFound do
+  begin
+    if (AItems[mVariant].SameNameOf <> '') and (OriginKey(AItems[mVariant]) = AKey) then
+    begin
+      AMoved.Add(mVariant);
+    end;
+  end;
+end;
+
 /// <summary>Gleichnamige Varianten aus anderen Units (#475) direkt hinter die aktive, in ihrer Reihenfolge; ohne
 /// aktive in der Liste bleiben sie, wo sie sind.</summary>
 procedure MoveVariants(const AItems: TAtlasCompletionItems; AFound: TList<Integer>);
 var
-  Actives: TDictionary<string, Boolean>;
-  Moved: TList<Integer>;
-  Index, Variant: Integer;
-  Key: string;
+  mActives: TDictionary<string, Boolean>;
+  mMoved: TList<Integer>;
+  mIndex: Integer;
 begin
-  Actives := TDictionary<string, Boolean>.Create;
-  Moved := TList<Integer>.Create;
+  mActives := TDictionary<string, Boolean>.Create;
+  mMoved := TList<Integer>.Create;
   try
-    for Index in AFound do
+    for mIndex in AFound do
     begin
-      if AItems[Index].SameNameActive then
+      if AItems[mIndex].SameNameActive then
       begin
-        Actives.AddOrSetValue(UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit), True);
+        mActives.AddOrSetValue(ActiveKey(AItems[mIndex]), True);
       end;
     end;
-    if Actives.Count = 0 then
+    if mActives.Count = 0 then
     begin
       Exit;
     end;
-    for Index in AFound do
+    for mIndex in AFound do
     begin
-      if AItems[Index].SameNameOf <> '' then
+      if AItems[mIndex].SameNameOf = '' then
       begin
-        if not Actives.ContainsKey(UpperCase(AItems[Index].Name + #0 + AItems[Index].SameNameOf)) then
+        mMoved.Add(mIndex);
+        if AItems[mIndex].SameNameActive then
         begin
-          Moved.Add(Index);
+          AddVariants(AItems, AFound, mMoved, ActiveKey(AItems[mIndex]));
         end;
-        Continue;
-      end;
-      Moved.Add(Index);
-      if not AItems[Index].SameNameActive then
+      end
+      else if not mActives.ContainsKey(OriginKey(AItems[mIndex])) then
       begin
-        Continue;
-      end;
-      Key := UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit);
-      for Variant in AFound do
-      begin
-        if (AItems[Variant].SameNameOf <> '') and
-          (UpperCase(AItems[Variant].Name + #0 + AItems[Variant].SameNameOf) = Key) then
-        begin
-          Moved.Add(Variant);
-        end;
+        mMoved.Add(mIndex);
       end;
     end;
     AFound.Clear;
-    AFound.AddRange(Moved);
+    AFound.AddRange(mMoved);
   finally
-    Moved.Free;
-    Actives.Free;
+    mMoved.Free;
+    mActives.Free;
   end;
 end;
 
@@ -340,6 +355,19 @@ begin
   Result := Order(AItems, APattern, AOptions, RestStart);
 end;
 
+/// <summary>Weder Hinweis noch angeheftet noch Deklaration eines unbekannten Namens.</summary>
+function IsPlainItem(const AItem: TAtlasCompletionItem): Boolean;
+begin
+  Result := not AItem.Hint and not AItem.Pinned and (AItem.Unknown = '');
+end;
+
+/// <summary>Gehört AItem ohne Treffer (AScore) in den Rest der Liste (#497)?</summary>
+function IsRestCandidate(const AItem: TAtlasCompletionItem; AChip: TAtlasChip; AScore: Integer): Boolean;
+begin
+  Result := (AScore = TAtlasCompletionMatcher.NoMatch) and TAtlasRanking.Matches(AItem, AChip) and
+    not AItem.IsAction and (AItem.Conversion = '') and IsPlainItem(AItem);
+end;
+
 /// <summary>Einträge ohne Treffer für den Rest der Liste (#497): passend zum Chip, keine Aktionen, Hinweise oder
 /// angehefteten Einträge, nicht schon in AShown; in Rang- und Namensfolge.</summary>
 function RestOf(const AItems: TAtlasCompletionItems; const AOptions: TAtlasRankOptions;
@@ -363,10 +391,7 @@ begin
   try
     for Index := 0 to High(Items) do
     begin
-      if not Shown[Index] and (AScores[Index] = TAtlasCompletionMatcher.NoMatch) and
-        TAtlasRanking.Matches(Items[Index], AOptions.Chip) and not Items[Index].IsAction and
-        (Items[Index].Conversion = '') and
-        not Items[Index].Hint and not Items[Index].Pinned and (Items[Index].Unknown = '') then
+      if not Shown[Index] and IsRestCandidate(Items[Index], AOptions.Chip, AScores[Index]) then
       begin
         Rest.Add(Index);
       end;
@@ -436,294 +461,431 @@ begin
   end;
 end;
 
-class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
-  const AOptions: TAtlasRankOptions; out ARestStart: Integer): TArray<Integer>;
-var
-  Rest: TArray<Integer>;
-  Items: TAtlasCompletionItems;
-  Scores, Boosts: TArray<Integer>;
-  Found, Ordered: TList<Integer>;
-  Index, Position, Depth, Unknown, First: Integer;
-  Grouped, AnyFits, NoPattern: Boolean;
-  Container: string;
-  Group: Integer;
-  Options: TAtlasRankOptions;
+/// <summary>Überschrift vor AItem: UnknownHeader vor den Deklarationen eines unbekannten Namens (#471), sonst
+/// Header.</summary>
+function HeaderOf(const AItem: TAtlasCompletionItem): Integer;
 begin
-  ARestStart := -1;
-  Items := AItems;
-  Options := AOptions;
-  SetLength(Scores, Length(Items));
-  SetLength(Boosts, Length(Items));
-  Grouped := Options.GroupInherited and (APattern = '');
-  NoPattern := APattern = '';
-  AnyFits := False;
-  for Index := 0 to High(Items) do
+  if AItem.Unknown <> '' then
   begin
-    if Items[Index].Fits then
+    Result := TAtlasRanking.UnknownHeader;
+  end
+  else
+  begin
+    Result := TAtlasRanking.Header;
+  end;
+end;
+
+type
+  /// <summary>Stand beim Einfügen der Überschriften: Gruppe, Tiefe und Klasse des vorigen Eintrags.</summary>
+  TArrangeState = record
+    Group: Integer;
+    Depth: Integer;
+    Container: string;
+  end;
+
+  /// <summary>Bewertet und ordnet die Einträge für TAtlasRanking.Order.</summary>
+  TRanker = class
+  private
+    FItems: TAtlasCompletionItems;
+    FOptions: TAtlasRankOptions;
+    FScores: TArray<Integer>;
+    FBoosts: TArray<Integer>;
+    FAnyFits: Boolean;
+    FNoPattern: Boolean;
+    FGrouped: Boolean;
+    /// <summary>Leerer Eintrag als Vorgänger des ersten nach den Favoriten.</summary>
+    FNone: TAtlasCompletionItem;
+    function ScoreOf(AIndex: Integer; const APattern: string): Integer;
+    procedure Collect(const APattern: string; AFound: TList<Integer>);
+    function CompareKind(A, B: Integer): Integer;
+    function CompareGroup(A, B: Integer): Integer;
+    function CompareGrouped(A, B: Integer): Integer;
+    function CompareScored(A, B: Integer): Integer;
+    function Compare(A, B: Integer): Integer;
+    function NeedsHeader(const AItem, APrevious: TAtlasCompletionItem; AIsFirst: Boolean;
+      const AState: TArrangeState): Boolean;
+    function FollowingHeader(const AItem, APrevious: TAtlasCompletionItem; const AState: TArrangeState): Boolean;
+    function Arrange(AFound: TList<Integer>): TArray<Integer>;
+  public
+    constructor Create(const AItems: TAtlasCompletionItems; const APattern: string;
+      const AOptions: TAtlasRankOptions);
+    /// <summary>Treffer sortiert, mit Überschriften, ohne Umwandlungen.</summary>
+    function Order(const APattern: string): TArray<Integer>;
+    property Scores: TArray<Integer> read FScores;
+    property Boosts: TArray<Integer> read FBoosts;
+  end;
+
+constructor TRanker.Create(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions);
+var
+  mIndex: Integer;
+begin
+  inherited Create;
+  FItems := AItems;
+  FOptions := AOptions;
+  SetLength(FScores, Length(FItems));
+  SetLength(FBoosts, Length(FItems));
+  FGrouped := FOptions.GroupInherited and (APattern = '');
+  FNoPattern := APattern = '';
+  FAnyFits := False;
+  for mIndex := 0 to High(FItems) do
+  begin
+    if FItems[mIndex].Fits then
     begin
-      AnyFits := True;
+      FAnyFits := True;
       Break;
     end;
   end;
-  Found := TList<Integer>.Create;
-  Ordered := TList<Integer>.Create;
-  try
-    for Index := 0 to High(Items) do
+  FNone := Default(TAtlasCompletionItem);
+end;
+
+function TRanker.ScoreOf(AIndex: Integer; const APattern: string): Integer;
+begin
+  if FItems[AIndex].IsAction or FItems[AIndex].Pinned or FItems[AIndex].Hint or FItems[AIndex].ByType then
+  begin
+    Result := 0;
+  end
+  else
+  begin
+    Result := TAtlasCompletionMatcher.Score(APattern, NameOf(FItems[AIndex]));
+  end;
+end;
+
+procedure TRanker.Collect(const APattern: string; AFound: TList<Integer>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FItems) do
+  begin
+    FScores[mIndex] := TAtlasCompletionMatcher.NoMatch;
+    // Umwandlungen (#490) setzt WithConversions vor ihr Original.
+    if not TAtlasRanking.Matches(FItems[mIndex], FOptions.Chip) or (FItems[mIndex].Conversion <> '') then
     begin
-      Scores[Index] := TAtlasCompletionMatcher.NoMatch;
-      // Umwandlungen (#490) setzt WithConversions vor ihr Original.
-      if not TAtlasRanking.Matches(Items[Index], Options.Chip) or (Items[Index].Conversion <> '') then
-      begin
-        Continue;
-      end;
-      if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint or Items[Index].ByType then
-      begin
-        Scores[Index] := 0;
-      end
-      else
-      begin
-        Scores[Index] := TAtlasCompletionMatcher.Score(APattern, NameOf(Items[Index]));
-      end;
-      if Scores[Index] = TAtlasCompletionMatcher.NoMatch then
-      begin
-        Continue;
-      end;
-      if Assigned(Options.Boost) then
-      begin
-        Boosts[Index] := EnsureRange(Options.Boost(Index), 0, 99);
-      end;
-      Found.Add(Index);
+      Continue;
     end;
-    Found.Sort(TComparer<Integer>.Construct(
+    FScores[mIndex] := ScoreOf(mIndex, APattern);
+    if FScores[mIndex] = TAtlasCompletionMatcher.NoMatch then
+    begin
+      Continue;
+    end;
+    if Assigned(FOptions.Boost) then
+    begin
+      FBoosts[mIndex] := EnsureRange(FOptions.Boost(mIndex), 0, 99);
+    end;
+    AFound.Add(mIndex);
+  end;
+end;
+
+/// <summary>Art des Eintrags: Favoriten, Hinweise, Formular, Angeheftetes, Aktionen, Postfix, Verfügbarkeit.</summary>
+function TRanker.CompareKind(A, B: Integer): Integer;
+begin
+  // Angeheftete Favoriten (#458) vor allem anderen.
+  Result := Ord(FItems[B].Favorite) - Ord(FItems[A].Favorite);
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Hint) - Ord(FItems[A].Hint);
+  end;
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Form <> '') - Ord(FItems[A].Form <> '');
+  end;
+  if (Result = 0) and (FItems[A].Form <> '') then
+  begin
+    Result := Ord(FItems[A].ByType) - Ord(FItems[B].ByType);
+  end;
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Pinned and FNoPattern) - Ord(FItems[A].Pinned and FNoPattern);
+  end;
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[A].IsAction) - Ord(FItems[B].IsAction);
+  end;
+  // Echte Mitglieder immer vor Postfix-Vorlagen (#188).
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[A].Postfix) - Ord(FItems[B].Postfix);
+  end;
+  // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[A].Unavailable) - Ord(FItems[B].Unavailable);
+  end;
+end;
+
+/// <summary>Gruppe: erwarteter Typ, inherited-Aufrufe, uses-Abschnitt, Aufzählungswerte.</summary>
+function TRanker.CompareGroup(A, B: Integer): Integer;
+begin
+  Result := GroupOf(FItems[A], FAnyFits) - GroupOf(FItems[B], FAnyFits);
+  // Vollständige inherited-Aufrufe vor den Namen der Vorfahrmethoden (#482).
+  if Result = 0 then
+  begin
+    Result := InheritedRank(FItems[A]) - InheritedRank(FItems[B]);
+  end;
+  // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern.
+  if Result = 0 then
+  begin
+    Result := UsesRank(FItems[A]) - UsesRank(FItems[B]);
+  end;
+  // Aufzählungswerte vor den übrigen passenden Einträgen, ohne Präfix in Deklarationsreihenfolge (#448).
+  if Result = 0 then
+  begin
+    Result := Ord(FItems[B].Ordinal > 0) - Ord(FItems[A].Ordinal > 0);
+  end;
+  if (Result = 0) and (FItems[A].Ordinal > 0) and FNoPattern then
+  begin
+    Result := FItems[A].Ordinal - FItems[B].Ordinal;
+  end;
+end;
+
+/// <summary>Ohne Präfix: nach Bereich (lokal vor Parameter vor Feld …, #488), dann Gruppen nach Tiefe, darin
+/// Gelerntes zuerst.</summary>
+function TRanker.CompareGrouped(A, B: Integer): Integer;
+begin
+  Result := ScopeRank(FItems[A]) - ScopeRank(FItems[B]);
+  if Result = 0 then
+  begin
+    Result := FItems[A].Depth - FItems[B].Depth;
+  end;
+  if (Result = 0) and (FItems[A].Depth > 0) then
+  begin
+    Result := CompareText(FItems[A].DeclaringClass, FItems[B].DeclaringClass);
+  end;
+  if Result = 0 then
+  begin
+    Result := FBoosts[B] - FBoosts[A];
+  end;
+end;
+
+/// <summary>Güte, dann Bereich (#488), dann Gelerntes (#418).</summary>
+function TRanker.CompareScored(A, B: Integer): Integer;
+begin
+  Result := FScores[B] - FScores[A];
+  if Result = 0 then
+  begin
+    Result := ScopeRank(FItems[A]) - ScopeRank(FItems[B]);
+  end;
+  if Result = 0 then
+  begin
+    Result := FBoosts[B] - FBoosts[A];
+  end;
+  if (Result = 0) and FOptions.GroupInherited then
+  begin
+    Result := FItems[A].Depth - FItems[B].Depth;
+  end;
+end;
+
+function TRanker.Compare(A, B: Integer): Integer;
+begin
+  Result := CompareKind(A, B);
+  if Result = 0 then
+  begin
+    Result := CompareGroup(A, B);
+  end;
+  if Result <> 0 then
+  begin
+    Exit;
+  end;
+  if FGrouped then
+  begin
+    Result := CompareGrouped(A, B);
+  end
+  else
+  begin
+    Result := CompareScored(A, B);
+  end;
+  if Result = 0 then
+  begin
+    Result := FItems[A].Rank - FItems[B].Rank;
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(FItems[A].Name, FItems[B].Name);
+  end;
+  if Result = 0 then
+  begin
+    Result := A - B;
+  end;
+end;
+
+/// <summary>Überschrift vor AItem? Je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member
+/// (#419). APrevious ist der Eintrag davor, FNone vor dem ersten nach den Favoriten (AIsFirst).</summary>
+function TRanker.NeedsHeader(const AItem, APrevious: TAtlasCompletionItem; AIsFirst: Boolean;
+  const AState: TArrangeState): Boolean;
+begin
+  if AItem.Unknown <> '' then
+  begin
+    Result := AIsFirst or (APrevious.Unknown = '');
+  end
+  else if AItem.Form <> '' then
+  begin
+    Result := AIsFirst or (APrevious.Form = '');
+  end
+  // Sender (#480) und Typargumente (#450): eine Überschrift über der Liste.
+  else if AIsFirst and ((AItem.Sender <> '') or (AItem.TypeParam <> '')) then
+  begin
+    Result := True;
+  end
+  // uses-Abschnitt (#469): eine Überschrift je Gruppe (Projekt, RTL/VCL, Drittanbieter).
+  else if AItem.UsesGroup <> '' then
+  begin
+    Result := AIsFirst or (APrevious.UsesGroup <> AItem.UsesGroup);
+  end
+  else
+  begin
+    Result := FollowingHeader(AItem, APrevious, AState);
+  end;
+end;
+
+function TRanker.FollowingHeader(const AItem, APrevious: TAtlasCompletionItem; const AState: TArrangeState): Boolean;
+begin
+  // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
+  if APrevious.Form <> '' then
+  begin
+    Result := True;
+  end
+  else if FAnyFits and (AItem.ExpectedType <> '') and not AItem.IsAction then
+  begin
+    Result := GroupOf(AItem, FAnyFits) <> AState.Group;
+  end
+  else
+  begin
+    Result := FGrouped and (AItem.Depth > 0) and ((AItem.Depth <> AState.Depth) or
+      not SameText(AItem.DeclaringClass, AState.Container));
+  end;
+end;
+
+function TRanker.Arrange(AFound: TList<Integer>): TArray<Integer>;
+var
+  mOrdered: TList<Integer>;
+  mState: TArrangeState;
+  mPosition, mFirst, mIndex: Integer;
+  mHeader: Boolean;
+begin
+  mState.Group := -1;
+  mState.Depth := 0;
+  mState.Container := '';
+  // Favoriten (#458) stehen vorne und ohne Überschrift; die übrigen Gruppen beginnen bei mFirst.
+  mFirst := 0;
+  while (mFirst < AFound.Count) and FItems[AFound[mFirst]].Favorite do
+  begin
+    Inc(mFirst);
+  end;
+  // In einer Liste sammeln: Anhängen an das Array kopierte es bei jedem Eintrag (#616).
+  mOrdered := TList<Integer>.Create;
+  try
+    for mPosition := 0 to AFound.Count - 1 do
+    begin
+      mIndex := AFound[mPosition];
+      if mPosition >= mFirst then
+      begin
+        if mPosition = mFirst then
+        begin
+          mHeader := NeedsHeader(FItems[mIndex], FNone, True, mState);
+        end
+        else
+        begin
+          mHeader := NeedsHeader(FItems[mIndex], FItems[AFound[mPosition - 1]], False, mState);
+        end;
+        if mHeader then
+        begin
+          mOrdered.Add(HeaderOf(FItems[mIndex]));
+        end;
+        mState.Group := GroupOf(FItems[mIndex], FAnyFits);
+        mState.Depth := FItems[mIndex].Depth;
+        mState.Container := FItems[mIndex].DeclaringClass;
+      end;
+      mOrdered.Add(mIndex);
+    end;
+    Result := mOrdered.ToArray;
+  finally
+    mOrdered.Free;
+  end;
+end;
+
+function TRanker.Order(const APattern: string): TArray<Integer>;
+var
+  mFound: TList<Integer>;
+begin
+  mFound := TList<Integer>.Create;
+  try
+    Collect(APattern, mFound);
+    mFound.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        // Angeheftete Favoriten (#458) vor allem anderen.
-        Result := Ord(Items[B].Favorite) - Ord(Items[A].Favorite);
-        if Result = 0 then
-        begin
-          Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
-        end;
-        if Result = 0 then
-        begin
-          Result := Ord(Items[B].Form <> '') - Ord(Items[A].Form <> '');
-        end;
-        if (Result = 0) and (Items[A].Form <> '') then
-        begin
-          Result := Ord(Items[A].ByType) - Ord(Items[B].ByType);
-        end;
-        if Result = 0 then
-        begin
-          Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
-        end;
-        if Result = 0 then
-        begin
-          Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
-        end;
-        // Echte Mitglieder immer vor Postfix-Vorlagen (#188).
-        if Result = 0 then
-        begin
-          Result := Ord(Items[A].Postfix) - Ord(Items[B].Postfix);
-        end;
-        // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
-        if Result = 0 then
-        begin
-          Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
-        end;
-        if Result = 0 then
-        begin
-          Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
-        end;
-        // Vollständige inherited-Aufrufe vor den Namen der Vorfahrmethoden (#482).
-        if Result = 0 then
-        begin
-          Result := InheritedRank(Items[A]) - InheritedRank(Items[B]);
-        end;
-        // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern.
-        if Result = 0 then
-        begin
-          Result := UsesRank(Items[A]) - UsesRank(Items[B]);
-        end;
-        // Aufzählungswerte vor den übrigen passenden Einträgen, ohne Präfix in Deklarationsreihenfolge (#448).
-        if Result = 0 then
-        begin
-          Result := Ord(Items[B].Ordinal > 0) - Ord(Items[A].Ordinal > 0);
-        end;
-        if (Result = 0) and (Items[A].Ordinal > 0) and NoPattern then
-        begin
-          Result := Items[A].Ordinal - Items[B].Ordinal;
-        end;
-        if Result <> 0 then
-        begin
-          Exit;
-        end;
-        if Grouped then
-        begin
-          // Ohne Präfix: nach Bereich (lokal vor Parameter vor Feld …, #488), dann Gruppen nach Tiefe,
-          // darin Gelerntes zuerst.
-          Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
-          if Result = 0 then
-          begin
-            Result := Items[A].Depth - Items[B].Depth;
-          end;
-          if (Result = 0) and (Items[A].Depth > 0) then
-          begin
-            Result := CompareText(Items[A].DeclaringClass, Items[B].DeclaringClass);
-          end;
-          if Result = 0 then
-          begin
-            Result := Boosts[B] - Boosts[A];
-          end;
-        end
-        else
-        begin
-          // Güte, dann Bereich (#488), dann Gelerntes (#418).
-          Result := Scores[B] - Scores[A];
-          if Result = 0 then
-          begin
-            Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
-          end;
-          if Result = 0 then
-          begin
-            Result := Boosts[B] - Boosts[A];
-          end;
-          if (Result = 0) and Options.GroupInherited then
-          begin
-            Result := Items[A].Depth - Items[B].Depth;
-          end;
-        end;
-        if Result = 0 then
-        begin
-          Result := Items[A].Rank - Items[B].Rank;
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(Items[A].Name, Items[B].Name);
-        end;
-        if Result = 0 then
-        begin
-          Result := A - B;
-        end;
+        Result := Compare(A, B);
       end));
-    MoveVariants(Items, Found);
-    // In einer Liste sammeln: Anhängen an das Array kopierte es bei jedem Eintrag (#616).
-    Depth := 0;
-    Container := '';
-    Group := -1;
-    // Favoriten (#458) stehen vorne und ohne Überschrift; die übrigen Gruppen beginnen bei First.
-    First := 0;
-    while (First < Found.Count) and Items[Found[First]].Favorite do
+    MoveVariants(FItems, mFound);
+    Result := Arrange(mFound);
+  finally
+    mFound.Free;
+  end;
+end;
+
+/// <summary>Position der Überschrift UnknownHeader (#471) in AOrder; Länge ohne.</summary>
+function UnknownStart(const AOrder: TArray<Integer>): Integer;
+var
+  mPosition: Integer;
+begin
+  for mPosition := 0 to High(AOrder) do
+  begin
+    if AOrder[mPosition] = TAtlasRanking.UnknownHeader then
     begin
-      Inc(First);
+      Exit(mPosition);
     end;
-    for Position := 0 to Found.Count - 1 do
-    begin
-      Index := Found[Position];
-      if Position < First then
-      begin
-        Ordered.Add(Index);
-        Continue;
-      end;
-      // Überschrift je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member (#419).
-      if Items[Index].Unknown <> '' then
-      begin
-        if (Position = First) or (Items[Found[Position - 1]].Unknown = '') then
-        begin
-          Ordered.Add(UnknownHeader);
-        end;
-      end
-      else if Items[Index].Form <> '' then
-      begin
-        if (Position = First) or (Items[Found[Position - 1]].Form = '') then
-        begin
-          Ordered.Add(Header);
-        end;
-      end
-      else if (Items[Index].Sender <> '') and (Position = First) then
-      begin
-        Ordered.Add(Header);
-      end
-      // Typargumente (#450): eine Überschrift mit dem Constraint über der Liste.
-      else if (Items[Index].TypeParam <> '') and (Position = First) then
-      begin
-        Ordered.Add(Header);
-      end
-      // uses-Abschnitt (#469): eine Überschrift je Gruppe (Projekt, RTL/VCL, Drittanbieter).
-      else if Items[Index].UsesGroup <> '' then
-      begin
-        if (Position = First) or (Items[Found[Position - 1]].UsesGroup <> Items[Index].UsesGroup) then
-        begin
-          Ordered.Add(Header);
-        end;
-      end
-      // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
-      else if (Position > First) and (Items[Found[Position - 1]].Form <> '') then
-      begin
-        Ordered.Add(Header);
-      end
-      else if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
-      begin
-        if GroupOf(Items[Index], AnyFits) <> Group then
-        begin
-          Ordered.Add(Header);
-        end;
-      end
-      else if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
-        not SameText(Items[Index].DeclaringClass, Container)) then
-      begin
-        Ordered.Add(Header);
-      end;
-      Group := GroupOf(Items[Index], AnyFits);
-      Depth := Items[Index].Depth;
-      Container := Items[Index].DeclaringClass;
-      Ordered.Add(Index);
-    end;
-    Result := WithConversions(Items, Ordered.ToArray, Options);
+  end;
+  Result := Length(AOrder);
+end;
+
+/// <summary>ARest vor der Gruppe des unbekannten Namens (#497): bei Rest unter RestHeader. ARestStart wird die
+/// Position des ersten Rest-Eintrags; ohne Rest bleibt alles, wie es ist.</summary>
+function WithRest(const AOrder, ARest: TArray<Integer>; AMode: TAtlasListMode; var ARestStart: Integer):
+  TArray<Integer>;
+var
+  mUnknown: Integer;
+begin
+  if Length(ARest) = 0 then
+  begin
+    Exit(AOrder);
+  end;
+  mUnknown := UnknownStart(AOrder);
+  if AMode = TAtlasListMode.Rest then
+  begin
+    ARestStart := mUnknown + 1;
+    Result := Copy(AOrder, 0, mUnknown) + [TAtlasRanking.RestHeader] + ARest + Copy(AOrder, mUnknown, MaxInt);
+  end
+  else
+  begin
+    ARestStart := mUnknown;
+    Result := Copy(AOrder, 0, mUnknown) + ARest + Copy(AOrder, mUnknown, MaxInt);
+  end;
+end;
+
+class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions; out ARestStart: Integer): TArray<Integer>;
+var
+  mRanker: TRanker;
+  mUnknown: Integer;
+begin
+  ARestStart := -1;
+  mRanker := TRanker.Create(AItems, APattern, AOptions);
+  try
+    Result := WithConversions(AItems, mRanker.Order(APattern), AOptions);
     // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“, vor
     // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
-    Unknown := Length(Result);
-    for Position := 0 to High(Result) do
+    mUnknown := UnknownStart(Result);
+    if (ItemCount(Copy(Result, 0, mUnknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
     begin
-      if Result[Position] = UnknownHeader then
-      begin
-        Unknown := Position;
-        Break;
-      end;
-    end;
-    if (ItemCount(Copy(Result, 0, Unknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
-    begin
-      Result := Copy(Result, 0, Unknown) + Typos(Items, APattern, Options, Scores, Boosts) +
-        Copy(Result, Unknown, MaxInt);
+      Result := Copy(Result, 0, mUnknown) + Typos(AItems, APattern, AOptions, mRanker.Scores, mRanker.Boosts) +
+        Copy(Result, mUnknown, MaxInt);
     end;
     // Rest der Liste (#497): hinter Treffern und Tippfehlern, vor dem unbekannten Namen.
-    if (Options.ListMode <> TAtlasListMode.Filter) and not NoPattern then
+    if (AOptions.ListMode <> TAtlasListMode.Filter) and (APattern <> '') then
     begin
-      Rest := RestOf(Items, Options, Scores, Result);
-      if Length(Rest) > 0 then
-      begin
-        Unknown := Length(Result);
-        for Position := 0 to High(Result) do
-        begin
-          if Result[Position] = UnknownHeader then
-          begin
-            Unknown := Position;
-            Break;
-          end;
-        end;
-        if Options.ListMode = TAtlasListMode.Rest then
-        begin
-          ARestStart := Unknown + 1;
-          Result := Copy(Result, 0, Unknown) + [RestHeader] + Rest + Copy(Result, Unknown, MaxInt);
-        end
-        else
-        begin
-          ARestStart := Unknown;
-          Result := Copy(Result, 0, Unknown) + Rest + Copy(Result, Unknown, MaxInt);
-        end;
-      end;
+      Result := WithRest(Result, RestOf(AItems, AOptions, mRanker.Scores, Result), AOptions.ListMode, ARestStart);
     end;
   finally
-    Ordered.Free;
-    Found.Free;
+    mRanker.Free;
   end;
 end;
 

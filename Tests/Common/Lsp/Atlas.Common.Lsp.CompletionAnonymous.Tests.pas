@@ -74,7 +74,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.CompletionAnonymous;
+  Atlas.Common.Lsp.CompletionAnonymous,
+  Atlas.Common.Lsp.Completion.Methods;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -197,7 +198,7 @@ begin
     Request.Resolver := FResolver;
     Request.Index := FIndex;
     Request.Settings := ASettings;
-    Result := TLspCompletion.AnonymousItem(Request, ASnippets, ANamingFor, AItem);
+    Result := TCompletionMethods.AnonymousItem(Request, ASnippets, ANamingFor, AItem);
   finally
     Request.Free;
     Tree.Free;

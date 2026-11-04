@@ -156,63 +156,80 @@ begin
   end;
 end;
 
+/// <summary>Reached[p][n]: Die ersten p Zeichen von APattern passen und enden bei AName[n] (wie
+/// MatchesSubsequence, aber mit allen Zwischenständen, um den Weg zurückzuverfolgen).</summary>
+function ReachedTable(const APattern, AName: string): TArray<TArray<Boolean>>;
+var
+  mPatternIndex, mNameIndex: Integer;
+  mBefore: Boolean;
+begin
+  SetLength(Result, Length(APattern) + 1, Length(AName) + 1);
+  for mNameIndex := 1 to Length(AName) do
+  begin
+    Result[1][mNameIndex] := IsWordStart(AName, mNameIndex) and SameChar(AName[mNameIndex], APattern[1]);
+  end;
+  for mPatternIndex := 2 to Length(APattern) do
+  begin
+    mBefore := False;
+    for mNameIndex := 1 to Length(AName) do
+    begin
+      Result[mPatternIndex][mNameIndex] := SameChar(AName[mNameIndex], APattern[mPatternIndex]) and
+        (Result[mPatternIndex - 1][mNameIndex - 1] or (mBefore and IsWordStart(AName, mNameIndex)));
+      mBefore := mBefore or Result[mPatternIndex - 1][mNameIndex - 1];
+    end;
+  end;
+end;
+
+/// <summary>Frühestes Ende des ganzen Musters (Länge APatternLength); 0 ohne.</summary>
+function FirstEnd(const AReached: TArray<TArray<Boolean>>; APatternLength: Integer): Integer;
+var
+  mNameIndex: Integer;
+begin
+  for mNameIndex := 1 to High(AReached[APatternLength]) do
+  begin
+    if AReached[APatternLength][mNameIndex] then
+    begin
+      Exit(mNameIndex);
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>Stelle des Zeichens APatternIndex - 1 vor dem Zeichen APatternIndex bei ANameIndex: bevorzugt direkt
+/// davor.</summary>
+function PreviousEnd(const AReached: TArray<TArray<Boolean>>; APatternIndex, ANameIndex: Integer): Integer;
+begin
+  if AReached[APatternIndex - 1][ANameIndex - 1] then
+  begin
+    Exit(ANameIndex - 1);
+  end;
+  Result := ANameIndex - 2;
+  while (Result >= 1) and not AReached[APatternIndex - 1][Result] do
+  begin
+    Dec(Result);
+  end;
+end;
+
 function SubsequencePositions(const APattern, AName: string): TArray<Integer>;
 var
-  Reached: TArray<TArray<Boolean>>;
-  PatternIndex, NameIndex, Previous: Integer;
-  Before: Boolean;
+  mReached: TArray<TArray<Boolean>>;
+  mPatternIndex, mNameIndex: Integer;
 begin
-  // Wie MatchesSubsequence, aber mit allen Zwischenständen, um den Weg zurückzuverfolgen.
   Result := nil;
-  SetLength(Reached, Length(APattern) + 1, Length(AName) + 1);
-  for NameIndex := 1 to Length(AName) do
-  begin
-    Reached[1][NameIndex] := IsWordStart(AName, NameIndex) and SameChar(AName[NameIndex], APattern[1]);
-  end;
-  for PatternIndex := 2 to Length(APattern) do
-  begin
-    Before := False;
-    for NameIndex := 1 to Length(AName) do
-    begin
-      Reached[PatternIndex][NameIndex] := SameChar(AName[NameIndex], APattern[PatternIndex]) and
-        (Reached[PatternIndex - 1][NameIndex - 1] or (Before and IsWordStart(AName, NameIndex)));
-      Before := Before or Reached[PatternIndex - 1][NameIndex - 1];
-    end;
-  end;
-  // Frühestes Ende des ganzen Musters, dann rückwärts: bevorzugt direkt davor.
-  NameIndex := 0;
-  for Previous := 1 to Length(AName) do
-  begin
-    if Reached[Length(APattern)][Previous] then
-    begin
-      NameIndex := Previous;
-      Break;
-    end;
-  end;
-  if NameIndex = 0 then
+  mReached := ReachedTable(APattern, AName);
+  // Frühestes Ende des ganzen Musters, dann rückwärts.
+  mNameIndex := FirstEnd(mReached, Length(APattern));
+  if mNameIndex = 0 then
   begin
     Exit;
   end;
   SetLength(Result, Length(APattern));
-  for PatternIndex := Length(APattern) downto 1 do
+  for mPatternIndex := Length(APattern) downto 1 do
   begin
-    Result[PatternIndex - 1] := NameIndex;
-    if PatternIndex = 1 then
+    Result[mPatternIndex - 1] := mNameIndex;
+    if mPatternIndex > 1 then
     begin
-      Break;
-    end;
-    if Reached[PatternIndex - 1][NameIndex - 1] then
-    begin
-      Dec(NameIndex);
-    end
-    else
-    begin
-      Previous := NameIndex - 2;
-      while (Previous >= 1) and not Reached[PatternIndex - 1][Previous] do
-      begin
-        Dec(Previous);
-      end;
-      NameIndex := Previous;
+      mNameIndex := PreviousEnd(mReached, mPatternIndex, mNameIndex);
     end;
   end;
 end;
@@ -220,51 +237,32 @@ end;
 { TAtlasItemPresentation }
 
 class function TAtlasItemPresentation.Badge(const AItem: TAtlasCompletionItem): TAtlasBadge;
+const
+  cKinds: array[TAtlasItemKind] of TAtlasBadgeKind = (TAtlasBadgeKind.Variable, TAtlasBadgeKind.Function_,
+    TAtlasBadgeKind.Function_, TAtlasBadgeKind.Procedure_, TAtlasBadgeKind.Function_, TAtlasBadgeKind.Procedure_,
+    TAtlasBadgeKind.Property_, TAtlasBadgeKind.Field, TAtlasBadgeKind.Event, TAtlasBadgeKind.Variable,
+    TAtlasBadgeKind.Variable, TAtlasBadgeKind.Constant, TAtlasBadgeKind.Type_, TAtlasBadgeKind.Type_,
+    TAtlasBadgeKind.Type_, TAtlasBadgeKind.Type_, TAtlasBadgeKind.Type_, TAtlasBadgeKind.Constant,
+    TAtlasBadgeKind.Unit_, TAtlasBadgeKind.Keyword, TAtlasBadgeKind.Snippet, TAtlasBadgeKind.XmlDoc);
+  cCodes: array[TAtlasItemKind] of string = ('··', 'fn', 'fn', 'pr', 'fn', 'pr', 'pp', 'fd', 'ev', 'va', 'va', 'co',
+    'ty', 'ty', 'ty', 'ty', 'ty', 'co', 'un', 'kw', 'sn', 'xd');
 var
-  Signature: string;
+  mSignature: string;
 begin
-  Signature := LowerCase(TrimLeft(AItem.Signature));
   if AItem.Attribute then
   begin
     Exit(MakeBadge(TAtlasBadgeKind.Type_, 'at'));
   end;
-  case AItem.Kind of
-    TAtlasItemKind.Procedure_, TAtlasItemKind.Destructor_:
-      Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
-    TAtlasItemKind.Function_, TAtlasItemKind.Constructor_:
-      Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
-    TAtlasItemKind.Method:
-      if Signature.StartsWith('procedure') or Signature.StartsWith('destructor') then
-      begin
-        Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
-      end
-      else
-      begin
-        Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
-      end;
-    TAtlasItemKind.Property_:
-      Result := MakeBadge(TAtlasBadgeKind.Property_, 'pp');
-    TAtlasItemKind.Field:
-      Result := MakeBadge(TAtlasBadgeKind.Field, 'fd');
-    TAtlasItemKind.Event:
-      Result := MakeBadge(TAtlasBadgeKind.Event, 'ev');
-    TAtlasItemKind.Constant, TAtlasItemKind.EnumMember:
-      Result := MakeBadge(TAtlasBadgeKind.Constant, 'co');
-    TAtlasItemKind.Type_, TAtlasItemKind.Class_, TAtlasItemKind.Interface_, TAtlasItemKind.Record_,
-    TAtlasItemKind.Enum:
-      Result := MakeBadge(TAtlasBadgeKind.Type_, 'ty');
-    TAtlasItemKind.Variable, TAtlasItemKind.Parameter:
-      Result := MakeBadge(TAtlasBadgeKind.Variable, 'va');
-    TAtlasItemKind.Unit_:
-      Result := MakeBadge(TAtlasBadgeKind.Unit_, 'un');
-    TAtlasItemKind.Keyword:
-      Result := MakeBadge(TAtlasBadgeKind.Keyword, 'kw');
-    TAtlasItemKind.Snippet:
-      Result := MakeBadge(TAtlasBadgeKind.Snippet, 'sn');
-    TAtlasItemKind.XmlDocTag:
-      Result := MakeBadge(TAtlasBadgeKind.XmlDoc, 'xd');
+  // Methode: Funktion oder Prozedur nach der Signatur.
+  mSignature := LowerCase(TrimLeft(AItem.Signature));
+  if (AItem.Kind = TAtlasItemKind.Method) and (mSignature.StartsWith('procedure') or
+    mSignature.StartsWith('destructor')) then
+  begin
+    Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
+  end
   else
-    Result := MakeBadge(TAtlasBadgeKind.Variable, '··');
+  begin
+    Result := MakeBadge(cKinds[AItem.Kind], cCodes[AItem.Kind]);
   end;
 end;
 
@@ -369,171 +367,235 @@ begin
   end;
 end;
 
-class function TAtlasItemPresentation.Tags(const AItem: TAtlasCompletionItem): TAtlasTags;
-var
-  Directive, MissingName: string;
+/// <summary>Hängt einen Tag an ATags an und liefert seine Stelle.</summary>
+function AddTag(var ATags: TAtlasTags; const AText: string; AKind: TAtlasTagKind): Integer;
 begin
-  Result := nil;
+  ATags := ATags + [MakeTag(AText, AKind)];
+  Result := High(ATags);
+end;
+
+/// <summary>Hängt einen Tag mit der Kennung AId an.</summary>
+procedure AddIdTag(var ATags: TAtlasTags; const AText: string; AKind: TAtlasTagKind; AId: TAtlasTagId);
+var
+  mIndex: Integer;
+begin
+  mIndex := AddTag(ATags, AText, AKind);
+  ATags[mIndex].Id := AId;
+end;
+
+/// <summary>Hängt einen Tag mit Fläche an.</summary>
+procedure AddFilledTag(var ATags: TAtlasTags; const AText: string; AKind: TAtlasTagKind);
+var
+  mIndex: Integer;
+begin
+  mIndex := AddTag(ATags, AText, AKind);
+  ATags[mIndex].Filled := True;
+end;
+
+/// <summary>Anonyme Methode, unerreichbarer Zweig, Anzahl, Zirkelbezug, aktive Variante.</summary>
+procedure AddLeadTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
   // Gerüst einer anonymen Methode (#468): der erwartete Typ.
   if AItem.MethodRef <> '' then
   begin
-    Result := Result + [MakeTag(AItem.MethodRef, TAtlasTagKind.Accent)];
+    AddTag(ATags, AItem.MethodRef, TAtlasTagKind.Accent);
   end;
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
   if AItem.Unreachable <> '' then
   begin
-    Result := Result + [MakeTag('nie erreicht: ' + AItem.Unreachable + ' davor', TAtlasTagKind.Warn)];
-    Result[High(Result)].Filled := True;
+    AddFilledTag(ATags, 'nie erreicht: ' + AItem.Unreachable + ' davor', TAtlasTagKind.Warn);
   end;
   if AItem.Count > 0 then
   begin
-    Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
+    AddTag(ATags, IntToStr(AItem.Count), TAtlasTagKind.Accent);
   end;
   // Zirkelbezug im uses-Abschnitt (#469).
   if AItem.UsesCycle <> '' then
   begin
-    Result := Result + [MakeTag('Zirkelbezug', TAtlasTagKind.Error)];
-    Result[High(Result)].Id := TAtlasTagId.Cycle;
+    AddIdTag(ATags, 'Zirkelbezug', TAtlasTagKind.Error, TAtlasTagId.Cycle);
   end;
   // Gleichnamige Bezeichner (#475): die Variante, die der Compiler wählt.
   if AItem.SameNameActive then
   begin
-    Result := Result + [MakeTag('aktiv', TAtlasTagKind.Accent)];
-    Result[High(Result)].Id := TAtlasTagId.Active;
+    AddIdTag(ATags, 'aktiv', TAtlasTagKind.Accent, TAtlasTagId.Active);
   end;
-  // Vollständiger inherited-Aufruf (#482): gleiche Parameter, andere Überladung, sonst die Klasse.
+end;
+
+/// <summary>Vollständiger inherited-Aufruf (#482): gleiche Parameter, andere Überladung, sonst die Klasse.</summary>
+procedure AddInheritedTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
   if AItem.InheritedMatch = 'same' then
   begin
-    Result := Result + [MakeTag('gleiche Parameter', TAtlasTagKind.Accent)];
-    Result[High(Result)].Id := TAtlasTagId.SameParams;
+    AddIdTag(ATags, 'gleiche Parameter', TAtlasTagKind.Accent, TAtlasTagId.SameParams);
   end
   else if AItem.InheritedMatch = 'overload' then
   begin
-    Result := Result + [MakeTag('Überladung', TAtlasTagKind.Neutral)];
-    Result[High(Result)].Id := TAtlasTagId.Overload;
+    AddIdTag(ATags, 'Überladung', TAtlasTagKind.Neutral, TAtlasTagId.Overload);
   end
   else if (AItem.InheritedMatch = 'other') and (AItem.DeclaringClass <> '') then
   begin
-    Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
+    AddTag(ATags, AItem.DeclaringClass, TAtlasTagKind.Neutral);
   end;
-  MissingName := MissingUnit(AItem);
-  if MissingName <> '' then
+end;
+
+/// <summary>Fehlende Unit, Konstruktor bzw. Destruktor, deprecated.</summary>
+procedure AddKindTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+var
+  mMissing, mDirective: string;
+begin
+  mMissing := TAtlasItemPresentation.MissingUnit(AItem);
+  if mMissing <> '' then
   begin
-    Result := Result + [MakeTag('+ ' + MissingName, TAtlasTagKind.Add)];
+    AddTag(ATags, '+ ' + mMissing, TAtlasTagKind.Add);
   end;
   case AItem.Kind of
-    TAtlasItemKind.Constructor_: Result := Result + [MakeTag('constructor', TAtlasTagKind.Neutral)];
-    TAtlasItemKind.Destructor_: Result := Result + [MakeTag('destructor', TAtlasTagKind.Neutral)];
+    TAtlasItemKind.Constructor_: AddTag(ATags, 'constructor', TAtlasTagKind.Neutral);
+    TAtlasItemKind.Destructor_: AddTag(ATags, 'destructor', TAtlasTagKind.Neutral);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
-  for Directive in AItem.Directives do
+  for mDirective in AItem.Directives do
   begin
-    if SameText(Directive, 'deprecated') then
+    if SameText(mDirective, 'deprecated') then
     begin
-      Result := Result + [MakeTag('deprecated', TAtlasTagKind.Warn)];
+      AddTag(ATags, 'deprecated', TAtlasTagKind.Warn);
     end;
   end;
-  // Herkunft (#488): woher ein Name ohne Punkt davor stammt.
+end;
+
+/// <summary>Mitglied von Self (#488): Eigenschaft, Feld oder die Klasse, die die Methode deklariert.</summary>
+procedure AddMemberTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
+  if AItem.Kind = TAtlasItemKind.Property_ then
+  begin
+    AddTag(ATags, 'Eigenschaft', TAtlasTagKind.Neutral);
+  end
+  else if AItem.Kind = TAtlasItemKind.Field then
+  begin
+    AddTag(ATags, 'Feld', TAtlasTagKind.Neutral);
+  end
+  else if AItem.DeclaringClass <> '' then
+  begin
+    AddTag(ATags, AItem.DeclaringClass, TAtlasTagKind.Neutral);
+  end;
+end;
+
+/// <summary>with-Objekt (#481): Herkunft und, was das Mitglied verdeckt, als Warnung mit Fläche.</summary>
+procedure AddWithTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+var
+  mShadow: string;
+begin
+  if AItem.WithOrigin = '' then
+  begin
+    Exit;
+  end;
+  AddTag(ATags, 'aus ' + AItem.WithOrigin, TAtlasTagKind.Accent);
+  for mShadow in AItem.WithShadows do
+  begin
+    AddFilledTag(ATags, 'verdeckt ' + mShadow, TAtlasTagKind.Warn);
+  end;
+end;
+
+/// <summary>Herkunft (#488): woher ein Name ohne Punkt davor stammt.</summary>
+procedure AddScopeTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
   case AItem.Scope of
-    1: Result := Result + [MakeTag('lokal', TAtlasTagKind.Accent)];
-    2: Result := Result + [MakeTag('Parameter', TAtlasTagKind.Accent)];
-    3:
-      if AItem.Kind = TAtlasItemKind.Property_ then
-      begin
-        Result := Result + [MakeTag('Eigenschaft', TAtlasTagKind.Neutral)];
-      end
-      else if AItem.Kind = TAtlasItemKind.Field then
-      begin
-        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)];
-      end
-      else if AItem.DeclaringClass <> '' then
-      begin
-        // Methoden von Self: die Klasse, die sie deklariert.
-        Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
-      end;
-    4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
-    6:
-      if AItem.WithOrigin <> '' then
-      begin
-        // with-Objekt (#481): Herkunft und, was das Mitglied verdeckt, als Warnung mit Fläche.
-        Result := Result + [MakeTag('aus ' + AItem.WithOrigin, TAtlasTagKind.Accent)];
-        for Directive in AItem.WithShadows do
-        begin
-          Result := Result + [MakeTag('verdeckt ' + Directive, TAtlasTagKind.Warn)];
-          Result[High(Result)].Filled := True;
-        end;
-      end;
+    1: AddTag(ATags, 'lokal', TAtlasTagKind.Accent);
+    2: AddTag(ATags, 'Parameter', TAtlasTagKind.Accent);
+    3: AddMemberTag(AItem, ATags);
+    4: AddTag(ATags, 'Unit', TAtlasTagKind.Neutral);
     5:
       if AItem.DeclaringUnit <> '' then
       begin
-        Result := Result + [MakeTag(AItem.DeclaringUnit, TAtlasTagKind.Neutral)];
+        AddTag(ATags, AItem.DeclaringUnit, TAtlasTagKind.Neutral);
       end;
+    6: AddWithTags(AItem, ATags);
   end;
-  // Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als Warnung.
+end;
+
+/// <summary>Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als
+/// Warnung.</summary>
+procedure AddConditionTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
   if SameText(AItem.Condition, 'platform') then
   begin
-    Result := Result + [MakeTag('platform', TAtlasTagKind.Warn)];
+    AddTag(ATags, 'platform', TAtlasTagKind.Warn);
   end
   else if AItem.Condition <> '' then
   begin
     if AItem.Unavailable then
     begin
-      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Warn)];
+      AddTag(ATags, 'nur ' + AItem.Condition, TAtlasTagKind.Warn);
     end
     else
     begin
-      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Neutral)];
+      AddTag(ATags, 'nur ' + AItem.Condition, TAtlasTagKind.Neutral);
     end;
   end;
+end;
+
+/// <summary>Zweig, Überladungen, Helper, Vorlagen, Sender, Typkonvertierung.</summary>
+procedure AddDetailTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+var
+  mIndex: Integer;
+begin
   // Felder varianter Records (#846): „Zweig 0“.
   if AItem.VariantBranch <> '' then
   begin
-    Result := Result + [MakeTag('Zweig ' + AItem.VariantBranch, TAtlasTagKind.Neutral)];
-    Result[High(Result)].Id := TAtlasTagId.VariantBranch;
-    Result[High(Result)].Arg := AItem.VariantBranch;
+    mIndex := AddTag(ATags, 'Zweig ' + AItem.VariantBranch, TAtlasTagKind.Neutral);
+    ATags[mIndex].Id := TAtlasTagId.VariantBranch;
+    ATags[mIndex].Arg := AItem.VariantBranch;
   end;
   if AItem.OverloadCount > 1 then
   begin
-    Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
+    AddTag(ATags, '+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral);
   end;
   if AItem.IsHelper then
   begin
-    Result := Result + [MakeTag('Helper', TAtlasTagKind.Accent)];
+    AddTag(ATags, 'Helper', TAtlasTagKind.Accent);
   end;
   // Postfix-Vorlagen (#188) und Code-Vorlagen (#51).
   if AItem.Postfix then
   begin
-    Result := Result + [MakeTag('Postfix', TAtlasTagKind.Neutral)];
+    AddTag(ATags, 'Postfix', TAtlasTagKind.Neutral);
   end
   else if AItem.Snippet <> '' then
   begin
-    Result := Result + [MakeTag('Snippet', TAtlasTagKind.Neutral)];
+    AddTag(ATags, 'Snippet', TAtlasTagKind.Neutral);
   end;
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then
   begin
-    Result := Result + [MakeTag('als ' + AItem.Sender, TAtlasTagKind.Accent)];
+    AddTag(ATags, 'als ' + AItem.Sender, TAtlasTagKind.Accent);
   end;
   // Typkonvertierung (#490).
   if AItem.Conversion <> '' then
   begin
-    Result := Result + [MakeTag('→ ' + AItem.Conversion, TAtlasTagKind.Accent)];
+    AddTag(ATags, '→ ' + AItem.Conversion, TAtlasTagKind.Accent);
   end;
+end;
+
+/// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt.</summary>
+procedure AddUsageTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
+begin
   case AItem.Usage of
-    TAtlasUsageMark.Recent:
-      begin
-        Result := Result + [MakeTag('zuletzt', TAtlasTagKind.Accent)];
-        Result[High(Result)].Id := TAtlasTagId.Recent;
-      end;
-    TAtlasUsageMark.Frequent:
-      begin
-        Result := Result + [MakeTag('häufig', TAtlasTagKind.Neutral)];
-        Result[High(Result)].Id := TAtlasTagId.Frequent;
-      end;
+    TAtlasUsageMark.Recent: AddIdTag(ATags, 'zuletzt', TAtlasTagKind.Accent, TAtlasTagId.Recent);
+    TAtlasUsageMark.Frequent: AddIdTag(ATags, 'häufig', TAtlasTagKind.Neutral, TAtlasTagId.Frequent);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
+end;
+
+class function TAtlasItemPresentation.Tags(const AItem: TAtlasCompletionItem): TAtlasTags;
+begin
+  Result := nil;
+  AddLeadTags(AItem, Result);
+  AddInheritedTag(AItem, Result);
+  AddKindTags(AItem, Result);
+  AddScopeTags(AItem, Result);
+  AddConditionTag(AItem, Result);
+  AddDetailTags(AItem, Result);
+  AddUsageTag(AItem, Result);
 end;
 
 class function TAtlasItemPresentation.Highlights(const APattern, AName: string): TArray<Integer>;

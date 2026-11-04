@@ -293,13 +293,13 @@ begin
   Tree := TPascalParser.Parse(cEventsText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.EventItems(Resolver, Tree, cEventsText, HauptFile, PositionOf(cEventsText,
-      'btnSave.OnClick := '),
+    Assert.IsTrue(EventsAt(LookupOf(Resolver, nil, Tree, cEventsText,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cEventsUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end, Items));
+      end),
+      PositionOf(cEventsText, 'btnSave.OnClick := '), Items));
     // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
     Handlers := '';
     for Item in Items.Items do
@@ -327,8 +327,8 @@ begin
     Assert.IsTrue(Edits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
-    Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, cEventsText, HauptFile, PositionOf(cEventsText,
-      'uses Ba'), nil, Items));
+    Assert.IsFalse(EventsAt(LookupOf(Resolver, nil, Tree, cEventsText, nil),
+      PositionOf(cEventsText, 'uses Ba'), Items));
   finally
     Resolver.Free;
     Tree.Free;
@@ -642,12 +642,13 @@ const
     Tree := TPascalParser.Parse(Text);
     Resolver := TNameResolver.Create(FIndex);
     try
-      Result := TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, Position,
+      Result := ComponentsAt(LookupOf(Resolver, nil, Tree, Text,
         function(const AFileName: string; out AText: string): Boolean
         begin
           AText := FormText;
           Result := SameText(ExtractFileExt(AFileName), '.dfm');
-        end, TCompletionMatching.Fuzzy, AItems);
+        end),
+        Position, AItems);
     finally
       Resolver.Free;
       Tree.Free;
@@ -737,12 +738,13 @@ const
     Tree := TPascalParser.Parse(Text);
     Resolver := TNameResolver.Create(FIndex);
     try
-      TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(13, 2 + Length(ATyped)),
+      ComponentsAt(LookupOf(Resolver, nil, Tree, Text,
         function(const AFileName: string; out AText: string): Boolean
         begin
           AText := FormText;
           Result := SameText(ExtractFileExt(AFileName), '.dfm');
-        end, TCompletionMatching.Fuzzy, Result);
+        end),
+        TTextPosition.Create(13, 2 + Length(ATyped)), Result);
     finally
       Resolver.Free;
       Tree.Free;
@@ -879,9 +881,8 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     // btnSave (TButton) und btnLoad (TBitBtn): gemeinsamer Vorfahr TButton.
-    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(14,
-      12),
-      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
+    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
+      TTextPosition.Create(14, 12), TCompletionSenderCast.AsOperator, Items));
     Assert.AreEqual('Caption', Names(Items));
     Assert.AreEqual('TButton', Items.Items[0].Sender);
     Assert.AreEqual('btnSave, btnLoad', Items.Items[0].SenderOf);
@@ -889,14 +890,12 @@ begin
     Assert.AreEqual('(Sender as TButton).Caption', Items.Items[0].TextEdit.NewText);
     Assert.AreEqual(2, Items.Items[0].TextEdit.Range.StartPos.Character);
     Assert.AreEqual(12, Items.Items[0].TextEdit.Range.EndPos.Character);
-    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(14,
-      12),
-      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.HardCast, Items));
+    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
+      TTextPosition.Create(14, 12), TCompletionSenderCast.HardCast, Items));
     Assert.AreEqual('TButton(Sender).Caption', Items.Items[0].TextEdit.NewText);
     // Ohne Zuweisung im Formular bleibt es bei den Mitgliedern von TObject.
-    Assert.IsFalse(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(18,
-      9),
-      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
+    Assert.IsFalse(SendersAt(LookupOf(Resolver, FIndex, Tree, cSenderText, ReadForm),
+      TTextPosition.Create(18, 9), TCompletionSenderCast.AsOperator, Items));
   finally
     Resolver.Free;
     Tree.Free;
@@ -1435,13 +1434,13 @@ const
 
   function Items(const ALine: string; ACharacter: Integer; out AItems: TCompletionItems): Boolean;
   begin
-    Result := TLspCompletion.DataNameItems(nil, 'unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
-      TTextPosition.Create(2, ACharacter),
+    Result := DataNamesAt(LookupOf(nil, nil, nil, 'unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := FormText;
         Result := SameText(ExtractFileExt(AFileName), '.dfm');
-      end, AItems);
+      end),
+      TTextPosition.Create(2, ACharacter), AItems);
   end;
 
 var
@@ -1505,7 +1504,8 @@ const
     Tree := TPascalParser.Parse(Text);
     Resolver := TNameResolver.Create(FIndex);
     try
-      Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8,
+      Result := GuardAt(LookupOf(Resolver, nil, Tree, Text, nil),
+        TTextPosition.Create(8,
         2 + Length(AStatement)), AStyle, False, AItems);
     finally
       Resolver.Free;
@@ -1526,8 +1526,8 @@ const
     Tree := TPascalParser.Parse(Text);
     Resolver := TNameResolver.Create(FIndex);
     try
-      Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(9, Length(ALine)),
-        TCompletionFreeStyle.Free, True, AItems);
+      Result := GuardAt(LookupOf(Resolver, nil, Tree, Text, nil),
+        TTextPosition.Create(9, Length(ALine)), TCompletionFreeStyle.Free, True, AItems);
     finally
       Resolver.Free;
       Tree.Free;
@@ -1765,8 +1765,8 @@ begin
     Text := FormSource('btn', '');
     Tree := TPascalParser.Parse(Text);
     try
-      Assert.IsFalse(TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(7, 7),
-        ReadForm, TCompletionMatching.Fuzzy, Items));
+      Assert.IsFalse(ComponentsAt(LookupOf(Resolver, nil, Tree, Text, ReadForm),
+        TTextPosition.Create(7, 7), Items));
       Assert.AreEqual(0, Reads);
     finally
       Tree.Free;
@@ -1775,8 +1775,8 @@ begin
     Text := FormSource('', 'btn');
     Tree := TPascalParser.Parse(Text);
     try
-      Assert.IsTrue(TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(14, 5),
-        ReadForm, TCompletionMatching.Fuzzy, Items));
+      Assert.IsTrue(ComponentsAt(LookupOf(Resolver, nil, Tree, Text, ReadForm),
+        TTextPosition.Create(14, 5), Items));
       Assert.AreEqual(1, Reads);
       Assert.AreEqual(2, Integer(Length(Items)));
       Assert.AreEqual('btnSave', Items[0].Name);
@@ -1912,8 +1912,8 @@ begin
   Tree := TPascalParser.Parse(Text);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(Line, 12),
-      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
+    Assert.IsTrue(SendersAt(LookupOf(Resolver, FIndex, Tree, Text, ReadForm),
+      TTextPosition.Create(Line, 12), TCompletionSenderCast.AsOperator, Items));
     Assert.AreEqual('Caption', Names(Items));
     Assert.AreEqual('TButton', Items.Items[0].Sender);
     // btnLoad hat zwei Ereignisse auf die Methode, zählt aber einmal.
