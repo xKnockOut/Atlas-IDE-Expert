@@ -40,7 +40,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.FindingsCache;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;

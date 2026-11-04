@@ -475,8 +475,8 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasIdeBranching.Ask(ExtractFileDir(AJob.Project), AJob.Facts, AJob.Plan.Branch, AJob.Plan.Message,
-    AJob.Issue.Key, AJob.Plan.Svn, True, AJob.Request, mNeverAsk);
+  Result := TAtlasIdeBranching.Ask(ExtractFileDir(AJob.Project), AJob.Facts, TAtlasIdeBranching.Setup(AJob.Plan.Branch,
+    AJob.Plan.Message, AJob.Issue.Key, AJob.Plan.Svn, True), AJob.Request, mNeverAsk);
   if not Result then
   begin
     Exit;

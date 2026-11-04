@@ -52,6 +52,8 @@ type
     procedure OpenFolder(Sender: TObject; AIndex: Integer);
     function Current(AGeneration: Integer): Boolean;
     function RowName(AIndex: Integer): string;
+    /// <summary>Nach Aktualisieren bzw. Festschreiben: FDone melden und die Tabelle neu lesen, solange offen.</summary>
+    procedure AfterChange;
   public
     /// <summary>Tabelle für AProject (.dproj bzw. .groupproj) zeigen (Hauptthread, modal); ADone im Hauptthread
     /// nach jedem Aktualisieren bzw. Festschreiben (z. B. „Projekte“ neu abfragen).</summary>
@@ -290,6 +292,42 @@ begin
   end;
 end;
 
+procedure TAtlasIdeWorkingCopies.AfterChange;
+begin
+  if Assigned(FDone) then
+  begin
+    FDone();
+  end;
+  if FOpen and (FDialog <> nil) then
+  begin
+    FDialog.SetBusy(False);
+    // Neue Revisionen, ggf. neue Externals: neu lesen.
+    Collect;
+  end;
+end;
+
+/// <summary>Meldung nach dem Aktualisieren von AName.</summary>
+function PullMessage(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome; const AName: string): string;
+begin
+  case AOutcome of
+    TAtlasPullOutcome.Updated:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdated, [AName]);
+    TAtlasPullOutcome.UpToDate:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpToDate, [AName]);
+    TAtlasPullOutcome.Blocked:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [AName]);
+  else
+    if AReason = TAtlasVcsOutcome.LoginNeeded then
+    begin
+      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [AName]);
+    end
+    else
+    begin
+      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdateFailed, [AName, AtlasVcsOutcomeName(AReason)]);
+    end;
+  end;
+end;
+
 procedure TAtlasIdeWorkingCopies.Update(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
 var
   mKeep: IInterface;
@@ -324,35 +362,8 @@ begin
       end;
       TAtlasGuard.Log(Format('Arbeitskopien: aktualisiert (ohne Externals %s), %s',
         [BoolToStr(mIgnore, True), AtlasVcsOutcomeName(mReason)]));
-      case mOutcome of
-        TAtlasPullOutcome.Updated:
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdated, [mName]));
-        TAtlasPullOutcome.UpToDate:
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpToDate, [mName]));
-        TAtlasPullOutcome.Blocked:
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [mName]));
-      else
-        if mReason = TAtlasVcsOutcome.LoginNeeded then
-        begin
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [mName]));
-        end
-        else
-        begin
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdateFailed, [mName,
-            AtlasVcsOutcomeName(mReason)]));
-        end;
-      end;
-      if Assigned(FDone) then
-      begin
-        FDone();
-      end;
-      if not FOpen or (FDialog = nil) then
-      begin
-        Exit;
-      end;
-      FDialog.SetBusy(False);
-      // Neue Revisionen, ggf. neue Externals: neu lesen.
-      Collect;
+      TAtlasIdeVcs.Report(PullMessage(mOutcome, mReason, mName));
+      AfterChange;
     end) then
   begin
     FDialog.SetBusy(False);
@@ -433,16 +444,7 @@ begin
         TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinFailed, [mName,
           AtlasVcsOutcomeName(mOutcome)]));
       end;
-      if Assigned(FDone) then
-      begin
-        FDone();
-      end;
-      if not FOpen or (FDialog = nil) then
-      begin
-        Exit;
-      end;
-      FDialog.SetBusy(False);
-      Collect;
+      AfterChange;
     end) then
   begin
     FDialog.SetBusy(False);
