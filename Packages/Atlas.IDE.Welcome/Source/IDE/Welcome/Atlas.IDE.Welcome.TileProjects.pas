@@ -35,7 +35,7 @@ begin
   mPage := ACurrent();
   if mPage <> nil then
   begin
-    Result := mPage.Projects;
+    Result := mPage.Areas.Projects;
   end;
 end;
 
