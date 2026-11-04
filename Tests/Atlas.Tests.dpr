@@ -1109,6 +1109,7 @@ uses
   Atlas.UI.Architecture.Frame.Tests in 'IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas',
   Atlas.Core.Query.Model in '..\Packages\Atlas.IDE.Search\Source\Core\Query\Atlas.Core.Query.Model.pas',
   Atlas.Core.Query.Model.Tests in 'IDE.Expert\Atlas.Core.Query.Model.Tests.pas',
+  Atlas.UI.Query.Parts in '..\Packages\Atlas.IDE.Search\Source\UI\Query\Atlas.UI.Query.Parts.pas',
   Atlas.UI.Query.Frame in '..\Packages\Atlas.IDE.Search\Source\UI\Query\Atlas.UI.Query.Frame.pas',
   Atlas.UI.Query.Frame.Tests in 'IDE.Expert\Atlas.UI.Query.Frame.Tests.pas',
   Atlas.Core.Hotspots.Model in '..\Packages\Atlas.IDE.Analysis\Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas',
