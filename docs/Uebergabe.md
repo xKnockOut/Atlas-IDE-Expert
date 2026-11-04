@@ -1,5 +1,12 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde in den Tests (03.–04.11.2026, Branch `claude/project-thread-sd4zkh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Befunde in `Tests/**` (Metriken an, Grenzwerte unverändert). Stand: 0 Befunde außer den Golden-Dateien (`*Golden.pas`, 9 × `unused-public-member`, 1 × `missing-begin-end` in `PropertyGolden`): Das sind erwartete Ausgaben der Codeaktionen, sie bleiben so. Die absichtlich kaputten Vorlagen (`Compilermeldungen/Faelle`, `Referenzprojekt`, `DccFaelle`) sind nicht Teil der Prüfung.
+- PRs #1566 und #1578 (Methodenlängen, Parameterzahlen), Folge-PR mit den Aufteilungen: große Testklassen nach Themen in zweite Fixtures derselben Unit; lange Units in Themen-Units (Willkommen: eine Testunit je Bereich, z. B. `Atlas.UI.Welcome.Setup.Tests`; Einstellungen `.Views/.Editing/.BuildDebug/.Issues.Tests`; Einstellungsseite `.Build/.Editor/.Vcs/.Dialog.Tests`; `Atlas.Core.Lsp.Adapters.ServerProcess.Tests`, `.TextChanges.Tests`; `Atlas.Common.Lsp.Completion.Proposals.Tests`; `Atlas.Common.Configuration.Features.Tests`; `Atlas.Core.Vcs.Internals.GitParser/SvnParser.Tests`).
+- Gemeinsame Hilfen liegen in `<Bereich>.TestSupport` (nicht `.Tests`, daher keine eigene Testunit nötig, aber in `.dpr`/`.dproj`). Wo eine TestSupport-Unit feste Pfade enthält, bindet sie `DUnitX.TestFramework` ein, damit Atlas sie als Testcode erkennt (`TUsesClauses.IsTestUnit`).
+- Vervollständigung: Basisklasse `TLspCompletionTestCase` (Index, Auflöser, `ItemsAt` als Überladung); jede Fixture hat eigenes `[Setup]`/`[TearDown]`, das `Prepare`/`Release` ruft.
+- FPC: Regel-, Konfigurations- und Vervollständigungstests grün (Vervollständigung: 3 Fehlschläge wie auf der Basis). VCL-Tests nur mit Atlas geprüft. uses der neuen Units wurden per Skript ausgedünnt; Delphi-Build (auch H2443) offen.
+
 ## Atlas-Befunde in Builtin Unicode bis XmlDoc (04.11.2026, Branch `claude/project-thread-i109zh` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Builtin.Unicode`, `Units`, `Unresolved`, `Unused`, `Visibility` und `XmlDoc` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen diesen Units und ihren Teilunits (PRs #1598, #1610 und der PR für Unicode und XmlDoc).
 - Muster: geschachtelte Routinen der großen `Check`-Methoden wurden zu Arbeitsklassen im implementation-Teil (`T<Regel>Check` mit Feldern statt eingefangener Locals), lange Bedingungen und Schleifen zu eigenen Funktionen.
