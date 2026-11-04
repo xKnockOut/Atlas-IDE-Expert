@@ -674,6 +674,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.GitHubBoards` | `Core/Tracker/Atlas.Core.Tracker.GitHubBoards.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Internals.YouTrackJson` | `Core/Tracker/Atlas.Core.Tracker.Internals.YouTrackJson.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.YouTrackApi` | `Core/Tracker/Atlas.Core.Tracker.YouTrackApi.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.YouTrackParse` | `Core/Tracker/Atlas.Core.Tracker.YouTrackParse.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.YouTrackBoards` | `Core/Tracker/Atlas.Core.Tracker.YouTrackBoards.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.SettingsTables` | `Core/Tracker/Atlas.Core.Tracker.SettingsTables.pas` | Ordner `Core/Tracker` |
