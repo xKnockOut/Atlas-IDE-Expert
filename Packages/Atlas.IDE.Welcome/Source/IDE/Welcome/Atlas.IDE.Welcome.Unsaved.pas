@@ -480,14 +480,17 @@ begin
   // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
   if not TAtlasIdeVcs.Run(
     procedure
+    var
+      mQuery: TAtlasUnsavedQuery;
     begin
-      Ok := TAtlasWelcomeUnsaved.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeUnsaved.CallTimeoutMs), Dir, Stamp,
-        FileTimeUtc,
+      mQuery := TAtlasUnsavedQuery.Create(Dir, Stamp, FileTimeUtc,
         function: Boolean
         begin
           // 2 s je Projekt: danach kein weiterer Aufruf; der Rest kommt aus dem gespeicherten Stand.
           Result := GetTickCount64 - Started >= TAtlasWelcomeUnsaved.TimeLimitMs;
-        end, mWorkingCopies, State);
+        end);
+      mQuery.WorkingCopies := mWorkingCopies;
+      Ok := TAtlasWelcomeUnsaved.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeUnsaved.CallTimeoutMs), mQuery, State);
     end,
     procedure
     var
