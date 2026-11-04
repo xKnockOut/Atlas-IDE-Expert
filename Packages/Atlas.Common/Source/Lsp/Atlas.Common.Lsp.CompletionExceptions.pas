@@ -365,7 +365,7 @@ begin
     Exit;
   end;
   Result := nil;
-  if Reader(AFileName, mText) then
+  if Assigned(Reader) and Reader(AFileName, mText) then
   begin
     Result := TLspDocumentation.SplitLines(mText);
   end;
