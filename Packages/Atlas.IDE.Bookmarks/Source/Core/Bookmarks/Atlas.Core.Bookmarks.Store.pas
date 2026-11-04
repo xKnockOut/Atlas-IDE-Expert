@@ -485,12 +485,40 @@ begin
   end;
 end;
 
+/// <summary>Zeilentext von ABookmark im Rumpf APlace suchen. Rang bei Überladungen: gleiche Parametertypen vor
+/// anderen, unveränderte Zeile vor geänderter. False, wenn der Rumpf nicht passt.</summary>
+function MatchInPlace(const AText: TParsedText; const ABookmark: TAtlasBookmark; const APlace: TAtlasMethodPlace;
+  out AMatch: TAtlasLineMatch; out ALine, ARank: Integer): Boolean;
+var
+  mAnchor: TAtlasLineAnchor;
+begin
+  ALine := -1;
+  ARank := 0;
+  AMatch := TAtlasLineMatch.Orphaned;
+  Result := APlace.IsBody and SameText(APlace.Name, ABookmark.Method);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mAnchor := ABookmark.Anchor;
+  mAnchor.Line := Min(APlace.FirstLine + Max(0, ABookmark.Offset), APlace.LastLine);
+  AMatch := TAtlasLineAnchors.Locate(AText.Lines, mAnchor, APlace.FirstLine, APlace.LastLine, ALine);
+  Result := AMatch <> TAtlasLineMatch.Orphaned;
+  if not SameText(APlace.Signature, ABookmark.Signature) then
+  begin
+    Inc(ARank, 2);
+  end;
+  if AMatch = TAtlasLineMatch.Changed then
+  begin
+    Inc(ARank);
+  end;
+end;
+
 function FindIn(const AText: TParsedText; const ABookmark: TAtlasBookmark; out ALine: Integer): TAtlasLineMatch;
 var
-  Place: TAtlasMethodPlace;
-  Anchor: TAtlasLineAnchor;
-  Match, BestMatch: TAtlasLineMatch;
-  Line, Rank, BestRank, BestLine: Integer;
+  mPlace: TAtlasMethodPlace;
+  mMatch, mBestMatch: TAtlasLineMatch;
+  mLine, mRank, mBestRank, mBestLine: Integer;
 begin
   ALine := ABookmark.Anchor.Line;
   // Außerhalb einer Methode: Zeilentext in der ganzen Datei.
@@ -498,52 +526,31 @@ begin
   begin
     Exit(TAtlasLineAnchors.Locate(AText.Lines, ABookmark.Anchor, ALine));
   end;
-  // Zuerst die Methode, dann der Zeilentext in ihrem Rumpf.
+  // Zuerst die Methode, dann der Zeilentext in ihrem Rumpf; bei gleichem Rang die nächste Zeile.
   Result := TAtlasLineMatch.Orphaned;
-  BestRank := MaxInt;
-  BestLine := -1;
-  BestMatch := TAtlasLineMatch.Orphaned;
-  for Place in AText.Places do
+  mBestRank := MaxInt;
+  mBestLine := -1;
+  mBestMatch := TAtlasLineMatch.Orphaned;
+  for mPlace in AText.Places do
   begin
-    if not Place.IsBody or not SameText(Place.Name, ABookmark.Method) then
+    if MatchInPlace(AText, ABookmark, mPlace, mMatch, mLine, mRank) and ((mRank < mBestRank) or
+      ((mRank = mBestRank) and (Abs(mLine - ABookmark.Anchor.Line) < Abs(mBestLine - ABookmark.Anchor.Line)))) then
     begin
-      Continue;
-    end;
-    Anchor := ABookmark.Anchor;
-    Anchor.Line := Min(Place.FirstLine + Max(0, ABookmark.Offset), Place.LastLine);
-    Match := TAtlasLineAnchors.Locate(AText.Lines, Anchor, Place.FirstLine, Place.LastLine, Line);
-    if Match = TAtlasLineMatch.Orphaned then
-    begin
-      Continue;
-    end;
-    // Überladungen: gleiche Parametertypen vor anderen, unveränderte Zeile vor geänderter, dann die nächste.
-    Rank := 0;
-    if not SameText(Place.Signature, ABookmark.Signature) then
-    begin
-      Inc(Rank, 2);
-    end;
-    if Match = TAtlasLineMatch.Changed then
-    begin
-      Inc(Rank);
-    end;
-    if (Rank < BestRank) or ((Rank = BestRank) and
-      (Abs(Line - ABookmark.Anchor.Line) < Abs(BestLine - ABookmark.Anchor.Line))) then
-    begin
-      BestRank := Rank;
-      BestLine := Line;
-      BestMatch := Match;
+      mBestRank := mRank;
+      mBestLine := mLine;
+      mBestMatch := mMatch;
     end;
   end;
-  if BestLine < 0 then
+  if mBestLine < 0 then
   begin
     Exit;
   end;
-  ALine := BestLine;
-  if BestMatch = TAtlasLineMatch.Changed then
+  ALine := mBestLine;
+  if mBestMatch = TAtlasLineMatch.Changed then
   begin
     Result := TAtlasLineMatch.Changed;
   end
-  else if BestLine = ABookmark.Anchor.Line then
+  else if mBestLine = ABookmark.Anchor.Line then
   begin
     Result := TAtlasLineMatch.Same;
   end

@@ -340,51 +340,52 @@ begin
   end;
 end;
 
+/// <summary>AWord (klein) ist ein Schlüsselwort, das die Austrittspunkte zeigt.</summary>
+function IsTriggerWord(const AWord: string): Boolean;
+var
+  mHead: string;
+begin
+  Result := False;
+  for mHead in TriggerWords do
+  begin
+    Result := Result or (AWord = mHead);
+  end;
+end;
+
+/// <summary>Vor dem Wort steht (class) procedure, function … und sonst nur Namen mit Punkten.</summary>
+function IsRoutineHead(const ABefore: string): Boolean;
+var
+  mHead, mWord: string;
+  mIndex: Integer;
+begin
+  mHead := LowerCase(Trim(ABefore));
+  Result := True;
+  for mIndex := 1 to Length(mHead) do
+  begin
+    Result := Result and (TTextChars.IsIdentChar(mHead[mIndex]) or CharInSet(mHead[mIndex], ['.', ' ', '<', '>', ',']));
+  end;
+  if Result then
+  begin
+    if mHead.StartsWith('class ') then
+    begin
+      mHead := TrimLeft(Copy(mHead, 7, MaxInt));
+    end;
+    Result := False;
+    for mWord in HeaderWords do
+    begin
+      Result := Result or (mHead = mWord) or mHead.StartsWith(mWord + ' ');
+    end;
+  end;
+end;
+
 class function TAtlasExitPoints.Triggers(const ALine: string; ACharacter: Integer): Boolean;
 var
-  Start, Stop, Index: Integer;
-  Word, Head, Rest: string;
+  mStart, mStop: Integer;
 begin
-  Result := WordAt(ALine, ACharacter, Start, Stop);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Word := LowerCase(Copy(ALine, Start + 1, Stop - Start));
-  for Head in TriggerWords do
-  begin
-    if Word = Head then
-    begin
-      Exit(True);
-    end;
-  end;
-  // Funktionsname als Ziel einer Zuweisung.
-  Rest := TrimLeft(Copy(ALine, Stop + 1, MaxInt));
-  if Rest.StartsWith(':=') then
-  begin
-    Exit(True);
-  end;
-  // Name im Routinenkopf: vor dem Wort steht (class) procedure, function … und sonst nur Namen mit Punkten.
-  Head := LowerCase(Trim(Copy(ALine, 1, Start)));
-  for Index := 1 to Length(Head) do
-  begin
-    if not TTextChars.IsIdentChar(Head[Index]) and not CharInSet(Head[Index], ['.', ' ', '<', '>', ',']) then
-    begin
-      Exit(False);
-    end;
-  end;
-  if Head.StartsWith('class ') then
-  begin
-    Head := TrimLeft(Copy(Head, 7, MaxInt));
-  end;
-  for Word in HeaderWords do
-  begin
-    if (Head = Word) or Head.StartsWith(Word + ' ') then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := WordAt(ALine, ACharacter, mStart, mStop);
+  // Schlüsselwort, Funktionsname als Ziel einer Zuweisung oder Name im Routinenkopf.
+  Result := Result and (IsTriggerWord(LowerCase(Copy(ALine, mStart + 1, mStop - mStart))) or
+    TrimLeft(Copy(ALine, mStop + 1, MaxInt)).StartsWith(':=') or IsRoutineHead(Copy(ALine, 1, mStart)));
 end;
 
 class function TAtlasExitPoints.BadgeText(const ASet: TAtlasExitPointSet; const AOne, AMany,

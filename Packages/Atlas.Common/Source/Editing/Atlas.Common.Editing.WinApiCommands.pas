@@ -83,124 +83,165 @@ begin
   Result := Result + 'Dll';
 end;
 
-function ExecuteExternal(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
-var
-  Source: TCommandSource;
-  Words: TArray<string>;
-  Name, Dll, Convention, Suffix, Library_, Declaration, Indent, ConstName, LB: string;
-  Tokens: TTokens;
-  Index, Next, Count: Integer;
-  ClassSymbol: TIndexSymbol;
-  Constant: TIndexSymbol;
-  Delayed: Boolean;
+type
+  /// <summary>Angaben von /external: Name, DLL, Aufrufkonvention und delayed.</summary>
+  TExternalSpec = record
+    Name: string;
+    Dll: string;
+    Convention: string;
+    Delayed: Boolean;
+  end;
+
+/// <summary>AText ohne umschließende Hochkommas ('meine.dll' wird zu meine.dll).</summary>
+function Unquoted(const AText: string): string;
 begin
-  AEdits := nil;
-  Declaration := '';
-  Words := AContext.Arguments.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-  if (Length(Words) < 2) or not IsValidIdent(Words[0]) then
+  Result := AText;
+  if (Length(AText) >= 2) and (AText[1] = '''') and (AText[Length(AText)] = '''') then
+  begin
+    Result := Copy(AText, 2, Length(AText) - 2);
+  end;
+end;
+
+/// <summary>Zerlegt die Argumente von /external; False mit Grund bei Fehlern.</summary>
+function ParseExternal(const AArguments: string; out ASpec: TExternalSpec; out AReason: string): Boolean;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  ASpec := Default(TExternalSpec);
+  mWords := AArguments.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  if (Length(mWords) < 2) or not IsValidIdent(mWords[0]) then
   begin
     Exit(Fail('Erwartet wird /external Name dll [delayed] [cdecl]', AReason));
   end;
-  Name := Words[0];
-  Dll := Words[1];
-  if (Length(Dll) >= 2) and (Dll[1] = '''') and (Dll[Length(Dll)] = '''') then
+  ASpec.Name := mWords[0];
+  ASpec.Dll := Unquoted(mWords[1]);
+  ASpec.Convention := 'stdcall';
+  for mIndex := 2 to High(mWords) do
   begin
-    Dll := Copy(Dll, 2, Length(Dll) - 2);
-  end;
-  Convention := 'stdcall';
-  Delayed := False;
-  for Index := 2 to High(Words) do
-  begin
-    if SameText(Words[Index], 'delayed') then
+    if SameText(mWords[mIndex], 'delayed') then
     begin
-      Delayed := True;
+      ASpec.Delayed := True;
     end
-    else if MatchText(Words[Index], Conventions) then
+    else if MatchText(mWords[mIndex], Conventions) then
     begin
-      Convention := LowerCase(Words[Index]);
+      ASpec.Convention := LowerCase(mWords[mIndex]);
     end
     else
     begin
-      Exit(Fail(Format('Unbekannte Angabe %s; erlaubt sind delayed und %s', [Words[Index],
+      Exit(Fail(Format('Unbekannte Angabe %s; erlaubt sind delayed und %s', [mWords[mIndex],
         string.Join(', ', Conventions)]), AReason));
     end;
   end;
-  Source := TCommandSource.Create(AContext);
+  Result := True;
+end;
+
+/// <summary>Zahl der Importe "external 'ADll'" in der Unit.</summary>
+function ImportCount(const ATokens: TTokens; const ADll: string): Integer;
+var
+  mIndex, mNext: Integer;
+begin
+  Result := 0;
+  for mIndex := 0 to High(ATokens) - 1 do
+  begin
+    if not SameText(ATokens[mIndex].Text, 'external') then
+    begin
+      Continue;
+    end;
+    mNext := mIndex + 1;
+    while (mNext <= High(ATokens)) and not IsCode(ATokens[mNext]) do
+    begin
+      Inc(mNext);
+    end;
+    if (mNext <= High(ATokens)) and SameText(ATokens[mNext].Text, QuotedStr(ADll)) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+/// <summary>Letzte globale Konstante der Unit, deren Zeile den DLL-Namen enthält; '' ohne.</summary>
+function DllConstant(ASource: TCommandSource; const ADll: string): string;
+var
+  mConstant: TIndexSymbol;
+begin
+  Result := '';
+  for mConstant in ASource.UnitIndex.Symbols do
+  begin
+    if (mConstant.Kind = TIndexSymbolKind.Constant) and (mConstant.Container = '') and
+      ContainsText(ASource.Lines[mConstant.Range.StartPos.Line], QuotedStr(ADll)) then
+    begin
+      Result := mConstant.Name;
+    end;
+  end;
+end;
+
+/// <summary>Importdeklaration; ab zwei vorhandenen Importen aus derselben DLL steht ihr Name in einer (bei Bedarf
+/// neuen) Konstante. Parameterliste und Ergebnis ergänzt der Entwickler; "()" hält sie übersetzbar.</summary>
+function ExternalDeclaration(ASource: TCommandSource; const ASpec: TExternalSpec): string;
+var
+  mLibrary, mSuffix, mPrefix, mLineBreak: string;
+begin
+  mLineBreak := ASource.LineBreak;
+  mLibrary := QuotedStr(ASpec.Dll);
+  mPrefix := '';
+  if ImportCount(ASource.Tree.Tokens, ASpec.Dll) >= 2 then
+  begin
+    mLibrary := DllConstant(ASource, ASpec.Dll);
+    if mLibrary = '' then
+    begin
+      mLibrary := DllConstName(ASpec.Dll);
+      mPrefix := 'const' + mLineBreak + Format('  %s = %s;', [mLibrary, QuotedStr(ASpec.Dll)]) + mLineBreak +
+        mLineBreak;
+    end;
+  end;
+  mSuffix := '';
+  if ASpec.Delayed then
+  begin
+    mSuffix := ' delayed';
+  end;
+  Result := mPrefix + Format('procedure %s(); %s; external %s%s;', [ASpec.Name, ASpec.Convention, mLibrary,
+    mSuffix]);
+end;
+
+function ExecuteExternal(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mSource: TCommandSource;
+  mSpec: TExternalSpec;
+  mDeclaration, mIndent, mLineBreak: string;
+  mClass: TIndexSymbol;
+begin
+  AEdits := nil;
+  if not ParseExternal(AContext.Arguments, mSpec, AReason) then
+  begin
+    Exit(False);
+  end;
+  mSource := TCommandSource.Create(AContext);
   try
-    if (Source.RoutineAt = nil) and Source.ClassAt(ClassSymbol) then
+    if (mSource.RoutineAt = nil) and mSource.ClassAt(mClass) then
     begin
       Exit(Fail('/external gehört nicht in eine Klasse', AReason));
     end;
-    LB := Source.LineBreak;
-    // Importe aus derselben DLL zählen; ab zwei vorhandenen kommt der Name in eine Konstante.
-    Tokens := Source.Tree.Tokens;
-    Count := 0;
-    for Index := 0 to High(Tokens) - 1 do
+    mLineBreak := mSource.LineBreak;
+    mDeclaration := ExternalDeclaration(mSource, mSpec);
+    // Aus einer Routine heraus: in die implementation wie /const!.
+    if (mSource.RoutineAt <> nil) and (mSource.ImplementationStart < 0) then
     begin
-      if SameText(Tokens[Index].Text, 'external') then
-      begin
-        Next := Index + 1;
-        while (Next <= High(Tokens)) and not IsCode(Tokens[Next]) do
-        begin
-          Inc(Next);
-        end;
-        if (Next <= High(Tokens)) and SameText(Tokens[Next].Text, QuotedStr(Dll)) then
-        begin
-          Inc(Count);
-        end;
-      end;
+      Exit(Fail('/external braucht hier einen implementation-Abschnitt', AReason));
     end;
-    Library_ := QuotedStr(Dll);
-    ConstName := '';
-    if Count >= 2 then
+    if mSource.RoutineAt <> nil then
     begin
-      for Constant in Source.UnitIndex.Symbols do
-      begin
-        if (Constant.Kind = TIndexSymbolKind.Constant) and (Constant.Container = '') and
-          ContainsText(Source.Lines[Constant.Range.StartPos.Line], QuotedStr(Dll)) then
-        begin
-          ConstName := Constant.Name;
-        end;
-      end;
-      if ConstName = '' then
-      begin
-        ConstName := DllConstName(Dll);
-        Declaration := 'const' + LB + Format('  %s = %s;', [ConstName, QuotedStr(Dll)]) + LB + LB;
-      end;
-      Library_ := ConstName;
-    end;
-    Suffix := '';
-    if Delayed then
-    begin
-      Suffix := ' delayed';
-    end;
-    // Parameterliste und Ergebnis ergänzt der Entwickler; "()" hält die Deklaration übersetzbar.
-    if (ConstName <> '') and (Declaration <> '') then
-    begin
-      Declaration := Declaration + Format('procedure %s(); %s; external %s%s;', [Name, Convention, Library_, Suffix]);
+      AEdits := [mSource.AfterLine(mSource.ImplementationStart, mLineBreak + mDeclaration), mSource.RemoveCommand];
     end
     else
     begin
-      Declaration := Format('procedure %s(); %s; external %s%s;', [Name, Convention, Library_, Suffix]);
-    end;
-    if Source.RoutineAt <> nil then
-    begin
-      // Aus einer Routine heraus: in die implementation wie /const!.
-      if Source.ImplementationStart < 0 then
-      begin
-        Exit(Fail('/external braucht hier einen implementation-Abschnitt', AReason));
-      end;
-      AEdits := [Source.AfterLine(Source.ImplementationStart, LB + Declaration), Source.RemoveCommand];
-    end
-    else
-    begin
-      Indent := Source.Indent(Source.Line);
-      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
-        Indent + StringReplace(Declaration, LB, LB + Indent, [rfReplaceAll]) + LB)];
+      mIndent := mSource.Indent(mSource.Line);
+      AEdits := [TTextEdit.Create(TTextRange.Create(mSource.Line, 0, mSource.Line + 1, 0),
+        mIndent + StringReplace(mDeclaration, mLineBreak, mLineBreak + mIndent, [rfReplaceAll]) + mLineBreak)];
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -226,101 +267,152 @@ begin
   Result := False;
 end;
 
-function ExecuteExports(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+/// <summary>Bezeichner, die in der exports-Klausel AClause schon stehen.</summary>
+function ListedNames(ASource: TCommandSource; AClause: TSyntaxNode): TArray<string>;
 var
-  Source: TCommandSource;
-  Root, Clause, Main: TSyntaxNode;
-  Names, Missing, Listed: TArray<string>;
-  Index: Integer;
-  Token: TPascalToken;
-  Name, LB, Text: string;
+  mToken: TPascalToken;
 begin
-  AEdits := nil;
-  Source := TCommandSource.Create(AContext);
-  try
-    Root := Source.Tree.Root;
-    if (Root = nil) or (Root.Kind <> TSyntaxKind.LibraryFile) then
+  Result := nil;
+  if AClause = nil then
+  begin
+    Exit;
+  end;
+  for mToken in ASource.Tree.Tokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.StartPos.Line >= AClause.StartPos.Line) and
+      (mToken.EndPos.Line <= AClause.EndPos.Line) then
     begin
-      Exit(Fail('/exports gilt nur in einer library-Datei (.dpr)', AReason));
+      Result := Result + [mToken.Text];
     end;
-    Clause := Root.FindChild(TSyntaxKind.ExportsClause);
-    Main := Root.FindChild(TSyntaxKind.Block);
-    Listed := nil;
-    if Clause <> nil then
+  end;
+end;
+
+/// <summary>Ist ARoutine eine freie Routine, die AName heißt (alle bei leerem AName) und noch nicht in AListed
+/// steht?</summary>
+function IsExportCandidate(ARoutine: TSyntaxNode; const AName: string; const AListed: TArray<string>): Boolean;
+begin
+  Result := (ARoutine.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', ARoutine.Name) = 0) and
+    ((AName = '') or SameText(ARoutine.Name, AName)) and (IndexText(ARoutine.Name, AListed) < 0);
+end;
+
+/// <summary>Noch nicht exportierte Routinen der library: mit Aufrufkonvention in ANames, ohne in AMissing.</summary>
+procedure CollectExports(ARoot: TSyntaxNode; const AName: string; const AListed: TArray<string>;
+  out ANames, AMissing: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  ANames := nil;
+  AMissing := nil;
+  for mIndex := 0 to ARoot.ChildCount - 1 do
+  begin
+    if not IsExportCandidate(ARoot[mIndex], AName, AListed) then
     begin
-      for Token in Source.Tree.Tokens do
-      begin
-        if (Token.Kind = TPascalTokenKind.Identifier) and (Token.StartPos.Line >= Clause.StartPos.Line) and
-          (Token.EndPos.Line <= Clause.EndPos.Line) then
-        begin
-          Listed := Listed + [Token.Text];
-        end;
-      end;
+      Continue;
     end;
-    Names := nil;
-    Missing := nil;
-    for Index := 0 to Root.ChildCount - 1 do
+    if HasConvention(ARoot[mIndex]) then
     begin
-      if (Root[Index].Kind = TSyntaxKind.RoutineDecl) and (Pos('.', Root[Index].Name) = 0) and
-        ((AContext.Arguments = '') or SameText(Root[Index].Name, AContext.Arguments)) and
-        (IndexText(Root[Index].Name, Listed) < 0) then
-      begin
-        if HasConvention(Root[Index]) then
-        begin
-          Names := Names + [Root[Index].Name];
-        end
-        else
-        begin
-          Missing := Missing + [Root[Index].Name];
-        end;
-      end;
-    end;
-    if Names = nil then
-    begin
-      if Missing <> nil then
-      begin
-        Exit(Fail('Ohne Aufrufkonvention (stdcall, cdecl): ' + string.Join(', ', Missing), AReason));
-      end;
-      if AContext.Arguments <> '' then
-      begin
-        Exit(Fail(Format('Keine Routine %s, die noch nicht exportiert wird', [AContext.Arguments]), AReason));
-      end;
-      Exit(Fail('Alle Routinen stehen schon in exports', AReason));
-    end;
-    LB := Source.LineBreak;
-    Text := '';
-    for Name in Names do
-    begin
-      Text := Text + ',' + LB + '  ' + Name;
-    end;
-    if Clause <> nil then
-    begin
-      // Vor dem abschließenden ";" der Klausel anhängen.
-      for Token in Source.Tree.Tokens do
-      begin
-        if Token.IsSymbol(';') and (Token.EndPos.Line = Clause.EndPos.Line) and
-          (Token.EndPos.Character = Clause.EndPos.Character) then
-        begin
-          AEdits := [TTextEdit.Create(TTextRange.Create(Token.StartPos, Token.StartPos), Text)];
-        end;
-      end;
-      if AEdits = nil then
-      begin
-        Exit(Fail('exports-Klausel ohne abschließendes ";"', AReason));
-      end;
+      ANames := ANames + [ARoot[mIndex].Name];
     end
     else
     begin
-      if Main = nil then
-      begin
-        Exit(Fail('Hauptblock der library nicht gefunden', AReason));
-      end;
-      AEdits := [Source.BeforeLine(Main.StartPos.Line, 'exports' + Copy(Text, 2, MaxInt) + ';')];
+      AMissing := AMissing + [ARoot[mIndex].Name];
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
-    Result := True;
+  end;
+end;
+
+/// <summary>Grund, warum es nichts zu exportieren gibt.</summary>
+function NothingToExport(const AMissing: TArray<string>; const AName: string): string;
+begin
+  if AMissing <> nil then
+  begin
+    Result := 'Ohne Aufrufkonvention (stdcall, cdecl): ' + string.Join(', ', AMissing);
+  end
+  else if AName <> '' then
+  begin
+    Result := Format('Keine Routine %s, die noch nicht exportiert wird', [AName]);
+  end
+  else
+  begin
+    Result := 'Alle Routinen stehen schon in exports';
+  end;
+end;
+
+/// <summary>Hängt AText vor das abschließende ";" der Klausel AClause; False ohne ";".</summary>
+function AppendToClause(ASource: TCommandSource; AClause: TSyntaxNode; const AText: string;
+  out AEdit: TTextEdit): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  AEdit := Default(TTextEdit);
+  Result := False;
+  for mToken in ASource.Tree.Tokens do
+  begin
+    if mToken.IsSymbol(';') and (mToken.EndPos.Line = AClause.EndPos.Line) and
+      (mToken.EndPos.Character = AClause.EndPos.Character) then
+    begin
+      AEdit := TTextEdit.Create(TTextRange.Create(mToken.StartPos, mToken.StartPos), AText);
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Bearbeitung, die ANames in die exports-Klausel der library ARoot bringt (bzw. eine neue vor dem
+/// Hauptblock); False mit Grund.</summary>
+function ExportsEdit(ASource: TCommandSource; ARoot: TSyntaxNode; const ANames: TArray<string>;
+  out AEdit: TTextEdit; out AReason: string): Boolean;
+var
+  mClause, mMain: TSyntaxNode;
+  mName, mText: string;
+begin
+  AReason := '';
+  mText := '';
+  for mName in ANames do
+  begin
+    mText := mText + ',' + ASource.LineBreak + '  ' + mName;
+  end;
+  mClause := ARoot.FindChild(TSyntaxKind.ExportsClause);
+  if mClause <> nil then
+  begin
+    Exit(AppendToClause(ASource, mClause, mText, AEdit) or Fail('exports-Klausel ohne abschließendes ";"', AReason));
+  end;
+  mMain := ARoot.FindChild(TSyntaxKind.Block);
+  if mMain = nil then
+  begin
+    AEdit := Default(TTextEdit);
+    Exit(Fail('Hauptblock der library nicht gefunden', AReason));
+  end;
+  AEdit := ASource.BeforeLine(mMain.StartPos.Line, 'exports' + Copy(mText, 2, MaxInt) + ';');
+  Result := True;
+end;
+
+function ExecuteExports(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mSource: TCommandSource;
+  mRoot: TSyntaxNode;
+  mNames, mMissing: TArray<string>;
+  mEdit: TTextEdit;
+begin
+  AEdits := nil;
+  mSource := TCommandSource.Create(AContext);
+  try
+    mRoot := mSource.Tree.Root;
+    if (mRoot = nil) or (mRoot.Kind <> TSyntaxKind.LibraryFile) then
+    begin
+      Exit(Fail('/exports gilt nur in einer library-Datei (.dpr)', AReason));
+    end;
+    CollectExports(mRoot, AContext.Arguments, ListedNames(mSource, mRoot.FindChild(TSyntaxKind.ExportsClause)),
+      mNames, mMissing);
+    if mNames = nil then
+    begin
+      Exit(Fail(NothingToExport(mMissing, AContext.Arguments), AReason));
+    end;
+    Result := ExportsEdit(mSource, mRoot, mNames, mEdit, AReason);
+    if Result then
+    begin
+      AEdits := [mEdit, mSource.RemoveCommand];
+    end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -337,81 +429,108 @@ type
     Callee: string;
   end;
 
+/// <summary>Erstes Code-Token hinter Zeile ALine; -1 ohne.</summary>
+function FirstCodeBelow(const ATokens: TTokens; ALine: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if (ATokens[mIndex].StartPos.Line > ALine) and IsCode(ATokens[mIndex]) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Beendet AToken auf oberster Ebene eine Anweisung?</summary>
+function EndsStatement(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(';') or AToken.IsKeyword('end') or AToken.IsKeyword('else') or
+    AToken.IsKeyword('until') or AToken.IsKeyword('begin');
+end;
+
+/// <summary>Index des Tokens, das die Anweisung ab AFirst beendet (über High ohne); AAssign: ":=" und AOpen: erste
+/// "(" auf oberster Ebene, je -1 ohne.</summary>
+function ScanStatement(const ATokens: TTokens; AFirst: Integer; out AAssign, AOpen: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  AAssign := -1;
+  AOpen := -1;
+  Result := AFirst;
+  while Result <= High(ATokens) do
+  begin
+    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
+    begin
+      if (mDepth = 0) and (AOpen < 0) and ATokens[Result].IsSymbol('(') then
+      begin
+        AOpen := Result;
+      end;
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
+    begin
+      Dec(mDepth);
+    end
+    else if (mDepth = 0) and ATokens[Result].IsSymbol(':=') then
+    begin
+      AAssign := Result;
+    end
+    else if (mDepth = 0) and EndsStatement(ATokens[Result]) then
+    begin
+      Break;
+    end;
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Text der Tokens AFirst bis ALast; mit Leerzeichen, wo im Quelltext Abstand war (ASpaced).</summary>
+function TokenText(const ATokens: TTokens; AFirst, ALast: Integer; ASpaced: Boolean): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to ALast do
+  begin
+    if ASpaced and (mIndex > AFirst) and ((ATokens[mIndex].StartPos.Line <> ATokens[mIndex - 1].EndPos.Line) or
+      (ATokens[mIndex].StartPos.Character <> ATokens[mIndex - 1].EndPos.Character)) then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + ATokens[mIndex].Text;
+  end;
+end;
+
 /// <summary>Anweisung unter der Befehlszeile; False ohne Aufruf.</summary>
 function StatementBelow(ASource: TCommandSource; out AStatement: TStatement): Boolean;
 var
-  Tokens: TTokens;
-  First, Index, Depth, Assign, Open: Integer;
+  mTokens: TTokens;
+  mFirst, mStop, mAssign, mOpen: Integer;
 begin
   Result := False;
-  Tokens := ASource.Tree.Tokens;
-  First := -1;
-  for Index := 0 to High(Tokens) do
-  begin
-    if (Tokens[Index].StartPos.Line > ASource.Line) and IsCode(Tokens[Index]) then
-    begin
-      First := Index;
-      Break;
-    end;
-  end;
-  if (First < 0) or (Tokens[First].Kind <> TPascalTokenKind.Identifier) then
+  mTokens := ASource.Tree.Tokens;
+  mFirst := FirstCodeBelow(mTokens, ASource.Line);
+  if (mFirst < 0) or (mTokens[mFirst].Kind <> TPascalTokenKind.Identifier) then
   begin
     Exit;
   end;
-  Depth := 0;
-  Assign := -1;
-  Open := -1;
-  Index := First;
-  while Index <= High(Tokens) do
-  begin
-    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-    begin
-      if (Depth = 0) and (Open < 0) and Tokens[Index].IsSymbol('(') then
-      begin
-        Open := Index;
-      end;
-      Inc(Depth);
-    end
-    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-    begin
-      Dec(Depth);
-    end
-    else if (Depth = 0) and Tokens[Index].IsSymbol(':=') then
-    begin
-      Assign := Index;
-    end
-    else if (Depth = 0) and (Tokens[Index].IsSymbol(';') or Tokens[Index].IsKeyword('end') or
-      Tokens[Index].IsKeyword('else') or Tokens[Index].IsKeyword('until') or Tokens[Index].IsKeyword('begin')) then
-    begin
-      Break;
-    end;
-    Inc(Index);
-  end;
-  if (Index > High(Tokens)) or not Tokens[Index].IsSymbol(';') or (Open <= First) or (Open < Assign) then
+  mStop := ScanStatement(mTokens, mFirst, mAssign, mOpen);
+  if (mStop > High(mTokens)) or not mTokens[mStop].IsSymbol(';') or (mOpen <= mFirst) or (mOpen < mAssign) then
   begin
     Exit;
   end;
-  AStatement.Range := TTextRange.Create(Tokens[First].StartPos, Tokens[Index].StartPos);
-  AStatement.Text := '';
-  for Depth := First to Index - 1 do
-  begin
-    if (Depth > First) and ((Tokens[Depth].StartPos.Line <> Tokens[Depth - 1].EndPos.Line) or
-      (Tokens[Depth].StartPos.Character <> Tokens[Depth - 1].EndPos.Character)) then
-    begin
-      AStatement.Text := AStatement.Text + ' ';
-    end;
-    AStatement.Text := AStatement.Text + Tokens[Depth].Text;
-  end;
+  AStatement.Range := TTextRange.Create(mTokens[mFirst].StartPos, mTokens[mStop].StartPos);
+  AStatement.Text := TokenText(mTokens, mFirst, mStop - 1, True);
   AStatement.Target := '';
-  if Assign >= 0 then
+  if mAssign >= 0 then
   begin
-    for Depth := First to Assign - 1 do
-    begin
-      AStatement.Target := AStatement.Target + Tokens[Depth].Text;
-    end;
+    AStatement.Target := TokenText(mTokens, mFirst, mAssign - 1, False);
   end;
-  AStatement.Callee := Tokens[Open - 1].Text;
-  Result := Tokens[Open - 1].Kind = TPascalTokenKind.Identifier;
+  AStatement.Callee := mTokens[mOpen - 1].Text;
+  Result := mTokens[mOpen - 1].Kind = TPascalTokenKind.Identifier;
 end;
 
 /// <summary>Rückgabetyp von AName aus Unit bzw. Index; '' wenn unbekannt.</summary>

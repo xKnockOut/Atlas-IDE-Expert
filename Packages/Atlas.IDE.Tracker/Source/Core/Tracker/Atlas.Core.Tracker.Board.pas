@@ -146,21 +146,43 @@ type
     function CardColumn(ACard: Integer): Integer;
   end;
 
+  /// <summary>Anfrage an IAtlasTrackerBoards.LoadBoard: Board BoardId ('' = das erste zum Projekt des Ziels) mit
+  /// Sprint SprintId ('' = aktueller), insgesamt höchstens TimeoutMs.</summary>
+  TAtlasBoardRequest = record
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    BoardId: string;
+    SprintId: string;
+    TimeoutMs: Integer;
+    class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest; static;
+  end;
+
+  /// <summary>Auftrag an IAtlasTrackerBoards.MoveCard: Card in die Spalte Column, mit Kommentar Comment
+  /// ('' = keiner), höchstens TimeoutMs.</summary>
+  TAtlasBoardMove = record
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    Card: TAtlasBoardCard;
+    Column: Integer;
+    Comment: string;
+    TimeoutMs: Integer;
+    class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string; ATimeoutMs: Integer): TAtlasBoardMove;
+      static;
+  end;
+
   /// <summary>Board lesen und Karten verschieben (#1272); optional neben IAtlasTrackerProvider. Im Hintergrund;
-  /// zum Verschieben muss ATransport IAtlasCiSend können.</summary>
+  /// zum Verschieben muss der Transport IAtlasCiSend können.</summary>
   IAtlasTrackerBoards = interface
     ['{4E7B2A93-5C1D-4F68-A0E2-9B3D6C8F1A57}']
-    /// <summary>Board ABoardId ('' = das erste zum Projekt des Ziels) mit Sprint ASprintId ('' = aktueller) und
-    /// dessen Karten, insgesamt höchstens ATimeoutMs. False mit AError, wenn nichts gelesen werden konnte.
-    /// </summary>
-    function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+    /// <summary>Board und Sprint nach ARequest mit den Karten des Sprints. False mit AError, wenn nichts gelesen
+    /// werden konnte.</summary>
+    function LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
       out AError: TAtlasCiFetchError): Boolean;
-    /// <summary>ACard in die Spalte AColumn von ASnapshot verschieben, mit Kommentar AComment ('' = keiner).
-    /// YouTrack: ein Befehl; GitHub: Kommentar, dann Feld „Status“ bzw. Zustand des Issues.</summary>
-    function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-      ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    /// <summary>Karte nach AMove in eine Spalte von ASnapshot verschieben. YouTrack: ein Befehl; GitHub:
+    /// Kommentar, dann Feld „Status“ bzw. Zustand des Issues.</summary>
+    function MoveCard(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
   end;
 
   TAtlasTrackerBoard = class
@@ -235,6 +257,27 @@ uses
   System.JSON,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueCache;
+
+class function TAtlasBoardRequest.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest;
+begin
+  Result.Target := ATarget;
+  Result.Transport := ATransport;
+  Result.BoardId := ABoardId;
+  Result.SprintId := ASprintId;
+  Result.TimeoutMs := ATimeoutMs;
+end;
+
+class function TAtlasBoardMove.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string; ATimeoutMs: Integer): TAtlasBoardMove;
+begin
+  Result.Target := ATarget;
+  Result.Transport := ATransport;
+  Result.Card := ACard;
+  Result.Column := AColumn;
+  Result.Comment := AComment;
+  Result.TimeoutMs := ATimeoutMs;
+end;
 
 { TAtlasBoardColumn }
 

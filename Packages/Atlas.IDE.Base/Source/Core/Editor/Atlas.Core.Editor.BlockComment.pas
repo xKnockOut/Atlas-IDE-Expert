@@ -146,158 +146,270 @@ begin
   end;
 end;
 
+function IsOneOf(const AText: string; const AWords: array of string): Boolean;
+var
+  mWord: string;
+begin
+  Result := False;
+  for mWord in AWords do
+  begin
+    Result := Result or (mWord = AText);
+  end;
+end;
+
 { Lexer }
 
-procedure Lex(const ALines: TArray<string>; out ASpans: TArray<TAtlasCommentSpan>;
+type
+  /// <summary>Kommentare, Direktiven und Strings als Bereiche, der Rest als Token; Zeile für Zeile.</summary>
+  TCommentLexer = class
+  private
+    FSpans: TArray<TAtlasCommentSpan>;
+    FTokens: TArray<TAtlasCodeToken>;
+    FText: string;
+    FCount: Integer;
+    FLine: Integer;
+    /// <summary>1-basiert.</summary>
+    FIndex: Integer;
+    FInside: Boolean;
+    FClose: string;
+    FOpen: TAtlasCommentSpan;
+    function CharAt(AIndex: Integer): Char;
+    procedure AddSpan(AKind: TAtlasCommentSpanKind; AStartLine, AStartChar, AEndLine, AEndChar: Integer);
+    procedure AddToken(const AText: string; AIsWord: Boolean; AStart, AStop: Integer);
+    procedure ScanInside;
+    procedure OpenComment(AKind: TAtlasCommentSpanKind; const AClose: string; ALength: Integer);
+    procedure LexBrace;
+    procedure LexSlash;
+    procedure LexParen;
+    procedure LexString;
+    procedure LexOther;
+    procedure Step;
+  public
+    procedure Run(const ALines: TArray<string>; out ASpans: TArray<TAtlasCommentSpan>;
+      out ATokens: TArray<TAtlasCodeToken>);
+  end;
+
+function TCommentLexer.CharAt(AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= FCount) then
+  begin
+    Result := FText[AIndex];
+  end;
+end;
+
+procedure TCommentLexer.AddSpan(AKind: TAtlasCommentSpanKind; AStartLine, AStartChar, AEndLine, AEndChar: Integer);
+var
+  mSpan: TAtlasCommentSpan;
+begin
+  mSpan.Kind := AKind;
+  mSpan.StartPos := Pos2(AStartLine, AStartChar);
+  mSpan.EndPos := Pos2(AEndLine, AEndChar);
+  FSpans := FSpans + [mSpan];
+end;
+
+procedure TCommentLexer.AddToken(const AText: string; AIsWord: Boolean; AStart, AStop: Integer);
+var
+  mToken: TAtlasCodeToken;
+begin
+  mToken.Text := AText;
+  mToken.IsWord := AIsWord;
+  mToken.StartPos := Pos2(FLine, AStart);
+  mToken.EndPos := Pos2(FLine, AStop);
+  FTokens := FTokens + [mToken];
+end;
+
+procedure TCommentLexer.ScanInside;
+var
+  mStart: Integer;
+begin
+  mStart := Pos(FClose, FText, FIndex);
+  if mStart = 0 then
+  begin
+    FIndex := FCount + 1;
+    Exit;
+  end;
+  FIndex := mStart + Length(FClose);
+  AddSpan(FOpen.Kind, FOpen.StartPos.Line, FOpen.StartPos.Character, FLine, FIndex - 1);
+  FInside := False;
+end;
+
+procedure TCommentLexer.OpenComment(AKind: TAtlasCommentSpanKind; const AClose: string; ALength: Integer);
+begin
+  FOpen.Kind := AKind;
+  FOpen.StartPos := Pos2(FLine, FIndex - 1);
+  FClose := AClose;
+  FInside := True;
+  Inc(FIndex, ALength);
+end;
+
+procedure TCommentLexer.LexBrace;
+begin
+  if CharAt(FIndex + 1) = '$' then
+  begin
+    OpenComment(TAtlasCommentSpanKind.Directive, '}', 1);
+  end
+  else
+  begin
+    OpenComment(TAtlasCommentSpanKind.BraceComment, '}', 1);
+  end;
+end;
+
+procedure TCommentLexer.LexSlash;
+begin
+  if CharAt(FIndex + 1) = '/' then
+  begin
+    AddSpan(TAtlasCommentSpanKind.LineComment, FLine, FIndex - 1, FLine, FCount);
+    FIndex := FCount + 1;
+  end
+  else
+  begin
+    AddToken('/', False, FIndex - 1, FIndex);
+    Inc(FIndex);
+  end;
+end;
+
+procedure TCommentLexer.LexParen;
+begin
+  if CharAt(FIndex + 1) <> '*' then
+  begin
+    AddToken('(', False, FIndex - 1, FIndex);
+    Inc(FIndex);
+  end
+  else if CharAt(FIndex + 2) = '$' then
+  begin
+    OpenComment(TAtlasCommentSpanKind.Directive, '*)', 2);
+  end
+  else
+  begin
+    OpenComment(TAtlasCommentSpanKind.ParenComment, '*)', 2);
+  end;
+end;
+
+procedure TCommentLexer.LexString;
+var
+  mStart: Integer;
+  mDone: Boolean;
+begin
+  mStart := FIndex;
+  Inc(FIndex);
+  mDone := False;
+  while not mDone and (FIndex <= FCount) do
+  begin
+    if (FText[FIndex] = '''') and (CharAt(FIndex + 1) = '''') then
+    begin
+      Inc(FIndex, 2);
+    end
+    else if FText[FIndex] = '''' then
+    begin
+      mDone := True;
+    end
+    else
+    begin
+      Inc(FIndex);
+    end;
+  end;
+  FIndex := Min(FIndex + 1, FCount + 1);
+  AddSpan(TAtlasCommentSpanKind.StringLiteral, FLine, mStart - 1, FLine, FIndex - 1);
+  AddToken(Copy(FText, mStart, FIndex - mStart), False, mStart - 1, FIndex - 1);
+end;
+
+procedure TCommentLexer.LexOther;
+var
+  mStart: Integer;
+begin
+  if not (TTextChars.IsIdentStart(FText[FIndex]) or (FText[FIndex] = '&')) then
+  begin
+    AddToken(FText[FIndex], False, FIndex - 1, FIndex);
+    Inc(FIndex);
+    Exit;
+  end;
+  mStart := FIndex;
+  Inc(FIndex);
+  while (FIndex <= FCount) and TTextChars.IsIdentChar(FText[FIndex]) do
+  begin
+    Inc(FIndex);
+  end;
+  AddToken(LowerCase(Copy(FText, mStart, FIndex - mStart)), True, mStart - 1, FIndex - 1);
+end;
+
+procedure TCommentLexer.Step;
+begin
+  case FText[FIndex] of
+    ' ', #9:
+      begin
+        Inc(FIndex);
+      end;
+    '{':
+      begin
+        LexBrace;
+      end;
+    '/':
+      begin
+        LexSlash;
+      end;
+    '(':
+      begin
+        LexParen;
+      end;
+    '''':
+      begin
+        LexString;
+      end;
+  else
+    begin
+      LexOther;
+    end;
+  end;
+end;
+
+procedure TCommentLexer.Run(const ALines: TArray<string>; out ASpans: TArray<TAtlasCommentSpan>;
   out ATokens: TArray<TAtlasCodeToken>);
 var
-  Line, Index, Count, Start: Integer;
-  Text: string;
-  Open: TAtlasCommentSpan;
-  Inside: Boolean;
-  Close: string;
-
-  procedure AddSpan(AKind: TAtlasCommentSpanKind; AStartLine, AStartChar, AEndLine, AEndChar: Integer);
-  var
-    Span: TAtlasCommentSpan;
-  begin
-    Span.Kind := AKind;
-    Span.StartPos := Pos2(AStartLine, AStartChar);
-    Span.EndPos := Pos2(AEndLine, AEndChar);
-    ASpans := ASpans + [Span];
-  end;
-
-  procedure AddToken(const AText: string; AIsWord: Boolean; ALine, AStart, AStop: Integer);
-  var
-    Token: TAtlasCodeToken;
-  begin
-    Token.Text := AText;
-    Token.IsWord := AIsWord;
-    Token.StartPos := Pos2(ALine, AStart);
-    Token.EndPos := Pos2(ALine, AStop);
-    ATokens := ATokens + [Token];
-  end;
-
+  mLine: Integer;
 begin
-  ASpans := nil;
-  ATokens := nil;
-  Inside := False;
-  Close := '';
-  Open := Default(TAtlasCommentSpan);
-  for Line := 0 to High(ALines) do
+  FSpans := nil;
+  FTokens := nil;
+  FInside := False;
+  FClose := '';
+  FOpen := Default(TAtlasCommentSpan);
+  for mLine := 0 to High(ALines) do
   begin
-    Text := ALines[Line];
-    Count := Length(Text);
-    // Index ist 1-basiert.
-    Index := 1;
-    while Index <= Count do
+    FLine := mLine;
+    FText := ALines[mLine];
+    FCount := Length(FText);
+    FIndex := 1;
+    while FIndex <= FCount do
     begin
-      if Inside then
+      if FInside then
       begin
-        Start := Pos(Close, Text, Index);
-        if Start = 0 then
-        begin
-          Index := Count + 1;
-          Continue;
-        end;
-        Index := Start + Length(Close);
-        AddSpan(Open.Kind, Open.StartPos.Line, Open.StartPos.Character, Line, Index - 1);
-        Inside := False;
-        Continue;
-      end;
-      case Text[Index] of
-        ' ', #9:
-          Inc(Index);
-        '{':
-          begin
-            Open.Kind := TAtlasCommentSpanKind.BraceComment;
-            if (Index < Count) and (Text[Index + 1] = '$') then
-            begin
-              Open.Kind := TAtlasCommentSpanKind.Directive;
-            end;
-            Open.StartPos := Pos2(Line, Index - 1);
-            Close := '}';
-            Inside := True;
-            Inc(Index);
-          end;
-        '/':
-          if (Index < Count) and (Text[Index + 1] = '/') then
-          begin
-            AddSpan(TAtlasCommentSpanKind.LineComment, Line, Index - 1, Line, Count);
-            Index := Count + 1;
-          end
-          else
-          begin
-            AddToken('/', False, Line, Index - 1, Index);
-            Inc(Index);
-          end;
-        '(':
-          if (Index < Count) and (Text[Index + 1] = '*') then
-          begin
-            Open.Kind := TAtlasCommentSpanKind.ParenComment;
-            if (Index + 1 < Count) and (Text[Index + 2] = '$') then
-            begin
-              Open.Kind := TAtlasCommentSpanKind.Directive;
-            end;
-            Open.StartPos := Pos2(Line, Index - 1);
-            Close := '*)';
-            Inside := True;
-            Inc(Index, 2);
-          end
-          else
-          begin
-            AddToken('(', False, Line, Index - 1, Index);
-            Inc(Index);
-          end;
-        '''':
-          begin
-            Start := Index;
-            Inc(Index);
-            while Index <= Count do
-            begin
-              if Text[Index] = '''' then
-              begin
-                if (Index < Count) and (Text[Index + 1] = '''') then
-                begin
-                  Inc(Index, 2);
-                end
-                else
-                begin
-                  Break;
-                end;
-              end
-              else
-              begin
-                Inc(Index);
-              end;
-            end;
-            Index := Min(Index + 1, Count + 1);
-            AddSpan(TAtlasCommentSpanKind.StringLiteral, Line, Start - 1, Line, Index - 1);
-            AddToken(Copy(Text, Start, Index - Start), False, Line, Start - 1, Index - 1);
-          end;
+        ScanInside;
+      end
       else
-        if TTextChars.IsIdentStart(Text[Index]) or (Text[Index] = '&') then
-        begin
-          Start := Index;
-          Inc(Index);
-          while (Index <= Count) and TTextChars.IsIdentChar(Text[Index]) do
-          begin
-            Inc(Index);
-          end;
-          AddToken(LowerCase(Copy(Text, Start, Index - Start)), True, Line, Start - 1, Index - 1);
-        end
-        else
-        begin
-          AddToken(Text[Index], False, Line, Index - 1, Index);
-          Inc(Index);
-        end;
+      begin
+        Step;
       end;
     end;
   end;
   // Nicht geschlossen: bis zum Textende.
-  if Inside and (Length(ALines) > 0) then
+  if FInside and (Length(ALines) > 0) then
   begin
-    AddSpan(Open.Kind, Open.StartPos.Line, Open.StartPos.Character, High(ALines), Length(ALines[High(ALines)]));
+    AddSpan(FOpen.Kind, FOpen.StartPos.Line, FOpen.StartPos.Character, High(ALines), Length(ALines[High(ALines)]));
+  end;
+  ASpans := FSpans;
+  ATokens := FTokens;
+end;
+
+procedure Lex(const ALines: TArray<string>; out ASpans: TArray<TAtlasCommentSpan>;
+  out ATokens: TArray<TAtlasCodeToken>);
+var
+  mLexer: TCommentLexer;
+begin
+  mLexer := TCommentLexer.Create;
+  try
+    mLexer.Run(ALines, ASpans, ATokens);
+  finally
+    mLexer.Free;
   end;
 end;
 
@@ -441,198 +553,277 @@ begin
   Result := False;
 end;
 
-class function TAtlasBlockComment.StatementRange(const ALines: TArray<string>; const ACursor: TLspTextPosition;
-  out AStart, AEnd: TLspTextPosition): Boolean;
-var
-  List: TArray<TAtlasCodeToken>;
-  Index, Current, First, Depth, Blocks, Ifs: Integer;
-  Token: TAtlasCodeToken;
+type
+  TStatementStep = (Include, StopBefore, StopAfter);
+
+  /// <summary>Vorwärts bis zum Semikolon derselben Ebene: Klammern, Blöcke und if … else.</summary>
+  TStatementScan = record
+    Depth: Integer;
+    Blocks: Integer;
+    Ifs: Integer;
+    function OuterStep(const AToken: TAtlasCodeToken): TStatementStep;
+    function LevelStep(const AToken: TAtlasCodeToken): TStatementStep;
+    function Step(const AToken: TAtlasCodeToken): TStatementStep;
+  end;
+
+function TStatementScan.OuterStep(const AToken: TAtlasCodeToken): TStatementStep;
 begin
-  AStart := ACursor;
-  AEnd := ACursor;
-  List := Tokens(ALines);
-  // Token am Cursor, sonst das nächste bzw. letzte der Cursorzeile.
-  Current := -1;
-  for Index := 0 to High(List) do
+  Result := TStatementStep.Include;
+  if IsWord(AToken, 'if') then
   begin
-    Token := List[Index];
-    if Token.StartPos.Line <> ACursor.Line then
+    Inc(Ifs);
+  end
+  else if IsWord(AToken, 'else') and (Ifs > 0) then
+  begin
+    Dec(Ifs);
+  end
+  else if IsWord(AToken, 'else') or IsWord(AToken, 'except') or IsWord(AToken, 'finally') then
+  begin
+    Result := TStatementStep.StopBefore;
+  end
+  else if AToken.Text = ';' then
+  begin
+    Result := TStatementStep.StopAfter;
+  end;
+end;
+
+function TStatementScan.LevelStep(const AToken: TAtlasCodeToken): TStatementStep;
+begin
+  Result := TStatementStep.Include;
+  if AToken.IsWord and IsOneOf(AToken.Text, ['begin', 'case', 'try', 'asm', 'record', 'repeat']) then
+  begin
+    Inc(Blocks);
+  end
+  else if IsWord(AToken, 'end') or IsWord(AToken, 'until') then
+  begin
+    if Blocks = 0 then
     begin
-      Continue;
-    end;
-    if Cmp(Token.StartPos, ACursor) <= 0 then
-    begin
-      Current := Index;
+      Result := TStatementStep.StopBefore;
     end
     else
     begin
-      if (Current < 0) or (Cmp(List[Current].EndPos, ACursor) < 0) then
+      Dec(Blocks);
+    end;
+  end
+  else if Blocks = 0 then
+  begin
+    Result := OuterStep(AToken);
+  end;
+end;
+
+function TStatementScan.Step(const AToken: TAtlasCodeToken): TStatementStep;
+begin
+  Result := TStatementStep.Include;
+  if IsOneOf(AToken.Text, ['(', '[']) then
+  begin
+    Inc(Depth);
+  end
+  else if IsOneOf(AToken.Text, [')', ']']) then
+  begin
+    Depth := Max(Depth - 1, 0);
+  end
+  else if Depth = 0 then
+  begin
+    Result := LevelStep(AToken);
+  end;
+end;
+
+/// <summary>Token am Cursor, sonst das nächste bzw. letzte der Cursorzeile; -1 ohne.</summary>
+function TokenAtCursor(const AList: TArray<TAtlasCodeToken>; const ACursor: TLspTextPosition): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AList) do
+  begin
+    if AList[mIndex].StartPos.Line <> ACursor.Line then
+    begin
+      Continue;
+    end;
+    if Cmp(AList[mIndex].StartPos, ACursor) > 0 then
+    begin
+      if (Result < 0) or (Cmp(AList[Result].EndPos, ACursor) < 0) then
       begin
-        Current := Index;
+        Result := mIndex;
       end;
       Break;
     end;
+    Result := mIndex;
   end;
-  if Current < 0 then
+end;
+
+/// <summary>Rückwärts bis hinter das vorige Semikolon bzw. Schlüsselwort, Klammern übersprungen.</summary>
+function StatementFirst(const AList: TArray<TAtlasCodeToken>; ACurrent: Integer): Integer;
+var
+  mDepth: Integer;
+  mToken: TAtlasCodeToken;
+begin
+  Result := ACurrent;
+  mDepth := 0;
+  while Result > 0 do
+  begin
+    mToken := AList[Result - 1];
+    if IsOneOf(mToken.Text, [')', ']']) then
+    begin
+      Inc(mDepth);
+    end
+    else if IsOneOf(mToken.Text, ['(', '[']) and (mDepth > 0) then
+    begin
+      Dec(mDepth);
+    end
+    else if (mDepth = 0) and IsStatementStart(mToken) then
+    begin
+      Break;
+    end;
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Ende der Anweisung ab AFirst (Anfang AStart).</summary>
+function StatementEnd(const AList: TArray<TAtlasCodeToken>; AFirst: Integer;
+  const AStart: TLspTextPosition): TLspTextPosition;
+var
+  mScan: TStatementScan;
+  mStep: TStatementStep;
+  mIndex: Integer;
+begin
+  Result := AStart;
+  mScan := Default(TStatementScan);
+  mIndex := AFirst;
+  mStep := TStatementStep.Include;
+  while (mStep = TStatementStep.Include) and (mIndex <= High(AList)) do
+  begin
+    mStep := mScan.Step(AList[mIndex]);
+    if mStep <> TStatementStep.StopBefore then
+    begin
+      Result := AList[mIndex].EndPos;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+class function TAtlasBlockComment.StatementRange(const ALines: TArray<string>; const ACursor: TLspTextPosition;
+  out AStart, AEnd: TLspTextPosition): Boolean;
+var
+  mList: TArray<TAtlasCodeToken>;
+  mCurrent, mFirst: Integer;
+begin
+  AStart := ACursor;
+  AEnd := ACursor;
+  mList := Tokens(ALines);
+  mCurrent := TokenAtCursor(mList, ACursor);
+  if mCurrent < 0 then
   begin
     Exit(False);
   end;
   // Direkt hinter dem Semikolon: die Anweisung davor.
-  if (List[Current].Text = ';') and (Current > 0) and (List[Current - 1].StartPos.Line = ACursor.Line) then
+  if (mList[mCurrent].Text = ';') and (mCurrent > 0) and (mList[mCurrent - 1].StartPos.Line = ACursor.Line) then
   begin
-    Dec(Current);
+    Dec(mCurrent);
   end;
-  // Rückwärts bis hinter das vorige Semikolon bzw. Schlüsselwort, Klammern übersprungen.
-  First := Current;
-  Depth := 0;
-  while First > 0 do
-  begin
-    Token := List[First - 1];
-    if (Token.Text = ')') or (Token.Text = ']') then
-    begin
-      Inc(Depth);
-    end
-    else if ((Token.Text = '(') or (Token.Text = '[')) and (Depth > 0) then
-    begin
-      Dec(Depth);
-    end
-    else if (Depth = 0) and IsStatementStart(Token) then
-    begin
-      Break;
-    end;
-    Dec(First);
-  end;
-  // Vorwärts bis zum Semikolon derselben Ebene.
-  Depth := 0;
-  Blocks := 0;
-  Ifs := 0;
-  Index := First;
-  AStart := List[First].StartPos;
-  AEnd := AStart;
-  while Index <= High(List) do
-  begin
-    Token := List[Index];
-    if (Token.Text = '(') or (Token.Text = '[') then
-    begin
-      Inc(Depth);
-    end
-    else if ((Token.Text = ')') or (Token.Text = ']')) and (Depth > 0) then
-    begin
-      Dec(Depth);
-    end
-    else if Depth = 0 then
-    begin
-      if IsWord(Token, 'begin') or IsWord(Token, 'case') or IsWord(Token, 'try') or IsWord(Token, 'asm') or
-        IsWord(Token, 'record') or IsWord(Token, 'repeat') then
-      begin
-        Inc(Blocks);
-      end
-      else if IsWord(Token, 'end') or IsWord(Token, 'until') then
-      begin
-        if Blocks = 0 then
-        begin
-          Break;
-        end;
-        Dec(Blocks);
-      end
-      else if (Blocks = 0) and IsWord(Token, 'if') then
-      begin
-        Inc(Ifs);
-      end
-      else if (Blocks = 0) and IsWord(Token, 'else') then
-      begin
-        if Ifs = 0 then
-        begin
-          Break;
-        end;
-        Dec(Ifs);
-      end
-      else if (Blocks = 0) and (IsWord(Token, 'except') or IsWord(Token, 'finally')) then
-      begin
-        Break;
-      end
-      else if (Blocks = 0) and (Token.Text = ';') then
-      begin
-        AEnd := Token.EndPos;
-        Break;
-      end;
-    end;
-    AEnd := Token.EndPos;
-    Inc(Index);
-  end;
+  mFirst := StatementFirst(mList, mCurrent);
+  AStart := mList[mFirst].StartPos;
+  AEnd := StatementEnd(mList, mFirst, AStart);
   Result := Cmp(AStart, AEnd) < 0;
+end;
+
+/// <summary>Anfang und Ende eines Blockkommentars dieser Art; Ergebnis: Länge der Zeichen.</summary>
+function Delimiters(AKind: TAtlasCommentSpanKind; out AOpener, ACloser: string): Integer;
+begin
+  Result := 1;
+  AOpener := '{';
+  ACloser := '}';
+  if AKind = TAtlasCommentSpanKind.ParenComment then
+  begin
+    Result := 2;
+    AOpener := '(*';
+    ACloser := '*)';
+  end;
+end;
+
+/// <summary>APos nach dem Löschen der Zeilen AOpenLine und ACloseLine.</summary>
+function AfterLineRemoval(const APos: TLspTextPosition; AOpenLine, ACloseLine: Integer): TLspTextPosition;
+begin
+  Result := APos;
+  Result.Line := APos.Line - Ord(APos.Line > AOpenLine) - Ord(APos.Line > ACloseLine);
+  if (APos.Line = AOpenLine) or (APos.Line = ACloseLine) then
+  begin
+    Result.Character := 0;
+  end;
+end;
+
+/// <summary>Eigene Zeilen: beide Zeilen entfallen.</summary>
+function RemoveOwnLines(const ALines: TArray<string>; AOpenLine, ACloseLine: Integer; const AStart,
+  AEnd: TLspTextPosition): TAtlasBlockCommentResult;
+var
+  mLines: TArray<string>;
+begin
+  mLines := Copy(ALines);
+  Delete(mLines, ACloseLine, 1);
+  Delete(mLines, AOpenLine, 1);
+  Result.Kind := TAtlasBlockCommentKind.Removed;
+  Result.Lines := mLines;
+  Result.SelectionStart := Clamp(mLines, AfterLineRemoval(AStart, AOpenLine, ACloseLine));
+  Result.SelectionEnd := Clamp(mLines, AfterLineRemoval(AEnd, AOpenLine, ACloseLine));
+end;
+
+/// <summary>Anfang und Ende des Kommentars samt unserem Leerzeichen innen entfernen.</summary>
+function RemoveDelimiters(const ALines: TArray<string>; const ASpan: TAtlasCommentSpan; ASize: Integer;
+  const AStart, AEnd: TLspTextPosition): TAtlasBlockCommentResult;
+var
+  mLines: TArray<string>;
+  mOpenLine, mOpenAt, mOpenLength, mCloseLine, mCloseAt, mCloseLength: Integer;
+  mStart, mEnd: TLspTextPosition;
+begin
+  mLines := Copy(ALines);
+  mOpenLine := ASpan.StartPos.Line;
+  mCloseLine := ASpan.EndPos.Line;
+  mOpenAt := ASpan.StartPos.Character;
+  mOpenLength := ASize;
+  mCloseAt := ASpan.EndPos.Character - ASize;
+  mCloseLength := ASize;
+  // Unser Leerzeichen hinter dem Anfang und vor dem Ende, ohne dass sich beide überschneiden.
+  if (mOpenAt + ASize < Length(mLines[mOpenLine])) and (mLines[mOpenLine][mOpenAt + ASize + 1] = ' ') and
+    ((mOpenLine <> mCloseLine) or (mOpenAt + ASize < mCloseAt)) then
+  begin
+    Inc(mOpenLength);
+  end;
+  if (mCloseAt > 0) and (mLines[mCloseLine][mCloseAt] = ' ') and
+    ((mOpenLine <> mCloseLine) or (mCloseAt - 1 >= mOpenAt + mOpenLength)) then
+  begin
+    Dec(mCloseAt);
+    Inc(mCloseLength);
+  end;
+  // Erst das Ende, dann der Anfang.
+  Delete(mLines[mCloseLine], mCloseAt + 1, mCloseLength);
+  mStart := AfterDelete(AStart, mCloseLine, mCloseAt, mCloseLength);
+  mEnd := AfterDelete(AEnd, mCloseLine, mCloseAt, mCloseLength);
+  Delete(mLines[mOpenLine], mOpenAt + 1, mOpenLength);
+  mStart := AfterDelete(mStart, mOpenLine, mOpenAt, mOpenLength);
+  mEnd := AfterDelete(mEnd, mOpenLine, mOpenAt, mOpenLength);
+  Result.Kind := TAtlasBlockCommentKind.Removed;
+  Result.Lines := mLines;
+  Result.SelectionStart := Clamp(mLines, mStart);
+  Result.SelectionEnd := Clamp(mLines, mEnd);
 end;
 
 function RemoveComment(const ALines: TArray<string>; const ASpan: TAtlasCommentSpan; const AStart,
   AEnd: TLspTextPosition): TAtlasBlockCommentResult;
 var
-  Lines: TArray<string>;
-  Size, OpenLine, OpenAt, OpenLength, CloseLine, CloseAt, CloseLength: Integer;
-  Opener, Closer: string;
-  SelectionStart, SelectionEnd: TLspTextPosition;
+  mSize, mOpenLine, mCloseLine: Integer;
+  mOpener, mCloser: string;
 begin
-  Result.Kind := TAtlasBlockCommentKind.Removed;
-  Lines := Copy(ALines);
-  Size := 1;
-  Opener := '{';
-  Closer := '}';
-  if ASpan.Kind = TAtlasCommentSpanKind.ParenComment then
+  mSize := Delimiters(ASpan.Kind, mOpener, mCloser);
+  mOpenLine := ASpan.StartPos.Line;
+  mCloseLine := ASpan.EndPos.Line;
+  if (mOpenLine < mCloseLine) and (Trim(ALines[mOpenLine]) = mOpener) and (Trim(ALines[mCloseLine]) = mCloser) then
   begin
-    Size := 2;
-    Opener := '(*';
-    Closer := '*)';
-  end;
-  SelectionStart := AStart;
-  SelectionEnd := AEnd;
-  OpenLine := ASpan.StartPos.Line;
-  CloseLine := ASpan.EndPos.Line;
-  // Eigene Zeilen: beide Zeilen entfallen.
-  if (OpenLine < CloseLine) and (Trim(Lines[OpenLine]) = Opener) and (Trim(Lines[CloseLine]) = Closer) then
+    Result := RemoveOwnLines(ALines, mOpenLine, mCloseLine, AStart, AEnd);
+  end
+  else
   begin
-    Delete(Lines, CloseLine, 1);
-    Delete(Lines, OpenLine, 1);
-    SelectionStart.Line := SelectionStart.Line - Ord(SelectionStart.Line > OpenLine) -
-      Ord(SelectionStart.Line > CloseLine);
-    SelectionEnd.Line := SelectionEnd.Line - Ord(SelectionEnd.Line > OpenLine) - Ord(SelectionEnd.Line > CloseLine);
-    if (AStart.Line = OpenLine) or (AStart.Line = CloseLine) then
-    begin
-      SelectionStart.Character := 0;
-    end;
-    if (AEnd.Line = OpenLine) or (AEnd.Line = CloseLine) then
-    begin
-      SelectionEnd.Character := 0;
-    end;
-    Result.Lines := Lines;
-    Result.SelectionStart := Clamp(Lines, SelectionStart);
-    Result.SelectionEnd := Clamp(Lines, SelectionEnd);
-    Exit;
+    Result := RemoveDelimiters(ALines, ASpan, mSize, AStart, AEnd);
   end;
-  OpenAt := ASpan.StartPos.Character;
-  OpenLength := Size;
-  CloseAt := ASpan.EndPos.Character - Size;
-  CloseLength := Size;
-  // Unser Leerzeichen hinter dem Anfang und vor dem Ende, ohne dass sich beide überschneiden.
-  if (OpenAt + Size < Length(Lines[OpenLine])) and (Lines[OpenLine][OpenAt + Size + 1] = ' ') and
-    ((OpenLine <> CloseLine) or (OpenAt + Size < CloseAt)) then
-  begin
-    Inc(OpenLength);
-  end;
-  if (CloseAt > 0) and (Lines[CloseLine][CloseAt] = ' ') and
-    ((OpenLine <> CloseLine) or (CloseAt - 1 >= OpenAt + OpenLength)) then
-  begin
-    Dec(CloseAt);
-    Inc(CloseLength);
-  end;
-  // Erst das Ende, dann der Anfang.
-  Delete(Lines[CloseLine], CloseAt + 1, CloseLength);
-  SelectionStart := AfterDelete(SelectionStart, CloseLine, CloseAt, CloseLength);
-  SelectionEnd := AfterDelete(SelectionEnd, CloseLine, CloseAt, CloseLength);
-  Delete(Lines[OpenLine], OpenAt + 1, OpenLength);
-  SelectionStart := AfterDelete(SelectionStart, OpenLine, OpenAt, OpenLength);
-  SelectionEnd := AfterDelete(SelectionEnd, OpenLine, OpenAt, OpenLength);
-  Result.Lines := Lines;
-  Result.SelectionStart := Clamp(Lines, SelectionStart);
-  Result.SelectionEnd := Clamp(Lines, SelectionEnd);
 end;
 
 function AddLineComments(const ALines: TArray<string>; AFirst, ALast: Integer; const AStart,
@@ -674,95 +865,141 @@ begin
   Result := False;
 end;
 
+/// <summary>Text, der in den Kommentar kommt: bei eigenen Zeilen die ganzen Zeilen.</summary>
+function CommentText(const ALines: TArray<string>; const AFrom, ATo: TLspTextPosition; AOwnLines: Boolean): string;
+begin
+  if AOwnLines then
+  begin
+    Result := TextOf(ALines, Pos2(AFrom.Line, 0), Pos2(ATo.Line, Length(ALines[ATo.Line])));
+  end
+  else
+  begin
+    Result := TextOf(ALines, AFrom, ATo);
+  end;
+end;
+
+/// <summary>Kommentarzeichen, die im Text AText nicht vorkommen; False, wenn beide Arten vorkommen.</summary>
+function ChooseDelimiters(const AText: string; const AOptions: TAtlasBlockCommentOptions;
+  out AOpener, ACloser: string): Boolean;
+var
+  mCanBraces, mCanParens: Boolean;
+begin
+  mCanBraces := Pos('}', AText) = 0;
+  mCanParens := Pos('*)', AText) = 0;
+  Result := mCanBraces or mCanParens;
+  AOpener := '(*';
+  ACloser := '*)';
+  if mCanBraces and ((AOptions.Style = TAtlasBlockCommentStyle.Braces) or not mCanParens) then
+  begin
+    AOpener := '{';
+    ACloser := '}';
+  end;
+end;
+
+/// <summary>Anfang und Ende auf eigenen Zeilen um AFirst bis ALast; die Markierung bleibt auf den Zeilen dazwischen.
+/// </summary>
+procedure WrapOwnLines(var AResult: TAtlasBlockCommentResult; AFirst, ALast: Integer;
+  const AOpener, ACloser: string);
+var
+  mIndent: string;
+begin
+  mIndent := Copy(AResult.Lines[AFirst], 1, LeadingSpace(AResult.Lines[AFirst]));
+  Insert(mIndent + ACloser, AResult.Lines, ALast + 1);
+  Insert(mIndent + AOpener, AResult.Lines, AFirst);
+  if (AResult.SelectionEnd.Line = ALast + 1) and (AResult.SelectionEnd.Character = 0) then
+  begin
+    AResult.SelectionEnd.Line := ALast + 2;
+  end
+  else
+  begin
+    AResult.SelectionEnd.Line := AResult.SelectionEnd.Line + Ord(AResult.SelectionEnd.Line >= AFirst) +
+      Ord(AResult.SelectionEnd.Line > ALast);
+  end;
+  AResult.SelectionStart.Line := AResult.SelectionStart.Line + Ord(AResult.SelectionStart.Line >= AFirst) +
+    Ord(AResult.SelectionStart.Line > ALast);
+end;
+
+/// <summary>Erst das Ende, dann der Anfang; je ein Leerzeichen innen.</summary>
+procedure WrapInline(var AResult: TAtlasBlockCommentResult; const AFrom, ATo: TLspTextPosition; const AOpener,
+  ACloser: string);
+begin
+  Insert(' ' + ACloser, AResult.Lines[ATo.Line], ATo.Character + 1);
+  AResult.SelectionStart := AfterInsert(AResult.SelectionStart, ATo.Line, ATo.Character, Length(ACloser) + 1, False);
+  AResult.SelectionEnd := AfterInsert(AResult.SelectionEnd, ATo.Line, ATo.Character, Length(ACloser) + 1, False);
+  Insert(AOpener + ' ', AResult.Lines[AFrom.Line], AFrom.Character + 1);
+  AResult.SelectionStart := AfterInsert(AResult.SelectionStart, AFrom.Line, AFrom.Character, Length(AOpener) + 1,
+    True);
+  AResult.SelectionEnd := AfterInsert(AResult.SelectionEnd, AFrom.Line, AFrom.Character, Length(AOpener) + 1, True);
+end;
+
 function AddComment(const ALines: TArray<string>; const AFrom, ATo, ASelectionStart,
   ASelectionEnd: TLspTextPosition; const AOptions: TAtlasBlockCommentOptions): TAtlasBlockCommentResult;
 var
-  Lines: TArray<string>;
-  Text, Opener, Closer, Indent: string;
-  CanBraces, CanParens, Braces: Boolean;
-  First, Last: Integer;
-  SelectionStart, SelectionEnd: TLspTextPosition;
+  mOpener, mCloser: string;
+  mOwnLines: Boolean;
 begin
   Result.Kind := TAtlasBlockCommentKind.Refused;
   Result.Lines := ALines;
   Result.SelectionStart := ASelectionStart;
   Result.SelectionEnd := ASelectionEnd;
-  First := AFrom.Line;
-  Last := ATo.Line;
+  mOwnLines := AOptions.OwnLines and (AFrom.Line < ATo.Line);
   // Nur eine Direktive: mit // auskommentieren, damit kein Kommentar entsteht, der wie eine Direktive aussieht.
-  if IsOnlyDirective(ALines, AFrom, ATo) then
+  if IsOnlyDirective(ALines, AFrom, ATo) or
+    not ChooseDelimiters(CommentText(ALines, AFrom, ATo, mOwnLines), AOptions, mOpener, mCloser) then
   begin
-    Exit(AddLineComments(ALines, First, Last, ASelectionStart, ASelectionEnd));
-  end;
-  if AOptions.OwnLines and (First < Last) then
-  begin
-    Text := TextOf(ALines, Pos2(First, 0), Pos2(Last, Length(ALines[Last])));
-  end
-  else
-  begin
-    Text := TextOf(ALines, AFrom, ATo);
-  end;
-  CanBraces := Pos('}', Text) = 0;
-  CanParens := Pos('*)', Text) = 0;
-  if not CanBraces and not CanParens then
-  begin
-    if AOptions.Fallback = TAtlasBlockCommentFallback.Refuse then
+    if IsOnlyDirective(ALines, AFrom, ATo) or (AOptions.Fallback <> TAtlasBlockCommentFallback.Refuse) then
     begin
-      Exit;
+      Result := AddLineComments(ALines, AFrom.Line, ATo.Line, ASelectionStart, ASelectionEnd);
     end;
-    Exit(AddLineComments(ALines, First, Last, ASelectionStart, ASelectionEnd));
-  end;
-  Braces := CanBraces and ((AOptions.Style = TAtlasBlockCommentStyle.Braces) or not CanParens);
-  Opener := '(*';
-  Closer := '*)';
-  if Braces then
-  begin
-    Opener := '{';
-    Closer := '}';
+    Exit;
   end;
   Result.Kind := TAtlasBlockCommentKind.Added;
-  Lines := Copy(ALines);
-  SelectionStart := ASelectionStart;
-  SelectionEnd := ASelectionEnd;
-  if AOptions.OwnLines and (First < Last) then
+  Result.Lines := Copy(ALines);
+  if mOwnLines then
   begin
-    Indent := Copy(Lines[First], 1, LeadingSpace(Lines[First]));
-    Insert(Indent + Closer, Lines, Last + 1);
-    Insert(Indent + Opener, Lines, First);
-    // Die Markierung bleibt auf den Zeilen dazwischen.
-    if (SelectionEnd.Line = Last + 1) and (SelectionEnd.Character = 0) then
-    begin
-      SelectionEnd.Line := Last + 2;
-    end
-    else
-    begin
-      SelectionEnd.Line := SelectionEnd.Line + Ord(SelectionEnd.Line >= First) + Ord(SelectionEnd.Line > Last);
-    end;
-    SelectionStart.Line := SelectionStart.Line + Ord(SelectionStart.Line >= First) +
-      Ord(SelectionStart.Line > Last);
+    WrapOwnLines(Result, AFrom.Line, ATo.Line, mOpener, mCloser);
   end
   else
   begin
-    // Erst das Ende, dann der Anfang; je ein Leerzeichen innen.
-    Insert(' ' + Closer, Lines[ATo.Line], ATo.Character + 1);
-    SelectionStart := AfterInsert(SelectionStart, ATo.Line, ATo.Character, Length(Closer) + 1, False);
-    SelectionEnd := AfterInsert(SelectionEnd, ATo.Line, ATo.Character, Length(Closer) + 1, False);
-    Insert(Opener + ' ', Lines[AFrom.Line], AFrom.Character + 1);
-    SelectionStart := AfterInsert(SelectionStart, AFrom.Line, AFrom.Character, Length(Opener) + 1, True);
-    SelectionEnd := AfterInsert(SelectionEnd, AFrom.Line, AFrom.Character, Length(Opener) + 1, True);
+    WrapInline(Result, AFrom, ATo, mOpener, mCloser);
   end;
-  Result.Lines := Lines;
-  Result.SelectionStart := SelectionStart;
-  Result.SelectionEnd := SelectionEnd;
+end;
+
+/// <summary>Bereich für den Cursor ohne Markierung: die Anweisung bzw. die Zeile, ohne Leerraum am Rand.</summary>
+function CursorRange(const ALines: TArray<string>; const ACursor: TLspTextPosition;
+  const AOptions: TAtlasBlockCommentOptions; out AFrom, ATill: TLspTextPosition): Boolean;
+var
+  mLine: string;
+begin
+  if (AOptions.Scope = TAtlasBlockCommentScope.Line) or
+    not TAtlasBlockComment.StatementRange(ALines, ACursor, AFrom, ATill) then
+  begin
+    mLine := ALines[ACursor.Line];
+    AFrom := Pos2(ACursor.Line, LeadingSpace(mLine));
+    ATill := Pos2(ACursor.Line, Length(TrimRight(mLine)));
+  end;
+  Result := TrimRange(ALines, AFrom, ATill);
+end;
+
+/// <summary>Markierung innerhalb von ALines, Anfang vor Ende.</summary>
+procedure OrderSelection(const ALines: TArray<string>; const ASelectionStart, ASelectionEnd: TLspTextPosition;
+  out AStart, AEnd: TLspTextPosition);
+begin
+  AStart := Clamp(ALines, ASelectionStart);
+  AEnd := Clamp(ALines, ASelectionEnd);
+  if Cmp(AEnd, AStart) < 0 then
+  begin
+    AStart := Clamp(ALines, ASelectionEnd);
+    AEnd := Clamp(ALines, ASelectionStart);
+  end;
 end;
 
 class function TAtlasBlockComment.Toggle(const ALines: TArray<string>; const ASelectionStart,
   ASelectionEnd: TLspTextPosition; const AOptions: TAtlasBlockCommentOptions): TAtlasBlockCommentResult;
 var
-  SelectionStart, SelectionEnd, From, Till: TLspTextPosition;
-  Span: TAtlasCommentSpan;
-  HasSelection: Boolean;
-  Line: string;
+  mStart, mEnd, mFrom, mTill: TLspTextPosition;
+  mSpan: TAtlasCommentSpan;
+  mInComment, mFound: Boolean;
 begin
   Result := Default(TAtlasBlockCommentResult);
   Result.Lines := ALines;
@@ -770,50 +1007,30 @@ begin
   begin
     Exit;
   end;
-  SelectionStart := Clamp(ALines, ASelectionStart);
-  SelectionEnd := Clamp(ALines, ASelectionEnd);
-  if Cmp(SelectionEnd, SelectionStart) < 0 then
+  OrderSelection(ALines, ASelectionStart, ASelectionEnd, mStart, mEnd);
+  Result.SelectionStart := mStart;
+  Result.SelectionEnd := mEnd;
+  mFrom := mStart;
+  mTill := mEnd;
+  if Cmp(mStart, mEnd) < 0 then
   begin
-    From := SelectionStart;
-    SelectionStart := SelectionEnd;
-    SelectionEnd := From;
-  end;
-  Result.SelectionStart := SelectionStart;
-  Result.SelectionEnd := SelectionEnd;
-  HasSelection := Cmp(SelectionStart, SelectionEnd) < 0;
-  From := SelectionStart;
-  Till := SelectionEnd;
-  if HasSelection then
-  begin
-    if not TrimRange(ALines, From, Till) then
-    begin
-      Exit;
-    end;
+    mFound := TrimRange(ALines, mFrom, mTill);
     // In einem Blockkommentar: ihn entfernen.
-    if CommentAt(ALines, From, Span) and (Cmp(Till, Span.EndPos) <= 0) then
-    begin
-      Exit(RemoveComment(ALines, Span, SelectionStart, SelectionEnd));
-    end;
+    mInComment := mFound and CommentAt(ALines, mFrom, mSpan) and (Cmp(mTill, mSpan.EndPos) <= 0);
   end
   else
   begin
-    if CommentAt(ALines, SelectionStart, Span) then
-    begin
-      Exit(RemoveComment(ALines, Span, SelectionStart, SelectionEnd));
-    end;
-    if (AOptions.Scope = TAtlasBlockCommentScope.Line) or
-      not StatementRange(ALines, SelectionStart, From, Till) then
-    begin
-      Line := ALines[SelectionStart.Line];
-      From := Pos2(SelectionStart.Line, LeadingSpace(Line));
-      Till := Pos2(SelectionStart.Line, Length(TrimRight(Line)));
-    end;
-    if not TrimRange(ALines, From, Till) then
-    begin
-      Exit;
-    end;
+    mInComment := CommentAt(ALines, mStart, mSpan);
+    mFound := mInComment or CursorRange(ALines, mStart, AOptions, mFrom, mTill);
   end;
-  Result := AddComment(ALines, From, Till, SelectionStart, SelectionEnd, AOptions);
+  if mInComment then
+  begin
+    Result := RemoveComment(ALines, mSpan, mStart, mEnd);
+  end
+  else if mFound then
+  begin
+    Result := AddComment(ALines, mFrom, mTill, mStart, mEnd, AOptions);
+  end;
 end;
 
 class function TAtlasBlockComment.StyleOf(const AValue: string): TAtlasBlockCommentStyle;
