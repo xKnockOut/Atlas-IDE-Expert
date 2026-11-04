@@ -199,9 +199,9 @@ begin
   end;
   Line := TTextLines.SplitLines(Virtual)[ACommandLine];
   Settings := TCompletionSettings.Default;
-  if Assigned(FCompletion.SettingsFor) then
+  if Assigned(FCompletion.Hooks.SettingsFor) then
   begin
-    Settings := FCompletion.SettingsFor(AUri);
+    Settings := FCompletion.Hooks.SettingsFor(AUri);
   end;
   // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
   Tree := TSyntaxTreeCache.Parse(Virtual);
@@ -209,12 +209,12 @@ begin
   Request := nil;
   try
     Resolver := TNameResolver.Create(FIndex);
-    Resolver.Namespaces := FCompletion.Namespaces;
+    Resolver.Namespaces := FCompletion.Hooks.Namespaces;
     Request := TCompletionRequest.Create(Virtual, TDocumentUris.ToPath(AUri),
       TTextPosition.Create(ACommandLine, Length(Line)));
     Request.Tree := Tree;
     Request.Resolver := Resolver;
-    Request.ReadText := FCompletion.ReadText;
+    Request.ReadText := FCompletion.Hooks.ReadText;
     Request.Settings := Settings;
     Result := TCompletionDeclarations.InterfaceItems(Request, AItems, Batch) and Batch;
   finally

@@ -191,7 +191,7 @@ begin
   try
     for mWorkspace in FServices.Workspaces.Items do
     begin
-      mFiles := mFiles + [mWorkspace.Configuration.PrimaryFileName, mWorkspace.Configuration.LegacyFileName];
+      mFiles := mFiles + [mWorkspace.Configuration.Files.Primary, mWorkspace.Configuration.Files.Legacy];
     end;
   finally
     System.TMonitor.Exit(FServices.Workspaces.Lock);

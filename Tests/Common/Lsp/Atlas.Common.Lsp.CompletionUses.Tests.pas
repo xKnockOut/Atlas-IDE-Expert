@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -164,7 +165,7 @@ begin
     Settings := TCompletionSettings.Default;
     Settings.UsesDetails := AUsesDetails;
     Request.Settings := Settings;
-    Result := TLspCompletion.Collect(Request, TPostfixOptions.Default, nil);
+    Result := TCompletionLists.Collect(Request, TPostfixOptions.Default, nil);
   finally
     Request.Free;
     Tree.Free;
