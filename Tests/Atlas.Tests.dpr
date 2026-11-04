@@ -92,6 +92,7 @@ uses
   Atlas.Common.Lsp.ExitPoints.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas',
   Atlas.Common.Semantics.Reassigned.Tests in 'Common\Semantics\Atlas.Common.Semantics.Reassigned.Tests.pas',
   Atlas.Common.Semantics.ExpressionTypes.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.Tests.pas',
+  Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests.pas',
   Atlas.Common.Semantics.ResolvedSignatures.Tests in 'Common\Semantics\Atlas.Common.Semantics.ResolvedSignatures.Tests.pas',
   Atlas.Common.Lsp.Reassigned.Tests in 'Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas',
   Atlas.Common.Lsp.ExpressionType.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas',
