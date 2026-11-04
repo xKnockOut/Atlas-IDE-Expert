@@ -258,23 +258,57 @@ begin
   Result.cx := mWidth + 2 * mPadding;
 end;
 
-class procedure TAtlasArchitectureAssignment.Draw(ACanvas: TCanvas; const ARect: TRect;
-  const AModel: TAtlasArchitectureModel; AUnit, APpi: Integer; const AColors: TAtlasColors);
-var
-  mWidths: TArray<Integer>;
-  mLine, mPadding, mGap, mX, mY, mRow, mLeft, mDot: Integer;
-  mCells: TArray<string>;
-  mClose: string;
-  mStyle: TFontStyles;
-begin
-  if not Available(AModel, AUnit) then
-  begin
-    Exit;
+type
+  /// <summary>Was das Zeichnen einer Tabellenzeile braucht.</summary>
+  TAssignmentTable = record
+    Canvas: TCanvas;
+    Widths: TArray<Integer>;
+    Line: Integer;
+    Gap: Integer;
+    Dot: Integer;
+    Ppi: Integer;
+    Colors: TAtlasColors;
   end;
-  Columns(ACanvas, AModel, AUnit, APpi, mWidths, mLine);
-  mPadding := MulDiv(cPadding, APpi, 96);
-  mGap := MulDiv(cColumnGap, APpi, 96);
-  mDot := MulDiv(cDotSize, APpi, 96);
+
+/// <summary>Zeile ARow der Zuordnung bei (AX, AY): Farbpunkt des Teilsystems wie in Karte und Legende, Name, Zahlen
+/// rechtsbündig.</summary>
+procedure DrawRow(const ATable: TAssignmentTable; const AModel: TAtlasArchitectureModel; AUnit, ARow, AX,
+  AY: Integer);
+var
+  mCells: TArray<string>;
+  mLeft, mCell: Integer;
+  mCanvas: TCanvas;
+begin
+  mCanvas := ATable.Canvas;
+  mCells := TAtlasArchitectureAssignment.Cells(AModel, AUnit, ARow);
+  mCanvas.Brush.Style := bsSolid;
+  mCanvas.Brush.Color := TColor(AModel.SubsystemColor(AModel.Units[AUnit].Assignment[ARow].Subsystem,
+    ATable.Colors.IsDark));
+  mCanvas.Pen.Color := mCanvas.Brush.Color;
+  mCanvas.Ellipse(AX, AY + (ATable.Line - ATable.Dot) div 2, AX + ATable.Dot,
+    AY + (ATable.Line - ATable.Dot) div 2 + ATable.Dot);
+  mCanvas.Brush.Style := bsClear;
+  if AModel.Units[AUnit].Assignment[ARow].Counts then
+  begin
+    mCanvas.Font.Color := TColor(ATable.Colors.Text);
+  end
+  else
+  begin
+    mCanvas.Font.Color := TColor(ATable.Colors.Muted);
+  end;
+  mCanvas.TextOut(AX + ATable.Dot + MulDiv(6, ATable.Ppi, 96), AY, mCells[0]);
+  mLeft := AX + ATable.Widths[0];
+  for mCell := 1 to 3 do
+  begin
+    mCanvas.TextOut(mLeft + ATable.Gap + ATable.Widths[mCell] - mCanvas.TextWidth(mCells[mCell]), AY,
+      mCells[mCell]);
+    Inc(mLeft, ATable.Gap + ATable.Widths[mCell]);
+  end;
+end;
+
+/// <summary>Hintergrund und Rand.</summary>
+procedure DrawFrame(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors);
+begin
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(AColors.Surface);
   ACanvas.Pen.Style := psSolid;
@@ -282,6 +316,28 @@ begin
   ACanvas.Pen.Color := TColor(AColors.Line);
   ACanvas.Rectangle(ARect);
   ACanvas.Brush.Style := bsClear;
+end;
+
+class procedure TAtlasArchitectureAssignment.Draw(ACanvas: TCanvas; const ARect: TRect;
+  const AModel: TAtlasArchitectureModel; AUnit, APpi: Integer; const AColors: TAtlasColors);
+var
+  mTable: TAssignmentTable;
+  mPadding, mX, mY, mRow: Integer;
+  mClose: string;
+  mStyle: TFontStyles;
+begin
+  if not Available(AModel, AUnit) then
+  begin
+    Exit;
+  end;
+  mTable.Canvas := ACanvas;
+  Columns(ACanvas, AModel, AUnit, APpi, mTable.Widths, mTable.Line);
+  mTable.Gap := MulDiv(cColumnGap, APpi, 96);
+  mTable.Dot := MulDiv(cDotSize, APpi, 96);
+  mTable.Ppi := APpi;
+  mTable.Colors := AColors;
+  mPadding := MulDiv(cPadding, APpi, 96);
+  DrawFrame(ACanvas, ARect, AColors);
   mX := ARect.Left + mPadding;
   mY := ARect.Top + mPadding;
   ACanvas.Font.Color := TColor(AColors.Text);
@@ -289,37 +345,14 @@ begin
   ACanvas.Font.Style := mStyle + [fsBold];
   ACanvas.TextOut(mX, mY, AModel.Units[AUnit].Name);
   ACanvas.Font.Style := mStyle;
-  Inc(mY, mLine);
+  Inc(mY, mTable.Line);
   ACanvas.Font.Color := TColor(AColors.Muted);
   ACanvas.TextOut(mX, mY, Head(AModel, AUnit));
-  Inc(mY, mLine);
+  Inc(mY, mTable.Line);
   for mRow := 0 to High(AModel.Units[AUnit].Assignment) do
   begin
-    mCells := Cells(AModel, AUnit, mRow);
-    // Farbpunkt des Teilsystems wie in Karte und Legende.
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := TColor(AModel.SubsystemColor(AModel.Units[AUnit].Assignment[mRow].Subsystem,
-      AColors.IsDark));
-    ACanvas.Pen.Color := ACanvas.Brush.Color;
-    ACanvas.Ellipse(mX, mY + (mLine - mDot) div 2, mX + mDot, mY + (mLine - mDot) div 2 + mDot);
-    ACanvas.Brush.Style := bsClear;
-    if AModel.Units[AUnit].Assignment[mRow].Counts then
-    begin
-      ACanvas.Font.Color := TColor(AColors.Text);
-    end
-    else
-    begin
-      ACanvas.Font.Color := TColor(AColors.Muted);
-    end;
-    ACanvas.TextOut(mX + mDot + MulDiv(6, APpi, 96), mY, mCells[0]);
-    // Zahlen rechtsbündig.
-    mLeft := mX + mWidths[0];
-    ACanvas.TextOut(mLeft + mGap + mWidths[1] - ACanvas.TextWidth(mCells[1]), mY, mCells[1]);
-    Inc(mLeft, mGap + mWidths[1]);
-    ACanvas.TextOut(mLeft + mGap + mWidths[2] - ACanvas.TextWidth(mCells[2]), mY, mCells[2]);
-    Inc(mLeft, mGap + mWidths[2]);
-    ACanvas.TextOut(mLeft + mGap + mWidths[3] - ACanvas.TextWidth(mCells[3]), mY, mCells[3]);
-    Inc(mY, mLine);
+    DrawRow(mTable, AModel, AUnit, mRow, mX, mY);
+    Inc(mY, mTable.Line);
   end;
   mClose := CloseLine(AModel, AUnit);
   if mClose <> '' then

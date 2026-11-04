@@ -41,7 +41,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Architecture.Model;
+  Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.View;
 
 type
   TAtlasArchitectureMap = class(TCustomControl)

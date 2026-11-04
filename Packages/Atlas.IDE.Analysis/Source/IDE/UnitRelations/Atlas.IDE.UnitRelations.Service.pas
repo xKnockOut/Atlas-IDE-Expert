@@ -101,6 +101,42 @@ const
   CostRefreshMs = 5000;
 
 type
+  /// <summary>Kosten einer interface-Änderung (#554) für das Feld der Statusleiste.</summary>
+  TInterfaceCostState = class
+  private
+    FRun: TAtlasUnitRelationsRun;
+    /// <summary>Besitzer (TUnitRelationsState); Antworten gelten nur, solange er FState ist.</summary>
+    FOwner: TObject;
+    FShow: TAtlasInterfaceCostShow;
+    FFile: string;
+    FCost: TAtlasInterfaceCost;
+    FKnown: Boolean;
+    FRequest: Integer;
+    FPending: Boolean;
+    FAsked: Cardinal;
+    FInInterface: Boolean;
+    FSections: TAtlasUnitSections;
+    FSectionsFile: string;
+    FSectionsVersion: Cardinal;
+    FShownText: string;
+    FShownHint: string;
+    procedure SetText(const AText, AHint: string);
+    procedure Show;
+    procedure Request;
+    function AnswerHandler(ANumber: Integer): TProc<TJSONValue>;
+    /// <summary>Abschnitte und Lage der Einfügemarke in AView lesen; Dateiwechsel setzt den Wert zurück.</summary>
+    procedure Locate(const AView: IOTAEditView);
+  public
+    constructor Create(const ARun: TAtlasUnitRelationsRun; AOwner: TObject);
+    /// <summary>Laufende Antworten verwerfen.</summary>
+    procedure Cancel;
+    procedure SetHandler(const AShow: TAtlasInterfaceCostShow);
+    /// <summary>Feld der Statusleiste wegnehmen und neu ermitteln (Einstellungen, Aus).</summary>
+    procedure Hide;
+    /// <summary>Takt: Einfügemarke prüfen, bei Bedarf nachfragen, Feld zeigen.</summary>
+    procedure Update;
+  end;
+
   TUnitRelationsState = class
   private
     FRun: TAtlasUnitRelationsRun;
@@ -118,19 +154,7 @@ type
     FLastJson: string;
     FShownMessage: Boolean;
     /// <summary>Kosten einer interface-Änderung (#554).</summary>
-    FShowCost: TAtlasInterfaceCostShow;
-    FCostFile: string;
-    FCost: TAtlasInterfaceCost;
-    FCostKnown: Boolean;
-    FCostRequest: Integer;
-    FCostPending: Boolean;
-    FCostAsked: Cardinal;
-    FCostInInterface: Boolean;
-    FSections: TAtlasUnitSections;
-    FSectionsFile: string;
-    FSectionsVersion: Cardinal;
-    FShownCost: string;
-    FShownCostHint: string;
+    FCost: TInterfaceCostState;
     procedure Tick(Sender: TObject);
     procedure Wire(AFrame: TAtlasUnitRelationsFrame);
     function EditorFile: string;
@@ -138,13 +162,11 @@ type
     procedure ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
     procedure ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
     procedure Request;
+    function AnswerHandler(ANumber: Integer; const AFileName: string; AAllLevels: Boolean): TProc<TJSONValue>;
+    procedure TakeAnswer(const AFileName: string; AAllLevels: Boolean; AAnswer: TJSONValue);
     procedure ChangeDepth(AAllLevels: Boolean);
     procedure Change(const ACommand, AArgumentsJson: string);
     procedure Open(const AFileName: string; ALine, ACharacter: Integer);
-    procedure UpdateCost;
-    procedure RequestCost;
-    procedure ShowCost;
-    procedure SetCost(const AText, AHint: string);
   public
     constructor Create(const ARun: TAtlasUnitRelationsRun);
     destructor Destroy; override;
@@ -170,6 +192,167 @@ begin
   Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk');
 end;
 
+{ TInterfaceCostState }
+
+constructor TInterfaceCostState.Create(const ARun: TAtlasUnitRelationsRun; AOwner: TObject);
+begin
+  inherited Create;
+  FRun := ARun;
+  FOwner := AOwner;
+end;
+
+procedure TInterfaceCostState.Cancel;
+begin
+  Inc(FRequest);
+end;
+
+procedure TInterfaceCostState.SetHandler(const AShow: TAtlasInterfaceCostShow);
+begin
+  Hide;
+  FShow := AShow;
+end;
+
+procedure TInterfaceCostState.SetText(const AText, AHint: string);
+begin
+  // Nur bei Änderungen: Der Zeitgeber fragt viermal je Sekunde.
+  if (AText = FShownText) and (AHint = FShownHint) then
+  begin
+    Exit;
+  end;
+  FShownText := AText;
+  FShownHint := AHint;
+  if Assigned(FShow) then
+  begin
+    FShow(AText, AHint);
+  end;
+end;
+
+procedure TInterfaceCostState.Hide;
+begin
+  SetText('', '');
+  FFile := '';
+  FKnown := False;
+  FInInterface := False;
+end;
+
+procedure TInterfaceCostState.Show;
+var
+  mText, mUnits: string;
+  mMore: Integer;
+begin
+  if not TAtlasInterfaceCostModel.Visible(TAtlasIdeSettings.Current.ShowInterfaceCost, FInInterface and FKnown,
+    FCost) then
+  begin
+    SetText('', '');
+    Exit;
+  end;
+  if FCost.RecompileCount = 1 then
+  begin
+    mText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostStatusOne);
+  end
+  else
+  begin
+    mText := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostStatus, [FCost.RecompileCount]);
+  end;
+  mUnits := TAtlasInterfaceCostModel.UnitList(FCost, mMore);
+  if mMore > 0 then
+  begin
+    mUnits := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostMore, [mUnits, mMore]);
+  end;
+  SetText(mText, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostHint, [FCost.UnitName, mUnits]));
+end;
+
+function TInterfaceCostState.AnswerHandler(ANumber: Integer): TProc<TJSONValue>;
+var
+  mOwner: TObject;
+begin
+  // Der Besitzer in einer eigenen Variablen: Nach seinem Abbau gibt es dieses Objekt nicht mehr.
+  mOwner := FOwner;
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    var
+      mCost: TAtlasInterfaceCost;
+    begin
+      if (TAtlasIdeUnitRelations.FState <> mOwner) or (ANumber <> FRequest) then
+      begin
+        Exit;
+      end;
+      FPending := False;
+      FAsked := GetTickCount;
+      if (AAnswer <> nil) and TAtlasInterfaceCostModel.Parse(AAnswer.ToJSON, mCost) then
+      begin
+        FCost := mCost;
+        FKnown := True;
+      end;
+      Show;
+    end;
+end;
+
+procedure TInterfaceCostState.Request;
+begin
+  Inc(FRequest);
+  FPending := True;
+  FAsked := GetTickCount;
+  if not FRun(TAtlasInterfaceCostModel.Command, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
+    TimeoutMs, AnswerHandler(FRequest)) then
+  begin
+    // Kein Server: in CostRefreshMs noch einmal.
+    FPending := False;
+  end;
+end;
+
+procedure TInterfaceCostState.Locate(const AView: IOTAEditView);
+var
+  mSnapshot: TAtlasEditorSnapshot;
+  mCursor: TOTAEditPos;
+  mFileName: string;
+begin
+  mFileName := AView.Buffer.FileName;
+  mSnapshot := TAtlasEditorSnapshots.Get(AView);
+  if (mSnapshot.Version <> FSectionsVersion) or not SameText(mFileName, FSectionsFile) then
+  begin
+    FSections := TAtlasSectionScanner.Scan(TTextLines.SplitLines(mSnapshot.Text));
+    FSectionsVersion := mSnapshot.Version;
+    FSectionsFile := mFileName;
+  end;
+  mCursor := AView.CursorPos;
+  FInInterface := TAtlasInterfaceCostModel.InInterfacePart(FSections, mCursor.Line - 1, mCursor.Col - 1);
+  if not SameText(mFileName, FFile) then
+  begin
+    // Dateiwechsel: alter Wert gilt nicht mehr, laufende Antworten fallen weg.
+    Inc(FRequest);
+    FFile := mFileName;
+    FCost := Default(TAtlasInterfaceCost);
+    FKnown := False;
+    FPending := False;
+    FAsked := GetTickCount - CostRefreshMs;
+  end;
+end;
+
+procedure TInterfaceCostState.Update;
+var
+  mView: IOTAEditView;
+begin
+  mView := nil;
+  if Assigned(FShow) and TAtlasIdeSettings.Current.ShowInterfaceCost then
+  begin
+    mView := TAtlasEditorBuffer.ActiveView;
+  end;
+  // Nur Units haben einen interface-Teil.
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
+  begin
+    Hide;
+    Exit;
+  end;
+  Locate(mView);
+  // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
+  if FInInterface and not FPending and (GetTickCount - FAsked >= CostRefreshMs) then
+  begin
+    Request;
+  end;
+  Show;
+end;
+
 { TUnitRelationsState }
 
 constructor TUnitRelationsState.Create(const ARun: TAtlasUnitRelationsRun);
@@ -177,6 +360,7 @@ begin
   inherited Create;
   FRun := ARun;
   FCache := TAtlasUnitRelationsCache.Create;
+  FCost := TInterfaceCostState.Create(ARun, Self);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -201,9 +385,9 @@ var
 begin
   // Antworten, die noch unterwegs sind, finden FState nicht mehr und fallen weg.
   Inc(FRequest);
-  Inc(FCostRequest);
+  FCost.Cancel;
   FTimer.Free;
-  HideCost;
+  FCost.Hide;
   TAtlasIdeUnitRelationsWindow.OnFrame := nil;
   Frame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
   if Frame <> nil then
@@ -214,6 +398,7 @@ begin
     Frame.OnDepthChanged := nil;
   end;
   FCache.Free;
+  FCost.Free;
   inherited Destroy;
 end;
 
@@ -306,140 +491,12 @@ end;
 
 procedure TUnitRelationsState.SetCostHandler(const AShow: TAtlasInterfaceCostShow);
 begin
-  HideCost;
-  FShowCost := AShow;
-end;
-
-procedure TUnitRelationsState.SetCost(const AText, AHint: string);
-begin
-  // Nur bei Änderungen: Der Zeitgeber fragt viermal je Sekunde.
-  if (AText = FShownCost) and (AHint = FShownCostHint) then
-  begin
-    Exit;
-  end;
-  FShownCost := AText;
-  FShownCostHint := AHint;
-  if Assigned(FShowCost) then
-  begin
-    FShowCost(AText, AHint);
-  end;
+  FCost.SetHandler(AShow);
 end;
 
 procedure TUnitRelationsState.HideCost;
 begin
-  SetCost('', '');
-  FCostFile := '';
-  FCostKnown := False;
-  FCostInInterface := False;
-end;
-
-procedure TUnitRelationsState.ShowCost;
-var
-  Text, Units: string;
-  More: Integer;
-begin
-  if not TAtlasInterfaceCostModel.Visible(TAtlasIdeSettings.Current.ShowInterfaceCost, FCostInInterface and
-    FCostKnown, FCost) then
-  begin
-    SetCost('', '');
-    Exit;
-  end;
-  if FCost.RecompileCount = 1 then
-  begin
-    Text := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.InterfaceCostStatusOne);
-  end
-  else
-  begin
-    Text := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostStatus, [FCost.RecompileCount]);
-  end;
-  Units := TAtlasInterfaceCostModel.UnitList(FCost, More);
-  if More > 0 then
-  begin
-    Units := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostMore, [Units, More]);
-  end;
-  SetCost(Text, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostHint, [FCost.UnitName, Units]));
-end;
-
-procedure TUnitRelationsState.RequestCost;
-var
-  Number: Integer;
-  FileName: string;
-begin
-  Inc(FCostRequest);
-  Number := FCostRequest;
-  FileName := FCostFile;
-  FCostPending := True;
-  FCostAsked := GetTickCount;
-  if not FRun(TAtlasInterfaceCostModel.Command, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FileName)),
-    TimeoutMs,
-    procedure(AAnswer: TJSONValue)
-    var
-      Cost: TAtlasInterfaceCost;
-    begin
-      if (TAtlasIdeUnitRelations.FState <> Self) or (Number <> FCostRequest) then
-      begin
-        Exit;
-      end;
-      FCostPending := False;
-      FCostAsked := GetTickCount;
-      if (AAnswer <> nil) and TAtlasInterfaceCostModel.Parse(AAnswer.ToJSON, Cost) then
-      begin
-        FCost := Cost;
-        FCostKnown := True;
-      end;
-      ShowCost;
-    end) then
-  begin
-    // Kein Server: in CostRefreshMs noch einmal.
-    FCostPending := False;
-  end;
-end;
-
-procedure TUnitRelationsState.UpdateCost;
-var
-  View: IOTAEditView;
-  Snapshot: TAtlasEditorSnapshot;
-  Cursor: TOTAEditPos;
-  FileName: string;
-begin
-  if not Assigned(FShowCost) or not TAtlasIdeSettings.Current.ShowInterfaceCost then
-  begin
-    HideCost;
-    Exit;
-  end;
-  View := TAtlasEditorBuffer.ActiveView;
-  // Nur Units haben einen interface-Teil.
-  if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
-  begin
-    HideCost;
-    Exit;
-  end;
-  FileName := View.Buffer.FileName;
-  Snapshot := TAtlasEditorSnapshots.Get(View);
-  if (Snapshot.Version <> FSectionsVersion) or not SameText(FileName, FSectionsFile) then
-  begin
-    FSections := TAtlasSectionScanner.Scan(TTextLines.SplitLines(Snapshot.Text));
-    FSectionsVersion := Snapshot.Version;
-    FSectionsFile := FileName;
-  end;
-  Cursor := View.CursorPos;
-  FCostInInterface := TAtlasInterfaceCostModel.InInterfacePart(FSections, Cursor.Line - 1, Cursor.Col - 1);
-  if not SameText(FileName, FCostFile) then
-  begin
-    // Dateiwechsel: alter Wert gilt nicht mehr, laufende Antworten fallen weg.
-    Inc(FCostRequest);
-    FCostFile := FileName;
-    FCost := Default(TAtlasInterfaceCost);
-    FCostKnown := False;
-    FCostPending := False;
-    FCostAsked := GetTickCount - CostRefreshMs;
-  end;
-  // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
-  if FCostInInterface and not FCostPending and (GetTickCount - FCostAsked >= CostRefreshMs) then
-  begin
-    RequestCost;
-  end;
-  ShowCost;
+  FCost.Hide;
 end;
 
 procedure TUnitRelationsState.ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
@@ -495,45 +552,55 @@ begin
   FAsked := GetTickCount;
   if not FRun(TAtlasUnitRelationsCommands.Command,
     TAtlasUnitRelationsCommands.Arguments(TLspSession.PathToUri(FileName), AllLevels), TimeoutMs,
-    procedure(AAnswer: TJSONValue)
-    var
-      Current: TAtlasUnitRelationsFrame;
-      Json: string;
-    begin
-      if (TAtlasIdeUnitRelations.FState <> Self) or (Number <> FRequest) then
-      begin
-        Exit;
-      end;
-      FPending := False;
-      // Gezählt wird ab der Antwort: Ein langsamer Server bekommt nicht gleich die nächste Anfrage.
-      FAsked := GetTickCount;
-      Current := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-      if Current = nil then
-      begin
-        Exit;
-      end;
-      Json := '';
-      if AAnswer <> nil then
-      begin
-        Json := AAnswer.ToJSON;
-      end;
-      if Json = '' then
-      begin
-        if not Current.HasRelations then
-        begin
-          ShowInfo(Current, TAtlasAnalysisTextId.UnitRelationsFailed);
-        end;
-        Exit;
-      end;
-      FCache.Put(FileName, AllLevels, Json);
-      ShowJson(Current, Json);
-    end) then
+    AnswerHandler(Number, FileName, AllLevels)) then
   begin
     FPending := False;
     if not Frame.HasRelations then
     begin
       ShowInfo(Frame, TAtlasAnalysisTextId.UnitRelationsNoServer);
     end;
+  end;
+end;
+
+function TUnitRelationsState.AnswerHandler(ANumber: Integer; const AFileName: string;
+  AAllLevels: Boolean): TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    begin
+      if (TAtlasIdeUnitRelations.FState = Self) and (ANumber = FRequest) then
+      begin
+        TakeAnswer(AFileName, AAllLevels, AAnswer);
+      end;
+    end;
+end;
+
+procedure TUnitRelationsState.TakeAnswer(const AFileName: string; AAllLevels: Boolean; AAnswer: TJSONValue);
+var
+  mCurrent: TAtlasUnitRelationsFrame;
+  mJson: string;
+begin
+  FPending := False;
+  // Gezählt wird ab der Antwort: Ein langsamer Server bekommt nicht gleich die nächste Anfrage.
+  FAsked := GetTickCount;
+  mCurrent := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if mCurrent = nil then
+  begin
+    Exit;
+  end;
+  mJson := '';
+  if AAnswer <> nil then
+  begin
+    mJson := AAnswer.ToJSON;
+  end;
+  if mJson <> '' then
+  begin
+    FCache.Put(AFileName, AAllLevels, mJson);
+    ShowJson(mCurrent, mJson);
+  end
+  else if not mCurrent.HasRelations then
+  begin
+    ShowInfo(mCurrent, TAtlasAnalysisTextId.UnitRelationsFailed);
   end;
 end;
 
@@ -674,7 +741,7 @@ procedure TUnitRelationsState.Tick(Sender: TObject);
 begin
   if not Active then
   begin
-    HideCost;
+    FCost.Hide;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.UnitRelations,
@@ -684,7 +751,7 @@ begin
       begin
         Update;
       end;
-      UpdateCost;
+      FCost.Update;
     end);
 end;
 
