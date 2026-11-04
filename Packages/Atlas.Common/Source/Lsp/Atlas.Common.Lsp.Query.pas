@@ -359,7 +359,8 @@ begin
         mResolver.Namespaces := ANamespaces;
         if AIncoming then
         begin
-          mCalls := TLspHierarchies.IncomingCalls(mResolver, AIndex, mItem, AFiles, AReadText, ASettings, nil);
+          mCalls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, AIndex, AReadText, nil), mItem,
+            AFiles, ASettings);
         end
         else
         begin

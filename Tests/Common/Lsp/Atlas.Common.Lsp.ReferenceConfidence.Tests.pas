@@ -570,8 +570,8 @@ begin
   Item.SelectionRange := TTextRange.Create(PositionOf(UnitKunden, 'Speichern; override'),
     PositionOf(UnitKunden, '; override'));
   Item.Range := Item.SelectionRange;
-  Calls := TLspHierarchies.IncomingCalls(FResolver, FIndex, Item, [KundenFile, HauptFile], ReadText,
-    Settings(True, False), nil);
+  Calls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex, ReadText, nil), Item,
+    [KundenFile, HauptFile], Settings(True, False));
   Kinds := '';
   for Call in Calls do
   begin
@@ -588,8 +588,8 @@ begin
     Json.Free;
   end;
   // Ohne Einstufung nur der sichere Aufrufer.
-  Assert.AreEqual(1, Integer(Length(TLspHierarchies.IncomingCalls(FResolver, FIndex, Item, [KundenFile, HauptFile],
-    ReadText, Settings(False, False), nil))));
+  Assert.AreEqual(1, Integer(Length(TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex,
+    ReadText, nil), Item, [KundenFile, HauptFile], Settings(False, False)))));
 end;
 
 procedure TReferenceConfidenceTests.McpListsSureThenInferred;

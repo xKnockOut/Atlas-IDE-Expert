@@ -3,15 +3,10 @@
 // Hover (textDocument/hover): Deklaration und XML-Dokumentation (///) des
 // Symbols unter dem Cursor als Markdown.
 //
-// Die Deklaration ist die erste Zeile der Fundstelle ab ihrem Anfang. Der
-// Dokumentationskommentar sind die ///-Zeilen direkt darüber, zerlegt von
-// TXmlDoc samt <inheritdoc/> (TLspDocumentation, #654): als Markdown in
-// contents, als Klartext für Clients ohne Markdown und strukturiert mit den
-// Fundorten der cref-Verweise in atlas.documentation. Bei Methoden mit
-// getrennter Implementierung gilt die Deklaration (TLspDefinition).
-// Bei Klassen folgen die published-Properties und Ereignisse samt geerbter
-// (TPublishedMembers). Auf einem Attribut (#119) zusätzlich die Konstruktoren
-// der Attributklasse, bei Argumenten die mit passender Parameterzahl.
+// Den Inhalt sammelt TLspHoverLookup (Atlas.Common.Lsp.Hover.Lookup), die
+// Darstellungen liefert THoverInfo (Atlas.Common.Lsp.Hover.Info): als Markdown
+// in contents, als Klartext für Clients ohne Markdown und strukturiert mit den
+// Fundorten der cref-Verweise in atlas.documentation.
 //
 // Clients ohne Markdown (RAD Studio meldet hover.contentFormat ["plaintext"])
 // bekommen denselben Inhalt als Klartext (#175).
@@ -37,22 +32,19 @@
 interface
 
 uses
-  System.SysUtils,
-  System.Diagnostics,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.HoverTypes,
-  Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Rationale,
-  Atlas.Common.Rationale.Contract;
+  Atlas.Common.Lsp.Hover.Info;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
@@ -61,66 +53,10 @@ type
   THoverVersionProvider = reference to function(const AUri: string): string;
   /// <summary>Einstellungen der Begründungen für das Dokument AUri (#1123).</summary>
   THoverRationaleProvider = reference to function(const AUri: string): TRationaleOptions;
-
-  THoverInfo = record
-    Declaration: string;
-    /// <summary>Dokumentation als Markdown (bei Unit-Namen der Dateiname).</summary>
-    Documentation: string;
-    /// <summary>XMLDoc der Deklaration samt inheritdoc (#654); leer ohne Kommentar.</summary>
-    Doc: TXmlDoc;
-    /// <summary>Fundorte der cref-Verweise in Doc.</summary>
-    DocTargets: TArray<TDocTarget>;
-    /// <summary>Unit der Deklaration, wenn sie nicht die aktuelle ist.</summary>
-    UnitName: string;
-    /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
-    Members: string;
-    /// <summary>Dieselben Mitglieder und die Standard-Property strukturiert für den Atlas-Tooltip (#110).</summary>
-    PublishedItems: TArray<TPublishedMember>;
-    DefaultProperty: string;
-    /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
-    DocWikiUrl: string;
-    /// <summary>Microsoft-Link und 64-Bit-Hinweis bei Windows-API-Funktionen (#120); sonst ''.</summary>
-    WinApi: string;
-    /// <summary>Message-Handler der Klasse als Markdown (#36); sonst ''.</summary>
-    Messages: string;
-    /// <summary>Wert bei Zahlen, Konstanten und Aufzählungswerten (#38); sonst ''.</summary>
-    Value: string;
-    /// <summary>Hinweis bei deprecated, platform, experimental (#38); sonst ''.</summary>
-    Deprecation: string;
-    /// <summary>In der Formulardatei gesetzte Werte eines Komponentenfelds (#126); sonst ''.</summary>
-    FormValues: string;
-    /// <summary>Konstruktoren der Attributklasse auf einem Attribut (#119); sonst ''.</summary>
-    Constructors: string;
-    /// <summary>Art für Badge und Kopfzeile (#588), siehe TLspHoverTypes.KindOf; '' wenn unbekannt.</summary>
-    Kind: string;
-    /// <summary>VCL, FMX oder RTL; '' bei eigenen Units.</summary>
-    Origin: string;
-    /// <summary>Fundort des Namens der Deklaration (0-basiert); FileName '' ohne.</summary>
-    FileName: string;
-    Line: Integer;
-    Character: Integer;
-    /// <summary>Typnamen in Declaration mit Fundort.</summary>
-    Links: TArray<THoverLink>;
-    /// <summary>Typ, dessen Kette Ancestors zeigt: der Typ selbst bzw. bei "class of T" T.</summary>
-    ChainOf: string;
-    /// <summary>Vererbungskette ab ChainOf aufwärts; leer bei anderen Arten.</summary>
-    Ancestors: TArray<THoverTypeRef>;
-    /// <summary>Begründungen der Deklaration bzw. Unit (#1123); InfoAt liefert alle aus dem Index, HandleHover
-    /// filtert nach den Einstellungen.</summary>
-    Rationale: TArray<TRationaleEntry>;
-    /// <summary>Dateien im ADR-Ordner für die Verweise in Rationale; leer ohne Ordner.</summary>
-    AdrFiles: TArray<string>;
-    /// <summary>Neu zugewiesener Name an der Stelle (#712): Ziel wie in highlight.reassigned.targets (locals,
-    /// loopVars, valueParams, varParams, fields); '' ohne.</summary>
-    ReassignedTarget: string;
-    /// <summary>Zahl der schreibenden Stellen und ihre Zeilen (ab 0).</summary>
-    ReassignedWrites: Integer;
-    ReassignedLines: TArray<Integer>;
-    function Found: Boolean;
-    function ToMarkdown: string;
-    /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
-    function ToPlainText: string;
-  end;
+  /// <summary>Inhalt eines Hovers, siehe Atlas.Common.Lsp.Hover.Info.</summary>
+  THoverInfo = Atlas.Common.Lsp.Hover.Info.THoverInfo;
+  /// <summary>Namensauflösung, Index und Lesen anderer Dateien für InfoAt.</summary>
+  THoverSource = Atlas.Common.Lsp.Hover.Info.THoverSource;
 
   TLspHover = class
   public const
@@ -137,6 +73,16 @@ type
     FRationaleFor: THoverRationaleProvider;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function OpenTree(const AUri: string; const ACancellation: IPascalCancellation; out AText: string;
+      out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
+    function AnswerAt(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function DirectiveHover(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const ADelphiVersion: string; out AMarkdown: string): Boolean;
+    function SymbolInfo(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const ADelphiVersion: string): THoverInfo;
+    procedure ApplySettings(const AUri: string; var AInfo: THoverInfo);
+    function InfoAnswer(const AUri: string; const AInfo: THoverInfo): TJSONObject;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
@@ -150,13 +96,11 @@ type
       const AReadText: THoverReadText); overload;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Hover-Inhalt an APosition; ATreeText ist der Text von ATree.</summary>
-    class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo; overload; static;
+    class function InfoAt(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+      const APosition: TTextPosition; const ADelphiVersion: string): THoverInfo; overload; static;
     /// <summary>Wie oben mit ADelphiVersion = ''.</summary>
-    class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText): THoverInfo; overload; static;
+    class function InfoAt(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+      const APosition: TTextPosition): THoverInfo; overload; static;
     /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
     class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
@@ -187,369 +131,69 @@ type
 implementation
 
 uses
+  System.SysUtils,
   System.Generics.Collections,
+  System.Diagnostics,
   Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Index.Files,
-  System.StrUtils,
-  System.RegularExpressions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.FormInfo,
-  Atlas.Common.Dfm.Parser,
-  Atlas.Common.Lsp.DocWiki,
-  Atlas.Common.Lsp.WinApiDocs,
-  Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Lsp.MessageHandlers,
-  Atlas.Common.Lsp.HoverValues,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.KeywordReference,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.Hover.Lookup,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Lsp.Reassigned,
-  Atlas.Text.Lines;
+  Atlas.Common.Lsp.Reassigned;
 
-function ComparePositions(const A, B: TTextPosition): Integer;
+const
+  cSectionBreak = #10#10'---'#10#10;
+
+/// <summary>Antwort mit AMarkdown als Inhalt.</summary>
+function MarkdownAnswer(const AMarkdown: string): TJSONObject;
+var
+  mContents: TJSONObject;
 begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
+  mContents := TJSONObject.Create;
+  mContents.AddPair('kind', 'markdown');
+  mContents.AddPair('value', AMarkdown);
+  Result := TJSONObject.Create;
+  Result.AddPair('contents', mContents);
 end;
 
-/// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
-function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string;
+/// <summary>Bedingtes Symbol an APosition und Wert der Bedingung mit Teilwerten (#847), Bedingung zuerst.</summary>
+function SymbolHover(const AText: string; const APosition: TTextPosition; const ASymbols: TConditionalContext;
+  out AMarkdown: string): Boolean;
 var
-  Line: Integer;
+  mCondition: string;
 begin
-  Result := '';
-  for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  Result := TConditionalSymbols.Hover(AText, APosition, ASymbols, AMarkdown);
+  if TConditionalSymbols.ConditionHover(AText, APosition, ASymbols, mCondition) then
   begin
-    if (Line < 0) or (Line > High(ALines)) then
+    if Result then
     begin
-      Break;
-    end;
-    if Line = ARange.StartPos.Line then
-    begin
-      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt);
+      AMarkdown := mCondition + cSectionBreak + AMarkdown;
     end
     else
     begin
-      Result := Result + ' ' + Trim(ALines[Line]);
+      AMarkdown := mCondition;
     end;
+    Result := True;
   end;
 end;
 
-/// <summary>Ordinalzahl eines Aufzählungswerts: Position im Typ, ohne explizite Werte.</summary>
-function EnumOrdinal(const AUnit: TUnitIndex; const AMember: TIndexSymbol): Integer;
+/// <summary>Werte von textDocument.uri und position; Fehler der Anfrage, wenn eins fehlt.</summary>
+procedure ReadParams(const AParams: TJSONValue; out AUri: string; out APosition: TTextPosition);
 var
-  Symbol: TIndexSymbol;
+  mPosition: TJSONValue;
 begin
-  Result := 0;
-  for Symbol in AUnit.Symbols do
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', AUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
-    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AMember.Container) then
-    begin
-      if Symbol.SelectionRange.StartPos = AMember.SelectionRange.StartPos then
-      begin
-        Exit;
-      end;
-      Inc(Result);
-    end;
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Felder "textDocument.uri" und "position" fehlen in ' + TLspHover.Method);
   end;
-end;
-
-/// <summary>Bei Mengentypen "set of TBar · 4 mögliche Elemente" (#38); Aufzählungen über den Index gezählt.
-/// '' bei anderen Typen.</summary>
-function SetTypeValue(AResolver: TNameResolver; const AUnit: TUnitIndex;
-  const ADeclaration: string): string;
-var
-  BaseType: string;
-  Count: Integer;
-  Resolved: TResolvedSymbol;
-  EnumUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-begin
-  Result := '';
-  if not THoverValues.SetBaseType(ADeclaration, BaseType) then
-  begin
-    Exit;
-  end;
-  Count := THoverValues.BaseTypeCount(BaseType);
-  if (Count < 0) and AResolver.ResolveTypeFrom(AUnit, BaseType, Resolved) and
-    (Resolved.SymbolKind = TIndexSymbolKind.EnumType) and AResolver.DeclaringUnit(Resolved, EnumUnit) then
-  begin
-    Count := 0;
-    for Symbol in EnumUnit.Symbols do
-    begin
-      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Resolved.Name) then
-      begin
-        Inc(Count);
-      end;
-    end;
-  end;
-  Result := 'set of ' + BaseType;
-  if Count = 1 then
-  begin
-    Result := Result + ' · 1 mögliches Element';
-  end
-  else if Count >= 0 then
-  begin
-    Result := Result + ' · ' + IntToStr(Count) + ' mögliche Elemente';
-  end;
-end;
-
-// Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
-// Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
-// dem Kommentar bleiben stehen, z. B. das * in "(Gallery.Page.*)" (in der IDE gesehen).
-function StripMarkdown(const AText: string): string;
-begin
-  Result := TRegEx.Replace(AText, '\*\*([^*\n]+)\*\*', '$1');
-  Result := TRegEx.Replace(Result, '(^|\n)\*([^*\n]+)\*:', '$1$2:');
-  Result := TRegEx.Replace(Result, '`([^`\n]*)`', '$1');
-end;
-
-{ THoverInfo }
-
-function TypeRefJson(const ARef: THoverTypeRef): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('name', ARef.Name);
-  if ARef.UnitName <> '' then
-  begin
-    Result.AddPair('unit', ARef.UnitName);
-  end;
-  Result.AddPair('file', ARef.FileName);
-  Result.AddPair('line', TJSONNumber.Create(ARef.Line));
-  Result.AddPair('character', TJSONNumber.Create(ARef.Character));
-end;
-
-class function TLspHover.AtlasJson(const AInfo: THoverInfo): TJSONObject;
-var
-  Links, Ancestors: TJSONArray;
-  Link: THoverLink;
-  Ancestor: THoverTypeRef;
-  Item, Members, Documentation: TJSONObject;
-  Written: TJSONArray;
-  Line: Integer;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('declaration', AInfo.Declaration);
-  if AInfo.UnitName <> '' then
-  begin
-    Result.AddPair('unit', AInfo.UnitName);
-  end;
-  // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
-  Documentation := nil;
-  if not AInfo.Doc.IsEmpty then
-  begin
-    Documentation := TLspDocumentation.ToJson(AInfo.Doc, AInfo.DocTargets);
-    Result.AddPair('documentation', Documentation);
-    Result.AddPair('documentationText', AInfo.Doc.ToPlainText);
-  end
-  else if AInfo.Documentation <> '' then
-  begin
-    Result.AddPair('documentationText', StripMarkdown(AInfo.Documentation));
-  end;
-  // Begründungen als eigene Abschnitte hinter der XMLDoc (#1123), auch ohne XMLDoc.
-  if Length(AInfo.Rationale) > 0 then
-  begin
-    if Documentation = nil then
-    begin
-      Documentation := TJSONObject.Create;
-      Documentation.AddPair('sections', TJSONArray.Create);
-      Result.AddPair('documentation', Documentation);
-    end;
-    TLspRationale.AddSections(TJSONArray(Documentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
-  end;
-  if AInfo.Value <> '' then
-  begin
-    Result.AddPair('value', AInfo.Value);
-  end;
-  if AInfo.Deprecation <> '' then
-  begin
-    Result.AddPair('deprecation', StripMarkdown(AInfo.Deprecation));
-  end;
-  if AInfo.Kind <> '' then
-  begin
-    Result.AddPair('kind', AInfo.Kind);
-  end;
-  if AInfo.Origin <> '' then
-  begin
-    Result.AddPair('origin', AInfo.Origin);
-  end;
-  if AInfo.FileName <> '' then
-  begin
-    Result.AddPair('file', AInfo.FileName);
-    Result.AddPair('line', TJSONNumber.Create(AInfo.Line));
-    Result.AddPair('character', TJSONNumber.Create(AInfo.Character));
-  end;
-  if AInfo.DocWikiUrl <> '' then
-  begin
-    Result.AddPair('docWiki', AInfo.DocWikiUrl);
-  end;
-  if Length(AInfo.Links) > 0 then
-  begin
-    Links := TJSONArray.Create;
-    for Link in AInfo.Links do
-    begin
-      Item := TypeRefJson(Link.Target);
-      Item.AddPair('start', TJSONNumber.Create(Link.Start));
-      Item.AddPair('length', TJSONNumber.Create(Link.Length));
-      Links.AddElement(Item);
-    end;
-    Result.AddPair('links', Links);
-  end;
-  // published-Properties und Ereignisse (#110).
-  Members := TPublishedMembers.ToJson(AInfo.PublishedItems, AInfo.DefaultProperty);
-  if Members <> nil then
-  begin
-    Result.AddPair('published', Members);
-  end;
-  if Length(AInfo.Ancestors) > 0 then
-  begin
-    Result.AddPair('chainOf', AInfo.ChainOf);
-    Ancestors := TJSONArray.Create;
-    for Ancestor in AInfo.Ancestors do
-    begin
-      Ancestors.AddElement(TypeRefJson(Ancestor));
-    end;
-    Result.AddPair('ancestors', Ancestors);
-  end;
-  if AInfo.ReassignedTarget <> '' then
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('target', AInfo.ReassignedTarget);
-    Item.AddPair('writes', TJSONNumber.Create(AInfo.ReassignedWrites));
-    Written := TJSONArray.Create;
-    for Line in AInfo.ReassignedLines do
-    begin
-      Written.Add(Line);
-    end;
-    Item.AddPair('lines', Written);
-    Result.AddPair('reassigned', Item);
-  end;
-end;
-
-class procedure TLspHover.AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
-  AText: string; const APosition: TTextPosition; var AInfo: THoverInfo);
-var
-  Symbol: TReassignedSymbol;
-begin
-  if not TReassigned.SymbolAt(TLspReassigned.Analyze(AResolver, ATree, AFileName, AText), APosition, Symbol) or
-    not Symbol.IsReassigned then
-  begin
-    Exit;
-  end;
-  AInfo.ReassignedTarget := TReassigned.TargetNames[Symbol.Target];
-  AInfo.ReassignedWrites := Symbol.WriteCount;
-  AInfo.ReassignedLines := Symbol.WriteLines;
-end;
-
-function THoverInfo.Found: Boolean;
-begin
-  Result := Declaration <> '';
-end;
-
-function THoverInfo.ToMarkdown: string;
-begin
-  Result := '```pascal' + #10 + Declaration + #10 + '```';
-  if Deprecation <> '' then
-  begin
-    Result := Result + #10#10 + Deprecation;
-  end;
-  if Value <> '' then
-  begin
-    Result := Result + #10#10 + 'Wert: `' + Value + '`';
-  end;
-  if Documentation <> '' then
-  begin
-    Result := Result + #10#10 + Documentation;
-  end;
-  if Length(Rationale) > 0 then
-  begin
-    Result := Result + #10#10 + TLspRationale.ToMarkdown(Rationale);
-  end;
-  if UnitName <> '' then
-  begin
-    Result := Result + #10#10 + 'Unit `' + UnitName + '`';
-  end;
-  if DocWikiUrl <> '' then
-  begin
-    Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
-  end;
-  if WinApi <> '' then
-  begin
-    Result := Result + #10#10 + WinApi;
-  end;
-  if Members <> '' then
-  begin
-    Result := Result + #10#10 + '---' + #10#10 + Members;
-  end;
-  if Messages <> '' then
-  begin
-    Result := Result + #10#10 + '---' + #10#10 + Messages;
-  end;
-  if FormValues <> '' then
-  begin
-    Result := Result + #10#10 + '---' + #10#10 + FormValues;
-  end;
-  if Constructors <> '' then
-  begin
-    Result := Result + #10#10 + '```pascal' + #10 + Constructors + #10 + '```';
-  end;
-end;
-
-function THoverInfo.ToPlainText: string;
-begin
-  Result := Declaration;
-  if Deprecation <> '' then
-  begin
-    Result := Result + #10#10 + StripMarkdown(Deprecation);
-  end;
-  if Value <> '' then
-  begin
-    Result := Result + #10#10 + 'Wert: ' + Value;
-  end;
-  if not Doc.IsEmpty then
-  begin
-    Result := Result + #10#10 + Doc.ToPlainText;
-  end
-  else if Documentation <> '' then
-  begin
-    Result := Result + #10#10 + StripMarkdown(Documentation);
-  end;
-  if Length(Rationale) > 0 then
-  begin
-    Result := Result + #10#10 + TLspRationale.ToPlainText(Rationale);
-  end;
-  if UnitName <> '' then
-  begin
-    Result := Result + #10#10 + 'Unit ' + UnitName;
-  end;
-  if DocWikiUrl <> '' then
-  begin
-    Result := Result + #10#10 + 'DocWiki: ' + DocWikiUrl;
-  end;
-  if Members <> '' then
-  begin
-    Result := Result + #10#10 + StripMarkdown(Members);
-  end;
-  if Messages <> '' then
-  begin
-    Result := Result + #10#10 + StripMarkdown(Messages);
-  end;
+  APosition := TLspPositions.ReadPosition(mPosition);
 end;
 
 { TLspHover }
@@ -588,19 +232,19 @@ end;
 
 class function TLspHover.ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean;
 var
-  Formats: TJSONArray;
-  Item: TJSONValue;
+  mFormats: TJSONArray;
+  mItem: TJSONValue;
 begin
   // Ohne Angabe bleibt es bei Markdown, wie bisher.
   if (AInitializeParams = nil) or
-    not AInitializeParams.TryGetValue<TJSONArray>('capabilities.textDocument.hover.contentFormat', Formats) or
-    (Formats.Count = 0) then
+    not AInitializeParams.TryGetValue<TJSONArray>('capabilities.textDocument.hover.contentFormat', mFormats) or
+    (mFormats.Count = 0) then
   begin
     Exit(True);
   end;
-  for Item in Formats do
+  for mItem in mFormats do
   begin
-    if SameText(Item.Value, 'markdown') then
+    if SameText(mItem.Value, 'markdown') then
     begin
       Exit(True);
     end;
@@ -608,557 +252,263 @@ begin
   Result := False;
 end;
 
-/// <summary>Werte des Komponentenfelds AFieldName aus der Formulardatei neben AUnitFile (#126); nur die eigene
-/// Formulardatei, ohne Vorfahr-Formulare (#115 nicht geplant).</summary>
-function FormFieldValues(const AUnitFile, AFormClass, AFieldName, AOpenFile, AOpenText: string;
-  const AReadText: THoverReadText): string;
-var
-  FormFile, FormText, Extension: string;
-  Document: TDfmDocument;
-  Obj: TDfmObject;
+class function TLspHover.InfoAt(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText,
+  AFileName: string; const APosition: TTextPosition): THoverInfo;
 begin
-  Result := '';
-  FormText := '';
-  for Extension in TArray<string>.Create('.dfm', '.fmx') do
-  begin
-    FormFile := ChangeFileExt(AUnitFile, Extension);
-    if SameText(FormFile, AOpenFile) then
-    begin
-      FormText := AOpenText;
-    end
-    else if not (Assigned(AReadText) and AReadText(FormFile, FormText)) then
-    begin
-      FormText := '';
-    end;
-    if FormText <> '' then
-    begin
-      Break;
-    end;
-  end;
-  if FormText = '' then
-  begin
-    Exit;
-  end;
-  Document := TDfmParser.Parse(FormText);
-  try
-    Obj := TFormInfo.FindComponent(Document, AFormClass, AFieldName);
-    if Obj <> nil then
-    begin
-      Result := TFormInfo.ComponentMarkdown(Obj, FormFile);
-    end;
-  finally
-    Document.Free;
-  end;end;
-
-/// <summary>Konstruktoren von AClass in AUnit, die AArgCount Argumente annehmen; passt keiner, alle.</summary>
-function AttributeConstructors(const AUnit: TUnitIndex; const AClass: TIndexSymbol; const ALines: TArray<string>;
-  AArgCount: Integer): string;
-var
-  Symbol: TIndexSymbol;
-  All, Matching: string;
-  Line: string;
-begin
-  All := '';
-  Matching := '';
-  for Symbol in AUnit.Symbols do
-  begin
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
-      (Symbol.Range.StartPos.Line < AClass.Range.EndPos.Line) and (Symbol.Range.StartPos.Line <= High(ALines)) then
-    begin
-      Line := Trim(ALines[Symbol.Range.StartPos.Line]);
-      All := All + IfThen(All <> '', #10) + Line;
-      if (AArgCount >= Symbol.MinArgs) and (AArgCount <= Symbol.MaxArgs) then
-      begin
-        Matching := Matching + IfThen(Matching <> '', #10) + Line;
-      end;
-    end;
-  end;
-  Result := IfThen(Matching <> '', Matching, All);
+  Result := InfoAt(ASource, ATree, ATreeText, AFileName, APosition, '');
 end;
 
-class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const ATreeText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: THoverReadText): THoverInfo;
+class function TLspHover.InfoAt(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText,
+  AFileName: string; const APosition: TTextPosition; const ADelphiVersion: string): THoverInfo;
 begin
-  Result := InfoAt(AResolver, AIndex, ATree, ATreeText, AFileName, APosition, AReadText, '');
+  Result := TLspHoverLookup.InfoAt(ASource, ATree, ATreeText, AFileName, APosition, ADelphiVersion);
 end;
 
-class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const ATreeText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo;
-var
-  Targets: TArray<TDefinitionTarget>;
-  Text: string;
-  Lines: TArray<string>;
-  Start: TTextPosition;
-  OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  ReadText: TMemberReadText;
-  ClassTree: TSyntaxTree;
-  Token: TPascalToken;
-  Number: Int64;
-  Use: TAttributeUse;
-  SelfName, ChainName, DocContainer: string;
-  TypeSymbol: Boolean;
-  Resolved, DocSymbol: TResolvedSymbol;
-  IntrinsicName: string;
-  Intrinsic: TSystemIntrinsic;
+class function TLspHover.AtlasJson(const AInfo: THoverInfo): TJSONObject;
 begin
-  Result := Default(THoverInfo);
-  // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
-  for Token in ATree.Tokens do
+  Result := AInfo.ToAtlasJson;
+end;
+
+class procedure TLspHover.AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  AText: string; const APosition: TTextPosition; var AInfo: THoverInfo);
+var
+  mSymbol: TReassignedSymbol;
+begin
+  if not TReassigned.SymbolAt(TLspReassigned.Analyze(AResolver, ATree, AFileName, AText), APosition, mSymbol) or
+    not mSymbol.IsReassigned then
   begin
-    if (Token.Kind = TPascalTokenKind.Number) and (ComparePositions(Token.StartPos, APosition) <= 0) and
-      (ComparePositions(APosition, Token.EndPos) < 0) then
-    begin
-      if THoverValues.TryParseNumber(Token.Text, Number) then
-      begin
-        Result.Declaration := Token.Text;
-        Result.Value := THoverValues.FormatNumber(Number);
-      end
-      else
-      begin
-        TRequestDiagnostics.Reason('numberUnparsed');
-      end;
-      Exit;
-    end;
-  end;
-  Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
-  // Bezeichner von System ohne Quelltext (#880): Kopf und Beschreibung aus der eingebauten Liste.
-  if (Length(Targets) = 0) and TSystemIntrinsics.NameAt(ATree, APosition, IntrinsicName) then
-  begin
-    for Intrinsic in TSystemIntrinsics.Find(IntrinsicName) do
-    begin
-      if Result.Declaration <> '' then
-      begin
-        Result.Declaration := Result.Declaration + #10;
-      end;
-      Result.Declaration := Result.Declaration + Intrinsic.Declaration;
-      if Result.Documentation = '' then
-      begin
-        Result.Documentation := Intrinsic.Documentation;
-      end;
-    end;
-    Result.UnitName := 'System';
     Exit;
   end;
-  if Length(Targets) = 0 then
-  begin
-    // Grundcodes für das Diagnoselog (#647).
-    TRequestDiagnostics.Reason('noTarget');
-    Exit;
-  end;
-  Start := Targets[0].Range.StartPos;
-  // Unit-Namen: Ziel ist der Dateianfang. Vor dem Lesen der Datei prüfen,
-  // denn dafür wird ihr Text nicht gebraucht.
-  if (Start.Line = 0) and (Start.Character = 0) and (Targets[0].Range.EndPos = Start) and
-    not SameText(Targets[0].FileName, AFileName) then
-  begin
-    if AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
-    begin
-      Result.Declaration := 'unit ' + OwnerUnit.UnitName + ';';
-      Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, '', '');
-      Result.Rationale := TRationale.DecodeAll(OwnerUnit.Rationale);
-    end;
-    Result.Documentation := '`' + Targets[0].FileName + '`';
-    Exit;
-  end;
-  if SameText(Targets[0].FileName, AFileName) then
-  begin
-    Text := ATreeText;
-  end
-  else if not (Assigned(AReadText) and AReadText(Targets[0].FileName, Text)) then
-  begin
-    TRequestDiagnostics.Reason('declarationUnreadable');
-    Exit;
-  end;
-  Lines := TTextLines.SplitLines(Text);
-  if (Start.Line < 0) or (Start.Line > High(Lines)) then
-  begin
-    TRequestDiagnostics.Reason('declarationOutOfRange');
-    Exit;
-  end;
-  Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
-  Result.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Start.Line));
-  Result.Documentation := Result.Doc.ToMarkdown;
-  Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
-  Result.FileName := Targets[0].FileName;
-  Result.Line := Targets[0].SelectionRange.StartPos.Line;
-  Result.Character := Targets[0].SelectionRange.StartPos.Character;
-  // Aus einer Include-Datei (#500): die einbindende Unit, die Datei dahinter. Die eigene Datei
-  // auch ohne Index (noch nicht gespeichert bzw. nicht im Projekt) aus dem Baum.
-  if not TIndexFiles.UnitOf(AIndex, Targets[0].FileName, OwnerUnit) then
-  begin
-    if SameText(Targets[0].FileName, AFileName) then
-    begin
-      OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
-    end
-    else
-    begin
-      TRequestDiagnostics.Reason('unitNotIndexed');
-      Exit;
-    end;
-  end;
-  if not SameText(Targets[0].FileName, OwnerUnit.FileName) then
-  begin
-    Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')';
-  end
-  else if not SameText(Targets[0].FileName, AFileName) then
-  begin
-    Result.UnitName := OwnerUnit.UnitName;
-  end;
-  SelfName := '';
-  TypeSymbol := False;
-  DocSymbol := Default(TResolvedSymbol);
-  DocContainer := '';
-  for Symbol in OwnerUnit.Symbols do
-  begin
-    if (Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos) and
-      SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
-    begin
-      SelfName := Symbol.Name;
-      DocSymbol := TResolvedSymbol.FromIndex(OwnerUnit, Symbol);
-      DocContainer := Symbol.Container;
-      if DocContainer = '' then
-      begin
-        DocContainer := Symbol.Name;
-      end;
-      Result.Kind := TLspHoverTypes.KindOf(Symbol.Kind, Result.Declaration);
-      Result.Rationale := TLspRationale.OfSymbol(OwnerUnit, Symbol);
-      TypeSymbol := (Symbol.Container = '') and (Symbol.Kind in [TIndexSymbolKind.ClassType,
-        TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
-      Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
-      if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
-      begin
-        Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
-      end;
-      if Symbol.Kind = TIndexSymbolKind.Constant then
-      begin
-        // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
-        Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range));
-      end
-      else if Symbol.Kind = TIndexSymbolKind.TypeAlias then
-      begin
-        Result.Value := SetTypeValue(AResolver, OwnerUnit, DeclarationText(Lines, Targets[0].Range));
-      end
-      else if Symbol.Kind = TIndexSymbolKind.EnumMember then
-      begin
-        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol));
-      end
-      else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
-      begin
-        Result.FormValues := FormFieldValues(Targets[0].FileName, Symbol.Container, Symbol.Name,
-          AFileName, ATreeText, AReadText);
-      end;
-      Break;
-    end;
-  end;
-  // XMLDoc mit <inheritdoc/> und den Fundorten der cref-Verweise (#654).
-  if Result.Doc.InheritDoc then
-  begin
-    Result.Doc := TLspDocumentation.Load(AResolver, DocSymbol, Lines, Start.Line,
-      TLspDocumentation.Reader(AFileName, ATreeText, AReadText));
-    Result.Documentation := Result.Doc.ToMarkdown;
-  end;
-  Result.DocTargets := TLspDocumentation.Targets(AResolver, OwnerUnit, DocContainer, Result.Doc);
-  // Typen in der Deklaration und Vererbungskette für den Atlas-Tooltip (#588).
-  Result.Origin := TLspHoverTypes.Origin(OwnerUnit.UnitName);
-  Result.Links := TLspHoverTypes.Links(AResolver, OwnerUnit, Result.Declaration, SelfName);
-  if TypeSymbol then
-  begin
-    ChainName := TLspHoverTypes.ClassRefTarget(Result.Declaration);
-    if ChainName = '' then
-    begin
-      ChainName := SelfName;
-    end;
-    if AResolver.ResolveTypeFrom(OwnerUnit, ChainName, Resolved) then
-    begin
-      Result.ChainOf := Resolved.Name;
-      Result.Ancestors := TLspHoverTypes.Chain(AResolver, Resolved);
-    end;
-  end;
-  for Symbol in OwnerUnit.Symbols do
-  begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
-      ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) and
-      SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
-    begin
-      if TAttributes.At(ATree, APosition, Use) then
-      begin
-        Result.Constructors := AttributeConstructors(OwnerUnit, Symbol, Lines, Use.ArgCount);
-      end;
-      // Die eigene Datei kommt aus dem Editor, nicht von der Platte.
-      ReadText :=
-        function(const AName: string; out AText: string): Boolean
-        begin
-          if SameText(AName, AFileName) then
-          begin
-            AText := ATreeText;
-            Exit(True);
-          end;
-          Result := Assigned(AReadText) and AReadText(AName, AText);
-        end;
-      Result.PublishedItems := TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText);
-      Result.DefaultProperty := TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText);
-      Result.Members := TPublishedMembers.ToMarkdown(Result.PublishedItems, Result.DefaultProperty);
-      if SameText(Targets[0].FileName, AFileName) then
-      begin
-        Result.Messages := TMessageHandlers.Overview(AResolver, ATree, AFileName, Symbol.Name,
-          function(const AName: string; out AText: string): Boolean
-          begin
-            Result := ReadText(AName, AText);
-          end).ToMarkdown;
-      end
-      else
-      begin
-        ClassTree := TSyntaxTreeCache.Parse(Text);
-        try
-          Result.Messages := TMessageHandlers.Overview(AResolver, ClassTree, Targets[0].FileName, Symbol.Name,
-            function(const AName: string; out AText: string): Boolean
-            begin
-              Result := ReadText(AName, AText);
-            end).ToMarkdown;
-        finally
-          ClassTree.Free;
-        end;
-      end;
-      // ReadText liegt im selben Closure-Rahmen, den es selbst und die Aufrufe oben einfangen:
-      // ohne Freigabe hielte der Rahmen sich selbst (Leck je Hover auf eine Klasse).
-      ReadText := nil;
-      Break;
-    end;
-  end;
+  AInfo.ReassignedTarget := TReassigned.TargetNames[mSymbol.Target];
+  AInfo.ReassignedWrites := mSymbol.WriteCount;
+  AInfo.ReassignedLines := mSymbol.WriteLines;
 end;
 
 class function TLspHover.DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string;
   const APosition: TTextPosition; const AReadText: THoverReadText; out AHint: string): Boolean;
 var
-  Lines: TArray<string>;
-  Call: TDataNameCall;
-  Sql: string;
-  Names: TArray<TDataName>;
-  Found: Boolean;
+  mLines: TArray<string>;
+  mCall: TDataNameCall;
+  mSql: string;
+  mNames: TArray<TDataName>;
+  mFound: Boolean;
 begin
   AHint := '';
   Result := False;
-  Lines := AText.Split([#10]);
-  if (APosition.Line < 0) or (APosition.Line > High(Lines)) or not Assigned(AReadText) or
-    not TDataFieldNames.CallAt(Lines[APosition.Line].TrimRight([#13]), APosition.Character, Call) or
-    (Call.Content = '') then
+  mLines := AText.Split([#10]);
+  if (APosition.Line < 0) or (APosition.Line > High(mLines)) or not Assigned(AReadText) or
+    not TDataFieldNames.CallAt(mLines[APosition.Line].TrimRight([#13]), APosition.Character, mCall) or
+    (mCall.Content = '') then
   begin
     Exit;
   end;
-  Names := TDataFieldNames.Lookup(TDataLookupSource.Create(AText, AFileName, AIndex,
+  mNames := TDataFieldNames.Lookup(TDataLookupSource.Create(AText, AFileName, AIndex,
     function(const AName: string; out AContent: string): Boolean
     begin
       Result := AReadText(AName, AContent);
-    end), Call, Sql, Found);
+    end), mCall, mSql, mFound);
   // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
-  if not Found or (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
+  if not mFound or (Length(mNames) = 0) or TDataFieldNames.Contains(mNames, mCall.Content) then
   begin
     Exit;
   end;
-  if Call.Kind = TDataNameKind.Param then
+  if mCall.Kind = TDataNameKind.Param then
   begin
-    AHint := Format('Parameter nicht gefunden in %s', [Call.DisplayName]);
+    AHint := Format('Parameter nicht gefunden in %s', [mCall.DisplayName]);
   end
   else
   begin
-    AHint := Format('Feld nicht gefunden in %s', [Call.DisplayName]);
+    AHint := Format('Feld nicht gefunden in %s', [mCall.DisplayName]);
   end;
   Result := True;
 end;
 
-function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TLspHover.OpenTree(const AUri: string; const ACancellation: IPascalCancellation; out AText: string;
+  out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
 var
-  Cancellation: IPascalCancellation;
-  Uri, Text: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree, OwnTree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Info: THoverInfo;
-  Contents, Atlas: TJSONObject;
-  DelphiVersion, mMarkdown, SymbolMarkdown, ConditionMarkdown: string;
-  Watch: TStopwatch;
-  Symbols: TConditionalContext;
-  HasSymbol, HasDirective: Boolean;
-  Rationale: TRationaleOptions;
+  mDocument: ITextDocument;
+  mWatch: TStopwatch;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  Result := nil;
+  AShared := nil;
+  AOwnTree := nil;
+  if FStore.TryGet(AUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  OwnTree := nil;
-  if FStore.TryGet(Uri, Document) then
-  begin
-    Text := Document.Text;
+    AText := mDocument.Text;
     // Wartet, wenn ein anderer Thread dieselbe Version gerade parst (#647).
-    Watch := TStopwatch.StartNew;
-    Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-    TRequestDiagnostics.Note('treeMs', Integer(Watch.ElapsedMilliseconds));
-    Tree := Shared.Tree;
+    mWatch := TStopwatch.StartNew;
+    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
+    TRequestDiagnostics.Note('treeMs', Integer(mWatch.ElapsedMilliseconds));
+    // Der Baum lebt, solange der Aufrufer AShared hält.
+    Result := AShared.Tree;
   end
   // Nicht geöffnete Datei (Typ aus dem Atlas-Tooltip angeklickt, #588): selbst lesen.
-  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(Uri), Text) then
+  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(AUri), AText) then
   begin
-    OwnTree := TSyntaxTreeCache.Parse(Text, Cancellation);
-    Tree := OwnTree;
+    AOwnTree := TSyntaxTreeCache.Parse(AText, ACancellation);
+    Result := AOwnTree;
+  end;
+end;
+
+function TLspHover.DirectiveHover(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ADelphiVersion: string; out AMarkdown: string): Boolean;
+var
+  mSymbols: TConditionalContext;
+  mSymbol: string;
+  mHasDirective: Boolean;
+begin
+  // Compiler-Direktiven wie {$R+} oder {$WARN …} und bedingte Symbole mit Zustand und Herkunft (#102).
+  AMarkdown := '';
+  mSymbols := TConditionalContext.Default;
+  if Assigned(FSymbolsFor) then
+  begin
+    mSymbols := FSymbolsFor(AUri);
+  end;
+  Result := False;
+  if not mSymbols.HoverEnabled then
+  begin
+    Exit;
+  end;
+  Result := SymbolHover(AText, APosition, mSymbols, mSymbol);
+  mHasDirective := TCompilerDirectives.HoverAt(ATree, APosition, ADelphiVersion, AMarkdown);
+  if Result and mHasDirective then
+  begin
+    AMarkdown := mSymbol + cSectionBreak + AMarkdown;
+  end
+  else if Result then
+  begin
+    AMarkdown := mSymbol;
+  end;
+  Result := Result or mHasDirective;
+end;
+
+procedure TLspHover.ApplySettings(const AUri: string; var AInfo: THoverInfo);
+var
+  mRationale: TRationaleOptions;
+begin
+  // published-Mitglieder abschaltbar (hints.publishedMembers, #110).
+  if Assigned(FHintsFor) and not FHintsFor(AUri).PublishedMembers then
+  begin
+    AInfo.Members := '';
+    AInfo.PublishedItems := nil;
+    AInfo.DefaultProperty := '';
+  end;
+  // Begründungen nach hints.rationale, hints.rationaleMarkers und hints.adrFolder (#1123).
+  mRationale := TRationaleOptions.Default;
+  if Assigned(FRationaleFor) then
+  begin
+    mRationale := FRationaleFor(AUri);
+  end;
+  AInfo.Rationale := TLspRationale.Select(AInfo.Rationale, mRationale);
+  if Length(AInfo.Rationale) > 0 then
+  begin
+    AInfo.AdrFiles := TLspRationale.AdrFiles(mRationale.AdrFolder);
+  end;
+end;
+
+function TLspHover.SymbolInfo(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ADelphiVersion: string): THoverInfo;
+var
+  mResolver: TNameResolver;
+begin
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := InfoAt(THoverSource.Create(mResolver, FIndex, FReadText), ATree, AText, TDocumentUris.ToPath(AUri),
+      APosition, ADelphiVersion);
+    // Wie oft der Name geschrieben wird, für die Unterstreichung im Plugin (#712).
+    if Result.Found then
+    begin
+      AddReassigned(mResolver, ATree, TDocumentUris.ToPath(AUri), AText, APosition, Result);
+    end;
+  finally
+    mResolver.Free;
+  end;
+  ApplySettings(AUri, Result);
+end;
+
+function TLspHover.InfoAnswer(const AUri: string; const AInfo: THoverInfo): TJSONObject;
+var
+  mAtlas: TJSONObject;
+begin
+  if FMarkdown then
+  begin
+    Result := MarkdownAnswer(AInfo.ToMarkdown);
   end
   else
+  begin
+    // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
+    // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
+    // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
+    Result := TJSONObject.Create;
+    Result.AddPair('contents', AInfo.ToPlainText);
+  end;
+  // Für den Atlas-Tooltip (#442, #588) die Teile einzeln; andere Clients ignorieren das Feld.
+  mAtlas := AInfo.ToAtlasJson;
+  if Assigned(FHintsFor) then
+  begin
+    mAtlas.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(AUri)));
+  end;
+  Result.AddPair('atlas', mAtlas);
+end;
+
+function TLspHover.AnswerAt(const AUri, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mDelphiVersion, mMarkdown: string;
+  mInfo: THoverInfo;
+begin
+  TRequestDiagnostics.Note('syntaxErr', Length(ATree.Diagnostics));
+  mDelphiVersion := '';
+  if Assigned(FVersionProvider) then
+  begin
+    mDelphiVersion := FVersionProvider(AUri);
+  end;
+  ACancellation.ThrowIfCancellationRequested;
+  // Direktiven und bedingte Symbole, dann unbekannte Feld- und Parameternamen (#461).
+  if DirectiveHover(AUri, AText, ATree, APosition, mDelphiVersion, mMarkdown) or
+    DataNameHint(FIndex, AText, TDocumentUris.ToPath(AUri), APosition, FReadText, mMarkdown) then
+  begin
+    Exit(MarkdownAnswer(mMarkdown));
+  end;
+  mInfo := SymbolInfo(AUri, AText, ATree, APosition, mDelphiVersion);
+  if mInfo.Found then
+  begin
+    Result := InfoAnswer(AUri, mInfo);
+  end
+  // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
+  else if TKeywordReference.HoverAt(AText, APosition, mDelphiVersion, mMarkdown) then
+  begin
+    Result := MarkdownAnswer(mMarkdown);
+  end
+  else
+  begin
+    TRequestDiagnostics.DefaultReason('noSymbol');
+    Result := TJSONNull.Create;
+  end;
+end;
+
+function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri, mText: string;
+  mPosition: TTextPosition;
+  mTree, mOwnTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+begin
+  ReadParams(AParams, mUri, mPosition);
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mTree := OpenTree(mUri, mCancellation, mText, mShared, mOwnTree);
+  if mTree = nil then
   begin
     TRequestDiagnostics.Reason('documentNotOpen');
     Exit(TJSONNull.Create);
   end;
   try
-    TRequestDiagnostics.Note('syntaxErr', Length(Tree.Diagnostics));
-    if Assigned(FVersionProvider) then
-    begin
-      DelphiVersion := FVersionProvider(Uri);
-    end
-    else
-    begin
-      DelphiVersion := '';
-    end;
-    ACancellation.ThrowIfCancellationRequested;
-    // Compiler-Direktiven wie {$R+} oder {$WARN …} und bedingte Symbole mit Zustand und Herkunft (#102).
-    Symbols := TConditionalContext.Default;
-    if Assigned(FSymbolsFor) then
-    begin
-      Symbols := FSymbolsFor(Uri);
-    end;
-    HasSymbol := False;
-    HasDirective := False;
-    if Symbols.HoverEnabled then
-    begin
-      HasSymbol := TConditionalSymbols.Hover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
-        SymbolMarkdown);
-      // Wert der Bedingung mit Teilwerten (#847).
-      if TConditionalSymbols.ConditionHover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
-        ConditionMarkdown) then
-      begin
-        if HasSymbol then
-        begin
-          SymbolMarkdown := ConditionMarkdown + #10#10'---'#10#10 + SymbolMarkdown;
-        end
-        else
-        begin
-          SymbolMarkdown := ConditionMarkdown;
-        end;
-        HasSymbol := True;
-      end;
-      HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
-        mMarkdown);
-    end;
-    if HasSymbol and HasDirective then
-    begin
-      mMarkdown := SymbolMarkdown + #10#10'---'#10#10 + mMarkdown;
-    end
-    else if HasSymbol then
-    begin
-      mMarkdown := SymbolMarkdown;
-    end;
-    if HasSymbol or HasDirective then
-    begin
-      Contents := TJSONObject.Create;
-      Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', mMarkdown);
-      Result := TJSONObject.Create;
-      TJSONObject(Result).AddPair('contents', Contents);
-      Exit;
-    end;
-    // Unbekannter Feld- oder Parametername (#461).
-    if DataNameHint(FIndex, Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
-      mMarkdown) then
-    begin
-      Contents := TJSONObject.Create;
-      Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', mMarkdown);
-      Result := TJSONObject.Create;
-      TJSONObject(Result).AddPair('contents', Contents);
-      Exit;
-    end;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := Namespaces;
-      Info := InfoAt(Resolver, FIndex, Tree, Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
-      // Wie oft der Name geschrieben wird, für die Unterstreichung im Plugin (#712).
-      if Info.Found then
-      begin
-        AddReassigned(Resolver, Tree, TDocumentUris.ToPath(Uri), Text, TLspPositions.ReadPosition(PositionValue),
-          Info);
-      end;
-    finally
-      Resolver.Free;
-    end;
-    // published-Mitglieder abschaltbar (hints.publishedMembers, #110).
-    if Assigned(FHintsFor) and not FHintsFor(Uri).PublishedMembers then
-    begin
-      Info.Members := '';
-      Info.PublishedItems := nil;
-      Info.DefaultProperty := '';
-    end;
-    // Begründungen nach hints.rationale, hints.rationaleMarkers und hints.adrFolder (#1123).
-    if Assigned(FRationaleFor) then
-    begin
-      Rationale := FRationaleFor(Uri);
-    end
-    else
-    begin
-      Rationale := TRationaleOptions.Default;
-    end;
-    Info.Rationale := TLspRationale.Select(Info.Rationale, Rationale);
-    if Length(Info.Rationale) > 0 then
-    begin
-      Info.AdrFiles := TLspRationale.AdrFiles(Rationale.AdrFolder);
-    end;
-    if not Info.Found then
-    begin
-      // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
-      if not TKeywordReference.HoverAt(Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
-        mMarkdown) then
-      begin
-        TRequestDiagnostics.DefaultReason('noSymbol');
-        Exit(TJSONNull.Create);
-      end;
-      Contents := TJSONObject.Create;
-      Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', mMarkdown);
-      Result := TJSONObject.Create;
-      TJSONObject(Result).AddPair('contents', Contents);
-      Exit;
-    end;
-    Result := TJSONObject.Create;
-    if FMarkdown then
-    begin
-      Contents := TJSONObject.Create;
-      Contents.AddPair('kind', 'markdown');
-      Contents.AddPair('value', Info.ToMarkdown);
-      TJSONObject(Result).AddPair('contents', Contents);
-    end
-    else
-    begin
-      // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
-      // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
-      // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
-      TJSONObject(Result).AddPair('contents', Info.ToPlainText);
-    end;
-    // Für den Atlas-Tooltip (#442, #588) die Teile einzeln; andere Clients ignorieren das Feld.
-    Atlas := AtlasJson(Info);
-    if Assigned(FHintsFor) then
-    begin
-      Atlas.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(Uri)));
-    end;
-    TJSONObject(Result).AddPair('atlas', Atlas);
+    Result := AnswerAt(mUri, mText, mTree, mPosition, ACancellation);
   finally
-    OwnTree.Free;
+    mOwnTree.Free;
   end;
 end;
 

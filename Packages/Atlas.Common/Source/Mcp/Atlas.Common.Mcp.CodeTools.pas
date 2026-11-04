@@ -420,6 +420,16 @@ begin
   end;
 end;
 
+/// <summary>Dateien des Arbeitsbereichs aus AFiles; leer ohne Provider.</summary>
+function ProvidedFiles(const AFiles: TReferenceFilesProvider): TArray<string>;
+begin
+  Result := nil;
+  if Assigned(AFiles) then
+  begin
+    Result := AFiles();
+  end;
+end;
+
 function TMcpCodeTools.CallHierarchy(const AName: string; ADirection: TMcpCallDirection): string;
 var
   Location: TSymbolLocation;
@@ -438,11 +448,7 @@ begin
   begin
     Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
   end;
-  Files := nil;
-  if Assigned(FFiles) then
-  begin
-    Files := FFiles();
-  end;
+  Files := ProvidedFiles(FFiles);
   Lines := TStringList.Create;
   try
     Tree := TSyntaxTreeCache.Parse(Text);
@@ -459,7 +465,8 @@ begin
         if ADirection in [TMcpCallDirection.Incoming, TMcpCallDirection.Both] then
         begin
           AddCalls(Lines, 'Aufgerufen von:', '←',
-            TLspHierarchies.IncomingCalls(Resolver, FIndex, Item, Files, FReadText, SettingsOf(Item.FileName), nil));
+            TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(Resolver, FIndex, FReadText, nil), Item, Files,
+            SettingsOf(Item.FileName)));
         end;
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
         begin
