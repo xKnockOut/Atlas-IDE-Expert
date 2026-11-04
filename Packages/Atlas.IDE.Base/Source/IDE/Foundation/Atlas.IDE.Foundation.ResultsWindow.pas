@@ -23,6 +23,14 @@ uses
   Atlas.Core.SymbolPath.Model,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.DataFlow,
+  Atlas.UI.Results.View,
+  Atlas.UI.Results.Hierarchy,
+  Atlas.UI.Results.Changes,
+  Atlas.UI.Results.Items,
+  Atlas.UI.Results.SymbolPath,
+  Atlas.UI.Results.Impact,
+  Atlas.UI.Results.DataFlow,
+  Atlas.UI.Results.Issues,
   Atlas.UI.Results.Frame;
 
 type
@@ -167,7 +175,7 @@ begin
         TAtlasIdeResultsWindow.OnOpen(AFileName, ALine, ACharacter);
       end;
     end;
-  AFrame.OnChangeUndo :=
+  AFrame.Changes.OnUndo :=
     procedure(ASetId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeUndo) then
@@ -175,7 +183,7 @@ begin
         TAtlasIdeResultsWindow.OnChangeUndo(ASetId);
       end;
     end;
-  AFrame.OnChangeRedo :=
+  AFrame.Changes.OnRedo :=
     procedure(ASetId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeRedo) then
@@ -183,7 +191,7 @@ begin
         TAtlasIdeResultsWindow.OnChangeRedo(ASetId);
       end;
     end;
-  AFrame.OnChangeDiff :=
+  AFrame.Changes.OnDiff :=
     procedure(ASetId: Integer; const AFileName: string)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
@@ -191,7 +199,7 @@ begin
         TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
       end;
     end;
-  AFrame.OnShowRoute :=
+  AFrame.Path.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
@@ -204,7 +212,7 @@ end;
 /// <summary>Auswirkung, Hierarchie und Datenfluss an die Ereignisse des Fensters.</summary>
 procedure WireAnalysis(AFrame: TAtlasResultsFrame);
 begin
-  AFrame.OnImpactDepth :=
+  AFrame.Impact.OnDepth :=
     procedure(ADepth: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
@@ -212,7 +220,7 @@ begin
         TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
       end;
     end;
-  AFrame.OnImpactRunTests :=
+  AFrame.Impact.OnRunTests :=
     procedure(const AImpact: TAtlasImpact)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
@@ -220,7 +228,7 @@ begin
         TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
       end;
     end;
-  AFrame.OnExpand :=
+  AFrame.Hierarchy.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
     begin
       Result := nil;
@@ -229,7 +237,7 @@ begin
         Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
       end;
     end;
-  AFrame.OnFlowExpand :=
+  AFrame.Flow.OnExpand :=
     function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
       const APath: TArray<string>): TAtlasDataFlowResult
     begin
@@ -239,7 +247,7 @@ begin
         Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
       end;
     end;
-  AFrame.OnFlowFilter :=
+  AFrame.Flow.OnFilter :=
     procedure(AOnlyProject, AExcludeTests: Boolean)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
@@ -252,7 +260,7 @@ end;
 /// <summary>Tracker-Einträge an die Ereignisse des Fensters.</summary>
 procedure WireIssues(AFrame: TAtlasResultsFrame);
 begin
-  AFrame.OnIssueOpen :=
+  AFrame.Issues.OnOpen :=
     procedure(AList, AId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnIssueOpen) then
@@ -260,7 +268,7 @@ begin
         TAtlasIdeResultsWindow.OnIssueOpen(AList, AId);
       end;
     end;
-  AFrame.OnIssueCommit :=
+  AFrame.Issues.OnCommit :=
     procedure(AList, AId: Integer)
     begin
       if Assigned(TAtlasIdeResultsWindow.OnIssueCommit) then
@@ -367,7 +375,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowEntries(ATitle, TAtlasResults.Group(AEntries));
+    Target.Entries.Show(ATitle, TAtlasResults.Group(AEntries));
   end;
 end;
 
@@ -379,7 +387,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
+    Target.Entries.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
       TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
   end;
 end;
@@ -400,9 +408,9 @@ begin
   begin
     Exit;
   end;
-  Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
-  Target.IsProjectFile := IsProjectFile;
-  Target.ShowHierarchy(ATitle, ADirection, ARoots, AAsDiagram);
+  Target.Hierarchy.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
+  Target.Hierarchy.IsProjectFile := IsProjectFile;
+  Target.Hierarchy.Show(ATitle, ADirection, ARoots, AAsDiagram);
 end;
 
 class procedure TAtlasIdeResultsWindow.ApplySettings;
@@ -412,7 +420,7 @@ begin
   Target := ExistingFrame;
   if Target <> nil then
   begin
-    Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
+    Target.Hierarchy.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
   end;
 end;
 
@@ -423,7 +431,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowChanges(ATitle, ASets, Now, False);
+    Target.Changes.Show(ATitle, ASets, Now, False);
   end;
 end;
 
@@ -434,20 +442,20 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowItems(AList);
+    Target.Items.Show(AList);
   end;
 end;
 
 class function TAtlasIdeResultsWindow.ShowsItemsOf(const AOwner: string): Boolean;
 begin
-  Result := (ResultsFrame <> nil) and ResultsFrame.ShowsItemsOf(AOwner);
+  Result := (ResultsFrame <> nil) and ResultsFrame.Items.ShowsItemsOf(AOwner);
 end;
 
 class procedure TAtlasIdeResultsWindow.ReleaseItems(const AOwner: string);
 begin
   if ResultsFrame <> nil then
   begin
-    ResultsFrame.ReleaseItems(AOwner);
+    ResultsFrame.Items.Release(AOwner);
   end;
 end;
 
@@ -459,7 +467,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowSymbolPath(ATitle, AAnswer, AMapAvailable);
+    Target.Path.Show(ATitle, AAnswer, AMapAvailable);
   end;
 end;
 
@@ -470,7 +478,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowSymbolPathMessage(ATitle, AText);
+    Target.Path.ShowText(ATitle, AText);
   end;
 end;
 
@@ -481,7 +489,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowImpact(ATitle, AImpact);
+    Target.Impact.Show(ATitle, AImpact);
   end;
 end;
 
@@ -493,7 +501,7 @@ begin
   Target := Frame;
   if Target <> nil then
   begin
-    Target.ShowDataFlow(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
+    Target.Flow.Show(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
   end;
 end;
 
@@ -505,7 +513,7 @@ begin
   mTarget := Frame;
   if mTarget <> nil then
   begin
-    mTarget.ShowIssues(ATitle, AList, AIssues);
+    mTarget.Issues.Show(ATitle, AList, AIssues);
   end;
 end;
 
@@ -516,7 +524,7 @@ begin
   mTarget := ExistingFrame;
   if mTarget <> nil then
   begin
-    mTarget.SetIssueText(AList, AId, AText);
+    mTarget.Issues.SetText(AList, AId, AText);
   end;
 end;
 

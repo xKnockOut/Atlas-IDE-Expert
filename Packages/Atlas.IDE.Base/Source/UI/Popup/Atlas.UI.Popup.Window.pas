@@ -36,25 +36,36 @@ uses
 
 type
   TAtlasPopupWindow = class(TCustomControl)
+  private type
+    /// <summary>UI-Automation-Element des Fensters (#447).</summary>
+    TAccess = record
+      Provider: IAtlasRawElementProvider;
+      /// <summary>Objekt hinter Provider, für Detach beim Schließen.</summary>
+      Element: TAtlasAccessibleElement;
+      Role: Integer;
+      Name: string;
+      /// <summary>Zuletzt vorgelesener Text.</summary>
+      Announced: string;
+    end;
+
+    /// <summary>Wer die Ecken rundet: der Fenstermanager (Windows 11) oder eine Fensterregion.</summary>
+    TCorners = record
+      ByWindowManager: Boolean;
+      /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
+      Known: Boolean;
+    end;
   private
     FColors: TAtlasColors;
     FUIFont: TFont;
     FBorderColor: TAtlasColor;
-    FSystemCorners: Boolean;
+    FCorners: TCorners;
     FPPI: Integer;
-    /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
-    FCornersKnown: Boolean;
-    FAccessible: IAtlasRawElementProvider;
-    /// <summary>Objekt hinter FAccessible, für Detach beim Schließen.</summary>
-    FAccessibleObject: TAtlasAccessibleElement;
-    FAccessibleRole: Integer;
-    FAccessibleName: string;
-    FAnnounced: string;
+    FAccess: TAccess;
     FGuardFeature: TAtlasFeature;
-    procedure WMGetObject(var Message: TMessage); message WM_GETOBJECT;
     function Accessible: IAtlasRawElementProvider;
-    procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
-    procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
+    /// <summary>WM_GETOBJECT, WM_MOUSEACTIVATE (MA_NOACTIVATE) und WM_NCHITTEST (HTCLIENT); False für alle
+    /// übrigen Nachrichten.</summary>
+    function HandleOwnMessage(var Message: TMessage): Boolean;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure SetColors(const AValue: TAtlasColors);
     procedure SetBorderColor(AValue: TAtlasColor);
@@ -81,7 +92,7 @@ type
     /// <summary>Element für UI Automation; Listen liefern hier eine TAtlasAccessibleList mit Einträgen.</summary>
     function CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement; virtual;
     /// <summary>Objekt des Elements; nil, solange UI Automation nicht gefragt hat.</summary>
-    property AccessibleObject: TAtlasAccessibleElement read FAccessibleObject;
+    property AccessibleObject: TAtlasAccessibleElement read FAccess.Element;
   public
     /// <summary>Feature, dem Fehler des Fensters angerechnet werden (Sicherung, #493); die Randmarken setzen es
     /// je Ebene.</summary>
@@ -96,8 +107,6 @@ type
     function IsShown: Boolean;
     /// <summary>Arbeitsbereich des Monitors, auf dem APoint liegt.</summary>
     class function WorkAreaAt(const APoint: TPoint): TRect; static;
-    /// <summary>Farben passend zum aktiven VCL-Stil (in der IDE deren Thema).</summary>
-    class function StyleColors: TAtlasColors; static;
     property Colors: TAtlasColors read FColors write SetColors;
     /// <summary>Rahmenfarbe; Standard Akzent, im Fehlerzustand des Hints Fehlerfarbe.</summary>
     property BorderColor: TAtlasColor read FBorderColor write SetBorderColor;
@@ -138,6 +147,12 @@ begin
   Result := Atlas.UI.Popup.Draw.ToColor(AColor);
 end;
 
+/// <summary>Farben passend zum aktiven VCL-Stil (in der IDE deren Thema).</summary>
+function StyleColors: TAtlasColors;
+begin
+  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices.GetSystemColor(clWindow))));
+end;
+
 { TAtlasPopupWindow }
 
 constructor TAtlasPopupWindow.Create(AOwner: TComponent);
@@ -157,11 +172,6 @@ destructor TAtlasPopupWindow.Destroy;
 begin
   FUIFont.Free;
   inherited Destroy;
-end;
-
-class function TAtlasPopupWindow.StyleColors: TAtlasColors;
-begin
-  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices.GetSystemColor(clWindow))));
 end;
 
 function TAtlasPopupWindow.Scale(AValue: Integer): Integer;
@@ -195,22 +205,22 @@ begin
   inherited CreateWnd;
   // Windows 11: runde Ecken mit Kantenglättung und Rahmen vom Fenstermanager.
   Preference := DWMWCP_ROUNDSMALL;
-  FSystemCorners := Succeeded(DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, @Preference,
-    SizeOf(Preference)));
-  FCornersKnown := True;
+  FCorners.ByWindowManager := Succeeded(DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE,
+    @Preference, SizeOf(Preference)));
+  FCorners.Known := True;
   UpdateCorners;
 end;
 
 procedure TAtlasPopupWindow.DestroyWnd;
 begin
-  FCornersKnown := False;
-  if FAccessible <> nil then
+  FCorners.Known := False;
+  if FAccess.Provider <> nil then
   begin
     // Erst lösen: Elemente, die UI Automation noch hält, fragen das Fenster dann nicht mehr.
-    FAccessibleObject.Detach;
-    FAccessibleObject := nil;
+    FAccess.Element.Detach;
+    FAccess.Element := nil;
     TAtlasAccessibility.Release(WindowHandle);
-    FAccessible := nil;
+    FAccess.Provider := nil;
   end;
   inherited DestroyWnd;
 end;
@@ -218,7 +228,10 @@ end;
 procedure TAtlasPopupWindow.WndProc(var Message: TMessage);
 begin
   try
-    inherited WndProc(Message);
+    if not HandleOwnMessage(Message) then
+    begin
+      inherited WndProc(Message);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(FGuardFeature, E);
@@ -227,8 +240,8 @@ end;
 
 procedure TAtlasPopupWindow.SetAccessible(ARole: Integer; const AName: string);
 begin
-  FAccessibleRole := ARole;
-  FAccessibleName := AName;
+  FAccess.Role := ARole;
+  FAccess.Name := AName;
 end;
 
 function TAtlasPopupWindow.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
@@ -238,30 +251,41 @@ end;
 
 function TAtlasPopupWindow.Accessible: IAtlasRawElementProvider;
 begin
-  if (FAccessible = nil) and (FAccessibleRole <> 0) and HandleAllocated then
+  if (FAccess.Provider = nil) and (FAccess.Role <> 0) and HandleAllocated then
   begin
-    FAccessibleObject := CreateAccessible(FAccessibleRole, FAccessibleName);
-    FAccessible := FAccessibleObject;
+    FAccess.Element := CreateAccessible(FAccess.Role, FAccess.Name);
+    FAccess.Provider := FAccess.Element;
   end;
-  Result := FAccessible;
+  Result := FAccess.Provider;
 end;
 
-procedure TAtlasPopupWindow.WMGetObject(var Message: TMessage);
+function TAtlasPopupWindow.HandleOwnMessage(var Message: TMessage): Boolean;
 begin
-  Message.Result := TAtlasAccessibility.Answer(Handle, Message.WParam, Message.LParam, Accessible);
-  if Message.Result = 0 then
-  begin
-    inherited;
+  Result := True;
+  case Message.Msg of
+    WM_GETOBJECT:
+      begin
+        Message.Result := TAtlasAccessibility.Answer(Handle, Message.WParam, Message.LParam, Accessible);
+        // Nicht für UI Automation: wie bisher die VCL antworten lassen.
+        Result := Message.Result <> 0;
+      end;
+    // Klicks wählen, ohne zu aktivieren.
+    WM_MOUSEACTIVATE:
+      Message.Result := MA_NOACTIVATE;
+    WM_NCHITTEST:
+      Message.Result := HTCLIENT;
+  else
+    Result := False;
   end;
 end;
 
 procedure TAtlasPopupWindow.Announce(const AText: string);
 begin
-  if (AText = FAnnounced) or not IsShown then
+  if (AText = FAccess.Announced) or not IsShown then
   begin
     Exit;
   end;
-  FAnnounced := AText;
+  FAccess.Announced := AText;
   TAtlasAccessibility.Announce(Accessible, AText);
 end;
 
@@ -270,11 +294,11 @@ var
   Border: DWORD;
 begin
   // Schon während inherited CreateWnd kommt WM_SIZE; eine Region mit der Größe von dann bliebe sonst stehen.
-  if not HandleAllocated or not FCornersKnown then
+  if not HandleAllocated or not FCorners.Known then
   begin
     Exit;
   end;
-  if FSystemCorners then
+  if FCorners.ByWindowManager then
   begin
     Border := DWORD(FBorderColor);
     DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, @Border, SizeOf(Border));
@@ -290,20 +314,10 @@ end;
 procedure TAtlasPopupWindow.Resize;
 begin
   inherited Resize;
-  if not FSystemCorners then
+  if not FCorners.ByWindowManager then
   begin
     UpdateCorners;
   end;
-end;
-
-procedure TAtlasPopupWindow.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
-procedure TAtlasPopupWindow.WMNCHitTest(var Message: TWMNCHitTest);
-begin
-  Message.Result := HTCLIENT;
 end;
 
 procedure TAtlasPopupWindow.CMFontChanged(var Message: TMessage);
@@ -376,7 +390,7 @@ end;
 procedure TAtlasPopupWindow.PaintBorder;
 begin
   // Unter Windows 11 zeichnet der Fenstermanager den Rahmen (DWMWA_BORDER_COLOR).
-  if FSystemCorners then
+  if FCorners.ByWindowManager then
   begin
     Exit;
   end;
@@ -398,7 +412,7 @@ end;
 
 procedure TAtlasPopupWindow.HidePopup;
 begin
-  FAnnounced := '';
+  FAccess.Announced := '';
   if HandleAllocated and IsWindowVisible(Handle) then
   begin
     ShowWindow(Handle, SW_HIDE);

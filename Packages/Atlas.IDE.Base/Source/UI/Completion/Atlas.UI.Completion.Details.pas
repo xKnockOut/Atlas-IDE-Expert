@@ -359,8 +359,8 @@ begin
       X := Left + IfThen(Line > 0, Scale(16));
       if ADraw then
       begin
-        FDecl.Draw(ACanvas, AColors, FDeclLines[Line].X, FDeclLines[Line].Y, X, Rect(X, Y, Right, Y + LineHeight),
-          False, Scale(3));
+        FDecl.Draw(TAtlasStyledTarget.Create(ACanvas, AColors, Scale(3)), FDeclLines[Line], X,
+          Rect(X, Y, Right, Y + LineHeight), False);
       end;
       Inc(Y, LineHeight);
     end;
