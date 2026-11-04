@@ -56,8 +56,12 @@ var
 begin
   Result := '';
   for C in AName do
+  begin
     if C.IsLetterOrDigit then
+    begin
       Result := Result + C.ToLower;
+    end;
+  end;
 end;
 
 class function TAtlasOpenBuildSettings.StripProjectExt(const AFileName: string): string;
@@ -68,7 +72,9 @@ begin
   Result := AFileName;
   Ext := LowerCase(ExtractFileExt(Result));
   if (Ext = '.dproj') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.groupproj') then
+  begin
     Result := Copy(Result, 1, Length(Result) - Length(Ext));
+  end;
 end;
 
 class function TAtlasOpenBuildSettings.NameOf(const AFileName: string): string;
@@ -77,11 +83,13 @@ var
 begin
   Result := AFileName;
   for Index := Length(Result) downto 1 do
+  begin
     if (Result[Index] = '\') or (Result[Index] = '/') then
     begin
       Result := Copy(Result, Index + 1, MaxInt);
       Break;
     end;
+  end;
   Result := StripProjectExt(Result);
 end;
 
@@ -91,11 +99,17 @@ var
 begin
   Name := LowerCase(Trim(AName));
   if Name = 'check' then
-    Result := TAtlasCompileKind.Check
+  begin
+    Result := TAtlasCompileKind.Check;
+  end
   else if Name = 'build' then
-    Result := TAtlasCompileKind.Build
+  begin
+    Result := TAtlasCompileKind.Build;
+  end
   else
+  begin
     Result := TAtlasCompileKind.Make;
+  end;
 end;
 
 class function TAtlasOpenBuildSettings.KindName(AKind: TAtlasCompileKind): string;
@@ -113,9 +127,13 @@ end;
 class function TAtlasOpenBuildSettings.ScopeOf(const AName: string): TAtlasOpenBuildScope;
 begin
   if SameText(Trim(AName), ScopeNames[TAtlasOpenBuildScope.Active]) then
-    Result := TAtlasOpenBuildScope.Active
+  begin
+    Result := TAtlasOpenBuildScope.Active;
+  end
   else
+  begin
     Result := TAtlasOpenBuildScope.All;
+  end;
 end;
 
 class function TAtlasOpenBuildSettings.ParseExclude(const AText: string): TArray<string>;
@@ -130,7 +148,9 @@ begin
     begin
       Name := NameOf(Trim(Part));
       if (Name = '') or Known.ContainsKey(LowerCase(Name)) then
+      begin
         Continue;
+      end;
       Known.Add(LowerCase(Name), True);
       Result := Result + [Name];
     end;
@@ -151,10 +171,16 @@ begin
   Result := '';
   Wanted := TargetKey(AWanted);
   if Wanted = '' then
+  begin
     Exit;
+  end;
   for Name in AAvailable do
+  begin
     if TargetKey(Name) = Wanted then
+    begin
       Exit(Name);
+    end;
+  end;
 end;
 
 end.

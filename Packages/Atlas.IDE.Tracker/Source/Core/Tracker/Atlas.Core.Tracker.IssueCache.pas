@@ -77,14 +77,18 @@ function WithoutQuery(const AUrl: string): string;
 begin
   Result := AUrl;
   if Pos('?', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('?', Result) - 1);
+  end;
 end;
 
 function IsoOf(AValue: TDateTime): string;
 begin
   Result := '';
   if AValue > 0 then
+  begin
     Result := DateToISO8601(AValue, True);
+  end;
 end;
 
 function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
@@ -94,7 +98,9 @@ begin
   Result := 0;
   mText := AObject.GetValue<string>(AName, '');
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
+  begin
     Result := 0;
+  end;
 end;
 
 { TAtlasTrackerIssueCache }
@@ -135,8 +141,12 @@ var
 begin
   Result := '';
   for mIndex := 1 to Length(AKey) do
+  begin
     if CharInSet(AKey[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    begin
       Result := Result + AKey[mIndex];
+    end;
+  end;
   Result := Copy(Result, 1, 64);
 end;
 
@@ -147,7 +157,9 @@ begin
   Result := '';
   mName := SafeName(AKey);
   if (FFolder = '') or (mName = '') or (ATarget.Server = '') then
+  begin
     Exit;
+  end;
   Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(FFolder, TrackerId(ATarget)), mName + '.json');
 end;
 
@@ -174,7 +186,9 @@ begin
     mRoot.AddPair('sprint', ADetails.Sprint);
     mList := TJSONArray.Create;
     for mText in ADetails.Labels do
+    begin
       mList.Add(mText);
+    end;
     mRoot.AddPair('labels', mList);
     mRoot.AddPair('created', IsoOf(ADetails.Created));
     mRoot.AddPair('updated', IsoOf(ADetails.Updated));
@@ -245,13 +259,19 @@ begin
   end;
   try
     if not (mValue is TJSONObject) then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     if mRoot.GetValue<Integer>('version', 0) <> Version then
+    begin
       Exit;
+    end;
     ADetails.Key := mRoot.GetValue<string>('key', '');
     if ADetails.Key = '' then
+    begin
       Exit;
+    end;
     ADetails.Number := mRoot.GetValue<Integer>('number', 0);
     ADetails.Title := mRoot.GetValue<string>('title', '');
     ADetails.Page := mRoot.GetValue<string>('page', '');
@@ -261,15 +281,23 @@ begin
     ADetails.Assignee := mRoot.GetValue<string>('assignee', '');
     ADetails.Sprint := mRoot.GetValue<string>('sprint', '');
     if mRoot.Values['labels'] is TJSONArray then
+    begin
       for mEntry in TJSONArray(mRoot.Values['labels']) do
+      begin
         if mEntry is TJSONString then
+        begin
           ADetails.Labels := ADetails.Labels + [TJSONString(mEntry).Value];
+        end;
+      end;
+    end;
     ADetails.Created := TimeOf(mRoot, 'created');
     ADetails.Updated := TimeOf(mRoot, 'updated');
     ADetails.Description := mRoot.GetValue<string>('description', '');
     ADetails.CommentsLoaded := mRoot.GetValue<Boolean>('commentsLoaded', False);
     if mRoot.Values['comments'] is TJSONArray then
+    begin
       for mEntry in TJSONArray(mRoot.Values['comments']) do
+      begin
         if mEntry is TJSONObject then
         begin
           mItem := TJSONObject(mEntry);
@@ -279,8 +307,12 @@ begin
           mComment.Text := mItem.GetValue<string>('text', '');
           ADetails.Comments := ADetails.Comments + [mComment];
         end;
+      end;
+    end;
     if mRoot.Values['attachments'] is TJSONArray then
+    begin
       for mEntry in TJSONArray(mRoot.Values['attachments']) do
+      begin
         if mEntry is TJSONObject then
         begin
           mItem := TJSONObject(mEntry);
@@ -292,8 +324,12 @@ begin
           mAttachment.External := mItem.GetValue<Boolean>('external', False);
           ADetails.Attachments := ADetails.Attachments + [mAttachment];
         end;
+      end;
+    end;
     if mRoot.Values['links'] is TJSONArray then
+    begin
       for mEntry in TJSONArray(mRoot.Values['links']) do
+      begin
         if mEntry is TJSONObject then
         begin
           mItem := TJSONObject(mEntry);
@@ -309,6 +345,8 @@ begin
           mLink.Resolved := mItem.GetValue<Boolean>('resolved', False);
           ADetails.Links := ADetails.Links + [mLink];
         end;
+      end;
+    end;
     ADetails.Fetched := TimeOf(mRoot, 'fetched');
     Result := True;
   finally
@@ -327,11 +365,13 @@ begin
     mOldest := '';
     mUsed := High(Int64);
     for mPair in FEntries do
+    begin
       if mPair.Value.Used < mUsed then
       begin
         mUsed := mPair.Value.Used;
         mOldest := mPair.Key;
       end;
+    end;
     FEntries.Remove(mOldest);
   end;
 end;
@@ -342,7 +382,9 @@ var
   mFile: string;
 begin
   if ADetails.Key = '' then
+  begin
     Exit;
+  end;
   Inc(FClock);
   mEntry.Details := ADetails;
   mEntry.Used := FClock;
@@ -350,7 +392,9 @@ begin
   Shrink;
   mFile := FileOf(ATarget, ADetails.Key);
   if mFile = '' then
+  begin
     Exit;
+  end;
   // Kein Platz, keine Rechte: dann eben nur im Speicher.
   TAtlasTrackerFiles.Files.WriteText(mFile, ToJson(ADetails));
 end;
@@ -375,7 +419,9 @@ begin
   mFile := FileOf(ATarget, AKey);
   Result := (mFile <> '') and TAtlasTrackerFiles.Files.ReadText(mFile, mText) and FromJson(mText, ADetails);
   if Result and ((ADetails.Fetched <= 0) or (ANow - ADetails.Fetched > MaxAgeDays)) then
+  begin
     Result := False;
+  end;
   if not Result then
   begin
     ADetails := TAtlasTrackerDetails.Empty;

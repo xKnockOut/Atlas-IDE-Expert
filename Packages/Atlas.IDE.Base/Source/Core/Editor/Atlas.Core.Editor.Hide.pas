@@ -144,12 +144,16 @@ begin
     end;
     From := Index;
     while (Index <= Length(ALine)) and not CharInSet(ALine[Index], [',', ' ', #9]) do
+    begin
       Inc(Index);
+    end;
     Result := Result + [LowerCase(Copy(ALine, From, Index - From))];
   end;
   AEnd := Stop;
   while (AEnd > AStart) and CharInSet(ALine[AEnd - 1], [',', ' ', #9]) do
+  begin
     Dec(AEnd);
+  end;
 end;
 
 function Covers(const AIds: TArray<string>; const ARuleId: string): Boolean;
@@ -157,8 +161,12 @@ var
   Id: string;
 begin
   for Id in AIds do
+  begin
     if (Id = '*') or SameText(Id, ARuleId) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -174,26 +182,40 @@ begin
   // "//", Leerraum, Schlüsselwort; davor nur Einrückung.
   Start := 1;
   while (Start <= Length(ALine)) and CharInSet(ALine[Start], [' ', #9]) do
+  begin
     Inc(Start);
+  end;
   Result := Copy(ALine, Start, 2) = '//';
   if not Result then
+  begin
     Exit;
+  end;
   Inc(Start, 2);
   while (Start <= Length(ALine)) and CharInSet(ALine[Start], [' ', #9]) do
+  begin
     Inc(Start);
+  end;
   Result := SameText(Copy(ALine, Start, Length(AWord)), AWord);
   if not Result then
+  begin
     Exit;
+  end;
   Inc(Start, Length(AWord));
   Ids := IdsOf(ALine, Start, Stop);
   AInsert.Line := ALineIndex;
   AInsert.Character := Stop - 1;
   if Covers(Ids, ARuleId) then
+  begin
     Exit;
+  end;
   if Length(Ids) = 0 then
-    AInsert.Text := ' ' + ARuleId
+  begin
+    AInsert.Text := ' ' + ARuleId;
+  end
   else
+  begin
     AInsert.Text := ', ' + ARuleId;
+  end;
 end;
 
 { TAtlasHideTarget }
@@ -242,7 +264,9 @@ var
   Offset: Integer;
 begin
   if IsEmpty then
+  begin
     Exit(AText);
+  end;
   Offset := OffsetIn(AText);
   Result := Copy(AText, 1, Offset) + Text + Copy(AText, Offset + 1, MaxInt);
 end;
@@ -253,11 +277,15 @@ var
 begin
   AResult := AText;
   if IsEmpty then
+  begin
     Exit(True);
+  end;
   Offset := OffsetIn(AText);
   Result := Copy(AText, Offset + 1, Length(Text)) = Text;
   if Result then
+  begin
     AResult := Copy(AText, 1, Offset) + Copy(AText, Offset + Length(Text) + 1, MaxInt);
+  end;
 end;
 
 { TAtlasHide }
@@ -271,10 +299,14 @@ begin
   // Steht darüber schon ein Kommentar allein in seiner Zeile, kommt die Regel dazu.
   if (ALine > 0) and (ALine - 1 <= High(Lines)) and
     ExtendComment(Lines[ALine - 1], ALine - 1, 'lsp-ignore:', ARuleId, Result) then
+  begin
     Exit;
+  end;
   Line := '';
   if (ALine >= 0) and (ALine <= High(Lines)) then
+  begin
     Line := Lines[ALine];
+  end;
   Result := Default(TAtlasTextInsert);
   Result.Line := ALine;
   Result.Character := 0;
@@ -288,8 +320,12 @@ var
 begin
   Lines := TTextLines.SplitLines(AText);
   for Index := 0 to High(Lines) do
+  begin
     if ExtendComment(Lines[Index], Index, 'lsp-ignore-file:', ARuleId, Result) then
+    begin
       Exit;
+    end;
+  end;
   Result := Default(TAtlasTextInsert);
   Result.Text := FileMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
@@ -368,9 +404,13 @@ var
 begin
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   if Store.HasInteger(AKey) then
-    Result := Store.ReadInteger(AKey, 0) <> 0
+  begin
+    Result := Store.ReadInteger(AKey, 0) <> 0;
+  end
   else
+  begin
     Result := (Store.Text(AKey) <> '') and not SameText(Store.Text(AKey), 'off');
+  end;
 end;
 
 class function TAtlasHide.SwitchOff(var ASettings: TAtlasPluginSettings; const AKey: string;
@@ -382,11 +422,17 @@ begin
   AOldValue := Store.Text(AKey);
   Result := (AOldValue <> '') and IsOn(ASettings, AKey);
   if not Result then
+  begin
     Exit;
+  end;
   if Store.HasInteger(AKey) then
-    Store.WriteInteger(AKey, 0)
+  begin
+    Store.WriteInteger(AKey, 0);
+  end
   else
+  begin
     Store.WriteString(AKey, 'off');
+  end;
   ASettings.Load(Store);
 end;
 
@@ -397,11 +443,17 @@ begin
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Result := Store.Text(AKey) <> '';
   if not Result then
+  begin
     Exit;
+  end;
   if Store.HasInteger(AKey) then
-    Store.WriteInteger(AKey, StrToIntDef(AOldValue, 1))
+  begin
+    Store.WriteInteger(AKey, StrToIntDef(AOldValue, 1));
+  end
   else
+  begin
     Store.WriteString(AKey, AOldValue);
+  end;
   ASettings.Load(Store);
 end;
 

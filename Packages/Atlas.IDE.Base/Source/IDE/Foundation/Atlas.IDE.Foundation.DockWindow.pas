@@ -115,7 +115,9 @@ var
   Services: INTAServices;
 begin
   if FRegistered and Supports(BorlandIDEServices, INTAServices, Services) then
+  begin
     Services.UnregisterDockableForm(FDock);
+  end;
   FRegistered := False;
   FreeForm;
   FDock := nil;
@@ -126,9 +128,13 @@ procedure TAtlasIdeDockWindow.Notification(AComponent: TComponent; Operation: TO
 begin
   inherited;
   if Operation <> opRemove then
+  begin
     Exit;
+  end;
   if AComponent = FFrame then
+  begin
     FFrame := nil;
+  end;
   if AComponent = FForm then
   begin
     // Die IDE hat die Form freigegeben; ihr Frame ist mit ihr gegangen.
@@ -143,10 +149,16 @@ var
 begin
   Result := False;
   if AForm = nil then
+  begin
     Exit;
+  end;
   for Form in FDockForms do
+  begin
     if Form = AForm then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeDockWindow.SetForm(AForm: TCustomForm);
@@ -154,23 +166,33 @@ var
   Index: Integer;
 begin
   if AForm = FForm then
+  begin
     Exit;
+  end;
   if FForm <> nil then
   begin
     FForm.RemoveFreeNotification(Self);
     if Assigned(FOldWndProc) then
+    begin
       FForm.WindowProc := FOldWndProc;
+    end;
     FOldWndProc := nil;
     for Index := High(FDockForms) downto 0 do
+    begin
       if FDockForms[Index] = FForm then
+      begin
         Delete(FDockForms, Index, 1);
+      end;
+    end;
   end;
   FForm := AForm;
   if FForm <> nil then
   begin
     FForm.FreeNotification(Self);
     if not IsDockForm(FForm) then
+    begin
       FDockForms := FDockForms + [FForm];
+    end;
     // Beim Ab- und Andocken legt die IDE das Fenster neu an; die Titelleiste muss dann neu dunkel werden.
     FOldWndProc := FForm.WindowProc;
     FForm.WindowProc := FormWndProc;
@@ -183,18 +205,28 @@ var
   ParentForm: TCustomForm;
 begin
   if AFrame = nil then
+  begin
     Exit;
+  end;
   if (FFrame <> nil) and (FFrame <> AFrame) then
+  begin
     FFrame.RemoveFreeNotification(Self);
+  end;
   FFrame := AFrame;
   FFrame.FreeNotification(Self);
   // Legt die IDE die Form selbst an (Desktop laden), kennen wir sie nur über den Frame.
   if AFrame.Owner is TCustomForm then
-    ParentForm := TCustomForm(AFrame.Owner)
+  begin
+    ParentForm := TCustomForm(AFrame.Owner);
+  end
   else
+  begin
     ParentForm := GetParentForm(AFrame, False);
+  end;
   if ParentForm <> nil then
+  begin
     SetForm(ParentForm);
+  end;
 end;
 
 procedure TAtlasIdeDockWindow.FreeForm;
@@ -203,7 +235,9 @@ var
 begin
   Old := FForm;
   if FFrame <> nil then
+  begin
     FFrame.RemoveFreeNotification(Self);
+  end;
   FFrame := nil;
   SetForm(nil);
   // Nur freigeben, was noch lebt: Hat die IDE die Form schon zerstört, ist Old hier nil.
@@ -221,15 +255,21 @@ begin
   HasServices := Supports(BorlandIDEServices, INTAServices, Services);
   Step := TAtlasDockPlan.ShowStep(HasServices, FForm <> nil, FFrame <> nil);
   if Step = TAtlasDockStep.Unavailable then
+  begin
     Exit(False);
+  end;
   if Step = TAtlasDockStep.RecreateForm then
+  begin
     FreeForm;
+  end;
   if Step <> TAtlasDockStep.RevealForm then
   begin
     // FrameCreated läuft schon während CreateDockableForm und setzt Frame und Form.
     Created := Services.CreateDockableForm(FDock);
     if Created = nil then
+    begin
       Exit(False);
+    end;
     SetForm(Created);
     ACreated := True;
   end;
@@ -243,7 +283,9 @@ var
   Sheet: TTabSheet;
 begin
   if FForm = nil then
+  begin
     Exit;
+  end;
   FForm.Visible := True;
   // Angedockt: Reiterseite wählen und versteckte Gastgeber (Dock-Fenster, Leisten) wieder zeigen.
   Host := FForm.Parent;
@@ -253,10 +295,14 @@ begin
     begin
       Sheet := TTabSheet(Host);
       if Sheet.PageControl <> nil then
+      begin
         Sheet.PageControl.ActivePage := Sheet;
+      end;
     end
     else if not Host.Visible then
+    begin
       Host.Visible := True;
+    end;
     Host := Host.Parent;
   end;
   FForm.BringToFront;
@@ -271,7 +317,9 @@ function TAtlasIdeDockWindow.Frame: TCustomFrame;
 begin
   Result := nil;
   if TAtlasDockPlan.FrameUsable(FForm <> nil, FFrame <> nil) then
+  begin
     Result := FFrame;
+  end;
 end;
 
 function TAtlasIdeDockWindow.Shown: Boolean;
@@ -280,7 +328,9 @@ var
   Host: TWinControl;
 begin
   if FForm = nil then
+  begin
     Exit(False);
+  end;
   Hosts := nil;
   Host := FForm.Parent;
   while Host <> nil do
@@ -294,7 +344,9 @@ end;
 procedure TAtlasIdeDockWindow.Hide;
 begin
   if FForm <> nil then
+  begin
     FForm.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeDockWindow.ApplyIdeTheme(AControl: TWinControl);
@@ -321,7 +373,9 @@ var
         TTreeView(Child).Font.Color := clWindowText;
       end;
       if Child is TWinControl then
+      begin
         ResetColors(TWinControl(Child));
+      end;
     end;
   end;
 
@@ -335,7 +389,9 @@ var
       Child := AParent.Controls[Index];
       Child.StyleName := '';
       if Child is TWinControl then
+      begin
         Inherit(TWinControl(Child));
+      end;
     end;
   end;
 
@@ -355,21 +411,31 @@ var
 begin
   if (AControl = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
     not Theming.IDEThemingEnabled then
+  begin
     Exit;
+  end;
   ResetColors(AControl);
   Theming.ApplyTheme(AControl);
   Style := Theming.StyleServices;
   if Style = nil then
+  begin
     Exit;
+  end;
   Inherit(AControl);
   if TStyleManager.Style[Style.Name] = Style then
+  begin
     AControl.StyleName := Style.Name;
+  end;
   if StyleServices(AControl) <> Style then
+  begin
     TAtlasGuard.Log(Format('Thema: %s zeichnet mit Stil "%s" statt "%s";%s', [AControl.ClassName,
       StyleServices(AControl).Name, Style.Name, Chain]));
+  end;
   // Auch die Form eines Atlas-Dockfensters (schwebend sonst Titelleiste und Grund im Systemstil).
   if not (AControl is TCustomForm) and IsDockForm(GetParentForm(AControl, False)) then
+  begin
     ThemeForm(GetParentForm(AControl, False));
+  end;
 end;
 
 class procedure TAtlasIdeDockWindow.ApplyDarkCaption(AForm: TCustomForm);
@@ -384,7 +450,9 @@ begin
   if (AForm = nil) or not AForm.HandleAllocated or
     not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or not Theming.IDEThemingEnabled or
     (Theming.StyleServices = nil) then
+  begin
     Exit;
+  end;
   // Dunkel, wenn der Fenstergrund des IDE-Stils dunkel ist (Helligkeit nach Rec. 601).
   Window := ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow));
   Dark := (GetRValue(Window) * 299 + GetGValue(Window) * 587 + GetBValue(Window) * 114) div 1000 < 128;
@@ -395,7 +463,9 @@ end;
 procedure TAtlasIdeDockWindow.FormWndProc(var AMessage: TMessage);
 begin
   if Assigned(FOldWndProc) then
+  begin
     FOldWndProc(AMessage);
+  end;
   // Neu angelegtes Fenster (Ab- oder Andocken): Titelleiste wieder dunkel.
   if (AMessage.Msg = WM_CREATE) and (FForm <> nil) then
     try
@@ -412,13 +482,17 @@ var
 begin
   if (AForm = nil) or not Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) or
     not Theming.IDEThemingEnabled then
+  begin
     Exit;
+  end;
   try
     Theming.ApplyTheme(AForm);
     // Der Frame ist durchsichtig und zeigt den Grund der Form; ApplyTheme setzt ihn nicht (schwebend hellgrau
     // unter weißer Schrift).
     if Theming.StyleServices <> nil then
+    begin
       TFormAccess(AForm).Color := Theming.StyleServices.GetSystemColor(clBtnFace);
+    end;
     ApplyDarkCaption(AForm);
   except
     // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.

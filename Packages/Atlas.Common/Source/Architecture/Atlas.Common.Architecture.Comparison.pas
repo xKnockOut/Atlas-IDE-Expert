@@ -402,19 +402,159 @@ begin
   Result := False;
 end;
 
+/// <summary>Kanten aus ASnapshot, die in AOtherKeys fehlen: alle in AAll, die zwischen Teilsystemen auch in
+/// ACross.</summary>
+procedure EdgesOnlyIn(const ASnapshot: TArchitectureSnapshot; AUnits: TDictionary<string, Integer>;
+  const AOtherEdges: TArray<TSnapshotEdge>; var AAll, ACross: TArray<TComparisonEdge>);
+var
+  mOtherKeys: TDictionary<string, Boolean>;
+  mEdge: TSnapshotEdge;
+  mChange: TComparisonEdge;
+begin
+  mOtherKeys := EdgeKeys(AOtherEdges);
+  try
+    for mEdge in ASnapshot.Edges do
+    begin
+      if mOtherKeys.ContainsKey(mEdge.Key) then
+      begin
+        Continue;
+      end;
+      mChange := ChangeOf(mEdge, ASnapshot, AUnits);
+      AAll := AAll + [mChange];
+      if not SameText(mChange.FromSubsystem, mChange.ToSubsystem) then
+      begin
+        ACross := ACross + [mChange];
+      end;
+    end;
+  finally
+    mOtherKeys.Free;
+  end;
+end;
+
+/// <summary>Zyklen aus ACycles, die in AOther fehlen.</summary>
+function CyclesOnlyIn(const ACycles, AOther: TArray<TSnapshotCycle>): TArray<TComparisonCycle>;
+var
+  mKeys: TDictionary<string, Boolean>;
+  mCycle: TSnapshotCycle;
+begin
+  Result := nil;
+  mKeys := TDictionary<string, Boolean>.Create;
+  try
+    for mCycle in AOther do
+    begin
+      mKeys.AddOrSetValue(mCycle.Key, True);
+    end;
+    for mCycle in ACycles do
+    begin
+      if not mKeys.ContainsKey(mCycle.Key) then
+      begin
+        Result := Result + [CycleOf(mCycle)];
+      end;
+    end;
+  finally
+    mKeys.Free;
+  end;
+end;
+
+/// <summary>Querverbindungen aus ALinks, die in AOther fehlen.</summary>
+function CrossLinksOnlyIn(const ALinks, AOther: TArray<TSnapshotCrossLink>): TArray<TComparisonEdge>;
+var
+  mKeys: TDictionary<string, Boolean>;
+  mLink: TSnapshotCrossLink;
+begin
+  Result := nil;
+  mKeys := TDictionary<string, Boolean>.Create;
+  try
+    for mLink in AOther do
+    begin
+      mKeys.AddOrSetValue(mLink.Edge.Key, True);
+    end;
+    for mLink in ALinks do
+    begin
+      if not mKeys.ContainsKey(mLink.Edge.Key) then
+      begin
+        Result := Result + [LinkOf(mLink)];
+      end;
+    end;
+  finally
+    mKeys.Free;
+  end;
+end;
+
+/// <summary>Zentrale Unit (alt oder neu), die um mindestens GrowthMinimum und GrowthPercent gewachsen ist.</summary>
+function HasGrown(const AOld, ANew: TArchitectureSnapshot; const ANewUnit, AOldUnit: TSnapshotUnit): Boolean;
+var
+  mGrow: Integer;
+begin
+  mGrow := ANewUnit.Total - AOldUnit.Total;
+  Result := (InList(ANewUnit.Name, ANew.Central) or InList(ANewUnit.Name, AOld.Central)) and
+    (mGrow >= TArchitectureComparer.GrowthMinimum) and
+    (mGrow * 100 > AOldUnit.Total * TArchitectureComparer.GrowthPercent);
+end;
+
+/// <summary>Eine Unit, die es in beiden Ständen gibt: Teilsystemwechsel und Wachstum.</summary>
+procedure CompareUnit(var AResult: TArchitectureComparison; const AOld, ANew: TArchitectureSnapshot;
+  const ANewUnit, AOldUnit: TSnapshotUnit);
+var
+  mMoved: TComparisonMove;
+  mGrowth: TComparisonGrowth;
+begin
+  if not SameText(AResult.MatchOf(ANewUnit.Subsystem), AOldUnit.Subsystem) then
+  begin
+    mMoved.Unit_ := ANewUnit.Name;
+    mMoved.FromSubsystem := AOldUnit.Subsystem;
+    mMoved.ToSubsystem := ANewUnit.Subsystem;
+    AResult.Moves := AResult.Moves + [mMoved];
+  end;
+  if HasGrown(AOld, ANew, ANewUnit, AOldUnit) then
+  begin
+    mGrowth.Unit_ := ANewUnit.Name;
+    mGrowth.Before := AOldUnit.Total;
+    mGrowth.After := ANewUnit.Total;
+    AResult.Growth := AResult.Growth + [mGrowth];
+  end;
+end;
+
+/// <summary>Units: neu, Teilsystemwechsel, Wachstum, entfallen.</summary>
+procedure CompareUnits(var AResult: TArchitectureComparison; const AOld, ANew: TArchitectureSnapshot;
+  AOldUnits, ANewUnits: TDictionary<string, Integer>);
+var
+  mItem: TSnapshotUnit;
+  mIndex: Integer;
+begin
+  for mItem in ANew.Units do
+  begin
+    if AOldUnits.TryGetValue(LowerCase(mItem.Name), mIndex) then
+    begin
+      CompareUnit(AResult, AOld, ANew, mItem, AOld.Units[mIndex]);
+    end
+    else
+    begin
+      AResult.NewUnits := AResult.NewUnits + [mItem.Name];
+    end;
+  end;
+  for mItem in AOld.Units do
+  begin
+    if not ANewUnits.ContainsKey(LowerCase(mItem.Name)) then
+    begin
+      AResult.RemovedUnits := AResult.RemovedUnits + [mItem.Name];
+    end;
+  end;
+  // Stärkster Zuwachs zuerst, bei Gleichstand nach Name.
+  TArray.Sort<TComparisonGrowth>(AResult.Growth, TComparer<TComparisonGrowth>.Construct(
+    function(const ALeft, ARight: TComparisonGrowth): Integer
+    begin
+      Result := (ARight.After - ARight.Before) - (ALeft.After - ALeft.Before);
+      if Result = 0 then
+      begin
+        Result := CompareNames(ALeft.Unit_, ARight.Unit_);
+      end;
+    end));
+end;
+
 class function TArchitectureComparer.Compare(const AOld, ANew: TArchitectureSnapshot): TArchitectureComparison;
 var
-  OldUnits, NewUnits: TDictionary<string, Integer>;
-  OldEdges, NewEdges, Keys: TDictionary<string, Boolean>;
-  Edge: TSnapshotEdge;
-  Change: TComparisonEdge;
-  Cycle: TSnapshotCycle;
-  Link: TSnapshotCrossLink;
-  Item: TSnapshotUnit;
-  Index, Grow: Integer;
-  OldSubsystem: string;
-  Moved: TComparisonMove;
-  Growth: TComparisonGrowth;
+  mOldUnits, mNewUnits: TDictionary<string, Integer>;
 begin
   Result := Default(TArchitectureComparison);
   Result.BaselineTitle := AOld.Title;
@@ -423,136 +563,20 @@ begin
   Result.BaselineGrouping := AOld.Grouping.Clamped;
   Result.Grouping := ANew.Grouping.Clamped;
   Result.Matches := MatchSubsystems(AOld, ANew);
-  OldUnits := UnitMap(AOld);
-  NewUnits := UnitMap(ANew);
-  OldEdges := EdgeKeys(AOld.Edges);
-  NewEdges := EdgeKeys(ANew.Edges);
-  Keys := TDictionary<string, Boolean>.Create;
+  mOldUnits := UnitMap(AOld);
+  mNewUnits := UnitMap(ANew);
   try
     // uses-Kanten (die Snapshots sind sortiert, die Listen damit auch).
-    for Edge in ANew.Edges do
-    begin
-      if not OldEdges.ContainsKey(Edge.Key) then
-      begin
-        Change := ChangeOf(Edge, ANew, NewUnits);
-        Result.AddedEdges := Result.AddedEdges + [Change];
-        if not SameText(Change.FromSubsystem, Change.ToSubsystem) then
-        begin
-          Result.NewEdges := Result.NewEdges + [Change];
-        end;
-      end;
-    end;
-    for Edge in AOld.Edges do
-    begin
-      if not NewEdges.ContainsKey(Edge.Key) then
-      begin
-        Change := ChangeOf(Edge, AOld, OldUnits);
-        Result.DroppedEdges := Result.DroppedEdges + [Change];
-        if not SameText(Change.FromSubsystem, Change.ToSubsystem) then
-        begin
-          Result.RemovedEdges := Result.RemovedEdges + [Change];
-        end;
-      end;
-    end;
-    // Zyklen.
-    Keys.Clear;
-    for Cycle in AOld.Cycles do
-    begin
-      Keys.AddOrSetValue(Cycle.Key, True);
-    end;
-    for Cycle in ANew.Cycles do
-    begin
-      if not Keys.ContainsKey(Cycle.Key) then
-      begin
-        Result.NewCycles := Result.NewCycles + [CycleOf(Cycle)];
-      end;
-    end;
-    Keys.Clear;
-    for Cycle in ANew.Cycles do
-    begin
-      Keys.AddOrSetValue(Cycle.Key, True);
-    end;
-    for Cycle in AOld.Cycles do
-    begin
-      if not Keys.ContainsKey(Cycle.Key) then
-      begin
-        Result.RemovedCycles := Result.RemovedCycles + [CycleOf(Cycle)];
-      end;
-    end;
-    // Querverbindungen.
-    Keys.Clear;
-    for Link in AOld.CrossLinks do
-    begin
-      Keys.AddOrSetValue(Link.Edge.Key, True);
-    end;
-    for Link in ANew.CrossLinks do
-    begin
-      if not Keys.ContainsKey(Link.Edge.Key) then
-      begin
-        Result.NewCrossLinks := Result.NewCrossLinks + [LinkOf(Link)];
-      end;
-    end;
-    Keys.Clear;
-    for Link in ANew.CrossLinks do
-    begin
-      Keys.AddOrSetValue(Link.Edge.Key, True);
-    end;
-    for Link in AOld.CrossLinks do
-    begin
-      if not Keys.ContainsKey(Link.Edge.Key) then
-      begin
-        Result.RemovedCrossLinks := Result.RemovedCrossLinks + [LinkOf(Link)];
-      end;
-    end;
-    // Units: neu, Teilsystemwechsel, Wachstum.
-    for Item in ANew.Units do
-    begin
-      if not OldUnits.TryGetValue(LowerCase(Item.Name), Index) then
-      begin
-        Result.NewUnits := Result.NewUnits + [Item.Name];
-        Continue;
-      end;
-      OldSubsystem := AOld.Units[Index].Subsystem;
-      if not SameText(Result.MatchOf(Item.Subsystem), OldSubsystem) then
-      begin
-        Moved.Unit_ := Item.Name;
-        Moved.FromSubsystem := OldSubsystem;
-        Moved.ToSubsystem := Item.Subsystem;
-        Result.Moves := Result.Moves + [Moved];
-      end;
-      Grow := Item.Total - AOld.Units[Index].Total;
-      if (InList(Item.Name, ANew.Central) or InList(Item.Name, AOld.Central)) and (Grow >= GrowthMinimum) and
-        (Grow * 100 > AOld.Units[Index].Total * GrowthPercent) then
-      begin
-        Growth.Unit_ := Item.Name;
-        Growth.Before := AOld.Units[Index].Total;
-        Growth.After := Item.Total;
-        Result.Growth := Result.Growth + [Growth];
-      end;
-    end;
-    for Item in AOld.Units do
-    begin
-      if not NewUnits.ContainsKey(LowerCase(Item.Name)) then
-      begin
-        Result.RemovedUnits := Result.RemovedUnits + [Item.Name];
-      end;
-    end;
-    // Stärkster Zuwachs zuerst, bei Gleichstand nach Name.
-    TArray.Sort<TComparisonGrowth>(Result.Growth, TComparer<TComparisonGrowth>.Construct(
-      function(const ALeft, ARight: TComparisonGrowth): Integer
-      begin
-        Result := (ARight.After - ARight.Before) - (ALeft.After - ALeft.Before);
-        if Result = 0 then
-        begin
-          Result := CompareNames(ALeft.Unit_, ARight.Unit_);
-        end;
-      end));
+    EdgesOnlyIn(ANew, mNewUnits, AOld.Edges, Result.AddedEdges, Result.NewEdges);
+    EdgesOnlyIn(AOld, mOldUnits, ANew.Edges, Result.DroppedEdges, Result.RemovedEdges);
+    Result.NewCycles := CyclesOnlyIn(ANew.Cycles, AOld.Cycles);
+    Result.RemovedCycles := CyclesOnlyIn(AOld.Cycles, ANew.Cycles);
+    Result.NewCrossLinks := CrossLinksOnlyIn(ANew.CrossLinks, AOld.CrossLinks);
+    Result.RemovedCrossLinks := CrossLinksOnlyIn(AOld.CrossLinks, ANew.CrossLinks);
+    CompareUnits(Result, AOld, ANew, mOldUnits, mNewUnits);
   finally
-    Keys.Free;
-    OldEdges.Free;
-    NewEdges.Free;
-    OldUnits.Free;
-    NewUnits.Free;
+    mOldUnits.Free;
+    mNewUnits.Free;
   end;
 end;
 

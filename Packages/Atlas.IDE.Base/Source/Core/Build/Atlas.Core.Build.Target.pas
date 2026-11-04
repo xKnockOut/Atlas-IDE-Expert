@@ -93,14 +93,20 @@ begin
   Result := SameText(Project, AOther.Project) and SameText(Config, AOther.Config) and
     SameText(Platform, AOther.Platform) and (Length(Defines) = Length(AOther.Defines));
   if not Result then
+  begin
     Exit;
+  end;
   for Define in Defines do
   begin
     Found := False;
     for Other in AOther.Defines do
+    begin
       Found := Found or SameText(Define, Other);
+    end;
     if not Found then
+    begin
       Exit(False);
+    end;
   end;
 end;
 
@@ -115,12 +121,18 @@ begin
     Name := UpperCase(Trim(Part));
     // $(DCC_Define) verweist auf geerbte Werte; die liefert die IDE schon mit.
     if (Name = '') or Name.StartsWith('$(') then
+    begin
       Continue;
+    end;
     Duplicate := False;
     for Known in Result do
+    begin
       Duplicate := Duplicate or (Known = Name);
+    end;
     if not Duplicate then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -138,7 +150,9 @@ begin
     Options.AddPair('platform', Platform);
     Items := TJSONArray.Create;
     for Define in Defines do
+    begin
       Items.Add(Define);
+    end;
     Options.AddPair('defines', Items);
   end;
   Result := TJSONArray.Create;
@@ -154,17 +168,23 @@ begin
   APlatform := '';
   Result := False;
   if not (AResult is TJSONObject) then
+  begin
     Exit;
+  end;
   Projects := TJSONObject(AResult).GetValue('projects');
   if not (Projects is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Projects) do
+  begin
     if (Item is TJSONObject) and SameText(TJSONObject(Item).GetValue<string>('project', ''), AProject) then
     begin
       AConfig := TJSONObject(Item).GetValue<string>('config', '');
       APlatform := TJSONObject(Item).GetValue<string>('platform', '');
       Exit(True);
     end;
+  end;
 end;
 
 { TAtlasBuildTargetTracker }
@@ -192,7 +212,9 @@ var
 begin
   Result := TAtlasBuildTargetAction.None;
   if FPending or (ACurrent.Project = '') then
+  begin
     Exit;
+  end;
   if not FKnown.TryGetValue(Key(ACurrent.Project), Known) then
   begin
     FPending := True;
@@ -200,9 +222,13 @@ begin
   end;
   // Projekt, das der Server nicht kennt: nichts senden.
   if Known.Project = '' then
+  begin
     Exit;
+  end;
   if ACurrent.SameAs(Known) then
+  begin
     Exit;
+  end;
   FKnown.AddOrSetValue(Key(ACurrent.Project), ACurrent);
   FPending := True;
   Result := TAtlasBuildTargetAction.Select;
@@ -212,9 +238,13 @@ procedure TAtlasBuildTargetTracker.Baseline(const AProject, AConfig, APlatform: 
   const ADefines: TArray<string>; AFound: Boolean);
 begin
   if AFound then
-    FKnown.AddOrSetValue(Key(AProject), TAtlasBuildTarget.Create(AProject, AConfig, APlatform, ADefines))
+  begin
+    FKnown.AddOrSetValue(Key(AProject), TAtlasBuildTarget.Create(AProject, AConfig, APlatform, ADefines));
+  end
   else
+  begin
     FKnown.AddOrSetValue(Key(AProject), Default(TAtlasBuildTarget));
+  end;
 end;
 
 procedure TAtlasBuildTargetTracker.Finished;

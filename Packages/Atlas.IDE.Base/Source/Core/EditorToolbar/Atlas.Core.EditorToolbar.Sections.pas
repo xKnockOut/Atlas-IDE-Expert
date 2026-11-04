@@ -111,15 +111,25 @@ function TAtlasUnitSections.SectionAt(ALine, ACharacter: Integer): TAtlasCodeSec
 begin
   if HeaderUses.Contains(ALine, ACharacter) or InterfaceUses.Contains(ALine, ACharacter) or
     ImplementationUses.Contains(ALine, ACharacter) then
+  begin
     Exit(TAtlasCodeSection.UsesClause);
+  end;
   if Finalization_.Before(ALine, ACharacter) then
+  begin
     Exit(TAtlasCodeSection.Finalization_);
+  end;
   if Initialization_.Before(ALine, ACharacter) then
+  begin
     Exit(TAtlasCodeSection.Initialization_);
+  end;
   if ImplementationPart.Before(ALine, ACharacter) then
+  begin
     Exit(TAtlasCodeSection.ImplementationPart);
+  end;
   if InterfacePart.Before(ALine, ACharacter) then
+  begin
     Exit(TAtlasCodeSection.InterfacePart);
+  end;
   Result := TAtlasCodeSection.None;
 end;
 
@@ -136,17 +146,27 @@ begin
       AMark := Initialization_;
     TAtlasSectionTarget.UsesClause:
       if Kind <> TAtlasSourceKind.Unit_ then
-        AMark := HeaderUses.Start
+      begin
+        AMark := HeaderUses.Start;
+      end
       else if ImplementationPart.Before(ALine, ACharacter) and ImplementationUses.Start.Found then
-        AMark := ImplementationUses.Start
-      else if InterfaceUses.Start.Found then
-        AMark := InterfaceUses.Start
-      else
+      begin
         AMark := ImplementationUses.Start;
+      end
+      else if InterfaceUses.Start.Found then
+      begin
+        AMark := InterfaceUses.Start;
+      end
+      else
+      begin
+        AMark := ImplementationUses.Start;
+      end;
   end;
   // Programme, Packages und Include-Dateien haben keine Abschnitte, auch wenn darin ein Wort so heißt.
   if (Kind <> TAtlasSourceKind.Unit_) and (ATarget <> TAtlasSectionTarget.UsesClause) then
+  begin
     AMark := Default(TAtlasSectionMark);
+  end;
   Result := AMark.Found;
 end;
 
@@ -171,7 +191,9 @@ function QuoteRun(const AText: string; APosition: Integer): Integer;
 begin
   Result := 0;
   while (APosition + Result <= Length(AText)) and (AText[APosition + Result] = '''') do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TTokenReader.Next(out AToken: string; out ALine, ACharacter: Integer): Boolean;
@@ -191,7 +213,9 @@ begin
       // Mehrzeiliger String: endet an einer Zeile, die (nach Einrückung) mit gleich vielen ''' beginnt.
       Start := 1;
       while (Start <= Length(Text)) and CharInSet(Text[Start], [' ', #9]) do
+      begin
         Inc(Start);
+      end;
       if QuoteRun(Text, Start) >= MultiQuotes then
       begin
         Position := Start + MultiQuotes;
@@ -209,7 +233,9 @@ begin
       if Comment = '{' then
       begin
         if Text[Position] = '}' then
+        begin
           Comment := #0;
+        end;
         Inc(Position);
         Continue;
       end;
@@ -236,12 +262,18 @@ begin
             Inc(Position, 2);
           end
           else
+          begin
             Inc(Position);
+          end;
         '/':
           if (Position < Length(Text)) and (Text[Position + 1] = '/') then
-            Position := Length(Text) + 1
+          begin
+            Position := Length(Text) + 1;
+          end
           else
+          begin
             Inc(Position);
+          end;
         '''':
           begin
             Run := QuoteRun(Text, Position);
@@ -259,7 +291,9 @@ begin
               if Text[Position] = '''' then
               begin
                 if (Position < Length(Text)) and (Text[Position + 1] = '''') then
-                  Inc(Position, 2)
+                begin
+                  Inc(Position, 2);
+                end
                 else
                 begin
                   Inc(Position);
@@ -267,7 +301,9 @@ begin
                 end;
               end
               else
+              begin
                 Inc(Position);
+              end;
             end;
           end;
         ';', '=', '.':
@@ -284,7 +320,9 @@ begin
             Inc(Position);
             Escaped := (Position <= Length(Text)) and TTextChars.IsIdentStart(Text[Position]);
             while (Position <= Length(Text)) and TTextChars.IsIdentChar(Text[Position]) do
+            begin
               Inc(Position);
+            end;
             if Escaped then
             begin
               AToken := '&';
@@ -298,14 +336,18 @@ begin
         begin
           Start := Position;
           while (Position <= Length(Text)) and TTextChars.IsIdentChar(Text[Position]) do
+          begin
             Inc(Position);
+          end;
           AToken := LowerCase(Copy(Text, Start, Position - Start));
           ALine := Line;
           ACharacter := Start - 1;
           Exit(True);
         end
         else
+        begin
           Inc(Position);
+        end;
       end;
     end;
     Inc(Line);
@@ -338,16 +380,26 @@ begin
     begin
       First := False;
       if Token = 'unit' then
-        Result.Kind := TAtlasSourceKind.Unit_
+      begin
+        Result.Kind := TAtlasSourceKind.Unit_;
+      end
       else if Token = 'program' then
-        Result.Kind := TAtlasSourceKind.Program_
+      begin
+        Result.Kind := TAtlasSourceKind.Program_;
+      end
       else if Token = 'library' then
-        Result.Kind := TAtlasSourceKind.Library_
+      begin
+        Result.Kind := TAtlasSourceKind.Library_;
+      end
       else if Token = 'package' then
-        Result.Kind := TAtlasSourceKind.Package
+      begin
+        Result.Kind := TAtlasSourceKind.Package;
+      end
       else
+      begin
         // Ohne Kopf (.inc): keine Abschnitte.
         Exit;
+      end;
       Previous := Token;
       Continue;
     end;
@@ -375,24 +427,38 @@ begin
     begin
       if (Token = 'interface') and not Result.InterfacePart.Found and not Result.ImplementationPart.Found and
         (AfterHeader or (Previous <> '=')) then
-        Result.InterfacePart := TAtlasSectionMark.At(Line, Character)
+      begin
+        Result.InterfacePart := TAtlasSectionMark.At(Line, Character);
+      end
       else if (Token = 'implementation') and not Result.ImplementationPart.Found then
-        Result.ImplementationPart := TAtlasSectionMark.At(Line, Character)
+      begin
+        Result.ImplementationPart := TAtlasSectionMark.At(Line, Character);
+      end
       else if (Token = 'initialization') and Result.ImplementationPart.Found and not Result.Initialization_.Found then
-        Result.Initialization_ := TAtlasSectionMark.At(Line, Character)
+      begin
+        Result.Initialization_ := TAtlasSectionMark.At(Line, Character);
+      end
       else if (Token = 'finalization') and Result.ImplementationPart.Found and not Result.Finalization_.Found then
-        Result.Finalization_ := TAtlasSectionMark.At(Line, Character)
+      begin
+        Result.Finalization_ := TAtlasSectionMark.At(Line, Character);
+      end
       else if Token = 'uses' then
       begin
         if Result.ImplementationPart.Found then
         begin
           if not Result.ImplementationUses.Start.Found then
+          begin
             OpenUses := @Result.ImplementationUses;
+          end;
         end
         else if Result.InterfacePart.Found and not Result.InterfaceUses.Start.Found then
+        begin
           OpenUses := @Result.InterfaceUses;
+        end;
         if OpenUses <> nil then
+        begin
           OpenUses^.Start := TAtlasSectionMark.At(Line, Character);
+        end;
       end;
     end
     else if HeaderDone and not Result.HeaderUses.Start.Found and
@@ -404,7 +470,9 @@ begin
     end;
     // „end.“ beendet die Unit; danach steht nichts mehr, was zählt.
     if (Previous = 'end') and (Token = '.') then
+    begin
       Break;
+    end;
     AfterHeader := False;
     Previous := Token;
   end;

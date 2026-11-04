@@ -169,143 +169,181 @@ begin
   end;
 end;
 
+type
+  /// <summary>Zustand beim Auswerten einer .dproj.</summary>
+  TDprojState = record
+    Options: TDprojOptions;
+    Directory: string;
+    Properties: TMSBuildProperties;
+    Units: TList<TProjectUnit>;
+    Origins: TList<TPair<string, string>>;
+  end;
+
+procedure PresetProperties(const AState: TDprojState; const AFileName: string);
+var
+  mVariable: TPair<string, string>;
+begin
+  for mVariable in AState.Options.Variables do
+  begin
+    AState.Properties.SetValue(mVariable.Key, mVariable.Value);
+  end;
+  AState.Properties.SetValue('MSBuildProjectDirectory', AState.Directory);
+  AState.Properties.SetValue('MSBuildProjectName', TProjectPaths.BaseName(AFileName));
+  if AState.Options.Config <> '' then
+  begin
+    AState.Properties.SetValue('Config', AState.Options.Config);
+  end;
+  if AState.Options.Platform <> '' then
+  begin
+    AState.Properties.SetValue('Platform', AState.Options.Platform);
+  end;
+end;
+
+function Defines(const AState: TDprojState): TArray<string>;
+begin
+  Result := UniqueUpper(TProjectPaths.SplitList(AState.Properties.Get('DCC_Define')));
+end;
+
+/// <summary>Übernimmt die Eigenschaft AItem der PropertyGroup AGroup; neue Symbole in DCC_Define merkt sich der
+/// Reader mit ihrer Ebene (#102).</summary>
+procedure ReadProperty(const AState: TDprojState; AGroup, AItem: TXmlElement);
+var
+  mBefore: TArray<string>;
+  mDefine: string;
+  mIsDefine: Boolean;
+begin
+  // Vorgegebene Konfiguration und Plattform haben Vorrang vor den Vorgaben der Datei.
+  if ((AState.Options.Config <> '') and SameText(AItem.Name, 'Config')) or
+    ((AState.Options.Platform <> '') and SameText(AItem.Name, 'Platform')) or
+    not AState.Properties.Evaluate(AItem.Attribute('Condition')) then
+  begin
+    Exit;
+  end;
+  mIsDefine := SameText(AItem.Name, 'DCC_Define');
+  mBefore := nil;
+  if mIsDefine then
+  begin
+    mBefore := Defines(AState);
+  end;
+  AState.Properties.SetValue(AItem.Name, AState.Properties.Expand(Trim(AItem.Text)));
+  if not mIsDefine then
+  begin
+    Exit;
+  end;
+  for mDefine in Defines(AState) do
+  begin
+    if IndexStr(mDefine, mBefore) < 0 then
+    begin
+      AState.Origins.Add(TPair<string, string>.Create(mDefine,
+        LevelOf(AGroup.Attribute('Condition'), AState.Properties.Get('Config'))));
+    end;
+  end;
+end;
+
+/// <summary>Übernimmt die Units (DCCReference auf .pas) einer ItemGroup.</summary>
+procedure ReadItems(const AState: TDprojState; AGroup: TXmlElement);
+var
+  mIndex: Integer;
+  mItem: TXmlElement;
+  mInclude: string;
+  mUnit: TProjectUnit;
+begin
+  for mIndex := 0 to AGroup.ChildCount - 1 do
+  begin
+    mItem := AGroup[mIndex];
+    if (mItem.Name <> 'DCCReference') or not AState.Properties.Evaluate(mItem.Attribute('Condition')) then
+    begin
+      Continue;
+    end;
+    mInclude := AState.Properties.Expand(mItem.Attribute('Include'));
+    if TProjectPaths.Extension(mInclude) = '.pas' then
+    begin
+      mUnit.Name := TProjectPaths.BaseName(mInclude);
+      mUnit.FileName := TProjectPaths.Combine(AState.Directory, mInclude);
+      AState.Units.Add(mUnit);
+    end;
+  end;
+end;
+
+procedure ReadGroups(const AState: TDprojState; ARoot: TXmlElement);
+var
+  mIndex, mItem: Integer;
+  mGroup: TXmlElement;
+begin
+  for mIndex := 0 to ARoot.ChildCount - 1 do
+  begin
+    mGroup := ARoot[mIndex];
+    if not AState.Properties.Evaluate(mGroup.Attribute('Condition')) then
+    begin
+      Continue;
+    end;
+    if mGroup.Name = 'PropertyGroup' then
+    begin
+      for mItem := 0 to mGroup.ChildCount - 1 do
+      begin
+        ReadProperty(AState, mGroup, mGroup[mItem]);
+      end;
+    end
+    else if mGroup.Name = 'ItemGroup' then
+    begin
+      ReadItems(AState, mGroup);
+    end;
+  end;
+end;
+
+function ProjectInfo(const AState: TDprojState; const AFileName: string; ARoot: TXmlElement): TProjectInfo;
+begin
+  Result.FileName := AFileName;
+  Result.MainSource := '';
+  if AState.Properties.Get('MainSource') <> '' then
+  begin
+    Result.MainSource := TProjectPaths.Combine(AState.Directory, AState.Properties.Get('MainSource'));
+  end;
+  Result.Config := AState.Properties.Get('Config');
+  Result.Platform := AState.Properties.Get('Platform');
+  Result.Defines := Defines(AState);
+  Result.DefineOrigins := AState.Origins.ToArray;
+  Result.SearchPaths := UniquePaths(AState.Directory,
+    TProjectPaths.SplitList(AState.Properties.Get('DCC_UnitSearchPath')));
+  Result.Namespaces := TProjectPaths.SplitList(AState.Properties.Get('DCC_Namespace'));
+  Result.Units := AState.Units.ToArray;
+  Result.Properties := AState.Properties.ToArray;
+  Result.Configs := nil;
+  Result.Platforms := nil;
+  CollectTargets(ARoot, Result.Configs, Result.Platforms);
+end;
+
 { TDprojReader }
 
 class function TDprojReader.Read(const AFileName, AText: string; const AOptions: TDprojOptions): TProjectInfo;
 var
-  Root: TXmlElement;
-  Group: TXmlElement;
-  Item: TXmlElement;
-  Properties: TMSBuildProperties;
-  Variable: TPair<string, string>;
-  GroupIndex: Integer;
-  ItemIndex: Integer;
-  Directory: string;
-  Units: TList<TProjectUnit>;
-  ProjectUnit: TProjectUnit;
-  Include: string;
-  Origins: TList<TPair<string, string>>;
-  Before: TArray<string>;
-  Define: string;
+  mRoot: TXmlElement;
+  mState: TDprojState;
 begin
   try
-    Root := TXmlReader.Parse(AText);
+    mRoot := TXmlReader.Parse(AText);
   except
     on E: EXmlError do
       raise EProjectError.CreateFmt('%s: %s', [AFileName, E.Message]);
   end;
-  Directory := TProjectPaths.DirectoryOf(AFileName);
-  Properties := TMSBuildProperties.Create(AOptions.FileExists);
-  Units := TList<TProjectUnit>.Create;
-  Origins := TList<TPair<string, string>>.Create;
+  mState.Options := AOptions;
+  mState.Directory := TProjectPaths.DirectoryOf(AFileName);
+  mState.Properties := TMSBuildProperties.Create(AOptions.FileExists);
+  mState.Units := TList<TProjectUnit>.Create;
+  mState.Origins := TList<TPair<string, string>>.Create;
   try
-    if Root.Name <> 'Project' then
+    if mRoot.Name <> 'Project' then
     begin
       raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
     end;
-    for Variable in AOptions.Variables do
-    begin
-      Properties.SetValue(Variable.Key, Variable.Value);
-    end;
-    Properties.SetValue('MSBuildProjectDirectory', Directory);
-    Properties.SetValue('MSBuildProjectName', TProjectPaths.BaseName(AFileName));
-    if AOptions.Config <> '' then
-    begin
-      Properties.SetValue('Config', AOptions.Config);
-    end;
-    if AOptions.Platform <> '' then
-    begin
-      Properties.SetValue('Platform', AOptions.Platform);
-    end;
-
-    for GroupIndex := 0 to Root.ChildCount - 1 do
-    begin
-      Group := Root[GroupIndex];
-      if not Properties.Evaluate(Group.Attribute('Condition')) then
-      begin
-        Continue;
-      end;
-      if Group.Name = 'PropertyGroup' then
-      begin
-        for ItemIndex := 0 to Group.ChildCount - 1 do
-        begin
-          Item := Group[ItemIndex];
-          // Vorgegebene Konfiguration und Plattform haben Vorrang vor den Vorgaben der Datei.
-          if ((AOptions.Config <> '') and SameText(Item.Name, 'Config')) or
-            ((AOptions.Platform <> '') and SameText(Item.Name, 'Platform')) then
-          begin
-            Continue;
-          end;
-          if not Properties.Evaluate(Item.Attribute('Condition')) then
-          begin
-            Continue;
-          end;
-          Before := nil;
-          if SameText(Item.Name, 'DCC_Define') then
-          begin
-            Before := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
-          end;
-          Properties.SetValue(Item.Name, Properties.Expand(Trim(Item.Text)));
-          // Neue Symbole dieser Ebene (#102).
-          if SameText(Item.Name, 'DCC_Define') then
-          begin
-            for Define in UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define'))) do
-            begin
-              if IndexStr(Define, Before) < 0 then
-              begin
-                Origins.Add(TPair<string, string>.Create(Define,
-                  LevelOf(Group.Attribute('Condition'), Properties.Get('Config'))));
-              end;
-            end;
-          end;
-        end;
-      end
-      else if Group.Name = 'ItemGroup' then
-      begin
-        for ItemIndex := 0 to Group.ChildCount - 1 do
-        begin
-          Item := Group[ItemIndex];
-          if (Item.Name <> 'DCCReference') or not Properties.Evaluate(Item.Attribute('Condition')) then
-          begin
-            Continue;
-          end;
-          Include := Properties.Expand(Item.Attribute('Include'));
-          if TProjectPaths.Extension(Include) <> '.pas' then
-          begin
-            Continue;
-          end;
-          ProjectUnit.Name := TProjectPaths.BaseName(Include);
-          ProjectUnit.FileName := TProjectPaths.Combine(Directory, Include);
-          Units.Add(ProjectUnit);
-        end;
-      end;
-    end;
-
-    Result.FileName := AFileName;
-    if Properties.Get('MainSource') <> '' then
-    begin
-      Result.MainSource := TProjectPaths.Combine(Directory, Properties.Get('MainSource'));
-    end
-    else
-    begin
-      Result.MainSource := '';
-    end;
-    Result.Config := Properties.Get('Config');
-    Result.Platform := Properties.Get('Platform');
-    Result.Defines := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
-    Result.DefineOrigins := Origins.ToArray;
-    Result.SearchPaths := UniquePaths(Directory, TProjectPaths.SplitList(Properties.Get('DCC_UnitSearchPath')));
-    Result.Namespaces := TProjectPaths.SplitList(Properties.Get('DCC_Namespace'));
-    Result.Units := Units.ToArray;
-    Result.Properties := Properties.ToArray;
-    Result.Configs := nil;
-    Result.Platforms := nil;
-    CollectTargets(Root, Result.Configs, Result.Platforms);
+    PresetProperties(mState, AFileName);
+    ReadGroups(mState, mRoot);
+    Result := ProjectInfo(mState, AFileName, mRoot);
   finally
-    Origins.Free;
-    Units.Free;
-    Properties.Free;
-    Root.Free;
+    mState.Origins.Free;
+    mState.Units.Free;
+    mState.Properties.Free;
+    mRoot.Free;
   end;
 end;
 

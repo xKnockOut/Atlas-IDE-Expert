@@ -56,7 +56,9 @@ begin
     Result := AColors.Muted;
   end;
   if AProblem.Stale then
+  begin
     Result := TAtlasColorMath.Mix(Result, AColors.Surface, AtlasMixFaded);
+  end;
 end;
 
 function DimmedTextColor(AText, ABack: TAtlasColor): TAtlasColor;
@@ -71,7 +73,9 @@ begin
   begin
     Alpha := Alpha + 0.05;
     if Alpha > 1 then
+    begin
       Alpha := 1;
+    end;
     Result := TAtlasColorMath.Mix(AText, ABack, Alpha);
   end;
   // Schon der volle Text ist zu blass (manche Themen): vom Hintergrund weg verstärken.
@@ -79,9 +83,13 @@ begin
   while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (Steps < 20) do
   begin
     if TAtlasColorMath.IsDark(ABack) then
-      Result := TAtlasColorMath.Lighten(Result, 0.05)
+    begin
+      Result := TAtlasColorMath.Lighten(Result, 0.05);
+    end
     else
+    begin
       Result := TAtlasColorMath.Darken(Result, 0.05);
+    end;
     Inc(Steps);
   end;
 end;

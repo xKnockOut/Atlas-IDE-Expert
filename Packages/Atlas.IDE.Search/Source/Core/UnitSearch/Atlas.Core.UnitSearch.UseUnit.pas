@@ -116,7 +116,9 @@ function TextOf(AObject: TJSONObject; const AName: string): string;
 begin
   Result := '';
   if AObject.GetValue(AName) is TJSONString then
+  begin
     Result := AObject.GetValue(AName).Value;
+  end;
 end;
 
 class function TAtlasUseUnit.Parse(const AJson: string; out AInfo: TAtlasUseUnitInfo): Boolean;
@@ -128,36 +130,56 @@ begin
   AInfo := Default(TAtlasUseUnitInfo);
   Result := False;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not (Root.GetValue('found') is TJSONBool) then
+    begin
       Exit;
+    end;
     AInfo.Found := TJSONBool(Root.GetValue('found')).AsBoolean;
     AInfo.UnitName := TextOf(Root, 'unit');
     AInfo.FileName := TextOf(Root, 'file');
     if Root.GetValue('inUses') is TJSONArray then
+    begin
       for Item in TJSONArray(Root.GetValue('inUses')) do
+      begin
         if Item is TJSONString then
+        begin
           AInfo.InUses := AInfo.InUses + [Item.Value];
+        end;
+      end;
+    end;
     if Root.GetValue('cycles') is TJSONArray then
+    begin
       for Item in TJSONArray(Root.GetValue('cycles')) do
       begin
         if not (Item is TJSONObject) then
+        begin
           Continue;
+        end;
         Cycle := Default(TAtlasUseUnitCycle);
         Cycle.Name := TextOf(TJSONObject(Item), 'name');
         Cycle.FileName := TextOf(TJSONObject(Item), 'file');
         Cycle.InterfacePath := TextOf(TJSONObject(Item), 'interfacePath');
         Cycle.Path := TextOf(TJSONObject(Item), 'path');
         if (Cycle.Name <> '') and (Cycle.Path <> '') then
+        begin
           AInfo.Cycles := AInfo.Cycles + [Cycle];
+        end;
       end;
+    end;
     if Root.GetValue('generation') is TJSONNumber then
+    begin
       AInfo.Generation := TJSONNumber(Root.GetValue('generation')).AsInt64;
+    end;
     Result := True;
   finally
     Value.Free;
@@ -178,10 +200,16 @@ var
 begin
   Result := SameText(AName, AInfo.UnitName);
   if Result then
+  begin
     Exit;
+  end;
   for Written in AInfo.InUses do
+  begin
     if Matches(Written, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasUseUnit.Marks(const AInfo: TAtlasUseUnitInfo;
@@ -197,7 +225,9 @@ begin
     for Index := 0 to High(AInfo.Cycles) do
     begin
       if AInfo.Cycles[Index].FileName <> '' then
+      begin
         Cycles.AddOrSetValue(LowerCase(AInfo.Cycles[Index].FileName), Index);
+      end;
       Cycles.AddOrSetValue('#' + LowerCase(AInfo.Cycles[Index].Name), Index);
     end;
     for Index := 0 to High(AEntries) do
@@ -205,7 +235,9 @@ begin
       Result[Index].InUses := InUses(AInfo, AEntries[Index].Name);
       if not Cycles.TryGetValue(LowerCase(AEntries[Index].FileName), Cycle) and
         not Cycles.TryGetValue('#' + LowerCase(AEntries[Index].Name), Cycle) then
+      begin
         Cycle := -1;
+      end;
       Result[Index].Cycle := Cycle;
     end;
   finally
@@ -217,19 +249,29 @@ class function TAtlasUseUnit.CycleState(const ACycle: TAtlasUseUnitCycle;
   ASection: TAtlasUseUnitSection): TAtlasUseUnitCycleState;
 begin
   if (ASection = TAtlasUseUnitSection.Interface_) and (ACycle.InterfacePath <> '') then
-    Result := TAtlasUseUnitCycleState.Warning
+  begin
+    Result := TAtlasUseUnitCycleState.Warning;
+  end
   else if ACycle.Path <> '' then
-    Result := TAtlasUseUnitCycleState.Hint
+  begin
+    Result := TAtlasUseUnitCycleState.Hint;
+  end
   else
+  begin
     Result := TAtlasUseUnitCycleState.None;
+  end;
 end;
 
 class function TAtlasUseUnit.CyclePath(const ACycle: TAtlasUseUnitCycle; ASection: TAtlasUseUnitSection): string;
 begin
   if CycleState(ACycle, ASection) = TAtlasUseUnitCycleState.Warning then
-    Result := ACycle.InterfacePath
+  begin
+    Result := ACycle.InterfacePath;
+  end
   else
+  begin
     Result := ACycle.Path;
+  end;
 end;
 
 class function TAtlasUseUnit.CycleVia(const ACycle: TAtlasUseUnitCycle; ASection: TAtlasUseUnitSection): string;
@@ -240,7 +282,9 @@ begin
   // "Ziel → Kandidat → … → Via → Ziel": vorletzter Teil.
   Parts := CyclePath(ACycle, ASection).Split([Arrow]);
   if Length(Parts) >= 3 then
+  begin
     Result := Parts[High(Parts) - 1];
+  end;
 end;
 
 class function TAtlasUseUnit.Addable(const AInfo: TAtlasUseUnitInfo;
@@ -256,7 +300,9 @@ begin
     begin
       if (Entry.Kind = TAtlasUnitKind.Include) or InUses(AInfo, Entry.Name) or
         Seen.ContainsKey(LowerCase(Entry.Name)) then
+      begin
         Continue;
+      end;
       Seen.Add(LowerCase(Entry.Name), True);
       Result := Result + [Entry];
     end;
@@ -277,7 +323,9 @@ begin
     Items.Add(AUri);
     Names := TJSONArray.Create;
     for Name in ANames do
+    begin
       Names.Add(Name);
+    end;
     Items.AddElement(Names);
     Options := TJSONObject.Create;
     Options.AddPair('section', SectionText(ASection));
@@ -291,9 +339,13 @@ end;
 class function TAtlasUseUnit.SectionText(ASection: TAtlasUseUnitSection): string;
 begin
   if ASection = TAtlasUseUnitSection.Interface_ then
-    Result := 'interface'
+  begin
+    Result := 'interface';
+  end
   else
+  begin
     Result := 'implementation';
+  end;
 end;
 
 class function TAtlasUseUnit.FormKinds: TAtlasUnitKinds;

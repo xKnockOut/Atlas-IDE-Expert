@@ -299,21 +299,35 @@ var
 begin
   Settings := TAtlasIdeSettings.Current;
   if Palette <> nil then
+  begin
     Palette.Rebind;
+  end;
   if CheckOnSave <> nil then
+  begin
     CheckOnSave.Rebind;
+  end;
   if EditorKeys <> nil then
+  begin
     EditorKeys.Rebind;
+  end;
   if CompletionKey <> nil then
+  begin
     CompletionKey.Rebind(Word(Settings.CompletionKey), Settings.CompletionKeyPriority,
       TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey));
+  end;
   if SignatureKey <> nil then
+  begin
     SignatureKey.Rebind(Word(Settings.SignatureKey), Settings.SignatureKeyPriority,
       TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
+  end;
   if QuickToggles <> nil then
+  begin
     QuickToggles.Rebind;
+  end;
   if DiagnosticMode <> nil then
+  begin
     DiagnosticMode.Rebind;
+  end;
 end;
 
 procedure ReportHang(const AHang: TAtlasHang);
@@ -324,7 +338,9 @@ var
   Group: IOTAMessageGroup;
 begin
   if (Hangs = nil) or (Manager = nil) then
+  begin
     Exit;
+  end;
   Hang := AHang;
   if Compile <> nil then
   begin
@@ -334,17 +350,25 @@ begin
   Hangs.ThresholdMs := TAtlasIdeSettings.Current.HangThresholdMs;
   Text := Hangs.Finish(Hang);
   if Text = '' then
+  begin
     Exit;
+  end;
   Manager.Report(Text);
   if not TAtlasIdeSettings.Current.HangHint or (Hang.DurationMs < HangHintMs) or
     not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Activity := '';
   if Hang.Activity <> '' then
+  begin
     Activity := ' (' + Hang.Activity + ')';
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup('Atlas');
+  end;
   // Nie als Dialog und ohne das Meldungsfenster nach vorn zu holen.
   Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.HangHint, [Hang.DurationMs, Activity]), Group);
 end;
@@ -356,12 +380,18 @@ var
   Group: IOTAMessageGroup;
 begin
   if Manager <> nil then
+  begin
     Manager.Report(AText);
+  end;
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup('Atlas');
+  end;
   Messages.AddTitleMessage(AText, Group);
 end;
 
@@ -372,10 +402,14 @@ var
   Group: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup('Atlas');
+  end;
   Messages.AddTitleMessage(AText, Group);
 end;
 
@@ -387,10 +421,14 @@ var
   Group: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group <> nil then
+  begin
     Messages.ShowMessageView(Group);
+  end;
 end;
 
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
@@ -468,7 +506,9 @@ begin
       ATimeoutMs: Cardinal): IAtlasVersionControl
     begin
       if ATimeoutMs = 0 then
+      begin
         Exit(TAtlasVersionControl.Open(AFolder, AProvider, ARunner));
+      end;
       Result := TAtlasVersionControl.Open(AFolder, AProvider, ARunner,
         function(AKind: TAtlasVcsKind): string
         begin
@@ -490,9 +530,13 @@ begin
     begin
       // Im Hintergrund (#874): Der Server antwortet auch während des Indexierens sofort, das Plugin wartet nicht.
       if Manager <> nil then
-        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone)
+      begin
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone);
+      end
       else
+      begin
         ADone(nil);
+      end;
     end,
     procedure(AText: string)
     begin
@@ -610,7 +654,9 @@ var
 begin
   if (Manager = nil) or (TAtlasIdeProjectSummaries.Current = nil) or (AProject = '') or
     not TAtlasIdeSettings.Current.Enabled then
+  begin
     Exit;
+  end;
   Project := AProject;
   Stamp := AStampUtc;
   Manager.RunCommandsAsync([MetricsCommand, TodosCommand],
@@ -627,6 +673,7 @@ begin
         procedure
         begin
           if TAtlasIdeProjectSummaries.Current <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.WelcomePage,
               procedure
               begin
@@ -635,6 +682,7 @@ begin
                 TAtlasIdeProjectSummaries.Current.RecordTodos(Project, Answers[1], Stamp);
                 TAtlasIdeProjectSummaries.Current.RecordBaseline(Project, Baseline, Stamp);
               end);
+          end;
         end);
     end);
 end;
@@ -648,7 +696,9 @@ var
 begin
   // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
   if (Manager = nil) or not TAtlasIdeSettings.Current.MetricsReport then
+  begin
     Exit;
+  end;
   Project := GetActiveProject;
   if (Project = nil) or (Project.FileName = '') then
   begin
@@ -685,21 +735,29 @@ begin
               ForceDirectories(ExtractFileDir(FileName));
               TFile.WriteAllText(FileName, Text, TEncoding.UTF8);
               if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+              begin
                 Actions.OpenFile(FileName);
+              end;
             end);
         end);
     end) then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportRunning))
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportRunning));
+  end
   else
+  begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
+  end;
 end;
 
 /// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 procedure RenameSymbol;
 begin
   if Manager = nil then
+  begin
     Exit;
+  end;
   TAtlasIdeRename.Execute(Manager.ActiveSession,
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     procedure(AText: string)
@@ -751,9 +809,13 @@ begin
     procedure(AValue: TJSONValue)
     begin
       if AValue = nil then
-        ADone('')
+      begin
+        ADone('');
+      end
       else
+      begin
         ADone(AValue.ToJSON([]));
+      end;
     end;
 end;
 
@@ -1028,8 +1090,12 @@ var
 begin
   ARunner := nil;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestRunner) do
+  begin
     if Supports(mItem, IAtlasTestRunner, ARunner) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1039,9 +1105,13 @@ var
   mRunner: IAtlasTestRunner;
 begin
   if TestRunner(mRunner) then
-    mRunner.RunTests(AFileName, ATests)
+  begin
+    mRunner.RunTests(AFileName, ATests);
+  end
   else
+  begin
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+  end;
 end;
 
 const
@@ -1056,7 +1126,9 @@ var
 begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+  end;
 end;
 
 procedure RegisterPalette;
@@ -1109,7 +1181,9 @@ begin
       Actions: IOTAActionServices;
     begin
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) and FileExists(TAtlasCodeInsightManager.DiagnoseLog) then
+      begin
         Actions.OpenFile(TAtlasCodeInsightManager.DiagnoseLog);
+      end;
     end);
   Add('Atlas.Rename', TAtlasTextId.RenameMenu, RenameSymbol);
   // Ergebnisfenster (#400).
@@ -1291,7 +1365,9 @@ begin
     procedure
     begin
       if CheckOnSave <> nil then
+      begin
         CheckOnSave.CheckNow;
+      end;
     end);
   Add('Atlas.ExportDiagnostics', TAtlasTextId.DiagExportMenu,
     procedure
@@ -1326,7 +1402,9 @@ begin
         procedure
         begin
           if TAtlasIdeProjectSummaries.Current <> nil then
+          begin
             TAtlasIdeProjectSummaries.Current.Refresh(mProject);
+          end;
         end);
     end);
   // Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts; sichtbar mit vcs.externals.show.
@@ -1345,7 +1423,9 @@ begin
         procedure
         begin
           if TAtlasIdeProjectSummaries.Current <> nil then
+          begin
             TAtlasIdeProjectSummaries.Current.Refresh(mProject);
+          end;
         end);
     end,
     function: Boolean
@@ -1360,7 +1440,9 @@ begin
     begin
       // Auch über Verlauf oder Taste nicht außerhalb des Diagnosemodus.
       if not TAtlasIdeSettings.Current.DiagnosticMode then
+      begin
         Exit;
+      end;
       Activity := TAtlasActivity.Scope('Wächter-Test');
       Sleep(1000);
     end, DiagnosticModeVisible);
@@ -1374,9 +1456,13 @@ var
 begin
   FileName := TAtlasCodeInsightManager.DiagnoseLog;
   if not FileExists(FileName) and (TAtlasGuard.RotatingLog <> nil) then
+  begin
     FileName := TAtlasGuard.RotatingLog.FileName;
+  end;
   if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+  begin
     Actions.OpenFile(FileName);
+  end;
 end;
 
 /// <summary>Ausgelöste Sicherung (#493) als Eintrag in der Benachrichtigungszentrale mit „Wieder einschalten“ und
@@ -1403,7 +1489,9 @@ begin
     begin
       if (TAtlasGuard.RotatingLog <> nil) and FileExists(TAtlasGuard.RotatingLog.FileName) and
         Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Actions.OpenFile(TAtlasGuard.RotatingLog.FileName);
+      end;
     end;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Error,
     TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(Feature)]), AMessage, [Enable, Log]);
@@ -1426,7 +1514,9 @@ begin
   Detail := TAtlasStrings.Fmt(TAtlasTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName, Reason]);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Warning,
     Text, Detail) <> TAtlasNotificationMode.Show then
+  begin
     Exit;
+  end;
   Text := Text + ': ' + Detail;
   TAtlasMainThread.Queue(TAtlasFeature.Status,
     procedure
@@ -1443,7 +1533,9 @@ var
 begin
   if Supports(BorlandIDEServices, IOTAServices, Services) and
     Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+  begin
     Options.EditOptions('', 'Atlas');
+  end;
 end;
 
 /// <summary>„Log-Ordner öffnen“ der Zustandskachel (#754): %LOCALAPPDATA%\Atlas\Logs im Explorer.</summary>
@@ -1467,9 +1559,13 @@ begin
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
       if Manager <> nil then
-        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 30000, ADone)
+      begin
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 30000, ADone);
+      end
       else
+      begin
         ADone(nil);
+      end;
     end,
     procedure(AText: string)
     begin
@@ -1488,7 +1584,9 @@ begin
     begin
       Result := '';
       if StatusLines <> nil then
+      begin
         Result := StatusLines.StatusJson;
+      end;
     end;
   mHooks.Running :=
     function: Boolean
@@ -1500,7 +1598,9 @@ begin
     begin
       Result := 0;
       if Manager <> nil then
+      begin
         Result := Manager.ServerRestarts;
+      end;
     end;
   mHooks.QueryNow :=
     function(ADone: TProc): Boolean
@@ -1511,14 +1611,20 @@ begin
     procedure
     begin
       if Manager = nil then
+      begin
         Exit;
+      end;
       Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', 30000,
         procedure(AAnswer: TJSONValue)
         begin
           if AAnswer = nil then
-            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          begin
+            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+          end
           else
+          begin
             GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+          end;
         end);
     end;
   mHooks.Package := CreateServerPackage;
@@ -1529,9 +1635,13 @@ begin
     begin
       // Ohne Pfad (ältere Antwort) oder gelöscht: nichts zu öffnen.
       if (AUnit.FileName = '') or not FileExists(AUnit.FileName) then
+      begin
         Exit;
+      end;
       if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+      begin
         mActions.OpenFile(AUnit.FileName);
+      end;
     end;
   mHooks.OpenRule :=
     procedure(ARule: string)
@@ -1547,9 +1657,13 @@ begin
     function: TAtlasServerInfo
     begin
       if Manager <> nil then
-        Result := Manager.ServerInfo
+      begin
+        Result := Manager.ServerInfo;
+      end
       else
+      begin
         Result := Default(TAtlasServerInfo);
+      end;
     end,
     function(out APercent: Integer): Boolean
     begin
@@ -1576,7 +1690,9 @@ begin
     procedure
     begin
       if StatusLines <> nil then
+      begin
         StatusLines.Refresh;
+      end;
     end;
   StatusField.OnOpenLog := OpenLog;
   // Zeigt die Atlas-Statusleiste das Element status, öffnen Statusfenster und Schnellschalter dort (#1155).
@@ -1586,20 +1702,26 @@ begin
     procedure(APoint: TPoint)
     begin
       if QuickToggles <> nil then
+      begin
         QuickToggles.Show(APoint);
+      end;
     end;
   StatusField.OnRestart :=
     procedure
     begin
       if Manager <> nil then
+      begin
         Manager.RestartServer;
+      end;
     end;
   // Fehlerzähler (#509) als Zusatzfeld; ein Klick öffnet die Liste „Atlas-Probleme“.
   TAtlasProblemsController.OnCounts :=
     procedure(AShow: Boolean; const ACounts: TAtlasProblemCounts)
     begin
       if StatusField = nil then
+      begin
         Exit;
+      end;
       if not AShow then
       begin
         StatusField.SetExtra(ProblemCountsExtra, '', '', nil);
@@ -1612,9 +1734,13 @@ begin
         begin
           // Mit dem Fenster „Atlas-Prüfung“ (#909) dorthin, sonst in die Meldungsliste.
           if TAtlasIdeProblems.Enabled then
-            TAtlasIdeProblems.ShowWindow
+          begin
+            TAtlasIdeProblems.ShowWindow;
+          end
           else
+          begin
             TAtlasProblemsList.ShowList;
+          end;
         end);
     end;
 end;
@@ -1641,19 +1767,25 @@ begin
     function: TPoint
     begin
       if (StatusField = nil) or not StatusField.Anchor(Result) then
+      begin
         Result := Point(MaxInt, MaxInt);
+      end;
     end;
   Notifications.OnBadge :=
     procedure(AUnread: Integer; AWorst: TAtlasNotificationSeverity)
     begin
       if StatusField <> nil then
+      begin
         StatusField.SetBadge(AUnread, BadgeState(AWorst),
           TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]),
           procedure(APoint: TPoint)
           begin
             if Notifications <> nil then
+            begin
               Notifications.Show(APoint);
+            end;
           end);
+      end;
     end;
   // Erst jetzt erreicht die Plakette das Feld.
   Notifications.ApplySettings;
@@ -1664,7 +1796,9 @@ begin
   TAtlasIdeServerWindow.Release;
   TAtlasProblemsController.OnCounts := nil;
   if Manager <> nil then
+  begin
     Manager.OnServerChanged := nil;
+  end;
   FreeAndNil(StatusField);
   FreeAndNil(StatusLines);
   TAtlasStatusRegistry.ReleaseDefault;
@@ -1685,14 +1819,18 @@ procedure UnregisterWatchdog;
 begin
   FreeAndNil(Watchdog);
   if (Hangs <> nil) and (Hangs.Count > 0) and (Manager <> nil) then
+  begin
     Manager.Report(Hangs.Summary);
+  end;
   FreeAndNil(Hangs);
 end;
 
 procedure LogLine(const AText: string);
 begin
   if Manager <> nil then
+  begin
     Manager.Log(AText);
+  end;
 end;
 
 /// <summary>Dateien, die die IDE kennt: offene Module und die Module des Projekts (für Meldungen ohne Pfad).</summary>
@@ -1704,13 +1842,23 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   for Index := 0 to Modules.ModuleCount - 1 do
+  begin
     Result := Result + [Modules.Modules[Index].FileName];
+  end;
   if (AProjectFile <> '') and Supports(Modules.FindModule(AProjectFile), IOTAProject, Project) then
+  begin
     for Index := 0 to Project.GetModuleCount - 1 do
+    begin
       if Project.GetModule(Index).FileName <> '' then
+      begin
         Result := Result + [Project.GetModule(Index).FileName];
+      end;
+    end;
+  end;
 end;
 
 procedure RegisterCompileEvents;
@@ -1722,9 +1870,13 @@ begin
     procedure(const AMethod: string; AParams: TJSONObject)
     begin
       if Manager <> nil then
-        Manager.NotifyServer(AMethod, AParams)
+      begin
+        Manager.NotifyServer(AMethod, AParams);
+      end
       else
+      begin
         AParams.Free;
+      end;
     end;
   Events.OnLog := LogLine;
   Events.Add(TAtlasCompileLog.Create(Events, LogLine));
@@ -1749,18 +1901,22 @@ begin
       // Ein Zeitpunkt je Build: Metriken, TODOs und Baseline kommen damit in den Messpunkt des Builds (#758).
       Stamp := TAtlasIdeProjectSummaries.StampUtc;
       if TAtlasIdeProjectSummaries.Current <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
             TAtlasIdeProjectSummaries.Current.Recorded(Messages, Project, Succeeded, Readable, Stamp);
           end);
+      end;
       // Code-Metriken und TODOs nach einem Build, nicht nach einer Hintergrundprüfung (#66, #68, #758).
       if AReadable and not AProject.Background then
+      begin
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
             RecordProjectMetrics(Project.FileName, Stamp);
           end);
+      end;
       // Gelesene Meldungen an die Module, etwa die Builds auf Auftrag (#261) der Build-Pipeline.
       for Failure in TAtlasBuildPipeline.MessagesRead(Messages, Project) do
       begin
@@ -1770,25 +1926,35 @@ begin
       // build.zeroHints, build.warningsAsErrors, Zusammenfassung), dann Benachrichtigung (#601) und Tests nach dem
       // Build (#69).
       if AReadable and not AProject.Background then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Build,
           procedure
           begin
             EvaluateBuild(Messages, Project, Succeeded);
-          end)
+          end);
+      end
       // Hintergrundprüfung bzw. Build ohne lesbare Meldungen: Eintrag in der Benachrichtigungszentrale (#601).
       else if Notifications <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Notifications,
           procedure
           begin
             Notifications.BuildFinished(Messages, Project, Succeeded, Readable);
           end);
+      end;
       if Manager = nil then
+      begin
         Exit;
+      end;
       if Length(Messages) > 0 then
+      begin
         Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, Messages[0].FileName,
-          Messages[0].Line]))
+          Messages[0].Line]));
+      end
       else
+      begin
         Manager.Report('Meldungsfenster: ' + AInfo);
+      end;
       Manager.NotifyServer('atlas/compilerMessages',
         TAtlasCompilerMessages.ToJson(Messages, AProject.FileName, AProject.Platform, ASucceeded,
         AProject.Background));
@@ -1816,29 +1982,45 @@ begin
     begin
       Registry.GetValueNames(Names);
       for Name in Names do
+      begin
         if SameText(Name, ParamStr(0)) and (Registry.GetDataType(Name) = rdString) then
+        begin
           Code := Registry.ReadString(Name);
+        end;
+      end;
     end;
   finally
     Names.Free;
     Registry.Free;
   end;
   if Code = '' then
+  begin
     if (GetUserDefaultUILanguage and $3FF) = LANG_GERMAN then
+    begin
       Code := 'DE';
+    end;
+  end;
   if SameText(Code, 'DE') then
-    Result := TAtlasLanguage.German
+  begin
+    Result := TAtlasLanguage.German;
+  end
   else
+  begin
     Result := TAtlasLanguage.English;
+  end;
 end;
 
 /// <summary>Stufe des abgesicherten Starts (#722); ohne Sicherung normal.</summary>
 function Level: TAtlasSafeLevel;
 begin
   if SafeMode <> nil then
-    Result := SafeMode.Level
+  begin
+    Result := SafeMode.Level;
+  end
   else
+  begin
     Result := TAtlasSafeLevel.Normal;
+  end;
 end;
 
 procedure CreateReloader;
@@ -1847,7 +2029,9 @@ begin
     procedure(AText: string)
     begin
       if Manager <> nil then
+      begin
         Manager.Report(AText);
+      end;
     end);
   // Gespeichert: Compilerprüfung vormerken (#548).
   Reloader.OnSaved :=
@@ -1855,12 +2039,18 @@ begin
     begin
       // Prüfung des Servers mit dcc (#40); die Prüfung in der IDE nur, wenn eingeschaltet (#548).
       if Manager <> nil then
+      begin
         Manager.NotifySaved(AFileName);
+      end;
       if CheckOnSave <> nil then
+      begin
         CheckOnSave.Saved(AFileName);
+      end;
       // Gewählte Kodierung und Zeilenenden schreiben (#591).
       if StatusLines <> nil then
+      begin
         StatusLines.Saved(AFileName);
+      end;
     end;
 end;
 
@@ -1871,16 +2061,24 @@ begin
     begin
       // Fortschritt im Menütitel nur, wenn er nicht ins Statusfeld gehört (IndexProgressPlace).
       if (Manager <> nil) and TAtlasIdeSettings.Current.IndexProgressInMenu then
-        Result := Manager.ServerProgress
+      begin
+        Result := Manager.ServerProgress;
+      end
       else
+      begin
         Result := '';
+      end;
     end,
     procedure(ACommand: string; ADone: TProc<TJSONValue>)
     begin
       if Manager <> nil then
-        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone)
+      begin
+        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone);
+      end
       else
+      begin
         ADone(nil);
+      end;
     end,
     procedure(AText: string)
     begin
@@ -1899,9 +2097,13 @@ begin
     function: TAtlasServerInfo
     begin
       if Manager <> nil then
-        Result := Manager.ServerInfo
+      begin
+        Result := Manager.ServerInfo;
+      end
       else
+      begin
         Result := Default(TAtlasServerInfo);
+      end;
     end;
   Hooks.Indexing :=
     function(out APercent: Integer): Boolean
@@ -1914,16 +2116,22 @@ begin
     begin
       Result := '';
       if StatusLines <> nil then
+      begin
         Result := StatusLines.StatusJson;
+      end;
     end;
   Hooks.StartServer :=
     function(ARestart: Boolean): Boolean
     begin
       Result := False;
       if Manager = nil then
+      begin
         Exit;
+      end;
       if ARestart then
-        Result := Manager.RestartServer
+      begin
+        Result := Manager.RestartServer;
+      end
       else
       begin
         // Von Hand: auch nach zwei gleichen Abstürzen (Bericht H5). Die aktive Sitzung startet den Server,
@@ -1938,7 +2146,9 @@ begin
       // Nur abschicken (#874): Den Fortschritt zeigt die Prüfliste über Indexing.
       Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
       if Result then
+      begin
         Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
+      end;
     end;
   // Derselbe Weg nach einem Branch mit geänderten Externals (#1291).
   TAtlasIdeBranching.ServerCommand := Hooks.ServerCommand;
@@ -1988,9 +2198,13 @@ begin
     begin
       // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492), im Hintergrund (#874).
       if Manager <> nil then
-        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone)
+      begin
+        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone);
+      end
       else
+      begin
         ADone(nil);
+      end;
     end;
   Hooks.ToolbarCommands :=
     function: TArray<TAtlasToolbarCommandInfo>
@@ -2049,7 +2263,9 @@ var
 begin
   try
     if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+    begin
       Services.RemoveCodeInsightManager(ManagerIndex);
+    end;
     ManagerIndex := -1;
     if Manager <> nil then
     begin
@@ -2057,8 +2273,10 @@ begin
       // Gruppen-Build entlädt), liefen sonst Sitzung, Server, Threads und Editor-Anbindungen nach dem Entladen weiter.
       Manager.Shutdown;
       if Manager.RefCount > 1 then
+      begin
         TAtlasGuard.Log(Format('Code-Insight-Manager wird nach dem Abmelden noch %d-mal von der IDE gehalten',
           [Manager.RefCount - 1]));
+      end;
     end;
   finally
     Manager := nil;
@@ -2072,7 +2290,9 @@ begin
     procedure(AText: string)
     begin
       if Manager <> nil then
+      begin
         Manager.Report(AText);
+      end;
     end);
 end;
 
@@ -2083,12 +2303,16 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end,
     procedure(AText: string)
     begin
       if Manager <> nil then
+      begin
         Manager.Report(AText);
+      end;
     end);
 end;
 
@@ -2109,19 +2333,25 @@ begin
     begin
       Result := nil;
       if Palette <> nil then
+      begin
         Result := Palette.AtlasCommands;
+      end;
     end;
   Hooks.Execute :=
     procedure(AId: string)
     begin
       if Palette <> nil then
+      begin
         Palette.Execute(AId);
+      end;
     end;
   Hooks.ShowPalette :=
     procedure
     begin
       if Palette <> nil then
+      begin
         Palette.Show;
+      end;
     end;
   Hooks.ShortCutOf :=
     function(AId: string): string
@@ -2133,7 +2363,9 @@ begin
     begin
       Result := 0;
       if TAtlasProblemsController.Current <> nil then
+      begin
         Result := Length(TAtlasProblemsController.Current.ForFile(AFileName));
+      end;
     end;
   Hooks.CanGoBack :=
     function: Boolean
@@ -2185,11 +2417,15 @@ begin
     begin
       // Klick auf die Live-Prüfung (#1231); startet keinen Server.
       if Manager <> nil then
+      begin
         Manager.RunServerCommandAsync('atlas.server.recheck', '[]', 10000, nil);
+      end;
     end;
   TAtlasIdeStatusBar.Install(Hooks);
   if StatusField <> nil then
+  begin
     StatusField.RequestRefresh;
+  end;
 end;
 
 procedure StartCommands;
@@ -2200,7 +2436,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2211,7 +2449,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2243,8 +2483,10 @@ begin
       begin
         Item := StrToIntDef(Copy(ATag, Length('related:') + 1, MaxInt), -1);
         if (Item >= 0) and (Item <= High(AProblem.Related)) then
+        begin
           TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(AProblem.Related[Item].Uri),
             AProblem.Related[Item].Line, AProblem.Related[Item].Character);
+        end;
         Exit;
       end;
       if ATag = 'cycle.showGraph' then
@@ -2268,7 +2510,9 @@ begin
     begin
       Result := nil;
       if TAtlasProblemsController.Current <> nil then
+      begin
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
+      end;
     end;
   // Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
   // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
@@ -2281,7 +2525,9 @@ begin
     procedure
     begin
       if Manager <> nil then
+      begin
         Manager.OpenSignature;
+      end;
     end;
   // ///-Gerüst (#88): Tab springt durch die Beschreibungen, wie bei Code-Vorlagen.
   TAtlasIdeEditorCommands.OnPlaceholders :=
@@ -2289,7 +2535,9 @@ begin
       const AExpansion: TAtlasSnippetExpansion)
     begin
       if (Manager <> nil) and (Manager.Completion <> nil) then
+      begin
         Manager.Completion.StartPlaceholders(AView, ABefore, AOffset, AExpansion);
+      end;
     end;
   // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
   TAtlasIdeGenerate.Install(
@@ -2297,7 +2545,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2307,12 +2557,16 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.Completion.Snippets;
+      end;
     end,
     procedure(AView: IOTAEditView; ASnippet: TAtlasSnippet)
     begin
       if Manager <> nil then
+      begin
         Manager.Completion.InsertSnippet(AView, ASnippet);
+      end;
     end,
     procedure(AAction: TLspCodeAction)
     begin
@@ -2328,7 +2582,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end);
   TAtlasIdeOutline.Install;
   TAtlasIdeBreadcrumbs.Install;
@@ -2361,7 +2617,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2375,7 +2633,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     function: Boolean
     begin
@@ -2392,7 +2652,9 @@ begin
     procedure(const AText, AHint: string)
     begin
       if StatusField <> nil then
+      begin
         StatusField.SetExtra('multiCursor', AText, AHint, nil);
+      end;
     end);
   // Bezeichner live mitziehen (#658, experimentell): ebenso nie neben Vervollständigung, Platzhaltern und
   // mehreren Einfügemarken.
@@ -2406,12 +2668,16 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(const AText, AHint: string)
     begin
       if StatusField <> nil then
+      begin
         StatusField.SetExtra('linkedEditing', AText, AHint, nil);
+      end;
     end);
   // Markierung beim Tippen umschließen (#672): nie neben Vervollständigung, Platzhaltern, mehreren
   // Einfügemarken (die umschließen selbst) und dem Mitziehen von Bezeichnern.
@@ -2433,7 +2699,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2445,7 +2713,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2457,7 +2727,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2469,7 +2741,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(AText: string)
     begin
@@ -2489,7 +2763,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end);
 end;
 
@@ -2582,12 +2858,16 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure(AText: string)
     begin
       if Manager <> nil then
+      begin
         Manager.Report(AText);
+      end;
     end);
 end;
 
@@ -2636,13 +2916,21 @@ begin
       Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
     end;
   if QuickToggles <> nil then
+  begin
     QuickToggles.RegisterCommands(Palette);
+  end;
   if DiagnosticMode <> nil then
+  begin
     DiagnosticMode.RegisterCommands(Palette);
+  end;
   if Setup <> nil then
+  begin
     Setup.RegisterCommands(Palette);
+  end;
   if KeyMap <> nil then
+  begin
     KeyMap.RegisterCommands(Palette);
+  end;
   // Zusatzquelle der Palette (#1270), etwa Issues aus „Meine Issues“: erst beim Öffnen gefragt, von einem
   // laufenden Modul (#1455).
   Palette.SourceOf := PaletteSourceOfModules;
@@ -2674,9 +2962,13 @@ begin
     begin
       // Im Hintergrund (#874).
       if Manager <> nil then
-        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone)
+      begin
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone);
+      end
       else
+      begin
         ADone(nil);
+      end;
     end;
   Hooks.Message :=
     procedure(AText: string)
@@ -2758,7 +3050,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end));
 end;
 
@@ -2770,7 +3064,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end,
     procedure
     begin
@@ -2795,7 +3091,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end);
 end;
 
@@ -2812,7 +3110,9 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end);
 end;
 
@@ -2828,7 +3128,9 @@ begin
     procedure
     begin
       if Manager <> nil then
+      begin
         Manager.OpenCompletion;
+      end;
     end);
 end;
 
@@ -2839,7 +3141,9 @@ begin
     procedure
     begin
       if Manager <> nil then
+      begin
         Manager.OpenSignature;
+      end;
     end);
 end;
 
@@ -2863,10 +3167,14 @@ begin
       TAtlasIdeKeys.ReportForeignCompletion;
       // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
       if KeyMap <> nil then
+      begin
         KeyMap.CheckNow;
+      end;
       // Neue Aktionen und Tasten für die Tastenkürzel-Tipps (#600).
       if ShortcutTips <> nil then
+      begin
         ShortcutTips.KeysChanged;
+      end;
     end);
 end;
 
@@ -2884,13 +3192,17 @@ begin
     procedure
     begin
       if Setup <> nil then
+      begin
         Setup.ShowWindow;
+      end;
     end;
   MainMenu.OnKeyMap :=
     procedure
     begin
       if KeyMap <> nil then
+      begin
         KeyMap.ShowWindow;
+      end;
     end;
 end;
 
@@ -3351,27 +3663,39 @@ var
   mFailure: string;
 begin
   if Features = nil then
+  begin
     AddFeatures;
+  end;
   // Ein Modul, das sich nach dem Start anmeldet, startet über denselben Weg (Regel 2).
   if (ModuleHosting <> nil) and not Assigned(ModuleHosting.OnChanged) then
+  begin
     ModuleHosting.OnChanged := RegisterFeatures;
+  end;
   for mFailure in Features.StopOffModules do
+  begin
     TAtlasGuard.Log('Modul ausgeschaltet, Teil nicht sauber gestoppt: ' + mFailure);
+  end;
   // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
   Features.Times := StartTimes;
   Features.StartWanted(Level);
   if MainMenu <> nil then
+  begin
     MainMenu.UpdateKeyMap;
+  end;
   // Abschaltbare Einträge im Kontextmenü des Editors (#1120).
   TAtlasIdeEditorCommands.UpdateContextMenus;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
+  begin
     Manager.OnServerChanged :=
       procedure
       begin
         if StatusField <> nil then
+        begin
           StatusField.RequestRefresh;
+        end;
       end;
+  end;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
   TAtlasIdeStructureSwitch.Sync;
   RebindKeys;
@@ -3385,7 +3709,9 @@ begin
     procedure
     begin
       if QuickToggles <> nil then
+      begin
         QuickToggles.Show;
+      end;
     end;
   SafeMode.OnExportLog :=
     procedure
@@ -3403,7 +3729,9 @@ begin
     procedure(AFeature: TAtlasFeature)
     begin
       if SafeMode <> nil then
+      begin
         SafeMode.RecordFailure(AFeature);
+      end;
     end;
 end;
 
@@ -3412,7 +3740,9 @@ procedure EndStartTimes;
 begin
   TAtlasActivity.TimeInto(nil);
   if Features <> nil then
+  begin
     Features.Times := nil;
+  end;
   FreeAndNil(StartTimes);
 end;
 
@@ -3426,9 +3756,13 @@ var
   Line, Parts: string;
 begin
   if SafeMode <> nil then
+  begin
     SafeMode.Loaded(ALoadMs);
+  end;
   if StartTimes = nil then
+  begin
     Exit;
+  end;
   try
     // Erst anhalten, dann lesen: Keine Aktion zählt mehr mit.
     TAtlasActivity.TimeInto(nil);
@@ -3436,12 +3770,16 @@ begin
     Line := StartTimes.LogLine(ALoadMs, Limit);
     TAtlasGuard.Log(Line);
     if Manager <> nil then
+    begin
       Manager.Log(Line);
+    end;
     if TAtlasStartTimes.IsSlow(ALoadMs, Limit) and TAtlasIdeSettings.Current.HangHint then
     begin
       Parts := StartTimes.SlowestText;
       if Parts <> '' then
+      begin
         Parts := ': ' + Parts;
+      end;
       MessageLine(TAtlasStrings.Fmt(TAtlasTextId.StartSlow, [ALoadMs, Limit, StartTimes.Total, Parts]));
     end;
   finally
@@ -3579,14 +3917,18 @@ begin
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.RunningSession;
+      end;
     end;
   mServices.ActiveSession :=
     function: TLspSession
     begin
       Result := nil;
       if Manager <> nil then
+      begin
         Result := Manager.ActiveSession;
+      end;
     end;
   mServices.Log :=
     procedure(AText: string)
@@ -3605,7 +3947,9 @@ begin
     begin
       Result := (Manager <> nil) and (Manager.RunningSession <> nil);
       if Result then
+      begin
         Manager.RunServerRequestAsync(AMethod, AParamsJson, ATimeoutMs, ACancelled, AnswerText(ADone));
+      end;
     end;
   mServices.RunCommand :=
     function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
@@ -3619,27 +3963,35 @@ begin
     begin
       Result := (Manager <> nil) and (Manager.RunningSession <> nil);
       if Result then
+      begin
         Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, AnswerText(ADone));
+      end;
     end;
   mServices.Report :=
     procedure(AText: string)
     begin
       if Manager <> nil then
+      begin
         Manager.Report(AText);
+      end;
     end;
   // Felder der Module im Atlas-Statusfeld, etwa Hinweise der schnellen Lesezeichen (#1104).
   mServices.StatusExtra :=
     procedure(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>)
     begin
       if StatusField <> nil then
+      begin
         StatusField.SetExtra(AId, AText, AHint, AOnClick);
+      end;
     end;
   mServices.CompileEvents :=
     function: TAtlasCompileEvents
     begin
       Result := nil;
       if Compile <> nil then
+      begin
         Result := Compile.Events;
+      end;
     end;
   InstallShellServices(mServices);
   TAtlasIdeHost.Install(mServices);
@@ -3651,7 +4003,9 @@ var
   mFailure: string;
 begin
   for mFailure in TAtlasModuleContributions.ThemeChanged(AtlasModuleRegistry) do
+  begin
     TAtlasGuard.Log('Thema im Modul nicht übernommen: ' + mFailure);
+  end;
 end;
 
 /// <summary>Geänderte Einstellungen an die angemeldeten Module weitergeben (#1455), z. B. debug.* des Debuggers.</summary>
@@ -3660,7 +4014,9 @@ var
   mFailure: string;
 begin
   for mFailure in TAtlasModuleContributions.ApplySettings(AtlasModuleRegistry) do
+  begin
     TAtlasGuard.Log('Einstellungen im Modul nicht übernommen: ' + mFailure);
+  end;
 end;
 
 procedure Register;
@@ -3690,19 +4046,31 @@ begin
     procedure
     begin
       if MainMenu <> nil then
+      begin
         MainMenu.UpdateImage;
+      end;
       if StatusField <> nil then
+      begin
         StatusField.RequestRefresh;
+      end;
       TAtlasIdeResultsWindow.ApplyTheme;
       TAtlasIdeServerWindow.ApplyTheme;
       if DiagnosticMode <> nil then
+      begin
         DiagnosticMode.ThemeChanged;
+      end;
       if Setup <> nil then
+      begin
         Setup.ThemeChanged;
+      end;
       if KeyMap <> nil then
+      begin
         KeyMap.ThemeChanged;
+      end;
       if ShortcutTips <> nil then
+      begin
         ShortcutTips.ThemeChanged;
+      end;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
@@ -3716,10 +4084,14 @@ begin
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
+  begin
     StartSafeMode;
+  end;
   // Immer: Statusfeld, Schnellschalter und Einstellungsseite.
   if StatusField = nil then
+  begin
     RegisterStatusField;
+  end;
   if QuickToggles = nil then
   begin
     QuickToggles := TAtlasIdeQuickToggles.Create(nil);
@@ -3727,11 +4099,15 @@ begin
       function: TPoint
       begin
         if (StatusField = nil) or not StatusField.Anchor(Result) then
+        begin
           Result := Point(MaxInt, MaxInt);
+        end;
       end;
   end;
   if Notifications = nil then
+  begin
     StartNotifications;
+  end;
   RegisterFeatures;
   TAtlasIdeExperimental.ApplySettings;
   // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
@@ -3741,15 +4117,21 @@ begin
       // Ein Schnellschalter oder „Normal weiterarbeiten“ im abgesicherten Start meldet nach (#722).
       RegisterFeatures;
       if SafeMode <> nil then
+      begin
         SafeMode.UpdateFeatures;
+      end;
       // undo.multiFile* (#721).
       TAtlasIdeUndo.ApplySettings;
       // updates.check (#495).
       if Updates <> nil then
+      begin
         Updates.ApplySettings;
+      end;
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
+      begin
         DiagnosticMode.ApplySettings;
+      end;
       // problems.window* (#909).
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
@@ -3776,7 +4158,9 @@ begin
       TAtlasIdeMinimap.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
+      begin
         Notifications.ApplySettings;
+      end;
       // Projektdatei .atlas an oder aus (#486).
       TAtlasIdeTeamFile.Refresh;
       // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
@@ -3785,7 +4169,9 @@ begin
       ModulesApplySettings;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
+      begin
         CommandUsage.ApplySettings;
+      end;
       // shortcutTips.* und neu belegte Tasten (#600); Zählung für „Atlas entdecken“ (#757).
       if ShortcutTips <> nil then
       begin
@@ -3797,16 +4183,22 @@ begin
       // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
       if StatusField <> nil then
+      begin
         StatusField.RequestRefresh;
+      end;
     end;
   // Prüfung und Regelkatalog des Einstellungsdialogs (#227): nur ein laufender Server, keiner wird gestartet.
   TAtlasProjectSettings.Command :=
     function(const ACommand, AArgumentsJson: string): TJSONValue
     begin
       if Manager <> nil then
-        Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 5000)
+      begin
+        Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 5000);
+      end
       else
+      begin
         Result := nil;
+      end;
     end;
   RegisterOptions;
   if StartTimes <> nil then
@@ -3824,10 +4216,14 @@ begin
       ReportStartup(TAtlasWatchdog.Timestamp - LoadedAt);
       // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
       if Setup <> nil then
+      begin
         Setup.Start;
+      end;
       // Eigene Tasten prüfen, sobald die übrigen Packages ihre Tasten angemeldet haben (#520).
       if KeyMap <> nil then
+      begin
         KeyMap.CheckAtStart;
+      end;
     end);
 end;
 
@@ -3856,14 +4252,22 @@ begin
   while Item <> nil do
   begin
     if Result <> '' then
+    begin
       Result := ' › ' + Result;
+    end;
     Result := Item.ClassName + ' ' + Item.Name + Result;
     if Item.Owner <> nil then
-      Item := Item.Owner
+    begin
+      Item := Item.Owner;
+    end
     else if (Item is TControl) and (TControl(Item).Parent <> nil) then
-      Item := TControl(Item).Parent
+    begin
+      Item := TControl(Item).Parent;
+    end
     else
+    begin
       Item := nil;
+    end;
   end;
 end;
 
@@ -3877,25 +4281,39 @@ var
   Control: TWinControl;
 begin
   for Index := 0 to AComponent.ComponentCount - 1 do
+  begin
     if OwnClass(AComponent.Components[Index]) then
     begin
       if not AFound.Contains(AComponent.Components[Index]) then
+      begin
         AFound.Add(AComponent.Components[Index]);
+      end;
     end
     else
+    begin
       CollectLeftovers(AComponent.Components[Index], AFound);
+    end;
+  end;
   if not (AComponent is TWinControl) then
+  begin
     Exit;
+  end;
   Control := TWinControl(AComponent);
   for Index := 0 to Control.ControlCount - 1 do
+  begin
     if OwnClass(Control.Controls[Index]) then
     begin
       if not AFound.Contains(Control.Controls[Index]) then
+      begin
         AFound.Add(Control.Controls[Index]);
+      end;
     end
     // Fremde Kinder ohne eigenen Owner-Baum hier (der kommt über Components).
     else if (Control.Controls[Index] is TWinControl) and (Control.Controls[Index].Owner <> AComponent) then
+    begin
       CollectLeftovers(Control.Controls[Index], AFound);
+    end;
+  end;
 end;
 
 type
@@ -3911,7 +4329,9 @@ procedure TLeftoverTracker.Notification(AComponent: TComponent; Operation: TOper
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (Found <> nil) then
+  begin
     Found.Remove(AComponent);
+  end;
 end;
 
 /// <summary>Modul einer Klasse ('' = unbekannt), für das Protokoll.</summary>
@@ -3921,7 +4341,9 @@ var
 begin
   Result := '';
   if GetModuleFileName(FindClassHInstance(AClass), Buffer, MAX_PATH) > 0 then
+  begin
     Result := ExtractFileName(Buffer);
+  end;
 end;
 
 /// <summary>Komponenten der Editorfenster mit Modul ihrer Klasse ins Protokoll (#1233): Beim Beenden ruft die IDE
@@ -3936,15 +4358,19 @@ begin
   begin
     Form := Screen.Forms[FormIndex];
     if not SameText(Form.ClassName, 'TEditWindow') then
+    begin
       Continue;
+    end;
     for Index := 0 to Form.ComponentCount - 1 do
     begin
       Module := ModuleOf(Form.Components[Index].ClassType);
       // Nur, was nicht aus der IDE selbst stammt.
       if not (StartsText('coreide', Module) or StartsText('vcl', Module) or StartsText('rtl', Module) or
         SameText(Module, 'bds.exe')) then
+      begin
         TAtlasGuard.Log(Format('Beim Entladen in %s: %s "%s" aus %s', [Form.Name,
           Form.Components[Index].ClassName, Form.Components[Index].Name, Module]));
+      end;
     end;
   end;
 end;
@@ -3960,16 +4386,28 @@ begin
   try
     Tracker.Found := TList<TComponent>.Create;
     for Index := 0 to Screen.FormCount - 1 do
+    begin
       if OwnClass(Screen.Forms[Index]) then
-        Tracker.Found.Add(Screen.Forms[Index])
+      begin
+        Tracker.Found.Add(Screen.Forms[Index]);
+      end
       else
+      begin
         CollectLeftovers(Screen.Forms[Index], Tracker.Found);
+      end;
+    end;
     for Index := 0 to Screen.DataModuleCount - 1 do
+    begin
       if not OwnClass(Screen.DataModules[Index]) then
+      begin
         CollectLeftovers(Screen.DataModules[Index], Tracker.Found);
+      end;
+    end;
     CollectLeftovers(Application, Tracker.Found);
     for Item in Tracker.Found do
+    begin
       Item.FreeNotification(Tracker);
+    end;
     while Tracker.Found.Count > 0 do
     begin
       Item := Tracker.Found.Last;
@@ -4040,7 +4478,9 @@ begin
       procedure
       begin
         if SafeMode <> nil then
+        begin
           SafeMode.Stop;
+        end;
         FreeAndNil(SafeMode);
       end);
     // Rückwärts zur Startreihenfolge (Code-Review S-03): Palette vor den Teilen, deren Befehle sie hält,
@@ -4052,13 +4492,17 @@ begin
       procedure
       begin
         if ModuleHosting <> nil then
+        begin
           ModuleHosting.OnChanged := nil;
+        end;
       end);
     Teardown.Step('Modules',
       procedure
       begin
         if AtlasModuleRegistryInstance <> nil then
+        begin
           Teardown.AddFailures(AtlasModuleRegistryInstance.ShutDown);
+        end;
       end);
     // Erst nach den Modulen: Bis zu ihrem Stopp dürfen sie Sitzung und Protokoll von Base fragen.
     Teardown.Step('Host',
@@ -4067,7 +4511,9 @@ begin
         TAtlasIdeHost.Uninstall;
       end);
     if Features <> nil then
+    begin
       Teardown.AddFailures(Features.StopAll);
+    end;
     Teardown.Step('QuickToggles',
       procedure
       begin

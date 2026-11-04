@@ -69,7 +69,9 @@ var
   Drop: TProc;
 begin
   if Drops = nil then
+  begin
     Exit;
+  end;
   PausedUntil := TThread.GetTickCount64 + TAtlasIdeGutterColumns.PauseMs;
   for Drop in Drops.Values do
     try
@@ -89,7 +91,9 @@ end;
 procedure TWindowWatch.WindowNotification(const EditWindow: INTAEditWindow; Operation: TOperation);
 begin
   if Operation = opRemove then
+  begin
     DropAll;
+  end;
 end;
 
 procedure TWindowWatch.WindowActivated(const EditWindow: INTAEditWindow);
@@ -127,9 +131,13 @@ var
   Editors: IOTAEditorServices;
 begin
   if Drops = nil then
+  begin
     Drops := TDictionary<Integer, TProc>.Create;
+  end;
   if (WatchIndex < 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     WatchIndex := Editors.AddNotifier(TWindowWatch.Create);
+  end;
   Inc(NextHandle);
   Result := NextHandle;
   Drops.Add(Result, ADrop);
@@ -140,12 +148,18 @@ var
   Editors: IOTAEditorServices;
 begin
   if Drops = nil then
+  begin
     Exit;
+  end;
   Drops.Remove(AHandle);
   if Drops.Count > 0 then
+  begin
     Exit;
+  end;
   if (WatchIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Editors.RemoveNotifier(WatchIndex);
+  end;
   WatchIndex := -1;
   FreeAndNil(Drops);
 end;

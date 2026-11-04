@@ -852,18 +852,86 @@ begin
   Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), Format);
 end;
 
+/// <summary>RefApp.dpr und die Units aus ihren in-Klauseln, alle in AData abgelegt.</summary>
+function RefAppSources(const AFolder: string; var AData: TScenario): TArray<string>;
+var
+  mMainFile, mSource: string;
+  mTree: TSyntaxTree;
+  mToken: TPascalToken;
+begin
+  mMainFile := TPath.Combine(AFolder, 'RefApp.dpr');
+  AData.Put(mMainFile, ReadSource(mMainFile));
+  Result := [mMainFile];
+  mTree := TSyntaxTreeCache.Parse(AData.Text(mMainFile));
+  try
+    for mToken in mTree.Tokens do
+    begin
+      if (mToken.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', mToken.Text) then
+      begin
+        mSource := TPath.Combine(AFolder, StringReplace(Copy(mToken.Text, 2, Length(mToken.Text) - 2), '\',
+          PathDelim, [rfReplaceAll]));
+        Result := Result + [mSource];
+        AData.Put(mSource, ReadSource(mSource));
+      end;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+/// <summary>Die mit „ERWARTET-PROJEKT: Regel“ markierten Zeilen von ASource, je Regel aus ARules.</summary>
+function ExpectedMarkers(const ASource, AText: string; const ARules: array of string): string;
+var
+  mLines: TArray<string>;
+  mRule: string;
+  mIndex: Integer;
+begin
+  Result := '';
+  mLines := AText.Replace(#13#10, #10).Split([#10]);
+  for mRule in ARules do
+  begin
+    for mIndex := 0 to High(mLines) do
+    begin
+      if mLines[mIndex].Contains('// ERWARTET-PROJEKT: ' + mRule) then
+      begin
+        Result := Result + Format('%s:%d %s'#10, [ExtractFileName(ASource), mIndex + 1, mRule]);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Treffer der Regeln aus ARules in ASource; APaths sammelt die Meldungen von uses-cycle.</summary>
+function ActualFindings(const AData: TScenario; const ASource: string; const ARules: array of string;
+  var APaths: string): string;
+var
+  mRule: string;
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mRule in ARules do
+  begin
+    for mFinding in Run(AData, ASource) do
+    begin
+      if SameText(mFinding.RuleId, mRule) then
+      begin
+        Result := Result + Format('%s:%d %s'#10, [ExtractFileName(ASource), mFinding.Range.StartPos.Line + 1,
+          mRule]);
+        if mRule = UsesCycleRuleId then
+        begin
+          APaths := APaths + mFinding.Message + #10;
+        end;
+      end;
+    end;
+  end;
+end;
+
 procedure TDeadCodeTests.ReferenceProjectMatchesMarkers;
 const
   Rules: array[0..1] of string = (UsesCycleRuleId, UnusedUnitRuleId);
 var
-  Folder, MainFile, Source, Expected, Actual, Rule, Paths: string;
+  Folder, Source, Expected, Actual, Paths: string;
   Data: TScenario;
   Sources: TArray<string>;
-  Lines: TArray<string>;
-  Token: TPascalToken;
-  Tree: TSyntaxTree;
-  Finding: TRuleFinding;
-  Index: Integer;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
@@ -871,25 +939,8 @@ begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
   end;
   // Units von RefApp aus den in-Klauseln der .dpr.
-  MainFile := TPath.Combine(Folder, 'RefApp.dpr');
   Data := Default(TScenario);
-  Data.Put(MainFile, ReadSource(MainFile));
-  Sources := [MainFile];
-  Tree := TSyntaxTreeCache.Parse(Data.Text(MainFile));
-  try
-    for Token in Tree.Tokens do
-    begin
-      if (Token.Kind = TPascalTokenKind.StringLiteral) and EndsText('.pas''', Token.Text) then
-      begin
-        Source := TPath.Combine(Folder, StringReplace(Copy(Token.Text, 2, Length(Token.Text) - 2), '\',
-          PathDelim, [rfReplaceAll]));
-        Sources := Sources + [Source];
-        Data.Put(Source, ReadSource(Source));
-      end;
-    end;
-  finally
-    Tree.Free;
-  end;
+  Sources := RefAppSources(Folder, Data);
   Data.Projects := [Project(TPath.Combine(Folder, 'RefApp.dproj'), TRuleProjectKind.Application, Sources)];
   // Erwartet: genau die markierten Zeilen je Regel, sonst nichts.
   Expected := '';
@@ -897,33 +948,10 @@ begin
   Paths := '';
   for Source in Sources do
   begin
-    Lines := Data.Text(Source).Replace(#13#10, #10).Split([#10]);
-    for Rule in Rules do
-    begin
-      for Index := 0 to High(Lines) do
-      begin
-        if Lines[Index].Contains('// ERWARTET-PROJEKT: ' + Rule) then
-        begin
-          Expected := Expected + Format('%s:%d %s'#10, [ExtractFileName(Source), Index + 1, Rule]);
-        end;
-      end;
-    end;
+    Expected := Expected + ExpectedMarkers(Source, Data.Text(Source), Rules);
     if SameText(ExtractFileExt(Source), '.pas') then
     begin
-      for Rule in Rules do
-      begin
-        for Finding in Run(Data, Source) do
-        begin
-          if SameText(Finding.RuleId, Rule) then
-          begin
-            Actual := Actual + Format('%s:%d %s'#10, [ExtractFileName(Source), Finding.Range.StartPos.Line + 1, Rule]);
-            if Rule = UsesCycleRuleId then
-            begin
-              Paths := Paths + Finding.Message + #10;
-            end;
-          end;
-        end;
-      end;
+      Actual := Actual + ActualFindings(Data, Source, Rules, Paths);
     end;
   end;
   Assert.AreEqual(Expected, Actual);

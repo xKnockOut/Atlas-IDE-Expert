@@ -267,7 +267,9 @@ begin
   FCommand := ACommand;
   FMessage := AMessage;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.MainMenu = nil) then
+  begin
     Exit;
+  end;
   FRoot := TMenuItem.Create(nil);
   FRoot.Name := 'AtlasMainMenu';
   FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
@@ -329,7 +331,9 @@ begin
   // Schalter; Tag wählt den Befehl in ToggleClick.
   AddGroup(TAtlasTextId.MenuGroupView);
   for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+  begin
     FToggles[Toggle] := AddItem(ToggleText(Toggle), Ord(Toggle), ToggleClick);
+  end;
   AddGroup(TAtlasTextId.MenuGroupIndex);
   AddItem(TAtlasTextId.MenuIndexStatus, 0, IndexStatusClick);
   AddItem(TAtlasTextId.MenuIndexRebuild, 0, IndexRebuildClick);
@@ -359,10 +363,15 @@ begin
   FRoot.Add(FEnableAll);
   Position := Services.MainMenu.Items.Count;
   for Index := 0 to Services.MainMenu.Items.Count - 1 do
+  begin
     if SameText(Services.MainMenu.Items[Index].Name, ToolsMenu) then
+    begin
       Position := Index + 1;
+    end;
+  end;
   Services.MainMenu.Items.Insert(Position, FRoot);
   for Index := 0 to Services.MainMenu.Items.Count - 1 do
+  begin
     if SameText(Services.MainMenu.Items[Index].Name, ViewsMenu) then
     begin
       // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
@@ -378,6 +387,7 @@ begin
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
+  end;
   UpdateKeyMap;
   UpdateImage;
   FTimer := TTimer.Create(nil);
@@ -401,7 +411,9 @@ var
 begin
   Image := TAtlasIdeSymbol.MenuImage;
   for Item in FImageItems do
+  begin
     Item.ImageIndex := Image;
+  end;
 end;
 
 class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
@@ -438,21 +450,35 @@ begin
       UpdateKeyMap;
     UpdateModuleItems;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+    begin
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
+    end;
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     Names := '';
     for Feature in TAtlasGuard.DisabledSet do
+    begin
       if Names = '' then
-        Names := TAtlasGuard.FeatureName(Feature)
+      begin
+        Names := TAtlasGuard.FeatureName(Feature);
+      end
       else
+      begin
         Names := Names + ', ' + TAtlasGuard.FeatureName(Feature);
+      end;
+    end;
     // Auch einzeln abgeschaltete Quellen (#493).
     for Name in TAtlasGuard.DisabledProviders do
+    begin
       if Names = '' then
-        Names := Name
+      begin
+        Names := Name;
+      end
       else
+      begin
         Names := Names + ', ' + Name;
+      end;
+    end;
     FEnableAll.Visible := Names <> '';
     FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [Names]);
   except
@@ -484,15 +510,23 @@ begin
     begin
       Text := '';
       if Assigned(FProgress) then
+      begin
         Text := FProgress();
+      end;
       if Text = FShownProgress then
+      begin
         Exit;
+      end;
       FShownProgress := Text;
       // Nur bei Änderung: Der Titel im Hauptmenü zeichnet die ganze Leiste neu.
       if Text = '' then
-        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas)
+      begin
+        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
+      end
       else
+      begin
         FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas) + ' – ' + Text;
+      end;
     end);
 end;
 
@@ -503,17 +537,25 @@ begin
     procedure
     begin
       if not Assigned(FCommand) then
+      begin
         Exit;
+      end;
       FCommand('atlas.server.status',
         procedure(AStatus: TJSONValue)
         var
           Line: string;
         begin
           if AStatus = nil then
-            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          begin
+            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+          end
           else
+          begin
             for Line in TLspIndexStatus.Lines(AStatus) do
+            begin
               FMessage(Line);
+            end;
+          end;
         end);
     end);
 end;
@@ -524,14 +566,20 @@ begin
     procedure
     begin
       if not Assigned(FCommand) then
+      begin
         Exit;
+      end;
       FCommand('atlas.server.rebuildIndex',
         procedure(AAnswer: TJSONValue)
         begin
           if AAnswer = nil then
-            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          begin
+            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+          end
           else
+          begin
             FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+          end;
         end);
     end);
 end;
@@ -558,9 +606,13 @@ begin
         procedure(ADone: TProc<TJSONValue>)
         begin
           if Assigned(FCommand) then
-            FCommand(TAtlasProcessesView.Command, ADone)
+          begin
+            FCommand(TAtlasProcessesView.Command, ADone);
+          end
           else
+          begin
             ADone(nil);
+          end;
         end;
       Actions.ModifiedFiles :=
         function: TArray<string>
@@ -580,17 +632,21 @@ procedure TAtlasMainMenu.BugReportClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.BugReport');
   if Assigned(FOnBugReport) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
       begin
         FOnBugReport();
       end);
+  end;
 end;
 
 procedure TAtlasMainMenu.ServerStatusClick(Sender: TObject);
 begin
   if not Assigned(FOnServerStatus) then
+  begin
     Exit;
+  end;
   TAtlasIdeShortcutTips.Invoked('Atlas.ServerStatus');
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
@@ -603,22 +659,26 @@ procedure TAtlasMainMenu.SetupClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.CommandId);
   if Assigned(FOnSetup) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
       begin
         FOnSetup();
       end);
+  end;
 end;
 
 procedure TAtlasMainMenu.KeyMapClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked(TAtlasIdeKeyMap.CommandId);
   if Assigned(FOnKeyMap) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
       begin
         FOnKeyMap();
       end);
+  end;
 end;
 
 procedure TAtlasMainMenu.UpdateKeyMap;
@@ -626,52 +686,80 @@ var
   Item: TMenuItem;
 begin
   if FKeyMapItem <> nil then
+  begin
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
+  end;
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
+  begin
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  end;
   // Fenster „Atlas-Server“ (#1356) nach server.statusWindow.
   if FServerStatusItem <> nil then
+  begin
     FServerStatusItem.Visible := TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus);
+  end;
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
   if FCallDiagramItem <> nil then
+  begin
     FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
+  end;
   // Erzeugen-Menü (#719) nach keys.generateMenu.
   if FGenerateItem <> nil then
+  begin
     FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
+  end;
   // Formatieren (#43) nach editor.format.
   if FFormatItem <> nil then
+  begin
     FFormatItem.Visible := TAtlasIdeSettings.Current.FormatCode;
+  end;
   // Methodenreihenfolge (#660) nach editor.methodPlacement.
   if FMethodOrderItem <> nil then
+  begin
     FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
+  end;
   // Gliederung (#537) nach outline.enabled.
   if FOutlineItem <> nil then
+  begin
     FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
+  end;
   // Atlas-Prüfung (#909) nach problems.window.
   if FProblemsItem <> nil then
+  begin
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
+  end;
   if FViewProblems <> nil then
+  begin
     FViewProblems.Visible := TAtlasIdeProblems.Enabled;
+  end;
   if FViewAtlas <> nil then
+  begin
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or HasViewModuleItems;
+  end;
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   if FImpactItem <> nil then
+  begin
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
+  end;
   // Datenfluss (#690) nach navigation.dataFlow.
   for Item in FDataFlowItems do
+  begin
     Item.Visible := TAtlasIdeSettings.Current.DataFlow;
+  end;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.Rename');
   if Assigned(FOnRename) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
       begin
         FOnRename();
       end);
+  end;
 end;
 
 function TAtlasMainMenu.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
@@ -702,7 +790,9 @@ var
 begin
   Command := TMenuItem(Sender).Tag;
   if (Command >= Low(ResultsIds)) and (Command <= High(ResultsIds)) then
+  begin
     TAtlasIdeShortcutTips.Invoked(ResultsIds[Command]);
+  end;
   TAtlasGuard.Run(TAtlasFeature.Results,
     procedure
     begin
@@ -730,7 +820,9 @@ var
 begin
   Command := TMenuItem(Sender).Tag;
   if (Command >= Low(EditorIds)) and (Command <= High(EditorIds)) then
+  begin
     TAtlasIdeShortcutTips.Invoked(EditorIds[Command]);
+  end;
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
@@ -757,7 +849,9 @@ var
 begin
   Command := TMenuItem(Sender).Tag;
   if (Command >= Low(SectionIds)) and (Command <= High(SectionIds)) then
+  begin
     TAtlasIdeShortcutTips.Invoked(SectionIds[Command]);
+  end;
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
     procedure
     begin
@@ -779,7 +873,9 @@ var
 begin
   Command := TMenuItem(Sender).Tag;
   if (Command >= Low(UndoIds)) and (Command <= High(UndoIds)) then
+  begin
     TAtlasIdeShortcutTips.Invoked(UndoIds[Command]);
+  end;
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
@@ -814,20 +910,29 @@ var
   mCommand: TAtlasModuleCommand;
 begin
   if FViewAtlas = nil then
+  begin
     Exit;
+  end;
   for mItem in FViewModuleItems do
+  begin
     mItem.Free;
+  end;
   FViewModuleItems := nil;
   FViewModuleIds := nil;
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.ViewMenu) do
+  begin
     if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
     begin
       mItem := TMenuItem.Create(FViewAtlas);
       // Unter Ansicht › Atlas darf der Eintrag einen eigenen Text haben („Atlas: Hotspots“ statt „Hotspots …“).
       if mEntry.Caption <> '' then
-        mItem.Caption := mEntry.Caption
+      begin
+        mItem.Caption := mEntry.Caption;
+      end
       else
+      begin
         mItem.Caption := mCommand.Caption;
+      end;
       mItem.Tag := Length(FViewModuleIds);
       mItem.OnClick := ViewModuleItemClick;
       mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
@@ -835,6 +940,7 @@ begin
       FViewModuleItems := FViewModuleItems + [mItem];
       FViewModuleIds := FViewModuleIds + [mCommand.Id];
     end;
+  end;
 end;
 
 class function TAtlasMainMenu.HasViewModuleItems: Boolean;
@@ -843,9 +949,13 @@ var
   mCommand: TAtlasModuleCommand;
 begin
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.ViewMenu) do
+  begin
     if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) and
       TAtlasModuleContributions.IsVisible(mCommand) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -856,7 +966,9 @@ var
 begin
   mIndex := TMenuItem(Sender).Tag;
   if (mIndex < 0) or (mIndex > High(FViewModuleIds)) then
+  begin
     Exit;
+  end;
   // Beim Klick neu suchen (Regel 3).
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, FViewModuleIds[mIndex], mCommand) and
     Assigned(mCommand.Run) then
@@ -875,19 +987,25 @@ var
 begin
   mIndex := TMenuItem(Sender).Tag;
   if (mIndex < 0) or (mIndex > High(FModuleIds)) then
+  begin
     Exit;
+  end;
   mId := FModuleIds[mIndex];
   // Beim Klick neu suchen (Regel 3): Befehl, sonst Eintrag ohne Befehl.
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mId, mCommand) then
   begin
     if not Assigned(mCommand.Run) then
+    begin
       Exit;
+    end;
     TAtlasIdeShortcutTips.Invoked(mId);
     TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
   end
   else if TAtlasModuleContributions.FindMenuEntry(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu, mId, mEntry) and
     Assigned(mEntry.Run) then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Menu, mEntry.Run);
+  end;
 end;
 
 procedure TAtlasMainMenu.UpdateModuleItems;
@@ -899,11 +1017,17 @@ var
   mPosition: Integer;
 begin
   if (FRoot = nil) or (FModuleAnchor = nil) then
+  begin
     Exit;
+  end;
   // Rückwärts freigeben: Untermenüs geben ihre Einträge mit frei.
   for mItem in FModuleItems do
+  begin
     if mItem.Parent = FRoot then
+    begin
       mItem.Free;
+    end;
+  end;
   FModuleItems := nil;
   FModuleIds := nil;
   mGroups := nil;
@@ -937,14 +1061,20 @@ begin
       FModuleIds := FModuleIds + [mEntry.CommandId];
     end;
     if mItem = nil then
+    begin
       Continue;
+    end;
     mParent := FRoot;
     if mEntry.Section <> '' then
     begin
       mParent := nil;
       for mGroup in mGroups do
+      begin
         if mGroup.Caption = mEntry.Section then
+        begin
           mParent := mGroup;
+        end;
+      end;
       if mParent = nil then
       begin
         mParent := TMenuItem.Create(FRoot);
@@ -962,10 +1092,14 @@ begin
       FModuleItems := FModuleItems + [mItem];
     end
     else
+    begin
       mParent.Add(mItem);
+    end;
   end;
   for mGroup in mGroups do
+  begin
     TidyModuleSection(mGroup);
+  end;
 end;
 
 class procedure TAtlasMainMenu.TidyModuleSection(AGroup: TMenuItem);
@@ -994,7 +1128,9 @@ begin
     else if mItem.Visible then
     begin
       if mPendingLine and (mLine <> nil) then
+      begin
         mLine.Visible := True;
+      end;
       mPendingLine := False;
       mSeenItem := True;
     end;
@@ -1036,7 +1172,9 @@ begin
   try
     if Supports(BorlandIDEServices, IOTAServices, Services) and
       Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+    begin
       Options.EditOptions('', 'Atlas');
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Settings, E);

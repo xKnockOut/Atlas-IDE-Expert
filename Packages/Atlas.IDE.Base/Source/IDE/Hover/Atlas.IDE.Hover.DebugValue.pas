@@ -104,11 +104,15 @@ var
 begin
   FillChar(Buffer, SizeOf(Buffer), 0);
   if ASideEffects then
+  begin
     Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseAll, '', ResultAddr,
-      ResultSize, ResultVal, AFileName, ALine)
+      ResultSize, ResultVal, AFileName, ALine);
+  end
   else
+  begin
     Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseNone, '', ResultAddr,
       ResultSize, ResultVal, AFileName, ALine);
+  end;
   Result.Text := Buffer;
 end;
 
@@ -130,12 +134,18 @@ var
   Value: TAtlasDebugValue;
 begin
   if FDone then
+  begin
     Exit;
+  end;
   FDone := True;
   if AReturnCode = 0 then
-    Value := TAtlasDebugValue.Evaluated(FExpression, AResult)
+  begin
+    Value := TAtlasDebugValue.Evaluated(FExpression, AResult);
+  end
   else
+  begin
     Value := TAtlasDebugValue.Failed(FExpression, AResult);
+  end;
   // Der Debugger ruft aus seiner Benachrichtigung; abmelden und anzeigen erst danach im Hauptthread.
   // Keep hält den Notifier bis dahin am Leben.
   Keep := Self;
@@ -144,15 +154,21 @@ begin
     procedure
     begin
       if Keep <> nil then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Hover,
         procedure
         begin
           if Deferred.FOwner = nil then
+          begin
             Exit;
+          end;
           Deferred.FOwner.Release(Deferred);
           if Assigned(Deferred.FOnDone) then
+          begin
             Deferred.FOnDone(Value);
+          end;
         end);
+      end;
     end);
 end;
 
@@ -206,10 +222,14 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   Process := Debugger.CurrentProcess;
   if (Process = nil) or not (Process.ProcessState in [psStopped, psFault, psException]) then
+  begin
     Exit;
+  end;
   Result := Process.CurrentThread;
 end;
 
@@ -221,7 +241,9 @@ end;
 procedure TAtlasIdeDebugValues.Release(ADeferred: TDeferred);
 begin
   if (ADeferred = nil) or (ADeferred <> FDeferred) then
+  begin
     Exit;
+  end;
   if (FThread <> nil) and (FIndex >= 0) and not FDeferred.FThreadGone then
     try
       FThread.RemoveNotifier(FIndex);
@@ -260,7 +282,9 @@ begin
   Result := Default(TAtlasDebugValue);
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') then
+  begin
     Exit;
+  end;
   Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, ASideEffects);
   case Outcome.Code of
     erOK:
@@ -289,12 +313,18 @@ begin
   Result := Default(TAtlasDebugValue);
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') then
+  begin
     Exit;
+  end;
   Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
   if Outcome.Code = erOK then
-    Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text)
+  begin
+    Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text);
+  end
   else
+  begin
     Result := TAtlasDebugValue.Failed(AExpression, Outcome.Text);
+  end;
 end;
 
 class function TAtlasIdeDebugValues.Modify(const AExpression, AFileName: string; ALine: Integer;
@@ -309,7 +339,9 @@ begin
   AResult := '';
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') then
+  begin
     Exit(False);
+  end;
   // Modify ändert den zuletzt ausgewerteten Ausdruck: erst auswerten, ohne Nebenwirkungen.
   Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
   if Outcome.Code <> erOK then

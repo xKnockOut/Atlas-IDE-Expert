@@ -70,7 +70,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -81,7 +83,9 @@ var
 begin
   LineText := '';
   if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
+  begin
     LineText := ALines[APosition.Line];
+  end;
   Result.Line := APosition.Line + 1;
   Result.Col := TLspSession.IndexToColumn(LineText, APosition.Character, ATabWidth);
 end;
@@ -92,7 +96,9 @@ var
 begin
   LineText := '';
   if (ARow >= 1) and (ARow <= Length(ALines)) then
+  begin
     LineText := ALines[ARow - 1];
+  end;
   Result.Line := ARow - 1;
   Result.Character := TLspSession.ColumnToIndex(LineText, AColumn, ATabWidth);
 end;
@@ -144,17 +150,25 @@ var
   Move: TAtlasLineMove;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   if Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   LineBreak := #10;
   if Pos(#13#10, Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
   Cursor := View.CursorPos;
@@ -172,15 +186,21 @@ begin
   Last := SelectionEnd.Line;
   // Eine Markierung, die am Anfang einer Zeile endet, berührt diese Zeile nicht.
   if HasSelection and (Last > First) and (SelectionEnd.Character = 0) then
+  begin
     Dec(Last);
+  end;
   MethodLine := -1;
   if not HasSelection then
+  begin
     MethodLine := CursorAt.Line;
+  end;
   if not TAtlasLineMover.Compute(Text, First, Last, MethodLine, AKind, TAtlasEditorBuffer.BlockIndent(Buffer),
     Move) then
   begin
     if Move.Method and Assigned(FMessage) then
+    begin
       FMessage(TAtlasStrings.Text(TAtlasTextId.MoveLinesNoNeighbour));
+    end;
     Exit;
   end;
   NewLines := TAtlasLineMover.Apply(Lines, Move);
@@ -192,11 +212,15 @@ begin
   if Grouped then
   begin
     if Buffer.Undo and (TAtlasEditorBuffer.Text(Buffer) = FBefore) then
-      Before := FBefore
+    begin
+      Before := FBefore;
+    end
     else
     begin
       if TAtlasEditorBuffer.Text(Buffer) <> Text then
+      begin
         Buffer.Redo;
+      end;
       // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
       if TAtlasEditorBuffer.Text(Buffer) <> Text then
       begin
@@ -206,7 +230,9 @@ begin
     end;
   end;
   if TAtlasLineMover.Difference(Before, NewText, Start, OldLength, Insert) then
+  begin
     WriteBuffer(Buffer, Before, Start, OldLength, Insert);
+  end;
   // Cursor und Markierung mit dem Block.
   CursorAt := Mapped(Move, CursorAt, Last);
   if HasSelection then
@@ -220,7 +246,9 @@ begin
     View.Block.EndBlock;
   end
   else
+  begin
     View.CursorPos := EditPos(NewLines, CursorAt, TabWidth);
+  end;
   View.MoveViewToCursor;
   View.Paint;
   FFileName := Buffer.FileName;

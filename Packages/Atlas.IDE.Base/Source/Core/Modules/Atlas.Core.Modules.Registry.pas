@@ -187,7 +187,9 @@ var
   mItem: string;
 begin
   for mItem in AMore do
+  begin
     AList := AList + [mItem];
+  end;
 end;
 
 function CleanField(const AText: string): string;
@@ -207,7 +209,9 @@ begin
   for mInfo in AModules do
   begin
     if Result <> '' then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + CleanField(mInfo.Id) + #9 + CleanField(mInfo.Name) + #9 + CleanField(mInfo.Version);
   end;
 end;
@@ -228,13 +232,19 @@ begin
     begin
       mFields := mLine.Split([#9]);
       if (Length(mFields) = 0) or (Trim(mFields[0]) = '') or mSeen.Contains(Trim(mFields[0])) then
+      begin
         Continue;
+      end;
       mInfo := Default(TAtlasModuleInfo);
       mInfo.Id := Trim(mFields[0]);
       if Length(mFields) > 1 then
+      begin
         mInfo.Name := mFields[1];
+      end;
       if Length(mFields) > 2 then
+      begin
         mInfo.Version := mFields[2];
+      end;
       mSeen.Add(mInfo.Id);
       Result := Result + [mInfo];
     end;
@@ -267,7 +277,9 @@ begin
   FLock.Acquire;
   try
     if not FOpen then
+    begin
       raise EAtlasModuleRegistry.CreateFmt('Modul %s ist abgemeldet; es kann nichts mehr anmelden', [FModuleId]);
+    end;
     Result := FRegistry;
   finally
     FLock.Release;
@@ -295,7 +307,9 @@ var
   mIndex: Integer;
 begin
   if ARegistration = nil then
+  begin
     Exit;
+  end;
   FLock.Acquire;
   try
     mOpen := FOpen;
@@ -303,15 +317,21 @@ begin
     begin
       // Schon gelöste Anmeldungen (etwa gelieferte Antworten) fallen weg, damit die Liste nicht wächst.
       for mIndex := FOwned.Count - 1 downto 0 do
+      begin
         if FOwned[mIndex].IsRevoked then
+        begin
           FOwned.Delete(mIndex);
+        end;
+      end;
       FOwned.Add(ARegistration);
     end;
   finally
     FLock.Release;
   end;
   if not mOpen then
+  begin
     ARegistration.Revoke;
+  end;
 end;
 
 function TAtlasModuleScope.Provide(const AIID: TGUID; const AObject: IInterface): IAtlasRegistration;
@@ -409,11 +429,17 @@ var
 begin
   // Was noch angemeldet ist, verweist auf diese Registry: abtrennen, damit ein späteres Revoke ins Leere geht.
   for mModule in FModules do
+  begin
     TAtlasModuleScope(mModule.Scope).Detach;
+  end;
   for mProvision in FProvisions do
+  begin
     mProvision.Item.Detach;
+  end;
   for mListener in FListeners do
+  begin
     mListener.Item.Detach;
+  end;
   FKnown.Free;
   FListeners.Free;
   FProvisions.Free;
@@ -425,7 +451,9 @@ end;
 class procedure TAtlasModuleRegistry.RaiseFailures(const AFailures: TArray<string>);
 begin
   if Length(AFailures) > 0 then
+  begin
     raise EAtlasModuleRegistry.Create(string.Join(sLineBreak, AFailures));
+  end;
 end;
 
 function TAtlasModuleRegistry.IndexOfModule(const AModuleId: string): Integer;
@@ -434,8 +462,12 @@ var
 begin
   Result := -1;
   for mIndex := 0 to FModules.Count - 1 do
+  begin
     if SameText(FModules[mIndex].Info.Id, AModuleId) then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 function TAtlasModuleRegistry.IndexOfKnown(const AModuleId: string): Integer;
@@ -444,8 +476,12 @@ var
 begin
   Result := -1;
   for mIndex := 0 to FKnown.Count - 1 do
+  begin
     if SameText(FKnown[mIndex].Id, AModuleId) then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 procedure TAtlasModuleRegistry.RememberModule(const AInfo: TAtlasModuleInfo);
@@ -457,16 +493,22 @@ begin
   mInfo.Handle := 0;
   mIndex := IndexOfKnown(AInfo.Id);
   if mIndex < 0 then
-    FKnown.Add(mInfo)
+  begin
+    FKnown.Add(mInfo);
+  end
   else
+  begin
     FKnown[mIndex] := mInfo;
+  end;
   SaveKnown;
 end;
 
 procedure TAtlasModuleRegistry.SaveKnown;
 begin
   if FStorage <> nil then
+  begin
     FStorage.WriteText(cAtlasKnownModulesName, TAtlasKnownModulesText.Encode(FKnown.ToArray));
+  end;
 end;
 
 function TAtlasModuleRegistry.Notify(AKind: TAtlasRegistryChangeKind; const AModuleId: string;
@@ -490,7 +532,9 @@ begin
   begin
     // Ein früherer Hörer kann diesen gelöst haben (Regel 3).
     if mListener.Item.IsRevoked then
+    begin
       Continue;
+    end;
     try
       mListener.Listener.RegistryChanged(mChange);
     except
@@ -511,18 +555,26 @@ var
   mScope: TAtlasModuleScope;
 begin
   if AModule = nil then
+  begin
     raise EAtlasModuleRegistry.Create('Kein Modul angegeben');
+  end;
   mEntry.Module := AModule;
   mEntry.Info := AModule.Info;
   mEntry.Info.Id := Trim(mEntry.Info.Id);
   if mEntry.Info.Id = '' then
+  begin
     raise EAtlasModuleRegistry.Create('Modul ohne Id');
+  end;
   FLock.Acquire;
   try
     if FShutDown then
+    begin
       raise EAtlasModuleRegistry.CreateFmt('Base ist abgebaut; Modul %s wird nicht angemeldet', [mEntry.Info.Id]);
+    end;
     if IndexOfModule(mEntry.Info.Id) >= 0 then
+    begin
       raise EAtlasModuleRegistry.CreateFmt('Modul %s ist schon angemeldet', [mEntry.Info.Id]);
+    end;
     mScope := TAtlasModuleScope.Create(Self, mEntry.Info.Id);
     mEntry.Scope := mScope;
     mEntry.ScopeRef := mScope;
@@ -545,7 +597,9 @@ begin
   try
     mIndex := IndexOfModule(AModuleId);
     if mIndex < 0 then
+    begin
       Exit;
+    end;
     mEntry := FModules[mIndex];
     FModules.Delete(mIndex);
   finally
@@ -554,7 +608,9 @@ begin
   // Erst stoppen, dann die Anmeldungen lösen: Stop darf noch auf eigene Anmeldungen zugreifen.
   try
     if mEntry.Module.IsActive then
+    begin
       mEntry.Module.Stop;
+    end;
   except
     on mError: Exception do
       Result := Result + [FailureOf(mEntry.Info.Id + ' Stop', mError)];
@@ -571,7 +627,9 @@ begin
   FLock.Acquire;
   try
     for mEntry in FModules do
+    begin
       Result := Result + [mEntry.Module];
+    end;
   finally
     FLock.Release;
   end;
@@ -587,7 +645,9 @@ begin
     mIndex := IndexOfModule(AModuleId);
     Result := mIndex >= 0;
     if Result then
+    begin
       AModule := FModules[mIndex].Module;
+    end;
   finally
     FLock.Release;
   end;
@@ -608,9 +668,13 @@ begin
       mModule := IndexOfModule(FKnown[mIndex].Id);
       mKnown.Installed := mModule >= 0;
       if mKnown.Installed then
-        mKnown.Info := FModules[mModule].Info
+      begin
+        mKnown.Info := FModules[mModule].Info;
+      end
       else
+      begin
         mKnown.Info := FKnown[mIndex];
+      end;
       Result[mIndex] := mKnown;
     end;
   finally
@@ -635,7 +699,9 @@ begin
     FLock.Release;
   end;
   if Result then
+  begin
     RaiseFailures(NotifyModule(rcKnownChanged, AModuleId));
+  end;
 end;
 
 function TAtlasModuleRegistry.IsModuleHandle(AHandle: NativeUInt): Boolean;
@@ -644,12 +710,18 @@ var
 begin
   Result := False;
   if AHandle = 0 then
+  begin
     Exit;
+  end;
   FLock.Acquire;
   try
     for mEntry in FModules do
+    begin
       if mEntry.Info.Handle = AHandle then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     FLock.Release;
   end;
@@ -662,7 +734,9 @@ var
   mItem: TAtlasProvisionRegistration;
 begin
   if (AObject = nil) or not Supports(AObject, AIID) then
+  begin
     raise EAtlasModuleRegistry.CreateFmt('Objekt unterstützt %s nicht', [GUIDToString(AIID)]);
+  end;
   mItem := TAtlasProvisionRegistration.Create(Self);
   mProvision.IID := AIID;
   mProvision.Instance := AObject;
@@ -686,7 +760,9 @@ var
   mItem: TAtlasListenerRegistration;
 begin
   if AListener = nil then
+  begin
     raise EAtlasModuleRegistry.Create('Kein Hörer angegeben');
+  end;
   mItem := TAtlasListenerRegistration.Create(Self);
   mEntry.Listener := AListener;
   mEntry.OwnerId := AOwnerId;
@@ -711,6 +787,7 @@ begin
   FLock.Acquire;
   try
     for mIndex := 0 to FProvisions.Count - 1 do
+    begin
       if FProvisions[mIndex].Item = AItem then
       begin
         mProvision := FProvisions[mIndex];
@@ -718,11 +795,14 @@ begin
         mFound := True;
         Break;
       end;
+    end;
   finally
     FLock.Release;
   end;
   if mFound then
+  begin
     RaiseFailures(Notify(rcRevoked, mProvision.OwnerId, mProvision.IID));
+  end;
 end;
 
 procedure TAtlasModuleRegistry.RemoveListener(AItem: TAtlasRegistration);
@@ -733,11 +813,13 @@ begin
   FLock.Acquire;
   try
     for mIndex := 0 to FListeners.Count - 1 do
+    begin
       if FListeners[mIndex].Item = AItem then
       begin
         FListeners.Delete(mIndex);
         Break;
       end;
+    end;
   finally
     FLock.Release;
   end;
@@ -756,8 +838,12 @@ begin
   FLock.Acquire;
   try
     for mProvision in FProvisions do
+    begin
       if IsEqualGUID(mProvision.IID, AIID) then
+      begin
         Result := Result + [mProvision.Instance];
+      end;
+    end;
   finally
     FLock.Release;
   end;
@@ -772,12 +858,14 @@ begin
   FLock.Acquire;
   try
     for mProvision in FProvisions do
+    begin
       if IsEqualGUID(mProvision.IID, AIID) then
       begin
         mItem.OwnerId := mProvision.OwnerId;
         mItem.Instance := mProvision.Instance;
         Result := Result + [mItem];
       end;
+    end;
   finally
     FLock.Release;
   end;
@@ -800,7 +888,9 @@ begin
   try
     FStorage := AStorage;
     if FStorage = nil then
+    begin
       Exit;
+    end;
     mStored := TAtlasKnownModulesText.Decode(FStorage.ReadText(cAtlasKnownModulesName));
     mMerged := TList<TAtlasModuleInfo>.Create;
     try
@@ -809,6 +899,7 @@ begin
       begin
         mFound := False;
         for mIndex := 0 to mMerged.Count - 1 do
+        begin
           if SameText(mMerged[mIndex].Id, mInfo.Id) then
           begin
             // Angaben eines in dieser Sitzung angemeldeten Moduls sind neuer als die gespeicherten.
@@ -816,8 +907,11 @@ begin
             mFound := True;
             Break;
           end;
+        end;
         if not mFound then
+        begin
           mMerged.Add(mInfo);
+        end;
       end;
       FKnown.Clear;
       FKnown.AddRange(mMerged);
@@ -842,12 +936,16 @@ begin
     FShutDown := True;
     mIds := nil;
     for mEntry in FModules do
+    begin
       mIds := mIds + [mEntry.Info.Id];
+    end;
   finally
     FLock.Release;
   end;
   for mIndex := High(mIds) downto 0 do
+  begin
     AppendFailures(Result, UnregisterModule(mIds[mIndex]));
+  end;
 end;
 
 initialization
@@ -858,7 +956,9 @@ finalization
   // Verdrahtung (#1456) schon vorher und protokolliert die Fehler; das hier ist nur das Sicherheitsnetz für den
   // Fall, dass die Finalisierung ohne diesen Schritt erreicht wird.
   if GRegistryInstance <> nil then
+  begin
     GRegistryInstance.ShutDown;
+  end;
   GTornDown := True;
   GRegistryInstance := nil;
   GRegistry := nil;

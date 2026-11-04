@@ -105,7 +105,9 @@ begin
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
   Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
   if AInsert <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(AInsert)));
+  end;
   Writer := nil;
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
@@ -140,9 +142,13 @@ begin
     FPreview.FollowCursor := True;
   end;
   if FKeys = nil then
+  begin
     FKeys := TKeys.Create(KeyPriority);
+  end;
   if FEnums = nil then
+  begin
     FEnums := TDictionary<string, TArray<string>>.Create;
+  end;
   TAtlasEnterWatch.Add(HandlerName,
     function: Boolean
     begin
@@ -160,7 +166,9 @@ begin
   Dismiss;
   // Vor dem Freigeben abmelden (TAtlasKeyHook).
   if FKeys <> nil then
+  begin
     TAtlasKeyHook.Remove(FKeys);
+  end;
   FreeAndNil(FKeys);
   FreeAndNil(FPreview);
   FreeAndNil(FEnums);
@@ -181,13 +189,19 @@ end;
 class procedure TAtlasIdePatternContinuation.Dismiss;
 begin
   if FFileName = '' then
+  begin
     Exit;
+  end;
   FFileName := '';
   FSuggestion := Default(TAtlasPatternSuggestion);
   if FKeys <> nil then
+  begin
     TAtlasKeyHook.Remove(FKeys);
+  end;
   if FPreview <> nil then
+  begin
     FPreview.Clear;
+  end;
 end;
 
 class procedure TAtlasIdePatternContinuation.EditorModified;
@@ -214,23 +228,35 @@ var
 begin
   Result := TAtlasPatternContinuation.LocalEnumValues(AText, AMember);
   if Result <> nil then
+  begin
     Exit;
+  end;
   Key := LowerCase(AFileName + '|' + AMember);
   if (FEnums <> nil) and FEnums.TryGetValue(Key, Result) then
+  begin
     Exit;
+  end;
   Session := nil;
   if Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if (Session = nil) or not Session.Initialized then
+  begin
     Exit;
+  end;
   try
     Session.Sync(AFileName, AText);
     Answer := Session.RunCommand('atlas.server.enumValues', Format('["%s",{"line":%d,"character":%d}]',
       [TLspSession.PathToUri(AFileName).Replace('\', '\\').Replace('"', '\"'), ALine, ACharacter]), EnumTimeoutMs);
     try
       if Answer is TJSONArray then
+      begin
         for Item in TJSONArray(Answer) do
+        begin
           Result := Result + [Item.Value];
+        end;
+      end;
     finally
       Answer.Free;
     end;
@@ -242,7 +268,9 @@ begin
   if FEnums <> nil then
   begin
     if FEnums.Count >= MaxCachedEnums then
+    begin
       FEnums.Clear;
+    end;
     FEnums.AddOrSetValue(Key, Result);
   end;
 end;
@@ -259,24 +287,34 @@ begin
   Result := False;
   Dismiss;
   if not Enabled or (AView = nil) or (AView.Buffer = nil) or (FPreview = nil) then
+  begin
     Exit;
+  end;
   if Assigned(FCompletionVisible) and FCompletionVisible() then
+  begin
     Exit;
+  end;
   Buffer := AView.Buffer;
   if Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   FileName := Buffer.FileName;
   Text := TAtlasEditorBuffer.Text(Buffer);
   Lines := Text.Split([#13#10, #10]);
   Cursor := AView.CursorPos;
   Line := Cursor.Line - 1;
   if (Line < 1) or (Line > High(Lines)) then
+  begin
     Exit;
+  end;
   // Enter am Zeilenende: die neue Zeile ist leer oder nur eingerückt, der Cursor steht an ihrem Ende.
   Current := Lines[Line];
   Character := TLspSession.ColumnToIndex(Current, Cursor.Col, TAtlasEditorBuffer.TabWidth(Buffer));
   if (Trim(Current) <> '') or (Character < Length(Current)) then
+  begin
     Exit;
+  end;
   if not TAtlasPatternContinuation.Suggest(Lines, Line, TAtlasIdeSettings.Current.ContinuePatternMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
     begin
@@ -286,11 +324,15 @@ begin
     begin
       Result := TAtlasPatternContinuation.ContainsWord(Text, AName);
     end, Suggestion) then
+  begin
     Exit;
+  end;
   // Schattentext ab dem Cursor: was am Einzug noch fehlt, dann die Zeile.
   Ghost := Suggestion.Text;
   if Suggestion.Indent.StartsWith(Current) then
+  begin
     Ghost := Copy(Suggestion.Indent, Length(Current) + 1, MaxInt) + Ghost;
+  end;
   FFileName := FileName;
   FLine := Cursor.Line;
   FColumn := Cursor.Col;
@@ -323,22 +365,32 @@ begin
   View := TAtlasEditorBuffer.ActiveView;
   Buffer := View.Buffer;
   if Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   LineBreak := #10;
   if Pos(#13#10, Text) > 0 then
+  begin
     LineBreak := #13#10;
+  end;
   Lines := Text.Split([#13#10, #10]);
   if (Line < 0) or (Line > High(Lines)) then
+  begin
     Exit;
+  end;
   NewLine := Suggestion.Indent + Suggestion.Text;
   Lines[Line] := NewLine;
   NewText := string.Join(LineBreak, Lines);
   if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
+  begin
     WriteBuffer(Buffer, Text, Start, OldLength, Insert);
+  end;
   Character := Length(NewLine);
   if Length(Suggestion.Fields) > 0 then
+  begin
     Character := Length(Suggestion.Indent) + Suggestion.Fields[0];
+  end;
   Target.Line := Line + 1;
   Target.Col := TLspSession.IndexToColumn(NewLine, Character, TAtlasEditorBuffer.TabWidth(Buffer));
   View.CursorPos := Target;

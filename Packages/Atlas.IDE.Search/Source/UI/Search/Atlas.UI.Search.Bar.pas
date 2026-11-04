@@ -260,17 +260,27 @@ end;
 class function TAtlasSearchCombo.KeepsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   if AShift = [ssCtrl] then
+  begin
     Result := CharInSet(Char(AKey), ['A', 'C', 'V', 'X', 'Y', 'Z']) or (AKey = VK_INSERT) or (AKey = VK_BACK) or
-      (AKey = VK_DELETE) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+      (AKey = VK_DELETE) or (AKey = VK_LEFT) or (AKey = VK_RIGHT);
+  end
   else if AShift = [ssShift] then
+  begin
     Result := (AKey = VK_INSERT) or (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_LEFT) or
-      (AKey = VK_RIGHT)
+      (AKey = VK_RIGHT);
+  end
   else if AShift = [ssCtrl, ssShift] then
-    Result := (AKey = Ord('Z')) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+  begin
+    Result := (AKey = Ord('Z')) or (AKey = VK_LEFT) or (AKey = VK_RIGHT);
+  end
   else if AShift = [] then
-    Result := (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_BACK)
+  begin
+    Result := (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_BACK);
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TAtlasSearchCombo.CNKeyDown(var Message: TWMKeyDown);
@@ -417,7 +427,9 @@ begin
   AControl.AlignWithMargins := True;
   AControl.Margins.SetBounds(Gap, 3, 0, 3);
   if AWidth > 0 then
+  begin
     AControl.Width := ScaleValue(AWidth);
+  end;
 end;
 
 function TAtlasSearchBar.AddLabel(ARow: TPanel; const ACaption: string): TLabel;
@@ -473,7 +485,9 @@ begin
   inherited CreateWnd;
   FitWidths;
   if FPending then
+  begin
     Apply;
+  end;
 end;
 
 procedure TAtlasSearchBar.FitWidths;
@@ -486,10 +500,14 @@ begin
   Canvas.Font := Font;
   Boxes := [FCase, FWhole, FIdentifier, FRegex];
   for Box in Boxes do
+  begin
     Box.Width := Canvas.TextWidth(Box.Caption) + ScaleValue(24);
+  end;
   Buttons := [FList, FCancel, FReplaceOne, FReplaceAll, FChoose];
   for Button in Buttons do
+  begin
     Button.Width := Canvas.TextWidth(Button.Caption) + ScaleValue(20);
+  end;
 end;
 
 procedure TAtlasSearchBar.Prepare(const AQuery: TAtlasSearchQuery; const ALevels: TArray<string>;
@@ -500,7 +518,9 @@ begin
   FHasSelection := AHasSelection;
   FPending := True;
   if HandleAllocated then
+  begin
     Apply;
+  end;
 end;
 
 procedure TAtlasSearchBar.Apply;
@@ -520,28 +540,40 @@ begin
     // Reihenfolge wie TAtlasSearchScope: Unit, Methode, Auswahl, offene Dateien, Projekt, Projektgruppe.
     FScopes := [TAtlasSearchScope.UnitFile, TAtlasSearchScope.Method];
     if FHasSelection then
+    begin
       FScopes := FScopes + [TAtlasSearchScope.Selection];
+    end;
     if FFeatures.MultiFile then
+    begin
       FScopes := FScopes + [TAtlasSearchScope.OpenFiles, TAtlasSearchScope.Project, TAtlasSearchScope.ProjectGroup];
+    end;
     FScope.Items.BeginUpdate;
     try
       FScope.Items.Clear;
       for Scope in FScopes do
+      begin
         FScope.Items.Add(ScopeCaption(Scope));
+      end;
     finally
       FScope.Items.EndUpdate;
     end;
     // Ein Bereich, den es gerade nicht gibt (Auswahl ohne Auswahl, Dateien mit search.multiFile aus), wird Unit.
     FScope.ItemIndex := 0;
     for Index := 0 to High(FScopes) do
+    begin
       if FScopes[Index] = FQuery.Scope then
+      begin
         FScope.ItemIndex := Index;
+      end;
+    end;
     FQuery.Scope := FScopes[FScope.ItemIndex];
     FLevel.Items.BeginUpdate;
     try
       FLevel.Items.Clear;
       for Level in FLevels do
+      begin
         FLevel.Items.Add(Level);
+      end;
     finally
       FLevel.Items.EndUpdate;
     end;
@@ -550,7 +582,9 @@ begin
     begin
       FLevel.ItemIndex := FQuery.Level;
       if FLevel.ItemIndex < 0 then
+      begin
         FLevel.ItemIndex := 0;
+      end;
     end;
     UpdateStates;
   finally
@@ -582,7 +616,9 @@ var
 begin
   Scope := TAtlasSearchScope.UnitFile;
   if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
+  begin
     Scope := FScopes[FScope.ItemIndex];
+  end;
   FLevel.Visible := (Scope = TAtlasSearchScope.Method) and (FLevel.Items.Count > 0);
   // Bezeichner-Modus ohne Regex kennt nur ganze Bezeichner ohne Rücksicht auf die Schreibweise; mit Regex filtert
   // er nur Kommentare und Strings heraus.
@@ -597,11 +633,17 @@ var
 begin
   FToggle.Visible := FFeatures.Replace;
   if not FFeatures.Replace then
+  begin
     FReplaceShown := False;
+  end;
   if FReplaceShown then
-    FToggle.Caption := '▾'
+  begin
+    FToggle.Caption := '▾';
+  end
   else
+  begin
     FToggle.Caption := '▸';
+  end;
   FReplaceRow.Visible := FReplaceShown;
   FInfoRow.Visible := FInfoKind <> TInfoKind.None;
   // Reihenfolge der Zeilen festhalten: sichtbar gewordene alTop-Panels ordnen sich nach Top.
@@ -610,9 +652,13 @@ begin
   FInfoRow.Top := 2 * FSearchRow.Height;
   Rows := 1;
   if FReplaceRow.Visible then
+  begin
     Inc(Rows);
+  end;
   if FInfoRow.Visible then
+  begin
     Inc(Rows);
+  end;
   Height := Rows * ScaleValue(BarHeight);
   FInfo.Invalidate;
 end;
@@ -621,9 +667,13 @@ procedure TAtlasSearchBar.SetFeatures(const AValue: TAtlasSearchBarFeatures);
 begin
   FFeatures := AValue;
   if not FFeatures.Regex then
+  begin
     FRegex.Checked := False;
+  end;
   if not FFeatures.Regex then
+  begin
     ClearPreview;
+  end;
   UpdateStates;
   UpdateLayout;
   if HandleAllocated and not FPending then
@@ -638,10 +688,14 @@ procedure TAtlasSearchBar.SetReplaceShown(AValue: Boolean);
 begin
   AValue := AValue and FFeatures.Replace;
   if AValue = FReplaceShown then
+  begin
     Exit;
+  end;
   FReplaceShown := AValue;
   if not FReplaceShown then
+  begin
     ClearPreview;
+  end;
   UpdateLayout;
 end;
 
@@ -657,10 +711,14 @@ begin
   Result.Options := TAtlasSearchOptions.Create(FCase.Checked, FWhole.Checked, FIdentifier.Checked,
     FRegex.Checked and FFeatures.Regex);
   if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
+  begin
     Result.Scope := FScopes[FScope.ItemIndex];
+  end;
   Result.Level := FLevel.ItemIndex;
   if Result.Level < 0 then
+  begin
     Result.Level := 0;
+  end;
 end;
 
 procedure TAtlasSearchBar.SetCounter(const AText: string);
@@ -708,7 +766,9 @@ begin
   FPreviewAfter := AAfter;
   FHasPreview := True;
   if FInfoKind = TInfoKind.None then
+  begin
     FInfoKind := TInfoKind.Notice;
+  end;
   UpdateLayout;
 end;
 
@@ -718,20 +778,30 @@ begin
   FPreviewBefore := '';
   FPreviewAfter := '';
   if (FInfoKind = TInfoKind.Notice) and (FInfoText = '') then
+  begin
     FInfoKind := TInfoKind.None;
+  end;
   if FInfo <> nil then
+  begin
     UpdateLayout;
+  end;
 end;
 
 procedure TAtlasSearchBar.SetNotice(const AText: string);
 begin
   if FInfoKind = TInfoKind.Error then
+  begin
     Exit;
+  end;
   FInfoText := AText;
   if (AText <> '') or FHasPreview then
-    FInfoKind := TInfoKind.Notice
+  begin
+    FInfoKind := TInfoKind.Notice;
+  end
   else
+  begin
     FInfoKind := TInfoKind.None;
+  end;
   UpdateLayout;
 end;
 
@@ -744,10 +814,14 @@ begin
     TInfoKind.Notice:
       begin
         if FHasPreview then
+        begin
           Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ' + FPreviewBefore + ' → ' +
             FPreviewAfter;
+        end;
         if (Result <> '') and (FInfoText <> '') then
+        begin
           Result := Result + '   ·   ';
+        end;
         Result := Result + FInfoText;
       end;
   end;
@@ -784,7 +858,9 @@ begin
     Put(' → ', []);
     Put(FPreviewAfter, [fsBold]);
     if FInfoText <> '' then
+    begin
       Put('   ·   ', []);
+    end;
   end;
   Put(FInfoText, []);
 end;
@@ -803,18 +879,26 @@ end;
 procedure TAtlasSearchBar.Remember;
 begin
   if FSearchHistory <> nil then
+  begin
     FSearchHistory.Remember(FText.Text);
+  end;
   if FReplaceShown and (FReplaceHistory <> nil) then
+  begin
     FReplaceHistory.Remember(FReplaceText.Text);
+  end;
 end;
 
 function TAtlasSearchBar.HistoryOf(ABox: TComboBox): TAtlasSearchHistory;
 begin
   Result := nil;
   if ABox = FText then
-    Result := FSearchHistory
+  begin
+    Result := FSearchHistory;
+  end
   else if ABox = FReplaceText then
+  begin
     Result := FReplaceHistory;
+  end;
 end;
 
 procedure TAtlasSearchBar.HistoryDropDown(Sender: TObject);
@@ -824,7 +908,9 @@ var
   Item, Text: string;
 begin
   if not (Sender is TComboBox) then
+  begin
     Exit;
+  end;
   Box := TComboBox(Sender);
   History := HistoryOf(Box);
   // Liste erst beim Aufklappen füllen (sie braucht ein Fenster); der Text im Feld bleibt.
@@ -835,8 +921,12 @@ begin
     try
       Box.Items.Clear;
       if History <> nil then
+      begin
         for Item in History.Items do
+        begin
           Box.Items.Add(Item);
+        end;
+      end;
     finally
       Box.Items.EndUpdate;
     end;
@@ -885,10 +975,14 @@ end;
 procedure TAtlasSearchBar.Changed(Sender: TObject);
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   // Von Hand geändert: Blättern im Verlauf beginnt beim nächsten Pfeil von vorn.
   if (Sender = FText) and (FSearchHistory <> nil) then
+  begin
     FSearchHistory.Reset;
+  end;
   UpdateStates;
   Fire(FOnQueryChanged);
 end;
@@ -896,29 +990,39 @@ end;
 procedure TAtlasSearchBar.ReplaceChanged(Sender: TObject);
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   if FReplaceHistory <> nil then
+  begin
     FReplaceHistory.Reset;
+  end;
   Fire(FOnReplaceShown);
 end;
 
 procedure TAtlasSearchBar.ControlEnter(Sender: TObject);
 begin
   if Assigned(FOnControlEnter) and (Sender is TWinControl) then
+  begin
     FOnControlEnter(TWinControl(Sender));
+  end;
 end;
 
 procedure TAtlasSearchBar.Fire(const AEvent: TProc);
 begin
   if Assigned(AEvent) then
+  begin
     AEvent();
+  end;
 end;
 
 procedure TAtlasSearchBar.Step(ABackward: Boolean);
 begin
   Remember;
   if Assigned(FOnStep) then
+  begin
     FOnStep(ABackward);
+  end;
 end;
 
 procedure TAtlasSearchBar.ControlKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -930,7 +1034,9 @@ var
 begin
   // Offene Auswahlliste: Enter, Esc und die Pfeile gehören ihr.
   if (Sender is TComboBox) and TComboBox(Sender).DroppedDown then
+  begin
     Exit;
+  end;
   // Pfeil hoch/runter im Such- bzw. Ersetzen-Feld: Verlauf (Alt+↓ öffnet die Liste wie gewohnt).
   if ((Key = VK_UP) or (Key = VK_DOWN)) and not (ssAlt in Shift) and ((Sender = FText) or (Sender = FReplaceText))
   then
@@ -940,10 +1046,14 @@ begin
     Older := Key = VK_UP;
     Key := 0;
     if History = nil then
+    begin
       Exit;
+    end;
     Next := History.Step(Box.Text, Older);
     if Next = Box.Text then
+    begin
       Exit;
+    end;
     // Ohne FUpdating setzte Changed das Blättern zurück.
     FUpdating := True;
     try
@@ -959,7 +1069,9 @@ begin
       Fire(FOnQueryChanged);
     end
     else
+    begin
       Fire(FOnReplaceShown);
+    end;
     Exit;
   end;
   case Key of
@@ -970,14 +1082,20 @@ begin
         begin
           Remember;
           if ssCtrl in Shift then
-            Fire(FOnReplaceAll)
+          begin
+            Fire(FOnReplaceAll);
+          end
           else
+          begin
             Fire(FOnReplace);
+          end;
           Exit;
         end;
         Step(ssShift in Shift);
         if not (ssShift in Shift) and FList.Visible then
+        begin
           Fire(FOnList);
+        end;
       end;
     VK_F3:
       begin
@@ -996,9 +1114,13 @@ procedure TAtlasSearchBar.ToggleClick(Sender: TObject);
 begin
   ReplaceShown := not ReplaceShown;
   if ReplaceShown then
-    FocusReplace
+  begin
+    FocusReplace;
+  end
   else
+  begin
     FocusText;
+  end;
   Fire(FOnReplaceShown);
 end;
 

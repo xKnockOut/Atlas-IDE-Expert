@@ -165,21 +165,29 @@ var
 begin
   Result := -1;
   for Index := 0 to FPending.Count - 1 do
+  begin
     if SameText(FPending[Index], AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 procedure TAtlasOpenBuild.AddPending(const AFileName: string; ANowMs: Int64);
 begin
   FLastOpened := ANowMs;
   if PendingIndex(AFileName) < 0 then
+  begin
     FPending.Add(AFileName);
+  end;
 end;
 
 procedure TAtlasOpenBuild.Opened(const AFileName: string; ANowMs: Int64);
 begin
   if (Trim(AFileName) = '') or not IsProjectFile(AFileName) then
+  begin
     Exit;
+  end;
   FAttempts.AddOrSetValue(KeyOf(AFileName), 0);
   AddPending(AFileName, ANowMs);
 end;
@@ -192,7 +200,9 @@ begin
   FAttempts.Remove(KeyOf(AFileName));
   Index := PendingIndex(AFileName);
   if Index >= 0 then
+  begin
     FPending.Delete(Index);
+  end;
 end;
 
 function TAtlasOpenBuild.Due(ANowMs: Int64; ADelayMs: Integer; AIdleMs: Int64; ADebugging: Boolean): Boolean;
@@ -214,7 +224,9 @@ var
 begin
   Key := KeyOf(AFileName);
   if not FAttempts.TryGetValue(Key, Attempts) then
+  begin
     Attempts := 0;
+  end;
   Inc(Attempts);
   Result := Attempts < MaxAttempts;
   if Result then
@@ -223,7 +235,9 @@ begin
     AddPending(AFileName, ANowMs);
   end
   else
+  begin
     FAttempts.Remove(Key);
+  end;
 end;
 
 function TAtlasOpenBuild.Select(const AProjects, AExclude: TArray<string>): TArray<string>;
@@ -237,15 +251,23 @@ begin
   begin
     Key := KeyOf(Project);
     if (Key = '') or FDone.ContainsKey(Key) then
+    begin
       Continue;
+    end;
     Skip := False;
     for Excluded in AExclude do
+    begin
       if SameText(TAtlasOpenBuildSettings.NameOf(Project), Excluded) then
+      begin
         Skip := True;
+      end;
+    end;
     // Auch ausgeschlossene gelten als erledigt: bis zum Schließen nicht noch einmal prüfen.
     FDone.Add(Key, True);
     if not Skip then
+    begin
       Result := Result + [Project];
+    end;
   end;
 end;
 
@@ -267,7 +289,9 @@ begin
   FRunResults.Clear;
   FCancelReason := '';
   for Project in AProjects do
+  begin
     FRunProjects.Add(Project);
+  end;
   FRunStartedAt := ANowMs;
   FRunning := True;
 end;
@@ -278,24 +302,36 @@ var
 begin
   Result := False;
   if not FRunning then
+  begin
     Exit;
+  end;
   for Project in FRunProjects do
+  begin
     if KeyOf(Project) = KeyOf(AFileName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TAtlasOpenBuild.ProjectFinished(const AFileName: string; ASucceeded: Boolean);
 begin
   if InRun(AFileName) then
+  begin
     FRunResults.AddOrSetValue(KeyOf(AFileName), ASucceeded);
+  end;
 end;
 
 procedure TAtlasOpenBuild.ProjectCancelled(const AFileName, AReason: string);
 begin
   if not InRun(AFileName) then
+  begin
     Exit;
+  end;
   if FCancelReason = '' then
+  begin
     FCancelReason := AReason;
+  end;
   // Abgebrochen zählt als „nicht gebaut“: kein Eintrag in FRunResults.
   FRunResults.Remove(KeyOf(AFileName));
 end;
@@ -306,8 +342,12 @@ var
 begin
   Result := FRunning;
   for Project in FRunProjects do
+  begin
     if not FRunResults.ContainsKey(KeyOf(Project)) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasOpenBuild.RunOverdue(ANowMs: Int64): Boolean;
@@ -331,7 +371,9 @@ begin
       Result.NotBuiltNames := Result.NotBuiltNames + [TAtlasOpenBuildSettings.NameOf(Project)];
     end
     else if Succeeded then
-      Inc(Result.Succeeded)
+    begin
+      Inc(Result.Succeeded);
+    end
     else
     begin
       Inc(Result.Failed);

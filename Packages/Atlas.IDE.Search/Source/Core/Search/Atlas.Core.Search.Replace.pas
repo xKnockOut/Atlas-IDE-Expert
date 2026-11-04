@@ -67,7 +67,9 @@ function CleanLine(const ALine: string): string;
 begin
   Result := ALine;
   if (Result <> '') and (Result[Length(Result)] = #13) then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 /// <summary>Wert der Gruppe (Nummer oder Name); '' wenn es sie nicht gibt oder sie nicht passte.</summary>
@@ -81,13 +83,19 @@ begin
     if TryStrToInt(AName, Number) then
     begin
       if (Number < 0) or (Number >= AMatch.Groups.Count) then
+      begin
         Exit;
+      end;
       Group := AMatch.Groups[Number];
     end
     else
+    begin
       Group := AMatch.Groups[AName];
+    end;
     if Group.Success then
+    begin
       Result := Group.Value;
+    end;
   except
     // Unbekannter Name: die Engine meldet ihn als Fehler; für den Ersatztext heißt das „nichts“.
     on Exception do
@@ -145,7 +153,9 @@ class function TAtlasSearchReplace.HitText(const ALines: TArray<string>; const A
 begin
   Result := '';
   if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
+  begin
     Result := Copy(CleanLine(ALines[AHit.Line]), AHit.Character + 1, AHit.Length);
+  end;
 end;
 
 class function TAtlasSearchReplace.Replacement(const ALines: TArray<string>; const AHit: TAtlasSearchHit;
@@ -156,14 +166,18 @@ var
 begin
   Result := AReplace;
   if not AQuery.Options.Regex or (AHit.Line < 0) or (AHit.Line > High(ALines)) then
+  begin
     Exit;
+  end;
   Line := CleanLine(ALines[AHit.Line]);
   // Derselbe Ausdruck auf derselben Zeile liefert den Treffer wieder, jetzt mit Gruppen.
   Found := TRegEx.Create(AQuery.Text, TAtlasSearchRegex.Options(AQuery.Options)).Match(Line);
   while Found.Success do
   begin
     if (Found.Index - 1 = AHit.Character) and (Found.Length = AHit.Length) then
+    begin
       Exit(Expand(AReplace, Found));
+    end;
     Found := Found.NextMatch;
   end;
 end;

@@ -43,7 +43,9 @@ procedure TAtlasTeardown.Step(const AName: string; const AStep: TProc);
 begin
   try
     if Assigned(AStep) then
+    begin
       AStep();
+    end;
   except
     on E: Exception do
       FFailures := FFailures + [AName + ': ' + E.ClassName];
@@ -63,9 +65,13 @@ end;
 function TAtlasTeardown.Summary: string;
 begin
   if Length(FFailures) = 0 then
-    Result := 'keine'
+  begin
+    Result := 'keine';
+  end
   else
+  begin
     Result := string.Join(', ', FFailures);
+  end;
 end;
 
 end.

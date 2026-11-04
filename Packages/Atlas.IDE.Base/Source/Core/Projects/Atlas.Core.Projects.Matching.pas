@@ -100,17 +100,27 @@ var
 begin
   Result := LowerCase(Trim(APath)).Replace('/', '\');
   if Result = '' then
+  begin
     Exit;
+  end;
   // \\server\freigabe bleibt am Anfang doppelt; sonst fallen doppelte Trenner weg (C:\\Projekte).
   mUnc := Result.StartsWith('\\');
   if mUnc then
+  begin
     Delete(Result, 1, 2);
+  end;
   while Result.Contains('\\') do
+  begin
     Result := Result.Replace('\\', '\');
+  end;
   if mUnc then
+  begin
     Result := '\\' + Result;
+  end;
   while Result.EndsWith('\') and (Length(Result) > 2) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasProjectMatching.KindOf(const AMatch: string): TAtlasProjectMatch;
@@ -118,14 +128,22 @@ var
   mExt: string;
 begin
   if Trim(AMatch) = '' then
+  begin
     Exit(TAtlasProjectMatch.None);
+  end;
   mExt := ExtractFileExt(NormalizedPath(AMatch));
   if mExt = cProjectExt then
-    Result := TAtlasProjectMatch.Project
+  begin
+    Result := TAtlasProjectMatch.Project;
+  end
   else if mExt = cGroupExt then
-    Result := TAtlasProjectMatch.Group
+  begin
+    Result := TAtlasProjectMatch.Group;
+  end
   else
+  begin
     Result := TAtlasProjectMatch.Folder;
+  end;
 end;
 
 class function TAtlasProjectMatching.Matches(const AMatch, AProjectFile, AGroupFile: string): TAtlasProjectMatch;
@@ -136,18 +154,26 @@ begin
   mMatch := NormalizedPath(AMatch);
   mProject := NormalizedPath(AProjectFile);
   if (mMatch = '') or (mProject = '') then
+  begin
     Exit;
+  end;
   case KindOf(AMatch) of
     TAtlasProjectMatch.Project:
       if mMatch = mProject then
+      begin
         Result := TAtlasProjectMatch.Project;
+      end;
     TAtlasProjectMatch.Group:
       if mMatch = NormalizedPath(AGroupFile) then
+      begin
         Result := TAtlasProjectMatch.Group;
+      end;
     TAtlasProjectMatch.Folder:
       // Nur ganze Ordner: C:\Projekte\Kasse gilt nicht für C:\Projekte\Kassenbuch\X.dproj.
       if mProject.StartsWith(mMatch + '\') then
+      begin
         Result := TAtlasProjectMatch.Folder;
+      end;
   else
     // Ohne Pfad gilt die Zeile nirgends.
   end;
@@ -158,7 +184,9 @@ begin
   Result := NormalizedPath(AMatch);
   // Trenner selbst suchen: ExtractFileDir kennt unter Linux nur „/“.
   if KindOf(AMatch) in [TAtlasProjectMatch.Project, TAtlasProjectMatch.Group] then
+  begin
     Result := NormalizedPath(Copy(Result, 1, LastDelimiter('\', Result) - 1));
+  end;
 end;
 
 class function TAtlasProjectMatching.Find(const AMatches: TArray<string>; const AUsable: TArray<Boolean>;
@@ -175,14 +203,20 @@ begin
   for mIndex := 0 to High(AMatches) do
   begin
     if not Usable(AUsable, mIndex) then
+    begin
       Continue;
+    end;
     case Matches(AMatches[mIndex], AProjectFile, AGroupFile) of
       TAtlasProjectMatch.Project:
         if mProject < 0 then
+        begin
           mProject := mIndex;
+        end;
       TAtlasProjectMatch.Group:
         if mGroup < 0 then
+        begin
           mGroup := mIndex;
+        end;
       TAtlasProjectMatch.Folder:
         if Length(NormalizedPath(AMatches[mIndex])) > mFolderLength then
         begin
@@ -220,18 +254,26 @@ begin
   Result := TAtlasProjectMatchResult.Empty;
   mFolder := NormalizedPath(AFolder);
   if mFolder = '' then
+  begin
     Exit;
+  end;
   mBestLength := -1;
   for mIndex := 0 to High(AMatches) do
   begin
     if not Usable(AUsable, mIndex) then
+    begin
       Continue;
+    end;
     mKind := KindOf(AMatches[mIndex]);
     mRowFolder := FolderOf(AMatches[mIndex]);
     if (mKind = TAtlasProjectMatch.None) or (mRowFolder = '') then
+    begin
       Continue;
+    end;
     if (mFolder <> mRowFolder) and not mFolder.StartsWith(mRowFolder + '\') then
+    begin
       Continue;
+    end;
     mLength := Length(mRowFolder);
     // Längster Ordner; bei Gleichstand .dproj vor .groupproj vor Ordner (Reihenfolge der Aufzählung).
     if (mLength > mBestLength) or ((mLength = mBestLength) and (Ord(mKind) < Ord(Result.Match))) then
@@ -248,17 +290,25 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AMatches) do
+  begin
     if NormalizedPath(AMatches[mIndex]) = NormalizedPath(AMatch) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
 class function TAtlasProjectMatching.CurrentMatch(const AProjectFile, AGroupFile: string): string;
 begin
   if Trim(AGroupFile) <> '' then
-    Result := Trim(AGroupFile)
+  begin
+    Result := Trim(AGroupFile);
+  end
   else
+  begin
     Result := Trim(AProjectFile);
+  end;
 end;
 
 end.

@@ -69,16 +69,26 @@ var
 begin
   Index := AIndex - 1;
   while (Index >= AFrom) and CharInSet(AText[Index], [' ', #9, #13, #10]) do
+  begin
     Dec(Index);
+  end;
   if Index < AFrom then
+  begin
     Exit(False);
+  end;
   if CharInSet(AText[Index], [')', ']']) then
+  begin
     Exit(True);
+  end;
   if not IsIdentifierChar(AText[Index]) then
+  begin
     Exit(False);
+  end;
   Stop := Index;
   while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
+  begin
     Dec(Index);
+  end;
   Result := not MatchText(Copy(AText, Index + 1, Stop - Index), Keywords);
 end;
 
@@ -89,10 +99,14 @@ var
 begin
   Index := AIndex - 1;
   while (Index >= AFrom) and CharInSet(AText[Index], [' ', #9, #13, #10]) do
+  begin
     Dec(Index);
+  end;
   Stop := Index;
   while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
+  begin
     Dec(Index);
+  end;
   Result := Copy(AText, Index + 1, Stop - Index);
 end;
 
@@ -110,7 +124,9 @@ begin
   if Start > 1 then
   begin
     while (Start <= Stop) and (AText[Start - 1] <> #10) do
+    begin
       Inc(Start);
+    end;
   end;
   Stack := TList<TFrame>.Create;
   try
@@ -127,26 +143,38 @@ begin
               if AText[Index] = '''' then
               begin
                 if (Index < Stop) and (AText[Index + 1] = '''') then
-                  Inc(Index)
+                begin
+                  Inc(Index);
+                end
                 else
+                begin
                   Break;
+                end;
               end;
               Inc(Index);
             end;
           end;
         '{':
           while (Index <= Stop) and (AText[Index] <> '}') do
+          begin
             Inc(Index);
+          end;
         '/':
           if (Index < Stop) and (AText[Index + 1] = '/') then
+          begin
             while (Index <= Stop) and not CharInSet(AText[Index], [#13, #10]) do
+            begin
               Inc(Index);
+            end;
+          end;
         '(':
           if (Index < Stop) and (AText[Index + 1] = '*') then
           begin
             Inc(Index, 2);
             while (Index < Stop) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+            begin
               Inc(Index);
+            end;
             Inc(Index);
           end
           else
@@ -156,7 +184,9 @@ begin
             Frame.IsParen := True;
             Frame.IsCall := FollowsCallee(AText, Start, Index);
             if Frame.IsCall then
+            begin
               Frame.Name := CalleeName(AText, Start, Index);
+            end;
             Stack.Add(Frame);
           end;
         '[':
@@ -169,11 +199,13 @@ begin
           begin
             // Bis zur passenden Klammer abbauen; fehlt sie, ist der Text unvollständig.
             for Level := Stack.Count - 1 downto 0 do
+            begin
               if Stack[Level].IsParen = (AText[Index] = ')') then
               begin
                 Stack.Count := Level;
                 Break;
               end;
+            end;
           end;
         ',':
           if Stack.Count > 0 then
@@ -187,6 +219,7 @@ begin
     end;
     // Innerster offener Aufruf; Klammern zur Gruppierung und [...] darüber gehören zu ihm.
     for Level := Stack.Count - 1 downto 0 do
+    begin
       if Stack[Level].IsParen and Stack[Level].IsCall then
       begin
         Result.Found := True;
@@ -194,10 +227,15 @@ begin
         Result.ActiveParameter := Stack[Level].Commas;
         Result.Name := Stack[Level].Name;
         for Index := 0 to Level - 1 do
+        begin
           if Stack[Index].IsParen and Stack[Index].IsCall then
+          begin
             Result.Outer := Result.Outer + [Stack[Index].Name];
+          end;
+        end;
         Break;
       end;
+    end;
   finally
     Stack.Free;
   end;
@@ -208,11 +246,15 @@ var
   Index: Integer;
 begin
   if Length(AOld) <> Length(ANew) + 1 then
+  begin
     Exit(False);
+  end;
   // Erste Abweichung; dort muss die Klammer gestanden haben, der Rest ist gleich.
   Index := 1;
   while (Index <= Length(ANew)) and (AOld[Index] = ANew[Index]) do
+  begin
     Inc(Index);
+  end;
   Result := (AOld[Index] = ')') and (Copy(AOld, Index + 1, MaxInt) = Copy(ANew, Index, MaxInt));
 end;
 
