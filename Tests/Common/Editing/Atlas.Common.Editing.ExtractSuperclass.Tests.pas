@@ -162,7 +162,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TExtractSuperclass.Plan(Tree, AText, ALine, ARequest, nil, nil, APlan, AReason);
+    Result := TExtractSuperclass.Plan(TClassSource.Create(Tree, AText, ALine), ARequest, nil, nil, APlan, AReason);
   finally
     Tree.Free;
   end;
@@ -205,7 +205,7 @@ var
 begin
   Tree := TPascalParser.Parse(Export_);
   try
-    Assert.IsTrue(TExtractSuperclass.Prepare(Tree, Export_, 4, 'Base',
+    Assert.IsTrue(TExtractSuperclass.Prepare(TClassSource.Create(Tree, Export_, 4), 'Base',
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'TExportBase');
