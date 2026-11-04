@@ -81,6 +81,111 @@ type
 
 implementation
 
+uses
+  System.Math;
+
+type
+  /// <summary>Änderung des Texts: gleicher Anfang und gleiches Ende (unabhängig voneinander), alte Länge,
+  /// Längenunterschied.</summary>
+  TTextChange = record
+    Prefix: Integer;
+    Suffix: Integer;
+    OldLength: Integer;
+    Delta: Integer;
+  end;
+
+function HasNumber(const ANumbers: TArray<Integer>; ANumber: Integer): Boolean;
+var
+  mNumber: Integer;
+begin
+  for mNumber in ANumbers do
+  begin
+    if mNumber = ANumber then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Nummern der Platzhalter ohne Endposition, ohne doppelte, aufsteigend.</summary>
+function SortedNumbers(const AStops: TArray<TAtlasSnippetStop>): TArray<Integer>;
+var
+  mStop: TAtlasSnippetStop;
+  mIndex, mInner, mSwap: Integer;
+begin
+  Result := nil;
+  for mStop in AStops do
+  begin
+    if (mStop.Number > 0) and not HasNumber(Result, mStop.Number) then
+    begin
+      Result := Result + [mStop.Number];
+    end;
+  end;
+  // Aufsteigend sortieren (wenige Einträge).
+  for mIndex := 1 to High(Result) do
+  begin
+    for mInner := mIndex downto 1 do
+    begin
+      if Result[mInner] < Result[mInner - 1] then
+      begin
+        mSwap := Result[mInner];
+        Result[mInner] := Result[mInner - 1];
+        Result[mInner - 1] := mSwap;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Gleicher Anfang und gleiches Ende von AOld und ANew, unabhängig voneinander: Bei "aa" → "aaa" ist jede
+/// Stelle möglich.</summary>
+function ChangeOf(const AOld, ANew: string): TTextChange;
+var
+  mLimit: Integer;
+begin
+  Result.OldLength := Length(AOld);
+  Result.Delta := Length(ANew) - Length(AOld);
+  mLimit := Min(Length(AOld), Length(ANew));
+  Result.Prefix := 0;
+  while (Result.Prefix < mLimit) and (AOld[Result.Prefix + 1] = ANew[Result.Prefix + 1]) do
+  begin
+    Inc(Result.Prefix);
+  end;
+  Result.Suffix := 0;
+  while (Result.Suffix < mLimit) and (AOld[Length(AOld) - Result.Suffix] = ANew[Length(ANew) - Result.Suffix]) do
+  begin
+    Inc(Result.Suffix);
+  end;
+end;
+
+/// <summary>Die Änderung liegt ganz in AField.</summary>
+function Fits(const AField: TAtlasPlaceholderField; const AChange: TTextChange): Boolean;
+begin
+  Result := (AChange.Prefix >= AField.Start) and (AChange.Suffix >= AChange.OldLength - AField.Stop) and
+    (AField.Length + AChange.Delta >= 0);
+end;
+
+/// <summary>Index des Platzhalters der Nummer ANumber, in dem die Änderung liegt: erst APrimary, dann die übrigen;
+/// -1, wenn keiner passt.</summary>
+function FittingField(const AFields: TArray<TAtlasPlaceholderField>; APrimary, ANumber: Integer;
+  const AChange: TTextChange): Integer;
+var
+  mIndex: Integer;
+begin
+  if Fits(AFields[APrimary], AChange) then
+  begin
+    Exit(APrimary);
+  end;
+  for mIndex := 0 to High(AFields) do
+  begin
+    if (mIndex <> APrimary) and (AFields[mIndex].Number = ANumber) and Fits(AFields[mIndex], AChange) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
 { TAtlasPlaceholderField }
 
 function TAtlasPlaceholderField.Stop: Integer;
@@ -93,68 +198,34 @@ end;
 constructor TAtlasPlaceholderSession.Create(const ADocument: string; AOffset: Integer;
   const AExpansion: TAtlasSnippetExpansion);
 var
-  Stop: TAtlasSnippetStop;
-  Field: TAtlasPlaceholderField;
-  Numbers: TArray<Integer>;
-  Number, Index, Swap: Integer;
-  HasEnd, Seen: Boolean;
+  mStop: TAtlasSnippetStop;
+  mField: TAtlasPlaceholderField;
+  mHasEnd: Boolean;
 begin
   inherited Create;
   FText := ADocument;
-  HasEnd := False;
-  Numbers := nil;
-  for Stop in AExpansion.Stops do
+  mHasEnd := False;
+  for mStop in AExpansion.Stops do
   begin
     // Die Endposition gilt nur einmal (die erste).
-    if Stop.Number = 0 then
+    if (mStop.Number = 0) and mHasEnd then
     begin
-      if HasEnd then
-      begin
-        Continue;
-      end
-      else
-      begin
-        HasEnd := True;
-      end;
+      Continue;
     end;
-    Field.Number := Stop.Number;
-    Field.Start := AOffset + Stop.Start;
-    Field.Length := Stop.Length;
-    FFields := FFields + [Field];
-    Seen := False;
-    for Number in Numbers do
-    begin
-      if Number = Stop.Number then
-      begin
-        Seen := True;
-      end;
-    end;
-    if not Seen and (Stop.Number > 0) then
-    begin
-      Numbers := Numbers + [Stop.Number];
-    end;
+    mHasEnd := mHasEnd or (mStop.Number = 0);
+    mField.Number := mStop.Number;
+    mField.Start := AOffset + mStop.Start;
+    mField.Length := mStop.Length;
+    FFields := FFields + [mField];
   end;
-  if not HasEnd then
+  if not mHasEnd then
   begin
-    Field.Number := 0;
-    Field.Start := AOffset + System.Length(AExpansion.Text);
-    Field.Length := 0;
-    FFields := FFields + [Field];
+    mField.Number := 0;
+    mField.Start := AOffset + System.Length(AExpansion.Text);
+    mField.Length := 0;
+    FFields := FFields + [mField];
   end;
-  // Aufsteigend sortieren (wenige Einträge).
-  for Index := 1 to High(Numbers) do
-  begin
-    for Number := Index downto 1 do
-    begin
-      if Numbers[Number] < Numbers[Number - 1] then
-      begin
-        Swap := Numbers[Number];
-        Numbers[Number] := Numbers[Number - 1];
-        Numbers[Number - 1] := Swap;
-      end;
-    end;
-  end;
-  FOrder := Numbers + [0];
+  FOrder := SortedNumbers(AExpansion.Stops) + [0];
   FCurrent := 0;
   FPrimary := FirstOf(FOrder[0]);
 end;
@@ -282,8 +353,8 @@ end;
 
 function TAtlasPlaceholderSession.Update(const ADocument: string): Boolean;
 var
-  Prefix, Suffix, OldLength, NewLength, Delta, Index, Limit: Integer;
-  Field: TAtlasPlaceholderField;
+  mChange: TTextChange;
+  mIndex: Integer;
 begin
   if ADocument = FText then
   begin
@@ -294,53 +365,18 @@ begin
   begin
     Exit;
   end;
-  OldLength := Length(FText);
-  NewLength := Length(ADocument);
-  Delta := NewLength - OldLength;
-  // Gleicher Anfang und gleiches Ende, unabhängig voneinander: Bei "aa" → "aaa" ist jede Stelle möglich.
-  Limit := OldLength;
-  if NewLength < Limit then
+  mChange := ChangeOf(FText, ADocument);
+  mIndex := FittingField(FFields, FPrimary, CurrentNumber, mChange);
+  if mIndex < 0 then
   begin
-    Limit := NewLength;
+    Exit;
   end;
-  Prefix := 0;
-  while (Prefix < Limit) and (FText[Prefix + 1] = ADocument[Prefix + 1]) do
-  begin
-    Inc(Prefix);
-  end;
-  Suffix := 0;
-  while (Suffix < Limit) and (FText[OldLength - Suffix] = ADocument[NewLength - Suffix]) do
-  begin
-    Inc(Suffix);
-  end;
-  // Erst der Platzhalter mit dem Cursor, dann die übrigen der Nummer.
-  for Index := -1 to High(FFields) do
-  begin
-    if Index < 0 then
-    begin
-      Field := FFields[FPrimary];
-    end
-    else if (Index = FPrimary) or (FFields[Index].Number <> CurrentNumber) then
-    begin
-      Continue;
-    end
-    else
-    begin
-      Field := FFields[Index];
-    end;
-    if (Prefix >= Field.Start) and (Suffix >= OldLength - Field.Stop) and (Field.Length + Delta >= 0) then
-    begin
-      if Index >= 0 then
-      begin
-        FPrimary := Index;
-      end;
-      Shift(FFields[FPrimary].Stop, Delta, FPrimary);
-      // Eine leere Endposition direkt am Anfang des Platzhalters bleibt davor.
-      Inc(FFields[FPrimary].Length, Delta);
-      FText := ADocument;
-      Exit(True);
-    end;
-  end;
+  FPrimary := mIndex;
+  Shift(FFields[FPrimary].Stop, mChange.Delta, FPrimary);
+  // Eine leere Endposition direkt am Anfang des Platzhalters bleibt davor.
+  Inc(FFields[FPrimary].Length, mChange.Delta);
+  FText := ADocument;
+  Result := True;
 end;
 
 function TAtlasPlaceholderSession.MirrorEdits: TAtlasPlaceholderEdits;
