@@ -27,7 +27,7 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.DataFlow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.CodeInsight.Manager,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Commands.QuickOpen,
@@ -153,7 +153,7 @@ end;
 /// <summary>Protokoll öffnen aus der Palette: nur das Diagnoseprotokoll.</summary>
 procedure OpenDiagnoseLog;
 begin
-  OpenInEditor(TAtlasCodeInsightManager.DiagnoseLog);
+  OpenInEditor(TAtlasCodeInsightPaths.DiagnoseLog);
 end;
 
 procedure AddNavigationCommands(APalette: TAtlasIdePalette);

@@ -32,7 +32,7 @@ uses
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.CodeInsight.Manager,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Tools,
@@ -132,7 +132,7 @@ begin
     end;
   mHooks.ToolbarCommands := TAtlasIdeEditorToolbar.CommandInfos;
   mHooks.ServerPath := ServerPath;
-  mHooks.DefaultServerPath := TAtlasCodeInsightManager.DefaultServerPath;
+  mHooks.DefaultServerPath := TAtlasCodeInsightPaths.DefaultServerPath;
   mHooks.IdeTemplateFolder := TAtlasEditorCompletion.IdeTemplateFolder;
   mHooks.SnippetFolder := TAtlasEditorCompletion.SnippetFolder;
   TAtlasOptionsRegistration.Register(mHooks);

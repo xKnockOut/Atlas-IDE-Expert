@@ -235,6 +235,14 @@
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.FormatMarks.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Paths.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Editors.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.State.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Handlers.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Session.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Commands.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Crashes.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Queries.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.Adapters.pas"/>
