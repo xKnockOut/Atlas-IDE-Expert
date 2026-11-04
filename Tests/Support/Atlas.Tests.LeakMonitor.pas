@@ -262,7 +262,7 @@ begin
     end;
     Exported := TAtlasSettingsTransfer.ExportSettings(Catalog, State, TAtlasExportOptions.ForBackup, Environment);
     TAtlasSettingsTransfer.Apply(Catalog, State, TAtlasSettingsTransfer.Preview(Catalog, State,
-      TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Environment, '', ''));
+      TAtlasSettingsTransfer.ParseFile(Exported.Text), TAtlasImportOptions.Create(imMerge, nil, Environment)));
   finally
     Catalog.Free;
   end;
