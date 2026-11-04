@@ -122,8 +122,17 @@ type
     function DeclarationText(const ALocation: TSymbolLocation): string;
     /// <summary>Symbole AName aus der geprüften Unit (FileName '') und dem Index.</summary>
     function Members(const AName: string): TArray<TSymbolLocation>;
+    /// <summary>Die Property AName, wie AClassName selbst sie deklariert.</summary>
+    function DeclaredIn(const AClassName, AName: string; out AMember: TSymbolLocation): Boolean;
+    /// <summary>stored, nodefault und default aus ADeclaration in AInfo übernehmen; ADecided: eine Angabe
+    /// gefunden.</summary>
+    procedure ReadDirectives(const ADeclaration: string; var AInfo: TPropertyInfo; var ADecided: Boolean);
     /// <summary>Deklarationen von AName in AClassName und den Vorfahren, die jüngste zuerst.</summary>
     function PropertyInfo(const AClassName, AName: string): TPropertyInfo;
+    /// <summary>Angaben zum letzten Teil von AParts (Font.Name): über den Typ jeder Zwischen-Property zur
+    /// Klasse des letzten Teils; False, wenn eine Zwischen-Property unbekannt oder nicht gespeichert ist.
+    /// </summary>
+    function PathInfo(const AClassName: string; const AParts: TArray<string>; out AInfo: TPropertyInfo): Boolean;
   public
     /// <summary>AUnit: die geprüfte Unit; ihre Klassen (z. B. die Formularklasse) stehen evtl. nicht im Index.</summary>
     constructor Create(const AContext: TRuleContext; const AUnit: TUnitIndex);
@@ -280,125 +289,155 @@ begin
   Result := Trim(Result);
 end;
 
+function TPropertyChecker.DeclaredIn(const AClassName, AName: string; out AMember: TSymbolLocation): Boolean;
+var
+  mMember: TSymbolLocation;
+begin
+  for mMember in Members(AName) do
+  begin
+    if (mMember.Symbol.Kind = TIndexSymbolKind.Property_) and SameText(mMember.Symbol.Container, AClassName) then
+    begin
+      AMember := mMember;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TPropertyChecker.ReadDirectives(const ADeclaration: string; var AInfo: TPropertyInfo;
+  var ADecided: Boolean);
+var
+  mMatch: TMatch;
+begin
+  mMatch := FStored.Match(ADeclaration);
+  if mMatch.Success then
+  begin
+    AInfo.StoredUnknown := not SameText(mMatch.Groups[1].Value, 'True');
+    ADecided := True;
+  end;
+  if ContainsText(ADeclaration, 'nodefault') then
+  begin
+    AInfo.NoDefault := True;
+    ADecided := True;
+  end
+  else if DefaultOf(FDefault, ADeclaration, AInfo.DefaultValue) then
+  begin
+    AInfo.HasDefault := True;
+    ADecided := True;
+  end;
+end;
+
 function TPropertyChecker.PropertyInfo(const AClassName, AName: string): TPropertyInfo;
 var
-  Name, Declaration, Stored: string;
-  Location, Member: TSymbolLocation;
-  Depth: Integer;
-  Match: TMatch;
-  Decided: Boolean;
+  mName, mDeclaration: string;
+  mLocation, mMember: TSymbolLocation;
+  mDepth: Integer;
+  mMatch: TMatch;
+  mDecided: Boolean;
 begin
   Result := Default(TPropertyInfo);
-  Decided := False;
-  Name := AClassName;
-  for Depth := 1 to MaxDepth do
+  mDecided := False;
+  mName := AClassName;
+  for mDepth := 1 to MaxDepth do
   begin
-    if not FindClass(Name, Location) then
+    if not FindClass(mName, mLocation) then
     begin
       Exit;
     end;
-    for Member in Members(AName) do
+    if DeclaredIn(mName, AName, mMember) then
     begin
-      if (Member.Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Member.Symbol.Container, Name) then
+      Result.Found := True;
+      mDeclaration := DeclarationText(mMember);
+      // Die jüngste Angabe gilt; eine Hochstufung ohne Angaben (property X;) erbt sie.
+      if not mDecided then
       begin
-        Result.Found := True;
-        Declaration := DeclarationText(Member);
-        // Die jüngste Angabe gilt; eine Hochstufung ohne Angaben (property X;) erbt sie.
-        if not Decided then
-        begin
-          Match := FStored.Match(Declaration);
-          if Match.Success then
-          begin
-            Stored := Match.Groups[1].Value;
-            Result.StoredUnknown := not SameText(Stored, 'True');
-            Decided := True;
-          end;
-          if ContainsText(Declaration, 'nodefault') then
-          begin
-            Result.NoDefault := True;
-            Decided := True;
-          end
-          else if DefaultOf(FDefault, Declaration, Result.DefaultValue) then
-          begin
-            Result.HasDefault := True;
-            Decided := True;
-          end;
-        end;
-        // Typ steht nur in der ersten Deklaration; eine Hochstufung (property X;) erbt ihn.
-        Match := FPropertyType.Match(Declaration);
-        if Match.Success then
-        begin
-          Result.TypeName := Match.Groups[1].Value;
-          Exit;
-        end;
-        Break;
+        ReadDirectives(mDeclaration, Result, mDecided);
+      end;
+      // Typ steht nur in der ersten Deklaration; eine Hochstufung (property X;) erbt ihn.
+      mMatch := FPropertyType.Match(mDeclaration);
+      if mMatch.Success then
+      begin
+        Result.TypeName := mMatch.Groups[1].Value;
+        Exit;
       end;
     end;
-    if Length(Location.Symbol.Ancestors) = 0 then
+    if Length(mLocation.Symbol.Ancestors) = 0 then
     begin
       Exit;
     end;
-    Name := Location.Symbol.Ancestors[0];
+    mName := mLocation.Symbol.Ancestors[0];
+  end;
+end;
+
+function TPropertyChecker.PathInfo(const AClassName: string; const AParts: TArray<string>;
+  out AInfo: TPropertyInfo): Boolean;
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  mName := AClassName;
+  for mIndex := 0 to High(AParts) - 1 do
+  begin
+    AInfo := PropertyInfo(mName, AParts[mIndex]);
+    // Nicht gespeichertes Objekt (stored IsFontStored, ParentFont): Werte kommen von anderswo.
+    if not AInfo.Found or (AInfo.TypeName = '') or AInfo.StoredUnknown then
+    begin
+      Exit(False);
+    end;
+    mName := AInfo.TypeName;
+  end;
+  AInfo := PropertyInfo(mName, AParts[High(AParts)]);
+  Result := True;
+end;
+
+/// <summary>Ohne default speichert die VCL alles außer dem Nullwert des Typs ATypeName; False, wenn er
+/// unbekannt ist.</summary>
+function ZeroValue(const ATypeName: string; out AValue: string): Boolean;
+begin
+  Result := True;
+  AValue := '';
+  if SameText(ATypeName, 'Boolean') then
+  begin
+    AValue := 'False';
+  end
+  else if MatchText(ATypeName, ['Integer', 'Cardinal', 'Byte', 'Word', 'SmallInt', 'ShortInt', 'Int64',
+    'UInt64', 'NativeInt', 'NativeUInt', 'LongInt', 'LongWord', 'TColor']) then
+  begin
+    AValue := '0';
+  end
+  else
+  begin
+    Result := MatchText(ATypeName, StringTypes);
   end;
 end;
 
 function TPropertyChecker.DefaultValue(const AClassName, APath: string; out AValue, ATypeName: string): Boolean;
 var
-  Parts: TArray<string>;
-  Name: string;
-  Index: Integer;
-  Info: TPropertyInfo;
+  mParts: TArray<string>;
+  mInfo: TPropertyInfo;
 begin
   Result := False;
   AValue := '';
   ATypeName := '';
-  Parts := APath.Split(['.']);
-  if Length(Parts) = 0 then
+  mParts := APath.Split(['.']);
+  if (Length(mParts) = 0) or not PathInfo(AClassName, mParts, mInfo) then
   begin
     Exit;
   end;
-  // Verschachtelt (Font.Name): über den Typ jeder Zwischen-Property zur Klasse des letzten Teils.
-  Name := AClassName;
-  for Index := 0 to High(Parts) - 1 do
-  begin
-    Info := PropertyInfo(Name, Parts[Index]);
-    // Nicht gespeichertes Objekt (stored IsFontStored, ParentFont): Werte kommen von anderswo.
-    if not Info.Found or (Info.TypeName = '') or Info.StoredUnknown then
-    begin
-      Exit;
-    end;
-    Name := Info.TypeName;
-  end;
-  Info := PropertyInfo(Name, Parts[High(Parts)]);
-  ATypeName := Info.TypeName;
-  if not Info.Found or Info.StoredUnknown or Info.NoDefault then
+  ATypeName := mInfo.TypeName;
+  if not mInfo.Found or mInfo.StoredUnknown or mInfo.NoDefault then
   begin
     Exit;
   end;
-  if Info.HasDefault then
+  if mInfo.HasDefault then
   begin
-    AValue := Info.DefaultValue;
-    Exit(True);
-  end;
-  // Ohne default speichert die VCL alles außer dem Nullwert des Typs.
-  if SameText(Info.TypeName, 'Boolean') then
-  begin
-    AValue := 'False';
-  end
-  else if MatchText(Info.TypeName, ['Integer', 'Cardinal', 'Byte', 'Word', 'SmallInt', 'ShortInt', 'Int64',
-    'UInt64', 'NativeInt', 'NativeUInt', 'LongInt', 'LongWord', 'TColor']) then
-  begin
-    AValue := '0';
-  end
-  else if MatchText(Info.TypeName, StringTypes) then
-  begin
-    AValue := '';
+    AValue := mInfo.DefaultValue;
+    Result := True;
   end
   else
   begin
-    Exit;
+    Result := ZeroValue(mInfo.TypeName, AValue);
   end;
-  Result := True;
 end;
 
 function TPropertyChecker.HasProperty(const AClassName, APath: string; out AMissing: string): Boolean;
@@ -593,43 +632,49 @@ begin
   end;
 end;
 
-class function TDfmPropertyCheckRule.DfmString(const AValue: string): string;
-var
-  Ch: Char;
-  Quoted: Boolean;
+/// <summary>Zeichen ACh an den DFM-Text AResult anhängen; AQuoted: AResult endet in Hochkommas.</summary>
+procedure AppendDfmChar(var AResult: string; var AQuoted: Boolean; ACh: Char);
 begin
-  // Wie die IDE: druckbares ASCII in Hochkommas, alles andere als #Code.
-  Result := '';
-  Quoted := False;
-  for Ch in AValue do
+  if (Ord(ACh) >= 32) and (Ord(ACh) < 127) then
   begin
-    if (Ord(Ch) >= 32) and (Ord(Ch) < 127) then
+    if not AQuoted then
     begin
-      if not Quoted then
-      begin
-        Result := Result + '''';
-      end;
-      Quoted := True;
-      if Ch = '''' then
-      begin
-        Result := Result + '''''';
-      end
-      else
-      begin
-        Result := Result + Ch;
-      end;
+      AResult := AResult + '''';
+    end;
+    AQuoted := True;
+    if ACh = '''' then
+    begin
+      AResult := AResult + '''''';
     end
     else
     begin
-      if Quoted then
-      begin
-        Result := Result + '''';
-      end;
-      Quoted := False;
-      Result := Result + '#' + IntToStr(Ord(Ch));
+      AResult := AResult + ACh;
     end;
+  end
+  else
+  begin
+    if AQuoted then
+    begin
+      AResult := AResult + '''';
+    end;
+    AQuoted := False;
+    AResult := AResult + '#' + IntToStr(Ord(ACh));
   end;
-  if Quoted then
+end;
+
+class function TDfmPropertyCheckRule.DfmString(const AValue: string): string;
+var
+  mCh: Char;
+  mQuoted: Boolean;
+begin
+  // Wie die IDE: druckbares ASCII in Hochkommas, alles andere als #Code.
+  Result := '';
+  mQuoted := False;
+  for mCh in AValue do
+  begin
+    AppendDfmChar(Result, mQuoted, mCh);
+  end;
+  if mQuoted then
   begin
     Result := Result + '''';
   end;
@@ -673,18 +718,49 @@ begin
   Result := '[' + string.Join(', ', AElements) + ']';
 end;
 
+/// <summary>Menge AActual ohne das Element AElement.</summary>
+function SetWithout(const AActual, AElement: string): string;
+var
+  mKept: TArray<string>;
+  mElement: string;
+begin
+  mKept := nil;
+  for mElement in SetElements(AActual) do
+  begin
+    if not SameText(mElement, AElement) then
+    begin
+      mKept := mKept + [mElement];
+    end;
+  end;
+  Result := JoinSet(mKept);
+end;
+
+/// <summary>Leerer Wert für AActual: [] bei Mengen, '' bei Strings; False, wenn er unbekannt ist.</summary>
+function EmptyValue(const AActual: string; AStringType: Boolean; out AValue: string): Boolean;
+begin
+  Result := True;
+  if IsSet(AActual) then
+  begin
+    AValue := '[]';
+  end
+  else if AStringType or StartsStr('''', Trim(AActual)) or StartsStr('#', Trim(AActual)) then
+  begin
+    AValue := '''''';
+  end
+  else
+  begin
+    AValue := '';
+    Result := False;
+  end;
+end;
+
 /// <summary>Neuer Wert, der die Regel erfüllt; False, wenn es keinen eindeutigen gibt.</summary>
 function TargetValue(const ARule: TDfmPropertyRule; const AActual: string; AStringType: Boolean;
   out AValue, ATitle: string): Boolean;
-var
-  Kept: TArray<string>;
-  Element: string;
-  IsSetValue: Boolean;
 begin
   Result := True;
   AValue := '';
   ATitle := '';
-  IsSetValue := IsSet(AActual);
   case ARule.Condition of
     TDfmCondition.Equal:
       begin
@@ -693,44 +769,19 @@ begin
       end;
     TDfmCondition.Contains:
       begin
-        if not IsSetValue then
-        begin
-          Exit(False);
-        end;
+        Result := IsSet(AActual);
         AValue := JoinSet(SetElements(AActual) + [Trim(ARule.Value)]);
         ATitle := Format('%s in %s ergänzen', [Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.NotContains:
       begin
-        if not IsSetValue then
-        begin
-          Exit(False);
-        end;
-        Kept := nil;
-        for Element in SetElements(AActual) do
-        begin
-          if not SameText(Element, Trim(ARule.Value)) then
-          begin
-            Kept := Kept + [Element];
-          end;
-        end;
-        AValue := JoinSet(Kept);
+        Result := IsSet(AActual);
+        AValue := SetWithout(AActual, Trim(ARule.Value));
         ATitle := Format('%s aus %s entfernen', [Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.Empty:
       begin
-        if IsSetValue then
-        begin
-          AValue := '[]';
-        end
-        else if AStringType or StartsStr('''', Trim(AActual)) or StartsStr('#', Trim(AActual)) then
-        begin
-          AValue := '''''';
-        end
-        else
-        begin
-          Exit(False);
-        end;
+        Result := EmptyValue(AActual, AStringType, AValue);
         ATitle := Format('%s in der Formulardatei leeren', [ARule.PropertyPath]);
       end;
   else
@@ -751,179 +802,254 @@ begin
   Result := Copy(ALine, 1, Count);
 end;
 
-/// <summary>Edit in der Formulardatei: gespeicherten Wert ersetzen oder eine Zeile nach den Properties
-/// des Objekts einfügen.</summary>
-function FormEdit(const AFormLines: TArray<string>; const ALineBreak: string; AObject: TDfmObject;
-  const AName, AValue: string; AStored: Boolean; const AProperty: TDfmProperty): TRuleEdit;
+/// <summary>Edit in der Formulardatei: eine Zeile AName = AValue nach den Properties des Objekts einfügen.
+/// </summary>
+function InsertEdit(const AFormLines: TArray<string>; const ALineBreak: string; AObject: TDfmObject;
+  const AName, AValue: string): TRuleEdit;
 var
-  Item: TDfmProperty;
-  Line: Integer;
-  Indent: string;
+  mItem: TDfmProperty;
+  mLine: Integer;
+  mIndent: string;
 begin
-  if AStored then
-  begin
-    Exit(TRuleEdit.Create(AProperty.ValueRange, AValue));
-  end;
   // Hinter der letzten Property, vor den Kindobjekten; ohne Properties hinter der Kopfzeile.
-  Line := AObject.TypeRange.EndPos.Line;
-  for Item in AObject.Properties do
+  mLine := AObject.TypeRange.EndPos.Line;
+  for mItem in AObject.Properties do
   begin
-    if Item.ValueRange.EndPos.Line > Line then
+    if mItem.ValueRange.EndPos.Line > mLine then
     begin
-      Line := Item.ValueRange.EndPos.Line;
+      mLine := mItem.ValueRange.EndPos.Line;
     end;
   end;
-  Indent := '';
+  mIndent := '';
   if (AObject.Range.StartPos.Line >= 0) and (AObject.Range.StartPos.Line <= High(AFormLines)) then
   begin
-    Indent := LeadingSpaces(AFormLines[AObject.Range.StartPos.Line]);
+    mIndent := LeadingSpaces(AFormLines[AObject.Range.StartPos.Line]);
   end;
-  Result := TRuleEdit.Create(TTextRange.Create(Line + 1, 0, Line + 1, 0),
-    Indent + '  ' + AName + ' = ' + AValue + ALineBreak);
+  Result := TRuleEdit.Create(TTextRange.Create(mLine + 1, 0, mLine + 1, 0),
+    mIndent + '  ' + AName + ' = ' + AValue + ALineBreak);
+end;
+
+type
+  /// <summary>Wert einer Property an einem Objekt: gespeichert oder aus der Deklaration.</summary>
+  TDfmActual = record
+    Stored: Boolean;
+    /// <summary>Gespeicherte Property, wenn Stored.</summary>
+    Prop: TDfmProperty;
+    Value: string;
+    /// <summary>Typ der nicht gespeicherten Property; '' wenn unbekannt.</summary>
+    TypeName: string;
+  end;
+
+  /// <summary>Ein Lauf von dfm-property-check über eine Unit samt Formulardatei.</summary>
+  TDfmPropertyRun = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FModel: TFormModel;
+    FChecker: TPropertyChecker;
+    FUnit: TUnitIndex;
+    FClassRange: TTextRange;
+    FCanFix: Boolean;
+    FLineBreak: string;
+    FFormLines: TArray<string>;
+    /// <summary>Bereich der Formularklasse; False, wenn die Unit sie nicht deklariert.</summary>
+    function FindClassRange: Boolean;
+    /// <summary>Wert von ARule.PropertyPath an AObject; False, wenn er unbekannt oder Sache des Vorfahren ist.
+    /// </summary>
+    function ActualOf(const ARule: TDfmPropertyRule; AObject: TDfmObject; out AActual: TDfmActual): Boolean;
+    /// <summary>Gemeldet wird am Feld der Komponente, sonst an der Formularklasse.</summary>
+    function RangeOf(AObject: TDfmObject): TTextRange;
+    function FixesOf(const ARule: TDfmPropertyRule; AObject: TDfmObject; const AActual: TDfmActual): TArray<TRuleFix>;
+    procedure CheckObject(const ARule: TDfmPropertyRule; AObject: TDfmObject);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
+    procedure Run;
+  end;
+
+{ TDfmPropertyRun }
+
+constructor TDfmPropertyRun.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
+  FUnit := TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext);
+  FModel := TFormModel.Create(AContext.FormText);
+  FChecker := TPropertyChecker.Create(AContext, FUnit);
+end;
+
+destructor TDfmPropertyRun.Destroy;
+begin
+  FChecker.Free;
+  FModel.Free;
+  inherited;
+end;
+
+function TDfmPropertyRun.FindClassRange: Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  FClassRange := Default(TTextRange);
+  for mSymbol in FUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and
+      SameText(mSymbol.Name, FModel.FormClass) then
+    begin
+      FClassRange := mSymbol.SelectionRange;
+    end;
+  end;
+  Result := FClassRange.StartPos <> FClassRange.EndPos;
+end;
+
+function TDfmPropertyRun.ActualOf(const ARule: TDfmPropertyRule; AObject: TDfmObject;
+  out AActual: TDfmActual): Boolean;
+var
+  mProp: TDfmProperty;
+begin
+  AActual := Default(TDfmActual);
+  for mProp in AObject.Properties do
+  begin
+    if SameText(mProp.Name, ARule.PropertyPath) then
+    begin
+      AActual.Stored := True;
+      AActual.Prop := mProp;
+      AActual.Value := Trim(mProp.Value);
+      Exit(True);
+    end;
+  end;
+  // Aus dem Vorfahrenformular und hier nicht gesetzt: Sache des Vorfahren.
+  Result := (AObject.Kind <> TDfmObjectKind.Inherited_) and
+    FChecker.DefaultValue(AObject.TypeName, ARule.PropertyPath, AActual.Value, AActual.TypeName);
+end;
+
+function TDfmPropertyRun.RangeOf(AObject: TDfmObject): TTextRange;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := FClassRange;
+  if AObject = FModel.Document.Root then
+  begin
+    Exit;
+  end;
+  for mSymbol in FUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, FModel.FormClass) and
+      SameText(mSymbol.Name, AObject.Name) then
+    begin
+      Exit(mSymbol.SelectionRange);
+    end;
+  end;
+end;
+
+function TDfmPropertyRun.FixesOf(const ARule: TDfmPropertyRule; AObject: TDfmObject;
+  const AActual: TDfmActual): TArray<TRuleFix>;
+var
+  mStringType: Boolean;
+  mTarget, mTitle: string;
+  mEdit: TRuleEdit;
+  mFix: TRuleFix;
+begin
+  Result := nil;
+  if not FCanFix or (ARule.Fix = TDfmFixMode.None) then
+  begin
+    Exit;
+  end;
+  if AActual.Stored then
+  begin
+    mStringType := StartsStr('''', AActual.Value) or StartsStr('#', AActual.Value);
+  end
+  else
+  begin
+    mStringType := MatchText(AActual.TypeName, StringTypes);
+  end;
+  if not TargetValue(ARule, AActual.Value, mStringType, mTarget, mTitle) then
+  begin
+    Exit;
+  end;
+  // Gespeicherten Wert ersetzen oder eine Zeile einfügen.
+  if AActual.Stored then
+  begin
+    mEdit := TRuleEdit.Create(AActual.Prop.ValueRange, mTarget);
+  end
+  else
+  begin
+    mEdit := InsertEdit(FFormLines, FLineBreak, AObject, ARule.PropertyPath, mTarget);
+  end;
+  mFix := TRuleFix.Create(Format('%s: %s', [AObject.Name, mTitle]), [mEdit], ARule.Fix = TDfmFixMode.Auto);
+  mFix.FileName := FContext.FormFile;
+  Result := [mFix];
+end;
+
+procedure TDfmPropertyRun.CheckObject(const ARule: TDfmPropertyRule; AObject: TDfmObject);
+var
+  mActual: TDfmActual;
+  mMessage: string;
+begin
+  if not FChecker.IsClassOrDescendant(AObject.TypeName, ARule.ClassName, ARule.IncludeDescendants) or
+    not ActualOf(ARule, AObject, mActual) or
+    TDfmPropertyCheckRule.Satisfies(ARule.Condition, mActual.Value, ARule.Value) then
+  begin
+    Exit;
+  end;
+  if ARule.Message <> '' then
+  begin
+    mMessage := Format('%s (%s): %s', [AObject.Name, AObject.TypeName, ARule.Message]);
+  end
+  else
+  begin
+    mMessage := DefaultMessage(ARule, AObject, mActual.Value);
+  end;
+  FReport.AddWithSeverity(RangeOf(AObject), mMessage, ARule.Severity, FixesOf(ARule, AObject, mActual));
+end;
+
+procedure TDfmPropertyRun.Run;
+var
+  mObjects: TArray<TDfmObject>;
+  mObject: TDfmObject;
+  mRule: TDfmPropertyRule;
+begin
+  if (FModel.Document.Root = nil) or (FModel.FormClass = '') or not FindClassRange then
+  begin
+    Exit;
+  end;
+  // Korrigiert wird nur eine Text-Formulardatei mit bekanntem Pfad.
+  FCanFix := (FContext.FormFile <> '') and not FModel.Binary;
+  FLineBreak := TTextLines.LineBreakOf(FContext.FormText);
+  FFormLines := nil;
+  if FCanFix then
+  begin
+    FFormLines := FContext.FormText.Replace(#13#10, #10).Split([#10]);
+  end;
+  mObjects := nil;
+  CollectObjects(FModel.Document.Root, mObjects);
+  for mRule in FContext.DfmPropertyRules do
+  begin
+    if (mRule.Severity <> TRuleSeverity.Off) and not IsExcluded(mRule, FContext.RelativePath) then
+    begin
+      for mObject in mObjects do
+      begin
+        CheckObject(mRule, mObject);
+      end;
+    end;
+  end;
 end;
 
 procedure TDfmPropertyCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TFormModel;
-  Checker: TPropertyChecker;
-  Objects: TArray<TDfmObject>;
-  Obj: TDfmObject;
-  Rule: TDfmPropertyRule;
-  Prop, Found: TDfmProperty;
-  Stored, StringType, CanFix: Boolean;
-  Actual, Message, TypeName, Target, Title, LineBreak: string;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  ClassRange, Range: TTextRange;
-  Cache: IRuleDerivedCache;
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
-  FormLines: TArray<string>;
+  mRun: TDfmPropertyRun;
 begin
   if (Length(AContext.DfmPropertyRules) = 0) or (AContext.FormText = '') or (AContext.Tree = nil) then
   begin
     Exit;
   end;
   // Gemeldet wird in der Unit: am Feld der Komponente, sonst an der Formularklasse.
-  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
-  Cache := TRuleDerived.Open(AContext);
-  UnitIndex := TRuleDerived.UnitIndex(Cache, AContext);
-  Model := TFormModel.Create(AContext.FormText);
-  Checker := TPropertyChecker.Create(AContext, UnitIndex);
+  mRun := TDfmPropertyRun.Create(AContext, AReport);
   try
-    if (Model.Document.Root = nil) or (Model.FormClass = '') then
-    begin
-      Exit;
-    end;
-    ClassRange := Default(TTextRange);
-    for Symbol in UnitIndex.Symbols do
-    begin
-      if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
-        SameText(Symbol.Name, Model.FormClass) then
-      begin
-        ClassRange := Symbol.SelectionRange;
-      end;
-    end;
-    if ClassRange.StartPos = ClassRange.EndPos then
-    begin
-      Exit;
-    end;
-    // Korrigiert wird nur eine Text-Formulardatei mit bekanntem Pfad.
-    CanFix := (AContext.FormFile <> '') and not Model.Binary;
-    LineBreak := TTextLines.LineBreakOf(AContext.FormText);
-    FormLines := nil;
-    if CanFix then
-    begin
-      FormLines := AContext.FormText.Replace(#13#10, #10).Split([#10]);
-    end;
-    Objects := nil;
-    CollectObjects(Model.Document.Root, Objects);
-    for Rule in AContext.DfmPropertyRules do
-    begin
-      if (Rule.Severity = TRuleSeverity.Off) or IsExcluded(Rule, AContext.RelativePath) then
-      begin
-        Continue;
-      end;
-      for Obj in Objects do
-      begin
-        if not Checker.IsClassOrDescendant(Obj.TypeName, Rule.ClassName, Rule.IncludeDescendants) then
-        begin
-          Continue;
-        end;
-        Stored := False;
-        Actual := '';
-        TypeName := '';
-        Found := Default(TDfmProperty);
-        for Prop in Obj.Properties do
-        begin
-          if SameText(Prop.Name, Rule.PropertyPath) then
-          begin
-            Stored := True;
-            Found := Prop;
-            Actual := Trim(Prop.Value);
-            Break;
-          end;
-        end;
-        // Aus dem Vorfahrenformular und hier nicht gesetzt: Sache des Vorfahren.
-        if not Stored and (Obj.Kind = TDfmObjectKind.Inherited_) then
-        begin
-          Continue;
-        end;
-        if not Stored and not Checker.DefaultValue(Obj.TypeName, Rule.PropertyPath, Actual, TypeName) then
-        begin
-          Continue;
-        end;
-        if Satisfies(Rule.Condition, Actual, Rule.Value) then
-        begin
-          Continue;
-        end;
-        Range := ClassRange;
-        if Obj <> Model.Document.Root then
-        begin
-          for Symbol in UnitIndex.Symbols do
-          begin
-            if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, Model.FormClass) and
-              SameText(Symbol.Name, Obj.Name) then
-            begin
-              Range := Symbol.SelectionRange;
-              Break;
-            end;
-          end;
-        end;
-        if Rule.Message <> '' then
-        begin
-          Message := Format('%s (%s): %s', [Obj.Name, Obj.TypeName, Rule.Message]);
-        end
-        else
-        begin
-          Message := DefaultMessage(Rule, Obj, Actual);
-        end;
-        Fixes := nil;
-        if CanFix and (Rule.Fix <> TDfmFixMode.None) then
-        begin
-          if Stored then
-          begin
-            StringType := StartsStr('''', Actual) or StartsStr('#', Actual);
-          end
-          else
-          begin
-            StringType := MatchText(TypeName, StringTypes);
-          end;
-          if TargetValue(Rule, Actual, StringType, Target, Title) then
-          begin
-            Fix := TRuleFix.Create(Format('%s: %s', [Obj.Name, Title]),
-              [FormEdit(FormLines, LineBreak, Obj, Rule.PropertyPath, Target, Stored, Found)],
-              Rule.Fix = TDfmFixMode.Auto);
-            Fix.FileName := AContext.FormFile;
-            Fixes := [Fix];
-          end;
-        end;
-        AReport.AddWithSeverity(Range, Message, Rule.Severity, Fixes);
-      end;
-    end;
+    mRun.Run;
   finally
-    Checker.Free;
-    Model.Free;
+    mRun.Free;
   end;
 end;
 
