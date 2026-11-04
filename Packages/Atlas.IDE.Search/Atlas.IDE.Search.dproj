@@ -113,6 +113,7 @@
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.FileSearch.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.ReplaceWindow.pas"/>
+        <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Actions.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>
         <DCCReference Include="Source\UI\Query\Atlas.UI.Query.Frame.pas">
             <Form>AtlasCodeQueryFrame</Form>
