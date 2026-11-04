@@ -36,6 +36,26 @@ uses
   Atlas.Common.Editing.Contract;
 
 type
+  /// <summary>Umgebung, in der ein Schnellbefehl läuft: Namespace-Präfixe für /uses, abgeschaltete Befehle
+  /// (slashCommands.disabled), Index für Vorfahren aus anderen Units, Delphi-Version, Datei, Host (nil ohne
+  /// Editor) und Formatstil für die Einrückung (#43).</summary>
+  TSlashEnvironment = record
+    Namespaces: TArray<string>;
+    Disabled: TArray<string>;
+    Index: ISymbolIndex;
+    DelphiVersion: string;
+    Uri: string;
+    Host: ISlashHost;
+    Style: TFormatStyle;
+    /// <summary>Ohne Index, Delphi-Version, Datei und Host, mit dem Vorgabestil.</summary>
+    class function Create(const ANamespaces, ADisabled: TArray<string>): TSlashEnvironment; overload; static;
+    /// <summary>Mit dem Vorgabestil.</summary>
+    class function Create(const ANamespaces, ADisabled: TArray<string>; const AIndex: ISymbolIndex;
+      const ADelphiVersion, AUri: string; const AHost: ISlashHost): TSlashEnvironment; overload; static;
+    /// <summary>Kopie mit dem Formatstil AStyle.</summary>
+    function WithStyle(const AStyle: TFormatStyle): TSlashEnvironment;
+  end;
+
   TSlashCommandRegistry = class
   private
     FCommands: TList<TSlashCommand>;
@@ -57,37 +77,19 @@ type
     class function IsCodeLine(const ATokens: TArray<TPascalToken>; ALine: Integer): Boolean; static;
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
-    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-      const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean; overload;
-    /// <summary>Wie oben mit AHost = nil.</summary>
-    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-      const ADelphiVersion, AUri: string): Boolean; overload;
-    /// <summary>Wie oben mit AUri = '' und AHost = nil.</summary>
-    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-      const ADelphiVersion: string): Boolean; overload;
-    /// <summary>Wie oben mit ADelphiVersion = '', AUri = '' und AHost = nil.</summary>
+    function AfterEnter(const AText: string; const APosition: TTextPosition; const AEnvironment: TSlashEnvironment;
+      out AEdits: TArray<TTextEdit>): Boolean; overload;
+    /// <summary>Wie oben mit AIndex, ohne Delphi-Version, Datei und Host, im Vorgabestil.</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
       ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex): Boolean; overload;
-    /// <summary>Wie oben ohne Index (AIndex = nil, ADelphiVersion = '', AUri = '', AHost = nil).</summary>
+    /// <summary>Wie oben ohne Index.</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
       ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean; overload;
-    /// <summary>Wie AfterEnter, mit der Einrückung nach AStyle (#43).</summary>
-    function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
-      const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>): Boolean; overload;
     /// <summary>Führt die Befehlszeile ALine (ab 0) aus wie AfterEnter, aber mit Grund (#719): False mit AReason,
     /// wenn dort kein ausführbarer Befehl steht. AWrapUntil &gt; ALine begrenzt das Umschließen auf die Zeilen
     /// davor (TSlashContext.WrapUntil); 0 = bis zum Blockende.</summary>
-    function Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces, ADisabled: TArray<string>;
-      const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string; const AHost: ISlashHost;
-      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; overload;
-    /// <summary>Wie Run, mit der Einrückung nach AStyle (#43).</summary>
-    function Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces, ADisabled: TArray<string>;
-      const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string; const AHost: ISlashHost;
-      const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; overload;
+    function Run(const AText: string; ALine, AWrapUntil: Integer; const AEnvironment: TSlashEnvironment;
+      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
     /// <summary>Einrückung der Änderungen AEdits zu AText nach AStyle (#43): Was eine Zeile über die Einrückung
     /// der Zeile hinaus trägt, an der die Änderung beginnt (dahinter oder, bei eingerückten vorhandenen Zeilen,
     /// davor), gilt als Ebenen zu zwei Leerzeichen und wird zu
@@ -145,6 +147,31 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ TSlashEnvironment }
+
+class function TSlashEnvironment.Create(const ANamespaces, ADisabled: TArray<string>): TSlashEnvironment;
+begin
+  Result := Create(ANamespaces, ADisabled, nil, '', '', nil);
+end;
+
+class function TSlashEnvironment.Create(const ANamespaces, ADisabled: TArray<string>; const AIndex: ISymbolIndex;
+  const ADelphiVersion, AUri: string; const AHost: ISlashHost): TSlashEnvironment;
+begin
+  Result.Namespaces := ANamespaces;
+  Result.Disabled := ADisabled;
+  Result.Index := AIndex;
+  Result.DelphiVersion := ADelphiVersion;
+  Result.Uri := AUri;
+  Result.Host := AHost;
+  Result.Style := TFormatStyle.Default;
+end;
+
+function TSlashEnvironment.WithStyle(const AStyle: TFormatStyle): TSlashEnvironment;
+begin
+  Result := Self;
+  Result.Style := AStyle;
 end;
 
 { TSlashCommandRegistry }
@@ -341,209 +368,192 @@ begin
   Result := not InAsm;
 end;
 
-function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-  const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean;
+function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition;
+  const AEnvironment: TSlashEnvironment; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mReason: string;
 begin
-  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
-    TFormatStyle.Default, AEdits);
-end;
-
-function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-  const ADelphiVersion, AUri: string): Boolean;
-begin
-  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, ADelphiVersion, AUri, nil);
-end;
-
-function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
-  const ADelphiVersion: string): Boolean;
-begin
-  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, ADelphiVersion, '', nil);
+  Result := Run(AText, APosition.Line - 1, 0, AEnvironment, AEdits, mReason);
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
   ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex): Boolean;
 begin
-  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, AIndex, '', '', nil);
+  Result := AfterEnter(AText, APosition, TSlashEnvironment.Create(ANamespaces, ADisabled, AIndex, '', '', nil),
+    AEdits);
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
   ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
 begin
-  Result := AfterEnter(AText, APosition, ANamespaces, ADisabled, AEdits, nil, '', '', nil);
+  Result := AfterEnter(AText, APosition, TSlashEnvironment.Create(ANamespaces, ADisabled), AEdits);
 end;
 
-function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
-  const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>): Boolean;
+/// <summary>Führende Leerzeichen und Tabulatoren von ALine.</summary>
+function Leading(const ALine: string): string;
 var
-  Reason: string;
+  mCount: Integer;
 begin
-  Result := Run(AText, APosition.Line - 1, 0, ANamespaces, ADisabled, AIndex, ADelphiVersion, AUri, AHost, AStyle,
-    AEdits, Reason);
+  mCount := 0;
+  while (mCount < Length(ALine)) and CharInSet(ALine[mCount + 1], [' ', #9]) do
+  begin
+    Inc(mCount);
+  end;
+  Result := Copy(ALine, 1, mCount);
 end;
 
-function TSlashCommandRegistry.Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces,
-  ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
-  const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+/// <summary>Einrückung je Ebene nach AStyle: Tabulator, IndentSize Leerzeichen oder zwei.</summary>
+function LevelUnitOf(const AStyle: TFormatStyle): string;
 begin
-  Result := Run(AText, ALine, AWrapUntil, ANamespaces, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
-    TFormatStyle.Default, AEdits, AReason);
+  if AStyle.UseTabs then
+  begin
+    Result := #9;
+  end
+  else if AStyle.IndentSize >= 1 then
+  begin
+    Result := StringOfChar(' ', AStyle.IndentSize);
+  end
+  else
+  begin
+    Result := '  ';
+  end;
+end;
+
+/// <summary>Zeile APart einer Änderung mit dem Zusatz zur Einrückung ABase in Ebenen zu ALevelUnit; unverändert bei
+/// Leerzeilen, anderer Einrückung oder Tabulatoren im Zusatz.</summary>
+function ReindentedPart(const APart, ABase, ALevelUnit: string): string;
+var
+  mIndent, mExtra: string;
+begin
+  Result := APart;
+  mIndent := Leading(APart);
+  if Length(mIndent) = Length(APart) then
+  begin
+    Exit;
+  end;
+  // Zusatz hinter der Einrückung der Zeile oder (eingerückte vorhandene Zeilen) davor.
+  if mIndent.StartsWith(ABase) then
+  begin
+    mExtra := Copy(mIndent, Length(ABase) + 1, MaxInt);
+  end
+  else if mIndent.EndsWith(ABase) then
+  begin
+    mExtra := Copy(mIndent, 1, Length(mIndent) - Length(ABase));
+  end;
+  if (mExtra <> '') and (Pos(#9, mExtra) = 0) then
+  begin
+    Result := ABase + DupeString(ALevelUnit, Length(mExtra) div 2) + StringOfChar(' ', Length(mExtra) mod 2) +
+      Copy(APart, Length(mIndent) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>AEdit mit der Einrückung nach ALevelUnit; ALines sind die Zeilen des Texts vor der Änderung.</summary>
+function ReindentedEdit(const AEdit: TTextEdit; const ALines: TArray<string>; const ALevelUnit: string): TTextEdit;
+var
+  mBase: string;
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := AEdit;
+  mBase := '';
+  if (AEdit.Range.StartPos.Line >= 0) and (AEdit.Range.StartPos.Line <= High(ALines)) then
+  begin
+    mBase := Leading(ALines[AEdit.Range.StartPos.Line]);
+  end;
+  mParts := AEdit.NewText.Split([#10]);
+  for mIndex := 0 to High(mParts) do
+  begin
+    // Erste Zeile mitten in einer Zeile: dort gibt es keine Einrückung.
+    if (mIndex > 0) or (AEdit.Range.StartPos.Character <= 0) then
+    begin
+      mParts[mIndex] := ReindentedPart(mParts[mIndex], mBase, ALevelUnit);
+    end;
+  end;
+  Result.NewText := string.Join(#10, mParts);
 end;
 
 class function TSlashCommandRegistry.Reindent(const AText: string; const AEdits: TArray<TTextEdit>;
   const AStyle: TFormatStyle): TArray<TTextEdit>;
-
-  function Leading(const ALine: string): string;
-  var
-    Count: Integer;
-  begin
-    Count := 0;
-    while (Count < Length(ALine)) and CharInSet(ALine[Count + 1], [' ', #9]) do
-    begin
-      Inc(Count);
-    end;
-    Result := Copy(ALine, 1, Count);
-  end;
-
 var
-  Lines, Parts: TArray<string>;
-  LevelUnit, Base, Part, Indent, Extra: string;
-  Index, PartIndex, Levels, Rest: Integer;
-  Edit: TTextEdit;
+  mLines: TArray<string>;
+  mLevelUnit: string;
+  mIndex: Integer;
 begin
   Result := Copy(AEdits);
-  if AStyle.UseTabs then
-  begin
-    LevelUnit := #9;
-  end
-  else if AStyle.IndentSize >= 1 then
-  begin
-    LevelUnit := StringOfChar(' ', AStyle.IndentSize);
-  end
-  else
-  begin
-    LevelUnit := '  ';
-  end;
-  if LevelUnit = '  ' then
+  mLevelUnit := LevelUnitOf(AStyle);
+  if mLevelUnit = '  ' then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AText);
-  for Index := 0 to High(Result) do
+  mLines := TTextLines.SplitLines(AText);
+  for mIndex := 0 to High(Result) do
   begin
-    Edit := Result[Index];
-    Base := '';
-    if (Edit.Range.StartPos.Line >= 0) and (Edit.Range.StartPos.Line <= High(Lines)) then
-    begin
-      Base := Leading(Lines[Edit.Range.StartPos.Line]);
-    end;
-    Parts := Edit.NewText.Split([#10]);
-    for PartIndex := 0 to High(Parts) do
-    begin
-      // Erste Zeile mitten in einer Zeile: dort gibt es keine Einrückung.
-      if (PartIndex = 0) and (Edit.Range.StartPos.Character > 0) then
-      begin
-        Continue;
-      end;
-      Part := Parts[PartIndex];
-      Indent := Leading(Part);
-      if Length(Indent) = Length(Part) then
-      begin
-        Continue;
-      end;
-      // Zusatz hinter der Einrückung der Zeile oder (eingerückte vorhandene Zeilen) davor.
-      if Indent.StartsWith(Base) then
-      begin
-        Extra := Copy(Indent, Length(Base) + 1, MaxInt);
-      end
-      else if Indent.EndsWith(Base) then
-      begin
-        Extra := Copy(Indent, 1, Length(Indent) - Length(Base));
-      end
-      else
-      begin
-        Continue;
-      end;
-      if (Extra = '') or (Pos(#9, Extra) > 0) then
-      begin
-        Continue;
-      end;
-      Levels := Length(Extra) div 2;
-      Rest := Length(Extra) mod 2;
-      Extra := '';
-      while Levels > 0 do
-      begin
-        Extra := Extra + LevelUnit;
-        Dec(Levels);
-      end;
-      Extra := Extra + StringOfChar(' ', Rest);
-      Parts[PartIndex] := Base + Extra + Copy(Part, Length(Indent) + 1, MaxInt);
-    end;
-    Edit.NewText := string.Join(#10, Parts);
-    Result[Index] := Edit;
+    Result[mIndex] := ReindentedEdit(Result[mIndex], mLines, mLevelUnit);
   end;
 end;
 
-function TSlashCommandRegistry.Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces,
-  ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
-  const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>;
+/// <summary>Kontext mit Zeile, Name und Argumenten der Befehlszeile ALine von AText; False ohne Befehlszeile.
+/// </summary>
+function CommandContext(const AText: string; ALine: Integer; out AContext: TSlashContext): Boolean;
+var
+  mLines: TArray<string>;
+  mLineBreak: string;
+begin
+  AContext := Default(TSlashContext);
+  AContext.Line := ALine;
+  mLines := TTextLines.SplitLines(AText, mLineBreak);
+  Result := (ALine >= 0) and (ALine <= High(mLines));
+  if Result then
+  begin
+    AContext.LineText := mLines[ALine];
+    Result := TSlashCommandRegistry.Split(AContext.LineText, AContext.Name, AContext.Arguments);
+  end;
+end;
+
+/// <summary>Grund, wenn der Befehl AName in ARegistry fehlt oder abgeschaltet ist; sonst '' und ACommand.</summary>
+function KnownIssue(ARegistry: TSlashCommandRegistry; const AName: string; const ADisabled: TArray<string>;
+  out ACommand: TSlashCommand): string;
+begin
+  Result := '';
+  if not ARegistry.Find(AName, ACommand) then
+  begin
+    Result := Format('Unbekannter Schnellbefehl /%s', [AName]);
+  end
+  else if IsDisabled(AName, ADisabled) then
+  begin
+    Result := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [AName]);
+  end;
+end;
+
+/// <summary>Grund, warum der Befehl aus AContext nicht laufen darf: unbekannt, abgeschaltet oder nicht im Code;
+/// sonst '' und ACommand.</summary>
+function CommandIssue(ARegistry: TSlashCommandRegistry; const AText: string; const AContext: TSlashContext;
+  const ADisabled: TArray<string>; out ACommand: TSlashCommand): string;
+begin
+  Result := KnownIssue(ARegistry, AContext.Name, ADisabled, ACommand);
+  if (Result = '') and not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(AText), AContext.Line) then
+  begin
+    Result := 'Schnellbefehle gelten nicht in Kommentaren, Strings und asm-Blöcken';
+  end;
+end;
+
+/// <summary>Führt ACommand in AContext aus, rückt die Änderungen nach AContext.Style ein und erledigt danach die
+/// vorgemerkten Aktionen. False mit AReason, wenn der Befehl nicht passt.</summary>
+function ExecuteCommand(const ACommand: TSlashCommand; var AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  Context: TSlashContext;
-  Command: TSlashCommand;
-  Action: TProc;
+  mAction: TProc;
 begin
-  AEdits := nil;
   AReason := '';
-  Context := Default(TSlashContext);
-  Context.Line := ALine;
-  Lines := TTextLines.SplitLines(AText, LineBreak);
-  if (Context.Line < 0) or (Context.Line > High(Lines)) then
-  begin
-    Exit(False);
-  end;
-  Context.LineText := Lines[Context.Line];
-  if not Split(Context.LineText, Context.Name, Context.Arguments) then
-  begin
-    Exit(False);
-  end;
-  if not Find(Context.Name, Command) then
-  begin
-    AReason := Format('Unbekannter Schnellbefehl /%s', [Context.Name]);
-    Exit(False);
-  end;
-  if IsDisabled(Context.Name, ADisabled) then
-  begin
-    AReason := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [Context.Name]);
-    Exit(False);
-  end;
-  if not IsCodeLine(TPascalLexer.Tokenize(AText), Context.Line) then
-  begin
-    AReason := 'Schnellbefehle gelten nicht in Kommentaren, Strings und asm-Blöcken';
-    Exit(False);
-  end;
-  Context.WrapUntil := AWrapUntil;
-  Context.Text := AText;
-  Context.Namespaces := ANamespaces;
-  Context.Index := AIndex;
-  Context.DelphiVersion := ADelphiVersion;
-  Context.Style := AStyle;
-  Context.Uri := AUri;
-  Context.Host := AHost;
-  Context.Actions := TList<TProc>.Create;
+  AContext.Actions := TList<TProc>.Create;
   try
-    Result := Command.Execute(Context, AEdits, AReason);
+    Result := ACommand.Execute(AContext, AEdits, AReason);
     if Result then
     begin
-      AEdits := Reindent(AText, AEdits, AStyle);
-      for Action in Context.Actions do
+      AEdits := TSlashCommandRegistry.Reindent(AContext.Text, AEdits, AContext.Style);
+      for mAction in AContext.Actions do
       begin
-        Action();
+        mAction();
       end;
     end
     else
@@ -551,12 +561,41 @@ begin
       AEdits := nil;
       if AReason = '' then
       begin
-        AReason := Format('Schnellbefehl /%s passt hier nicht', [Context.Name]);
+        AReason := Format('Schnellbefehl /%s passt hier nicht', [AContext.Name]);
       end;
     end;
   finally
-    Context.Actions.Free;
+    AContext.Actions.Free;
+    AContext.Actions := nil;
   end;
+end;
+
+function TSlashCommandRegistry.Run(const AText: string; ALine, AWrapUntil: Integer;
+  const AEnvironment: TSlashEnvironment; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mContext: TSlashContext;
+  mCommand: TSlashCommand;
+begin
+  AEdits := nil;
+  AReason := '';
+  if not CommandContext(AText, ALine, mContext) then
+  begin
+    Exit(False);
+  end;
+  AReason := CommandIssue(Self, AText, mContext, AEnvironment.Disabled, mCommand);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  mContext.WrapUntil := AWrapUntil;
+  mContext.Text := AText;
+  mContext.Namespaces := AEnvironment.Namespaces;
+  mContext.Index := AEnvironment.Index;
+  mContext.DelphiVersion := AEnvironment.DelphiVersion;
+  mContext.Style := AEnvironment.Style;
+  mContext.Uri := AEnvironment.Uri;
+  mContext.Host := AEnvironment.Host;
+  Result := ExecuteCommand(mCommand, mContext, AEdits, AReason);
 end;
 
 function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;
@@ -570,67 +609,64 @@ begin
   Result := Problems(AText, ADisabled, nil, '');
 end;
 
+/// <summary>Grund, warum die stehen gebliebene Befehlszeile aus AContext nicht läuft; '' wenn sie liefe.</summary>
+function ProblemReason(ARegistry: TSlashCommandRegistry; const AContext: TSlashContext;
+  const ADisabled: TArray<string>): string;
+var
+  mCommand: TSlashCommand;
+  mEdits: TArray<TTextEdit>;
+begin
+  Result := KnownIssue(ARegistry, AContext.Name, ADisabled, mCommand);
+  if (Result = '') and not mCommand.Execute(AContext, mEdits, Result) and (Result = '') then
+  begin
+    Result := Format('Schnellbefehl /%s passt hier nicht', [AContext.Name]);
+  end;
+end;
+
+/// <summary>Hinweis AReason über dem Befehl in der Zeile ALine mit dem Text ALineText.</summary>
+function LineProblem(const ALineText: string; ALine: Integer; const AReason: string): TSlashProblem;
+begin
+  Result.Range := TTextRange.Create(ALine, Pos('/', ALineText) - 1, ALine, Length(TrimRight(ALineText)));
+  Result.Message := AReason;
+end;
+
 function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;
   const AIndex: ISymbolIndex; const ADelphiVersion: string): TArray<TSlashProblem>;
 var
-  Lines: TArray<string>;
-  LineBreak, Name, Arguments, Reason: string;
-  Tokens: TArray<TPascalToken>;
-  Line, Start: Integer;
-  Command: TSlashCommand;
-  Context: TSlashContext;
-  Edits: TArray<TTextEdit>;
-  Problem: TSlashProblem;
+  mLines: TArray<string>;
+  mLineBreak, mReason: string;
+  mTokens: TArray<TPascalToken>;
+  mLine: Integer;
+  mContext: TSlashContext;
 begin
   Result := nil;
-  Tokens := nil;
-  Lines := TTextLines.SplitLines(AText, LineBreak);
-  for Line := 0 to High(Lines) do
+  mTokens := nil;
+  mLines := TTextLines.SplitLines(AText, mLineBreak);
+  for mLine := 0 to High(mLines) do
   begin
-    if not Split(Lines[Line], Name, Arguments) then
+    mContext := Default(TSlashContext);
+    if not Split(mLines[mLine], mContext.Name, mContext.Arguments) then
     begin
       Continue;
     end;
-    if Tokens = nil then
+    if mTokens = nil then
     begin
-      Tokens := TPascalLexer.Tokenize(AText);
+      mTokens := TPascalLexer.Tokenize(AText);
     end;
-    if not IsCodeLine(Tokens, Line) then
+    if not IsCodeLine(mTokens, mLine) then
     begin
       Continue;
     end;
-    Reason := '';
-    if not Find(Name, Command) then
+    mContext.Text := AText;
+    mContext.Line := mLine;
+    mContext.LineText := mLines[mLine];
+    mContext.Index := AIndex;
+    mContext.DelphiVersion := ADelphiVersion;
+    mReason := ProblemReason(Self, mContext, ADisabled);
+    if mReason <> '' then
     begin
-      Reason := Format('Unbekannter Schnellbefehl /%s', [Name]);
-    end
-    else if IsDisabled(Name, ADisabled) then
-    begin
-      Reason := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [Name]);
-    end
-    else
-    begin
-      Context := Default(TSlashContext);
-      Context.Text := AText;
-      Context.Line := Line;
-      Context.LineText := Lines[Line];
-      Context.Name := Name;
-      Context.Arguments := Arguments;
-      Context.Index := AIndex;
-      Context.DelphiVersion := ADelphiVersion;
-      if not Command.Execute(Context, Edits, Reason) and (Reason = '') then
-      begin
-        Reason := Format('Schnellbefehl /%s passt hier nicht', [Name]);
-      end;
+      Result := Result + [LineProblem(mLines[mLine], mLine, mReason)];
     end;
-    if Reason = '' then
-    begin
-      Continue;
-    end;
-    Start := Pos('/', Lines[Line]) - 1;
-    Problem.Range := TTextRange.Create(Line, Start, Line, Length(TrimRight(Lines[Line])));
-    Problem.Message := Reason;
-    Result := Result + [Problem];
   end;
 end;
 
