@@ -629,9 +629,10 @@ begin
   Assert.IsFalse(Pos('token', LowerCase(TAtlasMyIssues.ToJson(Back))) > 0, 'nie Zugangsdaten');
 end;
 
-procedure TAtlasMyIssuesTests.ExecuteGit;
 const
-  cName = 'feature/753-atlas-bereiche-und';
+  cExecuteGitcName = 'feature/753-atlas-bereiche-und';
+
+procedure TAtlasMyIssuesTests.ExecuteGit;
 var
   Fake: TFakeBranchingVcs;
   Vcs: IAtlasVersionControl;
@@ -649,15 +650,15 @@ begin
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
   Assert.IsTrue(Started.Succeeded);
-  Assert.AreEqual(cName, Started.Branch);
+  Assert.AreEqual(cExecuteGitcName, Started.Branch);
   Assert.AreEqual('master', Started.Base);
-  Assert.AreEqual(cName, Fake.Current);
+  Assert.AreEqual(cExecuteGitcName, Fake.Current);
   Assert.AreEqual('C:\Repo\.git', Started.GitDir);
   Assert.AreEqual('C:\Repo\.git\hooks', Started.Hooks);
   Assert.AreEqual(6, Integer(Length(Fake.Calls)));
   Assert.AreEqual('exists main', Fake.Calls[1]);
   Assert.AreEqual('remote master', Fake.Calls[4]);
-  Assert.AreEqual('run checkout --quiet --no-track -b ' + cName + ' refs/heads/master --', Fake.Calls[5]);
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/heads/master --', Fake.Calls[5]);
   Assert.AreEqual(1, Integer(Length(Started.Steps)));
   Assert.AreEqual(1, Started.Run.Done);
   // Gibt es den Branch schon: nur auschecken.
@@ -666,7 +667,7 @@ begin
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
   Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('switch ' + cName, Fake.Calls[1]);
+  Assert.AreEqual('switch ' + cExecuteGitcName, Fake.Calls[1]);
   // Nur auf origin: von origin/main.
   Fake.Branches := nil;
   Fake.Bases := nil;
@@ -675,7 +676,7 @@ begin
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
   Assert.AreEqual('origin/main', Started.Base);
-  Assert.AreEqual('run checkout --quiet --no-track -b ' + cName + ' refs/remotes/origin/main --',
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/remotes/origin/main --',
     Fake.Calls[High(Fake.Calls)]);
   // Keine Basis vorhanden: Fehler, nichts ausgecheckt (nie stillschweigend vom aktuellen Branch).
   Fake.Branches := nil;
@@ -870,9 +871,10 @@ begin
   mDone := nil;
 end;
 
-procedure TAtlasMyIssuesTests.ExecuteSvnUnderProjectRoot;
 const
-  cName = 'KASSE-42-bon-drucken-langsam';
+  cExecuteSvncName = 'KASSE-42-bon-drucken-langsam';
+
+procedure TAtlasMyIssuesTests.ExecuteSvnUnderProjectRoot;
 var
   Fake: TFakeBranchingVcs;
   Vcs: IAtlasVersionControl;
@@ -888,15 +890,15 @@ begin
   Fake.Current := 'trunk';
   Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
   Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
-  Assert.AreEqual(cName, Plan.Branch);
+  Assert.AreEqual(cExecuteSvncName, Plan.Branch);
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
   Assert.AreEqual('Kasse/trunk', Started.Base, 'Hauptbranch unter der Projektwurzel');
   Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('exists ^/Kasse/branches/' + cName, Fake.Calls[0]);
-  Assert.AreEqual('run copy ^/Kasse/trunk@ ^/Kasse/branches/' + cName +
+  Assert.AreEqual('exists ^/Kasse/branches/' + cExecuteSvncName, Fake.Calls[0]);
+  Assert.AreEqual('run copy ^/Kasse/trunk@ ^/Kasse/branches/' + cExecuteSvncName +
     '@ --parents -m KASSE-42 Branch für Bon drucken langsam', Fake.Calls[1]);
-  Assert.AreEqual('run switch ^/Kasse/branches/' + cName + '@ .', Fake.Calls[2]);
+  Assert.AreEqual('run switch ^/Kasse/branches/' + cExecuteSvncName + '@ .', Fake.Calls[2]);
   Assert.IsFalse(Started.IndexRebuild, 'ohne Externals kein neuer Index');
   // Zweites „Beginnen“ auf demselben Issue: findet ihn am selben Ort und schaltet nur um.
   Fake.Calls := nil;
@@ -904,8 +906,8 @@ begin
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
   Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('switch ^/Kasse/branches/' + cName, Fake.Calls[1]);
-  Assert.AreEqual('Kasse/branches/' + cName, Fake.Current);
+  Assert.AreEqual('switch ^/Kasse/branches/' + cExecuteSvncName, Fake.Calls[1]);
+  Assert.AreEqual('Kasse/branches/' + cExecuteSvncName, Fake.Current);
   // after = none: nur anlegen, die Arbeitskopie bleibt.
   Fake.Branches := nil;
   Fake.Calls := nil;
@@ -925,7 +927,7 @@ begin
   Started := TAtlasMyIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
   Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-  Assert.IsTrue(Fake.Calls[2].StartsWith('run checkout ^/Kasse/branches/' + cName + '@ '), Fake.Calls[2]);
+  Assert.IsTrue(Fake.Calls[2].StartsWith('run checkout ^/Kasse/branches/' + cExecuteSvncName + '@ '), Fake.Calls[2]);
   Assert.AreEqual(Fake.WorkingCopy.Root, Started.WorkingRoot);
   Assert.AreEqual(ExpandFileName(IncludeTrailingPathDelimiter(Fake.WorkingCopy.Root) + '..' + PathDelim +
     'Kassengruppe-KASSE-42'), Started.CheckoutFolder);
@@ -957,7 +959,7 @@ begin
   mFacts.SvnExternals[0].Url := '^/Packages/Basis/trunk';
   mFacts.SvnExternals[0].Source := 'Packages/Basis/trunk';
   mFacts.SvnExternals[0].WorkingRevision := '48190';
-  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, cName, TAtlasVcsBranchBase.Make(
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, cExecuteSvncName, TAtlasVcsBranchBase.Make(
     TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
   Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, Options.Svn));
   TAtlasVcsBranchPlan.ApplyExternals(mRequest, mFacts, Options.Svn,
