@@ -1456,6 +1456,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.StatusTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CheckTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
