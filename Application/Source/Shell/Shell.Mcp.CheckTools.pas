@@ -22,6 +22,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Mcp.CheckTools,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
@@ -48,8 +50,9 @@ begin
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
-  Result := TMcpCodeTools.Diagnostics(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, Files,
-    ReadSourceText, AContext.CheckSource, AContext.CheckProject);
+  Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), Files, ReadSourceText,
+    AContext.CheckSource, AContext.CheckProject);
   // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
   if not AContext.Group.Ready(Reason) then
   begin
@@ -71,7 +74,7 @@ var
   FileName: string;
   Severity: TRuleSeverity;
 begin
-  Severity := TMcpCodeTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
+  Severity := TMcpCheckTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
   try
     FileName := AContext.Guard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
   except
@@ -79,8 +82,9 @@ begin
     on EMcpToolError do
       Exit('');
   end;
-  Result := TMcpCodeTools.HookDiagnostics(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, FileName,
-    ReadSourceText, AContext.CheckSource, AContext.CheckProject, Severity);
+  Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), FileName, ReadSourceText,
+    AContext.CheckSource, AContext.CheckProject, Severity);
 end;
 
 procedure AddHookCheck(const AContext: TMcpToolContext);
@@ -118,7 +122,7 @@ begin
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
-  Result := TMcpCodeTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText,
+  Result := TMcpCheckTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText,
     SameText(Format, 'json'));
 end;
 
@@ -169,7 +173,7 @@ begin
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
-  Result := TMcpCodeTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText, Filter,
+  Result := TMcpCheckTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, Files, ReadSourceText, Filter,
     SameText(Format, 'json'));
 end;
 
@@ -209,7 +213,8 @@ begin
   begin
     EndLine := StartLine;
   end;
-  Result := AContext.Code.CheckCode(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, FileName, Text,
+  Result := AContext.Code.CheckCode(TMcpRuleScope.Create(BuiltinRules, AContext.Group.Main.Configuration.Settings,
+    AContext.Root), FileName, Text,
     StartLine, EndLine);
 end;
 

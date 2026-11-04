@@ -128,8 +128,8 @@ var
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TPromoteVariable.Execute(AText, ATree, APosition, AContext.Lookup, AContext.Style, AContext.NewName,
-    Promoted, Reason) then
+  if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, AContext.Lookup, AContext.Style,
+    AContext.NewName), Promoted, Reason) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
   end;

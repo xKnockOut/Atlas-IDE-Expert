@@ -13,8 +13,9 @@
 // - die Schichten der Rinne (IAtlasGutterLayer) und die eigenen Lesezeichen
 //   der Übersichtsleiste (IAtlasOverviewBookmarks),
 // - Hörer für Einstellungen und Thema.
-// Die TODO-Liste fragt den Server über TAtlasIdeHost; seine Antwort
-// erreicht das Modul nur, solange es angemeldet ist (Regel 3).
+// Die TODO-Liste (Atlas.IDE.Bookmarks.Composition.Todos) fragt den Server
+// über TAtlasIdeHost; seine Antwort erreicht das Modul nur, solange es
+// angemeldet ist (Regel 3).
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -54,50 +55,39 @@ type
 implementation
 
 uses
-  System.JSON,
-  ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Lsp.Session,
-  Atlas.Core.Results.Model,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Bookmarks.Quick,
-  Atlas.Core.Projects.Todos,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
-  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Bookmarks.QuickColumn,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Bookmarks.SavedPlaces,
+  Atlas.IDE.Bookmarks.Composition.Todos,
   Atlas.Core.SavedPlaces.Contract,
-  Atlas.UI.Todos.Dialog,
   Atlas.UI.Strings,
   Atlas.UI.Bookmarks.Strings;
 
 const
   /// <summary>Feld der schnellen Lesezeichen im Atlas-Statusfeld (#1104).</summary>
   QuickBookmarksExtra = 'quickBookmarks';
-  TodosCommand = 'atlas.server.todos';
-  TodosTimeoutMs = 120000;
 
 var
   GScope: IAtlasModuleScope;
   GNotesStarted: Boolean;
   GBookmarksStarted: Boolean;
   GQuickColumn: TAtlasIdeQuickColumn;
-  /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
-  GTodoFilter: TAtlasTodoFilter;
-  /// <summary>Vorschläge für den Filterdialog aus der letzten Liste.</summary>
-  GTodoChoices: TAtlasTodoChoices;
 
 { Dienste von Base }
 
@@ -233,125 +223,14 @@ end;
 
 { TODO-Liste des Projekts (#68) }
 
-/// <summary>Argumente für atlas.server.todos im Modus json: [uri, "json", filter].</summary>
-function TodoArguments(const AProject: string; const AFilter: TAtlasTodoFilter): string;
-var
-  mArguments: TJSONArray;
+procedure AllTodos;
 begin
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(TLspSession.PathToUri(AProject));
-    mArguments.Add('json');
-    mArguments.AddElement(TJSONObject.ParseJSONValue(AFilter.ToJson));
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
-  end;
+  AllProjectTodos(GScope);
 end;
 
-/// <summary>Antwort des Servers zur TODO-Liste im Ergebnisfenster zeigen (Hauptthread).</summary>
-procedure ShowTodos(const AAnswer, AName, ADescribed: string; const AFilter: TAtlasTodoFilter);
-var
-  mEntries: TArray<TAtlasResultEntry>;
-  mChoices: TAtlasTodoChoices;
+procedure FilterTodos;
 begin
-  if not TAtlasTodoList.Entries(AAnswer, mEntries) then
-  begin
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListFailed));
-    Exit;
-  end;
-  // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
-  if AFilter.IsEmpty and TAtlasTodoList.Choices(AAnswer, mChoices) then
-  begin
-    GTodoChoices := mChoices;
-  end;
-  if (Length(mEntries) = 0) and (ADescribed = '') then
-  begin
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListEmpty, [AName]));
-  end
-  else if Length(mEntries) = 0 then
-  begin
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListNoMatch, [AName, ADescribed]));
-  end
-  else if ADescribed = '' then
-  begin
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListTitle,
-      [AName, Length(mEntries)]), mEntries);
-  end
-  else
-  begin
-    TAtlasIdeResultsWindow.ShowEntries(TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.TodoListFilteredTitle,
-      [AName, ADescribed, Length(mEntries)]), mEntries);
-  end;
-end;
-
-/// <summary>Rückruf der TODO-Liste; eigene Routine, damit er nur seine Werte festhält.</summary>
-function TodosDone(const AName, ADescribed: string; const AFilter: TAtlasTodoFilter): TProc<string>;
-begin
-  Result :=
-    procedure(AAnswer: string)
-    begin
-      ShowTodos(AAnswer, AName, ADescribed, AFilter);
-    end;
-end;
-
-/// <summary>TODO-Liste des aktiven Projekts (#68) im Ergebnisfenster: Daten vom Server (startet ihn bei Bedarf) im
-/// Hintergrund mit dem Filter AFilter (Filter des Servers), nach Unit gruppiert; Doppelklick springt zum
-/// Kommentar.</summary>
-procedure ProjectTodos(const AFilter: TAtlasTodoFilter);
-var
-  mProject: IOTAProject;
-  mName, mDescribed: string;
-  mFilter: TAtlasTodoFilter;
-begin
-  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
-  if (GScope = nil) or not TAtlasIdeSettings.Current.TodoList then
-  begin
-    Exit;
-  end;
-  mProject := GetActiveProject;
-  if (mProject = nil) or (mProject.FileName = '') then
-  begin
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListNoProject));
-    Exit;
-  end;
-  mName := ChangeFileExt(ExtractFileName(mProject.FileName), '');
-  mFilter := AFilter.Trimmed;
-  mDescribed := mFilter.Describe;
-  if TAtlasIdeHost.ActiveSession = nil then
-  begin
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListFailed));
-    Exit;
-  end;
-  if not TAtlasIdeHost.RunCommandAsync(GScope, TAtlasFeature.Palette, TodosCommand,
-    TodoArguments(mProject.FileName, mFilter), TodosTimeoutMs, TodosDone(mName, mDescribed, mFilter)) then
-  begin
-    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
-    TAtlasIdeHost.Warning(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListBusy));
-  end;
-end;
-
-procedure AllProjectTodos;
-begin
-  ProjectTodos(Default(TAtlasTodoFilter));
-end;
-
-/// <summary>Filterdialog der TODO-Liste (#68) mit dem letzten Filter; „Anzeigen“ fragt mit dem neuen Filter.</summary>
-procedure FilterProjectTodos;
-var
-  mFilter: TAtlasTodoFilter;
-begin
-  if not TAtlasIdeSettings.Current.TodoList then
-  begin
-    Exit;
-  end;
-  mFilter := GTodoFilter;
-  if not TAtlasTodoFilterDialog.Execute(GTodoChoices, mFilter) then
-  begin
-    Exit;
-  end;
-  GTodoFilter := mFilter;
-  ProjectTodos(mFilter);
+  FilterProjectTodos(GScope);
 end;
 
 { Befehle }
@@ -418,11 +297,11 @@ begin
         begin
           if AJump then
           begin
-            TAtlasIdeBookmarks.QuickJump(ANumber);
+            TAtlasIdeQuickBookmarks.QuickJump(ANumber);
           end
           else
           begin
-            TAtlasIdeBookmarks.QuickSetNumber(ANumber);
+            TAtlasIdeQuickBookmarks.QuickSetNumber(ANumber);
           end;
         end);
     end;
@@ -518,22 +397,22 @@ begin
       TAtlasIdeBookmarks.ShowWindow, BookmarksWindowVisible),
     // Schnelle Lesezeichen (#1104); nur sichtbar, solange bookmarks.quick an ist.
     CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.QuickBookmarkToggle',
-      TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand), TAtlasIdeBookmarks.QuickToggle,
+      TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand), TAtlasIdeQuickBookmarks.QuickToggle,
         QuickBookmarksVisible,
       QuickBookmarkKey),
     CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.NextBookmark',
       TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand),
-      TAtlasIdeBookmarks.NextBookmark, QuickBookmarksVisible, NextBookmarkKey),
+      TAtlasIdeQuickBookmarks.NextBookmark, QuickBookmarksVisible, NextBookmarkKey),
     CommandWithKey(TAtlasFeature.QuickBookmarks, 'Atlas.PreviousBookmark',
       TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
-      TAtlasIdeBookmarks.PreviousBookmark, QuickBookmarksVisible, PreviousBookmarkKey),
+      TAtlasIdeQuickBookmarks.PreviousBookmark, QuickBookmarksVisible, PreviousBookmarkKey),
     // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
     // Einstellung TodoList an ist.
     Command(TAtlasFeature.Palette, 'Atlas.TodoList',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListCommand), AllProjectTodos,
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoListCommand), AllTodos,
       TodoListVisible),
     Command(TAtlasFeature.Palette, 'Atlas.TodoListFilter',
-      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCommand), FilterProjectTodos,
+      TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCommand), FilterTodos,
       TodoListVisible)];
 end;
 
@@ -615,10 +494,10 @@ begin
   end;
   Result := Result + [
     ModuleKey('Atlas.NextBookmark', TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand), mSettings.NextBookmarkKey,
-      TAtlasKeyPriority.Shared, Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark)),
+      TAtlasKeyPriority.Shared, Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.NextBookmark)),
     ModuleKey('Atlas.PreviousBookmark', TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand),
       mSettings.PreviousBookmarkKey, TAtlasKeyPriority.Shared,
-      Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark))];
+      Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.PreviousBookmark))];
 end;
 
 procedure TAtlasBookmarksModule.ApplySettings;
@@ -644,7 +523,7 @@ var
 begin
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ der Übersichtsleiste die Lesezeichen von Atlas.
   AMarks := nil;
-  Result := GBookmarksStarted and TAtlasIdeBookmarks.OverviewMarks(AFileName, mMarks);
+  Result := GBookmarksStarted and TAtlasIdeQuickBookmarks.OverviewMarks(AFileName, mMarks);
   if Result then
   begin
     for mMark in mMarks do
