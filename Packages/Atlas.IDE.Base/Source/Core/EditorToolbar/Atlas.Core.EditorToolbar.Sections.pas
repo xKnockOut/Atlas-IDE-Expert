@@ -70,13 +70,16 @@ type
   TAtlasSectionScanner = class
   public
     /// <summary>Abschnitte aus den Zeilen des Editors.</summary>
-    class function Scan(const ALines: TArray<string>): TAtlasUnitSections; static;
+    class function Scan(const ALines: TArray<string>): TAtlasUnitSections; overload; static;
+    /// <summary>Wie oben aus dem ganzen Text; CR, LF und CRLF trennen die Zeilen.</summary>
+    class function Scan(const AText: string): TAtlasUnitSections; overload; static;
   end;
 
 implementation
 
 uses
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 { TAtlasSectionMark }
 
@@ -560,6 +563,11 @@ begin
     AfterHeader := False;
   end;
   Previous := AToken.Text;
+end;
+
+class function TAtlasSectionScanner.Scan(const AText: string): TAtlasUnitSections;
+begin
+  Result := Scan(TTextLines.SplitLines(AText));
 end;
 
 class function TAtlasSectionScanner.Scan(const ALines: TArray<string>): TAtlasUnitSections;
