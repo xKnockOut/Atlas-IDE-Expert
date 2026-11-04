@@ -101,11 +101,11 @@ end;
 /// <summary>Ergebnis von „with auflösen“ am "|" in AMarked; '-' ohne Angebot.</summary>
 function Resolve(const AMarked, AOwners: string; const AOptions: TExtractOptions): string;
 var
-  Text, Reason: string;
+  Text: string;
   Line, Character, Index: Integer;
   Tree: TSyntaxTree;
   WithNode: TSyntaxNode;
-  Action: TCodeAction;
+  Resolved: TWithResolved;
 begin
   Line := 0;
   Character := 0;
@@ -125,13 +125,13 @@ begin
   Tree := TPascalParser.Parse(Text);
   try
     WithNode := TWithResolution.WithAt(Tree, TTextPosition.Create(Line, Character));
-    if (WithNode = nil) or not TWithResolution.Resolve(Text, Tree, WithNode, Lookup(AOwners), AOptions, Action,
-      Reason) then
+    if (WithNode = nil) or not TWithResolution.Resolve(Text, Tree, WithNode, Lookup(AOwners), AOptions,
+      Resolved) then
     begin
       Exit('-');
     end;
-    Assert.AreEqual('with auflösen', Action.Title);
-    Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    Assert.AreEqual('with auflösen', Resolved.Action.Title);
+    Result := TChangeSignature.ApplyEdits(Text, Resolved.Action.Edits);
   finally
     Tree.Free;
   end;

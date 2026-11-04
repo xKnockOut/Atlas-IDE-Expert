@@ -443,6 +443,51 @@ begin
   end;
 end;
 
+/// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
+function FullDataItem: TCompletionItem;
+begin
+  Result := Default(TCompletionItem);
+  Result.Name := 'Wert';
+  Result.Kind := 6;
+  Result.Detail := 'TFoo';
+  Result.FilterText := 'We';
+  Result.InsertText := 'Wert()';
+  Result.Snippet := True;
+  Result.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
+    TTextPosition.Create(2, 1)), 'uses X;')];
+  Result.SourceFile := 'C:\P\U.pas';
+  Result.SourcePosition := TTextPosition.Create(3, 4);
+  Result.Expected := 'Integer';
+  Result.Fits := True;
+  Result.Action := 'declare';
+  Result.Container := 'TFoo';
+  Result.Depth := 2;
+  Result.IsHelper := True;
+  Result.HasParameters := True;
+  Result.Condition := 'WIN64';
+  Result.Unavailable := True;
+  Result.Scope := 5;
+  Result.Ordinal := 1;
+  Result.SetOf := 'TKind';
+  Result.SetChecked := True;
+  Result.SetRange := TTextRange.Create(TTextPosition.Create(5, 1), TTextPosition.Create(5, 9));
+  Result.Pinned := True;
+  Result.Count := 3;
+  Result.Unknown := 'Wert';
+  Result.Batch := True;
+  Result.Hint := True;
+  Result.Form := 'frmMain';
+  Result.ByType := True;
+  Result.Sender := 'TButton';
+  Result.SenderOf := 'btnSave';
+  Result.DataSet := 'qry';
+  Result.DataSource := 'select';
+  Result.Guard := 'newLine';
+  Result.UnitName := 'U';
+  Result.Hides := ['Feld TKunde.Wert'];
+  Result.Overloads := [TTextPosition.Create(7, 2)];
+end;
+
 procedure TLspCompletionTests.ToJsonWritesAllDataFields;
 var
   Items: TCompletionItems;
@@ -450,46 +495,7 @@ var
 begin
   Items := Default(TCompletionItems);
   SetLength(Items.Items, 1);
-  Items.Items[0] := Default(TCompletionItem);
-  Items.Items[0].Name := 'Wert';
-  Items.Items[0].Kind := 6;
-  Items.Items[0].Detail := 'TFoo';
-  Items.Items[0].FilterText := 'We';
-  Items.Items[0].InsertText := 'Wert()';
-  Items.Items[0].Snippet := True;
-  Items.Items[0].AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
-    TTextPosition.Create(2, 1)), 'uses X;')];
-  Items.Items[0].SourceFile := 'C:\P\U.pas';
-  Items.Items[0].SourcePosition := TTextPosition.Create(3, 4);
-  Items.Items[0].Expected := 'Integer';
-  Items.Items[0].Fits := True;
-  Items.Items[0].Action := 'declare';
-  Items.Items[0].Container := 'TFoo';
-  Items.Items[0].Depth := 2;
-  Items.Items[0].IsHelper := True;
-  Items.Items[0].HasParameters := True;
-  Items.Items[0].Condition := 'WIN64';
-  Items.Items[0].Unavailable := True;
-  Items.Items[0].Scope := 5;
-  Items.Items[0].Ordinal := 1;
-  Items.Items[0].SetOf := 'TKind';
-  Items.Items[0].SetChecked := True;
-  Items.Items[0].SetRange := TTextRange.Create(TTextPosition.Create(5, 1), TTextPosition.Create(5, 9));
-  Items.Items[0].Pinned := True;
-  Items.Items[0].Count := 3;
-  Items.Items[0].Unknown := 'Wert';
-  Items.Items[0].Batch := True;
-  Items.Items[0].Hint := True;
-  Items.Items[0].Form := 'frmMain';
-  Items.Items[0].ByType := True;
-  Items.Items[0].Sender := 'TButton';
-  Items.Items[0].SenderOf := 'btnSave';
-  Items.Items[0].DataSet := 'qry';
-  Items.Items[0].DataSource := 'select';
-  Items.Items[0].Guard := 'newLine';
-  Items.Items[0].UnitName := 'U';
-  Items.Items[0].Hides := ['Feld TKunde.Wert'];
-  Items.Items[0].Overloads := [TTextPosition.Create(7, 2)];
+  Items.Items[0] := FullDataItem;
   Items.Incomplete := True;
   Json := TLspCompletion.ToJson(Items);
   try
@@ -1114,9 +1120,8 @@ begin
   end;
 end;
 
-procedure TLspCompletionTests.OffersMatchingHandlersAndNewMethodForEvents;
 const
-  UnitBasis =
+  cEventsUnitBasis =
     'unit Basis;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1127,7 +1132,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  Text =
+  cEventsText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Basis;'#13#10 +
@@ -1150,6 +1155,8 @@ const
     'begin'#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.OffersMatchingHandlersAndNewMethodForEvents;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
@@ -1158,14 +1165,15 @@ var
   Handlers, Edits: string;
   Edit: TRuleEdit;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
-  Tree := TPascalParser.Parse(Text);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cEventsUnitBasis, 'C:\P\Basis.pas', nil));
+  Tree := TPascalParser.Parse(cEventsText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'btnSave.OnClick := '),
+    Assert.IsTrue(TLspCompletion.EventItems(Resolver, Tree, cEventsText, HauptFile, PositionOf(cEventsText,
+      'btnSave.OnClick := '),
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
+        AText := cEventsUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end, Items));
     // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
@@ -1195,16 +1203,16 @@ begin
     Assert.IsTrue(Edits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
-    Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+    Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, cEventsText, HauptFile, PositionOf(cEventsText,
+      'uses Ba'), nil, Items));
   finally
     Resolver.Free;
     Tree.Free;
   end;
 end;
 
-procedure TLspCompletionTests.OffersGenericInterfaceMethods;
 const
-  UnitListen =
+  cGenericUnitListen =
     'unit Listen;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1218,7 +1226,7 @@ const
     'implementation'#13#10 +
     'end.';
   // Zeile 8: leere Zeile in der Klasse, Zeile 9: ihr end. Compare ist schon da (mit eingesetztem Typ).
-  Text =
+  cGenericText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Listen;'#13#10 +
@@ -1231,6 +1239,8 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.OffersGenericInterfaceMethods;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
@@ -1240,14 +1250,14 @@ var
   Item: TCompletionItem;
   Batch: Boolean;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitListen, 'C:\P\Listen.pas', nil));
-  Tree := TPascalParser.Parse(Text);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cGenericUnitListen, 'C:\P\Listen.pas', nil));
+  Tree := TPascalParser.Parse(cGenericText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8, 4),
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cGenericText, HauptFile, TTextPosition.Create(8, 4),
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitListen;
+        AText := cGenericUnitListen;
         Result := SameText(AFileName, 'C:\P\Listen.pas');
       end, TCompletionInterfaceSection.Public, Items, Batch));
     List.Items := Items;
@@ -1270,9 +1280,8 @@ begin
   end;
 end;
 
-procedure TLspCompletionTests.OffersMissingInterfaceMethods;
 const
-  UnitBasis =
+  cMissingUnitBasis =
     'unit Basis;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1292,7 +1301,7 @@ const
     'implementation'#13#10 +
     'end.';
   // Zeile 7: leere Zeile in der Klasse, Zeile 8: ihr end.
-  Text =
+  cMissingText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Basis;'#13#10 +
@@ -1304,7 +1313,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  Typed =
+  cMissingTyped =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Basis;'#13#10 +
@@ -1316,24 +1325,78 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
+
+/// <summary>Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die
+/// implementation.</summary>
+procedure AssertMergedInterfaceStubs(const AItems: TArray<TCompletionItem>);
+var
+  mEdits, mMerged: TArray<TRuleEdit>;
+  mItem: TCompletionItem;
+begin
+  // Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die implementation.
+  mEdits := nil;
+  for mItem in AItems do
+  begin
+    mEdits := mEdits + mItem.AdditionalEdits;
+  end;
+  mMerged := TInterfaceStubs.Merge(mEdits);
+  Assert.AreEqual(2, Integer(Length(mMerged)));
+  Assert.AreEqual(8, mMerged[0].Range.StartPos.Line);
+  Assert.AreEqual(
+    '  public'#13#10 +
+    '    { IExporter }'#13#10 +
+    '    procedure Export(const AFileName: string);'#13#10 +
+    '    function GetName: string;'#13#10 +
+    '    { IFlush }'#13#10 +
+    '    procedure Flush;'#13#10, mMerged[0].NewText);
+  Assert.IsTrue(mMerged[1].NewText.Contains(
+    'function TJsonExporter.GetName: string;'#13#10'begin'#13#10'  Result := Default(string);'#13#10'end;'),
+    mMerged[1].NewText);
+  Assert.IsTrue(mMerged[1].NewText.Contains('procedure TJsonExporter.Flush;'#13#10'begin'#13#10#13#10'end;'),
+    mMerged[1].NewText);
+  Assert.IsFalse(mMerged[1].NewText.Contains('inherited'), mMerged[1].NewText);
+end;
+
+/// <summary>Angefangenes Wort: je Interface ein Hinweis, der seine Methoden anlegt und das Wort entfernt.</summary>
+procedure AssertTypedInterfaceHints(AResolver: TNameResolver; ATree: TSyntaxTree);
+var
+  mItems: TArray<TCompletionItem>;
+  mBatch: Boolean;
+begin
+  Assert.IsTrue(TLspCompletion.InterfaceItems(AResolver, ATree, cMissingTyped, HauptFile, TTextPosition.Create(7, 6),
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := cMissingUnitBasis;
+      Result := True;
+    end, TCompletionInterfaceSection.Public, mItems, mBatch));
+  Assert.IsFalse(mBatch);
+  Assert.AreEqual(2, Integer(Length(mItems)));
+  Assert.AreEqual('2 Methoden von IExporter fehlen', mItems[0].Name);
+  Assert.AreEqual('1 Methode von IFlush fehlt', mItems[1].Name);
+  Assert.IsTrue(mItems[0].Hint and mItems[0].HasTextEdit);
+  Assert.AreEqual('', mItems[0].TextEdit.NewText);
+  Assert.AreEqual(4, mItems[0].TextEdit.Range.StartPos.Character);
+  Assert.IsTrue(mItems[0].AdditionalEdits[0].NewText.Contains('function GetName: string;'));
+  Assert.IsFalse(mItems[0].AdditionalEdits[0].NewText.Contains('Flush'));
+end;
+
+procedure TLspCompletionTests.OffersMissingInterfaceMethods;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
   Items: TArray<TCompletionItem>;
   List: TCompletionItems;
-  Edits, Merged: TArray<TRuleEdit>;
-  Item: TCompletionItem;
   Batch: Boolean;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
-  Tree := TPascalParser.Parse(Text);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cMissingUnitBasis, 'C:\P\Basis.pas', nil));
+  Tree := TPascalParser.Parse(cMissingText);
   Resolver := TNameResolver.Create(FIndex);
   try
     // Strg+Leer auf der leeren Zeile: Liste mit Kontrollkästchen. SetName erbt die Klasse von TBasis.
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(7, 4),
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(7, 4),
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
+        AText := cMissingUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end, TCompletionInterfaceSection.Public, Items, Batch));
     Assert.IsTrue(Batch);
@@ -1345,60 +1408,26 @@ begin
     Assert.IsTrue(Items[0].Batch and Items[0].SetChecked);
     Assert.AreEqual(3, Items[2].Ordinal);
     Assert.AreEqual(7, Items[0].SetRange.StartPos.Line);
-    // Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die implementation.
-    Edits := nil;
-    for Item in Items do
-    begin
-      Edits := Edits + Item.AdditionalEdits;
-    end;
-    Merged := TInterfaceStubs.Merge(Edits);
-    Assert.AreEqual(2, Integer(Length(Merged)));
-    Assert.AreEqual(8, Merged[0].Range.StartPos.Line);
-    Assert.AreEqual(
-      '  public'#13#10 +
-      '    { IExporter }'#13#10 +
-      '    procedure Export(const AFileName: string);'#13#10 +
-      '    function GetName: string;'#13#10 +
-      '    { IFlush }'#13#10 +
-      '    procedure Flush;'#13#10, Merged[0].NewText);
-    Assert.IsTrue(Merged[1].NewText.Contains(
-      'function TJsonExporter.GetName: string;'#13#10'begin'#13#10'  Result := Default(string);'#13#10'end;'),
-      Merged[1].NewText);
-    Assert.IsTrue(Merged[1].NewText.Contains('procedure TJsonExporter.Flush;'#13#10'begin'#13#10#13#10'end;'),
-      Merged[1].NewText);
-    Assert.IsFalse(Merged[1].NewText.Contains('inherited'), Merged[1].NewText);
+    AssertMergedInterfaceStubs(Items);
     // Abschnitt nach Einstellung: private steht schon als letzter da, also kein neuer.
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(7, 4),
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(7, 4),
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
+        AText := cMissingUnitBasis;
         Result := True;
       end, TCompletionInterfaceSection.Private, Items, Batch));
     Assert.AreEqual('    { IExporter }'#13#10, Items[0].AdditionalEdits[0].NewText);
     // Außerhalb der Klasse nichts.
-    Assert.IsFalse(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(2, 0), nil,
+    Assert.IsFalse(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(2, 0),
+      nil,
       TCompletionInterfaceSection.Public, Items, Batch));
   finally
     Tree.Free;
   end;
   // Angefangenes Wort: je Interface ein Hinweis, der seine Methoden anlegt und das Wort entfernt.
-  Tree := TPascalParser.Parse(Typed);
+  Tree := TPascalParser.Parse(cMissingTyped);
   try
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Typed, HauptFile, TTextPosition.Create(7, 6),
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := UnitBasis;
-        Result := True;
-      end, TCompletionInterfaceSection.Public, Items, Batch));
-    Assert.IsFalse(Batch);
-    Assert.AreEqual(2, Integer(Length(Items)));
-    Assert.AreEqual('2 Methoden von IExporter fehlen', Items[0].Name);
-    Assert.AreEqual('1 Methode von IFlush fehlt', Items[1].Name);
-    Assert.IsTrue(Items[0].Hint and Items[0].HasTextEdit);
-    Assert.AreEqual('', Items[0].TextEdit.NewText);
-    Assert.AreEqual(4, Items[0].TextEdit.Range.StartPos.Character);
-    Assert.IsTrue(Items[0].AdditionalEdits[0].NewText.Contains('function GetName: string;'));
-    Assert.IsFalse(Items[0].AdditionalEdits[0].NewText.Contains('Flush'));
+    AssertTypedInterfaceHints(Resolver, Tree);
   finally
     Resolver.Free;
     Tree.Free;
@@ -1655,9 +1684,8 @@ begin
   Assert.AreEqual(Integer(TFuzzyMatch.NoMatch), MatchScore('SaveButton', 'sb', TCompletionMatching.Prefix));
 end;
 
-procedure TLspCompletionTests.CastsSenderToAssignedComponents;
 const
-  UnitSteuer =
+  cSenderUnitSteuer =
     'unit Steuer;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1678,7 +1706,7 @@ const
     'begin'#13#10 +
     'end;'#13#10 +
     'end.';
-  FormText =
+  cSenderFormText =
     'object frmMain: TfrmMain'#13#10 +
     '  object btnSave: TButton'#13#10 +
     '    OnClick = btnAnyClick'#13#10 +
@@ -1688,7 +1716,7 @@ const
     '  end'#13#10 +
     'end';
   // Zeile 14: "  Sender.Cap" in btnAnyClick, Zeile 18: "  Sender." in Frei (keinem Ereignis zugewiesen).
-  Text =
+  cSenderText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Steuer;'#13#10 +
@@ -1710,24 +1738,27 @@ const
     '  Sender.'#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.CastsSenderToAssignedComponents;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
   Items: TCompletionItems;
   ReadForm: TCompletionReadText;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cSenderUnitSteuer, 'C:\P\Steuer.pas', nil));
   ReadForm :=
     function(const AFileName: string; out AText: string): Boolean
     begin
-      AText := FormText;
+      AText := cSenderFormText;
       Result := SameText(ExtractFileExt(AFileName), '.dfm');
     end;
-  Tree := TPascalParser.Parse(Text);
+  Tree := TPascalParser.Parse(cSenderText);
   Resolver := TNameResolver.Create(FIndex);
   try
     // btnSave (TButton) und btnLoad (TBitBtn): gemeinsamer Vorfahr TButton.
-    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(14, 12),
+    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(14,
+      12),
       ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
     Assert.AreEqual('Caption', Names(Items));
     Assert.AreEqual('TButton', Items.Items[0].Sender);
@@ -1736,11 +1767,13 @@ begin
     Assert.AreEqual('(Sender as TButton).Caption', Items.Items[0].TextEdit.NewText);
     Assert.AreEqual(2, Items.Items[0].TextEdit.Range.StartPos.Character);
     Assert.AreEqual(12, Items.Items[0].TextEdit.Range.EndPos.Character);
-    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(14, 12),
+    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(14,
+      12),
       ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.HardCast, Items));
     Assert.AreEqual('TButton(Sender).Caption', Items.Items[0].TextEdit.NewText);
     // Ohne Zuweisung im Formular bleibt es bei den Mitgliedern von TObject.
-    Assert.IsFalse(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(18, 9),
+    Assert.IsFalse(TLspCompletion.SenderItems(Resolver, FIndex, Tree, cSenderText, HauptFile, TTextPosition.Create(18,
+      9),
       ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
   finally
     Resolver.Free;
@@ -1748,9 +1781,8 @@ begin
   end;
 end;
 
-procedure TLspCompletionTests.OffersDeclarationsForUnknownNames;
 const
-  Text =
+  cUnknownText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1774,6 +1806,8 @@ const
     '  FLines := nil;'#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.OffersDeclarationsForUnknownNames;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
@@ -1797,12 +1831,12 @@ var
 var
   Item: TCompletionItem;
 begin
-  Tree := TPascalParser.Parse(Text);
+  Tree := TPascalParser.Parse(cUnknownText);
   Resolver := TNameResolver.Create(FIndex);
   try
     // Ziel einer Zuweisung: Typ aus der rechten Seite.
-    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, '  TotalCount'), True, nil, Items));
+    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, cUnknownText, HauptFile,
+      PositionOf(cUnknownText, '  TotalCount'), True, nil, Items));
     Item := Named('Lokale Variable anlegen');
     Assert.AreEqual('TotalCount: Integer', Item.Detail);
     Assert.AreEqual('declare', Item.Action);
@@ -1824,30 +1858,29 @@ begin
       Assert.AreNotEqual('Konstante anlegen', Item.Name);
     end;
     // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
-    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'Zeige(Anzahl'), False, nil, Items));
+    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, cUnknownText, HauptFile,
+      PositionOf(cUnknownText, 'Zeige(Anzahl'), False, nil, Items));
     Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
     Item := Named('Konstante anlegen');
     Assert.AreEqual('Anzahl = 0;', Item.Detail);
     Assert.AreEqual(12, Item.AdditionalEdits[0].Range.StartPos.Line);
     // Bekannte Namen und genaue Treffer: nichts.
-    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, Items));
+    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, cUnknownText, HauptFile,
+      PositionOf(cUnknownText, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, Items));
     // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
     SetLength(Known, 1);
     Known[0] := Default(TCompletionItem);
     Known[0].Name := 'Anzahl';
-    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'Zeige(Anzahl'), True, Known, Items));
+    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, cUnknownText, HauptFile,
+      PositionOf(cUnknownText, 'Zeige(Anzahl'), True, Known, Items));
   finally
     Resolver.Free;
     Tree.Free;
   end;
 end;
 
-procedure TLspCompletionTests.OffersMissingCaseBranches;
 const
-  Text =
+  cCaseText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -1877,6 +1910,8 @@ const
     '    '#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.OffersMissingCaseBranches;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
@@ -1884,12 +1919,12 @@ var
   SetMode: Boolean;
   Position: TTextPosition;
 begin
-  Tree := TPascalParser.Parse(Text);
+  Tree := TPascalParser.Parse(cCaseText);
   Resolver := TNameResolver.Create(FIndex);
   try
     // Ohne Zweige: „Alle Werte einfügen“ zuerst, mit Anzahl; alle vier Zweige und das fehlende end.
-    Position := PositionOf(Text, 'case S.Kind of'#13#10'    ');
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, Position, nil,
+    Position := PositionOf(cCaseText, 'case S.Kind of'#13#10'    ');
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, cCaseText, HauptFile, Position, nil,
       TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.AreEqual('Alle Werte einfügen', Items[0].Name);
     Assert.IsTrue(Items[0].Pinned);
@@ -1904,14 +1939,14 @@ begin
     Assert.AreEqual(Position.Character, Items[0].TextEdit.Range.EndPos.Character);
     Assert.AreEqual('skCircle', Items[1].Name, 'darunter die einzelnen Werte');
     // Mit Zweig skCircle: nur die drei übrigen, end ist vorhanden.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skCircle: Zeichne;'#13#10'    sk'), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, cCaseText, HauptFile,
+      PositionOf(cCaseText, 'skCircle: Zeichne;'#13#10'    sk'), nil, TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.AreEqual('Fehlende Werte ergänzen (3)', Items[0].Name);
     Assert.AreEqual(0, Integer(Items[0].Count));
     Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', Items[0].TextEdit.NewText);
     // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skTriangle: ;'#13#10'    '), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, cCaseText, HauptFile,
+      PositionOf(cCaseText, 'skTriangle: ;'#13#10'    '), nil, TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.AreEqual('skCircle', Items[0].Name);
     Assert.IsFalse(Items[0].Pinned);
   finally
@@ -2064,10 +2099,9 @@ begin
   Item := Default(TCompletionItem);
 end;
 
-procedure TLspCompletionTests.OffersEnumValuesAndSetValues;
 const
-  TypenFile = 'C:\P\Typen.pas';
-  UnitTypen =
+  cEnumTypenFile = 'C:\P\Typen.pas';
+  cEnumUnitTypen =
     'unit Typen;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -2085,7 +2119,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  Text =
+  cEnumText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Typen;'#13#10 +
@@ -2103,77 +2137,107 @@ const
     '  List[0] := List[];'#13#10 +
     'end;'#13#10 +
     'end.';
+
+/// <summary>Namen der Einträge, durch Leerzeichen getrennt.</summary>
+function JoinedItemNames(const AItems: TArray<TCompletionItem>): string;
+var
+  mItem: TCompletionItem;
+begin
+  Result := '';
+  for mItem in AItems do
+  begin
+    Result := Result + ' ' + mItem.Name;
+  end;
+  Result := Result.Trim;
+end;
+
+/// <summary>Liest nur die Unit Typen.</summary>
+function TypenReader: TCompletionReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := cEnumUnitTypen;
+      Result := SameText(AFileName, cEnumTypenFile);
+    end;
+end;
+
+/// <summary>Scoped Enum: Typpräfix beim Einfügen; case-Zweig mit den fehlenden Werten.</summary>
+procedure AssertScopedEnumAndCase(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AReader: TCompletionReadText);
+var
+  mItems: TArray<TCompletionItem>;
+  mSetMode: Boolean;
+begin
+  // Vergleich mit Scoped Enum: Typpräfix beim Einfügen, gefiltert nach dem Getippten.
+  Assert.IsTrue(TLspCompletion.EnumItems(AResolver, AIndex, ATree, cEnumText, HauptFile, PositionOf(cEnumText,
+    'C.Kind = sk'),
+    AReader, TCompletionMatching.Fuzzy, mItems, mSetMode));
+  Assert.AreEqual(4, Integer(Length(mItems)));
+  Assert.AreEqual('TShapeKind.skCircle', mItems[0].InsertText);
+  // case-Zweig.
+  Assert.IsTrue(TLspCompletion.EnumItems(AResolver, AIndex, ATree, cEnumText, HauptFile,
+    PositionOf(cEnumText, 'skCircle: ;'#13#10'    '), AReader, TCompletionMatching.Fuzzy, mItems, mSetMode));
+  Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', JoinedItemNames(mItems));
+  Assert.AreEqual(#13#10'    TShapeKind.skRect: $0;'#13#10'    TShapeKind.skLine: ;'#13#10'    TShapeKind.skTriangle: ;',
+    mItems[0].TextEdit.NewText, 'Scoped Enum mit Typpräfix (#449)');
+end;
+
+/// <summary>Menge: alle Werte des Elementtyps, akLeft angehakt; bei in der Elementtyp aus der linken Seite.</summary>
+procedure AssertEnumSetItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AReader: TCompletionReadText);
+var
+  mItems: TArray<TCompletionItem>;
+  mSetMode: Boolean;
+begin
+  // Menge: alle Werte des Elementtyps, akLeft angehakt, Enter ersetzt die ganze Klammer.
+  Assert.IsTrue(TLspCompletion.EnumItems(AResolver, AIndex, ATree, cEnumText, HauptFile,
+    PositionOf(cEnumText, 'C.Anchors := [akLeft, '), AReader, TCompletionMatching.Fuzzy, mItems, mSetMode));
+  Assert.IsTrue(mSetMode);
+  Assert.AreEqual('akLeft akTop akRight akBottom', JoinedItemNames(mItems));
+  Assert.IsTrue(mItems[0].SetChecked);
+  Assert.IsFalse(mItems[1].SetChecked);
+  Assert.AreEqual('TAnchorKind', mItems[0].SetOf);
+  Assert.AreEqual('TAnchors', mItems[0].Expected);
+  Assert.AreEqual(12, mItems[0].SetRange.StartPos.Line);
+  Assert.AreEqual(15, mItems[0].SetRange.StartPos.Character);
+  Assert.AreEqual(25, mItems[0].SetRange.EndPos.Character);
+  // "in": Elementtyp aus der linken Seite.
+  Assert.IsTrue(TLspCompletion.EnumItems(AResolver, AIndex, ATree, cEnumText, HauptFile, PositionOf(cEnumText,
+    'C.Kind in ['),
+    AReader, TCompletionMatching.Fuzzy, mItems, mSetMode));
+  Assert.IsTrue(mSetMode);
+  Assert.AreEqual('set of TShapeKind', mItems[0].Expected);
+  Assert.AreEqual('TShapeKind.skCircle', mItems[0].InsertText);
+end;
+
+procedure TLspCompletionTests.OffersEnumValuesAndSetValues;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
   Items: TArray<TCompletionItem>;
   SetMode: Boolean;
   Reader: TCompletionReadText;
-
-  function Joined: string;
-  var
-    Item: TCompletionItem;
-  begin
-    Result := '';
-    for Item in Items do
-    begin
-      Result := Result + ' ' + Item.Name;
-    end;
-    Result := Result.Trim;
-  end;
-
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTypen, TypenFile, nil));
-  Reader :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := UnitTypen;
-      Result := SameText(AFileName, TypenFile);
-    end;
-  Tree := TPascalParser.Parse(Text);
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cEnumUnitTypen, cEnumTypenFile, nil));
+  Reader := TypenReader();
+  Tree := TPascalParser.Parse(cEnumText);
   Resolver := TNameResolver.Create(FIndex);
   try
     // Zuweisung: Werte in Deklarationsreihenfolge, auch über mehrere Zeilen.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Align := '),
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, cEnumText, HauptFile, PositionOf(cEnumText,
+      'C.Align := '),
       Reader, TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.IsFalse(SetMode);
-    Assert.AreEqual('alNone alTop alClient', Joined);
+    Assert.AreEqual('alNone alTop alClient', JoinedItemNames(Items));
     Assert.AreEqual(3, Items[2].Ordinal);
     Assert.AreEqual('TAlign', Items[0].Expected);
     Assert.IsTrue(Items[0].Fits);
     Assert.AreEqual('', Items[0].InsertText);
-    Assert.AreEqual(TypenFile, Items[0].SourceFile, 'Position für completionItem/resolve');
-    // Vergleich mit Scoped Enum: Typpräfix beim Einfügen, gefiltert nach dem Getippten.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind = sk'),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
-    Assert.AreEqual(4, Integer(Length(Items)));
-    Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
-    // case-Zweig.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skCircle: ;'#13#10'    '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
-    Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', Joined);
-    Assert.AreEqual(#13#10'    TShapeKind.skRect: $0;'#13#10'    TShapeKind.skLine: ;'#13#10'    TShapeKind.skTriangle: ;',
-      Items[0].TextEdit.NewText, 'Scoped Enum mit Typpräfix (#449)');
-    // Menge: alle Werte des Elementtyps, akLeft angehakt, Enter ersetzt die ganze Klammer.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'C.Anchors := [akLeft, '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
-    Assert.IsTrue(SetMode);
-    Assert.AreEqual('akLeft akTop akRight akBottom', Joined);
-    Assert.IsTrue(Items[0].SetChecked);
-    Assert.IsFalse(Items[1].SetChecked);
-    Assert.AreEqual('TAnchorKind', Items[0].SetOf);
-    Assert.AreEqual('TAnchors', Items[0].Expected);
-    Assert.AreEqual(12, Items[0].SetRange.StartPos.Line);
-    Assert.AreEqual(15, Items[0].SetRange.StartPos.Character);
-    Assert.AreEqual(25, Items[0].SetRange.EndPos.Character);
-    // "in": Elementtyp aus der linken Seite.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind in ['),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
-    Assert.IsTrue(SetMode);
-    Assert.AreEqual('set of TShapeKind', Items[0].Expected);
-    Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
+    Assert.AreEqual(cEnumTypenFile, Items[0].SourceFile, 'Position für completionItem/resolve');
+    AssertScopedEnumAndCase(Resolver, FIndex, Tree, Reader);
+    AssertEnumSetItems(Resolver, FIndex, Tree, Reader);
     // Index statt Menge.
-    Assert.IsFalse(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, ':= List['),
+    Assert.IsFalse(TLspCompletion.EnumItems(Resolver, FIndex, Tree, cEnumText, HauptFile, PositionOf(cEnumText,
+      ':= List['),
       Reader, TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.IsFalse(SetMode);
   finally
@@ -2447,11 +2511,10 @@ begin
   Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo TBasis Rechne', Plain);
 end;
 
-procedure TLspCompletionTests.OverrideItemsReadsEachFileOnce;
 const
-  BasisFile = 'C:\P\Basis.pas';
-  MitteFile = 'C:\P\Mitte.pas';
-  UnitBasis =
+  cOverrideBasisFile = 'C:\P\Basis.pas';
+  cOverrideMitteFile = 'C:\P\Mitte.pas';
+  cOverrideUnitBasis =
     'unit Basis;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -2463,7 +2526,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  UnitMitte =
+  cOverrideUnitMitte =
     'unit Mitte;'#13#10 +
     'interface'#13#10 +
     'uses Basis;'#13#10 +
@@ -2475,7 +2538,7 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
-  Text =
+  cOverrideText =
     'unit Haupt;'#13#10 +
     'interface'#13#10 +
     'uses Basis, Mitte;'#13#10 +
@@ -2486,6 +2549,8 @@ const
     '  end;'#13#10 +
     'implementation'#13#10 +
     'end.';
+
+procedure TLspCompletionTests.OverrideItemsReadsEachFileOnce;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
@@ -2493,13 +2558,14 @@ var
   Reads: TDictionary<string, Integer>;
   Count: Integer;
 begin
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, BasisFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitMitte, MitteFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cOverrideUnitBasis, cOverrideBasisFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cOverrideUnitMitte, cOverrideMitteFile, nil));
   Reads := TDictionary<string, Integer>.Create;
-  Tree := TPascalParser.Parse(Text);
+  Tree := TPascalParser.Parse(cOverrideText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, '    procedure '),
+    Assert.IsTrue(TLspCompletion.OverrideItems(Resolver, Tree, cOverrideText, HauptFile, PositionOf(cOverrideText,
+      '    procedure '),
       function(const AFileName: string; out AText: string): Boolean
       var
         Seen: Integer;
@@ -2510,13 +2576,13 @@ begin
         end;
         Reads.AddOrSetValue(UpperCase(AFileName), Seen + 1);
         Result := True;
-        if SameText(AFileName, BasisFile) then
+        if SameText(AFileName, cOverrideBasisFile) then
         begin
-          AText := UnitBasis;
+          AText := cOverrideUnitBasis;
         end
-        else if SameText(AFileName, MitteFile) then
+        else if SameText(AFileName, cOverrideMitteFile) then
         begin
-          AText := UnitMitte;
+          AText := cOverrideUnitMitte;
         end
         else
         begin
@@ -2526,9 +2592,9 @@ begin
     Assert.AreEqual('Moved Renamed Changed Cleared Sorted', Names(Items));
     // Vorher je Kandidat einmal (3 bzw. 2), jetzt je Datei einmal.
     Assert.AreEqual(2, Integer(Reads.Count));
-    Assert.IsTrue(Reads.TryGetValue(UpperCase(BasisFile), Count));
+    Assert.IsTrue(Reads.TryGetValue(UpperCase(cOverrideBasisFile), Count));
     Assert.AreEqual(1, Count);
-    Assert.IsTrue(Reads.TryGetValue(UpperCase(MitteFile), Count));
+    Assert.IsTrue(Reads.TryGetValue(UpperCase(cOverrideMitteFile), Count));
     Assert.AreEqual(1, Count);
   finally
     Resolver.Free;

@@ -308,12 +308,51 @@ begin
     StartsStr('destructor ', Line) or StartsStr('operator ', Line);
 end;
 
+/// <summary>Signatur des Routinenkopfs ab Zeile AFirst; der Kopf kann über mehrere Zeilen gehen.</summary>
+function RoutineSignatureFrom(const ALines: TArray<string>; const AFirst: Integer): string;
+var
+  mDeclaration: string;
+  mIndex: Integer;
+begin
+  mDeclaration := '';
+  for mIndex := AFirst to High(ALines) do
+  begin
+    mDeclaration := mDeclaration + ' ' + ALines[mIndex];
+    if Pos(';', ALines[mIndex]) > 0 then
+    begin
+      Result := RoutineSignature(mDeclaration);
+      if (Pos('(', Result) = 0) or (Pos(')', Result) > 0) then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  Result := RoutineSignature(mDeclaration);
+end;
+
+/// <summary>XML-Dokumentation mit summary, je Parameter param und bei Funktionen returns.</summary>
+function DocCommentLines(const ASignature: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := ['/// <summary></summary>'];
+  for mName in ParameterNames(ASignature).Split([', ']) do
+  begin
+    if mName <> '' then
+    begin
+      Result := Result + [Format('/// <param name="%s"></param>', [mName])];
+    end;
+  end;
+  if StartsText('function ', ASignature) or StartsText('class function ', ASignature) then
+  begin
+    Result := Result + ['/// <returns></returns>'];
+  end;
+end;
+
 function ExecuteDoc(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  Next, Index: Integer;
-  Declaration, Signature, Name: string;
-  Lines: TArray<string>;
+  Next: Integer;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -327,34 +366,7 @@ begin
     begin
       Exit(Fail('/doc gilt nur über einer Routine', AReason));
     end;
-    // Kopf kann über mehrere Zeilen gehen.
-    Declaration := '';
-    for Index := Next to High(Source.Lines) do
-    begin
-      Declaration := Declaration + ' ' + Source.Lines[Index];
-      if Pos(';', Source.Lines[Index]) > 0 then
-      begin
-        Signature := RoutineSignature(Declaration);
-        if (Pos('(', Signature) = 0) or (Pos(')', Signature) > 0) then
-        begin
-          Break;
-        end;
-      end;
-    end;
-    Signature := RoutineSignature(Declaration);
-    Lines := ['/// <summary></summary>'];
-    for Name in ParameterNames(Signature).Split([', ']) do
-    begin
-      if Name <> '' then
-      begin
-        Lines := Lines + [Format('/// <param name="%s"></param>', [Name])];
-      end;
-    end;
-    if StartsText('function ', Signature) or StartsText('class function ', Signature) then
-    begin
-      Lines := Lines + ['/// <returns></returns>'];
-    end;
-    AEdits := [Source.ReplaceWithIndentedLines(Lines)];
+    AEdits := [Source.ReplaceWithIndentedLines(DocCommentLines(RoutineSignatureFrom(Source.Lines, Next)))];
     Result := True;
   finally
     Source.Free;

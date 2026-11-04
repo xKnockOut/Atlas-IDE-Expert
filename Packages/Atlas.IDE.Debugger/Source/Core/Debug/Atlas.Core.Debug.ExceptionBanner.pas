@@ -137,10 +137,14 @@ function TAtlasDebugBannerInfo.LocationText: string;
 begin
   Result := '';
   if FileName = '' then
+  begin
     Exit;
+  end;
   Result := ExtractFileName(FileName);
   if Line > 0 then
+  begin
     Result := Result + ':' + IntToStr(Line);
+  end;
 end;
 
 { TAtlasDebugBannerRules }
@@ -154,22 +158,34 @@ class function TAtlasDebugBannerRules.Mode(AEnabled, AKnownVersion, AIdeDialog: 
   const ADialog: TAtlasDebugDialogScan): TAtlasDebugBannerMode;
 begin
   if not AEnabled then
-    Result := TAtlasDebugBannerMode.Off
+  begin
+    Result := TAtlasDebugBannerMode.Off;
+  end
   else if AKnownVersion and not AIdeDialog and ADialog.CanContinue then
-    Result := TAtlasDebugBannerMode.Replace
+  begin
+    Result := TAtlasDebugBannerMode.Replace;
+  end
   else
+  begin
     Result := TAtlasDebugBannerMode.Additional;
+  end;
 end;
 
 class function TAtlasDebugBannerRules.AutoContinue(AClassIgnored, ALocationIgnored,
   AIgnoreAtLocation: Boolean): TAtlasDebugAutoContinue;
 begin
   if AClassIgnored then
-    Result := TAtlasDebugAutoContinue.ByClass
+  begin
+    Result := TAtlasDebugAutoContinue.ByClass;
+  end
   else if ALocationIgnored and AIgnoreAtLocation then
-    Result := TAtlasDebugAutoContinue.ByLocation
+  begin
+    Result := TAtlasDebugAutoContinue.ByLocation;
+  end
   else
+  begin
     Result := TAtlasDebugAutoContinue.None;
+  end;
 end;
 
 class function TAtlasDebugBannerRules.Info(const AException: TAtlasDebugException; AJustMyCode: Boolean;
@@ -195,7 +211,9 @@ begin
     Result.Line := Frames[Result.FrameIndex].Line;
   end
   else if (Result.Routine = '') and (Frames <> nil) then
+  begin
     Result.Routine := Frames[0].Routine;
+  end;
   Result.CanIgnoreLocation := AIgnoreAtLocation and (AProject <> '') and Result.HasLocation;
 end;
 

@@ -107,20 +107,32 @@ begin
   begin
     // Die Endposition gilt nur einmal (die erste).
     if Stop.Number = 0 then
+    begin
       if HasEnd then
-        Continue
+      begin
+        Continue;
+      end
       else
+      begin
         HasEnd := True;
+      end;
+    end;
     Field.Number := Stop.Number;
     Field.Start := AOffset + Stop.Start;
     Field.Length := Stop.Length;
     FFields := FFields + [Field];
     Seen := False;
     for Number in Numbers do
+    begin
       if Number = Stop.Number then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen and (Stop.Number > 0) then
+    begin
       Numbers := Numbers + [Stop.Number];
+    end;
   end;
   if not HasEnd then
   begin
@@ -131,13 +143,17 @@ begin
   end;
   // Aufsteigend sortieren (wenige Einträge).
   for Index := 1 to High(Numbers) do
+  begin
     for Number := Index downto 1 do
+    begin
       if Numbers[Number] < Numbers[Number - 1] then
       begin
         Swap := Numbers[Number];
         Numbers[Number] := Numbers[Number - 1];
         Numbers[Number - 1] := Swap;
       end;
+    end;
+  end;
   FOrder := Numbers + [0];
   FCurrent := 0;
   FPrimary := FirstOf(FOrder[0]);
@@ -147,7 +163,9 @@ procedure TAtlasPlaceholderSession.Link(const AField: TAtlasPlaceholderField);
 begin
   // Hinten anhängen: FirstOf findet zuerst die Platzhalter der Vorlage, dort steht der Cursor.
   if (AField.Number > 0) and (FirstOf(AField.Number) >= 0) then
+  begin
     FFields := FFields + [AField];
+  end;
 end;
 
 function TAtlasPlaceholderSession.FirstOf(ANumber: Integer): Integer;
@@ -155,8 +173,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFields) do
+  begin
     if FFields[Index].Number = ANumber then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -186,8 +208,12 @@ var
 begin
   Result := nil;
   for Field in FFields do
+  begin
     if Field.Number > 0 then
+    begin
       Result := Result + [Field];
+    end;
+  end;
 end;
 
 function TAtlasPlaceholderSession.FinalOffset: Integer;
@@ -198,7 +224,9 @@ end;
 function TAtlasPlaceholderSession.Next: Boolean;
 begin
   if FCurrent < High(FOrder) then
+  begin
     Inc(FCurrent);
+  end;
   FPrimary := FirstOf(FOrder[FCurrent]);
   Result := FOrder[FCurrent] <> 0;
 end;
@@ -206,7 +234,9 @@ end;
 procedure TAtlasPlaceholderSession.Previous;
 begin
   if (FCurrent > 0) and (FOrder[FCurrent] <> 0) then
+  begin
     Dec(FCurrent);
+  end;
   FPrimary := FirstOf(FOrder[FCurrent]);
 end;
 
@@ -223,13 +253,17 @@ begin
   ALine := 0;
   LineStart := 0;
   if AOffset > Length(AText) then
+  begin
     AOffset := Length(AText);
+  end;
   for Index := 1 to AOffset do
+  begin
     if AText[Index] = #10 then
     begin
       Inc(ALine);
       LineStart := Index;
     end;
+  end;
   ACharacter := AOffset - LineStart;
 end;
 
@@ -238,8 +272,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFields) do
+  begin
     if (Index <> AExcept) and (FFields[Index].Start >= AFrom) then
+    begin
       Inc(FFields[Index].Start, ADelta);
+    end;
+  end;
 end;
 
 function TAtlasPlaceholderSession.Update(const ADocument: string): Boolean;
@@ -248,36 +286,54 @@ var
   Field: TAtlasPlaceholderField;
 begin
   if ADocument = FText then
+  begin
     Exit(True);
+  end;
   Result := False;
   if CurrentNumber = 0 then
+  begin
     Exit;
+  end;
   OldLength := Length(FText);
   NewLength := Length(ADocument);
   Delta := NewLength - OldLength;
   // Gleicher Anfang und gleiches Ende, unabhängig voneinander: Bei "aa" → "aaa" ist jede Stelle möglich.
   Limit := OldLength;
   if NewLength < Limit then
+  begin
     Limit := NewLength;
+  end;
   Prefix := 0;
   while (Prefix < Limit) and (FText[Prefix + 1] = ADocument[Prefix + 1]) do
+  begin
     Inc(Prefix);
+  end;
   Suffix := 0;
   while (Suffix < Limit) and (FText[OldLength - Suffix] = ADocument[NewLength - Suffix]) do
+  begin
     Inc(Suffix);
+  end;
   // Erst der Platzhalter mit dem Cursor, dann die übrigen der Nummer.
   for Index := -1 to High(FFields) do
   begin
     if Index < 0 then
-      Field := FFields[FPrimary]
+    begin
+      Field := FFields[FPrimary];
+    end
     else if (Index = FPrimary) or (FFields[Index].Number <> CurrentNumber) then
-      Continue
+    begin
+      Continue;
+    end
     else
+    begin
       Field := FFields[Index];
+    end;
     if (Prefix >= Field.Start) and (Suffix >= OldLength - Field.Stop) and (Field.Length + Delta >= 0) then
     begin
       if Index >= 0 then
+      begin
         FPrimary := Index;
+      end;
       Shift(FFields[FPrimary].Stop, Delta, FPrimary);
       // Eine leere Endposition direkt am Anfang des Platzhalters bleibt davor.
       Inc(FFields[FPrimary].Length, Delta);
@@ -295,9 +351,12 @@ var
 begin
   Result := nil;
   if CurrentNumber = 0 then
+  begin
     Exit;
+  end;
   Value := FieldText(FFields[FPrimary]);
   for Index := 0 to High(FFields) do
+  begin
     if (Index <> FPrimary) and (FFields[Index].Number = CurrentNumber) and (FieldText(FFields[Index]) <> Value) then
     begin
       Edit.Start := FFields[Index].Start;
@@ -305,15 +364,20 @@ begin
       Edit.Text := Value;
       Result := Result + [Edit];
     end;
+  end;
   // Aufsteigend: Verknüpfte Platzhalter außerhalb der Vorlage (#473) können vor ihr liegen.
   for Index := 1 to High(Result) do
+  begin
     for Inner := Index downto 1 do
+    begin
       if Result[Inner].Start < Result[Inner - 1].Start then
       begin
         Edit := Result[Inner];
         Result[Inner] := Result[Inner - 1];
         Result[Inner - 1] := Edit;
       end;
+    end;
+  end;
 end;
 
 procedure TAtlasPlaceholderSession.Applied(const AEdits: TAtlasPlaceholderEdits);
@@ -328,11 +392,17 @@ begin
     Delta := Length(Edit.Text) - (Edit.Stop - Edit.Start);
     FText := Copy(FText, 1, Edit.Start) + Edit.Text + Copy(FText, Edit.Stop + 1, MaxInt);
     for Offset := 0 to High(FFields) do
+    begin
       if (FFields[Offset].Start = Edit.Start) and (FFields[Offset].Stop = Edit.Stop) and
         (FFields[Offset].Number = CurrentNumber) then
-        FFields[Offset].Length := Length(Edit.Text)
+      begin
+        FFields[Offset].Length := Length(Edit.Text);
+      end
       else if FFields[Offset].Start >= Edit.Stop then
+      begin
         Inc(FFields[Offset].Start, Delta);
+      end;
+    end;
   end;
 end;
 

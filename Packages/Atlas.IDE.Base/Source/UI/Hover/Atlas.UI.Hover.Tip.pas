@@ -49,6 +49,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Layout,
+  Atlas.Core.Hover.Texts,
   Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Popup.Window;
@@ -64,66 +65,45 @@ type
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
     AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
-  TAtlasHoverTip = class(TAtlasPopupWindow)
+  /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen (P-09).</summary>
+  TAtlasHoverTipView = class(TAtlasPopupWindow)
   public const
     MaxWidth = 460;
   private
-    FView: TAtlasHoverView;
-    /// <summary>Satz des Inhalts (P-09); FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
-    FLayout: TAtlasHoverLayout;
-    FLayoutKey: string;
     FDeclaration: TAtlasStyledText;
-    FHot: Integer;
-    FOnLink: TAtlasHoverRefEvent;
-    FOnPath: TAtlasHoverIndexEvent;
-    FOnBack: TNotifyEvent;
-    FOnAction: TAtlasHoverActionEvent;
-    FOnUrl: TAtlasHoverUrlEvent;
-    FOnProblemAction: TAtlasHoverProblemActionEvent;
-    FOnDebugFix: TAtlasHoverIndexEvent;
     FProblemActions: Boolean;
     FHideCompilerCode: Boolean;
-    FDoc: TAtlasDocView;
-    /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
-    FDocLeft: Integer;
-    FDocTop: Integer;
     /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
     FAbove: Boolean;
     /// <summary>Setzt die Doku für die Fensterbreite AWidth (volle Höhe).</summary>
     procedure PrepareDoc(AWidth: Integer);
     /// <summary>Höhe für AWidth mit höchstens AAvailable Pixeln: begrenzt die Doku (scrollt dann).</summary>
     function FitHeight(AWidth, AAvailable: Integer): Integer;
-    function InDoc(AX, AY: Integer): Boolean;
-    function DocLinkAt(AX, AY: Integer): Integer;
-    /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
-    procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
-    /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um, merkt den Zustand und passt die Höhe an.</summary>
-    procedure ToggleDoc;
-    /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
-    procedure TogglePublished(AToggle: TAtlasHoverPublishedToggle);
-    /// <summary>Höhe neu nach dem Inhalt, Breite bleibt; wächst nach unten, über dem Wort nach oben.</summary>
-    procedure Refit;
     procedure SetProblemActions(AValue: Boolean);
     procedure SetHideCompilerCode(AValue: Boolean);
-    /// <summary>Löst die Aktion der Klickfläche AHit (Index in FLayout.Hits) aus, wenn sie zu einem Problem gehört.
-    /// </summary>
-    function FireProblemAction(AHit: Integer): Boolean;
     function LayoutKey(AWidth: Integer): string;
-    function Texts: TAtlasHoverTexts;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
     procedure BuildLayout(AWidth: Integer);
-    /// <summary>Wählt die Schrift AFace in die Zeichenfläche.</summary>
-    procedure ApplyFace(const AFace: TAtlasHoverFace; ABadgeHeight: Integer);
+    procedure PaintLine(const AItem: TAtlasHoverItem; AHot: Boolean; AColor: TAtlasColor);
+    procedure PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace; AColor: TAtlasColor);
+    procedure PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace; AColor: TAtlasColor);
+    procedure PaintBlock(const AItem: TAtlasHoverItem; AColor: TAtlasColor);
     procedure PaintItem(const AItem: TAtlasHoverItem);
-    function HitAt(AX, AY: Integer): Integer;
     function PreferredWidth: Integer;
-    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
+    FView: TAtlasHoverView;
+    /// <summary>Satz des Inhalts (P-09); FLayoutKey: Breite, Doku, Schrift, Farben, für die er gilt.</summary>
+    FLayout: TAtlasHoverLayout;
+    FLayoutKey: string;
+    FHot: Integer;
+    FDoc: TAtlasDocView;
+    function InDoc(AX, AY: Integer): Boolean;
+    function DocLinkAt(AX, AY: Integer): Integer;
+    /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um, merkt den Zustand und passt die Höhe an.</summary>
+    procedure ToggleDoc;
+    /// <summary>Höhe neu nach dem Inhalt, Breite bleibt; wächst nach unten, über dem Wort nach oben.</summary>
+    procedure Refit;
     procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -132,6 +112,43 @@ type
     function HasSelection: Boolean;
     /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
     function ScrollDoc(ASteps: Integer): Boolean;
+    /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
+    procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
+    /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
+    procedure UpdateContent(const AView: TAtlasHoverView);
+    property View: TAtlasHoverView read FView;
+    /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
+    property ProblemActions: Boolean read FProblemActions write SetProblemActions;
+    /// <summary>problems.showCompilerCode aus (#1024).</summary>
+    property HideCompilerCode: Boolean read FHideCompilerCode write SetHideCompilerCode;
+  end;
+
+  /// <summary>Tooltip mit Maus, Tastatur im Befund-Hover und Ereignissen.</summary>
+  TAtlasHoverTip = class(TAtlasHoverTipView)
+  private
+    FOnLink: TAtlasHoverRefEvent;
+    FOnPath: TAtlasHoverIndexEvent;
+    FOnBack: TNotifyEvent;
+    FOnAction: TAtlasHoverActionEvent;
+    FOnUrl: TAtlasHoverUrlEvent;
+    FOnProblemAction: TAtlasHoverProblemActionEvent;
+    FOnDebugFix: TAtlasHoverIndexEvent;
+    /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
+    procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
+    /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
+    procedure TogglePublished(AToggle: TAtlasHoverPublishedToggle);
+    /// <summary>Löst die Aktion der Klickfläche AHit (Index in FLayout.Hits) aus, wenn sie zu einem Problem gehört.
+    /// </summary>
+    function FireProblemAction(AHit: Integer): Boolean;
+    /// <summary>Klick auf die Klickfläche AHit (Index in FLayout.Hits).</summary>
+    procedure FireHit(AHit: Integer; Shift: TShiftState);
+    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
+  protected
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+  public
     /// <summary>Tastatur im Befund-Hover (#909): Tab bzw. Umschalt+Tab markiert die nächste bzw. vorige Aktion
     /// unter einem Problem; False ohne Aktionen.</summary>
     function StepProblemAction(AForward: Boolean): Boolean;
@@ -142,13 +159,6 @@ type
     function HasProblemActions: Boolean;
     function HasFix: Boolean;
     function ProblemActionMarked: Boolean;
-    /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
-    procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
-    /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
-    procedure UpdateContent(const AView: TAtlasHoverView);
-    /// <summary>Text der Art für die Kopfzeile (Klasse, Methode …); '' wenn unbekannt.</summary>
-    class function KindCaption(const AKind: string): string; static;
-    property View: TAtlasHoverView read FView;
     property OnLink: TAtlasHoverRefEvent read FOnLink write FOnLink;
     property OnPath: TAtlasHoverIndexEvent read FOnPath write FOnPath;
     property OnBack: TNotifyEvent read FOnBack write FOnBack;
@@ -160,10 +170,6 @@ type
     /// <summary>Klick auf eine Korrektur unter „kein Zugriff“ (#840); AIndex in View.DebugValue.Note.Fixes.
     /// </summary>
     property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
-    /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
-    property ProblemActions: Boolean read FProblemActions write SetProblemActions;
-    /// <summary>problems.showCompilerCode aus (#1024).</summary>
-    property HideCompilerCode: Boolean read FHideCompilerCode write SetHideCompilerCode;
   end;
 
 implementation
@@ -178,13 +184,168 @@ uses
   Atlas.UI.Popup.Draw,
   Atlas.UI.Popup.Accessibility;
 
+function HoverKindCaption(const AKind: string): string;
+const
+  Kinds: array[0..15] of string = ('class', 'classref', 'object', 'record', 'interface', 'helper', 'enum', 'type',
+    'method', 'constructor', 'routine', 'property', 'field', 'variable', 'constant', 'enumMember');
+  Ids: array[0..15] of TAtlasTextId = (TAtlasTextId.KindClass, TAtlasTextId.KindClassRef, TAtlasTextId.KindObject,
+    TAtlasTextId.KindRecord, TAtlasTextId.KindInterface, TAtlasTextId.KindHelper, TAtlasTextId.KindEnum,
+    TAtlasTextId.KindType, TAtlasTextId.KindMethod, TAtlasTextId.KindConstructor, TAtlasTextId.KindRoutine,
+    TAtlasTextId.KindProperty, TAtlasTextId.KindField, TAtlasTextId.KindVariable, TAtlasTextId.KindConstant,
+    TAtlasTextId.KindEnumMember);
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexStr(AKind, Kinds);
+  if mIndex < 0 then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(Ids[mIndex]);
+  end;
+end;
+
+/// <summary>Kopfzeile, Navigation und Aktionsleiste.</summary>
+procedure SetActionTexts(var ATexts: TAtlasHoverTexts);
+begin
+  ATexts.Pinned := TAtlasStrings.Text(TAtlasTextId.HoverPinned);
+  ATexts.Inheritance := TAtlasStrings.Text(TAtlasTextId.HoverInheritance);
+  ATexts.TargetType := TAtlasStrings.Text(TAtlasTextId.HoverTargetType);
+  ATexts.Navigate := TAtlasStrings.Text(TAtlasTextId.HoverGoTo);
+  ATexts.Usages := TAtlasStrings.Text(TAtlasTextId.HoverUsages);
+  ATexts.UsagesCount := TAtlasStrings.Text(TAtlasTextId.HoverUsagesCount);
+  ATexts.Copy := TAtlasStrings.Text(TAtlasTextId.HoverCopy);
+  ATexts.CopySelection := TAtlasStrings.Text(TAtlasTextId.HoverCopySelection);
+  ATexts.Help := TAtlasStrings.Text(TAtlasTextId.HoverHelp);
+  ATexts.KeyUsages := TAtlasStrings.Text(TAtlasTextId.HoverKeyUsages);
+  ATexts.KeyCopy := TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy);
+  ATexts.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
+  ATexts.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
+  ATexts.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
+  ATexts.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
+  ATexts.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
+end;
+
+/// <summary>Probleme, uses-Hinweise und Befund-Hover (#621, #909, #1024).</summary>
+procedure SetProblemTexts(var ATexts: TAtlasHoverTexts);
+begin
+  ATexts.SourceAtlas := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
+  ATexts.Confirmed := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmed);
+  ATexts.ConfirmedCode := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmedCode);
+  ATexts.SourceCompiler := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler);
+  ATexts.SourceInactive := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive);
+  ATexts.SourceUses := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceUses);
+  ATexts.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
+  ATexts.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
+  ATexts.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
+  ATexts.ShowGraph := TAtlasStrings.Text(TAtlasTextId.HoverShowGraph);
+  ATexts.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
+  ATexts.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
+  ATexts.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
+  ATexts.Suppress := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress);
+  ATexts.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
+  ATexts.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
+end;
+
+/// <summary>published-Mitglieder (#110).</summary>
+procedure SetPublishedTexts(var ATexts: TAtlasHoverTexts);
+begin
+  ATexts.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
+  ATexts.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
+  ATexts.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
+  ATexts.PublishedProperties := TAtlasStrings.Text(TAtlasTextId.PublishedProperties);
+  ATexts.PublishedEvents := TAtlasStrings.Text(TAtlasTextId.PublishedEvents);
+  ATexts.PublishedName := TAtlasStrings.Text(TAtlasTextId.PublishedName);
+  ATexts.PublishedType := TAtlasStrings.Text(TAtlasTextId.PublishedType);
+  ATexts.PublishedDefault := TAtlasStrings.Text(TAtlasTextId.PublishedDefault);
+  ATexts.PublishedDeclared := TAtlasStrings.Text(TAtlasTextId.PublishedDeclared);
+  ATexts.PublishedImplicit := TAtlasStrings.Text(TAtlasTextId.PublishedImplicit);
+  ATexts.PublishedMoreProperties := TAtlasStrings.Text(TAtlasTextId.PublishedMoreProperties);
+  ATexts.PublishedMoreEvents := TAtlasStrings.Text(TAtlasTextId.PublishedMoreEvents);
+  ATexts.PublishedEventsNote := TAtlasStrings.Text(TAtlasTextId.PublishedEventsNote);
+  ATexts.PublishedArrayProperty := TAtlasStrings.Text(TAtlasTextId.PublishedArrayProperty);
+  ATexts.PublishedDefaultProperty := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultProperty);
+  ATexts.PublishedDefaultPropertyNote := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultPropertyNote);
+  ATexts.PublishedCopyList := TAtlasStrings.Text(TAtlasTextId.PublishedCopyList);
+  ATexts.PublishedVclNote := TAtlasStrings.Text(TAtlasTextId.PublishedVclNote);
+end;
+
+/// <summary>Texte des Satzes in der Sprache der Oberfläche.</summary>
+function HoverTexts(const AView: TAtlasHoverView): TAtlasHoverTexts;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasHoverTexts);
+  Result.KindCaption := HoverKindCaption(AView.Data.Kind);
+  SetActionTexts(Result);
+  SetProblemTexts(Result);
+  SetPublishedTexts(Result);
+  Result.Confidences := nil;
+  SetLength(Result.Confidences, Length(AView.Problems));
+  // Hohe Konfidenz ist der Normalfall und bekommt keine eigene Zeile (#909).
+  for mIndex := 0 to High(AView.Problems) do
+  begin
+    if not SameText(AView.Problems[mIndex].Confidence, 'high') then
+    begin
+      Result.Confidences[mIndex] := TAtlasStrings.Confidence(AView.Problems[mIndex].Confidence);
+    end;
+  end;
+end;
+
+/// <summary>Wählt die Schrift AFace in ACanvas; Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel
+/// (Editorschrift).</summary>
+procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: TAtlasHoverFace;
+  ABadgeHeight: Integer);
+begin
+  case AFace.Font of
+    TAtlasHoverFont.Mono:
+      ACanvas.Font := AFont;
+    TAtlasHoverFont.SmallUi:
+      begin
+        ACanvas.Font := AUIFont;
+        ACanvas.Font.Height := Round(AUIFont.Height * 0.88);
+      end;
+    TAtlasHoverFont.SmallMono:
+      begin
+        ACanvas.Font := AFont;
+        ACanvas.Font.Height := Round(AFont.Height * 0.8);
+      end;
+    TAtlasHoverFont.Badge:
+      begin
+        // Größe aus der Höhe des Kästchens: nur für Kästchen fester Größe (Kopfzeile), nicht zum Messen.
+        ACanvas.Font := AFont;
+        ACanvas.Font.Height := -Round(ABadgeHeight * 0.62);
+      end;
+  else
+    ACanvas.Font := AUIFont;
+  end;
+  ACanvas.Font.Style := [];
+  if AFace.Bold then
+  begin
+    ACanvas.Font.Style := [fsBold];
+  end;
+  if AFace.Underline then
+  begin
+    ACanvas.Font.Style := ACanvas.Font.Style + [fsUnderline];
+  end;
+end;
+
+/// <summary>Braucht der Inhalt die volle Breite (Doku, Kette, Fundort, Pfad, published-Mitglieder)?</summary>
+function NeedsFullWidth(const AView: TAtlasHoverView): Boolean;
+begin
+  Result := (AView.Data.Documentation <> '') or not AView.Data.Doc.IsEmpty or (Length(AView.Data.Ancestors) > 0);
+  Result := Result or AView.Data.Location.HasLocation or AView.Pinned or (Length(AView.Data.Members) > 0);
+end;
+
 type
   /// <summary>Messen über die Zeichenfläche des Tooltips für TAtlasHoverLayout.</summary>
   TTipMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
   private
-    FTip: TAtlasHoverTip;
+    FTip: TAtlasHoverTipView;
   public
-    constructor Create(ATip: TAtlasHoverTip);
+    constructor Create(ATip: TAtlasHoverTipView);
     function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
     function TextHeight(const AFace: TAtlasHoverFace): Integer;
     function BlockHeight(const AText: string; AWidth: Integer): Integer;
@@ -194,7 +355,7 @@ type
 
 { TTipMeasure }
 
-constructor TTipMeasure.Create(ATip: TAtlasHoverTip);
+constructor TTipMeasure.Create(ATip: TAtlasHoverTipView);
 begin
   inherited Create;
   FTip := ATip;
@@ -202,13 +363,13 @@ end;
 
 function TTipMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
 begin
-  FTip.ApplyFace(AFace, 0);
+  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
   Result := FTip.Canvas.TextWidth(AText);
 end;
 
 function TTipMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
 begin
-  FTip.ApplyFace(AFace, 0);
+  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
   Result := FTip.Canvas.TextHeight('Wg');
 end;
 
@@ -234,9 +395,9 @@ begin
   Result := FTip.FDeclaration.WrapAtSpaces(FTip.Canvas, AWidth, AIndent);
 end;
 
-{ TAtlasHoverTip }
+{ TAtlasHoverTipView }
 
-constructor TAtlasHoverTip.Create(AOwner: TComponent);
+constructor TAtlasHoverTipView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Hover;
@@ -244,13 +405,13 @@ begin
   FDoc := TAtlasDocView.Create;
 end;
 
-destructor TAtlasHoverTip.Destroy;
+destructor TAtlasHoverTipView.Destroy;
 begin
   FDoc.Free;
   inherited Destroy;
 end;
 
-procedure TAtlasHoverTip.PrepareDoc(AWidth: Integer);
+procedure TAtlasHoverTipView.PrepareDoc(AWidth: Integer);
 var
   Doc: TAtlasDoc;
 begin
@@ -271,7 +432,7 @@ begin
     TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip));
 end;
 
-procedure TAtlasHoverTip.ToggleDoc;
+procedure TAtlasHoverTipView.ToggleDoc;
 begin
   TAtlasDocExpandState.Remember(TAtlasDocSurface.Tooltip, FDoc.Toggle(Canvas));
   FDoc.ClearSelection;
@@ -287,7 +448,7 @@ begin
   Refit;
 end;
 
-procedure TAtlasHoverTip.Refit;
+procedure TAtlasHoverTipView.Refit;
 var
   Area, Bounds: TRect;
   NewHeight: Integer;
@@ -304,7 +465,7 @@ begin
   Invalidate;
 end;
 
-function TAtlasHoverTip.FitHeight(AWidth, AAvailable: Integer): Integer;
+function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;
 var
   Natural: Integer;
 begin
@@ -320,18 +481,18 @@ begin
   Result := Natural;
 end;
 
-function TAtlasHoverTip.InDoc(AX, AY: Integer): Boolean;
+function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
 begin
-  Result := not FDoc.IsEmpty and (AX >= FDocLeft - Scale(4)) and (AX < FDocLeft + FDoc.Width + Scale(8)) and
-    (AY >= FDocTop) and (AY < FDocTop + FDoc.Height);
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+    (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
 end;
 
-function TAtlasHoverTip.DocLinkAt(AX, AY: Integer): Integer;
+function TAtlasHoverTipView.DocLinkAt(AX, AY: Integer): Integer;
 begin
   Result := -1;
   if InDoc(AX, AY) then
   begin
-    Result := FDoc.LinkAt(AX - FDocLeft, AY - FDocTop);
+    Result := FDoc.LinkAt(AX - FLayout.DocLeft, AY - FLayout.DocTop);
   end;
 end;
 
@@ -371,7 +532,7 @@ begin
   end;
   if InDoc(X, Y) then
   begin
-    FDoc.StartSelection(Canvas, X - FDocLeft, Y - FDocTop);
+    FDoc.StartSelection(Canvas, X - FLayout.DocLeft, Y - FLayout.DocTop);
   end
   else
   begin
@@ -380,17 +541,17 @@ begin
   Invalidate;
 end;
 
-function TAtlasHoverTip.SelectedText: string;
+function TAtlasHoverTipView.SelectedText: string;
 begin
   Result := FDoc.SelectedText;
 end;
 
-function TAtlasHoverTip.HasSelection: Boolean;
+function TAtlasHoverTipView.HasSelection: Boolean;
 begin
   Result := FDoc.HasSelection;
 end;
 
-function TAtlasHoverTip.ScrollDoc(ASteps: Integer): Boolean;
+function TAtlasHoverTipView.ScrollDoc(ASteps: Integer): Boolean;
 begin
   Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
   if Result then
@@ -399,104 +560,13 @@ begin
   end;
 end;
 
-class function TAtlasHoverTip.KindCaption(const AKind: string): string;
-const
-  Kinds: array[0..15] of string = ('class', 'classref', 'object', 'record', 'interface', 'helper', 'enum', 'type',
-    'method', 'constructor', 'routine', 'property', 'field', 'variable', 'constant', 'enumMember');
-  Ids: array[0..15] of TAtlasTextId = (TAtlasTextId.KindClass, TAtlasTextId.KindClassRef, TAtlasTextId.KindObject,
-    TAtlasTextId.KindRecord, TAtlasTextId.KindInterface, TAtlasTextId.KindHelper, TAtlasTextId.KindEnum,
-    TAtlasTextId.KindType, TAtlasTextId.KindMethod, TAtlasTextId.KindConstructor, TAtlasTextId.KindRoutine,
-    TAtlasTextId.KindProperty, TAtlasTextId.KindField, TAtlasTextId.KindVariable, TAtlasTextId.KindConstant,
-    TAtlasTextId.KindEnumMember);
-var
-  Index: Integer;
-begin
-  Index := IndexStr(AKind, Kinds);
-  if Index < 0 then
-  begin
-    Result := '';
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(Ids[Index]);
-  end;
-end;
-
-function TAtlasHoverTip.Texts: TAtlasHoverTexts;
-var
-  Index: Integer;
-begin
-  Result := Default(TAtlasHoverTexts);
-  Result.KindCaption := KindCaption(FView.Data.Kind);
-  Result.Pinned := TAtlasStrings.Text(TAtlasTextId.HoverPinned);
-  Result.Inheritance := TAtlasStrings.Text(TAtlasTextId.HoverInheritance);
-  Result.TargetType := TAtlasStrings.Text(TAtlasTextId.HoverTargetType);
-  Result.Navigate := TAtlasStrings.Text(TAtlasTextId.HoverGoTo);
-  Result.Usages := TAtlasStrings.Text(TAtlasTextId.HoverUsages);
-  Result.UsagesCount := TAtlasStrings.Text(TAtlasTextId.HoverUsagesCount);
-  Result.Copy := TAtlasStrings.Text(TAtlasTextId.HoverCopy);
-  Result.CopySelection := TAtlasStrings.Text(TAtlasTextId.HoverCopySelection);
-  Result.Help := TAtlasStrings.Text(TAtlasTextId.HoverHelp);
-  Result.KeyUsages := TAtlasStrings.Text(TAtlasTextId.HoverKeyUsages);
-  Result.KeyCopy := TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy);
-  Result.SourceAtlas := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
-  Result.Confirmed := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmed);
-  Result.ConfirmedCode := TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerConfirmedCode);
-  Result.SourceCompiler := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler);
-  Result.SourceInactive := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive);
-  Result.SourceUses := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceUses);
-  Result.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
-  Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
-  Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
-  Result.ShowGraph := TAtlasStrings.Text(TAtlasTextId.HoverShowGraph);
-  Result.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
-  Result.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
-  Result.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
-  Result.Suppress := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress);
-  Result.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
-  Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
-  Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
-  Result.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
-  Result.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
-  Result.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
-  Result.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
-  Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
-  Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
-  Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
-  Result.PublishedProperties := TAtlasStrings.Text(TAtlasTextId.PublishedProperties);
-  Result.PublishedEvents := TAtlasStrings.Text(TAtlasTextId.PublishedEvents);
-  Result.PublishedName := TAtlasStrings.Text(TAtlasTextId.PublishedName);
-  Result.PublishedType := TAtlasStrings.Text(TAtlasTextId.PublishedType);
-  Result.PublishedDefault := TAtlasStrings.Text(TAtlasTextId.PublishedDefault);
-  Result.PublishedDeclared := TAtlasStrings.Text(TAtlasTextId.PublishedDeclared);
-  Result.PublishedImplicit := TAtlasStrings.Text(TAtlasTextId.PublishedImplicit);
-  Result.PublishedMoreProperties := TAtlasStrings.Text(TAtlasTextId.PublishedMoreProperties);
-  Result.PublishedMoreEvents := TAtlasStrings.Text(TAtlasTextId.PublishedMoreEvents);
-  Result.PublishedEventsNote := TAtlasStrings.Text(TAtlasTextId.PublishedEventsNote);
-  Result.PublishedArrayProperty := TAtlasStrings.Text(TAtlasTextId.PublishedArrayProperty);
-  Result.PublishedDefaultProperty := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultProperty);
-  Result.PublishedDefaultPropertyNote := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultPropertyNote);
-  Result.PublishedCopyList := TAtlasStrings.Text(TAtlasTextId.PublishedCopyList);
-  Result.PublishedVclNote := TAtlasStrings.Text(TAtlasTextId.PublishedVclNote);
-  Result.Confidences := nil;
-  SetLength(Result.Confidences, Length(FView.Problems));
-  // Hohe Konfidenz ist der Normalfall und bekommt keine eigene Zeile (#909).
-  for Index := 0 to High(FView.Problems) do
-  begin
-    if not SameText(FView.Problems[Index].Confidence, 'high') then
-    begin
-      Result.Confidences[Index] := TAtlasStrings.Confidence(FView.Problems[Index].Confidence);
-    end;
-  end;
-end;
-
-function TAtlasHoverTip.LayoutKey(AWidth: Integer): string;
+function TAtlasHoverTipView.LayoutKey(AWidth: Integer): string;
 begin
   Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
     Ord(FDoc.HasSelection), Ord(FProblemActions), Ord(FHideCompilerCode), PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
 end;
 
-procedure TAtlasHoverTip.BuildLayout(AWidth: Integer);
+procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
 var
   Input: TAtlasHoverInput;
 begin
@@ -506,7 +576,7 @@ begin
   Input.Width := AWidth;
   Input.PPI := PPI;
   Input.Colors := Colors;
-  Input.Texts := Texts;
+  Input.Texts := HoverTexts(FView);
   Input.HasDoc := not FDoc.IsEmpty;
   Input.DocHeight := FDoc.Height;
   Input.HasSelection := FDoc.HasSelection;
@@ -514,64 +584,70 @@ begin
   Input.HideCompilerCode := FHideCompilerCode;
   FLayout := TAtlasHoverLayout.Build(Input, TTipMeasure.Create(Self));
   FLayoutKey := LayoutKey(AWidth);
-  FDocLeft := FLayout.DocLeft;
-  FDocTop := FLayout.DocTop;
 end;
 
-procedure TAtlasHoverTip.ApplyFace(const AFace: TAtlasHoverFace; ABadgeHeight: Integer);
+procedure TAtlasHoverTipView.PaintLine(const AItem: TAtlasHoverItem; AHot: Boolean; AColor: TAtlasColor);
 begin
-  // Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel (Editorschrift).
-  case AFace.Font of
-    TAtlasHoverFont.Mono:
-      Canvas.Font := Font;
-    TAtlasHoverFont.SmallUi:
-      begin
-        Canvas.Font := UIFont;
-        Canvas.Font.Height := Round(UIFont.Height * 0.88);
-      end;
-    TAtlasHoverFont.SmallMono:
-      begin
-        Canvas.Font := Font;
-        Canvas.Font.Height := Round(Font.Height * 0.8);
-      end;
-    TAtlasHoverFont.Badge:
-      begin
-        // Größe aus der Höhe des Kästchens: nur für Kästchen fester Größe (Kopfzeile), nicht zum Messen.
-        Canvas.Font := Font;
-        Canvas.Font.Height := -Round(ABadgeHeight * 0.62);
-      end;
+  Canvas.Pen.Color := ToColor(AColor);
+  if AHot then
+  begin
+    Canvas.Pen.Width := AItem.HotPenWidth;
+  end
   else
-    Canvas.Font := UIFont;
-  end;
-  Canvas.Font.Style := [];
-  if AFace.Bold then
   begin
-    Canvas.Font.Style := [fsBold];
+    Canvas.Pen.Width := AItem.PenWidth;
   end;
-  if AFace.Underline then
-  begin
-    Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-  end;
+  Canvas.MoveTo(AItem.Rect.Left, AItem.Rect.Top);
+  Canvas.LineTo(AItem.Rect.Right, AItem.Rect.Top);
+  Canvas.Pen.Width := 1;
 end;
 
-procedure TAtlasHoverTip.PaintItem(const AItem: TAtlasHoverItem);
-var
-  Hot: Boolean;
-  mColor: TAtlasColor;
-  Face: TAtlasHoverFace;
-  Area: TRect;
-  X: Integer;
+procedure TAtlasHoverTipView.PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
+  AColor: TAtlasColor);
 begin
-  Hot := (AItem.HotIndex >= 0) and FLayout.IsHot(FHot, AItem.HotKind, AItem.HotIndex);
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, 0);
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(AItem.Rect.Left, AItem.Rect.Top, AItem.Text);
+end;
+
+procedure TAtlasHoverTipView.PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
+  AColor: TAtlasColor);
+var
+  mArea: TRect;
+begin
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, AItem.Rect.Height);
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  mArea := AItem.Rect;
+  DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+procedure TAtlasHoverTipView.PaintBlock(const AItem: TAtlasHoverItem; AColor: TAtlasColor);
+var
+  mArea: TRect;
+begin
+  Canvas.Font := UIFont;
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  mArea := AItem.Rect;
+  DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
+end;
+
+procedure TAtlasHoverTipView.PaintItem(const AItem: TAtlasHoverItem);
+var
+  mHot: Boolean;
+  mColor: TAtlasColor;
+  mFace: TAtlasHoverFace;
+  mX: Integer;
+begin
+  mHot := (AItem.HotIndex >= 0) and FLayout.IsHot(FHot, AItem.HotKind, AItem.HotIndex);
   mColor := AItem.Color;
-  if Hot then
+  mFace := AItem.Face;
+  if mHot then
   begin
     mColor := AItem.HotColor;
-  end;
-  Face := AItem.Face;
-  if Hot and AItem.HotUnderline then
-  begin
-    Face.Underline := True;
+    mFace.Underline := mFace.Underline or AItem.HotUnderline;
   end;
   case AItem.Kind of
     TAtlasHoverItemKind.Fill:
@@ -581,60 +657,29 @@ begin
         Canvas.FillRect(AItem.Rect);
       end;
     TAtlasHoverItemKind.Line:
-      begin
-        Canvas.Pen.Color := ToColor(mColor);
-        if Hot then
-        begin
-          Canvas.Pen.Width := AItem.HotPenWidth;
-        end
-        else
-        begin
-          Canvas.Pen.Width := AItem.PenWidth;
-        end;
-        Canvas.MoveTo(AItem.Rect.Left, AItem.Rect.Top);
-        Canvas.LineTo(AItem.Rect.Right, AItem.Rect.Top);
-        Canvas.Pen.Width := 1;
-      end;
+      PaintLine(AItem, mHot, mColor);
     TAtlasHoverItemKind.Text:
-      begin
-        ApplyFace(Face, 0);
-        Canvas.Font.Color := ToColor(mColor);
-        Canvas.Brush.Style := bsClear;
-        Canvas.TextOut(AItem.Rect.Left, AItem.Rect.Top, AItem.Text);
-      end;
+      PaintText(AItem, mFace, mColor);
     TAtlasHoverItemKind.CenterText:
-      begin
-        ApplyFace(Face, AItem.Rect.Height);
-        Canvas.Font.Color := ToColor(mColor);
-        Canvas.Brush.Style := bsClear;
-        Area := AItem.Rect;
-        DrawText(Canvas.Handle, PChar(AItem.Text), -1, Area, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
-          DT_NOPREFIX);
-      end;
+      PaintCenterText(AItem, mFace, mColor);
     TAtlasHoverItemKind.Frame:
       FrameRounded(AItem.Rect, mColor, AItem.Radius, ToColor(AItem.Back));
     TAtlasHoverItemKind.RoundFill:
       FillRounded(AItem.Rect, mColor, AItem.Radius);
     TAtlasHoverItemKind.Block:
-      begin
-        Canvas.Font := UIFont;
-        Canvas.Font.Color := ToColor(mColor);
-        Canvas.Brush.Style := bsClear;
-        Area := AItem.Rect;
-        DrawText(Canvas.Handle, PChar(AItem.Text), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
-      end;
+      PaintBlock(AItem, mColor);
     TAtlasHoverItemKind.Styled:
       begin
         Canvas.Font := Font;
-        X := AItem.Rect.Left;
-        FDeclaration.Draw(Canvas, Colors, AItem.From, AItem.Till, X, AItem.Rect, False, Scale(3));
+        mX := AItem.Rect.Left;
+        FDeclaration.Draw(Canvas, Colors, AItem.From, AItem.Till, mX, AItem.Rect, False, Scale(3));
       end;
     TAtlasHoverItemKind.Doc:
       FDoc.Paint(Canvas, Colors, AItem.Rect.Left, AItem.Rect.Top);
   end;
 end;
 
-function TAtlasHoverTip.PreferredWidth: Integer;
+function TAtlasHoverTipView.PreferredWidth: Integer;
 var
   Widest: Integer;
   Problem: TAtlasProblem;
@@ -658,15 +703,14 @@ begin
   begin
     Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
   end;
-  if (FView.Data.Documentation <> '') or not FView.Data.Doc.IsEmpty or (Length(FView.Data.Ancestors) > 0) or
-    FView.Data.Location.HasLocation or FView.Pinned or (Length(FView.Data.Members) > 0) then
+  if NeedsFullWidth(FView) then
   begin
     Widest := Scale(MaxWidth);
   end;
   Result := EnsureRange(Widest + Scale(26), Scale(200), Scale(MaxWidth));
 end;
 
-procedure TAtlasHoverTip.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
+procedure TAtlasHoverTipView.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
 var
   mWidth, mHeight: Integer;
   Spoken: string;
@@ -702,7 +746,7 @@ begin
   Announce(Spoken);
 end;
 
-procedure TAtlasHoverTip.UpdateContent(const AView: TAtlasHoverView);
+procedure TAtlasHoverTipView.UpdateContent(const AView: TAtlasHoverView);
 var
   mWidth, mHeight: Integer;
   Bounds, Area: TRect;
@@ -724,11 +768,6 @@ begin
   Invalidate;
 end;
 
-function TAtlasHoverTip.HitAt(AX, AY: Integer): Integer;
-begin
-  Result := FLayout.HitAt(Point(AX, AY));
-end;
-
 procedure TAtlasHoverTip.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   Hot, DocHot: Integer;
@@ -737,11 +776,11 @@ begin
   // Markieren in der Doku (#654).
   if FDoc.Selecting and (ssLeft in Shift) then
   begin
-    FDoc.ExtendSelection(Canvas, X - FDocLeft, Y - FDocTop);
+    FDoc.ExtendSelection(Canvas, X - FLayout.DocLeft, Y - FLayout.DocTop);
     Invalidate;
     Exit;
   end;
-  Hot := HitAt(X, Y);
+  Hot := FLayout.HitAt(Point(X, Y));
   DocHot := DocLinkAt(X, Y);
   if (Hot >= 0) or (DocHot >= 0) then
   begin
@@ -798,38 +837,26 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasHoverTip.FireHit(AHit: Integer; Shift: TShiftState);
 var
-  Index: Integer;
-  Hit: TAtlasHoverHit;
+  mHit: TAtlasHoverHit;
 begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  Index := HitAt(X, Y);
-  if Index < 0 then
-  begin
-    DocMouseDown(Shift, X, Y);
-    Exit;
-  end;
-  Hit := FLayout.Hits[Index];
-  case Hit.Kind of
+  mHit := FLayout.Hits[AHit];
+  case mHit.Kind of
     TAtlasHoverHitKind.Link:
       if Assigned(FOnLink) then
       begin
-        FOnLink(Self, FView.Data.Links[Hit.Index].Target, ssCtrl in Shift);
+        FOnLink(Self, FView.Data.Links[mHit.Index].Target, ssCtrl in Shift);
       end;
     TAtlasHoverHitKind.Ancestor:
       if Assigned(FOnLink) then
       begin
-        FOnLink(Self, FView.Data.Ancestors[Hit.Index], ssCtrl in Shift);
+        FOnLink(Self, FView.Data.Ancestors[mHit.Index], ssCtrl in Shift);
       end;
     TAtlasHoverHitKind.Path:
       if Assigned(FOnPath) then
       begin
-        FOnPath(Self, Hit.Index);
+        FOnPath(Self, mHit.Index);
       end;
     TAtlasHoverHitKind.Back:
       if Assigned(FOnBack) then
@@ -839,22 +866,42 @@ begin
     TAtlasHoverHitKind.Action:
       if Assigned(FOnAction) then
       begin
-        FOnAction(Self, TAtlasHoverAction(Hit.Index));
+        FOnAction(Self, TAtlasHoverAction(mHit.Index));
       end;
     TAtlasHoverHitKind.ProblemAction:
-      FireProblemAction(Index);
+      FireProblemAction(AHit);
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
-      TogglePublished(TAtlasHoverPublishedToggle(Hit.Index));
+      TogglePublished(TAtlasHoverPublishedToggle(mHit.Index));
     TAtlasHoverHitKind.DebugFix:
       if Assigned(FOnDebugFix) then
       begin
-        FOnDebugFix(Self, Hit.Index);
+        FOnDebugFix(Self, mHit.Index);
       end;
   end;
 end;
 
-procedure TAtlasHoverTip.SetProblemActions(AValue: Boolean);
+procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mIndex := FLayout.HitAt(Point(X, Y));
+  if mIndex < 0 then
+  begin
+    DocMouseDown(Shift, X, Y);
+  end
+  else
+  begin
+    FireHit(mIndex, Shift);
+  end;
+end;
+
+procedure TAtlasHoverTipView.SetProblemActions(AValue: Boolean);
 begin
   if FProblemActions = AValue then
   begin
@@ -866,7 +913,7 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasHoverTip.SetHideCompilerCode(AValue: Boolean);
+procedure TAtlasHoverTipView.SetHideCompilerCode(AValue: Boolean);
 begin
   if FHideCompilerCode = AValue then
   begin
@@ -935,7 +982,7 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.Paint;
+procedure TAtlasHoverTipView.Paint;
 var
   Index: Integer;
 begin

@@ -176,10 +176,14 @@ var
 begin
   Result := nil;
   if (AFileName = '') or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Module := Modules.FindModule(AFileName);
   if Module <> nil then
+  begin
     Supports(Module, IOTAProject, Result);
+  end;
 end;
 
 { TAtlasIdeSetup }
@@ -210,7 +214,9 @@ begin
   AText := '';
   // Abbruch beim Entladen: Die Prüfung liest dann nichts mehr.
   if TAtlasShutdown.Signalled or not FileExists(AFileName) then
+  begin
     Exit(False);
+  end;
   try
     AText := TAtlasTextFile.LoadText(AFileName);
     Result := True;
@@ -223,7 +229,9 @@ end;
 procedure TAtlasIdeSetup.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 procedure TAtlasIdeSetup.Start;
@@ -243,11 +251,13 @@ begin
     end);
   // Projekte geöffnet, geschlossen oder gebaut: Ziel und Schritte neu.
   if FListener < 0 then
+  begin
     FListener := TAtlasWelcomeSections.Default.AddListener(
       procedure(AId: string)
       begin
         ProjectsChanged(AId);
       end);
+  end;
   FTitle := '';
   if FWatch = nil then
   begin
@@ -270,7 +280,9 @@ begin
       // Anderes aktives Projekt in der Projektverwaltung: Karte für dieses Projekt.
       Project := Target(Open);
       if SameText(Project, FWatched) then
+      begin
         Exit;
+      end;
       FWatched := Project;
       Refresh;
     end);
@@ -279,11 +291,15 @@ end;
 procedure TAtlasIdeSetup.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   FreeAndNil(FWatch);
   if FListener >= 0 then
+  begin
     TAtlasWelcomeSections.Default.RemoveListener(FListener);
+  end;
   FListener := -1;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Setup);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Setup);
@@ -292,7 +308,9 @@ begin
     // ReadText liest nach dem Abbruchsignal nichts mehr; die Prüfung endet gleich.
     TAtlasShutdown.WaitForThreads([FThread]);
     if FThread.Finished then
-      FreeAndNil(FThread)
+    begin
+      FreeAndNil(FThread);
+    end
     else
     begin
       FThread.FreeOnTerminate := True;
@@ -307,7 +325,9 @@ var
 begin
   // Nur auf „Projekte“: Ein eigenes Changed löst hier nichts aus (keine Schleife).
   if not FStarted or (AId <> TAtlasWelcomeIds.Projects) or FQueued then
+  begin
     Exit;
+  end;
   FQueued := True;
   // Keep hält die Quelle, bis der Eintrag gelaufen ist.
   Keep := Self;
@@ -315,7 +335,9 @@ begin
     procedure
     begin
       if Keep = nil then
+      begin
         Exit;
+      end;
       FQueued := False;
       Refresh;
     end);
@@ -344,7 +366,9 @@ var
   Shown: Boolean;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
@@ -384,7 +408,9 @@ begin
     Result := TAtlasIdeProjectSummaries.ProjectFileOf(Project.FileName);
     AOpen := FileExists(Result);
     if not AOpen then
+    begin
       Result := '';
+    end;
     Exit;
   end;
   try
@@ -392,10 +418,14 @@ begin
     begin
       Result := TAtlasIdeProjectSummaries.ProjectFileOf(Recent);
       if not FileExists(Result) then
+      begin
         Continue;
+      end;
       // „Aus Liste entfernen“ (#592) gilt auch hier.
       if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Result, Summary) and Summary.Hidden then
+      begin
         Continue;
+      end;
       AOpen := OpenProjectOf(Result) <> nil;
       Exit;
     end;
@@ -413,7 +443,9 @@ begin
   Result.Setup := TAtlasProjectSetup.Empty;
   ASummary := TAtlasProjectSummary.Create(AProject);
   if AProject = '' then
+  begin
     Exit;
+  end;
   Result.Project := AProject;
   Result.ConfigExists := TAtlasProjectSetups.ExistingConfig(AProject, FileThere) <> '';
   Result.BaselineExists := TAtlasProjectBaselines.FileIn(ExtractFileDir(AProject),
@@ -422,7 +454,9 @@ begin
       Result := FileExists(AFileName);
     end) <> '';
   if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, ASummary) then
+  begin
     Result.Setup := ASummary.Setup;
+  end;
 end;
 
 class function TAtlasIdeSetup.GroupOf(const AProject: string): TArray<string>;
@@ -435,34 +469,52 @@ var
 begin
   Result := nil;
   if AProject = '' then
+  begin
     Exit;
+  end;
   if TAtlasWelcomeSetup.IsGroup(AProject) then
   begin
     // Geschlossene Gruppe: Projekte aus der .groupproj.
     if ReadText(AProject, Text) then
+    begin
       for Member in TAtlasWelcomeSaved.GroupProjects(AProject, Text) do
+      begin
         if SameText(ExtractFileExt(Member), '.dproj') and FileExists(Member) then
+        begin
           Result := Result + [Member];
+        end;
+      end;
+    end;
     Exit;
   end;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Group := Modules.MainProjectGroup;
   if (Group = nil) or (Group.ProjectCount < 2) then
+  begin
     Exit;
+  end;
   Inside := False;
   for Index := 0 to Group.ProjectCount - 1 do
   begin
     FileName := Group.Projects[Index].FileName;
     // Nur gespeicherte .dproj (wie TAtlasIdeProjectContext.Read).
     if not SameText(ExtractFileExt(FileName), '.dproj') or not FileExists(FileName) then
+    begin
       Continue;
+    end;
     Result := Result + [FileName];
     if SameText(FileName, AProject) then
+    begin
       Inside := True;
+    end;
   end;
   if not Inside or (Length(Result) < 2) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TAtlasIdeSetup.Card: TAtlasSetupCard;
@@ -476,12 +528,16 @@ var
 begin
   Result := TAtlasSetupCard.Empty;
   if not FStarted or not Active then
+  begin
     Exit;
+  end;
   Result.ShowNew := TAtlasWelcomeSetup.ShowNew(True, TAtlasIdeSettings.Current.WelcomePageNewFromTemplate,
     GetActiveProject <> nil);
   Result.Project := Target(Open);
   if Result.Project = '' then
+  begin
     Exit;
+  end;
   Result.ProjectOpen := Open;
   Result.ProjectName := TAtlasWelcomeSetup.NameOf(Result.Project);
   Result.Facts := FactsOf(Result.Project, Summary);
@@ -495,9 +551,13 @@ begin
       Item.Project := Member;
       Item.Setup := TAtlasProjectSetup.Empty;
       if SameText(Member, Result.Project) then
-        Item.Setup := Result.Facts.Setup
+      begin
+        Item.Setup := Result.Facts.Setup;
+      end
       else if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Member, Other) then
+      begin
         Item.Setup := Other.Setup;
+      end;
       Combined := Combined + [Item];
     end;
     Result.GroupProjects := Length(Members);
@@ -507,7 +567,9 @@ begin
   Result.ConfigName := ExtractFileName(TAtlasProjectSetups.ExistingConfig(Result.Project, FileThere));
   Result.ShowCard := TAtlasWelcomeSetup.ShowCard(True, Result.Facts);
   if Summary.Rules.Known then
+  begin
     Result.BaselineNewHits := Summary.Rules.NewHits;
+  end;
   // Läufe dieser Sitzung gelten nur für ihr Projekt.
   if SameText(FBaselineProject, Result.Project) then
   begin
@@ -538,7 +600,9 @@ begin
       Open: Boolean;
     begin
       if not Active then
+      begin
         Exit;
+      end;
       Project := Target(Open);
       if Project = '' then
       begin
@@ -572,7 +636,9 @@ begin
       ConfigFile := TAtlasProjectSetups.ConfigTarget(Project);
       if not TAtlasSetupPreviewDialog.Confirm(ExtractFileName(ConfigFile), ExtractFileName(Project),
         TAtlasWelcomeSetupFrame.TemplateCaption(Template), Text, nil) then
+      begin
         Exit;
+      end;
       // Während der Vorschau angelegt (etwa im Editor): nicht überschreiben.
       if TAtlasProjectSetups.ExistingConfig(Project, FileThere) <> '' then
       begin
@@ -608,7 +674,9 @@ begin
       Keep: IAtlasSetupSource;
     begin
       if not Active or not Assigned(FStartBaseline) then
+      begin
         Exit;
+      end;
       Project := Target(Open);
       if Project = '' then
       begin
@@ -621,7 +689,9 @@ begin
         Exit;
       end;
       if (FBaseline = TAtlasSetupRun.Running) and SameText(FBaselineProject, Project) then
+      begin
         Exit;
+      end;
       FBaselineProject := Project;
       FBaselineTotal := 0;
       FBaselineFiles := 0;
@@ -632,7 +702,9 @@ begin
         procedure(ASucceeded: Boolean; ATotal, AFiles: Integer; const AError: string)
         begin
           if Keep <> nil then
+          begin
             BaselineFinished(Project, ASucceeded, ATotal, AFiles, AError);
+          end;
         end);
       if Reason <> '' then
       begin
@@ -654,7 +726,9 @@ var
   Stamp: TDateTime;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   if ASucceeded then
   begin
     Stamp := TAtlasIdeProjectSummaries.StampUtc;
@@ -666,14 +740,20 @@ begin
       end);
   end;
   if not SameText(FBaselineProject, AProject) then
+  begin
     Exit;
+  end;
   FBaselineTotal := ATotal;
   FBaselineFiles := AFiles;
   FBaselineError := AError;
   if ASucceeded then
-    FBaseline := TAtlasSetupRun.Done
+  begin
+    FBaseline := TAtlasSetupRun.Done;
+  end
   else
+  begin
     FBaseline := TAtlasSetupRun.Failed;
+  end;
   Refresh;
 end;
 
@@ -705,16 +785,24 @@ begin
   // Hauptdatei: .dpr bei Programmen und Bibliotheken, .dpk bei Packages.
   Main := ChangeFileExt(Result.Project, '.dpr');
   if not FileExists(Main) then
+  begin
     Main := ChangeFileExt(Result.Project, '.dpk');
+  end;
   if not FileExists(Main) then
+  begin
     Main := '';
+  end;
   if Main <> '' then
+  begin
     Result.Input.Sources := [Main];
+  end;
   for Index := 0 to AIde.GetModuleCount - 1 do
   begin
     Name := AIde.GetModule(Index).FileName;
     if SameText(ExtractFileExt(Name), '.pas') then
+    begin
       Result.Input.Sources := Result.Input.Sources + [Name];
+    end;
   end;
   Result.Input.Namespaces := Context.Namespaces;
   // Projekte der Gruppe: ihre Packages erfüllen requires (#759).
@@ -725,11 +813,17 @@ begin
     if Group <> nil then
     begin
       if Group.FileName <> '' then
+      begin
         GroupDir := ExtractFileDir(Group.FileName);
+      end;
       for Index := 0 to Group.ProjectCount - 1 do
+      begin
         if Group.Projects[Index] <> nil then
+        begin
           Result.Input.GroupProjects := Result.Input.GroupProjects +
             [TAtlasIdeProjectSummaries.ProjectFileOf(Group.Projects[Index].FileName)];
+        end;
+      end;
     end;
   end;
   // Build-Skripte (-dX) neben dem Projekt, neben der Gruppe und in üblichen Unterordnern der Gruppe.
@@ -741,7 +835,9 @@ begin
   Result.LibraryPaths := Context.LibraryPaths;
   // Makros der IDE (Umgebungsvariablen der Optionen, BDS-Ordner, Projekt), danach der Prozess.
   if Context.Project = '' then
+  begin
     Context.Project := Result.Project;
+  end;
   Result.Macros := TAtlasIdeProjectContext.Macros(Context);
 end;
 
@@ -767,9 +863,12 @@ begin
     Input.LibraryPaths := TAtlasPathCheck.ExpandPaths(AJob.LibraryPaths, Folder, Variable, Skipped);
     Input.SkippedMacros := Skipped;
     if TAtlasIdeSetup.ReadText(AJob.Project, Dproj) then
+    begin
       Input.ProjectDefines := TAtlasPathCheck.DprojDefines(Dproj);
+    end;
     // Projekte der Gruppe, die in einen Ordner des Suchpfads übersetzen (DCC_DcuOutput).
     for Member in Input.GroupProjects do
+    begin
       if not SameText(Member, AJob.Project) and TAtlasIdeSetup.ReadText(Member, Other) then
       begin
         Match := TRegEx.Match(Other, '<DCC_DcuOutput>([^<]*)</DCC_DcuOutput>', [roIgnoreCase]);
@@ -777,13 +876,16 @@ begin
         begin
           Output := TAtlasPathCheck.ExpandPath(Match.Groups[1].Value, ExtractFileDir(Member), Variable);
           for Each in Input.SearchPaths do
+          begin
             if (Output <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(Output)) then
             begin
               Input.ProducedBy := Input.ProducedBy + [Member];
               Break;
             end;
+          end;
         end;
       end;
+    end;
     Result.Check := TAtlasPathCheck.Run(Input,
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -795,10 +897,14 @@ begin
       begin
         Result := nil;
         if TAtlasShutdown.Signalled or not TDirectory.Exists(AFolder) then
+        begin
           Exit;
+        end;
         try
           for Item in TDirectory.GetFiles(AFolder) do
+          begin
             Result := Result + [ExtractFileName(Item)];
+          end;
         except
           on Exception do
             Result := nil;
@@ -826,7 +932,9 @@ begin
       Keep: IAtlasSetupSource;
     begin
       if not Active then
+      begin
         Exit;
+      end;
       Project := Target(Open);
       if Project = '' then
       begin
@@ -842,16 +950,24 @@ begin
       if FThread <> nil then
       begin
         if not FThread.Finished then
+        begin
           Exit;
+        end;
         FreeAndNil(FThread);
       end;
       // Im Hauptthread: Optionen der aktiven Konfiguration, Dateien und Makros; bei einer Gruppe je Projekt.
       Jobs := nil;
       for Member in GroupOf(Project) do
+      begin
         if OpenProjectOf(Member) <> nil then
+        begin
           Jobs := Jobs + [PathJobOf(OpenProjectOf(Member))];
+        end;
+      end;
       if Length(Jobs) = 0 then
+      begin
         Jobs := [PathJobOf(Ide)];
+      end;
       FPathsProject := Project;
       FPaths := TAtlasSetupRun.Running;
       FPathsStarted := TThread.GetTickCount64;
@@ -870,16 +986,22 @@ begin
           for Job in Jobs do
           begin
             if TAtlasShutdown.Signalled then
+            begin
               Exit;
+            end;
             Runs := Runs + [RunPathJob(Job)];
           end;
           if TAtlasShutdown.Signalled then
+          begin
             Exit;
+          end;
           TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
             procedure
             begin
               if Keep <> nil then
+              begin
                 PathsFinished(Project, Runs);
+              end;
             end);
         end);
       FThread.FreeOnTerminate := False;
@@ -896,7 +1018,9 @@ var
   Units, Defines, Uncertain, Files: Integer;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   Error := '';
   Units := 0;
   Defines := 0;
@@ -908,7 +1032,9 @@ begin
     if Run.Error <> '' then
     begin
       if Error = '' then
+      begin
         Error := Run.Error;
+      end;
       Continue;
     end;
     // Kopien: Die Laufvariable darf nicht in die anonyme Methode.
@@ -932,7 +1058,9 @@ begin
   if SameText(FPathsProject, AProject) then
   begin
     if Error = '' then
-      FPaths := TAtlasSetupRun.Done
+    begin
+      FPaths := TAtlasSetupRun.Done;
+    end
     else
     begin
       FPaths := TAtlasSetupRun.Failed;
@@ -960,7 +1088,9 @@ begin
       end;
       // Dialog „Projektoptionen“ der IDE (Suchpfade unter Delphi-Compiler, Defines unter Bedingungen).
       if Ide.ProjectOptions <> nil then
+      begin
         Ide.ProjectOptions.EditOptions;
+      end;
       Refresh;
     end);
 end;
@@ -981,7 +1111,9 @@ begin
         Exit;
       end;
       if not Open and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      begin
         Actions.OpenProject(Project, True);
+      end;
     end);
 end;
 
@@ -996,7 +1128,9 @@ begin
     begin
       Project := Target(Open);
       if Project = '' then
+      begin
         Exit;
+      end;
       Stamp := TAtlasIdeProjectSummaries.StampUtc;
       // Abnahme: „Nicht mehr fragen“ wirkt dauerhaft (Projekt-Zusammenfassung, nicht die Sitzung).
       TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
@@ -1044,7 +1178,9 @@ begin
     begin
       // Abnahme: newFromTemplate aus schaltet nur die Knöpfe ab, projectSetup aus alles.
       if not Active or not TAtlasIdeSettings.Current.WelcomePageNewFromTemplate or not Assigned(FNewFile) then
+      begin
         Exit;
+      end;
       FNewFile(Kind);
     end);
 end;

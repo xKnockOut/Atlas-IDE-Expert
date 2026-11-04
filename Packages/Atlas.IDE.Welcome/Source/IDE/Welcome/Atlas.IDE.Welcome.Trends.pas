@@ -90,7 +90,9 @@ end;
 procedure TAtlasIdeTrends.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.History);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.History);
@@ -112,7 +114,9 @@ var
   Next: TAtlasWelcomeSection;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   Next := Section;
   // Nur beim ersten Mal (oder nach einem Sprachwechsel) anmelden: Add meldet allen Beobachtern.
   if Next.Title <> FTitle then
@@ -141,19 +145,25 @@ var
 begin
   Result := Default(TAtlasTrendView);
   if not FStarted or (FProjects = nil) or not Active then
+  begin
     Exit;
+  end;
   Entries := FProjects.Entries;
   Paths := nil;
   for Index := 0 to High(Entries) do
+  begin
     Paths := Paths + [Entries[Index].Project];
+  end;
   Chosen := TAtlasWelcomeTrends.Choose(Paths, FProjects.Selected);
   for Index := 0 to High(Entries) do
+  begin
     if Entries[Index].Project = Chosen then
     begin
       Series := TAtlasWelcomeTrends.ParseSeries(TAtlasIdeSettings.Current.WelcomePageTrendsSeries);
       Exit(TAtlasWelcomeTrends.View(Entries[Index].Summary, Series,
         TAtlasIdeSettings.Current.WelcomePageTrendsPoints));
     end;
+  end;
 end;
 
 end.

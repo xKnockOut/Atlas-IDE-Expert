@@ -255,8 +255,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(Tabs) do
+  begin
     if TAtlasWelcomeContinue.SameFile(Tabs[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasWorkState.LastIndex: Integer;
@@ -265,15 +269,25 @@ var
 begin
   Result := -1;
   for Index := 0 to High(Tabs) do
+  begin
     if Tabs[Index].Changed and (Tabs[Index].ChangedAt > 0) and
       ((Result < 0) or (Tabs[Index].ChangedAt > Tabs[Result].ChangedAt)) then
+    begin
       Result := Index;
+    end;
+  end;
   if Result >= 0 then
+  begin
     Exit;
+  end;
   if (Active >= 0) and (Active <= High(Tabs)) then
+  begin
     Exit(Active);
+  end;
   if Length(Tabs) > 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 function TAtlasWorkState.Files: TArray<string>;
@@ -283,10 +297,16 @@ function TAtlasWorkState.Files: TArray<string>;
     Known: string;
   begin
     if Trim(AFileName) = '' then
+    begin
       Exit;
+    end;
     for Known in Result do
+    begin
       if TAtlasWelcomeContinue.SameFile(Known, AFileName) then
+      begin
         Exit;
+      end;
+    end;
     Result := Result + [AFileName];
   end;
 
@@ -296,9 +316,13 @@ var
 begin
   Result := nil;
   for Tab in Tabs do
+  begin
     Add(Tab.FileName);
+  end;
   for FileName in Edited do
+  begin
     Add(FileName);
+  end;
 end;
 
 { TAtlasContinueEntry }
@@ -323,7 +347,9 @@ begin
   Result := Default(TAtlasWorkTab);
   Index := State.LastIndex;
   if Index >= 0 then
+  begin
     Result := State.Tabs[Index];
+  end;
 end;
 
 { JSON }
@@ -334,10 +360,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function NumberIn(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
@@ -346,10 +376,14 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt;
+  end;
 end;
 
 function FlagIn(AObject: TJSONObject; const AName: string): Boolean;
@@ -358,10 +392,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONBool then
+  begin
     Result := SameText(Value.Value, 'true');
+  end;
 end;
 
 function ObjectIn(AObject: TJSONObject; const AName: string): TJSONObject;
@@ -370,17 +408,23 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONObject then
+  begin
     Result := TJSONObject(Value);
+  end;
 end;
 
 function ParseObject(const AJson: string): TJSONValue;
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   try
     Result := TJSONObject.ParseJSONValue(AJson);
   except
@@ -398,16 +442,26 @@ var
 begin
   Result := TJSONObject.Create;
   if AState.At > 0 then
+  begin
     Result.AddPair('at', TAtlasProjectSummaries.TimeText(AState.At));
+  end;
   Result.AddPair('active', TJSONNumber.Create(AState.Active));
   if AState.VcsKind <> '' then
+  begin
     Result.AddPair('vcs', AState.VcsKind);
+  end;
   if AState.Head <> '' then
+  begin
     Result.AddPair('head', AState.Head);
+  end;
   if AState.Upstream <> '' then
+  begin
     Result.AddPair('upstream', AState.Upstream);
+  end;
   if AState.UpstreamRevision <> '' then
+  begin
     Result.AddPair('upstreamRevision', AState.UpstreamRevision);
+  end;
   Tabs := TJSONArray.Create;
   Result.AddPair('tabs', Tabs);
   for Tab in AState.Tabs do
@@ -418,18 +472,26 @@ begin
     Entry.AddPair('line', TJSONNumber.Create(Tab.Line));
     Entry.AddPair('column', TJSONNumber.Create(Tab.Column));
     if Tab.Method <> '' then
+    begin
       Entry.AddPair('method', Tab.Method);
+    end;
     if Tab.Changed then
+    begin
       Entry.AddPair('changed', TJSONBool.Create(True));
+    end;
     if Tab.ChangedAt > 0 then
+    begin
       Entry.AddPair('changedAt', TAtlasProjectSummaries.TimeText(Tab.ChangedAt));
+    end;
   end;
   if Length(AState.Edited) > 0 then
   begin
     Edited := TJSONArray.Create;
     Result.AddPair('edited', Edited);
     for FileName in AState.Edited do
+    begin
       Edited.Add(FileName);
+    end;
   end;
 end;
 
@@ -443,7 +505,9 @@ begin
   AState := TAtlasWorkState.Empty;
   Result := ASection <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   AState.Known := True;
   AState.At := TAtlasProjectSummaries.TimeOf(TextIn(ASection, 'at'));
   AState.VcsKind := LowerCase(TextIn(ASection, 'vcs'));
@@ -452,36 +516,52 @@ begin
   AState.UpstreamRevision := TextIn(ASection, 'upstreamRevision');
   Tabs := ASection.GetValue('tabs');
   if Tabs is TJSONArray then
+  begin
     for Index := 0 to TJSONArray(Tabs).Count - 1 do
     begin
       Element := TJSONArray(Tabs).Items[Index];
       if not (Element is TJSONObject) then
+      begin
         Continue;
+      end;
       Entry := TJSONObject(Element);
       Tab := TAtlasWorkTab.Create(TextIn(Entry, 'file'), NumberIn(Entry, 'line', 0), NumberIn(Entry, 'column', 0));
       if Trim(Tab.FileName) = '' then
+      begin
         Continue;
+      end;
       Tab.Method := TextIn(Entry, 'method');
       Tab.Changed := FlagIn(Entry, 'changed');
       Tab.ChangedAt := TAtlasProjectSummaries.TimeOf(TextIn(Entry, 'changedAt'));
       if Tab.Line < 0 then
+      begin
         Tab.Line := 0;
+      end;
       if Tab.Column < 0 then
+      begin
         Tab.Column := 0;
+      end;
       AState.Tabs := AState.Tabs + [Tab];
     end;
+  end;
   AState.Active := NumberIn(ASection, 'active', -1);
   if (AState.Active < 0) or (AState.Active > High(AState.Tabs)) then
+  begin
     AState.Active := -1;
+  end;
   Edited := ASection.GetValue('edited');
   if Edited is TJSONArray then
+  begin
     for Index := 0 to TJSONArray(Edited).Count - 1 do
     begin
       Element := TJSONArray(Edited).Items[Index];
       // TJSONNumber erbt von TJSONString: Zahlen sind keine Dateien.
       if (Element is TJSONString) and not (Element is TJSONNumber) and (Trim(TJSONString(Element).Value) <> '') then
+      begin
         AState.Edited := AState.Edited + [TJSONString(Element).Value];
+      end;
     end;
+  end;
 end;
 
 { TAtlasWelcomeContinue }
@@ -498,8 +578,12 @@ begin
   // Ohne ExtractFileName: Die Pfade haben „\“, auch wenn die Tests nicht unter Windows laufen.
   Result := Trim(APath);
   for Index := Length(Result) downto 1 do
+  begin
     if CharInSet(Result[Index], ['\', '/']) then
+    begin
       Exit(Copy(Result, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeContinue.ToJson(const AState: TAtlasWorkState): string;
@@ -559,7 +643,9 @@ begin
       begin
         Pair := Original.Pairs[Index];
         if Pair.JsonString.Value <> SectionName then
+        begin
           Root.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+        end;
       end;
     end;
     Root.AddPair(SectionName, SectionJson(AState));
@@ -586,43 +672,65 @@ begin
   Seen := nil;
   Limit := ACount;
   if Limit < MinCount then
+  begin
     Limit := MinCount;
+  end;
   if Limit > MaxCount then
+  begin
     Limit := MaxCount;
+  end;
   if not Assigned(ALoad) then
+  begin
     Exit;
+  end;
   for Project in ARecent do
   begin
     if Trim(Project) = '' then
+    begin
       Continue;
+    end;
     Key := TAtlasProjectSummaries.NormalizedPath(Project);
     Duplicate := False;
     for Known in Seen do
+    begin
       if Known = Key then
+      begin
         Duplicate := True;
+      end;
+    end;
     if Duplicate then
+    begin
       Continue;
+    end;
     Seen := Seen + [Key];
     if not ALoad(Trim(Project), Summary) then
+    begin
       Continue;
+    end;
     Entry := Default(TAtlasContinueEntry);
     Entry.Project := Trim(Project);
     if not Read(Summary, Entry.State) or (Entry.State.TabCount = 0) then
+    begin
       Continue;
+    end;
     // Neueste zuerst; bei Gleichstand bleibt die Reihenfolge der IDE (stabil einsortieren).
     Position := Length(Found);
     for Index := 0 to High(Found) do
+    begin
       if Entry.State.At > Found[Index].State.At then
       begin
         Position := Index;
         Break;
       end;
+    end;
     Insert(Entry, Found, Position);
   end;
   for Index := 0 to High(Found) do
   begin
     if Length(Result) >= Limit then
+    begin
       Break;
+    end;
     Result := Result + [Found[Index]];
   end;
 end;
@@ -641,27 +749,37 @@ begin
   for Tab in AOpen do
   begin
     if Trim(Tab.FileName) = '' then
+    begin
       Continue;
+    end;
     if Length(Result.Tabs) >= MaxTabs then
+    begin
       Break;
+    end;
     // Jede Datei einmal (dieselbe Datei in zwei Editorfenstern).
     if Result.IndexOf(Tab.FileName) >= 0 then
+    begin
       Continue;
+    end;
     Found := False;
     Change := Default(TAtlasWorkTab);
     for Index := High(AChanges) downto 0 do
+    begin
       if SameFile(AChanges[Index].FileName, Tab.FileName) then
       begin
         Change := AChanges[Index];
         Found := True;
         Break;
       end;
+    end;
     if Found then
     begin
       Change.FileName := Tab.FileName;
       Change.Changed := True;
       if Change.ChangedAt <= 0 then
+      begin
         Change.ChangedAt := ANowUtc;
+      end;
       Result.Tabs := Result.Tabs + [Change];
       Continue;
     end;
@@ -681,18 +799,28 @@ begin
   end;
   Result.Active := -1;
   if AActive <> '' then
+  begin
     Result.Active := Result.IndexOf(AActive);
+  end;
   // Geändert, aber nicht mehr offen.
   for Change in AChanges do
   begin
     if (Trim(Change.FileName) = '') or (Result.IndexOf(Change.FileName) >= 0) then
+    begin
       Continue;
+    end;
     Open := False;
     for FileName in Result.Edited do
+    begin
       if SameFile(FileName, Change.FileName) then
+      begin
         Open := True;
+      end;
+    end;
     if not Open then
+    begin
       Result.Edited := Result.Edited + [Change.FileName];
+    end;
   end;
 end;
 
@@ -702,9 +830,13 @@ var
 begin
   Result := '';
   if (AText = '') or (ALine < 1) then
+  begin
     Exit;
+  end;
   if TAtlasMethodToggle.BodyAt(TAtlasMethodToggle.Places(AText), ALine - 1, Place) then
+  begin
     Result := Place.Name;
+  end;
 end;
 
 /// <summary>Beschriftung eines Reiters ohne Markierungen (z. B. „*“ für geändert) und Leerraum.</summary>
@@ -712,9 +844,13 @@ function CaptionName(const ACaption: string): string;
 begin
   Result := Trim(ACaption);
   while (Result <> '') and CharInSet(Result[Length(Result)], ['*', ' ']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
   while (Result <> '') and CharInSet(Result[1], ['*', ' ', '&']) do
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 class function TAtlasWelcomeContinue.OrderByTabs(const AFiles, ACaptions: TArray<string>): TArray<string>;
@@ -729,10 +865,13 @@ begin
   begin
     Name := CaptionName(Caption);
     if Name = '' then
+    begin
       Continue;
+    end;
     // Gleich benannte Dateien in verschiedenen Ordnern: die erste noch nicht vergebene. Die IDE zeigt Units
     // auch ohne Endung („Kunde“ statt „Kunde.pas“).
     for Index := 0 to High(AFiles) do
+    begin
       if not Used[Index] and (SameText(FileNameOf(AFiles[Index]), Name) or
         SameText(ChangeFileExt(FileNameOf(AFiles[Index]), ''), Name)) then
       begin
@@ -740,10 +879,15 @@ begin
         Result := Result + [AFiles[Index]];
         Break;
       end;
+    end;
   end;
   for Index := 0 to High(AFiles) do
+  begin
     if not Used[Index] then
+    begin
       Result := Result + [AFiles[Index]];
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeContinue.Plan(const AProject: string; const AState: TAtlasWorkState;
@@ -757,12 +901,16 @@ begin
   Result.Active := -1;
   Wanted := AState.Active;
   if (Wanted < 0) or (Wanted > High(AState.Tabs)) then
+  begin
     Wanted := AState.LastIndex;
+  end;
   for Index := 0 to High(AState.Tabs) do
   begin
     Exists := True;
     if Assigned(AExists) then
+    begin
       Exists := AExists(AState.Tabs[Index].FileName);
+    end;
     if not Exists then
     begin
       Result.Missing := Result.Missing + [AState.Tabs[Index].FileName];
@@ -770,11 +918,15 @@ begin
     end;
     Result.Open := Result.Open + [AState.Tabs[Index]];
     if Index = Wanted then
+    begin
       Result.Active := High(Result.Open);
+    end;
   end;
   // Fehlt der aktive Reiter, bleibt der zuletzt geöffnete aktiv.
   if (Result.Active < 0) and (Length(Result.Open) > 0) then
+  begin
     Result.Active := High(Result.Open);
+  end;
 end;
 
 class function TAtlasWelcomeContinue.Age(AAtLocal, ANowLocal: TDateTime; out AValue: Integer): TAtlasContinueAge;
@@ -784,7 +936,9 @@ begin
   AValue := 0;
   Minutes := MinutesBetween(ANowLocal, AAtLocal);
   if (AAtLocal >= ANowLocal) or (Minutes < 1) then
+  begin
     Exit(TAtlasContinueAge.JustNow);
+  end;
   if Minutes < 60 then
   begin
     AValue := Minutes;
@@ -796,7 +950,9 @@ begin
     Exit(TAtlasContinueAge.Hours);
   end;
   if Trunc(AAtLocal) = Trunc(ANowLocal) - 1 then
+  begin
     Exit(TAtlasContinueAge.Yesterday);
+  end;
   Result := TAtlasContinueAge.Date;
 end;
 
@@ -814,14 +970,20 @@ begin
     Item := Default(TAtlasContinueCommit);
     Item.Commit := Commit;
     for Wanted in AFiles do
+    begin
       for Changed in Commit.Files do
+      begin
         if SameFile(Changed, Wanted) then
         begin
           Item.Files := Item.Files + [Wanted];
           Break;
         end;
+      end;
+    end;
     if Length(Item.Files) = 0 then
+    begin
       Continue;
+    end;
     if Length(Result) >= AMax then
     begin
       AMore := True;
@@ -843,7 +1005,9 @@ begin
   AState.Upstream := '';
   AState.UpstreamRevision := '';
   if AVcs = nil then
+  begin
     Exit;
+  end;
   Outcome := AVcs.Head(Head);
   if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
   begin
@@ -851,13 +1015,17 @@ begin
     Exit(True);
   end;
   if Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   AState.VcsKind := LowerCase(AtlasVcsKindName(AVcs.Kind));
   AState.Head := Head.Revision;
   AState.Upstream := Head.Upstream;
   if (Head.Upstream <> '') and Supports(AVcs, IAtlasVcsIncoming, Incoming) and
     (Incoming.Resolve(Head.Upstream, Revision) = TAtlasVcsOutcome.Ok) then
+  begin
     AState.UpstreamRevision := Revision;
+  end;
   Result := True;
 end;
 
@@ -885,10 +1053,14 @@ begin
   AResult.At := ANowUtc;
   Result := False;
   if AVcs = nil then
+  begin
     Exit;
+  end;
   // Keine Versionsverwaltung oder keine Schnittstelle: kein Abschnitt, kein Fehler.
   if (AVcs.Kind = TAtlasVcsKind.None) or not Supports(AVcs, IAtlasVcsIncoming, Incoming) then
+  begin
     Exit(True);
+  end;
   if (AFetchVcs <> nil) and Supports(AFetchVcs, IAtlasVcsIncoming, Fetcher) then
   begin
     Outcome := Fetcher.Fetch('');
@@ -898,41 +1070,61 @@ begin
   end;
   Outcome := AVcs.Head(Head);
   if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
+  begin
     Exit(True);
+  end;
   if Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   // Der verfolgte Branch beim Schließen gilt; ohne ihn der heutige.
   Upstream := AState.Upstream;
   if Upstream = '' then
+  begin
     Upstream := Head.Upstream;
+  end;
   // Ohne verfolgten Branch gilt der Hauptbranch des Projekts (#1286), wenn es ihn gibt; nicht für ihn selbst.
   if (Upstream = '') and (Trim(AMainBranch) <> '') and not SameText(Head.Branch, Trim(AMainBranch)) then
   begin
     if (Incoming.Resolve('origin/' + Trim(AMainBranch), Resolved) = TAtlasVcsOutcome.Ok) and (Resolved <> '') then
-      Upstream := 'origin/' + Trim(AMainBranch)
+    begin
+      Upstream := 'origin/' + Trim(AMainBranch);
+    end
     else if (Incoming.Resolve(Trim(AMainBranch), Resolved) = TAtlasVcsOutcome.Ok) and (Resolved <> '') then
+    begin
       Upstream := Trim(AMainBranch);
+    end;
   end;
   // Ohne verfolgten Branch (auch SVN): kein Abschnitt.
   if Upstream = '' then
+  begin
     Exit(True);
+  end;
   // Was beim Schließen schon da war: HEAD und verfolgter Branch von damals (sofern es die Commits noch gibt).
   Exclude := nil;
   Saved := nil;
   Saved := Saved + [AState.Head, AState.UpstreamRevision];
   for Revision in Saved do
+  begin
     if (Revision <> '') and (Incoming.Resolve(Revision, Resolved) = TAtlasVcsOutcome.Ok) and (Resolved <> '') then
+    begin
       Exclude := Exclude + [Resolved];
+    end;
+  end;
   // Ohne gemerkten Stand: gegenüber dem heutigen HEAD (vor dem ersten Commit gibt es nichts zu vergleichen).
   if Length(Exclude) = 0 then
   begin
     if Head.Revision = '' then
+    begin
       Exit(True);
+    end;
     Exclude := Exclude + [Head.Revision];
   end;
   Outcome := Incoming.Incoming(Upstream, Exclude, MaxIncomingScan, Commits);
   if Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   AResult.Available := True;
   AResult.Upstream := Upstream;
   AResult.Commits := Select(Commits, AState.Files, MaxIncomingShown, More);

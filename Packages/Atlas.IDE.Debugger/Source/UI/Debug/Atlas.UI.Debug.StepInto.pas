@@ -110,7 +110,9 @@ begin
   if ARow.Candidate then
   begin
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetCandidate);
   end;
 end;
@@ -133,15 +135,23 @@ var
 begin
   Result := '';
   if (AIndex < 0) or (AIndex > High(ARows)) then
+  begin
     Exit;
+  end;
   Result := ARows[AIndex].Caption;
   if AIndex < TAtlasStepInto.MaxDigit then
-    Result := IntToStr(AIndex + 1) + '  ' + Result
+  begin
+    Result := IntToStr(AIndex + 1) + '  ' + Result;
+  end
   else
+  begin
     Result := '   ' + Result;
+  end;
   Kind := KindText(ARows[AIndex]);
   if Kind <> '' then
+  begin
     Result := Result + '  (' + Kind + ')';
+  end;
 end;
 
 function TAtlasStepIntoWindow.Layout(ADraw: Boolean): TSize;
@@ -153,7 +163,9 @@ begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
   if ADraw then
+  begin
     Canvas.Brush.Style := bsClear;
+  end;
   X := Scale(Pad);
   Y := Scale(Pad);
   Text := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
@@ -168,7 +180,9 @@ begin
   // Spalte für den Ort: hinter dem breitesten Namen.
   NameWidth := 0;
   for Index := 0 to High(FRows) do
+  begin
     NameWidth := Max(NameWidth, Canvas.TextWidth(Marker + RowCaption(FRows, Index)));
+  end;
   RightX := Scale(Pad) + NameWidth + Scale(ColumnGap);
   SetLength(FRowRects, Length(FRows));
   for Index := 0 to High(FRows) do
@@ -178,25 +192,39 @@ begin
     X := Scale(Pad);
     Text := RowCaption(FRows, Index);
     if Index = FRow then
-      Text := Marker + Text
+    begin
+      Text := Marker + Text;
+    end
     else
+    begin
       X := X + Canvas.TextWidth(Marker);
+    end;
     if ADraw then
     begin
       if Index = FRow then
-        Canvas.Font.Color := ToColor(Colors.Accent)
+      begin
+        Canvas.Font.Color := ToColor(Colors.Accent);
+      end
       else if FRows[Index].Available then
-        Canvas.Font.Color := ToColor(Colors.Text)
+      begin
+        Canvas.Font.Color := ToColor(Colors.Text);
+      end
       else
+      begin
         Canvas.Font.Color := ToColor(Colors.Muted);
+      end;
       Canvas.TextOut(X, Y, Text);
     end;
     // Rechts: Datei:Zeile, bei nicht wählbaren der Grund.
     Right := ReasonText(FRows[Index]);
     if Right = '' then
-      Right := FRows[Index].Location
+    begin
+      Right := FRows[Index].Location;
+    end
     else if FRows[Index].Location <> '' then
+    begin
       Right := Right + '  ·  ' + FRows[Index].Location;
+    end;
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Muted);
@@ -215,7 +243,9 @@ begin
   end;
   Width := Max(Width, Scale(Pad) + Canvas.TextWidth(Text));
   if ADraw then
+  begin
     Canvas.Brush.Style := bsSolid;
+  end;
   Result.cx := Width + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
@@ -234,12 +264,16 @@ begin
   Left := Min(APoint.X, Area.Right - Size.cx);
   Top := APoint.Y + Scale(Gap);
   if Top + Size.cy > Area.Bottom then
+  begin
     Top := APoint.Y - Scale(Gap) - Size.cy;
+  end;
   ShowAt(Rect(Max(Left, Area.Left), Max(Top, Area.Top), Max(Left, Area.Left) + Size.cx,
     Max(Top, Area.Top) + Size.cy));
   Announce(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
   if FRow >= 0 then
+  begin
     Announce(RowCaption(FRows, FRow));
+  end;
 end;
 
 procedure TAtlasStepIntoWindow.Dismiss;
@@ -250,7 +284,9 @@ end;
 procedure TAtlasStepIntoWindow.Select(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available or (AIndex = FRow) then
+  begin
     Exit;
+  end;
   FRow := AIndex;
   Invalidate;
   Announce(RowCaption(FRows, FRow));
@@ -263,7 +299,9 @@ begin
   Next := TAtlasStepInto.NextAvailable(FRows, FRow + ADelta, ADelta);
   Result := Next >= 0;
   if Result then
+  begin
     Select(Next);
+  end;
 end;
 
 function TAtlasStepIntoWindow.AcceptDigit(ADigit: Integer): Boolean;
@@ -273,7 +311,9 @@ begin
   Index := TAtlasStepInto.DigitRow(FRows, ADigit);
   Result := Index >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   Select(Index);
   Accept;
 end;
@@ -282,7 +322,9 @@ function TAtlasStepIntoWindow.RowRect(AIndex: Integer): TRect;
 begin
   Result := TRect.Empty;
   if (AIndex >= 0) and (AIndex <= High(FRowRects)) then
+  begin
     Result := FRowRects[AIndex];
+  end;
 end;
 
 procedure TAtlasStepIntoWindow.Accept;
@@ -291,17 +333,23 @@ var
 begin
   Chosen := FRow;
   if (Chosen < 0) or (Chosen > High(FRows)) or not FRows[Chosen].Available then
+  begin
     Exit;
+  end;
   Dismiss;
   if Assigned(FOnAccept) then
+  begin
     FOnAccept(Chosen);
+  end;
 end;
 
 procedure TAtlasStepIntoWindow.Cancel;
 begin
   Dismiss;
   if Assigned(FOnCancel) then
+  begin
     FOnCancel();
+  end;
 end;
 
 procedure TAtlasStepIntoWindow.Paint;
@@ -320,15 +368,19 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Point := TPoint.Create(X, Y);
   for Index := 0 to High(FRowRects) do
+  begin
     if PtInRect(FRowRects[Index], Point) and FRows[Index].Available then
     begin
       Select(Index);
       Accept;
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasStepIntoWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -341,15 +393,21 @@ begin
   Point := TPoint.Create(X, Y);
   Hot := False;
   for Index := 0 to High(FRowRects) do
+  begin
     if PtInRect(FRowRects[Index], Point) and FRows[Index].Available then
     begin
       Hot := True;
       Select(Index);
     end;
+  end;
   if Hot then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
 end;
 
 end.

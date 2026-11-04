@@ -94,11 +94,15 @@ begin
   TagEnd := Pos('>', AText, APos);
   Start := Pos(AName + '="', AText, APos);
   if (Start = 0) or ((TagEnd > 0) and (Start > TagEnd)) then
+  begin
     Exit;
+  end;
   Inc(Start, Length(AName) + 2);
   Stop := Pos('"', AText, Start);
   if Stop > Start then
+  begin
     Result := Copy(AText, Start, Stop - Start);
+  end;
 end;
 
 procedure AddUnique(var AList: TArray<string>; const AValue: string);
@@ -106,10 +110,16 @@ var
   Item: string;
 begin
   if AValue = '' then
+  begin
     Exit;
+  end;
   for Item in AList do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [AValue];
 end;
 
@@ -129,8 +139,12 @@ var
 begin
   Result := '';
   for Product in Products do
+  begin
     if Product.Version = Trim(ARegistryVersion) then
+    begin
       Exit(Product.Product);
+    end;
+  end;
 end;
 
 class function TAtlasSettingChoices.DelphiCaption(const ARegistryVersion: string): string;
@@ -139,9 +153,13 @@ var
 begin
   Product := DelphiProduct(ARegistryVersion);
   if Product = '' then
-    Result := Trim(ARegistryVersion)
+  begin
+    Result := Trim(ARegistryVersion);
+  end
   else
+  begin
     Result := Format('%s (%s)', [Product, Trim(ARegistryVersion)]);
+  end;
 end;
 
 class function TAtlasSettingChoices.KnownVersions: TArray<string>;
@@ -150,7 +168,9 @@ var
 begin
   Result := nil;
   for Product in Products do
+  begin
     Result := Result + [Product.Version];
+  end;
 end;
 
 class function TAtlasSettingChoices.DelphiVersions(const AInstalled: TArray<string>): TArray<TAtlasSettingChoice>;
@@ -161,24 +181,34 @@ var
 begin
   Versions := nil;
   for Version in AInstalled do
+  begin
     AddUnique(Versions, Trim(Version));
+  end;
   List := TList<string>.Create(TComparer<string>.Construct(
     function(const A, B: string): Integer
     begin
       // Neueste zuerst.
       if VersionNumber(A) > VersionNumber(B) then
-        Result := -1
+      begin
+        Result := -1;
+      end
       else if VersionNumber(A) < VersionNumber(B) then
-        Result := 1
+      begin
+        Result := 1;
+      end
       else
+      begin
         Result := CompareText(A, B);
+      end;
     end));
   try
     List.AddRange(Versions);
     List.Sort;
     Result := nil;
     for Version in List do
+    begin
       Result := Result + [TAtlasSettingChoice.Create(DelphiCaption(Version), TAtlasJsonText.Quote(Version))];
+    end;
   finally
     List.Free;
   end;
@@ -195,7 +225,9 @@ begin
   begin
     Name := AttributeAfter(ADprojText, 'Include', Position);
     if not SameText(Name, 'Base') then
+    begin
       AddUnique(Result, Name);
+    end;
     Position := Pos('<BuildConfiguration ', ADprojText, Position + 1);
   end;
 end;
@@ -214,9 +246,13 @@ begin
     Stop := Pos('</Platform>', ADprojText, Close);
     Value := '';
     if (Close > 0) and (Stop > Close) then
+    begin
       Value := Trim(Copy(ADprojText, Close + 1, Stop - Close - 1));
+    end;
     if SameText(Value, 'True') then
+    begin
       AddUnique(Result, Name);
+    end;
     Position := Pos('<Platform value=', ADprojText, Position + 1);
   end;
 end;
@@ -229,14 +265,22 @@ var
 begin
   Result := nil;
   for Name in AtlasBuiltInProfiles do
+  begin
     AddUnique(Result, Name);
+  end;
   if AProfilesJson = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AProfilesJson);
   try
     if Value is TJSONObject then
+    begin
       for Pair in TJSONObject(Value) do
+      begin
         AddUnique(Result, Pair.JsonString.Value);
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -248,7 +292,9 @@ var
 begin
   Result := nil;
   for Text in ATexts do
+  begin
     Result := Result + [TAtlasSettingChoice.Create(Text, TAtlasJsonText.Quote(Text))];
+  end;
 end;
 
 class function TAtlasSettingChoices.IndexOf(const AChoices: TArray<TAtlasSettingChoice>; const AJson: string): Integer;
@@ -256,8 +302,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AChoices) do
+  begin
     if AChoices[Index].Json = AJson then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 

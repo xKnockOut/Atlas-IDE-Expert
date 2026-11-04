@@ -173,26 +173,34 @@ uses
 procedure TAtlasIdeDebugAccessViolation.TListener.DebugStarted;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Drop;
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
   // Neuer Halt: Das Ergebnis des alten gilt nicht mehr; ExceptionTaken kommt danach, wenn es eine Exception ist.
   if (FInstance <> nil) and (TAtlasIdeDebugSession.StopCount <> FInstance.FStop) then
+  begin
     FInstance.Drop;
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.TListener.DebugResumed;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Drop;
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.TListener.DebugEnded;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Drop;
+  end;
 end;
 
 { TAtlasIdeDebugAccessViolation.TEvents }
@@ -227,7 +235,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasIdeDebugAccessViolation.Destroy;
@@ -236,9 +246,13 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   if FEvents <> nil then
+  begin
     FEvents.OnEditorPaintLine := nil;
+  end;
   FEventsRef := nil;
   FreeAndNil(FTimer);
   FEvaluator.Cancel;
@@ -268,13 +282,17 @@ begin
       procedure(const AStop: TAtlasDebugExceptionStop)
       begin
         if FInstance <> nil then
+        begin
           FInstance.ExceptionTaken(AStop);
+        end;
       end);
     TAtlasIdeDebugExceptionBar.SetExplanationHandler(
       procedure(AAction: TAtlasDebugBarAction)
       begin
         if FInstance <> nil then
+        begin
           FInstance.RunAction(AAction);
+        end;
       end);
   end;
   TAtlasIdeDebugSession.Start;
@@ -285,7 +303,9 @@ var
   Instance: TAtlasIdeDebugAccessViolation;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Instance := FInstance;
   Instance.Drop;
   FInstance := nil;
@@ -293,9 +313,13 @@ begin
   TAtlasIdeDebugExceptionBar.Explain(Instance.FStop, Default(TAtlasDebugBannerExplanation));
   TAtlasIdeDebugExceptionBar.SetExplanationHandler(nil);
   if Instance.FHandler <> 0 then
+  begin
     TAtlasIdeDebugExceptions.RemoveExceptionHandler(Instance.FHandler);
+  end;
   if Instance.FListener <> nil then
+  begin
     TAtlasIdeDebugSession.RemoveListener(Instance.FListener);
+  end;
   Instance.FListener := nil;
   Instance.Free;
   Invalidate;
@@ -317,13 +341,17 @@ end;
 class procedure TAtlasIdeDebugAccessViolation.SetWhereAssigned(const AProc: TAtlasAvWhereAssignedProc);
 begin
   if FInstance <> nil then
+  begin
     FInstance.FOnWhereAssigned := AProc;
+  end;
 end;
 
 class procedure TAtlasIdeDebugAccessViolation.SetEvaluate(const AProc: TAtlasAvEvaluateProc);
 begin
   if FInstance <> nil then
+  begin
     FInstance.FOnEvaluate := AProc;
+  end;
 end;
 
 class procedure TAtlasIdeDebugAccessViolation.Invalidate;
@@ -331,7 +359,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.EndInternal;
@@ -355,9 +385,13 @@ begin
   // Antworten noch laufender Anfragen verwerfen.
   Inc(FRequest);
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   if FDeferred then
+  begin
     FEvaluator.Cancel;
+  end;
   FDeferred := False;
   EndInternal;
   FreeAndNil(FAnalysis);
@@ -370,7 +404,9 @@ begin
   FLines := nil;
   ReapWorkers(False);
   if Underlined then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.ExceptionTaken(const AStop: TAtlasDebugExceptionStop);
@@ -379,10 +415,14 @@ var
 begin
   Drop;
   if AStop.Continued or not Enabled then
+  begin
     Exit;
+  end;
   FAccess := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
   if not FAccess.IsAccessViolation then
+  begin
     Exit;
+  end;
   Frames := AStop.Frames;
   // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
   if (Length(Frames) = 0) or not Frames[0].HasSource or not Frames[0].Own then
@@ -444,7 +484,9 @@ begin
   end;
   Inc(FQuiet);
   if FQuiet < 2 then
+  begin
     Exit;
+  end;
   FTimer.Enabled := False;
   Ask;
 end;
@@ -459,7 +501,9 @@ var
 begin
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
   begin
     Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoServer), Header));
@@ -498,12 +542,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.Debugger,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.Accept(Request, Chains);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -515,7 +563,9 @@ procedure TAtlasIdeDebugAccessViolation.Accept(ARequest: Integer; const AChains:
 begin
   // Nur die jüngste Antwort, und nur, solange derselbe Halt besteht.
   if (ARequest <> FRequest) or (FPhase <> TPhase.Request) then
+  begin
     Exit;
+  end;
   if not StillStopped or not Enabled then
   begin
     Drop;
@@ -554,7 +604,9 @@ begin
   if FDeferred then
   begin
     if TThread.GetTickCount64 - FWaitAt < DeferredTimeoutMs then
+    begin
       Exit;
+    end;
     FEvaluator.Cancel;
     EndInternal;
     FDeferred := False;
@@ -576,7 +628,9 @@ begin
       Value := FEvaluator.Evaluate(Request.Expression, FFileName, FLine + 1, Request.SideEffects, DeferredDone);
     finally
       if Value.State <> TAtlasDebugValueState.Pending then
+      begin
         EndInternal;
+      end;
     end;
     case Value.State of
       TAtlasDebugValueState.Pending:
@@ -600,7 +654,9 @@ end;
 procedure TAtlasIdeDebugAccessViolation.DeferredDone(const AValue: TAtlasDebugValue);
 begin
   if not FDeferred or (FAnalysis = nil) then
+  begin
     Exit;
+  end;
   EndInternal;
   FDeferred := False;
   FAnalysis.Answer(AValue.State = TAtlasDebugValueState.Value, AValue.Text);
@@ -615,7 +671,9 @@ function TAtlasIdeDebugAccessViolation.Header: string;
 begin
   Result := FException.ExceptionClass;
   if FException.Message <> '' then
+  begin
     Result := Result + ': ' + FException.Message;
+  end;
   Result := Result + ' (' + Place + ')';
 end;
 
@@ -637,9 +695,13 @@ begin
     FUnderlineLine := FCulprit.StartLine;
     FUnderlineStart := FCulprit.StartCharacter;
     if FCulprit.EndLine = FCulprit.StartLine then
-      FUnderlineEnd := FCulprit.EndCharacter
+    begin
+      FUnderlineEnd := FCulprit.EndCharacter;
+    end
     else
+    begin
       FUnderlineEnd := Length(TrimRight(FLines[FUnderlineLine]));
+    end;
     Invalidate;
   end;
   Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FOnWhereAssigned) and Settings.DataFlow,
@@ -656,26 +718,40 @@ begin
   TAtlasGuard.Log('Zugriffsverletzung erklären: ' + AExplanation.Headline + ' ' + AExplanation.Detail);
   // Steht (oder kommt) die Leiste für diesen Halt, zeigt sie die Erklärung; sonst die Meldungen.
   if TAtlasIdeDebugExceptionBar.Covers(FStop) then
-    TAtlasIdeDebugExceptionBar.Explain(FStop, AExplanation)
+  begin
+    TAtlasIdeDebugExceptionBar.Explain(FStop, AExplanation);
+  end
   else if Assigned(FMessage) then
+  begin
     for Line in TAtlasAvTexts.MessageLines(AExplanation, Place) do
+    begin
       FMessage(Line);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeDebugAccessViolation.RunAction(AAction: TAtlasDebugBarAction);
 begin
   if not FExplanation.Active or FExplanation.Busy then
+  begin
     Exit;
+  end;
   case AAction of
     TAtlasDebugBarAction.WhereAssigned:
       if FHasCulprit and Assigned(FOnWhereAssigned) then
+      begin
         FOnWhereAssigned(FFileName, FCulprit.NameLine, FCulprit.NameCharacter, FCulprit.Name);
+      end;
     TAtlasDebugBarAction.Evaluate:
       if Assigned(FOnEvaluate) and (FExplanation.EvaluateExpression <> '') then
+      begin
         FOnEvaluate(FExplanation.EvaluateExpression);
+      end;
     TAtlasDebugBarAction.CopyExplanation:
       if FExplanation.CopyText <> '' then
+      begin
         Clipboard.AsText := FExplanation.CopyText;
+      end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
     TAtlasDebugBarAction.Open: ;
@@ -687,14 +763,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
@@ -716,31 +796,45 @@ var
   Pen: HPEN;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
+  begin
     Exit;
+  end;
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FUnderline then
+  begin
     Exit;
+  end;
   try
     if (Context.LogicalLineNum - 1 <> FUnderlineLine) or not SameText(Context.FileName, FFileName) or
       (FUnderlineLine > High(FLines)) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
+    begin
       Exit;
+    end;
     Stored := FLines[FUnderlineLine];
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     // Nur, wenn die Zeile im Editor der abgeglichenen entspricht.
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Stored, TabWidth)) then
+    begin
       Exit;
+    end;
     First := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, FUnderlineStart, TabWidth),
       Context.EditorLineNum);
     Last := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, FUnderlineEnd, TabWidth), Context.EditorLineNum);
     if Last.Left <= First.Left then
+    begin
       Exit;
+    end;
     DC := Context.Canvas.Handle;
     Sample := GetPixel(DC, First.Left, Rect.Top + 1);
     if Sample = CLR_INVALID then
+    begin
       Sample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
+    end;
     // Fehlerfarbe zum Hintergrund, doppelt so dick wie eine Wellenlinie der Diagnosen.
     Thickness := Max(2, (Rect.Bottom - Rect.Top) div 8);
     Y := Rect.Bottom - Thickness;

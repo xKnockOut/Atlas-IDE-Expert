@@ -247,57 +247,86 @@ begin
   end;
 end;
 
+/// <summary>Meldet AFeature für die Tokens AFirst bis ALast, wenn AVersion es noch nicht kennt.</summary>
+procedure ReportIfMissing(AList: TList<TLanguageFeatureFinding>; const ATokens: TArray<TPascalToken>;
+  AFeature: TLanguageFeature; AFirst, ALast: Integer; const AVersion: string);
+begin
+  if not TLanguageFeatures.IsAvailable(AFeature, AVersion) then
+  begin
+    AddFinding(AList, AFeature, ATokens[AFirst].StartPos, ATokens[ALast].EndPos, AVersion);
+  end;
+end;
+
+function IsMultilineString(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.StringLiteral) and (Copy(AToken.Text, 1, 3) = '''''''') and
+    (AToken.StartPos.Line <> AToken.EndPos.Line);
+end;
+
+/// <summary>Beginnt bei AIndex "class operator Initialize" bzw. "Finalize"?</summary>
+function IsManagedRecordOperator(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex + 2 <= High(ATokens)) and ATokens[AIndex].IsKeyword('class') and
+    SameText(ATokens[AIndex + 1].Text, 'operator');
+  if Result then
+  begin
+    Result := SameText(ATokens[AIndex + 2].Text, 'Initialize') or SameText(ATokens[AIndex + 2].Text, 'Finalize');
+  end;
+end;
+
+procedure CheckNumber(const ATokens: TArray<TPascalToken>; AIndex: Integer; AList: TList<TLanguageFeatureFinding>;
+  const AVersion: string);
+begin
+  if Pos('_', ATokens[AIndex].Text) > 0 then
+  begin
+    ReportIfMissing(AList, ATokens, TLanguageFeature.DigitSeparator, AIndex, AIndex, AVersion);
+  end;
+  if Copy(ATokens[AIndex].Text, 1, 1) = '%' then
+  begin
+    ReportIfMissing(AList, ATokens, TLanguageFeature.BinaryLiteral, AIndex, AIndex, AVersion);
+  end;
+end;
+
+/// <summary>"is not" und "not in" ab AIndex.</summary>
+procedure CheckOperators(const ATokens: TArray<TPascalToken>; AIndex: Integer; AList: TList<TLanguageFeatureFinding>;
+  const AVersion: string);
+var
+  mNext: Integer;
+begin
+  mNext := NextCode(ATokens, AIndex);
+  if mNext < 0 then
+  begin
+    Exit;
+  end;
+  if ATokens[AIndex].IsKeyword('is') and ATokens[mNext].IsKeyword('not') then
+  begin
+    ReportIfMissing(AList, ATokens, TLanguageFeature.IsNotOperator, AIndex, mNext, AVersion);
+  end;
+  if ATokens[AIndex].IsKeyword('not') and ATokens[mNext].IsKeyword('in') then
+  begin
+    ReportIfMissing(AList, ATokens, TLanguageFeature.NotInOperator, AIndex, mNext, AVersion);
+  end;
+end;
+
 procedure WalkTokens(const ATokens: TArray<TPascalToken>; AList: TList<TLanguageFeatureFinding>;
   const AVersion: string);
-
-  procedure Report(AFeature: TLanguageFeature; AFirst, ALast: Integer);
-  begin
-    if not TLanguageFeatures.IsAvailable(AFeature, AVersion) then
-    begin
-      AddFinding(AList, AFeature, ATokens[AFirst].StartPos, ATokens[ALast].EndPos, AVersion);
-    end;
-  end;
-
 var
-  Index, Next: Integer;
+  Index: Integer;
 begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].Kind = TPascalTokenKind.Number then
     begin
-      if Pos('_', ATokens[Index].Text) > 0 then
-      begin
-        Report(TLanguageFeature.DigitSeparator, Index, Index);
-      end;
-      if Copy(ATokens[Index].Text, 1, 1) = '%' then
-      begin
-        Report(TLanguageFeature.BinaryLiteral, Index, Index);
-      end;
+      CheckNumber(ATokens, Index, AList, AVersion);
     end;
-    Next := NextCode(ATokens, Index);
-    if (Next >= 0) and ATokens[Index].IsKeyword('is') and ATokens[Next].IsKeyword('not') then
+    CheckOperators(ATokens, Index, AList, AVersion);
+    if IsMultilineString(ATokens[Index]) then
     begin
-      Report(TLanguageFeature.IsNotOperator, Index, Next);
+      ReportIfMissing(AList, ATokens, TLanguageFeature.MultilineString, Index, Index, AVersion);
     end;
-    if (Next >= 0) and ATokens[Index].IsKeyword('not') and ATokens[Next].IsKeyword('in') then
+    if IsManagedRecordOperator(ATokens, Index) then
     begin
-      Report(TLanguageFeature.NotInOperator, Index, Next);
-    end;
-    if (ATokens[Index].Kind = TPascalTokenKind.StringLiteral) and
-      (Copy(ATokens[Index].Text, 1, 3) = '''''''') and
-      (ATokens[Index].StartPos.Line <> ATokens[Index].EndPos.Line) and
-      not TLanguageFeatures.IsAvailable(TLanguageFeature.MultilineString, AVersion) then
-    begin
-      AddFinding(AList, TLanguageFeature.MultilineString, ATokens[Index].StartPos,
-        ATokens[Index].EndPos, AVersion);
-    end;
-    if (Index + 2 <= High(ATokens)) and ATokens[Index].IsKeyword('class') and
-      SameText(ATokens[Index + 1].Text, 'operator') and
-      (SameText(ATokens[Index + 2].Text, 'Initialize') or SameText(ATokens[Index + 2].Text, 'Finalize')) and
-      not TLanguageFeatures.IsAvailable(TLanguageFeature.ManagedRecord, AVersion) then
-    begin
-      AddFinding(AList, TLanguageFeature.ManagedRecord, ATokens[Index].StartPos,
-        ATokens[Index + 2].EndPos, AVersion);
+      ReportIfMissing(AList, ATokens, TLanguageFeature.ManagedRecord, Index, Index + 2, AVersion);
     end;
   end;
 end;
@@ -307,15 +336,19 @@ begin
   Result := Check(ATree, AVersion, nil);
 end;
 
+/// <summary>Liegt A vor oder auf B (Zeile, dann Spalte)?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
 function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 var
   Range: TTextRange;
 begin
   for Range in ARanges do
   begin
-    if ((APosition.Line > Range.StartPos.Line) or ((APosition.Line = Range.StartPos.Line) and
-      (APosition.Character >= Range.StartPos.Character))) and ((APosition.Line < Range.EndPos.Line) or
-      ((APosition.Line = Range.EndPos.Line) and (APosition.Character <= Range.EndPos.Character))) then
+    if NotAfter(Range.StartPos, APosition) and NotAfter(APosition, Range.EndPos) then
     begin
       Exit(True);
     end;
