@@ -40,7 +40,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Attributes,
@@ -345,7 +345,7 @@ begin
   begin
     Exit;
   end;
-  mTree := TPascalParser.Parse(TFileEncoding.Decode(mData, mFormat));
+  mTree := TSyntaxTreeCache.Parse(TFileEncoding.Decode(mData, mFormat));
   try
     mSearch := TAssertSearch.Create(mTree, FPatterns, nil);
     try

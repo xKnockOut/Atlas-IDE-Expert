@@ -29,6 +29,7 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   ToolsAPI,
+  PlatformAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.BuildPipeline.Inbox;
@@ -96,7 +97,6 @@ implementation
 
 uses
   Winapi.Windows,
-  PlatformAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave;

@@ -89,6 +89,9 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Page.Tree,
+  Atlas.Core.Modules.Contract,
+  Atlas.UI.Welcome.TestSupport,
   System.SysUtils,
   System.Classes,
   System.UITypes,
@@ -122,6 +125,7 @@ uses
 procedure TAtlasSettingsPageTests.WarmUp;
 begin
   WarmUpSettingsPage;
+  FilterAndResetPerNode;
 end;
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;
@@ -191,7 +195,7 @@ var
   Minimap: TTabSheet;
 begin
   // #890: Bereiche oben im Baum, Funktionen als Unterpunkte; jeder Knoten zeigt nur seine Seite.
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -229,7 +233,7 @@ begin
     Assert.IsTrue(Page.Navigation.Selected.Parent.Expanded, 'Bereich aufgeklappt');
   finally
     Host.Free;
-    TAtlasSettingsPage.ForgetTreeState;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 procedure TAtlasSettingsPageTests.EveryBindingOnOneNode;
@@ -395,7 +399,7 @@ var
   Master: TCheckBox;
 begin
   // #890: Eine gesperrte Einstellung zeigen: Ihr Hauptschalter ist hervorgehoben.
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -411,18 +415,21 @@ begin
     Assert.IsTrue(Page.Navigation.Selected <> nil);
   finally
     Host.Free;
-    TAtlasSettingsPage.ForgetTreeState;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 procedure TAtlasSettingsPageTests.FilterAndResetPerNode;
 var
+  mWelcome: IAtlasRegistration;
   Host: TForm;
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
   Minimap: TTabSheet;
 begin
+  mWelcome := ProvideWelcomeSettings;
+
   // #890: Der Filter blendet Knoten ohne Treffer aus; „Seite zurücksetzen“ wirkt auf den gewählten Knoten.
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -455,7 +462,8 @@ begin
     Assert.IsTrue(Saved.ExperimentalEnabled);
   finally
     Host.Free;
-    TAtlasSettingsPage.ForgetTreeState;
+    mWelcome.Revoke;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 procedure TAtlasSettingsPageTests.TeamFileTabShowsValuesFromAtlas;
@@ -1161,7 +1169,7 @@ begin
     Assert.IsTrue(Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowClosedUnitsChoice.Enabled, 'wieder frei');
   finally
     Page.Free;
-    TAtlasSettingsPage.ForgetTreeState;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 /// <summary>Knoten des Bereichs Regeln: Prüffenster und „Profile und Baseline“, keine Regelgruppen.</summary>
@@ -1193,7 +1201,7 @@ var
   Settings: TAtlasPluginSettings;
   Project, Global: Integer;
 begin
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -1246,7 +1254,7 @@ begin
     AssertRulesAreaSaved(Settings);
   finally
     Host.Free;
-    TAtlasSettingsPage.ForgetTreeState;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 initialization

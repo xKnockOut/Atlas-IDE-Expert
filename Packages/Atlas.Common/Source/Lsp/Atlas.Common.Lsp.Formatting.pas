@@ -56,7 +56,8 @@ type
       const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
     /// <summary>Schnellbefehl der Zeile vor Enter (#293) nach AResult.</summary>
     procedure AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
-      const APosition: TTextPosition; AResult: TJSONArray);
+      const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken;
+      AResult: TJSONArray);
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -178,7 +179,7 @@ begin
 end;
 
 procedure TLspFormatting.AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
-  const APosition: TTextPosition; AResult: TJSONArray);
+  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
 var
   mDisabled: TArray<string>;
   mVersion: string;
@@ -191,6 +192,9 @@ begin
   begin
     mVersion := FDelphiVersionFor(AUri);
   end;
+  // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte ändern
+  // (A-06).
+  ACancellation.ThrowIfCancellationRequested;
   if Assigned(FSlashCommandsFor) and not FSlashCommandsFor(AUri, mDisabled) then
   begin
     Exit;
@@ -228,10 +232,7 @@ begin
     end
     else if mCharacter = #10 then
     begin
-      // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte
-      // ändern (A-06).
-      ACancellation.ThrowIfCancellationRequested;
-      AddSlashCommand(TJSONObject(AParams), mDocument, mUri, TLspPositions.ReadPosition(mPositionValue),
+      AddSlashCommand(TJSONObject(AParams), mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation,
         TJSONArray(Result));
     end;
   except

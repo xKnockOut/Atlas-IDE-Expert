@@ -28,6 +28,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,

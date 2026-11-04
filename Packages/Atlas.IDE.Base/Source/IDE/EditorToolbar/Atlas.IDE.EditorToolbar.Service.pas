@@ -89,6 +89,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Outline.Breadcrumbs,
   Winapi.Windows,
   System.Classes,
   System.Math,

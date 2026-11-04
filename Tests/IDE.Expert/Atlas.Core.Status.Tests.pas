@@ -745,12 +745,12 @@ begin
     begin
       Client.AddResponseTime(1000);
     end;
-    for Index := 1 to TLspClient.TimeSamples do
+    for Index := 1 to TLspResponseTimes.Samples do
     begin
       Client.AddResponseTime(4);
     end;
     Assert.AreEqual(4.0, Client.AverageMs(Samples), 0.001);
-    Assert.AreEqual(TLspClient.TimeSamples, Samples);
+    Assert.AreEqual(TLspResponseTimes.Samples, Samples);
   finally
     Client.Free;
   end;

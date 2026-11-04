@@ -15,6 +15,9 @@ type
   private
     FParts: TShellParts;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -85,6 +88,16 @@ begin
     mAnswer.Free;
   finally
     mMessage.Free;
+  end;
+end;
+
+procedure TShellClientStartTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    TakesClientName;
+  finally
+    TearDown;
   end;
 end;
 

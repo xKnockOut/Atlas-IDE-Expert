@@ -730,7 +730,7 @@ end;
 
 class function TAtlasProjectsTexts.DetailText(const AEntry: TAtlasProjectEntry): string;
 begin
-  Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, PathLength);
+  Result := TAtlasWelcomeProjects.ShortPath(AEntry.Project, TAtlasWelcomeProjectsFrame.PathLength);
   if AEntry.Summary.LastOpened > 0 then
   begin
     Result := Result + ' · ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsOpened,

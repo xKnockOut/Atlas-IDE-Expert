@@ -481,7 +481,6 @@ begin
     ADetails := mEntry.Details;
     Exit(True);
   end;
-  Result := False;
   mFile := FileOf(ATarget, AKey);
   Result := (mFile <> '') and TAtlasTrackerFiles.Files.ReadText(mFile, mText) and FromJson(mText, ADetails);
   if Result and ((ADetails.Fetched <= 0) or (ANow - ADetails.Fetched > MaxAgeDays)) then

@@ -1054,7 +1054,6 @@ var
   var
     mPosition: Integer;
   begin
-    Result := -1;
     mPosition := AFirst;
     while IsWord(mPosition) do
     begin

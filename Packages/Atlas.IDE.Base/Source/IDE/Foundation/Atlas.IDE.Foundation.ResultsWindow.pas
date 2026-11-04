@@ -448,14 +448,14 @@ end;
 
 class function TAtlasIdeResultsWindow.ShowsItemsOf(const AOwner: string): Boolean;
 begin
-  Result := (ResultsFrame <> nil) and ResultsFrame.Items.ShowsItemsOf(AOwner);
+  Result := (ExistingFrame <> nil) and ExistingFrame.Items.ShowsItemsOf(AOwner);
 end;
 
 class procedure TAtlasIdeResultsWindow.ReleaseItems(const AOwner: string);
 begin
-  if ResultsFrame <> nil then
+  if ExistingFrame <> nil then
   begin
-    ResultsFrame.Items.Release(AOwner);
+    ExistingFrame.Items.Release(AOwner);
   end;
 end;
 

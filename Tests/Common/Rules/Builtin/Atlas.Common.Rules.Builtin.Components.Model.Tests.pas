@@ -70,9 +70,9 @@ var
 begin
   BuildModel(mTree, mModel);
   try
-    Assert.AreEqual(2, mModel.Classes.Count);
+    Assert.AreEqual(2, Integer(mModel.Classes.Count));
     Assert.AreEqual('TFoo', mModel.Classes[0].Name);
-    Assert.AreEqual(2, mModel.Methods.Count);
+    Assert.AreEqual(2, Integer(mModel.Methods.Count));
     Assert.IsTrue(mModel.FindMethod('TFoo', 'Paint', mMethod));
     Assert.IsTrue(mModel.HasToken(mMethod.Block, ['inherited']));
     Assert.IsFalse(mModel.FindMethod('TBar', 'Paint', mMethod));

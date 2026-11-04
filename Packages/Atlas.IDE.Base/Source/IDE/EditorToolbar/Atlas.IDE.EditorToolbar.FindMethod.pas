@@ -122,6 +122,7 @@ var
   mCommand: TAtlasCommand;
   mLine, mCharacter: Integer;
   mCurrent: string;
+  mCommands: TArray<TAtlasCommand>;
   mWindow: TAtlasPaletteWindow;
 begin
   mView := TAtlasEditorBuffer.ActiveView;

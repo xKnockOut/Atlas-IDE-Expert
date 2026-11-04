@@ -52,6 +52,12 @@ type
     procedure SkipsNamesWithUnknownAncestor;
     [Test]
     procedure UsesKnownNeedsEveryUnit;
+    /// <summary>class(TAlias) mit TAlias = TBasis: Member von TBasis sind geerbt.</summary>
+    [Test]
+    procedure AncestorThroughAlias;
+    /// <summary>Erster uses-Eintrag eines Programms nach einem Kommentar, ohne „in“ (AtlasServer.dpr).</summary>
+    [Test]
+    procedure FirstUsesEntryOfProgram;
     [Test]
     procedure KnowsTextFile;
     [Test]
@@ -159,7 +165,25 @@ begin
     '  mZahl: PZahl;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TUnresolvedNamesTests.KnowsTextFile;
+procedure TUnresolvedNamesTests.AncestorThroughAlias;
+begin
+  Assert.AreEqual('', Names('unit Haupt;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '    procedure Zeichnen;'#10'  end;'#10'  TAlias = TBasis;'#10'  TKind = class(TAlias)'#10 +
+    '    procedure Lauf;'#10'  end;'#10'implementation'#10'procedure TBasis.Zeichnen;'#10'begin'#10'end;'#10 +
+    'procedure TKind.Lauf;'#10'begin'#10'  Zeichnen;'#10'end;'#10'end.'));
+end;
+
+procedure TUnresolvedNamesTests.FirstUsesEntryOfProgram;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Leck;'#10'interface'#10'type'#10'  TLeck = record'#10 +
+    '    class procedure Los; static;'#10'  end;'#10'implementation'#10'class procedure TLeck.Los;'#10'begin'#10 +
+    'end;'#10'end.', 'C:Peck.pas', nil));
+  assert.areequal('', names('program haupt;'#10'uses'#10'  // muss als erste unit stehen.'#10'  leck;'#10 +
+    'procedure melden;'#10'begin'#10'  tleck.los;'#10'end;'#10'begin'#10'  {$ifdef debug}'#10'  tleck.los;'#10 +
+    '  {$endif}'#10'end.'));
+end;
+
+procedure tunresolvednamestests.knowstextfile;
 begin
   // Fälle Cm.E2002, Cm.E2071, Cm.E2538: TextFile kommt vom Compiler, nicht aus System.pas.
   Assert.AreEqual('', Names(

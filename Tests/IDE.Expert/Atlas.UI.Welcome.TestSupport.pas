@@ -6,6 +6,7 @@ interface
 
 uses
   System.Classes,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame;
 
@@ -23,7 +24,33 @@ procedure RegisterViews(const AIds: array of string);
 /// <summary>Bereich mit Titel „Titel &lt;Kennung&gt;“ an Reihenfolge und Spalte.</summary>
 function Section(const AId: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn): TAtlasWelcomeSection;
 
+/// <summary>Meldet den Abschnitt der Willkommensseite an, wie es das Modul tut; ohne ihn fehlen dessen Zeilen auf
+/// der Einstellungsseite. Der Aufrufer ruft Revoke.</summary>
+function ProvideWelcomeSettings: IAtlasRegistration;
+
 implementation
+
+uses
+  Atlas.Core.Modules.Registry,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Welcome.SettingsSection;
+
+type
+  TWelcomeSettingsProvider = class(TInterfacedObject, IAtlasSettingsSectionProvider)
+  public
+    function CreateSection: IAtlasSettingsSection;
+  end;
+
+function TWelcomeSettingsProvider.CreateSection: IAtlasSettingsSection;
+begin
+  Result := TAtlasWelcomeSettingsSection.Create;
+end;
+
+function ProvideWelcomeSettings: IAtlasRegistration;
+begin
+  Result := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
+    TWelcomeSettingsProvider.Create as IAtlasSettingsSectionProvider);
+end;
 
 procedure TTestSection.UpdateContent;
 begin

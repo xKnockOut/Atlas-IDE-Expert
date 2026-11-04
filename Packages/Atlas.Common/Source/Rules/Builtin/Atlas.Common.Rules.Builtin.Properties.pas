@@ -740,9 +740,13 @@ begin
 end;
 
 function TAccessorScan.FieldType(const AField: TIndexSymbol; out ALocation: TSymbolLocation): Boolean;
+var
+  mName: string;
 begin
+  mName := Copy(AField.TypeName, LastDelimiter('.', AField.TypeName) + 1, MaxInt);
+  // Geschachtelte Typen der eigenen Klasse zuerst: private type TParts = record neben einer Klasse TParts anderswo.
   Result := (AField.TypeName <> '') and (AField.TypeArgs = '') and
-    FAncestry.FindAnyType(Copy(AField.TypeName, LastDelimiter('.', AField.TypeName) + 1, MaxInt), ALocation) and
+    (FAncestry.FindNestedType(AField.Container, mName, ALocation) or FAncestry.FindAnyType(mName, ALocation)) and
     (ALocation.Symbol.Kind <> TIndexSymbolKind.TypeAlias);
 end;
 

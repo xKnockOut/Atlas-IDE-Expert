@@ -22,6 +22,9 @@
 //   kurz, bis Threads des Tests ihre letzten Freigaben erledigt haben (z. B.
 //   der Lese-Thread einer JSON-RPC-Verbindung nach ReaderDone oder ein
 //   Task nach dem Signal).
+// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, 24 Byte unter Win64) im
+//   Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen PostSetUp und PreTest, zählt
+//   PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und zählen nicht.
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
 // Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
@@ -36,6 +39,8 @@ type
   private
     FSetUpBefore: Int64;
     FSetUpAllocated: Int64;
+    /// <summary>Stand am Ende des Setups; 0 = keins gemessen.</summary>
+    FSetUpEnd: Int64;
     FTestBefore: Int64;
     FTestAllocated: Int64;
     FTearDownBefore: Int64;
@@ -477,12 +482,24 @@ end;
 
 procedure TLeakMonitor.PostSetUp;
 begin
-  FSetUpAllocated := AllocatedBytes - FSetUpBefore;
+  FSetUpEnd := AllocatedBytes;
+  FSetUpAllocated := FSetUpEnd - FSetUpBefore;
 end;
 
 procedure TLeakMonitor.PreTest;
+var
+  Gap: Int64;
 begin
   Start;
+  if FSetUpEnd <> 0 then
+  begin
+    Gap := AllocatedBytes - FSetUpEnd;
+    FSetUpEnd := 0;
+    if Gap < 0 then
+    begin
+      Inc(FSetUpAllocated, Gap);
+    end;
+  end;
   // Arbeiter früherer Tests vor der Messung beenden, damit ihre Freigabe in PostTest kein Leck verdeckt.
   TAtlasTimeLimit.StopAll(1000);
   FTestBefore := AllocatedBytes;

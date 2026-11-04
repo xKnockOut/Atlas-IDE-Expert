@@ -435,6 +435,7 @@ contains
   Atlas.Core.Settings.StoreValues in 'Source\Core\Settings\Atlas.Core.Settings.StoreValues.pas',
   Atlas.UI.Settings.Contract in 'Source\UI\Settings\Atlas.UI.Settings.Contract.pas',
   Atlas.Core.Diagnostics.Teardown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas',
+  Atlas.Core.Diagnostics.ExitWatch in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ExitWatch.pas',
   Atlas.Core.Diagnostics.ThreadList in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas',
   Atlas.Core.Diagnostics.Processes in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas',
   Atlas.Core.Diagnostics.SafeMode in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas',

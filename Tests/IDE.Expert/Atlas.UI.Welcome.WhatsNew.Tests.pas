@@ -144,6 +144,7 @@ end;
 procedure TAtlasWelcomeWhatsNewFrameTests.WarmUpFirstUse;
 begin
   UnreadShowsRowsWithSwitchKeyAndTry;
+  BoardSizesCardToItsText;
 end;
 procedure TAtlasWelcomeWhatsNewFrameTests.UnreadShowsRowsWithSwitchKeyAndTry;
 var

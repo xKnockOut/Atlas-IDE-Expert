@@ -31,6 +31,7 @@ function SummaryTimeOf(const AText: string): TDateTime;
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.Math;
 

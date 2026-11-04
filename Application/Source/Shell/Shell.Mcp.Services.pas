@@ -331,13 +331,13 @@ begin
   Result.Edit := NewEditTools(Result.Index, Result.Group, Result.Code, ALogger);
   // Architekturübersicht (#1118) und Hotspots (#1354): dieselben Dienste wie im LSP-Server und auf der
   // Kommandozeile.
-  Result.Architecture := TArchitectureService.Create(Result.Index, UsesReaderOf, DefinesOf(Result.Group));
-  Result.Hotspots := THotspotService.Create(Result.Index, HotspotReaderOf);
+  Result.Architecture := TArchitectureService.Create(Result.Index, UsesReaderOf(), DefinesOf(Result.Group));
+  Result.Hotspots := THotspotService.Create(Result.Index, HotspotReaderOf());
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
   mPathOptions := TUsesGraphOptions.Default;
   mPathOptions.IncludeLibrary := True;
   Result.PathGraphs := TUsesGraphService.Create(Result.Index, mPathOptions);
-  Result.PathLocator := TUsesLocator.Create(UsesReaderOf, DefinesOf(Result.Group));
+  Result.PathLocator := TUsesLocator.Create(UsesReaderOf(), DefinesOf(Result.Group));
 end;
 
 procedure TMcpServices.Free;
@@ -373,7 +373,7 @@ begin
   Result.Root := Root;
   Result.Guard := Guard;
   Result.Edit := Edit;
-  Result.Architecture := ArchitectureOf(Group.Main, Architecture, AllFiles, Root);
+  Result.Architecture := ArchitectureOf(Group.Main, Architecture, AllFiles(), Root);
   Result.FindPath := FindPathOf(Index, PathGraphs, PathLocator, Group.Main, EnsureUnitOf(Group), Root);
   Result.Index := Index;
   Result.Hotspots := Hotspots;

@@ -18,6 +18,9 @@ type
     function NewServices: TShellBaselineServices;
     procedure CountRefresh;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -80,6 +83,16 @@ end;
 function NoIncludeResolver(const AUri: string): TIncludeResolver;
 begin
   Result := nil;
+end;
+
+procedure TShellBaselinesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    FilesWriteAndRead;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellBaselinesTests.Setup;

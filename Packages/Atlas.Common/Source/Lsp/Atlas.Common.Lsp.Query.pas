@@ -82,7 +82,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Query.Output;
+  Atlas.Common.Query.Output,
+  System.Generics.Collections;
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var

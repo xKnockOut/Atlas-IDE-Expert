@@ -98,7 +98,7 @@ type
     constructor CreateDialog(AOwner: TComponent; const AActions: TAtlasProcessesActions);
     destructor Destroy; override;
     /// <summary>Server fragen; die Antwort füllt das Fenster.</summary>
-    procedure Refresh;
+    procedure Reload;
     /// <summary>Antwort von atlas.server.processes anzeigen (nil: Server antwortet nicht).</summary>
     procedure ShowAnswer(const AAnswer: TJSONValue);
     class procedure Execute(const AActions: TAtlasProcessesActions); static;
@@ -340,7 +340,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasProcessesDialog.Refresh;
+procedure TAtlasProcessesDialog.Reload;
 var
   Alive: TAtlasProcessesAlive;
   Keep: IInterface;
@@ -525,7 +525,7 @@ end;
 
 procedure TAtlasProcessesDialog.RefreshClick(Sender: TObject);
 begin
-  Refresh;
+  Reload;
 end;
 
 procedure TAtlasProcessesDialog.CopyClick(Sender: TObject);
@@ -542,7 +542,7 @@ var
 begin
   Dialog := TAtlasProcessesDialog.CreateDialog(nil, AActions);
   try
-    Dialog.Refresh;
+    Dialog.Reload;
     Dialog.ShowModal;
   finally
     Dialog.Free;

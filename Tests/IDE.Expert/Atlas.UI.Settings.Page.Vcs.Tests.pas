@@ -37,6 +37,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Page.Tree,
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Vcs,
@@ -253,7 +254,7 @@ var
   mSettings, mSaved: TAtlasPluginSettings;
   mProbe: TVcsPageProbe;
 begin
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   mProbe := TVcsPageProbe.Create;
   mHost := TForm.CreateNew(nil);
   try
@@ -293,24 +294,24 @@ var
 begin
   mLocation := TAtlasVcsToolLocation.Empty;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing),
-    TAtlasSettingsPage.VcsLocationText(mLocation));
+    TAtlasSettingsVcsToolsPart.VcsLocationText(mLocation));
   mLocation.Source := TAtlasVcsToolSource.ConfiguredMissing;
   mLocation.Configured := 'X:\git.exe';
-  Assert.Contains(TAtlasSettingsPage.VcsLocationText(mLocation), 'X:\git.exe');
+  Assert.Contains(TAtlasSettingsVcsToolsPart.VcsLocationText(mLocation), 'X:\git.exe');
   mLocation.Source := TAtlasVcsToolSource.Path;
   mLocation.Executable := 'C:\Git\cmd\git.exe';
-  mText := TAtlasSettingsPage.VcsLocationText(mLocation);
+  mText := TAtlasSettingsVcsToolsPart.VcsLocationText(mLocation);
   Assert.Contains(mText, 'C:\Git\cmd\git.exe');
-  Assert.Contains(mText, TAtlasSettingsPage.VcsSourceText(TAtlasVcsToolSource.Path));
+  Assert.Contains(mText, TAtlasSettingsVcsToolsPart.VcsSourceText(TAtlasVcsToolSource.Path));
   mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Git, mLocation);
   mCheck.State := TAtlasVcsToolState.StartFailed;
   mCheck.ExitCode := 128;
-  Assert.Contains(TAtlasSettingsPage.VcsCheckText(mCheck), '128');
+  Assert.Contains(TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck), '128');
   mCheck.State := TAtlasVcsToolState.NoAnswer;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer), TAtlasSettingsPage.VcsCheckText(mCheck));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer), TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck));
   mCheck.State := TAtlasVcsToolState.Found;
   mCheck.Version := 'git version 2.47.1';
-  mText := TAtlasSettingsPage.VcsCheckText(mCheck);
+  mText := TAtlasSettingsVcsToolsPart.VcsCheckText(mCheck);
   Assert.Contains(mText, 'git version 2.47.1');
   Assert.Contains(mText, 'C:\Git\cmd\git.exe');
 end;
@@ -322,25 +323,25 @@ begin
   // #1287: Zustände der Tabelle „Server“.
   mServer := TAtlasVcsServerCheck.Empty;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
-    TAtlasSettingsPage.VcsServerStateText(mServer, True));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, True));
   mServer.State := TAtlasVcsServerState.Reachable;
   mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.LoginNeeded;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.Unreachable;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.NoServer;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
   mServer.State := TAtlasVcsServerState.ToolMissing;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
-    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+    TAtlasSettingsVcsServersPart.VcsServerStateText(mServer, False));
 end;
 procedure TAtlasSettingsPageVcsTests.VcsTexts;
 var
@@ -349,7 +350,7 @@ var
 begin
   AssertVcsToolTexts;
   mState := TAtlasVcsProjectState.Empty;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone), TAtlasSettingsPage.VcsProjectText(mState));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone), TAtlasSettingsVcsProjectPart.VcsProjectText(mState));
   mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
   mState.Outcome := TAtlasVcsOutcome.Ok;
   mState.WorkingCopy.Kind := TAtlasVcsKind.Git;
@@ -357,7 +358,7 @@ begin
   mState.Head.Branch := 'feature/42-kasse';
   mState.Head.Revision := '1979e3d795214220705682d5b0b63c8f3b7e66d7';
   mState.Head.Upstream := 'origin/feature/42-kasse';
-  mText := TAtlasSettingsPage.VcsProjectText(mState);
+  mText := TAtlasSettingsVcsProjectPart.VcsProjectText(mState);
   Assert.Contains(mText, 'Kasse.dproj');
   Assert.Contains(mText, 'C:\Projekte\Kasse');
   Assert.Contains(mText, 'feature/42-kasse');
@@ -365,15 +366,15 @@ begin
   Assert.Contains(mText, TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting), 'Herkunft der Art');
   mState.Source := TAtlasVcsProviderSource.Project;
   mState.SourceMatch := 'C:\Projekte\Kasse\Kasse.groupproj';
-  Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState), 'Kasse.groupproj');
+  Assert.Contains(TAtlasSettingsVcsProjectPart.VcsProjectText(mState), 'Kasse.groupproj');
   // #1286: Hauptbranch aus Zeile oder .atlas.
-  Assert.DoesNotContain(TAtlasSettingsPage.VcsProjectText(mState),
+  Assert.DoesNotContain(TAtlasSettingsVcsProjectPart.VcsProjectText(mState),
     TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
   mState.MainBranch := 'develop';
-  Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState),
+  Assert.Contains(TAtlasSettingsVcsProjectPart.VcsProjectText(mState),
     TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsPage.VcsProviderCaption('SVN'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsPage.VcsProviderCaption(''));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsVcsPart.VcsProviderCaption('SVN'));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsVcsPart.VcsProviderCaption(''));
   AssertVcsServerTexts;
 end;
 /// <summary>Kontext: Projekt und Gruppe Kasse, eine Zeile aus der .atlas.</summary>

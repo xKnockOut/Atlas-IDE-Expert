@@ -118,6 +118,8 @@ uses
   Atlas.Core.Vcs.Composition in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
   Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
   Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
+  Atlas.Core.Tracker.Contract.Files in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas',
+  Atlas.Core.Tracker.Files in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Files.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Mcp.Context in 'Source\Shell\Shell.Mcp.Context.pas',
   Shell.Mcp.Ide in 'Source\Shell\Shell.Mcp.Ide.pas',

@@ -126,6 +126,7 @@ type
 implementation
 
 uses
+  ToolsAPI.Editor,
   System.Classes,
   System.DateUtils,
   Atlas.Text.Lines,

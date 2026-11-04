@@ -97,7 +97,7 @@ var
   Key: Word;
 begin
   Key := AKey;
-  ABar.TextEdit.OnKeyDown(ABar.TextEdit, Key, AShift);
+  ABar.Parts.TextEdit.OnKeyDown(ABar.Parts.TextEdit, Key, AShift);
   Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 

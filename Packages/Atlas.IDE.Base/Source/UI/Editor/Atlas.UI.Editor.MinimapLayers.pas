@@ -159,7 +159,7 @@ constructor TAtlasMinimapCode.Create;
 begin
   inherited Create;
   FTabWidth := 4;
-  FBitmap := TBitmap.Create;
+  FBitmap := Vcl.Graphics.TBitmap.Create;
   FBitmap.PixelFormat := pf24bit;
 end;
 

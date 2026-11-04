@@ -52,6 +52,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.SysUtils,
   System.Generics.Collections,
   System.IOUtils,

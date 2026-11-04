@@ -17,6 +17,9 @@ type
   [TestFixture]
   TSettingsPageSectionsTests = class
   public
+    /// <summary>Einmalige Anlagen beim ersten Gebrauch zählen nicht als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure SectionLandsOnSheetOfItsArea;
     [Test]
@@ -44,6 +47,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.SysUtils,
   Vcl.Controls,
   Vcl.StdCtrls,
@@ -195,6 +199,13 @@ begin
   mProvider := TTestProvider.Create;
   mProvider.Sections := TArray<IAtlasSettingsSection>.Create(ASection);
   Result := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider, mProvider as IAtlasSettingsSectionProvider);
+end;
+
+procedure TSettingsPageSectionsTests.WarmUpFirstUse;
+begin
+  EveryPageGetsOwnSection;
+  BrokenSectionDoesNotStopPage;
+  BrokenProviderDoesNotStopPage;
 end;
 
 procedure TSettingsPageSectionsTests.SectionLandsOnSheetOfItsArea;
@@ -390,6 +401,8 @@ begin
     end;
   finally
     mRegistration.Revoke;
+    // Die Sicherung zählt Fehler je Quelle; der Eintrag gehört nicht zum Test.
+    TAtlasGuard.Fuse.ResetAll;
   end;
 end;
 
@@ -413,6 +426,8 @@ begin
     end;
   finally
     mRegistration.Revoke;
+    // Die Sicherung zählt Fehler je Quelle; der Eintrag gehört nicht zum Test.
+    TAtlasGuard.Fuse.ResetAll;
   end;
 end;
 

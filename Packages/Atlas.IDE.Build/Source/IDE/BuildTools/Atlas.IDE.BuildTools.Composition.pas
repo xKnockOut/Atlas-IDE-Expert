@@ -570,7 +570,7 @@ begin
   AReason := '';
   if not TasksVisible then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+    AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.WelcomeQuickReasonTasksOff);
     Exit(False);
   end;
   Result := GTasks.RunInProject(AProject, AName, AReason);

@@ -782,7 +782,7 @@ begin
   Result := False;
   if not TAtlasIdeSettings.Current.TasksEnabled then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+    AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.WelcomeQuickReasonTasksOff);
     Exit;
   end;
   if SameText(AProject, FLoaded.Project) then

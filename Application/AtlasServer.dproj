@@ -157,6 +157,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Contract.Files.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Files.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Context.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Ide.pas"/>

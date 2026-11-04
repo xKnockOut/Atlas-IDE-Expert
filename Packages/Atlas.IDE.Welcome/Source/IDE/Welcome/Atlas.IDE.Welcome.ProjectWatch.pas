@@ -31,6 +31,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,

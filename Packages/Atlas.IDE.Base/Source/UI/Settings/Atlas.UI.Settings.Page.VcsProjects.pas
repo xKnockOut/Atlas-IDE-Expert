@@ -270,7 +270,6 @@ procedure TAtlasSettingsVcsProjectsPart.AddVcsProjectsSection;
 var
   mPanel: TWinControl;
   mHint: TLabel;
-  mVcs: TAtlasSettingsVcsPart;
 begin
   FVcsProjectSelected := -1;
   FVcsContext := TAtlasVcsProjectContext.Empty;
@@ -299,9 +298,8 @@ begin
   FVcsProjectProvider := TAtlasChoiceBox.Create(FPage);
   FVcsProjectProvider.OnChange := VcsProjectProviderChange;
   Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsKind, FVcsProjectProvider, cVcsField), FVcsProjectList);
-  mVcs := FPage.Part<TAtlasSettingsVcsPart>;
-  FVcsProjectProvider.SetChoices(TArray<string>.Create(mVcs.VcsProviderCaption('auto'), mVcs.VcsProviderCaption('git'),
-    mVcs.VcsProviderCaption('svn'), mVcs.VcsProviderCaption('off')));
+  FVcsProjectProvider.SetChoices(TArray<string>.Create(TAtlasSettingsVcsPart.VcsProviderCaption('auto'), TAtlasSettingsVcsPart.VcsProviderCaption('git'),
+    TAtlasSettingsVcsPart.VcsProviderCaption('svn'), TAtlasSettingsVcsPart.VcsProviderCaption('off')));
   FVcsProjectMainBranch := TEdit.Create(FPage);
   FVcsProjectMainBranch.OnChange := VcsProjectMainBranchChange;
   Attach(AddFieldRow(TAtlasTextId.SettingsVcsProjectsMainBranch, FVcsProjectMainBranch, cVcsField),

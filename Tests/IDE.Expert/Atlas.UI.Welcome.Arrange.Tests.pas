@@ -34,6 +34,7 @@ type
 implementation
 
 uses
+  Vcl.Menus,
   Winapi.Windows,
   System.SysUtils,
   System.Classes,

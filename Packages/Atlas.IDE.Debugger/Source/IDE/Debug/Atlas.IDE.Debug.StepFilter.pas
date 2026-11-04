@@ -224,7 +224,6 @@ function FetchCounts(ASession: TLspSession; const APatterns: TArray<string>; out
 var
   mAnswer: TJSONValue;
 begin
-  Result := False;
   ACounts := Default(TAtlasStepCounts);
   try
     mAnswer := ASession.RunCommand(TAtlasStepFilter.CountsCommand, TAtlasStepFilter.CountsArguments(APatterns),

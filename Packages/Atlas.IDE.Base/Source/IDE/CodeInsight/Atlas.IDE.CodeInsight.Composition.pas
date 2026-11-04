@@ -195,6 +195,7 @@ uses
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Diagnostics.StartTimes,
+  Atlas.Core.Diagnostics.ExitWatch,
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Pipeline,
   Atlas.Core.Build.Verdict,
@@ -3175,10 +3176,10 @@ begin
     begin
       RebindKeys;
       TAtlasIdeKeys.ReportForeignCompletion;
-      // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
+      // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520), einmal für alle Module.
       if KeyMap <> nil then
       begin
-        KeyMap.CheckNow;
+        KeyMap.CheckAtStart;
       end;
       // Neue Aktionen und Tasten für die Tastenkürzel-Tipps (#600).
       if ShortcutTips <> nil then
@@ -4029,8 +4030,16 @@ begin
   end;
 end;
 
+var
+  // Unregister lief schon: beim Zerstören des Hauptfensters, die finalization kommt danach oder gar nicht.
+  Unregistered: Boolean;
+
+procedure WatchIdeExit; forward;
+
 procedure Register;
 begin
+  Unregistered := False;
+  WatchIdeExit;
   LoadedAt := TAtlasWatchdog.Timestamp;
   // Startanteile (Bericht N4): ab dem Laden jedes Teil, nach der Anmeldung die Atlas-Aktionen.
   EndStartTimes;
@@ -4444,6 +4453,11 @@ var
   Stopped: Boolean;
   Teardown: TAtlasTeardown;
 begin
+  if Unregistered then
+  begin
+    Exit;
+  end;
+  Unregistered := True;
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
   Stopped := False;
@@ -4600,9 +4614,20 @@ begin
   end;
 end;
 
+var
+  ExitWatch: TAtlasExitWatch;
+
+procedure WatchIdeExit;
+begin
+  if (ExitWatch = nil) and (Application.MainForm <> nil) then
+  begin
+    ExitWatch := TAtlasExitWatch.Create(Application.MainForm, Unregister);
+  end;
+end;
+
 initialization
 
 finalization
   Unregister;
-
+  FreeAndNil(ExitWatch);
 end.

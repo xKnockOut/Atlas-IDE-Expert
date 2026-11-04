@@ -171,7 +171,7 @@ begin
     Assert.IsFalse(mFrame.Parts.CopyKey.Enabled);
     Assert.IsFalse(mFrame.Parts.Refresh.Enabled);
     Assert.AreEqual('', mFrame.StatusText);
-    Assert.AreEqual(0, mFrame.Content.Docs.Count);
+    Assert.AreEqual(0, Integer(mFrame.Content.Docs.Count));
   finally
     mHost.Free;
   end;
@@ -212,7 +212,7 @@ begin
     Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
       [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewHours, [3])]), mFrame.Content.Badges.Texts[4]);
     // Beschreibung in zwei Doku-Stücken um das Bild, dazu der Kommentar.
-    Assert.AreEqual(3, mFrame.Content.Docs.Count);
+    Assert.AreEqual(3, Integer(mFrame.Content.Docs.Count));
     Assert.AreEqual(1, Integer(Length(ImageUrls(mFrame))));
     Assert.AreEqual('https://beispiel.youtrack.cloud/api/files/1-2?sign=x', ImageUrls(mFrame)[0], 'Bild aus dem Anhang');
     Assert.AreEqual(1, Integer(Length(mRequested)), 'Bild wird geladen');
@@ -245,7 +245,7 @@ begin
       mFrame.Content.Older.Caption);
     Assert.IsFalse(mFrame.State.CommentsExpanded);
     // Beschreibung (zwei Stücke) und die neuesten Kommentare.
-    Assert.AreEqual(2 + TAtlasIssuePreview.ShownComments, mFrame.Content.Docs.Count);
+    Assert.AreEqual(2 + TAtlasIssuePreview.ShownComments, Integer(mFrame.Content.Docs.Count));
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 1), cNow, '', False);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewOlderComment), mFrame.Content.Older.Caption);
   finally
@@ -345,7 +345,7 @@ begin
     mFrame.Parent := mHost;
     mFrame.ShowDetails(Sample(5), cNow, '', True);
     Assert.IsNull(mFrame.Content.Older);
-    Assert.AreEqual(2, mFrame.Content.Docs.Count, 'nur die Beschreibung');
+    Assert.AreEqual(2, Integer(mFrame.Content.Docs.Count), 'nur die Beschreibung');
   finally
     mHost.Free;
   end;

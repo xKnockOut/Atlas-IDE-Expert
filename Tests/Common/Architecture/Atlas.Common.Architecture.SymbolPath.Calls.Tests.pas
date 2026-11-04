@@ -84,7 +84,7 @@ begin
   FTable := TSymbolPathNodeTable.Create(FIndex);
   FGraph := TSymbolPathGraph.Create(FTable, nil);
   FGraph.Configure([Low(TSymbolPathEdgeKind)..High(TSymbolPathEdgeKind)], False, nil);
-  FCalls := TSymbolPathCalls.Create(FTable, FGraph, Reader, nil, nil);
+  FCalls := TSymbolPathCalls.Create(FTable, FGraph, Reader(), nil, nil);
 end;
 
 procedure TSymbolPathCallsTests.TearDown;

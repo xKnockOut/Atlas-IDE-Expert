@@ -25,6 +25,8 @@ type
     [Test]
     procedure LoopInvariantCallReported;
     [Test]
+    procedure ArgumentChangedInLoopSilent;
+    [Test]
     procedure ForBoundsAndCheapConditionSilent;
     [Test]
     procedure MissingBeginUpdateReported;
@@ -139,6 +141,14 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
     '  repeat'#10'    Inc(I);'#10'  until FileExists(Name);')));
+end;
+
+procedure TPerformanceRulesTests.ArgumentChangedInLoopSilent;
+begin
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;'#10'  S: string;',
+    '  while Copy(S, 1, I) = ''x'' do'#10'    Inc(I);')));
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  S: string;',
+    '  while Copy(S, 1, 2) = ''./'' do'#10'    S := Copy(S, 3, MaxInt);')));
 end;
 
 procedure TPerformanceRulesTests.ForBoundsAndCheapConditionSilent;

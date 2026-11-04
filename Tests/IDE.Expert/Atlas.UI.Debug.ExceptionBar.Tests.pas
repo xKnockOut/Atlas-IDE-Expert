@@ -21,6 +21,9 @@ type
     FForm: TForm;
     FBar: TAtlasDebugExceptionBar;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -65,6 +68,16 @@ begin
 end;
 
 { TAtlasDebugExceptionBarTests }
+
+procedure TAtlasDebugExceptionBarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    KeepsHeightAndShowsDetail;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugExceptionBarTests.SetUp;
 begin

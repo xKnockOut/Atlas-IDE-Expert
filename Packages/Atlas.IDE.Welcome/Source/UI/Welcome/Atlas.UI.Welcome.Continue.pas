@@ -128,7 +128,7 @@ type
     procedure OpenSelected;
     property Source: IAtlasContinueSource read FSource write FSource;
     /// <summary>Seit dem letzten Füllen des Bereichs gelesen; False: beim Zeigen neu lesen.</summary>
-    property Loaded: Boolean read FSavedLoaded write FSavedLoaded;
+    property IsRead: Boolean read FSavedLoaded write FSavedLoaded;
     property Filter: TEdit read FFilter;
     property List: TListView read FList;
     property EmptyLabel: TLabel read FSavedEmpty;
@@ -1307,7 +1307,7 @@ begin
   FSource := AValue;
   FRecent.Source := AValue;
   FSavedPage.Source := AValue;
-  FSavedPage.Loaded := False;
+  FSavedPage.IsRead := False;
   UpdateContent;
   if FSource <> nil then
   begin
@@ -1353,7 +1353,7 @@ var
 begin
   FTabs.Visible := TabsShown;
   mSaved := Page = PageSaved;
-  if mSaved and not FSavedPage.Loaded then
+  if mSaved and not FSavedPage.IsRead then
   begin
     FSavedPage.LoadSaved;
   end;
@@ -1377,7 +1377,7 @@ begin
   FRecent.Fill;
   FTabs.Visible := TabsShown;
   // „Gemerkt“ neu lesen, wenn der Reiter offen ist; sonst erst beim Wechsel dorthin.
-  FSavedPage.Loaded := False;
+  FSavedPage.IsRead := False;
   if Page = PageSaved then
   begin
     FSavedPage.LoadSaved;

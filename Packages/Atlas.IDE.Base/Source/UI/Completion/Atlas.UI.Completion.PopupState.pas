@@ -10,6 +10,7 @@
 interface
 
 uses
+  Vcl.Controls,
   Winapi.Messages,
   System.Classes,
   System.Types,

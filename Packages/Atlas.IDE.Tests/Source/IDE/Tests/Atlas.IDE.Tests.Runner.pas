@@ -370,7 +370,7 @@ begin
   AReason := '';
   if not TAtlasIdeSettings.Current.TestRun then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.WelcomeQuickReasonTestsOff);
     Exit;
   end;
   if Busy then
@@ -381,7 +381,7 @@ begin
   Project := ProjectByFile(AProject);
   if Project = nil then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.WelcomeQuickReasonNotOpened);
     Exit;
   end;
   Start(Project, nil, True);

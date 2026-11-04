@@ -8,6 +8,7 @@
 interface
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Backend,

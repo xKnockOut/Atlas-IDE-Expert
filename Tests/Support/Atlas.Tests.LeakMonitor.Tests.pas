@@ -25,6 +25,8 @@ type
     [Test]
     procedure FreeOnOtherThreadIsNoLeak;
     [Test]
+    procedure FreeBetweenSetupAndTestIsNoLeak;
+    [Test]
     procedure ReportNamesThreads;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
@@ -419,6 +421,29 @@ begin
     Worker.Free;
   end;
   Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+end;
+
+procedure TLeakMonitorTests.FreeBetweenSetupAndTestIsNoLeak;
+var
+  Monitor: TLeakMonitor;
+  Block: Pointer;
+begin
+  Monitor := TLeakMonitor.Create;
+  try
+    Monitor.PreSetup;
+    GetMem(Block, 4096);
+    Monitor.PostSetUp;
+    // Wie die Startdaten eines Threads: im Setup belegt, vor PreTest frei.
+    FreeMem(Block);
+    Monitor.PreTest;
+    Monitor.PostTest;
+    Monitor.PreTearDown;
+    Monitor.PostTearDown;
+    Assert.IsTrue(Monitor.SetUpMemoryAllocated + Monitor.TestMemoryAllocated + Monitor.TearDownMemoryAllocated <= 0,
+      Monitor.GetReport);
+  finally
+    Monitor.Free;
+  end;
 end;
 
 procedure TLeakMonitorTests.ReportNamesThreads;

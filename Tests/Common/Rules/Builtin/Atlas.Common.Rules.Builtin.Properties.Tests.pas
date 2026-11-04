@@ -17,6 +17,9 @@ type
   public
     [Test]
     procedure AccessorIssueExample;
+    /// <summary>Geschachtelter Record geht vor einer gleichnamigen Klasse der Unit.</summary>
+    [Test]
+    procedure AccessorPrefersNestedType;
     [Test]
     procedure AccessorValidFormsAreSilent;
     [Test]
@@ -143,6 +146,14 @@ begin
   Assert.IsTrue(Pos('procedure SetName(const Value: string);', Fixed) > 0, Fixed);
   Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);', Fixed) > 0, Fixed);
   Silent(Fixed);
+end;
+
+procedure TPropertyRulesTests.AccessorPrefersNestedType;
+begin
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TParts = class'#10'  end;'#10'  TKunde = class'#10 +
+    '  private type'#10'    TParts = record'#10'      Name: string;'#10'    end;'#10'  private'#10 +
+    '    FParts: TParts;'#10'  public'#10'    property Name: string read FParts.Name;'#10'  end;'#10 +
+    'implementation'#10'end.');
 end;
 
 procedure TPropertyRulesTests.AccessorValidFormsAreSilent;

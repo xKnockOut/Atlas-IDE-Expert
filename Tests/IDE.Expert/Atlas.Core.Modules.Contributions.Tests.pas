@@ -403,7 +403,6 @@ begin
   Assert.IsFalse(TAtlasModuleContributions.FindMenuEntry(mRegistry, TAtlasMenuPlace.EditorContext, 'task:Prüfen',
     mEntry), 'nur am eigenen Platz');
   mEntry := Default(TAtlasMenuEntry);
-  mDynamic := nil;
   mRef := nil;
   mScope := nil;
   mRegistry.UnregisterModule('atlas.a');
@@ -438,7 +437,6 @@ begin
   Assert.AreEqual('', mSource.Log, 'gestoppt hört nichts');
   mModule.Start;
   Assert.AreEqual(1, Integer(Length(TAtlasModuleContributions.Commands(mRegistry))), 'wieder da');
-  mSource := nil;
   mRef := nil;
   mScope := nil;
   mModule := nil;

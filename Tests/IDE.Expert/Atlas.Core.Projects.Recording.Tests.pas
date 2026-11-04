@@ -44,7 +44,8 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Projects.Recording;
+  Atlas.Core.Projects.Recording,
+  Atlas.Core.Welcome.Projects;
 
 type
   TFakeVcs = class(TInterfacedObject, IAtlasVersionControl)
@@ -62,6 +63,33 @@ type
     function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
     function ChangeMarker: string;
   end;
+
+function VcsChange(const APath, AOldPath: string): TAtlasVcsChange;
+begin
+  Result := Default(TAtlasVcsChange);
+  Result.Path := APath;
+  Result.OldPath := AOldPath;
+end;
+
+function Entry(const ASummary: TAtlasProjectSummary): TAtlasProjectEntry;
+begin
+  Result := Default(TAtlasProjectEntry);
+  Result.Summary := ASummary;
+  Result.HasSummary := True;
+end;
+
+function OnMain: TAtlasProjectSummary;
+begin
+  Result := TAtlasProjectSummary.Create('C:\Projekte\Demo.dproj');
+  Result.Vcs.Known := True;
+  Result.Vcs.Kind := 'git';
+  Result.Vcs.Branch := 'main';
+  Result.Vcs.Revision := 'abcdef0123456789';
+  Result.Vcs.Changed := 0;
+  Result.Vcs.Ahead := 0;
+  Result.Vcs.Behind := 0;
+end;
+
 
 function TFakeVcs.Kind: TAtlasVcsKind;
 begin

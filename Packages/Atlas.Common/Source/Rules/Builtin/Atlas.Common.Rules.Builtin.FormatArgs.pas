@@ -224,6 +224,28 @@ var
     end;
   end;
 
+  /// <summary>Kommen für den Aufruf ANode Überladungen mit verschiedenem Ergebnis in Frage (IfThen aus System.Math
+  /// und System.StrUtils)?</summary>
+  function OpenOverload(ANode: TSyntaxNode): Boolean;
+  var
+    mCandidates: TArray<TResolvedSymbol>;
+    mIndex: Integer;
+  begin
+    Result := False;
+    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+    begin
+      Exit;
+    end;
+    mCandidates := mScope.Resolver.CallCandidates(AContext.Tree, mScope.FileName, ANode[0]);
+    for mIndex := 1 to High(mCandidates) do
+    begin
+      if not SameText(mCandidates[mIndex].TypeName, mCandidates[0].TypeName) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+
   /// <summary>Art eines Ausdrucks mit sicherem Typ, der selbst kein Typ ist.</summary>
   function ExpressionClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
   var
@@ -231,7 +253,7 @@ var
   begin
     ATypeName := '';
     Result := TFormatArgumentClass.Unknown;
-    if mScope.SureType(ANode, mSymbol, mType) and not mSymbol.IsType then
+    if not OpenOverload(ANode) and mScope.SureType(ANode, mSymbol, mType) and not mSymbol.IsType then
     begin
       ATypeName := mType.Name;
       Result := TypeClass(mType);

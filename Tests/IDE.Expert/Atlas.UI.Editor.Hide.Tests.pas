@@ -44,6 +44,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Modules.Contract,
+  Atlas.UI.Welcome.TestSupport,
   System.SysUtils,
   System.Types,
   System.UITypes,
@@ -275,6 +277,7 @@ end;
 
 procedure TAtlasHideUiTests.PageRevealsEverySettingOfElementsAndWelcome;
 var
+  mWelcome: IAtlasRegistration;
   Host: TForm;
   Page: TAtlasSettingsPage;
   Element: TAtlasDrawnElement;
@@ -282,7 +285,8 @@ var
   Key: string;
   Control: TControl;
   Parent: TWinControl;
-begin
+begin  mWelcome := ProvideWelcomeSettings;
+
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -313,6 +317,7 @@ begin
     Assert.IsTrue(fsBold in TCheckBox(Control).Font.Style, 'Zeile hervorgehoben');
   finally
     Host.Free;
+    mWelcome.Revoke;
   end;
 end;
 

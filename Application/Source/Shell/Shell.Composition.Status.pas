@@ -7,6 +7,7 @@
 interface
 
 uses
+  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
   Atlas.Common.Logging.Contract,

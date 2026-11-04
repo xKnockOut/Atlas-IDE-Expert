@@ -35,7 +35,8 @@ type
     CompilerSwitchesOriginLine, CompilerSwitchesOriginInclude, CompilerSwitchesEmpty, CompilerSwitchesNoServer,
     CompilerSwitchesWaiting, CompilerSwitchesNoProject, CompilerSwitchesAt, CompilerSwitchesDeviations,
     CompilerSwitchesNoDeviations, CompilerSwitchesGoTo, CompilerSwitchesOptions, CompilerSwitchesCopy,
-    CompilerSwitchesStatusHint);
+    CompilerSwitchesStatusHint,
+    WelcomeQuickReasonTasksOff);
 
   TAtlasBuildStrings = class
   public
@@ -169,7 +170,8 @@ const
      'Zur Direktive springen',
      'Projektoptionen öffnen',
      'Kopieren',
-     'Compiler-Schalter abweichend von der .dproj (Klick: Fenster „Compiler-Schalter“)'),
+     'Compiler-Schalter abweichend von der .dproj (Klick: Fenster „Compiler-Schalter“)',
+    'Projektaufgaben sind aus'),
     ('Start profile: …',
      'Start profile: %s',
      'Start profile: –',
@@ -286,7 +288,8 @@ const
      'Go to directive',
      'Open project options',
      'Copy',
-     'Compiler switches deviating from the .dproj (click: Compiler switches window)'));
+     'Compiler switches deviating from the .dproj (click: Compiler switches window)',
+    'Project tasks are off'));
 
 { TAtlasBuildStrings }
 

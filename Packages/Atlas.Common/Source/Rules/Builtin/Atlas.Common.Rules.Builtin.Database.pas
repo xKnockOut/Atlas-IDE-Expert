@@ -1713,7 +1713,7 @@ begin
     mDocument := TDfmParser.Parse(AContext.FormText);
   end;
   try
-    CheckSql(AContext, AReport, SelectStarFinder, SelectStarFixer(mDocument,
+    CheckSql(AContext, AReport, SelectStarFinder(), SelectStarFixer(mDocument,
       TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext)));
   finally
     mDocument.Free;

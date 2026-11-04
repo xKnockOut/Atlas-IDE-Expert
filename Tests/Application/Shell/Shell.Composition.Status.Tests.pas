@@ -29,6 +29,9 @@ type
     procedure CheckStatus(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
     function IndexQueue: TIndexSchedulerQueue;
   public
+    /// <summary>Einmalige Anlagen beim ersten Gebrauch zählen nicht als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     /// <summary>Der anonyme Status fragt Compiler, Prüflauf und Index-Warteschlange und schreibt ins Log.</summary>
@@ -100,6 +103,15 @@ end;
 procedure TCollectingLogger.Error(const AText: string);
 begin
   FSink(AText);
+end;
+
+procedure TShellStatusReportsTests.WarmUpFirstUse;
+begin
+  StatusAsksAllStates;
+  TearDown;
+  FCompilerAsked := 0;
+  FCheckAsked := 0;
+  FQueueAsked := 0;
 end;
 
 procedure TShellStatusReportsTests.TearDown;

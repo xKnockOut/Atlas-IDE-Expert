@@ -15,6 +15,9 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasIdeWelcomeTilesTests = class
   public
+    /// <summary>Einmalige Anlagen beim ersten Gebrauch zählen nicht als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TileBecomesSection;
     [Test]
@@ -125,6 +128,12 @@ begin
   begin
     Result := mAll[0];
   end;
+end;
+
+procedure TAtlasIdeWelcomeTilesTests.WarmUpFirstUse;
+begin
+  TileBecomesSection;
+  RevokedTileFreesItsControls;
 end;
 
 procedure TAtlasIdeWelcomeTilesTests.TileBecomesSection;

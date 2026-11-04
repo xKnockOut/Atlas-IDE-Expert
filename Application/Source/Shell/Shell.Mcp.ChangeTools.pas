@@ -143,7 +143,7 @@ begin
   begin
     raise EMcpToolError.Create('"format" ist text, json oder dunitx');
   end;
-  mReadText := AffectedReadText;
+  mReadText := AffectedReadText();
   mFound := FindAffected(AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then

@@ -95,7 +95,7 @@ type
     procedure KeepWatching;
     procedure Finish;
     procedure HideBar;
-    procedure Report(const AText: string);
+    procedure Report(AText: string);
     procedure InstallMenu;
     procedure UpdateMenu;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
@@ -353,7 +353,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeEventBreak.Report(const AText: string);
+procedure TAtlasIdeEventBreak.Report(AText: string);
 begin
   if Assigned(FMessage) then
   begin

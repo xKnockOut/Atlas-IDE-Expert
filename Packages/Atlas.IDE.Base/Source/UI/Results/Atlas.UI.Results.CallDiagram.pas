@@ -259,9 +259,11 @@ end;
 procedure TCallPainter.BoxText(const ARect: TRect; const AText: string);
 var
   mRect: TRect;
+  mText: string;
 begin
   mRect := ARect;
-  Canvas.TextRect(mRect, AText, [tfSingleLine, tfVerticalCenter, tfEndEllipsis, tfNoPrefix]);
+  mText := AText;
+  Canvas.TextRect(mRect, mText, [tfSingleLine, tfVerticalCenter, tfEndEllipsis, tfNoPrefix]);
 end;
 
 procedure TCallPainter.DrawMore(const ABox: TAtlasCallBox; const ARect: TRect);

@@ -34,6 +34,7 @@
 interface
 
 uses
+  Atlas.UI.Welcome.Strings,
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
@@ -280,8 +281,7 @@ uses
   Vcl.Dialogs,
   Vcl.Themes,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Core.Diagnostics.MainThread;
 
 const
   // Tag der Einträge im Kontextmenü eines Bereichs.

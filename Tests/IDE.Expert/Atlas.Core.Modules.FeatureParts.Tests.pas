@@ -37,7 +37,7 @@ procedure TFeaturePartTests.AtLevelFollowsMinLevel;
 var
   mPart: IAtlasFeaturePart;
 begin
-  mPart := TAtlasFeaturePart.AtLevel('A', TAtlasSafeLevel.Safe, Inactive, nil, nil);
+  mPart := TAtlasFeaturePart.AtLevel('A', TAtlasSafeLevel.Safe, Inactive(), nil, nil);
   Assert.AreEqual('A', mPart.Name);
   Assert.IsTrue(mPart.Wanted(TAtlasSafeLevel.Normal));
   Assert.IsTrue(mPart.Wanted(TAtlasSafeLevel.Safe));

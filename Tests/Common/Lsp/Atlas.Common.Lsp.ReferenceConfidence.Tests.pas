@@ -27,6 +27,9 @@ type
     function HitAt(const ALocations: TArray<TReferenceLocation>; const AFileName: string; ALine: Integer;
       out ALocation: TReferenceLocation): Boolean;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -184,6 +187,16 @@ begin
 end;
 
 { TReferenceConfidenceTests }
+
+procedure TReferenceConfidenceTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    LspResponses;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TReferenceConfidenceTests.Setup;
 begin

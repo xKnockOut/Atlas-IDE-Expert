@@ -125,7 +125,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.LanguageFeatures;
+  Atlas.Common.Pascal.LanguageFeatures,
+  System.Generics.Collections;
 
 constructor TShellRefactoringPart.Create(const AServices: TShellRefactoringServices);
 begin

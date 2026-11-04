@@ -121,6 +121,8 @@ type
       LastLayout: string;
     end;
   private
+    // Abbau läuft: Was jetzt noch eingereiht würde, liefe nach dem Entladen des Moduls.
+    FStopping: Boolean;
     FHooks: THooks;
     FListeners: TListeners;
     FDirty: TDirty;
@@ -145,6 +147,8 @@ type
     procedure UpdateHeaders;
     procedure SetLayout(const AValue: string);
   public
+    /// <summary>Vor dem Abbau: Kacheln melden beim Freigeben Änderungen, die niemand mehr zeichnet.</summary>
+    procedure BeginStop;
     /// <summary>AServerInfo: Phase und Version des Servers; AIndexing(Prozent): läuft die Indizierung;
     /// AUnits: Units im Index (-1 unbekannt); AMessage: Zeile in die Meldungsansicht.</summary>
     constructor Create(const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
@@ -739,11 +743,20 @@ begin
     end;
 end;
 
+procedure TAtlasIdeWelcome.BeginStop;
+begin
+  FStopping := True;
+end;
+
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
 var
   mId: string;
   mCollect: TThreadProcedure;
 begin
+  if FStopping then
+  begin
+    Exit;
+  end;
   mId := AId;
   // Beobachter melden auch aus Hintergrund-Threads; gesammelt und gezeichnet wird im Hauptthread.
   mCollect :=

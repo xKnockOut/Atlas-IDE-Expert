@@ -64,7 +64,7 @@ begin
   FChains := TResolverChains.Create(FParts, FExpressions);
   FCandidates := TResolverCandidates.Create(FParts, FExpressions, FChains);
   FQueries := TResolverQueries.Create(FParts, FExpressions, FChains);
-  FParts.Typing.Infer := InferFunc;
+  FParts.Typing.Infer := InferFunc();
 end;
 
 destructor TResolverCore.Destroy;

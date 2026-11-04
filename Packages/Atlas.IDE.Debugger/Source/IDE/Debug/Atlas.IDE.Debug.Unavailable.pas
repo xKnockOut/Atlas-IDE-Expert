@@ -83,7 +83,7 @@ type
     procedure StartFetch(ASession: TLspSession; const AFileName: string; ALine: Integer;
       const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts; const ADone: TAtlasDebugValueEvent);
     procedure RestartWithDebug;
-    procedure Say(const AText: string);
+    procedure Say(AText: string);
     procedure ReapWorkers(AWait: Boolean);
     /// <summary>Datei (vollständig) und Zeile (0-basiert) des Ausführungspunkts; False ohne Quelltext.</summary>
     class function StopLocation(out AFileName: string; out ALine: Integer): Boolean; static;
@@ -587,7 +587,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugUnavailable.Say(const AText: string);
+procedure TAtlasIdeDebugUnavailable.Say(AText: string);
 begin
   if Assigned(FMessage) then
   begin

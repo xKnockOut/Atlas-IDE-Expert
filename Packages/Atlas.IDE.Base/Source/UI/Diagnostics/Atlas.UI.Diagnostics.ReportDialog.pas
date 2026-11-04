@@ -96,7 +96,7 @@ type
     /// <summary>Gewählte Teile.</summary>
     function Parts: TAtlasPackageParts;
     /// <summary>Vorschau neu bauen (nach einem Häkchen).</summary>
-    procedure Refresh;
+    procedure Reload;
     /// <summary>Inhalt der Datei AIndex zeigen; liefert ihn.</summary>
     function ViewFile(AIndex: Integer): string;
     /// <summary>„ZIP anlegen“: True, wenn die Datei geschrieben ist.</summary>
@@ -226,7 +226,7 @@ begin
   CreateFoot;
   CreateList;
   ShowFolder;
-  Refresh;
+  Reload;
 end;
 
 procedure TAtlasReportDialog.CreateHead;
@@ -373,7 +373,7 @@ begin
   end;
 end;
 
-procedure TAtlasReportDialog.Refresh;
+procedure TAtlasReportDialog.Reload;
 var
   Item: TAtlasPackageFile;
   Row: TListItem;
@@ -418,7 +418,7 @@ end;
 
 procedure TAtlasReportDialog.PartClick(Sender: TObject);
 begin
-  Refresh;
+  Reload;
 end;
 
 procedure TAtlasReportDialog.FootResize(Sender: TObject);

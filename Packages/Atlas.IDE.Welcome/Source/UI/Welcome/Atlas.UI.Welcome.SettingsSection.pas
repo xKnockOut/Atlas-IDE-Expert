@@ -19,6 +19,7 @@
 interface
 
 uses
+  Atlas.UI.Welcome.Strings,
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
@@ -180,12 +181,12 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Vcl.Menus,
   Vcl.Dialogs,
   Atlas.Core.Welcome.Trends,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Trends;
 
 const

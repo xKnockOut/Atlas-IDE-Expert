@@ -66,7 +66,7 @@ begin
     Assert.AreEqual(4, CountOf(mCounts, 'app'));
     Assert.AreEqual(2, CountOf(mCounts, 'index'));
     Assert.AreEqual(2, CountOf(mCounts, 'ui'));
-    Assert.AreEqual(3, mCounts.Count);
+    Assert.AreEqual(3, Integer(mCounts.Count));
   finally
     mCounts.Free;
   end;

@@ -11,6 +11,7 @@
 interface
 
 uses
+  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
@@ -59,7 +60,6 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
