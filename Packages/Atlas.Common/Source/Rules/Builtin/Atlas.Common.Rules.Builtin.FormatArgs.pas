@@ -213,65 +213,81 @@ var
     end;
   end;
 
-  /// <summary>Art des Arguments ANode und sein Typname für die Meldung.</summary>
-  function ArgumentClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
+  /// <summary>Argument ohne Klammern; eine negative Zahl als ihr Literal.</summary>
+  function Operand(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := Unwrapped(ANode);
+    if (Result.Kind = TSyntaxKind.UnaryExpr) and (Result.Name = '-') and (Result.ChildCount = 1) and
+      (Unwrapped(Result[0]).Kind = TSyntaxKind.Literal) then
+    begin
+      Result := Unwrapped(Result[0]);
+    end;
+  end;
+
+  /// <summary>Art eines Ausdrucks mit sicherem Typ, der selbst kein Typ ist.</summary>
+  function ExpressionClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
   var
     mSymbol, mType: TResolvedSymbol;
-    mFoundAny: Boolean;
   begin
     ATypeName := '';
     Result := TFormatArgumentClass.Unknown;
-    ANode := Unwrapped(ANode);
-    if (ANode.Kind = TSyntaxKind.UnaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 1) and
-      (Unwrapped(ANode[0]).Kind = TSyntaxKind.Literal) then
+    if mScope.SureType(ANode, mSymbol, mType) and not mSymbol.IsType then
     begin
-      ANode := Unwrapped(ANode[0]);
-    end;
-    if ANode.Kind = TSyntaxKind.Literal then
-    begin
-      Exit(TFormatString.LiteralClass(Raw(ANode), ATypeName));
-    end;
-    if ANode.Kind <> TSyntaxKind.Identifier then
-    begin
-      if mScope.SureType(ANode, mSymbol, mType) and not mSymbol.IsType then
-      begin
-        ATypeName := mType.Name;
-        Result := TypeClass(mType);
-      end;
-      Exit;
-    end;
-    if mScope.SureType(ANode, mSymbol, mType) then
-    begin
-      if mSymbol.IsType then
-      begin
-        Exit;
-      end;
       ATypeName := mType.Name;
-      if mSymbol.SymbolKind = TIndexSymbolKind.EnumMember then
-      begin
-        Exit(TFormatArgumentClass.Enum);
-      end;
-      Exit(TypeClass(mType));
+      Result := TypeClass(mType);
     end;
-    if mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ANode, mSymbol, mType, mFoundAny) then
+  end;
+
+  /// <summary>Art des Bezeichners ANode mit sicherem Typ; False, wenn der Typ nicht sicher ist.</summary>
+  function SureIdentifierClass(ANode: TSyntaxNode; out ATypeName: string; out AClass: TFormatArgumentClass): Boolean;
+  var
+    mSymbol, mType: TResolvedSymbol;
+  begin
+    ATypeName := '';
+    AClass := TFormatArgumentClass.Unknown;
+    Result := mScope.SureType(ANode, mSymbol, mType);
+    if not Result or mSymbol.IsType then
     begin
-      // Aufzählungswerte haben keinen deklarierten Typ, nur den umgebenden.
-      if (mSymbol.SymbolKind = TIndexSymbolKind.EnumMember) and mScope.DeclarationSure(mSymbol, ANode) then
-      begin
-        ATypeName := mType.Name;
-        if ATypeName = '' then
-        begin
-          ATypeName := mSymbol.Container;
-        end;
-        if ATypeName = '' then
-        begin
-          ATypeName := 'Aufzählungswert';
-        end;
-        Result := TFormatArgumentClass.Enum;
-      end;
       Exit;
     end;
-    // Ohne Deklaration: True, False, nil.
+    ATypeName := mType.Name;
+    if mSymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+    begin
+      AClass := TFormatArgumentClass.Enum;
+    end
+    else
+    begin
+      AClass := TypeClass(mType);
+    end;
+  end;
+
+  /// <summary>Aufzählungswerte haben keinen deklarierten Typ, nur den umgebenden.</summary>
+  function EnumMemberClass(const ASymbol, AType: TResolvedSymbol; ANode: TSyntaxNode;
+    out ATypeName: string): TFormatArgumentClass;
+  begin
+    ATypeName := '';
+    Result := TFormatArgumentClass.Unknown;
+    if (ASymbol.SymbolKind <> TIndexSymbolKind.EnumMember) or not mScope.DeclarationSure(ASymbol, ANode) then
+    begin
+      Exit;
+    end;
+    ATypeName := AType.Name;
+    if ATypeName = '' then
+    begin
+      ATypeName := ASymbol.Container;
+    end;
+    if ATypeName = '' then
+    begin
+      ATypeName := 'Aufzählungswert';
+    end;
+    Result := TFormatArgumentClass.Enum;
+  end;
+
+  /// <summary>Ohne Deklaration: True, False, nil.</summary>
+  function ConstantClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
+  begin
+    ATypeName := '';
+    Result := TFormatArgumentClass.Unknown;
     if MatchText(ANode.Name, ['True', 'False']) then
     begin
       ATypeName := 'Boolean';
@@ -281,6 +297,36 @@ var
     begin
       ATypeName := 'nil';
       Result := TFormatArgumentClass.Pointer_;
+    end;
+  end;
+
+  /// <summary>Art des Arguments ANode und sein Typname für die Meldung.</summary>
+  function ArgumentClass(ANode: TSyntaxNode; out ATypeName: string): TFormatArgumentClass;
+  var
+    mSymbol, mType: TResolvedSymbol;
+    mFoundAny: Boolean;
+  begin
+    ATypeName := '';
+    ANode := Operand(ANode);
+    if ANode.Kind = TSyntaxKind.Literal then
+    begin
+      Result := TFormatString.LiteralClass(Raw(ANode), ATypeName);
+    end
+    else if ANode.Kind <> TSyntaxKind.Identifier then
+    begin
+      Result := ExpressionClass(ANode, ATypeName);
+    end
+    else if SureIdentifierClass(ANode, ATypeName, Result) then
+    begin
+      // Art steht fest.
+    end
+    else if mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ANode, mSymbol, mType, mFoundAny) then
+    begin
+      Result := EnumMemberClass(mSymbol, mType, ANode, ATypeName);
+    end
+    else
+    begin
+      Result := ConstantClass(ANode, ATypeName);
     end;
   end;
 
@@ -355,140 +401,204 @@ var
     Result := Result + ': EConvertError zur Laufzeit.';
   end;
 
+  /// <summary>Aufgelöst: Der voll qualifizierte Name eines Kandidaten entscheidet (eine eigene Methode Format
+  /// bleibt still).</summary>
+  function ResolvedRoutine(const ACandidates: TArray<TResolvedSymbol>; out AFormatIndex: Integer): Boolean;
+  var
+    mCandidate: TResolvedSymbol;
+    mRoutine: TFormatRoutine;
+  begin
+    AFormatIndex := -1;
+    for mCandidate in ACandidates do
+    begin
+      for mRoutine in mRoutines do
+      begin
+        if TFormatRoutines.SameTail(mRoutine.Name, mCandidate.UnitName + '.' + mCandidate.QualifiedName) then
+        begin
+          AFormatIndex := mRoutine.FormatIndex;
+          Exit(True);
+        end;
+      end;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Passt der geschriebene Name AWritten des Callee ACallee auf ARoutine: als Ende des Eintrags,
+  /// Methoden auch über einen anderen Qualifizierer (EImport.CreateFmt)?</summary>
+  function WrittenMatches(const ARoutine: TFormatRoutine; ACallee: TSyntaxNode; const AWritten: string): Boolean;
+  begin
+    Result := EndsText('.' + AWritten, ARoutine.Name) or SameText(AWritten, ARoutine.Name);
+    Result := Result or (ARoutine.IsMethod and (ACallee.Kind = TSyntaxKind.MemberAccess) and
+      EndsText('.' + ACallee.Name, ARoutine.Name));
+  end;
+
+  /// <summary>Nicht aufgelöst (RTL nicht im Index): geschriebener Name. Writer.Format bleibt still: Format ist
+  /// keine Methode.</summary>
+  function WrittenRoutine(ACallee: TSyntaxNode; out AFormatIndex: Integer): Boolean;
+  var
+    mRoutine: TFormatRoutine;
+    mWritten: string;
+  begin
+    AFormatIndex := -1;
+    mWritten := mScope.Text(ACallee);
+    for mRoutine in mRoutines do
+    begin
+      if WrittenMatches(mRoutine, ACallee, mWritten) then
+      begin
+        AFormatIndex := mRoutine.FormatIndex;
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
   /// <summary>Ist der Aufruf mit Callee ACallee eine Formatroutine? AFormatIndex: Position des Formatstrings
   /// ohne Argumentliste [...] (-1 unbekannt).</summary>
   function IsFormatRoutine(ACallee: TSyntaxNode; out AFormatIndex: Integer): Boolean;
   var
     mCandidates: TArray<TResolvedSymbol>;
-    mCandidate: TResolvedSymbol;
-    mRoutine: TFormatRoutine;
-    mQualified, mWritten: string;
   begin
     AFormatIndex := -1;
-    Result := False;
     if not (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
       (ACallee.FindChild(TSyntaxKind.GenericArgs) <> nil) then
     begin
-      Exit;
+      Exit(False);
     end;
-    mWritten := mScope.Text(ACallee);
     mCandidates := mScope.Resolver.CallCandidates(AContext.Tree, mScope.FileName, ACallee);
     if mCandidates <> nil then
     begin
-      // Aufgelöst: Der voll qualifizierte Name entscheidet (eine eigene Methode Format bleibt still).
-      for mCandidate in mCandidates do
-      begin
-        mQualified := mCandidate.UnitName + '.' + mCandidate.QualifiedName;
-        for mRoutine in mRoutines do
-        begin
-          if TFormatRoutines.SameTail(mRoutine.Name, mQualified) then
-          begin
-            AFormatIndex := mRoutine.FormatIndex;
-            Exit(True);
-          end;
-        end;
-      end;
-      Exit;
-    end;
-    // Nicht aufgelöst (RTL nicht im Index): geschriebener Name als Ende eines Eintrags, Methoden auch über
-    // einen anderen Qualifizierer (EImport.CreateFmt). Writer.Format bleibt still: Format ist keine Methode.
-    for mRoutine in mRoutines do
+      Result := ResolvedRoutine(mCandidates, AFormatIndex);
+    end
+    else
     begin
-      if EndsText('.' + mWritten, mRoutine.Name) or SameText(mWritten, mRoutine.Name) or
-        (mRoutine.IsMethod and (ACallee.Kind = TSyntaxKind.MemberAccess) and
-        EndsText('.' + ACallee.Name, mRoutine.Name)) then
+      Result := WrittenRoutine(ACallee, AFormatIndex);
+    end;
+  end;
+
+  /// <summary>Formatstring und Argumentliste des Aufrufs ANode. Bekannte Stelle des Formatstrings zuerst
+  /// (FormatBuf: Puffer und Längen davor, die Länge direkt vor der Liste), sonst das Argument vor der Liste.
+  /// AList: nil ohne Liste.</summary>
+  function FindArguments(ANode: TSyntaxNode; AFormatIndex: Integer; out AFormatNode, AList: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    AList := nil;
+    AFormatNode := nil;
+    if (AFormatIndex >= 0) and (AFormatIndex + 1 < ANode.ChildCount) then
+    begin
+      AFormatNode := ANode[AFormatIndex + 1];
+    end;
+    for mIndex := 2 to ANode.ChildCount - 1 do
+    begin
+      if Unwrapped(ANode[mIndex]).Kind = TSyntaxKind.SetConstructor then
       begin
-        AFormatIndex := mRoutine.FormatIndex;
+        AList := Unwrapped(ANode[mIndex]);
+        if AFormatNode = nil then
+        begin
+          AFormatNode := ANode[mIndex - 1];
+        end;
+        Break;
+      end;
+    end;
+    Result := AFormatNode <> nil;
+  end;
+
+  /// <summary>Meldet die erste ungültige Angabe im Formatstring an AFormatNode; True, wenn es eine gibt.
+  /// </summary>
+  function ReportedInvalid(const AFormat: TFormatString; AFormatNode: TSyntaxNode): Boolean;
+  var
+    mSpec: TFormatSpec;
+  begin
+    for mSpec in AFormat.Specs do
+    begin
+      if mSpec.Kind <> TFormatSpecKind.Valid then
+      begin
+        AReport.Add(TTextRange.Create(AFormatNode.StartPos, AFormatNode.EndPos), InvalidMessage(mSpec),
+          TRuleConfidence.High);
         Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Enthält die Liste einen Bereich (a..b)? Dann ist die Zahl der Argumente unbekannt.</summary>
+  function HasRange(AList: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    for mIndex := 0 to AList.ChildCount - 1 do
+    begin
+      if AList[mIndex].Kind = TSyntaxKind.RangeExpr then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Zu wenige oder überzählige Argumente melden; False bei zu wenigen.</summary>
+  function CheckCount(const AFormat: TFormatString; AList: TSyntaxNode): Boolean;
+  var
+    mArgs, mNeeded: Integer;
+  begin
+    mArgs := AList.ChildCount;
+    mNeeded := AFormat.ArgumentCount;
+    Result := mArgs >= mNeeded;
+    if not Result then
+    begin
+      AReport.Add(TTextRange.Create(AList.StartPos, AList.EndPos), Format('Der Formatstring braucht %d Argumente, ' +
+        'die Liste hat %d: EConvertError zur Laufzeit.', [mNeeded, mArgs]), TRuleConfidence.High);
+    end
+    else if (mArgs > mNeeded) and not AFormat.HasExplicitIndex then
+    begin
+      AReport.Add(TTextRange.Create(AList[mNeeded].StartPos, AList[mNeeded].EndPos), Format('Argument %d (%s) ' +
+        'kommt im Formatstring nicht vor und wird nicht ausgegeben.', [mNeeded + 1, mScope.Text(AList[mNeeded])]),
+        TRuleConfidence.Medium);
+    end;
+  end;
+
+  procedure CheckArguments(const AFormat: TFormatString; AList: TSyntaxNode);
+  var
+    mSpec: TFormatSpec;
+  begin
+    for mSpec in AFormat.Specs do
+    begin
+      if mSpec.WidthArgument >= 0 then
+      begin
+        CheckArgument(mSpec, '*', AList[mSpec.WidthArgument]);
+      end;
+      if mSpec.PrecisionArgument >= 0 then
+      begin
+        CheckArgument(mSpec, '*', AList[mSpec.PrecisionArgument]);
+      end;
+      if mSpec.Argument >= 0 then
+      begin
+        CheckArgument(mSpec, mSpec.TypeChar, AList[mSpec.Argument]);
       end;
     end;
   end;
 
   procedure CheckCall(ANode: TSyntaxNode);
   var
-    mFormatIndex, mIndex, mArgs, mNeeded: Integer;
+    mFormatIndex: Integer;
     mFormatNode, mList: TSyntaxNode;
     mValue: string;
     mFormat: TFormatString;
-    mSpec: TFormatSpec;
   begin
-    if (ANode.ChildCount < 2) or not IsFormatRoutine(ANode[0], mFormatIndex) then
-    begin
-      Exit;
-    end;
-    mList := nil;
-    mFormatNode := nil;
-    // Bekannte Stelle des Formatstrings zuerst (FormatBuf: Puffer und Längen davor, die Länge direkt vor der
-    // Liste), sonst das Argument vor der Liste.
-    if (mFormatIndex >= 0) and (mFormatIndex + 1 < ANode.ChildCount) then
-    begin
-      mFormatNode := ANode[mFormatIndex + 1];
-    end;
-    for mIndex := 2 to ANode.ChildCount - 1 do
-    begin
-      if Unwrapped(ANode[mIndex]).Kind = TSyntaxKind.SetConstructor then
-      begin
-        mList := Unwrapped(ANode[mIndex]);
-        if mFormatNode = nil then
-        begin
-          mFormatNode := ANode[mIndex - 1];
-        end;
-        Break;
-      end;
-    end;
-    if (mFormatNode = nil) or not FormatValue(mFormatNode, 0, mValue) then
+    if (ANode.ChildCount < 2) or not IsFormatRoutine(ANode[0], mFormatIndex) or
+      not FindArguments(ANode, mFormatIndex, mFormatNode, mList) or not FormatValue(mFormatNode, 0, mValue) then
     begin
       Exit;
     end;
     mFormat := TFormatString.Parse(mValue);
-    for mSpec in mFormat.Specs do
-    begin
-      if mSpec.Kind <> TFormatSpecKind.Valid then
-      begin
-        AReport.Add(TTextRange.Create(mFormatNode.StartPos, mFormatNode.EndPos), InvalidMessage(mSpec),
-          TRuleConfidence.High);
-        Exit;
-      end;
-    end;
-    mNeeded := mFormat.ArgumentCount;
-    if (mList = nil) or (mNeeded < 0) then
+    if ReportedInvalid(mFormat, mFormatNode) or (mList = nil) or (mFormat.ArgumentCount < 0) or
+      HasRange(mList) then
     begin
       Exit;
     end;
-    mArgs := mList.ChildCount;
-    for mIndex := 0 to mArgs - 1 do
+    if CheckCount(mFormat, mList) then
     begin
-      if mList[mIndex].Kind = TSyntaxKind.RangeExpr then
-      begin
-        Exit;
-      end;
-    end;
-    if mArgs < mNeeded then
-    begin
-      AReport.Add(TTextRange.Create(mList.StartPos, mList.EndPos), Format('Der Formatstring braucht %d Argumente, ' +
-        'die Liste hat %d: EConvertError zur Laufzeit.', [mNeeded, mArgs]), TRuleConfidence.High);
-      Exit;
-    end;
-    if (mArgs > mNeeded) and not mFormat.HasExplicitIndex then
-    begin
-      AReport.Add(TTextRange.Create(mList[mNeeded].StartPos, mList[mNeeded].EndPos), Format('Argument %d (%s) ' +
-        'kommt im Formatstring nicht vor und wird nicht ausgegeben.', [mNeeded + 1, mScope.Text(mList[mNeeded])]),
-        TRuleConfidence.Medium);
-    end;
-    for mSpec in mFormat.Specs do
-    begin
-      if mSpec.WidthArgument >= 0 then
-      begin
-        CheckArgument(mSpec, '*', mList[mSpec.WidthArgument]);
-      end;
-      if mSpec.PrecisionArgument >= 0 then
-      begin
-        CheckArgument(mSpec, '*', mList[mSpec.PrecisionArgument]);
-      end;
-      if mSpec.Argument >= 0 then
-      begin
-        CheckArgument(mSpec, mSpec.TypeChar, mList[mSpec.Argument]);
-      end;
+      CheckArguments(mFormat, mList);
     end;
   end;
 
