@@ -713,6 +713,7 @@ uses
   Atlas.UI.Settings.Page in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.pas',
   Atlas.UI.Settings.ChoiceBox in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas',
   Atlas.UI.Settings.Bindings in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Bindings.pas',
+  Atlas.UI.Settings.Page.Sheets in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Sheets.pas',
   Atlas.UI.Tracker.QueryDialog in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas',
   Atlas.UI.Tracker.SettingsRows in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsRows.pas',
   Atlas.UI.Tracker.SettingsConnections in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsConnections.pas',
