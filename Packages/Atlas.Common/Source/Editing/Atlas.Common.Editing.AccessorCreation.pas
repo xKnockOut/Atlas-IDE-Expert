@@ -66,6 +66,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -164,50 +165,97 @@ begin
   Result := False;
 end;
 
+type
+  {$SCOPEDENUMS ON}
+  /// <summary>Ergebnis einer Stufe von IsComparable: vergleichbar, nicht vergleichbar oder Alias auf einen
+  /// weiteren Typ.</summary>
+  TComparability = (Comparable, Uncomparable, Alias);
+  {$SCOPEDENUMS OFF}
+
+const
+  /// <summary>Typtexte mit diesen Anfängen lassen sich nicht mit &lt;&gt; vergleichen.</summary>
+  cUncomparablePrefixes: array[0..5] of string = ('array', 'TArray<', 'procedure', 'function', 'reference',
+    'record');
+
+/// <summary>Zeigt schon der Typtext einen nicht vergleichbaren Typ (Array, prozeduraler Typ, Record)?</summary>
+function IsUncomparableText(const AName: string): Boolean;
+var
+  mPrefix: string;
+begin
+  Result := SameText(AName, 'TBytes');
+  for mPrefix in cUncomparablePrefixes do
+  begin
+    Result := Result or StartsText(mPrefix, AName);
+  end;
+end;
+
+/// <summary>Rechte Seite einer Aliasdeklaration ohne "type ": "TNotifyEvent = procedure(Sender: TObject) of
+/// object", "TPunkte = array of TPunkt", "TName = string".</summary>
+function AliasTarget(const ASignature: string): string;
+begin
+  Result := ASignature;
+  if Pos('=', Result) > 0 then
+  begin
+    Result := Trim(Copy(Result, Pos('=', Result) + 1, MaxInt));
+  end;
+  if StartsText('type ', Result) then
+  begin
+    Result := Trim(Copy(Result, 6, MaxInt));
+  end;
+end;
+
+/// <summary>Eine Stufe von IsComparable für den Typtext AName; ATarget ist bei Alias der nächste Typtext.</summary>
+function Comparability(const AName: string; const AIndex: ISymbolIndex; const AUnit: TUnitIndex;
+  out ATarget: string): TComparability;
+var
+  mSymbol: TIndexSymbol;
+begin
+  ATarget := '';
+  if IsUncomparableText(AName) then
+  begin
+    Result := TComparability.Uncomparable;
+  end
+  else if (AName = '') or (Pos('<', AName) > 0) or
+    not FindType(AName.Substring(AName.LastIndexOf('.') + 1), AIndex, AUnit, mSymbol) then
+  begin
+    Result := TComparability.Comparable;
+  end
+  else if mSymbol.Kind = TIndexSymbolKind.RecordType then
+  begin
+    Result := TComparability.Uncomparable;
+  end
+  else if mSymbol.Kind <> TIndexSymbolKind.TypeAlias then
+  begin
+    Result := TComparability.Comparable;
+  end
+  else
+  begin
+    ATarget := AliasTarget(mSymbol.Signature);
+    Result := TComparability.Alias;
+    if ATarget = '' then
+    begin
+      Result := TComparability.Comparable;
+    end;
+  end;
+end;
+
 class function TAccessorCreation.IsComparable(const ATypeName: string; const AIndex: ISymbolIndex;
   const AUnit: TUnitIndex): Boolean;
 var
-  Name, Right: string;
-  Level: Integer;
-  Symbol: TIndexSymbol;
+  mName, mTarget: string;
+  mLevel: Integer;
 begin
-  Name := Trim(ATypeName);
-  for Level := 1 to 3 do
+  mName := Trim(ATypeName);
+  for mLevel := 1 to 3 do
   begin
-    if StartsText('array', Name) or StartsText('TArray<', Name) or SameText(Name, 'TBytes') or
-      StartsText('procedure', Name) or StartsText('function', Name) or StartsText('reference', Name) or
-      StartsText('record', Name) then
-    begin
-      Exit(False);
+    case Comparability(mName, AIndex, AUnit, mTarget) of
+      TComparability.Comparable:
+        Exit(True);
+      TComparability.Uncomparable:
+        Exit(False);
+    else
+      mName := mTarget;
     end;
-    if (Name = '') or (Pos('<', Name) > 0) or
-      not FindType(Name.Substring(Name.LastIndexOf('.') + 1), AIndex, AUnit, Symbol) then
-    begin
-      Exit(True);
-    end;
-    if Symbol.Kind = TIndexSymbolKind.RecordType then
-    begin
-      Exit(False);
-    end;
-    if Symbol.Kind <> TIndexSymbolKind.TypeAlias then
-    begin
-      Exit(True);
-    end;
-    // "TNotifyEvent = procedure(Sender: TObject) of object", "TPunkte = array of TPunkt", "TName = string".
-    Right := Symbol.Signature;
-    if Pos('=', Right) > 0 then
-    begin
-      Right := Trim(Copy(Right, Pos('=', Right) + 1, MaxInt));
-    end;
-    if StartsText('type ', Right) then
-    begin
-      Right := Trim(Copy(Right, 6, MaxInt));
-    end;
-    if Right = '' then
-    begin
-      Exit(True);
-    end;
-    Name := Right;
   end;
   Result := True;
 end;
@@ -258,65 +306,126 @@ begin
   Result := False;
 end;
 
+type
+  /// <summary>Die Klasse, in die eingefügt wird: Quelle, Klassensymbol und Klassenrumpf.</summary>
+  TAccessorTarget = record
+    Source: TCommandSource;
+    ClassSymbol: TIndexSymbol;
+    Body: TSyntaxNode;
+  end;
+
+/// <summary>Letztes Feld direkt hinter dem Abschnittskopf ASection; nil ohne. Die Mitglieder folgen dem
+/// Abschnittskopf als Geschwister im Klassenrumpf.</summary>
+function LastLeadingField(ABody, ASection: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := nil;
+  mIndex := 0;
+  while (mIndex < ABody.ChildCount) and (ABody[mIndex] <> ASection) do
+  begin
+    Inc(mIndex);
+  end;
+  for mIndex := mIndex + 1 to ABody.ChildCount - 1 do
+  begin
+    mChild := ABody[mIndex];
+    if not (mChild.Kind in [TSyntaxKind.Field, TSyntaxKind.VarSection, TSyntaxKind.VarDecl]) then
+    begin
+      Break;
+    end;
+    Result := mChild;
+  end;
+end;
+
+/// <summary>Einfügung der Zeile ALine (mit Einrückung) in den vorhandenen Abschnitt ASection vor der
+/// Eigenschaft. Felder kommen hinter die Felder am Anfang des Abschnitts (Felder nach Methoden wären E2169),
+/// Methoden ans Ende des Abschnitts bzw. direkt vor die Eigenschaft, wenn sie selbst darin steht.</summary>
+function PlacementInSection(const ATarget: TAccessorTarget; ASection, ANext: TSyntaxNode; const ALine: string;
+  AIsField: Boolean): TTextEdit;
+var
+  mLastField: TSyntaxNode;
+  mSectionEnd: Integer;
+begin
+  if AIsField then
+  begin
+    mLastField := LastLeadingField(ATarget.Body, ASection);
+    if mLastField <> nil then
+    begin
+      Exit(ATarget.Source.AfterLine(mLastField.EndPos.Line, ALine));
+    end;
+    Exit(ATarget.Source.AfterLine(ASection.StartPos.Line, ALine));
+  end;
+  mSectionEnd := ATarget.ClassSymbol.Range.EndPos.Line;
+  if ANext <> nil then
+  begin
+    mSectionEnd := ANext.StartPos.Line;
+  end;
+  // Steht die Eigenschaft selbst im Abschnitt, direkt vor sie.
+  Result := ATarget.Source.BeforeLine(Min(mSectionEnd, ATarget.Source.Line), ALine);
+end;
+
 /// <summary>Einfügung der Deklaration ADecl (ohne Einrückung) in den Abschnitt ASection vor der Eigenschaft.
 /// ANewBlock: Es gab keinen passenden Abschnitt davor; die Einfügung beginnt dann mit ASection, und der Aufrufer
 /// setzt danach den Abschnitt der Eigenschaft fort.</summary>
-function Placement(ASource: TCommandSource; const AClass: TIndexSymbol; ABody: TSyntaxNode;
-  const ASection, ADecl: string; AIsField: Boolean; out ANewBlock: Boolean): TTextEdit;
+function Placement(const ATarget: TAccessorTarget; const ASection, ADecl: string; AIsField: Boolean;
+  out ANewBlock: Boolean): TTextEdit;
 var
-  Section, Next, Child, LastField: TSyntaxNode;
-  Index, PropertyLine, SectionEnd: Integer;
-  Indent: string;
+  mSection, mNext: TSyntaxNode;
+  mPropertyLine: Integer;
+  mIndent: string;
 begin
-  ANewBlock := False;
-  PropertyLine := ASource.Line;
-  Indent := ASource.Indent(PropertyLine);
-  Section := SectionNode(ABody, ASection, Next);
-  if (Section <> nil) and (Section.StartPos.Line < PropertyLine) then
+  mPropertyLine := ATarget.Source.Line;
+  mIndent := ATarget.Source.Indent(mPropertyLine);
+  mSection := SectionNode(ATarget.Body, ASection, mNext);
+  ANewBlock := (mSection = nil) or (mSection.StartPos.Line >= mPropertyLine);
+  if not ANewBlock then
   begin
-    if AIsField then
-    begin
-      // Hinter die Felder am Anfang des Abschnitts; Felder nach Methoden wären E2169. Die Mitglieder folgen dem
-      // Abschnittskopf als Geschwister im Klassenrumpf.
-      LastField := nil;
-      Index := 0;
-      while (Index < ABody.ChildCount) and (ABody[Index] <> Section) do
-      begin
-        Inc(Index);
-      end;
-      for Index := Index + 1 to ABody.ChildCount - 1 do
-      begin
-        Child := ABody[Index];
-        if not (Child.Kind in [TSyntaxKind.Field, TSyntaxKind.VarSection, TSyntaxKind.VarDecl]) then
-        begin
-          Break;
-        end;
-        LastField := Child;
-      end;
-      if LastField <> nil then
-      begin
-        Exit(ASource.AfterLine(LastField.EndPos.Line, Indent + ADecl));
-      end;
-      Exit(ASource.AfterLine(Section.StartPos.Line, Indent + ADecl));
-    end;
-    if Next <> nil then
-    begin
-      SectionEnd := Next.StartPos.Line;
-    end
-    else
-    begin
-      SectionEnd := AClass.Range.EndPos.Line;
-    end;
-    if SectionEnd <= PropertyLine then
-    begin
-      Exit(ASource.BeforeLine(SectionEnd, Indent + ADecl));
-    end;
-    // Die Eigenschaft steht selbst im Abschnitt.
-    Exit(ASource.BeforeLine(PropertyLine, Indent + ADecl));
+    Exit(PlacementInSection(ATarget, mSection, mNext, mIndent + ADecl, AIsField));
   end;
-  ANewBlock := True;
-  Result := ASource.BeforeLine(PropertyLine, ASource.Indent(AClass.Range.EndPos.Line) + ASection + ASource.LineBreak +
-    Indent + ADecl);
+  Result := ATarget.Source.BeforeLine(mPropertyLine, ATarget.Source.Indent(ATarget.ClassSymbol.Range.EndPos.Line) +
+    ASection + ATarget.Source.LineBreak + mIndent + ADecl);
+end;
+
+/// <summary>Beginnen beide Einfügungen am Anfang derselben Zeile?</summary>
+function SameLineStart(const AFirst, ASecond: TTextEdit): Boolean;
+begin
+  Result := (AFirst.Range.StartPos.Line = ASecond.Range.StartPos.Line) and
+    (AFirst.Range.StartPos.Character = ASecond.Range.StartPos.Character) and (ASecond.Range.StartPos.Character = 0);
+end;
+
+/// <summary>Text der Einfügung AIndex zum Anhängen an die Einfügung davor: Beginnt sie denselben neuen Abschnitt
+/// wie die Einfügung davor, ohne den Kopf.</summary>
+function AppendedText(const AEdits: TArray<TTextEdit>; const ANewBlocks: TArray<Boolean>;
+  const ASections: TArray<string>; AIndex: Integer; const AHeader: string): string;
+begin
+  Result := AEdits[AIndex].NewText;
+  if (AIndex > 0) and ANewBlocks[AIndex] and ANewBlocks[AIndex - 1] and
+    SameText(ASections[AIndex - 1], ASections[AIndex]) and StartsStr(AHeader, Result) then
+  begin
+    Result := Copy(Result, Length(AHeader) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Setzt hinter Einfügungen direkt vor der Eigenschaft deren Abschnitt fort.</summary>
+procedure ContinueSection(ASource: TCommandSource; const AClass: TIndexSymbol; var AEdits: TArray<TTextEdit>);
+var
+  mIndex: Integer;
+  mCurrent, mClassIndent: string;
+begin
+  mClassIndent := ASource.Indent(AClass.Range.EndPos.Line);
+  mCurrent := TInterfaceStubs.LastSection(ASource.Tree.Tokens, AClass.Range.StartPos.Line, ASource.Line);
+  if mCurrent = '' then
+  begin
+    mCurrent := 'public';
+  end;
+  for mIndex := 0 to High(AEdits) do
+  begin
+    if (AEdits[mIndex].Range.StartPos.Line = ASource.Line) and (AEdits[mIndex].Range.StartPos.Character = 0) then
+    begin
+      AEdits[mIndex].NewText := AEdits[mIndex].NewText + mClassIndent + mCurrent + ASource.LineBreak;
+    end;
+  end;
 end;
 
 /// <summary>Legt Einfügungen an derselben Stelle zusammen (in Reihenfolge), ohne einen Abschnittskopf zu
@@ -324,50 +433,121 @@ end;
 function Merged(ASource: TCommandSource; const AClass: TIndexSymbol; const AEdits: TArray<TTextEdit>;
   const ANewBlocks: TArray<Boolean>; const ASections: TArray<string>): TArray<TTextEdit>;
 var
-  Index, Last: Integer;
-  Text, Header, Current, ClassIndent: string;
-  AnyNew: Boolean;
+  mIndex, mLast: Integer;
+  mClassIndent: string;
+  mAnyNew: Boolean;
 begin
   Result := nil;
-  ClassIndent := ASource.Indent(AClass.Range.EndPos.Line);
-  AnyNew := False;
-  Last := -1;
-  for Index := 0 to High(AEdits) do
+  mClassIndent := ASource.Indent(AClass.Range.EndPos.Line);
+  mAnyNew := False;
+  mLast := -1;
+  for mIndex := 0 to High(AEdits) do
   begin
-    AnyNew := AnyNew or ANewBlocks[Index];
-    if (Last >= 0) and (Result[Last].Range.StartPos.Line = AEdits[Index].Range.StartPos.Line) and
-      (Result[Last].Range.StartPos.Character = AEdits[Index].Range.StartPos.Character) and
-      (AEdits[Index].Range.StartPos.Character = 0) then
+    mAnyNew := mAnyNew or ANewBlocks[mIndex];
+    if (mLast >= 0) and SameLineStart(Result[mLast], AEdits[mIndex]) then
     begin
-      Text := AEdits[Index].NewText;
-      Header := ClassIndent + ASections[Index] + ASource.LineBreak;
-      // Gleicher neuer Abschnitt wie die Einfügung davor: Kopf nur einmal.
-      if ANewBlocks[Index] and (Index > 0) and ANewBlocks[Index - 1] and SameText(ASections[Index - 1],
-        ASections[Index]) and StartsStr(Header, Text) then
-      begin
-        Text := Copy(Text, Length(Header) + 1, MaxInt);
-      end;
-      Result[Last].NewText := Result[Last].NewText + Text;
+      Result[mLast].NewText := Result[mLast].NewText + AppendedText(AEdits, ANewBlocks, ASections, mIndex,
+        mClassIndent + ASections[mIndex] + ASource.LineBreak);
       Continue;
     end;
-    Result := Result + [AEdits[Index]];
-    Last := High(Result);
+    Result := Result + [AEdits[mIndex]];
+    mLast := High(Result);
   end;
-  if not AnyNew then
+  if mAnyNew then
   begin
-    Exit;
+    ContinueSection(ASource, AClass, Result);
   end;
-  Current := TInterfaceStubs.LastSection(ASource.Tree.Tokens, AClass.Range.StartPos.Line, ASource.Line);
-  if Current = '' then
+end;
+
+/// <summary>Muss APlan das Feld mit anlegen? Ja beim Feld selbst und beim Setter ohne Feld und Index; der Setter
+/// braucht das Feld, es steht vor der Methode.</summary>
+function NeedsField(const APlan: TAccessorPlan; AHasField: Boolean): Boolean;
+begin
+  Result := (APlan.Kind = TAccessorKind.Field) or
+    ((APlan.Kind = TAccessorKind.Setter) and not AHasField and (APlan.IndexParameters = ''));
+end;
+
+/// <summary>Deklarationen für APlan (Feld und/oder Methode), zusammengelegt.</summary>
+function DeclarationEdits(const ATarget: TAccessorTarget; const APlan: TAccessorPlan; AHasField: Boolean;
+  out AWithField: Boolean): TArray<TTextEdit>;
+var
+  mNewBlock: Boolean;
+  mFieldSection: string;
+  mField: TAccessorPlan;
+  mPending: TArray<TTextEdit>;
+  mNewBlocks: TArray<Boolean>;
+  mSections: TArray<string>;
+begin
+  mFieldSection := 'private';
+  if HasSection(ATarget.Body, 'strict private') then
   begin
-    Current := 'public';
+    mFieldSection := 'strict private';
   end;
-  for Index := 0 to High(Result) do
+  mPending := nil;
+  mNewBlocks := nil;
+  mSections := nil;
+  AWithField := False;
+  if NeedsField(APlan, AHasField) then
   begin
-    if (Result[Index].Range.StartPos.Line = ASource.Line) and (Result[Index].Range.StartPos.Character = 0) then
-    begin
-      Result[Index].NewText := Result[Index].NewText + ClassIndent + Current + ASource.LineBreak;
-    end;
+    mField := APlan;
+    mField.Kind := TAccessorKind.Field;
+    mPending := mPending + [Placement(ATarget, mFieldSection, TAccessorCreation.Declaration(mField), True,
+      mNewBlock)];
+    mNewBlocks := mNewBlocks + [mNewBlock];
+    mSections := mSections + [mFieldSection];
+    AWithField := APlan.Kind = TAccessorKind.Setter;
+  end;
+  if APlan.Kind <> TAccessorKind.Field then
+  begin
+    mPending := mPending + [Placement(ATarget, APlan.MethodSection, TAccessorCreation.Declaration(APlan), False,
+      mNewBlock)];
+    mNewBlocks := mNewBlocks + [mNewBlock];
+    mSections := mSections + [APlan.MethodSection];
+  end;
+  Result := Merged(ATarget.Source, ATarget.ClassSymbol, mPending, mNewBlocks, mSections);
+end;
+
+/// <summary>Getter: liefert das Feld, wenn es das gibt (ohne Index), sonst Default(Typ).</summary>
+function GetterText(const ATarget: TAccessorTarget; const APlan: TAccessorPlan; AHasField: Boolean): string;
+var
+  mParams, mLB, mValue: string;
+begin
+  mLB := ATarget.Source.LineBreak;
+  mParams := '';
+  if APlan.IndexParameters <> '' then
+  begin
+    mParams := '(' + APlan.IndexParameters + ')';
+  end;
+  mValue := 'Default(' + APlan.PropertyType + ')';
+  if AHasField and (APlan.IndexParameters = '') then
+  begin
+    mValue := APlan.FieldName;
+  end;
+  Result := Format('function %s.%s%s: %s;', [ATarget.ClassSymbol.Name, APlan.Name, mParams, APlan.PropertyType]) +
+    mLB + 'begin' + mLB + '  Result := ' + mValue + ';' + mLB + 'end;';
+end;
+
+/// <summary>Setter: leer mit Index, sonst mit Änderungsprüfung wie /prop bzw. ohne bei nicht vergleichbaren
+/// Typen.</summary>
+function SetterText(const ATarget: TAccessorTarget; const AIndex: ISymbolIndex; const APlan: TAccessorPlan): string;
+var
+  mHead, mLB: string;
+begin
+  mLB := ATarget.Source.LineBreak;
+  mHead := 'procedure ' + ATarget.ClassSymbol.Name + '.' +
+    Copy(TAccessorCreation.Declaration(APlan), Length('procedure ') + 1, MaxInt);
+  if APlan.IndexParameters <> '' then
+  begin
+    Result := mHead + mLB + 'begin' + mLB + 'end;';
+  end
+  else if TAccessorCreation.IsComparable(APlan.PropertyType, AIndex, ATarget.Source.UnitIndex) then
+  begin
+    Result := mHead + mLB + TSetterGenerator.Body(APlan.FieldName, 'Value',
+      TSetterGenerator.NotifyCall(ATarget.Source, AIndex, ATarget.ClassSymbol), mLB);
+  end
+  else
+  begin
+    Result := mHead + mLB + 'begin' + mLB + '  ' + APlan.FieldName + ' := Value;' + mLB + 'end;';
   end;
 end;
 
@@ -375,96 +555,32 @@ class function TAccessorCreation.Edits(ASource: TCommandSource; const AIndex: IS
   const AClass: TIndexSymbol; const APlan: TAccessorPlan; out AEdits: TArray<TTextEdit>;
   out AWithField: Boolean): Boolean;
 var
-  Body: TSyntaxNode;
-  Member: TIndexSymbol;
-  HasField, NewBlock: Boolean;
-  FieldSection, LB, Head, Text, Params: string;
-  Field: TAccessorPlan;
-  Pending: TArray<TTextEdit>;
-  NewBlocks: TArray<Boolean>;
-  Sections: TArray<string>;
+  mTarget: TAccessorTarget;
+  mMember: TIndexSymbol;
+  mHasField: Boolean;
 begin
   AEdits := nil;
   AWithField := False;
-  Result := False;
-  Body := BodyOfClass(ASource, AClass);
-  if (Body = nil) or FindMember(ASource, AClass, APlan.Name, [TIndexSymbolKind.Field, TIndexSymbolKind.Method,
-    TIndexSymbolKind.Property_], Member) then
+  mTarget.Source := ASource;
+  mTarget.ClassSymbol := AClass;
+  mTarget.Body := BodyOfClass(ASource, AClass);
+  Result := (mTarget.Body <> nil) and not FindMember(ASource, AClass, APlan.Name, [TIndexSymbolKind.Field,
+    TIndexSymbolKind.Method, TIndexSymbolKind.Property_], mMember) and
+    not ((APlan.Kind = TAccessorKind.Field) and (APlan.IndexParameters <> ''));
+  if not Result then
   begin
     Exit;
   end;
-  if (APlan.Kind = TAccessorKind.Field) and (APlan.IndexParameters <> '') then
-  begin
-    Exit;
-  end;
-  FieldSection := 'private';
-  if HasSection(Body, 'strict private') then
-  begin
-    FieldSection := 'strict private';
-  end;
-  LB := ASource.LineBreak;
-  HasField := FindMember(ASource, AClass, APlan.FieldName, [TIndexSymbolKind.Field], Member);
-  Pending := nil;
-  NewBlocks := nil;
-  Sections := nil;
-  // Der Setter braucht das Feld; es steht vor der Methode.
-  if (APlan.Kind = TAccessorKind.Field) or ((APlan.Kind = TAccessorKind.Setter) and not HasField and
-    (APlan.IndexParameters = '')) then
-  begin
-    Field := APlan;
-    Field.Kind := TAccessorKind.Field;
-    Pending := Pending + [Placement(ASource, AClass, Body, FieldSection, Declaration(Field), True, NewBlock)];
-    NewBlocks := NewBlocks + [NewBlock];
-    Sections := Sections + [FieldSection];
-    AWithField := APlan.Kind = TAccessorKind.Setter;
-  end;
-  if APlan.Kind <> TAccessorKind.Field then
-  begin
-    Pending := Pending + [Placement(ASource, AClass, Body, APlan.MethodSection, Declaration(APlan), False, NewBlock)];
-    NewBlocks := NewBlocks + [NewBlock];
-    Sections := Sections + [APlan.MethodSection];
-  end;
-  AEdits := Merged(ASource, AClass, Pending, NewBlocks, Sections);
-  if APlan.Kind = TAccessorKind.Field then
-  begin
-    Exit(True);
-  end;
-  Params := '';
-  if APlan.IndexParameters <> '' then
-  begin
-    Params := '(' + APlan.IndexParameters + ')';
-  end;
+  mHasField := FindMember(ASource, AClass, APlan.FieldName, [TIndexSymbolKind.Field], mMember);
+  AEdits := DeclarationEdits(mTarget, APlan, mHasField, AWithField);
   if APlan.Kind = TAccessorKind.Getter then
   begin
-    Head := Format('function %s.%s%s: %s;', [AClass.Name, APlan.Name, Params, APlan.PropertyType]);
-    if HasField and (APlan.IndexParameters = '') then
-    begin
-      Text := Head + LB + 'begin' + LB + '  Result := ' + APlan.FieldName + ';' + LB + 'end;';
-    end
-    else
-    begin
-      Text := Head + LB + 'begin' + LB + '  Result := Default(' + APlan.PropertyType + ');' + LB + 'end;';
-    end;
+    AEdits := AEdits + [ASource.AddBody(AClass.Name, GetterText(mTarget, APlan, mHasField))];
   end
-  else
+  else if APlan.Kind = TAccessorKind.Setter then
   begin
-    Head := 'procedure ' + AClass.Name + '.' + Copy(Declaration(APlan), Length('procedure ') + 1, MaxInt);
-    if APlan.IndexParameters <> '' then
-    begin
-      Text := Head + LB + 'begin' + LB + 'end;';
-    end
-    else if IsComparable(APlan.PropertyType, AIndex, ASource.UnitIndex) then
-    begin
-      Text := Head + LB + TSetterGenerator.Body(APlan.FieldName, 'Value',
-        TSetterGenerator.NotifyCall(ASource, AIndex, AClass), LB);
-    end
-    else
-    begin
-      Text := Head + LB + 'begin' + LB + '  ' + APlan.FieldName + ' := Value;' + LB + 'end;';
-    end;
+    AEdits := AEdits + [ASource.AddBody(AClass.Name, SetterText(mTarget, AIndex, APlan))];
   end;
-  AEdits := AEdits + [ASource.AddBody(AClass.Name, Text)];
-  Result := True;
 end;
 
 end.

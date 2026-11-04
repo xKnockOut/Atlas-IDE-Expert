@@ -84,66 +84,84 @@ begin
   end;
 end;
 
+/// <summary>Zustand allein aus dem Ergebnis des Aufrufs; False, wenn er (Ok, Exit-Code ungleich 0) aus der Meldung
+/// folgt.</summary>
+function OutcomeState(const AResult: TAtlasVcsRunResult; out AState: TAtlasVcsServerState): Boolean;
+begin
+  Result := True;
+  case AResult.Outcome of
+    TAtlasVcsOutcome.Ok:
+      begin
+        AState := TAtlasVcsServerState.Reachable;
+        Result := AResult.ExitCode = 0;
+      end;
+    TAtlasVcsOutcome.TimedOut:
+      AState := TAtlasVcsServerState.Unreachable;
+    TAtlasVcsOutcome.ToolMissing:
+      AState := TAtlasVcsServerState.ToolMissing;
+    TAtlasVcsOutcome.NoWorkingCopy:
+      AState := TAtlasVcsServerState.NoServer;
+    TAtlasVcsOutcome.LoginNeeded:
+      AState := TAtlasVcsServerState.LoginNeeded;
+  else
+    AState := TAtlasVcsServerState.Failed;
+  end;
+end;
+
+/// <summary>Zustand aus der Fehlermeldung von svn (klein geschrieben).</summary>
+function SvnState(const AText: string): TAtlasVcsServerState;
+begin
+  // Feste Fehlerkennungen (svn: E170001: …); die Anmeldung zuerst, weil svn mehrere Zeilen schreibt.
+  Result := TAtlasVcsServerState.Failed;
+  if HasAny(AText, SvnLogin) then
+  begin
+    Result := TAtlasVcsServerState.LoginNeeded;
+  end
+  else if HasAny(AText, SvnUnreachable) then
+  begin
+    Result := TAtlasVcsServerState.Unreachable;
+  end
+  else if HasAny(AText, SvnNoServer) then
+  begin
+    Result := TAtlasVcsServerState.NoServer;
+  end;
+end;
+
+/// <summary>Zustand aus der Fehlermeldung von git (klein geschrieben).</summary>
+function GitState(const AText: string): TAtlasVcsServerState;
+begin
+  // git endet bei Fehlern mit dem Server mit 128; die Meldung unterscheidet die Ursache.
+  Result := TAtlasVcsServerState.Failed;
+  if HasAny(AText, GitNoServer) then
+  begin
+    Result := TAtlasVcsServerState.NoServer;
+  end
+  else if HasAny(AText, GitLogin) then
+  begin
+    Result := TAtlasVcsServerState.LoginNeeded;
+  end
+  else if HasAny(AText, GitUnreachable) then
+  begin
+    Result := TAtlasVcsServerState.Unreachable;
+  end;
+end;
+
 { TAtlasVcsServerAccess }
 
 class function TAtlasVcsServerAccess.State(AKind: TAtlasVcsKind;
   const AResult: TAtlasVcsRunResult): TAtlasVcsServerState;
-var
-  mText: string;
 begin
-  case AResult.Outcome of
-    TAtlasVcsOutcome.Ok:
-      ;
-    TAtlasVcsOutcome.TimedOut:
-      Exit(TAtlasVcsServerState.Unreachable);
-    TAtlasVcsOutcome.ToolMissing:
-      Exit(TAtlasVcsServerState.ToolMissing);
-    TAtlasVcsOutcome.NoWorkingCopy:
-      Exit(TAtlasVcsServerState.NoServer);
-    TAtlasVcsOutcome.LoginNeeded:
-      Exit(TAtlasVcsServerState.LoginNeeded);
+  if OutcomeState(AResult, Result) then
+  begin
+    Exit;
+  end;
+  case AKind of
+    TAtlasVcsKind.Svn:
+      Result := SvnState(LowerCase(AResult.ErrorText));
+    TAtlasVcsKind.Git:
+      Result := GitState(LowerCase(AResult.ErrorText));
   else
-    Exit(TAtlasVcsServerState.Failed);
-  end;
-  if AResult.ExitCode = 0 then
-  begin
-    Exit(TAtlasVcsServerState.Reachable);
-  end;
-  mText := LowerCase(AResult.ErrorText);
-  Result := TAtlasVcsServerState.Failed;
-  if AKind = TAtlasVcsKind.Svn then
-  begin
-    // Feste Fehlerkennungen (svn: E170001: …); die Anmeldung zuerst, weil svn mehrere Zeilen schreibt.
-    if HasAny(mText, SvnLogin) then
-    begin
-      Result := TAtlasVcsServerState.LoginNeeded;
-    end
-    else if HasAny(mText, SvnUnreachable) then
-    begin
-      Result := TAtlasVcsServerState.Unreachable;
-    end
-    else if HasAny(mText, SvnNoServer) then
-    begin
-      Result := TAtlasVcsServerState.NoServer;
-    end;
-    Exit;
-  end;
-  if AKind <> TAtlasVcsKind.Git then
-  begin
-    Exit;
-  end;
-  // git endet bei Fehlern mit dem Server mit 128; die Meldung unterscheidet die Ursache.
-  if HasAny(mText, GitNoServer) then
-  begin
-    Result := TAtlasVcsServerState.NoServer;
-  end
-  else if HasAny(mText, GitLogin) then
-  begin
-    Result := TAtlasVcsServerState.LoginNeeded;
-  end
-  else if HasAny(mText, GitUnreachable) then
-  begin
-    Result := TAtlasVcsServerState.Unreachable;
+    Result := TAtlasVcsServerState.Failed;
   end;
 end;
 

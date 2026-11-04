@@ -78,6 +78,7 @@ contains
   Atlas.IDE.Debug.InlineValues in 'Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas',
   Atlas.Core.Debug.Unavailable in 'Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas',
   Atlas.IDE.Debug.Unavailable in 'Source\IDE\Debug\Atlas.IDE.Debug.Unavailable.pas',
+  Atlas.IDE.Debug.UnavailableFixes in 'Source\IDE\Debug\Atlas.IDE.Debug.UnavailableFixes.pas',
   Atlas.Core.Debug.DialogCompletion in 'Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas',
   Atlas.IDE.Debug.DialogCompletion in 'Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas',
   Atlas.Core.Debug.Evaluate in 'Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas',

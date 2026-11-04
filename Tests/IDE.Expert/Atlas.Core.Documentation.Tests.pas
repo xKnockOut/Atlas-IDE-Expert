@@ -11,7 +11,8 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Documentation.Layout;
+  Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset;
 
 type
   [TestFixture]
@@ -158,14 +159,14 @@ end;
 
 function TAtlasDocumentationTests.Layout(const AJson: string; AWidth: Integer): TAtlasDocLayout;
 begin
-  Result := TAtlasDocLayout.Build(DocOf(AJson), AWidth, Metrics, Measure, TAtlasDocLabels.German);
+  Result := TAtlasDocTypeset.Build(DocOf(AJson), AWidth, Metrics, Measure, TAtlasDocLabels.German);
 end;
 
 function TAtlasDocumentationTests.LayoutWith(const AJson: string; AWidth: Integer; const ADeclaration: string;
   AExpanded: Boolean): TAtlasDocLayout;
 begin
-  Result := TAtlasDocLayout.Build(DocOf(AJson), AWidth, Metrics, Measure, TAtlasDocLabels.German,
-    TAtlasDocSignature.Parse(ADeclaration), AExpanded);
+  Result := TAtlasDocTypeset.Build(TAtlasDocContent.Create(DocOf(AJson), TAtlasDocSignature.Parse(ADeclaration),
+    AExpanded), AWidth, Metrics, Measure, TAtlasDocLabels.German);
 end;
 
 
@@ -530,14 +531,14 @@ begin
     end;
   end;
   Assert.IsTrue(ErrorSeen);
-  Parts := TAtlasDocLayout.HiddenParts(DocOf(Json), TAtlasDocSignature.Parse(Declaration), TAtlasDocLabels.German,
+  Parts := TAtlasDocTypeset.HiddenParts(DocOf(Json), TAtlasDocSignature.Parse(Declaration), TAtlasDocLabels.German,
     Colors);
   Assert.AreEqual(5, Integer(Length(Parts)));
   Assert.AreEqual('3 Parameter', Parts[0]);
   Assert.AreEqual(Ord(TAtlasDocColor.Error), Ord(Colors[2]));
   Assert.AreEqual(Ord(TAtlasDocColor.Muted), Ord(Colors[0]));
   // Ohne erkannte Signatur zählen die <param> der Doku; Einzahl.
-  Parts := TAtlasDocLayout.HiddenParts(DocOf(Json), Default(TAtlasDocSignature), TAtlasDocLabels.German, Colors);
+  Parts := TAtlasDocTypeset.HiddenParts(DocOf(Json), Default(TAtlasDocSignature), TAtlasDocLabels.German, Colors);
   Assert.AreEqual('1 Parameter', Parts[0]);
   Assert.AreEqual('1 Ausnahme', Parts[1]);
   // Aufgeklappt endet mit „Weniger anzeigen“.
@@ -556,7 +557,7 @@ begin
   Assert.IsTrue(Result_.Expanded);
   Assert.AreEqual('Nur das.|', Texts(Result_));
   Assert.AreEqual(0, Integer(Length(Result_.Links)));
-  Assert.IsFalse(TAtlasDocLayout.IsCollapsible(DocOf(Summary('x'))));
+  Assert.IsFalse(TAtlasDocTypeset.IsCollapsible(DocOf(Summary('x'))));
 end;
 
 procedure TAtlasDocumentationTests.ParamsInSignatureOrderWithTypes;
@@ -724,7 +725,7 @@ begin
   Assert.AreEqual(Ord(TAtlasDocRunKind.Paragraph), Ord(Doc.Sections[0].Runs[3].Kind));
   Assert.AreEqual('  Code := 1;'#10'  Weiter;', Doc.Sections[0].Runs[6].Text);
   Assert.IsTrue(TAtlasDoc.FromText('  ').IsEmpty);
-  Result_ := TAtlasDocLayout.Build(Doc, 400, Metrics, Measure, TAtlasDocLabels.German);
+  Result_ := TAtlasDocTypeset.Build(Doc, 400, Metrics, Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Erste Zeile'#13#10'zweite'#13#10'Absatz'#13#10'  Code := 1;'#13#10'  Weiter;', Result_.Text);
 end;
 
@@ -745,9 +746,9 @@ begin
   Assert.AreEqual('WHY', Doc.Sections[1].Name);
   Assert.AreEqual(2, Integer(Length(Doc.SectionsOf(TAtlasDocSectionKind.Rationale))));
   // Bis drei Einträge kein Schalter.
-  Assert.IsFalse(TAtlasDocLayout.IsCollapsible(Doc));
-  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
-    False);
+  Assert.IsFalse(TAtlasDocTypeset.IsCollapsible(Doc));
+  Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), False), 600, Metrics,
+    Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYSchnell.|HACKQC 1.|', Texts(Result_));
   Assert.AreEqual(Ord(TAtlasDocColor.Accent), Ord(Result_.Lines[2].Spans[0].Color));
 end;
@@ -761,12 +762,12 @@ var
 begin
   Doc := DocOf(Json + Rationale('WHY', 'A') + ',' + Rationale('WHY', 'B') + ',' + Rationale('NOTE', 'C') + ',' +
     Rationale('HACK', 'D') + ',' + Rationale('HACK', 'E') + ']}');
-  Assert.IsTrue(TAtlasDocLayout.IsCollapsible(Doc));
-  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
-    False);
+  Assert.IsTrue(TAtlasDocTypeset.IsCollapsible(Doc));
+  Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), False), 600, Metrics,
+    Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|Mehr anzeigen ▾   2 weitere Begründungen|', Texts(Result_));
-  Result_ := TAtlasDocLayout.Build(Doc, 600, Metrics, Measure, TAtlasDocLabels.German, Default(TAtlasDocSignature),
-    True);
+  Result_ := TAtlasDocTypeset.Build(TAtlasDocContent.Create(Doc, Default(TAtlasDocSignature), True), 600, Metrics,
+    Measure, TAtlasDocLabels.German);
   Assert.AreEqual('Liest.|BEGRÜNDUNG|WHYA|WHYB|NOTEC|HACKD|HACKE|Weniger anzeigen ▴|', Texts(Result_));
 end;
 

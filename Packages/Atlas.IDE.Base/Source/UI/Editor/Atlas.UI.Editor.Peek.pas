@@ -41,6 +41,12 @@ type
     procedure PaintHeader;
     procedure PaintList;
     procedure PaintCode;
+    /// <summary>Trennzeile „Implementierung in …“ zu ARow im Rechteck ARect.</summary>
+    procedure PaintSeparator(const ARow: TAtlasPeekRow; const ARect: TRect; AGutter: Integer);
+    /// <summary>Codezeile AIndex mit Zeilennummer im Rechteck ARect.</summary>
+    procedure PaintCodeRow(AIndex: Integer; const ARow: TAtlasPeekRow; const ARect: TRect; AGutter: Integer);
+    /// <summary>Lage im Ausschnitt am rechten Rand von AArea, wenn ARowCount Zeilen nicht ins Fenster passen.</summary>
+    procedure PaintThumb(const AArea: TRect; ARowCount: Integer);
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -337,83 +343,110 @@ end;
 
 procedure TAtlasPeekWindow.PaintCode;
 var
-  Area, Row, Number: TRect;
-  Rows: TArray<TAtlasPeekRow>;
-  mHeight, Index, Gutter, X, Thumb, ThumbTop: Integer;
-  Styled: TAtlasStyledText;
-  Value: string;
+  mArea, mRow: TRect;
+  mRows: TArray<TAtlasPeekRow>;
+  mHeight, mIndex, mGutter: Integer;
 begin
-  Area := CodeRect;
+  mArea := CodeRect;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(Area);
+  Canvas.FillRect(mArea);
   if (FView = nil) or (FView.Count = 0) then
   begin
     Exit;
   end;
   PrepareTokens;
-  Rows := FView.Current.Rows;
+  mRows := FView.Current.Rows;
   mHeight := RowHeight;
   Canvas.Font.Assign(Font);
-  Gutter := Canvas.TextWidth('99999') + Scale(Pad);
-  for Index := FView.Top to Min(High(Rows), FView.Top + FView.PageRows - 1) do
+  mGutter := Canvas.TextWidth('99999') + Scale(Pad);
+  for mIndex := FView.Top to Min(High(mRows), FView.Top + FView.PageRows - 1) do
   begin
-    Row := Rect(Area.Left, Area.Top + (Index - FView.Top) * mHeight, Area.Right, Area.Top + (Index - FView.Top + 1) *
-      mHeight);
-    if Rows[Index].Target then
+    mRow := Rect(mArea.Left, mArea.Top + (mIndex - FView.Top) * mHeight, mArea.Right,
+      mArea.Top + (mIndex - FView.Top + 1) * mHeight);
+    if mRows[mIndex].Target then
     begin
       Canvas.Brush.Style := bsSolid;
       Canvas.Brush.Color := ToColor(Colors.Selection);
-      Canvas.FillRect(Row);
+      Canvas.FillRect(mRow);
     end;
     Canvas.Brush.Style := bsClear;
-    if Rows[Index].Kind = TAtlasPeekRowKind.Separator then
+    if mRows[mIndex].Kind = TAtlasPeekRowKind.Separator then
     begin
-      Canvas.Pen.Color := ToColor(Colors.Line);
-      Canvas.MoveTo(Row.Left + Scale(Pad), Row.CenterPoint.Y);
-      Canvas.LineTo(Row.Right - Scale(Pad), Row.CenterPoint.Y);
-      Canvas.Font.Assign(UIFont);
-      Canvas.Font.Color := ToColor(Colors.Muted);
-      Value := ' ' + TAtlasStrings.Fmt(TAtlasTextId.PeekImplementation,
-        [ExtractFileName(Rows[Index].FileName), Rows[Index].Line + 1]) + ' ';
-      Canvas.Brush.Style := bsSolid;
-      Canvas.Brush.Color := ToColor(Colors.Surface);
-      Number := Rect(Row.Left + Gutter, Row.Top, Row.Left + Gutter + Canvas.TextWidth(Value), Row.Bottom);
-      DrawText(Canvas.Handle, PChar(Value), Length(Value), Number, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
-        DT_NOPREFIX);
-      Canvas.Brush.Style := bsClear;
-      Canvas.Font.Assign(Font);
-      Continue;
-    end;
-    // Zeilennummer, 1-basiert wie im Editor.
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Color := ToColor(Colors.Muted);
-    Number := Rect(Row.Left, Row.Top, Row.Left + Gutter - Scale(Pad div 2), Row.Bottom);
-    Value := IntToStr(Rows[Index].Line + 1);
-    DrawText(Canvas.Handle, PChar(Value), Length(Value), Number, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-    Styled := TAtlasStyledText.Create(Rows[Index].Text);
-    if Index <= High(FTokens) then
+      PaintSeparator(mRows[mIndex], mRow, mGutter);
+    end
+    else
     begin
-      Styled.Tokens := FTokens[Index];
+      PaintCodeRow(mIndex, mRows[mIndex], mRow, mGutter);
     end;
-    Styled.MutedRanges := nil;
-    Styled.ActiveStart := Rows[Index].NameStart;
-    Styled.ActiveStop := Rows[Index].NameStop;
-    Styled.ActiveFill := True;
-    X := Row.Left + Gutter;
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Color := ToColor(Colors.Text);
-    Styled.Draw(Canvas, Colors, 0, Length(Styled.Text), X, Row, False, Scale(3));
   end;
-  // Lage im Ausschnitt, wenn er länger ist als das Fenster.
-  if Length(Rows) > FView.PageRows then
+  PaintThumb(mArea, Length(mRows));
+end;
+
+procedure TAtlasPeekWindow.PaintSeparator(const ARow: TAtlasPeekRow; const ARect: TRect; AGutter: Integer);
+var
+  mValue: string;
+  mNumber: TRect;
+begin
+  Canvas.Pen.Color := ToColor(Colors.Line);
+  Canvas.MoveTo(ARect.Left + Scale(Pad), ARect.CenterPoint.Y);
+  Canvas.LineTo(ARect.Right - Scale(Pad), ARect.CenterPoint.Y);
+  Canvas.Font.Assign(UIFont);
+  Canvas.Font.Color := ToColor(Colors.Muted);
+  mValue := ' ' + TAtlasStrings.Fmt(TAtlasTextId.PeekImplementation, [ExtractFileName(ARow.FileName), ARow.Line + 1]) +
+    ' ';
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  mNumber := Rect(ARect.Left + AGutter, ARect.Top, ARect.Left + AGutter + Canvas.TextWidth(mValue), ARect.Bottom);
+  DrawText(Canvas.Handle, PChar(mValue), Length(mValue), mNumber, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
+    DT_NOPREFIX);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Assign(Font);
+end;
+
+procedure TAtlasPeekWindow.PaintCodeRow(AIndex: Integer; const ARow: TAtlasPeekRow; const ARect: TRect;
+  AGutter: Integer);
+var
+  mNumber: TRect;
+  mValue: string;
+  mStyled: TAtlasStyledText;
+  mX: Integer;
+begin
+  // Zeilennummer, 1-basiert wie im Editor.
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Color := ToColor(Colors.Muted);
+  mNumber := Rect(ARect.Left, ARect.Top, ARect.Left + AGutter - Scale(Pad div 2), ARect.Bottom);
+  mValue := IntToStr(ARow.Line + 1);
+  DrawText(Canvas.Handle, PChar(mValue), Length(mValue), mNumber, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or
+    DT_NOPREFIX);
+  mStyled := TAtlasStyledText.Create(ARow.Text);
+  if AIndex <= High(FTokens) then
   begin
-    Thumb := Max(Scale(12), Area.Height * FView.PageRows div Length(Rows));
-    ThumbTop := Area.Top + (Area.Height - Thumb) * FView.Top div Max(1, FView.MaxTop);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, AtlasMixThumb));
-    Canvas.FillRect(Rect(Area.Right - Scale(4), ThumbTop, Area.Right - Scale(1), ThumbTop + Thumb));
+    mStyled.Tokens := FTokens[AIndex];
   end;
+  mStyled.MutedRanges := nil;
+  mStyled.ActiveStart := ARow.NameStart;
+  mStyled.ActiveStop := ARow.NameStop;
+  mStyled.ActiveFill := True;
+  mX := ARect.Left + AGutter;
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Color := ToColor(Colors.Text);
+  mStyled.Draw(Canvas, Colors, 0, Length(mStyled.Text), mX, ARect, False, Scale(3));
+end;
+
+procedure TAtlasPeekWindow.PaintThumb(const AArea: TRect; ARowCount: Integer);
+var
+  mThumb, mThumbTop: Integer;
+begin
+  if ARowCount <= FView.PageRows then
+  begin
+    Exit;
+  end;
+  mThumb := Max(Scale(12), AArea.Height * FView.PageRows div ARowCount);
+  mThumbTop := AArea.Top + (AArea.Height - mThumb) * FView.Top div Max(1, FView.MaxTop);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, AtlasMixThumb));
+  Canvas.FillRect(Rect(AArea.Right - Scale(4), mThumbTop, AArea.Right - Scale(1), mThumbTop + mThumb));
 end;
 
 procedure TAtlasPeekWindow.Paint;

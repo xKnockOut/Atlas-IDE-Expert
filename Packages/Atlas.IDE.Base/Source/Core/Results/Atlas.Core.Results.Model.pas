@@ -202,118 +202,153 @@ begin
   end;
 end;
 
+/// <summary>Einträge für angelegte, umbenannte und gelöschte Dateien.</summary>
+function OperationEntries(const AEdit: TLspWorkspaceEdit): TArray<TAtlasResultEntry>;
+var
+  mOperation: TLspFileOperation;
+  mEntry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for mOperation in AEdit.Operations do
+  begin
+    mEntry := TAtlasResultEntry.Create(mOperation.FileName, 0, 0);
+    case mOperation.Kind of
+      TLspFileOperationKind.Create:
+        mEntry.Detail := ExtractFileName(mOperation.FileName);
+      TLspFileOperationKind.Rename:
+        begin
+          mEntry.Text := ExtractFileName(mOperation.FileName);
+          mEntry.Detail := ExtractFileName(mOperation.NewFileName);
+        end;
+    else
+      mEntry.Text := ExtractFileName(mOperation.FileName);
+    end;
+    Result := Result + [mEntry];
+  end;
+end;
+
+/// <summary>Zeilen mit Änderungen, aufsteigend, jede einmal.</summary>
+function ChangedLines(const AFileEdits: TLspFileEdits): TArray<Integer>;
+var
+  mChanged: TList<Integer>;
+  mEdit: TLspTextEdit;
+begin
+  mChanged := TList<Integer>.Create;
+  try
+    for mEdit in AFileEdits.Edits do
+    begin
+      if not mChanged.Contains(mEdit.StartPos.Line) then
+      begin
+        mChanged.Add(mEdit.StartPos.Line);
+      end;
+    end;
+    mChanged.Sort;
+    Result := mChanged.ToArray;
+  finally
+    mChanged.Free;
+  end;
+end;
+
+/// <summary>Zeile nach den Änderungen AOnLine, die in ALine beginnen. Nur Änderungen innerhalb der Zeile lassen
+/// sich als Zeile zeigen; sonst der neue Text der übergreifenden Änderung.</summary>
+function AfterText(const ABefore: string; const AOnLine: TArray<TLspTextEdit>; ALine: Integer): string;
+var
+  mEdit, mShifted: TLspTextEdit;
+  mSameLine: TArray<TLspTextEdit>;
+begin
+  Result := '';
+  mSameLine := nil;
+  for mEdit in AOnLine do
+  begin
+    if mEdit.EndPos.Line <> ALine then
+    begin
+      Result := mEdit.NewText;
+    end
+    else
+    begin
+      // Auf die eine Zeile bezogen: Zeile 0 in ABefore.
+      mShifted := mEdit;
+      mShifted.StartPos.Line := 0;
+      mShifted.EndPos.Line := 0;
+      mSameLine := mSameLine + [mShifted];
+    end;
+  end;
+  if Result = '' then
+    try
+      Result := TLspEdits.Apply(ABefore, mSameLine);
+    except
+      on ELspEditError do
+        Result := ABefore;
+    end;
+end;
+
+/// <summary>Eintrag für eine geänderte Zeile: Text vorher, Detail nachher.</summary>
+function LineEntry(const AFileEdits: TLspFileEdits; const AFileLines: TArray<string>;
+  ALine: Integer): TAtlasResultEntry;
+var
+  mBefore: string;
+  mOnLine: TArray<TLspTextEdit>;
+  mEdit: TLspTextEdit;
+begin
+  mBefore := '';
+  if (ALine >= 0) and (ALine < Length(AFileLines)) then
+  begin
+    mBefore := AFileLines[ALine];
+  end;
+  mOnLine := nil;
+  for mEdit in AFileEdits.Edits do
+  begin
+    if mEdit.StartPos.Line = ALine then
+    begin
+      mOnLine := mOnLine + [mEdit];
+    end;
+  end;
+  Result := TAtlasResultEntry.Create(AFileEdits.FileName, ALine, mOnLine[0].StartPos.Character);
+  for mEdit in mOnLine do
+  begin
+    if mEdit.StartPos.Character < Result.Character then
+    begin
+      Result.Character := mEdit.StartPos.Character;
+    end;
+  end;
+  Result.Text := Trim(mBefore);
+  Result.Detail := Trim(AfterText(mBefore, mOnLine, ALine));
+end;
+
+/// <summary>Nicht geänderte, erschlossene Stellen (#1119): zum Prüfen, ohne Vorschau.</summary>
+function UnchangedEntries(const AEdit: TLspWorkspaceEdit): TArray<TAtlasResultEntry>;
+var
+  mPlace: TLspUnchangedPlace;
+  mEntry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for mPlace in AEdit.Unchanged do
+  begin
+    mEntry := TAtlasResultEntry.Create(mPlace.FileName, mPlace.Line, mPlace.Character);
+    mEntry.Confidence := mPlace.Confidence;
+    Result := Result + [mEntry];
+  end;
+end;
 class function TAtlasResults.RenamePreview(const AEdit: TLspWorkspaceEdit; const AReadText: TAtlasReadText):
   TArray<TAtlasResultEntry>;
 var
-  FileEdits: TLspFileEdits;
-  FileLines: TArray<string>;
-  OnLine, SameLine: TArray<TLspTextEdit>;
-  Edit, Shifted: TLspTextEdit;
-  Changed: TList<Integer>;
-  Line: Integer;
-  Before, After: string;
-  Entry: TAtlasResultEntry;
-  Operation: TLspFileOperation;
-  Place: TLspUnchangedPlace;
-  Unchanged: TArray<TAtlasResultEntry>;
+  mFileEdits: TLspFileEdits;
+  mFileLines: TArray<string>;
+  mLine: Integer;
+  mUnchanged: TArray<TAtlasResultEntry>;
 begin
-  Result := nil;
-  for Operation in AEdit.Operations do
+  Result := OperationEntries(AEdit);
+  for mFileEdits in AEdit.Files do
   begin
-    Entry := TAtlasResultEntry.Create(Operation.FileName, 0, 0);
-    case Operation.Kind of
-      TLspFileOperationKind.Create:
-        Entry.Detail := ExtractFileName(Operation.FileName);
-      TLspFileOperationKind.Rename:
-        begin
-          Entry.Text := ExtractFileName(Operation.FileName);
-          Entry.Detail := ExtractFileName(Operation.NewFileName);
-        end;
-    else
-      Entry.Text := ExtractFileName(Operation.FileName);
-    end;
-    Result := Result + [Entry];
-  end;
-  Changed := TList<Integer>.Create;
-  try
-    for FileEdits in AEdit.Files do
+    mFileLines := TAtlasResults.Lines(AReadText(mFileEdits.FileName));
+    for mLine in ChangedLines(mFileEdits) do
     begin
-      FileLines := TAtlasResults.Lines(AReadText(FileEdits.FileName));
-      Changed.Clear;
-      for Edit in FileEdits.Edits do
-      begin
-        if not Changed.Contains(Edit.StartPos.Line) then
-        begin
-          Changed.Add(Edit.StartPos.Line);
-        end;
-      end;
-      Changed.Sort;
-      for Line in Changed do
-      begin
-        Before := '';
-        if (Line >= 0) and (Line < Length(FileLines)) then
-        begin
-          Before := FileLines[Line];
-        end;
-        OnLine := nil;
-        for Edit in FileEdits.Edits do
-        begin
-          if Edit.StartPos.Line = Line then
-          begin
-            OnLine := OnLine + [Edit];
-          end;
-        end;
-        Entry := TAtlasResultEntry.Create(FileEdits.FileName, Line, OnLine[0].StartPos.Character);
-        for Edit in OnLine do
-        begin
-          if Edit.StartPos.Character < Entry.Character then
-          begin
-            Entry.Character := Edit.StartPos.Character;
-          end;
-        end;
-        Entry.Text := Trim(Before);
-        // Nur Änderungen innerhalb der Zeile lassen sich als Zeile zeigen.
-        After := '';
-        SameLine := nil;
-        for Edit in OnLine do
-        begin
-          if Edit.EndPos.Line <> Line then
-          begin
-            After := Edit.NewText;
-          end
-          else
-          begin
-            // Auf die eine Zeile bezogen: Zeile 0 in Before.
-            Shifted := Edit;
-            Shifted.StartPos.Line := 0;
-            Shifted.EndPos.Line := 0;
-            SameLine := SameLine + [Shifted];
-          end;
-        end;
-        if After = '' then
-          try
-            After := TLspEdits.Apply(Before, SameLine);
-          except
-            on ELspEditError do
-              After := Before;
-          end;
-        Entry.Detail := Trim(After);
-        Result := Result + [Entry];
-      end;
+      Result := Result + [LineEntry(mFileEdits, mFileLines, mLine)];
     end;
-  finally
-    Changed.Free;
   end;
-  // Nicht geänderte, erschlossene Stellen (#1119): zum Prüfen, ohne Vorschau.
-  Unchanged := nil;
-  for Place in AEdit.Unchanged do
-  begin
-    Entry := TAtlasResultEntry.Create(Place.FileName, Place.Line, Place.Character);
-    Entry.Confidence := Place.Confidence;
-    Unchanged := Unchanged + [Entry];
-  end;
-  FillText(Unchanged, AReadText);
-  Result := Result + Unchanged;
+  mUnchanged := UnchangedEntries(AEdit);
+  FillText(mUnchanged, AReadText);
+  Result := Result + mUnchanged;
 end;
 
 class function TAtlasResults.SureOnly(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultEntry>;

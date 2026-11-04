@@ -106,13 +106,47 @@ begin
   Result := (AChar = ' ') or (AChar = #9);
 end;
 
+/// <summary>Liest ein Wort ab AIndex (kein Leerraum) bis zum nächsten Leerraum außerhalb von Anführungszeichen.
+/// </summary>
+function ReadToken(const ALine: string; var AIndex: Integer): TToken;
+var
+  mStart: Integer;
+  mQuote: Char;
+begin
+  mStart := AIndex;
+  Result.Value := '';
+  mQuote := #0;
+  while (AIndex <= Length(ALine)) and ((mQuote <> #0) or not IsBlank(ALine[AIndex])) do
+  begin
+    if (ALine[AIndex] = '\') and (AIndex < Length(ALine)) and
+      CharInSet(ALine[AIndex + 1], [' ', #9, '"', '''', '\']) then
+    begin
+      Result.Value := Result.Value + ALine[AIndex + 1];
+      Inc(AIndex, 2);
+      Continue;
+    end;
+    if (mQuote = #0) and CharInSet(ALine[AIndex], ['"', '''']) then
+    begin
+      mQuote := ALine[AIndex];
+    end
+    else if (mQuote <> #0) and (ALine[AIndex] = mQuote) then
+    begin
+      mQuote := #0;
+    end
+    else
+    begin
+      Result.Value := Result.Value + ALine[AIndex];
+    end;
+    Inc(AIndex);
+  end;
+  Result.Raw := Copy(ALine, mStart, AIndex - mStart);
+end;
+
 /// <summary>Teilt wie svn (apr_tokenize_to_argv): Leerraum trennt, "…" und '…' halten zusammen, \ schützt das
 /// nächste Leer-, Anführungs- oder \-Zeichen.</summary>
 function Tokenize(const ALine: string; out AIndent: string): TArray<TToken>;
 var
-  mIndex, mStart: Integer;
-  mQuote: Char;
-  mToken: TToken;
+  mIndex: Integer;
 begin
   Result := nil;
   mIndex := 1;
@@ -123,46 +157,11 @@ begin
   AIndent := Copy(ALine, 1, mIndex - 1);
   while mIndex <= Length(ALine) do
   begin
+    Result := Result + [ReadToken(ALine, mIndex)];
     while (mIndex <= Length(ALine)) and IsBlank(ALine[mIndex]) do
     begin
       Inc(mIndex);
     end;
-    if mIndex > Length(ALine) then
-    begin
-      Break;
-    end;
-    mStart := mIndex;
-    mToken.Value := '';
-    mQuote := #0;
-    while mIndex <= Length(ALine) do
-    begin
-      if (mQuote = #0) and IsBlank(ALine[mIndex]) then
-      begin
-        Break;
-      end;
-      if (ALine[mIndex] = '\') and (mIndex < Length(ALine)) and
-        CharInSet(ALine[mIndex + 1], [' ', #9, '"', '''', '\']) then
-      begin
-        mToken.Value := mToken.Value + ALine[mIndex + 1];
-        Inc(mIndex, 2);
-        Continue;
-      end;
-      if (mQuote = #0) and CharInSet(ALine[mIndex], ['"', '''']) then
-      begin
-        mQuote := ALine[mIndex];
-      end
-      else if (mQuote <> #0) and (ALine[mIndex] = mQuote) then
-      begin
-        mQuote := #0;
-      end
-      else
-      begin
-        mToken.Value := mToken.Value + ALine[mIndex];
-      end;
-      Inc(mIndex);
-    end;
-    mToken.Raw := Copy(ALine, mStart, mIndex - mStart);
-    Result := Result + [mToken];
   end;
 end;
 
@@ -286,6 +285,35 @@ begin
   end;
 end;
 
+/// <summary>Ordner einer Eigenschaft relativ zur Arbeitskopie: relativ wie angegeben ("." bzw. "Sub\X"),
+/// vollständig nur mit vollständigem Aufruf; die Wurzel selbst ist ''. False, wenn APath außerhalb von ARoot liegt.
+/// </summary>
+function ExternalOwner(const ARoot, APath: string; out ARelative: string): Boolean;
+begin
+  Result := True;
+  ARelative := StringReplace(Trim(APath), '\', '/', [rfReplaceAll]);
+  if (ExtractFileDrive(APath) <> '') or (Copy(ARelative, 1, 1) = '/') then
+  begin
+    Result := VcsRelativeOrRoot(ARoot, APath, ARelative);
+  end
+  else if Copy(ARelative, 1, 2) = './' then
+  begin
+    Delete(ARelative, 1, 2);
+  end;
+  if ARelative = '.' then
+  begin
+    ARelative := '';
+  end;
+  ARelative := WithoutSlash(ARelative);
+end;
+
+/// <summary>Beginnt der Leser auf einem nicht leeren &lt;property name="svn:externals"&gt;?</summary>
+function AtExternalsProperty(AReader: TAtlasVcsXmlReader): Boolean;
+begin
+  Result := (AReader.Node = TAtlasVcsXmlNode.StartTag) and (AReader.Name = 'property') and
+    (AReader.Attr('name') = 'svn:externals') and not AReader.EmptyElement;
+end;
+
 { TAtlasSvnExternals }
 
 class function TAtlasSvnExternals.Definitions(const AXml, ARoot: string): TArray<TAtlasVcsSvnExternalDefinition>;
@@ -301,49 +329,30 @@ begin
   mReader := TAtlasVcsXmlReader.Create(AXml);
   try
     while mReader.Next do
-      case mReader.Node of
-        TAtlasVcsXmlNode.StartTag:
-          if mReader.Name = 'target' then
-          begin
-            mPath := mReader.Attr('path');
-          end
-          else if (mReader.Name = 'property') and (mReader.Attr('name') = 'svn:externals') and
-            not mReader.EmptyElement then
-          begin
-            mInProperty := True;
-            mText := '';
-          end;
-        TAtlasVcsXmlNode.EndTag:
-          if (mReader.Name = 'property') and mInProperty then
-          begin
-            mInProperty := False;
-            // Relativ wie angegeben ("." bzw. "Sub\X"), vollständig nur mit vollständigem Aufruf.
-            mRelative := StringReplace(Trim(mPath), '\', '/', [rfReplaceAll]);
-            if (ExtractFileDrive(mPath) <> '') or (Copy(mRelative, 1, 1) = '/') then
-            begin
-              // Die Wurzel selbst gehört dazu (Owner '').
-              if not VcsRelativeOrRoot(ARoot, mPath, mRelative) then
-              begin
-                Continue;
-              end;
-            end
-            else if Copy(mRelative, 1, 2) = './' then
-            begin
-              Delete(mRelative, 1, 2);
-            end;
-            if mRelative = '.' then
-            begin
-              mRelative := '';
-            end;
-            Result := Result + [TAtlasVcsSvnExternalDefinition.Make(WithoutSlash(mRelative),
-              StringReplace(mText, #13#10, #10, [rfReplaceAll]))];
-          end;
-        TAtlasVcsXmlNode.Text:
-          if mInProperty then
-          begin
-            mText := mText + mReader.Value;
-          end;
+    begin
+      if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'target') then
+      begin
+        mPath := mReader.Attr('path');
+      end
+      else if AtExternalsProperty(mReader) then
+      begin
+        mInProperty := True;
+        mText := '';
+      end
+      else if mInProperty and (mReader.Node = TAtlasVcsXmlNode.Text) then
+      begin
+        mText := mText + mReader.Value;
+      end
+      else if mInProperty and (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'property') then
+      begin
+        mInProperty := False;
+        if ExternalOwner(ARoot, mPath, mRelative) then
+        begin
+          Result := Result + [TAtlasVcsSvnExternalDefinition.Make(mRelative,
+            StringReplace(mText, #13#10, #10, [rfReplaceAll]))];
+        end;
       end;
+    end;
   finally
     mReader.Free;
   end;

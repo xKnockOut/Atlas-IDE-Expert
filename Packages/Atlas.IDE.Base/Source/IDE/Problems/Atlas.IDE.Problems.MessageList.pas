@@ -61,76 +61,87 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsList.Update(AStore: TAtlasProblemStore);
 type
-  TEntry = record
+  TListEntry = record
     FileName: string;
     Problem: TAtlasProblem;
   end;
+
+/// <summary>Höchstens AMax Befunde ohne Compilermeldungen in AEntries, alle in ATotal; Ergebnis ist die Signatur
+/// des Stands (gleich = nichts zu tun).</summary>
+function CollectEntries(AStore: TAtlasProblemStore; AMax: Integer; out AEntries: TArray<TListEntry>;
+  out ATotal: Integer): string;
 var
-  Messages: IOTAMessageServices;
-  Target: IOTAMessageGroup;
-  Entries: TArray<TEntry>;
-  Entry: TEntry;
-  FileName: string;
-  Problem: TAtlasProblem;
-  Builder: TStringBuilder;
-  Signature: string;
-  Total: Integer;
-  LineRef: Pointer;
+  mEntry: TListEntry;
+  mFileName: string;
+  mProblem: TAtlasProblem;
+  mBuilder: TStringBuilder;
 begin
-  Entries := nil;
-  Total := 0;
-  Builder := TStringBuilder.Create;
+  AEntries := nil;
+  ATotal := 0;
+  mBuilder := TStringBuilder.Create;
   try
-    for FileName in AStore.Files do
+    for mFileName in AStore.Files do
     begin
-      for Problem in AStore.ForFile(FileName) do
+      for mProblem in AStore.ForFile(mFileName) do
       begin
-        if Problem.IsCompiler then
+        if mProblem.IsCompiler then
         begin
           Continue;
         end;
-        Inc(Total);
-        if Length(Entries) >= MaxEntries then
+        Inc(ATotal);
+        if Length(AEntries) < AMax then
         begin
-          Continue;
+          mEntry.FileName := mFileName;
+          mEntry.Problem := mProblem;
+          AEntries := AEntries + [mEntry];
+          mBuilder.Append(mFileName).Append('|').Append(mProblem.StartLine).Append('|')
+            .Append(mProblem.StartCharacter).Append('|').Append(Ord(mProblem.Severity)).Append('|')
+            .Append(mProblem.Caption).Append(#10);
         end;
-        Entry.FileName := FileName;
-        Entry.Problem := Problem;
-        Entries := Entries + [Entry];
-        Builder.Append(FileName).Append('|').Append(Problem.StartLine).Append('|').Append(Problem.StartCharacter)
-          .Append('|').Append(Ord(Problem.Severity)).Append('|').Append(Problem.Caption).Append(#10);
       end;
     end;
-    Builder.Append(Total);
-    Signature := Builder.ToString;
+    mBuilder.Append(ATotal);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  if Signature = FSignature then
+end;
+
+procedure TAtlasProblemsList.Update(AStore: TAtlasProblemStore);
+var
+  mMessages: IOTAMessageServices;
+  mTarget: IOTAMessageGroup;
+  mEntries: TArray<TListEntry>;
+  mEntry: TListEntry;
+  mSignature: string;
+  mTotal: Integer;
+  mLineRef: Pointer;
+begin
+  mSignature := CollectEntries(AStore, MaxEntries, mEntries, mTotal);
+  if mSignature = FSignature then
   begin
     Exit;
   end;
-  FSignature := Signature;
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  FSignature := mSignature;
+  mTarget := nil;
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    mTarget := Group(mMessages, Length(mEntries) > 0);
+  end;
+  if mTarget = nil then
   begin
     Exit;
   end;
-  Target := Group(Messages, Length(Entries) > 0);
-  if Target = nil then
+  mMessages.ClearMessageGroup(mTarget);
+  for mEntry in mEntries do
   begin
-    Exit;
+    mMessages.AddToolMessage(mEntry.FileName, mEntry.Problem.Caption, SeverityText(mEntry.Problem.Severity),
+      mEntry.Problem.StartLine + 1, mEntry.Problem.StartCharacter + 1, nil, mLineRef, mTarget);
   end;
-  Messages.ClearMessageGroup(Target);
-  for Entry in Entries do
+  if mTotal > Length(mEntries) then
   begin
-    Messages.AddToolMessage(Entry.FileName, Entry.Problem.Caption, SeverityText(Entry.Problem.Severity),
-      Entry.Problem.StartLine + 1, Entry.Problem.StartCharacter + 1, nil, LineRef, Target);
-  end;
-  if Total > Length(Entries) then
-  begin
-    Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ProblemsMore, [Total - Length(Entries)]), Target);
+    mMessages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ProblemsMore, [mTotal - Length(mEntries)]), mTarget);
   end;
 end;
 

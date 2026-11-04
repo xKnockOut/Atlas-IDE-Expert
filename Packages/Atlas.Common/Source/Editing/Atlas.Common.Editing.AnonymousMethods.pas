@@ -1086,7 +1086,8 @@ begin
         Edits := Edits + [FieldEdit];
       end;
     end;
-    if not TRoutineBody.MemberDeclaration(Text, Tree, TypeBody, 'private', Declaration, AStyle, Edit) then
+    if not TRoutineBody.MemberDeclaration(Text, Tree, TypeBody, TMemberEntry.Create('private', Declaration), AStyle,
+      Edit) then
     begin
       Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
     end;
