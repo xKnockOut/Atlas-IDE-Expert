@@ -1,4 +1,11 @@
-﻿## Atlas-Befunde in Welcome und Debugger (03.–04.11.2026, Branch `claude/project-thread-og1j44` auf `Pilot-2.0.0-beta.1`)
+﻿## Atlas-Befunde in IDE/Completion und UI/Completion (04.11.2026, PR #1730, Branch `claude/project-thread-o7h9kx` auf `Pilot-2.0.0-beta.1`)
+
+- **Stand:** alle 14 Units beider Ordner ohne Befunde (Wurzel-`atlas.json`, Metriken an, Schwellen unverändert). Popup, Details und die Editor-Kette übersetzen unter FPC mit Stubs für VCL und ToolsAPI; mit Delphi noch nicht gebaut.
+- **Popup:** Kette `PopupState` → `PopupLayout` → `PopupPainter` → `Popup`, Texte in `PopupTexts`; öffentliche Schnittstelle von `TAtlasCompletionPopup` gleich.
+- **Editor:** Kette `EditorState` → `EditorSnippets` → `EditorOpen` → `EditorCommit` → `Editor` (`TAtlasEditorCompletion`). Die Verträge zur Kompositionswurzel (`TAtlasCompletionSources` u. a.) stehen in `EditorState`; `Atlas.IDE.Completion.Editor` reicht sie als Aliase weiter, die Aufrufer bleiben unverändert. Nebenbei: Der Destruktor griff über `Shutdown` auf schon freigegebene Zeitgeber zu, jetzt erst schließen, dann freigeben.
+- **Offen:** Delphi-Build und Handtests laut PR #1730.
+
+## Atlas-Befunde in Welcome und Debugger (03.–04.11.2026, Branch `claude/project-thread-og1j44` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Welcome` (Core und IDE; UI hat ein eigener Thread erledigt) und `Packages/Atlas.IDE.Debugger` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde bis auf `Atlas.UI.Debug.EvaluateFrame` (4 Befunde, wartet auf PR #1568, der den Frame umbaut). PRs #1626 (Debugger IDE), #1645 (Debugger UI), #1698 (Welcome Core) und der PR für Welcome IDE.
 - Neue Units in `Source/IDE/Welcome`: `Continue.Editor` (Reiter, Ziel, Öffnen, Dateitext) und `Continue.Saved` („Gemerkt“), `Setup.Paths` (Pfadprüfung, Gruppen, Lesen mit Abbruch beim Entladen), `Areas` (Quellen der Bereiche, Start beim Setzen, Refresh, Stop, Release), `IdeLayout` (Sicherung, Marke, Platzieren und Aufräumen auf der Willkommensseite der IDE), `ProjectWatch` (welcomePage.openWhenNoProject).
 - API für Aufrufer: Bereiche über `GWelcome.Areas.<Bereich>` (statt `GWelcome.<Bereich>`), Registry-Zugriff über `GWelcome.IdeLayout.Access`; `TAtlasIdeContinue.Hooks` (QuickActions, OnServerAccess) und `TAtlasIdeQuickActions.Hooks` (OnBuild … OnRunTask) statt einzelner Eigenschaften. Kern: Anfragen als Records (`TAtlasUnsavedQuery`, `TAtlasContinueProbe`, `TAtlasWelcomeArea`/`Drop`/`InsertLine`).
