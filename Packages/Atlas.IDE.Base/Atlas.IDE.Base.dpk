@@ -187,6 +187,7 @@ contains
   Atlas.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas',
   Atlas.Core.Settings.OverviewKinds in 'Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas',
   Atlas.Core.Settings.Plugin in 'Source\Core\Settings\Atlas.Core.Settings.Plugin.pas',
+  Atlas.Core.Settings.ProblemsUpdate in 'Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas',
   Atlas.UI.Settings.Page in 'Source\UI\Settings\Atlas.UI.Settings.Page.pas' {AtlasSettingsPage: TFrame},
   Atlas.UI.Settings.ChoiceBox in 'Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas',
   Atlas.UI.Settings.Marks in 'Source\UI\Settings\Atlas.UI.Settings.Marks.pas',

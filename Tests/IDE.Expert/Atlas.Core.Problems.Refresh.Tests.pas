@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Problems.Refresh.Tests;
 
 // Tests für die Aktualisierung der Prüfung (problems.update,
-// problems.liveDelayMs): Werte, Übernahme von problems.live, Grenzen der
-// Verzögerung, Takt und die Entscheidung je Art.
+// problems.liveDelayMs): Takt, Entscheidung je Art und Anforderung. Die Werte
+// der Einstellungen prüft Atlas.Core.Settings.ProblemsUpdate.Tests.
 
 interface
 
@@ -13,14 +13,6 @@ type
   [TestFixture]
   TAtlasProblemsRefreshTests = class
   public
-    [Test]
-    procedure NamesRoundTrip;
-    [Test]
-    procedure UnknownValueIsLive;
-    [Test]
-    procedure FormerLiveMapsToLiveOrSave;
-    [Test]
-    procedure DelayIsClamped;
     [Test]
     procedure TickFollowsShortDelay;
     [Test]
@@ -40,6 +32,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.Core.Problems.Refresh;
 
 function State(AChanged, ACheckedBefore, AModified: Boolean; AQuietMs: Cardinal): TAtlasProblemsRefreshState;
@@ -49,42 +42,6 @@ begin
   Result.CheckedBefore := ACheckedBefore;
   Result.Modified := AModified;
   Result.QuietMs := AQuietMs;
-end;
-
-procedure TAtlasProblemsRefreshTests.NamesRoundTrip;
-var
-  mMode: TAtlasProblemsUpdate;
-begin
-  for mMode := Low(TAtlasProblemsUpdate) to High(TAtlasProblemsUpdate) do
-  begin
-    Assert.IsTrue(TAtlasProblemsRefresh.Parse(TAtlasProblemsRefresh.Name(mMode)) = mMode);
-  end;
-  Assert.AreEqual('live', TAtlasProblemsRefresh.Name(TAtlasProblemsUpdate.Live));
-  Assert.AreEqual('save', TAtlasProblemsRefresh.Name(TAtlasProblemsUpdate.Save));
-  Assert.AreEqual('manual', TAtlasProblemsRefresh.Name(TAtlasProblemsUpdate.Manual));
-end;
-
-procedure TAtlasProblemsRefreshTests.UnknownValueIsLive;
-begin
-  Assert.IsTrue(TAtlasProblemsRefresh.Parse('') = TAtlasProblemsUpdate.Live);
-  Assert.IsTrue(TAtlasProblemsRefresh.Parse('manuell') = TAtlasProblemsUpdate.Live);
-  Assert.IsTrue(TAtlasProblemsRefresh.Parse(' MANUAL ') = TAtlasProblemsUpdate.Manual);
-  Assert.AreEqual('save', TAtlasProblemsRefresh.Normalize('Save'));
-  Assert.AreEqual('live', TAtlasProblemsRefresh.Normalize('unsinn'));
-end;
-
-procedure TAtlasProblemsRefreshTests.FormerLiveMapsToLiveOrSave;
-begin
-  Assert.AreEqual('live', TAtlasProblemsRefresh.FromLive(True));
-  Assert.AreEqual('save', TAtlasProblemsRefresh.FromLive(False));
-end;
-
-procedure TAtlasProblemsRefreshTests.DelayIsClamped;
-begin
-  Assert.AreEqual(100, TAtlasProblemsRefresh.ClampDelay(0));
-  Assert.AreEqual(100, TAtlasProblemsRefresh.ClampDelay(-5));
-  Assert.AreEqual(400, TAtlasProblemsRefresh.ClampDelay(400));
-  Assert.AreEqual(10000, TAtlasProblemsRefresh.ClampDelay(60000));
 end;
 
 procedure TAtlasProblemsRefreshTests.TickFollowsShortDelay;
@@ -105,7 +62,7 @@ begin
   mState.Requested := True;
   for mMode := Low(TAtlasProblemsUpdate) to High(TAtlasProblemsUpdate) do
   begin
-    Assert.IsTrue(TAtlasProblemsRefresh.Due(mMode, mState, 400), TAtlasProblemsRefresh.Name(mMode));
+    Assert.IsTrue(TAtlasProblemsRefresh.Due(mMode, mState, 400), TAtlasProblemsUpdateSetting.Name(mMode));
   end;
 end;
 
@@ -116,7 +73,7 @@ begin
   for mMode := Low(TAtlasProblemsUpdate) to High(TAtlasProblemsUpdate) do
   begin
     Assert.IsFalse(TAtlasProblemsRefresh.Due(mMode, State(False, True, False, 5000), 400),
-      TAtlasProblemsRefresh.Name(mMode));
+      TAtlasProblemsUpdateSetting.Name(mMode));
   end;
 end;
 

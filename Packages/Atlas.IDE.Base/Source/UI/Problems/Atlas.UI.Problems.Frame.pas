@@ -51,7 +51,7 @@ uses
   Vcl.ImgList,
   Vcl.Forms,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.Refresh;
+  Atlas.Core.Settings.ProblemsUpdate;
 
 type
   TAtlasFindingEvent = reference to procedure(const AFinding: TAtlasFinding);

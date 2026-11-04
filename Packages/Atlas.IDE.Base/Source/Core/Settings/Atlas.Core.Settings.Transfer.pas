@@ -216,7 +216,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
-  Atlas.Core.Problems.Refresh;
+  Atlas.Core.Settings.ProblemsUpdate;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -1217,7 +1217,7 @@ begin
     if (AEntry.Name = 'ProblemsUpdate') and ((Value is TJSONBool) or (Value is TJSONNumber)) then
     begin
       AMigrated := True;
-      Exit('"' + TAtlasProblemsRefresh.FromLive(FormerFlag(Value)) + '"');
+      Exit('"' + TAtlasProblemsUpdateSetting.FromLive(FormerFlag(Value)) + '"');
     end;
     // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
     // „Standard“ kommt.

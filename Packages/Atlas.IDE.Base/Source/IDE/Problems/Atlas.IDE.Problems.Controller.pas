@@ -56,6 +56,7 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Build.Target;
@@ -863,7 +864,7 @@ begin
   mDelay := TAtlasIdeSettings.Current.ProblemsLiveDelayMs;
   // Kürzere Verzögerung als der Takt: öfter nachsehen.
   FTimer.Interval := TAtlasProblemsRefresh.TickMs(mDelay);
-  Result := TAtlasProblemsRefresh.Due(TAtlasProblemsRefresh.Parse(TAtlasIdeSettings.Current.ProblemsUpdate), mState,
+  Result := TAtlasProblemsRefresh.Due(TAtlasProblemsUpdateSetting.Parse(TAtlasIdeSettings.Current.ProblemsUpdate), mState,
     mDelay);
 end;
 
