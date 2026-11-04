@@ -1,4 +1,10 @@
-﻿## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
+﻿## Atlas-Befunde im Editing-Formatter (04.11.2026, Branch `claude/project-thread-z75bpx` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Editing.Formatter`, `.Formatter.Indent`, `.Formatter.Layout` und `.CommandSource` (anfangs 47), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde, keine neuen Units.
+- Formatter: Ablauf in `TFormatRun` (Pipeline, geschützte Zeilen, Änderungen), Zeilenformatierung in `TLineFormatting`. Layout: `TBlockPlacing` (begin/else), `TAligning` (Ausrichten), `BreakPosition` (Umbruch). Indent: Stand und Stapel als Record `TIndentState`, Zweige `{$IF}` in `TBranchTracker`, Tokens in `TIndentTokens`, Zeilen in `TIndentLines`; Klassenkette `TIndentCore` → `TStatementIndenter` (Anweisungen) → `TIndenter` (Deklarationen, Durchlauf).
+- API: `Wrap` aus CommandSource nimmt den Rahmen als `TWrapFrame.Create(Kopf, Schluss, Einrückung)` statt drei Parametern; Aufrufer in Collection-, Database-, Refactoring-, Task- und WrapCommands angepasst (betrifft den pausierten Thread Editing H–Z).
+- Geprüft: FPC-Tests aller Editing-, Lsp-Formatting- und Completion-Testunits wie auf dem Basiszweig. Delphi-Build offen.
+
+## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle 7 Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Engine` (Teil B der Aufteilung Common/Rules; Catalog gehört Teil A). Ergebnis: 0 Befunde (PR #1706).
 - `TRuleEngine.Run` legt einen Lauf `TRuleRun` im implementation-Teil an (Felder statt Locals, Destruktor räumt Cache und Baumauswertung auf); nachgelagerte Regeln als `TDeferredRule`. Die Bedingung „Regel läuft für die Datei“ steht einmal in `SeverityIfOn` (Run, NewNames, OverridingRule). Öffentliche API unverändert.
 - FPC: Engine-nahe Tests 121/121, SavedQueries/Metrics/GoldenCorpus/CodeActions 66/66. Delphi-Build offen.

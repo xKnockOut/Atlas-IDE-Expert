@@ -741,8 +741,8 @@ begin
     end;
     // Zeile hinter dem Future, an der Name.Value gebraucht wird; dorthin kommt der Cursor.
     Stop := BlockEnd(Source, Source.Line);
-    Result := Wrap(Source, 'future', [Head, Format('  function: %s', [TypeName]), '  begin'], ['  end);', ''], '    ',
-      AEdits, AReason);
+    Result := Wrap(Source, 'future', TWrapFrame.Create([Head, Format('  function: %s', [TypeName]), '  begin'],
+      ['  end);', ''], '    '), AEdits, AReason);
     if not Result then
     begin
       Exit;

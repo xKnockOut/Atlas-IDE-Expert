@@ -68,7 +68,9 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Common.Lsp.Completion.Declarations;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -343,16 +345,16 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'Wert: Integer read '), TCompletionMatching.Prefix, Items));
     // Felder und Funktionen vom Typ Integer, auch geerbte (Zaehler, Anzahl); kein string, kein Setter.
     Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(Items));
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'string read '), TCompletionMatching.Prefix, Items));
     // Dazu „GetItems anlegen“ (#467) oben; ein Feld gibt es zu Indexeigenschaften nicht.
     Assert.AreEqual('GetItems anlegen GetItem', Names(Items));
     // Außerhalb einer property-Zeile kein Kontext.
-    Assert.IsFalse(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsFalse(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'FWert: '), TCompletionMatching.Prefix, Items));
   finally
     Tree.Free;
@@ -382,8 +384,8 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile, PositionOf(Text, 'write Se'),
-      TCompletionMatching.Prefix, Items));
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
+      PositionOf(Text, 'write Se'), TCompletionMatching.Prefix, Items));
     Assert.AreEqual('SetWert', Names(Items));
   finally
     Tree.Free;
@@ -431,7 +433,7 @@ begin
     Request.Resolver := AResolver;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
-    Assert.IsTrue(TLspCompletion.PropertyItems(Request, Result));
+    Assert.IsTrue(TCompletionDeclarations.PropertyItems(Request, Result));
   finally
     Request.Free;
     Tree.Free;
@@ -521,20 +523,22 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.OverrideItems(FResolver, Tree, Text, HauptFile, PositionOf(Text, '    override '),
+    Assert.IsTrue(OverrideAt(LookupOf(FResolver, nil, Tree, Text,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitBasis;
         Result := SameText(AFileName, BasisFile);
-      end, Items));
+      end),
+      PositionOf(Text, '    override '), Items));
     Assert.AreEqual('Geschuetzt Oeffentlich', Names(Items));
     Assert.IsTrue(Items.Items[1].HasTextEdit);
     Assert.AreEqual('procedure Oeffentlich; override;', Items.Items[1].TextEdit.NewText);
     Assert.AreEqual(4, Items.Items[1].TextEdit.Range.StartPos.Character);
     Assert.AreEqual('override Oeffentlich', Items.Items[1].FilterText);
     // In einem Routinenrumpf kein Override-Kontext.
-    Assert.IsFalse(TLspCompletion.OverrideItems(FResolver, Tree, Text, HauptFile, PositionOf(Text,
-      'begin'#10'  override '), nil, Items));
+    Assert.IsFalse(OverrideAt(LookupOf(FResolver, nil, Tree, Text, nil),
+      PositionOf(Text,
+      'begin'#10'  override '), Items));
   finally
     Tree.Free;
   end;
