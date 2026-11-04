@@ -682,7 +682,8 @@ begin
 end;
 
 /// <summary>In einer Git-Arbeitskopie liefert Head den Commit.</summary>
-procedure AssertRepositoryHead(const AVcs: IAtlasVersionControl; AOutcome: TAtlasVcsOutcome; const AHead: TAtlasVcsHead);
+procedure AssertRepositoryHead(const AVcs: IAtlasVersionControl; AOutcome: TAtlasVcsOutcome;
+  const AHead: TAtlasVcsHead);
 begin
   if AVcs.Kind = TAtlasVcsKind.Git then
   begin

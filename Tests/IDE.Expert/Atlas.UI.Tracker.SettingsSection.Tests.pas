@@ -212,18 +212,23 @@ begin
   Assert.AreEqual('Firma', AList.Items[0].Caption);
   Assert.AreEqual('YouTrack', AList.Items[0].SubItems[0]);
   Assert.AreEqual('https://youtrack.firma.local', AList.Items[0].SubItems[1]);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']), AList.Items[0].SubItems[2]);
+  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerTokenVerified, ['10:18']),
+    AList.Items[0].SubItems[2]);
   Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerTokenMissing), AList.Items[1].SubItems[2]);
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesConnectionTeam, ['Atlas']), AList.Items[2].Caption);
+  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesConnectionTeam, ['Atlas']),
+    AList.Items[2].Caption);
 end;
 
-/// <summary>Neue Verbindung: erst mit gültiger Adresse gespeichert; http und vergebene Namen werden abgewiesen.</summary>
-procedure AddConnectionLager(APage: TAtlasSettingsPage; ASection: TAtlasTrackerSettingsSection; AList: TListView; var ASaved: TAtlasPluginSettings);
+/// <summary>Neue Verbindung: erst mit gültiger Adresse gespeichert; http und vergebene Namen werden
+/// abgewiesen.</summary>
+procedure AddConnectionLager(APage: TAtlasSettingsPage; ASection: TAtlasTrackerSettingsSection; AList: TListView;
+  var ASaved: TAtlasPluginSettings);
 begin
   // Neue Verbindung: erst mit gültiger Adresse gespeichert; http wird abgewiesen.
   ASection.Connections.View.Add.Click;
   Assert.AreEqual(4, AList.Items.Count);
-  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionNew), ASection.Connections.View.Name.Text);
+  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesConnectionNew),
+    ASection.Connections.View.Name.Text);
   APage.SaveTo(ASaved);
   Assert.AreEqual(2, Integer(Length(TAtlasTrackerConnections.Read(ASaved.IssuesConnections))), 'ohne Adresse');
   // Absicht: Die Seite soll eine Adresse ohne https ablehnen.
@@ -680,7 +685,8 @@ begin
   Assert.AreEqual('Zuständig', ASection.Workflow.View.AssigneeField.Values[0]);
   Assert.AreEqual('Status', ASection.Connections.View.StateField.Values[0]);
   Assert.AreEqual('Status', ASection.Workflow.View.StateField.Value, 'eingegebener Text bleibt');
-  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesLoaded, [2, 2]), ASection.Workflow.View.ValuesNote.Caption);
+  Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesLoaded, [2, 2]),
+    ASection.Workflow.View.ValuesNote.Caption);
   ASection.TrackerValuesDone(Default(TAtlasTrackerValueSet), 'Keine Rechte');
   Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.SettingsIssuesValuesFailed, ['Keine Rechte']),
     ASection.Workflow.View.ValuesNote.Caption);

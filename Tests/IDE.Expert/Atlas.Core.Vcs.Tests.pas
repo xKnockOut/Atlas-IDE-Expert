@@ -1570,7 +1570,8 @@ var
   Hooks, GitDir, mRevision: string;
   mSteps: TArray<TAtlasVcsBranchStep>;
 begin
-  ARunner.Answer('for-each-ref', 'refs/heads/feature/753-atlas-bereiche-und' + #10 + 'refs/remotes/origin/develop' + #10);
+  ARunner.Answer('for-each-ref',
+    'refs/heads/feature/753-atlas-bereiche-und' + #10 + 'refs/remotes/origin/develop' + #10);
   ARunner.Answer('rev-parse', '.git/hooks' + #10 + '.git' + #10);
   Vcs := TAtlasGitVersionControl.Create(Root, ARunnerRef, 'git.exe', 5000);
   Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching), 'Git bietet IAtlasVcsBranching');
@@ -1620,7 +1621,8 @@ begin
 end;
 
 /// <summary>SVN: Kopie im Repository und switch, Serverrevision, Externals, Pfad im Repository.</summary>
-procedure AssertSvnBranching(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner; out ASteps: TArray<TAtlasVcsBranchStep>);
+procedure AssertSvnBranching(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner;
+  out ASteps: TArray<TAtlasVcsBranchStep>);
 var
   Vcs: IAtlasVersionControl;
   Branching: IAtlasVcsBranching;
@@ -1694,7 +1696,8 @@ begin
 end;
 
 /// <summary>Ohne erkennbares Layout kein Ort; fester Ort mit ^/; ungültiges Muster ohne Prozess.</summary>
-procedure AssertSvnBranchLocations(ARunner: TFakeRunner; const ABranching: IAtlasVcsBranching; const AOptions: TAtlasVcsSvnBranchOptions);
+procedure AssertSvnBranchLocations(ARunner: TFakeRunner; const ABranching: IAtlasVcsBranching;
+  const AOptions: TAtlasVcsSvnBranchOptions);
 var
   mOptions: TAtlasVcsSvnBranchOptions;
   mExists: Boolean;
