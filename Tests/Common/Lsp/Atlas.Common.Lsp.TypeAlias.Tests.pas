@@ -183,12 +183,16 @@ function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  Request: TTypeAliasContext;
 begin
+  Request := Context(AIndex);
+  Request.Name := AName;
+  Request.Scope := AScope;
   Tree := TPascalParser.Parse(Kunden);
   Resolver := TNameResolver.Create(AIndex);
   try
     Result := TLspTypeAlias.Execute(Resolver, Tree, KundenFile, Kunden, TTextPosition.Create(ALine, ACharacter),
-      AName, AScope, Context(AIndex));
+      Request);
   finally
     Resolver.Free;
     Tree.Free;

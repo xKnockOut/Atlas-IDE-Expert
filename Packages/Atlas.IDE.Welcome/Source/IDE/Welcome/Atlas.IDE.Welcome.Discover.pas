@@ -53,6 +53,8 @@ type
     FTitle: string;
     FStarted: Boolean;
     procedure Report(const AText: string);
+    /// <summary>„Ausprobieren“ für ATip: Beispiel öffnen, sonst den Befehl über die Palette ausführen.</summary>
+    procedure TryFound(const ATip: TAtlasTip);
     procedure Changed;
     function Tips: TAtlasTips;
     function Tracking: Boolean;
@@ -101,6 +103,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Classes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
@@ -438,60 +441,49 @@ begin
   Result := True;
 end;
 
+procedure TAtlasIdeDiscover.TryFound(const ATip: TAtlasTip);
+var
+  mFileName: string;
+  mCommand: TAtlasCommand;
+begin
+  mFileName := SamplePath(ATip);
+  if mFileName <> '' then
+  begin
+    // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
+    TAtlasIdeResults.Open(mFileName, Max(ATip.Line - 1, 0), Max(ATip.Column - 1, 0));
+    if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
+    begin
+      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
+    end;
+  end
+  else if ATip.Sample <> '' then
+  begin
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
+  end
+  else if CanRun(ATip.TryId) and Assigned(FRun) then
+  begin
+    // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
+    FRun(ATip.TryId);
+  end
+  else
+  begin
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
+  end;
+end;
+
 procedure TAtlasIdeDiscover.TryTip(const AId: string);
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Index, Line, Column: Integer;
-      List: TAtlasTips;
-      Tip: TAtlasTip;
-      FileName: string;
-      Command: TAtlasCommand;
-      HasCommand: Boolean;
+      mList: TAtlasTips;
+      mIndex: Integer;
     begin
-      List := Tips;
-      Index := TAtlasTipCatalog.IndexOf(List, AId);
-      if Index < 0 then
+      mList := Tips;
+      mIndex := TAtlasTipCatalog.IndexOf(mList, AId);
+      if mIndex >= 0 then
       begin
-        Exit;
-      end;
-      Tip := List[Index];
-      HasCommand := (Tip.Command <> '') and FindCommand(Tip.Command, Command);
-      FileName := SamplePath(Tip);
-      if FileName <> '' then
-      begin
-        // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
-        Line := Tip.Line - 1;
-        if Line < 0 then
-        begin
-          Line := 0;
-        end;
-        Column := Tip.Column - 1;
-        if Column < 0 then
-        begin
-          Column := 0;
-        end;
-        TAtlasIdeResults.Open(FileName, Line, Column);
-        if HasCommand and (Command.ShortCut <> '') then
-        begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [Command.ShortCut]));
-        end;
-        Exit;
-      end;
-      if Tip.Sample <> '' then
-      begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [Tip.Sample]));
-        Exit;
-      end;
-      if CanRun(Tip.TryId) and Assigned(FRun) then
-      begin
-        // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
-        FRun(Tip.TryId);
-      end
-      else
-      begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [Tip.TryId]));
+        TryFound(mList[mIndex]);
       end;
     end);
 end;

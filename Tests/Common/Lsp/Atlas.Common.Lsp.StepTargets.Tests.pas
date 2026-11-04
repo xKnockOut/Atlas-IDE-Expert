@@ -327,8 +327,14 @@ var
   Json: TJSONObject;
   Calls: TJSONArray;
   Call: TJSONObject;
+  Targets: TLspStepTargets;
 begin
-  Json := TLspStepTargets.Execute(FResolver, FIndex, FTree, UnitHaupt, HauptFile, 63, nil);
+  Targets := TLspStepTargets.Create(FResolver, FIndex, FTree, UnitHaupt, HauptFile, nil);
+  try
+    Json := Targets.Execute(63);
+  finally
+    Targets.Free;
+  end;
   try
     Assert.AreEqual(1, Json.GetValue<Integer>('format'));
     Assert.AreEqual(63, Json.GetValue<Integer>('line'));

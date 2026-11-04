@@ -192,6 +192,10 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Context.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Values.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Declarations.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Names.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Forms.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Methods.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Guard.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>
@@ -345,6 +349,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Shared.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Types.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Syntax.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NameSuggestions.pas"/>
@@ -433,6 +440,9 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Threads.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.MainThread.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Shared.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Uninitialized.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.UseAfterFree.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Shared.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Duplicates.pas"/>

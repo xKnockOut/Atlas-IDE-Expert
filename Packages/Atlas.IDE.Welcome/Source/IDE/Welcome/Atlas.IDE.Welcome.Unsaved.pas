@@ -104,6 +104,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.MainThread,
+  System.Math,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
@@ -451,6 +452,42 @@ begin
   end;
 end;
 
+/// <summary>Anfrage für die Abfrage im Hintergrund: Zeitlimit von 2 s je Projekt ab AStarted; danach kein weiterer
+/// Aufruf, der Rest kommt aus dem gespeicherten Stand.</summary>
+function QueryFor(const ADir: string; AStamp: TDateTime; AStarted: UInt64; AWorkingCopies: Boolean;
+  const AFileTime: TAtlasUnsavedFileTime): TAtlasUnsavedQuery;
+begin
+  Result := TAtlasUnsavedQuery.Create(ADir, AStamp, AFileTime,
+    function: Boolean
+    begin
+      Result := GetTickCount64 - AStarted >= TAtlasWelcomeUnsaved.TimeLimitMs;
+    end);
+  Result.WorkingCopies := AWorkingCopies;
+end;
+
+/// <summary>AState mit dem gespeicherten Stand zusammenführen (Ignorieren, Alter unbekannter Arten, nicht
+/// Abgefragtes) und in die Zusammenfassung schreiben; ALive (Stand dieser Sitzung) hat Vorrang vor der Datei.</summary>
+function MergeAndStore(const ARoot, AProject, AKey: string; const AState: TAtlasUnsavedState; AStamp: TDateTime;
+  ALive: TDictionary<string, TAtlasUnsavedState>): TAtlasUnsavedState;
+var
+  mMerged: TAtlasUnsavedState;
+begin
+  mMerged := AState;
+  TAtlasProjectSummaries.Update(ARoot, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    var
+      mOld: TAtlasUnsavedState;
+    begin
+      if not ALive.TryGetValue(AKey, mOld) then
+      begin
+        TAtlasWelcomeUnsaved.Read(ASummary, mOld);
+      end;
+      mMerged := TAtlasWelcomeUnsaved.Merge(mOld, AState, AStamp);
+      TAtlasWelcomeUnsaved.Write(ASummary, mMerged);
+    end);
+  Result := mMerged;
+end;
+
 procedure TAtlasIdeUnsaved.Query(const AProject: string);
 var
   Keep: IAtlasUnsavedSource;
@@ -459,7 +496,7 @@ var
   Ok: Boolean;
   State: TAtlasUnsavedState;
   Started: UInt64;
-  mWorkingCopies: Boolean;
+  mQuery: TAtlasUnsavedQuery;
 begin
   Key := TAtlasProjectSummaries.NormalizedPath(AProject);
   if FStopped or Querying(Key) then
@@ -476,26 +513,16 @@ begin
   Ok := False;
   State := TAtlasUnsavedState.Empty;
   // Anteile je External bzw. Submodul (#1292); im Hauptthread gelesen.
-  mWorkingCopies := TAtlasIdeSettings.Current.VcsExternalsShow;
+  mQuery := QueryFor(Dir, Stamp, Started, TAtlasIdeSettings.Current.VcsExternalsShow, FileTimeUtc);
   // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
   if not TAtlasIdeVcs.Run(
     procedure
-    var
-      mQuery: TAtlasUnsavedQuery;
     begin
-      mQuery := TAtlasUnsavedQuery.Create(Dir, Stamp, FileTimeUtc,
-        function: Boolean
-        begin
-          // 2 s je Projekt: danach kein weiterer Aufruf; der Rest kommt aus dem gespeicherten Stand.
-          Result := GetTickCount64 - Started >= TAtlasWelcomeUnsaved.TimeLimitMs;
-        end);
-      mQuery.WorkingCopies := mWorkingCopies;
       Ok := TAtlasWelcomeUnsaved.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeUnsaved.CallTimeoutMs), mQuery, State);
     end,
     procedure
     var
       Current: UInt64;
-      Merged: TAtlasUnsavedState;
     begin
       // Keep hält die Quelle bis hierher am Leben.
       if (Keep = nil) or FStopped then
@@ -510,21 +537,7 @@ begin
       FFresh.AddOrSetValue(Key, GetTickCount64);
       if Ok then
       begin
-        // Mit dem gespeicherten Stand zusammenführen (Ignorieren, Alter unbekannter Arten, nicht Abgefragtes).
-        Merged := State;
-        TAtlasProjectSummaries.Update(Root, Project,
-          procedure(var ASummary: TAtlasProjectSummary)
-          var
-            Old: TAtlasUnsavedState;
-          begin
-            if not FLive.TryGetValue(Key, Old) then
-            begin
-              TAtlasWelcomeUnsaved.Read(ASummary, Old);
-            end;
-            Merged := TAtlasWelcomeUnsaved.Merge(Old, State, Stamp);
-            TAtlasWelcomeUnsaved.Write(ASummary, Merged);
-          end);
-        FLive.AddOrSetValue(Key, Merged);
+        FLive.AddOrSetValue(Key, MergeAndStore(Root, Project, Key, State, Stamp, FLive));
       end;
       Changed;
     end) then
@@ -579,6 +592,82 @@ begin
     end);
 end;
 
+/// <summary>Dateien der Stashes (höchstens MaxStashes) für „Ansehen“.</summary>
+function StashEntries(const ALocal: IAtlasVcsLocalWork; out AEntries: TArray<TAtlasResultEntry>): TAtlasVcsOutcome;
+var
+  mStashes: TArray<TAtlasVcsStash>;
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+  mIndex: Integer;
+  mEntry: TAtlasResultEntry;
+begin
+  AEntries := nil;
+  Result := ALocal.Stashes(mStashes);
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to Min(High(mStashes), TAtlasIdeUnsaved.MaxStashes - 1) do
+  begin
+    if ALocal.ChangesIn(mStashes[mIndex].Hash, mChanges) <> TAtlasVcsOutcome.Ok then
+    begin
+      Continue;
+    end;
+    for mChange in mChanges do
+    begin
+      mEntry := TAtlasResultEntry.Create(mChange.Path, 0, 0);
+      mEntry.Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedInStash, [mStashes[mIndex].Message,
+        TAtlasIdeUnsaved.KindText(Ord(mChange.Kind))]);
+      AEntries := AEntries + [mEntry];
+    end;
+  end;
+end;
+
+/// <summary>Wie in der Zeile: nur im Projektordner ADir; Konflikte (AConflicts) bzw. die übrigen Änderungen.</summary>
+function ChangeEntries(const AVcs: IAtlasVersionControl; const ADir: string; AConflicts: Boolean;
+  out AEntries: TArray<TAtlasResultEntry>): TAtlasVcsOutcome;
+var
+  mChanges: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+  mEntry: TAtlasResultEntry;
+begin
+  AEntries := nil;
+  Result := AVcs.Changes(mChanges);
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  for mChange in TAtlasWelcomeUnsaved.ChangesBelow(mChanges, ADir) do
+  begin
+    if (mChange.Kind = TAtlasVcsChangeKind.Conflicted) = AConflicts then
+    begin
+      mEntry := TAtlasResultEntry.Create(mChange.Path, 0, 0);
+      mEntry.Text := TAtlasIdeUnsaved.KindText(Ord(mChange.Kind));
+      AEntries := AEntries + [mEntry];
+    end;
+  end;
+end;
+
+/// <summary>Einträge für „Ansehen“ der Art AKind in ADir (startet Prozesse: nur im Hintergrund).</summary>
+function FilesOf(const ADir: string; AKind: TAtlasUnsavedKind;
+  out AEntries: TArray<TAtlasResultEntry>): TAtlasVcsOutcome;
+var
+  mVcs: IAtlasVersionControl;
+  mLocal: IAtlasVcsLocalWork;
+begin
+  AEntries := nil;
+  Result := TAtlasVcsOutcome.Failed;
+  mVcs := TAtlasIdeVcs.ForFolder(ADir, TAtlasIdeUnsaved.ActionTimeoutMs);
+  if AKind <> TAtlasUnsavedKind.Stashes then
+  begin
+    Result := ChangeEntries(mVcs, ADir, AKind = TAtlasUnsavedKind.Conflicts, AEntries);
+  end
+  else if Supports(mVcs, IAtlasVcsLocalWork, mLocal) then
+  begin
+    Result := StashEntries(mLocal, AEntries);
+  end;
+end;
+
 procedure TAtlasIdeUnsaved.ShowFiles(const ARow: TAtlasUnsavedRow);
 var
   Keep: IAtlasUnsavedSource;
@@ -594,64 +683,12 @@ begin
   Outcome := TAtlasVcsOutcome.Failed;
   TAtlasIdeVcs.Run(
     procedure
-    var
-      Vcs: IAtlasVersionControl;
-      Local: IAtlasVcsLocalWork;
-      Changes: TArray<TAtlasVcsChange>;
-      Change: TAtlasVcsChange;
-      Stashes: TArray<TAtlasVcsStash>;
-      Index: Integer;
-      Entry: TAtlasResultEntry;
     begin
-      Vcs := TAtlasIdeVcs.ForFolder(Dir, ActionTimeoutMs);
-      if Row.Item.Kind = TAtlasUnsavedKind.Stashes then
-      begin
-        if not Supports(Vcs, IAtlasVcsLocalWork, Local) then
-        begin
-          Exit;
-        end;
-        Outcome := Local.Stashes(Stashes);
-        if Outcome <> TAtlasVcsOutcome.Ok then
-        begin
-          Exit;
-        end;
-        for Index := 0 to High(Stashes) do
-        begin
-          if Index >= MaxStashes then
-          begin
-            Break;
-          end;
-          if Local.ChangesIn(Stashes[Index].Hash, Changes) <> TAtlasVcsOutcome.Ok then
-          begin
-            Continue;
-          end;
-          for Change in Changes do
-          begin
-            Entry := TAtlasResultEntry.Create(Change.Path, 0, 0);
-            Entry.Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedInStash, [Stashes[Index].Message,
-              KindText(Ord(Change.Kind))]);
-            Entries := Entries + [Entry];
-          end;
-        end;
-        Exit;
-      end;
-      Outcome := Vcs.Changes(Changes);
-      if Outcome <> TAtlasVcsOutcome.Ok then
-      begin
-        Exit;
-      end;
-      // Wie in der Zeile: nur im Projektordner; Konflikte bzw. die übrigen Änderungen.
-      for Change in TAtlasWelcomeUnsaved.ChangesBelow(Changes, Dir) do
-      begin
-        if (Change.Kind = TAtlasVcsChangeKind.Conflicted) = (Row.Item.Kind = TAtlasUnsavedKind.Conflicts) then
-        begin
-          Entry := TAtlasResultEntry.Create(Change.Path, 0, 0);
-          Entry.Text := KindText(Ord(Change.Kind));
-          Entries := Entries + [Entry];
-        end;
-      end;
+      Outcome := FilesOf(Dir, Row.Item.Kind, Entries);
     end,
     procedure
+    var
+      mTitle: TAtlasWelcomeTextId;
     begin
       if (Keep = nil) or FStopped then
       begin
@@ -663,16 +700,12 @@ begin
           [Row.Name, AtlasVcsOutcomeName(Outcome)]));
         Exit;
       end;
+      mTitle := TAtlasWelcomeTextId.WelcomeUnsavedChangesTitle;
       if Row.Item.Kind = TAtlasUnsavedKind.Stashes then
       begin
-        TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashTitle,
-          [Row.Name, Length(Entries)]), Entries);
-      end
-      else
-      begin
-        TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedChangesTitle,
-          [Row.Name, Length(Entries)]), Entries);
+        mTitle := TAtlasWelcomeTextId.WelcomeUnsavedStashTitle;
       end;
+      TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(mTitle, [Row.Name, Length(Entries)]), Entries);
     end);
 end;
 
@@ -735,6 +768,45 @@ begin
   end;
 end;
 
+/// <summary>Alle APlans pushen (spricht mit dem Server: eigenes, langes Zeitlimit); leer ohne Umsetzung.</summary>
+function PushAll(const ADir: string; const APlans: TArray<TAtlasUnsavedPush>): TArray<TAtlasVcsOutcome>;
+var
+  mLocal: IAtlasVcsLocalWork;
+  mPlan: TAtlasUnsavedPush;
+begin
+  Result := nil;
+  if Supports(TAtlasIdeVcs.ForFolder(ADir, TAtlasWelcomeUnsaved.PushTimeoutMs), IAtlasVcsLocalWork, mLocal) then
+  begin
+    for mPlan in APlans do
+    begin
+      Result := Result + [mLocal.Push(mPlan.Branch, mPlan.Remote, mPlan.RemoteRef, mPlan.SetUpstream)];
+    end;
+  end;
+end;
+
+/// <summary>Meldung zu Push AIndex von APlans; fehlt sein Ergebnis, gilt er als misslungen.</summary>
+function PushReport(const AName: string; const APlans: TArray<TAtlasUnsavedPush>;
+  const AOutcomes: TArray<TAtlasVcsOutcome>; AIndex: Integer): string;
+var
+  mOutcome: TAtlasVcsOutcome;
+begin
+  mOutcome := TAtlasVcsOutcome.Failed;
+  if AIndex <= High(AOutcomes) then
+  begin
+    mOutcome := AOutcomes[AIndex];
+  end;
+  if mOutcome = TAtlasVcsOutcome.Ok then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushDone, [AName, APlans[AIndex].Branch,
+      APlans[AIndex].Target]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushFailed, [AName, APlans[AIndex].Branch,
+      APlans[AIndex].Target, AtlasVcsOutcomeName(mOutcome)]);
+  end;
+end;
+
 procedure TAtlasIdeUnsaved.RunPush(const ARow: TAtlasUnsavedRow; const APlans: TArray<TAtlasUnsavedPush>);
 var
   Keep: IAtlasUnsavedSource;
@@ -752,47 +824,21 @@ begin
   TAtlasGuard.Log(Format('Willkommensseite: Push von %d Branch(es) bestätigt', [Length(Plans)]));
   if not TAtlasIdeVcs.Run(
     procedure
-    var
-      Local: IAtlasVcsLocalWork;
-      Plan: TAtlasUnsavedPush;
     begin
-      // Push spricht mit dem Server: eigenes, langes Zeitlimit.
-      if not Supports(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeUnsaved.PushTimeoutMs), IAtlasVcsLocalWork,
-        Local) then
-      begin
-        Exit;
-      end;
-      for Plan in Plans do
-      begin
-        Outcomes := Outcomes + [Local.Push(Plan.Branch, Plan.Remote, Plan.RemoteRef, Plan.SetUpstream)];
-      end;
+      Outcomes := PushAll(Dir, Plans);
     end,
     procedure
     var
-      Index: Integer;
+      mIndex: Integer;
     begin
       FPushing := False;
       if (Keep = nil) or FStopped then
       begin
         Exit;
       end;
-      for Index := 0 to High(Plans) do
+      for mIndex := 0 to High(Plans) do
       begin
-        if (Index <= High(Outcomes)) and (Outcomes[Index] = TAtlasVcsOutcome.Ok) then
-        begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushDone, [Row.Name, Plans[Index].Branch,
-            Plans[Index].Target]));
-        end
-        else if Index <= High(Outcomes) then
-        begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
-            Plans[Index].Target, AtlasVcsOutcomeName(Outcomes[Index])]));
-        end
-        else
-        begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushFailed, [Row.Name, Plans[Index].Branch,
-            Plans[Index].Target, AtlasVcsOutcomeName(TAtlasVcsOutcome.Failed)]));
-        end;
+        Report(PushReport(Row.Name, Plans, Outcomes, mIndex));
       end;
       // Neuer Stand für die Zeile.
       FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(Row.Project));

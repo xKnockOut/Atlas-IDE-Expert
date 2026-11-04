@@ -112,7 +112,24 @@ type
     procedure CheckTypeOf(ANode: TSyntaxNode);
     procedure CheckSlice(ANode: TSyntaxNode);
     procedure CheckConstArray(ANode: TSyntaxNode);
+    /// <summary>Erwartet jede mögliche Routine des Aufrufs von ACallee an der Stelle APosition einen Parameter
+    /// einfacher Art (kein offenes Array, nicht unbekannt)?</summary>
+    function AllSimpleParams(ACallee: TSyntaxNode; APosition: Integer): Boolean;
     procedure CheckTextIo(ANode: TSyntaxNode; AWrite: Boolean);
+    /// <summary>Erstes Argument von Write/Read, das ausgegeben bzw. eingelesen wird: hinter einer Textdatei 2,
+    /// sonst 1; False bei unbekanntem erstem Argument oder typisierter Datei.</summary>
+    function FirstTextArgument(ANode: TSyntaxNode; out AFirst: Integer): Boolean;
+    procedure CheckTextArgument(const ARoutine: string; AArg: TSyntaxNode; AWrite: Boolean);
+    /// <summary>Basis von TBasis.Machen als Klasse: Bezeichner, nicht generisch, nicht bedingt.</summary>
+    function ClassBase(ANode: TSyntaxNode; out ABaseType: TResolvedSymbol): Boolean;
+    /// <summary>Ist ANode sicher eine Instanzmethode (alle möglichen Routinen ohne class und static)?</summary>
+    function InstanceMethod(ANode: TSyntaxNode; out AMember: TResolvedSymbol): Boolean;
+    /// <summary>Steht ANode in einer Methode, deren Klasse ABaseType oder ein Nachfahre ist, oder ist das nicht
+    /// sicher zu sagen?</summary>
+    function InsideOwnClass(ANode: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
+    /// <summary>Gehört die Methode ARoutine (TKlasse.Name) zu ABaseType oder einem Nachfahren, oder ist das nicht
+    /// sicher?</summary>
+    function OwnClassMethod(ARoutine: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
     procedure CheckClassMethodForm(ANode: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport; AResolver: TNameResolver);
@@ -217,6 +234,36 @@ begin
       Exit(mIndex);
     end;
   end;
+end;
+
+/// <summary>Erwartet ACandidate an der Stelle APosition (ab 1) einen Parameter bekannter Art außer Array?</summary>
+function SimpleParamAt(const ACandidate: TResolvedSymbol; APosition: Integer): Boolean;
+var
+  mKind: TResolvedTypeKind;
+begin
+  Result := not ACandidate.Builtin and (ACandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]);
+  Result := Result and (Length(ACandidate.ParamTypes) >= APosition);
+  if Result then
+  begin
+    mKind := TResolvedTypeKinds.OfText(ACandidate.ParamTypes[APosition - 1]);
+    Result := (mKind <> TResolvedTypeKind.Unknown) and (mKind <> TResolvedTypeKind.Array_);
+  end;
+end;
+
+/// <summary>Steht ANode als Anweisung oder als Ziel eines Aufrufs (vor Klammern)?</summary>
+function IsCalledForm(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.ChildCount = 1) and (ANode.Parent <> nil);
+  Result := Result and ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or
+    ((ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)));
+end;
+
+/// <summary>Ist ACandidate eine Methode ohne class und static?</summary>
+function IsInstanceCandidate(const ACandidate: TResolvedSymbol): Boolean;
+begin
+  Result := (ACandidate.SymbolKind = TIndexSymbolKind.Method) and not MatchText('class', ACandidate.Directives);
+  Result := Result and not MatchText('static', ACandidate.Directives) and
+    not StartsText('class ', Trim(ACandidate.Signature));
 end;
 
 { TTypeKindChecker }
@@ -661,21 +708,28 @@ begin
     [NodeText(ANode[1]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
 end;
 
-procedure TTypeKindChecker.CheckSlice(ANode: TSyntaxNode);
+function TTypeKindChecker.AllSimpleParams(ACallee: TSyntaxNode; APosition: Integer): Boolean;
 var
-  mParent: TSyntaxNode;
-  mPosition: Integer;
   mCandidates: TArray<TResolvedSymbol>;
   mCandidate: TResolvedSymbol;
-  mKind: TResolvedTypeKind;
-  mParam: string;
 begin
-  if not IsIntrinsic(ANode, 'Slice') then
+  mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ACallee);
+  Result := Length(mCandidates) > 0;
+  for mCandidate in mCandidates do
   begin
-    Exit;
+    if not SimpleParamAt(mCandidate, APosition) then
+    begin
+      Exit(False);
+    end;
   end;
-  mParent := ANode.Parent;
-  if mParent = nil then
+end;
+
+procedure TTypeKindChecker.CheckSlice(ANode: TSyntaxNode);
+var
+  mPosition: Integer;
+  mMisplaced: Boolean;
+begin
+  if not IsIntrinsic(ANode, 'Slice') or (ANode.Parent = nil) then
   begin
     Exit;
   end;
@@ -683,36 +737,18 @@ begin
   if mPosition = 0 then
   begin
     // Als Wert einer Zuweisung, in einem Ausdruck oder als Startwert einer Inline-Variablen.
-    if not (mParent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.BinaryExpr, TSyntaxKind.InlineVar]) then
-    begin
-      Exit;
-    end;
+    mMisplaced := ANode.Parent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.BinaryExpr, TSyntaxKind.InlineVar];
   end
   else
   begin
     // Argument eines Aufrufs: nur, wenn jede mögliche Routine dort einen Parameter einfacher Art erwartet.
-    mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, mParent[0]);
-    if Length(mCandidates) = 0 then
-    begin
-      Exit;
-    end;
-    for mCandidate in mCandidates do
-    begin
-      if mCandidate.Builtin or not (mCandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
-        (Length(mCandidate.ParamTypes) < mPosition) then
-      begin
-        Exit;
-      end;
-      mParam := mCandidate.ParamTypes[mPosition - 1];
-      mKind := TResolvedTypeKinds.OfText(mParam);
-      if (mKind = TResolvedTypeKind.Unknown) or (mKind = TResolvedTypeKind.Array_) then
-      begin
-        Exit;
-      end;
-    end;
+    mMisplaced := AllSimpleParams(ANode.Parent[0], mPosition);
   end;
-  FReport.Add(Range(ANode), 'Slice ist nur als Argument für einen offenen Array-Parameter möglich (wie E2193).',
-    TRuleConfidence.High);
+  if mMisplaced then
+  begin
+    FReport.Add(Range(ANode), 'Slice ist nur als Argument für einen offenen Array-Parameter möglich (wie E2193).',
+      TRuleConfidence.High);
+  end;
 end;
 
 procedure TTypeKindChecker.CheckConstArray(ANode: TSyntaxNode);
@@ -754,141 +790,160 @@ begin
   end;
 end;
 
-procedure TTypeKindChecker.CheckTextIo(ANode: TSyntaxNode; AWrite: Boolean);
+function TTypeKindChecker.FirstTextArgument(ANode: TSyntaxNode; out AFirst: Integer): Boolean;
 var
-  mFirst, mIndex: Integer;
   mArg: TSyntaxNode;
   mSymbol, mType: TResolvedSymbol;
   mKind: TResolvedTypeKind;
-  mText, mRoutine: string;
-  mFixes: TArray<TRuleFix>;
 begin
-  if ANode.ChildCount < 2 then
-  begin
-    Exit;
-  end;
-  mRoutine := ANode[0].Name;
-  mFirst := 1;
+  Result := True;
+  AFirst := 2;
   mArg := ANode[1];
   if (mArg.Kind = TSyntaxKind.Identifier) and MatchText(mArg.Name, cStandardTextFiles) and
     not ValueType(mArg, mSymbol, mType, mKind) then
   begin
     // Input, Output, ErrOutput aus System, auch ohne System im Index.
-    mFirst := 2;
-  end
-  else if IsTextFile(mArg) then
+    Exit;
+  end;
+  if IsTextFile(mArg) then
   begin
-    mFirst := 2;
-  end
-  else
+    Exit;
+  end;
+  AFirst := 1;
+  // Unbekanntes erstes Argument oder typisierte Datei (Write(F, Datensatz)).
+  Result := ValueType(mArg, mSymbol, mType, mKind) and (mKind <> TResolvedTypeKind.File_);
+end;
+
+procedure TTypeKindChecker.CheckTextArgument(const ARoutine: string; AArg: TSyntaxNode; AWrite: Boolean);
+var
+  mSymbol, mType: TResolvedSymbol;
+  mKind: TResolvedTypeKind;
+  mText: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  if not ValueType(AArg, mSymbol, mType, mKind) or not (mKind in [TResolvedTypeKind.Class_,
+    TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_]) or
+    ((mKind = TResolvedTypeKind.Record_) and HasImplicit(mType)) then
   begin
-    if not ValueType(mArg, mSymbol, mType, mKind) or (mKind = TResolvedTypeKind.File_) then
-    begin
-      // Unbekanntes erstes Argument oder typisierte Datei (Write(F, Datensatz)).
-      Exit;
-    end;
+    Exit;
+  end;
+  mText := NodeText(AArg);
+  if not AWrite then
+  begin
+    FReport.Add(Range(AArg), Format('%s kann %s nicht einlesen: %s ist %s (wie E2055).', [ARoutine, mText,
+      mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
+    Exit;
+  end;
+  mFixes := nil;
+  if mKind = TResolvedTypeKind.Class_ then
+  begin
+    mFixes := [TRuleFix.Create(mText + '.ToString', [TTextEdit.Create(Range(AArg), mText + '.ToString')])];
+  end;
+  FReport.Add(Range(AArg), Format('%s kann %s nicht ausgeben: %s ist %s (wie E2054).', [ARoutine, mText,
+    mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High, mFixes);
+end;
+
+procedure TTypeKindChecker.CheckTextIo(ANode: TSyntaxNode; AWrite: Boolean);
+var
+  mFirst, mIndex: Integer;
+begin
+  if (ANode.ChildCount < 2) or not FirstTextArgument(ANode, mFirst) then
+  begin
+    Exit;
   end;
   for mIndex := mFirst to ANode.ChildCount - 1 do
   begin
-    mArg := ANode[mIndex];
-    if not ValueType(mArg, mSymbol, mType, mKind) or not (mKind in [TResolvedTypeKind.Class_,
-      TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_]) or
-      ((mKind = TResolvedTypeKind.Record_) and HasImplicit(mType)) then
-    begin
-      Continue;
-    end;
-    mText := NodeText(mArg);
-    mFixes := nil;
-    if AWrite then
-    begin
-      if mKind = TResolvedTypeKind.Class_ then
-      begin
-        mFixes := [TRuleFix.Create(mText + '.ToString', [TTextEdit.Create(Range(mArg), mText + '.ToString')])];
-      end;
-      FReport.Add(Range(mArg), Format('%s kann %s nicht ausgeben: %s ist %s (wie E2054).', [mRoutine, mText,
-        mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High, mFixes);
-    end
-    else
-    begin
-      FReport.Add(Range(mArg), Format('%s kann %s nicht einlesen: %s ist %s (wie E2055).', [mRoutine, mText,
-        mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
-    end;
+    CheckTextArgument(ANode[0].Name, ANode[mIndex], AWrite);
   end;
 end;
 
-procedure TTypeKindChecker.CheckClassMethodForm(ANode: TSyntaxNode);
+function TTypeKindChecker.ClassBase(ANode: TSyntaxNode; out ABaseType: TResolvedSymbol): Boolean;
 var
-  mBase, mOuter: TSyntaxNode;
-  mBaseSymbol, mBaseType, mMember, mMemberType, mCandidate, mOwner, mOwnerType: TResolvedSymbol;
-  mFound, mComplete: Boolean;
-  mCandidates: TArray<TResolvedSymbol>;
-  mName, mClassPart: string;
-  mAncestors: TArray<string>;
+  mBase: TSyntaxNode;
+  mBaseSymbol: TResolvedSymbol;
+  mFound: Boolean;
 begin
-  // TBasis.Machen als Anweisung oder vor Klammern.
-  if (ANode.ChildCount <> 1) or (ANode.Parent = nil) then
-  begin
-    Exit;
-  end;
-  if not ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or ((ANode.Parent.Kind = TSyntaxKind.Call) and
-    (ANode.Parent[0] = ANode))) then
-  begin
-    Exit;
-  end;
   mBase := ANode[0];
-  if (mBase.Kind <> TSyntaxKind.Identifier) or
-    not FResolver.NodeType(FContext.Tree, FFileName, mBase, mBaseSymbol, mBaseType, mFound) or
-    not mBaseSymbol.IsType or (mBaseSymbol.SymbolKind <> TIndexSymbolKind.ClassType) or
-    (mBaseSymbol.TypeParams <> '') or (mBaseSymbol.Condition <> '') then
-  begin
-    Exit;
-  end;
-  if not FResolver.NodeType(FContext.Tree, FFileName, ANode, mMember, mMemberType, mFound) or
-    (mMember.SymbolKind <> TIndexSymbolKind.Method) or (mMember.Condition <> '') then
+  Result := (mBase.Kind = TSyntaxKind.Identifier) and
+    FResolver.NodeType(FContext.Tree, FFileName, mBase, mBaseSymbol, ABaseType, mFound);
+  Result := Result and mBaseSymbol.IsType and (mBaseSymbol.SymbolKind = TIndexSymbolKind.ClassType);
+  Result := Result and (mBaseSymbol.TypeParams = '') and (mBaseSymbol.Condition = '');
+end;
+
+function TTypeKindChecker.InstanceMethod(ANode: TSyntaxNode; out AMember: TResolvedSymbol): Boolean;
+var
+  mMemberType, mCandidate: TResolvedSymbol;
+  mCandidates: TArray<TResolvedSymbol>;
+  mFound: Boolean;
+begin
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, AMember, mMemberType, mFound) and
+    (AMember.SymbolKind = TIndexSymbolKind.Method) and (AMember.Condition = '');
+  if not Result then
   begin
     Exit;
   end;
   mCandidates := FResolver.CallCandidates(FContext.Tree, FFileName, ANode);
-  if Length(mCandidates) = 0 then
-  begin
-    Exit;
-  end;
+  Result := Length(mCandidates) > 0;
   for mCandidate in mCandidates do
   begin
-    if (mCandidate.SymbolKind <> TIndexSymbolKind.Method) or MatchText('class', mCandidate.Directives) or
-      MatchText('static', mCandidate.Directives) or StartsText('class ', Trim(mCandidate.Signature)) then
+    if not IsInstanceCandidate(mCandidate) then
     begin
-      Exit;
+      Exit(False);
     end;
   end;
-  // In Methoden der Klasse und ihrer Nachfahren ruft TBasis.Machen die Methode mit Self auf.
+end;
+
+function TTypeKindChecker.OwnClassMethod(ARoutine: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
+var
+  mOwner, mOwnerType: TResolvedSymbol;
+  mClassPart: string;
+  mComplete: Boolean;
+  mAncestors: TArray<string>;
+begin
+  mClassPart := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+  mOwner := FResolver.ResolveChain(FContext.Tree, FFileName, mClassPart.Split(['.']), ARoutine.StartOffset);
+  Result := not mOwner.Found or not FResolver.TypeOf(mOwner, mOwnerType) or
+    (mOwnerType.SymbolKind <> TIndexSymbolKind.ClassType);
+  if Result or SameText(mOwnerType.QualifiedName, ABaseType.QualifiedName) then
+  begin
+    Exit(True);
+  end;
+  mAncestors := FResolver.Queries.AncestorNames(mOwnerType, mComplete);
+  Result := not mComplete or MatchText(ABaseType.Name, mAncestors);
+end;
+
+function TTypeKindChecker.InsideOwnClass(ANode: TSyntaxNode; const ABaseType: TResolvedSymbol): Boolean;
+var
+  mOuter: TSyntaxNode;
+begin
   mOuter := ANode.Parent;
   while mOuter <> nil do
   begin
-    if (mOuter.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mOuter.Name) > 0) then
+    if (mOuter.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mOuter.Name) > 0) and
+      OwnClassMethod(mOuter, ABaseType) then
     begin
-      mName := mOuter.Name;
-      mClassPart := Copy(mName, 1, LastDelimiter('.', mName) - 1);
-      mOwner := FResolver.ResolveChain(FContext.Tree, FFileName, mClassPart.Split(['.']), mOuter.StartOffset);
-      if not mOwner.Found or not FResolver.TypeOf(mOwner, mOwnerType) or
-        (mOwnerType.SymbolKind <> TIndexSymbolKind.ClassType) then
-      begin
-        Exit;
-      end;
-      if SameText(mOwnerType.QualifiedName, mBaseType.QualifiedName) then
-      begin
-        Exit;
-      end;
-      mAncestors := FResolver.Queries.AncestorNames(mOwnerType, mComplete);
-      if not mComplete or MatchText(mBaseType.Name, mAncestors) then
-      begin
-        Exit;
-      end;
+      Exit(True);
     end;
     mOuter := mOuter.Parent;
   end;
-  FReport.Add(Range(ANode), Format('%s ist keine Klassenmethode; %s.%s geht nur in Methoden von %s und seinen ' +
-    'Nachfahren (wie E2076).', [mMember.Name, mBase.Name, ANode.Name, mBaseType.Name]), TRuleConfidence.High);
+  Result := False;
+end;
+
+procedure TTypeKindChecker.CheckClassMethodForm(ANode: TSyntaxNode);
+var
+  mBaseType, mMember: TResolvedSymbol;
+begin
+  // TBasis.Machen als Anweisung oder vor Klammern.
+  if not IsCalledForm(ANode) or not ClassBase(ANode, mBaseType) or not InstanceMethod(ANode, mMember) then
+  begin
+    Exit;
+  end;
+  // In Methoden der Klasse und ihrer Nachfahren ruft TBasis.Machen die Methode mit Self auf.
+  if not InsideOwnClass(ANode, mBaseType) then
+  begin
+    FReport.Add(Range(ANode), Format('%s ist keine Klassenmethode; %s.%s geht nur in Methoden von %s und seinen ' +
+      'Nachfahren (wie E2076).', [mMember.Name, ANode[0].Name, ANode.Name, mBaseType.Name]), TRuleConfidence.High);
+  end;
 end;
 
 procedure TTypeKindChecker.CheckCall(ANode: TSyntaxNode);
