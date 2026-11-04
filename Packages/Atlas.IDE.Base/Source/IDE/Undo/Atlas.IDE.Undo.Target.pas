@@ -152,56 +152,72 @@ begin
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
+/// <summary>Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.</summary>
+procedure WriteProjectFile(const ADisk: IAtlasUndoTarget; const AFileName: string;
+  const AContent: TAtlasTextFileContent);
+var
+  mModule: IOTAModule;
+  mActions: IOTAActionServices;
+begin
+  mModule := TAtlasIdeFiles.ProjectModule(AFileName);
+  if (mModule <> nil) and TAtlasIdeFiles.ProjectModified(mModule) then
+  begin
+    raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+  end;
+  ADisk.Write(AFileName, AContent);
+  if (mModule <> nil) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    mActions.ReloadFile(AFileName);
+  end;
+end;
+
+/// <summary>Wie beim Umbenennen (#402): Im Designer setzt Atlas Ereignis-Zuordnungen und Eigenschaften (#309).
+/// False, wenn das Formular nicht offen ist; sonst geschrieben oder eine Ausnahme mit dem Grund.</summary>
+function WriteDesignerForm(const AFileName: string; const AContent: TAtlasTextFileContent): Boolean;
+var
+  mOld, mReason: string;
+  mChanges: TArray<TAtlasFormEventChange>;
+  mProperties: TArray<TAtlasFormPropertyChange>;
+begin
+  Result := TAtlasIdeForms.CurrentText(AFileName, mOld);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if not TAtlasFormChanges.Diff(mOld, AContent.Text, mChanges, mProperties, mReason) then
+  begin
+    raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und ' +
+      'Eigenschaften (%s)', [mReason]);
+  end;
+  mReason := TAtlasIdeForms.Apply(AFileName, mChanges, mProperties);
+  if mReason <> '' then
+  begin
+    raise EInOutError.Create(mReason);
+  end;
+end;
+
 procedure TAtlasIdeUndoTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
 var
-  Buffer: IOTAEditBuffer;
-  Module: IOTAModule;
-  Actions: IOTAActionServices;
-  Old, Reason: string;
-  FormChanges: TArray<TAtlasFormEventChange>;
-  FormProperties: TArray<TAtlasFormPropertyChange>;
+  mBuffer: IOTAEditBuffer;
 begin
   if TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
-    // Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.
-    Module := TAtlasIdeFiles.ProjectModule(AFileName);
-    if (Module <> nil) and TAtlasIdeFiles.ProjectModified(Module) then
-    begin
-      raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
-    end;
+    WriteProjectFile(FDisk, AFileName, AContent);
+    Exit;
+  end;
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if (mBuffer <> nil) and mBuffer.IsReadOnly then
+  begin
+    raise EInOutError.Create('schreibgeschützt');
+  end;
+  if mBuffer <> nil then
+  begin
+    WriteBuffer(mBuffer, TAtlasEditorBuffer.Text(mBuffer), AContent.Text);
+  end
+  else if not WriteDesignerForm(AFileName, AContent) then
+  begin
     FDisk.Write(AFileName, AContent);
-    if (Module <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
-    begin
-      Actions.ReloadFile(AFileName);
-    end;
-    Exit;
   end;
-  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if Buffer <> nil then
-  begin
-    if Buffer.IsReadOnly then
-    begin
-      raise EInOutError.Create('schreibgeschützt');
-    end;
-    WriteBuffer(Buffer, TAtlasEditorBuffer.Text(Buffer), AContent.Text);
-    Exit;
-  end;
-  if TAtlasIdeForms.CurrentText(AFileName, Old) then
-  begin
-    // Wie beim Umbenennen (#402): Im Designer setzt Atlas Ereignis-Zuordnungen und Eigenschaften (#309).
-    if not TAtlasFormChanges.Diff(Old, AContent.Text, FormChanges, FormProperties, Reason) then
-    begin
-      raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und ' +
-        'Eigenschaften (%s)', [Reason]);
-    end;
-    Reason := TAtlasIdeForms.Apply(AFileName, FormChanges, FormProperties);
-    if Reason <> '' then
-    begin
-      raise EInOutError.Create(Reason);
-    end;
-    Exit;
-  end;
-  FDisk.Write(AFileName, AContent);
 end;
 
 procedure TAtlasIdeUndoTarget.CreateFile(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);

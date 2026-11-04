@@ -503,15 +503,15 @@ begin
   try
     mFrame := TAtlasIssueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    Assert.IsTrue(mFrame.CommentEdit = mFrame.CommentEditor.Memo);
-    mFrame.CommentEditor.Bind(mRef);
-    mFrame.CommentEdit.Text := 'gesendet';
+    Assert.IsTrue(mFrame.Parts.CommentEdit = mFrame.Parts.Comment.Memo);
+    mFrame.Parts.Comment.Bind(mRef);
+    mFrame.Parts.CommentEdit.Text := 'gesendet';
     mFrame.CommentDone('');
-    Assert.AreEqual('', mFrame.CommentEdit.Text, 'Erfolg leert das Feld');
+    Assert.AreEqual('', mFrame.Parts.CommentEdit.Text, 'Erfolg leert das Feld');
     Assert.AreEqual(1, mAssist.Deleted, 'und löscht den Entwurf');
-    mFrame.CommentEdit.Text := 'bleibt';
+    mFrame.Parts.CommentEdit.Text := 'bleibt';
     mFrame.CommentDone('Fehler');
-    Assert.AreEqual('bleibt', mFrame.CommentEdit.Text, 'Fehler: Text bleibt');
+    Assert.AreEqual('bleibt', mFrame.Parts.CommentEdit.Text, 'Fehler: Text bleibt');
   finally
     mHost.Free;
   end;

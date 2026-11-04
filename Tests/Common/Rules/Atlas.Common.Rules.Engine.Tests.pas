@@ -51,6 +51,9 @@ type
     procedure UnknownRuleIdWithSuggestion;
     [Test]
     procedure UnknownRuleIdWithoutSuggestion;
+    /// <summary>#1458: Meldung und Korrektur auf Englisch.</summary>
+    [Test]
+    procedure UnknownRuleIdInEnglish;
     [Test]
     procedure UnknownRuleIdCanBeSwitchedOff;
     [Test]
@@ -108,6 +111,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Diagnostics.StackGuard,
+  Atlas.Common.Localization.Texts,
   Atlas.Tests.RuleAssert;
 
 type
@@ -525,6 +529,24 @@ begin
   Assert.IsTrue(Pos('wirkt nicht', Findings[0].Message) > 0, Findings[0].Message);
   // Kennungen der übergebenen Regeln, des Katalogs und "*" sind bekannt.
   TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker, *, with-statement'#13#10));
+end;
+
+procedure TRuleEngineTests.UnknownRuleIdInEnglish;
+var
+  mFindings: TArray<TRuleFinding>;
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mFindings := TRuleAssert.Findings(TMarkerRule.Create,
+      SourceWith('  Marker := 1; // lsp-ignore: empty-exept, marker'#13#10));
+    Assert.AreEqual(1, Integer(Length(mFindings)));
+    Assert.AreEqual('Unknown rule id "empty-exept"; probably "empty-except" is meant', mFindings[0].Message);
+    Assert.AreEqual('Replace with "empty-except"', mFindings[0].Fixes[0].Title);
+  finally
+    TAtlasLocale.Use(mSaved);
+  end;
 end;
 
 procedure TRuleEngineTests.UnknownRuleIdCanBeSwitchedOff;

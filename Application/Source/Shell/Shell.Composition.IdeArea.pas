@@ -10,6 +10,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Projects.Selection,
+  Atlas.Common.Pascal.FormatRoutines,
   Shell.Composition.Compile,
   Shell.Composition.Core,
   Shell.Composition.DiagnosticsArea,
@@ -50,6 +51,9 @@ type
     constructor Create(ACore: TShellCore; const AServices: TShellIdeAreaServices);
     /// <summary>Gibt Dateiänderungen, IDE und Projektwahl in dieser Reihenfolge frei.</summary>
     destructor Destroy; override;
+    /// <summary>Formatfunktionen für format-args: Vorgaben, "formatMethods" aus den Einstellungen und die
+    /// des IDE-Projekts der Datei.</summary>
+    function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
     property FileChanges: TShellFileChanges read FFileChanges;
     property Ide: TShellIde read FIde;
     property Selection: TProjectSelection read FSelection;
@@ -66,7 +70,14 @@ uses
   System.IOUtils,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Index.Adapters.CacheDirectory;
+  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.FormatArgs,
+  Shell.Workspace;
 
 constructor TShellIdeArea.Create(ACore: TShellCore; const AServices: TShellIdeAreaServices);
 begin
@@ -88,6 +99,29 @@ begin
   FreeAndNil(FSelection);
   FServices := Default(TShellIdeAreaServices);
   inherited;
+end;
+
+function TShellIdeArea.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TProjectInfo;
+  mContext: TIdeProjectContext;
+  mName: string;
+begin
+  Result := TFormatRoutines.Defaults;
+  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
+    'formatMethods', nil) do
+  begin
+    if Trim(mName) <> '' then
+    begin
+      Result := Result + [TFormatRoutines.Custom(mName, -1)];
+    end;
+  end;
+  mWorkspace := FCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
+  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIde.Project.Find(mProject.FileName, mContext) then
+  begin
+    Result := Result + mContext.FormatFunctions;
+  end;
 end;
 
 procedure TShellIdeArea.RefreshLater;

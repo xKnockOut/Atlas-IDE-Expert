@@ -8,7 +8,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 |---|---|---|---|---|---|---|
 | Allgemein | `delphiVersion` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl aus den installierten Versionen | #47, #258 |
 | Projekt | `minDelphiVersion` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl aller bekannten Delphi-Versionen | #1126 |
-| Allgemein | `language` | `"de"` | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #24 |
+| Allgemein | `language` | `""` | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #24, #1458 |
 | Allgemein | `encoding` | `"utf-8"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #121 |
 | Projekt | `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Vorgabe: aktives IDE-Projekt | #14, #24 |
 | Projekt | `config` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl aus der .dproj | #14, #46 |

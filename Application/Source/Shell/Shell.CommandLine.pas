@@ -4,6 +4,9 @@
 //
 //   --log <Datei>         Logdatei (wird fortgeschrieben)
 //   --log-level <Stufe>   debug, info, warning, error (Standard: info)
+//   --locale <Sprache>    de oder en (#1458): Sprache der Befunde und Meldungen ohne Client
+//                         (--check und die übrigen Befehle, --mcp); sonst language aus
+//                         settings.json, sonst Englisch. Der LSP-Server nimmt die Sprache aus initialize.
 //   --trace <Datei>       Mitschnitt aller JSON-Nachrichten
 //
 // Linter-Modus ohne Editor (#95):
@@ -103,6 +106,8 @@ type
     /// <summary>--log-names: Server-Log mit Pfaden und Namen statt anonymisiert (#647).</summary>
     LogNames: Boolean;
     TraceFile: string;
+    /// <summary>--locale (#1458): Sprache der Texte ohne Client, "de" oder "en"; '' = nicht angegeben.</summary>
+    Locale: string;
     /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
     CheckTarget: string;
     CheckFormat: TFindingsFormat;
@@ -197,6 +202,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Filter,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Architecture.Comparison;
 
 { TCommandLineOptions }
@@ -482,7 +488,7 @@ begin
     StringOption('--index-cache', @AOptions.IndexCacheFolder),
     StringOption('--architecture', @AOptions.ArchitectureFile), StringOption('--compare', @AOptions.CompareFile),
     StringOption('--replay', @AOptions.ReplayFile), StringOption('--hotspots', @AOptions.HotspotsFile),
-    StringOption('--query', @AOptions.QueryText)];
+    StringOption('--query', @AOptions.QueryText), StringOption('--locale', @AOptions.Locale)];
   Result.Flags := [FlagOption('--log-names', @AOptions.LogNames), FlagOption('--mcp', @AOptions.Mcp),
     FlagOption('--restricted', @AOptions.Restricted), FlagOption('--clear-cache', @AOptions.ClearCache),
     FlagOption('--include-uncommitted', @AOptions.IncludeUncommitted),
@@ -579,6 +585,18 @@ begin
   end;
 end;
 
+/// <summary>Verwirft eine unbekannte Sprache aus --locale mit Warnung (#1458).</summary>
+procedure CheckLocale(var AOptions: TCommandLineOptions);
+var
+  mLanguage: TTextLanguage;
+begin
+  if (AOptions.Locale <> '') and not TAtlasLocale.TryParse(AOptions.Locale, mLanguage) then
+  begin
+    AddWarning(AOptions, Format('Unbekannte Sprache "%s" für --locale, erlaubt sind de und en', [AOptions.Locale]));
+    AOptions.Locale := '';
+  end;
+end;
+
 class function TCommandLineOptions.Parse(const AArgs: TArray<string>): TCommandLineOptions;
 var
   mReader: TArgReader;
@@ -600,6 +618,7 @@ begin
       AddWarning(Result, Format('Unbekannter Parameter "%s" wird ignoriert', [mReader.Arg]));
     end;
   end;
+  CheckLocale(Result);
   // Mit --affected-tests gilt --include-uncommitted für dessen Basis, nicht als --changed.
   if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then
   begin
