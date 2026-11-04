@@ -20,14 +20,23 @@ uses
   Atlas.Common.Editing.CompilerFixes;
 
 type
+  /// <summary>Datei und Auswahl, für die Korrekturen gesucht werden.</summary>
+  TCompilerFixRequest = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Uri: string;
+    Range: TTextRange;
+    Context: TCompilerFixContext;
+  end;
+
   TLspCompilerFixes = class
   public
     /// <summary>Meldungen in der Form der Korrekturen.</summary>
     class function FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>; static;
-    /// <summary>Code-Aktionen für die Meldungen AMessages der Datei AUri auf den Zeilen von ARange.</summary>
-    class function Actions(AEnabled: Boolean; const AText: string; ATree: TSyntaxTree; const AUri: string;
-      const ARange: TTextRange; const AMessages: TArray<TCompilerMessage>;
-      const AContext: TCompilerFixContext): TArray<TJSONObject>; static;
+    /// <summary>Code-Aktionen für die Meldungen AMessages der Datei ARequest.Uri auf den Zeilen von
+    /// ARequest.Range.</summary>
+    class function Actions(AEnabled: Boolean; const ARequest: TCompilerFixRequest;
+      const AMessages: TArray<TCompilerMessage>): TArray<TJSONObject>; static;
   end;
 
 implementation
@@ -81,53 +90,66 @@ begin
   Result := False;
 end;
 
-class function TLspCompilerFixes.Actions(AEnabled: Boolean; const AText: string; ATree: TSyntaxTree;
-  const AUri: string; const ARange: TTextRange; const AMessages: TArray<TCompilerMessage>;
-  const AContext: TCompilerFixContext): TArray<TJSONObject>;
+/// <summary>Meldung AMessage bekommt Aktionen: auf den Zeilen der Auswahl, noch nicht gesehen und nicht schon
+/// von der uses-Aktion abgedeckt. Merkt sie sich in ASeen.</summary>
+function Wanted(const ARequest: TCompilerFixRequest; const AMessage: TFixMessage; var ASeen: TArray<string>): Boolean;
 var
-  Messages: TArray<TFixMessage>;
-  Message: TFixMessage;
-  Item: TCompilerFix;
-  Seen, Counted: TArray<string>;
-  Key: string;
+  mKey: string;
+  mNames: TArray<string>;
+begin
+  if (AMessage.Line < ARequest.Range.StartPos.Line) or (AMessage.Line > ARequest.Range.EndPos.Line) then
+  begin
+    Exit(False);
+  end;
+  // Dieselbe Meldung kommt bei mehreren Plattformen doppelt.
+  mKey := AMessage.Code + '@' + IntToStr(AMessage.Line) + '@' + AMessage.Text;
+  if IndexText(mKey, ASeen) >= 0 then
+  begin
+    Exit(False);
+  end;
+  ASeen := ASeen + [mKey];
+  if AMessage.Code <> 'E2003' then
+  begin
+    Exit(True);
+  end;
+  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  Result := (Length(mNames) = 0) or not OnName(ARequest.Tree, ARequest.Range.StartPos, mNames[0]);
+end;
+
+class function TLspCompilerFixes.Actions(AEnabled: Boolean; const ARequest: TCompilerFixRequest;
+  const AMessages: TArray<TCompilerMessage>): TArray<TJSONObject>;
+var
+  mMessages: TArray<TFixMessage>;
+  mMessage: TFixMessage;
+  mItem: TCompilerFix;
+  mSeen, mCounted: TArray<string>;
 begin
   Result := nil;
-  if not AEnabled or (ATree = nil) then
+  if not AEnabled or (ARequest.Tree = nil) then
   begin
     Exit;
   end;
-  Messages := FixMessages(AMessages);
-  Seen := nil;
-  Counted := nil;
-  for Message in Messages do
+  mMessages := FixMessages(AMessages);
+  mSeen := nil;
+  mCounted := nil;
+  for mMessage in mMessages do
   begin
-    if (Message.Line < ARange.StartPos.Line) or (Message.Line > ARange.EndPos.Line) then
+    if not Wanted(ARequest, mMessage, mSeen) then
     begin
       Continue;
     end;
-    // Dieselbe Meldung kommt bei mehreren Plattformen doppelt.
-    Key := Message.Code + '@' + IntToStr(Message.Line) + '@' + Message.Text;
-    if IndexText(Key, Seen) >= 0 then
+    for mItem in TCompilerFixes.Fixes(ARequest.Text, ARequest.Tree, mMessage, ARequest.Context) do
+    begin
+      Result := Result + [ToAction(ARequest.Uri, mItem)];
+    end;
+    if not TCompilerFixes.CanFixAll(mMessage.Code) or (IndexText(mMessage.Code, mCounted) >= 0) then
     begin
       Continue;
     end;
-    Seen := Seen + [Key];
-    if (Message.Code = 'E2003') and (Length(TCompilerFixes.QuotedNames(Message.Text)) > 0) and
-      OnName(ATree, ARange.StartPos, TCompilerFixes.QuotedNames(Message.Text)[0]) then
+    mCounted := mCounted + [mMessage.Code];
+    if TCompilerFixes.FixAll(ARequest.Text, ARequest.Tree, mMessages, mMessage.Code, ARequest.Context, mItem) then
     begin
-      Continue;
-    end;
-    for Item in TCompilerFixes.Fixes(AText, ATree, Message, AContext) do
-    begin
-      Result := Result + [ToAction(AUri, Item)];
-    end;
-    if TCompilerFixes.CanFixAll(Message.Code) and (IndexText(Message.Code, Counted) < 0) then
-    begin
-      Counted := Counted + [Message.Code];
-      if TCompilerFixes.FixAll(AText, ATree, Messages, Message.Code, AContext, Item) then
-      begin
-        Result := Result + [ToAction(AUri, Item)];
-      end;
+      Result := Result + [ToAction(ARequest.Uri, mItem)];
     end;
   end;
 end;
