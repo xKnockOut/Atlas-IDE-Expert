@@ -94,7 +94,11 @@ var
 begin
   mServices := Default(TShellCompileSetupServices);
   mServices.Logger := TLogger.Create;
-  mServices.Workspaces := FRegistry;
+  mServices.Workspaces :=
+    function: TShellWorkspaceRegistry
+    begin
+      Result := FRegistry;
+    end;
   mHost := TShellCompileSetup.NewHost(mServices);
   try
     Assert.IsNotNull(mHost);
