@@ -18,6 +18,9 @@ type
     /// <summary>#1108: offene Units zuerst, nicht geöffnete Units, aktive Unit ohne Befunde.</summary>
     [Test]
     procedure ProblemsWindowOpenFirstOptions;
+    /// <summary>Der alte Registry-Name ProblemsList (meist die Vorgabe „an“ von vor #909) gilt nicht mehr.</summary>
+    [Test]
+    procedure MessageListIgnoresFormerRegistryName;
     [Test]
     procedure SaveAndLoadRoundTrip;
     [Test]
@@ -183,7 +186,7 @@ begin
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, ASettings.PairGuideWidth, 'Blocklinien 1 px');
   Assert.AreEqual(75, ASettings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
-  Assert.IsFalse(ASettings.ProblemsList, 'Liste „Atlas-Probleme“ seit dem Prüffenster (#909) standardmäßig aus');
+  Assert.IsFalse(ASettings.ProblemsMessageList, 'Liste „Atlas-Probleme“ seit dem Prüffenster (#909) standardmäßig aus');
   Assert.IsTrue(ASettings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
   Assert.IsTrue(ASettings.Notes, 'Notizen standardmäßig an (#545)');
   Assert.IsTrue(ASettings.BookmarksNamed, 'Benannte Lesezeichen standardmäßig an (#622)');
@@ -304,7 +307,7 @@ begin
   ASettings.RedoKey := $C059;
   ASettings.UpdatesCheck := True;
   ASettings.BugReportAnonymize := False;
-  ASettings.ProblemsList := True;
+  ASettings.ProblemsMessageList := True;
   ASettings.PairOwners := False;
   ASettings.PairGuideWidth := 3;
   ASettings.PairGuideOpacity := 80;
@@ -380,7 +383,7 @@ begin
   Assert.AreEqual(3, ALoaded.PairGuideWidth);
   Assert.AreEqual(80, ALoaded.PairGuideOpacity);
   Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', ALoaded.PairColorsDark, 'einheitlich geschrieben');
-  Assert.IsTrue(ALoaded.ProblemsList, 'Liste „Atlas-Probleme“ eingeschaltet');
+  Assert.IsTrue(ALoaded.ProblemsMessageList, 'Liste „Atlas-Probleme“ eingeschaltet');
 end;
 /// <summary>Rundreise: Serverpfad, Tasten, Diagnose, Start und Zurücknehmen gelesen.</summary>
 procedure AssertRoundTripTools(const ALoaded: TAtlasPluginSettings);
@@ -964,7 +967,7 @@ begin
   ASettings.ProblemsLive := False;
   ASettings.FixBulk := False;
   ASettings.HoverProblemActions := False;
-  ASettings.ProblemsList := True;
+  ASettings.ProblemsMessageList := True;
   ASettings.ProblemsCompilerMerge := 'both';
   ASettings.ProblemsShowCompilerCode := False;
 end;
@@ -983,7 +986,7 @@ begin
   Assert.IsFalse(ALoaded.HoverProblemActions);
   Assert.AreEqual('both', ALoaded.ProblemsCompilerMerge);
   Assert.IsFalse(ALoaded.ProblemsShowCompilerCode);
-  Assert.IsTrue(ALoaded.ProblemsList);
+  Assert.IsTrue(ALoaded.ProblemsMessageList);
 end;
 procedure TAtlasPluginSettingsTests.ProblemsWindowOptions;
 var
@@ -1002,7 +1005,7 @@ begin
   Assert.IsTrue(Settings.ProblemsLive);
   Assert.IsTrue(Settings.FixBulk, 'Sammelkorrektur (#1352) an');
   Assert.IsTrue(Settings.HoverProblemActions);
-  Assert.IsFalse(Settings.ProblemsList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');
+  Assert.IsFalse(Settings.ProblemsMessageList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');
   // Gruppe „Compiler vorab“ (#1024).
   Assert.AreEqual('merge', Settings.ProblemsCompilerMerge);
   Assert.IsTrue(Settings.ProblemsShowCompilerCode);
@@ -1052,6 +1055,21 @@ begin
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
 end;
+procedure TAtlasPluginSettingsTests.MessageListIgnoresFormerRegistryName;
+var
+  mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mStore := TMemoryStore.Create;
+  mStore.WriteInteger('ProblemsList', 1);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.ProblemsMessageList, 'ProblemsList von vor #909 bleibt unbeachtet');
+  mStore.WriteInteger('ProblemsMessageList', 1);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.ProblemsMessageList, 'Neuer Name gilt');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasPluginSettingsTests);
   TDUnitX.RegisterTestFixture(TAtlasSettingsScopesTests);
