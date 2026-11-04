@@ -422,18 +422,24 @@ begin
 end;
 
 function TShellWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
+var
+  mInput: TLspQueryInput;
 begin
-  ASource := TLspQuery.Source(FIndex,
+  mInput.Index := FIndex;
+  mInput.EnsureUnit :=
     function(const AUnitName: string): Boolean
     begin
       Result := EnsureUnit(AUnitName);
-    end,
-    FRoot, AllFiles, FMain.State.Namespaces,
+    end;
+  mInput.Root := FRoot;
+  mInput.Files := AllFiles;
+  mInput.Namespaces := FMain.State.Namespaces;
+  mInput.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Assigned(FReadText) and FReadText(AFileName, AText);
-    end,
-    FMain.Configuration.Settings.References);
+    end;
+  ASource := TLspQuery.Source(mInput, FMain.Configuration.Settings.References);
   Result := True;
 end;
 

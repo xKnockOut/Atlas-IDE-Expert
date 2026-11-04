@@ -448,10 +448,10 @@ function TServerComposition.LifecycleCapabilities: TJSONObject;
 begin
   Result := BuildCapabilities;
   // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-  if TLspPullDiagnostics.ClientSupportsPull(FLifecycle.InitializeParams) then
+  if TLspPullProtocol.ClientSupportsPull(FLifecycle.InitializeParams) then
   begin
-    Result.AddPair('diagnosticProvider', TLspPullDiagnostics.Capability);
-    FPullDiagnostics.RefreshSupport := TLspPullDiagnostics.ClientSupportsRefresh(FLifecycle.InitializeParams);
+    Result.AddPair('diagnosticProvider', TLspPullProtocol.Capability);
+    FPullDiagnostics.RefreshSupport := TLspPullProtocol.ClientSupportsRefresh(FLifecycle.InitializeParams);
     FSyntaxDiagnostics.PullMode := True;
   end;
 end;

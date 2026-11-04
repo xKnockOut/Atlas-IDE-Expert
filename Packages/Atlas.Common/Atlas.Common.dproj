@@ -600,6 +600,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompactJson.pas"/>
