@@ -529,6 +529,8 @@ contains
   Atlas.Common.Lsp.PublishedMembers in 'Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas',
   Atlas.Common.Semantics.TypeInfoClasses in 'Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas',
   Atlas.Common.Lsp.Hover in 'Source\Lsp\Atlas.Common.Lsp.Hover.pas',
+  Atlas.Common.Lsp.Hover.Info in 'Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas',
+  Atlas.Common.Lsp.Hover.Lookup in 'Source\Lsp\Atlas.Common.Lsp.Hover.Lookup.pas',
   Atlas.Common.Lsp.HoverTypes in 'Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas',
   Atlas.Common.Lsp.Documentation in 'Source\Lsp\Atlas.Common.Lsp.Documentation.pas',
   Atlas.Common.Lsp.Rationale in 'Source\Lsp\Atlas.Common.Lsp.Rationale.pas',

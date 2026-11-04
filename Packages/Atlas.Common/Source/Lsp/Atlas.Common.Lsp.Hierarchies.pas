@@ -55,6 +55,17 @@ type
     Implementations: Integer;
   end;
 
+  /// <summary>Womit Aufrufe gesucht werden: Namensauflösung, Index (für Dispatch, darf nil sein), Lesen der
+  /// Dateien und Abbruch (darf nil sein).</summary>
+  THierarchyCallSource = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    ReadText: TReferenceReadText;
+    Cancellation: IJsonRpcCancellationToken;
+    class function Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const ACancellation: IJsonRpcCancellationToken): THierarchyCallSource; static;
+  end;
+
   TLspHierarchies = class
   public const
     PrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
@@ -71,7 +82,6 @@ type
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FSettingsFor: TReferenceSettingsProvider;
-    function NewResolver: TNameResolver;
     function Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
       ACall: Boolean): TJSONValue;
     function HandlePrepareType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -124,9 +134,8 @@ type
       const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<THierarchyCall>; overload; static;
     /// <summary>Wie oben, mit erschlossenen Aufrufen nach ASettings (#1119): je Aufrufer und Einstufung ein
     /// Eintrag.</summary>
-    class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText; const ASettings: TReferenceSettings;
-      const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>; overload; static;
+    class function IncomingCalls(const ASource: THierarchyCallSource; const AItem: THierarchyItem;
+      const AFiles: TArray<string>; const ASettings: TReferenceSettings): TArray<THierarchyCall>; overload; static;
     class function OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
       const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
       overload; static;
@@ -310,17 +319,51 @@ begin
   end;
 end;
 
+/// <summary>Stelle des Namens AName im Kopf von ANode; bei AQualified (TFoo.Bar) das letzte Vorkommen, sonst das
+/// erste. ANode selbst, wenn der Name im Kopf fehlt.</summary>
+function NameRangeIn(ATree: TSyntaxTree; ANode: TSyntaxNode; const AName: string; AQualified: Boolean): TTextRange;
+var
+  mToken: TPascalToken;
+  mIndex: Integer;
+begin
+  Result := NodeRange(ANode);
+  mIndex := ATree.FirstTokenFrom(ANode.StartOffset);
+  // Erst ab dem Knoten: Ein Semikolon davor (unit X;) beendete die Suche sonst vor dem Kopf, und der Name
+  // fehlte in SelectionRange (#1120).
+  while (mIndex <= High(ATree.Tokens)) and (ATree.Tokens[mIndex].Offset < ANode.StartOffset) do
+  begin
+    Inc(mIndex);
+  end;
+  while (mIndex <= High(ATree.Tokens)) and (ATree.Tokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    mToken := ATree.Tokens[mIndex];
+    if (mToken.Kind = TPascalTokenKind.Identifier) and
+      (SameText(mToken.Text, AName) or SameText(mToken.Text, '&' + AName)) then
+    begin
+      // Bei TFoo.Bar das letzte Vorkommen im Kopf; der Name folgt dem Typ.
+      Result := TTextRange.Create(mToken.StartPos, mToken.EndPos);
+      if not AQualified then
+      begin
+        Break;
+      end;
+    end;
+    if mToken.IsSymbol('(') or mToken.IsSymbol(';') or mToken.IsSymbol(':') then
+    begin
+      Break;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 /// <summary>Element für eine Routine im Baum (procedure TFoo.Bar → Bar in TFoo).</summary>
 function RoutineItem(ATree: TSyntaxTree; ANode: TSyntaxNode; const AFileName: string): THierarchyItem;
 var
-  Dot: Integer;
-  Token: TPascalToken;
-  mIndex: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', ANode.Name);
-  Result.Name := Copy(ANode.Name, Dot + 1, MaxInt);
-  Result.Container := Copy(ANode.Name, 1, Dot - 1);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', ANode.Name);
+  Result.Name := Copy(ANode.Name, mDot + 1, MaxInt);
+  Result.Container := Copy(ANode.Name, 1, mDot - 1);
+  if mDot > 0 then
   begin
     Result.SymbolKind := TIndexSymbolKind.Method;
   end
@@ -331,67 +374,198 @@ begin
   Result.UnitName := '';
   Result.FileName := AFileName;
   Result.Range := NodeRange(ANode);
-  Result.SelectionRange := Result.Range;
-  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
-  begin
-    Token := ATree.Tokens[mIndex];
-    if Token.Offset >= ANode.EndOffset then
-    begin
-      Break;
-    end;
-    // Erst ab dem Knoten: Ein Semikolon davor (unit X;) beendete die Suche sonst vor dem Kopf, und der Name
-    // fehlte in SelectionRange (#1120).
-    if Token.Offset < ANode.StartOffset then
-    begin
-      Continue;
-    end;
-    if (Token.Kind = TPascalTokenKind.Identifier) and
-      (SameText(Token.Text, Result.Name) or SameText(Token.Text, '&' + Result.Name)) then
-    begin
-      // Bei TFoo.Bar das letzte Vorkommen im Kopf; der Name folgt dem Typ.
-      Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
-      if Dot = 0 then
-      begin
-        Break;
-      end;
-    end;
-    if Token.IsSymbol('(') or Token.IsSymbol(';') or Token.IsSymbol(':') then
-    begin
-      Break;
-    end;
-  end;
+  Result.SelectionRange := NameRangeIn(ATree, ANode, Result.Name, mDot > 0);
+end;
+
+/// <summary>Routine mit Rumpf (keine Vorwärtsdeklaration).</summary>
+function IsRoutineWithBody(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil);
+end;
+
+/// <summary>ANode gehört zu AItem: gleicher Name mit Typ-Präfix AQualified bzw. dieselbe Startposition.</summary>
+function IsBodyOf(ANode: TSyntaxNode; const AItem: THierarchyItem; const AQualified: string): Boolean;
+begin
+  Result := SameText(ANode.Name, AQualified) or
+    ((ANode.StartPos = AItem.Range.StartPos) and SameText(ANode.Name, AItem.Name));
 end;
 
 /// <summary>Rumpf zur Routine AItem: gleicher Name mit Typ-Präfix bzw. dieselbe Startposition.</summary>
 function FindBody(ANode: TSyntaxNode; const AItem: THierarchyItem): TSyntaxNode;
 var
-  Root: TSyntaxNode;
-  Qualified, Name: string;
-  Start: TTextPosition;
+  mRoot: TSyntaxNode;
+  mItem: THierarchyItem;
+  mQualified: string;
 begin
   if AItem.Container <> '' then
   begin
-    Qualified := AItem.Container + '.' + AItem.Name;
+    mQualified := AItem.Container + '.' + AItem.Name;
   end
   else
   begin
-    Qualified := AItem.Name;
+    mQualified := AItem.Name;
   end;
-  Name := AItem.Name;
-  Start := AItem.Range.StartPos;
-  Root := ANode;
+  mItem := AItem;
+  mRoot := ANode;
   // Search statt Rekursion (Bericht M1); ANode selbst zählt wie früher nicht.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ACandidate <> Root) and (ACandidate.Kind = TSyntaxKind.RoutineDecl) and
-        (ACandidate.FindChild(TSyntaxKind.Block) <> nil) and (SameText(ACandidate.Name, Qualified) or
-        (ACandidate.StartPos = Start) and SameText(ACandidate.Name, Name)) then
+      if (ACandidate <> mRoot) and IsRoutineWithBody(ACandidate) and IsBodyOf(ACandidate, mItem, mQualified) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
+end;
+
+/// <summary>Formulare rufen nicht auf, sie verweisen nur.</summary>
+function IsFormFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.dfm') or SameText(ExtractFileExt(AFileName), '.fmx');
+end;
+
+procedure CheckCancelled(const ACancellation: IJsonRpcCancellationToken);
+begin
+  if Assigned(ACancellation) then
+  begin
+    ACancellation.ThrowIfCancellationRequested;
+  end;
+end;
+
+type
+  /// <summary>Gesammelte Aufrufe: je Schlüssel ein Eintrag mit allen Aufrufstellen, höchstens MaxCalls.</summary>
+  TCallCollector = class
+  private
+    FCalls: TList<THierarchyCall>;
+    FKeys: TDictionary<string, Integer>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Hängt ARange an den Eintrag zu AKey; False, wenn es ihn nicht gibt.</summary>
+    function Extend(const AKey: string; const ARange: TTextRange): Boolean;
+    /// <summary>Platz für einen neuen Eintrag?</summary>
+    function CanAdd: Boolean;
+    procedure Add(const AKey: string; const ACall: THierarchyCall);
+    function ToArray: TArray<THierarchyCall>;
+  end;
+
+  /// <summary>Syntaxbäume der gelesenen Dateien, je Datei einmal geparst.</summary>
+  TTreeSet = class
+  private
+    FTrees: TObjectDictionary<string, TSyntaxTree>;
+    FReadText: TReferenceReadText;
+  public
+    constructor Create(const AReadText: TReferenceReadText);
+    destructor Destroy; override;
+    /// <summary>Baum von AFileName; False, wenn sich die Datei nicht lesen lässt.</summary>
+    function TryGet(const AFileName: string; out ATree: TSyntaxTree): Boolean;
+  end;
+
+constructor TCallCollector.Create;
+begin
+  inherited Create;
+  FCalls := TList<THierarchyCall>.Create;
+  FKeys := TDictionary<string, Integer>.Create;
+end;
+
+destructor TCallCollector.Destroy;
+begin
+  FKeys.Free;
+  FCalls.Free;
+  inherited Destroy;
+end;
+
+function TCallCollector.Extend(const AKey: string; const ARange: TTextRange): Boolean;
+var
+  mSlot: Integer;
+  mCall: THierarchyCall;
+begin
+  Result := FKeys.TryGetValue(AKey, mSlot);
+  if Result then
+  begin
+    mCall := FCalls[mSlot];
+    mCall.Ranges := mCall.Ranges + [ARange];
+    FCalls[mSlot] := mCall;
+  end;
+end;
+
+function TCallCollector.CanAdd: Boolean;
+begin
+  Result := FCalls.Count < MaxCalls;
+end;
+
+procedure TCallCollector.Add(const AKey: string; const ACall: THierarchyCall);
+begin
+  FKeys.Add(AKey, FCalls.Count);
+  FCalls.Add(ACall);
+end;
+
+function TCallCollector.ToArray: TArray<THierarchyCall>;
+begin
+  Result := FCalls.ToArray;
+end;
+
+constructor TTreeSet.Create(const AReadText: TReferenceReadText);
+begin
+  inherited Create;
+  FTrees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
+  FReadText := AReadText;
+end;
+
+destructor TTreeSet.Destroy;
+begin
+  FTrees.Free;
+  inherited Destroy;
+end;
+
+function TTreeSet.TryGet(const AFileName: string; out ATree: TSyntaxTree): Boolean;
+var
+  mText: string;
+begin
+  Result := FTrees.TryGetValue(UpperCase(AFileName), ATree);
+  if not Result and Assigned(FReadText) and FReadText(AFileName, mText) then
+  begin
+    ATree := TSyntaxTreeCache.Parse(mText);
+    FTrees.Add(UpperCase(AFileName), ATree);
+    Result := True;
+  end;
+end;
+
+/// <summary>Neuer eingehender Aufruf von ACaller an ALocation; erschlossen über Interface oder virtual erreicht
+/// derselbe Aufruf auch andere Umsetzungen (#1122).</summary>
+function IncomingCall(const ACaller: THierarchyItem; const ALocation: TReferenceLocation): THierarchyCall;
+begin
+  Result.Item := ACaller;
+  Result.Ranges := [ALocation.Range];
+  Result.Confidence := ALocation.Confidence;
+  Result.Dispatch := TReferenceReason.None;
+  Result.Implementations := 0;
+  if ALocation.Confidence.Reason in [TReferenceReason.Interface_, TReferenceReason.Virtual] then
+  begin
+    Result.Dispatch := ALocation.Confidence.Reason;
+    Result.Implementations := ALocation.Confidence.Implementations;
+  end;
+end;
+
+/// <summary>Aufruf an ALocation dem Aufrufer zuordnen; außerhalb von Routinen bleibt er weg.</summary>
+procedure AddIncoming(ACalls: TCallCollector; ATrees: TTreeSet; const ALocation: TReferenceLocation);
+var
+  mTree: TSyntaxTree;
+  mCaller: THierarchyItem;
+  mKey: string;
+begin
+  if IsFormFile(ALocation.FileName) or not ATrees.TryGet(ALocation.FileName, mTree) or
+    not TLspHierarchies.CallerAt(mTree, ALocation.FileName, ALocation.Range.StartPos, mCaller) then
+  begin
+    Exit;
+  end;
+  // Sichere und erschlossene Aufrufe desselben Aufrufers getrennt, damit der Editor sie unterscheidet.
+  mKey := ItemKey(mCaller) + '|' + ALocation.Confidence.LevelName + '|' + ALocation.Confidence.ReasonName;
+  if not ACalls.Extend(mKey, ALocation.Range) and ACalls.CanAdd then
+  begin
+    ACalls.Add(mKey, IncomingCall(mCaller, ALocation));
+  end;
 end;
 
 /// <summary>Deklaration, deren Name an APosition steht (z. B. Methode in der Klasse).</summary>
@@ -412,6 +586,17 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ THierarchyCallSource }
+
+class function THierarchyCallSource.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): THierarchyCallSource;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.ReadText := AReadText;
+  Result.Cancellation := ACancellation;
 end;
 
 { THierarchyItem }
@@ -634,92 +819,37 @@ class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIn
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
-  Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, TReferenceSettings.SureOnly, ACancellation);
+  Result := IncomingCalls(THierarchyCallSource.Create(AResolver, AIndex, AReadText, ACancellation), AItem, AFiles,
+    TReferenceSettings.SureOnly);
 end;
 
-class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-  const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+class function TLspHierarchies.IncomingCalls(const ASource: THierarchyCallSource; const AItem: THierarchyItem;
+  const AFiles: TArray<string>; const ASettings: TReferenceSettings): TArray<THierarchyCall>;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Trees: TObjectDictionary<string, TSyntaxTree>;
-  Calls: TList<THierarchyCall>;
-  Keys: TDictionary<string, Integer>;
-  Locations: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Caller: THierarchyItem;
-  Call: THierarchyCall;
-  Key: string;
-  Slot: Integer;
+  mTree: TSyntaxTree;
+  mTrees: TTreeSet;
+  mCalls: TCallCollector;
+  mLocation: TReferenceLocation;
 begin
   Result := nil;
-  if not (Assigned(AReadText) and AReadText(AItem.FileName, Text)) then
-  begin
-    Exit;
-  end;
-  Trees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
-  Calls := TList<THierarchyCall>.Create;
-  Keys := TDictionary<string, Integer>.Create;
+  mTrees := TTreeSet.Create(ASource.ReadText);
+  mCalls := TCallCollector.Create;
   try
-    Tree := TSyntaxTreeCache.Parse(Text);
-    Trees.Add(UpperCase(AItem.FileName), Tree);
-    Locations := TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(AItem.FileName,
-      AItem.SelectionRange.StartPos, False, AFiles, AReadText), ASettings, ACancellation);
-    for Location in Locations do
+    if not mTrees.TryGet(AItem.FileName, mTree) then
     begin
-      if Assigned(ACancellation) then
-      begin
-        ACancellation.ThrowIfCancellationRequested;
-      end;
-      // Formulare rufen nicht auf, sie verweisen nur.
-      if SameText(ExtractFileExt(Location.FileName), '.dfm') or SameText(ExtractFileExt(Location.FileName), '.fmx') then
-      begin
-        Continue;
-      end;
-      if not Trees.TryGetValue(UpperCase(Location.FileName), Tree) then
-      begin
-        if not AReadText(Location.FileName, Text) then
-        begin
-          Continue;
-        end;
-        Tree := TSyntaxTreeCache.Parse(Text);
-        Trees.Add(UpperCase(Location.FileName), Tree);
-      end;
-      if not CallerAt(Tree, Location.FileName, Location.Range.StartPos, Caller) then
-      begin
-        Continue;
-      end;
-      // Sichere und erschlossene Aufrufe desselben Aufrufers getrennt, damit der Editor sie unterscheidet.
-      Key := ItemKey(Caller) + '|' + Location.Confidence.LevelName + '|' + Location.Confidence.ReasonName;
-      if Keys.TryGetValue(Key, Slot) then
-      begin
-        Call := Calls[Slot];
-        Call.Ranges := Call.Ranges + [Location.Range];
-        Calls[Slot] := Call;
-      end
-      else if Calls.Count < MaxCalls then
-      begin
-        Call.Item := Caller;
-        Call.Ranges := [Location.Range];
-        Call.Confidence := Location.Confidence;
-        // Erschlossen über Interface oder virtual: derselbe Aufruf erreicht auch andere Umsetzungen (#1122).
-        Call.Dispatch := TReferenceReason.None;
-        Call.Implementations := 0;
-        if Location.Confidence.Reason in [TReferenceReason.Interface_, TReferenceReason.Virtual] then
-        begin
-          Call.Dispatch := Location.Confidence.Reason;
-          Call.Implementations := Location.Confidence.Implementations;
-        end;
-        Keys.Add(Key, Calls.Count);
-        Calls.Add(Call);
-      end;
+      Exit;
     end;
-    Result := Calls.ToArray;
+    for mLocation in TLspReferences.Find(ASource.Resolver, ASource.Index, mTree,
+      TReferenceSearch.Create(AItem.FileName, AItem.SelectionRange.StartPos, False, AFiles, ASource.ReadText),
+      ASettings, ASource.Cancellation) do
+    begin
+      CheckCancelled(ASource.Cancellation);
+      AddIncoming(mCalls, mTrees, mLocation);
+    end;
+    Result := mCalls.ToArray;
   finally
-    Keys.Free;
-    Calls.Free;
-    Trees.Free;
+    mCalls.Free;
+    mTrees.Free;
   end;
 end;
 
@@ -761,81 +891,81 @@ begin
     Result = TReferenceReason.Interface_);
 end;
 
+/// <summary>Bezeichner ATokenIndex im Rumpf als Aufruf eintragen, wenn er eine Routine bezeichnet.</summary>
+procedure AddOutgoing(ACalls: TCallCollector; const ASource: THierarchyCallSource; ATree: TSyntaxTree;
+  const AFileName: string; const AToken: TPascalToken);
+var
+  mResolved: TResolvedSymbol;
+  mCall: THierarchyCall;
+  mKey: string;
+  mRange: TTextRange;
+begin
+  CheckCancelled(ASource.Cancellation);
+  mResolved := ASource.Resolver.Resolve(ATree, AFileName, AToken.StartPos);
+  if not (mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or not (mResolved.SymbolKind in RoutineKinds) then
+  begin
+    Exit;
+  end;
+  mCall.Item := FromResolved(mResolved);
+  mKey := ItemKey(mCall.Item);
+  mRange := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  if not ACalls.Extend(mKey, mRange) and ACalls.CanAdd then
+  begin
+    mCall.Ranges := [mRange];
+    mCall.Confidence := TReferenceConfidence.Sure;
+    mCall.Dispatch := TLspHierarchies.DispatchOf(ASource.Index, mResolved, mCall.Implementations);
+    ACalls.Add(mKey, mCall);
+  end;
+end;
+
+/// <summary>Aufrufe aus dem Block ABlock: jeder Bezeichner, der eine Routine bezeichnet.</summary>
+procedure CollectOutgoing(ACalls: TCallCollector; const ASource: THierarchyCallSource; ATree: TSyntaxTree;
+  const AFileName: string; ABlock: TSyntaxNode);
+var
+  mIndex: Integer;
+  mToken: TPascalToken;
+begin
+  for mIndex := ATree.FirstTokenFrom(ABlock.StartOffset) to High(ATree.Tokens) do
+  begin
+    mToken := ATree.Tokens[mIndex];
+    if mToken.Offset >= ABlock.EndOffset then
+    begin
+      Break;
+    end;
+    if (mToken.Offset >= ABlock.StartOffset) and (mToken.Kind = TPascalTokenKind.Identifier) then
+    begin
+      AddOutgoing(ACalls, ASource, ATree, AFileName, mToken);
+    end;
+  end;
+end;
+
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Body, Block: TSyntaxNode;
-  Token: TPascalToken;
-  mIndex: Integer;
-  Resolved: TResolvedSymbol;
-  Callee: THierarchyItem;
-  Calls: TList<THierarchyCall>;
-  Keys: TDictionary<string, Integer>;
-  Call: THierarchyCall;
-  Key: string;
-  Slot: Integer;
+  mText: string;
+  mTree: TSyntaxTree;
+  mBody: TSyntaxNode;
+  mCalls: TCallCollector;
 begin
   Result := nil;
-  if not (Assigned(AReadText) and AReadText(AItem.FileName, Text)) then
+  if not (Assigned(AReadText) and AReadText(AItem.FileName, mText)) then
   begin
     Exit;
   end;
-  Tree := TSyntaxTreeCache.Parse(Text);
-  Calls := TList<THierarchyCall>.Create;
-  Keys := TDictionary<string, Integer>.Create;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  mCalls := TCallCollector.Create;
   try
-    Body := FindBody(Tree.Root, AItem);
-    if Body = nil then
+    mBody := FindBody(mTree.Root, AItem);
+    if mBody <> nil then
     begin
-      Exit;
+      CollectOutgoing(mCalls, THierarchyCallSource.Create(AResolver, AIndex, AReadText, ACancellation), mTree,
+        AItem.FileName, mBody.FindChild(TSyntaxKind.Block));
+      Result := mCalls.ToArray;
     end;
-    Block := Body.FindChild(TSyntaxKind.Block);
-    for mIndex := Tree.FirstTokenFrom(Block.StartOffset) to High(Tree.Tokens) do
-    begin
-      Token := Tree.Tokens[mIndex];
-      if Token.Offset >= Block.EndOffset then
-      begin
-        Break;
-      end;
-      if (Token.Offset < Block.StartOffset) or (Token.Kind <> TPascalTokenKind.Identifier) then
-      begin
-        Continue;
-      end;
-      if Assigned(ACancellation) then
-      begin
-        ACancellation.ThrowIfCancellationRequested;
-      end;
-      Resolved := AResolver.Resolve(Tree, AItem.FileName, Token.StartPos);
-      if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or not (Resolved.SymbolKind in RoutineKinds) then
-      begin
-        Continue;
-      end;
-      Callee := FromResolved(Resolved);
-      Key := ItemKey(Callee);
-      if Keys.TryGetValue(Key, Slot) then
-      begin
-        Call := Calls[Slot];
-        Call.Ranges := Call.Ranges + [TTextRange.Create(Token.StartPos, Token.EndPos)];
-        Calls[Slot] := Call;
-      end
-      else if Calls.Count < MaxCalls then
-      begin
-        Call.Item := Callee;
-        Call.Ranges := [TTextRange.Create(Token.StartPos, Token.EndPos)];
-        Call.Confidence := TReferenceConfidence.Sure;
-        Call.Dispatch := DispatchOf(AIndex, Resolved, Call.Implementations);
-        Keys.Add(Key, Calls.Count);
-        Calls.Add(Call);
-      end;
-    end;
-    Result := Calls.ToArray;
   finally
-    Keys.Free;
-    Calls.Free;
-    Tree.Free;
+    mCalls.Free;
+    mTree.Free;
   end;
 end;
 
@@ -961,10 +1091,11 @@ begin
   end;
 end;
 
-function TLspHierarchies.NewResolver: TNameResolver;
+function NewResolver(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+  const ANamespaces: TArray<string>): TNameResolver;
 begin
-  Result := TNameResolver.Create(FIndex, FEnsureUnit);
-  Result.Namespaces := Namespaces;
+  Result := TNameResolver.Create(AIndex, AEnsureUnit);
+  Result.Namespaces := ANamespaces;
 end;
 
 function TLspHierarchies.Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
@@ -994,7 +1125,7 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := NewResolver;
+  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
     if ACall then
     begin
@@ -1032,7 +1163,7 @@ function TLspHierarchies.HandleSupertypes(const AParams: TJSONValue;
 var
   Resolver: TNameResolver;
 begin
-  Resolver := NewResolver;
+  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
     Result := ItemsToJson(Supertypes(Resolver, ReadItem(AParams), FReadText));
   finally
@@ -1071,9 +1202,10 @@ begin
   begin
     Settings := TReferenceSettings.Default;
   end;
-  Resolver := NewResolver;
+  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
-    Result := CallsToJson(IncomingCalls(Resolver, FIndex, Item, Files, FReadText, Settings, ACancellation), 'from');
+    Result := CallsToJson(IncomingCalls(THierarchyCallSource.Create(Resolver, FIndex, FReadText, ACancellation), Item,
+      Files, Settings), 'from');
   finally
     Resolver.Free;
   end;
@@ -1084,7 +1216,7 @@ function TLspHierarchies.HandleOutgoing(const AParams: TJSONValue;
 var
   Resolver: TNameResolver;
 begin
-  Resolver := NewResolver;
+  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
     Result := CallsToJson(OutgoingCalls(Resolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
   finally
