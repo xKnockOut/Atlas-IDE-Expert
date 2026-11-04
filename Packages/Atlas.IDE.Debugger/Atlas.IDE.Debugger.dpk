@@ -85,6 +85,8 @@ contains
   Atlas.UI.Debug.EvaluateFrame in 'Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas' {AtlasDebugEvaluateFrame: TFrame},
   Atlas.IDE.Debug.EvaluateWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas',
   Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas',
+  Atlas.IDE.Debug.EvaluateHook in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateHook.pas',
+  Atlas.IDE.Debug.EvaluateStore in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateStore.pas',
   Atlas.Core.Debug.AccessViolation in 'Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas',
   Atlas.UI.Debug.AccessViolation in 'Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas',
   Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',
@@ -95,6 +97,7 @@ contains
   Atlas.IDE.Debug.StepFilterWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilterWindow.pas',
   Atlas.IDE.Debug.StepFilter in 'Source\IDE\Debug\Atlas.IDE.Debug.StepFilter.pas',
   Atlas.IDE.Debug.Report in 'Source\IDE\Debug\Atlas.IDE.Debug.Report.pas',
+  Atlas.IDE.Debug.Composition.Values in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas',
   Atlas.IDE.Debug.Composition in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas';
 
 end.

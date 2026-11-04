@@ -114,10 +114,13 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.AccessViolationUnderline.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Breakpoints.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.Values.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DialogCompletion.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateHook.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateStore.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Evaluator.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.EventBreak.pas"/>
