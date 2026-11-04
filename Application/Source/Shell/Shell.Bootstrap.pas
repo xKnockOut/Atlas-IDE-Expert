@@ -13,6 +13,7 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts;
 
@@ -20,7 +21,11 @@ type
   TShellBootstrap = class
   public
     /// <summary>Datei lesen wie der Server (Kodierung erkennen); False und '' ohne Datei.</summary>
-    class function ReadSourceText(const AFileName: string; out AText: string): Boolean; static;
+    class function ReadSourceText(const AFileName: string; out AText: string): Boolean; overload; static;
+    /// <summary>Wie oben, geöffnete Dokumente aus ADocuments haben aber Vorrang vor der Datei auf der Platte.
+    /// </summary>
+    class function ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+      out AText: string): Boolean; overload; static;
     /// <summary>Projekte der einzigen .groupproj in ARoot (#648); leer ohne oder mit mehreren Gruppen.</summary>
     class function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>; static;
     /// <summary>Projekte der Projektgruppe AGroupFile; leer, wenn sie nicht lesbar ist (Warnung im Log).</summary>
@@ -52,6 +57,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.GroupReader;
 
 class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
@@ -67,6 +73,19 @@ begin
   begin
     AText := '';
   end;
+end;
+
+class function TShellBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+  out AText: string): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  if (ADocuments <> nil) and ADocuments.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
+  begin
+    AText := mDocument.Text;
+    Exit(True);
+  end;
+  Result := ReadSourceText(AFileName, AText);
 end;
 
 class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;

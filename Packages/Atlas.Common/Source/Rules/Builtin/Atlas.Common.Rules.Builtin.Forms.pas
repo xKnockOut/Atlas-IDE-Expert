@@ -72,6 +72,7 @@ uses
   System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Builtin.FormReferences,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -1272,6 +1273,8 @@ begin
   ARegistry.Register(TFormAutoCreateAndManualRule.Create);
   ARegistry.Register(TInheritedFormHandlerRule.Create);
   ARegistry.Register(TSelfFreeInEventHandlerRule.Create);
+  // dfm-reference-unit-missing gehört zur Gruppe forms, steht aber in eigener Unit.
+  ARegistry.Register(TDfmReferenceUnitMissingRule.Create);
 end;
 
 end.

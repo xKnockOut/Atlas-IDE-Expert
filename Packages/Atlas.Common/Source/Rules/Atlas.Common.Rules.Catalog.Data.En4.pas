@@ -6,7 +6,8 @@
 interface
 
 const
-  CatalogLinesEn4: array[0..993] of string = (
+  CatalogLinesEn4: array[0..1004] of string = (
+    '        "E2178",',
     '        "E2179",',
     '        "E2180",',
     '        "E2181",',
@@ -590,6 +591,21 @@ const
     'ree.",',
     '      "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",',
     '      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"',
+    '    },',
+    '    {',
+    '      "id": "dfm-reference-unit-missing",',
+    '      "name": "Form file refers to a module whose unit is not in the uses clause",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "forms",',
+    '      "description": "A property in the form file points to a component of another form, frame or data module (Connection = Form1.Connection), but the unit of that module is neither in the interface n' +
+    'or in the implementation uses clause. When the form is opened, the IDE only opens the modules from the uses clause along with it; otherwise the reference stays empty and is lost when the form is saved' +
+    '. At run time the VCL only resolves the reference while a module of that name exists. The module is the name of the root component (Form1, not TForm1). Its unit comes from the .dpr of the project (Uni' +
+    't1 in ''Unit1.pas'' {Form1}, high confidence) or else from the index: a global variable of that name in the interface of a unit that declares its type as a class (medium confidence). Silent for referenc' +
+    'es to the own form, to own components (embedded frames such as Frame11.Button1) and to modules whose unit is known neither from the .dpr nor from the index. Reported at the field of the component that' +
+    ' holds the reference, otherwise at the form class; the line in the form file is shown as a related location. Quick fix: add the unit to the implementation uses clause, as the IDE offers.",',
+    '      "bad": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\n{$R *.dfm}",',
+    '      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}"',
     '    },',
     '    {',
     '      "id": "parallel-for-shared-write",',

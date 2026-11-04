@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEn3: array[0..1236] of string = (
+  CatalogLinesEn3: array[0..1235] of string = (
     '    {',
     '      "id": "transaction-without-rollback",',
     '      "name": "Transaction without Rollback",',
@@ -1391,9 +1391,10 @@ const
     '      "severity": "hint",',
     '      "group": "style",',
     '      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same ' +
-    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} bran' +
-    'ches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where th' +
-    'e same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",',
+    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep, units the form file refers to (a glo' +
+    'bal variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove' +
+    ' the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index ' +
+    '(--no-index) and with syntax errors.",',
     '      "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",',
     '      "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",',
     '      "safeFix": true',
@@ -1505,8 +1506,7 @@ const
     '        "E2166",',
     '        "E2175",',
     '        "E2176",',
-    '        "E2177",',
-    '        "E2178",');
+    '        "E2177",');
 
 implementation
 

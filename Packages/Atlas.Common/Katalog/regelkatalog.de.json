@@ -1790,7 +1790,7 @@
     {
       "id": "unused-uses",
       "name": "Ungenutzte Unit im uses",
-      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."
+      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep, Units, auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."
     },
     {
       "id": "message-method-invalid",
@@ -2023,6 +2023,11 @@
       "id": "self-free-in-event-handler",
       "name": "Formular gibt sich im eigenen Ereignis frei",
       "description": "Free, Destroy, DisposeOf oder FreeAndNil auf Self bzw. auf die globale Variable der eigenen Formularklasse als Anweisung in einem Ereignis-Handler des Formulars oder eines seiner Controls. Nach der Rückkehr greift die VCL noch auf das Objekt zu: Zugriffsverletzung. Richtig ist Release oder Action := caFree in OnClose. Ereignis-Handler sind die Methoden aus der Formulardatei und Methoden mit einem Parameter Sender: TObject; ein Formular ist die Wurzelklasse der Formulardatei mit ClientWidth bzw. ClientHeight oder eine direkt von TForm bzw. TCustomForm abgeleitete Klasse (Rahmen und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken zählen nicht. Still ohne Formulardatei. Sicherheit hoch. Korrektur: Free durch Release ersetzen, in OnClose (var Action: TCloseAction) durch Action := caFree."
+    },
+    {
+      "id": "dfm-reference-unit-missing",
+      "name": "Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht",
+      "description": "Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit aber weder im interface- noch im implementation-uses steht. Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL den Verweis nur auf, solange ein Modul dieses Namens existiert. Das Modul ist der Name der Wurzelkomponente (Form1, nicht TForm1). Seine Unit kommt aus der .dpr des Projekts (Unit1 in 'Unit1.pas' {Form1}, Sicherheit hoch), sonst aus dem Index: globale Variable dieses Namens im interface einer Unit, die ihren Typ als Klasse deklariert (Sicherheit mittel). Still bleibt die Regel bei Verweisen auf das eigene Formular, auf eigene Komponenten (eingebettete Rahmen wie Frame11.Button1) und auf Module, deren Unit weder .dpr noch Index kennen. Gemeldet wird am Feld der Komponente, die den Verweis hält, sonst an der Formularklasse; die Zeile der Formulardatei steht als weitere Stelle dabei. Korrektur: die Unit ins implementation-uses aufnehmen, wie es die IDE anbietet."
     },
     {
       "id": "parallel-for-shared-write",

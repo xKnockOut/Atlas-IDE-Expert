@@ -66,6 +66,7 @@ type
     function SortUsesOf(const AUri: string): Boolean;
     function SortUsesByNamespaceOf(const AUri: string): Boolean;
     function IncludePathsOf(const AUri: string): TArray<string>;
+    function FormModulesOf(const AUri: string): TArray<string>;
   public
     constructor Create(const AServices: TShellCodeActionServices);
     destructor Destroy; override;
@@ -81,8 +82,10 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Dfm.FormModel,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.FormFiles,
+  Shell.Bootstrap,
   Shell.Platform;
 
 /// <summary>Code-Aktion für binär gespeicherte Formulare (#122): Umwandeln in Text.</summary>
@@ -107,8 +110,10 @@ begin
     end;
 end;
 
-/// <summary>Was der Index über eine Unit für die uses-Analyse weiß; lädt sie bei Bedarf über AEnsureUnit.</summary>
-function UsesInfoFunc(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc): TUsesUnitInfoFunc;
+/// <summary>Was der Index über eine Unit für die uses-Analyse weiß; lädt sie bei Bedarf über AEnsureUnit.
+/// AModules: Module, auf die die Formulardatei der Unit verweist (UsedByForm).</summary>
+function UsesInfoFunc(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+  const AModules: TArray<string>): TUsesUnitInfoFunc;
 begin
   Result :=
     function(const AUnitName: string): TUsesUnitInfo
@@ -129,6 +134,8 @@ begin
         if mSymbol.InInterface then
         begin
           Result.Names := Result.Names + [mSymbol.Name];
+          Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, AModules) and
+            (mSymbol.Kind = TIndexSymbolKind.Variable));
         end;
       end;
     end;
@@ -220,6 +227,25 @@ begin
   Result := FServices.WorkspaceOf(AUri).IncludePaths;
 end;
 
+function TShellCodeActions.FormModulesOf(const AUri: string): TArray<string>;
+var
+  mFileName, mText: string;
+begin
+  Result := nil;
+  mFileName := TDocumentUris.ToPath(AUri);
+  if not SameText(ExtractFileExt(mFileName), '.pas') then
+  begin
+    Exit;
+  end;
+  // Verweise der Formulardatei auf andere Module halten deren uses-Eintrag (dfm-reference-unit-missing).
+  // Offene Dokumente zuerst: Der Designer schickt den ungespeicherten Stand der Formulardatei (#402).
+  if TShellBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.dfm'), mText) or
+    TShellBootstrap.ReadSourceText(FServices.Documents, ChangeFileExt(mFileName, '.fmx'), mText) then
+  begin
+    Result := TFormModel.ForeignModulesOf(mText);
+  end;
+end;
+
 function TShellCodeActions.UsesContextOf(const AUri: string; out AContext: TUsesContext): Boolean;
 var
   mWorkspace: TShellCodeActionWorkspace;
@@ -228,7 +254,7 @@ begin
   mWorkspace := FServices.WorkspaceOf(AUri);
   AContext.Keep := mWorkspace.UsesKeep;
   AContext.Namespaces := mWorkspace.Namespaces;
-  AContext.Info := UsesInfoFunc(FServices.Index, FServices.EnsureUnit);
+  AContext.Info := UsesInfoFunc(FServices.Index, FServices.EnsureUnit, FormModulesOf(AUri));
   AContext.Declaring := DeclaringFunc(FServices.Index);
   Result := True;
 end;

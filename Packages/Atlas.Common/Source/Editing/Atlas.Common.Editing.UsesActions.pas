@@ -232,6 +232,11 @@ var
   Mask: Integer;
 begin
   Result := 0;
+  // Verweis der Formulardatei auf ein Modul der Unit: Die IDE braucht den Eintrag, der Code nennt ihn nicht.
+  if AInfo.UsedByForm then
+  begin
+    Result := InImplementationPart;
+  end;
   // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format.
   if AIdentifiers.TryGetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), Mask) then
   begin

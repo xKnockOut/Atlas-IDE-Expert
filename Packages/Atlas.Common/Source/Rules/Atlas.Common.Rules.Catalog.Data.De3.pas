@@ -6,7 +6,17 @@
 interface
 
 const
-  CatalogLinesDe3: array[0..54] of string = (
+  CatalogLinesDe3: array[0..60] of string = (
+    '      "name": "Typargument verletzt eine Einschränkung",',
+    '      "description": "Ein Typargument erfüllt die Einschränkung seines Typparameters nicht: class (wie E2511), record (wie E2512), constructor (wie E2513), ein Interface (wie E2514) oder eine Basiskla' +
+    'sse (wie E2515). In Methoden eines generischen Typs dieser Datei meldet die Regel außerdem T.Create ohne constructor-Einschränkung (wie E2568) und Methodenaufrufe auf Werten eines Typparameters ganz o' +
+    'hne Einschränkung (wie E2571). Den generischen Typ löst die Namensauflösung samt Zahl der Typparameter auf, seine Einschränkungen stammen aus seiner Deklaration in der Datei oder im Symbolindex. Argum' +
+    'ente, die selbst Typparameter sind, Aliase und Typen mit unvollständiger Vorfahrenkette meldet die Regel nicht. Korrektur für einen Typparameter dieser Datei, der allein in seiner Gruppe steht: die Ei' +
+    'nschränkung ergänzen (T: class, constructor bzw. T: class)."',
+    '    },',
+    '    {',
+    '      "id": "generic-inference-failed",',
+    '      "name": "Typargumente lassen sich nicht ableiten",',
     '      "description": "Ein Aufruf einer generischen Methode ohne Typargumente, deren Typparameter sich aus den Argumenten nicht ableiten lassen: ein Typparameter, der in keinem Parameter vorkommt, etwa' +
     ' nur im Ergebnis (wie E2531), oder Argumente verschiedener Art (Zahl, Zeichenkette, Boolean) für Parameter, deren Typ derselbe Typparameter ist (wie E2532). E2531 meldet die Regel als Anweisung, als A' +
     'ufruf mit Klammern und auf der rechten Seite einer Zuweisung an einen Wert bekannten, nicht prozeduralen Typs, und nur, wenn jede Überladung einen solchen Typparameter hat. E2532 meldet sie nur bei ge' +
