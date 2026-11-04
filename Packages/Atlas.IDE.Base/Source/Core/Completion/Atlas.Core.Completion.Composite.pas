@@ -85,6 +85,8 @@ type
     FCurrent: TQueryState;
     FCurrentRef: IInterface;
     FTimeLimitMs: Integer;
+    /// <summary>Quelle antwortet nicht in der Zeit: Teil abschließen, Abbruch anfordern, melden.</summary>
+    procedure Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
     procedure QueryOne(const AEntry: TEntry; const AContext: TAtlasContext; const APart: IAtlasCompletionSink);
   public
     /// <summary>Name einer Quelle ohne IAtlasNamedProvider.</summary>
@@ -300,6 +302,19 @@ begin
   end;
 end;
 
+procedure TAtlasCompletionProviders.Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
+begin
+  // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
+  APart.Complete;
+  try
+    AEntry.Provider.Cancel;
+  except
+    on E: Exception do
+      TAtlasGuard.ReportProvider(AEntry.Name, E);
+  end;
+  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
+    [TimeLimitOf(FTimeLimitMs)]));
+end;
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
   const APart: IAtlasCompletionSink);
 var
@@ -352,18 +367,7 @@ begin
         TAtlasGuard.ReportProvider(AEntry.Name, Error);
       end;
   else
-    begin
-      // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
-      Part.Complete;
-      try
-        Provider.Cancel;
-      except
-        on E: Exception do
-          TAtlasGuard.ReportProvider(AEntry.Name, E);
-      end;
-      TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
-        [TimeLimitOf(FTimeLimitMs)]));
-    end;
+    Abandon(AEntry, Part);
   end;
 end;
 

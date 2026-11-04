@@ -92,7 +92,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
-  Atlas.Common.Rules.Builtin.TypeChecks,
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Text.Lines;
 
 const

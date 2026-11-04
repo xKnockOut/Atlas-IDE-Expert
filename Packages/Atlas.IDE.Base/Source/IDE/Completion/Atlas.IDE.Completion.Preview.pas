@@ -191,7 +191,7 @@ begin
       begin
         TopRow := Context.EditView.TopRow;
       end;
-      TAtlasIdeElements.Painted(FElement, Context.FileName, FLine - 1, '',
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(FElement, Context.FileName, FLine - 1, ''),
         TRect.Create(Cell.Left, Rect.Top, Cell.Left + Size.cx, Rect.Bottom), TopRow, Rect.Height);
     finally
       Italic.Free;

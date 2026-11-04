@@ -86,7 +86,8 @@ type
     function HasTipState: Boolean;
   end;
 
-  TAtlasCommandUsage = class
+  /// <summary>Dateinamen, Format und Hilfen der Befehlsnutzung; Grundlage von TAtlasCommandUsage.</summary>
+  TAtlasCommandUsageFormat = class
   public const
     FormatVersion = 1;
     /// <summary>Zustand der Tipps (#600) und Abschnitte wie "discover" (#757).</summary>
@@ -95,6 +96,21 @@ type
     UsageFileName = 'usage.json';
     /// <summary>Ab so vielen Aufrufen insgesamt gilt „selten per Tastatur“.</summary>
     RarelyMinUses = 3;
+  public
+    /// <summary>Selten per Tastatur: mindestens RarelyMinUses Aufrufe, davon weniger als ein Viertel über das
+    /// Kürzel.</summary>
+    class function IsRarelyByKeyboard(AMouse, AKeyboard: Integer): Boolean; static;
+    /// <summary>&lt;ALocalAppData&gt;\Atlas\shortcut-tips.json.</summary>
+    class function DefaultFile(const ALocalAppData: string): string; static;
+    /// <summary>&lt;ALocalAppData&gt;\Atlas\usage.json (#757).</summary>
+    class function DefaultUsageFile(const ALocalAppData: string): string; static;
+    /// <summary>Zeit als "yyyy-mm-ddThh:nn:ss"; '' für 0.</summary>
+    class function TimeText(ATime: TDateTime): string; static;
+    /// <summary>Zeit aus TimeText (auch mit Bruchteilen und "Z"); 0, wenn nicht lesbar.</summary>
+    class function TimeOf(const AText: string): TDateTime; static;
+  end;
+
+  TAtlasCommandUsage = class(TAtlasCommandUsageFormat)
   private
     FEntries: TDictionary<string, TAtlasCommandUsageEntry>;
     /// <summary>Unbekannte Felder oberster Ebene von shortcut-tips.json als JSON-Text eines Objekts; '' ohne.
@@ -105,25 +121,13 @@ type
     FTipsChanged: Boolean;
     FCountsChanged: Boolean;
     FTracking: Boolean;
-    class function KeyOf(const AId: string): string; static;
     function GetChanged: Boolean;
     procedure SetChanged(AValue: Boolean);
     procedure ClearCounts;
     function HasAnyCounts: Boolean;
   public
-    /// <summary>Selten per Tastatur: mindestens RarelyMinUses Aufrufe, davon weniger als ein Viertel über das
-    /// Kürzel.</summary>
-    class function IsRarelyByKeyboard(AMouse, AKeyboard: Integer): Boolean; static;
     constructor Create;
     destructor Destroy; override;
-    /// <summary>&lt;ALocalAppData&gt;\Atlas\shortcut-tips.json.</summary>
-    class function DefaultFile(const ALocalAppData: string): string; static;
-    /// <summary>&lt;ALocalAppData&gt;\Atlas\usage.json (#757).</summary>
-    class function DefaultUsageFile(const ALocalAppData: string): string; static;
-    /// <summary>Zeit als "yyyy-mm-ddThh:nn:ss"; '' für 0.</summary>
-    class function TimeText(ATime: TDateTime): string; static;
-    /// <summary>Zeit aus TimeText (auch mit Bruchteilen und "Z"); 0, wenn nicht lesbar.</summary>
-    class function TimeOf(const AText: string): TDateTime; static;
     /// <summary>Alles leeren (Tracking bleibt).</summary>
     procedure Clear;
     /// <summary>Liest shortcut-tips.json (auch Zähler älterer Fassungen); False bei kaputtem JSON (dann leer) oder
@@ -221,7 +225,7 @@ begin
   Result := (LastTip > 0) or Never;
 end;
 
-class function TAtlasCommandUsage.IsRarelyByKeyboard(AMouse, AKeyboard: Integer): Boolean;
+class function TAtlasCommandUsageFormat.IsRarelyByKeyboard(AMouse, AKeyboard: Integer): Boolean;
 var
   Total: Integer;
 begin
@@ -347,7 +351,8 @@ begin
   inherited;
 end;
 
-class function TAtlasCommandUsage.KeyOf(const AId: string): string;
+/// <summary>Schlüssel im Wörterbuch: Kennung ohne Rand, groß.</summary>
+function KeyOf(const AId: string): string;
 begin
   Result := UpperCase(Trim(AId));
 end;
@@ -363,17 +368,17 @@ begin
   FCountsChanged := AValue;
 end;
 
-class function TAtlasCommandUsage.DefaultFile(const ALocalAppData: string): string;
+class function TAtlasCommandUsageFormat.DefaultFile(const ALocalAppData: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + FileName;
 end;
 
-class function TAtlasCommandUsage.DefaultUsageFile(const ALocalAppData: string): string;
+class function TAtlasCommandUsageFormat.DefaultUsageFile(const ALocalAppData: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + UsageFileName;
 end;
 
-class function TAtlasCommandUsage.TimeText(ATime: TDateTime): string;
+class function TAtlasCommandUsageFormat.TimeText(ATime: TDateTime): string;
 var
   Year, Month, Day, Hour, Minute, Second, MSec: Word;
 begin
@@ -387,7 +392,14 @@ begin
   Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2d', [Year, Month, Day, Hour, Minute, Second]);
 end;
 
-class function TAtlasCommandUsage.TimeOf(const AText: string): TDateTime;
+/// <summary>Hat AText die Form "yyyy-mm-ddThh:nn:ss" (auch mit Leerzeichen statt T, Rest danach erlaubt)?</summary>
+function HasTimeShape(const AText: string): Boolean;
+begin
+  Result := (Length(AText) >= 19) and (AText[5] + AText[8] = '--') and CharInSet(AText[11], ['T', 't', ' ']) and
+    (AText[14] + AText[17] = '::');
+end;
+
+class function TAtlasCommandUsageFormat.TimeOf(const AText: string): TDateTime;
 var
   Text: string;
   Year, Month, Day, Hour, Minute, Second: Integer;
@@ -395,8 +407,7 @@ var
 begin
   Result := 0;
   Text := Trim(AText);
-  if (Length(Text) < 19) or (Text[5] <> '-') or (Text[8] <> '-') or not CharInSet(Text[11], ['T', 't', ' ']) or
-    (Text[14] <> ':') or (Text[17] <> ':') then
+  if not HasTimeShape(Text) then
   begin
     Exit;
   end;
@@ -406,10 +417,7 @@ begin
   Hour := StrToIntDef(Copy(Text, 12, 2), -1);
   Minute := StrToIntDef(Copy(Text, 15, 2), -1);
   Second := StrToIntDef(Copy(Text, 18, 2), -1);
-  if (Year < 1) or (Month < 1) or (Day < 1) or (Hour < 0) or (Minute < 0) or (Second < 0) then
-  begin
-    Exit;
-  end;
+  // Ungültige Teile (-1) lehnen TryEncodeDate und TryEncodeTime ab.
   if not TryEncodeDate(Year, Month, Day, DatePart) or not TryEncodeTime(Hour, Minute, Second, 0, TimePart) then
   begin
     Exit;
@@ -465,12 +473,63 @@ begin
   end;
 end;
 
-function TAtlasCommandUsage.Parse(const AJson: string): Boolean;
+/// <summary>Felder oberster Ebene außer "format" und "commands" als JSON-Text eines Objekts; '' ohne.</summary>
+function ExtraOf(ARoot: TJSONObject): string;
 var
-  Root, Commands, Item, Extra: TJSONObject;
+  Extra: TJSONObject;
   Index: Integer;
   Pair: TJSONPair;
+begin
+  Result := '';
+  Extra := TJSONObject.Create;
+  try
+    for Index := 0 to ARoot.Count - 1 do
+    begin
+      Pair := ARoot.Pairs[Index];
+      if (Pair.JsonString.Value <> 'format') and (Pair.JsonString.Value <> 'commands') then
+      begin
+        Extra.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+      end;
+    end;
+    if Extra.Count > 0 then
+    begin
+      Result := Extra.ToJSON;
+    end;
+  finally
+    Extra.Free;
+  end;
+end;
+
+/// <summary>Einträge aus "commands" von shortcut-tips.json nach AEntries.</summary>
+procedure ReadTipEntries(ACommands: TJSONObject; AEntries: TDictionary<string, TAtlasCommandUsageEntry>);
+var
+  Index: Integer;
+  Pair: TJSONPair;
+  Item: TJSONObject;
   Entry: TAtlasCommandUsageEntry;
+begin
+  for Index := 0 to ACommands.Count - 1 do
+  begin
+    Pair := ACommands.Pairs[Index];
+    if (Trim(Pair.JsonString.Value) = '') or not (Pair.JsonValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    Item := TJSONObject(Pair.JsonValue);
+    Entry := TAtlasCommandUsageEntry.Create(Trim(Pair.JsonString.Value));
+    // Zähler nur aus älteren Fassungen von #600; heute stehen sie in usage.json.
+    Entry.Mouse := NumberOf(Item, 'mouse');
+    Entry.Keyboard := NumberOf(Item, 'keyboard');
+    Entry.LastUsed := TAtlasCommandUsage.TimeOf(TextOf(Item, 'lastUsed'));
+    Entry.LastTip := TAtlasCommandUsage.TimeOf(TextOf(Item, 'lastTip'));
+    Entry.Never := FlagOf(Item, 'never');
+    AEntries.AddOrSetValue(KeyOf(Entry.Id), Entry);
+  end;
+end;
+
+function TAtlasCommandUsage.Parse(const AJson: string): Boolean;
+var
+  Root: TJSONObject;
 begin
   Clear;
   Result := False;
@@ -486,43 +545,10 @@ begin
       FWritable := False;
       Exit;
     end;
-    Extra := TJSONObject.Create;
-    try
-      for Index := 0 to Root.Count - 1 do
-      begin
-        Pair := Root.Pairs[Index];
-        if (Pair.JsonString.Value <> 'format') and (Pair.JsonString.Value <> 'commands') then
-        begin
-          Extra.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
-        end;
-      end;
-      if Extra.Count > 0 then
-      begin
-        FExtra := Extra.ToJSON;
-      end;
-    finally
-      Extra.Free;
-    end;
+    FExtra := ExtraOf(Root);
     if Root.GetValue('commands') is TJSONObject then
     begin
-      Commands := TJSONObject(Root.GetValue('commands'));
-      for Index := 0 to Commands.Count - 1 do
-      begin
-        Pair := Commands.Pairs[Index];
-        if (Trim(Pair.JsonString.Value) = '') or not (Pair.JsonValue is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Item := TJSONObject(Pair.JsonValue);
-        Entry := TAtlasCommandUsageEntry.Create(Trim(Pair.JsonString.Value));
-        // Zähler nur aus älteren Fassungen von #600; heute stehen sie in usage.json.
-        Entry.Mouse := NumberOf(Item, 'mouse');
-        Entry.Keyboard := NumberOf(Item, 'keyboard');
-        Entry.LastUsed := TimeOf(TextOf(Item, 'lastUsed'));
-        Entry.LastTip := TimeOf(TextOf(Item, 'lastTip'));
-        Entry.Never := FlagOf(Item, 'never');
-        FEntries.AddOrSetValue(KeyOf(Entry.Id), Entry);
-      end;
+      ReadTipEntries(TJSONObject(Root.GetValue('commands')), FEntries);
     end;
     Result := True;
   finally
@@ -530,13 +556,34 @@ begin
   end;
 end;
 
+/// <summary>Felder des JSON-Objekts AExtra (Text, '' = keine) an ARoot anhängen.</summary>
+procedure AddExtra(ARoot: TJSONObject; const AExtra: string);
+var
+  Extra: TJSONObject;
+  Index: Integer;
+  Pair: TJSONPair;
+begin
+  // Leer oder kein Objekt: nichts anzuhängen.
+  Extra := ParseObject(AExtra);
+  if Extra = nil then
+  begin
+    Exit;
+  end;
+  try
+    for Index := 0 to Extra.Count - 1 do
+    begin
+      Pair := Extra.Pairs[Index];
+      ARoot.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+    end;
+  finally
+    Extra.Free;
+  end;
+end;
+
 function TAtlasCommandUsage.ToJson: string;
 var
   Root, Commands, Item: TJSONObject;
-  Extra: TJSONObject;
   Entry: TAtlasCommandUsageEntry;
-  Index: Integer;
-  Pair: TJSONPair;
 begin
   Root := TJSONObject.Create;
   try
@@ -562,22 +609,7 @@ begin
       end;
     end;
     // Unbekannte Felder oberster Ebene behalten (Erweiterungen, z. B. "discover" von #757).
-    if FExtra <> '' then
-    begin
-      Extra := ParseObject(FExtra);
-      try
-        if Extra <> nil then
-        begin
-          for Index := 0 to Extra.Count - 1 do
-          begin
-            Pair := Extra.Pairs[Index];
-            Root.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
-          end;
-        end;
-      finally
-        Extra.Free;
-      end;
-    end;
+    AddExtra(Root, FExtra);
     Result := Root.ToJSON;
   finally
     Root.Free;

@@ -153,7 +153,8 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Assert.IsTrue(TExtractInterface.Prepare(Tree, AText, ALine, NoLookup(), nil, Result, Reason), Reason);
+    Assert.IsTrue(TExtractInterface.Prepare(TClassSource.Create(Tree, AText, ALine),
+      TExtractInterfaceLookups.Create(NoLookup(), nil, nil), Result, Reason), Reason);
   finally
     Tree.Free;
   end;
@@ -208,11 +209,12 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TExtractInterface.Plan(Tree, AText, ALine, ARequest, ALookup,
+    Result := TExtractInterface.Plan(TClassSource.Create(Tree, AText, ALine), ARequest,
+      TExtractInterfaceLookups.Create(ALookup,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'IVergeben');
-      end, nil, APlan, AReason);
+      end, nil), APlan, AReason);
   finally
     Tree.Free;
   end;

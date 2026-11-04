@@ -505,35 +505,66 @@ begin
   Result := Order(ACommands, APattern, AHistory, False);
 end;
 
+/// <summary>Treffergüte von ACommand zu APattern: Beschriftung, ersatzweise mit Menüpfad ("projekt erz" findet
+/// „Erzeugen“ unter „Projekt“, halbe Güte), zuletzt lose als Teilfolge; NoMatch ohne Treffer.</summary>
+function MatchScore(const APattern: string; const ACommand: TAtlasCommand): Integer;
+begin
+  Result := TAtlasCompletionMatcher.Score(APattern, ACommand.Caption);
+  if (Result = TAtlasCompletionMatcher.NoMatch) and (ACommand.Path <> '') then
+  begin
+    Result := TAtlasCompletionMatcher.Score(APattern, ACommand.Path + ' ' + ACommand.Caption);
+    if Result <> TAtlasCompletionMatcher.NoMatch then
+    begin
+      Result := Result div 2;
+    end;
+  end;
+  if (Result = TAtlasCompletionMatcher.NoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
+  begin
+    Result := ScoreLoose;
+  end;
+end;
+
+/// <summary>Reihenfolge der Treffer: ohne Muster nach Verlauf, sonst nach Güte und Verlauf; bei Gleichstand nach
+/// Beschriftung (nicht mit AKeepOrder), zuletzt nach Index.</summary>
+function OrderComparer(const ACommands: TArray<TAtlasCommand>; const AScores, ABoosts: TArray<Integer>;
+  const APattern: string; AKeepOrder: Boolean): IComparer<Integer>;
+begin
+  Result := TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      if APattern = '' then
+      begin
+        Result := ABoosts[B] - ABoosts[A];
+      end
+      else
+      begin
+        Result := (AScores[B] + ABoosts[B]) - (AScores[A] + ABoosts[A]);
+      end;
+      if (Result = 0) and not AKeepOrder then
+      begin
+        Result := CompareText(ACommands[A].Caption, ACommands[B].Caption);
+      end;
+      if Result = 0 then
+      begin
+        Result := A - B;
+      end;
+    end);
+end;
+
 class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
   AHistory: TAtlasCommandHistory; AKeepOrder: Boolean): TArray<Integer>;
 var
   Scores, Boosts: TArray<Integer>;
   Found: TList<Integer>;
   Index, Score: Integer;
-  Commands: TArray<TAtlasCommand>;
 begin
-  Commands := ACommands;
-  SetLength(Scores, Length(Commands));
-  SetLength(Boosts, Length(Commands));
+  SetLength(Scores, Length(ACommands));
+  SetLength(Boosts, Length(ACommands));
   Found := TList<Integer>.Create;
   try
-    for Index := 0 to High(Commands) do
+    for Index := 0 to High(ACommands) do
     begin
-      Score := TAtlasCompletionMatcher.Score(APattern, Commands[Index].Caption);
-      // Ersatzweise mit Menüpfad: "projekt erz" findet „Erzeugen“ unter „Projekt“.
-      if (Score = TAtlasCompletionMatcher.NoMatch) and (Commands[Index].Path <> '') then
-      begin
-        Score := TAtlasCompletionMatcher.Score(APattern, Commands[Index].Path + ' ' + Commands[Index].Caption);
-        if Score <> TAtlasCompletionMatcher.NoMatch then
-        begin
-          Score := Score div 2;
-        end;
-      end;
-      if (Score = TAtlasCompletionMatcher.NoMatch) and IsSubsequence(APattern.Replace(' ', ''), Commands[Index].Caption) then
-      begin
-        Score := ScoreLoose;
-      end;
+      Score := MatchScore(APattern, ACommands[Index]);
       if Score = TAtlasCompletionMatcher.NoMatch then
       begin
         Continue;
@@ -541,30 +572,11 @@ begin
       Scores[Index] := Score;
       if AHistory <> nil then
       begin
-        Boosts[Index] := AHistory.Boost(Commands[Index].Id);
+        Boosts[Index] := AHistory.Boost(ACommands[Index].Id);
       end;
       Found.Add(Index);
     end;
-    Found.Sort(TComparer<Integer>.Construct(
-      function(const A, B: Integer): Integer
-      begin
-        if APattern = '' then
-        begin
-          Result := Boosts[B] - Boosts[A];
-        end
-        else
-        begin
-          Result := (Scores[B] + Boosts[B]) - (Scores[A] + Boosts[A]);
-        end;
-        if (Result = 0) and not AKeepOrder then
-        begin
-          Result := CompareText(Commands[A].Caption, Commands[B].Caption);
-        end;
-        if Result = 0 then
-        begin
-          Result := A - B;
-        end;
-      end));
+    Found.Sort(OrderComparer(ACommands, Scores, Boosts, APattern, AKeepOrder));
     Result := Found.ToArray;
   finally
     Found.Free;

@@ -99,22 +99,22 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Noch nie benutzt',
-      TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0)));
+      TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0)));
     Assert.AreEqual('Zuletzt vor 3 Wochen',
-      TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, 3)));
+      TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, 3)));
     Assert.AreEqual('Zuletzt vor 1 Jahr',
-      TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, 1)));
+      TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, 1)));
     Assert.AreEqual('Zuletzt gestern benutzt',
-      TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1)));
-    Assert.AreEqual('', TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0)),
+      TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1)));
+    Assert.AreEqual('', TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0)),
       'ohne Zählung kein Hinweis');
-    Assert.AreEqual('Tipp 2 von 5', TAtlasWelcomeDiscoverFrame.PositionText(2, 5));
-    Assert.AreEqual('', TAtlasWelcomeDiscoverFrame.PositionText(1, 1), 'ein Tipp: keine Stelle');
-    Assert.AreEqual('Atlas entdecken', TAtlasWelcomeDiscoverFrame.TitleText);
+    Assert.AreEqual('Tipp 2 von 5', TAtlasDiscoverTexts.PositionText(2, 5));
+    Assert.AreEqual('', TAtlasDiscoverTexts.PositionText(1, 1), 'ein Tipp: keine Stelle');
+    Assert.AreEqual('Atlas entdecken', TAtlasDiscoverTexts.TitleText);
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Last used 3 weeks ago',
-      TAtlasWelcomeDiscoverFrame.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, 3)));
-    Assert.AreEqual('Don''t show again', TAtlasWelcomeDiscoverFrame.ButtonCaption(TAtlasDiscoverButton.Block));
+      TAtlasDiscoverTexts.AgeText(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, 3)));
+    Assert.AreEqual('Don''t show again', TAtlasDiscoverTexts.ButtonCaption(TAtlasDiscoverButton.Block));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -138,7 +138,7 @@ begin
     Assert.AreEqual('Code-Aktionen', Frame.TipTitle.Caption);
     Assert.AreEqual('Ctrl+.', Frame.KeyLabel.Caption, 'tatsächliche Belegung');
     Assert.IsTrue(Frame.KeyLabel.Left > Frame.TipTitle.Left, 'Kürzel neben dem Titel');
-    Assert.AreEqual(TAtlasWelcomeDiscoverFrame.AgeText(Fake.Card_.Age), Frame.AgeLabel.Caption);
+    Assert.AreEqual(TAtlasDiscoverTexts.AgeText(Fake.Card_.Age), Frame.AgeLabel.Caption);
     Assert.IsTrue(Frame.TextLabel.Top > Frame.TipTitle.Top, 'Text unter dem Titel');
     Assert.IsFalse(Frame.Image.Visible, 'ohne Bild kein Platz dafür');
     Assert.IsTrue(Frame.Button(TAtlasDiscoverButton.TryIt).Enabled);

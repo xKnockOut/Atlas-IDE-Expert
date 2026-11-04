@@ -189,8 +189,7 @@ begin
   FParts.Editor.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
   FParts.Editor.Top := mRow.Top + mRow.Height + 1;
   FParts.Editor.Height := ScaleValue(CommentHeight + EditorBarHeight);
-  FParts.Editor.OnSend := SendClick;
-  FParts.Editor.OnCancel := EditorCancel;
+  FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);
   FParts.Editor.SetText(AComment);
   FParts.Comment := FParts.Editor.Memo;
 end;

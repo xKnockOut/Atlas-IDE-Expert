@@ -19,6 +19,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
+  Atlas.Core.Style.Palette,
   Atlas.Core.SymbolPath.Model;
 
 type
@@ -36,6 +37,11 @@ type
     procedure Layout;
     procedure SetSelected(AValue: Integer);
     procedure OpenSelected;
+    procedure DrawHeader(const ABox: TRect; const AMain: string; const AColors: TAtlasColors);
+    procedure DrawNode(const ABox: TRect; const AMain, ADetail: string; const AColors: TAtlasColors;
+      ASelected: Boolean);
+    procedure DrawStep(const ABox: TRect; const AMain, ADetail: string; const AColors: TAtlasColors;
+      AInferred, ASelected: Boolean);
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -81,7 +87,6 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.UI.Strings;
 
 const
@@ -95,6 +100,19 @@ const
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
+end;
+
+/// <summary>AOn für die gewählte Zeile, sonst AOff.</summary>
+function PickColor(ASelected: Boolean; AOn, AOff: TAtlasColor): TColor;
+begin
+  if ASelected then
+  begin
+    Result := ToColor(AOn);
+  end
+  else
+  begin
+    Result := ToColor(AOff);
+  end;
 end;
 
 { TAtlasSymbolPathChain }
@@ -122,61 +140,64 @@ begin
   end;
 end;
 
+type
+  /// <summary>Kantenart des Servers ohne Variante und ihr Text.</summary>
+  TAtlasStepText = record
+    Kind: string;
+    Id: TAtlasTextId;
+  end;
+
+const
+  cStepTexts: array[0..4] of TAtlasStepText = (
+    (Kind: 'inherits'; Id: TAtlasTextId.SymbolPathEdgeInherits),
+    (Kind: 'parameter'; Id: TAtlasTextId.SymbolPathEdgeParameter),
+    (Kind: 'result'; Id: TAtlasTextId.SymbolPathEdgeResult),
+    (Kind: 'calls'; Id: TAtlasTextId.SymbolPathEdgeCalls),
+    (Kind: 'contains'; Id: TAtlasTextId.SymbolPathEdgeContains));
+  cUsesTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeUses,
+    TAtlasTextId.SymbolPathEdgeUsesImpl);
+  cImplementsTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeImplements,
+    TAtlasTextId.SymbolPathEdgeImplementedBy);
+  cHasFieldTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeHasField,
+    TAtlasTextId.SymbolPathEdgeOfType);
+
+/// <summary>Text einer Kantenart ohne Variante; False bei unbekannter Art.</summary>
+function SimpleStepText(const AKind: string; out AId: TAtlasTextId): Boolean;
+var
+  mEntry: TAtlasStepText;
+begin
+  for mEntry in cStepTexts do
+  begin
+    if mEntry.Kind = AKind then
+    begin
+      AId := mEntry.Id;
+      Exit(True);
+    end;
+  end;
+  AId := Default(TAtlasTextId);
+  Result := False;
+end;
+
 class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
+var
+  mId: TAtlasTextId;
 begin
   if AStep.Kind = 'uses' then
   begin
-    if AStep.Implementation_ then
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl);
-    end
-    else
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUses);
-    end;
-  end
-  else if AStep.Kind = 'inherits' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeInherits);
+    Result := TAtlasStrings.Text(cUsesTexts[AStep.Implementation_]);
   end
   else if AStep.Kind = 'implements' then
   begin
-    if AStep.Reverse then
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy);
-    end
-    else
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplements);
-    end;
+    Result := TAtlasStrings.Text(cImplementsTexts[AStep.Reverse]);
   end
   else if AStep.Kind = 'hasField' then
   begin
     // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
-    if AStep.Caption = 'vom Typ' then
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType);
-    end
-    else
-    begin
-      Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeHasField);
-    end;
+    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']);
   end
-  else if AStep.Kind = 'parameter' then
+  else if SimpleStepText(AStep.Kind, mId) then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeParameter);
-  end
-  else if AStep.Kind = 'result' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeResult);
-  end
-  else if AStep.Kind = 'calls' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls);
-  end
-  else if AStep.Kind = 'contains' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains);
+    Result := TAtlasStrings.Text(mId);
   end
   else
   begin
@@ -484,114 +505,110 @@ begin
   end;
 end;
 
+procedure TAtlasSymbolPathChain.DrawHeader(const ABox: TRect; const AMain: string; const AColors: TAtlasColors);
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := ToColor(AColors.Text);
+  Canvas.Font.Style := [fsBold];
+  Canvas.TextOut(ABox.Left, ABox.Top + (ABox.Height - Canvas.TextHeight(AMain)) div 2, AMain);
+  Canvas.Font.Style := [];
+end;
+
+procedure TAtlasSymbolPathChain.DrawNode(const ABox: TRect; const AMain, ADetail: string;
+  const AColors: TAtlasColors; ASelected: Boolean);
+var
+  mTextTop: Integer;
+begin
+  // Kasten: gewählt mit Auswahlfläche und Akzentrand.
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  if ASelected then
+  begin
+    Canvas.Brush.Color := ToColor(AColors.Selection);
+    Canvas.Pen.Color := ToColor(AColors.Accent);
+  end
+  else
+  begin
+    Canvas.Brush.Color := ToColor(AColors.Gutter);
+    Canvas.Pen.Color := ToColor(AColors.Line);
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.RoundRect(ABox.Left, ABox.Top, ABox.Right, ABox.Bottom, Px(6), Px(6));
+  Canvas.Brush.Style := bsClear;
+  mTextTop := ABox.Top + Px(3);
+  Canvas.Font.Color := ToColor(AColors.Text);
+  Canvas.Font.Style := [fsBold];
+  Canvas.TextRect(ABox, ABox.Left + Px(8), mTextTop, AMain);
+  Canvas.Font.Style := [];
+  Canvas.Font.Color := ToColor(AColors.Muted);
+  Canvas.TextRect(ABox, ABox.Left + Px(8), mTextTop + Canvas.TextHeight('Ag') + Px(1), ADetail);
+end;
+
+procedure TAtlasSymbolPathChain.DrawStep(const ABox: TRect; const AMain, ADetail: string;
+  const AColors: TAtlasColors; AInferred, ASelected: Boolean);
+var
+  mX, mBottom, mTip, mTextTop: Integer;
+begin
+  // Pfeil nach unten links, erschlossene Kanten gestrichelt (Breite 1, sonst zeichnet GDI durchgehend).
+  mX := ABox.Left + Px(ArrowIndent);
+  mBottom := ABox.Bottom - Px(2);
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := Max(1, Px(2));
+  if AInferred then
+  begin
+    Canvas.Pen.Style := psDash;
+    Canvas.Pen.Width := 1;
+  end;
+  Canvas.Pen.Color := PickColor(ASelected, AColors.Accent, AColors.Muted);
+  Canvas.MoveTo(mX, ABox.Top + Px(2));
+  Canvas.LineTo(mX, mBottom);
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  mTip := Px(5);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := Canvas.Pen.Color;
+  Canvas.Polygon([Point(mX - mTip, mBottom - mTip), Point(mX + mTip, mBottom - mTip), Point(mX, mBottom)]);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := PickColor(ASelected, AColors.Accent, AColors.Text);
+  mTextTop := ABox.Top + (ABox.Height - Canvas.TextHeight(AMain)) div 2;
+  Canvas.TextOut(mX + Px(14), mTextTop, AMain);
+  if ADetail <> '' then
+  begin
+    Canvas.Font.Color := ToColor(AColors.Muted);
+    Canvas.TextOut(mX + Px(14) + Canvas.TextWidth(AMain) + Px(12), mTextTop, ADetail);
+  end;
+end;
+
 procedure TAtlasSymbolPathChain.Paint;
 var
-  Colors: TAtlasColors;
-  Index, X, Y, Bottom, Tip, TextTop: Integer;
-  Box: TRect;
-  Main, Detail: string;
-  Row: TAtlasSymbolPathRow;
+  mColors: TAtlasColors;
+  mIndex: Integer;
+  mBox: TRect;
+  mMain, mDetail: string;
+  mRow: TAtlasSymbolPathRow;
 begin
-  Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.Brush.Color := ToColor(mColors.Surface);
   Canvas.FillRect(ClientRect);
   Canvas.Font.Assign(Font);
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    Row := FRows[Index];
-    RowTexts(FAnswer, Row, Main, Detail);
-    Box := RowRect(Index);
-    case Row.Kind of
+    mRow := FRows[mIndex];
+    RowTexts(FAnswer, mRow, mMain, mDetail);
+    mBox := RowRect(mIndex);
+    case mRow.Kind of
       TAtlasSymbolPathRowKind.Header:
-        begin
-          Canvas.Brush.Style := bsClear;
-          Canvas.Font.Color := ToColor(Colors.Text);
-          Canvas.Font.Style := [fsBold];
-          Canvas.TextOut(Box.Left, Box.Top + (Box.Height - Canvas.TextHeight(Main)) div 2, Main);
-          Canvas.Font.Style := [];
-        end;
+        DrawHeader(mBox, mMain, mColors);
       TAtlasSymbolPathRowKind.Node, TAtlasSymbolPathRowKind.Candidate:
-        begin
-          // Kasten: gewählt mit Auswahlfläche und Akzentrand.
-          Canvas.Pen.Style := psSolid;
-          Canvas.Pen.Width := 1;
-          if Index = FSelected then
-          begin
-            Canvas.Brush.Color := ToColor(Colors.Selection);
-            Canvas.Pen.Color := ToColor(Colors.Accent);
-          end
-          else
-          begin
-            Canvas.Brush.Color := ToColor(Colors.Gutter);
-            Canvas.Pen.Color := ToColor(Colors.Line);
-          end;
-          Canvas.Brush.Style := bsSolid;
-          Canvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Px(6), Px(6));
-          Canvas.Brush.Style := bsClear;
-          TextTop := Box.Top + Px(3);
-          Canvas.Font.Color := ToColor(Colors.Text);
-          Canvas.Font.Style := [fsBold];
-          Canvas.TextRect(Box, Box.Left + Px(8), TextTop, Main);
-          Canvas.Font.Style := [];
-          Canvas.Font.Color := ToColor(Colors.Muted);
-          Canvas.TextRect(Box, Box.Left + Px(8), TextTop + Canvas.TextHeight('Ag') + Px(1), Detail);
-        end;
+        DrawNode(mBox, mMain, mDetail, mColors, mIndex = FSelected);
       TAtlasSymbolPathRowKind.Step:
-        begin
-          // Pfeil nach unten links, erschlossene Kanten gestrichelt (Breite 1, sonst zeichnet GDI durchgehend).
-          X := Box.Left + Px(ArrowIndent);
-          Y := Box.Top + Px(2);
-          Bottom := Box.Bottom - Px(2);
-          if Row.Inferred then
-          begin
-            Canvas.Pen.Style := psDash;
-            Canvas.Pen.Width := 1;
-          end
-          else
-          begin
-            Canvas.Pen.Style := psSolid;
-            Canvas.Pen.Width := Max(1, Px(2));
-          end;
-          if Index = FSelected then
-          begin
-            Canvas.Pen.Color := ToColor(Colors.Accent);
-          end
-          else
-          begin
-            Canvas.Pen.Color := ToColor(Colors.Muted);
-          end;
-          Canvas.MoveTo(X, Y);
-          Canvas.LineTo(X, Bottom);
-          Canvas.Pen.Style := psSolid;
-          Canvas.Pen.Width := 1;
-          Tip := Px(5);
-          Canvas.Brush.Style := bsSolid;
-          Canvas.Brush.Color := Canvas.Pen.Color;
-          Canvas.Polygon([Point(X - Tip, Bottom - Tip), Point(X + Tip, Bottom - Tip), Point(X, Bottom)]);
-          Canvas.Brush.Style := bsClear;
-          if Index = FSelected then
-          begin
-            Canvas.Font.Color := ToColor(Colors.Accent);
-          end
-          else
-          begin
-            Canvas.Font.Color := ToColor(Colors.Text);
-          end;
-          TextTop := Box.Top + (Box.Height - Canvas.TextHeight(Main)) div 2;
-          Canvas.TextOut(X + Px(14), TextTop, Main);
-          if Detail <> '' then
-          begin
-            Canvas.Font.Color := ToColor(Colors.Muted);
-            Canvas.TextOut(X + Px(14) + Canvas.TextWidth(Main) + Px(12), TextTop, Detail);
-          end;
-        end;
+        DrawStep(mBox, mMain, mDetail, mColors, mRow.Inferred, mIndex = FSelected);
     end;
   end;
   if Focused and (FSelected >= 0) then
   begin
-    Box := RowRect(FSelected);
-    Canvas.DrawFocusRect(Box);
+    Canvas.DrawFocusRect(RowRect(FSelected));
   end;
 end;
 

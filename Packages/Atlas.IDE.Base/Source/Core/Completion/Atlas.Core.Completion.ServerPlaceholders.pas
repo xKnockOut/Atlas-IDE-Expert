@@ -44,14 +44,30 @@ begin
   end;
 end;
 
+/// <summary>Platzhalter aus einem Eintrag {"number": n, "range": {...}}; False, wenn er unlesbar ist.</summary>
+function StopOf(AItem: TJSONValue; const ALines: TLineTable; out AStop: TAtlasSnippetStop): Boolean;
+var
+  mRange: TJSONObject;
+  mStart, mEnd: Integer;
+begin
+  AStop := Default(TAtlasSnippetStop);
+  Result := (AItem is TJSONObject) and TJSONObject(AItem).TryGetValue<Integer>('number', AStop.Number) and
+    (AStop.Number >= 0) and TJSONObject(AItem).TryGetValue<TJSONObject>('range', mRange);
+  Result := Result and ReadOffset(ALines, mRange, 'start', mStart) and ReadOffset(ALines, mRange, 'end', mEnd) and
+    (mEnd >= mStart);
+  if Result then
+  begin
+    AStop.Start := mStart;
+    AStop.Length := mEnd - mStart;
+  end;
+end;
+
 class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
   const ADocument: string): TAtlasSnippetExpansion;
 var
   Lines: TLineTable;
   Item: TJSONValue;
-  Range: TJSONObject;
   Stop: TAtlasSnippetStop;
-  StartOffset, EndOffset: Integer;
 begin
   Result := Default(TAtlasSnippetExpansion);
   if not (AValue is TJSONArray) then
@@ -61,13 +77,8 @@ begin
   Lines := TLineTable.Build(ADocument);
   for Item in TJSONArray(AValue) do
   begin
-    if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<Integer>('number', Stop.Number) and
-      (Stop.Number >= 0) and TJSONObject(Item).TryGetValue<TJSONObject>('range', Range) and
-      ReadOffset(Lines, Range, 'start', StartOffset) and ReadOffset(Lines, Range, 'end', EndOffset) and
-      (EndOffset >= StartOffset) then
+    if StopOf(Item, Lines, Stop) then
     begin
-      Stop.Start := StartOffset;
-      Stop.Length := EndOffset - StartOffset;
       Result.Stops := Result.Stops + [Stop];
     end;
   end;

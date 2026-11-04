@@ -57,6 +57,37 @@ type
     Button: Boolean;
   end;
 
+  /// <summary>Farben des IDE-Themas für eine Zeichnung des Bereichs.</summary>
+  TAtlasUnsavedPalette = record
+    Text: TColor;
+    Muted: TColor;
+    Line: TColor;
+  end;
+
+  /// <summary>Texte und Farben des Bereichs „Nicht gesichert“, ohne Steuerelement.</summary>
+  TAtlasUnsavedTexts = class
+  public
+    /// <summary>Jetzt in UTC.</summary>
+    class function NowUtc: TDateTime; static;
+    /// <summary>Kopfzeile: „Projekt · Branch“.</summary>
+    class function TitleText(const ARow: TAtlasUnsavedRow): string; static;
+    /// <summary>Zweite Zeile: was nicht gesichert ist und seit wann.</summary>
+    class function DetailText(const ARow: TAtlasUnsavedRow; ANowUtc: TDateTime): string; static;
+    /// <summary>Was nicht gesichert ist, z. B. „4 Dateien geändert“ oder „3 Commits nicht gepusht (main)“.</summary>
+    class function WhatText(const AItem: TAtlasUnsavedItem): string; static;
+    /// <summary>„seit 5 Min.“, „seit 3 Std.“, „seit 2 Tagen“; '' bei unbekanntem Alter.</summary>
+    class function AgeText(ASince, ANowUtc: TDateTime): string; static;
+    /// <summary>„Ansehen“ bzw. „Push …“.</summary>
+    class function ButtonText(const AItem: TAtlasUnsavedItem): string; static;
+    /// <summary>Text ohne Zeilen: „Alles gesichert“, ausgeblendete Einträge oder „wird abgefragt …“.</summary>
+    class function EmptyText(const AView: TAtlasUnsavedView): string; static;
+    class function LevelColor(ALevel: TAtlasUnsavedLevel): TColor; static;
+    /// <summary>Tooltip mit Pfad, Branches, ältestem Stand und Stand der Abfrage.</summary>
+    class function HintFor(const ARow: TAtlasUnsavedRow): string; static;
+    /// <summary>UTC-Zeit als lokales Datum mit Uhrzeit; '' für 0.</summary>
+    class function LocalText(AUtc: TDateTime): string; static;
+  end;
+
   TAtlasWelcomeUnsavedFrame = class(TAtlasWelcomeSectionFrame)
   public const
     RowHeight = 44;
@@ -82,6 +113,9 @@ type
     procedure OpenFolderClick(Sender: TObject);
     procedure IgnoreClick(Sender: TObject);
     procedure LayoutButtons;
+    procedure PaintRow(ACanvas: TCanvas; ARow: Integer; const APalette: TAtlasUnsavedPalette; AStamp: TDateTime);
+    procedure PaintButton(ACanvas: TCanvas; const AButton: TRect; const AText: string;
+      const APalette: TAtlasUnsavedPalette);
     function RowTop(ARow: Integer): Integer;
     function MenuTarget(out ARow: TAtlasUnsavedRow): Boolean;
   protected
@@ -93,25 +127,6 @@ type
     function HitTest(X, Y: Integer): TAtlasUnsavedHit;
     /// <summary>Klick wie mit der Maus (auch für Tests); nur die Schaltfläche löst eine Aktion aus.</summary>
     procedure ClickAt(const AHit: TAtlasUnsavedHit);
-    /// <summary>Jetzt in UTC.</summary>
-    class function NowUtc: TDateTime; static;
-    /// <summary>Kopfzeile: „Projekt · Branch“.</summary>
-    class function TitleText(const ARow: TAtlasUnsavedRow): string; static;
-    /// <summary>Zweite Zeile: was nicht gesichert ist und seit wann.</summary>
-    class function DetailText(const ARow: TAtlasUnsavedRow; ANowUtc: TDateTime): string; static;
-    /// <summary>Was nicht gesichert ist, z. B. „4 Dateien geändert“ oder „3 Commits nicht gepusht (main)“.</summary>
-    class function WhatText(const AItem: TAtlasUnsavedItem): string; static;
-    /// <summary>„seit 5 Min.“, „seit 3 Std.“, „seit 2 Tagen“; '' bei unbekanntem Alter.</summary>
-    class function AgeText(ASince, ANowUtc: TDateTime): string; static;
-    /// <summary>„Ansehen“ bzw. „Push …“.</summary>
-    class function ButtonText(const AItem: TAtlasUnsavedItem): string; static;
-    /// <summary>Text ohne Zeilen: „Alles gesichert“, ausgeblendete Einträge oder „wird abgefragt …“.</summary>
-    class function EmptyText(const AView: TAtlasUnsavedView): string; static;
-    class function LevelColor(ALevel: TAtlasUnsavedLevel): TColor; static;
-    /// <summary>Tooltip mit Pfad, Branches, ältestem Stand und Stand der Abfrage.</summary>
-    class function HintFor(const ARow: TAtlasUnsavedRow): string; static;
-    /// <summary>UTC-Zeit als lokales Datum mit Uhrzeit; '' für 0.</summary>
-    class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasUnsavedSource read FSource write SetSource;
     property View: TAtlasUnsavedView read FView;
     property PaintBox: TAtlasWelcomeCanvas read FBox;
@@ -210,12 +225,12 @@ begin
   Result := ScaleValue(Indent) div 2 + ARow * ScaleValue(RowHeight);
 end;
 
-class function TAtlasWelcomeUnsavedFrame.NowUtc: TDateTime;
+class function TAtlasUnsavedTexts.NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
-class function TAtlasWelcomeUnsavedFrame.LocalText(AUtc: TDateTime): string;
+class function TAtlasUnsavedTexts.LocalText(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc > 0 then
@@ -238,7 +253,7 @@ begin
   Result := string.Join(', ', AItems);
 end;
 
-class function TAtlasWelcomeUnsavedFrame.TitleText(const ARow: TAtlasUnsavedRow): string;
+class function TAtlasUnsavedTexts.TitleText(const ARow: TAtlasUnsavedRow): string;
 begin
   Result := ARow.Name;
   if ARow.Branch <> '' then
@@ -247,82 +262,98 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.WhatText(const AItem: TAtlasUnsavedItem): string;
+/// <summary>Geänderte Dateien: Summe, bei neuen oder gelöschten Dateien mit den Anteilen.</summary>
+function ChangesText(const AItem: TAtlasUnsavedItem): string;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
-  case AItem.Kind of
-    TAtlasUnsavedKind.Changes:
-      if (AItem.Added = 0) and (AItem.Deleted = 0) then
-      begin
-        if AItem.Count = 1 then
-        begin
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedFileOne);
-        end
-        else
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFiles, [AItem.Count]);
-        end;
-      end
-      else
-      begin
-        Parts := nil;
-        if AItem.Modified > 0 then
-        begin
-          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartModified, [AItem.Modified])];
-        end;
-        if AItem.Added > 0 then
-        begin
-          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartAdded, [AItem.Added])];
-        end;
-        if AItem.Deleted > 0 then
-        begin
-          Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartDeleted, [AItem.Deleted])];
-        end;
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFilesMixed, [AItem.Count, Joined(Parts)]);
-      end;
-    TAtlasUnsavedKind.Conflicts:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedConflicts, [AItem.Count]);
-    TAtlasUnsavedKind.Commits:
-      if AItem.Count = 1 then
-      begin
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)]);
-      end
-      else
-      begin
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommits,
-          [AItem.Count, Joined(AItem.Branches)]);
-      end;
-    TAtlasUnsavedKind.NoUpstream:
-      begin
-        if AItem.Count = 1 then
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)]);
-        end
-        else
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstream,
-            [AItem.Count, Joined(AItem.Branches)]);
-        end;
-        if AItem.Commits > 0 then
-        begin
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedLocalCommits, [Result, AItem.Commits]);
-        end;
-      end;
-  else
+  if (AItem.Added = 0) and (AItem.Deleted = 0) then
+  begin
     if AItem.Count = 1 then
     begin
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)]);
-    end
-    else
-    begin
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashes, [AItem.Count, AItem.Name,
-        LocalDate(AItem.Since)]);
+      Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedFileOne));
     end;
+    Exit(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFiles, [AItem.Count]));
+  end;
+  mParts := nil;
+  if AItem.Modified > 0 then
+  begin
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartModified, [AItem.Modified])];
+  end;
+  if AItem.Added > 0 then
+  begin
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartAdded, [AItem.Added])];
+  end;
+  if AItem.Deleted > 0 then
+  begin
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartDeleted, [AItem.Deleted])];
+  end;
+  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFilesMixed, [AItem.Count, Joined(mParts)]);
+end;
+
+/// <summary>Nicht gepushte Commits mit den Branches.</summary>
+function CommitsText(const AItem: TAtlasUnsavedItem): string;
+begin
+  if AItem.Count = 1 then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommits,
+      [AItem.Count, Joined(AItem.Branches)]);
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.AgeText(ASince, ANowUtc: TDateTime): string;
+/// <summary>Branches ohne Upstream, dazu die Zahl ihrer lokalen Commits.</summary>
+function NoUpstreamText(const AItem: TAtlasUnsavedItem): string;
+begin
+  if AItem.Count = 1 then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstream,
+      [AItem.Count, Joined(AItem.Branches)]);
+  end;
+  if AItem.Commits > 0 then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedLocalCommits, [Result, AItem.Commits]);
+  end;
+end;
+
+/// <summary>Abgelegte Änderungen (Stash) mit Name und Datum.</summary>
+function StashText(const AItem: TAtlasUnsavedItem): string;
+begin
+  if AItem.Count = 1 then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashes, [AItem.Count, AItem.Name,
+      LocalDate(AItem.Since)]);
+  end;
+end;
+
+class function TAtlasUnsavedTexts.WhatText(const AItem: TAtlasUnsavedItem): string;
+begin
+  case AItem.Kind of
+    TAtlasUnsavedKind.Changes:
+      Result := ChangesText(AItem);
+    TAtlasUnsavedKind.Conflicts:
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedConflicts, [AItem.Count]);
+    TAtlasUnsavedKind.Commits:
+      Result := CommitsText(AItem);
+    TAtlasUnsavedKind.NoUpstream:
+      Result := NoUpstreamText(AItem);
+  else
+    Result := StashText(AItem);
+  end;
+end;
+
+class function TAtlasUnsavedTexts.AgeText(ASince, ANowUtc: TDateTime): string;
 var
   Value: Integer;
   AgeUnit: TAtlasUnsavedAgeUnit;
@@ -350,7 +381,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.DetailText(const ARow: TAtlasUnsavedRow; ANowUtc: TDateTime): string;
+class function TAtlasUnsavedTexts.DetailText(const ARow: TAtlasUnsavedRow; ANowUtc: TDateTime): string;
 var
   Age, mPlaces: string;
 begin
@@ -368,7 +399,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.ButtonText(const AItem: TAtlasUnsavedItem): string;
+class function TAtlasUnsavedTexts.ButtonText(const AItem: TAtlasUnsavedItem): string;
 begin
   if AItem.CanPush then
   begin
@@ -380,7 +411,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.EmptyText(const AView: TAtlasUnsavedView): string;
+class function TAtlasUnsavedTexts.EmptyText(const AView: TAtlasUnsavedView): string;
 begin
   if AView.Hidden > 0 then
   begin
@@ -396,7 +427,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.LevelColor(ALevel: TAtlasUnsavedLevel): TColor;
+class function TAtlasUnsavedTexts.LevelColor(ALevel: TAtlasUnsavedLevel): TColor;
 begin
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.
   case ALevel of
@@ -409,7 +440,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeUnsavedFrame.HintFor(const ARow: TAtlasUnsavedRow): string;
+class function TAtlasUnsavedTexts.HintFor(const ARow: TAtlasUnsavedRow): string;
 var
   Lines: TStringList;
 begin
@@ -455,7 +486,7 @@ begin
   Right := FBox.Width - ScaleValue(Indent);
   for Row := 0 to High(FView.Rows) do
   begin
-    mWidth := Canvas.TextWidth(ButtonText(FView.Rows[Row].Item)) + 2 * ScaleValue(ButtonPadding);
+    mWidth := Canvas.TextWidth(TAtlasUnsavedTexts.ButtonText(FView.Rows[Row].Item)) + 2 * ScaleValue(ButtonPadding);
     mTop := RowTop(Row) + (ScaleValue(RowHeight) - ScaleValue(ButtonHeight)) div 2;
     FButtonRects[Row] := Rect(Right - mWidth, mTop, Right, mTop + ScaleValue(ButtonHeight));
   end;
@@ -463,72 +494,80 @@ end;
 
 procedure TAtlasWelcomeUnsavedFrame.BoxPaint(Sender: TObject);
 var
-  Canvas: TCanvas;
-  Row, mLeft, mTop, Dot, Limit: Integer;
-  Data: TAtlasUnsavedRow;
-  mText, Branch: string;
-  TextColor, MutedColor, LineColor: TColor;
-  Button: TRect;
-  Stamp: TDateTime;
+  mCanvas: TCanvas;
+  mRow: Integer;
+  mPalette: TAtlasUnsavedPalette;
+  mStamp: TDateTime;
 begin
-  Canvas := FBox.Canvas;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Assign(Font);
+  mCanvas := FBox.Canvas;
+  mCanvas.Brush.Style := bsClear;
+  mCanvas.Font.Assign(Font);
   // Farben des IDE-Themas (hell oder dunkel).
-  TextColor := StyleServices(Self).GetSystemColor(clWindowText);
-  MutedColor := StyleServices(Self).GetSystemColor(clGrayText);
-  LineColor := StyleServices(Self).GetSystemColor(clBtnShadow);
+  mPalette.Text := StyleServices(Self).GetSystemColor(clWindowText);
+  mPalette.Muted := StyleServices(Self).GetSystemColor(clGrayText);
+  mPalette.Line := StyleServices(Self).GetSystemColor(clBtnShadow);
   if Length(FView.Rows) = 0 then
   begin
-    Canvas.Font.Color := MutedColor;
-    Canvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4), EmptyText(FView));
+    mCanvas.Font.Color := mPalette.Muted;
+    mCanvas.TextOut(ScaleValue(Indent), RowTop(0) + ScaleValue(4), TAtlasUnsavedTexts.EmptyText(FView));
     Exit;
   end;
   LayoutButtons;
-  Stamp := NowUtc;
-  Dot := ScaleValue(DotSize);
-  for Row := 0 to High(FView.Rows) do
+  mStamp := TAtlasUnsavedTexts.NowUtc;
+  for mRow := 0 to High(FView.Rows) do
   begin
-    Data := FView.Rows[Row];
-    mTop := RowTop(Row);
-    mLeft := ScaleValue(Indent);
-    Button := FButtonRects[Row];
-    // Ampel.
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := LevelColor(Data.Level);
-    Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + Dot, mTop + ScaleValue(6) + Dot);
-    Canvas.Brush.Style := bsClear;
-    Inc(mLeft, Dot + ScaleValue(6));
-    Limit := Button.Left - ScaleValue(Indent);
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Color := TextColor;
-    Canvas.Font.Style := [fsBold];
-    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-      Data.Name);
-    Inc(mLeft, Canvas.TextWidth(Data.Name));
-    Canvas.Font.Style := [];
-    Branch := Data.Branch;
-    if (Branch <> '') and (mLeft < Limit) then
-    begin
-      Canvas.Font.Color := MutedColor;
-      Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), Limit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-        Separator + Branch);
-    end;
-    // Zweite Zeile.
-    mLeft := ScaleValue(Indent) + Dot + ScaleValue(6);
-    Canvas.Font.Color := MutedColor;
-    Canvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), Limit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
-      DetailText(Data, Stamp));
-    // Schaltfläche.
-    Canvas.Pen.Color := LineColor;
-    Canvas.Brush.Style := bsClear;
-    Canvas.RoundRect(Button.Left, Button.Top, Button.Right, Button.Bottom, ScaleValue(6), ScaleValue(6));
-    Canvas.Font.Color := TextColor;
-    mText := ButtonText(Data.Item);
-    Canvas.TextOut(Button.Left + (Button.Width - Canvas.TextWidth(mText)) div 2,
-      Button.Top + (Button.Height - Canvas.TextHeight(mText)) div 2, mText);
+    PaintRow(mCanvas, mRow, mPalette, mStamp);
   end;
+end;
+
+procedure TAtlasWelcomeUnsavedFrame.PaintRow(ACanvas: TCanvas; ARow: Integer; const APalette: TAtlasUnsavedPalette;
+  AStamp: TDateTime);
+var
+  mData: TAtlasUnsavedRow;
+  mLeft, mTop, mDot, mLimit: Integer;
+begin
+  mData := FView.Rows[ARow];
+  mTop := RowTop(ARow);
+  mLeft := ScaleValue(Indent);
+  mDot := ScaleValue(DotSize);
+  // Ampel.
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := TAtlasUnsavedTexts.LevelColor(mData.Level);
+  ACanvas.Pen.Color := ACanvas.Brush.Color;
+  ACanvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + mDot, mTop + ScaleValue(6) + mDot);
+  ACanvas.Brush.Style := bsClear;
+  Inc(mLeft, mDot + ScaleValue(6));
+  mLimit := FButtonRects[ARow].Left - ScaleValue(Indent);
+  ACanvas.Font.Assign(Font);
+  ACanvas.Font.Color := APalette.Text;
+  ACanvas.Font.Style := [fsBold];
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
+    mData.Name);
+  Inc(mLeft, ACanvas.TextWidth(mData.Name));
+  ACanvas.Font.Style := [];
+  if (mData.Branch <> '') and (mLeft < mLimit) then
+  begin
+    ACanvas.Font.Color := APalette.Muted;
+    ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
+      Separator + mData.Branch);
+  end;
+  // Zweite Zeile.
+  mLeft := ScaleValue(Indent) + mDot + ScaleValue(6);
+  ACanvas.Font.Color := APalette.Muted;
+  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), mLimit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
+    TAtlasUnsavedTexts.DetailText(mData, AStamp));
+  PaintButton(ACanvas, FButtonRects[ARow], TAtlasUnsavedTexts.ButtonText(mData.Item), APalette);
+end;
+
+procedure TAtlasWelcomeUnsavedFrame.PaintButton(ACanvas: TCanvas; const AButton: TRect; const AText: string;
+  const APalette: TAtlasUnsavedPalette);
+begin
+  ACanvas.Pen.Color := APalette.Line;
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.RoundRect(AButton.Left, AButton.Top, AButton.Right, AButton.Bottom, ScaleValue(6), ScaleValue(6));
+  ACanvas.Font.Color := APalette.Text;
+  ACanvas.TextOut(AButton.Left + (AButton.Width - ACanvas.TextWidth(AText)) div 2,
+    AButton.Top + (AButton.Height - ACanvas.TextHeight(AText)) div 2, AText);
 end;
 
 function TAtlasWelcomeUnsavedFrame.HitTest(X, Y: Integer): TAtlasUnsavedHit;
@@ -597,7 +636,7 @@ begin
   FHintRow := Hit.Row;
   if Hit.Row >= 0 then
   begin
-    FBox.Hint := HintFor(FView.Rows[Hit.Row]);
+    FBox.Hint := TAtlasUnsavedTexts.HintFor(FView.Rows[Hit.Row]);
   end
   else
   begin

@@ -137,6 +137,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
+  Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -391,7 +392,7 @@ begin
       Page := FItems[Index].Toggle.Page;
       Row := Default(TRow);
       Row.Item := -1;
-      Row.Text := Page;
+      Row.Text := TAtlasSettingsPageNames.Caption(Page, TAtlasStrings.Language = TAtlasLanguage.English);
       FRows := FRows + [Row];
       Header := High(FRows);
     end;
