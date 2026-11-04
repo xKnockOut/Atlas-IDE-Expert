@@ -319,7 +319,7 @@ var
     Result := False;
     if ObjectTarget(AResolver, ATree, AFileName, APointer, AType) then
     begin
-      AResolver.AncestorNames(AType, mComplete);
+      AResolver.Queries.AncestorNames(AType, mComplete);
       Result := mComplete and not AResolver.FindMember(AType, AName, mFound);
     end;
   end;
@@ -378,7 +378,7 @@ var
   function IsCandidate(ANode: TSyntaxNode): Boolean;
   begin
     Result := not IsIntrinsic(ANode.Name) and not IsDeclared(ANode.Name) and
-      not TNameResolver.IsBuiltinTypeName(ANode.Name) and not mMembers.ContainsKey(ANode);
+      not TResolverText.IsBuiltinTypeName(ANode.Name) and not mMembers.ContainsKey(ANode);
   end;
 
   /// <summary>Eintrag für den Bezeichner ANode, wenn er sich nicht auflösen lässt.</summary>
@@ -398,7 +398,7 @@ var
       mItem := Default(TUnresolvedName);
       mItem.Name := ANode.Name;
       mItem.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-      AResolver.ScopedEnumValue(ATree, AFileName, ANode.Name, ANode.StartOffset, mItem.Suggestion);
+      AResolver.Queries.ScopedEnumValue(ATree, AFileName, ANode.Name, ANode.StartOffset, mItem.Suggestion);
       Result := Result + [mItem];
     end;
   end;

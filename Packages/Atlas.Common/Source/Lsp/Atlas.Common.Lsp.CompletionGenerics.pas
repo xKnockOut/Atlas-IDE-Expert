@@ -462,7 +462,7 @@ begin
       (Symbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
       SameText(Symbol.Name, AItem.Name) then
     begin
-      ASymbol := ARequest.Resolver.SymbolFrom(UnitInfo, Symbol);
+      ASymbol := TResolvedSymbol.FromIndex(UnitInfo, Symbol);
       Exit(True);
     end;
   end;

@@ -257,7 +257,7 @@ begin
   Values := nil;
   for Binding in ABindings do
   begin
-    Values := Values + [AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+    Values := Values + [AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
@@ -270,7 +270,7 @@ begin
   for Binding in ABindings do
   begin
     Result := Result + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
 end;
 
@@ -623,7 +623,7 @@ var
   Text, Body: string;
 begin
   Text := Trim(ATypeText);
-  Result := Typed(FResolver.UnqualifyType(Text));
+  Result := Typed(FResolver.Queries.UnqualifyType(Text));
   if (Result.Category <> TExpressionCategory.Other) or (Text = '') then
   begin
     Exit;
