@@ -613,8 +613,8 @@ begin
   begin
     mLineText := AContext.LineState.Text;
   end;
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.GitGutter, AContext.FileName, mRow.Line, mLineText, mRow.Rect,
-    mRow.TopRow, ARect.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitGutter, AContext.FileName,
+    mRow.Line, mLineText), mRow.Rect, mRow.TopRow, ARect.Height);
 end;
 
 function TLineChangesState.BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Boolean;
@@ -690,8 +690,8 @@ begin
     begin
       FBlame.Wnd := Context.EditControl.Handle;
     end;
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.GitBlame, Context.FileName, FBlame.Line, mLineText, FBlame.Rect,
-      FBlame.TopRow, Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GitBlame, Context.FileName,
+      FBlame.Line, mLineText), FBlame.Rect, FBlame.TopRow, Rect.Height);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.LineChanges, E);

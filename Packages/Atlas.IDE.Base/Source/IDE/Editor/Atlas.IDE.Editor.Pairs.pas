@@ -774,13 +774,13 @@ procedure TAtlasEditorPairs.ReportDimmed(const Context: INTACodeEditorPaintConte
 begin
   if FBranchesDimmed then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, ALine, '', ARect,
-      TopRowOf(Context), ARect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.InactiveDim, Context.FileName, ALine, ''),
+      ARect, TopRowOf(Context), ARect.Height);
   end;
   if FUsesDimmed then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.UnusedUses, Context.FileName, ALine, '', ARect,
-      TopRowOf(Context), ARect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.UnusedUses, Context.FileName, ALine, ''),
+      ARect, TopRowOf(Context), ARect.Height);
   end;
 end;
 
@@ -914,13 +914,13 @@ procedure TAtlasEditorPairs.ReportRun(const ARun: TPairRun; const ASpans: TArray
 begin
   if ARun.Colored then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.PairColors, ARun.Context.FileName, ARun.Line, '', ARun.Rect,
-      TopRowOf(ARun.Context), ARun.Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.PairColors, ARun.Context.FileName,
+      ARun.Line, ''), ARun.Rect, TopRowOf(ARun.Context), ARun.Rect.Height);
   end;
   if ARun.OwnerColored then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.PairOwners, ARun.Context.FileName, ARun.Line, '', ARun.Rect,
-      TopRowOf(ARun.Context), ARun.Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.PairOwners, ARun.Context.FileName,
+      ARun.Line, ''), ARun.Rect, TopRowOf(ARun.Context), ARun.Rect.Height);
   end;
   if (Length(ASpans) > 0) and ARun.AnyDimmed then
   begin
@@ -1026,8 +1026,8 @@ begin
   finally
     RestoreDC(mPaint.DC, mSaved);
   end;
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.PairGuides, AContext.FileName, ALine, '', ACode,
-    TopRowOf(AContext), ARect.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.PairGuides, AContext.FileName, ALine, ''),
+    ACode, TopRowOf(AContext), ARect.Height);
 end;
 
 end.

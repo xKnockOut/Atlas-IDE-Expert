@@ -197,27 +197,27 @@ begin
     end;
   // Eigene Unit, auch über den Namen des eigenen Formulars.
   Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   Assert.Contains(Names(Items), 'CUSTOMER_ID');
   Assert.IsTrue(TDataFieldNames.CallAt('  frmOrders.qryOrders.FieldByName(''cu'');', 37, Call));
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   // Anderes Datenmodul über die globale Variable im Index.
   Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryKunden.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   Assert.AreEqual('KUNDE_ID|NAME', Names(Items));
   Assert.Contains(Sql, 'from KUNDEN');
   // Ohne Index, unbekanntes Datenmodul oder unbekannte Datenmenge: nichts.
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, nil, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, nil, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
   Assert.IsTrue(TDataFieldNames.CallAt('  dmFremd.qryKunden.FieldByName(''na'');', 35, Call));
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
   Assert.AreEqual(0, Integer(Length(Items)));
   Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(cLooksUpMainText, cLooksUpMainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
 end;
 

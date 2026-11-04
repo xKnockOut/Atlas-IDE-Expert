@@ -189,21 +189,13 @@ begin
   TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
 end;
 
-procedure TAtlasIdeContextMenu.UpdateModuleSlots;
+/// <summary>Einträge der Module im Kontextmenü in ihrer Reihenfolge; Trennlinien als Befehl „-“.</summary>
+function ModuleMenuCommands: TArray<TAtlasModuleCommand>;
 var
-  mCommands: TArray<TAtlasModuleCommand>;
-  mVisible: TArray<Boolean>;
   mEntry: TAtlasMenuEntry;
   mCommand: TAtlasModuleCommand;
-  mIndex, mSlot, mKey, mLast: Integer;
-  mCaption: string;
-  mSeen: Boolean;
 begin
-  if Length(FModuleIds) = 0 then
-  begin
-    Exit;
-  end;
-  mCommands := nil;
+  Result := nil;
   for mEntry in TAtlasModuleContributions.MenuEntries(AtlasModuleRegistry, TAtlasMenuPlace.EditorContext) do
   begin
     if mEntry.CommandId = '-' then
@@ -211,46 +203,82 @@ begin
       mCommand := Default(TAtlasModuleCommand);
       mCommand.Id := '-';
       mCommand.Caption := '-';
-      mCommands := mCommands + [mCommand];
+      Result := Result + [mCommand];
     end
     else if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
     begin
-      mCommands := mCommands + [mCommand];
+      Result := Result + [mCommand];
     end;
   end;
+end;
+
+/// <summary>Sichtbarkeit: Befehle nach Visible, Trennlinien nur zwischen sichtbaren Befehlen.</summary>
+function VisibleCommands(const ACommands: TArray<TAtlasModuleCommand>): TArray<Boolean>;
+var
+  mIndex, mLast: Integer;
+  mSeen: Boolean;
+begin
+  SetLength(Result, Length(ACommands));
+  mSeen := False;
+  mLast := -1;
+  for mIndex := 0 to High(ACommands) do
+  begin
+    if ACommands[mIndex].Id = '-' then
+    begin
+      Result[mIndex] := False;
+      if mSeen then
+      begin
+        mLast := mIndex;
+      end;
+      Continue;
+    end;
+    Result[mIndex] := TAtlasModuleContributions.IsVisible(ACommands[mIndex]);
+    if Result[mIndex] then
+    begin
+      if mLast >= 0 then
+      begin
+        Result[mLast] := True;
+      end;
+      mLast := -1;
+      mSeen := True;
+    end;
+  end;
+end;
+
+/// <summary>Beschriftung eines Modulbefehls, mit Tastenkürzel hinter dem Tabulator, wenn er eins hat.</summary>
+function ModuleCaption(const ACommand: TAtlasModuleCommand): string;
+var
+  mKey: Integer;
+begin
+  Result := ACommand.Caption;
+  if not Assigned(ACommand.Key) then
+  begin
+    Exit;
+  end;
+  mKey := ACommand.Key();
+  if mKey <> 0 then
+  begin
+    Result := Result + #9 + ShortCutToText(TShortCut(mKey));
+  end;
+end;
+
+procedure TAtlasIdeContextMenu.UpdateModuleSlots;
+var
+  mCommands: TArray<TAtlasModuleCommand>;
+  mVisible: TArray<Boolean>;
+  mIndex, mSlot: Integer;
+begin
+  if Length(FModuleIds) = 0 then
+  begin
+    Exit;
+  end;
+  mCommands := ModuleMenuCommands;
   if Length(mCommands) > Length(FModuleIds) then
   begin
     TAtlasGuard.Log(Format('Kontextmenü: %d Einträge der Module, nur %d Plätze',
       [Length(mCommands), Length(FModuleIds)]));
   end;
-  // Sichtbarkeit: Befehle nach Visible, Trennlinien nur zwischen sichtbaren Befehlen.
-  SetLength(mVisible, Length(mCommands));
-  mSeen := False;
-  mLast := -1;
-  for mIndex := 0 to High(mCommands) do
-  begin
-    if mCommands[mIndex].Id = '-' then
-    begin
-      mVisible[mIndex] := False;
-      if mSeen then
-      begin
-        mLast := mIndex;
-      end;
-    end
-    else
-    begin
-      mVisible[mIndex] := TAtlasModuleContributions.IsVisible(mCommands[mIndex]);
-      if mVisible[mIndex] then
-      begin
-        if mLast >= 0 then
-        begin
-          mVisible[mLast] := True;
-        end;
-        mLast := -1;
-        mSeen := True;
-      end;
-    end;
-  end;
+  mVisible := VisibleCommands(mCommands);
   for mIndex := 0 to Min(High(FEntries), High(FItems)) do
   begin
     mSlot := FEntries[mIndex].Slot;
@@ -264,18 +292,8 @@ begin
       TAction(FItems[mIndex]).Visible := False;
       Continue;
     end;
-    mCommand := mCommands[mSlot];
-    FModuleIds[mSlot] := mCommand.Id;
-    mCaption := mCommand.Caption;
-    if Assigned(mCommand.Key) then
-    begin
-      mKey := mCommand.Key();
-      if mKey <> 0 then
-      begin
-        mCaption := mCaption + #9 + ShortCutToText(TShortCut(mKey));
-      end;
-    end;
-    TAction(FItems[mIndex]).Caption := mCaption;
+    FModuleIds[mSlot] := mCommands[mSlot].Id;
+    TAction(FItems[mIndex]).Caption := ModuleCaption(mCommands[mSlot]);
     TAction(FItems[mIndex]).Visible := mVisible[mSlot];
   end;
 end;
@@ -364,6 +382,35 @@ begin
   // Nur das Untermenü; ohne Handler wäre die Aktion ausgegraut.
 end;
 
+/// <summary>Die eigene Aktion hinter Sender (aus AOwner), sonst die verknüpfte des Menüeintrags; nil, wenn keine.
+/// </summary>
+function OwnAction(Sender: TObject; AOwner: TComponent): TBasicAction;
+begin
+  Result := nil;
+  if (Sender is TBasicAction) and (TBasicAction(Sender).Owner = AOwner) then
+  begin
+    Result := TBasicAction(Sender);
+  end
+  else if (Sender is TMenuItem) and (TMenuItem(Sender).Action <> nil) and
+    (TMenuItem(Sender).Action.Owner = AOwner) then
+  begin
+    Result := TMenuItem(Sender).Action;
+  end;
+end;
+
+/// <summary>Protokolliert einen Aufruf, hinter dem keine eigene Aktion steht.</summary>
+procedure LogUnknownSender(Sender: TObject);
+begin
+  if Sender = nil then
+  begin
+    TAtlasGuard.Log('Kontextmenü: Aufruf ohne Absender');
+  end
+  else
+  begin
+    TAtlasGuard.Log('Kontextmenü: unbekannter Absender ' + Sender.ClassName);
+  end;
+end;
+
 procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
 var
   Index: Integer;
@@ -371,26 +418,10 @@ var
 begin
   // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
   // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
-  Action := nil;
-  if (Sender is TBasicAction) and (TBasicAction(Sender).Owner = FActions) then
-  begin
-    Action := TBasicAction(Sender);
-  end
-  else if (Sender is TMenuItem) and (TMenuItem(Sender).Action <> nil) and
-    (TMenuItem(Sender).Action.Owner = FActions) then
-  begin
-    Action := TMenuItem(Sender).Action;
-  end;
+  Action := OwnAction(Sender, FActions);
   if Action = nil then
   begin
-    if Sender = nil then
-    begin
-      TAtlasGuard.Log('Kontextmenü: Aufruf ohne Absender');
-    end
-    else
-    begin
-      TAtlasGuard.Log('Kontextmenü: unbekannter Absender ' + Sender.ClassName);
-    end;
+    LogUnknownSender(Sender);
     Exit;
   end;
   // Nicht über Tag: Die IDE setzt ihn beim Einbinden ins Kontextmenü selbst (Protokoll: „Eintrag 30“).
