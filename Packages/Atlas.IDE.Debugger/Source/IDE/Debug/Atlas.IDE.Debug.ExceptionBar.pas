@@ -103,6 +103,8 @@ type
     class procedure ExceptionTaken(const AStop: TAtlasDebugExceptionStop); static;
     class procedure CheckShow; static;
     class procedure ShowBar; static;
+    /// <summary>Leiste in AHost anlegen bzw. aus einem anderen Editorfenster herüberholen.</summary>
+    class procedure EnsureBar(AHost: TWinControl); static;
     class procedure RunAction(AAction: TAtlasDebugBarAction); static;
     class procedure ResumeProcess; static;
     class function HostOfTopEditor: TWinControl; static;
@@ -461,6 +463,34 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugExceptionBar.EnsureBar(AHost: TWinControl);
+begin
+  if (FBar <> nil) and (FBar.Parent <> AHost) then
+  begin
+    FreeAndNil(FBar);
+  end;
+  if FBar <> nil then
+  begin
+    Exit;
+  end;
+  FBar := TAtlasDebugExceptionBar.Create(nil);
+  FBar.FreeNotification(FWatcher);
+  FBar.OnAction :=
+    procedure(AAction: TAtlasDebugBarAction)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Debugger,
+        procedure
+        begin
+          RunAction(AAction);
+        end);
+    end;
+  // Ganz oben, über Brotkrumen und Editorleiste (alTop ordnet nach Top).
+  FBar.Align := alNone;
+  FBar.Top := 0;
+  FBar.Align := alTop;
+  FBar.Parent := AHost;
+end;
+
 class procedure TAtlasIdeDebugExceptionBar.ShowBar;
 var
   Found: TAtlasDebugException;
@@ -487,29 +517,7 @@ begin
     TAtlasGuard.Log('Exception-Leiste: kein Editorfenster; nur der Verlauf zeigt die Exception');
     Exit;
   end;
-  if (FBar <> nil) and (FBar.Parent <> Host) then
-  begin
-    FreeAndNil(FBar);
-  end;
-  if FBar = nil then
-  begin
-    FBar := TAtlasDebugExceptionBar.Create(nil);
-    FBar.FreeNotification(FWatcher);
-    FBar.OnAction :=
-      procedure(AAction: TAtlasDebugBarAction)
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Debugger,
-          procedure
-          begin
-            RunAction(AAction);
-          end);
-      end;
-    // Ganz oben, über Brotkrumen und Editorleiste (alTop ordnet nach Top).
-    FBar.Align := alNone;
-    FBar.Top := 0;
-    FBar.Align := alTop;
-    FBar.Parent := Host;
-  end;
+  EnsureBar(Host);
   FBar.SetColors(TAtlasIdeStyle.Colors);
   FBar.SetInfo(FShownInfo);
   FShownStop := FPending.Stop;

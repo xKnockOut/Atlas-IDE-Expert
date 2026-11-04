@@ -16,7 +16,7 @@
 //   - Texte der Ursache, der Herkunft des Schalters, der geprüften Punkte und
 //     der Korrekturen kommen aus Atlas.UI.Strings.
 //   - Fix (Klick auf eine Korrektur im Tooltip), jede erst nach einer Vorschau
-//     mit Bestätigung:
+//     mit Bestätigung (ausgeführt von TAtlasIdeDebugUnavailableFixes):
 //       RestartWithDebug: Programm zurücksetzen (Aktion der IDE wie Strg+F2),
 //         Konfiguration mit Debug-Informationen wählen („Debug“ zuerst) und
 //         nach dem Ende der Sitzung „Start“ auslösen. Zurück: die frühere
@@ -50,8 +50,6 @@ type
   TAtlasIdeDebugUnavailable = class
   public const
     RequestTimeoutMs = 3000;
-    /// <summary>Konfiguration, die „Mit Debug neu starten“ zuerst wählt.</summary>
-    DebugConfiguration = 'Debug';
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -78,10 +76,13 @@ type
     procedure Accept(ARequest: Integer; const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts;
       const ADone: TAtlasDebugValueEvent);
     procedure RunFix(const AValue: TAtlasDebugValue; AFix: TAtlasUnavailableFix);
-    procedure ApplyEdit(AFix: TAtlasUnavailableFix);
+    /// <summary>Ohne Server oder Quelltext: nur die Tatsachen des Plugins.</summary>
+    function ExplainLocally(const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts): TAtlasDebugValue;
+    /// <summary>Im Hintergrund nach dem ersten Bezeichner von AValue.Expression fragen; die Antwort geht über
+    /// Accept an ADone.</summary>
+    procedure StartFetch(ASession: TLspSession; const AFileName: string; ALine: Integer;
+      const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts; const ADone: TAtlasDebugValueEvent);
     procedure RestartWithDebug;
-    procedure UseDebugDcus;
-    procedure ShowDirective;
     procedure Say(const AText: string);
     procedure ReapWorkers(AWait: Boolean);
     /// <summary>Datei (vollständig) und Zeile (0-basiert) des Ausführungspunkts; False ohne Quelltext.</summary>
@@ -95,7 +96,6 @@ type
       const AFacts: TAtlasUnavailableFacts): TAtlasDebugValue; static;
     class function OriginText(const ASwitch: TAtlasUnavailableSwitch; const AOption, AConfiguration: string): string;
       static;
-    class function ExecuteAction(const AName: string; AShortCut: TShortCut): Boolean; static;
   public
     destructor Destroy; override;
     /// <summary>AMessage: Zeile für die Meldungsansicht.</summary>
@@ -123,43 +123,21 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  System.Actions,
-  System.UITypes,
-  Winapi.Windows,
-  Vcl.ActnList,
-  Vcl.Dialogs,
-  Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
-  Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Sources,
-  Atlas.UI.Strings,
+  Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Strings;
 
 const
-  ResetAction = 'RunProgramResetCommand';
-  RunAction = 'RunRunCommand';
-  DebugDcusOption = 'DCC_DebugDCUs';
-  DebugInfoOption = 'DCC_DebugInformation';
-
-function FixText(AFix: TAtlasUnavailableFix): string;
-const
-  Ids: array[TAtlasUnavailableFix] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugUnavailableFixRestart,
-    TAtlasDebugTextId.DebugUnavailableFixRoutine, TAtlasDebugTextId.DebugUnavailableFixUnit,
-    TAtlasDebugTextId.DebugUnavailableFixDcus, TAtlasDebugTextId.DebugUnavailableFixDirective);
-begin
-  Result := TAtlasDebugStrings.Text(Ids[AFix]);
-end;
+  DebugDcusOption = TAtlasIdeDebugUnavailableFixes.DebugDcusOption;
+  DebugInfoOption = TAtlasIdeDebugUnavailableFixes.DebugInfoOption;
 
 function CheckText(ACheck: TAtlasUnavailableCheck): string;
 const
@@ -204,10 +182,7 @@ begin
     Exit;
   end;
   FInstance.FRestartPending := False;
-  if not ExecuteAction(RunAction, ShortCut(VK_F9, [])) then
-  begin
-    FInstance.Say(TAtlasStrings.Text(TAtlasTextId.StartProfilesNoRunAction));
-  end;
+  TAtlasIdeDebugUnavailableFixes.Run(FInstance.Say);
 end;
 
 { TAtlasIdeDebugUnavailable }
@@ -357,52 +332,71 @@ end;
 function TAtlasIdeDebugUnavailable.ExplainValue(const AValue: TAtlasDebugValue;
   const ADone: TAtlasDebugValueEvent): TAtlasDebugValue;
 var
-  Session: TLspSession;
-  Buffer: IOTAEditBuffer;
-  FileName, Name: string;
-  Line, Request: Integer;
-  Facts: TAtlasUnavailableFacts;
-  Located: Boolean;
-  Worker: TThread;
+  mSession: TLspSession;
+  mBuffer: IOTAEditBuffer;
+  mFileName, mName: string;
+  mLine: Integer;
+  mFacts: TAtlasUnavailableFacts;
+  mLocated: Boolean;
 begin
   Result := AValue;
   Result.Note.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableCaption);
   Result.Note.Pending := True;
-  Located := StopLocation(FileName, Line);
-  Facts := TAtlasUnavailableFacts.Create(LaunchFacts, Located and
-    not TAtlasIdeDebugSources.OwnCode.IsOwnFile(FileName));
-  Name := TAtlasDebugUnavailable.RootName(AValue.Expression);
-  Session := nil;
+  mLocated := StopLocation(mFileName, mLine);
+  mFacts := TAtlasUnavailableFacts.Create(LaunchFacts, mLocated and
+    not TAtlasIdeDebugSources.OwnCode.IsOwnFile(mFileName));
+  mName := TAtlasDebugUnavailable.RootName(AValue.Expression);
+  mSession := nil;
   if Assigned(FSession) then
   begin
-    Session := FSession();
+    mSession := FSession();
   end;
-  Buffer := nil;
-  if Located then
+  mBuffer := nil;
+  if mLocated then
   begin
-    Buffer := TAtlasIdeFiles.BufferOf(FileName);
+    mBuffer := TAtlasIdeFiles.BufferOf(mFileName);
   end;
   Inc(FRequest);
-  Request := FRequest;
-  if (Session = nil) or (Buffer = nil) or (Name = '') then
+  if (mSession = nil) or (mBuffer = nil) or (mName = '') then
   begin
-    // Ohne Server oder Quelltext: nur die Tatsachen des Plugins.
-    FLastExpression := AValue.Expression;
-    FLastFacts := Facts;
-    FLastExplanation := TAtlasDebugUnavailable.Explain(Facts);
-    Result := Describe(AValue, FLastExplanation, Facts);
+    Result := ExplainLocally(AValue, mFacts);
     Exit;
   end;
-  FileName := Buffer.FileName;
+  mFileName := mBuffer.FileName;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  Session.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
-  Worker := TThread.CreateAnonymousThread(
+  mSession.Sync(mFileName, TAtlasEditorBuffer.Text(mBuffer));
+  StartFetch(mSession, mFileName, mLine, AValue, mFacts, ADone);
+end;
+
+function TAtlasIdeDebugUnavailable.ExplainLocally(const AValue: TAtlasDebugValue;
+  const AFacts: TAtlasUnavailableFacts): TAtlasDebugValue;
+begin
+  FLastExpression := AValue.Expression;
+  FLastFacts := AFacts;
+  FLastExplanation := TAtlasDebugUnavailable.Explain(AFacts);
+  Result := Describe(AValue, FLastExplanation, AFacts);
+end;
+
+procedure TAtlasIdeDebugUnavailable.StartFetch(ASession: TLspSession; const AFileName: string; ALine: Integer;
+  const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts; const ADone: TAtlasDebugValueEvent);
+var
+  mName: string;
+  mRequest: Integer;
+  mFacts: TAtlasUnavailableFacts;
+  mValue: TAtlasDebugValue;
+  mWorker: TThread;
+begin
+  mName := TAtlasDebugUnavailable.RootName(AValue.Expression);
+  mRequest := FRequest;
+  mFacts := AFacts;
+  mValue := AValue;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     var
-      Answer: TAtlasUnavailableFacts;
+      mAnswer: TAtlasUnavailableFacts;
     begin
-      Answer := Facts;
-      Fetch(Session, FileName, Line, Name, Answer);
+      mAnswer := mFacts;
+      Fetch(ASession, AFileName, ALine, mName, mAnswer);
       // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
         procedure
@@ -414,16 +408,16 @@ begin
               begin
                 if FInstance <> nil then
                 begin
-                  FInstance.Accept(Request, AValue, Answer, ADone);
+                  FInstance.Accept(mRequest, mValue, mAnswer, ADone);
                 end;
               end);
           end;
         end);
     end);
-  Worker.FreeOnTerminate := False;
+  mWorker.FreeOnTerminate := False;
   ReapWorkers(False);
-  FWorkers.Add(Worker);
-  Worker.Start;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
 end;
 
 class procedure TAtlasIdeDebugUnavailable.Fetch(ASession: TLspSession; const AFileName: string; ALine: Integer;
@@ -535,7 +529,8 @@ begin
   end;
   for Fix in AExplanation.Fixes do
   begin
-    Note.Fixes := Note.Fixes + [TAtlasDebugValueFix.Create(Ord(Fix), FixText(Fix))];
+    Note.Fixes := Note.Fixes + [TAtlasDebugValueFix.Create(Ord(Fix),
+      TAtlasIdeDebugUnavailableFixes.FixText(Fix))];
   end;
   Result.Note := Note;
 end;
@@ -565,207 +560,31 @@ begin
     TAtlasUnavailableFix.RestartWithDebug:
       RestartWithDebug;
     TAtlasUnavailableFix.RoutineOptimization, TAtlasUnavailableFix.UnitOptimization:
-      ApplyEdit(AFix);
+      TAtlasIdeDebugUnavailableFixes.ApplyEdit(AFix, FLastFacts, Say);
     TAtlasUnavailableFix.DebugDcus:
-      UseDebugDcus;
+      TAtlasIdeDebugUnavailableFixes.UseDebugDcus(FLastFacts.Launch.Configuration, Say);
     TAtlasUnavailableFix.ShowDirective:
-      ShowDirective;
-  end;
-end;
-
-procedure TAtlasIdeDebugUnavailable.ApplyEdit(AFix: TAtlasUnavailableFix);
-var
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Target: string;
-begin
-  if AFix = TAtlasUnavailableFix.RoutineOptimization then
-  begin
-    Edit := FLastFacts.RoutineEdit;
-  end
-  else
-  begin
-    Edit := FLastFacts.UnitEdit;
-  end;
-  if Edit.IsEmpty then
-  begin
-    Exit;
-  end;
-  Target := ExtractFileName(Edit.Files[0].FileName);
-  // Vorschau: die eingefügten Zeilen; erst nach Bestätigung ändern.
-  if MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmEdit, [Target, sLineBreak + sLineBreak,
-    string.Join(sLineBreak, TAtlasDebugUnavailable.PreviewLines(Edit)), sLineBreak + sLineBreak]),
-    TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) <> mrOk then
-  begin
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
-    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits), FixText(AFix));
-  if Outcome.Error <> '' then
-  begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-  end
-  else
-  begin
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableEditDone, [FixText(AFix), Target]));
+      TAtlasIdeDebugUnavailableFixes.ShowDirective(FLastExplanation.Switch);
   end;
 end;
 
 procedure TAtlasIdeDebugUnavailable.RestartWithDebug;
-var
-  Project: IOTAProject;
-  Name, Chosen, Previous: string;
-  Configurations: TArray<string>;
 begin
-  Project := GetActiveProject;
-  if Project = nil then
+  if not TAtlasIdeDebugUnavailableFixes.PrepareRestart(Say) then
   begin
     Exit;
-  end;
-  // Konfiguration mit Debug-Informationen: „Debug“, sonst die erste mit (ohne die Grundkonfiguration).
-  Chosen := '';
-  Configurations := TAtlasIdeProjectContext.Configurations(Project);
-  for Name in Configurations do
-  begin
-    if SameText(Name, DebugConfiguration) and TAtlasDebugUnavailable.OptionOn(
-      TAtlasIdeProjectContext.ConfigurationValue(Project, Name, '', DebugInfoOption), True) then
-    begin
-      Chosen := Name;
-    end;
-  end;
-  if Chosen = '' then
-  begin
-    for Name in Configurations do
-    begin
-      if (Chosen = '') and not SameText(Name, 'Base') and TAtlasDebugUnavailable.OptionOn(
-        TAtlasIdeProjectContext.ConfigurationValue(Project, Name, '', DebugInfoOption), True) then
-      begin
-        Chosen := Name;
-      end;
-    end;
-  end;
-  if Chosen = '' then
-  begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoDebugConfiguration));
-    Exit;
-  end;
-  Previous := Project.CurrentConfiguration;
-  if MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmRestart, [Chosen, Previous,
-    sLineBreak + sLineBreak]), TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) <> mrOk then
-  begin
-    Exit;
-  end;
-  if not SameText(Previous, Chosen) then
-  begin
-    Project.CurrentConfiguration := Chosen;
   end;
   if not TAtlasIdeDebugSession.Active then
   begin
-    if not ExecuteAction(RunAction, ShortCut(VK_F9, [])) then
-    begin
-      Say(TAtlasStrings.Text(TAtlasTextId.StartProfilesNoRunAction));
-    end;
+    TAtlasIdeDebugUnavailableFixes.Run(Say);
     Exit;
   end;
   // Start erst, wenn der letzte Prozess weg ist (TListener.DebugEnded).
   FRestartPending := True;
-  if not ExecuteAction(ResetAction, ShortCut(VK_F2, [ssCtrl])) then
+  if not TAtlasIdeDebugUnavailableFixes.Reset(Say) then
   begin
     FRestartPending := False;
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoResetAction));
   end;
-end;
-
-procedure TAtlasIdeDebugUnavailable.UseDebugDcus;
-var
-  Project: IOTAProject;
-  Build: IOTABuildConfiguration;
-  Configuration, Previous: string;
-begin
-  Project := GetActiveProject;
-  if Project = nil then
-  begin
-    Exit;
-  end;
-  Configuration := FLastFacts.Launch.Configuration;
-  if Configuration = '' then
-  begin
-    Configuration := Project.CurrentConfiguration;
-  end;
-  Build := TAtlasIdeProjectContext.BuildConfiguration(Project, Configuration);
-  if Build = nil then
-  begin
-    Exit;
-  end;
-  Previous := Trim(Build.GetValue(DebugDcusOption, True));
-  if Previous = '' then
-  begin
-    Previous := 'false';
-  end;
-  if MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmDcus, [Configuration,
-    ExtractFileName(Project.FileName), Previous, sLineBreak + sLineBreak]), TMsgDlgType.mtConfirmation,
-    [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) <> mrOk then
-  begin
-    Exit;
-  end;
-  Build.SetValue(DebugDcusOption, 'true');
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableDcusDone, [Configuration, Previous]));
-end;
-
-procedure TAtlasIdeDebugUnavailable.ShowDirective;
-var
-  Switch: TAtlasUnavailableSwitch;
-begin
-  Switch := FLastExplanation.Switch;
-  if Switch.IsDirective then
-  begin
-    TAtlasIdeNavigation.GoToLocation(Switch.FileName, Switch.Line, 0);
-  end;
-end;
-
-class function TAtlasIdeDebugUnavailable.ExecuteAction(const AName: string; AShortCut: TShortCut): Boolean;
-var
-  Services: INTAServices;
-  Index: Integer;
-  Action: TContainedAction;
-  Found: TContainedAction;
-begin
-  Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  Found := nil;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
-  begin
-    if SameText(Services.ActionList.Actions[Index].Name, AName) then
-    begin
-      Found := Services.ActionList.Actions[Index];
-    end;
-  end;
-  // Ersatz: die Aktion mit dem Tastenkürzel der IDE.
-  if Found = nil then
-  begin
-    for Index := 0 to Services.ActionList.ActionCount - 1 do
-    begin
-      Action := Services.ActionList.Actions[Index];
-      if (Found = nil) and (Action is TCustomAction) and (TCustomAction(Action).ShortCut = AShortCut) then
-      begin
-        Found := Action;
-      end;
-    end;
-  end;
-  if Found = nil then
-  begin
-    Exit;
-  end;
-  Found.Update;
-  if (Found is TCustomAction) and not TCustomAction(Found).Enabled then
-  begin
-    Exit;
-  end;
-  Found.Execute;
-  Result := True;
 end;
 
 procedure TAtlasIdeDebugUnavailable.Say(const AText: string);

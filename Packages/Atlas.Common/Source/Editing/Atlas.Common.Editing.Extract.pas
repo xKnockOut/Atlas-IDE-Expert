@@ -585,7 +585,8 @@ begin
   begin
     ClassDecl := ClassDecl + ' static;';
   end;
-  if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', ClassDecl, AOptions.Style, Edit) then
+  if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, TMemberEntry.Create('private', ClassDecl),
+    AOptions.Style, Edit) then
   begin
     Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
   end;

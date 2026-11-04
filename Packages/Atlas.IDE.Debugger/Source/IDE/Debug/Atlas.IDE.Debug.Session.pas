@@ -147,6 +147,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Projects.Context;
@@ -537,12 +538,50 @@ begin
   end;
 end;
 
+/// <summary>Höchstens AMax Rahmen von AThread (Zugriff schon begonnen); None, wenn der Halt unterwegs endet
+/// oder der Debug-Kernel nicht antwortet.</summary>
+function ReadFrames(const AThread: IOTAThread; AMax: Integer; out AFrames: TAtlasDebugFrames):
+  TAtlasDebugStackRead;
+var
+  mIndex, mLine, mCount: Integer;
+  mFileName: string;
+begin
+  AFrames := nil;
+  Result := TAtlasDebugStackRead.Ready;
+  try
+    mCount := Min(AThread.GetCallCount, AMax);
+    mIndex := 0;
+    while (Result = TAtlasDebugStackRead.Ready) and (mIndex < mCount) do
+    begin
+      // Endet die Sitzung während des Lesens (Programm beendet sich nach der Exception), meldet der Kernel
+      // jeden weiteren Zugriff mit "Disconnected session": vor jedem Frame prüfen, ob der Halt noch gilt.
+      if TAtlasIdeDebugSession.StoppedThread = nil then
+      begin
+        AFrames := nil;
+        Result := TAtlasDebugStackRead.None;
+        Continue;
+      end;
+      mFileName := '';
+      mLine := 0;
+      // Die Rahmen der Open Tools API zählen ab 1 (ToolsAPI: "CallHeaders are one-based"). Index 0 nimmt der
+      // Win32-Debugger hin; der Win64-Debugger meldet darauf "disconnected session".
+      AThread.GetCallPos(mIndex + 1, mFileName, mLine);
+      AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(mIndex + 1), mFileName, mLine)];
+      Inc(mIndex);
+    end;
+  except
+    // Verbindung zum Debug-Kernel weg: ohne Stack weiter, nicht die IDE stören.
+    on E: Exception do
+    begin
+      AFrames := nil;
+      TAtlasGuard.Log(Format('Debugger-Stack nicht lesbar: %s: %s', [E.ClassName, E.Message]));
+      Result := TAtlasDebugStackRead.None;
+    end;
+  end;
+end;
+
 class function TAtlasIdeDebugSession.ReadStack(const AThread: IOTAThread; AMax: Integer;
   out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
-var
-  Access: TOTACallStackState;
-  Index, Count, Line: Integer;
-  FileName: string;
 begin
   AFrames := nil;
   Result := TAtlasDebugStackRead.None;
@@ -550,46 +589,15 @@ begin
   begin
     Exit;
   end;
-  Access := AThread.StartCallStackAccess;
   try
-    case Access of
+    case AThread.StartCallStackAccess of
       csWait:
-        Exit(TAtlasDebugStackRead.Wait);
+        Result := TAtlasDebugStackRead.Wait;
       csInaccessible:
-        Exit;
+        ;
+    else
+      Result := ReadFrames(AThread, AMax, AFrames);
     end;
-    try
-      Count := AThread.GetCallCount;
-      if Count > AMax then
-      begin
-        Count := AMax;
-      end;
-      for Index := 0 to Count - 1 do
-      begin
-        // Endet die Sitzung während des Lesens (Programm beendet sich nach der Exception), meldet der Kernel
-        // jeden weiteren Zugriff mit "Disconnected session": vor jedem Frame prüfen, ob der Halt noch gilt.
-        if StoppedThread = nil then
-        begin
-          AFrames := nil;
-          Exit(TAtlasDebugStackRead.None);
-        end;
-        FileName := '';
-        Line := 0;
-        // Die Rahmen der Open Tools API zählen ab 1 (ToolsAPI: "CallHeaders are one-based"). Index 0 nimmt der
-        // Win32-Debugger hin; der Win64-Debugger meldet darauf "disconnected session".
-        AThread.GetCallPos(Index + 1, FileName, Line);
-        AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index + 1), FileName, Line)];
-      end;
-    except
-      // Verbindung zum Debug-Kernel weg: ohne Stack weiter, nicht die IDE stören.
-      on E: Exception do
-      begin
-        AFrames := nil;
-        TAtlasGuard.Log(Format('Debugger-Stack nicht lesbar: %s: %s', [E.ClassName, E.Message]));
-        Exit(TAtlasDebugStackRead.None);
-      end;
-    end;
-    Result := TAtlasDebugStackRead.Ready;
   finally
     AThread.EndCallStackAccess;
   end;

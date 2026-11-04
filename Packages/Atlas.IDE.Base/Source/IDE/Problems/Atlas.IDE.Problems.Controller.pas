@@ -48,6 +48,7 @@ uses
   System.SyncObjs,
   System.Generics.Collections,
   Vcl.ExtCtrls,
+  ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
@@ -70,8 +71,10 @@ type
     At: TDateTime;
   end;
 
-  TAtlasProblemsController = class
-  private type
+  /// <summary>Abgleich mit dem Server: Threads für textDocument/diagnostic und workspace/diagnostic, gelieferte
+  /// Diagnosen im Speicher. Grundlage von TAtlasProblemsController.</summary>
+  TAtlasProblemsSync = class
+  protected type
     TPull = record
       FileName: string;
       Text: string;
@@ -114,6 +117,8 @@ type
       FLog: TAtlasProblemsLogProc;
       procedure Deliver(const AReports: TArray<TLspDiagnosticReport>; const ARun: TLspWorkspaceRun);
       procedure LogLater(const AMessage: string);
+      /// <summary>Stände von AReports merken; geändert gelieferte zurück.</summary>
+      function Remember(const AReports: TArray<TLspDiagnosticReport>): TArray<TLspDiagnosticReport>;
     protected
       procedure Execute; override;
       procedure TerminatedSet; override;
@@ -127,13 +132,10 @@ type
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     WorkspaceTimeoutMs = 15000;
     WorkspaceRetryMs = 15000;
-  private
+  protected
     FSession: TAtlasProblemsSessionFunc;
     FLog: TAtlasProblemsLogProc;
     FStore: TAtlasProblemStore;
-    FPainter: TAtlasProblemsPainter;
-    FList: TAtlasProblemsList;
-    FTimer: TTimer;
     FWorkerSession: TLspSession;
     FDocuments: TDocumentWorker;
     FWorkspace: TWorkspaceWorker;
@@ -143,34 +145,15 @@ type
     FTexts: TDictionary<string, string>;
     // Version des Pufferstands je Datei (P-04): Vergleich statt des ganzen Textes.
     FVersions: TDictionary<string, Cardinal>;
-    // Zuletzt aktiver Editor: beim Wechsel seinen Stand sofort an den Server (Index, #492).
-    FLastFile: string;
     FPulled: TDictionary<string, string>;
-    FChangedAt: Cardinal;
     FRefreshSeen: Integer;
-    FPaintedVersion: Integer;
-    FListedVersion: Integer;
-    // Stand des Schalters ProblemsList beim letzten Aufbau der Liste.
-    FListShown: Boolean;
-    FListDue: Cardinal;
-    FClosedCheckAt: Cardinal;
-    // Nach gescheitertem Serverstart erst später wieder versuchen.
-    FRetryAt: Cardinal;
     FBuildTarget: TAtlasIdeBuildTarget;
-    // Zähler (#509): zuletzt gemeldeter Stand.
-    FCountsShown: Boolean;
-    FCountsVersion: Integer;
-    // Zuletzt gesehener Zähler weggefallener Projekte der Sitzung.
-    FProjectsRemoved: Integer;
     // Zuletzt dem Server gemeldete Debug-Pause (#1247).
     FDebugPauseSent: Boolean;
-    class var FOnCounts: TAtlasProblemCountsProc;
     // Stand der Projektprüfung des Servers (#1247) und wann der letzte Lauf endete (GetTickCount64, 0 = nie).
     class var FRun: TLspWorkspaceRun;
     class var FRunFinishedAt: UInt64;
     class var FLastCheck: TAtlasProblemsCheck;
-    procedure PublishCounts;
-    procedure Tick(Sender: TObject);
     procedure EnsureWorkers(ASession: TLspSession);
     procedure StopWorkers(AWait: Boolean);
     procedure FreeFinished;
@@ -179,13 +162,6 @@ type
     /// <summary>Meldet dem Server Beginn und Ende des Debuggens (#1247): Die Projektprüfung ruht solange.</summary>
     procedure ReportDebugPause(APaused: Boolean);
     procedure CloseUnopened(ASession: TLspSession);
-    procedure Publish;
-    /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
-    function Active: Boolean;
-    function ShowProblems: Boolean;
-    function ShowInactive: Boolean;
-    class function IsSource(const AFileName: string): Boolean; static;
-    class function IsOpenInIde(const AFileName: string): Boolean; static;
   public
     constructor Create(const ASession: TAtlasProblemsSessionFunc; const ALog: TAtlasProblemsLogProc);
     destructor Destroy; override;
@@ -193,6 +169,58 @@ type
     procedure BeginShutdown;
     /// <summary>Auf die Threads warten (Teil 2); danach darf die Sitzung enden.</summary>
     procedure WaitShutdown;
+    /// <summary>Letzte Prüfung einer Datei (#909); im Hauptthread.</summary>
+    class property LastCheck: TAtlasProblemsCheck read FLastCheck;
+    /// <summary>Läuft ein Programm im Debugger? Dann ruht die Prüfung (#1241).</summary>
+    class function Paused: Boolean; static;
+    /// <summary>Stand der Projektprüfung des Servers (#1247); AFinishedAgoMs = Zeit seit dem Ende des letzten Laufs
+    /// (High(UInt64) ohne). False, solange der Server keinen Stand gemeldet hat. Im Hauptthread.</summary>
+    class function ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean; static;
+  end;
+
+  TAtlasProblemsController = class(TAtlasProblemsSync)
+  private
+    FPainter: TAtlasProblemsPainter;
+    FList: TAtlasProblemsList;
+    FTimer: TTimer;
+    // Zuletzt aktiver Editor: beim Wechsel seinen Stand sofort an den Server (Index, #492).
+    FLastFile: string;
+    FChangedAt: Cardinal;
+    FPaintedVersion: Integer;
+    FListedVersion: Integer;
+    // Stand des Schalters ProblemsList beim letzten Aufbau der Liste.
+    FListShown: Boolean;
+    FListDue: Cardinal;
+    FClosedCheckAt: Cardinal;
+    // Nach gescheitertem Serverstart erst später wieder versuchen.
+    FRetryAt: Cardinal;
+    // Zähler (#509): zuletzt gemeldeter Stand.
+    FCountsShown: Boolean;
+    FCountsVersion: Integer;
+    // Zuletzt gesehener Zähler weggefallener Projekte der Sitzung.
+    FProjectsRemoved: Integer;
+    class var FOnCounts: TAtlasProblemCountsProc;
+    procedure PublishCounts;
+    procedure Tick(Sender: TObject);
+    procedure Publish;
+    /// <summary>Speicher und Stände verwerfen und veröffentlichen.</summary>
+    procedure DropAll;
+    /// <summary>Abgeschaltet oder Debugger aktiv: Threads anhalten; True, dann ruht der Takt.</summary>
+    function Halted: Boolean;
+    /// <summary>Projektgruppe geschlossen oder gewechselt: alles verwerfen und neu holen.</summary>
+    procedure CheckProjectsRemoved;
+    /// <summary>Pufferstand von AView merken; Markierungen wandern mit. Liefert den Text.</summary>
+    function TrackEdit(const AView: IOTAEditView): string;
+    procedure Serve(ASession: TLspSession; const AView: IOTAEditView; const AFileName, AText: string);
+    /// <summary>Editor gewechselt: Getipptes der vorigen Unit sofort senden (#492).</summary>
+    procedure SyncPrevious(ASession: TLspSession; const AFileName: string);
+    /// <summary>Diagnosen der Datei holen, wenn der Server neu gebaut hat oder die Tipp-Pause um ist.</summary>
+    procedure PullIfDue(ASession: TLspSession; const AView: IOTAEditView; const AFileName, AText: string);
+    /// <summary>Alle anderen abgeglichenen Dateien: Ihre Compilermeldungen können neu sein.</summary>
+    function OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TPull>;
+  public
+    constructor Create(const ASession: TAtlasProblemsSessionFunc; const ALog: TAtlasProblemsLogProc);
+    destructor Destroy; override;
     /// <summary>Probleme an der Stelle (0-basiert) für den Hover-Tooltip; mit Abblenden auch der Hinweis
     /// „Inaktiv: Bedingung … nicht erfüllt“ eines inaktiven Zweigs (#615) und mit DimUnusedUses der Grund eines
     /// auffälligen uses-Eintrags (#621).</summary>
@@ -206,15 +234,8 @@ type
     class function CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts; static;
     /// <summary>Empfänger der Zähler (#509); setzt die Composition, nil = keiner. Im Hauptthread.</summary>
     class property OnCounts: TAtlasProblemCountsProc read FOnCounts write FOnCounts;
-    /// <summary>Letzte Prüfung einer Datei (#909); im Hauptthread.</summary>
-    class property LastCheck: TAtlasProblemsCheck read FLastCheck;
     /// <summary>Läuft gerade eine Prüfung (textDocument/diagnostic) des laufenden Controllers? (#1155)</summary>
     class function Checking: Boolean; static;
-    /// <summary>Läuft ein Programm im Debugger? Dann ruht die Prüfung (#1241).</summary>
-    class function Paused: Boolean; static;
-    /// <summary>Stand der Projektprüfung des Servers (#1247); AFinishedAgoMs = Zeit seit dem Ende des letzten Laufs
-    /// (High(UInt64) ohne). False, solange der Server keinen Stand gemeldet hat. Im Hauptthread.</summary>
-    class function ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean; static;
   end;
 
 implementation
@@ -224,16 +245,56 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
-  ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings;
 
-{ TAtlasProblemsController.TDocumentWorker }
+/// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
+function ProblemsActive: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and (mSettings.Problems or mSettings.InactiveDim or mSettings.DimUnusedUses);
+end;
 
-constructor TAtlasProblemsController.TDocumentWorker.Create(ASession: TLspSession; const ADeliver: TDocumentProc;
+function ShowProblems: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.Problems;
+end;
+
+function ShowInactive: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.InactiveDim;
+end;
+
+function IsSource(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc') or
+    (mExtension = '.lpr');
+end;
+
+function IsOpenInIde(const AFileName: string): Boolean;
+var
+  mModules: IOTAModuleServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
+end;
+
+{ TAtlasProblemsSync.TDocumentWorker }
+
+constructor TAtlasProblemsSync.TDocumentWorker.Create(ASession: TLspSession; const ADeliver: TDocumentProc;
   const ALog: TAtlasProblemsLogProc);
 begin
   FSession := ASession;
@@ -244,20 +305,20 @@ begin
   inherited Create(False);
 end;
 
-destructor TAtlasProblemsController.TDocumentWorker.Destroy;
+destructor TAtlasProblemsSync.TDocumentWorker.Destroy;
 begin
   inherited Destroy;
   FWake.Free;
   FLock.Free;
 end;
 
-procedure TAtlasProblemsController.TDocumentWorker.TerminatedSet;
+procedure TAtlasProblemsSync.TDocumentWorker.TerminatedSet;
 begin
   inherited;
   FWake.SetEvent;
 end;
 
-procedure TAtlasProblemsController.TDocumentWorker.Add(const APulls: TArray<TPull>);
+procedure TAtlasProblemsSync.TDocumentWorker.Add(const APulls: TArray<TPull>);
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -268,7 +329,7 @@ begin
   FWake.SetEvent;
 end;
 
-function TAtlasProblemsController.TDocumentWorker.Idle: Boolean;
+function TAtlasProblemsSync.TDocumentWorker.Idle: Boolean;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -278,7 +339,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.TDocumentWorker.Deliver(const APull: TPull; const AReport: TLspDiagnosticReport);
+procedure TAtlasProblemsSync.TDocumentWorker.Deliver(const APull: TPull; const AReport: TLspDiagnosticReport);
 var
   Work: TThreadProcedure;
 begin
@@ -291,7 +352,7 @@ begin
   Queue(Work);
 end;
 
-procedure TAtlasProblemsController.TDocumentWorker.LogLater(const AMessage: string);
+procedure TAtlasProblemsSync.TDocumentWorker.LogLater(const AMessage: string);
 var
   Work: TThreadProcedure;
 begin
@@ -303,7 +364,7 @@ begin
   Queue(Work);
 end;
 
-procedure TAtlasProblemsController.TDocumentWorker.Execute;
+procedure TAtlasProblemsSync.TDocumentWorker.Execute;
 var
   Jobs: TArray<TPull>;
   Job, Done: TPull;
@@ -351,9 +412,9 @@ begin
   end;
 end;
 
-{ TAtlasProblemsController.TWorkspaceWorker }
+{ TAtlasProblemsSync.TWorkspaceWorker }
 
-constructor TAtlasProblemsController.TWorkspaceWorker.Create(ASession: TLspSession; const ADeliver: TWorkspaceProc;
+constructor TAtlasProblemsSync.TWorkspaceWorker.Create(ASession: TLspSession; const ADeliver: TWorkspaceProc;
   const ALog: TAtlasProblemsLogProc);
 begin
   FSession := ASession;
@@ -364,20 +425,20 @@ begin
   inherited Create(False);
 end;
 
-destructor TAtlasProblemsController.TWorkspaceWorker.Destroy;
+destructor TAtlasProblemsSync.TWorkspaceWorker.Destroy;
 begin
   inherited Destroy;
   FStop.Free;
   FKnown.Free;
 end;
 
-procedure TAtlasProblemsController.TWorkspaceWorker.TerminatedSet;
+procedure TAtlasProblemsSync.TWorkspaceWorker.TerminatedSet;
 begin
   inherited;
   FStop.SetEvent;
 end;
 
-procedure TAtlasProblemsController.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>;
+procedure TAtlasProblemsSync.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>;
   const ARun: TLspWorkspaceRun);
 var
   Work: TThreadProcedure;
@@ -390,7 +451,7 @@ begin
   Queue(Work);
 end;
 
-procedure TAtlasProblemsController.TWorkspaceWorker.LogLater(const AMessage: string);
+procedure TAtlasProblemsSync.TWorkspaceWorker.LogLater(const AMessage: string);
 var
   Work: TThreadProcedure;
 begin
@@ -402,10 +463,28 @@ begin
   Queue(Work);
 end;
 
-procedure TAtlasProblemsController.TWorkspaceWorker.Execute;
+function TAtlasProblemsSync.TWorkspaceWorker.Remember(
+  const AReports: TArray<TLspDiagnosticReport>): TArray<TLspDiagnosticReport>;
 var
-  Reports, Changed: TArray<TLspDiagnosticReport>;
-  Report, Known: TLspDiagnosticReport;
+  mReport, mKnown: TLspDiagnosticReport;
+begin
+  Result := nil;
+  for mReport in AReports do
+  begin
+    mKnown := Default(TLspDiagnosticReport);
+    mKnown.FileName := mReport.FileName;
+    mKnown.ResultId := mReport.ResultId;
+    FKnown.AddOrSetValue(TAtlasProblemStore.Key(mReport.FileName), mKnown);
+    if not mReport.Unchanged then
+    begin
+      Result := Result + [mReport];
+    end;
+  end;
+end;
+
+procedure TAtlasProblemsSync.TWorkspaceWorker.Execute;
+var
+  Changed: TArray<TLspDiagnosticReport>;
   Started: Cardinal;
   Run: TLspWorkspaceRun;
 begin
@@ -413,19 +492,7 @@ begin
   begin
     Started := GetTickCount;
     try
-      Reports := FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, Run);
-      Changed := nil;
-      for Report in Reports do
-      begin
-        Known := Default(TLspDiagnosticReport);
-        Known.FileName := Report.FileName;
-        Known.ResultId := Report.ResultId;
-        FKnown.AddOrSetValue(TAtlasProblemStore.Key(Report.FileName), Known);
-        if not Report.Unchanged then
-        begin
-          Changed := Changed + [Report];
-        end;
-      end;
+      Changed := Remember(FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, Run));
       // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
       if (Length(Changed) > 0) or Run.Known then
       begin
@@ -450,25 +517,20 @@ begin
   end;
 end;
 
-{ TAtlasProblemsController }
-
 var
   // Speicher des laufenden Controllers (#615).
   CurrentStore: TAtlasProblemStore = nil;
   // Laufender Controller für Checking (#1155).
   CurrentController: TAtlasProblemsController = nil;
 
-constructor TAtlasProblemsController.Create(const ASession: TAtlasProblemsSessionFunc;
-  const ALog: TAtlasProblemsLogProc);
+{ TAtlasProblemsSync }
+
+constructor TAtlasProblemsSync.Create(const ASession: TAtlasProblemsSessionFunc; const ALog: TAtlasProblemsLogProc);
 begin
   inherited Create;
   FSession := ASession;
   FLog := ALog;
   FStore := TAtlasProblemStore.Create;
-  CurrentStore := FStore;
-  CurrentController := Self;
-  FPainter := TAtlasProblemsPainter.Create(FStore);
-  FList := TAtlasProblemsList.Create;
   FRetired := TObjectList<TThread>.Create(True);
   FTexts := TDictionary<string, string>.Create;
   FVersions := TDictionary<string, Cardinal>.Create;
@@ -478,6 +540,31 @@ begin
     begin
       FLog(AMessage);
     end);
+end;
+
+destructor TAtlasProblemsSync.Destroy;
+begin
+  BeginShutdown;
+  WaitShutdown;
+  FRetired.Free;
+  FBuildTarget.Free;
+  FPulled.Free;
+  FTexts.Free;
+  FVersions.Free;
+  FStore.Free;
+  inherited Destroy;
+end;
+
+{ TAtlasProblemsController }
+
+constructor TAtlasProblemsController.Create(const ASession: TAtlasProblemsSessionFunc;
+  const ALog: TAtlasProblemsLogProc);
+begin
+  inherited Create(ASession, ALog);
+  CurrentStore := FStore;
+  CurrentController := Self;
+  FPainter := TAtlasProblemsPainter.Create(FStore);
+  FList := TAtlasProblemsList.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -495,7 +582,7 @@ begin
     not CurrentController.FDocuments.Idle;
 end;
 
-class function TAtlasProblemsController.ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean;
+class function TAtlasProblemsSync.ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean;
 begin
   ARun := FRun;
   AFinishedAgoMs := High(UInt64);
@@ -506,7 +593,7 @@ begin
   Result := (CurrentController <> nil) and FRun.Known;
 end;
 
-procedure TAtlasProblemsController.ReportDebugPause(APaused: Boolean);
+procedure TAtlasProblemsSync.ReportDebugPause(APaused: Boolean);
 var
   Session: TLspSession;
 begin
@@ -524,7 +611,7 @@ begin
   FDebugPauseSent := APaused;
 end;
 
-class function TAtlasProblemsController.Paused: Boolean;
+class function TAtlasProblemsSync.Paused: Boolean;
 var
   Debugger: IOTADebuggerServices;
 begin
@@ -544,23 +631,17 @@ begin
   FTimer.Free;
   BeginShutdown;
   WaitShutdown;
-  FRetired.Free;
-  FBuildTarget.Free;
-  FPulled.Free;
-  FTexts.Free;
-  FVersions.Free;
   FList.Free;
   FPainter.Free;
-  FStore.Free;
   inherited Destroy;
 end;
 
-procedure TAtlasProblemsController.BeginShutdown;
+procedure TAtlasProblemsSync.BeginShutdown;
 begin
   StopWorkers(False);
 end;
 
-procedure TAtlasProblemsController.WaitShutdown;
+procedure TAtlasProblemsSync.WaitShutdown;
 var
   Thread: TThread;
 begin
@@ -576,7 +657,7 @@ begin
   FRefreshSeen := 0;
 end;
 
-procedure TAtlasProblemsController.StopWorkers(AWait: Boolean);
+procedure TAtlasProblemsSync.StopWorkers(AWait: Boolean);
 begin
   if FDocuments <> nil then
   begin
@@ -598,7 +679,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.FreeFinished;
+procedure TAtlasProblemsSync.FreeFinished;
 var
   Index: Integer;
 begin
@@ -612,7 +693,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.EnsureWorkers(ASession: TLspSession);
+procedure TAtlasProblemsSync.EnsureWorkers(ASession: TLspSession);
 begin
   if (FWorkerSession <> nil) and (FWorkerSession <> ASession) then
   begin
@@ -641,57 +722,190 @@ begin
   FWorkerSession := ASession;
 end;
 
-function TAtlasProblemsController.Active: Boolean;
-var
-  Settings: TAtlasPluginSettings;
+procedure TAtlasProblemsController.DropAll;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and (Settings.Problems or Settings.InactiveDim or Settings.DimUnusedUses);
+  FStore.Clear;
+  FTexts.Clear;
+  FVersions.Clear;
+  FPulled.Clear;
+  Publish;
 end;
 
-function TAtlasProblemsController.ShowProblems: Boolean;
-var
-  Settings: TAtlasPluginSettings;
+function TAtlasProblemsController.Halted: Boolean;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.Problems;
+  Result := not ProblemsActive;
+  if Result then
+  begin
+    if (FDocuments <> nil) or (FWorkspace <> nil) then
+    begin
+      StopWorkers(False);
+    end;
+    DropAll;
+    Exit;
+  end;
+  // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
+  FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
+  // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
+  // Die Projektprüfung des Servers erfährt es eigens (#1247), sonst liefe ihr Lauf weiter.
+  Result := Paused;
+  ReportDebugPause(Result);
+  if Result and ((FDocuments <> nil) or (FWorkspace <> nil)) then
+  begin
+    StopWorkers(False);
+  end;
 end;
 
-function TAtlasProblemsController.ShowInactive: Boolean;
+procedure TAtlasProblemsController.CheckProjectsRemoved;
 var
-  Settings: TAtlasPluginSettings;
+  mSession: TLspSession;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.InactiveDim;
+  // Pull-Diagnosen melden weggefallene Dateien nie mehr, ihre Befunde blieben sonst im Speicher und im Fenster
+  // „Atlas-Prüfung“.
+  mSession := FSession(False);
+  if (mSession = nil) or (mSession.ProjectsRemoved = FProjectsRemoved) then
+  begin
+    Exit;
+  end;
+  FProjectsRemoved := mSession.ProjectsRemoved;
+  FLog('Projekte weggefallen: Befunde verworfen, Prüfung neu');
+  StopWorkers(False);
+  DropAll;
 end;
 
-class function TAtlasProblemsController.IsSource(const AFileName: string): Boolean;
+/// <summary>Oberer Editor mit einer Quelldatei; nil ohne. Ohne Fokus ändert sich der Puffer nur über Neuladen, das
+/// den Stand ohnehin als veraltet markiert: dann weder Puffer lesen noch abgleichen (P-04).</summary>
+function TopSourceView: IOTAEditView;
 var
-  Extension: string;
+  mEditors: IOTAEditorServices;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc') or
-    (Extension = '.lpr');
+  Result := nil;
+  if Application.Active and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
+  if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
+  begin
+    Result := nil;
+  end;
 end;
 
-class function TAtlasProblemsController.IsOpenInIde(const AFileName: string): Boolean;
+function TAtlasProblemsController.TrackEdit(const AView: IOTAEditView): string;
 var
-  Modules: IOTAModuleServices;
+  mFileName, mKey: string;
+  mSnapshot: TAtlasEditorSnapshot;
+  mKnownVersion: Cardinal;
 begin
-  Result := Supports(BorlandIDEServices, IOTAModuleServices, Modules) and (Modules.FindModule(AFileName) <> nil);
+  mFileName := AView.Buffer.FileName;
+  mKey := TAtlasProblemStore.Key(mFileName);
+  // Gemeinsamer Pufferstand (P-04): gelesen nur nach einer Änderung.
+  mSnapshot := TAtlasEditorSnapshots.Get(AView);
+  Result := mSnapshot.Text;
+  // Markierungen wandern mit, bevor neue Diagnosen da sind.
+  if not FVersions.TryGetValue(mKey, mKnownVersion) or (mKnownVersion <> mSnapshot.Version) then
+  begin
+    FVersions.AddOrSetValue(mKey, mSnapshot.Version);
+    FTexts.AddOrSetValue(mKey, Result);
+    FStore.Edit(mFileName, Result);
+    FChangedAt := GetTickCount;
+  end;
+end;
+
+procedure TAtlasProblemsController.SyncPrevious(ASession: TLspSession; const AFileName: string);
+var
+  mOtherText: string;
+begin
+  // Sonst fehlt eine neue Deklaration in der anderen Unit (Index nach der Tipp-Pause, #492).
+  if (FLastFile = '') or SameText(FLastFile, AFileName) then
+  begin
+    FLastFile := AFileName;
+    Exit;
+  end;
+  if not FDocuments.Idle then
+  begin
+    Exit;
+  end;
+  if FTexts.TryGetValue(TAtlasProblemStore.Key(FLastFile), mOtherText) then
+  begin
+    ASession.Sync(FLastFile, mOtherText);
+  end;
+  FLastFile := AFileName;
+end;
+
+function TAtlasProblemsController.OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TPull>;
+var
+  mOther, mOtherText: string;
+  mPull: TPull;
+begin
+  Result := nil;
+  for mOther in ASession.SyncedFiles do
+  begin
+    if not SameText(mOther, AFileName) and ASession.SyncedText(mOther, mOtherText) then
+    begin
+      mPull := Default(TPull);
+      mPull.FileName := mOther;
+      mPull.Text := mOtherText;
+      mPull.ReplaceCompiler := True;
+      Result := Result + [mPull];
+    end;
+  end;
+end;
+
+procedure TAtlasProblemsController.PullIfDue(ASession: TLspSession; const AView: IOTAEditView;
+  const AFileName, AText: string);
+var
+  mKey, mKnown: string;
+  mRefresh, mChanged: Boolean;
+  mPull: TPull;
+  mPulls: TArray<TPull>;
+begin
+  mKey := TAtlasProblemStore.Key(AFileName);
+  mRefresh := ASession.RefreshCount <> FRefreshSeen;
+  mChanged := not FPulled.TryGetValue(mKey, mKnown) or (mKnown <> AText);
+  // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
+  mChanged := mChanged and (TAtlasIdeSettings.Current.ProblemsLive or not AView.Buffer.IsModified);
+  if not (mRefresh or (mChanged and (GetTickCount - FChangedAt >= QuietMs))) or not FDocuments.Idle then
+  begin
+    Exit;
+  end;
+  ASession.Sync(AFileName, AText);
+  FPulled.AddOrSetValue(mKey, AText);
+  mPull := Default(TPull);
+  mPull.FileName := AFileName;
+  mPull.Text := AText;
+  mPull.ReplaceCompiler := mRefresh or not FStore.Contains(AFileName);
+  if not mPull.ReplaceCompiler then
+  begin
+    mPull.PreviousId := FStore.ResultId(AFileName);
+  end;
+  mPulls := TArray<TPull>.Create(mPull);
+  if mRefresh then
+  begin
+    FRefreshSeen := ASession.RefreshCount;
+    mPulls := mPulls + OtherPulls(ASession, AFileName);
+  end;
+  FDocuments.Add(mPulls);
+end;
+
+procedure TAtlasProblemsController.Serve(ASession: TLspSession; const AView: IOTAEditView;
+  const AFileName, AText: string);
+begin
+  EnsureWorkers(ASession);
+  // Konfiguration oder Plattform gewechselt, Defines geändert (#615).
+  FBuildTarget.Tick(ASession, GetTickCount);
+  SyncPrevious(ASession, AFileName);
+  PullIfDue(ASession, AView, AFileName, AText);
+  if GetTickCount - FClosedCheckAt >= 5000 then
+  begin
+    FClosedCheckAt := GetTickCount;
+    CloseUnopened(ASession);
+  end;
 end;
 
 procedure TAtlasProblemsController.Tick(Sender: TObject);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Session: TLspSession;
-  FileName, Key, Text, Known, Other, OtherText: string;
-  Refresh, Changed: Boolean;
-  Pull: TPull;
-  Pulls: TArray<TPull>;
-  Snapshot: TAtlasEditorSnapshot;
-  KnownVersion: Cardinal;
+  mView: IOTAEditView;
+  mSession: TLspSession;
+  mText: string;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
@@ -700,141 +914,23 @@ begin
   end;
   try
     FreeFinished;
-    if not Active then
+    if Halted then
     begin
-      if (FDocuments <> nil) or (FWorkspace <> nil) then
-      begin
-        StopWorkers(False);
-      end;
-      FStore.Clear;
-      FTexts.Clear;
-      FVersions.Clear;
-      FPulled.Clear;
-      Publish;
       Exit;
     end;
-    // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
-    FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
-    // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
-    // Die Projektprüfung des Servers erfährt es eigens (#1247), sonst liefe ihr Lauf weiter.
-    ReportDebugPause(Paused);
-    if Paused then
+    CheckProjectsRemoved;
+    mView := TopSourceView;
+    if mView <> nil then
     begin
-      if (FDocuments <> nil) or (FWorkspace <> nil) then
-      begin
-        StopWorkers(False);
-      end;
-      Exit;
-    end;
-    // Projektgruppe geschlossen oder gewechselt: Pull-Diagnosen melden weggefallene Dateien nie mehr, ihre
-    // Befunde blieben sonst im Speicher und im Fenster „Atlas-Prüfung“. Alles verwerfen und neu holen.
-    Session := FSession(False);
-    if (Session <> nil) and (Session.ProjectsRemoved <> FProjectsRemoved) then
-    begin
-      FProjectsRemoved := Session.ProjectsRemoved;
-      FLog('Projekte weggefallen: Befunde verworfen, Prüfung neu');
-      StopWorkers(False);
-      FStore.Clear;
-      FTexts.Clear;
-      FVersions.Clear;
-      FPulled.Clear;
-      Publish;
-    end;
-    View := nil;
-    // Ohne Fokus ändert sich der Puffer nur über Neuladen, das den Stand ohnehin als veraltet markiert:
-    // dann weder Puffer lesen noch abgleichen (P-04). Freigeben, Stoppen und Veröffentlichen laufen weiter.
-    if Application.Active and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    begin
-      View := Editors.TopView;
-    end;
-    if (View <> nil) and (View.Buffer <> nil) and IsSource(View.Buffer.FileName) then
-    begin
-      FileName := View.Buffer.FileName;
-      Key := TAtlasProblemStore.Key(FileName);
-      // Gemeinsamer Pufferstand (P-04): gelesen nur nach einer Änderung.
-      Snapshot := TAtlasEditorSnapshots.Get(View);
-      Text := Snapshot.Text;
-      // Markierungen wandern mit, bevor neue Diagnosen da sind.
-      if not FVersions.TryGetValue(Key, KnownVersion) or (KnownVersion <> Snapshot.Version) then
-      begin
-        FVersions.AddOrSetValue(Key, Snapshot.Version);
-        FTexts.AddOrSetValue(Key, Text);
-        FStore.Edit(FileName, Text);
-        FChangedAt := GetTickCount;
-      end;
-      Session := FSession(GetTickCount >= FRetryAt);
-      if Session = nil then
+      mText := TrackEdit(mView);
+      mSession := FSession(GetTickCount >= FRetryAt);
+      if mSession = nil then
       begin
         FRetryAt := GetTickCount + 30000;
       end
       else
       begin
-        EnsureWorkers(Session);
-        // Konfiguration oder Plattform gewechselt, Defines geändert (#615).
-        FBuildTarget.Tick(Session, GetTickCount);
-        // Editor gewechselt: Getipptes der vorigen Unit sofort senden, nicht erst bei der Rückkehr.
-        // Sonst fehlt eine neue Deklaration in der anderen Unit (Index nach der Tipp-Pause, #492).
-        if (FLastFile <> '') and not SameText(FLastFile, FileName) then
-        begin
-          if FDocuments.Idle then
-          begin
-            if FTexts.TryGetValue(TAtlasProblemStore.Key(FLastFile), OtherText) then
-            begin
-              Session.Sync(FLastFile, OtherText);
-            end;
-            FLastFile := FileName;
-          end;
-        end
-        else
-        begin
-          FLastFile := FileName;
-        end;
-        Refresh := Session.RefreshCount <> FRefreshSeen;
-        Changed := not FPulled.TryGetValue(Key, Known) or (Known <> Text);
-        // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
-        if Changed and not TAtlasIdeSettings.Current.ProblemsLive and View.Buffer.IsModified then
-        begin
-          Changed := False;
-        end;
-        if (Refresh or (Changed and (GetTickCount - FChangedAt >= QuietMs))) and FDocuments.Idle then
-        begin
-          Session.Sync(FileName, Text);
-          FPulled.AddOrSetValue(Key, Text);
-          Pull.FileName := FileName;
-          Pull.Text := Text;
-          Pull.ReplaceCompiler := Refresh or not FStore.Contains(FileName);
-          if Pull.ReplaceCompiler then
-          begin
-            Pull.PreviousId := '';
-          end
-          else
-          begin
-            Pull.PreviousId := FStore.ResultId(FileName);
-          end;
-          Pulls := [Pull];
-          if Refresh then
-          begin
-            FRefreshSeen := Session.RefreshCount;
-            // Alle anderen abgeglichenen Dateien auch: Ihre Compilermeldungen können neu sein.
-            for Other in Session.SyncedFiles do
-            begin
-              if not SameText(Other, FileName) and Session.SyncedText(Other, OtherText) then
-              begin
-                Pull.FileName := Other;
-                Pull.Text := OtherText;
-                Pull.PreviousId := '';
-                Pull.ReplaceCompiler := True;
-                Pulls := Pulls + [Pull];
-              end;
-            end;
-          end;
-          FDocuments.Add(Pulls);
-        end;
-        if GetTickCount - FClosedCheckAt >= 5000 then
-        begin
-          FClosedCheckAt := GetTickCount;
-          CloseUnopened(Session);
-        end;
+        Serve(mSession, mView, mView.Buffer.FileName, mText);
       end;
     end;
     Publish;
@@ -847,7 +943,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.CloseUnopened(ASession: TLspSession);
+procedure TAtlasProblemsSync.CloseUnopened(ASession: TLspSession);
 var
   FileName: string;
 begin
@@ -887,7 +983,7 @@ begin
   begin
     Exit;
   end;
-  Show := Active and TAtlasIdeSettings.ProblemsStatusCounterOn;
+  Show := ProblemsActive and TAtlasIdeSettings.ProblemsStatusCounterOn;
   if (Show = FCountsShown) and (not Show or (FCountsVersion = FStore.Version)) then
   begin
     Exit;
@@ -915,7 +1011,7 @@ begin
     TAtlasProblemsPainter.Invalidate;
     FListDue := GetTickCount + 800;
   end;
-  Show := Active and TAtlasIdeSettings.Current.ProblemsList;
+  Show := ProblemsActive and TAtlasIdeSettings.Current.ProblemsList;
   if (Show <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
   begin
     FListedVersion := FStore.Version;
@@ -931,11 +1027,11 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.DeliverDocument(const APull: TPull; const AReport: TLspDiagnosticReport);
+procedure TAtlasProblemsSync.DeliverDocument(const APull: TPull; const AReport: TLspDiagnosticReport);
 var
   Current: string;
 begin
-  if not Active then
+  if not ProblemsActive then
   begin
     Exit;
   end;
@@ -954,7 +1050,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsController.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>;
+procedure TAtlasProblemsSync.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>;
   const ARun: TLspWorkspaceRun);
 var
   Report: TLspDiagnosticReport;

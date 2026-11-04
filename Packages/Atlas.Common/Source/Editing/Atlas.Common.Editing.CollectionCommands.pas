@@ -110,129 +110,210 @@ begin
   Result := -1;
 end;
 
-/// <summary>Feld AName vom Typ ATypeName mit AConstruction in Konstruktor und Free im Destruktor.</summary>
-function AddOwnedField(ASource: TCommandSource; const AClass: TIndexSymbol; const AName, ATypeName,
-  AConstruction: string): TArray<TTextEdit>;
-var
-  Constructor_, Destructor_: TSyntaxNode;
-  Declarations: TArray<string>;
-  Bodies, Indent, Create, Free: string;
-  PrivateAt, Line, EndLine, Index: Integer;
+type
+  /// <summary>Name, Typ und Erzeugung einer neuen Sammlung.</summary>
+  TCollectionSpec = record
+    Name: string;
+    TypeName: string;
+    Construction: string;
+    class function Create(const AName, ATypeName, AConstruction: string): TCollectionSpec; static;
+  end;
+
+  /// <summary>Sammelt die Änderungen für ein Feld, das der Konstruktor erzeugt und der Destruktor freigibt.
+  /// </summary>
+  TOwnedField = record
+    Source: TCommandSource;
+    ClassSymbol: TIndexSymbol;
+    Spec: TCollectionSpec;
+    Edits: TArray<TTextEdit>;
+    /// <summary>Neue Zeilen der Klassendeklaration ('private', 'public' oder eine Deklaration).</summary>
+    Declarations: TArray<string>;
+    /// <summary>Neue Rümpfe, durch Leerzeilen getrennt.</summary>
+    Bodies: string;
+    procedure AddBody(const ABody: string);
+    procedure AddField;
+    function AddCreate: Boolean;
+    procedure AddFree(AHasConstructor: Boolean);
+    function DeclarationText(const AIndent: string): string;
+    procedure AddDeclarations;
+  end;
+
+class function TCollectionSpec.Create(const AName, ATypeName, AConstruction: string): TCollectionSpec;
 begin
-  Result := nil;
-  Declarations := nil;
-  Bodies := '';
-  Create := AName + ' := ' + AConstruction + ';';
-  Free := AName + '.Free;';
-  PrivateAt := ASource.PrivateLine(AClass);
-  if PrivateAt >= 0 then
-  begin
-    Result := Result + [ASource.AfterLine(PrivateAt, ASource.Indent(PrivateAt) + '  ' + AName + ': ' + ATypeName +
-      ';')];
-  end
-  else
-  begin
-    Declarations := Declarations + ['private', AName + ': ' + ATypeName + ';'];
-  end;
+  Result.Name := AName;
+  Result.TypeName := ATypeName;
+  Result.Construction := AConstruction;
+end;
 
-  Constructor_ := MethodNode(ASource, AClass.Name, 'Create');
-  if Constructor_ <> nil then
-  begin
-    Line := InheritedLine(ASource, Constructor_);
-    if Line < 0 then
-    begin
-      Line := Constructor_.FindChild(TSyntaxKind.Block).StartPos.Line;
-    end;
-    Result := Result + [ASource.AfterLine(Line, ASource.Indent(Constructor_.StartPos.Line) + '  ' + Create)];
-  end
-  else
-  begin
-    Declarations := Declarations + ['public', 'constructor Create;'];
-    Bodies := Format('constructor %s.Create;', [AClass.Name]) + ASource.LineBreak + 'begin' + ASource.LineBreak +
-      '  inherited Create;' + ASource.LineBreak + '  ' + Create + ASource.LineBreak + 'end;';
-  end;
-
-  Destructor_ := MethodNode(ASource, AClass.Name, 'Destroy');
-  if Destructor_ <> nil then
-  begin
-    Line := InheritedLine(ASource, Destructor_);
-    if Line < 0 then
-    begin
-      Line := Destructor_.FindChild(TSyntaxKind.Block).EndPos.Line;
-    end;
-    Result := Result + [ASource.BeforeLine(Line, ASource.Indent(Destructor_.StartPos.Line) + '  ' + Free)];
-  end
-  else
-  begin
-    if Constructor_ <> nil then
-    begin
-      Declarations := Declarations + ['public'];
-    end;
-    Declarations := Declarations + ['destructor Destroy; override;'];
-    if Bodies <> '' then
-    begin
-      Bodies := Bodies + ASource.LineBreak + ASource.LineBreak;
-    end;
-    Bodies := Bodies + Format('destructor %s.Destroy;', [AClass.Name]) + ASource.LineBreak + 'begin' +
-      ASource.LineBreak + '  ' + Free + ASource.LineBreak + '  inherited;' + ASource.LineBreak + 'end;';
-  end;
-
-  if Declarations <> nil then
-  begin
-    EndLine := AClass.Range.EndPos.Line;
-    Indent := ASource.Indent(EndLine);
-    Create := '';
-    for Index := 0 to High(Declarations) do
-    begin
-      if Index > 0 then
-      begin
-        Create := Create + ASource.LineBreak;
-      end;
-      if MatchText(Declarations[Index], ['private', 'public']) then
-      begin
-        Create := Create + Indent + Declarations[Index];
-      end
-      else
-      begin
-        Create := Create + Indent + '  ' + Declarations[Index];
-      end;
-    end;
-    Result := Result + [ASource.BeforeLine(EndLine, Create)];
-  end;
+procedure TOwnedField.AddBody(const ABody: string);
+begin
   if Bodies <> '' then
   begin
-    Result := Result + [ASource.AddBody(AClass.Name, Bodies)];
+    Bodies := Bodies + Source.LineBreak + Source.LineBreak;
+  end;
+  Bodies := Bodies + ABody;
+end;
+
+/// <summary>Feld in den private-Abschnitt der Klasse, ohne einen als neue Deklaration.</summary>
+procedure TOwnedField.AddField;
+var
+  mPrivateAt: Integer;
+begin
+  mPrivateAt := Source.PrivateLine(ClassSymbol);
+  if mPrivateAt >= 0 then
+  begin
+    Edits := Edits + [Source.AfterLine(mPrivateAt, Source.Indent(mPrivateAt) + '  ' + Spec.Name + ': ' +
+      Spec.TypeName + ';')];
+  end
+  else
+  begin
+    Declarations := Declarations + ['private', Spec.Name + ': ' + Spec.TypeName + ';'];
   end;
 end;
 
-/// <summary>Lokale Variable AName mit Erzeugen und try … finally Free um die folgenden Anweisungen.</summary>
-function AddOwnedLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; const AName, ATypeName, AConstruction: string;
+/// <summary>Erzeugen hinter inherited im Konstruktor bzw. ein neuer Konstruktor; True, wenn es einen gab.
+/// </summary>
+function TOwnedField.AddCreate: Boolean;
+var
+  mConstructor: TSyntaxNode;
+  mLine: Integer;
+  mCreate, mLB: string;
+begin
+  mCreate := Spec.Name + ' := ' + Spec.Construction + ';';
+  mConstructor := MethodNode(Source, ClassSymbol.Name, 'Create');
+  Result := mConstructor <> nil;
+  if Result then
+  begin
+    mLine := InheritedLine(Source, mConstructor);
+    if mLine < 0 then
+    begin
+      mLine := mConstructor.FindChild(TSyntaxKind.Block).StartPos.Line;
+    end;
+    Edits := Edits + [Source.AfterLine(mLine, Source.Indent(mConstructor.StartPos.Line) + '  ' + mCreate)];
+  end
+  else
+  begin
+    mLB := Source.LineBreak;
+    Declarations := Declarations + ['public', 'constructor Create;'];
+    AddBody(Format('constructor %s.Create;', [ClassSymbol.Name]) + mLB + 'begin' + mLB + '  inherited Create;' +
+      mLB + '  ' + mCreate + mLB + 'end;');
+  end;
+end;
+
+/// <summary>Free vor inherited im Destruktor bzw. ein neuer Destruktor.</summary>
+procedure TOwnedField.AddFree(AHasConstructor: Boolean);
+var
+  mDestructor: TSyntaxNode;
+  mLine: Integer;
+  mFree, mLB: string;
+begin
+  mFree := Spec.Name + '.Free;';
+  mDestructor := MethodNode(Source, ClassSymbol.Name, 'Destroy');
+  if mDestructor <> nil then
+  begin
+    mLine := InheritedLine(Source, mDestructor);
+    if mLine < 0 then
+    begin
+      mLine := mDestructor.FindChild(TSyntaxKind.Block).EndPos.Line;
+    end;
+    Edits := Edits + [Source.BeforeLine(mLine, Source.Indent(mDestructor.StartPos.Line) + '  ' + mFree)];
+    Exit;
+  end;
+  if AHasConstructor then
+  begin
+    Declarations := Declarations + ['public'];
+  end;
+  Declarations := Declarations + ['destructor Destroy; override;'];
+  mLB := Source.LineBreak;
+  AddBody(Format('destructor %s.Destroy;', [ClassSymbol.Name]) + mLB + 'begin' + mLB + '  ' + mFree + mLB +
+    '  inherited;' + mLB + 'end;');
+end;
+
+function TOwnedField.DeclarationText(const AIndent: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(Declarations) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + Source.LineBreak;
+    end;
+    if MatchText(Declarations[mIndex], ['private', 'public']) then
+    begin
+      Result := Result + AIndent + Declarations[mIndex];
+    end
+    else
+    begin
+      Result := Result + AIndent + '  ' + Declarations[mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Neue Deklarationen vor das end der Klasse.</summary>
+procedure TOwnedField.AddDeclarations;
+var
+  mEndLine: Integer;
+begin
+  if Declarations = nil then
+  begin
+    Exit;
+  end;
+  mEndLine := ClassSymbol.Range.EndPos.Line;
+  Edits := Edits + [Source.BeforeLine(mEndLine, DeclarationText(Source.Indent(mEndLine)))];
+end;
+
+/// <summary>Feld ASpec mit Erzeugen im Konstruktor und Free im Destruktor.</summary>
+function AddOwnedField(ASource: TCommandSource; const AClass: TIndexSymbol;
+  const ASpec: TCollectionSpec): TArray<TTextEdit>;
+var
+  mField: TOwnedField;
+begin
+  mField := Default(TOwnedField);
+  mField.Source := ASource;
+  mField.ClassSymbol := AClass;
+  mField.Spec := ASpec;
+  mField.AddField;
+  mField.AddFree(mField.AddCreate);
+  mField.AddDeclarations;
+  if mField.Bodies <> '' then
+  begin
+    mField.Edits := mField.Edits + [ASource.AddBody(AClass.Name, mField.Bodies)];
+  end;
+  Result := mField.Edits;
+end;
+
+/// <summary>Lokale Variable ASpec mit Erzeugen und try … finally Free um die folgenden Anweisungen.</summary>
+function AddOwnedLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; const ASpec: TCollectionSpec;
   out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Indent: string;
-  Wrapped: TArray<TTextEdit>;
+  mIndent, mCreate, mLB: string;
+  mWrapped: TArray<TTextEdit>;
 begin
-  Indent := ASource.Indent(ASource.Line);
-  if Wrap(ASource, 'list', [AName + ' := ' + AConstruction + ';', 'try'], ['finally', '  ' + AName + '.Free;',
-    'end;'], '  ', Wrapped, AReason) then
+  mIndent := ASource.Indent(ASource.Line);
+  mCreate := ASpec.Name + ' := ' + ASpec.Construction + ';';
+  mLB := ASource.LineBreak;
+  if Wrap(ASource, 'list', [mCreate, 'try'], ['finally', '  ' + ASpec.Name + '.Free;', 'end;'], '  ', mWrapped,
+    AReason) then
   begin
-    AEdits := Wrapped;
+    AEdits := mWrapped;
   end
   else
   begin
     // Ohne folgende Anweisungen: leerer Rumpf.
     AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0),
-      Indent + AName + ' := ' + AConstruction + ';' + ASource.LineBreak + Indent + 'try' + ASource.LineBreak +
-      Indent + '  ' + ASource.LineBreak + Indent + 'finally' + ASource.LineBreak + Indent + '  ' + AName + '.Free;' +
-      ASource.LineBreak + Indent + 'end;' + ASource.LineBreak)];
+      mIndent + mCreate + mLB + mIndent + 'try' + mLB + mIndent + '  ' + mLB + mIndent + 'finally' + mLB + mIndent +
+      '  ' + ASpec.Name + '.Free;' + mLB + mIndent + 'end;' + mLB)];
   end;
-  AEdits := [AddLocal(ASource, ARoutine, TSyntaxKind.VarSection, 'var', AName + ': ' + ATypeName + ';')] + AEdits;
+  AEdits := [AddLocal(ASource, ARoutine, TSyntaxKind.VarSection, 'var', ASpec.Name + ': ' + ASpec.TypeName + ';')] +
+    AEdits;
   Result := True;
 end;
 
 /// <summary>Gemeinsamer Ablauf von /list und /dict: Feld in der Klasse oder lokale Variable.</summary>
-function AddCollection(const AContext: TSlashContext; const AName, ATypeName, AConstruction: string;
-  const AUnits: array of string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+function AddCollection(const AContext: TSlashContext; const ASpec: TCollectionSpec; const AUnits: array of string;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -245,7 +326,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine <> nil then
     begin
-      if not AddOwnedLocal(Source, Routine, AName, ATypeName, AConstruction, Edits, AReason) then
+      if not AddOwnedLocal(Source, Routine, ASpec, Edits, AReason) then
       begin
         Exit(False);
       end;
@@ -253,7 +334,7 @@ begin
     end
     else if Source.ClassAt(ClassSymbol) then
     begin
-      Edits := AddOwnedField(Source, ClassSymbol, AName, ATypeName, AConstruction) + [Source.RemoveCommand];
+      Edits := AddOwnedField(Source, ClassSymbol, ASpec) + [Source.RemoveCommand];
       AddUses(Source, AContext, ClassSymbol.Range.StartPos.Line, AUnits, Edits);
     end
     else
@@ -299,8 +380,8 @@ begin
   begin
     TypeName := 'TList<' + ElementType + '>';
   end;
-  Result := AddCollection(AContext, Name, TypeName, TypeName + '.Create', ['System.Generics.Collections'], AEdits,
-    AReason);
+  Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create'),
+    ['System.Generics.Collections'], AEdits, AReason);
 end;
 
 { /dict, /dict! }
@@ -356,12 +437,12 @@ begin
   end;
   if AIgnoreCase then
   begin
-    Result := AddCollection(AContext, Name, TypeName, TypeName + '.Create' + Arguments,
+    Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create' + Arguments),
       ['System.Generics.Collections', 'System.Generics.Defaults'], AEdits, AReason);
   end
   else
   begin
-    Result := AddCollection(AContext, Name, TypeName, TypeName + '.Create' + Arguments,
+    Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create' + Arguments),
       ['System.Generics.Collections'], AEdits, AReason);
   end;
 end;
@@ -437,64 +518,82 @@ begin
   Result := '';
 end;
 
+/// <summary>"/sort Liste [-]Mitglied" zerlegen; False bei falscher Form.</summary>
+function ParseSortArguments(const AArguments: string; out ACollection, AMember: string;
+  out ADescending: Boolean): Boolean;
+var
+  mArguments: string;
+  mSpace: Integer;
+begin
+  mArguments := Trim(AArguments);
+  mSpace := Pos(' ', mArguments);
+  ACollection := Trim(Copy(mArguments, 1, mSpace - 1));
+  AMember := Trim(Copy(mArguments, mSpace + 1, MaxInt));
+  ADescending := StartsStr('-', AMember);
+  if ADescending then
+  begin
+    AMember := Trim(Copy(AMember, 2, MaxInt));
+  end;
+  Result := (mSpace > 0) and IsValidIdent(ACollection, True) and IsValidIdent(AMember);
+end;
+
+/// <summary>Aufruf von Sort mit einem TComparer für AElement, der ACompare liefert; ersetzt die Befehlszeile.
+/// </summary>
+function SortText(ASource: TCommandSource; const ACollection, AElement, ACompare: string): string;
+var
+  mIndent, mLB: string;
+begin
+  mIndent := ASource.Indent(ASource.Line);
+  mLB := ASource.LineBreak;
+  Result := mIndent + ACollection + '.Sort(TComparer<' + AElement + '>.Construct(' + mLB +
+    mIndent + '  function(const L, R: ' + AElement + '): Integer' + mLB +
+    mIndent + '  begin' + mLB +
+    mIndent + '    Result := ' + ACompare + ';' + mLB +
+    mIndent + '  end));' + mLB;
+end;
+
 function ExecuteSort(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Arguments, Collection, Member, Element, Kind, Compare, CompareUnit, Indent, Text, LB: string;
-  Space: Integer;
-  Descending: Boolean;
+  mSource: TCommandSource;
+  mCollection, mMember, mElement, mKind, mCompare, mCompareUnit: string;
+  mDescending: Boolean;
 begin
   AEdits := nil;
-  Arguments := Trim(AContext.Arguments);
-  Space := Pos(' ', Arguments);
-  Collection := Trim(Copy(Arguments, 1, Space - 1));
-  Member := Trim(Copy(Arguments, Space + 1, MaxInt));
-  Descending := StartsStr('-', Member);
-  if Descending then
-  begin
-    Member := Trim(Copy(Member, 2, MaxInt));
-  end;
-  if (Space = 0) or not IsValidIdent(Collection, True) or not IsValidIdent(Member) then
+  if not ParseSortArguments(AContext.Arguments, mCollection, mMember, mDescending) then
   begin
     Exit(Fail('Erwartet wird /sort Liste [-]Mitglied', AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail('/sort gilt nur im Rumpf einer Routine', AReason));
     end;
-    Element := ElementType(Source, Collection);
-    if Element = '' then
+    mElement := ElementType(mSource, mCollection);
+    if mElement = '' then
     begin
-      Exit(Fail('Elementtyp von ' + Collection + ' nicht erkannt', AReason));
+      Exit(Fail('Elementtyp von ' + mCollection + ' nicht erkannt', AReason));
     end;
-    Kind := MemberType(Source, AContext.Index, Element, Member);
-    if Kind = '' then
+    mKind := MemberType(mSource, AContext.Index, mElement, mMember);
+    if mKind = '' then
     begin
-      Exit(Fail(Element + ' hat kein Feld oder keine Property ' + Member, AReason));
+      Exit(Fail(mElement + ' hat kein Feld oder keine Property ' + mMember, AReason));
     end;
-    Compare := CompareFunction(Kind, CompareUnit);
-    if Descending then
+    mCompare := CompareFunction(mKind, mCompareUnit);
+    if mDescending then
     begin
-      Compare := Format(Compare, ['R.' + Member, 'L.' + Member]);
+      mCompare := Format(mCompare, ['R.' + mMember, 'L.' + mMember]);
     end
     else
     begin
-      Compare := Format(Compare, ['L.' + Member, 'R.' + Member]);
+      mCompare := Format(mCompare, ['L.' + mMember, 'R.' + mMember]);
     end;
-    Indent := Source.Indent(Source.Line);
-    LB := Source.LineBreak;
-    Text := Indent + Collection + '.Sort(TComparer<' + Element + '>.Construct(' + LB +
-      Indent + '  function(const L, R: ' + Element + '): Integer' + LB +
-      Indent + '  begin' + LB +
-      Indent + '    Result := ' + Compare + ';' + LB +
-      Indent + '  end));' + LB;
-    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
-    AddUses(Source, AContext, Source.Line, ['System.Generics.Defaults', CompareUnit], AEdits);
+    AEdits := [TTextEdit.Create(TTextRange.Create(mSource.Line, 0, mSource.Line + 1, 0),
+      SortText(mSource, mCollection, mElement, mCompare))];
+    AddUses(mSource, AContext, mSource.Line, ['System.Generics.Defaults', mCompareUnit], AEdits);
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -524,6 +623,22 @@ begin
   Result := False;
 end;
 
+/// <summary>Mindestens ein Bezeichner unter ATokens ist ein Mitglied von AElement.</summary>
+function KnowsMembers(ASource: TCommandSource; const AIndex: ISymbolIndex; const AElement: string;
+  const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  mIndex := 0;
+  while not Result and (mIndex <= High(ATokens)) do
+  begin
+    Result := (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      IsMember(ASource, AIndex, AElement, ATokens[mIndex].Text);
+    Inc(mIndex);
+  end;
+end;
+
 /// <summary>Bedingung mit dem Element als Bezug: Jeder Bezeichner, der ein Mitglied von AElement ist, bekommt
 /// AVariable davor ("Aktiv and (Umsatz > 0)" wird "K.Aktiv and (K.Umsatz > 0)"). Sind die Mitglieder unbekannt,
 /// nur der erste Bezeichner ("not Aktiv" wird "not K.Aktiv").</summary>
@@ -535,15 +650,7 @@ var
   AfterDot, Known, Prefix, First: Boolean;
 begin
   Tokens := TPascalLexer.Tokenize(ACondition);
-  Known := False;
-  for Index := 0 to High(Tokens) do
-  begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-      IsMember(ASource, AIndex, AElement, Tokens[Index].Text) then
-    begin
-      Known := True;
-    end;
-  end;
+  Known := KnowsMembers(ASource, AIndex, AElement, Tokens);
   Result := '';
   Last := 0;
   AfterDot := False;
@@ -578,79 +685,111 @@ begin
   Result := Result + Copy(ACondition, Last + 1, MaxInt);
 end;
 
+/// <summary>"/filter Liste Bedingung" zerlegen; False bei falscher Form.</summary>
+function ParseFilterArguments(const AArguments: string; out ACollection, ACondition: string): Boolean;
+var
+  mArguments: string;
+  mSpace: Integer;
+begin
+  mArguments := Trim(AArguments);
+  mSpace := Pos(' ', mArguments);
+  ACollection := Trim(Copy(mArguments, 1, mSpace - 1));
+  ACondition := Trim(Copy(mArguments, mSpace + 1, MaxInt));
+  Result := (mSpace > 0) and IsValidIdent(ACollection, True) and (ACondition <> '');
+end;
+
+/// <summary>Laufvariable: erster Buchstabe des Typs ohne T.</summary>
+function LoopVariable(const AElement: string): string;
+begin
+  if (Length(AElement) > 1) and (AElement[1] = 'T') then
+  begin
+    Result := Copy(AElement, 2, 1);
+  end
+  else
+  begin
+    Result := Copy(AElement, 1, 1);
+  end;
+  Result := UpperCase(Result);
+end;
+
+type
+  /// <summary>Schleife von /filter, die die Treffer in eine neue Liste sammelt.</summary>
+  TFilterLoop = record
+    Collection: string;
+    Element: string;
+    Variable: string;
+    /// <summary>Bedingung mit der Laufvariable als Bezug.</summary>
+    Condition: string;
+    /// <summary>Inline-Variablen verfügbar (ab Delphi 10.3, #109); sonst stehen beide im var-Abschnitt.</summary>
+    UseInline: Boolean;
+    function Text(const AIndent, ALineBreak: string): string;
+  end;
+
+function TFilterLoop.Text(const AIndent, ALineBreak: string): string;
+var
+  mHead, mLoop: string;
+begin
+  if UseInline then
+  begin
+    mHead := 'var Treffer := ';
+    mLoop := 'for var ';
+  end
+  else
+  begin
+    mHead := 'Treffer := ';
+    mLoop := 'for ';
+  end;
+  Result := AIndent + mHead + 'TList<' + Element + '>.Create;' + ALineBreak +
+    AIndent + 'try' + ALineBreak +
+    AIndent + '  ' + mLoop + Variable + ' in ' + Collection + ' do' + ALineBreak +
+    AIndent + '    if ' + Condition + ' then' + ALineBreak +
+    AIndent + '      Treffer.Add(' + Variable + ');' + ALineBreak +
+    AIndent + '  ' + ALineBreak +
+    AIndent + 'finally' + ALineBreak +
+    AIndent + '  Treffer.Free;' + ALineBreak +
+    AIndent + 'end;' + ALineBreak;
+end;
+
 function ExecuteFilter(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Arguments, Collection, Condition, Element, Variable, Indent, Text, LB, Head, Loop: string;
-  Space: Integer;
-  UseInline: Boolean;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mLoop: TFilterLoop;
+  mCondition, mLB: string;
 begin
   AEdits := nil;
-  Arguments := Trim(AContext.Arguments);
-  Space := Pos(' ', Arguments);
-  Collection := Trim(Copy(Arguments, 1, Space - 1));
-  Condition := Trim(Copy(Arguments, Space + 1, MaxInt));
-  if (Space = 0) or not IsValidIdent(Collection, True) or (Condition = '') then
+  mLoop := Default(TFilterLoop);
+  if not ParseFilterArguments(AContext.Arguments, mLoop.Collection, mCondition) then
   begin
     Exit(Fail('Erwartet wird /filter Liste Bedingung', AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail('/filter gilt nur im Rumpf einer Routine', AReason));
     end;
-    Element := ElementType(Source, Collection);
-    if Element = '' then
+    mLoop.Element := ElementType(mSource, mLoop.Collection);
+    if mLoop.Element = '' then
     begin
-      Exit(Fail('Elementtyp von ' + Collection + ' nicht erkannt', AReason));
+      Exit(Fail('Elementtyp von ' + mLoop.Collection + ' nicht erkannt', AReason));
     end;
-    // Laufvariable: erster Buchstabe des Typs ohne T.
-    Variable := Element;
-    if (Length(Variable) > 1) and (Variable[1] = 'T') then
+    mLoop.Variable := LoopVariable(mLoop.Element);
+    mLoop.Condition := ElementCondition(mSource, AContext.Index, mLoop.Element, mLoop.Variable, mCondition);
+    mLoop.UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
+    mLB := mSource.LineBreak;
+    AEdits := [TTextEdit.Create(TTextRange.Create(mSource.Line, 0, mSource.Line + 1, 0),
+      mLoop.Text(mSource.Indent(mSource.Line), mLB))];
+    if not mLoop.UseInline then
     begin
-      Variable := Copy(Variable, 2, 1);
-    end
-    else
-    begin
-      Variable := Copy(Variable, 1, 1);
+      AEdits := [AddLocal(mSource, mRoutine, TSyntaxKind.VarSection, 'var', 'Treffer: TList<' + mLoop.Element + '>;' +
+        mLB + mSource.Indent(mRoutine.StartPos.Line) + '  ' + mLoop.Variable + ': ' + mLoop.Element + ';')] + AEdits;
     end;
-    Variable := UpperCase(Variable);
-    Indent := Source.Indent(Source.Line);
-    LB := Source.LineBreak;
-    // Vor Delphi 10.3 (#109) gibt es keine Inline-Variablen: beide in den var-Abschnitt.
-    UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
-    if UseInline then
-    begin
-      Head := 'var Treffer := ';
-      Loop := 'for var ';
-    end
-    else
-    begin
-      Head := 'Treffer := ';
-      Loop := 'for ';
-    end;
-    Text := Indent + Head + 'TList<' + Element + '>.Create;' + LB +
-      Indent + 'try' + LB +
-      Indent + '  ' + Loop + Variable + ' in ' + Collection + ' do' + LB +
-      Indent + '    if ' + ElementCondition(Source, AContext.Index, Element, Variable, Condition) + ' then' + LB +
-      Indent + '      Treffer.Add(' + Variable + ');' + LB +
-      Indent + '  ' + LB +
-      Indent + 'finally' + LB +
-      Indent + '  Treffer.Free;' + LB +
-      Indent + 'end;' + LB;
-    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
-    if not UseInline then
-    begin
-      AEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', 'Treffer: TList<' + Element + '>;' + LB +
-        Source.Indent(Routine.StartPos.Line) + '  ' + Variable + ': ' + Element + ';')] + AEdits;
-    end;
-    AddUses(Source, AContext, Source.Line, ['System.Generics.Collections'], AEdits);
+    AddUses(mSource, AContext, mSource.Line, ['System.Generics.Collections'], AEdits);
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -662,109 +801,139 @@ begin
   end;
 end;
 
-/// <summary>Sammlungen im Gültigkeitsbereich der Befehlszeile.</summary>
-function CollectionNames(ASource: TCommandSource): TArray<string>;
+/// <summary>Felder der Klasse an der Befehlszeile und globale Variablen mit Typargumenten.</summary>
+procedure AddScopeCollections(ASource: TCommandSource; var ANames: TArray<string>);
 var
-  Symbol, ClassSymbol: TIndexSymbol;
-  HasClass: Boolean;
-  Routine: TSyntaxNode;
-  Index, Colon: Integer;
-  Part, Declared, Name: string;
+  mSymbol, mClass: TIndexSymbol;
+  mHasClass: Boolean;
 begin
-  Result := nil;
-  HasClass := ASource.ClassAt(ClassSymbol);
-  for Symbol in ASource.UnitIndex.Symbols do
+  mHasClass := ASource.ClassAt(mClass);
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Variable]) and
-      (Symbol.TypeArgs <> '') and ((Symbol.Container = '') or (HasClass and
-      SameText(Symbol.Container, ClassSymbol.Name))) then
+    if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Variable]) and
+      (mSymbol.TypeArgs <> '') and ((mSymbol.Container = '') or (mHasClass and
+      SameText(mSymbol.Container, mClass.Name))) then
     begin
-      AddName(Result, Symbol.Name);
+      AddName(ANames, mSymbol.Name);
     end;
   end;
-  // Parameter und lokale Variablen: "A, B: TList<T>" im Kopf oder var-Abschnitt, "var Name := TList<T>.Create".
-  Routine := ASource.RoutineAt;
-  if Routine = nil then
+end;
+
+/// <summary>Deklaration ohne var, out oder const davor.</summary>
+function WithoutModifier(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if StartsText('var ', Result) or StartsText('out ', Result) then
+  begin
+    Result := Trim(Copy(Result, 5, MaxInt));
+  end
+  else if StartsText('const ', Result) then
+  begin
+    Result := Trim(Copy(Result, 7, MaxInt));
+  end;
+end;
+
+/// <summary>Namen einer Deklaration "A, B: TList&lt;T&gt;"; nur mit Typargumenten hinter dem Doppelpunkt.
+/// </summary>
+procedure AddDeclaredNames(const APart: string; var ANames: TArray<string>);
+var
+  mDeclared, mName: string;
+  mColon: Integer;
+begin
+  mDeclared := WithoutModifier(APart);
+  mColon := Pos(':', mDeclared);
+  if (mColon = 0) or (Pos('<', mDeclared) < mColon) then
   begin
     Exit;
   end;
-  for Index := Routine.StartPos.Line to ASource.Line - 1 do
+  for mName in Copy(mDeclared, 1, mColon - 1).Split([',']) do
   begin
-    for Part in StringReplace(ASource.Lines[Index], '(', ';', [rfReplaceAll]).Split([';']) do
+    if IsValidIdent(Trim(mName)) then
     begin
-      Declared := Trim(Part);
-      if StartsText('var ', Declared) or StartsText('out ', Declared) then
-      begin
-        Declared := Trim(Copy(Declared, 5, MaxInt));
-      end
-      else if StartsText('const ', Declared) then
-      begin
-        Declared := Trim(Copy(Declared, 7, MaxInt));
-      end;
-      Colon := Pos(':', Declared);
-      if (Colon = 0) or (Pos('<', Declared) < Colon) then
-      begin
-        Continue;
-      end;
-      for Name in Copy(Declared, 1, Colon - 1).Split([',']) do
-      begin
-        if IsValidIdent(Trim(Name)) then
-        begin
-          AddName(Result, Trim(Name));
-        end;
-      end;
+      AddName(ANames, Trim(mName));
+    end;
+  end;
+end;
+
+/// <summary>Sammlungen im Gültigkeitsbereich der Befehlszeile.</summary>
+function CollectionNames(ASource: TCommandSource): TArray<string>;
+var
+  mRoutine: TSyntaxNode;
+  mIndex: Integer;
+  mPart: string;
+begin
+  Result := nil;
+  AddScopeCollections(ASource, Result);
+  // Parameter und lokale Variablen: "A, B: TList<T>" im Kopf oder var-Abschnitt, "var Name := TList<T>.Create".
+  mRoutine := ASource.RoutineAt;
+  if mRoutine = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := mRoutine.StartPos.Line to ASource.Line - 1 do
+  begin
+    for mPart in StringReplace(ASource.Lines[mIndex], '(', ';', [rfReplaceAll]).Split([';']) do
+    begin
+      AddDeclaredNames(mPart, Result);
+    end;
+  end;
+end;
+
+/// <summary>Felder und Properties von AElement unter ASymbols.</summary>
+procedure AddElementMembers(const ASymbols: TArray<TIndexSymbol>; const AElement: string;
+  var ANames: TArray<string>);
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in ASymbols do
+  begin
+    if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+      SameText(mSymbol.Container, AElement) then
+    begin
+      AddName(ANames, mSymbol.Name);
+    end;
+  end;
+end;
+
+/// <summary>Felder und Properties von AElement aus den Dateien des Index, die AElement deklarieren.</summary>
+procedure AddIndexedMembers(const AIndex: ISymbolIndex; const AElement: string; var ANames: TArray<string>);
+var
+  mLocation: TSymbolLocation;
+  mFound: TUnitIndex;
+begin
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in AIndex.FindSymbols(AElement) do
+  begin
+    if (mLocation.Symbol.Container = '') and AIndex.FindFile(mLocation.FileName, mFound) then
+    begin
+      AddElementMembers(mFound.Symbols, AElement, ANames);
     end;
   end;
 end;
 
 function CollectionChoices(const AContext: TSlashContext; const ACollection: string): TArray<string>;
 var
-  Source: TCommandSource;
-  Element: string;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Found: TUnitIndex;
+  mSource: TCommandSource;
+  mElement: string;
 begin
   Result := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
     if ACollection = '' then
     begin
-      Exit(CollectionNames(Source));
+      Exit(CollectionNames(mSource));
     end;
-    Element := ElementType(Source, ACollection);
-    if Element = '' then
+    mElement := ElementType(mSource, ACollection);
+    if mElement <> '' then
     begin
-      Exit;
-    end;
-    for Symbol in Source.UnitIndex.Symbols do
-    begin
-      if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-        SameText(Symbol.Container, Element) then
-      begin
-        AddName(Result, Symbol.Name);
-      end;
-    end;
-    if AContext.Index = nil then
-    begin
-      Exit;
-    end;
-    for Location in AContext.Index.FindSymbols(Element) do
-    begin
-      if (Location.Symbol.Container = '') and AContext.Index.FindFile(Location.FileName, Found) then
-      begin
-        for Symbol in Found.Symbols do
-        begin
-          if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-            SameText(Symbol.Container, Element) then
-          begin
-            AddName(Result, Symbol.Name);
-          end;
-        end;
-      end;
+      AddElementMembers(mSource.UnitIndex.Symbols, mElement, Result);
+      AddIndexedMembers(AContext.Index, mElement, Result);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

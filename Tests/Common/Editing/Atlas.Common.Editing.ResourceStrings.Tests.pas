@@ -144,7 +144,8 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     Result := '-';
-    if not TResourceStrings.Insertion(AText, Tree.Tokens, AInterface, ABefore, ADecl, #10, Edit) then
+    if not TResourceStrings.Insertion(AText, Tree.Tokens, TResourcePlace.Create(AInterface, ABefore), ADecl, #10,
+      Edit) then
     begin
       Exit;
     end;
