@@ -1593,6 +1593,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Session.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IdeArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.EditingArea.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IndexArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
@@ -1632,6 +1633,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.Session.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.IdeArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.EditingArea.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.IndexArea.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
