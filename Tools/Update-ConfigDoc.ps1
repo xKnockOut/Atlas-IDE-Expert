@@ -71,7 +71,8 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
 $PluginSchemaPath = Join-Path $Root 'schemas/atlas-plugin.schema.json'
 $PluginSchema = Get-Content -Raw -Encoding utf8 $PluginSchemaPath | ConvertFrom-Json -AsHashtable
-$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
+# TAtlasPluginSettings und seine Bereichs-Units Atlas.Core.Settings.Plugin.<Bereich> (Records je x-area).
+$PluginFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 $ProfileFolder = Join-Path $Root 'Setup/Profile'
 
 function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $null -ne $Node[$Key] }
@@ -600,11 +601,25 @@ function Check-English([string] $Where, $Node) {
 Check-English '' $Schema
 
 # --- Wächter: Katalog der Plugin-Einstellungen (#723) ---
-$PluginText = [IO.File]::ReadAllText($PluginPath, $Utf8)
-$SaveNames = @([regex]::Matches($PluginText, "Write(?:Integer|String)\('(\w+)'") | ForEach-Object { $_.Groups[1].Value })
+# Jeder Wert steht genau einmal in Exchange seines Bereichs: AIo.Flag/Number/Text/TrimmedText('Name', …).
+$SaveNames = [Collections.Generic.List[string]]::new()
 $CatalogNames = @($PluginSchema['properties'].Keys)
-foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings.Save fehlt in schemas/atlas-plugin.schema.json") } }
-foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings.Save nicht geschrieben") } }
+foreach ($AreaFile in Get-ChildItem -Path $PluginFolder -Filter 'Atlas.Core.Settings.Plugin.*.pas') {
+    $AreaUnit = $AreaFile.BaseName.Substring('Atlas.Core.Settings.Plugin.'.Length)
+    $AreaText = [IO.File]::ReadAllText($AreaFile.FullName, $Utf8)
+    foreach ($Match in [regex]::Matches($AreaText, "AIo\.(?:Flag|Number|Text|TrimmedText)\('(\w+)'")) {
+        $Name = $Match.Groups[1].Value
+        $SaveNames.Add($Name)
+        if (-not ($CatalogNames -ccontains $Name) -or -not (Has $PluginSchema['properties'][$Name] 'x-area')) { continue }
+        $Area = [string]$PluginSchema['properties'][$Name]['x-area']
+        if (($Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)) -cne $AreaUnit) {
+            $Problems.Add("Plugin-Katalog: ""$Name"" steht in Atlas.Core.Settings.Plugin.$AreaUnit, gehört nach x-area ""$Area""")
+        }
+    }
+}
+foreach ($Twice in @($SaveNames | Group-Object | Where-Object Count -gt 1)) { $Problems.Add("Plugin-Katalog: ""$($Twice.Name)"" wird mehrfach gelesen und geschrieben") }
+foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings (Exchange der Bereiche) fehlt in schemas/atlas-plugin.schema.json") } }
+foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings (Exchange der Bereiche) nicht gelesen und geschrieben") } }
 $SeenKeys = @{}
 foreach ($Name in $CatalogNames) {
     $P = $PluginSchema['properties'][$Name]
@@ -760,6 +775,37 @@ function Pascal-Lines([string] $Name, [string] $Source) {
     }
     return $Result
 }
+# Eingebettete Texte (Schemata): mehrere Zeilen je Element, damit die Unit kurz bleibt (metric-unit-length);
+# je Element eine Zeile mit höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+function Pascal-Chunks([string] $Name, [string] $Source) {
+    $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
+    $Elements = New-Object System.Collections.Generic.List[string]
+    $Current = ''
+    $CurrentSize = 0
+    foreach ($Line in $Lines) {
+        $Tokens = @()
+        for ($At = 0; $At -lt $Line.Length; $At += 200) {
+            $Tokens += "'" + $Line.Substring($At, [Math]::Min(200, $Line.Length - $At)).Replace("'", "''") + "'"
+        }
+        $Tokens += '#10'
+        $Text = $Tokens -join ' + '
+        $Size = [Text.Encoding]::UTF8.GetByteCount($Text)
+        if ($Size -gt 990) {
+            if ($Current -ne '') { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
+            $Elements.Add($Tokens -join " +`r`n      ")
+            continue
+        }
+        if (($Current -ne '') -and ($CurrentSize + 3 + $Size -gt 990)) { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
+        if ($Current -eq '') { $Current = $Text; $CurrentSize = $Size } else { $Current = $Current + ' + ' + $Text; $CurrentSize += 3 + $Size }
+    }
+    if ($Current -ne '') { $Elements.Add($Current) }
+    $Result = @("  $Name`: array[0..$($Elements.Count - 1)] of string = (")
+    for ($Index = 0; $Index -lt $Elements.Count; $Index++) {
+        $End = if ($Index -eq $Elements.Count - 1) { ');' } else { ',' }
+        $Result += '    ' + $Elements[$Index] + $End
+    }
+    return $Result
+}
 function Sync-Unit([string] $Path, [string[]] $Lines) {
     $Text = ($Lines -join "`r`n") + "`r`n"
     $Current = if (Test-Path $Path) { [IO.File]::ReadAllText($Path, $Utf8).TrimStart([char]0xFEFF) } else { '' }
@@ -772,9 +818,9 @@ function Sync-Unit([string] $Path, [string[]] $Lines) {
 }
 function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [string] $FunctionName, [string] $Source) {
     return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
-        'implementation', '', 'const') + (Pascal-Lines 'Lines' $Source) +
-        @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-        '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')
+        'implementation', '', 'const') + (Pascal-Chunks 'Chunks' $Source) +
+        @('', "function $FunctionName`: string;", 'var', '  mChunk: string;', 'begin', "  Result := '';",
+        '  for mChunk in Chunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
 }
 $SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 

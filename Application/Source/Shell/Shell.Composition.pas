@@ -191,6 +191,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Lsp.Completion.Details,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Messages;
 
@@ -610,7 +611,7 @@ begin
     procedure(const ANamespaces: TArray<string>)
     begin
       FCodeArea.Navigation.SetNamespaces(ANamespaces);
-      FCodeArea.Completion.Completion.Namespaces := ANamespaces;
+      FCodeArea.Completion.Completion.Hooks.Namespaces := ANamespaces;
       FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
     end;
   Result.LibraryRootsChanged :=
@@ -886,8 +887,8 @@ begin
   end;
   FCodeArea.Navigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
-  FCodeArea.Completion.Completion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
-  FCodeArea.Completion.Completion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
+  FCodeArea.Completion.Completion.Hooks.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
+  FCodeArea.Completion.Completion.Hooks.DocumentationMarkdown := TCompletionDetails.ClientPrefersMarkdown(AParams);
 end;
 
 destructor TServerComposition.Destroy;

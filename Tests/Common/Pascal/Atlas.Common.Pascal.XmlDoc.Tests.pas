@@ -67,7 +67,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion.Details;
 
 const
   ListeFile = 'C:\P\Liste.pas';
@@ -403,7 +403,7 @@ var
   Runs: TJSONArray;
 begin
   // Namensposition von "Add" in Zeile 9.
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(9, 13));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(9, 13));
   try
     Assert.AreEqual('function Add(const S: string): Integer; virtual;', Details.GetValue<string>('declaration'));
     Assert.AreEqual('Liste', Details.GetValue<string>('unit'));
@@ -431,7 +431,7 @@ procedure TCompletionDetailsTests.ReportsDeprecatedTextAndDirectives;
 var
   Details: TJSONObject;
 begin
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(11, 14));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(11, 14));
   try
     Assert.AreEqual('protected', Details.GetValue<string>('visibility'));
     Assert.AreEqual('Stattdessen Neu verwenden', Details.GetValue<string>('deprecated'));
@@ -446,7 +446,7 @@ procedure TCompletionDetailsTests.LocalVariableWithoutIndexEntry;
 var
   Details: TJSONObject;
 begin
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(16, 2));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(16, 2));
   try
     Assert.AreEqual('Anzahl: Integer;', Details.GetValue<string>('declaration'));
     Assert.IsNull(Details.GetValue('container'));

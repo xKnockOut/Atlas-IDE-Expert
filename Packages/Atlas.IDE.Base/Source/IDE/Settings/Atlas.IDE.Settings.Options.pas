@@ -4,19 +4,14 @@
 // (INTAAddInOptions, #227) und verbindet sie mit den Einstellungen in der
 // Registry. „Verlauf zurücksetzen“ leert die lernende Gewichtung (#418).
 // Die Liste der angehefteten Favoriten (#458) kommt aus TAtlasIdeFavorites; „Entfernen“ wirkt sofort.
-// Darunter die Seite „Snippets“ (#51): Code-Vorlagen ansehen, eigene anlegen,
-// bearbeiten und löschen; gespeichert wird beim Schließen mit OK. Der Punkt
-// in der Überschrift „Atlas.Snippets“ hängt die Seite unter „Atlas“.
-// Daneben die Seite „Atlas.Tastenkonflikte“ (#494): Wer welche Taste belegt,
-// fragt sie über TAtlasIdeKeys.Owner ab; nach dem Speichern belegt die
-// Komposition die Tasten über Settings.OnChanged neu.
+// Die Unterseiten „Snippets“ (#51), „Tastenkonflikte“ (#494) und „Server“
+// (#227) stehen in Atlas.IDE.Settings.SubPages.
 // Abschnitt Symbolindex (#492): Kennzahlen aus atlas.server.status, „Index neu
 // aufbauen“ und „Index löschen“ über die Befehle des Servers, im Hintergrund
 // (#874): Die Antwort kommt im Hauptthread und geht nur an die Seite, für die
 // sie bestellt wurde (FGeneration), solange der Dialog offen ist.
-// Seite „Atlas.Server“ (#227): globale und Projekt-Einstellungen des Servers im
-// Dialog, Baseline neu erzeugen oder löschen, Unterdrückungen je Regel und
-// Index-Cache löschen über AtlasServer.exe als Prozess (TAtlasServerTool).
+// Baseline, Unterdrückungen und Index-Cache über AtlasServer.exe als Prozess
+// rufen beide Seiten über TAtlasIdeServerActions.
 // ShowSetting (#628, „Einstellungen dazu …“): öffnet Tools › Optionen, wählt
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
@@ -28,10 +23,9 @@
 // und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Settings).
 // ShowSetting mit Vorgabe („zuordnen …“ aus „Meine Issues“, #1261) reicht die
 // Vorgabe nach dem Laden an den Abschnitt, dem die Einstellung gehört.
-// Seite Versionsverwaltung (#1285): Fundort ohne Prozess, „Prüfen“ und
-// „Aktuelles Projekt“ über TAtlasIdeVcs im Hintergrund; das Ergebnis geht nur
-// an die Seite, für die es bestellt wurde (FGeneration). Nach OK liest
-// TAtlasIdeVcs settings.json sofort neu, damit ein neuer Pfad gleich gilt.
+// Seite Versionsverwaltung (#1285): verbindet TAtlasVcsOptions; das Ergebnis
+// geht nur an die Seite, für die es bestellt wurde (FGeneration, Alive). Nach
+// OK liest TAtlasIdeVcs settings.json sofort neu, damit ein neuer Pfad gilt.
 
 interface
 
@@ -87,46 +81,31 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.MainThread,
-  System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
-  System.Classes,
-  System.UITypes,
   Vcl.Forms,
-  Vcl.Dialogs,
   Vcl.Controls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Vcl.ActnList,
   Vcl.Menus,
-  Atlas.Core.Completion.Snippets,
-  Atlas.Core.Completion.LiveTemplates,
-  Atlas.Core.Completion.SnippetCatalog,
-  Atlas.UI.Settings.SnippetsPage,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
-  Atlas.UI.Settings.Keys,
-  Atlas.UI.Settings.ServerPage,
-  Atlas.Core.Settings.Baseline,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Settings.ServerTool,
-  Atlas.IDE.Settings.Transfer,
+  Atlas.IDE.Settings.ServerActions,
+  Atlas.IDE.Settings.SubPages,
+  Atlas.IDE.Settings.VcsOptions,
+  Atlas.IDE.Settings.PageOptions,
+  Atlas.UI.Settings.Page.General,
+  Atlas.UI.Settings.Page.Completion,
+  Atlas.UI.Settings.Page.Index,
+  Atlas.UI.Settings.Page.Sections,
+  Atlas.UI.Settings.Page.VcsProjects,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.Keys,
-  Atlas.Core.Completion.Favorites,
-  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Settings.TeamFile,
-  Atlas.IDE.Foundation.Files,
-  Atlas.Core.Projects.Vcs,
-  Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.ToolCheck,
-  Atlas.Core.Vcs.ServerCheck,
-  Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Vcs.Service;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -134,59 +113,13 @@ type
     FPage: TAtlasSettingsPage;
     /// <summary>Zählt die angelegten Seiten; eine späte Antwort für eine geschlossene Seite verfällt (#874).</summary>
     FGeneration: Integer;
+    /// <summary>Sagt, ob die Seite noch offen und dieselbe ist wie beim Aufruf; hält das Objekt bis dahin.</summary>
+    function Alive: TFunc<Boolean>;
     /// <summary>Führt ACommand im Hintergrund aus; AText macht aus der Antwort (nil ohne Server) den Text für
     /// die Seite.</summary>
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
-    /// <summary>Seite Versionsverwaltung (#1285).</summary>
-    procedure ConnectVcs;
-    /// <summary>Zeile AFolder der Tabelle „Server“ im Hintergrund prüfen (#1287).</summary>
-    procedure CheckVcsServer(const AFolder: string);
-    /// <summary>Seite Prüfregeln (#909): Katalog im Hintergrund holen und mit "rules" der globalen Datei
-    /// übergeben.</summary>
-  public
-    function GetArea: string;
-    function GetCaption: string;
-    function GetFrameClass: TCustomFrameClass;
-    procedure FrameCreated(AFrame: TCustomFrame);
-    procedure DialogClosed(Accepted: Boolean);
-    function ValidateContents: Boolean;
-    function GetHelpContext: Integer;
-    function IncludeInIDEInsight: Boolean;
-  end;
-
-  /// <summary>Seite „Tastenkonflikte“ (#494).</summary>
-  TAtlasKeysOptions = class(TInterfacedObject, INTAAddInOptions)
-  private
-    FPage: TAtlasKeysPage;
-  public
-    function GetArea: string;
-    function GetCaption: string;
-    function GetFrameClass: TCustomFrameClass;
-    procedure FrameCreated(AFrame: TCustomFrame);
-    procedure DialogClosed(Accepted: Boolean);
-    function ValidateContents: Boolean;
-    function GetHelpContext: Integer;
-    function IncludeInIDEInsight: Boolean;
-  end;
-
-  TAtlasSnippetOptions = class(TInterfacedObject, INTAAddInOptions)
-  private
-    FPage: TAtlasSnippetsPage;
-  public
-    function GetArea: string;
-    function GetCaption: string;
-    function GetFrameClass: TCustomFrameClass;
-    procedure FrameCreated(AFrame: TCustomFrame);
-    procedure DialogClosed(Accepted: Boolean);
-    function ValidateContents: Boolean;
-    function GetHelpContext: Integer;
-    function IncludeInIDEInsight: Boolean;
-  end;
-
-  /// <summary>Seite „Server“ (#227).</summary>
-  TAtlasServerOptions = class(TInterfacedObject, INTAAddInOptions)
-  private
-    FPage: TAtlasServerPage;
+    /// <summary>Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.</summary>
+    procedure ConnectIndex;
   public
     function GetArea: string;
     function GetCaption: string;
@@ -233,28 +166,6 @@ type
 
 var
   Selector: TAtlasOptionsSelector;
-
-/// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dem Abschnitt vcs der .atlas
-/// für die Seite Versionsverwaltung (#1286).</summary>
-function VcsProjectContext: TAtlasVcsProjectContext;
-var
-  mTeam: TAtlasTeamSettings;
-begin
-  Result := TAtlasVcsProjectContext.Empty;
-  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
-  if Result.ProjectFile = '' then
-  begin
-    Exit;
-  end;
-  Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
-  mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
-  if mTeam.Vcs.Configured then
-  begin
-    Result.Team := [TAtlasVcsProjectMapping.FromTeamFile(Result.ProjectFile, mTeam.Vcs.Provider,
-      mTeam.Vcs.MainBranch)];
-  end;
-end;
-
 
 { TAtlasOptionsSelector }
 
@@ -368,102 +279,77 @@ begin
   end;
 end;
 
-function ServerExe: string;
+/// <summary>Text der Antwort auf „Index neu aufbauen“.</summary>
+function RebuildText(AAnswer: TJSONValue): string;
 begin
-  Result := HookText(Hooks.ServerPath);
-end;
-
-/// <summary>atlas-baseline.json des aktiven Projekts (oder der alte Name, wenn nur er existiert); '' ohne Projekt.
-/// </summary>
-function BaselineFile: string;
-var
-  Folder: string;
-begin
-  Result := '';
-  if TAtlasProjectSettings.SettingsFile = '' then
+  if AAnswer <> nil then
   begin
-    Exit;
-  end;
-  Folder := ExtractFileDir(TAtlasProjectSettings.SettingsFile);
-  Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.FileName;
-  if not FileExists(Result) and FileExists(IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName)
-  then
-  begin
-    Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName;
-  end;
-end;
-
-function BaselineText: string;
-var
-  FileName: string;
-  Count, Entries: Integer;
-begin
-  FileName := BaselineFile;
-  if FileName = '' then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
-  end;
-  if not FileExists(FileName) then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
-  end;
-  Count := TAtlasBaselineInfo.Count(TFile.ReadAllText(FileName, TEncoding.UTF8), Entries);
-  if Count < 0 then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
-  end;
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
-end;
-
-/// <summary>AtlasServer.exe mit AArguments im Projektordner; '' bei Erfolg, sonst die Meldung.</summary>
-function RunTool(const AArguments: string; ATimeoutMs: Cardinal; out AOutput: string): string;
-var
-  Code: Cardinal;
-  Error, Folder: string;
-begin
-  Result := '';
-  Folder := ExtractFileDir(TAtlasProjectSettings.ActiveProject);
-  if not TAtlasServerTool.Run(ServerExe, AArguments, Folder, ATimeoutMs, AOutput, Code, Error) then
-  begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error]);
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding);
   end
-  else if Code = 3 then
+  else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+  end;
+end;
+
+/// <summary>Text der Antwort auf „Index löschen“.</summary>
+function ClearText(AAnswer: TJSONValue): string;
+begin
+  if AAnswer <> nil then
+  begin
+    Result := TLspIndexStatus.ClearedText(AAnswer);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
   end;
 end;
 
 { TAtlasAddInOptions }
 
+function TAtlasAddInOptions.Alive: TFunc<Boolean>;
+var
+  mKeep: INTAAddInOptions;
+  mOwner: TAtlasAddInOptions;
+  mGeneration: Integer;
+begin
+  // mKeep hält das Objekt, bis die Antwort da ist; ob die Seite noch dieselbe ist, sagt FGeneration.
+  mKeep := Self;
+  mOwner := Self;
+  mGeneration := FGeneration;
+  Result :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration);
+    end;
+end;
+
 procedure TAtlasAddInOptions.Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
 var
-  Keep: INTAAddInOptions;
-  Owner: TAtlasAddInOptions;
-  Generation: Integer;
-  Text: TFunc<TJSONValue, string>;
+  mAlive: TFunc<Boolean>;
+  mPage: TAtlasSettingsPage;
+  mText: TFunc<TJSONValue, string>;
 begin
-  // Keep hält das Objekt, bis die Antwort da ist; ob die Seite noch dieselbe ist, sagt FGeneration.
-  Keep := Self;
-  Owner := Self;
-  Generation := FGeneration;
-  Text := AText;
+  mText := AText;
   if not Assigned(Hooks.Command) then
   begin
     if FPage <> nil then
     begin
-      FPage.IndexAnswered(Text(nil));
+      FPage.Part<TAtlasSettingsIndexPart>.IndexAnswered(mText(nil));
     end;
     Exit;
   end;
+  mAlive := Alive();
+  mPage := FPage;
   Hooks.Command(ACommand,
     procedure(AAnswer: TJSONValue)
     begin
-      if (Keep <> nil) and (Owner.FPage <> nil) and (Owner.FGeneration = Generation) then
+      if mAlive() then
       begin
         TAtlasGuard.Run(TAtlasFeature.Settings,
           procedure
           begin
-            Owner.FPage.IndexAnswered(Text(AAnswer));
+            mPage.Part<TAtlasSettingsIndexPart>.IndexAnswered(mText(AAnswer));
           end);
       end;
     end);
@@ -485,90 +371,9 @@ begin
   Result := TAtlasSettingsPage;
 end;
 
-procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
+procedure TAtlasAddInOptions.ConnectIndex;
 begin
-  Inc(FGeneration);
-  FPage := AFrame as TAtlasSettingsPage;
-  FPage.DefaultServerPath := HookText(Hooks.DefaultServerPath);
-  // Version der gewählten AtlasServer.exe (#227).
-  FPage.OnServerVersion :=
-    function(APath: string): string
-    begin
-      Result := TAtlasServerTool.FileVersion(APath);
-    end;
-  FPage.OnResetHistory := Hooks.ResetHistory;
-  // Seite Prüfregeln (#909): Wege zu den Regeln im Projekt- und im globalen Dialog, Baseline.
-  FPage.OnRulesProject :=
-    procedure
-    begin
-      TAtlasProjectSettings.Execute;
-    end;
-  FPage.OnRulesGlobal :=
-    procedure
-    begin
-      TAtlasProjectSettings.ExecuteGlobal;
-    end;
-  FPage.OnBaselineInfo :=
-    function: string
-    begin
-      Result := BaselineText;
-    end;
-  FPage.OnBaselineUpdate :=
-    function: string
-    var
-      Output: string;
-    begin
-      if TAtlasProjectSettings.ActiveProject = '' then
-      begin
-        Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
-      end;
-      Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
-        TAtlasServerTool.CheckTimeoutMs, Output);
-      if Result = '' then
-      begin
-        Result := BaselineText;
-      end;
-    end;
-  FPage.OnBaselineDelete :=
-    function: string
-    begin
-      if (BaselineFile <> '') and FileExists(BaselineFile) then
-      begin
-        TFile.Delete(BaselineFile);
-      end;
-      Result := BaselineText;
-    end;
-  // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
-  if PendingReveal <> '' then
-  begin
-    FPage.Reveal(PendingReveal);
-  end;
-  // Angeheftete Favoriten (#458): Liste und Entfernen.
-  FPage.OnRemoveFavorites :=
-    procedure(AKeys: TArray<string>)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasIdeFavorites.Remove(AKeys);
-        end);
-    end;
-  FPage.OnFavorites :=
-    function: TArray<TAtlasFavorite>
-    begin
-      Result := TAtlasIdeFavorites.Items;
-    end;
-  FPage.OnToolbarCommands :=
-    function: TArray<TAtlasToolbarCommandInfo>
-    begin
-      Result := nil;
-      if Assigned(Hooks.ToolbarCommands) then
-      begin
-        Result := Hooks.ToolbarCommands();
-      end;
-    end;
-  // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
-  FPage.OnIndexMetrics :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexMetrics :=
     procedure
     begin
       Run('atlas.server.status',
@@ -577,195 +382,52 @@ begin
           Result := TLspIndexStatus.Metrics(AAnswer).Text;
         end);
     end;
-  FPage.OnIndexRebuild :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexRebuild :=
     procedure
     begin
       Run('atlas.server.rebuildIndex',
         function(AAnswer: TJSONValue): string
         begin
-          if AAnswer <> nil then
-          begin
-            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding);
-          end
-          else
-          begin
-            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-          end;
+          Result := RebuildText(AAnswer);
         end);
     end;
-  FPage.OnIndexClear :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexClear :=
     procedure
     begin
       Run('atlas.server.clearIndex',
         function(AAnswer: TJSONValue): string
         begin
-          if AAnswer <> nil then
-          begin
-            Result := TLspIndexStatus.ClearedText(AAnswer);
-          end
-          else
-          begin
-            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-          end;
+          Result := ClearText(AAnswer);
         end);
     end;
-  // Projektdatei .atlas (#486): Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt sie an.
-  FPage.OnTeamFile :=
-    function: TAtlasTeamSettings
-    begin
-      Result := TAtlasIdeTeamFile.Read(TAtlasIdeTeamFile.ActiveProject);
-    end;
-  FPage.OnOpenTeamFile :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasIdeTeamFile.OpenInEditor;
-        end);
-    end;
-  // Export, Import und „Alles zurücksetzen“ (#723) mit den Werten der Seite; Import und Zurücksetzen speichern
-  // sofort (mit Sicherung), die Seite lädt danach neu.
-  FPage.OnExportSettings :=
-    procedure(ACurrent: TAtlasPluginSettings)
-    begin
-      TAtlasIdeSettingsTransfer.ExportSettings(ACurrent);
-    end;
-  FPage.OnImportSettings :=
-    function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean; out AResult: TAtlasPluginSettings): Boolean
-    begin
-      Result := TAtlasIdeSettingsTransfer.ImportSettings(ACurrent, AProfile, AResult);
-    end;
-  FPage.OnResetAllSettings :=
-    function(const ACurrent: TAtlasPluginSettings; out AResult: TAtlasPluginSettings): Boolean
-    begin
-      Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
-    end;
-  ConnectVcs;
+end;
+
+procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
+begin
+  Inc(FGeneration);
+  FPage := AFrame as TAtlasSettingsPage;
+  FPage.Part<TAtlasSettingsGeneralPart>.DefaultServerPath := HookText(Hooks.DefaultServerPath);
+  FPage.Part<TAtlasSettingsCompletionPart>.OnResetHistory := Hooks.ResetHistory;
+  TAtlasPageOptions.ConnectRules(FPage);
+  // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
+  if PendingReveal <> '' then
+  begin
+    FPage.Reveal(PendingReveal);
+  end;
+  TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
+  ConnectIndex;
+  TAtlasPageOptions.ConnectTransfer(FPage);
+  TAtlasVcsOptions.Connect(FPage, Alive());
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
   // Vorgabe für den Abschnitt eines Moduls (#1455), z. B. „zuordnen …“ aus „Meine Issues“: nach dem Laden.
   if (PendingReveal <> '') and (PendingArgument <> '') then
   begin
-    FPage.ShowSettingArgument(PendingReveal, PendingArgument);
+    FPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument(PendingReveal, PendingArgument);
   end;
   // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
   if PendingVcsServer <> '' then
   begin
-    FPage.RevealVcsServer(PendingVcsServer);
-  end;
-end;
-
-procedure TAtlasAddInOptions.ConnectVcs;
-var
-  mKeep: INTAAddInOptions;
-  mOwner: TAtlasAddInOptions;
-  mGeneration: Integer;
-begin
-  mKeep := Self;
-  mOwner := Self;
-  mGeneration := FGeneration;
-  FPage.OnVcsContext :=
-    function: TAtlasVcsProjectContext
-    begin
-      Result := VcsProjectContext;
-    end;
-  FPage.OnVcsLocate :=
-    function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
-    begin
-      Result := TAtlasIdeVcs.Locate(AKind, APath);
-    end;
-  FPage.OnVcsCheck :=
-    procedure(AKind: TAtlasVcsKind; const APath: string)
-    var
-      mLocation: TAtlasVcsToolLocation;
-    begin
-      if not TAtlasIdeVcs.CheckTool(AKind, APath,
-        procedure(ACheck: TAtlasVcsToolCheck)
-        begin
-          // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
-          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
-          begin
-            mOwner.FPage.VcsCheckDone(ACheck);
-          end;
-        end) then
-      begin
-        // Nichts gestartet (Versionsverwaltung noch nicht bereit): Zustand ohne Prozess.
-        mLocation := TAtlasIdeVcs.Locate(AKind, APath);
-        mOwner.FPage.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind, mLocation));
-      end;
-    end;
-  FPage.OnVcsProject :=
-    procedure
-    var
-      mProject, mGroup: string;
-    begin
-      // Aktive .dproj in der geöffneten .groupproj; Art und Hauptbranch nach vcs.projects und .atlas (#1286).
-      mProject := TAtlasIdeTeamFile.ActiveProject;
-      mGroup := '';
-      if mProject <> '' then
-      begin
-        mGroup := TAtlasIdeFiles.GroupOfProject(mProject);
-      end;
-      TAtlasIdeVcs.QueryProject(mProject, mGroup,
-        procedure(AState: TAtlasVcsProjectState)
-        begin
-          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
-          begin
-            mOwner.FPage.VcsProjectDone(AState);
-          end;
-        end);
-    end;
-  // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
-  FPage.OnVcsServerState :=
-    function(AFolder: string): TAtlasVcsServerCheck
-    begin
-      Result := TAtlasIdeVcs.ServerState(AFolder);
-    end;
-  FPage.OnVcsServerCheck :=
-    procedure(const AFolder: string)
-    begin
-      CheckVcsServer(AFolder);
-    end;
-  FPage.OnVcsServerLogin :=
-    function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
-    var
-      mFolder: string;
-    begin
-      mFolder := AFolder;
-      // Nach dem Schließen der Konsole dieselbe Zeile erneut prüfen.
-      Result := TAtlasIdeVcs.OpenServerLogin(ACheck,
-        procedure
-        begin
-          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
-          begin
-            mOwner.CheckVcsServer(mFolder);
-          end;
-        end);
-    end;
-end;
-
-procedure TAtlasAddInOptions.CheckVcsServer(const AFolder: string);
-var
-  mKeep: INTAAddInOptions;
-  mOwner: TAtlasAddInOptions;
-  mGeneration: Integer;
-  mFolder: string;
-begin
-  mKeep := Self;
-  mOwner := Self;
-  mGeneration := FGeneration;
-  mFolder := AFolder;
-  if not TAtlasIdeVcs.CheckServer(mFolder,
-    procedure(ACheck: TAtlasVcsServerCheck)
-    begin
-      // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
-      if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
-      begin
-        mOwner.FPage.VcsServerDone(mFolder, ACheck);
-      end;
-    end) then
-  begin
-    FPage.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
+    FPage.Part<TAtlasSettingsVcsServersPart>.RevealVcsServer(PendingVcsServer);
   end;
 end;
 
@@ -822,296 +484,6 @@ begin
   Result := True;
 end;
 
-{ TAtlasSnippetOptions }
-
-function TAtlasSnippetOptions.GetArea: string;
-begin
-  Result := '';
-end;
-
-function TAtlasSnippetOptions.GetCaption: string;
-begin
-  Result := 'Atlas.Snippets';
-end;
-
-function TAtlasSnippetOptions.GetFrameClass: TCustomFrameClass;
-begin
-  Result := TAtlasSnippetsPage;
-end;
-
-procedure TAtlasSnippetOptions.FrameCreated(AFrame: TCustomFrame);
-var
-  Ide, Own: TAtlasSnippetList;
-  Stats: TAtlasLiveTemplateStats;
-  Errors: TArray<string>;
-begin
-  try
-    FPage := AFrame as TAtlasSnippetsPage;
-    Ide := nil;
-    if TAtlasIdeSettings.Current.ImportIdeTemplates then
-    begin
-      Ide := TAtlasLiveTemplates.LoadFolder(HookText(Hooks.IdeTemplateFolder), Stats);
-    end;
-    Own := TAtlasSnippets.LoadFolder(HookText(Hooks.SnippetFolder), Errors);
-    FPage.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, Ide, Own));
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
-end;
-
-procedure TAtlasSnippetOptions.DialogClosed(Accepted: Boolean);
-begin
-  try
-    if Accepted and (FPage <> nil) and (FPage.Catalog <> nil) and FPage.Catalog.Modified then
-    begin
-      FPage.Catalog.Save(HookText(Hooks.SnippetFolder));
-    end;
-    FPage := nil;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
-end;
-
-function TAtlasSnippetOptions.ValidateContents: Boolean;
-var
-  Message: string;
-begin
-  Result := True;
-  if FPage = nil then
-  begin
-    Exit;
-  end;
-  Message := FPage.Validate;
-  if Message <> '' then
-  begin
-    ShowMessage(Message);
-    Result := False;
-  end;
-end;
-
-function TAtlasSnippetOptions.GetHelpContext: Integer;
-begin
-  Result := 0;
-end;
-
-function TAtlasSnippetOptions.IncludeInIDEInsight: Boolean;
-begin
-  Result := True;
-end;
-
-{ TAtlasKeysOptions }
-
-function TAtlasKeysOptions.GetArea: string;
-begin
-  Result := '';
-end;
-
-function TAtlasKeysOptions.GetCaption: string;
-begin
-  // Punkt: Unterseite von „Atlas“.
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle);
-end;
-
-function TAtlasKeysOptions.GetFrameClass: TCustomFrameClass;
-begin
-  Result := TAtlasKeysPage;
-end;
-
-procedure TAtlasKeysOptions.FrameCreated(AFrame: TCustomFrame);
-begin
-  try
-    FPage := AFrame as TAtlasKeysPage;
-    FPage.LoadFrom(TAtlasIdeSettings.Stored);
-    FPage.OwnerOf :=
-      function(AShortCut: Word): string
-      begin
-        Result := TAtlasIdeKeys.Owner(AShortCut);
-      end;
-    FPage.ShowForeignCompletions(TAtlasIdeKeys.ForeignCompletions);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
-end;
-
-procedure TAtlasKeysOptions.DialogClosed(Accepted: Boolean);
-var
-  Settings: TAtlasPluginSettings;
-begin
-  try
-    if Accepted and (FPage <> nil) then
-    begin
-      Settings := TAtlasIdeSettings.Stored;
-      FPage.SaveTo(Settings);
-      TAtlasIdeSettings.Update(Settings);
-    end;
-    FPage := nil;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
-end;
-
-function TAtlasKeysOptions.ValidateContents: Boolean;
-begin
-  Result := True;
-end;
-
-function TAtlasKeysOptions.GetHelpContext: Integer;
-begin
-  Result := 0;
-end;
-
-function TAtlasKeysOptions.IncludeInIDEInsight: Boolean;
-begin
-  Result := True;
-end;
-
-{ TAtlasServerOptions }
-
-
-function TAtlasServerOptions.GetArea: string;
-begin
-  Result := '';
-end;
-
-function TAtlasServerOptions.GetCaption: string;
-begin
-  // Punkt: Unterseite von „Atlas“.
-  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.ServerPageTitle);
-end;
-
-function TAtlasServerOptions.GetFrameClass: TCustomFrameClass;
-begin
-  Result := TAtlasServerPage;
-end;
-
-procedure TAtlasServerOptions.FrameCreated(AFrame: TCustomFrame);
-begin
-  try
-    FPage := AFrame as TAtlasServerPage;
-    FPage.OnEditGlobal :=
-      procedure
-      begin
-        TAtlasProjectSettings.ExecuteGlobal;
-      end;
-    FPage.OnEditProject :=
-      procedure
-      begin
-        TAtlasProjectSettings.Execute;
-      end;
-    FPage.OnBaselineInfo :=
-      function: string
-      begin
-        Result := BaselineText;
-      end;
-    FPage.OnBaselineUpdate :=
-      function: string
-      var
-        Output: string;
-      begin
-        if TAtlasProjectSettings.ActiveProject = '' then
-        begin
-          Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
-        end;
-        Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
-          TAtlasServerTool.CheckTimeoutMs, Output);
-        if Result = '' then
-        begin
-          Result := BaselineText;
-        end;
-      end;
-    FPage.OnBaselineDelete :=
-      function: string
-      begin
-        if (BaselineFile <> '') and FileExists(BaselineFile) then
-        begin
-          TFile.Delete(BaselineFile);
-        end;
-        Result := BaselineText;
-      end;
-    FPage.OnSuppressions :=
-      function: TArray<string>
-      var
-        OutputFile, Output, Error: string;
-        Row: TAtlasSuppressionRow;
-      begin
-        Result := nil;
-        if TAtlasProjectSettings.ActiveProject = '' then
-        begin
-          Result := [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject)];
-          Exit;
-        end;
-        OutputFile := TPath.GetTempFileName;
-        try
-          Error := RunTool('--check "' + TAtlasProjectSettings.ActiveProject +
-            '" --suppression-stats --format json --output "' + OutputFile + '"', TAtlasServerTool.CheckTimeoutMs,
-            Output);
-          if Error <> '' then
-          begin
-            Result := [Error];
-            Exit;
-          end;
-          for Row in TAtlasBaselineInfo.Suppressions(TFile.ReadAllText(OutputFile, TEncoding.UTF8)) do
-          begin
-            Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.ServerPageSuppressionRow,
-              [Row.Rule, Row.Total, Row.Unused, Row.Files])];
-          end;
-          if Length(Result) = 0 then
-          begin
-            Result := [TAtlasStrings.Text(TAtlasTextId.ServerPageSuppressionsNone)];
-          end;
-        finally
-          if FileExists(OutputFile) then
-          begin
-            TFile.Delete(OutputFile);
-          end;
-        end;
-      end;
-    FPage.OnClearCache :=
-      function: string
-      var
-        Output: string;
-      begin
-        Result := RunTool('--clear-cache', TAtlasServerTool.ShortTimeoutMs, Output);
-        if Result = '' then
-        begin
-          Result := Trim(Output);
-        end;
-        if Result = '' then
-        begin
-          Result := TAtlasStrings.Text(TAtlasTextId.ServerPageToolDone);
-        end;
-      end;
-    FPage.Refresh;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Settings, E);
-  end;
-end;
-
-procedure TAtlasServerOptions.DialogClosed(Accepted: Boolean);
-begin
-  FPage := nil;
-end;
-
-function TAtlasServerOptions.ValidateContents: Boolean;
-begin
-  Result := True;
-end;
-
-function TAtlasServerOptions.GetHelpContext: Integer;
-begin
-  Result := 0;
-end;
-
-function TAtlasServerOptions.IncludeInIDEInsight: Boolean;
-begin
-  Result := True;
-end;
-
 { TAtlasOptionsRegistration }
 
 class procedure TAtlasOptionsRegistration.Register(const AHooks: TAtlasOptionsHooks);
@@ -1121,9 +493,10 @@ begin
   if (Options = nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
   begin
     Hooks := AHooks;
+    TAtlasIdeServerActions.ServerPath := AHooks.ServerPath;
     Options := TAtlasAddInOptions.Create;
     Services.RegisterAddInOptions(Options);
-    SnippetOptions := TAtlasSnippetOptions.Create;
+    SnippetOptions := TAtlasSnippetOptions.Create(AHooks.IdeTemplateFolder, AHooks.SnippetFolder);
     Services.RegisterAddInOptions(SnippetOptions);
     KeysOptions := TAtlasKeysOptions.Create;
     Services.RegisterAddInOptions(KeysOptions);
@@ -1160,6 +533,7 @@ begin
   ServerOptions := nil;
   Options := nil;
   Hooks := Default(TAtlasOptionsHooks);
+  TAtlasIdeServerActions.ServerPath := nil;
   PendingReveal := '';
   PendingArgument := '';
   PendingVcsServer := '';

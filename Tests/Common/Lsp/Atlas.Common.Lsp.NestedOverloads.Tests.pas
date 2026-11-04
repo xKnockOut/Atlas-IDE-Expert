@@ -42,6 +42,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -152,8 +153,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      NoText);
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+      NoText), PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;
@@ -167,7 +168,7 @@ begin
   Text := StringReplace(UnitHaupt, '  |', ACode, []);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;

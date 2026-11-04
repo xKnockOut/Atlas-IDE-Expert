@@ -7,6 +7,7 @@ interface
 uses
   Atlas.UI.Settings.Page,
   Vcl.Controls,
+  Vcl.StdCtrls,
   Vcl.Forms,
   Vcl.ComCtrls;
 
@@ -16,6 +17,12 @@ procedure WarmUpSettingsPage;
 
 /// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
 function SheetOf(AControl: TControl): TTabSheet;
+
+/// <summary>Kontrollkästchen der Plugin-Einstellung AName (Registry-Name); Fehler, wenn es keins ist.</summary>
+function CheckOf(APage: TAtlasSettingsPage; const AName: string): TCheckBox;
+
+/// <summary>Eingabefeld der Plugin-Einstellung AName (Registry-Name); Fehler, wenn es keins ist.</summary>
+function EditOf(APage: TAtlasSettingsPage; const AName: string): TEdit;
 
 /// <summary>Knoten der obersten Ebene im Navigationsbaum der Seite.</summary>
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
@@ -46,6 +53,16 @@ begin
     AControl := AControl.Parent;
   end;
   Result := TTabSheet(AControl);
+end;
+
+function CheckOf(APage: TAtlasSettingsPage; const AName: string): TCheckBox;
+begin
+  Result := APage.ControlOfSetting(AName) as TCheckBox;
+end;
+
+function EditOf(APage: TAtlasSettingsPage; const AName: string): TEdit;
+begin
+  Result := APage.ControlOfSetting(AName) as TEdit;
 end;
 
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;

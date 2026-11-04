@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -208,7 +209,7 @@ begin
         AText := UnitListen;
         Result := SameText(AFileName, ListenFile);
       end;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;
@@ -464,12 +465,12 @@ begin
     '  Kunden.Add(|);', []), Position);
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, Position,
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitListen;
         Result := SameText(AFileName, ListenFile);
-      end);
+      end), Position);
   finally
     Tree.Free;
   end;
