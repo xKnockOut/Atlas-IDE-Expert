@@ -523,6 +523,7 @@ uses
   Atlas.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas',
   Atlas.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.Tests.pas',
   Atlas.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Tests.pas',
+  Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests.pas',
   Atlas.Common.Rules.Builtin.Flow.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Tests.pas',
   Atlas.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas',
   Atlas.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas',

@@ -125,6 +125,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Concurrency,
+  Atlas.Common.Rules.Builtin.Concurrency.Threads,
+  Atlas.Common.Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
