@@ -558,11 +558,12 @@ begin
       end;
       if Assigned(FFiles) then
       begin
-        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, FFiles(), FReadText, Options, nil);
+        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, TImpactSources.Create(FFiles(), FReadText), Options,
+          nil);
       end
       else
       begin
-        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, nil, FReadText, Options, nil);
+        Found := TImpactAnalysis.Analyze(Resolver, FIndex, Start, TImpactSources.Create(nil, FReadText), Options, nil);
       end;
     finally
       Resolver.Free;

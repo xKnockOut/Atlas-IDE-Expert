@@ -112,25 +112,28 @@ begin
   if HeaderUses.Contains(ALine, ACharacter) or InterfaceUses.Contains(ALine, ACharacter) or
     ImplementationUses.Contains(ALine, ACharacter) then
   begin
-    Exit(TAtlasCodeSection.UsesClause);
-  end;
-  if Finalization_.Before(ALine, ACharacter) then
+    Result := TAtlasCodeSection.UsesClause;
+  end
+  else if Finalization_.Before(ALine, ACharacter) then
   begin
-    Exit(TAtlasCodeSection.Finalization_);
-  end;
-  if Initialization_.Before(ALine, ACharacter) then
+    Result := TAtlasCodeSection.Finalization_;
+  end
+  else if Initialization_.Before(ALine, ACharacter) then
   begin
-    Exit(TAtlasCodeSection.Initialization_);
-  end;
-  if ImplementationPart.Before(ALine, ACharacter) then
+    Result := TAtlasCodeSection.Initialization_;
+  end
+  else if ImplementationPart.Before(ALine, ACharacter) then
   begin
-    Exit(TAtlasCodeSection.ImplementationPart);
-  end;
-  if InterfacePart.Before(ALine, ACharacter) then
+    Result := TAtlasCodeSection.ImplementationPart;
+  end
+  else if InterfacePart.Before(ALine, ACharacter) then
   begin
-    Exit(TAtlasCodeSection.InterfacePart);
+    Result := TAtlasCodeSection.InterfacePart;
+  end
+  else
+  begin
+    Result := TAtlasCodeSection.None;
   end;
-  Result := TAtlasCodeSection.None;
 end;
 
 function TAtlasUnitSections.Target(ATarget: TAtlasSectionTarget; ALine, ACharacter: Integer;
@@ -173,6 +176,14 @@ end;
 { TAtlasSectionScanner }
 
 type
+  /// <summary>Wort (klein) bzw. „;“, „=“, „.“ oder „&amp;“ und seine Stelle, 0-basiert.</summary>
+  TSectionToken = record
+    Text: string;
+    Line: Integer;
+    Character: Integer;
+    function Mark: TAtlasSectionMark;
+  end;
+
   /// <summary>Liest Wörter und die Zeichen „;“, „=“ und „.“ außerhalb von Kommentaren und Strings.</summary>
   TTokenReader = record
     Lines: TArray<string>;
@@ -183,8 +194,45 @@ type
     /// <summary>Anzahl der Anführungszeichen eines offenen mehrzeiligen Strings; 0 = keiner.</summary>
     MultiQuotes: Integer;
     /// <summary>Nächstes Wort (klein) bzw. „;“, „=“ oder „.“; False am Ende des Textes.</summary>
-    function Next(out AToken: string; out ALine, ACharacter: Integer): Boolean;
+    function Next(out AToken: TSectionToken): Boolean;
+  private
+    /// <summary>Ende eines mehrzeiligen Strings suchen; False, wenn die Zeile noch dazugehört.</summary>
+    function LeaveMultiLine(const AText: string): Boolean;
+    /// <summary>Ein Zeichen im offenen Kommentar weiter.</summary>
+    procedure SkipInComment(const AText: string);
+    /// <summary>Kommentar, der bei Position beginnt, öffnen bzw. überspringen; sonst ein Zeichen weiter.</summary>
+    procedure OpenComment(const AText: string);
+    /// <summary>String ab Position überspringen; ''' am Zeilenende öffnet einen mehrzeiligen.</summary>
+    procedure SkipString(const AText: string);
+    /// <summary>Token ab Position oder ein Zeichen weiter; False ohne Token.</summary>
+    function TokenAt(const AText: string; out AToken: TSectionToken): Boolean;
+    function Emit(const AText: string; AStart: Integer; out AToken: TSectionToken): Boolean;
   end;
+
+  /// <summary>Zustand von Scan: Kopf gelesen, offene uses-Klausel, vorheriges Token.</summary>
+  TSectionScan = record
+    Sections: TAtlasUnitSections;
+    HeaderDone: Boolean;
+    AfterHeader: Boolean;
+    OpenUses: ^TAtlasUsesMark;
+    Previous: string;
+    /// <summary>Art aus dem ersten Wort; False ohne Kopf (.inc).</summary>
+    function TakeKind(const AToken: string): Boolean;
+    procedure UnitToken(const AToken: TSectionToken);
+    /// <summary>interface oder implementation.</summary>
+    procedure FrontPart(const AToken: TSectionToken);
+    /// <summary>initialization oder finalization nach implementation.</summary>
+    procedure BackPart(const AToken: TSectionToken);
+    procedure UnitUses;
+    procedure HeaderToken(const AToken: TSectionToken);
+    /// <summary>Ein Token nach dem ersten; False nach „end.“.</summary>
+    function Take(const AToken: TSectionToken): Boolean;
+  end;
+
+function TSectionToken.Mark: TAtlasSectionMark;
+begin
+  Result := TAtlasSectionMark.At(Line, Character);
+end;
 
 /// <summary>Anzahl gleicher Anführungszeichen ab APosition.</summary>
 function QuoteRun(const AText: string; APosition: Integer): Integer;
@@ -196,157 +244,176 @@ begin
   end;
 end;
 
-function TTokenReader.Next(out AToken: string; out ALine, ACharacter: Integer): Boolean;
+function TTokenReader.LeaveMultiLine(const AText: string): Boolean;
 var
-  Text: string;
-  Start, Run: Integer;
-  Escaped: Boolean;
+  mStart: Integer;
 begin
-  AToken := '';
-  ALine := 0;
-  ACharacter := 0;
+  Result := True;
+  if MultiQuotes = 0 then
+  begin
+    Exit;
+  end;
+  // Mehrzeiliger String: endet an einer Zeile, die (nach Einrückung) mit gleich vielen ''' beginnt.
+  mStart := 1;
+  while (mStart <= Length(AText)) and CharInSet(AText[mStart], [' ', #9]) do
+  begin
+    Inc(mStart);
+  end;
+  Result := QuoteRun(AText, mStart) >= MultiQuotes;
+  if Result then
+  begin
+    Position := mStart + MultiQuotes;
+    MultiQuotes := 0;
+  end;
+end;
+
+procedure TTokenReader.SkipInComment(const AText: string);
+begin
+  if (Comment = '{') and (AText[Position] = '}') then
+  begin
+    Comment := #0;
+  end
+  else if (Comment = '(') and (AText[Position] = '*') and (Position < Length(AText)) and
+    (AText[Position + 1] = ')') then
+  begin
+    Comment := #0;
+    Inc(Position);
+  end;
+  Inc(Position);
+end;
+
+procedure TTokenReader.OpenComment(const AText: string);
+var
+  mNext: Char;
+begin
+  mNext := #0;
+  if Position < Length(AText) then
+  begin
+    mNext := AText[Position + 1];
+  end;
+  if AText[Position] = '{' then
+  begin
+    Comment := '{';
+    Inc(Position);
+  end
+  else if (AText[Position] = '(') and (mNext = '*') then
+  begin
+    Comment := '(';
+    Inc(Position, 2);
+  end
+  else if (AText[Position] = '/') and (mNext = '/') then
+  begin
+    Position := Length(AText) + 1;
+  end
+  else
+  begin
+    Inc(Position);
+  end;
+end;
+
+procedure TTokenReader.SkipString(const AText: string);
+var
+  mRun: Integer;
+begin
+  mRun := QuoteRun(AText, Position);
+  // ''' (oder mehr, ungerade) am Zeilenende öffnet einen mehrzeiligen String (Delphi 12).
+  if (mRun >= 3) and Odd(mRun) and (Trim(Copy(AText, Position + mRun, MaxInt)) = '') then
+  begin
+    MultiQuotes := mRun;
+    Position := Length(AText) + 1;
+    Exit;
+  end;
+  // Gewöhnlicher String: '' ist ein Anführungszeichen darin.
+  Inc(Position);
+  while Position <= Length(AText) do
+  begin
+    if AText[Position] <> '''' then
+    begin
+      Inc(Position);
+    end
+    else if (Position < Length(AText)) and (AText[Position + 1] = '''') then
+    begin
+      Inc(Position, 2);
+    end
+    else
+    begin
+      Inc(Position);
+      Exit;
+    end;
+  end;
+end;
+
+function TTokenReader.Emit(const AText: string; AStart: Integer; out AToken: TSectionToken): Boolean;
+begin
+  AToken.Text := AText;
+  AToken.Line := Line;
+  AToken.Character := AStart - 1;
+  Result := True;
+end;
+
+function TTokenReader.TokenAt(const AText: string; out AToken: TSectionToken): Boolean;
+var
+  mStart: Integer;
+begin
+  Result := False;
+  mStart := Position;
+  case AText[Position] of
+    '{', '(', '/':
+      OpenComment(AText);
+    '''':
+      SkipString(AText);
+    ';', '=', '.':
+      begin
+        Inc(Position);
+        Result := Emit(AText[mStart], mStart, AToken);
+      end;
+    '&':
+      begin
+        // &interface ist ein Bezeichner, kein Schlüsselwort.
+        Inc(Position);
+        Result := (Position <= Length(AText)) and TTextChars.IsIdentStart(AText[Position]);
+        while (Position <= Length(AText)) and TTextChars.IsIdentChar(AText[Position]) do
+        begin
+          Inc(Position);
+        end;
+        if Result then
+        begin
+          Emit('&', Position, AToken);
+        end;
+      end;
+  else
+    if not TTextChars.IsIdentStart(AText[Position]) then
+    begin
+      Inc(Position);
+      Exit;
+    end;
+    while (Position <= Length(AText)) and TTextChars.IsIdentChar(AText[Position]) do
+    begin
+      Inc(Position);
+    end;
+    Result := Emit(LowerCase(Copy(AText, mStart, Position - mStart)), mStart, AToken);
+  end;
+end;
+
+function TTokenReader.Next(out AToken: TSectionToken): Boolean;
+var
+  mText: string;
+begin
+  AToken := Default(TSectionToken);
   while Line <= High(Lines) do
   begin
-    Text := Lines[Line];
-    if MultiQuotes > 0 then
+    mText := Lines[Line];
+    if LeaveMultiLine(mText) then
     begin
-      // Mehrzeiliger String: endet an einer Zeile, die (nach Einrückung) mit gleich vielen ''' beginnt.
-      Start := 1;
-      while (Start <= Length(Text)) and CharInSet(Text[Start], [' ', #9]) do
+      while Position <= Length(mText) do
       begin
-        Inc(Start);
-      end;
-      if QuoteRun(Text, Start) >= MultiQuotes then
-      begin
-        Position := Start + MultiQuotes;
-        MultiQuotes := 0;
-      end
-      else
-      begin
-        Inc(Line);
-        Position := 1;
-        Continue;
-      end;
-    end;
-    while Position <= Length(Text) do
-    begin
-      if Comment = '{' then
-      begin
-        if Text[Position] = '}' then
+        if Comment <> #0 then
         begin
-          Comment := #0;
-        end;
-        Inc(Position);
-        Continue;
-      end;
-      if Comment = '(' then
-      begin
-        if (Text[Position] = '*') and (Position < Length(Text)) and (Text[Position + 1] = ')') then
-        begin
-          Comment := #0;
-          Inc(Position);
-        end;
-        Inc(Position);
-        Continue;
-      end;
-      case Text[Position] of
-        '{':
-          begin
-            Comment := '{';
-            Inc(Position);
-          end;
-        '(':
-          if (Position < Length(Text)) and (Text[Position + 1] = '*') then
-          begin
-            Comment := '(';
-            Inc(Position, 2);
-          end
-          else
-          begin
-            Inc(Position);
-          end;
-        '/':
-          if (Position < Length(Text)) and (Text[Position + 1] = '/') then
-          begin
-            Position := Length(Text) + 1;
-          end
-          else
-          begin
-            Inc(Position);
-          end;
-        '''':
-          begin
-            Run := QuoteRun(Text, Position);
-            // ''' (oder mehr, ungerade) am Zeilenende öffnet einen mehrzeiligen String (Delphi 12).
-            if (Run >= 3) and Odd(Run) and (Trim(Copy(Text, Position + Run, MaxInt)) = '') then
-            begin
-              MultiQuotes := Run;
-              Position := Length(Text) + 1;
-              Continue;
-            end;
-            // Gewöhnlicher String: '' ist ein Anführungszeichen darin.
-            Inc(Position);
-            while Position <= Length(Text) do
-            begin
-              if Text[Position] = '''' then
-              begin
-                if (Position < Length(Text)) and (Text[Position + 1] = '''') then
-                begin
-                  Inc(Position, 2);
-                end
-                else
-                begin
-                  Inc(Position);
-                  Break;
-                end;
-              end
-              else
-              begin
-                Inc(Position);
-              end;
-            end;
-          end;
-        ';', '=', '.':
-          begin
-            AToken := Text[Position];
-            ALine := Line;
-            ACharacter := Position - 1;
-            Inc(Position);
-            Exit(True);
-          end;
-        '&':
-          begin
-            // &interface ist ein Bezeichner, kein Schlüsselwort.
-            Inc(Position);
-            Escaped := (Position <= Length(Text)) and TTextChars.IsIdentStart(Text[Position]);
-            while (Position <= Length(Text)) and TTextChars.IsIdentChar(Text[Position]) do
-            begin
-              Inc(Position);
-            end;
-            if Escaped then
-            begin
-              AToken := '&';
-              ALine := Line;
-              ACharacter := Position - 1;
-              Exit(True);
-            end;
-          end;
-      else
-        if TTextChars.IsIdentStart(Text[Position]) then
-        begin
-          Start := Position;
-          while (Position <= Length(Text)) and TTextChars.IsIdentChar(Text[Position]) do
-          begin
-            Inc(Position);
-          end;
-          AToken := LowerCase(Copy(Text, Start, Position - Start));
-          ALine := Line;
-          ACharacter := Start - 1;
-          Exit(True);
+          SkipInComment(mText);
         end
-        else
+        else if TokenAt(mText, AToken) then
         begin
-          Inc(Position);
+          Exit(True);
         end;
       end;
     end;
@@ -356,126 +423,168 @@ begin
   Result := False;
 end;
 
-class function TAtlasSectionScanner.Scan(const ALines: TArray<string>): TAtlasUnitSections;
-var
-  Reader: TTokenReader;
-  Token, Previous: string;
-  Line, Character: Integer;
-  First, HeaderDone, AfterHeader: Boolean;
-  OpenUses: ^TAtlasUsesMark;
+function TSectionScan.TakeKind(const AToken: string): Boolean;
 begin
-  Result := Default(TAtlasUnitSections);
-  Result.Kind := TAtlasSourceKind.Include;
-  Reader := Default(TTokenReader);
-  Reader.Lines := ALines;
-  Reader.Position := 1;
-  First := True;
-  HeaderDone := False;
-  AfterHeader := False;
-  OpenUses := nil;
-  Previous := '';
-  while Reader.Next(Token, Line, Character) do
+  Result := True;
+  if AToken = 'unit' then
   begin
-    if First then
+    Sections.Kind := TAtlasSourceKind.Unit_;
+  end
+  else if AToken = 'program' then
+  begin
+    Sections.Kind := TAtlasSourceKind.Program_;
+  end
+  else if AToken = 'library' then
+  begin
+    Sections.Kind := TAtlasSourceKind.Library_;
+  end
+  else if AToken = 'package' then
+  begin
+    Sections.Kind := TAtlasSourceKind.Package;
+  end
+  else
+  begin
+    Result := False;
+  end;
+  Previous := AToken;
+end;
+
+procedure TSectionScan.UnitUses;
+begin
+  // uses gehört zum Abschnitt, in dem es steht; je Abschnitt zählt die erste Klausel.
+  if Sections.ImplementationPart.Found then
+  begin
+    if not Sections.ImplementationUses.Start.Found then
     begin
-      First := False;
-      if Token = 'unit' then
-      begin
-        Result.Kind := TAtlasSourceKind.Unit_;
-      end
-      else if Token = 'program' then
-      begin
-        Result.Kind := TAtlasSourceKind.Program_;
-      end
-      else if Token = 'library' then
-      begin
-        Result.Kind := TAtlasSourceKind.Library_;
-      end
-      else if Token = 'package' then
-      begin
-        Result.Kind := TAtlasSourceKind.Package;
-      end
-      else
-      begin
-        // Ohne Kopf (.inc): keine Abschnitte.
-        Exit;
-      end;
-      Previous := Token;
-      Continue;
+      OpenUses := @Sections.ImplementationUses;
     end;
+  end
+  else if Sections.InterfacePart.Found and not Sections.InterfaceUses.Start.Found then
+  begin
+    OpenUses := @Sections.InterfaceUses;
+  end;
+end;
+
+procedure TSectionScan.FrontPart(const AToken: TSectionToken);
+var
+  mInImplementation: Boolean;
+begin
+  mInImplementation := Sections.ImplementationPart.Found;
+  if (AToken.Text = 'interface') and not Sections.InterfacePart.Found and not mInImplementation and
+    (AfterHeader or (Previous <> '=')) then
+  begin
+    Sections.InterfacePart := AToken.Mark;
+  end
+  else if (AToken.Text = 'implementation') and not mInImplementation then
+  begin
+    Sections.ImplementationPart := AToken.Mark;
+  end;
+end;
+
+procedure TSectionScan.BackPart(const AToken: TSectionToken);
+begin
+  if not Sections.ImplementationPart.Found then
+  begin
+    Exit;
+  end;
+  if (AToken.Text = 'initialization') and not Sections.Initialization_.Found then
+  begin
+    Sections.Initialization_ := AToken.Mark;
+  end
+  else if (AToken.Text = 'finalization') and not Sections.Finalization_.Found then
+  begin
+    Sections.Finalization_ := AToken.Mark;
+  end;
+end;
+procedure TSectionScan.UnitToken(const AToken: TSectionToken);
+begin
+  if AToken.Text = 'uses' then
+  begin
+    UnitUses;
     if OpenUses <> nil then
     begin
-      if Token = ';' then
-      begin
-        OpenUses^.Stop := TAtlasSectionMark.At(Line, Character);
-        OpenUses := nil;
-      end;
-      Previous := Token;
-      Continue;
+      OpenUses^.Start := AToken.Mark;
     end;
-    if not HeaderDone then
+  end
+  else
+  begin
+    FrontPart(AToken);
+    BackPart(AToken);
+  end;
+end;
+
+procedure TSectionScan.HeaderToken(const AToken: TSectionToken);
+var
+  mKeyword: string;
+begin
+  mKeyword := 'uses';
+  if Sections.Kind = TAtlasSourceKind.Package then
+  begin
+    mKeyword := 'contains';
+  end;
+  if HeaderDone and not Sections.HeaderUses.Start.Found and (AToken.Text = mKeyword) then
+  begin
+    OpenUses := @Sections.HeaderUses;
+    OpenUses^.Start := AToken.Mark;
+  end;
+end;
+
+function TSectionScan.Take(const AToken: TSectionToken): Boolean;
+begin
+  Result := True;
+  if OpenUses <> nil then
+  begin
+    if AToken.Text = ';' then
     begin
-      if Token = ';' then
-      begin
-        HeaderDone := True;
-        AfterHeader := True;
-        Previous := Token;
-        Continue;
-      end;
+      OpenUses^.Stop := AToken.Mark;
+      OpenUses := nil;
     end;
-    if Result.Kind = TAtlasSourceKind.Unit_ then
+  end
+  else if not HeaderDone and (AToken.Text = ';') then
+  begin
+    HeaderDone := True;
+    AfterHeader := True;
+  end
+  else
+  begin
+    if Sections.Kind = TAtlasSourceKind.Unit_ then
     begin
-      if (Token = 'interface') and not Result.InterfacePart.Found and not Result.ImplementationPart.Found and
-        (AfterHeader or (Previous <> '=')) then
-      begin
-        Result.InterfacePart := TAtlasSectionMark.At(Line, Character);
-      end
-      else if (Token = 'implementation') and not Result.ImplementationPart.Found then
-      begin
-        Result.ImplementationPart := TAtlasSectionMark.At(Line, Character);
-      end
-      else if (Token = 'initialization') and Result.ImplementationPart.Found and not Result.Initialization_.Found then
-      begin
-        Result.Initialization_ := TAtlasSectionMark.At(Line, Character);
-      end
-      else if (Token = 'finalization') and Result.ImplementationPart.Found and not Result.Finalization_.Found then
-      begin
-        Result.Finalization_ := TAtlasSectionMark.At(Line, Character);
-      end
-      else if Token = 'uses' then
-      begin
-        if Result.ImplementationPart.Found then
-        begin
-          if not Result.ImplementationUses.Start.Found then
-          begin
-            OpenUses := @Result.ImplementationUses;
-          end;
-        end
-        else if Result.InterfacePart.Found and not Result.InterfaceUses.Start.Found then
-        begin
-          OpenUses := @Result.InterfaceUses;
-        end;
-        if OpenUses <> nil then
-        begin
-          OpenUses^.Start := TAtlasSectionMark.At(Line, Character);
-        end;
-      end;
+      UnitToken(AToken);
     end
-    else if HeaderDone and not Result.HeaderUses.Start.Found and
-      (((Result.Kind <> TAtlasSourceKind.Package) and (Token = 'uses')) or
-      ((Result.Kind = TAtlasSourceKind.Package) and (Token = 'contains'))) then
+    else
     begin
-      OpenUses := @Result.HeaderUses;
-      OpenUses^.Start := TAtlasSectionMark.At(Line, Character);
+      HeaderToken(AToken);
     end;
     // „end.“ beendet die Unit; danach steht nichts mehr, was zählt.
-    if (Previous = 'end') and (Token = '.') then
-    begin
-      Break;
-    end;
+    Result := not ((Previous = 'end') and (AToken.Text = '.'));
     AfterHeader := False;
-    Previous := Token;
   end;
+  Previous := AToken.Text;
+end;
+
+class function TAtlasSectionScanner.Scan(const ALines: TArray<string>): TAtlasUnitSections;
+var
+  mReader: TTokenReader;
+  mScan: TSectionScan;
+  mToken: TSectionToken;
+begin
+  mScan := Default(TSectionScan);
+  mScan.Sections.Kind := TAtlasSourceKind.Include;
+  mReader := Default(TTokenReader);
+  mReader.Lines := ALines;
+  mReader.Position := 1;
+  // Ohne Kopf (.inc): keine Abschnitte.
+  if mReader.Next(mToken) and mScan.TakeKind(mToken.Text) then
+  begin
+    while mReader.Next(mToken) do
+    begin
+      if not mScan.Take(mToken) then
+      begin
+        Break;
+      end;
+    end;
+  end;
+  Result := mScan.Sections;
 end;
 
 end.

@@ -92,6 +92,7 @@ contains
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Documentation.Contract in 'Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in 'Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',
+  Atlas.Core.Documentation.Typeset in 'Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas',
   Atlas.Core.Signature.CallScanner in 'Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas',
   Atlas.Core.Signature.Controller in 'Source\Core\Signature\Atlas.Core.Signature.Controller.pas',
   Atlas.Core.Signature.Format in 'Source\Core\Signature\Atlas.Core.Signature.Format.pas',

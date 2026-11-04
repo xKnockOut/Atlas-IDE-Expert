@@ -95,6 +95,7 @@ implementation
 
 uses
   System.Classes,
+  System.Math,
   System.IOUtils,
   System.DateUtils,
   System.Generics.Collections,
@@ -295,129 +296,158 @@ begin
   TAtlasIdeSettings.Update(Next);
 end;
 
-procedure Refresh(AForce: Boolean);
-var
-  Frame: TAtlasProblemsFrame;
-  Store: TAtlasProblemStore;
-  Current, Inputs, Status, Last: string;
-  Line: Integer;
-  Files, Project, Opened: TArray<string>;
-  Checked, Changed, InputsChanged: Boolean;
-  Findings: TArray<TAtlasFinding>;
-  Counts: TAtlasFindingCounts;
-  Check: TAtlasProblemsCheck;
-  ReadLines: TFunc<string, TArray<string>>;
-  Percent: Integer;
+type
+  /// <summary>Eingaben eines Refresh: obere Datei und Zeile, Dateien des Bereichs, geöffnete Module.</summary>
+  TRefreshInputs = record
+    Current: string;
+    Line: Integer;
+    Files: TArray<string>;
+    Project: TArray<string>;
+    Opened: TArray<string>;
+    Checked: Boolean;
+    /// <summary>Alles zusammen als Text: Ändert er sich, wird neu aufgebaut.</summary>
+    Key: string;
+  end;
+
+function GatherInputs(AFrame: TAtlasProblemsFrame; AStore: TAtlasProblemStore): TRefreshInputs;
 begin
-  Frame := TAtlasIdeProblemsWindow.ExistingFrame;
-  if (Frame = nil) or not TAtlasIdeProblemsWindow.Visible then
+  Result := Default(TRefreshInputs);
+  Result.Current := TopFile(Result.Line);
+  if AFrame.Scope <> TAtlasFindingScope.CurrentFile then
+  begin
+    Result.Project := ProjectFiles;
+  end;
+  if AFrame.Scope = TAtlasFindingScope.Project then
+  begin
+    Result.Files := Result.Project;
+  end;
+  // Offene Units zuerst (#1108): geöffnete Module gehören zu den Eingaben; die Modulliste ist billig.
+  if AFrame.OpenFirst then
+  begin
+    Result.Opened := OpenFiles;
+  end;
+  // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
+  Result.Checked := (AStore <> nil) and (Result.Current <> '') and (AStore.Contains(Result.Current) or
+    AStore.Contains(ChangeFileExt(Result.Current, '.pas')));
+  Result.Key := Ord(AFrame.Scope).ToString + '|' + Result.Current + '|' + string.Join(';', Result.Files) + '|' +
+    string.Join(';', Result.Opened) + '|' + BoolToStr(Result.Checked, True);
+end;
+
+/// <summary>Befunde neu aus dem Speicher, wenn sich Speicher oder Eingaben geändert haben.</summary>
+procedure UpdateFindings(AFrame: TAtlasProblemsFrame; AStore: TAtlasProblemStore; const AInputs: TRefreshInputs;
+  AForce: Boolean);
+var
+  mFiles: TArray<string>;
+  mChanged, mInputsChanged: Boolean;
+  mFindings: TArray<TAtlasFinding>;
+  mReadLines: TFunc<string, TArray<string>>;
+begin
+  if AStore = nil then
+  begin
+    AFrame.SetFindings(nil, AInputs.Current, AInputs.Files, AInputs.Opened, False);
+    Exit;
+  end;
+  mInputsChanged := AForce or (AInputs.Key <> State.Inputs);
+  if not mInputsChanged and (AStore.Version = State.Version) then
   begin
     Exit;
   end;
-  Store := TAtlasProblemsController.Current;
-  Current := TopFile(Line);
-  Files := nil;
-  Project := nil;
-  if Frame.Scope <> TAtlasFindingScope.CurrentFile then
+  State.Version := AStore.Version;
+  State.Inputs := AInputs.Key;
+  if AForce then
   begin
-    Project := ProjectFiles;
+    State.Findings.Clear;
   end;
-  if Frame.Scope = TAtlasFindingScope.Project then
-  begin
-    Files := Project;
-  end;
-  // Offene Units zuerst (#1108): geöffnete Module gehören zu den Eingaben; die Modulliste ist billig.
-  Opened := nil;
-  if Frame.OpenFirst then
-  begin
-    Opened := OpenFiles;
-  end;
-  // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
-  Checked := (Store <> nil) and (Current <> '') and (Store.Contains(Current) or
-    Store.Contains(ChangeFileExt(Current, '.pas')));
-  Inputs := Ord(Frame.Scope).ToString + '|' + Current + '|' + string.Join(';', Files) + '|' +
-    string.Join(';', Opened) + '|' + BoolToStr(Checked, True);
-  Frame.SetLive(Settings.ProblemsLive and Settings.Problems);
-  if (Store <> nil) and (AForce or (Store.Version <> State.Version) or (Inputs <> State.Inputs)) then
-  begin
-    InputsChanged := AForce or (Inputs <> State.Inputs);
-    State.Version := Store.Version;
-    State.Inputs := Inputs;
-    if AForce then
+  mReadLines :=
+    function(AFileName: string): TArray<string>
     begin
-      State.Findings.Clear;
+      Result := DiskLines(AFileName);
     end;
-    ReadLines :=
-      function(AFileName: string): TArray<string>
-      begin
-        Result := DiskLines(AFileName);
-      end;
-    // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
-    // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
-    if Frame.Scope = TAtlasFindingScope.CurrentFile then
-    begin
-      Findings := State.Findings.Build(Store, [Current], ReadLines, Changed);
-    end
-    else
-    begin
-      Findings := State.Findings.Build(Store, Files, ReadLines, Changed);
-    end;
-    if Changed or InputsChanged then
-    begin
-      Frame.SetFindings(Findings, Current, Files, Opened, Checked);
-    end;
-  end
-  else if Store = nil then
+  // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
+  // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
+  mFiles := AInputs.Files;
+  if AFrame.Scope = TAtlasFindingScope.CurrentFile then
   begin
-    Frame.SetFindings(nil, Current, Files, Opened, False);
+    mFiles := TArray<string>.Create(AInputs.Current);
   end;
-  // Statuszeile.
-  Counts := Frame.View.Counts;
-  if Frame.View.TiersActive then
+  mFindings := State.Findings.Build(AStore, mFiles, mReadLines, mChanged);
+  if mChanged or mInputsChanged then
   begin
-    Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusTiers, [Counts.Total, Counts.OpenUnits,
-      Counts.OpenFindings, Counts.ClosedUnits, Counts.ClosedFindings]);
-    if Counts.HiddenUnits > 0 then
-    begin
-      Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusHidden, [Counts.HiddenUnits]);
-    end;
-  end
-  else
-  begin
-    Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [Counts.Total, Counts.Files]);
+    AFrame.SetFindings(mFindings, AInputs.Current, AInputs.Files, AInputs.Opened, AInputs.Checked);
   end;
-  Check := TAtlasProblemsController.LastCheck;
-  if Check.FileName <> '' then
+end;
+
+/// <summary>Zähler der Statuszeile: mit Stufen geöffnet/nicht geöffnet, sonst Befunde und Dateien.</summary>
+function CountsStatus(AFrame: TAtlasProblemsFrame): string;
+var
+  mCounts: TAtlasFindingCounts;
+begin
+  mCounts := AFrame.View.Counts;
+  if not AFrame.View.TiersActive then
   begin
-    Last := FormatDateTime('hh":"nn":"ss', Check.At);
-    Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusLast, [Last,
-      ExtractFileName(Check.FileName), Integer(Check.DurationMs)]);
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [mCounts.Total, mCounts.Files]));
   end;
-  if (Store <> nil) and (Length(Project) > 0) then
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusTiers, [mCounts.Total, mCounts.OpenUnits,
+    mCounts.OpenFindings, mCounts.ClosedUnits, mCounts.ClosedFindings]);
+  if mCounts.HiddenUnits > 0 then
   begin
-    Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
-      [TAtlasFindings.CheckedCount(Store, Project), Length(Project)]);
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusHidden, [mCounts.HiddenUnits]);
+  end;
+end;
+
+function StatusText(AFrame: TAtlasProblemsFrame; AStore: TAtlasProblemStore;
+  const AProject: TArray<string>): string;
+var
+  mCheck: TAtlasProblemsCheck;
+  mPercent: Integer;
+begin
+  Result := CountsStatus(AFrame);
+  mCheck := TAtlasProblemsController.LastCheck;
+  if mCheck.FileName <> '' then
+  begin
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusLast,
+      [FormatDateTime('hh":"nn":"ss', mCheck.At), ExtractFileName(mCheck.FileName), Integer(mCheck.DurationMs)]);
+  end;
+  if (AStore <> nil) and (Length(AProject) > 0) then
+  begin
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
+      [TAtlasFindings.CheckedCount(AStore, AProject), Length(AProject)]);
   end;
   // Projektweite Regeln (#1102) prüfen erst mit vollständigem Index; bis dahin fehlen ihre Befunde.
-  if (State <> nil) and Assigned(State.Hooks.Indexing) and State.Hooks.Indexing(Percent) then
+  if (State <> nil) and Assigned(State.Hooks.Indexing) and State.Hooks.Indexing(mPercent) then
   begin
-    if Percent < 0 then
-    begin
-      Percent := 0;
-    end;
-    Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusWaiting, [Percent]);
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusWaiting, [Max(mPercent, 0)]);
   end;
-  if Status <> State.Status then
+end;
+
+procedure Refresh(AForce: Boolean);
+var
+  mFrame: TAtlasProblemsFrame;
+  mStore: TAtlasProblemStore;
+  mInputs: TRefreshInputs;
+  mStatus, mCursor: string;
+begin
+  mFrame := TAtlasIdeProblemsWindow.ExistingFrame;
+  if (mFrame = nil) or not TAtlasIdeProblemsWindow.Visible then
   begin
-    State.Status := Status;
-    Frame.SetStatus(Status);
+    Exit;
+  end;
+  mStore := TAtlasProblemsController.Current;
+  mInputs := GatherInputs(mFrame, mStore);
+  mFrame.SetLive(Settings.ProblemsLive and Settings.Problems);
+  UpdateFindings(mFrame, mStore, mInputs, AForce);
+  mStatus := StatusText(mFrame, mStore, mInputs.Project);
+  if mStatus <> State.Status then
+  begin
+    State.Status := mStatus;
+    mFrame.SetStatus(mStatus);
   end;
   // Markierung folgt dem Cursor.
-  if Settings.ProblemsWindowFollowCursor and (Current <> '') and
-    (State.Cursor <> Current + ':' + Line.ToString) then
+  mCursor := mInputs.Current + ':' + mInputs.Line.ToString;
+  if Settings.ProblemsWindowFollowCursor and (mInputs.Current <> '') and (State.Cursor <> mCursor) then
   begin
-    State.Cursor := Current + ':' + Line.ToString;
-    Frame.FollowCursor(Current, Line);
+    State.Cursor := mCursor;
+    mFrame.FollowCursor(mInputs.Current, mInputs.Line);
   end;
 end;
 
@@ -572,7 +602,8 @@ begin
   Result := False;
 end;
 
-procedure Wire(AFrame: TAtlasProblemsFrame);
+/// <summary>Einstellungen des Fensters aus den Plugin-Einstellungen.</summary>
+procedure WireSettings(AFrame: TAtlasProblemsFrame);
 var
   Settings: TAtlasPluginSettings;
 begin
@@ -582,6 +613,11 @@ begin
     Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
   AFrame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
     Settings.ProblemsWindowShowCleanActive);
+end;
+
+/// <summary>Öffnen, Beheben und Unterdrücken aus der Liste.</summary>
+procedure WireFixes(AFrame: TAtlasProblemsFrame);
+begin
   AFrame.OnOpen :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -631,6 +667,11 @@ begin
           ApplyTag(AFinding, SuppressLineTag);
         end);
     end;
+end;
+
+/// <summary>Regel einstellen, abschalten, erklären; Issue anlegen.</summary>
+procedure WireRules(AFrame: TAtlasProblemsFrame);
+begin
   AFrame.OnConfigure :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -671,6 +712,13 @@ begin
       Result := (State <> nil) and Assigned(State.Hooks.CreateIssue) and Assigned(State.Hooks.CanCreateIssue) and
         State.Hooks.CanCreateIssue();
     end;
+end;
+
+procedure Wire(AFrame: TAtlasProblemsFrame);
+begin
+  WireSettings(AFrame);
+  WireFixes(AFrame);
+  WireRules(AFrame);
   AFrame.OnScope :=
     procedure(AScope: TAtlasFindingScope)
     begin
