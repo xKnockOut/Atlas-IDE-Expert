@@ -19,6 +19,7 @@ type
   private
     function Entries: TAtlasUnitEntries;
     function Names(const AEntries: TAtlasUnitEntries; const AOrder: TArray<Integer>): string;
+    class function ManyUnits: TAtlasUnitEntries; static;
   public
     [Test]
     procedure ParsesFilterSyntax;
@@ -458,10 +459,10 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
+/// <summary>Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).</summary>
+class function TAtlasUnitSearchTests.ManyUnits: TAtlasUnitEntries;
 const
   Count = 5000;
-  // Tastendruck für Tastendruck wie im Fenster; „-t:test “ wird beim Leerzeichen zum Filter.
   Areas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
     'Shell');
   Features: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
@@ -470,11 +471,31 @@ const
   Roles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
     'Reader', 'Provider', 'Editor', 'Painter', 'Commands', 'State', 'Tests', 'Frame', 'Dialog', 'Adapter', 'Cache',
     'Composition');
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Count);
+  for mIndex := 0 to Count - 1 do
+  begin
+    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [Areas[mIndex mod 10], Features[(mIndex div 10) mod 25],
+      Roles[mIndex div 250]]);
+    Result[mIndex].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
+      [Root, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
+    Result[mIndex].Project := Format('Atlas.IDE.P%d', [mIndex mod 7]);
+    Result[mIndex].Projects := [Result[mIndex].Project];
+    Result[mIndex].Origin := TAtlasUnitOrigin.Group;
+    Result[mIndex].Kind := TAtlasUnitKind(mIndex mod 6);
+  end;
+end;
+
+procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
+const
+  // Tastendruck für Tastendruck wie im Fenster; „-t:test “ wird beim Leerzeichen zum Filter.
   Typed: array[0..11] of string = ('s', 'se', 'set', 'sett', 'settp', 'settpa', 'settpag', 'settpage',
     '-t:test ', '-t:test s', '-t:test se', '-t:test settpage');
 var
   Units: TAtlasUnitEntries;
-  Index: Integer;
   Pattern: string;
   Watch: TStopwatch;
   Order: TArray<Integer>;
@@ -484,19 +505,7 @@ var
   All: TAtlasUnitOrigins;
 begin
   // Abnahme #777: unter 50 ms je Tastendruck bei 5000 Units (Filtern, Ordnen, Gruppen bilden).
-  SetLength(Units, Count);
-  // Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).
-  for Index := 0 to Count - 1 do
-  begin
-    Units[Index].Name := Format('Atlas.%s.%s.%s', [Areas[Index mod 10], Features[(Index div 10) mod 25],
-      Roles[Index div 250]]);
-    Units[Index].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
-      [Root, Index mod 7, Index mod 97, Units[Index].Name]);
-    Units[Index].Project := Format('Atlas.IDE.P%d', [Index mod 7]);
-    Units[Index].Projects := [Units[Index].Project];
-    Units[Index].Origin := TAtlasUnitOrigin.Group;
-    Units[Index].Kind := TAtlasUnitKind(Index mod 6);
-  end;
+  Units := ManyUnits;
   TAtlasUnitSearch.SortByName(Units);
   All := [Low(TAtlasUnitOrigin)..High(TAtlasUnitOrigin)];
   Worst := 0;
