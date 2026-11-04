@@ -44,7 +44,7 @@ uses
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
-  Atlas.IDE.Bookmarks.Service;
+  Atlas.IDE.Bookmarks.QuickService;
 
 const
   /// <summary>Nach dem Wartezeitende des Tastatur-Hooks: vor den Fenstern von Atlas gefragt.</summary>
@@ -125,7 +125,7 @@ begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.QuickToggle);
+      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks, TAtlasIdeQuickBookmarks.QuickToggle);
     end);
 end;
 
