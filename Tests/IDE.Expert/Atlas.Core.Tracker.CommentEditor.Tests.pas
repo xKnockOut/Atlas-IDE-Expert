@@ -81,7 +81,9 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.CommentEditor;
+  Atlas.Core.Tracker.CommentEditor,
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.GitHubParse;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -509,9 +511,9 @@ var
   mPeople: IAtlasTrackerPeople;
   mError: TAtlasCiFetchError;
 begin
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
-  Assert.IsTrue(TAtlasGitHubTracker.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
+  Assert.IsTrue(TAtlasGitHubParse.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
   Assert.AreEqual('octocat,anna-b', Logins(mUsers));
   Assert.AreEqual('', mUsers[0].Name, 'GitHub liefert hier keinen Namen');
   mTransport := TUsersTransport.Create(200, '[{"login":"octocat"},{"login":"anna-b"},{"login":"banana"}]');
