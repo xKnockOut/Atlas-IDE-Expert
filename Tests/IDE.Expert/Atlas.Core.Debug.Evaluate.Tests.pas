@@ -4,7 +4,9 @@
 // Baumknoten zerlegen (Objekte, Records, Arrays, verschachtelt, Strings mit
 // ; und Klammern), Stringliterale, Ansichten Text, Zeilen, JSON und Hex,
 // Feldausdrücke, Ausdruck unter dem Cursor (Strg+F7), Felder vom Server, Baum mit Markierung geänderter Werte über Halte, Teile ohne
-// Server, offene Knoten in Anzeigereihenfolge, festgeheftete Ausdrücke.
+// Server, offene Knoten in Anzeigereihenfolge, festgeheftete Ausdrücke,
+// Suche über den Schlüsselpfad, Eingabe der Ansicht unten (unverändert:
+// nichts neu berechnen).
 
 interface
 
@@ -44,6 +46,10 @@ type
     procedure PartsWithoutServer;
     [Test]
     procedure PinnedAndDuplicates;
+    [Test]
+    procedure FindFollowsKeyPath;
+    [Test]
+    procedure DetailInputSame;
   end;
 
 implementation
@@ -324,6 +330,64 @@ begin
     Assert.AreEqual(2, List.Count);
   finally
     List.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateTests.FindFollowsKeyPath;
+var
+  mList: TAtlasEvalList;
+  mShort, mLong, mChild, mDouble: TAtlasEvalNode;
+begin
+  mList := TAtlasEvalList.Create;
+  try
+    // „A“ ist Präfix von „AB“, aber kein Elternknoten: Die Suche muss bei „AB“ weitermachen.
+    mShort := mList.Add('A');
+    mShort.AddChild('X', 'A.X');
+    mLong := mList.Add('AB');
+    mChild := mLong.AddChild('X', 'AB.X');
+    mDouble := mChild.AddChild('Y', 'AB.X.Y');
+    Assert.IsTrue(mList.Find('AB'#1'X') = mChild, 'Kind unter AB');
+    Assert.IsTrue(mList.Find('AB'#1'X'#1'Y') = mDouble, 'Enkel');
+    Assert.IsTrue(mList.Find('A'#1'X') = mShort.Children[0], 'Kind unter A');
+    Assert.IsTrue(mList.Find('AB') = mLong);
+    Assert.IsNull(mList.Find('A'#1'Z'));
+    Assert.IsNull(mList.Find('AB'#1));
+  finally
+    mList.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateTests.DetailInputSame;
+var
+  mList: TAtlasEvalList;
+  mNode: TAtlasEvalNode;
+  mFirst, mNext: TAtlasEvalDetailInput;
+begin
+  mList := TAtlasEvalList.Create;
+  try
+    mNode := mList.Add('S');
+    mList.SetResult(mNode, True, '''eins''');
+    mFirst := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Text, False, '');
+    mNext := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Text, False, '');
+    Assert.IsTrue(mNext.Same(mFirst), 'unverändert');
+    Assert.IsFalse(mNext.Same(Default(TAtlasEvalDetailInput)), 'noch nichts gezeigt');
+    mNext := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Json, False, '');
+    Assert.IsFalse(mNext.Same(mFirst), 'andere Ansicht');
+    mList.SetResult(mNode, True, '''zwei''');
+    mNext := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Text, False, '');
+    Assert.IsFalse(mNext.Same(mFirst), 'neuer Wert');
+    mFirst := mNext;
+    mList.BeginStop;
+    mNext := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Text, False, '');
+    Assert.IsFalse(mNext.Same(mFirst), 'wird ausgewertet');
+    mNext := TAtlasEvalDetailInput.ForNode(nil, TAtlasEvalView.Text, False, '');
+    Assert.IsTrue(mNext.Same(TAtlasEvalDetailInput.ForNode(nil, TAtlasEvalView.Text, False, '')), 'keine Auswahl');
+    Assert.IsFalse(mNext.Same(mFirst));
+    mFirst := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Lines, True, 'a');
+    mNext := TAtlasEvalDetailInput.ForNode(mNode, TAtlasEvalView.Lines, True, 'b');
+    Assert.IsFalse(mNext.Same(mFirst), 'anderer Wert von .Text');
+  finally
+    mList.Free;
   end;
 end;
 
