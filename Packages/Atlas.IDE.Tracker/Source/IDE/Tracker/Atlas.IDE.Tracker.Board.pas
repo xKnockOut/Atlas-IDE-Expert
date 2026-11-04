@@ -554,7 +554,7 @@ begin
   mFrame.SetCanDrag(False);
   if TAtlasTrackerBoard.Load(FCacheFolder, ATarget, mCached) and (AError <> TAtlasCiFetchError.NotFound) then
   begin
-    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched));
+    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
     mFrame.SetSnapshot(mCached, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardOffline, [mWhen, ErrorText(AError)]));
     UpdateActive;
   end
