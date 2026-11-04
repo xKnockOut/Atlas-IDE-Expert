@@ -139,8 +139,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspHover.InfoAt(AResolver, AIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      ReadText);
+    Result := TLspHover.InfoAt(THoverSource.Create(AResolver, AIndex, ReadText), Tree, UnitHaupt, HauptFile,
+      PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;

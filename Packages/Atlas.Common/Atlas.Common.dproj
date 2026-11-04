@@ -576,6 +576,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Lookup.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rationale.pas"/>
@@ -752,6 +754,12 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Types.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Syntax.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Files.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Base.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Sources.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepFilter.pas"/>
         <BuildConfiguration Include="Base">

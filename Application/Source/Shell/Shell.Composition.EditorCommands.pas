@@ -108,7 +108,7 @@ end;
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := TLspExitPoints.Execute(FServices.Documents, FServices.Index, FServices.EnsureUnit, FServices.Namespaces(),
-    ReadText, FServices.HighlightSettingsFor, AArguments);
+    TExitPointsReaders.Create(ReadText, FServices.HighlightSettingsFor), AArguments);
 end;
 
 function TShellEditorCommands.RunReassigned(const AArguments: TJSONArray): TJSONValue;

@@ -543,6 +543,8 @@ contains
   Atlas.Common.Lsp.PublishedMembers in 'Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas',
   Atlas.Common.Semantics.TypeInfoClasses in 'Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas',
   Atlas.Common.Lsp.Hover in 'Source\Lsp\Atlas.Common.Lsp.Hover.pas',
+  Atlas.Common.Lsp.Hover.Info in 'Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas',
+  Atlas.Common.Lsp.Hover.Lookup in 'Source\Lsp\Atlas.Common.Lsp.Hover.Lookup.pas',
   Atlas.Common.Lsp.HoverTypes in 'Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas',
   Atlas.Common.Lsp.Documentation in 'Source\Lsp\Atlas.Common.Lsp.Documentation.pas',
   Atlas.Common.Lsp.Rationale in 'Source\Lsp\Atlas.Common.Lsp.Rationale.pas',
@@ -719,6 +721,12 @@ contains
   Atlas.Common.Lsp.DebugUnavailable in 'Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas',
   Atlas.Common.Lsp.ExpressionCompletion in 'Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas',
   Atlas.Common.Lsp.DataFlow in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.pas',
+  Atlas.Common.Lsp.DataFlow.Types in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Types.pas',
+  Atlas.Common.Lsp.DataFlow.Syntax in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Syntax.pas',
+  Atlas.Common.Lsp.DataFlow.Files in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Files.pas',
+  Atlas.Common.Lsp.DataFlow.Base in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Base.pas',
+  Atlas.Common.Lsp.DataFlow.Sources in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Sources.pas',
+  Atlas.Common.Lsp.DataFlow.Targets in 'Source\Lsp\Atlas.Common.Lsp.DataFlow.Targets.pas',
   Atlas.Common.Lsp.AccessChains in 'Source\Lsp\Atlas.Common.Lsp.AccessChains.pas',
   Atlas.Common.Lsp.StepFilter in 'Source\Lsp\Atlas.Common.Lsp.StepFilter.pas';
 

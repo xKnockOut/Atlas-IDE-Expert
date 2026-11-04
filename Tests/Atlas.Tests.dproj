@@ -155,6 +155,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeInfoClasses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Parts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rationale.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
@@ -1826,6 +1827,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Parts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>

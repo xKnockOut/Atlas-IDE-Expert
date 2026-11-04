@@ -98,6 +98,17 @@ const
     'end;' + LB +
     'end.';
 
+/// <summary>Liest nur die Unit des Laders.</summary>
+function LoaderReader(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := SameText(AFileName, LoaderFile);
+  if Result then
+  begin
+    AText := UnitLoader;
+  end;
+end;
+
 { TLspExitPointsTests }
 
 procedure TLspExitPointsTests.Setup;
@@ -137,16 +148,8 @@ begin
     begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
     end;
-    Reply := TLspExitPoints.Execute(FStore, FIndex, nil, nil,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        Result := SameText(AFileName, LoaderFile);
-        if Result then
-        begin
-          AText := UnitLoader;
-        end;
-      end,
-      FSettingsFor, Arguments);
+    Reply := TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(LoaderReader, FSettingsFor),
+      Arguments);
   finally
     Arguments.Free;
   end;
@@ -262,7 +265,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspExitPoints.Execute(FStore, FIndex, nil, nil, nil, nil, Arguments).Free;
+        TLspExitPoints.Execute(FStore, FIndex, nil, nil, TExitPointsReaders.Create(nil, nil), Arguments).Free;
       end,
       EJsonRpcError);
   finally
