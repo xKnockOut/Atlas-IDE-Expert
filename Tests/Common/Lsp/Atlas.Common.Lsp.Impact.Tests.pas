@@ -321,11 +321,11 @@ end;
 
 function TImpactAnalysisTests.Analyze(const AStart: THierarchyItem; const AOptions: TImpactOptions): TImpactResult;
 begin
-  Result := TImpactAnalysis.Analyze(FResolver, FIndex, AStart, ProjectFiles,
+  Result := TImpactAnalysis.Analyze(FResolver, FIndex, AStart, TImpactSources.Create(ProjectFiles,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadFile(AFileName, AText);
-    end, AOptions, nil);
+    end), AOptions, nil);
 end;
 
 function TImpactAnalysisTests.PlaceNamed(const AResult: TImpactResult; const AName: string): Integer;
@@ -713,19 +713,55 @@ begin
   // #1353: mehrere Startpunkte mit gemeinsamen Bäumen und Units, je Ergebnis wie eine eigene Analyse.
   mStarts := TArray<THierarchyItem>.Create(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'),
     ItemAt(WerkzeugFile, 'procedure Oben;', 'Oben'));
-  mEach := TImpactAnalysis.AnalyzeEach(FResolver, FIndex, mStarts, ProjectFiles,
+  mEach := TImpactAnalysis.AnalyzeEach(FResolver, FIndex, mStarts, TImpactSources.Create(ProjectFiles,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadFile(AFileName, AText);
-    end, Options(3), nil);
+    end), Options(3), nil);
   Assert.AreEqual(2, Integer(Length(mEach)));
   for mIndex := 0 to High(mStarts) do
   begin
     Assert.AreEqual(Describe(Analyze(mStarts[mIndex], 3)), Describe(mEach[mIndex]), mStarts[mIndex].Name);
   end;
   Assert.AreEqual(1, Integer(Length(mEach[0].Tests)));
-  Assert.AreEqual(0, Integer(Length(TImpactAnalysis.AnalyzeEach(FResolver, FIndex, nil, ProjectFiles, nil, Options(3),
-    nil))));
+  Assert.AreEqual(0, Integer(Length(TImpactAnalysis.AnalyzeEach(FResolver, FIndex, nil,
+    TImpactSources.Create(ProjectFiles, nil), Options(3), nil))));
+end;
+
+/// <summary>Unit AIndex der Kette Stufe1 ← Stufe2 ← …: LaufN ruft LaufN-1.</summary>
+function ChainText(AIndex: Integer): string;
+begin
+  if AIndex = 0 then
+  begin
+    Result := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
+      'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
+  end
+  else
+  begin
+    Result := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
+      'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
+      [AIndex, AIndex - 1, AIndex, AIndex, AIndex - 1]);
+  end;
+end;
+
+/// <summary>Liest die Datei AFiles[i] als ATexts[i].</summary>
+function TextsReader(const AFiles, ATexts: TArray<string>): TReferenceReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      mSlot: Integer;
+    begin
+      for mSlot := 0 to High(AFiles) do
+      begin
+        if SameText(AFiles[mSlot], AFileName) then
+        begin
+          AText := ATexts[mSlot];
+          Exit(True);
+        end;
+      end;
+      Result := False;
+    end;
 end;
 
 procedure TImpactAnalysisTests.LongChainStaysFast;
@@ -750,17 +786,7 @@ begin
   for Index := 0 to Count - 1 do
   begin
     Files[Index] := Format('C:\B\Stufe%d.pas', [Index]);
-    if Index = 0 then
-    begin
-      Texts[Index] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
-        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
-    end
-    else
-    begin
-      Texts[Index] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
-        'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
-        [Index, Index - 1, Index, Index, Index - 1]);
-    end;
+    Texts[Index] := ChainText(Index);
     Big.AddUnit(TIndexExtractor.ExtractText(Texts[Index], Files[Index], nil, nil, True));
   end;
   Resolver := TNameResolver.Create(Big);
@@ -774,21 +800,8 @@ begin
     end;
     Settings := Options(5);
     Watch := TStopwatch.StartNew;
-    Found := TImpactAnalysis.Analyze(Resolver, Big, Start, Files,
-      function(const AFileName: string; out AText: string): Boolean
-      var
-        Slot: Integer;
-      begin
-        for Slot := 0 to High(Files) do
-        begin
-          if SameText(Files[Slot], AFileName) then
-          begin
-            AText := Texts[Slot];
-            Exit(True);
-          end;
-        end;
-        Result := False;
-      end, Settings, nil);
+    Found := TImpactAnalysis.Analyze(Resolver, Big, Start, TImpactSources.Create(Files, TextsReader(Files, Texts)),
+      Settings, nil);
     Watch.Stop;
   finally
     Resolver.Free;
