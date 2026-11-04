@@ -51,7 +51,6 @@ uses
   Shell.Composition.Slash,
   Shell.Composition.Contract,
   Shell.Composition.Workspaces,
-  Shell.Composition.Ide,
   Shell.Composition.FileChanges,
   Shell.Composition.CompileSetup,
   Shell.Composition.Stdio,
@@ -63,6 +62,7 @@ uses
   Shell.Composition.DocumentEvents,
   Shell.Composition.Protocol,
   Shell.Composition.Session,
+  Shell.Composition.IdeArea,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -123,15 +123,10 @@ type
     FAnalysisArea: TShellAnalysisArea;
     /// <summary>Host der Schnellbefehle (#297) mit seinen Quellen.</summary>
     FSlash: TShellSlash;
+    /// <summary>Teilwurzel IDE: Nachrichten aus der IDE, Dateiänderungen und Projektwahl.</summary>
+    FIdeArea: TShellIdeArea;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
-    /// <summary>Dateiänderungen von außen und Tipp-Pause (#492) (Shell.Composition.FileChanges).</summary>
-    FFileChanges: TShellFileChanges;
-    /// <summary>Build-Ergebnisse, Compilermeldungen (#528) und Projektkontext (#396) aus der IDE
-    /// (Shell.Composition.Ide).</summary>
-    FIde: TShellIde;
-    /// <summary>Gemerkte Projektwahl über Neustarts (#46): selectBuild je Projekt, selectProject je Ordner.</summary>
-    FProjectSelection: TProjectSelection;
     FWorkspaceFolders: TLspWorkspaceFolders;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -196,14 +191,8 @@ type
     procedure CommandServer(var AServices: TShellServerCommandServices);
     /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter FCore.Workspaces.Lock auf.</summary>
     procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
-    /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
-    procedure WireWatchedFiles;
-    function FileChangesServices: TShellFileChangesServices;
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
-    /// <summary>Dienste der IDE-Nachrichten: Meldungen ersetzen die des letzten Laufs, Pause der Projektprüfung
-    /// während eines Compiles, Neuprüfung nach neuen Präfixen.</summary>
-    function IdeServices: TShellIdeServices;
     /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
     procedure WireWorkspaceFolders;
     /// <summary>Arbeitsbereichsordner entfernen und hinzufügen, wie der Client sie meldet.</summary>
@@ -263,7 +252,6 @@ type
 implementation
 
 uses
-  System.IOUtils,
   Shell.Composition.Refactorings.Services,
   System.StrUtils,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -287,10 +275,6 @@ uses
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
 
-const
-  /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
-  CompilePauseLimitMs = 10 * 60 * 1000;
-
 { TServerComposition }
 
 constructor TServerComposition.Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
@@ -306,7 +290,6 @@ begin
   WireCode;
   WireAnalysis;
   WireCommands;
-  WireWatchedFiles;
   WireIde;
   WireWorkspaceFolders;
   FConnection := TJsonRpcConnection.Create(FTransport, FProtocol.Dispatcher);
@@ -606,11 +589,15 @@ begin
     begin
       Result := FCompile;
     end;
-  // Die Dateiänderungen entstehen erst in WireWatchedFiles.
+  // Die Dateiänderungen entstehen erst in WireIde.
   mServices.FileChanges :=
     function: TShellFileChanges
     begin
-      Result := FFileChanges;
+      Result := nil;
+      if FIdeArea <> nil then
+      begin
+        Result := FIdeArea.FileChanges;
+      end;
     end;
   mServices.DeriveWorkspaces :=
     function: Boolean
@@ -644,22 +631,22 @@ begin
   Result.SelectedProject :=
     function(const AOrigin: string): string
     begin
-      Result := FProjectSelection.Project(AOrigin);
+      Result := FIdeArea.Selection.Project(AOrigin);
     end;
   Result.ActiveProject :=
     function: string
     begin
-      Result := FIde.Project.ActiveProject;
+      Result := FIdeArea.Ide.Project.ActiveProject;
     end;
   Result.IdeProject :=
     function: TLspIdeProject
     begin
-      Result := FIde.Project;
+      Result := FIdeArea.Ide.Project;
     end;
   Result.Selection :=
     function: TProjectSelection
     begin
-      Result := FProjectSelection;
+      Result := FIdeArea.Selection;
     end;
   Result.Anonymizer :=
     function: ILogAnonymizer
@@ -778,11 +765,11 @@ begin
     begin
       Result := FCompile.Results.MessagesFor(AFileName);
     end;
-  // Closure: FIde entsteht erst in WireIde.
+  // Closure: Die Teilwurzel IDE entsteht erst in WireIde.
   mServices.IdeProjectFor :=
     function(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean
     begin
-      Result := FIde.Project.Find(AProjectFile, AContext);
+      Result := FIdeArea.Ide.Project.Find(AProjectFile, AContext);
     end;
   mServices.VisitWorkspaces := VisitWorkspaces;
   mServices.Notify := NotifyClient;
@@ -842,7 +829,7 @@ begin
   AServices.ActiveProject :=
     function: string
     begin
-      Result := FIde.Project.ActiveProject;
+      Result := FIdeArea.Ide.Project.ActiveProject;
     end;
   // Protokoll, Mitschnitt und Anonymisierung setzt CreateForStdio erst nach Create.
   AServices.RecentLog :=
@@ -887,12 +874,12 @@ begin
   AServices.ActiveProject :=
     function: string
     begin
-      Result := FIde.Project.ActiveProject;
+      Result := FIdeArea.Ide.Project.ActiveProject;
     end;
   AServices.SetProject :=
     procedure(const AScope, AProject: string)
     begin
-      FProjectSelection.SetProject(AScope, AProject);
+      FIdeArea.Selection.SetProject(AScope, AProject);
     end;
   AServices.RetryCrashCase :=
     function(const AUri: string): Integer
@@ -910,76 +897,25 @@ begin
   FCore.Workspaces.Visit(AVisit);
 end;
 
-procedure TServerComposition.WireWatchedFiles;
-begin
-  FFileChanges := TShellFileChanges.Create(FileChangesServices);
-  FFileChanges.Attach(FProtocol.Dispatcher);
-end;
-
-function TServerComposition.FileChangesServices: TShellFileChangesServices;
-begin
-  Result := Default(TShellFileChangesServices);
-  Result.Logger := FLogger;
-  Result.Workspaces := FCore.Workspaces;
-  Result.Transport := FTransport;
-  Result.Configuration := FCore.Configuration;
-  Result.RefreshLater :=
-    procedure
-    begin
-      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Syntax <> nil) then
-      begin
-        FDiagnosticsArea.Syntax.RefreshLater;
-      end;
-    end;
-  // Beim Tippen macht die Projektprüfung Platz (#1247).
-  Result.Typed :=
-    procedure
-    begin
-      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Pull <> nil) then
-      begin
-        FDiagnosticsArea.Pull.Typed;
-      end;
-    end;
-  Result.Affected :=
-    procedure(const AFiles: TArray<string>)
-    begin
-      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Pull <> nil) then
-      begin
-        FDiagnosticsArea.Pull.Check.Affected(AFiles, True);
-      end;
-    end;
-end;
-
-function TServerComposition.IdeServices: TShellIdeServices;
-begin
-  Result := Default(TShellIdeServices);
-  Result.Logger := FLogger;
-  Result.Workspaces := FCore.Workspaces;
-  Result.MessagesReceived :=
-    procedure(const AMessages: TArray<TCompilerMessage>)
-    begin
-      FDiagnosticsArea.Syntax.RefreshFiles(FCompile.Results.Replace(AMessages));
-    end;
-  Result.Compiling :=
-    procedure(ARunning: Boolean)
-    begin
-      // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
-      FDiagnosticsArea.Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
-    end;
-  Result.NamingChanged :=
-    procedure
-    begin
-      FDiagnosticsArea.Syntax.RefreshLater;
-    end;
-end;
-
 procedure TServerComposition.WireIde;
+var
+  mServices: TShellIdeAreaServices;
 begin
-  FIde := TShellIde.Create(IdeServices);
-  FIde.Attach(FProtocol.Dispatcher);
-  // Projektwahl je Benutzer über Neustarts (#46).
-  FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
-    'projektauswahl.json'));
+  mServices.Logger := FLogger;
+  mServices.Transport := FTransport;
+  mServices.Dispatcher := FProtocol.Dispatcher;
+  // Beim Beenden sind Diagnosen und Compile-Host vor der Teilwurzel IDE fort.
+  mServices.Diagnostics :=
+    function: TShellDiagnosticsArea
+    begin
+      Result := FDiagnosticsArea;
+    end;
+  mServices.Compile :=
+    function: TShellCompileHost
+    begin
+      Result := FCompile;
+    end;
+  FIdeArea := TShellIdeArea.Create(FCore, mServices);
 end;
 
 procedure TServerComposition.WireWorkspaceFolders;
@@ -1013,7 +949,7 @@ begin
   ApplyClientInfo(FProtocol.Lifecycle.InitializeParams);
   mFolders := TLspWorkspaceFolders.FromInitialize(FProtocol.Lifecycle.InitializeParams);
   // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
-  FIde.Project.LoadInitialize(FProtocol.Lifecycle.InitializeParams);
+  FIdeArea.Ide.Project.LoadInitialize(FProtocol.Lifecycle.InitializeParams);
   // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
   // Projekte weiter einen abgeleiteten Arbeitsbereich.
   FDeriveWorkspaces := True;
@@ -1034,7 +970,7 @@ begin
     FCore.Folders.Add(mFolder);
   end;
   FCore.Configuration.UpdateWatchedFiles;
-  FFileChanges.RegisterWatchers(FProtocol.Lifecycle.InitializeParams);
+  FIdeArea.FileChanges.RegisterWatchers(FProtocol.Lifecycle.InitializeParams);
 end;
 
 procedure TServerComposition.ApplyClientInfo(const AParams: TJSONObject);
@@ -1072,9 +1008,9 @@ var
 begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
-  if FFileChanges <> nil then
+  if FIdeArea <> nil then
   begin
-    FFileChanges.StopRefresh;
+    FIdeArea.FileChanges.StopRefresh;
   end;
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   if FCore <> nil then
@@ -1169,9 +1105,7 @@ begin
   FreeAndNil(FSlash);
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
-  FreeAndNil(FFileChanges);
-  FreeAndNil(FIde);
-  FreeAndNil(FProjectSelection);
+  FreeAndNil(FIdeArea);
   FreeAndNil(FTextDocumentSync);
   FDocuments := nil;
   // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
@@ -1261,7 +1195,7 @@ begin
     end;
   end;
   Workspace := FCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (Workspace <> nil) and Workspace.State.Project(Project) and FIde.Project.Find(Project.FileName, Context) then
+  if (Workspace <> nil) and Workspace.State.Project(Project) and FIdeArea.Ide.Project.Find(Project.FileName, Context) then
   begin
     Result := Result + Context.FormatFunctions;
   end;
