@@ -269,6 +269,34 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Bindings.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Sheets.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Host.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.General.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Completion.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Transfer.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.TeamFile.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.EditorView.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.EditorCode.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Colors.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Index.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Build.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Tasks.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Rules.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Release.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Debug.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Vcs.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VcsTools.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VcsProject.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VcsProjects.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.VcsBranch.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Parts.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Sections.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Nodes.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Tree.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Rules.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
@@ -287,6 +315,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.PageOptions.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Scopes.pas"/>
