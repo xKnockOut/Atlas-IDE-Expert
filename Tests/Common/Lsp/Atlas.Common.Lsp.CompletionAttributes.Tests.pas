@@ -413,7 +413,8 @@ procedure TCompletionAttributesTests.SignatureShowsConstructor;
     Text := Split(Source(AMarked), Position);
     Tree := TPascalParser.Parse(Text);
     try
-      Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, Position, ReadText);
+      Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+        ReadText), Position);
     finally
       Tree.Free;
     end;

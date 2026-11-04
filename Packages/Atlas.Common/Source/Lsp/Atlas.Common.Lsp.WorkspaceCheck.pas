@@ -119,76 +119,162 @@ type
       Queued: Int64;
     end;
 
+    /// <summary>Gespeicherter Befund, den Collect ausliefern will.</summary>
+    TCollected = record
+      Uri: string;
+      Id: string;
+      Items: TBytes;
+    end;
+
+    /// <summary>Rückrufe des Servers und Frist je Datei.</summary>
+    THooks = record
+      Files: TWorkspaceCheckFiles;
+      Stamp: TWorkspaceCheckStamp;
+      ReadText: TWorkspaceCheckRead;
+      IsOpen: TWorkspaceCheckOpen;
+      Diagnose: TWorkspaceCheckDiagnose;
+      Busy: TWorkspaceCheckBusy;
+      Dependents: TWorkspaceCheckDependents;
+      FileLabel: TWorkspaceCheckLabel;
+      Log: TWorkspaceCheckLog;
+      FileLimitMs: Cardinal;
+    end;
+
+    /// <summary>Warteschlange, Projektdateien und laufende Datei. Nur unter der Sperre des Besitzers.</summary>
+    TSchedule = class
+    private
+      FQueue: TList<TEntry>;
+      FQueued: TDictionary<string, Boolean>;
+      // Projektdateien des letzten Start; Affected stellt nur diese ein.
+      FProject: TDictionary<string, Boolean>;
+      // Datei, die der Thread gerade prüft; FInterrupt bricht sie ab.
+      FCurrent: string;
+      FInterrupt: Boolean;
+      // Erst die erste Anfrage workspace/diagnostic startet die Prüfung; ohne Projektprüfung im Client ruht sie.
+      FWanted: Boolean;
+      procedure ForceQueued(const AKey: string);
+    public
+      constructor Create;
+      destructor Destroy; override;
+      /// <summary>Leert die Schlange und bricht die laufende Datei ab (erzwungener Neustart).</summary>
+      procedure Restart;
+      /// <summary>Bricht die laufende Datei ab; sie kommt wieder vorn in die Schlange.</summary>
+      procedure InterruptCurrent;
+      procedure ClearProject;
+      /// <summary>False, wenn AFileName schon zum Projekt gehört.</summary>
+      function AddToProject(const AFileName: string): Boolean;
+      function InProject(const AFileName: string): Boolean;
+      /// <summary>Stellt AFileName ein; True, wenn sie neu in der Schlange steht. Eine wartende Datei wird
+      /// höchstens auf erzwungen gehoben.</summary>
+      function Add(const AFileName: string; AForced: Boolean; ANow: Int64): Boolean;
+      /// <summary>Nimmt den ersten Eintrag und macht ihn zur laufenden Datei.</summary>
+      function TakeFirst: TEntry;
+      /// <summary>Die laufende Datei ist erledigt.</summary>
+      procedure Release;
+      function IsQueued(const AFileName: string): Boolean;
+      procedure Put(const AEntry: TEntry; AFront: Boolean);
+      function Count: Integer;
+      function Running: Boolean;
+      function OldestWaitMs(ANow: Int64): Int64;
+      property Interrupt: Boolean read FInterrupt;
+      property Wanted: Boolean read FWanted write FWanted;
+    end;
+
+    /// <summary>Gespeicherte Befunde je Uri, kompakt als JSON-Text (#1237). Nur unter der Sperre des
+    /// Besitzers.</summary>
+    TReports = class
+    private
+      FReports: TDictionary<string, TBytes>;
+      FIds: TDictionary<string, string>;
+      FStamps: TDictionary<string, Int64>;
+      FSession: Integer;
+      FSerial: Integer;
+    public
+      constructor Create;
+      destructor Destroy; override;
+      procedure Put(const AUri: string; AStamp: Int64; const APacked: TBytes);
+      /// <summary>True, wenn für AUri Befunde mit dem Zeitstempel AStamp gespeichert sind.</summary>
+      function Unchanged(const AUri: string; AStamp: Int64): Boolean;
+      /// <summary>Nicht mehr zum Projekt gehörende Dateien melden sich nie wieder; ihre Befunde verwerfen.
+      /// </summary>
+      procedure DropStale(ASchedule: TSchedule);
+      /// <summary>Befunde, deren Id sich von APrevious unterscheidet (Referenzen, keine Kopien).</summary>
+      function NewerThan(const APrevious: TDictionary<string, string>): TArray<TCollected>;
+    end;
+
+    /// <summary>Stand des Laufs und Zählerstände. Nur unter der Sperre des Besitzers.</summary>
+    TProgress = record
+      Run: TWorkspaceCheckRun;
+      Clock: TStopwatch;
+      RunComputed: Integer;
+      Computed: Integer;
+      Skipped: Integer;
+      // Zeitprofil des Laufs (#1356); sperrt selbst.
+      Profiler: TCheckProfiler;
+      /// <summary>Eine Datei kommt hinzu; ohne aktiven Lauf beginnt einer.</summary>
+      procedure Added;
+      procedure BeginRun;
+      /// <summary>Beendet einen aktiven Lauf; liefert die Zeile fürs Log, sonst ''.</summary>
+      function Finish: string;
+      /// <summary>Datei ohne neue Befunde erledigt.</summary>
+      procedure Settle;
+      procedure Stored(AFailed: Boolean);
+      function Snapshot: TWorkspaceCheckRun;
+      /// <summary>Dauer des laufenden Laufs, -1 ohne.</summary>
+      function RunningMs: Int64;
+    end;
+
+    /// <summary>Pausen und Vorrang des Benutzers. Nur unter der Sperre des Besitzers.</summary>
+    TPauses = record
+      // Pausengrund -> Ende in ms auf FClock (High(Int64) = ohne Frist).
+      Reasons: TDictionary<string, Int64>;
+      TypedAt: Int64;
+      Foreground: Integer;
+      QuietMs: Cardinal;
+      procedure Switch(const AReason: string; AOn: Boolean; ALimitMs: Cardinal; ANow: Int64);
+      /// <summary>Erste aktive Pause; abgelaufene Pausen entfallen mit Logzeile.</summary>
+      function ActivePause(ANow: Int64; const ALog: TWorkspaceCheckLog): string;
+      /// <summary>Grund, jetzt keine Datei zu beginnen, '' = keiner. AShown: der Grund für die Statusleiste.
+      /// </summary>
+      function Hindrance(ABusy: Boolean; ANow: Int64; const ALog: TWorkspaceCheckLog; out AShown: string): string;
+    end;
+
+    /// <summary>Prüft die Schlange Datei für Datei.</summary>
     TWorker = class(TThread)
     private
       FOwner: TLspWorkspaceCheck;
+      function NextEntry(out AEntry: TEntry): Boolean;
+      function WaitLocked: string;
+      procedure Process(const AEntry: TEntry);
+      function Prepare(const AEntry: TEntry; out AUri: string; out AStamp: Int64; out AText: string): Boolean;
+      function Diagnose(const AEntry: TEntry; const AUri, AText: string): TJSONArray;
+      procedure Fail(const AEntry: TEntry; const AUri: string; AStamp: Int64; AError: Exception);
+      procedure Requeue(const AEntry: TEntry; AFront: Boolean);
+      procedure Settle;
+      procedure Store(const AUri: string; AStamp: Int64; AItems: TJSONArray; AFailed: Boolean);
+      function LabelOf(const AFileName: string): string;
+      procedure Log(const AMessage: string);
     protected
       procedure Execute; override;
     public
       constructor Create(AOwner: TLspWorkspaceCheck);
     end;
   private
-    FFiles: TWorkspaceCheckFiles;
-    FStamp: TWorkspaceCheckStamp;
-    FReadText: TWorkspaceCheckRead;
-    FIsOpen: TWorkspaceCheckOpen;
-    FDiagnose: TWorkspaceCheckDiagnose;
-    FBusy: TWorkspaceCheckBusy;
-    FDependents: TWorkspaceCheckDependents;
-    FFileLabel: TWorkspaceCheckLabel;
-    FLog: TWorkspaceCheckLog;
-    FFileLimitMs: Cardinal;
-    FTypingQuietMs: Cardinal;
+    FHooks: THooks;
     // Alles Folgende unter FLock; TMonitor.PulseAll(FLock) weckt Thread und Wartende.
     FLock: TObject;
     FClock: TStopwatch;
     FWorker: TWorker;
     FStopping: Boolean;
-    // Erst die erste Anfrage workspace/diagnostic startet die Prüfung; ohne Projektprüfung im Client ruht sie.
-    FWanted: Boolean;
-    FQueue: TList<TEntry>;
-    FQueued: TDictionary<string, Boolean>;
-    // Projektdateien des letzten Start; Affected stellt nur diese ein.
-    FProject: TDictionary<string, Boolean>;
-    // Gespeicherte Befunde je Uri, kompakt als JSON-Text (#1237).
-    FReports: TDictionary<string, TBytes>;
-    FIds: TDictionary<string, string>;
-    FStamps: TDictionary<string, Int64>;
-    FSession: Integer;
-    FSerial: Integer;
-    FRun: TWorkspaceCheckRun;
-    FRunClock: TStopwatch;
-    FRunComputed: Integer;
     // Steigt bei jeder Änderung, die Wartende sehen sollen.
     FChange: Integer;
-    // Pausengrund -> Ende in ms auf FClock (High(Int64) = ohne Frist).
-    FPauses: TDictionary<string, Int64>;
-    FTypedAt: Int64;
-    FForeground: Integer;
-    // Datei, die der Thread gerade prüft; FInterrupt bricht sie ab.
-    FCurrent: string;
-    FInterrupt: Boolean;
-    FComputed: Integer;
-    FSkipped: Integer;
-    // Zeitprofil des Laufs (#1356); sperrt selbst.
-    FProfiler: TCheckProfiler;
-    class function KeyOf(const AFileName: string): string; static;
-    function Now_: Int64;
+    FSchedule: TSchedule;
+    FReports: TReports;
+    FProgress: TProgress;
+    FPauses: TPauses;
     procedure Changed;
     procedure EnsureWorker;
-    procedure BeginRunLocked;
-    function FinishRunLocked: string;
-    procedure EnqueueLocked(const AFileName: string; AForced: Boolean);
-    function HindranceLocked(ABusy: Boolean; out AShown: string): string;
-    function NextEntry(out AEntry: TEntry): Boolean;
-    procedure Process(const AEntry: TEntry);
-    procedure Requeue(const AEntry: TEntry; AFront: Boolean);
-    procedure Store(const AUri: string; AStamp: Int64; AItems: TJSONArray; AFailed: Boolean);
-    procedure Settle;
     function Interrupted(AInterruptible: Boolean): Boolean;
-    function LabelOf(const AFileName: string): string;
-    procedure Log(const AMessage: string);
-    procedure Work;
   public
     constructor Create(const AFiles: TWorkspaceCheckFiles; const AStamp: TWorkspaceCheckStamp;
       const AReadText: TWorkspaceCheckRead; const AIsOpen: TWorkspaceCheckOpen;
@@ -228,16 +314,16 @@ type
     /// <summary>Dateien unter AUnits, die von AFileName abhängen: bei .inc die einbindenden Units, sonst die
     /// Projekt-Units mit dem Unit-Namen in uses. Ohne AFileName selbst.</summary>
     class function DependentsOf(const AUnits: TArray<TUnitIndex>; const AFileName: string): TArray<string>; static;
-    property Busy: TWorkspaceCheckBusy read FBusy write FBusy;
-    property Dependents: TWorkspaceCheckDependents read FDependents write FDependents;
-    property FileLabel: TWorkspaceCheckLabel read FFileLabel write FFileLabel;
-    property OnLog: TWorkspaceCheckLog read FLog write FLog;
-    property FileLimitMs: Cardinal read FFileLimitMs write FFileLimitMs;
-    property TypingQuietMs: Cardinal read FTypingQuietMs write FTypingQuietMs;
+    property Busy: TWorkspaceCheckBusy read FHooks.Busy write FHooks.Busy;
+    property Dependents: TWorkspaceCheckDependents read FHooks.Dependents write FHooks.Dependents;
+    property FileLabel: TWorkspaceCheckLabel read FHooks.FileLabel write FHooks.FileLabel;
+    property OnLog: TWorkspaceCheckLog read FHooks.Log write FHooks.Log;
+    property FileLimitMs: Cardinal read FHooks.FileLimitMs write FHooks.FileLimitMs;
+    property TypingQuietMs: Cardinal read FPauses.QuietMs write FPauses.QuietMs;
     /// <summary>Tatsächlich berechnete Dateibefunde.</summary>
-    property Computed: Integer read FComputed;
+    property Computed: Integer read FProgress.Computed;
     /// <summary>Nach einem Fehler übersprungene Dateien (#1094).</summary>
-    property Skipped: Integer read FSkipped;
+    property Skipped: Integer read FProgress.Skipped;
   end;
 
   /// <summary>Entscheidet, wann ein Indexaufbau die Projektprüfung neu startet. Nach der Projektstufe sind alle
@@ -267,13 +353,6 @@ uses
   Atlas.Common.Lsp.CompactJson;
 
 type
-  /// <summary>Gespeicherter Befund, den Collect ausliefern will.</summary>
-  TCollected = record
-    Uri: string;
-    Id: string;
-    Items: TBytes;
-  end;
-
   /// <summary>Frist der Datei abgelaufen (#1220): Die Datei kommt ans Ende der Schlange.</summary>
   EWorkspaceCheckDeadline = class(Exception);
   /// <summary>Der Benutzer tippt, eine Pause beginnt oder der Server endet: Die Datei kommt wieder vorn hin.
@@ -344,6 +423,441 @@ begin
     (Paused <> AOther.Paused);
 end;
 
+/// <summary>Schlüssel einer Datei in Schlange und Projekt.</summary>
+function KeyOf(const AFileName: string): string;
+begin
+  Result := AnsiLowerCase(AFileName);
+end;
+
+/// <summary>True, wenn AUnit die Datei AFileName mit $I einbindet.</summary>
+function IncludesFile(const AUnit: TUnitIndex; const AFileName: string): Boolean;
+var
+  mInclude: string;
+begin
+  for mInclude in AUnit.Includes do
+  begin
+    if SameFileName(mInclude, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>True, wenn AUnit die Unit AName in uses hat.</summary>
+function UsesUnit(const AUnit: TUnitIndex; const AName: string): Boolean;
+var
+  mUsed: string;
+begin
+  for mUsed in AUnit.InterfaceUses + AUnit.ImplementationUses do
+  begin
+    if SameText(mUsed, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+{ TLspWorkspaceCheck.TSchedule }
+
+constructor TLspWorkspaceCheck.TSchedule.Create;
+begin
+  inherited Create;
+  FQueue := TList<TEntry>.Create;
+  FQueued := TDictionary<string, Boolean>.Create;
+  FProject := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TLspWorkspaceCheck.TSchedule.Destroy;
+begin
+  FProject.Free;
+  FQueued.Free;
+  FQueue.Free;
+  inherited;
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.Restart;
+begin
+  FQueue.Clear;
+  FQueued.Clear;
+  InterruptCurrent;
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.InterruptCurrent;
+begin
+  if FCurrent <> '' then
+  begin
+    FInterrupt := True;
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.ClearProject;
+begin
+  FProject.Clear;
+end;
+
+function TLspWorkspaceCheck.TSchedule.AddToProject(const AFileName: string): Boolean;
+var
+  mKey: string;
+begin
+  mKey := KeyOf(AFileName);
+  Result := not FProject.ContainsKey(mKey);
+  if Result then
+  begin
+    FProject.Add(mKey, True);
+  end;
+end;
+
+function TLspWorkspaceCheck.TSchedule.InProject(const AFileName: string): Boolean;
+begin
+  Result := FProject.ContainsKey(KeyOf(AFileName));
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.ForceQueued(const AKey: string);
+var
+  mIndex: Integer;
+  mEntry: TEntry;
+begin
+  FQueued[AKey] := True;
+  for mIndex := 0 to FQueue.Count - 1 do
+  begin
+    if KeyOf(FQueue[mIndex].FileName) = AKey then
+    begin
+      mEntry := FQueue[mIndex];
+      mEntry.Forced := True;
+      FQueue[mIndex] := mEntry;
+      Exit;
+    end;
+  end;
+end;
+
+function TLspWorkspaceCheck.TSchedule.Add(const AFileName: string; AForced: Boolean; ANow: Int64): Boolean;
+var
+  mKey: string;
+  mEntry: TEntry;
+  mForced: Boolean;
+begin
+  mKey := KeyOf(AFileName);
+  if FQueued.TryGetValue(mKey, mForced) then
+  begin
+    if AForced and not mForced then
+    begin
+      ForceQueued(mKey);
+    end;
+    Exit(False);
+  end;
+  mEntry := Default(TEntry);
+  mEntry.FileName := AFileName;
+  mEntry.Forced := AForced;
+  mEntry.Queued := ANow;
+  FQueue.Add(mEntry);
+  FQueued.Add(mKey, AForced);
+  Result := True;
+end;
+
+function TLspWorkspaceCheck.TSchedule.TakeFirst: TEntry;
+begin
+  Result := FQueue[0];
+  FQueue.Delete(0);
+  FQueued.Remove(KeyOf(Result.FileName));
+  FCurrent := Result.FileName;
+  FInterrupt := False;
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.Release;
+begin
+  FCurrent := '';
+end;
+
+function TLspWorkspaceCheck.TSchedule.IsQueued(const AFileName: string): Boolean;
+begin
+  Result := FQueued.ContainsKey(KeyOf(AFileName));
+end;
+
+procedure TLspWorkspaceCheck.TSchedule.Put(const AEntry: TEntry; AFront: Boolean);
+begin
+  if AFront then
+  begin
+    FQueue.Insert(0, AEntry);
+  end
+  else
+  begin
+    FQueue.Add(AEntry);
+  end;
+  FQueued.Add(KeyOf(AEntry.FileName), AEntry.Forced);
+end;
+
+function TLspWorkspaceCheck.TSchedule.Count: Integer;
+begin
+  Result := FQueue.Count;
+end;
+
+function TLspWorkspaceCheck.TSchedule.Running: Boolean;
+begin
+  Result := FCurrent <> '';
+end;
+
+function TLspWorkspaceCheck.TSchedule.OldestWaitMs(ANow: Int64): Int64;
+var
+  mEntry: TEntry;
+begin
+  Result := 0;
+  for mEntry in FQueue do
+  begin
+    if ANow - mEntry.Queued > Result then
+    begin
+      Result := ANow - mEntry.Queued;
+    end;
+  end;
+end;
+
+{ TLspWorkspaceCheck.TReports }
+
+constructor TLspWorkspaceCheck.TReports.Create;
+begin
+  inherited Create;
+  FReports := TDictionary<string, TBytes>.Create;
+  FIds := TDictionary<string, string>.Create;
+  FStamps := TDictionary<string, Int64>.Create;
+  // Ids einer früheren Sitzung sollen nie zufällig passen.
+  FSession := Integer(TThread.GetTickCount64 and $7FFFFFFF);
+end;
+
+destructor TLspWorkspaceCheck.TReports.Destroy;
+begin
+  FStamps.Free;
+  FIds.Free;
+  FReports.Free;
+  inherited;
+end;
+
+procedure TLspWorkspaceCheck.TReports.Put(const AUri: string; AStamp: Int64; const APacked: TBytes);
+begin
+  Inc(FSerial);
+  FReports.AddOrSetValue(AUri, APacked);
+  FIds.AddOrSetValue(AUri, Format('w%d.%d:t%d', [FSession, FSerial, AStamp]));
+  FStamps.AddOrSetValue(AUri, AStamp);
+end;
+
+function TLspWorkspaceCheck.TReports.Unchanged(const AUri: string; AStamp: Int64): Boolean;
+var
+  mKnown: Int64;
+begin
+  Result := FStamps.TryGetValue(AUri, mKnown) and (mKnown = AStamp);
+end;
+
+procedure TLspWorkspaceCheck.TReports.DropStale(ASchedule: TSchedule);
+var
+  mStale: TList<string>;
+  mUri: string;
+begin
+  mStale := TList<string>.Create;
+  try
+    for mUri in FIds.Keys do
+    begin
+      if not ASchedule.InProject(TDocumentUris.ToPath(mUri)) then
+      begin
+        mStale.Add(mUri);
+      end;
+    end;
+    for mUri in mStale do
+    begin
+      FIds.Remove(mUri);
+      FReports.Remove(mUri);
+      FStamps.Remove(mUri);
+    end;
+  finally
+    mStale.Free;
+  end;
+end;
+
+function TLspWorkspaceCheck.TReports.NewerThan(const APrevious: TDictionary<string, string>): TArray<TCollected>;
+var
+  mPair: TPair<string, string>;
+  mKnown: string;
+  mCandidate: TCollected;
+  mCandidates: TList<TCollected>;
+begin
+  mCandidates := TList<TCollected>.Create;
+  try
+    for mPair in FIds do
+    begin
+      if (APrevious.TryGetValue(mPair.Key, mKnown) and (mKnown = mPair.Value)) or
+        not FReports.TryGetValue(mPair.Key, mCandidate.Items) then
+      begin
+        Continue;
+      end;
+      mCandidate.Uri := mPair.Key;
+      mCandidate.Id := mPair.Value;
+      mCandidates.Add(mCandidate);
+    end;
+    Result := mCandidates.ToArray;
+  finally
+    mCandidates.Free;
+  end;
+end;
+
+{ TLspWorkspaceCheck.TProgress }
+
+procedure TLspWorkspaceCheck.TProgress.Added;
+begin
+  BeginRun;
+  Inc(Run.Total);
+end;
+
+procedure TLspWorkspaceCheck.TProgress.BeginRun;
+begin
+  if Run.Active then
+  begin
+    Exit;
+  end;
+  Inc(Run.Serial);
+  Run.Active := True;
+  Run.Done := 0;
+  Run.Total := 0;
+  Run.Skipped := 0;
+  Run.ElapsedMs := 0;
+  RunComputed := 0;
+  Clock := TStopwatch.StartNew;
+  Profiler.BeginRun(Now);
+end;
+
+function TLspWorkspaceCheck.TProgress.Finish: string;
+begin
+  Result := '';
+  if not Run.Active then
+  begin
+    Exit;
+  end;
+  Run.Active := False;
+  Run.ElapsedMs := Clock.ElapsedMilliseconds;
+  Profiler.FinishRun(Run.ElapsedMs);
+  Result := Format('Projektprüfung fertig: %d Units in %d ms, %d neu geprüft, %d übersprungen',
+    [Run.Total, Run.ElapsedMs, RunComputed, Run.Skipped]);
+end;
+
+procedure TLspWorkspaceCheck.TProgress.Settle;
+begin
+  // Höchstens Total: Eine nicht unterbrechbare Datei kann nach einem Neustart noch im alten Lauf enden.
+  if Run.Active and (Run.Done < Run.Total) then
+  begin
+    Inc(Run.Done);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TProgress.Stored(AFailed: Boolean);
+begin
+  Inc(Computed);
+  if Run.Active and (Run.Done < Run.Total) then
+  begin
+    Inc(Run.Done);
+    Inc(RunComputed);
+    if AFailed then
+    begin
+      Inc(Run.Skipped);
+    end;
+  end;
+  if AFailed then
+  begin
+    Inc(Skipped);
+  end;
+end;
+
+function TLspWorkspaceCheck.TProgress.Snapshot: TWorkspaceCheckRun;
+begin
+  Result := Run;
+  if Run.Active then
+  begin
+    Result.ElapsedMs := Clock.ElapsedMilliseconds;
+  end;
+end;
+
+function TLspWorkspaceCheck.TProgress.RunningMs: Int64;
+begin
+  Result := -1;
+  if Run.Active then
+  begin
+    Result := Clock.ElapsedMilliseconds;
+  end;
+end;
+
+{ TLspWorkspaceCheck.TPauses }
+
+procedure TLspWorkspaceCheck.TPauses.Switch(const AReason: string; AOn: Boolean; ALimitMs: Cardinal; ANow: Int64);
+begin
+  if not AOn then
+  begin
+    Reasons.Remove(AReason);
+  end
+  else if ALimitMs = 0 then
+  begin
+    Reasons.AddOrSetValue(AReason, High(Int64));
+  end
+  else
+  begin
+    Reasons.AddOrSetValue(AReason, ANow + ALimitMs);
+  end;
+end;
+
+function TLspWorkspaceCheck.TPauses.ActivePause(ANow: Int64; const ALog: TWorkspaceCheckLog): string;
+var
+  mPair: TPair<string, Int64>;
+  mExpired: TList<string>;
+  mReason: string;
+begin
+  Result := '';
+  mExpired := TList<string>.Create;
+  try
+    for mPair in Reasons do
+    begin
+      if mPair.Value < ANow then
+      begin
+        mExpired.Add(mPair.Key);
+      end
+      else if (Result = '') or (mPair.Key < Result) then
+      begin
+        Result := mPair.Key;
+      end;
+    end;
+    // Sicherheitsnetz: Das Ende der Pause kam nie an.
+    for mReason in mExpired do
+    begin
+      Reasons.Remove(mReason);
+      if Assigned(ALog) then
+      begin
+        ALog(Format('Projektprüfung: Pause "%s" nach Frist beendet (Sicherheitsnetz)', [mReason]));
+      end;
+    end;
+  finally
+    mExpired.Free;
+  end;
+end;
+
+function TLspWorkspaceCheck.TPauses.Hindrance(ABusy: Boolean; ANow: Int64; const ALog: TWorkspaceCheckLog;
+  out AShown: string): string;
+begin
+  Result := ActivePause(ANow, ALog);
+  if (Result = '') and ABusy then
+  begin
+    Result := TLspWorkspaceCheck.cPauseIndex;
+  end;
+  AShown := Result;
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  // Vorrang des Benutzers: kurz, darum nicht in der Statusleiste.
+  if Foreground > 0 then
+  begin
+    Result := 'foreground';
+  end
+  else if (TypedAt >= 0) and (ANow - TypedAt < QuietMs) then
+  begin
+    Result := 'typing';
+  end;
+end;
+
 { TLspWorkspaceCheck.TWorker }
 
 constructor TLspWorkspaceCheck.TWorker.Create(AOwner: TLspWorkspaceCheck);
@@ -356,18 +870,262 @@ begin
     Priority := tpLower;
   except
     on Exception do
-      FOwner.Log('Projektprüfung: niedrige Priorität nicht gesetzt');
+      Log('Projektprüfung: niedrige Priorität nicht gesetzt');
   end;
 end;
 
 procedure TLspWorkspaceCheck.TWorker.Execute;
+var
+  mEntry: TEntry;
 begin
   try
-    FOwner.Work;
+    while NextEntry(mEntry) do
+    begin
+      Process(mEntry);
+    end;
   except
     // Ein Fehler außerhalb einer Datei beendet nur die Projektprüfung, nicht den Server.
     on E: Exception do
-      FOwner.Log('Projektprüfung beendet nach Fehler: ' + E.ClassName);
+      Log('Projektprüfung beendet nach Fehler: ' + E.ClassName);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Log(const AMessage: string);
+begin
+  if Assigned(FOwner.FHooks.Log) then
+  begin
+    FOwner.FHooks.Log(AMessage);
+  end;
+end;
+
+function TLspWorkspaceCheck.TWorker.LabelOf(const AFileName: string): string;
+begin
+  Result := 'unit';
+  if Assigned(FOwner.FHooks.FileLabel) then
+  begin
+    Result := FOwner.FHooks.FileLabel(AFileName);
+  end;
+end;
+
+function TLspWorkspaceCheck.TWorker.NextEntry(out AEntry: TEntry): Boolean;
+var
+  mBusy: Boolean;
+  mReason, mShown, mFinished: string;
+begin
+  while True do
+  begin
+    // Außerhalb der Sperre: Der Anbieter sperrt selbst (Arbeitsbereiche).
+    mBusy := Assigned(FOwner.FHooks.Busy) and FOwner.FHooks.Busy();
+    TMonitor.Enter(FOwner.FLock);
+    try
+      if FOwner.FStopping then
+      begin
+        Exit(False);
+      end;
+      mReason := FOwner.FPauses.Hindrance(mBusy, FOwner.FClock.ElapsedMilliseconds, FOwner.FHooks.Log, mShown);
+      if mShown <> FOwner.FProgress.Run.Paused then
+      begin
+        FOwner.FProgress.Run.Paused := mShown;
+        FOwner.Changed;
+      end;
+      if (mReason = '') and (FOwner.FSchedule.Count > 0) then
+      begin
+        AEntry := FOwner.FSchedule.TakeFirst;
+        Exit(True);
+      end;
+      mFinished := WaitLocked;
+    finally
+      TMonitor.Exit(FOwner.FLock);
+    end;
+    if mFinished <> '' then
+    begin
+      Log(mFinished);
+    end;
+  end;
+end;
+
+function TLspWorkspaceCheck.TWorker.WaitLocked: string;
+begin
+  // Bei leerer Schlange endet erst der Lauf, sonst ein Takt.
+  Result := '';
+  if FOwner.FSchedule.Count > 0 then
+  begin
+    TMonitor.Wait(FOwner.FLock, TLspWorkspaceCheck.cSliceMs);
+    Exit;
+  end;
+  Result := FOwner.FProgress.Finish;
+  if Result = '' then
+  begin
+    TMonitor.Wait(FOwner.FLock, TLspWorkspaceCheck.cIdleWaitMs);
+  end
+  else
+  begin
+    FOwner.Changed;
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Process(const AEntry: TEntry);
+var
+  mUri, mText: string;
+  mStamp: Int64;
+  mItems: TJSONArray;
+begin
+  if not Prepare(AEntry, mUri, mStamp, mText) then
+  begin
+    Settle;
+    Exit;
+  end;
+  try
+    mItems := Diagnose(AEntry, mUri, mText);
+  except
+    on E: Exception do
+    begin
+      Fail(AEntry, mUri, mStamp, E);
+      Exit;
+    end;
+  end;
+  Store(mUri, mStamp, mItems, False);
+end;
+
+function TLspWorkspaceCheck.TWorker.Prepare(const AEntry: TEntry; out AUri: string; out AStamp: Int64;
+  out AText: string): Boolean;
+var
+  mUnchanged: Boolean;
+begin
+  AUri := TDocumentUris.FromPath(AEntry.FileName);
+  AStamp := 0;
+  AText := '';
+  // Geöffnete Dateien prüft textDocument/diagnostic mit dem Editortext.
+  if (Assigned(FOwner.FHooks.IsOpen) and FOwner.FHooks.IsOpen(AUri)) or
+    not FOwner.FHooks.Stamp(AEntry.FileName, AStamp) then
+  begin
+    Exit(False);
+  end;
+  TMonitor.Enter(FOwner.FLock);
+  try
+    mUnchanged := not AEntry.Forced and FOwner.FReports.Unchanged(AUri, AStamp);
+  finally
+    TMonitor.Exit(FOwner.FLock);
+  end;
+  Result := not mUnchanged and FOwner.FHooks.ReadText(AEntry.FileName, AText);
+end;
+
+function TLspWorkspaceCheck.TWorker.Diagnose(const AEntry: TEntry; const AUri, AText: string): TJSONArray;
+var
+  mDocument: ITextDocument;
+  mToken: IJsonRpcCancellationToken;
+  mLimit: Int64;
+  mPrevious: TCheckProfiler;
+  mWatch: TStopwatch;
+begin
+  // Erst in Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben (beim Token je Datei 88 Byte).
+  mDocument := TTextDocument.Create(AUri, 'objectpascal', 0, AText);
+  mLimit := FOwner.FHooks.FileLimitMs;
+  if AEntry.Unlimited then
+  begin
+    mLimit := 0;
+  end;
+  mToken := TCheckToken.Create(FOwner, mLimit, not AEntry.Unlimited);
+  // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den Profiler dieses Threads.
+  mPrevious := TCheckProfiler.Attach(FOwner.FProgress.Profiler);
+  mWatch := TStopwatch.StartNew;
+  try
+    Result := FOwner.FHooks.Diagnose(mDocument, mToken);
+  finally
+    TCheckProfiler.Attach(mPrevious);
+    FOwner.FProgress.Profiler.AddUnit(AEntry.FileName, TCheckProfiler.TicksToMicroseconds(mWatch.ElapsedTicks,
+      TStopwatch.Frequency));
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Fail(const AEntry: TEntry; const AUri: string; AStamp: Int64;
+  AError: Exception);
+var
+  mRetry: TEntry;
+begin
+  if AError is EWorkspaceCheckInterrupted then
+  begin
+    Requeue(AEntry, True);
+  end
+  else if AError is EWorkspaceCheckDeadline then
+  begin
+    // Zu langsam für den ersten Durchgang (#1220): am Ende ohne Frist zu Ende prüfen.
+    mRetry := AEntry;
+    mRetry.Unlimited := True;
+    mRetry.Forced := True;
+    mRetry.Queued := FOwner.FClock.ElapsedMilliseconds;
+    Requeue(mRetry, False);
+  end
+  else if FOwner.Interrupted(False) then
+  begin
+    Requeue(AEntry, True);
+  end
+  else
+  begin
+    // Datei überspringen (#1094): leer bis zur nächsten Änderung, die übrigen weiter prüfen.
+    TStackGuard.AfterError(AError);
+    Log(Format('Projektprüfung: %s übersprungen (%s)', [LabelOf(AEntry.FileName), AError.ClassName]));
+    Store(AUri, AStamp, TJSONArray.Create, True);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Requeue(const AEntry: TEntry; AFront: Boolean);
+begin
+  TMonitor.Enter(FOwner.FLock);
+  try
+    FOwner.FSchedule.Release;
+    // Inzwischen neu eingestellt (Start, Affected): der neue Eintrag genügt.
+    if FOwner.FStopping or FOwner.FSchedule.IsQueued(AEntry.FileName) then
+    begin
+      Exit;
+    end;
+    // Ein erzwungener Neustart hat den Lauf beendet; die Datei gehört in den neuen.
+    if not FOwner.FProgress.Run.Active then
+    begin
+      FOwner.FProgress.Added;
+    end;
+    FOwner.FSchedule.Put(AEntry, AFront);
+  finally
+    TMonitor.Exit(FOwner.FLock);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Settle;
+begin
+  // Datei ohne neue Befunde erledigt (geöffnet, unverändert, fehlt).
+  TMonitor.Enter(FOwner.FLock);
+  try
+    FOwner.FSchedule.Release;
+    FOwner.FProgress.Settle;
+    FOwner.Changed;
+  finally
+    TMonitor.Exit(FOwner.FLock);
+  end;
+end;
+
+procedure TLspWorkspaceCheck.TWorker.Store(const AUri: string; AStamp: Int64; AItems: TJSONArray;
+  AFailed: Boolean);
+var
+  mPacked: TBytes;
+begin
+  // Außerhalb der Sperre packen; der Baum wird danach nicht mehr gebraucht.
+  try
+    mPacked := TCompactJson.Pack(AItems);
+  finally
+    AItems.Free;
+  end;
+  TMonitor.Enter(FOwner.FLock);
+  try
+    FOwner.FSchedule.Release;
+    if FOwner.FStopping then
+    begin
+      Exit;
+    end;
+    FOwner.FReports.Put(AUri, AStamp, mPacked);
+    FOwner.FProgress.Stored(AFailed);
+    FOwner.Changed;
+  finally
+    TMonitor.Exit(FOwner.FLock);
   end;
 end;
 
@@ -378,26 +1136,20 @@ constructor TLspWorkspaceCheck.Create(const AFiles: TWorkspaceCheckFiles; const 
   const ADiagnose: TWorkspaceCheckDiagnose);
 begin
   inherited Create;
-  FFiles := AFiles;
-  FStamp := AStamp;
-  FReadText := AReadText;
-  FIsOpen := AIsOpen;
-  FDiagnose := ADiagnose;
-  FFileLimitMs := cDefaultFileLimitMs;
-  FTypingQuietMs := cDefaultTypingQuietMs;
+  FHooks.Files := AFiles;
+  FHooks.Stamp := AStamp;
+  FHooks.ReadText := AReadText;
+  FHooks.IsOpen := AIsOpen;
+  FHooks.Diagnose := ADiagnose;
+  FHooks.FileLimitMs := cDefaultFileLimitMs;
   FLock := TObject.Create;
   FClock := TStopwatch.StartNew;
-  FQueue := TList<TEntry>.Create;
-  FQueued := TDictionary<string, Boolean>.Create;
-  FProject := TDictionary<string, Boolean>.Create;
-  FReports := TDictionary<string, TBytes>.Create;
-  FIds := TDictionary<string, string>.Create;
-  FStamps := TDictionary<string, Int64>.Create;
-  FPauses := TDictionary<string, Int64>.Create;
-  FProfiler := TCheckProfiler.Create;
-  FTypedAt := -1;
-  // Ids einer früheren Sitzung sollen nie zufällig passen.
-  FSession := Integer(TThread.GetTickCount64 and $7FFFFFFF);
+  FSchedule := TSchedule.Create;
+  FReports := TReports.Create;
+  FProgress.Profiler := TCheckProfiler.Create;
+  FPauses.Reasons := TDictionary<string, Int64>.Create;
+  FPauses.TypedAt := -1;
+  FPauses.QuietMs := cDefaultTypingQuietMs;
 end;
 
 destructor TLspWorkspaceCheck.Destroy;
@@ -414,26 +1166,12 @@ begin
     FWorker.WaitFor;
     FWorker.Free;
   end;
-  FProfiler.Free;
-  FPauses.Free;
-  FStamps.Free;
-  FIds.Free;
+  FPauses.Reasons.Free;
+  FProgress.Profiler.Free;
   FReports.Free;
-  FProject.Free;
-  FQueued.Free;
-  FQueue.Free;
+  FSchedule.Free;
   FLock.Free;
   inherited;
-end;
-
-class function TLspWorkspaceCheck.KeyOf(const AFileName: string): string;
-begin
-  Result := AnsiLowerCase(AFileName);
-end;
-
-function TLspWorkspaceCheck.Now_: Int64;
-begin
-  Result := FClock.ElapsedMilliseconds;
 end;
 
 procedure TLspWorkspaceCheck.Changed;
@@ -454,89 +1192,14 @@ begin
   FWorker.Start;
 end;
 
-function TLspWorkspaceCheck.LabelOf(const AFileName: string): string;
+function TLspWorkspaceCheck.Interrupted(AInterruptible: Boolean): Boolean;
 begin
-  Result := 'unit';
-  if Assigned(FFileLabel) then
-  begin
-    Result := FFileLabel(AFileName);
+  TMonitor.Enter(FLock);
+  try
+    Result := FStopping or (AInterruptible and FSchedule.Interrupt);
+  finally
+    TMonitor.Exit(FLock);
   end;
-end;
-
-procedure TLspWorkspaceCheck.Log(const AMessage: string);
-begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
-end;
-
-procedure TLspWorkspaceCheck.BeginRunLocked;
-begin
-  if FRun.Active then
-  begin
-    Exit;
-  end;
-  Inc(FRun.Serial);
-  FRun.Active := True;
-  FRun.Done := 0;
-  FRun.Total := 0;
-  FRun.Skipped := 0;
-  FRun.ElapsedMs := 0;
-  FRunComputed := 0;
-  FRunClock := TStopwatch.StartNew;
-  FProfiler.BeginRun(Now);
-end;
-
-function TLspWorkspaceCheck.FinishRunLocked: string;
-begin
-  Result := '';
-  if not FRun.Active then
-  begin
-    Exit;
-  end;
-  FRun.Active := False;
-  FRun.ElapsedMs := FRunClock.ElapsedMilliseconds;
-  FProfiler.FinishRun(FRun.ElapsedMs);
-  Changed;
-  Result := Format('Projektprüfung fertig: %d Units in %d ms, %d neu geprüft, %d übersprungen',
-    [FRun.Total, FRun.ElapsedMs, FRunComputed, FRun.Skipped]);
-end;
-
-procedure TLspWorkspaceCheck.EnqueueLocked(const AFileName: string; AForced: Boolean);
-var
-  mKey: string;
-  mEntry: TEntry;
-  mIndex: Integer;
-  mForced: Boolean;
-begin
-  mKey := KeyOf(AFileName);
-  if FQueued.TryGetValue(mKey, mForced) then
-  begin
-    if AForced and not mForced then
-    begin
-      FQueued[mKey] := True;
-      for mIndex := 0 to FQueue.Count - 1 do
-      begin
-        if KeyOf(FQueue[mIndex].FileName) = mKey then
-        begin
-          mEntry := FQueue[mIndex];
-          mEntry.Forced := True;
-          FQueue[mIndex] := mEntry;
-          Break;
-        end;
-      end;
-    end;
-    Exit;
-  end;
-  BeginRunLocked;
-  mEntry := Default(TEntry);
-  mEntry.FileName := AFileName;
-  mEntry.Forced := AForced;
-  mEntry.Queued := Now_;
-  FQueue.Add(mEntry);
-  FQueued.Add(mKey, AForced);
-  Inc(FRun.Total);
 end;
 
 procedure TLspWorkspaceCheck.Want;
@@ -545,8 +1208,8 @@ var
 begin
   TMonitor.Enter(FLock);
   try
-    mFirst := not FWanted;
-    FWanted := True;
+    mFirst := not FSchedule.Wanted;
+    FSchedule.Wanted := True;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -559,16 +1222,15 @@ end;
 procedure TLspWorkspaceCheck.Start(AForce: Boolean);
 var
   mFiles: TArray<string>;
-  mFileName, mKey, mUri: string;
-  mStale: TList<string>;
+  mFileName: string;
 begin
-  if not Assigned(FFiles) then
+  if not Assigned(FHooks.Files) then
   begin
     Exit;
   end;
   TMonitor.Enter(FLock);
   try
-    if not FWanted or FStopping then
+    if not FSchedule.Wanted or FStopping then
     begin
       Exit;
     end;
@@ -576,52 +1238,29 @@ begin
     TMonitor.Exit(FLock);
   end;
   // Außerhalb der Sperre: Der Anbieter sperrt selbst (Arbeitsbereiche).
-  mFiles := FFiles();
-  mStale := TList<string>.Create;
+  mFiles := FHooks.Files();
   TMonitor.Enter(FLock);
   try
     // Erzwungen: Der Lauf beginnt von vorn, damit Fortschritt und Ende stimmen. Die laufende Datei bricht ab;
     // sie steht ohnehin wieder in der Schlange.
     if AForce then
     begin
-      FQueue.Clear;
-      FQueued.Clear;
-      FRun.Active := False;
-      if FCurrent <> '' then
-      begin
-        FInterrupt := True;
-      end;
+      FSchedule.Restart;
+      FProgress.Run.Active := False;
     end;
-    FProject.Clear;
+    FSchedule.ClearProject;
     for mFileName in mFiles do
     begin
-      mKey := KeyOf(mFileName);
-      if FProject.ContainsKey(mKey) then
+      if FSchedule.AddToProject(mFileName) and FSchedule.Add(mFileName, AForce, FClock.ElapsedMilliseconds) then
       begin
-        Continue;
-      end;
-      FProject.Add(mKey, True);
-      EnqueueLocked(mFileName, AForce);
-    end;
-    // Nicht mehr zum Projekt gehörende Dateien melden sich nie wieder; ihre Befunde verwerfen.
-    for mUri in FIds.Keys do
-    begin
-      if not FProject.ContainsKey(KeyOf(TDocumentUris.ToPath(mUri))) then
-      begin
-        mStale.Add(mUri);
+        FProgress.Added;
       end;
     end;
-    for mUri in mStale do
-    begin
-      FIds.Remove(mUri);
-      FReports.Remove(mUri);
-      FStamps.Remove(mUri);
-    end;
+    FReports.DropStale(FSchedule);
     EnsureWorker;
     Changed;
   finally
     TMonitor.Exit(FLock);
-    mStale.Free;
   end;
 end;
 
@@ -632,7 +1271,7 @@ var
 begin
   TMonitor.Enter(FLock);
   try
-    if not FWanted or FStopping then
+    if not FSchedule.Wanted or FStopping then
     begin
       Exit;
     end;
@@ -640,20 +1279,20 @@ begin
     TMonitor.Exit(FLock);
   end;
   mFiles := AFiles;
-  if AWithDependents and Assigned(FDependents) then
+  if AWithDependents and Assigned(FHooks.Dependents) then
   begin
     for mFileName in AFiles do
     begin
-      mFiles := mFiles + FDependents(mFileName);
+      mFiles := mFiles + FHooks.Dependents(mFileName);
     end;
   end;
   TMonitor.Enter(FLock);
   try
     for mFileName in mFiles do
     begin
-      if FProject.ContainsKey(KeyOf(mFileName)) then
+      if FSchedule.InProject(mFileName) and FSchedule.Add(mFileName, True, FClock.ElapsedMilliseconds) then
       begin
-        EnqueueLocked(mFileName, True);
+        FProgress.Added;
       end;
     end;
     EnsureWorker;
@@ -672,24 +1311,10 @@ procedure TLspWorkspaceCheck.Pause(const AReason: string; AOn: Boolean; ALimitMs
 begin
   TMonitor.Enter(FLock);
   try
+    FPauses.Switch(AReason, AOn, ALimitMs, FClock.ElapsedMilliseconds);
     if AOn then
     begin
-      if ALimitMs = 0 then
-      begin
-        FPauses.AddOrSetValue(AReason, High(Int64));
-      end
-      else
-      begin
-        FPauses.AddOrSetValue(AReason, Now_ + ALimitMs);
-      end;
-      if FCurrent <> '' then
-      begin
-        FInterrupt := True;
-      end;
-    end
-    else
-    begin
-      FPauses.Remove(AReason);
+      FSchedule.InterruptCurrent;
     end;
     TMonitor.PulseAll(FLock);
   finally
@@ -701,11 +1326,8 @@ procedure TLspWorkspaceCheck.Typed;
 begin
   TMonitor.Enter(FLock);
   try
-    FTypedAt := Now_;
-    if FCurrent <> '' then
-    begin
-      FInterrupt := True;
-    end;
+    FPauses.TypedAt := FClock.ElapsedMilliseconds;
+    FSchedule.InterruptCurrent;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -715,7 +1337,7 @@ procedure TLspWorkspaceCheck.EnterForeground;
 begin
   TMonitor.Enter(FLock);
   try
-    Inc(FForeground);
+    Inc(FPauses.Foreground);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -725,9 +1347,9 @@ procedure TLspWorkspaceCheck.LeaveForeground;
 begin
   TMonitor.Enter(FLock);
   try
-    if FForeground > 0 then
+    if FPauses.Foreground > 0 then
     begin
-      Dec(FForeground);
+      Dec(FPauses.Foreground);
     end;
     TMonitor.PulseAll(FLock);
   finally
@@ -735,356 +1357,38 @@ begin
   end;
 end;
 
-function TLspWorkspaceCheck.Interrupted(AInterruptible: Boolean): Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FStopping or (AInterruptible and FInterrupt);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-function TLspWorkspaceCheck.HindranceLocked(ABusy: Boolean; out AShown: string): string;
-var
-  mPair: TPair<string, Int64>;
-  mExpired: TList<string>;
-  mReason: string;
-begin
-  Result := '';
-  AShown := '';
-  mExpired := TList<string>.Create;
-  try
-    for mPair in FPauses do
-    begin
-      if mPair.Value < Now_ then
-      begin
-        mExpired.Add(mPair.Key);
-      end
-      else if (Result = '') or (mPair.Key < Result) then
-      begin
-        Result := mPair.Key;
-      end;
-    end;
-    // Sicherheitsnetz: Das Ende der Pause kam nie an.
-    for mReason in mExpired do
-    begin
-      FPauses.Remove(mReason);
-      Log(Format('Projektprüfung: Pause "%s" nach Frist beendet (Sicherheitsnetz)', [mReason]));
-    end;
-  finally
-    mExpired.Free;
-  end;
-  if (Result = '') and ABusy then
-  begin
-    Result := cPauseIndex;
-  end;
-  AShown := Result;
-  if Result <> '' then
-  begin
-    Exit;
-  end;
-  // Vorrang des Benutzers: kurz, darum nicht in der Statusleiste.
-  if FForeground > 0 then
-  begin
-    Exit('foreground');
-  end;
-  if (FTypedAt >= 0) and (Now_ - FTypedAt < FTypingQuietMs) then
-  begin
-    Exit('typing');
-  end;
-end;
-
-function TLspWorkspaceCheck.NextEntry(out AEntry: TEntry): Boolean;
-var
-  mBusy: Boolean;
-  mReason, mShown, mFinished: string;
-begin
-  while True do
-  begin
-    // Außerhalb der Sperre: Der Anbieter sperrt selbst (Arbeitsbereiche).
-    mBusy := Assigned(FBusy) and FBusy();
-    mFinished := '';
-    TMonitor.Enter(FLock);
-    try
-      if FStopping then
-      begin
-        Exit(False);
-      end;
-      mReason := HindranceLocked(mBusy, mShown);
-      if mShown <> FRun.Paused then
-      begin
-        FRun.Paused := mShown;
-        Changed;
-      end;
-      if (mReason = '') and (FQueue.Count > 0) then
-      begin
-        AEntry := FQueue[0];
-        FQueue.Delete(0);
-        FQueued.Remove(KeyOf(AEntry.FileName));
-        FCurrent := AEntry.FileName;
-        FInterrupt := False;
-        Exit(True);
-      end;
-      if FQueue.Count = 0 then
-      begin
-        mFinished := FinishRunLocked;
-        if mFinished = '' then
-        begin
-          TMonitor.Wait(FLock, cIdleWaitMs);
-        end;
-      end
-      else
-      begin
-        TMonitor.Wait(FLock, cSliceMs);
-      end;
-    finally
-      TMonitor.Exit(FLock);
-    end;
-    if mFinished <> '' then
-    begin
-      Log(mFinished);
-    end;
-  end;
-end;
-
-procedure TLspWorkspaceCheck.Requeue(const AEntry: TEntry; AFront: Boolean);
-begin
-  TMonitor.Enter(FLock);
-  try
-    FCurrent := '';
-    if FStopping then
-    begin
-      Exit;
-    end;
-    // Inzwischen neu eingestellt (Start, Affected): der neue Eintrag genügt.
-    if FQueued.ContainsKey(KeyOf(AEntry.FileName)) then
-    begin
-      Exit;
-    end;
-    // Ein erzwungener Neustart hat den Lauf beendet; die Datei gehört in den neuen.
-    if not FRun.Active then
-    begin
-      BeginRunLocked;
-      Inc(FRun.Total);
-    end;
-    if AFront then
-    begin
-      FQueue.Insert(0, AEntry);
-    end
-    else
-    begin
-      FQueue.Add(AEntry);
-    end;
-    FQueued.Add(KeyOf(AEntry.FileName), AEntry.Forced);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspWorkspaceCheck.Settle;
-begin
-  // Datei ohne neue Befunde erledigt (geöffnet, unverändert, fehlt).
-  TMonitor.Enter(FLock);
-  try
-    FCurrent := '';
-    // Höchstens Total: Eine nicht unterbrechbare Datei kann nach einem Neustart noch im alten Lauf enden.
-    if FRun.Active and (FRun.Done < FRun.Total) then
-    begin
-      Inc(FRun.Done);
-    end;
-    Changed;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspWorkspaceCheck.Store(const AUri: string; AStamp: Int64; AItems: TJSONArray; AFailed: Boolean);
-var
-  mPacked: TBytes;
-begin
-  // Außerhalb der Sperre packen; der Baum wird danach nicht mehr gebraucht.
-  try
-    mPacked := TCompactJson.Pack(AItems);
-  finally
-    AItems.Free;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    FCurrent := '';
-    if FStopping then
-    begin
-      Exit;
-    end;
-    Inc(FSerial);
-    FReports.AddOrSetValue(AUri, mPacked);
-    FIds.AddOrSetValue(AUri, Format('w%d.%d:t%d', [FSession, FSerial, AStamp]));
-    FStamps.AddOrSetValue(AUri, AStamp);
-    Inc(FComputed);
-    if FRun.Active and (FRun.Done < FRun.Total) then
-    begin
-      Inc(FRun.Done);
-      Inc(FRunComputed);
-      if AFailed then
-      begin
-        Inc(FRun.Skipped);
-      end;
-    end;
-    if AFailed then
-    begin
-      Inc(FSkipped);
-    end;
-    Changed;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TLspWorkspaceCheck.Process(const AEntry: TEntry);
-var
-  mUri, mText: string;
-  mStamp, mKnown: Int64;
-  mUnchanged: Boolean;
-  mDocument: ITextDocument;
-  mToken: IJsonRpcCancellationToken;
-  mItems: TJSONArray;
-  mRetry: TEntry;
-  mLimit: Int64;
-  mPrevious: TCheckProfiler;
-  mWatch: TStopwatch;
-begin
-  mUri := TDocumentUris.FromPath(AEntry.FileName);
-  // Geöffnete Dateien prüft textDocument/diagnostic mit dem Editortext.
-  if (Assigned(FIsOpen) and FIsOpen(mUri)) or not FStamp(AEntry.FileName, mStamp) then
-  begin
-    Settle;
-    Exit;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    mUnchanged := not AEntry.Forced and FStamps.TryGetValue(mUri, mKnown) and (mKnown = mStamp);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  if mUnchanged or not FReadText(AEntry.FileName, mText) then
-  begin
-    Settle;
-    Exit;
-  end;
-  // Erst in Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben (beim Token je Datei 88 Byte).
-  mDocument := TTextDocument.Create(mUri, 'objectpascal', 0, mText);
-  mLimit := FFileLimitMs;
-  if AEntry.Unlimited then
-  begin
-    mLimit := 0;
-  end;
-  mToken := TCheckToken.Create(Self, mLimit, not AEntry.Unlimited);
-  try
-    // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den Profiler dieses Threads.
-    mPrevious := TCheckProfiler.Attach(FProfiler);
-    mWatch := TStopwatch.StartNew;
-    try
-      mItems := FDiagnose(mDocument, mToken);
-    finally
-      TCheckProfiler.Attach(mPrevious);
-      FProfiler.AddUnit(AEntry.FileName, TCheckProfiler.TicksToMicroseconds(mWatch.ElapsedTicks,
-        TStopwatch.Frequency));
-    end;
-  except
-    on EWorkspaceCheckInterrupted do
-    begin
-      Requeue(AEntry, True);
-      Exit;
-    end;
-    on EWorkspaceCheckDeadline do
-    begin
-      // Zu langsam für den ersten Durchgang (#1220): am Ende ohne Frist zu Ende prüfen.
-      mRetry := AEntry;
-      mRetry.Unlimited := True;
-      mRetry.Forced := True;
-      mRetry.Queued := Now_;
-      Requeue(mRetry, False);
-      Exit;
-    end;
-    on E: Exception do
-    begin
-      if Interrupted(False) then
-      begin
-        Requeue(AEntry, True);
-        Exit;
-      end;
-      // Datei überspringen (#1094): leer bis zur nächsten Änderung, die übrigen weiter prüfen.
-      TStackGuard.AfterError(E);
-      Log(Format('Projektprüfung: %s übersprungen (%s)', [LabelOf(AEntry.FileName), E.ClassName]));
-      Store(mUri, mStamp, TJSONArray.Create, True);
-      Exit;
-    end;
-  end;
-  Store(mUri, mStamp, mItems, False);
-end;
-
-procedure TLspWorkspaceCheck.Work;
-var
-  mEntry: TEntry;
-begin
-  while NextEntry(mEntry) do
-  begin
-    Process(mEntry);
-  end;
-end;
-
 function TLspWorkspaceCheck.Collect(const APrevious: TDictionary<string, string>; AMax: Integer): TJSONArray;
 var
-  mPair: TPair<string, string>;
-  mKnown: string;
+  mCandidates: TArray<TCollected>;
   mCandidate: TCollected;
-  mCandidates: TList<TCollected>;
   mReport: TJSONObject;
 begin
-  Result := TJSONArray.Create;
-  mCandidates := TList<TCollected>.Create;
+  // Unter der Sperre nur die gepackten Befunde einsammeln (Referenzen, keine Kopien).
+  TMonitor.Enter(FLock);
   try
-    // Unter der Sperre nur die gepackten Befunde einsammeln (Referenzen, keine Kopien).
-    TMonitor.Enter(FLock);
-    try
-      for mPair in FIds do
-      begin
-        if APrevious.TryGetValue(mPair.Key, mKnown) and (mKnown = mPair.Value) then
-        begin
-          Continue;
-        end;
-        if not FReports.TryGetValue(mPair.Key, mCandidate.Items) then
-        begin
-          Continue;
-        end;
-        mCandidate.Uri := mPair.Key;
-        mCandidate.Id := mPair.Value;
-        mCandidates.Add(mCandidate);
-      end;
-    finally
-      TMonitor.Exit(FLock);
-    end;
-    // Außerhalb der Sperre: Der Dokumentspeicher sperrt selbst. Entpackt wird nur, was die Antwort enthält.
-    for mCandidate in mCandidates do
-    begin
-      if Result.Count >= AMax then
-      begin
-        Break;
-      end;
-      if Assigned(FIsOpen) and FIsOpen(mCandidate.Uri) then
-      begin
-        Continue;
-      end;
-      mReport := TJSONObject.Create;
-      mReport.AddPair('uri', mCandidate.Uri);
-      mReport.AddPair('version', TJSONNull.Create);
-      mReport.AddPair('kind', 'full');
-      mReport.AddPair('resultId', mCandidate.Id);
-      mReport.AddPair('items', TCompactJson.UnpackArray(mCandidate.Items));
-      Result.AddElement(mReport);
-    end;
+    mCandidates := FReports.NewerThan(APrevious);
   finally
-    mCandidates.Free;
+    TMonitor.Exit(FLock);
+  end;
+  Result := TJSONArray.Create;
+  // Außerhalb der Sperre: Der Dokumentspeicher sperrt selbst. Entpackt wird nur, was die Antwort enthält.
+  for mCandidate in mCandidates do
+  begin
+    if Result.Count >= AMax then
+    begin
+      Break;
+    end;
+    if Assigned(FHooks.IsOpen) and FHooks.IsOpen(mCandidate.Uri) then
+    begin
+      Continue;
+    end;
+    mReport := TJSONObject.Create;
+    mReport.AddPair('uri', mCandidate.Uri);
+    mReport.AddPair('version', TJSONNull.Create);
+    mReport.AddPair('kind', 'full');
+    mReport.AddPair('resultId', mCandidate.Id);
+    mReport.AddPair('items', TCompactJson.UnpackArray(mCandidate.Items));
+    Result.AddElement(mReport);
   end;
 end;
 
@@ -1117,11 +1421,7 @@ function TLspWorkspaceCheck.Run: TWorkspaceCheckRun;
 begin
   TMonitor.Enter(FLock);
   try
-    Result := FRun;
-    if FRun.Active then
-    begin
-      Result.ElapsedMs := FRunClock.ElapsedMilliseconds;
-    end;
+    Result := FProgress.Snapshot;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1133,38 +1433,24 @@ var
 begin
   TMonitor.Enter(FLock);
   try
-    mRunning := -1;
-    if FRun.Active then
-    begin
-      mRunning := FRunClock.ElapsedMilliseconds;
-    end;
+    mRunning := FProgress.RunningMs;
   finally
     TMonitor.Exit(FLock);
   end;
-  Result := FProfiler.Snapshot(ACount, mRunning);
+  Result := FProgress.Profiler.Snapshot(ACount, mRunning);
 end;
 
 function TLspWorkspaceCheck.Queue: TWorkspaceCheckQueue;
-var
-  mEntry: TEntry;
-  mNow: Int64;
 begin
   Result := Default(TWorkspaceCheckQueue);
   TMonitor.Enter(FLock);
   try
-    mNow := Now_;
-    Result.Waiting := FQueue.Count;
-    if FCurrent <> '' then
+    Result.Waiting := FSchedule.Count;
+    if FSchedule.Running then
     begin
       Result.Running := 1;
     end;
-    for mEntry in FQueue do
-    begin
-      if mNow - mEntry.Queued > Result.OldestWaitMs then
-      begin
-        Result.OldestWaitMs := mNow - mEntry.Queued;
-      end;
-    end;
+    Result.OldestWaitMs := FSchedule.OldestWaitMs(FClock.ElapsedMilliseconds);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1177,12 +1463,12 @@ begin
   mClock := TStopwatch.StartNew;
   TMonitor.Enter(FLock);
   try
-    while (FRun.Active or (FQueue.Count > 0) or (FCurrent <> '')) and
+    while (FProgress.Run.Active or (FSchedule.Count > 0) or FSchedule.Running) and
       (mClock.ElapsedMilliseconds < Int64(ATimeoutMs)) do
     begin
       TMonitor.Wait(FLock, cSliceMs);
     end;
-    Result := not (FRun.Active or (FQueue.Count > 0) or (FCurrent <> ''));
+    Result := not (FProgress.Run.Active or (FSchedule.Count > 0) or FSchedule.Running);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -1192,7 +1478,7 @@ class function TLspWorkspaceCheck.DependentsOf(const AUnits: TArray<TUnitIndex>;
   const AFileName: string): TArray<string>;
 var
   mUnit: TUnitIndex;
-  mName, mUsed, mInclude: string;
+  mName: string;
   mIsInclude: Boolean;
 begin
   Result := nil;
@@ -1204,25 +1490,9 @@ begin
     begin
       Continue;
     end;
-    if mIsInclude then
+    if (mIsInclude and IncludesFile(mUnit, AFileName)) or (not mIsInclude and UsesUnit(mUnit, mName)) then
     begin
-      for mInclude in mUnit.Includes do
-      begin
-        if SameFileName(mInclude, AFileName) then
-        begin
-          Result := Result + [mUnit.FileName];
-          Break;
-        end;
-      end;
-      Continue;
-    end;
-    for mUsed in mUnit.InterfaceUses + mUnit.ImplementationUses do
-    begin
-      if SameText(mUsed, mName) then
-      begin
-        Result := Result + [mUnit.FileName];
-        Break;
-      end;
+      Result := Result + [mUnit.FileName];
     end;
   end;
 end;
