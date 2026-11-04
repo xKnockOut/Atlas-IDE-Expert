@@ -181,6 +181,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.RecursionGutter.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterColumn.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SelectionMatches.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ServerEdit.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExitPoints.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Reassigned.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.BlockComment.pas"/>
@@ -576,6 +577,7 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExtractMembers.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.HideTeamFile.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.NavHistory.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.NavHistory.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Peek.pas"/>
