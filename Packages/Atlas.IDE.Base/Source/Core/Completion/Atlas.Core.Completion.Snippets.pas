@@ -164,88 +164,395 @@ begin
   Result := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]);
 end;
 
+procedure FlushLiteral(var ASegments: TArray<TSegment>; var ALiteral: string);
+var
+  mSegment: TSegment;
+begin
+  if ALiteral = '' then
+  begin
+    Exit;
+  end;
+  mSegment := Default(TSegment);
+  mSegment.Text := ALiteral;
+  ASegments := ASegments + [mSegment];
+  ALiteral := '';
+end;
+
+/// <summary>${n} bzw. ${n:Vorgabe} ab dem "$" an AIndex; ANext: Index hinter "}".</summary>
+function TryBracedStop(const ABody: string; AIndex: Integer; out ASegment: TSegment; out ANext: Integer): Boolean;
+var
+  mClose, mColon, mNumber: Integer;
+  mInner: string;
+begin
+  ASegment := Default(TSegment);
+  ANext := AIndex;
+  if not ((AIndex + 2 <= Length(ABody)) and (ABody[AIndex + 1] = '{') and IsDigit(ABody[AIndex + 2])) then
+  begin
+    Exit(False);
+  end;
+  mClose := AIndex + 2;
+  while (mClose <= Length(ABody)) and (ABody[mClose] <> '}') and (ABody[mClose] <> #10) do
+  begin
+    Inc(mClose);
+  end;
+  mInner := Copy(ABody, AIndex + 2, mClose - AIndex - 2);
+  mColon := Pos(':', mInner);
+  if mColon = 0 then
+  begin
+    mColon := Length(mInner) + 1;
+  end;
+  Result := (mClose <= Length(ABody)) and (ABody[mClose] = '}') and
+    TryStrToInt(Copy(mInner, 1, mColon - 1), mNumber) and (mNumber >= 0);
+  if Result then
+  begin
+    ASegment.IsStop := True;
+    ASegment.Number := mNumber;
+    ASegment.HasDefault := mColon <= Length(mInner);
+    ASegment.Text := Copy(mInner, mColon + 1, MaxInt);
+    ANext := mClose + 1;
+  end;
+end;
+
+/// <summary>$0 allein, nicht $0F, ab dem "$" an AIndex.</summary>
+function TryEndStop(const ABody: string; AIndex: Integer; out ASegment: TSegment; out ANext: Integer): Boolean;
+begin
+  ASegment := Default(TSegment);
+  ANext := AIndex + 2;
+  Result := (AIndex < Length(ABody)) and (ABody[AIndex + 1] = '0') and
+    ((AIndex + 2 > Length(ABody)) or not TTextChars.IsAsciiIdentChar(ABody[AIndex + 2]));
+  ASegment.IsStop := Result;
+end;
+
 /// <summary>Zerlegt den Text in Klartext und Platzhalter.</summary>
 function Segments(const ABody: string): TArray<TSegment>;
 var
-  Index, Close, Colon, Number: Integer;
-  Literal: string;
-  Segment: TSegment;
-  Inner: string;
-
-  procedure FlushLiteral;
-  begin
-    if Literal = '' then
-    begin
-      Exit;
-    end;
-    Segment := Default(TSegment);
-    Segment.Text := Literal;
-    Result := Result + [Segment];
-    Literal := '';
-  end;
-
+  mIndex, mNext: Integer;
+  mLiteral: string;
+  mSegment: TSegment;
 begin
   Result := nil;
-  Literal := '';
-  Index := 1;
-  while Index <= Length(ABody) do
+  mLiteral := '';
+  mIndex := 1;
+  while mIndex <= Length(ABody) do
   begin
-    if ABody[Index] = '$' then
+    if ABody[mIndex] <> '$' then
     begin
-      // "$$" = "$"
-      if (Index < Length(ABody)) and (ABody[Index + 1] = '$') then
-      begin
-        Literal := Literal + '$';
-        Inc(Index, 2);
-        Continue;
-      end;
-      // ${n} bzw. ${n:Vorgabe}
-      if (Index < Length(ABody)) and (ABody[Index + 1] = '{') and (Index + 2 <= Length(ABody)) and
-        IsDigit(ABody[Index + 2]) then
-      begin
-        Close := Index + 2;
-        while (Close <= Length(ABody)) and (ABody[Close] <> '}') and (ABody[Close] <> #10) do
-        begin
-          Inc(Close);
-        end;
-        if (Close <= Length(ABody)) and (ABody[Close] = '}') then
-        begin
-          Inner := Copy(ABody, Index + 2, Close - Index - 2);
-          Colon := Pos(':', Inner);
-          if Colon = 0 then
-          begin
-            Colon := Length(Inner) + 1;
-          end;
-          if TryStrToInt(Copy(Inner, 1, Colon - 1), Number) and (Number >= 0) then
-          begin
-            FlushLiteral;
-            Segment := Default(TSegment);
-            Segment.IsStop := True;
-            Segment.Number := Number;
-            Segment.HasDefault := Colon <= Length(Inner);
-            Segment.Text := Copy(Inner, Colon + 1, MaxInt);
-            Result := Result + [Segment];
-            Index := Close + 1;
-            Continue;
-          end;
-        end;
-      end;
-      // $0 allein, nicht $0F
-      if (Index < Length(ABody)) and (ABody[Index + 1] = '0') and
-        ((Index + 2 > Length(ABody)) or not TTextChars.IsAsciiIdentChar(ABody[Index + 2])) then
-      begin
-        FlushLiteral;
-        Segment := Default(TSegment);
-        Segment.IsStop := True;
-        Result := Result + [Segment];
-        Inc(Index, 2);
-        Continue;
-      end;
+      mLiteral := mLiteral + ABody[mIndex];
+      Inc(mIndex);
+    end
+    // "$$" = "$"
+    else if (mIndex < Length(ABody)) and (ABody[mIndex + 1] = '$') then
+    begin
+      mLiteral := mLiteral + '$';
+      Inc(mIndex, 2);
+    end
+    else if TryBracedStop(ABody, mIndex, mSegment, mNext) or TryEndStop(ABody, mIndex, mSegment, mNext) then
+    begin
+      FlushLiteral(Result, mLiteral);
+      Result := Result + [mSegment];
+      mIndex := mNext;
+    end
+    else
+    begin
+      mLiteral := mLiteral + '$';
+      Inc(mIndex);
     end;
-    Literal := Literal + ABody[Index];
-    Inc(Index);
   end;
-  FlushLiteral;
+  FlushLiteral(Result, mLiteral);
+end;
+
+/// <summary>Wörter von "context:" prüfen (#719); False mit AError bei einem unbekannten.</summary>
+function CheckContext(const AValue: string; ALine: Integer; out AError: string): Boolean;
+var
+  mWord: string;
+begin
+  AError := '';
+  for mWord in AValue.Split([',']) do
+  begin
+    if (Trim(mWord) <> '') and (IndexText(Trim(mWord), TAtlasSnippets.ContextWords) < 0) then
+    begin
+      AError := Format('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
+        [ALine, Trim(mWord), string.Join(', ', TAtlasSnippets.ContextWords)]);
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function ApplyPostfix(var ASnippet: TAtlasSnippet; const AValue: string; ALine: Integer;
+  out AError: string): Boolean;
+begin
+  AError := '';
+  Result := SameText(AValue, 'true') or SameText(AValue, 'false');
+  if Result then
+  begin
+    ASnippet.Postfix := ASnippet.Postfix or SameText(AValue, 'true');
+  end
+  else
+  begin
+    AError := Format('Zeile %d: "postfix" ist true oder false', [ALine]);
+  end;
+end;
+
+function ApplyFileKind(var ASnippet: TAtlasSnippet; const AValue: string; ALine: Integer;
+  out AError: string): Boolean;
+begin
+  AError := '';
+  Result := IndexText(AValue, TAtlasSnippets.FileKinds) >= 0;
+  if Result then
+  begin
+    ASnippet.FileKind := LowerCase(AValue);
+  end
+  else
+  begin
+    AError := Format('Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
+      [ALine, AValue, string.Join(', ', TAtlasSnippets.FileKinds)]);
+  end;
+end;
+
+/// <summary>Schlüssel AKey der Kopfzeile ALine übernehmen; False mit AError bei einem Fehler.</summary>
+function ApplyKey(var ASnippet: TAtlasSnippet; const AKey, AValue: string; ALine: Integer;
+  out AError: string): Boolean;
+begin
+  AError := '';
+  Result := True;
+  if AKey = 'name' then
+  begin
+    ASnippet.Name := AValue;
+  end
+  else if AKey = 'prefix' then
+  begin
+    ASnippet.Prefix := AValue;
+  end
+  else if AKey = 'description' then
+  begin
+    ASnippet.Description := AValue;
+  end
+  else if AKey = 'postfix' then
+  begin
+    Result := ApplyPostfix(ASnippet, AValue, ALine, AError);
+  end
+  else if AKey = 'type' then
+  begin
+    ASnippet.TypeCondition := AValue;
+  end
+  else if AKey = 'context' then
+  begin
+    Result := CheckContext(AValue, ALine, AError);
+    if Result then
+    begin
+      ASnippet.Context := AValue;
+    end;
+  end
+  else if AKey = 'file' then
+  begin
+    Result := ApplyFileKind(ASnippet, AValue, ALine, AError);
+  end
+  else
+  begin
+    AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, ' +
+      'context, file)', [ALine, AKey]);
+    Result := False;
+  end;
+end;
+
+/// <summary>Kopfzeilen bis "---" lesen; ASeparator: Index dieser Zeile, -1 ohne. False mit AError bei einem
+/// Fehler.</summary>
+function ReadHeader(const ALines: TArray<string>; var ASnippet: TAtlasSnippet; out ASeparator: Integer;
+  out AError: string): Boolean;
+var
+  mIndex, mColon: Integer;
+  mLine: string;
+begin
+  ASeparator := -1;
+  AError := '';
+  Result := True;
+  mIndex := 0;
+  while Result and (mIndex <= High(ALines)) do
+  begin
+    mLine := Trim(ALines[mIndex]);
+    if mLine = '---' then
+    begin
+      ASeparator := mIndex;
+      Break;
+    end;
+    mColon := Pos(':', mLine);
+    if (mLine <> '') and (mLine[1] <> '#') and (mColon = 0) then
+    begin
+      AError := Format('Zeile %d: "Schlüssel: Wert" oder "---" erwartet', [mIndex + 1]);
+      Result := False;
+    end
+    else if (mLine <> '') and (mLine[1] <> '#') then
+    begin
+      Result := ApplyKey(ASnippet, LowerCase(Trim(Copy(mLine, 1, mColon - 1))), Trim(Copy(mLine, mColon + 1, MaxInt)),
+        mIndex + 1, AError);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Trenner und Kürzel prüfen: "---" vorhanden, Kürzel gesetzt und nur aus Buchstaben, Ziffern und _.
+/// </summary>
+function CheckHead(ASeparator: Integer; const APrefix: string; out AError: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  AError := '';
+  if ASeparator < 0 then
+  begin
+    AError := 'Zeile "---" zwischen Kopf und Text fehlt';
+  end
+  else if APrefix = '' then
+  begin
+    AError := 'Schlüssel "prefix" fehlt';
+  end;
+  for mIndex := 1 to Length(APrefix) do
+  begin
+    if (AError = '') and not TTextChars.IsAsciiIdentChar(APrefix[mIndex]) then
+    begin
+      AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [APrefix]);
+    end;
+  end;
+  Result := AError = '';
+end;
+
+/// <summary>Text nach "---", ohne Leerzeilen und Leerzeichen am Ende.</summary>
+function BodyOf(const ALines: TArray<string>; ASeparator: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := ASeparator + 1 to High(ALines) do
+  begin
+    if mIndex > ASeparator + 1 then
+    begin
+      Result := Result + #10;
+    end;
+    Result := Result + ALines[mIndex];
+  end;
+  // Leerzeilen am Ende gehören nicht zur Vorlage.
+  while (Result <> '') and ((Result[Length(Result)] = #10) or (Result[Length(Result)] = ' ')) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
+/// <summary>Ein Wort von "context:" passt zu den Orten APlaces (siehe TAtlasSnippets.FitsContext).</summary>
+function WordFits(const AWord: string; const APlaces: TArray<string>; AInRoutine: Boolean): Boolean;
+var
+  mPlace: string;
+begin
+  if SameText(AWord, 'any') or (SameText(AWord, 'statement') and AInRoutine) then
+  begin
+    Exit(True);
+  end;
+  for mPlace in APlaces do
+  begin
+    // Deklarationen: Typ- und Klassenebene, nicht im Rumpf einer Methode.
+    if SameText(AWord, mPlace) or (SameText(AWord, 'declaration') and not AInRoutine and
+      not SameText(mPlace, 'routine')) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function HasPrefix(const AList: TAtlasSnippetList; const APrefix: string): Boolean;
+var
+  mItem: TAtlasSnippet;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    if SameText(mItem.Prefix, APrefix) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function HasSameOrigin(const AList: TAtlasSnippetList; const ASnippet: TAtlasSnippet): Boolean;
+var
+  mItem: TAtlasSnippet;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    if (mItem.Origin = ASnippet.Origin) and SameText(mItem.Prefix, ASnippet.Prefix) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure AddSnippetFiles(const APath: string; ANames: TStringList);
+var
+  mSearch: TSearchRec;
+begin
+  if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + TAtlasSnippets.FileExtension, faAnyFile, mSearch) <> 0 then
+  begin
+    Exit;
+  end;
+  try
+    repeat
+      if (mSearch.Attr and faDirectory) = 0 then
+      begin
+        ANames.Add(mSearch.Name);
+      end;
+    until FindNext(mSearch) <> 0;
+  finally
+    FindClose(mSearch);
+  end;
+end;
+
+/// <summary>Namen der Vorlagendateien in APath, sortiert: Bei doppelten Kürzeln gilt immer dieselbe Datei.
+/// </summary>
+function SnippetFileNames(const APath: string): TArray<string>;
+var
+  mNames: TStringList;
+  mIndex: Integer;
+begin
+  mNames := TStringList.Create;
+  try
+    AddSnippetFiles(APath, mNames);
+    mNames.Sort;
+    SetLength(Result, mNames.Count);
+    for mIndex := 0 to mNames.Count - 1 do
+    begin
+      Result[mIndex] := mNames[mIndex];
+    end;
+  finally
+    mNames.Free;
+  end;
+end;
+
+/// <summary>Eine Vorlagendatei lesen: an AList anhängen, sonst Fehler "Datei: Meldung" an AErrors.</summary>
+procedure LoadSnippetFile(const APath, AName: string; var AList: TAtlasSnippetList; var AErrors: TArray<string>);
+var
+  mLines: TStringList;
+  mItem: TAtlasSnippet;
+  mError: string;
+begin
+  mLines := TStringList.Create;
+  try
+    try
+      mLines.LoadFromFile(IncludeTrailingPathDelimiter(APath) + AName, TEncoding.UTF8);
+      if TAtlasSnippets.Parse(mLines.Text, IncludeTrailingPathDelimiter(APath) + AName, mItem, mError) then
+      begin
+        AList := AList + [mItem];
+      end
+      else
+      begin
+        AErrors := AErrors + [AName + ': ' + mError];
+      end;
+    except
+      on E: Exception do
+        AErrors := AErrors + [AName + ': ' + E.Message];
+    end;
+  finally
+    mLines.Free;
+  end;
 end;
 
 { TAtlasSnippetExpansion }
@@ -269,138 +576,31 @@ end;
 class function TAtlasSnippets.Parse(const AText, AFileName: string; out ASnippet: TAtlasSnippet;
   out AError: string): Boolean;
 var
-  Lines: TArray<string>;
-  Index, Separator, Colon: Integer;
-  Line, Key, Value, Body, Word: string;
+  mLines: TArray<string>;
+  mSeparator: Integer;
+  mBody: string;
 begin
-  Result := False;
   ASnippet := Default(TAtlasSnippet);
   ASnippet.Origin := TAtlasSnippetOrigin.User;
   ASnippet.FileName := AFileName;
-  AError := '';
-  Lines := NormalizeBreaks(AText).Split([#10]);
-  Separator := -1;
-  for Index := 0 to High(Lines) do
+  mLines := NormalizeBreaks(AText).Split([#10]);
+  Result := ReadHeader(mLines, ASnippet, mSeparator, AError) and CheckHead(mSeparator, ASnippet.Prefix, AError);
+  if not Result then
   begin
-    Line := Trim(Lines[Index]);
-    if Line = '---' then
-    begin
-      Separator := Index;
-      Break;
-    end;
-    if (Line = '') or (Line[1] = '#') then
-    begin
-      Continue;
-    end;
-    Colon := Pos(':', Line);
-    if Colon = 0 then
-    begin
-      AError := Format('Zeile %d: "Schlüssel: Wert" oder "---" erwartet', [Index + 1]);
-      Exit;
-    end;
-    Key := LowerCase(Trim(Copy(Line, 1, Colon - 1)));
-    Value := Trim(Copy(Line, Colon + 1, MaxInt));
-    if Key = 'name' then
-    begin
-      ASnippet.Name := Value;
-    end
-    else if Key = 'prefix' then
-    begin
-      ASnippet.Prefix := Value;
-    end
-    else if Key = 'description' then
-    begin
-      ASnippet.Description := Value;
-    end
-    else if Key = 'postfix' then
-    begin
-      if SameText(Value, 'true') then
-      begin
-        ASnippet.Postfix := True;
-      end
-      else if not SameText(Value, 'false') then
-      begin
-        AError := Format('Zeile %d: "postfix" ist true oder false', [Index + 1]);
-        Exit;
-      end;
-    end
-    else if Key = 'type' then
-    begin
-      ASnippet.TypeCondition := Value;
-    end
-    else if Key = 'context' then
-    begin
-      for Word in Value.Split([',']) do
-      begin
-        if (Trim(Word) <> '') and (IndexText(Trim(Word), ContextWords) < 0) then
-        begin
-          AError := Format('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
-            [Index + 1, Trim(Word), string.Join(', ', ContextWords)]);
-          Exit;
-        end;
-      end;
-      ASnippet.Context := Value;
-    end
-    else if Key = 'file' then
-    begin
-      if IndexText(Value, FileKinds) < 0 then
-      begin
-        AError := Format('Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
-          [Index + 1, Value, string.Join(', ', FileKinds)]);
-        Exit;
-      end;
-      ASnippet.FileKind := LowerCase(Value);
-    end
-    else
-    begin
-      AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, ' +
-        'context, file)', [Index + 1, Key]);
-      Exit;
-    end;
-  end;
-  if Separator < 0 then
-  begin
-    AError := 'Zeile "---" zwischen Kopf und Text fehlt';
     Exit;
   end;
-  if ASnippet.Prefix = '' then
-  begin
-    AError := 'Schlüssel "prefix" fehlt';
-    Exit;
-  end;
-  for Index := 1 to Length(ASnippet.Prefix) do
-  begin
-    if not TTextChars.IsAsciiIdentChar(ASnippet.Prefix[Index]) then
-    begin
-      AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [ASnippet.Prefix]);
-      Exit;
-    end;
-  end;
-  Body := '';
-  for Index := Separator + 1 to High(Lines) do
-  begin
-    if Index > Separator + 1 then
-    begin
-      Body := Body + #10;
-    end;
-    Body := Body + Lines[Index];
-  end;
-  // Leerzeilen am Ende gehören nicht zur Vorlage.
-  while (Body <> '') and ((Body[Length(Body)] = #10) or (Body[Length(Body)] = ' ')) do
-  begin
-    Delete(Body, Length(Body), 1);
-  end;
-  if Trim(Body) = '' then
+  mBody := BodyOf(mLines, mSeparator);
+  Result := Trim(mBody) <> '';
+  if not Result then
   begin
     AError := 'Text der Vorlage fehlt';
     Exit;
   end;
-  ASnippet.Body := Body;
+  ASnippet.Body := mBody;
   if ASnippet.Name = '' then
   begin
     ASnippet.Name := ASnippet.Prefix;
   end;
-  Result := True;
 end;
 
 class function TAtlasSnippets.ToFileText(const ASnippet: TAtlasSnippet): string;
@@ -535,35 +735,19 @@ end;
 
 class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;
 var
-  Word, Place: string;
-  InRoutine: Boolean;
+  mWord: string;
+  mInRoutine: Boolean;
 begin
   if Trim(AContext) = '' then
   begin
     Exit(True);
   end;
-  InRoutine := IndexText('routine', APlaces) >= 0;
-  for Word in AContext.Split([',']) do
+  mInRoutine := IndexText('routine', APlaces) >= 0;
+  for mWord in AContext.Split([',']) do
   begin
-    if SameText(Trim(Word), 'any') then
+    if WordFits(Trim(mWord), APlaces, mInRoutine) then
     begin
       Exit(True);
-    end;
-    if SameText(Trim(Word), 'statement') and InRoutine then
-    begin
-      Exit(True);
-    end;
-    for Place in APlaces do
-    begin
-      if SameText(Trim(Word), Place) then
-      begin
-        Exit(True);
-      end;
-      // Deklarationen: Typ- und Klassenebene, nicht im Rumpf einer Methode.
-      if SameText(Trim(Word), 'declaration') and not InRoutine and not SameText(Place, 'routine') then
-      begin
-        Exit(True);
-      end;
     end;
   end;
   Result := False;
@@ -571,39 +755,22 @@ end;
 
 class function TAtlasSnippets.Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList;
 var
-  Item, Own: TAtlasSnippet;
-  Replaced: Boolean;
+  mItem: TAtlasSnippet;
 begin
   Result := nil;
-  for Item in ABuiltIn do
+  for mItem in ABuiltIn do
   begin
-    Replaced := False;
-    for Own in AUser do
+    if not HasPrefix(AUser, mItem.Prefix) then
     begin
-      if SameText(Own.Prefix, Item.Prefix) then
-      begin
-        Replaced := True;
-      end;
-    end;
-    if not Replaced then
-    begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
-  for Own in AUser do
+  // Doppelte Kürzel unter den neuen: die erste Datei gilt.
+  for mItem in AUser do
   begin
-    Replaced := False;
-    // Doppelte Kürzel unter den neuen: die erste Datei gilt.
-    for Item in Result do
+    if not HasSameOrigin(Result, mItem) then
     begin
-      if (Item.Origin = Own.Origin) and SameText(Own.Prefix, Item.Prefix) then
-      begin
-        Replaced := True;
-      end;
-    end;
-    if not Replaced then
-    begin
-      Result := Result + [Own];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -721,125 +888,156 @@ begin
   Result.Text := Text;
 end;
 
+function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string; forward;
+
+/// <summary>"\" an AIndex: maskiertes Zeichen (auf oberster Ebene "\$" als "$$"), sonst "\" selbst.</summary>
+function EscapeAt(const AText: string; var AIndex: Integer; ATop: Boolean): string;
+begin
+  if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
+  begin
+    Result := AText[AIndex + 1];
+    if ATop and (Result = '$') then
+    begin
+      Result := '$$';
+    end;
+    Inc(AIndex, 2);
+  end
+  else
+  begin
+    Result := '\';
+    Inc(AIndex);
+  end;
+end;
+
+procedure SkipPast(const AText: string; var AIndex: Integer; AChar: Char);
+begin
+  while (AIndex <= Length(AText)) and (AText[AIndex] <> AChar) do
+  begin
+    Inc(AIndex);
+  end;
+  Inc(AIndex);
+end;
+
+/// <summary>Auswahl ${n|a,b|} ab hinter "|": die erste Möglichkeit als Vorgabe; AIndex danach hinter "}".</summary>
+function ChoiceDefault(const AText: string; var AIndex: Integer): string;
+var
+  mStart: Integer;
+begin
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := Copy(AText, mStart, AIndex - mStart);
+  SkipPast(AText, AIndex, '}');
+end;
+
+/// <summary>Vorgabe eines Platzhalters in Klammern ab hinter dem Namen; AIndex danach hinter "}".</summary>
+function BracedDefault(const AText: string; var AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
+  begin
+    Inc(AIndex);
+    Result := ConvertLsp(AText, AIndex, False);
+  end
+  else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
+  begin
+    Inc(AIndex);
+    Result := ChoiceDefault(AText, AIndex);
+  end
+  else
+  begin
+    SkipPast(AText, AIndex, '}');
+  end;
+end;
+
+/// <summary>Tabstopp nur auf oberster Ebene und mit Nummer; Variablen werden zu ihrer Vorgabe.</summary>
+function StopText(const ANumber, ADefault: string; ATop: Boolean): string;
+begin
+  if not (ATop and (ANumber <> '') and IsDigit(ANumber[1])) then
+  begin
+    Result := ADefault;
+  end
+  else if (ADefault = '') and (ANumber = '0') then
+  begin
+    Result := '$0';
+  end
+  else if ADefault = '' then
+  begin
+    Result := '${' + ANumber + '}';
+  end
+  else
+  begin
+    Result := '${' + ANumber + ':' + ADefault + '}';
+  end;
+end;
+
+/// <summary>$1, ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe} ab dem "$" an AIndex.</summary>
+function PlaceholderAt(const AText: string; var AIndex: Integer; ATop: Boolean): string;
+var
+  mStart: Integer;
+  mBraced: Boolean;
+  mNumber, mDefault: string;
+begin
+  Inc(AIndex);
+  mBraced := AText[AIndex] = '{';
+  if mBraced then
+  begin
+    Inc(AIndex);
+  end;
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+  begin
+    Inc(AIndex);
+  end;
+  mNumber := Copy(AText, mStart, AIndex - mStart);
+  mDefault := '';
+  if mBraced then
+  begin
+    mDefault := BracedDefault(AText, AIndex);
+  end;
+  Result := StopText(mNumber, mDefault, ATop);
+end;
+
+/// <summary>"$" an AIndex beginnt einen Platzhalter; "$" vor einem Buchstaben bleibt Text ($FF).</summary>
+function IsPlaceholderStart(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AText[AIndex] = '$') and (AIndex < Length(AText)) and
+    (IsDigit(AText[AIndex + 1]) or (AText[AIndex + 1] = '{'));
+end;
+
 /// <summary>Liest ab AIndex Klartext bis zum passenden "}" bzw. Textende (verschachtelte Platzhalter und Variablen
 /// werden zu ihrer Vorgabe). Mit ATop entsteht das eigene Format ($$, ${n}, ${n:Vorgabe}).</summary>
 function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string;
-var
-  Start: Integer;
-  Number, Default: string;
 begin
   Result := '';
   while AIndex <= Length(AText) do
   begin
-    case AText[AIndex] of
-      '\':
-        begin
-          if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
-          begin
-            if ATop and (AText[AIndex + 1] = '$') then
-            begin
-              Result := Result + '$$';
-            end
-            else
-            begin
-              Result := Result + AText[AIndex + 1];
-            end;
-            Inc(AIndex, 2);
-          end
-          else
-          begin
-            Result := Result + '\';
-            Inc(AIndex);
-          end;
-          Continue;
-        end;
-      '}':
-        if not ATop then
-        begin
-          Inc(AIndex);
-          Exit;
-        end;
-      '$':
-        // $1, ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}; "$" vor einem Buchstaben bleibt Text ($FF).
-        if (AIndex < Length(AText)) and (IsDigit(AText[AIndex + 1]) or (AText[AIndex + 1] = '{')) then
-        begin
-          Inc(AIndex);
-          if AText[AIndex] = '{' then
-          begin
-            Inc(AIndex);
-          end;
-          Start := AIndex;
-          while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-          begin
-            Inc(AIndex);
-          end;
-          Number := Copy(AText, Start, AIndex - Start);
-          Default := '';
-          if AText[Start - 1] = '{' then
-          begin
-            if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
-            begin
-              Inc(AIndex);
-              Default := ConvertLsp(AText, AIndex, False);
-            end
-            else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
-            begin
-              // Auswahl: die erste Möglichkeit als Vorgabe.
-              Inc(AIndex);
-              Start := AIndex;
-              while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
-              begin
-                Inc(AIndex);
-              end;
-              Default := Copy(AText, Start, AIndex - Start);
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-              begin
-                Inc(AIndex);
-              end;
-              Inc(AIndex);
-            end
-            else
-            begin
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-              begin
-                Inc(AIndex);
-              end;
-              Inc(AIndex);
-            end;
-          end;
-          // Tabstopp nur auf oberster Ebene und mit Nummer; Variablen werden zu ihrer Vorgabe.
-          if ATop and (Number <> '') and IsDigit(Number[1]) then
-          begin
-            if (Default = '') and (Number = '0') then
-            begin
-              Result := Result + '$0';
-            end
-            else if Default = '' then
-            begin
-              Result := Result + '${' + Number + '}';
-            end
-            else
-            begin
-              Result := Result + '${' + Number + ':' + Default + '}';
-            end;
-          end
-          else
-          begin
-            Result := Result + Default;
-          end;
-          Continue;
-        end;
-    end;
+    if AText[AIndex] = '\' then
+    begin
+      Result := Result + EscapeAt(AText, AIndex, ATop);
+    end
+    else if (AText[AIndex] = '}') and not ATop then
+    begin
+      Inc(AIndex);
+      Exit;
+    end
+    else if IsPlaceholderStart(AText, AIndex) then
+    begin
+      Result := Result + PlaceholderAt(AText, AIndex, ATop);
+    end
     // Ein "$" ohne Platzhalter bleibt Text.
-    if ATop and (AText[AIndex] = '$') then
+    else if ATop and (AText[AIndex] = '$') then
     begin
       Result := Result + '$$';
+      Inc(AIndex);
     end
     else
     begin
       Result := Result + AText[AIndex];
+      Inc(AIndex);
     end;
-    Inc(AIndex);
   end;
 end;
 
@@ -883,12 +1081,7 @@ end;
 
 class function TAtlasSnippets.LoadFolder(const APath: string; out AErrors: TArray<string>): TAtlasSnippetList;
 var
-  Search: TSearchRec;
-  Names: TStringList;
-  Lines: TStringList;
-  Index: Integer;
-  Item: TAtlasSnippet;
-  Error, FileName: string;
+  mName: string;
 begin
   Result := nil;
   AErrors := nil;
@@ -896,46 +1089,9 @@ begin
   begin
     Exit;
   end;
-  Names := TStringList.Create;
-  try
-    if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, Search) = 0 then
-      try
-        repeat
-          if (Search.Attr and faDirectory) = 0 then
-          begin
-            Names.Add(Search.Name);
-          end;
-        until FindNext(Search) <> 0;
-      finally
-        FindClose(Search);
-      end;
-    // Feste Reihenfolge, damit bei doppelten Kürzeln immer dieselbe Datei gilt.
-    Names.Sort;
-    for Index := 0 to Names.Count - 1 do
-    begin
-      FileName := IncludeTrailingPathDelimiter(APath) + Names[Index];
-      Lines := TStringList.Create;
-      try
-        try
-          Lines.LoadFromFile(FileName, TEncoding.UTF8);
-          if Parse(Lines.Text, FileName, Item, Error) then
-          begin
-            Result := Result + [Item];
-          end
-          else
-          begin
-            AErrors := AErrors + [Names[Index] + ': ' + Error];
-          end;
-        except
-          on E: Exception do
-            AErrors := AErrors + [Names[Index] + ': ' + E.Message];
-        end;
-      finally
-        Lines.Free;
-      end;
-    end;
-  finally
-    Names.Free;
+  for mName in SnippetFileNames(APath) do
+  begin
+    LoadSnippetFile(APath, mName, Result, AErrors);
   end;
 end;
 
