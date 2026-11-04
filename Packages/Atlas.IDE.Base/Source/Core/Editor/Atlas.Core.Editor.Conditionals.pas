@@ -31,6 +31,16 @@ type
     FFrames: TList<TFrame>;
     FCompilerVersion: Double;
     function Evaluate(const AExpression: string): Boolean;
+    /// <summary>Bedingung von $IFDEF, $IFNDEF bzw. $IF; $IFOPT kennt nur der Compiler (falsch).</summary>
+    function BranchCondition(const AName, AArgument: string): Boolean;
+    procedure OpenBranch(const AName, AArgument: string);
+    /// <summary>$ELSEIF: aktiv, wenn noch kein Zweig gewählt ist und die Bedingung gilt.</summary>
+    procedure NextBranch(const AArgument: string);
+    /// <summary>$ELSE: aktiv, wenn noch kein Zweig gewählt ist.</summary>
+    procedure LastBranch;
+    procedure CloseBranch;
+    procedure DefineSymbol(const AArgument: string);
+    procedure UndefineSymbol(const AArgument: string);
   public
     /// <summary>ADefines: gesetzte Symbole (Groß-/Kleinschreibung egal); ACompilerVersion z. B. 37.0.</summary>
     constructor Create(const ADefines: TArray<string>; ACompilerVersion: Double);
@@ -73,6 +83,9 @@ type
     function ParseAnd: Double;
     function ParseNot: Double;
     function ParseCompare: Double;
+    /// <summary>Defined(…) bzw. Declared(…) nach dem Wort AWord.</summary>
+    function ParseDefined(const AWord: string): Double;
+    function ParseIdent(const AWord: string): Double;
     function ParseValue: Double;
   public
     constructor Create(AOwner: TAtlasConditionals; const AText: string);
@@ -82,6 +95,79 @@ type
 const
   /// <summary>Wert für Unbekanntes: gilt als wahr bzw. als erfüllter Vergleich.</summary>
   UnknownValue = 1.0;
+
+function IsOneOf(const AText: string; const AList: array of string): Boolean;
+var
+  mItem: string;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    Result := Result or (AText = mItem);
+  end;
+end;
+
+/// <summary>Zwei Zeichen lange Vergleiche: "&lt;=", "&gt;=", "&lt;&gt;".</summary>
+function IsTwoCharSymbol(const AText: string; AStart: Integer): Boolean;
+begin
+  Result := (AStart < Length(AText)) and CharInSet(AText[AStart], ['<', '>']) and
+    CharInSet(AText[AStart + 1], ['=', '>']);
+end;
+
+/// <summary>Token ab AIndex; AIndex steht danach dahinter.</summary>
+function ScanToken(const AText: string; var AIndex: Integer): TExprToken;
+var
+  mStart: Integer;
+begin
+  mStart := AIndex;
+  if AText[AIndex].IsLetter or (AText[AIndex] = '_') then
+  begin
+    while (AIndex <= Length(AText)) and (AText[AIndex].IsLetterOrDigit or CharInSet(AText[AIndex], ['_', '.'])) do
+    begin
+      Inc(AIndex);
+    end;
+    Result.Kind := etIdent;
+  end
+  else if AText[AIndex].IsDigit then
+  begin
+    while (AIndex <= Length(AText)) and (AText[AIndex].IsDigit or (AText[AIndex] = '.')) do
+    begin
+      Inc(AIndex);
+    end;
+    Result.Kind := etNumber;
+  end
+  else
+  begin
+    Inc(AIndex);
+    if IsTwoCharSymbol(AText, mStart) then
+    begin
+      Inc(AIndex);
+    end;
+    Result.Kind := etSymbol;
+  end;
+  Result.Text := Copy(AText, mStart, AIndex - mStart);
+end;
+
+function IsCompareOperator(const AToken: TExprToken): Boolean;
+begin
+  Result := (AToken.Kind = etSymbol) and IsOneOf(AToken.Text, ['=', '<>', '<', '>', '<=', '>=']);
+end;
+
+/// <summary>Name und Argument einer Direktive: "IFDEF FPC" → IFDEF, FPC.</summary>
+procedure SplitDirective(const ADirective: string; out AName, AArgument: string);
+var
+  mText: string;
+  mSplit: Integer;
+begin
+  mText := Trim(ADirective);
+  mSplit := 1;
+  while (mSplit <= Length(mText)) and (mText[mSplit].IsLetterOrDigit or (mText[mSplit] = '_')) do
+  begin
+    Inc(mSplit);
+  end;
+  AName := UpperCase(Copy(mText, 1, mSplit - 1));
+  AArgument := Trim(Copy(mText, mSplit, MaxInt));
+end;
 
 function Truth(ACondition: Boolean): Double;
 begin
@@ -107,47 +193,20 @@ end;
 
 procedure TExprParser.Scan(const AText: string);
 var
-  Index, Start: Integer;
-  Token: TExprToken;
+  mIndex: Integer;
 begin
   FTokens := nil;
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if AText[Index].IsWhiteSpace then
+    if AText[mIndex].IsWhiteSpace then
     begin
-      Inc(Index);
-      Continue;
-    end;
-    Start := Index;
-    if AText[Index].IsLetter or (AText[Index] = '_') then
-    begin
-      while (Index <= Length(AText)) and (AText[Index].IsLetterOrDigit or CharInSet(AText[Index], ['_', '.'])) do
-      begin
-        Inc(Index);
-      end;
-      Token.Kind := etIdent;
-    end
-    else if AText[Index].IsDigit then
-    begin
-      while (Index <= Length(AText)) and (AText[Index].IsDigit or (AText[Index] = '.')) do
-      begin
-        Inc(Index);
-      end;
-      Token.Kind := etNumber;
+      Inc(mIndex);
     end
     else
     begin
-      Inc(Index);
-      if (Index <= Length(AText)) and CharInSet(AText[Start], ['<', '>']) and CharInSet(AText[Index], ['=', '>'])
-        then
-      begin
-        Inc(Index);
-      end;
-      Token.Kind := etSymbol;
+      FTokens := FTokens + [ScanToken(AText, mIndex)];
     end;
-    Token.Text := Copy(AText, Start, Index - Start);
-    FTokens := FTokens + [Token];
   end;
 end;
 
@@ -231,8 +290,7 @@ var
   Right: Double;
 begin
   Result := ParseValue;
-  if not (IsSymbol('=') or IsSymbol('<>') or IsSymbol('<') or IsSymbol('>') or IsSymbol('<=') or
-    IsSymbol('>=')) then
+  if not IsCompareOperator(Peek) then
   begin
     Exit;
   end;
@@ -265,61 +323,74 @@ begin
   end;
 end;
 
+function TExprParser.ParseDefined(const AWord: string): Double;
+var
+  mName: string;
+begin
+  Result := UnknownValue;
+  mName := '';
+  if IsSymbol('(') then
+  begin
+    Take;
+    while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
+    begin
+      mName := mName + Take.Text;
+    end;
+    Take;
+  end;
+  // Declared kennt nur der Compiler: bleibt wahr.
+  if SameText(AWord, 'Defined') then
+  begin
+    Result := Truth(FOwner.Defined(mName));
+  end;
+end;
+
+function TExprParser.ParseIdent(const AWord: string): Double;
+begin
+  Result := UnknownValue;
+  if SameText(AWord, 'Defined') or SameText(AWord, 'Declared') then
+  begin
+    Result := ParseDefined(AWord);
+  end
+  else if SameText(AWord, 'CompilerVersion') or SameText(AWord, 'RTLVersion') then
+  begin
+    Result := FOwner.CompilerVersion;
+  end
+  else if SameText(AWord, 'True') then
+  begin
+    Result := 1;
+  end
+  else if SameText(AWord, 'False') then
+  begin
+    Result := 0;
+  end;
+end;
+
 function TExprParser.ParseValue: Double;
 var
-  Token: TExprToken;
-  Name: string;
+  mToken: TExprToken;
 begin
-  Token := Take;
+  mToken := Take;
   Result := UnknownValue;
-  case Token.Kind of
-    etNumber:
-      if not TryStrToFloat(Token.Text, Result, TFormatSettings.Invariant) then
-      begin
-        Result := UnknownValue;
-      end;
-    etIdent:
-      if SameText(Token.Text, 'Defined') or SameText(Token.Text, 'Declared') then
-      begin
-        Name := '';
-        if IsSymbol('(') then
-        begin
-          Take;
-          while not ((Peek.Kind = etEnd) or IsSymbol(')')) do
-          begin
-            Name := Name + Take.Text;
-          end;
-          Take;
-        end;
-        // Declared kennt nur der Compiler: bleibt wahr.
-        if SameText(Token.Text, 'Defined') then
-        begin
-          Result := Truth(FOwner.Defined(Name));
-        end;
-      end
-      else if SameText(Token.Text, 'CompilerVersion') or SameText(Token.Text, 'RTLVersion') then
-      begin
-        Result := FOwner.CompilerVersion;
-      end
-      else if SameText(Token.Text, 'True') then
-      begin
-        Result := 1;
-      end
-      else if SameText(Token.Text, 'False') then
-      begin
-        Result := 0;
-      end;
-    etSymbol:
-      if Token.Text = '(' then
-      begin
-        Result := ParseOr;
-        if IsSymbol(')') then
-        begin
-          Take;
-        end;
-      end;
-  else
-    // Ende des Ausdrucks: bleibt unbekannt.
+  // Ende des Ausdrucks und Unbekanntes bleiben unbekannt.
+  if mToken.Kind = etNumber then
+  begin
+    if not TryStrToFloat(mToken.Text, Result, TFormatSettings.Invariant) then
+    begin
+      Result := UnknownValue;
+    end;
+  end
+  else if mToken.Kind = etIdent then
+  begin
+    Result := ParseIdent(mToken.Text);
+  end
+  else if (mToken.Kind = etSymbol) and (mToken.Text = '(') then
+  begin
+    Result := ParseOr;
+    if IsSymbol(')') then
+    begin
+      Take;
+    end;
   end;
 end;
 
@@ -371,79 +442,106 @@ begin
   end;
 end;
 
+function TAtlasConditionals.BranchCondition(const AName, AArgument: string): Boolean;
+begin
+  Result := False;
+  if AName = 'IFDEF' then
+  begin
+    Result := Defined(AArgument);
+  end
+  else if AName = 'IFNDEF' then
+  begin
+    Result := not Defined(AArgument);
+  end
+  else if AName = 'IF' then
+  begin
+    Result := Evaluate(AArgument);
+  end;
+end;
+
+procedure TAtlasConditionals.OpenBranch(const AName, AArgument: string);
+var
+  mFrame: TFrame;
+begin
+  mFrame.ParentActive := Active;
+  mFrame.Active := mFrame.ParentActive and BranchCondition(AName, AArgument);
+  mFrame.Taken := mFrame.Active;
+  FFrames.Add(mFrame);
+end;
+
+procedure TAtlasConditionals.NextBranch(const AArgument: string);
+var
+  mFrame: TFrame;
+begin
+  mFrame := FFrames.Last;
+  mFrame.Active := mFrame.ParentActive and not mFrame.Taken and Evaluate(AArgument);
+  mFrame.Taken := mFrame.Taken or mFrame.Active;
+  FFrames[FFrames.Count - 1] := mFrame;
+end;
+
+procedure TAtlasConditionals.LastBranch;
+var
+  mFrame: TFrame;
+begin
+  mFrame := FFrames.Last;
+  mFrame.Active := mFrame.ParentActive and not mFrame.Taken;
+  mFrame.Taken := True;
+  FFrames[FFrames.Count - 1] := mFrame;
+end;
+
+procedure TAtlasConditionals.CloseBranch;
+begin
+  if FFrames.Count > 0 then
+  begin
+    FFrames.Delete(FFrames.Count - 1);
+  end;
+end;
+
+procedure TAtlasConditionals.DefineSymbol(const AArgument: string);
+begin
+  if Active and (AArgument <> '') then
+  begin
+    FDefines.AddOrSetValue(UpperCase(AArgument), True);
+  end;
+end;
+
+procedure TAtlasConditionals.UndefineSymbol(const AArgument: string);
+begin
+  if Active then
+  begin
+    FDefines.Remove(UpperCase(AArgument));
+  end;
+end;
+
 function TAtlasConditionals.Handle(const ADirective: string): Boolean;
 var
-  Text, Name, Argument: string;
-  Split: Integer;
-  Frame: TFrame;
-  Condition: Boolean;
+  mName, mArgument: string;
 begin
-  Text := Trim(ADirective);
-  Split := 1;
-  while (Split <= Length(Text)) and (Text[Split].IsLetterOrDigit or (Text[Split] = '_')) do
-  begin
-    Inc(Split);
-  end;
-  Name := UpperCase(Copy(Text, 1, Split - 1));
-  Argument := Trim(Copy(Text, Split, MaxInt));
+  SplitDirective(ADirective, mName, mArgument);
   Result := True;
-  if (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IF') or (Name = 'IFOPT') then
+  if IsOneOf(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
   begin
-    Frame.ParentActive := Active;
-    Condition := False;
-    if Frame.ParentActive then
-    begin
-      if Name = 'IFDEF' then
-      begin
-        Condition := Defined(Argument);
-      end
-      else if Name = 'IFNDEF' then
-      begin
-        Condition := not Defined(Argument);
-      end
-      else if Name = 'IF' then
-      begin
-        Condition := Evaluate(Argument);
-      end;
-    end;
-    Frame.Active := Frame.ParentActive and Condition;
-    Frame.Taken := Frame.Active;
-    FFrames.Add(Frame);
+    OpenBranch(mName, mArgument);
   end
-  else if (Name = 'ELSEIF') and (FFrames.Count > 0) then
+  else if (mName = 'ELSEIF') and (FFrames.Count > 0) then
   begin
-    Frame := FFrames.Last;
-    Frame.Active := Frame.ParentActive and not Frame.Taken and Evaluate(Argument);
-    Frame.Taken := Frame.Taken or Frame.Active;
-    FFrames[FFrames.Count - 1] := Frame;
+    NextBranch(mArgument);
   end
-  else if (Name = 'ELSE') and (FFrames.Count > 0) then
+  else if (mName = 'ELSE') and (FFrames.Count > 0) then
   begin
-    Frame := FFrames.Last;
-    Frame.Active := Frame.ParentActive and not Frame.Taken;
-    Frame.Taken := True;
-    FFrames[FFrames.Count - 1] := Frame;
+    LastBranch;
   end
-  else if (Name = 'ENDIF') or (Name = 'IFEND') then
+  else if IsOneOf(mName, ['ENDIF', 'IFEND']) then
   begin
-    if FFrames.Count > 0 then
-    begin
-      FFrames.Delete(FFrames.Count - 1);
-    end;
+    CloseBranch;
   end
-  else if Name = 'DEFINE' then
+  else if mName = 'DEFINE' then
   begin
-    if Active and (Argument <> '') then
-    begin
-      FDefines.AddOrSetValue(UpperCase(Argument), True);
-    end;
+    DefineSymbol(mArgument);
   end
-  else if Name = 'UNDEF' then
+  else if mName = 'UNDEF' then
   begin
-    if Active then
-    begin
-      FDefines.Remove(UpperCase(Argument));
-    end;
+    UndefineSymbol(mArgument);
   end
   else
   begin

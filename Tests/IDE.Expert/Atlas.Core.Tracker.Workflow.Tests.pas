@@ -88,7 +88,8 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Tracker.Internals.GitHubApi;
 
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
@@ -634,19 +635,19 @@ var
   mChange: TAtlasTrackerWrite;
   mJson: string;
 begin
-  Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('Erledigt'));
-  Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('done'));
-  Assert.IsFalse(TAtlasGitHubTracker.ClosesIssue('Zur Prüfung'));
+  Assert.IsTrue(TAtlasGitHubApi.ClosesIssue('Erledigt'));
+  Assert.IsTrue(TAtlasGitHubApi.ClosesIssue('done'));
+  Assert.IsFalse(TAtlasGitHubApi.ClosesIssue('Zur Prüfung'));
   // Beginnen: Label dazu, mich als Zuständigen dazu.
   mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
-  mJson := TAtlasGitHubTracker.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
   Assert.AreEqual('["bug","in arbeit"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["bert","anna"]', JsonText(mJson, 'assignees'));
   Assert.AreEqual('', JsonText(mJson, 'state'));
   // Schon so: nichts zu ändern.
-  Assert.AreEqual('', TAtlasGitHubTracker.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
+  Assert.AreEqual('', TAtlasGitHubApi.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
     mChange, 'anna'));
   // Beenden: Label aus „Beginnen“ weg, „Erledigt“ schließt (ohne Label), übergeben ersetzt die Zuständigen.
   mChange := TAtlasTrackerWrite.Empty;
@@ -654,7 +655,7 @@ begin
   mChange.PreviousState := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'carl';
-  mJson := TAtlasGitHubTracker.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), TArray<string>.Create('anna',
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), TArray<string>.Create('anna',
     'bert'), mChange, '');
   Assert.AreEqual('["bug"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["carl"]', JsonText(mJson, 'assignees'));

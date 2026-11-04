@@ -92,6 +92,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Core.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CodeArea.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.CommandArea.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
