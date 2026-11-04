@@ -194,7 +194,7 @@ begin
   begin
     MethodLine := CursorAt.Line;
   end;
-  if not TAtlasLineMover.Compute(Text, First, Last, MethodLine, AKind, TAtlasEditorBuffer.BlockIndent(Buffer),
+  if not TAtlasLineMover.Compute(Text, TAtlasLineSelection.Create(First, Last, MethodLine), AKind, TAtlasEditorBuffer.BlockIndent(Buffer),
     Move) then
   begin
     if Move.Method and Assigned(FMessage) then
