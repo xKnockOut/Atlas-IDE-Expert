@@ -299,7 +299,10 @@
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Usage.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ShortcutKeys.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ShortcutTips.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MenuModules.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MenuActions.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
