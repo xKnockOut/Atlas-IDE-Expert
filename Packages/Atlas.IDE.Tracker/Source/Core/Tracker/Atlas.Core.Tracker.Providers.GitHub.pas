@@ -1736,6 +1736,7 @@ var
   mUrl, mText, mMe, mBody: string;
   mStatus: Integer;
   mError: TAtlasCiFetchError;
+  mResponse: TAtlasCiResponse;
   mValue: TJSONValue;
   mLabels, mAssignees: TArray<string>;
 begin
@@ -1779,13 +1780,14 @@ begin
   if Trim(AChange.Comment) <> '' then
   begin
     if not mSend.Send('POST', mUrl + '/comments', CommentJson(AChange.Comment), Remaining(mWatch, ATimeoutMs),
-      mStatus, mText, mError) then
+      mResponse) then
     begin
-      Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+      Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
     end;
-    if not Answered(mStatus) then
+    if not Answered(mResponse.Status) then
     begin
-      Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+      Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
+        ErrorMessage(mResponse.Text)));
     end;
   end;
   if (Trim(AChange.State) = '') and (AChange.Assign = TAtlasTrackerAssign.Keep) then
@@ -1809,13 +1811,14 @@ begin
   begin
     Exit;
   end;
-  if not mSend.Send('PATCH', mUrl, mBody, Remaining(mWatch, ATimeoutMs), mStatus, mText, mError) then
+  if not mSend.Send('PATCH', mUrl, mBody, Remaining(mWatch, ATimeoutMs), mResponse) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
-  if not Answered(mStatus) then
+  if not Answered(mResponse.Status) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText));
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
+      ErrorMessage(mResponse.Text));
   end;
 end;
 
@@ -1930,8 +1933,8 @@ function TAtlasGitHubTracker.UpdateDescription(const ATarget: TAtlasTrackerTarge
   const ATransport: IAtlasCiTransport; const AKey, AText: string; ATimeoutMs: Integer;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mUrl, mAnswer: string;
-  mStatus: Integer;
+  mUrl: string;
+  mResponse: TAtlasCiResponse;
   mSend: IAtlasCiSend;
 begin
   AError := TAtlasCiFetchError.None;
@@ -1947,13 +1950,14 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  if not mSend.Send('PATCH', mUrl, BodyJson(AText), ATimeoutMs, mStatus, mAnswer, AError) then
+  if not mSend.Send('PATCH', mUrl, BodyJson(AText), ATimeoutMs, mResponse) then
   begin
+    AError := mResponse.Error;
     Exit;
   end;
-  if mStatus <> 200 then
+  if mResponse.Status <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   Result := True;
@@ -2274,16 +2278,20 @@ end;
 function Posted(const APost: IAtlasCiSend; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
+  mResponse: TAtlasCiResponse;
 begin
   Result := False;
-  if not APost.Send('POST', AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+  AError := TAtlasCiFetchError.None;
+  if not APost.Send('POST', AUrl, ABody, ATimeoutMs, mResponse) then
   begin
+    AText := '';
+    AError := mResponse.Error;
     Exit;
   end;
-  if (mStatus <> 200) and (mStatus <> 201) then
+  AText := mResponse.Text;
+  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
   begin
-    AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
+    AError := TAtlasGitHubTracker.ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   AError := TAtlasCiFetchError.None;
@@ -2959,17 +2967,20 @@ end;
 function Query(const ASend: IAtlasCiSend; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
+  mResponse: TAtlasCiResponse;
   mMessage: string;
 begin
   Result := False;
-  if not ASend.Send('POST', AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+  if not ASend.Send('POST', AUrl, ABody, ATimeoutMs, mResponse) then
   begin
+    AText := '';
+    AError := mResponse.Error;
     Exit;
   end;
-  if mStatus <> 200 then
+  AText := mResponse.Text;
+  if mResponse.Status <> 200 then
   begin
-    AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
+    AError := TAtlasGitHubTracker.ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   AError := TAtlasGitHubBoards.GraphQlError(AText, mMessage);
@@ -3115,8 +3126,8 @@ var
   mWatch: TStopwatch;
   mSend: IAtlasCiSend;
   mWriter: IAtlasTrackerWriter;
-  mUrl, mText, mMessage, mBody: string;
-  mStatus: Integer;
+  mUrl, mMessage, mBody: string;
+  mResponse: TAtlasCiResponse;
   mError: TAtlasCiFetchError;
   mColumn: TAtlasBoardColumn;
 begin
@@ -3148,19 +3159,19 @@ begin
     end;
     mBody := GraphQlBody(MoveMutation, ['project', ASnapshot.ProjectId, 'item', ACard.ItemId, 'field',
       ASnapshot.FieldId, 'option', mColumn.OptionId]);
-    if not mSend.Send('POST', GraphQlUrl(ATarget), mBody, Rest(mWatch, ATimeoutMs), mStatus, mText, mError) then
+    if not mSend.Send('POST', GraphQlUrl(ATarget), mBody, Rest(mWatch, ATimeoutMs), mResponse) then
     begin
-      Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+      Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
     end;
-    if mStatus <> 200 then
+    if mResponse.Status <> 200 then
     begin
-      Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mStatus), mStatus,
-        TAtlasGitHubTracker.ErrorMessage(mText)));
+      Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mResponse.Status), mResponse.Status,
+        TAtlasGitHubTracker.ErrorMessage(mResponse.Text)));
     end;
-    mError := GraphQlError(mText, mMessage);
+    mError := GraphQlError(mResponse.Text, mMessage);
     if mError <> TAtlasCiFetchError.None then
     begin
-      Exit(TAtlasTrackerWriteResult.Failed(mError, mStatus, mMessage));
+      Exit(TAtlasTrackerWriteResult.Failed(mError, mResponse.Status, mMessage));
     end;
     Exit(TAtlasTrackerWriteResult.Ok);
   end;
@@ -3175,14 +3186,14 @@ begin
   begin
     mBody := '{"state":"closed"}';
   end;
-  if not mSend.Send('PATCH', mUrl, mBody, Rest(mWatch, ATimeoutMs), mStatus, mText, mError) then
+  if not mSend.Send('PATCH', mUrl, mBody, Rest(mWatch, ATimeoutMs), mResponse) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
-  if not Answered(mStatus) then
+  if not Answered(mResponse.Status) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mStatus), mStatus,
-      TAtlasGitHubTracker.ErrorMessage(mText)));
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubTracker.ErrorOfStatus(mResponse.Status), mResponse.Status,
+      TAtlasGitHubTracker.ErrorMessage(mResponse.Text)));
   end;
   Result := TAtlasTrackerWriteResult.Ok;
 end;
@@ -3608,6 +3619,7 @@ var
   mFound, mMore: TArray<TAtlasTrackerChange>;
   mIgnored: TAtlasCiFetchError;
   mAnswered: Boolean;
+  mResponse: TAtlasCiResponse;
 begin
   AChanges := nil;
   AError := TAtlasCiFetchError.None;
@@ -3624,7 +3636,12 @@ begin
   if Supports(ATransport, IAtlasCiConditional, mConditional) then
   begin
     mAnswered := mConditional.GetConditional(NotificationsUrl(ATarget, APoll.Since), APoll.LastModified, ATimeoutMs,
-      mStatus, mText, mLastModified, mPoll, AError);
+      mResponse);
+    mStatus := mResponse.Status;
+    mText := mResponse.Text;
+    mLastModified := mResponse.LastModified;
+    mPoll := mResponse.PollSeconds;
+    AError := mResponse.Error;
   end
   else
   begin
@@ -3728,13 +3745,14 @@ end;
 function TAtlasGitHubTracker.Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey,
   AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
+  mResponse: TAtlasCiResponse;
 begin
   Result := TAtlasAttachSender.Post(ASend, CommentsUrl(ATarget, AKey), 'application/json',
-    TAtlasAttachComment.JsonBody('body', AMarkdown), ATimeoutMs, mStatus, AError);
-  if not Result and (mStatus <> 0) then
+    TAtlasAttachComment.JsonBody('body', AMarkdown), ATimeoutMs, mResponse);
+  AError := mResponse.Error;
+  if not Result and (mResponse.Status <> 0) then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := ErrorOfStatus(mResponse.Status);
   end;
 end;
 

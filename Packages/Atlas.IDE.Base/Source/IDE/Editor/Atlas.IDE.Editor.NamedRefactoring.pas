@@ -59,30 +59,14 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.JSON,
   Vcl.Dialogs,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Results.Model,
-  Atlas.UI.Results.Frame,
-  Atlas.UI.Results.RenamePreview,
-  Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Editor.ServerEdit;
 
 const
   // Verweise, Überschreibungen und Formulare im Projekt suchen dauert; wie beim Umbenennen.
   TimeoutMs = 60000;
-
-function NumberOf(AReply: TJSONObject; const AName: string): Integer;
-begin
-  Result := 0;
-  if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
-  begin
-    Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
-  end;
-end;
 
 class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -149,101 +133,47 @@ end;
 class procedure TAtlasIdeNamedRefactoring.Run(ASession: TLspSession; const AApplyArguments, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Answer, Item: TJSONValue;
-  Reply: TJSONObject;
-  Hint, Warning, Explanation: string;
-  Warnings: TArray<string>;
-  Places, Files: Integer;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mCommand: TAtlasServerEditCommand;
+  mReply: TAtlasServerEditReply;
+  mPlaces, mFiles: Integer;
+  mHint, mExplanation: string;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  Warnings := nil;
-  Places := 0;
-  Files := 0;
-  Explanation := '';
-  try
-    Answer := ASession.RunCommand(AApplyCommand, AApplyArguments, TimeoutMs);
-    try
-      Reply := nil;
-      if Answer is TJSONObject then
-      begin
-        Reply := TJSONObject(Answer);
-      end;
-      Edit := TLspWorkspaceEdit.FromJson(nil);
-      if Reply <> nil then
-      begin
-        Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
-        Places := NumberOf(Reply, 'places');
-        Files := NumberOf(Reply, 'files');
-        // Erklärung des Servers, z. B. die Form der Umwandlung (#680).
-        if Reply.GetValue('preview') is TJSONString then
-        begin
-          Explanation := Reply.GetValue('preview').Value;
-        end;
-        if Reply.GetValue('warnings') is TJSONArray then
-        begin
-          for Item in TJSONArray(Reply.GetValue('warnings')) do
-          begin
-            Warnings := Warnings + [Item.Value];
-          end;
-        end;
-      end;
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
+  mCommand.Command := AApplyCommand;
+  mCommand.Arguments := AApplyArguments;
+  mCommand.TimeoutMs := TimeoutMs;
+  mCommand.Failed := ATexts.Failed;
+  mPlaces := 0;
+  mFiles := 0;
+  mExplanation := '';
+  if not TAtlasIdeServerEdit.Fetch(ASession, mCommand,
+    procedure(const AReply: TJSONObject)
     begin
-      AMessage(TAtlasStrings.Fmt(ATexts.Failed, [E.Message]));
-      Exit;
-    end;
+      mPlaces := TAtlasIdeServerEdit.NumberOf(AReply, 'places');
+      mFiles := TAtlasIdeServerEdit.NumberOf(AReply, 'files');
+      // Erklärung des Servers, z. B. die Form der Umwandlung (#680).
+      mExplanation := TAtlasIdeServerEdit.TextOf(AReply, 'preview');
+    end, AMessage, mReply) then
+  begin
+    Exit;
   end;
-  if Edit.IsEmpty then
+  if mReply.Edit.IsEmpty then
   begin
     AMessage(TAtlasStrings.Text(ATexts.Nothing));
     Exit;
   end;
-  Hint := TAtlasStrings.Fmt(ATexts.PreviewHint, [Places, Files]);
-  if Explanation <> '' then
+  mHint := TAtlasStrings.Fmt(ATexts.PreviewHint, [mPlaces, mFiles]);
+  if mExplanation <> '' then
   begin
-    Hint := Hint + sLineBreak + Explanation;
+    mHint := mHint + sLineBreak + mExplanation;
   end;
-  for Warning in Warnings do
+  mHint := mHint + TAtlasIdeServerEdit.WarningLines(mReply, ATexts.Warning);
+  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(ATexts.Title), mHint, TAtlasStrings.Text(ATexts.Apply),
+    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(ATexts.Title), AMessage,
+    mOutcome) then
   begin
-    Hint := Hint + sLineBreak + TAtlasStrings.Fmt(ATexts.Warning, [Warning]);
-  end;
-  Preview := TAtlasResults.RenamePreview(Edit,
-    function(const AFileName: string): string
-    begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  Open :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-    end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(ATexts.Title), Hint, TAtlasStrings.Text(ATexts.Apply),
-    TAtlasResults.Group(Preview), Open) then
-  begin
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(ATexts.Title));
-  if Outcome.Error <> '' then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-    Exit;
-  end;
-  AMessage(TAtlasStrings.Fmt(ATexts.Done, [Outcome.Edits, Outcome.Files]));
-  for Warning in Warnings do
-  begin
-    AMessage(TAtlasStrings.Fmt(ATexts.Warning, [Warning]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+    AMessage(TAtlasStrings.Fmt(ATexts.Done, [mOutcome.Edits, mOutcome.Files]));
+    TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, ATexts.Warning, AMessage);
   end;
 end;
 
