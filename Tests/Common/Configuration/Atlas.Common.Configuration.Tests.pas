@@ -320,7 +320,8 @@ begin
   Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
 end;
 
-procedure TConfigurationParserTests.ReadsArchitectureGrouping;
+/// <summary>Vorgaben, Nachteilung (#1364), Fundamente (#1365) und Zuordnung erklären (#1368).</summary>
+procedure ReadsGroupingSplitAndFoundations;
 var
   mSettings: TServerSettings;
   mIssues: TArray<TConfigurationIssue>;
@@ -362,6 +363,14 @@ begin
   mSettings := Parse('{"architecture": {"explainAssignment": "nein"}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsTrue(mSettings.ArchitectureExplainAssignment);
+end;
+
+/// <summary>Farben und Namen halten (#1367), Auflösung mit Grenzen und globale Ebene.</summary>
+procedure ReadsGroupingResolution;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
   // Farben und Namen halten (#1367).
   Assert.IsTrue(TServerSettings.Default.ArchitectureGroupingKeepPrevious);
   mSettings := Parse('{"architecture": {"grouping": {"keepPrevious": false}}}', mIssues);
@@ -399,6 +408,12 @@ begin
   mSettings := TConfigurationParser.ParseLayered('{"architecture": {"grouping": {"resolution": 0.5}}}', '{}',
     mIssues);
   Assert.AreEqual(Double(0.5), mSettings.ArchitectureGroupingResolution, 1E-9);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureGrouping;
+begin
+  ReadsGroupingSplitAndFoundations;
+  ReadsGroupingResolution;
 end;
 
 procedure TConfigurationParserTests.ReadsNavigationSymbolPath;
@@ -724,7 +739,8 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
 end;
 
-procedure TConfigurationParserTests.ReadsCompilerSettings;
+/// <summary>Einstellungen ab „Vorgabe aus: Das Plugin wählt „Nach dem Speichern“ selbst“.</summary>
+procedure ReadsCompilerOnSaveAndSlashCommands;
 var
   Settings: TServerSettings;
   Issues: TArray<TConfigurationIssue>;
@@ -776,6 +792,14 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"usesCommand": true}', '{"usesCommand": false}', Issues);
   Assert.IsFalse(Settings.UsesCommand, 'atlas.json gilt vor den Editor-Einstellungen');
+end;
+
+/// <summary>Einstellungen ab „Gerüst des Dokumentationskommentars (#88)“.</summary>
+procedure ReadsDocCommentAndCompletion;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Gerüst des Dokumentationskommentars (#88)
   Assert.IsTrue(Parse('{}', Issues).CompleteBlocksDocComment);
   Settings := Parse('{"completeBlocks": {"docComment": false}}', Issues);
@@ -825,6 +849,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „Abschnitt für Interface-Methoden (#466)“.</summary>
+procedure ReadsInterfaceSectionAndConversions;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Abschnitt für Interface-Methoden (#466)
   Assert.IsTrue(Parse('{}', Issues).Completion.InterfaceSection = TCompletionInterfaceSection.Public);
   Assert.IsTrue(Parse('{"completion": {"interfaceSection": "protected"}}', Issues).Completion.InterfaceSection =
@@ -875,6 +906,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"attributes": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „Anonyme Methoden (#468)“.</summary>
+procedure ReadsAnonymousMethodsAndKeywords;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Anonyme Methoden (#468)
   Assert.IsTrue(Parse('{}', Issues).Completion.AnonymousMethods);
   Assert.IsFalse(Parse('{"completion": {"anonymousMethods": false}}', Issues).Completion.AnonymousMethods);
@@ -929,6 +967,13 @@ begin
   // Typargumente nach den Constraints (#450)
   Assert.IsTrue(Parse('{}', Issues).Completion.GenericConstraints);
   Assert.IsFalse(Parse('{"completion": {"genericConstraints": false}}', Issues).Completion.GenericConstraints);
+end;
+
+/// <summary>Einstellungen ab „Namensvorschläge (#452)“.</summary>
+procedure ReadsNameSuggestionsAndRefactorings;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Namensvorschläge (#452)
   Assert.IsTrue(Parse('{}', Issues).Completion.NameSuggestions);
   Assert.IsFalse(Parse('{"completion": {"nameSuggestions": false}}', Issues).Completion.NameSuggestions);
@@ -982,6 +1027,13 @@ begin
   // Unit nicht gefunden: Suchpfad ergänzen (#550)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.MissingUnit);
   Assert.IsFalse(Parse('{"refactoring": {"missingUnit": false}}', Issues).Refactoring.MissingUnit);
+end;
+
+/// <summary>Einstellungen ab „Warnung gezielt abschalten (#531)“.</summary>
+procedure ReadsWarningsAndCodeActions;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Warnung gezielt abschalten (#531)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarning);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarningReason);
@@ -1035,6 +1087,13 @@ begin
     Issues).Refactoring.PropertyFromAccessorsSection);
   Assert.AreEqual('protected', Parse('{"refactoring": {"propertyFromAccessorsHideAccessors": "protected"}}',
     Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+end;
+
+/// <summary>Einstellungen ab „#666: Felder im Destruktor freigeben“.</summary>
+procedure ReadsFreeFieldsAndConditions;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // #666: Felder im Destruktor freigeben.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.FreeFields);
   Assert.AreEqual('free', Parse('{}', Issues).Refactoring.FreeFieldsStyle);
@@ -1088,6 +1147,13 @@ begin
   Assert.AreEqual('forward', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "felder"}}',
     Issues).Refactoring.AnonymousMethodDeferredCapture);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „#686: Methode ohne Self“.</summary>
+procedure ReadsMethodWithoutSelfAndTypes;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
   // #686: Methode ohne Self.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKind);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindMarker);
@@ -1129,6 +1195,14 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"extractInterface": false}}', Issues).Refactoring.ExtractInterface);
   Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „#713: Basisklasse herauslösen“.</summary>
+procedure ReadsExtractBaseClassAndDelete;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
   // #713: Basisklasse herauslösen.
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Refactoring.ExtractSuperclass);
@@ -1183,6 +1257,14 @@ begin
   Settings := Parse('{"refactoring": {"safeDeleteCascade": "manchmal"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
+end;
+
+/// <summary>Einstellungen ab „Speicherbudget (#185)“.</summary>
+procedure ReadsBudgetAndTimeLimits;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
@@ -1228,6 +1310,14 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsFalse(Parse('{"diagnostics": {"librarySources": "ja"}}', Issues).DiagnosticsLibrarySources);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „Umfang des Index (#648)“.</summary>
+procedure ReadsIndexScope;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Umfang des Index (#648)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.IndexProjectGroup and Settings.IndexSearchPaths);
@@ -1275,6 +1365,14 @@ begin
   Assert.AreEqual('Fail', Settings.Highlight.ExitKeywords[1]);
   Parse('{"highlight": {"blockPairs": 1, "foo": true}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+/// <summary>Einstellungen ab „Protokoll (#265)“.</summary>
+procedure ReadsProtocolSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
   // Protokoll (#265)
   Assert.AreEqual('info', Parse('{}', Issues).LogLevel);
   Settings := Parse('{"logLevel": "debug", "logFile": "C:\\Log\\lsp.log", "traceFile": "t.json"}', Issues);
@@ -1286,6 +1384,22 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"logLevel": "error"}', '{"logLevel": "warning"}', Issues);
   Assert.AreEqual('warning', Settings.LogLevel);
+end;
+
+procedure TConfigurationParserTests.ReadsCompilerSettings;
+begin
+  ReadsCompilerOnSaveAndSlashCommands;
+  ReadsDocCommentAndCompletion;
+  ReadsInterfaceSectionAndConversions;
+  ReadsAnonymousMethodsAndKeywords;
+  ReadsNameSuggestionsAndRefactorings;
+  ReadsWarningsAndCodeActions;
+  ReadsFreeFieldsAndConditions;
+  ReadsMethodWithoutSelfAndTypes;
+  ReadsExtractBaseClassAndDelete;
+  ReadsBudgetAndTimeLimits;
+  ReadsIndexScope;
+  ReadsProtocolSettings;
 end;
 
 procedure TConfigurationParserTests.ReadsStringLiteral;

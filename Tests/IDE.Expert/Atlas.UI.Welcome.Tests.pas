@@ -2232,6 +2232,16 @@ begin
   end;
 end;
 
+/// <summary>Klick auf Punkt APoint der Kachel ATile (-1: daneben).</summary>
+procedure ClickTrendPoint(const AFrame: TAtlasWelcomeTrendsFrame; ATile, APoint: Integer);
+var
+  mHit: TAtlasTrendsHit;
+begin
+  mHit.Tile := ATile;
+  mHit.Point := APoint;
+  AFrame.ClickAt(mHit);
+end;
+
 procedure TAtlasWelcomeTrendsFrameTests.ClickShowsBuild;
 var
   Saved: TAtlasLanguage;
@@ -2239,7 +2249,6 @@ var
   Fake: TFakeTrends;
   Source: IAtlasTrendsSource;
   Frame: TAtlasWelcomeTrendsFrame;
-  Hit: TAtlasTrendsHit;
   Info: string;
 begin
   Saved := TAtlasStrings.Language;
@@ -2254,9 +2263,7 @@ begin
     Assert.AreEqual('Kasse · letzte 30 Builds', Frame.HeadingText);
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsClickHint), Frame.InfoText,
       'vor dem Klick');
-    Hit.Tile := 0;
-    Hit.Point := 2;
-    Frame.ClickAt(Hit);
+    ClickTrendPoint(Frame, 0, 2);
     Assert.AreEqual(2, Frame.ChosenPoint);
     Assert.AreEqual(0, Frame.ChosenTile);
     Info := Frame.InfoText;
@@ -2267,15 +2274,11 @@ begin
     Assert.Contains(Info, '1a2b3c2', 'Commit gekürzt');
     Assert.Contains(Info, 'Warnungen + Hinweise: 6', 'Wert');
     // Lücke: kein Wert.
-    Hit.Tile := 2;
-    Hit.Point := 0;
-    Frame.ClickAt(Hit);
+    ClickTrendPoint(Frame, 2, 0);
     Assert.Contains(Frame.InfoText,
       'Offene TODOs: ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeTrendsNoValue));
     // Daneben: nichts ändert sich.
-    Hit.Tile := -1;
-    Hit.Point := -1;
-    Frame.ClickAt(Hit);
+    ClickTrendPoint(Frame, -1, -1);
     Assert.Contains(Frame.InfoText, 'Offene TODOs');
     // Neu laden (gleiches Projekt, neuer Build): Auswahl bleibt am Build.
     Frame.UpdateContent;
@@ -2284,9 +2287,7 @@ begin
     Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
       [TAtlasTrendSeries.Warnings], 3);
     Frame.UpdateContent;
-    Hit.Tile := 0;
-    Hit.Point := 0;
-    Frame.ClickAt(Hit);
+    ClickTrendPoint(Frame, 0, 0);
     Assert.Contains(Frame.InfoText, 'Build 1 von 3 · Nr. 3 · ');
     Info := TAtlasWelcomeTrendsFrame.PointInfo(Frame.View, 0, 0, False);
     Assert.Contains(Info, 'Build 1 von 3 · ');
@@ -3240,6 +3241,32 @@ begin
   end;
 end;
 
+/// <summary>Schritt 1 erledigt, Vorlage „Bestehendes Projekt“, Knöpfe rechts neben ihren Schritten.</summary>
+procedure AssertSetupStartLayout(const AFrame: TAtlasWelcomeSetupFrame);
+begin
+  // Schritt 1 erledigt, die anderen offen.
+  Assert.AreEqual(string(#$2713), AFrame.StepMark(TAtlasSetupStep.Found).Caption);
+  Assert.AreEqual(Integer(TAtlasWelcomeSetupFrame.DoneColor),
+    Integer(AFrame.StepText(TAtlasSetupStep.Found).Font.Color));
+  Assert.AreNotEqual(string(#$2713), AFrame.StepMark(TAtlasSetupStep.Config).Caption);
+  Assert.IsTrue(AFrame.TemplateBox.Visible);
+  Assert.IsTrue(AFrame.Button(TAtlasSetupButton.CreateConfig).Visible);
+  Assert.IsTrue(AFrame.Button(TAtlasSetupButton.Baseline).Visible);
+  Assert.IsTrue(AFrame.Button(TAtlasSetupButton.Paths).Visible);
+  Assert.IsTrue(AFrame.DismissLabel.Visible);
+  Assert.IsFalse(AFrame.Button(TAtlasSetupButton.Options).Visible, 'ohne Funde keine Projektoptionen');
+  // Vorgabe der Vorlage: Bestehendes Projekt.
+  Assert.IsTrue(AFrame.SelectedTemplate = TAtlasSetupTemplate.Existing);
+  Assert.AreEqual(3, Integer(AFrame.TemplateBox.Items.Count));
+  Assert.AreEqual(Integer(Ord(TAtlasSetupTemplate.Existing)), AFrame.TemplateBox.ItemIndex);
+  // Knöpfe rechts neben dem Text ihres Schritts, Schritte untereinander.
+  Assert.IsTrue(AFrame.Button(TAtlasSetupButton.CreateConfig).Left > AFrame.TemplateBox.Left);
+  Assert.IsTrue(AFrame.TemplateBox.Left > AFrame.StepText(TAtlasSetupStep.Config).Left);
+  Assert.IsTrue(AFrame.StepText(TAtlasSetupStep.Baseline).Top > AFrame.StepText(TAtlasSetupStep.Config).Top);
+  Assert.IsTrue(AFrame.StepText(TAtlasSetupStep.Paths).Top > AFrame.StepText(TAtlasSetupStep.Baseline).Top);
+  Assert.IsTrue(AFrame.DismissLabel.Top > AFrame.StepText(TAtlasSetupStep.Paths).Top);
+end;
+
 procedure TAtlasWelcomeSetupFrameTests.StepsShowMarksAndButtons;
 var
   Host: TForm;
@@ -3256,27 +3283,7 @@ begin
     Frame.Parent := Host;
     Frame.SetBounds(0, 0, 640, 300);
     Frame.Source := Source;
-    // Schritt 1 erledigt, die anderen offen.
-    Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Found).Caption);
-    Assert.AreEqual(Integer(TAtlasWelcomeSetupFrame.DoneColor),
-      Integer(Frame.StepText(TAtlasSetupStep.Found).Font.Color));
-    Assert.AreNotEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Config).Caption);
-    Assert.IsTrue(Frame.TemplateBox.Visible);
-    Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Visible);
-    Assert.IsTrue(Frame.Button(TAtlasSetupButton.Baseline).Visible);
-    Assert.IsTrue(Frame.Button(TAtlasSetupButton.Paths).Visible);
-    Assert.IsTrue(Frame.DismissLabel.Visible);
-    Assert.IsFalse(Frame.Button(TAtlasSetupButton.Options).Visible, 'ohne Funde keine Projektoptionen');
-    // Vorgabe der Vorlage: Bestehendes Projekt.
-    Assert.IsTrue(Frame.SelectedTemplate = TAtlasSetupTemplate.Existing);
-    Assert.AreEqual(3, Integer(Frame.TemplateBox.Items.Count));
-    Assert.AreEqual(Integer(Ord(TAtlasSetupTemplate.Existing)), Frame.TemplateBox.ItemIndex);
-    // Knöpfe rechts neben dem Text ihres Schritts, Schritte untereinander.
-    Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Left > Frame.TemplateBox.Left);
-    Assert.IsTrue(Frame.TemplateBox.Left > Frame.StepText(TAtlasSetupStep.Config).Left);
-    Assert.IsTrue(Frame.StepText(TAtlasSetupStep.Baseline).Top > Frame.StepText(TAtlasSetupStep.Config).Top);
-    Assert.IsTrue(Frame.StepText(TAtlasSetupStep.Paths).Top > Frame.StepText(TAtlasSetupStep.Baseline).Top);
-    Assert.IsTrue(Frame.DismissLabel.Top > Frame.StepText(TAtlasSetupStep.Paths).Top);
+    AssertSetupStartLayout(Frame);
     // Abnahme: Nach „Anlegen“ ist Schritt 2 abgehakt; nach der Baseline Schritt 3 mit „neue Treffer: 0“.
     Fake.Card_.Facts.ConfigExists := True;
     Fake.Card_.ConfigName := 'atlas.json';
@@ -3311,6 +3318,50 @@ begin
   end;
 end;
 
+/// <summary>Beschriftung eines Fundes: fehlende Unit mit und ohne Anzahl, Define ohne Quelle.</summary>
+procedure AssertSetupFindingCaptions;
+var
+  mLine: TAtlasSetupLine;
+begin
+  mLine := Default(TAtlasSetupLine);
+  mLine.Kind := TAtlasSetupFindingKind.MissingUnit;
+  mLine.Name := 'Xml.Helpers';
+  mLine.FileName := 'Src\Main.pas';
+  mLine.Line := 12;
+  mLine.Count := 1;
+  Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12',
+    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+  mLine.Count := 3;
+  Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12 (3×)',
+    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+  mLine.Kind := TAtlasSetupFindingKind.UndefinedDefine;
+  mLine.Name := 'USE_XML';
+  mLine.Count := 1;
+  Assert.AreEqual('Define „USE_XML“ ohne Quelle – Src\Main.pas, Zeile 12',
+    TAtlasWelcomeSetupFrame.FindingCaption(mLine));
+end;
+
+/// <summary>Einrichtungskarte mit 9 fehlenden Units und einem Define ohne Quelle.</summary>
+function SetupCardWithFindings: TAtlasSetupCard;
+var
+  mIndex: Integer;
+begin
+  Result := SetupCard;
+  Result.Facts.Setup.Known := True;
+  Result.Facts.Setup.Checked := True;
+  Result.Facts.Setup.Files := 12;
+  Result.Facts.Setup.MissingUnitCount := 9;
+  Result.Facts.Setup.UndefinedDefineCount := 1;
+  Result.Facts.Setup.MissingUnits := [SetupFinding('Xml.Helpers', 'Src\Main.pas', 12, 3)];
+  for mIndex := 2 to 9 do
+  begin
+    Result.Facts.Setup.MissingUnits := Result.Facts.Setup.MissingUnits +
+      [SetupFinding('Unit' + IntToStr(mIndex), 'Src\Main.pas', 12 + mIndex, 1)];
+  end;
+  Result.Facts.Setup.UndefinedDefines := [SetupFinding('USE_XML', 'Src\Main.pas', 3, 1)];
+  Result.Paths := TAtlasSetupRun.Done;
+end;
+
 procedure TAtlasWelcomeSetupFrameTests.FindingNamesUnit;
 var
   Saved: TAtlasLanguage;
@@ -3318,45 +3369,15 @@ var
   Fake: TFakeSetup;
   Source: IAtlasSetupSource;
   Frame: TAtlasWelcomeSetupFrame;
-  Line: TAtlasSetupLine;
-  Index: Integer;
 begin
   Saved := TAtlasStrings.Language;
   Fake := TFakeSetup.Create;
-  Fake.Card_ := SetupCard;
-  Fake.Card_.Facts.Setup.Known := True;
-  Fake.Card_.Facts.Setup.Checked := True;
-  Fake.Card_.Facts.Setup.Files := 12;
-  Fake.Card_.Facts.Setup.MissingUnitCount := 9;
-  Fake.Card_.Facts.Setup.UndefinedDefineCount := 1;
-  Fake.Card_.Facts.Setup.MissingUnits := [SetupFinding('Xml.Helpers', 'Src\Main.pas', 12, 3)];
-  for Index := 2 to 9 do
-  begin
-    Fake.Card_.Facts.Setup.MissingUnits := Fake.Card_.Facts.Setup.MissingUnits +
-      [SetupFinding('Unit' + IntToStr(Index), 'Src\Main.pas', 12 + Index, 1)];
-  end;
-  Fake.Card_.Facts.Setup.UndefinedDefines := [SetupFinding('USE_XML', 'Src\Main.pas', 3, 1)];
-  Fake.Card_.Paths := TAtlasSetupRun.Done;
+  Fake.Card_ := SetupCardWithFindings;
   Source := Fake;
   Host := TForm.CreateNew(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    Line := Default(TAtlasSetupLine);
-    Line.Kind := TAtlasSetupFindingKind.MissingUnit;
-    Line.Name := 'Xml.Helpers';
-    Line.FileName := 'Src\Main.pas';
-    Line.Line := 12;
-    Line.Count := 1;
-    Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12',
-      TAtlasWelcomeSetupFrame.FindingCaption(Line));
-    Line.Count := 3;
-    Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12 (3×)',
-      TAtlasWelcomeSetupFrame.FindingCaption(Line));
-    Line.Kind := TAtlasSetupFindingKind.UndefinedDefine;
-    Line.Name := 'USE_XML';
-    Line.Count := 1;
-    Assert.AreEqual('Define „USE_XML“ ohne Quelle – Src\Main.pas, Zeile 12',
-      TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    AssertSetupFindingCaptions;
     Frame := TAtlasWelcomeSetupFrame.Create(Host);
     Frame.Parent := Host;
     Frame.SetBounds(0, 0, 640, 300);
@@ -3850,6 +3871,28 @@ begin
   end;
 end;
 
+/// <summary>Klicks neben „Fortsetzen“, auf „Fortsetzen“ der zweiten Zeile und auf zwei Commits.</summary>
+procedure ClickContinueRowsAndCommits(const AFrame: TAtlasWelcomeContinueFrame);
+var
+  mHit: TAtlasContinueHit;
+begin
+  // Klick auf die Zeile außerhalb von „Fortsetzen“: nichts.
+  mHit := Default(TAtlasContinueHit);
+  mHit.Row := 0;
+  mHit.Button := False;
+  mHit.Commit := -1;
+  AFrame.ClickAt(mHit);
+  mHit.Row := 1;
+  mHit.Button := True;
+  AFrame.ClickAt(mHit);
+  mHit.Row := -1;
+  mHit.Button := False;
+  mHit.Commit := 0;
+  AFrame.ClickAt(mHit);
+  mHit.Commit := 3;
+  AFrame.ClickAt(mHit);
+end;
+
 procedure TAtlasWelcomeContinueFrameTests.ResumeAndCommitReachSource;
 var
   Host: TForm;
@@ -3878,21 +3921,7 @@ begin
     Assert.IsTrue(Frame.PreferredHeight > Height, 'zwei Arbeitsstände und ein Commit brauchen mehr Platz');
     Assert.AreEqual(2, Integer(Length(Frame.Entries)));
     Fake.Calls := nil;
-    // Klick auf die Zeile außerhalb von „Fortsetzen“: nichts.
-    Hit := Default(TAtlasContinueHit);
-    Hit.Row := 0;
-    Hit.Button := False;
-    Hit.Commit := -1;
-    Frame.ClickAt(Hit);
-    Hit.Row := 1;
-    Hit.Button := True;
-    Frame.ClickAt(Hit);
-    Hit.Row := -1;
-    Hit.Button := False;
-    Hit.Commit := 0;
-    Frame.ClickAt(Hit);
-    Hit.Commit := 3;
-    Frame.ClickAt(Hit);
+    ClickContinueRowsAndCommits(Frame);
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
     Assert.AreEqual(2, Integer(Length(Fake.Calls)));
