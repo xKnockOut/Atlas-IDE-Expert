@@ -632,6 +632,60 @@ end;
 const
   cExecuteGitcName = 'feature/753-atlas-bereiche-und';
 
+/// <summary>Nur auf origin, keine Basis, Zeitüberschreitung bei der Prüfung.</summary>
+procedure AssertGitBaseFromOrigin(const AFake: TFakeBranchingVcs; const AVcs: IAtlasVersionControl;
+  const APlan: TAtlasIssueStartPlan);
+var
+  mStarted: TAtlasIssueStartResult;
+begin
+  // Nur auf origin: von origin/main.
+  AFake.Branches := nil;
+  AFake.Bases := nil;
+  AFake.RemoteBases := ['main'];
+  AFake.Calls := nil;
+  mStarted := TAtlasMyIssues.Execute(AVcs, APlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual('origin/main', mStarted.Base);
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/remotes/origin/main --',
+    AFake.Calls[High(AFake.Calls)]);
+  // Keine Basis vorhanden: Fehler, nichts ausgecheckt (nie stillschweigend vom aktuellen Branch).
+  AFake.Branches := nil;
+  AFake.RemoteBases := nil;
+  AFake.Current := 'main';
+  mStarted := TAtlasMyIssues.Execute(AVcs, APlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.IsFalse(mStarted.Succeeded);
+  Assert.IsTrue(mStarted.Reason = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual('main', AFake.Current);
+  // Zeitüberschreitung bei der Prüfung: kein Anlegen.
+  AFake.ExistsOutcome := TAtlasVcsOutcome.TimedOut;
+  AFake.Bases := ['main'];
+  AFake.Calls := nil;
+  mStarted := TAtlasMyIssues.Execute(AVcs, APlan);
+  Assert.IsTrue(mStarted.Reason = TAtlasVcsOutcome.TimedOut);
+  Assert.AreEqual(1, Integer(Length(AFake.Calls)));
+  AFake.ExistsOutcome := TAtlasVcsOutcome.Ok;
+end;
+
+/// <summary>Ungültiger Name aus dem Muster; danach den Fake leeren.</summary>
+procedure AssertGitInvalidName(const AFake: TFakeBranchingVcs; const AVcs: IAtlasVersionControl);
+var
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
+begin
+  // Ungültiger Name aus dem Muster.
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
+    TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '{kurztitel}', '', ''), Issue('#1', 1, '...'));
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.InvalidName);
+  AFake.Calls := nil;
+  AFake.Branches := nil;
+  AFake.Bases := nil;
+  AFake.RemoteBases := nil;
+  AFake.Current := '';
+  mStarted := Default(TAtlasIssueStartResult);
+end;
+
 procedure TAtlasMyIssuesTests.ExecuteGit;
 var
   Fake: TFakeBranchingVcs;
@@ -668,44 +722,8 @@ begin
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
   Assert.AreEqual(2, Integer(Length(Fake.Calls)));
   Assert.AreEqual('switch ' + cExecuteGitcName, Fake.Calls[1]);
-  // Nur auf origin: von origin/main.
-  Fake.Branches := nil;
-  Fake.Bases := nil;
-  Fake.RemoteBases := ['main'];
-  Fake.Calls := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual('origin/main', Started.Base);
-  Assert.AreEqual('run checkout --quiet --no-track -b ' + cExecuteGitcName + ' refs/remotes/origin/main --',
-    Fake.Calls[High(Fake.Calls)]);
-  // Keine Basis vorhanden: Fehler, nichts ausgecheckt (nie stillschweigend vom aktuellen Branch).
-  Fake.Branches := nil;
-  Fake.RemoteBases := nil;
-  Fake.Current := 'main';
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
-  Assert.IsFalse(Started.Succeeded);
-  Assert.IsTrue(Started.Reason = TAtlasVcsOutcome.Failed);
-  Assert.AreEqual('main', Fake.Current);
-  // Zeitüberschreitung bei der Prüfung: kein Anlegen.
-  Fake.ExistsOutcome := TAtlasVcsOutcome.TimedOut;
-  Fake.Bases := ['main'];
-  Fake.Calls := nil;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Reason = TAtlasVcsOutcome.TimedOut);
-  Assert.AreEqual(1, Integer(Length(Fake.Calls)));
-  Fake.ExistsOutcome := TAtlasVcsOutcome.Ok;
-  // Ungültiger Name aus dem Muster.
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Git,
-    TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '{kurztitel}', '', ''), Issue('#1', 1, '...'));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.InvalidName);
-  Fake.Calls := nil;
-  Fake.Branches := nil;
-  Fake.Bases := nil;
-  Fake.RemoteBases := nil;
-  Fake.Current := '';
-  Started := Default(TAtlasIssueStartResult);
+  AssertGitBaseFromOrigin(Fake, Vcs, Plan);
+  AssertGitInvalidName(Fake, Vcs);
 end;
 
 procedure TAtlasMyIssuesTests.ExecuteWithDialogRequest;
@@ -874,6 +892,100 @@ end;
 const
   cExecuteSvncName = 'KASSE-42-bon-drucken-langsam';
 
+/// <summary>after = none, after = checkout und ohne erkennbares Layout.</summary>
+procedure AssertSvnAfterNoneCheckoutLayout(const AFake: TFakeBranchingVcs; const AVcs: IAtlasVersionControl;
+  var AOptions: TAtlasIssuesOptions);
+var
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
+begin
+  // after = none: nur anlegen, die Arbeitskopie bleibt.
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  AFake.Current := 'Kasse/trunk';
+  AOptions.Svn.After := TAtlasVcsSvnAfter.None;
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, AOptions, Issue('KASSE-42', 42, 'Bon drucken langsam'));
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual(2, Integer(Length(AFake.Calls)), 'kein switch');
+  Assert.AreEqual('Kasse/trunk', AFake.Current);
+  // after = checkout: das Ergebnis nennt Ordner und alte Wurzel für das Angebot, die Gruppe dort zu öffnen.
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  AOptions.Svn.After := TAtlasVcsSvnAfter.Checkout;
+  AOptions.Svn.Project := 'Kassengruppe';
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, AOptions, Issue('KASSE-42', 42, 'Bon drucken langsam'));
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual(3, Integer(Length(AFake.Calls)));
+  Assert.IsTrue(AFake.Calls[2].StartsWith('run checkout ^/Kasse/branches/' + cExecuteSvncName + '@ '), AFake.Calls[2]);
+  Assert.AreEqual(AFake.WorkingCopy.Root, mStarted.WorkingRoot);
+  Assert.AreEqual(ExpandFileName(IncludeTrailingPathDelimiter(AFake.WorkingCopy.Root) + '..' + PathDelim +
+    'Kassengruppe-KASSE-42'), mStarted.CheckoutFolder);
+  // Ohne erkennbares Layout: kein Ort, kein Serverschritt.
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  AFake.SvnUrl := 'Kasse/Quellen';
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.AreEqual(1, Integer(Length(AFake.Calls)));
+  Assert.AreEqual('exists ?', AFake.Calls[0]);
+end;
+
+/// <summary>#1291: festgeschriebenes External mit und ohne Umschalten.</summary>
+procedure AssertSvnPinnedExternals(const AFake: TFakeBranchingVcs; const AVcs: IAtlasVersionControl;
+  const AOptions: TAtlasIssuesOptions);
+var
+  mOptions: TAtlasIssuesOptions;
+  mPlan: TAtlasIssueStartPlan;
+  mStarted: TAtlasIssueStartResult;
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+begin
+  mOptions := AOptions;
+  // #1291: Anfrage mit festgeschriebenem External und Umschalten: --pin-externals, danach Index neu.
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  AFake.SvnUrl := 'Kasse/trunk';
+  AFake.Current := 'Kasse/trunk';
+  mOptions.Svn.After := TAtlasVcsSvnAfter.Switch;
+  mPlan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, mOptions, Issue('KASSE-42', 42, 'Bon drucken langsam'));
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mFacts.Kind := TAtlasVcsKind.Svn;
+  mFacts.ProjectRoot := 'Kasse';
+  mFacts.LayoutKnown := True;
+  mFacts.RepositoryRoot := 'https://svn.firma.local/repo';
+  mFacts.SvnVersion := '1.14.3';
+  mFacts.SvnDefinitions := [TAtlasVcsSvnExternalDefinition.Make('', '^/Packages/Basis/trunk Packages/Basis'#10)];
+  SetLength(mFacts.SvnExternals, 1);
+  mFacts.SvnExternals[0] := Default(TAtlasVcsSvnExternal);
+  mFacts.SvnExternals[0].Folder := 'Packages/Basis';
+  mFacts.SvnExternals[0].Url := '^/Packages/Basis/trunk';
+  mFacts.SvnExternals[0].Source := 'Packages/Basis/trunk';
+  mFacts.SvnExternals[0].WorkingRevision := '48190';
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, cExecuteSvncName, TAtlasVcsBranchBase.Make(
+    TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
+  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions.Svn));
+  TAtlasVcsBranchPlan.ApplyExternals(mRequest, mFacts, mOptions.Svn,
+    TArray<TAtlasVcsExternalAction>.Create(TAtlasVcsExternalAction.Pin));
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsTrue(AFake.Calls[1].EndsWith('--pin-externals'), AFake.Calls[1]);
+  Assert.IsTrue(mStarted.IndexRebuild);
+  // Nur anlegen: Die Arbeitskopie bleibt, der Index auch.
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  mRequest.After := TAtlasVcsSvnAfter.None;
+  mStarted := TAtlasMyIssues.Execute(AVcs, mPlan, mRequest);
+  Assert.IsTrue(mStarted.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(mStarted.IndexRebuild);
+  AFake.Branches := nil;
+  AFake.Calls := nil;
+  mStarted := Default(TAtlasIssueStartResult);
+  mRequest := Default(TAtlasVcsBranchRequest);
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
 procedure TAtlasMyIssuesTests.ExecuteSvnUnderProjectRoot;
 var
   Fake: TFakeBranchingVcs;
@@ -881,8 +993,6 @@ var
   Options: TAtlasIssuesOptions;
   Plan: TAtlasIssueStartPlan;
   Started: TAtlasIssueStartResult;
-  mFacts: TAtlasVcsBranchFacts;
-  mRequest: TAtlasVcsBranchRequest;
 begin
   Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
   Vcs := Fake;
@@ -908,78 +1018,8 @@ begin
   Assert.AreEqual(2, Integer(Length(Fake.Calls)));
   Assert.AreEqual('switch ^/Kasse/branches/' + cExecuteSvncName, Fake.Calls[1]);
   Assert.AreEqual('Kasse/branches/' + cExecuteSvncName, Fake.Current);
-  // after = none: nur anlegen, die Arbeitskopie bleibt.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Fake.Current := 'Kasse/trunk';
-  Options.Svn.After := TAtlasVcsSvnAfter.None;
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual(2, Integer(Length(Fake.Calls)), 'kein switch');
-  Assert.AreEqual('Kasse/trunk', Fake.Current);
-  // after = checkout: das Ergebnis nennt Ordner und alte Wurzel für das Angebot, die Gruppe dort zu öffnen.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Options.Svn.After := TAtlasVcsSvnAfter.Checkout;
-  Options.Svn.Project := 'Kassengruppe';
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-  Assert.IsTrue(Fake.Calls[2].StartsWith('run checkout ^/Kasse/branches/' + cExecuteSvncName + '@ '), Fake.Calls[2]);
-  Assert.AreEqual(Fake.WorkingCopy.Root, Started.WorkingRoot);
-  Assert.AreEqual(ExpandFileName(IncludeTrailingPathDelimiter(Fake.WorkingCopy.Root) + '..' + PathDelim +
-    'Kassengruppe-KASSE-42'), Started.CheckoutFolder);
-  // Ohne erkennbares Layout: kein Ort, kein Serverschritt.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Fake.SvnUrl := 'Kasse/Quellen';
-  Started := TAtlasMyIssues.Execute(Vcs, Plan);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
-  Assert.AreEqual(1, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('exists ?', Fake.Calls[0]);
-  // #1291: Anfrage mit festgeschriebenem External und Umschalten: --pin-externals, danach Index neu.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Fake.SvnUrl := 'Kasse/trunk';
-  Fake.Current := 'Kasse/trunk';
-  Options.Svn.After := TAtlasVcsSvnAfter.Switch;
-  Plan := TAtlasMyIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
-  mFacts := TAtlasVcsBranchFacts.Empty;
-  mFacts.Kind := TAtlasVcsKind.Svn;
-  mFacts.ProjectRoot := 'Kasse';
-  mFacts.LayoutKnown := True;
-  mFacts.RepositoryRoot := 'https://svn.firma.local/repo';
-  mFacts.SvnVersion := '1.14.3';
-  mFacts.SvnDefinitions := [TAtlasVcsSvnExternalDefinition.Make('', '^/Packages/Basis/trunk Packages/Basis'#10)];
-  SetLength(mFacts.SvnExternals, 1);
-  mFacts.SvnExternals[0] := Default(TAtlasVcsSvnExternal);
-  mFacts.SvnExternals[0].Folder := 'Packages/Basis';
-  mFacts.SvnExternals[0].Url := '^/Packages/Basis/trunk';
-  mFacts.SvnExternals[0].Source := 'Packages/Basis/trunk';
-  mFacts.SvnExternals[0].WorkingRevision := '48190';
-  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, cExecuteSvncName, TAtlasVcsBranchBase.Make(
-    TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
-  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, Options.Svn));
-  TAtlasVcsBranchPlan.ApplyExternals(mRequest, mFacts, Options.Svn,
-    TArray<TAtlasVcsExternalAction>.Create(TAtlasVcsExternalAction.Pin));
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsTrue(Fake.Calls[1].EndsWith('--pin-externals'), Fake.Calls[1]);
-  Assert.IsTrue(Started.IndexRebuild);
-  // Nur anlegen: Die Arbeitskopie bleibt, der Index auch.
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  mRequest.After := TAtlasVcsSvnAfter.None;
-  Started := TAtlasMyIssues.Execute(Vcs, Plan, mRequest);
-  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.IsFalse(Started.IndexRebuild);
-  Fake.Branches := nil;
-  Fake.Calls := nil;
-  Started := Default(TAtlasIssueStartResult);
-  mRequest := Default(TAtlasVcsBranchRequest);
-  mFacts := TAtlasVcsBranchFacts.Empty;
+  AssertSvnAfterNoneCheckoutLayout(Fake, Vcs, Options);
+  AssertSvnPinnedExternals(Fake, Vcs, Options);
 end;
 
 procedure TAtlasMyIssuesTests.VcsKindFromText;

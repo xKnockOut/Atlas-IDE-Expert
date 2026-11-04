@@ -780,6 +780,27 @@ begin
   mFake.Calls := nil;
 end;
 
+/// <summary>Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.</summary>
+procedure AssertTaskTexts;
+var
+  mButton: TAtlasQuickActionButton;
+  mState: TAtlasQuickActionState;
+begin
+  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
+  mButton := Default(TAtlasQuickActionButton);
+  mButton.Action := TAtlasQuickAction.Tasks;
+  mButton.Enabled := True;
+  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionsBar.Caption(mButton, TAtlasQuickActionState.Idle, 0));
+  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
+  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionsBar.Caption(mButton, mState, 4200));
+  mState.Phase := TAtlasQuickActionPhase.Failed;
+  mState.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
+  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionsBar.StateText(mState, 0, False));
+  mState.Phase := TAtlasQuickActionPhase.Refused;
+  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionsBar.StateText(mState, 0, False));
+  Assert.IsTrue(TAtlasQuickActionsBar.ButtonHint(mButton, False, 0, '').Contains('Atlas-Aufgaben'));
+end;
+
 procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;
 var
   Fake: TAtlasFakeQuickActions;
@@ -788,8 +809,6 @@ var
   Items: TMenuItem;
   Menu: TPopupMenu;
   Index: Integer;
-  Button: TAtlasQuickActionButton;
-  State: TAtlasQuickActionState;
 begin
   Fake := TAtlasFakeQuickActions.Create;
   Source := Fake;
@@ -834,19 +853,7 @@ begin
   finally
     Host.Free;
   end;
-  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
-  Button := Default(TAtlasQuickActionButton);
-  Button.Action := TAtlasQuickAction.Tasks;
-  Button.Enabled := True;
-  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionsBar.Caption(Button, TAtlasQuickActionState.Idle, 0));
-  State := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
-  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionsBar.Caption(Button, State, 4200));
-  State.Phase := TAtlasQuickActionPhase.Failed;
-  State.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
-  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionsBar.StateText(State, 0, False));
-  State.Phase := TAtlasQuickActionPhase.Refused;
-  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionsBar.StateText(State, 0, False));
-  Assert.IsTrue(TAtlasQuickActionsBar.ButtonHint(Button, False, 0, '').Contains('Atlas-Aufgaben'));
+  AssertTaskTexts;
 end;
 
 initialization
