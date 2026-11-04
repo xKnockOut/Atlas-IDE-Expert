@@ -31,6 +31,10 @@ uses
   Winapi.Windows,
   Winapi.TlHelp32;
 
+const
+  // Fehlt in Winapi.TlHelp32.
+  TH32CS_SNAPMODULE32 = $00000010;
+
 var
   GCancelled: Integer;
 

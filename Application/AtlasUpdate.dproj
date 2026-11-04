@@ -53,6 +53,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Update.pas"/>
         <DCCReference Include="Source\Shell\Shell.Update.System.pas"/>
         <DCCReference Include="Source\Shell\Shell.Update.Install.pas"/>

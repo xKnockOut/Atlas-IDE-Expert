@@ -8,6 +8,7 @@
 // Atlas.Windows.Updates.Adapters.*.
 
 uses
+  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
   Shell.Update in 'Source\Shell\Shell.Update.pas',
   Shell.Update.System in 'Source\Shell\Shell.Update.System.pas',
   Shell.Update.Install in 'Source\Shell\Shell.Update.Install.pas';
