@@ -906,9 +906,9 @@ begin
   begin
     Exit;
   end;
-  Locations := TLspReferences.Find(FResolver, FIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, False,
-    TImpactAnalysis.CandidateFiles(FIndex, FSources.Files, AItem.Name), FSources.ReadText, FOptions.References,
-    FToken);
+  Locations := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(AItem.FileName,
+    AItem.SelectionRange.StartPos, False, TImpactAnalysis.CandidateFiles(FIndex, FSources.Files, AItem.Name),
+    FSources.ReadText), FOptions.References, FToken);
   Edge := TImpactEdge.Reference;
   if TLspHierarchies.IsRoutine(AItem) then
   begin

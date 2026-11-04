@@ -160,8 +160,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitMain);
   try
-    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, Tree, MainFile, PositionOf(UnitMain, AMarker, AOccurrence),
-      AWithParameters, Result, Error), Error);
+    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
+      PositionOf(UnitMain, AMarker, AOccurrence), AWithParameters), Result, Error), Error);
   finally
     Tree.Free;
   end;
@@ -214,8 +214,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitMain);
   try
-    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, Tree, MainFile, TTextPosition.Create(17, 0), False, Name,
-      Error));
+    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
+      TTextPosition.Create(17, 0), False), Name, Error));
     Assert.AreEqual('', Name);
     Assert.AreEqual('An Zeile 18, Spalte 1 steht kein bekanntes Symbol', Error);
   finally

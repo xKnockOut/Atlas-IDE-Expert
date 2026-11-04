@@ -127,12 +127,14 @@ function TargetAt(const AText, AMarker: string; ACapture: TDeferredCapture; out 
   out AReason: string): Boolean;
 var
   Tree: TSyntaxTree;
+  Input: TAnonymousInput;
 begin
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TAnonymousMethods.Target(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree,
-      TProcTypeKind.Unknown), ACapture, ATarget, AReason);
+    Input := TAnonymousInput.Create(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree, TProcTypeKind.Unknown));
+    Input.Capture := ACapture;
+    Result := TAnonymousMethods.Target(Input, ATarget, AReason);
   finally
     Tree.Free;
   end;
@@ -159,13 +161,16 @@ function ConvertAt(const AText: string; const ARequest: TConvertRequest; out ACo
   out AReason, AResult: string): Boolean;
 var
   Tree: TSyntaxTree;
+  Input: TAnonymousInput;
 begin
   AResult := '';
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TAnonymousMethods.Execute(AText, Tree, PositionOf(AText, ARequest.Marker), LookupFor(Tree,
-      TProcTypeKind.Unknown), ARequest.Capture, TFormatStyle.Default, ARequest.Name, AConverted, AReason);
+    Input := TAnonymousInput.Create(AText, Tree, PositionOf(AText, ARequest.Marker), LookupFor(Tree,
+      TProcTypeKind.Unknown));
+    Input.Capture := ARequest.Capture;
+    Result := TAnonymousMethods.Execute(Input, ARequest.Name, AConverted, AReason);
     if Result then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AConverted.Edits);
@@ -186,8 +191,8 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
-    Result := TAnonymousMethods.Embed(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree, AKind),
-      TFormatStyle.Default, AAction, AReason);
+    Result := TAnonymousMethods.Embed(TAnonymousInput.Create(AText, Tree, PositionOf(AText, AMarker), LookupFor(Tree,
+      AKind)), AAction, AReason);
     if Result then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);
@@ -640,7 +645,7 @@ begin
       begin
         Result := SameText(AName, 'Tick');
       end;
-    Assert.IsFalse(TAnonymousMethods.Embed(Text, Tree, PositionOf(Text, 'TFoo.Tick'), Lookup, TFormatStyle.Default,
+    Assert.IsFalse(TAnonymousMethods.Embed(TAnonymousInput.Create(Text, Tree, PositionOf(Text, 'TFoo.Tick'), Lookup),
       Action, Reason));
     Assert.IsTrue(Pos('Formulardatei', Reason) > 0, Reason);
   finally
