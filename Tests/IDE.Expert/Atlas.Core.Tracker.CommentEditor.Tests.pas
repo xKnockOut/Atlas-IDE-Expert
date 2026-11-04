@@ -81,7 +81,9 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.CommentEditor;
+  Atlas.Core.Tracker.CommentEditor,
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.GitHubParse;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -494,7 +496,7 @@ begin
     '{"login":"anna","fullName":"Anna Berger"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(YouTrackTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   // YouTrack findet "mail" etwa über die E-Mail-Adresse: bleibt, aber hinter dem Treffer im Namen.
   Assert.AreEqual('anna,mail', Logins(mUsers));
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
@@ -509,15 +511,15 @@ var
   mPeople: IAtlasTrackerPeople;
   mError: TAtlasCiFetchError;
 begin
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
-  Assert.IsTrue(TAtlasGitHubTracker.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
+  Assert.IsTrue(TAtlasGitHubParse.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
   Assert.AreEqual('octocat,anna-b', Logins(mUsers));
   Assert.AreEqual('', mUsers[0].Name, 'GitHub liefert hier keinen Namen');
   mTransport := TUsersTransport.Create(200, '[{"login":"octocat"},{"login":"anna-b"},{"login":"banana"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasGitHubTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(GitHubTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   Assert.AreEqual('anna-b,banana', Logins(mUsers), 'nur passende, Anfang zuerst');
   Assert.IsTrue(mTransport.Calls[0].EndsWith('/assignees?per_page=100'));
   mUsers := nil;

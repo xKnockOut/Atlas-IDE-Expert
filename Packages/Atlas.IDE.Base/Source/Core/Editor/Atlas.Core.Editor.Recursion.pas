@@ -76,57 +76,62 @@ end;
 
 { TAtlasFileRecursion }
 
-class function TAtlasFileRecursion.FromJson(AValue: TJSONValue): TAtlasFileRecursion;
+/// <summary>Kette {name, line, character} eines Aufrufs; Glieder ohne Namen fallen weg.</summary>
+function ReadChain(const AValue: TJSONValue): TArray<TAtlasRecursionStep>;
 var
-  Calls, Chain: TJSONArray;
-  Item, Link: TJSONValue;
-  Call: TAtlasRecursionCall;
-  Step: TAtlasRecursionStep;
+  mLink: TJSONValue;
+  mStep: TAtlasRecursionStep;
 begin
-  Result := Default(TAtlasFileRecursion);
-  if not (AValue is TJSONObject) then
+  Result := nil;
+  if AValue is TJSONArray then
   begin
-    Exit;
-  end;
-  // Typen selbst prüfen: GetValue<TJSONArray> wandelt eine Zahl ungeprüft um.
-  if not (TJSONObject(AValue).GetValue('calls') is TJSONArray) then
-  begin
-    Exit;
-  end;
-  Calls := TJSONArray(TJSONObject(AValue).GetValue('calls'));
-  for Item in Calls do
-  begin
-    if not (Item is TJSONObject) then
+    for mLink in TJSONArray(AValue) do
     begin
-      Continue;
-    end;
-    Call := Default(TAtlasRecursionCall);
-    Call.Line := TJSONObject(Item).GetValue<Integer>('line', -1);
-    Call.Character := TJSONObject(Item).GetValue<Integer>('character', 0);
-    Call.EndCharacter := TJSONObject(Item).GetValue<Integer>('endCharacter', Call.Character);
-    Call.Text := TJSONObject(Item).GetValue<string>('text', '');
-    if Call.Line < 0 then
-    begin
-      Continue;
-    end;
-    if TJSONObject(Item).GetValue('chain') is TJSONArray then
-    begin
-      Chain := TJSONArray(TJSONObject(Item).GetValue('chain'));
-      for Link in Chain do
+      if mLink is TJSONObject then
       begin
-        if Link is TJSONObject then
+        mStep.Name := TJSONObject(mLink).GetValue<string>('name', '');
+        mStep.Line := TJSONObject(mLink).GetValue<Integer>('line', -1);
+        mStep.Character := TJSONObject(mLink).GetValue<Integer>('character', 0);
+        if mStep.Name <> '' then
         begin
-          Step.Name := TJSONObject(Link).GetValue<string>('name', '');
-          Step.Line := TJSONObject(Link).GetValue<Integer>('line', -1);
-          Step.Character := TJSONObject(Link).GetValue<Integer>('character', 0);
-          if Step.Name <> '' then
-          begin
-            Call.Chain := Call.Chain + [Step];
-          end;
+          Result := Result + [mStep];
         end;
       end;
     end;
-    Result.Calls := Result.Calls + [Call];
+  end;
+end;
+
+/// <summary>Ein Aufruf {line, character, endCharacter, text, chain}; False ohne gültige Zeile.</summary>
+function ReadCall(const AItem: TJSONObject; out ACall: TAtlasRecursionCall): Boolean;
+begin
+  ACall := Default(TAtlasRecursionCall);
+  ACall.Line := AItem.GetValue<Integer>('line', -1);
+  ACall.Character := AItem.GetValue<Integer>('character', 0);
+  ACall.EndCharacter := AItem.GetValue<Integer>('endCharacter', ACall.Character);
+  ACall.Text := AItem.GetValue<string>('text', '');
+  Result := ACall.Line >= 0;
+  if Result then
+  begin
+    ACall.Chain := ReadChain(AItem.GetValue('chain'));
+  end;
+end;
+
+class function TAtlasFileRecursion.FromJson(AValue: TJSONValue): TAtlasFileRecursion;
+var
+  mItem: TJSONValue;
+  mCall: TAtlasRecursionCall;
+begin
+  Result := Default(TAtlasFileRecursion);
+  // Typen selbst prüfen: GetValue<TJSONArray> wandelt eine Zahl ungeprüft um.
+  if (AValue is TJSONObject) and (TJSONObject(AValue).GetValue('calls') is TJSONArray) then
+  begin
+    for mItem in TJSONArray(TJSONObject(AValue).GetValue('calls')) do
+    begin
+      if (mItem is TJSONObject) and ReadCall(TJSONObject(mItem), mCall) then
+      begin
+        Result.Calls := Result.Calls + [mCall];
+      end;
+    end;
   end;
 end;
 

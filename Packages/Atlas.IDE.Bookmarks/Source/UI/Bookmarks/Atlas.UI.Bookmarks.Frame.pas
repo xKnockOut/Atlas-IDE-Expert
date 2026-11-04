@@ -39,57 +39,76 @@ const
 
 type
   TAtlasBookmarksFrame = class(TFrame)
+  private type
+    /// <summary>Steuerelemente des Frames.</summary>
+    TParts = record
+      Filter: TEdit;
+      OnlyFile: TCheckBox;
+      List: TListView;
+      Empty: TLabel;
+      Place: TLabel;
+      Menu: TPopupMenu;
+      OpenItem: TMenuItem;
+      RenameItem: TMenuItem;
+      DeleteItem: TMenuItem;
+    end;
+
+    /// <summary>Rückrufe an die IDE-Schicht.</summary>
+    THandlers = record
+      OnOpen: TProc<string>;
+      OnRename: TProc<string, string>;
+      OnDelete: TProc<string>;
+      OnMove: TProc<string, string>;
+      OnNumber: TProc<string, Integer>;
+    end;
+
+    /// <summary>Zustand von Maus und Namensbearbeitung.</summary>
+    TMouse = record
+      EditAllowed: Boolean;
+      Dropped: Boolean;
+      /// <summary>Der letzte Mausklick traf eine Zeile (nicht die freie Fläche).</summary>
+      ClickedItem: Boolean;
+    end;
+
+    /// <summary>Ereignisse der Steuerelemente; gehört dem Frame.</summary>
+    TEvents = class(TComponent)
+    private
+      FFrame: TAtlasBookmarksFrame;
+    public
+      constructor Create(AFrame: TAtlasBookmarksFrame); reintroduce;
+      procedure FilterChange(Sender: TObject);
+      procedure OnlyFileClick(Sender: TObject);
+      procedure FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+      procedure FilterKeyPress(Sender: TObject; var Key: Char);
+      procedure ListClick(Sender: TObject);
+      procedure ListDblClick(Sender: TObject);
+      procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+      procedure ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+      procedure ListEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
+      procedure ListEdited(Sender: TObject; Item: TListItem; var S: string);
+      procedure ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
+      procedure ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+      procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+        var DefaultDraw: Boolean);
+      procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
+        State: TCustomDrawState; var DefaultDraw: Boolean);
+      procedure MenuPopup(Sender: TObject);
+      procedure OpenClick(Sender: TObject);
+      procedure RenameClick(Sender: TObject);
+      procedure DeleteClick(Sender: TObject);
+    end;
   private
-    FFilter: TEdit;
-    FOnlyFile: TCheckBox;
+    FParts: TParts;
+    FHandlers: THandlers;
+    FMouse: TMouse;
     FCurrentFile: string;
-    FList: TListView;
-    FEmpty: TLabel;
-    FPlace: TLabel;
-    FMenu: TPopupMenu;
-    FOpenItem: TMenuItem;
-    FRenameItem: TMenuItem;
-    FDeleteItem: TMenuItem;
     FBookmarks: TAtlasBookmarkList;
     /// <summary>Gezeigte Lesezeichen in der Reihenfolge der Listenzeilen.</summary>
     FShown: TArray<TAtlasBookmark>;
-    FEditAllowed: Boolean;
-    FDropped: Boolean;
-    /// <summary>Der letzte Mausklick traf eine Zeile (nicht die freie Fläche).</summary>
-    FClickedItem: Boolean;
-    FOnOpen: TProc<string>;
-    FOnRename: TProc<string, string>;
-    FOnDelete: TProc<string>;
-    FOnMove: TProc<string, string>;
-    FOnNumber: TProc<string, Integer>;
-    function AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
-    function AddMenuItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
     function IdAt(AIndex: Integer): string;
     procedure Refill(const ASelectId: string);
-    procedure FilterChange(Sender: TObject);
-    procedure OnlyFileClick(Sender: TObject);
     /// <summary>Spalte „Nr.“ vorn zeigen, sobald die Liste ein Fenster hat.</summary>
     procedure ApplyColumnOrder;
-    procedure FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure FilterKeyPress(Sender: TObject; var Key: Char);
-    procedure ListClick(Sender: TObject);
-    procedure ListDblClick(Sender: TObject);
-    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure ListEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
-    procedure ListEdited(Sender: TObject; Item: TListItem; var S: string);
-    procedure ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
-    procedure ListDragDrop(Sender, Source: TObject; X, Y: Integer);
-    function ListColor(AColor: TColor): TColor;
-    procedure RowColors(ACanvas: TCanvas; ASelected, AGray: Boolean);
-    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
-      var DefaultDraw: Boolean);
-    procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
-      State: TCustomDrawState; var DefaultDraw: Boolean);
-    procedure MenuPopup(Sender: TObject);
-    procedure OpenClick(Sender: TObject);
-    procedure RenameClick(Sender: TObject);
-    procedure DeleteClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
   public const
@@ -117,21 +136,21 @@ type
     /// <summary>Text der Spalten einer Zeile: Name (ohne Namen die Methode), Datei mit Zeile, Methode, Vorschau,
     /// Nr. (Ziffer, • bei unnummerierten schnellen, sonst leer).</summary>
     class function Cells(const ABookmark: TAtlasBookmark): TArray<string>; static;
-    property Filter: TEdit read FFilter;
-    property OnlyFileCheck: TCheckBox read FOnlyFile;
-    property List: TListView read FList;
-    property EmptyLabel: TLabel read FEmpty;
-    property PlaceLabel: TLabel read FPlace;
-    property Menu: TPopupMenu read FMenu;
+    property Filter: TEdit read FParts.Filter;
+    property OnlyFileCheck: TCheckBox read FParts.OnlyFile;
+    property List: TListView read FParts.List;
+    property EmptyLabel: TLabel read FParts.Empty;
+    property PlaceLabel: TLabel read FParts.Place;
+    property Menu: TPopupMenu read FParts.Menu;
     property Shown: TArray<TAtlasBookmark> read FShown;
-    property OnOpen: TProc<string> read FOnOpen write FOnOpen;
+    property OnOpen: TProc<string> read FHandlers.OnOpen write FHandlers.OnOpen;
     /// <summary>Kennung und neuer Name (ohne Leerraum am Rand, nie leer).</summary>
-    property OnRename: TProc<string, string> read FOnRename write FOnRename;
-    property OnDelete: TProc<string> read FOnDelete write FOnDelete;
+    property OnRename: TProc<string, string> read FHandlers.OnRename write FHandlers.OnRename;
+    property OnDelete: TProc<string> read FHandlers.OnDelete write FHandlers.OnDelete;
     /// <summary>Kennung und Kennung, vor die es soll ('' = ans Ende).</summary>
-    property OnMove: TProc<string, string> read FOnMove write FOnMove;
+    property OnMove: TProc<string, string> read FHandlers.OnMove write FHandlers.OnMove;
     /// <summary>Kennung und Nummer 1–9 (#1104).</summary>
-    property OnNumber: TProc<string, Integer> read FOnNumber write FOnNumber;
+    property OnNumber: TProc<string, Integer> read FHandlers.OnNumber write FHandlers.OnNumber;
   end;
 
 implementation
@@ -144,87 +163,402 @@ uses
 
 {$R *.dfm}
 
+function AddColumn(AList: TListView; const ACaption: string; AWidth, APPI: Integer): TListColumn;
+begin
+  Result := AList.Columns.Add;
+  Result.Caption := ACaption;
+  Result.Width := MulDiv(AWidth, APPI, 96);
+end;
+
+function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  AMenu.Items.Add(Result);
+end;
+
+function ListColor(AList: TListView; AColor: TColor): TColor;
+begin
+  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
+  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
+end;
+
+procedure RowColors(AList: TListView; ACanvas: TCanvas; ASelected, AGray: Boolean);
+begin
+  // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
+  // Systemfarben, im dunklen Thema also weiße Zellen. ASelected aus Item.Selected: Mit cdsSelected war in der
+  // Prüfliste jede Zeile blau, auch die nicht gewählten.
+  if ASelected then
+  begin
+    ACanvas.Brush.Color := ListColor(AList, clHighlight);
+    ACanvas.Font.Color := ListColor(AList, clHighlightText);
+  end
+  else
+  begin
+    ACanvas.Brush.Color := ListColor(AList, AList.Color);
+    if AGray then
+    begin
+      ACanvas.Font.Color := ListColor(AList, clGrayText);
+    end
+    else
+    begin
+      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
+    end;
+  end;
+end;
+
+function BuildFilter(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents): TEdit;
+begin
+  Result := TEdit.Create(AFrame);
+  Result.Parent := AFrame;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.TextHint := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksFilterHint);
+  Result.OnChange := AEvents.FilterChange;
+  Result.OnKeyDown := AEvents.FilterKeyDown;
+  Result.OnKeyPress := AEvents.FilterKeyPress;
+end;
+
+function BuildOnlyFile(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents;
+  AFilter: TEdit): TCheckBox;
+begin
+  Result := TCheckBox.Create(AFrame);
+  Result.Parent := AFrame;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Top := AFilter.Top + AFilter.Height;
+  Result.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksOnlyFile);
+  Result.OnClick := AEvents.OnlyFileClick;
+end;
+
+function BuildPlace(AFrame: TAtlasBookmarksFrame): TLabel;
+begin
+  Result := TLabel.Create(AFrame);
+  Result.Parent := AFrame;
+  Result.Align := alBottom;
+  Result.AlignWithMargins := True;
+  Result.ShowAccelChar := False;
+  Result.EllipsisPosition := epEndEllipsis;
+  Result.Font.Color := clGrayText;
+  Result.Caption := '';
+end;
+
+procedure BuildMenu(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents;
+  var AParts: TAtlasBookmarksFrame.TParts);
+begin
+  AParts.Menu := TPopupMenu.Create(AFrame);
+  AParts.Menu.OnPopup := AEvents.MenuPopup;
+  AParts.OpenItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
+    AEvents.OpenClick);
+  AParts.OpenItem.Default := True;
+  AParts.RenameItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename),
+    AEvents.RenameClick);
+  AParts.DeleteItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete),
+    AEvents.DeleteClick);
+end;
+
+procedure AddColumns(AList: TListView; APPI: Integer);
+begin
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), 160, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), 120, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), 140, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), 240, APPI);
+  // „Nr.“ hinten angelegt, damit der Name die bearbeitbare erste Spalte bleibt; CreateWnd zeigt sie vorn.
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), 36, APPI).Alignment :=
+    taCenter;
+end;
+
+function BuildList(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents;
+  AMenu: TPopupMenu): TListView;
+begin
+  Result := TListView.Create(AFrame);
+  Result.Parent := AFrame;
+  Result.Align := alClient;
+  Result.AlignWithMargins := True;
+  Result.ViewStyle := vsReport;
+  Result.RowSelect := True;
+  Result.HideSelection := False;
+  Result.ReadOnly := False;
+  Result.MultiSelect := False;
+  Result.ColumnClick := False;
+  Result.DragMode := dmAutomatic;
+  Result.PopupMenu := AMenu;
+  AddColumns(Result, AFrame.CurrentPPI);
+  Result.OnClick := AEvents.ListClick;
+  Result.OnDblClick := AEvents.ListDblClick;
+  Result.OnKeyDown := AEvents.ListKeyDown;
+  Result.OnMouseDown := AEvents.ListMouseDown;
+  Result.OnEditing := AEvents.ListEditing;
+  Result.OnEdited := AEvents.ListEdited;
+  Result.OnDragOver := AEvents.ListDragOver;
+  Result.OnDragDrop := AEvents.ListDragDrop;
+  Result.OnCustomDrawItem := AEvents.ListCustomDrawItem;
+  Result.OnCustomDrawSubItem := AEvents.ListCustomDrawSubItem;
+end;
+
+function BuildEmpty(AFrame: TAtlasBookmarksFrame): TLabel;
+begin
+  // Ohne Lesezeichen: Hinweis statt leerer Liste.
+  Result := TLabel.Create(AFrame);
+  Result.Parent := AFrame;
+  Result.Align := alClient;
+  Result.AlignWithMargins := True;
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+  Result.Font.Color := clGrayText;
+  Result.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);
+  Result.Visible := False;
+end;
+
+{ TAtlasBookmarksFrame.TEvents }
+
+constructor TAtlasBookmarksFrame.TEvents.Create(AFrame: TAtlasBookmarksFrame);
+begin
+  inherited Create(AFrame);
+  FFrame := AFrame;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.FilterChange(Sender: TObject);
+begin
+  FFrame.Refill(FFrame.SelectedId);
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.OnlyFileClick(Sender: TObject);
+begin
+  FFrame.Refill(FFrame.SelectedId);
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  mList: TListView;
+begin
+  mList := FFrame.FParts.List;
+  case Key of
+    VK_DOWN:
+      if mList.Visible and (mList.Items.Count > 0) then
+      begin
+        Key := 0;
+        if mList.CanFocus and mList.Showing then
+        begin
+          mList.SetFocus;
+        end;
+      end;
+    VK_RETURN:
+      begin
+        Key := 0;
+        if mList.Items.Count > 0 then
+        begin
+          mList.Items[0].Selected := True;
+          FFrame.OpenSelected;
+        end;
+      end;
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.FilterKeyPress(Sender: TObject; var Key: Char);
+begin
+  // Enter springt; kein Signalton des Eingabefelds.
+  if Key = #13 then
+  begin
+    Key := #0;
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  FFrame.FMouse.Dropped := False;
+  FFrame.FMouse.ClickedItem := FFrame.FParts.List.GetItemAt(X, Y) <> nil;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListClick(Sender: TObject);
+begin
+  // Nach dem Ziehen und auf der freien Fläche kein Sprung.
+  if FFrame.FMouse.Dropped or not FFrame.FMouse.ClickedItem then
+  begin
+    FFrame.FMouse.Dropped := False;
+    Exit;
+  end;
+  FFrame.OpenSelected;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListDblClick(Sender: TObject);
+begin
+  FFrame.OpenSelected;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  // Während der Namensbearbeitung gehören die Tasten dem Eingabefeld.
+  if FFrame.FParts.List.IsEditing then
+  begin
+    Exit;
+  end;
+  case Key of
+    VK_RETURN:
+      begin
+        Key := 0;
+        FFrame.OpenSelected;
+      end;
+    VK_F2:
+      begin
+        Key := 0;
+        FFrame.BeginRename;
+      end;
+    VK_DELETE:
+      begin
+        Key := 0;
+        FFrame.DeleteSelected;
+      end;
+    Ord('1')..Ord('9'):
+      // Strg+Umschalt+Zahl vergibt die Nummer (#1104).
+      if (ssCtrl in Shift) and (ssShift in Shift) and not (ssAlt in Shift) then
+      begin
+        FFrame.NumberSelected(Key - Ord('0'));
+        Key := 0;
+      end;
+    VK_UP, VK_DOWN:
+      if ssCtrl in Shift then
+      begin
+        if Key = VK_UP then
+        begin
+          FFrame.MoveSelected(-1);
+        end
+        else
+        begin
+          FFrame.MoveSelected(1);
+        end;
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
+begin
+  // Nur über F2 bzw. „Umbenennen“, nicht durch einen zweiten Klick (der springt).
+  AllowEdit := FFrame.FMouse.EditAllowed;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListEdited(Sender: TObject; Item: TListItem; var S: string);
+var
+  mId, mName: string;
+begin
+  mId := FFrame.IdAt(Item.Index);
+  mName := Trim(S);
+  // Leer bleibt beim alten Namen.
+  if (mId = '') or (mName = '') then
+  begin
+    S := Item.Caption;
+    Exit;
+  end;
+  S := mName;
+  if Assigned(FFrame.FHandlers.OnRename) then
+  begin
+    FFrame.FHandlers.OnRename(mId, mName);
+  end;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
+  var Accept: Boolean);
+begin
+  Accept := (Source = FFrame.FParts.List) and (FFrame.FParts.List.Selected <> nil);
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+var
+  mList: TListView;
+  mTarget: TListItem;
+  mBefore: string;
+begin
+  mList := FFrame.FParts.List;
+  if (Source <> mList) or (mList.Selected = nil) then
+  begin
+    Exit;
+  end;
+  FFrame.FMouse.Dropped := True;
+  mTarget := mList.GetItemAt(X, Y);
+  mBefore := '';
+  if mTarget <> nil then
+  begin
+    // Nach unten gezogen: hinter das Ziel, nach oben: davor.
+    if mTarget.Index > mList.Selected.Index then
+    begin
+      mBefore := FFrame.IdAt(mTarget.Index + 1);
+    end
+    else
+    begin
+      mBefore := FFrame.IdAt(mTarget.Index);
+    end;
+  end;
+  FFrame.Drop(FFrame.SelectedId, mBefore);
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  mShown: TArray<TAtlasBookmark>;
+begin
+  DefaultDraw := True;
+  mShown := FFrame.FShown;
+  // Nicht gefunden: ganze Zeile grau; ohne Namen ist der abgeleitete Name grau (#1104).
+  RowColors(FFrame.FParts.List, Sender.Canvas, (Item <> nil) and Item.Selected,
+    (Item <> nil) and (Item.Index <= High(mShown)) and (mShown[Item.Index].Lost or mShown[Item.Index].Unnamed));
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  mShown: TArray<TAtlasBookmark>;
+begin
+  DefaultDraw := True;
+  mShown := FFrame.FShown;
+  RowColors(FFrame.FParts.List, Sender.Canvas, (Item <> nil) and Item.Selected,
+    (Item <> nil) and (Item.Index <= High(mShown)) and mShown[Item.Index].Lost);
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.MenuPopup(Sender: TObject);
+var
+  mHas: Boolean;
+begin
+  mHas := FFrame.SelectedId <> '';
+  FFrame.FParts.OpenItem.Enabled := mHas;
+  FFrame.FParts.RenameItem.Enabled := mHas;
+  FFrame.FParts.DeleteItem.Enabled := mHas;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.OpenClick(Sender: TObject);
+begin
+  FFrame.OpenSelected;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.RenameClick(Sender: TObject);
+begin
+  FFrame.BeginRename;
+end;
+
+procedure TAtlasBookmarksFrame.TEvents.DeleteClick(Sender: TObject);
+begin
+  FFrame.DeleteSelected;
+end;
+
 { TAtlasBookmarksFrame }
 
 constructor TAtlasBookmarksFrame.Create(AOwner: TComponent);
+var
+  mEvents: TEvents;
 begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
   FBookmarks := TAtlasBookmarkList.Create('');
-
-  FFilter := TEdit.Create(Self);
-  FFilter.Parent := Self;
-  FFilter.Align := alTop;
-  FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksFilterHint);
-  FFilter.OnChange := FilterChange;
-  FFilter.OnKeyDown := FilterKeyDown;
-  FFilter.OnKeyPress := FilterKeyPress;
-
-  FOnlyFile := TCheckBox.Create(Self);
-  FOnlyFile.Parent := Self;
-  FOnlyFile.Align := alTop;
-  FOnlyFile.AlignWithMargins := True;
-  FOnlyFile.Top := FFilter.Top + FFilter.Height;
-  FOnlyFile.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksOnlyFile);
-  FOnlyFile.OnClick := OnlyFileClick;
-
-  FPlace := TLabel.Create(Self);
-  FPlace.Parent := Self;
-  FPlace.Align := alBottom;
-  FPlace.AlignWithMargins := True;
-  FPlace.ShowAccelChar := False;
-  FPlace.EllipsisPosition := epEndEllipsis;
-  FPlace.Font.Color := clGrayText;
-  FPlace.Caption := '';
-
-  FMenu := TPopupMenu.Create(Self);
-  FMenu.OnPopup := MenuPopup;
-  FOpenItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo), OpenClick);
-  FOpenItem.Default := True;
-  FRenameItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename), RenameClick);
-  FDeleteItem := AddMenuItem(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete), DeleteClick);
-
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.ViewStyle := vsReport;
-  FList.RowSelect := True;
-  FList.HideSelection := False;
-  FList.ReadOnly := False;
-  FList.MultiSelect := False;
-  FList.ColumnClick := False;
-  FList.DragMode := dmAutomatic;
-  FList.PopupMenu := FMenu;
-  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), 160);
-  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), 120);
-  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), 140);
-  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), 240);
-  // „Nr.“ hinten angelegt, damit der Name die bearbeitbare erste Spalte bleibt; CreateWnd zeigt sie vorn.
-  AddColumn(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), 36).Alignment := taCenter;
-  FList.OnClick := ListClick;
-  FList.OnDblClick := ListDblClick;
-  FList.OnKeyDown := ListKeyDown;
-  FList.OnMouseDown := ListMouseDown;
-  FList.OnEditing := ListEditing;
-  FList.OnEdited := ListEdited;
-  FList.OnDragOver := ListDragOver;
-  FList.OnDragDrop := ListDragDrop;
-  FList.OnCustomDrawItem := ListCustomDrawItem;
-  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
-
-  // Ohne Lesezeichen: Hinweis statt leerer Liste.
-  FEmpty := TLabel.Create(Self);
-  FEmpty.Parent := Self;
-  FEmpty.Align := alClient;
-  FEmpty.AlignWithMargins := True;
-  FEmpty.WordWrap := True;
-  FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);
-  FEmpty.Visible := False;
+  mEvents := TEvents.Create(Self);
+  FParts.Filter := BuildFilter(Self, mEvents);
+  FParts.OnlyFile := BuildOnlyFile(Self, mEvents, FParts.Filter);
+  FParts.Place := BuildPlace(Self);
+  BuildMenu(Self, mEvents, FParts);
+  FParts.List := BuildList(Self, mEvents, FParts.Menu);
+  FParts.Empty := BuildEmpty(Self);
   Refill('');
 end;
 
@@ -236,35 +570,20 @@ end;
 
 procedure TAtlasBookmarksFrame.ApplyColumnOrder;
 var
-  Order: array[0..NumberColumn] of Integer;
-  Index: Integer;
+  mOrder: array[0..NumberColumn] of Integer;
+  mIndex: Integer;
 begin
   // Ohne Fenster gibt es keine Reihenfolge; Refill versucht es erneut.
-  if (FList = nil) or not FList.HandleAllocated then
+  if (FParts.List = nil) or not FParts.List.HandleAllocated then
   begin
     Exit;
   end;
-  Order[0] := NumberColumn;
-  for Index := 1 to NumberColumn do
+  mOrder[0] := NumberColumn;
+  for mIndex := 1 to NumberColumn do
   begin
-    Order[Index] := Index - 1;
+    mOrder[mIndex] := mIndex - 1;
   end;
-  ListView_SetColumnOrderArray(FList.Handle, Length(Order), @Order[0]);
-end;
-
-function TAtlasBookmarksFrame.AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
-begin
-  Result := FList.Columns.Add;
-  Result.Caption := ACaption;
-  Result.Width := MulDiv(AWidth, CurrentPPI, 96);
-end;
-
-function TAtlasBookmarksFrame.AddMenuItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  FMenu.Items.Add(Result);
+  ListView_SetColumnOrderArray(FParts.List.Handle, Length(mOrder), @mOrder[0]);
 end;
 
 class function TAtlasBookmarksFrame.Cells(const ABookmark: TAtlasBookmark): TArray<string>;
@@ -296,7 +615,7 @@ begin
     Exit;
   end;
   FCurrentFile := AFileName;
-  if FOnlyFile.Checked then
+  if FParts.OnlyFile.Checked then
   begin
     Refill(SelectedId);
   end;
@@ -307,15 +626,10 @@ var
   Id: string;
 begin
   Id := SelectedId;
-  if (Id <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FOnNumber) then
+  if (Id <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
   begin
-    FOnNumber(Id, ANumber);
+    FHandlers.OnNumber(Id, ANumber);
   end;
-end;
-
-procedure TAtlasBookmarksFrame.OnlyFileClick(Sender: TObject);
-begin
-  Refill(SelectedId);
 end;
 
 procedure TAtlasBookmarksFrame.SetBookmarks(const AList: TAtlasBookmarkList; const APlace, ASelectId: string);
@@ -328,7 +642,7 @@ begin
     Select := SelectedId;
   end;
   FBookmarks := AList;
-  FPlace.Caption := APlace;
+  FParts.Place.Caption := APlace;
   Refill(Select);
 end;
 
@@ -338,24 +652,26 @@ var
   Item: TListItem;
   Texts: TArray<string>;
   Part: Integer;
+  mList: TListView;
 begin
+  mList := FParts.List;
   FShown := nil;
-  for Index in FBookmarks.Filter(FFilter.Text) do
+  for Index in FBookmarks.Filter(FParts.Filter.Text) do
   begin
     // „nur diese Datei“ (#1104): ohne bekannte Datei alle.
-    if not FOnlyFile.Checked or (FCurrentFile = '') or
+    if not FParts.OnlyFile.Checked or (FCurrentFile = '') or
       TAtlasBookmarks.SameFile(FBookmarks.Bookmarks[Index].FileName, FCurrentFile) then
     begin
       FShown := FShown + [FBookmarks.Bookmarks[Index]];
     end;
   end;
-  FList.Items.BeginUpdate;
+  mList.Items.BeginUpdate;
   try
-    FList.Items.Clear;
+    mList.Items.Clear;
     for Index := 0 to High(FShown) do
     begin
       Texts := Cells(FShown[Index]);
-      Item := FList.Items.Add;
+      Item := mList.Items.Add;
       Item.Caption := Texts[0];
       for Part := 1 to High(Texts) do
       begin
@@ -368,21 +684,21 @@ begin
       end;
     end;
   finally
-    FList.Items.EndUpdate;
+    mList.Items.EndUpdate;
   end;
-  if (FList.Selected = nil) and (FList.Items.Count > 0) then
+  if (mList.Selected = nil) and (mList.Items.Count > 0) then
   begin
-    FList.Items[0].Selected := True;
-    FList.Items[0].Focused := True;
+    mList.Items[0].Selected := True;
+    mList.Items[0].Focused := True;
   end;
-  if FList.Selected <> nil then
+  if mList.Selected <> nil then
   begin
-    FList.Selected.MakeVisible(False);
+    mList.Selected.MakeVisible(False);
   end;
   ApplyColumnOrder;
   // Hinweis nur ohne jedes Lesezeichen; ein Filter ohne Treffer zeigt die leere Liste.
-  FEmpty.Visible := FBookmarks.Count = 0;
-  FList.Visible := not FEmpty.Visible;
+  FParts.Empty.Visible := FBookmarks.Count = 0;
+  mList.Visible := not FParts.Empty.Visible;
 end;
 
 function TAtlasBookmarksFrame.IdAt(AIndex: Integer): string;
@@ -397,9 +713,9 @@ end;
 function TAtlasBookmarksFrame.SelectedId: string;
 begin
   Result := '';
-  if FList.Selected <> nil then
+  if FParts.List.Selected <> nil then
   begin
-    Result := IdAt(FList.Selected.Index);
+    Result := IdAt(FParts.List.Selected.Index);
   end;
 end;
 
@@ -408,23 +724,23 @@ var
   Id: string;
 begin
   Id := SelectedId;
-  if (Id <> '') and Assigned(FOnOpen) then
+  if (Id <> '') and Assigned(FHandlers.OnOpen) then
   begin
-    FOnOpen(Id);
+    FHandlers.OnOpen(Id);
   end;
 end;
 
 procedure TAtlasBookmarksFrame.BeginRename;
 begin
-  if FList.Selected = nil then
+  if FParts.List.Selected = nil then
   begin
     Exit;
   end;
-  FEditAllowed := True;
+  FMouse.EditAllowed := True;
   try
-    FList.Selected.EditCaption;
+    FParts.List.Selected.EditCaption;
   finally
-    FEditAllowed := False;
+    FMouse.EditAllowed := False;
   end;
 end;
 
@@ -433,9 +749,9 @@ var
   Id: string;
 begin
   Id := SelectedId;
-  if (Id <> '') and Assigned(FOnDelete) then
+  if (Id <> '') and Assigned(FHandlers.OnDelete) then
   begin
-    FOnDelete(Id);
+    FHandlers.OnDelete(Id);
   end;
 end;
 
@@ -444,11 +760,11 @@ var
   Index: Integer;
   Before: string;
 begin
-  if FList.Selected = nil then
+  if FParts.List.Selected = nil then
   begin
     Exit;
   end;
-  Index := FList.Selected.Index;
+  Index := FParts.List.Selected.Index;
   if ADelta < 0 then
   begin
     if Index <= 0 then
@@ -471,248 +787,11 @@ end;
 
 procedure TAtlasBookmarksFrame.Drop(const AId, ABeforeId: string);
 begin
-  if (AId = '') or SameText(AId, ABeforeId) or not Assigned(FOnMove) then
+  if (AId = '') or SameText(AId, ABeforeId) or not Assigned(FHandlers.OnMove) then
   begin
     Exit;
   end;
-  FOnMove(AId, ABeforeId);
-end;
-
-procedure TAtlasBookmarksFrame.FilterChange(Sender: TObject);
-begin
-  Refill(SelectedId);
-end;
-
-procedure TAtlasBookmarksFrame.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  case Key of
-    VK_DOWN:
-      if FList.Visible and (FList.Items.Count > 0) then
-      begin
-        Key := 0;
-        if FList.CanFocus and FList.Showing then
-        begin
-          FList.SetFocus;
-        end;
-      end;
-    VK_RETURN:
-      begin
-        Key := 0;
-        if FList.Items.Count > 0 then
-        begin
-          FList.Items[0].Selected := True;
-          OpenSelected;
-        end;
-      end;
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.FilterKeyPress(Sender: TObject; var Key: Char);
-begin
-  // Enter springt; kein Signalton des Eingabefelds.
-  if Key = #13 then
-  begin
-    Key := #0;
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-begin
-  FDropped := False;
-  FClickedItem := FList.GetItemAt(X, Y) <> nil;
-end;
-
-procedure TAtlasBookmarksFrame.ListClick(Sender: TObject);
-begin
-  // Nach dem Ziehen und auf der freien Fläche kein Sprung.
-  if FDropped or not FClickedItem then
-  begin
-    FDropped := False;
-    Exit;
-  end;
-  OpenSelected;
-end;
-
-procedure TAtlasBookmarksFrame.ListDblClick(Sender: TObject);
-begin
-  OpenSelected;
-end;
-
-procedure TAtlasBookmarksFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  // Während der Namensbearbeitung gehören die Tasten dem Eingabefeld.
-  if FList.IsEditing then
-  begin
-    Exit;
-  end;
-  case Key of
-    VK_RETURN:
-      begin
-        Key := 0;
-        OpenSelected;
-      end;
-    VK_F2:
-      begin
-        Key := 0;
-        BeginRename;
-      end;
-    VK_DELETE:
-      begin
-        Key := 0;
-        DeleteSelected;
-      end;
-    Ord('1')..Ord('9'):
-      // Strg+Umschalt+Zahl vergibt die Nummer (#1104).
-      if (ssCtrl in Shift) and (ssShift in Shift) and not (ssAlt in Shift) then
-      begin
-        NumberSelected(Key - Ord('0'));
-        Key := 0;
-      end;
-    VK_UP, VK_DOWN:
-      if ssCtrl in Shift then
-      begin
-        if Key = VK_UP then
-        begin
-          MoveSelected(-1);
-        end
-        else
-        begin
-          MoveSelected(1);
-        end;
-        Key := 0;
-      end;
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.ListEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
-begin
-  // Nur über F2 bzw. „Umbenennen“, nicht durch einen zweiten Klick (der springt).
-  AllowEdit := FEditAllowed;
-end;
-
-procedure TAtlasBookmarksFrame.ListEdited(Sender: TObject; Item: TListItem; var S: string);
-var
-  Id, mName: string;
-begin
-  Id := IdAt(Item.Index);
-  mName := Trim(S);
-  // Leer bleibt beim alten Namen.
-  if (Id = '') or (mName = '') then
-  begin
-    S := Item.Caption;
-    Exit;
-  end;
-  S := mName;
-  if Assigned(FOnRename) then
-  begin
-    FOnRename(Id, mName);
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.ListDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState;
-  var Accept: Boolean);
-begin
-  Accept := (Source = FList) and (FList.Selected <> nil);
-end;
-
-procedure TAtlasBookmarksFrame.ListDragDrop(Sender, Source: TObject; X, Y: Integer);
-var
-  Target: TListItem;
-  Before: string;
-begin
-  if (Source <> FList) or (FList.Selected = nil) then
-  begin
-    Exit;
-  end;
-  FDropped := True;
-  Target := FList.GetItemAt(X, Y);
-  Before := '';
-  if Target <> nil then
-  begin
-    // Nach unten gezogen: hinter das Ziel, nach oben: davor.
-    if Target.Index > FList.Selected.Index then
-    begin
-      Before := IdAt(Target.Index + 1);
-    end
-    else
-    begin
-      Before := IdAt(Target.Index);
-    end;
-  end;
-  Drop(SelectedId, Before);
-end;
-
-function TAtlasBookmarksFrame.ListColor(AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(FList).GetSystemColor(AColor));
-end;
-
-procedure TAtlasBookmarksFrame.RowColors(ACanvas: TCanvas; ASelected, AGray: Boolean);
-begin
-  // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
-  // Systemfarben, im dunklen Thema also weiße Zellen. ASelected aus Item.Selected: Mit cdsSelected war in der
-  // Prüfliste jede Zeile blau, auch die nicht gewählten.
-  if ASelected then
-  begin
-    ACanvas.Brush.Color := ListColor(clHighlight);
-    ACanvas.Font.Color := ListColor(clHighlightText);
-  end
-  else
-  begin
-    ACanvas.Brush.Color := ListColor(FList.Color);
-    if AGray then
-    begin
-      ACanvas.Font.Color := ListColor(clGrayText);
-    end
-    else
-    begin
-      ACanvas.Font.Color := ListColor(FList.Font.Color);
-    end;
-  end;
-end;
-
-procedure TAtlasBookmarksFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  // Nicht gefunden: ganze Zeile grau; ohne Namen ist der abgeleitete Name grau (#1104).
-  RowColors(Sender.Canvas, (Item <> nil) and Item.Selected, (Item <> nil) and (Item.Index <= High(FShown)) and
-    (FShown[Item.Index].Lost or FShown[Item.Index].Unnamed));
-end;
-
-procedure TAtlasBookmarksFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  RowColors(Sender.Canvas, (Item <> nil) and Item.Selected, (Item <> nil) and (Item.Index <= High(FShown)) and
-    FShown[Item.Index].Lost);
-end;
-
-procedure TAtlasBookmarksFrame.MenuPopup(Sender: TObject);
-var
-  Has: Boolean;
-begin
-  Has := SelectedId <> '';
-  FOpenItem.Enabled := Has;
-  FRenameItem.Enabled := Has;
-  FDeleteItem.Enabled := Has;
-end;
-
-procedure TAtlasBookmarksFrame.OpenClick(Sender: TObject);
-begin
-  OpenSelected;
-end;
-
-procedure TAtlasBookmarksFrame.RenameClick(Sender: TObject);
-begin
-  BeginRename;
-end;
-
-procedure TAtlasBookmarksFrame.DeleteClick(Sender: TObject);
-begin
-  DeleteSelected;
+  FHandlers.OnMove(AId, ABeforeId);
 end;
 
 end.

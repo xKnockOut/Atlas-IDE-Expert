@@ -169,10 +169,9 @@ type
   public
     /// <summary>Vorgaben aus dem Katalog (#873).</summary>
     class function Defaults: TAtlasMinimapOptions; static;
-    /// <summary>Einstellungen als Optionen: Namen ohne Groß-/Kleinschreibung, unbekannte als Vorgabe, Zahlen
-    /// geklemmt.</summary>
-    class function Options(const ARender, ASide, ASlider: string; AWidth, AScale, AMaxColumn: Integer;
-      ASectionHeaders, AHighlightMethod, AMarkers, AClickJumps: Boolean): TAtlasMinimapOptions; static;
+    /// <summary>Einstellungen (Minimap*) als Optionen: Namen ohne Groß-/Kleinschreibung, unbekannte als Vorgabe,
+    /// Zahlen geklemmt.</summary>
+    class function Options(const ASettings: TAtlasPluginSettings): TAtlasMinimapOptions; static;
     class function RenderOf(const AName: string): TAtlasMinimapRender; static;
     class function SideOf(const AName: string): TAtlasMinimapSide; static;
     class function SliderOf(const AName: string): TAtlasMinimapSlider; static;
@@ -247,6 +246,251 @@ end;
 function IsHeaderType(AKind: Integer): Boolean;
 begin
   Result := (AKind = KindClass) or (AKind = KindInterface) or (AKind = KindObject) or (AKind = KindStruct);
+end;
+
+type
+  /// <summary>Sammelt die Balken der Wörter einer Zeile, Spalte für Spalte.</summary>
+  TRunBuilder = record
+  private
+    FRuns: TAtlasMinimapLine;
+    FRun: TAtlasMinimapRun;
+    FInWord: Boolean;
+    FColumn: Integer;
+    FMaxColumn: Integer;
+    FTabWidth: Integer;
+  public
+    procedure Init(AMaxColumn, ATabWidth: Integer);
+    /// <summary>Offenes Wort an der aktuellen Spalte beenden.</summary>
+    procedure Close;
+    /// <summary>Ein Zeichen des Tokens der Art AKind.</summary>
+    procedure Add(AChar: Char; AKind: TAtlasTokenKind);
+    function Full: Boolean;
+    property Runs: TAtlasMinimapLine read FRuns;
+  end;
+
+procedure TRunBuilder.Init(AMaxColumn, ATabWidth: Integer);
+begin
+  FRuns := nil;
+  FInWord := False;
+  FColumn := 0;
+  FMaxColumn := AMaxColumn;
+  FTabWidth := Max(1, ATabWidth);
+end;
+
+procedure TRunBuilder.Close;
+begin
+  if FInWord then
+  begin
+    FInWord := False;
+    FRun.Stop := Min(FColumn, FMaxColumn);
+    if FRun.Stop > FRun.Start then
+    begin
+      FRuns := FRuns + [FRun];
+    end;
+  end;
+end;
+
+procedure TRunBuilder.Add(AChar: Char; AKind: TAtlasTokenKind);
+begin
+  if AChar = #9 then
+  begin
+    Close;
+    FColumn := (FColumn div FTabWidth + 1) * FTabWidth;
+  end
+  else if AChar = ' ' then
+  begin
+    Close;
+    Inc(FColumn);
+  end
+  else
+  begin
+    if not FInWord then
+    begin
+      FInWord := True;
+      FRun.Start := FColumn;
+      FRun.Kind := AKind;
+    end;
+    Inc(FColumn);
+  end;
+end;
+
+function TRunBuilder.Full: Boolean;
+begin
+  Result := FColumn >= FMaxColumn;
+end;
+
+/// <summary>Gemalte Zeilen nach ihrem oberen Rand (stabil).</summary>
+function SortedByTop(const APainted: TArray<TAtlasMinimapPainted>): TArray<TAtlasMinimapPainted>;
+var
+  mItem, mMoved: TAtlasMinimapPainted;
+  mPosition: Integer;
+begin
+  Result := nil;
+  for mItem in APainted do
+  begin
+    Result := Result + [mItem];
+    mPosition := High(Result);
+    while (mPosition > 0) and (Result[mPosition - 1].Top > Result[mPosition].Top) do
+    begin
+      mMoved := Result[mPosition - 1];
+      Result[mPosition - 1] := Result[mPosition];
+      Result[mPosition] := mMoved;
+      Dec(mPosition);
+    end;
+  end;
+end;
+
+/// <summary>Faltungen zwischen direkt aufeinanderfolgenden Bildschirmzeilen; AOpened: Kopfzeilen, deren
+/// Folgezeile direkt darunter steht.</summary>
+function ObservedFolds(const ARows: TArray<TAtlasMinimapPainted>; ARowHeight: Integer;
+  out AOpened: TArray<Integer>): TAtlasMinimapFolds;
+var
+  mIndex, mGap: Integer;
+begin
+  Result := nil;
+  AOpened := nil;
+  for mIndex := 1 to High(ARows) do
+  begin
+    // Nur direkt aufeinanderfolgende Bildschirmzeilen sagen etwas über die Faltung.
+    if (ARowHeight > 0) and (ARows[mIndex].Top - ARows[mIndex - 1].Top = ARowHeight) then
+    begin
+      mGap := ARows[mIndex].Line - ARows[mIndex - 1].Line;
+      if mGap > 1 then
+      begin
+        Result := Result + [TAtlasMinimapFold.Create(ARows[mIndex - 1].Line, mGap - 1)];
+      end
+      else if mGap = 1 then
+      begin
+        AOpened := AOpened + [ARows[mIndex - 1].Line];
+      end;
+    end;
+  end;
+end;
+
+function ContainsLine(const ALines: TArray<Integer>; ALine: Integer): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := False;
+  for mLine in ALines do
+  begin
+    Result := Result or (mLine = ALine);
+  end;
+end;
+
+function HasFoldAt(const AFolds: TAtlasMinimapFolds; ALine: Integer): Boolean;
+var
+  mFold: TAtlasMinimapFold;
+begin
+  Result := False;
+  for mFold in AFolds do
+  begin
+    Result := Result or (mFold.Line = ALine);
+  end;
+end;
+
+/// <summary>Knoten mit Überschrift: Typen und Routinen außerhalb von Typen (Rümpfe im implementation-Teil und
+/// globale Routinen).</summary>
+function HasHeader(const ANode: TAtlasOutlineNode): Boolean;
+begin
+  Result := not ANode.InBody and (ANode.Name <> '') and
+    (((ANode.Category = TAtlasOutlineCategory.TypeDecl) and IsHeaderType(ANode.Kind)) or
+    ((ANode.Category = TAtlasOutlineCategory.Routine) and IsRoutine(ANode.Kind)));
+end;
+
+/// <summary>Knoten mit Überschrift, aufsteigend nach Anfangszeile (stabil).</summary>
+function HeaderOrder(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
+var
+  mIndex, mPosition, mMoved: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ANodes) do
+  begin
+    if HasHeader(ANodes[mIndex]) then
+    begin
+      Result := Result + [mIndex];
+      mPosition := High(Result);
+      while (mPosition > 0) and (ANodes[Result[mPosition - 1]].StartLine > ANodes[mIndex].StartLine) do
+      begin
+        mMoved := Result[mPosition - 1];
+        Result[mPosition - 1] := Result[mPosition];
+        Result[mPosition] := mMoved;
+        Dec(mPosition);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Marken der Art AKind, aufsteigend nach Zeile (stabil).</summary>
+function MarksOfKind(const AMarks: TAtlasOverviewMarks; AKind: TAtlasOverviewMarkKind): TArray<Integer>;
+var
+  mIndex, mPosition, mMoved: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AMarks) do
+  begin
+    if AMarks[mIndex].Kind = AKind then
+    begin
+      Result := Result + [mIndex];
+      mPosition := High(Result);
+      while (mPosition > 0) and (AMarks[Result[mPosition - 1]].Line > AMarks[mIndex].Line) do
+      begin
+        mMoved := Result[mPosition - 1];
+        Result[mPosition - 1] := Result[mPosition];
+        Result[mPosition] := mMoved;
+        Dec(mPosition);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Pixelbereich der Marke, mindestens AMinHeight hoch und in der Karte.</summary>
+function MarkSpan(const AMark: TAtlasOverviewMark; const AMap: TAtlasMinimapMap; AMinHeight: Integer):
+  TAtlasMinimapSpan;
+var
+  mLastLine: Integer;
+begin
+  mLastLine := Min(AMark.Line + AMark.Count - 1, AMap.LineCount - 1);
+  Result.Top := AMap.PixelOfLine(AMark.Line);
+  Result.Bottom := Max(AMap.PixelOfRow(AMap.RowOf(mLastLine) + 1), Result.Top + Max(1, AMinHeight));
+  if Result.Bottom > AMap.Height then
+  begin
+    Result.Bottom := AMap.Height;
+    Result.Top := Max(0, Min(Result.Top, AMap.Height - Max(1, AMinHeight)));
+  end;
+end;
+
+/// <summary>Balken der Marken einer Art; überlappende gehen im vorigen auf.</summary>
+procedure AddKindBars(const AMarks: TAtlasOverviewMarks; const AMap: TAtlasMinimapMap; AMinHeight: Integer;
+  AKind: TAtlasOverviewMarkKind; var ABars: TAtlasOverviewBars);
+var
+  mIndex, mLast: Integer;
+  mSpan: TAtlasMinimapSpan;
+  mBar: TAtlasOverviewBar;
+begin
+  mLast := -1;
+  for mIndex in MarksOfKind(AMarks, AKind) do
+  begin
+    mSpan := MarkSpan(AMarks[mIndex], AMap, AMinHeight);
+    if (mLast >= 0) and (mSpan.Top <= ABars[mLast].Bottom) then
+    begin
+      ABars[mLast].Bottom := Max(ABars[mLast].Bottom, mSpan.Bottom);
+    end
+    else
+    begin
+      mBar.Mark := mIndex;
+      mBar.Kind := AKind;
+      mBar.Lane := TAtlasOverviewLane.Full;
+      if TAtlasOverview.GroupOf(AKind) = TAtlasOverviewKind.Changes then
+      begin
+        mBar.Lane := TAtlasOverviewLane.Left;
+      end;
+      mBar.Top := mSpan.Top;
+      mBar.Bottom := mSpan.Bottom;
+      ABars := ABars + [mBar];
+      mLast := High(ABars);
+    end;
+  end;
 end;
 
 { TAtlasMinimapOptions }
@@ -494,19 +738,18 @@ begin
   Result.ClickJumps := True;
 end;
 
-class function TAtlasMinimap.Options(const ARender, ASide, ASlider: string; AWidth, AScale, AMaxColumn: Integer;
-  ASectionHeaders, AHighlightMethod, AMarkers, AClickJumps: Boolean): TAtlasMinimapOptions;
+class function TAtlasMinimap.Options(const ASettings: TAtlasPluginSettings): TAtlasMinimapOptions;
 begin
-  Result.Render := RenderOf(ARender);
-  Result.Width := ClampWidth(AWidth);
-  Result.Scale := ClampScale(AScale);
-  Result.MaxColumn := ClampColumn(AMaxColumn);
-  Result.Side := SideOf(ASide);
-  Result.Slider := SliderOf(ASlider);
-  Result.SectionHeaders := ASectionHeaders;
-  Result.HighlightMethod := AHighlightMethod;
-  Result.Markers := AMarkers;
-  Result.ClickJumps := AClickJumps;
+  Result.Render := RenderOf(ASettings.MinimapRender);
+  Result.Width := ClampWidth(ASettings.MinimapWidth);
+  Result.Scale := ClampScale(ASettings.MinimapScale);
+  Result.MaxColumn := ClampColumn(ASettings.MinimapMaxColumn);
+  Result.Side := SideOf(ASettings.MinimapSide);
+  Result.Slider := SliderOf(ASettings.MinimapShowSlider);
+  Result.SectionHeaders := ASettings.MinimapSectionHeaders;
+  Result.HighlightMethod := ASettings.MinimapHighlightMethod;
+  Result.Markers := ASettings.MinimapMarkers;
+  Result.ClickJumps := ASettings.MinimapClickJumps;
 end;
 
 class function TAtlasMinimap.RenderOf(const AName: string): TAtlasMinimapRender;
@@ -613,66 +856,16 @@ end;
 class function TAtlasMinimap.Folds(const AKnown: TAtlasMinimapFolds; const APainted: TArray<TAtlasMinimapPainted>;
   ARowHeight, ALineCount: Integer): TAtlasMinimapFolds;
 var
-  Rows: TArray<TAtlasMinimapPainted>;
-  Item, Moved: TAtlasMinimapPainted;
-  Fold: TAtlasMinimapFold;
-  Index, Position: Integer;
-  Opened: TArray<Integer>;
-  Keep: Boolean;
+  mOpened: TArray<Integer>;
+  mFold: TAtlasMinimapFold;
 begin
-  // Gemalte Zeilen nach ihrem oberen Rand.
-  Rows := nil;
-  for Item in APainted do
+  Result := ObservedFolds(SortedByTop(APainted), ARowHeight, mOpened);
+  for mFold in AKnown do
   begin
-    Rows := Rows + [Item];
-    Position := High(Rows);
-    while (Position > 0) and (Rows[Position - 1].Top > Rows[Position].Top) do
+    // Bekannte bleiben, außer sie sind aufgeklappt oder neu beobachtet (dann gilt der neue Stand).
+    if not ContainsLine(mOpened, mFold.Line) and not HasFoldAt(Result, mFold.Line) then
     begin
-      Moved := Rows[Position - 1];
-      Rows[Position - 1] := Rows[Position];
-      Rows[Position] := Moved;
-      Dec(Position);
-    end;
-  end;
-  Result := nil;
-  Opened := nil;
-  for Index := 1 to High(Rows) do
-  begin
-    // Nur direkt aufeinanderfolgende Bildschirmzeilen sagen etwas über die Faltung.
-    if (ARowHeight <= 0) or (Rows[Index].Top - Rows[Index - 1].Top <> ARowHeight) then
-    begin
-      Continue;
-    end;
-    if Rows[Index].Line - Rows[Index - 1].Line > 1 then
-    begin
-      Result := Result + [TAtlasMinimapFold.Create(Rows[Index - 1].Line, Rows[Index].Line - Rows[Index - 1].Line - 1)];
-    end
-    else if Rows[Index].Line - Rows[Index - 1].Line = 1 then
-    begin
-      Opened := Opened + [Rows[Index - 1].Line];
-    end;
-  end;
-  for Fold in AKnown do
-  begin
-    Keep := True;
-    for Index in Opened do
-    begin
-      if Index = Fold.Line then
-      begin
-        Keep := False;
-      end;
-    end;
-    // Neu beobachtet: der neue Stand gilt.
-    for Index := 0 to High(Result) do
-    begin
-      if Result[Index].Line = Fold.Line then
-      begin
-        Keep := False;
-      end;
-    end;
-    if Keep then
-    begin
-      Result := Result + [Fold];
+      Result := Result + [mFold];
     end;
   end;
   Result := NormalizeFolds(Result, ALineCount);
@@ -699,57 +892,26 @@ end;
 class function TAtlasMinimap.Headers(const ANodes: TAtlasOutlineNodes; const AMap: TAtlasMinimapMap;
   ALabelHeight: Integer): TAtlasMinimapHeaders;
 var
-  Order: TArray<Integer>;
-  Index, Position, Moved, Top, LastBottom: Integer;
-  Node: TAtlasOutlineNode;
-  Header: TAtlasMinimapHeader;
-  IsType: Boolean;
+  mIndex, mTop, mLastBottom, mHeight: Integer;
+  mHeader: TAtlasMinimapHeader;
 begin
   Result := nil;
-  Order := nil;
-  for Index := 0 to High(ANodes) do
+  mHeight := Max(1, ALabelHeight);
+  mLastBottom := -1;
+  for mIndex in HeaderOrder(ANodes) do
   begin
-    Node := ANodes[Index];
-    if Node.InBody or (Node.Name = '') then
+    mTop := AMap.PixelOfLine(ANodes[mIndex].StartLine);
+    // Überdeckt keine frühere und passt in die Karte.
+    if ((mLastBottom < 0) or (mTop >= mLastBottom)) and ((AMap.Height <= 0) or (mTop + mHeight <= AMap.Height)) then
     begin
-      Continue;
+      mHeader.Node := mIndex;
+      mHeader.Line := ANodes[mIndex].StartLine;
+      mHeader.Text := ANodes[mIndex].Name;
+      mHeader.IsType := ANodes[mIndex].Category = TAtlasOutlineCategory.TypeDecl;
+      mHeader.Top := mTop;
+      Result := Result + [mHeader];
+      mLastBottom := mTop + mHeight;
     end;
-    IsType := (Node.Category = TAtlasOutlineCategory.TypeDecl) and IsHeaderType(Node.Kind);
-    // Routinen außerhalb von Typen: Rümpfe im implementation-Teil und globale Routinen.
-    if not IsType and not ((Node.Category = TAtlasOutlineCategory.Routine) and IsRoutine(Node.Kind)) then
-    begin
-      Continue;
-    end;
-    Order := Order + [Index];
-    Position := High(Order);
-    while (Position > 0) and (ANodes[Order[Position - 1]].StartLine > Node.StartLine) do
-    begin
-      Moved := Order[Position - 1];
-      Order[Position - 1] := Order[Position];
-      Order[Position] := Moved;
-      Dec(Position);
-    end;
-  end;
-  LastBottom := -1;
-  for Index in Order do
-  begin
-    Node := ANodes[Index];
-    Top := AMap.PixelOfLine(Node.StartLine);
-    if (LastBottom >= 0) and (Top < LastBottom) then
-    begin
-      Continue;
-    end;
-    if (AMap.Height > 0) and (Top + Max(1, ALabelHeight) > AMap.Height) then
-    begin
-      Continue;
-    end;
-    Header.Node := Index;
-    Header.Line := Node.StartLine;
-    Header.Text := Node.Name;
-    Header.IsType := (Node.Category = TAtlasOutlineCategory.TypeDecl);
-    Header.Top := Top;
-    Result := Result + [Header];
-    LastBottom := Top + Max(1, ALabelHeight);
   end;
 end;
 
@@ -790,68 +952,17 @@ end;
 class function TAtlasMinimap.MarkerBars(const AMarks: TAtlasOverviewMarks; const AMap: TAtlasMinimapMap;
   AMinHeight: Integer): TAtlasOverviewBars;
 var
-  Kind: TAtlasOverviewMarkKind;
-  Order: TArray<Integer>;
-  Index, Position, Moved, Top, Bottom, Last, LastLine: Integer;
-  Bar: TAtlasOverviewBar;
+  mKind: TAtlasOverviewMarkKind;
 begin
   Result := nil;
-  if (AMap.LineCount <= 0) or (AMap.Height <= 0) then
+  if (AMap.LineCount > 0) and (AMap.Height > 0) then
   begin
-    Exit;
-  end;
-  for Kind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
-  begin
-    if not (TAtlasOverview.GroupOf(Kind) in MarkerKinds) then
+    for mKind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
     begin
-      Continue;
-    end;
-    Order := nil;
-    for Index := 0 to High(AMarks) do
-    begin
-      if AMarks[Index].Kind = Kind then
+      if TAtlasOverview.GroupOf(mKind) in MarkerKinds then
       begin
-        Order := Order + [Index];
-        Position := High(Order);
-        while (Position > 0) and (AMarks[Order[Position - 1]].Line > AMarks[Index].Line) do
-        begin
-          Moved := Order[Position - 1];
-          Order[Position - 1] := Order[Position];
-          Order[Position] := Moved;
-          Dec(Position);
-        end;
+        AddKindBars(AMarks, AMap, AMinHeight, mKind, Result);
       end;
-    end;
-    Last := -1;
-    for Index in Order do
-    begin
-      LastLine := Min(AMarks[Index].Line + AMarks[Index].Count - 1, AMap.LineCount - 1);
-      Top := AMap.PixelOfLine(AMarks[Index].Line);
-      Bottom := Max(AMap.PixelOfRow(AMap.RowOf(LastLine) + 1), Top + Max(1, AMinHeight));
-      if Bottom > AMap.Height then
-      begin
-        Bottom := AMap.Height;
-        Top := Max(0, Min(Top, AMap.Height - Max(1, AMinHeight)));
-      end;
-      if (Last >= 0) and (Top <= Result[Last].Bottom) then
-      begin
-        Result[Last].Bottom := Max(Result[Last].Bottom, Bottom);
-        Continue;
-      end;
-      Bar.Mark := Index;
-      Bar.Kind := Kind;
-      if TAtlasOverview.GroupOf(Kind) = TAtlasOverviewKind.Changes then
-      begin
-        Bar.Lane := TAtlasOverviewLane.Left;
-      end
-      else
-      begin
-        Bar.Lane := TAtlasOverviewLane.Full;
-      end;
-      Bar.Top := Top;
-      Bar.Bottom := Bottom;
-      Result := Result + [Bar];
-      Last := High(Result);
     end;
   end;
 end;
@@ -859,67 +970,26 @@ end;
 class function TAtlasMinimap.LineRuns(const ALine: string; const ATokens: TAtlasTokens;
   AMaxColumn, ATabWidth: Integer): TAtlasMinimapLine;
 var
-  Token: TAtlasToken;
-  Index, Column, Start, TabWidth: Integer;
-  Run: TAtlasMinimapRun;
-  InWord: Boolean;
-
-  procedure Close(AStop: Integer);
-  begin
-    if not InWord then
-    begin
-      Exit;
-    end;
-    InWord := False;
-    Run.Stop := Min(AStop, AMaxColumn);
-    if Run.Stop > Run.Start then
-    begin
-      Result := Result + [Run];
-    end;
-  end;
-
+  mBuilder: TRunBuilder;
+  mTokenIndex, mIndex, mStop: Integer;
 begin
-  Result := nil;
-  TabWidth := Max(1, ATabWidth);
-  Column := 0;
-  InWord := False;
-  for Token in ATokens do
+  mBuilder := Default(TRunBuilder);
+  mBuilder.Init(AMaxColumn, ATabWidth);
+  mTokenIndex := 0;
+  while (mTokenIndex <= High(ATokens)) and not mBuilder.Full do
   begin
-    Close(Column);
-    Start := Max(0, Token.Start);
-    for Index := Start to Min(Token.Stop, Length(ALine)) - 1 do
+    mBuilder.Close;
+    mIndex := Max(0, ATokens[mTokenIndex].Start);
+    mStop := Min(ATokens[mTokenIndex].Stop, Length(ALine));
+    while (mIndex < mStop) and not mBuilder.Full do
     begin
-      if Column >= AMaxColumn then
-      begin
-        Break;
-      end;
-      if (ALine[Index + 1] = ' ') or (ALine[Index + 1] = #9) then
-      begin
-        Close(Column);
-        if ALine[Index + 1] = #9 then
-        begin
-          Column := (Column div TabWidth + 1) * TabWidth;
-        end
-        else
-        begin
-          Inc(Column);
-        end;
-        Continue;
-      end;
-      if not InWord then
-      begin
-        InWord := True;
-        Run.Start := Column;
-        Run.Kind := Token.Kind;
-      end;
-      Inc(Column);
+      mBuilder.Add(ALine[mIndex + 1], ATokens[mTokenIndex].Kind);
+      Inc(mIndex);
     end;
-    if Column >= AMaxColumn then
-    begin
-      Break;
-    end;
+    Inc(mTokenIndex);
   end;
-  Close(Column);
+  mBuilder.Close;
+  Result := mBuilder.Runs;
 end;
 
 class function TAtlasMinimap.Runs(const ALines: TArray<string>; AMaxColumn, ATabWidth: Integer):

@@ -218,39 +218,52 @@ begin
   end;
 end;
 
+type
+  /// <summary>Hält fest, welche Ereignisse die Änderungsliste auslöst.</summary>
+  TChangeEventProbe = class
+  public
+    FUndoId: Integer;
+    FRedoId: Integer;
+    FDiffId: Integer;
+    FDiffFile: string;
+  end;
+
+/// <summary>Hängt Zurücknehmen, Wiederherstellen und Unterschied der Liste an die Probe.</summary>
+procedure WireChangeEvents(const AFrame: TAtlasResultsFrame; const AProbe: TChangeEventProbe);
+begin
+  AFrame.OnChangeUndo :=
+    procedure(ASetId: Integer)
+    begin
+      AProbe.FUndoId := ASetId;
+    end;
+  AFrame.OnChangeRedo :=
+    procedure(ASetId: Integer)
+    begin
+      AProbe.FRedoId := ASetId;
+    end;
+  AFrame.OnChangeDiff :=
+    procedure(ASetId: Integer; const AFileName: string)
+    begin
+      AProbe.FDiffId := ASetId;
+      AProbe.FDiffFile := AFileName;
+    end;
+end;
+
 procedure TAtlasUndoViewTests.ChangeListShowsSetsAndRaisesEvents;
 var
   Host: TForm;
   Frame: TAtlasResultsFrame;
   Older: TAtlasChangeSet;
-  UndoId, RedoId, DiffId: Integer;
-  DiffFile: string;
+  mProbe: TChangeEventProbe;
 begin
+  mProbe := TChangeEventProbe.Create;
   Older := SampleSet(True);
   Older.Id := 2;
   Host := TForm.CreateNew(nil);
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    UndoId := 0;
-    RedoId := 0;
-    DiffId := 0;
-    Frame.OnChangeUndo :=
-      procedure(ASetId: Integer)
-      begin
-        UndoId := ASetId;
-      end;
-    Frame.OnChangeRedo :=
-      procedure(ASetId: Integer)
-      begin
-        RedoId := ASetId;
-      end;
-    Frame.OnChangeDiff :=
-      procedure(ASetId: Integer; const AFileName: string)
-      begin
-        DiffId := ASetId;
-        DiffFile := AFileName;
-      end;
+    WireChangeEvents(Frame, mProbe);
     Frame.ShowChanges('Atlas-Änderungen', [SampleSet(False), Older], EncodeDateTime(2026, 10, 14, 18, 0, 0, 0),
       False);
     Assert.IsTrue(Frame.ShowsChanges);
@@ -264,26 +277,27 @@ begin
     Assert.IsTrue(Frame.Menu.Items[0].Enabled);
     Assert.IsFalse(Frame.Menu.Items[1].Enabled);
     Frame.UndoSelected;
-    Assert.AreEqual(3, UndoId);
+    Assert.AreEqual(3, mProbe.FUndoId);
     Frame.ShowSelectedDiff;
-    Assert.AreEqual(3, DiffId);
-    Assert.AreEqual('', DiffFile, 'Satz: alle Dateien');
+    Assert.AreEqual(3, mProbe.FDiffId);
+    Assert.AreEqual('', mProbe.FDiffFile, 'Satz: alle Dateien');
     // Datei des älteren, zurückgenommenen Satzes.
     Frame.Tree.Selected := Frame.Tree.Items[4];
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[0].Enabled);
     Assert.IsTrue(Frame.Menu.Items[1].Enabled);
     Frame.RedoSelected;
-    Assert.AreEqual(2, RedoId);
+    Assert.AreEqual(2, mProbe.FRedoId);
     Frame.ShowSelectedDiff;
-    Assert.AreEqual(2, DiffId);
-    Assert.AreEqual('C:\P\A.pas', DiffFile);
+    Assert.AreEqual(2, mProbe.FDiffId);
+    Assert.AreEqual('C:\P\A.pas', mProbe.FDiffFile);
     // Neu aufbauen behält die Auswahl.
     Frame.Tree.Selected := Frame.Tree.Items[3];
     Frame.ShowChanges('Atlas-Änderungen', [SampleSet(False), Older], Now, True);
     Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[3]);
   finally
     Host.Free;
+    mProbe.Free;
   end;
 end;
 
