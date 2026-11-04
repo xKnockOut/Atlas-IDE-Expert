@@ -56,20 +56,9 @@ type
     FOnShowToggles: TProc;
     FOnExportLog: TProc;
     FOnBugReport: TProc;
-    class function Options: TAtlasSafeOptions; static;
-    class function Alive(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean; static;
-    class function KeyDown(AKey: TAtlasStartupKey): TAtlasStartupKey; static;
-    class function Forced: Boolean; static;
-    class function EnabledFeatures: TArray<string>; static;
-    class function NowUtc: TDateTime; static;
-    class procedure Warn(const AText: string); static;
     procedure WriteMarker;
     procedure ShowLine;
     procedure HideLine;
-    function NoticeText(AKind: TAtlasSafeNoticeKind): string;
-    function Suggestion: string;
-    function RestoreCaption: string;
-    function DetailLines: TArray<string>;
     procedure Restore;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -152,7 +141,7 @@ begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'Session');
 end;
 
-class function TAtlasIdeSafeMode.Options: TAtlasSafeOptions;
+function Options: TAtlasSafeOptions;
 var
   Settings: TAtlasPluginSettings;
 begin
@@ -161,12 +150,12 @@ begin
     TAtlasSafeMode.KeyOf(Settings.SafeStartupKey));
 end;
 
-class function TAtlasIdeSafeMode.NowUtc: TDateTime;
+function NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
-class function TAtlasIdeSafeMode.Alive(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean;
+function Alive(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean;
 var
   Process: THandle;
   Code: DWORD;
@@ -192,7 +181,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeSafeMode.KeyDown(AKey: TAtlasStartupKey): TAtlasStartupKey;
+function KeyDown(AKey: TAtlasStartupKey): TAtlasStartupKey;
 begin
   Result := TAtlasStartupKey.None;
   case AKey of
@@ -211,7 +200,7 @@ begin
   end;
 end;
 
-class function TAtlasIdeSafeMode.Forced: Boolean;
+function Forced: Boolean;
 var
   Args: TArray<string>;
   Index: Integer;
@@ -224,7 +213,7 @@ begin
   Result := TAtlasSafeMode.IsForced(GetEnvironmentVariable(TAtlasSafeMode.EnvironmentName), Args);
 end;
 
-class function TAtlasIdeSafeMode.EnabledFeatures: TArray<string>;
+function EnabledFeatures: TArray<string>;
 var
   Toggle: TAtlasQuickToggle;
   Settings: TAtlasPluginSettings;
@@ -241,7 +230,7 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSafeMode.Warn(const AText: string);
+procedure Warn(const AText: string);
 var
   Warning: TAtlasGuardMessage;
 begin
@@ -268,6 +257,37 @@ begin
   end;
 end;
 
+/// <summary>Zustand und Marken abgestürzter Sitzungen aus AFolder; leer, wenn das Lesen scheitert.</summary>
+procedure ReadSessions(const AFolder: string; out AState: TAtlasSafeState;
+  out ACrashed: TArray<TAtlasSessionMarker>);
+begin
+  try
+    AState := TAtlasSessionFiles.ReadState(AFolder);
+    ACrashed := TAtlasSessionFiles.TakeCrashed(AFolder, GetCurrentProcessId,
+      function(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean
+      begin
+        Result := Alive(AProcessId, AStartedAt);
+      end);
+  except
+    on Exception do
+    begin
+      AState := Default(TAtlasSafeState);
+      ACrashed := nil;
+    end;
+  end;
+end;
+
+/// <summary>Für den Vorschlag: Was die letzte gespeicherte Änderung umgestellt hat.</summary>
+function LastChangedKeys: TArray<string>;
+begin
+  try
+    Result := TAtlasIdeSettings.History.LastChangedKeys(TAtlasIdeSettings.Stored);
+  except
+    on Exception do
+      Result := nil;
+  end;
+end;
+
 procedure TAtlasIdeSafeMode.Start(const AFolder: string; const ARegistry: IAtlasStatusRegistry);
 var
   State: TAtlasSafeState;
@@ -281,27 +301,8 @@ begin
   StartedAt := NowUtc;
   FStartedLocal := Now;
   SafeOptions := Options;
-  try
-    State := TAtlasSessionFiles.ReadState(FFolder);
-    Crashed := TAtlasSessionFiles.TakeCrashed(FFolder, GetCurrentProcessId,
-      function(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean
-      begin
-        Result := Alive(AProcessId, AStartedAt);
-      end);
-  except
-    on Exception do
-    begin
-      State := Default(TAtlasSafeState);
-      Crashed := nil;
-    end;
-  end;
-  // Für den Vorschlag: Was die letzte gespeicherte Änderung umgestellt hat.
-  try
-    FChangedKeys := TAtlasIdeSettings.History.LastChangedKeys(TAtlasIdeSettings.Stored);
-  except
-    on Exception do
-      FChangedKeys := nil;
-  end;
+  ReadSessions(FFolder, State, Crashed);
+  FChangedKeys := LastChangedKeys;
   FDecision := TAtlasSafeMode.Decide(State, Crashed, StartedAt, SafeOptions, KeyDown(SafeOptions.StartupKey),
     Forced);
   FLevel := FDecision.Level;
@@ -462,13 +463,13 @@ begin
   Warn(TAtlasStrings.Text(TAtlasTextId.SafeLeft));
 end;
 
-function TAtlasIdeSafeMode.NoticeText(AKind: TAtlasSafeNoticeKind): string;
+function NoticeText(AKind: TAtlasSafeNoticeKind; AReason: TAtlasSafeReason): string;
 begin
   if AKind = TAtlasSafeNoticeKind.Ask then
   begin
     Exit(TAtlasStrings.Text(TAtlasTextId.SafeAskText));
   end;
-  case FDecision.Reason of
+  case AReason of
     TAtlasSafeReason.StartupKey:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SafeMinimalText, [TAtlasStrings.Text(TAtlasTextId.SafeReasonKey)]);
     TAtlasSafeReason.Forced:
@@ -482,7 +483,8 @@ begin
   end;
 end;
 
-function TAtlasIdeSafeMode.Suggestion: string;
+function Suggestion(const ADecision: TAtlasSafeDecision; const AChangedKeys: TArray<string>;
+  const ACrashed: TAtlasSessionMarker): string;
 var
   Toggles: TArray<TAtlasQuickToggle>;
   Toggle: TAtlasQuickToggle;
@@ -490,13 +492,13 @@ var
   Names: TArray<string>;
 begin
   Result := '';
-  if not FDecision.Crashed then
+  if not ADecision.Crashed then
   begin
     Exit;
   end;
   Toggles := TAtlasIdeSettings.QuickToggles;
   Names := nil;
-  for Key in TAtlasSafeMode.Suggest(Toggles, FChangedKeys, FCrashed) do
+  for Key in TAtlasSafeMode.Suggest(Toggles, AChangedKeys, ACrashed) do
   begin
     if TAtlasQuickToggles.Find(Toggles, Key, Toggle) then
     begin
@@ -509,7 +511,7 @@ begin
   end;
 end;
 
-function TAtlasIdeSafeMode.RestoreCaption: string;
+function RestoreCaption: string;
 begin
   Result := '';
   try
@@ -552,21 +554,22 @@ begin
   end;
 end;
 
-function TAtlasIdeSafeMode.DetailLines: TArray<string>;
+function DetailLines(AHasCrashed: Boolean; const ADecision: TAtlasSafeDecision;
+  const ACrashed: TAtlasSessionMarker; AStartedLocal: TDateTime): TArray<string>;
 var
   Lines, Log: TArray<string>;
   Line, Folder: string;
 begin
   Result := nil;
-  if not FHasCrashed then
+  if not AHasCrashed then
   begin
-    if FDecision.Crashed then
+    if ADecision.Crashed then
     begin
       Result := Result + [TAtlasStrings.Text(TAtlasTextId.SafeNoDetails)];
     end;
     Exit;
   end;
-  Result := TAtlasSafeMode.Details(FCrashed);
+  Result := TAtlasSafeMode.Details(ACrashed);
   if TAtlasGuard.RotatingLog = nil then
   begin
     Exit;
@@ -574,8 +577,8 @@ begin
   // Die Sitzung kann über eine Rotation reichen: erst die ältere Datei, dann die aktuelle.
   Folder := ExtractFileDir(TAtlasGuard.RotatingLog.FileName);
   Log := ReadLog(TPath.Combine(Folder, 'atlas.1.log')) + ReadLog(TAtlasGuard.RotatingLog.FileName);
-  Lines := TAtlasSafeMode.LogLinesBetween(Log, TTimeZone.Local.ToLocalTime(FCrashed.StartedAt), FStartedLocal,
-    MaxLogLines);
+  Lines := TAtlasSafeMode.LogLinesBetween(Log, TTimeZone.Local.ToLocalTime(ACrashed.StartedAt), AStartedLocal,
+    TAtlasIdeSafeMode.MaxLogLines);
   Result := Result + ['', TAtlasStrings.Text(TAtlasTextId.SafeLogTitle)];
   // Anonym (#647): Pfade und Namen fallen weg.
   for Line in Lines do
@@ -606,8 +609,9 @@ begin
   begin
     Kind := TAtlasSafeNoticeKind.Ask;
   end;
-  FNotice := TAtlasSafeModeNotice.CreateNotice(Self, Kind, NoticeText(Kind), Suggestion, RestoreCaption,
-    DetailLines);
+  FNotice := TAtlasSafeModeNotice.CreateNotice(Self, Kind, NoticeText(Kind, FDecision.Reason),
+    Suggestion(FDecision, FChangedKeys, FCrashed), RestoreCaption,
+    DetailLines(FHasCrashed, FDecision, FCrashed, FStartedLocal));
   FNotice.OnSafe :=
     procedure
     begin

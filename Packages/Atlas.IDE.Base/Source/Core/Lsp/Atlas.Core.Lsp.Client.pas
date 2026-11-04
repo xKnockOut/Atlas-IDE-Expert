@@ -61,10 +61,24 @@ type
     OpenMethods: TArray<string>;
   end;
 
+  /// <summary>Ringpuffer der Antwortzeiten der letzten Samples Anfragen (#591); nicht threadsicher, TLspClient
+  /// sperrt.</summary>
+  TLspResponseTimes = record
+  public const
+    Samples = 50;
+  private
+    FTimes: array[0..Samples - 1] of Int64;
+    FCount: Integer;
+    FNext: Integer;
+  public
+    /// <summary>Nimmt eine Antwortzeit auf; die älteste fällt heraus, wenn Samples erreicht sind.</summary>
+    procedure Add(AMilliseconds: Int64);
+    /// <summary>Mittelwert der gemerkten Zeiten, 0 ohne Zeiten; ASamples ist ihre Anzahl.</summary>
+    function Average(out ASamples: Integer): Double;
+  end;
+
   TLspClient = class
   public const
-    /// <summary>So viele Antwortzeiten gehen in AverageMs ein (#591).</summary>
-    TimeSamples = 50;
     /// <summary>Obergrenzen der Rahmung wie im Server (Atlas.Common.JsonRpc.StreamTransport): Kopf 8 KB,
     /// Inhalt 256 MB (Code-Review D-10). Darüber gilt die Verbindung als kaputt.</summary>
     MaxHeaderLength = 8 * 1024;
@@ -93,9 +107,7 @@ type
     FOnServerMessage: TLspServerMessageProc;
     FOnServerRequest: TLspServerRequestFunc;
     FOnClosed: TProc;
-    FTimes: array[0..TimeSamples - 1] of Int64;
-    FTimeCount: Integer;
-    FTimeNext: Integer;
+    FTimes: TLspResponseTimes;
     procedure SendText(const AText: string);
     /// <summary>$/cancelRequest für eine Anfrage, auf die der Client nicht mehr wartet.</summary>
     procedure CancelOnServer(AId: Integer);
@@ -143,7 +155,7 @@ type
     function CloseInfo: TLspCloseInfo;
     /// <summary>Antwortzeit einer Anfrage merken; Request ruft das selbst (öffentlich für Tests).</summary>
     procedure AddResponseTime(AMilliseconds: Int64);
-    /// <summary>Mittlere Antwortzeit der letzten TimeSamples Anfragen in ms; ASamples = deren Anzahl.</summary>
+    /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.Samples Anfragen in ms; ASamples = deren Anzahl.</summary>
     function AverageMs(out ASamples: Integer): Double;
     /// <summary>Geht die Antwortzeit von AMethod in AverageMs ein? Nicht bei Long-Polling.</summary>
     class function CountsResponseTime(const AMethod: string): Boolean; static;
@@ -173,6 +185,339 @@ uses
 
 const
   HeaderEnd: array[0..3] of Byte = (13, 10, 13, 10);
+
+type
+  /// <summary>Ablauf einer Anfrage aus TLspClient.DoRequest: anmelden, senden, auf die Antwort warten,
+  /// auswerten und abmelden.</summary>
+  TLspRequestRun = class
+  private
+    FClient: TLspClient;
+    FPending: TLspClient.TPending;
+    FId: Integer;
+    FMethod: string;
+    FTimeoutMs: Cardinal;
+    FCancelled: TFunc<Boolean>;
+    procedure Register(AParams: TJSONValue);
+    procedure Unregister;
+    function WaitSliced: TWaitResult;
+    function Wait: TWaitResult;
+    procedure Check(AWait: TWaitResult; AElapsedMs: Int64);
+  public
+    constructor Create(AClient: TLspClient; const AMethod: string; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>);
+    destructor Destroy; override;
+    /// <summary>Sendet die Anfrage mit AParams (gehen in jedem Fall in den Besitz des Ablaufs über) und liefert
+    /// das Ergebnis; ELspClientError bei Fehlerantwort, Zeitlimit, Abbruch oder beendeter Verbindung.</summary>
+    function Execute(AParams: TJSONValue): TJSONValue;
+  end;
+
+/// <summary>JSON-RPC-Nachricht mit jsonrpc, id (nur wenn AId > 0), method und params (AParams geht in die
+/// Nachricht über).</summary>
+function MessageText(AId: Integer; const AMethod: string; AParams: TJSONValue): string;
+var
+  Message: TJSONObject;
+begin
+  Message := TJSONObject.Create;
+  try
+    Message.AddPair('jsonrpc', '2.0');
+    if AId > 0 then
+    begin
+      Message.AddPair('id', TJSONNumber.Create(AId));
+    end;
+    Message.AddPair('method', AMethod);
+    if AParams <> nil then
+    begin
+      Message.AddPair('params', AParams);
+    end;
+    Result := Message.ToJSON;
+  finally
+    Message.Free;
+  end;
+end;
+
+/// <summary>Antwort mit result null auf die Anfrage mit AId (AId bleibt beim Aufrufer).</summary>
+function NullReplyText(AId: TJSONValue): string;
+var
+  Reply: TJSONObject;
+begin
+  Reply := TJSONObject.Create;
+  try
+    Reply.AddPair('jsonrpc', '2.0');
+    Reply.AddPair('id', TJSONValue(AId.Clone));
+    Reply.AddPair('result', TJSONNull.Create);
+    Result := Reply.ToJSON;
+  finally
+    Reply.Free;
+  end;
+end;
+
+/// <summary>Gibt die Anfrage AMessage an OnServerRequest; True, wenn der Empfänger sie übernommen hat und
+/// später selbst antwortet.</summary>
+function OfferServerRequest(AClient: TLspClient; AMessage: TJSONObject; AIdValue: TJSONValue): Boolean;
+var
+  IdCopy: TJSONValue;
+begin
+  Result := False;
+  if not Assigned(AClient.FOnServerRequest) then
+  begin
+    Exit;
+  end;
+  IdCopy := TJSONValue(AIdValue.Clone);
+  try
+    Result := AClient.FOnServerRequest(AMessage.GetValue<string>('method', ''), AMessage.GetValue('params'), IdCopy);
+  except
+    on Exception do
+      Result := False;
+  end;
+  if not Result then
+  begin
+    IdCopy.Free;
+  end;
+end;
+
+/// <summary>Anfrage oder Benachrichtigung des Servers: Teilergebnis, OnServerMessage und bei Anfragen
+/// OnServerRequest oder eine Antwort mit null, damit der Server nicht wartet.</summary>
+procedure HandleServerMessage(AClient: TLspClient; AMessage: TJSONObject; AIdValue: TJSONValue);
+begin
+  if (AIdValue = nil) and AClient.HandlePartial(AMessage) then
+  begin
+    Exit;
+  end;
+  if Assigned(AClient.FOnServerMessage) then
+    try
+      AClient.FOnServerMessage(AMessage.GetValue<string>('method', ''), AMessage.GetValue('params'));
+    except
+      // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
+      on Exception do
+        ;
+    end;
+  if (AIdValue <> nil) and not OfferServerRequest(AClient, AMessage, AIdValue) then
+  begin
+    AClient.SendText(NullReplyText(AIdValue));
+  end;
+end;
+
+/// <summary>Antwort auf die eigene Anfrage AId: Ergebnis oder Fehler an die wartende Anfrage geben.</summary>
+procedure AnswerPending(AClient: TLspClient; AMessage: TJSONObject; AId: Integer);
+var
+  Pending: TLspClient.TPending;
+  ResultValue, ErrorValue: TJSONValue;
+begin
+  TMonitor.Enter(AClient.FLock);
+  try
+    if not AClient.FPending.TryGetValue(AId, Pending) then
+    begin
+      Exit;
+    end;
+    ErrorValue := AMessage.GetValue('error');
+    ResultValue := AMessage.GetValue('result');
+    if ErrorValue is TJSONObject then
+    begin
+      Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', 'Fehlerantwort des Servers');
+    end
+    else if (ResultValue <> nil) and not (ResultValue is TJSONNull) then
+    begin
+      Pending.Result := TJSONValue(ResultValue.Clone);
+    end;
+    Pending.Done.SetEvent;
+  finally
+    TMonitor.Exit(AClient.FLock);
+  end;
+end;
+
+/// <summary>Index des Kopfendes (CR LF CR LF) in den ersten MaxHeaderLength Bytes, -1 ohne.</summary>
+function HeaderEndIndex(const ABuffer: TBytes): Integer;
+var
+  Index, Last: Integer;
+begin
+  Result := -1;
+  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
+  Last := Length(ABuffer) - Length(HeaderEnd);
+  if Last > TLspClient.MaxHeaderLength then
+  begin
+    Last := TLspClient.MaxHeaderLength;
+  end;
+  Index := 0;
+  while (Result < 0) and (Index <= Last) do
+  begin
+    if CompareMem(@ABuffer[Index], @HeaderEnd[0], Length(HeaderEnd)) then
+    begin
+      Result := Index;
+    end;
+    Inc(Index);
+  end;
+end;
+
+/// <summary>Kein Kopfende in den ersten MaxHeaderLength Bytes: kein LSP, Verbindung aufgeben statt den
+/// Speicher zu füllen.</summary>
+procedure RejectEndlessHeader(var ABuffer: TBytes);
+begin
+  if Length(ABuffer) >= TLspClient.MaxHeaderLength + Length(HeaderEnd) then
+  begin
+    ABuffer := nil;
+    raise ELspClientError.Create('Servernachricht ohne Kopfende');
+  end;
+end;
+
+/// <summary>Nachricht über MaxContentLength: Verbindung aufgeben statt den Speicher zu füllen.</summary>
+procedure RejectOversizedBody(var ABuffer: TBytes; ABodyLength: Integer);
+begin
+  if ABodyLength > TLspClient.MaxContentLength then
+  begin
+    ABuffer := nil;
+    raise ELspClientError.CreateFmt('Servernachricht mit %d Bytes über der Grenze von %d Bytes',
+      [ABodyLength, TLspClient.MaxContentLength]);
+  end;
+end;
+
+/// <summary>Wert von Content-Length im Kopf, -1 ohne oder bei ungültiger Zahl.</summary>
+function ContentLengthOf(const AHeader: string): Integer;
+var
+  Line: string;
+begin
+  Result := -1;
+  for Line in AHeader.Split([#13#10]) do
+  begin
+    if Line.StartsWith('Content-Length:', True) then
+    begin
+      Result := StrToIntDef(Line.Substring(Length('Content-Length:')).Trim, -1);
+    end;
+  end;
+end;
+
+{ TLspRequestRun }
+
+constructor TLspRequestRun.Create(AClient: TLspClient; const AMethod: string; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>);
+begin
+  inherited Create;
+  FClient := AClient;
+  FMethod := AMethod;
+  FTimeoutMs := ATimeoutMs;
+  FCancelled := ACancelled;
+  FPending := TLspClient.TPending.Create;
+  FPending.Method := AMethod;
+end;
+
+destructor TLspRequestRun.Destroy;
+begin
+  FPending.Free;
+  inherited;
+end;
+
+procedure TLspRequestRun.Register(AParams: TJSONValue);
+begin
+  TMonitor.Enter(FClient.FLock);
+  try
+    if FClient.FClosed then
+    begin
+      AParams.Free;
+      raise ELspClientError.Create('Verbindung zum Server ist beendet');
+    end;
+    Inc(FClient.FNextId);
+    FId := FClient.FNextId;
+    FClient.FPending.Add(FId, FPending);
+    if TLspClient.CountsResponseTime(FMethod) then
+    begin
+      FClient.FLastMethod := FMethod;
+    end;
+  finally
+    TMonitor.Exit(FClient.FLock);
+  end;
+end;
+
+procedure TLspRequestRun.Unregister;
+begin
+  TMonitor.Enter(FClient.FLock);
+  try
+    FClient.FPending.Remove(FId);
+  finally
+    TMonitor.Exit(FClient.FLock);
+  end;
+end;
+
+function TLspRequestRun.WaitSliced: TWaitResult;
+var
+  Slice, Waited: Cardinal;
+begin
+  // In Scheiben warten, damit „Abbrechen“ nicht bis zum Zeitlimit hängt.
+  Waited := 0;
+  repeat
+    Slice := TLspClient.CancelPollMs;
+    if FTimeoutMs - Waited < Slice then
+    begin
+      Slice := FTimeoutMs - Waited;
+    end;
+    Result := TAtlasShutdown.WaitFor(FPending.Done, Slice);
+    Inc(Waited, Slice);
+    if (Result = wrTimeout) and FCancelled() then
+    begin
+      FClient.CancelOnServer(FId);
+      raise ELspClientError.CreateFmt('%s abgebrochen', [FMethod]);
+    end;
+  until (Result <> wrTimeout) or (Waited >= FTimeoutMs);
+end;
+
+function TLspRequestRun.Wait: TWaitResult;
+begin
+  if Assigned(FCancelled) then
+  begin
+    Result := WaitSliced;
+  end
+  else
+  begin
+    Result := TAtlasShutdown.WaitFor(FPending.Done, FTimeoutMs);
+  end;
+end;
+
+procedure TLspRequestRun.Check(AWait: TWaitResult; AElapsedMs: Int64);
+var
+  Counts: Boolean;
+begin
+  Counts := TLspClient.CountsResponseTime(FMethod);
+  case AWait of
+    wrSignaled:
+      // Beendete Verbindung ist keine Antwort und zählt nicht.
+      if not FClient.FClosed and Counts then
+      begin
+        FClient.AddResponseTime(AElapsedMs);
+      end;
+    wrAbandoned:
+      raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [FMethod]);
+  else
+    begin
+      if Counts then
+      begin
+        FClient.AddResponseTime(FTimeoutMs);
+      end;
+      // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
+      FClient.CancelOnServer(FId);
+      raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [FMethod, FTimeoutMs]);
+    end;
+  end;
+end;
+
+function TLspRequestRun.Execute(AParams: TJSONValue): TJSONValue;
+var
+  Text: string;
+  Watch: TStopwatch;
+begin
+  Register(AParams);
+  Text := MessageText(FId, FMethod, AParams);
+  try
+    Watch := TStopwatch.StartNew;
+    FClient.SendText(Text);
+    Check(Wait, Watch.ElapsedMilliseconds);
+  finally
+    Unregister;
+  end;
+  if FPending.Error <> '' then
+  begin
+    raise ELspClientError.Create(FPending.Error);
+  end;
+  Result := FPending.Result;
+  FPending.Result := nil;
+end;
 
 { TLspClient.TPending }
 
@@ -238,109 +583,13 @@ end;
 function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
   const ACancelled: TFunc<Boolean>): TJSONValue;
 var
-  Message: TJSONObject;
-  Pending: TPending;
-  Id: Integer;
-  Text: string;
-  Watch: TStopwatch;
-  mWait: TWaitResult;
-  mSlice, mWaited: Cardinal;
+  Run: TLspRequestRun;
 begin
-  Pending := TPending.Create;
+  Run := TLspRequestRun.Create(Self, AMethod, ATimeoutMs, ACancelled);
   try
-    TMonitor.Enter(FLock);
-    try
-      if FClosed then
-      begin
-        AParams.Free;
-        raise ELspClientError.Create('Verbindung zum Server ist beendet');
-      end;
-      Inc(FNextId);
-      Id := FNextId;
-      Pending.Method := AMethod;
-      FPending.Add(Id, Pending);
-      if CountsResponseTime(AMethod) then
-      begin
-        FLastMethod := AMethod;
-      end;
-    finally
-      TMonitor.Exit(FLock);
-    end;
-    Message := TJSONObject.Create;
-    try
-      Message.AddPair('jsonrpc', '2.0');
-      Message.AddPair('id', TJSONNumber.Create(Id));
-      Message.AddPair('method', AMethod);
-      if AParams <> nil then
-      begin
-        Message.AddPair('params', AParams);
-      end;
-      Text := Message.ToJSON;
-    finally
-      Message.Free;
-    end;
-    try
-      Watch := TStopwatch.StartNew;
-      SendText(Text);
-      if Assigned(ACancelled) then
-      begin
-        // In Scheiben warten, damit „Abbrechen“ nicht bis zum Zeitlimit hängt.
-        mWaited := 0;
-        repeat
-          mSlice := CancelPollMs;
-          if ATimeoutMs - mWaited < mSlice then
-          begin
-            mSlice := ATimeoutMs - mWaited;
-          end;
-          mWait := TAtlasShutdown.WaitFor(Pending.Done, mSlice);
-          Inc(mWaited, mSlice);
-          if (mWait = wrTimeout) and ACancelled() then
-          begin
-            CancelOnServer(Id);
-            raise ELspClientError.CreateFmt('%s abgebrochen', [AMethod]);
-          end;
-        until (mWait <> wrTimeout) or (mWaited >= ATimeoutMs);
-      end
-      else
-      begin
-        mWait := TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs);
-      end;
-      case mWait of
-        wrSignaled:
-          // Beendete Verbindung ist keine Antwort und zählt nicht.
-          if not FClosed and CountsResponseTime(AMethod) then
-          begin
-            AddResponseTime(Watch.ElapsedMilliseconds);
-          end;
-        wrAbandoned:
-          raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [AMethod]);
-      else
-        begin
-          if CountsResponseTime(AMethod) then
-          begin
-            AddResponseTime(ATimeoutMs);
-          end;
-          // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
-          CancelOnServer(Id);
-          raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
-        end;
-      end;
-    finally
-      TMonitor.Enter(FLock);
-      try
-        FPending.Remove(Id);
-      finally
-        TMonitor.Exit(FLock);
-      end;
-    end;
-    if Pending.Error <> '' then
-    begin
-      raise ELspClientError.Create(Pending.Error);
-    end;
-    Result := Pending.Result;
-    Pending.Result := nil;
+    Result := Run.Execute(AParams);
   finally
-    Pending.Free;
+    Run.Free;
   end;
 end;
 
@@ -376,21 +625,9 @@ end;
 
 procedure TLspClient.Notify(const AMethod: string; AParams: TJSONValue);
 var
-  Message: TJSONObject;
   Text: string;
 begin
-  Message := TJSONObject.Create;
-  try
-    Message.AddPair('jsonrpc', '2.0');
-    Message.AddPair('method', AMethod);
-    if AParams <> nil then
-    begin
-      Message.AddPair('params', AParams);
-    end;
-    Text := Message.ToJSON;
-  finally
-    Message.Free;
-  end;
+  Text := MessageText(0, AMethod, AParams);
   if not FClosed then
   begin
     SendText(Text);
@@ -451,94 +688,22 @@ procedure TLspClient.HandleMessage(const AText: string);
 var
   Value: TJSONValue;
   Message: TJSONObject;
-  IdValue, ResultValue, ErrorValue: TJSONValue;
-  Pending: TPending;
-  Reply: TJSONObject;
-  ReplyText: string;
-  IdCopy: TJSONValue;
-  Taken: Boolean;
+  IdValue: TJSONValue;
 begin
   Value := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Value is TJSONObject) then
+    if Value is TJSONObject then
     begin
-      Exit;
-    end;
-    Message := TJSONObject(Value);
-    IdValue := Message.GetValue('id');
-    if (IdValue = nil) and HandlePartial(Message) then
-    begin
-      Exit;
-    end;
-    if Message.GetValue('method') <> nil then
-    begin
-      if Assigned(FOnServerMessage) then
-        try
-          FOnServerMessage(Message.GetValue<string>('method', ''), Message.GetValue('params'));
-        except
-          // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
-          on Exception do
-            ;
-        end;
-      if IdValue = nil then
+      Message := TJSONObject(Value);
+      IdValue := Message.GetValue('id');
+      if Message.GetValue('method') <> nil then
       begin
-        Exit;
-      end;
-      // Anfrage, die ein Empfänger selbst beantwortet.
-      if Assigned(FOnServerRequest) then
-      begin
-        IdCopy := TJSONValue(IdValue.Clone);
-        try
-          Taken := FOnServerRequest(Message.GetValue<string>('method', ''), Message.GetValue('params'), IdCopy);
-        except
-          on Exception do
-            Taken := False;
-        end;
-        if Taken then
-        begin
-          Exit;
-        end;
-        IdCopy.Free;
-      end;
-      // Sonst mit null beantworten, damit der Server nicht wartet.
-      Reply := TJSONObject.Create;
-      try
-        Reply.AddPair('jsonrpc', '2.0');
-        Reply.AddPair('id', TJSONValue(IdValue.Clone));
-        Reply.AddPair('result', TJSONNull.Create);
-        ReplyText := Reply.ToJSON;
-      finally
-        Reply.Free;
-      end;
-      SendText(ReplyText);
-      Exit;
-    end;
-    if not (IdValue is TJSONNumber) then
-    begin
-      Exit;
-    end;
-    TMonitor.Enter(FLock);
-    try
-      if not FPending.TryGetValue(TJSONNumber(IdValue).AsInt, Pending) then
-      begin
-        Exit;
-      end;
-      ErrorValue := Message.GetValue('error');
-      if ErrorValue is TJSONObject then
-      begin
-        Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', 'Fehlerantwort des Servers');
+        HandleServerMessage(Self, Message, IdValue);
       end
-      else
+      else if IdValue is TJSONNumber then
       begin
-        ResultValue := Message.GetValue('result');
-        if (ResultValue <> nil) and not (ResultValue is TJSONNull) then
-        begin
-          Pending.Result := TJSONValue(ResultValue.Clone);
-        end;
+        AnswerPending(Self, Message, TJSONNumber(IdValue).AsInt);
       end;
-      Pending.Done.SetEvent;
-    finally
-      TMonitor.Exit(FLock);
     end;
   finally
     Value.Free;
@@ -574,64 +739,30 @@ end;
 
 function TLspClient.TakeMessage(out AText: string): Boolean;
 var
-  HeaderLength, Index, Len, BodyLength, Last: Integer;
-  Header, Line: string;
+  HeaderLength, Len, BodyLength: Integer;
 begin
   Result := False;
-  HeaderLength := -1;
-  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
-  Last := Length(FBuffer) - 4;
-  if Last > MaxHeaderLength then
-  begin
-    Last := MaxHeaderLength;
-  end;
-  for Index := 0 to Last do
-  begin
-    if CompareMem(@FBuffer[Index], @HeaderEnd[0], 4) then
-    begin
-      HeaderLength := Index;
-      Break;
-    end;
-  end;
+  HeaderLength := HeaderEndIndex(FBuffer);
   if HeaderLength < 0 then
   begin
-    // Kein Kopfende in den ersten MaxHeaderLength Bytes: kein LSP, Verbindung aufgeben statt den Speicher zu füllen.
-    if Length(FBuffer) >= MaxHeaderLength + 4 then
-    begin
-      FBuffer := nil;
-      raise ELspClientError.Create('Servernachricht ohne Kopfende');
-    end;
+    RejectEndlessHeader(FBuffer);
     Exit;
   end;
-  Header := TEncoding.UTF8.GetString(FBuffer, 0, HeaderLength);
-  BodyLength := -1;
-  for Line in Header.Split([#13#10]) do
-  begin
-    if Line.StartsWith('Content-Length:', True) then
-    begin
-      BodyLength := StrToIntDef(Line.Substring(Length('Content-Length:')).Trim, -1);
-    end;
-  end;
-  Len := HeaderLength + 4;
+  BodyLength := ContentLengthOf(TEncoding.UTF8.GetString(FBuffer, 0, HeaderLength));
+  Len := HeaderLength + Length(HeaderEnd);
   if BodyLength < 0 then
   begin
     // Kaputter Kopf: verwerfen und weitermachen.
     Delete(FBuffer, 0, Len);
     Exit(True);
   end;
-  if BodyLength > MaxContentLength then
+  RejectOversizedBody(FBuffer, BodyLength);
+  if Length(FBuffer) >= Len + BodyLength then
   begin
-    FBuffer := nil;
-    raise ELspClientError.CreateFmt('Servernachricht mit %d Bytes über der Grenze von %d Bytes',
-      [BodyLength, MaxContentLength]);
+    AText := TEncoding.UTF8.GetString(FBuffer, Len, BodyLength);
+    Delete(FBuffer, 0, Len + BodyLength);
+    Result := True;
   end;
-  if Length(FBuffer) < Len + BodyLength then
-  begin
-    Exit;
-  end;
-  AText := TEncoding.UTF8.GetString(FBuffer, Len, BodyLength);
-  Delete(FBuffer, 0, Len + BodyLength);
-  Result := True;
 end;
 
 procedure TLspClient.Receive(const ABytes: TBytes; ACount: Integer);
@@ -733,12 +864,7 @@ procedure TLspClient.AddResponseTime(AMilliseconds: Int64);
 begin
   TMonitor.Enter(FLock);
   try
-    FTimes[FTimeNext] := AMilliseconds;
-    FTimeNext := (FTimeNext + 1) mod TimeSamples;
-    if FTimeCount < TimeSamples then
-    begin
-      Inc(FTimeCount);
-    end;
+    FTimes.Add(AMilliseconds);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -750,26 +876,40 @@ begin
 end;
 
 function TLspClient.AverageMs(out ASamples: Integer): Double;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FTimes.Average(ASamples);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+{ TLspResponseTimes }
+
+procedure TLspResponseTimes.Add(AMilliseconds: Int64);
+begin
+  FTimes[FNext] := AMilliseconds;
+  FNext := (FNext + 1) mod Samples;
+  if FCount < Samples then
+  begin
+    Inc(FCount);
+  end;
+end;
+
+function TLspResponseTimes.Average(out ASamples: Integer): Double;
 var
   Index: Integer;
   Sum: Int64;
 begin
-  TMonitor.Enter(FLock);
-  try
-    ASamples := FTimeCount;
-    Sum := 0;
-    for Index := 0 to FTimeCount - 1 do
-    begin
-      Inc(Sum, FTimes[Index]);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  if ASamples = 0 then
+  ASamples := FCount;
+  Sum := 0;
+  for Index := 0 to FCount - 1 do
   begin
-    Result := 0;
-  end
-  else
+    Inc(Sum, FTimes[Index]);
+  end;
+  Result := 0;
+  if ASamples > 0 then
   begin
     Result := Sum / ASamples;
   end;

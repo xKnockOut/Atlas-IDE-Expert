@@ -229,6 +229,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Lsp.Crashes` | `Core/Lsp/Atlas.Core.Lsp.Crashes.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.DataFlow` | `Core/Lsp/Atlas.Core.Lsp.DataFlow.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Progress` | `Core/Lsp/Atlas.Core.Lsp.Progress.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Json` | `Core/Lsp/Atlas.Core.Lsp.Session.Json.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Base` | `Core/Lsp/Atlas.Core.Lsp.Session.Base.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Requests` | `Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session` | `Core/Lsp/Atlas.Core.Lsp.Session.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.TextChanges` | `Core/Lsp/Atlas.Core.Lsp.TextChanges.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Uris` | `Core/Lsp/Atlas.Core.Lsp.Uris.pas` | Ordner `Core/Lsp` |
@@ -452,6 +455,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.Unwrap` | `IDE/Editor/Atlas.IDE.Editor.Unwrap.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.WorkspaceEdit` | `IDE/Editor/Atlas.IDE.Editor.WorkspaceEdit.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.WrapSelection` | `IDE/Editor/Atlas.IDE.Editor.WrapSelection.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.EditorToolbar.FindMethod` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.FindMethod.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.EditorToolbar.Service` | `IDE/EditorToolbar/Atlas.IDE.EditorToolbar.Service.pas` | Ordner `IDE/EditorToolbar` |
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.EditInbox` | `IDE/Files/Atlas.IDE.Files.EditInbox.pas` | Ordner `IDE/Files` |
@@ -844,6 +848,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.Architecture.Model` | `Core/Architecture/Atlas.Core.Architecture.Model.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.Commands` | `Core/Architecture/Atlas.Core.Architecture.Commands.pas` | Ordner `Core/Architecture` |
+| `Atlas.Core.Architecture.MapState` | `Core/Architecture/Atlas.Core.Architecture.MapState.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.View` | `Core/Architecture/Atlas.Core.Architecture.View.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Hotspots.Model` | `Core/Hotspots/Atlas.Core.Hotspots.Model.pas` | Ordner `Core/Hotspots` |
 | `Atlas.Core.UnitRelations.InterfaceCost` | `Core/UnitRelations/Atlas.Core.UnitRelations.InterfaceCost.pas` | Ordner `Core/UnitRelations` |
@@ -901,6 +906,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Search.FileSearch` | `IDE/Search/Atlas.IDE.Search.FileSearch.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.MessageList` | `IDE/Search/Atlas.IDE.Search.MessageList.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.ReplaceWindow` | `IDE/Search/Atlas.IDE.Search.ReplaceWindow.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.UnitSearch.Actions` | `IDE/UnitSearch/Atlas.IDE.UnitSearch.Actions.pas` | Ordner `IDE/UnitSearch` |
 | `Atlas.IDE.UnitSearch.Commands` | `IDE/UnitSearch/Atlas.IDE.UnitSearch.Commands.pas` | Ordner `IDE/UnitSearch` |
 | `Atlas.UI.Query.Frame` | `UI/Query/Atlas.UI.Query.Frame.pas` | Ordner `UI/Query` |
 | `Atlas.UI.Search.Bar` | `UI/Search/Atlas.UI.Search.Bar.pas` | Ordner `UI/Search` |

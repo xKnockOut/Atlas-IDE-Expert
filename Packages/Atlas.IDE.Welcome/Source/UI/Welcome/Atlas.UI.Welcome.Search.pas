@@ -44,6 +44,7 @@ type
     FOwnerWindow: HWND;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure DrawRow(ARow: Integer; const ARect: TRect);
+    procedure DrawHit(AIndex: Integer; const ARect: TRect; APart: TRect);
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
@@ -174,10 +175,8 @@ end;
 procedure TAtlasWelcomeSearchList.DrawRow(ARow: Integer; const ARect: TRect);
 var
   Row: TAtlasWelcomeSearchRow;
-  Hit: TAtlasWelcomeHit;
   mText: string;
-  Part, Cell: TRect;
-  Width_: Integer;
+  Part: TRect;
 begin
   Row := FBox.FRows[ARow];
   Part := ARect;
@@ -209,31 +208,37 @@ begin
         Canvas.Font.Style := [];
       end;
   else
-    begin
-      Hit := FBox.FHits[Row.Index];
-      if Row.Index = FBox.FSelected then
-      begin
-        Canvas.Brush.Style := bsSolid;
-        Canvas.Brush.Color := ToColor(FBox.FColors.Selection);
-        Canvas.FillRect(ARect);
-        Canvas.Brush.Style := bsClear;
-      end;
-      Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
-      Canvas.Font.Color := ToColor(FBox.FColors.Text);
-      Width_ := Min(Canvas.TextWidth(Hit.Caption) + MulDiv(4, Screen.PixelsPerInch, 96), Part.Width);
-      Cell := Rect(Part.Left, Part.Top, Part.Left + Width_, Part.Bottom);
-      DrawText(Canvas.Handle, PChar(Hit.Caption), -1, Cell,
-        DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-      if Hit.Detail <> '' then
-      begin
-        Canvas.Font.Color := ToColor(FBox.FColors.Muted);
-        Cell := Rect(Part.Left + Width_ + MulDiv(10, Screen.PixelsPerInch, 96), Part.Top, Part.Right, Part.Bottom);
-        DrawText(Canvas.Handle, PChar(Hit.Detail), -1, Cell,
-          DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
-      end;
-    end;
+    DrawHit(Row.Index, ARect, Part);
   end;
   Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasWelcomeSearchList.DrawHit(AIndex: Integer; const ARect: TRect; APart: TRect);
+var
+  mHit: TAtlasWelcomeHit;
+  mCell: TRect;
+  mWidth: Integer;
+begin
+  mHit := FBox.FHits[AIndex];
+  if AIndex = FBox.FSelected then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(FBox.FColors.Selection);
+    Canvas.FillRect(ARect);
+    Canvas.Brush.Style := bsClear;
+  end;
+  Inc(APart.Left, MulDiv(12, Screen.PixelsPerInch, 96));
+  Canvas.Font.Color := ToColor(FBox.FColors.Text);
+  mWidth := Min(Canvas.TextWidth(mHit.Caption) + MulDiv(4, Screen.PixelsPerInch, 96), APart.Width);
+  mCell := Rect(APart.Left, APart.Top, APart.Left + mWidth, APart.Bottom);
+  DrawText(Canvas.Handle, PChar(mHit.Caption), -1, mCell, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  if mHit.Detail <> '' then
+  begin
+    Canvas.Font.Color := ToColor(FBox.FColors.Muted);
+    mCell := Rect(APart.Left + mWidth + MulDiv(10, Screen.PixelsPerInch, 96), APart.Top, APart.Right, APart.Bottom);
+    DrawText(Canvas.Handle, PChar(mHit.Detail), -1, mCell,
+      DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+  end;
 end;
 
 procedure TAtlasWelcomeSearchList.Paint;
