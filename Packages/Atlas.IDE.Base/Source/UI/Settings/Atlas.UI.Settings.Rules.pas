@@ -18,6 +18,9 @@
 // noch Server: Er bekommt den Katalog und den Wert von "rules" und meldet
 // Änderungen über OnChange; RulesJson ist der neue Wert. Tabelle und Auswahl-
 // listen brauchen ein Fenster und werden erst mit Handle gefüllt (CreateWnd).
+// Aufbau als Klassenkette: TAtlasRulesLayout (Stapeln, Höhe) → TAtlasRulesTable
+// (Suche, Gruppe, Hauptschalter, Tabelle) → TAtlasRulesDetailsView (markierte
+// Regel, Optionen, Beispiele) → TAtlasRulesEditor (Zustand, Ereignisse).
 
 interface
 
@@ -43,20 +46,35 @@ type
     constructor Create(AOwner: TComponent); override;
   end;
 
-  TAtlasRulesEditor = class(TCustomPanel)
+  /// <summary>Stapelt die Steuerelemente des Editors von oben nach unten und hält die Höhe am Inhalt.</summary>
+  TAtlasRulesLayout = class(TCustomPanel)
   private
-    FCatalog: TJSONValue;
-    FRulesJson: string;
-    FOtherRulesJson: string;
-    FRows: TArray<TAtlasRuleRow>;
-    /// <summary>Zeilen der Tabelle als Index in FRows.</summary>
-    FVisible: TArray<Integer>;
-    FFixedGroup: string;
-    FLoaded: Boolean;
-    FFilling: Boolean;
-    FDirty: Boolean;
-    FSelectedId: string;
-    FOnChange: TNotifyEvent;
+    FNextTop: Integer;
+    /// <summary>Alle über Stack gestapelten Steuerelemente in Aufbaureihenfolge (#1296).</summary>
+    FStacked: TArray<TControl>;
+  protected
+    /// <summary>Bereich der markierten Regel; legt TAtlasRulesDetailsView an.</summary>
+    FDetails: TAtlasRulesBox;
+    function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+    function AddMemo(AParent: TWinControl): TMemo;
+    /// <summary>Höhe nach Zeilenzahl, damit das Beispiel ganz zu sehen ist.</summary>
+    procedure FitMemo(AMemo: TMemo);
+    /// <summary>AControl oben in AParent unter die bisherigen (alTop ordnet nach Top).</summary>
+    procedure Stack(AParent: TWinControl; AControl: TControl);
+    procedure Restack;
+    /// <summary>AutoSize regelt nur die Höhe; die Breite gibt der Behälter vor (Align oder SetBounds mit
+    /// Anker). Sonst schrumpft der Editor ohne Align auf die Breite eines leeren Panels, weil alle Kinder alTop
+    /// sind (Projektdialog). Die angefragte Breite bleibt: CheckNewSize fragt mit der neuen Breite, die alte
+    /// (Width) hielt jedes SetBounds auf den 185 Pixeln eines frischen Panels.</summary>
+    function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    property Details: TAtlasRulesBox read FDetails;
+  end;
+
+  /// <summary>Oberer Teil: Suche, Gruppenauswahl, Hauptschalter, Stufe T, Stand und Tabelle der Regeln.</summary>
+  TAtlasRulesTable = class(TAtlasRulesLayout)
+  private
     FTopBar: TAtlasRulesBox;
     FSearch: TEdit;
     FGroupChoice: TComboBox;
@@ -64,7 +82,34 @@ type
     FTypeLevel: TCheckBox;
     FStatus: TLabel;
     FList: TListView;
-    FDetails: TAtlasRulesBox;
+  protected
+    FFixedGroup: string;
+    /// <summary>Felder werden gerade gefüllt: Änderungen nicht zurückschreiben.</summary>
+    FFilling: Boolean;
+    /// <summary>Feste Gruppe oder die gewählte; '' = alle.</summary>
+    function Group: string;
+    /// <summary>Feste Gruppe setzen: ohne Suche und Gruppenauswahl, die Spalte zeigt die Kategorie.</summary>
+    procedure ShowFixedGroup(const AValue: string);
+    /// <summary>Hauptschalter und Stufe T nach der Gruppe und dem Wert von "rules".</summary>
+    procedure ShowMaster(const ARulesJson: string);
+    /// <summary>Stand über der Tabelle; '' blendet ihn aus.</summary>
+    procedure ShowStatus(const AText: string);
+    procedure FillGroups;
+  public
+    constructor Create(AOwner: TComponent); override;
+    property Search: TEdit read FSearch;
+    property GroupChoice: TComboBox read FGroupChoice;
+    property Master: TCheckBox read FMaster;
+    /// <summary>Stufe T der Gruppe „Compiler vorab“ (#1024); nur in dieser Gruppe sichtbar.</summary>
+    property TypeLevel: TCheckBox read FTypeLevel;
+    property Status: TLabel read FStatus;
+    property List: TListView read FList;
+  end;
+
+  /// <summary>Unterer Teil: Name, Marke, Beschreibung, Schweregrad, Ausnahmen, Optionen und Beispiele der
+  /// markierten Regel.</summary>
+  TAtlasRulesDetailsView = class(TAtlasRulesTable)
+  private
     FTitle: TLabel;
     FMark: TLabel;
     FDescription: TLabel;
@@ -80,52 +125,70 @@ type
     FBad: TMemo;
     FGoodLabel: TLabel;
     FGood: TMemo;
-    FNextTop: Integer;
-    /// <summary>Alle über Stack gestapelten Steuerelemente in Aufbaureihenfolge (#1296).</summary>
-    FStacked: TArray<TControl>;
-    function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
-    function AddMemo(AParent: TWinControl): TMemo;
-    /// <summary>Höhe nach Zeilenzahl, damit das Beispiel ganz zu sehen ist.</summary>
-    procedure FitMemo(AMemo: TMemo);
-    /// <summary>AControl oben in AParent unter die bisherigen (alTop ordnet nach Top).</summary>
-    procedure Stack(AParent: TWinControl; AControl: TControl);
-    procedure Restack;
-    function Group: string;
+    procedure BuildOptions(const ARow: TAtlasRuleRow);
+    /// <summary>Tabelle der Option AOption (Art "object-list", #1133) in ALine; Tag = AIndex.</summary>
+    function BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption; AIndex: Integer): TControl;
+  protected
+    /// <summary>Regel ARow zeigen (APresent False: keine markiert); AOverriding nennt die Gegenregel (#1025).
+    /// </summary>
+    procedure ShowRow(const ARow: TAtlasRuleRow; APresent: Boolean; const AOverriding: string);
+    procedure FillSeverities;
+    /// <summary>Hauptschalter aus: Tabelle und alle Felder gesperrt (wie #890); ohne Auswahl nur die
+    /// Beschreibung.</summary>
+    procedure SetEditable(AOn, ASelected: Boolean);
+    /// <summary>Eingabe in einem Feld einer Option (Tag = Index der Option).</summary>
+    procedure OptionChange(Sender: TObject); virtual; abstract;
+    /// <summary>Eingabe in der Tabelle einer Option (Tag = Index der Option).</summary>
+    procedure OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string); virtual; abstract;
+  public
+    constructor Create(AOwner: TComponent); override;
+    property TitleLabel: TLabel read FTitle;
+    property MarkLabel: TLabel read FMark;
+    property DescriptionLabel: TLabel read FDescription;
+    property SeverityChoice: TComboBox read FSeverity;
+    property ExcludeEdit: TEdit read FExclude;
+    property OptionControls: TArray<TControl> read FOptionControls;
+    property InvalidLabel: TLabel read FInvalid;
+    property OptionsTitleLabel: TLabel read FOptionsTitle;
+    property OptionsBox: TAtlasRulesBox read FOptionsBox;
+    property BadLabel: TLabel read FBadLabel;
+    property GoodLabel: TLabel read FGoodLabel;
+    property BadMemo: TMemo read FBad;
+    property GoodMemo: TMemo read FGood;
+  end;
+
+  TAtlasRulesEditor = class(TAtlasRulesDetailsView)
+  private
+    FCatalog: TJSONValue;
+    FRulesJson: string;
+    FOtherRulesJson: string;
+    FRows: TArray<TAtlasRuleRow>;
+    /// <summary>Zeilen der Tabelle als Index in FRows.</summary>
+    FVisible: TArray<Integer>;
+    FLoaded: Boolean;
+    FDirty: Boolean;
+    FSelectedId: string;
+    FOnChange: TNotifyEvent;
     function RowOf(const AId: string): Integer;
     function SelectedRow: Integer;
     /// <summary>Lässt der Filter (Gruppe, Suche) die Zeile ARow (Index in FRows) stehen?</summary>
     function RowShown(ARow: Integer): Boolean;
-    function GroupCaption(const AGroup: string): string;
-    function SeverityCaption(const ASeverity: string): string;
-    function SeverityColumn(const ARow: TAtlasRuleRow): string;
-    procedure FillItem(AItem: TListItem; const ARow: TAtlasRuleRow);
-    procedure FillChoices;
     procedure Refill;
     procedure ShowDetails;
-    procedure BuildOptions(const ARow: TAtlasRuleRow);
-    /// <summary>Tabelle der Option AOption (Art "object-list", #1133) in ALine; Tag = AIndex.</summary>
-    function BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption; AIndex: Integer): TControl;
-    procedure UpdateEnabled;
-    procedure UpdateMaster;
     procedure Apply(const ARulesJson: string);
     procedure SetFixedGroup(const AValue: string);
-    procedure SearchChange(Sender: TObject);
-    procedure GroupChoiceChange(Sender: TObject);
+    /// <summary>Suche oder Gruppenauswahl geändert.</summary>
+    procedure FilterChange(Sender: TObject);
     procedure MasterClick(Sender: TObject);
     procedure TypeLevelClick(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListChecked(Sender: TObject; Item: TListItem);
     procedure SeverityChange(Sender: TObject);
     procedure ExcludeChange(Sender: TObject);
-    procedure OptionChange(Sender: TObject);
-    procedure OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string);
   protected
+    procedure OptionChange(Sender: TObject); override;
+    procedure OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string); override;
     procedure CreateWnd; override;
-    /// <summary>AutoSize regelt nur die Höhe; die Breite gibt der Behälter vor (Align oder SetBounds mit
-    /// Anker). Sonst schrumpft der Editor ohne Align auf die Breite eines leeren Panels, weil alle Kinder alTop
-    /// sind (Projektdialog). Die angefragte Breite bleibt: CheckNewSize fragt mit der neuen Breite, die alte
-    /// (Width) hielt jedes SetBounds auf den 185 Pixeln eines frischen Panels.</summary>
-    function CanAutoSize(var NewWidth, NewHeight: Integer): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Katalog (atlas.server.settingsCatalog, bleibt beim Aufrufer und muss leben, solange der Editor
@@ -152,27 +215,6 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     /// <summary>Höhe oder Breite geändert; die Höhe folgt dem Inhalt der markierten Regel (#1296).</summary>
     property OnResize;
-    property Search: TEdit read FSearch;
-    property GroupChoice: TComboBox read FGroupChoice;
-    property Master: TCheckBox read FMaster;
-    /// <summary>Stufe T der Gruppe „Compiler vorab“ (#1024); nur in dieser Gruppe sichtbar.</summary>
-    property TypeLevel: TCheckBox read FTypeLevel;
-    property Status: TLabel read FStatus;
-    property List: TListView read FList;
-    property Details: TAtlasRulesBox read FDetails;
-    property TitleLabel: TLabel read FTitle;
-    property MarkLabel: TLabel read FMark;
-    property DescriptionLabel: TLabel read FDescription;
-    property SeverityChoice: TComboBox read FSeverity;
-    property ExcludeEdit: TEdit read FExclude;
-    property OptionControls: TArray<TControl> read FOptionControls;
-    property InvalidLabel: TLabel read FInvalid;
-    property OptionsTitleLabel: TLabel read FOptionsTitle;
-    property OptionsBox: TAtlasRulesBox read FOptionsBox;
-    property BadLabel: TLabel read FBadLabel;
-    property GoodLabel: TLabel read FGoodLabel;
-    property BadMemo: TMemo read FBad;
-    property GoodMemo: TMemo read FGood;
   end;
 
 /// <summary>Beschriftung der Gruppe AGroup (Kennung des Katalogs) in der Sprache der Oberfläche.</summary>
@@ -219,130 +261,209 @@ begin
   Result := AGroup;
 end;
 
-{ TAtlasRulesEditor }
 
-constructor TAtlasRulesEditor.Create(AOwner: TComponent);
+function SeverityCaption(const ASeverity: string): string;
+begin
+  if SameText(ASeverity, 'error') then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityError);
+  end
+  else if SameText(ASeverity, 'warning') then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityWarning);
+  end
+  else if SameText(ASeverity, 'info') or SameText(ASeverity, 'information') then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityInfo);
+  end
+  else if SameText(ASeverity, 'hint') then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityHint);
+  end
+  else if SameText(ASeverity, 'off') then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityOff);
+  end
+  else
+  begin
+    Result := ASeverity;
+  end;
+end;
+
+/// <summary>Spalte Schweregrad: eingestellt, sonst „Vorgabe (…)“; ein Wert der anderen Ebene steht dahinter als
+/// „(global: …)“.</summary>
+function SeverityColumn(const ARow: TAtlasRuleRow): string;
+begin
+  if ARow.Severity <> '' then
+  begin
+    Result := SeverityCaption(ARow.Severity);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, [SeverityCaption(ARow.DefaultSeverity)]);
+  end;
+  if ARow.GlobalSeverity <> '' then
+  begin
+    Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
+  end;
+end;
+
+/// <summary>Zeile der Tabelle; mit fester Gruppe steht in der dritten Spalte die Kategorie.</summary>
+procedure FillItem(AItem: TListItem; const ARow: TAtlasRuleRow; AFixedGroup: Boolean);
+begin
+  AItem.Caption := ARow.Id;
+  AItem.SubItems.Clear;
+  AItem.SubItems.Add(ARow.Name);
+  if AFixedGroup then
+  begin
+    AItem.SubItems.Add(ARow.Category);
+  end
+  else
+  begin
+    AItem.SubItems.Add(AtlasRuleGroupCaption(ARow.Group));
+  end;
+  AItem.SubItems.Add(SeverityColumn(ARow));
+  AItem.SubItems.Add(TAtlasRuleTable.ListText(ARow.Exclude));
+  AItem.Checked := ARow.Enabled;
+end;
+
+/// <summary>Eintrag der Auswahl des Schweregrads für ARow; 0 = Vorgabe.</summary>
+function SeverityIndex(const ARow: TAtlasRuleRow): Integer;
 var
-  Column: TListColumn;
+  mValue: Integer;
+begin
+  Result := 0;
+  for mValue := 1 to High(SeverityValues) do
+  begin
+    if SameText(SeverityValues[mValue], ARow.Severity) or
+      (SameText(ARow.Severity, 'information') and (SeverityValues[mValue] = 'info')) then
+    begin
+      Result := mValue;
+    end;
+  end;
+end;
+
+/// <summary>Schweregrad nach dem Haken in der Tabelle: aus "off"; an die Vorgabe, wenn sie meldet, sonst Warnung.
+/// </summary>
+function CheckedSeverity(const ARow: TAtlasRuleRow; AChecked: Boolean): string;
+begin
+  Result := 'off';
+  if AChecked then
+  begin
+    Result := '';
+    if SameText(ARow.DefaultSeverity, 'off') or SameText(ARow.GlobalSeverity, 'off') then
+    begin
+      Result := 'warning';
+    end;
+  end;
+end;
+
+/// <summary>Text über der Tabelle: lädt, kein Katalog, keine Regel; '' sonst.</summary>
+function StatusText(ALoaded, AHasCatalog, AEmpty: Boolean): string;
+begin
+  Result := '';
+  if not ALoaded then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
+  end
+  else if not AHasCatalog then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesNoCatalog);
+  end
+  else if AEmpty then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesEmpty);
+  end;
+end;
+
+/// <summary>AControl und alle Kinder sperren bzw. freigeben.</summary>
+procedure SetTreeEnabled(AControl: TControl; AEnabled: Boolean);
+var
+  mIndex: Integer;
+begin
+  AControl.Enabled := AEnabled;
+  if AControl is TWinControl then
+  begin
+    for mIndex := 0 to TWinControl(AControl).ControlCount - 1 do
+    begin
+      SetTreeEnabled(TWinControl(AControl).Controls[mIndex], AEnabled);
+    end;
+  end;
+end;
+
+/// <summary>Zellen der Tabelle AGrid ohne Kopfzeile.</summary>
+function GridCells(AGrid: TStringGrid): TArray<TArray<string>>;
+var
+  mRow, mCol: Integer;
+  mLine: TArray<string>;
+begin
+  Result := nil;
+  for mRow := AGrid.FixedRows to AGrid.RowCount - 1 do
+  begin
+    mLine := nil;
+    for mCol := 0 to AGrid.ColCount - 1 do
+    begin
+      mLine := mLine + [AGrid.Cells[mCol, mRow]];
+    end;
+    Result := Result + [mLine];
+  end;
+end;
+
+/// <summary>Kästchen für eine Option vom Typ boolean.</summary>
+function NewOptionCheck(AOwner: TComponent; ALine: TWinControl; const AOption: TAtlasRuleOption;
+  AOnClick: TNotifyEvent): TControl;
+var
+  mCheck: TCheckBox;
+begin
+  mCheck := TCheckBox.Create(AOwner);
+  mCheck.Parent := ALine;
+  mCheck.Align := alClient;
+  mCheck.Caption := AOption.Name;
+  mCheck.Hint := AOption.Description;
+  mCheck.ShowHint := AOption.Description <> '';
+  mCheck.Checked := SameText(TAtlasRuleTable.OptionText(AOption), 'true');
+  mCheck.OnClick := AOnClick;
+  Result := mCheck;
+end;
+
+/// <summary>Beschriftung und Feld für eine Option (Zahl, Text, Liste, JSON).</summary>
+function NewOptionEdit(AOwner: TComponent; ALine: TWinControl; const AOption: TAtlasRuleOption;
+  AOnChange: TNotifyEvent): TControl;
+var
   mCaption: TLabel;
+  mEdit: TEdit;
+begin
+  mCaption := TLabel.Create(AOwner);
+  mCaption.Parent := ALine;
+  mCaption.Align := alLeft;
+  mCaption.AutoSize := False;
+  mCaption.Width := 160;
+  mCaption.Layout := tlCenter;
+  mCaption.ShowAccelChar := False;
+  mCaption.Caption := AOption.Name + ':';
+  mCaption.Hint := AOption.Description;
+  mCaption.ShowHint := AOption.Description <> '';
+  mEdit := TEdit.Create(AOwner);
+  mEdit.Parent := ALine;
+  mEdit.Align := alClient;
+  mEdit.Text := TAtlasRuleTable.OptionText(AOption);
+  mEdit.NumbersOnly := SameText(AOption.Kind, 'integer');
+  mEdit.Hint := AOption.Description;
+  mEdit.ShowHint := AOption.Description <> '';
+  mEdit.OnChange := AOnChange;
+  Result := mEdit;
+end;
+
+{ TAtlasRulesLayout }
+
+constructor TAtlasRulesLayout.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   AutoSize := True;
   FNextTop := 0;
-
-  FTopBar := TAtlasRulesBox.Create(Self);
-  FTopBar.Height := 26;
-  Stack(Self, FTopBar);
-  FSearch := TEdit.Create(Self);
-  FSearch.Parent := FTopBar;
-  FSearch.Align := alClient;
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.RulesSearchHint);
-  FSearch.OnChange := SearchChange;
-  FGroupChoice := TComboBox.Create(Self);
-  FGroupChoice.Parent := FTopBar;
-  FGroupChoice.Align := alRight;
-  FGroupChoice.AlignWithMargins := True;
-  FGroupChoice.Margins.SetBounds(Gap, 0, 0, 0);
-  FGroupChoice.Width := 200;
-  FGroupChoice.Style := csDropDownList;
-  FGroupChoice.OnChange := GroupChoiceChange;
-
-  FMaster := TCheckBox.Create(Self);
-  FMaster.Height := 20;
-  FMaster.Visible := False;
-  FMaster.OnClick := MasterClick;
-  Stack(Self, FMaster);
-
-  FTypeLevel := TCheckBox.Create(Self);
-  FTypeLevel.Height := 20;
-  FTypeLevel.Visible := False;
-  FTypeLevel.Caption := TAtlasStrings.Text(TAtlasTextId.RulesTypeLevel);
-  FTypeLevel.AlignWithMargins := True;
-  FTypeLevel.Margins.SetBounds(18, 0, 0, 0);
-  FTypeLevel.OnClick := TypeLevelClick;
-  Stack(Self, FTypeLevel);
-
-  FStatus := AddLabel(Self, '');
-  FStatus.Font.Color := clGrayText;
-  FStatus.Visible := False;
-
-  FList := TListView.Create(Self);
-  FList.ViewStyle := vsReport;
-  FList.ReadOnly := True;
-  FList.RowSelect := True;
-  FList.HideSelection := False;
-  FList.Checkboxes := True;
-  FList.Height := ListHeight;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnId);
-  Column.Width := 190;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnName);
-  Column.Width := 220;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnGroup);
-  Column.Width := 120;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnSeverity);
-  Column.Width := 150;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnExclude);
-  Column.Width := 140;
-  FList.OnSelectItem := ListSelect;
-  FList.OnItemChecked := ListChecked;
-  Stack(Self, FList);
-
-  FDetails := TAtlasRulesBox.Create(Self);
-  FDetails.AutoSize := True;
-  Stack(Self, FDetails);
-  FTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesNoSelection));
-  FTitle.Font.Style := [fsBold];
-  FMark := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
-  FMark.Font.Color := $000080C0;
-  FMark.Visible := False;
-  FDescription := AddLabel(FDetails, '');
-  FDescription.WordWrap := True;
-
-  FSeverityRow := TAtlasRulesBox.Create(Self);
-  FSeverityRow.Height := 24;
-  Stack(FDetails, FSeverityRow);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := FSeverityRow;
-  mCaption.Align := alLeft;
-  mCaption.Layout := tlCenter;
-  mCaption.Width := 160;
-  mCaption.AutoSize := False;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.RulesSeverity);
-  FSeverity := TComboBox.Create(Self);
-  FSeverity.Parent := FSeverityRow;
-  FSeverity.Align := alLeft;
-  FSeverity.Width := 200;
-  FSeverity.Style := csDropDownList;
-  FSeverity.OnChange := SeverityChange;
-
-  FExcludeLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesExclude));
-  FExclude := TEdit.Create(Self);
-  FExclude.OnChange := ExcludeChange;
-  Stack(FDetails, FExclude);
-  FOptionsTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesOptions));
-  FOptionsTitle.Font.Style := [fsBold];
-  FOptionsBox := TAtlasRulesBox.Create(Self);
-  FOptionsBox.AutoSize := True;
-  Stack(FDetails, FOptionsBox);
-  FInvalid := AddLabel(FDetails, '');
-  FInvalid.Font.Color := clRed;
-  FInvalid.Visible := False;
-  FBadLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
-  FBadLabel.Font.Color := $003C3CD8;
-  FBad := AddMemo(FDetails);
-  FGoodLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
-  FGoodLabel.Font.Color := $0050A030;
-  FGood := AddMemo(FDetails);
-  // Auswahl und Memos brauchen ein Fenster: CreateWnd füllt über Refill auch die Details.
-  FDirty := True;
 end;
 
-function TAtlasRulesEditor.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+function TAtlasRulesLayout.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(Self);
   Result.ShowAccelChar := False;
@@ -350,7 +471,7 @@ begin
   Stack(AParent, Result);
 end;
 
-function TAtlasRulesEditor.AddMemo(AParent: TWinControl): TMemo;
+function TAtlasRulesLayout.AddMemo(AParent: TWinControl): TMemo;
 begin
   Result := TMemo.Create(Self);
   Result.ReadOnly := True;
@@ -361,7 +482,7 @@ begin
   Stack(AParent, Result);
 end;
 
-procedure TAtlasRulesEditor.FitMemo(AMemo: TMemo);
+procedure TAtlasRulesLayout.FitMemo(AMemo: TMemo);
 const
   MaxLines = 20;
 var
@@ -385,7 +506,7 @@ begin
   AMemo.Height := Max(MinMemoHeight, Lines * LineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
 end;
 
-procedure TAtlasRulesEditor.Stack(AParent: TWinControl; AControl: TControl);
+procedure TAtlasRulesLayout.Stack(AParent: TWinControl; AControl: TControl);
 begin
   // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt.
   Inc(FNextTop, 1000);
@@ -396,7 +517,7 @@ begin
   FStacked := FStacked + [AControl];
 end;
 
-procedure TAtlasRulesEditor.Restack;
+procedure TAtlasRulesLayout.Restack;
 var
   Control: TControl;
   Next: Integer;
@@ -425,7 +546,7 @@ begin
   AdjustSize;
 end;
 
-function TAtlasRulesEditor.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
+function TAtlasRulesLayout.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
 var
   Requested: Integer;
 begin
@@ -434,18 +555,73 @@ begin
   NewWidth := Requested;
 end;
 
-procedure TAtlasRulesEditor.CreateWnd;
+{ TAtlasRulesTable }
+
+constructor TAtlasRulesTable.Create(AOwner: TComponent);
+var
+  mColumn: TListColumn;
+  mIndex: Integer;
+const
+  cColumns: array[0..4] of TAtlasTextId = (TAtlasTextId.RulesColumnId, TAtlasTextId.RulesColumnName,
+    TAtlasTextId.RulesColumnGroup, TAtlasTextId.RulesColumnSeverity, TAtlasTextId.RulesColumnExclude);
+  cWidths: array[0..4] of Integer = (190, 220, 120, 150, 140);
 begin
-  inherited CreateWnd;
-  // Auswahllisten und Tabelle brauchen ein Fenster.
-  FillChoices;
-  if FDirty then
+  inherited Create(AOwner);
+  FTopBar := TAtlasRulesBox.Create(Self);
+  FTopBar.Height := 26;
+  Stack(Self, FTopBar);
+  FSearch := TEdit.Create(Self);
+  FSearch.Parent := FTopBar;
+  FSearch.Align := alClient;
+  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.RulesSearchHint);
+  FGroupChoice := TComboBox.Create(Self);
+  FGroupChoice.Parent := FTopBar;
+  FGroupChoice.Align := alRight;
+  FGroupChoice.AlignWithMargins := True;
+  FGroupChoice.Margins.SetBounds(Gap, 0, 0, 0);
+  FGroupChoice.Width := 200;
+  FGroupChoice.Style := csDropDownList;
+  FMaster := TCheckBox.Create(Self);
+  FMaster.Height := 20;
+  FMaster.Visible := False;
+  Stack(Self, FMaster);
+  FTypeLevel := TCheckBox.Create(Self);
+  FTypeLevel.Height := 20;
+  FTypeLevel.Visible := False;
+  FTypeLevel.Caption := TAtlasStrings.Text(TAtlasTextId.RulesTypeLevel);
+  FTypeLevel.AlignWithMargins := True;
+  FTypeLevel.Margins.SetBounds(18, 0, 0, 0);
+  Stack(Self, FTypeLevel);
+  FStatus := AddLabel(Self, '');
+  FStatus.Font.Color := clGrayText;
+  FStatus.Visible := False;
+  FList := TListView.Create(Self);
+  FList.ViewStyle := vsReport;
+  FList.ReadOnly := True;
+  FList.RowSelect := True;
+  FList.HideSelection := False;
+  FList.Checkboxes := True;
+  FList.Height := ListHeight;
+  for mIndex := 0 to High(cColumns) do
   begin
-    Refill;
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := TAtlasStrings.Text(cColumns[mIndex]);
+    mColumn.Width := cWidths[mIndex];
+  end;
+  Stack(Self, FList);
+end;
+
+function TAtlasRulesTable.Group: string;
+begin
+  Result := FFixedGroup;
+  if (Result = '') and (FGroupChoice.ItemIndex > 0) and
+    (FGroupChoice.ItemIndex <= Length(TAtlasRuleTable.GroupIds)) then
+  begin
+    Result := TAtlasRuleTable.GroupIds[FGroupChoice.ItemIndex - 1];
   end;
 end;
 
-procedure TAtlasRulesEditor.SetFixedGroup(const AValue: string);
+procedure TAtlasRulesTable.ShowFixedGroup(const AValue: string);
 begin
   FFixedGroup := AValue;
   // Fester Knoten einer Gruppe: keine Suche und keine Gruppenauswahl; die Spalte zeigt die Kategorie.
@@ -458,258 +634,9 @@ begin
   begin
     FList.Columns[2].Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnGroup);
   end;
-  FDirty := True;
-  if HandleAllocated then
-  begin
-    Refill;
-  end;
 end;
 
-procedure TAtlasRulesEditor.SetRules(ACatalog: TJSONValue; const ARulesJson, AOtherRulesJson: string);
-begin
-  FCatalog := ACatalog;
-  FRulesJson := ARulesJson;
-  FOtherRulesJson := AOtherRulesJson;
-  FRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FOtherRulesJson);
-  FLoaded := True;
-  FDirty := True;
-  if HandleAllocated then
-  begin
-    Refill;
-  end;
-end;
-
-procedure TAtlasRulesEditor.ShowLoading;
-begin
-  FLoaded := False;
-  FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
-  FStatus.Visible := True;
-  Restack;
-end;
-
-function TAtlasRulesEditor.Group: string;
-begin
-  Result := FFixedGroup;
-  if (Result = '') and (FGroupChoice.ItemIndex > 0) and
-    (FGroupChoice.ItemIndex <= Length(TAtlasRuleTable.GroupIds)) then
-  begin
-    Result := TAtlasRuleTable.GroupIds[FGroupChoice.ItemIndex - 1];
-  end;
-end;
-
-function TAtlasRulesEditor.GroupOff: Boolean;
-begin
-  Result := (Group <> '') and TAtlasRuleTable.GroupOff(FRulesJson, Group);
-end;
-
-function TAtlasRulesEditor.RowOf(const AId: string): Integer;
-var
-  Index: Integer;
-begin
-  for Index := 0 to High(FRows) do
-  begin
-    if SameText(FRows[Index].Id, AId) then
-    begin
-      Exit(Index);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasRulesEditor.HasRule(const AId: string): Boolean;
-begin
-  Result := RowOf(AId) >= 0;
-end;
-
-function TAtlasRulesEditor.SelectedRow: Integer;
-begin
-  Result := -1;
-  if (FList.Selected <> nil) and (FList.Selected.Index <= High(FVisible)) then
-  begin
-    Result := FVisible[FList.Selected.Index];
-  end;
-end;
-
-function TAtlasRulesEditor.RowShown(ARow: Integer): Boolean;
-var
-  Index: Integer;
-begin
-  for Index in TAtlasRuleTable.Filter(FRows, Group, FSearch.Text) do
-  begin
-    if Index = ARow then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TAtlasRulesEditor.GroupCaption(const AGroup: string): string;
-begin
-  Result := AtlasRuleGroupCaption(AGroup);
-end;
-
-function TAtlasRulesEditor.SeverityCaption(const ASeverity: string): string;
-begin
-  if SameText(ASeverity, 'error') then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityError);
-  end
-  else if SameText(ASeverity, 'warning') then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityWarning);
-  end
-  else if SameText(ASeverity, 'info') or SameText(ASeverity, 'information') then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityInfo);
-  end
-  else if SameText(ASeverity, 'hint') then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityHint);
-  end
-  else if SameText(ASeverity, 'off') then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityOff);
-  end
-  else
-  begin
-    Result := ASeverity;
-  end;
-end;
-
-function TAtlasRulesEditor.SeverityColumn(const ARow: TAtlasRuleRow): string;
-begin
-  // Eingestellt, sonst „Vorgabe (…)“; ein Wert der anderen Ebene steht dahinter als „(global: …)“.
-  if ARow.Severity <> '' then
-  begin
-    Result := SeverityCaption(ARow.Severity);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, [SeverityCaption(ARow.DefaultSeverity)]);
-  end;
-  if ARow.GlobalSeverity <> '' then
-  begin
-    Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
-  end;
-end;
-
-procedure TAtlasRulesEditor.FillItem(AItem: TListItem; const ARow: TAtlasRuleRow);
-var
-  Third: string;
-begin
-  AItem.Caption := ARow.Id;
-  AItem.SubItems.Clear;
-  AItem.SubItems.Add(ARow.Name);
-  if FFixedGroup <> '' then
-  begin
-    Third := ARow.Category;
-  end
-  else
-  begin
-    Third := GroupCaption(ARow.Group);
-  end;
-  AItem.SubItems.Add(Third);
-  AItem.SubItems.Add(SeverityColumn(ARow));
-  AItem.SubItems.Add(TAtlasRuleTable.ListText(ARow.Exclude));
-  AItem.Checked := ARow.Enabled;
-end;
-
-procedure TAtlasRulesEditor.FillChoices;
-var
-  Index: Integer;
-  Value: string;
-begin
-  if FGroupChoice.Items.Count = 0 then
-  begin
-    FGroupChoice.Items.BeginUpdate;
-    try
-      FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
-      for Index := 0 to High(TAtlasRuleTable.GroupIds) do
-      begin
-        FGroupChoice.Items.Add(GroupCaption(TAtlasRuleTable.GroupIds[Index]));
-      end;
-    finally
-      FGroupChoice.Items.EndUpdate;
-    end;
-    FGroupChoice.ItemIndex := 0;
-  end;
-  if FSeverity.Items.Count = 0 then
-  begin
-    for Value in SeverityValues do
-    begin
-      if Value = '' then
-      begin
-        FSeverity.Items.Add(TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, ['']));
-      end
-      else
-      begin
-        FSeverity.Items.Add(SeverityCaption(Value));
-      end;
-    end;
-  end;
-end;
-
-procedure TAtlasRulesEditor.Refill;
-var
-  Index, Selected: Integer;
-  Item: TListItem;
-begin
-  FDirty := False;
-  FStatus.Visible := False;
-  if not FLoaded then
-  begin
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
-    FStatus.Visible := True;
-  end
-  else if FCatalog = nil then
-  begin
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesNoCatalog);
-    FStatus.Visible := True;
-  end;
-  if SelectedRow >= 0 then
-  begin
-    FSelectedId := FRows[SelectedRow].Id;
-  end;
-  FVisible := TAtlasRuleTable.Filter(FRows, Group, FSearch.Text);
-  if FLoaded and (Length(FVisible) = 0) and (FCatalog <> nil) then
-  begin
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesEmpty);
-    FStatus.Visible := True;
-  end;
-  Selected := -1;
-  FFilling := True;
-  FList.Items.BeginUpdate;
-  try
-    FList.Items.Clear;
-    for Index := 0 to High(FVisible) do
-    begin
-      Item := FList.Items.Add;
-      FillItem(Item, FRows[FVisible[Index]]);
-      if SameText(FRows[FVisible[Index]].Id, FSelectedId) then
-      begin
-        Selected := Index;
-      end;
-    end;
-  finally
-    FList.Items.EndUpdate;
-    FFilling := False;
-  end;
-  if Selected >= 0 then
-  begin
-    FFilling := True;
-    try
-      FList.Items[Selected].Selected := True;
-      FList.Items[Selected].Focused := True;
-    finally
-      FFilling := False;
-    end;
-  end;
-  UpdateMaster;
-  ShowDetails;
-end;
-
-procedure TAtlasRulesEditor.UpdateMaster;
+procedure TAtlasRulesTable.ShowMaster(const ARulesJson: string);
 begin
   FMaster.Visible := Group <> '';
   FTypeLevel.Visible := SameText(Group, TAtlasRuleTable.CompilerGroup);
@@ -717,191 +644,210 @@ begin
   begin
     Exit;
   end;
-  FMaster.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesGroupMaster, [GroupCaption(Group)]);
+  FMaster.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesGroupMaster, [AtlasRuleGroupCaption(Group)]);
   FFilling := True;
   try
-    FMaster.Checked := not GroupOff;
-    FTypeLevel.Checked := not SameText(TAtlasRuleTable.GroupOption(FRulesJson, Group, 'typeLevel'), 'off');
+    FMaster.Checked := not TAtlasRuleTable.GroupOff(ARulesJson, Group);
+    FTypeLevel.Checked := not SameText(TAtlasRuleTable.GroupOption(ARulesJson, Group, 'typeLevel'), 'off');
   finally
     FFilling := False;
   end;
 end;
 
-procedure TAtlasRulesEditor.UpdateEnabled;
+procedure TAtlasRulesTable.ShowStatus(const AText: string);
+begin
+  FStatus.Caption := AText;
+  FStatus.Visible := AText <> '';
+end;
 
-  procedure SetTree(AControl: TControl; AEnabled: Boolean);
-  var
-    Index: Integer;
+procedure TAtlasRulesTable.FillGroups;
+var
+  mIndex: Integer;
+begin
+  if FGroupChoice.Items.Count > 0 then
   begin
-    AControl.Enabled := AEnabled;
-    if AControl is TWinControl then
+    Exit;
+  end;
+  FGroupChoice.Items.BeginUpdate;
+  try
+    FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
+    for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
     begin
-      for Index := 0 to TWinControl(AControl).ControlCount - 1 do
-      begin
-        SetTree(TWinControl(AControl).Controls[Index], AEnabled);
-      end;
+      FGroupChoice.Items.Add(AtlasRuleGroupCaption(TAtlasRuleTable.GroupIds[mIndex]));
+    end;
+  finally
+    FGroupChoice.Items.EndUpdate;
+  end;
+  FGroupChoice.ItemIndex := 0;
+end;
+
+{ TAtlasRulesDetailsView }
+
+constructor TAtlasRulesDetailsView.Create(AOwner: TComponent);
+var
+  mCaption: TLabel;
+begin
+  inherited Create(AOwner);
+  FDetails := TAtlasRulesBox.Create(Self);
+  FDetails.AutoSize := True;
+  Stack(Self, FDetails);
+  FTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesNoSelection));
+  FTitle.Font.Style := [fsBold];
+  FMark := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
+  FMark.Font.Color := $000080C0;
+  FMark.Visible := False;
+  FDescription := AddLabel(FDetails, '');
+  FDescription.WordWrap := True;
+  FSeverityRow := TAtlasRulesBox.Create(Self);
+  FSeverityRow.Height := 24;
+  Stack(FDetails, FSeverityRow);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := FSeverityRow;
+  mCaption.Align := alLeft;
+  mCaption.Layout := tlCenter;
+  mCaption.Width := 160;
+  mCaption.AutoSize := False;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.RulesSeverity);
+  FSeverity := TComboBox.Create(Self);
+  FSeverity.Parent := FSeverityRow;
+  FSeverity.Align := alLeft;
+  FSeverity.Width := 200;
+  FSeverity.Style := csDropDownList;
+  FExcludeLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesExclude));
+  FExclude := TEdit.Create(Self);
+  Stack(FDetails, FExclude);
+  FOptionsTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesOptions));
+  FOptionsTitle.Font.Style := [fsBold];
+  FOptionsBox := TAtlasRulesBox.Create(Self);
+  FOptionsBox.AutoSize := True;
+  Stack(FDetails, FOptionsBox);
+  FInvalid := AddLabel(FDetails, '');
+  FInvalid.Font.Color := clRed;
+  FInvalid.Visible := False;
+  FBadLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
+  FBadLabel.Font.Color := $003C3CD8;
+  FBad := AddMemo(FDetails);
+  FGoodLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
+  FGoodLabel.Font.Color := $0050A030;
+  FGood := AddMemo(FDetails);
+end;
+
+procedure TAtlasRulesDetailsView.FillSeverities;
+var
+  mValue: string;
+begin
+  if FSeverity.Items.Count > 0 then
+  begin
+    Exit;
+  end;
+  for mValue in SeverityValues do
+  begin
+    if mValue = '' then
+    begin
+      FSeverity.Items.Add(TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, ['']));
+    end
+    else
+    begin
+      FSeverity.Items.Add(SeverityCaption(mValue));
     end;
   end;
+end;
 
-var
-  IsOn: Boolean;
+procedure TAtlasRulesDetailsView.SetEditable(AOn, ASelected: Boolean);
 begin
-  // Hauptschalter aus: Tabelle und alle Felder gesperrt (wie #890); ohne Auswahl nur die Beschreibung.
-  IsOn := not GroupOff;
-  FTypeLevel.Enabled := IsOn;
-  FList.Enabled := IsOn;
-  SetTree(FDetails, IsOn and (SelectedRow >= 0));
+  TypeLevel.Enabled := AOn;
+  List.Enabled := AOn;
+  SetTreeEnabled(FDetails, AOn and ASelected);
   FTitle.Enabled := True;
   FDescription.Enabled := True;
 end;
 
-procedure TAtlasRulesEditor.ShowDetails;
-var
-  Index, Value, Choice: Integer;
-  Row: TAtlasRuleRow;
-  Present: Boolean;
-  Overriding: string;
+procedure TAtlasRulesDetailsView.ShowRow(const ARow: TAtlasRuleRow; APresent: Boolean; const AOverriding: string);
 begin
-  Index := SelectedRow;
-  Present := Index >= 0;
-  Row := Default(TAtlasRuleRow);
-  FFilling := True;
-  try
-    if not Present then
-    begin
-      FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.RulesNoSelection);
-      FMark.Visible := False;
-      FDescription.Caption := '';
-      FExclude.Text := '';
-      if FSeverity.Items.Count > 0 then
-      begin
-        FSeverity.ItemIndex := -1;
-      end;
-      BuildOptions(Default(TAtlasRuleRow));
-      FBad.Lines.Text := '';
-      FGood.Lines.Text := '';
-    end
-    else
-    begin
-      Row := FRows[Index];
-      FTitle.Caption := Row.Id;
-      if Row.Name <> '' then
-      begin
-        FTitle.Caption := Row.Name + '  ·  ' + Row.Id;
-      end;
-      FMark.Visible := Row.Experimental;
-      FDescription.Caption := Row.Description;
-      // Gegenregel an (#1025): z. B. redundant-begin-end schweigt, solange missing-begin-end an ist.
-      Overriding := TAtlasRuleTable.OverridingRule(FRows, Row);
-      if Overriding <> '' then
-      begin
-        FDescription.Caption := Trim(Row.Description + sLineBreak + sLineBreak +
-          TAtlasStrings.Fmt(TAtlasTextId.RulesOverriddenBy, [Overriding]));
-      end;
-      if FSeverity.Items.Count > 0 then
-      begin
-        FSeverity.Items[0] := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault,
-          [SeverityCaption(Row.DefaultSeverity)]);
-        Choice := 0;
-        for Value := 1 to High(SeverityValues) do
-        begin
-          if SameText(SeverityValues[Value], Row.Severity) or
-            (SameText(Row.Severity, 'information') and (SeverityValues[Value] = 'info')) then
-          begin
-            Choice := Value;
-          end;
-        end;
-        FSeverity.ItemIndex := Choice;
-      end;
-      FExclude.Text := TAtlasRuleTable.ListText(Row.Exclude);
-      BuildOptions(Row);
-      FBad.Lines.Text := Row.Bad;
-      FGood.Lines.Text := Row.Good;
-      FitMemo(FBad);
-      FitMemo(FGood);
-    end;
-    FBadLabel.Visible := Present and (Row.Bad <> '');
-    FBad.Visible := FBadLabel.Visible;
-    FGoodLabel.Visible := Present and (Row.Good <> '');
-    FGood.Visible := FGoodLabel.Visible;
-    FInvalid.Visible := False;
-  finally
-    FFilling := False;
+  FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.RulesNoSelection);
+  if APresent then
+  begin
+    FTitle.Caption := ARow.Id;
   end;
-  Restack;
-  UpdateEnabled;
+  if APresent and (ARow.Name <> '') then
+  begin
+    FTitle.Caption := ARow.Name + '  ·  ' + ARow.Id;
+  end;
+  FMark.Visible := APresent and ARow.Experimental;
+  FDescription.Caption := ARow.Description;
+  // Gegenregel an (#1025): z. B. redundant-begin-end schweigt, solange missing-begin-end an ist.
+  if AOverriding <> '' then
+  begin
+    FDescription.Caption := Trim(ARow.Description + sLineBreak + sLineBreak +
+      TAtlasStrings.Fmt(TAtlasTextId.RulesOverriddenBy, [AOverriding]));
+  end;
+  if FSeverity.Items.Count > 0 then
+  begin
+    FSeverity.ItemIndex := -1;
+  end;
+  if APresent and (FSeverity.Items.Count > 0) then
+  begin
+    FSeverity.Items[0] := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault,
+      [SeverityCaption(ARow.DefaultSeverity)]);
+    FSeverity.ItemIndex := SeverityIndex(ARow);
+  end;
+  FExclude.Text := TAtlasRuleTable.ListText(ARow.Exclude);
+  BuildOptions(ARow);
+  FBad.Lines.Text := ARow.Bad;
+  FGood.Lines.Text := ARow.Good;
+  if APresent then
+  begin
+    FitMemo(FBad);
+    FitMemo(FGood);
+  end;
+  FBadLabel.Visible := APresent and (ARow.Bad <> '');
+  FBad.Visible := FBadLabel.Visible;
+  FGoodLabel.Visible := APresent and (ARow.Good <> '');
+  FGood.Visible := FGoodLabel.Visible;
+  FInvalid.Visible := False;
 end;
 
-procedure TAtlasRulesEditor.BuildOptions(const ARow: TAtlasRuleRow);
+procedure TAtlasRulesDetailsView.BuildOptions(const ARow: TAtlasRuleRow);
 var
-  Index: Integer;
-  Option: TAtlasRuleOption;
-  Line: TAtlasRulesBox;
-  mCaption: TLabel;
-  Check: TCheckBox;
-  Edit: TEdit;
-  Control: TControl;
+  mIndex: Integer;
+  mOption: TAtlasRuleOption;
+  mLine: TAtlasRulesBox;
+  mControl: TControl;
 begin
-  for Control in FOptionControls do
+  for mControl in FOptionControls do
   begin
-    Control.Parent.Free;
+    mControl.Parent.Free;
   end;
   FOptionControls := nil;
   FOptionsTitle.Visible := Length(ARow.Options) > 0;
-  for Index := 0 to High(ARow.Options) do
+  for mIndex := 0 to High(ARow.Options) do
   begin
-    Option := ARow.Options[Index];
-    Line := TAtlasRulesBox.Create(Self);
-    Line.Parent := FOptionsBox;
-    Line.Align := alTop;
-    Line.AlignWithMargins := True;
-    Line.Height := 24;
-    Line.Top := Index * 30;
-    if SameText(Option.Kind, 'boolean') then
+    mOption := ARow.Options[mIndex];
+    mLine := TAtlasRulesBox.Create(Self);
+    mLine.Parent := FOptionsBox;
+    mLine.Align := alTop;
+    mLine.AlignWithMargins := True;
+    mLine.Height := 24;
+    mLine.Top := mIndex * 30;
+    if SameText(mOption.Kind, 'boolean') then
     begin
-      Check := TCheckBox.Create(Self);
-      Check.Parent := Line;
-      Check.Align := alClient;
-      Check.Caption := Option.Name;
-      Check.Hint := Option.Description;
-      Check.ShowHint := Option.Description <> '';
-      Check.Checked := SameText(TAtlasRuleTable.OptionText(Option), 'true');
-      Check.OnClick := OptionChange;
-      Control := Check;
+      mControl := NewOptionCheck(Self, mLine, mOption, OptionChange);
     end
-    else if SameText(Option.Kind, 'object-list') and (Option.Columns <> nil) then
+    else if SameText(mOption.Kind, 'object-list') and (mOption.Columns <> nil) then
     begin
-      Line.Height := 150;
-      Control := BuildTable(Line, Option, Index);
+      mLine.Height := 150;
+      mControl := BuildTable(mLine, mOption, mIndex);
     end
     else
     begin
-      mCaption := TLabel.Create(Self);
-      mCaption.Parent := Line;
-      mCaption.Align := alLeft;
-      mCaption.AutoSize := False;
-      mCaption.Width := 160;
-      mCaption.Layout := tlCenter;
-      mCaption.ShowAccelChar := False;
-      mCaption.Caption := Option.Name + ':';
-      mCaption.Hint := Option.Description;
-      mCaption.ShowHint := Option.Description <> '';
-      Edit := TEdit.Create(Self);
-      Edit.Parent := Line;
-      Edit.Align := alClient;
-      Edit.Text := TAtlasRuleTable.OptionText(Option);
-      Edit.NumbersOnly := SameText(Option.Kind, 'integer');
-      Edit.Hint := Option.Description;
-      Edit.ShowHint := Option.Description <> '';
-      Edit.OnChange := OptionChange;
-      Control := Edit;
+      mControl := NewOptionEdit(Self, mLine, mOption, OptionChange);
     end;
-    Control.Tag := Index;
-    FOptionControls := FOptionControls + [Control];
+    mControl.Tag := mIndex;
+    FOptionControls := FOptionControls + [mControl];
   end;
 end;
 
-function TAtlasRulesEditor.BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption;
+function TAtlasRulesDetailsView.BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption;
   AIndex: Integer): TControl;
 var
   mCaption: TLabel;
@@ -945,9 +891,182 @@ begin
   Result := mGrid;
 end;
 
+{ TAtlasRulesEditor }
+
+constructor TAtlasRulesEditor.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Search.OnChange := FilterChange;
+  GroupChoice.OnChange := FilterChange;
+  Master.OnClick := MasterClick;
+  TypeLevel.OnClick := TypeLevelClick;
+  List.OnSelectItem := ListSelect;
+  List.OnItemChecked := ListChecked;
+  SeverityChoice.OnChange := SeverityChange;
+  ExcludeEdit.OnChange := ExcludeChange;
+  // Auswahl und Memos brauchen ein Fenster: CreateWnd füllt über Refill auch die Details.
+  FDirty := True;
+end;
+
+procedure TAtlasRulesEditor.CreateWnd;
+begin
+  inherited CreateWnd;
+  // Auswahllisten und Tabelle brauchen ein Fenster.
+  FillGroups;
+  FillSeverities;
+  if FDirty then
+  begin
+    Refill;
+  end;
+end;
+
+procedure TAtlasRulesEditor.SetFixedGroup(const AValue: string);
+begin
+  ShowFixedGroup(AValue);
+  FDirty := True;
+  if HandleAllocated then
+  begin
+    Refill;
+  end;
+end;
+
+procedure TAtlasRulesEditor.SetRules(ACatalog: TJSONValue; const ARulesJson, AOtherRulesJson: string);
+begin
+  FCatalog := ACatalog;
+  FRulesJson := ARulesJson;
+  FOtherRulesJson := AOtherRulesJson;
+  FRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FOtherRulesJson);
+  FLoaded := True;
+  FDirty := True;
+  if HandleAllocated then
+  begin
+    Refill;
+  end;
+end;
+
+procedure TAtlasRulesEditor.ShowLoading;
+begin
+  FLoaded := False;
+  ShowStatus(TAtlasStrings.Text(TAtlasTextId.RulesLoading));
+  Restack;
+end;
+
+function TAtlasRulesEditor.GroupOff: Boolean;
+begin
+  Result := (Group <> '') and TAtlasRuleTable.GroupOff(FRulesJson, Group);
+end;
+
+function TAtlasRulesEditor.RowOf(const AId: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FRows) do
+  begin
+    if SameText(FRows[Index].Id, AId) then
+    begin
+      Exit(Index);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasRulesEditor.HasRule(const AId: string): Boolean;
+begin
+  Result := RowOf(AId) >= 0;
+end;
+
+function TAtlasRulesEditor.SelectedRow: Integer;
+begin
+  Result := -1;
+  if (List.Selected <> nil) and (List.Selected.Index <= High(FVisible)) then
+  begin
+    Result := FVisible[List.Selected.Index];
+  end;
+end;
+
+function TAtlasRulesEditor.RowShown(ARow: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  for Index in TAtlasRuleTable.Filter(FRows, Group, Search.Text) do
+  begin
+    if Index = ARow then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TAtlasRulesEditor.Refill;
+var
+  mIndex, mSelected: Integer;
+begin
+  FDirty := False;
+  if SelectedRow >= 0 then
+  begin
+    FSelectedId := FRows[SelectedRow].Id;
+  end;
+  FVisible := TAtlasRuleTable.Filter(FRows, Group, Search.Text);
+  ShowStatus(StatusText(FLoaded, FCatalog <> nil, Length(FVisible) = 0));
+  mSelected := -1;
+  FFilling := True;
+  List.Items.BeginUpdate;
+  try
+    List.Items.Clear;
+    for mIndex := 0 to High(FVisible) do
+    begin
+      FillItem(List.Items.Add, FRows[FVisible[mIndex]], FFixedGroup <> '');
+      if SameText(FRows[FVisible[mIndex]].Id, FSelectedId) then
+      begin
+        mSelected := mIndex;
+      end;
+    end;
+  finally
+    List.Items.EndUpdate;
+    FFilling := False;
+  end;
+  if mSelected >= 0 then
+  begin
+    FFilling := True;
+    try
+      List.Items[mSelected].Selected := True;
+      List.Items[mSelected].Focused := True;
+    finally
+      FFilling := False;
+    end;
+  end;
+  ShowMaster(FRulesJson);
+  ShowDetails;
+end;
+
+procedure TAtlasRulesEditor.ShowDetails;
+var
+  mIndex: Integer;
+  mRow: TAtlasRuleRow;
+  mOverriding: string;
+begin
+  mIndex := SelectedRow;
+  mRow := Default(TAtlasRuleRow);
+  mOverriding := '';
+  if mIndex >= 0 then
+  begin
+    mRow := FRows[mIndex];
+    mOverriding := TAtlasRuleTable.OverridingRule(FRows, mRow);
+  end;
+  FFilling := True;
+  try
+    ShowRow(mRow, mIndex >= 0, mOverriding);
+  finally
+    FFilling := False;
+  end;
+  Restack;
+  SetEditable(not GroupOff, SelectedRow >= 0);
+end;
+
 procedure TAtlasRulesEditor.Apply(const ARulesJson: string);
 var
-  Index, mVisible: Integer;
+  mIndex, mVisible: Integer;
 begin
   // Zeilen aus dem neuen Wert; die Tabelle wird nur nachgeführt, damit Fokus und Eingabe bleiben.
   FRulesJson := ARulesJson;
@@ -956,17 +1075,17 @@ begin
   try
     for mVisible := 0 to High(FVisible) do
     begin
-      Index := FVisible[mVisible];
-      if (Index <= High(FRows)) and (mVisible < FList.Items.Count) then
+      mIndex := FVisible[mVisible];
+      if (mIndex <= High(FRows)) and (mVisible < List.Items.Count) then
       begin
-        FillItem(FList.Items[mVisible], FRows[Index]);
+        FillItem(List.Items[mVisible], FRows[mIndex], FFixedGroup <> '');
       end;
     end;
   finally
     FFilling := False;
   end;
-  UpdateMaster;
-  UpdateEnabled;
+  ShowMaster(FRulesJson);
+  SetEditable(not GroupOff, SelectedRow >= 0);
   if Assigned(FOnChange) then
   begin
     FOnChange(Self);
@@ -991,8 +1110,8 @@ begin
     begin
       FFilling := True;
       try
-        FSearch.Text := '';
-        FGroupChoice.ItemIndex := 0;
+        Search.Text := '';
+        GroupChoice.ItemIndex := 0;
       finally
         FFilling := False;
       end;
@@ -1002,9 +1121,9 @@ begin
     begin
       if FVisible[Index] = Row then
       begin
-        FList.Items[Index].Selected := True;
-        FList.Items[Index].Focused := True;
-        FList.Items[Index].MakeVisible(False);
+        List.Items[Index].Selected := True;
+        List.Items[Index].Focused := True;
+        List.Items[Index].MakeVisible(False);
       end;
     end;
   end
@@ -1044,15 +1163,7 @@ begin
   end;
 end;
 
-procedure TAtlasRulesEditor.SearchChange(Sender: TObject);
-begin
-  if not FFilling then
-  begin
-    Refill;
-  end;
-end;
-
-procedure TAtlasRulesEditor.GroupChoiceChange(Sender: TObject);
+procedure TAtlasRulesEditor.FilterChange(Sender: TObject);
 begin
   if not FFilling then
   begin
@@ -1066,23 +1177,23 @@ begin
   begin
     Exit;
   end;
-  Apply(TAtlasRuleTable.WithGroup(FRulesJson, Group, FMaster.Checked));
+  Apply(TAtlasRuleTable.WithGroup(FRulesJson, Group, Master.Checked));
 end;
 
 procedure TAtlasRulesEditor.TypeLevelClick(Sender: TObject);
 var
-  Value: string;
+  mValue: string;
 begin
   if FFilling or (Group = '') then
   begin
     Exit;
   end;
-  Value := '';
-  if not FTypeLevel.Checked then
+  mValue := '';
+  if not TypeLevel.Checked then
   begin
-    Value := 'off';
+    mValue := 'off';
   end;
-  Apply(TAtlasRuleTable.WithGroupOption(FRulesJson, Group, 'typeLevel', Value));
+  Apply(TAtlasRuleTable.WithGroupOption(FRulesJson, Group, 'typeLevel', mValue));
 end;
 
 procedure TAtlasRulesEditor.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -1100,30 +1211,19 @@ end;
 
 procedure TAtlasRulesEditor.ListChecked(Sender: TObject; Item: TListItem);
 var
-  Row: Integer;
-  Severity: string;
+  mRow: Integer;
 begin
   if FFilling or (Item = nil) or (Item.Index > High(FVisible)) then
   begin
     Exit;
   end;
-  Row := FVisible[Item.Index];
-  if Item.Checked = FRows[Row].Enabled then
+  mRow := FVisible[Item.Index];
+  if Item.Checked = FRows[mRow].Enabled then
   begin
     Exit;
   end;
-  // Aus: "off". An: Vorgabe, wenn sie meldet; sonst Warnung.
-  Severity := 'off';
-  if Item.Checked then
-  begin
-    Severity := '';
-    if SameText(FRows[Row].DefaultSeverity, 'off') or SameText(FRows[Row].GlobalSeverity, 'off') then
-    begin
-      Severity := 'warning';
-    end;
-  end;
-  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, Severity));
-  if Row = SelectedRow then
+  Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[mRow].Id, CheckedSeverity(FRows[mRow], Item.Checked)));
+  if mRow = SelectedRow then
   begin
     ShowDetails;
   end;
@@ -1131,23 +1231,23 @@ end;
 
 procedure TAtlasRulesEditor.SeverityChange(Sender: TObject);
 begin
-  if FFilling or (FSeverity.ItemIndex < 0) or (FSeverity.ItemIndex > High(SeverityValues)) then
+  if FFilling or (SeverityChoice.ItemIndex < 0) or (SeverityChoice.ItemIndex > High(SeverityValues)) then
   begin
     Exit;
   end;
-  SetSeverity(SeverityValues[FSeverity.ItemIndex]);
+  SetSeverity(SeverityValues[SeverityChoice.ItemIndex]);
 end;
 
 procedure TAtlasRulesEditor.ExcludeChange(Sender: TObject);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
-  Row := SelectedRow;
-  if FFilling or (Row < 0) then
+  mRow := SelectedRow;
+  if FFilling or (mRow < 0) then
   begin
     Exit;
   end;
-  Apply(TAtlasRuleTable.WithExclude(FRulesJson, FRows[Row].Id, TAtlasRuleTable.ParseList(FExclude.Text)));
+  Apply(TAtlasRuleTable.WithExclude(FRulesJson, FRows[mRow].Id, TAtlasRuleTable.ParseList(ExcludeEdit.Text)));
 end;
 
 procedure TAtlasRulesEditor.OptionChange(Sender: TObject);
@@ -1182,17 +1282,17 @@ begin
   // Ungültige Eingabe bleibt im Feld stehen, wird aber nicht übernommen.
   if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
-    FInvalid.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
-    if not FInvalid.Visible then
+    InvalidLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
+    if not InvalidLabel.Visible then
     begin
-      FInvalid.Visible := True;
+      InvalidLabel.Visible := True;
       Restack;
     end;
     Exit;
   end;
-  if FInvalid.Visible then
+  if InvalidLabel.Visible then
   begin
-    FInvalid.Visible := False;
+    InvalidLabel.Visible := False;
     Restack;
   end;
   // Gleich der Vorgabe: Option entfernen.
@@ -1206,10 +1306,8 @@ end;
 procedure TAtlasRulesEditor.OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string);
 var
   mGrid: TStringGrid;
-  mRuleRow, mIndex, mRow, mCol: Integer;
+  mRuleRow, mIndex: Integer;
   mOption: TAtlasRuleOption;
-  mCells: TArray<TArray<string>>;
-  mLine: TArray<string>;
   mJson: string;
 begin
   mRuleRow := SelectedRow;
@@ -1229,23 +1327,13 @@ begin
   begin
     mGrid.RowCount := mGrid.RowCount + 1;
   end;
-  mCells := nil;
-  for mRow := mGrid.FixedRows to mGrid.RowCount - 1 do
-  begin
-    mLine := nil;
-    for mCol := 0 to mGrid.ColCount - 1 do
-    begin
-      mLine := mLine + [mGrid.Cells[mCol, mRow]];
-    end;
-    mCells := mCells + [mLine];
-  end;
-  mJson := TAtlasRuleTable.TableJson(mOption, mCells);
+  mJson := TAtlasRuleTable.TableJson(mOption, GridCells(mGrid));
   // Gleich der Vorgabe: Option entfernen.
   if mJson = mOption.DefaultJson then
   begin
     mJson := '';
   end;
-  FInvalid.Visible := False;
+  InvalidLabel.Visible := False;
   Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[mRuleRow].Id, mOption.Name, mJson));
 end;
 
