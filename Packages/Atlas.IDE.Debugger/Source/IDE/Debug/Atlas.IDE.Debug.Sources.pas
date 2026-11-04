@@ -61,13 +61,54 @@ begin
   FOwnCode.Folders := nil;
 end;
 
-class function TAtlasIdeDebugSources.Resolve(const AFileName: string): string;
+/// <summary>Vorhandene Datei namens AName unter den Dateien von AProject; '' ohne.</summary>
+function FindInProject(const AProject: IOTAProject; const AName: string): string;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  ProjectIndex, FileIndex: Integer;
-  Name, Candidate: string;
-  Files: TStringList;
+  mFiles: TStringList;
+  mIndex: Integer;
+begin
+  Result := '';
+  mFiles := TStringList.Create;
+  try
+    AProject.GetCompleteFileList(mFiles);
+    for mIndex := 0 to mFiles.Count - 1 do
+    begin
+      if SameText(ExtractFileName(mFiles[mIndex]), AName) and FileExists(mFiles[mIndex]) then
+      begin
+        Exit(mFiles[mIndex]);
+      end;
+    end;
+  finally
+    mFiles.Free;
+  end;
+end;
+
+/// <summary>Vorhandene Datei namens AName in einem Projekt der Projektgruppe; '' ohne.</summary>
+function FindInGroup(const AName: string): string;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mGroup := mModules.MainProjectGroup;
+  if mGroup = nil then
+  begin
+    Exit;
+  end;
+  mIndex := 0;
+  while (Result = '') and (mIndex < mGroup.ProjectCount) do
+  begin
+    Result := FindInProject(mGroup.Projects[mIndex], AName);
+    Inc(mIndex);
+  end;
+end;
+
+class function TAtlasIdeDebugSources.Resolve(const AFileName: string): string;
 begin
   Result := '';
   if AFileName = '' then
@@ -87,37 +128,7 @@ begin
   begin
     Exit(FCache.Values[AFileName]);
   end;
-  Name := ExtractFileName(AFileName);
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Group := Modules.MainProjectGroup;
-    Files := TStringList.Create;
-    try
-      if Group <> nil then
-      begin
-        for ProjectIndex := 0 to Group.ProjectCount - 1 do
-        begin
-          Files.Clear;
-          Group.Projects[ProjectIndex].GetCompleteFileList(Files);
-          for FileIndex := 0 to Files.Count - 1 do
-          begin
-            Candidate := Files[FileIndex];
-            if SameText(ExtractFileName(Candidate), Name) and FileExists(Candidate) then
-            begin
-              Result := Candidate;
-              Break;
-            end;
-          end;
-          if Result <> '' then
-          begin
-            Break;
-          end;
-        end;
-      end;
-    finally
-      Files.Free;
-    end;
-  end;
+  Result := FindInGroup(ExtractFileName(AFileName));
   FCache.Values[AFileName] := Result;
 end;
 
