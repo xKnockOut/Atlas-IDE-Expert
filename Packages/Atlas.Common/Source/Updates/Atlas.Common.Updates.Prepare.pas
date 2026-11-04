@@ -63,14 +63,24 @@ implementation
 
 uses
   System.Generics.Collections,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Updates.Ides,
   Atlas.Common.Updates.Archive,
   Atlas.Common.Updates.SourceBuild,
   Atlas.Common.Updates.KnownPackages,
   Atlas.Common.Updates.Selection;
 
+type
+{$SCOPEDENUMS ON}
+  TPrepareText = (Loading, Unsigned, Failed);
+{$SCOPEDENUMS OFF}
+
 const
-  cReleasesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases';
+  cTexts: array[TPrepareText] of TAtlasText = (
+    (De: 'Lade %s'; En: 'Downloading %s'),
+    (De: 'AtlasUpdate.exe ist nicht signiert: nur die Prüfsumme sichert das Paket.';
+    En: 'AtlasUpdate.exe is not signed: only the checksum protects the package.'),
+    (De: 'Fehler %s: %s'; En: 'Error %s: %s'));
 
 { TUpdateFolders }
 
@@ -179,7 +189,7 @@ begin
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.Download, mError);
   end;
-  if not TUpdateManifests.TryParse(mText, cReleasesUrl, Result) then
+  if not TUpdateManifests.TryParse(mText, TUpdateChannels.ReleasesUrl, Result) then
   begin
     raise EUpdateError.CreateCode(TUpdateErrors.Manifest, '');
   end;
@@ -195,7 +205,7 @@ var
   mZip, mError: string;
 begin
   mZip := TUpdateLayout.Join(TUpdateLayout.Join(FArgs.Staging, TUpdateLayout.DownloadFolder), AName);
-  FSystem.Log('Lade ' + AName);
+  FSystem.Log(cTexts[TPrepareText.Loading].Fmt([AName]));
   if not FSystem.Network.Download(AFile.Url, mZip,
     procedure(APercent: Integer)
     begin
@@ -225,7 +235,7 @@ begin
   mOwn := FSystem.Trust.Signature(FUpdater);
   if not mOwn.Valid then
   begin
-    FSystem.Log('AtlasUpdate.exe ist nicht signiert: nur die Prüfsumme sichert das Paket.');
+    FSystem.Log(cTexts[TPrepareText.Unsigned].Text);
     Exit;
   end;
   mFilesDir := TUpdateFolders.FilesDir(FArgs.Staging);
@@ -324,10 +334,13 @@ begin
   end;
   if Result <> 0 then
   begin
-    FSystem.Log('Fehler ' + FStage.Error + ': ' + FStage.Detail);
+    FSystem.Log(cTexts[TPrepareText.Failed].Fmt([FStage.Error, FStage.Detail]));
     FStage.Phase := TUpdatePhase.Failed;
     WriteStage;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Updates.Prepare', cTexts);
 
 end.

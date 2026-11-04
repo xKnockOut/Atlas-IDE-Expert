@@ -658,6 +658,8 @@ contains
   Atlas.Core.Settings.EventBreakNames in 'Source\Core\Settings\Atlas.Core.Settings.EventBreakNames.pas',
   Atlas.Text.StepFilter in '..\Atlas.Text\Source\StepFilter\Atlas.Text.StepFilter.pas',
   Atlas.Core.SavedPlaces.Contract in 'Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas',
-  Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas';
+  Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
+  Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
+  Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas';
 
 end.

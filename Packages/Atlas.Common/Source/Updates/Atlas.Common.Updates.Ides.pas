@@ -36,6 +36,16 @@ type
     function Caption: string;
   end;
 
+  /// <summary>Eine installierbare IDE: Profil und Plattform (klassische oder 64-Bit-IDE).</summary>
+  TUpdateIdeChoice = record
+    CompilerVersion: string;
+    Platform: string;
+    Profile: TUpdateIdeProfile;
+    /// <summary>z. B. „Delphi 13 Florence (Atlas), 64-Bit-IDE“ ohne die Plattform, die der Aufrufer übersetzt.
+    /// </summary>
+    function Caption: string;
+  end;
+
   TUpdateIdes = class
   public const
     EmbarcaderoKey = 'Software\Embarcadero';
@@ -43,6 +53,8 @@ type
     Win32 = 'Win32';
     Win64 = 'Win64';
   public
+    /// <summary>Alle bekannten Versionen, die neueste zuerst.</summary>
+    class function Catalog: TArray<TUpdateIdeVersion>; static;
     /// <summary>Bekannte Version zu ACompilerVersion; False für unbekannte.</summary>
     class function ByCompilerVersion(const ACompilerVersion: string; out AVersion: TUpdateIdeVersion): Boolean;
       static;
@@ -55,6 +67,9 @@ type
     class function Profiles(const ARegistry: IUpdateRegistry; const ABdsVersion: string): TArray<TUpdateIdeProfile>;
       static;
     class function IsPlatform(const APlatform: string): Boolean; static;
+    /// <summary>Installierte IDEs mit allen Profilen; Win64, wenn die 64-Bit-IDE (bin64\bds.exe) da ist.</summary>
+    class function Choices(const ARegistry: IUpdateRegistry; const AFiles: IUpdateFiles): TArray<TUpdateIdeChoice>;
+      static;
     /// <summary>Versionsendung der BPLs zur CompilerVersion („37.0“ → 370, „36.0“ → 290); unbekannte Versionen
     /// ohne Punkt („38.0“ → 380).</summary>
     class function PackageSuffix(const ACompilerVersion: string): string; static;
@@ -90,7 +105,60 @@ begin
   end;
 end;
 
+{ TUpdateIdeChoice }
+
+function TUpdateIdeChoice.Caption: string;
+begin
+  Result := Profile.Caption;
+end;
+
 { TUpdateIdes }
+
+function Choice(const AVersion: TUpdateIdeVersion; const AProfile: TUpdateIdeProfile;
+  const APlatform: string): TUpdateIdeChoice;
+begin
+  Result := Default(TUpdateIdeChoice);
+  Result.CompilerVersion := AVersion.CompilerVersion;
+  Result.Platform := APlatform;
+  Result.Profile := AProfile;
+end;
+
+class function TUpdateIdes.Choices(const ARegistry: IUpdateRegistry;
+  const AFiles: IUpdateFiles): TArray<TUpdateIdeChoice>;
+var
+  mVersion: TUpdateIdeVersion;
+  mProfile: TUpdateIdeProfile;
+  mRoot: string;
+begin
+  Result := nil;
+  for mVersion in cCatalog do
+  begin
+    mRoot := ARegistry.RootDir(mVersion.BdsVersion);
+    if mRoot = '' then
+    begin
+      Continue;
+    end;
+    for mProfile in Profiles(ARegistry, mVersion.BdsVersion) do
+    begin
+      Result := Result + [Choice(mVersion, mProfile, Win32)];
+      if AFiles.FileExists(mRoot + '\bin64\bds.exe') then
+      begin
+        Result := Result + [Choice(mVersion, mProfile, Win64)];
+      end;
+    end;
+  end;
+end;
+
+class function TUpdateIdes.Catalog: TArray<TUpdateIdeVersion>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(cCatalog));
+  for mIndex := 0 to High(cCatalog) do
+  begin
+    Result[mIndex] := cCatalog[mIndex];
+  end;
+end;
 
 class function TUpdateIdes.ByCompilerVersion(const ACompilerVersion: string; out AVersion: TUpdateIdeVersion): Boolean;
 var

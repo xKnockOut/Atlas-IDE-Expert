@@ -157,6 +157,8 @@ begin
   Assert.IsFalse(TUpdateVersions.IsSafeUrl('https://github.com/x y'));
   Assert.IsFalse(TUpdateVersions.IsSafeUrl('https://github.com/x'#10));
   Assert.IsTrue(TUpdateVersions.IsSha256(cSha));
+  Assert.IsTrue(TUpdateVersions.IsSafeUrl(TUpdateChannels.UrlOf(False)));
+  Assert.IsTrue(TUpdateChannels.UrlOf(True).EndsWith('/atlas-version-beta.json'));
   Assert.IsFalse(TUpdateVersions.IsSha256(Copy(cSha, 2, 63)));
 end;
 

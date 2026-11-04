@@ -30,10 +30,13 @@ type
 implementation
 
 uses
-  System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Updates,
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.Common.Localization.Texts;
+
+const
+  cBuildingText: array[0..0] of TAtlasText = ((De: 'Baue %s'; En: 'Building %s'));
 
 { TUpdateSourceBuild }
 
@@ -95,7 +98,7 @@ begin
   mLog := ASystem.Log;
   for mProject in Projects(ASystem.Files.FilesIn(ASourceDir)) do
   begin
-    mLog('Baue ' + mProject);
+    mLog(cBuildingText[0].Fmt([mProject]));
     if ASystem.Builder.Build(ABdsVersion, APlatform, TUpdateLayout.Join(ASourceDir, mProject),
       procedure(const ALine: string)
       begin
@@ -135,5 +138,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Updates.SourceBuild', cBuildingText);
 
 end.

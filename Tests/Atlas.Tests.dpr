@@ -1831,7 +1831,13 @@ uses
   Atlas.Core.Debug.StepFilter in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
   Atlas.Core.Debug.StepFilter.Tests in 'IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas',
   Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',
-  Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas';
+  Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas',
+  Atlas.Tests.UpdateFakes in 'Support\Atlas.Tests.UpdateFakes.pas',
+  Atlas.Text.Updates.Tests in 'Text\Atlas.Text.Updates.Tests.pas',
+  Atlas.Text.UpdateRun.Tests in 'Text\Atlas.Text.UpdateRun.Tests.pas',
+  Atlas.Common.Updates.Tests in 'Common\Updates\Atlas.Common.Updates.Tests.pas',
+  Atlas.Common.Updates.Prepare.Tests in 'Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas',
+  Atlas.Common.Updates.Apply.Tests in 'Common\Updates\Atlas.Common.Updates.Apply.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}

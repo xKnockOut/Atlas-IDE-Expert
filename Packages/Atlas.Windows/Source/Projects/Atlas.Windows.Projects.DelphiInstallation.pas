@@ -33,6 +33,9 @@ type
     class function Versions: TArray<string>; static;
     /// <summary>Neueste Installation oder nil, wenn keine gefunden wurde.</summary>
     class function Latest: ILibraryPathProvider; static;
+    /// <summary>Installationsordner der Version (z. B. "37.0") ohne abschließenden Trenner; '' ohne Installation.
+    /// </summary>
+    class function RootDirOf(const AVersion: string): string; static;
     /// <summary>EProjectError, wenn die Version nicht installiert ist.</summary>
     constructor Create(const AVersion: string);
     { ILibraryPathProvider }
@@ -177,6 +180,11 @@ begin
     Names.Free;
     Found.Free;
   end;
+end;
+
+class function TDelphiInstallation.RootDirOf(const AVersion: string): string;
+begin
+  Result := ReadRootDir(AVersion);
 end;
 
 class function TDelphiInstallation.Latest: ILibraryPathProvider;
