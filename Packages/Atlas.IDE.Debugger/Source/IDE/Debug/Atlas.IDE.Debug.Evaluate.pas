@@ -410,7 +410,7 @@ end;
 /// <summary>Zeilen anfügen, festheften und entfernen.</summary>
 procedure WireRows(AFrame: TAtlasDebugEvaluateFrame);
 begin
-  AFrame.OnAdd :=
+  AFrame.Hooks.Add :=
     procedure(AExpression: string)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -418,7 +418,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.Add(AExpression, False);
       end;
     end;
-  AFrame.OnPinExpression :=
+  AFrame.Hooks.PinExpression :=
     procedure(AExpression: string)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -426,7 +426,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.Add(AExpression, True);
       end;
     end;
-  AFrame.OnPin :=
+  AFrame.Hooks.Pin :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -434,7 +434,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.TogglePin(ANode);
       end;
     end;
-  AFrame.OnDelete :=
+  AFrame.Hooks.Delete :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -442,7 +442,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.Delete(ANode);
       end;
     end;
-  AFrame.OnHistory :=
+  AFrame.Hooks.History :=
     function: TArray<string>
     begin
       Result := nil;
@@ -456,12 +456,12 @@ end;
 /// <summary>Werte aufklappen, ändern, als Zeilen zeigen; Nebenwirkungen und Dialog der IDE.</summary>
 procedure WireValues(AFrame: TAtlasDebugEvaluateFrame);
 begin
-  AFrame.OnExpand :=
+  AFrame.Hooks.Expand :=
     procedure(ANode: TAtlasEvalNode)
     begin
       QueueExpand(ANode.Key);
     end;
-  AFrame.OnModify :=
+  AFrame.Hooks.Modify :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -469,7 +469,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.Modify(ANode);
       end;
     end;
-  AFrame.OnLines :=
+  AFrame.Hooks.Lines :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -478,7 +478,7 @@ begin
           TAtlasIdeDebugEvaluate.FInstance.FSideEffects);
       end;
     end;
-  AFrame.OnSideEffects :=
+  AFrame.Hooks.SideEffects :=
     procedure(AValue: Boolean)
     begin
       if TAtlasIdeDebugEvaluate.FInstance <> nil then
@@ -486,7 +486,7 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.SetSideEffects(AValue);
       end;
     end;
-  AFrame.OnIdeDialog :=
+  AFrame.Hooks.IdeDialog :=
     procedure
     begin
       TAtlasIdeDebugEvaluate.OpenIdeDialog;

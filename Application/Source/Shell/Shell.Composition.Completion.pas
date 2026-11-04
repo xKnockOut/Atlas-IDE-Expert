@@ -145,6 +145,7 @@ var
 begin
   AEdits := nil;
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
+  mContext.CaretMarker := True;
   Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
     ARequest.Text, ARequest.Position, mContext, mAction);
   if Result then
@@ -165,7 +166,7 @@ begin
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
   // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
   Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
-    ARequest.Text, ARequest.Position, mContext, True, mCreated) and (mCreated.FileEdits = nil);
+    ARequest.Text, ARequest.Position, mContext, mCreated) and (mCreated.FileEdits = nil);
   if Result then
   begin
     ATitle := mCreated.Title;

@@ -259,113 +259,151 @@ begin
   end;
 end;
 
-function TAtlasIdeWelcomeSearch.Candidates(const APattern: string; out ASymbolHint: string): TArray<TAtlasWelcomeHit>;
+function ProjectHits(const AProjects: TArray<string>): TArray<TAtlasWelcomeHit>;
 var
-  Settings: TAtlasPluginSettings;
-  Project, ProjectName, Detail: string;
-  Recent: TArray<string>;
-  Files: TArray<TAtlasIndexFile>;
-  Entry: TAtlasIndexFile;
-  Seen: TDictionary<string, Boolean>;
-  Hit: TAtlasWelcomeHit;
-  Command: TAtlasCommand;
-  Session: TLspSession;
-  Symbols: TArray<TAtlasSymbol>;
-  Symbol: TAtlasSymbol;
-  Now_: UInt64;
+  mProject: string;
 begin
   Result := nil;
-  ASymbolHint := '';
-  Settings := TAtlasIdeSettings.Current;
-  Now_ := GetTickCount64;
-  if (FRefreshed = 0) or (Now_ - FRefreshed >= RefreshMs) then
-  begin
-    FIndex.Refresh;
-    FRefreshed := Now_;
-  end;
-  // Projekte: Favoriten und zuletzt geöffnete, Gruppen eingeschlossen.
-  Recent := RecentProjects;
-  for Project in Recent do
+  for mProject in AProjects do
   begin
     Result := Result + [TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Projects,
-      ChangeFileExt(ExtractFileName(Project), ''), ExtractFileDir(Project), Project)];
+      ChangeFileExt(ExtractFileName(mProject), ''), ExtractFileDir(mProject), mProject)];
   end;
-  // Dateien der Projekte, zuletzt geöffnete zuerst; jede Datei einmal.
-  Seen := TDictionary<string, Boolean>.Create;
-  try
-    for Project in ProjectFiles do
+end;
+
+function FileHit(const AProject, AFileName: string): TAtlasWelcomeHit;
+var
+  mDetail: string;
+begin
+  mDetail := ChangeFileExt(ExtractFileName(AProject), '');
+  if TAtlasWelcomeIndexFiles.FormOf(AFileName) <> '' then
+  begin
+    mDetail := mDetail + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchForm);
+  end;
+  Result := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, ExtractFileName(AFileName), mDetail, AFileName);
+  Result.Project := AProject;
+end;
+
+/// <summary>Treffer eines Projekts aus seinem Cache: das Projekt selbst, wenn die IDE es nicht kennt, und seine
+/// .pas-Dateien, die ASeen noch nicht hat.</summary>
+function IndexHits(const AProject: string; const AFiles: TArray<TAtlasIndexFile>; const ARecent: TArray<string>;
+  ASeen: TDictionary<string, Boolean>): TArray<TAtlasWelcomeHit>;
+var
+  mEntry: TAtlasIndexFile;
+begin
+  Result := nil;
+  // Projekte nur mit Cache, aber nicht in der Liste der IDE: trotzdem als Projekt anbieten.
+  if (Length(AFiles) > 0) and (IndexText(AProject, ARecent) < 0) then
+  begin
+    Result := ProjectHits(TArray<string>.Create(AProject));
+  end;
+  for mEntry in AFiles do
+  begin
+    if SameText(ExtractFileExt(mEntry.FileName), '.pas') and not ASeen.ContainsKey(AnsiUpperCase(mEntry.FileName)) then
     begin
-      ProjectName := ChangeFileExt(ExtractFileName(Project), '');
-      Files := FIndex.FilesOf(Project);
-      // Projekte nur mit Cache, aber nicht in der Liste der IDE: trotzdem als Projekt anbieten.
-      if (Length(Files) > 0) and (IndexText(Project, Recent) < 0) then
-      begin
-        Result := Result + [TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Projects, ProjectName,
-          ExtractFileDir(Project), Project)];
-      end;
-      for Entry in Files do
-      begin
-        if not SameText(ExtractFileExt(Entry.FileName), '.pas') or Seen.ContainsKey(AnsiUpperCase(Entry.FileName)) then
-        begin
-          Continue;
-        end;
-        Seen.Add(AnsiUpperCase(Entry.FileName), True);
-        Detail := ProjectName;
-        if TAtlasWelcomeIndexFiles.FormOf(Entry.FileName) <> '' then
-        begin
-          Detail := Detail + ' · ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchForm);
-        end;
-        Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Files, ExtractFileName(Entry.FileName), Detail,
-          Entry.FileName);
-        Hit.Project := Project;
-        Result := Result + [Hit];
-      end;
+      ASeen.Add(AnsiUpperCase(mEntry.FileName), True);
+      Result := Result + [FileHit(AProject, mEntry.FileName)];
+    end;
+  end;
+end;
+
+function SymbolHit(const ASymbol: TAtlasSymbol): TAtlasWelcomeHit;
+var
+  mDetail: string;
+begin
+  mDetail := ExtractFileName(ASymbol.FileName);
+  if ASymbol.Container <> '' then
+  begin
+    mDetail := ASymbol.Container + ' · ' + mDetail;
+  end;
+  Result := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, ASymbol.Name, mDetail, ASymbol.FileName);
+  Result.Line := ASymbol.Line;
+  Result.Character := ASymbol.Character;
+  Result.Prefiltered := True;
+end;
+
+/// <summary>Symbole: nur mit laufender Sitzung; die Willkommensseite startet keinen Server.</summary>
+function SymbolHits(const APattern: string; ATimeoutMs: Integer; out AHint: string): TArray<TAtlasWelcomeHit>;
+var
+  mSession: TLspSession;
+  mSymbols: TArray<TAtlasSymbol>;
+  mSymbol: TAtlasSymbol;
+begin
+  Result := nil;
+  AHint := '';
+  mSession := TAtlasIdeResults.Session;
+  if mSession = nil then
+  begin
+    AHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchNoServer);
+    Exit;
+  end;
+  if Length(Trim(APattern)) < 2 then
+  begin
+    Exit;
+  end;
+  try
+    mSymbols := mSession.WorkspaceSymbols(Trim(APattern), ATimeoutMs);
+  except
+    // Server beschäftigt oder Zeit abgelaufen: diesmal ohne Symbole.
+    on Exception do
+      mSymbols := nil;
+  end;
+  for mSymbol in mSymbols do
+  begin
+    Result := Result + [SymbolHit(mSymbol)];
+  end;
+end;
+
+/// <summary>Atlas-Befehle; auch über ihre Kennung auffindbar ("wel" → Atlas.WelcomeStart).</summary>
+function CommandHits(const ACommands: TArray<TAtlasCommand>): TArray<TAtlasWelcomeHit>;
+var
+  mCommand: TAtlasCommand;
+  mHit: TAtlasWelcomeHit;
+begin
+  Result := nil;
+  for mCommand in ACommands do
+  begin
+    mHit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Commands,
+      StringReplace(mCommand.Caption, 'Atlas: ', '', []), mCommand.ShortCut, mCommand.Id);
+    mHit.Alias := StringReplace(mCommand.Id, 'Atlas.', '', []);
+    Result := Result + [mHit];
+  end;
+end;
+
+function TAtlasIdeWelcomeSearch.Candidates(const APattern: string; out ASymbolHint: string): TArray<TAtlasWelcomeHit>;
+var
+  mProject: string;
+  mRecent: TArray<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mNow: UInt64;
+begin
+  ASymbolHint := '';
+  mNow := GetTickCount64;
+  if (FRefreshed = 0) or (mNow - FRefreshed >= RefreshMs) then
+  begin
+    FIndex.Refresh;
+    FRefreshed := mNow;
+  end;
+  // Projekte: Favoriten und zuletzt geöffnete, Gruppen eingeschlossen.
+  mRecent := RecentProjects;
+  Result := ProjectHits(mRecent);
+  // Dateien der Projekte, zuletzt geöffnete zuerst; jede Datei einmal.
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    for mProject in ProjectFiles do
+    begin
+      Result := Result + IndexHits(mProject, FIndex.FilesOf(mProject), mRecent, mSeen);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
-  // Symbole: nur mit laufender Sitzung; die Willkommensseite startet keinen Server.
-  if Settings.WelcomePageSearchSymbols then
+  if TAtlasIdeSettings.Current.WelcomePageSearchSymbols then
   begin
-    Session := TAtlasIdeResults.Session;
-    if Session = nil then
-    begin
-      ASymbolHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSearchNoServer);
-    end
-    else if Length(Trim(APattern)) >= 2 then
-    begin
-      try
-        Symbols := Session.WorkspaceSymbols(Trim(APattern), SymbolTimeoutMs);
-      except
-        // Server beschäftigt oder Zeit abgelaufen: diesmal ohne Symbole.
-        on Exception do
-          Symbols := nil;
-      end;
-      for Symbol in Symbols do
-      begin
-        Detail := ExtractFileName(Symbol.FileName);
-        if Symbol.Container <> '' then
-        begin
-          Detail := Symbol.Container + ' · ' + Detail;
-        end;
-        Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Symbols, Symbol.Name, Detail, Symbol.FileName);
-        Hit.Line := Symbol.Line;
-        Hit.Character := Symbol.Character;
-        Hit.Prefiltered := True;
-        Result := Result + [Hit];
-      end;
-    end;
+    Result := Result + SymbolHits(APattern, SymbolTimeoutMs, ASymbolHint);
   end;
-  // Atlas-Befehle; auch über ihre Kennung auffindbar ("wel" → Atlas.WelcomeStart).
   if Assigned(FCommands) then
   begin
-    for Command in FCommands() do
-    begin
-      Hit := TAtlasWelcomeHit.Create(TAtlasWelcomeSearchGroup.Commands,
-        StringReplace(Command.Caption, 'Atlas: ', '', []), Command.ShortCut, Command.Id);
-      Hit.Alias := StringReplace(Command.Id, 'Atlas.', '', []);
-      Result := Result + [Hit];
-    end;
+    Result := Result + CommandHits(FCommands());
   end;
 end;
 
