@@ -517,23 +517,29 @@ begin
   Assert.IsFalse(TAtlasStickyScroll.OwnerKind('on', Kind));
 end;
 
+/// <summary>Kopf über ATopLine mit den Gliederungsarten AKinds (3 Zeilen, Tabulator 8).</summary>
+function KindRows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AKinds: TAtlasStickyKinds;
+  ATopLine: Integer): TAtlasStickyRows;
+begin
+  Result := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(ANodes, ALines, nil, AKinds), ATopLine, 3, 8);
+end;
+
 procedure TAtlasStickyScrollTests.OutlineKindsCanBeSwitchedOff;
 var
   Source: TSource;
 begin
   Source := Build;
   // Klasse: nur mit Types.
-  Assert.AreEqual('TForm1 = class(TObject)', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil,
-    [TAtlasStickyKind.Types], Source.Marks.FormClass + 2, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Routines],
-    Source.Marks.FormClass + 2, 3, 8)));
+  Assert.AreEqual('TForm1 = class(TObject)', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
+    Source.Marks.FormClass + 2)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Routines],
+    Source.Marks.FormClass + 2)));
   // Routinen: nur mit Routines; ohne beide bleibt der Kopf leer.
-  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(TAtlasStickyScroll.Rows(Source.Nodes,
-    Source.Lines, nil, [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Types],
-    Source.Marks.EinsBody + 5, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [], Source.Marks.EinsBody + 5,
-    3, 8)));
+  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(KindRows(Source.Nodes, Source.Lines,
+    [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
+    Source.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [], Source.Marks.EinsBody + 5)));
 end;
 
 initialization
