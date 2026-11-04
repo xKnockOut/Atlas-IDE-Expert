@@ -182,19 +182,19 @@ begin
   mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
   if mFrame <> nil then
   begin
-    mFrame.OnRun := nil;
-    mFrame.OnCancel := nil;
-    mFrame.OnSaveRule := nil;
-    mFrame.OnCopied := nil;
-    mFrame.OnOpenLocation := nil;
-    mFrame.OnSymbols := nil;
+    mFrame.Events.OnRun := nil;
+    mFrame.Events.OnCancel := nil;
+    mFrame.Events.OnSaveRule := nil;
+    mFrame.Events.OnCopied := nil;
+    mFrame.Events.OnOpenLocation := nil;
+    mFrame.Events.OnSymbols := nil;
   end;
   inherited Destroy;
 end;
 
 procedure TCodeQueryState.Wire(AFrame: TAtlasCodeQueryFrame);
 begin
-  AFrame.OnRun :=
+  AFrame.Events.OnRun :=
     procedure(AQuery: string)
     begin
       TAtlasGuard.Run(TAtlasFeature.Query,
@@ -203,7 +203,7 @@ begin
           Run(AQuery);
         end);
     end;
-  AFrame.OnCancel :=
+  AFrame.Events.OnCancel :=
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Query,
@@ -212,7 +212,7 @@ begin
           Cancel;
         end);
     end;
-  AFrame.OnSaveRule :=
+  AFrame.Events.OnSaveRule :=
     procedure(AQuery: string)
     begin
       TAtlasGuard.Run(TAtlasFeature.Query,
@@ -221,12 +221,12 @@ begin
           SaveRule(AQuery);
         end);
     end;
-  AFrame.OnOpenLocation :=
+  AFrame.Events.OnOpenLocation :=
     procedure(AFileName: string; ALine, ACharacter: Integer)
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, ACharacter - 1);
     end;
-  AFrame.OnSymbols :=
+  AFrame.Events.OnSymbols :=
     function(const APredicate, APrefix: string): TArray<string>
     begin
       Result := Symbols(APredicate, APrefix);
@@ -481,9 +481,9 @@ begin
   end;
   // Gespeicherte Abfragen können sich geändert haben (atlas.json, anderes Projekt): bei jedem Zeigen neu holen.
   TCodeQueryState(FState).LoadCatalog;
-  if mFrame.Input.CanFocus and mFrame.Showing then
+  if mFrame.InputBar.Edit.CanFocus and mFrame.Showing then
   begin
-    mFrame.Input.SetFocus;
+    mFrame.InputBar.Edit.SetFocus;
   end;
 end;
 
