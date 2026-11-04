@@ -320,64 +320,81 @@ begin
   Result := Validate(mName);
 end;
 
+/// <summary>Name schon in einer früheren Zeile als AIndex.</summary>
+function IsDuplicate(const ARows: TArray<TAtlasSignatureRow>; AIndex: Integer): Boolean;
+var
+  mOther: Integer;
+begin
+  Result := False;
+  for mOther := 0 to AIndex - 1 do
+  begin
+    Result := Result or SameText(ARows[mOther].Name, ARows[AIndex].Name);
+  end;
+end;
+
+/// <summary>Problem der Zeile AIndex; ASeenDefault merkt sich, ob ein bestehender Parameter einen Vorgabewert
+/// hat (neue Parameter dürfen danach nicht ohne einen stehen).</summary>
+function RowProblem(const ARows: TArray<TAtlasSignatureRow>; AIndex: Integer;
+  var ASeenDefault: Boolean): TAtlasSignatureProblem;
+var
+  mRow: TAtlasSignatureRow;
+begin
+  mRow := ARows[AIndex];
+  Result := TAtlasSignatureProblem.None;
+  if not IsName(mRow.Name) then
+  begin
+    Result := TAtlasSignatureProblem.BadName;
+  end
+  else if IsDuplicate(ARows, AIndex) then
+  begin
+    Result := TAtlasSignatureProblem.Duplicate;
+  end
+  else if not mRow.IsNew then
+  begin
+    ASeenDefault := ASeenDefault or (mRow.DefaultValue <> '');
+  end
+  else if mRow.TypeName = '' then
+  begin
+    Result := TAtlasSignatureProblem.MissingType;
+  end
+  else if mRow.Value = '' then
+  begin
+    Result := TAtlasSignatureProblem.MissingValue;
+  end
+  else if ASeenDefault then
+  begin
+    Result := TAtlasSignatureProblem.AfterDefault;
+  end;
+end;
+
 function TAtlasSignatureModel.Validate(out AName: string): TAtlasSignatureProblem;
 var
-  Index, Other: Integer;
-  Row: TAtlasSignatureRow;
-  SeenDefault, TypesChanged: Boolean;
+  mIndex: Integer;
+  mSeenDefault, mTypesChanged: Boolean;
 begin
   Result := TAtlasSignatureProblem.None;
   AName := '';
-  SeenDefault := False;
-  TypesChanged := Length(FRows) <> Length(FOriginal);
-  for Index := 0 to High(FRows) do
+  mSeenDefault := False;
+  mTypesChanged := Length(FRows) <> Length(FOriginal);
+  mIndex := 0;
+  while (Result = TAtlasSignatureProblem.None) and (mIndex <= High(FRows)) do
   begin
-    Row := FRows[Index];
-    AName := Row.Name;
-    if Row.Origin <> Index then
-    begin
-      TypesChanged := True;
-    end;
-    if not IsName(Row.Name) then
-    begin
-      Exit(TAtlasSignatureProblem.BadName);
-    end;
-    for Other := 0 to Index - 1 do
-    begin
-      if SameText(FRows[Other].Name, Row.Name) then
-      begin
-        Exit(TAtlasSignatureProblem.Duplicate);
-      end;
-    end;
-    if not Row.IsNew then
-    begin
-      if Row.DefaultValue <> '' then
-      begin
-        SeenDefault := True;
-      end;
-      Continue;
-    end;
-    if Row.TypeName = '' then
-    begin
-      Exit(TAtlasSignatureProblem.MissingType);
-    end;
-    if Row.Value = '' then
-    begin
-      Exit(TAtlasSignatureProblem.MissingValue);
-    end;
-    if SeenDefault then
-    begin
-      Exit(TAtlasSignatureProblem.AfterDefault);
-    end;
+    AName := FRows[mIndex].Name;
+    mTypesChanged := mTypesChanged or (FRows[mIndex].Origin <> mIndex);
+    Result := RowProblem(FRows, mIndex, mSeenDefault);
+    Inc(mIndex);
   end;
-  AName := FBoundEvent;
-  if TypesChanged and FEventFixed then
+  if Result = TAtlasSignatureProblem.None then
   begin
-    Result := TAtlasSignatureProblem.TypesFixed;
-  end
-  else
-  begin
-    AName := '';
+    AName := FBoundEvent;
+    if mTypesChanged and FEventFixed then
+    begin
+      Result := TAtlasSignatureProblem.TypesFixed;
+    end
+    else
+    begin
+      AName := '';
+    end;
   end;
 end;
 

@@ -133,7 +133,7 @@ begin
   FNotes.WordWrap := True;
   FNotes.ShowAccelChar := False;
   Notes := '';
-  for Note in AModel.Notes do
+  for Note in AModel.Source.Notes do
   begin
     if Notes <> '' then
     begin
@@ -172,7 +172,7 @@ begin
   end
   else
   begin
-    if AModel.MultiTarget then
+    if AModel.Source.MultiTarget then
     begin
       FTargetList := TCheckListBox.Create(Self);
       Row := AddLabeled(Header, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTargets), Row, FTargetList);
@@ -187,11 +187,11 @@ begin
       FTarget.Style := csDropDownList;
       FTarget.OnChange := TargetChange;
     end;
-    if AModel.OptionKind <> '' then
+    if AModel.Source.OptionKind <> '' then
     begin
       FOptionBox := TCheckBox.Create(Self);
       FOptionBox.Parent := Header;
-      if AModel.OptionKind = 'keepAbstract' then
+      if AModel.Source.OptionKind = 'keepAbstract' then
       begin
         FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract);
       end
@@ -299,7 +299,7 @@ end;
 
 function TAtlasExtractMembersDialog.OwnUnitCaption: string;
 begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersOwnUnit, [FModel.OwnUnit]);
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersOwnUnit, [FModel.Source.OwnUnit]);
 end;
 
 procedure TAtlasExtractMembersDialog.DoShow;
@@ -354,9 +354,9 @@ begin
       FUnit.Items.BeginUpdate;
       try
         FUnit.Items.Add(OwnUnitCaption);
-        for Name in FModel.Units do
+        for Name in FModel.Source.Units do
         begin
-          if not SameText(Name, FModel.OwnUnit) then
+          if not SameText(Name, FModel.Source.OwnUnit) then
           begin
             FUnit.Items.Add(Name);
           end;

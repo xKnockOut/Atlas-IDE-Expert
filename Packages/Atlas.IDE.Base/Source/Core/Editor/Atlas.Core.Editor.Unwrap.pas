@@ -166,65 +166,83 @@ begin
   end;
 end;
 
+/// <summary>Eintrag ohne Variante: Art, Hinweis und Zeile des Kandidaten.</summary>
+function CandidateEntry(const ACandidate: TJSONObject): TAtlasUnwrapEntry;
+var
+  mRange: TLspRange;
+begin
+  Result := Default(TAtlasUnwrapEntry);
+  Result.Kind := StringOf(ACandidate, 'kind');
+  Result.Note := StringOf(ACandidate, 'note');
+  Result.NoteText := StringOf(ACandidate, 'noteText');
+  if ReadRange(ACandidate.GetValue('range'), mRange) then
+  begin
+    Result.Line := mRange.StartPos.Line;
+  end;
+end;
+
+/// <summary>AEntry mit der Variante AChoice {kind, branch, edits, keep, remove}.</summary>
+function VariantEntry(const AEntry: TAtlasUnwrapEntry; const AChoice: TJSONObject): TAtlasUnwrapEntry;
+var
+  mBranch: Integer;
+begin
+  Result := AEntry;
+  Result.VariantKind := StringOf(AChoice, 'kind');
+  Result.Branch := 0;
+  if AChoice.TryGetValue<Integer>('branch', mBranch) then
+  begin
+    Result.Branch := mBranch;
+  end;
+  Result.Edits := ReadEdits(AChoice.GetValue('edits'));
+  Result.Keep := ReadRanges(AChoice.GetValue('keep'));
+  Result.Remove := ReadRanges(AChoice.GetValue('remove'));
+end;
+
+/// <summary>Einträge eines Kandidaten: je Variante einer, ohne Varianten einer mit Hinweis.</summary>
+function CandidateEntries(const ACandidate: TJSONObject): TArray<TAtlasUnwrapEntry>;
+var
+  mEntry: TAtlasUnwrapEntry;
+  mVariants: TJSONArray;
+  mVariantItem: TJSONValue;
+begin
+  mEntry := CandidateEntry(ACandidate);
+  mVariants := nil;
+  if ACandidate.GetValue('variants') is TJSONArray then
+  begin
+    mVariants := TJSONArray(ACandidate.GetValue('variants'));
+  end;
+  if (mVariants = nil) or (mVariants.Count = 0) then
+  begin
+    // Nicht übernehmbar, aber mit Hinweis in der Liste.
+    Result := TArray<TAtlasUnwrapEntry>.Create(mEntry);
+  end
+  else
+  begin
+    Result := nil;
+    mEntry.VariantCount := mVariants.Count;
+    for mVariantItem in mVariants do
+    begin
+      if mVariantItem is TJSONObject then
+      begin
+        Result := Result + [VariantEntry(mEntry, TJSONObject(mVariantItem))];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasUnwrap.ReadEntries(const AAnswer: TJSONValue): TArray<TAtlasUnwrapEntry>;
 var
-  Candidates, Variants: TJSONArray;
-  Item, VariantItem: TJSONValue;
-  Candidate, Choice: TJSONObject;
-  Entry: TAtlasUnwrapEntry;
-  Range: TLspRange;
-  Branch: Integer;
+  mItem: TJSONValue;
 begin
   Result := nil;
-  if not (AAnswer is TJSONObject) or not (TJSONObject(AAnswer).GetValue('candidates') is TJSONArray) then
+  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('candidates') is TJSONArray) then
   begin
-    Exit;
-  end;
-  Candidates := TJSONArray(TJSONObject(AAnswer).GetValue('candidates'));
-  for Item in Candidates do
-  begin
-    if not (Item is TJSONObject) then
+    for mItem in TJSONArray(TJSONObject(AAnswer).GetValue('candidates')) do
     begin
-      Continue;
-    end;
-    Candidate := TJSONObject(Item);
-    Entry := Default(TAtlasUnwrapEntry);
-    Entry.Kind := StringOf(Candidate, 'kind');
-    Entry.Note := StringOf(Candidate, 'note');
-    Entry.NoteText := StringOf(Candidate, 'noteText');
-    if ReadRange(Candidate.GetValue('range'), Range) then
-    begin
-      Entry.Line := Range.StartPos.Line;
-    end;
-    Variants := nil;
-    if Candidate.GetValue('variants') is TJSONArray then
-    begin
-      Variants := TJSONArray(Candidate.GetValue('variants'));
-    end;
-    if (Variants = nil) or (Variants.Count = 0) then
-    begin
-      // Nicht übernehmbar, aber mit Hinweis in der Liste.
-      Result := Result + [Entry];
-      Continue;
-    end;
-    Entry.VariantCount := Variants.Count;
-    for VariantItem in Variants do
-    begin
-      if not (VariantItem is TJSONObject) then
+      if mItem is TJSONObject then
       begin
-        Continue;
+        Result := Result + CandidateEntries(TJSONObject(mItem));
       end;
-      Choice := TJSONObject(VariantItem);
-      Entry.VariantKind := StringOf(Choice, 'kind');
-      Entry.Branch := 0;
-      if Choice.TryGetValue<Integer>('branch', Branch) then
-      begin
-        Entry.Branch := Branch;
-      end;
-      Entry.Edits := ReadEdits(Choice.GetValue('edits'));
-      Entry.Keep := ReadRanges(Choice.GetValue('keep'));
-      Entry.Remove := ReadRanges(Choice.GetValue('remove'));
-      Result := Result + [Entry];
     end;
   end;
 end;

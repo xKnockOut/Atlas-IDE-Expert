@@ -9,7 +9,7 @@
 //     und die Typableitung der Inlay Hints (#453), mit eigener
 //     Namensauflösung je Probe (der Probebaum lebt nur kurz).
 //   - Aufzählungswerte über TLspCompletion.CaseValues (#448).
-//   - Herkunft über TNameResolver.WithMember.
+//   - Herkunft über TNameResolver.Queries.WithMember.
 // Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
 // denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
 // über den Typ des Qualifizierers; Klassen aus Bibliotheken bekommen nichts.

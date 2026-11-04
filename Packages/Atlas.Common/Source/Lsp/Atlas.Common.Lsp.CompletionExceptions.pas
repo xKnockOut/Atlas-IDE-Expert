@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.CompletionExceptions;
 
 // Exception-Klassen (#483, ARG-085): Nach "raise " und nach "on Name: " bleiben nur Exception-Klassen
-// (TNameResolver.ExceptionClassOf).
+// (TNameResolver.Queries.ExceptionClassOf).
 // - Nach raise: Projektklassen vor denen der Bibliotheken; Übernahme als "EFoo.Create('')" mit dem Cursor
 //   zwischen den Anführungszeichen, dazu je Klasse ein eigener Eintrag "EFoo.CreateFmt('', [])".
 // - Nach "on E: ": zuerst die Gruppe „Aus dem try-Block“ mit den Klassen, die die dort aufgerufenen Routinen laut
