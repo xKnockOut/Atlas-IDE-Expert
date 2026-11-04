@@ -1,4 +1,9 @@
-﻿## GenericLists zerlegt (04.11.2026, Branch `claude/project-thread-3pj10y` auf `Pilot-2.0.0-beta.1`)
+﻿## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle 7 Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Engine` (Teil B der Aufteilung Common/Rules; Catalog gehört Teil A). Ergebnis: 0 Befunde (PR #1706).
+- `TRuleEngine.Run` legt einen Lauf `TRuleRun` im implementation-Teil an (Felder statt Locals, Destruktor räumt Cache und Baumauswertung auf); nachgelagerte Regeln als `TDeferredRule`. Die Bedingung „Regel läuft für die Datei“ steht einmal in `SeverityIfOn` (Run, NewNames, OverridingRule). Öffentliche API unverändert.
+- FPC: Engine-nahe Tests 121/121, SavedQueries/Metrics/GoldenCorpus/CodeActions 66/66. Delphi-Build offen.
+
+## GenericLists zerlegt (04.11.2026, Branch `claude/project-thread-3pj10y` auf `Pilot-2.0.0-beta.1`)
 - Ziel: `Atlas.Common.Editing.GenericLists` (2117 Zeilen, `TGenericListConversion` mit 63 Mitgliedern, 40 Atlas-Befunde mit Metriken) ohne Befunde, ohne Grenzwerte zu ändern. Jetzt neun Units `Atlas.Common.Editing.GenericLists*`, alle 0 Befunde.
 - Aufbau: `TGenericListConversion` (Fassade: `Start`, `AddFile`, `Finish`) ist die oberste Stufe der Klassenkette `TGenericListState` (`.State`, gemeinsamer Zustand, Ziel als Record `TGenericListTarget` mit `Accepts`) → `TGenericListDeclarations` (`.Declarations`, Deklaration, Properties, Create, `DeclarationAt`) → `TGenericListUsages` (`.Usages`, Verwendungen, Casts, Schleifen). Dazu `TLegacyListKind`/`TGenericListNames` (`.Kinds`), `TGenericListSyntax` (`.Syntax`), Datei mit Edits `TGenericListSource` (`.Source`), uses-Listen `TGenericListUses` (`.UsesEdits`) und Elementprüfung `TGenericListElementCheck` (`.Elements`).
 - API für Aufrufer: unverändert bis auf die Unit von `TLegacyListKind` (jetzt `.Kinds` einbinden); neue Abfragen am Record (`IsKnown`, `ElementArgument`, `RenameOf`, `UnsupportedReason`, `GenericText`).
