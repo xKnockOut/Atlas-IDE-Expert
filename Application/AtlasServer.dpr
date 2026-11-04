@@ -60,6 +60,7 @@ uses
   Shell.Composition.Session in 'Source\Shell\Shell.Composition.Session.pas',
   Shell.Composition.IdeArea in 'Source\Shell\Shell.Composition.IdeArea.pas',
   Shell.Composition.EditingArea in 'Source\Shell\Shell.Composition.EditingArea.pas',
+  Shell.Composition.IndexArea in 'Source\Shell\Shell.Composition.IndexArea.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',

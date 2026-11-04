@@ -179,15 +179,41 @@ begin
   Result := FKeys;
 end;
 
+/// <summary>Plattform des aktiven Projekts und Namen der .dproj der Projektgruppe.</summary>
+procedure ReadProjects(var APlatform: string; var AProjects: TArray<string>);
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  if mModules.GetActiveProject <> nil then
+  begin
+    APlatform := mModules.GetActiveProject.CurrentPlatform;
+  end;
+  mGroup := mModules.MainProjectGroup;
+  if mGroup = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
+  begin
+    if SameText(ExtractFileExt(mGroup.Projects[mIndex].FileName), '.dproj') then
+    begin
+      AProjects := AProjects + [TAtlasSetupChecklist.ProjectName(mGroup.Projects[mIndex].FileName)];
+    end;
+  end;
+end;
+
 function TIdeEnvironment.Snapshot: TAtlasSetupInput;
 var
   Settings: TAtlasPluginSettings;
   Services: IOTAServices;
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Active: IOTAProject;
   Path: string;
-  Index, Percent: Integer;
+  Percent: Integer;
 begin
   Result := Default(TAtlasSetupInput);
   Settings := TAtlasIdeSettings.Current;
@@ -206,26 +232,7 @@ begin
   begin
     Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(Services.GetBaseRegistryKey);
   end;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Active := Modules.GetActiveProject;
-    if Active <> nil then
-    begin
-      Result.Platform := Active.CurrentPlatform;
-    end;
-    Group := Modules.MainProjectGroup;
-    if Group <> nil then
-    begin
-      for Index := 0 to Group.ProjectCount - 1 do
-      begin
-        if SameText(ExtractFileExt(Group.Projects[Index].FileName), '.dproj') then
-        begin
-          Result.Projects := Result.Projects +
-            [TAtlasSetupChecklist.ProjectName(Group.Projects[Index].FileName)];
-        end;
-      end;
-    end;
-  end;
+  ReadProjects(Result.Platform, Result.Projects);
   Result.IndexPercent := -1;
   if (Result.Server.Phase = TAtlasServerPhase.Running) and Assigned(FHooks.Indexing) then
   begin
@@ -476,6 +483,53 @@ begin
   end;
 end;
 
+/// <summary>Ereignisse des Fensters an die laufende Checkliste; nach dem Abbau erreichen sie nichts mehr.</summary>
+procedure WireWindow(AWindow: TAtlasSetupWindow);
+begin
+  AWindow.OnFix :=
+    procedure(AResult: TAtlasSetupResult)
+    begin
+      if TAtlasIdeSetupChecklist.FInstance <> nil then
+      begin
+        TAtlasIdeSetupChecklist.FInstance.Fix(AResult);
+      end;
+    end;
+  AWindow.OnCopy :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          if TAtlasIdeSetupChecklist.FInstance <> nil then
+          begin
+            TAtlasIdeSetupChecklist.FInstance.CopyReport;
+          end;
+        end);
+    end;
+  AWindow.OnRecheck :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          if TAtlasIdeSetupChecklist.FInstance = nil then
+          begin
+            Exit;
+          end;
+          TIdeEnvironment(TAtlasIdeSetupChecklist.FInstance.FIdeEnvironment).ForgetKeys;
+          TAtlasIdeSetupChecklist.FInstance.Refresh;
+        end);
+    end;
+  AWindow.OnShowAtStart :=
+    procedure(AValue: Boolean)
+    begin
+      if TAtlasIdeSetupChecklist.FInstance <> nil then
+      begin
+        TAtlasIdeSetupChecklist.FInstance.SaveShowAtStart(AValue);
+      end;
+    end;
+end;
+
 procedure TAtlasIdeSetupChecklist.ShowWindow;
 begin
   if FWindow = nil then
@@ -486,48 +540,7 @@ begin
       FWindow.PopupMode := pmExplicit;
       FWindow.PopupParent := Application.MainForm;
     end;
-    FWindow.OnFix :=
-      procedure(AResult: TAtlasSetupResult)
-      begin
-        if FInstance <> nil then
-        begin
-          FInstance.Fix(AResult);
-        end;
-      end;
-    FWindow.OnCopy :=
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Settings,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.CopyReport;
-            end;
-          end);
-      end;
-    FWindow.OnRecheck :=
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Settings,
-          procedure
-          begin
-            if FInstance = nil then
-            begin
-              Exit;
-            end;
-            TIdeEnvironment(FInstance.FIdeEnvironment).ForgetKeys;
-            FInstance.Refresh;
-          end);
-      end;
-    FWindow.OnShowAtStart :=
-      procedure(AValue: Boolean)
-      begin
-        if FInstance <> nil then
-        begin
-          FInstance.SaveShowAtStart(AValue);
-        end;
-      end;
+    WireWindow(FWindow);
   end;
   FWindow.SetColors(TAtlasIdeStyle.Colors);
   FWindow.SetTryKey(TryKey);
