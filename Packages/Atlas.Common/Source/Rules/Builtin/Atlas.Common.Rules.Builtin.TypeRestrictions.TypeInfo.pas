@@ -100,108 +100,244 @@ begin
   Result := nil;
 end;
 
+function Unresolved: TNameResolution;
+begin
+  Result := TNameResolution.Create(TNameMeaning.NotFound, nil, nil);
+end;
+
+/// <summary>Bedeutung der Deklaration ADecl aus einem var-, const- oder type-Abschnitt.</summary>
+function DeclResolution(ADecl: TSyntaxNode): TNameResolution;
+begin
+  case ADecl.Kind of
+    TSyntaxKind.VarDecl:
+      Result := TNameResolution.Create(TNameMeaning.Variable, ADecl, TypeChild(ADecl));
+    TSyntaxKind.TypeDecl:
+      Result := TNameResolution.Create(TNameMeaning.TypeName, ADecl, nil);
+  else
+    Result := TNameResolution.Create(TNameMeaning.Other, ADecl, nil);
+  end;
+end;
+
+/// <summary>Letzte Deklaration AName in einem var-, const- oder type-Abschnitt; AResolution bleibt sonst.</summary>
+procedure MatchDeclSection(ASection: TSyntaxNode; const AName: string; var AResolution: TNameResolution);
+var
+  mIndex: Integer;
+  mDecl: TSyntaxNode;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mDecl := ASection[mIndex];
+    if (mDecl.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl]) and
+      InNameList(mDecl.Name, AName) then
+    begin
+      AResolution := DeclResolution(mDecl);
+    end;
+  end;
+end;
+
+/// <summary>Letzte Unit AName einer uses-Klausel; AResolution bleibt sonst.</summary>
+procedure MatchUses(AUses: TSyntaxNode; const AName: string; var AResolution: TNameResolution);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AUses.ChildCount - 1 do
+  begin
+    if SameText(LastPart(AUses[mIndex].Name), AName) then
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.Other, AUses[mIndex], nil);
+    end;
+  end;
+end;
+
+/// <summary>Deklariert der Abschnitt ASection (Kind eines Halters) den Namen AName? AResolution bleibt sonst.
+/// </summary>
+procedure MatchSection(ASection: TSyntaxNode; const AName: string; var AResolution: TNameResolution);
+begin
+  case ASection.Kind of
+    TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
+      MatchDeclSection(ASection, AName, AResolution);
+    TSyntaxKind.Field:
+      if InNameList(ASection.Name, AName) then
+      begin
+        AResolution := TNameResolution.Create(TNameMeaning.Variable, ASection, TypeChild(ASection));
+      end;
+    TSyntaxKind.PropertyDecl:
+      if SameText(ASection.Name, AName) then
+      begin
+        AResolution := TNameResolution.Create(TNameMeaning.Variable, ASection, TypeChild(ASection));
+      end;
+    TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
+      if SameText(LastPart(ASection.Name), AName) and (Pos('.', ASection.Name) = 0) then
+      begin
+        AResolution := TNameResolution.Create(TNameMeaning.Other, ASection, nil);
+      end;
+    TSyntaxKind.UsesClause:
+      MatchUses(ASection, AName, AResolution);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
 /// <summary>Sucht AName in den Deklarationsabschnitten unter AHolder (Routine, anonyme Methode, Klasse, Unit-
 /// Abschnitt), nur vor ABefore (-1: alle). Variablen und Felder: Variable, Typen: TypeName, sonst Other.</summary>
 function FindInSections(AHolder: TSyntaxNode; const AName: string; ABefore: Integer;
   out AResolution: TNameResolution): Boolean;
 var
-  Index, Inner: Integer;
-  Section, Decl: TSyntaxNode;
+  mIndex: Integer;
 begin
-  AResolution := TNameResolution.Create(TNameMeaning.NotFound, nil, nil);
-  for Index := 0 to AHolder.ChildCount - 1 do
+  AResolution := Unresolved;
+  for mIndex := 0 to AHolder.ChildCount - 1 do
   begin
-    Section := AHolder[Index];
-    if (ABefore >= 0) and (Section.StartOffset >= ABefore) then
+    if (ABefore >= 0) and (AHolder[mIndex].StartOffset >= ABefore) then
     begin
       Break;
     end;
-    case Section.Kind of
-      TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-        for Inner := 0 to Section.ChildCount - 1 do
-        begin
-          Decl := Section[Inner];
-          if not (Decl.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl]) or
-            not InNameList(Decl.Name, AName) then
-          begin
-            Continue;
-          end;
-          case Decl.Kind of
-            TSyntaxKind.VarDecl:
-              AResolution := TNameResolution.Create(TNameMeaning.Variable, Decl, TypeChild(Decl));
-            TSyntaxKind.TypeDecl:
-              AResolution := TNameResolution.Create(TNameMeaning.TypeName, Decl, nil);
-          else
-            AResolution := TNameResolution.Create(TNameMeaning.Other, Decl, nil);
-          end;
-        end;
-      TSyntaxKind.Field:
-        if InNameList(Section.Name, AName) then
-        begin
-          AResolution := TNameResolution.Create(TNameMeaning.Variable, Section, TypeChild(Section));
-        end;
-      TSyntaxKind.PropertyDecl:
-        if SameText(Section.Name, AName) then
-        begin
-          AResolution := TNameResolution.Create(TNameMeaning.Variable, Section, TypeChild(Section));
-        end;
-      TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
-        if SameText(LastPart(Section.Name), AName) and (Pos('.', Section.Name) = 0) then
-        begin
-          AResolution := TNameResolution.Create(TNameMeaning.Other, Section, nil);
-        end;
-      TSyntaxKind.UsesClause:
-        for Inner := 0 to Section.ChildCount - 1 do
-        begin
-          if SameText(LastPart(Section[Inner].Name), AName) then
-          begin
-            AResolution := TNameResolution.Create(TNameMeaning.Other, Section[Inner], nil);
-          end;
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
+    MatchSection(AHolder[mIndex], AName, AResolution);
   end;
   Result := AResolution.Meaning <> TNameMeaning.NotFound;
+end;
+
+/// <summary>Letzter Parameter AName unter AParameters; AResolution bleibt sonst.</summary>
+procedure MatchParameters(AParameters: TSyntaxNode; const AName: string; var AResolution: TNameResolution);
+var
+  mIndex: Integer;
+  mParam: TSyntaxNode;
+begin
+  for mIndex := 0 to AParameters.ChildCount - 1 do
+  begin
+    mParam := AParameters[mIndex];
+    if (mParam.Kind = TSyntaxKind.Parameter) and InNameList(mParam.Name, AName) then
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.Variable, mParam, TypeChild(mParam));
+    end;
+  end;
+end;
+
+/// <summary>Letzter Typparameter AName unter AParams; AResolution bleibt sonst.</summary>
+procedure MatchGenericParams(AParams: TSyntaxNode; const AName: string; var AResolution: TNameResolution);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AParams.ChildCount - 1 do
+  begin
+    if SameText(AParams[mIndex].Name, AName) then
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.TypeName, AParams[mIndex], nil);
+    end;
+  end;
 end;
 
 /// <summary>Parameter, Typparameter und Result eines Routinenkopfs.</summary>
 function FindInHeader(AHeader: TSyntaxNode; const AName: string; out AResolution: TNameResolution): Boolean;
 var
-  Index, Inner: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mResultType: TSyntaxNode;
 begin
-  AResolution := TNameResolution.Create(TNameMeaning.NotFound, nil, nil);
-  for Index := 0 to AHeader.ChildCount - 1 do
+  AResolution := Unresolved;
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    Child := AHeader[Index];
-    case Child.Kind of
+    case AHeader[mIndex].Kind of
       TSyntaxKind.Parameters:
-        for Inner := 0 to Child.ChildCount - 1 do
-        begin
-          if (Child[Inner].Kind = TSyntaxKind.Parameter) and InNameList(Child[Inner].Name, AName) then
-          begin
-            AResolution := TNameResolution.Create(TNameMeaning.Variable, Child[Inner], TypeChild(Child[Inner]));
-          end;
-        end;
+        MatchParameters(AHeader[mIndex], AName, AResolution);
       TSyntaxKind.GenericParams:
-        for Inner := 0 to Child.ChildCount - 1 do
-        begin
-          if SameText(Child[Inner].Name, AName) then
-          begin
-            AResolution := TNameResolution.Create(TNameMeaning.TypeName, Child[Inner], nil);
-          end;
-        end;
+        MatchGenericParams(AHeader[mIndex], AName, AResolution);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
-  if (AResolution.Meaning = TNameMeaning.NotFound) and SameText(AName, 'Result') and
-    (AHeader.FindChild(TSyntaxKind.TypeReference) <> nil) then
+  mResultType := AHeader.FindChild(TSyntaxKind.TypeReference);
+  if (AResolution.Meaning = TNameMeaning.NotFound) and SameText(AName, 'Result') and (mResultType <> nil) then
   begin
-    AResolution := TNameResolution.Create(TNameMeaning.Variable, AHeader, AHeader.FindChild(TSyntaxKind.TypeReference));
+    AResolution := TNameResolution.Create(TNameMeaning.Variable, AHeader, mResultType);
   end;
   Result := AResolution.Meaning <> TNameMeaning.NotFound;
+end;
+
+/// <summary>Inline-Variable oder -Konstante AName im Block ABlock vor dessen Kind AChild.</summary>
+function FindInlineBefore(ABlock, AChild: TSyntaxNode; const AName: string; out AResolution: TNameResolution):
+  Boolean;
+var
+  mPosition, mIndex: Integer;
+  mDecl: TSyntaxNode;
+begin
+  AResolution := Unresolved;
+  mPosition := ABlock.ChildCount - 1;
+  while (mPosition >= 0) and (ABlock[mPosition] <> AChild) do
+  begin
+    Dec(mPosition);
+  end;
+  for mIndex := mPosition - 1 downto 0 do
+  begin
+    mDecl := ABlock[mIndex];
+    if not (mDecl.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) or not InNameList(mDecl.Name, AName) then
+    begin
+      Continue;
+    end;
+    if mDecl.Kind = TSyntaxKind.InlineVar then
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.Variable, mDecl, TypeChild(mDecl));
+    end
+    else
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.Other, mDecl, nil);
+    end;
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+/// <summary>Unit-Ebene: im implementation-Teil zuerst die eigenen Deklarationen vor ABefore, dann der
+/// interface-Teil; NotFound ohne Treffer.</summary>
+procedure ResolveInUnitSection(ASection: TSyntaxNode; const AName: string; ABefore: Integer;
+  out AResolution: TNameResolution);
+var
+  mInterface: TSyntaxNode;
+begin
+  if FindInSections(ASection, AName, ABefore, AResolution) then
+  begin
+    Exit;
+  end;
+  if (ASection.Kind = TSyntaxKind.ImplementationSection) and (ASection.Parent <> nil) then
+  begin
+    mInterface := ASection.Parent.FindChild(TSyntaxKind.InterfaceSection);
+    if mInterface <> nil then
+    begin
+      FindInSections(mInterface, AName, -1, AResolution);
+    end;
+  end;
+end;
+
+type
+  /// <summary>Aufruf TypeInfo(X) bzw. Default(X): Knoten, Argument und Name.</summary>
+  TIntrinsicCall = record
+    Call: TSyntaxNode;
+    Argument: TSyntaxNode;
+    /// <summary>TypeInfo oder Default, wie geschrieben.</summary>
+    Intrinsic: string;
+    /// <summary>Name im Argument.</summary>
+    Name: string;
+    IsTypeInfo: Boolean;
+  end;
+
+/// <summary>Steht der Aufruf rechts in einer Zuweisung?</summary>
+function AssignedFrom(ACall: TSyntaxNode): Boolean;
+begin
+  Result := (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.AssignStatement);
+  Result := Result and (ACall.Parent.ChildCount > 1) and (ACall.Parent[1] = ACall);
+end;
+
+function HasExplicitValues(AEnum: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to AEnum.ChildCount - 1 do
+  begin
+    if AEnum[Index].Kind <> TSyntaxKind.Identifier then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TTypeInfoInvalidRule.Descriptor: TRuleDescriptor;
@@ -252,105 +388,84 @@ var
     Result := (Decl <> nil) and FindInHeader(Decl, AName, AResolution);
   end;
 
+  /// <summary>Namen in der Routine ARoutine: Kopf, Abschnitte, ihr eigener Name, Mitglieder des eigenen Typs.
+  /// </summary>
+  function ResolveInRoutine(ARoutine: TSyntaxNode; const AName: string; out AResolution: TNameResolution): Boolean;
+  var
+    mHeader: TSyntaxNode;
+  begin
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    Result := (mHeader <> nil) and FindInHeader(mHeader, AName, AResolution);
+    Result := Result or FindInSections(ARoutine, AName, -1, AResolution);
+    if not Result and SameText(LastPart(ARoutine.Name), AName) then
+    begin
+      AResolution := TNameResolution.Create(TNameMeaning.Other, ARoutine, nil);
+      Result := True;
+    end;
+    if not Result and (Pos('.', ARoutine.Name) > 0) then
+    begin
+      Result := FindInOwner(ARoutine, AName, AResolution);
+    end;
+  end;
+
+  /// <summary>Bedeutung von AName (gesucht an AStart) auf der Ebene über ANode; False, wenn weiter außen gesucht
+  /// werden muss.</summary>
+  function ResolveAt(AStart, ANode: TSyntaxNode; const AName: string; out AResolution: TNameResolution): Boolean;
+  var
+    mParent: TSyntaxNode;
+  begin
+    mParent := ANode.Parent;
+    AResolution := Unresolved;
+    Result := False;
+    case mParent.Kind of
+      TSyntaxKind.WithStatement:
+        if ANode = mParent[mParent.ChildCount - 1] then
+        begin
+          AResolution := TNameResolution.Create(TNameMeaning.Uncertain, nil, nil);
+          Result := True;
+        end;
+      TSyntaxKind.Block:
+        Result := FindInlineBefore(mParent, ANode, AName, AResolution);
+      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.ExceptionHandler:
+        if SameText(mParent.Name, AName) then
+        begin
+          AResolution := TNameResolution.Create(TNameMeaning.Variable, mParent, TypeChild(mParent));
+          Result := True;
+        end;
+      TSyntaxKind.AnonymousMethod:
+        Result := FindInHeader(mParent, AName, AResolution) or FindInSections(mParent, AName, -1, AResolution);
+      TSyntaxKind.RoutineDecl:
+        Result := ResolveInRoutine(mParent, AName, AResolution);
+      TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection:
+        begin
+          ResolveInUnitSection(mParent, AName, AStart.StartOffset, AResolution);
+          Result := True;
+        end;
+      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+        begin
+          FindInSections(mParent, AName, AStart.StartOffset, AResolution);
+          Result := True;
+        end;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+
   /// <summary>Bedeutung von AName an der Stelle ANode, von innen nach außen.</summary>
   function Resolve(ANode: TSyntaxNode; const AName: string): TNameResolution;
   var
-    Node, Parent, Header: TSyntaxNode;
-    Index, Position: Integer;
+    mNode: TSyntaxNode;
   begin
-    Node := ANode;
-    while Node.Parent <> nil do
+    mNode := ANode;
+    while mNode.Parent <> nil do
     begin
-      Parent := Node.Parent;
-      case Parent.Kind of
-        TSyntaxKind.WithStatement:
-          if Node = Parent[Parent.ChildCount - 1] then
-          begin
-            Exit(TNameResolution.Create(TNameMeaning.Uncertain, nil, nil));
-          end;
-        TSyntaxKind.Block:
-          begin
-            Position := Parent.ChildCount - 1;
-            while (Position >= 0) and (Parent[Position] <> Node) do
-            begin
-              Dec(Position);
-            end;
-            for Index := Position - 1 downto 0 do
-            begin
-              if (Parent[Index].Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) and
-                InNameList(Parent[Index].Name, AName) then
-              begin
-                if Parent[Index].Kind = TSyntaxKind.InlineVar then
-                begin
-                  Exit(TNameResolution.Create(TNameMeaning.Variable, Parent[Index], TypeChild(Parent[Index])));
-                end;
-                Exit(TNameResolution.Create(TNameMeaning.Other, Parent[Index], nil));
-              end;
-            end;
-          end;
-        TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.ExceptionHandler:
-          if SameText(Parent.Name, AName) then
-          begin
-            Exit(TNameResolution.Create(TNameMeaning.Variable, Parent, TypeChild(Parent)));
-          end;
-        TSyntaxKind.AnonymousMethod:
-          begin
-            if FindInHeader(Parent, AName, Result) or FindInSections(Parent, AName, -1, Result) then
-            begin
-              Exit;
-            end;
-          end;
-        TSyntaxKind.RoutineDecl:
-          begin
-            Header := Parent.FindChild(TSyntaxKind.RoutineHeader);
-            if (Header <> nil) and FindInHeader(Header, AName, Result) then
-            begin
-              Exit;
-            end;
-            if FindInSections(Parent, AName, -1, Result) then
-            begin
-              Exit;
-            end;
-            if SameText(LastPart(Parent.Name), AName) then
-            begin
-              Exit(TNameResolution.Create(TNameMeaning.Other, Parent, nil));
-            end;
-            if (Pos('.', Parent.Name) > 0) and FindInOwner(Parent, AName, Result) then
-            begin
-              Exit;
-            end;
-          end;
-        TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection:
-          begin
-            // Unit-Ebene: im implementation-Teil zuerst die eigenen Deklarationen davor, dann der interface-Teil.
-            if FindInSections(Parent, AName, ANode.StartOffset, Result) then
-            begin
-              Exit;
-            end;
-            if (Parent.Kind = TSyntaxKind.ImplementationSection) and (Parent.Parent <> nil) then
-            begin
-              Header := Parent.Parent.FindChild(TSyntaxKind.InterfaceSection);
-              if (Header <> nil) and FindInSections(Header, AName, -1, Result) then
-              begin
-                Exit;
-              end;
-            end;
-            Exit(TNameResolution.Create(TNameMeaning.NotFound, nil, nil));
-          end;
-        TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
-          begin
-            if FindInSections(Parent, AName, ANode.StartOffset, Result) then
-            begin
-              Exit;
-            end;
-            Exit(TNameResolution.Create(TNameMeaning.NotFound, nil, nil));
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
+      if ResolveAt(ANode, mNode, AName, Result) then
+      begin
+        Exit;
       end;
-      Node := Parent;
+      mNode := mNode.Parent;
     end;
-    Result := TNameResolution.Create(TNameMeaning.NotFound, nil, nil);
+    Result := Unresolved;
   end;
 
   /// <summary>Typknoten hinter dem Typnamen ADecl (TypeDecl), Aliase in der Datei verfolgt; nil bei unsicheren.
@@ -380,20 +495,6 @@ var
     Result := nil;
   end;
 
-  function HasExplicitValues(AEnum: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-  begin
-    for Index := 0 to AEnum.ChildCount - 1 do
-    begin
-      if AEnum[Index].Kind <> TSyntaxKind.Identifier then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
   /// <summary>Deklariert eine Unit im Index AName auf oberster Ebene (eigene Routine Default o. ä.)?</summary>
   function DeclaredInIndex(const AName: string): Boolean;
   var
@@ -413,113 +514,130 @@ var
     Result := False;
   end;
 
-  procedure CheckCall(ACall: TSyntaxNode);
+  procedure ReportVariable(const ACall: TIntrinsicCall; const AResolution: TNameResolution);
   var
-    Intrinsic, Name, TypeText, Code: string;
-    Argument, Behind: TSyntaxNode;
-    Resolution: TNameResolution;
-    Fixes: TArray<TRuleFix>;
-    BuiltinFile, IsTypeInfo: Boolean;
+    mTypeText, mCode: string;
   begin
-    Intrinsic := ACall[0].Name;
-    IsTypeInfo := SameText(Intrinsic, 'TypeInfo');
-    Argument := ACall[1];
-    if Argument.Kind <> TSyntaxKind.Identifier then
+    mCode := 'E2537';
+    if ACall.IsTypeInfo then
+    begin
+      mCode := 'E2133';
+    end;
+    mTypeText := '';
+    if (AResolution.TypeNode <> nil) and (AResolution.TypeNode.Kind = TSyntaxKind.TypeReference) then
+    begin
+      mTypeText := OneLine(AContext.Text, AResolution.TypeNode);
+    end;
+    if mTypeText <> '' then
+    begin
+      AReport.Add(NodeRange(ACall.Argument), Format('%s erwartet einen Typ, %s ist eine Variable; gemeint ist ' +
+        '%s(%s) (wie %s).', [ACall.Intrinsic, ACall.Name, ACall.Intrinsic, mTypeText, mCode]), TRuleConfidence.High,
+        [TRuleFix.Create(Format('%s(%s) einsetzen', [ACall.Intrinsic, mTypeText]),
+        [TRuleEdit.Create(NodeRange(ACall.Argument), mTypeText)])]);
+    end
+    else
+    begin
+      AReport.Add(NodeRange(ACall.Argument), Format('%s erwartet einen Typ, %s ist eine Variable (wie %s).',
+        [ACall.Intrinsic, ACall.Name, mCode]), TRuleConfidence.High, nil);
+    end;
+  end;
+
+  procedure ReportFileType(const ACall: TIntrinsicCall);
+  begin
+    if ACall.IsTypeInfo then
+    begin
+      AReport.Add(NodeRange(ACall.Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
+        'RTTI (wie E2134).', [ACall.Name]), TRuleConfidence.High, nil);
+    end
+    else if AssignedFrom(ACall.Call) then
+    begin
+      // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
+      AReport.Add(NodeRange(ACall.Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
+        'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [ACall.Name]), TRuleConfidence.High,
+        nil);
+    end
+    else
+    begin
+      AReport.Add(NodeRange(ACall.Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
+        [ACall.Name]), TRuleConfidence.High, nil);
+    end;
+  end;
+
+  /// <summary>Ist der nicht gefundene Name Text, TextFile oder file aus System? Eine gleichnamige Deklaration der
+  /// Datei macht still.</summary>
+  function IsBuiltinFile(const ACall: TIntrinsicCall): Boolean;
+  begin
+    Result := not Names.Declared(ACall.Name) and (Types.IndexOf(ACall.Name) < 0);
+    Result := Result and (MatchText(ACall.Name, ['Text', 'TextFile']) or
+      (not ACall.IsTypeInfo and SameText(ACall.Name, 'File')));
+  end;
+
+  /// <summary>Typknoten hinter dem gefundenen Typnamen, nil bei unsicheren.</summary>
+  function DeclaredTypeBehind(const AResolution: TNameResolution): TSyntaxNode;
+  begin
+    Result := nil;
+    if AResolution.Decl.Kind = TSyntaxKind.TypeDecl then
+    begin
+      Result := TypeBehind(AResolution.Decl);
+    end;
+  end;
+
+  procedure CheckTypeArgument(const ACall: TIntrinsicCall; const AResolution: TNameResolution);
+  var
+    mBehind: TSyntaxNode;
+  begin
+    if AResolution.Meaning = TNameMeaning.NotFound then
+    begin
+      if IsBuiltinFile(ACall) then
+      begin
+        ReportFileType(ACall);
+      end;
+      Exit;
+    end;
+    mBehind := DeclaredTypeBehind(AResolution);
+    if mBehind = nil then
     begin
       Exit;
     end;
-    Name := Argument.Name;
-    Resolution := Resolve(ACall, Name);
-    if (Resolution.Decl <> nil) and (Resolution.Meaning in [TNameMeaning.Variable, TNameMeaning.TypeName]) and
-      not TConditionalBranches.Implies(PathOf(ACall), PathOf(Resolution.Decl)) then
+    if mBehind.Kind = TSyntaxKind.FileType then
+    begin
+      ReportFileType(ACall);
+    end
+    else if ACall.IsTypeInfo and (mBehind.Kind = TSyntaxKind.EnumType) and HasExplicitValues(mBehind) then
+    begin
+      AReport.Add(NodeRange(ACall.Argument), Format('%s hat keine Typinformation: Aufzählungen mit festen Werten ' +
+        'erzeugen keine RTTI (wie E2134).', [ACall.Name]), TRuleConfidence.High, nil);
+    end;
+  end;
+
+  procedure CheckCall(ACallNode: TSyntaxNode);
+  var
+    mCall: TIntrinsicCall;
+    mResolution: TNameResolution;
+  begin
+    mCall := Default(TIntrinsicCall);
+    mCall.Call := ACallNode;
+    mCall.Argument := ACallNode[1];
+    if mCall.Argument.Kind <> TSyntaxKind.Identifier then
     begin
       Exit;
     end;
-    case Resolution.Meaning of
+    mCall.Intrinsic := ACallNode[0].Name;
+    mCall.IsTypeInfo := SameText(mCall.Intrinsic, 'TypeInfo');
+    mCall.Name := mCall.Argument.Name;
+    mResolution := Resolve(ACallNode, mCall.Name);
+    if (mResolution.Decl <> nil) and (mResolution.Meaning in [TNameMeaning.Variable, TNameMeaning.TypeName]) and
+      not TConditionalBranches.Implies(PathOf(ACallNode), PathOf(mResolution.Decl)) then
+    begin
+      Exit;
+    end;
+    case mResolution.Meaning of
       TNameMeaning.Variable:
-        begin
-          Code := 'E2537';
-          if IsTypeInfo then
-          begin
-            Code := 'E2133';
-          end;
-          Fixes := nil;
-          TypeText := '';
-          if (Resolution.TypeNode <> nil) and (Resolution.TypeNode.Kind = TSyntaxKind.TypeReference) then
-          begin
-            TypeText := OneLine(AContext.Text, Resolution.TypeNode);
-          end;
-          if TypeText <> '' then
-          begin
-            Fixes := [TRuleFix.Create(Format('%s(%s) einsetzen', [Intrinsic, TypeText]),
-              [TRuleEdit.Create(NodeRange(Argument), TypeText)])];
-            AReport.Add(NodeRange(Argument), Format('%s erwartet einen Typ, %s ist eine Variable; gemeint ist ' +
-              '%s(%s) (wie %s).', [Intrinsic, Name, Intrinsic, TypeText, Code]), TRuleConfidence.High, Fixes);
-          end
-          else
-          begin
-            AReport.Add(NodeRange(Argument), Format('%s erwartet einen Typ, %s ist eine Variable (wie %s).',
-              [Intrinsic, Name, Code]), TRuleConfidence.High, nil);
-          end;
-        end;
+        ReportVariable(mCall, mResolution);
       TNameMeaning.NotFound, TNameMeaning.TypeName:
-        begin
-          Behind := nil;
-          BuiltinFile := False;
-          if Resolution.Meaning = TNameMeaning.TypeName then
-          begin
-            if Resolution.Decl.Kind <> TSyntaxKind.TypeDecl then
-            begin
-              Exit;
-            end;
-            Behind := TypeBehind(Resolution.Decl);
-            if Behind = nil then
-            begin
-              Exit;
-            end;
-          end
-          else
-          begin
-            // Text, TextFile und file aus System; eine gleichnamige Deklaration der Datei macht still.
-            if Names.Declared(Name) or (Types.IndexOf(Name) >= 0) then
-            begin
-              Exit;
-            end;
-            BuiltinFile := MatchText(Name, ['Text', 'TextFile']) or (not IsTypeInfo and SameText(Name, 'File'));
-            if not BuiltinFile then
-            begin
-              Exit;
-            end;
-          end;
-          if BuiltinFile or (Behind.Kind = TSyntaxKind.FileType) then
-          begin
-            if IsTypeInfo then
-            begin
-              AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
-                'RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil);
-            end
-            else if (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.AssignStatement) and
-              (ACall.Parent.ChildCount > 1) and (ACall.Parent[1] = ACall) then
-            begin
-              // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
-              AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
-                'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [Name]),
-                TRuleConfidence.High, nil);
-            end
-            else
-            begin
-              AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
-                [Name]), TRuleConfidence.High, nil);
-            end;
-          end
-          else if IsTypeInfo and (Behind.Kind = TSyntaxKind.EnumType) and HasExplicitValues(Behind) then
-          begin
-            AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Aufzählungen mit festen Werten ' +
-              'erzeugen keine RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil);
-          end;
-        end;
-      TNameMeaning.Other: ;
-      TNameMeaning.Uncertain: ;
+        CheckTypeArgument(mCall, mResolution);
+    else
+      // Other und Uncertain: still.
     end;
   end;
 
