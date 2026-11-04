@@ -178,54 +178,97 @@ begin
   end;
 end;
 
+/// <summary>Klammern rückwärts zählen; False bei einer offenen Klammer ohne Partner: Der Cursor steht dann in
+/// einem Ausdruck, nicht am Zweiganfang.</summary>
+function StepParens(const AToken: TPascalToken; var AParens: Integer): Boolean;
+begin
+  Result := True;
+  if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
+  begin
+    Inc(AParens);
+  end
+  else if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Result := AParens > 0;
+    Dec(AParens);
+  end;
+end;
+
+/// <summary>AIndex, wenn dort case steht; -1 sonst.</summary>
+function CaseIndexOf(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := -1;
+  if ATokens[AIndex].IsKeyword('case') then
+  begin
+    Result := AIndex;
+  end;
+end;
+
 /// <summary>Umgebende case-Anweisung, wenn AIndex (";" oder ",") am Ende eines ihrer Zweige steht; -1 sonst.</summary>
 function EnclosingCase(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 var
-  Depth, Parens: Integer;
+  mDepth, mParens: Integer;
 begin
   Result := -1;
-  Depth := 0;
-  Parens := 0;
+  mDepth := 0;
+  mParens := 0;
   AIndex := Prev(ATokens, AIndex);
   while AIndex >= 0 do
   begin
-    if ATokens[AIndex].IsSymbol(')') or ATokens[AIndex].IsSymbol(']') then
+    if not StepParens(ATokens[AIndex], mParens) then
     begin
-      Inc(Parens);
+      Exit;
+    end;
+    if ATokens[AIndex].IsKeyword('end') then
+    begin
+      Inc(mDepth);
     end
-    else if ATokens[AIndex].IsSymbol('(') or ATokens[AIndex].IsSymbol('[') then
+    else if IsKeywordIn(ATokens[AIndex], ['begin', 'try', 'asm', 'record', 'class', 'object', 'interface',
+      'case']) then
     begin
-      // Offene Klammer: der Cursor steht in einem Ausdruck, nicht am Zweiganfang.
-      if Parens = 0 then
+      if mDepth = 0 then
       begin
-        Exit;
+        Exit(CaseIndexOf(ATokens, AIndex));
       end;
-      Dec(Parens);
-    end
-    else if ATokens[AIndex].IsKeyword('end') then
-    begin
-      Inc(Depth);
-    end
-    else if IsKeywordIn(ATokens[AIndex], ['begin', 'try', 'asm', 'record', 'class', 'object', 'interface', 'case']) then
-    begin
-      if Depth = 0 then
-      begin
-        if ATokens[AIndex].IsKeyword('case') then
-        begin
-          Result := AIndex;
-        end;
-        Exit;
-      end;
-      Dec(Depth);
+      Dec(mDepth);
     end
     // "else" bleibt außen vor: Es kann zu einem if in einem Zweig gehören. Im else-Teil der case-Anweisung
     // selbst gilt die Stelle dann auch als Zweiganfang; das schadet nicht.
-    else if (Depth = 0) and IsKeywordIn(ATokens[AIndex], ['repeat', 'var', 'const', 'type', 'procedure', 'function',
-      'constructor', 'destructor', 'implementation', 'uses']) then
+    else if (mDepth = 0) and IsKeywordIn(ATokens[AIndex], ['repeat', 'var', 'const', 'type', 'procedure',
+      'function', 'constructor', 'destructor', 'implementation', 'uses']) then
     begin
       Exit;
     end;
     AIndex := Prev(ATokens, AIndex);
+  end;
+end;
+
+/// <summary>"of" der case-Anweisung, deren Zweig hinter AIndex beginnt: direkt nach "of", nach dem ";" eines
+/// Zweigs oder in einer Liste "a, |"; -1 sonst.</summary>
+function CaseOfBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mCase: Integer;
+begin
+  if ATokens[AIndex].IsKeyword('of') then
+  begin
+    Exit(AIndex);
+  end;
+  Result := -1;
+  if ATokens[AIndex].IsSymbol(';') or ATokens[AIndex].IsSymbol(',') then
+  begin
+    mCase := EnclosingCase(ATokens, AIndex);
+    if mCase >= 0 then
+    begin
+      Result := Next(ATokens, mCase);
+      while (Result <= High(ATokens)) and (Result < AIndex) and not ATokens[Result].IsKeyword('of') do
+      begin
+        Result := Next(ATokens, Result);
+      end;
+      if (Result > High(ATokens)) or not ATokens[Result].IsKeyword('of') then
+      begin
+        Result := -1;
+      end;
+    end;
   end;
 end;
 
@@ -234,238 +277,260 @@ end;
 class function TCompletionEnums.ValueSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASlot: TEnumValueSlot): Boolean;
 var
-  Index, Prefix, CaseIndex, OfIndex, Start: Integer;
+  mIndex, mPrefix, mOf, mStart: Integer;
 begin
   ASlot := Default(TEnumValueSlot);
   Result := False;
-  Index := TokenBefore(ATokens, APosition, Prefix);
-  if Index < 0 then
+  mIndex := TokenBefore(ATokens, APosition, mPrefix);
+  if mIndex < 0 then
   begin
     Exit;
   end;
   // Vergleich: "Kette = |", "Kette <> |".
-  if ATokens[Index].IsSymbol('=') or ATokens[Index].IsSymbol('<>') then
+  if ATokens[mIndex].IsSymbol('=') or ATokens[mIndex].IsSymbol('<>') then
   begin
-    ASlot.Names := ChainBefore(ATokens, Prev(ATokens, Index), Start);
-    ASlot.Offset := ATokens[Index].Offset;
+    ASlot.Names := ChainBefore(ATokens, Prev(ATokens, mIndex), mStart);
+    ASlot.Offset := ATokens[mIndex].Offset;
     Exit(ASlot.Names <> nil);
   end;
-  // case-Zweig: direkt nach "of", nach dem ";" eines Zweigs oder in einer Liste "a, |".
-  if ATokens[Index].IsKeyword('of') then
+  mOf := CaseOfBefore(ATokens, mIndex);
+  if mOf < 0 then
   begin
-    OfIndex := Index;
+    Exit;
+  end;
+  ASlot.Names := ChainBefore(ATokens, Prev(ATokens, mOf), mStart);
+  // Nur "case Kette of": ein anderer Ausdruck (Funktionsaufruf, Rechnung) bleibt außen vor.
+  Result := (ASlot.Names <> nil) and (Prev(ATokens, mStart) >= 0) and
+    ATokens[Prev(ATokens, mStart)].IsKeyword('case');
+  if Result then
+  begin
+    ASlot.Offset := ATokens[mOf].Offset;
   end
-  else if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
+  else
   begin
-    CaseIndex := EnclosingCase(ATokens, Index);
-    if CaseIndex < 0 then
+    ASlot.Names := nil;
+  end;
+end;
+
+/// <summary>AElement an APresent anhängen, wenn es nicht leer ist, und leeren.</summary>
+procedure FlushElement(var APresent: TArray<string>; var AElement: string);
+begin
+  if AElement <> '' then
+  begin
+    APresent := APresent + [AElement];
+  end;
+  AElement := '';
+end;
+
+/// <summary>Teil einer Menge: Wert, Komma, Bereich oder Punkt eines qualifizierten Werts.</summary>
+function IsSetPart(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) or AToken.IsSymbol(',') or AToken.IsSymbol('..') or
+    AToken.IsSymbol('.');
+end;
+
+/// <summary>Öffnende Klammer rückwärts ab AIndex über Werte, Kommas und Bereiche; -1 ohne.</summary>
+function OpeningBracket(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 0) and not ATokens[Result].IsSymbol('[') do
+  begin
+    if not IsSetPart(ATokens[Result]) then
     begin
-      Exit;
+      Exit(-1);
     end;
-    OfIndex := Next(ATokens, CaseIndex);
-    while (OfIndex <= High(ATokens)) and (OfIndex < Index) and not ATokens[OfIndex].IsKeyword('of') do
+    Result := Prev(ATokens, Result);
+  end;
+end;
+
+/// <summary>"Liste[", "F(x)[", "P^[", "'abc'[": Index, keine Menge.</summary>
+function IsIndexBase(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
+    TPascalTokenKind.CharLiteral]) or AToken.IsSymbol(')') or AToken.IsSymbol(']') or AToken.IsSymbol('^');
+end;
+
+/// <summary>AToken an das Element AElement anfügen ("," schließt es ab); ACounts False für das Wort am Cursor.
+/// False bei einem Token, das nicht zur Menge gehört.</summary>
+function AppendElement(const AToken: TPascalToken; ACounts: Boolean; var APresent: TArray<string>;
+  var AElement: string): Boolean;
+begin
+  Result := True;
+  if AToken.IsSymbol(',') then
+  begin
+    FlushElement(APresent, AElement);
+  end
+  else if AToken.IsSymbol('.') or AToken.IsSymbol('..') then
+  begin
+    AElement := AElement + AToken.Text;
+  end
+  else if AToken.Kind = TPascalTokenKind.Identifier then
+  begin
+    if ACounts then
     begin
-      OfIndex := Next(ATokens, OfIndex);
-    end;
-    if (OfIndex > High(ATokens)) or not ATokens[OfIndex].IsKeyword('of') then
-    begin
-      Exit;
+      AElement := AElement + CleanName(AToken.Text);
     end;
   end
   else
   begin
-    Exit;
+    Result := False;
   end;
-  ASlot.Names := ChainBefore(ATokens, Prev(ATokens, OfIndex), Start);
-  // Nur "case Kette of": ein anderer Ausdruck (Funktionsaufruf, Rechnung) bleibt außen vor.
-  if (ASlot.Names = nil) or (Prev(ATokens, Start) < 0) or not ATokens[Prev(ATokens, Start)].IsKeyword('case') then
+end;
+
+/// <summary>Elemente vorwärts ab ABracket bis zur schließenden Klammer; das Wort am Cursor (APrefix) zählt nicht
+/// als enthalten. False, wenn die Klammer fehlt; ALast ist das letzte gelesene Token.</summary>
+function ClosedElements(const ATokens: TArray<TPascalToken>; ABracket, APrefix: Integer;
+  out APresent: TArray<string>; out ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+  mElement: string;
+begin
+  APresent := nil;
+  mElement := '';
+  Result := False;
+  ALast := ABracket;
+  mIndex := Next(ATokens, ABracket);
+  while mIndex <= High(ATokens) do
   begin
-    ASlot.Names := nil;
-    Exit;
+    if ATokens[mIndex].IsSymbol(']') then
+    begin
+      Result := True;
+      ALast := mIndex;
+      Break;
+    end;
+    if not AppendElement(ATokens[mIndex], mIndex <> APrefix, APresent, mElement) then
+    begin
+      Break;
+    end;
+    ALast := mIndex;
+    mIndex := Next(ATokens, mIndex);
   end;
-  ASlot.Offset := ATokens[OfIndex].Offset;
-  Result := True;
+  FlushElement(APresent, mElement);
+end;
+
+/// <summary>Offene Klammer: Was hinter dem Cursor folgt, gehört nicht zur Menge (nächste Zeile, Anweisung).
+/// </summary>
+function OpenElements(const ATokens: TArray<TPascalToken>; ABracket, APrefix: Integer;
+  const APosition: TTextPosition): TArray<string>;
+var
+  mIndex: Integer;
+  mElement: string;
+begin
+  Result := nil;
+  mElement := '';
+  mIndex := Next(ATokens, ABracket);
+  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].StartPos, APosition) < 0) do
+  begin
+    if ATokens[mIndex].IsSymbol(',') then
+    begin
+      FlushElement(Result, mElement);
+    end
+    else if mIndex <> APrefix then
+    begin
+      mElement := mElement + CleanName(ATokens[mIndex].Text);
+    end;
+    mIndex := Next(ATokens, mIndex);
+  end;
+  FlushElement(Result, mElement);
 end;
 
 class function TCompletionEnums.SetSlot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASlot: TEnumSetSlot): Boolean;
 var
-  Index, Prefix, Bracket, Before, Start, Last: Integer;
-  Closed: Boolean;
-  Element: string;
-  Present: TArray<string>;
-
-  procedure Flush;
-  begin
-    if Element <> '' then
-    begin
-      Present := Present + [Element];
-    end;
-    Element := '';
-  end;
-
+  mPrefix, mBracket, mBefore, mStart, mLast: Integer;
 begin
   ASlot := Default(TEnumSetSlot);
   Result := False;
-  Index := TokenBefore(ATokens, APosition, Prefix);
-  // Rückwärts über Werte, Kommas und Bereiche bis zur öffnenden Klammer.
-  while (Index >= 0) and not ATokens[Index].IsSymbol('[') do
-  begin
-    if not ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol(',') or
-      ATokens[Index].IsSymbol('..') or ATokens[Index].IsSymbol('.')) then
-    begin
-      Exit;
-    end;
-    Index := Prev(ATokens, Index);
-  end;
-  if Index < 0 then
+  mBracket := OpeningBracket(ATokens, TokenBefore(ATokens, APosition, mPrefix));
+  if mBracket < 0 then
   begin
     Exit;
   end;
-  Bracket := Index;
-  Before := Prev(ATokens, Bracket);
-  if Before < 0 then
+  mBefore := Prev(ATokens, mBracket);
+  if (mBefore < 0) or IsIndexBase(ATokens[mBefore]) then
   begin
     Exit;
   end;
-  // "Liste[", "F(x)[", "P^[", "'abc'[": Index, keine Menge.
-  if (ATokens[Before].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
-    TPascalTokenKind.CharLiteral]) or ATokens[Before].IsSymbol(')') or ATokens[Before].IsSymbol(']') or
-    ATokens[Before].IsSymbol('^') then
+  if ATokens[mBefore].IsKeyword('in') then
   begin
-    Exit;
-  end;
-  if ATokens[Before].IsKeyword('in') then
-  begin
-    ASlot.ElementOf := ChainBefore(ATokens, Prev(ATokens, Before), Start);
+    ASlot.ElementOf := ChainBefore(ATokens, Prev(ATokens, mBefore), mStart);
     if ASlot.ElementOf = nil then
     begin
       Exit;
     end;
   end;
-  ASlot.Bracket := ATokens[Bracket].StartPos;
-  ASlot.Offset := ATokens[Bracket].Offset;
-  // Vorwärts bis zur schließenden Klammer; das Wort am Cursor zählt nicht als enthalten.
-  Present := nil;
-  Element := '';
-  Closed := False;
-  Last := Bracket;
-  Index := Next(ATokens, Bracket);
-  while Index <= High(ATokens) do
+  ASlot.Bracket := ATokens[mBracket].StartPos;
+  ASlot.Offset := ATokens[mBracket].Offset;
+  if ClosedElements(ATokens, mBracket, mPrefix, ASlot.Present, mLast) then
   begin
-    if ATokens[Index].IsSymbol(']') then
-    begin
-      Closed := True;
-      Last := Index;
-      Break;
-    end;
-    if ATokens[Index].IsSymbol(',') then
-    begin
-      Flush;
-    end
-    else if ATokens[Index].IsSymbol('.') or ATokens[Index].IsSymbol('..') then
-    begin
-      Element := Element + ATokens[Index].Text;
-    end
-    else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
-    begin
-      if Index <> Prefix then
-      begin
-        Element := Element + CleanName(ATokens[Index].Text);
-      end;
-    end
-    else
-    begin
-      Break;
-    end;
-    Last := Index;
-    Index := Next(ATokens, Index);
-  end;
-  Flush;
-  if Closed then
-  begin
-    ASlot.EditRange := TTextRange.Create(ASlot.Bracket, ATokens[Last].EndPos);
+    ASlot.EditRange := TTextRange.Create(ASlot.Bracket, ATokens[mLast].EndPos);
   end
   else
   begin
-    // Offene Klammer: Was hinter dem Cursor folgt, gehört nicht zur Menge (nächste Zeile, Anweisung).
-    Present := nil;
-    Element := '';
-    Index := Next(ATokens, Bracket);
-    while (Index <= High(ATokens)) and (Compare(ATokens[Index].StartPos, APosition) < 0) do
+    ASlot.Present := OpenElements(ATokens, mBracket, mPrefix, APosition);
+    ASlot.EditRange := TTextRange.Create(ASlot.Bracket, APosition);
+    if mPrefix >= 0 then
     begin
-      if ATokens[Index].IsSymbol(',') then
-      begin
-        Flush;
-      end
-      else if Index <> Prefix then
-      begin
-        Element := Element + CleanName(ATokens[Index].Text);
-      end;
-      Index := Next(ATokens, Index);
-    end;
-    Flush;
-    if Prefix >= 0 then
-    begin
-      ASlot.EditRange := TTextRange.Create(ASlot.Bracket, ATokens[Prefix].EndPos);
-    end
-    else
-    begin
-      ASlot.EditRange := TTextRange.Create(ASlot.Bracket, APosition);
+      ASlot.EditRange := TTextRange.Create(ASlot.Bracket, ATokens[mPrefix].EndPos);
     end;
   end;
-  ASlot.Present := Present;
   Result := True;
+end;
+
+/// <summary>Bei "," einen neuen Wert erwarten, sonst den erwarteten Namen an AValues anhängen.</summary>
+procedure TakeEnumValue(const AToken: TPascalToken; var AExpect: Boolean; var AValues: TArray<string>);
+begin
+  if AToken.IsSymbol(',') then
+  begin
+    AExpect := True;
+  end
+  else if AExpect and (AToken.Kind = TPascalTokenKind.Identifier) then
+  begin
+    AValues := AValues + [CleanName(AToken.Text)];
+    AExpect := False;
+  end;
 end;
 
 class function TCompletionEnums.EnumValues(const ADeclaration: string): TArray<string>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth: Integer;
-  Expect: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mDepth: Integer;
+  mExpect: Boolean;
 begin
   Result := nil;
-  Tokens := TPascalLexer.Tokenize(ADeclaration);
+  mTokens := TPascalLexer.Tokenize(ADeclaration);
   // "Name = (": die erste Klammer direkt hinter dem "=".
-  Index := 0;
-  while (Index <= High(Tokens)) and not Tokens[Index].IsSymbol('=') do
+  mIndex := 0;
+  while (mIndex <= High(mTokens)) and not mTokens[mIndex].IsSymbol('=') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Index := Next(Tokens, Index);
-  if (Index > High(Tokens)) or not Tokens[Index].IsSymbol('(') then
+  mIndex := Next(mTokens, mIndex);
+  if (mIndex > High(mTokens)) or not mTokens[mIndex].IsSymbol('(') then
   begin
     Exit;
   end;
-  Depth := 0;
-  Expect := True;
-  while Index <= High(Tokens) do
+  mDepth := 0;
+  mExpect := True;
+  while mIndex <= High(mTokens) do
   begin
-    if Tokens[Index].IsSymbol('(') then
+    if mTokens[mIndex].IsSymbol('(') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if Tokens[Index].IsSymbol(')') then
+    else if mTokens[mIndex].IsSymbol(')') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Break;
       end;
     end
-    else if Depth = 1 then
+    else if mDepth = 1 then
     begin
-      if Tokens[Index].IsSymbol(',') then
-      begin
-        Expect := True;
-      end
-      else if Expect and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
-      begin
-        Result := Result + [CleanName(Tokens[Index].Text)];
-        Expect := False;
-      end;
+      TakeEnumValue(mTokens[mIndex], mExpect, Result);
     end;
-    Index := Next(Tokens, Index);
+    mIndex := Next(mTokens, mIndex);
   end;
 end;
 
