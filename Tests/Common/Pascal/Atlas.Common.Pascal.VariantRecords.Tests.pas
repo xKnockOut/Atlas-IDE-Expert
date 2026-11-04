@@ -131,25 +131,41 @@ begin
   end;
 end;
 
+/// <summary>Eintrag ATypeName unter den Kindern von ASection.</summary>
+function FindTypeEntry(ASection: TJSONValue; const ATypeName: string; out AEntry: TJSONObject): Boolean;
+var
+  mEntry: TJSONValue;
+begin
+  Result := False;
+  AEntry := nil;
+  if not (TJSONObject(ASection).GetValue('children') is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(TJSONObject(ASection).GetValue('children')) do
+  begin
+    if TJSONObject(mEntry).GetValue<string>('name', '') = ATypeName then
+    begin
+      AEntry := TJSONObject(mEntry);
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Kinder des Typs ATypeName in der Gliederung (unter interface).</summary>
 function TypeChildren(ASymbols: TJSONArray; const ATypeName: string): string;
 var
-  Root, Section, Entry: TJSONValue;
+  Root, Section: TJSONValue;
+  Entry: TJSONObject;
 begin
   Result := '';
   for Root in ASymbols do
   begin
     for Section in TJSONArray(TJSONObject(Root).GetValue('children')) do
     begin
-      if TJSONObject(Section).GetValue('children') is TJSONArray then
+      if FindTypeEntry(Section, ATypeName, Entry) then
       begin
-        for Entry in TJSONArray(TJSONObject(Section).GetValue('children')) do
-        begin
-          if TJSONObject(Entry).GetValue<string>('name', '') = ATypeName then
-          begin
-            Exit(Names(TJSONObject(Entry).GetValue('children')));
-          end;
-        end;
+        Exit(Names(Entry.GetValue('children')));
       end;
     end;
   end;

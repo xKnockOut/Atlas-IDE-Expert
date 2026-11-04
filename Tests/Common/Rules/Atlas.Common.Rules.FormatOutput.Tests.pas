@@ -84,13 +84,53 @@ begin
   Assert.IsTrue(mText.Contains('b.pas: formatiert (1 Abweichungen)'), mText);
 end;
 
+/// <summary>Prüft die Datei mit Abweichung in der JSON-Ausgabe von JsonListsAllDeviations.</summary>
+procedure AssertDeviatingFile(AFile: TJSONObject);
+var
+  mDeviations: TJSONArray;
+  mDeviation: TJSONObject;
+  mPath, mKind: string;
+  mLine: Integer;
+begin
+  mPath := AFile.GetValue<string>('path');
+  Assert.AreEqual('Sub/b.pas', mPath);
+  mDeviations := AFile.GetValue<TJSONArray>('deviations');
+  mDeviation := mDeviations.Items[0] as TJSONObject;
+  mLine := mDeviation.GetValue<Integer>('line');
+  mKind := mDeviation.GetValue<string>('kind');
+  Assert.AreEqual(3, mLine);
+  Assert.AreEqual('indent', mKind);
+end;
+
+/// <summary>Prüft die Datei mit Syntaxfehler in der JSON-Ausgabe von JsonListsAllDeviations.</summary>
+procedure AssertBrokenFile(AFile: TJSONObject);
+var
+  mSyntax: TJSONObject;
+  mSyntaxLine: Integer;
+begin
+  mSyntax := AFile.GetValue<TJSONObject>('syntaxError');
+  mSyntaxLine := mSyntax.GetValue<Integer>('line');
+  Assert.AreEqual(6, mSyntaxLine);
+end;
+
+/// <summary>Prüft die Zusammenfassung in der JSON-Ausgabe von JsonListsAllDeviations.</summary>
+procedure AssertSummary(AJson: TJSONObject);
+var
+  mCount, mChanged, mSyntaxErrors: Integer;
+begin
+  mCount := AJson.GetValue<Integer>('summary.files');
+  mChanged := AJson.GetValue<Integer>('summary.changed');
+  mSyntaxErrors := AJson.GetValue<Integer>('summary.syntaxErrors');
+  Assert.AreEqual(3, mCount);
+  Assert.AreEqual(1, mChanged);
+  Assert.AreEqual(1, mSyntaxErrors);
+end;
+
 procedure TFormatOutputTests.JsonListsAllDeviations;
 var
   mJson: TJSONValue;
-  mFiles, mDeviations: TJSONArray;
-  mFirst, mSecond, mDeviation, mSyntax: TJSONObject;
-  mText, mMode, mPath, mKind: string;
-  mLine, mSyntaxLine, mCount, mChanged, mSyntaxErrors: Integer;
+  mFiles: TJSONArray;
+  mText, mMode: string;
 begin
   mText := TFormatOutput.Render([FileOf('a.pas', cClean), FileOf('Sub\b.pas', cIndented), FileOf('c.pas', cBroken)],
     TFormatOutputKind.Json, False);
@@ -101,25 +141,9 @@ begin
     Assert.AreEqual('check', mMode);
     mFiles := TJSONObject(mJson).GetValue<TJSONArray>('files');
     Assert.AreEqual(2, mFiles.Count);
-    mFirst := mFiles.Items[0] as TJSONObject;
-    mSecond := mFiles.Items[1] as TJSONObject;
-    mPath := mFirst.GetValue<string>('path');
-    Assert.AreEqual('Sub/b.pas', mPath);
-    mDeviations := mFirst.GetValue<TJSONArray>('deviations');
-    mDeviation := mDeviations.Items[0] as TJSONObject;
-    mLine := mDeviation.GetValue<Integer>('line');
-    mKind := mDeviation.GetValue<string>('kind');
-    Assert.AreEqual(3, mLine);
-    Assert.AreEqual('indent', mKind);
-    mSyntax := mSecond.GetValue<TJSONObject>('syntaxError');
-    mSyntaxLine := mSyntax.GetValue<Integer>('line');
-    Assert.AreEqual(6, mSyntaxLine);
-    mCount := TJSONObject(mJson).GetValue<Integer>('summary.files');
-    mChanged := TJSONObject(mJson).GetValue<Integer>('summary.changed');
-    mSyntaxErrors := TJSONObject(mJson).GetValue<Integer>('summary.syntaxErrors');
-    Assert.AreEqual(3, mCount);
-    Assert.AreEqual(1, mChanged);
-    Assert.AreEqual(1, mSyntaxErrors);
+    AssertDeviatingFile(mFiles.Items[0] as TJSONObject);
+    AssertBrokenFile(mFiles.Items[1] as TJSONObject);
+    AssertSummary(TJSONObject(mJson));
   finally
     mJson.Free;
   end;
