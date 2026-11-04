@@ -94,6 +94,17 @@ type
     StatusLinesReady: TFunc<Boolean>;
   end;
 
+  /// <summary>Anfrage an den Server für TAtlasIdeHost.RunRequestAsync: Methode, Parameter als JSON, Zeitgrenze und
+  /// Abbruch.</summary>
+  TAtlasServerRequest = record
+    Method: string;
+    ParamsJson: string;
+    TimeoutMs: Cardinal;
+    Cancelled: TFunc<Boolean>;
+    class function Create(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>): TAtlasServerRequest; static;
+  end;
+
   TAtlasIdeHost = class
   private class var
     FServices: TAtlasHostServices;
@@ -132,8 +143,7 @@ type
     /// läuft im Hauptthread, gesichert über AFeature, und nur, solange AScope offen ist. False = nicht gestartet.
     /// </summary>
     class function RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
-      const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
-      const ADone: TProc<string>): Boolean; static;
+      const ARequest: TAtlasServerRequest; const ADone: TProc<string>): Boolean; static;
     /// <summary>Zustand des Servers; Default ohne Quelle.</summary>
     class function ServerInfo: TAtlasServerInfo; static;
     class function ServerIndexing(out APercent: Integer): Boolean; static;
@@ -164,6 +174,17 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
+
+{ TAtlasServerRequest }
+
+class function TAtlasServerRequest.Create(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>): TAtlasServerRequest;
+begin
+  Result.Method := AMethod;
+  Result.ParamsJson := AParamsJson;
+  Result.TimeoutMs := ATimeoutMs;
+  Result.Cancelled := ACancelled;
+end;
 
 class procedure TAtlasIdeHost.Install(const AServices: TAtlasHostServices);
 begin
@@ -426,8 +447,7 @@ begin
 end;
 
 class function TAtlasIdeHost.RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
-  const AMethod, AParamsJson: string; ATimeoutMs: Cardinal; const ACancelled: TFunc<Boolean>;
-  const ADone: TProc<string>): Boolean;
+  const ARequest: TAtlasServerRequest; const ADone: TProc<string>): Boolean;
 var
   mAnswer: IAtlasModuleAnswer;
 begin
@@ -437,7 +457,7 @@ begin
     Exit;
   end;
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
-  Result := FServices.RunRequest(AMethod, AParamsJson, ATimeoutMs, ACancelled,
+  Result := FServices.RunRequest(ARequest.Method, ARequest.ParamsJson, ARequest.TimeoutMs, ARequest.Cancelled,
     DeliverInMainThread(mAnswer, AFeature));
   if not Result then
   begin

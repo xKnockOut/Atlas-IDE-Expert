@@ -536,14 +536,16 @@ begin
       if ShowNames then
       begin
         Hints := DrawPills(DC, Names, Top, Height, X);
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayHints, Context.FileName, Line, Stored, Hints,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.InlayHints, Context.FileName, Line, Stored), Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Typmarken (#453): „: TStringList“ in derselben Pille.
       if ShowTypes then
       begin
         Hints := DrawPills(DC, Types, Top, Height, X);
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayTypeHints, Context.FileName, Line, Stored, Hints,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.InlayTypeHints, Context.FileName, Line, Stored), Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Include-Symbole (#860): „definiert COMPLIB_VCL“ in der Sprache der IDE.
@@ -554,14 +556,16 @@ begin
           Defines[Index] := TAtlasStrings.Fmt(TAtlasTextId.InlayDefinesLabel, [Defines[Index]]);
         end;
         Hints := DrawPills(DC, Defines, Top, Height, X);
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Line, Stored, Hints,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Line, Stored), Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Steuerzeichen (#862): „#3“ hinter ^C.
       if ShowChars then
       begin
         Hints := DrawPills(DC, Chars, Top, Height, X);
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayCharHints, Context.FileName, Line, Stored, Hints,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.InlayCharHints, Context.FileName, Line, Stored), Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Methode ohne Self (#686): „ohne Self“ in der Sprache der IDE hinter dem Kopf.
@@ -569,7 +573,8 @@ begin
       begin
         Hints := DrawPills(DC, TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.InlayMethodWithoutSelf)), Top,
           Height, X);
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayMethodHints, Context.FileName, Line, Stored, Hints,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.InlayMethodHints, Context.FileName, Line, Stored), Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen.
@@ -578,7 +583,8 @@ begin
         GetTextExtentPoint32W(DC, PChar(EndLabel), Length(EndLabel), Size);
         Pill := TRect.Create(X, Top, X + Size.cx + 4, Top + Height + 2);
         TextOutW(DC, Pill.Left + 2, Pill.Top + 1, PChar(EndLabel), Length(EndLabel));
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.BlockEndLabels, Context.FileName, Line, EndText, Pill,
+        TAtlasIdeElements.Painted(
+          TAtlasIdeElements.Target(TAtlasDrawnElement.BlockEndLabels, Context.FileName, Line, EndText), Pill,
           Context.EditView.TopRow, Rect.Height);
         RememberEnd(Context.FileName, Line, Context.EditView.TopRow, Pill, EndHint);
         X := Pill.Right;
