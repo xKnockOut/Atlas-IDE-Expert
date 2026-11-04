@@ -1579,9 +1579,8 @@ begin
   end;
 end;
 
-procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
 const
-  UnitText =
+  cCompilerMessagesUnitText =
     'unit ProbeCompiler;'#13#10 +
     'interface'#13#10 +
     'implementation'#13#10 +
@@ -1590,6 +1589,8 @@ const
     '  Gibtsnicht.Create;'#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
 var
   ServerExe, FileName: string;
   Server: TLspServerProcess;
@@ -1611,7 +1612,7 @@ begin
     Session := TLspSession.Create(Server.Client, 5000);
     try
       Session.Initialize;
-      Session.Sync(FileName, UnitText);
+      Session.Sync(FileName, cCompilerMessagesUnitText);
       Params := TJSONObject.ParseJSONValue(Format('{"project":"","platform":"Win32","success":false,"background":true,' +
         '"messages":[{"file":"%s","line":6,"column":3,"severity":"error","code":"E2003",' +
         '"text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}', [StringReplace(FileName, '\', '\\', [rfReplaceAll])]))

@@ -908,9 +908,10 @@ begin
   end;
 end;
 
-procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;
 const
-  cFileCount = 12;
+  cWorkspaceBundlescFileCount = 12;
+
+procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;
 var
   mStore: IDocumentStore;
   mProviders: TSyntaxDiagnosticsProviders;
@@ -921,7 +922,7 @@ var
   mAnswer: TJSONValue;
 begin
   mFiles := nil;
-  for mIndex := 1 to cFileCount do
+  for mIndex := 1 to cWorkspaceBundlescFileCount do
   begin
     mFiles := mFiles + [Format('C:\P\U%d.pas', [mIndex])];
   end;

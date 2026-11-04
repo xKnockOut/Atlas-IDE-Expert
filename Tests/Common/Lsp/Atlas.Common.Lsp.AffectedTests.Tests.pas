@@ -782,10 +782,11 @@ begin
   Assert.IsTrue(Pos('run_tests tests: ', mText) > 0, mText);
 end;
 
-procedure TAffectedTestsTests.TwentyFilesInThousandUnitsStayFast;
 const
-  cUnits = 1000;
-  cChanged = 20;
+  cTwentyFilescUnits = 1000;
+  cTwentyFilescChanged = 20;
+
+procedure TAffectedTestsTests.TwentyFilesInThousandUnitsStayFast;
 var
   mTexts, mFiles: TArray<string>;
   mIndex: Integer;
@@ -797,10 +798,10 @@ var
   mFound: TAffectedResult;
 begin
   // Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.
-  SetLength(mTexts, cUnits + cUnits div 10);
+  SetLength(mTexts, cTwentyFilescUnits + cTwentyFilescUnits div 10);
   SetLength(mFiles, Length(mTexts));
   mBig := TSymbolIndex.Create;
-  for mIndex := 0 to cUnits - 1 do
+  for mIndex := 0 to cTwentyFilescUnits - 1 do
   begin
     mFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
     if mIndex = 0 then
@@ -815,10 +816,10 @@ begin
         [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
     end;
   end;
-  for mIndex := 0 to cUnits div 10 - 1 do
+  for mIndex := 0 to cTwentyFilescUnits div 10 - 1 do
   begin
-    mFiles[cUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
-    mTexts[cUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
+    mFiles[cTwentyFilescUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
+    mTexts[cTwentyFilescUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
       'type'#10'  [TestFixture]'#10'  TStufe%dTests = class'#10'  public'#10'    [Test]'#10'    procedure Laeuft;'#10 +
       '  end;'#10'implementation'#10'procedure TStufe%dTests.Laeuft;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
       [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
@@ -828,7 +829,7 @@ begin
     mBig.AddUnit(TIndexExtractor.ExtractText(mTexts[mIndex], mFiles[mIndex], nil, nil, True));
   end;
   mInputs := nil;
-  for mIndex := 0 to cChanged - 1 do
+  for mIndex := 0 to cTwentyFilescChanged - 1 do
   begin
     mInputs := mInputs + [Input(mFiles[mIndex * 37], LinesAt(mTexts[mIndex * 37], 'begin'))];
   end;
@@ -860,7 +861,7 @@ begin
     mResolver.Free;
   end;
   Assert.IsFalse(mFound.All, mFound.AllReason);
-  Assert.AreEqual(cChanged, Integer(Length(mFound.Changes)));
+  Assert.AreEqual(cTwentyFilescChanged, Integer(Length(mFound.Changes)));
   Assert.IsTrue(Length(mFound.Tests) > 0, 'Tests der Stufen in Reichweite');
   Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
 end;
