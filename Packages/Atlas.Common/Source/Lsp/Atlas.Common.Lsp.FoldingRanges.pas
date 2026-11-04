@@ -128,63 +128,95 @@ begin
     ((Length(Text) = Length(AName)) or not CharInSet(Text.Chars[Length(AName)], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
 end;
 
+type
+  /// <summary>Faltbereiche aus Tokens: Regionen und Kommentarblöcke.</summary>
+  TTokenFolds = record
+    List: TList<TFoldingRange>;
+    Regions: TStack<Integer>;
+    /// <summary>Erste und letzte Zeile des laufenden Blocks aus Zeilenkommentaren (-1 = keiner).</summary>
+    LineStart: Integer;
+    LineEnd: Integer;
+    /// <summary>Letzte Zeile des vorigen Tokens.</summary>
+    PreviousLine: Integer;
+    procedure Directive(const AToken: TPascalToken);
+    procedure LineComment(const AToken: TPascalToken);
+    procedure Comment(const AToken: TPascalToken);
+    procedure CloseLineComments;
+  end;
+
+procedure TTokenFolds.Directive(const AToken: TPascalToken);
+begin
+  if IsDirective(AToken, 'REGION') then
+  begin
+    Regions.Push(AToken.StartPos.Line);
+  end
+  else if IsDirective(AToken, 'ENDREGION') and (Regions.Count > 0) then
+  begin
+    AddRange(List, Regions.Pop, AToken.EndPos.Line, KindRegion);
+  end;
+end;
+
+procedure TTokenFolds.CloseLineComments;
+begin
+  if LineStart >= 0 then
+  begin
+    AddRange(List, LineStart, LineEnd, KindComment);
+  end;
+end;
+
+procedure TTokenFolds.LineComment(const AToken: TPascalToken);
+begin
+  // Zeilenkommentar am Zeilenanfang: Block fortsetzen oder neu beginnen.
+  if (LineStart >= 0) and (AToken.StartPos.Line = LineEnd + 1) then
+  begin
+    LineEnd := AToken.StartPos.Line;
+    Exit;
+  end;
+  CloseLineComments;
+  LineStart := AToken.StartPos.Line;
+  LineEnd := LineStart;
+end;
+
+procedure TTokenFolds.Comment(const AToken: TPascalToken);
+begin
+  if AToken.Text.StartsWith('//') and (AToken.StartPos.Line > PreviousLine) then
+  begin
+    LineComment(AToken);
+  end
+  else
+  begin
+    // Blockkommentar über mehrere Zeilen.
+    AddRange(List, AToken.StartPos.Line, AToken.EndPos.Line, KindComment);
+  end;
+end;
+
 procedure CollectTokens(const ATokens: TArray<TPascalToken>; AList: TList<TFoldingRange>);
 var
-  Regions: TStack<Integer>;
-  Token: TPascalToken;
-  LineStart: Integer;
-  LineEnd: Integer;
-  PreviousLine: Integer;
+  mFolds: TTokenFolds;
+  mToken: TPascalToken;
 begin
-  Regions := TStack<Integer>.Create;
+  mFolds := Default(TTokenFolds);
+  mFolds.List := AList;
+  mFolds.LineStart := -1;
+  mFolds.LineEnd := -1;
+  mFolds.PreviousLine := -1;
+  mFolds.Regions := TStack<Integer>.Create;
   try
-    LineStart := -1;
-    LineEnd := -1;
-    PreviousLine := -1;
-    for Token in ATokens do
+    for mToken in ATokens do
     begin
-      if Token.Kind = TPascalTokenKind.Directive then
+      if mToken.Kind = TPascalTokenKind.Directive then
       begin
-        if IsDirective(Token, 'REGION') then
-        begin
-          Regions.Push(Token.StartPos.Line);
-        end
-        else if IsDirective(Token, 'ENDREGION') and (Regions.Count > 0) then
-        begin
-          AddRange(AList, Regions.Pop, Token.EndPos.Line, KindRegion);
-        end;
-      end;
-      if (Token.Kind = TPascalTokenKind.Comment) and Token.Text.StartsWith('//') and
-        (Token.StartPos.Line > PreviousLine) then
-      begin
-        // Zeilenkommentar am Zeilenanfang: Block fortsetzen oder neu beginnen.
-        if (LineStart >= 0) and (Token.StartPos.Line = LineEnd + 1) then
-        begin
-          LineEnd := Token.StartPos.Line;
-        end
-        else
-        begin
-          if LineStart >= 0 then
-          begin
-            AddRange(AList, LineStart, LineEnd, KindComment);
-          end;
-          LineStart := Token.StartPos.Line;
-          LineEnd := LineStart;
-        end;
+        mFolds.Directive(mToken);
       end
-      else if Token.Kind = TPascalTokenKind.Comment then
+      else if mToken.Kind = TPascalTokenKind.Comment then
       begin
-        // Blockkommentar über mehrere Zeilen.
-        AddRange(AList, Token.StartPos.Line, Token.EndPos.Line, KindComment);
+        mFolds.Comment(mToken);
       end;
-      PreviousLine := Token.EndPos.Line;
+      mFolds.PreviousLine := mToken.EndPos.Line;
     end;
-    if LineStart >= 0 then
-    begin
-      AddRange(AList, LineStart, LineEnd, KindComment);
-    end;
+    mFolds.CloseLineComments;
   finally
-    Regions.Free;
+    mFolds.Regions.Free;
   end;
 end;
 
