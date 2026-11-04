@@ -6,7 +6,8 @@
 interface
 
 const
-  CatalogLinesEn4: array[0..992] of string = (
+  CatalogLinesEn4: array[0..993] of string = (
+    '        "E2179",',
     '        "E2180",',
     '        "E2181",',
     '        "E2182",',

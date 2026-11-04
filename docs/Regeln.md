@@ -2321,7 +2321,7 @@ List := TStringList.Create;
 
 **Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'.
+Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen Unit und einer Unit, die in uses nach System.SysUtils steht.
 
 Mit Treffer:
 

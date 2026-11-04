@@ -8,7 +8,7 @@
 interface
 
 const
-  CatalogLinesEn1: array[0..1385] of string = (
+  CatalogLinesEn1: array[0..1384] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -1122,7 +1122,8 @@ const
     '      "group": "robustness",',
     '      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user''s locale (decimal separator, date format)' +
     '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as ''yyyy\"-\' +
-    '"mm\"-\"dd'' or ''ddddd t''.",',
+    '"mm\"-\"dd'' or ''ddddd t''. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after S' +
+    'ystem.SysUtils in uses.",',
     '      "bad": "Line := Format(''%.2f'', [Amount]);",',
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"',
     '    },',
@@ -1507,8 +1508,7 @@ const
     '      "good": "Edit.Text := '''';\nEdit.SetFocus;",',
     '      "options": [',
     '        {',
-    '          "name": "keywords",',
-    '          "type": "string-list",');
+    '          "name": "keywords",');
 
 implementation
 

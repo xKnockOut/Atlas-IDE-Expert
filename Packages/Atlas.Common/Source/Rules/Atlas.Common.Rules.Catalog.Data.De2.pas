@@ -6,7 +6,8 @@
 interface
 
 const
-  CatalogLinesDe2: array[0..955] of string = (
+  CatalogLinesDe2: array[0..956] of string = (
+    '        }',
     '      ]',
     '    },',
     '    {',
