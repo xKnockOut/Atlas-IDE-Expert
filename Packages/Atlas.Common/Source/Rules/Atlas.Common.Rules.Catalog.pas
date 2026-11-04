@@ -76,6 +76,7 @@ type
   TRuleCatalog = class
   private class var
     FShared: TRuleCatalog;
+    FGerman: TRuleCatalog;
   private
     FEntries: TList<TRuleCatalogEntry>;
     // Kennung (klein) -> Position des ersten Eintrags in FEntries; IndexOf lief linear über alle Regeln (#1342).
@@ -108,6 +109,10 @@ type
     class function GroupOfCategory(ACategory: TRuleCategory): TRuleGroup; static;
     /// <summary>Eingebetteter englischer Katalog, einmal je Prozess gelesen; nicht freigeben.</summary>
     class function Shared: TRuleCatalog; static;
+    /// <summary>Katalog in der Sprache der Texte (#1458, TAtlasLocale): englisch wie Shared, deutsch mit dem
+    /// Overlay regelkatalog.de.json; einmal je Sprache gelesen; nicht freigeben. Für alles, was der Benutzer
+    /// liest (Erklärung, Hover); Regel-Engine und SARIF bleiben bei Shared.</summary>
+    class function Localized: TRuleCatalog; static;
   end;
 
 const
@@ -118,7 +123,25 @@ implementation
 uses
   System.JSON,
   System.SyncObjs,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog.Data;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Erklärung (#300) in beiden Sprachen (#1458).</summary>
+  TCatalogText = (Wrong, Right, CompilerCodes, OverriddenBy, OrSeparator, More);
+
+const
+  cTexts: array[TCatalogText] of TAtlasText = (
+    (De: 'Falsch:'; En: 'Wrong:'),
+    (De: 'Richtig:'; En: 'Right:'),
+    (De: 'Entspricht der Compilermeldung %s.'; En: 'Corresponds to compiler message %s.'),
+    (De: 'Schweigt, solange %s an ist.'; En: 'Silent while %s is on.'),
+    (De: ' oder '; En: ' or '),
+    (De: 'Mehr: %s'; En: 'More: %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
@@ -550,23 +573,23 @@ begin
   end;
   if AEntry.Bad <> '' then
   begin
-    Result := Result + ALineBreak + ALineBreak + 'Falsch:' + ALineBreak + AEntry.Bad;
+    Result := Result + ALineBreak + ALineBreak + cTexts[TCatalogText.Wrong].Text + ALineBreak + AEntry.Bad;
   end;
   if AEntry.Good <> '' then
   begin
-    Result := Result + ALineBreak + ALineBreak + 'Richtig:' + ALineBreak + AEntry.Good;
+    Result := Result + ALineBreak + ALineBreak + cTexts[TCatalogText.Right].Text + ALineBreak + AEntry.Good;
   end;
   if AEntry.CompilerCodes <> nil then
   begin
-    Result := Result + ALineBreak + ALineBreak + 'Entspricht der Compilermeldung ' +
-      string.Join(', ', AEntry.CompilerCodes) + '.';
+    Result := Result + ALineBreak + ALineBreak +
+      cTexts[TCatalogText.CompilerCodes].Fmt([string.Join(', ', AEntry.CompilerCodes)]);
   end;
   if AEntry.OverriddenBy <> nil then
   begin
-    Result := Result + ALineBreak + ALineBreak + 'Schweigt, solange ' + string.Join(' oder ', AEntry.OverriddenBy) +
-      ' an ist.';
+    Result := Result + ALineBreak + ALineBreak + cTexts[TCatalogText.OverriddenBy].Fmt(
+      [string.Join(cTexts[TCatalogText.OrSeparator].Text, AEntry.OverriddenBy)]);
   end;
-  Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
+  Result := Result + ALineBreak + ALineBreak + cTexts[TCatalogText.More].Fmt([HelpUri(AEntry.Id)]);
 end;
 
 class function TRuleCatalog.CategoryName(ACategory: TRuleCategory): string;
@@ -643,10 +666,30 @@ begin
   end;
 end;
 
+class function TRuleCatalog.Localized: TRuleCatalog;
+begin
+  if TAtlasLocale.Language = TTextLanguage.English then
+  begin
+    Exit(Shared);
+  end;
+  SharedLock.Acquire;
+  try
+    if FGerman = nil then
+    begin
+      FGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+    end;
+    Result := FGerman;
+  finally
+    SharedLock.Release;
+  end;
+end;
+
 initialization
   SharedLock := TCriticalSection.Create;
+  TAtlasTextTables.Add('Atlas.Common.Rules.Catalog', cTexts);
 
 finalization
+  FreeAndNil(TRuleCatalog.FGerman);
   FreeAndNil(TRuleCatalog.FShared);
   FreeAndNil(SharedLock);
 

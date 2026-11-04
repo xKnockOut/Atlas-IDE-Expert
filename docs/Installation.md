@@ -1,6 +1,12 @@
 # Installation
 
+English version: [en/Installation.md](en/Installation.md).
+
 Atlas ist eine einzelne Datei, `AtlasServer.exe` (Windows, Win64). Sie spricht LSP über stdio, mit `--mcp` MCP für KI-Agenten und mit `--check` prüft sie ohne Editor. Eine installierte RAD-Studio-Version braucht der Server nur für Compiler-Meldungen (`compiler.onSave`); die passende Version liest er aus der `.dproj`.
+
+## Sprache
+
+Atlas folgt der Sprache der IDE (#1458): Mit englischer Delphi-IDE sind Befunde, Glühbirne, Hover, Vorschauen und die Beschreibungen der Einstellungen englisch, mit deutscher IDE bleibt alles deutsch. Die Einstellung `language` (`""` = wie die IDE, `"de"`, `"en"`) legt die Sprache fest. Ohne IDE nimmt `AtlasServer --check` die Option `--locale de|en`; ohne `--locale` gilt `language` aus `%APPDATA%\Atlas\settings.json`, sonst Englisch.
 
 ## Server besorgen
 
