@@ -673,7 +673,8 @@ begin
       begin
         Canvas.Font := Font;
         mX := AItem.Rect.Left;
-        FDeclaration.Draw(Canvas, Colors, AItem.From, AItem.Till, mX, AItem.Rect, False, Scale(3));
+        FDeclaration.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), Point(AItem.From, AItem.Till), mX,
+          AItem.Rect, False);
       end;
     TAtlasHoverItemKind.Doc:
       FDoc.Paint(Canvas, Colors, AItem.Rect.Left, AItem.Rect.Top);

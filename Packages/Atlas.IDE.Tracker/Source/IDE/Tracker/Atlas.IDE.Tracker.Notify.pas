@@ -39,7 +39,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Notifications.Notice,
-  Atlas.IDE.Tracker.IssuePreview;
+  Atlas.IDE.Tracker.IssueContext;
 
 type
   /// <summary>Alle Tracker, die abgefragt werden sollen (auch doppelte; gezählt wird je Verbindung).</summary>

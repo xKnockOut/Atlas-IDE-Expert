@@ -30,26 +30,42 @@ type
 {$SCOPEDENUMS OFF}
 
   TAtlasSafeModeNotice = class(TForm)
+  private type
+    /// <summary>Steuerelemente des Fensters.</summary>
+    TParts = record
+      Text: TLabel;
+      Suggestion: TLabel;
+      Buttons: TFlowPanel;
+      PrimaryButton: TButton;
+      SecondaryButton: TButton;
+      RestoreButton: TButton;
+      DetailsButton: TButton;
+      DetailsPanel: TPanel;
+      Details: TMemo;
+      ExportButton: TButton;
+      BugButton: TButton;
+    end;
+
+    /// <summary>Aktionen der Knöpfe, gesetzt vom Aufrufer.</summary>
+    THandlers = record
+      OnSafe: TProc;
+      OnNormal: TProc;
+      OnToggles: TProc;
+      OnRestore: TProc;
+      OnExportLog: TProc;
+      OnBugReport: TProc;
+    end;
   private
     FKind: TAtlasSafeNoticeKind;
-    FText: TLabel;
-    FSuggestion: TLabel;
-    FButtons: TFlowPanel;
-    FPrimaryButton: TButton;
-    FSecondaryButton: TButton;
-    FRestoreButton: TButton;
-    FDetailsButton: TButton;
-    FDetailsPanel: TPanel;
-    FDetails: TMemo;
-    FExportButton: TButton;
-    FBugButton: TButton;
+    FParts: TParts;
+    FHandlers: THandlers;
     FDone: Boolean;
-    FOnSafe: TProc;
-    FOnNormal: TProc;
-    FOnToggles: TProc;
-    FOnRestore: TProc;
-    FOnExportLog: TProc;
-    FOnBugReport: TProc;
+    /// <summary>Text und Vorschlag oben.</summary>
+    procedure CreateTexts(const AText, ASuggestion: string);
+    /// <summary>Knopfreihe je nach Art; ARestore = '' blendet „Zurücksetzen“ aus.</summary>
+    procedure CreateButtons(const ARestore: string; AHasDetails: Boolean);
+    /// <summary>Aufklappbare Details mit Export und Fehlerbericht.</summary>
+    procedure CreateDetails(const ADetails: TArray<string>);
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     procedure Run(const AProc: TProc);
     procedure PrimaryClick(Sender: TObject);
@@ -72,24 +88,24 @@ type
     procedure ToggleDetails;
     function DetailsVisible: Boolean;
     property Kind: TAtlasSafeNoticeKind read FKind;
-    property TextLabel: TLabel read FText;
-    property SuggestionLabel: TLabel read FSuggestion;
-    property PrimaryButton: TButton read FPrimaryButton;
-    property SecondaryButton: TButton read FSecondaryButton;
-    property RestoreButton: TButton read FRestoreButton;
-    property DetailsButton: TButton read FDetailsButton;
-    property ExportButton: TButton read FExportButton;
-    property BugButton: TButton read FBugButton;
-    property Details: TMemo read FDetails;
+    property TextLabel: TLabel read FParts.Text;
+    property SuggestionLabel: TLabel read FParts.Suggestion;
+    property PrimaryButton: TButton read FParts.PrimaryButton;
+    property SecondaryButton: TButton read FParts.SecondaryButton;
+    property RestoreButton: TButton read FParts.RestoreButton;
+    property DetailsButton: TButton read FParts.DetailsButton;
+    property ExportButton: TButton read FParts.ExportButton;
+    property BugButton: TButton read FParts.BugButton;
+    property Details: TMemo read FParts.Details;
     /// <summary>Rückfrage: „Abgesichert starten“.</summary>
-    property OnSafe: TProc read FOnSafe write FOnSafe;
+    property OnSafe: TProc read FHandlers.OnSafe write FHandlers.OnSafe;
     /// <summary>„Normal starten“ bzw. „Normal weiterarbeiten“.</summary>
-    property OnNormal: TProc read FOnNormal write FOnNormal;
-    property OnToggles: TProc read FOnToggles write FOnToggles;
-    property OnRestore: TProc read FOnRestore write FOnRestore;
-    property OnExportLog: TProc read FOnExportLog write FOnExportLog;
+    property OnNormal: TProc read FHandlers.OnNormal write FHandlers.OnNormal;
+    property OnToggles: TProc read FHandlers.OnToggles write FHandlers.OnToggles;
+    property OnRestore: TProc read FHandlers.OnRestore write FHandlers.OnRestore;
+    property OnExportLog: TProc read FHandlers.OnExportLog write FHandlers.OnExportLog;
     /// <summary>Fehlerbericht (#108); ohne Zuweisung kein Knopf.</summary>
-    property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    property OnBugReport: TProc read FHandlers.OnBugReport write FHandlers.OnBugReport;
   end;
 
 implementation
@@ -109,8 +125,6 @@ const
 
 constructor TAtlasSafeModeNotice.CreateNotice(AOwner: TComponent; AKind: TAtlasSafeNoticeKind; const AText,
   ASuggestion, ARestore: string; const ADetails: TArray<string>);
-var
-  Line: string;
 begin
   inherited CreateNew(AOwner);
   FKind := AKind;
@@ -122,80 +136,98 @@ begin
   Font.Size := 9;
   ClientWidth := NoticeWidth;
   OnClose := FormClose;
+  CreateTexts(AText, ASuggestion);
+  CreateButtons(ARestore, Length(ADetails) > 0);
+  CreateDetails(ADetails);
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + Gap;
+end;
 
-  FText := TLabel.Create(Self);
-  FText.Parent := Self;
-  FText.Align := alTop;
-  FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FText.WordWrap := True;
-  FText.Caption := AText;
+procedure TAtlasSafeModeNotice.CreateTexts(const AText, ASuggestion: string);
+begin
+  FParts.Text := TLabel.Create(Self);
+  FParts.Text.Parent := Self;
+  FParts.Text.Align := alTop;
+  FParts.Text.AlignWithMargins := True;
+  FParts.Text.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FParts.Text.WordWrap := True;
+  FParts.Text.Caption := AText;
 
-  FSuggestion := TLabel.Create(Self);
-  FSuggestion.Parent := Self;
-  FSuggestion.Align := alTop;
-  FSuggestion.AlignWithMargins := True;
-  FSuggestion.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FSuggestion.WordWrap := True;
-  FSuggestion.Caption := ASuggestion;
-  FSuggestion.Visible := ASuggestion <> '';
-  FSuggestion.Top := FText.Top + FText.Height + 1;
+  FParts.Suggestion := TLabel.Create(Self);
+  FParts.Suggestion.Parent := Self;
+  FParts.Suggestion.Align := alTop;
+  FParts.Suggestion.AlignWithMargins := True;
+  FParts.Suggestion.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FParts.Suggestion.WordWrap := True;
+  FParts.Suggestion.Caption := ASuggestion;
+  FParts.Suggestion.Visible := ASuggestion <> '';
+  FParts.Suggestion.Top := FParts.Text.Top + FParts.Text.Height + 1;
+end;
 
-  FButtons := TFlowPanel.Create(Self);
-  FButtons.Parent := Self;
-  FButtons.Align := alTop;
-  FButtons.AutoSize := True;
-  FButtons.BevelOuter := bvNone;
-  FButtons.AlignWithMargins := True;
-  FButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  FButtons.Top := FSuggestion.Top + FSuggestion.Height + 1;
-
-  if AKind = TAtlasSafeNoticeKind.Ask then
+procedure TAtlasSafeModeNotice.CreateButtons(const ARestore: string; AHasDetails: Boolean);
+var
+  mButtons: TFlowPanel;
+begin
+  mButtons := TFlowPanel.Create(Self);
+  mButtons.Parent := Self;
+  mButtons.Align := alTop;
+  mButtons.AutoSize := True;
+  mButtons.BevelOuter := bvNone;
+  mButtons.AlignWithMargins := True;
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  mButtons.Top := FParts.Suggestion.Top + FParts.Suggestion.Height + 1;
+  FParts.Buttons := mButtons;
+  if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    FPrimaryButton := AddButton(FButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskSafe), PrimaryClick);
-    FSecondaryButton := AddButton(FButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskNormal), SecondaryClick);
+    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskSafe), PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeAskNormal), SecondaryClick);
   end
   else
   begin
-    FPrimaryButton := AddButton(FButtons, TAtlasStrings.Text(TAtlasTextId.SafeContinueNormal), PrimaryClick);
-    FSecondaryButton := AddButton(FButtons, TAtlasStrings.Text(TAtlasTextId.SafeOpenToggles), SecondaryClick);
+    FParts.PrimaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeContinueNormal), PrimaryClick);
+    FParts.SecondaryButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeOpenToggles),
+      SecondaryClick);
   end;
-  FRestoreButton := AddButton(FButtons, ARestore, RestoreClick);
-  FRestoreButton.Visible := (AKind = TAtlasSafeNoticeKind.Safe) and (ARestore <> '');
-  FDetailsButton := AddButton(FButtons, TAtlasStrings.Text(TAtlasTextId.SafeDetails), DetailsClick);
-  FDetailsButton.Visible := Length(ADetails) > 0;
+  FParts.RestoreButton := AddButton(mButtons, ARestore, RestoreClick);
+  FParts.RestoreButton.Visible := (FKind = TAtlasSafeNoticeKind.Safe) and (ARestore <> '');
+  FParts.DetailsButton := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SafeDetails), DetailsClick);
+  FParts.DetailsButton.Visible := AHasDetails;
+end;
 
-  FDetailsPanel := TPanel.Create(Self);
-  FDetailsPanel.Parent := Self;
-  FDetailsPanel.Align := alClient;
-  FDetailsPanel.BevelOuter := bvNone;
-  FDetailsPanel.Visible := False;
+procedure TAtlasSafeModeNotice.CreateDetails(const ADetails: TArray<string>);
+var
+  mLine: string;
+  mPanel: TPanel;
+begin
+  mPanel := TPanel.Create(Self);
+  mPanel.Parent := Self;
+  mPanel.Align := alClient;
+  mPanel.BevelOuter := bvNone;
+  mPanel.Visible := False;
+  FParts.DetailsPanel := mPanel;
 
-  FDetails := TMemo.Create(Self);
-  FDetails.Parent := FDetailsPanel;
-  FDetails.Align := alClient;
-  FDetails.AlignWithMargins := True;
-  FDetails.Margins.SetBounds(Gap, 0, Gap, 0);
-  FDetails.ReadOnly := True;
-  FDetails.ScrollBars := ssBoth;
-  FDetails.WordWrap := False;
-  FDetails.Font.Name := 'Consolas';
-  for Line in ADetails do
+  FParts.Details := TMemo.Create(Self);
+  FParts.Details.Parent := mPanel;
+  FParts.Details.Align := alClient;
+  FParts.Details.AlignWithMargins := True;
+  FParts.Details.Margins.SetBounds(Gap, 0, Gap, 0);
+  FParts.Details.ReadOnly := True;
+  FParts.Details.ScrollBars := ssBoth;
+  FParts.Details.WordWrap := False;
+  FParts.Details.Font.Name := 'Consolas';
+  for mLine in ADetails do
   begin
-    FDetails.Lines.Add(Line);
+    FParts.Details.Lines.Add(mLine);
   end;
 
-  FExportButton := AddButton(FDetailsPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
-  FExportButton.Align := alBottom;
-  FExportButton.AlignWithMargins := True;
-  FExportButton.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  FBugButton := AddButton(FDetailsPanel, TAtlasStrings.Text(TAtlasTextId.SafeBugReport), BugClick);
-  FBugButton.Align := alBottom;
-  FBugButton.AlignWithMargins := True;
-  FBugButton.Margins.SetBounds(Gap, 0, Gap, 0);
-  FBugButton.Visible := False;
-
-  ClientHeight := FButtons.Top + FButtons.Height + Gap;
+  FParts.ExportButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
+  FParts.ExportButton.Align := alBottom;
+  FParts.ExportButton.AlignWithMargins := True;
+  FParts.ExportButton.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  FParts.BugButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.SafeBugReport), BugClick);
+  FParts.BugButton.Align := alBottom;
+  FParts.BugButton.AlignWithMargins := True;
+  FParts.BugButton.Margins.SetBounds(Gap, 0, Gap, 0);
+  FParts.BugButton.Visible := False;
 end;
 
 function TAtlasSafeModeNotice.AddButton(AParent: TWinControl; const ACaption: string;
@@ -218,32 +250,32 @@ var
 begin
   HandleNeeded;
   // Umbrechende Beschriftungen messen erst mit Fenster richtig.
-  FText.AutoSize := False;
-  FText.AutoSize := True;
-  FSuggestion.AutoSize := False;
-  FSuggestion.AutoSize := True;
+  FParts.Text.AutoSize := False;
+  FParts.Text.AutoSize := True;
+  FParts.Suggestion.AutoSize := False;
+  FParts.Suggestion.AutoSize := True;
   // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
   // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
-  FButtons.AutoSize := False;
-  FButtons.Height := ScaleValue(200);
-  FButtons.Realign;
+  FParts.Buttons.AutoSize := False;
+  FParts.Buttons.Height := ScaleValue(200);
+  FParts.Buttons.Realign;
   Bottom := 0;
-  for Index := 0 to FButtons.ControlCount - 1 do
+  for Index := 0 to FParts.Buttons.ControlCount - 1 do
   begin
-    Control := FButtons.Controls[Index];
+    Control := FParts.Buttons.Controls[Index];
     if Control.Visible then
     begin
       Bottom := Max(Bottom, Control.Top + Control.Height + Control.Margins.Bottom);
     end;
   end;
-  FButtons.Height := Bottom;
+  FParts.Buttons.Height := Bottom;
   Realign;
   Extra := 0;
-  if FDetailsPanel.Visible then
+  if FParts.DetailsPanel.Visible then
   begin
     Extra := ScaleValue(DetailsHeight);
   end;
-  ClientHeight := FButtons.Top + FButtons.Height + Gap + Extra;
+  ClientHeight := FParts.Buttons.Top + FParts.Buttons.Height + Gap + Extra;
 end;
 
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
@@ -282,11 +314,11 @@ procedure TAtlasSafeModeNotice.PrimaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FOnSafe);
+    Run(FHandlers.OnSafe);
   end
   else
   begin
-    Run(FOnNormal);
+    Run(FHandlers.OnNormal);
   end;
 end;
 
@@ -294,17 +326,17 @@ procedure TAtlasSafeModeNotice.SecondaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FOnNormal);
+    Run(FHandlers.OnNormal);
   end
   else
   begin
-    Run(FOnToggles);
+    Run(FHandlers.OnToggles);
   end;
 end;
 
 procedure TAtlasSafeModeNotice.RestoreClick(Sender: TObject);
 begin
-  Run(FOnRestore);
+  Run(FHandlers.OnRestore);
 end;
 
 procedure TAtlasSafeModeNotice.DetailsClick(Sender: TObject);
@@ -314,23 +346,23 @@ end;
 
 procedure TAtlasSafeModeNotice.ExportClick(Sender: TObject);
 begin
-  if Assigned(FOnExportLog) then
+  if Assigned(FHandlers.OnExportLog) then
   begin
-    FOnExportLog();
+    FHandlers.OnExportLog();
   end;
 end;
 
 procedure TAtlasSafeModeNotice.BugClick(Sender: TObject);
 begin
-  if Assigned(FOnBugReport) then
+  if Assigned(FHandlers.OnBugReport) then
   begin
-    FOnBugReport();
+    FHandlers.OnBugReport();
   end;
 end;
 
 function TAtlasSafeModeNotice.DetailsVisible: Boolean;
 begin
-  Result := FDetailsPanel.Visible;
+  Result := FParts.DetailsPanel.Visible;
 end;
 
 procedure TAtlasSafeModeNotice.ToggleDetails;
@@ -338,9 +370,9 @@ var
   Bottom: Integer;
 begin
   Bottom := Top + Height;
-  FBugButton.Visible := Assigned(FOnBugReport);
-  FExportButton.Visible := Assigned(FOnExportLog);
-  FDetailsPanel.Visible := not FDetailsPanel.Visible;
+  FParts.BugButton.Visible := Assigned(FHandlers.OnBugReport);
+  FParts.ExportButton.Visible := Assigned(FHandlers.OnExportLog);
+  FParts.DetailsPanel.Visible := not FParts.DetailsPanel.Visible;
   FitHeight;
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then

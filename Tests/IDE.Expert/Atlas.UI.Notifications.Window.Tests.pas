@@ -67,20 +67,20 @@ begin
   Center := SampleCenter;
   Window := TAtlasNotificationsWindow.CreateList(nil, TAtlasColors.Light, Center);
   try
-    Assert.AreEqual(3, Window.RowCount);
-    Assert.AreEqual('Meldung des Servers', Window.Row(0).Title);
-    Assert.AreEqual('Server neu gestartet', Window.Row(2).Title);
+    Assert.AreEqual(3, Integer(Length(Window.Rows)));
+    Assert.AreEqual('Meldung des Servers', Window.Rows[0].Title);
+    Assert.AreEqual('Server neu gestartet', Window.Rows[2].Title);
     // „Alle Quellen“ und die beiden Quellen in der Reihenfolge der Liste.
     Assert.AreEqual(3, Integer(Window.FilterBox.Items.Count));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll), Window.FilterBox.Items[0]);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer), Window.FilterBox.Items[1]);
     Window.SetFilter(TAtlasNotificationSources.Build);
-    Assert.AreEqual(1, Window.RowCount);
+    Assert.AreEqual(1, Integer(Length(Window.Rows)));
     Assert.AreEqual(2, Window.FilterBox.ItemIndex);
     // Gewählte Quelle bleibt im Filter, auch wenn sie keine Einträge mehr hat.
     Center.Clear;
     Window.Reload;
-    Assert.AreEqual(0, Window.RowCount);
+    Assert.AreEqual(0, Integer(Length(Window.Rows)));
     Assert.AreEqual(2, Integer(Window.FilterBox.Items.Count));
     Assert.AreEqual(1, Window.FilterBox.ItemIndex);
     Window.SetFilter('');
@@ -101,7 +101,7 @@ begin
     Assert.AreEqual(3, Center.UnreadCount);
     Window.ClickRow(1);
     Assert.AreEqual(2, Center.UnreadCount);
-    Assert.IsTrue(Window.Row(1).Read);
+    Assert.IsTrue(Window.Rows[1].Read);
     Assert.AreEqual(1, Window.Selected);
     Assert.IsTrue(Window.AllReadButton.Enabled);
   finally
@@ -171,7 +171,7 @@ begin
     Menu := Window.BuildMenu(0);
     Assert.IsTrue(Menu.Items[4].Checked);
     Menu.Items[0].Click;
-    Assert.IsTrue(Window.Row(0).Read);
+    Assert.IsTrue(Window.Rows[0].Read);
   finally
     Window.Free;
   end;
@@ -189,9 +189,9 @@ begin
     Window.AllReadButton.Click;
     Assert.AreEqual(0, Center.UnreadCount);
     Assert.IsFalse(Window.AllReadButton.Enabled);
-    Assert.AreEqual(3, Window.RowCount, 'gelesen bleiben sie in der Liste');
+    Assert.AreEqual(3, Integer(Length(Window.Rows)), 'gelesen bleiben sie in der Liste');
     Window.ClearButton.Click;
-    Assert.AreEqual(0, Window.RowCount);
+    Assert.AreEqual(0, Integer(Length(Window.Rows)));
     Assert.AreEqual(0, Integer(Length(Center.Items())));
     Assert.IsFalse(Window.ClearButton.Enabled);
   finally
@@ -204,24 +204,24 @@ var
   Day: TDateTime;
 begin
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips),
-    TAtlasNotificationsWindow.SourceCaption('ShortcutTips'));
+    TAtlasNotificationTexts.SourceCaption('ShortcutTips'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer),
-    TAtlasNotificationsWindow.SourceCaption('buildServer'));
+    TAtlasNotificationTexts.SourceCaption('buildServer'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild),
-    TAtlasNotificationsWindow.SourceCaption('openBuild'));
+    TAtlasNotificationTexts.SourceCaption('openBuild'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden),
-    TAtlasNotificationsWindow.SourceCaption('hidden'));
+    TAtlasNotificationTexts.SourceCaption('hidden'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle),
-    TAtlasNotificationsWindow.SourceCaption('unitRename'));
+    TAtlasNotificationTexts.SourceCaption('unitRename'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceRuleChecks),
-    TAtlasNotificationsWindow.SourceCaption('ruleChecks'), 'Modulschalter (#1454)');
-  Assert.AreEqual('tracker', TAtlasNotificationsWindow.SourceCaption('tracker'), 'unbekannt: Kennung');
+    TAtlasNotificationTexts.SourceCaption('ruleChecks'), 'Modulschalter (#1454)');
+  Assert.AreEqual('tracker', TAtlasNotificationTexts.SourceCaption('tracker'), 'unbekannt: Kennung');
   Day := EncodeDateTime(2026, 10, 16, 14, 3, 0, 0);
-  Assert.AreEqual('14:03', TAtlasNotificationsWindow.TimeText(Day, IncHour(Day, 2)));
-  Assert.AreEqual('16.10. 14:03', TAtlasNotificationsWindow.TimeText(Day, IncDay(Day)));
-  Assert.IsTrue(TAtlasNotificationsWindow.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Error) =
+  Assert.AreEqual('14:03', TAtlasNotificationTexts.TimeText(Day, IncHour(Day, 2)));
+  Assert.AreEqual('16.10. 14:03', TAtlasNotificationTexts.TimeText(Day, IncDay(Day)));
+  Assert.IsTrue(TAtlasNotificationTexts.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Error) =
     TAtlasColors.Light.Error);
-  Assert.IsTrue(TAtlasNotificationsWindow.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Info) =
+  Assert.IsTrue(TAtlasNotificationTexts.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Info) =
     TAtlasColors.Light.Accent);
 end;
 

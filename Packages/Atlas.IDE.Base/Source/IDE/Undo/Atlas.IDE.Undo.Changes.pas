@@ -266,9 +266,9 @@ var
 begin
   // Nur eine schon sichtbare Liste aktualisieren; nie das Fenster deswegen öffnen.
   Frame := TAtlasIdeResultsWindow.ExistingFrame;
-  if (FJournal <> nil) and (Frame <> nil) and Frame.ShowsChanges then
+  if (FJournal <> nil) and (Frame <> nil) and Frame.Changes.Shows then
   begin
-    Frame.ShowChanges(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
+    Frame.Changes.Show(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
   end;
 end;
 

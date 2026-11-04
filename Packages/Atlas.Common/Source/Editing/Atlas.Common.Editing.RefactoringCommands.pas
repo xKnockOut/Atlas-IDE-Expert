@@ -385,9 +385,9 @@ begin
       Name := Name + ' ' + AContext.Arguments;
     end;
     // Name als Format-Argument: Prozentzeichen im Namen stören so nicht.
-    Result := Wrap(Source, 'measure', ['var SW := TStopwatch.StartNew;', 'try'],
+    Result := Wrap(Source, 'measure', TWrapFrame.Create(['var SW := TStopwatch.StartNew;', 'try'],
       ['finally', '  ' + LogStatement(AContext, Format('Format(''%%s: %%d ms'', [%s, SW.ElapsedMilliseconds])',
-      [QuotedStr(Name)])), 'end;'], '  ', AEdits, AReason);
+      [QuotedStr(Name)])), 'end;'], '  '), AEdits, AReason);
     if Result then
     begin
       AddUses(Source, AContext, Source.Line, ['System.Diagnostics'], AEdits);

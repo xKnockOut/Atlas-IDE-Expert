@@ -195,71 +195,81 @@ begin
   Result := Search(APattern, ACandidates, ASymbolHint, GroupLimit);
 end;
 
+/// <summary>Reihenfolge der Treffer (Indizes in ACandidates): höhere Bewertung zuerst; gefilterte Symbole behalten
+/// die Reihenfolge des Servers; bei Gleichstand der Index.</summary>
+function HitOrder(const ACandidates: TArray<TAtlasWelcomeHit>; const AScores: TArray<Integer>): IComparer<Integer>;
+begin
+  Result := TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      Result := 0;
+      if not (ACandidates[A].Prefiltered and ACandidates[B].Prefiltered) then
+      begin
+        Result := AScores[B] - AScores[A];
+      end;
+      if Result = 0 then
+      begin
+        Result := A - B;
+      end;
+    end);
+end;
+
+/// <summary>Gruppe AGroup: höchstens ALimit Treffer mit Bewertung, der Rest als More; ohne Symbole ASymbolHint.
+/// </summary>
+function GroupEntry(AGroup: TAtlasWelcomeSearchGroup; const ACandidates: TArray<TAtlasWelcomeHit>;
+  const AScores: TArray<Integer>; const ASymbolHint: string; ALimit: Integer): TAtlasWelcomeSearchResult;
+var
+  mFound: TList<Integer>;
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasWelcomeSearchResult);
+  Result.Group := AGroup;
+  mFound := TList<Integer>.Create;
+  try
+    for mIndex := 0 to High(ACandidates) do
+    begin
+      if (ACandidates[mIndex].Group = AGroup) and (AScores[mIndex] <> TAtlasWelcomeSearch.NoMatch) then
+      begin
+        mFound.Add(mIndex);
+      end;
+    end;
+    mFound.Sort(HitOrder(ACandidates, AScores));
+    if (AGroup = TAtlasWelcomeSearchGroup.Symbols) and (ASymbolHint <> '') and (mFound.Count = 0) then
+    begin
+      Result.Hint := ASymbolHint;
+    end;
+    for mIndex := 0 to Min(mFound.Count, ALimit) - 1 do
+    begin
+      Result.Hits := Result.Hits + [ACandidates[mFound[mIndex]]];
+      Result.Hits[High(Result.Hits)].Score := AScores[mFound[mIndex]];
+    end;
+    Result.More := Max(0, mFound.Count - ALimit);
+  finally
+    mFound.Free;
+  end;
+end;
+
 class function TAtlasWelcomeSearch.Search(const APattern: string; const ACandidates: TArray<TAtlasWelcomeHit>;
   const ASymbolHint: string; ALimit: Integer): TArray<TAtlasWelcomeSearchResult>;
 var
   Group: TAtlasWelcomeSearchGroup;
-  Found: TList<Integer>;
   Scores: TArray<Integer>;
-  Candidates: TArray<TAtlasWelcomeHit>;
   Index: Integer;
   Entry: TAtlasWelcomeSearchResult;
 begin
   Result := nil;
-  Candidates := ACandidates;
-  SetLength(Scores, Length(Candidates));
-  for Index := 0 to High(Candidates) do
+  SetLength(Scores, Length(ACandidates));
+  for Index := 0 to High(ACandidates) do
   begin
-    Scores[Index] := ScoreHit(APattern, Candidates[Index]);
+    Scores[Index] := ScoreHit(APattern, ACandidates[Index]);
   end;
-  Found := TList<Integer>.Create;
-  try
-    for Group := Low(TAtlasWelcomeSearchGroup) to High(TAtlasWelcomeSearchGroup) do
+  for Group := Low(TAtlasWelcomeSearchGroup) to High(TAtlasWelcomeSearchGroup) do
+  begin
+    Entry := GroupEntry(Group, ACandidates, Scores, ASymbolHint, ALimit);
+    if (Length(Entry.Hits) > 0) or (Entry.Hint <> '') then
     begin
-      Found.Clear;
-      for Index := 0 to High(Candidates) do
-      begin
-        if (Candidates[Index].Group = Group) and (Scores[Index] <> NoMatch) then
-        begin
-          Found.Add(Index);
-        end;
-      end;
-      Found.Sort(TComparer<Integer>.Construct(
-        function(const A, B: Integer): Integer
-        begin
-          // Gefilterte Symbole behalten die Reihenfolge des Servers.
-          if Candidates[A].Prefiltered and Candidates[B].Prefiltered then
-          begin
-            Result := 0;
-          end
-          else
-          begin
-            Result := Scores[B] - Scores[A];
-          end;
-          if Result = 0 then
-          begin
-            Result := A - B;
-          end;
-        end));
-      Entry := Default(TAtlasWelcomeSearchResult);
-      Entry.Group := Group;
-      if (Group = TAtlasWelcomeSearchGroup.Symbols) and (ASymbolHint <> '') and (Found.Count = 0) then
-      begin
-        Entry.Hint := ASymbolHint;
-      end;
-      for Index := 0 to Min(Found.Count, ALimit) - 1 do
-      begin
-        Entry.Hits := Entry.Hits + [Candidates[Found[Index]]];
-        Entry.Hits[High(Entry.Hits)].Score := Scores[Found[Index]];
-      end;
-      Entry.More := Max(0, Found.Count - ALimit);
-      if (Length(Entry.Hits) > 0) or (Entry.Hint <> '') then
-      begin
-        Result := Result + [Entry];
-      end;
+      Result := Result + [Entry];
     end;
-  finally
-    Found.Free;
   end;
 end;
 
@@ -341,11 +351,28 @@ begin
   Result := StrToIntDef(Copy(AName, Index + 1, MaxInt), MaxInt);
 end;
 
+/// <summary>Erster Teil von AValue (durch Komma getrennt), der ein absoluter Pfad einer Projektdatei ist; ''
+/// ohne. Delphi 13 setzt den Pfad in Hochkommas: TProjectGroup,'C:\P\A.groupproj',1.</summary>
+function ProjectPathIn(const AValue: string): string;
+var
+  mPart: string;
+begin
+  for mPart in AValue.Split([',']) do
+  begin
+    Result := AnsiDequotedStr(Trim(mPart), '''');
+    if TAtlasWelcomeSearch.IsProjectFile(Result) and IsAbsolute(Result) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := '';
+end;
+
 class function TAtlasWelcomeSearch.RecentProjects(const AValues: TArray<TPair<string, string>>): TArray<string>;
 var
   Values: TValueList;
   Pair: TPair<string, string>;
-  Part, Path: string;
+  Path: string;
   Seen: TDictionary<string, Boolean>;
 begin
   Result := nil;
@@ -364,19 +391,11 @@ begin
       end));
     for Pair in Values do
     begin
-      for Part in Pair.Value.Split([',']) do
+      Path := ProjectPathIn(Pair.Value);
+      if (Path <> '') and not Seen.ContainsKey(AnsiUpperCase(Path)) then
       begin
-        // Delphi 13 setzt den Pfad in Hochkommas: TProjectGroup,'C:\P\A.groupproj',1.
-        Path := AnsiDequotedStr(Trim(Part), '''');
-        if IsProjectFile(Path) and IsAbsolute(Path) then
-        begin
-          if not Seen.ContainsKey(AnsiUpperCase(Path)) then
-          begin
-            Seen.Add(AnsiUpperCase(Path), True);
-            Result := Result + [Path];
-          end;
-          Break;
-        end;
+        Seen.Add(AnsiUpperCase(Path), True);
+        Result := Result + [Path];
       end;
     end;
   finally
