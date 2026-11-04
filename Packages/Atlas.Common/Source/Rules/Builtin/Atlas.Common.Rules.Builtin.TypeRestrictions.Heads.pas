@@ -88,7 +88,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver;
 
 function BareTypeName(const AName: string): string;
