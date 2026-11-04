@@ -1991,16 +1991,9 @@ begin
 end;
 
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
-var
-  Document: ITextDocument;
 begin
   // Geöffnete Dokumente haben Vorrang vor der Datei auf der Platte.
-  if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
-  begin
-    AText := Document.Text;
-    Exit(True);
-  end;
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+  Result := TShellBootstrap.ReadSourceText(FDocuments, AFileName, AText);
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;

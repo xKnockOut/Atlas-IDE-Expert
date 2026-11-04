@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 14 |
+| [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 54 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -326,6 +326,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-autocreate-and-manual`](#form-autocreate-and-manual) | Formular automatisch und zusätzlich von Hand erzeugt | Bug | Warnung |
 | [`inherited-form-handler-without-inherited`](#inherited-form-handler-without-inherited) | Ereignis-Handler im geerbten Formular ohne inherited | Bug | Warnung |
 | [`self-free-in-event-handler`](#self-free-in-event-handler) | Formular gibt sich im eigenen Ereignis frei | Bug | Fehler |
+| [`dfm-reference-unit-missing`](#dfm-reference-unit-missing) | Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht | Bug | Warnung |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -6819,7 +6820,7 @@ uses
 
 **Ungenutzte Unit im uses** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
+Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep, Units, auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
 
 Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
@@ -7831,6 +7832,34 @@ procedure TfrmMeldung.btnOKClick(Sender: TObject);
 begin
   Release;
 end;
+```
+
+<a id="dfm-reference-unit-missing"></a>
+### dfm-reference-unit-missing
+
+**Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht** · Bug · Warnung · Gruppe Formulare und Daten
+
+Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit aber weder im interface- noch im implementation-uses steht. Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL den Verweis nur auf, solange ein Modul dieses Namens existiert. Das Modul ist der Name der Wurzelkomponente (Form1, nicht TForm1). Seine Unit kommt aus der .dpr des Projekts (Unit1 in 'Unit1.pas' {Form1}, Sicherheit hoch), sonst aus dem Index: globale Variable dieses Namens im interface einer Unit, die ihren Typ als Klasse deklariert (Sicherheit mittel). Still bleibt die Regel bei Verweisen auf das eigene Formular, auf eigene Komponenten (eingebettete Rahmen wie Frame11.Button1) und auf Module, deren Unit weder .dpr noch Index kennen. Gemeldet wird am Feld der Komponente, die den Verweis hält, sonst an der Formularklasse; die Zeile der Formulardatei steht als weitere Stelle dabei. Korrektur: die Unit ins implementation-uses aufnehmen, wie es die IDE anbietet.
+
+Mit Treffer:
+
+```pascal
+// Unit2.dfm: Connection = Form1.Connection
+implementation
+
+{$R *.dfm}
+```
+
+Richtig:
+
+```pascal
+// Unit2.dfm: Connection = Form1.Connection
+implementation
+
+uses
+  Unit1;
+
+{$R *.dfm}
 ```
 
 <a id="parallel-for-shared-write"></a>

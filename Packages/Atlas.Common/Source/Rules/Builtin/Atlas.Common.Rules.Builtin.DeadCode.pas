@@ -109,6 +109,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Dfm.FormModel,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -984,6 +985,7 @@ var
   mEntry: TUsesEntry;
   mEdit: TTextEdit;
   mFixes: TArray<TRuleFix>;
+  mModules: TArray<string>;
 begin
   // Im Editor zeigt der Server dieselben Einträge abgeblendet (#621); ohne Index ist nichts sicher, und bei
   // Syntaxfehlern fehlen Bezeichner.
@@ -999,6 +1001,8 @@ begin
   end;
   mIndex := AContext.Index;
   mEnsure := AContext.EnsureUnit;
+  // Module, auf die die Formulardatei verweist: Ihr uses-Eintrag ist gebraucht (dfm-reference-unit-missing).
+  mModules := TFormModel.ForeignModulesOf(AContext.FormText);
   for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges,
     function(const AUnitName: string): TUsesUnitInfo
     var
@@ -1021,6 +1025,8 @@ begin
         if mSymbol.InInterface then
         begin
           Result.Names := Result.Names + [mSymbol.Name];
+          Result.UsedByForm := Result.UsedByForm or (MatchText(mSymbol.Name, mModules) and
+            (mSymbol.Kind = TIndexSymbolKind.Variable));
         end;
       end;
     end, AContext.UsesKeep) do

@@ -6357,6 +6357,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Formular `TfrmMeldung` mit 
 | FS6 | `"self-free-in-event-handler": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
 | FS7 | Abgleich: FS1 ausführen und auf OK klicken | Zugriffsverletzung (bzw. FastMM-Meldung); nach FS2 schließt das Formular sauber |
 
+## Formulardatei verweist auf ein Modul ohne uses (dfm-reference-unit-missing)
+
+Voraussetzung: Server läuft in der IDE mit einem VCL-Projekt aus `Unit1` (`Form1` mit `TFDConnection` `Connection`) und `Unit2` (`Form2` mit `TFDQuery` `Query`); beide stehen in der .dpr.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FV1 | In `Unit2.dfm` (Text) bei `Query` `Connection = Form1.Connection` eintragen, `Unit1` steht in keiner uses-Liste von `Unit2` | Warnung `dfm-reference-unit-missing` am Feld `Query`: „Connection = Form1.Connection: Form1 stammt aus Unit1, die Unit steht nicht in den uses. …“; im Befund-Hover der Zusatz zur Laufzeit und die Zeile der .dfm als weitere Stelle (**Abnahme**) |
+| FV2 | Schnellkorrektur „uses Unit1 ergänzen“, danach Strg+Z | `uses Unit1;` nach `implementation`, keine Meldung mehr; ein Undo-Schritt |
+| FV3 | `Unit1` im interface-uses bzw. vorhandenes implementation-uses | Keine Meldung; die Korrektur hängt `Unit1` an eine vorhandene implementation-Liste an |
+| FV4 | Verweis auf ein Datenmodul (`DataSet = DM.Query1`, .dpr: `{DM: TDataModule}`), auf das eigene Formular (`Form2.Edit1`), auf einen eingebetteten Rahmen (`Frame11.DataSource1`) und auf ein unbekanntes Modul | Meldung nur beim Datenmodul ohne uses |
+| FV5 | `Unit1` liegt in einem anderen Projekt der Gruppe (nicht in der .dpr), `Form1: TForm1` im interface | Meldung mit Sicherheit mittel (über den Index) |
+| FV6 | `"dfm-reference-unit-missing": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FV7 | Abgleich: FV1 ohne Korrektur, IDE neu starten, nur `Unit2` öffnen und das Formular speichern | Die IDE fragt nach `Unit1` bzw. `Connection` ist leer und fehlt nach dem Speichern in der .dfm; nach FV2 bleibt der Verweis erhalten |
+
 ## Gemeinsame Variable in TParallel.For geschrieben (#1058)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `uses System.Threading`.
