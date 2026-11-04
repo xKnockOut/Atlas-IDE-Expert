@@ -227,6 +227,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.Foundations.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.Naming.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.Splitting.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Layout.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
