@@ -187,7 +187,7 @@ var
   Allow: Boolean;
   mProbe: TDataFlowProbe;
 begin
-mProbe := TDataFlowProbe.Create;
+  mProbe := TDataFlowProbe.Create;
   Host := TForm.CreateNew(nil);
   try
     Frame := TAtlasResultsFrame.Create(Host);
