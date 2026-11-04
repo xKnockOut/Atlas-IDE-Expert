@@ -62,7 +62,9 @@ var
 begin
   Size := Min(ARect.Width, ARect.Height);
   if Size <= 0 then
+  begin
     Exit;
+  end;
   X := ARect.Left;
   Y := ARect.Top;
   Pad := Size div 8;

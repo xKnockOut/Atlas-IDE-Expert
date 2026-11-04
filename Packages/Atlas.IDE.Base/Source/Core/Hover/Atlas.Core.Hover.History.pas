@@ -85,9 +85,13 @@ end;
 function TAtlasHoverHistory.GetCurrent: TAtlasHoverData;
 begin
   if Length(FItems) = 0 then
-    Result := Default(TAtlasHoverData)
+  begin
+    Result := Default(TAtlasHoverData);
+  end
   else
+  begin
     Result := FItems[High(FItems)];
+  end;
 end;
 
 function TAtlasHoverHistory.GetItem(AIndex: Integer): TAtlasHoverData;
@@ -100,7 +104,9 @@ var
   Data: TAtlasHoverData;
 begin
   if Length(FItems) = 0 then
+  begin
     Exit(False);
+  end;
   // Derselbe Typ wie angezeigt: kein neuer Eintrag.
   if ARef.HasLocation and (ARef.Key = Current.Location.Key) then
   begin
@@ -108,12 +114,18 @@ begin
     Exit(True);
   end;
   if not (Assigned(FFetch) and FFetch(ARef, Data) and Data.Found) then
+  begin
     Exit(False);
+  end;
   if Data.Location.Name = '' then
+  begin
     Data.Location.Name := ARef.Name;
+  end;
   FItems := FItems + [Data];
   if Length(FItems) > MaxSteps then
+  begin
     Delete(FItems, 0, Length(FItems) - MaxSteps);
+  end;
   FPinned := True;
   Result := True;
 end;
@@ -127,14 +139,18 @@ function TAtlasHoverHistory.Back: Boolean;
 begin
   Result := CanGoBack;
   if Result then
+  begin
     SetLength(FItems, Length(FItems) - 1);
+  end;
 end;
 
 function TAtlasHoverHistory.JumpTo(AIndex: Integer): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex < Length(FItems));
   if Result then
+  begin
     SetLength(FItems, AIndex + 1);
+  end;
 end;
 
 function TAtlasHoverHistory.Path: TArray<TAtlasHoverPathItem>;

@@ -204,22 +204,30 @@ class function TAtlasPaletteRows.Create(ACommands: Integer; const AGroup: TAtlas
 begin
   Result.FCommands := ACommands;
   if Result.FCommands < 0 then
+  begin
     Result.FCommands := 0;
+  end;
   Result.FGroup := AGroup.Visible;
   Result.FStatus := Result.FGroup and (AGroup.Status <> '');
   Result.FItems := 0;
   if Result.FGroup then
+  begin
     Result.FItems := Length(AGroup.Items);
+  end;
 end;
 
 function TAtlasPaletteRows.Count: Integer;
 begin
   Result := FCommands;
   if not FGroup then
+  begin
     Exit;
+  end;
   Inc(Result, 1 + FItems);
   if FStatus then
+  begin
     Inc(Result);
+  end;
 end;
 
 function TAtlasPaletteRows.Kind(ARow: Integer; out AIndex: Integer): TAtlasPaletteRowKind;
@@ -227,15 +235,21 @@ begin
   AIndex := ARow;
   Result := TAtlasPaletteRowKind.Command;
   if ARow < FCommands then
+  begin
     Exit;
+  end;
   AIndex := ARow - FCommands;
   if AIndex = 0 then
+  begin
     Exit(TAtlasPaletteRowKind.Header);
+  end;
   Dec(AIndex);
   if FStatus then
   begin
     if AIndex = 0 then
+    begin
       Exit(TAtlasPaletteRowKind.Status);
+    end;
     Dec(AIndex);
   end;
   Result := TAtlasPaletteRowKind.Item;
@@ -254,8 +268,12 @@ var
   mRow: Integer;
 begin
   for mRow := 0 to Count - 1 do
+  begin
     if Selectable(mRow) then
+    begin
       Exit(mRow);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -265,30 +283,44 @@ var
 begin
   Result := AFrom;
   if (Count = 0) or (ADelta = 0) then
+  begin
     Exit;
+  end;
   mDirection := Sign(ADelta);
   mRow := EnsureRange(AFrom + ADelta, 0, Count - 1);
   while (mRow >= 0) and (mRow < Count) and not Selectable(mRow) do
+  begin
     Inc(mRow, mDirection);
+  end;
   // Am Rand nur Überschrift oder Status: zurück zur nächsten wählbaren Zeile.
   if (mRow < 0) or (mRow >= Count) then
   begin
     mRow := EnsureRange(AFrom + ADelta, 0, Count - 1);
     while (mRow >= 0) and (mRow < Count) and not Selectable(mRow) do
+    begin
       Dec(mRow, mDirection);
+    end;
   end;
   if (mRow >= 0) and (mRow < Count) then
+  begin
     Result := mRow;
+  end;
 end;
 
 class function TAtlasPaletteRows.ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction;
 begin
   if ACtrl then
-    Result := TAtlasPaletteAction.Start
+  begin
+    Result := TAtlasPaletteAction.Start;
+  end
   else if AShift then
-    Result := TAtlasPaletteAction.Browse
+  begin
+    Result := TAtlasPaletteAction.Browse;
+  end
   else
+  begin
     Result := TAtlasPaletteAction.Open;
+  end;
 end;
 
 { TAtlasCommandHistory }
@@ -311,7 +343,9 @@ var
   Entry: TEntry;
 begin
   if not FEntries.TryGetValue(AId, Entry) then
+  begin
     Entry := Default(TEntry);
+  end;
   Inc(Entry.Count);
   Inc(FTick);
   Entry.Last := FTick;
@@ -324,7 +358,9 @@ var
 begin
   Result := 0;
   if not FEntries.TryGetValue(AId, Entry) then
+  begin
     Exit;
+  end;
   // Der zuletzt ausgeführte Befehl steht vorn (bis 70), Häufigkeit gibt bis 29 dazu.
   Result := Max(0, 70 - Integer(FTick - Entry.Last) * 10) + Min(29, Entry.Count * 3);
 end;
@@ -342,16 +378,22 @@ begin
   try
     Result := Root is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     for Pair in TJSONObject(Root) do
     begin
       // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
       if not (Pair.JsonValue is TJSONArray) then
+      begin
         Continue;
+      end;
       Values := TJSONArray(Pair.JsonValue);
       if (Values.Count < 2) or not Values.Items[0].TryGetValue<Integer>(Entry.Count) or
         not Values.Items[1].TryGetValue<Int64>(Entry.Last) then
+      begin
         Continue;
+      end;
       FEntries.AddOrSetValue(Pair.JsonString.Value, Entry);
       FTick := Max(FTick, Entry.Last);
     end;
@@ -371,7 +413,9 @@ begin
       Result := Parse(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   if Result <> TAtlasDataLoad.Loaded then
   begin
     FEntries.Clear;
@@ -386,11 +430,15 @@ var
 begin
   Result := not SameFileName(AFileName, FKept);
   if not Result then
+  begin
     Exit;
+  end;
   Root := TJSONObject.Create;
   try
     for Pair in FEntries do
+    begin
       Root.AddPair(Pair.Key, TJSONArray.Create.Add(Pair.Value.Count).Add(Pair.Value.Last));
+    end;
     TAtlasDataFile.Write(AFileName, Root.ToJSON);
   finally
     Root.Free;
@@ -404,8 +452,12 @@ var
 begin
   PatternIndex := 1;
   for TextIndex := 1 to Length(AText) do
+  begin
     if (PatternIndex <= Length(APattern)) and (UpCase(AText[TextIndex]) = UpCase(APattern[PatternIndex])) then
+    begin
       Inc(PatternIndex);
+    end;
+  end;
   Result := PatternIndex > Length(APattern);
 end;
 
@@ -431,14 +483,20 @@ begin
       end;
     end
     else
+    begin
       Result := Result + ACaption[Index];
+    end;
     Inc(Index);
   end;
   Result := Trim(Result);
   if Result.EndsWith('...') then
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 3))
+  begin
+    Result := TrimRight(Copy(Result, 1, Length(Result) - 3));
+  end
   else if Result.EndsWith('…') then
+  begin
     Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+  end;
 end;
 
 class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
@@ -468,28 +526,44 @@ begin
       begin
         Score := TAtlasCompletionMatcher.Score(APattern, Commands[Index].Path + ' ' + Commands[Index].Caption);
         if Score <> TAtlasCompletionMatcher.NoMatch then
+        begin
           Score := Score div 2;
+        end;
       end;
       if (Score = TAtlasCompletionMatcher.NoMatch) and IsSubsequence(APattern.Replace(' ', ''), Commands[Index].Caption) then
+      begin
         Score := ScoreLoose;
+      end;
       if Score = TAtlasCompletionMatcher.NoMatch then
+      begin
         Continue;
+      end;
       Scores[Index] := Score;
       if AHistory <> nil then
+      begin
         Boosts[Index] := AHistory.Boost(Commands[Index].Id);
+      end;
       Found.Add(Index);
     end;
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         if APattern = '' then
-          Result := Boosts[B] - Boosts[A]
+        begin
+          Result := Boosts[B] - Boosts[A];
+        end
         else
+        begin
           Result := (Scores[B] + Boosts[B]) - (Scores[A] + Boosts[A]);
+        end;
         if (Result = 0) and not AKeepOrder then
+        begin
           Result := CompareText(Commands[A].Caption, Commands[B].Caption);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := Found.ToArray;
   finally

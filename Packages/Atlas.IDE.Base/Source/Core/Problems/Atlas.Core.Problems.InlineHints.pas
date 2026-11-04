@@ -98,8 +98,12 @@ var
   Mode: TAtlasInlineDiagnosticsMode;
 begin
   for Mode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
+  begin
     if SameText(Trim(AName), ModeNames[Mode]) then
+    begin
       Exit(Mode);
+    end;
+  end;
   Result := TAtlasInlineDiagnosticsMode.Errors;
 end;
 
@@ -134,17 +138,23 @@ begin
   for Problem in AProblems do
   begin
     if (Problem.StartLine <> ALine) or not IsFinding(Problem) or not Shows(AMode, Problem.Severity) then
+    begin
       Continue;
+    end;
     // Bei gleichem Schweregrad gewinnt die erste (weiter links).
     if (Count = 0) or (Rank(Problem.Severity) < Rank(AResult.Problem.Severity)) or
       ((Rank(Problem.Severity) = Rank(AResult.Problem.Severity)) and
       (Problem.StartCharacter < AResult.Problem.StartCharacter)) then
+    begin
       AResult.Problem := Problem;
+    end;
     Inc(Count);
   end;
   Result := Count > 0;
   if Result then
+  begin
     AResult.More := Count - 1;
+  end;
 end;
 
 class function TAtlasInlineDiagnostics.Caption(const ADiagnostic: TAtlasInlineDiagnostic): string;
@@ -154,12 +164,18 @@ begin
   Result := ADiagnostic.Problem.Message;
   Cut := Pos(#10, Result);
   if Cut > 0 then
+  begin
     Result := Copy(Result, 1, Cut - 1);
+  end;
   Result := Trim(StringReplace(Result, #13, '', [rfReplaceAll]));
   if Length(Result) > MaxChars then
+  begin
     Result := TrimRight(Copy(Result, 1, MaxChars - 1)) + '…';
+  end;
   if ADiagnostic.More > 0 then
+  begin
     Result := Result + ' (+' + IntToStr(ADiagnostic.More) + ')';
+  end;
 end;
 
 class function TAtlasInlineDiagnostics.Counts(const AProblems: TArray<TAtlasProblem>): TAtlasProblemCounts;
@@ -170,7 +186,9 @@ begin
   for Problem in AProblems do
   begin
     if Problem.IsCompiler or not IsFinding(Problem) then
+    begin
       Continue;
+    end;
     case Problem.Severity of
       TAtlasProblemSeverity.Error:
         Inc(Result.Errors);
@@ -196,12 +214,16 @@ begin
   for Problem in AProblems do
   begin
     if not IsFinding(Problem) then
+    begin
       Continue;
+    end;
     // Am anderen Ende für den Umlauf: der erste bzw. letzte Befund der Datei.
     if not Wrap or (AForward and Before(Problem.StartLine, Problem.StartCharacter, Edge.StartLine,
       Edge.StartCharacter)) or (not AForward and Before(Edge.StartLine, Edge.StartCharacter, Problem.StartLine,
       Problem.StartCharacter)) then
+    begin
       Edge := Problem;
+    end;
     Wrap := True;
     if AForward then
     begin
