@@ -111,10 +111,10 @@ begin
   begin
     mNote := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
   end;
-  if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Text(TAtlasTextId.ServerPackageTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.ServerPackageHint, [mNote]),
+  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
+    TAtlasStrings.Text(TAtlasTextId.ServerPackageTitle), TAtlasStrings.Fmt(TAtlasTextId.ServerPackageHint, [mNote]),
     TAtlasServerDiagnostics.Preview(mFiles, TAtlasStrings.Text(TAtlasTextId.ServerPackageCut)),
-    TAtlasServerDiagnostics.ZipName(Now), TAtlasStrings.Text(TAtlasTextId.ServerPackageFilter), 'zip',
+    TAtlasServerDiagnostics.ZipName(Now), TAtlasStrings.Text(TAtlasTextId.ServerPackageFilter), 'zip'),
     mTarget, TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;

@@ -431,7 +431,7 @@ begin
   mX := ARect.Left + AGutter;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := ToColor(Colors.Text);
-  mStyled.Draw(Canvas, Colors, 0, Length(mStyled.Text), mX, ARect, False, Scale(3));
+  mStyled.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), Point(0, Length(mStyled.Text)), mX, ARect, False);
 end;
 
 procedure TAtlasPeekWindow.PaintThumb(const AArea: TRect; ARowCount: Integer);

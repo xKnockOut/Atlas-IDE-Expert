@@ -231,17 +231,17 @@ type
 /// <summary>Hängt Zurücknehmen, Wiederherstellen und Unterschied der Liste an die Probe.</summary>
 procedure WireChangeEvents(const AFrame: TAtlasResultsFrame; const AProbe: TChangeEventProbe);
 begin
-  AFrame.OnChangeUndo :=
+  AFrame.Changes.OnUndo :=
     procedure(ASetId: Integer)
     begin
       AProbe.FUndoId := ASetId;
     end;
-  AFrame.OnChangeRedo :=
+  AFrame.Changes.OnRedo :=
     procedure(ASetId: Integer)
     begin
       AProbe.FRedoId := ASetId;
     end;
-  AFrame.OnChangeDiff :=
+  AFrame.Changes.OnDiff :=
     procedure(ASetId: Integer; const AFileName: string)
     begin
       AProbe.FDiffId := ASetId;
@@ -264,9 +264,9 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     WireChangeEvents(Frame, mProbe);
-    Frame.ShowChanges('Atlas-Änderungen', [SampleSet(False), Older], EncodeDateTime(2026, 10, 14, 18, 0, 0, 0),
+    Frame.Changes.Show('Atlas-Änderungen', [SampleSet(False), Older], EncodeDateTime(2026, 10, 14, 18, 0, 0, 0),
       False);
-    Assert.IsTrue(Frame.ShowsChanges);
+    Assert.IsTrue(Frame.Changes.Shows);
     // Zwei Sätze mit je zwei Dateien.
     Assert.AreEqual(6, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual(2, Integer(Frame.Tree.Items[0].Count));
@@ -276,9 +276,9 @@ begin
     Assert.IsTrue(Frame.Menu.Items[0].Visible);
     Assert.IsTrue(Frame.Menu.Items[0].Enabled);
     Assert.IsFalse(Frame.Menu.Items[1].Enabled);
-    Frame.UndoSelected;
+    Frame.Changes.UndoSelected;
     Assert.AreEqual(3, mProbe.FUndoId);
-    Frame.ShowSelectedDiff;
+    Frame.Changes.ShowSelectedDiff;
     Assert.AreEqual(3, mProbe.FDiffId);
     Assert.AreEqual('', mProbe.FDiffFile, 'Satz: alle Dateien');
     // Datei des älteren, zurückgenommenen Satzes.
@@ -286,14 +286,14 @@ begin
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[0].Enabled);
     Assert.IsTrue(Frame.Menu.Items[1].Enabled);
-    Frame.RedoSelected;
+    Frame.Changes.RedoSelected;
     Assert.AreEqual(2, mProbe.FRedoId);
-    Frame.ShowSelectedDiff;
+    Frame.Changes.ShowSelectedDiff;
     Assert.AreEqual(2, mProbe.FDiffId);
     Assert.AreEqual('C:\P\A.pas', mProbe.FDiffFile);
     // Neu aufbauen behält die Auswahl.
     Frame.Tree.Selected := Frame.Tree.Items[3];
-    Frame.ShowChanges('Atlas-Änderungen', [SampleSet(False), Older], Now, True);
+    Frame.Changes.Show('Atlas-Änderungen', [SampleSet(False), Older], Now, True);
     Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[3]);
   finally
     Host.Free;
