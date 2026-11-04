@@ -610,13 +610,14 @@ foreach ($AreaFile in Get-ChildItem -Path $PluginFolder -Filter 'Atlas.Core.Sett
     foreach ($Match in [regex]::Matches($AreaText, "AIo\.(?:Flag|Number|Text|TrimmedText)\('(\w+)'")) {
         $Name = $Match.Groups[1].Value
         $SaveNames.Add($Name)
-        $Area = $PluginSchema['properties'][$Name]['x-area']
-        if (($CatalogNames -ccontains $Name) -and ($Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)) -cne $AreaUnit) {
+        if (-not ($CatalogNames -ccontains $Name) -or -not (Has $PluginSchema['properties'][$Name] 'x-area')) { continue }
+        $Area = [string]$PluginSchema['properties'][$Name]['x-area']
+        if (($Area.Substring(0, 1).ToUpperInvariant() + $Area.Substring(1)) -cne $AreaUnit) {
             $Problems.Add("Plugin-Katalog: ""$Name"" steht in Atlas.Core.Settings.Plugin.$AreaUnit, gehört nach x-area ""$Area""")
         }
     }
 }
-foreach ($Name in ($SaveNames | Group-Object | Where-Object Count -gt 1).Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird mehrfach gelesen und geschrieben") }
+foreach ($Twice in @($SaveNames | Group-Object | Where-Object Count -gt 1)) { $Problems.Add("Plugin-Katalog: ""$($Twice.Name)"" wird mehrfach gelesen und geschrieben") }
 foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings (Exchange der Bereiche) fehlt in schemas/atlas-plugin.schema.json") } }
 foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings (Exchange der Bereiche) nicht gelesen und geschrieben") } }
 $SeenKeys = @{}
