@@ -148,7 +148,9 @@ begin
   for Dir in AProgramDirs do
   begin
     if Trim(Dir) = '' then
+    begin
       Continue;
+    end;
     case AKind of
       TAtlasVcsKind.Git:
         Result := Result + [
@@ -173,15 +175,21 @@ var
 begin
   FileName := AName;
   if PathDelim = '\' then
+  begin
     FileName := FileName + '.exe';
+  end;
   for Dir in APath.Split([PathSep]) + AExtraDirs do
   begin
     Candidate := Trim(Dir).Trim(['"']);
     if Candidate = '' then
+    begin
       Continue;
+    end;
     Candidate := IncludeTrailingPathDelimiter(Candidate) + FileName;
     if AExists(Candidate) then
+    begin
       Exit(Candidate);
+    end;
   end;
   Result := '';
 end;
@@ -203,7 +211,9 @@ begin
       Result.Source := TAtlasVcsToolSource.Configured;
     end
     else
+    begin
       Result.Source := TAtlasVcsToolSource.ConfiguredMissing;
+    end;
     Exit;
   end;
   Result.Executable := Locate(AName, APath, nil, AExists);
@@ -214,7 +224,9 @@ begin
   end;
   Result.Executable := Locate(AName, '', AExtraDirs, AExists);
   if Result.Executable <> '' then
+  begin
     Result.Source := TAtlasVcsToolSource.KnownDir;
+  end;
 end;
 
 class procedure TAtlasVcsTools.Configure(AKind: TAtlasVcsKind; const APath: string);
@@ -222,12 +234,16 @@ var
   mPath: string;
 begin
   if AKind = TAtlasVcsKind.None then
+  begin
     Exit;
+  end;
   mPath := Trim(APath);
   FLock.Enter;
   try
     if FConfigured[AKind] = mPath then
+    begin
       Exit;
+    end;
     FConfigured[AKind] := mPath;
     FFound[AKind] := TAtlasVcsToolLocation.Empty;
     FSearched[AKind] := False;
@@ -251,7 +267,9 @@ var
   mProgramDirs: TArray<string>;
 begin
   if AKind = TAtlasVcsKind.None then
+  begin
     Exit(TAtlasVcsToolLocation.Empty);
+  end;
   mProgramDirs := [GetEnvironmentVariable('ProgramW6432'), GetEnvironmentVariable('ProgramFiles'),
     GetEnvironmentVariable('ProgramFiles(x86)'), GetEnvironmentVariable('LOCALAPPDATA') + PathDelim + 'Programs'];
   Result := Resolve(ProgramName(AKind), AConfigured, GetEnvironmentVariable('PATH'), KnownDirs(AKind, mProgramDirs),
@@ -266,11 +284,15 @@ var
   mConfigured: string;
 begin
   if AKind = TAtlasVcsKind.None then
+  begin
     Exit(TAtlasVcsToolLocation.Empty);
+  end;
   FLock.Enter;
   try
     if FSearched[AKind] then
+    begin
       Exit(FFound[AKind]);
+    end;
     mConfigured := FConfigured[AKind];
   finally
     FLock.Leave;
@@ -317,7 +339,9 @@ begin
     FFound[AKind] := TAtlasVcsToolLocation.Empty;
     FFound[AKind].Executable := AExecutable;
     if AExecutable <> '' then
+    begin
       FFound[AKind].Source := TAtlasVcsToolSource.Path;
+    end;
     FSearched[AKind] := True;
   finally
     FLock.Leave;
@@ -342,13 +366,19 @@ var
 begin
   AOutput := nil;
   if (FExecutable = '') or (FRunner = nil) then
+  begin
     Exit(TAtlasVcsOutcome.ToolMissing);
+  end;
   Answer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
   Result := Answer.Outcome;
   if (Result = TAtlasVcsOutcome.Ok) and (Answer.ExitCode <> 0) then
+  begin
     Result := TAtlasVcsOutcome.Failed;
+  end;
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     AOutput := Answer.Output;
+  end;
 end;
 
 function TAtlasVcsCommand.RunRemote(AKind: TAtlasVcsKind; const AArguments: TArray<string>;
@@ -358,11 +388,15 @@ var
 begin
   AOutput := nil;
   if (FExecutable = '') or (FRunner = nil) then
+  begin
     Exit(TAtlasVcsOutcome.ToolMissing);
+  end;
   Answer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
   Result := TAtlasVcsServerAccess.OutcomeOf(AKind, Answer);
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     AOutput := Answer.Output;
+  end;
 end;
 
 end.

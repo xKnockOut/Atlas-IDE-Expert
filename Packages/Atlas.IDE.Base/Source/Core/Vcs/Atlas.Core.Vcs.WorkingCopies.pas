@@ -133,6 +133,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.SvnExternals,
   Atlas.Core.Vcs.Internals.SvnLayout;
@@ -141,11 +142,17 @@ function Slashed(const APath: string): string;
 begin
   Result := StringReplace(Trim(APath), '\', '/', [rfReplaceAll]);
   while Copy(Result, 1, 2) = './' do
+  begin
     Delete(Result, 1, 2);
+  end;
   if Result = '.' then
+  begin
     Result := '';
+  end;
   while (Result <> '') and (Result[Length(Result)] = '/') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function Inside(const APath, AFolder: string): Boolean;
@@ -159,8 +166,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(ARows) do
+  begin
     if SameText(ARows[mIndex].Path, APath) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -171,9 +182,13 @@ var
 begin
   Result := -1;
   for mIndex := 0 to High(ARows) do
+  begin
     if Inside(APath, ARows[mIndex].Path) and
       ((Result < 0) or (Length(ARows[mIndex].Path) > Length(ARows[Result].Path))) then
+    begin
       Result := mIndex;
+    end;
+  end;
 end;
 
 procedure SortAndIndent(var ARows: TArray<TAtlasVcsWorkingCopyRow>);
@@ -197,11 +212,17 @@ begin
   begin
     ARows[mIndex].Depth := 0;
     if ARows[mIndex].Path = '' then
+    begin
       Continue;
+    end;
     for mOther := 0 to High(ARows) do
+    begin
       if (mOther <> mIndex) and Inside(ARows[mIndex].Path, ARows[mOther].Path) and
         not SameText(ARows[mIndex].Path, ARows[mOther].Path) then
+      begin
         Inc(ARows[mIndex].Depth);
+      end;
+    end;
   end;
 end;
 
@@ -215,7 +236,9 @@ begin
   Result.Path := Slashed(APath);
   Result.Folder := VcsFullPath(ARoot, Result.Path);
   if Result.Path = '' then
+  begin
     Result.Folder := VcsNormalizeDir(ARoot);
+  end;
   Result.Changed := -1;
   Result.Incoming := -1;
   Result.ExternalIndex := -1;
@@ -225,7 +248,9 @@ end;
 function TAtlasVcsWorkingCopyRow.Caption(const AName: string): string;
 begin
   if Path = '' then
+  begin
     Exit(AName);
+  end;
   Result := StringReplace(Path, '/', '\', [rfReplaceAll]);
 end;
 
@@ -248,89 +273,108 @@ begin
   Result := Length(Rows) > 1;
 end;
 
+type
+  /// <summary>Erster wc-status eines Eintrags aus svn status --xml.</summary>
+  TStatusEntry = record
+    Path: string;
+    Item: string;
+    Props: string;
+  end;
+
+/// <summary>Einträge von svn status --xml mit Pfad ("/" getrennt) und ihrem ersten wc-status.</summary>
+function StatusEntries(const AStatusXml: string): TArray<TStatusEntry>;
+var
+  mReader: TAtlasVcsXmlReader;
+  mEntry: TStatusEntry;
+  mInEntry: Boolean;
+begin
+  Result := nil;
+  mInEntry := False;
+  mEntry := Default(TStatusEntry);
+  mReader := TAtlasVcsXmlReader.Create(AStatusXml);
+  try
+    while mReader.Next do
+    begin
+      if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'entry') then
+      begin
+        mInEntry := True;
+        mEntry.Path := Slashed(mReader.Attr('path'));
+      end
+      else if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'wc-status') and mInEntry then
+      begin
+        mInEntry := False;
+        mEntry.Item := mReader.Attr('item');
+        mEntry.Props := mReader.Attr('props');
+        Result := Result + [mEntry];
+      end
+      else if (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'entry') then
+      begin
+        mInEntry := False;
+      end;
+    end;
+  finally
+    mReader.Free;
+  end;
+end;
+
+/// <summary>Zählt der Eintrag als Änderung (Inhalt oder Eigenschaften)?</summary>
+function IsChangedStatus(const AEntry: TStatusEntry): Boolean;
+begin
+  Result := MatchStr(AEntry.Item, ['modified', 'added', 'deleted', 'replaced', 'conflicted', 'missing',
+    'obstructed', 'incomplete']) or MatchStr(AEntry.Props, ['modified', 'conflicted']);
+end;
+
 { TAtlasVcsWorkingCopies }
 
 class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
 var
-  mReader: TAtlasVcsXmlReader;
-  mPath: string;
-  mInEntry: Boolean;
+  mEntry: TStatusEntry;
 begin
   Result := nil;
   if Trim(AStatusXml) = '' then
+  begin
     Exit;
-  mPath := '';
-  mInEntry := False;
-  mReader := TAtlasVcsXmlReader.Create(AStatusXml);
-  try
-    while mReader.Next do
-      if mReader.Node = TAtlasVcsXmlNode.StartTag then
-      begin
-        if mReader.Name = 'entry' then
-        begin
-          mInEntry := True;
-          mPath := Slashed(mReader.Attr('path'));
-        end
-        else if (mReader.Name = 'wc-status') and mInEntry then
-        begin
-          // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
-          if (mReader.Attr('item') = 'external') and (mPath <> '') then
-            Result := Result + [mPath];
-          mInEntry := False;
-        end;
-      end
-      else if (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'entry') then
-        mInEntry := False;
-  finally
-    mReader.Free;
+  end;
+  // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
+  for mEntry in StatusEntries(AStatusXml) do
+  begin
+    if (mEntry.Item = 'external') and (mEntry.Path <> '') then
+    begin
+      Result := Result + [mEntry.Path];
+    end;
   end;
 end;
 
 class procedure TAtlasVcsWorkingCopies.CountChanges(var ARows: TArray<TAtlasVcsWorkingCopyRow>;
   const AStatusXml: string);
 var
-  mReader: TAtlasVcsXmlReader;
-  mPath, mItem, mProps: string;
-  mInEntry: Boolean;
+  mEntry: TStatusEntry;
   mIndex, mRow: Integer;
 begin
   if Trim(AStatusXml) = '' then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(ARows) do
+  begin
     if ARows[mIndex].Kind <> TAtlasVcsWorkingCopyKind.Submodule then
+    begin
       ARows[mIndex].Changed := 0;
-  mPath := '';
-  mInEntry := False;
-  mReader := TAtlasVcsXmlReader.Create(AStatusXml);
-  try
-    while mReader.Next do
-      if mReader.Node = TAtlasVcsXmlNode.StartTag then
-      begin
-        if mReader.Name = 'entry' then
-        begin
-          mInEntry := True;
-          mPath := Slashed(mReader.Attr('path'));
-        end
-        else if (mReader.Name = 'wc-status') and mInEntry then
-        begin
-          mInEntry := False;
-          mItem := mReader.Attr('item');
-          mProps := mReader.Attr('props');
-          if not ((mItem = 'modified') or (mItem = 'added') or (mItem = 'deleted') or (mItem = 'replaced') or
-            (mItem = 'conflicted') or (mItem = 'missing') or (mItem = 'obstructed') or (mItem = 'incomplete') or
-            (mProps = 'modified') or (mProps = 'conflicted')) then
-            Continue;
-          // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
-          // (geänderte Eigenschaft) gehört zu ihm.
-          mRow := DeepestRow(ARows, mPath);
-          if mRow >= 0 then
-            Inc(ARows[mRow].Changed);
-        end;
-      end
-      else if (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'entry') then
-        mInEntry := False;
-  finally
-    mReader.Free;
+    end;
+  end;
+  // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
+  // (geänderte Eigenschaft) gehört zu ihm.
+  for mEntry in StatusEntries(AStatusXml) do
+  begin
+    mRow := -1;
+    if IsChangedStatus(mEntry) then
+    begin
+      mRow := DeepestRow(ARows, mEntry.Path);
+    end;
+    if mRow >= 0 then
+    begin
+      Inc(ARows[mRow].Changed);
+    end;
   end;
 end;
 
@@ -350,21 +394,31 @@ begin
   begin
     // Datei-Externals sind keine eigene Arbeitskopie.
     if AExternals[mIndex].IsFile or (RowOf(Result, Slashed(AExternals[mIndex].Path)) >= 0) then
+    begin
       Continue;
+    end;
     mRow := TAtlasVcsWorkingCopyRow.Make(TAtlasVcsWorkingCopyKind.External, ARoot, AExternals[mIndex].Path);
     mRow.RepositoryPath := AExternals[mIndex].Source;
     if AExternals[mIndex].Foreign or (mRow.RepositoryPath = '') then
+    begin
       mRow.Url := AExternals[mIndex].FullUrl;
+    end;
     mRow.Fixed := AExternals[mIndex].Fixed;
     mRow.FixedRevision := AExternals[mIndex].Revision;
     if mRow.FixedRevision = '' then
+    begin
       mRow.FixedRevision := AExternals[mIndex].Peg;
+    end;
     mRow.ExternalIndex := mIndex;
     Result := Result + [mRow];
   end;
   for mPath in StatusExternals(AStatusXml) do
+  begin
     if RowOf(Result, mPath) < 0 then
+    begin
       Result := Result + [TAtlasVcsWorkingCopyRow.Make(TAtlasVcsWorkingCopyKind.External, ARoot, mPath)];
+    end;
+  end;
   SortAndIndent(Result);
   CountChanges(Result, AStatusXml);
 end;
@@ -386,22 +440,32 @@ begin
   begin
     // "<Zustand><Hash> <Pfad>[ (<Beschreibung>)]"; Zustand ' ', '+', '-' oder 'U'.
     if Length(mLine) < 3 then
+    begin
       Continue;
+    end;
     mState := mLine[1];
     mText := Copy(mLine, 2, MaxInt);
     mSpace := Pos(' ', mText);
     if mSpace < 2 then
+    begin
       Continue;
+    end;
     mHash := Copy(mText, 1, mSpace - 1);
     mPath := Copy(mText, mSpace + 1, MaxInt);
     if (Length(mPath) > 1) and (mPath[Length(mPath)] = ')') and (Pos(' (', mPath) > 0) then
+    begin
       mPath := Copy(mPath, 1, Pos(' (', mPath) - 1);
+    end;
     mPath := Slashed(mPath);
     if (mPath = '') or (RowOf(Result, mPath) >= 0) then
+    begin
       Continue;
+    end;
     mRow := TAtlasVcsWorkingCopyRow.Make(TAtlasVcsWorkingCopyKind.Submodule, ARoot, mPath);
     if mState <> '-' then
+    begin
       mRow.Revision := Copy(mHash, 1, 7);
+    end;
     mRow.Loaded := True;
     Result := Result + [mRow];
   end;
@@ -418,24 +482,32 @@ var
 begin
   Result := TAtlasVcsWorkingCopyList.Empty;
   if AVcs = nil then
+  begin
     Exit;
+  end;
   Result.Kind := AVcs.Kind;
   Result.Root := AVcs.WorkingCopy.Root;
   Result.Outcome := AVcs.Head(mHead);
   if Result.Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   if Result.Kind = TAtlasVcsKind.Git then
   begin
     mText := '';
     if Supports(AVcs, IAtlasVcsSubmodules, mSubmodules) and
       (mSubmodules.SubmoduleStatus(mText) <> TAtlasVcsOutcome.Ok) then
+    begin
       mText := '';
+    end;
     Result.Rows := FromSubmodules(Result.Root, mHead.Branch, mHead.ShortRevision(TAtlasVcsKind.Git), mText);
     Exit;
   end;
   mStatusXml := '';
   if Supports(AVcs, IAtlasVcsSvnExternals, mStatus) and (mStatus.StatusXml(mStatusXml) <> TAtlasVcsOutcome.Ok) then
+  begin
     mStatusXml := '';
+  end;
   // Ohne lesbare Externals bleiben die Zeilen aus dem Status (ohne Quelle).
   if Supports(AVcs, IAtlasVcsSvnWorkingCopy, mSvn) and (mSvn.ExternalsXml(mXml) = TAtlasVcsOutcome.Ok) and
     (mSvn.RepositoryRoot(mRepository) = TAtlasVcsOutcome.Ok) and (mRepository <> '') then
@@ -465,7 +537,9 @@ var
   mMixed: Boolean;
 begin
   if (AIndex < 0) or (AIndex > High(AList.Rows)) or AList.Rows[AIndex].Loaded then
+  begin
     Exit;
+  end;
   AList.Rows[AIndex].Loaded := True;
   if ASvn = nil then
   begin
@@ -475,7 +549,9 @@ begin
   AList.Rows[AIndex].Outcome := ASvn.WorkingRevisions(AList.Rows[AIndex].Path, mText);
   if (AList.Rows[AIndex].Outcome = TAtlasVcsOutcome.Ok) and TAtlasSvnLayout.WorkingRevision(mText, mRevision,
     mMixed) then
+  begin
     AList.Rows[AIndex].Revision := mRevision;
+  end;
 end;
 
 class procedure TAtlasVcsWorkingCopies.FillChanges(var AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
@@ -485,7 +561,9 @@ var
   mChange: TAtlasVcsChange;
 begin
   if (AIndex < 0) or (AIndex > High(AList.Rows)) then
+  begin
     Exit;
+  end;
   if AVcs = nil then
   begin
     AList.Rows[AIndex].Outcome := TAtlasVcsOutcome.NoWorkingCopy;
@@ -493,11 +571,17 @@ begin
   end;
   AList.Rows[AIndex].Outcome := AVcs.Changes(mChanges);
   if AList.Rows[AIndex].Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   AList.Rows[AIndex].Changed := 0;
   for mChange in mChanges do
+  begin
     if mChange.Kind <> TAtlasVcsChangeKind.Untracked then
+    begin
       Inc(AList.Rows[AIndex].Changed);
+    end;
+  end;
 end;
 
 class function TAtlasVcsWorkingCopies.CheckServer(var AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
@@ -509,15 +593,21 @@ begin
   Result := TAtlasVcsOutcome.Failed;
   if (AIndex < 0) or (AIndex > High(AList.Rows)) or (ASvn = nil) or (AList.Rows[AIndex].RepositoryPath = '') or
     (AList.Kind <> TAtlasVcsKind.Svn) then
+  begin
     Exit;
+  end;
   // Fest: Ist der Trunk des Packages weiter als die feste Revision?
   mRevision := AList.Rows[AIndex].Revision;
   if AList.Rows[AIndex].Fixed and (AList.Rows[AIndex].FixedRevision <> '') then
+  begin
     mRevision := AList.Rows[AIndex].FixedRevision;
+  end;
   Result := ASvn.CommitsSince(AList.Rows[AIndex].RepositoryPath, mRevision, mCount);
   AList.Rows[AIndex].Outcome := Result;
   if Result = TAtlasVcsOutcome.Ok then
+  begin
     AList.Rows[AIndex].Incoming := mCount;
+  end;
 end;
 
 class function TAtlasVcsWorkingCopies.PinnedText(const AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
@@ -532,19 +622,25 @@ begin
   Result := False;
   if (AIndex < 0) or (AIndex > High(AList.Rows)) or not AList.Rows[AIndex].CanPin or
     (AList.Rows[AIndex].ExternalIndex > High(AList.Externals)) then
+  begin
     Exit;
+  end;
   mExternal := AList.Externals[AList.Rows[AIndex].ExternalIndex];
   for mDefinition := 0 to High(AList.Definitions) do
+  begin
     if SameText(AList.Definitions[mDefinition].Owner, mExternal.Owner) then
     begin
       mLine := TAtlasSvnExternals.PinnedLine(AList.Definitions[mDefinition].Text, mExternal,
         AList.Rows[AIndex].Revision);
       if mLine = '' then
+      begin
         Exit;
+      end;
       AOwner := mExternal.Owner;
       AText := TAtlasSvnExternals.ReplaceLine(AList.Definitions[mDefinition].Text, mExternal.Line, mLine);
       Exit(True);
     end;
+  end;
 end;
 
 class function TAtlasVcsWorkingCopies.Pin(const AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
@@ -553,7 +649,9 @@ var
   mOwner, mText: string;
 begin
   if (ASvn = nil) or not PinnedText(AList, AIndex, mOwner, mText) then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   Result := ASvn.SetExternals(mOwner, mText);
 end;
 
@@ -565,21 +663,29 @@ var
 begin
   Result := nil;
   if AVcs = nil then
+  begin
     Exit;
+  end;
   mRoot := AVcs.WorkingCopy.Root;
   if mRoot = '' then
+  begin
     Exit;
+  end;
   mText := '';
   if AVcs.Kind = TAtlasVcsKind.Git then
   begin
     if Supports(AVcs, IAtlasVcsSubmodules, mSubmodules) and
       (mSubmodules.SubmoduleStatus(mText) <> TAtlasVcsOutcome.Ok) then
+    begin
       mText := '';
+    end;
     Result := FromSubmodules(mRoot, '', '', mText);
     Exit;
   end;
   if Supports(AVcs, IAtlasVcsSvnExternals, mStatus) and (mStatus.StatusXml(mText) <> TAtlasVcsOutcome.Ok) then
+  begin
     mText := '';
+  end;
   try
     Result := FromSvn(mRoot, '', '', nil, mText);
   except
@@ -597,21 +703,33 @@ var
 begin
   SetLength(Result, Length(ARows));
   for mIndex := 0 to High(Result) do
+  begin
     Result[mIndex] := 0;
+  end;
   if Length(ARows) = 0 then
+  begin
     Exit;
+  end;
   mRoot := ARows[0].Folder;
   for mIndex := 0 to High(ARows) do
+  begin
     if ARows[mIndex].Path = '' then
+    begin
       mRoot := ARows[mIndex].Folder;
+    end;
+  end;
   for mChange in AChanges do
   begin
     // Der Wurzelordner selbst (geänderte Eigenschaft) gehört zur Wurzel.
     if not VcsRelativeOrRoot(mRoot, mChange.Path, mPath) then
+    begin
       Continue;
+    end;
     mRow := DeepestRow(ARows, Slashed(mPath));
     if mRow >= 0 then
+    begin
       Inc(Result[mRow]);
+    end;
   end;
 end;
 

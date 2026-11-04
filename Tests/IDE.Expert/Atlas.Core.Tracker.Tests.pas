@@ -313,8 +313,8 @@ type
     Posts: TArray<string>;
     Bodies: TArray<string>;
     procedure AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 procedure TFakePostTransport.AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
@@ -324,24 +324,23 @@ begin
   FPostTexts := FPostTexts + [AText];
 end;
 
-function TFakePostTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakePostTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 var
   mIndex: Integer;
 begin
   Methods := Methods + [AMethod];
   Posts := Posts + [AUrl];
   Bodies := Bodies + [ABody];
-  AStatus := 404;
-  AText := '';
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
+  AResponse.Status := 404;
   Result := True;
   for mIndex := 0 to High(FPostPrefixes) do
   begin
     if Copy(AUrl, 1, Length(FPostPrefixes[mIndex])) = FPostPrefixes[mIndex] then
     begin
-      AStatus := FPostStatus[mIndex];
-      AText := FPostTexts[mIndex];
+      AResponse.Status := FPostStatus[mIndex];
+      AResponse.Text := FPostTexts[mIndex];
       Exit;
     end;
   end;
@@ -1048,8 +1047,8 @@ type
     Url: string;
     Body: string;
     constructor Create;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 constructor TFakeSendTransport.Create;
@@ -1058,15 +1057,15 @@ begin
   SendStatus := 200;
 end;
 
-function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
   Method := AMethod;
   Url := AUrl;
   Body := ABody;
-  AText := '{}';
-  AStatus := SendStatus;
-  AError := SendFail;
+  AResponse := TAtlasCiResponse.Failed(SendFail);
+  AResponse.Text := '{}';
+  AResponse.Status := SendStatus;
   Result := SendFail = TAtlasCiFetchError.None;
 end;
 

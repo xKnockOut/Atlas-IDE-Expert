@@ -71,8 +71,12 @@ var
 begin
   Result := False;
   for mName in ANames do
+  begin
     if SameText(mName, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Wert eines Schalters aus dem Speicher; ohne Eintrag an (Vorgabe der Modul-Schalter).</summary>
@@ -86,7 +90,9 @@ var
   mValue: string;
 begin
   if AEntry.Kind = akBoolean then
-    AStore.WriteInteger(AEntry.Name, 0)
+  begin
+    AStore.WriteInteger(AEntry.Name, 0);
+  end
   else
   begin
     mValue := TAtlasJsonValues.Display(AEntry.OffJson);
@@ -110,7 +116,9 @@ begin
     begin
       mEntry := ACatalog[mIndex];
       if (mEntry.Source <> asPlugin) or (mEntry.Module = '') or (mEntry.Kind <> akBoolean) then
+      begin
         Continue;
+      end;
       mSwitch := Default(TAtlasModuleSwitch);
       mSwitch.Module := mEntry.Module;
       mSwitch.Name := mEntry.Name;
@@ -118,9 +126,13 @@ begin
       mSwitch.Caption := mEntry.Caption;
       mSwitch.CaptionEn := mEntry.CaptionEn;
       for mOther := 0 to ACatalog.Count - 1 do
+      begin
         if (ACatalog[mOther].Source = asPlugin) and HasOffValue(ACatalog[mOther]) and
           Contains(mGroups.AncestorsOf(ACatalog[mOther].Name), mEntry.Name) then
+        begin
           mSwitch.Members := mSwitch.Members + [ACatalog[mOther]];
+        end;
+      end;
       Result := Result + [mSwitch];
     end;
   finally
@@ -138,18 +150,26 @@ var
 begin
   Result := ASettings;
   if Length(ASwitches) = 0 then
+  begin
     Exit;
+  end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
   mChanged := False;
   for mSwitch in ASwitches do
+  begin
     if not SwitchOn(mStore, mSwitch) then
     begin
       for mEntry in mSwitch.Members do
+      begin
         WriteOff(mStore, mEntry);
+      end;
       mChanged := True;
     end;
+  end;
   if mChanged then
+  begin
     Result.Load(mStore);
+  end;
 end;
 
 class function TAtlasModuleSwitches.IsOn(const ASettings: TAtlasPluginSettings;
@@ -160,11 +180,13 @@ var
 begin
   Result := True;
   for mSwitch in ASwitches do
+  begin
     if SameText(mSwitch.Module, AModule) then
     begin
       mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
       Exit(SwitchOn(mStore, mSwitch));
     end;
+  end;
 end;
 
 class function TAtlasModuleSwitches.OffModules(const ASettings: TAtlasPluginSettings;
@@ -175,11 +197,17 @@ var
 begin
   Result := nil;
   if Length(ASwitches) = 0 then
+  begin
     Exit;
+  end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
   for mSwitch in ASwitches do
+  begin
     if not SwitchOn(mStore, mSwitch) then
+    begin
       Result := Result + [mSwitch.Module];
+    end;
+  end;
 end;
 
 class function TAtlasModuleSwitches.ModuleOf(const ASwitches: TArray<TAtlasModuleSwitch>;
@@ -192,10 +220,16 @@ begin
   for mSwitch in ASwitches do
   begin
     if SameText(mSwitch.Name, AName) or SameText(mSwitch.Key, AName) then
+    begin
       Exit(mSwitch.Module);
+    end;
     for mEntry in mSwitch.Members do
+    begin
       if SameText(mEntry.Name, AName) or SameText(mEntry.Key, AName) then
+      begin
         Exit(mSwitch.Module);
+      end;
+    end;
   end;
 end;
 

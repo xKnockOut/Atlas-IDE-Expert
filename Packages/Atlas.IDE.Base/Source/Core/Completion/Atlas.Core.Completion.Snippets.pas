@@ -175,7 +175,9 @@ var
   procedure FlushLiteral;
   begin
     if Literal = '' then
+    begin
       Exit;
+    end;
     Segment := Default(TSegment);
     Segment.Text := Literal;
     Result := Result + [Segment];
@@ -203,13 +205,17 @@ begin
       begin
         Close := Index + 2;
         while (Close <= Length(ABody)) and (ABody[Close] <> '}') and (ABody[Close] <> #10) do
+        begin
           Inc(Close);
+        end;
         if (Close <= Length(ABody)) and (ABody[Close] = '}') then
         begin
           Inner := Copy(ABody, Index + 2, Close - Index - 2);
           Colon := Pos(':', Inner);
           if Colon = 0 then
+          begin
             Colon := Length(Inner) + 1;
+          end;
           if TryStrToInt(Copy(Inner, 1, Colon - 1), Number) and (Number >= 0) then
           begin
             FlushLiteral;
@@ -250,8 +256,12 @@ var
 begin
   Result := False;
   for Stop in Stops do
+  begin
     if Stop.Number > 0 then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasSnippets }
@@ -279,7 +289,9 @@ begin
       Break;
     end;
     if (Line = '') or (Line[1] = '#') then
+    begin
       Continue;
+    end;
     Colon := Pos(':', Line);
     if Colon = 0 then
     begin
@@ -289,15 +301,23 @@ begin
     Key := LowerCase(Trim(Copy(Line, 1, Colon - 1)));
     Value := Trim(Copy(Line, Colon + 1, MaxInt));
     if Key = 'name' then
-      ASnippet.Name := Value
+    begin
+      ASnippet.Name := Value;
+    end
     else if Key = 'prefix' then
-      ASnippet.Prefix := Value
+    begin
+      ASnippet.Prefix := Value;
+    end
     else if Key = 'description' then
-      ASnippet.Description := Value
+    begin
+      ASnippet.Description := Value;
+    end
     else if Key = 'postfix' then
     begin
       if SameText(Value, 'true') then
-        ASnippet.Postfix := True
+      begin
+        ASnippet.Postfix := True;
+      end
       else if not SameText(Value, 'false') then
       begin
         AError := Format('Zeile %d: "postfix" ist true oder false', [Index + 1]);
@@ -305,16 +325,20 @@ begin
       end;
     end
     else if Key = 'type' then
-      ASnippet.TypeCondition := Value
+    begin
+      ASnippet.TypeCondition := Value;
+    end
     else if Key = 'context' then
     begin
       for Word in Value.Split([',']) do
+      begin
         if (Trim(Word) <> '') and (IndexText(Trim(Word), ContextWords) < 0) then
         begin
           AError := Format('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
             [Index + 1, Trim(Word), string.Join(', ', ContextWords)]);
           Exit;
         end;
+      end;
       ASnippet.Context := Value;
     end
     else if Key = 'file' then
@@ -345,21 +369,27 @@ begin
     Exit;
   end;
   for Index := 1 to Length(ASnippet.Prefix) do
+  begin
     if not TTextChars.IsAsciiIdentChar(ASnippet.Prefix[Index]) then
     begin
       AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [ASnippet.Prefix]);
       Exit;
     end;
+  end;
   Body := '';
   for Index := Separator + 1 to High(Lines) do
   begin
     if Index > Separator + 1 then
+    begin
       Body := Body + #10;
+    end;
     Body := Body + Lines[Index];
   end;
   // Leerzeilen am Ende gehören nicht zur Vorlage.
   while (Body <> '') and ((Body[Length(Body)] = #10) or (Body[Length(Body)] = ' ')) do
+  begin
     Delete(Body, Length(Body), 1);
+  end;
   if Trim(Body) = '' then
   begin
     AError := 'Text der Vorlage fehlt';
@@ -367,7 +397,9 @@ begin
   end;
   ASnippet.Body := Body;
   if ASnippet.Name = '' then
+  begin
     ASnippet.Name := ASnippet.Prefix;
+  end;
   Result := True;
 end;
 
@@ -385,12 +417,18 @@ begin
   begin
     Result := Result + 'postfix: true' + #10;
     if ASnippet.TypeCondition <> '' then
+    begin
       Result := Result + 'type: ' + OneLine(ASnippet.TypeCondition) + #10;
+    end;
   end;
   if ASnippet.Context <> '' then
+  begin
     Result := Result + 'context: ' + OneLine(ASnippet.Context) + #10;
+  end;
   if ASnippet.FileKind <> '' then
+  begin
     Result := Result + 'file: ' + OneLine(ASnippet.FileKind) + #10;
+  end;
   Result := Result + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
 end;
 
@@ -400,8 +438,12 @@ var
 begin
   Result := APrefix;
   for Index := 1 to Length(Result) do
+  begin
     if not TTextChars.IsAsciiIdentChar(Result[Index]) then
+    begin
       Result[Index] := '_';
+    end;
+  end;
   Result := Result + FileExtension;
 end;
 
@@ -469,8 +511,12 @@ var
 begin
   Result := nil;
   for Item in AList do
+  begin
     if Item.FileKind <> '' then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
@@ -479,8 +525,12 @@ var
 begin
   Result := nil;
   for Item in AList do
+  begin
     if Item.FileKind = '' then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;
@@ -489,21 +539,31 @@ var
   InRoutine: Boolean;
 begin
   if Trim(AContext) = '' then
+  begin
     Exit(True);
+  end;
   InRoutine := IndexText('routine', APlaces) >= 0;
   for Word in AContext.Split([',']) do
   begin
     if SameText(Trim(Word), 'any') then
+    begin
       Exit(True);
+    end;
     if SameText(Trim(Word), 'statement') and InRoutine then
+    begin
       Exit(True);
+    end;
     for Place in APlaces do
     begin
       if SameText(Trim(Word), Place) then
+      begin
         Exit(True);
+      end;
       // Deklarationen: Typ- und Klassenebene, nicht im Rumpf einer Methode.
       if SameText(Trim(Word), 'declaration') and not InRoutine and not SameText(Place, 'routine') then
+      begin
         Exit(True);
+      end;
     end;
   end;
   Result := False;
@@ -519,20 +579,32 @@ begin
   begin
     Replaced := False;
     for Own in AUser do
+    begin
       if SameText(Own.Prefix, Item.Prefix) then
+      begin
         Replaced := True;
+      end;
+    end;
     if not Replaced then
+    begin
       Result := Result + [Item];
+    end;
   end;
   for Own in AUser do
   begin
     Replaced := False;
     // Doppelte Kürzel unter den neuen: die erste Datei gilt.
     for Item in Result do
+    begin
       if (Item.Origin = Own.Origin) and SameText(Own.Prefix, Item.Prefix) then
+      begin
         Replaced := True;
+      end;
+    end;
     if not Replaced then
+    begin
       Result := Result + [Own];
+    end;
   end;
 end;
 
@@ -542,8 +614,12 @@ var
 begin
   Result := nil;
   for Item in AList do
+  begin
     if Item.Postfix then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasSnippets.WithoutPostfix(const AList: TAtlasSnippetList): TAtlasSnippetList;
@@ -552,8 +628,12 @@ var
 begin
   Result := nil;
   for Item in AList do
+  begin
     if not Item.Postfix then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 class function TAtlasSnippets.PostfixParams(const AList: TAtlasSnippetList): TJSONObject;
@@ -570,13 +650,17 @@ begin
   begin
     Description := Item.Description;
     if Description = '' then
+    begin
       Description := Item.Name;
+    end;
     Entry := TJSONObject.Create;
     Entry.AddPair('key', Item.Prefix);
     Entry.AddPair('description', Description);
     Entry.AddPair('body', Item.Body);
     if Item.TypeCondition <> '' then
+    begin
       Entry.AddPair('type', Item.TypeCondition);
+    end;
     Templates.AddElement(Entry);
   end;
 end;
@@ -601,18 +685,25 @@ begin
   // Vorgabetext je Nummer: der erste vorhandene.
   Highest := 0;
   for Index := 0 to High(Parts) do
+  begin
     if Parts[Index].IsStop and (Parts[Index].Number > Highest) then
+    begin
       Highest := Parts[Index].Number;
+    end;
+  end;
   SetLength(Defaults, Highest + 1);
   SetLength(Known, Highest + 1);
   for Index := 0 to High(Parts) do
+  begin
     if Parts[Index].IsStop and Parts[Index].HasDefault and not Known[Parts[Index].Number] then
     begin
       Defaults[Parts[Index].Number] := Parts[Index].Text;
       Known[Parts[Index].Number] := True;
     end;
+  end;
   Text := '';
   for Index := 0 to High(Parts) do
+  begin
     if Parts[Index].IsStop then
     begin
       Number := Parts[Index].Number;
@@ -623,7 +714,10 @@ begin
       Result.Stops := Result.Stops + [Stop];
     end
     else
+    begin
       Text := Text + Indented(Parts[Index].Text);
+    end;
+  end;
   Result.Text := Text;
 end;
 
@@ -643,9 +737,13 @@ begin
           if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
           begin
             if ATop and (AText[AIndex + 1] = '$') then
-              Result := Result + '$$'
+            begin
+              Result := Result + '$$';
+            end
             else
+            begin
               Result := Result + AText[AIndex + 1];
+            end;
             Inc(AIndex, 2);
           end
           else
@@ -667,10 +765,14 @@ begin
         begin
           Inc(AIndex);
           if AText[AIndex] = '{' then
+          begin
             Inc(AIndex);
+          end;
           Start := AIndex;
           while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+          begin
             Inc(AIndex);
+          end;
           Number := Copy(AText, Start, AIndex - Start);
           Default := '';
           if AText[Start - 1] = '{' then
@@ -686,16 +788,22 @@ begin
               Inc(AIndex);
               Start := AIndex;
               while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+              begin
                 Inc(AIndex);
+              end;
               Default := Copy(AText, Start, AIndex - Start);
               while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+              begin
                 Inc(AIndex);
+              end;
               Inc(AIndex);
             end
             else
             begin
               while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+              begin
                 Inc(AIndex);
+              end;
               Inc(AIndex);
             end;
           end;
@@ -703,22 +811,34 @@ begin
           if ATop and (Number <> '') and IsDigit(Number[1]) then
           begin
             if (Default = '') and (Number = '0') then
-              Result := Result + '$0'
+            begin
+              Result := Result + '$0';
+            end
             else if Default = '' then
-              Result := Result + '${' + Number + '}'
+            begin
+              Result := Result + '${' + Number + '}';
+            end
             else
+            begin
               Result := Result + '${' + Number + ':' + Default + '}';
+            end;
           end
           else
+          begin
             Result := Result + Default;
+          end;
           Continue;
         end;
     end;
     // Ein "$" ohne Platzhalter bleibt Text.
     if ATop and (AText[AIndex] = '$') then
-      Result := Result + '$$'
+    begin
+      Result := Result + '$$';
+    end
     else
+    begin
       Result := Result + AText[AIndex];
+    end;
     Inc(AIndex);
   end;
 end;
@@ -747,7 +867,9 @@ var
 begin
   Result := '';
   if (APath = '') or not DirectoryExists(APath) then
+  begin
     Exit;
+  end;
   Result := '+';
   if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, Search) = 0 then
     try
@@ -771,14 +893,18 @@ begin
   Result := nil;
   AErrors := nil;
   if (APath = '') or not DirectoryExists(APath) then
+  begin
     Exit;
+  end;
   Names := TStringList.Create;
   try
     if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, Search) = 0 then
       try
         repeat
           if (Search.Attr and faDirectory) = 0 then
+          begin
             Names.Add(Search.Name);
+          end;
         until FindNext(Search) <> 0;
       finally
         FindClose(Search);
@@ -793,9 +919,13 @@ begin
         try
           Lines.LoadFromFile(FileName, TEncoding.UTF8);
           if Parse(Lines.Text, FileName, Item, Error) then
-            Result := Result + [Item]
+          begin
+            Result := Result + [Item];
+          end
           else
+          begin
             AErrors := AErrors + [Names[Index] + ': ' + Error];
+          end;
         except
           on E: Exception do
             AErrors := AErrors + [Names[Index] + ': ' + E.Message];

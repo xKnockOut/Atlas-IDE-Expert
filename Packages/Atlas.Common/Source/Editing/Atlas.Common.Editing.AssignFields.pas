@@ -191,51 +191,76 @@ begin
   end;
 end;
 
-class function TAssignFields.KindOfText(const ATypeName: string; out AKind: TAssignValueKind): Boolean;
+const
+  /// <summary>Typtexte, die mit einem dieser Wörter beginnen, sind Verweise.</summary>
+  cReferenceWords: array[0..4] of string = ('array', 'procedure', 'function', 'reference', 'class');
+
+/// <summary>Art eines Typtexts nach seiner Form: "set of", Zeiger, Arrays, prozedurale Typen, Klassenverweise,
+/// "string[n]"; False für einen Typnamen.</summary>
+function KindOfShape(const AText: string; out AKind: TAssignValueKind): Boolean;
 var
-  Text, Bare: string;
+  mWord: string;
 begin
   AKind := TAssignValueKind.Other;
-  Result := True;
-  Text := Trim(ATypeName);
-  if Text.StartsWith('type ', True) then
-  begin
-    Text := Trim(Copy(Text, 6, MaxInt));
-  end;
-  Bare := BareName(Text);
-  if StartsWithWord(Text, 'set') then
+  if StartsWithWord(AText, 'set') then
   begin
     AKind := TAssignValueKind.SetOf;
   end
-  else if Text.StartsWith('^') or StartsWithWord(Text, 'array') or StartsWithWord(Text, 'procedure') or
-    StartsWithWord(Text, 'function') or StartsWithWord(Text, 'reference') or StartsWithWord(Text, 'class') then
+  else if AText.StartsWith('^') then
   begin
     AKind := TAssignValueKind.Reference;
   end
-  else if StartsWithWord(Text, 'string') or (IndexText(Bare, TextTypes) >= 0) then
+  else if StartsWithWord(AText, 'string') then
+  begin
+    AKind := TAssignValueKind.Text;
+  end;
+  for mWord in cReferenceWords do
+  begin
+    if StartsWithWord(AText, mWord) and (AKind = TAssignValueKind.Other) then
+    begin
+      AKind := TAssignValueKind.Reference;
+    end;
+  end;
+  Result := AKind <> TAssignValueKind.Other;
+end;
+
+/// <summary>Art eines bekannten Typnamens ABare (ohne Unit); False für unbekannte Namen.</summary>
+function KindOfName(const ABare: string; out AKind: TAssignValueKind): Boolean;
+begin
+  AKind := TAssignValueKind.Other;
+  if IndexText(ABare, TextTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Text;
   end
-  else if (IndexText(Bare, NumberTypes) >= 0) or SameText(Bare, 'ttime') then
+  else if (IndexText(ABare, NumberTypes) >= 0) or SameText(ABare, 'ttime') then
   begin
     AKind := TAssignValueKind.Number;
   end
-  else if IndexText(Bare, CharTypes) >= 0 then
+  else if IndexText(ABare, CharTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Character;
   end
-  else if IndexText(Bare, BooleanTypes) >= 0 then
+  else if IndexText(ABare, BooleanTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Boolean_;
   end
-  else if IndexText(Bare, ReferenceTypes) >= 0 then
+  else if IndexText(ABare, ReferenceTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Reference;
-  end
-  else
-  begin
-    Result := False;
   end;
+  Result := AKind <> TAssignValueKind.Other;
+end;
+
+class function TAssignFields.KindOfText(const ATypeName: string; out AKind: TAssignValueKind): Boolean;
+var
+  mText: string;
+begin
+  mText := Trim(ATypeName);
+  if mText.StartsWith('type ', True) then
+  begin
+    mText := Trim(Copy(mText, 6, MaxInt));
+  end;
+  Result := KindOfShape(mText, AKind) or KindOfName(BareName(mText), AKind);
 end;
 
 class function TAssignFields.DefaultValue(AKind: TAssignValueKind; const ATypeName, AFirstValue: string): string;

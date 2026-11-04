@@ -1433,9 +1433,8 @@ function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const A
   const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
   mSend: IAtlasCiSend;
-  mQuery, mUrl, mBody, mAnswer: string;
-  mStatus: Integer;
-  mError: TAtlasCiFetchError;
+  mQuery, mUrl, mBody: string;
+  mResponse: TAtlasCiResponse;
 begin
   Result := TAtlasTrackerWriteResult.Ok;
   if not AChange.HasWork then
@@ -1457,13 +1456,14 @@ begin
     mUrl := ATarget.Url + '/api/commands';
     mBody := CommandJson(AKey, mQuery, AChange.Comment);
   end;
-  if not mSend.Send('POST', mUrl, mBody, ATimeoutMs, mStatus, mAnswer, mError) then
+  if not mSend.Send('POST', mUrl, mBody, ATimeoutMs, mResponse) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
-  if (mStatus < 200) or (mStatus > 299) then
+  if (mResponse.Status < 200) or (mResponse.Status > 299) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mAnswer));
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
+      ErrorMessage(mResponse.Text));
   end;
 end;
 
@@ -1662,9 +1662,7 @@ function TAtlasYouTrackTracker.BookTime(const ATarget: TAtlasTrackerTarget; cons
   const AKey: string; const AItem: TAtlasTrackerWorkItem; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
   mSend: IAtlasCiSend;
-  mAnswer: string;
-  mStatus: Integer;
-  mError: TAtlasCiFetchError;
+  mResponse: TAtlasCiResponse;
 begin
   if AItem.Minutes <= 0 then
   begin
@@ -1676,13 +1674,14 @@ begin
   end;
   Result := TAtlasTrackerWriteResult.Ok;
   if not mSend.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/timeTracking/workItems?fields=id',
-    WorkItemJson(AItem), ATimeoutMs, mStatus, mAnswer, mError) then
+    WorkItemJson(AItem), ATimeoutMs, mResponse) then
   begin
-    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
   end;
-  if (mStatus < 200) or (mStatus > 299) then
+  if (mResponse.Status < 200) or (mResponse.Status > 299) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mAnswer));
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
+      ErrorMessage(mResponse.Text));
   end;
 end;
 
@@ -1764,8 +1763,8 @@ function TAtlasYouTrackTracker.UpdateDescription(const ATarget: TAtlasTrackerTar
   const ATransport: IAtlasCiTransport; const AKey, AText: string; ATimeoutMs: Integer;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mUrl, mAnswer: string;
-  mStatus: Integer;
+  mUrl: string;
+  mResponse: TAtlasCiResponse;
   mSend: IAtlasCiSend;
 begin
   AError := TAtlasCiFetchError.None;
@@ -1781,13 +1780,14 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  if not mSend.Send('POST', mUrl, DescriptionJson(AText), ATimeoutMs, mStatus, mAnswer, AError) then
+  if not mSend.Send('POST', mUrl, DescriptionJson(AText), ATimeoutMs, mResponse) then
   begin
+    AError := mResponse.Error;
     Exit;
   end;
-  if mStatus <> 200 then
+  if mResponse.Status <> 200 then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   Result := True;
@@ -1944,18 +1944,18 @@ end;
 function PostLink(const ATarget: TAtlasTrackerTarget; const APost: IAtlasCiSend; const AKey, AType, AOtherKey: string;
   ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
-  mText: string;
+  mResponse: TAtlasCiResponse;
 begin
   Result := False;
   if not APost.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType + '/issues?fields=id',
-    TAtlasYouTrackTracker.LinkBody(AOtherKey), ATimeoutMs, mStatus, mText, AError) then
+    TAtlasYouTrackTracker.LinkBody(AOtherKey), ATimeoutMs, mResponse) then
   begin
+    AError := mResponse.Error;
     Exit;
   end;
-  if (mStatus <> 200) and (mStatus <> 201) then
+  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
   begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackTracker.ErrorOfStatus(mResponse.Status);
     Exit;
   end;
   AError := TAtlasCiFetchError.None;
@@ -1997,6 +1997,7 @@ var
   mWatch: TStopwatch;
   mStatus: Integer;
   mText, mProject, mType: string;
+  mResponse: TAtlasCiResponse;
 begin
   AKey := '';
   AError := TAtlasCiFetchError.NotConfigured;
@@ -2035,16 +2036,17 @@ begin
     Exit;
   end;
   if not mPost.Send('POST', ATarget.Url + '/api/issues?fields=idReadable', NewIssueBody(mProject, ATitle,
-    ADescription), Rest(mWatch, ATimeoutMs), mStatus, mText, AError) then
+    ADescription), Rest(mWatch, ATimeoutMs), mResponse) then
   begin
+    AError := mResponse.Error;
     Exit;
   end;
-  if (mStatus <> 200) and (mStatus <> 201) then
+  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
   begin
-    AError := ErrorOfStatus(mStatus);
+    AError := ErrorOfStatus(mResponse.Status);
     Exit;
   end;
-  AKey := ParseCreatedKey(mText);
+  AKey := ParseCreatedKey(mResponse.Text);
   if AKey = '' then
   begin
     AError := TAtlasCiFetchError.Invalid;
@@ -3159,12 +3161,13 @@ end;
 function PostTo(const ASend: IAtlasCiPost; const AUrl, AContentType: string; const ABody: TBytes;
   ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
 var
-  mStatus: Integer;
+  mResponse: TAtlasCiResponse;
 begin
-  Result := TAtlasAttachSender.Post(ASend, AUrl, AContentType, ABody, ATimeoutMs, mStatus, AError);
-  if not Result and (mStatus <> 0) then
+  Result := TAtlasAttachSender.Post(ASend, AUrl, AContentType, ABody, ATimeoutMs, mResponse);
+  AError := mResponse.Error;
+  if not Result and (mResponse.Status <> 0) then
   begin
-    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
+    AError := TAtlasYouTrackTracker.ErrorOfStatus(mResponse.Status);
   end;
 end;
 

@@ -70,6 +70,8 @@ type
     FUnavailablePatterns: TArray<string>;
     /// <summary>Fertige Werte für die Hervorhebung beim nächsten Halt merken.</summary>
     procedure Remember;
+    /// <summary>Höchstens APerLine verschiedene Namen je Zeile übernehmen.</summary>
+    procedure AddRefs(const ARefs: TAtlasInlineValueRefs; APerLine: Integer);
     class function KeyOf(const AName: string): string; static;
   public
     constructor Create;
@@ -109,6 +111,8 @@ implementation
 
 uses
   System.SysUtils,
+  System.Math,
+  System.StrUtils,
   System.Generics.Defaults,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Unavailable;
@@ -196,15 +200,83 @@ begin
   end;
 end;
 
+/// <summary>Bezüge mit einfachem Namen in der Reihenfolge im Text; der Server liefert sie schon so, aber darauf
+/// verlässt sich die Anzeige nicht.</summary>
+function SortedRefs(const ARefs: TAtlasInlineValueRefs): TArray<TAtlasInlineValueRef>;
+var
+  mRef: TAtlasInlineValueRef;
+  mSorted: TList<TAtlasInlineValueRef>;
+begin
+  mSorted := TList<TAtlasInlineValueRef>.Create;
+  try
+    for mRef in ARefs do
+    begin
+      if TAtlasInlineValues.IsPlainIdentifier(mRef.Name) then
+      begin
+        mSorted.Add(mRef);
+      end;
+    end;
+    mSorted.Sort(TDelegatedComparer<TAtlasInlineValueRef>.Construct(
+      function(const ALeft, ARight: TAtlasInlineValueRef): Integer
+      begin
+        Result := ALeft.Line - ARight.Line;
+        if Result = 0 then
+        begin
+          Result := ALeft.Character - ARight.Character;
+        end;
+      end));
+    Result := mSorted.ToArray;
+  finally
+    mSorted.Free;
+  end;
+end;
+
+/// <summary>Zeilen nach Abstand zu AStoppedLine, bei gleichem Abstand die untere zuerst.</summary>
+function LinesByDistance(const ALines: TArray<Integer>; AStoppedLine: Integer): TArray<Integer>;
+begin
+  Result := Copy(ALines);
+  TArray.Sort<Integer>(Result, TDelegatedComparer<Integer>.Construct(
+    function(const ALeft, ARight: Integer): Integer
+    begin
+      Result := Abs(ALeft - AStoppedLine) - Abs(ARight - AStoppedLine);
+      if Result = 0 then
+      begin
+        Result := ARight - ALeft;
+      end;
+    end));
+end;
+
+procedure TAtlasInlineValues.AddRefs(const ARefs: TAtlasInlineValueRefs; APerLine: Integer);
+var
+  mRef: TAtlasInlineValueRef;
+  mNames: TArray<string>;
+  mKey: string;
+begin
+  for mRef in SortedRefs(ARefs) do
+  begin
+    mKey := KeyOf(mRef.Name);
+    if not FLines.TryGetValue(mRef.Line, mNames) then
+    begin
+      mNames := nil;
+    end;
+    if (Length(mNames) >= APerLine) or (IndexStr(mKey, mNames) >= 0) then
+    begin
+      Continue;
+    end;
+    FLines.AddOrSetValue(mRef.Line, mNames + [mKey]);
+    if not FTypes.ContainsKey(mKey) then
+    begin
+      FTypes.Add(mKey, mRef.TypeName);
+      FSpellings.Add(mKey, mRef.Name);
+      FValues.Add(mKey, Default(TValue));
+    end;
+  end;
+end;
+
 procedure TAtlasInlineValues.Start(const AFileName, AContext: string; AStoppedLine: Integer;
   const ARefs: TAtlasInlineValueRefs; APerLine: Integer);
 var
-  Ref: TAtlasInlineValueRef;
-  Sorted: TList<TAtlasInlineValueRef>;
-  Names: TArray<string>;
-  Key, Name: string;
-  Seen: Boolean;
-  Lines: TArray<Integer>;
+  Key: string;
   Line: Integer;
 begin
   Clear;
@@ -216,75 +288,9 @@ begin
   FFileName := AFileName;
   FContext := AContext;
   FStoppedLine := AStoppedLine;
-  if APerLine < 1 then
-  begin
-    APerLine := 1;
-  end;
-  Sorted := TList<TAtlasInlineValueRef>.Create;
-  try
-    for Ref in ARefs do
-    begin
-      if IsPlainIdentifier(Ref.Name) then
-      begin
-        Sorted.Add(Ref);
-      end;
-    end;
-    // Reihenfolge im Text; der Server liefert sie schon so, aber darauf verlässt sich die Anzeige nicht.
-    Sorted.Sort(TDelegatedComparer<TAtlasInlineValueRef>.Construct(
-      function(const ALeft, ARight: TAtlasInlineValueRef): Integer
-      begin
-        Result := ALeft.Line - ARight.Line;
-        if Result = 0 then
-        begin
-          Result := ALeft.Character - ARight.Character;
-        end;
-      end));
-    for Ref in Sorted do
-    begin
-      Key := KeyOf(Ref.Name);
-      if not FLines.TryGetValue(Ref.Line, Names) then
-      begin
-        Names := nil;
-      end;
-      if Length(Names) >= APerLine then
-      begin
-        Continue;
-      end;
-      Seen := False;
-      for Name in Names do
-      begin
-        if Name = Key then
-        begin
-          Seen := True;
-        end;
-      end;
-      if Seen then
-      begin
-        Continue;
-      end;
-      FLines.AddOrSetValue(Ref.Line, Names + [Key]);
-      if not FTypes.ContainsKey(Key) then
-      begin
-        FTypes.Add(Key, Ref.TypeName);
-        FSpellings.Add(Key, Ref.Name);
-        FValues.Add(Key, Default(TValue));
-      end;
-    end;
-  finally
-    Sorted.Free;
-  end;
+  AddRefs(ARefs, Max(APerLine, 1));
   // Auswerten: Zeile des Halts zuerst, dann darüber die nächste zuerst.
-  Lines := FLines.Keys.ToArray;
-  TArray.Sort<Integer>(Lines, TDelegatedComparer<Integer>.Construct(
-    function(const ALeft, ARight: Integer): Integer
-    begin
-      Result := Abs(ALeft - AStoppedLine) - Abs(ARight - AStoppedLine);
-      if Result = 0 then
-      begin
-        Result := ARight - ALeft;
-      end;
-    end));
-  for Line in Lines do
+  for Line in LinesByDistance(FLines.Keys.ToArray, AStoppedLine) do
   begin
     for Key in FLines[Line] do
     begin

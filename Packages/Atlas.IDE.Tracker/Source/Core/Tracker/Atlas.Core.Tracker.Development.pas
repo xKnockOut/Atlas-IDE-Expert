@@ -287,10 +287,23 @@ begin
   Result := (mIndex >= 1) and (mIndex < APos - 1) and (AText[mIndex] = '/');
 end;
 
+/// <summary>Vor AIndex kein Buchstabe und keine Ziffer ("x#12" und "AATL-1" nicht), außer einem Repository vor
+/// "#" ("owner/repo#12").</summary>
+function FreeBefore(const AText, AKey: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex = 1) or not IsAlnum(AText[AIndex - 1]) or ((AKey[1] = '#') and AfterRepository(AText, AIndex));
+end;
+
+/// <summary>An AStop steht keine Ziffer mehr.</summary>
+function FreeAfter(const AText: string; AStop: Integer): Boolean;
+begin
+  Result := (AStop > Length(AText)) or not CharInSet(AText[AStop], ['0'..'9']);
+end;
+
 class function TAtlasIssueDevelopmentQuery.MentionsKey(const AKey, AText: string): Boolean;
 var
   mKey, mText: string;
-  mIndex, mStop: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   mKey := UpperCase(Trim(AKey));
@@ -302,11 +315,7 @@ begin
   mIndex := Pos(mKey, mText);
   while mIndex > 0 do
   begin
-    mStop := mIndex + Length(mKey);
-    // Davor kein Buchstabe und keine Ziffer ("x#12" und "AATL-1" nicht), außer einem Repository vor "#"
-    // ("owner/repo#12"); danach keine Ziffer.
-    if ((mIndex = 1) or not IsAlnum(mText[mIndex - 1]) or ((mKey[1] = '#') and AfterRepository(mText, mIndex))) and
-      ((mStop > Length(mText)) or not CharInSet(mText[mStop], ['0'..'9'])) then
+    if FreeBefore(mText, mKey, mIndex) and FreeAfter(mText, mIndex + Length(mKey)) then
     begin
       Exit(True);
     end;
@@ -350,125 +359,118 @@ begin
   end;
 end;
 
+/// <summary>Ein Ref mit dem Namen AName (lokal bzw. entfernt) ist da.</summary>
+function HasRef(const ARefs: TArray<TAtlasVcsRef>; const AName: string; ARemote: Boolean): Boolean;
+var
+  mRef: TAtlasVcsRef;
+begin
+  Result := False;
+  for mRef in ARefs do
+  begin
+    if (mRef.Remote = ARemote) and SameText(mRef.Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Basis: der erste Kandidat, den es gibt, lokal vor origin/&lt;Name&gt;; '' ohne.</summary>
+function BaseOf(const ABases: TArray<string>; const ARefs: TArray<TAtlasVcsRef>): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  for mCandidate in ABases do
+  begin
+    if Trim(mCandidate) = '' then
+    begin
+      Continue;
+    end;
+    if HasRef(ARefs, mCandidate, False) then
+    begin
+      Exit(mCandidate);
+    end;
+    if HasRef(ARefs, 'origin/' + mCandidate, True) then
+    begin
+      Exit('origin/' + mCandidate);
+    end;
+  end;
+end;
+
+/// <summary>Stelle des Branches ALocalName in ABranches; neu angelegt mit ABase, -1 wenn die Liste voll ist.
+/// </summary>
+function BranchIndex(var ABranches: TArray<TAtlasIssueBranch>; const ALocalName, ABase: string): Integer;
+var
+  mIndex: Integer;
+  mBranch: TAtlasIssueBranch;
+begin
+  for mIndex := 0 to High(ABranches) do
+  begin
+    if SameText(ABranches[mIndex].Name, ALocalName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+  if Length(ABranches) < TAtlasIssueDevelopmentRequest.MaxBranches then
+  begin
+    mBranch := Default(TAtlasIssueBranch);
+    mBranch.Name := ALocalName;
+    mBranch.Ahead := -1;
+    mBranch.Behind := -1;
+    mBranch.Base := ABase;
+    ABranches := ABranches + [mBranch];
+    Result := High(ABranches);
+  end;
+end;
+
+/// <summary>ARef in den Branch übernehmen: lokal bzw. entfernt, aktuell, jüngster Commit.</summary>
+procedure MergeRef(var ABranch: TAtlasIssueBranch; const ARef: TAtlasVcsRef);
+begin
+  if ARef.Remote then
+  begin
+    ABranch.Remote := True;
+    ABranch.RemoteName := ARef.Name;
+  end
+  else
+  begin
+    ABranch.Local := True;
+  end;
+  ABranch.Current := ABranch.Current or ARef.Current;
+  if ARef.TipDate > ABranch.TipDate then
+  begin
+    ABranch.TipDate := ARef.TipDate;
+  end;
+end;
+
 class function TAtlasIssueDevelopmentQuery.BranchesOf(const ARequest: TAtlasIssueDevelopmentRequest;
   const ARefs: TArray<TAtlasVcsRef>): TArray<TAtlasIssueBranch>;
 var
   mRef: TAtlasVcsRef;
-  mIndex, mFound: Integer;
-  mBranch: TAtlasIssueBranch;
-  mBase, mCandidate: string;
-  mLocal, mRemote: TDictionary<string, Boolean>;
+  mFound: Integer;
+  mBase: string;
 begin
   Result := nil;
-  mLocal := TDictionary<string, Boolean>.Create;
-  mRemote := TDictionary<string, Boolean>.Create;
-  try
-    for mRef in ARefs do
+  mBase := BaseOf(ARequest.Bases, ARefs);
+  for mRef in ARefs do
+  begin
+    if not BranchMatches(ARequest, mRef.LocalName) then
     begin
-      if mRef.Remote then
-      begin
-        mRemote.AddOrSetValue(LowerCase(mRef.Name), True);
-      end
-      else
-      begin
-        mLocal.AddOrSetValue(LowerCase(mRef.Name), True);
-      end;
+      Continue;
     end;
-    // Basis: der erste Kandidat, den es gibt, lokal vor origin/<Name>.
-    mBase := '';
-    for mCandidate in ARequest.Bases do
+    mFound := BranchIndex(Result, mRef.LocalName, mBase);
+    if mFound >= 0 then
     begin
-      if Trim(mCandidate) = '' then
-      begin
-        Continue;
-      end;
-      if mLocal.ContainsKey(LowerCase(mCandidate)) then
-      begin
-        mBase := mCandidate;
-      end
-      else if mRemote.ContainsKey(LowerCase('origin/' + mCandidate)) then
-      begin
-        mBase := 'origin/' + mCandidate;
-      end;
-      if mBase <> '' then
-      begin
-        Break;
-      end;
+      MergeRef(Result[mFound], mRef);
     end;
-    for mRef in ARefs do
-    begin
-      if not BranchMatches(ARequest, mRef.LocalName) then
-      begin
-        Continue;
-      end;
-      mFound := -1;
-      for mIndex := 0 to High(Result) do
-      begin
-        if SameText(Result[mIndex].Name, mRef.LocalName) then
-        begin
-          mFound := mIndex;
-        end;
-      end;
-      if mFound < 0 then
-      begin
-        if Length(Result) >= TAtlasIssueDevelopmentRequest.MaxBranches then
-        begin
-          Continue;
-        end;
-        mBranch := Default(TAtlasIssueBranch);
-        mBranch.Name := mRef.LocalName;
-        mBranch.Ahead := -1;
-        mBranch.Behind := -1;
-        mBranch.Base := mBase;
-        Result := Result + [mBranch];
-        mFound := High(Result);
-      end;
-      if mRef.Remote then
-      begin
-        Result[mFound].Remote := True;
-        Result[mFound].RemoteName := mRef.Name;
-      end
-      else
-      begin
-        Result[mFound].Local := True;
-      end;
-      if mRef.Current then
-      begin
-        Result[mFound].Current := True;
-      end;
-      if mRef.TipDate > Result[mFound].TipDate then
-      begin
-        Result[mFound].TipDate := mRef.TipDate;
-      end;
-    end;
-  finally
-    mLocal.Free;
-    mRemote.Free;
   end;
 end;
 
-class function TAtlasIssueDevelopmentQuery.GroupUnits(const ACommits: TArray<TAtlasVcsLogEntry>;
-  const AProjects: TArray<TAtlasIssueProject>): TArray<TAtlasIssueUnitGroup>;
-var
-  mFiles: TDictionary<string, TAtlasIssueUnit>;
-  mOrder: TList<string>;
-  mEntry: TAtlasVcsLogEntry;
-  mFile: TAtlasVcsLogFile;
-  mUnit: TAtlasIssueUnit;
-  mKey, mPath: string;
-  mGroups: TList<TAtlasIssueUnitGroup>;
-  mGroup: TAtlasIssueUnitGroup;
-  mProjects: TArray<TAtlasIssueProject>;
-  mIndex, mBest, mGroupIndex: Integer;
-  mUnits: TList<TAtlasIssueUnit>;
-  mByGroup: TArray<TList<TAtlasIssueUnit>>;
-  mMembers: TDictionary<string, Integer>;
-  mMember, mExt: string;
+/// <summary>Projekte nach Name: Bei gleichem Ordner gewinnt das erste.</summary>
+function SortedProjects(const AProjects: TArray<TAtlasIssueProject>): TArray<TAtlasIssueProject>;
 begin
-  Result := nil;
-  // Projekte nach Name: Bei gleichem Ordner gewinnt das erste.
-  mProjects := Copy(AProjects, 0, Length(AProjects));
-  TArray.Sort<TAtlasIssueProject>(mProjects, TComparer<TAtlasIssueProject>.Construct(
+  Result := Copy(AProjects, 0, Length(AProjects));
+  TArray.Sort<TAtlasIssueProject>(Result, TComparer<TAtlasIssueProject>.Construct(
     function(const ALeft, ARight: TAtlasIssueProject): Integer
     begin
       Result := CompareText(ALeft.Name, ARight.Name);
@@ -477,119 +479,188 @@ begin
         Result := CompareText(ALeft.FileName, ARight.FileName);
       end;
     end));
-  mFiles := TDictionary<string, TAtlasIssueUnit>.Create;
-  mOrder := TList<string>.Create;
-  mGroups := TList<TAtlasIssueUnitGroup>.Create;
-  mMembers := TDictionary<string, Integer>.Create;
+end;
+
+/// <summary>Datei (klein geschrieben) → erstes Projekt in AProjects, das sie enthält.</summary>
+procedure AddMembers(AMembers: TDictionary<string, Integer>; const AProjects: TArray<TAtlasIssueProject>);
+var
+  mIndex: Integer;
+  mMember: string;
+begin
+  for mIndex := 0 to High(AProjects) do
+  begin
+    for mMember in AProjects[mIndex].Files do
+    begin
+      if not AMembers.ContainsKey(LowerCase(mMember)) then
+      begin
+        AMembers.Add(LowerCase(mMember), mIndex);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Geänderte Dateien aller Commits in AFiles, die Schlüssel in der Reihenfolge des ersten Auftretens in
+/// AOrder. Commits kommen neueste zuerst: Der erste Eintrag einer Datei ist ihr jüngster Stand.</summary>
+procedure CollectUnits(const ACommits: TArray<TAtlasVcsLogEntry>; AFiles: TDictionary<string, TAtlasIssueUnit>;
+  AOrder: TList<string>);
+var
+  mEntry: TAtlasVcsLogEntry;
+  mFile: TAtlasVcsLogFile;
+  mUnit: TAtlasIssueUnit;
+  mKey: string;
+begin
+  for mEntry in ACommits do
+  begin
+    for mFile in mEntry.Files do
+    begin
+      mKey := LowerCase(mFile.Path);
+      if mFile.Path = '' then
+      begin
+        Continue;
+      end;
+      if AFiles.TryGetValue(mKey, mUnit) then
+      begin
+        Inc(mUnit.Commits);
+        AFiles[mKey] := mUnit;
+        Continue;
+      end;
+      mUnit := Default(TAtlasIssueUnit);
+      mUnit.Path := mFile.Path;
+      mUnit.Deleted := mFile.Kind = TAtlasVcsChangeKind.Deleted;
+      mUnit.Commits := 1;
+      AFiles.Add(mKey, mUnit);
+      AOrder.Add(mKey);
+    end;
+  end;
+end;
+
+/// <summary>Projekt einer Datei: über die Liste des Projekts (Formular über seine .pas), sonst das tiefste
+/// Projekt, unter dessen Ordner sie liegt; Length(AProjects) = ohne Projekt.</summary>
+function ProjectOf(AMembers: TDictionary<string, Integer>; const AProjects: TArray<TAtlasIssueProject>;
+  const AKey, APath: string): Integer;
+var
+  mExt: string;
+  mIndex: Integer;
+begin
+  if AMembers.TryGetValue(AKey, Result) then
+  begin
+    Exit;
+  end;
+  mExt := LowerCase(ExtractFileExt(APath));
+  if ((mExt = '.dfm') or (mExt = '.fmx')) and AMembers.TryGetValue(LowerCase(ChangeFileExt(APath, '.pas')),
+    Result) then
+  begin
+    Exit;
+  end;
+  Result := -1;
+  for mIndex := 0 to High(AProjects) do
+  begin
+    if SameOrUnder(AProjects[mIndex].Folder, APath) and
+      ((Result < 0) or (Length(AProjects[mIndex].Folder) > Length(AProjects[Result].Folder))) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+  if Result < 0 then
+  begin
+    Result := Length(AProjects);
+  end;
+end;
+
+function UnitOrder: IComparer<TAtlasIssueUnit>;
+begin
+  Result := TComparer<TAtlasIssueUnit>.Construct(
+    function(const ALeft, ARight: TAtlasIssueUnit): Integer
+    begin
+      Result := CompareText(ALeft.Path, ARight.Path);
+      if Result = 0 then
+      begin
+        Result := CompareStr(ALeft.Path, ARight.Path);
+      end;
+    end);
+end;
+
+/// <summary>Gruppen aus den Listen je Projekt (die letzte ist „ohne Projekt“); leere entfallen.</summary>
+function GroupsOf(const AByGroup: TArray<TList<TAtlasIssueUnit>>;
+  const AProjects: TArray<TAtlasIssueProject>): TArray<TAtlasIssueUnitGroup>;
+var
+  mGroupIndex: Integer;
+  mGroup: TAtlasIssueUnitGroup;
+begin
+  Result := nil;
+  for mGroupIndex := 0 to High(AByGroup) do
+  begin
+    if AByGroup[mGroupIndex].Count = 0 then
+    begin
+      Continue;
+    end;
+    AByGroup[mGroupIndex].Sort(UnitOrder());
+    mGroup := Default(TAtlasIssueUnitGroup);
+    if mGroupIndex < Length(AProjects) then
+    begin
+      mGroup.Project := AProjects[mGroupIndex].Name;
+      mGroup.ProjectFile := AProjects[mGroupIndex].FileName;
+    end;
+    mGroup.Units := AByGroup[mGroupIndex].ToArray;
+    Result := Result + [mGroup];
+  end;
+end;
+
+/// <summary>Dateien aus AOrder je Projekt gruppieren.</summary>
+function GroupByProject(AFiles: TDictionary<string, TAtlasIssueUnit>; AOrder: TList<string>;
+  AMembers: TDictionary<string, Integer>; const AProjects: TArray<TAtlasIssueProject>):
+  TArray<TAtlasIssueUnitGroup>;
+var
+  mByGroup: TArray<TList<TAtlasIssueUnit>>;
+  mIndex: Integer;
+  mKey: string;
+  mUnit: TAtlasIssueUnit;
+begin
+  // Eine Liste je Projekt und eine für „ohne Projekt“ (letzte).
+  SetLength(mByGroup, Length(AProjects) + 1);
+  for mIndex := 0 to High(mByGroup) do
+  begin
+    mByGroup[mIndex] := TList<TAtlasIssueUnit>.Create;
+  end;
   try
-    // Datei → erstes Projekt (nach Name), das sie enthält.
-    for mIndex := 0 to High(mProjects) do
+    for mKey in AOrder do
     begin
-      for mMember in mProjects[mIndex].Files do
+      if AFiles.TryGetValue(mKey, mUnit) then
       begin
-        if not mMembers.ContainsKey(LowerCase(mMember)) then
-        begin
-          mMembers.Add(LowerCase(mMember), mIndex);
-        end;
+        mByGroup[ProjectOf(AMembers, AProjects, mKey, mUnit.Path)].Add(mUnit);
       end;
     end;
-    // Commits kommen neueste zuerst: Der erste Eintrag einer Datei ist ihr jüngster Stand.
-    for mEntry in ACommits do
-    begin
-      for mFile in mEntry.Files do
-      begin
-        if mFile.Path = '' then
-        begin
-          Continue;
-        end;
-        mKey := LowerCase(mFile.Path);
-        if mFiles.TryGetValue(mKey, mUnit) then
-        begin
-          Inc(mUnit.Commits);
-          mFiles[mKey] := mUnit;
-          Continue;
-        end;
-        mUnit := Default(TAtlasIssueUnit);
-        mUnit.Path := mFile.Path;
-        mUnit.Deleted := mFile.Kind = TAtlasVcsChangeKind.Deleted;
-        mUnit.Commits := 1;
-        mFiles.Add(mKey, mUnit);
-        mOrder.Add(mKey);
-      end;
-    end;
-    if mOrder.Count = 0 then
-    begin
-      Exit;
-    end;
-    // Eine Liste je Projekt und eine für „ohne Projekt“ (letzte).
-    SetLength(mByGroup, Length(mProjects) + 1);
+    Result := GroupsOf(mByGroup, AProjects);
+  finally
     for mIndex := 0 to High(mByGroup) do
     begin
-      mByGroup[mIndex] := TList<TAtlasIssueUnit>.Create;
+      mByGroup[mIndex].Free;
     end;
-    try
-      for mKey in mOrder do
-      begin
-        mUnit := mFiles[mKey];
-        mPath := mUnit.Path;
-        mExt := LowerCase(ExtractFileExt(mPath));
-        if not mMembers.TryGetValue(mKey, mBest) and (((mExt <> '.dfm') and (mExt <> '.fmx')) or
-          not mMembers.TryGetValue(LowerCase(ChangeFileExt(mPath, '.pas')), mBest)) then
-        begin
-          mBest := -1;
-        end;
-        if mBest < 0 then
-        begin
-          for mIndex := 0 to High(mProjects) do
-          begin
-            if SameOrUnder(mProjects[mIndex].Folder, mPath) and
-              ((mBest < 0) or (Length(mProjects[mIndex].Folder) > Length(mProjects[mBest].Folder))) then
-            begin
-              mBest := mIndex;
-            end;
-          end;
-        end;
-        if mBest < 0 then
-        begin
-          mBest := Length(mProjects);
-        end;
-        mByGroup[mBest].Add(mUnit);
-      end;
-      for mGroupIndex := 0 to High(mByGroup) do
-      begin
-        mUnits := mByGroup[mGroupIndex];
-        if mUnits.Count = 0 then
-        begin
-          Continue;
-        end;
-        mUnits.Sort(TComparer<TAtlasIssueUnit>.Construct(
-          function(const ALeft, ARight: TAtlasIssueUnit): Integer
-          begin
-            Result := CompareText(ALeft.Path, ARight.Path);
-            if Result = 0 then
-            begin
-              Result := CompareStr(ALeft.Path, ARight.Path);
-            end;
-          end));
-        mGroup := Default(TAtlasIssueUnitGroup);
-        if mGroupIndex < Length(mProjects) then
-        begin
-          mGroup.Project := mProjects[mGroupIndex].Name;
-          mGroup.ProjectFile := mProjects[mGroupIndex].FileName;
-        end;
-        mGroup.Units := mUnits.ToArray;
-        mGroups.Add(mGroup);
-      end;
-    finally
-      for mIndex := 0 to High(mByGroup) do
-      begin
-        mByGroup[mIndex].Free;
-      end;
+  end;
+end;
+
+class function TAtlasIssueDevelopmentQuery.GroupUnits(const ACommits: TArray<TAtlasVcsLogEntry>;
+  const AProjects: TArray<TAtlasIssueProject>): TArray<TAtlasIssueUnitGroup>;
+var
+  mFiles: TDictionary<string, TAtlasIssueUnit>;
+  mOrder: TList<string>;
+  mProjects: TArray<TAtlasIssueProject>;
+  mMembers: TDictionary<string, Integer>;
+begin
+  Result := nil;
+  mProjects := SortedProjects(AProjects);
+  mFiles := TDictionary<string, TAtlasIssueUnit>.Create;
+  mOrder := TList<string>.Create;
+  mMembers := TDictionary<string, Integer>.Create;
+  try
+    AddMembers(mMembers, mProjects);
+    CollectUnits(ACommits, mFiles, mOrder);
+    if mOrder.Count > 0 then
+    begin
+      Result := GroupByProject(mFiles, mOrder, mMembers, mProjects);
     end;
-    Result := mGroups.ToArray;
   finally
     mMembers.Free;
-    mGroups.Free;
     mOrder.Free;
     mFiles.Free;
   end;

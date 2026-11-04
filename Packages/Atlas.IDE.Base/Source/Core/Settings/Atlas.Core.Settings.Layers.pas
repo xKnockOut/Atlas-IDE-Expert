@@ -109,15 +109,21 @@ begin
   Root := TAtlasJsonText.Parse(AText);
   GlobalRoot := nil;
   if not AGlobal then
+  begin
     GlobalRoot := TAtlasJsonText.Parse(AGlobalText);
+  end;
   try
     for Index := 0 to High(FFields) do
     begin
       if Root <> nil then
+      begin
         FOriginal[Index] := TAtlasJsonText.ValueAt(Root, FFields[Index].Path);
+      end;
       FCurrent[Index] := FOriginal[Index];
       if GlobalRoot <> nil then
+      begin
         FInherited[Index] := TAtlasJsonText.ValueAt(GlobalRoot, FFields[Index].Path);
+      end;
     end;
   finally
     GlobalRoot.Free;
@@ -140,8 +146,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFields) do
+  begin
     if SameText(FFields[Index].Path, APath) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -164,14 +174,18 @@ function TAtlasSettingsModel.Fallback(AIndex: Integer): string;
 begin
   Result := FInherited[AIndex];
   if Result = '' then
+  begin
     Result := FFields[AIndex].DefaultJson;
+  end;
 end;
 
 function TAtlasSettingsModel.Effective(AIndex: Integer): string;
 begin
   Result := FCurrent[AIndex];
   if Result = '' then
+  begin
     Result := Fallback(AIndex);
+  end;
 end;
 
 function TAtlasSettingsModel.Origin(AIndex: Integer): TAtlasSettingOrigin;
@@ -179,14 +193,22 @@ begin
   if FCurrent[AIndex] <> '' then
   begin
     if FGlobal then
-      Result := TAtlasSettingOrigin.Global
+    begin
+      Result := TAtlasSettingOrigin.Global;
+    end
     else
+    begin
       Result := TAtlasSettingOrigin.Project;
+    end;
   end
   else if FInherited[AIndex] <> '' then
-    Result := TAtlasSettingOrigin.Global
+  begin
+    Result := TAtlasSettingOrigin.Global;
+  end
   else
+  begin
     Result := TAtlasSettingOrigin.Default_;
+  end;
 end;
 
 function TAtlasSettingsModel.Typed(AIndex: Integer): Boolean;
@@ -211,8 +233,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(FFields) do
+  begin
     if FCurrent[Index] <> FOriginal[Index] then
+    begin
       Result := Result + [TPair<string, string>.Create(FFields[Index].Path, FCurrent[Index])];
+    end;
+  end;
   Result := Result + FPaths;
 end;
 
@@ -221,11 +247,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FPaths) do
+  begin
     if SameText(FPaths[Index].Key, APath) then
     begin
       FPaths[Index].Value := AJson;
       Exit;
     end;
+  end;
   FPaths := FPaths + [TPair<string, string>.Create(APath, AJson)];
 end;
 
@@ -240,7 +268,9 @@ var
 begin
   Pending := Changes;
   if Length(Pending) = 0 then
+  begin
     Exit(FText);
+  end;
   Result := TAtlasJsonText.ApplyChanges(FText, Pending);
 end;
 
@@ -250,7 +280,9 @@ class function TAtlasSettingsFiles.GlobalFile(const AAppData: string): string;
 begin
   Result := '';
   if AAppData <> '' then
+  begin
     Result := TPath.Combine(TPath.Combine(AAppData, GlobalFolder), GlobalName);
+  end;
 end;
 
 end.

@@ -53,8 +53,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Known) do
+  begin
     if SameText(Known[Index], AId) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -64,7 +68,9 @@ var
 begin
   SetLength(Result, Length(Known));
   for Index := 0 to High(Known) do
+  begin
     Result[Index] := Known[Index];
+  end;
 end;
 
 class function TAtlasStatusBarItems.DefaultText: string;
@@ -78,7 +84,9 @@ var
 begin
   Rank := RankOf(Trim(AId));
   if Rank < 0 then
+  begin
     Exit('');
+  end;
   Result := Known[Rank];
 end;
 
@@ -87,8 +95,12 @@ var
   Item: string;
 begin
   for Item in AItems do
+  begin
     if SameText(Item, AId) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -101,7 +113,9 @@ begin
   begin
     Id := Canonical(Part);
     if (Id <> '') and not Contains(Result, Id) then
+    begin
       Result := Result + [Id];
+    end;
   end;
 end;
 
@@ -123,17 +137,23 @@ begin
   Result := Parse(Format(AItems));
   Id := Canonical(AId);
   if Id = '' then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Result) do
+  begin
     if Result[Index] = Id then
     begin
       Delete(Result, Index, 1);
       Exit;
     end;
+  end;
   Rank := RankOf(Id);
   Index := 0;
   while (Index <= High(Result)) and (RankOf(Result[Index]) < Rank) do
+  begin
     Inc(Index);
+  end;
   Insert(Id, Result, Index);
 end;
 

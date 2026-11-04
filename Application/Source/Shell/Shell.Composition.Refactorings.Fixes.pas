@@ -151,6 +151,7 @@ var
   mDocument: ITextDocument;
   mUses: TUsesContext;
   mContext: TCompilerFixContext;
+  mRequest: TCompilerFixRequest;
 begin
   Result := nil;
   if not Settings(AUri).CompilerFixes or not Documents.TryGet(AUri, mDocument) then
@@ -168,8 +169,12 @@ begin
     mContext.Declaring := mUses.Declaring;
     mContext.Namespaces := mUses.Namespaces;
   end;
-  Result := TLspCompilerFixes.Actions(True, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree, AUri, ARange,
-    mMessages, mContext);
+  mRequest.Text := mDocument.Text;
+  mRequest.Tree := TSyntaxTreeCache.Get(mDocument, nil).Tree;
+  mRequest.Uri := AUri;
+  mRequest.Range := ARange;
+  mRequest.Context := mContext;
+  Result := TLspCompilerFixes.Actions(True, mRequest, mMessages);
 end;
 
 function TShellFixRefactorings.MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
