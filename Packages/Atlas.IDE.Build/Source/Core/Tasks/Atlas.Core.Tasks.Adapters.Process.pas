@@ -118,228 +118,290 @@ begin
     end;
 end;
 
-class function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
-  const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
+type
+  /// <summary>Was CreateProcess braucht; CommandLine ist beschreibbar (UniqueString).</summary>
+  TLaunch = record
+    ProgramPath: string;
+    CommandLine: string;
+    Environment: string;
+  end;
+
+  /// <summary>Handles eines Laufs; 0 bzw. INVALID_HANDLE_VALUE (NullInput) = nicht offen.</summary>
+  THandles = record
+    OutRead: THandle;
+    OutWrite: THandle;
+    NullInput: THandle;
+    Job: THandle;
+    Process: TProcessInformation;
+  end;
+
+/// <summary>Programm, Befehlszeile und Umgebung; False mit Result.Error (und Outcome), wenn nicht startbar.</summary>
+function PrepareLaunch(const ATask: TAtlasTaskDefinition; out ALaunch: TLaunch;
+  var AResult: TAtlasTaskProcessResult): Boolean;
 var
-  Security: TSecurityAttributes;
-  OutRead, OutWrite, NullInput, Job: THandle;
-  Startup: TStartupInfo;
-  Process: TProcessInformation;
-  Limits: TJobExtendedLimits;
-  ProgramPath, CommandLine, Environment, ComSpec: string;
-  Batch: Boolean;
-  WorkingDir: PChar;
-  Lines: TAtlasTaskLines;
-  Chunk: TBytes;
-  Available, BytesRead, ExitCode: DWORD;
-  Deadline: UInt64;
-  Line: string;
-
-  function Cancelled: Boolean;
-  begin
-    Result := (not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated) or
-      (Assigned(ACancelled) and ACancelled());
-  end;
-
-  procedure Drain;
-  var
-    Text: string;
-  begin
-    while PeekNamedPipe(OutRead, nil, 0, nil, @Available, nil) and (Available > 0) do
-    begin
-      if Available > DWORD(Length(Chunk)) then
-      begin
-        Available := Length(Chunk);
-      end;
-      if not ReadFile(OutRead, Chunk[0], Available, BytesRead, nil) or (BytesRead = 0) then
-      begin
-        Exit;
-      end;
-      for Text in Lines.Feed(Chunk, Integer(BytesRead)) do
-      begin
-        AOnLine(Text);
-      end;
-    end;
-  end;
-
+  mBatch: Boolean;
 begin
-  Result := Default(TAtlasTaskProcessResult);
-  Result.Outcome := TAtlasTaskOutcome.StartFailed;
-  Result.ExitCode := -1;
+  ALaunch := Default(TLaunch);
+  Result := False;
   if GetCurrentThreadId = MainThreadID then
   begin
-    Result.Error := 'main thread';
+    AResult.Error := 'main thread';
     Exit;
   end;
-  ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),
+  ALaunch.ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),
     GetEnvironmentVariable('PATHEXT'), FileExistsProc());
-  if ProgramPath = '' then
+  if ALaunch.ProgramPath = '' then
   begin
-    Result.Outcome := TAtlasTaskOutcome.ProgramMissing;
-    Result.Error := ATask.Command;
+    AResult.Outcome := TAtlasTaskOutcome.ProgramMissing;
+    AResult.Error := ATask.Command;
     Exit;
   end;
   if (ATask.Cwd <> '') and not DirectoryExists(ATask.Cwd) then
   begin
-    Result.Error := ATask.Cwd;
+    AResult.Error := ATask.Cwd;
     Exit;
   end;
-  Batch := TAtlasTaskCommands.IsBatch(ProgramPath);
-  CommandLine := TAtlasTaskCommands.BuildCommandLine(ProgramPath, ATask.Args, Batch);
-  if Batch then
+  mBatch := TAtlasTaskCommands.IsBatch(ALaunch.ProgramPath);
+  ALaunch.CommandLine := TAtlasTaskCommands.BuildCommandLine(ALaunch.ProgramPath, ATask.Args, mBatch);
+  if mBatch then
   begin
-    ComSpec := GetEnvironmentVariable('ComSpec');
-    if ComSpec = '' then
+    ALaunch.ProgramPath := GetEnvironmentVariable('ComSpec');
+    if ALaunch.ProgramPath = '' then
     begin
-      ComSpec := 'cmd.exe';
+      ALaunch.ProgramPath := 'cmd.exe';
     end;
-    ProgramPath := ComSpec;
   end;
-  UniqueString(CommandLine);
-  Environment := string.Join(#0, TAtlasTaskCommands.MergeEnvironment(CurrentEnvironment, ATask.EnvNames,
+  UniqueString(ALaunch.CommandLine);
+  ALaunch.Environment := string.Join(#0, TAtlasTaskCommands.MergeEnvironment(CurrentEnvironment, ATask.EnvNames,
     ATask.EnvValues)) + #0#0;
+  Result := True;
+end;
+
+function NoHandles: THandles;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  Result.NullInput := INVALID_HANDLE_VALUE;
+end;
+
+/// <summary>Pipe für stdout/stderr, NUL als stdin und Job mit „beim Schließen beenden“.</summary>
+function OpenHandles(var AHandles: THandles; var AResult: TAtlasTaskProcessResult): Boolean;
+var
+  mSecurity: TSecurityAttributes;
+  mLimits: TJobExtendedLimits;
+begin
+  mSecurity.nLength := SizeOf(mSecurity);
+  mSecurity.lpSecurityDescriptor := nil;
+  mSecurity.bInheritHandle := True;
+  Result := CreatePipe(AHandles.OutRead, AHandles.OutWrite, @mSecurity, 0);
+  if not Result then
+  begin
+    AResult.Error := SysErrorMessage(GetLastError);
+    Exit;
+  end;
+  SetHandleInformation(AHandles.OutRead, HANDLE_FLAG_INHERIT, 0);
+  AHandles.NullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity,
+    OPEN_EXISTING, 0, 0);
+  AHandles.Job := CreateJob(nil, nil);
+  if AHandles.Job <> 0 then
+  begin
+    FillChar(mLimits, SizeOf(mLimits), 0);
+    mLimits.Basic.LimitFlags := JobKillOnClose;
+    SetJobInformation(AHandles.Job, JobExtendedLimitClass, @mLimits, SizeOf(mLimits));
+  end;
+end;
+
+/// <summary>Prozess unsichtbar starten, in den Job legen und laufen lassen.</summary>
+function StartProcess(var ALaunch: TLaunch; const ACwd: string; var AHandles: THandles;
+  var AResult: TAtlasTaskProcessResult): Boolean;
+var
+  mStartup: TStartupInfo;
+  mWorkingDir: PChar;
+begin
+  FillChar(mStartup, SizeOf(mStartup), 0);
+  mStartup.cb := SizeOf(mStartup);
+  mStartup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
+  mStartup.wShowWindow := SW_HIDE;
+  if AHandles.NullInput <> INVALID_HANDLE_VALUE then
+  begin
+    mStartup.hStdInput := AHandles.NullInput;
+  end;
+  mStartup.hStdOutput := AHandles.OutWrite;
+  mStartup.hStdError := AHandles.OutWrite;
+  mWorkingDir := nil;
+  if ACwd <> '' then
+  begin
+    mWorkingDir := PChar(ACwd);
+  end;
+  // Angehalten starten, damit der Prozess im Job ist, bevor er Kinder startet.
+  Result := CreateProcess(PChar(ALaunch.ProgramPath), PChar(ALaunch.CommandLine), nil, nil, True,
+    CREATE_NO_WINDOW or CREATE_SUSPENDED or CreateUnicodeEnvironment, PChar(ALaunch.Environment), mWorkingDir,
+    mStartup, AHandles.Process);
+  if not Result then
+  begin
+    AResult.Error := SysErrorMessage(GetLastError);
+    Exit;
+  end;
+  if AHandles.Job <> 0 then
+  begin
+    AssignToJob(AHandles.Job, AHandles.Process.hProcess);
+  end;
+  ResumeThread(AHandles.Process.hThread);
+  CloseHandle(AHandles.OutWrite);
+  AHandles.OutWrite := 0;
+end;
+
+function IsCancelled(const ACancelled: TFunc<Boolean>): Boolean;
+begin
+  Result := (not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated) or
+    (Assigned(ACancelled) and ACancelled());
+end;
+
+/// <summary>Alles Verfügbare aus der Pipe lesen und fertige Zeilen weitergeben.</summary>
+procedure Drain(AOutRead: THandle; ALines: TAtlasTaskLines; var AChunk: TBytes; const AOnLine: TAtlasTaskLineProc);
+var
+  mAvailable, mBytesRead: DWORD;
+  mText: string;
+begin
+  while PeekNamedPipe(AOutRead, nil, 0, nil, @mAvailable, nil) and (mAvailable > 0) do
+  begin
+    if mAvailable > DWORD(Length(AChunk)) then
+    begin
+      mAvailable := Length(AChunk);
+    end;
+    if not ReadFile(AOutRead, AChunk[0], mAvailable, mBytesRead, nil) or (mBytesRead = 0) then
+    begin
+      Exit;
+    end;
+    for mText in ALines.Feed(AChunk, Integer(mBytesRead)) do
+    begin
+      AOnLine(mText);
+    end;
+  end;
+end;
+
+/// <summary>Prozessbaum beenden: Job schließen beendet den ganzen Baum; ohne Job wenigstens den Prozess.</summary>
+procedure StopProcess(var AHandles: THandles);
+begin
+  if AHandles.Job <> 0 then
+  begin
+    CloseHandle(AHandles.Job);
+    AHandles.Job := 0;
+  end
+  else
+  begin
+    TerminateProcess(AHandles.Process.hProcess, 1);
+  end;
+  WaitForSingleObject(AHandles.Process.hProcess, 1000);
+end;
+
+function DeadlineOf(ATimeoutSec: Integer): UInt64;
+begin
+  Result := High(UInt64);
+  if ATimeoutSec > 0 then
+  begin
+    Result := TThread.GetTickCount64 + UInt64(ATimeoutSec) * 1000;
+  end;
+end;
+
+/// <summary>Im Takt lesen, bis der Prozess endet, abgebrochen wird oder die Zeit abläuft; danach den Rest.</summary>
+function Watch(ATimeoutSec: Integer; var AHandles: THandles; ALines: TAtlasTaskLines;
+  const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskOutcome;
+var
+  mChunk: TBytes;
+  mDeadline: UInt64;
+  mLine: string;
+begin
+  SetLength(mChunk, 16384);
+  Result := TAtlasTaskOutcome.Finished;
+  mDeadline := DeadlineOf(ATimeoutSec);
+  repeat
+    Drain(AHandles.OutRead, ALines, mChunk, AOnLine);
+    if WaitForSingleObject(AHandles.Process.hProcess, TAtlasTaskProcess.SliceMs) = WAIT_OBJECT_0 then
+    begin
+      Break;
+    end;
+    if IsCancelled(ACancelled) then
+    begin
+      Result := TAtlasTaskOutcome.Cancelled;
+    end
+    else if TThread.GetTickCount64 >= mDeadline then
+    begin
+      Result := TAtlasTaskOutcome.TimedOut;
+    end;
+  until Result <> TAtlasTaskOutcome.Finished;
+  if Result <> TAtlasTaskOutcome.Finished then
+  begin
+    StopProcess(AHandles);
+  end;
+  Drain(AHandles.OutRead, ALines, mChunk, AOnLine);
+  for mLine in ALines.Flush do
+  begin
+    AOnLine(mLine);
+  end;
+end;
+
+function ProcessExitCode(AProcess: THandle): Integer;
+var
+  mExitCode: DWORD;
+begin
+  if not GetExitCodeProcess(AProcess, mExitCode) then
+  begin
+    mExitCode := $FFFFFFFF;
+  end;
+  Result := Integer(mExitCode);
+end;
+
+procedure CloseIf(AHandle: THandle);
+begin
+  if AHandle <> 0 then
+  begin
+    CloseHandle(AHandle);
+  end;
+end;
+
+procedure CloseHandles(const AHandles: THandles);
+begin
+  CloseIf(AHandles.Process.hThread);
+  CloseIf(AHandles.Process.hProcess);
+  // Enkelprozesse, die noch laufen, enden mit dem Job.
+  CloseIf(AHandles.Job);
+  if AHandles.NullInput <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(AHandles.NullInput);
+  end;
+  CloseIf(AHandles.OutRead);
+  CloseIf(AHandles.OutWrite);
+end;
+
+class function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
+  const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
+var
+  mLaunch: TLaunch;
+  mHandles: THandles;
+  mLines: TAtlasTaskLines;
+begin
+  Result := Default(TAtlasTaskProcessResult);
+  Result.Outcome := TAtlasTaskOutcome.StartFailed;
+  Result.ExitCode := -1;
+  if not PrepareLaunch(ATask, mLaunch, Result) then
+  begin
+    Exit;
+  end;
   if ACodePage = 0 then
   begin
     ACodePage := Integer(GetOEMCP);
   end;
-
-  Security.nLength := SizeOf(Security);
-  Security.lpSecurityDescriptor := nil;
-  Security.bInheritHandle := True;
-  OutRead := 0;
-  OutWrite := 0;
-  Job := 0;
-  NullInput := INVALID_HANDLE_VALUE;
-  FillChar(Process, SizeOf(Process), 0);
-  Lines := TAtlasTaskLines.Create(ACodePage);
+  mHandles := NoHandles;
+  mLines := TAtlasTaskLines.Create(ACodePage);
   try
-    if not CreatePipe(OutRead, OutWrite, @Security, 0) then
+    if OpenHandles(mHandles, Result) and StartProcess(mLaunch, ATask.Cwd, mHandles, Result) then
     begin
-      Result.Error := SysErrorMessage(GetLastError);
-      Exit;
+      Result.Outcome := Watch(ATask.TimeoutSec, mHandles, mLines, ACancelled, AOnLine);
+      Result.ExitCode := ProcessExitCode(mHandles.Process.hProcess);
     end;
-    SetHandleInformation(OutRead, HANDLE_FLAG_INHERIT, 0);
-    NullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @Security, OPEN_EXISTING, 0, 0);
-    Job := CreateJob(nil, nil);
-    if Job <> 0 then
-    begin
-      FillChar(Limits, SizeOf(Limits), 0);
-      Limits.Basic.LimitFlags := JobKillOnClose;
-      SetJobInformation(Job, JobExtendedLimitClass, @Limits, SizeOf(Limits));
-    end;
-
-    FillChar(Startup, SizeOf(Startup), 0);
-    Startup.cb := SizeOf(Startup);
-    Startup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-    Startup.wShowWindow := SW_HIDE;
-    if NullInput <> INVALID_HANDLE_VALUE then
-    begin
-      Startup.hStdInput := NullInput;
-    end;
-    Startup.hStdOutput := OutWrite;
-    Startup.hStdError := OutWrite;
-    if ATask.Cwd <> '' then
-    begin
-      WorkingDir := PChar(ATask.Cwd);
-    end
-    else
-    begin
-      WorkingDir := nil;
-    end;
-    // Angehalten starten, damit der Prozess im Job ist, bevor er Kinder startet.
-    if not CreateProcess(PChar(ProgramPath), PChar(CommandLine), nil, nil, True,
-      CREATE_NO_WINDOW or CREATE_SUSPENDED or CreateUnicodeEnvironment, PChar(Environment), WorkingDir, Startup,
-      Process) then
-    begin
-      Result.Error := SysErrorMessage(GetLastError);
-      Exit;
-    end;
-    if Job <> 0 then
-    begin
-      AssignToJob(Job, Process.hProcess);
-    end;
-    ResumeThread(Process.hThread);
-    CloseHandle(OutWrite);
-    OutWrite := 0;
-
-    SetLength(Chunk, 16384);
-    Result.Outcome := TAtlasTaskOutcome.Finished;
-    if ATask.TimeoutSec > 0 then
-    begin
-      Deadline := TThread.GetTickCount64 + UInt64(ATask.TimeoutSec) * 1000;
-    end
-    else
-    begin
-      Deadline := High(UInt64);
-    end;
-    while True do
-    begin
-      Drain;
-      if WaitForSingleObject(Process.hProcess, TAtlasTaskProcess.SliceMs) = WAIT_OBJECT_0 then
-      begin
-        Break;
-      end;
-      if Cancelled then
-      begin
-        Result.Outcome := TAtlasTaskOutcome.Cancelled;
-      end
-      else if TThread.GetTickCount64 >= Deadline then
-      begin
-        Result.Outcome := TAtlasTaskOutcome.TimedOut;
-      end;
-      if Result.Outcome <> TAtlasTaskOutcome.Finished then
-      begin
-        // Job schließen beendet den ganzen Baum; ohne Job wenigstens den Prozess.
-        if Job <> 0 then
-        begin
-          CloseHandle(Job);
-          Job := 0;
-        end
-        else
-        begin
-          TerminateProcess(Process.hProcess, 1);
-        end;
-        WaitForSingleObject(Process.hProcess, 1000);
-        Break;
-      end;
-    end;
-    Drain;
-    for Line in Lines.Flush do
-    begin
-      AOnLine(Line);
-    end;
-    if not GetExitCodeProcess(Process.hProcess, ExitCode) then
-    begin
-      ExitCode := $FFFFFFFF;
-    end;
-    Result.ExitCode := Integer(ExitCode);
   finally
-    Lines.Free;
-    if Process.hThread <> 0 then
-    begin
-      CloseHandle(Process.hThread);
-    end;
-    if Process.hProcess <> 0 then
-    begin
-      CloseHandle(Process.hProcess);
-    end;
-    // Enkelprozesse, die noch laufen, enden mit dem Job.
-    if Job <> 0 then
-    begin
-      CloseHandle(Job);
-    end;
-    if NullInput <> INVALID_HANDLE_VALUE then
-    begin
-      CloseHandle(NullInput);
-    end;
-    if OutRead <> 0 then
-    begin
-      CloseHandle(OutRead);
-    end;
-    if OutWrite <> 0 then
-    begin
-      CloseHandle(OutWrite);
-    end;
+    mLines.Free;
+    CloseHandles(mHandles);
   end;
 end;
 
