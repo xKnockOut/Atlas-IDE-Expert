@@ -132,6 +132,10 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Usages.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Conditions.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.InlineRefs.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Tokens.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.TypeText.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.TypeMembers.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>

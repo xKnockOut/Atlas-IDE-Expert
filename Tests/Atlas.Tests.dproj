@@ -106,6 +106,10 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameFacts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Usages.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Tokens.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.TypeText.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.TypeMembers.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas"/>
