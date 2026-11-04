@@ -1356,6 +1356,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Bar.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.MinimapLayers.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
