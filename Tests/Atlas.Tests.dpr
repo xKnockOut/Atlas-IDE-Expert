@@ -1627,6 +1627,7 @@ uses
   Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
   Atlas.Common.Editing.ForwardDeclarations.Tests in 'Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas',
   Atlas.Common.Editing.FreeFields.Tests in 'Common\Editing\Atlas.Common.Editing.FreeFields.Tests.pas',
+  Atlas.Common.Editing.FreeFields.Types.Tests in 'Common\Editing\Atlas.Common.Editing.FreeFields.Types.Tests.pas',
   Atlas.Common.Editing.PropertyFromAccessors.Tests in 'Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas',
   Atlas.Common.Lsp.PropertyFromAccessors.Tests in 'Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas',
   Atlas.Common.Editing.ClassLayout.Tests in 'Common\Editing\Atlas.Common.Editing.ClassLayout.Tests.pas',
