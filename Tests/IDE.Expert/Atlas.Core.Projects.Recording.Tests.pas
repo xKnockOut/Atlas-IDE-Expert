@@ -139,7 +139,8 @@ begin
     Message(TAtlasCompilerSeverity.Error, 'C:\Projekte\B.pas', 12, 'E2003'),
     Message(TAtlasCompilerSeverity.Fatal, 'C:\Projekte\C.pas', 1, 'F1026'),
     Message(TAtlasCompilerSeverity.Warning, 'C:\Projekte\A.pas', 4, 'W1000'),
-    Message(TAtlasCompilerSeverity.Info, '', 0, '')], False, False, 'build', 'Debug', 'Win32', Now_);
+    Message(TAtlasCompilerSeverity.Info, '', 0, '')],
+    TAtlasProjectCompileRun.Create(False, False, 'build', 'Debug', 'Win32'), Now_);
   Assert.IsTrue(Summary.Build.Known);
   Assert.AreEqual(3, Summary.Build.Errors, 'Fatal zählt als Fehler');
   Assert.AreEqual(1, Summary.Build.Warnings);
@@ -155,13 +156,15 @@ begin
   Assert.IsTrue(Summary.Build.At = Now_);
   Assert.IsFalse(Summary.Check.Known, 'Build ist keine Prüfung');
   // Hintergrundprüfung (#548): nur "check", der Build bleibt.
-  TAtlasProjectRecording.RecordCompile(Summary, [], True, True, 'check', 'Debug', 'Win32', Now_ + 1 / 24);
+  TAtlasProjectRecording.RecordCompile(Summary, [], TAtlasProjectCompileRun.Create(True, True, 'check', 'Debug', 'Win32'),
+    Now_ + 1 / 24);
   Assert.IsTrue(Summary.Check.Known);
   Assert.AreEqual(0, Summary.Check.Errors);
   Assert.IsTrue(Summary.Check.First.IsEmpty);
   Assert.AreEqual(3, Summary.Build.Errors);
   // Neuer fehlerfreier Build ersetzt das Sprungziel.
-  TAtlasProjectRecording.RecordCompile(Summary, [], False, True, 'make', 'Debug', 'Win32', Now_ + 2 / 24);
+  TAtlasProjectRecording.RecordCompile(Summary, [], TAtlasProjectCompileRun.Create(False, True, 'make', 'Debug', 'Win32'),
+    Now_ + 2 / 24);
   Assert.AreEqual(0, Summary.Build.Errors);
   Assert.IsTrue(Summary.Build.First.IsEmpty);
   Assert.IsTrue(Summary.Build.Succeeded);
