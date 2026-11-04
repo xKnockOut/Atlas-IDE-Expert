@@ -83,6 +83,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.Declarations,
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
@@ -180,6 +182,7 @@ var
   Resolver: TNameResolver;
   Settings: TCompletionSettings;
   Batch: Boolean;
+  Request: TCompletionRequest;
 begin
   AItems := nil;
   ACommandLine := -1;
@@ -202,17 +205,21 @@ begin
   end;
   // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
   Tree := TSyntaxTreeCache.Parse(Virtual);
+  Resolver := nil;
+  Request := nil;
   try
     Resolver := TNameResolver.Create(FIndex);
-    try
-      Resolver.Namespaces := FCompletion.Namespaces;
-      Result := TLspCompletion.InterfaceItems(Resolver, Tree, Virtual, TDocumentUris.ToPath(AUri),
-        TTextPosition.Create(ACommandLine, Length(Line)), FCompletion.ReadText,
-        Settings.InterfaceSection, AItems, Batch) and Batch;
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FCompletion.Namespaces;
+    Request := TCompletionRequest.Create(Virtual, TDocumentUris.ToPath(AUri),
+      TTextPosition.Create(ACommandLine, Length(Line)));
+    Request.Tree := Tree;
+    Request.Resolver := Resolver;
+    Request.ReadText := FCompletion.ReadText;
+    Request.Settings := Settings;
+    Result := TCompletionDeclarations.InterfaceItems(Request, AItems, Batch) and Batch;
   finally
+    Request.Free;
+    Resolver.Free;
     Tree.Free;
   end;
   if not Result then

@@ -16,6 +16,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -302,6 +303,13 @@ type
     property Trigger: string read FTrigger write FTrigger;
   end;
 
+/// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>
+function TextLines(const AText: string): TArray<string>;
+/// <summary>Zeilen von AFileName, je Datei einmal gelesen (Code-Review P-07); AText für die eigene Datei
+/// AOwnFile. False, wenn die Datei nicht lesbar ist (auch das merkt sich ACache).</summary>
+function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;
+  const AReadText: TCompletionReadText; out ALines: TArray<string>): Boolean;
+
 implementation
 
 uses
@@ -427,6 +435,43 @@ begin
     FUnitIndexReady := True;
   end;
   Result := FUnitIndex;
+end;
+
+function TextLines(const AText: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := AText.Split([#10]);
+  for mIndex := 0 to High(Result) do
+  begin
+    if Result[mIndex].EndsWith(#13) then
+    begin
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
+    end;
+  end;
+end;
+
+function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;
+  const AReadText: TCompletionReadText; out ALines: TArray<string>): Boolean;
+var
+  mKey, mSource: string;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  if not ACache.TryGetValue(mKey, ALines) then
+  begin
+    ALines := nil;
+    if SameText(AFileName, AOwnFile) then
+    begin
+      ALines := TextLines(AText);
+    end
+    else if Assigned(AReadText) and AReadText(AFileName, mSource) then
+    begin
+      ALines := TextLines(mSource);
+    end;
+    // nil steht für "nicht lesbar"; TextLines liefert sonst mindestens eine Zeile.
+    ACache.Add(mKey, ALines);
+  end;
+  Result := ALines <> nil;
 end;
 
 end.

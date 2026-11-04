@@ -346,6 +346,37 @@ begin
   Result := ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\\') or APath.StartsWith('/');
 end;
 
+/// <summary>Zähler von APart zu ATotal.</summary>
+procedure AddCounts(var ATotal: TAtlasProjectSetup; const APart: TAtlasProjectSetup);
+begin
+  Inc(ATotal.Files, APart.Files);
+  Inc(ATotal.Unreadable, APart.Unreadable);
+  Inc(ATotal.MissingUnitCount, APart.MissingUnitCount);
+  Inc(ATotal.UndefinedDefineCount, APart.UndefinedDefineCount);
+  Inc(ATotal.UncertainUnitCount, APart.UncertainUnitCount);
+  Inc(ATotal.UncertainDefineCount, APart.UncertainDefineCount);
+end;
+
+/// <summary>Makros aus AFrom an AList, die dort noch nicht stehen (ohne Groß-/Kleinschreibung).</summary>
+procedure AddMacros(var AList: TArray<string>; const AFrom: TArray<string>);
+var
+  mMacro, mKnown: string;
+  mSeen: Boolean;
+begin
+  for mMacro in AFrom do
+  begin
+    mSeen := False;
+    for mKnown in AList do
+    begin
+      mSeen := mSeen or SameText(mKnown, mMacro);
+    end;
+    if not mSeen then
+    begin
+      AList := AList + [mMacro];
+    end;
+  end;
+end;
+
 class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AGroup: TAtlasProjectSetup;
   const AMembers: TArray<TAtlasSetupMember>; out AChecked: Integer): TAtlasProjectSetup;
 
@@ -373,8 +404,6 @@ class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AG
 
 var
   Member: TAtlasSetupMember;
-  Macro, Known: string;
-  Seen: Boolean;
 begin
   Result := TAtlasProjectSetup.Empty;
   Result.Known := AGroup.Known;
@@ -392,30 +421,11 @@ begin
     begin
       Result.CheckedAt := Member.Setup.CheckedAt;
     end;
-    Inc(Result.Files, Member.Setup.Files);
-    Inc(Result.Unreadable, Member.Setup.Unreadable);
-    Inc(Result.MissingUnitCount, Member.Setup.MissingUnitCount);
-    Inc(Result.UndefinedDefineCount, Member.Setup.UndefinedDefineCount);
-    Inc(Result.UncertainUnitCount, Member.Setup.UncertainUnitCount);
-    Inc(Result.UncertainDefineCount, Member.Setup.UncertainDefineCount);
+    AddCounts(Result, Member.Setup);
     AddAll(Member, Member.Setup.MissingUnits, Result.MissingUnits);
     AddAll(Member, Member.Setup.UndefinedDefines, Result.UndefinedDefines);
     AddAll(Member, Member.Setup.Hints, Result.Hints);
-    for Macro in Member.Setup.SkippedMacros do
-    begin
-      Seen := False;
-      for Known in Result.SkippedMacros do
-      begin
-        if SameText(Known, Macro) then
-        begin
-          Seen := True;
-        end;
-      end;
-      if not Seen then
-      begin
-        Result.SkippedMacros := Result.SkippedMacros + [Macro];
-      end;
-    end;
+    AddMacros(Result.SkippedMacros, Member.Setup.SkippedMacros);
   end;
   // Erledigt erst, wenn jedes Projekt geprüft ist.
   Result.Checked := (Length(AMembers) > 0) and (AChecked = Length(AMembers));

@@ -38,6 +38,9 @@
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
 // verlangt; aufgebaut wird im Code. Listen, Bäume und die Auswahl des Umfangs
 // brauchen ein Fenster: gefüllt wird erst mit Fenster (CreateWnd).
+// Die Steuerelemente stehen in Parts, der Text der Listen kommt über ListText;
+// aufgebaut und gefüllt wird in Routinen dieser Unit, die Ereignisse fängt
+// TEvents.
 
 interface
 
@@ -57,131 +60,138 @@ uses
   Atlas.UI.Architecture.Slider;
 
 type
+  /// <summary>Listen und Bäume des Frames, deren Text TAtlasArchitectureFrame.ListText liefert.</summary>
+  TAtlasArchFrameList = (Central, Subsystems, Cycles, CrossLinks, Comparison);
+
+  /// <summary>Sortierung der Tabelle „Zentrale Units“.</summary>
+  TAtlasArchSort = record
+    Column: TAtlasArchColumn;
+    Descending: Boolean;
+  end;
+
   TAtlasArchitectureFrame = class(TFrame)
+  public type
+    /// <summary>Steuerelemente des Frames (für die IDE-Schicht, Tests und Bildschirmleser).</summary>
+    TParts = record
+      Top: TPanel;
+      Refresh: TButton;
+      Save: TButton;
+      SaveState: TButton;
+      Compare: TButton;
+      Scope: TComboBox;
+      LibraryUnits: TCheckBox;
+      ResolutionCaption: TLabel;
+      Resolution: TAtlasResolutionSlider;
+      ResolutionInfo: TLabel;
+      Filter: TEdit;
+      Pages: TPageControl;
+      /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).
+      /// </summary>
+      Sheets: TArray<TTabSheet>;
+      MapBar: TPanel;
+      Fit: TButton;
+      Names: TCheckBox;
+      ImplementationUses: TCheckBox;
+      MarkCycles: TCheckBox;
+      Changes: TCheckBox;
+      SubsystemsButton: TButton;
+      SubsystemsMenu: TPopupMenu;
+      Map: TAtlasArchitectureMap;
+      Info: TLabel;
+      /// <summary>Zuordnung der gewählten Unit (#1368), links neben der Karte.</summary>
+      Assignment: TPaintBox;
+      /// <summary>Bereich mit der Erklärung der Zuordnung links neben dem Diagramm (scrollbar).</summary>
+      AssignmentBox: TScrollBox;
+      AssignmentSplit: TSplitter;
+      SubsystemsBar: TPanel;
+      ExplainButton: TButton;
+      Explanation: TLabel;
+      Central: TListView;
+      Subsystems: TTreeView;
+      Cycles: TTreeView;
+      CrossLinks: TListView;
+      CompareBar: TPanel;
+      CompareInfo: TLabel;
+      ClearCompare: TButton;
+      Comparison: TTreeView;
+      Status: TLabel;
+    end;
+  private type
+    /// <summary>Rückrufe an die IDE-Schicht.</summary>
+    THandlers = record
+      OnRefresh: TProc;
+      OnSave: TProc<string>;
+      OnSaveState: TProc<string>;
+      OnCompare: TProc<string>;
+      OnClearComparison: TProc;
+      OnScopeChanged: TProc<string>;
+      OnLibraryChanged: TProc<Boolean>;
+      OnResolutionChanged: TProc<Double>;
+      OnRenameSubsystems: TProc;
+      OnOpenUnit: TProc<string>;
+      OnOpenLocation: TProc<string, Integer, Integer>;
+      OnUnitRelations: TProc<string>;
+    end;
+
+    /// <summary>Ereignisse der Steuerelemente; gehört dem Frame.</summary>
+    TEvents = class(TComponent)
+    private
+      FFrame: TAtlasArchitectureFrame;
+    public
+      constructor Create(AFrame: TAtlasArchitectureFrame); reintroduce;
+      procedure RefreshClick(Sender: TObject);
+      procedure SaveClick(Sender: TObject);
+      procedure SaveStateClick(Sender: TObject);
+      procedure CompareClick(Sender: TObject);
+      procedure ClearCompareClick(Sender: TObject);
+      procedure ScopeChange(Sender: TObject);
+      procedure LibraryClick(Sender: TObject);
+      procedure FilterChange(Sender: TObject);
+      procedure FitClick(Sender: TObject);
+      /// <summary>Schalter der Karte; Tag des Kästchens = Ord(TAtlasArchMapFlag).</summary>
+      procedure FlagClick(Sender: TObject);
+      procedure SubsystemsClick(Sender: TObject);
+      procedure SubsystemItemClick(Sender: TObject);
+      procedure FoundationEdgesClick(Sender: TObject);
+      procedure ShowAllClick(Sender: TObject);
+      procedure RenameSubsystemsClick(Sender: TObject);
+      procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
+      procedure CentralDblClick(Sender: TObject);
+      procedure CrossDblClick(Sender: TObject);
+      procedure TreeDblClick(Sender: TObject);
+      procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+      procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+      procedure AssignmentPaint(Sender: TObject);
+      procedure ExplainClick(Sender: TObject);
+    end;
+
+    /// <summary>Gezeigte Daten, Einstellungen und Zeilen der Listen.</summary>
+    TState = record
+      Model: TAtlasArchitectureModel;
+      HasModel: Boolean;
+      MessageText: string;
+      /// <summary>'projectGroup' oder 'project'; gilt auch ohne Fenster.</summary>
+      ScopeValue: string;
+      IncludeLibrary: Boolean;
+      ShowResolution: Boolean;
+      Updating: Boolean;
+      Sort: TAtlasArchSort;
+      /// <summary>Gezeigte Zeilen der Tabelle „Zentrale Units“ (Nummern der Units).</summary>
+      CentralRows: TArray<Integer>;
+      /// <summary>uses-Einträge der Bäume und der Querverbindungen; Data eines Knotens = Nummer + 1.</summary>
+      Links: TArray<TAtlasArchLink>;
+      CrossRows: TArray<Integer>;
+      Events: TEvents;
+    end;
   private
-    FTop: TPanel;
-    FRefresh: TButton;
-    FSave: TButton;
-    FSaveState: TButton;
-    FCompare: TButton;
-    FScope: TComboBox;
-    FLibrary: TCheckBox;
-    FResolutionCaption: TLabel;
-    FResolution: TAtlasResolutionSlider;
-    FResolutionInfo: TLabel;
-    FFilter: TEdit;
-    FPages: TPageControl;
-    /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
-    FSheets: TArray<TTabSheet>;
-    FMapBar: TPanel;
-    FFit: TButton;
-    FNames: TCheckBox;
-    FImplementation: TCheckBox;
-    FMarkCycles: TCheckBox;
-    FChanges: TCheckBox;
-    FSubsystemsButton: TButton;
-    FSubsystemsMenu: TPopupMenu;
-    FMap: TAtlasArchitectureMap;
-    FInfo: TLabel;
-    /// <summary>Zuordnung der gewählten Unit (#1368), unter der Karte.</summary>
-    FAssignment: TPaintBox;
-    FAssignmentBox: TScrollBox;
-    FAssignmentSplit: TSplitter;
-    FSubsystemsBar: TPanel;
-    FExplainButton: TButton;
-    FExplanation: TLabel;
-    FCentral: TListView;
-    FSubsystems: TTreeView;
-    FCycles: TTreeView;
-    FCrossLinks: TListView;
-    FCompareBar: TPanel;
-    FCompareInfo: TLabel;
-    FClearCompare: TButton;
-    FComparison: TTreeView;
-    FStatus: TLabel;
-    FModel: TAtlasArchitectureModel;
-    FHasModel: Boolean;
-    FMessageText: string;
-    /// <summary>'projectGroup' oder 'project'; gilt auch ohne Fenster.</summary>
-    FScopeValue: string;
-    FUpdating: Boolean;
-    FSortColumn: TAtlasArchColumn;
-    FSortDescending: Boolean;
-    /// <summary>Gezeigte Zeilen der Tabelle „Zentrale Units“ (Nummern der Units).</summary>
-    FCentralRows: TArray<Integer>;
-    /// <summary>uses-Einträge der Bäume und der Querverbindungen; Data eines Knotens = Nummer + 1.</summary>
-    FLinks: TArray<TAtlasArchLink>;
-    FCrossRows: TArray<Integer>;
-    FOnRefresh: TProc;
-    FOnSave: TProc<string>;
-    FOnSaveState: TProc<string>;
-    FOnCompare: TProc<string>;
-    FOnClearComparison: TProc;
-    FOnScopeChanged: TProc<string>;
-    FOnLibraryChanged: TProc<Boolean>;
-    FOnResolutionChanged: TProc<Double>;
-    FOnRenameSubsystems: TProc;
-    FOnOpenUnit: TProc<string>;
-    FOnOpenLocation: TProc<string, Integer, Integer>;
-    FOnUnitRelations: TProc<string>;
-    function NewSheet(const ACaption: string): TTabSheet;
-    function NewList(AParent: TWinControl): TListView;
-    function NewTree(AParent: TWinControl): TTreeView;
-    function AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn;
-    function CanFill(AControl: TWinControl): Boolean;
-    function UnitCaption(AUnit: Integer): string;
-    function RoleCaption(const ARole: string): string;
-    function LinkCaption(const ALink: TAtlasArchLink): string;
-    function LocationCaption(const ALink: TAtlasArchLink): string;
-    function AddLink(const ALink: TAtlasArchLink): Integer;
-    procedure FillScope;
-    procedure FillAll;
-    procedure FillCentral;
-    procedure FillSubsystems;
-    procedure FillCycles;
-    procedure FillCrossLinks;
-    procedure FillComparison;
-    function ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
-    procedure UpdateStatus;
-    procedure UpdateInfo;
-    procedure UpdateAssignment;
-    procedure AssignmentPaint(Sender: TObject);
-    procedure ExplainClick(Sender: TObject);
-    procedure RefreshClick(Sender: TObject);
-    procedure SaveClick(Sender: TObject);
-    procedure SaveStateClick(Sender: TObject);
-    procedure CompareClick(Sender: TObject);
-    procedure ClearCompareClick(Sender: TObject);
-    procedure ChangesClick(Sender: TObject);
-    procedure ScopeChange(Sender: TObject);
-    procedure LibraryClick(Sender: TObject);
-    procedure FilterChange(Sender: TObject);
-    procedure FitClick(Sender: TObject);
-    procedure NamesClick(Sender: TObject);
-    procedure ImplementationClick(Sender: TObject);
-    procedure MarkCyclesClick(Sender: TObject);
-    procedure SubsystemsClick(Sender: TObject);
-    procedure SubsystemItemClick(Sender: TObject);
-    procedure FoundationEdgesClick(Sender: TObject);
-    procedure ShowAllClick(Sender: TObject);
-    procedure RenameSubsystemsClick(Sender: TObject);
-    procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
-    procedure CentralDblClick(Sender: TObject);
-    procedure CrossDblClick(Sender: TObject);
-    procedure TreeDblClick(Sender: TObject);
-    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure MapSelect;
-    procedure MapOpen(AUnit: Integer);
+    FParts: TParts;
+    FHandlers: THandlers;
+    FState: TState;
     procedure SetScopeValue(const AValue: string);
-    function GetIncludeLibrary: Boolean;
     procedure SetIncludeLibrary(AValue: Boolean);
     function GetResolutionValue: Double;
     procedure SetResolutionValue(AValue: Double);
-    function GetShowResolution: Boolean;
     procedure SetShowResolution(AValue: Boolean);
-    /// <summary>„γ = 1,0 · 6 Teilsysteme“; die Zahl nur, wenn die Karte mit diesem Wert gerechnet ist.</summary>
-    procedure UpdateResolutionInfo(AValue: Double);
   protected
     procedure CreateWnd; override;
   public
@@ -200,76 +210,43 @@ type
     /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“ und mit
     /// OnRenameSubsystems „Teilsysteme neu benennen“ (#1367).</summary>
     procedure FillSubsystemsMenu;
-    /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
-    /// </summary>
-    function SubsystemCaption(ASubsystem: Integer): string;
     /// <summary>Zeile für Zeile der Text einer Liste bzw. eines Baums (für Tests und Bildschirmleser).</summary>
-    function CentralText: TArray<string>;
-    function SubsystemText: TArray<string>;
-    function CycleText: TArray<string>;
-    function CrossLinkText: TArray<string>;
-    function ComparisonText: TArray<string>;
-    property Model: TAtlasArchitectureModel read FModel;
-    property HasModel: Boolean read FHasModel;
-    property Map: TAtlasArchitectureMap read FMap;
-    property Pages: TPageControl read FPages;
-    property RefreshButton: TButton read FRefresh;
-    property SaveButton: TButton read FSave;
-    property SaveStateButton: TButton read FSaveState;
-    property CompareButton: TButton read FCompare;
-    property ClearCompareButton: TButton read FClearCompare;
-    property ChangesCheck: TCheckBox read FChanges;
-    property ComparisonTree: TTreeView read FComparison;
-    property ComparisonInfo: TLabel read FCompareInfo;
-    property LibraryCheck: TCheckBox read FLibrary;
-    property Filter: TEdit read FFilter;
-    property CentralList: TListView read FCentral;
-    property SubsystemTree: TTreeView read FSubsystems;
-    property CycleTree: TTreeView read FCycles;
-    property CrossLinkList: TListView read FCrossLinks;
-    property StatusLabel: TLabel read FStatus;
-    property InfoLabel: TLabel read FInfo;
-    /// <summary>Bereich mit der Erklärung der Zuordnung links neben dem Diagramm (scrollbar).</summary>
-    property AssignmentBox: TScrollBox read FAssignmentBox;
-    property ExplainButton: TButton read FExplainButton;
-    property ExplanationLabel: TLabel read FExplanation;
-    property FitButton: TButton read FFit;
-    property NamesCheck: TCheckBox read FNames;
-    property ImplementationCheck: TCheckBox read FImplementation;
-    property MarkCyclesCheck: TCheckBox read FMarkCycles;
-    property SubsystemsMenu: TPopupMenu read FSubsystemsMenu;
-    property ScopeValue: string read FScopeValue write SetScopeValue;
-    property IncludeLibrary: Boolean read GetIncludeLibrary write SetIncludeLibrary;
+    function ListText(AList: TAtlasArchFrameList): TArray<string>;
+    property Model: TAtlasArchitectureModel read FState.Model;
+    property HasModel: Boolean read FState.HasModel;
+    property Map: TAtlasArchitectureMap read FParts.Map;
+    property Parts: TParts read FParts;
+    property ScopeValue: string read FState.ScopeValue write SetScopeValue;
+    property IncludeLibrary: Boolean read FState.IncludeLibrary write SetIncludeLibrary;
     /// <summary>Feinheit γ des Reglers (#1366); Setzen meldet nichts.</summary>
     property ResolutionValue: Double read GetResolutionValue write SetResolutionValue;
     /// <summary>Regler „Feinheit“ zeigen (architecture.grouping.showResolutionSlider).</summary>
-    property ShowResolution: Boolean read GetShowResolution write SetShowResolution;
-    property ResolutionSlider: TAtlasResolutionSlider read FResolution;
-    property ResolutionInfo: TLabel read FResolutionInfo;
-    property SortColumn: TAtlasArchColumn read FSortColumn;
-    property SortDescending: Boolean read FSortDescending;
-    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
+    property ShowResolution: Boolean read FState.ShowResolution write SetShowResolution;
+    property Sort: TAtlasArchSort read FState.Sort;
+    property OnRefresh: TProc read FHandlers.OnRefresh write FHandlers.OnRefresh;
     /// <summary>Gewählte Zieldatei (.html oder .md).</summary>
-    property OnSave: TProc<string> read FOnSave write FOnSave;
+    property OnSave: TProc<string> read FHandlers.OnSave write FHandlers.OnSave;
     /// <summary>Gewählte Zieldatei für den Stand (.json, #1121).</summary>
-    property OnSaveState: TProc<string> read FOnSaveState write FOnSaveState;
+    property OnSaveState: TProc<string> read FHandlers.OnSaveState write FHandlers.OnSaveState;
     /// <summary>Gewählter gespeicherter Stand (.json), mit dem verglichen werden soll.</summary>
-    property OnCompare: TProc<string> read FOnCompare write FOnCompare;
+    property OnCompare: TProc<string> read FHandlers.OnCompare write FHandlers.OnCompare;
     /// <summary>Vergleich aufheben (auch den mit architecture.baseline).</summary>
-    property OnClearComparison: TProc read FOnClearComparison write FOnClearComparison;
-    property OnScopeChanged: TProc<string> read FOnScopeChanged write FOnScopeChanged;
-    property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
+    property OnClearComparison: TProc read FHandlers.OnClearComparison write FHandlers.OnClearComparison;
+    property OnScopeChanged: TProc<string> read FHandlers.OnScopeChanged write FHandlers.OnScopeChanged;
+    property OnLibraryChanged: TProc<Boolean> read FHandlers.OnLibraryChanged write FHandlers.OnLibraryChanged;
     /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
-    property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
+    property OnResolutionChanged: TProc<Double> read FHandlers.OnResolutionChanged
+      write FHandlers.OnResolutionChanged;
     /// <summary>„Teilsysteme neu benennen“ im Menü „Teilsysteme ▾“ (#1367): einmal ohne Angleichung rechnen.
     /// </summary>
-    property OnRenameSubsystems: TProc read FOnRenameSubsystems write FOnRenameSubsystems;
-    property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
+    property OnRenameSubsystems: TProc read FHandlers.OnRenameSubsystems write FHandlers.OnRenameSubsystems;
+    property OnOpenUnit: TProc<string> read FHandlers.OnOpenUnit write FHandlers.OnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
-    property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
+    property OnOpenLocation: TProc<string, Integer, Integer> read FHandlers.OnOpenLocation
+      write FHandlers.OnOpenLocation;
     /// <summary>Strg+Doppelklick bzw. Strg+Enter auf eine Unit: Fenster „Unit-Beziehungen“ (#593), absoluter Pfad.
     /// </summary>
-    property OnUnitRelations: TProc<string> read FOnUnitRelations write FOnUnitRelations;
+    property OnUnitRelations: TProc<string> read FHandlers.OnUnitRelations write FHandlers.OnUnitRelations;
   end;
 
 implementation
@@ -289,340 +266,30 @@ uses
 {$R *.dfm}
 
 const
-  ScopeValues: array[0..1] of string = ('projectGroup', 'project');
+  cScopeValues: array[0..1] of string = ('projectGroup', 'project');
   /// <summary>Spalten der Tabelle „Zentrale Units“ in Reihenfolge der Anzeige.</summary>
-  CentralColumns: array[0..5] of TAtlasArchColumn = (TAtlasArchColumn.Name, TAtlasArchColumn.Subsystem,
+  cCentralColumns: array[0..5] of TAtlasArchColumn = (TAtlasArchColumn.Name, TAtlasArchColumn.Subsystem,
     TAtlasArchColumn.Direct, TAtlasArchColumn.Total, TAtlasArchColumn.Uses_, TAtlasArchColumn.Role);
 
-{ TAtlasArchitectureFrame }
+type
+  TArchFrame = TAtlasArchitectureFrame;
+  TArchEvents = TAtlasArchitectureFrame.TEvents;
 
-constructor TAtlasArchitectureFrame.Create(AOwner: TComponent);
-var
-  Sheet: TTabSheet;
+{ Aufbau }
+
+function NewSheet(AFrame: TArchFrame; AText: TAtlasAnalysisTextId): TTabSheet;
 begin
-  inherited Create(AOwner);
-  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
-  Name := '';
-  FScopeValue := ScopeValues[0];
-  FSortColumn := TAtlasArchColumn.Total;
-  FSortDescending := True;
-
-  FTop := TPanel.Create(Self);
-  FTop.Parent := Self;
-  FTop.Align := alTop;
-  FTop.BevelOuter := bvNone;
-  FTop.ShowCaption := False;
-  FTop.AutoSize := True;
-  FTop.Padding.SetBounds(2, 2, 2, 2);
-
-  FRefresh := TButton.Create(Self);
-  FRefresh.Parent := FTop;
-  FRefresh.Align := alLeft;
-  FRefresh.AlignWithMargins := True;
-  FRefresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRefresh);
-  FRefresh.Width := 110;
-  FRefresh.OnClick := RefreshClick;
-
-  FSave := TButton.Create(Self);
-  FSave.Parent := FTop;
-  FSave.Align := alLeft;
-  FSave.AlignWithMargins := True;
-  FSave.Left := FRefresh.Left + FRefresh.Width + 1;
-  FSave.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSaveReport);
-  FSave.Width := 130;
-  FSave.OnClick := SaveClick;
-
-  FSaveState := TButton.Create(Self);
-  FSaveState.Parent := FTop;
-  FSaveState.Align := alLeft;
-  FSaveState.AlignWithMargins := True;
-  FSaveState.Left := FSave.Left + FSave.Width + 1;
-  FSaveState.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSaveState);
-  FSaveState.Width := 120;
-  FSaveState.OnClick := SaveStateClick;
-
-  FCompare := TButton.Create(Self);
-  FCompare.Parent := FTop;
-  FCompare.Align := alLeft;
-  FCompare.AlignWithMargins := True;
-  FCompare.Left := FSaveState.Left + FSaveState.Width + 1;
-  FCompare.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCompare);
-  FCompare.Width := 130;
-  FCompare.OnClick := CompareClick;
-
-  FScope := TComboBox.Create(Self);
-  FScope.Parent := FTop;
-  FScope.Align := alLeft;
-  FScope.AlignWithMargins := True;
-  FScope.Left := FCompare.Left + FCompare.Width + 1;
-  FScope.Style := csDropDownList;
-  FScope.Width := 130;
-  FScope.OnChange := ScopeChange;
-
-  FLibrary := TCheckBox.Create(Self);
-  FLibrary.Parent := FTop;
-  FLibrary.Align := alLeft;
-  FLibrary.AlignWithMargins := True;
-  FLibrary.Left := FScope.Left + FScope.Width + 1;
-  FLibrary.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLibrary);
-  FLibrary.Width := 120;
-  FLibrary.OnClick := LibraryClick;
-
-  FResolutionCaption := TLabel.Create(Self);
-  FResolutionCaption.Parent := FTop;
-  FResolutionCaption.Align := alLeft;
-  FResolutionCaption.AlignWithMargins := True;
-  FResolutionCaption.Left := FLibrary.Left + FLibrary.Width + 1;
-  FResolutionCaption.Layout := tlCenter;
-  FResolutionCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
-  FResolutionCaption.ShowAccelChar := False;
-
-  FResolution := TAtlasResolutionSlider.Create(Self);
-  FResolution.Parent := FTop;
-  FResolution.Align := alLeft;
-  FResolution.AlignWithMargins := True;
-  FResolution.Left := FResolutionCaption.Left + FResolutionCaption.Width + 1;
-  FResolution.Width := 140;
-  FResolution.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionHint);
-  FResolution.ShowHint := True;
-  FResolution.OnTracking :=
-    procedure(AValue: Double)
-    begin
-      UpdateResolutionInfo(AValue);
-    end;
-  FResolution.OnChange :=
-    procedure(AValue: Double)
-    begin
-      UpdateResolutionInfo(AValue);
-      if Assigned(FOnResolutionChanged) then
-      begin
-        FOnResolutionChanged(AValue);
-      end;
-    end;
-
-  FResolutionInfo := TLabel.Create(Self);
-  FResolutionInfo.Parent := FTop;
-  FResolutionInfo.Align := alLeft;
-  FResolutionInfo.AlignWithMargins := True;
-  FResolutionInfo.Left := FResolution.Left + FResolution.Width + 1;
-  FResolutionInfo.Layout := tlCenter;
-  FResolutionInfo.ShowAccelChar := False;
-  UpdateResolutionInfo(FResolution.Value);
-
-  FFilter := TEdit.Create(Self);
-  FFilter.Parent := FTop;
-  FFilter.Align := alClient;
-  FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFilterHint);
-  FFilter.OnChange := FilterChange;
-
-  FStatus := TLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alBottom;
-  FStatus.AlignWithMargins := True;
-  FStatus.ShowAccelChar := False;
-  FStatus.EllipsisPosition := epEndEllipsis;
-  FStatus.Caption := '';
-
-  FPages := TPageControl.Create(Self);
-  FPages.Parent := Self;
-  FPages.Align := alClient;
-  FPages.AlignWithMargins := True;
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabOverview));
-  FInfo := TLabel.Create(Self);
-  FInfo.Parent := Sheet;
-  FInfo.Align := alBottom;
-  FInfo.AlignWithMargins := True;
-  FInfo.ShowAccelChar := False;
-  FInfo.EllipsisPosition := epEndEllipsis;
-  FInfo.Font.Color := clGrayText;
-  FInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
-  // Erklärung der Zuordnung links neben dem Diagramm (scrollbar, Breite über die Ziehleiste); unten verdrängte sie
-  // bei vielen Teilsystemen das Diagramm.
-  FAssignmentBox := TScrollBox.Create(Self);
-  FAssignmentBox.Parent := Sheet;
-  FAssignmentBox.Align := alLeft;
-  FAssignmentBox.BorderStyle := bsNone;
-  FAssignmentBox.VertScrollBar.Tracking := True;
-  FAssignmentBox.Visible := False;
-  FAssignmentSplit := TSplitter.Create(Self);
-  FAssignmentSplit.Parent := Sheet;
-  FAssignmentSplit.Align := alLeft;
-  FAssignmentSplit.Left := FAssignmentBox.Left + FAssignmentBox.Width + 1;
-  FAssignmentSplit.Visible := False;
-  FAssignment := TPaintBox.Create(Self);
-  FAssignment.Parent := FAssignmentBox;
-  FAssignment.SetBounds(0, 0, 10, 10);
-  FAssignment.OnPaint := AssignmentPaint;
-  FMapBar := TPanel.Create(Self);
-  FMapBar.Parent := Sheet;
-  FMapBar.Align := alTop;
-  FMapBar.BevelOuter := bvNone;
-  FMapBar.ShowCaption := False;
-  FMapBar.AutoSize := True;
-  FFit := TButton.Create(Self);
-  FFit.Parent := FMapBar;
-  FFit.Align := alLeft;
-  FFit.AlignWithMargins := True;
-  FFit.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFit);
-  FFit.Width := 90;
-  FFit.OnClick := FitClick;
-  FNames := TCheckBox.Create(Self);
-  FNames.Parent := FMapBar;
-  FNames.Align := alLeft;
-  FNames.AlignWithMargins := True;
-  FNames.Left := FFit.Left + FFit.Width + 1;
-  FNames.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNames);
-  FNames.Width := 120;
-  FNames.Checked := True;
-  FNames.OnClick := NamesClick;
-  FImplementation := TCheckBox.Create(Self);
-  FImplementation.Parent := FMapBar;
-  FImplementation.Align := alLeft;
-  FImplementation.AlignWithMargins := True;
-  FImplementation.Left := FNames.Left + FNames.Width + 1;
-  FImplementation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureImplementation);
-  FImplementation.Width := 140;
-  FImplementation.Checked := True;
-  FImplementation.OnClick := ImplementationClick;
-  FMarkCycles := TCheckBox.Create(Self);
-  FMarkCycles.Parent := FMapBar;
-  FMarkCycles.Align := alLeft;
-  FMarkCycles.AlignWithMargins := True;
-  FMarkCycles.Left := FImplementation.Left + FImplementation.Width + 1;
-  FMarkCycles.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMarkCycles);
-  FMarkCycles.Width := 130;
-  FMarkCycles.OnClick := MarkCyclesClick;
-  FChanges := TCheckBox.Create(Self);
-  FChanges.Parent := FMapBar;
-  FChanges.Align := alLeft;
-  FChanges.AlignWithMargins := True;
-  FChanges.Left := FMarkCycles.Left + FMarkCycles.Width + 1;
-  FChanges.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureShowChanges);
-  FChanges.Width := 150;
-  FChanges.Checked := True;
-  FChanges.Enabled := False;
-  FChanges.OnClick := ChangesClick;
-  FSubsystemsButton := TButton.Create(Self);
-  FSubsystemsButton.Parent := FMapBar;
-  FSubsystemsButton.Align := alLeft;
-  FSubsystemsButton.AlignWithMargins := True;
-  FSubsystemsButton.Left := FChanges.Left + FChanges.Width + 1;
-  FSubsystemsButton.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSubsystemsButton);
-  FSubsystemsButton.Width := 110;
-  FSubsystemsButton.OnClick := SubsystemsClick;
-  FSubsystemsMenu := TPopupMenu.Create(Self);
-  FMap := TAtlasArchitectureMap.Create(Self);
-  FMap.Parent := Sheet;
-  FMap.Align := alClient;
-  FMap.OnSelect :=
-    procedure(AUnit: Integer)
-    begin
-      MapSelect;
-    end;
-  FMap.OnOpen :=
-    procedure(AUnit: Integer)
-    begin
-      MapOpen(AUnit);
-    end;
-  FMap.State.OnPathChanged :=
-    procedure
-    begin
-      UpdateInfo;
-    end;
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabCentral));
-  FCentral := NewList(Sheet);
-  FCentral.ColumnClick := True;
-  FCentral.OnColumnClick := CentralColumnClick;
-  FCentral.OnDblClick := CentralDblClick;
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColUnit), 220);
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColSubsystem), 120);
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColDirect), 100);
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColTotal), 100);
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColUses), 80);
-  AddColumn(FCentral, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColRole), 100);
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabSubsystems));
-  // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
-  FSubsystemsBar := TPanel.Create(Self);
-  FSubsystemsBar.Parent := Sheet;
-  FSubsystemsBar.Align := alTop;
-  FSubsystemsBar.BevelOuter := bvNone;
-  FSubsystemsBar.ShowCaption := False;
-  FSubsystemsBar.AutoSize := True;
-  FSubsystemsBar.Visible := False;
-  FExplainButton := TButton.Create(Self);
-  FExplainButton.Parent := FSubsystemsBar;
-  FExplainButton.Align := alLeft;
-  FExplainButton.AlignWithMargins := True;
-  FExplainButton.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainButton);
-  FExplainButton.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
-  FExplainButton.ShowHint := True;
-  FExplainButton.Width := 28;
-  FExplainButton.OnClick := ExplainClick;
-  FExplanation := TLabel.Create(Self);
-  FExplanation.Parent := FSubsystemsBar;
-  FExplanation.Align := alClient;
-  FExplanation.AlignWithMargins := True;
-  FExplanation.ShowAccelChar := False;
-  FExplanation.WordWrap := True;
-  FExplanation.Font.Color := clGrayText;
-  FExplanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
-  FSubsystems := NewTree(Sheet);
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabCycles));
-  FCycles := NewTree(Sheet);
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabCrossLinks));
-  FCrossLinks := NewList(Sheet);
-  FCrossLinks.OnDblClick := CrossDblClick;
-  AddColumn(FCrossLinks, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColFrom), 200);
-  AddColumn(FCrossLinks, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColTo), 200);
-  AddColumn(FCrossLinks, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColSubsystem), 180);
-  AddColumn(FCrossLinks, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColReason), 160);
-  AddColumn(FCrossLinks, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureColLocation), 200);
-
-  Sheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureTabComparison));
-  FCompareBar := TPanel.Create(Self);
-  FCompareBar.Parent := Sheet;
-  FCompareBar.Align := alTop;
-  FCompareBar.BevelOuter := bvNone;
-  FCompareBar.ShowCaption := False;
-  FCompareBar.AutoSize := True;
-  FClearCompare := TButton.Create(Self);
-  FClearCompare.Parent := FCompareBar;
-  FClearCompare.Align := alRight;
-  FClearCompare.AlignWithMargins := True;
-  FClearCompare.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureClearComparison);
-  FClearCompare.Width := 140;
-  FClearCompare.Enabled := False;
-  FClearCompare.OnClick := ClearCompareClick;
-  FCompareInfo := TLabel.Create(Self);
-  FCompareInfo.Parent := FCompareBar;
-  FCompareInfo.Align := alClient;
-  FCompareInfo.AlignWithMargins := True;
-  FCompareInfo.Layout := tlCenter;
-  FCompareInfo.ShowAccelChar := False;
-  FCompareInfo.EllipsisPosition := epEndEllipsis;
-  FCompareInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison);
-  FComparison := NewTree(Sheet);
-end;
-
-function TAtlasArchitectureFrame.NewSheet(const ACaption: string): TTabSheet;
-begin
-  Result := TTabSheet.Create(Self);
+  Result := TTabSheet.Create(AFrame);
   // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (CreateWnd zeigt ihn).
   Result.TabVisible := False;
-  Result.PageControl := FPages;
-  Result.Caption := ACaption;
-  FSheets := FSheets + [Result];
+  Result.PageControl := AFrame.FParts.Pages;
+  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  AFrame.FParts.Sheets := AFrame.FParts.Sheets + [Result];
 end;
 
-function TAtlasArchitectureFrame.NewList(AParent: TWinControl): TListView;
+function NewList(AFrame: TArchFrame; AParent: TWinControl): TListView;
 begin
-  Result := TListView.Create(Self);
+  Result := TListView.Create(AFrame);
   Result.Parent := AParent;
   Result.Align := alClient;
   Result.ViewStyle := vsReport;
@@ -630,185 +297,403 @@ begin
   Result.ReadOnly := True;
   Result.HideSelection := False;
   Result.ColumnClick := False;
-  Result.OnKeyDown := ListKeyDown;
+  Result.OnKeyDown := AFrame.FState.Events.ListKeyDown;
 end;
 
-function TAtlasArchitectureFrame.NewTree(AParent: TWinControl): TTreeView;
+function NewTree(AFrame: TArchFrame; AParent: TWinControl): TTreeView;
 begin
-  Result := TTreeView.Create(Self);
+  Result := TTreeView.Create(AFrame);
   Result.Parent := AParent;
   Result.Align := alClient;
   Result.ReadOnly := True;
   Result.HideSelection := False;
-  Result.OnDblClick := TreeDblClick;
-  Result.OnKeyDown := TreeKeyDown;
+  Result.OnDblClick := AFrame.FState.Events.TreeDblClick;
+  Result.OnKeyDown := AFrame.FState.Events.TreeKeyDown;
 end;
 
-function TAtlasArchitectureFrame.AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn;
-begin
-  Result := AList.Columns.Add;
-  Result.Caption := ACaption;
-  Result.Width := MulDiv(AWidth, CurrentPPI, 96);
-end;
-
-procedure TAtlasArchitectureFrame.CreateWnd;
+procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth, APpi: Integer);
 var
-  Sheet: TTabSheet;
+  mColumn: TListColumn;
 begin
-  inherited CreateWnd;
-  for Sheet in FSheets do
+  mColumn := AList.Columns.Add;
+  mColumn.Caption := TAtlasAnalysisStrings.Text(AText);
+  mColumn.Width := MulDiv(AWidth, APpi, 96);
+end;
+
+/// <summary>Links ausgerichtet hinter AAfter (nil: ganz links).</summary>
+procedure PlaceLeft(AControl: TControl; AParent: TWinControl; AAfter: TControl);
+begin
+  AControl.Parent := AParent;
+  AControl.Align := alLeft;
+  AControl.AlignWithMargins := True;
+  if AAfter <> nil then
   begin
-    Sheet.TabVisible := True;
-  end;
-  if (FPages.ActivePage = nil) and (Length(FSheets) > 0) then
-  begin
-    FPages.ActivePage := FSheets[0];
-  end;
-  // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
-  FillScope;
-  FillAll;
-end;
-
-function TAtlasArchitectureFrame.CanFill(AControl: TWinControl): Boolean;
-begin
-  Result := AControl.HandleAllocated or (GetParentForm(AControl) <> nil);
-end;
-
-procedure TAtlasArchitectureFrame.FillScope;
-begin
-  if not CanFill(FScope) then
-  begin
-    Exit;
-  end;
-  FUpdating := True;
-  try
-    FScope.Items.BeginUpdate;
-    try
-      FScope.Items.Clear;
-      FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup));
-      FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject));
-    finally
-      FScope.Items.EndUpdate;
-    end;
-    if FScopeValue = ScopeValues[1] then
-    begin
-      FScope.ItemIndex := 1;
-    end
-    else
-    begin
-      FScope.ItemIndex := 0;
-    end;
-  finally
-    FUpdating := False;
+    AControl.Left := AAfter.Left + AAfter.Width + 1;
   end;
 end;
 
-procedure TAtlasArchitectureFrame.SetScopeValue(const AValue: string);
+function NewButton(AFrame: TArchFrame; AParent: TWinControl; AAfter: TControl; AText: TAtlasAnalysisTextId;
+  AWidth: Integer; AClick: TNotifyEvent): TButton;
 begin
-  if AValue = ScopeValues[1] then
-  begin
-    FScopeValue := ScopeValues[1];
-  end
-  else
-  begin
-    FScopeValue := ScopeValues[0];
-  end;
-  FillScope;
+  Result := TButton.Create(AFrame);
+  PlaceLeft(Result, AParent, AAfter);
+  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  Result.Width := AWidth;
+  Result.OnClick := AClick;
 end;
 
-function TAtlasArchitectureFrame.GetIncludeLibrary: Boolean;
+/// <summary>Schalter der Karte: Tag = Ord(AFlag), Haken nach dem Zustand der Karte.</summary>
+function NewFlagCheck(AFrame: TArchFrame; AAfter: TControl; AText: TAtlasAnalysisTextId; AWidth: Integer;
+  AFlag: TAtlasArchMapFlag): TCheckBox;
 begin
-  Result := FLibrary.Checked;
+  Result := TCheckBox.Create(AFrame);
+  PlaceLeft(Result, AFrame.FParts.MapBar, AAfter);
+  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  Result.Width := AWidth;
+  Result.Tag := Ord(AFlag);
+  Result.Checked := AFlag <> TAtlasArchMapFlag.MarkCycles;
+  Result.OnClick := AFrame.FState.Events.FlagClick;
 end;
 
-procedure TAtlasArchitectureFrame.SetIncludeLibrary(AValue: Boolean);
+function NewLabel(AFrame: TArchFrame; AParent: TWinControl; AAlign: TAlign): TLabel;
 begin
-  FUpdating := True;
-  try
-    FLibrary.Checked := AValue;
-  finally
-    FUpdating := False;
-  end;
+  Result := TLabel.Create(AFrame);
+  Result.Parent := AParent;
+  Result.Align := AAlign;
+  Result.AlignWithMargins := True;
+  Result.ShowAccelChar := False;
 end;
 
-function TAtlasArchitectureFrame.GetResolutionValue: Double;
+function NewBar(AFrame: TArchFrame; AParent: TWinControl): TPanel;
 begin
-  Result := FResolution.Value;
+  Result := TPanel.Create(AFrame);
+  Result.Parent := AParent;
+  Result.Align := alTop;
+  Result.BevelOuter := bvNone;
+  Result.ShowCaption := False;
+  Result.AutoSize := True;
 end;
 
-procedure TAtlasArchitectureFrame.SetResolutionValue(AValue: Double);
-begin
-  FResolution.Value := AValue;
-  UpdateResolutionInfo(FResolution.Value);
-end;
-
-function TAtlasArchitectureFrame.GetShowResolution: Boolean;
-begin
-  Result := FResolution.Visible;
-end;
-
-procedure TAtlasArchitectureFrame.SetShowResolution(AValue: Boolean);
-begin
-  FResolutionCaption.Visible := AValue;
-  FResolution.Visible := AValue;
-  FResolutionInfo.Visible := AValue;
-end;
-
-procedure TAtlasArchitectureFrame.UpdateResolutionInfo(AValue: Double);
+procedure UpdateResolutionInfo(AFrame: TArchFrame; AValue: Double);
 var
   mText: string;
 begin
   mText := TAtlasArchResolution.Text(AValue, FormatSettings);
-  if FHasModel and TAtlasArchResolution.Same(FModel.Resolution, AValue) then
+  if AFrame.FState.HasModel and TAtlasArchResolution.Same(AFrame.FState.Model.Resolution, AValue) then
   begin
-    FResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionInfo, [mText,
-      FModel.SubsystemCount]);
+    AFrame.FParts.ResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionInfo,
+      [mText, AFrame.FState.Model.SubsystemCount]);
   end
   else
   begin
-    FResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionValue, [mText]);
+    AFrame.FParts.ResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(
+      TAtlasAnalysisTextId.ArchitectureResolutionValue, [mText]);
   end;
 end;
 
-procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
+function ResolutionTracking(AFrame: TArchFrame): TProc<Double>;
 begin
-  FModel := AModel;
-  FHasModel := True;
-  FMessageText := '';
-  FMap.SetModel(FModel);
-  FMap.State.Filter := FFilter.Text;
-  FillAll;
-  UpdateResolutionInfo(FResolution.Value);
+  Result :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AFrame, AValue);
+    end;
 end;
 
-procedure TAtlasArchitectureFrame.SetMessage(const AText: string; AKeep: Boolean);
+function ResolutionChange(AFrame: TArchFrame): TProc<Double>;
 begin
-  FMessageText := AText;
-  if not AKeep then
+  Result :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AFrame, AValue);
+      if Assigned(AFrame.FHandlers.OnResolutionChanged) then
+      begin
+        AFrame.FHandlers.OnResolutionChanged(AValue);
+      end;
+    end;
+end;
+
+procedure BuildTop(AFrame: TArchFrame);
+var
+  mEvents: TArchEvents;
+begin
+  mEvents := AFrame.FState.Events;
+  AFrame.FParts.Top := NewBar(AFrame, AFrame);
+  AFrame.FParts.Top.Padding.SetBounds(2, 2, 2, 2);
+  AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
+    mEvents.RefreshClick);
+  AFrame.FParts.Save := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Refresh,
+    TAtlasAnalysisTextId.ArchitectureSaveReport, 130, mEvents.SaveClick);
+  AFrame.FParts.SaveState := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Save,
+    TAtlasAnalysisTextId.ArchitectureSaveState, 120, mEvents.SaveStateClick);
+  AFrame.FParts.Compare := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.SaveState,
+    TAtlasAnalysisTextId.ArchitectureCompare, 130, mEvents.CompareClick);
+  AFrame.FParts.Scope := TComboBox.Create(AFrame);
+  PlaceLeft(AFrame.FParts.Scope, AFrame.FParts.Top, AFrame.FParts.Compare);
+  AFrame.FParts.Scope.Style := csDropDownList;
+  AFrame.FParts.Scope.Width := 130;
+  AFrame.FParts.Scope.OnChange := mEvents.ScopeChange;
+  AFrame.FParts.LibraryUnits := TCheckBox.Create(AFrame);
+  PlaceLeft(AFrame.FParts.LibraryUnits, AFrame.FParts.Top, AFrame.FParts.Scope);
+  AFrame.FParts.LibraryUnits.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLibrary);
+  AFrame.FParts.LibraryUnits.Width := 120;
+  AFrame.FParts.LibraryUnits.OnClick := mEvents.LibraryClick;
+end;
+
+procedure BuildResolution(AFrame: TArchFrame);
+var
+  mCaption, mInfo: TLabel;
+  mSlider: TAtlasResolutionSlider;
+begin
+  mCaption := NewLabel(AFrame, AFrame.FParts.Top, alLeft);
+  mCaption.Left := AFrame.FParts.LibraryUnits.Left + AFrame.FParts.LibraryUnits.Width + 1;
+  mCaption.Layout := tlCenter;
+  mCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
+  mSlider := TAtlasResolutionSlider.Create(AFrame);
+  PlaceLeft(mSlider, AFrame.FParts.Top, mCaption);
+  mSlider.Width := 140;
+  mSlider.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionHint);
+  mSlider.ShowHint := True;
+  mSlider.OnTracking := ResolutionTracking(AFrame);
+  mSlider.OnChange := ResolutionChange(AFrame);
+  mInfo := NewLabel(AFrame, AFrame.FParts.Top, alLeft);
+  mInfo.Left := mSlider.Left + mSlider.Width + 1;
+  mInfo.Layout := tlCenter;
+  AFrame.FParts.ResolutionCaption := mCaption;
+  AFrame.FParts.Resolution := mSlider;
+  AFrame.FParts.ResolutionInfo := mInfo;
+  UpdateResolutionInfo(AFrame, mSlider.Value);
+end;
+
+procedure BuildFilterAndStatus(AFrame: TArchFrame);
+begin
+  AFrame.FParts.Filter := TEdit.Create(AFrame);
+  AFrame.FParts.Filter.Parent := AFrame.FParts.Top;
+  AFrame.FParts.Filter.Align := alClient;
+  AFrame.FParts.Filter.AlignWithMargins := True;
+  AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFilterHint);
+  AFrame.FParts.Filter.OnChange := AFrame.FState.Events.FilterChange;
+  AFrame.FParts.Status := NewLabel(AFrame, AFrame, alBottom);
+  AFrame.FParts.Status.EllipsisPosition := epEndEllipsis;
+  AFrame.FParts.Status.Caption := '';
+  AFrame.FParts.Pages := TPageControl.Create(AFrame);
+  AFrame.FParts.Pages.Parent := AFrame;
+  AFrame.FParts.Pages.Align := alClient;
+  AFrame.FParts.Pages.AlignWithMargins := True;
+end;
+
+procedure BuildAssignment(AFrame: TArchFrame; ASheet: TTabSheet);
+begin
+  // Erklärung der Zuordnung links neben dem Diagramm (scrollbar, Breite über die Ziehleiste); unten verdrängte sie
+  // bei vielen Teilsystemen das Diagramm.
+  AFrame.FParts.AssignmentBox := TScrollBox.Create(AFrame);
+  AFrame.FParts.AssignmentBox.Parent := ASheet;
+  AFrame.FParts.AssignmentBox.Align := alLeft;
+  AFrame.FParts.AssignmentBox.BorderStyle := bsNone;
+  AFrame.FParts.AssignmentBox.VertScrollBar.Tracking := True;
+  AFrame.FParts.AssignmentBox.Visible := False;
+  AFrame.FParts.AssignmentSplit := TSplitter.Create(AFrame);
+  AFrame.FParts.AssignmentSplit.Parent := ASheet;
+  AFrame.FParts.AssignmentSplit.Align := alLeft;
+  AFrame.FParts.AssignmentSplit.Left := AFrame.FParts.AssignmentBox.Left + AFrame.FParts.AssignmentBox.Width + 1;
+  AFrame.FParts.AssignmentSplit.Visible := False;
+  AFrame.FParts.Assignment := TPaintBox.Create(AFrame);
+  AFrame.FParts.Assignment.Parent := AFrame.FParts.AssignmentBox;
+  AFrame.FParts.Assignment.SetBounds(0, 0, 10, 10);
+  AFrame.FParts.Assignment.OnPaint := AFrame.FState.Events.AssignmentPaint;
+end;
+
+procedure BuildMapBar(AFrame: TArchFrame; ASheet: TTabSheet);
+var
+  mEvents: TArchEvents;
+  mBar: TPanel;
+begin
+  mEvents := AFrame.FState.Events;
+  mBar := NewBar(AFrame, ASheet);
+  AFrame.FParts.MapBar := mBar;
+  AFrame.FParts.Fit := NewButton(AFrame, mBar, nil, TAtlasAnalysisTextId.ArchitectureFit, 90, mEvents.FitClick);
+  AFrame.FParts.Names := NewFlagCheck(AFrame, AFrame.FParts.Fit, TAtlasAnalysisTextId.ArchitectureNames, 120,
+    TAtlasArchMapFlag.ShowNames);
+  AFrame.FParts.ImplementationUses := NewFlagCheck(AFrame, AFrame.FParts.Names,
+    TAtlasAnalysisTextId.ArchitectureImplementation, 140, TAtlasArchMapFlag.ShowImplementation);
+  AFrame.FParts.MarkCycles := NewFlagCheck(AFrame, AFrame.FParts.ImplementationUses,
+    TAtlasAnalysisTextId.ArchitectureMarkCycles, 130, TAtlasArchMapFlag.MarkCycles);
+  AFrame.FParts.Changes := NewFlagCheck(AFrame, AFrame.FParts.MarkCycles, TAtlasAnalysisTextId.ArchitectureShowChanges,
+    150, TAtlasArchMapFlag.ShowChanges);
+  AFrame.FParts.Changes.Enabled := False;
+  AFrame.FParts.SubsystemsButton := NewButton(AFrame, mBar, AFrame.FParts.Changes,
+    TAtlasAnalysisTextId.ArchitectureSubsystemsButton, 110, mEvents.SubsystemsClick);
+  AFrame.FParts.SubsystemsMenu := TPopupMenu.Create(AFrame);
+end;
+
+procedure UpdateInfo(AFrame: TArchFrame); forward;
+
+function MapSelectHandler(AFrame: TArchFrame): TProc<Integer>;
+begin
+  Result :=
+    procedure(AUnit: Integer)
+    begin
+      UpdateInfo(AFrame);
+    end;
+end;
+
+function MapOpenHandler(AFrame: TArchFrame): TProc<Integer>;
+begin
+  Result :=
+    procedure(AUnit: Integer)
+    begin
+      AFrame.OpenUnit(AUnit);
+    end;
+end;
+
+function PathChangedHandler(AFrame: TArchFrame): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      UpdateInfo(AFrame);
+    end;
+end;
+
+procedure BuildOverview(AFrame: TArchFrame);
+var
+  mSheet: TTabSheet;
+begin
+  mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabOverview);
+  AFrame.FParts.Info := NewLabel(AFrame, mSheet, alBottom);
+  AFrame.FParts.Info.EllipsisPosition := epEndEllipsis;
+  AFrame.FParts.Info.Font.Color := clGrayText;
+  AFrame.FParts.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
+  BuildAssignment(AFrame, mSheet);
+  BuildMapBar(AFrame, mSheet);
+  AFrame.FParts.Map := TAtlasArchitectureMap.Create(AFrame);
+  AFrame.FParts.Map.Parent := mSheet;
+  AFrame.FParts.Map.Align := alClient;
+  AFrame.FParts.Map.OnSelect := MapSelectHandler(AFrame);
+  AFrame.FParts.Map.OnOpen := MapOpenHandler(AFrame);
+  AFrame.FParts.Map.State.OnPathChanged := PathChangedHandler(AFrame);
+end;
+
+procedure BuildCentral(AFrame: TArchFrame);
+var
+  mList: TListView;
+  mPpi: Integer;
+begin
+  mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCentral));
+  AFrame.FParts.Central := mList;
+  mList.ColumnClick := True;
+  mList.OnColumnClick := AFrame.FState.Events.CentralColumnClick;
+  mList.OnDblClick := AFrame.FState.Events.CentralDblClick;
+  mPpi := AFrame.CurrentPPI;
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, 220, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 120, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, 100, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, 100, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, 80, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, 100, mPpi);
+end;
+
+procedure BuildSubsystems(AFrame: TArchFrame);
+var
+  mSheet: TTabSheet;
+  mButton: TButton;
+begin
+  mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabSubsystems);
+  // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
+  AFrame.FParts.SubsystemsBar := NewBar(AFrame, mSheet);
+  AFrame.FParts.SubsystemsBar.Visible := False;
+  mButton := NewButton(AFrame, AFrame.FParts.SubsystemsBar, nil, TAtlasAnalysisTextId.ArchitectureExplainButton, 28,
+    AFrame.FState.Events.ExplainClick);
+  mButton.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+  mButton.ShowHint := True;
+  AFrame.FParts.ExplainButton := mButton;
+  AFrame.FParts.Explanation := NewLabel(AFrame, AFrame.FParts.SubsystemsBar, alClient);
+  AFrame.FParts.Explanation.WordWrap := True;
+  AFrame.FParts.Explanation.Font.Color := clGrayText;
+  AFrame.FParts.Explanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+  AFrame.FParts.Subsystems := NewTree(AFrame, mSheet);
+end;
+
+procedure BuildCyclesAndCrossLinks(AFrame: TArchFrame);
+var
+  mList: TListView;
+  mPpi: Integer;
+begin
+  AFrame.FParts.Cycles := NewTree(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCycles));
+  mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCrossLinks));
+  AFrame.FParts.CrossLinks := mList;
+  mList.OnDblClick := AFrame.FState.Events.CrossDblClick;
+  mPpi := AFrame.CurrentPPI;
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, 200, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, 200, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 180, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, 160, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, 200, mPpi);
+end;
+
+procedure BuildComparison(AFrame: TArchFrame);
+var
+  mSheet: TTabSheet;
+  mButton: TButton;
+begin
+  mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabComparison);
+  AFrame.FParts.CompareBar := NewBar(AFrame, mSheet);
+  mButton := NewButton(AFrame, AFrame.FParts.CompareBar, nil, TAtlasAnalysisTextId.ArchitectureClearComparison, 140,
+    AFrame.FState.Events.ClearCompareClick);
+  mButton.Align := alRight;
+  mButton.Enabled := False;
+  AFrame.FParts.ClearCompare := mButton;
+  AFrame.FParts.CompareInfo := NewLabel(AFrame, AFrame.FParts.CompareBar, alClient);
+  AFrame.FParts.CompareInfo.Layout := tlCenter;
+  AFrame.FParts.CompareInfo.EllipsisPosition := epEndEllipsis;
+  AFrame.FParts.CompareInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison);
+  AFrame.FParts.Comparison := NewTree(AFrame, mSheet);
+end;
+
+{ Füllen }
+
+function CanFill(AControl: TWinControl): Boolean;
+begin
+  Result := AControl.HandleAllocated or (GetParentForm(AControl) <> nil);
+end;
+
+procedure FillScope(AFrame: TArchFrame);
+var
+  mScope: TComboBox;
+begin
+  mScope := AFrame.FParts.Scope;
+  if not CanFill(mScope) then
   begin
-    FModel := Default(TAtlasArchitectureModel);
-    FHasModel := False;
-    FMap.SetModel(FModel);
-    FillAll;
-    UpdateResolutionInfo(FResolution.Value);
+    Exit;
   end;
-  UpdateStatus;
-end;
-
-function TAtlasArchitectureFrame.UnitCaption(AUnit: Integer): string;
-begin
-  if (AUnit >= 0) and (AUnit <= High(FModel.Units)) then
-  begin
-    Result := FModel.Units[AUnit].Name;
-  end
-  else
-  begin
-    Result := '';
+  AFrame.FState.Updating := True;
+  try
+    mScope.Items.BeginUpdate;
+    try
+      mScope.Items.Clear;
+      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup));
+      mScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject));
+    finally
+      mScope.Items.EndUpdate;
+    end;
+    mScope.ItemIndex := Ord(AFrame.FState.ScopeValue = cScopeValues[1]);
+  finally
+    AFrame.FState.Updating := False;
   end;
 end;
 
-function TAtlasArchitectureFrame.RoleCaption(const ARole: string): string;
+function UnitCaption(const AModel: TAtlasArchitectureModel; AUnit: Integer): string;
 begin
+  Result := '';
+  if (AUnit >= 0) and (AUnit <= High(AModel.Units)) then
+  begin
+    Result := AModel.Units[AUnit].Name;
+  end;
+end;
+
+function RoleCaption(const ARole: string): string;
+begin
+  Result := '';
   if ARole = 'foundation' then
   begin
     Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleFoundation);
@@ -816,271 +701,331 @@ begin
   else if ARole = 'hub' then
   begin
     Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleHub);
-  end
-  else
-  begin
-    Result := '';
   end;
 end;
 
-function TAtlasArchitectureFrame.LocationCaption(const ALink: TAtlasArchLink): string;
+function LocationCaption(const ALink: TAtlasArchLink): string;
 begin
-  if (ALink.FileName = '') or (ALink.Line <= 0) then
+  Result := '';
+  if (ALink.FileName <> '') and (ALink.Line > 0) then
   begin
-    Exit('');
+    Result := Format('%s:%d', [ALink.FileName, ALink.Line]);
   end;
-  Result := Format('%s:%d', [ALink.FileName, ALink.Line]);
 end;
 
-function TAtlasArchitectureFrame.LinkCaption(const ALink: TAtlasArchLink): string;
+function LinkCaption(const AModel: TAtlasArchitectureModel; const ALink: TAtlasArchLink): string;
 var
-  Section, Location: string;
+  mSection, mLocation: string;
 begin
+  mSection := 'implementation';
   if ALink.Interface_ then
   begin
-    Section := 'interface';
+    mSection := 'interface';
+  end;
+  mLocation := LocationCaption(ALink);
+  if mLocation <> '' then
+  begin
+    mSection := mSection + ', ' + mLocation;
+  end;
+  Result := Format('%s → %s (%s)', [UnitCaption(AModel, ALink.Source), UnitCaption(AModel, ALink.Target), mSection]);
+end;
+
+function AddLink(AFrame: TArchFrame; const ALink: TAtlasArchLink): Integer;
+begin
+  AFrame.FState.Links := AFrame.FState.Links + [ALink];
+  Result := Length(AFrame.FState.Links);
+end;
+
+function Matches(AFrame: TArchFrame; AUnit: Integer): Boolean;
+begin
+  Result := AFrame.FState.Model.Matches(AUnit, AFrame.FParts.Filter.Text);
+end;
+
+procedure FillCentral(AFrame: TArchFrame);
+var
+  mShown: TArray<Integer>;
+  mMember: Integer;
+  mItem: TListItem;
+  mData: TAtlasArchUnit;
+begin
+  if not CanFill(AFrame.FParts.Central) then
+  begin
+    Exit;
+  end;
+  mShown := nil;
+  for mMember in AFrame.FState.Model.Central do
+  begin
+    if Matches(AFrame, mMember) then
+    begin
+      mShown := mShown + [mMember];
+    end;
+  end;
+  AFrame.FState.CentralRows := AFrame.FState.Model.Sorted(mShown, AFrame.FState.Sort.Column,
+    AFrame.FState.Sort.Descending);
+  AFrame.FParts.Central.Items.BeginUpdate;
+  try
+    AFrame.FParts.Central.Items.Clear;
+    for mMember in AFrame.FState.CentralRows do
+    begin
+      mData := AFrame.FState.Model.Units[mMember];
+      mItem := AFrame.FParts.Central.Items.Add;
+      mItem.Caption := mData.Name;
+      mItem.SubItems.Add(AFrame.FState.Model.SubsystemName(mData.Subsystem));
+      mItem.SubItems.Add(IntToStr(mData.Direct));
+      mItem.SubItems.Add(IntToStr(mData.Total));
+      mItem.SubItems.Add(IntToStr(mData.Uses_));
+      mItem.SubItems.Add(RoleCaption(mData.Role));
+    end;
+  finally
+    AFrame.FParts.Central.Items.EndUpdate;
+  end;
+end;
+
+/// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).</summary>
+function SubsystemCaption(const AModel: TAtlasArchitectureModel; ASubsystem: Integer): string;
+var
+  mSubsystem: TAtlasArchSubsystem;
+begin
+  mSubsystem := AModel.Subsystems[ASubsystem];
+  if mSubsystem.Foundation then
+  begin
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureFoundationLine,
+      [mSubsystem.Name, Length(mSubsystem.Units)]);
   end
   else
   begin
-    Section := 'implementation';
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemLine,
+      [mSubsystem.Name, Length(mSubsystem.Units), Round(mSubsystem.Cohesion * 100)]);
   end;
-  Location := LocationCaption(ALink);
-  if Location <> '' then
-  begin
-    Section := Section + ', ' + Location;
-  end;
-  Result := Format('%s → %s (%s)', [UnitCaption(ALink.Source), UnitCaption(ALink.Target), Section]);
 end;
 
-function TAtlasArchitectureFrame.AddLink(const ALink: TAtlasArchLink): Integer;
-begin
-  FLinks := FLinks + [ALink];
-  Result := Length(FLinks);
-end;
-
-procedure TAtlasArchitectureFrame.FillAll;
-begin
-  FLinks := nil;
-  FSubsystemsBar.Visible := FModel.HasAssignment;
-  FExplanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
-  FillCentral;
-  FillSubsystems;
-  FillCycles;
-  FillCrossLinks;
-  FillComparison;
-  UpdateStatus;
-  UpdateInfo;
-end;
-
-procedure TAtlasArchitectureFrame.FillCentral;
+/// <summary>Units des Teilsystems, die der Filter durchlässt.</summary>
+function FilteredMembers(AFrame: TArchFrame; ASubsystem: Integer): TArray<Integer>;
 var
-  Shown: TArray<Integer>;
-  Member, Index: Integer;
-  Item: TListItem;
-  Data: TAtlasArchUnit;
+  mMember: Integer;
 begin
-  if not CanFill(FCentral) then
+  Result := nil;
+  for mMember in AFrame.FState.Model.Subsystems[ASubsystem].Units do
+  begin
+    if Matches(AFrame, mMember) then
+    begin
+      Result := Result + [mMember];
+    end;
+  end;
+end;
+
+/// <summary>Unit im Baum der Teilsysteme: Name, Grund des Ausreißers, knapp zugeordnet (#1368).</summary>
+function MemberLine(const AModel: TAtlasArchitectureModel; AMember: Integer): string;
+var
+  mOutlier: Integer;
+  mText: TAtlasAnalysisTextId;
+begin
+  Result := AModel.Units[AMember].Name;
+  mOutlier := AModel.OutlierOf(AMember);
+  if mOutlier >= 0 then
+  begin
+    mText := TAtlasAnalysisTextId.ArchitectureOutlierEdges;
+    if AModel.Outliers[mOutlier].Reason = 'namespace' then
+    begin
+      mText := TAtlasAnalysisTextId.ArchitectureOutlierNamespace;
+    end;
+    Result := Result + ' — ' + TAtlasAnalysisStrings.Fmt(mText,
+      [AModel.SubsystemName(AModel.Outliers[mOutlier].Suggested)]);
+  end;
+  if TAtlasArchitectureAssignment.CloseMark(AModel, AMember) <> '' then
+  begin
+    Result := Result + ' — ' + TAtlasArchitectureAssignment.CloseMark(AModel, AMember);
+  end;
+end;
+
+procedure AddSubsystemGroup(AFrame: TArchFrame; ASubsystem: Integer; const AMembers: TArray<Integer>);
+var
+  mItems: TTreeNodes;
+  mGroup: TTreeNode;
+  mLine: string;
+  mMember: Integer;
+  mSubsystem: TAtlasArchSubsystem;
+begin
+  mItems := AFrame.FParts.Subsystems.Items;
+  mSubsystem := AFrame.FState.Model.Subsystems[ASubsystem];
+  mLine := SubsystemCaption(AFrame.FState.Model, ASubsystem);
+  if mSubsystem.Parent <> '' then
+  begin
+    mLine := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemPart, [mLine, mSubsystem.Parent]);
+  end;
+  mGroup := mItems.Add(nil, mLine);
+  mGroup.Data := nil;
+  // Regel des Fundaments (#1365) als erste Zeile.
+  if mSubsystem.Foundation then
+  begin
+    mItems.AddChild(mGroup, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationRule)).Data := nil;
+  end;
+  for mMember in AFrame.FState.Model.Sorted(AMembers, TAtlasArchColumn.Total, True) do
+  begin
+    // Unit: negative Zahl (−1 − Nummer), uses-Eintrag: positive (Nummer in Links + 1).
+    mItems.AddChild(mGroup, MemberLine(AFrame.FState.Model, mMember)).Data := Pointer(NativeInt(-1 - mMember));
+  end;
+  // Kleine Teilsysteme aufgeklappt, große zu.
+  mGroup.Expanded := Length(AMembers) <= 12;
+end;
+
+procedure FillSubsystems(AFrame: TArchFrame);
+var
+  mIndex: Integer;
+  mMembers: TArray<Integer>;
+begin
+  if not CanFill(AFrame.FParts.Subsystems) then
   begin
     Exit;
   end;
-  Shown := nil;
-  for Member in FModel.Central do
-  begin
-    if FModel.Matches(Member, FFilter.Text) then
-    begin
-      Shown := Shown + [Member];
-    end;
-  end;
-  FCentralRows := FModel.Sorted(Shown, FSortColumn, FSortDescending);
-  FCentral.Items.BeginUpdate;
+  AFrame.FParts.Subsystems.Items.BeginUpdate;
   try
-    FCentral.Items.Clear;
-    for Index := 0 to High(FCentralRows) do
-    begin
-      Data := FModel.Units[FCentralRows[Index]];
-      Item := FCentral.Items.Add;
-      Item.Caption := Data.Name;
-      Item.SubItems.Add(FModel.SubsystemName(Data.Subsystem));
-      Item.SubItems.Add(IntToStr(Data.Direct));
-      Item.SubItems.Add(IntToStr(Data.Total));
-      Item.SubItems.Add(IntToStr(Data.Uses_));
-      Item.SubItems.Add(RoleCaption(Data.Role));
-    end;
-  finally
-    FCentral.Items.EndUpdate;
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.FillSubsystems;
-var
-  Index, Member, Outlier: Integer;
-  Subsystem: TAtlasArchSubsystem;
-  Group, Node: TTreeNode;
-  Line: string;
-  Members: TArray<Integer>;
-begin
-  if not CanFill(FSubsystems) then
-  begin
-    Exit;
-  end;
-  FSubsystems.Items.BeginUpdate;
-  try
-    FSubsystems.Items.Clear;
+    AFrame.FParts.Subsystems.Items.Clear;
     // Teile eines nachgeteilten Teilsystems (#1364) beieinander.
-    for Index in FModel.LegendOrder do
+    for mIndex in AFrame.FState.Model.LegendOrder do
     begin
-      Subsystem := FModel.Subsystems[Index];
-      Members := nil;
-      for Member in Subsystem.Units do
+      mMembers := FilteredMembers(AFrame, mIndex);
+      if Length(mMembers) > 0 then
       begin
-        if FModel.Matches(Member, FFilter.Text) then
-        begin
-          Members := Members + [Member];
-        end;
+        AddSubsystemGroup(AFrame, mIndex, mMembers);
       end;
-      if Length(Members) = 0 then
-      begin
-        Continue;
-      end;
-      Line := SubsystemCaption(Index);
-      if Subsystem.Parent <> '' then
-      begin
-        Line := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
-      end;
-      Group := FSubsystems.Items.Add(nil, Line);
-      Group.Data := nil;
-      // Regel des Fundaments (#1365) als erste Zeile.
-      if Subsystem.Foundation then
-      begin
-        FSubsystems.Items.AddChild(Group,
-          TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationRule)).Data := nil;
-      end;
-      for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
-      begin
-        Line := FModel.Units[Member].Name;
-        Outlier := FModel.OutlierOf(Member);
-        if (Outlier >= 0) and (FModel.Outliers[Outlier].Reason = 'namespace') then
-        begin
-            Line := Line + ' — ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureOutlierNamespace,
-            [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
-        end
-        else if Outlier >= 0 then
-        begin
-            Line := Line + ' — ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureOutlierEdges,
-            [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
-        end;
-        // Knapp zugeordnet (#1368).
-        if TAtlasArchitectureAssignment.CloseMark(FModel, Member) <> '' then
-        begin
-          Line := Line + ' — ' + TAtlasArchitectureAssignment.CloseMark(FModel, Member);
-        end;
-        Node := FSubsystems.Items.AddChild(Group, Line);
-        // Unit: negative Zahl (−1 − Nummer), uses-Eintrag: positive (Nummer in FLinks + 1).
-        Node.Data := Pointer(NativeInt(-1 - Member));
-      end;
-      // Kleine Teilsysteme aufgeklappt, große zu.
-      Group.Expanded := Length(Members) <= 12;
     end;
   finally
-    FSubsystems.Items.EndUpdate;
+    AFrame.FParts.Subsystems.Items.EndUpdate;
   end;
 end;
 
-procedure TAtlasArchitectureFrame.FillCycles;
+function CycleShown(AFrame: TArchFrame; const ACycle: TAtlasArchCycle): Boolean;
 var
-  Cycle: TAtlasArchCycle;
-  Link: TAtlasArchLink;
-  Group, Node: TTreeNode;
-  Line: string;
-  Member: Integer;
-  Hit: Boolean;
+  mMember: Integer;
 begin
-  if not CanFill(FCycles) then
+  Result := False;
+  for mMember in ACycle.Units do
+  begin
+    Result := Result or Matches(AFrame, mMember);
+  end;
+end;
+
+function CycleTitle(const ACycle: TAtlasArchCycle): string;
+begin
+  if ACycle.InterfaceOnly then
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface);
+  end
+  else
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation);
+  end;
+end;
+
+procedure AddCycle(AFrame: TArchFrame; const ACycle: TAtlasArchCycle);
+var
+  mItems: TTreeNodes;
+  mGroup: TTreeNode;
+  mLink: TAtlasArchLink;
+begin
+  mItems := AFrame.FParts.Cycles.Items;
+  mGroup := mItems.Add(nil, CycleTitle(ACycle) + ': ' + AFrame.FState.Model.CyclePath(ACycle));
+  mGroup.Data := nil;
+  for mLink in ACycle.Edges do
+  begin
+    mItems.AddChild(mGroup, LinkCaption(AFrame.FState.Model, mLink)).Data := Pointer(NativeInt(AddLink(AFrame, mLink)));
+  end;
+  mGroup.Expanded := True;
+end;
+
+procedure FillCycles(AFrame: TArchFrame);
+var
+  mCycle: TAtlasArchCycle;
+begin
+  if not CanFill(AFrame.FParts.Cycles) then
   begin
     Exit;
   end;
-  FCycles.Items.BeginUpdate;
+  AFrame.FParts.Cycles.Items.BeginUpdate;
   try
-    FCycles.Items.Clear;
-    for Cycle in FModel.Cycles do
+    AFrame.FParts.Cycles.Items.Clear;
+    for mCycle in AFrame.FState.Model.Cycles do
     begin
-      Hit := False;
-      for Member in Cycle.Units do
+      if CycleShown(AFrame, mCycle) then
       begin
-        Hit := Hit or FModel.Matches(Member, FFilter.Text);
+        AddCycle(AFrame, mCycle);
       end;
-      if not Hit then
-      begin
-        Continue;
-      end;
-      if Cycle.InterfaceOnly then
-      begin
-        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface);
-      end
-      else
-      begin
-        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation);
-      end;
-      Group := FCycles.Items.Add(nil, Line + ': ' + FModel.CyclePath(Cycle));
-      Group.Data := nil;
-      for Link in Cycle.Edges do
-      begin
-        Node := FCycles.Items.AddChild(Group, LinkCaption(Link));
-        Node.Data := Pointer(NativeInt(AddLink(Link)));
-      end;
-      Group.Expanded := True;
     end;
   finally
-    FCycles.Items.EndUpdate;
+    AFrame.FParts.Cycles.Items.EndUpdate;
   end;
 end;
 
-procedure TAtlasArchitectureFrame.FillCrossLinks;
+procedure AddCrossItem(AFrame: TArchFrame; const ALink: TAtlasArchLink);
 var
-  Index: Integer;
-  Link: TAtlasArchLink;
-  Item: TListItem;
-  Reason: string;
+  mItem: TListItem;
+  mReason: string;
+  mModel: TAtlasArchitectureModel;
 begin
-  if not CanFill(FCrossLinks) then
+  mModel := AFrame.FState.Model;
+  if ALink.Reason = 'rare' then
+  begin
+    mReason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
+  end
+  else
+  begin
+    mReason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
+  end;
+  mItem := AFrame.FParts.CrossLinks.Items.Add;
+  mItem.Caption := UnitCaption(mModel, ALink.Source);
+  mItem.SubItems.Add(UnitCaption(mModel, ALink.Target));
+  mItem.SubItems.Add(mModel.SubsystemName(ALink.FromSubsystem) + ' → ' + mModel.SubsystemName(ALink.ToSubsystem));
+  mItem.SubItems.Add(Format('%s (%d:%d)', [mReason, ALink.Forward, ALink.Backward]));
+  mItem.SubItems.Add(LocationCaption(ALink));
+end;
+
+procedure FillCrossLinks(AFrame: TArchFrame);
+var
+  mIndex: Integer;
+  mLink: TAtlasArchLink;
+begin
+  if not CanFill(AFrame.FParts.CrossLinks) then
   begin
     Exit;
   end;
-  FCrossRows := nil;
-  FCrossLinks.Items.BeginUpdate;
+  AFrame.FState.CrossRows := nil;
+  AFrame.FParts.CrossLinks.Items.BeginUpdate;
   try
-    FCrossLinks.Items.Clear;
-    for Index := 0 to High(FModel.CrossLinks) do
+    AFrame.FParts.CrossLinks.Items.Clear;
+    for mIndex := 0 to High(AFrame.FState.Model.CrossLinks) do
     begin
-      Link := FModel.CrossLinks[Index];
-      if not (FModel.Matches(Link.Source, FFilter.Text) or FModel.Matches(Link.Target, FFilter.Text)) then
+      mLink := AFrame.FState.Model.CrossLinks[mIndex];
+      if Matches(AFrame, mLink.Source) or Matches(AFrame, mLink.Target) then
       begin
-        Continue;
+        AFrame.FState.CrossRows := AFrame.FState.CrossRows + [mIndex];
+        AddCrossItem(AFrame, mLink);
       end;
-      FCrossRows := FCrossRows + [Index];
-      if Link.Reason = 'rare' then
-      begin
-        Reason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
-      end
-      else
-      begin
-        Reason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
-      end;
-      Item := FCrossLinks.Items.Add;
-      Item.Caption := UnitCaption(Link.Source);
-      Item.SubItems.Add(UnitCaption(Link.Target));
-      Item.SubItems.Add(FModel.SubsystemName(Link.FromSubsystem) + ' → ' + FModel.SubsystemName(Link.ToSubsystem));
-      Item.SubItems.Add(Format('%s (%d:%d)', [Reason, Link.Forward, Link.Backward]));
-      Item.SubItems.Add(LocationCaption(Link));
     end;
   finally
-    FCrossLinks.Items.EndUpdate;
+    AFrame.FParts.CrossLinks.Items.EndUpdate;
   end;
 end;
 
-function TAtlasArchitectureFrame.ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
-var
-  Detail: string;
+/// <summary>Angaben einer Kante im Vergleich: von → nach, Abschnitt, Grund.</summary>
+function EdgeDetail(const AChange: TAtlasArchChange): string;
+begin
+  Result := AChange.From + ' → ' + AChange.To_;
+  if AChange.Section <> '' then
+  begin
+    Result := Result + ', ' + AChange.Section;
+  end;
+  if AChange.Reason = 'rare' then
+  begin
+    Result := Result + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
+  end
+  else if AChange.Reason <> '' then
+  begin
+    Result := Result + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
+  end;
+end;
+
+function ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
 begin
   Result := AChange.Text;
   case AKind of
@@ -1100,298 +1045,844 @@ begin
       Result := Result + ' (' + AChange.From + ' → ' + AChange.To_ + ')';
     TAtlasArchChangeKind.NewCrossLinks, TAtlasArchChangeKind.RemovedCrossLinks, TAtlasArchChangeKind.NewEdges,
     TAtlasArchChangeKind.RemovedEdges:
-      begin
-        Detail := AChange.From + ' → ' + AChange.To_;
-        if AChange.Section <> '' then
-        begin
-          Detail := Detail + ', ' + AChange.Section;
-        end;
-        if AChange.Reason = 'rare' then
-        begin
-          Detail := Detail + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
-        end
-        else if AChange.Reason <> '' then
-        begin
-          Detail := Detail + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
-        end;
-        Result := Result + ' (' + Detail + ')';
-      end;
+      Result := Result + ' (' + EdgeDetail(AChange) + ')';
     TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits: ;
   end;
 end;
 
-procedure TAtlasArchitectureFrame.FillComparison;
+/// <summary>Zeile über dem Baum „Vergleich“: gegen welchen Stand, Fehler oder Hinweis.</summary>
+function ComparisonInfo(const AComparison: TAtlasArchComparison): string;
+begin
+  if AComparison.Error <> '' then
+  begin
+    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonError, [AComparison.Error]));
+  end;
+  if not AComparison.Present then
+  begin
+    Exit(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison));
+  end;
+  Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonInfo,
+    [ExtractFileName(AComparison.Baseline), AComparison.BaselineTitle, AComparison.BaselineUnits,
+    AComparison.BaselineEdges, AComparison.Count]);
+  if Length(AComparison.Failed) > 0 then
+  begin
+    Result := Result + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonFailed,
+      [string.Join(', ', AComparison.Failed)]);
+  end;
+  // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
+  if AComparison.ResolutionDiffers then
+  begin
+    Result := Result + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonResolution,
+      [TAtlasArchResolution.Text(AComparison.BaselineResolution, FormatSettings),
+      TAtlasArchResolution.Text(AComparison.Resolution, FormatSettings)]);
+  end;
+end;
+
+/// <summary>Der Filter wirkt wie in den anderen Listen auf die Namen; entfernte Units zählen mit ihrem Namen.
+/// </summary>
+function ChangeShown(AFrame: TArchFrame; const AChange: TAtlasArchChange): Boolean;
+var
+  mFilter: string;
+begin
+  mFilter := LowerCase(Trim(AFrame.FParts.Filter.Text));
+  Result := (mFilter = '') or (Pos(mFilter, LowerCase(AChange.Text)) > 0) or Matches(AFrame, AChange.Unit_);
+end;
+
+procedure AddChangeSection(AFrame: TArchFrame; const ASection: TAtlasArchChangeSection);
 const
-  Titles: array[TAtlasArchChangeKind] of TAtlasAnalysisTextId = (TAtlasAnalysisTextId.ArchitectureChangeNewCycles,
+  cTitles: array[TAtlasArchChangeKind] of TAtlasAnalysisTextId = (TAtlasAnalysisTextId.ArchitectureChangeNewCycles,
     TAtlasAnalysisTextId.ArchitectureChangeRemovedCycles, TAtlasAnalysisTextId.ArchitectureChangeNewCrossLinks,
     TAtlasAnalysisTextId.ArchitectureChangeRemovedCrossLinks, TAtlasAnalysisTextId.ArchitectureChangeNewEdges,
     TAtlasAnalysisTextId.ArchitectureChangeRemovedEdges, TAtlasAnalysisTextId.ArchitectureChangeMoves,
     TAtlasAnalysisTextId.ArchitectureChangeGrowth, TAtlasAnalysisTextId.ArchitectureChangeNewUnits,
     TAtlasAnalysisTextId.ArchitectureChangeRemovedUnits);
 var
-  Comparison: TAtlasArchComparison;
-  Section: TAtlasArchChangeSection;
-  Change: TAtlasArchChange;
-  Shown: TArray<TAtlasArchChange>;
-  Group, Node: TTreeNode;
-  Info: string;
+  mShown: TArray<TAtlasArchChange>;
+  mChange: TAtlasArchChange;
+  mGroup: TTreeNode;
+  mItems: TTreeNodes;
 begin
-  Comparison := FModel.Comparison;
-  FChanges.Enabled := Comparison.Present;
-  FMap.State.SetFlag(TAtlasArchMapFlag.ShowChanges, FChanges.Checked);
-  FClearCompare.Enabled := FHasModel and ((Comparison.Baseline <> '') or (Comparison.Error <> ''));
-  if Comparison.Error <> '' then
+  mShown := nil;
+  for mChange in ASection.Items do
   begin
-    Info := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonError, [Comparison.Error]);
-  end
-  else if Comparison.Present then
-  begin
-    Info := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonInfo,
-      [ExtractFileName(Comparison.Baseline),
-      Comparison.BaselineTitle, Comparison.BaselineUnits, Comparison.BaselineEdges, Comparison.Count]);
-    if Length(Comparison.Failed) > 0 then
+    if ChangeShown(AFrame, mChange) then
     begin
-      Info := Info + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonFailed,
-        [string.Join(', ', Comparison.Failed)]);
+      mShown := mShown + [mChange];
     end;
-    // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
-    if Comparison.ResolutionDiffers then
-    begin
-      Info := Info + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonResolution,
-        [TAtlasArchResolution.Text(Comparison.BaselineResolution, FormatSettings),
-        TAtlasArchResolution.Text(Comparison.Resolution, FormatSettings)]);
-    end;
-  end
-  else
-  begin
-    Info := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison);
   end;
-  FCompareInfo.Caption := Info;
-  FCompareInfo.Hint := Comparison.Baseline;
-  FCompareInfo.ShowHint := Comparison.Baseline <> '';
-  if not CanFill(FComparison) then
+  if Length(mShown) = 0 then
   begin
     Exit;
   end;
-  FComparison.Items.BeginUpdate;
+  mItems := AFrame.FParts.Comparison.Items;
+  mGroup := mItems.Add(nil, TAtlasAnalysisStrings.Fmt(cTitles[ASection.Kind], [Length(mShown)]));
+  mGroup.Data := nil;
+  for mChange in mShown do
+  begin
+    // Wie im Baum der Teilsysteme: Unit als −1 − Nummer; entfernte Units haben keine (Data = nil).
+    mItems.AddChild(mGroup, ChangeCaption(ASection.Kind, mChange)).Data := Pointer(NativeInt(-1 - Max(-1,
+      mChange.Unit_)));
+  end;
+  mGroup.Expanded := Length(mShown) <= 20;
+end;
+
+procedure FillComparisonTree(AFrame: TArchFrame);
+var
+  mComparison: TAtlasArchComparison;
+  mSection: TAtlasArchChangeSection;
+  mItems: TTreeNodes;
+begin
+  mComparison := AFrame.FState.Model.Comparison;
+  mItems := AFrame.FParts.Comparison.Items;
+  mItems.BeginUpdate;
   try
-    FComparison.Items.Clear;
-    if not Comparison.Present then
+    mItems.Clear;
+    if mComparison.Present and (mComparison.Count = 0) then
     begin
-      Exit;
-    end;
-    if Comparison.Count = 0 then
+      mItems.Add(nil, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoChanges)).Data := nil;
+    end
+    else if mComparison.Present then
     begin
-      FComparison.Items.Add(nil, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoChanges)).Data := nil;
-      Exit;
-    end;
-    for Section in Comparison.Sections do
-    begin
-      // Der Filter wirkt wie in den anderen Listen auf die Namen; entfernte Units zählen mit ihrem Namen.
-      Shown := nil;
-      for Change in Section.Items do
+      for mSection in mComparison.Sections do
       begin
-        if (Trim(FFilter.Text) = '') or (Pos(LowerCase(Trim(FFilter.Text)), LowerCase(Change.Text)) > 0) or
-          FModel.Matches(Change.Unit_, FFilter.Text) then
-        begin
-          Shown := Shown + [Change];
-        end;
+        AddChangeSection(AFrame, mSection);
       end;
-      if Length(Shown) = 0 then
-      begin
-        Continue;
-      end;
-      Group := FComparison.Items.Add(nil, TAtlasAnalysisStrings.Fmt(Titles[Section.Kind], [Length(Shown)]));
-      Group.Data := nil;
-      for Change in Shown do
-      begin
-        Node := FComparison.Items.AddChild(Group, ChangeCaption(Section.Kind, Change));
-        // Wie im Baum der Teilsysteme: Unit als −1 − Nummer; entfernte Units haben keine.
-        if Change.Unit_ >= 0 then
-        begin
-          Node.Data := Pointer(NativeInt(-1 - Change.Unit_));
-        end
-        else
-        begin
-          Node.Data := nil;
-        end;
-      end;
-      Group.Expanded := Length(Shown) <= 20;
     end;
   finally
-    FComparison.Items.EndUpdate;
+    mItems.EndUpdate;
   end;
 end;
 
-procedure TAtlasArchitectureFrame.UpdateStatus;
-begin
-  if FMessageText <> '' then
-  begin
-    FStatus.Caption := FMessageText;
-  end
-  else if not FHasModel then
-  begin
-    FStatus.Caption := '';
-  end
-  else if Length(FModel.Units) = 0 then
-  begin
-    FStatus.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureEmpty);
-  end
-  else
-  begin
-    // Index-Stand: Zahl der Änderungen; der obere Teil der Generation kennzeichnet nur den Index.
-    FStatus.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatus, [Length(FModel.Units),
-      Length(FModel.Subsystems), Length(FModel.Cycles), Length(FModel.CrossLinks),
-      Integer(FModel.Generation and $7FFFFFFF), FModel.DurationMs]);
-    if Length(FModel.Excludes) > 0 then
-    begin
-      FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusExcludes,
-        [string.Join(', ', FModel.Excludes)]);
-    end;
-    // Angleichung an einen vorigen Stand (#1367).
-    if FModel.AlignedSource = 'baseline' then
-    begin
-      FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(
-        TAtlasAnalysisTextId.ArchitectureStatusAlignedBaseline,
-        [FModel.AlignedText]);
-    end
-    else if FModel.AlignedSource <> '' then
-    begin
-      FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusAlignedLast,
-        [FModel.AlignedText]);
-    end;
-    if FModel.Comparison.Present then
-    begin
-      FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusComparison,
-        [FModel.Comparison.Count]);
-    end
-    else if FModel.Comparison.Error <> '' then
-    begin
-      FStatus.Caption := FStatus.Caption + ' · ' + TAtlasAnalysisStrings.Fmt(
-        TAtlasAnalysisTextId.ArchitectureComparisonError,
-        [FModel.Comparison.Error]);
-    end;
-  end;
-  FSave.Enabled := FHasModel and (Length(FModel.Units) > 0);
-  FSaveState.Enabled := FSave.Enabled;
-end;
-
-procedure TAtlasArchitectureFrame.UpdateInfo;
+procedure FillComparison(AFrame: TArchFrame);
 var
-  Item: TAtlasArchUnit;
+  mComparison: TAtlasArchComparison;
 begin
-  UpdateAssignment;
-  if Length(FMap.State.Path.Route) > 0 then
+  mComparison := AFrame.FState.Model.Comparison;
+  AFrame.FParts.Changes.Enabled := mComparison.Present;
+  AFrame.FParts.Map.State.SetFlag(TAtlasArchMapFlag.ShowChanges, AFrame.FParts.Changes.Checked);
+  AFrame.FParts.ClearCompare.Enabled := AFrame.FState.HasModel and
+    ((mComparison.Baseline <> '') or (mComparison.Error <> ''));
+  AFrame.FParts.CompareInfo.Caption := ComparisonInfo(mComparison);
+  AFrame.FParts.CompareInfo.Hint := mComparison.Baseline;
+  AFrame.FParts.CompareInfo.ShowHint := mComparison.Baseline <> '';
+  if CanFill(AFrame.FParts.Comparison) then
   begin
-    // Fester Weg aus „Weg zwischen Symbolen“ (#1117).
-    FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [Length(FMap.State.Path.Route),
-      FModel.RouteText(FMap.State.Path.Route)]);
-    Exit;
+    FillComparisonTree(AFrame);
   end;
-  if FMap.State.Path.From >= 0 then
-  begin
-    if FMap.State.Path.Found then
-    begin
-      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [Length(FMap.State.Path.Edges),
-        FModel.PathText(FMap.State.Path.From, FMap.State.Path.Edges)]);
-    end
-    else
-    begin
-      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, 
-        [UnitCaption(FMap.State.Path.From), UnitCaption(FMap.State.Path.To_)]);
-    end;
-    Exit;
-  end;
-  if (FMap.State.Selected < 0) or (FMap.State.Selected > High(FModel.Units)) then
-  begin
-    FInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
-    Exit;
-  end;
-  Item := FModel.Units[FMap.State.Selected];
-  FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureUnitInfo, [Item.Name,
-    FModel.SubsystemName(Item.Subsystem), Item.Direct, Item.Total, Item.Uses_]);
 end;
 
-procedure TAtlasArchitectureFrame.UpdateAssignment;
+/// <summary>Angleichung an einen vorigen Stand (#1367) und Vergleich als Zusatz der Statuszeile.</summary>
+function StatusNotes(const AModel: TAtlasArchitectureModel): string;
+begin
+  Result := '';
+  if Length(AModel.Excludes) > 0 then
+  begin
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusExcludes,
+      [string.Join(', ', AModel.Excludes)]);
+  end;
+  if AModel.AlignedSource = 'baseline' then
+  begin
+    Result := Result + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusAlignedBaseline,
+      [AModel.AlignedText]);
+  end
+  else if AModel.AlignedSource <> '' then
+  begin
+    Result := Result + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusAlignedLast,
+      [AModel.AlignedText]);
+  end;
+  if AModel.Comparison.Present then
+  begin
+    Result := Result + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusComparison,
+      [AModel.Comparison.Count]);
+  end
+  else if AModel.Comparison.Error <> '' then
+  begin
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonError,
+      [AModel.Comparison.Error]);
+  end;
+end;
+
+function StatusText(AFrame: TArchFrame): string;
+var
+  mModel: TAtlasArchitectureModel;
+begin
+  mModel := AFrame.FState.Model;
+  if AFrame.FState.MessageText <> '' then
+  begin
+    Exit(AFrame.FState.MessageText);
+  end;
+  if not AFrame.FState.HasModel then
+  begin
+    Exit('');
+  end;
+  if Length(mModel.Units) = 0 then
+  begin
+    Exit(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureEmpty));
+  end;
+  // Index-Stand: Zahl der Änderungen; der obere Teil der Generation kennzeichnet nur den Index.
+  Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatus, [Length(mModel.Units),
+    Length(mModel.Subsystems), Length(mModel.Cycles), Length(mModel.CrossLinks),
+    Integer(mModel.Generation and $7FFFFFFF), mModel.DurationMs]) + StatusNotes(mModel);
+end;
+
+procedure UpdateStatus(AFrame: TArchFrame);
+begin
+  AFrame.FParts.Status.Caption := StatusText(AFrame);
+  AFrame.FParts.Save.Enabled := AFrame.FState.HasModel and (Length(AFrame.FState.Model.Units) > 0);
+  AFrame.FParts.SaveState.Enabled := AFrame.FParts.Save.Enabled;
+end;
+
+procedure UpdateAssignment(AFrame: TArchFrame);
 var
   mBitmap: Vcl.Graphics.TBitmap;
   mSize: TSize;
+  mControls: TArchFrame.TParts;
+  mState: TAtlasArchitectureMapState;
 begin
+  mControls := AFrame.FParts;
+  mState := mControls.Map.State;
   // Steckbrief (#1368): nur mit gewählter Unit, ohne Weg und mit Zuordnung vom Server.
-  if (FMap.State.Path.From >= 0) or (Length(FMap.State.Path.Route) > 0) or
-    not TAtlasArchitectureAssignment.Available(FModel, FMap.State.Selected) then
+  if (mState.Path.From >= 0) or (Length(mState.Path.Route) > 0) or
+    not TAtlasArchitectureAssignment.Available(AFrame.FState.Model, mState.Selected) then
   begin
-    FAssignmentSplit.Visible := False;
-    FAssignmentBox.Visible := False;
+    mControls.AssignmentSplit.Visible := False;
+    mControls.AssignmentBox.Visible := False;
     Exit;
   end;
   // Messen ohne Fenster: auf einer Bitmap mit derselben Schrift.
   mBitmap := Vcl.Graphics.TBitmap.Create;
   try
-    mBitmap.Canvas.Font.Assign(Font);
-    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.State.Selected, CurrentPPI);
+    mBitmap.Canvas.Font.Assign(AFrame.Font);
+    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, AFrame.FState.Model, mState.Selected,
+      AFrame.CurrentPPI);
   finally
     mBitmap.Free;
   end;
-  FAssignment.SetBounds(0, 0, mSize.cx + 1, mSize.cy + 1);
-  if not FAssignmentBox.Visible then
+  mControls.Assignment.SetBounds(0, 0, mSize.cx + 1, mSize.cy + 1);
+  if not mControls.AssignmentBox.Visible then
   begin
     // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens 40 % der Seite; danach gilt die Ziehleiste.
-    FAssignmentBox.Width := Min(mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + ScaleValue(8),
-      Max(ScaleValue(120), FAssignmentBox.Parent.Width * 2 div 5));
-    FAssignmentBox.Visible := True;
-    FAssignmentSplit.Left := FAssignmentBox.Left + FAssignmentBox.Width + 1;
-    FAssignmentSplit.Visible := True;
+    mControls.AssignmentBox.Width := Min(mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + AFrame.ScaleValue(8),
+      Max(AFrame.ScaleValue(120), mControls.AssignmentBox.Parent.Width * 2 div 5));
+    mControls.AssignmentBox.Visible := True;
+    mControls.AssignmentSplit.Left := mControls.AssignmentBox.Left + mControls.AssignmentBox.Width + 1;
+    mControls.AssignmentSplit.Visible := True;
   end;
-  FAssignmentBox.VertScrollBar.Position := 0;
-  FAssignment.Invalidate;
+  mControls.AssignmentBox.VertScrollBar.Position := 0;
+  mControls.Assignment.Invalidate;
 end;
 
-procedure TAtlasArchitectureFrame.AssignmentPaint(Sender: TObject);
+/// <summary>Zeile unter der Karte: fester Weg (#1117), Weg nach Umschalt+Klick, gewählte Unit oder Hinweis.
+/// </summary>
+function InfoText(AFrame: TArchFrame): string;
 var
-  mColors: TAtlasColors;
-  mSize: TSize;
+  mModel: TAtlasArchitectureModel;
+  mPath: TAtlasArchitectureMapPath;
+  mItem: TAtlasArchUnit;
 begin
-  if not TAtlasArchitectureAssignment.Available(FModel, FMap.State.Selected) then
+  mModel := AFrame.FState.Model;
+  mPath := AFrame.FParts.Map.State.Path;
+  if Length(mPath.Route) > 0 then
+  begin
+    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [Length(mPath.Route),
+      mModel.RouteText(mPath.Route)]));
+  end;
+  if (mPath.From >= 0) and mPath.Found then
+  begin
+    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [Length(mPath.Edges),
+      mModel.PathText(mPath.From, mPath.Edges)]));
+  end;
+  if mPath.From >= 0 then
+  begin
+    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, [UnitCaption(mModel, mPath.From),
+      UnitCaption(mModel, mPath.To_)]));
+  end;
+  Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
+  if (AFrame.FParts.Map.State.Selected >= 0) and (AFrame.FParts.Map.State.Selected <= High(mModel.Units)) then
+  begin
+    mItem := mModel.Units[AFrame.FParts.Map.State.Selected];
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureUnitInfo, [mItem.Name,
+      mModel.SubsystemName(mItem.Subsystem), mItem.Direct, mItem.Total, mItem.Uses_]);
+  end;
+end;
+
+procedure UpdateInfo(AFrame: TArchFrame);
+begin
+  UpdateAssignment(AFrame);
+  AFrame.FParts.Info.Caption := InfoText(AFrame);
+end;
+
+/// <summary>Listen und Bäume nach Daten und Filter neu füllen.</summary>
+procedure FillLists(AFrame: TArchFrame);
+begin
+  FillCentral(AFrame);
+  FillSubsystems(AFrame);
+  AFrame.FState.Links := nil;
+  FillCycles(AFrame);
+  FillCrossLinks(AFrame);
+  FillComparison(AFrame);
+end;
+
+procedure FillAll(AFrame: TArchFrame);
+begin
+  AFrame.FParts.SubsystemsBar.Visible := AFrame.FState.Model.HasAssignment;
+  AFrame.FParts.Explanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+  FillLists(AFrame);
+  UpdateStatus(AFrame);
+  UpdateInfo(AFrame);
+end;
+
+{ Menü „Teilsysteme ▾“ }
+
+function NewMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.OnClick := AClick;
+  AMenu.Items.Add(Result);
+end;
+
+/// <summary>Überschrift der Teile eines nachgeteilten Teilsystems (#1364), nicht wählbar.</summary>
+procedure AddFamilyItem(AFrame: TArchFrame; const AFamily: string);
+var
+  mParts, mIndex: Integer;
+begin
+  mParts := 0;
+  for mIndex := 0 to High(AFrame.FState.Model.Subsystems) do
+  begin
+    if SameText(AFrame.FState.Model.Subsystems[mIndex].Parent, AFamily) then
+    begin
+      Inc(mParts);
+    end;
+  end;
+  NewMenuItem(AFrame.FParts.SubsystemsMenu, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily,
+    [AFamily, mParts]), -1, nil).Enabled := False;
+end;
+
+/// <summary>Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter
+/// seinem Namen.</summary>
+procedure AddSubsystemItems(AFrame: TArchFrame);
+var
+  mIndex: Integer;
+  mFamily, mParent, mCaption: string;
+begin
+  mFamily := '';
+  for mIndex in AFrame.FState.Model.LegendOrder do
+  begin
+    mCaption := SubsystemCaption(AFrame.FState.Model, mIndex);
+    mParent := AFrame.FState.Model.Subsystems[mIndex].Parent;
+    if (mParent <> '') and not SameText(mParent, mFamily) then
+    begin
+      AddFamilyItem(AFrame, mParent);
+    end;
+    if mParent <> '' then
+    begin
+      mCaption := '      ' + mCaption;
+    end;
+    mFamily := mParent;
+    NewMenuItem(AFrame.FParts.SubsystemsMenu, mCaption, mIndex, AFrame.FState.Events.SubsystemItemClick).Checked :=
+      AFrame.FParts.Map.State.SubsystemVisible[mIndex];
+  end;
+end;
+
+procedure AddMenuCommands(AFrame: TArchFrame);
+var
+  mMenu: TPopupMenu;
+  mEvents: TArchEvents;
+begin
+  mMenu := AFrame.FParts.SubsystemsMenu;
+  mEvents := AFrame.FState.Events;
+  mMenu.Items.NewBottomLine;
+  // Kanten zum Fundament (#1365) ein- und ausblenden.
+  if AFrame.FState.Model.HasFoundation then
+  begin
+    NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationEdges), -1,
+      mEvents.FoundationEdgesClick).Checked := AFrame.FParts.Map.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
+  end;
+  NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureShowAll), 0, mEvents.ShowAllClick);
+  // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
+  if Assigned(AFrame.FHandlers.OnRenameSubsystems) then
+  begin
+    NewMenuItem(mMenu, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameSubsystems), -1,
+      mEvents.RenameSubsystemsClick).Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameHint);
+  end;
+end;
+
+{ Text der Listen }
+
+function ItemsText(AList: TListView): TArray<string>;
+var
+  mIndex, mColumn: Integer;
+  mLine: string;
+begin
+  Result := nil;
+  for mIndex := 0 to AList.Items.Count - 1 do
+  begin
+    mLine := AList.Items[mIndex].Caption;
+    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
+    begin
+      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
+    end;
+    Result := Result + [mLine];
+  end;
+end;
+
+function NodesText(ATree: TTreeView): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ATree.Items.Count - 1 do
+  begin
+    Result := Result + [StringOfChar(' ', 2 * ATree.Items[mIndex].Level) + ATree.Items[mIndex].Text];
+  end;
+end;
+
+/// <summary>Speicherdialog; True mit gewählter Datei.</summary>
+function ChooseTarget(AFilter: TAtlasAnalysisTextId; const AExtension, ATitle: string; out AFileName: string): Boolean;
+var
+  mDialog: TSaveDialog;
+begin
+  mDialog := TSaveDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasAnalysisStrings.Text(AFilter);
+    mDialog.DefaultExt := AExtension;
+    mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if ATitle <> '' then
+    begin
+      mDialog.FileName := 'Architektur-' + ATitle + '.' + AExtension;
+    end;
+    Result := mDialog.Execute;
+    AFileName := mDialog.FileName;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+function ChooseBaseline(const ACurrent: string; out AFileName: string): Boolean;
+var
+  mDialog: TOpenDialog;
+begin
+  mDialog := TOpenDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureStateFilter);
+    mDialog.DefaultExt := 'json';
+    mDialog.Options := mDialog.Options + [ofFileMustExist, ofPathMustExist];
+    if ACurrent <> '' then
+    begin
+      mDialog.FileName := ACurrent;
+    end;
+    Result := mDialog.Execute;
+    AFileName := mDialog.FileName;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure CallProc(const AProc: TProc);
+begin
+  if Assigned(AProc) then
+  begin
+    AProc();
+  end;
+end;
+
+{ TAtlasArchitectureFrame.TEvents }
+
+constructor TAtlasArchitectureFrame.TEvents.Create(AFrame: TAtlasArchitectureFrame);
+begin
+  inherited Create(AFrame);
+  FFrame := AFrame;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.RefreshClick(Sender: TObject);
+begin
+  CallProc(FFrame.FHandlers.OnRefresh);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.SaveClick(Sender: TObject);
+var
+  mFileName: string;
+begin
+  if ChooseTarget(TAtlasAnalysisTextId.ArchitectureSaveFilter, 'html', FFrame.FState.Model.Title, mFileName) and
+    Assigned(FFrame.FHandlers.OnSave) then
+  begin
+    FFrame.FHandlers.OnSave(mFileName);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.SaveStateClick(Sender: TObject);
+var
+  mFileName: string;
+begin
+  if ChooseTarget(TAtlasAnalysisTextId.ArchitectureStateFilter, 'json', FFrame.FState.Model.Title, mFileName) and
+    Assigned(FFrame.FHandlers.OnSaveState) then
+  begin
+    FFrame.FHandlers.OnSaveState(mFileName);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.CompareClick(Sender: TObject);
+var
+  mFileName: string;
+begin
+  if ChooseBaseline(FFrame.FState.Model.Comparison.Baseline, mFileName) and Assigned(FFrame.FHandlers.OnCompare) then
+  begin
+    FFrame.FHandlers.OnCompare(mFileName);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.ClearCompareClick(Sender: TObject);
+begin
+  CallProc(FFrame.FHandlers.OnClearComparison);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.ScopeChange(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := FFrame.FParts.Scope.ItemIndex;
+  if FFrame.FState.Updating or (mIndex < 0) or (mIndex > High(cScopeValues)) then
   begin
     Exit;
   end;
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
-  FAssignment.Canvas.Font.Assign(Font);
-  mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.State.Selected, CurrentPPI);
-  TAtlasArchitectureAssignment.Draw(FAssignment.Canvas, Rect(0, 0, Min(mSize.cx, FAssignment.Width), mSize.cy),
-    FModel, FMap.State.Selected, CurrentPPI, mColors);
+  FFrame.FState.ScopeValue := cScopeValues[mIndex];
+  if Assigned(FFrame.FHandlers.OnScopeChanged) then
+  begin
+    FFrame.FHandlers.OnScopeChanged(FFrame.FState.ScopeValue);
+  end;
 end;
 
-procedure TAtlasArchitectureFrame.ExplainClick(Sender: TObject);
+procedure TAtlasArchitectureFrame.TEvents.LibraryClick(Sender: TObject);
 begin
-  // Erneut: wieder nur der kurze Hinweis.
-  if FExplanation.Caption = TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint) then
+  FFrame.FState.IncludeLibrary := FFrame.FParts.LibraryUnits.Checked;
+  if not FFrame.FState.Updating and Assigned(FFrame.FHandlers.OnLibraryChanged) then
   begin
-    FExplanation.Caption := TAtlasArchitectureAssignment.Explanation(FModel);
+    FFrame.FHandlers.OnLibraryChanged(FFrame.FState.IncludeLibrary);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.FilterChange(Sender: TObject);
+begin
+  FFrame.FParts.Map.State.Filter := FFrame.FParts.Filter.Text;
+  FillLists(FFrame);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.FitClick(Sender: TObject);
+begin
+  FFrame.FParts.Map.FitView;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.FlagClick(Sender: TObject);
+var
+  mCheck: TCheckBox;
+begin
+  mCheck := Sender as TCheckBox;
+  FFrame.FParts.Map.State.SetFlag(TAtlasArchMapFlag(mCheck.Tag), mCheck.Checked);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.SubsystemsClick(Sender: TObject);
+var
+  mPoint: TPoint;
+  mButton: TButton;
+begin
+  FFrame.FillSubsystemsMenu;
+  mButton := FFrame.FParts.SubsystemsButton;
+  mPoint := mButton.ClientToScreen(System.Types.Point(0, mButton.Height));
+  FFrame.FParts.SubsystemsMenu.Popup(mPoint.X, mPoint.Y);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.SubsystemItemClick(Sender: TObject);
+var
+  mItem: TMenuItem;
+  mState: TAtlasArchitectureMapState;
+begin
+  mItem := Sender as TMenuItem;
+  mState := FFrame.FParts.Map.State;
+  mState.SubsystemVisible[mItem.Tag] := not mState.SubsystemVisible[mItem.Tag];
+  mItem.Checked := mState.SubsystemVisible[mItem.Tag];
+  UpdateInfo(FFrame);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.FoundationEdgesClick(Sender: TObject);
+var
+  mState: TAtlasArchitectureMapState;
+begin
+  mState := FFrame.FParts.Map.State;
+  mState.SetFlag(TAtlasArchMapFlag.ShowFoundationEdges, not mState.Has(TAtlasArchMapFlag.ShowFoundationEdges));
+  (Sender as TMenuItem).Checked := mState.Has(TAtlasArchMapFlag.ShowFoundationEdges);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.ShowAllClick(Sender: TObject);
+begin
+  FFrame.FParts.Map.State.ShowAllSubsystems;
+  UpdateInfo(FFrame);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.RenameSubsystemsClick(Sender: TObject);
+begin
+  CallProc(FFrame.FHandlers.OnRenameSubsystems);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.CentralColumnClick(Sender: TObject; Column: TListColumn);
+var
+  mNext: TAtlasArchColumn;
+begin
+  if (Column.Index < 0) or (Column.Index > High(cCentralColumns)) then
+  begin
+    Exit;
+  end;
+  mNext := cCentralColumns[Column.Index];
+  if mNext = FFrame.FState.Sort.Column then
+  begin
+    FFrame.FState.Sort.Descending := not FFrame.FState.Sort.Descending;
   end
   else
   begin
-    FExplanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+    FFrame.FState.Sort.Column := mNext;
+    // Zahlen zuerst die größten, Text alphabetisch.
+    FFrame.FState.Sort.Descending := mNext in [TAtlasArchColumn.Direct, TAtlasArchColumn.Total, TAtlasArchColumn.Uses_];
   end;
+  FillCentral(FFrame);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.CentralDblClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := FFrame.FParts.Central.ItemIndex;
+  if (mIndex >= 0) and (mIndex <= High(FFrame.FState.CentralRows)) then
+  begin
+    FFrame.OpenUnit(FFrame.FState.CentralRows[mIndex]);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.CrossDblClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := FFrame.FParts.CrossLinks.ItemIndex;
+  if (mIndex >= 0) and (mIndex <= High(FFrame.FState.CrossRows)) then
+  begin
+    FFrame.OpenLink(FFrame.FState.Model.CrossLinks[FFrame.FState.CrossRows[mIndex]]);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.TreeDblClick(Sender: TObject);
+var
+  mNode: TTreeNode;
+  mValue: NativeInt;
+begin
+  mNode := nil;
+  if Sender is TTreeView then
+  begin
+    mNode := TTreeView(Sender).Selected;
+  end;
+  if (mNode = nil) or (mNode.Data = nil) then
+  begin
+    Exit;
+  end;
+  // Unit: −1 − Nummer, uses-Eintrag: Nummer in Links + 1.
+  mValue := NativeInt(mNode.Data);
+  if mValue < 0 then
+  begin
+    FFrame.OpenUnit(-1 - mValue);
+  end
+  else if mValue <= Length(FFrame.FState.Links) then
+  begin
+    FFrame.OpenLink(FFrame.FState.Links[mValue - 1]);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key <> VK_RETURN then
+  begin
+    Exit;
+  end;
+  if Sender = FFrame.FParts.Central then
+  begin
+    CentralDblClick(Sender);
+  end
+  else if Sender = FFrame.FParts.CrossLinks then
+  begin
+    CrossDblClick(Sender);
+  end;
+  Key := 0;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    TreeDblClick(Sender);
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.AssignmentPaint(Sender: TObject);
+var
+  mColors: TAtlasColors;
+  mSize: TSize;
+  mBox: TPaintBox;
+  mSelected, mPpi: Integer;
+begin
+  mSelected := FFrame.FParts.Map.State.Selected;
+  if not TAtlasArchitectureAssignment.Available(FFrame.FState.Model, mSelected) then
+  begin
+    Exit;
+  end;
+  mBox := FFrame.FParts.Assignment;
+  mPpi := FFrame.CurrentPPI;
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(FFrame).GetSystemColor(clWindow))));
+  mBox.Canvas.Font.Assign(FFrame.Font);
+  mSize := TAtlasArchitectureAssignment.Measure(mBox.Canvas, FFrame.FState.Model, mSelected, mPpi);
+  TAtlasArchitectureAssignment.Draw(mBox.Canvas, Rect(0, 0, Min(mSize.cx, mBox.Width), mSize.cy),
+    FFrame.FState.Model, mSelected, mPpi, mColors);
+end;
+
+procedure TAtlasArchitectureFrame.TEvents.ExplainClick(Sender: TObject);
+var
+  mHint: string;
+begin
+  // Erneut: wieder nur der kurze Hinweis.
+  mHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+  if FFrame.FParts.Explanation.Caption = mHint then
+  begin
+    FFrame.FParts.Explanation.Caption := TAtlasArchitectureAssignment.Explanation(FFrame.FState.Model);
+  end
+  else
+  begin
+    FFrame.FParts.Explanation.Caption := mHint;
+  end;
+end;
+
+{ TAtlasArchitectureFrame }
+
+constructor TAtlasArchitectureFrame.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
+  Name := '';
+  FState.ScopeValue := cScopeValues[0];
+  FState.ShowResolution := True;
+  FState.Sort.Column := TAtlasArchColumn.Total;
+  FState.Sort.Descending := True;
+  FState.Events := TEvents.Create(Self);
+  BuildTop(Self);
+  BuildResolution(Self);
+  BuildFilterAndStatus(Self);
+  BuildOverview(Self);
+  BuildCentral(Self);
+  BuildSubsystems(Self);
+  BuildCyclesAndCrossLinks(Self);
+  BuildComparison(Self);
+end;
+
+procedure TAtlasArchitectureFrame.CreateWnd;
+var
+  mSheet: TTabSheet;
+begin
+  inherited CreateWnd;
+  for mSheet in FParts.Sheets do
+  begin
+    mSheet.TabVisible := True;
+  end;
+  if (FParts.Pages.ActivePage = nil) and (Length(FParts.Sheets) > 0) then
+  begin
+    FParts.Pages.ActivePage := FParts.Sheets[0];
+  end;
+  // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
+  FillScope(Self);
+  FillAll(Self);
+end;
+
+procedure TAtlasArchitectureFrame.SetScopeValue(const AValue: string);
+begin
+  FState.ScopeValue := cScopeValues[Ord(AValue = cScopeValues[1])];
+  FillScope(Self);
+end;
+
+procedure TAtlasArchitectureFrame.SetIncludeLibrary(AValue: Boolean);
+begin
+  FState.Updating := True;
+  try
+    FParts.LibraryUnits.Checked := AValue;
+    FState.IncludeLibrary := AValue;
+  finally
+    FState.Updating := False;
+  end;
+end;
+
+function TAtlasArchitectureFrame.GetResolutionValue: Double;
+begin
+  Result := FParts.Resolution.Value;
+end;
+
+procedure TAtlasArchitectureFrame.SetResolutionValue(AValue: Double);
+begin
+  FParts.Resolution.Value := AValue;
+  UpdateResolutionInfo(Self, FParts.Resolution.Value);
+end;
+
+procedure TAtlasArchitectureFrame.SetShowResolution(AValue: Boolean);
+begin
+  FState.ShowResolution := AValue;
+  FParts.ResolutionCaption.Visible := AValue;
+  FParts.Resolution.Visible := AValue;
+  FParts.ResolutionInfo.Visible := AValue;
+end;
+
+procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
+begin
+  FState.Model := AModel;
+  FState.HasModel := True;
+  FState.MessageText := '';
+  FParts.Map.SetModel(FState.Model);
+  FParts.Map.State.Filter := FParts.Filter.Text;
+  FillAll(Self);
+  UpdateResolutionInfo(Self, FParts.Resolution.Value);
+end;
+
+procedure TAtlasArchitectureFrame.SetMessage(const AText: string; AKeep: Boolean);
+begin
+  FState.MessageText := AText;
+  if not AKeep then
+  begin
+    FState.Model := Default(TAtlasArchitectureModel);
+    FState.HasModel := False;
+    FParts.Map.SetModel(FState.Model);
+    FillAll(Self);
+    UpdateResolutionInfo(Self, FParts.Resolution.Value);
+  end;
+  UpdateStatus(Self);
+end;
+
+procedure TAtlasArchitectureFrame.ShowCostRanking;
+begin
+  FState.Sort.Column := TAtlasArchColumn.Total;
+  FState.Sort.Descending := True;
+  FParts.Pages.ActivePage := FParts.Central.Parent as TTabSheet;
+  FillCentral(Self);
 end;
 
 procedure TAtlasArchitectureFrame.OpenUnit(AUnit: Integer);
 var
-  FileName: string;
+  mFileName: string;
 begin
-  if (AUnit < 0) or (AUnit > High(FModel.Units)) or (FModel.Units[AUnit].FileName = '') then
+  if (AUnit < 0) or (AUnit > High(FState.Model.Units)) or (FState.Model.Units[AUnit].FileName = '') then
   begin
     Exit;
   end;
-  FileName := FModel.FullPath(FModel.Units[AUnit].FileName);
-  if (GetKeyState(VK_CONTROL) < 0) and Assigned(FOnUnitRelations) then
+  mFileName := FState.Model.FullPath(FState.Model.Units[AUnit].FileName);
+  if (GetKeyState(VK_CONTROL) < 0) and Assigned(FHandlers.OnUnitRelations) then
   begin
-    FOnUnitRelations(FileName);
+    FHandlers.OnUnitRelations(mFileName);
   end
-  else if Assigned(FOnOpenUnit) then
+  else if Assigned(FHandlers.OnOpenUnit) then
   begin
-    FOnOpenUnit(FileName);
+    FHandlers.OnOpenUnit(mFileName);
   end;
 end;
 
@@ -1400,463 +1891,36 @@ begin
   if (ALink.FileName = '') or (ALink.Line <= 0) then
   begin
     OpenUnit(ALink.Source);
-    Exit;
-  end;
-  if Assigned(FOnOpenLocation) then
+  end
+  else if Assigned(FHandlers.OnOpenLocation) then
   begin
-    FOnOpenLocation(FModel.FullPath(ALink.FileName), ALink.Line, Max(1, ALink.Character));
+    FHandlers.OnOpenLocation(FState.Model.FullPath(ALink.FileName), ALink.Line, Max(1, ALink.Character));
   end;
-end;
-
-procedure TAtlasArchitectureFrame.RefreshClick(Sender: TObject);
-begin
-  if Assigned(FOnRefresh) then
-  begin
-    FOnRefresh();
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.SaveClick(Sender: TObject);
-var
-  Dialog: TSaveDialog;
-begin
-  Dialog := TSaveDialog.Create(nil);
-  try
-    Dialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSaveFilter);
-    Dialog.DefaultExt := 'html';
-    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
-    if FModel.Title <> '' then
-    begin
-      Dialog.FileName := 'Architektur-' + FModel.Title + '.html';
-    end;
-    if Dialog.Execute and Assigned(FOnSave) then
-    begin
-      FOnSave(Dialog.FileName);
-    end;
-  finally
-    Dialog.Free;
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.SaveStateClick(Sender: TObject);
-var
-  Dialog: TSaveDialog;
-begin
-  Dialog := TSaveDialog.Create(nil);
-  try
-    Dialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureStateFilter);
-    Dialog.DefaultExt := 'json';
-    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
-    if FModel.Title <> '' then
-    begin
-      Dialog.FileName := 'Architektur-' + FModel.Title + '.json';
-    end;
-    if Dialog.Execute and Assigned(FOnSaveState) then
-    begin
-      FOnSaveState(Dialog.FileName);
-    end;
-  finally
-    Dialog.Free;
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.CompareClick(Sender: TObject);
-var
-  Dialog: TOpenDialog;
-begin
-  Dialog := TOpenDialog.Create(nil);
-  try
-    Dialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureStateFilter);
-    Dialog.DefaultExt := 'json';
-    Dialog.Options := Dialog.Options + [ofFileMustExist, ofPathMustExist];
-    if FModel.Comparison.Baseline <> '' then
-    begin
-      Dialog.FileName := FModel.Comparison.Baseline;
-    end;
-    if Dialog.Execute and Assigned(FOnCompare) then
-    begin
-      FOnCompare(Dialog.FileName);
-    end;
-  finally
-    Dialog.Free;
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.ClearCompareClick(Sender: TObject);
-begin
-  if Assigned(FOnClearComparison) then
-  begin
-    FOnClearComparison();
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.ChangesClick(Sender: TObject);
-begin
-  FMap.State.SetFlag(TAtlasArchMapFlag.ShowChanges, FChanges.Checked);
-end;
-
-procedure TAtlasArchitectureFrame.ScopeChange(Sender: TObject);
-begin
-  if FUpdating or (FScope.ItemIndex < 0) or (FScope.ItemIndex > High(ScopeValues)) then
-  begin
-    Exit;
-  end;
-  FScopeValue := ScopeValues[FScope.ItemIndex];
-  if Assigned(FOnScopeChanged) then
-  begin
-    FOnScopeChanged(FScopeValue);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.LibraryClick(Sender: TObject);
-begin
-  if FUpdating then
-  begin
-    Exit;
-  end;
-  if Assigned(FOnLibraryChanged) then
-  begin
-    FOnLibraryChanged(FLibrary.Checked);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.FilterChange(Sender: TObject);
-begin
-  FMap.State.Filter := FFilter.Text;
-  FillCentral;
-  FillSubsystems;
-  FLinks := nil;
-  FillCycles;
-  FillCrossLinks;
-  FillComparison;
-end;
-
-procedure TAtlasArchitectureFrame.FitClick(Sender: TObject);
-begin
-  FMap.FitView;
-end;
-
-procedure TAtlasArchitectureFrame.NamesClick(Sender: TObject);
-begin
-  FMap.State.SetFlag(TAtlasArchMapFlag.ShowNames, FNames.Checked);
-end;
-
-procedure TAtlasArchitectureFrame.ImplementationClick(Sender: TObject);
-begin
-  FMap.State.SetFlag(TAtlasArchMapFlag.ShowImplementation, FImplementation.Checked);
-end;
-
-procedure TAtlasArchitectureFrame.MarkCyclesClick(Sender: TObject);
-begin
-  FMap.State.SetFlag(TAtlasArchMapFlag.MarkCycles, FMarkCycles.Checked);
 end;
 
 procedure TAtlasArchitectureFrame.FillSubsystemsMenu;
-var
-  Index, mOther, mParts: Integer;
-  Item: TMenuItem;
-  mFamily, mCaption: string;
 begin
-  FSubsystemsMenu.Items.Clear;
-  // Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter seinem
-  // Namen.
-  mFamily := '';
-  for Index in FModel.LegendOrder do
+  FParts.SubsystemsMenu.Items.Clear;
+  AddSubsystemItems(Self);
+  if FParts.SubsystemsMenu.Items.Count > 0 then
   begin
-    mCaption := SubsystemCaption(Index);
-    if FModel.Subsystems[Index].Parent = '' then
-    begin
-      mFamily := '';
-    end
-    else
-    begin
-      if not SameText(FModel.Subsystems[Index].Parent, mFamily) then
-      begin
-        mFamily := FModel.Subsystems[Index].Parent;
-        mParts := 0;
-        for mOther := 0 to High(FModel.Subsystems) do
-        begin
-          if SameText(FModel.Subsystems[mOther].Parent, mFamily) then
-          begin
-            Inc(mParts);
-          end;
-        end;
-        Item := TMenuItem.Create(FSubsystemsMenu);
-        Item.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily, [mFamily, mParts]);
-        Item.Enabled := False;
-        Item.Tag := -1;
-        FSubsystemsMenu.Items.Add(Item);
-      end;
-      mCaption := '      ' + mCaption;
-    end;
-    Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := mCaption;
-    Item.Tag := Index;
-    Item.Checked := FMap.State.SubsystemVisible[Index];
-    Item.OnClick := SubsystemItemClick;
-    FSubsystemsMenu.Items.Add(Item);
-  end;
-  if FSubsystemsMenu.Items.Count = 0 then
-  begin
-    Exit;
-  end;
-  FSubsystemsMenu.Items.NewBottomLine;
-  // Kanten zum Fundament (#1365) ein- und ausblenden.
-  if FModel.HasFoundation then
-  begin
-    Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationEdges);
-    Item.Checked := FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
-    Item.Tag := -1;
-    Item.OnClick := FoundationEdgesClick;
-    FSubsystemsMenu.Items.Add(Item);
-  end;
-  Item := TMenuItem.Create(FSubsystemsMenu);
-  Item.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureShowAll);
-  Item.OnClick := ShowAllClick;
-  FSubsystemsMenu.Items.Add(Item);
-  // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
-  if Assigned(FOnRenameSubsystems) then
-  begin
-    Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameSubsystems);
-    Item.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRenameHint);
-    Item.Tag := -1;
-    Item.OnClick := RenameSubsystemsClick;
-    FSubsystemsMenu.Items.Add(Item);
+    AddMenuCommands(Self);
   end;
 end;
 
-procedure TAtlasArchitectureFrame.RenameSubsystemsClick(Sender: TObject);
+function TAtlasArchitectureFrame.ListText(AList: TAtlasArchFrameList): TArray<string>;
 begin
-  if Assigned(FOnRenameSubsystems) then
-  begin
-    FOnRenameSubsystems();
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.SubsystemsClick(Sender: TObject);
-var
-  Point: TPoint;
-begin
-  FillSubsystemsMenu;
-  Point := FSubsystemsButton.ClientToScreen(System.Types.Point(0, FSubsystemsButton.Height));
-  FSubsystemsMenu.Popup(Point.X, Point.Y);
-end;
-
-procedure TAtlasArchitectureFrame.FoundationEdgesClick(Sender: TObject);
-var
-  mItem: TMenuItem;
-begin
-  mItem := Sender as TMenuItem;
-  FMap.State.SetFlag(TAtlasArchMapFlag.ShowFoundationEdges, not FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges));
-  mItem.Checked := FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
-end;
-
-function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
-begin
-  if FModel.Subsystems[ASubsystem].Foundation then
-  begin
-    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureFoundationLine,
-      [FModel.Subsystems[ASubsystem].Name,
-      Length(FModel.Subsystems[ASubsystem].Units)]);
-  end
+  case AList of
+    TAtlasArchFrameList.Central:
+      Result := ItemsText(FParts.Central);
+    TAtlasArchFrameList.Subsystems:
+      Result := NodesText(FParts.Subsystems);
+    TAtlasArchFrameList.Cycles:
+      Result := NodesText(FParts.Cycles);
+    TAtlasArchFrameList.CrossLinks:
+      Result := ItemsText(FParts.CrossLinks);
   else
-  begin
-    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemLine,
-      [FModel.Subsystems[ASubsystem].Name,
-      Length(FModel.Subsystems[ASubsystem].Units), Round(FModel.Subsystems[ASubsystem].Cohesion * 100)]);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.SubsystemItemClick(Sender: TObject);
-var
-  Item: TMenuItem;
-begin
-  Item := Sender as TMenuItem;
-  FMap.State.SubsystemVisible[Item.Tag] := not FMap.State.SubsystemVisible[Item.Tag];
-  Item.Checked := FMap.State.SubsystemVisible[Item.Tag];
-  UpdateInfo;
-end;
-
-procedure TAtlasArchitectureFrame.ShowAllClick(Sender: TObject);
-begin
-  FMap.State.ShowAllSubsystems;
-  UpdateInfo;
-end;
-
-procedure TAtlasArchitectureFrame.ShowCostRanking;
-begin
-  FSortColumn := TAtlasArchColumn.Total;
-  FSortDescending := True;
-  FPages.ActivePage := FCentral.Parent as TTabSheet;
-  FillCentral;
-end;
-
-procedure TAtlasArchitectureFrame.CentralColumnClick(Sender: TObject; Column: TListColumn);
-var
-  Next: TAtlasArchColumn;
-begin
-  if (Column.Index < 0) or (Column.Index > High(CentralColumns)) then
-  begin
-    Exit;
-  end;
-  Next := CentralColumns[Column.Index];
-  if Next = FSortColumn then
-  begin
-    FSortDescending := not FSortDescending;
-  end
-  else
-  begin
-    FSortColumn := Next;
-    // Zahlen zuerst die größten, Text alphabetisch.
-    FSortDescending := Next in [TAtlasArchColumn.Direct, TAtlasArchColumn.Total, TAtlasArchColumn.Uses_];
-  end;
-  FillCentral;
-end;
-
-procedure TAtlasArchitectureFrame.CentralDblClick(Sender: TObject);
-begin
-  if (FCentral.ItemIndex >= 0) and (FCentral.ItemIndex <= High(FCentralRows)) then
-  begin
-    OpenUnit(FCentralRows[FCentral.ItemIndex]);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.CrossDblClick(Sender: TObject);
-begin
-  if (FCrossLinks.ItemIndex >= 0) and (FCrossLinks.ItemIndex <= High(FCrossRows)) then
-  begin
-    OpenLink(FModel.CrossLinks[FCrossRows[FCrossLinks.ItemIndex]]);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.TreeDblClick(Sender: TObject);
-var
-  Node: TTreeNode;
-  Value: NativeInt;
-begin
-  if not (Sender is TTreeView) then
-  begin
-    Exit;
-  end;
-  Node := TTreeView(Sender).Selected;
-  if (Node = nil) or (Node.Data = nil) then
-  begin
-    Exit;
-  end;
-  Value := NativeInt(Node.Data);
-  if Value < 0 then
-  begin
-    OpenUnit(-1 - Value);
-  end
-  else if Value <= Length(FLinks) then
-  begin
-    OpenLink(FLinks[Value - 1]);
-  end;
-end;
-
-procedure TAtlasArchitectureFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key <> VK_RETURN then
-  begin
-    Exit;
-  end;
-  if Sender = FCentral then
-  begin
-    CentralDblClick(Sender);
-  end
-  else if Sender = FCrossLinks then
-  begin
-    CrossDblClick(Sender);
-  end;
-  Key := 0;
-end;
-
-procedure TAtlasArchitectureFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key <> VK_RETURN then
-  begin
-    Exit;
-  end;
-  TreeDblClick(Sender);
-  Key := 0;
-end;
-
-procedure TAtlasArchitectureFrame.MapSelect;
-begin
-  UpdateInfo;
-end;
-
-procedure TAtlasArchitectureFrame.MapOpen(AUnit: Integer);
-begin
-  OpenUnit(AUnit);
-end;
-
-function TAtlasArchitectureFrame.CentralText: TArray<string>;
-var
-  Index, Column: Integer;
-  Line: string;
-begin
-  Result := nil;
-  for Index := 0 to FCentral.Items.Count - 1 do
-  begin
-    Line := FCentral.Items[Index].Caption;
-    for Column := 0 to FCentral.Items[Index].SubItems.Count - 1 do
-    begin
-      Line := Line + #9 + FCentral.Items[Index].SubItems[Column];
-    end;
-    Result := Result + [Line];
-  end;
-end;
-
-function TAtlasArchitectureFrame.SubsystemText: TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index := 0 to FSubsystems.Items.Count - 1 do
-  begin
-    Result := Result + [StringOfChar(' ', 2 * FSubsystems.Items[Index].Level) + FSubsystems.Items[Index].Text];
-  end;
-end;
-
-function TAtlasArchitectureFrame.CycleText: TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index := 0 to FCycles.Items.Count - 1 do
-  begin
-    Result := Result + [StringOfChar(' ', 2 * FCycles.Items[Index].Level) + FCycles.Items[Index].Text];
-  end;
-end;
-
-function TAtlasArchitectureFrame.ComparisonText: TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index := 0 to FComparison.Items.Count - 1 do
-  begin
-    Result := Result + [StringOfChar(' ', 2 * FComparison.Items[Index].Level) + FComparison.Items[Index].Text];
-  end;
-end;
-
-function TAtlasArchitectureFrame.CrossLinkText: TArray<string>;
-var
-  Index, Column: Integer;
-  Line: string;
-begin
-  Result := nil;
-  for Index := 0 to FCrossLinks.Items.Count - 1 do
-  begin
-    Line := FCrossLinks.Items[Index].Caption;
-    for Column := 0 to FCrossLinks.Items[Index].SubItems.Count - 1 do
-    begin
-      Line := Line + #9 + FCrossLinks.Items[Index].SubItems[Column];
-    end;
-    Result := Result + [Line];
+    Result := NodesText(FParts.Comparison);
   end;
 end;
 

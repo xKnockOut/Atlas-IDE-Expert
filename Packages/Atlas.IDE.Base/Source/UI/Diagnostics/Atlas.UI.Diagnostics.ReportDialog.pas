@@ -48,6 +48,21 @@ type
   TAtlasReportDialog = class(TForm)
   public const
     Gap = 8;
+  private type
+    /// <summary>Steuerelemente des Dialogs.</summary>
+    TParts = record
+      Description: TMemo;
+      Checks: array[TAtlasPackagePart] of TCheckBox;
+      List: TListView;
+      Summary: TLabel;
+      FolderLabel: TLabel;
+      Status: TLabel;
+      ViewButton: TButton;
+      FolderButton: TButton;
+      ZipButton: TButton;
+      IssueButton: TButton;
+      CloseButton: TButton;
+    end;
   private
     FInput: TAtlasPackageInput;
     FActions: TAtlasReportActions;
@@ -56,23 +71,17 @@ type
     FFiles: TAtlasPackageFiles;
     FZipFile: string;
     FLastDataAvailable: Boolean;
-    FDescription: TMemo;
-    FChecks: array[TAtlasPackagePart] of TCheckBox;
-    FList: TListView;
-    FSummary: TLabel;
-    FFolderLabel: TLabel;
-    FStatus: TLabel;
-    FViewButton: TButton;
-    FFolderButton: TButton;
-    FZipButton: TButton;
-    FIssueButton: TButton;
-    FCloseButton: TButton;
-    function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
-    function AddButton(AParent: TWinControl; const ACaption: string; AWidth: Integer;
-      const AClick: TNotifyEvent): TButton;
+    FParts: TParts;
+    /// <summary>Hinweis, Kurzbeschreibung und Überschrift der Teile (von oben gestapelt).</summary>
+    procedure CreateHead;
+    /// <summary>Ein Häkchen je Teil des Pakets.</summary>
+    procedure CreateChecks;
+    /// <summary>Fuß mit Summe, Ordner, Status und Knöpfen.</summary>
+    procedure CreateFoot;
+    /// <summary>Vorschau der Dateien.</summary>
+    procedure CreateList;
     procedure PartClick(Sender: TObject);
     procedure FootResize(Sender: TObject);
-    procedure ListDblClick(Sender: TObject);
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ViewClick(Sender: TObject);
     procedure FolderClick(Sender: TObject);
@@ -103,15 +112,13 @@ type
     function Check(APart: TAtlasPackagePart): TCheckBox;
     property Files: TAtlasPackageFiles read FFiles;
     property ZipFile: string read FZipFile;
-    property Folder: string read FFolder;
-    property ReportUrl: string read FReportUrl;
-    property Description: TMemo read FDescription;
-    property List: TListView read FList;
-    property SummaryLabel: TLabel read FSummary;
-    property StatusLabel: TLabel read FStatus;
-    property ZipButton: TButton read FZipButton;
-    property IssueButton: TButton read FIssueButton;
-    property ViewButton: TButton read FViewButton;
+    property Description: TMemo read FParts.Description;
+    property List: TListView read FParts.List;
+    property SummaryLabel: TLabel read FParts.Summary;
+    property StatusLabel: TLabel read FParts.Status;
+    property ZipButton: TButton read FParts.ZipButton;
+    property IssueButton: TButton read FParts.IssueButton;
+    property ViewButton: TButton read FParts.ViewButton;
   end;
 
 implementation
@@ -168,15 +175,39 @@ begin
   end;
 end;
 
+function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
+begin
+  Result := TLabel.Create(AOwner);
+  Result.Parent := AParent;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(TAtlasReportDialog.Gap, TAtlasReportDialog.Gap, TAtlasReportDialog.Gap, 2);
+  Result.ShowAccelChar := False;
+  Result.Caption := ACaption;
+end;
+
+/// <summary>Beschriftung im Fuß: ohne Ausrichtung und feste Größe, die Lage setzt FootResize.</summary>
+function NewFootLabel(AOwner: TComponent; AParent: TWinControl): TLabel;
+begin
+  Result := NewLabel(AOwner, AParent, '');
+  Result.Align := alNone;
+  Result.AutoSize := False;
+end;
+
+function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: string; AWidth: Integer;
+  const AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(AOwner);
+  Result.Parent := AParent;
+  Result.SetBounds(0, 8, AWidth, 28);
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+end;
+
 { TAtlasReportDialog }
 
 constructor TAtlasReportDialog.CreateDialog(AOwner: TComponent; const AInput: TAtlasPackageInput; const AFolder,
   AReportUrl: string; const AActions: TAtlasReportActions);
-var
-  Foot: TPanel;
-  Part: TAtlasPackagePart;
-  Heading: TLabel;
-  Column: TListColumn;
 begin
   inherited CreateNew(AOwner);
   FInput := AInput;
@@ -189,127 +220,127 @@ begin
   Position := poMainFormCenter;
   Width := 760;
   Height := 660;
-
-  // Von oben nach unten gestapelt: alTop ordnet nach Top, daher wachsende Werte.
-  Heading := AddLabel(Self, TAtlasStrings.Text(TAtlasTextId.ReportHint));
-  Heading.WordWrap := True;
-  Heading.Top := 0;
-  Heading := AddLabel(Self, TAtlasStrings.Text(TAtlasTextId.ReportDescription));
-  Heading.Top := 100;
-  FDescription := TMemo.Create(Self);
-  FDescription.Parent := Self;
-  FDescription.Align := alTop;
-  FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(Gap, 0, Gap, Gap);
-  FDescription.Height := 72;
-  FDescription.ScrollBars := ssVertical;
-  FDescription.Top := 200;
-  Heading := AddLabel(Self, TAtlasStrings.Text(TAtlasTextId.ReportParts));
-  Heading.Top := 300;
-  for Part := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
-  begin
-    FChecks[Part] := TCheckBox.Create(Self);
-    FChecks[Part].Parent := Self;
-    FChecks[Part].Align := alTop;
-    FChecks[Part].AlignWithMargins := True;
-    FChecks[Part].Margins.SetBounds(Gap * 2, 0, Gap, 2);
-    FChecks[Part].Top := 400 + Ord(Part);
-    // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
-    // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
-    FChecks[Part].Checked := Part <> TAtlasPackagePart.LastData;
-    FChecks[Part].OnClick := PartClick;
-  end;
-  FChecks[TAtlasPackagePart.Logs].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLogs);
-  FChecks[TAtlasPackagePart.Versions].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartVersions);
-  FChecks[TAtlasPackagePart.Settings].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartSettings);
-  // Optional (#479): nur mit vorhandenen Daten.
-  FChecks[TAtlasPackagePart.LastData].Enabled := FLastDataAvailable;
-  if FLastDataAvailable then
-  begin
-    FChecks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastData);
-  end
-  else
-  begin
-    FChecks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing);
-  end;
-  Heading := AddLabel(Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview));
-  Heading.Top := 500;
-
-  // Fuß mit festen Zeilen: Summe und „Ansehen“, Ordner, Status, Knöpfe.
-  // Die Lage nach der Breite setzt FootResize (die Breite steht erst nach dem Ausrichten fest).
-  Foot := TPanel.Create(Self);
-  Foot.Parent := Self;
-  Foot.Align := alBottom;
-  Foot.Height := 136;
-  Foot.BevelOuter := bvNone;
-  Foot.ShowCaption := False;
-  FSummary := AddLabel(Foot, '');
-  FSummary.Align := alNone;
-  FSummary.AutoSize := False;
-  FViewButton := AddButton(Foot, TAtlasStrings.Text(TAtlasTextId.ReportView), 110, ViewClick);
-  FFolderLabel := AddLabel(Foot, '');
-  FFolderLabel.Align := alNone;
-  FFolderLabel.AutoSize := False;
-  FFolderLabel.EllipsisPosition := epPathEllipsis;
-  FFolderButton := AddButton(Foot, TAtlasStrings.Text(TAtlasTextId.ReportFolderChange), 110, FolderClick);
-  FStatus := AddLabel(Foot, '');
-  FStatus.Align := alNone;
-  FStatus.AutoSize := False;
-  FZipButton := AddButton(Foot, TAtlasStrings.Text(TAtlasTextId.ReportCreateZip), 130, ZipClick);
-  FIssueButton := AddButton(Foot, TAtlasStrings.Text(TAtlasTextId.ReportOpenIssue), 160, IssueClick);
-  FCloseButton := AddButton(Foot, TAtlasStrings.Text(TAtlasTextId.ReportClose), 100, nil);
-  FCloseButton.Cancel := True;
-  FCloseButton.ModalResult := mrCancel;
-  Foot.OnResize := FootResize;
-  FootResize(Foot);
-
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(Gap, 0, Gap, 0);
-  FList.ViewStyle := vsReport;
-  FList.ReadOnly := True;
-  FList.RowSelect := True;
-  FList.HideSelection := False;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnFile);
-  Column.Width := 480;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnSize);
-  Column.Width := 120;
-  Column.Alignment := taRightJustify;
-  FList.OnDblClick := ListDblClick;
-  FList.OnSelectItem := ListSelectItem;
-
+  CreateHead;
+  CreateChecks;
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportPreview)).Top := 500;
+  CreateFoot;
+  CreateList;
   ShowFolder;
   Refresh;
 end;
 
-function TAtlasReportDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
+procedure TAtlasReportDialog.CreateHead;
+var
+  mHeading: TLabel;
 begin
-  Result := TLabel.Create(Self);
-  Result.Parent := AParent;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(Gap, Gap, Gap, 2);
-  Result.ShowAccelChar := False;
-  Result.Caption := ACaption;
+  // Von oben nach unten gestapelt: alTop ordnet nach Top, daher wachsende Werte.
+  mHeading := NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportHint));
+  mHeading.WordWrap := True;
+  mHeading.Top := 0;
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportDescription)).Top := 100;
+  FParts.Description := TMemo.Create(Self);
+  FParts.Description.Parent := Self;
+  FParts.Description.Align := alTop;
+  FParts.Description.AlignWithMargins := True;
+  FParts.Description.Margins.SetBounds(Gap, 0, Gap, Gap);
+  FParts.Description.Height := 72;
+  FParts.Description.ScrollBars := ssVertical;
+  FParts.Description.Top := 200;
+  NewLabel(Self, Self, TAtlasStrings.Text(TAtlasTextId.ReportParts)).Top := 300;
 end;
 
-function TAtlasReportDialog.AddButton(AParent: TWinControl; const ACaption: string; AWidth: Integer;
-  const AClick: TNotifyEvent): TButton;
+procedure TAtlasReportDialog.CreateChecks;
+var
+  mPart: TAtlasPackagePart;
+  mCheck: TCheckBox;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.SetBounds(0, 8, AWidth, 28);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
+  for mPart := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
+  begin
+    mCheck := TCheckBox.Create(Self);
+    mCheck.Parent := Self;
+    mCheck.Align := alTop;
+    mCheck.AlignWithMargins := True;
+    mCheck.Margins.SetBounds(Gap * 2, 0, Gap, 2);
+    mCheck.Top := 400 + Ord(mPart);
+    // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
+    // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
+    mCheck.Checked := mPart <> TAtlasPackagePart.LastData;
+    mCheck.OnClick := PartClick;
+    FParts.Checks[mPart] := mCheck;
+  end;
+  FParts.Checks[TAtlasPackagePart.Logs].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLogs);
+  FParts.Checks[TAtlasPackagePart.Versions].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartVersions);
+  FParts.Checks[TAtlasPackagePart.Settings].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartSettings);
+  // Optional (#479): nur mit vorhandenen Daten.
+  FParts.Checks[TAtlasPackagePart.LastData].Enabled := FLastDataAvailable;
+  if FLastDataAvailable then
+  begin
+    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastData);
+  end
+  else
+  begin
+    FParts.Checks[TAtlasPackagePart.LastData].Caption := TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing);
+  end;
+end;
+
+procedure TAtlasReportDialog.CreateFoot;
+var
+  mFoot: TPanel;
+begin
+  // Fuß mit festen Zeilen: Summe und „Ansehen“, Ordner, Status, Knöpfe.
+  // Die Lage nach der Breite setzt FootResize (die Breite steht erst nach dem Ausrichten fest).
+  mFoot := TPanel.Create(Self);
+  mFoot.Parent := Self;
+  mFoot.Align := alBottom;
+  mFoot.Height := 136;
+  mFoot.BevelOuter := bvNone;
+  mFoot.ShowCaption := False;
+  FParts.Summary := NewFootLabel(Self, mFoot);
+  FParts.ViewButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportView), 110, ViewClick);
+  FParts.FolderLabel := NewFootLabel(Self, mFoot);
+  FParts.FolderLabel.EllipsisPosition := epPathEllipsis;
+  FParts.FolderButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportFolderChange), 110,
+    FolderClick);
+  FParts.Status := NewFootLabel(Self, mFoot);
+  FParts.ZipButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportCreateZip), 130, ZipClick);
+  FParts.IssueButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportOpenIssue), 160, IssueClick);
+  FParts.CloseButton := NewButton(Self, mFoot, TAtlasStrings.Text(TAtlasTextId.ReportClose), 100, nil);
+  FParts.CloseButton.Cancel := True;
+  FParts.CloseButton.ModalResult := mrCancel;
+  mFoot.OnResize := FootResize;
+  FootResize(mFoot);
+end;
+
+procedure TAtlasReportDialog.CreateList;
+var
+  mColumn: TListColumn;
+  mList: TListView;
+begin
+  mList := TListView.Create(Self);
+  mList.Parent := Self;
+  mList.Align := alClient;
+  mList.AlignWithMargins := True;
+  mList.Margins.SetBounds(Gap, 0, Gap, 0);
+  mList.ViewStyle := vsReport;
+  mList.ReadOnly := True;
+  mList.RowSelect := True;
+  mList.HideSelection := False;
+  mColumn := mList.Columns.Add;
+  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnFile);
+  mColumn.Width := 480;
+  mColumn := mList.Columns.Add;
+  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.ReportColumnSize);
+  mColumn.Width := 120;
+  mColumn.Alignment := taRightJustify;
+  // Doppelklick wie „Ansehen“.
+  mList.OnDblClick := ViewClick;
+  mList.OnSelectItem := ListSelectItem;
+  FParts.List := mList;
 end;
 
 function TAtlasReportDialog.Check(APart: TAtlasPackagePart): TCheckBox;
 begin
-  Result := FChecks[APart];
+  Result := FParts.Checks[APart];
 end;
 
 function TAtlasReportDialog.Parts: TAtlasPackageParts;
@@ -319,7 +350,7 @@ begin
   Result := [];
   for Part := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
   begin
-    if FChecks[Part].Checked and FChecks[Part].Enabled then
+    if FParts.Checks[Part].Checked and FParts.Checks[Part].Enabled then
     begin
       Include(Result, Part);
     end;
@@ -347,42 +378,42 @@ var
   Item: TAtlasPackageFile;
   Row: TListItem;
 begin
-  if FList = nil then
+  if FParts.List = nil then
   begin
     Exit;
   end;
   FFiles := TAtlasDiagnosticPackage.Build(FInput, Parts);
   // Eine vorher angelegte ZIP passt nicht mehr zur Auswahl.
   FZipFile := '';
-  FStatus.Caption := '';
-  FList.Items.BeginUpdate;
+  FParts.Status.Caption := '';
+  FParts.List.Items.BeginUpdate;
   try
-    FList.Items.Clear;
+    FParts.List.Items.Clear;
     for Item in FFiles do
     begin
-      Row := FList.Items.Add;
+      Row := FParts.List.Items.Add;
       Row.Caption := Item.Name;
       Row.SubItems.Add(SizeText(Item.Size));
     end;
   finally
-    FList.Items.EndUpdate;
+    FParts.List.Items.EndUpdate;
   end;
   if Length(FFiles) = 0 then
   begin
-    FSummary.Caption := TAtlasStrings.Text(TAtlasTextId.ReportEmpty);
+    FParts.Summary.Caption := TAtlasStrings.Text(TAtlasTextId.ReportEmpty);
   end
   else
   begin
-    FSummary.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportSummary, [Length(FFiles),
+    FParts.Summary.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportSummary, [Length(FFiles),
       SizeText(TAtlasDiagnosticPackage.TotalSize(FFiles))]);
   end;
-  FZipButton.Enabled := Length(FFiles) > 0;
-  FViewButton.Enabled := FList.Selected <> nil;
+  FParts.ZipButton.Enabled := Length(FFiles) > 0;
+  FParts.ViewButton.Enabled := FParts.List.Selected <> nil;
 end;
 
 procedure TAtlasReportDialog.ShowFolder;
 begin
-  FFolderLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportFolder, [FFolder]);
+  FParts.FolderLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportFolder, [FFolder]);
 end;
 
 procedure TAtlasReportDialog.PartClick(Sender: TObject);
@@ -395,19 +426,19 @@ var
   Right: Integer;
 begin
   Right := (Sender as TPanel).ClientWidth - Gap;
-  FViewButton.SetBounds(Right - 110, 4, 110, 28);
-  FSummary.SetBounds(Gap, 10, Max(0, FViewButton.Left - 2 * Gap), 17);
-  FFolderButton.SetBounds(Right - 110, 38, 110, 28);
-  FFolderLabel.SetBounds(Gap, 44, Max(0, FFolderButton.Left - 2 * Gap), 17);
-  FStatus.SetBounds(Gap, 74, Max(0, Right - Gap), 17);
-  FZipButton.SetBounds(Gap, 98, 130, 28);
-  FIssueButton.SetBounds(2 * Gap + 130, 98, 160, 28);
-  FCloseButton.SetBounds(Right - 100, 98, 100, 28);
+  FParts.ViewButton.SetBounds(Right - 110, 4, 110, 28);
+  FParts.Summary.SetBounds(Gap, 10, Max(0, FParts.ViewButton.Left - 2 * Gap), 17);
+  FParts.FolderButton.SetBounds(Right - 110, 38, 110, 28);
+  FParts.FolderLabel.SetBounds(Gap, 44, Max(0, FParts.FolderButton.Left - 2 * Gap), 17);
+  FParts.Status.SetBounds(Gap, 74, Max(0, Right - Gap), 17);
+  FParts.ZipButton.SetBounds(Gap, 98, 130, 28);
+  FParts.IssueButton.SetBounds(2 * Gap + 130, 98, 160, 28);
+  FParts.CloseButton.SetBounds(Right - 100, 98, 100, 28);
 end;
 
 procedure TAtlasReportDialog.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  FViewButton.Enabled := FList.Selected <> nil;
+  FParts.ViewButton.Enabled := FParts.List.Selected <> nil;
 end;
 
 function TAtlasReportDialog.ViewFile(AIndex: Integer): string;
@@ -428,19 +459,11 @@ begin
   end;
 end;
 
-procedure TAtlasReportDialog.ListDblClick(Sender: TObject);
-begin
-  if FList.Selected <> nil then
-  begin
-    ViewFile(FList.Selected.Index);
-  end;
-end;
-
 procedure TAtlasReportDialog.ViewClick(Sender: TObject);
 begin
-  if FList.Selected <> nil then
+  if FParts.List.Selected <> nil then
   begin
-    ViewFile(FList.Selected.Index);
+    ViewFile(FParts.List.Selected.Index);
   end;
 end;
 
@@ -496,12 +519,12 @@ begin
   except
     on E: Exception do
     begin
-      FStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipFailed, [E.Message]);
+      FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipFailed, [E.Message]);
       Exit;
     end;
   end;
   FZipFile := Target;
-  FStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(Target)]);
+  FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(Target)]);
   if Assigned(FActions.ShowFile) then
   begin
     FActions.ShowFile(Target);
@@ -511,7 +534,7 @@ end;
 
 function TAtlasReportDialog.IssueText: string;
 begin
-  Result := TAtlasDiagnosticPackage.IssueTemplate(FDescription.Text, FInput, Parts, ExtractFileName(FZipFile),
+  Result := TAtlasDiagnosticPackage.IssueTemplate(FParts.Description.Text, FInput, Parts, ExtractFileName(FZipFile),
     TAtlasStrings.Language = TAtlasLanguage.English);
 end;
 
@@ -533,7 +556,7 @@ begin
   begin
     FActions.OpenUrl(Url);
   end;
-  FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.ReportIssueDone);
+  FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ReportIssueDone);
 end;
 
 procedure TAtlasReportDialog.ZipClick(Sender: TObject);
