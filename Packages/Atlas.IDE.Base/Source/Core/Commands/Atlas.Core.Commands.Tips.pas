@@ -201,10 +201,32 @@ end;
 
 { TAtlasTipCatalog }
 
+/// <summary>Tipp aus einem Eintrag von "tips"; ohne "id" gilt "command".</summary>
+function TipOf(AItem: TJSONObject): TAtlasTip;
+begin
+  Result := Default(TAtlasTip);
+  Result.Command := TextOf(AItem, 'command');
+  Result.Id := TextOf(AItem, 'id');
+  if Result.Id = '' then
+  begin
+    Result.Id := Result.Command;
+  end;
+  Result.Usage := ListOf(AItem, 'usage');
+  Result.Setting := TextOf(AItem, 'setting');
+  Result.TryCommand := TextOf(AItem, 'try');
+  Result.Title := TextOf(AItem, 'title');
+  Result.TitleEn := TextOf(AItem, 'titleEn');
+  Result.Text := TextOf(AItem, 'text');
+  Result.TextEn := TextOf(AItem, 'textEn');
+  Result.Image := TextOf(AItem, 'image');
+  Result.Sample := TextOf(AItem, 'sample');
+  Result.Line := NumberOf(AItem, 'line');
+  Result.Column := NumberOf(AItem, 'column');
+end;
+
 class function TAtlasTipCatalog.Parse(const AJson: string): TAtlasTips;
 var
   Root, Tips, Value: TJSONValue;
-  Item: TJSONObject;
   Tip: TAtlasTip;
 begin
   Result := nil;
@@ -236,25 +258,7 @@ begin
       begin
         Continue;
       end;
-      Item := TJSONObject(Value);
-      Tip := Default(TAtlasTip);
-      Tip.Command := TextOf(Item, 'command');
-      Tip.Id := TextOf(Item, 'id');
-      if Tip.Id = '' then
-      begin
-        Tip.Id := Tip.Command;
-      end;
-      Tip.Usage := ListOf(Item, 'usage');
-      Tip.Setting := TextOf(Item, 'setting');
-      Tip.TryCommand := TextOf(Item, 'try');
-      Tip.Title := TextOf(Item, 'title');
-      Tip.TitleEn := TextOf(Item, 'titleEn');
-      Tip.Text := TextOf(Item, 'text');
-      Tip.TextEn := TextOf(Item, 'textEn');
-      Tip.Image := TextOf(Item, 'image');
-      Tip.Sample := TextOf(Item, 'sample');
-      Tip.Line := NumberOf(Item, 'line');
-      Tip.Column := NumberOf(Item, 'column');
+      Tip := TipOf(TJSONObject(Value));
       if (Tip.Id = '') or (Tip.Title = '') or (IndexOf(Result, Tip.Id) >= 0) then
       begin
         Continue;
