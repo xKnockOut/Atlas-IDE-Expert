@@ -1245,6 +1245,7 @@ uses
   Atlas.Core.Editor.Minimap.Tests in 'IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas',
   Atlas.UI.Editor.Bar in '..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.Bar.pas',
   Atlas.UI.Editor.Bar.Tests in 'IDE.Expert\Atlas.UI.Editor.Bar.Tests.pas',
+  Atlas.UI.Editor.MinimapLayers in '..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.MinimapLayers.pas',
   Atlas.UI.Editor.Minimap in '..\Packages\Atlas.IDE.Base\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas',
   Atlas.UI.Editor.Minimap.Tests in 'IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas',
   Atlas.Core.Search.Matching in '..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Matching.pas',
