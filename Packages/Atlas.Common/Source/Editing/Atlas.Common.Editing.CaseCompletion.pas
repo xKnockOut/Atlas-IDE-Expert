@@ -800,15 +800,6 @@ begin
   end;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  Result := #10;
-  if Pos(#13#10, AText) > 0 then
-  begin
-    Result := #13#10;
-  end;
-end;
-
 /// <summary>Einfügungen vor dem Anker AAnchor: vom letzten Token davor (auch einem Kommentar) bis vor den Anker
 /// neue Zeilen ABranches, dann ATail (Zeilenumbruch und Einrückung von case). Das fehlende ";" gehört hinter den
 /// Zweig ABefore, nicht hinter seinen Kommentar.</summary>
@@ -871,7 +862,7 @@ begin
   begin
     Exit(False);
   end;
-  mLineBreak := LineBreakOf(AText);
+  mLineBreak := TTextLines.LineBreakOf(AText);
   mBranches := '';
   for mValue in mAbsent do
   begin
