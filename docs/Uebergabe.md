@@ -1,4 +1,9 @@
-﻿## Atlas-Befunde in Base UI Teil 2 (04.11.2026, Branch `claude/project-thread-dy513l` auf `Pilot-2.0.0-beta.1`)
+﻿## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle 7 Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Engine` (Teil B der Aufteilung Common/Rules; Catalog gehört Teil A). Ergebnis: 0 Befunde (PR #1706).
+- `TRuleEngine.Run` legt einen Lauf `TRuleRun` im implementation-Teil an (Felder statt Locals, Destruktor räumt Cache und Baumauswertung auf); nachgelagerte Regeln als `TDeferredRule`. Die Bedingung „Regel läuft für die Datei“ steht einmal in `SeverityIfOn` (Run, NewNames, OverridingRule). Öffentliche API unverändert.
+- FPC: Engine-nahe Tests 121/121, SavedQueries/Metrics/GoldenCorpus/CodeActions 66/66. Delphi-Build offen.
+
+## Atlas-Befunde in Base UI Teil 2 (04.11.2026, Branch `claude/project-thread-dy513l` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/UI/{EditorToolbar,Generate,Documentation,Setup,Signature,Undo,SymbolPath,StatusBar}` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 11 Units (PR #1697).
 - API für Aufrufer: `TAtlasDocView.Build` nimmt `TAtlasDocContent` und `TAtlasDocFonts`; die Editorleiste liefert ihre Lage über `Places` (`ButtonRect`, `Return`, `More`, `Gear`, `OverflowIds`); Textfunktionen von Setup- und Erzeugen-Fenster liegen statisch in `TAtlasSetupTexts` bzw. `TAtlasGenerateTexts`; die Statusleiste bekommt ihre Beschriftungen über `Texts := TAtlasStatusBarTexts.Create(...)`.
 - Offen: Delphi-Build und Handtest (CI übersetzt den VCL-Code nicht). Vorhandene Befunde in Aufrufern (`StatusBar.Service`, `Setup.Checklist`, `Completion.Details`) gehören anderen Threads.
