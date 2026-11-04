@@ -175,7 +175,7 @@ begin
   FProgress := nil;
   FId := 0;
   FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.ReadText :=
+  FCompletion.Hooks.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(ExtractFileExt(AFileName), '.dfm') then
@@ -185,7 +185,7 @@ begin
       end;
       Result := FFiles.TryGetValue(LowerCase(AFileName), AText);
     end;
-  FCompletion.Notify :=
+  FCompletion.Hooks.Notify :=
     procedure(const AMethod: string; AParams: TJSONObject)
     begin
       try
@@ -386,7 +386,7 @@ var
 begin
   Line := -1;
   Blanked := False;
-  FCompletion.RuleIdsFor :=
+  FCompletion.Hooks.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
       Line := ALine;
@@ -403,7 +403,7 @@ begin
     Answer.Free;
   end;
   // Ohne Auskunft der ganze Katalog.
-  FCompletion.RuleIdsFor := nil;
+  FCompletion.Hooks.RuleIdsFor := nil;
   Answer := Complete(Source);
   try
     Assert.IsTrue(ItemCount(Answer) > 2, Labels(Answer));
@@ -681,7 +681,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -876,7 +876,7 @@ var
   Answer: TJSONObject;
 begin
   AddUnit(KundenFile, FieldUnit(5, 0));
-  FCompletion.NamingFor :=
+  FCompletion.Hooks.NamingFor :=
     function(const AUri: string; AKind: TNamingKind): string
     begin
       Result := '';
@@ -891,7 +891,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -964,7 +964,7 @@ procedure TLspCompletionHandleTests.ResourceStringAsLinkedSnippet;
 var
   Answer, Item: TJSONObject;
 begin
-  FCompletion.SnippetSupport := True;
+  FCompletion.Hooks.SnippetSupport := True;
   Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich', 'Preis in $ wirklich', []));
   try
     // Platzhalter-Modus (#51): derselbe Platzhalter an der Stelle und im Abschnitt, "$" maskiert.
@@ -1004,7 +1004,7 @@ var
   Arguments: TJSONArray;
 begin
   AddUnit(TexteFile, TexteUnit);
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -1054,7 +1054,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -1081,7 +1081,7 @@ var
   Enabled: Boolean;
 begin
   Enabled := True;
-  FCompletion.DocCommentsFor :=
+  FCompletion.Hooks.DocCommentsFor :=
     function(const AUri: string): Boolean
     begin
       Result := Enabled;
@@ -1121,7 +1121,7 @@ var
   Enabled: Boolean;
 begin
   Enabled := True;
-  FCompletion.SymbolsFor :=
+  FCompletion.Hooks.SymbolsFor :=
     function(const AUri: string): TConditionalContext
     begin
       Result := TConditionalContext.Default;

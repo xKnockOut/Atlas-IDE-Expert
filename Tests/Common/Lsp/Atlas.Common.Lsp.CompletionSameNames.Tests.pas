@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -105,7 +106,7 @@ begin
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
     Postfix := Default(TPostfixOptions);
-    Result := TLspCompletion.Collect(Request, Postfix, nil);
+    Result := TCompletionLists.Collect(Request, Postfix, nil);
   finally
     Request.Free;
     Resolver.Free;

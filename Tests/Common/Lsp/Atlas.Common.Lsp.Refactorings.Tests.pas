@@ -507,7 +507,7 @@ begin
   Completion := TLspCompletion.Create(Store, FIndex);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.WithFor :=
+    Completion.Hooks.WithFor :=
       function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
       begin
         Inc(Asked);
@@ -650,7 +650,7 @@ begin
   Completion := TLspCompletion.Create(Store, FIndex);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.CreateFor :=
+    Completion.Hooks.CreateFor :=
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var
         Rechner: TRefactoringContext;

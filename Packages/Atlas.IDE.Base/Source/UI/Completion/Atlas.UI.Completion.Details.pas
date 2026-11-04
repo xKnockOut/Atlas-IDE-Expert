@@ -186,376 +186,475 @@ begin
   TAtlasDocExpandState.Remember(TAtlasDocSurface.Details, Result);
 end;
 
-function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
-  const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
-var
-  Left, Y, Right, TagX, TagHeight, LineHeight, Fixed: Integer;
-  Text, Tag, Key: string;
-  Line, X, Index: Integer;
-  Box, Rect_: TRect;
-  Expanded: Boolean;
-
-  function Scale(AValue: Integer): Integer;
-  begin
-    Result := MulDiv(AValue, APPI, 96);
+type
+  /// <summary>Ein Durchlauf von TAtlasDetailView.Render: Zeichenfläche, Schriften, Spalte von Left bis Right und
+  /// die laufende Höhe Y. Jeder Abschnitt rückt Y hinter sich; ohne Draw wird nur gemessen.</summary>
+  TDetailRender = record
+    View: TAtlasDetailView;
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Font: TFont;
+    UIFont: TFont;
+    PPI: Integer;
+    Draw: Boolean;
+    Left: Integer;
+    Right: Integer;
+    Y: Integer;
+    function Scale(AValue: Integer): Integer;
+    procedure Frame(const ARect: TRect; ALine: TAtlasColor);
+    /// <summary>Text in der UI-Schrift umbrechend ab Y.</summary>
+    procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles);
+    /// <summary>Text in der Editorschrift umbrechend ab Y (Pfad und Typen einer Unit, #469).</summary>
+    procedure Mono(const AText: string; AColor: TAtlasColor);
+    procedure Separator;
+    /// <summary>Kopfzeile bei Überladungen (#425): "‹ 2 / 3 ›" rechtsbündig.</summary>
+    procedure Overloads;
+    /// <summary>1. Tags als umrandete Marken.</summary>
+    procedure Tags;
+    procedure Tag(const ATag: string; const ABox: TRect);
+    /// <summary>2. Deklaration, eingefärbt und an Leerzeichen umbrochen.</summary>
+    procedure Declaration;
+    /// <summary>3. Unit · Klasse; bei Helpern „Helper · Unit“ (#456).</summary>
+    procedure Origin;
+    /// <summary>Unit im uses-Abschnitt (#469): Pfad, die ersten exportierten Typen, Zirkelbezug und anderer
+    /// Abschnitt; Helper aus nicht eingebundener Unit (#456).</summary>
+    procedure UsesInfo;
+    /// <summary>Gleichnamige Bezeichner (#475): alle Units, die den Namen deklarieren, und was Enter tut.</summary>
+    procedure SameName;
+    procedure SameNameInsert;
+    /// <summary>with-Objekt (#481), verdeckte Deklarationen (#488), Gleitkomma für eine Ganzzahl (#490).</summary>
+    procedure Notes;
+    /// <summary>4.–6. Veraltung, Verfügbarkeit und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren
+    /// Abschnitte. ATop: oberer Rand des Panels.</summary>
+    procedure Doc(ATop: Integer);
+    procedure BuildDoc;
   end;
 
-  procedure Frame(const ARect: TRect; ALine: TAtlasColor);
-  begin
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.Pen.Style := psSolid;
-    ACanvas.Pen.Color := ToColor(ALine);
-    ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
-      Scale(2 * TAtlasDraw.ChipRadius));
-  end;
+{ TDetailRender }
 
-  /// <summary>Text in der UI-Schrift umbrechend ab Y; AMaxLines = 0 ohne Grenze.</summary>
-  procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles; AMaxLines: Integer); overload;
-  var
-    Area: TRect;
-  begin
-    if AText = '' then
-    begin
-      Exit;
-    end;
-    ACanvas.Font := AUIFont;
-    ACanvas.Font.Style := AStyle;
-    ACanvas.Font.Color := ToColor(AColor);
-    ACanvas.Brush.Style := bsClear;
-    Area := Rect(Left, Y, Right, Y);
-    DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-    Area.Right := Right;
-    if AMaxLines > 0 then
-    begin
-      Area.Bottom := Min(Area.Bottom, Y + AMaxLines * ACanvas.TextHeight('Wg'));
-    end;
-    if ADraw then
-    begin
-      DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
-    end;
-    Y := Area.Bottom + Scale(6);
-    ACanvas.Font.Style := [];
-  end;
-
-  /// <summary>Wie oben ohne Grenze (AMaxLines = 0).</summary>
-  procedure Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles); overload;
-  begin
-    Block(AText, AColor, AStyle, 0);
-  end;
-
-  /// <summary>Text in der Editorschrift umbrechend ab Y (Pfad und Typen einer Unit, #469).</summary>
-  procedure Mono(const AText: string; AColor: TAtlasColor);
-  var
-    Area: TRect;
-  begin
-    ACanvas.Font := AFont;
-    ACanvas.Font.Color := ToColor(AColor);
-    ACanvas.Brush.Style := bsClear;
-    Area := Rect(Left, Y, Right, Y);
-    DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-    Area.Right := Right;
-    if ADraw then
-    begin
-      DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX);
-    end;
-    Y := Area.Bottom + Scale(6);
-  end;
-
-  procedure Separator;
-  begin
-    if ADraw then
-    begin
-      TAtlasDraw.Separator(ACanvas, Left, Right, Y + Scale(2), AColors.Line);
-    end;
-    Inc(Y, Scale(8));
-  end;
-
+function TDetailRender.Scale(AValue: Integer): Integer;
 begin
-  Left := ABounds.Left + Scale(13);
-  Right := ABounds.Right - Scale(13);
-  Y := ABounds.Top + Scale(11);
-  FPreviousRect := TRect.Empty;
-  FNextRect := TRect.Empty;
-  // Kopfzeile bei Überladungen (#425): "‹ 2 / 3 ›" rechtsbündig.
-  if FOverloadCount > 1 then
+  Result := MulDiv(AValue, PPI, 96);
+end;
+
+procedure TDetailRender.Frame(const ARect: TRect; ALine: TAtlasColor);
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Color := ToColor(ALine);
+  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
+    Scale(2 * TAtlasDraw.ChipRadius));
+end;
+
+procedure TDetailRender.Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles);
+var
+  mArea: TRect;
+begin
+  if AText = '' then
   begin
-    ACanvas.Font := AUIFont;
-    LineHeight := ACanvas.TextHeight('Wg');
-    Text := Format('%d / %d', [FOverloadIndex + 1, FOverloadCount]);
-    X := Right - ACanvas.TextWidth('›') - Scale(4);
-    FNextRect := Rect(X - Scale(4), Y - Scale(2), Right, Y + LineHeight + Scale(2));
-    Dec(X, ACanvas.TextWidth(Text) + Scale(8));
-    Rect_ := Rect(X, Y, X + ACanvas.TextWidth(Text), Y + LineHeight);
-    Dec(X, ACanvas.TextWidth('‹') + Scale(8));
-    FPreviousRect := Rect(X - Scale(4), Y - Scale(2), X + ACanvas.TextWidth('‹') + Scale(4),
-      Y + LineHeight + Scale(2));
-    if ADraw then
-    begin
-      ACanvas.Brush.Style := bsClear;
-      ACanvas.Font.Color := ToColor(AColors.Muted);
-      ACanvas.TextOut(Left, Y, TAtlasStrings.Text(TAtlasTextId.Overload));
-      ACanvas.Font.Color := ToColor(AColors.Text);
-      DrawText(ACanvas.Handle, PChar(Text), -1, Rect_, DT_SINGLELINE or DT_NOPREFIX);
-      ACanvas.Font.Style := [fsBold];
-      ACanvas.Font.Color := ToColor(AColors.Accent);
-      ACanvas.TextOut(FPreviousRect.Left + Scale(4), Y, '‹');
-      ACanvas.TextOut(FNextRect.Left + Scale(4), Y, '›');
-      ACanvas.Font.Style := [];
-    end;
-    Inc(Y, LineHeight + Scale(8));
+    Exit;
   end;
-  if FDetails.IsEmpty then
+  Canvas.Font := UIFont;
+  Canvas.Font.Style := AStyle;
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  mArea := Rect(Left, Y, Right, Y);
+  DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+  mArea.Right := Right;
+  if Draw then
   begin
-    Block(TAtlasStrings.Text(TAtlasTextId.NoDetails), AColors.Muted, []);
-    Exit(Y - ABounds.Top + Scale(5));
+    DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
-  // 1. Tags als umrandete Marken.
-  if (FDetails.Visibility <> '') or (Length(FDetails.Directives) > 0) then
+  Y := mArea.Bottom + Scale(6);
+  Canvas.Font.Style := [];
+end;
+
+procedure TDetailRender.Mono(const AText: string; AColor: TAtlasColor);
+var
+  mArea: TRect;
+begin
+  Canvas.Font := Font;
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  mArea := Rect(Left, Y, Right, Y);
+  DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+  mArea.Right := Right;
+  if Draw then
   begin
-    ACanvas.Font := AUIFont;
-    TagHeight := ACanvas.TextHeight('Wg') + Scale(2);
-    TagX := Left;
-    for Tag in [FDetails.Visibility] + FDetails.Directives do
-    begin
-      if Tag = '' then
-      begin
-        Continue;
-      end;
-      ACanvas.Font := AUIFont;
-      Box := Rect(TagX, Y, TagX + ACanvas.TextWidth(Tag) + Scale(TAtlasDraw.ChipPad), Y + TagHeight);
-      if ADraw then
-      begin
-        if Tag = 'deprecated' then
-        begin
-          Frame(Box, AColors.Warn);
-          ACanvas.Font.Color := ToColor(AColors.Warn);
-        end
-        else
-        begin
-          Frame(Box, AColors.Line);
-          ACanvas.Font.Color := ToColor(AColors.Muted);
-        end;
-        ACanvas.Brush.Style := bsClear;
-        Rect_ := Box;
-        DrawText(ACanvas.Handle, PChar(Tag), -1, Rect_, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-      end;
-      TagX := Box.Right + Scale(6);
-    end;
-    Inc(Y, TagHeight + Scale(8));
+    DrawText(Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX);
   end;
-  // 2. Deklaration, eingefärbt und an Leerzeichen umbrochen.
-  if FDetails.Declaration <> '' then
+  Y := mArea.Bottom + Scale(6);
+end;
+
+procedure TDetailRender.Separator;
+begin
+  if Draw then
   begin
-    ACanvas.Font := AFont;
-    LineHeight := ACanvas.TextHeight('Wg') + Scale(2);
-    Key := IntToStr(Right - Left) + '|' + IntToStr(APPI) + '|' + AFont.Name + '|' + IntToStr(AFont.Height);
-    if Key <> FDeclKey then
-    begin
-      FDeclLines := FDecl.WrapAtSpaces(ACanvas, Right - Left, Scale(16));
-      FDeclKey := Key;
-    end;
-    for Line := 0 to High(FDeclLines) do
-    begin
-      X := Left + IfThen(Line > 0, Scale(16));
-      if ADraw then
-      begin
-        FDecl.Draw(TAtlasStyledTarget.Create(ACanvas, AColors, Scale(3)), FDeclLines[Line], X,
-          Rect(X, Y, Right, Y + LineHeight), False);
-      end;
-      Inc(Y, LineHeight);
-    end;
-    Inc(Y, Scale(3));
+    TAtlasDraw.Separator(Canvas, Left, Right, Y + Scale(2), Colors.Line);
   end;
-  // 3. Unit · Klasse; bei Helpern „Helper · Unit“ (#456).
-  Text := FDetails.UnitName;
-  if FDetails.IsHelper and (FDetails.Container <> '') then
+  Inc(Y, Scale(8));
+end;
+
+procedure TDetailRender.Overloads;
+var
+  mLineHeight, mX: Integer;
+  mText: string;
+  mCount: TRect;
+begin
+  Canvas.Font := UIFont;
+  mLineHeight := Canvas.TextHeight('Wg');
+  mText := Format('%d / %d', [View.FOverloadIndex + 1, View.FOverloadCount]);
+  mX := Right - Canvas.TextWidth('›') - Scale(4);
+  View.FNextRect := Rect(mX - Scale(4), Y - Scale(2), Right, Y + mLineHeight + Scale(2));
+  Dec(mX, Canvas.TextWidth(mText) + Scale(8));
+  mCount := Rect(mX, Y, mX + Canvas.TextWidth(mText), Y + mLineHeight);
+  Dec(mX, Canvas.TextWidth('‹') + Scale(8));
+  View.FPreviousRect := Rect(mX - Scale(4), Y - Scale(2), mX + Canvas.TextWidth('‹') + Scale(4),
+    Y + mLineHeight + Scale(2));
+  if Draw then
   begin
-    if Text <> '' then
-    begin
-      Text := FDetails.Container + ' · ' + Text;
-    end
-    else
-    begin
-      Text := FDetails.Container;
-    end;
-  end
-  else if FDetails.Container <> '' then
-  begin
-    if Text <> '' then
-    begin
-      Text := Text + ' · ' + FDetails.Container;
-    end
-    else
-    begin
-      Text := FDetails.Container;
-    end;
+    Canvas.Brush.Style := bsClear;
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.TextOut(Left, Y, TAtlasStrings.Text(TAtlasTextId.Overload));
+    Canvas.Font.Color := ToColor(Colors.Text);
+    DrawText(Canvas.Handle, PChar(mText), -1, mCount, DT_SINGLELINE or DT_NOPREFIX);
+    Canvas.Font.Style := [fsBold];
+    Canvas.Font.Color := ToColor(Colors.Accent);
+    Canvas.TextOut(View.FPreviousRect.Left + Scale(4), Y, '‹');
+    Canvas.TextOut(View.FNextRect.Left + Scale(4), Y, '›');
+    Canvas.Font.Style := [];
   end;
-  Block(Text, AColors.Muted, []);
-  // Unit im uses-Abschnitt (#469): Pfad, die ersten exportierten Typen, Zirkelbezug und anderer Abschnitt.
-  if FDetails.UnitPath <> '' then
+  Inc(Y, mLineHeight + Scale(8));
+end;
+
+procedure TDetailRender.Tag(const ATag: string; const ABox: TRect);
+var
+  mText: TRect;
+begin
+  if ATag = 'deprecated' then
   begin
-    Mono(FDetails.UnitPath, AColors.Muted);
-  end;
-  if Length(FDetails.UnitTypes) > 0 then
-  begin
-    Separator;
-    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.UsesTypesHeading)), AColors.Muted, [fsBold]);
-    Text := string.Join(' · ', FDetails.UnitTypes);
-    if FDetails.UnitTypeCount > Length(FDetails.UnitTypes) then
-    begin
-      Text := Text + ' · …';
-    end;
-    Mono(Text, AColors.Text);
-  end;
-  if FDetails.UsesCycle <> '' then
-  begin
-    Block(TAtlasStrings.UsesCycle(FDetails.UsesCycle), AColors.Error, []);
-  end;
-  if FDetails.UsesElsewhere = 'interface' then
-  begin
-    Block(TAtlasStrings.Text(TAtlasTextId.UsesInInterface), AColors.Muted, [fsItalic]);
-  end
-  else if FDetails.UsesElsewhere = 'implementation' then
-  begin
-    Block(TAtlasStrings.Text(TAtlasTextId.UsesInImplementation), AColors.Muted, [fsItalic]);
-  end;
-  // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
-  if FDetails.AddsUnit <> '' then
-  begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [FDetails.AddsUnit]), AColors.Accent, []);
-  end;
-  // Gleichnamige Bezeichner (#475): alle Units, die den Namen deklarieren, und was Enter tut.
-  if Length(FDetails.SameNameUnits) > 0 then
-  begin
-    Separator;
-    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.SameNameDeclaredIn)), AColors.Muted, [fsBold]);
-    for Index := 0 to High(FDetails.SameNameUnits) do
-    begin
-      Text := FDetails.SameNameUnits[Index];
-      if Index = 0 then
-      begin
-        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleActive);
-      end
-      else if SameText(Text, FDetails.SameNameThis) then
-      begin
-        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleThis);
-      end;
-      if SameText(FDetails.SameNameUnits[Index], FDetails.SameNameThis) then
-      begin
-        Block(Text, AColors.Text, [fsBold]);
-      end
-      else
-      begin
-        Block(Text, AColors.Text, []);
-      end;
-    end;
-    for Text in FDetails.SameNameHidden do
-    begin
-      Block(Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleHidden), AColors.Muted, [fsItalic]);
-    end;
-    if FDetails.SameNameInsert = 'prefix' then
-    begin
-      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
-        TAtlasStrings.Text(TAtlasTextId.SameNameInsertPrefix), AColors.Muted, []);
-    end
-    else if FDetails.SameNameInsert = 'prefixAdd' then
-    begin
-      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
-        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertPrefixAdd, [FDetails.SameNameThis]), AColors.Warn, []);
-    end
-    else if FDetails.SameNameInsert = 'move' then
-    begin
-      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
-        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertMove, [FDetails.SameNameThis]), AColors.Warn, []);
-    end
-    else if FDetails.SameNameInsert = 'add' then
-    begin
-      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
-        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [FDetails.SameNameThis]), AColors.Warn, []);
-    end;
-  end;
-  // with-Objekt (#481): Zusammen mit „Verdeckt: …“ nennt das Panel beide Bedeutungen.
-  if FDetails.WithOrigin <> '' then
-  begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.WithMemberOrigin, [FDetails.WithOrigin]), AColors.Accent, []);
-  end;
-  // Verdeckte Deklarationen weiter außen (#488).
-  for Text in FDetails.Hides do
-  begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
-  end;
-  // Gleitkomma für eine Ganzzahl (#490): keine Umwandlung vorgeschlagen, nur der Hinweis.
-  if FDetails.LossyFrom <> '' then
-  begin
-    Block(TAtlasStrings.Fmt(TAtlasTextId.CompletionLossyHint, [FDetails.LossyFrom, FDetails.LossyTo]), AColors.Warn,
-      []);
-  end;
-  // 4.–6. Veraltung, Verfügbarkeit und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
-  if FDetails.IsDeprecated or not FDocData.IsEmpty or (FDetails.Availability <> '') then
-  begin
-    Separator;
-    // Im aktiven Ziel nicht deklariert (#476): zuerst, in Warnfarbe.
-    if FDetails.Availability <> '' then
-    begin
-      Block(FDetails.Availability, AColors.Warn, []);
-    end;
-    if FDetails.IsDeprecated then
-    begin
-      if FDetails.DeprecatedText <> '' then
-      begin
-        Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [FDetails.DeprecatedText]), AColors.Warn, []);
-      end
-      else
-      begin
-        Block(TAtlasStrings.Text(TAtlasTextId.DeprecatedPlain), AColors.Warn, []);
-      end;
-    end;
-    if FDocData.IsEmpty then
-    begin
-      FDoc.Clear;
-    end
-    else
-    begin
-      if FDocWidth <> Right - Left then
-      begin
-        // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
-        if FDocWidth = 0 then
-        begin
-          Expanded := TAtlasDocExpandState.Initial(FDetails.Display.Expand, TAtlasDocSurface.Details);
-        end
-        else
-        begin
-          Expanded := FDoc.Expanded;
-        end;
-        FDoc.Build(ACanvas, TAtlasDocContent.Create(FDocData, TAtlasDocSignature.Parse(FDetails.Declaration),
-          Expanded), Right - Left, TAtlasDocFonts.Create(AFont, AUIFont, APPI), TAtlasStrings.DocLabels);
-        FDocWidth := Right - Left;
-      end;
-      // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.
-      Fixed := Y - ABounds.Top + Scale(5);
-      if FMaxHeight > 0 then
-      begin
-        FDoc.FitHeight(FDetails.Display.MaxLines, FMaxHeight - Fixed);
-      end
-      else
-      begin
-        FDoc.FitHeight(FDetails.Display.MaxLines, 0);
-      end;
-      FDocLeft := Left;
-      FDocTop := Y;
-      if ADraw then
-      begin
-        FDoc.Paint(ACanvas, AColors, Left, Y);
-      end;
-      Inc(Y, FDoc.Height);
-    end;
+    Frame(ABox, Colors.Warn);
+    Canvas.Font.Color := ToColor(Colors.Warn);
   end
   else
   begin
-    FDoc.Clear;
+    Frame(ABox, Colors.Line);
+    Canvas.Font.Color := ToColor(Colors.Muted);
   end;
-  ACanvas.Brush.Style := bsSolid;
-  Result := Y - ABounds.Top + Scale(5);
+  Canvas.Brush.Style := bsClear;
+  mText := ABox;
+  DrawText(Canvas.Handle, PChar(ATag), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+procedure TDetailRender.Tags;
+var
+  mTag: string;
+  mTagX, mTagHeight: Integer;
+  mBox: TRect;
+begin
+  if (View.FDetails.Visibility = '') and (Length(View.FDetails.Directives) = 0) then
+  begin
+    Exit;
+  end;
+  Canvas.Font := UIFont;
+  mTagHeight := Canvas.TextHeight('Wg') + Scale(2);
+  mTagX := Left;
+  for mTag in TArray<string>.Create(View.FDetails.Visibility) + View.FDetails.Directives do
+  begin
+    if mTag = '' then
+    begin
+      Continue;
+    end;
+    Canvas.Font := UIFont;
+    mBox := Rect(mTagX, Y, mTagX + Canvas.TextWidth(mTag) + Scale(TAtlasDraw.ChipPad), Y + mTagHeight);
+    if Draw then
+    begin
+      Tag(mTag, mBox);
+    end;
+    mTagX := mBox.Right + Scale(6);
+  end;
+  Inc(Y, mTagHeight + Scale(8));
+end;
+
+procedure TDetailRender.Declaration;
+var
+  mLineHeight, mLine, mX: Integer;
+  mKey: string;
+begin
+  if View.FDetails.Declaration = '' then
+  begin
+    Exit;
+  end;
+  Canvas.Font := Font;
+  mLineHeight := Canvas.TextHeight('Wg') + Scale(2);
+  mKey := IntToStr(Right - Left) + '|' + IntToStr(PPI) + '|' + Font.Name + '|' + IntToStr(Font.Height);
+  if mKey <> View.FDeclKey then
+  begin
+    View.FDeclLines := View.FDecl.WrapAtSpaces(Canvas, Right - Left, Scale(16));
+    View.FDeclKey := mKey;
+  end;
+  for mLine := 0 to High(View.FDeclLines) do
+  begin
+    mX := Left + IfThen(mLine > 0, Scale(16));
+    if Draw then
+    begin
+      View.FDecl.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), View.FDeclLines[mLine], mX,
+        Rect(mX, Y, Right, Y + mLineHeight), False);
+    end;
+    Inc(Y, mLineHeight);
+  end;
+  Inc(Y, Scale(3));
+end;
+
+procedure TDetailRender.Origin;
+var
+  mText: string;
+begin
+  mText := View.FDetails.UnitName;
+  if View.FDetails.Container = '' then
+  begin
+    // Nur die Unit (bzw. nichts).
+  end
+  else if mText = '' then
+  begin
+    mText := View.FDetails.Container;
+  end
+  else if View.FDetails.IsHelper then
+  begin
+    mText := View.FDetails.Container + ' · ' + mText;
+  end
+  else
+  begin
+    mText := mText + ' · ' + View.FDetails.Container;
+  end;
+  Block(mText, Colors.Muted, []);
+end;
+
+procedure TDetailRender.UsesInfo;
+var
+  mText: string;
+begin
+  if View.FDetails.UnitPath <> '' then
+  begin
+    Mono(View.FDetails.UnitPath, Colors.Muted);
+  end;
+  if Length(View.FDetails.UnitTypes) > 0 then
+  begin
+    Separator;
+    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.UsesTypesHeading)), Colors.Muted, [fsBold]);
+    mText := string.Join(' · ', View.FDetails.UnitTypes);
+    if View.FDetails.UnitTypeCount > Length(View.FDetails.UnitTypes) then
+    begin
+      mText := mText + ' · …';
+    end;
+    Mono(mText, Colors.Text);
+  end;
+  if View.FDetails.UsesCycle <> '' then
+  begin
+    Block(TAtlasStrings.UsesCycle(View.FDetails.UsesCycle), Colors.Error, []);
+  end;
+  if View.FDetails.UsesElsewhere = 'interface' then
+  begin
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInInterface), Colors.Muted, [fsItalic]);
+  end
+  else if View.FDetails.UsesElsewhere = 'implementation' then
+  begin
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInImplementation), Colors.Muted, [fsItalic]);
+  end;
+  // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
+  if View.FDetails.AddsUnit <> '' then
+  begin
+    Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [View.FDetails.AddsUnit]), Colors.Accent, []);
+  end;
+end;
+
+procedure TDetailRender.SameName;
+var
+  mIndex: Integer;
+  mText: string;
+begin
+  if Length(View.FDetails.SameNameUnits) = 0 then
+  begin
+    Exit;
+  end;
+  Separator;
+  Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.SameNameDeclaredIn)), Colors.Muted, [fsBold]);
+  for mIndex := 0 to High(View.FDetails.SameNameUnits) do
+  begin
+    mText := View.FDetails.SameNameUnits[mIndex];
+    if mIndex = 0 then
+    begin
+      mText := mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleActive);
+    end
+    else if SameText(mText, View.FDetails.SameNameThis) then
+    begin
+      mText := mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleThis);
+    end;
+    if SameText(View.FDetails.SameNameUnits[mIndex], View.FDetails.SameNameThis) then
+    begin
+      Block(mText, Colors.Text, [fsBold]);
+    end
+    else
+    begin
+      Block(mText, Colors.Text, []);
+    end;
+  end;
+  for mText in View.FDetails.SameNameHidden do
+  begin
+    Block(mText + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleHidden), Colors.Muted, [fsItalic]);
+  end;
+  SameNameInsert;
+end;
+
+procedure TDetailRender.SameNameInsert;
+var
+  mLead: string;
+begin
+  mLead := TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ';
+  if View.FDetails.SameNameInsert = 'prefix' then
+  begin
+    Block(mLead + TAtlasStrings.Text(TAtlasTextId.SameNameInsertPrefix), Colors.Muted, []);
+  end
+  else if View.FDetails.SameNameInsert = 'prefixAdd' then
+  begin
+    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertPrefixAdd, [View.FDetails.SameNameThis]), Colors.Warn,
+      []);
+  end
+  else if View.FDetails.SameNameInsert = 'move' then
+  begin
+    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertMove, [View.FDetails.SameNameThis]), Colors.Warn, []);
+  end
+  else if View.FDetails.SameNameInsert = 'add' then
+  begin
+    Block(mLead + TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [View.FDetails.SameNameThis]), Colors.Warn, []);
+  end;
+end;
+
+procedure TDetailRender.Notes;
+var
+  mText: string;
+begin
+  // with-Objekt (#481): Zusammen mit „Verdeckt: …“ nennt das Panel beide Bedeutungen.
+  if View.FDetails.WithOrigin <> '' then
+  begin
+    Block(TAtlasStrings.Fmt(TAtlasTextId.WithMemberOrigin, [View.FDetails.WithOrigin]), Colors.Accent, []);
+  end;
+  // Verdeckte Deklarationen weiter außen (#488).
+  for mText in View.FDetails.Hides do
+  begin
+    Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [mText]), Colors.Muted, [fsItalic]);
+  end;
+  // Gleitkomma für eine Ganzzahl (#490): keine Umwandlung vorgeschlagen, nur der Hinweis.
+  if View.FDetails.LossyFrom <> '' then
+  begin
+    Block(TAtlasStrings.Fmt(TAtlasTextId.CompletionLossyHint, [View.FDetails.LossyFrom, View.FDetails.LossyTo]),
+      Colors.Warn, []);
+  end;
+end;
+
+procedure TDetailRender.BuildDoc;
+var
+  mExpanded: Boolean;
+begin
+  // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
+  if View.FDocWidth = 0 then
+  begin
+    mExpanded := TAtlasDocExpandState.Initial(View.FDetails.Display.Expand, TAtlasDocSurface.Details);
+  end
+  else
+  begin
+    mExpanded := View.FDoc.Expanded;
+  end;
+  View.FDoc.Build(Canvas, TAtlasDocContent.Create(View.FDocData, TAtlasDocSignature.Parse(View.FDetails.Declaration),
+    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
+  View.FDocWidth := Right - Left;
+end;
+
+procedure TDetailRender.Doc(ATop: Integer);
+var
+  mFixed: Integer;
+begin
+  if not View.FDetails.IsDeprecated and View.FDocData.IsEmpty and (View.FDetails.Availability = '') then
+  begin
+    View.FDoc.Clear;
+    Exit;
+  end;
+  Separator;
+  // Im aktiven Ziel nicht deklariert (#476): zuerst, in Warnfarbe.
+  Block(View.FDetails.Availability, Colors.Warn, []);
+  if View.FDetails.IsDeprecated and (View.FDetails.DeprecatedText <> '') then
+  begin
+    Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [View.FDetails.DeprecatedText]), Colors.Warn, []);
+  end
+  else if View.FDetails.IsDeprecated then
+  begin
+    Block(TAtlasStrings.Text(TAtlasTextId.DeprecatedPlain), Colors.Warn, []);
+  end;
+  if View.FDocData.IsEmpty then
+  begin
+    View.FDoc.Clear;
+    Exit;
+  end;
+  if View.FDocWidth <> Right - Left then
+  begin
+    BuildDoc;
+  end;
+  // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.
+  mFixed := Y - ATop + Scale(5);
+  if View.FMaxHeight > 0 then
+  begin
+    View.FDoc.FitHeight(View.FDetails.Display.MaxLines, View.FMaxHeight - mFixed);
+  end
+  else
+  begin
+    View.FDoc.FitHeight(View.FDetails.Display.MaxLines, 0);
+  end;
+  View.FDocLeft := Left;
+  View.FDocTop := Y;
+  if Draw then
+  begin
+    View.FDoc.Paint(Canvas, Colors, Left, Y);
+  end;
+  Inc(Y, View.FDoc.Height);
+end;
+
+function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
+  const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
+var
+  mRender: TDetailRender;
+begin
+  mRender.View := Self;
+  mRender.Canvas := ACanvas;
+  mRender.Colors := AColors;
+  mRender.Font := AFont;
+  mRender.UIFont := AUIFont;
+  mRender.PPI := APPI;
+  mRender.Draw := ADraw;
+  mRender.Left := ABounds.Left + mRender.Scale(13);
+  mRender.Right := ABounds.Right - mRender.Scale(13);
+  mRender.Y := ABounds.Top + mRender.Scale(11);
+  FPreviousRect := TRect.Empty;
+  FNextRect := TRect.Empty;
+  if FOverloadCount > 1 then
+  begin
+    mRender.Overloads;
+  end;
+  if FDetails.IsEmpty then
+  begin
+    mRender.Block(TAtlasStrings.Text(TAtlasTextId.NoDetails), AColors.Muted, []);
+  end
+  else
+  begin
+    mRender.Tags;
+    mRender.Declaration;
+    mRender.Origin;
+    mRender.UsesInfo;
+    mRender.SameName;
+    mRender.Notes;
+    mRender.Doc(ABounds.Top);
+    ACanvas.Brush.Style := bsSolid;
+  end;
+  Result := mRender.Y - ABounds.Top + mRender.Scale(5);
 end;
 
 end.
