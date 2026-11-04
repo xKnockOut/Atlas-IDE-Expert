@@ -659,8 +659,9 @@ begin
         Rechner := Context;
         Rechner.FileName := RechnerFile;
         Rechner.Settings.CreateMethodCaretInBody := True;
+        Rechner.CaretMarker := True;
         Result := Enabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
-          ARequest.Position, Rechner, True, Created);
+          ARequest.Position, Rechner, Created);
         ATitle := Created.Title;
         ADetail := Created.Detail;
         AEdits := Created.Edits;

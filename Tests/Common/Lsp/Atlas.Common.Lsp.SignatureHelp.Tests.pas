@@ -174,8 +174,8 @@ begin
   Text := StringReplace(UnitHaupt, '  |', ACode, []);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, AMarker),
-      ReadWerkzeug);
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+      ReadWerkzeug), PositionOf(Text, AMarker));
   finally
     Tree.Free;
   end;
