@@ -18,7 +18,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Documentation.Layout;
+  Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset;
 
 type
   TAtlasDocView = class
@@ -265,7 +266,8 @@ end;
 
 procedure TAtlasDocView.Relayout(ACanvas: TCanvas);
 begin
-  FLayout := TAtlasDocLayout.Build(FDoc, FWidth, FMetrics, MeasureOn(ACanvas), FLabels, FSignature, FExpanded);
+  FLayout := TAtlasDocTypeset.Build(TAtlasDocContent.Create(FDoc, FSignature, FExpanded), FWidth, FMetrics,
+    MeasureOn(ACanvas), FLabels);
   FViewport := FLayout.Height;
   ClampScroll;
   FAnchor := -1;

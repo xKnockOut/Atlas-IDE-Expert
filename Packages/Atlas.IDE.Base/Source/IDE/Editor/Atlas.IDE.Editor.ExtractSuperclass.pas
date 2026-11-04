@@ -66,7 +66,7 @@ begin
     TimeoutMs, TAtlasTextId.ExtractSuperFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [AModel.SourceClass]);
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractSuperTitle, [AModel.Source.SourceClass]);
     end, AMessage, mChoice) then
   begin
     Exit;

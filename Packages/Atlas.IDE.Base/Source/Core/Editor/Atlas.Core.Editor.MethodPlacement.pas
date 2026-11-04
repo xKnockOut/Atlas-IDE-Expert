@@ -258,40 +258,62 @@ begin
   end;
 end;
 
+/// <summary>Erste Hälfte eines Zeilenumbruchs #13#10 oder eines Ersatzpaars: dort nicht schneiden.</summary>
+function IsLeadingHalf(AChar: Char): Boolean;
+begin
+  Result := (AChar = #13) or ((AChar >= #$D800) and (AChar <= #$DBFF));
+end;
+
+/// <summary>Zweite Hälfte eines Zeilenumbruchs #13#10 oder eines Ersatzpaars.</summary>
+function IsTrailingHalf(AChar: Char): Boolean;
+begin
+  Result := (AChar = #10) or ((AChar >= #$DC00) and (AChar <= #$DFFF));
+end;
+
+/// <summary>Länge des gemeinsamen Anfangs.</summary>
+function CommonPrefix(const AOld, ANew: string): Integer;
+begin
+  Result := 0;
+  while (Result < Length(AOld)) and (Result < Length(ANew)) and (AOld[Result + 1] = ANew[Result + 1]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Länge des gemeinsamen Endes, ohne in APrefix hineinzureichen.</summary>
+function CommonSuffix(const AOld, ANew: string; APrefix: Integer): Integer;
+begin
+  Result := 0;
+  while (Result < Length(AOld) - APrefix) and (Result < Length(ANew) - APrefix) and
+    (AOld[Length(AOld) - Result] = ANew[Length(ANew) - Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
 class function TAtlasMethodPlacement.Difference(const AOld, ANew: string; out ARange: TLspTextRange): Boolean;
 var
-  Prefix, Suffix: Integer;
+  mPrefix, mSuffix: Integer;
 begin
   ARange := Default(TLspTextRange);
   Result := AOld <> ANew;
-  if not Result then
+  if Result then
   begin
-    Exit;
+    mPrefix := CommonPrefix(AOld, ANew);
+    mSuffix := CommonSuffix(AOld, ANew, mPrefix);
+    // Kein Schnitt mitten in einem Zeilenumbruch #13#10 oder einem Ersatzpaar.
+    while (mPrefix > 0) and IsLeadingHalf(AOld[mPrefix]) do
+    begin
+      Dec(mPrefix);
+    end;
+    while (mSuffix > 0) and IsTrailingHalf(AOld[Length(AOld) - mSuffix + 1]) do
+    begin
+      Dec(mSuffix);
+    end;
+    ARange.StartOffset := mPrefix;
+    ARange.EndOffset := Length(AOld) - mSuffix;
+    ARange.NewText := Copy(ANew, mPrefix + 1, Length(ANew) - mSuffix - mPrefix);
   end;
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
-  begin
-    Inc(Prefix);
-  end;
-  Suffix := 0;
-  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
-    (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
-  begin
-    Inc(Suffix);
-  end;
-  // Kein Schnitt mitten in einem Zeilenumbruch #13#10 oder einem Ersatzpaar.
-  while (Prefix > 0) and ((AOld[Prefix] = #13) or ((AOld[Prefix] >= #$D800) and (AOld[Prefix] <= #$DBFF))) do
-  begin
-    Dec(Prefix);
-  end;
-  while (Suffix > 0) and ((AOld[Length(AOld) - Suffix + 1] = #10) or
-    ((AOld[Length(AOld) - Suffix + 1] >= #$DC00) and (AOld[Length(AOld) - Suffix + 1] <= #$DFFF))) do
-  begin
-    Dec(Suffix);
-  end;
-  ARange.StartOffset := Prefix;
-  ARange.EndOffset := Length(AOld) - Suffix;
-  ARange.NewText := Copy(ANew, Prefix + 1, Length(ANew) - Suffix - Prefix);
 end;
 
 class function TAtlasMethodPlacement.CaretLine(const AMoves: TArray<TAtlasMethodMove>; ALine: Integer;

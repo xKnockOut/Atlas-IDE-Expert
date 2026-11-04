@@ -361,276 +361,805 @@ begin
   end;
 end;
 
-class function TMoveMember.PullUp(AFiles: TMemberFiles; const ASource, ATarget: TMemberClassRef;
-  const ARequest: TMoveMemberRequest; out APlan: TMoveMemberPlan; out AReason: string): Boolean;
 type
+  /// <summary>Gleichnamige Methode eines anderen Nachfahren, die override bekommt.</summary>
   TSiblingHit = record
     Ref: TMemberClassRef;
     Member: TClassMember;
   end;
+
+  /// <summary>Ablauf von PullUp mit seinem Zwischenstand.</summary>
+  TPullUp = record
+    Files: TMemberFiles;
+    SourceRef: TMemberClassRef;
+    TargetRef: TMemberClassRef;
+    Request: TMoveMemberRequest;
+    Source: TClassLayout;
+    Target: TClassLayout;
+    Candidates: TArray<TTransferCandidate>;
+    Picked: TArray<Integer>;
+    Moved: TArray<Integer>;
+    Abstracts: TArray<Integer>;
+    Virtualize: TArray<Integer>;
+    Raised: TArray<Integer>;
+    Hits: TArray<TSiblingHit>;
+    Plan: TMoveMemberPlan;
+    function Run(out AReason: string): Boolean;
+    /// <summary>Gewählte in ganz wandernde und abstrakt werdende teilen und prüfen.</summary>
+    function Split(out AReason: string): Boolean;
+    procedure CompareSiblings;
+    procedure CompareSibling(ASibling: TClassLayout; const ARef: TMemberClassRef);
+    procedure CompareMethod(ASibling: TClassLayout; const ARef: TMemberClassRef; AId, AIndex: Integer);
+    /// <summary>Sichtbarkeit oben; gehobene abstrakte Methoden unten in denselben Abschnitt (sonst H2269).
+    /// </summary>
+    procedure RaiseUsed;
+    function DeclarationOf(AId: Integer): TTransferDeclaration;
+    function BodyOf(AId: Integer): string;
+    procedure Collect(out ADeclarations: TArray<TTransferDeclaration>; out ABodies: TArray<string>);
+    function ChangeSource(out AReason: string): Boolean;
+    function InsertTarget(const ADeclarations: TArray<TTransferDeclaration>; const ABodies: TArray<string>;
+      out AReason: string): Boolean;
+    procedure OverrideSibling(const AHit: TSiblingHit);
+  end;
+
+  /// <summary>Ablauf von PushDown mit seinem Zwischenstand.</summary>
+  TPushDown = record
+    Files: TMemberFiles;
+    SourceRef: TMemberClassRef;
+    Targets: TArray<TMemberClassRef>;
+    Request: TMoveMemberRequest;
+    Source: TClassLayout;
+    Candidates: TArray<TTransferCandidate>;
+    Picked: TArray<Integer>;
+    Kept: TArray<Integer>;
+    Moved: TArray<Integer>;
+    Needed: TArray<Integer>;
+    Plan: TMoveMemberPlan;
+    function Run(out AReason: string): Boolean;
+    /// <summary>Im Vorfahren abstrakt bleiben können nur Methoden, die virtuell werden dürfen.</summary>
+    procedure Split;
+    function UsersIssue(AId: Integer): string;
+    function PlacesIssue(AId: Integer): string;
+    /// <summary>Benutzt oben oder fremder Code ein wanderndes Mitglied weiter?</summary>
+    function UnusedAbove(out AReason: string): Boolean;
+    function OtherUnit: Boolean;
+    function MustRaise(AId: Integer; AOtherUnit: Boolean): Boolean;
+    procedure AddNeeded(AId: Integer; const AWhy: string);
+    /// <summary>Mitglieder, die oben bleiben und unten sichtbar sein müssen.</summary>
+    procedure CollectNeeded;
+    function AbstractEdits(AId: Integer): TArray<TTextEdit>;
+    function ChangeSource(out AReason: string): Boolean;
+    function CheckTarget(ATarget: TClassLayout; out AReason: string): Boolean;
+    function IsOverrideOf(const AMember: TClassMember; AId: Integer): Boolean;
+    /// <summary>Gleichnamige Mitglieder im Nachfahren: Überschreibungen abstrakt bleibender Methoden kommen
+    /// nach ASkip, sonst Abbruch.</summary>
+    function Overridden(ATarget: TClassLayout; out ASkip: TArray<Integer>; out AReason: string): Boolean;
+    function DeclarationOf(AId: Integer): TTransferDeclaration;
+    procedure Collect(ATarget: TClassLayout; const ASkip: TArray<Integer>;
+      out ADeclarations: TArray<TTransferDeclaration>; out ABodies: TArray<string>);
+    function InsertInto(const ARef: TMemberClassRef; out AReason: string): Boolean;
+    function InsertAll(out AReason: string): Boolean;
+    procedure Finish;
+  end;
+
+{ TPullUp }
+
+function TPullUp.Run(out AReason: string): Boolean;
 var
-  Source, Target, Sibling: TClassLayout;
-  SourceTree, TargetTree, SiblingTree: TSyntaxTree;
-  Candidates: TArray<TTransferCandidate>;
-  Picked, Moved, Abstracts, Virtualize, Raised: TArray<Integer>;
-  Missing: TArray<string>;
-  Id, Index: Integer;
-  Member: TClassMember;
-  Ref: TMemberClassRef;
-  Hits: TArray<TSiblingHit>;
-  Hit: TSiblingHit;
-  Visibility: TClassVisibility;
-  Declarations: TArray<TTransferDeclaration>;
-  Bodies: TArray<string>;
-  Olds: TArray<TClassMember>;
-  Edits: TArray<TTextEdit>;
-  Text, Declaration: string;
-  SameUnit, Matched: Boolean;
+  mDeclarations: TArray<TTransferDeclaration>;
+  mBodies: TArray<string>;
+  mHit: TSiblingHit;
+begin
+  if Target = nil then
+  begin
+    Exit(Fail(Format('Der Vorfahr %s ist nicht lesbar.', [TargetRef.ClassName]), AReason));
+  end;
+  Result := SameGenerics(Source, Target, AReason);
+  if Result then
+  begin
+    Candidates := TMemberTransfer.Candidates(Source);
+    Result := Chosen(Candidates, Request.Members, Picked, AReason) and Split(AReason);
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  CompareSiblings;
+  RaiseUsed;
+  Collect(mDeclarations, mBodies);
+  Result := ChangeSource(AReason) and InsertTarget(mDeclarations, mBodies, AReason);
+  if Result then
+  begin
+    for mHit in Hits do
+    begin
+      OverrideSibling(mHit);
+    end;
+  end;
+end;
+
+function TPullUp.Split(out AReason: string): Boolean;
+var
+  mId, mIndex: Integer;
+  mMissing: TArray<string>;
+begin
+  Moved := nil;
+  Abstracts := nil;
+  for mId in Picked do
+  begin
+    if TMemberTransfer.Has(Request.Abstract, mId) then
+    begin
+      mIndex := TMemberTransfer.IndexOf(Candidates, mId);
+      if not Candidates[mIndex].CanAbstract then
+      begin
+        Exit(Fail(Format('%s kann nicht abstrakt werden: %s.', [Candidates[mIndex].Name, Candidates[mIndex].Reason]),
+          AReason));
+      end;
+      Abstracts := Abstracts + [mId];
+    end
+    else
+    begin
+      Moved := Moved + [mId];
+    end;
+  end;
+  // Was ganz wandert, darf nur benutzen, was mitwandert (abstrakt zählt).
+  mMissing := TMemberTransfer.MissingNeeds(Source, Moved, Picked);
+  if mMissing <> nil then
+  begin
+    Exit(Fail(string.Join('; ', mMissing) + '. Bitte mitnehmen oder abstrakt deklarieren.', AReason));
+  end;
+  for mId in Picked do
+  begin
+    if Target.Find(Source.Members[mId].Name) <> nil then
+    begin
+      Exit(Fail(Format('%s hat schon ein Mitglied %s.', [Target.Name, Source.Members[mId].Name]), AReason));
+    end;
+  end;
+  AReason := '';
+  Result := True;
+end;
+
+procedure TPullUp.CompareSiblings;
+var
+  mRef: TMemberClassRef;
+  mSibling: TClassLayout;
+  mTree: TSyntaxTree;
+begin
+  // Andere Nachfahren des Ziels mit gleichnamigen Methoden.
+  Hits := nil;
+  Virtualize := nil;
+  for mRef in Request.Siblings do
+  begin
+    if SameText(mRef.ClassName, Source.Name) and SameText(mRef.FileName, SourceRef.FileName) then
+    begin
+      Continue;
+    end;
+    mSibling := TMemberTransfer.ParseLayout(Files.Text(mRef.FileName), mRef.ClassName, mTree);
+    if mSibling = nil then
+    begin
+      Continue;
+    end;
+    try
+      CompareSibling(mSibling, mRef);
+    finally
+      mSibling.Free;
+      mTree.Free;
+    end;
+  end;
+end;
+
+procedure TPullUp.CompareSibling(ASibling: TClassLayout; const ARef: TMemberClassRef);
+var
+  mId, mIndex: Integer;
+begin
+  for mId in Picked do
+  begin
+    for mIndex in ASibling.Find(Source.Members[mId].Name) do
+    begin
+      CompareMethod(ASibling, ARef, mId, mIndex);
+    end;
+  end;
+end;
+
+/// <summary>Methode ohne override?</summary>
+function IsPlainMethod(const AMember: TClassMember): Boolean;
+begin
+  Result := (AMember.Kind = TClassMemberKind.Method) and not AMember.HasDirective('override');
+end;
+
+function SameParameters(const AFirst, ASecond: TClassMember): Boolean;
+begin
+  Result := string.Join(',', AFirst.ParameterTypes) = string.Join(',', ASecond.ParameterTypes);
+end;
+
+procedure TPullUp.CompareMethod(ASibling: TClassLayout; const ARef: TMemberClassRef; AId, AIndex: Integer);
+var
+  mMember, mOther: TClassMember;
+  mHit: TSiblingHit;
+  mMatched: Boolean;
+begin
+  mMember := Source.Members[AId];
+  mOther := ASibling.Members[AIndex];
+  mMatched := IsPlainMethod(mMember) and IsPlainMethod(mOther) and SameParameters(mOther, mMember) and
+    (TMemberTransfer.AbstractBlocker(mOther) = '');
+  if mMatched and Request.OverrideSiblings then
+  begin
+    mHit.Ref := ARef;
+    mHit.Member := mOther;
+    Hits := Hits + [mHit];
+    if not TMemberTransfer.Has(Virtualize, AId) then
+    begin
+      Virtualize := Virtualize + [AId];
+    end;
+  end
+  else if mMatched then
+  begin
+    Plan.Warnings := Plan.Warnings + [Format('%s.%s verdeckt dann %s.%s (ohne override).',
+      [ASibling.Name, mMember.Name, Target.Name, mMember.Name])];
+  end
+  else
+  begin
+    Plan.Warnings := Plan.Warnings + [Format('%s.%s passt nicht zu %s.%s und verdeckt es dann.',
+      [ASibling.Name, mMember.Name, Target.Name, mMember.Name])];
+  end;
+end;
+
+procedure TPullUp.RaiseUsed;
+var
+  mSameUnit: Boolean;
+  mId: Integer;
+begin
+  mSameUnit := SameText(SourceRef.FileName, TargetRef.FileName);
+  Raised := nil;
+  for mId in Picked do
+  begin
+    if TMemberTransfer.MustRaise(Source, mId, Moved, TMemberTransfer.Has(Abstracts, mId), mSameUnit, nil) then
+    begin
+      Raised := Raised + [mId];
+      Plan.Raised := Plan.Raised + [Source.Members[mId].Name];
+      Plan.Warnings := Plan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.',
+        [Source.Members[mId].Name, TClassEdits.VisibilityName(Request.RaiseVisibility), Source.Name])];
+    end;
+  end;
+end;
+
+function TPullUp.DeclarationOf(AId: Integer): TTransferDeclaration;
+var
+  mMember: TClassMember;
+  mVisibility: TClassVisibility;
+  mText: string;
+begin
+  mMember := Source.Members[AId];
+  mVisibility := mMember.Visibility;
+  if TMemberTransfer.Has(Raised, AId) then
+  begin
+    mVisibility := Request.RaiseVisibility;
+  end;
+  if TMemberTransfer.Has(Abstracts, AId) then
+  begin
+    mText := TMemberTransfer.WithDoc(Source, AId, TMemberTransfer.AbstractDeclaration(Source, AId));
+  end
+  else if TMemberTransfer.Has(Virtualize, AId) and not mMember.IsVirtual then
+  begin
+    mText := TMemberTransfer.WithDoc(Source, AId, TMemberTransfer.VirtualDeclaration(Source, AId));
+  end
+  else
+  begin
+    mText := TMemberTransfer.MemberText(Source, AId);
+  end;
+  Result := TTransferDeclaration.Create(mText, mVisibility,
+    mMember.Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar]);
+end;
+
+function TPullUp.BodyOf(AId: Integer): string;
+var
+  mMember: TClassMember;
+begin
+  mMember := Source.Members[AId];
+  Result := TClassEdits.BodyText(Source, AId, Target.Name);
+  if CallsInherited(mMember.Body) and (Source.Ancestors <> nil) and
+    not SameText(PlainName(Source.Ancestors[0]), Target.Name) then
+  begin
+    Plan.Warnings := Plan.Warnings + [Format('%s ruft inherited auf; in %s meint das den Vorfahren von %s.',
+      [mMember.Name, Target.Name, Target.Name])];
+  end;
+end;
+
+procedure TPullUp.Collect(out ADeclarations: TArray<TTransferDeclaration>; out ABodies: TArray<string>);
+var
+  mId: Integer;
+begin
+  // Deklarationen und Rümpfe für oben.
+  ADeclarations := nil;
+  ABodies := nil;
+  for mId in Picked do
+  begin
+    ADeclarations := ADeclarations + [DeclarationOf(mId)];
+    if TMemberTransfer.Has(Moved, mId) and (Source.Members[mId].Body <> nil) then
+    begin
+      ABodies := ABodies + [BodyOf(mId)];
+    end;
+    if TMemberTransfer.Has(Abstracts, mId) then
+    begin
+      Plan.Abstracts := Plan.Abstracts + [Source.Members[mId].Name];
+    end
+    else
+    begin
+      Plan.Moved := Plan.Moved + [Source.Members[mId].Name];
+    end;
+  end;
+end;
+
+function TPullUp.ChangeSource(out AReason: string): Boolean;
+var
+  mEdits: TArray<TTextEdit>;
+  mOlds: TArray<TClassMember>;
+  mText: string;
+  mId: Integer;
+begin
+  // Schritt 1: Klasse ändern.
+  mEdits := TClassEdits.DeleteMembers(Source, Moved, True) + TMemberTransfer.EmptiedSections(Source, Moved);
+  for mId in Abstracts do
+  begin
+    mEdits := mEdits + TMemberTransfer.OverrideEdits(Source, Source.Members[mId].Node, True);
+  end;
+  mText := TTextChanges.Apply(Files.Text(SourceRef.FileName), mEdits);
+  mOlds := nil;
+  for mId in Abstracts do
+  begin
+    if TMemberTransfer.Has(Raised, mId) then
+    begin
+      mOlds := mOlds + [Source.Members[mId]];
+    end;
+  end;
+  AReason := '';
+  Result := TMemberTransfer.Relocate(mText, Source.Name, mOlds, Request.RaiseVisibility);
+  if Result then
+  begin
+    Files.Put(SourceRef.FileName, mText);
+  end
+  else
+  begin
+    AReason := Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]);
+  end;
+end;
+
+function TPullUp.InsertTarget(const ADeclarations: TArray<TTransferDeclaration>; const ABodies: TArray<string>;
+  out AReason: string): Boolean;
+var
+  mText: string;
+begin
+  // Schritt 2: in den Vorfahren einfügen (gleiche Datei: auf dem neuen Stand).
+  mText := Files.Text(TargetRef.FileName);
+  Result := TMemberTransfer.InsertInto(mText, Target.Name, ADeclarations, ABodies, AReason);
+  if Result then
+  begin
+    Files.Put(TargetRef.FileName, mText);
+  end;
+end;
+
+procedure TPullUp.OverrideSibling(const AHit: TSiblingHit);
+var
+  mText: string;
+  mSibling: TClassLayout;
+  mTree: TSyntaxTree;
+  mIndex: Integer;
+begin
+  // Schritt 3: andere Nachfahren überschreiben.
+  mText := Files.Text(AHit.Ref.FileName);
+  mSibling := TMemberTransfer.ParseLayout(mText, AHit.Ref.ClassName, mTree);
+  if mSibling = nil then
+  begin
+    Exit;
+  end;
+  try
+    mIndex := TMemberTransfer.Same(mSibling, AHit.Member);
+    if mIndex < 0 then
+    begin
+      Exit;
+    end;
+    mText := TTextChanges.Apply(mText, TMemberTransfer.OverrideEdits(mSibling, mSibling.Members[mIndex].Node, True));
+    Plan.Overridden := Plan.Overridden + [mSibling.Name + '.' + AHit.Member.Name];
+  finally
+    mSibling.Free;
+    mTree.Free;
+  end;
+  Files.Put(AHit.Ref.FileName, mText);
+end;
+
+{ TPushDown }
+
+function TPushDown.Run(out AReason: string): Boolean;
+begin
+  Candidates := TMemberTransfer.Candidates(Source);
+  Result := Chosen(Candidates, Request.Members, Picked, AReason);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Split;
+  Result := UnusedAbove(AReason);
+  if Result then
+  begin
+    CollectNeeded;
+    Result := ChangeSource(AReason) and InsertAll(AReason);
+  end;
+  if Result then
+  begin
+    Finish;
+  end;
+end;
+
+procedure TPushDown.Split;
+var
+  mId: Integer;
+begin
+  Kept := nil;
+  Moved := nil;
+  for mId in Picked do
+  begin
+    if Request.KeepAbstract and Candidates[TMemberTransfer.IndexOf(Candidates, mId)].CanAbstract then
+    begin
+      Kept := Kept + [mId];
+    end
+    else
+    begin
+      Moved := Moved + [mId];
+    end;
+  end;
+end;
+
+function TPushDown.UsersIssue(AId: Integer): string;
+var
+  mUser: Integer;
+  mUsers: TArray<string>;
+begin
+  Result := '';
+  mUsers := nil;
+  for mUser in Source.UsersOf(AId) do
+  begin
+    if not TMemberTransfer.Has(Picked, mUser) then
+    begin
+      mUsers := mUsers + [Source.Members[mUser].Name];
+    end;
+  end;
+  if mUsers <> nil then
+  begin
+    Result := Format('%s wird in %s weiter benutzt (%s).', [Source.Members[AId].Name, Source.Name,
+      string.Join(', ', mUsers)]);
+  end;
+end;
+
+function TPushDown.PlacesIssue(AId: Integer): string;
+var
+  mUsage: TMemberUsage;
+  mPlaces: TArray<string>;
+begin
+  Result := '';
+  mPlaces := nil;
+  for mUsage in Request.Usages do
+  begin
+    if (mUsage.Id = AId) and (Length(mPlaces) < 5) then
+    begin
+      mPlaces := mPlaces + [mUsage.Where];
+    end;
+  end;
+  if mPlaces <> nil then
+  begin
+    Result := Format('%s wird außerhalb der Nachfahren über %s benutzt: %s.', [Source.Members[AId].Name,
+      Source.Name, string.Join(', ', mPlaces)]);
+  end;
+end;
+
+function TPushDown.UnusedAbove(out AReason: string): Boolean;
+var
+  mId: Integer;
+begin
+  AReason := '';
+  for mId in Moved do
+  begin
+    AReason := UsersIssue(mId);
+    if AReason = '' then
+    begin
+      AReason := PlacesIssue(mId);
+    end;
+    if AReason <> '' then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function TPushDown.OtherUnit: Boolean;
+var
+  mRef: TMemberClassRef;
+begin
+  Result := False;
+  for mRef in Targets do
+  begin
+    if not SameText(mRef.FileName, SourceRef.FileName) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+function TPushDown.MustRaise(AId: Integer; AOtherUnit: Boolean): Boolean;
+begin
+  Result := (Source.Members[AId].Visibility = TClassVisibility.StrictPrivate) or
+    ((Source.Members[AId].Visibility = TClassVisibility.Private_) and AOtherUnit);
+end;
+
+procedure TPushDown.AddNeeded(AId: Integer; const AWhy: string);
+begin
+  Needed := Needed + [AId];
+  Plan.Raised := Plan.Raised + [Source.Members[AId].Name];
+  Plan.Warnings := Plan.Warnings + [Format('%s wird %s, %s', [Source.Members[AId].Name,
+    TClassEdits.VisibilityName(Request.RaiseVisibility), AWhy])];
+end;
+
+procedure TPushDown.CollectNeeded;
+var
+  mOtherUnit: Boolean;
+  mId, mNeed: Integer;
+begin
+  mOtherUnit := OtherUnit;
+  Needed := nil;
+  for mId in Moved do
+  begin
+    for mNeed in Source.UsedBy(mId) do
+    begin
+      if not TMemberTransfer.Has(Picked, mNeed) and not TMemberTransfer.Has(Needed, mNeed) and
+        MustRaise(mNeed, mOtherUnit) and (Source.Members[mNeed].Kind <> TClassMemberKind.Other) then
+      begin
+        AddNeeded(mNeed, 'weil die Nachfahren es benutzen.');
+      end;
+    end;
+  end;
+  // Abstrakt bleibende Methoden müssen die Nachfahren überschreiben können.
+  for mId in Kept do
+  begin
+    if MustRaise(mId, mOtherUnit) then
+    begin
+      AddNeeded(mId, 'damit die Nachfahren es überschreiben können.');
+    end;
+  end;
+end;
+
+function TPushDown.AbstractEdits(AId: Integer): TArray<TTextEdit>;
+var
+  mMember: TClassMember;
+begin
+  mMember := Source.Members[AId];
+  Result := nil;
+  Result := Result + [TTextEdit.Create(TTextRange.Create(mMember.Node.StartPos, mMember.Node.EndPos),
+    TMemberTransfer.AbstractDeclaration(Source, AId))];
+  if mMember.Body <> nil then
+  begin
+    Result := Result + [TClassEdits.DeleteLines(Source, mMember.BodyFirstLine, mMember.BodyLastLine)];
+  end;
+end;
+
+function TPushDown.ChangeSource(out AReason: string): Boolean;
+var
+  mEdits: TArray<TTextEdit>;
+  mOlds: TArray<TClassMember>;
+  mText: string;
+  mId: Integer;
+begin
+  // Schritt 1: Vorfahr ändern.
+  mEdits := TClassEdits.DeleteMembers(Source, Moved, True) + TMemberTransfer.EmptiedSections(Source, Moved);
+  for mId in Kept do
+  begin
+    mEdits := mEdits + AbstractEdits(mId);
+  end;
+  mText := TTextChanges.Apply(Files.Text(SourceRef.FileName), mEdits);
+  mOlds := nil;
+  for mId in Needed do
+  begin
+    mOlds := mOlds + [Source.Members[mId]];
+  end;
+  AReason := '';
+  Result := TMemberTransfer.Relocate(mText, Source.Name, mOlds, Request.RaiseVisibility);
+  if Result then
+  begin
+    Files.Put(SourceRef.FileName, mText);
+  end
+  else
+  begin
+    AReason := Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]);
+  end;
+end;
+
+function TPushDown.CheckTarget(ATarget: TClassLayout; out AReason: string): Boolean;
+begin
+  if (ATarget.Ancestors = nil) or not SameText(PlainName(ATarget.Ancestors[0]), Source.Name) then
+  begin
+    Exit(Fail(Format('%s ist kein direkter Nachfahr von %s.', [ATarget.Name, Source.Name]), AReason));
+  end;
+  Result := SameGenerics(Source, ATarget, AReason);
+end;
+
+function TPushDown.IsOverrideOf(const AMember: TClassMember; AId: Integer): Boolean;
+begin
+  Result := TMemberTransfer.Has(Kept, AId) and (AMember.Kind = TClassMemberKind.Method) and
+    AMember.HasDirective('override') and SameParameters(AMember, Source.Members[AId]);
+end;
+
+function TPushDown.Overridden(ATarget: TClassLayout; out ASkip: TArray<Integer>; out AReason: string): Boolean;
+var
+  mId, mFound: Integer;
+begin
+  ASkip := nil;
+  AReason := '';
+  for mId in Picked do
+  begin
+    for mFound in ATarget.Find(Source.Members[mId].Name) do
+    begin
+      if not IsOverrideOf(ATarget.Members[mFound], mId) then
+      begin
+        Exit(Fail(Format('%s hat schon ein Mitglied %s.', [ATarget.Name, Source.Members[mId].Name]), AReason));
+      end;
+      ASkip := ASkip + [mId];
+    end;
+  end;
+  Result := True;
+end;
+
+function TPushDown.DeclarationOf(AId: Integer): TTransferDeclaration;
+var
+  mMember: TClassMember;
+  mVisibility: TClassVisibility;
+  mText: string;
+begin
+  mMember := Source.Members[AId];
+  mVisibility := mMember.Visibility;
+  if TMemberTransfer.Has(Needed, AId) then
+  begin
+    mVisibility := Request.RaiseVisibility;
+  end;
+  if TMemberTransfer.Has(Kept, AId) then
+  begin
+    mText := TMemberTransfer.WithDoc(Source, AId, TMemberTransfer.OverrideDeclaration(Source, AId));
+  end
+  else
+  begin
+    mText := TMemberTransfer.MemberText(Source, AId);
+  end;
+  Result := TTransferDeclaration.Create(mText, mVisibility,
+    mMember.Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar]);
+end;
+
+procedure TPushDown.Collect(ATarget: TClassLayout; const ASkip: TArray<Integer>;
+  out ADeclarations: TArray<TTransferDeclaration>; out ABodies: TArray<string>);
+var
+  mId: Integer;
+begin
+  ADeclarations := nil;
+  ABodies := nil;
+  for mId in Picked do
+  begin
+    if TMemberTransfer.Has(ASkip, mId) then
+    begin
+      Continue;
+    end;
+    ADeclarations := ADeclarations + [DeclarationOf(mId)];
+    if Source.Members[mId].Body <> nil then
+    begin
+      ABodies := ABodies + [TClassEdits.BodyText(Source, mId, ATarget.Name)];
+    end;
+  end;
+end;
+
+function TPushDown.InsertInto(const ARef: TMemberClassRef; out AReason: string): Boolean;
+var
+  mTarget: TClassLayout;
+  mTree: TSyntaxTree;
+  mSkip: TArray<Integer>;
+  mDeclarations: TArray<TTransferDeclaration>;
+  mBodies: TArray<string>;
+  mText: string;
+begin
+  mTarget := TMemberTransfer.ParseLayout(Files.Text(ARef.FileName), ARef.ClassName, mTree);
+  if mTarget = nil then
+  begin
+    Exit(Fail(Format('Der Nachfahr %s ist nicht lesbar.', [ARef.ClassName]), AReason));
+  end;
+  try
+    Result := CheckTarget(mTarget, AReason) and Overridden(mTarget, mSkip, AReason);
+    if Result then
+    begin
+      Collect(mTarget, mSkip, mDeclarations, mBodies);
+      mText := Files.Text(ARef.FileName);
+      Result := TMemberTransfer.InsertInto(mText, mTarget.Name, mDeclarations, mBodies, AReason);
+      if Result then
+      begin
+        Files.Put(ARef.FileName, mText);
+      end;
+    end;
+  finally
+    mTarget.Free;
+    mTree.Free;
+  end;
+end;
+
+function TPushDown.InsertAll(out AReason: string): Boolean;
+var
+  mRef: TMemberClassRef;
+begin
+  // Schritt 2: in jeden Nachfahren einfügen.
+  AReason := '';
+  for mRef in Targets do
+  begin
+    if not InsertInto(mRef, AReason) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+procedure TPushDown.Finish;
+var
+  mId: Integer;
+begin
+  for mId in Picked do
+  begin
+    if TMemberTransfer.Has(Kept, mId) then
+    begin
+      Plan.Abstracts := Plan.Abstracts + [Source.Members[mId].Name];
+    end
+    else
+    begin
+      Plan.Moved := Plan.Moved + [Source.Members[mId].Name];
+    end;
+  end;
+  if (Kept <> nil) and (Request.AllTargets > Length(Targets)) then
+  begin
+    Plan.Warnings := Plan.Warnings + [Format('Die übrigen Nachfahren von %s müssen %s selbst überschreiben ' +
+      '(sonst EAbstractError).', [Source.Name, string.Join(', ', Plan.Abstracts)])];
+  end;
+end;
+
+{ TMoveMember: Verschieben }
+
+class function TMoveMember.PullUp(AFiles: TMemberFiles; const ASource, ATarget: TMemberClassRef;
+  const ARequest: TMoveMemberRequest; out APlan: TMoveMemberPlan; out AReason: string): Boolean;
+var
+  mWork: TPullUp;
+  mSourceTree, mTargetTree: TSyntaxTree;
 begin
   APlan := Default(TMoveMemberPlan);
   AReason := '';
-  Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, SourceTree);
-  if Source = nil then
+  mWork := Default(TPullUp);
+  mWork.Files := AFiles;
+  mWork.SourceRef := ASource;
+  mWork.TargetRef := ATarget;
+  mWork.Request := ARequest;
+  mWork.Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, mSourceTree);
+  if mWork.Source = nil then
   begin
     Exit(Fail(Format('%s ist nicht lesbar.', [ASource.ClassName]), AReason));
   end;
-  Target := nil;
-  TargetTree := nil;
+  mTargetTree := nil;
   try
-    Target := TMemberTransfer.ParseLayout(AFiles.Text(ATarget.FileName), ATarget.ClassName, TargetTree);
-    if Target = nil then
-    begin
-      Exit(Fail(Format('Der Vorfahr %s ist nicht lesbar.', [ATarget.ClassName]), AReason));
-    end;
-    if not SameGenerics(Source, Target, AReason) then
-    begin
-      Exit(False);
-    end;
-    Candidates := TMemberTransfer.Candidates(Source);
-    if not Chosen(Candidates, ARequest.Members, Picked, AReason) then
-    begin
-      Exit(False);
-    end;
-    Moved := nil;
-    Abstracts := nil;
-    for Id in Picked do
-    begin
-      if TMemberTransfer.Has(ARequest.Abstract, Id) then
-      begin
-        Index := TMemberTransfer.IndexOf(Candidates, Id);
-        if not Candidates[Index].CanAbstract then
-        begin
-          Exit(Fail(Format('%s kann nicht abstrakt werden: %s.', [Candidates[Index].Name, Candidates[Index].Reason]),
-            AReason));
-        end;
-        Abstracts := Abstracts + [Id];
-      end
-      else
-      begin
-        Moved := Moved + [Id];
-      end;
-    end;
-    // Was ganz wandert, darf nur benutzen, was mitwandert (abstrakt zählt).
-    Missing := TMemberTransfer.MissingNeeds(Source, Moved, Picked);
-    if Missing <> nil then
-    begin
-      Exit(Fail(string.Join('; ', Missing) + '. Bitte mitnehmen oder abstrakt deklarieren.', AReason));
-    end;
-    for Id in Picked do
-    begin
-      if Target.Find(Source.Members[Id].Name) <> nil then
-      begin
-        Exit(Fail(Format('%s hat schon ein Mitglied %s.', [Target.Name, Source.Members[Id].Name]), AReason));
-      end;
-    end;
-    // Andere Nachfahren des Ziels mit gleichnamigen Methoden.
-    Hits := nil;
-    Virtualize := nil;
-    for Ref in ARequest.Siblings do
-    begin
-      if SameText(Ref.ClassName, Source.Name) and SameText(Ref.FileName, ASource.FileName) then
-      begin
-        Continue;
-      end;
-      Sibling := TMemberTransfer.ParseLayout(AFiles.Text(Ref.FileName), Ref.ClassName, SiblingTree);
-      if Sibling = nil then
-      begin
-        Continue;
-      end;
-      try
-        for Id in Picked do
-        begin
-          Member := Source.Members[Id];
-          for Index in Sibling.Find(Member.Name) do
-          begin
-            Matched := (Member.Kind = TClassMemberKind.Method) and
-              (Sibling.Members[Index].Kind = TClassMemberKind.Method) and
-              (string.Join(',', Sibling.Members[Index].ParameterTypes) = string.Join(',', Member.ParameterTypes)) and
-              not Member.HasDirective('override') and not Sibling.Members[Index].HasDirective('override') and
-              (TMemberTransfer.AbstractBlocker(Sibling.Members[Index]) = '');
-            if Matched and ARequest.OverrideSiblings then
-            begin
-              Hit.Ref := Ref;
-              Hit.Member := Sibling.Members[Index];
-              Hits := Hits + [Hit];
-              if not TMemberTransfer.Has(Virtualize, Id) then
-              begin
-                Virtualize := Virtualize + [Id];
-              end;
-            end
-            else if Matched then
-            begin
-              APlan.Warnings := APlan.Warnings + [Format('%s.%s verdeckt dann %s.%s (ohne override).',
-                [Sibling.Name, Member.Name, Target.Name, Member.Name])];
-            end
-            else
-            begin
-              APlan.Warnings := APlan.Warnings + [Format('%s.%s passt nicht zu %s.%s und verdeckt es dann.',
-                [Sibling.Name, Member.Name, Target.Name, Member.Name])];
-            end;
-          end;
-        end;
-      finally
-        Sibling.Free;
-        SiblingTree.Free;
-      end;
-    end;
-    // Sichtbarkeit oben; gehobene abstrakte Methoden unten in denselben Abschnitt (sonst H2269).
-    SameUnit := SameText(ASource.FileName, ATarget.FileName);
-    Raised := nil;
-    for Id in Picked do
-    begin
-      if TMemberTransfer.MustRaise(Source, Id, Moved, TMemberTransfer.Has(Abstracts, Id), SameUnit, nil) then
-      begin
-        Raised := Raised + [Id];
-        APlan.Raised := APlan.Raised + [Source.Members[Id].Name];
-        APlan.Warnings := APlan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.',
-          [Source.Members[Id].Name, TClassEdits.VisibilityName(ARequest.RaiseVisibility), Source.Name])];
-      end;
-    end;
-    // Deklarationen und Rümpfe für oben.
-    Declarations := nil;
-    Bodies := nil;
-    for Id in Picked do
-    begin
-      Member := Source.Members[Id];
-      Visibility := Member.Visibility;
-      if TMemberTransfer.Has(Raised, Id) then
-      begin
-        Visibility := ARequest.RaiseVisibility;
-      end;
-      if TMemberTransfer.Has(Abstracts, Id) then
-      begin
-        Declaration := TMemberTransfer.WithDoc(Source, Id, TMemberTransfer.AbstractDeclaration(Source, Id));
-      end
-      else if TMemberTransfer.Has(Virtualize, Id) and not Member.IsVirtual then
-      begin
-        Declaration := TMemberTransfer.WithDoc(Source, Id, TMemberTransfer.VirtualDeclaration(Source, Id));
-      end
-      else
-      begin
-        Declaration := TMemberTransfer.MemberText(Source, Id);
-      end;
-      Declarations := Declarations + [TTransferDeclaration.Create(Declaration, Visibility,
-        Member.Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar])];
-      if TMemberTransfer.Has(Moved, Id) and (Member.Body <> nil) then
-      begin
-        Bodies := Bodies + [TClassEdits.BodyText(Source, Id, Target.Name)];
-        if CallsInherited(Member.Body) and (Source.Ancestors <> nil) and
-          not SameText(PlainName(Source.Ancestors[0]), Target.Name) then
-        begin
-          APlan.Warnings := APlan.Warnings + [Format('%s ruft inherited auf; in %s meint das den Vorfahren von %s.',
-            [Member.Name, Target.Name, Target.Name])];
-        end;
-      end;
-      if TMemberTransfer.Has(Abstracts, Id) then
-      begin
-        APlan.Abstracts := APlan.Abstracts + [Member.Name];
-      end
-      else
-      begin
-        APlan.Moved := APlan.Moved + [Member.Name];
-      end;
-    end;
-    // Schritt 1: Klasse ändern.
-    Edits := TClassEdits.DeleteMembers(Source, Moved, True) + TMemberTransfer.EmptiedSections(Source, Moved);
-    for Id in Abstracts do
-    begin
-      Edits := Edits + TMemberTransfer.OverrideEdits(Source, Source.Members[Id].Node, True);
-    end;
-    Text := TTextChanges.Apply(AFiles.Text(ASource.FileName), Edits);
-    Olds := nil;
-    for Id in Abstracts do
-    begin
-      if TMemberTransfer.Has(Raised, Id) then
-      begin
-        Olds := Olds + [Source.Members[Id]];
-      end;
-    end;
-    if not TMemberTransfer.Relocate(Text, Source.Name, Olds, ARequest.RaiseVisibility) then
-    begin
-      Exit(Fail(Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]), AReason));
-    end;
-    AFiles.Put(ASource.FileName, Text);
-    // Schritt 2: in den Vorfahren einfügen (gleiche Datei: auf dem neuen Stand).
-    Text := AFiles.Text(ATarget.FileName);
-    if not TMemberTransfer.InsertInto(Text, Target.Name, Declarations, Bodies, AReason) then
-    begin
-      Exit(False);
-    end;
-    AFiles.Put(ATarget.FileName, Text);
-    // Schritt 3: andere Nachfahren überschreiben.
-    for Hit in Hits do
-    begin
-      Text := AFiles.Text(Hit.Ref.FileName);
-      Sibling := TMemberTransfer.ParseLayout(Text, Hit.Ref.ClassName, SiblingTree);
-      if Sibling = nil then
-      begin
-        Continue;
-      end;
-      try
-        Index := TMemberTransfer.Same(Sibling, Hit.Member);
-        if Index < 0 then
-        begin
-          Continue;
-        end;
-        Text := TTextChanges.Apply(Text, TMemberTransfer.OverrideEdits(Sibling, Sibling.Members[Index].Node, True));
-        APlan.Overridden := APlan.Overridden + [Sibling.Name + '.' + Hit.Member.Name];
-      finally
-        Sibling.Free;
-        SiblingTree.Free;
-      end;
-      AFiles.Put(Hit.Ref.FileName, Text);
-    end;
+    mWork.Target := TMemberTransfer.ParseLayout(AFiles.Text(ATarget.FileName), ATarget.ClassName, mTargetTree);
+    Result := mWork.Run(AReason);
+    APlan := mWork.Plan;
   finally
-    Target.Free;
-    TargetTree.Free;
-    Source.Free;
-    SourceTree.Free;
+    mWork.Target.Free;
+    mTargetTree.Free;
+    mWork.Source.Free;
+    mSourceTree.Free;
   end;
-  Result := True;
 end;
 
 class function TMoveMember.PushDown(AFiles: TMemberFiles; const ASource: TMemberClassRef;
   const ATargets: TArray<TMemberClassRef>; const ARequest: TMoveMemberRequest; out APlan: TMoveMemberPlan;
   out AReason: string): Boolean;
 var
-  Source, Target: TClassLayout;
-  SourceTree, TargetTree: TSyntaxTree;
-  Candidates: TArray<TTransferCandidate>;
-  Picked, Kept, Moved, Needed, Skip: TArray<Integer>;
-  Id, Need, User, Found: Integer;
-  Member: TClassMember;
-  Visibility: TClassVisibility;
-  Ref: TMemberClassRef;
-  Usage: TMemberUsage;
-  Places, Users: TArray<string>;
-  OtherUnit, Raise_: Boolean;
-  Edits: TArray<TTextEdit>;
-  Olds: TArray<TClassMember>;
-  Declarations: TArray<TTransferDeclaration>;
-  Bodies: TArray<string>;
-  Text, Declaration: string;
+  mWork: TPushDown;
+  mSourceTree: TSyntaxTree;
 begin
   APlan := Default(TMoveMemberPlan);
   AReason := '';
@@ -638,220 +1167,23 @@ begin
   begin
     Exit(Fail('Bitte mindestens einen Nachfahren wählen.', AReason));
   end;
-  Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, SourceTree);
-  if Source = nil then
+  mWork := Default(TPushDown);
+  mWork.Files := AFiles;
+  mWork.SourceRef := ASource;
+  mWork.Targets := ATargets;
+  mWork.Request := ARequest;
+  mWork.Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, mSourceTree);
+  if mWork.Source = nil then
   begin
     Exit(Fail(Format('%s ist nicht lesbar.', [ASource.ClassName]), AReason));
   end;
   try
-    Candidates := TMemberTransfer.Candidates(Source);
-    if not Chosen(Candidates, ARequest.Members, Picked, AReason) then
-    begin
-      Exit(False);
-    end;
-    // Im Vorfahren abstrakt bleiben können nur Methoden, die virtuell werden dürfen.
-    Kept := nil;
-    Moved := nil;
-    for Id in Picked do
-    begin
-      if ARequest.KeepAbstract and Candidates[TMemberTransfer.IndexOf(Candidates, Id)].CanAbstract then
-      begin
-        Kept := Kept + [Id];
-      end
-      else
-      begin
-        Moved := Moved + [Id];
-      end;
-    end;
-    // Wer das Mitglied oben weiter benutzt.
-    for Id in Moved do
-    begin
-      Users := nil;
-      for User in Source.UsersOf(Id) do
-      begin
-        if not TMemberTransfer.Has(Picked, User) then
-        begin
-          Users := Users + [Source.Members[User].Name];
-        end;
-      end;
-      if Users <> nil then
-      begin
-        Exit(Fail(Format('%s wird in %s weiter benutzt (%s).', [Source.Members[Id].Name, Source.Name,
-          string.Join(', ', Users)]), AReason));
-      end;
-      Places := nil;
-      for Usage in ARequest.Usages do
-      begin
-        if (Usage.Id = Id) and (Length(Places) < 5) then
-        begin
-          Places := Places + [Usage.Where];
-        end;
-      end;
-      if Places <> nil then
-      begin
-        Exit(Fail(Format('%s wird außerhalb der Nachfahren über %s benutzt: %s.', [Source.Members[Id].Name,
-          Source.Name, string.Join(', ', Places)]), AReason));
-      end;
-    end;
-    // Mitglieder, die oben bleiben und unten sichtbar sein müssen.
-    OtherUnit := False;
-    for Ref in ATargets do
-    begin
-      if not SameText(Ref.FileName, ASource.FileName) then
-      begin
-        OtherUnit := True;
-      end;
-    end;
-    Needed := nil;
-    for Id in Moved do
-    begin
-      for Need in Source.UsedBy(Id) do
-      begin
-        if not TMemberTransfer.Has(Picked, Need) and not TMemberTransfer.Has(Needed, Need) then
-        begin
-          Raise_ := (Source.Members[Need].Visibility = TClassVisibility.StrictPrivate) or
-            ((Source.Members[Need].Visibility = TClassVisibility.Private_) and OtherUnit);
-          if Raise_ and (Source.Members[Need].Kind <> TClassMemberKind.Other) then
-          begin
-            Needed := Needed + [Need];
-            APlan.Raised := APlan.Raised + [Source.Members[Need].Name];
-            APlan.Warnings := APlan.Warnings + [Format('%s wird %s, weil die Nachfahren es benutzen.',
-              [Source.Members[Need].Name, TClassEdits.VisibilityName(ARequest.RaiseVisibility)])];
-          end;
-        end;
-      end;
-    end;
-    // Abstrakt bleibende Methoden müssen die Nachfahren überschreiben können.
-    for Id in Kept do
-    begin
-      Raise_ := (Source.Members[Id].Visibility = TClassVisibility.StrictPrivate) or
-        ((Source.Members[Id].Visibility = TClassVisibility.Private_) and OtherUnit);
-      if Raise_ then
-      begin
-        Needed := Needed + [Id];
-        APlan.Raised := APlan.Raised + [Source.Members[Id].Name];
-        APlan.Warnings := APlan.Warnings + [Format('%s wird %s, damit die Nachfahren es überschreiben können.',
-          [Source.Members[Id].Name, TClassEdits.VisibilityName(ARequest.RaiseVisibility)])];
-      end;
-    end;
-    // Schritt 1: Vorfahr ändern.
-    Edits := TClassEdits.DeleteMembers(Source, Moved, True) + TMemberTransfer.EmptiedSections(Source, Moved);
-    for Id in Kept do
-    begin
-      Member := Source.Members[Id];
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Member.Node.StartPos, Member.Node.EndPos),
-        TMemberTransfer.AbstractDeclaration(Source, Id))];
-      if Member.Body <> nil then
-      begin
-        Edits := Edits + [TClassEdits.DeleteLines(Source, Member.BodyFirstLine, Member.BodyLastLine)];
-      end;
-    end;
-    Text := TTextChanges.Apply(AFiles.Text(ASource.FileName), Edits);
-    Olds := nil;
-    for Need in Needed do
-    begin
-      Olds := Olds + [Source.Members[Need]];
-    end;
-    if not TMemberTransfer.Relocate(Text, Source.Name, Olds, ARequest.RaiseVisibility) then
-    begin
-      Exit(Fail(Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]), AReason));
-    end;
-    AFiles.Put(ASource.FileName, Text);
-    // Schritt 2: in jeden Nachfahren einfügen.
-    for Ref in ATargets do
-    begin
-      Target := TMemberTransfer.ParseLayout(AFiles.Text(Ref.FileName), Ref.ClassName, TargetTree);
-      if Target = nil then
-      begin
-        Exit(Fail(Format('Der Nachfahr %s ist nicht lesbar.', [Ref.ClassName]), AReason));
-      end;
-      try
-        if (Target.Ancestors = nil) or not SameText(PlainName(Target.Ancestors[0]), Source.Name) then
-        begin
-          Exit(Fail(Format('%s ist kein direkter Nachfahr von %s.', [Target.Name, Source.Name]), AReason));
-        end;
-        if not SameGenerics(Source, Target, AReason) then
-        begin
-          Exit(False);
-        end;
-        Skip := nil;
-        for Id in Picked do
-        begin
-          for Found in Target.Find(Source.Members[Id].Name) do
-          begin
-            if TMemberTransfer.Has(Kept, Id) and (Target.Members[Found].Kind = TClassMemberKind.Method) and
-              Target.Members[Found].HasDirective('override') and (string.Join(',',
-              Target.Members[Found].ParameterTypes) = string.Join(',', Source.Members[Id].ParameterTypes)) then
-            begin
-              Skip := Skip + [Id];
-            end
-            else
-            begin
-              Exit(Fail(Format('%s hat schon ein Mitglied %s.', [Target.Name, Source.Members[Id].Name]), AReason));
-            end;
-          end;
-        end;
-        Declarations := nil;
-        Bodies := nil;
-        for Id in Picked do
-        begin
-          if TMemberTransfer.Has(Skip, Id) then
-          begin
-            Continue;
-          end;
-          Member := Source.Members[Id];
-          Visibility := Member.Visibility;
-          if TMemberTransfer.Has(Needed, Id) then
-          begin
-            Visibility := ARequest.RaiseVisibility;
-          end;
-          if TMemberTransfer.Has(Kept, Id) then
-          begin
-            Declaration := TMemberTransfer.WithDoc(Source, Id, TMemberTransfer.OverrideDeclaration(Source, Id));
-          end
-          else
-          begin
-            Declaration := TMemberTransfer.MemberText(Source, Id);
-          end;
-          Declarations := Declarations + [TTransferDeclaration.Create(Declaration, Visibility,
-            Member.Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar])];
-          if Member.Body <> nil then
-          begin
-            Bodies := Bodies + [TClassEdits.BodyText(Source, Id, Target.Name)];
-          end;
-        end;
-        Text := AFiles.Text(Ref.FileName);
-        if not TMemberTransfer.InsertInto(Text, Target.Name, Declarations, Bodies, AReason) then
-        begin
-          Exit(False);
-        end;
-        AFiles.Put(Ref.FileName, Text);
-      finally
-        Target.Free;
-        TargetTree.Free;
-      end;
-    end;
-    for Id in Picked do
-    begin
-      if TMemberTransfer.Has(Kept, Id) then
-      begin
-        APlan.Abstracts := APlan.Abstracts + [Source.Members[Id].Name];
-      end
-      else
-      begin
-        APlan.Moved := APlan.Moved + [Source.Members[Id].Name];
-      end;
-    end;
-    if (Kept <> nil) and (ARequest.AllTargets > Length(ATargets)) then
-    begin
-      APlan.Warnings := APlan.Warnings + [Format('Die übrigen Nachfahren von %s müssen %s selbst überschreiben ' +
-        '(sonst EAbstractError).', [Source.Name, string.Join(', ', APlan.Abstracts)])];
-    end;
+    Result := mWork.Run(AReason);
+    APlan := mWork.Plan;
   finally
-    Source.Free;
-    SourceTree.Free;
+    mWork.Source.Free;
+    mSourceTree.Free;
   end;
-  Result := True;
 end;
 
 end.

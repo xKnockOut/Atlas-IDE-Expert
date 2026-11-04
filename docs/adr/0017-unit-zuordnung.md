@@ -147,6 +147,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Documentation.Layout` | `Core/Documentation/Atlas.Core.Documentation.Layout.pas` | Ordner `Core/Documentation` |
+| `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
@@ -425,6 +426,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.NewLine` | `IDE/Editor/Atlas.IDE.Editor.NewLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Overloads` | `IDE/Editor/Atlas.IDE.Editor.Overloads.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.OverviewRuler` | `IDE/Editor/Atlas.IDE.Editor.OverviewRuler.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.PaintedLine` | `IDE/Editor/Atlas.IDE.Editor.PaintedLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Pairs` | `IDE/Editor/Atlas.IDE.Editor.Pairs.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PatternContinuation` | `IDE/Editor/Atlas.IDE.Editor.PatternContinuation.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PromoteVariable` | `IDE/Editor/Atlas.IDE.Editor.PromoteVariable.pas` | Ordner `IDE/Editor` |
@@ -666,6 +668,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Development` | `Core/Tracker/Atlas.Core.Tracker.Development.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Files` | `Core/Tracker/Atlas.Core.Tracker.Files.pas` | Ordner `Core/Tracker`; Anmeldung von Platte und Shell, leere Umsetzung ohne Anmeldung (Paket 2d) |
 | `Atlas.Core.Tracker.Internals.GitHubApi` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubApi.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Internals.GitHubJson` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubJson.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.GitHubParse` | `Core/Tracker/Atlas.Core.Tracker.GitHubParse.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueCache` | `Core/Tracker/Atlas.Core.Tracker.IssueCache.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Markdown` | `Core/Tracker/Atlas.Core.Tracker.Markdown.pas` | Ordner `Core/Tracker` |
@@ -677,6 +681,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Projects` | `Core/Tracker/Atlas.Core.Tracker.Projects.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.GitHubBoards` | `Core/Tracker/Atlas.Core.Tracker.GitHubBoards.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
@@ -910,9 +915,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
+| `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 
 ## Atlas.IDE.Build
 
@@ -964,10 +971,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notes.Store` | `Core/Notes/Atlas.Core.Notes.Store.pas` | Ordner `Core/Notes` |
 | `Atlas.IDE.Bookmarks.Gutter` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Gutter.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.Composition` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.pas` | Anmeldung des Moduls `atlas.bookmarks`, #1455 |
+| `Atlas.IDE.Bookmarks.Composition.Todos` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Composition.Todos.pas` | TODO-Liste des Projekts (#68), von der Composition aufgerufen |
 | `Atlas.IDE.Bookmarks.QuickChord` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickChord.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.QuickColumn` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickColumn.pas` | Ordner `IDE/Bookmarks` |
+| `Atlas.IDE.Bookmarks.QuickPopups` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickPopups.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.SavedPlaces` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.SavedPlaces.pas` | IAtlasSavedPlacesSource für den Reiter „Gemerkt“ der Willkommensseite, #1456 |
 | `Atlas.IDE.Bookmarks.Service` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Service.pas` | Ordner `IDE/Bookmarks` |
+| `Atlas.IDE.Bookmarks.QuickService` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.QuickService.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Bookmarks.Window` | `IDE/Bookmarks/Atlas.IDE.Bookmarks.Window.pas` | Ordner `IDE/Bookmarks` |
 | `Atlas.IDE.Notes.Gutter` | `IDE/Notes/Atlas.IDE.Notes.Gutter.pas` | Ordner `IDE/Notes` |
 | `Atlas.IDE.Notes.Service` | `IDE/Notes/Atlas.IDE.Notes.Service.pas` | Ordner `IDE/Notes` |

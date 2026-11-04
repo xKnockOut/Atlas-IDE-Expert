@@ -416,96 +416,124 @@ begin
   Result := AOffset + Delta;
 end;
 
+/// <summary>AEdits aufsteigend nach Start (stabil).</summary>
+function SortEdits(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
+var
+  mEdit: TTextEdit;
+  mIndex, mInner: Integer;
+begin
+  Result := Copy(AEdits);
+  for mIndex := 1 to High(Result) do
+  begin
+    mEdit := Result[mIndex];
+    mInner := mIndex - 1;
+    while (mInner >= 0) and (Result[mInner].Start > mEdit.Start) do
+    begin
+      Result[mInner + 1] := Result[mInner];
+      Dec(mInner);
+    end;
+    Result[mInner + 1] := mEdit;
+  end;
+end;
+
+/// <summary>Überlappungen auf das Ende der vorigen Ersetzung kürzen. True, wenn sich etwas ändert.</summary>
+function ClipEdits(var AEdits: TArray<TTextEdit>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to High(AEdits) do
+  begin
+    if (mIndex > 0) and (AEdits[mIndex].Start < AEdits[mIndex - 1].Stop) then
+    begin
+      AEdits[mIndex].Start := AEdits[mIndex - 1].Stop;
+    end;
+    if AEdits[mIndex].Stop < AEdits[mIndex].Start then
+    begin
+      AEdits[mIndex].Stop := AEdits[mIndex].Start;
+    end;
+    Result := Result or (AEdits[mIndex].Stop > AEdits[mIndex].Start) or (AEdits[mIndex].Text <> '');
+  end;
+end;
+
+/// <summary>Neuer Text nach den aufsteigenden Ersetzungen AEdits; AEdited: neues Ende je bearbeiteter Marke, -1
+/// für die übrigen.</summary>
+function EditedText(const AText: string; var AEdits: TArray<TTextEdit>; ACaretCount: Integer;
+  out AEdited: TArray<Integer>): string;
+var
+  mIndex, mPosition, mDelta: Integer;
+begin
+  Result := '';
+  mPosition := 0;
+  mDelta := 0;
+  AEdited := nil;
+  SetLength(AEdited, ACaretCount);
+  for mIndex := 0 to High(AEdited) do
+  begin
+    AEdited[mIndex] := -1;
+  end;
+  for mIndex := 0 to High(AEdits) do
+  begin
+    Result := Result + Copy(AText, mPosition + 1, AEdits[mIndex].Start - mPosition) + AEdits[mIndex].Text;
+    mPosition := AEdits[mIndex].Stop;
+    AEdits[mIndex].NewStop := AEdits[mIndex].Start + mDelta + Length(AEdits[mIndex].Text);
+    mDelta := mDelta + Length(AEdits[mIndex].Text) - (AEdits[mIndex].Stop - AEdits[mIndex].Start);
+    if (AEdits[mIndex].Caret >= 0) and (AEdits[mIndex].Caret < ACaretCount) then
+    begin
+      AEdited[AEdits[mIndex].Caret] := AEdits[mIndex].NewStop;
+    end;
+  end;
+  Result := Result + Copy(AText, mPosition + 1, MaxInt);
+end;
+
+/// <summary>Marke nach den Ersetzungen: bearbeitete hinter ihr Eingefügtes (AEdited >= 0), die übrigen rücken mit.
+/// </summary>
+function MovedCaret(const ACaret: TAtlasCaret; AEdited: Integer; const AEdits: TArray<TTextEdit>;
+  const AOldIndex, ANewIndex: TLineIndex): TAtlasCaret;
+var
+  mLine, mCharacter, mAnchorLine, mAnchorCharacter: Integer;
+begin
+  if AEdited >= 0 then
+  begin
+    ANewIndex.Position(AEdited, mLine, mCharacter);
+    Result := TAtlasCaret.At(mLine, mCharacter);
+  end
+  else
+  begin
+    ANewIndex.Position(MapOffset(AEdits, AOldIndex.Offset(ACaret.Line, ACaret.Character)), mLine, mCharacter);
+    ANewIndex.Position(MapOffset(AEdits, AOldIndex.Offset(ACaret.AnchorLine, ACaret.AnchorCharacter)),
+      mAnchorLine, mAnchorCharacter);
+    Result := TAtlasCaret.Range(mAnchorLine, mAnchorCharacter, mLine, mCharacter);
+  end;
+end;
+
 /// <summary>Wendet AEdits (je höchstens eine Ersetzung pro Marke) auf AText an. Bearbeitete Marken stehen danach
 /// hinter ihrem Eingefügten ohne Markierung, die übrigen rücken mit. False, wenn sich nichts ändert.</summary>
 function ApplyEdits(const AText: string; const ACarets: TAtlasCarets; const AEdits: TArray<TTextEdit>;
   out ANewText: string; out ANewCarets: TAtlasCarets): Boolean;
 var
-  Sorted: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  Edited: TArray<Integer>;
-  Index, Inner, Position, Delta, Line, Character, AnchorLine, AnchorCharacter: Integer;
-  OldIndex, NewIndex: TLineIndex;
-  Caret: TAtlasCaret;
+  mSorted: TArray<TTextEdit>;
+  mEdited: TArray<Integer>;
+  mIndex: Integer;
+  mOldIndex, mNewIndex: TLineIndex;
 begin
-  // Aufsteigend nach Start; Überlappungen auf das Ende der vorigen gekürzt.
-  Sorted := Copy(AEdits);
-  for Index := 1 to High(Sorted) do
-  begin
-    Edit := Sorted[Index];
-    Inner := Index - 1;
-    while (Inner >= 0) and (Sorted[Inner].Start > Edit.Start) do
-    begin
-      Sorted[Inner + 1] := Sorted[Inner];
-      Dec(Inner);
-    end;
-    Sorted[Inner + 1] := Edit;
-  end;
-  Result := False;
-  for Index := 0 to High(Sorted) do
-  begin
-    if (Index > 0) and (Sorted[Index].Start < Sorted[Index - 1].Stop) then
-    begin
-      Sorted[Index].Start := Sorted[Index - 1].Stop;
-    end;
-    if Sorted[Index].Stop < Sorted[Index].Start then
-    begin
-      Sorted[Index].Stop := Sorted[Index].Start;
-    end;
-    if (Sorted[Index].Stop > Sorted[Index].Start) or (Sorted[Index].Text <> '') then
-    begin
-      Result := True;
-    end;
-  end;
+  mSorted := SortEdits(AEdits);
+  Result := ClipEdits(mSorted);
   ANewText := AText;
   ANewCarets := ACarets;
-  if not Result then
+  if Result then
   begin
-    Exit;
-  end;
-  ANewText := '';
-  Position := 0;
-  Delta := 0;
-  Edited := nil;
-  SetLength(Edited, Length(ACarets));
-  for Index := 0 to High(Edited) do
-  begin
-    Edited[Index] := -1;
-  end;
-  for Index := 0 to High(Sorted) do
-  begin
-    ANewText := ANewText + Copy(AText, Position + 1, Sorted[Index].Start - Position) + Sorted[Index].Text;
-    Position := Sorted[Index].Stop;
-    Sorted[Index].NewStop := Sorted[Index].Start + Delta + Length(Sorted[Index].Text);
-    Delta := Delta + Length(Sorted[Index].Text) - (Sorted[Index].Stop - Sorted[Index].Start);
-    if (Sorted[Index].Caret >= 0) and (Sorted[Index].Caret < Length(Edited)) then
+    ANewText := EditedText(AText, mSorted, Length(ACarets), mEdited);
+    mOldIndex := TLineIndex.Build(AText);
+    mNewIndex := TLineIndex.Build(ANewText);
+    ANewCarets := nil;
+    SetLength(ANewCarets, Length(ACarets));
+    for mIndex := 0 to High(ACarets) do
     begin
-      Edited[Sorted[Index].Caret] := Sorted[Index].NewStop;
+      ANewCarets[mIndex] := MovedCaret(ACarets[mIndex], mEdited[mIndex], mSorted, mOldIndex, mNewIndex);
     end;
+    ANewCarets := TAtlasMultiCursor.Merge(ANewCarets);
   end;
-  ANewText := ANewText + Copy(AText, Position + 1, MaxInt);
-  OldIndex := TLineIndex.Build(AText);
-  NewIndex := TLineIndex.Build(ANewText);
-  ANewCarets := nil;
-  SetLength(ANewCarets, Length(ACarets));
-  for Index := 0 to High(ACarets) do
-  begin
-    if Edited[Index] >= 0 then
-    begin
-      NewIndex.Position(Edited[Index], Line, Character);
-      Caret := TAtlasCaret.At(Line, Character);
-    end
-    else
-    begin
-      Caret := ACarets[Index];
-      NewIndex.Position(MapOffset(Sorted, OldIndex.Offset(Caret.Line, Caret.Character)), Line, Character);
-      NewIndex.Position(MapOffset(Sorted, OldIndex.Offset(Caret.AnchorLine, Caret.AnchorCharacter)),
-        AnchorLine, AnchorCharacter);
-      Caret := TAtlasCaret.Range(AnchorLine, AnchorCharacter, Line, Character);
-    end;
-    ANewCarets[Index] := Caret;
-  end;
-  ANewCarets := TAtlasMultiCursor.Merge(ANewCarets);
 end;
 
 function MakeEdit(AStart, AStop: Integer; const AText: string; ACaret: Integer): TTextEdit;
@@ -553,50 +581,88 @@ begin
   end;
 end;
 
-/// <summary>Nächstes Vorkommen von ANeedle ab (AFromLine, AFromCharacter), am Dateiende von vorn; Stellen, die
-/// eine Markierung von AExisting überschneiden, zählen nicht.</summary>
-function Find(const ALines: TArray<string>; const AExisting: TAtlasCarets; const ANeedle: string;
-  AFromLine, AFromCharacter: Integer; AMatchCase, AWholeWord: Boolean; out ALine, ACharacter: Integer): Boolean;
+type
+  /// <summary>Was Find sucht: Needle ab (FromLine, FromCharacter).</summary>
+  TFindQuery = record
+    Needle: string;
+    FromLine: Integer;
+    FromCharacter: Integer;
+    MatchCase: Boolean;
+    WholeWord: Boolean;
+    class function Create(const ANeedle: string; AFromLine, AFromCharacter: Integer; AMatchCase,
+      AWholeWord: Boolean): TFindQuery; static;
+  end;
+
+class function TFindQuery.Create(const ANeedle: string; AFromLine, AFromCharacter: Integer; AMatchCase,
+  AWholeWord: Boolean): TFindQuery;
+begin
+  Result.Needle := ANeedle;
+  Result.FromLine := AFromLine;
+  Result.FromCharacter := AFromCharacter;
+  Result.MatchCase := AMatchCase;
+  Result.WholeWord := AWholeWord;
+end;
+
+/// <summary>Erste passende Stelle von AQuery in Zeile ALine ab AFrom (0-basiert); -1 ohne.</summary>
+function FindInLine(const ALines: TArray<string>; const AExisting: TAtlasCarets; const AQuery: TFindQuery;
+  const ANeedle: string; ALine, AFrom: Integer): Integer;
 var
-  Pass, Line, From, Found: Integer;
-  Needle, Hay: string;
+  mHay: string;
+  mFound: Integer;
+begin
+  Result := -1;
+  mHay := ALines[ALine];
+  if not AQuery.MatchCase then
+  begin
+    mHay := AnsiLowerCase(mHay);
+  end;
+  mFound := Pos(ANeedle, mHay, AFrom + 1);
+  while (Result < 0) and (mFound > 0) do
+  begin
+    if (not AQuery.WholeWord or IsWholeWord(ALines[ALine], mFound - 1, Length(ANeedle))) and
+      not Taken(AExisting, ALine, mFound - 1, mFound - 1 + Length(ANeedle)) then
+    begin
+      Result := mFound - 1;
+    end;
+    mFound := Pos(ANeedle, mHay, mFound + 1);
+  end;
+end;
+
+/// <summary>Nächstes Vorkommen von AQuery.Needle ab (FromLine, FromCharacter), am Dateiende von vorn; Stellen, die
+/// eine Markierung von AExisting überschneiden, zählen nicht.</summary>
+function Find(const ALines: TArray<string>; const AExisting: TAtlasCarets; const AQuery: TFindQuery;
+  out ALine, ACharacter: Integer): Boolean;
+var
+  mPass, mFrom: Integer;
+  mNeedle: string;
 begin
   Result := False;
   ALine := 0;
   ACharacter := 0;
-  if (ANeedle = '') or (Length(ALines) = 0) then
+  if (AQuery.Needle <> '') and (Length(ALines) > 0) then
   begin
-    Exit;
-  end;
-  Needle := ANeedle;
-  if not AMatchCase then
-  begin
-    Needle := AnsiLowerCase(ANeedle);
-  end;
-  for Pass := 0 to Length(ALines) do
-  begin
-    Line := (EnsureRange(AFromLine, 0, High(ALines)) + Pass) mod Length(ALines);
-    From := 0;
-    if Pass = 0 then
+    mNeedle := AQuery.Needle;
+    if not AQuery.MatchCase then
     begin
-      From := Max(0, AFromCharacter);
+      mNeedle := AnsiLowerCase(AQuery.Needle);
     end;
-    Hay := ALines[Line];
-    if not AMatchCase then
+    mPass := 0;
+    while not Result and (mPass <= Length(ALines)) do
     begin
-      Hay := AnsiLowerCase(Hay);
-    end;
-    Found := Pos(Needle, Hay, From + 1);
-    while Found > 0 do
-    begin
-      if (not AWholeWord or IsWholeWord(ALines[Line], Found - 1, Length(Needle))) and
-        not Taken(AExisting, Line, Found - 1, Found - 1 + Length(Needle)) then
+      ALine := (EnsureRange(AQuery.FromLine, 0, High(ALines)) + mPass) mod Length(ALines);
+      mFrom := 0;
+      if mPass = 0 then
       begin
-        ALine := Line;
-        ACharacter := Found - 1;
-        Exit(True);
+        mFrom := Max(0, AQuery.FromCharacter);
       end;
-      Found := Pos(Needle, Hay, Found + 1);
+      ACharacter := FindInLine(ALines, AExisting, AQuery, mNeedle, ALine, mFrom);
+      Result := ACharacter >= 0;
+      Inc(mPass);
+    end;
+    if not Result then
+    begin
+      ALine := 0;
+      ACharacter := 0;
     end;
   end;
 end;
@@ -633,140 +699,249 @@ begin
   Result := True;
 end;
 
+/// <summary>Rücktaste: Markierung löschen, sonst das Zeichen (bzw. #13#10) davor.</summary>
+procedure AddBackspace(const AText: string; AStart, AStop, ACaret: Integer; var AEdits: TArray<TTextEdit>);
+begin
+  if AStart < AStop then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart, AStop, '', ACaret)];
+  end
+  else if (AStart >= 2) and (AText[AStart - 1] = #13) and (AText[AStart] = #10) then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart - 2, AStart, '', ACaret)];
+  end
+  else if AStart > 0 then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart - 1, AStart, '', ACaret)];
+  end;
+end;
+
+/// <summary>Entf: Markierung löschen, sonst das Zeichen (bzw. #13#10) dahinter.</summary>
+procedure AddDelete(const AText: string; AStart, AStop, ACaret: Integer; var AEdits: TArray<TTextEdit>);
+begin
+  if AStart < AStop then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart, AStop, '', ACaret)];
+  end
+  else if (AStart + 2 <= Length(AText)) and (AText[AStart + 1] = #13) and (AText[AStart + 2] = #10) then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart, AStart + 2, '', ACaret)];
+  end
+  else if AStart < Length(AText) then
+  begin
+    AEdits := AEdits + [MakeEdit(AStart, AStart + 1, '', ACaret)];
+  end;
+end;
+
+/// <summary>Zeilenumbruch mit dem Einzug der Zeile ALine bis zum Cursor.</summary>
+function NewLineEdit(const AText: string; const AIndex: TLineIndex; ALine, AStart, AStop, ACaret: Integer):
+  TTextEdit;
+var
+  mLine, mIndent: Integer;
+  mLineText: string;
+begin
+  mLine := EnsureRange(ALine, 0, AIndex.Count - 1);
+  mLineText := Copy(AText, AIndex.Starts[mLine] + 1, AIndex.Lengths[mLine]);
+  mIndent := 0;
+  while (mIndent < AStart - AIndex.Starts[mLine]) and (mIndent < Length(mLineText)) and
+    IsSpace(mLineText[mIndent + 1]) do
+  begin
+    Inc(mIndent);
+  end;
+  Result := MakeEdit(AStart, AStop, TTextLines.LineBreakOf(AText) + Copy(mLineText, 1, mIndent), ACaret);
+end;
+
+/// <summary>Spiegel der Ersetzung um die Marke ACaret: ABefore Zeichen davor, AAfter dahinter, in ihrer Zeile.
+/// </summary>
+function MirrorEdit(const AIndex: TLineIndex; const ACaret: TAtlasCaret; ABefore, AAfter: Integer;
+  const AInsert: string; ACaretIndex: Integer): TTextEdit;
+var
+  mOffset, mLine, mLineStart: Integer;
+begin
+  mOffset := AIndex.Offset(ACaret.Line, ACaret.Character);
+  mLine := EnsureRange(ACaret.Line, 0, AIndex.Count - 1);
+  mLineStart := AIndex.Starts[mLine];
+  Result := MakeEdit(Max(mLineStart, mOffset - ABefore), Min(mLineStart + AIndex.Lengths[mLine], mOffset + AAfter),
+    AInsert, ACaretIndex);
+end;
+
+type
+  {$SCOPEDENUMS ON}
+  TCharClass = (Space, Ident, Symbol);
+  {$SCOPEDENUMS OFF}
+
+function ClassOf(AChar: Char): TCharClass;
+begin
+  if IsSpace(AChar) then
+  begin
+    Result := TCharClass.Space;
+  end
+  else if TTextChars.IsIdentChar(AChar) then
+  begin
+    Result := TCharClass.Ident;
+  end
+  else
+  begin
+    Result := TCharClass.Symbol;
+  end;
+end;
+
+/// <summary>Ab AIndex (1-basiert) in Schritten AStep über Zeichen der Klasse AClass; Ergebnis: erstes Zeichen
+/// danach (0 bzw. Length + 1 am Rand).</summary>
+function SkipClass(const AText: string; AIndex, AStep: Integer; AClass: TCharClass): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 1) and (Result <= Length(AText)) and (ClassOf(AText[Result]) = AClass) do
+  begin
+    Inc(Result, AStep);
+  end;
+end;
+
+procedure MoveLeft(const ALines: TArray<string>; var ALine, ACharacter: Integer);
+begin
+  if ACharacter > 0 then
+  begin
+    Dec(ACharacter);
+  end
+  else if ALine > 0 then
+  begin
+    Dec(ALine);
+    ACharacter := Length(ALines[ALine]);
+  end;
+end;
+
+procedure MoveRight(const ALines: TArray<string>; var ALine, ACharacter: Integer);
+begin
+  if ACharacter < Length(ALines[ALine]) then
+  begin
+    Inc(ACharacter);
+  end
+  else if ALine < High(ALines) then
+  begin
+    Inc(ALine);
+    ACharacter := 0;
+  end;
+end;
+
+procedure MoveUp(const ALines: TArray<string>; AColumn, ATabWidth: Integer; var ALine, ACharacter: Integer);
+begin
+  if ALine = 0 then
+  begin
+    ACharacter := 0;
+  end
+  else
+  begin
+    Dec(ALine);
+    ACharacter := CharacterAt(ALines[ALine], AColumn, ATabWidth);
+  end;
+end;
+
+procedure MoveDown(const ALines: TArray<string>; AColumn, ATabWidth: Integer; var ALine, ACharacter: Integer);
+begin
+  if ALine = High(ALines) then
+  begin
+    ACharacter := Length(ALines[ALine]);
+  end
+  else
+  begin
+    Inc(ALine);
+    ACharacter := CharacterAt(ALines[ALine], AColumn, ATabWidth);
+  end;
+end;
+
+/// <summary>Hinter das Wort (bzw. die Zeichenfolge) am Cursor und den Leerraum danach; am Zeilenende in die
+/// nächste Zeile.</summary>
+procedure MoveWordRight(const ALines: TArray<string>; var ALine, ACharacter: Integer);
+var
+  mText: string;
+  mIndex: Integer;
+  mClass: TCharClass;
+begin
+  mText := ALines[ALine];
+  if ACharacter >= Length(mText) then
+  begin
+    if ALine < High(ALines) then
+    begin
+      Inc(ALine);
+      ACharacter := 0;
+    end;
+  end
+  else
+  begin
+    mIndex := ACharacter + 1;
+    mClass := ClassOf(mText[mIndex]);
+    if mClass <> TCharClass.Space then
+    begin
+      mIndex := SkipClass(mText, mIndex, 1, mClass);
+    end;
+    ACharacter := SkipClass(mText, mIndex, 1, TCharClass.Space) - 1;
+  end;
+end;
+
+/// <summary>Über Leerraum zurück an den Anfang des Worts (bzw. der Zeichenfolge); am Zeilenanfang in die vorige
+/// Zeile.</summary>
+procedure MoveWordLeft(const ALines: TArray<string>; var ALine, ACharacter: Integer);
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  if ACharacter = 0 then
+  begin
+    if ALine > 0 then
+    begin
+      Dec(ALine);
+      ACharacter := Length(ALines[ALine]);
+    end;
+  end
+  else
+  begin
+    mText := ALines[ALine];
+    mIndex := SkipClass(mText, ACharacter, -1, TCharClass.Space);
+    if mIndex >= 1 then
+    begin
+      mIndex := SkipClass(mText, mIndex, -1, ClassOf(mText[mIndex]));
+    end;
+    ACharacter := mIndex;
+  end;
+end;
+
 /// <summary>Ein Punkt (ALine, ACharacter) nach AMove; AColumn = gewünschte Anzeigespalte (-1 = keine).</summary>
 procedure MovePoint(const ALines: TArray<string>; AMove: TAtlasCaretMove; ATabWidth: Integer;
   var ALine, ACharacter, AColumn: Integer);
 var
-  Text: string;
-  Index, Column: Integer;
+  mColumn: Integer;
 begin
   ALine := EnsureRange(ALine, 0, High(ALines));
-  Text := ALines[ALine];
-  ACharacter := EnsureRange(ACharacter, 0, Length(Text));
-  Column := AColumn;
-  if Column < 0 then
+  ACharacter := EnsureRange(ACharacter, 0, Length(ALines[ALine]));
+  mColumn := AColumn;
+  if mColumn < 0 then
   begin
-    Column := DisplayColumn(Text, ACharacter, ATabWidth);
+    mColumn := DisplayColumn(ALines[ALine], ACharacter, ATabWidth);
   end;
   AColumn := -1;
   case AMove of
     TAtlasCaretMove.Left:
-      if ACharacter > 0 then
-      begin
-        Dec(ACharacter);
-      end
-      else if ALine > 0 then
-      begin
-        Dec(ALine);
-        ACharacter := Length(ALines[ALine]);
-      end;
+      MoveLeft(ALines, ALine, ACharacter);
     TAtlasCaretMove.Right:
-      if ACharacter < Length(Text) then
-      begin
-        Inc(ACharacter);
-      end
-      else if ALine < High(ALines) then
-      begin
-        Inc(ALine);
-        ACharacter := 0;
-      end;
+      MoveRight(ALines, ALine, ACharacter);
     TAtlasCaretMove.Up:
       begin
-        AColumn := Column;
-        if ALine = 0 then
-        begin
-          ACharacter := 0;
-        end
-        else
-        begin
-          Dec(ALine);
-          ACharacter := CharacterAt(ALines[ALine], Column, ATabWidth);
-        end;
+        AColumn := mColumn;
+        MoveUp(ALines, mColumn, ATabWidth, ALine, ACharacter);
       end;
     TAtlasCaretMove.Down:
       begin
-        AColumn := Column;
-        if ALine = High(ALines) then
-        begin
-          ACharacter := Length(Text);
-        end
-        else
-        begin
-          Inc(ALine);
-          ACharacter := CharacterAt(ALines[ALine], Column, ATabWidth);
-        end;
+        AColumn := mColumn;
+        MoveDown(ALines, mColumn, ATabWidth, ALine, ACharacter);
       end;
     TAtlasCaretMove.LineStart:
       ACharacter := 0;
     TAtlasCaretMove.LineEnd:
-      ACharacter := Length(Text);
+      ACharacter := Length(ALines[ALine]);
     TAtlasCaretMove.WordRight:
-      if ACharacter >= Length(Text) then
-      begin
-        if ALine < High(ALines) then
-        begin
-          Inc(ALine);
-          ACharacter := 0;
-        end;
-      end
-      else
-      begin
-        Index := ACharacter + 1;
-        if TTextChars.IsIdentChar(Text[Index]) then
-        begin
-          while (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) do
-          begin
-            Inc(Index);
-          end;
-        end
-        else if not IsSpace(Text[Index]) then
-        begin
-          while (Index <= Length(Text)) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
-          begin
-            Inc(Index);
-          end;
-        end;
-        while (Index <= Length(Text)) and IsSpace(Text[Index]) do
-        begin
-          Inc(Index);
-        end;
-        ACharacter := Index - 1;
-      end;
+      MoveWordRight(ALines, ALine, ACharacter);
     TAtlasCaretMove.WordLeft:
-      if ACharacter = 0 then
-      begin
-        if ALine > 0 then
-        begin
-          Dec(ALine);
-          ACharacter := Length(ALines[ALine]);
-        end;
-      end
-      else
-      begin
-        Index := ACharacter;
-        while (Index >= 1) and IsSpace(Text[Index]) do
-        begin
-          Dec(Index);
-        end;
-        if Index >= 1 then
-        begin
-          if TTextChars.IsIdentChar(Text[Index]) then
-          begin
-            while (Index >= 1) and TTextChars.IsIdentChar(Text[Index]) do
-            begin
-              Dec(Index);
-            end;
-          end
-          else
-          begin
-            while (Index >= 1) and not TTextChars.IsIdentChar(Text[Index]) and not IsSpace(Text[Index]) do
-            begin
-              Dec(Index);
-            end;
-          end;
-        end;
-        ACharacter := Index;
-      end;
+      MoveWordLeft(ALines, ALine, ACharacter);
   end;
 end;
 
@@ -1019,7 +1194,8 @@ begin
   end;
   Last.Bounds(SL, SC, EL, EC);
   Needle := Copy(Lines[SL], SC + 1, EC - SC);
-  if Find(Lines, ACarets, Needle, EL, EC, AMatchCase, AWholeWord, FoundLine, FoundCharacter) then
+  if Find(Lines, ACarets, TFindQuery.Create(Needle, EL, EC, AMatchCase, AWholeWord), FoundLine,
+    FoundCharacter) then
   begin
     AResult := ACarets + [TAtlasCaret.Range(FoundLine, FoundCharacter, FoundLine, FoundCharacter + Length(Needle))];
     Result := TAtlasOccurrence.Added;
@@ -1051,7 +1227,8 @@ begin
   end;
   Last.Bounds(SL, SC, EL, EC);
   Needle := Copy(Lines[SL], SC + 1, EC - SC);
-  if Find(Lines, Rest, Needle, EL, EC, AMatchCase, AWholeWord, FoundLine, FoundCharacter) then
+  if Find(Lines, Rest, TFindQuery.Create(Needle, EL, EC, AMatchCase, AWholeWord), FoundLine,
+    FoundCharacter) then
   begin
     AResult := Rest + [TAtlasCaret.Range(FoundLine, FoundCharacter, FoundLine, FoundCharacter + Length(Needle))];
   end;
@@ -1060,68 +1237,29 @@ end;
 class function TAtlasMultiCursor.Edit(const AText: string; const ACarets: TAtlasCarets;
   AKind: TAtlasCaretEditKind; const AInsert: string; out ANewText: string; out ANewCarets: TAtlasCarets): Boolean;
 var
-  Index: TLineIndex;
-  Edits: TArray<TTextEdit>;
-  Caret, SL, SC, EL, EC, Start, Stop, Indent: Integer;
-  LineText: string;
+  mIndex: TLineIndex;
+  mEdits: TArray<TTextEdit>;
+  mCaret, mSL, mSC, mEL, mEC, mStart, mStop: Integer;
 begin
-  Index := TLineIndex.Build(AText);
-  Edits := nil;
-  for Caret := 0 to High(ACarets) do
+  mIndex := TLineIndex.Build(AText);
+  mEdits := nil;
+  for mCaret := 0 to High(ACarets) do
   begin
-    ACarets[Caret].Bounds(SL, SC, EL, EC);
-    Start := Index.Offset(SL, SC);
-    Stop := Index.Offset(EL, EC);
+    ACarets[mCaret].Bounds(mSL, mSC, mEL, mEC);
+    mStart := mIndex.Offset(mSL, mSC);
+    mStop := mIndex.Offset(mEL, mEC);
     case AKind of
       TAtlasCaretEditKind.Insert:
-        Edits := Edits + [MakeEdit(Start, Stop, AInsert, Caret)];
+        mEdits := mEdits + [MakeEdit(mStart, mStop, AInsert, mCaret)];
       TAtlasCaretEditKind.Backspace:
-        if Start < Stop then
-        begin
-          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)];
-        end
-        else if Start > 0 then
-        begin
-          if (Start >= 2) and (AText[Start - 1] = #13) and (AText[Start] = #10) then
-          begin
-            Edits := Edits + [MakeEdit(Start - 2, Start, '', Caret)];
-          end
-          else
-          begin
-            Edits := Edits + [MakeEdit(Start - 1, Start, '', Caret)];
-          end;
-        end;
+        AddBackspace(AText, mStart, mStop, mCaret, mEdits);
       TAtlasCaretEditKind.Delete:
-        if Start < Stop then
-        begin
-          Edits := Edits + [MakeEdit(Start, Stop, '', Caret)];
-        end
-        else if Start < Length(AText) then
-        begin
-          if (AText[Start + 1] = #13) and (Start + 2 <= Length(AText)) and (AText[Start + 2] = #10) then
-          begin
-            Edits := Edits + [MakeEdit(Start, Start + 2, '', Caret)];
-          end
-          else
-          begin
-            Edits := Edits + [MakeEdit(Start, Start + 1, '', Caret)];
-          end;
-        end;
+        AddDelete(AText, mStart, mStop, mCaret, mEdits);
       TAtlasCaretEditKind.NewLine:
-        begin
-          SL := EnsureRange(SL, 0, Index.Count - 1);
-          LineText := Copy(AText, Index.Starts[SL] + 1, Index.Lengths[SL]);
-          Indent := 0;
-          while (Indent < Start - Index.Starts[SL]) and (Indent < Length(LineText)) and
-            IsSpace(LineText[Indent + 1]) do
-          begin
-            Inc(Indent);
-          end;
-          Edits := Edits + [MakeEdit(Start, Stop, LineBreakOf(AText) + Copy(LineText, 1, Indent), Caret)];
-        end;
+        mEdits := mEdits + [NewLineEdit(AText, mIndex, mSL, mStart, mStop, mCaret)];
     end;
   end;
-  Result := ApplyEdits(AText, ACarets, Edits, ANewText, ANewCarets);
+  Result := ApplyEdits(AText, ACarets, mEdits, ANewText, ANewCarets);
 end;
 
 class function TAtlasMultiCursor.Paste(const AText: string; const ACarets: TAtlasCarets; const AClipboard: string;
@@ -1254,7 +1392,7 @@ class function TAtlasMultiCursor.Mirror(const AOldText, ANewText: string; const 
 var
   Index: TLineIndex;
   Edits: TArray<TTextEdit>;
-  Start, Stop, Main, Before, After, Caret, Offset, LineStart, LineStop: Integer;
+  Start, Stop, Main, Before, After, Caret: Integer;
   Insert, Deleted: string;
 begin
   AText := ANewText;
@@ -1284,10 +1422,7 @@ begin
   begin
     if not ACarets[Caret].HasSelection then
     begin
-      Offset := Index.Offset(ACarets[Caret].Line, ACarets[Caret].Character);
-      LineStart := Index.Starts[EnsureRange(ACarets[Caret].Line, 0, Index.Count - 1)];
-      LineStop := LineStart + Index.Lengths[EnsureRange(ACarets[Caret].Line, 0, Index.Count - 1)];
-      Edits := Edits + [MakeEdit(Max(LineStart, Offset - Before), Min(LineStop, Offset + After), Insert, Caret)];
+      Edits := Edits + [MirrorEdit(Index, ACarets[Caret], Before, After, Insert, Caret)];
     end;
   end;
   ApplyEdits(AOldText, ACarets, Edits, AText, ANewCarets);

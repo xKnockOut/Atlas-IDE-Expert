@@ -199,6 +199,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
@@ -228,6 +229,9 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UnitRelations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRelations.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Nodes.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Graph.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Calls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
@@ -402,6 +406,9 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Shared.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Duplicates.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.EmptyRoutines.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.pas"/>
@@ -501,6 +508,8 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas"/>
@@ -508,12 +517,14 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TrivialAccessor.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tokens.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DllExports.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Files.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas"/>
@@ -526,6 +537,8 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Forms.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.SharedState.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Values.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Jumps.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas"/>
@@ -545,6 +558,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Scanner.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.UnsafeCode.pas"/>
@@ -597,6 +611,10 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Cursor.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Declarations.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Expressions.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Types.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeCache.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.LanguageFeatures.pas"/>

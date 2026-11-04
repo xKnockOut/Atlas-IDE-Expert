@@ -468,6 +468,36 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasServerCompletionProvider.ItemsFromLsp(nil))));
 end;
 
+/// <summary>Mitglied eines Helpers (#456) und Angaben anderer Server.</summary>
+procedure AssertHelperAndForeignDetails;
+var
+  mResponse: TJSONValue;
+  mDetails: TAtlasItemDetails;
+begin
+  // Mitglied eines Helpers (#456).
+  mResponse := TJSONObject.ParseJSONValue('{"label":"Trim","data":{"atlas":{"declaration":"function Trim: string;",' +
+    '"unit":"System.SysUtils","container":"TStringHelper","helper":true}}}');
+  try
+    mDetails := TAtlasServerCompletionProvider.DetailsFromLsp(mResponse);
+  finally
+    mResponse.Free;
+  end;
+  Assert.IsTrue(mDetails.IsHelper);
+  Assert.AreEqual('TStringHelper', mDetails.Container);
+  // Andere Server: detail und documentation.
+  mResponse := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
+  try
+    mDetails := TAtlasServerCompletionProvider.DetailsFromLsp(mResponse);
+  finally
+    mResponse.Free;
+  end;
+  Assert.AreEqual('X: Integer', mDetails.Declaration);
+  Assert.AreEqual('Doku', mDetails.Summary);
+  Assert.IsFalse(mDetails.IsDeprecated);
+  Assert.IsTrue(mDetails.Doc.IsEmpty);
+  Assert.IsFalse(mDetails.Display.Known);
+end;
+
 procedure TAtlasCompletionProviderTests.ReadsResolvedDetails;
 var
   Response: TJSONValue;
@@ -513,28 +543,7 @@ begin
   Assert.IsTrue(Details.Display.Known);
   Assert.AreEqual(20, Details.Display.MaxLines);
   Assert.IsFalse(Details.IsHelper);
-  // Mitglied eines Helpers (#456).
-  Response := TJSONObject.ParseJSONValue('{"label":"Trim","data":{"atlas":{"declaration":"function Trim: string;",' +
-    '"unit":"System.SysUtils","container":"TStringHelper","helper":true}}}');
-  try
-    Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
-  finally
-    Response.Free;
-  end;
-  Assert.IsTrue(Details.IsHelper);
-  Assert.AreEqual('TStringHelper', Details.Container);
-  // Andere Server: detail und documentation.
-  Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
-  try
-    Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
-  finally
-    Response.Free;
-  end;
-  Assert.AreEqual('X: Integer', Details.Declaration);
-  Assert.AreEqual('Doku', Details.Summary);
-  Assert.IsFalse(Details.IsDeprecated);
-  Assert.IsTrue(Details.Doc.IsEmpty);
-  Assert.IsFalse(Details.Display.Known);
+  AssertHelperAndForeignDetails;
 end;
 
 procedure TAtlasCompletionProviderTests.MergesProvidersAndCompletesOnce;
@@ -651,9 +660,8 @@ begin
     end;
 end;
 
-procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 const
-  UnitText =
+  cCompletesMembersUnitText =
     'unit Probe;'#13#10 +
     'interface'#13#10 +
     'type'#13#10 +
@@ -668,6 +676,8 @@ const
     '  Self.FWe'#13#10 +
     'end;'#13#10 +
     'end.';
+
+procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 var
   ServerExe: string;
   Server: TLspServerProcess;
@@ -696,7 +706,7 @@ begin
       ProviderRef := Provider;
       Query := Default(TAtlasContext);
       Query.FileName := TPath.Combine(TPath.GetTempPath, 'AtlasCompletionProbe.pas');
-      Query.Text := UnitText;
+      Query.Text := cCompletesMembersUnitText;
       Query.Line := 11;
       // Hinter "  Self.FWe".
       Query.Character := 10;

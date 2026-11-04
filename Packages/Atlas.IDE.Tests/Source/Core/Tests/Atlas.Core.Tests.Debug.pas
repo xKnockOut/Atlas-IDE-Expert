@@ -148,47 +148,61 @@ begin
   end;
 end;
 
+/// <summary>Test oder Testfall namens AName in der Fixture AFixture; ACaseIndex -1 für den ganzen Test.</summary>
+function FindTest(const AFixture: TDUnitXFixture; const AName: string; out ATestIndex, ACaseIndex: Integer): Boolean;
+var
+  mTest: TDUnitXTest;
+  mTestIndex, mCaseIndex: Integer;
+begin
+  Result := True;
+  for mTestIndex := 0 to High(AFixture.Tests) do
+  begin
+    mTest := AFixture.Tests[mTestIndex];
+    ATestIndex := mTestIndex;
+    ACaseIndex := -1;
+    if SameText(AName, AFixture.Name + '.' + mTest.Method) then
+    begin
+      Exit;
+    end;
+    for mCaseIndex := 0 to High(mTest.Cases) do
+    begin
+      ACaseIndex := mCaseIndex;
+      if SameText(TDUnitXCommandLine.CaseName('', AFixture.Name, mTest.Method, mTest.Cases[mCaseIndex]), AName) then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  ATestIndex := -1;
+  ACaseIndex := -1;
+  Result := False;
+end;
+
 class function TAtlasTestDebug.SelectByName(const AUnit: TDUnitXUnit; const AFullName: string;
   out ASelection: TAtlasTestSelection): Boolean;
 var
-  FixtureIndex, TestIndex, CaseIndex: Integer;
-  Fixture: TDUnitXFixture;
-  Test: TDUnitXTest;
-  Name, Prefix: string;
+  mFixtureIndex, mTestIndex, mCaseIndex: Integer;
+  mName: string;
 begin
   ASelection := Default(TAtlasTestSelection);
   ASelection.BreakLine := -1;
-  Name := Trim(AFullName);
+  mName := Trim(AFullName);
   // Der Unitname steht davor oder fehlt (Fixture.Methode).
-  if (AUnit.UnitName <> '') and SameText(Copy(Name, 1, Length(AUnit.UnitName) + 1), AUnit.UnitName + '.') then
+  if (AUnit.UnitName <> '') and SameText(Copy(mName, 1, Length(AUnit.UnitName) + 1), AUnit.UnitName + '.') then
   begin
-    Name := Copy(Name, Length(AUnit.UnitName) + 2, MaxInt);
+    mName := Copy(mName, Length(AUnit.UnitName) + 2, MaxInt);
   end;
-  for FixtureIndex := 0 to High(AUnit.Fixtures) do
+  for mFixtureIndex := 0 to High(AUnit.Fixtures) do
   begin
-    Fixture := AUnit.Fixtures[FixtureIndex];
-    if SameText(Name, Fixture.Name) then
+    if SameText(mName, AUnit.Fixtures[mFixtureIndex].Name) then
     begin
-      ASelection := Selection(AUnit, FixtureIndex, -1, -1);
+      ASelection := Selection(AUnit, mFixtureIndex, -1, -1);
       Exit(True);
     end;
-    for TestIndex := 0 to High(Fixture.Tests) do
+    if FindTest(AUnit.Fixtures[mFixtureIndex], mName, mTestIndex, mCaseIndex) then
     begin
-      Test := Fixture.Tests[TestIndex];
-      Prefix := Fixture.Name + '.' + Test.Method;
-      if SameText(Name, Prefix) then
-      begin
-        ASelection := Selection(AUnit, FixtureIndex, TestIndex, -1);
-        Exit(True);
-      end;
-      for CaseIndex := 0 to High(Test.Cases) do
-      begin
-        if SameText(TDUnitXCommandLine.CaseName('', Fixture.Name, Test.Method, Test.Cases[CaseIndex]), Name) then
-        begin
-          ASelection := Selection(AUnit, FixtureIndex, TestIndex, CaseIndex);
-          Exit(True);
-        end;
-      end;
+      ASelection := Selection(AUnit, mFixtureIndex, mTestIndex, mCaseIndex);
+      Exit(True);
     end;
   end;
   Result := False;
@@ -266,52 +280,69 @@ begin
   Result := LowerCase(Text);
 end;
 
+/// <summary>Bisherige Argumente ohne die Optionen, die der Testlauf selbst setzt.</summary>
+function KeptArguments(const AExisting: string): TArray<string>;
+var
+  mArgument, mName, mDropped: string;
+  mDrop: Boolean;
+begin
+  Result := nil;
+  for mArgument in TAtlasTestDebug.SplitArguments(AExisting) do
+  begin
+    mName := TAtlasTestDebug.OptionName(mArgument);
+    mDrop := False;
+    for mDropped in DroppedOptions do
+    begin
+      if mName = mDropped then
+      begin
+        mDrop := True;
+      end;
+    end;
+    if not mDrop then
+    begin
+      Result := Result + [mArgument];
+    end;
+  end;
+end;
+
+/// <summary>Nicht leere Namen, mit Komma verbunden.</summary>
+function JoinedNames(const ANames: TArray<string>): string;
+var
+  mName: string;
+begin
+  Result := '';
+  for mName in ANames do
+  begin
+    if mName = '' then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + mName;
+  end;
+end;
+
 class function TAtlasTestDebug.Parameters(const AExisting: string; const ANames: TArray<string>;
   const AXmlFile: string): string;
 var
-  Parts: TArray<string>;
-  Argument, Name, Dropped, Run: string;
-  Drop: Boolean;
+  mParts: TArray<string>;
+  mRun: string;
 begin
-  Parts := nil;
-  for Argument in SplitArguments(AExisting) do
+  mParts := KeptArguments(AExisting);
+  mRun := JoinedNames(ANames);
+  if mRun <> '' then
   begin
-    Name := OptionName(Argument);
-    Drop := False;
-    for Dropped in DroppedOptions do
-    begin
-      if Name = Dropped then
-      begin
-        Drop := True;
-      end;
-    end;
-    if not Drop then
-    begin
-      Parts := Parts + [Argument];
-    end;
+    mParts := mParts + [QuoteArgument('--run:' + mRun)];
   end;
-  Run := '';
-  for Name in ANames do
-  begin
-    if Name <> '' then
-    begin
-      if Run <> '' then
-      begin
-        Run := Run + ',';
-      end;
-      Run := Run + Name;
-    end;
-  end;
-  if Run <> '' then
-  begin
-    Parts := Parts + [QuoteArgument('--run:' + Run)];
-  end;
-  Parts := Parts + ['--exitbehavior:Continue'];
+  mParts := mParts + ['--exitbehavior:Continue'];
   if AXmlFile <> '' then
   begin
-    Parts := Parts + [QuoteArgument('--xmlfile:' + AXmlFile)];
+    mParts := mParts + [QuoteArgument('--xmlfile:' + AXmlFile)];
   end;
-  Result := string.Join(' ', Parts);
+  Result := string.Join(' ', mParts);
 end;
 
 class function TAtlasTestDebug.DebugWanted(const ASettings: TAtlasPluginSettings): Boolean;

@@ -97,84 +97,272 @@ begin
   Result := Copy(ALine, 1, Index - 1);
 end;
 
+function CharAt(const AText: string; AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(AText)) then
+  begin
+    Result := AText[AIndex];
+  end;
+end;
+
+procedure OpenComment(var AState: TLineState; AKind: TLexState; ALine, ACharacter: Integer);
+begin
+  AState.State := AKind;
+  AState.OpenLine := ALine;
+  AState.OpenCharacter := ACharacter;
+end;
+
+/// <summary>String ab dem Hochkomma an AIndex bis hinter das schließende ('' ist ein Hochkomma im String).
+/// </summary>
+function SkipString(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and (AText[Result] <> '''') do
+  begin
+    Inc(Result);
+  end;
+  Inc(Result);
+end;
+
+/// <summary>Direktive ab AIndex bis hinter "}"; Direktiven enden in derselben Zeile und zählen wie Code.</summary>
+function SkipDirective(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] <> '}') do
+  begin
+    Inc(Result);
+  end;
+  Inc(Result);
+end;
+
+/// <summary>Ein Schritt im Code ab AIndex; Ergebnis: nächste Stelle.</summary>
+function StepCode(const AText: string; AIndex, ALine: Integer; var AState: TLineState): Integer;
+var
+  mNext: Char;
+begin
+  mNext := CharAt(AText, AIndex + 1);
+  Result := AIndex + 1;
+  if AText[AIndex] = '''' then
+  begin
+    Result := SkipString(AText, AIndex);
+  end
+  else if (AText[AIndex] = '/') and (mNext = '/') then
+  begin
+    Result := Length(AText) + 1;
+  end
+  else if (AText[AIndex] = '{') and (mNext = '$') then
+  begin
+    Result := SkipDirective(AText, AIndex);
+  end
+  else if AText[AIndex] = '{' then
+  begin
+    OpenComment(AState, TLexState.Brace, ALine, AIndex - 1);
+  end
+  else if (AText[AIndex] = '(') and (mNext = '*') then
+  begin
+    OpenComment(AState, TLexState.ParenStar, ALine, AIndex - 1);
+    Result := AIndex + 2;
+  end;
+end;
+
+/// <summary>Ein Schritt im offenen Blockkommentar ab AIndex; Ergebnis: nächste Stelle.</summary>
+function StepComment(const AText: string; AIndex: Integer; var AState: TLineState): Integer;
+begin
+  Result := AIndex + 1;
+  if (AState.State = TLexState.Brace) and (AText[AIndex] = '}') then
+  begin
+    AState.State := TLexState.Code;
+  end
+  else if (AState.State = TLexState.ParenStar) and (AText[AIndex] = '*') and (CharAt(AText, AIndex + 1) = ')') then
+  begin
+    AState.State := TLexState.Code;
+    Result := AIndex + 2;
+  end;
+end;
+
 /// <summary>Zustand am Anfang von ALast + 1, gelesen ab Zeile 0.</summary>
 function StateAfter(const ALines: TArray<string>; ALast: Integer): TLineState;
 var
-  Line, Index: Integer;
-  Text: string;
+  mLine, mIndex: Integer;
+  mText: string;
 begin
   Result.State := TLexState.Code;
   Result.OpenLine := -1;
   Result.OpenCharacter := -1;
-  for Line := 0 to ALast do
+  for mLine := 0 to ALast do
   begin
-    Text := ALines[Line];
-    Index := 1;
-    while Index <= Length(Text) do
-      case Result.State of
-        TLexState.Brace:
-          begin
-            if Text[Index] = '}' then
-            begin
-              Result.State := TLexState.Code;
-            end;
-            Inc(Index);
-          end;
-        TLexState.ParenStar:
-          begin
-            if (Text[Index] = '*') and (Index < Length(Text)) and (Text[Index + 1] = ')') then
-            begin
-              Result.State := TLexState.Code;
-              Inc(Index);
-            end;
-            Inc(Index);
-          end;
+    mText := ALines[mLine];
+    mIndex := 1;
+    while mIndex <= Length(mText) do
+    begin
+      if Result.State = TLexState.Code then
+      begin
+        mIndex := StepCode(mText, mIndex, mLine, Result);
+      end
       else
-        if Text[Index] = '''' then
-        begin
-          // String bis zum schließenden Hochkomma ('' ist ein Hochkomma im String).
-          Inc(Index);
-          while (Index <= Length(Text)) and (Text[Index] <> '''') do
-          begin
-            Inc(Index);
-          end;
-          Inc(Index);
-        end
-        else if (Text[Index] = '/') and (Index < Length(Text)) and (Text[Index + 1] = '/') then
-        begin
-          Index := Length(Text) + 1;
-        end
-        else if Text[Index] = '{' then
-        begin
-          // Direktiven enden in derselben Zeile; sie zählen wie Code.
-          if (Index < Length(Text)) and (Text[Index + 1] = '$') then
-          begin
-            while (Index <= Length(Text)) and (Text[Index] <> '}') do
-            begin
-              Inc(Index);
-            end;
-            Inc(Index);
-          end
-          else
-          begin
-            Result.State := TLexState.Brace;
-            Result.OpenLine := Line;
-            Result.OpenCharacter := Index - 1;
-            Inc(Index);
-          end;
-        end
-        else if (Text[Index] = '(') and (Index < Length(Text)) and (Text[Index + 1] = '*') then
-        begin
-          Result.State := TLexState.ParenStar;
-          Result.OpenLine := Line;
-          Result.OpenCharacter := Index - 1;
-          Inc(Index, 2);
-        end
-        else
-        begin
-          Inc(Index);
-        end;
+      begin
+        mIndex := StepComment(mText, mIndex, Result);
       end;
+    end;
+  end;
+end;
+
+/// <summary>"1." bzw. "1)" an AIndex mit Leerzeichen oder am Ende; höchstens drei Ziffern davor (keine Jahreszahl
+/// wie "2026. ").</summary>
+function IsNumberMarker(const AContent: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex > 1) and (AIndex <= 4) and CharInSet(CharAt(AContent, AIndex), ['.', ')']) and
+    CharInSet(CharAt(AContent, AIndex + 1), [' ', #0]);
+end;
+
+/// <summary>Neue Zeile ALine wird ANewLine, der Cursor steht an ACursor.</summary>
+procedure SetCurrent(ALine: Integer; const ANewLine: string; ACursor: Integer; var AEdit: TAtlasCommentEdit);
+begin
+  AEdit.StartLine := ALine;
+  AEdit.OldCount := 1;
+  AEdit.Lines := [ANewLine];
+  AEdit.CursorLine := ALine;
+  AEdit.CursorCharacter := ACursor;
+end;
+
+/// <summary>Zeile über ALine wird ANewLine plus ARest, die neue Zeile fällt weg; Cursor hinter ANewLine.</summary>
+procedure JoinLines(ALine: Integer; const ANewLine, ARest: string; var AEdit: TAtlasCommentEdit);
+begin
+  AEdit.StartLine := ALine - 1;
+  AEdit.OldCount := 2;
+  AEdit.Lines := [ANewLine + ARest];
+  AEdit.CursorLine := ALine - 1;
+  AEdit.CursorCharacter := Length(ANewLine);
+end;
+
+/// <summary>"///" (XMLDoc, nicht "////") oder "//" am Anfang von ABody.</summary>
+function CommentMarker(const ABody: string): string;
+begin
+  Result := '//';
+  if ABody.StartsWith('///') and not ABody.StartsWith('////') then
+  begin
+    Result := '///';
+  end;
+end;
+
+/// <summary>Zeile darüber ist ein "//"-Kommentar: fortsetzen, beenden (nur Präfix) oder das leere
+/// Aufzählungszeichen entfernen. False, wenn "//"-Zeilen nicht fortgesetzt werden.</summary>
+function ContinueLineComment(const APrevious: string; ALine: Integer; const ARest: string;
+  const AOptions: TAtlasCommentOptions; var AEdit: TAtlasCommentEdit): Boolean;
+var
+  mIndent, mBody, mMarker, mAfter, mSpace, mContent, mBullet, mNext, mPrefix: string;
+begin
+  mIndent := LeadingSpace(APrevious);
+  mBody := TrimLeft(APrevious);
+  mMarker := CommentMarker(mBody);
+  Result := (mMarker = '///') or AOptions.LineComments;
+  if Result then
+  begin
+    mAfter := Copy(mBody, Length(mMarker) + 1, MaxInt);
+    mSpace := LeadingSpace(mAfter);
+    mContent := Copy(mAfter, Length(mSpace) + 1, MaxInt);
+    mNext := '';
+    if Trim(mContent) = '' then
+    begin
+      // Nur das Präfix: Kommentar beenden.
+      JoinLines(ALine, mIndent, ARest, AEdit);
+    end
+    else if AOptions.Lists and TAtlasCommentContinuation.ListItem(mContent, mBullet, mNext) and
+      (Trim(Copy(mContent, Length(mBullet) + 1, MaxInt)) = '') then
+    begin
+      // Nur das Aufzählungszeichen: Es fällt weg, der Kommentar bleibt.
+      JoinLines(ALine, mIndent + mMarker + mSpace, ARest, AEdit);
+    end
+    else
+    begin
+      if mSpace = '' then
+      begin
+        mSpace := ' ';
+      end;
+      mPrefix := mIndent + mMarker + mSpace + mNext;
+      SetCurrent(ALine, mPrefix + ARest, Length(mPrefix), AEdit);
+    end;
+  end;
+end;
+
+/// <summary>Mit BlockPrefix: Einrückung ABase der öffnenden Zeile plus Präfix; vor dem Schließer ohne Präfix.
+/// </summary>
+function PrefixedIndent(const ABase, ARest, ABlockPrefix: string): string;
+begin
+  if ARest.StartsWith('*)') then
+  begin
+    Result := ABase + ' ';
+  end
+  else if ARest.StartsWith('}') then
+  begin
+    Result := ABase;
+  end
+  else
+  begin
+    Result := ABase + ABlockPrefix;
+  end;
+end;
+
+/// <summary>Direkt unter der öffnenden Zeile: unter den Text hinter der Klammer; Tabulatoren davor bleiben.
+/// </summary>
+function OpenerIndent(const APrevious, ABase: string; const AState: TLineState): string;
+var
+  mOpenerLength: Integer;
+  mAfter: string;
+begin
+  mOpenerLength := 1;
+  if AState.State = TLexState.ParenStar then
+  begin
+    mOpenerLength := 2;
+  end;
+  mAfter := Copy(APrevious, AState.OpenCharacter + mOpenerLength + 1, MaxInt);
+  if Trim(mAfter) = '' then
+  begin
+    Result := ABase + '  ';
+  end
+  else
+  begin
+    Result := Copy(APrevious, 1, AState.OpenCharacter + mOpenerLength) + LeadingSpace(mAfter);
+    Result := ABase + StringOfChar(' ', Length(Result) - Length(ABase));
+  end;
+end;
+
+/// <summary>In einem offenen Blockkommentar: Einrückung (und Präfix). False außerhalb oder ohne Änderung.</summary>
+function ContinueBlock(const ALines: TArray<string>; ALine: Integer; const ARest: string;
+  const AOptions: TAtlasCommentOptions; var AEdit: TAtlasCommentEdit): Boolean;
+var
+  mState: TLineState;
+  mPrevious, mBase, mPrefix: string;
+begin
+  mState := StateAfter(ALines, ALine - 1);
+  Result := mState.State <> TLexState.Code;
+  if Result then
+  begin
+    mPrevious := ALines[ALine - 1];
+    mBase := LeadingSpace(ALines[mState.OpenLine]);
+    mPrefix := '';
+    if AOptions.BlockPrefix <> '' then
+    begin
+      mPrefix := PrefixedIndent(mBase, ARest, AOptions.BlockPrefix);
+    end
+    else if mState.OpenLine = ALine - 1 then
+    begin
+      mPrefix := OpenerIndent(mPrevious, mBase, mState);
+    end
+    else if Trim(mPrevious) <> '' then
+    begin
+      mPrefix := LeadingSpace(mPrevious);
+    end
+    else
+    begin
+      Result := False;
+    end;
+    Result := Result and (mPrefix + ARest <> ALines[ALine]);
+    if Result then
+    begin
+      SetCurrent(ALine, mPrefix + ARest, Length(mPrefix), AEdit);
+    end;
   end;
 end;
 
@@ -212,9 +400,7 @@ begin
   begin
     Inc(Index);
   end;
-  // "1." bzw. "1)" mit Leerzeichen oder am Ende; höchstens drei Ziffern (keine Jahreszahl wie "2026. ").
-  if (Index = 1) or (Index > 4) or (Index > Length(AContent)) or not CharInSet(AContent[Index], ['.', ')']) or
-    ((Index < Length(AContent)) and (AContent[Index + 1] <> ' ')) then
+  if not IsNumberMarker(AContent, Index) then
   begin
     Exit;
   end;
@@ -231,142 +417,25 @@ end;
 class function TAtlasCommentContinuation.OnEnter(const AText: string; ALine, ACharacter: Integer;
   const AOptions: TAtlasCommentOptions; out AEdit: TAtlasCommentEdit): Boolean;
 var
-  Lines: TArray<string>;
-  Previous, Current, Rest, Indent, Marker, After, Space, Content, Bullet, Next, Prefix, Opener, Base: string;
-  State: TLineState;
-  Body: string;
-
-  procedure SetCurrent(const ANewLine: string; ACursor: Integer);
-  begin
-    AEdit.StartLine := ALine;
-    AEdit.OldCount := 1;
-    AEdit.Lines := [ANewLine];
-    AEdit.CursorLine := ALine;
-    AEdit.CursorCharacter := ACursor;
-  end;
-
-  /// <summary>Zeile darüber wird ANewLine, die neue Zeile fällt weg; Cursor an ihr Ende.</summary>
-  procedure Join(const ANewLine: string);
-  begin
-    AEdit.StartLine := ALine - 1;
-    AEdit.OldCount := 2;
-    AEdit.Lines := [ANewLine + Rest];
-    AEdit.CursorLine := ALine - 1;
-    AEdit.CursorCharacter := Length(ANewLine);
-  end;
-
+  mLines: TArray<string>;
+  mRest: string;
 begin
   AEdit := Default(TAtlasCommentEdit);
   Result := False;
-  Lines := LinesOf(AText);
-  if (ALine < 1) or (ALine > High(Lines)) then
+  mLines := LinesOf(AText);
+  if (ALine >= 1) and (ALine <= High(mLines)) and (Trim(Copy(mLines[ALine], 1, ACharacter)) = '') then
   begin
-    Exit;
-  end;
-  Previous := Lines[ALine - 1];
-  Current := Lines[ALine];
-  if Trim(Copy(Current, 1, ACharacter)) <> '' then
-  begin
-    Exit;
-  end;
-  Rest := TrimLeft(Current);
-  // Zustand am Anfang der Zeile darüber: Nur dann ist ein "//" am Zeilenanfang ein Zeilenkommentar.
-  State := StateAfter(Lines, ALine - 2);
-  if (State.State = TLexState.Code) and TrimLeft(Previous).StartsWith('//') then
-  begin
-    Indent := LeadingSpace(Previous);
-    Body := TrimLeft(Previous);
-    Marker := '//';
-    if Body.StartsWith('///') and not Body.StartsWith('////') then
+    mRest := TrimLeft(mLines[ALine]);
+    // Zustand am Anfang der Zeile darüber: Nur dann ist ein "//" am Zeilenanfang ein Zeilenkommentar.
+    if (StateAfter(mLines, ALine - 2).State = TLexState.Code) and TrimLeft(mLines[ALine - 1]).StartsWith('//') then
     begin
-      Marker := '///';
-    end;
-    if (Marker = '//') and not AOptions.LineComments then
-    begin
-      Exit;
-    end;
-    After := Copy(Body, Length(Marker) + 1, MaxInt);
-    Space := LeadingSpace(After);
-    Content := Copy(After, Length(Space) + 1, MaxInt);
-    // Nur das Präfix: Kommentar beenden.
-    if Trim(Content) = '' then
-    begin
-      Join(Indent);
-      Exit(True);
-    end;
-    Next := '';
-    if AOptions.Lists and ListItem(Content, Bullet, Next) then
-    begin
-      // Nur das Aufzählungszeichen: Es fällt weg, der Kommentar bleibt.
-      if Trim(Copy(Content, Length(Bullet) + 1, MaxInt)) = '' then
-      begin
-        Join(Indent + Marker + Space);
-        Exit(True);
-      end;
-    end;
-    if Space = '' then
-    begin
-      Space := ' ';
-    end;
-    Prefix := Indent + Marker + Space + Next;
-    SetCurrent(Prefix + Rest, Length(Prefix));
-    Exit(True);
-  end;
-  // In einem offenen Blockkommentar: Einrückung (und Präfix).
-  State := StateAfter(Lines, ALine - 1);
-  if State.State = TLexState.Code then
-  begin
-    Exit;
-  end;
-  Opener := '{';
-  if State.State = TLexState.ParenStar then
-  begin
-    Opener := '(*';
-  end;
-  Base := LeadingSpace(Lines[State.OpenLine]);
-  if AOptions.BlockPrefix <> '' then
-  begin
-    if Rest.StartsWith('*)') then
-    begin
-      Prefix := Base + ' ';
-    end
-    else if Rest.StartsWith('}') then
-    begin
-      Prefix := Base;
+      Result := ContinueLineComment(mLines[ALine - 1], ALine, mRest, AOptions, AEdit);
     end
     else
     begin
-      Prefix := Base + AOptions.BlockPrefix;
+      Result := ContinueBlock(mLines, ALine, mRest, AOptions, AEdit);
     end;
-  end
-  else if State.OpenLine = ALine - 1 then
-  begin
-    // Unter den Text hinter der öffnenden Klammer; Tabulatoren davor bleiben.
-    After := Copy(Previous, State.OpenCharacter + Length(Opener) + 1, MaxInt);
-    if Trim(After) = '' then
-    begin
-      Prefix := Base + '  ';
-    end
-    else
-    begin
-      Prefix := Copy(Previous, 1, State.OpenCharacter + Length(Opener)) + LeadingSpace(After);
-      Prefix := Base + StringOfChar(' ', Length(Prefix) - Length(Base));
-    end;
-  end
-  else if Trim(Previous) <> '' then
-  begin
-    Prefix := LeadingSpace(Previous);
-  end
-  else
-  begin
-    Exit;
   end;
-  if Prefix + Rest = Current then
-  begin
-    Exit;
-  end;
-  SetCurrent(Prefix + Rest, Length(Prefix));
-  Result := True;
 end;
 
 end.

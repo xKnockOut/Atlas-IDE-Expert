@@ -496,6 +496,32 @@ begin
   end;
 end;
 
+/// <summary>GitHub-Ansicht mit drei Abfragen, die erste gewählt, Klappliste an.</summary>
+function QueryPickerView: TAtlasIssuesView;
+begin
+  Result := SampleView;
+  Result.Connection := 'GitHub';
+  Result.TrackerProject := 'beispiel/atlas';
+  Result.Queries := TAtlasTrackerQueries.Read('[{"name": "Standard", "query": "assignee:@me state:open"}, ' +
+    '{"name": "Bugs", "query": "label:bug"}, {"name": "Alle", "query": "is:open"}]');
+  Result.QueryCounts := TArray<Integer>.Create(2, -1, 10);
+  Result.QueryIndex := 0;
+  Result.QueryText := 'assignee:@me state:open';
+  Result.Picker := True;
+end;
+
+/// <summary>Klappliste: drei Abfragen, die gewählte mit Haken, dann „Abfragen bearbeiten …“.</summary>
+procedure AssertQueryMenu(const AFrame: TAtlasTrackerIssuesView);
+begin
+  AFrame.Queries.Fill;
+  Assert.AreEqual(5, AFrame.Queries.QueryMenu.Items.Count);
+  Assert.AreEqual('Standard (2)', AFrame.Queries.QueryMenu.Items[0].Caption);
+  Assert.IsTrue(AFrame.Queries.QueryMenu.Items[0].Checked);
+  Assert.IsFalse(AFrame.Queries.QueryMenu.Items[1].Checked);
+  Assert.AreEqual('Alle (10+)', AFrame.Queries.QueryMenu.Items[2].Caption);
+  Assert.AreEqual('Abfragen bearbeiten …', AFrame.Queries.QueryMenu.Items[4].Caption);
+end;
+
 procedure TAtlasTrackerIssuesViewTests.QueryPickerAndSourceLine;
 var
   mSaved: TAtlasLanguage;
@@ -511,15 +537,7 @@ begin
   mHost := TForm.CreateNew(nil);
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
-    mView := SampleView;
-    mView.Connection := 'GitHub';
-    mView.TrackerProject := 'beispiel/atlas';
-    mView.Queries := TAtlasTrackerQueries.Read('[{"name": "Standard", "query": "assignee:@me state:open"}, ' +
-      '{"name": "Bugs", "query": "label:bug"}, {"name": "Alle", "query": "is:open"}]');
-    mView.QueryCounts := TArray<Integer>.Create(2, -1, 10);
-    mView.QueryIndex := 0;
-    mView.QueryText := 'assignee:@me state:open';
-    mView.Picker := True;
+    mView := QueryPickerView;
     Assert.AreEqual('GitHub · beispiel/atlas · Abfrage: assignee:@me state:open',
       TAtlasTrackerIssuesText.SourceText(mView));
     Assert.AreEqual('Standard (2)', TAtlasTrackerIssuesText.QueryCaption('Standard', 2));
@@ -534,13 +552,7 @@ begin
     Assert.IsTrue(mFrame.Queries.QueryLabel.Visible);
     Assert.AreEqual('Standard (2) ' + #$25BE, mFrame.Queries.QueryLabel.Caption);
     // Klappliste: drei Abfragen, die gewählte mit Haken, dann „Abfragen bearbeiten …“.
-    mFrame.Queries.Fill;
-    Assert.AreEqual(5, mFrame.Queries.QueryMenu.Items.Count);
-    Assert.AreEqual('Standard (2)', mFrame.Queries.QueryMenu.Items[0].Caption);
-    Assert.IsTrue(mFrame.Queries.QueryMenu.Items[0].Checked);
-    Assert.IsFalse(mFrame.Queries.QueryMenu.Items[1].Checked);
-    Assert.AreEqual('Alle (10+)', mFrame.Queries.QueryMenu.Items[2].Caption);
-    Assert.AreEqual('Abfragen bearbeiten …', mFrame.Queries.QueryMenu.Items[4].Caption);
+    AssertQueryMenu(mFrame);
     // Wahl und Bearbeiten über die Nachrichtenschleife.
     mFake.Calls := nil;
     mFrame.Queries.QueryMenu.Items[1].Click;

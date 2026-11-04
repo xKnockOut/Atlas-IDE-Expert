@@ -79,6 +79,51 @@ type
     Group: Integer;
   end;
 
+  /// <summary>Suche der Gruppe zum Token am Cursor (Blöcke und Klammern).</summary>
+  TPairSearch = record
+  private
+    FLines: TArray<string>;
+    FTokens: TArray<TAtlasPairToken>;
+    FIsWord: Boolean;
+    FWord: string;
+    FHit: Integer;
+    function Relevant(AIndex: Integer): Boolean;
+    function RoleAt(AIndex: Integer): TRole;
+    /// <summary>Gleiche Art, Tiefe ADepth und gepaart?</summary>
+    function Peer(AIndex, ADepth: Integer): Boolean;
+    function UnpairedAs(AIndex: Integer; ARole: TRole): Boolean;
+    /// <summary>Gehört AIndex zur Gruppe AFirst..ALast (Öffner, Mittelteil, Schließer)?</summary>
+    function InGroup(AIndex, AFirst, ALast: Integer): Boolean;
+    function FindHit(ALine, ACharacter: Integer): Integer;
+    function FindFirst: Integer;
+    function FindLast(AFirst: Integer): Integer;
+    function Ambiguous(AFirst, ALast: Integer): Boolean;
+    procedure Collect(AFirst, ALast: Integer; var AMatch: TAtlasMatch);
+  public
+    function Run(const AText: string; ALine, ACharacter: Integer; var AMatch: TAtlasMatch): Boolean;
+  end;
+
+  /// <summary>Liest bedingte Direktiven außerhalb von Strings und Zeilenkommentaren.</summary>
+  TDirectiveScanner = record
+  private
+    FText: string;
+    FIndex: Integer;
+    FLine: Integer;
+    FLineStart: Integer;
+    FResult: TArray<TDirective>;
+    function CharAt(AIndex: Integer): Char;
+    procedure NewLine;
+    procedure SkipString;
+    procedure SkipLineComment;
+    /// <summary>Letztes Zeichen des Kommentars ab AStart ("}" bzw. ")").</summary>
+    function CommentStop(AStart: Integer): Integer;
+    procedure AddDirective(AStart, AStop: Integer);
+    procedure LexComment;
+    procedure Step;
+  public
+    function Run(const AText: string): TArray<TDirective>;
+  end;
+
 class function TAtlasMatchSpot.Create(ALine, ACharacter, ALength: Integer): TAtlasMatchSpot;
 begin
   Result.Line := ALine;
@@ -151,340 +196,488 @@ begin
   Result := TAtlasMatchSpot.Create(AToken.Line, AToken.Character, AToken.Length);
 end;
 
-/// <summary>Blöcke und Klammern: Gruppe zum Token am Cursor.</summary>
-function FindPair(const AText: string; ALine, ACharacter: Integer; out AMatch: TAtlasMatch): Boolean;
-var
-  Lines: TArray<string>;
-  Tokens: TArray<TAtlasPairToken>;
-  Index, Hit, First, Last, Step: Integer;
-  Word: string;
-  IsWord: Boolean;
-  Role: TRole;
+{ TPairSearch }
 
-  function Relevant(AIndex: Integer): Boolean;
-  begin
-    Result := (Tokens[AIndex].IsWord = IsWord) and not Tokens[AIndex].Owner;
-    if Result and not IsWord then
-    begin
-      Result := SameBracket(TextOf(Lines, Tokens[AIndex]), Word);
-    end;
-  end;
-
-  function RoleAt(AIndex: Integer): TRole;
-  begin
-    if IsWord then
-    begin
-      Result := RoleOfWord(TextOf(Lines, Tokens[AIndex]));
-    end
-    else
-    begin
-      Result := RoleOfBracket(TextOf(Lines, Tokens[AIndex]));
-    end;
-  end;
-
+function TPairSearch.Relevant(AIndex: Integer): Boolean;
 begin
-  Result := False;
-  AMatch := Default(TAtlasMatch);
-  Lines := TTextLines.SplitLines(AText);
-  Tokens := TAtlasPairs.Analyze(AText);
-  // Token am Cursor: beginnt dort, sonst enthält es den Cursor oder endet davor.
-  Hit := -1;
-  for Index := 0 to High(Tokens) do
+  Result := (FTokens[AIndex].IsWord = FIsWord) and not FTokens[AIndex].Owner;
+  if Result and not FIsWord then
   begin
-    if not Tokens[Index].Owner and Touches(SpotOf(Tokens[Index]), ALine, ACharacter) then
-    begin
-      Hit := Index;
-      if Tokens[Index].Character = ACharacter then
-      begin
-        Break;
-      end;
-    end;
+    Result := SameBracket(TextOf(FLines, FTokens[AIndex]), FWord);
   end;
-  if (Hit < 0) or Tokens[Hit].Unpaired then
+end;
+
+function TPairSearch.RoleAt(AIndex: Integer): TRole;
+begin
+  if FIsWord then
   begin
-    Exit;
-  end;
-  IsWord := Tokens[Hit].IsWord;
-  Word := TextOf(Lines, Tokens[Hit]);
-  Role := RoleAt(Hit);
-  // Öffner suchen (rückwärts dieselbe Tiefe), dann den Schließer (vorwärts).
-  First := Hit;
-  if Role <> TRole.Opener then
-  begin
-    First := -1;
-    for Index := Hit - 1 downto 0 do
-    begin
-      if Relevant(Index) and (Tokens[Index].Depth = Tokens[Hit].Depth) and not Tokens[Index].Unpaired then
-      begin
-        if RoleAt(Index) = TRole.Opener then
-        begin
-          First := Index;
-        end;
-        if RoleAt(Index) <> TRole.Middle then
-        begin
-          Break;
-        end;
-      end;
-    end;
-    if First < 0 then
-    begin
-      Exit;
-    end;
-  end;
-  Last := -1;
-  for Index := First + 1 to High(Tokens) do
-  begin
-    if Relevant(Index) and (Tokens[Index].Depth = Tokens[First].Depth) and not Tokens[Index].Unpaired then
-    begin
-      if RoleAt(Index) = TRole.Closer then
-      begin
-        Last := Index;
-        Break;
-      end;
-      if RoleAt(Index) = TRole.Opener then
-      begin
-        Break;
-      end;
-    end;
-  end;
-  if Last < 0 then
-  begin
-    Exit;
-  end;
-  // Mehrdeutig: unpaariger Öffner davor bzw. unpaariger Schließer dahinter.
-  for Index := 0 to First - 1 do
-  begin
-    if Relevant(Index) and Tokens[Index].Unpaired and (RoleAt(Index) = TRole.Opener) then
-    begin
-      Exit;
-    end;
-  end;
-  for Index := Last + 1 to High(Tokens) do
-  begin
-    if Relevant(Index) and Tokens[Index].Unpaired and (RoleAt(Index) = TRole.Closer) then
-    begin
-      Exit;
-    end;
-  end;
-  if IsWord then
-  begin
-    AMatch.Kind := TAtlasMatchKind.Block;
+    Result := RoleOfWord(TextOf(FLines, FTokens[AIndex]));
   end
   else
   begin
-    AMatch.Kind := TAtlasMatchKind.Bracket;
+    Result := RoleOfBracket(TextOf(FLines, FTokens[AIndex]));
+  end;
+end;
+
+function TPairSearch.Peer(AIndex, ADepth: Integer): Boolean;
+begin
+  Result := Relevant(AIndex) and (FTokens[AIndex].Depth = ADepth) and not FTokens[AIndex].Unpaired;
+end;
+
+function TPairSearch.UnpairedAs(AIndex: Integer; ARole: TRole): Boolean;
+begin
+  Result := Relevant(AIndex) and FTokens[AIndex].Unpaired and (RoleAt(AIndex) = ARole);
+end;
+
+function TPairSearch.InGroup(AIndex, AFirst, ALast: Integer): Boolean;
+begin
+  Result := (AIndex = AFirst) or (AIndex = ALast) or (Relevant(AIndex) and
+    (FTokens[AIndex].Depth = FTokens[AFirst].Depth) and (RoleAt(AIndex) = TRole.Middle));
+end;
+
+function TPairSearch.FindHit(ALine, ACharacter: Integer): Integer;
+var
+  mIndex: Integer;
+  mDone: Boolean;
+begin
+  // Token am Cursor: beginnt dort, sonst enthält es den Cursor oder endet davor.
+  Result := -1;
+  mIndex := 0;
+  mDone := False;
+  while not mDone and (mIndex <= High(FTokens)) do
+  begin
+    if not FTokens[mIndex].Owner and Touches(SpotOf(FTokens[mIndex]), ALine, ACharacter) then
+    begin
+      Result := mIndex;
+      mDone := FTokens[mIndex].Character = ACharacter;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+function TPairSearch.FindFirst: Integer;
+var
+  mIndex: Integer;
+  mDone: Boolean;
+begin
+  // Öffner rückwärts auf derselben Tiefe; Mittelteile (finally/except) überspringen.
+  Result := FHit;
+  if RoleAt(FHit) <> TRole.Opener then
+  begin
+    Result := -1;
+    mIndex := FHit - 1;
+    mDone := False;
+    while not mDone and (mIndex >= 0) do
+    begin
+      if Peer(mIndex, FTokens[FHit].Depth) then
+      begin
+        if RoleAt(mIndex) = TRole.Opener then
+        begin
+          Result := mIndex;
+        end;
+        mDone := RoleAt(mIndex) <> TRole.Middle;
+      end;
+      Dec(mIndex);
+    end;
+  end;
+end;
+
+function TPairSearch.FindLast(AFirst: Integer): Integer;
+var
+  mIndex: Integer;
+  mRole: TRole;
+  mDone: Boolean;
+begin
+  Result := -1;
+  mIndex := AFirst + 1;
+  mDone := False;
+  while not mDone and (mIndex <= High(FTokens)) do
+  begin
+    if Peer(mIndex, FTokens[AFirst].Depth) then
+    begin
+      mRole := RoleAt(mIndex);
+      if mRole = TRole.Closer then
+      begin
+        Result := mIndex;
+      end;
+      mDone := mRole in [TRole.Opener, TRole.Closer];
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+function TPairSearch.Ambiguous(AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  // Mehrdeutig: unpaariger Öffner davor bzw. unpaariger Schließer dahinter.
+  Result := False;
+  for mIndex := 0 to AFirst - 1 do
+  begin
+    Result := Result or UnpairedAs(mIndex, TRole.Opener);
+  end;
+  for mIndex := ALast + 1 to High(FTokens) do
+  begin
+    Result := Result or UnpairedAs(mIndex, TRole.Closer);
+  end;
+end;
+
+procedure TPairSearch.Collect(AFirst, ALast: Integer; var AMatch: TAtlasMatch);
+var
+  mIndex: Integer;
+begin
+  AMatch.Kind := TAtlasMatchKind.Bracket;
+  if FIsWord then
+  begin
+    AMatch.Kind := TAtlasMatchKind.Block;
   end;
   AMatch.Current := -1;
-  Step := First;
-  while Step <= Last do
+  for mIndex := AFirst to ALast do
   begin
-    if (Step = First) or (Step = Last) or (Relevant(Step) and (Tokens[Step].Depth = Tokens[First].Depth) and
-      (RoleAt(Step) = TRole.Middle)) then
+    if InGroup(mIndex, AFirst, ALast) then
     begin
-      if Step = Hit then
+      if mIndex = FHit then
       begin
         AMatch.Current := Length(AMatch.Spots);
       end;
-      AMatch.Spots := AMatch.Spots + [SpotOf(Tokens[Step])];
+      AMatch.Spots := AMatch.Spots + [SpotOf(FTokens[mIndex])];
     end;
-    Inc(Step);
   end;
-  Result := (AMatch.Current >= 0) and (Length(AMatch.Spots) >= 2);
+end;
+
+function TPairSearch.Run(const AText: string; ALine, ACharacter: Integer; var AMatch: TAtlasMatch): Boolean;
+var
+  mFirst, mLast: Integer;
+begin
+  Result := False;
+  FLines := TTextLines.SplitLines(AText);
+  FTokens := TAtlasPairs.Analyze(AText);
+  FHit := FindHit(ALine, ACharacter);
+  if (FHit >= 0) and not FTokens[FHit].Unpaired then
+  begin
+    FIsWord := FTokens[FHit].IsWord;
+    FWord := TextOf(FLines, FTokens[FHit]);
+    mFirst := FindFirst;
+    mLast := -1;
+    if mFirst >= 0 then
+    begin
+      mLast := FindLast(mFirst);
+    end;
+    if (mLast >= 0) and not Ambiguous(mFirst, mLast) then
+    begin
+      Collect(mFirst, mLast, AMatch);
+      Result := (AMatch.Current >= 0) and (Length(AMatch.Spots) >= 2);
+    end;
+  end;
+end;
+
+/// <summary>Blöcke und Klammern: Gruppe zum Token am Cursor.</summary>
+function FindPair(const AText: string; ALine, ACharacter: Integer; out AMatch: TAtlasMatch): Boolean;
+var
+  mSearch: TPairSearch;
+begin
+  AMatch := Default(TAtlasMatch);
+  mSearch := Default(TPairSearch);
+  Result := mSearch.Run(AText, ALine, ACharacter, AMatch);
+end;
+
+function IsOneOf(const AText: string; const AList: array of string): Boolean;
+var
+  mItem: string;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    Result := Result or (AText = mItem);
+  end;
+end;
+
+function RoleOfDirective(const AName: string): TRole;
+begin
+  Result := TRole.Other;
+  if IsOneOf(AName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  begin
+    Result := TRole.Opener;
+  end
+  else if IsOneOf(AName, ['ELSE', 'ELSEIF']) then
+  begin
+    Result := TRole.Middle;
+  end
+  else if IsOneOf(AName, ['ENDIF', 'IFEND']) then
+  begin
+    Result := TRole.Closer;
+  end;
+end;
+
+{ TDirectiveScanner }
+
+function TDirectiveScanner.CharAt(AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(FText)) then
+  begin
+    Result := FText[AIndex];
+  end;
+end;
+
+procedure TDirectiveScanner.NewLine;
+begin
+  Inc(FLine);
+  FLineStart := FIndex + 1;
+end;
+
+procedure TDirectiveScanner.SkipString;
+begin
+  // Bis zum schließenden Hochkomma; am Zeilenende stehen bleiben, damit die Zeile zählt.
+  Inc(FIndex);
+  while not CharInSet(CharAt(FIndex), ['''', #10, #0]) do
+  begin
+    Inc(FIndex);
+  end;
+  if CharAt(FIndex) <> #10 then
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+procedure TDirectiveScanner.SkipLineComment;
+begin
+  while (FIndex < Length(FText)) and (FText[FIndex + 1] <> #10) do
+  begin
+    Inc(FIndex);
+  end;
+  Inc(FIndex);
+end;
+
+function TDirectiveScanner.CommentStop(AStart: Integer): Integer;
+begin
+  if FText[AStart] = '{' then
+  begin
+    Result := Pos('}', FText, AStart + 1);
+    if Result = 0 then
+    begin
+      Result := Length(FText);
+    end;
+  end
+  else
+  begin
+    Result := Pos('*)', FText, AStart + 2);
+    if Result = 0 then
+    begin
+      Result := Length(FText);
+    end
+    else
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+procedure TDirectiveScanner.AddDirective(AStart, AStop: Integer);
+var
+  mNameEnd: Integer;
+  mName: string;
+  mDirective: TDirective;
+begin
+  // Direktive: {$ bzw. (*$ ; der Name endet am ersten Nicht-Buchstaben.
+  mNameEnd := AStart + 1;
+  if FText[AStart] = '(' then
+  begin
+    Inc(mNameEnd);
+  end;
+  if CharAt(mNameEnd) = '$' then
+  begin
+    Inc(mNameEnd);
+    mName := '';
+    while (mNameEnd <= AStop) and CharInSet(CharAt(mNameEnd), ['A'..'Z', 'a'..'z']) do
+    begin
+      mName := mName + UpCase(FText[mNameEnd]);
+      Inc(mNameEnd);
+    end;
+    mDirective.Role := RoleOfDirective(mName);
+    if (mDirective.Role <> TRole.Other) and (Pos(#10, Copy(FText, AStart, AStop - AStart + 1)) = 0) then
+    begin
+      mDirective.Spot := TAtlasMatchSpot.Create(FLine, AStart - FLineStart, AStop - AStart + 1);
+      mDirective.Group := -1;
+      FResult := FResult + [mDirective];
+    end;
+  end;
+end;
+
+procedure TDirectiveScanner.LexComment;
+var
+  mStop: Integer;
+begin
+  mStop := CommentStop(FIndex);
+  AddDirective(FIndex, mStop);
+  // Zeilen im Kommentar mitzählen.
+  while FIndex < mStop do
+  begin
+    if FText[FIndex] = #10 then
+    begin
+      NewLine;
+    end;
+    Inc(FIndex);
+  end;
+  Inc(FIndex);
+end;
+
+procedure TDirectiveScanner.Step;
+begin
+  case FText[FIndex] of
+    #10:
+      begin
+        NewLine;
+        Inc(FIndex);
+      end;
+    '''':
+      SkipString;
+    '/':
+      if CharAt(FIndex + 1) = '/' then
+      begin
+        SkipLineComment;
+      end
+      else
+      begin
+        Inc(FIndex);
+      end;
+    '{':
+      LexComment;
+    '(':
+      if CharAt(FIndex + 1) = '*' then
+      begin
+        LexComment;
+      end
+      else
+      begin
+        Inc(FIndex);
+      end;
+  else
+    Inc(FIndex);
+  end;
+end;
+
+function TDirectiveScanner.Run(const AText: string): TArray<TDirective>;
+begin
+  FText := AText;
+  FIndex := 1;
+  FLine := 0;
+  FLineStart := 1;
+  FResult := nil;
+  while FIndex <= Length(FText) do
+  begin
+    Step;
+  end;
+  Result := FResult;
 end;
 
 /// <summary>Bedingte Direktiven in AText (außerhalb von Strings und Kommentaren), mit Rolle.</summary>
 function Directives(const AText: string): TArray<TDirective>;
 var
-  Index, Line, LineStart, Start, Stop, NameEnd: Integer;
-  Name: string;
-  Directive: TDirective;
+  mScanner: TDirectiveScanner;
+begin
+  mScanner := Default(TDirectiveScanner);
+  Result := mScanner.Run(AText);
+end;
+
+/// <summary>Index der Direktive am Cursor; -1 ohne.</summary>
+function DirectiveAt(const AList: TArray<TDirective>; ALine, ACharacter: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  mIndex := 0;
+  while (Result < 0) and (mIndex <= High(AList)) do
+  begin
+    if Touches(AList[mIndex].Spot, ALine, ACharacter) then
+    begin
+      Result := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Gruppen bilden; ein ELSE oder ENDIF ohne IF bleibt ohne Gruppe. Ergebnis: offen gebliebene IFs.
+/// </summary>
+function AssignGroups(var AList: TArray<TDirective>): TArray<Integer>;
+var
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := 1;
-  Line := 0;
-  LineStart := 1;
-  while Index <= Length(AText) do
+  for mIndex := 0 to High(AList) do
   begin
-    case AText[Index] of
-      #10:
-        begin
-          Inc(Line);
-          LineStart := Index + 1;
-        end;
-      '''':
-        begin
-          Inc(Index);
-          while (Index <= Length(AText)) and (AText[Index] <> '''') and (AText[Index] <> #10) do
-          begin
-            Inc(Index);
-          end;
-          if (Index <= Length(AText)) and (AText[Index] = #10) then
-          begin
-            Continue;
-          end;
-        end;
-      '/':
-        if (Index < Length(AText)) and (AText[Index + 1] = '/') then
-        begin
-          while (Index < Length(AText)) and (AText[Index + 1] <> #10) do
-          begin
-            Inc(Index);
-          end;
-        end;
-      '{', '(':
-        if (AText[Index] = '{') or ((Index < Length(AText)) and (AText[Index + 1] = '*')) then
-        begin
-          Start := Index;
-          if AText[Index] = '{' then
-          begin
-            Stop := Pos('}', AText, Index + 1);
-            if Stop = 0 then
-            begin
-              Stop := Length(AText);
-            end;
-          end
-          else
-          begin
-            Stop := Pos('*)', AText, Index + 2);
-            if Stop = 0 then
-            begin
-              Stop := Length(AText);
-            end
-            else
-            begin
-              Inc(Stop);
-            end;
-          end;
-          // Direktive: {$ bzw. (*$ ; der Name endet am ersten Nicht-Buchstaben.
-          NameEnd := Start + 1;
-          if AText[Start] = '(' then
-          begin
-            Inc(NameEnd);
-          end;
-          if (NameEnd <= Length(AText)) and (AText[NameEnd] = '$') then
-          begin
-            Inc(NameEnd);
-            Name := '';
-            while (NameEnd <= Stop) and CharInSet(AText[NameEnd], ['A'..'Z', 'a'..'z']) do
-            begin
-              Name := Name + UpCase(AText[NameEnd]);
-              Inc(NameEnd);
-            end;
-            Directive.Role := TRole.Other;
-            if (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IF') or (Name = 'IFOPT') then
-            begin
-              Directive.Role := TRole.Opener;
-            end
-            else if (Name = 'ELSE') or (Name = 'ELSEIF') then
-            begin
-              Directive.Role := TRole.Middle;
-            end
-            else if (Name = 'ENDIF') or (Name = 'IFEND') then
-            begin
-              Directive.Role := TRole.Closer;
-            end;
-            if (Directive.Role <> TRole.Other) and (Pos(#10, Copy(AText, Start, Stop - Start + 1)) = 0) then
-            begin
-              Directive.Spot := TAtlasMatchSpot.Create(Line, Start - LineStart, Stop - Start + 1);
-              Directive.Group := -1;
-              Result := Result + [Directive];
-            end;
-          end;
-          // Zeilen im Kommentar mitzählen.
-          while Index < Stop do
-          begin
-            if AText[Index] = #10 then
-            begin
-              Inc(Line);
-              LineStart := Index + 1;
-            end;
-            Inc(Index);
-          end;
-        end;
+    if AList[mIndex].Role = TRole.Opener then
+    begin
+      AList[mIndex].Group := mIndex;
+      Result := Result + [mIndex];
+    end
+    else if Length(Result) > 0 then
+    begin
+      AList[mIndex].Group := Result[High(Result)];
+      if AList[mIndex].Role = TRole.Closer then
+      begin
+        SetLength(Result, Length(Result) - 1);
+      end;
     end;
-    Inc(Index);
+  end;
+end;
+
+/// <summary>Offen gebliebene IFs (die eigene Gruppe unvollständig, eine davor umschließt sie) oder ein Schließer
+/// ohne IF dahinter machen die Gruppe mehrdeutig.</summary>
+function GroupAmbiguous(const AList: TArray<TDirective>; const AOpen: TArray<Integer>; AGroup: Integer): Boolean;
+var
+  mIndex, mOpened: Integer;
+begin
+  Result := False;
+  for mOpened in AOpen do
+  begin
+    Result := Result or (mOpened <= AGroup);
+  end;
+  for mIndex := AGroup + 1 to High(AList) do
+  begin
+    Result := Result or ((AList[mIndex].Group < 0) and (AList[mIndex].Role = TRole.Closer));
+  end;
+end;
+
+procedure CollectGroup(const AList: TArray<TDirective>; AGroup, AHit: Integer; var AMatch: TAtlasMatch);
+var
+  mIndex: Integer;
+begin
+  AMatch.Kind := TAtlasMatchKind.Directive;
+  AMatch.Current := -1;
+  for mIndex := AGroup to High(AList) do
+  begin
+    if AList[mIndex].Group = AGroup then
+    begin
+      if mIndex = AHit then
+      begin
+        AMatch.Current := Length(AMatch.Spots);
+      end;
+      AMatch.Spots := AMatch.Spots + [AList[mIndex].Spot];
+    end;
   end;
 end;
 
 function FindDirective(const AText: string; ALine, ACharacter: Integer; out AMatch: TAtlasMatch): Boolean;
 var
-  List: TArray<TDirective>;
-  Stack: TArray<Integer>;
-  Index, Hit, Group, Opened: Integer;
+  mList: TArray<TDirective>;
+  mOpen: TArray<Integer>;
+  mHit, mGroup: Integer;
 begin
   Result := False;
   AMatch := Default(TAtlasMatch);
-  List := Directives(AText);
-  Hit := -1;
-  for Index := 0 to High(List) do
+  mList := Directives(AText);
+  mHit := DirectiveAt(mList, ALine, ACharacter);
+  if mHit >= 0 then
   begin
-    if (List[Index].Spot.Line = ALine) and (ACharacter >= List[Index].Spot.Character) and
-      (ACharacter <= List[Index].Spot.Character + List[Index].Spot.Length) then
+    mOpen := AssignGroups(mList);
+    mGroup := mList[mHit].Group;
+    if (mGroup >= 0) and not GroupAmbiguous(mList, mOpen, mGroup) then
     begin
-      Hit := Index;
-      Break;
+      CollectGroup(mList, mGroup, mHit, AMatch);
+      Result := (AMatch.Current >= 0) and (Length(AMatch.Spots) >= 2);
     end;
   end;
-  if Hit < 0 then
-  begin
-    Exit;
-  end;
-  // Gruppen bilden; ein ELSE oder ENDIF ohne IF bleibt ohne Gruppe.
-  Stack := nil;
-  for Index := 0 to High(List) do
-    case List[Index].Role of
-      TRole.Opener:
-        begin
-          List[Index].Group := Index;
-          Stack := Stack + [Index];
-        end;
-      TRole.Middle:
-        if Length(Stack) > 0 then
-        begin
-          List[Index].Group := Stack[High(Stack)];
-        end;
-      TRole.Closer:
-        if Length(Stack) > 0 then
-        begin
-          List[Index].Group := Stack[High(Stack)];
-          SetLength(Stack, Length(Stack) - 1);
-        end;
-    end;
-  Group := List[Hit].Group;
-  if Group < 0 then
-  begin
-    Exit;
-  end;
-  // Offen gebliebene IFs: die eigene Gruppe unvollständig, eine davor umschließt sie (mehrdeutig).
-  for Opened in Stack do
-  begin
-    if Opened <= Group then
-    begin
-      Exit;
-    end;
-  end;
-  // Schließer ohne IF dahinter: mehrdeutig.
-  for Index := Group + 1 to High(List) do
-  begin
-    if (List[Index].Group < 0) and (List[Index].Role = TRole.Closer) then
-    begin
-      Exit;
-    end;
-  end;
-  AMatch.Kind := TAtlasMatchKind.Directive;
-  AMatch.Current := -1;
-  for Index := Group to High(List) do
-  begin
-    if List[Index].Group = Group then
-    begin
-      if Index = Hit then
-      begin
-        AMatch.Current := Length(AMatch.Spots);
-      end;
-      AMatch.Spots := AMatch.Spots + [List[Index].Spot];
-    end;
-  end;
-  Result := (AMatch.Current >= 0) and (Length(AMatch.Spots) >= 2);
 end;
 
 function FindMethod(const AText: string; ALine, ACharacter: Integer; out AMatch: TAtlasMatch): Boolean;
