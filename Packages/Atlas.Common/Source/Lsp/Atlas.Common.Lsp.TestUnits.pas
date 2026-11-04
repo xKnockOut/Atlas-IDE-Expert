@@ -171,16 +171,74 @@ begin
   Result := Resolve(AFileName, AText, TIndexExtractor.ExtractText(AText, AFileName, nil), ALine, AContext);
 end;
 
+/// <summary>Zu prüfende Unit ATested einer Testunit eintragen.</summary>
+procedure SetTested(var ATarget: TTestUnitTarget; const ATested: string; const AContext: TTestUnitContext);
+begin
+  ATarget.IsTest := True;
+  ATarget.Counterpart := ATested;
+  if Assigned(AContext.FindUnit) then
+  begin
+    ATarget.CounterpartFile := AContext.FindUnit(ATested);
+  end;
+  if ATarget.CounterpartFile = '' then
+  begin
+    ATarget.Reason := Format('Unit %s nicht gefunden', [ATested]);
+  end;
+end;
+
+/// <summary>Datei der Testunit im Projekt oder im Testordner AFolder.</summary>
+procedure FindTestFile(var ATarget: TTestUnitTarget; const AContext: TTestUnitContext; const AFolder: string);
+begin
+  if Assigned(AContext.FindUnit) then
+  begin
+    ATarget.CounterpartFile := AContext.FindUnit(ATarget.Counterpart);
+  end;
+  if (ATarget.CounterpartFile = '') and (AFolder <> '') and Assigned(AContext.Exists) and
+    AContext.Exists(AFolder + ATarget.Counterpart + '.pas') then
+  begin
+    ATarget.CounterpartFile := AFolder + ATarget.Counterpart + '.pas';
+  end;
+end;
+
+/// <summary>Ob und wo eine neue Testunit entstehen kann; sonst der Grund.</summary>
+procedure PlanTestUnit(var ATarget: TTestUnitTarget; ALine: Integer; const AContext: TTestUnitContext;
+  const AFolder: string);
+begin
+  if ALine >= 0 then
+  begin
+    ATarget.ClassName := TTestUnits.ClassAt(ATarget.Source, ALine);
+  end;
+  ATarget.ClassAtLine := ATarget.ClassName <> '';
+  if ATarget.ClassName = '' then
+  begin
+    ATarget.ClassName := TTestUnits.FirstClass(ATarget.Source);
+  end;
+  if AContext.TestProgram = '' then
+  begin
+    ATarget.Reason := 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); ' +
+      '„testUnits.project“ in atlas.json festlegen';
+  end
+  else if (ATarget.ClassName = '') and (Length(TTestUnits.TestMethods(ATarget.Source, '')) = 0) then
+  begin
+    ATarget.Reason := Format('%s hat weder Klassen noch Routinen im interface', [ATarget.UnitName]);
+  end
+  else
+  begin
+    ATarget.CanCreate := True;
+    ATarget.NewFile := AFolder + ATarget.Counterpart + '.pas';
+  end;
+end;
+
 class function TLspTestUnits.Resolve(const AFileName, AText: string; const ASource: TUnitIndex; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 var
-  Tokens: TArray<TPascalToken>;
-  Tested, Folder: string;
+  mTokens: TArray<TPascalToken>;
+  mTested, mFolder: string;
 begin
   Result := Default(TTestUnitTarget);
   Result.FileName := AFileName;
-  Tokens := TPascalLexer.Tokenize(AText);
-  if not IsUnitText(Tokens) then
+  mTokens := TPascalLexer.Tokenize(AText);
+  if not IsUnitText(mTokens) then
   begin
     Exit;
   end;
@@ -190,58 +248,18 @@ begin
   begin
     Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
   end;
-  if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, Tested) and
-    TRuleProfiles.IsTestUnit(Tokens) then
+  if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
+    TRuleProfiles.IsTestUnit(mTokens) then
   begin
-    Result.IsTest := True;
-    Result.Counterpart := Tested;
-    if Assigned(AContext.FindUnit) then
-    begin
-      Result.CounterpartFile := AContext.FindUnit(Tested);
-    end;
-    if Result.CounterpartFile = '' then
-    begin
-      Result.Reason := Format('Unit %s nicht gefunden', [Tested]);
-    end;
+    SetTested(Result, mTested, AContext);
     Exit;
   end;
   Result.Counterpart := TTestUnits.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
-  if Assigned(AContext.FindUnit) then
+  mFolder := TestFolder(AContext);
+  FindTestFile(Result, AContext, mFolder);
+  if Result.CounterpartFile = '' then
   begin
-    Result.CounterpartFile := AContext.FindUnit(Result.Counterpart);
-  end;
-  Folder := TestFolder(AContext);
-  if (Result.CounterpartFile = '') and (Folder <> '') and Assigned(AContext.Exists) and
-    AContext.Exists(Folder + Result.Counterpart + '.pas') then
-  begin
-    Result.CounterpartFile := Folder + Result.Counterpart + '.pas';
-  end;
-  if Result.CounterpartFile <> '' then
-  begin
-    Exit;
-  end;
-  if ALine >= 0 then
-  begin
-    Result.ClassName := TTestUnits.ClassAt(Result.Source, ALine);
-  end;
-  Result.ClassAtLine := Result.ClassName <> '';
-  if Result.ClassName = '' then
-  begin
-    Result.ClassName := TTestUnits.FirstClass(Result.Source);
-  end;
-  if AContext.TestProgram = '' then
-  begin
-    Result.Reason := 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); ' +
-      '„testUnits.project“ in atlas.json festlegen';
-  end
-  else if (Result.ClassName = '') and (Length(TTestUnits.TestMethods(Result.Source, '')) = 0) then
-  begin
-    Result.Reason := Format('%s hat weder Klassen noch Routinen im interface', [Result.UnitName]);
-  end
-  else
-  begin
-    Result.CanCreate := True;
-    Result.NewFile := Folder + Result.Counterpart + '.pas';
+    PlanTestUnit(Result, ALine, AContext, mFolder);
   end;
 end;
 
