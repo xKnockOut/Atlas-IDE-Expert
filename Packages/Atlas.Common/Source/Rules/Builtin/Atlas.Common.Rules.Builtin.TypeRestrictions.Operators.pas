@@ -142,6 +142,69 @@ begin
   Result := Result + ['Assign'];
 end;
 
+type
+  /// <summary>Ein class operator mit allem, was die Prüfungen brauchen.</summary>
+  TOperatorSite = record
+    Head: TRoutineHead;
+    Own: string;
+    Name: string;
+    Range: TTextRange;
+    Shape: TOperatorShape;
+    OwnNames: TArray<string>;
+    /// <summary>Typname je Parametername ('' ohne Typ).</summary>
+    ParamTypes: TArray<string>;
+  end;
+
+/// <summary>Typname je Parametername des Kopfs ("A, B: T" ergibt zweimal T, '' ohne Typ).</summary>
+function ParameterTypeNames(const AHead: TRoutineHead): TArray<string>;
+var
+  mParam: TSyntaxNode;
+  mType: string;
+  mCount: Integer;
+begin
+  Result := nil;
+  for mParam in AHead.Parameters do
+  begin
+    mType := '';
+    if (mParam.ChildCount > 0) and (mParam[mParam.ChildCount - 1].Kind = TSyntaxKind.TypeReference) then
+    begin
+      mType := mParam[mParam.ChildCount - 1].Name;
+    end;
+    for mCount := 1 to Length(SplitString(mParam.Name, ',')) do
+    begin
+      Result := Result + [mType];
+    end;
+  end;
+end;
+
+/// <summary>Verlangte Parameterzahl eines Operators der Art AShape.</summary>
+function ExpectedParameterCount(AShape: TOperatorShape): Integer;
+begin
+  case AShape of
+    TOperatorShape.Unary, TOperatorShape.Conversion, TOperatorShape.Managed:
+      Result := 1;
+  else
+    Result := 2;
+  end;
+end;
+
+/// <summary>Vorlage der Parameterliste für einen Operator der Art AShape im Typ AOwn; '' ohne Vorlage.</summary>
+function ParameterTemplate(AShape: TOperatorShape; const AOwn: string): string;
+begin
+  case AShape of
+    TOperatorShape.Unary:
+      Result := '(const A: ' + AOwn + ')';
+    TOperatorShape.Managed:
+      Result := '(out Dest: ' + AOwn + ')';
+    TOperatorShape.Assign:
+      Result := '(var Dest: ' + AOwn + '; const [ref] Src: ' + AOwn + ')';
+    TOperatorShape.Binary, TOperatorShape.Comparison:
+      Result := '(const A, B: ' + AOwn + ')';
+  else
+    Result := '';
+  end;
+end;
+
 function TOperatorDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OperatorDeclarationInvalidRuleId, TRuleSeverity.Error,
@@ -287,26 +350,152 @@ var
     end;
   end;
 
-  procedure CheckOperator(AHeader: TSyntaxNode);
+  /// <summary>Liest den Kopf AHeader als class operator mit Namen und eigenem Typ; False bei anderen Köpfen.
+  /// </summary>
+  function ReadSite(AHeader: TSyntaxNode; out ASite: TOperatorSite): Boolean;
   var
-    Head: TRoutineHead;
-    Own, Name, Closest, Other, Template: string;
-    OwnNames, ParamTypes: TArray<string>;
-    Shape: TOperatorShape;
-    Range: TTextRange;
-    Index, Count, Expected: Integer;
-    Param: TSyntaxNode;
-    HasOwn, Certain: Boolean;
+    mIndex: Integer;
   begin
-    Head := TRoutineHead.Read(Tokens, AHeader);
-    if not Head.IsClass or (Head.Keyword <> 'operator') then
+    ASite := Default(TOperatorSite);
+    ASite.Head := TRoutineHead.Read(Tokens, AHeader);
+    ASite.Own := ContainerName(AHeader);
+    ASite.Name := AHeader.Name;
+    mIndex := NameToken(Tokens, AHeader);
+    Result := ASite.Head.IsClass and (ASite.Head.Keyword = 'operator');
+    Result := Result and (ASite.Own <> '') and (ASite.Name <> '') and (mIndex >= 0) and IsValidIdent(ASite.Name);
+    if Result then
+    begin
+      ASite.Range := TokenRange(Tokens[mIndex]);
+      ASite.Shape := OperatorShape(ASite.Name);
+      ASite.OwnNames := Types.SameNames(ASite.Own);
+      ASite.ParamTypes := ParameterTypeNames(ASite.Head);
+    end;
+  end;
+
+  procedure ReportUnknown(const ASite: TOperatorSite);
+  var
+    mClosest: string;
+  begin
+    mClosest := TTextFuzzy.Closest(ASite.Name, KnownOperators);
+    if mClosest <> '' then
+    begin
+      Report(ASite.Range, Format('Unbekannter Operator %s; gemeint ist wohl %s (wie E2393).', [ASite.Name,
+        mClosest]), [RenameFix(ASite.Own, ASite.Head, mClosest)]);
+    end
+    else
+    begin
+      Report(ASite.Range, Format('Unbekannter Operator %s (wie E2393).', [ASite.Name]), nil);
+    end;
+    ReportBodies(ASite.Own, ASite.Head);
+  end;
+
+  /// <summary>Parameterzahl (E2517); True nach einer Meldung.</summary>
+  function CheckCount(const ASite: TOperatorSite): Boolean;
+  var
+    mExpected: Integer;
+    mTemplate: string;
+    mFixes: TArray<TRuleFix>;
+  begin
+    mExpected := ExpectedParameterCount(ASite.Shape);
+    Result := ASite.Head.ParameterCount <> mExpected;
+    if not Result then
     begin
       Exit;
     end;
-    Own := ContainerName(AHeader);
-    Name := AHeader.Name;
-    Index := NameToken(Tokens, AHeader);
-    if (Own = '') or (Name = '') or (Index < 0) or not IsValidIdent(Name) then
+    mTemplate := ParameterTemplate(ASite.Shape, ASite.Own);
+    mFixes := nil;
+    if mTemplate <> '' then
+    begin
+      mFixes := [ParametersFix(ASite.Own, ASite.Head, mTemplate)];
+    end;
+    Report(ASite.Range, Format('Der Operator %s muss %d Parameter haben (wie E2517).', [ASite.Name, mExpected]),
+      mFixes);
+  end;
+
+  /// <summary>Eigener Typ in den Parametern (E2518) bzw. in Parameter oder Ergebnis (E2521); True nach einer
+  /// Meldung.</summary>
+  function CheckOwnType(const ASite: TOperatorSite): Boolean;
+  var
+    mOther: string;
+    mHasOwn, mCertain: Boolean;
+  begin
+    mHasOwn := False;
+    mCertain := True;
+    for mOther in ASite.ParamTypes do
+    begin
+      mHasOwn := mHasOwn or MatchText(BareTypeName(mOther), ASite.OwnNames);
+      mCertain := mCertain and Types.CertainlyOther(mOther, ASite.OwnNames);
+    end;
+    if (ASite.Shape = TOperatorShape.Conversion) and (ASite.Head.ResultType <> nil) then
+    begin
+      mHasOwn := mHasOwn or MatchText(BareTypeName(ASite.Head.ResultType.Name), ASite.OwnNames);
+      mCertain := mCertain and Types.CertainlyOther(ASite.Head.ResultType.Name, ASite.OwnNames);
+    end;
+    Result := not mHasOwn and mCertain and (ASite.Shape <> TOperatorShape.Managed);
+    if not Result then
+    begin
+      Exit;
+    end;
+    if ASite.Shape = TOperatorShape.Conversion then
+    begin
+      Report(ASite.Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [ASite.Name,
+        ASite.Own]), nil);
+    end
+    else
+    begin
+      Report(ASite.Range, Format('Der Operator %s muss %s in mindestens einem Parameter haben (wie E2518).',
+        [ASite.Name, ASite.Own]), nil);
+    end;
+  end;
+
+  /// <summary>Liefert der Kopf sicher einen anderen Typ als den des ersten Parameters?</summary>
+  function ResultDiffers(const ASite: TOperatorSite): Boolean;
+  var
+    mResult, mFirst: string;
+  begin
+    Result := (ASite.Head.ResultType <> nil) and (ASite.ParamTypes[0] <> '');
+    if not Result then
+    begin
+      Exit;
+    end;
+    mResult := ASite.Head.ResultType.Name;
+    mFirst := ASite.ParamTypes[0];
+    Result := not SameText(BareTypeName(mResult), BareTypeName(mFirst));
+    Result := Result and Types.CertainlyOther(mResult, Types.SameNames(mFirst)) and
+      Types.CertainlyOther(mFirst, Types.SameNames(mResult));
+  end;
+
+  /// <summary>Inc und Dec liefern den Typ des Parameters (E2519); True nach einer Meldung.</summary>
+  function CheckIncDec(const ASite: TOperatorSite): Boolean;
+  begin
+    // Vergleiche mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D Persistence.Criteria liefert
+    // ICriterion; OP1-OP5, #1328); die Prüfung auf E2520 ist entfallen.
+    Result := MatchText(ASite.Name, ['Inc', 'Dec']) and ResultDiffers(ASite);
+    if Result then
+    begin
+      Report(ASite.Range, Format('%s muss denselben Typ liefern wie den ersten Parameter, hier %s (wie E2519).',
+        [ASite.Name, ASite.ParamTypes[0]]), [ResultFix(ASite.Own, ASite.Head, ASite.ParamTypes[0],
+        ASite.ParamTypes[0] + ' als Ergebnis')]);
+    end;
+  end;
+
+  /// <summary>Assign eines Managed Records: erster Parameter var; Delphi 13 meldet E2617 (Cm.E2464, #1380).
+  /// </summary>
+  procedure CheckAssign(const ASite: TOperatorSite);
+  begin
+    if (ASite.Shape = TOperatorShape.Assign) and (ASite.Head.Parameters <> nil) and
+      (ASite.Head.Parameters[0].Modifier <> TParameterModifier.VarParam) then
+    begin
+      Report(ASite.Range, 'Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein ' +
+        '(wie E2617).', [VarFix(ASite.Own, ASite.Head)]);
+    end;
+  end;
+
+  procedure CheckOperator(AHeader: TSyntaxNode);
+  var
+    mSite: TOperatorSite;
+  begin
+    if not ReadSite(AHeader, mSite) then
     begin
       Exit;
     end;
@@ -314,124 +503,19 @@ var
     // Deklaration (E2123, #1382), hier bleibt nur der Rumpf, der zu nichts passt (Cm.E2522, #1380).
     if AHeader.Parent.Kind = TSyntaxKind.ClassType then
     begin
-      ReportBodies(Own, Head);
-      Exit;
-    end;
-    Range := TokenRange(Tokens[Index]);
-    Shape := OperatorShape(Name);
-    if Shape = TOperatorShape.Unknown then
+      ReportBodies(mSite.Own, mSite.Head);
+    end
+    else if mSite.Shape = TOperatorShape.Unknown then
     begin
-      Closest := TTextFuzzy.Closest(Name, KnownOperators);
-      if Closest <> '' then
-      begin
-        Report(Range, Format('Unbekannter Operator %s; gemeint ist wohl %s (wie E2393).', [Name, Closest]),
-          [RenameFix(Own, Head, Closest)]);
-      end
-      else
-      begin
-        Report(Range, Format('Unbekannter Operator %s (wie E2393).', [Name]), nil);
-      end;
-      ReportBodies(Own, Head);
-      Exit;
-    end;
-    if Shape = TOperatorShape.Tolerated then
+      ReportUnknown(mSite);
+    end
+    else if mSite.Shape <> TOperatorShape.Tolerated then
     begin
-      Exit;
-    end;
-    OwnNames := Types.SameNames(Own);
-    ParamTypes := nil;
-    for Param in Head.Parameters do
-    begin
-      for Count := 1 to Length(SplitString(Param.Name, ',')) do
+      if CheckCount(mSite) or CheckOwnType(mSite) or CheckIncDec(mSite) then
       begin
-        if (Param.ChildCount > 0) and (Param[Param.ChildCount - 1].Kind = TSyntaxKind.TypeReference) then
-        begin
-          ParamTypes := ParamTypes + [Param[Param.ChildCount - 1].Name];
-        end
-        else
-        begin
-          ParamTypes := ParamTypes + [''];
-        end;
-      end;
-    end;
-    // Parameterzahl (E2517).
-    case Shape of
-      TOperatorShape.Unary, TOperatorShape.Conversion, TOperatorShape.Managed:
-        Expected := 1;
-    else
-      Expected := 2;
-    end;
-    Count := Head.ParameterCount;
-    if Count <> Expected then
-    begin
-      case Shape of
-        TOperatorShape.Unary:
-          Template := '(const A: ' + Own + ')';
-        TOperatorShape.Managed:
-          Template := '(out Dest: ' + Own + ')';
-        TOperatorShape.Assign:
-          Template := '(var Dest: ' + Own + '; const [ref] Src: ' + Own + ')';
-        TOperatorShape.Binary, TOperatorShape.Comparison:
-          Template := '(const A, B: ' + Own + ')';
-      else
-        Template := '';
-      end;
-      if Template <> '' then
-      begin
-        Report(Range, Format('Der Operator %s muss %d Parameter haben (wie E2517).', [Name, Expected]),
-          [ParametersFix(Own, Head, Template)]);
-      end
-      else
-      begin
-        Report(Range, Format('Der Operator %s muss %d Parameter haben (wie E2517).', [Name, Expected]), nil);
-      end;
-      Exit;
-    end;
-    // Eigener Typ in den Parametern (E2518) bzw. in Parameter oder Ergebnis (E2521).
-    HasOwn := False;
-    Certain := True;
-    for Other in ParamTypes do
-    begin
-      HasOwn := HasOwn or MatchText(BareTypeName(Other), OwnNames);
-      Certain := Certain and Types.CertainlyOther(Other, OwnNames);
-    end;
-    if Shape = TOperatorShape.Conversion then
-    begin
-      if Head.ResultType <> nil then
-      begin
-        HasOwn := HasOwn or MatchText(BareTypeName(Head.ResultType.Name), OwnNames);
-        Certain := Certain and Types.CertainlyOther(Head.ResultType.Name, OwnNames);
-      end;
-      if not HasOwn and Certain then
-      begin
-        Report(Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [Name, Own]), nil);
         Exit;
       end;
-    end
-    else if not HasOwn and Certain and (Shape <> TOperatorShape.Managed) then
-    begin
-      Report(Range, Format('Der Operator %s muss %s in mindestens einem Parameter haben (wie E2518).', [Name, Own]),
-        nil);
-      Exit;
-    end;
-    // Vergleiche mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D Persistence.Criteria liefert
-    // ICriterion; OP1-OP5, #1328); die Prüfung auf E2520 ist entfallen.
-    // Inc und Dec liefern den Typ des Parameters (E2519).
-    if MatchText(Name, ['Inc', 'Dec']) and (Head.ResultType <> nil) and (ParamTypes[0] <> '') and
-      not SameText(BareTypeName(Head.ResultType.Name), BareTypeName(ParamTypes[0])) and
-      Types.CertainlyOther(Head.ResultType.Name, Types.SameNames(ParamTypes[0])) and
-      Types.CertainlyOther(ParamTypes[0], Types.SameNames(Head.ResultType.Name)) then
-    begin
-      Report(Range, Format('%s muss denselben Typ liefern wie den ersten Parameter, hier %s (wie E2519).',
-        [Name, ParamTypes[0]]), [ResultFix(Own, Head, ParamTypes[0], ParamTypes[0] + ' als Ergebnis')]);
-      Exit;
-    end;
-    // Assign eines Managed Records: erster Parameter var; Delphi 13 meldet E2617 (Cm.E2464, #1380).
-    if (Shape = TOperatorShape.Assign) and (Head.Parameters <> nil) and
-      (Head.Parameters[0].Modifier <> TParameterModifier.VarParam) then
-    begin
-      Report(Range, 'Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).',
-        [VarFix(Own, Head)]);
+      CheckAssign(mSite);
     end;
   end;
 
