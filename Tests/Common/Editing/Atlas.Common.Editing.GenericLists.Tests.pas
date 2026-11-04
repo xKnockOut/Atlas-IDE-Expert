@@ -52,6 +52,8 @@ type
     [Test]
     procedure ContnrsRemovedFromOtherClause;
     [Test]
+    procedure ContnrsKeptInClauseWithDirectives;
+    [Test]
     procedure SafeOnlyWithKnownTypes;
     [Test]
     procedure RejectsSort;
@@ -106,6 +108,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists;
 
 const
@@ -482,6 +485,21 @@ begin
     '  TPosition(Liste[0]).Free;'#10'end;'#10'end.', 'Liste');
   Assert.IsTrue(Outcome.Converted, Outcome.Reason);
   AssertContains(Outcome.Text, 'interface'#10'uses Classes;'#10);
+  AssertContains(Outcome.Text, 'implementation'#10'uses SysUtils, System.Generics.Collections;'#10);
+end;
+
+procedure TGenericListsTests.ContnrsKeptInClauseWithDirectives;
+var
+  Outcome: TOutcome;
+begin
+  // Contnrs steht in einer Liste mit Direktive: Sie bleibt unverändert und bekommt auch kein
+  // System.Generics.Collections, das schon in das uses des implementation-Abschnitts kommt.
+  Outcome := Convert(TLegacyListKind.ObjectList, 'unit Haupt;'#10'interface'#10 +
+    'uses Classes{$IFDEF X}, Foo{$ENDIF}, Contnrs;'#10'implementation'#10'uses SysUtils;'#10'type'#10 +
+    '  TPosition = class'#10'  end;'#10'procedure Lauf;'#10'var'#10'  Liste: TObjectList;'#10'begin'#10 +
+    '  Liste := TObjectList.Create;'#10'  TPosition(Liste[0]).Free;'#10'end;'#10'end.', 'Liste');
+  Assert.IsTrue(Outcome.Converted, Outcome.Reason);
+  AssertContains(Outcome.Text, 'interface'#10'uses Classes{$IFDEF X}, Foo{$ENDIF}, Contnrs;'#10);
   AssertContains(Outcome.Text, 'implementation'#10'uses SysUtils, System.Generics.Collections;'#10);
 end;
 
