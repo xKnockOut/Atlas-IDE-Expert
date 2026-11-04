@@ -100,10 +100,13 @@
         <DCCReference Include="Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.Todos.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickColumn.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickPopups.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.SavedPlaces.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickService.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>
