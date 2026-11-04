@@ -104,9 +104,6 @@ begin
   Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
-/// <summary>Ein Parameter je Eintrag, ohne Standardwert: Deklaration und Implementierung dürfen Parameter
-/// verschieden gruppieren (const A: string; const B: string = '' gegen const A, B: string) und die
-/// Implementierung lässt Standardwerte weg (#647).</summary>
 /// <summary>Schneidet einen führenden Modifizierer (const, var, out …) von ANames ab und liefert ihn klein.</summary>
 function TakeModifier(var ANames: string): string;
 var
