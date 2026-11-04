@@ -458,7 +458,7 @@ begin
   Result := False;
 end;
 
-function HasPrefix(const AList: TAtlasSnippetList; const APrefix: string): Boolean;
+function ListHasPrefix(const AList: TAtlasSnippetList; const APrefix: string): Boolean;
 var
   mItem: TAtlasSnippet;
 begin
@@ -760,7 +760,7 @@ begin
   Result := nil;
   for mItem in ABuiltIn do
   begin
-    if not HasPrefix(AUser, mItem.Prefix) then
+    if not ListHasPrefix(AUser, mItem.Prefix) then
     begin
       Result := Result + [mItem];
     end;
