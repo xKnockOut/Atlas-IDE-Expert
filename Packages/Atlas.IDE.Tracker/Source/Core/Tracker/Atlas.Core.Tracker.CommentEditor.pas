@@ -232,6 +232,74 @@ begin
   Result := CharInSet(AChar, [#13, #10]);
 end;
 
+/// <summary>Anfang des Worts vor ACaret: Index des Zeichens davor (0 am Textanfang).</summary>
+function WordStart(const AText: string; ACaret: Integer): Integer;
+begin
+  Result := ACaret;
+  while (Result >= 1) and IsNameChar(AText[Result]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Issue-Auslöser für AWord ab AStart (wie SelStart); None, wenn die Palette nichts daraus liest.
+/// </summary>
+function IssueTrigger(const ATarget: TAtlasTrackerTarget; const AWord: string; AStart: Integer):
+  TAtlasCommentTrigger;
+var
+  mQuery: TAtlasIssueSearchQuery;
+begin
+  Result := TAtlasCommentTrigger.None;
+  mQuery := TAtlasIssuePaletteSearch.Parse(ATarget, AWord);
+  if mQuery.Kind <> TAtlasIssueSearchKind.None then
+  begin
+    Result.Kind := TAtlasCommentTriggerKind.Issue;
+    Result.Text := AWord;
+    Result.Query := mQuery;
+    Result.Start := AStart;
+    Result.Length := Length(AWord);
+  end;
+end;
+
+/// <summary>Erwähnung "@AWord"; AMarkIndex: Index des "@". Nur mit Buchstaben am Anfang.</summary>
+function MentionTrigger(const AWord: string; AMarkIndex: Integer): TAtlasCommentTrigger;
+begin
+  Result := TAtlasCommentTrigger.None;
+  if AWord[1].IsLetter then
+  begin
+    Result.Kind := TAtlasCommentTriggerKind.Mention;
+    Result.Text := AWord;
+    Result.Start := AMarkIndex - 1;
+    Result.Length := Length(AWord) + 1;
+  end;
+end;
+
+/// <summary>"a@b" (E-Mail), "##", "`#" und Pfade: Zeichen vor der Marke an AMarkIndex hängt daran.</summary>
+function MarkIsGlued(const AText: string; AMarkIndex: Integer): Boolean;
+begin
+  Result := (AMarkIndex > 1) and (IsNameChar(AText[AMarkIndex - 1]) or
+    CharInSet(AText[AMarkIndex - 1], [cMention, cHash, '`', '/', '\']));
+end;
+
+/// <summary>Auslöser mit "@" oder "#" an AMarkIndex vor AWord.</summary>
+function MarkedTrigger(const AText: string; AMarkIndex: Integer; const AWord: string;
+  const ATarget: TAtlasTrackerTarget): TAtlasCommentTrigger;
+begin
+  Result := TAtlasCommentTrigger.None;
+  if (AWord = '') or MarkIsGlued(AText, AMarkIndex) then
+  begin
+    Exit;
+  end;
+  if AText[AMarkIndex] = cMention then
+  begin
+    Result := MentionTrigger(AWord, AMarkIndex);
+  end
+  else
+  begin
+    Result := IssueTrigger(ATarget, cHash + AWord, AMarkIndex - 1);
+  end;
+end;
+
 { TAtlasCommentTrigger }
 
 class function TAtlasCommentTrigger.None: TAtlasCommentTrigger;
@@ -255,8 +323,6 @@ class function TAtlasCommentEditing.Trigger(const AText: string; ACaret: Integer
 var
   mStart: Integer;
   mWord: string;
-  mMark: Char;
-  mQuery: TAtlasIssueSearchQuery;
 begin
   Result := TAtlasCommentTrigger.None;
   if (ACaret < 1) or (ACaret > System.Length(AText)) then
@@ -268,64 +334,17 @@ begin
   begin
     Exit;
   end;
-  mStart := ACaret;
-  while (mStart >= 1) and IsNameChar(AText[mStart]) do
-  begin
-    Dec(mStart);
-  end;
+  mStart := WordStart(AText, ACaret);
   mWord := Copy(AText, mStart + 1, ACaret - mStart);
   if (mStart >= 1) and CharInSet(AText[mStart], [cMention, cHash]) then
   begin
-    mMark := AText[mStart];
-    // "a@b" (E-Mail), "##" und "`#" sind keine Auslöser.
-    if (mStart > 1) and (IsNameChar(AText[mStart - 1]) or CharInSet(AText[mStart - 1], [cMention, cHash, '`', '/',
-      '\'])) then
-    begin
-      Exit;
-    end;
-    if mWord = '' then
-    begin
-      Exit;
-    end;
-    if mMark = cMention then
-    begin
-      if not mWord[1].IsLetter then
-      begin
-        Exit;
-      end;
-      Result.Kind := TAtlasCommentTriggerKind.Mention;
-      Result.Text := mWord;
-    end
-    else
-    begin
-      mQuery := TAtlasIssuePaletteSearch.Parse(ATarget, cHash + mWord);
-      if mQuery.Kind = TAtlasIssueSearchKind.None then
-      begin
-        Exit;
-      end;
-      Result.Kind := TAtlasCommentTriggerKind.Issue;
-      Result.Text := cHash + mWord;
-      Result.Query := mQuery;
-    end;
-    Result.Start := mStart - 1;
-    Result.Length := System.Length(mWord) + 1;
-    Exit;
-  end;
+    Result := MarkedTrigger(AText, mStart, mWord, ATarget);
+  end
   // Projektkürzel mit "-" (YouTrack): ein eigenes Wort, nicht Teil eines Pfads oder Codes.
-  if (mWord = '') or ((mStart >= 1) and CharInSet(AText[mStart], ['`', '/', '\'])) then
+  else if (mWord <> '') and not ((mStart >= 1) and CharInSet(AText[mStart], ['`', '/', '\'])) then
   begin
-    Exit;
+    Result := IssueTrigger(ATarget, mWord, mStart);
   end;
-  mQuery := TAtlasIssuePaletteSearch.Parse(ATarget, mWord);
-  if mQuery.Kind = TAtlasIssueSearchKind.None then
-  begin
-    Exit;
-  end;
-  Result.Kind := TAtlasCommentTriggerKind.Issue;
-  Result.Text := mWord;
-  Result.Query := mQuery;
-  Result.Start := mStart;
-  Result.Length := System.Length(mWord);
 end;
 
 class function TAtlasCommentEditing.Replace(const AText: string; const ATrigger: TAtlasCommentTrigger;
@@ -706,13 +725,44 @@ begin
   end;
 end;
 
+/// <summary>Pflichtfelder eines Entwurfs aus AObject; False, wenn eines fehlt.</summary>
+function ReadDraftFields(AObject: TJSONObject; var AEntry: TAtlasCommentDrafts.TEntry): Boolean;
+begin
+  Result := AObject.TryGetValue<string>('tracker', AEntry.Tracker) and
+    AObject.TryGetValue<string>('issue', AEntry.Issue) and AObject.TryGetValue<string>('field', AEntry.Field) and
+    AObject.TryGetValue<string>('text', AEntry.Text);
+end;
+
+/// <summary>Kein Pflichtfeld nur Leerraum.</summary>
+function IsFilledDraft(const AEntry: TAtlasCommentDrafts.TEntry): Boolean;
+begin
+  Result := (Trim(AEntry.Text) <> '') and (Trim(AEntry.Issue) <> '') and (Trim(AEntry.Tracker) <> '') and
+    (Trim(AEntry.Field) <> '');
+end;
+
+/// <summary>Entwurf aus AItem; False bei anderer Form.</summary>
+function DraftOf(AItem: TJSONValue; out AEntry: TAtlasCommentDrafts.TEntry): Boolean;
+var
+  mSaved: string;
+begin
+  AEntry := Default(TAtlasCommentDrafts.TEntry);
+  Result := (AItem is TJSONObject) and ReadDraftFields(TJSONObject(AItem), AEntry) and IsFilledDraft(AEntry);
+  if Result then
+  begin
+    mSaved := '';
+    if TJSONObject(AItem).TryGetValue<string>('saved', mSaved) and (mSaved <> '') then
+    begin
+      TryISO8601ToDate(mSaved, AEntry.Saved, True);
+    end;
+    AEntry.Text := Copy(AEntry.Text, 1, TAtlasTrackerDetails.MaxText);
+  end;
+end;
+
 function TAtlasCommentDrafts.Parse(const AText: string): Boolean;
 var
   mRoot, mList, mItem: TJSONValue;
-  mObject: TJSONObject;
   mEntry: TEntry;
   mVersion: Integer;
-  mSaved: string;
 begin
   FEntries.Clear;
   mRoot := TJSONObject.ParseJSONValue(AText);
@@ -734,27 +784,7 @@ begin
       begin
         Break;
       end;
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mObject := TJSONObject(mItem);
-      mEntry := Default(TEntry);
-      if not mObject.TryGetValue<string>('tracker', mEntry.Tracker) or
-        not mObject.TryGetValue<string>('issue', mEntry.Issue) or
-        not mObject.TryGetValue<string>('field', mEntry.Field) or
-        not mObject.TryGetValue<string>('text', mEntry.Text) or (Trim(mEntry.Text) = '') or
-        (Trim(mEntry.Issue) = '') or (Trim(mEntry.Tracker) = '') or (Trim(mEntry.Field) = '') then
-      begin
-        Continue;
-      end;
-      mSaved := '';
-      if mObject.TryGetValue<string>('saved', mSaved) and (mSaved <> '') then
-      begin
-        TryISO8601ToDate(mSaved, mEntry.Saved, True);
-      end;
-      mEntry.Text := Copy(mEntry.Text, 1, TAtlasTrackerDetails.MaxText);
-      if IndexOf(mEntry.Tracker, mEntry.Issue, mEntry.Field) < 0 then
+      if DraftOf(mItem, mEntry) and (IndexOf(mEntry.Tracker, mEntry.Issue, mEntry.Field) < 0) then
       begin
         FEntries.Add(mEntry);
       end;
