@@ -134,16 +134,24 @@ begin
   // Ohne ExtractFileDir: Pfade haben immer „\“, auch wenn die Tests nicht unter Windows laufen.
   Result := '';
   for Index := Length(AFileName) downto 1 do
+  begin
     if CharInSet(AFileName[Index], ['\', '/']) then
+    begin
       Exit(Copy(AFileName, 1, Index - 1));
+    end;
+  end;
 end;
 
 function Joined(const AFolder, AName: string): string;
 begin
   if (AFolder = '') or CharInSet(AFolder[Length(AFolder)], ['\', '/']) then
-    Result := AFolder + AName
+  begin
+    Result := AFolder + AName;
+  end
   else
+  begin
     Result := AFolder + '\' + AName;
+  end;
 end;
 
 { TAtlasProjectSetups }
@@ -159,11 +167,13 @@ var
 begin
   ATemplate := TAtlasSetupTemplate.Existing;
   for Each := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
+  begin
     if SameText(Trim(AId), TemplateIds[Each]) then
     begin
       ATemplate := Each;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -191,20 +201,30 @@ var
 begin
   Result := '';
   if (Trim(APluginDir) = '') or not Assigned(AExists) then
+  begin
     Exit;
+  end;
   Folder := APluginDir;
   while (Folder <> '') and CharInSet(Folder[Length(Folder)], ['\', '/']) do
+  begin
     Delete(Folder, Length(Folder), 1);
+  end;
   Candidate := Joined(Folder, TemplatesFolder);
   if AExists(Joined(Candidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
+  begin
     Exit(Candidate);
+  end;
   // BPL in Win32\ bzw. Win64\: Vorlagen eine Ebene darüber.
   Parent := FolderOf(Folder);
   if Parent = '' then
+  begin
     Exit;
+  end;
   Candidate := Joined(Parent, TemplatesFolder);
   if AExists(Joined(Candidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
+  begin
     Result := Candidate;
+  end;
 end;
 
 class function TAtlasProjectSetups.TemplateText(ATemplate: TAtlasSetupTemplate; const AFolder: string;
@@ -214,16 +234,22 @@ var
 begin
   Result := BuiltIn(ATemplate);
   if (AFolder = '') or not Assigned(ARead) then
+  begin
     Exit;
+  end;
   if ARead(Joined(AFolder, TemplateFile(ATemplate)), Text) and (Trim(Text) <> '') then
+  begin
     Result := Text;
+  end;
 end;
 
 class function TAtlasProjectSetups.ConfigTarget(const AProject: string): string;
 begin
   Result := '';
   if Trim(AProject) = '' then
+  begin
     Exit;
+  end;
   Result := Joined(FolderOf(Trim(AProject)), ConfigName);
 end;
 
@@ -234,12 +260,18 @@ var
 begin
   Result := '';
   if (Trim(AProject) = '') or not Assigned(AExists) then
+  begin
     Exit;
+  end;
   Folder := FolderOf(Trim(AProject));
   if AExists(Joined(Folder, ConfigName)) then
-    Result := Joined(Folder, ConfigName)
+  begin
+    Result := Joined(Folder, ConfigName);
+  end
   else if AExists(Joined(Folder, LegacyConfigName)) then
+  begin
     Result := Joined(Folder, LegacyConfigName);
+  end;
 end;
 
 class function TAtlasProjectSetups.ValidTemplate(const ATemplateText, ASchemaJson: string;
@@ -273,8 +305,12 @@ var
 begin
   Result := nil;
   for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+  begin
     if not StepDone(Step, AFacts) then
+    begin
       Result := Result + [Step];
+    end;
+  end;
 end;
 
 class function TAtlasProjectSetups.NeedsCard(const AFacts: TAtlasSetupFacts): Boolean;

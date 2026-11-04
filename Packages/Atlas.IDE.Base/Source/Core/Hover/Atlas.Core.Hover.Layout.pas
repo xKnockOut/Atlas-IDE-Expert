@@ -450,7 +450,9 @@ end;
 procedure TBuilder.Add(const AItem: TAtlasHoverItem);
 begin
   if FItemCount = Length(FItems) then
+  begin
     SetLength(FItems, 2 * FItemCount + 16);
+  end;
   FItems[FItemCount] := AItem;
   Inc(FItemCount);
 end;
@@ -461,14 +463,18 @@ var
 begin
   Add(AItem);
   for Index := FItemCount - 1 downto AAt + 1 do
+  begin
     FItems[Index] := FItems[Index - 1];
+  end;
   FItems[AAt] := AItem;
 end;
 
 procedure TBuilder.AddHit(AKind: TAtlasHoverHitKind; AIndex: Integer; const ARect: TRect);
 begin
   if FHitCount = Length(FHits) then
+  begin
     SetLength(FHits, 2 * FHitCount + 8);
+  end;
   FHits[FHitCount].Kind := AKind;
   FHits[FHitCount].Index := AIndex;
   FHits[FHitCount].Rect := ARect;
@@ -502,10 +508,14 @@ var
   Item: TAtlasHoverItem;
 begin
   if AText = '' then
+  begin
     Exit;
+  end;
   Bottom := FY + FMeasure.BlockHeight(AText, FRight - FLeft);
   if AMaxLines > 0 then
+  begin
     Bottom := Min(Bottom, FY + AMaxLines * Height(Face(TAtlasHoverFont.Ui, False)));
+  end;
   Item := NewItem(TAtlasHoverItemKind.Block, Rect(FLeft, FY, FRight, Bottom), AColor);
   Item.Text := AText;
   Add(Item);
@@ -542,7 +552,9 @@ begin
   end;
   Add(Item);
   if AIndex >= 0 then
+  begin
     AddHit(AKind, AIndex, Cell);
+  end;
   Inc(FX, TextWidth);
   FRowHeight := Max(FRowHeight, TextHeight);
 end;
@@ -573,7 +585,9 @@ begin
   end;
   Cell := Rect(FX, FY, FX + TextWidth + Scale(AtlasChipPad), FY + TextHeight);
   if ACurrent then
-    Item := NewItem(TAtlasHoverItemKind.Frame, Cell, FColors.Accent)
+  begin
+    Item := NewItem(TAtlasHoverItemKind.Frame, Cell, FColors.Accent);
+  end
   else
   begin
     Item := NewItem(TAtlasHoverItemKind.Frame, Cell, FColors.Line);
@@ -585,8 +599,10 @@ begin
   Item.Radius := AtlasChipRadius;
   Add(Item);
   if ACurrent then
+  begin
     Item := NewItem(TAtlasHoverItemKind.Text, Rect(Cell.Left + Scale(AtlasChipPad div 2), Cell.Top + Scale(1),
-      Cell.Left + Scale(AtlasChipPad div 2), Cell.Top + Scale(1)), FColors.Accent)
+      Cell.Left + Scale(AtlasChipPad div 2), Cell.Top + Scale(1)), FColors.Accent);
+  end
   else
   begin
     Item := NewItem(TAtlasHoverItemKind.Text, Rect(Cell.Left + Scale(AtlasChipPad div 2), Cell.Top + Scale(1),
@@ -599,7 +615,9 @@ begin
   Item.Face := TextFace;
   Add(Item);
   if not ACurrent then
+  begin
     AddHit(TAtlasHoverHitKind.Ancestor, AIndex, Cell);
+  end;
   FX := Cell.Right;
   FRowHeight := Max(FRowHeight, TextHeight);
 end;
@@ -611,7 +629,9 @@ var
 begin
   // Taste in Akzentfarbe, Beschriftung gedämpft; bleibt in einer Zeile.
   if FX > FLeft then
+  begin
     Inc(FX, Scale(14));
+  end;
   Total := Width(Face(TAtlasHoverFont.SmallUi, True), AKey + ' ') +
     Width(Face(TAtlasHoverFont.SmallUi, False), ACaption);
   if (FX + Total > FRight) and (FX > FLeft) then
@@ -621,17 +641,25 @@ begin
     FRowHeight := 0;
   end;
   if AEnabled then
-    KeyColor := FColors.Accent
+  begin
+    KeyColor := FColors.Accent;
+  end
   else
+  begin
     KeyColor := FColors.Muted;
+  end;
   HotIndex := -1;
   if AEnabled then
+  begin
     HotIndex := Ord(AAction);
+  end;
   Start := FX;
   Flow(AKey + ' ', KeyColor, True, TAtlasHoverHitKind.Action, -1, -1, KeyColor);
   Flow(ACaption, FColors.Muted, False, TAtlasHoverHitKind.Action, -1, HotIndex, FColors.Text);
   if AEnabled then
+  begin
     AddHit(TAtlasHoverHitKind.Action, Ord(AAction), Rect(Start, FY, FX, FY + FRowHeight));
+  end;
 end;
 
 procedure TBuilder.ProblemLink(const ACaption: string; AProblem: Integer; AAction: TAtlasHoverProblemAction);
@@ -639,7 +667,9 @@ var
   Code: Integer;
 begin
   if FX > FLeft then
+  begin
     Inc(FX, Scale(12));
+  end;
   Code := TAtlasHoverLayout.ProblemActionCode(AProblem, AAction);
   Flow(ACaption, FColors.Accent, False, TAtlasHoverHitKind.ProblemAction, Code, Code, FColors.Accent);
 end;
@@ -652,7 +682,9 @@ var
 begin
   Cycle := AProblem.Code = TAtlasProblem.UsesCycleCode;
   if (AProblem.Related = nil) and not Cycle then
+  begin
     Exit;
+  end;
   OldFont := FFlowFont;
   FFlowFont := TAtlasHoverFont.SmallUi;
   FX := FLeft;
@@ -660,15 +692,21 @@ begin
   for Item := 0 to Min(High(AProblem.Related), MaxRelated - 1) do
   begin
     if (Item > 0) and Cycle then
-      Flow(' → ', FColors.Muted, False, TAtlasHoverHitKind.ProblemAction, -1, -1, FColors.Muted)
+    begin
+      Flow(' → ', FColors.Muted, False, TAtlasHoverHitKind.ProblemAction, -1, -1, FColors.Muted);
+    end
     else if Item > 0 then
+    begin
       Flow(' · ', FColors.Muted, False, TAtlasHoverHitKind.ProblemAction, -1, -1, FColors.Muted);
+    end;
     Code := TAtlasHoverLayout.ProblemActionCode(AIndex, TAtlasHoverProblemAction.Related, Item);
     Flow(AProblem.Related[Item].Message, FColors.Accent, False, TAtlasHoverHitKind.ProblemAction, Code, Code,
       FColors.Accent);
   end;
   if Cycle and (FInput.Texts.ShowGraph <> '') then
+  begin
     ProblemLink(FInput.Texts.ShowGraph, AIndex, TAtlasHoverProblemAction.ShowGraph);
+  end;
   EndFlow;
   Inc(FY, Scale(6));
   FFlowFont := OldFont;
@@ -688,9 +726,13 @@ begin
       begin
         Inc(FY, Scale(8));
         if FData.Kind = TAtlasHoverData.KindClassRef then
-          Caption := Format(FInput.Texts.TargetType, [FData.ChainOf])
+        begin
+          Caption := Format(FInput.Texts.TargetType, [FData.ChainOf]);
+        end
         else
+        begin
           Caption := FInput.Texts.Inheritance;
+        end;
         CaptionFace := Face(TAtlasHoverFont.SmallMono, True);
         AddText(FLeft, FY, AnsiUpperCase(Caption), CaptionFace, FColors.Muted);
         Inc(FY, Height(CaptionFace) + Scale(6));
@@ -699,12 +741,18 @@ begin
         for Item := 0 to High(Chain) do
         begin
           if Item > 0 then
+          begin
             Flow(' › ', FColors.Muted, False, TAtlasHoverHitKind.Ancestor, -1, -1, FColors.Muted);
+          end;
           if Chain[Item] < 0 then
-            Flow('…', FColors.Muted, False, TAtlasHoverHitKind.Ancestor, -1, -1, FColors.Muted)
+          begin
+            Flow('…', FColors.Muted, False, TAtlasHoverHitKind.Ancestor, -1, -1, FColors.Muted);
+          end
           else
+          begin
             Chip(FData.Ancestors[Chain[Item]].Name, FData.Ancestors[Chain[Item]].Key = FData.Location.Key,
               Chain[Item]);
+          end;
         end;
         EndFlow;
         Inc(FY, Scale(8));
@@ -715,18 +763,28 @@ begin
         FFlowFont := TAtlasHoverFont.SmallUi;
         ActionItem('F12', Format(FInput.Texts.Navigate, [FData.Title]), TAtlasHoverAction.Navigate, True);
         if FInput.View.UsagesCount >= 0 then
-          Caption := Format(FInput.Texts.UsagesCount, [FInput.View.UsagesCount])
+        begin
+          Caption := Format(FInput.Texts.UsagesCount, [FInput.View.UsagesCount]);
+        end
         else
+        begin
           Caption := FInput.Texts.Usages;
+        end;
         ActionItem(FInput.Texts.KeyUsages, Caption, TAtlasHoverAction.Usages, True);
         // Mit Markierung in der Doku kopiert Strg+C diese, bei Komponentenklassen die Liste (#110), sonst die
         // Deklaration.
         if FInput.HasSelection then
-          Caption := FInput.Texts.CopySelection
+        begin
+          Caption := FInput.Texts.CopySelection;
+        end
         else if Length(FData.Members) > 0 then
-          Caption := FInput.Texts.PublishedCopyList
+        begin
+          Caption := FInput.Texts.PublishedCopyList;
+        end
         else
+        begin
           Caption := FInput.Texts.Copy;
+        end;
         ActionItem(FInput.Texts.KeyCopy, Caption, TAtlasHoverAction.Copy, True);
         ActionItem('F1', FInput.Texts.Help, TAtlasHoverAction.Help, FData.DocWiki <> '');
         // Geerbte VCL-Mitglieder kennt der Server nur mit den VCL-Quellen im Index (#110).
@@ -801,14 +859,20 @@ begin
   end;
   Add(Item);
   if FInput.View.CanGoBack then
-    Item := NewItem(TAtlasHoverItemKind.CenterText, Box, FColors.Text)
+  begin
+    Item := NewItem(TAtlasHoverItemKind.CenterText, Box, FColors.Text);
+  end
   else
+  begin
     Item := NewItem(TAtlasHoverItemKind.CenterText, Box, FColors.Muted);
+  end;
   Item.Text := '‹';
   Item.Face := Face(TAtlasHoverFont.Mono, True);
   Add(Item);
   if FInput.View.CanGoBack then
+  begin
     AddHit(TAtlasHoverHitKind.Back, 0, Box);
+  end;
   FFlowFont := TAtlasHoverFont.Mono;
   FNoWrap := True;
   FY := (NavHeight - Height(Face(TAtlasHoverFont.Mono, False))) div 2;
@@ -817,20 +881,30 @@ begin
   for Index := 0 to High(Path) do
   begin
     if Index > 0 then
+    begin
       Flow(' › ', FColors.Muted, False, TAtlasHoverHitKind.Path, -1, -1, FColors.Muted);
+    end;
     if Index = High(Path) then
-      Flow(Path[Index].Caption, FColors.Text, True, TAtlasHoverHitKind.Path, -1, -1, FColors.Text)
+    begin
+      Flow(Path[Index].Caption, FColors.Text, True, TAtlasHoverHitKind.Path, -1, -1, FColors.Text);
+    end
     else if Path[Index].Index < 0 then
-      Flow(Path[Index].Caption, FColors.Muted, False, TAtlasHoverHitKind.Path, -1, -1, FColors.Muted)
+    begin
+      Flow(Path[Index].Caption, FColors.Muted, False, TAtlasHoverHitKind.Path, -1, -1, FColors.Muted);
+    end
     else
+    begin
       Flow(Path[Index].Caption, FColors.Muted, False, TAtlasHoverHitKind.Path, Path[Index].Index,
         Path[Index].Index, FColors.Muted);
+    end;
   end;
   SmallFace := Face(TAtlasHoverFont.SmallUi, False);
   Caption := FInput.Texts.Pinned;
   CaptionWidth := Width(SmallFace, Caption);
   if FX + CaptionWidth + Scale(12) < FRight then
+  begin
     AddText(FRight - CaptionWidth, (NavHeight - Height(SmallFace)) div 2, Caption, SmallFace, FColors.Muted);
+  end;
   FNoWrap := False;
   FFlowFont := TAtlasHoverFont.Ui;
   FRowHeight := 0;
@@ -854,11 +928,17 @@ begin
   AddText(FLeft, FY, Value.Expression, MonoFace, FColors.Accent);
   Inc(FY, Height(MonoFace) + Scale(3));
   if Value.State = TAtlasDebugValueState.Pending then
-    Block(FInput.Texts.DebugPending, FColors.Muted, 1)
+  begin
+    Block(FInput.Texts.DebugPending, FColors.Muted, 1);
+  end
   else if Value.Explained then
-    DebugNote(Value.Note)
+  begin
+    DebugNote(Value.Note);
+  end
   else
+  begin
     Block(Value.Text, FColors.Text, 6);
+  end;
   FLeft := Scale(11);
   Bar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, Start + Scale(1), FLeft + Scale(3), FY - Scale(7)),
     FColors.Accent);
@@ -885,10 +965,14 @@ begin
   begin
     Block(FInput.Texts.DebugChecked, FColors.Muted, 1);
     for Line in ANote.Checked do
+    begin
       Block('• ' + Line, FColors.Muted, 2);
+    end;
   end;
   if Length(ANote.Fixes) = 0 then
+  begin
     Exit;
+  end;
   OldFont := FFlowFont;
   FFlowFont := TAtlasHoverFont.SmallUi;
   FX := FLeft;
@@ -896,7 +980,9 @@ begin
   for Index := 0 to High(ANote.Fixes) do
   begin
     if FX > FLeft then
+    begin
       Inc(FX, Scale(12));
+    end;
     Flow(ANote.Fixes[Index].Caption, FColors.Accent, False, TAtlasHoverHitKind.DebugFix, Index, Index,
       FColors.Accent);
   end;
@@ -930,9 +1016,13 @@ begin
     Color := FColors.Accent;
   end;
   if Caption = '' then
+  begin
     Exit;
+  end;
   if AProblem.Stale then
+  begin
     Color := TAtlasColorMath.Mix(Color, FColors.Surface, AtlasMixFaded);
+  end;
   // Kleine UI-Schrift statt Badge: Die Badge-Schrift richtet sich beim Zeichnen nach der Höhe des Kästchens, das
   // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
   // Kästchen geriet zu groß und der Text darin kleiner.
@@ -968,11 +1058,15 @@ begin
     Flow(AProblem.FixTitle, FColors.Accent, True, TAtlasHoverHitKind.ProblemAction, -1, Code, FColors.Accent);
     AddHit(TAtlasHoverHitKind.ProblemAction, Code, Rect(Start, FY, FX, FY + FRowHeight));
     if FLayout.FixProblem < 0 then
+    begin
       FLayout.FixProblem := AIndex;
+    end;
   end;
   // Syntaxfehler (#1022) lassen sich nicht unterdrücken, nur beheben oder einstellen.
   if AProblem.CanSuppress then
+  begin
     ProblemLink(FInput.Texts.Suppress, AIndex, TAtlasHoverProblemAction.SuppressLine);
+  end;
   ProblemLink(FInput.Texts.Configure, AIndex, TAtlasHoverProblemAction.Configure);
   EndFlow;
   Inc(FY, Scale(6));
@@ -1004,41 +1098,65 @@ begin
     begin
       SeverityPill(Problem);
       if FInput.HideCompilerCode then
-        Block(TAtlasProblem.WithoutCompilerCode(Problem.Message), FColors.Text, 3)
+      begin
+        Block(TAtlasProblem.WithoutCompilerCode(Problem.Message), FColors.Text, 3);
+      end
       else
+      begin
         Block(Problem.Message, FColors.Text, 3);
+      end;
       FLeft := Scale(20);
     end
     else
+    begin
       Block(Problem.Caption, FColors.Text, 3);
+    end;
     Dec(FY, Scale(4));
     if Problem.IsUses then
-      Caption := FInput.Texts.SourceUses
+    begin
+      Caption := FInput.Texts.SourceUses;
+    end
     else if Problem.Unnecessary then
-      Caption := FInput.Texts.SourceInactive
+    begin
+      Caption := FInput.Texts.SourceInactive;
+    end
     else
     begin
       // „Atlas · loop-off-by-one“, „dcc · W1036“, „Atlas · syntax“ (#1022). Vom Build bestätigt (#1024):
       // „Atlas + dcc · argument-count-mismatch · vom Compiler bestätigt (E2035)“.
       Caption := Problem.Source;
       if Caption = '' then
+      begin
         Caption := FInput.Texts.SourceAtlas;
+      end;
       if Problem.Confirmed then
+      begin
         Caption := TAtlasProblem.ConfirmedSource;
+      end;
       if Problem.Code <> '' then
+      begin
         Caption := Caption + ' · ' + Problem.Code;
+      end;
       if Problem.Confirmed and (FInput.HideCompilerCode or (Problem.ConfirmedCode = '')) then
-        Caption := Caption + ' · ' + FInput.Texts.Confirmed
+      begin
+        Caption := Caption + ' · ' + FInput.Texts.Confirmed;
+      end
       else if Problem.Confirmed then
+      begin
         Caption := Caption + ' · ' + Format(FInput.Texts.ConfirmedCode, [Problem.ConfirmedCode]);
+      end;
     end;
     if Problem.Stale then
+    begin
       Caption := Caption + ' · ' + FInput.Texts.Stale;
+    end;
     AddText(FLeft, FY, Caption, SmallFace, FColors.Muted);
     // Konfidenz eines Regeltreffers als eigene Zeile (#144).
     Caption := '';
     if Index <= High(FInput.Texts.Confidences) then
+    begin
       Caption := FInput.Texts.Confidences[Index];
+    end;
     if Caption <> '' then
     begin
       Inc(FY, Height(SmallFace) + Scale(2));
@@ -1064,17 +1182,23 @@ begin
       begin
         ProblemLink(FInput.Texts.UsesRemove, Index, TAtlasHoverProblemAction.RemoveUses);
         if Problem.UsesUnusedCount > 1 then
+        begin
           ProblemLink(FInput.Texts.UsesRemoveAll, Index, TAtlasHoverProblemAction.RemoveAllUses);
+        end;
       end
       else
+      begin
         ProblemLink(FInput.Texts.UsesMove, Index, TAtlasHoverProblemAction.MoveUses);
+      end;
       EndFlow;
       Inc(FY, Scale(6));
       FFlowFont := OldFont;
     end
     // Aktionszeile nur an Regelbefunden: Compilermeldungen und Syntaxfehler haben keine Regel.
     else if FInput.ProblemActions and IsRule and not Problem.IsCompiler and (Problem.Code <> '') then
+    begin
       RuleActions(Problem, Index);
+    end;
     FLeft := Scale(11);
     Bar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, Start + Scale(1), FLeft + Scale(3), FY - Scale(7)),
       ProblemColor(FColors, Problem));
@@ -1095,10 +1219,14 @@ begin
   // Kopfzeile: Badge, Art · Herkunft, rechts der Fundort.
   Caption := FInput.Texts.KindCaption;
   if (Caption <> '') and (FData.Origin <> '') then
+  begin
     Caption := Caption + ' · ' + FData.Origin;
+  end;
   Location := FData.LocationText;
   if (Caption = '') and (Location = '') then
+  begin
     Exit;
+  end;
   FLineHeight := Max(Height(Face(TAtlasHoverFont.Ui, False)), Scale(17));
   FX := FLeft;
   if FData.Kind <> '' then
@@ -1145,7 +1273,9 @@ begin
   begin
     FX := FLeft;
     if Line > 0 then
+    begin
       FX := FLeft + Scale(16);
+    end;
     From := Lines[Line].X;
     Till := Lines[Line].Y;
     Pos := From;
@@ -1154,9 +1284,13 @@ begin
       // Nächster Verweis, der in [Pos, Till) hineinreicht.
       Next := -1;
       for Index := 0 to High(Links) do
+      begin
         if (Links[Index].Start + Links[Index].Length > Pos) and (Links[Index].Start < Till) and
           ((Next < 0) or (Links[Index].Start < Links[Next].Start)) then
+        begin
           Next := Index;
+        end;
+      end;
       if Next < 0 then
       begin
         DrawPart(Pos, Till);
@@ -1166,7 +1300,9 @@ begin
       LinkFrom := Max(Pos, Links[Next].Start);
       LinkTill := Min(Till, Links[Next].Start + Links[Next].Length);
       if LinkFrom > Pos then
+      begin
         DrawPart(Pos, LinkFrom);
+      end;
       Start := FX;
       Inc(FX, FMeasure.DeclarationWidth(LinkFrom, LinkTill));
       Area := Rect(Start, FY, FX, FY + FLineHeight);
@@ -1195,13 +1331,19 @@ begin
   Reassigned := FData.ReassignedText(FInput.Texts.ReassignedOne, FInput.Texts.ReassignedCount);
   if not (((FData.LocationText = '') and (FData.UnitName <> '')) or (FData.Value <> '') or
     (FData.Deprecation <> '') or (Reassigned <> '') or FInput.HasDoc) then
+  begin
     Exit;
+  end;
   HorizontalLine(FY);
   Inc(FY, Scale(7));
   if FData.LocationText = '' then
+  begin
     Block(FData.UnitName, FColors.Muted, 0);
+  end;
   if FData.Value <> '' then
+  begin
     Block('= ' + FData.Value, FColors.Muted, 0);
+  end;
   Block(FData.Deprecation, FColors.Warn, 0);
   Block(Reassigned, FColors.Muted, 0);
   FLayout.DocLeft := FLeft;
@@ -1266,7 +1408,9 @@ var
 begin
   Rows := FData.VisibleMembers(AEvents, not FInput.View.HideInherited, FInput.View.OnlyDefaults);
   if Length(Rows) = 0 then
+  begin
     Exit;
+  end;
   if AEvents then
   begin
     Caption := FInput.Texts.PublishedEvents;
@@ -1292,9 +1436,13 @@ begin
   Gap := Scale(12);
   // Abschnittstitel mit ▾ (offen) bzw. ▸ (zu); Klick klappt um.
   if Collapsed then
-    Caption := AnsiUpperCase(Caption) + ' ▸'
+  begin
+    Caption := AnsiUpperCase(Caption) + ' ▸';
+  end
   else
+  begin
     Caption := AnsiUpperCase(Caption) + ' ▾';
+  end;
   Cell := Rect(FLeft, FY, FLeft + Width(HeadFace, Caption), FY + Height(HeadFace));
   Item := NewItem(TAtlasHoverItemKind.Text, Cell, FColors.Muted);
   Item.Text := Caption;
@@ -1306,15 +1454,21 @@ begin
   AddHit(TAtlasHoverHitKind.Published, Ord(Toggle), Cell);
   Inc(FY, Height(HeadFace) + Scale(5));
   if Collapsed then
+  begin
     Exit;
+  end;
   Shown := Length(Rows);
   if not ShowAll then
+  begin
     Shown := Min(Shown, Limit);
+  end;
   // Spalten nach den breitesten gezeigten Werten; „deklariert in“ rechtsbündig.
   NameX := FLeft;
   TypeX := NameX + Width(SmallFace, FInput.Texts.PublishedName);
   for Row := 0 to Shown - 1 do
+  begin
     TypeX := Max(TypeX, NameX + Width(MonoFace, FData.Members[Rows[Row]].Name));
+  end;
   Inc(TypeX, Gap);
   DefaultX := TypeX + Width(SmallFace, FInput.Texts.PublishedType);
   for Row := 0 to Shown - 1 do
@@ -1342,8 +1496,10 @@ begin
     begin
       // Am Methodenzeiger-Typ erkannt, nicht am Namen: fremde Typnamen kenntlich machen.
       if not EndsText('Event', Member.TypeName) then
+      begin
         AddText(TypeX + Width(MonoFace, Member.TypeName + ' '), FY + (Height(MonoFace) - Height(SmallFace)) div 2,
           '(of object)', SmallFace, FColors.Muted);
+      end;
     end
     else
     begin
@@ -1380,7 +1536,9 @@ begin
         // Übrige Werte bewusst ohne Wirkung.
       end;
       if Member.Stored <> '' then
+      begin
         AddText(FX, FY, 'stored ' + Member.Stored, MonoFace, FColors.Muted);
+      end;
     end;
     Declared := Member.DeclaringClass;
     AddText(FRight - Width(SmallMonoFace, Declared), FY + (Height(MonoFace) - Height(SmallMonoFace)) div 2,
@@ -1394,15 +1552,21 @@ begin
   if Shown < Length(Rows) then
   begin
     if AEvents then
-      Caption := Format(FInput.Texts.PublishedMoreEvents, [Length(Rows) - Shown])
+    begin
+      Caption := Format(FInput.Texts.PublishedMoreEvents, [Length(Rows) - Shown]);
+    end
     else
+    begin
       Caption := Format(FInput.Texts.PublishedMoreProperties, [Length(Rows) - Shown]);
+    end;
     Flow(Caption, FColors.Accent, False, TAtlasHoverHitKind.Published, Ord(More), Ord(More), FColors.Accent);
   end;
   if AEvents then
   begin
     if FX > FLeft then
+    begin
       Flow(' · ', FColors.Muted, False, TAtlasHoverHitKind.Published, -1, -1, FColors.Muted);
+    end;
     Flow(FInput.Texts.PublishedEventsNote, FColors.Muted, False, TAtlasHoverHitKind.Published, -1, -1,
       FColors.Muted);
   end;
@@ -1425,7 +1589,9 @@ var
 begin
   // published-Mitglieder einer Komponentenklasse (#110).
   if (Length(FData.Members) = 0) and (FData.DefaultProperty = '') then
+  begin
     Exit;
+  end;
   HorizontalLine(FY);
   Inc(FY, Scale(7));
   SmallFace := Face(TAtlasHoverFont.SmallUi, False);
@@ -1440,7 +1606,9 @@ begin
       Scale(AtlasChipPad);
     AddText(FLeft, FY + Scale(1), Summary, SmallFace, FColors.Muted);
     if FLeft + Width(SmallFace, Summary) + Scale(12) + ChipsWidth > FRight then
+    begin
       Inc(FY, Height(SmallFace) + Scale(6));
+    end;
     ToggleChip(FInput.Texts.PublishedInherited, not FInput.View.HideInherited,
       TAtlasHoverPublishedToggle.ShowInherited, FRight - ChipsWidth);
     ToggleChip(FInput.Texts.PublishedOnlyDefaults, FInput.View.OnlyDefaults, TAtlasHoverPublishedToggle.OnlyDefaults,
@@ -1457,7 +1625,9 @@ begin
     Name := FData.DefaultProperty;
     Bracket := Pos(']', Name);
     if Bracket > 0 then
+    begin
       Name := Copy(Name, 1, Bracket);
+    end;
     AddText(FLeft, FY, Name, MonoFace, FColors.Text);
     FX := FLeft + Width(MonoFace, Name + ' ');
     TagWidth := Width(SmallFace, FInput.Texts.PublishedDefaultProperty) + Scale(AtlasChipPad);
@@ -1472,7 +1642,9 @@ begin
     Add(Item);
     Note := FInput.Texts.PublishedDefaultPropertyNote;
     if Cell.Right + Scale(8) + Width(SmallFace, Note) <= FRight then
-      AddText(Cell.Right + Scale(8), FY + Scale(1), Note, SmallFace, FColors.Muted)
+    begin
+      AddText(Cell.Right + Scale(8), FY + Scale(1), Note, SmallFace, FColors.Muted);
+    end
     else
     begin
       Inc(FY, Height(MonoFace) + Scale(3));
@@ -1493,7 +1665,9 @@ begin
   FY := Scale(8);
   FX := FLeft;
   if FInput.View.Pinned then
+  begin
     Navigation;
+  end;
   if FInput.View.DebugValue.Visible then
   begin
     DebugValue;
@@ -1524,9 +1698,13 @@ begin
   PublishedMembers;
   // Vererbung bzw. Zieltyp und Aktionsleiste auf eigener Randfläche.
   if Length(FData.Ancestors) > 0 then
+  begin
     Band(BandChain, not FData.Location.HasLocation);
+  end;
   if FData.Location.HasLocation then
+  begin
     Band(BandActions, True);
+  end;
 end;
 
 function TBuilder.Layout: TAtlasHoverLayout;
@@ -1560,8 +1738,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Hits) do
+  begin
     if Hits[Index].Rect.Contains(APoint) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1604,17 +1786,21 @@ begin
   SetLength(Result, Length(AProblems));
   Count := 0;
   for Index := 0 to High(AProblems) do
+  begin
     if AProblems[Index].Severity = TAtlasProblemSeverity.Error then
     begin
       Result[Count] := Index;
       Inc(Count);
     end;
+  end;
   for Index := 0 to High(AProblems) do
+  begin
     if AProblems[Index].Severity <> TAtlasProblemSeverity.Error then
     begin
       Result[Count] := Index;
       Inc(Count);
     end;
+  end;
 end;
 
 function TAtlasHoverLayout.NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
@@ -1623,18 +1809,26 @@ var
 begin
   Result := -1;
   if Length(Hits) = 0 then
+  begin
     Exit;
+  end;
   Step := 1;
   if not AForward then
+  begin
     Step := -1;
+  end;
   Index := AHot;
   if (Index < 0) and not AForward then
+  begin
     Index := 0;
+  end;
   for Tries := 1 to Length(Hits) do
   begin
     Index := (Index + Step + Length(Hits)) mod Length(Hits);
     if Hits[Index].Kind = TAtlasHoverHitKind.ProblemAction then
+    begin
       Exit(Index);
+    end;
   end;
 end;
 
@@ -1648,15 +1842,23 @@ var
   Wanted, Delta, Index: Integer;
 begin
   if AnchorItem < 0 then
+  begin
     Exit;
+  end;
   Wanted := Max(0, AClientHeight - AnchorHeight - AnchorTop);
   Delta := Wanted - AnchorShift;
   if Delta = 0 then
+  begin
     Exit;
+  end;
   for Index := AnchorItem to High(Items) do
+  begin
     Items[Index].Rect.Offset(0, Delta);
+  end;
   for Index := AnchorHit to High(Hits) do
+  begin
     Hits[Index].Rect.Offset(0, Delta);
+  end;
   AnchorShift := Wanted;
 end;
 
