@@ -259,8 +259,12 @@ var
 begin
   Result := 0;
   for Finding in AFindings do
+  begin
     if Finding.Uncertain then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 { TAtlasPathMacros }
@@ -276,8 +280,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FNames) do
+  begin
     if SameText(FNames[Index], Trim(AName)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -286,10 +294,14 @@ var
   Index: Integer;
 begin
   if (Trim(AName) = '') or (Trim(AValue) = '') then
+  begin
     Exit;
+  end;
   Index := IndexOf(AName);
   if Index >= 0 then
-    FValues[Index] := AValue
+  begin
+    FValues[Index] := AValue;
+  end
   else
   begin
     FNames := FNames + [Trim(AName)];
@@ -300,14 +312,18 @@ end;
 procedure TAtlasPathMacros.AddDefault(const AName, AValue: string);
 begin
   if IndexOf(AName) < 0 then
+  begin
     Add(AName, AValue);
+  end;
 end;
 
 function WithoutSlash(const AFolder: string): string;
 begin
   Result := Trim(AFolder);
   while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 procedure TAtlasPathMacros.AddBds(const ABdsDir: string);
@@ -316,7 +332,9 @@ var
 begin
   Bds := WithoutSlash(ABdsDir);
   if Bds = '' then
+  begin
     Exit;
+  end;
   AddDefault('BDS', Bds);
   AddDefault('BDSLIB', Bds + '\lib');
   AddDefault('BDSBIN', Bds + '\bin');
@@ -331,23 +349,29 @@ begin
   Add('Platform', APlatform);
   Add('Config', AConfig);
   if Trim(AProject) = '' then
+  begin
     Exit;
+  end;
   Folder := '';
   FileName := Trim(AProject);
   for Index := Length(FileName) downto 1 do
+  begin
     if CharInSet(FileName[Index], ['\', '/']) then
     begin
       Folder := Copy(FileName, 1, Index - 1);
       FileName := Copy(FileName, Index + 1, MaxInt);
       Break;
     end;
+  end;
   Name := FileName;
   for Index := Length(Name) downto 1 do
+  begin
     if Name[Index] = '.' then
     begin
       Name := Copy(Name, 1, Index - 1);
       Break;
     end;
+  end;
   // ProjectDir wie bei MSBuild ohne abschließenden Trenner; Combine verträgt doppelte „\“.
   Add('ProjectDir', Folder);
   Add('ProjectPath', Folder);
@@ -360,9 +384,13 @@ begin
   Add('MSBuildThisFileDirectory', Folder + '\');
   NoRoot := Folder;
   if (Length(NoRoot) >= 2) and (NoRoot[2] = ':') then
+  begin
     Delete(NoRoot, 1, 2);
+  end;
   while (NoRoot <> '') and CharInSet(NoRoot[1], ['\', '/']) do
+  begin
     Delete(NoRoot, 1, 1);
+  end;
   Add('MSBuildProjectDirectoryNoRoot', NoRoot);
 end;
 
@@ -372,10 +400,14 @@ var
 begin
   Index := IndexOf(AName);
   if Index >= 0 then
+  begin
     Exit(FValues[Index]);
+  end;
   Result := '';
   if Assigned(FEnvironment) and (Trim(AName) <> '') then
+  begin
     Result := FEnvironment(Trim(AName));
+  end;
 end;
 
 function TAtlasPathMacros.Variable: TAtlasPathVariable;
@@ -427,12 +459,16 @@ begin
   while Index <= Length(AText) do
   begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if TTextChars.IsIdentStart(AText[Index]) then
     begin
       Start := Index;
       while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
+      begin
         Inc(Index);
+      end;
       Result := Result + [Copy(AText, Start, Index - Start)];
     end
     else
@@ -446,9 +482,13 @@ end;
 function StateOf(AValue: Boolean): TAtlasBranchState;
 begin
   if AValue then
-    Result := TAtlasBranchState.Active
+  begin
+    Result := TAtlasBranchState.Active;
+  end
   else
+  begin
     Result := TAtlasBranchState.Inactive;
+  end;
 end;
 
 constructor TExpressionParser.Create(const AExpression: string; ADefines: TDictionary<string, Boolean>);
@@ -462,7 +502,9 @@ function TExpressionParser.Peek: string;
 begin
   Result := '';
   if FPos <= High(FTokens) then
+  begin
     Result := FTokens[FPos];
+  end;
 end;
 
 function TExpressionParser.Next: string;
@@ -477,7 +519,9 @@ begin
   FFailed := False;
   Result := ParseOr;
   if FFailed or (FPos <= High(FTokens)) then
+  begin
     Result := TAtlasBranchState.Unknown;
+  end;
 end;
 
 function TExpressionParser.ParseOr: TAtlasBranchState;
@@ -490,11 +534,17 @@ begin
     Next;
     Right := ParseAnd;
     if (Result = TAtlasBranchState.Active) or (Right = TAtlasBranchState.Active) then
-      Result := TAtlasBranchState.Active
+    begin
+      Result := TAtlasBranchState.Active;
+    end
     else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
-      Result := TAtlasBranchState.Unknown
+    begin
+      Result := TAtlasBranchState.Unknown;
+    end
     else
+    begin
       Result := TAtlasBranchState.Inactive;
+    end;
   end;
 end;
 
@@ -508,11 +558,17 @@ begin
     Next;
     Right := ParseUnary;
     if (Result = TAtlasBranchState.Inactive) or (Right = TAtlasBranchState.Inactive) then
-      Result := TAtlasBranchState.Inactive
+    begin
+      Result := TAtlasBranchState.Inactive;
+    end
     else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
-      Result := TAtlasBranchState.Unknown
+    begin
+      Result := TAtlasBranchState.Unknown;
+    end
     else
+    begin
       Result := TAtlasBranchState.Active;
+    end;
   end;
 end;
 
@@ -525,16 +581,22 @@ begin
   begin
     Result := ParseUnary;
     if Result = TAtlasBranchState.Active then
-      Result := TAtlasBranchState.Inactive
+    begin
+      Result := TAtlasBranchState.Inactive;
+    end
     else if Result = TAtlasBranchState.Inactive then
+    begin
       Result := TAtlasBranchState.Active;
+    end;
     Exit;
   end;
   if Token = '(' then
   begin
     Result := ParseOr;
     if Next <> ')' then
+    begin
       FFailed := True;
+    end;
     Exit;
   end;
   if SameText(Token, 'defined') and (Peek = '(') then
@@ -599,8 +661,12 @@ begin
   FText := AText;
   FDefines := TDictionary<string, Boolean>.Create;
   for Name in ADefines do
+  begin
     if Trim(Name) <> '' then
+    begin
       FDefines.AddOrSetValue(UpperCase(Trim(Name)), True);
+    end;
+  end;
   FStack := TList<TBranch>.Create;
   FFirstWord := True;
 end;
@@ -615,9 +681,13 @@ end;
 function TScanner.Current: TAtlasBranchState;
 begin
   if FStack.Count = 0 then
-    Result := TAtlasBranchState.Active
+  begin
+    Result := TAtlasBranchState.Active;
+  end
   else
+  begin
     Result := FStack.Last.State;
+  end;
 end;
 
 procedure TScanner.Push(ACondition: TAtlasBranchState);
@@ -636,9 +706,13 @@ begin
     TAtlasBranchState.Unknown:
       begin
         if ACondition = TAtlasBranchState.Inactive then
-          Branch.State := TAtlasBranchState.Inactive
+        begin
+          Branch.State := TAtlasBranchState.Inactive;
+        end
         else
+        begin
           Branch.State := TAtlasBranchState.Unknown;
+        end;
         Branch.Taken := ACondition = TAtlasBranchState.Active;
         Branch.Unsure := ACondition = TAtlasBranchState.Unknown;
       end;
@@ -655,19 +729,29 @@ var
   Branch: TBranch;
 begin
   if FStack.Count = 0 then
+  begin
     Exit;
+  end;
   Branch := FStack.Last;
   if Branch.Taken or (Branch.Parent = TAtlasBranchState.Inactive) then
-    Branch.State := TAtlasBranchState.Inactive
+  begin
+    Branch.State := TAtlasBranchState.Inactive;
+  end
   else if ACondition = TAtlasBranchState.Inactive then
-    Branch.State := TAtlasBranchState.Inactive
+  begin
+    Branch.State := TAtlasBranchState.Inactive;
+  end
   else
   begin
     if Branch.Unsure or (Branch.Parent = TAtlasBranchState.Unknown) or
       (ACondition = TAtlasBranchState.Unknown) then
-      Branch.State := TAtlasBranchState.Unknown
+    begin
+      Branch.State := TAtlasBranchState.Unknown;
+    end
     else
+    begin
       Branch.State := TAtlasBranchState.Active;
+    end;
     // Gilt die Bedingung sicher, kann kein späterer Zweig mehr gelten: Entweder galt ein früherer oder dieser.
     Branch.Taken := ACondition = TAtlasBranchState.Active;
     Branch.Unsure := Branch.Unsure or (ACondition = TAtlasBranchState.Unknown);
@@ -678,7 +762,9 @@ end;
 procedure TScanner.Pop;
 begin
   if FStack.Count > 0 then
+  begin
     FStack.Delete(FStack.Count - 1);
+  end;
 end;
 
 procedure TScanner.Reference(const AName: string; ALine: Integer);
@@ -686,7 +772,9 @@ var
   Use: TAtlasSymbolUse;
 begin
   if (AName = '') or not TTextChars.IsIdentStart(AName[1]) then
+  begin
     Exit;
+  end;
   Use.Name := AName;
   Use.Line := ALine;
   FResult.Referenced := FResult.Referenced + [Use];
@@ -699,8 +787,12 @@ var
 begin
   Tokens := Tokenize(AExpression);
   for Index := 0 to High(Tokens) - 3 do
+  begin
     if SameText(Tokens[Index], 'defined') and (Tokens[Index + 1] = '(') and (Tokens[Index + 3] = ')') then
+    begin
       Reference(Tokens[Index + 2], ALine);
+    end;
+  end;
 end;
 
 function FirstWord(const AText: string): string;
@@ -709,7 +801,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, 1, Index - 1);
 end;
 
@@ -717,7 +811,9 @@ function Unquote(const AText: string): string;
 begin
   Result := Trim(AText);
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2);
+  end;
 end;
 
 procedure TScanner.Directive(const AText: string; ALine: Integer);
@@ -734,7 +830,9 @@ begin
     Reference(Symbol, ALine);
     Condition := StateOf(FDefines.ContainsKey(UpperCase(Symbol)) = (Name = 'IFDEF'));
     if Symbol = '' then
+    begin
       Condition := TAtlasBranchState.Unknown;
+    end;
     Push(Condition);
   end
   else if (Name = 'IF') or (Name = 'ELSEIF') then
@@ -747,37 +845,57 @@ begin
       Parser.Free;
     end;
     if Name = 'IF' then
-      Push(Condition)
+    begin
+      Push(Condition);
+    end
     else
+    begin
       ElseIf(Condition);
+    end;
   end
   else if Name = 'IFOPT' then
-    Push(TAtlasBranchState.Unknown)
+  begin
+    Push(TAtlasBranchState.Unknown);
+  end
   else if Name = 'ELSE' then
-    ElseIf(TAtlasBranchState.Active)
+  begin
+    ElseIf(TAtlasBranchState.Active);
+  end
   else if (Name = 'ENDIF') or (Name = 'IFEND') then
-    Pop
+  begin
+    Pop;
+  end
   else if (Name = 'DEFINE') and (Symbol <> '') then
   begin
     FResult.Defined := FResult.Defined + [Symbol];
     if Current = TAtlasBranchState.Active then
+    begin
       FDefines.AddOrSetValue(UpperCase(Symbol), True);
+    end;
   end
   else if (Name = 'UNDEF') and (Symbol <> '') then
   begin
     if Current = TAtlasBranchState.Active then
+    begin
       FDefines.Remove(UpperCase(Symbol));
+    end;
   end
   else if ((Name = 'I') or (Name = 'INCLUDE')) and (Argument <> '') and not CharInSet(Argument[1], ['+', '-']) then
+  begin
     FResult.Includes := FResult.Includes + [Unquote(Argument)];
+  end;
 end;
 
 procedure TScanner.Commit;
 begin
   if (FPending.Name <> '') and FInRequires then
-    FResult.Requires := FResult.Requires + [FPending]
+  begin
+    FResult.Requires := FResult.Requires + [FPending];
+  end
   else if FPending.Name <> '' then
+  begin
     FResult.Units := FResult.Units + [FPending];
+  end;
   FPending := Default(TAtlasUsedUnit);
 end;
 
@@ -812,9 +930,13 @@ begin
       end;
     TUsesState.AfterName:
       if SameText(AWord, 'in') then
-        FUses := TUsesState.ExpectPath
+      begin
+        FUses := TUsesState.ExpectPath;
+      end
       else
+      begin
         FUses := TUsesState.None;
+      end;
   else
     FUses := TUsesState.None;
   end;
@@ -871,8 +993,12 @@ var
   Index: Integer;
 begin
   for Index := AFrom to ATo do
+  begin
     if (Index >= 1) and (Index <= Length(FText)) and (FText[Index] = #10) then
+    begin
       Inc(FLine);
+    end;
+  end;
 end;
 
 function TScanner.Run: TAtlasSourceScan;
@@ -894,20 +1020,28 @@ begin
       Inc(FPos);
     end
     else if CharInSet(C, [' ', #9, #13]) then
-      Inc(FPos)
+    begin
+      Inc(FPos);
+    end
     else if (C = '/') and (FPos < Len) and (FText[FPos + 1] = '/') then
     begin
       while (FPos <= Len) and (FText[FPos] <> #10) do
+      begin
         Inc(FPos);
+      end;
     end
     else if C = '{' then
     begin
       Close := Pos('}', FText, FPos + 1);
       if Close = 0 then
+      begin
         Close := Len + 1;
+      end;
       StartLine := FLine;
       if (FPos < Len) and (FText[FPos + 1] = '$') then
+      begin
         Directive(Copy(FText, FPos + 2, Close - FPos - 2), StartLine);
+      end;
       CountLines(FPos, Close);
       FPos := Close + 1;
     end
@@ -915,10 +1049,14 @@ begin
     begin
       Close := Pos('*)', FText, FPos + 2);
       if Close = 0 then
+      begin
         Close := Len + 1;
+      end;
       StartLine := FLine;
       if (FPos + 2 <= Len) and (FText[FPos + 2] = '$') then
+      begin
         Directive(Copy(FText, FPos + 3, Close - FPos - 3), StartLine);
+      end;
       CountLines(FPos, Close);
       FPos := Close + 2;
     end
@@ -929,7 +1067,9 @@ begin
       begin
         Close := Pos('''''''', FText, FPos + 3);
         if Close = 0 then
+        begin
           Close := Len + 1;
+        end;
         CountLines(FPos, Close);
         FPos := Close + 3;
         StringLiteral('');
@@ -950,24 +1090,34 @@ begin
           Break;
         end;
         if FText[FPos] = #10 then
+        begin
           Break;
+        end;
         Value := Value + FText[FPos];
         Inc(FPos);
       end;
       // Schließendes Hochkomma überspringen; ein Zeilenende bleibt für die Zeilenzählung stehen.
       if (FPos <= Len) and (FText[FPos] = '''') then
+      begin
         Inc(FPos);
+      end;
       StringLiteral(Value);
     end
     else if TTextChars.IsIdentStart(C) or (C = '&') then
     begin
       if C = '&' then
+      begin
         Inc(FPos);
+      end;
       Start := FPos;
       while (FPos <= Len) and TTextChars.IsIdentChar(FText[FPos]) do
+      begin
         Inc(FPos);
+      end;
       if FPos > Start then
+      begin
         Word(Copy(FText, Start, FPos - Start), FLine);
+      end;
     end
     else
     begin
@@ -1002,7 +1152,9 @@ begin
   Defines := TDictionary<string, Boolean>.Create;
   try
     for Name in ADefines do
+    begin
       Defines.AddOrSetValue(UpperCase(Trim(Name)), True);
+    end;
     Parser := TExpressionParser.Create(AExpression, Defines);
     try
       Result := Parser.Parse;
@@ -1029,7 +1181,9 @@ begin
   begin
     Prefix := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
     if (Prefix <> '') and not Prefix.EndsWith('\') then
+    begin
       Prefix := Prefix + '\';
+    end;
     Path := Prefix + Path;
   end;
   // Laufwerk bzw. \\Server bleibt vorn, der Rest wird aufgelöst.
@@ -1047,15 +1201,23 @@ begin
   Parts := TList<string>.Create;
   try
     for Part in Path.Split(['\']) do
+    begin
       if (Part = '') or (Part = '.') then
-        Continue
+      begin
+        Continue;
+      end
       else if Part = '..' then
       begin
         if Parts.Count > 0 then
+        begin
           Parts.Delete(Parts.Count - 1);
+        end;
       end
       else
+      begin
         Parts.Add(Part);
+      end;
+    end;
     Result := Prefix + '\' + string.Join('\', Parts.ToArray);
   finally
     Parts.Free;
@@ -1079,7 +1241,9 @@ begin
   AUnknown := '';
   Text := Trim(APath);
   if Text = '' then
+  begin
     Exit;
+  end;
   Count := 0;
   Open := Pos('$(', Text);
   while Open > 0 do
@@ -1094,7 +1258,9 @@ begin
     Value := '';
     Inc(Count);
     if Assigned(AVariable) and (Count <= MaxExpansions) then
+    begin
       Value := AVariable(Name);
+    end;
     if Value = '' then
     begin
       AUnknown := Name;
@@ -1106,7 +1272,9 @@ begin
   end;
   Result := Combine(ABaseDir, Text);
   if Result.EndsWith('\') and (Length(Result) > 3) then
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasPathCheck.ExpandPaths(const ARaw: TArray<string>; const ABaseDir: string;
@@ -1125,13 +1293,21 @@ begin
       Continue;
     end;
     if Unknown = '' then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in ASkipped do
+    begin
       if SameText(Known, Unknown) then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       ASkipped := ASkipped + [Unknown];
+    end;
   end;
 end;
 
@@ -1153,13 +1329,17 @@ begin
     begin
       Stop := Pos(CloseTag, Upper, Start);
       if Stop = 0 then
+      begin
         Break;
+      end;
       for Item in Copy(ADprojText, Start + Length(OpenTag), Stop - Start - Length(OpenTag)).Split([';']) do
+      begin
         if (Trim(Item) <> '') and (Pos('$(', Item) = 0) and not Seen.ContainsKey(UpperCase(Trim(Item))) then
         begin
           Seen.Add(UpperCase(Trim(Item)), True);
           Result := Result + [Trim(Item)];
         end;
+      end;
       Start := Pos(OpenTag, Upper, Stop);
     end;
   finally
@@ -1172,11 +1352,19 @@ var
   Name: string;
 begin
   for Name in ForeignSymbols do
+  begin
     if SameText(Name, Trim(AName)) then
+    begin
       Exit(True);
+    end;
+  end;
   for Name in ForeignPrefixes do
+  begin
     if StartsText(Name, Trim(AName)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -1212,21 +1400,33 @@ begin
   Match := TRegEx.Match(ADprojText, '<BuildConfiguration\s+Include="' + TRegEx.Escape(AConfig) +
     '"\s*>\s*<Key>(\w+)</Key>', [roIgnoreCase]);
   if Match.Success then
+  begin
     Key := Match.Groups[1].Value;
+  end;
   Keys := ['Base'];
   if (Key <> '') and not SameText(Key, 'Base') then
   begin
     Keys := Keys + [Key];
     if APlatform <> '' then
+    begin
       Keys := Keys + [Key + '_' + APlatform];
+    end;
   end;
   Inherited_ := '';
   for Key in Keys do
+  begin
     if DefineOf(Key, Value) then
+    begin
       Inherited_ := StringReplace(Value, '$(DCC_Define)', Inherited_, [rfReplaceAll, rfIgnoreCase]);
+    end;
+  end;
   for Part in Inherited_.Split([';']) do
+  begin
     if (Trim(Part) <> '') and (Pos('$(', Part) = 0) and (IndexText(Trim(Part), Result) < 0) then
+    begin
       Result := Result + [Trim(Part)];
+    end;
+  end;
 end;
 
 class function TAtlasPathCheck.ScriptDefines(const AFileName, AText: string): TArray<string>;
@@ -1237,19 +1437,29 @@ var
   procedure Add(const AName: string);
   begin
     if (AName <> '') and (IndexText(AName, Result) < 0) then
+    begin
       Result := Result + [AName];
+    end;
   end;
 
 begin
   Result := nil;
   // -dX auf der Kommandozeile (fpc -dX, dcc32 -DX); X beginnt mit Buchstabe oder _.
   for Match in TRegEx.Matches(AText, '(?<![\w-])-[dD]([A-Za-z_]\w*)') do
+  begin
     Add(Match.Groups[1].Value);
+  end;
   Ext := LowerCase(ExtractFileExt(AFileName));
   if (Ext = '.lpi') or (Ext = '.lpk') then
+  begin
     for Match in TRegEx.Matches(AText, '<ConditionalDefines\s+Value="([^"]*)"', [roIgnoreCase]) do
+    begin
       for Part in Match.Groups[1].Value.Split([';', ',', ' ']) do
+      begin
         Add(Trim(Part));
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasPathCheck.Suggest(const AName: string; const AKnown: TArray<string>): string;
@@ -1262,7 +1472,9 @@ class function TAtlasPathCheck.Suggest(const AName: string; const AKnown: TArray
     SetLength(Prev, Length(B) + 1);
     SetLength(Row, Length(B) + 1);
     for J := 0 to Length(B) do
+    begin
       Prev[J] := J;
+    end;
     for I := 1 to Length(A) do
     begin
       Row[0] := I;
@@ -1283,9 +1495,12 @@ begin
   Result := '';
   // Kurze Namen (X, C) gleichen fast allem; erst ab vier Zeichen.
   if Length(Trim(AName)) < 4 then
+  begin
     Exit;
+  end;
   Best := 3;
   for Known in AKnown do
+  begin
     if (Known <> '') and not SameText(Known, AName) and (Abs(Length(Known) - Length(AName)) <= 2) then
     begin
       Value := Distance(AName, Known);
@@ -1295,6 +1510,7 @@ begin
         Result := Known;
       end;
     end;
+  end;
 end;
 
 { Ablauf }
@@ -1333,8 +1549,12 @@ begin
   begin
     Names := TDictionary<string, Boolean>.Create;
     if Assigned(FList) then
+    begin
       for Name in FList(TAtlasPathCheck.Combine(AFolder, '')) do
+      begin
         Names.AddOrSetValue(UpperCase(Name), True);
+      end;
+    end;
     FFolders.Add(Key, Names);
   end;
   Result := Names.ContainsKey(UpperCase(AFileName));
@@ -1433,24 +1653,46 @@ var
     end;
     Names := [AUnit.Name];
     for Namespace in AInput.Namespaces do
+    begin
       if Trim(Namespace) <> '' then
+      begin
         Names := Names + [Trim(Namespace) + '.' + AUnit.Name];
+      end;
+    end;
     for Each in Names do
     begin
       if ProjectNames.ContainsKey(UpperCase(Each)) or Required.ContainsKey(UpperCase(Each)) then
+      begin
         Exit(True);
+      end;
       for Path in DcpTexts do
+      begin
         if Pos(UpperCase(Each), Path) > 0 then
+        begin
           Exit(True);
+        end;
+      end;
       for Dir in AlwaysThere do
+      begin
         if SameText(Dir, Each) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
     for Dir in Folders(AFrom) do
+    begin
       if Trim(Dir) <> '' then
+      begin
         for Each in Names do
+        begin
           if Cache.Has(Dir, Each + '.pas') or Cache.Has(Dir, Each + '.dcu') then
+          begin
             Exit(True);
+          end;
+        end;
+      end;
+    end;
     Result := False;
   end;
 
@@ -1461,15 +1703,23 @@ var
   begin
     Names := [AName];
     if ExtractFileExt(AName) = '' then
+    begin
       Names := Names + [AName + '.inc', AName + '.pas'];
+    end;
     for Dir in Folders(AFrom) do
+    begin
       if Trim(Dir) <> '' then
+      begin
         for Each in Names do
         begin
           APath := Combine(Dir, Each);
           if Cache.Has(ExtractFileDir(APath), ExtractFileName(APath)) then
+          begin
             Exit(True);
+          end;
         end;
+      end;
+    end;
     APath := '';
     Result := False;
   end;
@@ -1479,8 +1729,12 @@ var
     Each: string;
   begin
     for Each in AFolders do
+    begin
       if (Trim(Each) <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(AFolder)) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
@@ -1490,7 +1744,9 @@ var
   begin
     // Ein Hinweis je Package.
     if HintedPackages.ContainsKey(UpperCase(APackage)) then
+    begin
       Exit;
+    end;
     HintedPackages.Add(UpperCase(APackage), True);
     Item := Default(TAtlasPathFinding);
     Item.Name := APackage;
@@ -1511,11 +1767,14 @@ var
     Own: TArray<string>;
   begin
     for Project in AInput.GroupProjects do
+    begin
       if SameText(ChangeFileExt(ExtractFileName(Project), ''), APackage.Name) then
       begin
         Dpk := ChangeFileExt(Project, '.dpk');
         if not (Assigned(ARead) and ARead(Dpk, PackageText)) then
+        begin
           Continue;
+        end;
         Contained := Scan(PackageText, AInput.ActiveDefines);
         for Item in Contained.Units do
         begin
@@ -1525,29 +1784,40 @@ var
           begin
             Path := Combine(ExtractFileDir(Dpk), Item.InFile);
             if InFolders(ExtractFileDir(Path), AInput.SearchPaths) then
+            begin
               Hint(APackage.Name, Item.Name, AFrom, APackage.Line);
+            end;
           end;
         end;
         Exit;
       end;
+    end;
     // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
     // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
     for Dir in AInput.LibraryPaths do
+    begin
       if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
       begin
         if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
+        begin
           DcpTexts.Add(UpperCase(PackageText));
+        end;
         Exit;
       end;
+    end;
     Own := [ProjectDir] + AInput.SearchPaths;
     for Dir in Own do
+    begin
       if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
       begin
         if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
+        begin
           DcpTexts.Add(UpperCase(PackageText));
+        end;
         Hint(APackage.Name, '', AFrom, APackage.Line);
         Exit;
       end;
+    end;
   end;
 
 begin
@@ -1572,38 +1842,66 @@ begin
   Uses_ := TList<TSymbolAt>.Create;
   try
     for Source in AInput.Sources do
+    begin
       ProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(Source), '')), True);
+    end;
     for Name in AInput.ActiveDefines + AInput.ProjectDefines do
+    begin
       Known.AddOrSetValue(UpperCase(Trim(Name)), True);
+    end;
     // Units, die ein anderes Projekt der Gruppe in einen Ordner des Suchpfads übersetzt.
     for Source in AInput.ProducedBy do
+    begin
       if Assigned(ARead) and (ARead(ChangeFileExt(Source, '.dpk'), Text) or ARead(ChangeFileExt(Source, '.dpr'), Text)) then
       begin
         Scanned := Scan(Text, AInput.ActiveDefines);
         for Used in Scanned.Units do
+        begin
           Required.AddOrSetValue(UpperCase(Used.Name), ChangeFileExt(ExtractFileName(Source), ''));
+        end;
       end;
+    end;
     // requires der Packages zuerst: Ihre Units sind beim Prüfen der uses schon bekannt.
     for Source in AInput.Sources do
+    begin
       if SameText(ExtractFileExt(Source), '.dpk') and Assigned(ARead) and ARead(Source, Text) then
       begin
         Scanned := Scan(Text, AInput.ActiveDefines);
         for Used in Scanned.Requires do
+        begin
           if Used.State = TAtlasBranchState.Active then
+          begin
             Require(Used, Source);
+          end;
+        end;
       end;
+    end;
     // Build-Skripte und Lazarus-Projekte: -dX und ConditionalDefines sind Quellen.
     for Folder in AInput.ScriptFolders do
+    begin
       if Trim(Folder) <> '' then
+      begin
         for Name in AList(Folder) do
+        begin
           if IndexText(ExtractFileExt(Name), ScriptExtensions) >= 0 then
+          begin
             if Assigned(ARead) and ARead(Combine(Folder, Name), Text) then
+            begin
               for Include in ScriptDefines(Name, Text) do
+              begin
                 Known.AddOrSetValue(UpperCase(Include), True);
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
     for Source in AInput.Sources do
     begin
       if Visited.ContainsKey(UpperCase(Source)) then
+      begin
         Continue;
+      end;
       Visited.Add(UpperCase(Source), True);
       if not (Assigned(ARead) and ARead(Source, Text)) then
       begin
@@ -1614,15 +1912,25 @@ begin
       Folder := ExtractFileDir(Source);
       Scanned := Scan(Text, AInput.ActiveDefines);
       for Used in Scanned.Units do
+      begin
         if (Used.State = TAtlasBranchState.Active) and not Resolves(Used, Folder) then
+        begin
           // Mit "in 'Pfad'" zählt kein Suchpfad: dann sicher.
           AddFinding(Missing, MissingIndex, Used.Name, Source, Used.Line, Skipped and (Used.InFile = ''));
+        end;
+      end;
       for Use in Scanned.Referenced do
+      begin
         Uses_.Add(SymbolAt(Source, Use));
+      end;
       for Name in Scanned.Defined do
+      begin
         Known.AddOrSetValue(UpperCase(Name), True);
+      end;
       for Include in Scanned.Includes do
+      begin
         Queue.Add(IncludeRef(Include, Folder));
+      end;
     end;
     // Eingebundene Dateien nur nach $DEFINE durchsuchen.
     Index := 0;
@@ -1636,22 +1944,34 @@ begin
         Continue;
       end;
       if Visited.ContainsKey(UpperCase(Candidate)) then
+      begin
         Continue;
+      end;
       Visited.Add(UpperCase(Candidate), True);
       if not (Assigned(ARead) and ARead(Candidate, Text)) then
+      begin
         Continue;
+      end;
       Scanned := Scan(Text, AInput.ActiveDefines);
       for Name in Scanned.Defined do
+      begin
         Known.AddOrSetValue(UpperCase(Name), True);
+      end;
       for Include in Scanned.Includes do
+      begin
         Queue.Add(IncludeRef(Include, ExtractFileDir(Candidate)));
+      end;
     end;
     for Item in Uses_ do
+    begin
       if not Known.ContainsKey(UpperCase(Item.Use.Name)) and not TTextDefines.IsCompilerSymbol(Item.Use.Name) and
         not IsForeignSymbol(Item.Use.Name) then
+      begin
         // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
         AddFinding(Undefined, UndefinedIndex, Item.Use.Name, Item.FileName, Item.Use.Line,
           Skipped and IncludeMissing);
+      end;
+    end;
     // Tippfehler? Ein ähnlich geschriebenes bekanntes Symbol vorschlagen.
     for Index := 0 to Undefined.Count - 1 do
     begin

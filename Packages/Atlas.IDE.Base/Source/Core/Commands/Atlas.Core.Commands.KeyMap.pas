@@ -211,9 +211,13 @@ end;
 function TAtlasKeyItem.Holder: string;
 begin
   if OriginName = '' then
-    Result := Command
+  begin
+    Result := Command;
+  end
   else
+  begin
     Result := Command + ' (' + OriginName + ')';
+  end;
 end;
 
 { TAtlasKeyQuery }
@@ -233,11 +237,17 @@ end;
 function TAtlasKeyQuery.Matches(const AItem: TAtlasKeyItem): Boolean;
 begin
   if Text = '' then
+  begin
     Exit(True);
+  end;
   if ShortCut <> 0 then
+  begin
     Exit(AItem.ShortCut = ShortCut);
+  end;
   if Modifiers <> 0 then
+  begin
     Exit((AItem.ShortCut <> 0) and ((AItem.ShortCut and Modifiers) = Modifiers));
+  end;
   Result := (Pos(Text, LowerCase(AItem.KeyText)) > 0) or (Pos(Text, LowerCase(AItem.Command)) > 0) or
     (Pos(Text, LowerCase(AItem.Category)) > 0) or (Pos(Text, LowerCase(AItem.OriginName)) > 0);
 end;
@@ -409,11 +419,17 @@ var
 begin
   Lower := LowerCase(ACategory);
   if (Pos('designer', Lower) > 0) or (Pos('formular', Lower) > 0) then
-    Result := TAtlasKeyContext.Designer
+  begin
+    Result := TAtlasKeyContext.Designer;
+  end
   else if Pos('editor', Lower) > 0 then
-    Result := TAtlasKeyContext.Editor
+  begin
+    Result := TAtlasKeyContext.Editor;
+  end
   else
+  begin
     Result := TAtlasKeyContext.Global;
+  end;
 end;
 
 class function TAtlasKeyMap.OriginOfModule(const AModule, AIdeFolder, AAtlasModule: string;
@@ -447,9 +463,13 @@ class function TAtlasKeyMap.Collide(const A, B: TAtlasKeyItem): Boolean;
 begin
   Result := False;
   if (A.ShortCut = 0) or (A.ShortCut <> B.ShortCut) or not Overlaps(A.Context, B.Context) then
+  begin
     Exit;
+  end;
   if A.Origin <> B.Origin then
+  begin
     Exit(True);
+  end;
   case A.Origin of
     // Zwei Atlas-Funktionen auf derselben Taste: doppelt belegt.
     TAtlasKeyOrigin.Atlas:
@@ -473,15 +493,23 @@ var
 begin
   Result := AItems[AIndex].Context;
   if Result <> TAtlasKeyContext.Global then
+  begin
     Exit;
+  end;
   for Context in [TAtlasKeyContext.Editor, TAtlasKeyContext.Designer, TAtlasKeyContext.WelcomePage] do
   begin
     Found := False;
     for Partner in APartners do
+    begin
       if AItems[Partner].Context = Context then
+      begin
         Found := True;
+      end;
+    end;
     if Found then
+    begin
       Exit(Context);
+    end;
   end;
 end;
 
@@ -496,63 +524,103 @@ begin
   AReason := TAtlasKeyReason.NoneActive;
   // Willkommensseite: Das Suchfeld von Atlas nimmt die Taste, solange die Seite aktiv ist.
   if AClash = TAtlasKeyContext.WelcomePage then
+  begin
     for Candidate in ACandidates do
+    begin
       if (AItems[Candidate].Source = TAtlasKeySource.Window) and AItems[Candidate].Active then
       begin
         AWinner := Candidate;
         AReason := TAtlasKeyReason.OwnWindow;
         Exit;
       end;
+    end;
+  end;
   // Editor: Tastaturbelegungen vor Menübefehlen; unter ihnen die wirksame (zuletzt angemeldete).
   if AClash = TAtlasKeyContext.Editor then
   begin
     for Candidate in ACandidates do
+    begin
       if (AWinner < 0) and (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
         AItems[Candidate].Effective then
+      begin
         AWinner := Candidate;
+      end;
+    end;
     for Candidate in ACandidates do
+    begin
       if (AWinner < 0) and (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
         (AItems[Candidate].Origin = TAtlasKeyOrigin.Atlas) and AItems[Candidate].Priority then
+      begin
         AWinner := Candidate;
+      end;
+    end;
     for Candidate in ACandidates do
+    begin
       if (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
         ((AWinner < 0) or ((AItems[AWinner].Source = TAtlasKeySource.Binding) and
         not AItems[AWinner].Effective and not AItems[AWinner].Priority and
         (AItems[Candidate].Order > AItems[AWinner].Order))) then
+      begin
         AWinner := Candidate;
+      end;
+    end;
   end;
   // Sonst die erste Aktion der Aktionsliste.
   if AWinner < 0 then
+  begin
     for Candidate in ACandidates do
+    begin
       if (AItems[Candidate].Source = TAtlasKeySource.Action) and AItems[Candidate].Active and
         ((AWinner < 0) or (AItems[Candidate].Order < AItems[AWinner].Order)) then
+      begin
         AWinner := Candidate;
+      end;
+    end;
+  end;
   if AWinner < 0 then
+  begin
     Exit;
+  end;
   OnlyAtlasLeft := AItems[AWinner].Origin <> TAtlasKeyOrigin.Atlas;
   ActionLoses := False;
   for Candidate in ACandidates do
+  begin
     if Candidate <> AWinner then
     begin
       if (AItems[Candidate].Origin <> TAtlasKeyOrigin.Atlas) or AItems[Candidate].Active then
+      begin
         OnlyAtlasLeft := False;
+      end;
       if AItems[Candidate].Source = TAtlasKeySource.Action then
+      begin
         ActionLoses := True;
+      end;
     end;
+  end;
   if OnlyAtlasLeft then
-    AReason := TAtlasKeyReason.AtlasYields
+  begin
+    AReason := TAtlasKeyReason.AtlasYields;
+  end
   else if (AItems[AWinner].Origin = TAtlasKeyOrigin.Atlas) and AItems[AWinner].Priority and
     (AItems[AWinner].Source = TAtlasKeySource.Binding) then
-    AReason := TAtlasKeyReason.AtlasPriority
+  begin
+    AReason := TAtlasKeyReason.AtlasPriority;
+  end
   else if AItems[AWinner].Source = TAtlasKeySource.Binding then
   begin
     if ActionLoses then
-      AReason := TAtlasKeyReason.EditorBinding
+    begin
+      AReason := TAtlasKeyReason.EditorBinding;
+    end
     else
+    begin
       AReason := TAtlasKeyReason.LastBinding;
+    end;
   end
   else
+  begin
     AReason := TAtlasKeyReason.FirstAction;
+  end;
 end;
 
 class procedure TAtlasKeyMap.Analyze(var AItems: TArray<TAtlasKeyItem>);
@@ -572,11 +640,17 @@ begin
   for Index := 0 to High(AItems) do
   begin
     if AItems[Index].ShortCut = 0 then
+    begin
       Continue;
+    end;
     Partners := nil;
     for Other := 0 to High(AItems) do
+    begin
       if (Other <> Index) and Collide(AItems[Index], AItems[Other]) then
+      begin
         Partners := Partners + [Other];
+      end;
+    end;
     if Length(Partners) = 0 then
     begin
       AItems[Index].Winner := Index;
@@ -587,8 +661,12 @@ begin
     Clash := ClashContext(AItems, Index, Partners);
     Candidates := [Index];
     for Other in Partners do
+    begin
       if Overlaps(AItems[Other].Context, Clash) then
+      begin
         Candidates := Candidates + [Other];
+      end;
+    end;
     Decide(AItems, Candidates, Clash, Winner, Reason);
     AItems[Index].Winner := Winner;
     AItems[Index].Reason := Reason;
@@ -602,8 +680,12 @@ var
 begin
   Result := 0;
   for Item in AItems do
+  begin
     if Item.Conflict then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.PartnerOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): Integer;
@@ -612,12 +694,20 @@ var
 begin
   Result := -1;
   if (AIndex < 0) or (AIndex > High(AItems)) or not AItems[AIndex].Conflict then
+  begin
     Exit;
+  end;
   if (AItems[AIndex].Winner >= 0) and (AItems[AIndex].Winner <> AIndex) then
+  begin
     Exit(AItems[AIndex].Winner);
+  end;
   for Other := 0 to High(AItems) do
+  begin
     if (Other <> AIndex) and Collide(AItems[AIndex], AItems[Other]) then
+    begin
       Exit(Other);
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.AtlasConflicts(const AItems: TArray<TAtlasKeyItem>): TArray<Integer>;
@@ -626,9 +716,13 @@ var
 begin
   Result := nil;
   for Index := 0 to High(AItems) do
+  begin
     if (AItems[Index].Origin = TAtlasKeyOrigin.Atlas) and AItems[Index].Conflict and
       not (AItems[Index].Wins and AItems[Index].Priority) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.Filter(const AItems: TArray<TAtlasKeyItem>; const AQuery: string;
@@ -644,18 +738,28 @@ begin
   Found := TList<Integer>.Create;
   try
     for Index := 0 to High(Items) do
+    begin
       if (not AOnlyConflicts or Items[Index].Conflict) and Query.Matches(Items[Index]) then
+      begin
         Found.Add(Index);
+      end;
+    end;
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         Result := CompareText(Items[A].KeyText, Items[B].KeyText);
         if Result = 0 then
+        begin
           Result := Integer(Items[A].ShortCut) - Integer(Items[B].ShortCut);
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Command, Items[B].Command);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := Found.ToArray;
   finally
@@ -667,13 +771,21 @@ end;
 function ModifierOf(const AName: string): Word;
 begin
   if (AName = 'strg') or (AName = 'ctrl') or (AName = 'control') or (AName = 'ctl') then
-    Result := TAtlasKeyMap.scCtrl
+  begin
+    Result := TAtlasKeyMap.scCtrl;
+  end
   else if (AName = 'umschalt') or (AName = 'umsch') or (AName = 'shift') or (AName = 'shft') then
-    Result := TAtlasKeyMap.scShift
+  begin
+    Result := TAtlasKeyMap.scShift;
+  end
   else if (AName = 'alt') or (AName = 'menu') then
-    Result := TAtlasKeyMap.scAlt
+  begin
+    Result := TAtlasKeyMap.scAlt;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Virtueller Tastencode zum Namen (deutsch oder englisch); 0, wenn unbekannt. AFunctionKey bei F1–F24.
@@ -685,7 +797,9 @@ begin
   AFunctionKey := False;
   Result := 0;
   if AName = '' then
+  begin
     Exit;
+  end;
   if Length(AName) = 1 then
   begin
     case AName[1] of
@@ -708,37 +822,67 @@ begin
     Exit($70 + Number - 1);
   end;
   if (AName = 'leer') or (AName = 'leertaste') or (AName = 'space') then
-    Result := $20
+  begin
+    Result := $20;
+  end
   else if (AName = 'eingabe') or (AName = 'enter') or (AName = 'return') then
-    Result := $0D
+  begin
+    Result := $0D;
+  end
   else if (AName = 'esc') or (AName = 'escape') then
-    Result := $1B
+  begin
+    Result := $1B;
+  end
   else if (AName = 'tab') or (AName = 'tabulator') then
-    Result := $09
+  begin
+    Result := $09;
+  end
   else if (AName = 'entf') or (AName = 'del') or (AName = 'delete') then
-    Result := $2E
+  begin
+    Result := $2E;
+  end
   else if (AName = 'einfg') or (AName = 'ins') or (AName = 'insert') then
-    Result := $2D
+  begin
+    Result := $2D;
+  end
   else if (AName = 'pos1') or (AName = 'home') then
-    Result := $24
+  begin
+    Result := $24;
+  end
   else if (AName = 'ende') or (AName = 'end') then
-    Result := $23
+  begin
+    Result := $23;
+  end
   else if (AName = 'bild auf') or (AName = 'bildauf') or (AName = 'pgup') or (AName = 'page up') or
     (AName = 'pageup') then
-    Result := $21
+  begin
+    Result := $21;
+  end
   else if (AName = 'bild ab') or (AName = 'bildab') or (AName = 'pgdn') or (AName = 'page down') or
     (AName = 'pagedown') then
-    Result := $22
+  begin
+    Result := $22;
+  end
   else if (AName = 'rück') or (AName = 'rücktaste') or (AName = 'backspace') or (AName = 'bksp') then
-    Result := $08
+  begin
+    Result := $08;
+  end
   else if (AName = 'links') or (AName = 'left') then
-    Result := $25
+  begin
+    Result := $25;
+  end
   else if (AName = 'oben') or (AName = 'auf') or (AName = 'up') then
-    Result := $26
+  begin
+    Result := $26;
+  end
   else if (AName = 'rechts') or (AName = 'right') then
-    Result := $27
+  begin
+    Result := $27;
+  end
   else if (AName = 'unten') or (AName = 'ab') or (AName = 'down') then
+  begin
     Result := $28;
+  end;
 end;
 
 class function TAtlasKeyMap.ParseShortCut(const AText: string; out AModifiers: Word): Word;
@@ -753,13 +897,17 @@ begin
   AModifiers := 0;
   Parts := LowerCase(Trim(AText)).Split(['+']);
   if Length(Parts) = 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Parts) do
   begin
     Part := Trim(Parts[Index]);
     if (Part = '') and (Index = High(Parts)) and (Index > 0) then
+    begin
       // „Strg+“: nur Umschalttasten.
       Exit;
+    end;
     Modifier := ModifierOf(Part);
     if Modifier <> 0 then
     begin
@@ -775,7 +923,9 @@ begin
     end;
     // Ein einzelnes Zeichen ohne Umschalttaste ist eine Textsuche, eine Funktionstaste nicht.
     if (Length(Parts) = 1) and not FunctionKey then
+    begin
       Exit;
+    end;
     Result := Key or AModifiers;
   end;
 end;
@@ -838,26 +988,40 @@ begin
       '</style>'#13#10'</head>'#13#10'<body>'#13#10);
     Builder.Append('<h1>').Append(HtmlEscape(ATitle)).Append('</h1>'#13#10);
     if ASubtitle <> '' then
+    begin
       Builder.Append('<p class="sub">').Append(HtmlEscape(ASubtitle)).Append('</p>'#13#10);
+    end;
     if APrint <> '' then
+    begin
       Builder.Append('<button class="print" onclick="window.print()">').Append(HtmlEscape(APrint))
         .Append('</button>'#13#10);
+    end;
     Builder.Append('<table>'#13#10'<thead><tr>');
     for Header in AHeaders do
+    begin
       Builder.Append('<th>').Append(HtmlEscape(Header)).Append('</th>');
+    end;
     Builder.Append('</tr></thead>'#13#10'<tbody>'#13#10);
     for Row in ARows do
     begin
       if Row.Conflict then
-        Builder.Append('<tr class="conflict">')
+      begin
+        Builder.Append('<tr class="conflict">');
+      end
       else
+      begin
         Builder.Append('<tr>');
+      end;
       for Index := 0 to High(Row.Cells) do
       begin
         if Index = 0 then
-          Builder.Append('<td class="key">')
+        begin
+          Builder.Append('<td class="key">');
+        end
         else
+        begin
           Builder.Append('<td>');
+        end;
         Builder.Append(HtmlEscape(Row.Cells[Index])).Append('</td>');
       end;
       Builder.Append('</tr>'#13#10);
