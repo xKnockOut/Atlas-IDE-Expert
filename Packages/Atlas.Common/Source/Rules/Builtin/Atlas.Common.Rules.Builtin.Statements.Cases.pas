@@ -163,15 +163,19 @@ var
   function SelectorType(ACase: TSyntaxNode; out ASlot: TCaseBranchSlot; out AType: TResolvedSymbol): Boolean;
   var
     mNames: TArray<string>;
-    mOwner: TResolvedSymbol;
+    mChain: TResolvedChainType;
     mOfPos: TTextPosition;
-    mTypeFound: Boolean;
   begin
     mNames := nil;
+    AType := Default(TResolvedSymbol);
     Result := Chain(ACase[0], mNames) and TCaseCompletion.OfPosition(AContext.Tree, ACase, mOfPos) and
       TCaseCompletion.BranchSlot(AContext.Text, AContext.Tree.Tokens, mOfPos, ASlot);
-    Result := Result and Resolver.ChainType(AContext.Tree, FileName, mNames, ACase[0].EndOffset, mOwner, AType,
-      mTypeFound) and mTypeFound;
+    Result := Result and Resolver.ChainType(AContext.Tree, FileName, mNames, ACase[0].EndOffset, mChain) and
+      mChain.TypeFound;
+    if Result then
+    begin
+      AType := mChain.TypeInfo;
+    end;
   end;
 
   // {$SCOPEDENUMS ON}: die vorhandenen Marken tragen den Typnamen.

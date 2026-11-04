@@ -427,7 +427,7 @@ var
   TypeSymbol: TResolvedSymbol;
 begin
   Result := (AParamType <> '') and not StartsText('array of', AParamType);
-  Result := Result and (TNameResolver.IsBuiltinTypeName(AParamType) or
+  Result := Result and (TResolverText.IsBuiltinTypeName(AParamType) or
     FResolver.ResolveTypeFrom(FLocal, AParamType, TypeSymbol));
 end;
 

@@ -40,6 +40,18 @@ type
   TAtlasTrackerSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
     const ADone: TAtlasTrackerSendDone);
 
+  /// <summary>Die Steuerelemente des Dialogs (für Tests und APrepare). Comment ist das Memo des Editors.</summary>
+  TAtlasEndDialogParts = record
+    State: TAtlasValueBox;
+    Editor: TAtlasCommentEditor;
+    Comment: TMemo;
+    HandOver: TCheckBox;
+    Assignee: TAtlasValueBox;
+    Note: TLabel;
+    Send: TButton;
+    Cancel: TButton;
+  end;
+
   TAtlasTrackerEndDialog = class(TForm)
   public const
     DialogWidth = 520;
@@ -49,20 +61,17 @@ type
   private
     FKey: string;
     FOptions: TAtlasTrackerSyncOptions;
-    FState: TAtlasValueBox;
-    FEditor: TAtlasCommentEditor;
-    FComment: TMemo;
-    FHandOver: TCheckBox;
-    FAssignee: TAtlasValueBox;
-    FNote: TLabel;
-    FSend: TButton;
-    FCancel: TButton;
+    FParts: TAtlasEndDialogParts;
     FOnSend: TAtlasTrackerSendEvent;
     FSending: Boolean;
     FSent: Boolean;
     FChange: TAtlasTrackerWrite;
     function AddRow(AHeight: Integer): TPanel;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    procedure AddState;
+    procedure AddComment(const AComment: string);
+    function AddHandOver: TPanel;
+    procedure AddButtons(ATop: Integer);
     procedure SendClick(Sender: TObject);
     procedure AssigneeChange(Sender: TObject);
     procedure DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -99,21 +108,14 @@ type
     property Sending: Boolean read FSending;
     /// <summary>Gesendete Änderung (gilt mit Sent).</summary>
     property SentChange: TAtlasTrackerWrite read FChange;
-    property StateBox: TAtlasValueBox read FState;
-    property CommentMemo: TMemo read FComment;
-    /// <summary>Kommentar-Editor (#1278); CommentMemo ist sein Memo.</summary>
-    property CommentEditor: TAtlasCommentEditor read FEditor;
-    property HandOverCheck: TCheckBox read FHandOver;
-    property AssigneeBox: TAtlasValueBox read FAssignee;
-    property Note: TLabel read FNote;
-    property SendButton: TButton read FSend;
-    property CancelButton: TButton read FCancel;
+    property Parts: TAtlasEndDialogParts read FParts;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
+  System.Math,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.UI.Tracker.Strings;
@@ -125,11 +127,6 @@ const
 
 constructor TAtlasTrackerEndDialog.CreateDialog(AOwner: TComponent; const AKey: string;
   const AOptions: TAtlasTrackerSyncOptions; const AComment: string);
-var
-  mRow: TPanel;
-  mLabel: TLabel;
-  mButtons: TFlowPanel;
-  mChoices: TArray<string>;
 begin
   inherited CreateNew(AOwner);
   FKey := AKey;
@@ -144,71 +141,91 @@ begin
   KeyPreview := True;
   OnKeyDown := DialogKeyDown;
   OnCloseQuery := DialogCloseQuery;
+  AddState;
+  AddComment(AComment);
+  AddButtons(AddHandOver.BoundsRect.Bottom + 1);
+  ActiveControl := FParts.Comment;
+end;
 
+/// <summary>Zielzustand; Vorgabe ist der erste angebotene, ohne Liste „Zustand nicht ändern“.</summary>
+procedure TAtlasTrackerEndDialog.AddState;
+var
+  mRow: TPanel;
+  mLabel: TLabel;
+  mChoices: TArray<string>;
+begin
   mRow := AddRow(26);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndState);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(4);
-  FState := TAtlasValueBox.Create(Self);
-  FState.Parent := mRow;
-  FState.Left := ScaleValue(180);
-  FState.Top := 0;
-  FState.Width := ScaleValue(240);
-  mChoices := StateChoices(AOptions);
-  FState.SetValues(mChoices);
-  // Vorgabe: der erste angebotene Zielzustand, ohne Liste „Zustand nicht ändern“.
-  if Length(mChoices) > 1 then
-  begin
-    FState.Value := mChoices[1];
-  end
-  else
-  begin
-    FState.Value := mChoices[0];
-  end;
+  FParts.State := TAtlasValueBox.Create(Self);
+  FParts.State.Parent := mRow;
+  FParts.State.Left := ScaleValue(180);
+  FParts.State.Top := 0;
+  FParts.State.Width := ScaleValue(240);
+  mChoices := StateChoices(FOptions);
+  FParts.State.SetValues(mChoices);
+  FParts.State.Value := mChoices[Min(1, High(mChoices))];
+end;
 
+/// <summary>Kommentar-Editor (#1278) mit seiner Leiste unter dem Feld; die Vorlage ist kein Entwurf.</summary>
+procedure TAtlasTrackerEndDialog.AddComment(const AComment: string);
+var
+  mRow: TPanel;
+  mLabel: TLabel;
+begin
   mRow := AddRow(20);
   mLabel := TLabel.Create(Self);
   mLabel.Parent := mRow;
   mLabel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndComment);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(2);
-  // Kommentar-Editor (#1278) mit seiner Leiste unter dem Feld; die Vorlage ist kein Entwurf.
-  FEditor := TAtlasCommentEditor.Create(Self);
-  FEditor.Parent := Self;
-  FEditor.Align := alTop;
-  FEditor.AlignWithMargins := True;
-  FEditor.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
-  FEditor.Top := mRow.Top + mRow.Height + 1;
-  FEditor.Height := ScaleValue(CommentHeight + EditorBarHeight);
-  FEditor.OnSend := SendClick;
-  FEditor.OnCancel := EditorCancel;
-  FEditor.SetText(AComment);
-  FComment := FEditor.Memo;
+  FParts.Editor := TAtlasCommentEditor.Create(Self);
+  FParts.Editor.Parent := Self;
+  FParts.Editor.Align := alTop;
+  FParts.Editor.AlignWithMargins := True;
+  FParts.Editor.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FParts.Editor.Top := mRow.Top + mRow.Height + 1;
+  FParts.Editor.Height := ScaleValue(CommentHeight + EditorBarHeight);
+  FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);
+  FParts.Editor.SetText(AComment);
+  FParts.Comment := FParts.Editor.Memo;
+end;
 
+/// <summary>„Zuständigkeit übergeben an“ und die Zeile für Hinweise; liefert die Hinweiszeile.</summary>
+function TAtlasTrackerEndDialog.AddHandOver: TPanel;
+var
+  mRow: TPanel;
+begin
   mRow := AddRow(26);
-  mRow.Top := FEditor.Top + FEditor.Height + 1;
-  FHandOver := TCheckBox.Create(Self);
-  FHandOver.Parent := mRow;
-  FHandOver.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndHandOver);
-  FHandOver.Left := 0;
-  FHandOver.Top := ScaleValue(3);
-  FHandOver.Width := ScaleValue(176);
-  FAssignee := TAtlasValueBox.Create(Self);
-  FAssignee.Parent := mRow;
-  FAssignee.Left := ScaleValue(180);
-  FAssignee.Top := 0;
-  FAssignee.Width := ScaleValue(240);
-  FAssignee.OnChange := AssigneeChange;
+  mRow.Top := FParts.Editor.Top + FParts.Editor.Height + 1;
+  FParts.HandOver := TCheckBox.Create(Self);
+  FParts.HandOver.Parent := mRow;
+  FParts.HandOver.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndHandOver);
+  FParts.HandOver.Left := 0;
+  FParts.HandOver.Top := ScaleValue(3);
+  FParts.HandOver.Width := ScaleValue(176);
+  FParts.Assignee := TAtlasValueBox.Create(Self);
+  FParts.Assignee.Parent := mRow;
+  FParts.Assignee.Left := ScaleValue(180);
+  FParts.Assignee.Top := 0;
+  FParts.Assignee.Width := ScaleValue(240);
+  FParts.Assignee.OnChange := AssigneeChange;
 
-  mRow := AddRow(20);
-  FNote := TLabel.Create(Self);
-  FNote.Parent := mRow;
-  FNote.Align := alClient;
-  FNote.WordWrap := True;
-  FNote.Caption := '';
+  Result := AddRow(20);
+  FParts.Note := TLabel.Create(Self);
+  FParts.Note.Parent := Result;
+  FParts.Note.Align := alClient;
+  FParts.Note.WordWrap := True;
+  FParts.Note.Caption := '';
+end;
 
+procedure TAtlasTrackerEndDialog.AddButtons(ATop: Integer);
+var
+  mButtons: TFlowPanel;
+begin
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
   mButtons.Align := alTop;
@@ -216,14 +233,13 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  mButtons.Top := mRow.Top + mRow.Height + 1;
-  FSend := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
-  FSend.OnClick := SendClick;
-  FSend.Default := True;
-  FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
-  FCancel.ModalResult := mrCancel;
-  FCancel.Cancel := True;
-  ActiveControl := FComment;
+  mButtons.Top := ATop;
+  FParts.Send := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSend));
+  FParts.Send.OnClick := SendClick;
+  FParts.Send.Default := True;
+  FParts.Cancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndCancel));
+  FParts.Cancel.ModalResult := mrCancel;
+  FParts.Cancel.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
@@ -291,20 +307,20 @@ begin
       mChoices := mChoices + [mState];
     end;
   end;
-  FState.SetValues(mChoices);
+  FParts.State.SetValues(mChoices);
 end;
 
 procedure TAtlasTrackerEndDialog.SetUsers(const AUsers: TArray<string>);
 begin
-  FAssignee.SetValues(AUsers);
+  FParts.Assignee.SetValues(AUsers);
 end;
 
 procedure TAtlasTrackerEndDialog.AssigneeChange(Sender: TObject);
 begin
   // Wer einen Namen einträgt, will übergeben.
-  if FAssignee.Value <> '' then
+  if FParts.Assignee.Value <> '' then
   begin
-    FHandOver.Checked := True;
+    FParts.HandOver.Checked := True;
   end;
 end;
 
@@ -312,24 +328,25 @@ function TAtlasTrackerEndDialog.Change: TAtlasTrackerWrite;
 var
   mState: string;
 begin
-  mState := FState.Value;
+  mState := FParts.State.Value;
   if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
   begin
     mState := '';
   end;
   Result := TAtlasTrackerWorkflow.EndChange(FOptions, mState,
-    StringReplace(FComment.Text, #13#10, #10, [rfReplaceAll]), FHandOver.Checked, FAssignee.Value);
+    StringReplace(FParts.Comment.Text, #13#10, #10, [rfReplaceAll]), FParts.HandOver.Checked,
+    FParts.Assignee.Value);
 end;
 
 procedure TAtlasTrackerEndDialog.SetBusy(AValue: Boolean);
 begin
   FSending := AValue;
-  FState.Enabled := not AValue;
-  FComment.ReadOnly := AValue;
-  FHandOver.Enabled := not AValue;
-  FAssignee.Enabled := not AValue;
-  FSend.Enabled := not AValue;
-  FCancel.Enabled := not AValue;
+  FParts.State.Enabled := not AValue;
+  FParts.Comment.ReadOnly := AValue;
+  FParts.HandOver.Enabled := not AValue;
+  FParts.Assignee.Enabled := not AValue;
+  FParts.Send.Enabled := not AValue;
+  FParts.Cancel.Enabled := not AValue;
 end;
 
 procedure TAtlasTrackerEndDialog.SendClick(Sender: TObject);
@@ -345,12 +362,12 @@ begin
   if not FChange.HasWork or not Assigned(FOnSend) then
   begin
     FSent := True;
-    FEditor.Sent;
+    FParts.Editor.Sent;
     ModalResult := mrOk;
     Exit;
   end;
-  FNote.Font.Color := clWindowText;
-  FNote.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSending);
+  FParts.Note.Font.Color := clWindowText;
+  FParts.Note.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;
   FOnSend(FChange,
@@ -367,14 +384,14 @@ begin
   begin
     FSent := True;
     // Geschrieben: Der Entwurf hat sich erledigt.
-    FEditor.Sent;
-    FNote.Caption := '';
+    FParts.Editor.Sent;
+    FParts.Note.Caption := '';
     ModalResult := mrOk;
     Exit;
   end;
   // Kein neuer Versuch von selbst: Der Benutzer ändert und sendet erneut oder bricht ab.
-  FNote.Font.Color := clRed;
-  FNote.Caption := ErrorText(FKey, AResult);
+  FParts.Note.Font.Color := clRed;
+  FParts.Note.Caption := ErrorText(FKey, AResult);
 end;
 
 procedure TAtlasTrackerEndDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -395,7 +412,7 @@ end;
 procedure TAtlasTrackerEndDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   // Im Kommentarfeld sendet der Editor selbst (und schluckt das Zeichen der Taste).
-  if ActiveControl = FComment then
+  if ActiveControl = FParts.Comment then
   begin
     Exit;
   end;

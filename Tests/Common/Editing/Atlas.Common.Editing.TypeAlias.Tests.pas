@@ -136,8 +136,9 @@ begin
   Result := '';
   Tree := TPascalParser.Parse(AText);
   try
-    if TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', AText, Tree), nil, PositionOf(AText, AMarker, 1),
-      AName, AScope, TTypeAliasLookup.FromTree, AResult, AReason) then
+    if TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', AText, Tree), nil,
+      TTypeAliasRequest.Create(PositionOf(AText, AMarker, 1), AName, AScope, TTypeAliasLookup.FromTree), AResult,
+      AReason) then
     begin
       Result := TChangeSignature.ApplyEdits(AText, EditsOf(AResult, 'Kunden.pas'));
     end;
@@ -230,8 +231,8 @@ begin
     Assert.AreEqual(1, Integer(Length(Found)));
     Assert.AreEqual('T', Found[0].OpenParams);
     Assert.IsFalse(TTypeAlias.Introduce(TTypeAliasSource.Create('U.pas', Source, Tree), nil,
-      PositionOf(Source, 'TList<T>', 1), 'TListe', TTypeAliasScope.InUnit, TTypeAliasLookup.FromTree, Outcome,
-      Reason));
+      TTypeAliasRequest.Create(PositionOf(Source, 'TList<T>', 1), 'TListe', TTypeAliasScope.InUnit,
+      TTypeAliasLookup.FromTree), Outcome, Reason));
     Assert.IsTrue(Pos('generischen Parameter T', Reason) > 0, Reason);
     Found := TTypeAlias.Targets(Source, Tree, 'U.pas', PositionOf(Source, 'TList<Integer>', 1),
       TTypeAliasLookup.FromTree);
@@ -337,8 +338,8 @@ begin
   try
     Assert.IsTrue(TTypeAlias.Introduce(TTypeAliasSource.Create('Kunden.pas', UnitKunden, Tree),
       [TTypeAliasSource.Create('Nutzer.pas', Nutzer, NutzerTree), TTypeAliasSource.Create('Fremd.pas', Fremd,
-      FremdTree)], PositionOf(UnitKunden, 'TList<TKunde>;', 1), 'TKundenListe', TTypeAliasScope.Project,
-      TTypeAliasLookup.FromTree, Outcome, Reason), Reason);
+      FremdTree)], TTypeAliasRequest.Create(PositionOf(UnitKunden, 'TList<TKunde>;', 1), 'TKundenListe',
+      TTypeAliasScope.Project, TTypeAliasLookup.FromTree), Outcome, Reason), Reason);
     Assert.AreEqual(6, Outcome.Places);
     Assert.IsTrue(Pos('X: TKundenListe;', TChangeSignature.ApplyEdits(Nutzer, EditsOf(Outcome, 'Nutzer.pas'))) > 0);
     // Fremd bindet Kunden nicht ein und deklariert TKunde selbst.

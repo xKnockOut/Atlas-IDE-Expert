@@ -223,7 +223,7 @@ begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
       AArguments.Items[2].Value + ' ist keine Warnung und kein Hinweis.');
   end;
-  if not TDisableWarning.Edits(AText, ATree, Line, Switch, Scope, Reason, Edits) then
+  if not TDisableWarning.Edits(AText, ATree, Line, TDisableWarningRequest.Create(Switch, Scope, Reason), Edits) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
       'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).');

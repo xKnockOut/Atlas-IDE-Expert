@@ -22,6 +22,9 @@ uses
   Atlas.Common.Rules.Builtin.Testing,
   Atlas.Common.Rules.Builtin.Events,
   Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Rules.Builtin.Ownership.RawMemory,
+  Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
+  Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
   Atlas.Common.Rules.Builtin.Expressions,
   Atlas.Common.Rules.Builtin.Statements,
   Atlas.Common.Rules.Builtin.Database,
@@ -39,8 +42,7 @@ uses
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Builtin.SharedState,
-  Atlas.Common.Rules.Builtin.Conditions,
-  Atlas.Common.Rules.Builtin.Platform;
+  Atlas.Common.Rules.Builtin.Conditions;
 
 procedure RegisterBuiltinRules2(const ARegistry: TRuleRegistry);
 begin
@@ -52,6 +54,9 @@ begin
   RegisterTestingRules(ARegistry);
   RegisterEventRules(ARegistry);
   RegisterOwnershipRules(ARegistry);
+  RegisterOwnershipRawMemoryRules(ARegistry);
+  RegisterOwnershipStringListObjectsRules(ARegistry);
+  RegisterOwnershipComponentInterfaceRules(ARegistry);
   RegisterExpressionRules(ARegistry);
   RegisterStatementRules(ARegistry);
   RegisterDatabaseRules(ARegistry);
@@ -70,7 +75,6 @@ begin
   RegisterFormRules(ARegistry);
   RegisterSharedStateRules(ARegistry);
   RegisterConditionRules(ARegistry);
-  RegisterPlatformRules(ARegistry);
 end;
 
 end.

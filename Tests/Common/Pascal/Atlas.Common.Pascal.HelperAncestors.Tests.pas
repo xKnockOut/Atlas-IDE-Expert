@@ -253,7 +253,7 @@ begin
   Tree := TPascalParser.Parse(UnitMain);
   try
     Listed := '';
-    for Candidate in Resolver.MemberCandidates(Tree, MainFile, ['Foo'], Pos('Foo.'#10, UnitMain) + 3) do
+    for Candidate in Resolver.Candidates.MemberCandidates(Tree, MainFile, ['Foo'], Pos('Foo.'#10, UnitMain) + 3) do
     begin
       Listed := Listed + Candidate.Container + '.' + Candidate.Name + ' ';
     end;

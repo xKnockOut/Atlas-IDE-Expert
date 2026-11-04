@@ -1182,8 +1182,8 @@ begin
   Result := TJSONObject.Create;
   LineBreak := TTextLines.LineBreakOf(AText);
   AddedList := TJSONArray.Create;
-  if (AText <> '') and TUsesActions.AddUnits(TPascalLexer.Tokenize(AText), AUnits, AUses.Declaring,
-    AUses.Namespaces, ATarget, LineBreak, Edits, Added) then
+  if (AText <> '') and TUsesActions.AddUnits(TPascalLexer.Tokenize(AText),
+    TUsesAddRequest.Create(AUnits, AUses.Declaring, AUses.Namespaces, LineBreak).WithTarget(ATarget), Edits, Added) then
   begin
     List := TJSONArray.Create;
     for Edit in Edits do

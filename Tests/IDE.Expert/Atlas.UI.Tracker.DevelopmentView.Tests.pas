@@ -30,6 +30,8 @@ type
     [Test]
     procedure ClickShowsDiffDoubleClickOpens;
     [Test]
+    procedure UnitAndPullOpen;
+    [Test]
     procedure SwitchOnlyForOtherBranch;
     [Test]
     procedure MissingWorkingCopyAndTrackerError;
@@ -64,7 +66,6 @@ begin
   Result := Root + PathDelim + StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
 end;
 
-/// <summary>Lokaler Branch mit Stand gegenüber main und ein nur noch entfernter.</summary>
 function SampleBranches: TArray<TAtlasIssueBranch>;
 var
   mBranch: TAtlasIssueBranch;
@@ -86,7 +87,25 @@ begin
   Result := Result + [mBranch];
 end;
 
-/// <summary>Units im Projekt Kasse (eine gelöscht) und eine Datei ohne Projekt.</summary>
+function SampleCommits: TArray<TAtlasVcsLogEntry>;
+var
+  mEntry: TAtlasVcsLogEntry;
+  mFile: TAtlasVcsLogFile;
+begin
+  mFile := Default(TAtlasVcsLogFile);
+  mFile.Path := Under('app/Main.pas');
+  mFile.RepositoryPath := 'app/Main.pas';
+  mEntry := Default(TAtlasVcsLogEntry);
+  mEntry.Revision := '28358feaf94440dbfe2fcc3aa2cb742e2d972f37';
+  mEntry.Summary := '#753 Bereiche';
+  mEntry.Author := 'Marco';
+  mEntry.Files := [mFile];
+  Result := [mEntry];
+  mEntry.Revision := '7637c6cf53522335c876c98aef9a32861d4dc147';
+  mEntry.Summary := '#753 Anfang';
+  Result := Result + [mEntry];
+end;
+
 function SampleUnits: TArray<TAtlasIssueUnitGroup>;
 var
   mGroup: TAtlasIssueUnitGroup;
@@ -112,8 +131,6 @@ end;
 
 function Sample: TAtlasIssueDevelopment;
 var
-  mEntry: TAtlasVcsLogEntry;
-  mFile: TAtlasVcsLogFile;
   mPull: TAtlasTrackerPull;
 begin
   Result := TAtlasIssueDevelopment.Empty;
@@ -121,18 +138,7 @@ begin
   Result.VcsKind := TAtlasVcsKind.Git;
   Result.VcsOutcome := TAtlasVcsOutcome.Ok;
   Result.Branches := SampleBranches;
-  mFile := Default(TAtlasVcsLogFile);
-  mFile.Path := Under('app/Main.pas');
-  mFile.RepositoryPath := 'app/Main.pas';
-  mEntry := Default(TAtlasVcsLogEntry);
-  mEntry.Revision := '28358feaf94440dbfe2fcc3aa2cb742e2d972f37';
-  mEntry.Summary := '#753 Bereiche';
-  mEntry.Author := 'Marco';
-  mEntry.Files := [mFile];
-  Result.Commits := [mEntry];
-  mEntry.Revision := '7637c6cf53522335c876c98aef9a32861d4dc147';
-  mEntry.Summary := '#753 Anfang';
-  Result.Commits := Result.Commits + [mEntry];
+  Result.Commits := SampleCommits;
   Result.TrackerLoaded := True;
   mPull := Default(TAtlasTrackerPull);
   mPull.Number := 760;
@@ -167,15 +173,17 @@ begin
     mView := TAtlasIssueDevelopmentView.Create(mHost);
     mView.Parent := mHost;
     mView.ShowLoading;
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLoading), mView.StatusText);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLoading),
+      TAtlasIssueDevelopmentProbe.StatusText(mView));
     Assert.IsFalse(mView.HasDevelopment);
-    Assert.IsNull(mView.Commits);
+    Assert.IsNull(mView.Parts.Commits);
     mView.ShowDevelopment(Sample, '');
     Assert.IsTrue(mView.HasDevelopment);
-    Assert.AreEqual('', mView.StatusText);
+    Assert.AreEqual('', TAtlasIssueDevelopmentProbe.StatusText(mView));
     mView.ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject), mView.StatusText);
-    Assert.IsNull(mView.Branches, 'alter Inhalt weg');
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject),
+      TAtlasIssueDevelopmentProbe.StatusText(mView));
+    Assert.IsNull(mView.Parts.Branches, 'alter Inhalt weg');
   finally
     mHost.Free;
   end;
@@ -194,27 +202,28 @@ begin
     mView := TAtlasIssueDevelopmentView.Create(mHost);
     mView.Parent := mHost;
     mView.ShowDevelopment(Sample, '');
-    Assert.AreEqual(2, mView.Branches.Items.Count);
-    Assert.AreEqual('feature/753-atlas-bereiche', mView.Branches.Items[0].Caption);
+    Assert.AreEqual(2, mView.Parts.Branches.Items.Count);
+    Assert.AreEqual('feature/753-atlas-bereiche', mView.Parts.Branches.Items[0].Caption);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevLocalRemote),
-      mView.Branches.Items[0].SubItems[0]);
+      mView.Parts.Branches.Items[0].SubItems[0]);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevCurrent) + ', ' +
       TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevAheadBehind, [3, 1, 'main']),
-        mView.Branches.Items[0].SubItems[1]);
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevRemote), mView.Branches.Items[1].SubItems[0]);
-    Assert.AreEqual('', mView.Branches.Items[1].SubItems[1], 'ohne Vergleich kein Stand');
-    Assert.AreEqual(2, mView.Commits.Items.Count);
-    Assert.AreEqual('28358fe', mView.Commits.Items[0].Caption);
-    Assert.AreEqual('#753 Bereiche', mView.Commits.Items[0].SubItems[0]);
-    Assert.AreEqual('Marco', mView.Commits.Items[0].SubItems[1]);
-    Assert.AreEqual(1, mView.Pulls.Items.Count);
-    Assert.AreEqual('#760', mView.Pulls.Items[0].Caption);
+        mView.Parts.Branches.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevRemote),
+      mView.Parts.Branches.Items[1].SubItems[0]);
+    Assert.AreEqual('', mView.Parts.Branches.Items[1].SubItems[1], 'ohne Vergleich kein Stand');
+    Assert.AreEqual(2, mView.Parts.Commits.Items.Count);
+    Assert.AreEqual('28358fe', mView.Parts.Commits.Items[0].Caption);
+    Assert.AreEqual('#753 Bereiche', mView.Parts.Commits.Items[0].SubItems[0]);
+    Assert.AreEqual('Marco', mView.Parts.Commits.Items[0].SubItems[1]);
+    Assert.AreEqual(1, mView.Parts.Pulls.Items.Count);
+    Assert.AreEqual('#760', mView.Parts.Pulls.Items[0].Caption);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevPullMerged),
-      mView.Pulls.Items[0].SubItems[1]);
+      mView.Parts.Pulls.Items[0].SubItems[1]);
     Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevChecksSuccess),
-      mView.Pulls.Items[0].SubItems[2]);
-    Assert.IsNull(mView.Changes, 'GitHub ohne VCS-Änderungen');
-    mLines := mView.UnitLines;
+      mView.Parts.Pulls.Items[0].SubItems[2]);
+    Assert.IsNull(mView.Parts.Changes, 'GitHub ohne VCS-Änderungen');
+    mLines := TAtlasIssueDevelopmentProbe.UnitLines(mView);
     Assert.AreEqual(5, Integer(Length(mLines)));
     Assert.AreEqual('Kasse (2)', mLines[0]);
     Assert.AreEqual('  ' + 'app' + PathDelim + 'Main.pas', mLines[1], 'relativ zum Projekt');
@@ -227,87 +236,95 @@ begin
   end;
 end;
 
-type
-  /// <summary>Hält fest, was die Ansicht zeigen oder öffnen will.</summary>
-  TDevelopmentClickProbe = class
-  public
-    FDiff: string;
-    FOpened: string;
-    FUnit: string;
-    FPull: string;
-  end;
-
-/// <summary>Diff, Commit, Unit und Pull Request der Ansicht an die Probe hängen.</summary>
-procedure WireDevelopmentClicks(const ATarget: TAtlasIssueDevelopmentView; const AProbe: TDevelopmentClickProbe);
-begin
-  ATarget.OnShowDiff :=
-    procedure(AEntry: TAtlasVcsLogEntry)
-    begin
-      AProbe.FDiff := AEntry.Revision;
-    end;
-  ATarget.OnOpenCommit :=
-    procedure(AEntry: TAtlasVcsLogEntry)
-    begin
-      AProbe.FOpened := AEntry.Revision;
-    end;
-  ATarget.OnOpenUnit :=
-    procedure(AUnit: TAtlasIssueUnit)
-    begin
-      AProbe.FUnit := AUnit.Path;
-    end;
-  ATarget.OnOpenPull :=
-    procedure(APull: TAtlasTrackerPull)
-    begin
-      AProbe.FPull := APull.Page;
-    end;
-end;
-
 procedure TAtlasIssueDevelopmentViewTests.ClickShowsDiffDoubleClickOpens;
 var
   mHost: TForm;
   mView: TAtlasIssueDevelopmentView;
-  mProbe: TDevelopmentClickProbe;
+  mEvents: TAtlasIssueDevelopmentEvents;
+  mDiff, mOpened: string;
 begin
-  mProbe := TDevelopmentClickProbe.Create;
+  mEvents := Default(TAtlasIssueDevelopmentEvents);
+  mDiff := '';
+  mOpened := '';
   mHost := TForm.CreateNew(nil);
   try
     mView := TAtlasIssueDevelopmentView.Create(mHost);
     mView.Parent := mHost;
-    WireDevelopmentClicks(mView, mProbe);
+    mEvents.ShowDiff :=
+      procedure(AEntry: TAtlasVcsLogEntry)
+      begin
+        mDiff := AEntry.Revision;
+      end;
+    mEvents.OpenCommit :=
+      procedure(AEntry: TAtlasVcsLogEntry)
+      begin
+        mOpened := AEntry.Revision;
+      end;
+    mView.Events := mEvents;
     mView.ShowDevelopment(Sample, '');
     // Klick: der Diff erst nach der Doppelklickzeit.
-    mView.Commits.Selected := mView.Commits.Items[1];
-    mView.Commits.OnClick(mView.Commits);
-    Assert.IsTrue(mView.CommitTimer.Enabled);
-    Assert.AreEqual('', mProbe.FDiff);
+    mView.Parts.Commits.Selected := mView.Parts.Commits.Items[1];
+    mView.Parts.Commits.OnClick(mView.Parts.Commits);
+    Assert.IsTrue(mView.Parts.CommitTimer.Enabled);
+    Assert.AreEqual('', mDiff);
     mView.FireCommitClick;
-    Assert.AreEqual('7637c6cf53522335c876c98aef9a32861d4dc147', mProbe.FDiff);
-    Assert.IsFalse(mView.CommitTimer.Enabled);
+    Assert.AreEqual('7637c6cf53522335c876c98aef9a32861d4dc147', mDiff);
+    Assert.IsFalse(mView.Parts.CommitTimer.Enabled);
     // Doppelklick: öffnen statt Diff.
-    mProbe.FDiff := '';
-    mView.Commits.Selected := mView.Commits.Items[0];
-    mView.Commits.OnClick(mView.Commits);
-    mView.Commits.OnDblClick(mView.Commits);
-    Assert.IsFalse(mView.CommitTimer.Enabled, 'Doppelklick hält den Diff an');
+    mDiff := '';
+    mView.Parts.Commits.Selected := mView.Parts.Commits.Items[0];
+    mView.Parts.Commits.OnClick(mView.Parts.Commits);
+    mView.Parts.Commits.OnDblClick(mView.Parts.Commits);
+    Assert.IsFalse(mView.Parts.CommitTimer.Enabled, 'Doppelklick hält den Diff an');
     mView.FireCommitClick;
-    Assert.AreEqual('', mProbe.FDiff);
-    Assert.AreEqual('28358feaf94440dbfe2fcc3aa2cb742e2d972f37', mProbe.FOpened);
-    // Units: Gruppen und gelöschte öffnen nichts.
-    mView.Units.Selected := mView.Units.Items[0];
-    mView.Units.OnClick(mView.Units);
-    Assert.AreEqual('', mProbe.FUnit);
-    mView.Units.Selected := mView.Units.Items[2];
-    mView.Units.OnClick(mView.Units);
-    Assert.AreEqual('', mProbe.FUnit, 'gelöscht');
-    mView.Units.Selected := mView.Units.Items[1];
-    mView.Units.OnClick(mView.Units);
-    Assert.AreEqual(Under('app/Main.pas'), mProbe.FUnit);
-    mView.Pulls.Selected := mView.Pulls.Items[0];
-    mView.Pulls.OnDblClick(mView.Pulls);
-    Assert.AreEqual('https://github.com/beispiel/kasse/pull/760', mProbe.FPull);
+    Assert.AreEqual('', mDiff);
+    Assert.AreEqual('28358feaf94440dbfe2fcc3aa2cb742e2d972f37', mOpened);
   finally
     mHost.Free;
-    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasIssueDevelopmentViewTests.UnitAndPullOpen;
+var
+  mHost: TForm;
+  mView: TAtlasIssueDevelopmentView;
+  mEvents: TAtlasIssueDevelopmentEvents;
+  mUnit, mPull: string;
+begin
+  mEvents := Default(TAtlasIssueDevelopmentEvents);
+  mUnit := '';
+  mPull := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mView := TAtlasIssueDevelopmentView.Create(mHost);
+    mView.Parent := mHost;
+    mEvents.OpenUnit :=
+      procedure(AUnit: TAtlasIssueUnit)
+      begin
+        mUnit := AUnit.Path;
+      end;
+    mEvents.OpenPull :=
+      procedure(APull: TAtlasTrackerPull)
+      begin
+        mPull := APull.Page;
+      end;
+    mView.Events := mEvents;
+    mView.ShowDevelopment(Sample, '');
+    // Units: Gruppen und gelöschte öffnen nichts.
+    mView.Parts.Units.Selected := mView.Parts.Units.Items[0];
+    mView.Parts.Units.OnClick(mView.Parts.Units);
+    Assert.AreEqual('', mUnit);
+    mView.Parts.Units.Selected := mView.Parts.Units.Items[2];
+    mView.Parts.Units.OnClick(mView.Parts.Units);
+    Assert.AreEqual('', mUnit, 'gelöscht');
+    mView.Parts.Units.Selected := mView.Parts.Units.Items[1];
+    mView.Parts.Units.OnClick(mView.Parts.Units);
+    Assert.AreEqual(Under('app/Main.pas'), mUnit);
+    mView.Parts.Pulls.Selected := mView.Parts.Pulls.Items[0];
+    mView.Parts.Pulls.OnDblClick(mView.Parts.Pulls);
+    Assert.AreEqual('https://github.com/beispiel/kasse/pull/760', mPull);
+  finally
+    mHost.Free;
   end;
 end;
 
@@ -315,28 +332,31 @@ procedure TAtlasIssueDevelopmentViewTests.SwitchOnlyForOtherBranch;
 var
   mHost: TForm;
   mView: TAtlasIssueDevelopmentView;
+  mEvents: TAtlasIssueDevelopmentEvents;
   mSwitched: string;
 begin
+  mEvents := Default(TAtlasIssueDevelopmentEvents);
   mSwitched := '';
   mHost := TForm.CreateNew(nil);
   try
     mView := TAtlasIssueDevelopmentView.Create(mHost);
     mView.Parent := mHost;
-    mView.OnSwitchBranch :=
+    mEvents.SwitchBranch :=
       procedure(ABranch: TAtlasIssueBranch)
       begin
         mSwitched := ABranch.Name;
       end;
+    mView.Events := mEvents;
     mView.ShowDevelopment(Sample, '');
-    Assert.IsFalse(mView.SwitchButton.Enabled, 'ohne Auswahl');
+    Assert.IsFalse(mView.Parts.Switch.Enabled, 'ohne Auswahl');
     // Die Auswahl meldet die Liste über OnSelectItem; ohne sichtbares Fenster hier direkt.
-    mView.Branches.Selected := mView.Branches.Items[0];
-    mView.Branches.OnSelectItem(mView.Branches, mView.Branches.Items[0], True);
-    Assert.IsFalse(mView.SwitchButton.Enabled, 'schon aktuell');
-    mView.Branches.Selected := mView.Branches.Items[1];
-    mView.Branches.OnSelectItem(mView.Branches, mView.Branches.Items[1], True);
-    Assert.IsTrue(mView.SwitchButton.Enabled);
-    mView.SwitchButton.Click;
+    mView.Parts.Branches.Selected := mView.Parts.Branches.Items[0];
+    mView.Parts.Branches.OnSelectItem(mView.Parts.Branches, mView.Parts.Branches.Items[0], True);
+    Assert.IsFalse(mView.Parts.Switch.Enabled, 'schon aktuell');
+    mView.Parts.Branches.Selected := mView.Parts.Branches.Items[1];
+    mView.Parts.Branches.OnSelectItem(mView.Parts.Branches, mView.Parts.Branches.Items[1], True);
+    Assert.IsTrue(mView.Parts.Switch.Enabled);
+    mView.Parts.Switch.Click;
     Assert.AreEqual('bugfix/753-nur-entfernt', mSwitched);
   finally
     mHost.Free;
@@ -356,29 +376,32 @@ begin
     mDevelopment := Sample;
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.NoWorkingCopy;
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoVcs), mView.StatusText);
-    Assert.IsNull(mView.Branches);
-    Assert.IsNull(mView.Commits);
-    Assert.IsNull(mView.Units, 'ohne Arbeitskopie keine Units');
-    Assert.IsNotNull(mView.Pulls, 'der Tracker bleibt');
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoVcs),
+      TAtlasIssueDevelopmentProbe.StatusText(mView));
+    Assert.IsNull(mView.Parts.Branches);
+    Assert.IsNull(mView.Parts.Commits);
+    Assert.IsNull(mView.Parts.Units, 'ohne Arbeitskopie keine Units');
+    Assert.IsNotNull(mView.Parts.Pulls, 'der Tracker bleibt');
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.ToolMissing;
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevToolMissing, ['Git']), mView.StatusText);
+    Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueDevToolMissing, ['Git']),
+      TAtlasIssueDevelopmentProbe.StatusText(mView));
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.Ok;
     mView.ShowDevelopment(mDevelopment, 'kein Netz', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject));
-    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject), mView.StatusText, 'ohne Projekt');
-    Assert.IsNull(mView.Commits);
-    Assert.IsNull(mView.Pulls, 'Fehler des Trackers statt der Liste');
+    Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDevNoProject),
+      TAtlasIssueDevelopmentProbe.StatusText(mView), 'ohne Projekt');
+    Assert.IsNull(mView.Parts.Commits);
+    Assert.IsNull(mView.Parts.Pulls, 'Fehler des Trackers statt der Liste');
     // Leere Ergebnisse sagen, was fehlt.
     mDevelopment := TAtlasIssueDevelopment.Empty;
     mDevelopment.Key := '#9';
     mDevelopment.VcsOutcome := TAtlasVcsOutcome.Ok;
     mDevelopment.TrackerLoaded := True;
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.IsNull(mView.Branches);
-    Assert.IsNull(mView.Commits);
-    Assert.IsNull(mView.Pulls);
-    Assert.AreEqual(0, Integer(Length(mView.UnitLines)));
+    Assert.IsNull(mView.Parts.Branches);
+    Assert.IsNull(mView.Parts.Commits);
+    Assert.IsNull(mView.Parts.Pulls);
+    Assert.AreEqual(0, Integer(Length(TAtlasIssueDevelopmentProbe.UnitLines(mView))));
   finally
     mHost.Free;
   end;
@@ -403,10 +426,10 @@ begin
     mChange.Author := 'Marco B.';
     mDevelopment.Tracker.Changes := [mChange];
     mView.ShowDevelopment(mDevelopment, '');
-    Assert.AreEqual(1, mView.Changes.Items.Count);
-    Assert.AreEqual('4c1d2e3f4a', mView.Changes.Items[0].Caption, 'gekürzt');
-    Assert.AreEqual('ATL-123 Tracker angebunden', mView.Changes.Items[0].SubItems[0]);
-    Assert.IsNull(mView.Pulls, 'YouTrack ohne Pull Requests');
+    Assert.AreEqual(1, mView.Parts.Changes.Items.Count);
+    Assert.AreEqual('4c1d2e3f4a', mView.Parts.Changes.Items[0].Caption, 'gekürzt');
+    Assert.AreEqual('ATL-123 Tracker angebunden', mView.Parts.Changes.Items[0].SubItems[0]);
+    Assert.IsNull(mView.Parts.Pulls, 'YouTrack ohne Pull Requests');
   finally
     mHost.Free;
   end;

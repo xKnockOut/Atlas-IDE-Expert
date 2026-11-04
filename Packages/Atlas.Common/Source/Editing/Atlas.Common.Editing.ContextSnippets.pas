@@ -312,67 +312,81 @@ end;
 
 { TContextSnippets }
 
-class function TContextSnippets.At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>;
+/// <summary>Höchstens ein Wort vor dem Cursor, nichts dahinter.</summary>
+function IsWordBeforeCursor(const ALineText: string; ACharacter: Integer): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Routine, Block: TSyntaxNode;
-  Before, Head, Method: string;
-  Index, Dot: Integer;
+  mBefore: string;
+  mIndex: Integer;
+begin
+  Result := (ACharacter >= 0) and (ACharacter <= Length(ALineText)) and
+    (Trim(Copy(ALineText, ACharacter + 1, MaxInt)) = '');
+  mBefore := TrimLeft(Copy(ALineText, 1, ACharacter));
+  mIndex := 1;
+  while Result and (mIndex <= Length(mBefore)) do
+  begin
+    Result := TTextChars.IsAsciiIdentChar(mBefore[mIndex]);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Vorschläge im Rumpf der Methode ARoutine: im Konstruktor, Destruktor bzw. Setter.</summary>
+function RoutineItems(ASource: TCommandSource; const AContext: TSlashContext; const AClass: TIndexSymbol;
+  ARoutine: TSyntaxNode): TArray<TContextSnippet>;
+var
+  mBlock: TSyntaxNode;
+  mHead, mMethod: string;
 begin
   Result := nil;
-  // Höchstens ein Wort vor dem Cursor, nichts dahinter.
-  if (ACharacter < 0) or (ACharacter > Length(AContext.LineText)) or
-    (Trim(Copy(AContext.LineText, ACharacter + 1, MaxInt)) <> '') then
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if (mBlock = nil) or (mBlock.StartPos.Line >= AContext.Line) or (mBlock.EndPos.Line <= AContext.Line) then
   begin
     Exit;
   end;
-  Before := TrimLeft(Copy(AContext.LineText, 1, ACharacter));
-  for Index := 1 to Length(Before) do
+  mMethod := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+  mHead := LowerCase(TrimLeft(ASource.Lines[ARoutine.StartPos.Line]));
+  if StartsStr('constructor ', mHead) then
   begin
-    if not TTextChars.IsAsciiIdentChar(Before[Index]) then
-    begin
-      Exit;
-    end;
+    Result := ConstructorItems(ASource, AContext, AClass, mBlock);
+  end
+  else if StartsStr('destructor ', mHead) then
+  begin
+    Result := DestructorItems(ASource, AClass, mBlock);
+  end
+  else if StartsStr('procedure ', mHead) then
+  begin
+    Result := SetterItems(ASource, AContext, AClass, ARoutine, mBlock, mMethod);
   end;
-  Source := TCommandSource.Create(AContext);
+end;
+
+class function TContextSnippets.At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>;
+var
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mRoutine: TSyntaxNode;
+begin
+  Result := nil;
+  if not IsWordBeforeCursor(AContext.LineText, ACharacter) then
+  begin
+    Exit;
+  end;
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClass) then
     begin
       Exit;
     end;
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine <> nil then
     begin
-      // In der Klassendeklaration.
-      if (ClassSymbol.Range.StartPos.Line < AContext.Line) and (ClassSymbol.Range.EndPos.Line > AContext.Line) then
-      begin
-        Result := PropertyItems(Source, AContext, ClassSymbol);
-      end;
-      Exit;
-    end;
-    Block := Routine.FindChild(TSyntaxKind.Block);
-    if (Block = nil) or (Block.StartPos.Line >= AContext.Line) or (Block.EndPos.Line <= AContext.Line) then
-    begin
-      Exit;
-    end;
-    Dot := LastDelimiter('.', Routine.Name);
-    Method := Copy(Routine.Name, Dot + 1, MaxInt);
-    Head := LowerCase(TrimLeft(Source.Lines[Routine.StartPos.Line]));
-    if StartsStr('constructor ', Head) then
-    begin
-      Result := ConstructorItems(Source, AContext, ClassSymbol, Block);
+      Result := RoutineItems(mSource, AContext, mClass, mRoutine);
     end
-    else if StartsStr('destructor ', Head) then
+    // In der Klassendeklaration.
+    else if (mClass.Range.StartPos.Line < AContext.Line) and (mClass.Range.EndPos.Line > AContext.Line) then
     begin
-      Result := DestructorItems(Source, ClassSymbol, Block);
-    end
-    else if StartsStr('procedure ', Head) then
-    begin
-      Result := SetterItems(Source, AContext, ClassSymbol, Routine, Block, Method);
+      Result := PropertyItems(mSource, AContext, mClass);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -394,11 +408,107 @@ begin
   end;
 end;
 
+function PlainUntilClose(const AText: string; var AIndex: Integer; AInside: Boolean): string; forward;
+
+/// <summary>Zeichen hinter "\" an AIndex: geschützte Zeichen ohne "\", sonst "\" selbst.</summary>
+function EscapedChar(const AText: string; var AIndex: Integer): string;
+begin
+  if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
+  begin
+    Result := AText[AIndex + 1];
+    Inc(AIndex, 2);
+  end
+  else
+  begin
+    Result := '\';
+    Inc(AIndex);
+  end;
+end;
+
+procedure SkipIdent(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Bis hinter das nächste "}".</summary>
+procedure SkipPastClose(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+  begin
+    Inc(AIndex);
+  end;
+  Inc(AIndex);
+end;
+
+/// <summary>Auswahl: die erste Möglichkeit bis "," bzw. "|".</summary>
+function FirstChoice(const AText: string; var AIndex: Integer): string;
+var
+  mStart: Integer;
+begin
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := Copy(AText, mStart, AIndex - mStart);
+end;
+
+/// <summary>${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe} ab dem Namen: Vorgabe bzw. erste Auswahl.</summary>
+function PlaceholderText(const AText: string; var AIndex: Integer): string;
+begin
+  Result := '';
+  SkipIdent(AText, AIndex);
+  if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
+  begin
+    Inc(AIndex);
+    Result := PlainUntilClose(AText, AIndex, True);
+  end
+  else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
+  begin
+    Inc(AIndex);
+    Result := FirstChoice(AText, AIndex);
+    SkipPastClose(AText, AIndex);
+  end
+  else
+  begin
+    SkipPastClose(AText, AIndex);
+  end;
+end;
+
+/// <summary>Platzhalter ab "$" an AIndex lesen; False, wenn das "$" Text bleibt ($FF, Textende).</summary>
+function DollarText(const AText: string; var AIndex: Integer; out APart: string): Boolean;
+begin
+  APart := '';
+  Result := AIndex < Length(AText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if CharInSet(AText[AIndex + 1], ['0'..'9']) then
+  begin
+    // $1; "$" vor einem Buchstaben bleibt Text ($FF).
+    Inc(AIndex);
+    SkipIdent(AText, AIndex);
+  end
+  else if AText[AIndex + 1] = '{' then
+  begin
+    Inc(AIndex, 2);
+    APart := PlaceholderText(AText, AIndex);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 /// <summary>Liest ab AIndex bis zum passenden "}" (oder Textende) und gibt den Klartext zurück; AIndex steht danach
 /// hinter dem "}".</summary>
 function PlainUntilClose(const AText: string; var AIndex: Integer; AInside: Boolean): string;
 var
-  Start: Integer;
+  mPart: string;
 begin
   Result := '';
   while AIndex <= Length(AText) do
@@ -406,16 +516,7 @@ begin
     case AText[AIndex] of
       '\':
         begin
-          if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
-          begin
-            Result := Result + AText[AIndex + 1];
-            Inc(AIndex, 2);
-          end
-          else
-          begin
-            Result := Result + '\';
-            Inc(AIndex);
-          end;
+          Result := Result + EscapedChar(AText, AIndex);
           Continue;
         end;
       '}':
@@ -425,57 +526,10 @@ begin
           Exit;
         end;
       '$':
-        if AIndex < Length(AText) then
+        if DollarText(AText, AIndex, mPart) then
         begin
-          // $1; "$" vor einem Buchstaben bleibt Text ($FF).
-          if CharInSet(AText[AIndex + 1], ['0'..'9']) then
-          begin
-            Inc(AIndex);
-            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-            begin
-              Inc(AIndex);
-            end;
-            Continue;
-          end;
-          // ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}
-          if AText[AIndex + 1] = '{' then
-          begin
-            Inc(AIndex, 2);
-            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-            begin
-              Inc(AIndex);
-            end;
-            if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
-            begin
-              Inc(AIndex);
-              Result := Result + PlainUntilClose(AText, AIndex, True);
-            end
-            else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
-            begin
-              // Auswahl: die erste Möglichkeit.
-              Inc(AIndex);
-              Start := AIndex;
-              while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
-              begin
-                Inc(AIndex);
-              end;
-              Result := Result + Copy(AText, Start, AIndex - Start);
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-              begin
-                Inc(AIndex);
-              end;
-              Inc(AIndex);
-            end
-            else
-            begin
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-              begin
-                Inc(AIndex);
-              end;
-              Inc(AIndex);
-            end;
-            Continue;
-          end;
+          Result := Result + mPart;
+          Continue;
         end;
     end;
     Result := Result + AText[AIndex];
