@@ -1490,6 +1490,7 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests.pas',
   Atlas.Common.Rules.Builtin.Exceptions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.Tests.pas',
   Atlas.Common.Rules.Builtin.Style.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tests.pas',
+  Atlas.Common.Rules.Builtin.Style.Tokens.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tokens.Tests.pas',
   Atlas.Common.Rules.Builtin.PaletteIcons.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas',
   Atlas.Common.Rules.Builtin.Performance.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas',
   Atlas.Common.Rules.ChangedFiles.Tests in 'Common\Rules\Atlas.Common.Rules.ChangedFiles.Tests.pas',
