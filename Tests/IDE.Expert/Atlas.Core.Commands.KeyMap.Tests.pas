@@ -527,6 +527,38 @@ begin
   Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
 end;
 
+/// <summary>Vorgaben mit allen abschaltbaren Tastenfunktionen aus.</summary>
+function SwitchedOffSettings: TAtlasPluginSettings;
+begin
+  Result := TAtlasPluginSettings.Defaults;
+  Result.UnitSearchKey := $C055;
+  Result.MethodToggle := False;
+  Result.UnitSearchEnabled := False;
+  Result.WelcomePageSearch := False;
+  Result.BookmarksNamed := False;
+  Result.GenerateMenu := False;
+  Result.Notifications := False;
+  Result.WelcomePageQuickActions := False;
+  Result.Problems := False;
+  Result.QuickOpen := False;
+  Result.NavHistory := False;
+  Result.Peek := False;
+  Result.Breadcrumbs := False;
+  Result.JumpToMatch := False;
+  Result.GitGutter := False;
+  Result.MoveLines := False;
+  Result.CompleteStatement := False;
+  Result.MultiCursor := False;
+  Result.FormatCode := False;
+  Result.ToggleBlockComment := False;
+  Result.NewLineAround := False;
+  Result.Unwrap := False;
+  Result.SafeDelete := False;
+  Result.ProblemsWindow := False;
+  Result.DebugStepIntoTarget := False;
+  Result.ExpressionType := False;
+end;
+
 /// <summary>Die Taste bleibt eingestellt; nur der Schalter ist aus.</summary>
 procedure AssertSwitchedOffKeysStay(const ASettings: TAtlasPluginSettings; const AEntries: TArray<TAtlasKeyEntry>);
 var
@@ -554,33 +586,7 @@ var
   Entries: TArray<TAtlasKeyEntry>;
   Entry: TAtlasKeyEntry;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.UnitSearchKey := $C055;
-  Settings.MethodToggle := False;
-  Settings.UnitSearchEnabled := False;
-  Settings.WelcomePageSearch := False;
-  Settings.BookmarksNamed := False;
-  Settings.GenerateMenu := False;
-  Settings.Notifications := False;
-  Settings.WelcomePageQuickActions := False;
-  Settings.Problems := False;
-  Settings.QuickOpen := False;
-  Settings.NavHistory := False;
-  Settings.Peek := False;
-  Settings.Breadcrumbs := False;
-  Settings.JumpToMatch := False;
-  Settings.GitGutter := False;
-  Settings.MoveLines := False;
-  Settings.CompleteStatement := False;
-  Settings.MultiCursor := False;
-  Settings.FormatCode := False;
-  Settings.ToggleBlockComment := False;
-  Settings.NewLineAround := False;
-  Settings.Unwrap := False;
-  Settings.SafeDelete := False;
-  Settings.ProblemsWindow := False;
-  Settings.DebugStepIntoTarget := False;
-  Settings.ExpressionType := False;
+  Settings := SwitchedOffSettings;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
   begin
