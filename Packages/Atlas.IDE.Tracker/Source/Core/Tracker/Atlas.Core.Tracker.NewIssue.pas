@@ -1560,8 +1560,7 @@ var
   mSend: IAtlasCiSend;
   mWatch: TStopwatch;
   mUrl, mText, mId, mMe, mBody: string;
-  mStatus: Integer;
-  mError: TAtlasCiFetchError;
+  mResponse: TAtlasCiResponse;
 begin
   if (AProvider = nil) or not ATarget.Configured or (Trim(ADraft.Title) = '') then
   begin
@@ -1587,19 +1586,19 @@ begin
   begin
     Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured);
   end
-  else if not mSend.Send('POST', mUrl, mBody, Remaining(mWatch), mStatus, mText, mError) then
+  else if not mSend.Send('POST', mUrl, mBody, Remaining(mWatch), mResponse) then
   begin
-    Result := TAtlasNewIssueResult.Create(OutcomeOfError(mError));
+    Result := TAtlasNewIssueResult.Create(OutcomeOfError(mResponse.Error));
   end
-  else if (mStatus <> 200) and (mStatus <> 201) then
+  else if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
   begin
-    Result := Failure(mStatus, mText);
+    Result := Failure(mResponse.Status, mResponse.Text);
   end
   else
   begin
     Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
-    Result.HttpStatus := mStatus;
-    ReadCreated(AProvider, ATarget, mText, Result);
+    Result.HttpStatus := mResponse.Status;
+    ReadCreated(AProvider, ATarget, mResponse.Text, Result);
   end;
 end;
 
