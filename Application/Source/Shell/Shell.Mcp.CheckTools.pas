@@ -290,7 +290,7 @@ begin
   Catalog := TFindingPrompt.GermanCatalog;
   try
     for Finding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, RelativePath, Text,
-      AContext.CheckProject(FileName), AContext.Group.Main.State.CheckSource(FileName), Scopes) do
+      TCheckOrigin.Make(AContext.CheckProject(FileName), AContext.Group.Main.State.CheckSource(FileName)), Scopes) do
     begin
       if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
       begin

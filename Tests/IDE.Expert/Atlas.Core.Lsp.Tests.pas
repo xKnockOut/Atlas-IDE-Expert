@@ -106,68 +106,24 @@ type
     procedure ReadsShowMessageParams;
   end;
 
-  [TestFixture]
-  TLspTextChangesTests = class
-  public
-    [Test]
-    procedure RangeCoversOnlyTheDifference;
-    [Test]
-    procedure NeverSplitsLineBreaksOrSurrogates;
-    [Test]
-    procedure AppliedChangeGivesNewText;
-    /// <summary>Wie beim Server (TLineTable): ein Index zwischen CR und LF zählt zum Zeilenende.</summary>
-    [Test]
-    procedure PositionOfInsideCrlf;
-    /// <summary>Positionen und Offsets passen für CRLF, LF und CR zueinander.</summary>
-    [Test]
-    procedure PositionAndOffsetAgree;
-  end;
-
-  [TestFixture]
-  TLspServerProcessTests = class
-  public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
-    // Startet den echten Server neben dem Testprogramm.
-    [Test]
-    procedure HoverAndDefinitionAgainstServer;
-    [Test]
-    procedure PullsDiagnosticsAgainstServer;
-    [Test]
-    procedure CompilerMessagesReachPulledDiagnostics;
-    /// <summary>Scheitert der Start, bleiben keine Handles offen (Code-Review S-07).</summary>
-    [Test]
-    procedure StartFailureLeavesNoHandles;
-    /// <summary>Endet der Prozess, kennt der Client Exit-Code und Zeilen auf stderr; stderr steht in
-    /// server-stderr.log (Bericht H5).</summary>
-    [Test]
-    procedure EndReportsExitCodeAndStderr;
-  end;
-
 implementation
 
 uses
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
-  System.IOUtils,
   System.JSON,
   System.Generics.Collections,
   System.SyncObjs,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model,
-  Atlas.Core.Problems.Contract;
+  Atlas.Core.Results.Model;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -177,11 +133,6 @@ begin
   Text := TEncoding.UTF8.GetString(ABytes);
   Result := TJSONObject.ParseJSONValue(Text.Substring(Text.IndexOf(#13#10#13#10) + 4)) as TJSONObject;
 end;
-
-/// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>
-function ProcessHandleCount(hProcess: THandle; var pdwHandleCount: DWORD): BOOL; stdcall;
-  external kernel32 name 'GetProcessHandleCount';
-
 /// <summary>Client, der Gesendetes in ASent sammelt; antwortet auf initialize.</summary>
 function ApplyEditClient(ASent: TList<string>): TLspClient;
 var
@@ -259,7 +210,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspClientTests.RaisesOnErrorResponse;
 var
   Client: TLspClient;
@@ -291,7 +241,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspClientTests.AnswersServerRequestWithNull;
 var
   Client: TLspClient;
@@ -322,7 +271,6 @@ begin
     Sent.Free;
   end;
 end;
-
 procedure TLspClientTests.ForwardsServerMessagesToHandler;
 var
   Client: TLspClient;
@@ -362,7 +310,6 @@ begin
     Sent.Free;
   end;
 end;
-
 procedure TLspClientTests.RoutesPartialResultsToRequest;
 var
   Client: TLspClient;
@@ -424,7 +371,6 @@ begin
     Partials.Free;
   end;
 end;
-
 procedure TLspClientTests.CancellableRequestSendsCancel;
 var
   Client: TLspClient;
@@ -466,7 +412,6 @@ begin
     Sent.Free;
   end;
 end;
-
 procedure TLspClientTests.RejectsRequestsAfterClose;
 var
   Client: TLspClient;
@@ -486,7 +431,6 @@ begin
     Client.Free;
   end;
 end;
-
 /// <summary>Anfrage in einem eigenen Thread; endet mit dem Schließen des Clients.</summary>
 function RequestInThread(AClient: TLspClient; const AMethod: string): TThread;
 var
@@ -509,17 +453,10 @@ begin
   Result.FreeOnTerminate := False;
   Result.Start;
 end;
-
-procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
-var
-  Client: TLspClient;
-  DefinitionSent, DiagnosticSent: TEvent;
-  Definition, Diagnostic: TThread;
-  Ended, Info: TLspCloseInfo;
+/// <summary>Client, der nie antwortet und das Senden von definition und diagnostic meldet.</summary>
+function CreateSilentClient(const ADefinitionSent, ADiagnosticSent: TEvent): TLspClient;
 begin
-  DefinitionSent := TEvent.Create(nil, True, False, '');
-  DiagnosticSent := TEvent.Create(nil, True, False, '');
-  Client := TLspClient.Create(
+  Result := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
       Message: TJSONObject;
@@ -529,16 +466,27 @@ begin
       try
         if Message.GetValue<string>('method', '') = 'textDocument/definition' then
         begin
-          DefinitionSent.SetEvent;
+          ADefinitionSent.SetEvent;
         end
         else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
         begin
-          DiagnosticSent.SetEvent;
+          ADiagnosticSent.SetEvent;
         end;
       finally
         Message.Free;
       end;
     end);
+end;
+procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
+var
+  Client: TLspClient;
+  DefinitionSent, DiagnosticSent: TEvent;
+  Definition, Diagnostic: TThread;
+  Ended, Info: TLspCloseInfo;
+begin
+  DefinitionSent := TEvent.Create(nil, True, False, '');
+  DiagnosticSent := TEvent.Create(nil, True, False, '');
+  Client := CreateSilentClient(DefinitionSent, DiagnosticSent);
   Definition := nil;
   Diagnostic := nil;
   try
@@ -576,14 +524,12 @@ begin
     DiagnosticSent.Free;
   end;
 end;
-
 { TLspSessionTests }
 
 procedure TLspSessionTests.WarmUpFirstUse;
 begin
   AcceptsApplyEditAndRepliesLater;
 end;
-
 procedure TLspSessionTests.ConvertsPathsAndUris;
 begin
   Assert.AreEqual('file:///c%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspSession.PathToUri('C:\Mein Projekt\Übung.pas'));
@@ -593,7 +539,6 @@ begin
   Assert.AreEqual('\\server\share\a.pas', TLspSession.UriToPath('file://server/share/a.pas'));
   Assert.AreEqual('', TLspSession.UriToPath('untitled:1'));
 end;
-
 procedure TLspSessionTests.ReadsAllHoverForms;
 
   function Text(const AJson: string): string;
@@ -614,7 +559,6 @@ begin
   Assert.AreEqual('C' + sLineBreak + 'D', Text('{"contents":["C",{"language":"delphi","value":"D"}]}'));
   Assert.AreEqual('', Text('null'));
 end;
-
 procedure TLspSessionTests.ReadsHoverParts;
 var
   Hover: TJSONValue;
@@ -651,7 +595,6 @@ begin
   end;
   Assert.IsFalse(TLspHoverParts.FromHover(nil).Found);
 end;
-
 procedure TLspSessionTests.MapsEditorColumnsWithTabs;
 begin
   Assert.AreEqual(0, TLspSession.ColumnToIndex('abc', 1, 8));
@@ -662,7 +605,6 @@ begin
   // Hinter dem Zeilenende: Länge der Zeile.
   Assert.AreEqual(3, TLspSession.ColumnToIndex('abc', 20, 8));
 end;
-
 procedure TLspSessionTests.SendsOpenOnceAndChangeOnlyWhenTextChanged;
 var
   Client: TLspClient;
@@ -699,7 +641,6 @@ begin
     Methods.Free;
   end;
 end;
-
 procedure TLspSessionTests.ClosesSyncedDocumentsAndListsThem;
 var
   Client: TLspClient;
@@ -743,7 +684,6 @@ begin
     Methods.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReopensDocumentsOfPreviousSession;
 var
   Client: TLspClient;
@@ -789,7 +729,6 @@ begin
     Messages.Free;
   end;
 end;
-
 procedure TLspSessionTests.SendsOnlyTheChangedRange;
 var
   Client: TLspClient;
@@ -830,7 +769,6 @@ begin
     Changes.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReportsWatchedFilesExceptSyncedChanges;
 var
   Client: TLspClient;
@@ -878,7 +816,6 @@ begin
     Messages.Free;
   end;
 end;
-
 procedure TLspSessionTests.PreparesAndRequestsRename;
 var
   Client: TLspClient;
@@ -940,7 +877,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReadsParameterInlayHints;
 var
   Client: TLspClient;
@@ -999,76 +935,103 @@ begin
   end;
 end;
 
-procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
-var
-  Client: TLspClient;
-  Session: TLspSession;
-  Sent: TList<string>;
-  Announced: Boolean;
-  Received: TLspWorkspaceEdit;
-  Reply: TLspApplyEditReply;
-  Incoming: TBytes;
+type
+  /// <summary>Hält fest, was Client und Sitzung beim applyEdit-Test senden und empfangen.</summary>
+  TApplyEditProbe = class
+  public
+    FClient: TLspClient;
+    FSent: TList<string>;
+    FAnnounced: Boolean;
+    FReceived: TLspWorkspaceEdit;
+    FReply: TLspApplyEditReply;
+  end;
+
+/// <summary>Client, der initialize beantwortet und Antworten des Plugins in der Probe sammelt.</summary>
+function CreateApplyEditClient(const AProbe: TApplyEditProbe): TLspClient;
 begin
-  Sent := TList<string>.Create;
-  Announced := False;
-  Client := TLspClient.Create(
+  Result := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
-      Message: TJSONObject;
-      Answer: TBytes;
+      mMessage: TJSONObject;
+      mAnswer: TBytes;
     begin
-      Message := Unframe(ABytes);
+      mMessage := Unframe(ABytes);
       try
-        if Message.GetValue<string>('method', '') = 'initialize' then
+        if mMessage.GetValue<string>('method', '') = 'initialize' then
         begin
-          Announced := Message.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
-          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [Message.GetValue<Integer>('id')]));
-          Client.Receive(Answer, Length(Answer));
+          AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
+          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [mMessage.GetValue<Integer>('id')]));
+          AProbe.FClient.Receive(mAnswer, Length(mAnswer));
         end
-        else if Message.GetValue('method') = nil then
+        else if mMessage.GetValue('method') = nil then
         begin
-          Sent.Add(Message.ToJSON);
+          AProbe.FSent.Add(mMessage.ToJSON);
         end;
       finally
-        Message.Free;
+        mMessage.Free;
       end;
     end);
-  Session := TLspSession.Create(Client);
+end;
+/// <summary>Hängt den applyEdit-Empfang der Sitzung an die Probe.</summary>
+procedure WireApplyEdit(const ASession: TLspSession; const AProbe: TApplyEditProbe);
+begin
+  ASession.OnApplyEdit :=
+    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+    begin
+      AProbe.FReceived := AEdit;
+      AProbe.FReply := AReply;
+    end;
+end;
+procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
+var
+  mProbe: TApplyEditProbe;
+  mSession: TLspSession;
+  mIncoming: TBytes;
+begin
+  mProbe := TApplyEditProbe.Create;
+  mProbe.FSent := TList<string>.Create;
+  mProbe.FClient := CreateApplyEditClient(mProbe);
+  mSession := TLspSession.Create(mProbe.FClient);
   try
-    Session.OnApplyEdit :=
-      procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
-      begin
-        Received := AEdit;
-        Reply := AReply;
-      end;
-    Session.Initialize;
-    Assert.IsTrue(Announced, 'applyEdit angekündigt');
-    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+    WireApplyEdit(mSession, mProbe);
+    mSession.Initialize;
+    Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
       '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
       '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
-    Client.Receive(Incoming, Length(Incoming));
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
     // Noch keine Antwort: Die kommt erst, wenn die Änderung im Hauptthread übernommen ist.
-    Assert.AreEqual(0, Integer(Sent.Count));
-    Assert.AreEqual(1, Received.EditCount);
-    Reply(False, 'gesperrt');
-    Assert.AreEqual(1, Integer(Sent.Count));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}', Sent[0]);
+    Assert.AreEqual(0, Integer(mProbe.FSent.Count));
+    Assert.AreEqual(1, mProbe.FReceived.EditCount);
+    mProbe.FReply(False, 'gesperrt');
+    Assert.AreEqual(1, Integer(mProbe.FSent.Count));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
+      mProbe.FSent[0]);
     // Andere Anfragen weiter mit null.
-    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
-    Client.Receive(Incoming, Length(Incoming));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', Sent[1]);
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
   finally
-    // Eingefangene Variablen lösen: Reply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
-    Reply := nil;
-    Received := Default(TLspWorkspaceEdit);
-    Session.OnApplyEdit := nil;
-    Session.Free;
-    Client.Free;
-    Sent.Free;
+    // Probe lösen: FReply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
+    mProbe.FReply := nil;
+    mProbe.FReceived := Default(TLspWorkspaceEdit);
+    mSession.OnApplyEdit := nil;
+    mSession.Free;
+    mProbe.FClient.Free;
+    mProbe.FSent.Free;
+    mProbe.Free;
   end;
 end;
-
+/// <summary>Projektkontext C:\P\A.dproj, Debug/Win32 mit DEBUG.</summary>
+function DebugWin32Context: TAtlasProjectContext;
+begin
+  Result := Default(TAtlasProjectContext);
+  Result.Project := 'C:\P\A.dproj';
+  Result.Configuration := 'Debug';
+  Result.Platform := 'Win32';
+  Result.Defines := ['DEBUG'];
+end;
 procedure TLspSessionTests.SendsProjectContextsInInitializeAndOnChange;
 var
   Client: TLspClient;
@@ -1107,11 +1070,7 @@ begin
     end);
   Session := TLspSession.Create(Client);
   try
-    Context := Default(TAtlasProjectContext);
-    Context.Project := 'C:\P\A.dproj';
-    Context.Configuration := 'Debug';
-    Context.Platform := 'Win32';
-    Context.Defines := ['DEBUG'];
+    Context := DebugWin32Context;
     Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'für initialize gemerkt');
     Session.Initialize;
     Assert.Contains(Initial, '"configuration":"Debug"');
@@ -1131,7 +1090,6 @@ begin
     Sent.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReadsWorkspaceRun;
 var
   Response: TJSONValue;
@@ -1161,7 +1119,6 @@ begin
   end;
   Run := Default(TLspWorkspaceRun);
 end;
-
 procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
 var
   Client: TLspClient;
@@ -1202,7 +1159,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspSessionTests.WrapsServerSettings;
 var
   Params: TJSONObject;
@@ -1221,7 +1177,6 @@ begin
     Params.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReadsShowMessageParams;
 var
   Params: TJSONValue;
@@ -1245,7 +1200,6 @@ begin
   end;
   Assert.IsFalse(TLspSession.ShowMessageParams(nil, MessageType, Text));
 end;
-
 procedure TLspSessionTests.ReportsProjectGroupChanges;
 var
   Folders: TJSONArray;
@@ -1269,7 +1223,6 @@ begin
   TLspSession.ProjectChanges(['C:\G\A.dproj'], ['C:\G\A.dproj'], Added, Removed);
   Assert.AreEqual<NativeInt>(0, Length(Added) + Length(Removed));
 end;
-
 procedure TLspSessionTests.FreesApplyEditIdWithoutReply;
 var
   Client: TLspClient;
@@ -1302,7 +1255,6 @@ begin
     Sent.Free;
   end;
 end;
-
 procedure TLspSessionTests.RepliesToApplyEditOnlyOnce;
 var
   Client: TLspClient;
@@ -1335,79 +1287,6 @@ begin
     Sent.Free;
   end;
 end;
-
-{ TLspServerProcessTests }
-
-procedure TLspServerProcessTests.WarmUpFirstUse;
-begin
-  StartFailureLeavesNoHandles;
-  // Erster echter Start (Pipes, Lese- und Schreib-Thread, Sitzung) ungemessen statt [IgnoreMemoryLeaks]
-  // (Bericht N2). Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
-  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
-    try
-      HoverAndDefinitionAgainstServer;
-    except
-      // Scheitert der Lauf, meldet das der Test selbst; das Aufwärmen hält die übrigen Tests nicht auf.
-      on Exception do
-        ;
-    end;
-end;
-
-procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
-const
-  Missing = 'C:\nicht\vorhanden\AtlasServer.exe';
-var
-  Before, After: DWORD;
-  Index: Integer;
-begin
-  // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
-  Assert.WillRaise(
-    procedure
-    begin
-      TLspServerProcess.Create(Missing, '').Free;
-    end, EOSError);
-  Before := 0;
-  After := 0;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, Before));
-  for Index := 1 to 10 do
-  begin
-    Assert.WillRaise(
-      procedure
-      begin
-        TLspServerProcess.Create(Missing, '').Free;
-      end, EOSError);
-  end;
-  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, After));
-  // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
-  Assert.IsTrue(Integer(After) - Integer(Before) < 5, Format('Handles vorher %d, nachher %d', [Before, After]));
-end;
-
-procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
-var
-  Server: IAtlasLspServer;
-  Watch: TStopwatch;
-  Info: TLspCloseInfo;
-  Text: string;
-begin
-  // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
-  Server := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
-  Watch := TStopwatch.StartNew;
-  while not Server.Client.Closed and (Watch.ElapsedMilliseconds < 10000) do
-  begin
-    Sleep(20);
-  end;
-  Assert.IsTrue(Server.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
-  Info := Server.Client.CloseInfo;
-  Assert.IsTrue(Info.ExitKnown, 'Exit-Code bekannt');
-  Assert.AreEqual(Int64(3), Int64(Info.ExitCode));
-  Assert.AreEqual(1, Info.ErrorLines);
-  Assert.IsTrue(Info.RuntimeMs >= 0);
-  Server := nil;
-  Text := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
-  Assert.Contains(Text, 'Serverstart');
-  Assert.Contains(Text, 'Testausgabe auf stderr');
-end;
-
 { TLspClientTests (Obergrenzen) }
 
 procedure TLspClientTests.RejectsOversizedContentLength;
@@ -1430,7 +1309,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspClientTests.RejectsHeaderWithoutEnd;
 var
   Client: TLspClient;
@@ -1451,7 +1329,6 @@ begin
     Client.Free;
   end;
 end;
-
 procedure TLspClientTests.AcceptsMessageAtHeaderLimit;
 const
   Body = '{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}';
@@ -1485,269 +1362,6 @@ begin
     Seen.Free;
   end;
 end;
-
-{ TLspServerProcessTests }
-
-procedure TLspServerProcessTests.HoverAndDefinitionAgainstServer;
-const
-  UnitText =
-    'unit Probe;'#13#10 +
-    'interface'#13#10 +
-    'type'#13#10 +
-    '  TFoo = class'#13#10 +
-    '    FWert: Integer;'#13#10 +
-    '    procedure Setze;'#13#10 +
-    '  end;'#13#10 +
-    'implementation'#13#10 +
-    'procedure TFoo.Setze;'#13#10 +
-    'begin'#13#10 +
-    '  FWert := 1;'#13#10 +
-    'end;'#13#10 +
-    'end.';
-var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Location: TLspLocation;
-begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
-  begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
-  end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbe.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
-  try
-    Session := TLspSession.Create(Server.Client, 5000);
-    try
-      Session.Initialize;
-      Assert.IsTrue(Server.Running);
-      Assert.AreEqual('FWert: Integer;', Session.Hover(FileName, UnitText, 10, 3));
-      Assert.IsTrue(Session.Definition(FileName, UnitText, 10, 3, Location));
-      Assert.AreEqual(4, Location.Line);
-      Assert.IsTrue(SameText(FileName, Location.FileName), Location.FileName);
-    finally
-      Session.Free;
-    end;
-  finally
-    Server.Free;
-  end;
-end;
-
-procedure TLspServerProcessTests.PullsDiagnosticsAgainstServer;
-const
-  UnitText =
-    'unit ProbeFehler;'#13#10 +
-    'interface'#13#10 +
-    'implementation'#13#10 +
-    'procedure P;'#13#10 +
-    'begin'#13#10 +
-    '  if then'#13#10 +
-    'end;'#13#10 +
-    'end.';
-var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Report, Again: TLspDiagnosticReport;
-begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
-  begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
-  end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeFehler.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
-  try
-    Session := TLspSession.Create(Server.Client, 5000);
-    try
-      Session.Initialize;
-      Session.Sync(FileName, UnitText);
-      Report := Session.DocumentDiagnostics(FileName, '', 10000);
-      Assert.IsFalse(Report.Unchanged);
-      Assert.IsTrue(Length(Report.Problems) > 0, 'Syntaxfehler gemeldet');
-      Assert.IsTrue(Report.Problems[0].Severity = TAtlasProblemSeverity.Error);
-      Assert.AreEqual(5, Report.Problems[0].StartLine);
-      Assert.AreNotEqual('', Report.ResultId);
-      Again := Session.DocumentDiagnostics(FileName, Report.ResultId, 10000);
-      Assert.IsTrue(Again.Unchanged, 'gleiche Version: unverändert');
-    finally
-      Session.Free;
-    end;
-  finally
-    Server.Free;
-  end;
-end;
-
-procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
-const
-  UnitText =
-    'unit ProbeCompiler;'#13#10 +
-    'interface'#13#10 +
-    'implementation'#13#10 +
-    'procedure P;'#13#10 +
-    'begin'#13#10 +
-    '  Gibtsnicht.Create;'#13#10 +
-    'end;'#13#10 +
-    'end.';
-var
-  ServerExe, FileName: string;
-  Server: TLspServerProcess;
-  Session: TLspSession;
-  Report: TLspDiagnosticReport;
-  Params: TJSONObject;
-  Waited: Integer;
-  Problem: TAtlasProblem;
-  Found: Boolean;
-begin
-  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe');
-  if not FileExists(ServerExe) then
-  begin
-    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
-  end;
-  FileName := TPath.Combine(TPath.GetTempPath, 'AtlasPluginProbeCompiler.pas');
-  Server := TLspServerProcess.Create(ServerExe, '');
-  try
-    Session := TLspSession.Create(Server.Client, 5000);
-    try
-      Session.Initialize;
-      Session.Sync(FileName, UnitText);
-      Params := TJSONObject.ParseJSONValue(Format('{"project":"","platform":"Win32","success":false,"background":true,' +
-        '"messages":[{"file":"%s","line":6,"column":3,"severity":"error","code":"E2003",' +
-        '"text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}', [StringReplace(FileName, '\', '\\', [rfReplaceAll])]))
-        as TJSONObject;
-      Session.Notify('atlas/compilerMessages', Params);
-      // Der Server bittet danach um neues Holen.
-      Waited := 0;
-      while (Session.RefreshCount = 0) and (Waited < 5000) do
-      begin
-        Sleep(50);
-        Inc(Waited, 50);
-      end;
-      Assert.AreEqual(1, Session.RefreshCount, 'workspace/diagnostic/refresh');
-      Report := Session.DocumentDiagnostics(FileName, '', 10000);
-      Found := False;
-      for Problem in Report.Problems do
-      begin
-        if Problem.IsCompiler and (Problem.Code = 'E2003') then
-        begin
-          Found := True;
-          Assert.AreEqual(5, Problem.StartLine);
-          Assert.IsTrue(Problem.Severity = TAtlasProblemSeverity.Error);
-        end;
-      end;
-      Assert.IsTrue(Found, 'dcc-Meldung in den Diagnosen der geöffneten Datei');
-    finally
-      Session.Free;
-    end;
-  finally
-    Server.Free;
-  end;
-end;
-
-{ TLspTextChangesTests }
-
-function Applied(const AOld: string; const AChange: TLspTextChange): string;
-var
-  StartOffset, EndOffset: Integer;
-begin
-  StartOffset := TLspTextChanges.OffsetOf(AOld, AChange.StartPos);
-  EndOffset := TLspTextChanges.OffsetOf(AOld, AChange.EndPos);
-  Result := Copy(AOld, 1, StartOffset) + AChange.Text + Copy(AOld, EndOffset + 1, MaxInt);
-end;
-
-function RangeText(const AChange: TLspTextChange): string;
-begin
-  Result := Format('%d:%d-%d:%d "%s"', [AChange.StartPos.Line, AChange.StartPos.Character, AChange.EndPos.Line,
-    AChange.EndPos.Character, AChange.Text]);
-end;
-
-procedure TLspTextChangesTests.RangeCoversOnlyTheDifference;
-begin
-  Assert.AreEqual('0:5-0:5 "X"', RangeText(TLspTextChanges.Between('unit A;', 'unit XA;')));
-  Assert.AreEqual('1:1-1:2 ""', RangeText(TLspTextChanges.Between('a'#13#10'bcd', 'a'#13#10'bd')));
-  Assert.AreEqual('0:0-0:0 "x"', RangeText(TLspTextChanges.Between('', 'x')));
-  Assert.AreEqual('0:3-0:3 ""', RangeText(TLspTextChanges.Between('abc', 'abc')));
-  // Lone CR und LF zählen wie beim Server als Zeilenende.
-  Assert.AreEqual('2:0-2:1 "Y"', RangeText(TLspTextChanges.Between('a'#13'b'#10'X', 'a'#13'b'#10'Y')));
-end;
-
-procedure TLspTextChangesTests.NeverSplitsLineBreaksOrSurrogates;
-var
-  Change: TLspTextChange;
-begin
-  // CR bleibt gleich, LF wird zu "X"#10: Der Bereich darf nicht zwischen CR und LF beginnen.
-  Change := TLspTextChanges.Between('a'#13#10'b', 'a'#13'X'#10'b');
-  Assert.AreEqual('0:1-1:0 "'#13'X'#10'"', RangeText(Change));
-  // Vor dem gleichen Ende "\n..." steht im alten Text CR: das LF gehört in den Bereich.
-  Change := TLspTextChanges.Between('a'#13#10'b', 'aZ'#10'b');
-  Assert.AreEqual('aZ'#10'b', Applied('a'#13#10'b', Change));
-  Assert.AreEqual(0, Change.StartPos.Line);
-  Assert.AreEqual(1, Change.EndPos.Line);
-  // Zwei Emojis mit gleichem hohem Surrogat: nicht in der Mitte eines Paars trennen.
-  Change := TLspTextChanges.Between('x'#$D83D#$DE00, 'x'#$D83D#$DE01);
-  Assert.AreEqual('0:1-0:3 "'#$D83D#$DE01'"', RangeText(Change));
-end;
-
-procedure TLspTextChangesTests.AppliedChangeGivesNewText;
-const
-  Alphabet = 'ab'#13#10'x';
-var
-  Round, Index: Integer;
-  Old, New_: string;
-
-  function RandomText(ALength: Integer): string;
-  var
-    Position: Integer;
-  begin
-    Result := '';
-    for Position := 1 to ALength do
-    begin
-      Result := Result + Alphabet[Random(Length(Alphabet)) + 1];
-    end;
-  end;
-
-begin
-  RandSeed := 395;
-  for Round := 1 to 5000 do
-  begin
-    Old := RandomText(Random(12));
-    Index := Random(Length(Old) + 1);
-    New_ := Copy(Old, 1, Index) + RandomText(Random(4)) + Copy(Old, Index + Random(3) + 1, MaxInt);
-    Assert.AreEqual(New_, Applied(Old, TLspTextChanges.Between(Old, New_)), Format('%d: "%s" -> "%s"', [Round, Old, New_]));
-  end;
-end;
-
-procedure TLspTextChangesTests.PositionOfInsideCrlf;
-var
-  Position: TLspTextPosition;
-begin
-  Position := TLspTextChanges.PositionOf('ab'#13#10'c', 3);
-  Assert.AreEqual('0:2', Format('%d:%d', [Position.Line, Position.Character]));
-  Position := TLspTextChanges.PositionOf('ab'#13#10'c', 4);
-  Assert.AreEqual('1:0', Format('%d:%d', [Position.Line, Position.Character]));
-  Assert.AreEqual(5, TLspTextChanges.OffsetOf('ab'#13#10'c', TLspTextPosition.Create(7, 0)),
-    'hinter der letzten Zeile');
-end;
-
-procedure TLspTextChangesTests.PositionAndOffsetAgree;
-const
-  Text = 'a'#13#10'bc'#10'd'#13'e';
-var
-  Offset: Integer;
-begin
-  for Offset := 0 to Length(Text) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen; Text[Offset] nur ab 1
-  begin
-    if (Offset = 0) or (Text[Offset] <> #13) or (Offset = Length(Text)) or (Text[Offset + 1] <> #10) then
-    begin
-      Assert.AreEqual(Offset, TLspTextChanges.OffsetOf(Text, TLspTextChanges.PositionOf(Text, Offset)),
-        IntToStr(Offset));
-    end;
-  end;
-  Assert.AreEqual(3, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(1, 0)));
-  Assert.AreEqual(7, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(2, 9)), 'geklemmt auf das Zeilenende');
-end;
-
 /// <summary>Client, der je Methode mit AReplies[Methode] antwortet und die Parameter in ASeen sammelt.</summary>
 function CannedClient(const AReplies: TDictionary<string, string>; ASeen: TStrings): TLspClient;
 var
@@ -1778,7 +1392,6 @@ begin
     end);
   Result := Client;
 end;
-
 procedure TLspSessionTests.ReadsImplementationsAndSymbols;
 var
   Replies: TDictionary<string, string>;
@@ -1828,7 +1441,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.WalksCallAndTypeHierarchies;
 const
   Item = '{"name":"%s","kind":12,"detail":"%s","uri":"file:///c:/p/a.pas",' +
@@ -1885,7 +1497,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.ReadsCodeActionsAndRunsCommands;
 var
   Replies: TDictionary<string, string>;
@@ -1939,7 +1550,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.RequestsTypingSelectionAndTypeDefinition;
 var
   Replies: TDictionary<string, string>;
@@ -1986,7 +1596,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.RequestsFormatting;
 var
   Replies: TDictionary<string, string>;
@@ -2019,7 +1628,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.RequestsLinkedLocals;
 var
   Replies: TDictionary<string, string>;
@@ -2051,7 +1659,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.RequestsDeclarationsAndDefinitions;
 var
   Replies: TDictionary<string, string>;
@@ -2086,7 +1693,6 @@ begin
     Replies.Free;
   end;
 end;
-
 procedure TLspSessionTests.MapsIndexBackToColumn;
 var
   Line: string;
@@ -2103,11 +1709,8 @@ begin
     Assert.AreEqual(Index, TLspSession.ColumnToIndex(Line, TLspSession.IndexToColumn(Line, Index, 4), 4));
   end;
 end;
-
 initialization
   TDUnitX.RegisterTestFixture(TLspClientTests);
-  TDUnitX.RegisterTestFixture(TLspTextChangesTests);
   TDUnitX.RegisterTestFixture(TLspSessionTests);
-  TDUnitX.RegisterTestFixture(TLspServerProcessTests);
 
 end.

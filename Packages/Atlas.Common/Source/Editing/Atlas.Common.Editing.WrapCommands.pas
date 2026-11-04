@@ -440,8 +440,7 @@ end;
 function TCaseCommand.ResolveEnum: Boolean;
 var
   mResolver: TNameResolver;
-  mOwner, mEnumType: TResolvedSymbol;
-  mTypeFound: Boolean;
+  mChain: TResolvedChainType;
 begin
   FFileName := '';
   if FContext.Uri <> '' then
@@ -450,13 +449,13 @@ begin
   end;
   mResolver := TNameResolver.Create(FContext.Index);
   try
-    Result := mResolver.ChainType(FSource.Tree, FFileName, FNames, FTokens[FCaseIndex].Offset, mOwner, mEnumType,
-      mTypeFound) and mTypeFound and EnumValues(mResolver, mEnumType);
+    Result := mResolver.ChainType(FSource.Tree, FFileName, FNames, FTokens[FCaseIndex].Offset, mChain) and
+      mChain.TypeFound and EnumValues(mResolver, mChain.TypeInfo);
     if not Result then
     begin
       Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', FNames)])));
     end;
-    FScoped := ScopedEnum(FContext, FSource, FFileName, mEnumType);
+    FScoped := ScopedEnum(FContext, FSource, FFileName, mChain.TypeInfo);
   finally
     mResolver.Free;
   end;

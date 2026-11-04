@@ -271,80 +271,113 @@ begin
   Result := TAtlasLab.Create(116 * Y - 16, 500 * (X - Y), 200 * (Y - Z));
 end;
 
-class function TAtlasColorMath.DeltaE2000(const A, B: TAtlasLab): Double;
 const
-  Pow25 = 6103515625.0; // 25^7
-var
-  C1, C2, CMean, G, A1, A2, C1p, C2p, H1p, H2p, DLp, DCp, DHp, DeltaHue, LMean, CpMean, HpMean, T, DTheta, Rc,
-    Sl, Sc, Sh, Rt: Double;
+  /// <summary>25^7 für CIEDE2000.</summary>
+  cPow25 = 6103515625.0;
 
-  function Hue(AB, AA: Double): Double;
+type
+  /// <summary>Chroma C' und Farbton h' (Grad) einer Farbe in CIEDE2000.</summary>
+  TPrimedLab = record
+    C: Double;
+    H: Double;
+  end;
+
+  /// <summary>Gewichte S_L, S_C, S_H und Drehterm R_T von CIEDE2000.</summary>
+  TDeltaWeights = record
+    Sl: Double;
+    Sc: Double;
+    Sh: Double;
+    Rt: Double;
+  end;
+
+function HueAngle(AB, AA: Double): Double;
+begin
+  Result := 0;
+  if (AA <> 0) or (AB <> 0) then
   begin
-    if (AA = 0) and (AB = 0) then
-    begin
-      Exit(0);
-    end;
     Result := RadToDeg(ArcTan2(AB, AA));
     if Result < 0 then
     begin
       Result := Result + 360;
     end;
   end;
+end;
 
+/// <summary>C' und h' von AColor; der Faktor G hängt von beiden Farben (AFirst, ASecond) ab.</summary>
+function PrimedLab(const AColor, AFirst, ASecond: TAtlasLab): TPrimedLab;
+var
+  mCMean, mG, mA: Double;
 begin
-  C1 := Sqrt(Sqr(A.A) + Sqr(A.B));
-  C2 := Sqrt(Sqr(B.A) + Sqr(B.B));
-  CMean := (C1 + C2) / 2;
-  G := 0.5 * (1 - Sqrt(Power(CMean, 7) / (Power(CMean, 7) + Pow25)));
-  A1 := (1 + G) * A.A;
-  A2 := (1 + G) * B.A;
-  C1p := Sqrt(Sqr(A1) + Sqr(A.B));
-  C2p := Sqrt(Sqr(A2) + Sqr(B.B));
-  H1p := Hue(A.B, A1);
-  H2p := Hue(B.B, A2);
-  DLp := B.L - A.L;
-  DCp := C2p - C1p;
-  DeltaHue := 0;
-  if C1p * C2p <> 0 then
+  mCMean := (Sqrt(Sqr(AFirst.A) + Sqr(AFirst.B)) + Sqrt(Sqr(ASecond.A) + Sqr(ASecond.B))) / 2;
+  mG := 0.5 * (1 - Sqrt(Power(mCMean, 7) / (Power(mCMean, 7) + cPow25)));
+  mA := (1 + mG) * AColor.A;
+  Result.C := Sqrt(Sqr(mA) + Sqr(AColor.B));
+  Result.H := HueAngle(AColor.B, mA);
+end;
+
+function HueDelta(const AFirst, ASecond: TPrimedLab): Double;
+begin
+  Result := 0;
+  if AFirst.C * ASecond.C <> 0 then
   begin
-    DeltaHue := H2p - H1p;
-    if DeltaHue > 180 then
+    Result := ASecond.H - AFirst.H;
+    if Result > 180 then
     begin
-      DeltaHue := DeltaHue - 360;
+      Result := Result - 360;
     end
-    else if DeltaHue < -180 then
+    else if Result < -180 then
     begin
-      DeltaHue := DeltaHue + 360;
+      Result := Result + 360;
     end;
   end;
-  DHp := 2 * Sqrt(C1p * C2p) * Sin(DegToRad(DeltaHue / 2));
-  LMean := (A.L + B.L) / 2;
-  CpMean := (C1p + C2p) / 2;
-  if C1p * C2p = 0 then
+end;
+
+function MeanHue(const AFirst, ASecond: TPrimedLab): Double;
+begin
+  if AFirst.C * ASecond.C = 0 then
   begin
-    HpMean := H1p + H2p;
+    Result := AFirst.H + ASecond.H;
   end
-  else if Abs(H1p - H2p) <= 180 then
+  else if Abs(AFirst.H - ASecond.H) <= 180 then
   begin
-    HpMean := (H1p + H2p) / 2;
+    Result := (AFirst.H + ASecond.H) / 2;
   end
-  else if H1p + H2p < 360 then
+  else if AFirst.H + ASecond.H < 360 then
   begin
-    HpMean := (H1p + H2p + 360) / 2;
+    Result := (AFirst.H + ASecond.H + 360) / 2;
   end
   else
   begin
-    HpMean := (H1p + H2p - 360) / 2;
+    Result := (AFirst.H + ASecond.H - 360) / 2;
   end;
-  T := 1 - 0.17 * Cos(DegToRad(HpMean - 30)) + 0.24 * Cos(DegToRad(2 * HpMean)) +
-    0.32 * Cos(DegToRad(3 * HpMean + 6)) - 0.20 * Cos(DegToRad(4 * HpMean - 63));
-  DTheta := 30 * Exp(-Sqr((HpMean - 275) / 25));
-  Rc := 2 * Sqrt(Power(CpMean, 7) / (Power(CpMean, 7) + Pow25));
-  Sl := 1 + 0.015 * Sqr(LMean - 50) / Sqrt(20 + Sqr(LMean - 50));
-  Sc := 1 + 0.045 * CpMean;
-  Sh := 1 + 0.015 * CpMean * T;
-  Rt := -Sin(DegToRad(2 * DTheta)) * Rc;
-  Result := Sqrt(Sqr(DLp / Sl) + Sqr(DCp / Sc) + Sqr(DHp / Sh) + Rt * (DCp / Sc) * (DHp / Sh));
+end;
+
+function DeltaWeights(ALMean, ACpMean, AHpMean: Double): TDeltaWeights;
+var
+  mT, mDTheta, mRc: Double;
+begin
+  mT := 1 - 0.17 * Cos(DegToRad(AHpMean - 30)) + 0.24 * Cos(DegToRad(2 * AHpMean)) +
+    0.32 * Cos(DegToRad(3 * AHpMean + 6)) - 0.20 * Cos(DegToRad(4 * AHpMean - 63));
+  mDTheta := 30 * Exp(-Sqr((AHpMean - 275) / 25));
+  mRc := 2 * Sqrt(Power(ACpMean, 7) / (Power(ACpMean, 7) + cPow25));
+  Result.Sl := 1 + 0.015 * Sqr(ALMean - 50) / Sqrt(20 + Sqr(ALMean - 50));
+  Result.Sc := 1 + 0.045 * ACpMean;
+  Result.Sh := 1 + 0.015 * ACpMean * mT;
+  Result.Rt := -Sin(DegToRad(2 * mDTheta)) * mRc;
+end;
+class function TAtlasColorMath.DeltaE2000(const A, B: TAtlasLab): Double;
+var
+  mFirst, mSecond: TPrimedLab;
+  mDHp, mDCp: Double;
+  mWeights: TDeltaWeights;
+begin
+  mFirst := PrimedLab(A, A, B);
+  mSecond := PrimedLab(B, A, B);
+  mDCp := mSecond.C - mFirst.C;
+  mDHp := 2 * Sqrt(mFirst.C * mSecond.C) * Sin(DegToRad(HueDelta(mFirst, mSecond) / 2));
+  mWeights := DeltaWeights((A.L + B.L) / 2, (mFirst.C + mSecond.C) / 2, MeanHue(mFirst, mSecond));
+  Result := Sqrt(Sqr((B.L - A.L) / mWeights.Sl) + Sqr(mDCp / mWeights.Sc) + Sqr(mDHp / mWeights.Sh) +
+    mWeights.Rt * (mDCp / mWeights.Sc) * (mDHp / mWeights.Sh));
 end;
 
 class function TAtlasColorMath.DeltaE2000(A, B: TAtlasColor): Double;

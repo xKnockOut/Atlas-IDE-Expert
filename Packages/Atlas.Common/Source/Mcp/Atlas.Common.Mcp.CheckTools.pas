@@ -165,7 +165,7 @@ var
   mScopes: TFindingScopes;
 begin
   Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root, AFileName),
-    AText, TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName), mScopes);
+    AText, TCheckOrigin.ForFile(AProject, ASource, AFileName), mScopes);
 end;
 
 class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;

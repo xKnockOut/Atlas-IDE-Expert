@@ -1158,7 +1158,7 @@ var
     // Eingebaute Typen (Integer, string …) stehen nicht im Index; ein eigener gleichnamiger Typ geht vor.
     if not Scan.Resolver.ResolveTypeFrom(Scan.OwnUnit, Reference.Name, Resolved) or not Resolved.Found then
     begin
-      Resolved.Builtin := TNameResolver.IsBuiltinTypeName(Reference.Name);
+      Resolved.Builtin := TResolverText.IsBuiltinTypeName(Reference.Name);
       if not Resolved.Builtin then
       begin
         Exit;

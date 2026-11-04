@@ -595,7 +595,7 @@ begin
         begin
           TypeName := TypeSymbol.Container + '.' + TypeName;
         end;
-        Missing := Resolver.MissingInterfaceMembers(OwnUnit, TypeName, nil,
+        Missing := Resolver.Queries.MissingInterfaceMembers(OwnUnit, TypeName, nil,
           Delegated(AContext.Tree.Tokens, TypeSymbol.Range), Complete);
         if Complete and (Length(Missing) > 0) then
         begin

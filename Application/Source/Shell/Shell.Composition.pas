@@ -61,6 +61,8 @@ uses
   Shell.Composition.AnalysisArea,
   Shell.Composition.CodeArea,
   Shell.Composition.CommandArea,
+  Shell.Composition.DiagnosticsArea,
+  Shell.Composition.DocumentEvents,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -114,10 +116,8 @@ type
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
-    FSyntaxDiagnostics: TLspSyntaxDiagnostics;
-    FPullDiagnostics: TLspPullDiagnostics;
-    // Projektprüfung je Indexaufbau nur einmal neu starten (29.10.2026).
-    FIndexRecheck: TWorkspaceCheckIndexGate;
+    /// <summary>Teilwurzel Diagnosen: Syntaxprüfung, Pull-Diagnosen und Projektprüfung.</summary>
+    FDiagnosticsArea: TShellDiagnosticsArea;
     /// <summary>Bearbeiten: Gliederung, Falt- und Auswahlbereiche, Formatieren, Erzeugen-Menü (#719).</summary>
     FEditing: TShellEditing;
     /// <summary>Prozessnummer des Editors aus der Befehlszeile (#283); 0 = keine.</summary>
@@ -183,16 +183,10 @@ type
     procedure LogDebug(const AText: string);
     /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
     procedure WireDocuments;
-    /// <summary>Protokolliert einen Fehler der Syntaxprüfung.</summary>
-    procedure SyntaxCheckFailed(AError: Exception);
     /// <summary>Anonyme Bezeichnung einer Unit im Diagnoselog (#1094); 'unit', solange es fehlt.</summary>
     function DiagnosticsFileLabel(const AFileName: string): string;
     /// <summary>Zeitlimit einer Anfrage aus den Einstellungen.</summary>
     function CurrentRequestTimeout: Cardinal;
-    /// <summary>Units, die AFileName in uses haben (#1247).</summary>
-    function DependentUnitsOf(const AFileName: string): TArray<string>;
-    /// <summary>Schreibt AMessage ins Protokoll.</summary>
-    procedure LogInfo(const AMessage: string);
     /// <summary>Teil von WireDocuments (#1355): Absturzfälle und Sicherheitsnetz mit Dokumenten, Einstellungen
     /// und Benachrichtigung an den Client.</summary>
     procedure WireCrashCases;
@@ -206,6 +200,8 @@ type
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
+    /// <summary>Teil von WireWorkspaces: Ereignisse des Dokumentspeichers (Shell.Composition.DocumentEvents).</summary>
+    procedure WireDocumentEvents;
     /// <summary>Was der Kern von der Komposition braucht.</summary>
     function CoreServices: TShellCoreServices;
     /// <summary>Teil von CoreServices: Meldungen des Kerns an die Komposition.</summary>
@@ -255,22 +251,12 @@ type
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
-    /// <summary>Dienste der Syntaxprüfung; sie lösen erst beim Aufruf auf, die Felder dahinter entstehen in den
-    /// späteren Wire-Schritten vor der ersten Nachricht.</summary>
-    function SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     /// <summary>Namespaces und Bibliothekswurzeln aller Projekte ohne Doppelte.</summary>
     procedure CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
     /// <summary>Gibt die Namespaces an alle Features und den Uses-Graphen.</summary>
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
-    procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-    /// <summary>WorkspaceOf unter FCore.Workspaces.Lock.</summary>
-    function LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Index und Arbeitsbereiche zu einem Dokumentereignis einer Datei auf der Platte.</summary>
-    procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-    /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
-    procedure SourceSaved(const AFileName: string);
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
     /// <summary>Teil von FreeFeatures: Editor-Features von Gliederung bis Verweise.</summary>
@@ -311,7 +297,6 @@ uses
   Atlas.Common.Product.Version,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Shell.Bootstrap,
   Atlas.Common.Rules.Engine,
@@ -448,12 +433,7 @@ function TServerComposition.LifecycleCapabilities: TJSONObject;
 begin
   Result := BuildCapabilities;
   // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-  if TLspPullProtocol.ClientSupportsPull(FLifecycle.InitializeParams) then
-  begin
-    Result.AddPair('diagnosticProvider', TLspPullProtocol.Capability);
-    FPullDiagnostics.RefreshSupport := TLspPullProtocol.ClientSupportsRefresh(FLifecycle.InitializeParams);
-    FSyntaxDiagnostics.PullMode := True;
-  end;
+  FDiagnosticsArea.ApplyClientCapabilities(FLifecycle.InitializeParams, Result);
 end;
 
 procedure TServerComposition.NotifyClient(const AMethod: string; AParams: TJSONObject);
@@ -541,7 +521,7 @@ begin
   mServices.Publish :=
     procedure(const AFiles: TArray<string>)
     begin
-      FSyntaxDiagnostics.RefreshFiles(AFiles);
+      FDiagnosticsArea.Syntax.RefreshFiles(AFiles);
     end;
   FCompile := TShellCompileSetup.NewHost(mServices);
 end;
@@ -552,84 +532,41 @@ begin
   Result := TShellPlatform.CanonicalizePath(APath);
 end;
 
-/// <summary>Zeitstempel einer Datei in Millisekunden (UTC); False, wenn sie fehlt.</summary>
-function FileStampOf(const AFileName: string; out AStamp: Int64): Boolean;
-begin
-  Result := TFile.Exists(AFileName);
-  if Result then
-  begin
-    AStamp := Round(TFile.GetLastWriteTimeUtc(AFileName) * MSecsPerDay);
-  end
-  else
-  begin
-    AStamp := 0;
-  end;
-end;
-
-/// <summary>Liest eine vorhandene Datei mit erkannter Kodierung; False, wenn sie fehlt.</summary>
-function LoadExistingFile(const AFileName: string; out AText: string): Boolean;
-var
-  mFileFormat: TFileFormat;
-begin
-  Result := TFile.Exists(AFileName);
-  if Result then
-  begin
-    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-  end
-  else
-  begin
-    AText := '';
-  end;
-end;
-
 procedure TServerComposition.WireDocuments;
+var
+  mServices: TShellDiagnosticsAreaServices;
 begin
   FDocuments := TDocumentStore.Create(CanonicalPath);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
   WireCrashCases;
-  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, SyntaxDiagnosticsProviders);
-  FSyntaxDiagnostics.OnError := SyntaxCheckFailed;
   WireCompile;
-  FSyntaxDiagnostics.Attach;
-  FIndexRecheck := TWorkspaceCheckIndexGate.Create;
-  FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport,
-    function: TArray<string>
+  mServices := Default(TShellDiagnosticsAreaServices);
+  mServices.Logger := FLogger;
+  mServices.Transport := FTransport;
+  mServices.Dispatcher := FDispatcher;
+  mServices.Documents := FDocuments;
+  // Closures: Kern und Index entstehen erst nach den Diagnosen (WireWorkspaces, WireIndex).
+  mServices.Core :=
+    function: TShellCore
     begin
-      Result := FCore.CheckFiles;
-    end,
-    FileStampOf, LoadExistingFile);
-  FPullDiagnostics.Busy :=
-    function: Boolean
-    begin
-      Result := FCore.Workspaces.ProjectIndexPending;
+      Result := FCore;
     end;
-  // Unit im Diagnoselog nur anonym (#1094); das Diagnoselog entsteht erst später.
-  FPullDiagnostics.FileLabel := DiagnosticsFileLabel;
-  // Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).
-  FPullDiagnostics.RequestTimeout := CurrentRequestTimeout;
-  FPullDiagnostics.Attach(FDispatcher);
-  // Als anonyme Methode statt der Methode selbst: Free Pascal (Linux-Bau) bricht an der Zuweisung einer
-  // Methode an eine Methodenreferenz intern ab.
-  FSyntaxDiagnostics.OnPullChanged :=
-    procedure
+  mServices.Index :=
+    function: ISymbolIndex
     begin
-      FPullDiagnostics.Changed;
+      Result := FIndex;
     end;
-  // Neue Compilermeldungen (#1247): nur ihre Dateien neu prüfen, nicht alle Units.
-  FSyntaxDiagnostics.OnPullFilesChanged :=
-    procedure(AFiles: TArray<string>)
+  mServices.CompilerMessages :=
+    function(const AFileName: string): TArray<TCompilerMessage>
     begin
-      FPullDiagnostics.FilesChanged(AFiles);
+      Result := FCompile.Results.MessagesFor(AFileName);
     end;
-  // Nach dem Speichern prüft die Projektprüfung auch die Units, die die Datei in uses haben (#1247).
-  FPullDiagnostics.Check.Dependents := DependentUnitsOf;
-  FPullDiagnostics.Check.OnLog := LogInfo;
-end;
-
-procedure TServerComposition.SyntaxCheckFailed(AError: Exception);
-begin
-  FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
+  mServices.UsesContext := UsesContextFor;
+  // Das Diagnoselog entsteht erst später.
+  mServices.FileLabel := DiagnosticsFileLabel;
+  mServices.RequestTimeout := CurrentRequestTimeout;
+  FDiagnosticsArea := TShellDiagnosticsArea.Create(mServices);
 end;
 
 function TServerComposition.DiagnosticsFileLabel(const AFileName: string): string;
@@ -644,20 +581,6 @@ end;
 function TServerComposition.CurrentRequestTimeout: Cardinal;
 begin
   Result := FRequestTimeout;
-end;
-
-function TServerComposition.DependentUnitsOf(const AFileName: string): TArray<string>;
-begin
-  Result := nil;
-  if FIndex <> nil then
-  begin
-    Result := TLspWorkspaceCheck.DependentsOf(FIndex.Units, AFileName);
-  end;
-end;
-
-procedure TServerComposition.LogInfo(const AMessage: string);
-begin
-  FLogger.Info(AMessage);
 end;
 
 procedure TServerComposition.WireEditing;
@@ -758,8 +681,42 @@ end;
 procedure TServerComposition.WireWorkspaces;
 begin
   FCore := TShellCore.Create(CoreServices);
-  FDocuments.Subscribe(HandleDocumentEvent);
+  WireDocumentEvents;
   FCore.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireDocumentEvents;
+var
+  mServices: TShellDocumentEventServices;
+begin
+  mServices := Default(TShellDocumentEventServices);
+  mServices.Core :=
+    function: TShellCore
+    begin
+      Result := FCore;
+    end;
+  mServices.CrashCases :=
+    function: TShellCrashCases
+    begin
+      Result := FCrashCases;
+    end;
+  mServices.Compile :=
+    function: TShellCompileHost
+    begin
+      Result := FCompile;
+    end;
+  // Die Dateiänderungen entstehen erst in WireWatchedFiles.
+  mServices.FileChanges :=
+    function: TShellFileChanges
+    begin
+      Result := FFileChanges;
+    end;
+  mServices.DeriveWorkspaces :=
+    function: Boolean
+    begin
+      Result := FDeriveWorkspaces;
+    end;
+  TShellDocumentEvents.Attach(FDocuments, mServices);
 end;
 
 function TServerComposition.CoreServices: TShellCoreServices;
@@ -938,7 +895,7 @@ end;
 
 procedure TServerComposition.RefreshDiagnosticsLater;
 begin
-  FSyntaxDiagnostics.RefreshLater;
+  FDiagnosticsArea.Syntax.RefreshLater;
 end;
 
 procedure TServerComposition.WireCommands;
@@ -998,10 +955,10 @@ begin
     procedure(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue)
     begin
       AQueue := Default(TWorkspaceCheckQueue);
-      if FPullDiagnostics <> nil then
+      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Pull <> nil) then
       begin
-        AStatus.CheckRun := FPullDiagnostics.Check.Profile(TCheckRunProfile.cTop);
-        AQueue := FPullDiagnostics.Check.Queue;
+        AStatus.CheckRun := FDiagnosticsArea.Pull.Check.Profile(TCheckRunProfile.cTop);
+        AQueue := FDiagnosticsArea.Pull.Check.Queue;
       end;
     end;
 end;
@@ -1031,7 +988,7 @@ begin
   AServices.Recheck :=
     procedure
     begin
-      FPullDiagnostics.Changed;
+      FDiagnosticsArea.Pull.Changed;
     end;
 end;
 procedure TServerComposition.VisitWorkspaces(const AVisit: TShellWorkspacesProc);
@@ -1055,26 +1012,26 @@ begin
   Result.RefreshLater :=
     procedure
     begin
-      if FSyntaxDiagnostics <> nil then
+      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Syntax <> nil) then
       begin
-        FSyntaxDiagnostics.RefreshLater;
+        FDiagnosticsArea.Syntax.RefreshLater;
       end;
     end;
   // Beim Tippen macht die Projektprüfung Platz (#1247).
   Result.Typed :=
     procedure
     begin
-      if FPullDiagnostics <> nil then
+      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Pull <> nil) then
       begin
-        FPullDiagnostics.Typed;
+        FDiagnosticsArea.Pull.Typed;
       end;
     end;
   Result.Affected :=
     procedure(const AFiles: TArray<string>)
     begin
-      if FPullDiagnostics <> nil then
+      if (FDiagnosticsArea <> nil) and (FDiagnosticsArea.Pull <> nil) then
       begin
-        FPullDiagnostics.Check.Affected(AFiles, True);
+        FDiagnosticsArea.Pull.Check.Affected(AFiles, True);
       end;
     end;
 end;
@@ -1087,18 +1044,18 @@ begin
   Result.MessagesReceived :=
     procedure(const AMessages: TArray<TCompilerMessage>)
     begin
-      FSyntaxDiagnostics.RefreshFiles(FCompile.Results.Replace(AMessages));
+      FDiagnosticsArea.Syntax.RefreshFiles(FCompile.Results.Replace(AMessages));
     end;
   Result.Compiling :=
     procedure(ARunning: Boolean)
     begin
       // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
-      FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
+      FDiagnosticsArea.Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
     end;
   Result.NamingChanged :=
     procedure
     begin
-      FSyntaxDiagnostics.RefreshLater;
+      FDiagnosticsArea.Syntax.RefreshLater;
     end;
 end;
 
@@ -1263,12 +1220,11 @@ end;
 procedure TServerComposition.FreeFeatures;
 begin
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
-  FPullDiagnostics.Free;
-  FSyntaxDiagnostics.Free;
+  FDiagnosticsArea.FreeChecks;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FCore.FreeWorkspaces;
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
-  FIndexRecheck.Free;
+  FreeAndNil(FDiagnosticsArea);
   FreeAndNil(FCore);
   FWorkspaceFolders.Free;
   FreeAndNil(FUsesGraph);
@@ -1329,9 +1285,9 @@ begin
   begin
     // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
     // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
-    if FIndexRecheck.Recheck(AProjectStage) then
+    if FDiagnosticsArea.IndexRecheck.Recheck(AProjectStage) then
     begin
-      FSyntaxDiagnostics.RefreshLater;
+      FDiagnosticsArea.Syntax.RefreshLater;
     end;
     // Meldungen in atlas.json, die den Index brauchen (#309); Publish nur in der Nachrichtenschleife.
     if FConnection <> nil then
@@ -1402,47 +1358,13 @@ begin
   end;
 end;
 
-function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProviders;
-begin
-  Result := Default(TSyntaxDiagnosticsProviders);
-  // Closures: Die Syntaxprüfung entsteht vor dem Kern (WireDocuments vor WireWorkspaces).
-  Result.Defines :=
-    function(const AUri: string; out ADefines: TArray<string>): Boolean
-    begin
-      Result := FCore.Directives.Defines()(AUri, ADefines);
-    end;
-  // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
-  Result.Version :=
-    function(const AUri: string): string
-    begin
-      Result := FCore.FileOptions.LanguageLevelFor(AUri);
-    end;
-  Result.BuildTarget :=
-    function(const AUri: string; out APlatform, AConfig: string): Boolean
-    begin
-      Result := FCore.Directives.BuildTarget()(AUri, APlatform, AConfig);
-    end;
-  Result.Rules :=
-    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-    begin
-      Result := FCore.RuleContext.LiveRuleContextFor(AUri, AContext);
-    end;
-  Result.CompilerMessages :=
-    function(const AFileName: string): TArray<TCompilerMessage>
-    begin
-      Result := FCompile.Results.MessagesFor(AFileName);
-    end;
-  // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
-  Result.UsesContext := UsesContextFor;
-end;
-
 procedure TServerComposition.ProjectLoaded;
 var
   mNamespaces: TArray<string>;
   mLibraryRoots: TArray<string>;
 begin
   // Neuer Indexaufbau: Seine Projektstufe oder, falls die ausbleibt, sein Ende startet die Projektprüfung.
-  FIndexRecheck.IndexStarted;
+  FDiagnosticsArea.IndexRecheck.IndexStarted;
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompile <> nil then
   begin
@@ -1455,7 +1377,7 @@ begin
   begin
     FLogAnonymizer.SetLibraryRoots(mLibraryRoots);
   end;
-  FSyntaxDiagnostics.Refresh;
+  FDiagnosticsArea.Syntax.Refresh;
 end;
 
 procedure TServerComposition.CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
@@ -1504,92 +1426,6 @@ begin
   end;
   FCodeArea.Completion.Completion.Namespaces := ANamespaces;
   FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
-end;
-
-procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-var
-  mFileName: string;
-begin
-  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
-  if (FCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
-  begin
-    FCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
-  end;
-  mFileName := TDocumentUris.ToPath(ADocument.Uri);
-  if StartsText('file:', ADocument.Uri) then
-  begin
-    DocumentIndexEvent(AKind, mFileName, ADocument.Text);
-  end;
-  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
-  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
-  begin
-    SourceSaved(mFileName);
-  end
-  else if IsConfigurationFileName(ExtractFileName(mFileName)) then
-  begin
-    FCore.Configuration.DocumentEvent(AKind, ADocument);
-  end;
-end;
-
-function TServerComposition.LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-begin
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    Result := FCore.Workspaces.WorkspaceOf(AFileName);
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
-  if FFileChanges <> nil then
-  begin
-    FFileChanges.DocumentEvent(AKind, AFileName, AText);
-  end;
-  if AKind <> TDocumentEventKind.Opened then
-  begin
-    Exit;
-  end;
-  if FDeriveWorkspaces then
-  begin
-    FCore.Folders.Derive(AFileName);
-  end;
-  // Zurückgestelltes Projekt der Gruppe (index.projectGroup = false): jetzt indizieren (#648).
-  mWorkspace := LockedWorkspaceOf(AFileName);
-  // Nur der Thread der Nachrichtenschleife entfernt Arbeitsbereiche; mWorkspace bleibt gültig.
-  if (mWorkspace <> nil) and mWorkspace.Setup.Deferred then
-  begin
-    mWorkspace.Activate;
-  end;
-end;
-
-procedure TServerComposition.SourceSaved(const AFileName: string);
-var
-  mWorkspace: TShellWorkspace;
-  mOnSave: Boolean;
-  mChoice: TCompilerBackendChoice;
-begin
-  // Index nachziehen (#500): Clients ohne Dateiüberwachung (IDE-Plugin) melden nur das Speichern;
-  // bei einer .inc liest der Index die einbindenden Units neu ein.
-  if not SameText(ExtractFileExt(AFileName), '.dpk') then
-  begin
-    FFileChanges.Handle([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
-  end;
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    mWorkspace := FCore.Workspaces.WorkspaceOf(AFileName);
-    mOnSave := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.Compiler.OnSave;
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-  if mOnSave then
-  begin
-    FCompile.Start(AFileName, False, mChoice);
-  end;
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;

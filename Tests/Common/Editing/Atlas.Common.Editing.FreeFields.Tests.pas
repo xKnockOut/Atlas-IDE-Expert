@@ -423,9 +423,8 @@ begin
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[1].State));
 end;
 
-procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
 const
-  Text =
+  cHandOverText =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -478,12 +477,14 @@ const
     '  inherited;'#10 +
     'end;'#10 +
     'end.';
+
+procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
 var
   Fields: TArray<TOwnedField>;
 begin
   // TEvents hält seine Teilnehmer in einer TObjectList, FOwning besitzt seine Elemente: beide übernehmen.
   // Eine mit False erzeugte Liste und eine Klasse ohne besitzende Liste bleiben unklar.
-  Fields := Analyze(Text);
+  Fields := Analyze(cHandOverText);
   Assert.AreEqual(2, Integer(Length(Fields)));
   Assert.AreEqual('FLoosely', Fields[0].Name);
   Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));

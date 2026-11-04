@@ -398,7 +398,8 @@ begin
   Assert.AreNotEqual('', ExtractReason(Text, 'procedure Outer'));
 end;
 
-procedure TNestedRoutinesTests.ExtractRefusesChangedMeaning;
+/// <summary>Result der äußeren Funktion, andere lokale Routine, lokaler Typ.</summary>
+procedure AssertRefusesResultRoutineAndType;
 begin
   // Result der äußeren Funktion.
   Assert.AreNotEqual('', ExtractReason(PlainUnit(Lines([
@@ -444,6 +445,11 @@ begin
     'begin',
     '  Use;',
     'end;'])), 'procedure Use'));
+end;
+
+/// <summary>with, Methodenzeiger und künftiger var-Parameter in einer anonymen Methode.</summary>
+procedure AssertRefusesWithPointerAndCapture;
+begin
   // with.
   Assert.AreNotEqual('', ExtractReason(PlainUnit(Lines([
     'procedure Outer;',
@@ -484,6 +490,12 @@ begin
     'begin',
     '  Use;',
     'end;'])), 'procedure Use'));
+end;
+
+procedure TNestedRoutinesTests.ExtractRefusesChangedMeaning;
+begin
+  AssertRefusesResultRoutineAndType;
+  AssertRefusesWithPointerAndCapture;
 end;
 
 procedure TNestedRoutinesTests.ExtractUsesConstLookup;
