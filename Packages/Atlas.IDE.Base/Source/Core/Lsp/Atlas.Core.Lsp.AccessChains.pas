@@ -161,10 +161,29 @@ begin
   end;
 end;
 
+function ReadChain(AItem: TJSONObject): TAtlasAvChain;
+var
+  Value, Entry: TJSONValue;
+begin
+  Result := Default(TAtlasAvChain);
+  Result.Text := AItem.GetValue<string>('text', '');
+  if not (AItem.TryGetValue<TJSONValue>('links', Value) and (Value is TJSONArray)) then
+  begin
+    Exit;
+  end;
+  for Entry in TJSONArray(Value) do
+  begin
+    if Entry is TJSONObject then
+    begin
+      Result.Links := Result.Links + [ReadLink(TJSONObject(Entry))];
+    end;
+  end;
+end;
+
 class function TAtlasAvJson.Parse(const AValue: TJSONValue): TAtlasAvChains;
 var
   Response: TJSONObject;
-  Value, Entry, LinkValue: TJSONValue;
+  Value, Entry: TJSONValue;
   Chain: TAtlasAvChain;
 begin
   Result := Default(TAtlasAvChains);
@@ -185,18 +204,7 @@ begin
     begin
       Continue;
     end;
-    Chain := Default(TAtlasAvChain);
-    Chain.Text := TJSONObject(Entry).GetValue<string>('text', '');
-    if TJSONObject(Entry).TryGetValue<TJSONValue>('links', LinkValue) and (LinkValue is TJSONArray) then
-    begin
-      for LinkValue in TJSONArray(LinkValue) do
-      begin
-        if LinkValue is TJSONObject then
-        begin
-          Chain.Links := Chain.Links + [ReadLink(TJSONObject(LinkValue))];
-        end;
-      end;
-    end;
+    Chain := ReadChain(TJSONObject(Entry));
     if Chain.Links <> nil then
     begin
       Result.Chains := Result.Chains + [Chain];
