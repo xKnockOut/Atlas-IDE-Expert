@@ -23,6 +23,8 @@ type
     [Test]
     procedure ClampsOutOfRangeValues;
     [Test]
+    procedure NormalizesUpdateChoices;
+    [Test]
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
@@ -183,6 +185,10 @@ begin
   Assert.AreEqual($C05A, ASettings.UndoKey, 'Strg+Alt+Z');
   Assert.AreEqual($E05A, ASettings.RedoKey, 'Strg+Alt+Umschalt+Z');
   Assert.IsFalse(ASettings.UpdatesCheck, 'Update-Prüfung nur nach Zustimmung');
+  // Update-Installer (#1519).
+  Assert.AreEqual('ask', ASettings.UpdatesInstall);
+  Assert.AreEqual('stable', ASettings.UpdatesChannel);
+  Assert.AreEqual('ask', ASettings.UpdatesNewModules);
   Assert.IsTrue(ASettings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, ASettings.PairGuideWidth, 'Blocklinien 1 px');
@@ -307,6 +313,9 @@ begin
   ASettings.UndoKey := 0;
   ASettings.RedoKey := $C059;
   ASettings.UpdatesCheck := True;
+  ASettings.UpdatesInstall := 'auto';
+  ASettings.UpdatesChannel := 'prerelease';
+  ASettings.UpdatesNewModules := 'skip';
   ASettings.BugReportAnonymize := False;
   ASettings.ProblemsList := True;
   ASettings.PairOwners := False;
@@ -423,6 +432,9 @@ begin
   Assert.AreEqual(0, ALoaded.UndoKey);
   Assert.AreEqual($C059, ALoaded.RedoKey);
   Assert.IsTrue(ALoaded.UpdatesCheck);
+  Assert.AreEqual('auto', ALoaded.UpdatesInstall);
+  Assert.AreEqual('prerelease', ALoaded.UpdatesChannel);
+  Assert.AreEqual('skip', ALoaded.UpdatesNewModules);
   Assert.IsFalse(ALoaded.BugReportAnonymize);
 end;
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -628,6 +640,22 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxTestsAffectedDepth, Settings.TestsAffectedDepth);
 end;
+
+procedure TAtlasPluginSettingsTests.NormalizesUpdateChoices;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  // updates.install, updates.channel, updates.newModules (#1519): unbekannt = Standard.
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.UpdatesInstall := 'immer';
+  mSettings.UpdatesChannel := 'nightly';
+  mSettings.UpdatesNewModules := 'alle';
+  mSettings.Normalize;
+  Assert.AreEqual('ask', mSettings.UpdatesInstall);
+  Assert.AreEqual('stable', mSettings.UpdatesChannel);
+  Assert.AreEqual('ask', mSettings.UpdatesNewModules);
+end;
+
 procedure TAtlasPluginSettingsTests.OneActionAfterSaving;
 var
   Settings: TAtlasPluginSettings;

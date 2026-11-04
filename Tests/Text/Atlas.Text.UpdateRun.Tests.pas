@@ -61,11 +61,13 @@ begin
   mArgs.ManifestUrl := 'https://example.org/atlas-version.json';
   mArgs.RegistryKey := 'Software\Embarcadero\Mein Profil\37.0';
   mArgs.Target := 'C:\Program Files\Atlas\';
+  mArgs.Previous := '2.0.0';
   mArgs.NewModules := TUpdateNewModules.Install;
   mCopy := TUpdateArguments.Parse(mArgs.ToArgs);
   Assert.AreEqual(mArgs.ManifestUrl, mCopy.ManifestUrl);
   Assert.AreEqual(mArgs.RegistryKey, mCopy.RegistryKey);
   Assert.AreEqual(mArgs.Target, mCopy.Target);
+  Assert.AreEqual('2.0.0', mCopy.Previous);
   Assert.IsTrue(mCopy.NewModules = TUpdateNewModules.Install);
   Assert.IsTrue(mArgs.CommandLine.StartsWith('prepare '));
 end;

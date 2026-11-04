@@ -1399,6 +1399,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Check.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Install.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Install.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas"/>
@@ -1441,6 +1443,9 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Vcs.BranchDialog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Vcs.WorkingCopies.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Selection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Updates.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>

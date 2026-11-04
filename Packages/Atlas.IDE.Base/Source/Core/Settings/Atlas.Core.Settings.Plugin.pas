@@ -499,6 +499,9 @@ type
     property UndoKey: Integer read FEditingKeys.UndoKey write FEditingKeys.UndoKey;
     property RedoKey: Integer read FEditingKeys.RedoKey write FEditingKeys.RedoKey;
     property UpdatesCheck: Boolean read FGeneral.UpdatesCheck write FGeneral.UpdatesCheck;
+    property UpdatesInstall: string read FGeneral.UpdatesInstall write FGeneral.UpdatesInstall;
+    property UpdatesChannel: string read FGeneral.UpdatesChannel write FGeneral.UpdatesChannel;
+    property UpdatesNewModules: string read FGeneral.UpdatesNewModules write FGeneral.UpdatesNewModules;
     property BugReportAnonymize: Boolean read FGeneralServer.BugReportAnonymize write FGeneralServer.BugReportAnonymize;
     property UnitSearchEnabled: Boolean read FUnitSearch.UnitSearchEnabled write FUnitSearch.UnitSearchEnabled;
     property UnitSearchReplaceIdeDialog: Boolean read FUnitSearch.UnitSearchReplaceIdeDialog

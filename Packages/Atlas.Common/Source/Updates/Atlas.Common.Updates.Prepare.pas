@@ -290,6 +290,7 @@ begin
   SetPhase(TUpdatePhase.Downloading, 0);
   mManifest := LoadManifest;
   FStage.Version := mManifest.Version;
+  FStage.Previous := FArgs.Previous;
   FStage.FromSource := not mManifest.PackageFor(FArgs.Ide, mPackage);
   if FStage.FromSource and not (mManifest.Source.IsValid and mManifest.AnyPackage(mPackage)) then
   begin
