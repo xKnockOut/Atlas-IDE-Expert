@@ -68,6 +68,7 @@ function TypeUnitEdits(const ALookup: TEnumLookup; const ATypeName, ALineBreak: 
 implementation
 
 uses
+  Atlas.Text.Lines,
   System.SysUtils,
   System.StrUtils,
   System.Math,
@@ -362,15 +363,6 @@ begin
   end;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  Result := #10;
-  if Pos(#13#10, AText) > 0 then
-  begin
-    Result := #13#10;
-  end;
-end;
-
 /// <summary>„Alle Werte einfügen“ bzw. „Fehlende Werte ergänzen (n)“ am Anfang eines case-Zweigs (#449).</summary>
 function CaseItem(const AEnum: TEnumType; const AText: string; const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition; out AItem: TCompletionItem): Boolean;
@@ -386,7 +378,7 @@ begin
   begin
     Exit;
   end;
-  mLineBreak := LineBreakOf(AText);
+  mLineBreak := TTextLines.LineBreakOf(AText);
   mPrefix := '';
   if AEnum.Scoped then
   begin
