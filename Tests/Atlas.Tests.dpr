@@ -1627,6 +1627,7 @@ uses
   Atlas.Core.Debug.CallStack in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas',
   Atlas.Core.Debug.IgnoreList in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas',
   Atlas.Core.Debug.ExceptionDialog in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas',
+  Atlas.UI.Debug.ExceptionStack in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas',
   Atlas.UI.Debug.ExceptionsFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas',
   Atlas.Core.Debug.Exceptions.Tests in 'IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas',
   Atlas.Core.Debug.CallStack.Tests in 'IDE.Expert\Atlas.Core.Debug.CallStack.Tests.pas',
