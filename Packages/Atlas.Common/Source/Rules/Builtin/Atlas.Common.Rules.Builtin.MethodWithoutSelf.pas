@@ -40,7 +40,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.MethodWithoutSelf;
+  Atlas.Common.Editing.MethodWithoutSelf,
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
 
 const
   MethodWithoutSelfRuleId = 'method-without-self';
