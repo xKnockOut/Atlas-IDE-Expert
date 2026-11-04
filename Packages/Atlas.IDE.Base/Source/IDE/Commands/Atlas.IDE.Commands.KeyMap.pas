@@ -267,9 +267,9 @@ begin
       Continue;
     end;
     Item := TAtlasKeyItem.Create(Entry.Key, ShortCutToText(TShortCut(Entry.Key)),
-      TAtlasKeyMapWindow.FunctionCaption(Entry.Func), TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName,
-      TAtlasKeyMap.ContextOf(Entry.Func), TAtlasKeyMap.SourceOf(Entry.Func), KeyIdPrefix + IntToStr(Ord(Entry.Func)),
-      BindOrder[Entry.Func]);
+      TAtlasKeyMapWindow.FunctionCaption(Entry.Func), TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
+      TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Entry.Func), TAtlasKeyMap.SourceOf(Entry.Func),
+      KeyIdPrefix + IntToStr(Ord(Entry.Func)), BindOrder[Entry.Func]));
     Item.Category := TAtlasKeyMap.AtlasName;
     Item.Func := Entry.Func;
     Item.Priority := Entry.Priority;
@@ -358,8 +358,8 @@ begin
   begin
     Caption := AAction.Name;
   end;
-  Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), Caption, Origin, Name,
-    TAtlasKeyMap.ContextOfCategory(AAction.Category), TAtlasKeySource.Action, AAction.Name, AOrder);
+  Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), Caption, TAtlasKeyProvenance.Create(Origin,
+    Name, TAtlasKeyMap.ContextOfCategory(AAction.Category), TAtlasKeySource.Action, AAction.Name, AOrder));
   Item.Category := AAction.Category;
   AItems.Add(Item);
 end;
@@ -374,8 +374,8 @@ var
   Item: TAtlasKeyItem;
 begin
   Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), TAtlasKeyMapWindow.FunctionCaption(Func),
-    TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Func), TAtlasKeyMap.SourceOf(Func),
-    KeyIdPrefix + IntToStr(Ord(Func)), AOrder);
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Func),
+    TAtlasKeyMap.SourceOf(Func), KeyIdPrefix + IntToStr(Ord(Func)), AOrder));
   Item.Category := AAction.Category;
   Item.Func := Func;
   Item.Priority := True;
@@ -457,8 +457,8 @@ begin
       Command := Copy(Command, 6, MaxInt);
     end;
     AItems.Add(TAtlasKeyItem.Create(Known.ShortCut, ShortCutToText(TShortCut(Known.ShortCut)), Command,
-      TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding,
-      'Editor.' + IntToStr(Known.ShortCut), 0));
+      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor,
+      TAtlasKeySource.Binding, 'Editor.' + IntToStr(Known.ShortCut), 0)));
   end;
 end;
 
@@ -616,8 +616,9 @@ begin
           else if Shared then
           begin
             Item := TAtlasKeyItem.Create(Key, ShortCutToText(TShortCut(Key)),
-              TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName,
-              TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(Key), Order);
+              TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
+              TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(Key),
+              Order));
             Item.Effective := True;
             AItems.Add(Item);
           end;
@@ -625,8 +626,8 @@ begin
     else
       begin
         Item := TAtlasKeyItem.Create(Key, ShortCutToText(TShortCut(Key)),
-          TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), Origin, Name, TAtlasKeyContext.Editor,
-          TAtlasKeySource.Binding, 'Editor.' + IntToStr(Key), Order);
+          TAtlasStrings.Text(TAtlasTextId.KeyMapEditorBinding), TAtlasKeyProvenance.Create(Origin, Name,
+          TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(Key), Order));
         Item.Effective := True;
         AItems.Add(Item);
       end;

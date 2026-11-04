@@ -148,13 +148,13 @@ begin
     end;
     if AMode.Embed then
     begin
-      Result := TNestedRoutines.Embed(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
-        AMode.PassThrough, AAction, AReason);
+      Result := TNestedRoutines.Embed(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+        TFormatStyle.Default), AMode.PassThrough, AAction, AReason);
     end
     else
     begin
-      Result := TNestedRoutines.Extract(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
-        AAction, AReason);
+      Result := TNestedRoutines.Extract(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+        TFormatStyle.Default), AAction, AReason);
     end;
     if Result and (AAction.Disabled = '') then
     begin

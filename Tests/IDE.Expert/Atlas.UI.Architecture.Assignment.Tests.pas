@@ -46,6 +46,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Model.Tests,
   Atlas.UI.Architecture.Map,
@@ -220,18 +221,18 @@ begin
     mMap.SetBounds(0, 0, 800, 500);
     mMap.SetModel(ModelOf(SampleAssignmentAnswer));
     mMap.FitView;
-    mMid := mMap.Model.IndexOf('Z.Own.Mid');
-    Assert.IsTrue(mMap.ShowAssignment);
-    Assert.AreEqual(-1, mMap.Hover);
-    mMap.MouseMove([], Round(mMap.View.ScreenX(mMap.Model.Units[mMid].X)),
-      Round(mMap.View.ScreenY(mMap.Model.Units[mMid].Y)));
-    Assert.AreEqual(mMid, mMap.Hover);
+    mMid := mMap.State.Model.IndexOf('Z.Own.Mid');
+    Assert.IsTrue(mMap.State.Has(TAtlasArchMapFlag.ShowAssignment));
+    Assert.AreEqual(-1, mMap.State.Hover);
+    mMap.MouseMove([], Round(mMap.View.ScreenX(mMap.State.Model.Units[mMid].X)),
+      Round(mMap.View.ScreenY(mMap.State.Model.Units[mMid].Y)));
+    Assert.AreEqual(mMid, mMap.State.Hover);
     // Zeichnen mit Hinweis wirft nicht.
     mMap.Repaint;
     mMap.Perform(CM_MOUSELEAVE, 0, 0);
-    Assert.AreEqual(-1, mMap.Hover);
-    mMap.ShowAssignment := False;
-    Assert.IsFalse(mMap.ShowAssignment);
+    Assert.AreEqual(-1, mMap.State.Hover);
+    mMap.State.SetFlag(TAtlasArchMapFlag.ShowAssignment, False);
+    Assert.IsFalse(mMap.State.Has(TAtlasArchMapFlag.ShowAssignment));
   finally
     mForm.Free;
   end;
