@@ -165,6 +165,32 @@ begin
   end;
 end;
 
+/// <summary>Die Namen 1 bis ACount im Format APattern (z. B. 'Big.Lsp.U%.2d').</summary>
+function NumberedUnits(const APattern: string; ACount: Integer): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 1 to ACount do
+  begin
+    Result := Result + [Format(APattern, [mIndex])];
+  end;
+end;
+
+/// <summary>Verweise der Unit AItem der Gruppe AGroup in BigProject auf andere Gruppen.</summary>
+function BigProjectLinks(const AGroups: array of string; AGroup, AItem: Integer): TArray<string>;
+begin
+  Result := nil;
+  if (AGroup > 0) and (AItem <= 2) then
+  begin
+    Result := Result + [Format('Big.%s.U%.2d', [AGroups[AGroup - 1], AItem])];
+  end;
+  if (AGroup = 2) and (AItem in [3, 4]) then
+  begin
+    Result := Result + [Format('Big.%s.U%.2d', [AGroups[0], AItem])];
+  end;
+end;
+
 /// <summary>Drei dichte Gruppen Big.Lsp, Big.Rules und Big.Index zu je 12 Units (jede verwendet alle vorigen),
 /// untereinander mit je zwei Kanten verbunden, dazu Rest.Core mit 80 Units als dichter interface-Block. Neben dem
 /// großen Block sind die drei Gruppen zu klein: Louvain legt sie zu einem Teilsystem mit 36 von 116 Units
@@ -173,39 +199,23 @@ function BigProject: TArray<TUnitIndex>;
 const
   cGroups: array[0..2] of string = ('Lsp', 'Rules', 'Index');
 var
-  mGroup, mItem, mOther: Integer;
-  mUses, mLinks: TArray<string>;
+  mGroup, mItem: Integer;
+  mPattern: string;
 begin
   Result := nil;
   for mGroup := 0 to High(cGroups) do
   begin
+    mPattern := 'Big.' + cGroups[mGroup] + '.U%.2d';
     for mItem := 1 to 12 do
     begin
-      mUses := nil;
-      for mOther := 1 to mItem - 1 do
-      begin
-        mUses := mUses + [Format('Big.%s.U%.2d', [cGroups[mGroup], mOther])];
-      end;
-      mLinks := nil;
-      if (mGroup > 0) and (mItem <= 2) then
-      begin
-        mLinks := mLinks + [Format('Big.%s.U%.2d', [cGroups[mGroup - 1], mItem])];
-      end;
-      if (mGroup = 2) and (mItem in [3, 4]) then
-      begin
-        mLinks := mLinks + [Format('Big.%s.U%.2d', [cGroups[0], mItem])];
-      end;
-      Result := Result + [UsesUnit(Format('Big.%s.U%.2d', [cGroups[mGroup], mItem]), nil, mUses + mLinks)];
+      Result := Result + [UsesUnit(Format(mPattern, [mItem]), nil, NumberedUnits(mPattern, mItem - 1) +
+        BigProjectLinks(cGroups, mGroup, mItem))];
     end;
   end;
   for mItem := 1 to 80 do
   begin
-    mUses := nil;
-    for mOther := 1 to mItem - 1 do
-    begin
-      mUses := mUses + [Format('Rest.Core.K%.2d', [mOther])];
-    end;
-    Result := Result + [UsesUnit(Format('Rest.Core.K%.2d', [mItem]), mUses, nil)];
+    Result := Result + [UsesUnit(Format('Rest.Core.K%.2d', [mItem]), NumberedUnits('Rest.Core.K%.2d', mItem - 1),
+      nil)];
   end;
 end;
 

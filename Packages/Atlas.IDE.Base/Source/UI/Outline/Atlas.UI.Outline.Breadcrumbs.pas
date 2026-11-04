@@ -206,7 +206,9 @@ end;
 procedure TAtlasBreadcrumbBar.SetCrumbs(const ACrumbs: TAtlasCrumbs);
 begin
   if SameCrumbs(ACrumbs, FCrumbs) then
+  begin
     Exit;
+  end;
   FCrumbs := ACrumbs;
   FSelected := High(FCrumbs);
   SetHot(PartNone);
@@ -217,10 +219,14 @@ end;
 procedure TAtlasBreadcrumbBar.SetEmptyText(const AValue: string);
 begin
   if AValue = FEmptyText then
+  begin
     Exit;
+  end;
   FEmptyText := AValue;
   if Length(FCrumbs) = 0 then
+  begin
     Invalidate;
+  end;
 end;
 
 function TAtlasBreadcrumbBar.ContentRight: Integer;
@@ -233,7 +239,9 @@ begin
   begin
     Child := Controls[Index];
     if Child.Visible and (Child.Align = alRight) then
+    begin
       Result := Min(Result, Child.Left);
+    end;
   end;
   Result := Max(0, Result);
 end;
@@ -281,10 +289,14 @@ function TAtlasBreadcrumbBar.CrumbWidth(AIndex: Integer): Integer;
 begin
   Canvas.Font := Font;
   if AIndex = High(FCrumbs) then
+  begin
     Canvas.Font.Style := [fsBold];
+  end;
   Result := Canvas.TextWidth(FCrumbs[AIndex].Text) + Scale(8);
   if FCrumbs[AIndex].Badge.Code <> '' then
+  begin
     Inc(Result, BadgeWidth + Scale(4));
+  end;
   Canvas.Font := Font;
 end;
 
@@ -301,14 +313,18 @@ var
   Index, Total, Available, Left_, Right_: Integer;
 begin
   if FLaidOut or not HandleAllocated then
+  begin
     Exit;
+  end;
   FLaidOut := True;
   SetLength(FRects, Length(FCrumbs));
   SetLength(FSeparators, Length(FCrumbs));
   SetLength(Widths, Length(FCrumbs));
   FFirstShown := 0;
   if Length(FCrumbs) = 0 then
+  begin
     Exit;
+  end;
   Total := 0;
   for Index := 0 to High(FCrumbs) do
   begin
@@ -317,7 +333,9 @@ begin
   end;
   Inc(Total, High(FCrumbs) * SeparatorWidth);
   if TrailingSeparator then
+  begin
     Inc(Total, SeparatorWidth);
+  end;
   Right_ := ContentRight;
   Available := Right_ - 2 * Scale(4);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
@@ -325,35 +343,47 @@ begin
   begin
     Dec(Total, Widths[FFirstShown] + SeparatorWidth);
     if FFirstShown = 0 then
+    begin
       Inc(Total, EllipsisWidth + SeparatorWidth);
+    end;
     Inc(FFirstShown);
   end;
   Left_ := Scale(4);
   if FFirstShown > 0 then
+  begin
     Inc(Left_, EllipsisWidth + SeparatorWidth);
+  end;
   for Index := 0 to High(FCrumbs) do
   begin
     FSeparators[Index] := TRect.Empty;
     if Index < FFirstShown then
-      FRects[Index] := TRect.Empty
+    begin
+      FRects[Index] := TRect.Empty;
+    end
     else
     begin
       FRects[Index] := Rect(Left_, 0, Min(Left_ + Widths[Index], Right_), ClientHeight);
       Left_ := Left_ + Widths[Index];
       if (Index < High(FCrumbs)) or TrailingSeparator then
+      begin
         FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, Right_), ClientHeight);
+      end;
       Left_ := Left_ + SeparatorWidth;
     end;
   end;
   if FSelected < FFirstShown then
+  begin
     FSelected := High(FCrumbs);
+  end;
 end;
 
 function TAtlasBreadcrumbBar.CrumbRect(AIndex: Integer): TRect;
 begin
   Layout;
   if (AIndex < 0) or (AIndex > High(FRects)) then
+  begin
     Exit(TRect.Empty);
+  end;
   Result := FRects[AIndex];
 end;
 
@@ -366,7 +396,9 @@ function TAtlasBreadcrumbBar.SeparatorRect(AIndex: Integer): TRect;
 begin
   Layout;
   if (AIndex < 0) or (AIndex > High(FSeparators)) then
+  begin
     Exit(TRect.Empty);
+  end;
   Result := FSeparators[AIndex];
 end;
 
@@ -376,10 +408,16 @@ var
 begin
   Layout;
   if (Y >= 0) and (Y < ClientHeight) then
+  begin
     for Index := FFirstShown to High(FSeparators) do
+    begin
       if not FSeparators[Index].IsEmpty and (X >= FSeparators[Index].Left) and (X < FSeparators[Index].Right) and
         (Length(FCrumbs[Index].Children) > 0) then
+      begin
         Exit(Index);
+      end;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -389,9 +427,15 @@ var
 begin
   Layout;
   if (Y >= 0) and (Y < ClientHeight) then
+  begin
     for Index := FFirstShown to High(FRects) do
+    begin
       if not FRects[Index].IsEmpty and (X >= FRects[Index].Left) and (X < FRects[Index].Right) then
+      begin
         Exit(Index);
+      end;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -438,7 +482,9 @@ begin
     Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.Pen.Color := ToColor(Colors.Selection);
     if Focused and (AIndex = FSelected) then
+    begin
       Canvas.Pen.Color := ToColor(Colors.Accent);
+    end;
     Radius := Scale(4);
     Canvas.RoundRect(Area.Left, Area.Top + Scale(2), Area.Right, Area.Bottom - Scale(2), Radius, Radius);
   end;
@@ -470,7 +516,9 @@ begin
     Canvas.Font.Color := ToColor(Colors.Text);
   end
   else
+  begin
     Canvas.Font.Color := ToColor(Colors.Muted);
+  end;
   Part := Rect(Left_, 0, Area.Right - Scale(2), ClientHeight);
   DrawText(Canvas.Handle, PChar(Crumb.Text), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
@@ -503,7 +551,9 @@ begin
   begin
     DrawCrumb(Index);
     if not FSeparators[Index].IsEmpty then
+    begin
       DrawSeparator(Index);
+    end;
   end;
 end;
 
@@ -519,21 +569,31 @@ var
 begin
   mIndex := SeparatorAt(X, Y);
   if mIndex >= 0 then
+  begin
     Exit(SeparatorPart + mIndex);
+  end;
   Result := CrumbAt(X, Y);
   if Result < 0 then
+  begin
     Result := PartNone;
+  end;
 end;
 
 function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
 begin
   // Hinweis je Teil: Glied (Menü, Strg+Klick) oder „›“ (Kinder).
   if APart >= SeparatorPart then
-    Result := FSeparatorHint
+  begin
+    Result := FSeparatorHint;
+  end
   else if Clickable(APart) then
-    Result := FCrumbHint
+  begin
+    Result := FCrumbHint;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasBreadcrumbBar.PartEnabled(APart: Integer): Boolean;
@@ -554,14 +614,20 @@ begin
   end;
   Index := APart;
   if Index < 0 then
+  begin
     Exit;
+  end;
   FSelected := Index;
   Invalidate;
   // Ohne Geschwister gibt es kein Menü; dann springt auch der einfache Klick.
   if (ssCtrl in AShift) or (Length(FCrumbs[Index].Siblings) = 0) then
-    Jump(Index, ssShift in AShift)
+  begin
+    Jump(Index, ssShift in AShift);
+  end
   else
+  begin
     OpenMenu(Index);
+  end;
 end;
 
 procedure TAtlasBreadcrumbBar.OpenMenu(AIndex: Integer);
@@ -570,7 +636,9 @@ var
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Siblings) = 0) or
     not Assigned(FOnOpenMenu) then
+  begin
     Exit;
+  end;
   Area := CrumbRect(AIndex);
   FOnOpenMenu(AIndex, ClientToScreen(Point(Area.Left, ClientHeight)));
 end;
@@ -581,20 +649,28 @@ var
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Children) = 0) or
     not Assigned(FOnOpenChildren) then
+  begin
     Exit;
+  end;
   Area := SeparatorRect(AIndex);
   // Ohne „›“ (letztes Glied ohne Platz) unter dem Glied selbst.
   if Area.IsEmpty then
+  begin
     Area := CrumbRect(AIndex);
+  end;
   FOnOpenChildren(AIndex, ClientToScreen(Point(Area.Left, ClientHeight)));
 end;
 
 procedure TAtlasBreadcrumbBar.Jump(AIndex: Integer; ADeclaration: Boolean);
 begin
   if (AIndex < 0) or (AIndex > High(FCrumbs)) or not Assigned(FOnJump) then
+  begin
     Exit;
+  end;
   if (FCrumbs[AIndex].Node < 0) and (FCrumbs[AIndex].Badge.Kind <> TAtlasBadgeKind.Unit_) then
+  begin
     Exit;
+  end;
   FOnJump(AIndex, ADeclaration);
 end;
 
@@ -602,7 +678,9 @@ procedure TAtlasBreadcrumbBar.FocusLast;
 begin
   FSelected := High(FCrumbs);
   if CanFocus then
+  begin
     SetFocus;
+  end;
   Invalidate;
 end;
 
@@ -636,15 +714,23 @@ begin
       if ssCtrl in Shift then
       begin
         if Key = VK_DOWN then
-          OpenChildren(FSelected)
+        begin
+          OpenChildren(FSelected);
+        end
         else
+        begin
           Jump(FSelected, ssShift in Shift);
+        end;
       end
       else
+      begin
         OpenMenu(FSelected);
+      end;
     VK_ESCAPE:
       if Assigned(FOnLeave) then
+      begin
         FOnLeave();
+      end;
   else
     Exit;
   end;
@@ -662,22 +748,34 @@ begin
   Result := string(WindowClass);
   Control := FindControl(AWindow);
   if Control <> nil then
+  begin
     Result := Result + ' ' + Control.Name;
+  end;
 end;
 
 function TAtlasBreadcrumbBar.WindowProblem: string;
 begin
   Result := '';
   if not HandleAllocated then
-    Result := 'Leiste hat kein Fenster'
+  begin
+    Result := 'Leiste hat kein Fenster';
+  end
   else if GetWindowThreadProcessId(Handle, nil) <> MainThreadID then
-    Result := 'Fenster gehört einem anderen Thread'
+  begin
+    Result := 'Fenster gehört einem anderen Thread';
+  end
   else if (Parent = nil) or not Parent.HandleAllocated or (GetParent(Handle) <> Parent.Handle) then
-    Result := 'Fenster hängt an einem anderen Elternfenster'
+  begin
+    Result := 'Fenster hängt an einem anderen Elternfenster';
+  end
   else if not IsWindowEnabled(Handle) then
-    Result := Format('Fenster ist gesperrt (Enabled %s)', [BoolToStr(Enabled, True)])
+  begin
+    Result := Format('Fenster ist gesperrt (Enabled %s)', [BoolToStr(Enabled, True)]);
+  end
   else if GetWindowLongPtr(Handle, GWL_STYLE) and WS_VISIBLE = 0 then
+  begin
     Result := 'Fenster ist ausgeblendet';
+  end;
 end;
 
 function TAtlasBreadcrumbBar.HitProblem(const AScreenPoint: TPoint): string;
@@ -690,7 +788,9 @@ var
 begin
   Result := WindowProblem;
   if Result <> '' then
+  begin
     Exit;
+  end;
   GetWindowRect(Handle, Bounds);
   if not PtInRect(Bounds, AScreenPoint) then
   begin
@@ -700,28 +800,40 @@ begin
   end;
   // Kinder trifft Windows nur in der Client-Fläche des Elternfensters; im Rahmen bekommt es das Elternfenster.
   if not PtInRect(Parent.ClientRect, Parent.ScreenToClient(AScreenPoint)) then
+  begin
     Exit('Punkt liegt im Rahmen des Elternfensters, nicht in seiner Client-Fläche');
+  end;
   Region := CreateRectRgn(0, 0, 0, 0);
   try
     // Die Region ist relativ zur linken oberen Ecke des Fensters; ERROR = keine Region gesetzt.
     if (GetWindowRgn(Handle, Region) <> ERROR) and
       not PtInRegion(Region, AScreenPoint.X - Bounds.Left, AScreenPoint.Y - Bounds.Top) then
+    begin
       Exit('Punkt liegt außerhalb der Fensterregion (SetWindowRgn)');
+    end;
   finally
     DeleteObject(Region);
   end;
   ExStyle := GetWindowLongPtr(Handle, GWL_EXSTYLE);
   if ExStyle and WS_EX_TRANSPARENT <> 0 then
+  begin
     Exit('Fenster hat WS_EX_TRANSPARENT');
+  end;
   if ExStyle and WS_EX_LAYERED <> 0 then
+  begin
     Exit('Fenster ist geschichtet (WS_EX_LAYERED)');
+  end;
   // Über die ganze Fensterprozedur, also auch über Unterklassen und Stil-Hooks der IDE.
   HitTest := SendMessage(Handle, WM_NCHITTEST, 0, MakeLParam(Word(AScreenPoint.X), Word(AScreenPoint.Y)));
   if Integer(HitTest) = HTTRANSPARENT then
+  begin
     Exit('WM_NCHITTEST liefert HTTRANSPARENT');
+  end;
   Topmost := ChildWindowFromPointEx(Parent.Handle, Parent.ScreenToClient(AScreenPoint), CWP_SKIPINVISIBLE);
   if (Topmost <> 0) and (Topmost <> Handle) and (Topmost <> Parent.Handle) then
+  begin
     Result := Format('Geschwisterfenster liegt darüber (%s)', [WindowLabel(Topmost)]);
+  end;
 end;
 
 procedure TAtlasBreadcrumbBar.WMGetDlgCode(var Message: TWMGetDlgCode);

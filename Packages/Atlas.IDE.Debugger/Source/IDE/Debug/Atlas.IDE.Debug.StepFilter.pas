@@ -168,10 +168,14 @@ end;
 procedure TAtlasIdeDebugStepFilter.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
   if AStop = TAtlasDebugStop.Paused then
-    Stopped
+  begin
+    Stopped;
+  end
   else
+  begin
     // Exception oder Fehler: Der Benutzer soll sehen, wo es gekracht hat.
     FRun.Cancel;
+  end;
 end;
 
 procedure TAtlasIdeDebugStepFilter.TListener.DebugEnded;
@@ -209,7 +213,9 @@ end;
 class procedure TAtlasIdeDebugStepFilter.Start;
 begin
   if FTicker = nil then
+  begin
     FTicker := TTicker.Create;
+  end;
   if FTimer = nil then
   begin
     FTimer := TTimer.Create(nil);
@@ -218,7 +224,9 @@ begin
     FTimer.OnTimer := FTicker.Tick;
   end;
   if FCache = nil then
+  begin
     FCache := TAtlasStepRoutineCache.Create;
+  end;
   FRun.Cancel;
   FBypass := False;
   TAtlasIdeDebugTrace.AddHandler(TraceHandler,
@@ -238,7 +246,9 @@ end;
 class procedure TAtlasIdeDebugStepFilter.Release;
 begin
   if FListener <> nil then
+  begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
   FListener := nil;
   TAtlasIdeDebugTrace.RemoveHandler(TraceHandler);
   FreeAndNil(FTimer);
@@ -271,7 +281,9 @@ end;
 class procedure TAtlasIdeDebugStepFilter.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.Traced(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
@@ -289,15 +301,21 @@ begin
   begin
     // Atlas springt nach „Bis zur Rückkehr“ selbst wieder hinein: derselbe Lauf, der nächste Halt gehört dazu.
     if FRun.Phase <> TAtlasStepFilterPhase.Idle then
+    begin
       FStepStop := TAtlasIdeDebugSession.StopCount;
+    end;
     Exit;
   end;
   FRun.Cancel;
   if not Options.Enabled then
+  begin
     Exit;
+  end;
   // Unter LLDB kann der Stapel noch fehlen; dann filtert Atlas diesen Schritt nicht.
   if TAtlasIdeDebugSession.StackDepth(TAtlasIdeDebugSession.StoppedThread, mDepth) <> TAtlasDebugStackRead.Ready then
+  begin
     Exit;
+  end;
   FRun.Start(mDepth);
   FStepStop := TAtlasIdeDebugSession.StopCount;
 end;
@@ -305,7 +323,9 @@ end;
 class procedure TAtlasIdeDebugStepFilter.Stopped;
 begin
   if FRun.Phase = TAtlasStepFilterPhase.Idle then
+  begin
     Exit;
+  end;
   // Nur der Halt direkt nach dem Schritt bzw. nach „Bis zur Rückkehr“ gehört dazu.
   if TAtlasIdeDebugSession.StopCount <> FStepStop + 1 then
   begin
@@ -326,16 +346,22 @@ var
 begin
   FTimer.Enabled := False;
   if FRun.Phase = TAtlasStepFilterPhase.Idle then
+  begin
     Exit;
+  end;
   mThread := TAtlasIdeDebugSession.StoppedThread;
   case TAtlasIdeDebugSession.StackDepth(mThread, mDepth) of
     TAtlasDebugStackRead.Wait:
       begin
         Inc(FRetries);
         if FRetries <= StackRetries then
-          FTimer.Enabled := True
+        begin
+          FTimer.Enabled := True;
+        end
         else
+        begin
           FRun.Cancel;
+        end;
         Exit;
       end;
     TAtlasDebugStackRead.None:
@@ -345,28 +371,38 @@ begin
       end;
   end;
   if FRun.Phase = TAtlasStepFilterPhase.Returning then
-    mAction := FRun.AfterReturn(mDepth)
+  begin
+    mAction := FRun.AfterReturn(mDepth);
+  end
   else
   begin
     mVerdict := Default(TAtlasStepVerdict);
     mRoutine := Default(TAtlasStepRoutine);
     if FRun.Entered(mDepth) then
+    begin
       mVerdict := Judge(mThread, mRoutine);
+    end;
     mAction := FRun.AfterStep(mDepth, mVerdict.Filtered);
     if mAction = TAtlasStepFilterAction.Return then
+    begin
       Remember(mRoutine, mVerdict);
+    end;
   end;
   case mAction of
     TAtlasStepFilterAction.Return:
       begin
         FStepStop := TAtlasIdeDebugSession.StopCount;
         if not TAtlasIdeDebugSession.RunMode(ormRunUntilReturn) then
+        begin
           FRun.Cancel;
+        end;
       end;
     TAtlasStepFilterAction.StepInto:
       // Der Empfänger (Origin Atlas) setzt FStepStop.
       if not TAtlasIdeDebugTrace.StepInto then
+      begin
         FRun.Cancel;
+      end;
     TAtlasStepFilterAction.Keep: ;
   end;
 end;
@@ -380,22 +416,32 @@ begin
   Result := Default(TAtlasStepVerdict);
   ARoutine := Default(TAtlasStepRoutine);
   if AThread = nil then
+  begin
     Exit;
+  end;
   mFileName := AThread.CurrentFile;
   mLine := Integer(AThread.CurrentLine) - 1;
   // Ohne Quelltext entscheidet „Nur eigener Code“ (#578), nicht der Schrittfilter.
   if (mFileName = '') or (mLine < 0) then
+  begin
     Exit;
+  end;
   mResolved := TAtlasIdeDebugSources.Resolve(mFileName);
   if mResolved = '' then
+  begin
     Exit;
+  end;
   // Ein Haltepunkt des Benutzers in der neuen Routine geht vor.
   if HasBreakpoint(mFileName, mResolved, mLine) then
+  begin
     Exit;
+  end;
   if not FCache.TryGet(mResolved, mLine, ARoutine) then
   begin
     if not Lookup(mResolved, mLine, ARoutine) then
+    begin
       Exit;
+    end;
     FCache.Add(mResolved, mLine, ARoutine);
   end;
   Result := TAtlasStepFilter.Verdict(Options, ARoutine);
@@ -409,13 +455,17 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTADebuggerServices, mServices) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to mServices.SourceBkptCount - 1 do
   begin
     mBreakpoint := mServices.SourceBkpts[mIndex];
     if (mBreakpoint <> nil) and mBreakpoint.Enabled and (mBreakpoint.LineNumber = ALine + 1) and
       (SameText(mBreakpoint.FileName, AFileName) or SameText(mBreakpoint.FileName, AResolved)) then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -430,15 +480,21 @@ begin
   ARoutine := Default(TAtlasStepRoutine);
   mSession := nil;
   if Assigned(FSession) then
+  begin
     mSession := FSession();
+  end;
   // Ohne Server und bei Fehlern bleibt der Halt stehen: wie F7 ohne Schrittfilter.
   if mSession = nil then
+  begin
     Exit;
+  end;
   try
     // Offene Dateien mit dem Stand im Editor; alle anderen liest der Server selbst.
     mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
     if mBuffer <> nil then
+    begin
       mSession.Sync(AFileName, TAtlasEditorBuffer.Text(mBuffer));
+    end;
     mAnswer := mSession.RunCommand(TAtlasStepFilter.Command,
       TAtlasStepFilter.Arguments(TLspSession.PathToUri(AFileName), ALine), TimeoutMs);
     try
@@ -471,7 +527,9 @@ begin
   // Ohne Ablauf (debug.stepFilters aus) ist es ein gewöhnliches F7.
   FBypass := Started;
   if not TAtlasIdeDebugTrace.StepInto then
+  begin
     FBypass := False;
+  end;
 end;
 
 class function TAtlasIdeDebugStepFilter.RoutineAtCursor(out ARoutine: TAtlasStepRoutine): Boolean;
@@ -491,7 +549,9 @@ begin
   end;
   mSession := nil;
   if Assigned(FSession) then
+  begin
     mSession := FSession();
+  end;
   if mSession = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
@@ -515,7 +575,9 @@ begin
     end;
   end;
   if not Result then
+  begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNoRoutine));
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.SaveOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
@@ -538,13 +600,17 @@ var
   mStored: TAtlasPluginSettings;
 begin
   if not RoutineAtCursor(mRoutine) then
+  begin
     Exit;
+  end;
   mStored := TAtlasIdeSettings.Stored;
   mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
   mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
   if mVerdict.Filtered then
+  begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
-      [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]))
+      [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]));
+  end
   else
   begin
     SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, TStepFilterNames.WithPattern(mOptions.Patterns,
@@ -552,7 +618,9 @@ begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
   end;
   if not mStored.DebugStepFilters then
+  begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterOff));
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.UnskipAtCursor;
@@ -564,7 +632,9 @@ var
   mRemoved: Boolean;
 begin
   if not RoutineAtCursor(mRoutine) then
+  begin
     Exit;
+  end;
   mStored := TAtlasIdeSettings.Stored;
   mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
   mRemoved := TStepFilterNames.IndexOfPattern(mOptions.Patterns, mRoutine.Name) >= 0;
@@ -583,9 +653,13 @@ begin
         [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]));
   else
     if mRemoved then
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]))
+    begin
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]));
+    end
     else
+    begin
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterNotSkipped, [mRoutine.Name]));
+    end;
   end;
 end;
 
@@ -630,7 +704,9 @@ var
 begin
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.SetSession(Started, FSkipped, FLastName, FLastReason);
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.ShowWindow;
@@ -639,7 +715,9 @@ var
 begin
   mFrame := TAtlasIdeDebugStepFilterWindow.Show;
   if mFrame <> nil then
+  begin
     FillFrame(mFrame);
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.ApplySettings;
@@ -648,11 +726,15 @@ var
 begin
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   FillFrame(mFrame);
   // Neue Muster: Treffer neu zählen; die Arten zählt der Server ohnehin alle.
   if TAtlasIdeSettings.Current.DebugStepFilterPatterns <> FCountedPatterns then
+  begin
     Recount;
+  end;
 end;
 
 class procedure TAtlasIdeDebugStepFilter.ThemeChanged;
@@ -669,7 +751,9 @@ var
 begin
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   if FCountsThread <> nil then
   begin
     // Läuft noch: danach mit den dann gültigen Mustern.
@@ -678,7 +762,9 @@ begin
   end;
   mSession := nil;
   if Assigned(FSession) then
+  begin
     mSession := FSession();
+  end;
   FCountedPatterns := TAtlasIdeSettings.Current.DebugStepFilterPatterns;
   if mSession = nil then
   begin
@@ -728,10 +814,16 @@ begin
   WaitCounts;
   mFrame := Frame;
   if (mFrame <> nil) and (ARequest = FCountsRequest) then
+  begin
     if AOk then
-      mFrame.SetCounts(ACounts)
+    begin
+      mFrame.SetCounts(ACounts);
+    end
     else
+    begin
       mFrame.SetNoCounts;
+    end;
+  end;
   if FCountsAgain then
   begin
     FCountsAgain := False;
@@ -743,7 +835,9 @@ class procedure TAtlasIdeDebugStepFilter.WaitCounts;
 begin
   // Der Faden endet spätestens nach CountsTimeoutMs; beim Entladen darf er nicht weiterlaufen.
   if FCountsThread = nil then
+  begin
     Exit;
+  end;
   FCountsThread.WaitFor;
   FreeAndNil(FCountsThread);
 end;

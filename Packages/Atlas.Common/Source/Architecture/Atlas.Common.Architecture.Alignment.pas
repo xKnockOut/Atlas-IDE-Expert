@@ -172,131 +172,212 @@ begin
   Result := False;
 end;
 
-/// <summary>Farben: je Familie (gleiche Farbnummer aus der Gruppierung) die alte Farbe ihres größten zugeordneten
-/// Teils, sonst die kleinste freie; Farbtöne zugeordneter Teile bleiben, wenn frei.</summary>
+type
+  /// <summary>Farben: je Familie (gleiche Farbnummer aus der Gruppierung) die alte Farbe ihres größten zugeordneten
+  /// Teils, sonst die kleinste freie; Farbtöne zugeordneter Teile bleiben, wenn frei.</summary>
+  TColorAlignment = class
+  private
+    FPrevious: TArchitectureSnapshot;
+    FOld: TArray<Integer>;
+    FFamily: TArray<Integer>;
+    FKeep: TArray<Boolean>;
+    FSlotOf, FSourceOf: TDictionary<Integer, Integer>;
+    FUsed: TDictionary<Integer, Boolean>;
+    FShades: TDictionary<Integer, TArray<Integer>>;
+    function HasOldColor(ASubsystem: Integer): Boolean;
+    function UsedShades(ASlot: Integer): TArray<Integer>;
+    procedure KeepOldSlot(AFamilyStart: Integer);
+    procedure AssignSlots;
+    procedure KeepOldShades(var AOverview: TArchitectureOverview);
+    procedure AssignShades(var AOverview: TArchitectureOverview);
+    procedure ApplySlots(var AOverview: TArchitectureOverview);
+  public
+    constructor Create(const AOverview: TArchitectureOverview; const APrevious: TArchitectureSnapshot;
+      const AOld: TArray<Integer>);
+    destructor Destroy; override;
+    procedure Run(var AOverview: TArchitectureOverview);
+  end;
+
+constructor TColorAlignment.Create(const AOverview: TArchitectureOverview; const APrevious: TArchitectureSnapshot;
+  const AOld: TArray<Integer>);
+var
+  mIndex: Integer;
+begin
+  inherited Create;
+  FPrevious := APrevious;
+  FOld := AOld;
+  SetLength(FFamily, Length(AOverview.Subsystems));
+  for mIndex := 0 to High(FFamily) do
+  begin
+    FFamily[mIndex] := AOverview.Subsystems[mIndex].ColorSlot;
+  end;
+  SetLength(FKeep, Length(FFamily));
+  FSlotOf := TDictionary<Integer, Integer>.Create;
+  FSourceOf := TDictionary<Integer, Integer>.Create;
+  FUsed := TDictionary<Integer, Boolean>.Create;
+  FShades := TDictionary<Integer, TArray<Integer>>.Create;
+end;
+
+destructor TColorAlignment.Destroy;
+begin
+  FShades.Free;
+  FUsed.Free;
+  FSourceOf.Free;
+  FSlotOf.Free;
+  inherited;
+end;
+
+function TColorAlignment.HasOldColor(ASubsystem: Integer): Boolean;
+begin
+  Result := (FOld[ASubsystem] >= 0) and FPrevious.Subsystems[FOld[ASubsystem]].HasColor and
+    (FPrevious.Subsystems[FOld[ASubsystem]].ColorSlot >= 0);
+end;
+
+function TColorAlignment.UsedShades(ASlot: Integer): TArray<Integer>;
+begin
+  if not FShades.TryGetValue(ASlot, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Alte Farbe für die Familie, die bei AFamilyStart beginnt: die des ersten (größten) zugeordneten Teils,
+/// dessen Farbe noch frei ist.</summary>
+procedure TColorAlignment.KeepOldSlot(AFamilyStart: Integer);
+var
+  mMember, mSlot: Integer;
+begin
+  for mMember := AFamilyStart to High(FFamily) do
+  begin
+    if (FFamily[mMember] = FFamily[AFamilyStart]) and HasOldColor(mMember) and
+      not FUsed.ContainsKey(FPrevious.Subsystems[FOld[mMember]].ColorSlot) then
+    begin
+      mSlot := FPrevious.Subsystems[FOld[mMember]].ColorSlot;
+      FSlotOf.Add(FFamily[AFamilyStart], mSlot);
+      FSourceOf.Add(FFamily[AFamilyStart], mMember);
+      FUsed.Add(mSlot, True);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TColorAlignment.AssignSlots;
+var
+  mIndex, mSlot: Integer;
+begin
+  // Erst die Familien mit alter Farbe (die Teile stehen nach Größe, der erste zugeordnete ist der größte).
+  for mIndex := 0 to High(FFamily) do
+  begin
+    if (FFamily[mIndex] >= 0) and not FSlotOf.ContainsKey(FFamily[mIndex]) then
+    begin
+      KeepOldSlot(mIndex);
+    end;
+  end;
+  // Dann die übrigen mit der kleinsten freien.
+  for mIndex := 0 to High(FFamily) do
+  begin
+    if (FFamily[mIndex] < 0) or FSlotOf.ContainsKey(FFamily[mIndex]) then
+    begin
+      Continue;
+    end;
+    mSlot := 0;
+    while FUsed.ContainsKey(mSlot) do
+    begin
+      Inc(mSlot);
+    end;
+    FSlotOf.Add(FFamily[mIndex], mSlot);
+    FUsed.Add(mSlot, True);
+  end;
+end;
+
+/// <summary>Zugeordnete Teile mit derselben alten Farbe behalten ihren Farbton.</summary>
+procedure TColorAlignment.KeepOldShades(var AOverview: TArchitectureOverview);
+var
+  mIndex, mSlot: Integer;
+  mUsedShades: TArray<Integer>;
+begin
+  for mIndex := 0 to High(FFamily) do
+  begin
+    if FFamily[mIndex] < 0 then
+    begin
+      Continue;
+    end;
+    mSlot := FSlotOf[FFamily[mIndex]];
+    mUsedShades := UsedShades(mSlot);
+    if HasOldColor(mIndex) and (FPrevious.Subsystems[FOld[mIndex]].ColorSlot = mSlot) and
+      not ContainsShade(mUsedShades, FPrevious.Subsystems[FOld[mIndex]].Shade) then
+    begin
+      FKeep[mIndex] := True;
+      AOverview.Subsystems[mIndex].Shade := FPrevious.Subsystems[FOld[mIndex]].Shade;
+      FShades.AddOrSetValue(mSlot, mUsedShades + [AOverview.Subsystems[mIndex].Shade]);
+    end;
+  end;
+end;
+
+/// <summary>Die übrigen Teile bekommen der Reihe nach den ersten freien Farbton ihrer Farbe.</summary>
+procedure TColorAlignment.AssignShades(var AOverview: TArchitectureOverview);
+var
+  mIndex, mSlot, mRank, mShade: Integer;
+  mUsedShades: TArray<Integer>;
+begin
+  for mIndex := 0 to High(FFamily) do
+  begin
+    if (FFamily[mIndex] < 0) or FKeep[mIndex] then
+    begin
+      Continue;
+    end;
+    mSlot := FSlotOf[FFamily[mIndex]];
+    mUsedShades := UsedShades(mSlot);
+    mRank := 0;
+    mShade := ShadeAt(mRank);
+    while ContainsShade(mUsedShades, mShade) do
+    begin
+      Inc(mRank);
+      mShade := ShadeAt(mRank);
+    end;
+    AOverview.Subsystems[mIndex].Shade := mShade;
+    FShades.AddOrSetValue(mSlot, mUsedShades + [mShade]);
+  end;
+end;
+
+procedure TColorAlignment.ApplySlots(var AOverview: TArchitectureOverview);
+var
+  mIndex, mSource: Integer;
+begin
+  for mIndex := 0 to High(FFamily) do
+  begin
+    if FFamily[mIndex] < 0 then
+    begin
+      Continue;
+    end;
+    AOverview.Subsystems[mIndex].ColorSlot := FSlotOf[FFamily[mIndex]];
+    // Das ursprüngliche Teilsystem einer Familie heißt wie das des Teils, dessen Farbe sie übernimmt.
+    if FSourceOf.TryGetValue(FFamily[mIndex], mSource) and (AOverview.Subsystems[mIndex].Parent <> '') and
+      (FPrevious.Subsystems[FOld[mSource]].Parent <> '') then
+    begin
+      AOverview.Subsystems[mIndex].Parent := FPrevious.Subsystems[FOld[mSource]].Parent;
+    end;
+  end;
+end;
+
+procedure TColorAlignment.Run(var AOverview: TArchitectureOverview);
+begin
+  AssignSlots;
+  KeepOldShades(AOverview);
+  AssignShades(AOverview);
+  ApplySlots(AOverview);
+end;
+
 procedure AlignColors(var AOverview: TArchitectureOverview; const APrevious: TArchitectureSnapshot;
   const AOld: TArray<Integer>);
 var
-  mFamily: TArray<Integer>;
-  mSlotOf, mSourceOf: TDictionary<Integer, Integer>;
-  mUsed: TDictionary<Integer, Boolean>;
-  mShades: TDictionary<Integer, TArray<Integer>>;
-  mIndex, mMember, mSlot, mSource, mRank, mShade: Integer;
-  mUsedShades: TArray<Integer>;
-  mKeep: TArray<Boolean>;
-
-  function HasOldColor(ASubsystem: Integer): Boolean;
-  begin
-    Result := (AOld[ASubsystem] >= 0) and APrevious.Subsystems[AOld[ASubsystem]].HasColor and
-      (APrevious.Subsystems[AOld[ASubsystem]].ColorSlot >= 0);
-  end;
-
+  mAlignment: TColorAlignment;
 begin
-  SetLength(mFamily, Length(AOverview.Subsystems));
-  for mIndex := 0 to High(mFamily) do
-  begin
-    mFamily[mIndex] := AOverview.Subsystems[mIndex].ColorSlot;
-  end;
-  SetLength(mKeep, Length(mFamily));
-  mSlotOf := TDictionary<Integer, Integer>.Create;
-  mSourceOf := TDictionary<Integer, Integer>.Create;
-  mUsed := TDictionary<Integer, Boolean>.Create;
-  mShades := TDictionary<Integer, TArray<Integer>>.Create;
+  mAlignment := TColorAlignment.Create(AOverview, APrevious, AOld);
   try
-    // Erst die Familien mit alter Farbe (die Teile stehen nach Größe, der erste zugeordnete ist der größte).
-    for mIndex := 0 to High(mFamily) do
-    begin
-      if (mFamily[mIndex] < 0) or mSlotOf.ContainsKey(mFamily[mIndex]) then
-      begin
-        Continue;
-      end;
-      for mMember := mIndex to High(mFamily) do
-      begin
-        if (mFamily[mMember] = mFamily[mIndex]) and HasOldColor(mMember) and
-          not mUsed.ContainsKey(APrevious.Subsystems[AOld[mMember]].ColorSlot) then
-        begin
-          mSlot := APrevious.Subsystems[AOld[mMember]].ColorSlot;
-          mSlotOf.Add(mFamily[mIndex], mSlot);
-          mSourceOf.Add(mFamily[mIndex], mMember);
-          mUsed.Add(mSlot, True);
-          Break;
-        end;
-      end;
-    end;
-    // Dann die übrigen mit der kleinsten freien.
-    for mIndex := 0 to High(mFamily) do
-    begin
-      if (mFamily[mIndex] < 0) or mSlotOf.ContainsKey(mFamily[mIndex]) then
-      begin
-        Continue;
-      end;
-      mSlot := 0;
-      while mUsed.ContainsKey(mSlot) do
-      begin
-        Inc(mSlot);
-      end;
-      mSlotOf.Add(mFamily[mIndex], mSlot);
-      mUsed.Add(mSlot, True);
-    end;
-    // Farbtöne: zugeordnete Teile mit derselben alten Farbe behalten ihren, die übrigen der Reihe nach.
-    for mIndex := 0 to High(mFamily) do
-    begin
-      if mFamily[mIndex] < 0 then
-      begin
-        Continue;
-      end;
-      mSlot := mSlotOf[mFamily[mIndex]];
-      if not mShades.TryGetValue(mSlot, mUsedShades) then
-      begin
-        mUsedShades := nil;
-      end;
-      if HasOldColor(mIndex) and (APrevious.Subsystems[AOld[mIndex]].ColorSlot = mSlot) and
-        not ContainsShade(mUsedShades, APrevious.Subsystems[AOld[mIndex]].Shade) then
-      begin
-        mKeep[mIndex] := True;
-        AOverview.Subsystems[mIndex].Shade := APrevious.Subsystems[AOld[mIndex]].Shade;
-        mShades.AddOrSetValue(mSlot, mUsedShades + [AOverview.Subsystems[mIndex].Shade]);
-      end;
-    end;
-    for mIndex := 0 to High(mFamily) do
-    begin
-      if (mFamily[mIndex] < 0) or mKeep[mIndex] then
-      begin
-        Continue;
-      end;
-      mSlot := mSlotOf[mFamily[mIndex]];
-      if not mShades.TryGetValue(mSlot, mUsedShades) then
-      begin
-        mUsedShades := nil;
-      end;
-      mRank := 0;
-      mShade := ShadeAt(mRank);
-      while ContainsShade(mUsedShades, mShade) do
-      begin
-        Inc(mRank);
-        mShade := ShadeAt(mRank);
-      end;
-      AOverview.Subsystems[mIndex].Shade := mShade;
-      mShades.AddOrSetValue(mSlot, mUsedShades + [mShade]);
-    end;
-    for mIndex := 0 to High(mFamily) do
-    begin
-      if mFamily[mIndex] >= 0 then
-      begin
-        AOverview.Subsystems[mIndex].ColorSlot := mSlotOf[mFamily[mIndex]];
-        // Das ursprüngliche Teilsystem einer Familie heißt wie das des Teils, dessen Farbe sie übernimmt.
-        if mSourceOf.TryGetValue(mFamily[mIndex], mSource) and (AOverview.Subsystems[mIndex].Parent <> '') and
-          (APrevious.Subsystems[AOld[mSource]].Parent <> '') then
-        begin
-          AOverview.Subsystems[mIndex].Parent := APrevious.Subsystems[AOld[mSource]].Parent;
-        end;
-      end;
-    end;
+    mAlignment.Run(AOverview);
   finally
-    mShades.Free;
-    mUsed.Free;
-    mSourceOf.Free;
-    mSlotOf.Free;
+    mAlignment.Free;
   end;
 end;
 

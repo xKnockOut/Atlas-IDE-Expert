@@ -17,6 +17,7 @@
 // (IAtlasBuildJobs aus Atlas.IDE.Contracts, ohne Modul nicht), die Probleme gehen an das Problemfenster von
 // Base; die fehlgeschlagenen Tests des letzten Laufs liest das Modul aus den
 // Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
+// Diese Haken stehen in Atlas.IDE.Tests.Composition.Hooks.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
 
@@ -28,8 +29,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
-  Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Contracts.BuildPipeline;
+  Atlas.IDE.Contracts.Tests;
 
 type
   TAtlasTestsModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -64,26 +64,22 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Modules.Contributions,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Adapters.ProcessRunner,
-  Atlas.Core.Problems.Contract,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Composition.Hooks,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens,
   Atlas.IDE.Tests.Affected,
@@ -124,91 +120,6 @@ begin
     begin
       Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
     end;
-end;
-
-/// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
-function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
-var
-  mItem: IInterface;
-begin
-  AJobs := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
-  begin
-    if Supports(mItem, IAtlasBuildJobs, AJobs) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".
-/// </summary>
-function BuildForTests(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
-var
-  mJobs: IAtlasBuildJobs;
-  mJob: TAtlasBuildJob;
-  mDone: TAtlasTestsBuildDone;
-begin
-  if not BuildJobs(mJobs) then
-  begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
-    Exit(False);
-  end;
-  mDone := ADone;
-  mJob := Default(TAtlasBuildJob);
-  mJob.Project := AProject;
-  mJob.Kind := TAtlasBuildJobKind.Make;
-  mJob.RequestedBy := TAtlasTestRun.RequestedBy;
-  Result := mJobs.Start(mJob,
-    procedure(const AResult: TAtlasBuildJobResult)
-    begin
-      mDone(AResult.Succeeded, AResult.OutputFile, AResult.Error);
-    end, AReason);
-end;
-
-procedure ShowProblems(const AProblems: TArray<TPair<string, TAtlasProblem>>);
-begin
-  if TAtlasProblemsController.Current <> nil then
-  begin
-    TAtlasProblemsController.Current.SetTests(AProblems);
-  end;
-end;
-
-/// <summary>Ende eines Laufs in die Projekt-Zusammenfassung (#69, Karte Tests) und an jeden IAtlasTestsListener
-/// (Schnellaktionen der Willkommensseite).</summary>
-procedure AnnounceTests(const AProject: string; const ATests: TAtlasProjectTests);
-var
-  mItem: IInterface;
-  mListener: IAtlasTestsListener;
-  mPassed, mFailed: Integer;
-begin
-  if TAtlasIdeProjectSummaries.Current <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build,
-      procedure
-      begin
-        TAtlasIdeProjectSummaries.Current.RecordTests(AProject, ATests);
-      end);
-  end;
-  mPassed := ATests.Passed;
-  mFailed := ATests.Failed + ATests.Errors;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestsListener) do
-  begin
-    if Supports(mItem, IAtlasTestsListener, mListener) then
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        begin
-          mListener.TestsFinished(AProject, mPassed, mFailed);
-        end);
-    end;
-  end;
-end;
-
-function LastFailed(AProject: string): TArray<string>;
-begin
-  Result := TAtlasProjectSummaries.FailedTestsOf(TAtlasProjectSummaries.DefaultFolder, AProject);
 end;
 
 procedure RunAtCursor;

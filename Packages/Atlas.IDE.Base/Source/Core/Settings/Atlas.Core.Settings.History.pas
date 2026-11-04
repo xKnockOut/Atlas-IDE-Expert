@@ -122,13 +122,17 @@ end;
 procedure TAtlasMemorySettingsStore.Remember(const AName: string);
 begin
   if FNames.IndexOf(AName) < 0 then
+  begin
     FNames.Add(AName);
+  end;
 end;
 
 function TAtlasMemorySettingsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 begin
   if not FIntegers.TryGetValue(LowerCase(AName), Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TAtlasMemorySettingsStore.WriteInteger(const AName: string; AValue: Integer);
@@ -140,7 +144,9 @@ end;
 function TAtlasMemorySettingsStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FStrings.TryGetValue(LowerCase(AName), Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TAtlasMemorySettingsStore.WriteString(const AName, AValue: string);
@@ -164,9 +170,13 @@ var
   Value: Integer;
 begin
   if FIntegers.TryGetValue(LowerCase(AName), Value) then
-    Result := IntToStr(Value)
+  begin
+    Result := IntToStr(Value);
+  end
   else if not FStrings.TryGetValue(LowerCase(AName), Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasMemorySettingsStore.ToJson: TJSONObject;
@@ -176,10 +186,16 @@ var
 begin
   Result := TJSONObject.Create;
   for Name in FNames do
+  begin
     if FIntegers.TryGetValue(LowerCase(Name), Value) then
-      Result.AddPair(Name, TJSONNumber.Create(Value))
+    begin
+      Result.AddPair(Name, TJSONNumber.Create(Value));
+    end
     else
+    begin
       Result.AddPair(Name, TJSONString.Create(ReadString(Name, '')));
+    end;
+  end;
 end;
 
 procedure TAtlasMemorySettingsStore.FromJson(AValues: TJSONObject);
@@ -187,12 +203,20 @@ var
   Pair: TJSONPair;
 begin
   if AValues = nil then
+  begin
     Exit;
+  end;
   for Pair in AValues do
+  begin
     if Pair.JsonValue is TJSONNumber then
-      WriteInteger(Pair.JsonString.Value, TJSONNumber(Pair.JsonValue).AsInt)
+    begin
+      WriteInteger(Pair.JsonString.Value, TJSONNumber(Pair.JsonValue).AsInt);
+    end
     else if Pair.JsonValue is TJSONString then
+    begin
       WriteString(Pair.JsonString.Value, TJSONString(Pair.JsonValue).Value);
+    end;
+  end;
 end;
 
 function TAtlasMemorySettingsStore.Contains(const AName: string): Boolean;
@@ -207,8 +231,12 @@ begin
   FIntegers.Remove(LowerCase(AName));
   FStrings.Remove(LowerCase(AName));
   for Index := FNames.Count - 1 downto 0 do
+  begin
     if SameText(FNames[Index], AName) then
+    begin
       FNames.Delete(Index);
+    end;
+  end;
 end;
 
 class function TAtlasMemorySettingsStore.FromSettings(
@@ -254,8 +282,12 @@ begin
   Right := TAtlasMemorySettingsStore.FromSettings(ARight);
   Result := nil;
   for Name in Left.Names do
+  begin
     if Left.Text(Name) <> Right.Text(Name) then
+    begin
       Result := Result + [Name];
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsHistory.Push(const ABefore, AAfter: TAtlasPluginSettings; AChangedAt: TDateTime;
@@ -264,16 +296,24 @@ var
   Snapshot: TAtlasSettingsSnapshot;
 begin
   if Length(Differences(ABefore, AAfter)) = 0 then
+  begin
     Exit;
+  end;
   Snapshot.ChangedAt := AChangedAt;
   Snapshot.Settings := ABefore;
   FSnapshots.Insert(0, Snapshot);
   if AKeep < 0 then
+  begin
     AKeep := 0;
+  end;
   if AKeep > MaxKeep then
+  begin
     AKeep := MaxKeep;
+  end;
   while FSnapshots.Count > AKeep do
+  begin
     FSnapshots.Delete(FSnapshots.Count - 1);
+  end;
 end;
 
 function TAtlasSettingsHistory.ChangedKeys(AIndex: Integer; const ACurrent: TAtlasPluginSettings): TArray<string>;
@@ -285,7 +325,9 @@ function TAtlasSettingsHistory.LastChangedKeys(const ACurrent: TAtlasPluginSetti
 begin
   Result := nil;
   if FSnapshots.Count > 0 then
+  begin
     Result := ChangedKeys(0, ACurrent);
+  end;
 end;
 
 procedure TAtlasSettingsHistory.Clear;
@@ -331,20 +373,28 @@ begin
   try
     Result := Root is TJSONArray;
     if not Result then
+    begin
       Exit;
+    end;
     for Element in TJSONArray(Root) do
     begin
       if not (Element is TJSONObject) then
+      begin
         Continue;
+      end;
       Values := TJSONObject(Element).GetValue('settings');
       Stamp := TJSONObject(Element).GetValue<string>('changedAt', '');
       if not (Values is TJSONObject) or (Stamp = '') then
+      begin
         Continue;
+      end;
       Store := TAtlasMemorySettingsStore.Create;
       Store.FromJson(TJSONObject(Values));
       // Stände von vor einer Umbenennung (#1280): frühere Namen wie beim Start übernehmen.
       if Catalog = nil then
+      begin
         Catalog := TAtlasSettingsCatalog.CreateDefault;
+      end;
       TAtlasSettingsRenames.Apply(Store, Store as IAtlasSettingsNames, Catalog);
       // Einzelne Abfrage von vor #1262: als „Standard“ in die Liste der Abfragen.
       TAtlasSettingsQueryMigrations.Migrate(Store, Store as IAtlasSettingsNames, Store);

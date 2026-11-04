@@ -149,10 +149,16 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.MainMenu = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.MainMenu.Items.Count - 1 do
+  begin
     if SameText(Services.MainMenu.Items[Index].Name, 'RunMenu') then
+    begin
       Exit(Services.MainMenu.Items[Index]);
+    end;
+  end;
 end;
 
 { TAtlasIdeEventBreak }
@@ -187,7 +193,9 @@ class procedure TAtlasIdeEventBreak.Install(const ASession: TAtlasEventBreakSess
   const AMessage: TProc<string>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeEventBreak.Create(ASession, AMessage);
+  end;
 end;
 
 class procedure TAtlasIdeEventBreak.Uninstall;
@@ -211,7 +219,9 @@ end;
 class procedure TAtlasIdeEventBreak.Run;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   if not Enabled then
   begin
     FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOff));
@@ -223,11 +233,15 @@ end;
 class procedure TAtlasIdeEventBreak.ApplySettings;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   FInstance.UpdateMenu;
   // Ausgeschaltet während der Beobachtung: Haltepunkte gleich entfernen.
   if not Enabled and (FInstance.FPhase <> TPhase.Idle) then
+  begin
     FInstance.Finish;
+  end;
 end;
 
 procedure TAtlasIdeEventBreak.InstallMenu;
@@ -236,7 +250,9 @@ var
 begin
   Parent := RunMenu;
   if Parent = nil then
+  begin
     Exit;
+  end;
   FMenuItem := TMenuItem.Create(nil);
   FMenuItem.Name := MenuItemName;
   FMenuItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand);
@@ -248,7 +264,9 @@ end;
 procedure TAtlasIdeEventBreak.UpdateMenu;
 begin
   if FMenuItem <> nil then
+  begin
     FMenuItem.Visible := Enabled;
+  end;
 end;
 
 procedure TAtlasIdeEventBreak.MenuClick(Sender: TObject);
@@ -263,7 +281,9 @@ end;
 procedure TAtlasIdeEventBreak.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class function TAtlasIdeEventBreak.Evaluate(const AExpression: string; out AValue: string): Boolean;
@@ -281,7 +301,9 @@ begin
   Result := False;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
@@ -293,7 +315,9 @@ begin
       TimeoutMs);
     try
       if not TAtlasEventBreak.ReadAnswer(Answer, FAnswer) then
+      begin
         FAnswer := Default(TAtlasEventAnswer);
+      end;
     finally
       Answer.Free;
     end;
@@ -320,7 +344,9 @@ begin
   // Welche Formulare sichtbar sind, steht erst beim Start fest: bis dahin zählen alle.
   Choice := AChoice;
   if Choice.Scope = TAtlasEventScope.VisibleForms then
+  begin
     Choice.Scope := TAtlasEventScope.AllForms;
+  end;
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice,
     TAtlasEventBreakSettings.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), nil);
   Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakCount,
@@ -348,7 +374,9 @@ begin
     Exit;
   end;
   if not Query then
+  begin
     Exit;
+  end;
   Choice := FChoice;
   if not TAtlasEventBreakDialog.Execute(Choice, TAtlasEventBreak.Forms(FAnswer.Handlers),
     TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded,
@@ -356,10 +384,14 @@ begin
     begin
       Result := CountText(AChoice);
     end) then
+  begin
     Exit;
+  end;
   FChoice := Choice;
   if FAnswer.Unresolved > 0 then
+  begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
+  end;
   // Der Dialog war modal: Das Programm kann inzwischen beendet sein.
   Process := TAtlasIdeBreakpoints.CurrentProcess;
   if Process = nil then
@@ -375,9 +407,13 @@ begin
   if TAtlasIdeBreakpoints.IsStopped(Process) then
   begin
     if VisibleForms(Forms) then
-      Arm(FChoice, Forms)
+    begin
+      Arm(FChoice, Forms);
+    end
     else
+    begin
       ArmAllForms;
+    end;
     Exit;
   end;
   // Programm läuft: kurz anhalten, im Takt auf den Halt warten, dann Formulare lesen.
@@ -404,15 +440,23 @@ begin
   Result := Evaluate(TAtlasEventBreak.FormCountExpression, Value) and TryStrToInt(Trim(Value), Count) and
     (Count >= 0);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to Count - 1 do
   begin
     if not Evaluate(TAtlasEventBreak.FormVisibleExpression(Index), Value) then
+    begin
       Exit(False);
+    end;
     if not SameText(Trim(Value), 'True') then
+    begin
       Continue;
+    end;
     if not Evaluate(TAtlasEventBreak.FormClassExpression(Index), Value) then
+    begin
       Exit(False);
+    end;
     AForms := AForms + [TAtlasEventBreak.Unquote(Value)];
   end;
 end;
@@ -443,7 +487,9 @@ begin
     Exit;
   end;
   if Length(FLocations) > TAtlasEventBreak.ManyBreakpoints then
+  begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FLocations)]));
+  end;
   Watch;
   Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FLocations)]));
 end;
@@ -459,7 +505,9 @@ begin
   begin
     Breakpoint := TAtlasIdeBreakpoints.Add(Location.FileName, Location.Line, BreakpointGroup);
     if Breakpoint <> nil then
+    begin
       FBreaks := FBreaks + [Breakpoint];
+    end;
   end;
   FPhase := TPhase.Watching;
   FSeenRunning := False;
@@ -473,7 +521,9 @@ begin
     Process.Run(ormRun);
   end
   else
+  begin
     FSeenRunning := True;
+  end;
 end;
 
 procedure TAtlasIdeEventBreak.KeepWatching;
@@ -485,7 +535,9 @@ begin
     Exit;
   end;
   if Length(FLocations) > 0 then
+  begin
     Watch;
+  end;
 end;
 
 procedure TAtlasIdeEventBreak.Finish;
@@ -498,7 +550,9 @@ end;
 procedure TAtlasIdeEventBreak.HideBar;
 begin
   if (FBar <> nil) and FBar.IsShown then
+  begin
     FBar.Dismiss;
+  end;
 end;
 
 procedure TAtlasIdeEventBreak.Stopped(const AProcess: IOTAProcess);
@@ -514,17 +568,23 @@ begin
   if Found < 0 then
   begin
     if AProcess.ProcessState = psStopped then
+    begin
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(FileName), Line + 1]));
+    end;
     Exit;
   end;
   Identified := -1;
   if Length(FLocations[Found].Handlers) > 1 then
   begin
     if Evaluate('Sender.Name', Sender) then
+    begin
       Identified := TAtlasEventBreak.Identify(FAnswer.Handlers, FLocations[Found], TAtlasEventBreak.Unquote(Sender));
+    end;
   end
   else
+  begin
     Identified := FLocations[Found].Handlers[0];
+  end;
   Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped,
     [TAtlasEventBreak.Caption(FAnswer.Handlers, FLocations[Found], Identified)]));
   if FBar = nil then
@@ -537,7 +597,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.KeepWatching;
+            end;
           end);
       end;
     FBar.OnClose :=
@@ -547,7 +609,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.HideBar;
+            end;
           end);
       end;
   end;
@@ -588,15 +652,21 @@ begin
             if not TAtlasIdeBreakpoints.IsStopped(Process) then
             begin
               if GetTickCount - FPauseStarted < PauseWaitMs then
+              begin
                 Exit;
+              end;
               // Kein Halt nach Pause: alle Formulare.
               ArmAllForms;
               Exit;
             end;
             if VisibleForms(Forms) then
-              Arm(FChoice, Forms)
+            begin
+              Arm(FChoice, Forms);
+            end
             else
+            begin
               ArmAllForms;
+            end;
           end;
         TPhase.Watching:
           begin
@@ -608,7 +678,9 @@ begin
             // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
             TAtlasIdeBreakpoints.Position(Process.CurrentThread, FileName, Line);
             if not FSeenRunning and SameText(FileName, FStartFile) and (Line = FStartLine) then
+            begin
               Exit;
+            end;
             Stopped(Process);
           end;
       else

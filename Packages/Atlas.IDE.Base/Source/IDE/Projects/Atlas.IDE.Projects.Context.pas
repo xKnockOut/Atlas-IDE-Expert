@@ -86,22 +86,34 @@ var
 begin
   Result := nil;
   if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  begin
     Exit;
+  end;
   if AConfiguration = '' then
-    Result := Configurations.ActiveConfiguration
+  begin
+    Result := Configurations.ActiveConfiguration;
+  end
   else
+  begin
     for Index := 0 to Configurations.ConfigurationCount - 1 do
+    begin
       if SameText(Configurations.Configurations[Index].Name, AConfiguration) then
       begin
         Result := Configurations.Configurations[Index];
         Break;
       end;
+    end;
+  end;
   if (Result = nil) or (APlatform = '') then
+  begin
     Exit;
+  end;
   // Plattformabhängige Werte (z. B. Suchpfade nur für Win64) stehen in der Plattformkonfiguration.
   Platformed := Result.PlatformConfiguration[APlatform];
   if Platformed <> nil then
+  begin
     Result := Platformed;
+  end;
 end;
 
 function BuildConfiguration(const AProject: IOTAProject; const APlatform: string): IOTABuildConfiguration;
@@ -117,12 +129,18 @@ var
 begin
   Result := ABuild.GetValue(AName, True);
   if not TAtlasProjectContext.RefersToItself(Result, AName) then
+  begin
     Exit;
+  end;
   Parent := ABuild.Parent;
   if (Parent = nil) or (ADepth > 8) then
-    Result := TAtlasProjectContext.Inherit(Result, AName, '')
+  begin
+    Result := TAtlasProjectContext.Inherit(Result, AName, '');
+  end
   else
+  begin
     Result := TAtlasProjectContext.Inherit(Result, AName, ConfigValue(Parent, AName, ADepth + 1, AResolved));
+  end;
   AResolved := True;
 end;
 
@@ -151,7 +169,9 @@ begin
       AContext.Namespaces := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_Namespace', 0, Resolved));
       AContext.Source := TAtlasProjectContext.SourceConfiguration;
       if Resolved then
+      begin
         AContext.Source := TAtlasProjectContext.SourceResolved;
+      end;
       Exit;
     end;
   except
@@ -159,7 +179,9 @@ begin
       ; // Ersatzweg unten.
   end;
   if AProject.ProjectOptions = nil then
+  begin
     Exit;
+  end;
   AContext.Defines := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Define'));
   AContext.SearchPaths := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_UnitSearchPath'));
   AContext.Namespaces := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Namespace'));
@@ -172,12 +194,16 @@ var
 begin
   Result := nil;
   if (ABaseKey = '') or (APlatform = '') then
+  begin
     Exit;
+  end;
   Registry := TRegistry.Create(KEY_READ);
   try
     Registry.RootKey := HKEY_CURRENT_USER;
     if Registry.OpenKeyReadOnly(ABaseKey + '\Library\' + APlatform) and Registry.ValueExists('Search Path') then
+    begin
       Result := TAtlasProjectContext.List(Registry.ReadString('Search Path'));
+    end;
   finally
     Registry.Free;
   end;
@@ -189,7 +215,9 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result := Services.GetBaseRegistryKey;
+  end;
 end;
 
 procedure ReadNaming(var AContext: TAtlasProjectContext);
@@ -201,13 +229,17 @@ var
 begin
   Team := TAtlasIdeTeamFile.ForProject(AContext.Project);
   if not Team.Valid then
+  begin
     Exit;
+  end;
   for Kind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
+  begin
     if Team.HasNaming[Kind] then
     begin
       AContext.HasNaming[TAtlasProjectNamingKind(Ord(Kind))] := True;
       AContext.Naming[TAtlasProjectNamingKind(Ord(Kind))] := Team.Naming[Kind];
     end;
+  end;
   // Eigene Formatroutinen für die Platzhalter im Parameter-Hint (#451).
   for Item in Team.FormatFunctions do
   begin
@@ -224,7 +256,9 @@ begin
   Result := Default(TAtlasProjectContext);
   if (AProject = nil) or not SameText(ExtractFileExt(AProject.FileName), '.dproj') or
     not FileExists(AProject.FileName) then
+  begin
     Exit;
+  end;
   Result.Project := AProject.FileName;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
@@ -273,7 +307,9 @@ begin
   end;
   // Ordner der laufenden IDE.
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result.AddBds(Services.GetRootDirectory);
+  end;
   // Ordner der Version unter „Öffentliche Dokumente“ und „Dokumente“, wie sie die IDE setzt.
   if AContext.BdsVersion <> '' then
   begin
@@ -299,19 +335,25 @@ var
 begin
   Result := '';
   if AProject = nil then
+  begin
     Exit;
+  end;
   Resolved := False;
   try
     Build := NamedConfiguration(AProject, AConfiguration, APlatform);
     if Build <> nil then
+    begin
       Exit(ConfigValue(Build, AName, 0, Resolved));
+    end;
   except
     on Exception do
       ; // Ersatzweg unten.
   end;
   if (AProject.ProjectOptions <> nil) and
     ((AConfiguration = '') or SameText(AConfiguration, AProject.CurrentConfiguration)) then
+  begin
     Result := OptionValue(AProject, AName);
+  end;
 end;
 
 class function TAtlasIdeProjectContext.BuildConfiguration(const AProject: IOTAProject;
@@ -319,7 +361,9 @@ class function TAtlasIdeProjectContext.BuildConfiguration(const AProject: IOTAPr
 begin
   Result := nil;
   if AProject <> nil then
+  begin
     Result := NamedConfiguration(AProject, AName, '');
+  end;
 end;
 
 class function TAtlasIdeProjectContext.Configurations(const AProject: IOTAProject): TArray<string>;
@@ -330,8 +374,12 @@ begin
   Result := nil;
   try
     if (AProject <> nil) and Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Items) then
+    begin
       for Index := 0 to Items.ConfigurationCount - 1 do
+      begin
         Result := Result + [Items.Configurations[Index].Name];
+      end;
+    end;
   except
     on Exception do
       Result := nil;
@@ -344,8 +392,12 @@ var
 begin
   Result := False;
   for Name in Configurations(AProject) do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;
@@ -357,17 +409,23 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Projects := Modules.MainProjectGroup;
   if Projects = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Projects.ProjectCount - 1 do
   begin
     Context := Read(Projects.Projects[Index]);
     // Aktives Projekt für Dateien, die zu mehreren Projekten gehören (#46).
     Context.Active := Projects.Projects[Index] = Projects.ActiveProject;
     if Context.Project <> '' then
+    begin
       Result := Result + [Context];
+    end;
   end;
 end;
 
@@ -382,7 +440,9 @@ class function TAtlasIdeProjectContext.Version(const AProject: IOTAProject; cons
 begin
   Result := '';
   if (AProject = nil) or (AProject.ProjectOptions = nil) then
+  begin
     Exit;
+  end;
   Result := TAtlasProjectVersion.FromOptions(Value('VerInfo_IncludeVerInfo'), Value('VerInfo_Keys'), Value('VerInfo_MajorVer'),
     Value('VerInfo_MinorVer'), Value('VerInfo_Release'), Value('VerInfo_Build'));
 end;

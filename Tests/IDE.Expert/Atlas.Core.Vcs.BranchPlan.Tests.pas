@@ -1113,23 +1113,15 @@ begin
   mFacts := TAtlasVcsBranchFacts.Empty;
 end;
 
-procedure TAtlasVcsBranchPlanTests.StepsSvnWithExternals;
+/// <summary>svn 1.8: Atlas schreibt im Branch selbst fest, mit der Revision der External-Arbeitskopie.</summary>
+procedure AssertSvn18PinsInBranch(const AFacts: TAtlasVcsBranchFacts);
 var
   mFacts: TAtlasVcsBranchFacts;
   mRequest: TAtlasVcsBranchRequest;
   mSteps: TArray<TAtlasVcsBranchStep>;
   mDir: string;
 begin
-  mFacts := ExternalFacts;
-  // Alle ohne Revision festschreiben, svn 1.14: --pin-externals, kein Umschreiben.
-  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
-    TAtlasVcsExternalAction.Pin]);
-  Assert.IsTrue(TAtlasVcsBranchPlan.UsesPinExternals(mRequest));
-  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
-  Assert.AreEqual(2, Integer(Length(mSteps)));
-  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch ' +
-    '--pin-externals', Line(mSteps, 0));
-  Assert.AreEqual('switch', mSteps[1].Arguments[0]);
+  mFacts := AFacts;
   // svn 1.8: Atlas schreibt im Branch selbst fest, mit der Revision der External-Arbeitskopie.
   mFacts.SvnVersion := '1.8.19';
   mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
@@ -1153,6 +1145,25 @@ begin
   Assert.IsTrue(mSteps[3].ChangesServer);
   Assert.AreEqual('switch', mSteps[4].Arguments[0]);
   Assert.Contains(TAtlasVcsBranchPlan.StepText(TAtlasVcsKind.Svn, mSteps[2]), '(svn:externals: Packages/Basis');
+end;
+
+procedure TAtlasVcsBranchPlanTests.StepsSvnWithExternals;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+begin
+  mFacts := ExternalFacts;
+  // Alle ohne Revision festschreiben, svn 1.14: --pin-externals, kein Umschreiben.
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Pin]);
+  Assert.IsTrue(TAtlasVcsBranchPlan.UsesPinExternals(mRequest));
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch ' +
+    '--pin-externals', Line(mSteps, 0));
+  Assert.AreEqual('switch', mSteps[1].Arguments[0]);
+  AssertSvn18PinsInBranch(mFacts);
   // Mitverzweigen: Package zuerst, dann Projekt, dann Umschreiben, dann umschalten.
   mFacts.SvnVersion := '1.14.3';
   mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Branch, TAtlasVcsExternalAction.Keep,
@@ -1258,7 +1269,7 @@ var
   mRules: TArray<TAtlasVcsExternalRule>;
   mInvalid: string;
 begin
-  mRules := TAtlasVcsBranchPlan.RulesOf('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
+  mRules := TAtlasVcsExternalRules.RulesOf('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
     '{"source": "", "onBranch": "pin"}, {"source": "^/Libs", "onBranch": "ask"}, ' +
     '{"source": "^/packages/basis", "onBranch": "branch"}, {"source": "https://svn.x/Libs", "onBranch": "BRANCH"}]');
   Assert.AreEqual(2, Integer(Length(mRules)), 'ohne Quelle, ask und doppelte Quelle fallen weg');
@@ -1266,24 +1277,24 @@ begin
   Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Keep);
   Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Branch);
   Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
-    '{"source": "https://svn.x/Libs", "onBranch": "branch"}]', TAtlasVcsBranchPlan.RulesJson(mRules));
+    '{"source": "https://svn.x/Libs", "onBranch": "branch"}]', TAtlasVcsExternalRules.RulesJson(mRules));
   Assert.AreEqual('^/Packages/Basis = keep' + sLineBreak + 'https://svn.x/Libs = branch',
-    TAtlasVcsBranchPlan.RulesText(mRules));
-  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.RulesOf('kaputt'))));
-  Assert.AreEqual('[]', TAtlasVcsBranchPlan.RulesJson(nil));
-  Assert.IsTrue(TAtlasVcsBranchPlan.RulesOfText('# Kommentar'#13#10'^/Packages/Basis = keep'#13#10#13#10 +
+    TAtlasVcsExternalRules.RulesText(mRules));
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsExternalRules.RulesOf('kaputt'))));
+  Assert.AreEqual('[]', TAtlasVcsExternalRules.RulesJson(nil));
+  Assert.IsTrue(TAtlasVcsExternalRules.RulesOfText('# Kommentar'#13#10'^/Packages/Basis = keep'#13#10#13#10 +
     '  ^/Libs=pin '#10'^/packages/basis = branch', mRules, mInvalid));
   Assert.AreEqual(2, Integer(Length(mRules)));
   Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Branch, 'letzte Zeile gewinnt');
   Assert.AreEqual('^/Libs', mRules[1].Source);
   Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Pin);
   Assert.AreEqual('', mInvalid);
-  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('^/a = keep'#13#10'^/b = fragen', mRules, mInvalid));
+  Assert.IsFalse(TAtlasVcsExternalRules.RulesOfText('^/a = keep'#13#10'^/b = fragen', mRules, mInvalid));
   Assert.AreEqual('^/b = fragen', mInvalid);
   Assert.AreEqual(0, Integer(Length(mRules)));
-  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('= keep', mRules, mInvalid));
-  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('^/a keep', mRules, mInvalid));
-  Assert.IsTrue(TAtlasVcsBranchPlan.RulesOfText('', mRules, mInvalid));
+  Assert.IsFalse(TAtlasVcsExternalRules.RulesOfText('= keep', mRules, mInvalid));
+  Assert.IsFalse(TAtlasVcsExternalRules.RulesOfText('^/a keep', mRules, mInvalid));
+  Assert.IsTrue(TAtlasVcsExternalRules.RulesOfText('', mRules, mInvalid));
   Assert.AreEqual(0, Integer(Length(mRules)));
   mRules := nil;
   mInvalid := '';

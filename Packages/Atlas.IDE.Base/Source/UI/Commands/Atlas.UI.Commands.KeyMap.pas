@@ -118,7 +118,9 @@ begin
   Result := Trim(AText);
   while (Result <> '') and ((Result[Length(Result)] = ':') or (Result[Length(Result)] = '…') or
     (Result[Length(Result)] = '.')) do
+  begin
     Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+  end;
 end;
 
 { TAtlasKeyMapWindow }
@@ -426,15 +428,23 @@ var
 begin
   Result := '';
   if (AIndex < 0) or (AIndex > High(AItems)) or not AItems[AIndex].Conflict then
+  begin
     Exit;
+  end;
   Item := AItems[AIndex];
   if Item.Winner < 0 then
-    Result := ReasonText(TAtlasKeyReason.NoneActive)
+  begin
+    Result := ReasonText(TAtlasKeyReason.NoneActive);
+  end
   else if Item.Wins then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapWins, [ReasonText(Item.Reason)])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapWins, [ReasonText(Item.Reason)]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapLoses, [AItems[Item.Winner].Command,
       OriginText(AItems[Item.Winner]), ReasonText(Item.Reason)]);
+  end;
 end;
 
 class function TAtlasKeyMapWindow.Headers: TArray<string>;
@@ -454,17 +464,25 @@ class function TAtlasKeyMapWindow.RarelyText(const AItem: TAtlasKeyItem): string
 begin
   // Aus der Zählung der Tastenkürzel-Tipps (#600); leer, solange der Befehl selten genutzt oder nicht gezählt ist.
   if AItem.RarelyByKeyboard then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapRarely, [AItem.MouseUses, AItem.KeyUses])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapRarely, [AItem.MouseUses, AItem.KeyUses]);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TAtlasKeyMapWindow.SummaryText(AShown, ATotal, AConflicts: Integer): string;
 begin
   if AShown = ATotal then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapSummary, [ATotal, AConflicts])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapSummary, [ATotal, AConflicts]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapSummaryFiltered, [AShown, ATotal, AConflicts]);
+  end;
 end;
 
 function TAtlasKeyMapWindow.ExportHtml(const ACreated: string): string;
@@ -475,17 +493,25 @@ var
 begin
   Rows := nil;
   for Index in FShown do
+  begin
     Rows := Rows + [TAtlasKeyHtmlRow.Create(Cells(FItems, Index), FItems[Index].Conflict)];
+  end;
   Subtitle := TAtlasStrings.Fmt(TAtlasTextId.KeyMapCreated, [ACreated,
     SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems))]);
   if Trim(FSearch.Text) <> '' then
+  begin
     Subtitle := Subtitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.KeyMapFilter, [Trim(FSearch.Text)]);
+  end;
   if TAtlasStrings.Language = TAtlasLanguage.German then
+  begin
     Result := TAtlasKeyMap.Html('de', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), Subtitle,
-      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, Rows)
+      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, Rows);
+  end
   else
+  begin
     Result := TAtlasKeyMap.Html('en', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), Subtitle,
       TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, Rows);
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.ApplyFilter;
@@ -537,11 +563,15 @@ var
   Index: Integer;
 begin
   if (Item.Index < 0) or (Item.Index > High(FShown)) then
+  begin
     Exit;
+  end;
   Values := Cells(FItems, FShown[Item.Index]);
   Item.Caption := Values[0];
   for Index := 1 to High(Values) do
+  begin
     Item.SubItems.Add(Values[Index]);
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
@@ -549,30 +579,42 @@ procedure TAtlasKeyMapWindow.ListCustomDrawItem(Sender: TCustomListView; Item: T
 begin
   DefaultDraw := True;
   if (Item.Index < 0) or (Item.Index > High(FShown)) then
+  begin
     Exit;
+  end;
   // Doppelt belegte Kürzel rot (#520).
   if FItems[FShown[Item.Index]].Conflict then
-    Sender.Canvas.Font.Color := ToColor(FColors.Error)
+  begin
+    Sender.Canvas.Font.Color := ToColor(FColors.Error);
+  end
   else
+  begin
     Sender.Canvas.Font.Color := ToColor(FColors.Text);
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.ExportClick(Sender: TObject);
 begin
   if Assigned(FOnExport) then
+  begin
     FOnExport();
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.SettingsClick(Sender: TObject);
 begin
   if Assigned(FOnSettings) then
+  begin
     FOnSettings();
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.CloseClick(Sender: TObject);

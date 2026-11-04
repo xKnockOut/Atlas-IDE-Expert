@@ -118,7 +118,9 @@ begin
   else
     begin
       if ACode >= $80000000 then
+      begin
         Exit(Format('Ausnahme 0x%.8X', [ACode]));
+      end;
       Exit(Format('Code %d', [ACode]));
     end;
   end;
@@ -130,12 +132,18 @@ var
   Seconds: Int64;
 begin
   if AMs < 1000 then
+  begin
     Exit('unter 1 s');
+  end;
   Seconds := AMs div 1000;
   if Seconds < 60 then
+  begin
     Exit(Format('%d s', [Seconds]));
+  end;
   if Seconds < 3600 then
+  begin
     Exit(Format('%d min %d s', [Seconds div 60, Seconds mod 60]));
+  end;
   Result := Format('%d h %d min', [Seconds div 3600, (Seconds mod 3600) div 60]);
 end;
 
@@ -144,13 +152,21 @@ class function TAtlasServerExits.Line(ACode: Cardinal; ARuntimeMs: Int64; const 
 begin
   Result := Format('Server beendet: %s nach %s', [Describe(ACode), Runtime(ARuntimeMs)]);
   if ALastMethod <> '' then
+  begin
     Result := Result + '; letzte Anfrage ' + ALastMethod;
+  end;
   if Length(AOpenMethods) > 0 then
+  begin
     Result := Result + '; offen: ' + string.Join(', ', AOpenMethods);
+  end;
   if AErrorLines > 0 then
-    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, StderrName])
+  begin
+    Result := Result + Format('; %d Zeilen auf stderr (%s)', [AErrorLines, StderrName]);
+  end
   else
+  begin
     Result := Result + '; nichts auf stderr';
+  end;
 end;
 
 class function TAtlasServerExits.StderrFileName(const AFolder: string): string;
@@ -171,11 +187,13 @@ begin
   FLock := TCriticalSection.Create;
   FClock := AClock;
   if not Assigned(FClock) then
+  begin
     FClock :=
       function: TDateTime
       begin
         Result := Now;
       end;
+  end;
 end;
 
 destructor TAtlasServerCrashes.Destroy;
@@ -196,7 +214,9 @@ begin
     FLastCode := ACode;
     FLastAt := Time;
     if not Result then
+    begin
       FHeld := True;
+    end;
   finally
     FLock.Leave;
   end;

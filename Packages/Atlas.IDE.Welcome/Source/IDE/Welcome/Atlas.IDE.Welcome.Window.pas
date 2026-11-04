@@ -103,14 +103,20 @@ var
   Board: TAtlasWelcomeBoardFrame;
 begin
   if not (AFrame is TAtlasWelcomeBoardFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Board := TAtlasWelcomeBoardFrame(AFrame);
   TAtlasIdeWelcomeWindow.UpdateIcon;
   Theme(Board);
   if Assigned(TAtlasIdeWelcomeWindow.OnFrame) then
+  begin
     TAtlasIdeWelcomeWindow.OnFrame(Board);
+  end;
 end;
 
 function TStartDock.GetMenuActionList: TCustomActionList;
@@ -167,7 +173,9 @@ const
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TStartDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeWelcomeWindow }
@@ -196,7 +204,9 @@ class function TAtlasIdeWelcomeWindow.ExistingBoard: TAtlasWelcomeBoardFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasWelcomeBoardFrame) then
+  begin
     Result := TAtlasWelcomeBoardFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeWelcomeWindow.Visible: Boolean;
@@ -208,7 +218,9 @@ end;
 class procedure TAtlasIdeWelcomeWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeWelcomeWindow.UpdateIcon;
@@ -216,7 +228,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.

@@ -47,8 +47,13 @@ const
   Sql = 'select *'#13#10'from Kunde'#13#10'where Name = ''O''''Brien''';
 
 function Concat(const AText: string; ABreak: TStringLiteralBreak; AMaxLineLength: Integer = 0): string;
+var
+  Settings: TStringLiteralSettings;
 begin
-  Result := TStringLiterals.ToLiteral(AText, '  ', False, False, ABreak, AMaxLineLength, #10);
+  Settings := TStringLiteralSettings.Default;
+  Settings.LineBreak := ABreak;
+  Settings.MaxLineLength := AMaxLineLength;
+  Result := TStringLiterals.ToLiteral(AText, '  ', False, False, Settings, #10);
 end;
 
 function Plain(const AExpression: string): string;
@@ -113,12 +118,12 @@ procedure TStringLiteralsTests.MultilineString;
 var
   Literal: string;
 begin
-  Literal := TStringLiterals.ToLiteral('select *'#10'from Kunde', '  ', False, True, TStringLiteralBreak.SLineBreak, 0,
+  Literal := TStringLiterals.ToLiteral('select *'#10'from Kunde', '  ', False, True, TStringLiteralSettings.Default,
     #10);
   Assert.AreEqual('''''''' + #10'    select *'#10'    from Kunde'#10'    ''''''', Literal);
   Assert.AreEqual('select *'#13#10'from Kunde', Plain(Literal));
   // Mit ''' im Text oder Steuerzeichen geht es nur verkettet.
-  Literal := TStringLiterals.ToLiteral('a'''''''#10'b', '', False, True, TStringLiteralBreak.SLineBreak, 0, #10);
+  Literal := TStringLiterals.ToLiteral('a'''''''#10'b', '', False, True, TStringLiteralSettings.Default, #10);
   Assert.AreEqual('''a'''''''''''''' + sLineBreak +'#10'''b''', Literal);
 end;
 

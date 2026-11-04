@@ -107,31 +107,57 @@ end;
 class function TAtlasIdeWelcomeLayouts.Description(const AId: string): string;
 begin
   if SameText(AId, TAtlasWelcomeIds.Continue) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescContinue)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescContinue);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Projects) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescProjects)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescProjects);
+  end
   else if SameText(AId, TAtlasWelcomeIds.History) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHistory)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHistory);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Tests) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescTests)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescTests);
+  end
   else if SameText(AId, TAtlasWelcomeIds.State) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescState)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescState);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Unsaved) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescUnsaved)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescUnsaved);
+  end
   else if SameText(AId, TAtlasWelcomeIds.News) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescNews)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescNews);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Discover) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescDiscover)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescDiscover);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Setup) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSetup)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSetup);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Issues) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescIssues)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescIssues);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Sprint) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSprint)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescSprint);
+  end
   else if SameText(AId, TAtlasWelcomeIds.Help) then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHelp)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDescHelp);
+  end
   else
+  begin
     Result := DescriptionOfSection(AId);
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.Registered: TArray<string>;
@@ -141,7 +167,9 @@ begin
   // Auch ausgeschaltete Bereiche: Sie sind angemeldet, ihr Schalter ist nur aus.
   Result := nil;
   for Section in TAtlasWelcomeSections.Default.All do
+  begin
     Result := Result + [Section.Id];
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.BoardLayout(const AWeight: TAtlasWelcomeWeight): TAtlasWelcomeLayout;
@@ -154,11 +182,15 @@ var
 begin
   Current := TAtlasIdeSettings.Current;
   if not Current.WelcomePageCustomLayout then
+  begin
     Exit(TAtlasWelcomeLayout.Atlas);
+  end;
   Ids := Registered;
   Result := TAtlasWelcomeCustomizing.Load(Current).Current.Adopted(Ids, AWeight, Added);
   if (Length(Added) = 0) or FAdopting or (Trim(TAtlasIdeSettings.Stored.WelcomePageLayouts) = '') then
+  begin
     Exit;
+  end;
   // Ein eigenes Layout ist gespeichert: neue Bereiche dort aufnehmen und melden. Nicht mitten im Füllen der
   // Tafel speichern, das füllte sie gleich noch einmal.
   FAdopting := True;
@@ -173,11 +205,15 @@ begin
     begin
       FAdopting := False;
       if Keep = nil then
+      begin
         Exit;
+      end;
       Stored := TAtlasIdeSettings.Stored;
       Save(TAtlasWelcomeCustomizing.Stored(Stored, TAtlasWelcomeCustomizing.Load(Stored).WithCurrent(Adopted)));
       if Assigned(FOnAnnounce) then
+      begin
         FOnAnnounce(Added);
+      end;
     end);
 end;
 
@@ -197,7 +233,9 @@ begin
   Key := TAtlasWelcomeCustomizing.SettingOf(AId);
   Session := TAtlasIdeSettings.Session;
   if (Key = '') or not Session.TryGet(Key, Value) then
+  begin
     Exit;
+  end;
   Session.Drop(Key);
   TAtlasIdeSettings.SetSession(Session);
 end;
@@ -218,10 +256,14 @@ end;
 procedure TAtlasIdeWelcomeLayouts.SetEditing(AOn: Boolean);
 begin
   if FEditing = AOn then
+  begin
     Exit;
+  end;
   FEditing := AOn;
   if Assigned(FRefresh) then
+  begin
     FRefresh();
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.LayoutNames: TArray<string>;
@@ -243,10 +285,14 @@ begin
   Result := nil;
   Current := TAtlasIdeSettings.Current;
   for Item in TAtlasWelcomeCustomizing.Catalog do
+  begin
     // Nur angemeldete Bereiche; dazu gehören auch die, die noch nie gezeigt wurden (Schalter aus).
     if TAtlasWelcomeSections.Default.Find(Item.Id, Section) then
+    begin
       Result := Result + [TAtlasWelcomeCatalogEntry.Create(Item.Id, Section.Title, Description(Item.Id),
         TAtlasWelcomeCustomizing.IsOn(Current, Item.Id))];
+    end;
+  end;
 end;
 
 procedure TAtlasIdeWelcomeLayouts.Arrange(const ALayout: TAtlasWelcomeLayout);
@@ -259,7 +305,9 @@ begin
   Next := TAtlasWelcomeCustomizing.Stored(Stored, Layouts.WithCurrent(ALayout));
   if (Next.WelcomePageLayouts <> Stored.WelcomePageLayouts) or (Next.WelcomePageColumns <> Stored.WelcomePageColumns)
     or (Next.WelcomePageActiveLayout <> Stored.WelcomePageActiveLayout) then
+  begin
     Save(Next);
+  end;
 end;
 
 procedure TAtlasIdeWelcomeLayouts.ShowSection(const AId: string; AColumn: Integer; const ABefore: string);
@@ -268,7 +316,9 @@ var
   Layouts: TAtlasWelcomeLayouts;
 begin
   if not TAtlasWelcomeCustomizing.InCatalog(AId) then
+  begin
     Exit;
+  end;
   Stored := TAtlasIdeSettings.Stored;
   Layouts := TAtlasWelcomeCustomizing.Load(Stored);
   // Erst an die Einfügelinie, dann sichtbar: Stored nimmt die Sichtbarkeit aus den Einstellungen.
@@ -283,7 +333,9 @@ var
   Stored: TAtlasPluginSettings;
 begin
   if not TAtlasWelcomeCustomizing.InCatalog(AId) then
+  begin
     Exit;
+  end;
   Stored := TAtlasWelcomeCustomizing.WithSection(TAtlasIdeSettings.Stored, AId, False);
   DropSession(AId);
   // Das aktive Layout merkt sich die Sichtbarkeit mit (mehrere Layouts).
@@ -296,10 +348,14 @@ var
 begin
   Key := TAtlasWelcomeCustomizing.SettingOf(AId);
   if Key = '' then
+  begin
     Exit;
+  end;
   // Ohne den Weg von #628 (Funktion nicht gestartet) wie das Auge.
   if not (Assigned(FOnHideSetting) and FOnHideSetting(Key, APoint)) then
+  begin
     HideSection(AId);
+  end;
 end;
 
 procedure TAtlasIdeWelcomeLayouts.ShowSectionSettings(const AId: string);
@@ -308,7 +364,9 @@ var
 begin
   Key := TAtlasWelcomeCustomizing.SettingOf(AId);
   if (Key <> '') and Assigned(FOnShowSetting) then
+  begin
     FOnShowSetting(Key);
+  end;
 end;
 
 procedure TAtlasIdeWelcomeLayouts.SwitchLayout(const AName: string);
@@ -318,7 +376,9 @@ begin
   Stored := TAtlasIdeSettings.Stored;
   Next := TAtlasWelcomeCustomizing.Switched(Stored, AName);
   if Next.WelcomePageActiveLayout <> Stored.WelcomePageActiveLayout then
+  begin
     Save(Next);
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.AddLayout(const AName: string): Boolean;
@@ -329,7 +389,9 @@ begin
   Stored := TAtlasIdeSettings.Stored;
   Result := TAtlasWelcomeCustomizing.Load(Stored).Added(AName, Layouts);
   if Result then
+  begin
     Save(TAtlasWelcomeCustomizing.Stored(Stored, Layouts));
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.RenameLayout(const AName: string): Boolean;
@@ -340,7 +402,9 @@ begin
   Stored := TAtlasIdeSettings.Stored;
   Result := TAtlasWelcomeCustomizing.Load(Stored).Renamed(AName, Layouts);
   if Result then
+  begin
     Save(TAtlasWelcomeCustomizing.Stored(Stored, Layouts));
+  end;
 end;
 
 function TAtlasIdeWelcomeLayouts.DeleteLayout: Boolean;
@@ -352,7 +416,9 @@ begin
   Result := TAtlasWelcomeCustomizing.Load(Stored).Deleted(Layouts);
   // Das Layout danach bringt seine Sichtbarkeit mit.
   if Result then
+  begin
     Save(TAtlasWelcomeCustomizing.Applied(Stored, Layouts));
+  end;
 end;
 
 procedure TAtlasIdeWelcomeLayouts.ResetLayout;

@@ -3507,7 +3507,9 @@ var
 begin
   Result := '';
   for Line in Lines do
+  begin
     Result := Result + Line + #10;
+  end;
 end;
 
 end.

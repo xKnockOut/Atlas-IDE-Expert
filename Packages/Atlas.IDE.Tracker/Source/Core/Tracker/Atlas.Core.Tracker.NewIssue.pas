@@ -238,6 +238,7 @@ implementation
 uses
   System.Classes,
   System.Diagnostics,
+  System.Math,
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Uris,
@@ -320,137 +321,216 @@ begin
   Result := CharInSet(ACh, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
 end;
 
+/// <summary>Erste Stelle ab AIndex (vor ATo), die kein Leerraum ist.</summary>
+function SkipSpaces(const ALine: string; AIndex, ATo: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result < ATo) and IsSpace(ALine[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Stelle hinter "#" bzw. "ATL-" ab AStart; 0 ohne.</summary>
+function KeyPrefixEnd(const AText: string; AStart: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  if AStart > Length(AText) then
+  begin
+    Exit;
+  end;
+  if AText[AStart] = '#' then
+  begin
+    Exit(AStart + 1);
+  end;
+  mIndex := AStart;
+  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', '0'..'9', '_']) do
+  begin
+    Inc(mIndex);
+  end;
+  if CharInSet(AText[AStart], ['A'..'Z']) and (mIndex <= Length(AText)) and (AText[mIndex] = '-') then
+  begin
+    Result := mIndex + 1;
+  end;
+end;
+
 /// <summary>Länge einer Kennung "ATL-130" bzw. "#130" ab AStart in AText; 0 ohne.</summary>
 function KeyLength(const AText: string; AStart: Integer): Integer;
 var
-  mIndex, mDigits: Integer;
+  mIndex, mEnd: Integer;
 begin
   Result := 0;
-  mIndex := AStart;
-  if (mIndex <= Length(AText)) and (AText[mIndex] = '#') then
-  begin
-    Inc(mIndex);
-  end
-  else
-  begin
-    if (mIndex > Length(AText)) or not CharInSet(AText[mIndex], ['A'..'Z']) then
-    begin
-      Exit;
-    end;
-    while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', '0'..'9', '_']) do
-    begin
-      Inc(mIndex);
-    end;
-    if (mIndex > Length(AText)) or (AText[mIndex] <> '-') then
-    begin
-      Exit;
-    end;
-    Inc(mIndex);
-  end;
-  mDigits := 0;
-  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['0'..'9']) do
-  begin
-    Inc(mIndex);
-    Inc(mDigits);
-  end;
-  if mDigits = 0 then
+  mIndex := KeyPrefixEnd(AText, AStart);
+  if mIndex = 0 then
   begin
     Exit;
+  end;
+  mEnd := mIndex;
+  while (mEnd <= Length(AText)) and CharInSet(AText[mEnd], ['0'..'9']) do
+  begin
+    Inc(mEnd);
   end;
   // Danach Ende, Leerraum oder Doppelpunkt: "ATL-130x" ist keine Kennung.
-  if (mIndex <= Length(AText)) and IsKeyChar(AText[mIndex]) then
+  if (mEnd > mIndex) and not ((mEnd <= Length(AText)) and IsKeyChar(AText[mEnd])) then
   begin
-    Exit;
+    Result := mEnd - AStart;
   end;
-  Result := mIndex - AStart;
 end;
 
-/// <summary>Inhalt eines Kommentars von AFrom bis vor ATo (ab 1) auf TODO prüfen.</summary>
-function ParseBody(const ALine: string; AFrom, ATo: Integer; AStyle: TAtlasTodoStyle;
-  out ATodo: TAtlasTodoComment): Boolean;
+/// <summary>"TODO" bzw. "FIXME" als eigenes Wort ab AFrom (nach Leerraum); „TODOs“ oder „TODO-Liste“ sind keine
+/// Einträge.</summary>
+function KeywordAt(const ALine: string; AFrom, ATo: Integer; out AStart, AEnd: Integer): Boolean;
 var
-  mIndex, mWordEnd, mColon, mKeyLength: Integer;
   mWord: string;
 begin
-  Result := False;
-  mIndex := AFrom;
-  while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
+  AStart := SkipSpaces(ALine, AFrom, ATo);
+  AEnd := AStart;
+  while (AEnd < ATo) and CharInSet(ALine[AEnd], ['A'..'Z', 'a'..'z']) do
   begin
-    Inc(mIndex);
+    Inc(AEnd);
   end;
-  mWordEnd := mIndex;
-  while (mWordEnd < ATo) and CharInSet(ALine[mWordEnd], ['A'..'Z', 'a'..'z']) do
+  mWord := Copy(ALine, AStart, AEnd - AStart);
+  Result := (SameText(mWord, 'TODO') or SameText(mWord, 'FIXME')) and
+    ((AEnd >= ATo) or IsSpace(ALine[AEnd]) or (ALine[AEnd] = ':'));
+end;
+
+/// <summary>Optionen der IDE ({ TODO 1 -oMarco -cGUI : Text }) beginnen an AIndex.</summary>
+function HasIdeOptions(const ALine: string; AIndex, ATo: Integer): Boolean;
+begin
+  Result := (AIndex < ATo) and (CharInSet(ALine[AIndex], ['0'..'9']) or ((ALine[AIndex] = '-') and
+    (AIndex + 1 < ATo) and CharInSet(ALine[AIndex + 1], ['o', 'O', 'c', 'C'])));
+end;
+
+/// <summary>Anfang des Texts nach dem Schlüsselwort: nach den Optionen der IDE bzw. einem Doppelpunkt.</summary>
+function TextStartAfter(const ALine: string; AIndex, ATo: Integer; var AHasOptions: Boolean): Integer;
+var
+  mColon: Integer;
+begin
+  Result := SkipSpaces(ALine, AIndex, ATo);
+  if HasIdeOptions(ALine, Result, ATo) then
   begin
-    Inc(mWordEnd);
-  end;
-  mWord := Copy(ALine, mIndex, mWordEnd - mIndex);
-  if not SameText(mWord, 'TODO') and not SameText(mWord, 'FIXME') then
-  begin
-    Exit;
-  end;
-  // „TODOs“ oder „TODO-Liste“ sind keine Einträge.
-  if (mWordEnd < ATo) and not IsSpace(ALine[mWordEnd]) and (ALine[mWordEnd] <> ':') then
-  begin
-    Exit;
-  end;
-  ATodo := Default(TAtlasTodoComment);
-  ATodo.Style := AStyle;
-  ATodo.Keyword := mWord;
-  ATodo.KeywordEnd := mWordEnd;
-  mIndex := mWordEnd;
-  while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
-  begin
-    Inc(mIndex);
-  end;
-  // Optionen der IDE ({ TODO 1 -oMarco -cGUI : Text }): Text nach dem Doppelpunkt.
-  if (mIndex < ATo) and (CharInSet(ALine[mIndex], ['0'..'9']) or ((ALine[mIndex] = '-') and (mIndex + 1 < ATo) and
-    CharInSet(ALine[mIndex + 1], ['o', 'O', 'c', 'C']))) then
-  begin
-    mColon := mIndex;
+    mColon := Result;
     while (mColon < ATo) and (ALine[mColon] <> ':') do
     begin
       Inc(mColon);
     end;
     if mColon < ATo then
     begin
-      ATodo.HasOptions := True;
-      mIndex := mColon + 1;
-      while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
-      begin
-        Inc(mIndex);
-      end;
+      AHasOptions := True;
+      Result := SkipSpaces(ALine, mColon + 1, ATo);
     end;
   end
-  else if (mIndex < ATo) and (ALine[mIndex] = ':') then
+  else if (Result < ATo) and (ALine[Result] = ':') then
+  begin
+    Result := SkipSpaces(ALine, Result + 1, ATo);
+  end;
+end;
+
+/// <summary>Kennung am Anfang des Texts ("ATL-130: …") in ATodo.Key, der Text dann ohne sie.</summary>
+procedure ReadKey(const ALine: string; AIndex, ATo: Integer; var ATodo: TAtlasTodoComment);
+var
+  mKeyLength, mIndex: Integer;
+begin
+  mKeyLength := KeyLength(ALine, AIndex);
+  if (mKeyLength = 0) or (AIndex + mKeyLength > ATo) then
+  begin
+    Exit;
+  end;
+  ATodo.Key := Copy(ALine, AIndex, mKeyLength);
+  mIndex := AIndex + mKeyLength;
+  if (mIndex < ATo) and (ALine[mIndex] = ':') then
   begin
     Inc(mIndex);
-    while (mIndex < ATo) and IsSpace(ALine[mIndex]) do
-    begin
-      Inc(mIndex);
-    end;
   end;
+  ATodo.Text := Trim(Copy(ALine, mIndex, ATo - mIndex));
+end;
+
+/// <summary>Inhalt eines Kommentars von AFrom bis vor ATo (ab 1) auf TODO prüfen.</summary>
+function ParseBody(const ALine: string; AFrom, ATo: Integer; AStyle: TAtlasTodoStyle;
+  out ATodo: TAtlasTodoComment): Boolean;
+var
+  mStart, mWordEnd, mIndex: Integer;
+begin
+  Result := KeywordAt(ALine, AFrom, ATo, mStart, mWordEnd);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ATodo := Default(TAtlasTodoComment);
+  ATodo.Style := AStyle;
+  ATodo.Keyword := Copy(ALine, mStart, mWordEnd - mStart);
+  ATodo.KeywordEnd := mWordEnd;
+  mIndex := TextStartAfter(ALine, mWordEnd, ATo, ATodo.HasOptions);
   ATodo.TextStart := mIndex;
   ATodo.Text := Trim(Copy(ALine, mIndex, ATo - mIndex));
-  mKeyLength := KeyLength(ALine, mIndex);
-  if (mKeyLength > 0) and (mIndex + mKeyLength <= ATo) then
+  ReadKey(ALine, mIndex, ATo, ATodo);
+end;
+
+function IsAt(const ALine: string; AIndex: Integer; const AText: string): Boolean;
+begin
+  Result := Copy(ALine, AIndex, Length(AText)) = AText;
+end;
+
+/// <summary>Zeilenkommentar an AIndex; "///" (XML-Doku) zählt wie "//".</summary>
+function SlashTodo(const ALine: string; AIndex: Integer; out ATodo: TAtlasTodoComment): Boolean;
+var
+  mBody: Integer;
+begin
+  mBody := AIndex + 2;
+  while (mBody <= Length(ALine)) and (ALine[mBody] = '/') do
   begin
-    ATodo.Key := Copy(ALine, mIndex, mKeyLength);
-    mIndex := mIndex + mKeyLength;
-    if (mIndex < ATo) and (ALine[mIndex] = ':') then
-    begin
-      Inc(mIndex);
-    end;
-    ATodo.Text := Trim(Copy(ALine, mIndex, ATo - mIndex));
+    Inc(mBody);
   end;
-  Result := True;
+  Result := ParseBody(ALine, mBody, Length(ALine) + 1, TAtlasTodoStyle.Slashes, ATodo);
+end;
+
+/// <summary>Blockkommentar zwischen AOpen und AClose ab AIndex (Direktiven zählen nicht); AIndex danach auf dem
+/// letzten Zeichen des Kommentars.</summary>
+function BlockTodo(const ALine: string; var AIndex: Integer; const AOpen, AClose: string; AStyle: TAtlasTodoStyle;
+  out ATodo: TAtlasTodoComment): Boolean;
+var
+  mBody, mClose: Integer;
+begin
+  mBody := AIndex + Length(AOpen);
+  mClose := Pos(AClose, ALine, mBody);
+  if mClose = 0 then
+  begin
+    mClose := Length(ALine) + 1;
+  end;
+  Result := not IsAt(ALine, mBody, '$') and ParseBody(ALine, mBody, mClose, AStyle, ATodo);
+  AIndex := mClose + Length(AClose) - 1;
+end;
+
+/// <summary>Kommentar an AIndex auf TODO prüfen; AStop: die Suche ist zu Ende (Zeilenkommentar oder gefunden).
+/// </summary>
+function CommentTodo(const ALine: string; var AIndex: Integer; var ATodo: TAtlasTodoComment;
+  out AStop: Boolean): Boolean;
+begin
+  Result := False;
+  AStop := IsAt(ALine, AIndex, '//');
+  if AStop then
+  begin
+    Result := SlashTodo(ALine, AIndex, ATodo);
+  end
+  else if ALine[AIndex] = '{' then
+  begin
+    Result := BlockTodo(ALine, AIndex, '{', '}', TAtlasTodoStyle.Braces, ATodo);
+  end
+  else if IsAt(ALine, AIndex, '(*') then
+  begin
+    Result := BlockTodo(ALine, AIndex, '(*', '*)', TAtlasTodoStyle.Parens, ATodo);
+  end;
+  AStop := AStop or Result;
 end;
 
 { TAtlasNewIssues }
 
 class function TAtlasNewIssues.TodoAt(const ALine: string; out ATodo: TAtlasTodoComment): Boolean;
 var
-  mIndex, mClose: Integer;
-  mInString: Boolean;
+  mIndex: Integer;
+  mInString, mStop: Boolean;
 begin
   ATodo := Default(TAtlasTodoComment);
   Result := False;
@@ -464,43 +544,10 @@ begin
     end
     else if not mInString then
     begin
-      if (ALine[mIndex] = '/') and (mIndex < Length(ALine)) and (ALine[mIndex + 1] = '/') then
+      Result := CommentTodo(ALine, mIndex, ATodo, mStop);
+      if mStop then
       begin
-        mClose := mIndex + 2;
-        // "///" (XML-Doku) zählt wie "//".
-        while (mClose <= Length(ALine)) and (ALine[mClose] = '/') do
-        begin
-          Inc(mClose);
-        end;
-        Exit(ParseBody(ALine, mClose, Length(ALine) + 1, TAtlasTodoStyle.Slashes, ATodo));
-      end;
-      if (ALine[mIndex] = '{') then
-      begin
-        mClose := Pos('}', ALine, mIndex + 1);
-        if mClose = 0 then
-        begin
-          mClose := Length(ALine) + 1;
-        end;
-        if ((mIndex = Length(ALine)) or (ALine[mIndex + 1] <> '$')) and
-          ParseBody(ALine, mIndex + 1, mClose, TAtlasTodoStyle.Braces, ATodo) then
-        begin
-          Exit(True);
-        end;
-        mIndex := mClose;
-      end
-      else if (ALine[mIndex] = '(') and (mIndex < Length(ALine)) and (ALine[mIndex + 1] = '*') then
-      begin
-        mClose := Pos('*)', ALine, mIndex + 2);
-        if mClose = 0 then
-        begin
-          mClose := Length(ALine) + 1;
-        end;
-        if ((mIndex + 2 > Length(ALine)) or (ALine[mIndex + 2] <> '$')) and
-          ParseBody(ALine, mIndex + 2, mClose, TAtlasTodoStyle.Parens, ATodo) then
-        begin
-          Exit(True);
-        end;
-        mIndex := mClose + 1;
+        Exit;
       end;
     end;
     Inc(mIndex);
@@ -600,11 +647,33 @@ begin
   end;
 end;
 
+/// <summary>Kleinster Einzug der nicht leeren Zeilen von AFirst bis ALast.</summary>
+function CommonIndent(const ALines: TArray<string>; AFirst, ALast: Integer): Integer;
+var
+  mIndex, mCount: Integer;
+  mLine: string;
+begin
+  Result := MaxInt;
+  for mIndex := AFirst to ALast do
+  begin
+    mLine := ALines[mIndex];
+    if Trim(mLine) = '' then
+    begin
+      Continue;
+    end;
+    mCount := 0;
+    while (mCount < Length(mLine)) and IsSpace(mLine[mCount + 1]) do
+    begin
+      Inc(mCount);
+    end;
+    Result := Min(Result, mCount);
+  end;
+end;
+
 /// <summary>Gemeinsame Einrückung aller nicht leeren Zeilen entfernen, leere Zeilen am Rand weglassen.</summary>
 function Dedent(const ALines: TArray<string>): string;
 var
-  mLine: string;
-  mIndent, mCount, mFirst, mLast, mIndex: Integer;
+  mIndent, mFirst, mLast, mIndex: Integer;
 begin
   Result := '';
   mFirst := 0;
@@ -617,28 +686,7 @@ begin
   begin
     Dec(mLast);
   end;
-  if mFirst > mLast then
-  begin
-    Exit;
-  end;
-  mIndent := MaxInt;
-  for mIndex := mFirst to mLast do
-  begin
-    mLine := ALines[mIndex];
-    if Trim(mLine) = '' then
-    begin
-      Continue;
-    end;
-    mCount := 0;
-    while (mCount < Length(mLine)) and IsSpace(mLine[mCount + 1]) do
-    begin
-      Inc(mCount);
-    end;
-    if mCount < mIndent then
-    begin
-      mIndent := mCount;
-    end;
-  end;
+  mIndent := CommonIndent(ALines, mFirst, mLast);
   for mIndex := mFirst to mLast do
   begin
     if mIndex > mFirst then
@@ -1014,11 +1062,24 @@ begin
     TTextUris.PercentEncode('field(name),bundle(values(name,login),aggregatedUsers(login))') + '&$top=100';
 end;
 
+/// <summary>Name bzw. bei AUsers der Anmeldename eines Werts aus "values".</summary>
+function ValueName(AItem: TJSONObject; AUsers: Boolean): string;
+begin
+  Result := '';
+  if AUsers then
+  begin
+    Result := TextOf(AItem, 'login');
+  end;
+  if Result = '' then
+  begin
+    Result := TextOf(AItem, 'name');
+  end;
+end;
+
 /// <summary>Namen bzw. Anmeldenamen aus "values" und "aggregatedUsers" eines Bündels.</summary>
 function BundleValues(ABundle: TJSONObject; AUsers: Boolean): TArray<string>;
 var
   mList, mItem: TJSONValue;
-  mName: string;
 begin
   Result := nil;
   if ABundle = nil then
@@ -1032,32 +1093,20 @@ begin
     begin
       if mItem is TJSONObject then
       begin
-        mName := '';
-        if AUsers then
-        begin
-          mName := TextOf(TJSONObject(mItem), 'login');
-        end;
-        if mName = '' then
-        begin
-          mName := TextOf(TJSONObject(mItem), 'name');
-        end;
-        Result := AddUnique(Result, mName);
+        Result := AddUnique(Result, ValueName(TJSONObject(mItem), AUsers));
       end;
     end;
   end;
-  if not AUsers then
+  mList := ABundle.Values['aggregatedUsers'];
+  if not AUsers or not (mList is TJSONArray) then
   begin
     Exit;
   end;
-  mList := ABundle.Values['aggregatedUsers'];
-  if mList is TJSONArray then
+  for mItem in TJSONArray(mList) do
   begin
-    for mItem in TJSONArray(mList) do
+    if mItem is TJSONObject then
     begin
-      if mItem is TJSONObject then
-      begin
-        Result := AddUnique(Result, TextOf(TJSONObject(mItem), 'login'));
-      end;
+      Result := AddUnique(Result, TextOf(TJSONObject(mItem), 'login'));
     end;
   end;
 end;
@@ -1422,15 +1471,96 @@ begin
   end;
 end;
 
+/// <summary>YouTrack braucht die ID des Projekts, die Zuordnung kennt das Kürzel. False mit AFailure, wenn sie
+/// sich nicht lesen lässt.</summary>
+function YouTrackProjectId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AWatch: TStopwatch; out AId: string; out AFailure: TAtlasNewIssueResult): Boolean;
+var
+  mStatus: Integer;
+  mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  AId := '';
+  AFailure := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown);
+  Result := False;
+  if ATarget.Project = '' then
+  begin
+    Exit;
+  end;
+  if not ATransport.Get(TAtlasNewIssues.YouTrackProjectsUrl(ATarget), Remaining(AWatch), mStatus, mText,
+    mError) then
+  begin
+    AFailure := TAtlasNewIssueResult.Create(OutcomeOfError(mError));
+  end
+  else if mStatus <> 200 then
+  begin
+    AFailure := Failure(mStatus, mText);
+  end
+  else if TAtlasNewIssues.ParseYouTrackProject(mText, ATarget.Project, AId) then
+  begin
+    Result := True;
+  end
+  else if not IsJson(mText) then
+  begin
+    AFailure.Outcome := TAtlasNewIssueOutcome.Unreadable;
+  end;
+end;
+
+/// <summary>Kennung und Nummer aus der Antwort auf das Anlegen; ohne Kennung Unreadable (dann nichts in den Code
+/// schreiben).</summary>
+procedure ReadCreated(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AText: string; var AResult: TAtlasNewIssueResult);
+var
+  mKey: string;
+  mNumber: Integer;
+begin
+  if IsYouTrack(AProvider) then
+  begin
+    if TAtlasNewIssues.ParseYouTrackCreated(AText, mKey, mNumber) then
+    begin
+      AResult.Key := mKey;
+      AResult.Number := mNumber;
+    end;
+  end
+  else if TAtlasNewIssues.ParseGitHubCreated(AText, mNumber) then
+  begin
+    AResult.Key := '#' + IntToStr(mNumber);
+    AResult.Number := mNumber;
+  end;
+  if AResult.Key = '' then
+  begin
+    AResult.Outcome := TAtlasNewIssueOutcome.Unreadable;
+  end
+  else
+  begin
+    AResult.Page := AProvider.IssuePage(ATarget, AResult.Key);
+  end;
+end;
+
+/// <summary>Adresse der Anfrage zum Anlegen, ABody ihr Inhalt.</summary>
+function CreateRequest(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AProjectId, AMe: string; const ADraft: TAtlasNewIssueDraft; out ABody: string): string;
+begin
+  if IsYouTrack(AProvider) then
+  begin
+    Result := TAtlasNewIssues.YouTrackCreateUrl(ATarget);
+    ABody := TAtlasNewIssues.YouTrackBody(AProjectId, ADraft, AMe);
+  end
+  else
+  begin
+    Result := TAtlasNewIssues.GitHubCreateUrl(ATarget);
+    ABody := TAtlasNewIssues.GitHubBody(ADraft, AMe);
+  end;
+end;
+
 class function TAtlasNewIssues.CreateIssue(const AProvider: IAtlasTrackerProvider;
   const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const ADraft: TAtlasNewIssueDraft): TAtlasNewIssueResult;
 var
   mSend: IAtlasCiSend;
   mWatch: TStopwatch;
-  mUrl, mText, mId, mMe, mBody, mKey: string;
-  mStatus, mNumber: Integer;
-  mError: TAtlasCiFetchError;
+  mUrl, mText, mId, mMe, mBody: string;
+  mResponse: TAtlasCiResponse;
 begin
   if (AProvider = nil) or not ATarget.Configured or (Trim(ADraft.Title) = '') then
   begin
@@ -1442,80 +1572,34 @@ begin
   end;
   mWatch := TStopwatch.StartNew;
   mId := '';
-  if IsYouTrack(AProvider) then
+  if IsYouTrack(AProvider) and not YouTrackProjectId(ATarget, ATransport, mWatch, mId, Result) then
   begin
-    // YouTrack braucht die ID des Projekts, die Zuordnung kennt das Kürzel.
-    if ATarget.Project = '' then
-    begin
-      Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown));
-    end;
-    if not ATransport.Get(YouTrackProjectsUrl(ATarget), Remaining(mWatch), mStatus, mText, mError) then
-    begin
-      Exit(TAtlasNewIssueResult.Create(OutcomeOfError(mError)));
-    end;
-    if mStatus <> 200 then
-    begin
-      Exit(Failure(mStatus, mText));
-    end;
-    if not ParseYouTrackProject(mText, ATarget.Project, mId) then
-    begin
-      Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.ProjectUnknown);
-      if not IsJson(mText) then
-      begin
-        Result.Outcome := TAtlasNewIssueOutcome.Unreadable;
-      end;
-      Exit;
-    end;
+    Exit;
   end;
   mMe := '';
   if ADraft.AssignToMe and GetText(ATransport, AProvider.ProbeUrl(ATarget), mWatch, mText) then
   begin
     mMe := ParseLogin(mText);
   end;
-  if IsYouTrack(AProvider) then
+  mUrl := CreateRequest(AProvider, ATarget, mId, mMe, ADraft, mBody);
+  if mUrl = '' then
   begin
-    mUrl := YouTrackCreateUrl(ATarget);
-    mBody := YouTrackBody(mId, ADraft, mMe);
+    Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured);
+  end
+  else if not mSend.Send('POST', mUrl, mBody, Remaining(mWatch), mResponse) then
+  begin
+    Result := TAtlasNewIssueResult.Create(OutcomeOfError(mResponse.Error));
+  end
+  else if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
+  begin
+    Result := Failure(mResponse.Status, mResponse.Text);
   end
   else
   begin
-    mUrl := GitHubCreateUrl(ATarget);
-    mBody := GitHubBody(ADraft, mMe);
+    Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
+    Result.HttpStatus := mResponse.Status;
+    ReadCreated(AProvider, ATarget, mResponse.Text, Result);
   end;
-  if mUrl = '' then
-  begin
-    Exit(TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.NotConfigured));
-  end;
-  if not mSend.Send('POST', mUrl, mBody, Remaining(mWatch), mStatus, mText, mError) then
-  begin
-    Exit(TAtlasNewIssueResult.Create(OutcomeOfError(mError)));
-  end;
-  if (mStatus <> 200) and (mStatus <> 201) then
-  begin
-    Exit(Failure(mStatus, mText));
-  end;
-  Result := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Created);
-  Result.HttpStatus := mStatus;
-  if IsYouTrack(AProvider) then
-  begin
-    if ParseYouTrackCreated(mText, mKey, mNumber) then
-    begin
-      Result.Key := mKey;
-      Result.Number := mNumber;
-    end;
-  end
-  else if ParseGitHubCreated(mText, mNumber) then
-  begin
-    Result.Key := '#' + IntToStr(mNumber);
-    Result.Number := mNumber;
-  end;
-  // Angelegt, aber die Antwort nennt keine Kennung: nichts in den Code schreiben.
-  if Result.Key = '' then
-  begin
-    Result.Outcome := TAtlasNewIssueOutcome.Unreadable;
-    Exit;
-  end;
-  Result.Page := AProvider.IssuePage(ATarget, Result.Key);
 end;
 
 end.

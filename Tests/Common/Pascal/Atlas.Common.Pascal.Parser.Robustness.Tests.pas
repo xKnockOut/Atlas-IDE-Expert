@@ -505,71 +505,91 @@ begin
   Findings := nil;
 end;
 
+/// <summary>Wurzel des Korpus aus ATLAS_CORPUS, sonst der Ordner source der Delphi-Installation (BDS); '' ohne.
+/// </summary>
+function CorpusRoot: string;
+begin
+  Result := GetEnvironmentVariable('ATLAS_CORPUS');
+  if Result = '' then
+  begin
+    Result := GetEnvironmentVariable('BDS');
+    if Result <> '' then
+    begin
+      Result := TPath.Combine(Result, 'source');
+    end;
+  end;
+end;
+
+/// <summary>In der Delphi-Installation RTL und VCL, sonst der ganze Ordner ARoot.</summary>
+function CorpusDirectories(const ARoot: string): TArray<string>;
+var
+  mDirectory: string;
+begin
+  Result := nil;
+  for mDirectory in TArray<string>.Create(TPath.Combine(ARoot, 'rtl'), TPath.Combine(ARoot, 'vcl')) do
+  begin
+    if TDirectory.Exists(mDirectory) then
+    begin
+      Result := Result + [mDirectory];
+    end;
+  end;
+  if Result = nil then
+  begin
+    Result := [ARoot];
+  end;
+end;
+
+/// <summary>Parst jede .pas unter ADirectory; zählt AFiles hoch und merkt sich die langsamste Datei.</summary>
+procedure ParseDirectory(const ADirectory: string; var AFiles: Integer; var ASlowest: Int64;
+  var ASlowestFile: string);
+var
+  mFileName, mText: string;
+  mWatch: TStopwatch;
+begin
+  for mFileName in TDirectory.GetFiles(ADirectory, '*.pas', TSearchOption.soAllDirectories) do
+  begin
+    mText := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+    mWatch := TStopwatch.StartNew;
+    try
+      ParseAndFree(mText);
+    except
+      on E: Exception do
+      begin
+        Assert.Fail(Format('%s: %s: %s', [mFileName, E.ClassName, E.Message]));
+      end;
+    end;
+    if mWatch.ElapsedMilliseconds > ASlowest then
+    begin
+      ASlowest := mWatch.ElapsedMilliseconds;
+      ASlowestFile := mFileName;
+    end;
+    Inc(AFiles);
+  end;
+end;
+
 procedure TPascalParserRobustnessTests.ParsesDelphiSourceCorpus;
 var
   Root: string;
-  Directories: TArray<string>;
   Directory: string;
-  FileName: string;
   Files: Integer;
   Slowest: Int64;
   SlowestFile: string;
-  Watch: TStopwatch;
   Total: TStopwatch;
-  Text: string;
 begin
-  Root := GetEnvironmentVariable('ATLAS_CORPUS');
-  if Root = '' then
-  begin
-    Root := GetEnvironmentVariable('BDS');
-    if Root <> '' then
-    begin
-      Root := TPath.Combine(Root, 'source');
-    end;
-  end;
+  Root := CorpusRoot;
   // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet (Bericht N2).
   if (Root = '') or not TDirectory.Exists(Root) then
   begin
     System.Writeln('  Übersprungen: kein Korpus (ATLAS_CORPUS oder BDS setzen)');
     Exit;
   end;
-  // In der Delphi-Installation RTL und VCL, sonst der ganze Ordner.
-  Directories := nil;
-  for Directory in TArray<string>.Create(TPath.Combine(Root, 'rtl'), TPath.Combine(Root, 'vcl')) do
-  begin
-    if TDirectory.Exists(Directory) then
-    begin
-      Directories := Directories + [Directory];
-    end;
-  end;
-  if Directories = nil then
-  begin
-    Directories := [Root];
-  end;
-
   Files := 0;
   Slowest := 0;
   SlowestFile := '';
   Total := TStopwatch.StartNew;
-  for Directory in Directories do
+  for Directory in CorpusDirectories(Root) do
   begin
-    for FileName in TDirectory.GetFiles(Directory, '*.pas', TSearchOption.soAllDirectories) do
-    begin
-      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
-      Watch := TStopwatch.StartNew;
-      try
-        ParseAndFree(Text);
-      except
-        on E: Exception do
-          Assert.Fail(Format('%s: %s: %s', [FileName, E.ClassName, E.Message]));
-      end;
-      if Watch.ElapsedMilliseconds > Slowest then
-      begin
-        Slowest := Watch.ElapsedMilliseconds;
-        SlowestFile := FileName;
-      end;
-      Inc(Files);
-    end;
+    ParseDirectory(Directory, Files, Slowest, SlowestFile);
   end;
   Assert.IsTrue(Files > 0, 'Keine .pas-Dateien unter ' + Root);
   Assert.IsTrue(Slowest < HangLimitMs, Format('%s braucht %d ms', [SlowestFile, Slowest]));

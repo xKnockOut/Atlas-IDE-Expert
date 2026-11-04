@@ -49,7 +49,9 @@ var
 procedure LogWay(const AWay: string);
 begin
   if AWay = LoggedWay then
+  begin
     Exit;
+  end;
   LoggedWay := AWay;
   TAtlasGuard.Log(AWay);
 end;
@@ -64,7 +66,9 @@ begin
     Registry.RootKey := HKEY_CURRENT_USER;
     try
       if Registry.OpenKeyReadOnly(AtlasRegistryKey) and Registry.ValueExists(Marker) then
+      begin
         Result := Registry.ReadInteger(Marker) <> 0;
+      end;
     except
       on E: ERegistryException do
         TAtlasGuard.Log('Navigationsleiste: Merker nicht lesbar (' + TAtlasGuard.SafeMessage(E.Message) + ')');
@@ -83,7 +87,9 @@ begin
     Registry.RootKey := HKEY_CURRENT_USER;
     try
       if Registry.OpenKey(AtlasRegistryKey, True) then
+      begin
         Registry.WriteInteger(Marker, Ord(AValue));
+      end;
     except
       on E: ERegistryException do
         TAtlasGuard.Log('Navigationsleiste: Merker nicht geschrieben (' + TAtlasGuard.SafeMessage(E.Message) + ')');
@@ -101,7 +107,9 @@ begin
   Names := AOptions.GetOptionNames;
   SetLength(Result, Length(Names));
   for Index := 0 to High(Names) do
+  begin
     Result[Index] := Names[Index].Name;
+  end;
 end;
 
 class function TAtlasIdeNavigationOption.Apply(AHide: Boolean): Boolean;
@@ -115,11 +123,15 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Exit;
+  end;
   try
     Options := Services.GetEnvironmentOptions;
     if Options = nil then
+    begin
       Exit;
+    end;
     Names := OptionNames(Options);
     Name := TAtlasNavigationOption.Find(Names);
     if Name = '' then
@@ -133,9 +145,13 @@ begin
     State.DisabledByAtlas := ReadMarker;
     Next := TAtlasGuides.Switch(State, AHide);
     if Next.Enabled <> State.Enabled then
+    begin
       Options.Values[Name] := TAtlasNavigationOption.Encode(Value, Next.Enabled);
+    end;
     if Next.DisabledByAtlas <> State.DisabledByAtlas then
+    begin
       WriteMarker(Next.DisabledByAtlas);
+    end;
     LogWay(Format('Navigationsleiste: über die Option %s der IDE (an: %s, von Atlas ausgeschaltet: %s)', [Name,
       BoolToStr(Next.Enabled, True), BoolToStr(Next.DisabledByAtlas, True)]));
     Result := True;

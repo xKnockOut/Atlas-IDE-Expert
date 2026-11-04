@@ -163,8 +163,8 @@ var
   Done: TDictionary<string, Boolean>;
   Lines: TDictionary<Integer, TOverrideMark>;
   Mark: TOverrideMark;
-  Key, Owner: string;
-  Ancestor: TCodeLensLocation;
+  Key: string;
+  Ancestor: TCodeLensOverride;
   Overrides, Overridden: TArray<TOverrideMarkTarget>;
   HasOverride, HasVirtual: Boolean;
   Line: Integer;
@@ -219,10 +219,11 @@ begin
         end;
       end;
       Overrides := nil;
-      if HasOverride and TLspCodeLens.OverriddenAncestor(AResolver, AIndex, Current, TypeSymbol, Symbol.Name, Owner,
+      if HasOverride and TLspCodeLens.OverriddenAncestor(AResolver, AIndex, Current, TypeSymbol, Symbol.Name,
         Ancestor) then
       begin
-        Overrides := [MarkTarget(Owner + '.' + Symbol.Name, Ancestor.FileName, Ancestor.Range)];
+        Overrides := [MarkTarget(Ancestor.Owner + '.' + Symbol.Name, Ancestor.Target.FileName,
+          Ancestor.Target.Range)];
       end;
       Overridden := nil;
       if HasVirtual and (TypeSymbol.Kind <> TIndexSymbolKind.RecordType) then
