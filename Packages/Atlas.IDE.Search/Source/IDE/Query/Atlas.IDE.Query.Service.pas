@@ -363,46 +363,13 @@ begin
   end;
 end;
 
-procedure TCodeQueryState.SaveRule(const AQuery: string);
+/// <summary>Bisherige Liste queries der atlas.json des Projekts als JSON; '' ohne.</summary>
+function ExistingQueriesJson: string;
 var
-  mFrame: TAtlasCodeQueryFrame;
-  mValues: array[0..2] of string;
   mProject: TJSONObject;
   mExisting: TJSONValue;
-  mExistingJson: string;
-  mSaved: TAtlasSavedQuery;
 begin
-  mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  if TAtlasProjectSettings.SettingsFile = '' then
-  begin
-    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
-    Exit;
-  end;
-  mValues[0] := '';
-  mValues[1] := '';
-  mValues[2] := '';
-  if not InputQuery(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleTitle),
-    [TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleName),
-      TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleDescription),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleMessage)], mValues) then
-  begin
-    Exit;
-  end;
-  mSaved := Default(TAtlasSavedQuery);
-  mSaved.Name := Trim(mValues[0]);
-  mSaved.Query := AQuery;
-  mSaved.Description := Trim(mValues[1]);
-  mSaved.FailIfAny := True;
-  if not TAtlasSavedQueries.ValidName(mSaved.Name) then
-  begin
-    mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleBadName), True);
-    Exit;
-  end;
-  mExistingJson := '';
+  Result := '';
   mProject := TAtlasProjectSettings.ReadProject;
   try
     if mProject <> nil then
@@ -410,14 +377,65 @@ begin
       mExisting := mProject.GetValue('queries');
       if mExisting is TJSONArray then
       begin
-        mExistingJson := mExisting.ToJSON([]);
+        Result := mExisting.ToJSON([]);
       end;
     end;
   finally
     mProject.Free;
   end;
+end;
+
+/// <summary>Fragt Name, Beschreibung und Meldung der neuen Regel ab. False, wenn es kein Projekt gibt, der Benutzer
+/// abbricht oder der Name ungültig ist; Hinweise dazu zeigt AFrame.</summary>
+function AskRule(AFrame: TAtlasCodeQueryFrame; const AQuery: string; out ASaved: TAtlasSavedQuery;
+  out AMessage: string): Boolean;
+var
+  mValues: array[0..2] of string;
+begin
+  ASaved := Default(TAtlasSavedQuery);
+  AMessage := '';
+  Result := TAtlasProjectSettings.SettingsFile <> '';
+  if not Result then
+  begin
+    AFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
+    Exit;
+  end;
+  mValues[0] := '';
+  mValues[1] := '';
+  mValues[2] := '';
+  Result := InputQuery(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleTitle),
+    [TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleName),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleDescription),
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleMessage)], mValues);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ASaved.Name := Trim(mValues[0]);
+  ASaved.Query := AQuery;
+  ASaved.Description := Trim(mValues[1]);
+  ASaved.FailIfAny := True;
+  AMessage := Trim(mValues[2]);
+  Result := TAtlasSavedQueries.ValidName(ASaved.Name);
+  if not Result then
+  begin
+    AFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleBadName), True);
+  end;
+end;
+
+procedure TCodeQueryState.SaveRule(const AQuery: string);
+var
+  mFrame: TAtlasCodeQueryFrame;
+  mSaved: TAtlasSavedQuery;
+  mMessage: string;
+begin
+  mFrame := TAtlasIdeCodeQueryWindow.ExistingFrame;
+  if (mFrame = nil) or not AskRule(mFrame, AQuery, mSaved, mMessage) then
+  begin
+    Exit;
+  end;
   if not TAtlasProjectSettings.WriteValue('queries',
-    TAtlasSavedQueries.WithQuery(mExistingJson, mSaved, cSeverity, Trim(mValues[2]))) then
+    TAtlasSavedQueries.WithQuery(ExistingQueriesJson, mSaved, cSeverity, mMessage)) then
   begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRuleNoProject), True);
     Exit;
