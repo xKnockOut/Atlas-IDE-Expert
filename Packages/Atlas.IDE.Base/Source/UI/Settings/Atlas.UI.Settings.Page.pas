@@ -4706,7 +4706,7 @@ begin
   FMarks.Bind(FLightSwatches[0], ['PairColorsLight']);
   FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
   FMarks.Bind(FProblems, ['Problems']);
-  FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FProblemsList, ['ProblemsMessageList']);
   FMarks.Bind(FProblemsWindow, ['ProblemsWindow']);
   FMarks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
   FMarks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
@@ -7300,7 +7300,7 @@ begin
   ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
-  FProblemsList.Checked := ASettings.ProblemsList;
+  FProblemsList.Checked := ASettings.ProblemsMessageList;
   FProblemsWindow.Checked := ASettings.ProblemsWindow;
   FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, ScopeValues));
   FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
@@ -7874,7 +7874,7 @@ begin
   ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
   ASettings.Problems := FProblems.Checked;
-  ASettings.ProblemsList := FProblemsList.Checked;
+  ASettings.ProblemsMessageList := FProblemsList.Checked;
   ASettings.ProblemsWindow := FProblemsWindow.Checked;
   if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
   begin
