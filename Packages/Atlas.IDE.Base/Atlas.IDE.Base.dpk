@@ -307,6 +307,7 @@ contains
   Atlas.Core.Editor.Minimap in 'Source\Core\Editor\Atlas.Core.Editor.Minimap.pas',
   Atlas.UI.Editor.Bar in 'Source\UI\Editor\Atlas.UI.Editor.Bar.pas',
   Atlas.UI.Editor.Minimap in 'Source\UI\Editor\Atlas.UI.Editor.Minimap.pas',
+  Atlas.UI.Editor.MinimapLayers in 'Source\UI\Editor\Atlas.UI.Editor.MinimapLayers.pas',
   Atlas.IDE.Editor.Minimap in 'Source\IDE\Editor\Atlas.IDE.Editor.Minimap.pas',
   Atlas.IDE.Editor.MinimapFolds in 'Source\IDE\Editor\Atlas.IDE.Editor.MinimapFolds.pas',
   Atlas.IDE.Editor.MinimapNotice in 'Source\IDE\Editor\Atlas.IDE.Editor.MinimapNotice.pas',
