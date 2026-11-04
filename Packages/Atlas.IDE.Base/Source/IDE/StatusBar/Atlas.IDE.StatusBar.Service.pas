@@ -8,7 +8,7 @@
 // - Ein Zeitgeber (250 ms) setzt den Inhalt: Status aus dem Atlas-Feld
 //   (TAtlasStatusField, Text, Zustand, Tooltip), Meldungen dieser Unit aus dem
 //   Speicher der Probleme (TAtlasProblemsController.Current), Live-Prüfung
-//   (problems.live, Checking, LastCheck) und die Methode am Cursor aus der
+//   (problems.update, Checking, LastCheck) und die Methode am Cursor aus der
 //   Gliederung (TAtlasIdeOutlineCache) mit Zeilen und CC aus
 //   atlas.server.metrics (Hook Metrics; die Leiste meldet über WantMetrics,
 //   dass sie Metriken braucht). Die oberste Leiste bekommt alles, die anderen
@@ -23,7 +23,8 @@
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
 //   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
-//   #1231), Klick auf die Methode springt zum Methodenkopf. Aktionen laufen
+//   #1231), ohne Live-Prüfung (problems.update save, manual) nur die offene
+//   Datei (TAtlasIdeProblems.CheckFileNow), Klick auf die Methode springt zum Methodenkopf. Aktionen laufen
 //   erst nach dem Klick
 //   (die IDE holt den Fokus in den Editor), wie bei der Editorleiste.
 // - Menü „Leiste anpassen“: Elemente ein- und ausblenden
@@ -168,6 +169,12 @@ function LiveTexts: TAtlasStatusLiveTexts;
 begin
   Result.Live := TAtlasStrings.Text(TAtlasTextId.StatusBarLive);
   Result.OnSave := TAtlasStrings.Text(TAtlasTextId.StatusBarOnSave);
+  Result.Manual := TAtlasStrings.Text(TAtlasTextId.StatusBarManual);
+  Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
+  Result.OnSaveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
+  Result.ManualHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveManualHint);
+  Result.RecheckClick := TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
+  Result.CheckFileClick := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckFileClick);
   Result.Checking := TAtlasStrings.Text(TAtlasTextId.StatusBarChecking);
   Result.CheckedAgo := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckedAgo);
   Result.Seconds := TAtlasStrings.Text(TAtlasTextId.StatusBarSeconds);
@@ -584,8 +591,8 @@ begin
       CheckedAt := Check.At;
     end;
     Result.LiveBusy := ProblemsOn(Settings) and TAtlasProblemsController.Checking;
-    Result.LiveText := TAtlasStatusBarContent.LiveText(Settings.ProblemsLive, Result.LiveBusy, CheckedAt, Now,
-      LiveTexts);
+    Result.LiveText := TAtlasStatusBarContent.LiveText(TAtlasIdeProblems.UpdateMode, Result.LiveBusy, CheckedAt,
+      Now, LiveTexts);
     // Während des Debuggens ruht die Prüfung (#1241).
     if ProblemsOn(Settings) and TAtlasProblemsController.Paused then
     begin
@@ -607,18 +614,8 @@ begin
     begin
       Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);
     end;
-    if Settings.ProblemsLive then
-    begin
-      Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
-    end
-    else
-    begin
-      Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
-    end;
-    if ProblemsOn(Settings) then
-    begin
-      Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
-    end;
+    Result.LiveHint := TAtlasStatusBarContent.LiveHint(TAtlasIdeProblems.UpdateMode, ProblemsOn(Settings),
+      LiveTexts);
     if Check.FileName <> '' then
     begin
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
@@ -787,7 +784,18 @@ procedure TStatusBarState.Recheck;
 begin
   // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
   // liefert workspace/diagnostic nach und nach.
-  if not ProblemsOn(TAtlasIdeSettings.Current) or not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
+  if not ProblemsOn(TAtlasIdeSettings.Current) then
+  begin
+    Exit;
+  end;
+  // Ohne Live-Prüfung prüft der Klick nur die offene Datei: Wer selbst bestimmt, wann geprüft wird, will nicht alle
+  // Units neu prüfen lassen.
+  if TAtlasStatusBarContent.ClickChecksFile(TAtlasIdeProblems.UpdateMode) then
+  begin
+    TAtlasIdeProblems.CheckFileNow;
+    Exit;
+  end;
+  if not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
   begin
     Exit;
   end;

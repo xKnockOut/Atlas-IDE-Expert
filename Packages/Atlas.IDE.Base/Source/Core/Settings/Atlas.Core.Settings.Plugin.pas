@@ -428,8 +428,12 @@ type
     GotoInterfaceKey: Integer;
     /// <summary>Kürzel „Zum implementation-Teil“ (#1101, keys.gotoImplementation); 0 = keins.</summary>
     GotoImplementationKey: Integer;
-    /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
-    ProblemsLive: Boolean;
+    /// <summary>Wann die offene Datei geprüft wird (problems.update): 'live' (beim Tippen, Vorgabe), 'save' (beim
+    /// Speichern), 'manual' (nur auf Anforderung). Ersetzt ProblemsLive (#909).</summary>
+    ProblemsUpdate: string;
+    /// <summary>Verzögerung der Live-Prüfung nach der letzten Änderung in ms (problems.liveDelayMs, 100 bis
+    /// 10000).</summary>
+    ProblemsLiveDelayMs: Integer;
     /// <summary>„Alle sicheren Treffer korrigieren …“ im Fenster Atlas-Prüfung (#1352, fix.bulk).</summary>
     FixBulk: Boolean;
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
@@ -1683,7 +1687,8 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.Settings.StatusBarItems;
+  Atlas.Core.Settings.StatusBarItems,
+  Atlas.Core.Problems.Refresh;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -2076,7 +2081,8 @@ begin
   Result.CreateIssueKey := 0;
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
-  Result.ProblemsLive := True;
+  Result.ProblemsUpdate := TAtlasProblemsRefresh.Name(TAtlasProblemsUpdate.Live);
+  Result.ProblemsLiveDelayMs := TAtlasProblemsRefresh.DefaultDelayMs;
   Result.FixBulk := True;
   Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
@@ -2887,6 +2893,8 @@ begin
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
+  ProblemsUpdate := TAtlasProblemsRefresh.Normalize(ProblemsUpdate);
+  ProblemsLiveDelayMs := TAtlasProblemsRefresh.ClampDelay(ProblemsLiveDelayMs);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
   CreateIssueKey := EnsureRange(CreateIssueKey, 0, $FFFF);
   GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
@@ -3043,7 +3051,13 @@ begin
   CreateIssueKey := AStore.ReadInteger('CreateIssueKey', Default.CreateIssueKey);
   GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
   GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
-  ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
+  ProblemsUpdate := AStore.ReadString('ProblemsUpdate', '');
+  // Vor problems.update: problems.live (#909) übernehmen, an = live, aus = beim Speichern.
+  if ProblemsUpdate = '' then
+  begin
+    ProblemsUpdate := TAtlasProblemsRefresh.FromLive(AStore.ReadInteger('ProblemsLive', 1) <> 0);
+  end;
+  ProblemsLiveDelayMs := AStore.ReadInteger('ProblemsLiveDelayMs', Default.ProblemsLiveDelayMs);
   FixBulk := AStore.ReadInteger('FixBulk', BoolValue(Default.FixBulk)) <> 0;
   HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
   InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
@@ -3690,7 +3704,8 @@ begin
   AStore.WriteInteger('CreateIssueKey', CreateIssueKey);
   AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
   AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
-  AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
+  AStore.WriteString('ProblemsUpdate', ProblemsUpdate);
+  AStore.WriteInteger('ProblemsLiveDelayMs', ProblemsLiveDelayMs);
   AStore.WriteInteger('FixBulk', BoolValue(FixBulk));
   AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));
   AStore.WriteString('InlineDiagnostics', InlineDiagnostics);

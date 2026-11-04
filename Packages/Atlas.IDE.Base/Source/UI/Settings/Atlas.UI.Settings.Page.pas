@@ -22,8 +22,8 @@
 // Schlüssel (Name der Plugin-Einstellung), rollt sie ins Bild, setzt den Fokus und hebt die Zeile fett hervor.
 // Bereich Prüfregeln (#909): Die Regeln selbst stehen in den Dialogen der Einstellungsdateien (atlas.json des
 // Projekts, settings.json über „Weitere globale Einstellungen“) mit einem Knoten je Gruppe; im Hauptknoten der
-// Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.live),
-// „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
+// Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.update,
+// problems.liveDelayMs), „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
 // Bereich Versionsverwaltung (#1285): Art (vcs.provider), Programme git und svn mit eigenem Pfad, „…“ und
 // „Prüfen“ (Version und Fundort, im Hintergrund über OnVcsCheck), Zeitlimit je Aufruf und „Aktuelles Projekt“
 // (beim ersten Zeigen der Seite einmal im Hintergrund abgefragt, OnVcsProject); Links auf die Seiten, die die
@@ -576,7 +576,8 @@ type
     FProblemsWindowOpenFirst: TCheckBox;
     FProblemsWindowClosedUnits: TAtlasChoiceBox;
     FProblemsWindowShowCleanActive: TCheckBox;
-    FProblemsLive: TCheckBox;
+    FProblemsUpdate: TAtlasChoiceBox;
+    FProblemsLiveDelay: TEdit;
     FFixBulk: TCheckBox;
     FProblemsCompilerMerge: TAtlasChoiceBox;
     FProblemsShowCompilerCode: TCheckBox;
@@ -1370,7 +1371,8 @@ type
     property ProblemsWindowOpenFirstCheck: TCheckBox read FProblemsWindowOpenFirst;
     property ProblemsWindowClosedUnitsChoice: TAtlasChoiceBox read FProblemsWindowClosedUnits;
     property ProblemsWindowShowCleanActiveCheck: TCheckBox read FProblemsWindowShowCleanActive;
-    property ProblemsLiveCheck: TCheckBox read FProblemsLive;
+    property ProblemsUpdateChoice: TAtlasChoiceBox read FProblemsUpdate;
+    property ProblemsLiveDelayEdit: TEdit read FProblemsLiveDelay;
     property FixBulkCheck: TCheckBox read FFixBulk;
     property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
     property ProblemsShowCompilerCodeCheck: TCheckBox read FProblemsShowCompilerCode;
@@ -1602,6 +1604,8 @@ const
   ClosedUnitsValues: array[0..2] of string = ('dimmed', 'normal', 'hidden');
   /// <summary>Werte von problems.compilerMerge in der Reihenfolge der Auswahl (#1024).</summary>
   CompilerMergeValues: array[0..1] of string = ('merge', 'both');
+  /// <summary>Werte von problems.update in der Reihenfolge der Auswahl (wie TAtlasProblemsRefresh).</summary>
+  ProblemsUpdateValues: array[0..2] of string = ('live', 'save', 'manual');
 
 const
   // Reihenfolge der Auswahllisten von „Units suchen“ (#777) wie die Werte der Einstellungen.
@@ -2405,7 +2409,11 @@ begin
     TAtlasStrings.Text(TAtlasTextId.ProblemsClosedHidden)]);
   FProblemsWindowShowCleanActive := AddCheck(
     TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive));
-  FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
+  // Wann die offene Datei geprüft wird, und die Verzögerung der Live-Prüfung.
+  FProblemsUpdate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsUpdate),
+    [TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateLive), TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateSave),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateManual)]);
+  FProblemsLiveDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLiveDelay));
   // Sammelkorrektur im Kontextmenü des Fensters (#1352).
   FFixBulk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
@@ -2678,7 +2686,8 @@ begin
   Bind('ArchitectureEnabled', FArchitecture);
   Bind('QueryEnabled', FQuery);
   Bind('HotspotsEnabled', FHotspots);
-  Bind('ProblemsLive', FProblemsLive);
+  Bind('ProblemsUpdate', FProblemsUpdate);
+  Bind('ProblemsLiveDelayMs', FProblemsLiveDelay);
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
   Bind('BookmarksNamed', FBookmarksNamed);
@@ -4715,7 +4724,8 @@ begin
   FMarks.Bind(FProblemsWindowOpenFirst, ['ProblemsWindowOpenFirst']);
   FMarks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
   FMarks.Bind(FProblemsWindowShowCleanActive, ['ProblemsWindowShowCleanActive']);
-  FMarks.Bind(FProblemsLive, ['ProblemsLive']);
+  FMarks.Bind(FProblemsUpdate, ['ProblemsUpdate']);
+  FMarks.Bind(FProblemsLiveDelay, ['ProblemsLiveDelayMs']);
   FMarks.Bind(FFixBulk, ['FixBulk']);
   FMarks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
   FMarks.Bind(FProblemsShowCompilerCode, ['ProblemsShowCompilerCode']);
@@ -7311,7 +7321,8 @@ begin
   FProblemsWindowShowCleanActive.Checked := ASettings.ProblemsWindowShowCleanActive;
   FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
   FProblemsShowCompilerCode.Checked := ASettings.ProblemsShowCompilerCode;
-  FProblemsLive.Checked := ASettings.ProblemsLive;
+  FProblemsUpdate.Choice := Max(0, IndexText(ASettings.ProblemsUpdate, ProblemsUpdateValues));
+  FProblemsLiveDelay.Text := IntToStr(ASettings.ProblemsLiveDelayMs);
   FFixBulk.Checked := ASettings.FixBulk;
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
@@ -7897,7 +7908,11 @@ begin
     ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
   end;
   ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;
-  ASettings.ProblemsLive := FProblemsLive.Checked;
+  if (FProblemsUpdate.Choice >= 0) and (FProblemsUpdate.Choice <= High(ProblemsUpdateValues)) then
+  begin
+    ASettings.ProblemsUpdate := ProblemsUpdateValues[FProblemsUpdate.Choice];
+  end;
+  ASettings.ProblemsLiveDelayMs := StrToIntDef(FProblemsLiveDelay.Text, ASettings.ProblemsLiveDelayMs);
   ASettings.FixBulk := FFixBulk.Checked;
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;

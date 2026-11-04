@@ -68,6 +68,8 @@ type
     [Test]
     procedure ImportMigratesOldKeys;
     [Test]
+    procedure ImportMigratesProblemsLive;
+    [Test]
     procedure ImportRejectsInvalidValuesAndPlaceholders;
     [Test]
     procedure ImportExpandsPathMacros;
@@ -646,6 +648,25 @@ begin
   finally
     Catalog.Free;
   end;
+end;
+
+procedure TAtlasSettingsTransferTests.ImportMigratesProblemsLive;
+var
+  mSource: TAtlasSettingsFile;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+begin
+  // problems.live (#909, Wahrheitswert bzw. 0/1) wird zur Auswahl problems.update: an = live, aus = save.
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    FileOf('"problems.live": false'), imMerge, nil, Macros(), '', '');
+  Assert.IsTrue(ItemOf(mPreview, 'problems.update').Migrated);
+  Assert.AreEqual('"save"', ItemOf(mPreview, 'problems.update').NewJson);
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.AreEqual('save', mAfter.Plugin.ProblemsUpdate);
+  mSource := TAtlasSettingsTransfer.ParseFile('{"ProblemsLive": 1}');
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mSource, imMerge,
+    nil, Macros(), '', '');
+  Assert.AreEqual('"live"', ItemOf(mPreview, 'problems.update').NewJson);
 end;
 
 procedure TAtlasSettingsTransferTests.ImportRejectsInvalidValuesAndPlaceholders;

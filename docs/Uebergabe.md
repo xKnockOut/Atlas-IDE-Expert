@@ -1,5 +1,12 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Aktualisierung der Prüfung einstellbar (04.11.2026, Branch `claude/project-thread-y5r8i0` auf `Pilot-2.0.0-beta.1`, ungebaut mit Delphi)
+- **Anlass:** Marco wollte die Prüfregeln „live (mit ms zum Einstellen) oder manuell“ aktualisieren.
+- **Was:** `problems.update` (`live`/`save`/`manual`, Plugin `ProblemsUpdate`) ersetzt `problems.live`; `problems.liveDelayMs` (100–10000, Vorgabe 400) ersetzt die feste Wartezeit von 400 ms. Alte Werte (Registry `ProblemsLive`, Import `problems.live`) werden umgesetzt: an = live, aus = save.
+- **Kern:** `Atlas.Core.Problems.Refresh` (`TAtlasProblemsRefresh.Due` entscheidet je Takt, `TAtlasProblemsCheckRequest` hält die Anforderung „Datei jetzt prüfen“). Der Controller fragt nur noch `PullDue`; der Takt folgt einer kurzen Verzögerung (`TickMs`).
+- **Plugin:** Knopf „Datei jetzt prüfen“ im Fenster „Atlas-Prüfung“ (nicht im Live-Modus), Befehl `Atlas.CheckFile` in der Befehlspalette, Klick auf die Live-Prüfung der Statusleiste prüft außerhalb von Live nur die offene Datei.
+- **Stand:** ungebaut; Python-Nachbau von Update-ConfigDoc (pwsh nicht installierbar). Handtests LV1–LV9, ASL7/ASL7b, AP14. Offen als Folgeidee: eigenes Tastenkürzel für „Datei jetzt prüfen“.
+
 ## Speicherkorrekturen in der Rollenstruktur von 2.0 (02.11.2026, Branch `claude/project-thread-3ck2sf` auf `Pilot-2.0.0-beta.1`)
 - Ziel: Die übernommenen Korrekturen (PR #1482) liegen in Atlas.Common bzw. in Atlas.IDE.Base (Fenster „Atlas-Server“), nicht in einem Modul; alle berührten Units haben jetzt 0 Atlas-Befunde mit Metriken, ohne Grenzwerte zu ändern.
 - `Atlas.Common.Index.Builder`: Defines je Datei als Record `TIndexFileDefines` (`DefinesOf`, `KeyOf`, `IsUnder`, vorher `TIndexBuilder.IsUnder`), threadsichere Schlüsselmengen `TIndexKeySet` (fehlgeschlagene Units, laufende Aufbauten mit `Claim`), Cache-Einträge `TIndexCacheEntries`, Stufenlauf `RunStage`, `ApplyChange` je Änderung. Rückruf nach der Projektstufe jetzt Eigenschaft `OnProjectDone` statt siebtem Parameter von `Build`.

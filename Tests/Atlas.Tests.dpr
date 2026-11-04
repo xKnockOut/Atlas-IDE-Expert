@@ -1177,6 +1177,8 @@ uses
   Atlas.UI.Popup.Styled in '..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas',
   Atlas.Core.Problems.Tests in 'IDE.Expert\Atlas.Core.Problems.Tests.pas',
   Atlas.Core.Problems.InlineHints.Tests in 'IDE.Expert\Atlas.Core.Problems.InlineHints.Tests.pas',
+  Atlas.Core.Problems.Refresh in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Refresh.pas',
+  Atlas.Core.Problems.Refresh.Tests in 'IDE.Expert\Atlas.Core.Problems.Refresh.Tests.pas',
   Atlas.Core.Problems.Findings.Tests in 'IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas',
   Atlas.Core.Problems.BulkFix.Tests in 'IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas',
   Atlas.Core.Editor.Recursion.Tests in 'IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas',

@@ -22,6 +22,9 @@ type
     procedure NextOfKindWithoutFinding;
     [Test]
     procedure LiveTexts;
+    /// <summary>Tooltip je Art (problems.update) und was der Klick tut.</summary>
+    [Test]
+    procedure LiveHintsFollowUpdateMode;
     [Test]
     procedure AgeRounding;
     [Test]
@@ -47,6 +50,7 @@ uses
   System.DateUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.Refresh,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.StatusBar.Content;
@@ -80,6 +84,12 @@ function Texts: TAtlasStatusLiveTexts;
 begin
   Result.Live := 'live';
   Result.OnSave := 'beim Speichern';
+  Result.Manual := 'manuell';
+  Result.LiveHint := 'Prüft beim Tippen';
+  Result.OnSaveHint := 'Prüft nach dem Speichern';
+  Result.ManualHint := 'Prüft auf Anforderung';
+  Result.RecheckClick := 'Klick: alle Units';
+  Result.CheckFileClick := 'Klick: Datei';
   Result.Checking := 'prüft …';
   Result.CheckedAgo := 'geprüft vor %s';
   Result.Seconds := '%d s';
@@ -188,14 +198,35 @@ var
   Now_: TDateTime;
 begin
   Now_ := EncodeDateTime(2026, 10, 23, 18, 30, 0, 0);
-  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(True, True, Now_, Now_, Texts));
-  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(False, True, 0, Now_, Texts));
-  Assert.AreEqual('beim Speichern', TAtlasStatusBarContent.LiveText(False, False, IncSecond(Now_, -5), Now_, Texts));
-  Assert.AreEqual('live', TAtlasStatusBarContent.LiveText(True, False, 0, Now_, Texts), 'noch nicht geprüft');
-  Assert.AreEqual('live · geprüft vor 2 s', TAtlasStatusBarContent.LiveText(True, False, IncSecond(Now_, -2), Now_,
-    Texts));
-  Assert.AreEqual('live · geprüft vor 0 s', TAtlasStatusBarContent.LiveText(True, False, IncSecond(Now_, 30), Now_,
-    Texts), 'Uhr zurückgestellt');
+  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, True, Now_, Now_, Texts));
+  Assert.AreEqual('prüft …', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Save, True, 0, Now_, Texts));
+  Assert.AreEqual('beim Speichern', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Save, False,
+    IncSecond(Now_, -5), Now_, Texts));
+  Assert.AreEqual('live', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False, 0, Now_, Texts),
+    'noch nicht geprüft');
+  Assert.AreEqual('live · geprüft vor 2 s', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False,
+    IncSecond(Now_, -2), Now_, Texts));
+  Assert.AreEqual('live · geprüft vor 0 s', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Live, False,
+    IncSecond(Now_, 30), Now_, Texts), 'Uhr zurückgestellt');
+  // Nur auf Anforderung: mit dem Alter der letzten Prüfung, damit man sieht, wie alt die Befunde sind.
+  Assert.AreEqual('manuell', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Manual, False, 0, Now_, Texts));
+  Assert.AreEqual('manuell · geprüft vor 2 min', TAtlasStatusBarContent.LiveText(TAtlasProblemsUpdate.Manual, False,
+    IncSecond(Now_, -150), Now_, Texts));
+end;
+
+procedure TAtlasStatusBarContentTests.LiveHintsFollowUpdateMode;
+begin
+  Assert.AreEqual('Prüft beim Tippen', TAtlasStatusBarContent.LiveHint(TAtlasProblemsUpdate.Live, False, Texts));
+  Assert.AreEqual('Prüft beim Tippen' + sLineBreak + 'Klick: alle Units',
+    TAtlasStatusBarContent.LiveHint(TAtlasProblemsUpdate.Live, True, Texts));
+  Assert.AreEqual('Prüft nach dem Speichern' + sLineBreak + 'Klick: Datei',
+    TAtlasStatusBarContent.LiveHint(TAtlasProblemsUpdate.Save, True, Texts));
+  Assert.AreEqual('Prüft auf Anforderung' + sLineBreak + 'Klick: Datei',
+    TAtlasStatusBarContent.LiveHint(TAtlasProblemsUpdate.Manual, True, Texts));
+  Assert.AreEqual('Prüft auf Anforderung', TAtlasStatusBarContent.LiveHint(TAtlasProblemsUpdate.Manual, False, Texts));
+  Assert.IsFalse(TAtlasStatusBarContent.ClickChecksFile(TAtlasProblemsUpdate.Live));
+  Assert.IsTrue(TAtlasStatusBarContent.ClickChecksFile(TAtlasProblemsUpdate.Save));
+  Assert.IsTrue(TAtlasStatusBarContent.ClickChecksFile(TAtlasProblemsUpdate.Manual));
 end;
 
 procedure TAtlasStatusBarContentTests.AgeRounding;

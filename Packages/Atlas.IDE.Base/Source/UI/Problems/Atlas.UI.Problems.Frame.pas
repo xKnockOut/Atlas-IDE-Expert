@@ -3,7 +3,8 @@
 // Inhalt des Fensters „Atlas-Prüfung“ (#909), reine VCL. Oben die
 // Werkzeugleiste: Bereich (aktuelle Datei, Projekt, Projektgruppe), je Art ein
 // Umschalter mit Anzahl, Kategorie, Gruppierung, Textfilter und rechts die
-// Anzeige „Live“ bzw. „Angehalten“. Darunter die Liste (virtuell, ohne
+// Anzeige nach problems.update („Live“, „Beim Speichern“, „Manuell“), ohne
+// Live-Prüfung mit dem Knopf „Datei jetzt prüfen“ (OnCheckFile). Darunter die Liste (virtuell, ohne
 // Flackern) mit den Spalten aus TAtlasFindingColumn: Icon (rotes Kreuz,
 // gelb-oranges Dreieck, blauer Kreis), Art, Kategorie, Meldung, Zeile (gekürzt,
 // Tooltip mit ganzer Zeile), Stelle, Regel und Compiler (#1024: Code, bei
@@ -49,7 +50,8 @@ uses
   Vcl.Menus,
   Vcl.ImgList,
   Vcl.Forms,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.Refresh;
 
 type
   TAtlasFindingEvent = reference to procedure(const AFinding: TAtlasFinding);
@@ -68,6 +70,7 @@ type
     FOpenFirst: TSpeedButton;
     FFilter: TEdit;
     FLive: TLabel;
+    FCheckFile: TSpeedButton;
     FList: TListView;
     FEmpty: TLabel;
     FStatus: TLabel;
@@ -113,6 +116,7 @@ type
     FCanCreateIssue: TFunc<Boolean>;
     FOnScope: TAtlasFindingScopeEvent;
     FOnLayout: TProc;
+    FOnCheckFile: TProc;
     function AddMenuItem(AParent: TMenuItem; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
     function AddCombo(AWidth: Integer): TComboBox;
     procedure FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
@@ -150,6 +154,9 @@ type
     procedure ScopeChange(Sender: TObject);
     procedure GroupingChange(Sender: TObject);
     procedure OpenFirstClick(Sender: TObject);
+    /// <summary>Anzeige der Prüfart und Knopf „Datei jetzt prüfen“ rechts in der Werkzeugleiste.</summary>
+    procedure AddLiveControls;
+    procedure CheckFileClick(Sender: TObject);
     procedure FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListData(Sender: TObject; Item: TListItem);
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -198,8 +205,9 @@ type
     procedure SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
       const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean); overload;
     procedure SetStatus(const AText: string);
-    /// <summary>„Live“ bei laufender Prüfung, sonst „Angehalten“.</summary>
-    procedure SetLive(ALive: Boolean);
+    /// <summary>Anzeige nach problems.update: „Live“, „Beim Speichern“ oder „Manuell“; ohne Live-Prüfung mit dem
+    /// Knopf „Datei jetzt prüfen“.</summary>
+    procedure SetUpdate(AMode: TAtlasProblemsUpdate);
     /// <summary>Liste neu zeichnen, Auswahl und Bildlauf bleiben.</summary>
     procedure Refill;
     /// <summary>Markierung folgt dem Cursor (problems.window.followCursor).</summary>
@@ -225,6 +233,7 @@ type
     property OpenFirstButton: TSpeedButton read FOpenFirst;
     property FilterEdit: TEdit read FFilter;
     property LiveLabel: TLabel read FLive;
+    property CheckFileButton: TSpeedButton read FCheckFile;
     property StatusLabel: TLabel read FStatus;
     property EmptyLabel: TLabel read FEmpty;
     property Menu: TPopupMenu read FMenu;
@@ -248,6 +257,8 @@ type
     property OnScope: TAtlasFindingScopeEvent read FOnScope write FOnScope;
     /// <summary>Bereich, Gruppierung, Spalten oder „Offene zuerst“ geändert: zum Speichern.</summary>
     property OnLayout: TProc read FOnLayout write FOnLayout;
+    /// <summary>„Datei jetzt prüfen“ geklickt.</summary>
+    property OnCheckFile: TProc read FOnCheckFile write FOnCheckFile;
   end;
 
 implementation
@@ -355,13 +366,7 @@ begin
   FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.ProblemsFilterHint);
   FFilter.OnChange := ControlsChanged;
   FFilter.OnKeyDown := FilterKeyDown;
-  FLive := TLabel.Create(Self);
-  FLive.Parent := FBar;
-  FLive.Align := alRight;
-  FLive.AlignWithMargins := True;
-  FLive.Layout := tlCenter;
-  FLive.ShowAccelChar := False;
-  FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  AddLiveControls;
 
   FStatus := TLabel.Create(Self);
   FStatus.Parent := Self;
@@ -1021,16 +1026,53 @@ begin
   FStatus.Caption := AText;
 end;
 
-procedure TAtlasProblemsFrame.SetLive(ALive: Boolean);
+procedure TAtlasProblemsFrame.AddLiveControls;
 begin
-  if ALive then
+  FLive := TLabel.Create(Self);
+  FLive.Parent := FBar;
+  FLive.Align := alRight;
+  FLive.AlignWithMargins := True;
+  FLive.Layout := tlCenter;
+  FLive.ShowAccelChar := False;
+  FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  // Links neben der Anzeige; sichtbar nur ohne Live-Prüfung (SetUpdate).
+  FCheckFile := TSpeedButton.Create(Self);
+  FCheckFile.Parent := FBar;
+  FCheckFile.Left := 0;
+  FCheckFile.Align := alRight;
+  FCheckFile.AlignWithMargins := True;
+  FCheckFile.Flat := True;
+  FCheckFile.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand);
+  FCheckFile.Width := MulDiv(110, CurrentPPI, 96);
+  FCheckFile.Visible := False;
+  FCheckFile.OnClick := CheckFileClick;
+end;
+
+procedure TAtlasProblemsFrame.CheckFileClick(Sender: TObject);
+begin
+  if Assigned(FOnCheckFile) then
   begin
+    FOnCheckFile();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.SetUpdate(AMode: TAtlasProblemsUpdate);
+begin
+  case AMode of
+    TAtlasProblemsUpdate.Save:
+      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsOnSave);
+    TAtlasProblemsUpdate.Manual:
+      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsManual);
+  else
     FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  end;
+  FCheckFile.Visible := AMode <> TAtlasProblemsUpdate.Live;
+  if AMode = TAtlasProblemsUpdate.Live then
+  begin
     FLive.Font.Color := $0050A030;
   end
   else
   begin
-    FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsPaused);
     FLive.Font.Color := clGrayText;
   end;
 end;

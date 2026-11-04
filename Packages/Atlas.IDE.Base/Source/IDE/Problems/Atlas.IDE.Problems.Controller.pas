@@ -23,10 +23,13 @@
 // Fehler, Warnungen und Hinweise wie in der Liste „Atlas-Probleme“ (ohne
 // Compilermeldungen) an OnCounts; mit problems.statusCounter aus einmal
 // AShow = False.
-// Laufende Prüfung (#909, problems.live): an = 400 ms nach der letzten
-// Änderung holen; aus = erst, wenn der Puffer wieder ungeändert ist (nach
-// dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
-// steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
+// Wann die offene Datei geholt wird (problems.update, TAtlasProblemsRefresh):
+// live = problems.liveDelayMs (Vorgabe 400 ms) nach der letzten Änderung, der
+// Takt folgt kürzeren Verzögerungen; save = erst, wenn der Puffer wieder
+// ungeändert ist (nach dem Speichern); manual = nur auf Anforderung
+// („Datei jetzt prüfen“, TAtlasProblemsCheckRequest), eine ungeändert
+// geöffnete Datei einmal. Eine Anforderung gilt in jeder Art im nächsten Takt.
+// Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt) steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
 // Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
 // Projektprüfung (#1247): Der Server prüft als begrenzten Lauf; seinen Stand
 // (erledigt/gesamt, Pause, Ende) liefert jede Antwort auf workspace/diagnostic,
@@ -52,6 +55,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.InlineHints,
+  Atlas.Core.Problems.Refresh,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Build.Target;
@@ -122,7 +126,6 @@ type
       destructor Destroy; override;
     end;
   public const
-    QuietMs = 400;
     DocumentTimeoutMs = 8000;
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     WorkspaceTimeoutMs = 15000;
@@ -171,6 +174,8 @@ type
     class var FLastCheck: TAtlasProblemsCheck;
     procedure PublishCounts;
     procedure Tick(Sender: TObject);
+    /// <summary>Datei AKey mit Text AText jetzt holen (problems.update, Anforderung)?</summary>
+    function PullDue(const AKey, AText: string; AModified: Boolean): Boolean;
     procedure EnsureWorkers(ASession: TLspSession);
     procedure StopWorkers(AWait: Boolean);
     procedure FreeFinished;
@@ -686,7 +691,7 @@ var
   Editors: IOTAEditorServices;
   View: IOTAEditView;
   Session: TLspSession;
-  FileName, Key, Text, Known, Other, OtherText: string;
+  FileName, Key, Text, Other, OtherText: string;
   Refresh, Changed: Boolean;
   Pull: TPull;
   Pulls: TArray<TPull>;
@@ -790,14 +795,10 @@ begin
           FLastFile := FileName;
         end;
         Refresh := Session.RefreshCount <> FRefreshSeen;
-        Changed := not FPulled.TryGetValue(Key, Known) or (Known <> Text);
-        // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
-        if Changed and not TAtlasIdeSettings.Current.ProblemsLive and View.Buffer.IsModified then
+        Changed := PullDue(Key, Text, View.Buffer.IsModified);
+        if (Refresh or Changed) and FDocuments.Idle then
         begin
-          Changed := False;
-        end;
-        if (Refresh or (Changed and (GetTickCount - FChangedAt >= QuietMs))) and FDocuments.Idle then
-        begin
+          TAtlasProblemsCheckRequest.Clear;
           Session.Sync(FileName, Text);
           FPulled.AddOrSetValue(Key, Text);
           Pull.FileName := FileName;
@@ -845,6 +846,25 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Problems, E);
     end;
   end;
+end;
+
+function TAtlasProblemsController.PullDue(const AKey, AText: string; AModified: Boolean): Boolean;
+var
+  mState: TAtlasProblemsRefreshState;
+  mKnown: string;
+  mDelay: Integer;
+begin
+  mState := Default(TAtlasProblemsRefreshState);
+  mState.CheckedBefore := FPulled.TryGetValue(AKey, mKnown);
+  mState.Changed := not mState.CheckedBefore or (mKnown <> AText);
+  mState.Modified := AModified;
+  mState.QuietMs := GetTickCount - FChangedAt;
+  mState.Requested := TAtlasProblemsCheckRequest.Pending;
+  mDelay := TAtlasIdeSettings.Current.ProblemsLiveDelayMs;
+  // Kürzere Verzögerung als der Takt: öfter nachsehen.
+  FTimer.Interval := TAtlasProblemsRefresh.TickMs(mDelay);
+  Result := TAtlasProblemsRefresh.Due(TAtlasProblemsRefresh.Parse(TAtlasIdeSettings.Current.ProblemsUpdate), mState,
+    mDelay);
 end;
 
 procedure TAtlasProblemsController.CloseUnopened(ASession: TLspSession);
