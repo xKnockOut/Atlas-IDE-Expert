@@ -444,7 +444,8 @@ begin
   begin
     mOutcome := TGoldenCorpus.Compare(ExtractFileName(AFiles[mIndex]),
       TGoldenCorpus.Markers(ATexts[mIndex], True), TFileChecker.CheckText(ARun.Rules, ARun.Settings,
-      ExtractFileName(AFiles[mIndex]), ATexts[mIndex], ARun.Project, TCheckSource.Default, mScopes), ARun.Known,
+      ExtractFileName(AFiles[mIndex]), ATexts[mIndex],
+      TCheckOrigin.Make(ARun.Project, TCheckSource.Default), mScopes), ARun.Known,
       ARun.Planned);
     for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
     begin
