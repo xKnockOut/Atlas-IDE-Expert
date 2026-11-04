@@ -35,10 +35,14 @@ class function TAtlasSnapshotPolicy.MustRead(const AState: TAtlasSnapshotState; 
   AModified: Boolean; ANow: Cardinal): Boolean;
 begin
   if not AState.Known or AState.Dirty or (AState.Lines <> ALines) or (AState.Modified <> AModified) then
+  begin
     Exit(True);
+  end;
   // Zähler übergelaufen (ANow vor ReadAt): lieber einmal zu oft lesen.
   if ANow < AState.ReadAt then
+  begin
     Exit(True);
+  end;
   Result := ANow - AState.ReadAt >= SafetyMs;
 end;
 

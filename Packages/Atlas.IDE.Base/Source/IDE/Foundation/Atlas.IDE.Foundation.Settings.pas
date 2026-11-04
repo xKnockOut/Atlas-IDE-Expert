@@ -212,14 +212,22 @@ constructor TRegistryStore.Create(AWrite: Boolean);
 begin
   inherited Create;
   if AWrite then
-    FRegistry := TRegistry.Create(KEY_READ or KEY_WRITE)
+  begin
+    FRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  end
   else
+  begin
     FRegistry := TRegistry.Create(KEY_READ);
+  end;
   FRegistry.RootKey := HKEY_CURRENT_USER;
   if AWrite then
-    FWritable := FRegistry.OpenKey(AtlasRegistryKey, True)
+  begin
+    FWritable := FRegistry.OpenKey(AtlasRegistryKey, True);
+  end
   else
+  begin
     FRegistry.OpenKeyReadOnly(AtlasRegistryKey);
+  end;
 end;
 
 destructor TRegistryStore.Destroy;
@@ -234,7 +242,9 @@ begin
   try
     if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
       (FRegistry.GetDataType(AName) = rdInteger) then
+    begin
       Result := FRegistry.ReadInteger(AName);
+    end;
   except
     on ERegistryException do
       Result := ADefault;
@@ -244,7 +254,9 @@ end;
 procedure TRegistryStore.WriteInteger(const AName: string; AValue: Integer);
 begin
   if not FWritable then
+  begin
     Exit;
+  end;
   try
     FRegistry.WriteInteger(AName, AValue);
   except
@@ -260,7 +272,9 @@ begin
   try
     if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
       (FRegistry.GetDataType(AName) in [rdString, rdExpandString]) then
+    begin
       Result := FRegistry.ReadString(AName);
+    end;
   except
     on ERegistryException do
       Result := ADefault;
@@ -270,7 +284,9 @@ end;
 procedure TRegistryStore.WriteString(const AName, AValue: string);
 begin
   if not FWritable then
+  begin
     Exit;
+  end;
   try
     FRegistry.WriteString(AName, AValue);
   except
@@ -293,10 +309,14 @@ end;
 procedure TRegistryStore.Remove(const AName: string);
 begin
   if not FWritable then
+  begin
     Exit;
+  end;
   try
     if FRegistry.ValueExists(AName) then
+    begin
       FRegistry.DeleteValue(AName);
+    end;
   except
     // Ohne Schreibrecht bleibt der alte Wert; die Übernahme versucht es beim nächsten Start erneut.
     on ERegistryException do
@@ -318,7 +338,9 @@ begin
   Result := True;
   try
     if (GlobalFile <> '') and TFile.Exists(GlobalFile) then
+    begin
       AContent := TAtlasTextFile.Load(GlobalFile);
+    end;
   except
     // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
     on Exception do
@@ -334,7 +356,9 @@ var
   Content: TAtlasTextFileContent;
 begin
   if (GlobalFile = '') or (AText = AContent.Text) then
+  begin
     Exit;
+  end;
   Content := AContent;
   Content.Text := AText;
   try
@@ -360,7 +384,9 @@ var
   mMigration: TAtlasSettingsQueryMigration;
 begin
   if FLoaded then
+  begin
     Exit;
+  end;
   FStored := TAtlasPluginSettings.Defaults;
   ApplyRenames;
   Readable := LoadGlobal(Content);
@@ -371,11 +397,17 @@ begin
   mMigration := Default(TAtlasSettingsQueryMigration);
   // Eine nicht lesbare Datei wird nicht geschrieben: dann bleibt auch issues.query in der Registry.
   if Readable and MigrateQuery(Store, mMigration) then
+  begin
     mChanged := True;
+  end;
   if mChanged and Readable then
+  begin
     SaveGlobal(Content, Routed.Text);
+  end;
   if Readable then
+  begin
     RemoveLegacyQuery(mMigration);
+  end;
   FStored.Load(Store);
   FLoaded := True;
   FEffective := Effective;
@@ -393,7 +425,9 @@ begin
   Catalog := TAtlasSettingsCatalog.CreateDefault;
   try
     for Rename in TAtlasSettingsRenames.Apply(Store, Registry, Catalog) do
+    begin
       TAtlasGuard.Log(Rename.LogLine);
+    end;
   finally
     Catalog.Free;
   end;
@@ -417,7 +451,9 @@ var
   mNames: IAtlasSettingsNames;
 begin
   if not AMigration.Found then
+  begin
     Exit;
+  end;
   mRegistry := TRegistryStore.Create(True);
   mNames := mRegistry;
   TAtlasSettingsQueryMigrations.RemoveLegacy(mNames);
@@ -590,9 +626,13 @@ class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsM
 begin
   EnsureLoaded;
   if FEffective.Enabled and FEffective.Problems then
-    Result := TAtlasInlineDiagnostics.ModeOf(FEffective.InlineDiagnostics)
+  begin
+    Result := TAtlasInlineDiagnostics.ModeOf(FEffective.InlineDiagnostics);
+  end
   else
+  begin
     Result := TAtlasInlineDiagnosticsMode.Off;
+  end;
 end;
 
 class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
@@ -613,7 +653,9 @@ class procedure TAtlasIdeSettings.Changed;
 begin
   FEffective := Effective;
   if Assigned(FOnChanged) then
+  begin
     FOnChanged();
+  end;
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
@@ -644,7 +686,9 @@ begin
   Store := Routed;
   FStored.Save(Store);
   if Readable then
+  begin
     SaveGlobal(Content, Routed.Text);
+  end;
   Changed;
 end;
 
@@ -662,7 +706,9 @@ var
 begin
   Result := LoadGlobal(Content);
   if Result then
+  begin
     SaveGlobal(Content, AText);
+  end;
 end;
 
 class function TAtlasIdeSettings.Session: TAtlasToggleSession;
@@ -699,7 +745,9 @@ begin
         Result := FHistory.LoadJson(AText);
       end));
     if FHistoryKept then
+    begin
       FHistory.Clear;
+    end;
   end;
   Result := FHistory;
 end;
@@ -712,13 +760,17 @@ begin
   Snapshots := History;
   // Gesperrt gelesene Datei nicht mit den Ständen dieser Sitzung allein überschreiben.
   if not FHistoryKept then
+  begin
     TAtlasDataFile.Write(HistoryFile, Snapshots.ToJson);
+  end;
 end;
 
 class procedure TAtlasIdeSettings.Restore(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex >= History.Count) then
+  begin
     Exit;
+  end;
   Update(History[AIndex].Settings);
 end;
 

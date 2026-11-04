@@ -156,8 +156,12 @@ var
 begin
   Result := AName <> '';
   for Part in AName.Split(['.']) do
+  begin
     if not IsValidIdent(Part) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function StringOf(AObject: TJSONObject; const AKey: string): string;
@@ -166,10 +170,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AKey);
   if (Value <> nil) and not (Value is TJSONNull) then
+  begin
     Result := Value.Value;
+  end;
 end;
 
 function BoolOf(AObject: TJSONObject; const AKey: string; ADefault: Boolean): Boolean;
@@ -178,9 +186,13 @@ var
 begin
   Value := AObject.GetValue(AKey);
   if Value is TJSONBool then
-    Result := TJSONBool(Value).AsBoolean
+  begin
+    Result := TJSONBool(Value).AsBoolean;
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 function IdsOf(AObject: TJSONObject; const AKey: string): TArray<Integer>;
@@ -190,9 +202,15 @@ begin
   Result := nil;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONNumber then
+      begin
         Result := Result + [TJSONNumber(Item).AsInt];
+      end;
+    end;
+  end;
 end;
 
 function StringsOf(AObject: TJSONObject; const AKey: string): TArray<string>;
@@ -201,11 +219,17 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       Result := Result + [Item.Value];
+    end;
+  end;
 end;
 
 { TAtlasClassExtractionModel }
@@ -228,7 +252,9 @@ begin
   FDirection := StringOf(APrepared, 'direction');
   FNeedsRequired := True;
   if APrepared = nil then
+  begin
     Exit;
+  end;
   FNeedsRequired := BoolOf(APrepared, 'needsRequired', True);
   FMultiTarget := BoolOf(APrepared, 'multiTarget', False);
   if APrepared.GetValue('option') is TJSONObject then
@@ -239,7 +265,9 @@ begin
   end;
   Value := APrepared.GetValue('targets');
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONObject then
       begin
         Target_ := Default(TAtlasExtractionTarget);
@@ -248,17 +276,25 @@ begin
         Target_.Checked := BoolOf(TJSONObject(Item), 'checked', False);
         FTargets := FTargets + [Target_];
       end;
+    end;
+  end;
   Value := APrepared.GetValue('candidates');
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Value) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Entry := TJSONObject(Item);
     Member := Default(TAtlasExtractionMember);
     if Entry.GetValue('id') is TJSONNumber then
+    begin
       Member.Id := TJSONNumber(Entry.GetValue('id')).AsInt;
+    end;
     Member.Name := StringOf(Entry, 'name');
     Member.Kind := StringOf(Entry, 'kind');
     Member.Display := StringOf(Entry, 'display');
@@ -303,12 +339,16 @@ var
   Index: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FTargets)) then
+  begin
     Exit;
+  end;
   if not FMultiTarget then
   begin
     // Ein Vorfahr: genau einer gewählt.
     for Index := 0 to High(FTargets) do
+    begin
       FTargets[Index].Checked := Index = AIndex;
+    end;
     Exit;
   end;
   FTargets[AIndex].Checked := AChecked;
@@ -320,8 +360,12 @@ var
 begin
   Result := nil;
   for Item in FTargets do
+  begin
     if Item.Checked then
+    begin
       Result := Result + [Item.Name];
+    end;
+  end;
 end;
 
 function TAtlasClassExtractionModel.IndexOfId(AId: Integer): Integer;
@@ -330,14 +374,20 @@ var
 begin
   Result := -1;
   for Index := 0 to High(FMembers) do
+  begin
     if FMembers[Index].Id = AId then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 procedure TAtlasClassExtractionModel.SetChecked(AIndex: Integer; AChecked: Boolean);
 begin
   if (AIndex < 0) or (AIndex > High(FMembers)) or not FMembers[AIndex].Enabled then
+  begin
     Exit;
+  end;
   FMembers[AIndex].Checked := AChecked;
 end;
 
@@ -346,7 +396,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FMembers) do
+  begin
     SetChecked(Index, AChecked);
+  end;
 end;
 
 function TAtlasClassExtractionModel.CheckedCount: Integer;
@@ -355,14 +407,20 @@ var
 begin
   Result := 0;
   for Member in FMembers do
+  begin
     if Member.Checked then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 procedure TAtlasClassExtractionModel.SetAbstract(AIndex: Integer; AAbstract: Boolean);
 begin
   if (AIndex < 0) or (AIndex > High(FMembers)) or not FMembers[AIndex].CanAbstract then
+  begin
     Exit;
+  end;
   FMembers[AIndex].Abstract := AAbstract;
 end;
 
@@ -372,8 +430,12 @@ var
 begin
   Result := False;
   for Member in FMembers do
+  begin
     if Member.CanAbstract then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasClassExtractionModel.HasNeeds: Boolean;
@@ -382,8 +444,12 @@ var
 begin
   Result := False;
   for Member in FMembers do
+  begin
     if Member.Needs <> nil then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasClassExtractionModel.MissingDependency(out AMember, ANeeded: string): Boolean;
@@ -395,7 +461,9 @@ begin
   ANeeded := '';
   // Eine abstrakte Methode nimmt ihren Rumpf nicht mit und braucht oben nichts.
   for Member in FMembers do
+  begin
     if Member.Checked and not Member.Abstract then
+    begin
       for Need in Member.Needs do
       begin
         Index := IndexOfId(Need);
@@ -406,6 +474,8 @@ begin
           Exit(True);
         end;
       end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -418,7 +488,9 @@ begin
   repeat
     Changed := False;
     for Index := 0 to High(FMembers) do
+    begin
       if FMembers[Index].Checked and not FMembers[Index].Abstract then
+      begin
         for Need in FMembers[Index].Needs do
         begin
           Needed := IndexOfId(Need);
@@ -429,6 +501,8 @@ begin
             Changed := True;
           end;
         end;
+      end;
+    end;
   until not Changed;
 end;
 
@@ -439,9 +513,13 @@ begin
   Candidate := Trim(FName);
   ASubject := Candidate;
   if not IsMove and not IsName(Candidate) then
+  begin
     Exit(TAtlasExtractionProblem.BadName);
+  end;
   if not IsMove and SameText(Candidate, FSourceClass) then
+  begin
     Exit(TAtlasExtractionProblem.SameName);
+  end;
   if CheckedCount = 0 then
   begin
     ASubject := '';
@@ -456,7 +534,9 @@ begin
   begin
     ASubject := '';
     if CheckedTargets = nil then
+    begin
       Exit(TAtlasExtractionProblem.NoTarget);
+    end;
     Exit(TAtlasExtractionProblem.None);
   end;
   Candidate := Target;
@@ -480,7 +560,9 @@ function TAtlasClassExtractionModel.Target: string;
 begin
   Result := Trim(FTargetUnit);
   if SameText(Result, FOwnUnit) then
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasClassExtractionModel.RequestJson: TJSONObject;
@@ -497,27 +579,43 @@ begin
   end;
   List := TJSONArray.Create;
   for Member in FMembers do
+  begin
     if Member.Checked then
+    begin
       List.AddElement(TJSONNumber.Create(Member.Id));
+    end;
+  end;
   Result.AddPair('members', List);
   Abstracts := nil;
   for Member in FMembers do
+  begin
     if Member.Checked and Member.Abstract then
     begin
       if Abstracts = nil then
+      begin
         Abstracts := TJSONArray.Create;
+      end;
       Abstracts.AddElement(TJSONNumber.Create(Member.Id));
     end;
+  end;
   if Abstracts <> nil then
+  begin
     Result.AddPair('abstract', Abstracts);
+  end;
   if not IsMove then
+  begin
     Exit;
+  end;
   List := TJSONArray.Create;
   for mName in CheckedTargets do
+  begin
     List.Add(mName);
+  end;
   Result.AddPair('targets', List);
   if FOptionKind <> '' then
+  begin
     Result.AddPair('option', TJSONBool.Create(FOption));
+  end;
 end;
 
 end.

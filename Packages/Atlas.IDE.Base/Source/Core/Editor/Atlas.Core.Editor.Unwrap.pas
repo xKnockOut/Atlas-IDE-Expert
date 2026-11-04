@@ -81,7 +81,9 @@ begin
   Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', Line) and
     TJSONObject(AValue).TryGetValue<Integer>('character', Character);
   if Result then
+  begin
     APosition := TLspTextPosition.Create(Line, Character);
+  end;
 end;
 
 function ReadRange(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
@@ -98,9 +100,15 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for Item in TJSONArray(AValue) do
+    begin
       if ReadRange(Item, Range) then
+      begin
         Result := Result + [Range];
+      end;
+    end;
+  end;
 end;
 
 function ReadEdits(const AValue: TJSONValue): TArray<TLspTextEdit>;
@@ -110,16 +118,24 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for Item in TJSONArray(AValue) do
+    begin
       if TLspTextEdit.FromJson(Item, Edit) then
+      begin
         Result := Result + [Edit];
+      end;
+    end;
+  end;
 end;
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 begin
   Result := '';
   if AObject.GetValue(AName) is TJSONString then
+  begin
     Result := AObject.GetValue(AName).Value;
+  end;
 end;
 
 { TAtlasUnwrapEntry }
@@ -161,22 +177,30 @@ var
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) or not (TJSONObject(AAnswer).GetValue('candidates') is TJSONArray) then
+  begin
     Exit;
+  end;
   Candidates := TJSONArray(TJSONObject(AAnswer).GetValue('candidates'));
   for Item in Candidates do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Candidate := TJSONObject(Item);
     Entry := Default(TAtlasUnwrapEntry);
     Entry.Kind := StringOf(Candidate, 'kind');
     Entry.Note := StringOf(Candidate, 'note');
     Entry.NoteText := StringOf(Candidate, 'noteText');
     if ReadRange(Candidate.GetValue('range'), Range) then
+    begin
       Entry.Line := Range.StartPos.Line;
+    end;
     Variants := nil;
     if Candidate.GetValue('variants') is TJSONArray then
+    begin
       Variants := TJSONArray(Candidate.GetValue('variants'));
+    end;
     if (Variants = nil) or (Variants.Count = 0) then
     begin
       // Nicht übernehmbar, aber mit Hinweis in der Liste.
@@ -187,12 +211,16 @@ begin
     for VariantItem in Variants do
     begin
       if not (VariantItem is TJSONObject) then
+      begin
         Continue;
+      end;
       Choice := TJSONObject(VariantItem);
       Entry.VariantKind := StringOf(Choice, 'kind');
       Entry.Branch := 0;
       if Choice.TryGetValue<Integer>('branch', Branch) then
+      begin
         Entry.Branch := Branch;
+      end;
       Entry.Edits := ReadEdits(Choice.GetValue('edits'));
       Entry.Keep := ReadRanges(Choice.GetValue('keep'));
       Entry.Remove := ReadRanges(Choice.GetValue('remove'));
@@ -213,14 +241,20 @@ begin
   Result := -1;
   Count := Length(AEntries);
   if Count = 0 then
+  begin
     Exit;
+  end;
   if ADelta = 0 then
+  begin
     ADelta := 1;
+  end;
   for Step := 0 to Count - 1 do
   begin
     Index := ((AFrom + Step * ADelta) mod Count + Count) mod Count;
     if AEntries[Index].Available then
+    begin
       Exit(Index);
+    end;
   end;
 end;
 
@@ -234,16 +268,24 @@ class function TAtlasUnwrap.SpansOnLine(const AEntry: TAtlasUnwrapEntry; ALine: 
     for Range in ARanges do
     begin
       if (Range.StartPos.Line > ALine) or (Range.EndPos.Line < ALine) then
+      begin
         Continue;
+      end;
       Span.Start := 0;
       if Range.StartPos.Line = ALine then
+      begin
         Span.Start := Range.StartPos.Character;
+      end;
       Span.Stop := MaxInt;
       if Range.EndPos.Line = ALine then
+      begin
         Span.Stop := Range.EndPos.Character;
+      end;
       Span.Keep := AKeep;
       if Span.Stop > Span.Start then
+      begin
         ASpans := ASpans + [Span];
+      end;
     end;
   end;
 
@@ -267,13 +309,19 @@ begin
   for Range in AEntry.Keep + AEntry.Remove do
   begin
     if Range.StartPos.Line < AFirst then
+    begin
       AFirst := Range.StartPos.Line;
+    end;
     if Range.EndPos.Line > ALast then
+    begin
       ALast := Range.EndPos.Line;
+    end;
   end;
   Result := ALast >= 0;
   if not Result then
+  begin
     AFirst := -1;
+  end;
 end;
 
 class function TAtlasUnwrap.EditOf(const AEntry: TAtlasUnwrapEntry; const AFileName: string): TLspWorkspaceEdit;
@@ -282,7 +330,9 @@ var
 begin
   Result := TLspWorkspaceEdit.FromJson(nil);
   if not AEntry.Available then
+  begin
     Exit;
+  end;
   FileEdits.FileName := AFileName;
   FileEdits.Edits := AEntry.Edits;
   Result.Files := [FileEdits];

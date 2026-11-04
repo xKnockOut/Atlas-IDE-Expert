@@ -137,7 +137,9 @@ begin
   AText := '';
   Result := Request('GET', AUrl, 'application/json', nil, ATimeoutMs, MaxBytes, AStatus, mBytes, AError);
   if Result then
+  begin
     AText := TEncoding.UTF8.GetString(mBytes);
+  end;
 end;
 
 function TAtlasCiHttpTransport.GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
@@ -162,7 +164,9 @@ begin
   Result := Request(UpperCase(AMethod), AUrl, 'application/json', TEncoding.UTF8.GetBytes(ABody), ATimeoutMs,
     MaxBytes, AStatus, mBytes, AError);
   if Result then
+  begin
     AText := TEncoding.UTF8.GetString(mBytes);
+  end;
 end;
 
 function TAtlasCiHttpTransport.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
@@ -188,7 +192,9 @@ begin
   Result := Request('POST', AUrl, 'application/json', AContentType, '', ABody, ATimeoutMs, MaxBytes, AStatus, mBytes,
     mLastModified, mPoll, AError);
   if Result then
+  begin
     AText := TEncoding.UTF8.GetString(mBytes);
+  end;
 end;
 
 function TAtlasCiHttpTransport.MayWrite(const AUrl: string): Boolean;
@@ -218,10 +224,14 @@ begin
   Result := Request('GET', AUrl, 'application/json', '', AIfModifiedSince, nil, ATimeoutMs, MaxBytes, AStatus, mBytes,
     ALastModified, mPoll, AError);
   if not Result then
+  begin
     Exit;
+  end;
   AText := TEncoding.UTF8.GetString(mBytes);
   if not TryStrToInt(Trim(mPoll), APollSeconds) or (APollSeconds < 0) then
+  begin
     APollSeconds := 0;
+  end;
 end;
 
 function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes;
@@ -240,7 +250,9 @@ begin
   Result := nil;
   // Anmeldung nur über https beim eingetragenen Server.
   if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
-    Result := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
+  begin
+    Result := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)];
+  end
   else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
   begin
     Encoding := TBase64Encoding.Create(0);
@@ -282,7 +294,9 @@ begin
   Content := TBytesStream.Create;
   Source := nil;
   if AMethod <> 'GET' then
+  begin
     Source := TBytesStream.Create(ABody);
+  end;
   try
     Client.ConnectionTimeout := ATimeoutMs;
     Client.ResponseTimeout := ATimeoutMs;
@@ -298,36 +312,54 @@ begin
       begin
         Headers := AuthHeaders(Url);
         if AIfModifiedSince <> '' then
+        begin
           Headers := Headers + [TNetHeader.Create('If-Modified-Since', AIfModifiedSince)];
+        end;
         Content.Clear;
         if AMethod = 'GET' then
-          Async := Client.BeginGet(Url, Content, Headers)
+        begin
+          Async := Client.BeginGet(Url, Content, Headers);
+        end
         else
         begin
           Headers := Headers + [TNetHeader.Create('Content-Type', AContentType)];
           Source.Position := 0;
           if AMethod = 'PATCH' then
-            Async := Client.BeginPatch(Url, Source, Content, Headers)
+          begin
+            Async := Client.BeginPatch(Url, Source, Content, Headers);
+          end
           else
+          begin
             Async := Client.BeginPost(Url, Source, Content, Headers);
+          end;
         end;
         while not Async.IsCompleted do
+        begin
           if TAtlasShutdown.Wait(SliceMs) or Cancelled or (Watch.ElapsedMilliseconds > ATimeoutMs) then
           begin
             if Watch.ElapsedMilliseconds > ATimeoutMs then
-              AError := TAtlasCiFetchError.Timeout
+            begin
+              AError := TAtlasCiFetchError.Timeout;
+            end
             else
+            begin
               AError := TAtlasCiFetchError.Cancelled;
+            end;
             Async.Cancel;
             // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
             Wait := TStopwatch.StartNew;
             while not Async.IsCompleted and (Wait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+            begin
               Sleep(10);
+            end;
             Exit;
           end;
+        end;
         Response := THTTPClient.EndAsyncHTTP(Async);
         if not IsRedirect(Response.StatusCode) then
+        begin
           Break;
+        end;
         // Geschrieben wird nur an die eingetragene Adresse: Eine Weiterleitung ist ein Fehler, der Inhalt ginge sonst
         // an ein anderes Ziel.
         if AMethod <> 'GET' then
@@ -361,9 +393,13 @@ begin
     except
       // Kein Netz, Name unbekannt, Zertifikat abgelehnt …: still als Fehler der Abfrage.
       if Watch.ElapsedMilliseconds > ATimeoutMs then
-        AError := TAtlasCiFetchError.Timeout
+      begin
+        AError := TAtlasCiFetchError.Timeout;
+      end
       else
+      begin
         AError := TAtlasCiFetchError.Network;
+      end;
     end;
   finally
     // Erst die Schnittstellen lösen, sie verweisen auf den Client.

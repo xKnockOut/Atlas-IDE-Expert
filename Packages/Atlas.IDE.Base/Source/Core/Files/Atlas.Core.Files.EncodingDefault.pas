@@ -35,11 +35,15 @@ begin
   Result := 0;
   Root := TAtlasJsonText.Parse(AText);
   if Root = nil then
+  begin
     Exit;
+  end;
   try
     Value := Root.GetValue('encoding');
     if (Value is TJSONString) and not TTextEncodingProbe.ParseCodePage(Value.Value, Result) then
+    begin
       Result := 0;
+    end;
   finally
     Root.Free;
   end;
@@ -66,7 +70,9 @@ begin
     end;
     Parent := ExtractFileDir(Folder);
     if SameText(Parent, Folder) then
+    begin
       Exit;
+    end;
     Folder := Parent;
   end;
 end;

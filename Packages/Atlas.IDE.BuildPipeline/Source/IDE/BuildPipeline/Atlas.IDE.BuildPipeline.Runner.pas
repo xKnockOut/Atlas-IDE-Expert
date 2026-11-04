@@ -103,20 +103,26 @@ end;
 procedure TAtlasIdeBuildRunner.TWatcher.GroupStarted(AKind: TAtlasCompileKind);
 begin
   if (FOwner <> nil) and not FOwner.FBuilding then
+  begin
     FOwner.FForeignBuild := True;
+  end;
 end;
 
 procedure TAtlasIdeBuildRunner.TWatcher.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
   if (FOwner <> nil) and not FOwner.FBuilding then
+  begin
     FOwner.FForeignBuild := False;
+  end;
 end;
 
 procedure TAtlasIdeBuildRunner.TWatcher.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
   ADurationMs: Int64);
 begin
   if (FOwner = nil) or not FOwner.FBuilding or not SameText(AProject.FileName, FOwner.FRequest.Project) then
+  begin
     Exit;
+  end;
   FOwner.FProjectSeen := True;
   FOwner.FReport.Project := AProject;
   FOwner.FReport.Succeeded := ASucceeded;
@@ -128,10 +134,14 @@ procedure TAtlasIdeBuildRunner.TWatcher.CompileCancelled(const AProject: TAtlasC
 begin
   // Auch der Abbruch eines abhängigen Projekts verhindert den eigenen Build; der erste Grund zählt.
   if (FOwner = nil) or not FOwner.FBuilding or (FOwner.FCancelReason <> '') then
+  begin
     Exit;
+  end;
   FOwner.FCancelReason := AReason;
   if FOwner.FCancelReason = '' then
+  begin
     FOwner.FCancelReason := 'Ein Teilnehmer hat den Build abgebrochen';
+  end;
 end;
 
 { TAtlasIdeBuildRunner }
@@ -181,8 +191,12 @@ var
 begin
   Result := False;
   for Index := 0 to AConfigurations.ConfigurationCount - 1 do
+  begin
     if SameText(AConfigurations.Configurations[Index].Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasIdeBuildRunner.Start(const ARequest: TAtlasBuildRequest; const ARequestedBy: string;
@@ -202,27 +216,47 @@ var
 begin
   AReason := '';
   if FBusy then
-    AReason := 'Atlas baut in der IDE schon ein Projekt'
+  begin
+    AReason := 'Atlas baut in der IDE schon ein Projekt';
+  end
   else if FForeignBuild or FEvents.Background then
-    AReason := 'In der IDE läuft schon ein Build oder eine Compilerprüfung'
+  begin
+    AReason := 'In der IDE läuft schon ein Build oder eine Compilerprüfung';
+  end
   else if Debugging then
-    AReason := 'In der IDE läuft der Debugger'
+  begin
+    AReason := 'In der IDE läuft der Debugger';
+  end
   else if not (ARequest.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]) then
-    AReason := 'Nur make, build und check sind möglich'
+  begin
+    AReason := 'Nur make, build und check sind möglich';
+  end
   else if not Supports(BorlandIDEServices, IOTAModuleServices, Services) or
     not Supports(Services.FindModule(ARequest.Project), IOTAProject, Project) or (Project.ProjectBuilder = nil) then
+  begin
     AReason := Format('Das Projekt %s ist in der IDE nicht offen', [ExtractFileName(ARequest.Project)]);
+  end;
   Configurations := nil;
   Platforms := nil;
   if (AReason = '') and (ARequest.Configuration <> '') then
+  begin
     if not Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) or
       not ConfigurationKnown(Configurations, ARequest.Configuration) then
+    begin
       AReason := Format('Das Projekt kennt die Konfiguration %s nicht', [ARequest.Configuration]);
+    end;
+  end;
   if (AReason = '') and (ARequest.Platform <> '') then
+  begin
     if not Supports(Project, IOTAProjectPlatforms, Platforms) or not Platforms.Enabled[ARequest.Platform] then
+    begin
       AReason := Format('Die Plattform %s ist im Projekt nicht aktiviert', [ARequest.Platform]);
+    end;
+  end;
   if AReason <> '' then
+  begin
     Exit(False);
+  end;
   FRequest := ARequest;
   FRequest.Project := Project.FileName;
   FOnDone := AOnDone;
@@ -244,9 +278,13 @@ begin
       // Nur für diesen Build umschalten; der Benutzer findet danach seine Auswahl wieder. Über IOTAProject:
       // ActiveConfigurationName und CurrentPlatform der Hilfsschnittstellen sind nur lesbar.
       if (Configurations <> nil) and not SameText(OldConfiguration, ARequest.Configuration) then
+      begin
         Project.CurrentConfiguration := ARequest.Configuration;
+      end;
       if (Platforms <> nil) and not SameText(OldPlatform, ARequest.Platform) then
+      begin
         Project.CurrentPlatform := ARequest.Platform;
+      end;
       FReport.Project.Configuration := Project.CurrentConfiguration;
       FReport.Project.Platform := Project.CurrentPlatform;
       FEvents.RequestedBy := ARequestedBy;
@@ -258,9 +296,13 @@ begin
     finally
       FBuilding := False;
       if (Configurations <> nil) and not SameText(Project.CurrentConfiguration, OldConfiguration) then
+      begin
         Project.CurrentConfiguration := OldConfiguration;
+      end;
       if (Platforms <> nil) and not SameText(Project.CurrentPlatform, OldPlatform) then
+      begin
         Project.CurrentPlatform := OldPlatform;
+      end;
     end;
   except
     on E: Exception do
@@ -291,7 +333,9 @@ begin
   FReport.FinishedAt := Now;
   FWaitStarted := NowMs;
   if FMessagesSeen then
+  begin
     Finish;
+  end;
   Result := True;
 end;
 
@@ -299,12 +343,16 @@ procedure TAtlasIdeBuildRunner.MessagesRead(const AMessages: TArray<TAtlasCompil
   const AProject: TAtlasCompileProject);
 begin
   if not FBusy or FMessagesSeen or not SameText(AProject.FileName, FRequest.Project) then
+  begin
     Exit;
+  end;
   FMessagesSeen := True;
   FReport.Messages := AMessages;
   // Der Leser kann mitten im modalen Build kommen (Warteschlange); dann schließt Start ab.
   if not FBuilding then
+  begin
     Finish;
+  end;
 end;
 
 procedure TAtlasIdeBuildRunner.Tick(Sender: TObject);
@@ -317,7 +365,9 @@ begin
       Exit;
     end;
     if FBusy and (NowMs - FWaitStarted >= MessagesWaitMs) then
+    begin
       Finish;
+    end;
   except
     // Keine Exception an die IDE (#493).
     on E: Exception do
@@ -330,13 +380,17 @@ var
   Done: TAtlasBuildDoneProc;
 begin
   if not FBusy then
+  begin
     Exit;
+  end;
   FBusy := False;
   FTimer.Enabled := False;
   Done := FOnDone;
   FOnDone := nil;
   if Assigned(Done) then
+  begin
     Done(FReport, '');
+  end;
 end;
 
 end.

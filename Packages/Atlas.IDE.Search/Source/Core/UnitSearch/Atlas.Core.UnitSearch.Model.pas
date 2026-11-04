@@ -189,8 +189,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -200,8 +204,12 @@ var
 begin
   // Teilstring ohne Groß-/Kleinschreibung: p:ide trifft Atlas.IDE.Expert.
   for Item in AEntry.Projects do
+  begin
     if ContainsText(Item, AFilter) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -215,9 +223,13 @@ var
 begin
   Token := AToken;
   if Token.StartsWith('-') then
+  begin
     Token := Copy(Token, 2, MaxInt);
+  end;
   if (Length(Token) < 3) or (Token[2] <> ':') then
+  begin
     Exit(False);
+  end;
   Value := Copy(Token, 3, MaxInt);
   case UpCase(Token[1]) of
     'P':
@@ -226,8 +238,12 @@ begin
       begin
         Result := Value <> '';
         for Part in Value.Split(['|']) do
+        begin
           if not TAtlasUnitSearch.KindFromText(Part, Kind) then
+          begin
             Exit(False);
+          end;
+        end;
       end;
   else
     Result := False;
@@ -253,19 +269,29 @@ begin
     if UpCase(Token[1 + Ord(Negative)]) = 'P' then
     begin
       if Negative then
-        Result.NotProjects := Result.NotProjects + [Value]
+      begin
+        Result.NotProjects := Result.NotProjects + [Value];
+      end
       else
+      begin
         Result.Projects := Result.Projects + [Value];
+      end;
       Continue;
     end;
     for Part in Value.Split(['|']) do
+    begin
       if TAtlasUnitSearch.KindFromText(Part, Kind) then
       begin
         if Negative then
-          Include(Result.NotKinds, Kind)
+        begin
+          Include(Result.NotKinds, Kind);
+        end
         else
+        begin
           Include(Result.Kinds, Kind);
+        end;
       end;
+    end;
   end;
 end;
 
@@ -275,18 +301,32 @@ var
   Any: Boolean;
 begin
   if (Kinds <> []) and not (AEntry.Kind in Kinds) then
+  begin
     Exit(False);
+  end;
   if AEntry.Kind in NotKinds then
+  begin
     Exit(False);
+  end;
   for Filter in NotProjects do
+  begin
     if ProjectMatches(AEntry, Filter) then
+    begin
       Exit(False);
+    end;
+  end;
   if Length(Projects) = 0 then
+  begin
     Exit(True);
+  end;
   Any := False;
   for Filter in Projects do
+  begin
     if ProjectMatches(AEntry, Filter) then
+    begin
       Any := True;
+    end;
+  end;
   Result := Any;
 end;
 
@@ -301,9 +341,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if not SameText(A[Index], B[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasUnitQuery.Narrows(const APrevious: TAtlasUnitQuery): Boolean;
@@ -316,9 +362,15 @@ begin
     SameNames(Projects, APrevious.Projects) and SameNames(NotProjects, APrevious.NotProjects) and
     (Length(Words) >= Length(APrevious.Words));
   if Result then
+  begin
     for Index := 0 to High(APrevious.Words) do
+    begin
       if not StartsText(APrevious.Words[Index], Words[Index]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 { TAtlasUnitPreview }
@@ -337,10 +389,14 @@ begin
   Result := Default(TAtlasUnitPreview);
   Result.UsedBy := -1;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AValue);
   if Answer.TryGetValue<string>('uri', Text) and Assigned(AUriToPath) then
+  begin
     Result.FileName := AUriToPath(Text);
+  end;
   Answer.TryGetValue<string>('header', Result.Header);
   Answer.TryGetValue<Integer>('lines', Result.Lines);
   if Answer.TryGetValue<string>('modified', Text) then
@@ -352,7 +408,9 @@ begin
     end;
   Answer.TryGetValue<string>('git', Result.Git);
   if Answer.TryGetValue<TJSONArray>('types', Items) then
+  begin
     for Item in Items do
+    begin
       if Item is TJSONObject then
       begin
         TypeEntry := Default(TAtlasUnitType);
@@ -360,17 +418,31 @@ begin
         TJSONObject(Item).TryGetValue<string>('kind', TypeEntry.Kind);
         Result.Types := Result.Types + [TypeEntry];
       end;
+    end;
+  end;
   Result.TypeCount := Length(Result.Types);
   if Answer.TryGetValue<Integer>('typeCount', Number) and (Number > Result.TypeCount) then
+  begin
     Result.TypeCount := Number;
+  end;
   if Answer.TryGetValue<TJSONArray>('uses', Items) then
+  begin
     for Item in Items do
+    begin
       Result.Uses_ := Result.Uses_ + [Item.Value];
+    end;
+  end;
   if Answer.TryGetValue<Integer>('usedBy', Number) then
+  begin
     Result.UsedBy := Number;
+  end;
   if Answer.TryGetValue<TJSONArray>('usedByUnits', Items) then
+  begin
     for Item in Items do
+    begin
       Result.UsedByUnits := Result.UsedByUnits + [Item.Value];
+    end;
+  end;
   if Answer.TryGetValue<TJSONObject>('form', Form) then
   begin
     Result.HasForm := True;
@@ -379,10 +451,13 @@ begin
     Form.TryGetValue<Integer>('width', Result.FormWidth);
     Form.TryGetValue<Integer>('height', Result.FormHeight);
     if Form.TryGetValue<TJSONArray>('items', Items) then
+    begin
       for Item in Items do
       begin
         if not (Item is TJSONArray) or (TJSONArray(Item).Count < 8) then
+        begin
           Continue;
+        end;
         Row := TJSONArray(Item);
         Sketch := Default(TAtlasUnitSketchItem);
         Sketch.Name := Row.Items[0].Value;
@@ -395,6 +470,7 @@ begin
         Sketch.Depth := StrToIntDef(Row.Items[7].Value, 1);
         Result.FormItems := Result.FormItems + [Sketch];
       end;
+    end;
   end;
 end;
 
@@ -408,15 +484,21 @@ begin
   Text := LowerCase(Trim(AText));
   // Lange Schreibweisen zusätzlich zu den Kürzeln.
   if (Text = 'datamodule') or (Text = 'datenmodul') then
-    Text := 'dm'
+  begin
+    Text := 'dm';
+  end
   else if Text = 'include' then
+  begin
     Text := 'inc';
+  end;
   for Kind := Low(TAtlasUnitKind) to High(TAtlasUnitKind) do
+  begin
     if KindTexts[Kind] = Text then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   AKind := TAtlasUnitKind.Unit_;
   Result := False;
 end;
@@ -429,11 +511,17 @@ end;
 class function TAtlasUnitSearch.GroupingFromText(const AText: string): TAtlasUnitGrouping;
 begin
   if SameText(AText, 'folder') then
-    Result := TAtlasUnitGrouping.Folder
+  begin
+    Result := TAtlasUnitGrouping.Folder;
+  end
   else if SameText(AText, 'none') then
-    Result := TAtlasUnitGrouping.None
+  begin
+    Result := TAtlasUnitGrouping.None;
+  end
   else
+  begin
     Result := TAtlasUnitGrouping.Project;
+  end;
 end;
 
 class function TAtlasUnitSearch.GroupingText(AGrouping: TAtlasUnitGrouping): string;
@@ -449,24 +537,38 @@ end;
 class function TAtlasUnitSearch.PathStyleFromText(const AText: string): TAtlasUnitPathStyle;
 begin
   if SameText(AText, 'compact') then
-    Result := TAtlasUnitPathStyle.Compact
+  begin
+    Result := TAtlasUnitPathStyle.Compact;
+  end
   else if SameText(AText, 'absolute') then
-    Result := TAtlasUnitPathStyle.Absolute
+  begin
+    Result := TAtlasUnitPathStyle.Absolute;
+  end
   else
+  begin
     Result := TAtlasUnitPathStyle.Relative;
+  end;
 end;
 
 class function TAtlasUnitSearch.OriginsForScope(const AScope: string): TAtlasUnitOrigins;
 begin
   if SameText(AScope, 'project') then
-    Result := [TAtlasUnitOrigin.Active]
+  begin
+    Result := [TAtlasUnitOrigin.Active];
+  end
   else if SameText(AScope, 'searchPath') then
-    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath]
+  begin
+    Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath];
+  end
   else if SameText(AScope, 'library') then
+  begin
     Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group, TAtlasUnitOrigin.SearchPath,
-      TAtlasUnitOrigin.Library_]
+      TAtlasUnitOrigin.Library_];
+  end
   else
+  begin
     Result := [TAtlasUnitOrigin.Active, TAtlasUnitOrigin.Group];
+  end;
 end;
 
 class function TAtlasUnitSearch.FromJson(const AValue: TJSONValue; const AActiveProject: string;
@@ -480,43 +582,71 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('units', Units) then
+  begin
     Exit;
+  end;
   List := TList<TAtlasUnitEntry>.Create;
   try
     List.Capacity := Units.Count;
     for Item in Units do
     begin
       if not (Item is TJSONObject) then
+      begin
         Continue;
+      end;
       Entry := Default(TAtlasUnitEntry);
       TJSONObject(Item).TryGetValue<string>('name', Entry.Name);
       if TJSONObject(Item).TryGetValue<string>('uri', Text) and Assigned(AUriToPath) then
+      begin
         Entry.FileName := AUriToPath(Text);
+      end;
       if TJSONObject(Item).TryGetValue<string>('kind', Text) then
+      begin
         KindFromText(Text, Entry.Kind);
+      end;
       TJSONObject(Item).TryGetValue<string>('caption', Entry.Caption);
       if TJSONObject(Item).TryGetValue<TJSONArray>('projects', Projects) then
+      begin
         for ProjectValue in Projects do
+        begin
           Entry.Projects := Entry.Projects + [ProjectValue.Value];
+        end;
+      end;
       if (AActiveProject <> '') and Contains(Entry.Projects, AActiveProject) then
-        Entry.Project := AActiveProject
+      begin
+        Entry.Project := AActiveProject;
+      end
       else if Length(Entry.Projects) > 0 then
+      begin
         Entry.Project := Entry.Projects[0];
+      end;
       Text := '';
       TJSONObject(Item).TryGetValue<string>('origin', Text);
       if SameText(Text, 'library') then
-        Entry.Origin := TAtlasUnitOrigin.Library_
+      begin
+        Entry.Origin := TAtlasUnitOrigin.Library_;
+      end
       else if SameText(Text, 'searchPath') then
-        Entry.Origin := TAtlasUnitOrigin.SearchPath
+      begin
+        Entry.Origin := TAtlasUnitOrigin.SearchPath;
+      end
       else if (AActiveProject <> '') and Contains(Entry.Projects, AActiveProject) then
-        Entry.Origin := TAtlasUnitOrigin.Active
+      begin
+        Entry.Origin := TAtlasUnitOrigin.Active;
+      end
       else if (AActiveProject = '') and (Length(Entry.Projects) > 0) then
+      begin
         // Ohne aktives Projekt gilt jedes Projekt der Gruppe als aktiv.
-        Entry.Origin := TAtlasUnitOrigin.Active
+        Entry.Origin := TAtlasUnitOrigin.Active;
+      end
       else
+      begin
         Entry.Origin := TAtlasUnitOrigin.Group;
+      end;
       if Entry.Name <> '' then
+      begin
         List.Add(Entry);
+      end;
     end;
     Result := List.ToArray;
   finally
@@ -528,7 +658,9 @@ class function TAtlasUnitSearch.UnitsArguments(ACaptions: Boolean): string;
 begin
   Result := '[]';
   if ACaptions then
+  begin
     Result := '[{"captions":true}]';
+  end;
 end;
 
 class function TAtlasUnitSearch.ProjectsFromJson(const AValue: TJSONValue): TArray<string>;
@@ -539,10 +671,16 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('projects', Projects) then
+  begin
     Exit;
+  end;
   for Item in Projects do
+  begin
     if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('name', Name) then
+    begin
       Result := Result + [Name];
+    end;
+  end;
 end;
 
 function IsSubsequence(const APattern, AText: string): Boolean;
@@ -551,8 +689,12 @@ var
 begin
   PatternIndex := 1;
   for TextIndex := 1 to Length(AText) do
+  begin
     if (PatternIndex <= Length(APattern)) and (UpCase(AText[TextIndex]) = UpCase(APattern[PatternIndex])) then
+    begin
       Inc(PatternIndex);
+    end;
+  end;
   Result := PatternIndex > Length(APattern);
 end;
 
@@ -566,10 +708,16 @@ var
   Index: Integer;
 begin
   if AStart + Length(APattern) - 1 > Length(AName) then
+  begin
     Exit(False);
+  end;
   for Index := 1 to Length(APattern) do
+  begin
     if AName[AStart + Index - 1] <> APattern[Index] then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -585,34 +733,58 @@ var
 begin
   Len := Length(AName) - AStart + 1;
   if AWord = '' then
+  begin
     Exit(TAtlasCompletionMatcher.ScoreSubsequence);
+  end;
   if Length(AWord) > Len then
+  begin
     Exit(TAtlasCompletionMatcher.NoMatch);
+  end;
   if Len > MaxFastLength then
+  begin
     Exit(TAtlasCompletionMatcher.Score(AWord, Copy(AName, AStart, MaxInt)));
+  end;
   if (Length(AWord) = Len) and SameAt(AWordUpper, AUpper, AStart) then
+  begin
     Exit(TAtlasCompletionMatcher.ScoreExact);
+  end;
   if SameAt(AWord, AName, AStart) then
+  begin
     Exit(TAtlasCompletionMatcher.ScorePrefixCase);
+  end;
   if SameAt(AWordUpper, AUpper, AStart) then
+  begin
     Exit(TAtlasCompletionMatcher.ScorePrefix);
+  end;
   // Wortanfänge des Teils einmal bestimmen; das erste Zeichen ist immer einer.
   Starts[1] := True;
   for Index := 2 to Len do
+  begin
     Starts[Index] := TAtlasCompletionMatcher.IsWordStart(AName, AStart + Index - 1);
+  end;
   PatternIndex := 1;
   for Index := 1 to Len do
+  begin
     if (PatternIndex <= Length(AWord)) and Starts[Index] and
       (AUpper[AStart + Index - 1] = AWordUpper[PatternIndex]) then
+    begin
       Inc(PatternIndex);
+    end;
+  end;
   if PatternIndex > Length(AWord) then
+  begin
     Exit(TAtlasCompletionMatcher.ScoreWordStarts);
+  end;
   if Pos(AWordUpper, AUpper, AStart) > 0 then
+  begin
     Exit(TAtlasCompletionMatcher.ScoreSubstring);
+  end;
   // Teilfolge mit Wortgrenzen wie MatchesSubsequence des Matchers.
   Reached[0] := False;
   for Index := 1 to Len do
+  begin
     Reached[Index] := Starts[Index] and (AUpper[AStart + Index - 1] = AWordUpper[1]);
+  end;
   for PatternIndex := 2 to Length(AWord) do
   begin
     Previous := False;
@@ -626,12 +798,18 @@ begin
       Found := Found or Next[Index];
     end;
     if not Found then
+    begin
       Exit(TAtlasCompletionMatcher.NoMatch);
+    end;
     Reached := Next;
   end;
   for Index := 1 to Len do
+  begin
     if Reached[Index] then
+    begin
       Exit(TAtlasCompletionMatcher.ScoreSubsequence);
+    end;
+  end;
   Result := TAtlasCompletionMatcher.NoMatch;
 end;
 
@@ -642,14 +820,20 @@ var
 begin
   // Schneller Ausschluss: Ohne Teilfolge passt keine Regel des Matchers (die meisten Units je Tastendruck).
   if not IsSubsequence(AWordUpper, AUpper) then
+  begin
     Exit(TAtlasCompletionMatcher.NoMatch);
+  end;
   Result := SegmentScore(AWord, AWordUpper, AName, AUpper, 1);
   // Der letzte Teil des Namens zählt wie ein eigener Name ("binform" in Atlas.Common.Dfm.BinaryForm).
   Dot := LastDelimiter('.', AName);
   if (Dot > 0) and (Dot < Length(AName)) then
+  begin
     Result := Max(Result, SegmentScore(AWord, AWordUpper, AName, AUpper, Dot + 1) - 1);
+  end;
   if Result = TAtlasCompletionMatcher.NoMatch then
+  begin
     Result := TAtlasUnitSearch.ScoreSubsequence;
+  end;
 end;
 
 class function TAtlasUnitSearch.Score(const AWord, AName: string): Integer;
@@ -665,7 +849,9 @@ var
 begin
   SetLength(All, Length(AEntries));
   for Index := 0 to High(All) do
+  begin
     All[Index] := Index;
+  end;
   Result := Order(AEntries, AQuery, AOrigins, AKinds, All);
 end;
 
@@ -683,31 +869,47 @@ begin
   SetLength(Scores, Length(AEntries));
   SetLength(Uppers, Length(AQuery.Words));
   for WordIndex := 0 to High(AQuery.Words) do
+  begin
     Uppers[WordIndex] := AQuery.Words[WordIndex].ToUpper;
+  end;
   List := TList<Integer>.Create;
   try
     for Index in ACandidates do
     begin
       if (Index < 0) or (Index > High(AEntries)) then
+      begin
         Continue;
+      end;
       if not (AEntries[Index].Origin in AOrigins) then
+      begin
         Continue;
+      end;
       if (AKinds <> []) and not (AEntries[Index].Kind in AKinds) then
+      begin
         Continue;
+      end;
       if not AQuery.Accepts(AEntries[Index]) then
+      begin
         Continue;
+      end;
       Total := 0;
       Upper := AEntries[Index].UpperName;
       if (Upper = '') and (Length(AQuery.Words) > 0) then
+      begin
         Upper := AEntries[Index].Name.ToUpper;
+      end;
       UpperCaption := AEntries[Index].UpperCaption;
       if (UpperCaption = '') and (Length(AQuery.Words) > 0) then
+      begin
         UpperCaption := AEntries[Index].Caption.ToUpper;
+      end;
       for WordIndex := 0 to High(AQuery.Words) do
       begin
         Points := FastScore(AQuery.Words[WordIndex], Uppers[WordIndex], AEntries[Index].Name, Upper);
         if (Points < ScoreCaption) and (UpperCaption <> '') and (Pos(Uppers[WordIndex], UpperCaption) > 0) then
+        begin
           Points := ScoreCaption;
+        end;
         if Points < 0 then
         begin
           Total := -1;
@@ -716,7 +918,9 @@ begin
         Inc(Total, Points);
       end;
       if Total < 0 then
+      begin
         Continue;
+      end;
       Scores[Index] := Total;
       List.Add(Index);
     end;
@@ -725,12 +929,18 @@ begin
       begin
         Result := Scores[B] - Scores[A];
         if Result = 0 then
+        begin
           Result := Ord(Entries[B].IsOpen) - Ord(Entries[A].IsOpen);
+        end;
         if Result = 0 then
+        begin
           Result := Ord(Entries[B].Origin = TAtlasUnitOrigin.Active) - Ord(Entries[A].Origin = TAtlasUnitOrigin.Active);
+        end;
         // Dann die Reihenfolge der Einträge (FromJson sortiert nach Name und Datei).
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := List.ToArray;
   finally
@@ -743,14 +953,18 @@ function WithSlash(const AFolder: string): string;
 begin
   Result := AFolder;
   if (Result <> '') and not Result.EndsWith('\') then
+  begin
     Result := Result + '\';
+  end;
 end;
 
 function WithoutSlash(const AFolder: string): string;
 begin
   Result := AFolder;
   while (Length(Result) > 3) and Result.EndsWith('\') do
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 function RelativeTo(const AFileName, ARoot: string): string;
@@ -759,9 +973,13 @@ var
 begin
   Root := WithSlash(ARoot);
   if (ARoot <> '') and StartsText(Root, AFileName) then
-    Result := Copy(AFileName, Length(Root) + 1, MaxInt)
+  begin
+    Result := Copy(AFileName, Length(Root) + 1, MaxInt);
+  end
   else
+  begin
     Result := AFileName;
+  end;
 end;
 
 class function TAtlasUnitSearch.GroupOf(const AEntry: TAtlasUnitEntry; AGrouping: TAtlasUnitGrouping;
@@ -816,15 +1034,21 @@ begin
     for Index in AOrder do
     begin
       if AGrouping = TAtlasUnitGrouping.Project then
-        Key := AEntries[Index].Project
+      begin
+        Key := AEntries[Index].Project;
+      end
       else
       begin
         Name := AEntries[Index].FileName;
         Slash := LastDelimiter('\', Name);
         if (ARoot <> '') and (Length(Name) > Length(Root)) and StartsText(Root, Name) then
-          Key := Copy(Name, Length(Root) + 1, Slash - Length(Root) - 1)
+        begin
+          Key := Copy(Name, Length(Root) + 1, Slash - Length(Root) - 1);
+        end
         else
+        begin
           Key := Copy(Name, 1, Slash - 1);
+        end;
       end;
       Lower := LowerCase(Key);
       if not Groups.TryGetValue(Lower, Members) then
@@ -836,16 +1060,22 @@ begin
       Members.Add(Index);
     end;
     if not ASearching then
+    begin
       Keys.Sort(TComparer<string>.Construct(
         function(const A, B: string): Integer
         begin
           // Aktives Projekt oben, Einträge ohne Gruppe unten, sonst alphabetisch.
           Result := Ord(SameText(B, Active)) - Ord(SameText(A, Active));
           if Result = 0 then
+          begin
             Result := Ord(A = '') - Ord(B = '');
+          end;
           if Result = 0 then
+          begin
             Result := CompareText(A, B);
+          end;
         end));
+    end;
     for Key in Keys do
     begin
       Members := Groups[LowerCase(Key)];
@@ -858,7 +1088,9 @@ begin
       Row.Entry := -1;
       List.Add(Row);
       if Collapsed then
+      begin
         Continue;
+      end;
       for Index in Members do
       begin
         Row := Default(TAtlasUnitRow);
@@ -880,9 +1112,13 @@ var
   Head, Tail: Integer;
 begin
   if (AMax <= 0) or (Length(AText) <= AMax) then
+  begin
     Exit(AText);
+  end;
   if AMax <= 1 then
+  begin
     Exit('…');
+  end;
   // Das Ende unterscheidet (Dateiname, letzter Ordner) und bekommt etwas mehr Platz.
   Tail := (AMax - 1 + 1) div 2;
   Head := AMax - 1 - Tail;
@@ -938,7 +1174,9 @@ begin
     begin
       Result := CompareText(A.Name, B.Name);
       if Result = 0 then
+      begin
         Result := CompareText(A.FileName, B.FileName);
+      end;
     end));
 end;
 

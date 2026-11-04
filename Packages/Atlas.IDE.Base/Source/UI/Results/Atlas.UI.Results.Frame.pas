@@ -627,7 +627,9 @@ begin
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       if Assigned(FOnOpen) then
+      begin
         FOnOpen(AFileName, ALine, ACharacter);
+      end;
     end;
 end;
 
@@ -641,42 +643,68 @@ class function TAtlasResultsFrame.ReasonText(const AConfidence: TAtlasConfidence
 begin
   Result := '';
   if not AConfidence.Inferred then
+  begin
     Exit;
+  end;
   if AConfidence.Reason = 'interface' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface);
+  end
   else if AConfidence.Reason = 'virtual' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual);
+  end
   else if AConfidence.Reason = 'ambiguous' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonAmbiguous)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonAmbiguous);
+  end
   else if AConfidence.Reason = 'unresolved' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonUnresolved)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonUnresolved);
+  end
   else if AConfidence.Reason = 'inactiveBranch' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInactiveBranch)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInactiveBranch);
+  end
   else if AConfidence.Reason = 'text' then
-    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonText)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonText);
+  end
   else
+  begin
     // Gründe neuerer Server: wie geliefert.
     Result := AConfidence.Reason;
+  end;
 end;
 
 class function TAtlasResultsFrame.EntryText(const AEntry: TAtlasResultEntry): string;
 begin
   Result := Format('%d: %s', [AEntry.Line + 1, AEntry.Text]);
   if AEntry.Detail <> '' then
+  begin
     Result := Result + '  →  ' + AEntry.Detail;
+  end;
   if AEntry.Confidence.Inferred then
+  begin
     Result := '≈ ' + Result + '  [' + ReasonText(AEntry.Confidence) + ']';
+  end;
 end;
 
 class function TAtlasResultsFrame.HierarchyText(const AItem: TAtlasHierarchyItem): string;
 begin
   Result := AItem.Name;
   if AItem.Detail <> '' then
+  begin
     Result := Result + ' · ' + AItem.Detail;
+  end;
   if AItem.FileName <> '' then
+  begin
     Result := Result + Format('  (%s:%d)', [ExtractFileName(AItem.FileName), AItem.Line + 1]);
+  end;
   if AItem.Confidence.Inferred then
+  begin
     Result := '≈ ' + Result + '  [' + ReasonText(AItem.Confidence) + ']';
+  end;
 end;
 
 class function TAtlasResultsFrame.ImpactPlaceText(const APlace: TAtlasImpactPlace): string;
@@ -684,27 +712,47 @@ var
   Edge: string;
 begin
   if APlace.Terminal then
+  begin
     Result := APlace.Item.Name + ' · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) +
-      Format('  (%s:%d)', [ExtractFileName(APlace.Item.FileName), APlace.UseLine + 1])
+      Format('  (%s:%d)', [ExtractFileName(APlace.Item.FileName), APlace.UseLine + 1]);
+  end
   else
+  begin
     Result := HierarchyText(APlace.Item);
+  end;
   Edge := '';
   if APlace.Edge = 'reference' then
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference)
+  begin
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference);
+  end
   else if APlace.Edge = 'override' then
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride)
+  begin
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride);
+  end
   else if APlace.Edge = 'baseMethod' then
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase)
+  begin
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase);
+  end
   else if APlace.Edge = 'interfaceMethod' then
-    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface)
+  begin
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface);
+  end
   else if APlace.Edge = 'implementation' then
+  begin
     Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
+  end;
   if Edge <> '' then
+  begin
     Result := Result + '  · ' + Edge;
+  end;
   if APlace.UseCount > 1 then
+  begin
     Result := Result + Format('  ×%d', [APlace.UseCount]);
+  end;
   if APlace.Test <> '' then
+  begin
     Result := Result + '  · Test';
+  end;
 end;
 
 class function TAtlasResultsFrame.ImpactFormText(const AForm: TAtlasImpactForm): string;
@@ -717,12 +765,18 @@ class function TAtlasResultsFrame.ImpactLimitTexts(const AImpact: TAtlasImpact):
 begin
   Result := nil;
   if AImpact.DepthReached then
+  begin
     Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitDepth), [AImpact.Depth,
       AImpact.Unexpanded])];
+  end;
   if AImpact.CountReached then
+  begin
     Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitCount), [AImpact.MaxPlaces])];
+  end;
   if AImpact.TimeReached then
+  begin
     Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitTime), [AImpact.TimeoutMs])];
+  end;
 end;
 
 procedure TAtlasResultsFrame.AddImpactForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
@@ -764,7 +818,9 @@ var
 begin
   // Jede Stelle hat genau eine Ursache: Der Baum endet, Zyklen gibt es nicht.
   for Child in FImpact.Children(ACause) do
+  begin
     AddImpactBranch(AddImpactPlace(AParent, Child), Child);
+  end;
 end;
 
 procedure TAtlasResultsFrame.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
@@ -783,8 +839,12 @@ begin
   FRunTests.Visible := True;
   FRunTests.Enabled := Length(AImpact.Tests) > 0;
   if FDepth.Items.Count = 0 then
+  begin
     for Depth := 1 to 5 do
+    begin
       FDepth.Items.Add(IntToStr(Depth));
+    end;
+  end;
   FDepth.OnChange := nil;
   try
     FDepth.ItemIndex := AImpact.Depth - 1;
@@ -798,19 +858,27 @@ begin
     Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactDirect), [AImpact.LevelCount(1)]), Data);
     AddImpactForms(Section, AImpact.SymbolForms);
     for Index := 0 to High(AImpact.Places) do
+    begin
       if AImpact.Places[Index].Level = 1 then
+      begin
         AddImpactPlace(Section, Index);
+      end;
+    end;
     Section.Expand(False);
     Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactIndirect), [AImpact.CountFrom(2)]), Data);
     for Index in AImpact.Children(-1) do
+    begin
       if Length(AImpact.Children(Index)) > 0 then
       begin
         Node := AddImpactPlace(Section, Index);
         AddImpactBranch(Node, Index);
       end;
+    end;
     Section.Expand(AImpact.CountFrom(2) <= 200);
     if Length(AImpact.Tests) = 0 then
-      AddNode(nil, TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Data)
+    begin
+      AddNode(nil, TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Data);
+    end
     else
     begin
       Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactTests), [Length(AImpact.Tests)]), Data);
@@ -828,24 +896,32 @@ begin
       Section.Expand(False);
     end;
     for Limit in ImpactLimitTexts(AImpact) do
+    begin
       AddNode(nil, '⚠ ' + Limit, Data);
+    end;
   finally
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 procedure TAtlasResultsFrame.DepthChange(Sender: TObject);
 begin
   if FShowsImpact and (FDepth.ItemIndex >= 0) and Assigned(FOnImpactDepth) then
+  begin
     FOnImpactDepth(FDepth.ItemIndex + 1);
+  end;
 end;
 
 procedure TAtlasResultsFrame.RunTestsClick(Sender: TObject);
 begin
   if FShowsImpact and (Length(FImpact.Tests) > 0) and Assigned(FOnImpactRunTests) then
+  begin
     FOnImpactRunTests(FImpact);
+  end;
 end;
 
 function TAtlasResultsFrame.AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
@@ -862,10 +938,14 @@ begin
   Result := Default(TNodeData);
   Result.Kind := TNodeKind.Placeholder;
   if ANode = nil then
+  begin
     Exit;
+  end;
   Index := NativeInt(ANode.Data) - 1;
   if (Index >= 0) and (Index < FData.Count) then
+  begin
     Result := FData[Integer(Index)];
+  end;
 end;
 
 procedure TAtlasResultsFrame.ShowPathPanel(AVisible: Boolean);
@@ -883,7 +963,9 @@ end;
 procedure TAtlasResultsFrame.PathMapClick(Sender: TObject);
 begin
   if Assigned(FOnShowRoute) and (Length(FPathChain.Answer.Routes) > 0) then
+  begin
     FOnShowRoute(FPathChain.Answer.Routes[0].UnitNames);
+  end;
 end;
 
 procedure TAtlasResultsFrame.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
@@ -897,7 +979,9 @@ begin
   FPathBox.VertScrollBar.Position := 0;
   // Nur im gezeigten Fenster; SetFocus in einem verborgenen löst eine Ausnahme aus.
   if FPathChain.Showing and FPathChain.CanFocus then
+  begin
     FPathChain.SetFocus;
+  end;
 end;
 
 procedure TAtlasResultsFrame.ShowSymbolPathMessage(const ATitle, AText: string);
@@ -974,7 +1058,9 @@ begin
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 procedure TAtlasResultsFrame.ShowRated(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>;
@@ -997,8 +1083,12 @@ begin
   Sure := TAtlasResults.SureOnly(FRatedEntries);
   Inferred := nil;
   for Entry in FRatedEntries do
+  begin
     if Entry.Confidence.Inferred then
+    begin
       Inferred := Inferred + [Entry];
+    end;
+  end;
   if Length(Inferred) = 0 then
   begin
     ShowEntries(FRatedTitle, TAtlasResults.Group(FRatedEntries));
@@ -1009,7 +1099,9 @@ begin
   FTree.Items.BeginUpdate;
   try
     if FOnlySure.Checked then
-      AddGroups(nil, TAtlasResults.Group(Sure))
+    begin
+      AddGroups(nil, TAtlasResults.Group(Sure));
+    end
     else
     begin
       Data := Default(TNodeData);
@@ -1025,14 +1117,18 @@ begin
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 procedure TAtlasResultsFrame.OnlySureClick(Sender: TObject);
 begin
   // Clear blendet den Filter aus und RenderRated wieder ein; Checked bleibt.
   if Length(FRatedEntries) > 0 then
+  begin
     RenderRated;
+  end;
 end;
 
 procedure TAtlasResultsFrame.TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -1041,7 +1137,9 @@ var
 begin
   Node := FTree.GetNodeAt(X, Y);
   if Node = FHintNode then
+  begin
     Exit;
+  end;
   FHintNode := Node;
   FTree.Hint := DataOf(Node).Hint;
   Application.CancelHint;
@@ -1096,7 +1194,9 @@ begin
   FHierarchyTitle := ATitle;
   UpdateDiagramControls;
   if AAsDiagram or FDiagramToggle.Checked then
+  begin
     SetShowsDiagram(True);
+  end;
 end;
 
 function TAtlasResultsFrame.IsCallHierarchy: Boolean;
@@ -1128,9 +1228,13 @@ procedure TAtlasResultsFrame.SetDiagramAllowed(AValue: Boolean);
 begin
   FDiagramAllowed := AValue;
   if not AValue then
-    SetShowsDiagram(False)
+  begin
+    SetShowsDiagram(False);
+  end
   else
+  begin
     UpdateDiagramControls;
+  end;
 end;
 
 function TAtlasResultsFrame.GetShowsDiagram: Boolean;
@@ -1155,7 +1259,9 @@ begin
   end;
   UpdateDiagramControls;
   if AValue and FDiagram.CanFocus and FDiagram.Showing then
+  begin
     FDiagram.SetFocus;
+  end;
 end;
 
 procedure TAtlasResultsFrame.SetIsProjectFile(const AValue: TFunc<string, Boolean>);
@@ -1172,7 +1278,9 @@ var
   AsDiagram: Boolean;
 begin
   if (Length(FRoots) = 0) or (ADirection = FDirection) then
+  begin
     Exit;
+  end;
   Roots := FRoots;
   AsDiagram := ShowsDiagram;
   ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots, AsDiagram);
@@ -1181,17 +1289,25 @@ end;
 procedure TAtlasResultsFrame.DiagramToggleClick(Sender: TObject);
 begin
   if not FUpdatingDiagram then
+  begin
     SetShowsDiagram(FDiagramToggle.Checked);
+  end;
 end;
 
 procedure TAtlasResultsFrame.DirectionClick(Sender: TObject);
 begin
   if FUpdatingDiagram then
+  begin
     Exit;
+  end;
   if FOutgoing.Checked then
-    SwitchDirection(TAtlasHierarchyDirection.Outgoing)
+  begin
+    SwitchDirection(TAtlasHierarchyDirection.Outgoing);
+  end
   else if FIncoming.Checked then
+  begin
     SwitchDirection(TAtlasHierarchyDirection.Incoming);
+  end;
 end;
 
 procedure TAtlasResultsFrame.ProjectOnlyClick(Sender: TObject);
@@ -1220,7 +1336,9 @@ begin
     Dialog.FileName := TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand) + '.html';
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if not Dialog.Execute then
+    begin
       Exit;
+    end;
     TFile.WriteAllText(Dialog.FileName, DiagramHtml, TEncoding.UTF8);
     FTitle.Caption := FHierarchyTitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.CallDiagramSaved, [Dialog.FileName]);
   finally
@@ -1233,13 +1351,17 @@ function TAtlasResultsFrame.DiagramLoad(ADirection: TAtlasHierarchyDirection;
 begin
   Result := nil;
   if Assigned(FOnExpand) then
+  begin
     Result := FOnExpand(ADirection, AItem);
+  end;
 end;
 
 procedure TAtlasResultsFrame.DiagramOpen(const AItem: TAtlasHierarchyItem);
 begin
   if Assigned(FOnOpen) and (AItem.FileName <> '') then
+  begin
     FOnOpen(AItem.FileName, AItem.Line, AItem.Character);
+  end;
 end;
 
 procedure TAtlasResultsFrame.TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
@@ -1255,7 +1377,9 @@ begin
     Exit;
   end;
   if (Data.Kind <> TNodeKind.Hierarchy) or Data.Loaded then
+  begin
     Exit;
+  end;
   Index := NativeInt(Node.Data) - 1;
   Data.Loaded := True;
   FData[Integer(Index)] := Data;
@@ -1290,7 +1414,9 @@ var
 begin
   PreviousId := 0;
   if AKeepSelection and FShowsChanges then
+  begin
     PreviousId := SelectedSet.SetId;
+  end;
   Clear(ATitle);
   FShowsChanges := True;
   Selected := nil;
@@ -1304,7 +1430,9 @@ begin
       Data.State := ChangeSet.State;
       SetNode := AddNode(nil, TAtlasUndoMessages.SetCaption(ChangeSet, ANow), Data);
       if ChangeSet.Id = PreviousId then
+      begin
         Selected := SetNode;
+      end;
       for Change in ChangeSet.Files do
       begin
         Data.Kind := TNodeKind.ChangeFile;
@@ -1316,16 +1444,22 @@ begin
     FTree.Items.EndUpdate;
   end;
   if Selected <> nil then
-    FTree.Selected := Selected
+  begin
+    FTree.Selected := Selected;
+  end
   else if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 function TAtlasResultsFrame.SelectedSet: TNodeData;
 begin
   Result := DataOf(FTree.Selected);
   if not (Result.Kind in [TNodeKind.ChangeSet, TNodeKind.ChangeFile]) then
+  begin
     Result := Default(TNodeData);
+  end;
 end;
 
 procedure TAtlasResultsFrame.MenuPopup(Sender: TObject);
@@ -1374,7 +1508,9 @@ begin
         mData.ItemId := mItem.Id;
         mNode := AddNode(mGroupNode, mItem.Caption, mData);
         if (AList.SelectId <> '') and (mItem.Id = AList.SelectId) then
+        begin
           mSelected := mNode;
+        end;
       end;
       mGroupNode.Expand(False);
     end;
@@ -1382,9 +1518,13 @@ begin
     FTree.Items.EndUpdate;
   end;
   if mSelected <> nil then
-    FTree.Selected := mSelected
+  begin
+    FTree.Selected := mSelected;
+  end
   else if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 function TAtlasResultsFrame.ShowsItemsOf(const AOwner: string): Boolean;
@@ -1395,7 +1535,9 @@ end;
 procedure TAtlasResultsFrame.ReleaseItems(const AOwner: string);
 begin
   if not ShowsItemsOf(AOwner) then
+  begin
     Exit;
+  end;
   FItems.OnEdit := nil;
   FItems.OnDelete := nil;
 end;
@@ -1411,7 +1553,9 @@ var
 begin
   mId := SelectedItemId;
   if (mId <> '') and Assigned(FItems.OnEdit) then
+  begin
     FItems.OnEdit(mId);
+  end;
 end;
 
 procedure TAtlasResultsFrame.DeleteSelectedItem;
@@ -1420,7 +1564,9 @@ var
 begin
   mId := SelectedItemId;
   if (mId <> '') and Assigned(FItems.OnDelete) then
+  begin
     FItems.OnDelete(mId);
+  end;
 end;
 
 procedure TAtlasResultsFrame.ItemEditClick(Sender: TObject);
@@ -1439,7 +1585,9 @@ var
 begin
   Data := SelectedSet;
   if (Data.SetId > 0) and Assigned(FOnChangeDiff) then
+  begin
     FOnChangeDiff(Data.SetId, Data.FileName);
+  end;
 end;
 
 procedure TAtlasResultsFrame.UndoSelected;
@@ -1448,7 +1596,9 @@ var
 begin
   Data := SelectedSet;
   if (Data.SetId > 0) and Assigned(FOnChangeUndo) then
+  begin
     FOnChangeUndo(Data.SetId);
+  end;
 end;
 
 procedure TAtlasResultsFrame.RedoSelected;
@@ -1457,7 +1607,9 @@ var
 begin
   Data := SelectedSet;
   if (Data.SetId > 0) and Assigned(FOnChangeRedo) then
+  begin
     FOnChangeRedo(Data.SetId);
+  end;
 end;
 
 procedure TAtlasResultsFrame.UndoClick(Sender: TObject);
@@ -1493,23 +1645,37 @@ const
     TAtlasTextId.DataFlowAddresses, TAtlasTextId.DataFlowPlaces);
 begin
   if ACount > 1 then
-    Result := Format('%d %s', [ACount, TAtlasStrings.Text(Plural[AKind])])
+  begin
+    Result := Format('%d %s', [ACount, TAtlasStrings.Text(Plural[AKind])]);
+  end
   else
+  begin
     Result := TAtlasStrings.Text(Singular[AKind]);
+  end;
 end;
 
 function UnsafeText(const AReason: string): string;
 begin
   if AReason = 'pointer' then
-    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer);
+  end
   else if AReason = 'address' then
-    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafeAddress)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafeAddress);
+  end
   else if AReason = 'move' then
-    Result := 'Move'
+  begin
+    Result := 'Move';
+  end
   else if AReason = 'fillchar' then
-    Result := 'FillChar'
+  begin
+    Result := 'FillChar';
+  end
   else
+  begin
     Result := AReason;
+  end;
 end;
 
 class function TAtlasResultsFrame.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
@@ -1523,9 +1689,13 @@ var
 begin
   Result := FlowKindText(ANode.Kind, Length(ANode.Places));
   if ANode.Detail <> '' then
+  begin
     Result := Result + ': ' + ANode.Detail;
+  end;
   if ANode.Via <> '' then
+  begin
     Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, [ANode.Via]);
+  end;
   // Herkunft eines Blatts nur, wo die Art sie nicht schon nennt.
   Origin := TAtlasDataFlowTree.Origin(ANode);
   case Origin of
@@ -1535,28 +1705,40 @@ begin
       Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOpen);
     TAtlasDataFlowOrigin.Outside:
       if ANode.Kind <> TAtlasDataFlowKind.Outside then
+      begin
         Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOutside);
+      end;
     TAtlasDataFlowOrigin.Address:
       Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginAddress);
     TAtlasDataFlowOrigin.None, TAtlasDataFlowOrigin.Input, TAtlasDataFlowOrigin.Output, TAtlasDataFlowOrigin.Use,
     TAtlasDataFlowOrigin.Constant: ;
   end;
   if ANode.Unsafe then
+  begin
     Result := Result + '  ⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe, [UnsafeText(ANode.UnsafeReason)]);
+  end;
   if Length(ANode.Places) = 1 then
+  begin
     Result := Result + '   ' + FlowPlaceText(ANode.Places[0]);
+  end;
 end;
 
 class function TAtlasResultsFrame.FlowSourceText(const AChild: TAtlasDataFlowChild;
   ADirection: TAtlasDataFlowDirection): string;
 begin
   if ADirection = TAtlasDataFlowDirection.Targets then
-    Result := '→ '
+  begin
+    Result := '→ ';
+  end
   else
+  begin
     Result := '← ';
+  end;
   Result := Result + AChild.Source.Name;
   if AChild.Source.FileName <> '' then
+  begin
     Result := Result + Format('  (%s:%d)', [ExtractFileName(AChild.Source.FileName), AChild.Source.Line + 1]);
+  end;
   case AChild.Source.Leaf of
     TAtlasDataFlowLeaf.Constant:
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant);
@@ -1566,7 +1748,9 @@ begin
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle);
   else
     if AChild.DepthReached then
+    begin
       Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth);
+    end;
   end;
 end;
 
@@ -1642,7 +1826,9 @@ begin
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 procedure TAtlasResultsFrame.ExpandFlowSource(ANode: TTreeNode; var AllowExpansion: Boolean);
@@ -1678,7 +1864,9 @@ end;
 procedure TAtlasResultsFrame.FlowFilterClick(Sender: TObject);
 begin
   if FSettingFilter or not FShowsFlow or not Assigned(FOnFlowFilter) then
+  begin
     Exit;
+  end;
   FOnFlowFilter(FOnlyProject.Checked, FExcludeTests.Checked);
 end;
 
@@ -1712,7 +1900,9 @@ begin
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
+  begin
     FTree.Selected := FTree.Items[0];
+  end;
 end;
 
 function TAtlasResultsFrame.SetIssueText(AList, AId: Integer; const AText: string): Boolean;
@@ -1722,7 +1912,9 @@ var
 begin
   Result := False;
   if not FShowsIssues or (AList <> FIssueList) then
+  begin
     Exit;
+  end;
   mNode := FTree.Items.GetFirstNode;
   while mNode <> nil do
   begin
@@ -1741,12 +1933,18 @@ var
   mData: TNodeData;
 begin
   if not FShowsIssues then
+  begin
     Exit;
+  end;
   mData := DataOf(FTree.Selected);
   if (mData.Kind = TNodeKind.Issue) and Assigned(FOnIssueOpen) then
-    FOnIssueOpen(FIssueList, mData.SetId)
+  begin
+    FOnIssueOpen(FIssueList, mData.SetId);
+  end
   else if (mData.Kind = TNodeKind.Commit) and Assigned(FOnIssueCommit) then
+  begin
     FOnIssueCommit(FIssueList, mData.SetId);
+  end;
 end;
 
 procedure TAtlasResultsFrame.TreeClick(Sender: TObject);
@@ -1756,13 +1954,19 @@ var
 begin
   // Klick auf die Zeile eines Issues (nicht auf das Aufklappzeichen) öffnet es (#1275).
   if not FShowsIssues or not FTree.HandleAllocated then
+  begin
     Exit;
+  end;
   mWhere := FTree.ScreenToClient(Mouse.CursorPos);
   if not (htOnItem in FTree.GetHitTestInfoAt(mWhere.X, mWhere.Y)) then
+  begin
     Exit;
+  end;
   mNode := FTree.GetNodeAt(mWhere.X, mWhere.Y);
   if (mNode <> nil) and (mNode = FTree.Selected) and (DataOf(mNode).Kind = TNodeKind.Issue) then
+  begin
     OpenSelectedIssue;
+  end;
 end;
 
 procedure TAtlasResultsFrame.OpenSelected;
@@ -1786,14 +1990,18 @@ begin
   if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Item, TNodeKind.Flow, TNodeKind.FlowPlace,
     TNodeKind.FlowSource]) and (Data.FileName <> '') and
     Assigned(FOnOpen) then
+  begin
     FOnOpen(Data.FileName, Data.Line, Data.Character);
+  end;
 end;
 
 procedure TAtlasResultsFrame.TreeDblClick(Sender: TObject);
 begin
   // Ein Issue hat schon der Klick geöffnet; der Doppelklick klappt es nur auf.
   if DataOf(FTree.Selected).Kind = TNodeKind.Issue then
+  begin
     Exit;
+  end;
   OpenSelected;
 end;
 

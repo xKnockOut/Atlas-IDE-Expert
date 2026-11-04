@@ -132,7 +132,9 @@ begin
         end;
       end;
       if Terminated then
+      begin
         Break;
+      end;
       if Captured and Running then
       begin
         Hang.DurationMs := NowMs - SentAt;
@@ -162,7 +164,9 @@ begin
       Hang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(Addresses,
         TAtlasIdeStackCapture.Modules));
       if Assigned(FOwner.FOnHang) then
+      begin
         FOwner.FOnHang(Hang);
+      end;
     end);
 end;
 
@@ -174,14 +178,18 @@ begin
   FThresholdFunc := AThreshold;
   FThresholdMs := 500;
   if Assigned(FThresholdFunc) then
+  begin
     FThresholdMs := FThresholdFunc();
+  end;
   FWake := TEvent.Create(nil, False, False, '');
   SetLength(FContextBuffer, SizeOf(TContext) + 16);
   FWindow := AllocateHWnd(WndProc);
   // Echter Handle des Hauptthreads (der Konstruktor läuft dort); GetCurrentThread ist nur ein Platzhalter.
   if not DuplicateHandle(GetCurrentProcess, GetCurrentThread, GetCurrentProcess, @FMainThread, 0, False,
     DUPLICATE_SAME_ACCESS) then
+  begin
     FMainThread := 0;
+  end;
   PostMessage(FWindow, WM_ATLAS_STARTUP, 0, 0);
   FThread := TWatchThread.Create(True);
   FThread.FOwner := Self;
@@ -200,9 +208,13 @@ begin
     FreeAndNil(FThread);
   end;
   if FWindow <> 0 then
+  begin
     DeallocateHWnd(FWindow);
+  end;
   if FMainThread <> 0 then
+  begin
     CloseHandle(FMainThread);
+  end;
   FWake.Free;
   inherited;
 end;
@@ -226,7 +238,9 @@ begin
           TInterlocked.Exchange(FPong, Integer(AMessage.WParam));
           // Die Schwelle kann sich in den Optionen ändern; hier im Hauptthread lesen.
           if Assigned(FThresholdFunc) then
+          begin
             TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
+          end;
         end;
       WM_ATLAS_STARTUP:
         TInterlocked.Exchange(FStarted, 1);
@@ -249,15 +263,21 @@ begin
   FStackCount := 0;
   FIP := 0;
   if FMainThread = 0 then
+  begin
     Exit;
+  end;
   // Während der Hauptthread steht: nichts anfordern, nichts sperren, nur kopieren.
   if SuspendThread(FMainThread) = DWORD(-1) then
+  begin
     Exit;
+  end;
   try
     FillChar(Context^, SizeOf(TContext), 0);
     Context.ContextFlags := CONTEXT_CONTROL;
     if not GetThreadContext(FMainThread, Context^) then
+    begin
       Exit;
+    end;
     {$IFDEF CPUX64}
     StackPointer := Context.Rsp;
     FIP := Context.Rip;
@@ -266,11 +286,15 @@ begin
     FIP := Context.Eip;
     {$ENDIF}
     if VirtualQuery(Pointer(StackPointer), Info, SizeOf(Info)) = 0 then
+    begin
       Exit;
+    end;
     Limit := NativeUInt(Info.BaseAddress) + Info.RegionSize;
     FStackCount := (Limit - StackPointer) div SizeOf(NativeUInt);
     if FStackCount > StackWords then
+    begin
       FStackCount := StackWords;
+    end;
     Move(Pointer(StackPointer)^, FStack[0], FStackCount * SizeOf(NativeUInt));
   finally
     ResumeThread(FMainThread);
@@ -284,7 +308,9 @@ begin
   SetLength(Result, FStackCount + 1);
   Result[0] := FIP;
   for Index := 0 to FStackCount - 1 do
+  begin
     Result[Index + 1] := FStack[Index];
+  end;
 end;
 
 class function TAtlasWatchdog.ForegroundWindowText: string;
@@ -297,10 +323,14 @@ begin
   Result := '';
   Window := GetForegroundWindow;
   if Window = 0 then
+  begin
     Exit;
+  end;
   Length_ := InternalGetWindowText(Window, Buffer, Length(Buffer));
   if Length_ > 0 then
+  begin
     SetString(Result, PWideChar(@Buffer[0]), Length_);
+  end;
 end;
 
 end.

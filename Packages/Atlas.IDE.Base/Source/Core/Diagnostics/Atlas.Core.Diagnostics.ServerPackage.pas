@@ -78,22 +78,32 @@ var
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) then
+  begin
     Exit;
+  end;
   mFiles := TJSONObject(AAnswer).GetValue('files');
   if not (mFiles is TJSONArray) then
+  begin
     Exit;
+  end;
   for mItem in TJSONArray(mFiles) do
   begin
     if not (mItem is TJSONObject) then
+    begin
       Continue;
+    end;
     mName := TJSONObject(mItem).GetValue('name');
     mContent := TJSONObject(mItem).GetValue('content');
     // TJSONNumber leitet von TJSONString ab; Zahlen sind weder Name noch Inhalt.
     if not (mName is TJSONString) or not (mContent is TJSONString) or (mName is TJSONNumber) or
       (mContent is TJSONNumber) then
+    begin
       Continue;
+    end;
     if not IsServerName(mName.Value) then
+    begin
       Continue;
+    end;
     Result := Result + [TAtlasPackageFile.Create(mName.Value, TAtlasPackagePart.Logs, mContent.Value)];
   end;
 end;
@@ -117,14 +127,20 @@ begin
     for mFile in AFiles do
     begin
       if mBuilder.Length > 0 then
+      begin
         mBuilder.Append(sLineBreak);
+      end;
       mBuilder.Append('== ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes) ==');
       mBuilder.Append(sLineBreak);
       mText := mFile.Text;
       if Length(mText) > PreviewChars then
-        mBuilder.Append(Copy(mText, 1, PreviewChars)).Append(sLineBreak).Append(ACutNote)
+      begin
+        mBuilder.Append(Copy(mText, 1, PreviewChars)).Append(sLineBreak).Append(ACutNote);
+      end
       else
+      begin
         mBuilder.Append(mText);
+      end;
       mBuilder.Append(sLineBreak);
     end;
     Result := mBuilder.ToString;

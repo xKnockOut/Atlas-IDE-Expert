@@ -27,11 +27,17 @@ var
 begin
   mServer := ATarget.Server;
   if mServer = '' then
+  begin
     Exit('');
+  end;
   if (mServer = 'https://github.com') or (mServer = 'https://www.github.com') then
-    Result := ApiHost
+  begin
+    Result := ApiHost;
+  end
   else
+  begin
     Result := mServer + '/api/v3';
+  end;
 end;
 
 end.

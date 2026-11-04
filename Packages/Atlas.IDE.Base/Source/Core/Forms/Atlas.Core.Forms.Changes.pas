@@ -68,9 +68,13 @@ var
 begin
   Result := AValue <> '';
   for Index := 1 to Length(AValue) do
+  begin
     if not (CharInSet(AValue[Index], ['A'..'Z', 'a'..'z', '_']) or
       ((Index > 1) and CharInSet(AValue[Index], ['0'..'9']))) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function IsPath(const AValue: string): Boolean;
@@ -79,8 +83,12 @@ var
 begin
   Result := AValue <> '';
   for Part in AValue.Split(['.']) do
+  begin
     if not IsIdentifier(Part) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>"Name = Wert" mit vollständigem, einzeiligem Wert; False sonst.</summary>
@@ -91,7 +99,9 @@ begin
   Separator := Pos(' = ', ALine);
   Result := Separator > 0;
   if not Result then
+  begin
     Exit;
+  end;
   AName := Trim(Copy(ALine, 1, Separator - 1));
   AValue := Trim(Copy(ALine, Separator + 3, MaxInt));
   // Mehrzeilige Werte beginnen mit (, < oder { bzw. enden mit +.
@@ -123,6 +133,7 @@ begin
   Line := Trim(ALine);
   AIsObject := False;
   for Keyword in TArray<string>.Create('object ', 'inherited ', 'inline ') do
+  begin
     if Line.StartsWith(Keyword, True) then
     begin
       AIsObject := True;
@@ -130,9 +141,12 @@ begin
       Colon := Pos(':', Line);
       // Ohne Doppelpunkt ("object TTimer") hat die Komponente keinen Namen.
       if Colon > 0 then
+      begin
         Result := Trim(Copy(Line, 1, Colon - 1));
+      end;
       Exit;
     end;
+  end;
 end;
 
 class function TAtlasFormChanges.StringValue(const AValue: string; out AText: string): Boolean;
@@ -144,7 +158,9 @@ begin
   Value := Trim(AValue);
   Result := (Value <> '') and CharInSet(Value[1], ['''', '#']);
   if not Result then
+  begin
     Exit;
+  end;
   Index := 1;
   while Index <= Length(Value) do
     case Value[Index] of
@@ -173,9 +189,13 @@ begin
           Inc(Index);
           Start := Index;
           while (Index <= Length(Value)) and CharInSet(Value[Index], ['0'..'9']) do
+          begin
             Inc(Index);
+          end;
           if not TryStrToInt(Copy(Value, Start, Index - Start), Code) then
+          begin
             Exit(False);
+          end;
           AText := AText + Char(Code);
         end;
       ' ', '+', #13, #10, #9:
@@ -216,12 +236,18 @@ var
     Name := ObjectName(ALine, IsObject);
     Trimmed := Trim(ALine);
     if IsObject then
-      Stack := Stack + [Name]
+    begin
+      Stack := Stack + [Name];
+    end
     else if SameText(Trimmed, 'item') then
-      Stack := Stack + ['']
+    begin
+      Stack := Stack + [''];
+    end
     // Das letzte Element einer Kollektion endet mit "end>".
     else if (SameText(Trimmed, 'end') or SameText(Trimmed, 'end>')) and (Length(Stack) > 0) then
+    begin
       SetLength(Stack, Length(Stack) - 1);
+    end;
   end;
 
   /// <summary>Innerhalb eines Objekts, nicht in einem Kollektionseintrag.</summary>
@@ -235,7 +261,9 @@ var
     // Die oberste Ebene ist das Formular selbst.
     Result := '';
     if Length(Stack) > 1 then
+    begin
       Result := Stack[High(Stack)];
+    end;
   end;
 
   function Fail(ALine: Integer; const AText: string): Boolean;
@@ -280,11 +308,15 @@ begin
       (OldName = NewName) then
     begin
       if not InObject then
+      begin
         Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
+      end;
       if IsEventName(OldName) then
       begin
         if not IsIdentifier(OldValue) or not IsIdentifier(NewValue) then
+        begin
           Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
+        end;
         Change.Component := Component;
         Change.EventName := OldName;
         Change.OldHandler := OldValue;
@@ -292,7 +324,9 @@ begin
         AChanges := AChanges + [Change];
       end
       else
+      begin
         AProperties := AProperties + [NewProperty(NewName, NewValue, False, OldIndex + 1)];
+      end;
       Inc(OldIndex);
       Inc(NewIndex);
       Continue;
@@ -317,7 +351,9 @@ begin
       Continue;
     end;
     if OldIndex <= High(OldLines) then
+    begin
       Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
+    end;
     Exit(Fail(OldIndex + 1, NewLines[NewIndex]));
   end;
   Result := True;

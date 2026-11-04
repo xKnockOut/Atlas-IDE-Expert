@@ -161,7 +161,9 @@ begin
   TAtlasIdeArchitectureWindow.Prepare;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeArchitectureWindow.ExistingFrame <> nil then
+  begin
     Wire(TAtlasIdeArchitectureWindow.ExistingFrame);
+  end;
 end;
 
 destructor TArchitectureState.Destroy;
@@ -276,16 +278,22 @@ begin
     procedure(AFileName: string)
     begin
       if Assigned(TAtlasIdeArchitecture.OnUnitRelations) then
-        TAtlasIdeArchitecture.OnUnitRelations(AFileName)
+      begin
+        TAtlasIdeArchitecture.OnUnitRelations(AFileName);
+      end
       else
+      begin
         TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
+      end;
     end;
   // Vom Desktop wiederhergestellt: rechnen, sobald der Aufbau durch ist (dann ist meist auch das Projekt da).
   TAtlasMainThread.Queue(TAtlasFeature.Architecture,
     procedure
     begin
       if (TAtlasIdeArchitecture.FState = Self) and Active and TAtlasIdeArchitectureWindow.Visible then
+      begin
         EnsureData;
+      end;
     end);
 end;
 
@@ -295,7 +303,9 @@ var
 begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if (Frame <> nil) and not Frame.HasModel and not FPending then
+  begin
     Refresh;
+  end;
 end;
 
 function TArchitectureState.ProjectUri(out AUri: string): Boolean;
@@ -306,7 +316,9 @@ begin
   Project := GetActiveProject;
   Result := (Project <> nil) and (Project.FileName <> '');
   if Result then
+  begin
     AUri := TLspSession.PathToUri(Project.FileName);
+  end;
 end;
 
 procedure TArchitectureState.ChangeScope(const AScope: string);
@@ -362,7 +374,9 @@ end;
 procedure TArchitectureState.CompareWith(const AFileName: string);
 begin
   if AFileName = '' then
+  begin
     Exit;
+  end;
   FCompareWith := AFileName;
   FCompare := True;
   Refresh;
@@ -389,7 +403,9 @@ var
 begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if Frame = nil then
+  begin
     Exit;
+  end;
   if not ProjectUri(Uri) then
   begin
     Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), False);
@@ -416,15 +432,23 @@ begin
           Current: TAtlasArchitectureFrame;
         begin
           if (TAtlasIdeArchitecture.FState <> Self) or (Request <> FRequest) then
+          begin
             Exit;
+          end;
           FPending := False;
           Current := TAtlasIdeArchitectureWindow.ExistingFrame;
           if Current = nil then
+          begin
             Exit;
+          end;
           if not Parsed then
-            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False)
+          begin
+            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False);
+          end
           else if not Enabled then
-            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False)
+          begin
+            Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False);
+          end
           else
           begin
             Current.SetModel(Model);
@@ -445,7 +469,9 @@ var
 begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if (Frame = nil) or (AFileName = '') then
+  begin
     Exit;
+  end;
   if not ProjectUri(Uri) then
   begin
     Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoProject), True);
@@ -465,17 +491,27 @@ begin
           Current: TAtlasArchitectureFrame;
         begin
           if TAtlasIdeArchitecture.FState <> Self then
+          begin
             Exit;
+          end;
           Current := TAtlasIdeArchitectureWindow.ExistingFrame;
           if Current = nil then
+          begin
             Exit;
+          end;
           if Saved <> '' then
-            Current.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSaved, [Saved]), True)
+          begin
+            Current.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSaved, [Saved]), True);
+          end
           else
+          begin
             Current.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), True);
+          end;
         end);
     end) then
+  begin
     Frame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
+  end;
 end;
 
 procedure TArchitectureState.ShowRoute(const AUnits: TArray<string>);
@@ -491,11 +527,17 @@ var
 begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if (Length(FRoute) = 0) or (Frame = nil) or not Frame.HasModel then
+  begin
     Exit;
+  end;
   if Frame.Model.RouteOf(FRoute, Units, Edges) then
-    Frame.Map.ShowRoute(Units, Edges)
+  begin
+    Frame.Map.ShowRoute(Units, Edges);
+  end
   else
+  begin
     Frame.Map.ClearPath;
+  end;
   FRoute := nil;
   // Die Karte zeigen, nicht eine Tabelle.
   Frame.Pages.ActivePageIndex := 0;
@@ -514,14 +556,18 @@ begin
   FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if Frame = nil then
+  begin
     Exit;
+  end;
   Frame.ScopeValue := FScope;
   Frame.IncludeLibrary := FIncludeLibrary;
   Frame.ResolutionValue := FResolution;
   Frame.ShowResolution := FShowResolution;
   // Umfang oder Bibliotheks-Units auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
   if Changed and TAtlasIdeArchitectureWindow.Visible then
+  begin
     Refresh;
+  end;
 end;
 
 { TAtlasIdeArchitecture }
@@ -549,14 +595,20 @@ var
   Frame: TAtlasArchitectureFrame;
 begin
   if (FState = nil) or not Active then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeArchitectureWindow.Show;
   if Frame = nil then
+  begin
     Exit;
+  end;
   // Beim ersten Öffnen rechnen; danach nur auf „Neu berechnen“ (die Karte bleibt stehen, während man springt).
   TArchitectureState(FState).EnsureData;
   if Frame.Filter.CanFocus then
+  begin
     Frame.Filter.SetFocus;
+  end;
 end;
 
 class procedure TAtlasIdeArchitecture.ShowRanking;
@@ -566,14 +618,18 @@ begin
   ShowWindow;
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if (FState <> nil) and Active and (Frame <> nil) then
+  begin
     Frame.ShowCostRanking;
+  end;
 end;
 
 class function TAtlasIdeArchitecture.ShowRoute(const AUnits: TArray<string>): Boolean;
 begin
   Result := (FState <> nil) and Active;
   if not Result then
+  begin
     Exit;
+  end;
   ShowWindow;
   TArchitectureState(FState).ShowRoute(AUnits);
 end;
@@ -581,7 +637,9 @@ end;
 class procedure TAtlasIdeArchitecture.ApplySettings;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   if not Active then
   begin
     TAtlasIdeArchitectureWindow.Hide;
@@ -597,7 +655,9 @@ begin
   TAtlasIdeArchitectureWindow.ApplyTheme;
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if Frame <> nil then
+  begin
     Frame.Map.Invalidate;
+  end;
 end;
 
 end.

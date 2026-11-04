@@ -147,7 +147,9 @@ begin
             while (Index <= Length(AText)) and (AText[Index] <> '}') do
             begin
               if AText[Index] = #10 then
+              begin
                 NewLine;
+              end;
               Inc(Index);
             end;
           end;
@@ -155,10 +157,14 @@ begin
           if (Index < Length(AText)) and (AText[Index + 1] = '/') then
           begin
             while (Index < Length(AText)) and (AText[Index + 1] <> #10) do
+            begin
               Inc(Index);
+            end;
           end
           else
+          begin
             Add(Index, 1, False, False);
+          end;
         '(':
           if (Index < Length(AText)) and (AText[Index + 1] = '*') then
           begin
@@ -166,13 +172,17 @@ begin
             while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
             begin
               if AText[Index] = #10 then
+              begin
                 NewLine;
+              end;
               Inc(Index);
             end;
             Inc(Index);
           end
           else
+          begin
             Add(Index, 1, False, False);
+          end;
         '^':
           begin
             Add(Index, 1, False, False);
@@ -181,26 +191,36 @@ begin
             if (Index < Length(AText)) and CharInSet(AText[Index + 1], ['[', ']', '(', ')']) and
               not ((Index > 1) and
               CharInSet(AText[Index - 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', ')', ']', '^'])) then
+            begin
               Inc(Index);
+            end;
           end;
         '''':
           begin
             Inc(Index);
             while (Index <= Length(AText)) and (AText[Index] <> '''') and (AText[Index] <> #10) do
+            begin
               Inc(Index);
+            end;
             if (Index <= Length(AText)) and (AText[Index] = #10) then
+            begin
               Continue;
+            end;
           end;
         'A'..'Z', 'a'..'z', '_', '&':
           begin
             Escaped := AText[Index] = '&';
             Start := Index;
             if Escaped then
+            begin
               Inc(Index);
+            end;
             // @@End im asm-Block ist eine Sprungmarke, kein Blockende (#861).
             Escaped := Escaped or (Start > 1) and (AText[Start - 1] = '@');
             while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+            begin
               Inc(Index);
+            end;
             Add(Start, Index - Start, True,
               Escaped or (List.Count > 0) and (List.Last.Text = '.') and (List.Last.Line = Line));
             Continue;
@@ -208,7 +228,9 @@ begin
         '0'..'9', '$', '#':
           begin
             while (Index < Length(AText)) and CharInSet(AText[Index + 1], ['0'..'9', 'A'..'F', 'a'..'f', '$']) do
+            begin
               Inc(Index);
+            end;
           end;
         ' ', #9, #13:
           ;
@@ -236,7 +258,9 @@ begin
   for Token in ALineTokens do
   begin
     if Token.Owner and not AOwners then
+    begin
       Continue;
+    end;
     Span.Start := Token.Character - Offset + 1;
     Span.Length := Token.Length;
     Span.Depth := Token.Depth;
@@ -244,7 +268,9 @@ begin
     // Hinter einem gekürzten „(…)“ steht anderer Text: nur, was dort wirklich steht.
     if (Span.Start < 1) or (Span.Start + Span.Length - 1 > System.Length(AText)) or
       (Copy(AText, Span.Start, Span.Length) <> Copy(ALine, Token.Character + 1, Token.Length)) then
+    begin
       Continue;
+    end;
     Result := Result + [Span];
   end;
 end;
@@ -257,10 +283,16 @@ begin
   Builder := TStringBuilder.Create;
   try
     for Ch in ALine do
+    begin
       if (Ch = #9) and (ATabWidth > 0) then
-        Builder.Append(' ', ATabWidth - Builder.Length mod ATabWidth)
+      begin
+        Builder.Append(' ', ATabWidth - Builder.Length mod ATabWidth);
+      end
       else if Ch <> #13 then
+      begin
         Builder.Append(Ch);
+      end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -278,10 +310,16 @@ var
 begin
   Result := 1;
   for Index := 1 to ACharacter do
+  begin
     if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
-      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1
+    begin
+      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1;
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasPairs.Analyze(const AText: string): TArray<TAtlasPairToken>;
@@ -321,9 +359,13 @@ var
   function TextAt(AIndex: Integer): string;
   begin
     if (AIndex >= 0) and (AIndex <= High(Tokens)) and not Tokens[AIndex].Plain then
-      Result := LowerCase(Tokens[AIndex].Text)
+    begin
+      Result := LowerCase(Tokens[AIndex].Text);
+    end
     else
+    begin
       Result := '';
+    end;
   end;
 
   /// <summary>Nach "class(TBase)" bzw. "interface(IBase)": Token hinter der Klammer.</summary>
@@ -332,17 +374,23 @@ var
     Depth: Integer;
   begin
     if TextAt(AIndex) <> '(' then
+    begin
       Exit(TextAt(AIndex));
+    end;
     Depth := 0;
     while AIndex <= High(Tokens) do
     begin
       if Tokens[AIndex].Text = '(' then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if Tokens[AIndex].Text = ')' then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Exit(TextAt(AIndex + 1));
+        end;
       end;
       Inc(AIndex);
     end;
@@ -377,15 +425,25 @@ var
     Previous := TextAt(Index - 1);
     Next := TextAt(Index + 1);
     if (Word = 'begin') or (Word = 'try') or (Word = 'repeat') or (Word = 'asm') then
+    begin
       Exit(True);
+    end;
     if Word = 'case' then
+    begin
       Exit(not InRecord);
+    end;
     if Word = 'record' then
+    begin
       Exit((Previous = '=') or (Previous = ':') or (Previous = 'of') or (Previous = 'packed'));
+    end;
     if (Word = 'class') or (Word = 'interface') or (Word = 'dispinterface') then
+    begin
       Exit(((Previous = '=') or (Previous = 'packed')) and (Next <> 'of') and (AfterParens(Index + 1) <> ';'));
+    end;
     if Word = 'object' then
+    begin
       Exit(Previous = '=');
+    end;
     Result := False;
   end;
 
@@ -421,10 +479,16 @@ var
     begin
       Text := TextAt(AFrom);
       for Candidate in AWords do
+      begin
         if Text = Candidate then
+        begin
           Exit(AFrom);
+        end;
+      end;
       if IsStop(Text) then
+      begin
         Exit(-1);
+      end;
       Dec(AFrom);
     end;
     Result := -1;
@@ -445,43 +509,59 @@ var
       begin
         Before := TextAt(Found);
         if (Before = '(') or (Before = '[') then
-          Inc(Parens)
+        begin
+          Inc(Parens);
+        end
         else if (Before = ')') or (Before = ']') then
-          Dec(Parens)
+        begin
+          Dec(Parens);
+        end
         else if (Parens = 0) and (Before = 'of') then
         begin
           AddOwner(AOpen, Found, Depth);
           Exit;
         end
         else if (Before = ';') or (Before = 'begin') or (Before = 'end') then
+        begin
           Exit;
+        end;
         Inc(Found);
       end;
       Exit;
     end;
     if (AOpen.Word <> 'begin') and (AOpen.Word <> 'asm') then
+    begin
       Exit;
+    end;
     Before := TextAt(AIndex - 1);
     if Before = 'then' then
     begin
       Found := FindBack(AIndex - 2, ['if']);
       if Found < 0 then
+      begin
         Exit;
+      end;
       AddOwner(AOpen, AIndex - 1, Depth);
       AddOwner(AOpen, Found, Depth);
       if TextAt(Found - 1) = 'else' then
+      begin
         AddOwner(AOpen, Found - 1, Depth);
+      end;
     end
     else if Before = 'do' then
     begin
       Found := FindBack(AIndex - 2, ['for', 'while', 'with', 'on']);
       if Found < 0 then
+      begin
         Exit;
+      end;
       AddOwner(AOpen, AIndex - 1, Depth);
       AddOwner(AOpen, Found, Depth);
     end
     else if Before = 'else' then
-      AddOwner(AOpen, AIndex - 1, Depth)
+    begin
+      AddOwner(AOpen, AIndex - 1, Depth);
+    end
     else if (Depth = 0) and (Headers.Count > 0) then
     begin
       // Rumpf der zuletzt begonnenen Routine (lokale Routinen kommen vor dem äußeren Rumpf).
@@ -489,7 +569,9 @@ var
       Headers.Delete(Headers.Count - 1);
       AddOwner(AOpen, Found, Depth);
       if TextAt(Found - 1) = 'class' then
+      begin
         AddOwner(AOpen, Found - 1, Depth);
+      end;
     end;
   end;
 
@@ -497,13 +579,19 @@ var
   begin
     Result := False;
     if Blocks.Count > 0 then
+    begin
       Exit;
+    end;
     Previous := TextAt(Index - 1);
     if (Previous = '=') or (Previous = ':') or (Previous = 'to') or (Previous = 'of') or (Previous = '(') or
       (Previous = ',') then
+    begin
       Exit;
+    end;
     if Word = 'operator' then
+    begin
       Exit(Previous = 'class');
+    end;
     Result := (Word = 'procedure') or (Word = 'function') or (Word = 'constructor') or (Word = 'destructor');
   end;
 
@@ -534,19 +622,29 @@ begin
             Emit(Index, Brackets.Count, False);
           end
           else
+          begin
             Emit(Index, 0, True);
+          end;
         end;
         Continue;
       end;
       if Token.Plain then
+      begin
         Continue;
+      end;
       Word := LowerCase(Token.Text);
       if IsRoutineHeader then
-        Headers.Add(Index)
+      begin
+        Headers.Add(Index);
+      end
       else if Word = 'implementation' then
-        Headers.Clear
+      begin
+        Headers.Clear;
+      end
       else if ((Word = 'forward') or (Word = 'external')) and (Blocks.Count = 0) and (Headers.Count > 0) then
+      begin
         Headers.Delete(Headers.Count - 1);
+      end;
       if Opens then
       begin
         Open.Word := Word;
@@ -560,37 +658,53 @@ begin
       else if Word = 'end' then
       begin
         if (Blocks.Count > 0) and (Blocks.Last.Word <> 'repeat') then
-          CloseBlock(Index)
+        begin
+          CloseBlock(Index);
+        end
         else if (Blocks.Count = 0) and (TextAt(Index + 1) = '.') then
           // Ende der Unit bzw. des Programms.
         else
+        begin
           Emit(Index, 0, True);
+        end;
       end
       else if Word = 'until' then
       begin
         if (Blocks.Count > 0) and (Blocks.Last.Word = 'repeat') then
-          CloseBlock(Index)
+        begin
+          CloseBlock(Index);
+        end
         else
+        begin
           Emit(Index, 0, True);
+        end;
       end
       else if ((Word = 'finally') or (Word = 'except')) and (Blocks.Count > 0) and (Blocks.Last.Word = 'try') then
+      begin
         Emit(Index, Blocks.Count - 1, False);
+      end;
     end;
     // Offen geblieben: unpaarig.
     for Open in Blocks do
     begin
       Results.List[Open.Index].Unpaired := True;
       for Owner in Open.Owners do
+      begin
         Results.List[Owner].Unpaired := True;
+      end;
     end;
     for Open in Brackets do
+    begin
       Results.List[Open.Index].Unpaired := True;
+    end;
     Results.Sort(TComparer<TAtlasPairToken>.Construct(
       function(const A, B: TAtlasPairToken): Integer
       begin
         Result := A.Line - B.Line;
         if Result = 0 then
+        begin
           Result := A.Character - B.Character;
+        end;
       end));
     Result := Results.ToArray;
     ABlocks := Closed.ToArray;

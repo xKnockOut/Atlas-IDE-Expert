@@ -60,7 +60,9 @@ end;
 procedure TAtlasRegistration.Revoke;
 begin
   if TryClaim then
+  begin
     DoRevoke;
+  end;
 end;
 
 function TAtlasRegistration.IsRevoked: Boolean;

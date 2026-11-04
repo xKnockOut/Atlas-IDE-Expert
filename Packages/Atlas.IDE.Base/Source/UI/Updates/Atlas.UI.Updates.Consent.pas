@@ -99,7 +99,9 @@ begin
   FNo := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
   ClientHeight := Buttons.Top + Buttons.Height + Gap;
   if ClientHeight < FSymbol.Top + FSymbol.Height + Gap then
+  begin
     ClientHeight := FSymbol.Top + FSymbol.Height + Gap;
+  end;
 end;
 
 function TAtlasUpdateConsent.AddButton(AParent: TWinControl; const ACaption: string;
@@ -127,15 +129,19 @@ procedure TAtlasUpdateConsent.Run(const AProc: TProc);
 begin
   // Nur die erste Antwort zählt; ausgeführt wird nach dem Schließen.
   if FDone then
+  begin
     Exit;
+  end;
   FDone := True;
   Close;
   if Assigned(AProc) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         AProc();
       end);
+  end;
 end;
 
 procedure TAtlasUpdateConsent.YesClick(Sender: TObject);

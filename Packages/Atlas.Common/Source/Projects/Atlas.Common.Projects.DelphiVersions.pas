@@ -157,11 +157,46 @@ begin
   Result := Choose(AConfigured, AProjectVersion, AInstalled, Missing);
 end;
 
+/// <summary>Wahl ohne Installation: die eingestellte Version, sonst die zum Projekt passende, sonst die neueste
+/// bekannte.</summary>
+function ChooseWithoutInstallation(const AConfigured, AWanted: string): string;
+begin
+  if ToNumber(AConfigured) > 0 then
+  begin
+    Result := AConfigured;
+  end
+  else if AWanted <> '' then
+  begin
+    Result := AWanted;
+  end
+  else
+  begin
+    Result := TDelphiVersions.LatestKnown;
+  end;
+end;
+
+/// <summary>Erste installierte Version ab AWanted, sonst die letzte installierte.</summary>
+function ChooseInstalled(const AWanted: string; const AInstalled: TArray<string>): string;
+var
+  mVersion: string;
+begin
+  if AWanted <> '' then
+  begin
+    for mVersion in AInstalled do
+    begin
+      if ToNumber(mVersion) >= ToNumber(AWanted) then
+      begin
+        Exit(mVersion);
+      end;
+    end;
+  end;
+  Result := AInstalled[High(AInstalled)];
+end;
+
 class function TDelphiVersions.Choose(const AConfigured, AProjectVersion: string; const AInstalled: TArray<string>;
   out AConfiguredMissing: Boolean): string;
 var
-  Wanted: string;
-  Version: string;
+  mWanted: string;
 begin
   AConfiguredMissing := False;
   if AConfigured <> '' then
@@ -173,32 +208,17 @@ begin
     // Fehlt sie, liefe das Projekt ohne Bibliothekspfade; die automatische Wahl greift (#47).
     AConfiguredMissing := True;
   end;
-  Wanted := BdsForProjectVersion(AProjectVersion);
+  mWanted := BdsForProjectVersion(AProjectVersion);
   // Ohne Installation fehlten sonst CompilerVersion und VERxxx, und beide Zweige von
   // {$IF CompilerVersion >= 36}A{$ELSE}B{$ENDIF} blieben stehen (#1321).
   if Length(AInstalled) = 0 then
   begin
-    if ToNumber(AConfigured) > 0 then
-    begin
-      Exit(AConfigured);
-    end;
-    if Wanted <> '' then
-    begin
-      Exit(Wanted);
-    end;
-    Exit(LatestKnown);
-  end;
-  if Wanted <> '' then
+    Result := ChooseWithoutInstallation(AConfigured, mWanted);
+  end
+  else
   begin
-    for Version in AInstalled do
-    begin
-      if ToNumber(Version) >= ToNumber(Wanted) then
-      begin
-        Exit(Version);
-      end;
-    end;
+    Result := ChooseInstalled(mWanted, AInstalled);
   end;
-  Result := AInstalled[High(AInstalled)];
 end;
 
 class function TDelphiVersions.ConfigurationIssues(const ASettings: TServerSettings;

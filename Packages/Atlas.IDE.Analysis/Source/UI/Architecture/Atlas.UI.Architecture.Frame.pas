@@ -394,7 +394,9 @@ begin
     begin
       UpdateResolutionInfo(AValue);
       if Assigned(FOnResolutionChanged) then
+      begin
         FOnResolutionChanged(AValue);
+      end;
     end;
 
   FResolutionInfo := TLabel.Create(Self);
@@ -654,9 +656,13 @@ var
 begin
   inherited CreateWnd;
   for Sheet in FSheets do
+  begin
     Sheet.TabVisible := True;
+  end;
   if (FPages.ActivePage = nil) and (Length(FSheets) > 0) then
+  begin
     FPages.ActivePage := FSheets[0];
+  end;
   // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
   FillScope;
   FillAll;
@@ -670,7 +676,9 @@ end;
 procedure TAtlasArchitectureFrame.FillScope;
 begin
   if not CanFill(FScope) then
+  begin
     Exit;
+  end;
   FUpdating := True;
   try
     FScope.Items.BeginUpdate;
@@ -682,9 +690,13 @@ begin
       FScope.Items.EndUpdate;
     end;
     if FScopeValue = ScopeValues[1] then
-      FScope.ItemIndex := 1
+    begin
+      FScope.ItemIndex := 1;
+    end
     else
+    begin
       FScope.ItemIndex := 0;
+    end;
   finally
     FUpdating := False;
   end;
@@ -693,9 +705,13 @@ end;
 procedure TAtlasArchitectureFrame.SetScopeValue(const AValue: string);
 begin
   if AValue = ScopeValues[1] then
-    FScopeValue := ScopeValues[1]
+  begin
+    FScopeValue := ScopeValues[1];
+  end
   else
+  begin
     FScopeValue := ScopeValues[0];
+  end;
   FillScope;
 end;
 
@@ -743,10 +759,14 @@ var
 begin
   mText := TAtlasArchResolution.Text(AValue, FormatSettings);
   if FHasModel and TAtlasArchResolution.Same(FModel.Resolution, AValue) then
+  begin
     FResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionInfo, [mText,
-      FModel.SubsystemCount])
+      FModel.SubsystemCount]);
+  end
   else
+  begin
     FResolutionInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureResolutionValue, [mText]);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
@@ -777,25 +797,37 @@ end;
 function TAtlasArchitectureFrame.UnitCaption(AUnit: Integer): string;
 begin
   if (AUnit >= 0) and (AUnit <= High(FModel.Units)) then
-    Result := FModel.Units[AUnit].Name
+  begin
+    Result := FModel.Units[AUnit].Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasArchitectureFrame.RoleCaption(const ARole: string): string;
 begin
   if ARole = 'foundation' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleFoundation)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleFoundation);
+  end
   else if ARole = 'hub' then
-    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleHub)
+  begin
+    Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureRoleHub);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasArchitectureFrame.LocationCaption(const ALink: TAtlasArchLink): string;
 begin
   if (ALink.FileName = '') or (ALink.Line <= 0) then
+  begin
     Exit('');
+  end;
   Result := Format('%s:%d', [ALink.FileName, ALink.Line]);
 end;
 
@@ -804,12 +836,18 @@ var
   Section, Location: string;
 begin
   if ALink.Interface_ then
-    Section := 'interface'
+  begin
+    Section := 'interface';
+  end
   else
+  begin
     Section := 'implementation';
+  end;
   Location := LocationCaption(ALink);
   if Location <> '' then
+  begin
     Section := Section + ', ' + Location;
+  end;
   Result := Format('%s → %s (%s)', [UnitCaption(ALink.Source), UnitCaption(ALink.Target), Section]);
 end;
 
@@ -841,11 +879,17 @@ var
   Data: TAtlasArchUnit;
 begin
   if not CanFill(FCentral) then
+  begin
     Exit;
+  end;
   Shown := nil;
   for Member in FModel.Central do
+  begin
     if FModel.Matches(Member, FFilter.Text) then
+    begin
       Shown := Shown + [Member];
+    end;
+  end;
   FCentralRows := FModel.Sorted(Shown, FSortColumn, FSortDescending);
   FCentral.Items.BeginUpdate;
   try
@@ -875,7 +919,9 @@ var
   Members: TArray<Integer>;
 begin
   if not CanFill(FSubsystems) then
+  begin
     Exit;
+  end;
   FSubsystems.Items.BeginUpdate;
   try
     FSubsystems.Items.Clear;
@@ -885,32 +931,48 @@ begin
       Subsystem := FModel.Subsystems[Index];
       Members := nil;
       for Member in Subsystem.Units do
+      begin
         if FModel.Matches(Member, FFilter.Text) then
+        begin
           Members := Members + [Member];
+        end;
+      end;
       if Length(Members) = 0 then
+      begin
         Continue;
+      end;
       Line := SubsystemCaption(Index);
       if Subsystem.Parent <> '' then
+      begin
         Line := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
+      end;
       Group := FSubsystems.Items.Add(nil, Line);
       Group.Data := nil;
       // Regel des Fundaments (#1365) als erste Zeile.
       if Subsystem.Foundation then
+      begin
         FSubsystems.Items.AddChild(Group,
           TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationRule)).Data := nil;
+      end;
       for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
       begin
         Line := FModel.Units[Member].Name;
         Outlier := FModel.OutlierOf(Member);
         if (Outlier >= 0) and (FModel.Outliers[Outlier].Reason = 'namespace') then
+        begin
             Line := Line + ' — ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureOutlierNamespace,
-            [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)])
+            [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
+        end
         else if Outlier >= 0 then
+        begin
             Line := Line + ' — ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureOutlierEdges,
             [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
+        end;
         // Knapp zugeordnet (#1368).
         if TAtlasArchitectureAssignment.CloseMark(FModel, Member) <> '' then
+        begin
           Line := Line + ' — ' + TAtlasArchitectureAssignment.CloseMark(FModel, Member);
+        end;
         Node := FSubsystems.Items.AddChild(Group, Line);
         // Unit: negative Zahl (−1 − Nummer), uses-Eintrag: positive (Nummer in FLinks + 1).
         Node.Data := Pointer(NativeInt(-1 - Member));
@@ -933,7 +995,9 @@ var
   Hit: Boolean;
 begin
   if not CanFill(FCycles) then
+  begin
     Exit;
+  end;
   FCycles.Items.BeginUpdate;
   try
     FCycles.Items.Clear;
@@ -941,13 +1005,21 @@ begin
     begin
       Hit := False;
       for Member in Cycle.Units do
+      begin
         Hit := Hit or FModel.Matches(Member, FFilter.Text);
+      end;
       if not Hit then
+      begin
         Continue;
+      end;
       if Cycle.InterfaceOnly then
-        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface)
+      begin
+        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface);
+      end
       else
+      begin
         Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation);
+      end;
       Group := FCycles.Items.Add(nil, Line + ': ' + FModel.CyclePath(Cycle));
       Group.Data := nil;
       for Link in Cycle.Edges do
@@ -970,7 +1042,9 @@ var
   Reason: string;
 begin
   if not CanFill(FCrossLinks) then
+  begin
     Exit;
+  end;
   FCrossRows := nil;
   FCrossLinks.Items.BeginUpdate;
   try
@@ -979,12 +1053,18 @@ begin
     begin
       Link := FModel.CrossLinks[Index];
       if not (FModel.Matches(Link.Source, FFilter.Text) or FModel.Matches(Link.Target, FFilter.Text)) then
+      begin
         Continue;
+      end;
       FCrossRows := FCrossRows + [Index];
       if Link.Reason = 'rare' then
-        Reason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare)
+      begin
+        Reason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
+      end
       else
+      begin
         Reason := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
+      end;
       Item := FCrossLinks.Items.Add;
       Item.Caption := UnitCaption(Link.Source);
       Item.SubItems.Add(UnitCaption(Link.Target));
@@ -1005,9 +1085,13 @@ begin
   case AKind of
     TAtlasArchChangeKind.NewCycles, TAtlasArchChangeKind.RemovedCycles:
       if AChange.Section = 'interface' then
-        Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface) + ': ' + Result
+      begin
+        Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleInterface) + ': ' + Result;
+      end
       else
+      begin
         Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureCycleImplementation) + ': ' + Result;
+      end;
     TAtlasArchChangeKind.Growth:
       Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureGrowthLine,
         [AChange.Text, AChange.From, AChange.To_]);
@@ -1018,11 +1102,17 @@ begin
       begin
         Detail := AChange.From + ' → ' + AChange.To_;
         if AChange.Section <> '' then
+        begin
           Detail := Detail + ', ' + AChange.Section;
+        end;
         if AChange.Reason = 'rare' then
-          Detail := Detail + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare)
+        begin
+          Detail := Detail + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonRare);
+        end
         else if AChange.Reason <> '' then
+        begin
           Detail := Detail + ', ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureReasonAgainst);
+        end;
         Result := Result + ' (' + Detail + ')';
       end;
     TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits: ;
@@ -1050,33 +1140,45 @@ begin
   FMap.ShowChanges := FChanges.Checked;
   FClearCompare.Enabled := FHasModel and ((Comparison.Baseline <> '') or (Comparison.Error <> ''));
   if Comparison.Error <> '' then
-    Info := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonError, [Comparison.Error])
+  begin
+    Info := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonError, [Comparison.Error]);
+  end
   else if Comparison.Present then
   begin
     Info := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonInfo,
       [ExtractFileName(Comparison.Baseline),
       Comparison.BaselineTitle, Comparison.BaselineUnits, Comparison.BaselineEdges, Comparison.Count]);
     if Length(Comparison.Failed) > 0 then
+    begin
       Info := Info + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonFailed,
         [string.Join(', ', Comparison.Failed)]);
+    end;
     // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
     if Comparison.ResolutionDiffers then
+    begin
       Info := Info + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureComparisonResolution,
         [TAtlasArchResolution.Text(Comparison.BaselineResolution, FormatSettings),
         TAtlasArchResolution.Text(Comparison.Resolution, FormatSettings)]);
+    end;
   end
   else
+  begin
     Info := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoComparison);
+  end;
   FCompareInfo.Caption := Info;
   FCompareInfo.Hint := Comparison.Baseline;
   FCompareInfo.ShowHint := Comparison.Baseline <> '';
   if not CanFill(FComparison) then
+  begin
     Exit;
+  end;
   FComparison.Items.BeginUpdate;
   try
     FComparison.Items.Clear;
     if not Comparison.Present then
+    begin
       Exit;
+    end;
     if Comparison.Count = 0 then
     begin
       FComparison.Items.Add(nil, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoChanges)).Data := nil;
@@ -1087,11 +1189,17 @@ begin
       // Der Filter wirkt wie in den anderen Listen auf die Namen; entfernte Units zählen mit ihrem Namen.
       Shown := nil;
       for Change in Section.Items do
+      begin
         if (Trim(FFilter.Text) = '') or (Pos(LowerCase(Trim(FFilter.Text)), LowerCase(Change.Text)) > 0) or
           FModel.Matches(Change.Unit_, FFilter.Text) then
+        begin
           Shown := Shown + [Change];
+        end;
+      end;
       if Length(Shown) = 0 then
+      begin
         Continue;
+      end;
       Group := FComparison.Items.Add(nil, TAtlasAnalysisStrings.Fmt(Titles[Section.Kind], [Length(Shown)]));
       Group.Data := nil;
       for Change in Shown do
@@ -1099,9 +1207,13 @@ begin
         Node := FComparison.Items.AddChild(Group, ChangeCaption(Section.Kind, Change));
         // Wie im Baum der Teilsysteme: Unit als −1 − Nummer; entfernte Units haben keine.
         if Change.Unit_ >= 0 then
-          Node.Data := Pointer(NativeInt(-1 - Change.Unit_))
+        begin
+          Node.Data := Pointer(NativeInt(-1 - Change.Unit_));
+        end
         else
+        begin
           Node.Data := nil;
+        end;
       end;
       Group.Expanded := Length(Shown) <= 20;
     end;
@@ -1113,11 +1225,17 @@ end;
 procedure TAtlasArchitectureFrame.UpdateStatus;
 begin
   if FMessageText <> '' then
-    FStatus.Caption := FMessageText
+  begin
+    FStatus.Caption := FMessageText;
+  end
   else if not FHasModel then
-    FStatus.Caption := ''
+  begin
+    FStatus.Caption := '';
+  end
   else if Length(FModel.Units) = 0 then
-    FStatus.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureEmpty)
+  begin
+    FStatus.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureEmpty);
+  end
   else
   begin
     // Index-Stand: Zahl der Änderungen; der obere Teil der Generation kennzeichnet nur den Index.
@@ -1125,23 +1243,33 @@ begin
       Length(FModel.Subsystems), Length(FModel.Cycles), Length(FModel.CrossLinks),
       Integer(FModel.Generation and $7FFFFFFF), FModel.DurationMs]);
     if Length(FModel.Excludes) > 0 then
+    begin
       FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusExcludes,
         [string.Join(', ', FModel.Excludes)]);
+    end;
     // Angleichung an einen vorigen Stand (#1367).
     if FModel.AlignedSource = 'baseline' then
+    begin
       FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(
         TAtlasAnalysisTextId.ArchitectureStatusAlignedBaseline,
-        [FModel.AlignedText])
+        [FModel.AlignedText]);
+    end
     else if FModel.AlignedSource <> '' then
+    begin
       FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusAlignedLast,
         [FModel.AlignedText]);
+    end;
     if FModel.Comparison.Present then
+    begin
       FStatus.Caption := FStatus.Caption + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureStatusComparison,
-        [FModel.Comparison.Count])
+        [FModel.Comparison.Count]);
+    end
     else if FModel.Comparison.Error <> '' then
+    begin
       FStatus.Caption := FStatus.Caption + ' · ' + TAtlasAnalysisStrings.Fmt(
         TAtlasAnalysisTextId.ArchitectureComparisonError,
         [FModel.Comparison.Error]);
+    end;
   end;
   FSave.Enabled := FHasModel and (Length(FModel.Units) > 0);
   FSaveState.Enabled := FSave.Enabled;
@@ -1162,11 +1290,15 @@ begin
   if FMap.PathFrom >= 0 then
   begin
     if FMap.PathFound then
+    begin
       FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [Length(FMap.Path),
-        FModel.PathText(FMap.PathFrom, FMap.Path)])
+        FModel.PathText(FMap.PathFrom, FMap.Path)]);
+    end
     else
+    begin
       FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, [UnitCaption(FMap.PathFrom),
         UnitCaption(FMap.PathTo)]);
+    end;
     Exit;
   end;
   if (FMap.Selected < 0) or (FMap.Selected > High(FModel.Units)) then
@@ -1220,7 +1352,9 @@ var
   mSize: TSize;
 begin
   if not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+  begin
     Exit;
+  end;
   mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
   FAssignment.Canvas.Font.Assign(Font);
   mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.Selected, CurrentPPI);
@@ -1232,9 +1366,13 @@ procedure TAtlasArchitectureFrame.ExplainClick(Sender: TObject);
 begin
   // Erneut: wieder nur der kurze Hinweis.
   if FExplanation.Caption = TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint) then
-    FExplanation.Caption := TAtlasArchitectureAssignment.Explanation(FModel)
+  begin
+    FExplanation.Caption := TAtlasArchitectureAssignment.Explanation(FModel);
+  end
   else
+  begin
     FExplanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.OpenUnit(AUnit: Integer);
@@ -1242,12 +1380,18 @@ var
   FileName: string;
 begin
   if (AUnit < 0) or (AUnit > High(FModel.Units)) or (FModel.Units[AUnit].FileName = '') then
+  begin
     Exit;
+  end;
   FileName := FModel.FullPath(FModel.Units[AUnit].FileName);
   if (GetKeyState(VK_CONTROL) < 0) and Assigned(FOnUnitRelations) then
-    FOnUnitRelations(FileName)
+  begin
+    FOnUnitRelations(FileName);
+  end
   else if Assigned(FOnOpenUnit) then
+  begin
     FOnOpenUnit(FileName);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.OpenLink(const ALink: TAtlasArchLink);
@@ -1258,13 +1402,17 @@ begin
     Exit;
   end;
   if Assigned(FOnOpenLocation) then
+  begin
     FOnOpenLocation(FModel.FullPath(ALink.FileName), ALink.Line, Max(1, ALink.Character));
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.SaveClick(Sender: TObject);
@@ -1277,9 +1425,13 @@ begin
     Dialog.DefaultExt := 'html';
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if FModel.Title <> '' then
+    begin
       Dialog.FileName := 'Architektur-' + FModel.Title + '.html';
+    end;
     if Dialog.Execute and Assigned(FOnSave) then
+    begin
       FOnSave(Dialog.FileName);
+    end;
   finally
     Dialog.Free;
   end;
@@ -1295,9 +1447,13 @@ begin
     Dialog.DefaultExt := 'json';
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if FModel.Title <> '' then
+    begin
       Dialog.FileName := 'Architektur-' + FModel.Title + '.json';
+    end;
     if Dialog.Execute and Assigned(FOnSaveState) then
+    begin
       FOnSaveState(Dialog.FileName);
+    end;
   finally
     Dialog.Free;
   end;
@@ -1313,9 +1469,13 @@ begin
     Dialog.DefaultExt := 'json';
     Dialog.Options := Dialog.Options + [ofFileMustExist, ofPathMustExist];
     if FModel.Comparison.Baseline <> '' then
+    begin
       Dialog.FileName := FModel.Comparison.Baseline;
+    end;
     if Dialog.Execute and Assigned(FOnCompare) then
+    begin
       FOnCompare(Dialog.FileName);
+    end;
   finally
     Dialog.Free;
   end;
@@ -1324,7 +1484,9 @@ end;
 procedure TAtlasArchitectureFrame.ClearCompareClick(Sender: TObject);
 begin
   if Assigned(FOnClearComparison) then
+  begin
     FOnClearComparison();
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.ChangesClick(Sender: TObject);
@@ -1335,18 +1497,26 @@ end;
 procedure TAtlasArchitectureFrame.ScopeChange(Sender: TObject);
 begin
   if FUpdating or (FScope.ItemIndex < 0) or (FScope.ItemIndex > High(ScopeValues)) then
+  begin
     Exit;
+  end;
   FScopeValue := ScopeValues[FScope.ItemIndex];
   if Assigned(FOnScopeChanged) then
+  begin
     FOnScopeChanged(FScopeValue);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.LibraryClick(Sender: TObject);
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   if Assigned(FOnLibraryChanged) then
+  begin
     FOnLibraryChanged(FLibrary.Checked);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.FilterChange(Sender: TObject);
@@ -1394,7 +1564,9 @@ begin
   begin
     mCaption := SubsystemCaption(Index);
     if FModel.Subsystems[Index].Parent = '' then
-      mFamily := ''
+    begin
+      mFamily := '';
+    end
     else
     begin
       if not SameText(FModel.Subsystems[Index].Parent, mFamily) then
@@ -1402,8 +1574,12 @@ begin
         mFamily := FModel.Subsystems[Index].Parent;
         mParts := 0;
         for mOther := 0 to High(FModel.Subsystems) do
+        begin
           if SameText(FModel.Subsystems[mOther].Parent, mFamily) then
+          begin
             Inc(mParts);
+          end;
+        end;
         Item := TMenuItem.Create(FSubsystemsMenu);
         Item.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemFamily, [mFamily, mParts]);
         Item.Enabled := False;
@@ -1420,7 +1596,9 @@ begin
     FSubsystemsMenu.Items.Add(Item);
   end;
   if FSubsystemsMenu.Items.Count = 0 then
+  begin
     Exit;
+  end;
   FSubsystemsMenu.Items.NewBottomLine;
   // Kanten zum Fundament (#1365) ein- und ausblenden.
   if FModel.HasFoundation then
@@ -1451,7 +1629,9 @@ end;
 procedure TAtlasArchitectureFrame.RenameSubsystemsClick(Sender: TObject);
 begin
   if Assigned(FOnRenameSubsystems) then
+  begin
     FOnRenameSubsystems();
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemsClick(Sender: TObject);
@@ -1475,13 +1655,17 @@ end;
 function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
 begin
   if FModel.Subsystems[ASubsystem].Foundation then
+  begin
     Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureFoundationLine,
       [FModel.Subsystems[ASubsystem].Name,
-      Length(FModel.Subsystems[ASubsystem].Units)])
+      Length(FModel.Subsystems[ASubsystem].Units)]);
+  end
   else
+  begin
     Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSubsystemLine,
       [FModel.Subsystems[ASubsystem].Name,
       Length(FModel.Subsystems[ASubsystem].Units), Round(FModel.Subsystems[ASubsystem].Cohesion * 100)]);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemItemClick(Sender: TObject);
@@ -1513,10 +1697,14 @@ var
   Next: TAtlasArchColumn;
 begin
   if (Column.Index < 0) or (Column.Index > High(CentralColumns)) then
+  begin
     Exit;
+  end;
   Next := CentralColumns[Column.Index];
   if Next = FSortColumn then
-    FSortDescending := not FSortDescending
+  begin
+    FSortDescending := not FSortDescending;
+  end
   else
   begin
     FSortColumn := Next;
@@ -1529,13 +1717,17 @@ end;
 procedure TAtlasArchitectureFrame.CentralDblClick(Sender: TObject);
 begin
   if (FCentral.ItemIndex >= 0) and (FCentral.ItemIndex <= High(FCentralRows)) then
+  begin
     OpenUnit(FCentralRows[FCentral.ItemIndex]);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.CrossDblClick(Sender: TObject);
 begin
   if (FCrossLinks.ItemIndex >= 0) and (FCrossLinks.ItemIndex <= High(FCrossRows)) then
+  begin
     OpenLink(FModel.CrossLinks[FCrossRows[FCrossLinks.ItemIndex]]);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.TreeDblClick(Sender: TObject);
@@ -1544,32 +1736,48 @@ var
   Value: NativeInt;
 begin
   if not (Sender is TTreeView) then
+  begin
     Exit;
+  end;
   Node := TTreeView(Sender).Selected;
   if (Node = nil) or (Node.Data = nil) then
+  begin
     Exit;
+  end;
   Value := NativeInt(Node.Data);
   if Value < 0 then
-    OpenUnit(-1 - Value)
+  begin
+    OpenUnit(-1 - Value);
+  end
   else if Value <= Length(FLinks) then
+  begin
     OpenLink(FLinks[Value - 1]);
+  end;
 end;
 
 procedure TAtlasArchitectureFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key <> VK_RETURN then
+  begin
     Exit;
+  end;
   if Sender = FCentral then
-    CentralDblClick(Sender)
+  begin
+    CentralDblClick(Sender);
+  end
   else if Sender = FCrossLinks then
+  begin
     CrossDblClick(Sender);
+  end;
   Key := 0;
 end;
 
 procedure TAtlasArchitectureFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key <> VK_RETURN then
+  begin
     Exit;
+  end;
   TreeDblClick(Sender);
   Key := 0;
 end;
@@ -1594,7 +1802,9 @@ begin
   begin
     Line := FCentral.Items[Index].Caption;
     for Column := 0 to FCentral.Items[Index].SubItems.Count - 1 do
+    begin
       Line := Line + #9 + FCentral.Items[Index].SubItems[Column];
+    end;
     Result := Result + [Line];
   end;
 end;
@@ -1605,7 +1815,9 @@ var
 begin
   Result := nil;
   for Index := 0 to FSubsystems.Items.Count - 1 do
+  begin
     Result := Result + [StringOfChar(' ', 2 * FSubsystems.Items[Index].Level) + FSubsystems.Items[Index].Text];
+  end;
 end;
 
 function TAtlasArchitectureFrame.CycleText: TArray<string>;
@@ -1614,7 +1826,9 @@ var
 begin
   Result := nil;
   for Index := 0 to FCycles.Items.Count - 1 do
+  begin
     Result := Result + [StringOfChar(' ', 2 * FCycles.Items[Index].Level) + FCycles.Items[Index].Text];
+  end;
 end;
 
 function TAtlasArchitectureFrame.ComparisonText: TArray<string>;
@@ -1623,7 +1837,9 @@ var
 begin
   Result := nil;
   for Index := 0 to FComparison.Items.Count - 1 do
+  begin
     Result := Result + [StringOfChar(' ', 2 * FComparison.Items[Index].Level) + FComparison.Items[Index].Text];
+  end;
 end;
 
 function TAtlasArchitectureFrame.CrossLinkText: TArray<string>;
@@ -1636,7 +1852,9 @@ begin
   begin
     Line := FCrossLinks.Items[Index].Caption;
     for Column := 0 to FCrossLinks.Items[Index].SubItems.Count - 1 do
+    begin
       Line := Line + #9 + FCrossLinks.Items[Index].SubItems[Column];
+    end;
     Result := Result + [Line];
   end;
 end;

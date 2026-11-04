@@ -67,11 +67,15 @@ function TAtlasTaskPreBuild.Decide(const AProject: TAtlasCompileProject; AHasBlo
 begin
   Result := TAtlasTaskPreBuildAction.None;
   if not Applies(AProject) or not (AHasBlock or AHasWarn) then
+  begin
     Exit;
+  end;
   if FRunning then
   begin
     if AHasBlock then
+    begin
       Result := TAtlasTaskPreBuildAction.Busy;
+    end;
     Exit;
   end;
   if AHasBlock and SameText(FPassFile, AProject.FileName) and (ANowMs <= FPassUntil) then
@@ -84,9 +88,13 @@ begin
   FBlocking := AHasBlock;
   FProject := AProject;
   if AHasBlock then
-    Result := TAtlasTaskPreBuildAction.StartAndCancel
+  begin
+    Result := TAtlasTaskPreBuildAction.StartAndCancel;
+  end
   else
+  begin
     Result := TAtlasTaskPreBuildAction.StartWarn;
+  end;
 end;
 
 function TAtlasTaskPreBuild.Finish(APassed: Boolean; ANowMs: Int64): Boolean;

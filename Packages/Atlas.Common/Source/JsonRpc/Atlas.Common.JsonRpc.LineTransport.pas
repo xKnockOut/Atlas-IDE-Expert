@@ -27,6 +27,8 @@ type
     FBufferLen: Integer;
     FWriteLock: TCriticalSection;
     function FillBuffer: Boolean;
+    /// <summary>Nächstes Byte der Eingabe; False am Ende.</summary>
+    function NextByte(out AValue: Byte): Boolean;
     /// <summary>Nächste nicht leere Zeile ohne Zeilenende; False am Ende der Eingabe.</summary>
     function ReadLine(out ALine: TBytes): Boolean;
   public
@@ -69,50 +71,54 @@ begin
   Result := FBufferLen > 0;
 end;
 
+function TJsonRpcLineTransport.NextByte(out AValue: Byte): Boolean;
+begin
+  Result := (FBufferPos < FBufferLen) or FillBuffer;
+  if Result then
+  begin
+    AValue := FBuffer[FBufferPos];
+    Inc(FBufferPos);
+  end;
+end;
+
+/// <summary>AValue gehört nicht in die Zeile: CR immer, Tabulator und Leerzeichen am Anfang.</summary>
+function SkipsByte(AValue: Byte; ALineSize: Int64): Boolean;
+begin
+  Result := (AValue = 13) or ((ALineSize = 0) and (AValue in [9, 32]));
+end;
+
 function TJsonRpcLineTransport.ReadLine(out ALine: TBytes): Boolean;
 var
-  Line: TBytesStream;
-  Value: Byte;
-  Bytes: TBytes;
+  mLine: TBytesStream;
+  mValue: Byte;
+  mDone: Boolean;
 begin
-  Line := TBytesStream.Create;
+  mLine := TBytesStream.Create;
   try
-    while True do
+    mDone := False;
+    // Leere Zeilen zählen nicht; die letzte Zeile ohne LF gilt noch als Nachricht.
+    while not mDone and NextByte(mValue) do
     begin
-      if (FBufferPos >= FBufferLen) and not FillBuffer then
+      if mValue = 10 then
       begin
-        // Letzte Zeile ohne LF gilt noch als Nachricht.
-        if Line.Size = 0 then
+        mDone := mLine.Size > 0;
+      end
+      else if not SkipsByte(mValue, mLine.Size) then
+      begin
+        if mLine.Size >= MaxLineLength then
         begin
-          Exit(False);
+          raise EJsonRpcTransportError.Create('Nachricht überschreitet die Höchstlänge');
         end;
-        Break;
+        mLine.WriteBuffer(mValue, 1);
       end;
-      Value := FBuffer[FBufferPos];
-      Inc(FBufferPos);
-      if Value = 10 then
-      begin
-        if Line.Size > 0 then
-        begin
-          Break;
-        end;
-        Continue;
-      end;
-      if (Value = 13) or ((Line.Size = 0) and (Value in [9, 32])) then
-      begin
-        Continue;
-      end;
-      if Line.Size >= MaxLineLength then
-      begin
-        raise EJsonRpcTransportError.Create('Nachricht überschreitet die Höchstlänge');
-      end;
-      Line.WriteBuffer(Value, 1);
     end;
-    Bytes := Line.Bytes;
-    ALine := Copy(Bytes, 0, Line.Size);
-    Result := True;
+    Result := mLine.Size > 0;
+    if Result then
+    begin
+      ALine := Copy(mLine.Bytes, 0, mLine.Size);
+    end;
   finally
-    Line.Free;
+    mLine.Free;
   end;
 end;
 

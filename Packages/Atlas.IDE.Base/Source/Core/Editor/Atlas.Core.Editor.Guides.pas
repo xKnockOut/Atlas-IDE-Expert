@@ -85,16 +85,22 @@ begin
   for Block in ABlocks do
   begin
     if (Block.CloseLine <= Block.OpenLine) or (Block.CloseLine > High(ALines)) then
+    begin
       Continue;
+    end;
     First := Block.OpenLine;
     // Öffner allein am Zeilenanfang unter seiner Anweisung: Linie ab der Anweisung.
     if AOwners and (Block.OwnerLine < Block.OpenLine) and (Block.OwnerLine >= 0) and
       (Trim(Copy(ALines[Block.OpenLine], 1, Block.OpenCharacter)) = '') then
+    begin
       First := Block.OwnerLine;
+    end;
     Display := TAtlasPairs.DisplayLine(ALines[First], ATabWidth);
     Indent := 1;
     while (Indent <= Length(Display)) and (Display[Indent] = ' ') do
+    begin
       Inc(Indent);
+    end;
     Guide.FirstLine := First;
     Guide.LastLine := Block.CloseLine;
     Guide.Column := Min(Indent, Length(TAtlasPairs.DisplayLine(Copy(ALines[Block.CloseLine], 1,
@@ -108,7 +114,9 @@ class function TAtlasGuides.PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integ
 begin
   AWidth := EnsureRange(AWidth, 1, 3);
   if (ACellHeight <= 0) or (ABaseCellHeight <= 0) then
+  begin
     Exit(AWidth);
+  end;
   Result := Max(1, Round(AWidth * ACellHeight / ABaseCellHeight));
 end;
 

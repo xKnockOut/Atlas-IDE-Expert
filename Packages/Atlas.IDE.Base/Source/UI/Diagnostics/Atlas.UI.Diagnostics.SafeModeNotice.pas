@@ -181,7 +181,9 @@ begin
   FDetails.WordWrap := False;
   FDetails.Font.Name := 'Consolas';
   for Line in ADetails do
+  begin
     FDetails.Lines.Add(Line);
+  end;
 
   FExportButton := AddButton(FDetailsPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
   FExportButton.Align := alBottom;
@@ -230,13 +232,17 @@ begin
   begin
     Control := FButtons.Controls[Index];
     if Control.Visible then
+    begin
       Bottom := Max(Bottom, Control.Top + Control.Height + Control.Margins.Bottom);
+    end;
   end;
   FButtons.Height := Bottom;
   Realign;
   Extra := 0;
   if FDetailsPanel.Visible then
+  begin
     Extra := ScaleValue(DetailsHeight);
+  end;
   ClientHeight := FButtons.Top + FButtons.Height + Gap + Extra;
 end;
 
@@ -257,31 +263,43 @@ procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
 begin
   // Nur die erste Aktion zählt; ausgeführt wird nach dem Schließen.
   if FDone then
+  begin
     Exit;
+  end;
   FDone := True;
   Close;
   if Assigned(AProc) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         AProc();
       end);
+  end;
 end;
 
 procedure TAtlasSafeModeNotice.PrimaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
-    Run(FOnSafe)
+  begin
+    Run(FOnSafe);
+  end
   else
+  begin
     Run(FOnNormal);
+  end;
 end;
 
 procedure TAtlasSafeModeNotice.SecondaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
-    Run(FOnNormal)
+  begin
+    Run(FOnNormal);
+  end
   else
+  begin
     Run(FOnToggles);
+  end;
 end;
 
 procedure TAtlasSafeModeNotice.RestoreClick(Sender: TObject);
@@ -297,13 +315,17 @@ end;
 procedure TAtlasSafeModeNotice.ExportClick(Sender: TObject);
 begin
   if Assigned(FOnExportLog) then
+  begin
     FOnExportLog();
+  end;
 end;
 
 procedure TAtlasSafeModeNotice.BugClick(Sender: TObject);
 begin
   if Assigned(FOnBugReport) then
+  begin
     FOnBugReport();
+  end;
 end;
 
 function TAtlasSafeModeNotice.DetailsVisible: Boolean;
@@ -322,7 +344,9 @@ begin
   FitHeight;
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then
+  begin
     Top := Bottom - Height;
+  end;
 end;
 
 procedure TAtlasSafeModeNotice.FormClose(Sender: TObject; var Action: TCloseAction);
