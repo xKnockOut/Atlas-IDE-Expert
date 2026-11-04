@@ -180,8 +180,8 @@ begin
         'IsValidIban'))];
     end;
     Result := TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Kunden.pas', ACase.Declaring, Tree,
-      OffsetsOf(Tree, 'IsValidIban')), Others, TTextPosition.Create(cLine, cCharacter), ACase.Conversion,
-      ACase.Static, Lookup, TFormatStyle.Default, AResult, AReason);
+      OffsetsOf(Tree, 'IsValidIban')), Others, TMethodRequest.Create(TTextPosition.Create(cLine, cCharacter),
+      ACase.Conversion, ACase.Static, Lookup, TFormatStyle.Default), AResult, AReason);
     ANewDeclaring := ACase.Declaring;
     ANewOther := ACase.Other;
     if Result then
@@ -516,8 +516,8 @@ begin
   try
     Lookup := TMethodLookup.FromTree(Tree);
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TTextPosition.Create(13, 13), TMethodConversion.Routine, True, Lookup, TFormatStyle.Default, Converted,
-      Reason), Reason);
+      TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Routine, True, Lookup,
+      TFormatStyle.Default), Converted, Reason), Reason);
     Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
     Assert.IsTrue(Pos('  Result := N + TA.Max;', Text) > 0, Text);
     Assert.IsTrue(Pos(#10'function Grenze(N: Integer): Integer;'#10, Text) > 0, Text);
@@ -527,8 +527,8 @@ begin
     Assert.IsTrue(Pos('FZaehler', Target.RoutineReason) > 0, Target.RoutineReason);
     Assert.AreEqual(2, Integer(Length(Target.Conversions)));
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, Lookup, TFormatStyle.Default, Converted,
-      Reason), Reason);
+      TMethodRequest.Create(TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, Lookup,
+      TFormatStyle.Default), Converted, Reason), Reason);
     Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Zaehle(N: Integer): Integer; static;', Text) > 0, Text);
   finally
@@ -584,8 +584,8 @@ begin
   Tree := TPascalParser.Parse(Source);
   try
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', Source, Tree, OffsetsOf(Tree,
-      'Doppelt')), nil, TTextPosition.Create(13, 13), TMethodConversion.Helper, True, TMethodLookup.FromTree(Tree),
-      TFormatStyle.Default, Converted, Reason), Reason);
+      'Doppelt')), nil, TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Helper, True,
+      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
     Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
   finally
     Tree.Free;
@@ -632,14 +632,14 @@ begin
   try
     // Records: class-Methoden sind immer static.
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TTextPosition.Create(16, 16), TMethodConversion.ClassMethod, False, TMethodLookup.FromTree(Tree),
-      TFormatStyle.Default, Converted, Reason), Reason);
+      TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.ClassMethod, False,
+      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
     Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Doppelt(const A: Integer): Integer; static;', Text) > 0, Text);
     // Vorhandener Helper für Integer bekommt die Methode.
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', Source, Tree, nil), nil,
-      TTextPosition.Create(16, 16), TMethodConversion.Helper, False, TMethodLookup.FromTree(Tree),
-      TFormatStyle.Default, Converted, Reason), Reason);
+      TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.Helper, False,
+      TMethodLookup.FromTree(Tree), TFormatStyle.Default), Converted, Reason), Reason);
     Text := TChangeSignature.ApplyEdits(Source, Converted.Files[0].Edits);
   finally
     Tree.Free;
