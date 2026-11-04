@@ -565,7 +565,7 @@ begin
   Results_ := FController.Results;
   Input := Default(TAtlasSetupReportInput);
   Input.Title := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
-  Input.Summary := TAtlasSetupWindow.ProgressText(Results_);
+  Input.Summary := TAtlasSetupTexts.ProgressText(Results_);
   Input.AtlasVersion := TAtlasPluginVersion.Version;
   Input.IdeVersion := TAtlasUpdates.IdeVersion;
   {$IFDEF WIN64}
@@ -576,7 +576,7 @@ begin
   Input.Created := Now;
   Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
-  Input.Lines := TAtlasSetupWindow.ReportLines(Results_);
+  Input.Lines := TAtlasSetupTexts.ReportLines(Results_);
   Result := TAtlasSetupChecklist.Report(Input);
 end;
 
