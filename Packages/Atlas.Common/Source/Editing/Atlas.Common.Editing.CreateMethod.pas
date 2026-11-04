@@ -665,8 +665,8 @@ begin
   begin
     Section := 'private';
   end;
-  if not TRoutineBody.MemberDeclaration(AText, ATree, Body, Section, TCreateMethod.Header(APlan, False) + ';',
-    APlan.Style, Edit) then
+  if not TRoutineBody.MemberDeclaration(AText, ATree, Body,
+    TMemberEntry.Create(Section, TCreateMethod.Header(APlan, False) + ';'), APlan.Style, Edit) then
   begin
     Exit;
   end;
