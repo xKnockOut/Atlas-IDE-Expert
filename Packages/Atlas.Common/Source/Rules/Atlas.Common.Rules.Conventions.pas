@@ -37,98 +37,115 @@ begin
   Result := (Pos('name', LowerCase(ARuleId)) > 0) or (Pos('naming', LowerCase(ARuleId)) > 0);
 end;
 
-class function TRuleConventions.Markdown(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ACatalog: TRuleCatalog): string;
 type
-  TActive = record
+  /// <summary>Aktive Regel für den Bericht: Kennung, Schwere und Name aus dem Katalog.</summary>
+  TConventionRule = record
     Id: string;
     Severity: string;
     Text: string;
   end;
+
+/// <summary>Die aktiven Regeln aus ARules nach Kennung sortiert; experimentelle nur, wenn atlas.json sie
+/// einschaltet.</summary>
+function ActiveRules(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ACatalog: TRuleCatalog): TArray<TConventionRule>;
 var
-  Builder: TStringBuilder;
-  Rule: IRule;
-  Severity: TRuleSeverity;
-  Enabled: Boolean;
-  Entry: TRuleCatalogEntry;
-  Active: TList<TActive>;
-  Item: TActive;
-  Profile: string;
-  Naming: Boolean;
+  mRule: IRule;
+  mSeverity: TRuleSeverity;
+  mEnabled: Boolean;
+  mEntry: TRuleCatalogEntry;
+  mItem: TConventionRule;
 begin
-  Active := TList<TActive>.Create;
-  Builder := TStringBuilder.Create;
+  Result := nil;
+  for mRule in ARules do
+  begin
+    mSeverity := TRuleEngine.EffectiveSeverity(mRule.Descriptor, ASettings, '', mEnabled);
+    if (mSeverity <> TRuleSeverity.Off) and (mEnabled or not mRule.Descriptor.Experimental) then
+    begin
+      mItem.Id := mRule.Descriptor.Id;
+      mItem.Severity := TFindingsOutput.SeverityName(mSeverity);
+      mItem.Text := mRule.Descriptor.Description;
+      if (ACatalog <> nil) and ACatalog.TryFind(mItem.Id, mEntry) and (mEntry.Name <> '') then
+      begin
+        mItem.Text := mEntry.Name;
+      end;
+      Result := Result + [mItem];
+    end;
+  end;
+  TArray.Sort<TConventionRule>(Result, TComparer<TConventionRule>.Construct(
+    function(const A, B: TConventionRule): Integer
+    begin
+      Result := CompareText(A.Id, B.Id);
+    end));
+end;
+
+procedure AppendHeader(ABuilder: TStringBuilder; const ASettings: TServerSettings);
+var
+  mProfile: string;
+begin
+  mProfile := ASettings.Profile;
+  if mProfile = '' then
+  begin
+    mProfile := 'standard';
+  end;
+  ABuilder.AppendLine('# Konventionen des Projekts');
+  ABuilder.AppendLine;
+  ABuilder.AppendLine('Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.');
+  ABuilder.AppendLine;
+  ABuilder.AppendFormat('- Regelprofil: `%s`', [mProfile]).AppendLine;
+  if ASettings.Format <> '' then
+  begin
+    ABuilder.AppendFormat('- Formatstil (`format` in atlas.json): `%s`', [ASettings.Format]).AppendLine;
+  end
+  else
+  begin
+    ABuilder.AppendLine('- Formatstil: Vorgaben bzw. `.editorconfig`');
+  end;
+end;
+
+procedure AppendRule(ABuilder: TStringBuilder; const AItem: TConventionRule);
+begin
+  ABuilder.AppendFormat('- `%s` (%s): %s', [AItem.Id, AItem.Severity, AItem.Text]).AppendLine;
+end;
+
+class function TRuleConventions.Markdown(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ACatalog: TRuleCatalog): string;
+var
+  mBuilder: TStringBuilder;
+  mActive: TArray<TConventionRule>;
+  mItem: TConventionRule;
+  mNaming: Boolean;
+begin
+  mActive := ActiveRules(ARules, ASettings, ACatalog);
+  mBuilder := TStringBuilder.Create;
   try
-    for Rule in ARules do
+    AppendHeader(mBuilder, ASettings);
+    mBuilder.AppendLine;
+    mBuilder.AppendLine('## Benennung');
+    mBuilder.AppendLine;
+    mNaming := False;
+    for mItem in mActive do
     begin
-      Severity := TRuleEngine.EffectiveSeverity(Rule.Descriptor, ASettings, '', Enabled);
-      // Experimentelle Regeln laufen nur, wenn atlas.json sie einschaltet.
-      if (Severity = TRuleSeverity.Off) or (Rule.Descriptor.Experimental and not Enabled) then
+      if IsNamingRule(mItem.Id) then
       begin
-        Continue;
-      end;
-      Item.Id := Rule.Descriptor.Id;
-      Item.Severity := TFindingsOutput.SeverityName(Severity);
-      Item.Text := Rule.Descriptor.Description;
-      if (ACatalog <> nil) and ACatalog.TryFind(Item.Id, Entry) then
-      begin
-        if Entry.Name <> '' then
-        begin
-          Item.Text := Entry.Name;
-        end;
-      end;
-      Active.Add(Item);
-    end;
-    Active.Sort(TComparer<TActive>.Construct(
-      function(const A, B: TActive): Integer
-      begin
-        Result := CompareText(A.Id, B.Id);
-      end));
-    Profile := ASettings.Profile;
-    if Profile = '' then
-    begin
-      Profile := 'standard';
-    end;
-    Builder.AppendLine('# Konventionen des Projekts');
-    Builder.AppendLine;
-    Builder.AppendLine('Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.');
-    Builder.AppendLine;
-    Builder.AppendFormat('- Regelprofil: `%s`', [Profile]).AppendLine;
-    if ASettings.Format <> '' then
-    begin
-      Builder.AppendFormat('- Formatstil (`format` in atlas.json): `%s`', [ASettings.Format]).AppendLine;
-    end
-    else
-    begin
-      Builder.AppendLine('- Formatstil: Vorgaben bzw. `.editorconfig`');
-    end;
-    Builder.AppendLine;
-    Builder.AppendLine('## Benennung');
-    Builder.AppendLine;
-    Naming := False;
-    for Item in Active do
-    begin
-      if IsNamingRule(Item.Id) then
-      begin
-        Builder.AppendFormat('- `%s` (%s): %s', [Item.Id, Item.Severity, Item.Text]).AppendLine;
-        Naming := True;
+        AppendRule(mBuilder, mItem);
+        mNaming := True;
       end;
     end;
-    if not Naming then
+    if not mNaming then
     begin
-      Builder.AppendLine('- Keine aktive Benennungsregel.');
+      mBuilder.AppendLine('- Keine aktive Benennungsregel.');
     end;
-    Builder.AppendLine;
-    Builder.AppendFormat('## Aktive Regeln (%d)', [Active.Count]).AppendLine;
-    Builder.AppendLine;
-    for Item in Active do
+    mBuilder.AppendLine;
+    mBuilder.AppendFormat('## Aktive Regeln (%d)', [Length(mActive)]).AppendLine;
+    mBuilder.AppendLine;
+    for mItem in mActive do
     begin
-      Builder.AppendFormat('- `%s` (%s): %s', [Item.Id, Item.Severity, Item.Text]).AppendLine;
+      AppendRule(mBuilder, mItem);
     end;
-    Result := TrimRight(Builder.ToString);
+    Result := TrimRight(mBuilder.ToString);
   finally
-    Builder.Free;
-    Active.Free;
+    mBuilder.Free;
   end;
 end;
 

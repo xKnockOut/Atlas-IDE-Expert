@@ -79,6 +79,15 @@ const
   cRequestLevel = 'method';
 
 type
+  /// <summary>Gelesene Antwort von atlas.hotspots.</summary>
+  THotspotsAnswer = record
+    Parsed: Boolean;
+    Enabled: Boolean;
+    HasVcs: Boolean;
+    Message: string;
+    Model: TAtlasHotspotModel;
+  end;
+
   THotspotsState = class
   private
     FRun: TAtlasHotspotsRun;
@@ -95,6 +104,9 @@ type
     procedure PollTimer(Sender: TObject);
     /// <summary>atlas.hotspots fragen; ARefresh verlangt eine neue Rechnung.</summary>
     procedure Request(ARefresh: Boolean);
+    function AnswerHandler(ARequest: Integer): TProc<string>;
+    /// <summary>Antwort auf die Anfrage ARequest im Hauptthread zeigen.</summary>
+    procedure ShowAnswer(ARequest: Integer; const AAnswer: THotspotsAnswer);
     function ProjectUri(out AUri: string): Boolean;
     procedure Impact(const AFileName: string; ALine: Integer; const AMethod: string);
   public
@@ -282,6 +294,62 @@ begin
   TAtlasIdeHotspots.OnImpact();
 end;
 
+function THotspotsState.AnswerHandler(ARequest: Integer): TProc<string>;
+begin
+  Result :=
+    procedure(AAnswer: string)
+    var
+      mAnswer: THotspotsAnswer;
+    begin
+      mAnswer := Default(THotspotsAnswer);
+      mAnswer.Parsed := TAtlasHotspotModel.Parse(AAnswer, mAnswer.Model, mAnswer.Enabled, mAnswer.HasVcs,
+        mAnswer.Message);
+      TAtlasMainThread.Queue(TAtlasFeature.Hotspots,
+        procedure
+        begin
+          ShowAnswer(ARequest, mAnswer);
+        end);
+    end;
+end;
+
+procedure THotspotsState.ShowAnswer(ARequest: Integer; const AAnswer: THotspotsAnswer);
+var
+  mCurrent: TAtlasHotspotsFrame;
+begin
+  if (TAtlasIdeHotspots.FState <> Self) or (ARequest <> FRequest) then
+  begin
+    Exit;
+  end;
+  FPending := False;
+  mCurrent := TAtlasIdeHotspotsWindow.ExistingFrame;
+  if mCurrent = nil then
+  begin
+    Exit;
+  end;
+  if not AAnswer.Parsed then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), False);
+  end
+  else if not AAnswer.Enabled then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsDisabled), False);
+  end
+  else if not AAnswer.HasVcs then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, [AAnswer.Message]), False);
+  end
+  else if AAnswer.Model.Pending then
+  begin
+    // Der Server rechnet noch: bisherige Daten stehen lassen und später nachfragen.
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
+    FPoll.Enabled := True;
+  end
+  else
+  begin
+    mCurrent.SetModel(AAnswer.Model);
+  end;
+end;
+
 procedure THotspotsState.Request(ARefresh: Boolean);
 var
   mFrame: TAtlasHotspotsFrame;
@@ -306,53 +374,7 @@ begin
   FMinCommits := TAtlasIdeSettings.Current.HotspotsCouplingMinCommits;
   mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
   if not FRun(TAtlasHotspotCommands.Command, TAtlasHotspotCommands.Arguments(mUri, cRequestLevel, ARefresh),
-    cTimeoutMs,
-    procedure(AAnswer: string)
-    var
-      mModel: TAtlasHotspotModel;
-      mEnabled, mHasVcs, mParsed: Boolean;
-      mMessage: string;
-    begin
-      mParsed := TAtlasHotspotModel.Parse(AAnswer, mModel, mEnabled, mHasVcs, mMessage);
-      TAtlasMainThread.Queue(TAtlasFeature.Hotspots,
-        procedure
-        var
-          mCurrent: TAtlasHotspotsFrame;
-        begin
-          if (TAtlasIdeHotspots.FState <> Self) or (mRequest <> FRequest) then
-          begin
-            Exit;
-          end;
-          FPending := False;
-          mCurrent := TAtlasIdeHotspotsWindow.ExistingFrame;
-          if mCurrent = nil then
-          begin
-            Exit;
-          end;
-          if not mParsed then
-          begin
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFailed), False);
-          end
-          else if not mEnabled then
-          begin
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsDisabled), False);
-          end
-          else if not mHasVcs then
-          begin
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsNoVcs, [mMessage]), False);
-          end
-          else if mModel.Pending then
-          begin
-            // Der Server rechnet noch: bisherige Daten stehen lassen und später nachfragen.
-            mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLoading), True);
-            FPoll.Enabled := True;
-          end
-          else
-          begin
-            mCurrent.SetModel(mModel);
-          end;
-        end);
-    end) then
+    cTimeoutMs, AnswerHandler(mRequest)) then
   begin
     FPending := False;
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoServer), True);

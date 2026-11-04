@@ -90,6 +90,30 @@ begin
   end;
 end;
 
+/// <summary>Trägt ANode als Routine (Name mit AOuter) oder als Abschnitt der obersten Ebene ein; liefert den
+/// Namen der Routine, die seine Kinder umschließt.</summary>
+function AddScope(ANode: TSyntaxNode; const AOuter: string; var ARoutines, ASections: TArray<TFindingScope>):
+  string;
+begin
+  Result := AOuter;
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.Name <> '') and HasBody(ANode) then
+  begin
+    if AOuter = '' then
+    begin
+      Result := ANode.Name;
+    end
+    else
+    begin
+      Result := AOuter + '.' + ANode.Name;
+    end;
+    ARoutines := ARoutines + [Scope(Result, ANode)];
+  end
+  else if (AOuter = '') and (SectionName(ANode.Kind) <> '') then
+  begin
+    ASections := ASections + [Scope(SectionName(ANode.Kind), ANode)];
+  end;
+end;
+
 // Iterativ (Bericht M1): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
 procedure Collect(ARoot: TSyntaxNode; var ARoutines, ASections: TArray<TFindingScope>);
 var
@@ -97,7 +121,7 @@ var
   PendingOuter: TStack<string>;
   Index: Integer;
   Child: TSyntaxNode;
-  Outer, Name, Section: string;
+  Name: string;
 begin
   Pending := TStack<TSyntaxNode>.Create;
   PendingOuter := TStack<string>.Create;
@@ -110,28 +134,7 @@ begin
     while Pending.Count > 0 do
     begin
       Child := Pending.Pop;
-      Outer := PendingOuter.Pop;
-      Name := Outer;
-      if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.Name <> '') and HasBody(Child) then
-      begin
-        if Outer = '' then
-        begin
-          Name := Child.Name;
-        end
-        else
-        begin
-          Name := Outer + '.' + Child.Name;
-        end;
-        ARoutines := ARoutines + [Scope(Name, Child)];
-      end
-      else if Outer = '' then
-      begin
-        Section := SectionName(Child.Kind);
-        if Section <> '' then
-        begin
-          ASections := ASections + [Scope(Section, Child)];
-        end;
-      end;
+      Name := AddScope(Child, PendingOuter.Pop, ARoutines, ASections);
       // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen (#1094).
       if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
       begin
