@@ -530,6 +530,7 @@ uses
   Atlas.Common.Rules.Builtin.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Tests.pas',
   Atlas.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.Tests.pas',
   Atlas.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Tests.pas',
+  Atlas.Common.Rules.Builtin.Components.Model.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Model.Tests.pas',
   Atlas.Core.Settings.OverviewKinds in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas',
   Atlas.Core.Settings.OverviewKinds.Tests in 'IDE.Expert\Atlas.Core.Settings.OverviewKinds.Tests.pas',
   Atlas.Core.Settings.Plugin in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas',
