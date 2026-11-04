@@ -27,6 +27,21 @@ uses
   Atlas.Core.CiBuild.Contract;
 
 type
+  /// <summary>Antwort einer Anfrage über IAtlasCiSend, IAtlasCiPost und IAtlasCiConditional.</summary>
+  TAtlasCiResponse = record
+    /// <summary>HTTP-Status; 0 ohne Antwort.</summary>
+    Status: Integer;
+    /// <summary>Inhalt der Antwort; '' ohne Antwort.</summary>
+    Text: string;
+    /// <summary>Kopf Last-Modified ('' ohne).</summary>
+    LastModified: string;
+    /// <summary>Kopf X-Poll-Interval in Sekunden (0 ohne).</summary>
+    PollSeconds: Integer;
+    Error: TAtlasCiFetchError;
+    /// <summary>Ohne Antwort, mit AError.</summary>
+    class function Failed(AError: TAtlasCiFetchError): TAtlasCiResponse; static;
+  end;
+
   IAtlasCiTransport = interface
     ['{3E8B5C21-7D4A-4F96-A0B3-6C2E9F1D7A58}']
     /// <summary>GET auf AUrl mit höchstens ATimeoutMs. True, wenn eine Antwort kam (auch 404); AStatus ist der
@@ -51,9 +66,9 @@ type
     /// <summary>AMethod ("POST", "PATCH") auf AUrl mit dem JSON ABody, höchstens ATimeoutMs. Nur mit Anmeldung beim
     /// eingetragenen Server über https (sonst False mit Unauthorized, ohne Netz); eine Weiterleitung ist ein Fehler
     /// (False mit Server), damit der Inhalt nie an ein anderes Ziel geht. True, wenn eine Antwort kam (auch 4xx);
-    /// AStatus und AText wie bei IAtlasCiTransport.Get.</summary>
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    /// Status und Text von AResponse wie bei IAtlasCiTransport.Get.</summary>
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
   /// <summary>Laufende und künftige Anfragen eines Transports abbrechen (Fenster geschlossen, #1264); sie enden
@@ -67,10 +82,10 @@ type
   /// X-Poll-Interval aus der Antwort, unter denselben Regeln wie IAtlasCiTransport.Get.</summary>
   IAtlasCiConditional = interface
     ['{E2A7C953-4B18-4D6F-9C31-7F5A0B2D8E46}']
-    /// <summary>GET auf AUrl; AIfModifiedSince '' = ohne Bedingung. 304 heißt „unverändert“ (AText leer).
-    /// ALastModified ist der Kopf Last-Modified ('' ohne), APollSeconds X-Poll-Interval (0 ohne).</summary>
-    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>GET auf AUrl; AIfModifiedSince '' = ohne Bedingung. 304 heißt „unverändert“ (Text leer).
+    /// AResponse trägt dazu LastModified und PollSeconds.</summary>
+    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
   end;
 
   /// <summary>POST beliebigen Inhalts an den Tracker (Anhänge und Kommentare, #1276) über denselben Transport, unter
@@ -79,9 +94,9 @@ type
   IAtlasCiPost = interface
     ['{2D7A5E19-8C43-4B6F-A1E0-7F3B9C25D814}']
     /// <summary>POST von ABody (AContentType) an AUrl mit höchstens ATimeoutMs. True, wenn eine Antwort kam (auch
-    /// 4xx); AStatus ist der HTTP-Status, AText der Inhalt der Antwort. False ohne Antwort mit AError.</summary>
-    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    /// 4xx; Status und Text in AResponse). False ohne Antwort mit dem Error von AResponse.</summary>
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
   end;
 
   IAtlasCiProvider = interface
@@ -119,5 +134,13 @@ type
   end;
 
 implementation
+
+{ TAtlasCiResponse }
+
+class function TAtlasCiResponse.Failed(AError: TAtlasCiFetchError): TAtlasCiResponse;
+begin
+  Result := Default(TAtlasCiResponse);
+  Result.Error := AError;
+end;
 
 end.
