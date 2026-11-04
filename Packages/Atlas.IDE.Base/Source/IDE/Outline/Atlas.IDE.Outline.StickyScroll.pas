@@ -121,14 +121,35 @@ type
     Style: TFontStyles;
   end;
 
-  TStickyState = class
+  /// <summary>Was alle Blocklinien einer Kopfzeile teilen: Gerät, Zeile, Codebereich, Stiftbreite, Farben.</summary>
+  TGuidePaint = record
+    Context: INTACodeEditorPaintContext;
+    DC: HDC;
+    Rect: TRect;
+    Code: TRect;
+    Width: Integer;
+    Opacity: Integer;
+    Colors: TAtlasColors;
+    Back: TAtlasColor;
+    /// <summary>Hintergrund des Kopfs: Dort beginnt die Spitze eingeblendeter Linien.</summary>
+    HeadBack: TAtlasColor;
+  end;
+
+  /// <summary>Werkzeuge der Leinwand, vor dem Zeichnen gesichert und danach zurückgesetzt.</summary>
+  TSavedTools = record
+    Font: TFont;
+    Brush: TBrush;
+    Pen: TPen;
+    class function Save(ACanvas: TCanvas): TSavedTools; static;
+    /// <summary>Zurücksetzen und die Sicherung freigeben.</summary>
+    procedure Restore(ACanvas: TCanvas);
+  end;
+
+  TSyntaxStyles = array[TAtlasStickySyntax] of TSyntaxStyle;
+
+  /// <summary>Stand des Kopfs: Gliederung, Zeilen, Paaranalyse und Farbschema der Datei FFileName.</summary>
+  TStickyData = class
   private
-    FTimer: TTimer;
-    FEvents: TEvents;
-    FEventsRef: INTACodeEditorEvents;
-    FIndex: Integer;
-    FOn: Boolean;
-    FMaxLines: Integer;
     FFileName: string;
     FStamp: Cardinal;
     FNodes: TAtlasOutlineNodes;
@@ -143,7 +164,22 @@ type
     FGuides: TArray<TAtlasGuide>;
     FGuidesKey: string;
     /// <summary>Farbschema des Editors je Art (Editor\Highlight), gelesen mit jedem neuen Stand.</summary>
-    FSyntax: array[TAtlasStickySyntax] of TSyntaxStyle;
+    FSyntax: TSyntaxStyles;
+    /// <summary>Hintergrund aus dem Farbschema (Plain text); vor dem Abtasten, das bei markierten oder
+    /// hervorgehobenen Zeilen deren Farbe träfe (#1245).</summary>
+    FSchemeBack: TAtlasColor;
+    FSchemeBackKnown: Boolean;
+    procedure AnalyzePairs(const AText: string);
+    procedure ReadSyntax;
+    /// <summary>Blocklinien zur Tabulatorbreite ATabWidth und zum Besitzer-Schalter AOwners, nur bei Änderung neu.
+    /// </summary>
+    procedure EnsureGuides(ATabWidth: Integer; AOwners: Boolean);
+  end;
+
+  /// <summary>Zeichnen des Kopfs: Kopfzeilen zur obersten Zeile und was zuletzt gezeichnet wurde.</summary>
+  TStickyPainter = class(TStickyData)
+  private
+    FMaxLines: Integer;
     /// <summary>Köpfe für die oberste Zeile FRowsTop (0-basiert, -1 = neu rechnen).</summary>
     FRows: TAtlasStickyRows;
     FRowsTop: Integer;
@@ -159,18 +195,21 @@ type
     /// <summary>Hintergrund des Editors aus einer nicht übermalten Zeile.</summary>
     FBack: TAtlasColor;
     FBackKnown: Boolean;
-    /// <summary>Hintergrund aus dem Farbschema (Plain text); vor dem Abtasten, das bei markierten oder
-    /// hervorgehobenen Zeilen deren Farbe träfe (#1245).</summary>
-    FSchemeBack: TAtlasColor;
-    FSchemeBackKnown: Boolean;
-    procedure Tick(Sender: TObject);
-    procedure Clear;
-    procedure Update;
-    procedure AnalyzePairs(const AText: string);
-    procedure ReadSyntax;
-    procedure QueueInvalidate;
-    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    /// <summary>Köpfe zur obersten Zeile ATop neu rechnen, wenn sie oder die Zeilenzahl sich geändert haben.</summary>
+    procedure UpdateRows(const AView: IOTAEditView; ATop: Integer);
+    /// <summary>Gezeichnet ab oberster Zeile ATop mit Zeilenhöhe AHeight merken; True, wenn der Editor beim
+    /// Bildlauf nur einen Teil gemalt hat und alte Köpfe verschoben stehen (dann ganz neu zeichnen).</summary>
+    function Painted(ATop, AHeight: Integer): Boolean;
+    /// <summary>Hintergrund des Editors an einer nicht übermalten Zeile abtasten.</summary>
+    procedure SampleBack(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
+    /// <summary>Hintergrund unter dem Kopf: Farbschema, abgetastet oder an ARect.</summary>
+    function RowBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
+    /// <summary>Kopfzeile unter dem Mauspunkt X, Y (Editorkoordinaten); False außerhalb des Kopfs.</summary>
+    function RowAt(X, Y: Integer; out ARow: Integer): Boolean;
+    /// <summary>Paarfarben-Stücke der Kopfzeile ARow; leer ohne PairColors oder in dieser Datei ausgeblendet.</summary>
+    function RowSpans(const ARow: TAtlasStickyRow): TArray<TAtlasPairSpan>;
+    /// <summary>Linie AGuide in Kopfzeile ARowIndex, wenn ihr Element hier oder darüber eine Kopfzeile hat.</summary>
+    procedure DrawGuide(const APaint: TGuidePaint; const AGuide: TAtlasGuide; ARowIndex: Integer);
     procedure PaintRow(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext);
     /// <summary>Blocklinien im Kopf: Jede beginnt mit Haken in der Kopfzeile ihres Elements; ohne Kopfzeile blendet
     /// sie in der letzten Kopfzeile ein.</summary>
@@ -179,6 +218,21 @@ type
     /// <summary>Kopftext ab ALeft; Klammern und Blockwörter in der Farbe ihrer Tiefe (#1229).</summary>
     procedure DrawHeader(ACanvas: TCanvas; ALeft, ATop: Integer; const ARow: TAtlasStickyRow;
       const AColors: TAtlasColors; ATextColor: TColor);
+  end;
+
+  TStickyState = class(TStickyPainter)
+  private
+    FTimer: TTimer;
+    FEvents: TEvents;
+    FEventsRef: INTACodeEditorEvents;
+    FIndex: Integer;
+    FOn: Boolean;
+    procedure Tick(Sender: TObject);
+    procedure Clear;
+    procedure Update;
+    procedure QueueInvalidate;
+    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
   public
@@ -444,15 +498,49 @@ begin
   end;
 end;
 
-procedure TStickyState.AnalyzePairs(const AText: string);
+/// <summary>Paar-Token je Zeile (ALineCount Zeilen).</summary>
+function PairsPerLine(const ATokens: TArray<TAtlasPairToken>; ALineCount: Integer): TArray<TArray<TAtlasPairToken>>;
+var
+  Token: TAtlasPairToken;
+begin
+  SetLength(Result, ALineCount);
+  for Token in ATokens do
+  begin
+    if (Token.Line >= 0) and (Token.Line <= High(Result)) then
+    begin
+      Result[Token.Line] := Result[Token.Line] + [Token];
+    end;
+  end;
+end;
+
+/// <summary>Blöcke, deren erstes Besitzerwort zu einer der Arten AKinds gehört (#1230).</summary>
+function BranchesOf(const ABlocks: TArray<TAtlasPairBlock>; const ALines: TArray<string>;
+  AKinds: TAtlasStickyKinds): TArray<TAtlasStickyBlock>;
+var
+  Block: TAtlasPairBlock;
+  Kind: TAtlasStickyKind;
+begin
+  Result := nil;
+  for Block in ABlocks do
+  begin
+    if (Block.OwnerLine < 0) or (Block.OwnerLine > High(ALines)) then
+    begin
+      Continue;
+    end;
+    if TAtlasStickyScroll.OwnerKind(WordAt(ALines[Block.OwnerLine], Block.OwnerCharacter), Kind) and
+      (Kind in AKinds) then
+    begin
+      Result := Result + [TAtlasStickyBlock.Create(Block.OwnerLine, Block.OwnerCharacter, Block.CloseLine)];
+    end;
+  end;
+end;
+
+procedure TStickyData.AnalyzePairs(const AText: string);
 var
   Settings: TAtlasPluginSettings;
-  Token: TAtlasPairToken;
   Tokens: TArray<TAtlasPairToken>;
   Blocks: TArray<TAtlasPairBlock>;
-  Block: TAtlasPairBlock;
   Kinds: TAtlasStickyKinds;
-  Kind: TAtlasStickyKind;
 begin
   FPairs := nil;
   FBranches := nil;
@@ -468,32 +556,21 @@ begin
   FBlocks := Blocks;
   if Settings.PairColors then
   begin
-    SetLength(FPairs, Length(FLines));
-    for Token in Tokens do
-    begin
-      if (Token.Line >= 0) and (Token.Line <= High(FPairs)) then
-      begin
-        FPairs[Token.Line] := FPairs[Token.Line] + [Token];
-      end;
-    end;
+    FPairs := PairsPerLine(Tokens, Length(FLines));
   end;
-  if Kinds = [] then
+  // Routinen und Klassen liefert die Gliederung.
+  FBranches := BranchesOf(Blocks, FLines, Kinds);
+end;
+
+procedure TStickyData.EnsureGuides(ATabWidth: Integer; AOwners: Boolean);
+var
+  Key: string;
+begin
+  Key := IntToStr(ATabWidth) + BoolToStr(AOwners, True);
+  if Key <> FGuidesKey then
   begin
-    Exit;
-  end;
-  // Blöcke, deren erstes Besitzerwort zu einer eingestellten Art gehört (#1230); Routinen und Klassen liefert die
-  // Gliederung.
-  for Block in Blocks do
-  begin
-    if (Block.OwnerLine < 0) or (Block.OwnerLine > High(FLines)) then
-    begin
-      Continue;
-    end;
-    if TAtlasStickyScroll.OwnerKind(WordAt(FLines[Block.OwnerLine], Block.OwnerCharacter), Kind) and
-      (Kind in Kinds) then
-    begin
-      FBranches := FBranches + [TAtlasStickyBlock.Create(Block.OwnerLine, Block.OwnerCharacter, Block.CloseLine)];
-    end;
+    FGuides := TAtlasGuides.FromBlocks(FLines, FBlocks, ATabWidth, AOwners);
+    FGuidesKey := Key;
   end;
 end;
 
@@ -512,14 +589,60 @@ begin
   end;
 end;
 
+procedure TStickyPainter.UpdateRows(const AView: IOTAEditView; ATop: Integer);
+var
+  Settings: TAtlasPluginSettings;
+  Branches: TArray<TAtlasStickyBlock>;
+begin
+  if (ATop = FRowsTop) and (FMaxLines = FRowsMax) then
+  begin
+    Exit;
+  end;
+  Settings := TAtlasIdeSettings.Current;
+  Branches := LongBranches(FBranches, Settings.StickyScrollBlockMinLines);
+  FRows := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(FNodes, FLines, Branches,
+    StickyKinds(Settings) * TAtlasStickyScroll.OutlineKinds), ATop, FMaxLines,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  FRowsTop := ATop;
+  FRowsMax := FMaxLines;
+end;
+
+procedure TStickyPainter.SampleBack(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
+var
+  Sample: COLORREF;
+begin
+  Sample := GetPixel(AContext.Canvas.Handle, ARect.Right - 2, ARect.Top + 1);
+  if not FSchemeBackKnown and (Sample <> CLR_INVALID) then
+  begin
+    FBack := TAtlasColor(Sample);
+    FBackKnown := True;
+  end;
+end;
+
+function TStickyPainter.Painted(ATop, AHeight: Integer): Boolean;
+begin
+  Result := (FPaintedTop >= 0) and (ATop <> FPaintedTop) and ((FPaintedRows > 0) or (Length(FRows) > 0));
+  FPaintedTop := ATop;
+  FPaintedRows := Length(FRows);
+  FRowHeight := AHeight;
+end;
+
+function TStickyPainter.RowAt(X, Y: Integer; out ARow: Integer): Boolean;
+begin
+  ARow := -1;
+  Result := (FPaintedRows > 0) and (FRowHeight > 0) and (Y >= 0) and (X >= FCodeLeft);
+  if Result then
+  begin
+    ARow := Y div FRowHeight;
+    Result := (ARow < FPaintedRows) and (ARow <= High(FRows));
+  end;
+end;
+
 procedure TStickyState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   View: IOTAEditView;
   Top, Row, Height: Integer;
-  Sample: COLORREF;
-  Branches: TArray<TAtlasStickyBlock>;
-  Settings: TAtlasPluginSettings;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FOn or (FFileName = '') then
   begin
@@ -527,51 +650,32 @@ begin
   end;
   try
     View := Context.EditView;
-    if (View = nil) or (View.Buffer = nil) or not SameText(Context.FileName, FFileName) then
-    begin
-      Exit;
-    end;
     Height := Rect.Bottom - Rect.Top;
-    if Height <= 0 then
+    if (View = nil) or (View.Buffer = nil) or not SameText(Context.FileName, FFileName) or (Height <= 0) then
     begin
       Exit;
     end;
     Top := View.TopRow - 1;
-    if (Top <> FRowsTop) or (FMaxLines <> FRowsMax) then
-    begin
-      Settings := TAtlasIdeSettings.Current;
-      Branches := LongBranches(FBranches, Settings.StickyScrollBlockMinLines);
-      FRows := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(FNodes, FLines, Branches,
-        StickyKinds(Settings) * TAtlasStickyScroll.OutlineKinds), Top, FMaxLines, TAtlasEditorBuffer.TabWidth(View.Buffer));
-      FRowsTop := Top;
-      FRowsMax := FMaxLines;
-    end;
-    // Hat der Editor beim Bildlauf nur einen Teil gemalt, stehen alte Köpfe verschoben: ganz neu zeichnen.
-    if (FPaintedTop >= 0) and (Top <> FPaintedTop) and ((FPaintedRows > 0) or (Length(FRows) > 0)) then
+    UpdateRows(View, Top);
+    if Painted(Top, Height) then
     begin
       QueueInvalidate;
     end;
-    FPaintedTop := Top;
-    FPaintedRows := Length(FRows);
-    FRowHeight := Height;
     Row := (Rect.Top + Height div 2) div Height;
     if Row >= Length(FRows) then
     begin
       // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.
-      Sample := GetPixel(Context.Canvas.Handle, Rect.Right - 2, Rect.Top + 1);
-      if not FSchemeBackKnown and (Sample <> CLR_INVALID) then
-      begin
-        FBack := TAtlasColor(Sample);
-        FBackKnown := True;
-      end;
-      Exit;
-    end;
-    // Mit jedem neu gezeichneten Kopf neu sammeln (DrawGuides).
-    if Row = 0 then
+      SampleBack(Rect, Context);
+    end
+    else
     begin
-      FTaperColumns := nil;
+      // Mit jedem neu gezeichneten Kopf neu sammeln (DrawGuides).
+      if Row = 0 then
+      begin
+        FTaperColumns := nil;
+      end;
+      PaintRow(Rect, Row, Context);
     end;
-    PaintRow(Rect, Row, Context);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
@@ -593,145 +697,259 @@ begin
   end;
 end;
 
-procedure TStickyState.DrawGuides(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext;
-  ABack: TAtlasColor);
 const
   // Wie die Blocklinien des Editors (Atlas.IDE.Editor.Pairs).
   GuideMargin = 4;
+
+/// <summary>Paarfarben zu AColors (hell oder dunkel) aus den Einstellungen.</summary>
+function PairPalette(const AColors: TAtlasColors; const ASettings: TAtlasPluginSettings): TAtlasColors;
+begin
+  if AColors.IsDark then
+  begin
+    Result := AColors.WithPairs(ASettings.PairColorsDark);
+  end
+  else
+  begin
+    Result := AColors.WithPairs(ASettings.PairColorsLight);
+  end;
+end;
+
+/// <summary>Ohne Zeilenzustand, Ansicht oder Puffer gibt es keine Blocklinien.</summary>
+function NoEditor(const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := (AContext.LineState = nil) or (AContext.EditView = nil) or (AContext.EditView.Buffer = nil);
+end;
+
+function GuidePaintOf(const AContext: INTACodeEditorPaintContext; const ARect: TRect; ABack: TAtlasColor;
+  const ASettings: TAtlasPluginSettings): TGuidePaint;
+begin
+  Result.Context := AContext;
+  Result.DC := AContext.Canvas.Handle;
+  Result.Rect := ARect;
+  Result.Code := AContext.LineState.CodeRect;
+  Result.Width := TAtlasGuides.PenWidth(ASettings.PairGuideWidth, AContext.CellSize.cy,
+    TAtlasIdeStyle.BaseTextHeight);
+  Result.Opacity := ASettings.PairGuideOpacity;
+  Result.Back := ABack;
+  Result.Colors := TAtlasColors.ForBackground(ABack);
+  // Die Spitze eingeblendeter Linien beginnt in der Farbe des Kopfs.
+  Result.HeadBack := HeaderBack(Result.Colors, ABack);
+  Result.Colors := PairPalette(Result.Colors, ASettings);
+end;
+
+/// <summary>Spalte der Linie in Pixeln vor der Zelle ACell; nicht links aus dem Codebereich.</summary>
+function GuideX(const APaint: TGuidePaint; const ACell: TRect): Integer;
+begin
+  Result := ACell.Left - Max(2, ACell.Width div 3) - (APaint.Width - 1) div 2;
+  if (APaint.Code.Right > APaint.Code.Left) and (Result < APaint.Code.Left - GuideMargin + APaint.Width div 2) then
+  begin
+    Result := APaint.Code.Left - GuideMargin + APaint.Width div 2;
+  end;
+end;
+
+function GuideColor(const APaint: TGuidePaint; ADepth: Integer): TAtlasColor;
+begin
+  Result := APaint.Colors.Pairs[ADepth mod Length(APaint.Colors.Pairs)];
+  if APaint.Opacity < 100 then
+  begin
+    Result := TAtlasColorMath.Mix(Result, APaint.Back, APaint.Opacity / 100);
+  end;
+end;
+
+/// <summary>Spitz nach oben: je Pixelzeile ein Streifen, der von 1 Pixel auf die Stiftbreite wächst und von der
+/// Kopffarbe zur Linienfarbe übergeht; bei 1–2 Pixel Stiftbreite sieht man die Spitze sonst nicht.</summary>
+procedure DrawFade(const APaint: TGuidePaint; AX: Integer; AColor: TAtlasColor);
+var
+  FadeHeight, Offset, Thick: Integer;
+  Step: TRect;
+  Brush: HBRUSH;
+begin
+  FadeHeight := APaint.Rect.Height - 2;
+  for Offset := 0 to FadeHeight - 1 do
+  begin
+    Thick := Max(1, MulDiv(APaint.Width, Offset + 1, FadeHeight));
+    Step := TRect.Create(AX - (Thick - 1) div 2, APaint.Rect.Bottom - FadeHeight + Offset,
+      AX - (Thick - 1) div 2 + Thick, APaint.Rect.Bottom - FadeHeight + Offset + 1);
+    Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(AColor, APaint.HeadBack,
+      TAtlasStickyScroll.FadeWeight(Offset, FadeHeight)))));
+    try
+      FillRect(APaint.DC, Step, Brush);
+    finally
+      DeleteObject(Brush);
+    end;
+  end;
+end;
+
+/// <summary>Senkrechter Strich bei AX durch die Zeile; mit AHook > 0 beginnt er oben mit einem Haken dieser
+/// Länge (Kopfzeile des Elements).</summary>
+procedure DrawStroke(const APaint: TGuidePaint; AX, AHook: Integer; AColor: TAtlasColor);
+var
+  Pen, Old: HGDIOBJ;
+  Top: Integer;
+begin
+  Pen := CreatePen(PS_SOLID, APaint.Width, ColorToRGB(TColor(AColor)));
+  Old := SelectObject(APaint.DC, Pen);
+  try
+    Top := APaint.Rect.Top;
+    if AHook > 0 then
+    begin
+      Top := Top + 2;
+    end;
+    MoveToEx(APaint.DC, AX, Top, nil);
+    LineTo(APaint.DC, AX, APaint.Rect.Bottom);
+    if AHook > 0 then
+    begin
+      MoveToEx(APaint.DC, AX, Top, nil);
+      LineTo(APaint.DC, AX + AHook, Top);
+    end;
+  finally
+    SelectObject(APaint.DC, Old);
+    DeleteObject(Pen);
+  end;
+end;
+
+procedure TStickyPainter.DrawGuide(const APaint: TGuidePaint; const AGuide: TAtlasGuide; ARowIndex: Integer);
+var
+  Start: TAtlasStickyGuideStart;
+  Cell: TRect;
+  X: Integer;
+  LineColor: TAtlasColor;
+begin
+  // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner). Ohne
+  // Kopfzeile blendet die Linie in der letzten Kopfzeile ein, sonst käme sie ohne Anfang darunter hervor.
+  Start := TAtlasStickyScroll.GuideStart(FRows, AGuide.FirstLine);
+  if (Start.Row < 0) or (ARowIndex < Start.Row) then
+  begin
+    Exit;
+  end;
+  Cell := APaint.Context.EditorState.GetCharacterPosPx(AGuide.Column, APaint.Context.EditorLineNum);
+  X := GuideX(APaint, Cell);
+  LineColor := GuideColor(APaint, AGuide.Depth);
+  if not Start.FadeIn then
+  begin
+    if ARowIndex = Start.Row then
+    begin
+      DrawStroke(APaint, X, Max(3, Cell.Width div 2), LineColor);
+    end
+    else
+    begin
+      DrawStroke(APaint, X, 0, LineColor);
+    end;
+  end
+  // Oben spitz zulaufend (Marco 28.10.2026), ab der Oberkante der letzten Kopfzeile wie die Linie eines Elements
+  // mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die Blocklinien
+  // des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand geschoben (GuideX).
+  else if X + APaint.Width > APaint.Context.EditorState.GetCharacterPosPx(FRows[Start.Row].Indent,
+    APaint.Context.EditorLineNum).Left then
+  begin
+    if not HasColumn(FTaperColumns, AGuide.Column) then
+    begin
+      FTaperColumns := FTaperColumns + [AGuide.Column];
+    end;
+  end
+  else
+  begin
+    DrawFade(APaint, X, LineColor);
+  end;
+end;
+
+procedure TStickyPainter.DrawGuides(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext;
+  ABack: TAtlasColor);
 var
   Settings: TAtlasPluginSettings;
-  Owners: Boolean;
-  Key: string;
-  TabWidth, Below, Width, X, FadeHeight, Offset, Thick: Integer;
+  Paint: TGuidePaint;
   Guide: TAtlasGuide;
-  Start: TAtlasStickyGuideStart;
-  Colors: TAtlasColors;
-  LineColor, HeadBack: TAtlasColor;
-  Cell, Code, Step: TRect;
-  Brush: HBRUSH;
-  DC: HDC;
-  Saved: Integer;
-  Pen, Old: HGDIOBJ;
+  Below, Saved: Integer;
 begin
   Settings := TAtlasIdeSettings.Current;
-  if not (Settings.PairColors and Settings.PairGuides) or (Length(FBlocks) = 0) or (Context.LineState = nil) or
-    (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
+  if not (Settings.PairColors and Settings.PairGuides) or (Length(FBlocks) = 0) or NoEditor(Context) or
     TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairGuides, FFileName) then
   begin
     Exit;
   end;
-  TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
-  Owners := Settings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName);
-  Key := IntToStr(TabWidth) + BoolToStr(Owners, True);
-  if Key <> FGuidesKey then
-  begin
-    FGuides := TAtlasGuides.FromBlocks(FLines, FBlocks, TabWidth, Owners);
-    FGuidesKey := Key;
-  end;
+  EnsureGuides(TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer),
+    Settings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
+  Paint := GuidePaintOf(Context, ARect, ABack, Settings);
   // Erste Zeile unter dem Kopf: Nur Linien, die dort weiterlaufen, reichen in den Kopf.
   Below := FRowsTop + Length(FRows);
-  Colors := TAtlasColors.ForBackground(ABack);
-  // Die Spitze eingeblendeter Linien beginnt in der Farbe des Kopfs.
-  HeadBack := HeaderBack(Colors, ABack);
-  if Colors.IsDark then
-  begin
-    Colors := Colors.WithPairs(Settings.PairColorsDark);
-  end
-  else
-  begin
-    Colors := Colors.WithPairs(Settings.PairColorsLight);
-  end;
-  Width := TAtlasGuides.PenWidth(Settings.PairGuideWidth, Context.CellSize.cy, TAtlasIdeStyle.BaseTextHeight);
-  Code := Context.LineState.CodeRect;
-  DC := Context.Canvas.Handle;
-  Saved := SaveDC(DC);
+  Saved := SaveDC(Paint.DC);
   try
-    if Code.Right > Code.Left then
+    if Paint.Code.Right > Paint.Code.Left then
     begin
-      IntersectClipRect(DC, Code.Left - GuideMargin, ARect.Top, ARect.Right, ARect.Bottom);
+      IntersectClipRect(Paint.DC, Paint.Code.Left - GuideMargin, ARect.Top, ARect.Right, ARect.Bottom);
     end;
     for Guide in FGuides do
     begin
-      if (Guide.FirstLine >= Below) or (Guide.LastLine < Below) then
+      if (Guide.FirstLine < Below) and (Guide.LastLine >= Below) then
       begin
-        Continue;
-      end;
-      // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner). Ohne
-      // Kopfzeile blendet die Linie in der letzten Kopfzeile ein, sonst käme sie ohne Anfang darunter hervor.
-      Start := TAtlasStickyScroll.GuideStart(FRows, Guide.FirstLine);
-      if (Start.Row < 0) or (ARowIndex < Start.Row) then
-      begin
-        Continue;
-      end;
-      Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
-      X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
-      if (Code.Right > Code.Left) and (X < Code.Left - GuideMargin + Width div 2) then
-      begin
-        X := Code.Left - GuideMargin + Width div 2;
-      end;
-      LineColor := Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)];
-      if Settings.PairGuideOpacity < 100 then
-      begin
-        LineColor := TAtlasColorMath.Mix(LineColor, ABack, Settings.PairGuideOpacity / 100);
-      end;
-      if Start.FadeIn then
-      begin
-        // Oben spitz zulaufend (Marco 28.10.2026), ab der Oberkante der letzten Kopfzeile wie die Linie eines
-        // Elements mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die
-        // Blocklinien des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand
-        // geschoben (siehe oben).
-        if X + Width > Context.EditorState.GetCharacterPosPx(FRows[Start.Row].Indent, Context.EditorLineNum).Left then
-        begin
-          if not HasColumn(FTaperColumns, Guide.Column) then
-          begin
-            FTaperColumns := FTaperColumns + [Guide.Column];
-          end;
-          Continue;
-        end;
-        FadeHeight := ARect.Height - 2;
-        // Spitz nach oben: je Pixelzeile ein Streifen, der von 1 Pixel auf die Stiftbreite wächst und von der
-        // Kopffarbe zur Linienfarbe übergeht; bei 1–2 Pixel Stiftbreite sieht man die Spitze sonst nicht.
-        for Offset := 0 to FadeHeight - 1 do
-        begin
-          Thick := Max(1, MulDiv(Width, Offset + 1, FadeHeight));
-          Step := TRect.Create(X - (Thick - 1) div 2, ARect.Bottom - FadeHeight + Offset,
-            X - (Thick - 1) div 2 + Thick, ARect.Bottom - FadeHeight + Offset + 1);
-          Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(LineColor, HeadBack,
-            TAtlasStickyScroll.FadeWeight(Offset, FadeHeight)))));
-          try
-            FillRect(DC, Step, Brush);
-          finally
-            DeleteObject(Brush);
-          end;
-        end;
-        Continue;
-      end;
-      Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(LineColor)));
-      Old := SelectObject(DC, Pen);
-      try
-        if ARowIndex = Start.Row then
-        begin
-          MoveToEx(DC, X, ARect.Top + 2, nil);
-          LineTo(DC, X, ARect.Bottom);
-          MoveToEx(DC, X, ARect.Top + 2, nil);
-          LineTo(DC, X + Max(3, Cell.Width div 2), ARect.Top + 2);
-        end
-        else
-        begin
-          MoveToEx(DC, X, ARect.Top, nil);
-          LineTo(DC, X, ARect.Bottom);
-        end;
-      finally
-        SelectObject(DC, Old);
-        DeleteObject(Pen);
+        DrawGuide(Paint, Guide, ARowIndex);
       end;
     end;
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(Paint.DC, Saved);
   end;
 end;
 
-procedure TStickyState.ReadSyntax;
+function RegistryTrue(ARegistry: TRegistry; const AName: string): Boolean;
+begin
+  Result := ARegistry.ValueExists(AName) and SameText(ARegistry.ReadString(AName), 'True');
+end;
+
+/// <summary>Darstellung aus dem Schlüssel AKey (Editor\Highlight\…); unlesbar: ohne Hervorhebung.</summary>
+function ReadStyle(ARegistry: TRegistry; const AKey: string): TSyntaxStyle;
+begin
+  Result := Default(TSyntaxStyle);
+  try
+    if not ARegistry.OpenKeyReadOnly(AKey) then
+    begin
+      Exit;
+    end;
+    if RegistryTrue(ARegistry, 'Bold') then
+    begin
+      Include(Result.Style, fsBold);
+    end;
+    if RegistryTrue(ARegistry, 'Italic') then
+    begin
+      Include(Result.Style, fsItalic);
+    end;
+    // „$00BCE0FF“ oder „clMaroon“; mit Default Foreground die Vorgabefarbe des Editors.
+    if ARegistry.ValueExists('Foreground Color New') and not RegistryTrue(ARegistry, 'Default Foreground') then
+    begin
+      Result.Color := StringToColor(ARegistry.ReadString('Foreground Color New'));
+      Result.HasColor := True;
+    end;
+    ARegistry.CloseKey;
+  except
+    // Unlesbarer Eintrag: diese Art ohne Hervorhebung.
+    on Exception do
+      Result := Default(TSyntaxStyle);
+  end;
+end;
+
+/// <summary>Hintergrund des Editors aus AKey (Plain text, #1245); False mit Default Background (dann bleibt das
+/// Abtasten) oder unlesbar.</summary>
+function ReadSchemeBack(ARegistry: TRegistry; const AKey: string; out ABack: TAtlasColor): Boolean;
+begin
+  Result := False;
+  ABack := Default(TAtlasColor);
+  try
+    if not ARegistry.OpenKeyReadOnly(AKey) then
+    begin
+      Exit;
+    end;
+    if ARegistry.ValueExists('Background Color New') and not RegistryTrue(ARegistry, 'Default Background') then
+    begin
+      ABack := TAtlasColor(ColorToRGB(StringToColor(ARegistry.ReadString('Background Color New'))));
+      Result := True;
+    end;
+    ARegistry.CloseKey;
+  except
+    on Exception do
+      Result := False;
+  end;
+end;
+
+procedure TStickyData.ReadSyntax;
 const
   Elements: array[TAtlasStickySyntax] of string = ('Whitespace', 'Reserved word', 'Identifier', 'Number', 'String',
     'Character', 'Comment', 'Symbol', 'Preprocessor');
@@ -739,7 +957,8 @@ var
   Services: IOTAServices;
   Registry: TRegistry;
   Kind: TAtlasStickySyntax;
-  Style: TSyntaxStyle;
+  Base: string;
+  Back: TAtlasColor;
 begin
   for Kind := Low(TAtlasStickySyntax) to High(TAtlasStickySyntax) do
   begin
@@ -749,80 +968,125 @@ begin
   begin
     Exit;
   end;
+  Base := Services.GetBaseRegistryKey + '\Editor\Highlight\';
   Registry := TRegistry.Create(KEY_READ);
   try
     Registry.RootKey := HKEY_CURRENT_USER;
     for Kind := Low(TAtlasStickySyntax) to High(TAtlasStickySyntax) do
     begin
-      Style := Default(TSyntaxStyle);
-      try
-        if Registry.OpenKeyReadOnly(Services.GetBaseRegistryKey + '\Editor\Highlight\' + Elements[Kind]) then
-        begin
-          if Registry.ValueExists('Bold') and SameText(Registry.ReadString('Bold'), 'True') then
-          begin
-            Include(Style.Style, fsBold);
-          end;
-          if Registry.ValueExists('Italic') and SameText(Registry.ReadString('Italic'), 'True') then
-          begin
-            Include(Style.Style, fsItalic);
-          end;
-          // „$00BCE0FF“ oder „clMaroon“; mit Default Foreground die Vorgabefarbe des Editors.
-          if Registry.ValueExists('Foreground Color New') and not (Registry.ValueExists('Default Foreground') and
-            SameText(Registry.ReadString('Default Foreground'), 'True')) then
-          begin
-            Style.Color := StringToColor(Registry.ReadString('Foreground Color New'));
-            Style.HasColor := True;
-          end;
-          Registry.CloseKey;
-        end;
-      except
-        // Unlesbarer Eintrag: diese Art ohne Hervorhebung.
-        on Exception do
-          Style := Default(TSyntaxStyle);
-      end;
-      FSyntax[Kind] := Style;
+      FSyntax[Kind] := ReadStyle(Registry, Base + Elements[Kind]);
     end;
-    // Hintergrund des Editors (#1245); mit Default Background bleibt das Abtasten.
-    FSchemeBackKnown := False;
-    try
-      if Registry.OpenKeyReadOnly(Services.GetBaseRegistryKey + '\Editor\Highlight\Plain text') then
-      begin
-        if Registry.ValueExists('Background Color New') and not (Registry.ValueExists('Default Background') and
-          SameText(Registry.ReadString('Default Background'), 'True')) then
-        begin
-          FSchemeBack := TAtlasColor(ColorToRGB(StringToColor(Registry.ReadString('Background Color New'))));
-          FSchemeBackKnown := True;
-        end;
-        Registry.CloseKey;
-      end;
-    except
-      on Exception do
-        FSchemeBackKnown := False;
+    FSchemeBackKnown := ReadSchemeBack(Registry, Base + 'Plain text', Back);
+    if FSchemeBackKnown then
+    begin
+      FSchemeBack := Back;
     end;
   finally
     Registry.Free;
   end;
 end;
 
-procedure TStickyState.DrawHeader(ACanvas: TCanvas; ALeft, ATop: Integer; const ARow: TAtlasStickyRow;
-  const AColors: TAtlasColors; ATextColor: TColor);
+/// <summary>Farbschema des Editors (Farbe, fett, kursiv) je Zeichen von AText.</summary>
+procedure ApplySyntax(const AText: string; const ASyntax: TSyntaxStyles; var AColors: TArray<TColor>;
+  var AStyles: TArray<TFontStyles>);
+var
+  Token: TAtlasStickyToken;
+  Style: TSyntaxStyle;
+  Index: Integer;
+begin
+  for Token in TAtlasStickyScroll.Syntax(AText) do
+  begin
+    Style := ASyntax[Token.Kind];
+    for Index := Token.Start - 1 to Min(High(AColors), Token.Start + Token.Length - 2) do
+    begin
+      if Style.HasColor then
+      begin
+        AColors[Index] := Style.Color;
+      end;
+      AStyles[Index] := Style.Style;
+    end;
+  end;
+end;
+
+function SpanColor(const ASpan: TAtlasPairSpan; const APairs: TAtlasColors): TColor;
+begin
+  if ASpan.Unpaired then
+  begin
+    Result := TColor(APairs.Error);
+  end
+  else
+  begin
+    Result := TColor(APairs.Pairs[ASpan.Depth mod Length(APairs.Pairs)]);
+  end;
+end;
+
+/// <summary>Paarfarben ersetzen die Farbe des Farbschemas; fett und kursiv bleiben.</summary>
+procedure ApplySpans(const ASpans: TArray<TAtlasPairSpan>; const APairs: TAtlasColors; var AColors: TArray<TColor>);
+var
+  Span: TAtlasPairSpan;
+  Index: Integer;
+begin
+  for Span in ASpans do
+  begin
+    for Index := Span.Start - 1 to Min(High(AColors), Span.Start + Span.Length - 2) do
+    begin
+      AColors[Index] := SpanColor(Span, APairs);
+    end;
+  end;
+end;
+
+/// <summary>AText ab AX in Läufen gleicher Farbe und Schrift am Stück.</summary>
+procedure DrawRuns(ACanvas: TCanvas; AX, ATop: Integer; const AText: string; const AColors: TArray<TColor>;
+  const AStyles: TArray<TFontStyles>);
+var
+  Index, Stop: Integer;
+  Part: string;
+begin
+  Index := 0;
+  while Index <= High(AColors) do
+  begin
+    Stop := Index;
+    while (Stop < High(AColors)) and (AColors[Stop + 1] = AColors[Index]) and (AStyles[Stop + 1] = AStyles[Index]) do
+    begin
+      Inc(Stop);
+    end;
+    Part := Copy(AText, Index + 1, Stop - Index + 1);
+    ACanvas.Font.Color := AColors[Index];
+    ACanvas.Font.Style := AStyles[Index];
+    ACanvas.TextOut(AX, ATop, Part);
+    Inc(AX, ACanvas.TextWidth(Part));
+    Index := Stop + 1;
+  end;
+end;
+
+function TStickyPainter.RowSpans(const ARow: TAtlasStickyRow): TArray<TAtlasPairSpan>;
 var
   Settings: TAtlasPluginSettings;
-  Pairs: TAtlasColors;
+begin
+  Result := nil;
+  Settings := TAtlasIdeSettings.Current;
+  if (ARow.Line < 0) or (ARow.Line > High(FPairs)) or (ARow.Line > High(FLines)) or not Settings.PairColors or
+    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, FFileName) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasPairs.Spans(ARow.Text, FLines[ARow.Line], FPairs[ARow.Line],
+    Settings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
+end;
+
+procedure TStickyPainter.DrawHeader(ACanvas: TCanvas; ALeft, ATop: Integer; const ARow: TAtlasStickyRow;
+  const AColors: TAtlasColors; ATextColor: TColor);
+var
   Spans: TArray<TAtlasPairSpan>;
-  Span: TAtlasPairSpan;
-  Token: TAtlasStickyToken;
   CharColors: TArray<TColor>;
   CharStyles: TArray<TFontStyles>;
-  Index, Stop, X: Integer;
-  Style: TSyntaxStyle;
+  Index: Integer;
 begin
-  X := ALeft;
   if ARow.Summary or (ARow.Text = '') then
   begin
     // Zusammenfassung „A › B“: gedämpft wie bisher, ohne Hervorhebung.
     ACanvas.Font.Color := ATextColor;
-    ACanvas.TextOut(X, ATop, ARow.Text);
+    ACanvas.TextOut(ALeft, ATop, ARow.Text);
     Exit;
   end;
   // Hervorhebung wie im Editor (Farbschema, fett, kursiv), je Zeichen.
@@ -833,164 +1097,140 @@ begin
     CharColors[Index] := ATextColor;
     CharStyles[Index] := [];
   end;
-  for Token in TAtlasStickyScroll.Syntax(ARow.Text) do
-  begin
-    Style := FSyntax[Token.Kind];
-    for Index := Token.Start - 1 to Min(High(CharColors), Token.Start + Token.Length - 2) do
-    begin
-      if Style.HasColor then
-      begin
-        CharColors[Index] := Style.Color;
-      end;
-      CharStyles[Index] := Style.Style;
-    end;
-  end;
-  // Paarfarben wie im Editor (#1229): nur mit PairColors und nicht in dieser Datei ausgeblendet; die Farbe ersetzt
-  // die des Farbschemas, fett und kursiv bleiben.
-  Settings := TAtlasIdeSettings.Current;
-  Spans := nil;
-  if (ARow.Line >= 0) and (ARow.Line <= High(FPairs)) and (ARow.Line <= High(FLines)) and Settings.PairColors and
-    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, FFileName) then
-  begin
-    Spans := TAtlasPairs.Spans(ARow.Text, FLines[ARow.Line], FPairs[ARow.Line],
-      Settings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
-  end;
+  ApplySyntax(ARow.Text, FSyntax, CharColors, CharStyles);
+  // Paarfarben wie im Editor (#1229).
+  Spans := RowSpans(ARow);
   if Length(Spans) > 0 then
   begin
-    if AColors.IsDark then
-    begin
-      Pairs := AColors.WithPairs(Settings.PairColorsDark);
-    end
-    else
-    begin
-      Pairs := AColors.WithPairs(Settings.PairColorsLight);
-    end;
-    for Span in Spans do
-    begin
-      for Index := Span.Start - 1 to Min(High(CharColors), Span.Start + Span.Length - 2) do
-      begin
-        if Span.Unpaired then
-        begin
-          CharColors[Index] := TColor(Pairs.Error);
-        end
-        else
-        begin
-          CharColors[Index] := TColor(Pairs.Pairs[Span.Depth mod Length(Pairs.Pairs)]);
-        end;
-      end;
-    end;
+    ApplySpans(Spans, PairPalette(AColors, TAtlasIdeSettings.Current), CharColors);
   end;
-  // Läufe gleicher Farbe und Schrift am Stück.
-  Index := 0;
-  while Index <= High(CharColors) do
+  DrawRuns(ACanvas, ALeft, ATop, ARow.Text, CharColors, CharStyles);
+end;
+
+class function TSavedTools.Save(ACanvas: TCanvas): TSavedTools;
+begin
+  Result.Font := TFont.Create;
+  Result.Brush := TBrush.Create;
+  Result.Pen := TPen.Create;
+  Result.Font.Assign(ACanvas.Font);
+  Result.Brush.Assign(ACanvas.Brush);
+  Result.Pen.Assign(ACanvas.Pen);
+end;
+
+procedure TSavedTools.Restore(ACanvas: TCanvas);
+begin
+  ACanvas.Font.Assign(Font);
+  ACanvas.Brush.Assign(Brush);
+  ACanvas.Pen.Assign(Pen);
+  Pen.Free;
+  Brush.Free;
+  Font.Free;
+end;
+
+/// <summary>Linker Rand des Codebereichs, sonst der der Zeile.</summary>
+function CodeLeftOf(const AContext: INTACodeEditorPaintContext; const ARect: TRect): Integer;
+var
+  Code: TRect;
+begin
+  Result := ARect.Left;
+  if AContext.LineState = nil then
   begin
-    Stop := Index;
-    while (Stop < High(CharColors)) and (CharColors[Stop + 1] = CharColors[Index]) and
-      (CharStyles[Stop + 1] = CharStyles[Index]) do
-    begin
-      Inc(Stop);
-    end;
-    ACanvas.Font.Color := CharColors[Index];
-    ACanvas.Font.Style := CharStyles[Index];
-    ACanvas.TextOut(X, ATop, Copy(ARow.Text, Index + 1, Stop - Index + 1));
-    Inc(X, ACanvas.TextWidth(Copy(ARow.Text, Index + 1, Stop - Index + 1)));
-    Index := Stop + 1;
+    Exit;
+  end;
+  Code := AContext.LineState.CodeRect;
+  if Code.Right > Code.Left then
+  begin
+    Result := Code.Left;
   end;
 end;
 
-procedure TStickyState.PaintRow(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext);
+function TStickyPainter.RowBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
-  ARow: TAtlasStickyRow;
-  ALast: Boolean;
-  Canvas: TCanvas;
-  LineState: INTACodeEditorLineState;
-  Code, Area, Cell: TRect;
-  Colors: TAtlasColors;
-  Back: TAtlasColor;
   Sample: COLORREF;
-  Saved, Left, TextTop: Integer;
-  OldFont: TFont;
-  OldBrush: TBrush;
-  OldPen: TPen;
 begin
-  ARow := FRows[ARowIndex];
-  ALast := ARowIndex = High(FRows);
-  Canvas := Context.Canvas;
-  LineState := Context.LineState;
-  Left := ARect.Left;
-  if LineState <> nil then
-  begin
-    Code := LineState.CodeRect;
-    if Code.Right > Code.Left then
-    begin
-      Left := Code.Left;
-    end;
-  end;
-  FCodeLeft := Left;
-  Area := TRect.Create(Left, ARect.Top, ARect.Right, ARect.Bottom);
   if FSchemeBackKnown then
   begin
-    Back := FSchemeBack;
+    Result := FSchemeBack;
   end
   else if FBackKnown then
   begin
-    Back := FBack;
+    Result := FBack;
   end
   else
   begin
-    Sample := GetPixel(Canvas.Handle, ARect.Right - 2, ARect.Top + 1);
+    Sample := GetPixel(ACanvas.Handle, ARect.Right - 2, ARect.Top + 1);
     if Sample = CLR_INVALID then
     begin
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
+      Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
     end
     else
     begin
-      Back := TAtlasColor(Sample);
+      Result := TAtlasColor(Sample);
     end;
   end;
+end;
+
+/// <summary>Hintergrund der Kopfzeile in AArea, Schrift für Text oder (ASummary) Zusammenfassung.</summary>
+procedure FillRow(ACanvas: TCanvas; const AArea: TRect; const AColors: TAtlasColors; ABack: TAtlasColor;
+  ASummary: Boolean);
+begin
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := TColor(HeaderBack(AColors, ABack));
+  ACanvas.FillRect(AArea);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Style := [];
+  if ASummary then
+  begin
+    ACanvas.Font.Color := TColor(AColors.Muted);
+  end
+  else
+  begin
+    ACanvas.Font.Color := TColor(AColors.Text);
+  end;
+end;
+
+/// <summary>Trennlinie unter der letzten Kopfzeile.</summary>
+procedure DrawSeparator(ACanvas: TCanvas; const AArea: TRect; const AColors: TAtlasColors);
+begin
+  ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Pen.Color := TColor(AColors.Line);
+  ACanvas.MoveTo(AArea.Left, AArea.Bottom - 1);
+  ACanvas.LineTo(AArea.Right, AArea.Bottom - 1);
+end;
+
+procedure TStickyPainter.PaintRow(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext);
+var
+  Row: TAtlasStickyRow;
+  Canvas: TCanvas;
+  Area, Cell: TRect;
+  Colors: TAtlasColors;
+  Back: TAtlasColor;
+  Saved, TextTop: Integer;
+  Tools: TSavedTools;
+begin
+  Row := FRows[ARowIndex];
+  Canvas := Context.Canvas;
+  FCodeLeft := CodeLeftOf(Context, ARect);
+  Area := TRect.Create(FCodeLeft, ARect.Top, ARect.Right, ARect.Bottom);
+  Back := RowBack(Canvas, ARect);
   Colors := TAtlasColors.ForBackground(Back);
-  OldFont := TFont.Create;
-  OldBrush := TBrush.Create;
-  OldPen := TPen.Create;
-  OldFont.Assign(Canvas.Font);
-  OldBrush.Assign(Canvas.Brush);
-  OldPen.Assign(Canvas.Pen);
+  Tools := TSavedTools.Save(Canvas);
   Saved := SaveDC(Canvas.Handle);
   try
     IntersectClipRect(Canvas.Handle, Area.Left, Area.Top, Area.Right, Area.Bottom);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := TColor(HeaderBack(Colors, Back));
-    Canvas.FillRect(Area);
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Style := [];
-    if ARow.Summary then
-    begin
-      Canvas.Font.Color := TColor(Colors.Muted);
-    end
-    else
-    begin
-      Canvas.Font.Color := TColor(Colors.Text);
-    end;
-    Cell := Context.EditorState.GetCharacterPosPx(ARow.Indent + 1, Context.EditorLineNum);
+    FillRow(Canvas, Area, Colors, Back, Row.Summary);
+    Cell := Context.EditorState.GetCharacterPosPx(Row.Indent + 1, Context.EditorLineNum);
     TextTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - Canvas.TextHeight('Xg')) div 2);
-    DrawHeader(Canvas, Max(Left, Cell.Left), TextTop, ARow, Colors, Canvas.Font.Color);
-    if ALast then
+    DrawHeader(Canvas, Max(FCodeLeft, Cell.Left), TextTop, Row, Colors, Canvas.Font.Color);
+    if ARowIndex = High(FRows) then
     begin
-      Canvas.Pen.Style := psSolid;
-      Canvas.Pen.Width := 1;
-      Canvas.Pen.Color := TColor(Colors.Line);
-      Canvas.MoveTo(Area.Left, Area.Bottom - 1);
-      Canvas.LineTo(Area.Right, Area.Bottom - 1);
+      DrawSeparator(Canvas, Area, Colors);
     end;
   finally
     RestoreDC(Canvas.Handle, Saved);
     DrawGuides(ARect, ARowIndex, Context, Back);
-    Canvas.Font.Assign(OldFont);
-    Canvas.Brush.Assign(OldBrush);
-    Canvas.Pen.Assign(OldPen);
-    OldPen.Free;
-    OldBrush.Free;
-    OldFont.Free;
+    Tools.Restore(Canvas);
   end;
 end;
 
@@ -1025,13 +1265,7 @@ var
   FileName: string;
 begin
   try
-    if not FOn or (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or (FPaintedRows = 0) or
-      (FRowHeight <= 0) or (Y < 0) or (X < FCodeLeft) then
-    begin
-      Exit;
-    end;
-    Row := Y div FRowHeight;
-    if (Row >= FPaintedRows) or (Row > High(FRows)) then
+    if not FOn or (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not RowAt(X, Y, Row) then
     begin
       Exit;
     end;
