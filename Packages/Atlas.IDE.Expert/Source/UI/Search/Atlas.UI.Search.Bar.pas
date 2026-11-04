@@ -136,6 +136,10 @@ type
     function AddButton(ARow: TPanel; const ACaption, AHint: string; AWidth: Integer): TButton;
     function AddCombo(ARow: TPanel; AStyle: TComboBoxStyle; AWidth: Integer): TComboBox;
     procedure Apply;
+    /// <summary>Gewählter Bereich: aus der Liste, solange sie kein Fenster hat aus der vorbereiteten Suche.</summary>
+    function SelectedScope: TAtlasSearchScope;
+    /// <summary>Gewählte Stufe: aus der Liste, ohne Fenster aus der vorbereiteten Suche.</summary>
+    function SelectedLevel: Integer;
     procedure UpdateStates;
     procedure UpdateLayout;
     procedure FitWidths;
@@ -575,14 +579,35 @@ begin
   end;
 end;
 
-procedure TAtlasSearchBar.UpdateStates;
+// ItemIndex und Items.Count einer TComboBox fragen ihr Fenster ab (CB_GETCURSEL, CB_GETCOUNT) und legen es dafür
+// an. Ohne übergeordnetes Fenster scheitert das mit EInvalidOperation: Unter Delphi 12 legt die Suche ihre Leiste
+// vor dem Einhängen an (CreateBar setzt Features, dann ordnet Place sie ein); jedes Strg+F scheiterte so, und nach
+// dem dritten Versuch schaltete die Sicherung die Atlas-Suche ab. Ohne Fenster gilt darum der Stand der
+// vorbereiteten Suche; Apply schreibt ihn in die Listen, sobald es eins gibt.
+
+function TAtlasSearchBar.SelectedScope: TAtlasSearchScope;
 var
-  Scope: TAtlasSearchScope;
+  mIndex: Integer;
 begin
-  Scope := TAtlasSearchScope.UnitFile;
-  if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
-    Scope := FScopes[FScope.ItemIndex];
-  FLevel.Visible := (Scope = TAtlasSearchScope.Method) and (FLevel.Items.Count > 0);
+  Result := FQuery.Scope;
+  if not FScope.HandleAllocated then
+    Exit;
+  mIndex := FScope.ItemIndex;
+  if (mIndex >= 0) and (mIndex <= High(FScopes)) then
+    Result := FScopes[mIndex];
+end;
+
+function TAtlasSearchBar.SelectedLevel: Integer;
+begin
+  Result := FQuery.Level;
+  if FLevel.HandleAllocated then
+    Result := FLevel.ItemIndex;
+end;
+
+procedure TAtlasSearchBar.UpdateStates;
+begin
+  // FLevels sind die Einträge der Stufenliste (Apply füllt sie daraus); Items.Count bräuchte ein Fenster.
+  FLevel.Visible := (SelectedScope = TAtlasSearchScope.Method) and (Length(FLevels) > 0);
   // Bezeichner-Modus ohne Regex kennt nur ganze Bezeichner ohne Rücksicht auf die Schreibweise; mit Regex filtert
   // er nur Kommentare und Strings heraus.
   FCase.Enabled := not FIdentifier.Checked or FRegex.Checked;
@@ -655,9 +680,8 @@ begin
   Result.Text := FText.Text;
   Result.Options := TAtlasSearchOptions.Create(FCase.Checked, FWhole.Checked, FIdentifier.Checked,
     FRegex.Checked and FFeatures.Regex);
-  if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
-    Result.Scope := FScopes[FScope.ItemIndex];
-  Result.Level := FLevel.ItemIndex;
+  Result.Scope := SelectedScope;
+  Result.Level := SelectedLevel;
   if Result.Level < 0 then
     Result.Level := 0;
 end;
