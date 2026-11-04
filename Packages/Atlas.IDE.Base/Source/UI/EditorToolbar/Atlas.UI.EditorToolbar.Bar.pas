@@ -70,47 +70,69 @@ type
 
   TAtlasToolbarCommandEvent = reference to procedure(const AId: string);
 
-  TAtlasEditorToolbar = class(TAtlasEditorBar)
-  private const
-    /// <summary>Teile ohne Index in FButtons (PartNone vom Vorfahr).</summary>
+  /// <summary>Lage der Teile nach dem Layout (Client): je Knopf, Rücksprung, », Zahnrad und die Knöpfe im
+  /// Überlauf. Leere Flächen stehen nicht in der Leiste.</summary>
+  TAtlasToolbarPlaces = record
+  public const
+    /// <summary>Teile ohne Index in den Knöpfen (PartNone vom Vorfahr ist -1).</summary>
     PartReturn = -2;
     PartMore = -3;
     PartGear = -4;
+  public
+    Ids: TArray<string>;
+    Separators: TArray<Boolean>;
+    Rects: TArray<TRect>;
+    Return: TRect;
+    More: TRect;
+    Gear: TRect;
+    /// <summary>Indizes der Knöpfe im Überlaufmenü in Reihenfolge.</summary>
+    Overflow: TArray<Integer>;
+    class function Create(const AButtons: TArray<TAtlasToolbarButton>): TAtlasToolbarPlaces; static;
+    /// <summary>Verteilt die Einträge AOrder (Index oder PartReturn) mit Breiten ASlots nach AFit in ABand; AWidth
+    /// ist die Breite von » und Zahnrad, das rechts außen steht.</summary>
+    procedure Arrange(const AOrder: TArray<Integer>; const ASlots: TArray<TAtlasToolbarSlot>;
+      const AFit: TAtlasToolbarFit; const ABand: TRect; AWidth: Integer);
+    /// <summary>Fläche des Knopfs mit Kennung AId; leer, wenn er nicht in der Leiste steht.</summary>
+    function ButtonRect(const AId: string): TRect;
+    /// <summary>Kennungen im Überlaufmenü in Reihenfolge ('|' = Trennstrich).</summary>
+    function OverflowIds: TArray<string>;
+    /// <summary>Teil unter APoint; -1 (PartNone) ohne. Trennstriche sind keine Teile.</summary>
+    function PartAt(const APoint: TPoint): Integer;
+  end;
+
+  /// <summary>Rücksprung-Knopf: gezeigt, Text (Zeilennummer) und Tooltip.</summary>
+  TAtlasToolbarReturn = record
+    Shown: Boolean;
+    Text: string;
+    Hint: string;
+  end;
+
+  /// <summary>Texte der Leiste: Tooltips von » und Zahnrad, Menüeintrag „Leiste anpassen …“.</summary>
+  TAtlasToolbarTexts = record
+    More: string;
+    Gear: string;
+    Customize: string;
+  end;
+
+  TAtlasToolbarEvents = record
+    Command: TAtlasToolbarCommandEvent;
+    Return: TProc;
+    Customize: TProc;
+  end;
+
+  TAtlasEditorToolbar = class(TAtlasEditorBar)
   private
     FButtons: TArray<TAtlasToolbarButton>;
-    FReturnShown: Boolean;
-    FReturnText: string;
-    FReturnHint: string;
+    FReturn: TAtlasToolbarReturn;
     FLabels: Boolean;
     FInline: Boolean;
-    FRects: TArray<TRect>;
-    FReturnRect: TRect;
-    FMoreRect: TRect;
-    FGearRect: TRect;
-    FOverflow: TArray<Integer>;
+    FPlaces: TAtlasToolbarPlaces;
     FLaidOut: Boolean;
-    FMoreHint: string;
-    FGearHint: string;
-    FCustomizeCaption: string;
+    FTexts: TAtlasToolbarTexts;
     FMenu: TPopupMenu;
-    /// <summary>Kennungen der Menüeinträge: Die Knöpfe können sich ändern, während das Menü offen ist.</summary>
-    FMenuIds: TArray<string>;
-    FOnCommand: TAtlasToolbarCommandEvent;
-    FOnReturn: TProc;
-    FOnCustomize: TProc;
-    function IconSize: Integer;
-    function ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
-    function ReturnWidth: Integer;
-    function SeparatorWidth: Integer;
-    /// <summary>Einträge in Reihenfolge der Leiste: Index in FButtons, PartReturn für den Rücksprung.</summary>
-    function Entries: TArray<Integer>;
+    FEvents: TAtlasToolbarEvents;
     procedure Layout;
-    function PartRect(APart: Integer): TRect;
-    procedure DrawButton(const ARect: TRect; AIcon: TAtlasToolbarIcon; const ACaption: string; AEnabled, APressed,
-      AHot, ADot: Boolean; const AText: string);
     procedure ShowMenu(const APoint: TPoint; AOverflow: Boolean);
-    procedure MenuCommandClick(Sender: TObject);
-    procedure MenuCustomizeClick(Sender: TObject);
     procedure Fire(APart: Integer);
     procedure SetLabels(AValue: Boolean);
     procedure SetInline(AValue: Boolean);
@@ -129,36 +151,27 @@ type
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
     /// <summary>Knöpfe setzen; gleiche Knöpfe zeichnen nicht neu.</summary>
     procedure SetButtons(const AButtons: TArray<TAtlasToolbarButton>);
     /// <summary>Rücksprung zeigen (AShown) mit Text (Zeilennummer) und Tooltip.</summary>
     procedure SetReturn(AShown: Boolean; const AText, AHint: string);
     /// <summary>Breite, mit der alles ohne Überlauf passt (samt Zahnrad).</summary>
     function PreferredWidth: Integer;
-    /// <summary>Fläche des Knopfs mit Kennung AId (Client); leer, wenn er nicht in der Leiste steht.</summary>
-    function ButtonRect(const AId: string): TRect;
-    /// <summary>Kennungen im Überlaufmenü in Reihenfolge ('|' = Trennstrich).</summary>
-    function OverflowIds: TArray<string>;
-    /// <summary>Steht der Rücksprung-Knopf in der Leiste?</summary>
-    function ReturnRect: TRect;
-    function MoreRect: TRect;
-    function GearRect: TRect;
+    /// <summary>Lage der Teile nach dem Layout (Client).</summary>
+    function Places: TAtlasToolbarPlaces;
     /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
     function HintAt(X, Y: Integer): string;
     /// <summary>Klick wie mit der Maus (für Tests): Knopf, Rücksprung, », Zahnrad unter dem Punkt.</summary>
     procedure ClickAt(X, Y: Integer);
-    property Buttons: TArray<TAtlasToolbarButton> read FButtons;
-    property ReturnShown: Boolean read FReturnShown;
     property Labels: Boolean read FLabels write SetLabels;
     /// <summary>In der Brotkrumenzeile: ohne eigene Fläche unten, Trennlinie links.</summary>
     property InlineMode: Boolean read FInline write SetInline;
-    property MoreHint: string read FMoreHint write FMoreHint;
-    property GearHint: string read FGearHint write FGearHint;
-    property CustomizeCaption: string read FCustomizeCaption write FCustomizeCaption;
-    property OnCommand: TAtlasToolbarCommandEvent read FOnCommand write FOnCommand;
-    property OnReturn: TProc read FOnReturn write FOnReturn;
-    property OnCustomize: TProc read FOnCustomize write FOnCustomize;
+    property MoreHint: string read FTexts.More write FTexts.More;
+    property GearHint: string read FTexts.Gear write FTexts.Gear;
+    property CustomizeCaption: string read FTexts.Customize write FTexts.Customize;
+    property OnCommand: TAtlasToolbarCommandEvent read FEvents.Command write FEvents.Command;
+    property OnReturn: TProc read FEvents.Return write FEvents.Return;
+    property OnCustomize: TProc read FEvents.Customize write FEvents.Customize;
   end;
 
 implementation
@@ -173,6 +186,9 @@ const
   BaseButton = 24;
   BaseSeparator = 9;
   Margin = 4;
+  PartReturn = TAtlasToolbarPlaces.PartReturn;
+  PartMore = TAtlasToolbarPlaces.PartMore;
+  PartGear = TAtlasToolbarPlaces.PartGear;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -209,20 +225,383 @@ begin
     (Enabled = AOther.Enabled) and (Pressed = AOther.Pressed) and (Dot = AOther.Dot) and (Pinned = AOther.Pinned);
 end;
 
+{ TAtlasToolbarPlaces }
+
+class function TAtlasToolbarPlaces.Create(const AButtons: TArray<TAtlasToolbarButton>): TAtlasToolbarPlaces;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasToolbarPlaces);
+  SetLength(Result.Ids, Length(AButtons));
+  SetLength(Result.Separators, Length(AButtons));
+  SetLength(Result.Rects, Length(AButtons));
+  for mIndex := 0 to High(AButtons) do
+  begin
+    Result.Ids[mIndex] := AButtons[mIndex].Id;
+    Result.Separators[mIndex] := AButtons[mIndex].IsSeparator;
+    Result.Rects[mIndex] := TRect.Empty;
+  end;
+  Result.Return := TRect.Empty;
+  Result.More := TRect.Empty;
+  Result.Gear := TRect.Empty;
+end;
+
+procedure TAtlasToolbarPlaces.Arrange(const AOrder: TArray<Integer>; const ASlots: TArray<TAtlasToolbarSlot>;
+  const AFit: TAtlasToolbarFit; const ABand: TRect; AWidth: Integer);
+var
+  mIndex, mLeft: Integer;
+begin
+  mLeft := ABand.Left;
+  for mIndex := 0 to High(AOrder) do
+  begin
+    if not AFit.Visible[mIndex] then
+    begin
+      Continue;
+    end;
+    if AOrder[mIndex] = PartReturn then
+    begin
+      Return := Rect(mLeft, ABand.Top, mLeft + ASlots[mIndex].Width, ABand.Bottom);
+    end
+    else
+    begin
+      Rects[AOrder[mIndex]] := Rect(mLeft, ABand.Top, mLeft + ASlots[mIndex].Width, ABand.Bottom);
+    end;
+    Inc(mLeft, ASlots[mIndex].Width);
+  end;
+  Overflow := nil;
+  for mIndex in AFit.Overflow do
+  begin
+    if AOrder[mIndex] >= 0 then
+    begin
+      Overflow := Overflow + [AOrder[mIndex]];
+    end;
+  end;
+  if AFit.More then
+  begin
+    More := Rect(mLeft, ABand.Top, mLeft + AWidth, ABand.Bottom);
+    Inc(mLeft, AWidth);
+  end;
+  // Zahnrad rechts außen.
+  mLeft := Max(mLeft, ABand.Right - AWidth);
+  Gear := Rect(mLeft, ABand.Top, mLeft + AWidth, ABand.Bottom);
+end;
+
+function TAtlasToolbarPlaces.ButtonRect(const AId: string): TRect;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Ids) do
+  begin
+    if SameText(Ids[mIndex], AId) then
+    begin
+      Exit(Rects[mIndex]);
+    end;
+  end;
+  Result := TRect.Empty;
+end;
+
+function TAtlasToolbarPlaces.OverflowIds: TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex in Overflow do
+  begin
+    Result := Result + [Ids[mIndex]];
+  end;
+end;
+
+function TAtlasToolbarPlaces.PartAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  if Return.Contains(APoint) then
+  begin
+    Exit(PartReturn);
+  end;
+  if More.Contains(APoint) then
+  begin
+    Exit(PartMore);
+  end;
+  if Gear.Contains(APoint) then
+  begin
+    Exit(PartGear);
+  end;
+  for mIndex := 0 to High(Rects) do
+  begin
+    if not Separators[mIndex] and Rects[mIndex].Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := TAtlasEditorBar.PartNone;
+end;
+
+type
+  /// <summary>Breiten der Leiste: Knöpfe, Rücksprung und die Einträge in Reihenfolge.</summary>
+  TAtlasToolbarMeasure = record
+    Bar: TAtlasEditorToolbar;
+    function IconSize: Integer;
+    function ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
+    function ReturnWidth: Integer;
+    /// <summary>Einträge in Reihenfolge der Leiste: Index der Knöpfe, PartReturn für den Rücksprung.</summary>
+    function Entries: TArray<Integer>;
+    function Slots(const AOrder: TArray<Integer>): TArray<TAtlasToolbarSlot>;
+  end;
+
+  /// <summary>Zeichnen der Knöpfe, Trennstriche und des Rücksprungs.</summary>
+  TAtlasToolbarPainter = record
+    Bar: TAtlasEditorToolbar;
+    procedure Button(const ARect: TRect; const AButton: TAtlasToolbarButton; AHot: Boolean; const AText: string);
+    procedure Separator(const ARect: TRect);
+    procedure Return(const ARect: TRect; const AText: string);
+  end;
+
+  /// <summary>Menü der Leiste: Überlauf und „Leiste anpassen …“. Die Kennungen stehen im Menü, weil sich die
+  /// Knöpfe ändern können, während es offen ist.</summary>
+  TAtlasToolbarMenu = class(TPopupMenu)
+  private
+    FBar: TAtlasEditorToolbar;
+    FIds: TArray<string>;
+    procedure CommandClick(Sender: TObject);
+    procedure CustomizeClick(Sender: TObject);
+  public
+    constructor CreateFor(ABar: TAtlasEditorToolbar);
+    procedure AddButton(const AButton: TAtlasToolbarButton);
+    procedure AddCustomize(const ACaption: string);
+  end;
+
+{ TAtlasToolbarMeasure }
+
+function TAtlasToolbarMeasure.IconSize: Integer;
+begin
+  Result := Bar.Scale(16);
+end;
+
+function TAtlasToolbarMeasure.ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
+begin
+  if AButton.IsSeparator then
+  begin
+    Exit(Bar.Scale(BaseSeparator));
+  end;
+  Result := Bar.Scale(BaseButton);
+  if Bar.FLabels and (AButton.Caption <> '') then
+  begin
+    Bar.Canvas.Font := Bar.Font;
+    Inc(Result, Bar.Canvas.TextWidth(AButton.Caption) + Bar.Scale(6));
+  end;
+end;
+
+function TAtlasToolbarMeasure.ReturnWidth: Integer;
+begin
+  Bar.Canvas.Font := Bar.Font;
+  Bar.Canvas.Font.Style := [fsBold];
+  Result := Bar.Scale(4) + IconSize + Bar.Scale(4) + Bar.Canvas.TextWidth(Bar.FReturn.Text) + Bar.Scale(6);
+  Bar.Canvas.Font := Bar.Font;
+end;
+
+function TAtlasToolbarMeasure.Entries: TArray<Integer>;
+var
+  mIndex: Integer;
+  mPlaced: Boolean;
+begin
+  Result := nil;
+  mPlaced := not Bar.FReturn.Shown;
+  for mIndex := 0 to High(Bar.FButtons) do
+  begin
+    // Rücksprung hinter den angehefteten Abschnittssymbolen am Anfang.
+    if not mPlaced and not Bar.FButtons[mIndex].Pinned then
+    begin
+      Result := Result + [PartReturn];
+      mPlaced := True;
+    end;
+    Result := Result + [mIndex];
+  end;
+  if not mPlaced then
+  begin
+    Result := Result + [PartReturn];
+  end;
+end;
+
+function TAtlasToolbarMeasure.Slots(const AOrder: TArray<Integer>): TArray<TAtlasToolbarSlot>;
+var
+  mIndex: Integer;
+  mButton: TAtlasToolbarButton;
+begin
+  SetLength(Result, Length(AOrder));
+  for mIndex := 0 to High(AOrder) do
+  begin
+    if AOrder[mIndex] = PartReturn then
+    begin
+      Result[mIndex] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
+    end
+    else
+    begin
+      mButton := Bar.FButtons[AOrder[mIndex]];
+      Result[mIndex] := TAtlasToolbarSlot.Create(ButtonWidth(mButton), mButton.IsSeparator, mButton.Pinned);
+    end;
+  end;
+end;
+
+{ TAtlasToolbarPainter }
+
+procedure TAtlasToolbarPainter.Button(const ARect: TRect; const AButton: TAtlasToolbarButton; AHot: Boolean;
+  const AText: string);
+var
+  mBack, mFore: TColor;
+  mIcon, mPart: TRect;
+  mIconSize, mDotSize: Integer;
+begin
+  mBack := ToColor(Bar.Colors.Gutter);
+  mFore := ToColor(Bar.Colors.Text);
+  Bar.Canvas.Brush.Style := bsSolid;
+  if AButton.Pressed then
+  begin
+    mBack := ToColor(Bar.Colors.AccentSoft);
+    mFore := ToColor(Bar.Colors.Accent);
+    Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Accent);
+  end
+  else if AHot and AButton.Enabled then
+  begin
+    mBack := ToColor(Bar.Colors.Selection);
+    Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Line);
+  end;
+  if AButton.Pressed or (AHot and AButton.Enabled) then
+  begin
+    Bar.Canvas.Brush.Color := mBack;
+    Bar.Canvas.RoundRect(ARect.Left + Bar.Scale(1), ARect.Top + Bar.Scale(1), ARect.Right - Bar.Scale(1),
+      ARect.Bottom - Bar.Scale(1), Bar.Scale(4), Bar.Scale(4));
+  end;
+  if not AButton.Enabled then
+  begin
+    mFore := ToColor(Bar.Colors.Muted);
+  end;
+  mIconSize := Bar.Scale(16);
+  mIcon := Rect(ARect.Left + Bar.Scale(4), ARect.Top + (ARect.Height - mIconSize) div 2,
+    ARect.Left + Bar.Scale(4) + mIconSize, ARect.Top + (ARect.Height - mIconSize) div 2 + mIconSize);
+  Bar.Canvas.Font := Bar.Font;
+  TAtlasGlyphPainter.Draw(Bar.Canvas, AButton.Icon, mIcon, mFore, mBack, AButton.Caption);
+  if AText <> '' then
+  begin
+    Bar.Canvas.Font := Bar.Font;
+    Bar.Canvas.Font.Color := mFore;
+    Bar.Canvas.Brush.Style := bsClear;
+    mPart := Rect(mIcon.Right + Bar.Scale(4), ARect.Top, ARect.Right - Bar.Scale(2), ARect.Bottom);
+    DrawText(Bar.Canvas.Handle, PChar(AText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+  end;
+  if AButton.Dot then
+  begin
+    mDotSize := Bar.Scale(6);
+    Bar.Canvas.Brush.Style := bsSolid;
+    Bar.Canvas.Brush.Color := ToColor(Bar.Colors.Warn);
+    Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Warn);
+    Bar.Canvas.Ellipse(ARect.Right - Bar.Scale(3) - mDotSize, ARect.Top + Bar.Scale(2), ARect.Right - Bar.Scale(3),
+      ARect.Top + Bar.Scale(2) + mDotSize);
+  end;
+end;
+
+procedure TAtlasToolbarPainter.Separator(const ARect: TRect);
+var
+  mMiddle: Integer;
+begin
+  mMiddle := (ARect.Left + ARect.Right) div 2;
+  Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Line);
+  Bar.Canvas.MoveTo(mMiddle, ARect.Top + Bar.Scale(4));
+  Bar.Canvas.LineTo(mMiddle, ARect.Bottom - Bar.Scale(4));
+end;
+
+procedure TAtlasToolbarPainter.Return(const ARect: TRect; const AText: string);
+var
+  mIconSize: Integer;
+  mArea: TRect;
+begin
+  // Rücksprung: Akzentfarbe, Zeilennummer fett daneben.
+  mIconSize := Bar.Scale(16);
+  Bar.Canvas.Brush.Style := bsSolid;
+  Bar.Canvas.Brush.Color := ToColor(Bar.Colors.AccentSoft);
+  Bar.Canvas.Pen.Color := ToColor(Bar.Colors.Accent);
+  Bar.Canvas.RoundRect(ARect.Left + Bar.Scale(1), ARect.Top + Bar.Scale(1), ARect.Right - Bar.Scale(1),
+    ARect.Bottom - Bar.Scale(1), Bar.Scale(4), Bar.Scale(4));
+  TAtlasGlyphPainter.Draw(Bar.Canvas, TAtlasToolbarIcon.Return, Rect(ARect.Left + Bar.Scale(4),
+    ARect.Top + (ARect.Height - mIconSize) div 2, ARect.Left + Bar.Scale(4) + mIconSize,
+    ARect.Top + (ARect.Height - mIconSize) div 2 + mIconSize), ToColor(Bar.Colors.Accent),
+    ToColor(Bar.Colors.AccentSoft), '');
+  Bar.Canvas.Font := Bar.Font;
+  Bar.Canvas.Font.Style := [fsBold];
+  Bar.Canvas.Font.Color := ToColor(Bar.Colors.Accent);
+  Bar.Canvas.Brush.Style := bsClear;
+  mArea := Rect(ARect.Left + Bar.Scale(8) + mIconSize, ARect.Top, ARect.Right - Bar.Scale(2), ARect.Bottom);
+  DrawText(Bar.Canvas.Handle, PChar(AText), -1, mArea, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  Bar.Canvas.Font := Bar.Font;
+end;
+
+{ TAtlasToolbarMenu }
+
+constructor TAtlasToolbarMenu.CreateFor(ABar: TAtlasEditorToolbar);
+begin
+  inherited Create(ABar);
+  FBar := ABar;
+end;
+
+procedure TAtlasToolbarMenu.AddButton(const AButton: TAtlasToolbarButton);
+var
+  mItem: TMenuItem;
+begin
+  if AButton.IsSeparator then
+  begin
+    Items.Add(NewLine);
+    Exit;
+  end;
+  mItem := TMenuItem.Create(Self);
+  mItem.Caption := StringReplace(AButton.Caption, '&', '&&', [rfReplaceAll]);
+  mItem.Hint := AButton.Hint;
+  mItem.Enabled := AButton.Enabled;
+  mItem.Checked := AButton.Pressed;
+  mItem.Tag := Length(FIds);
+  FIds := FIds + [AButton.Id];
+  mItem.OnClick := CommandClick;
+  Items.Add(mItem);
+end;
+
+procedure TAtlasToolbarMenu.AddCustomize(const ACaption: string);
+var
+  mItem: TMenuItem;
+begin
+  mItem := TMenuItem.Create(Self);
+  mItem.Caption := StringReplace(ACaption, '&', '&&', [rfReplaceAll]);
+  mItem.OnClick := CustomizeClick;
+  Items.Add(mItem);
+end;
+
+procedure TAtlasToolbarMenu.CommandClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FIds)) and Assigned(FBar.FEvents.Command) then
+  begin
+    FBar.FEvents.Command(FIds[mIndex]);
+  end;
+end;
+
+procedure TAtlasToolbarMenu.CustomizeClick(Sender: TObject);
+begin
+  if Assigned(FBar.FEvents.Customize) then
+  begin
+    FBar.FEvents.Customize();
+  end;
+end;
+
 { TAtlasEditorToolbar }
 
 constructor TAtlasEditorToolbar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FMoreHint := '»';
-  FGearHint := '';
-  FCustomizeCaption := '';
-end;
-
-destructor TAtlasEditorToolbar.Destroy;
-begin
-  FMenu.Free;
-  inherited Destroy;
+  FTexts.More := '»';
+  FTexts.Gear := '';
+  FTexts.Customize := '';
+  FPlaces := TAtlasToolbarPlaces.Create(nil);
 end;
 
 class function TAtlasEditorToolbar.BaseHeight: Integer;
@@ -236,24 +615,19 @@ begin
   FLaidOut := False;
 end;
 
-function TAtlasEditorToolbar.IconSize: Integer;
-begin
-  Result := Scale(16);
-end;
-
 procedure TAtlasEditorToolbar.SetButtons(const AButtons: TArray<TAtlasToolbarButton>);
 var
-  Index: Integer;
-  Same: Boolean;
+  mIndex: Integer;
+  mSame: Boolean;
 begin
-  Same := Length(AButtons) = Length(FButtons);
-  Index := 0;
-  while Same and (Index <= High(AButtons)) do
+  mSame := Length(AButtons) = Length(FButtons);
+  mIndex := 0;
+  while mSame and (mIndex <= High(AButtons)) do
   begin
-    Same := AButtons[Index].SameAs(FButtons[Index]);
-    Inc(Index);
+    mSame := AButtons[mIndex].SameAs(FButtons[mIndex]);
+    Inc(mIndex);
   end;
-  if Same then
+  if mSame then
   begin
     Exit;
   end;
@@ -264,13 +638,13 @@ end;
 
 procedure TAtlasEditorToolbar.SetReturn(AShown: Boolean; const AText, AHint: string);
 begin
-  if (AShown = FReturnShown) and (AText = FReturnText) and (AHint = FReturnHint) then
+  if (AShown = FReturn.Shown) and (AText = FReturn.Text) and (AHint = FReturn.Hint) then
   begin
     Exit;
   end;
-  FReturnShown := AShown;
-  FReturnText := AText;
-  FReturnHint := AHint;
+  FReturn.Shown := AShown;
+  FReturn.Text := AText;
+  FReturn.Hint := AHint;
   FLaidOut := False;
   Invalidate;
 end;
@@ -313,251 +687,49 @@ begin
   Invalidate;
 end;
 
-function TAtlasEditorToolbar.SeparatorWidth: Integer;
-begin
-  Result := Scale(BaseSeparator);
-end;
-
-function TAtlasEditorToolbar.ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
-begin
-  if AButton.IsSeparator then
-  begin
-    Exit(SeparatorWidth);
-  end;
-  Result := Scale(BaseButton);
-  if FLabels and (AButton.Caption <> '') then
-  begin
-    Canvas.Font := Font;
-    Inc(Result, Canvas.TextWidth(AButton.Caption) + Scale(6));
-  end;
-end;
-
-function TAtlasEditorToolbar.ReturnWidth: Integer;
-begin
-  Canvas.Font := Font;
-  Canvas.Font.Style := [fsBold];
-  Result := Scale(4) + IconSize + Scale(4) + Canvas.TextWidth(FReturnText) + Scale(6);
-  Canvas.Font := Font;
-end;
-
-function TAtlasEditorToolbar.Entries: TArray<Integer>;
-var
-  Index: Integer;
-  Placed: Boolean;
-begin
-  Result := nil;
-  Placed := not FReturnShown;
-  for Index := 0 to High(FButtons) do
-  begin
-    // Rücksprung hinter den angehefteten Abschnittssymbolen am Anfang.
-    if not Placed and not FButtons[Index].Pinned then
-    begin
-      Result := Result + [PartReturn];
-      Placed := True;
-    end;
-    Result := Result + [Index];
-  end;
-  if not Placed then
-  begin
-    Result := Result + [PartReturn];
-  end;
-end;
-
 procedure TAtlasEditorToolbar.Layout;
 var
-  Order: TArray<Integer>;
-  Slots: TArray<TAtlasToolbarSlot>;
-  Fit: TAtlasToolbarFit;
-  Index, Left_, Top_, Bottom_, Available, Width_, Part: Integer;
-  Overflow: Integer;
+  mMeasure: TAtlasToolbarMeasure;
+  mOrder: TArray<Integer>;
+  mSlots: TArray<TAtlasToolbarSlot>;
+  mWidth: Integer;
 begin
   if FLaidOut or not HandleAllocated then
   begin
     Exit;
   end;
   FLaidOut := True;
-  Order := Entries;
-  SetLength(Slots, Length(Order));
-  for Index := 0 to High(Order) do
-  begin
-    if Order[Index] = PartReturn then
-    begin
-      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
-    end
-    else
-    begin
-      Slots[Index] := TAtlasToolbarSlot.Create(ButtonWidth(FButtons[Order[Index]]),
-        FButtons[Order[Index]].IsSeparator, FButtons[Order[Index]].Pinned);
-    end;
-  end;
-  Width_ := Scale(BaseButton);
-  Available := ClientWidth - 2 * Scale(Margin) - Width_;
-  Fit := TAtlasToolbarLayout.Fit(Slots, Available, Width_);
-  SetLength(FRects, Length(FButtons));
-  for Index := 0 to High(FRects) do
-  begin
-    FRects[Index] := TRect.Empty;
-  end;
-  FReturnRect := TRect.Empty;
-  Top_ := Scale(1);
-  Bottom_ := ClientHeight - Scale(1);
-  Left_ := Scale(Margin);
-  for Index := 0 to High(Order) do
-  begin
-    if not Fit.Visible[Index] then
-    begin
-      Continue;
-    end;
-    Part := Order[Index];
-    if Part = PartReturn then
-    begin
-      FReturnRect := Rect(Left_, Top_, Left_ + Slots[Index].Width, Bottom_);
-    end
-    else
-    begin
-      FRects[Part] := Rect(Left_, Top_, Left_ + Slots[Index].Width, Bottom_);
-    end;
-    Inc(Left_, Slots[Index].Width);
-  end;
-  FOverflow := nil;
-  for Overflow in Fit.Overflow do
-  begin
-    if Order[Overflow] >= 0 then
-    begin
-      FOverflow := FOverflow + [Order[Overflow]];
-    end;
-  end;
-  if Fit.More then
-  begin
-    FMoreRect := Rect(Left_, Top_, Left_ + Width_, Bottom_);
-    Inc(Left_, Width_);
-  end
-  else
-  begin
-    FMoreRect := TRect.Empty;
-  end;
-  // Zahnrad rechts außen.
-  FGearRect := Rect(Max(Left_, ClientWidth - Scale(Margin) - Width_), Top_, Max(Left_, ClientWidth - Scale(Margin) -
-    Width_) + Width_, Bottom_);
+  mMeasure.Bar := Self;
+  mOrder := mMeasure.Entries;
+  mSlots := mMeasure.Slots(mOrder);
+  mWidth := Scale(BaseButton);
+  FPlaces := TAtlasToolbarPlaces.Create(FButtons);
+  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(Margin) - mWidth, mWidth),
+    Rect(Scale(Margin), Scale(1), ClientWidth - Scale(Margin), ClientHeight - Scale(1)), mWidth);
 end;
 
 function TAtlasEditorToolbar.PreferredWidth: Integer;
 var
-  Order: TArray<Integer>;
-  Slots: TArray<TAtlasToolbarSlot>;
-  Index: Integer;
+  mMeasure: TAtlasToolbarMeasure;
 begin
-  Order := Entries;
-  SetLength(Slots, Length(Order));
-  for Index := 0 to High(Order) do
-  begin
-    if Order[Index] = PartReturn then
-    begin
-      Slots[Index] := TAtlasToolbarSlot.Create(ReturnWidth, False, True);
-    end
-    else
-    begin
-      Slots[Index] := TAtlasToolbarSlot.Create(ButtonWidth(FButtons[Order[Index]]),
-        FButtons[Order[Index]].IsSeparator, FButtons[Order[Index]].Pinned);
-    end;
-  end;
-  Result := TAtlasToolbarLayout.FullWidth(Slots) + 2 * Scale(Margin) + Scale(BaseButton);
+  mMeasure.Bar := Self;
+  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(Margin) + Scale(BaseButton);
   if FInline then
   begin
     Inc(Result, Scale(Margin));
   end;
 end;
 
-function TAtlasEditorToolbar.PartRect(APart: Integer): TRect;
+function TAtlasEditorToolbar.Places: TAtlasToolbarPlaces;
 begin
   Layout;
-  case APart of
-    PartReturn:
-      Result := FReturnRect;
-    PartMore:
-      Result := FMoreRect;
-    PartGear:
-      Result := FGearRect;
-  else
-    if (APart >= 0) and (APart <= High(FRects)) then
-    begin
-      Result := FRects[APart];
-    end
-    else
-    begin
-      Result := TRect.Empty;
-    end;
-  end;
-end;
-
-function TAtlasEditorToolbar.ButtonRect(const AId: string): TRect;
-var
-  Index: Integer;
-begin
-  for Index := 0 to High(FButtons) do
-  begin
-    if SameText(FButtons[Index].Id, AId) then
-    begin
-      Exit(PartRect(Index));
-    end;
-  end;
-  Result := TRect.Empty;
-end;
-
-function TAtlasEditorToolbar.ReturnRect: TRect;
-begin
-  Result := PartRect(PartReturn);
-end;
-
-function TAtlasEditorToolbar.MoreRect: TRect;
-begin
-  Result := PartRect(PartMore);
-end;
-
-function TAtlasEditorToolbar.GearRect: TRect;
-begin
-  Result := PartRect(PartGear);
-end;
-
-function TAtlasEditorToolbar.OverflowIds: TArray<string>;
-var
-  Index: Integer;
-begin
-  Layout;
-  Result := nil;
-  for Index in FOverflow do
-  begin
-    Result := Result + [FButtons[Index].Id];
-  end;
+  Result := FPlaces;
 end;
 
 function TAtlasEditorToolbar.PartAt(X, Y: Integer): Integer;
-var
-  Index: Integer;
-  Point_: TPoint;
 begin
   Layout;
-  Point_ := Point(X, Y);
-  if FReturnRect.Contains(Point_) then
-  begin
-    Exit(PartReturn);
-  end;
-  if FMoreRect.Contains(Point_) then
-  begin
-    Exit(PartMore);
-  end;
-  if FGearRect.Contains(Point_) then
-  begin
-    Exit(PartGear);
-  end;
-  for Index := 0 to High(FRects) do
-  begin
-    if not FButtons[Index].IsSeparator and FRects[Index].Contains(Point_) then
-    begin
-      Exit(Index);
-    end;
-  end;
-  Result := PartNone;
+  Result := FPlaces.PartAt(Point(X, Y));
 end;
 
 function TAtlasEditorToolbar.PartHint(APart: Integer): string;
@@ -566,11 +738,11 @@ begin
     PartNone:
       Result := '';
     PartReturn:
-      Result := FReturnHint;
+      Result := FReturn.Hint;
     PartMore:
-      Result := FMoreHint;
+      Result := FTexts.More;
     PartGear:
-      Result := FGearHint;
+      Result := FTexts.Gear;
   else
     Result := FButtons[APart].Hint;
     if Result = '' then
@@ -590,70 +762,13 @@ begin
   Result := PartHint(PartAt(X, Y));
 end;
 
-procedure TAtlasEditorToolbar.DrawButton(const ARect: TRect; AIcon: TAtlasToolbarIcon; const ACaption: string;
-  AEnabled, APressed, AHot, ADot: Boolean; const AText: string);
-var
-  Back, Fore: TColor;
-  Icon, Part: TRect;
-  Radius, DotSize: Integer;
-begin
-  Back := ToColor(Colors.Gutter);
-  Fore := ToColor(Colors.Text);
-  Radius := Scale(4);
-  Canvas.Brush.Style := bsSolid;
-  if APressed then
-  begin
-    Back := ToColor(Colors.AccentSoft);
-    Fore := ToColor(Colors.Accent);
-    Canvas.Brush.Color := Back;
-    Canvas.Pen.Color := ToColor(Colors.Accent);
-    Canvas.RoundRect(ARect.Left + Scale(1), ARect.Top + Scale(1), ARect.Right - Scale(1), ARect.Bottom - Scale(1),
-      Radius, Radius);
-  end
-  else if AHot and AEnabled then
-  begin
-    Back := ToColor(Colors.Selection);
-    Canvas.Brush.Color := Back;
-    Canvas.Pen.Color := ToColor(Colors.Line);
-    Canvas.RoundRect(ARect.Left + Scale(1), ARect.Top + Scale(1), ARect.Right - Scale(1), ARect.Bottom - Scale(1),
-      Radius, Radius);
-  end;
-  if not AEnabled then
-  begin
-    Fore := ToColor(Colors.Muted);
-  end;
-  Icon := Rect(ARect.Left + Scale(4), ARect.Top + (ARect.Height - IconSize) div 2, ARect.Left + Scale(4) + IconSize,
-    ARect.Top + (ARect.Height - IconSize) div 2 + IconSize);
-  Canvas.Font := Font;
-  TAtlasGlyphPainter.Draw(Canvas, AIcon, Icon, Fore, Back, ACaption);
-  if AText <> '' then
-  begin
-    Canvas.Font := Font;
-    Canvas.Font.Color := Fore;
-    Canvas.Brush.Style := bsClear;
-    Part := Rect(Icon.Right + Scale(4), ARect.Top, ARect.Right - Scale(2), ARect.Bottom);
-    DrawText(Canvas.Handle, PChar(AText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
-      DT_END_ELLIPSIS);
-  end;
-  if ADot then
-  begin
-    DotSize := Scale(6);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Colors.Warn);
-    Canvas.Pen.Color := ToColor(Colors.Warn);
-    Canvas.Ellipse(ARect.Right - Scale(3) - DotSize, ARect.Top + Scale(2), ARect.Right - Scale(3),
-      ARect.Top + Scale(2) + DotSize);
-  end;
-end;
-
 procedure TAtlasEditorToolbar.Paint;
 var
-  Index, Middle: Integer;
-  Button: TAtlasToolbarButton;
-  Area: TRect;
-  mText: string;
+  mIndex: Integer;
+  mPainter: TAtlasToolbarPainter;
 begin
   Layout;
+  mPainter.Bar := Self;
   // Untere Linie wie die Brotkrumenleiste, Inline dazu ein Trennstrich links.
   PaintChrome(False);
   if FInline then
@@ -661,54 +776,34 @@ begin
     Canvas.MoveTo(0, Scale(4));
     Canvas.LineTo(0, ClientHeight - Scale(4));
   end;
-  for Index := 0 to High(FButtons) do
+  for mIndex := 0 to High(FPlaces.Rects) do
   begin
-    Area := FRects[Index];
-    if Area.IsEmpty then
+    if FPlaces.Rects[mIndex].IsEmpty then
     begin
       Continue;
     end;
-    Button := FButtons[Index];
-    if Button.IsSeparator then
+    if FButtons[mIndex].IsSeparator then
     begin
-      Middle := (Area.Left + Area.Right) div 2;
-      Canvas.Pen.Color := ToColor(Colors.Line);
-      Canvas.MoveTo(Middle, Area.Top + Scale(4));
-      Canvas.LineTo(Middle, Area.Bottom - Scale(4));
-      Continue;
-    end;
-    mText := '';
-    if FLabels then
+      mPainter.Separator(FPlaces.Rects[mIndex]);
+    end
+    else if FLabels then
     begin
-      mText := Button.Caption;
+      mPainter.Button(FPlaces.Rects[mIndex], FButtons[mIndex], Hot = mIndex, FButtons[mIndex].Caption);
+    end
+    else
+    begin
+      mPainter.Button(FPlaces.Rects[mIndex], FButtons[mIndex], Hot = mIndex, '');
     end;
-    DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, Hot = Index, Button.Dot, mText);
   end;
-  if not FReturnRect.IsEmpty then
+  if not FPlaces.Return.IsEmpty then
   begin
-    // Rücksprung: Akzentfarbe, Zeilennummer fett daneben.
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Colors.AccentSoft);
-    Canvas.Pen.Color := ToColor(Colors.Accent);
-    Canvas.RoundRect(FReturnRect.Left + Scale(1), FReturnRect.Top + Scale(1), FReturnRect.Right - Scale(1),
-      FReturnRect.Bottom - Scale(1), Scale(4), Scale(4));
-    TAtlasGlyphPainter.Draw(Canvas, TAtlasToolbarIcon.Return, Rect(FReturnRect.Left + Scale(4), FReturnRect.Top +
-      (FReturnRect.Height - IconSize) div 2, FReturnRect.Left + Scale(4) + IconSize, FReturnRect.Top +
-      (FReturnRect.Height - IconSize) div 2 + IconSize), ToColor(Colors.Accent), ToColor(Colors.AccentSoft), '');
-    Canvas.Font := Font;
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := ToColor(Colors.Accent);
-    Canvas.Brush.Style := bsClear;
-    Area := Rect(FReturnRect.Left + Scale(8) + IconSize, FReturnRect.Top, FReturnRect.Right - Scale(2),
-      FReturnRect.Bottom);
-    DrawText(Canvas.Handle, PChar(FReturnText), -1, Area, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-    Canvas.Font := Font;
+    mPainter.Return(FPlaces.Return, FReturn.Text);
   end;
-  if not FMoreRect.IsEmpty then
+  if not FPlaces.More.IsEmpty then
   begin
-    DrawButton(FMoreRect, TAtlasToolbarIcon.More, '', True, False, Hot = PartMore, False, '');
+    mPainter.Button(FPlaces.More, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.More), Hot = PartMore, '');
   end;
-  DrawButton(FGearRect, TAtlasToolbarIcon.Gear, '', True, False, Hot = PartGear, False, '');
+  mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = PartGear, '');
 end;
 
 procedure TAtlasEditorToolbar.ClickAt(X, Y: Integer);
@@ -729,30 +824,25 @@ end;
 function TAtlasEditorToolbar.KeyboardMenuPoint: TPoint;
 begin
   Layout;
-  Result := Point(FGearRect.Left, FGearRect.Bottom);
+  Result := Point(FPlaces.Gear.Left, FPlaces.Gear.Bottom);
 end;
 
 procedure TAtlasEditorToolbar.Fire(APart: Integer);
-var
-  Area: TRect;
 begin
   case APart of
     PartNone:
       ;
     PartReturn:
-      if Assigned(FOnReturn) then
+      if Assigned(FEvents.Return) then
       begin
-        FOnReturn();
+        FEvents.Return();
       end;
     PartMore:
-      begin
-        Area := FMoreRect;
-        ShowMenu(ClientToScreen(Point(Area.Left, Area.Bottom)), True);
-      end;
+      ShowMenu(ClientToScreen(Point(FPlaces.More.Left, FPlaces.More.Bottom)), True);
     PartGear:
-      if Assigned(FOnCustomize) then
+      if Assigned(FEvents.Customize) then
       begin
-        FOnCustomize();
+        FEvents.Customize();
       end;
   else
     if not FButtons[APart].Enabled then
@@ -760,70 +850,35 @@ begin
       TAtlasGuard.Log(Format('Editorleiste: Klick auf gesperrten Knopf %s (%s)', [FButtons[APart].Id,
         PartHint(APart)]));
     end
-    else if Assigned(FOnCommand) then
+    else if Assigned(FEvents.Command) then
     begin
-      FOnCommand(FButtons[APart].Id);
+      FEvents.Command(FButtons[APart].Id);
     end;
   end;
 end;
 
 procedure TAtlasEditorToolbar.ShowMenu(const APoint: TPoint; AOverflow: Boolean);
 var
-  Item: TMenuItem;
-  Index: Integer;
+  mMenu: TAtlasToolbarMenu;
+  mIndex: Integer;
 begin
   Layout;
   FreeAndNil(FMenu);
-  FMenuIds := nil;
-  FMenu := TPopupMenu.Create(nil);
+  mMenu := TAtlasToolbarMenu.CreateFor(Self);
+  FMenu := mMenu;
   if AOverflow then
   begin
-    for Index in FOverflow do
+    for mIndex in FPlaces.Overflow do
     begin
-      if FButtons[Index].IsSeparator then
-      begin
-        FMenu.Items.Add(NewLine);
-        Continue;
-      end;
-      Item := TMenuItem.Create(FMenu);
-      Item.Caption := StringReplace(FButtons[Index].Caption, '&', '&&', [rfReplaceAll]);
-      Item.Hint := FButtons[Index].Hint;
-      Item.Enabled := FButtons[Index].Enabled;
-      Item.Checked := FButtons[Index].Pressed;
-      Item.Tag := Length(FMenuIds);
-      FMenuIds := FMenuIds + [FButtons[Index].Id];
-      Item.OnClick := MenuCommandClick;
-      FMenu.Items.Add(Item);
+      mMenu.AddButton(FButtons[mIndex]);
     end;
-    if FMenu.Items.Count > 0 then
+    if mMenu.Items.Count > 0 then
     begin
-      FMenu.Items.Add(NewLine);
+      mMenu.Items.Add(NewLine);
     end;
   end;
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := StringReplace(FCustomizeCaption, '&', '&&', [rfReplaceAll]);
-  Item.OnClick := MenuCustomizeClick;
-  FMenu.Items.Add(Item);
-  FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasEditorToolbar.MenuCommandClick(Sender: TObject);
-var
-  Index: Integer;
-begin
-  Index := TMenuItem(Sender).Tag;
-  if (Index >= 0) and (Index <= High(FMenuIds)) and Assigned(FOnCommand) then
-  begin
-    FOnCommand(FMenuIds[Index]);
-  end;
-end;
-
-procedure TAtlasEditorToolbar.MenuCustomizeClick(Sender: TObject);
-begin
-  if Assigned(FOnCustomize) then
-  begin
-    FOnCustomize();
-  end;
+  mMenu.AddCustomize(FTexts.Customize);
+  mMenu.Popup(APoint.X, APoint.Y);
 end;
 
 end.
