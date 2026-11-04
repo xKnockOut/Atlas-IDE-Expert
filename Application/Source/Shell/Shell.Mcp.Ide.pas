@@ -167,7 +167,7 @@ begin
   Pid := IdeWithOpenFile(AFileName);
   if Pid <> 0 then
     case TMcpIdeEdits.Send(TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), Pid),
-      AFileName, Expected, AText,
+      TMcpIdeEdit.Make(AFileName, Expected, AText),
       procedure
       begin
         Sleep(TMcpIdeEdits.PollMs);
