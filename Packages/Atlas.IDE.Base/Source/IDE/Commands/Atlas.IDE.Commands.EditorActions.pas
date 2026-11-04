@@ -53,7 +53,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,

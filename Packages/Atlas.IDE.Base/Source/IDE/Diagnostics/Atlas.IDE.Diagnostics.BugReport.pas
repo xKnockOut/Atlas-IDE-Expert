@@ -201,9 +201,10 @@ begin
   begin
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportPlain);
   end;
-  if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
+  if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
+    TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
     TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [Note, TAtlasBugReport.IssuesUrl]), Report,
-    TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md', Target,
+    TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md'), Target,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
