@@ -53,7 +53,6 @@ begin
   AddModuleSwitch('BuildPipelineEnabled');
   AddModuleSwitch('TestsEnabled');
   BindCheck('Problems', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems)));
-  BindCheck('ProblemsList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList)));
   BindCheck('ProblemsStatusCounter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter)));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
   FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),

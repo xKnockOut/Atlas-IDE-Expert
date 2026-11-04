@@ -42,6 +42,12 @@ type
     ProblemsLive: Boolean;
     /// <summary>„Alle sicheren Treffer korrigieren …“ im Fenster Atlas-Prüfung (#1352, fix.bulk).</summary>
     FixBulk: Boolean;
+    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems. Seit
+    /// Fenster „Atlas-Prüfung“ (#909) Vorgabe aus. Registry-Name ProblemsMessageList: Der frühere Name ProblemsList
+    /// trug bei fast allen Installationen die alte Vorgabe „an“, weil Save alle Werte schreibt; er gilt bewusst nicht
+    /// mehr (kein x-renamedFrom).
+    /// </summary>
+    ProblemsMessageList: Boolean;
     /// <summary>Modul-Schalter ruleChecks.enabled (#1454): Prüfregeln; aus = die wirksamen Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     RuleChecksEnabled: Boolean;
@@ -72,6 +78,7 @@ begin
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsLive := True;
   Result.FixBulk := True;
+  Result.ProblemsMessageList := False;
   Result.RuleChecksEnabled := True;
 end;
 
@@ -98,6 +105,7 @@ begin
   AIo.Flag('ProblemsShowCompilerCode', ProblemsShowCompilerCode);
   AIo.Flag('ProblemsLive', ProblemsLive);
   AIo.Flag('FixBulk', FixBulk);
+  AIo.Flag('ProblemsMessageList', ProblemsMessageList);
   AIo.Flag('RuleChecksEnabled', RuleChecksEnabled);
 end;
 
