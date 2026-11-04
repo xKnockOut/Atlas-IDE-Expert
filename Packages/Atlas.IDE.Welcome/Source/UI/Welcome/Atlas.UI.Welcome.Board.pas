@@ -1274,8 +1274,9 @@ end;
 
 procedure TAtlasWelcomeBoardArranger.UpdateInsertLine;
 var
-  mColumn, mLeft, mTop, mWidth: Integer;
+  mColumn: Integer;
   mBefore: string;
+  mLine: TAtlasWelcomeInsertLine;
 begin
   if not FBoard.FState.Editing then
   begin
@@ -1283,9 +1284,11 @@ begin
     Exit;
   end;
   Target(mColumn, mBefore);
-  TAtlasWelcomeFlow.InsertLine(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
-    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, mColumn, mBefore, mLeft, mTop, mWidth);
-  FInsertLine.SetBounds(mLeft, mTop - 1 - FBoard.FScroll.VertScrollBar.Position, mWidth, 3);
+  mLine := TAtlasWelcomeFlow.InsertLine(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
+    TAtlasWelcomeBoardFrame.MinColumnWidth), mColumn,
+    mBefore);
+  FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width, 3);
   FInsertLine.Color := StyleServices(FBoard).GetSystemColor(clHighlight);
   FInsertLine.Visible := True;
   FInsertLine.BringToFront;
@@ -1293,13 +1296,13 @@ end;
 
 procedure TAtlasWelcomeBoardArranger.ClickAt(X, Y: Integer);
 var
-  mColumn: Integer;
-  mBefore: string;
+  mDrop: TAtlasWelcomeDrop;
 begin
-  TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
-    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, X, Y + FBoard.FScroll.VertScrollBar.Position,
-    '', mColumn, mBefore);
-  SetTarget(mColumn, mBefore);
+  mDrop := TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
+    TAtlasWelcomeBoardFrame.MinColumnWidth), X,
+    Y + FBoard.FScroll.VertScrollBar.Position, '');
+  SetTarget(mDrop.Column, mDrop.Before);
 end;
 
 function TAtlasWelcomeBoardArranger.GripMove(const AId: string; ADirection: TAtlasWelcomeMove): Boolean;
@@ -1355,8 +1358,7 @@ end;
 procedure TAtlasWelcomeBoardArranger.DragMove(const AScreen: TPoint);
 var
   mLocal: TPoint;
-  mColumn: Integer;
-  mBefore: string;
+  mDrop: TAtlasWelcomeDrop;
 begin
   if FDrag.Id = '' then
   begin
@@ -1369,10 +1371,11 @@ begin
   begin
     Exit;
   end;
-  TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
-    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, mLocal.X,
-    mLocal.Y + FBoard.FScroll.VertScrollBar.Position, FDrag.Id, mColumn, mBefore);
-  SetTarget(mColumn, mBefore);
+  mDrop := TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
+    TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.Gap,
+    TAtlasWelcomeBoardFrame.MinColumnWidth), mLocal.X,
+    mLocal.Y + FBoard.FScroll.VertScrollBar.Position, FDrag.Id);
+  SetTarget(mDrop.Column, mDrop.Before);
 end;
 
 procedure TAtlasWelcomeBoardArranger.DragEnd(ADrop: Boolean);

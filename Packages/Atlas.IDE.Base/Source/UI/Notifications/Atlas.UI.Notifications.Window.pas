@@ -39,45 +39,80 @@ uses
 type
   TAtlasNotificationModeEvent = reference to procedure(const ASource: string; AMode: TAtlasNotificationMode);
 
+  /// <summary>Texte und Farben der Einträge, auch für die Einstellungen.</summary>
+  TAtlasNotificationTexts = record
+    /// <summary>Name der Quelle in der Sprache der Oberfläche; unbekannte Quellen mit ihrer Kennung.</summary>
+    class function SourceCaption(const ASource: string): string; static;
+    /// <summary>Farbe des Symbols: Info Akzent, Warnung gelb, Fehler rot.</summary>
+    class function SeverityColor(const AColors: TAtlasColors; ASeverity: TAtlasNotificationSeverity): TAtlasColor;
+      static;
+    /// <summary>Uhrzeit "hh:nn"; an einem anderen Tag als ANow mit Datum "dd.mm. hh:nn".</summary>
+    class function TimeText(ATime, ANow: TDateTime): string; static;
+  end;
+
   TAtlasNotificationsWindow = class(TForm)
+  private type
+    /// <summary>Einträge, ihre Lage in der Liste (ohne Blättern), Auswahl und Eintrag unter der Maus.</summary>
+    TRows = record
+      Items: TArray<IAtlasNotification>;
+      Tops: TArray<Integer>;
+      Heights: TArray<Integer>;
+      ContentHeight: Integer;
+      Scroll: Integer;
+      Selected: Integer;
+      HotRow: Integer;
+      HotChip: Integer;
+      function Valid(AIndex: Integer): Boolean;
+      /// <summary>Lage je Eintrag: Titel und Text (je ALine hoch) plus APad, mit Aktionen eine Zeile mehr.</summary>
+      procedure Measure(ALine, APad: Integer);
+      /// <summary>Blättern auf AValue, begrenzt auf einen Bereich der Höhe AVisible.</summary>
+      procedure ScrollTo(AValue, AVisible: Integer);
+      procedure EnsureVisible(AIndex, AVisible: Integer);
+      /// <summary>Kennung des gewählten Eintrags; -1 ohne Auswahl.</summary>
+      function SelectedId: Integer;
+      /// <summary>Wählt den Eintrag mit der Kennung AId; -1, wenn es ihn nicht gibt.</summary>
+      procedure SelectId(AId: Integer);
+    end;
+
+    /// <summary>Steuerelemente des Fensters.</summary>
+    TParts = record
+      FilterBox: TComboBox;
+      AllReadButton: TButton;
+      ClearButton: TButton;
+      Menu: TPopupMenu;
+    end;
+
+    /// <summary>Filter nach Quelle: gewählte Quelle und Quellen der Auswahlliste ('' = alle).</summary>
+    TFilter = record
+      Source: string;
+      Sources: TArray<string>;
+      /// <summary>Die Auswahlliste wird gerade gefüllt; ihr OnChange zählt nicht.</summary>
+      Updating: Boolean;
+    end;
+
+    TState = record
+      /// <summary>Eintrag des Kontextmenüs; -1 ohne.</summary>
+      MenuRow: Integer;
+      MenuOpen: Boolean;
+      Closing: Boolean;
+      /// <summary>Linke untere Ecke beim Zeigen (Bildschirm).</summary>
+      Anchor: TPoint;
+    end;
   private
     FColors: TAtlasColors;
     FCenter: IAtlasNotificationCenter;
-    FItems: TArray<IAtlasNotification>;
-    // Lage der Einträge in der Liste (ohne Blättern) und Gesamthöhe.
-    FTops: TArray<Integer>;
-    FHeights: TArray<Integer>;
-    FContentHeight: Integer;
-    FScroll: Integer;
-    FSelected: Integer;
-    FHotRow: Integer;
-    FHotChip: Integer;
-    FFilter: string;
-    FFilterSources: TArray<string>;
-    FFilterBox: TComboBox;
-    FAllReadButton: TButton;
-    FClearButton: TButton;
-    FMenu: TPopupMenu;
-    FMenuRow: Integer;
-    FMenuOpen: Boolean;
-    FClosing: Boolean;
-    FUpdating: Boolean;
-    FAnchor: TPoint;
+    FRows: TRows;
+    FParts: TParts;
+    FFilter: TFilter;
+    FState: TState;
     FOnModeChange: TAtlasNotificationModeEvent;
-    function LineHeight: Integer;
-    function HeaderHeight: Integer;
-    function ButtonsHeight: Integer;
-    function MaxListHeight: Integer;
-    function ListRect: TRect;
-    function EntryRect(AIndex: Integer): TRect;
-    function ChipRect(ARow, AChip: Integer): TRect;
-    function HitTest(const APoint: TPoint; out AChip: Integer): Integer;
+    /// <summary>Höhe und Lage aller Einträge, Größe des Fensters.</summary>
     procedure Layout;
+    /// <summary>Filter oben rechts, Knöpfe unten.</summary>
+    procedure PlaceControls;
     procedure FillFilter;
-    procedure ScrollTo(AValue: Integer);
-    procedure EnsureVisible(AIndex: Integer);
-    procedure DrawEntry(AIndex: Integer);
-    procedure DrawSeverity(const ACenter: TPoint; ASeverity: TAtlasNotificationSeverity);
+    /// <summary>Pfeile, Eingabe und Entf in der Liste; False, wenn die Taste nicht der Liste gilt.</summary>
+    function ListKey(AKey: Word): Boolean;
     procedure FormDeactivate(Sender: TObject);
     procedure FilterChange(Sender: TObject);
     procedure AllReadClick(Sender: TObject);
@@ -95,13 +130,6 @@ type
   public
     constructor CreateList(AOwner: TComponent; const AColors: TAtlasColors;
       const ACenter: IAtlasNotificationCenter);
-    /// <summary>Name der Quelle in der Sprache der Oberfläche; unbekannte Quellen mit ihrer Kennung.</summary>
-    class function SourceCaption(const ASource: string): string; static;
-    /// <summary>Farbe des Symbols: Info Akzent, Warnung gelb, Fehler rot.</summary>
-    class function SeverityColor(const AColors: TAtlasColors; ASeverity: TAtlasNotificationSeverity): TAtlasColor;
-      static;
-    /// <summary>Uhrzeit "hh:nn"; an einem anderen Tag als ANow mit Datum "dd.mm. hh:nn".</summary>
-    class function TimeText(ATime, ANow: TDateTime): string; static;
     /// <summary>Einträge, Zähler und Filter neu aus der Zentrale lesen (auch bei offenem Fenster).</summary>
     procedure Reload;
     /// <summary>Zeigt das Fenster mit der linken unteren Ecke an AAnchor (Bildschirm, Oberkante des Felds).</summary>
@@ -116,14 +144,14 @@ type
     function BuildMenu(ARow: Integer): TPopupMenu;
     /// <summary>Nur Einträge dieser Quelle; '' = alle.</summary>
     procedure SetFilter(const ASource: string);
-    function RowCount: Integer;
-    function Row(AIndex: Integer): IAtlasNotification;
-    property Filter: string read FFilter;
-    property Selected: Integer read FSelected;
+    /// <summary>Angezeigte Einträge, neueste zuerst.</summary>
+    property Rows: TArray<IAtlasNotification> read FRows.Items;
+    property Filter: string read FFilter.Source;
+    property Selected: Integer read FRows.Selected;
     /// <summary>Zum Testen: Filter und Knöpfe.</summary>
-    property FilterBox: TComboBox read FFilterBox;
-    property AllReadButton: TButton read FAllReadButton;
-    property ClearButton: TButton read FClearButton;
+    property FilterBox: TComboBox read FParts.FilterBox;
+    property AllReadButton: TButton read FParts.AllReadButton;
+    property ClearButton: TButton read FParts.ClearButton;
     /// <summary>Verhalten einer Quelle im Kontextmenü geändert (schon in der Zentrale gesetzt).</summary>
     property OnModeChange: TAtlasNotificationModeEvent read FOnModeChange write FOnModeChange;
   end;
@@ -143,49 +171,49 @@ const
   // Tag der Menüeinträge: gelesen bzw. Verhalten (ModeTag + Ord).
   MarkReadTag = 1;
   ModeTag = 10;
+  /// <summary>Höhe des Fußes mit den Knöpfen und größte Höhe der Liste, logische Pixel.</summary>
+  cButtonsHeight = 40;
+  cMaxListHeight = 420;
 
-{ TAtlasNotificationsWindow }
+type
+  /// <summary>Maße des Fensters: Zeilenhöhe, Kopf, Bereich der Liste, Einträge und ihre Aktionen.</summary>
+  TNotificationsGeometry = record
+    Window: TAtlasNotificationsWindow;
+    Line: Integer;
+    Header: Integer;
+    List: TRect;
+    class function Create(AWindow: TAtlasNotificationsWindow): TNotificationsGeometry; static;
+    function VisibleHeight: Integer;
+    function EntryRect(AIndex: Integer): TRect;
+    function ChipRect(ARow, AChip: Integer): TRect;
+    /// <summary>Eintrag unter APoint (-1 ohne), AChip die Aktion darunter (-1 ohne).</summary>
+    function HitTest(const APoint: TPoint; out AChip: Integer): Integer;
+  end;
 
-constructor TAtlasNotificationsWindow.CreateList(AOwner: TComponent; const AColors: TAtlasColors;
-  const ACenter: IAtlasNotificationCenter);
-begin
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  FCenter := ACenter;
-  FSelected := -1;
-  FHotRow := -1;
-  FHotChip := -1;
-  FMenuRow := -1;
-  BorderStyle := bsNone;
-  KeyPreview := True;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  OnDeactivate := FormDeactivate;
-  FFilterBox := TComboBox.Create(Self);
-  FFilterBox.Parent := Self;
-  FFilterBox.Style := csDropDownList;
-  FFilterBox.OnChange := FilterChange;
-  FAllReadButton := TButton.Create(Self);
-  FAllReadButton.Parent := Self;
-  FAllReadButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsAllRead);
-  FAllReadButton.OnClick := AllReadClick;
-  FClearButton := TButton.Create(Self);
-  FClearButton.Parent := Self;
-  FClearButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsClear);
-  FClearButton.OnClick := ClearClick;
-  FMenu := TPopupMenu.Create(Self);
-  Reload;
-end;
+  /// <summary>Zeichnet das Fenster: Einträge, Kopf, Trennlinien und Rahmen.</summary>
+  TNotificationsPainter = record
+    Window: TAtlasNotificationsWindow;
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Geometry: TNotificationsGeometry;
+    class function Create(AWindow: TAtlasNotificationsWindow): TNotificationsPainter; static;
+    function Scale(AValue: Integer): Integer;
+    procedure DrawSeverity(const ACenter: TPoint; ASeverity: TAtlasNotificationSeverity);
+    /// <summary>Hintergrund (ungelesen, Auswahl) und Symbol der Schwere.</summary>
+    procedure DrawEntryBack(AIndex: Integer; const AEntry: TRect);
+    procedure DrawEntryTexts(const AItem: IAtlasNotification; const AEntry: TRect);
+    procedure DrawChips(AIndex: Integer);
+    procedure DrawEntry(AIndex: Integer);
+    procedure DrawThumb;
+    /// <summary>Einträge im Listenbereich; Kopf und Fuß übermalen, was hinausragt.</summary>
+    procedure DrawList;
+    procedure DrawHeader;
+    procedure Paint;
+  end;
 
-procedure TAtlasNotificationsWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
+{ TAtlasNotificationTexts }
 
-class function TAtlasNotificationsWindow.SourceCaption(const ASource: string): string;
+class function TAtlasNotificationTexts.SourceCaption(const ASource: string): string;
 begin
   if SameText(ASource, TAtlasNotificationSources.Build) then
   begin
@@ -245,7 +273,7 @@ begin
   end;
 end;
 
-class function TAtlasNotificationsWindow.SeverityColor(const AColors: TAtlasColors;
+class function TAtlasNotificationTexts.SeverityColor(const AColors: TAtlasColors;
   ASeverity: TAtlasNotificationSeverity): TAtlasColor;
 begin
   case ASeverity of
@@ -258,7 +286,7 @@ begin
   end;
 end;
 
-class function TAtlasNotificationsWindow.TimeText(ATime, ANow: TDateTime): string;
+class function TAtlasNotificationTexts.TimeText(ATime, ANow: TDateTime): string;
 begin
   if IsSameDay(ATime, ANow) then
   begin
@@ -270,92 +298,155 @@ begin
   end;
 end;
 
-function TAtlasNotificationsWindow.LineHeight: Integer;
+{ TAtlasNotificationsWindow.TRows }
+
+function TAtlasNotificationsWindow.TRows.Valid(AIndex: Integer): Boolean;
 begin
-  Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg');
+  Result := (AIndex >= 0) and (AIndex <= High(Items));
 end;
 
-function TAtlasNotificationsWindow.HeaderHeight: Integer;
-begin
-  Result := Max(LineHeight, FFilterBox.Height) + ScaleValue(12);
-end;
-
-function TAtlasNotificationsWindow.ButtonsHeight: Integer;
-begin
-  Result := ScaleValue(40);
-end;
-
-function TAtlasNotificationsWindow.MaxListHeight: Integer;
-begin
-  Result := ScaleValue(420);
-end;
-
-function TAtlasNotificationsWindow.ListRect: TRect;
-begin
-  Result := Rect(1, HeaderHeight, ClientWidth - 1, ClientHeight - ButtonsHeight);
-end;
-
-function TAtlasNotificationsWindow.EntryRect(AIndex: Integer): TRect;
+procedure TAtlasNotificationsWindow.TRows.Measure(ALine, APad: Integer);
 var
-  List: TRect;
+  mIndex, mTop, mHeight: Integer;
 begin
-  List := ListRect;
-  Result := Rect(List.Left, List.Top + FTops[AIndex] - FScroll, List.Right,
-    List.Top + FTops[AIndex] - FScroll + FHeights[AIndex]);
+  SetLength(Tops, Length(Items));
+  SetLength(Heights, Length(Items));
+  mTop := 0;
+  for mIndex := 0 to High(Items) do
+  begin
+    // Titel und Text, darunter die Aktionen.
+    mHeight := APad + 2 * ALine;
+    if Length(Items[mIndex].Actions) > 0 then
+    begin
+      Inc(mHeight, ALine + APad);
+    end;
+    Tops[mIndex] := mTop;
+    Heights[mIndex] := mHeight;
+    Inc(mTop, mHeight);
+  end;
+  ContentHeight := mTop;
 end;
 
-function TAtlasNotificationsWindow.ChipRect(ARow, AChip: Integer): TRect;
+procedure TAtlasNotificationsWindow.TRows.ScrollTo(AValue, AVisible: Integer);
+begin
+  Scroll := EnsureRange(AValue, 0, Max(0, ContentHeight - AVisible));
+end;
+
+procedure TAtlasNotificationsWindow.TRows.EnsureVisible(AIndex, AVisible: Integer);
+begin
+  if not Valid(AIndex) then
+  begin
+    Exit;
+  end;
+  if Tops[AIndex] < Scroll then
+  begin
+    ScrollTo(Tops[AIndex], AVisible);
+  end
+  else if Tops[AIndex] + Heights[AIndex] > Scroll + AVisible then
+  begin
+    ScrollTo(Tops[AIndex] + Heights[AIndex] - AVisible, AVisible);
+  end;
+end;
+
+function TAtlasNotificationsWindow.TRows.SelectedId: Integer;
+begin
+  Result := -1;
+  if Valid(Selected) then
+  begin
+    Result := Items[Selected].Id;
+  end;
+end;
+
+procedure TAtlasNotificationsWindow.TRows.SelectId(AId: Integer);
 var
-  Entry: TRect;
-  Index, Left_, Top_, Width_: Integer;
-  Actions: TArray<TAtlasNotificationAction>;
+  mIndex: Integer;
+begin
+  Selected := -1;
+  for mIndex := 0 to High(Items) do
+  begin
+    if Items[mIndex].Id = AId then
+    begin
+      Selected := mIndex;
+    end;
+  end;
+end;
+
+{ TNotificationsGeometry }
+
+class function TNotificationsGeometry.Create(AWindow: TAtlasNotificationsWindow): TNotificationsGeometry;
+begin
+  Result.Window := AWindow;
+  AWindow.Canvas.Font := AWindow.Font;
+  Result.Line := AWindow.Canvas.TextHeight('Wg');
+  Result.Header := Max(Result.Line, AWindow.FParts.FilterBox.Height) + AWindow.ScaleValue(12);
+  Result.List := Rect(1, Result.Header, AWindow.ClientWidth - 1,
+    AWindow.ClientHeight - AWindow.ScaleValue(cButtonsHeight));
+end;
+
+function TNotificationsGeometry.VisibleHeight: Integer;
+begin
+  Result := List.Bottom - List.Top;
+end;
+
+function TNotificationsGeometry.EntryRect(AIndex: Integer): TRect;
+var
+  mTop: Integer;
+begin
+  mTop := List.Top + Window.FRows.Tops[AIndex] - Window.FRows.Scroll;
+  Result := Rect(List.Left, mTop, List.Right, mTop + Window.FRows.Heights[AIndex]);
+end;
+
+function TNotificationsGeometry.ChipRect(ARow, AChip: Integer): TRect;
+var
+  mEntry: TRect;
+  mIndex, mLeft, mTop, mWidth: Integer;
+  mActions: TArray<TAtlasNotificationAction>;
 begin
   Result := Rect(0, 0, 0, 0);
-  if (ARow < 0) or (ARow > High(FItems)) then
+  if not Window.FRows.Valid(ARow) then
   begin
     Exit;
   end;
-  Actions := FItems[ARow].Actions;
-  if (AChip < 0) or (AChip > High(Actions)) then
+  mActions := Window.FRows.Items[ARow].Actions;
+  if (AChip < 0) or (AChip > High(mActions)) then
   begin
     Exit;
   end;
-  Canvas.Font := Font;
-  Entry := EntryRect(ARow);
-  Left_ := Entry.Left + ScaleValue(34);
-  Top_ := Entry.Top + ScaleValue(6) + 2 * LineHeight + ScaleValue(6);
-  for Index := 0 to AChip do
+  Window.Canvas.Font := Window.Font;
+  mEntry := EntryRect(ARow);
+  mLeft := mEntry.Left + Window.ScaleValue(34);
+  mTop := mEntry.Top + Window.ScaleValue(6) + 2 * Line + Window.ScaleValue(6);
+  for mIndex := 0 to AChip do
   begin
-    Width_ := Canvas.TextWidth(Actions[Index].Caption) + ScaleValue(TAtlasDraw.ChipPad + 8);
-    if Index = AChip then
+    mWidth := Window.Canvas.TextWidth(mActions[mIndex].Caption) + Window.ScaleValue(TAtlasDraw.ChipPad + 8);
+    if mIndex = AChip then
     begin
-      Exit(Rect(Left_, Top_, Left_ + Width_, Top_ + LineHeight + ScaleValue(6)));
+      Exit(Rect(mLeft, mTop, mLeft + mWidth, mTop + Line + Window.ScaleValue(6)));
     end;
-    Inc(Left_, Width_ + ScaleValue(6));
+    Inc(mLeft, mWidth + Window.ScaleValue(6));
   end;
 end;
 
-function TAtlasNotificationsWindow.HitTest(const APoint: TPoint; out AChip: Integer): Integer;
+function TNotificationsGeometry.HitTest(const APoint: TPoint; out AChip: Integer): Integer;
 var
-  Index, Chip: Integer;
+  mIndex, mChip: Integer;
 begin
   AChip := -1;
   Result := -1;
-  if not PtInRect(ListRect, APoint) then
+  if not PtInRect(List, APoint) then
   begin
     Exit;
   end;
-  for Index := 0 to High(FItems) do
+  for mIndex := 0 to High(Window.FRows.Items) do
   begin
-    if PtInRect(EntryRect(Index), APoint) then
+    if PtInRect(EntryRect(mIndex), APoint) then
     begin
-      Result := Index;
-      for Chip := 0 to High(FItems[Index].Actions) do
+      Result := mIndex;
+      for mChip := 0 to High(Window.FRows.Items[mIndex].Actions) do
       begin
-        if PtInRect(ChipRect(Index, Chip), APoint) then
+        if PtInRect(ChipRect(mIndex, mChip), APoint) then
         begin
-          AChip := Chip;
+          AChip := mChip;
         end;
       end;
       Exit;
@@ -363,50 +454,320 @@ begin
   end;
 end;
 
+{ TNotificationsPainter }
+
+class function TNotificationsPainter.Create(AWindow: TAtlasNotificationsWindow): TNotificationsPainter;
+begin
+  Result.Window := AWindow;
+  Result.Canvas := AWindow.Canvas;
+  Result.Colors := AWindow.FColors;
+  Result.Geometry := TNotificationsGeometry.Create(AWindow);
+end;
+
+function TNotificationsPainter.Scale(AValue: Integer): Integer;
+begin
+  Result := Window.ScaleValue(AValue);
+end;
+
+procedure TNotificationsPainter.DrawSeverity(const ACenter: TPoint; ASeverity: TAtlasNotificationSeverity);
+var
+  mRadius: Integer;
+  mGlyph: string;
+  mPart: TRect;
+begin
+  mRadius := Scale(8);
+  Canvas.Pen.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, ASeverity));
+  Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, ASeverity));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
+  case ASeverity of
+    TAtlasNotificationSeverity.Warning:
+      mGlyph := '!';
+    TAtlasNotificationSeverity.Error:
+      mGlyph := '×';
+  else
+    mGlyph := 'i';
+  end;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(Colors.Surface);
+  mPart := Rect(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
+  DrawText(Canvas.Handle, PChar(mGlyph), -1, mPart, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+  Canvas.Font.Style := [];
+end;
+
+procedure TNotificationsPainter.DrawEntryBack(AIndex: Integer; const AEntry: TRect);
+var
+  mItem: IAtlasNotification;
+begin
+  mItem := Window.FRows.Items[AIndex];
+  // Ungelesen hinterlegt, mit Balken in der Farbe der Schwere.
+  Canvas.Brush.Style := bsSolid;
+  if not mItem.Read then
+  begin
+    Canvas.Brush.Color := ToColor(Colors.Selection);
+    Canvas.FillRect(AEntry);
+    Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, mItem.Severity));
+    Canvas.FillRect(Rect(AEntry.Left, AEntry.Top, AEntry.Left + Scale(3), AEntry.Bottom));
+  end;
+  if (AIndex = Window.FRows.Selected) or ((AIndex = Window.FRows.HotRow) and (Window.FRows.HotChip < 0)) then
+  begin
+    Canvas.Brush.Style := bsClear;
+    Canvas.Pen.Color := ToColor(Colors.Line);
+    Canvas.Rectangle(AEntry.Left + Scale(4), AEntry.Top + 1, AEntry.Right - 1, AEntry.Bottom - 1);
+  end;
+  DrawSeverity(Point(AEntry.Left + Scale(18), AEntry.Top + Scale(6) + Geometry.Line div 2), mItem.Severity);
+end;
+
+procedure TNotificationsPainter.DrawEntryTexts(const AItem: IAtlasNotification; const AEntry: TRect);
+var
+  mPart: TRect;
+  mText, mRight: string;
+begin
+  Canvas.Brush.Style := bsClear;
+  // Rechts Quelle und Uhrzeit, gedämpft.
+  mRight := TAtlasNotificationTexts.SourceCaption(AItem.Source) + ' · ' +
+    TAtlasNotificationTexts.TimeText(AItem.Time, Now);
+  Canvas.Font.Color := ToColor(Colors.Muted);
+  mPart := Rect(AEntry.Left + Scale(34), AEntry.Top + Scale(6), AEntry.Right - Scale(10),
+    AEntry.Top + Scale(6) + Geometry.Line);
+  DrawText(Canvas.Handle, PChar(mRight), -1, mPart, DT_SINGLELINE or DT_RIGHT or DT_NOPREFIX);
+  mPart.Right := mPart.Right - Canvas.TextWidth(mRight) - Scale(10);
+  // Titel mit Zähler; ungelesen fett.
+  if not AItem.Read then
+  begin
+    Canvas.Font.Style := [fsBold];
+  end;
+  Canvas.Font.Color := ToColor(Colors.Text);
+  mText := AItem.Caption;
+  DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  Canvas.Font.Style := [];
+  // Text in der zweiten Zeile.
+  mPart := Rect(AEntry.Left + Scale(34), mPart.Bottom, AEntry.Right - Scale(10), mPart.Bottom + Geometry.Line);
+  Canvas.Font.Color := ToColor(Colors.Muted);
+  mText := AItem.Text;
+  DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+end;
+
+procedure TNotificationsPainter.DrawChips(AIndex: Integer);
+var
+  mActions: TArray<TAtlasNotificationAction>;
+  mChip: TRect;
+  mIndex: Integer;
+  mText: string;
+begin
+  // Aktionen als Knöpfe.
+  mActions := Window.FRows.Items[AIndex].Actions;
+  for mIndex := 0 to High(mActions) do
+  begin
+    mChip := Geometry.ChipRect(AIndex, mIndex);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Colors.Surface);
+    if (AIndex = Window.FRows.HotRow) and (mIndex = Window.FRows.HotChip) then
+    begin
+      Canvas.Brush.Color := ToColor(Colors.AccentSoft);
+    end;
+    Canvas.Pen.Color := ToColor(Colors.Accent);
+    Canvas.RoundRect(mChip.Left, mChip.Top, mChip.Right, mChip.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
+      Scale(2 * TAtlasDraw.ChipRadius));
+    Canvas.Brush.Style := bsClear;
+    Canvas.Font.Color := ToColor(Colors.Accent);
+    mText := mActions[mIndex].Caption;
+    DrawText(Canvas.Handle, PChar(mText), -1, mChip, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+  end;
+end;
+
+procedure TNotificationsPainter.DrawEntry(AIndex: Integer);
+var
+  mEntry: TRect;
+begin
+  mEntry := Geometry.EntryRect(AIndex);
+  DrawEntryBack(AIndex, mEntry);
+  DrawEntryTexts(Window.FRows.Items[AIndex], mEntry);
+  DrawChips(AIndex);
+end;
+
+procedure TNotificationsPainter.DrawThumb;
+var
+  mList: TRect;
+  mVisible, mThumbHeight, mThumbTop: Integer;
+begin
+  // Daumen, wenn die Liste länger ist als der Bereich.
+  mList := Geometry.List;
+  mVisible := Geometry.VisibleHeight;
+  if Window.FRows.ContentHeight <= mVisible then
+  begin
+    Exit;
+  end;
+  mThumbHeight := Max(Scale(16), MulDiv(mVisible, mVisible, Window.FRows.ContentHeight));
+  mThumbTop := mList.Top + MulDiv(Window.FRows.Scroll, mVisible - mThumbHeight,
+    Max(1, Window.FRows.ContentHeight - mVisible));
+  TAtlasDraw.Thumb(Canvas, Rect(mList.Right - Scale(5), mThumbTop, mList.Right - Scale(1),
+    mThumbTop + mThumbHeight), Colors, Scale(2));
+end;
+
+procedure TNotificationsPainter.DrawList;
+var
+  mIndex: Integer;
+  mList, mPart: TRect;
+  mText: string;
+begin
+  mList := Geometry.List;
+  IntersectClipRect(Canvas.Handle, mList.Left, mList.Top, mList.Right, mList.Bottom);
+  try
+    if Length(Window.FRows.Items) = 0 then
+    begin
+      Canvas.Brush.Style := bsClear;
+      Canvas.Font.Color := ToColor(Colors.Muted);
+      mText := TAtlasStrings.Text(TAtlasTextId.NotificationsEmpty);
+      mPart := mList;
+      DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+    end;
+    for mIndex := 0 to High(Window.FRows.Items) do
+    begin
+      mPart := Geometry.EntryRect(mIndex);
+      if (mPart.Bottom > mList.Top) and (mPart.Top < mList.Bottom) then
+      begin
+        DrawEntry(mIndex);
+      end;
+    end;
+    DrawThumb;
+  finally
+    SelectClipRgn(Canvas.Handle, 0);
+  end;
+end;
+
+procedure TNotificationsPainter.DrawHeader;
+var
+  mPart: TRect;
+  mText: string;
+  mUnread: Integer;
+begin
+  // Kopf: Titel und Zahl der ungelesenen.
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(Colors.Text);
+  mPart := Rect(Scale(12), 0, Window.FParts.FilterBox.Left - Scale(8), Geometry.Header);
+  mText := TAtlasStrings.Text(TAtlasTextId.NotificationsCommand);
+  DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  mPart.Left := mPart.Left + Canvas.TextWidth(mText) + Scale(8);
+  Canvas.Font.Style := [];
+  mUnread := 0;
+  if Window.FCenter <> nil then
+  begin
+    mUnread := Window.FCenter.UnreadCount;
+  end;
+  if mUnread > 0 then
+  begin
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsUnread, [mUnread]);
+    DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+  end;
+end;
+
+procedure TNotificationsPainter.Paint;
+var
+  mFoot: Integer;
+begin
+  Canvas.Font := Window.Font;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(Window.ClientRect);
+  DrawList;
+  DrawHeader;
+  mFoot := Window.ClientHeight - Scale(cButtonsHeight);
+  Canvas.Pen.Color := ToColor(Colors.Line);
+  Canvas.MoveTo(0, Geometry.Header - 1);
+  Canvas.LineTo(Window.ClientWidth, Geometry.Header - 1);
+  Canvas.MoveTo(0, mFoot);
+  Canvas.LineTo(Window.ClientWidth, mFoot);
+  // Rahmen des Fensters in Akzentfarbe.
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Color := ToColor(Colors.Accent);
+  Canvas.Rectangle(Window.ClientRect);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+{ TAtlasNotificationsWindow }
+
+constructor TAtlasNotificationsWindow.CreateList(AOwner: TComponent; const AColors: TAtlasColors;
+  const ACenter: IAtlasNotificationCenter);
+begin
+  inherited CreateNew(AOwner);
+  FColors := AColors;
+  FCenter := ACenter;
+  FRows.Selected := -1;
+  FRows.HotRow := -1;
+  FRows.HotChip := -1;
+  FState.MenuRow := -1;
+  BorderStyle := bsNone;
+  KeyPreview := True;
+  DoubleBuffered := True;
+  Color := ToColor(FColors.Surface);
+  Font.Name := 'Segoe UI';
+  Font.Size := 9;
+  OnDeactivate := FormDeactivate;
+  FParts.FilterBox := TComboBox.Create(Self);
+  FParts.FilterBox.Parent := Self;
+  FParts.FilterBox.Style := csDropDownList;
+  FParts.FilterBox.OnChange := FilterChange;
+  FParts.AllReadButton := TButton.Create(Self);
+  FParts.AllReadButton.Parent := Self;
+  FParts.AllReadButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsAllRead);
+  FParts.AllReadButton.OnClick := AllReadClick;
+  FParts.ClearButton := TButton.Create(Self);
+  FParts.ClearButton.Parent := Self;
+  FParts.ClearButton.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsClear);
+  FParts.ClearButton.OnClick := ClearClick;
+  FParts.Menu := TPopupMenu.Create(Self);
+  Reload;
+end;
+
+procedure TAtlasNotificationsWindow.CreateParams(var Params: TCreateParams);
+begin
+  inherited;
+  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
+end;
+
 procedure TAtlasNotificationsWindow.Layout;
 var
-  Index, Top_, Height_, Line, ButtonWidth, ListHeight, Gap: Integer;
+  mGeometry: TNotificationsGeometry;
+  mListHeight: Integer;
 begin
-  Canvas.Font := Font;
-  Line := LineHeight;
+  mGeometry := TNotificationsGeometry.Create(Self);
   ClientWidth := ScaleValue(440);
-  SetLength(FTops, Length(FItems));
-  SetLength(FHeights, Length(FItems));
-  Top_ := 0;
-  for Index := 0 to High(FItems) do
+  FRows.Measure(mGeometry.Line, ScaleValue(12));
+  if Length(FRows.Items) = 0 then
   begin
-    // Titel und Text, darunter die Aktionen.
-    Height_ := ScaleValue(12) + 2 * Line;
-    if Length(FItems[Index].Actions) > 0 then
-    begin
-      Inc(Height_, Line + ScaleValue(12));
-    end;
-    FTops[Index] := Top_;
-    FHeights[Index] := Height_;
-    Inc(Top_, Height_);
-  end;
-  FContentHeight := Top_;
-  if Length(FItems) = 0 then
-  begin
-    ListHeight := 3 * Line;
+    mListHeight := 3 * mGeometry.Line;
   end
   else
   begin
-    ListHeight := Min(FContentHeight, MaxListHeight);
+    mListHeight := Min(FRows.ContentHeight, ScaleValue(cMaxListHeight));
   end;
-  ClientHeight := HeaderHeight + ListHeight + ButtonsHeight;
-  ScrollTo(FScroll);
-  Gap := ScaleValue(8);
-  FFilterBox.Width := ScaleValue(170);
-  FFilterBox.Left := ClientWidth - FFilterBox.Width - Gap;
-  FFilterBox.Top := (HeaderHeight - FFilterBox.Height) div 2;
-  ButtonWidth := Max(Canvas.TextWidth(FAllReadButton.Caption), Canvas.TextWidth(FClearButton.Caption)) +
-    ScaleValue(24);
-  Index := ClientHeight - ButtonsHeight + Gap;
-  FAllReadButton.SetBounds(ScaleValue(10), Index, ButtonWidth, ScaleValue(25));
-  FClearButton.SetBounds(ScaleValue(20) + ButtonWidth, Index, ButtonWidth, ScaleValue(25));
-  FAllReadButton.Enabled := (FCenter <> nil) and (FCenter.UnreadCount > 0);
-  FClearButton.Enabled := (FCenter <> nil) and (Length(FCenter.Items()) > 0);
+  ClientHeight := mGeometry.Header + mListHeight + ScaleValue(cButtonsHeight);
+  FRows.ScrollTo(FRows.Scroll, TNotificationsGeometry.Create(Self).VisibleHeight);
+  PlaceControls;
+end;
+
+procedure TAtlasNotificationsWindow.PlaceControls;
+var
+  mGap, mButtonWidth, mTop, mHeader: Integer;
+begin
+  mGap := ScaleValue(8);
+  mHeader := TNotificationsGeometry.Create(Self).Header;
+  FParts.FilterBox.Width := ScaleValue(170);
+  FParts.FilterBox.Left := ClientWidth - FParts.FilterBox.Width - mGap;
+  FParts.FilterBox.Top := (mHeader - FParts.FilterBox.Height) div 2;
+  Canvas.Font := Font;
+  mButtonWidth := Max(Canvas.TextWidth(FParts.AllReadButton.Caption),
+    Canvas.TextWidth(FParts.ClearButton.Caption)) + ScaleValue(24);
+  mTop := ClientHeight - ScaleValue(cButtonsHeight) + mGap;
+  FParts.AllReadButton.SetBounds(ScaleValue(10), mTop, mButtonWidth, ScaleValue(25));
+  FParts.ClearButton.SetBounds(ScaleValue(20) + mButtonWidth, mTop, mButtonWidth, ScaleValue(25));
+  FParts.AllReadButton.Enabled := (FCenter <> nil) and (FCenter.UnreadCount > 0);
+  FParts.ClearButton.Enabled := (FCenter <> nil) and (Length(FCenter.Items()) > 0);
 end;
 
 procedure TAtlasNotificationsWindow.FillFilter;
@@ -415,7 +776,7 @@ var
   Sources: TArray<string>;
   Index, Found: Integer;
 begin
-  FUpdating := True;
+  FFilter.Updating := True;
   try
     Sources := nil;
     if FCenter <> nil then
@@ -426,135 +787,80 @@ begin
     Found := -1;
     for Index := 0 to High(Sources) do
     begin
-      if SameText(Sources[Index], FFilter) then
+      if SameText(Sources[Index], FFilter.Source) then
       begin
         Found := Index;
       end;
     end;
-    if (FFilter <> '') and (Found < 0) then
+    if (FFilter.Source <> '') and (Found < 0) then
     begin
-      Sources := Sources + [FFilter];
+      Sources := Sources + [FFilter.Source];
     end;
-    FFilterSources := [''] + Sources;
-    FFilterBox.Items.BeginUpdate;
+    FFilter.Sources := [''] + Sources;
+    FParts.FilterBox.Items.BeginUpdate;
     try
-      FFilterBox.Items.Clear;
-      FFilterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll));
+      FParts.FilterBox.Items.Clear;
+      FParts.FilterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll));
       for Source in Sources do
       begin
-        FFilterBox.Items.Add(SourceCaption(Source));
+        FParts.FilterBox.Items.Add(TAtlasNotificationTexts.SourceCaption(Source));
       end;
     finally
-      FFilterBox.Items.EndUpdate;
+      FParts.FilterBox.Items.EndUpdate;
     end;
-    FFilterBox.ItemIndex := 0;
-    for Index := 1 to High(FFilterSources) do
+    FParts.FilterBox.ItemIndex := 0;
+    for Index := 1 to High(FFilter.Sources) do
     begin
-      if SameText(FFilterSources[Index], FFilter) then
+      if SameText(FFilter.Sources[Index], FFilter.Source) then
       begin
-        FFilterBox.ItemIndex := Index;
+        FParts.FilterBox.ItemIndex := Index;
       end;
     end;
   finally
-    FUpdating := False;
+    FFilter.Updating := False;
   end;
 end;
 
 procedure TAtlasNotificationsWindow.Reload;
 var
-  SelectedId: Integer;
-  Index: Integer;
+  mSelectedId: Integer;
 begin
-  SelectedId := -1;
-  if (FSelected >= 0) and (FSelected <= High(FItems)) then
-  begin
-    SelectedId := FItems[FSelected].Id;
-  end;
-  FItems := nil;
+  mSelectedId := FRows.SelectedId;
+  FRows.Items := nil;
   if FCenter <> nil then
   begin
-    FItems := FCenter.Items(FFilter);
+    FRows.Items := FCenter.Items(FFilter.Source);
   end;
-  FSelected := -1;
-  for Index := 0 to High(FItems) do
-  begin
-    if FItems[Index].Id = SelectedId then
-    begin
-      FSelected := Index;
-    end;
-  end;
-  FHotRow := -1;
-  FHotChip := -1;
+  FRows.SelectId(mSelectedId);
+  FRows.HotRow := -1;
+  FRows.HotChip := -1;
   FillFilter;
   Layout;
   if Visible then
   begin
-    SetBounds(FAnchor.X, FAnchor.Y - Height, Width, Height);
+    SetBounds(FState.Anchor.X, FState.Anchor.Y - Height, Width, Height);
   end;
   Invalidate;
 end;
 
 procedure TAtlasNotificationsWindow.SetFilter(const ASource: string);
 begin
-  FFilter := Trim(ASource);
-  FScroll := 0;
+  FFilter.Source := Trim(ASource);
+  FRows.Scroll := 0;
   Reload;
-end;
-
-function TAtlasNotificationsWindow.RowCount: Integer;
-begin
-  Result := Length(FItems);
-end;
-
-function TAtlasNotificationsWindow.Row(AIndex: Integer): IAtlasNotification;
-begin
-  Result := nil;
-  if (AIndex >= 0) and (AIndex <= High(FItems)) then
-  begin
-    Result := FItems[AIndex];
-  end;
-end;
-
-procedure TAtlasNotificationsWindow.ScrollTo(AValue: Integer);
-var
-  List: TRect;
-begin
-  List := ListRect;
-  FScroll := EnsureRange(AValue, 0, Max(0, FContentHeight - (List.Bottom - List.Top)));
-end;
-
-procedure TAtlasNotificationsWindow.EnsureVisible(AIndex: Integer);
-var
-  List: TRect;
-  Visible_: Integer;
-begin
-  if (AIndex < 0) or (AIndex > High(FItems)) then
-  begin
-    Exit;
-  end;
-  List := ListRect;
-  Visible_ := List.Bottom - List.Top;
-  if FTops[AIndex] < FScroll then
-  begin
-    ScrollTo(FTops[AIndex]);
-  end
-  else if FTops[AIndex] + FHeights[AIndex] > FScroll + Visible_ then
-  begin
-    ScrollTo(FTops[AIndex] + FHeights[AIndex] - Visible_);
-  end;
 end;
 
 procedure TAtlasNotificationsWindow.ShowAbove(const AAnchor: TPoint);
 var
-  Area: TRect;
-  Left_, Top_: Integer;
+  mArea: TRect;
+  mLeft, mTop: Integer;
 begin
   Layout;
-  Area := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  Left_ := EnsureRange(AAnchor.X, Area.Left, Max(Area.Left, Area.Right - Width));
-  Top_ := Max(Area.Top, AAnchor.Y - Height);
-  FAnchor := Point(Left_, Top_ + Height);
-  SetBounds(Left_, Top_, Width, Height);
+  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
+  mLeft := EnsureRange(AAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width));
+  mTop := Max(mArea.Top, AAnchor.Y - Height);
+  FState.Anchor := Point(mLeft, mTop + Height);
+  SetBounds(mLeft, mTop, Width, Height);
   Show;
   // Die Liste hat die Tastatur (Pfeile, Eingabe); Tab führt zu Filter und Knöpfen.
   ActiveControl := nil;
@@ -563,18 +869,18 @@ end;
 
 procedure TAtlasNotificationsWindow.Dismiss;
 begin
-  if FClosing then
+  if FState.Closing then
   begin
     Exit;
   end;
-  FClosing := True;
+  FState.Closing := True;
   Close;
   Release;
 end;
 
 procedure TAtlasNotificationsWindow.CloseAndRun(const AProc: TProc);
 begin
-  if FClosing then
+  if FState.Closing then
   begin
     Exit;
   end;
@@ -593,7 +899,7 @@ end;
 procedure TAtlasNotificationsWindow.FormDeactivate(Sender: TObject);
 begin
   // Das eigene Kontextmenü nimmt den Fokus nicht weg; sicherheitshalber offen lassen.
-  if not FMenuOpen then
+  if not FState.MenuOpen then
   begin
     Dismiss;
   end;
@@ -601,11 +907,12 @@ end;
 
 procedure TAtlasNotificationsWindow.FilterChange(Sender: TObject);
 begin
-  if FUpdating or (FFilterBox.ItemIndex < 0) or (FFilterBox.ItemIndex > High(FFilterSources)) then
+  if FFilter.Updating or (FParts.FilterBox.ItemIndex < 0) or
+    (FParts.FilterBox.ItemIndex > High(FFilter.Sources)) then
   begin
     Exit;
   end;
-  SetFilter(FFilterSources[FFilterBox.ItemIndex]);
+  SetFilter(FFilter.Sources[FParts.FilterBox.ItemIndex]);
 end;
 
 procedure TAtlasNotificationsWindow.AllReadClick(Sender: TObject);
@@ -625,40 +932,43 @@ begin
     Exit;
   end;
   FCenter.Clear;
-  FScroll := 0;
+  FRows.Scroll := 0;
   Reload;
 end;
 
 procedure TAtlasNotificationsWindow.ClickRow(ARow: Integer);
 begin
-  if (ARow < 0) or (ARow > High(FItems)) or (FCenter = nil) then
+  if not FRows.Valid(ARow) or (FCenter = nil) then
   begin
     Exit;
   end;
-  FSelected := ARow;
-  if not FItems[ARow].Read then
+  FRows.Selected := ARow;
+  if not FRows.Items[ARow].Read then
   begin
-    FCenter.MarkRead(FItems[ARow].Id);
+    FCenter.MarkRead(FRows.Items[ARow].Id);
   end;
   Reload;
 end;
 
 procedure TAtlasNotificationsWindow.ClickAction(ARow, AAction: Integer);
 var
-  Center: IAtlasNotificationCenter;
-  Id: Integer;
+  mCenter: IAtlasNotificationCenter;
+  mId: Integer;
 begin
-  if (ARow < 0) or (ARow > High(FItems)) or (AAction < 0) or (AAction > High(FItems[ARow].Actions)) or
-    (FCenter = nil) then
+  if not FRows.Valid(ARow) or (FCenter = nil) then
   begin
     Exit;
   end;
-  Center := FCenter;
-  Id := FItems[ARow].Id;
+  if (AAction < 0) or (AAction > High(FRows.Items[ARow].Actions)) then
+  begin
+    Exit;
+  end;
+  mCenter := FCenter;
+  mId := FRows.Items[ARow].Id;
   CloseAndRun(
     procedure
     begin
-      Center.RunAction(Id, AAction);
+      mCenter.RunAction(mId, AAction);
     end);
 end;
 
@@ -672,132 +982,130 @@ const
   ModeTexts: array[TAtlasNotificationMode] of TAtlasTextId = (TAtlasTextId.NotificationsModeShow,
     TAtlasTextId.NotificationsModeCollect, TAtlasTextId.NotificationsModeOff);
 begin
-  Result := FMenu;
-  FMenu.Items.Clear;
-  FMenuRow := -1;
-  if (ARow < 0) or (ARow > High(FItems)) or (FCenter = nil) then
+  Result := FParts.Menu;
+  FParts.Menu.Items.Clear;
+  FState.MenuRow := -1;
+  if not FRows.Valid(ARow) or (FCenter = nil) then
   begin
     Exit;
   end;
-  FMenuRow := ARow;
-  Source := FItems[ARow].Source;
-  Item := TMenuItem.Create(FMenu);
+  FState.MenuRow := ARow;
+  Source := FRows.Items[ARow].Source;
+  Item := TMenuItem.Create(FParts.Menu);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsMarkRead);
   Item.Tag := MarkReadTag;
-  Item.Enabled := not FItems[ARow].Read;
+  Item.Enabled := not FRows.Items[ARow].Read;
   Item.OnClick := MenuClick;
-  FMenu.Items.Add(Item);
-  FMenu.Items.Add(NewLine);
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.NotificationsModeMenu, [SourceCaption(Source)]);
+  FParts.Menu.Items.Add(Item);
+  FParts.Menu.Items.Add(NewLine);
+  Item := TMenuItem.Create(FParts.Menu);
+  Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.NotificationsModeMenu,
+    [TAtlasNotificationTexts.SourceCaption(Source)]);
   Item.Enabled := False;
-  FMenu.Items.Add(Item);
+  FParts.Menu.Items.Add(Item);
   Current := FCenter.ModeOf(Source);
   for Mode := Low(TAtlasNotificationMode) to High(TAtlasNotificationMode) do
   begin
-    Item := TMenuItem.Create(FMenu);
+    Item := TMenuItem.Create(FParts.Menu);
     Item.Caption := TAtlasStrings.Text(ModeTexts[Mode]);
     Item.Tag := ModeTag + Ord(Mode);
     Item.RadioItem := True;
     Item.GroupIndex := 1;
     Item.Checked := Mode = Current;
     Item.OnClick := MenuClick;
-    FMenu.Items.Add(Item);
+    FParts.Menu.Items.Add(Item);
   end;
 end;
 
 procedure TAtlasNotificationsWindow.MenuClick(Sender: TObject);
 var
-  Tag_: Integer;
-  Source: string;
-  Mode: TAtlasNotificationMode;
-  Handler: TAtlasNotificationModeEvent;
+  mTag: Integer;
+  mSource: string;
+  mMode: TAtlasNotificationMode;
+  mHandler: TAtlasNotificationModeEvent;
 begin
-  if (FMenuRow < 0) or (FMenuRow > High(FItems)) or (FCenter = nil) then
+  if not FRows.Valid(FState.MenuRow) or (FCenter = nil) then
   begin
     Exit;
   end;
-  Tag_ := (Sender as TMenuItem).Tag;
-  if Tag_ = MarkReadTag then
+  mTag := (Sender as TMenuItem).Tag;
+  if mTag = MarkReadTag then
   begin
-    ClickRow(FMenuRow);
+    ClickRow(FState.MenuRow);
     Exit;
   end;
-  if (Tag_ < ModeTag) or (Tag_ > ModeTag + Ord(High(TAtlasNotificationMode))) then
+  if (mTag < ModeTag) or (mTag > ModeTag + Ord(High(TAtlasNotificationMode))) then
   begin
     Exit;
   end;
-  Source := FItems[FMenuRow].Source;
-  Mode := TAtlasNotificationMode(Tag_ - ModeTag);
-  FCenter.SetMode(Source, Mode);
-  Handler := FOnModeChange;
-  if Assigned(Handler) then
+  mSource := FRows.Items[FState.MenuRow].Source;
+  mMode := TAtlasNotificationMode(mTag - ModeTag);
+  FCenter.SetMode(mSource, mMode);
+  mHandler := FOnModeChange;
+  if Assigned(mHandler) then
   begin
-    Handler(Source, Mode);
+    mHandler(mSource, mMode);
   end;
   Reload;
 end;
 
-procedure TAtlasNotificationsWindow.KeyDown(var Key: Word; Shift: TShiftState);
-var
-  Next: Integer;
+function TAtlasNotificationsWindow.ListKey(AKey: Word): Boolean;
 begin
-  case Key of
-    VK_ESCAPE:
+  // Nur ohne Fokus auf Filter oder Knöpfen; dort gelten deren Tasten.
+  Result := (ActiveControl = nil) and (Length(FRows.Items) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_UP:
+      FRows.Selected := Max(0, FRows.Selected - 1);
+    VK_DOWN:
+      FRows.Selected := Min(High(FRows.Items), FRows.Selected + 1);
+    VK_RETURN, VK_DELETE:
       begin
-        Key := 0;
-        Dismiss;
-        Exit;
-      end;
-    VK_UP, VK_DOWN:
-      if (Length(FItems) > 0) and (ActiveControl = nil) then
-      begin
-        if Key = VK_UP then
+        Result := FRows.Valid(FRows.Selected);
+        // Eingabe führt die erste Aktion aus (ohne Aktion: gelesen), Entf markiert als gelesen.
+        if Result and (AKey = VK_RETURN) and (Length(FRows.Items[FRows.Selected].Actions) > 0) then
         begin
-          Next := Max(0, FSelected - 1);
+          ClickAction(FRows.Selected, 0);
         end
-        else
+        else if Result then
         begin
-          Next := Min(High(FItems), FSelected + 1);
-        end;
-        Key := 0;
-        FSelected := Next;
-        EnsureVisible(FSelected);
-        Invalidate;
-        Exit;
-      end;
-    VK_RETURN:
-      if (FSelected >= 0) and (FSelected <= High(FItems)) and (ActiveControl = nil) then
-      begin
-        Key := 0;
-        if Length(FItems[FSelected].Actions) > 0 then
-        begin
-          ClickAction(FSelected, 0);
-        end
-        else
-        begin
-          ClickRow(FSelected);
+          ClickRow(FRows.Selected);
         end;
         Exit;
       end;
-    VK_DELETE:
-      if (FSelected >= 0) and (FSelected <= High(FItems)) and (ActiveControl = nil) then
-      begin
-        Key := 0;
-        ClickRow(FSelected);
-        Exit;
-      end;
+  else
+    Exit(False);
+  end;
+  FRows.EnsureVisible(FRows.Selected, TNotificationsGeometry.Create(Self).VisibleHeight);
+  Invalidate;
+end;
+
+procedure TAtlasNotificationsWindow.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+  begin
+    Key := 0;
+    Dismiss;
+    Exit;
+  end;
+  if ListKey(Key) then
+  begin
+    Key := 0;
+    Exit;
   end;
   inherited;
 end;
 
 procedure TAtlasNotificationsWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Row, Chip: Integer;
+  mRow, mChip: Integer;
 begin
   inherited;
-  Row := HitTest(Point(X, Y), Chip);
-  if Chip >= 0 then
+  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
+  if mChip >= 0 then
   begin
     Cursor := crHandPoint;
   end
@@ -805,10 +1113,10 @@ begin
   begin
     Cursor := crDefault;
   end;
-  if (Row <> FHotRow) or (Chip <> FHotChip) then
+  if (mRow <> FRows.HotRow) or (mChip <> FRows.HotChip) then
   begin
-    FHotRow := Row;
-    FHotChip := Chip;
+    FRows.HotRow := mRow;
+    FRows.HotChip := mChip;
     Invalidate;
   end;
 end;
@@ -816,36 +1124,36 @@ end;
 procedure TAtlasNotificationsWindow.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if (FHotRow >= 0) or (FHotChip >= 0) then
+  if (FRows.HotRow >= 0) or (FRows.HotChip >= 0) then
   begin
-    FHotRow := -1;
-    FHotChip := -1;
+    FRows.HotRow := -1;
+    FRows.HotChip := -1;
     Invalidate;
   end;
 end;
 
 procedure TAtlasNotificationsWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Row, Chip: Integer;
-  Screen_: TPoint;
+  mRow, mChip: Integer;
+  mScreen: TPoint;
 begin
   inherited;
-  Row := HitTest(Point(X, Y), Chip);
-  if Row < 0 then
+  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
+  if mRow < 0 then
   begin
     Exit;
   end;
   if Button = mbRight then
   begin
-    FSelected := Row;
+    FRows.Selected := mRow;
     Invalidate;
-    BuildMenu(Row);
-    Screen_ := ClientToScreen(Point(X, Y));
-    FMenuOpen := True;
+    BuildMenu(mRow);
+    mScreen := ClientToScreen(Point(X, Y));
+    FState.MenuOpen := True;
     try
-      FMenu.Popup(Screen_.X, Screen_.Y);
+      FParts.Menu.Popup(mScreen.X, mScreen.Y);
     finally
-      FMenuOpen := False;
+      FState.MenuOpen := False;
     end;
     Exit;
   end;
@@ -853,195 +1161,29 @@ begin
   begin
     Exit;
   end;
-  if Chip >= 0 then
+  if mChip >= 0 then
   begin
-    ClickAction(Row, Chip);
+    ClickAction(mRow, mChip);
   end
   else
   begin
-    ClickRow(Row);
+    ClickRow(mRow);
   end;
 end;
 
 function TAtlasNotificationsWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  mGeometry: TNotificationsGeometry;
 begin
-  ScrollTo(FScroll - (WheelDelta div WHEEL_DELTA) * 3 * LineHeight);
+  mGeometry := TNotificationsGeometry.Create(Self);
+  FRows.ScrollTo(FRows.Scroll - (WheelDelta div WHEEL_DELTA) * 3 * mGeometry.Line, mGeometry.VisibleHeight);
   Invalidate;
   Result := True;
 end;
 
-procedure TAtlasNotificationsWindow.DrawSeverity(const ACenter: TPoint; ASeverity: TAtlasNotificationSeverity);
-var
-  Radius: Integer;
-  Glyph: string;
-  Part: TRect;
-begin
-  Radius := ScaleValue(8);
-  Canvas.Pen.Color := ToColor(SeverityColor(FColors, ASeverity));
-  Canvas.Brush.Color := ToColor(SeverityColor(FColors, ASeverity));
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Ellipse(ACenter.X - Radius, ACenter.Y - Radius, ACenter.X + Radius + 1, ACenter.Y + Radius + 1);
-  case ASeverity of
-    TAtlasNotificationSeverity.Warning:
-      Glyph := '!';
-    TAtlasNotificationSeverity.Error:
-      Glyph := '×';
-  else
-    Glyph := 'i';
-  end;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(FColors.Surface);
-  Part := Rect(ACenter.X - Radius, ACenter.Y - Radius, ACenter.X + Radius + 1, ACenter.Y + Radius + 1);
-  DrawText(Canvas.Handle, PChar(Glyph), -1, Part, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
-  Canvas.Font.Style := [];
-end;
-
-procedure TAtlasNotificationsWindow.DrawEntry(AIndex: Integer);
-var
-  Item: IAtlasNotification;
-  Entry, Part, Chip: TRect;
-  Line, Index: Integer;
-  mText, Right: string;
-  Actions: TArray<TAtlasNotificationAction>;
-begin
-  Item := FItems[AIndex];
-  Entry := EntryRect(AIndex);
-  Line := LineHeight;
-  // Ungelesen hinterlegt, mit Balken in der Farbe der Schwere.
-  Canvas.Brush.Style := bsSolid;
-  if not Item.Read then
-  begin
-    Canvas.Brush.Color := ToColor(FColors.Selection);
-    Canvas.FillRect(Entry);
-    Canvas.Brush.Color := ToColor(SeverityColor(FColors, Item.Severity));
-    Canvas.FillRect(Rect(Entry.Left, Entry.Top, Entry.Left + ScaleValue(3), Entry.Bottom));
-  end;
-  if (AIndex = FSelected) or ((AIndex = FHotRow) and (FHotChip < 0)) then
-  begin
-    Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := ToColor(FColors.Line);
-    Canvas.Rectangle(Entry.Left + ScaleValue(4), Entry.Top + 1, Entry.Right - 1, Entry.Bottom - 1);
-  end;
-  DrawSeverity(Point(Entry.Left + ScaleValue(18), Entry.Top + ScaleValue(6) + Line div 2), Item.Severity);
-  Canvas.Brush.Style := bsClear;
-  // Rechts Quelle und Uhrzeit, gedämpft.
-  Right := SourceCaption(Item.Source) + ' · ' + TimeText(Item.Time, Now);
-  Canvas.Font.Color := ToColor(FColors.Muted);
-  Part := Rect(Entry.Left + ScaleValue(34), Entry.Top + ScaleValue(6), Entry.Right - ScaleValue(10),
-    Entry.Top + ScaleValue(6) + Line);
-  DrawText(Canvas.Handle, PChar(Right), -1, Part, DT_SINGLELINE or DT_RIGHT or DT_NOPREFIX);
-  Part.Right := Part.Right - Canvas.TextWidth(Right) - ScaleValue(10);
-  // Titel mit Zähler; ungelesen fett.
-  if not Item.Read then
-  begin
-    Canvas.Font.Style := [fsBold];
-  end;
-  Canvas.Font.Color := ToColor(FColors.Text);
-  mText := Item.Caption;
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Canvas.Font.Style := [];
-  // Text in der zweiten Zeile.
-  Part := Rect(Entry.Left + ScaleValue(34), Part.Bottom, Entry.Right - ScaleValue(10), Part.Bottom + Line);
-  Canvas.Font.Color := ToColor(FColors.Muted);
-  mText := Item.Text;
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  // Aktionen als Knöpfe.
-  Actions := Item.Actions;
-  for Index := 0 to High(Actions) do
-  begin
-    Chip := ChipRect(AIndex, Index);
-    Canvas.Brush.Style := bsSolid;
-    if (AIndex = FHotRow) and (Index = FHotChip) then
-    begin
-      Canvas.Brush.Color := ToColor(FColors.AccentSoft);
-    end
-    else
-    begin
-      Canvas.Brush.Color := ToColor(FColors.Surface);
-    end;
-    Canvas.Pen.Color := ToColor(FColors.Accent);
-    Canvas.RoundRect(Chip.Left, Chip.Top, Chip.Right, Chip.Bottom, ScaleValue(2 * TAtlasDraw.ChipRadius),
-      ScaleValue(2 * TAtlasDraw.ChipRadius));
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := ToColor(FColors.Accent);
-    mText := Actions[Index].Caption;
-    DrawText(Canvas.Handle, PChar(mText), -1, Chip, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
-  end;
-end;
-
 procedure TAtlasNotificationsWindow.Paint;
-var
-  Index, Unread, ThumbHeight, ThumbTop: Integer;
-  List, Part: TRect;
-  mText: string;
 begin
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  List := ListRect;
-  // Einträge nur im Listenbereich; Kopf und Fuß übermalen, was hinausragt.
-  IntersectClipRect(Canvas.Handle, List.Left, List.Top, List.Right, List.Bottom);
-  try
-    if Length(FItems) = 0 then
-    begin
-      Canvas.Brush.Style := bsClear;
-      Canvas.Font.Color := ToColor(FColors.Muted);
-      mText := TAtlasStrings.Text(TAtlasTextId.NotificationsEmpty);
-      Part := List;
-      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
-    end;
-    for Index := 0 to High(FItems) do
-    begin
-      Part := EntryRect(Index);
-      if (Part.Bottom > List.Top) and (Part.Top < List.Bottom) then
-      begin
-        DrawEntry(Index);
-      end;
-    end;
-    // Daumen, wenn die Liste länger ist als der Bereich.
-    if FContentHeight > List.Bottom - List.Top then
-    begin
-      ThumbHeight := Max(ScaleValue(16), MulDiv(List.Bottom - List.Top, List.Bottom - List.Top, FContentHeight));
-      ThumbTop := List.Top + MulDiv(FScroll, List.Bottom - List.Top - ThumbHeight,
-        Max(1, FContentHeight - (List.Bottom - List.Top)));
-      TAtlasDraw.Thumb(Canvas, Rect(List.Right - ScaleValue(5), ThumbTop, List.Right - ScaleValue(1),
-        ThumbTop + ThumbHeight), FColors, ScaleValue(2));
-    end;
-  finally
-    SelectClipRgn(Canvas.Handle, 0);
-  end;
-  // Kopf: Titel und Zahl der ungelesenen.
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(FColors.Text);
-  Part := Rect(ScaleValue(12), 0, FFilterBox.Left - ScaleValue(8), HeaderHeight);
-  mText := TAtlasStrings.Text(TAtlasTextId.NotificationsCommand);
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  Part.Left := Part.Left + Canvas.TextWidth(mText) + ScaleValue(8);
-  Canvas.Font.Style := [];
-  Unread := 0;
-  if FCenter <> nil then
-  begin
-    Unread := FCenter.UnreadCount;
-  end;
-  if Unread > 0 then
-  begin
-    Canvas.Font.Color := ToColor(FColors.Muted);
-    mText := TAtlasStrings.Fmt(TAtlasTextId.NotificationsUnread, [Unread]);
-    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-  end;
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, HeaderHeight - 1);
-  Canvas.LineTo(ClientWidth, HeaderHeight - 1);
-  Canvas.MoveTo(0, ClientHeight - ButtonsHeight);
-  Canvas.LineTo(ClientWidth, ClientHeight - ButtonsHeight);
-  // Rahmen des Fensters in Akzentfarbe.
-  Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Color := ToColor(FColors.Accent);
-  Canvas.Rectangle(ClientRect);
-  Canvas.Brush.Style := bsSolid;
+  TNotificationsPainter.Create(Self).Paint;
 end;
 
 end.
