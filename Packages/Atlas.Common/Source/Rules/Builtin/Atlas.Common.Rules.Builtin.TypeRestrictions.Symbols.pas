@@ -194,10 +194,51 @@ end;
 /// Konstanten, Typen samt Aufzählungswerten und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1,
 /// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
 /// TG4).</summary>
+/// <summary>Namen der echten Konstanten (ohne Typ) eines const-Abschnitts.</summary>
+function UntypedConstNames(AConstSection: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+  mDecl: TSyntaxNode;
+begin
+  Result := nil;
+  for mIndex := 0 to AConstSection.ChildCount - 1 do
+  begin
+    mDecl := AConstSection[mIndex];
+    // Typisierte Konstanten haben Typ und Wert als Kinder.
+    if (mDecl.Kind = TSyntaxKind.ConstDecl) and (mDecl.ChildCount < 2) then
+    begin
+      Result := Result + DeclaredNames(mDecl);
+    end;
+  end;
+end;
+
+/// <summary>Namen der Typen eines type-Abschnitts samt Werten ihrer Aufzählungen.</summary>
+function TypeAndEnumNames(ATypeSection: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+  mDecl, mType: TSyntaxNode;
+begin
+  Result := nil;
+  for mIndex := 0 to ATypeSection.ChildCount - 1 do
+  begin
+    mDecl := ATypeSection[mIndex];
+    if mDecl.Kind <> TSyntaxKind.TypeDecl then
+    begin
+      Continue;
+    end;
+    Result := Result + DeclaredNames(mDecl);
+    mType := TypeOfDecl(mDecl);
+    if (mType <> nil) and (mType.Kind = TSyntaxKind.EnumType) then
+    begin
+      Result := Result + NamesBelow(mType);
+    end;
+  end;
+end;
+
 function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
 var
-  mIndex, mInner: Integer;
-  mChild, mDecl: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := nil;
   if ASection = nil then
@@ -209,29 +250,9 @@ begin
     mChild := ASection[mIndex];
     case mChild.Kind of
       TSyntaxKind.ConstSection:
-        for mInner := 0 to mChild.ChildCount - 1 do
-        begin
-          mDecl := mChild[mInner];
-          // Typisierte Konstanten haben Typ und Wert als Kinder.
-          if (mDecl.Kind = TSyntaxKind.ConstDecl) and (mDecl.ChildCount < 2) then
-          begin
-            Result := Result + DeclaredNames(mDecl);
-          end;
-        end;
+        Result := Result + UntypedConstNames(mChild);
       TSyntaxKind.TypeSection:
-        for mInner := 0 to mChild.ChildCount - 1 do
-        begin
-          mDecl := mChild[mInner];
-          if mDecl.Kind = TSyntaxKind.TypeDecl then
-          begin
-            Result := Result + DeclaredNames(mDecl);
-          end;
-          if (mDecl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(mDecl) <> nil) and
-            (TypeOfDecl(mDecl).Kind = TSyntaxKind.EnumType) then
-          begin
-            Result := Result + NamesBelow(TypeOfDecl(mDecl));
-          end;
-        end;
+        Result := Result + TypeAndEnumNames(mChild);
       TSyntaxKind.RoutineDecl:
         if Pos('.', mChild.Name) = 0 then
         begin
@@ -272,6 +293,7 @@ begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
+{ TImplementationSymbols }
 
 constructor TImplementationSymbols.Create(const AContext: TRuleContext);
 var

@@ -56,6 +56,8 @@ const
   NonReferenceTypeKinds = [TSyntaxKind.RecordType, TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.ArrayType,
     TSyntaxKind.PointerType, TSyntaxKind.FileType, TSyntaxKind.SubrangeType];
   // Ziele, an denen Volatile nicht stehen darf (Compiler Attributes: keine Typen, Routinen, Methoden).
+  // Längste verfolgte Alias-Kette.
+  cMaxAliasDepth = 16;
   VolatileForbiddenTargets = [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
     TSyntaxKind.PropertyDecl];
 
@@ -162,51 +164,69 @@ end;
 
 /// <summary>Ist der Typ des Felds bzw. der Variablen (Kind von AType) sicher weder Klasse noch Interface? Eingebaute
 /// Werttypen und Records, Aufzählungen, Mengen, Arrays, Zeiger der Datei; Aliase werden verfolgt.</summary>
+type
+  /// <summary>Ergebnis eines Schritts entlang einer Alias-Kette: sicher kein Referenztyp, offen bzw. Referenz, oder
+  /// dem neuen Namen weiter folgen.</summary>
+  TAliasStep = (NoReference, Unknown, Follow);
+
+/// <summary>Ein Schritt von AName entlang der Aliase der Datei; bei Follow steht in AName das Ziel.</summary>
+function AliasStep(const ATypes: TFileTypes; var AName: string): TAliasStep;
+var
+  mIndex: Integer;
+begin
+  Result := TAliasStep.Unknown;
+  if (AName = '') or (Pos('.', AName) > 0) or (Pos('<', AName) > 0) then
+  begin
+    Exit;
+  end;
+  if ATypes.DeclaredKind(AName) in NonReferenceTypeKinds then
+  begin
+    Exit(TAliasStep.NoReference);
+  end;
+  mIndex := ATypes.IndexOf(AName);
+  if mIndex < 0 then
+  begin
+    // Pointer bleibt außen vor: die Hilfe nennt nur Klassen und Interfaces, der Fall ist nicht abgeglichen.
+    if not SameText(AName, 'Pointer') and (MatchText(AName, BuiltinTypeNames) or
+      MatchText(AName, BooleanTypeNames)) then
+    begin
+      Result := TAliasStep.NoReference;
+    end;
+  end
+  else if ATypes.AliasOf[mIndex] <> '' then
+  begin
+    AName := ATypes.AliasOf[mIndex];
+    Result := TAliasStep.Follow;
+  end
+  else if ATypes.Types[mIndex].Kind = TSyntaxKind.TypeReference then
+  begin
+    AName := ATypes.Types[mIndex].Name;
+    Result := TAliasStep.Follow;
+  end;
+end;
+
 function CertainlyNoReference(const ATypes: TFileTypes; AType: TSyntaxNode): Boolean;
 var
-  Name: string;
-  Index, Depth: Integer;
+  mName: string;
+  mDepth: Integer;
 begin
-  if AType.Kind in NonReferenceTypeKinds then
+  Result := AType.Kind in NonReferenceTypeKinds;
+  if Result or (AType.Kind <> TSyntaxKind.TypeReference) or (AType.FindChild(TSyntaxKind.GenericArgs) <> nil) then
   begin
-    Exit(True);
+    Exit;
   end;
-  if (AType.Kind <> TSyntaxKind.TypeReference) or (AType.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+  mName := AType.Name;
+  for mDepth := 1 to cMaxAliasDepth do
   begin
-    Exit(False);
-  end;
-  Name := AType.Name;
-  for Depth := 1 to 16 do
-  begin
-    if (Name = '') or (Pos('.', Name) > 0) or (Pos('<', Name) > 0) then
-    begin
-      Exit(False);
-    end;
-    if ATypes.DeclaredKind(Name) in NonReferenceTypeKinds then
-    begin
-      Exit(True);
-    end;
-    Index := ATypes.IndexOf(Name);
-    if Index < 0 then
-    begin
-      // Pointer bleibt außen vor: die Hilfe nennt nur Klassen und Interfaces, der Fall ist nicht abgeglichen.
-      Exit(not SameText(Name, 'Pointer') and (MatchText(Name, BuiltinTypeNames) or
-        MatchText(Name, BooleanTypeNames)));
-    end;
-    if ATypes.AliasOf[Index] <> '' then
-    begin
-      Name := ATypes.AliasOf[Index];
-    end
-    else if ATypes.Types[Index].Kind = TSyntaxKind.TypeReference then
-    begin
-      Name := ATypes.Types[Index].Name;
-    end
+    case AliasStep(ATypes, mName) of
+      TAliasStep.NoReference:
+        Exit(True);
+      TAliasStep.Unknown:
+        Exit(False);
     else
-    begin
-      Exit(False);
+      // Follow: dem Alias weiter folgen.
     end;
   end;
-  Result := False;
 end;
 
 function TAttributeUsageInvalidRule.Descriptor: TRuleDescriptor;
@@ -244,40 +264,35 @@ var
 
   /// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
   /// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
-  function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
+  /// <summary>Ist der var-Abschnitt ASection am Attribut sichtbar? Unit-Ebene oder umgebende Routine.</summary>
+  function VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
   var
     Holder: TSyntaxNode;
   begin
     Result := False;
-    if (ADecl.StartOffset >= AAttribute.StartOffset) or (ADecl.Kind = TSyntaxKind.Field) then
+    if (ASection = nil) or (ASection.Kind <> TSyntaxKind.VarSection) or (ASection.Parent = nil) then
     begin
       Exit;
     end;
-    Holder := ADecl.Parent;
-    if ADecl.Kind = TSyntaxKind.VarDecl then
+    Holder := ASection.Parent;
+    if Holder.Kind = TSyntaxKind.RoutineDecl then
     begin
-      if (Holder = nil) or (Holder.Kind <> TSyntaxKind.VarSection) then
-      begin
-        Exit;
-      end;
-      Holder := Holder.Parent;
-      if Holder = nil then
-      begin
-        Exit;
-      end;
-      if Holder.Kind = TSyntaxKind.RoutineDecl then
-      begin
-        if not Inside(AAttribute, Holder) then
-        begin
-          Exit;
-        end;
-      end
-      else if not (Holder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
-      begin
-        Exit;
-      end;
+      Result := Inside(AAttribute, Holder);
+    end
+    else
+    begin
+      Result := Holder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection];
     end;
-    Result := TConditionalBranches.Implies(PathOf(AAttribute), PathOf(ADecl));
+  end;
+
+  function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
+  begin
+    Result := (ADecl.StartOffset < AAttribute.StartOffset) and (ADecl.Kind <> TSyntaxKind.Field);
+    if Result and (ADecl.Kind = TSyntaxKind.VarDecl) then
+    begin
+      Result := VarSectionVisible(ADecl.Parent, AAttribute);
+    end;
+    Result := Result and TConditionalBranches.Implies(PathOf(AAttribute), PathOf(ADecl));
   end;
 
   /// <summary>Steht AName am Attribut sicher für eine Variable bzw. Routine der Datei?</summary>
@@ -301,11 +316,44 @@ var
     end;
   end;
 
+  /// <summary>Meldet ANode, wenn es eine Variable oder der Aufruf einer eigenen Routine ist; True nach einer
+  /// Meldung.</summary>
+  function ReportNonConstant(ANode, AAttribute: TSyntaxNode; const AAttributeName: string): Boolean;
+  var
+    Callee: TSyntaxNode;
+  begin
+    Result := False;
+    if ANode.Kind = TSyntaxKind.Identifier then
+    begin
+      Result := CertainVariable(ANode.Name, AAttribute);
+      if Result then
+      begin
+        AReport.Add(NodeRange(ANode), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
+          'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+          [ANode.Name, AAttributeName]), TRuleConfidence.High, nil);
+      end;
+      Exit;
+    end;
+    // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
+    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+    begin
+      Exit;
+    end;
+    Callee := ANode[0];
+    Result := (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute);
+    if Result then
+    begin
+      AReport.Add(NodeRange(ANode), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
+        'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein ' +
+        '(wie E2448).', [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
+    end;
+  end;
+
   // Iterativ (Bericht M1).
   procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
   var
     Pending: TStack<TSyntaxNode>;
-    Node, Callee: TSyntaxNode;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
     Pending := TStack<TSyntaxNode>.Create;
@@ -315,30 +363,8 @@ var
       begin
         Node := Pending.Pop;
         case Node.Kind of
-          TSyntaxKind.Identifier:
-            if CertainVariable(Node.Name, AAttribute) then
-            begin
-              AReport.Add(NodeRange(Node), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
-                'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
-                [Node.Name, AAttributeName]), TRuleConfidence.High, nil);
-              AReported := True;
-            end;
-          TSyntaxKind.Call:
-            begin
-              // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
-              if Node.ChildCount = 0 then
-              begin
-                Continue;
-              end;
-              Callee := Node[0];
-              if (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute) then
-              begin
-                AReport.Add(NodeRange(Node), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
-                  'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein ' +
-                  '(wie E2448).', [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
-                AReported := True;
-              end;
-            end;
+          TSyntaxKind.Identifier, TSyntaxKind.Call:
+            AReported := ReportNonConstant(Node, AAttribute, AAttributeName);
           TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
           TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
             for Index := Node.ChildCount - 1 downto 0 do
@@ -458,63 +484,77 @@ var
       nil);
   end;
 
+  /// <summary>Steht das Compiler-Attribut AItemNames[AIndex] schon weiter vorn in derselben Bedingungsvariante?
+  /// </summary>
+  function IsDuplicate(const AItems: TArray<TSyntaxNode>; const AItemNames: TArray<string>; AIndex: Integer):
+    Boolean;
+  var
+    Other: Integer;
+  begin
+    Result := False;
+    for Other := 0 to AIndex - 1 do
+    begin
+      if SameText(AItemNames[Other], AItemNames[AIndex]) and
+        not TConditionalBranches.Exclusive(PathOf(AItems[Other]), PathOf(AItems[AIndex])) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+
+  procedure CheckItem(AItem, ATarget: TSyntaxNode; const AName: string);
+  begin
+    if SameText(AName, 'Volatile') and (ATarget.Kind in VolatileForbiddenTargets) then
+    begin
+      AReport.Add(NodeRange(AItem), '[Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, ' +
+        'Routinen, Methoden oder Properties (wie E2325).', TRuleConfidence.High, nil);
+    end
+    else if SameText(AName, 'Weak') then
+    begin
+      CheckWeakTarget(AItem, ATarget);
+    end;
+  end;
+
   procedure CheckTarget(AFirst: TSyntaxNode);
   var
-    Group: TArray<TSyntaxNode>;
     Items: TArray<TSyntaxNode>;
     ItemNames: TArray<string>;
-    Attribute, Target, Item: TSyntaxNode;
-    Index, Other: Integer;
-    Name: string;
-    Duplicate: Boolean;
+    Attribute, Target: TSyntaxNode;
+    Index: Integer;
   begin
     Target := AttributeTarget(AFirst);
     if Target = nil then
     begin
       Exit;
     end;
-    Group := AttributeGroup(AFirst);
     Items := nil;
-    ItemNames := nil;
-    for Attribute in Group do
+    for Attribute in AttributeGroup(AFirst) do
     begin
       for Index := 0 to Attribute.ChildCount - 1 do
       begin
         Items := Items + [Attribute[Index]];
-        ItemNames := ItemNames + [CompilerAttribute(Types, Attribute[Index])];
       end;
+    end;
+    SetLength(ItemNames, Length(Items));
+    for Index := 0 to High(Items) do
+    begin
+      ItemNames[Index] := CompilerAttribute(Types, Items[Index]);
     end;
     for Index := 0 to High(Items) do
     begin
-      Name := ItemNames[Index];
-      if Name = '' then
+      if ItemNames[Index] = '' then
       begin
         Continue;
       end;
-      Item := Items[Index];
-      Duplicate := False;
-      for Other := 0 to Index - 1 do
+      if IsDuplicate(Items, ItemNames, Index) then
       begin
-        if SameText(ItemNames[Other], Name) and
-          not TConditionalBranches.Exclusive(PathOf(Items[Other]), PathOf(Item)) then
-        begin
-          Duplicate := True;
-        end;
-      end;
-      if Duplicate then
-      begin
-        AReport.Add(NodeRange(Item), Format('[%s] steht mehrfach an derselben Deklaration; ein Attribut des ' +
-          'Compilers darf je Ziel nur einmal stehen (wie E2326).', [Name]), TRuleConfidence.High, nil);
-        Continue;
-      end;
-      if SameText(Name, 'Volatile') and (Target.Kind in VolatileForbiddenTargets) then
-      begin
-        AReport.Add(NodeRange(Item), '[Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, ' +
-          'Routinen, Methoden oder Properties (wie E2325).', TRuleConfidence.High, nil);
+        AReport.Add(NodeRange(Items[Index]), Format('[%s] steht mehrfach an derselben Deklaration; ein Attribut ' +
+          'des Compilers darf je Ziel nur einmal stehen (wie E2326).', [ItemNames[Index]]), TRuleConfidence.High,
+          nil);
       end
-      else if SameText(Name, 'Weak') then
+      else
       begin
-        CheckWeakTarget(Item, Target);
+        CheckItem(Items[Index], Target, ItemNames[Index]);
       end;
     end;
   end;

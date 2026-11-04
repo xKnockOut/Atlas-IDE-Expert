@@ -109,11 +109,26 @@ begin
   Result := Trim(Result);
 end;
 
+/// <summary>Kinder vom Typ Parameter unter AParameters in Reihenfolge.</summary>
+function ParameterNodes(AParameters: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to AParameters.ChildCount - 1 do
+  begin
+    if AParameters[Index].Kind = TSyntaxKind.Parameter then
+    begin
+      Result := Result + [AParameters[Index]];
+    end;
+  end;
+end;
+
 { TRoutineHead }
 
 class function TRoutineHead.Read(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TRoutineHead;
 var
-  Index, Inner: Integer;
+  Index: Integer;
   Child: TSyntaxNode;
 begin
   Result := Default(TRoutineHead);
@@ -138,13 +153,7 @@ begin
     Child := AHeader[Index];
     case Child.Kind of
       TSyntaxKind.Parameters:
-        for Inner := 0 to Child.ChildCount - 1 do
-        begin
-          if Child[Inner].Kind = TSyntaxKind.Parameter then
-          begin
-            Result.Parameters := Result.Parameters + [Child[Inner]];
-          end;
-        end;
+        Result.Parameters := Result.Parameters + ParameterNodes(Child);
       TSyntaxKind.TypeReference:
         Result.ResultType := Child;
       TSyntaxKind.GenericParams:
@@ -188,7 +197,7 @@ begin
   Result := Directive(AName) <> nil;
 end;
 
-
+{ TFileTypes }
 
 class function TFileTypes.Collect(ARoot: TSyntaxNode): TFileTypes;
 var
