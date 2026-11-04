@@ -128,6 +128,8 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Search\Atlas.UI.Search.Strings.pas"/>
+        <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Data.pas"/>
+        <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Painter.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
