@@ -124,7 +124,22 @@ type
     procedure SetTarget(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
     /// <summary>Projekt für eine neue Datei: das des Edits (#274) oder das aktive.</summary>
     function NewFileProject(const AFileName: string): string;
+    procedure PlanCreateFile(const AOperation: TLspFileOperation);
+    /// <summary>Umbenennen: Inhalt, Kodierung und Projekt wandern zum neuen Namen.</summary>
+    procedure PlanMove(const AOperation: TLspFileOperation);
+    procedure PlanRename(const AOperation: TLspFileOperation);
+    procedure PlanDelete(const AOperation: TLspFileOperation);
     procedure PlanOperation(const AOperation: TLspFileOperation);
+    /// <summary>Änderungen an einer neuen Datei in deren Inhalt; False mit APlan.Error, wenn sie scheitern.
+    /// </summary>
+    function EditCreated(const AFileEdits: TLspFileEdits; var APlan: TAtlasEditPlan): Boolean;
+    /// <summary>Textänderungen je Datei nach AFiles; False mit APlan.Error.</summary>
+    function CollectEdits(const AFiles: TArray<TLspFileEdits>; AList: TList<TAtlasPlannedEdit>;
+      var APlan: TAtlasEditPlan): Boolean;
+    /// <summary>Ersetzte Dateien ohne eigene Textänderungen bekommen einen Eintrag.</summary>
+    procedure AddReplaced(AList: TList<TAtlasPlannedEdit>);
+    /// <summary>Ersetzte Dateien: neuer Inhalt als Basis der Änderungen.</summary>
+    procedure SetBases(AList: TList<TAtlasPlannedEdit>);
     /// <summary>Änderungen an neuen Dateien in deren Inhalt, die übrigen in APlan.Files; ersetzte Dateien ohne
     /// eigene Änderungen bekommen einen Eintrag. False mit APlan.Error, wenn eine Datei gelöscht wird.</summary>
     function PlanTexts(const AFiles: TArray<TLspFileEdits>; var APlan: TAtlasEditPlan): Boolean;
@@ -326,147 +341,189 @@ begin
   end;
 end;
 
-procedure TPlanBuilder.PlanOperation(const AOperation: TLspFileOperation);
+procedure TPlanBuilder.PlanCreateFile(const AOperation: TLspFileOperation);
+begin
+  if not Exists(AOperation.FileName) or MayReplace(AOperation.FileName, AOperation) then
+  begin
+    SetTarget(AOperation.FileName, NewFileProject(AOperation.FileName), Content(AOperation.FileName, ''));
+  end;
+end;
+
+procedure TPlanBuilder.PlanMove(const AOperation: TLspFileOperation);
 var
-  Source: TAtlasTextFileContent;
-  Project: string;
+  mSource: TAtlasTextFileContent;
+  mProject: string;
+begin
+  mSource := ReadCurrent(AOperation.FileName);
+  if FPending.ContainsKey(KeyOf(AOperation.FileName)) then
+  begin
+    mProject := FCreates[FPending[KeyOf(AOperation.FileName)]].Project;
+    DropCreate(AOperation.FileName);
+  end
+  else
+  begin
+    mProject := FEnvironment.ProjectOfFile(AOperation.FileName);
+    AddRemove(AOperation.FileName);
+  end;
+  // Kodierung und Zeilenenden wandern mit (#121); das Projekt bleibt.
+  SetTarget(AOperation.NewFileName, mProject, mSource);
+end;
+
+procedure TPlanBuilder.PlanRename(const AOperation: TLspFileOperation);
+begin
+  if not Exists(AOperation.FileName) then
+  begin
+    raise ELspEditError.Create('Datei nicht gefunden');
+  end;
+  if not SameText(AOperation.FileName, AOperation.NewFileName) and
+    (not Exists(AOperation.NewFileName) or MayReplace(AOperation.NewFileName, AOperation)) then
+  begin
+    PlanMove(AOperation);
+  end;
+end;
+
+procedure TPlanBuilder.PlanDelete(const AOperation: TLspFileOperation);
+begin
+  if FPending.ContainsKey(KeyOf(AOperation.FileName)) then
+  begin
+    DropCreate(AOperation.FileName);
+  end
+  else if FEnvironment.IsDirectory(AOperation.FileName) then
+  begin
+    raise ELspEditError.Create('Ordner löscht Atlas nicht');
+  end
+  else if Exists(AOperation.FileName) then
+  begin
+    AddRemove(AOperation.FileName);
+  end
+  else if not AOperation.IgnoreIfNotExists then
+  begin
+    raise ELspEditError.Create('Datei nicht gefunden');
+  end;
+end;
+
+procedure TPlanBuilder.PlanOperation(const AOperation: TLspFileOperation);
 begin
   case AOperation.Kind of
     TLspFileOperationKind.Create:
-      begin
-        if Exists(AOperation.FileName) and not MayReplace(AOperation.FileName, AOperation) then
-        begin
-          Exit;
-        end;
-        SetTarget(AOperation.FileName, NewFileProject(AOperation.FileName), Content(AOperation.FileName, ''));
-      end;
+      PlanCreateFile(AOperation);
     TLspFileOperationKind.Rename:
-      begin
-        if not Exists(AOperation.FileName) then
-        begin
-          raise ELspEditError.Create('Datei nicht gefunden');
-        end;
-        if SameText(AOperation.FileName, AOperation.NewFileName) then
-        begin
-          Exit;
-        end;
-        if Exists(AOperation.NewFileName) and not MayReplace(AOperation.NewFileName, AOperation) then
-        begin
-          Exit;
-        end;
-        Source := ReadCurrent(AOperation.FileName);
-        if FPending.ContainsKey(KeyOf(AOperation.FileName)) then
-        begin
-          Project := FCreates[FPending[KeyOf(AOperation.FileName)]].Project;
-          DropCreate(AOperation.FileName);
-        end
-        else
-        begin
-          Project := FEnvironment.ProjectOfFile(AOperation.FileName);
-          AddRemove(AOperation.FileName);
-        end;
-        // Kodierung und Zeilenenden wandern mit (#121); das Projekt bleibt.
-        SetTarget(AOperation.NewFileName, Project, Source);
-      end;
+      PlanRename(AOperation);
     TLspFileOperationKind.Delete:
-      begin
-        if FPending.ContainsKey(KeyOf(AOperation.FileName)) then
-        begin
-          DropCreate(AOperation.FileName);
-          Exit;
-        end;
-        if FEnvironment.IsDirectory(AOperation.FileName) then
-        begin
-          raise ELspEditError.Create('Ordner löscht Atlas nicht');
-        end;
-        if not Exists(AOperation.FileName) then
-        begin
-          if AOperation.IgnoreIfNotExists then
-          begin
-            Exit;
-          end;
-          raise ELspEditError.Create('Datei nicht gefunden');
-        end;
-        AddRemove(AOperation.FileName);
-      end;
+      PlanDelete(AOperation);
+  end;
+end;
+
+function TPlanBuilder.EditCreated(const AFileEdits: TLspFileEdits; var APlan: TAtlasEditPlan): Boolean;
+var
+  mIndex: Integer;
+  mPlanned: TAtlasPlannedOperation;
+begin
+  mIndex := FPending[KeyOf(AFileEdits.FileName)];
+  mPlanned := FCreates[mIndex];
+  Result := True;
+  try
+    mPlanned.Content.Text := TLspEdits.Apply(mPlanned.Content.Text, AFileEdits.Edits);
+  except
+    on E: Exception do
+    begin
+      APlan.Error := Failure(AFileEdits.FileName, E.Message);
+      Result := False;
+    end;
+  end;
+  if Result then
+  begin
+    FCreates[mIndex] := mPlanned;
+    Inc(APlan.CreatedEdits, Length(AFileEdits.Edits));
+  end;
+end;
+
+function TPlanBuilder.CollectEdits(const AFiles: TArray<TLspFileEdits>; AList: TList<TAtlasPlannedEdit>;
+  var APlan: TAtlasEditPlan): Boolean;
+var
+  mIndex: Integer;
+  mEntry: TAtlasPlannedEdit;
+begin
+  Result := True;
+  mIndex := 0;
+  while Result and (mIndex <= High(AFiles)) do
+  begin
+    if FGone.ContainsKey(KeyOf(AFiles[mIndex].FileName)) then
+    begin
+      APlan.Error := Failure(AFiles[mIndex].FileName, 'wird gelöscht');
+      Result := False;
+    end
+    else if FPending.ContainsKey(KeyOf(AFiles[mIndex].FileName)) then
+    begin
+      // Neue Datei: Die Änderungen gehen in ihren Inhalt.
+      Result := EditCreated(AFiles[mIndex], APlan);
+    end
+    else
+    begin
+      mEntry := Default(TAtlasPlannedEdit);
+      mEntry.FileName := AFiles[mIndex].FileName;
+      mEntry.Edits := AFiles[mIndex].Edits;
+      AList.Add(mEntry);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+procedure TPlanBuilder.AddReplaced(AList: TList<TAtlasPlannedEdit>);
+var
+  mExisting: TReplacedFile;
+  mEntry: TAtlasPlannedEdit;
+  mListed: Boolean;
+begin
+  for mExisting in FReplaced.Values do
+  begin
+    mListed := False;
+    for mEntry in AList do
+    begin
+      mListed := mListed or SameText(mEntry.FileName, mExisting.FileName);
+    end;
+    if not mListed then
+    begin
+      mEntry := Default(TAtlasPlannedEdit);
+      mEntry.FileName := mExisting.FileName;
+      AList.Add(mEntry);
+    end;
+  end;
+end;
+
+procedure TPlanBuilder.SetBases(AList: TList<TAtlasPlannedEdit>);
+var
+  mIndex: Integer;
+  mEntry: TAtlasPlannedEdit;
+  mReplacement: TReplacedFile;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    mEntry := AList[mIndex];
+    mEntry.HasBase := FReplaced.TryGetValue(KeyOf(mEntry.FileName), mReplacement);
+    if mEntry.HasBase then
+    begin
+      mEntry.Base := mReplacement.Base;
+    end;
+    AList[mIndex] := mEntry;
   end;
 end;
 
 function TPlanBuilder.PlanTexts(const AFiles: TArray<TLspFileEdits>; var APlan: TAtlasEditPlan): Boolean;
 var
-  Files: TList<TAtlasPlannedEdit>;
-  FileEdits: TLspFileEdits;
-  Planned: TAtlasPlannedOperation;
-  Entry: TAtlasPlannedEdit;
-  Existing, Replacement: TReplacedFile;
-  Index: Integer;
-  Listed: Boolean;
+  mFiles: TList<TAtlasPlannedEdit>;
 begin
-  Result := False;
-  Files := TList<TAtlasPlannedEdit>.Create;
+  mFiles := TList<TAtlasPlannedEdit>.Create;
   try
-    for FileEdits in AFiles do
+    Result := CollectEdits(AFiles, mFiles, APlan);
+    if Result then
     begin
-      if FGone.ContainsKey(KeyOf(FileEdits.FileName)) then
-      begin
-        APlan.Error := Failure(FileEdits.FileName, 'wird gelöscht');
-        Exit;
-      end;
-      if FPending.ContainsKey(KeyOf(FileEdits.FileName)) then
-      begin
-        // Neue Datei: Die Änderungen gehen in ihren Inhalt.
-        Index := FPending[KeyOf(FileEdits.FileName)];
-        Planned := FCreates[Index];
-        try
-          Planned.Content.Text := TLspEdits.Apply(Planned.Content.Text, FileEdits.Edits);
-        except
-          on E: Exception do
-          begin
-            APlan.Error := Failure(FileEdits.FileName, E.Message);
-            Exit;
-          end;
-        end;
-        FCreates[Index] := Planned;
-        Inc(APlan.CreatedEdits, Length(FileEdits.Edits));
-        Continue;
-      end;
-      Entry := Default(TAtlasPlannedEdit);
-      Entry.FileName := FileEdits.FileName;
-      Entry.Edits := FileEdits.Edits;
-      Files.Add(Entry);
+      AddReplaced(mFiles);
+      SetBases(mFiles);
+      APlan.Files := mFiles.ToArray;
     end;
-    // Ersetzte Dateien ohne eigene Textänderungen bekommen den neuen Inhalt ebenso.
-    for Existing in FReplaced.Values do
-    begin
-      Listed := False;
-      for Entry in Files do
-      begin
-        if SameText(Entry.FileName, Existing.FileName) then
-        begin
-          Listed := True;
-        end;
-      end;
-      if not Listed then
-      begin
-        Entry := Default(TAtlasPlannedEdit);
-        Entry.FileName := Existing.FileName;
-        Files.Add(Entry);
-      end;
-    end;
-    for Index := 0 to Files.Count - 1 do
-    begin
-      Entry := Files[Index];
-      Entry.HasBase := FReplaced.TryGetValue(KeyOf(Entry.FileName), Replacement);
-      if Entry.HasBase then
-      begin
-        Entry.Base := Replacement.Base;
-      end;
-      Files[Index] := Entry;
-    end;
-    APlan.Files := Files.ToArray;
-    Result := True;
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 

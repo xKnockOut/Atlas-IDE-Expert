@@ -124,6 +124,207 @@ begin
     IsIdentifier(AName);
 end;
 
+type
+  /// <summary>Zustand von Diff: beide Zeilenlisten, Stapel der offenen Objekte und das Ergebnis.</summary>
+  TFormDiff = record
+    OldLines: TArray<string>;
+    NewLines: TArray<string>;
+    Stack: TArray<string>;
+    OldIndex: Integer;
+    NewIndex: Integer;
+    Changes: TArray<TAtlasFormEventChange>;
+    Properties: TArray<TAtlasFormPropertyChange>;
+    Reason: string;
+    procedure Track(const ALine: string);
+    /// <summary>Innerhalb eines Objekts, nicht in einem Kollektionseintrag.</summary>
+    function InObject: Boolean;
+    function Component: string;
+    function Fail(ALine: Integer; const AText: string): Boolean;
+    function NewProperty(const AName, AValue: string; ARemoved: Boolean; ALine: Integer): TAtlasFormPropertyChange;
+    function BothLeft: Boolean;
+    function SameLine: Boolean;
+    /// <summary>Gleiche Eigenschaft, anderer Wert; AOk False, wenn die Änderung nicht geht.</summary>
+    function ChangedLine(out AOk: Boolean): Boolean;
+    function TakeChange(const AName, AOldValue, ANewValue: string): Boolean;
+    /// <summary>Eingefügte Eigenschaft: danach geht es mit der alten Zeile weiter.</summary>
+    function InsertedLine: Boolean;
+    /// <summary>Entfernte Eigenschaft: zurück zum Vorgabewert.</summary>
+    function RemovedLine: Boolean;
+    function Step: Boolean;
+    function Run: Boolean;
+  end;
+
+procedure TFormDiff.Track(const ALine: string);
+var
+  mName, mTrimmed: string;
+  mIsObject: Boolean;
+begin
+  mName := TAtlasFormChanges.ObjectName(ALine, mIsObject);
+  mTrimmed := Trim(ALine);
+  if mIsObject then
+  begin
+    Stack := Stack + [mName];
+  end
+  else if SameText(mTrimmed, 'item') then
+  begin
+    Stack := Stack + [''];
+  end
+  // Das letzte Element einer Kollektion endet mit "end>".
+  else if (SameText(mTrimmed, 'end') or SameText(mTrimmed, 'end>')) and (Length(Stack) > 0) then
+  begin
+    SetLength(Stack, Length(Stack) - 1);
+  end;
+end;
+
+function TFormDiff.InObject: Boolean;
+begin
+  Result := (Length(Stack) > 0) and ((Length(Stack) = 1) or (Stack[High(Stack)] <> ''));
+end;
+
+function TFormDiff.Component: string;
+begin
+  // Die oberste Ebene ist das Formular selbst.
+  Result := '';
+  if Length(Stack) > 1 then
+  begin
+    Result := Stack[High(Stack)];
+  end;
+end;
+
+function TFormDiff.Fail(ALine: Integer; const AText: string): Boolean;
+begin
+  Changes := nil;
+  Properties := nil;
+  Reason := Format('Zeile %d: %s', [ALine, Trim(AText)]);
+  Result := False;
+end;
+
+function TFormDiff.NewProperty(const AName, AValue: string; ARemoved: Boolean;
+  ALine: Integer): TAtlasFormPropertyChange;
+begin
+  Result.Component := Component;
+  Result.PropertyPath := AName;
+  Result.Value := AValue;
+  Result.Removed := ARemoved;
+  Result.Line := ALine;
+end;
+
+function TFormDiff.BothLeft: Boolean;
+begin
+  Result := (OldIndex <= High(OldLines)) and (NewIndex <= High(NewLines));
+end;
+
+function TFormDiff.SameLine: Boolean;
+begin
+  Result := BothLeft and (OldLines[OldIndex] = NewLines[NewIndex]);
+  if Result then
+  begin
+    Track(OldLines[OldIndex]);
+    Inc(OldIndex);
+    Inc(NewIndex);
+  end;
+end;
+
+function TFormDiff.TakeChange(const AName, AOldValue, ANewValue: string): Boolean;
+var
+  mChange: TAtlasFormEventChange;
+begin
+  Result := InObject;
+  if not Result then
+  begin
+    Exit;
+  end;
+  if IsEventName(AName) then
+  begin
+    Result := IsIdentifier(AOldValue) and IsIdentifier(ANewValue);
+    mChange.Component := Component;
+    mChange.EventName := AName;
+    mChange.OldHandler := AOldValue;
+    mChange.NewHandler := ANewValue;
+    Changes := Changes + [mChange];
+  end
+  else
+  begin
+    Properties := Properties + [NewProperty(AName, ANewValue, False, OldIndex + 1)];
+  end;
+end;
+
+function TFormDiff.ChangedLine(out AOk: Boolean): Boolean;
+var
+  mOldName, mOldValue, mNewName, mNewValue: string;
+begin
+  AOk := True;
+  Result := BothLeft and PropertyLine(OldLines[OldIndex], mOldName, mOldValue) and
+    PropertyLine(NewLines[NewIndex], mNewName, mNewValue) and (mOldName = mNewName);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AOk := TakeChange(mOldName, mOldValue, mNewValue);
+  if AOk then
+  begin
+    Inc(OldIndex);
+    Inc(NewIndex);
+  end
+  else
+  begin
+    Fail(OldIndex + 1, OldLines[OldIndex]);
+  end;
+end;
+
+function TFormDiff.InsertedLine: Boolean;
+var
+  mName, mValue: string;
+begin
+  Result := (NewIndex < High(NewLines)) and (OldIndex <= High(OldLines)) and
+    SameKey(NewLines[NewIndex + 1], OldLines[OldIndex]) and PropertyLine(NewLines[NewIndex], mName, mValue);
+  Result := Result and not IsEventName(mName) and InObject;
+  if Result then
+  begin
+    Properties := Properties + [NewProperty(mName, mValue, False, OldIndex + 1)];
+    Inc(NewIndex);
+  end;
+end;
+
+function TFormDiff.RemovedLine: Boolean;
+var
+  mName, mValue: string;
+begin
+  Result := (OldIndex < High(OldLines)) and (NewIndex <= High(NewLines)) and
+    SameKey(OldLines[OldIndex + 1], NewLines[NewIndex]) and PropertyLine(OldLines[OldIndex], mName, mValue);
+  Result := Result and not IsEventName(mName) and InObject;
+  if Result then
+  begin
+    Properties := Properties + [NewProperty(mName, '', True, OldIndex + 1)];
+    Inc(OldIndex);
+  end;
+end;
+
+function TFormDiff.Step: Boolean;
+begin
+  Result := True;
+  if not (SameLine or ChangedLine(Result) or InsertedLine or RemovedLine) then
+  begin
+    if OldIndex <= High(OldLines) then
+    begin
+      Result := Fail(OldIndex + 1, OldLines[OldIndex]);
+    end
+    else
+    begin
+      Result := Fail(OldIndex + 1, NewLines[NewIndex]);
+    end;
+  end;
+end;
+
+function TFormDiff.Run: Boolean;
+begin
+  Result := True;
+  while Result and ((OldIndex <= High(OldLines)) or (NewIndex <= High(NewLines))) do
+  begin
+    Result := Step;
+  end;
+end;
+
 class function TAtlasFormChanges.ObjectName(const ALine: string; out AIsObject: Boolean): string;
 var
   Line, Keyword: string;
@@ -149,60 +350,72 @@ begin
   end;
 end;
 
+/// <summary>'…' ab AIndex (auf dem Anführungszeichen) an AText hängen; '' steht für eines.</summary>
+procedure TakeQuoted(const AValue: string; var AIndex: Integer; var AText: string);
+begin
+  Inc(AIndex);
+  while AIndex <= Length(AValue) do
+  begin
+    if AValue[AIndex] <> '''' then
+    begin
+      AText := AText + AValue[AIndex];
+      Inc(AIndex);
+    end
+    else if (AIndex < Length(AValue)) and (AValue[AIndex + 1] = '''') then
+    begin
+      AText := AText + '''';
+      Inc(AIndex, 2);
+    end
+    else
+    begin
+      Inc(AIndex);
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>#Zahl ab AIndex (auf dem #) an AText hängen; False ohne Zahl.</summary>
+function TakeCharCode(const AValue: string; var AIndex: Integer; var AText: string): Boolean;
+var
+  Start, Code: Integer;
+begin
+  Inc(AIndex);
+  Start := AIndex;
+  while (AIndex <= Length(AValue)) and CharInSet(AValue[AIndex], ['0'..'9']) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := TryStrToInt(Copy(AValue, Start, AIndex - Start), Code);
+  if Result then
+  begin
+    AText := AText + Char(Code);
+  end;
+end;
+
 class function TAtlasFormChanges.StringValue(const AValue: string; out AText: string): Boolean;
 var
-  Index, Start, Code: Integer;
+  Index: Integer;
   Value: string;
 begin
   AText := '';
   Value := Trim(AValue);
   Result := (Value <> '') and CharInSet(Value[1], ['''', '#']);
-  if not Result then
-  begin
-    Exit;
-  end;
   Index := 1;
-  while Index <= Length(Value) do
+  while Result and (Index <= Length(Value)) do
     case Value[Index] of
       '''':
-        begin
-          Inc(Index);
-          while Index <= Length(Value) do
-          begin
-            if Value[Index] = '''' then
-            begin
-              if (Index < Length(Value)) and (Value[Index + 1] = '''') then
-              begin
-                AText := AText + '''';
-                Inc(Index, 2);
-                Continue;
-              end;
-              Inc(Index);
-              Break;
-            end;
-            AText := AText + Value[Index];
-            Inc(Index);
-          end;
-        end;
+        TakeQuoted(Value, Index, AText);
       '#':
-        begin
-          Inc(Index);
-          Start := Index;
-          while (Index <= Length(Value)) and CharInSet(Value[Index], ['0'..'9']) do
-          begin
-            Inc(Index);
-          end;
-          if not TryStrToInt(Copy(Value, Start, Index - Start), Code) then
-          begin
-            Exit(False);
-          end;
-          AText := AText + Char(Code);
-        end;
+        Result := TakeCharCode(Value, Index, AText);
       ' ', '+', #13, #10, #9:
         Inc(Index);
     else
-      Exit(False);
+      Result := False;
     end;
+  if not Result then
+  begin
+    AText := '';
+  end;
 end;
 
 class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
@@ -222,141 +435,15 @@ end;
 class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
   out AProperties: TArray<TAtlasFormPropertyChange>; out AReason: string): Boolean;
 var
-  OldLines, NewLines, Stack: TArray<string>;
-  OldIndex, NewIndex: Integer;
-  OldName, OldValue, NewName, NewValue: string;
-  Change: TAtlasFormEventChange;
-  Prop: TAtlasFormPropertyChange;
-
-  procedure Track(const ALine: string);
-  var
-    Name, Trimmed: string;
-    IsObject: Boolean;
-  begin
-    Name := ObjectName(ALine, IsObject);
-    Trimmed := Trim(ALine);
-    if IsObject then
-    begin
-      Stack := Stack + [Name];
-    end
-    else if SameText(Trimmed, 'item') then
-    begin
-      Stack := Stack + [''];
-    end
-    // Das letzte Element einer Kollektion endet mit "end>".
-    else if (SameText(Trimmed, 'end') or SameText(Trimmed, 'end>')) and (Length(Stack) > 0) then
-    begin
-      SetLength(Stack, Length(Stack) - 1);
-    end;
-  end;
-
-  /// <summary>Innerhalb eines Objekts, nicht in einem Kollektionseintrag.</summary>
-  function InObject: Boolean;
-  begin
-    Result := (Length(Stack) > 0) and ((Length(Stack) = 1) or (Stack[High(Stack)] <> ''));
-  end;
-
-  function Component: string;
-  begin
-    // Die oberste Ebene ist das Formular selbst.
-    Result := '';
-    if Length(Stack) > 1 then
-    begin
-      Result := Stack[High(Stack)];
-    end;
-  end;
-
-  function Fail(ALine: Integer; const AText: string): Boolean;
-  begin
-    AChanges := nil;
-    AProperties := nil;
-    AReason := Format('Zeile %d: %s', [ALine, Trim(AText)]);
-    Result := False;
-  end;
-
-  function NewProperty(const AName, AValue: string; ARemoved: Boolean; ALine: Integer): TAtlasFormPropertyChange;
-  begin
-    Result.Component := Component;
-    Result.PropertyPath := AName;
-    Result.Value := AValue;
-    Result.Removed := ARemoved;
-    Result.Line := ALine;
-  end;
-
+  mDiff: TFormDiff;
 begin
-  AChanges := nil;
-  AProperties := nil;
-  AReason := '';
-  OldLines := TTextLines.SplitLines(AOld);
-  NewLines := TTextLines.SplitLines(ANew);
-  Stack := nil;
-  OldIndex := 0;
-  NewIndex := 0;
-  while (OldIndex <= High(OldLines)) or (NewIndex <= High(NewLines)) do
-  begin
-    if (OldIndex <= High(OldLines)) and (NewIndex <= High(NewLines)) and
-      (OldLines[OldIndex] = NewLines[NewIndex]) then
-    begin
-      Track(OldLines[OldIndex]);
-      Inc(OldIndex);
-      Inc(NewIndex);
-      Continue;
-    end;
-    // Geänderte Zeile: gleiche Eigenschaft, anderer Wert.
-    if (OldIndex <= High(OldLines)) and (NewIndex <= High(NewLines)) and
-      PropertyLine(OldLines[OldIndex], OldName, OldValue) and PropertyLine(NewLines[NewIndex], NewName, NewValue) and
-      (OldName = NewName) then
-    begin
-      if not InObject then
-      begin
-        Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
-      end;
-      if IsEventName(OldName) then
-      begin
-        if not IsIdentifier(OldValue) or not IsIdentifier(NewValue) then
-        begin
-          Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
-        end;
-        Change.Component := Component;
-        Change.EventName := OldName;
-        Change.OldHandler := OldValue;
-        Change.NewHandler := NewValue;
-        AChanges := AChanges + [Change];
-      end
-      else
-      begin
-        AProperties := AProperties + [NewProperty(NewName, NewValue, False, OldIndex + 1)];
-      end;
-      Inc(OldIndex);
-      Inc(NewIndex);
-      Continue;
-    end;
-    // Eingefügte Eigenschaft: danach geht es mit der alten Zeile weiter.
-    if (NewIndex < High(NewLines)) and (OldIndex <= High(OldLines)) and
-      SameKey(NewLines[NewIndex + 1], OldLines[OldIndex]) and PropertyLine(NewLines[NewIndex], NewName, NewValue) and
-      not IsEventName(NewName) and InObject then
-    begin
-      AProperties := AProperties + [NewProperty(NewName, NewValue, False, OldIndex + 1)];
-      Inc(NewIndex);
-      Continue;
-    end;
-    // Entfernte Eigenschaft: zurück zum Vorgabewert.
-    if (OldIndex < High(OldLines)) and (NewIndex <= High(NewLines)) and
-      SameKey(OldLines[OldIndex + 1], NewLines[NewIndex]) and PropertyLine(OldLines[OldIndex], OldName, OldValue) and
-      not IsEventName(OldName) and InObject then
-    begin
-      Prop := NewProperty(OldName, '', True, OldIndex + 1);
-      AProperties := AProperties + [Prop];
-      Inc(OldIndex);
-      Continue;
-    end;
-    if OldIndex <= High(OldLines) then
-    begin
-      Exit(Fail(OldIndex + 1, OldLines[OldIndex]));
-    end;
-    Exit(Fail(OldIndex + 1, NewLines[NewIndex]));
-  end;
-  Result := True;
+  mDiff := Default(TFormDiff);
+  mDiff.OldLines := TTextLines.SplitLines(AOld);
+  mDiff.NewLines := TTextLines.SplitLines(ANew);
+  Result := mDiff.Run;
+  AChanges := mDiff.Changes;
+  AProperties := mDiff.Properties;
+  AReason := mDiff.Reason;
 end;
 
 end.

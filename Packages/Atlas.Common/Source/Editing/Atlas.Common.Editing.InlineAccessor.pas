@@ -107,12 +107,6 @@ begin
   Result.EqualityCheck := True;
 end;
 
-function Fail(out AReason: string; const AMessage: string): Boolean;
-begin
-  AReason := AMessage;
-  Result := False;
-end;
-
 function StripGenerics(const AName: string): string;
 begin
   Result := Trim(AName);
@@ -193,83 +187,120 @@ begin
   end;
 end;
 
-/// <summary>Feld, das der Setter-Rumpf setzt; '' wenn er mehr tut.</summary>
-function SetterField(ABody: TSyntaxNode; AEqualityCheck: Boolean): string;
+/// <summary>Name des einzigen Parameters im Kopf AHeader; False bei anderer Zahl.</summary>
+function SingleParameter(AHeader: TSyntaxNode; out AParam: string): Boolean;
 var
-  Block, Header, Parameters, Statement, Condition, Inner: TSyntaxNode;
-  Param, Left, Right: string;
+  mParameters: TSyntaxNode;
+begin
+  AParam := '';
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  Result := (mParameters <> nil) and (mParameters.ChildCount = 1);
+  if Result then
+  begin
+    AParam := mParameters[0].Name;
+  end;
+end;
+
+/// <summary>Vergleicht ACondition (A &lt;&gt; B) das Feld AField mit dem Parameter AParam?</summary>
+function ComparesWith(ACondition: TSyntaxNode; const AField, AParam: string): Boolean;
+var
+  mLeft, mRight: string;
+begin
+  mLeft := FieldRef(ACondition[0]);
+  mRight := FieldRef(ACondition[1]);
+  Result := (SameText(mLeft, AField) and SameText(mRight, AParam)) or
+    (SameText(mLeft, AParam) and SameText(mRight, AField));
+end;
+
+/// <summary>Feld aus "if FX &lt;&gt; AParam then FX := AParam"; '' sonst.</summary>
+function GuardedField(AStatement: TSyntaxNode; const AParam: string): string;
+var
+  mCondition, mInner: TSyntaxNode;
 begin
   Result := '';
-  Block := BodyBlock(ABody);
-  if (Block = nil) or (Block.ChildCount <> 1) then
+  if (AStatement.Kind <> TSyntaxKind.IfStatement) or (AStatement.ChildCount <> 2) then
   begin
     Exit;
   end;
-  Header := ABody[0];
-  Parameters := Header.FindChild(TSyntaxKind.Parameters);
-  if (Parameters = nil) or (Parameters.ChildCount <> 1) then
+  mCondition := AStatement[0];
+  if (mCondition.Kind <> TSyntaxKind.BinaryExpr) or (mCondition.Name <> '<>') or (mCondition.ChildCount <> 2) then
   begin
     Exit;
   end;
-  // Der Rumpf darf den Parameter anders nennen als die Deklaration.
-  Param := Parameters[0].Name;
-  Statement := Block[0];
-  if Statement.Kind = TSyntaxKind.AssignStatement then
+  mInner := AStatement[1];
+  if (mInner.Kind = TSyntaxKind.Block) and (mInner.ChildCount = 1) then
   begin
-    Exit(AssignedField(Statement, Param));
+    mInner := mInner[0];
   end;
-  if not AEqualityCheck or (Statement.Kind <> TSyntaxKind.IfStatement) or (Statement.ChildCount <> 2) then
-  begin
-    Exit;
-  end;
-  Condition := Statement[0];
-  if (Condition.Kind <> TSyntaxKind.BinaryExpr) or (Condition.Name <> '<>') or (Condition.ChildCount <> 2) then
-  begin
-    Exit;
-  end;
-  Inner := Statement[1];
-  if (Inner.Kind = TSyntaxKind.Block) and (Inner.ChildCount = 1) then
-  begin
-    Inner := Inner[0];
-  end;
-  Result := AssignedField(Inner, Param);
-  if Result = '' then
-  begin
-    Exit;
-  end;
-  Left := FieldRef(Condition[0]);
-  Right := FieldRef(Condition[1]);
-  if not ((SameText(Left, Result) and SameText(Right, Param)) or (SameText(Left, Param) and
-    SameText(Right, Result))) then
+  Result := AssignedField(mInner, AParam);
+  if (Result <> '') and not ComparesWith(mCondition, Result, AParam) then
   begin
     Result := '';
   end;
 end;
 
+/// <summary>Feld, das der Setter-Rumpf setzt; '' wenn er mehr tut.</summary>
+function SetterField(ABody: TSyntaxNode; AEqualityCheck: Boolean): string;
+var
+  mBlock, mStatement: TSyntaxNode;
+  mParam: string;
+begin
+  Result := '';
+  mBlock := BodyBlock(ABody);
+  // Der Rumpf darf den Parameter anders nennen als die Deklaration.
+  if (mBlock = nil) or (mBlock.ChildCount <> 1) or not SingleParameter(ABody[0], mParam) then
+  begin
+    Exit;
+  end;
+  mStatement := mBlock[0];
+  if mStatement.Kind = TSyntaxKind.AssignStatement then
+  begin
+    Result := AssignedField(mStatement, mParam);
+  end
+  else if AEqualityCheck then
+  begin
+    Result := GuardedField(mStatement, mParam);
+  end;
+end;
+
+/// <summary>Enden die Tokens ASignificant bis ALast mit "Name.Name"?</summary>
+function EndsQualifiedName(const ATokens: TArray<TPascalToken>; const ASignificant: TArray<Integer>;
+  ALast: Integer): Boolean;
+begin
+  Result := (ATokens[ASignificant[ALast]].Kind = TPascalTokenKind.Identifier) and
+    ATokens[ASignificant[ALast - 1]].IsSymbol('.') and
+    (ATokens[ASignificant[ALast - 2]].Kind = TPascalTokenKind.Identifier);
+end;
+
+/// <summary>Steht an APos "= AMethod" hinter "IFoo.Bar"?</summary>
+function ResolvesTo(const ATokens: TArray<TPascalToken>; const ASignificant: TArray<Integer>; APos: Integer;
+  const AMethod: string): Boolean;
+begin
+  Result := ATokens[ASignificant[APos]].IsSymbol('=') and (APos + 1 <= High(ASignificant)) and
+    SameText(ATokens[ASignificant[APos + 1]].Text, AMethod) and EndsQualifiedName(ATokens, ASignificant, APos - 1);
+end;
+
 /// <summary>Methodenzuordnung "IFoo.Bar = AMethod;" in der Klasse?</summary>
 function HasResolution(ALayout: TClassLayout; const AMethod: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Next: Integer;
-  Significant: TArray<Integer>;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mNext: Integer;
+  mSignificant: TArray<Integer>;
 begin
-  Tokens := ALayout.Tree.Tokens;
-  Significant := nil;
-  Index := TokenIndexAt(Tokens, ALayout.ClassNode.StartOffset);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < ALayout.ClassNode.EndOffset) do
+  mTokens := ALayout.Tree.Tokens;
+  mSignificant := nil;
+  mIndex := TokenIndexAt(mTokens, ALayout.ClassNode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ALayout.ClassNode.EndOffset) do
   begin
-    if not IsTrivia(Tokens[Index]) then
+    if not IsTrivia(mTokens[mIndex]) then
     begin
-      Significant := Significant + [Index];
+      mSignificant := mSignificant + [mIndex];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  for Next := 4 to High(Significant) do
+  for mNext := 4 to High(mSignificant) do
   begin
-    if Tokens[Significant[Next]].IsSymbol('=') and (Next + 1 <= High(Significant)) and
-      SameText(Tokens[Significant[Next + 1]].Text, AMethod) and Tokens[Significant[Next - 2]].IsSymbol('.') and
-      (Tokens[Significant[Next - 1]].Kind = TPascalTokenKind.Identifier) and
-      (Tokens[Significant[Next - 3]].Kind = TPascalTokenKind.Identifier) then
+    if ResolvesTo(mTokens, mSignificant, mNext, AMethod) then
     begin
       Exit(True);
     end;
@@ -349,182 +380,296 @@ begin
   Result := TInterfaceAnswer.No;
 end;
 
+/// <summary>Properties, die AName als read- bzw. write-Methode nennen; AReads und AWrites zählen sie.</summary>
+function AccessingProperties(ALayout: TClassLayout; const AName: string; out AReads, AWrites: Integer):
+  TArray<Integer>;
+var
+  mIndex: Integer;
+  mProp: TClassMember;
+begin
+  Result := nil;
+  AReads := 0;
+  AWrites := 0;
+  for mIndex := 0 to High(ALayout.Members) do
+  begin
+    mProp := ALayout.Members[mIndex];
+    if mProp.Kind <> TClassMemberKind.Property_ then
+    begin
+      Continue;
+    end;
+    if SameText(mProp.ReadAccessor, AName) then
+    begin
+      Inc(AReads);
+      Result := Result + [mIndex];
+    end
+    else if SameText(mProp.WriteAccessor, AName) then
+    begin
+      Inc(AWrites);
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Warum die Methode AMember keine einfache Zugriffsmethode sein kann (ABoth: Properties lesen und
+/// schreiben über sie); '' wenn nichts dagegen spricht.</summary>
+function MethodIssue(ALayout: TClassLayout; const AMember: TClassMember; ABoth: Boolean): string;
+begin
+  Result := '';
+  if ABoth then
+  begin
+    Result := Format('%s ist zugleich Getter und Setter.', [AMember.Name]);
+  end
+  else if AMember.Kind <> TClassMemberKind.Method then
+  begin
+    Result := Format('%s ist keine gewöhnliche Methode.', [AMember.Name]);
+  end
+  else if AMember.IsVirtual or AMember.HasDirective('message') then
+  begin
+    Result := Format('%s ist virtuell (virtual, dynamic, override oder abstract).', [AMember.Name]);
+  end
+  else if AMember.IsClassMember then
+  begin
+    Result := Format('%s ist eine class-Methode.', [AMember.Name]);
+  end
+  else if AMember.IsGeneric or (Length(ALayout.Find(AMember.Name)) > 1) then
+  begin
+    Result := Format('%s ist überladen oder generisch.', [AMember.Name]);
+  end;
+end;
+
+/// <summary>Warum die Property AProp nicht direkt auf ein Feld zeigen kann; '' wenn nichts dagegen spricht.
+/// </summary>
+function PropertyIssue(const AProp: TClassMember; const AMethod: string): string;
+begin
+  Result := '';
+  if AProp.IndexSpecifier <> '' then
+  begin
+    Result := Format('Property %s hat einen index; %s braucht ihn als Parameter.', [AProp.Name, AMethod]);
+  end
+  else if (AProp.Parameters <> '') or AProp.IsClassMember or AProp.IsRedeclaration then
+  begin
+    Result := Format('Property %s ist eine Array-, class- oder umdeklarierte Property.', [AProp.Name]);
+  end
+  else if SameText(AProp.StoredSpecifier, AMethod) then
+  begin
+    Result := Format('Property %s nennt %s auch bei stored.', [AProp.Name, AMethod]);
+  end;
+end;
+
+/// <summary>Prüft die Properties AProperties zur Methode AMethod; AType ist ihr gemeinsamer Typ.</summary>
+function PropertiesIssue(ALayout: TClassLayout; const AProperties: TArray<Integer>; const AMethod: string;
+  out AType: string): string;
+var
+  mIndex: Integer;
+  mProp: TClassMember;
+begin
+  AType := '';
+  for mIndex in AProperties do
+  begin
+    mProp := ALayout.Members[mIndex];
+    Result := PropertyIssue(mProp, AMethod);
+    if (Result = '') and (AType <> '') and not SameType(AType, mProp.TypeName) then
+    begin
+      Result := Format('Die Properties zu %s haben verschiedene Typen.', [AMethod]);
+    end;
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+    AType := mProp.TypeName;
+  end;
+  Result := '';
+end;
+
+/// <summary>Passt die Signatur von AMember als Getter bzw. Setter zum Property-Typ AType?</summary>
+function SignatureIssue(const AMember: TClassMember; AIsGetter: Boolean; const AType: string): string;
+begin
+  Result := '';
+  if AIsGetter then
+  begin
+    if not AMember.IsFunction or (AMember.Parameters <> '') or not SameType(AMember.TypeName, AType) then
+    begin
+      Result := Format('%s passt nicht als Getter zur Property.', [AMember.Name]);
+    end;
+  end
+  else if AMember.IsFunction or (Length(AMember.ParameterTypes) <> 1) or
+    not SameType(AMember.ParameterTypes[0], AType) or StartsText('var ', AMember.Parameters) or
+    StartsText('out ', AMember.Parameters) then
+  begin
+    Result := Format('%s passt nicht als Setter zur Property.', [AMember.Name]);
+  end;
+end;
+
+/// <summary>Ist AMember ein Feld der Instanz?</summary>
+function IsInstanceField(const AMember: TClassMember): Boolean;
+begin
+  Result := (AMember.Kind = TClassMemberKind.Field) and not AMember.IsClassMember;
+end;
+
+/// <summary>Prüft das Feld AField, das der Rumpf von AMember liest bzw. setzt; AFieldName ist dann sein deklarierter
+/// Name.</summary>
+function FieldIssue(ALayout: TClassLayout; const AMember: TClassMember; const AField, AType: string;
+  out AFieldName: string): string;
+var
+  mFields: TArray<Integer>;
+begin
+  Result := '';
+  AFieldName := '';
+  if AMember.Body = nil then
+  begin
+    Result := Format('Der Rumpf von %s steht nicht in dieser Unit.', [AMember.Name]);
+  end
+  else if AField = '' then
+  begin
+    Result := Format('%s tut mehr, als ein Feld zu lesen bzw. zu setzen.', [AMember.Name]);
+  end
+  else
+  begin
+    mFields := ALayout.Find(AField);
+    if (Length(mFields) <> 1) or not IsInstanceField(ALayout.Members[mFields[0]]) then
+    begin
+      Result := Format('%s ist kein Feld von %s.', [AField, ALayout.Name]);
+    end
+    else if not SameType(ALayout.Members[mFields[0]].TypeName, AType) then
+    begin
+      Result := Format('%s hat einen anderen Typ als die Property.', [AField]);
+    end
+    else
+    begin
+      AFieldName := ALayout.Members[mFields[0]].Name;
+    end;
+  end;
+end;
+
+/// <summary>Verbietet der Vorfahr AIndex der Klasse, AMethod zu entfernen (Methode eines Interfaces)?</summary>
+function AncestorIssue(ALayout: TClassLayout; AIndex: Integer; const AMethod: string;
+  const AInterfaces: TInterfaceDeclares): string;
+var
+  mAnswer: TInterfaceAnswer;
+begin
+  Result := '';
+  mAnswer := TInlineAccessor.LocalInterfaceDeclares(ALayout.Tree, ALayout.Ancestors[AIndex], AMethod);
+  if (mAnswer = TInterfaceAnswer.Unknown) and Assigned(AInterfaces) then
+  begin
+    mAnswer := AInterfaces(ALayout.Ancestors[AIndex], AMethod);
+  end;
+  if mAnswer = TInterfaceAnswer.Yes then
+  begin
+    Result := Format('%s implementiert eine Methode von %s.', [AMethod, ALayout.Ancestors[AIndex]]);
+  end
+  // Nur der erste Eintrag kann eine Klasse sein; ein unbekanntes Interface schließt aus.
+  else if (mAnswer = TInterfaceAnswer.Unknown) and (AIndex > 0) then
+  begin
+    Result := Format('Ob %s eine Methode von %s implementiert, ist unbekannt.', [AMethod,
+      ALayout.Ancestors[AIndex]]);
+  end;
+end;
+
+/// <summary>Methoden eines Interfaces der Klasse müssen bleiben.</summary>
+function InterfaceIssue(ALayout: TClassLayout; const AMethod: string; const AInterfaces: TInterfaceDeclares):
+  string;
+var
+  mIndex: Integer;
+begin
+  if HasResolution(ALayout, AMethod) then
+  begin
+    Exit(Format('%s ist einer Interface-Methode zugeordnet.', [AMethod]));
+  end;
+  for mIndex := 0 to High(ALayout.Ancestors) do
+  begin
+    Result := AncestorIssue(ALayout, mIndex, AMethod, AInterfaces);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Benutzt die Klasse AMember außer in seinen Properties AProperties?</summary>
+function UserIssue(ALayout: TClassLayout; AMember: Integer; const AProperties: TArray<Integer>): string;
+var
+  mUser: Integer;
+begin
+  for mUser in ALayout.UsersOf(AMember) do
+  begin
+    if not TMemberTransfer.Has(AProperties, mUser) then
+    begin
+      Exit(Format('%s wird in der Klasse benutzt (%s).', [ALayout.Members[AMember].Name,
+        ALayout.Members[mUser].Name]));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Feld, das der Rumpf von AMember liest (Getter) bzw. setzt (Setter); '' wenn er mehr tut.</summary>
+function AccessedField(const AMember: TClassMember; AIsGetter, AEqualityCheck: Boolean): string;
+begin
+  if AIsGetter then
+  begin
+    Result := GetterField(AMember.Body, AMember.Name);
+  end
+  else
+  begin
+    Result := SetterField(AMember.Body, AEqualityCheck);
+  end;
+end;
+
 class function TInlineAccessor.Check(ALayout: TClassLayout; AMember: Integer;
   const AOptions: TInlineAccessorOptions; const AInterfaces: TInterfaceDeclares; out AAccessor: TTrivialAccessor;
   out AReason: string): Boolean;
 var
-  Member, Prop, FieldMember: TClassMember;
-  Index, Reads, Writes: Integer;
-  PropertyType, Field: string;
-  Fields: TArray<Integer>;
-  Answer: TInterfaceAnswer;
-  Users: TArray<Integer>;
-  User: Integer;
+  mMember: TClassMember;
+  mReads, mWrites: Integer;
+  mType: string;
 begin
-  Result := False;
   AReason := '';
   AAccessor := Default(TTrivialAccessor);
-  Member := ALayout.Members[AMember];
-  if not Member.IsMethod then
+  mMember := ALayout.Members[AMember];
+  if not mMember.IsMethod then
   begin
-    Exit;
+    Exit(False);
   end;
   AAccessor.ClassName := ALayout.Name;
   AAccessor.Member := AMember;
-  AAccessor.Name := Member.Name;
-  Reads := 0;
-  Writes := 0;
-  for Index := 0 to High(ALayout.Members) do
-  begin
-    Prop := ALayout.Members[Index];
-    if Prop.Kind <> TClassMemberKind.Property_ then
-    begin
-      Continue;
-    end;
-    if SameText(Prop.ReadAccessor, Member.Name) then
-    begin
-      Inc(Reads);
-    end
-    else if SameText(Prop.WriteAccessor, Member.Name) then
-    begin
-      Inc(Writes);
-    end
-    else
-    begin
-      Continue;
-    end;
-    AAccessor.Properties := AAccessor.Properties + [Index];
-  end;
+  AAccessor.Name := mMember.Name;
+  AAccessor.Properties := AccessingProperties(ALayout, mMember.Name, mReads, mWrites);
   if AAccessor.Properties = nil then
   begin
-    Exit;
+    Exit(False);
   end;
-  AAccessor.IsGetter := Reads > 0;
-  if (Reads > 0) and (Writes > 0) then
+  AAccessor.IsGetter := mReads > 0;
+  AReason := MethodIssue(ALayout, mMember, (mReads > 0) and (mWrites > 0));
+  if AReason = '' then
   begin
-    Exit(Fail(AReason, Format('%s ist zugleich Getter und Setter.', [Member.Name])));
+    AReason := PropertiesIssue(ALayout, AAccessor.Properties, mMember.Name, mType);
   end;
-  if Member.Kind <> TClassMemberKind.Method then
+  if AReason = '' then
   begin
-    Exit(Fail(AReason, Format('%s ist keine gewöhnliche Methode.', [Member.Name])));
+    AReason := SignatureIssue(mMember, AAccessor.IsGetter, mType);
   end;
-  if Member.IsVirtual or Member.HasDirective('message') then
+  if AReason = '' then
   begin
-    Exit(Fail(AReason, Format('%s ist virtuell (virtual, dynamic, override oder abstract).',
-      [Member.Name])));
+    AReason := FieldIssue(ALayout, mMember, AccessedField(mMember, AAccessor.IsGetter, AOptions.EqualityCheck), mType,
+      AAccessor.Field);
   end;
-  if Member.IsClassMember then
+  if AReason = '' then
   begin
-    Exit(Fail(AReason, Format('%s ist eine class-Methode.', [Member.Name])));
+    AReason := InterfaceIssue(ALayout, mMember.Name, AInterfaces);
   end;
-  if Member.IsGeneric or (Length(ALayout.Find(Member.Name)) > 1) then
+  if AReason = '' then
   begin
-    Exit(Fail(AReason, Format('%s ist überladen oder generisch.', [Member.Name])));
+    AReason := UserIssue(ALayout, AMember, AAccessor.Properties);
   end;
-  PropertyType := '';
-  for Index in AAccessor.Properties do
+  if (AReason = '') and not NameRangeIn(ALayout, mMember.Node, mMember.Name, AAccessor.NameRange) then
   begin
-    Prop := ALayout.Members[Index];
-    if Prop.IndexSpecifier <> '' then
-    begin
-      Exit(Fail(AReason, Format('Property %s hat einen index; %s braucht ihn als Parameter.',
-        [Prop.Name, Member.Name])));
-    end;
-    if (Prop.Parameters <> '') or Prop.IsClassMember or Prop.IsRedeclaration then
-    begin
-      Exit(Fail(AReason, Format('Property %s ist eine Array-, class- oder umdeklarierte Property.',
-        [Prop.Name])));
-    end;
-    if SameText(Prop.StoredSpecifier, Member.Name) then
-    begin
-      Exit(Fail(AReason, Format('Property %s nennt %s auch bei stored.', [Prop.Name, Member.Name])));
-    end;
-    if (PropertyType <> '') and not SameType(PropertyType, Prop.TypeName) then
-    begin
-      Exit(Fail(AReason, Format('Die Properties zu %s haben verschiedene Typen.', [Member.Name])));
-    end;
-    PropertyType := Prop.TypeName;
+    AReason := Format('Der Name von %s ist nicht zu finden.', [mMember.Name]);
   end;
-  if AAccessor.IsGetter then
+  Result := AReason = '';
+  if Result then
   begin
-    if not Member.IsFunction or (Member.Parameters <> '') or not SameType(Member.TypeName, PropertyType) then
-    begin
-      Exit(Fail(AReason, Format('%s passt nicht als Getter zur Property.', [Member.Name])));
-    end;
-    Field := GetterField(Member.Body, Member.Name);
-  end
-  else
-  begin
-    if Member.IsFunction or (Length(Member.ParameterTypes) <> 1) or
-      not SameType(Member.ParameterTypes[0], PropertyType) or StartsText('var ', Member.Parameters) or
-      StartsText('out ', Member.Parameters) then
-    begin
-      Exit(Fail(AReason, Format('%s passt nicht als Setter zur Property.', [Member.Name])));
-    end;
-    Field := SetterField(Member.Body, AOptions.EqualityCheck);
+    AAccessor.NamePos := AAccessor.NameRange.StartPos;
   end;
-  if Member.Body = nil then
-  begin
-    Exit(Fail(AReason, Format('Der Rumpf von %s steht nicht in dieser Unit.', [Member.Name])));
-  end;
-  if Field = '' then
-  begin
-    Exit(Fail(AReason, Format('%s tut mehr, als ein Feld zu lesen bzw. zu setzen.', [Member.Name])));
-  end;
-  Fields := ALayout.Find(Field);
-  if Length(Fields) <> 1 then
-  begin
-    Exit(Fail(AReason, Format('%s ist kein Feld von %s.', [Field, ALayout.Name])));
-  end;
-  FieldMember := ALayout.Members[Fields[0]];
-  if (FieldMember.Kind <> TClassMemberKind.Field) or FieldMember.IsClassMember then
-  begin
-    Exit(Fail(AReason, Format('%s ist kein Feld von %s.', [Field, ALayout.Name])));
-  end;
-  if not SameType(FieldMember.TypeName, PropertyType) then
-  begin
-    Exit(Fail(AReason, Format('%s hat einen anderen Typ als die Property.', [Field])));
-  end;
-  AAccessor.Field := FieldMember.Name;
-  // Methoden eines Interfaces der Klasse müssen bleiben.
-  if HasResolution(ALayout, Member.Name) then
-  begin
-    Exit(Fail(AReason, Format('%s ist einer Interface-Methode zugeordnet.', [Member.Name])));
-  end;
-  for Index := 0 to High(ALayout.Ancestors) do
-  begin
-    Answer := LocalInterfaceDeclares(ALayout.Tree, ALayout.Ancestors[Index], Member.Name);
-    if (Answer = TInterfaceAnswer.Unknown) and Assigned(AInterfaces) then
-    begin
-      Answer := AInterfaces(ALayout.Ancestors[Index], Member.Name);
-    end;
-    if Answer = TInterfaceAnswer.Yes then
-    begin
-      Exit(Fail(AReason, Format('%s implementiert eine Methode von %s.', [Member.Name,
-        ALayout.Ancestors[Index]])));
-    end;
-    // Nur der erste Eintrag kann eine Klasse sein; ein unbekanntes Interface schließt aus.
-    if (Answer = TInterfaceAnswer.Unknown) and (Index > 0) then
-    begin
-      Exit(Fail(AReason, Format('Ob %s eine Methode von %s implementiert, ist unbekannt.',
-        [Member.Name, ALayout.Ancestors[Index]])));
-    end;
-  end;
-  Users := ALayout.UsersOf(AMember);
-  for User in Users do
-  begin
-    if not TMemberTransfer.Has(AAccessor.Properties, User) then
-    begin
-      Exit(Fail(AReason, Format('%s wird in der Klasse benutzt (%s).', [Member.Name,
-        ALayout.Members[User].Name])));
-    end;
-  end;
-  if not NameRangeIn(ALayout, Member.Node, Member.Name, AAccessor.NameRange) then
-  begin
-    Exit(Fail(AReason, Format('Der Name von %s ist nicht zu finden.', [Member.Name])));
-  end;
-  AAccessor.NamePos := AAccessor.NameRange.StartPos;
-  Result := True;
 end;
 
 class function TInlineAccessor.InClass(ALayout: TClassLayout; const AOptions: TInlineAccessorOptions;
@@ -544,77 +689,101 @@ begin
   end;
 end;
 
-class function TInlineAccessor.At(ALayout: TClassLayout; ALine: Integer; const AOptions: TInlineAccessorOptions;
+/// <summary>Mitglied in Zeile ALine bzw. Methode, in deren Rumpf ALine liegt; -1 ohne.</summary>
+function MemberAt(ALayout: TClassLayout; ALine: Integer): Integer;
+var
+  mIndex: Integer;
+  mMember: TClassMember;
+begin
+  Result := ALayout.MemberAtLine(ALine);
+  if Result >= 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(ALayout.Members) do
+  begin
+    mMember := ALayout.Members[mIndex];
+    if mMember.IsMethod and (mMember.Body <> nil) and (ALine >= mMember.BodyFirstLine) and
+      (ALine <= mMember.BodyLastLine) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Namen der read- und write-Methode der Property AProperty.</summary>
+function AccessorNames(const AProperty: TClassMember): TArray<string>;
+begin
+  Result := nil;
+  if AProperty.ReadAccessor <> '' then
+  begin
+    Result := Result + [AProperty.ReadAccessor];
+  end;
+  if AProperty.WriteAccessor <> '' then
+  begin
+    Result := Result + [AProperty.WriteAccessor];
+  end;
+end;
+
+/// <summary>Einfache Zugriffsmethoden unter den Methoden ANames; AReason: Grund der ersten, die keine ist.</summary>
+function TrivialAmong(ALayout: TClassLayout; const ANames: TArray<string>; const AOptions: TInlineAccessorOptions;
   const AInterfaces: TInterfaceDeclares; out AReason: string): TArray<TTrivialAccessor>;
 var
-  Index, Hit: Integer;
-  Member: TClassMember;
-  Accessor: TTrivialAccessor;
-  Reason: string;
-  Names: TArray<string>;
-  Name: string;
+  mName, mReason: string;
+  mIndex: Integer;
+  mAccessor: TTrivialAccessor;
 begin
   Result := nil;
   AReason := '';
-  Hit := ALayout.MemberAtLine(ALine);
-  if Hit < 0 then
+  for mName in ANames do
   begin
-    // Im Rumpf einer Methode der Klasse.
-    for Index := 0 to High(ALayout.Members) do
+    for mIndex in ALayout.Find(mName) do
     begin
-      if ALayout.Members[Index].IsMethod and (ALayout.Members[Index].Body <> nil) and
-        (ALine >= ALayout.Members[Index].BodyFirstLine) and (ALine <= ALayout.Members[Index].BodyLastLine) then
+      if not ALayout.Members[mIndex].IsMethod then
       begin
-        Hit := Index;
+        Continue;
+      end;
+      if TInlineAccessor.Check(ALayout, mIndex, AOptions, AInterfaces, mAccessor, mReason) then
+      begin
+        Result := Result + [mAccessor];
+      end
+      else if AReason = '' then
+      begin
+        AReason := mReason;
       end;
     end;
   end;
-  if Hit < 0 then
+end;
+
+class function TInlineAccessor.At(ALayout: TClassLayout; ALine: Integer; const AOptions: TInlineAccessorOptions;
+  const AInterfaces: TInterfaceDeclares; out AReason: string): TArray<TTrivialAccessor>;
+var
+  mHit: Integer;
+  mMember: TClassMember;
+  mAccessor: TTrivialAccessor;
+begin
+  Result := nil;
+  AReason := '';
+  mHit := MemberAt(ALayout, ALine);
+  if mHit < 0 then
   begin
     Exit;
   end;
-  Member := ALayout.Members[Hit];
-  if Member.IsMethod then
+  mMember := ALayout.Members[mHit];
+  if mMember.IsMethod then
   begin
-    if Check(ALayout, Hit, AOptions, AInterfaces, Accessor, AReason) then
+    if Check(ALayout, mHit, AOptions, AInterfaces, mAccessor, AReason) then
     begin
-      Result := [Accessor];
+      Result := [mAccessor];
     end;
-    Exit;
-  end;
-  if Member.Kind <> TClassMemberKind.Property_ then
+  end
+  else if mMember.Kind = TClassMemberKind.Property_ then
   begin
-    Exit;
-  end;
-  Names := nil;
-  if Member.ReadAccessor <> '' then
-  begin
-    Names := Names + [Member.ReadAccessor];
-  end;
-  if Member.WriteAccessor <> '' then
-  begin
-    Names := Names + [Member.WriteAccessor];
-  end;
-  for Name in Names do
-  begin
-    for Index in ALayout.Find(Name) do
+    Result := TrivialAmong(ALayout, AccessorNames(mMember), AOptions, AInterfaces, AReason);
+    if Result <> nil then
     begin
-      if ALayout.Members[Index].IsMethod then
-      begin
-        if Check(ALayout, Index, AOptions, AInterfaces, Accessor, Reason) then
-        begin
-          Result := Result + [Accessor];
-        end
-        else if AReason = '' then
-        begin
-          AReason := Reason;
-        end;
-      end;
+      AReason := '';
     end;
-  end;
-  if Result <> nil then
-  begin
-    AReason := '';
   end;
 end;
 
@@ -674,59 +843,93 @@ begin
   Result := False;
 end;
 
-/// <summary>Interface AName im Index: deklariert es AMethod, auch über Vorfahren? ADepth begrenzt Kreise.</summary>
-function IndexDeclares(const AIndex: ISymbolIndex; const AName, AMethod: string; ADepth: Integer): TInterfaceAnswer;
-var
-  Name, Ancestor: string;
-  Location: TSymbolLocation;
-  Known: Boolean;
-  Answer: TInterfaceAnswer;
+/// <summary>Name des Interfaces ohne generische Argumente und Unit (System.IFoo&lt;T&gt; wird IFoo).</summary>
+function ShortInterfaceName(const AName: string): string;
 begin
-  Name := StripGenerics(AName);
-  if Pos('.', Name) > 0 then
+  Result := StripGenerics(AName);
+  if Pos('.', Result) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
   end;
-  // Die Methoden von IInterface, IUnknown und IDispatch heißen nie wie eine Zugriffsmethode.
-  if MatchText(Name, ['IInterface', 'IUnknown', 'IDispatch']) then
-  begin
-    Exit(TInterfaceAnswer.No);
-  end;
-  if ADepth > 10 then
-  begin
-    Exit(TInterfaceAnswer.Unknown);
-  end;
-  Known := False;
+end;
+
+function IndexDeclares(const AIndex: ISymbolIndex; const AName, AMethod: string; ADepth: Integer): TInterfaceAnswer;
+  forward;
+
+/// <summary>Deklariert ein Vorfahr des Interfaces AName (Kurzname) im Index AMethod? AKnown: Kennt der Index
+/// AName?</summary>
+function AncestorsDeclare(const AIndex: ISymbolIndex; const AName, AMethod: string; ADepth: Integer;
+  out AKnown: Boolean): TInterfaceAnswer;
+var
+  mLocation: TSymbolLocation;
+  mAncestor: string;
+  mAnswer: TInterfaceAnswer;
+begin
+  AKnown := False;
   Result := TInterfaceAnswer.No;
-  for Location in AIndex.FindSymbols(Name) do
+  for mLocation in AIndex.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind <> TIndexSymbolKind.InterfaceType) or (Location.Symbol.Container <> '') then
+    if (mLocation.Symbol.Kind <> TIndexSymbolKind.InterfaceType) or (mLocation.Symbol.Container <> '') then
     begin
       Continue;
     end;
-    Known := True;
-    for Ancestor in Location.Symbol.Ancestors do
+    AKnown := True;
+    for mAncestor in mLocation.Symbol.Ancestors do
     begin
-      Answer := IndexDeclares(AIndex, Ancestor, AMethod, ADepth + 1);
-      if Answer = TInterfaceAnswer.Yes then
+      mAnswer := IndexDeclares(AIndex, mAncestor, AMethod, ADepth + 1);
+      if mAnswer = TInterfaceAnswer.Yes then
       begin
         Exit(TInterfaceAnswer.Yes);
       end;
-      if Answer = TInterfaceAnswer.Unknown then
+      if mAnswer = TInterfaceAnswer.Unknown then
       begin
         Result := TInterfaceAnswer.Unknown;
       end;
     end;
   end;
-  if not Known then
+end;
+
+/// <summary>Deklariert das Interface AName (Kurzname) im Index selbst eine Methode AMethod?</summary>
+function DeclaresMethod(const AIndex: ISymbolIndex; const AName, AMethod: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  for mLocation in AIndex.FindSymbols(AMethod) do
   begin
-    Exit(TInterfaceAnswer.Unknown);
-  end;
-  for Location in AIndex.FindSymbols(AMethod) do
-  begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.Method) and SameText(Location.Symbol.Container, Name) then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.Method) and SameText(mLocation.Symbol.Container, AName) then
     begin
-      Exit(TInterfaceAnswer.Yes);
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Interface AName im Index: deklariert es AMethod, auch über Vorfahren? ADepth begrenzt Kreise.</summary>
+function IndexDeclares(const AIndex: ISymbolIndex; const AName, AMethod: string; ADepth: Integer): TInterfaceAnswer;
+var
+  mName: string;
+  mKnown: Boolean;
+begin
+  mName := ShortInterfaceName(AName);
+  // Die Methoden von IInterface, IUnknown und IDispatch heißen nie wie eine Zugriffsmethode.
+  if MatchText(mName, ['IInterface', 'IUnknown', 'IDispatch']) then
+  begin
+    Result := TInterfaceAnswer.No;
+  end
+  else if ADepth > 10 then
+  begin
+    Result := TInterfaceAnswer.Unknown;
+  end
+  else
+  begin
+    Result := AncestorsDeclare(AIndex, mName, AMethod, ADepth, mKnown);
+    if not mKnown then
+    begin
+      Result := TInterfaceAnswer.Unknown;
+    end
+    else if (Result <> TInterfaceAnswer.Yes) and DeclaresMethod(AIndex, mName, AMethod) then
+    begin
+      Result := TInterfaceAnswer.Yes;
     end;
   end;
 end;

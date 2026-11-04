@@ -47,6 +47,13 @@ type
     LogLines = 100;
     /// <summary>So viele Zeilen aus server-stderr.log.</summary>
     ErrorOutputLines = 50;
+  private
+    class procedure AppendPlugin(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput); static;
+    class procedure AppendSettings(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput); static;
+    /// <summary>Zeilen in einem Codeblock unter ATitle, anonymisiert wie das Protokoll.</summary>
+    class procedure AppendLines(ABuilder: TStringBuilder; const ATitle: string; const ALines: TArray<string>;
+      const AInput: TAtlasBugReportInput); static;
+    class procedure AppendServer(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput); static;
   public
     /// <summary>Angaben für den Server: [{"anonymize": …, "client": "Atlas-Plugin …, IDE …, Win32"}].</summary>
     class function ServerArguments(const AInput: TAtlasBugReportInput): string; static;
@@ -99,97 +106,106 @@ begin
   end;
 end;
 
+class procedure TAtlasBugReport.AppendPlugin(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput);
+begin
+  ABuilder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append('- Atlas: ').Append(AInput.PluginVersion).Append(sLineBreak);
+  ABuilder.Append('- IDE: ').Append(AInput.IdeVersion).Append(sLineBreak);
+  ABuilder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak);
+  ABuilder.Append('- Experimentell: ');
+  if Length(AInput.Experimental) = 0 then
+  begin
+    ABuilder.Append('keine');
+  end
+  else
+  begin
+    ABuilder.Append(string.Join(', ', AInput.Experimental));
+  end;
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+end;
+
+class procedure TAtlasBugReport.AppendSettings(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput);
+var
+  mText: string;
+begin
+  ABuilder.Append('### Einstellungen').Append(sLineBreak).Append(sLineBreak);
+  mText := AInput.Settings;
+  if AInput.Anonymize then
+  begin
+    mText := AnonymizePaths(mText, AInput.Roots, AInput.Identity);
+  end;
+  ABuilder.Append('```json').Append(sLineBreak).Append(mText.TrimRight).Append(sLineBreak).Append('```');
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+end;
+
+class procedure TAtlasBugReport.AppendLines(ABuilder: TStringBuilder; const ATitle: string;
+  const ALines: TArray<string>; const AInput: TAtlasBugReportInput);
+var
+  mLine, mText: string;
+begin
+  ABuilder.Append(ATitle);
+  ABuilder.Append(sLineBreak).Append(sLineBreak).Append('```').Append(sLineBreak);
+  for mLine in ALines do
+  begin
+    mText := mLine;
+    if AInput.Anonymize then
+    begin
+      mText := AnonymizeLogLine(mText, AInput.Roots, AInput.Identity);
+    end;
+    ABuilder.Append(TTextAnonymizer.FenceSafe(mText)).Append(sLineBreak);
+  end;
+  ABuilder.Append('```').Append(sLineBreak).Append(sLineBreak);
+end;
+
+class procedure TAtlasBugReport.AppendServer(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput);
+var
+  mText: string;
+begin
+  if AInput.ServerReport = '' then
+  begin
+    ABuilder.Append('## Server').Append(sLineBreak).Append(sLineBreak).Append(AInput.ServerMissing)
+      .Append(sLineBreak);
+    Exit;
+  end;
+  // Überschriften des Servers eine Ebene tiefer, damit der Bericht eine Gliederung hat.
+  mText := AInput.ServerReport;
+  mText := StringReplace(mText, sLineBreak + '## ', sLineBreak + '### ', [rfReplaceAll]);
+  if mText.StartsWith('# ') then
+  begin
+    mText := '#' + mText;
+  end;
+  ABuilder.Append(mText.TrimRight).Append(sLineBreak);
+end;
+
 class function TAtlasBugReport.Build(const AInput: TAtlasBugReportInput): string;
 var
-  Builder: TStringBuilder;
-  Line, Text: string;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('# Atlas-Fehlerbericht').Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
+    mBuilder.Append('# Atlas-Fehlerbericht').Append(sLineBreak).Append(sLineBreak);
+    mBuilder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
     if AInput.Anonymize then
     begin
-      Builder.Append(' · anonymisiert');
+      mBuilder.Append(' · anonymisiert');
     end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('Quelltext steht nicht in diesem Bericht. Issue anlegen: ').Append(IssuesUrl);
-    Builder.Append(sLineBreak).Append(sLineBreak);
-
-    Builder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('- Atlas: ').Append(AInput.PluginVersion).Append(sLineBreak);
-    Builder.Append('- IDE: ').Append(AInput.IdeVersion).Append(sLineBreak);
-    Builder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak);
-    Builder.Append('- Experimentell: ');
-    if Length(AInput.Experimental) = 0 then
-    begin
-      Builder.Append('keine');
-    end
-    else
-    begin
-      Builder.Append(string.Join(', ', AInput.Experimental));
-    end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-
-    Builder.Append('### Einstellungen').Append(sLineBreak).Append(sLineBreak);
-    Text := AInput.Settings;
-    if AInput.Anonymize then
-    begin
-      Text := AnonymizePaths(Text, AInput.Roots, AInput.Identity);
-    end;
-    Builder.Append('```json').Append(sLineBreak).Append(Text.TrimRight).Append(sLineBreak).Append('```');
-    Builder.Append(sLineBreak).Append(sLineBreak);
-
-    Builder.Append(Format('### Protokoll des Plugins (letzte %d Zeilen)', [Length(AInput.PluginLog)]));
-    Builder.Append(sLineBreak).Append(sLineBreak).Append('```').Append(sLineBreak);
-    for Line in AInput.PluginLog do
-    begin
-      Text := Line;
-      if AInput.Anonymize then
-      begin
-        Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
-      end;
-      Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
-    end;
-    Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
-
+    mBuilder.Append(sLineBreak).Append(sLineBreak);
+    mBuilder.Append('Quelltext steht nicht in diesem Bericht. Issue anlegen: ').Append(IssuesUrl);
+    mBuilder.Append(sLineBreak).Append(sLineBreak);
+    AppendPlugin(mBuilder, AInput);
+    AppendSettings(mBuilder, AInput);
+    AppendLines(mBuilder, Format('### Protokoll des Plugins (letzte %d Zeilen)', [Length(AInput.PluginLog)]),
+      AInput.PluginLog, AInput);
     // Was die Laufzeit des Servers vor einem Absturz noch ausgab (Bericht H5); anonymisiert wie das Protokoll.
     if Length(AInput.ServerErrorOutput) > 0 then
     begin
-      Builder.Append(Format('### Fehlerausgabe des Servers (stderr, letzte %d Zeilen)',
-        [Length(AInput.ServerErrorOutput)]));
-      Builder.Append(sLineBreak).Append(sLineBreak).Append('```').Append(sLineBreak);
-      for Line in AInput.ServerErrorOutput do
-      begin
-        Text := Line;
-        if AInput.Anonymize then
-        begin
-          Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
-        end;
-        Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
-      end;
-      Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
+      AppendLines(mBuilder, Format('### Fehlerausgabe des Servers (stderr, letzte %d Zeilen)',
+        [Length(AInput.ServerErrorOutput)]), AInput.ServerErrorOutput, AInput);
     end;
-
-    if AInput.ServerReport <> '' then
-    begin
-      // Überschriften des Servers eine Ebene tiefer, damit der Bericht eine Gliederung hat.
-      Text := AInput.ServerReport;
-      Text := StringReplace(Text, sLineBreak + '## ', sLineBreak + '### ', [rfReplaceAll]);
-      if Text.StartsWith('# ') then
-      begin
-        Text := '#' + Text;
-      end;
-      Builder.Append(Text.TrimRight).Append(sLineBreak);
-    end
-    else
-    begin
-      Builder.Append('## Server').Append(sLineBreak).Append(sLineBreak).Append(AInput.ServerMissing)
-        .Append(sLineBreak);
-    end;
-    Result := Builder.ToString;
+    AppendServer(mBuilder, AInput);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

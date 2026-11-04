@@ -147,6 +147,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Documentation.Layout` | `Core/Documentation/Atlas.Core.Documentation.Layout.pas` | Ordner `Core/Documentation` |
+| `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
@@ -425,6 +426,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.NewLine` | `IDE/Editor/Atlas.IDE.Editor.NewLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Overloads` | `IDE/Editor/Atlas.IDE.Editor.Overloads.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.OverviewRuler` | `IDE/Editor/Atlas.IDE.Editor.OverviewRuler.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.PaintedLine` | `IDE/Editor/Atlas.IDE.Editor.PaintedLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Pairs` | `IDE/Editor/Atlas.IDE.Editor.Pairs.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PatternContinuation` | `IDE/Editor/Atlas.IDE.Editor.PatternContinuation.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PromoteVariable` | `IDE/Editor/Atlas.IDE.Editor.PromoteVariable.pas` | Ordner `IDE/Editor` |
@@ -626,6 +628,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.StepInto` | `IDE/Debug/Atlas.IDE.Debug.StepInto.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Trace` | `IDE/Debug/Atlas.IDE.Debug.Trace.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Unavailable` | `IDE/Debug/Atlas.IDE.Debug.Unavailable.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.UnavailableFixes` | `IDE/Debug/Atlas.IDE.Debug.UnavailableFixes.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
@@ -661,6 +664,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Development` | `Core/Tracker/Atlas.Core.Tracker.Development.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Files` | `Core/Tracker/Atlas.Core.Tracker.Files.pas` | Ordner `Core/Tracker`; Anmeldung von Platte und Shell, leere Umsetzung ohne Anmeldung (Paket 2d) |
 | `Atlas.Core.Tracker.Internals.GitHubApi` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubApi.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.Internals.GitHubJson` | `Core/Tracker/Atlas.Core.Tracker.Internals.GitHubJson.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.GitHubParse` | `Core/Tracker/Atlas.Core.Tracker.GitHubParse.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.IssueCache` | `Core/Tracker/Atlas.Core.Tracker.IssueCache.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Links` | `Core/Tracker/Atlas.Core.Tracker.Links.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Markdown` | `Core/Tracker/Atlas.Core.Tracker.Markdown.pas` | Ordner `Core/Tracker` |
@@ -672,6 +677,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Preview` | `Core/Tracker/Atlas.Core.Tracker.Preview.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Projects` | `Core/Tracker/Atlas.Core.Tracker.Projects.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.GitHub` | `Core/Tracker/Atlas.Core.Tracker.Providers.GitHub.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.GitHubBoards` | `Core/Tracker/Atlas.Core.Tracker.GitHubBoards.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Providers.YouTrack` | `Core/Tracker/Atlas.Core.Tracker.Providers.YouTrack.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Queries` | `Core/Tracker/Atlas.Core.Tracker.Queries.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.QueryTest` | `Core/Tracker/Atlas.Core.Tracker.QueryTest.pas` | Ordner `Core/Tracker` |
