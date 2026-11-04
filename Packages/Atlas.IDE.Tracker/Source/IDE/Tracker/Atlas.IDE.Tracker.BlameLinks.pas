@@ -117,7 +117,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Tracker.IssueLookups;
 
 type
   /// <summary>Alles für das Zählen der Issues eines Bereichs im Hintergrund.</summary>
@@ -273,8 +274,8 @@ begin
   begin
     Exit;
   end;
-  if mPreview.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails) and
-    TAtlasIdeIssuePreview.Fresh(mDetails) then
+  if mPreview.Lookups.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails) and
+    TAtlasIdeIssueLookups.Fresh(mDetails) then
   begin
     Exit;
   end;
@@ -282,7 +283,7 @@ begin
   mState.Error := TAtlasCiFetchError.None;
   FKeyStates.Add(mKey, mState);
   mSerial := FSerialOf;
-  mPreview.Lookup(AMatch.IssueTarget(ATarget), AMatch.IssueKey,
+  mPreview.Lookups.Lookup(AMatch.IssueTarget(ATarget), AMatch.IssueKey,
     procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
     var
       mDone: TKeyState;
@@ -326,7 +327,7 @@ begin
   mDetails := TAtlasTrackerDetails.Empty;
   if mPreview <> nil then
   begin
-    mCached := mPreview.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails);
+    mCached := mPreview.Lookups.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails);
   end;
   mKnown := FKeyStates.TryGetValue(StateKey(APattern, AMatch), mState);
   if mKnown and (mState.State = TAtlasIssueTipState.NotFound) then

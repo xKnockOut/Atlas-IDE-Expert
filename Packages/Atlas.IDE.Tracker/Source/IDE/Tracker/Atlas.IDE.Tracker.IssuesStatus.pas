@@ -115,7 +115,8 @@ uses
   Atlas.UI.Tracker.MyIssues,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.Attach;
+  Atlas.IDE.Tracker.Attach,
+  Atlas.IDE.Tracker.IssueChecklists;
 
 const
   // Commit-Dialog der Versionsverwaltung der IDE (Git, SVN, Mercurial): am Namen der Formularklasse erkannt.
@@ -319,9 +320,9 @@ begin
   end;
   // Stand aus dem Zwischenspeicher der Vorschau; fehlt er oder ist er alt, frischt ihn Prefetch im Hintergrund auf.
   mTarget := FContext.TargetOf(AProject);
-  FServices.Preview.Prefetch(mTarget, AKey);
+  FServices.Preview.Checklists.Prefetch(mTarget, AKey);
   // Ohne Checkliste kein Feld.
-  if not FServices.Preview.ChecklistProgress(mTarget, AKey, mProgress) or not mProgress.Any then
+  if not FServices.Preview.Checklists.Progress(mTarget, AKey, mProgress) or not mProgress.Any then
   begin
     RemoveChecklist;
     Exit;

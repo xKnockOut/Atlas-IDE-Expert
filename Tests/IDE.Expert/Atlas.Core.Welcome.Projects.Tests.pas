@@ -67,9 +67,6 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.Welcome.Projects;
 
-type
-  /// <summary>Ersatz für Git/SVN: liefert festgelegte Ergebnisse ohne Prozess.</summary>
-
 function Entry(const ASummary: TAtlasProjectSummary): TAtlasProjectEntry;
 begin
   Result := Default(TAtlasProjectEntry);

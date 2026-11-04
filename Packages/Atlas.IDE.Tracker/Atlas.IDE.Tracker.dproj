@@ -153,6 +153,12 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CommentAssist.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Development.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueContext.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueLookups.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueChecklists.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueLinkWrites.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueMedia.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueComments.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.MyIssues.pas"/>
