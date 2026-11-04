@@ -469,6 +469,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Generate.NewFile` | `IDE/Generate/Atlas.IDE.Generate.NewFile.pas` | Ordner `IDE/Generate` |
 | `Atlas.IDE.Hover.DebugValue` | `IDE/Hover/Atlas.IDE.Hover.DebugValue.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.Hover.Editor` | `IDE/Hover/Atlas.IDE.Hover.Editor.pas` | Ordner `IDE/Hover` |
+| `Atlas.IDE.Hover.EditorContent` | `IDE/Hover/Atlas.IDE.Hover.EditorContent.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.InlayHints.Editor` | `IDE/InlayHints/Atlas.IDE.InlayHints.Editor.pas` | Ordner `IDE/InlayHints` |
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |
