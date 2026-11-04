@@ -31,27 +31,19 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.Graphics,
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.UI.Popup.TitledTip,
+  Atlas.IDE.Editor.GutterColumnState;
 
 type
-  /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
-  TAtlasGutterColumnSessionFunc = reference to function: TLspSession;
   /// <summary>Code-Aktion anwenden; kommt von der Komposition, damit Editor nicht von Commands abhängt.</summary>
   TAtlasGutterColumnApplyProc = reference to procedure(const AAction: TLspCodeAction);
 
   TAtlasIdeGutterColumn = class
-  public const
-    OverridesCommand = 'atlas.server.overrideMarks';
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -67,15 +59,19 @@ type
       Symbol: TAtlasGutterSymbol;
       TopRow: Integer;
     end;
+    /// <summary>Inhalt der Tafel: Titel, Text und Links mit ihren Aktionen.</summary>
+    TPanel = record
+      Title: string;
+      Text: string;
+      Captions: TArray<string>;
+      Links: TArray<TProc>;
+      /// <summary>Zeile an den Text hängen.</summary>
+      procedure AddLine(const ALine: string);
+      procedure AddLink(const ACaption: string; const AAction: TProc);
+    end;
   private const
-    QuietMs = 600;
     HoverMs = 400;
-    OverridesTimeoutMs = 800;
-    ActionsTimeoutMs = 600;
-    FixesTimeoutMs = 3000;
-    RetryMs = 5000;
   private
-    FSession: TAtlasGutterColumnSessionFunc;
     FOpenActions: TProc;
     FApply: TAtlasGutterColumnApplyProc;
     FEvents: TEvents;
@@ -85,54 +81,25 @@ type
     FWidth: Integer;
     FWantedWidth: Integer;
     FTimer: TTimer;
-    /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
+    /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben
+    /// (#1233).</summary>
     FColumnsHandle: Integer;
     FTip: TAtlasTitledTip;
     FLinks: TArray<TProc>;
-    FOptions: TAtlasGutterColumnOptions;
     FRows: TDictionary<Integer, TRow>;
-    // Oberer Editor und Tipp-Pause.
-    FFileName: string;
-    FText: string;
-    FCaretLine: Integer;
-    FChangedAt: UInt64;
-    FRetryAt: UInt64;
-    // Überschreibungen vom Server.
-    FFetchedFile: string;
-    FFetchedText: string;
-    FOverrides: TAtlasFileOverrides;
-    // Glühbirne der Cursorzeile.
-    FActionFile: string;
-    FActionText: string;
-    FActionLine: Integer;
-    FActionAsked: Boolean;
-    FActionFound: Boolean;
-    // Probleme der Datei, neu gelesen bei neuer Version des Speichers.
-    FProblemsFile: string;
-    FProblemsVersion: Integer;
-    FProblems: TArray<TAtlasProblem>;
+    FState: TAtlasIdeGutterColumnState;
     // Überfahren.
     FHover: TRow;
     FHovering: Boolean;
     FHoverSince: UInt64;
     FHoverScreen: TRect;
     function Active: Boolean;
-    function TopView: IOTAEditView;
-    function Services: INTACodeEditorServices280;
     procedure EnsureColumn;
     procedure DropColumn;
     procedure Tick(Sender: TObject);
-    procedure ReadOptions;
-    procedure Track;
-    procedure FetchOverrides(ASession: TLspSession);
-    procedure FetchAction(ASession: TLspSession);
-    procedure Clear;
-    function ProblemsOf(const AFileName: string): TArray<TAtlasProblem>;
-    function LineOf(const AFileName: string; ALine: Integer; const ALineText: string; AHasText: Boolean;
-      out AOverrides: TAtlasGutterOverrides): TAtlasGutterLine;
+    /// <summary>Zeile von AContext mit ihrem Symbol; ALineText: Text der Zeile im Editor.</summary>
+    function RowOf(const AContext: INTACodeEditorPaintContext; out ALineText: string): TRow;
     function RowAt(X, Y: Integer; out ARow: TRow): Boolean;
-    procedure PaintSymbol(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol;
-      const AColors: TAtlasColors; ABack: TAtlasColor);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -140,12 +107,12 @@ type
     procedure CheckHover;
     procedure HideTip;
     procedure ShowPanel(const ARow: TRow; AFetchFixes: Boolean);
+    /// <summary>Tafel zu ✕/▲/●: Meldungen, mit AFetchFixes die Korrekturen des Servers; False ohne Problem.</summary>
+    function ProblemPanel(const ARow: TRow; AFetchFixes: Boolean; var APanel: TPanel): Boolean;
+    /// <summary>Tafel zu ↑/↓: die Methoden als Links; False ohne Überschreibung.</summary>
+    function OverridesPanel(const ARow: TRow; var APanel: TPanel): Boolean;
     procedure Click(const ARow: TRow);
     procedure OpenActions(const ARow: TRow);
-    function TargetsOf(const ARow: TRow): TArray<TAtlasGutterTarget>;
-    procedure AddLink(var ACaptions: TArray<string>; const ACaption: string; const AAction: TProc);
-    function FixAction(const AFix: TLspCodeAction): TProc;
-    function TargetAction(const ATarget: TAtlasGutterTarget): TProc;
     function ActionsAction(const ARow: TRow): TProc;
   public
     /// <summary>ASession: laufende Sitzung oder nil; AOpenActions: Code-Aktionen am Cursor anbieten; AApply:
@@ -160,16 +127,14 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  System.JSON,
   Vcl.Forms,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Problems.Store,
+  Vcl.Graphics,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
+  Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.Recursion,
   Atlas.UI.Strings,
-  Atlas.IDE.Problems.Controller,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -178,23 +143,243 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorRefresh;
 
-procedure InvalidateTop;
-var
-  Editors: INTACodeEditorServices;
+type
+  /// <summary>Maße eines Symbols in seiner Zelle.</summary>
+  TSymbolBox = record
+    Left: Integer;
+    Top: Integer;
+    Size: Integer;
+    Mid: Integer;
+    Center: Integer;
+    Pen: Integer;
+    constructor Create(const ARect: TRect);
+    /// <summary>Unterste Pixelzeile.</summary>
+    function Bottom: Integer;
+  end;
+
+constructor TSymbolBox.Create(const ARect: TRect);
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  Size := Max(6, Min(ARect.Width, ARect.Height) - 4);
+  Left := ARect.Left + (ARect.Width - Size) div 2;
+  Top := ARect.Top + (ARect.Height - Size) div 2;
+  Mid := Top + Size div 2;
+  Center := Left + Size div 2;
+  Pen := Max(1, Size div 7);
+end;
+
+function TSymbolBox.Bottom: Integer;
+begin
+  Result := Top + Size - 1;
+end;
+
+function Services: INTACodeEditorServices280;
+begin
+  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+    Result := nil;
   end;
 end;
 
-function IsSource(const AFileName: string): Boolean;
+function TopView: IOTAEditView;
 var
-  Extension: string;
+  mEditors: IOTAEditorServices;
 begin
-  Extension := ExtractFileExt(AFileName);
-  Result := SameText(Extension, '.pas') or SameText(Extension, '.dpr') or SameText(Extension, '.dpk') or
-    SameText(Extension, '.inc');
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
+end;
+
+function SymbolColor(ASymbol: TAtlasGutterSymbol; const AColors: TAtlasColors; ABack: TAtlasColor): TColor;
+begin
+  case ASymbol of
+    TAtlasGutterSymbol.Error:
+      Result := TColor(TAtlasColorMath.Mix(AColors.Error, ABack, 0.95));
+    TAtlasGutterSymbol.Warning:
+      Result := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.95));
+    TAtlasGutterSymbol.Hint:
+      Result := TColor(TAtlasColorMath.Mix(AColors.Muted, ABack, 0.9));
+    TAtlasGutterSymbol.Action:
+      Result := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.95));
+  else
+    Result := TColor(TAtlasColorMath.Mix(AColors.Add, ABack, 0.95));
+  end;
+end;
+
+/// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
+procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
+var
+  mHead: Integer;
+begin
+  mHead := Max(2, ABox.Size div 3);
+  ACanvas.Pen.Width := 1;
+  if AUp then
+  begin
+    ACanvas.Polygon([Point(ABox.Center, ABox.Top), Point(ABox.Center + mHead, ABox.Top + mHead),
+      Point(ABox.Center - mHead, ABox.Top + mHead)]);
+    ACanvas.Pen.Width := ABox.Pen;
+    ACanvas.MoveTo(ABox.Center, ABox.Top + mHead);
+    ACanvas.LineTo(ABox.Center, ABox.Bottom);
+  end
+  else
+  begin
+    ACanvas.Polygon([Point(ABox.Center, ABox.Bottom), Point(ABox.Center + mHead, ABox.Bottom - mHead),
+      Point(ABox.Center - mHead, ABox.Bottom - mHead)]);
+    ACanvas.Pen.Width := ABox.Pen;
+    ACanvas.MoveTo(ABox.Center, ABox.Top);
+    ACanvas.LineTo(ABox.Center, ABox.Bottom - mHead);
+  end;
+end;
+
+procedure PaintSymbol(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol; ABack: TAtlasColor);
+var
+  mBox: TSymbolBox;
+  mColor: TColor;
+  mQuarter: Integer;
+begin
+  mBox := TSymbolBox.Create(ARect);
+  mColor := SymbolColor(ASymbol, TAtlasColors.ForBackground(ABack), ABack);
+  ACanvas.Pen.Color := mColor;
+  ACanvas.Pen.Width := mBox.Pen;
+  ACanvas.Brush.Color := mColor;
+  ACanvas.Brush.Style := bsSolid;
+  if ASymbol <> TAtlasGutterSymbol.Error then
+  begin
+    ACanvas.Pen.Width := 1;
+  end;
+  mQuarter := mBox.Size div 4;
+  case ASymbol of
+    TAtlasGutterSymbol.Error:
+      begin
+        // ✕: zwei Diagonalen.
+        ACanvas.MoveTo(mBox.Left + 1, mBox.Top + 1);
+        ACanvas.LineTo(mBox.Left + mBox.Size - 1, mBox.Bottom);
+        ACanvas.MoveTo(mBox.Left + mBox.Size - 2, mBox.Top + 1);
+        ACanvas.LineTo(mBox.Left, mBox.Bottom);
+      end;
+    TAtlasGutterSymbol.Warning:
+      // ▲: gefülltes Dreieck.
+      ACanvas.Polygon([Point(mBox.Center, mBox.Top), Point(mBox.Left + mBox.Size - 1, mBox.Bottom),
+        Point(mBox.Left, mBox.Bottom)]);
+    TAtlasGutterSymbol.Hint:
+      // ●: kleiner Punkt.
+      ACanvas.Ellipse(mBox.Center - mQuarter, mBox.Mid - mQuarter, mBox.Center + mQuarter + 1,
+        mBox.Mid + mQuarter + 1);
+    TAtlasGutterSymbol.Action:
+      // ◆: Raute.
+      ACanvas.Polygon([Point(mBox.Center, mBox.Top), Point(mBox.Left + mBox.Size - 1, mBox.Mid),
+        Point(mBox.Center, mBox.Bottom), Point(mBox.Left, mBox.Mid)]);
+    TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
+      PaintArrow(ACanvas, mBox, ASymbol = TAtlasGutterSymbol.Overrides);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Symbol in ARect zeichnen, Farben aus dem Grund der Spalte (hell oder dunkel wie das Thema der IDE);
+/// Pinsel und Stift der IDE bleiben erhalten.</summary>
+procedure PaintCell(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol);
+var
+  mSample: COLORREF;
+  mBack: TAtlasColor;
+  mOldBrush: TBrush;
+  mOldPen: TPen;
+begin
+  mSample := GetPixel(ACanvas.Handle, ARect.Left + 1, ARect.Top + 1);
+  mBack := TAtlasColor(mSample);
+  if mSample = CLR_INVALID then
+  begin
+    mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
+  end;
+  mOldBrush := TBrush.Create;
+  mOldPen := TPen.Create;
+  try
+    mOldBrush.Assign(ACanvas.Brush);
+    mOldPen.Assign(ACanvas.Pen);
+    PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+  finally
+    ACanvas.Brush.Assign(mOldBrush);
+    ACanvas.Pen.Assign(mOldPen);
+    mOldPen.Free;
+    mOldBrush.Free;
+  end;
+end;
+
+function SeverityText(ASeverity: TAtlasProblemSeverity): string;
+begin
+  case ASeverity of
+    TAtlasProblemSeverity.Error:
+      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityError);
+    TAtlasProblemSeverity.Warning:
+      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityWarning);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityHint);
+  end;
+end;
+
+function FixAction(const AApply: TAtlasGutterColumnApplyProc; const AFix: TLspCodeAction): TProc;
+var
+  mApply: TAtlasGutterColumnApplyProc;
+  mFix: TLspCodeAction;
+begin
+  mApply := AApply;
+  mFix := AFix;
+  Result :=
+    procedure
+    begin
+      if Assigned(mApply) then
+      begin
+        mApply(mFix);
+      end;
+    end;
+end;
+
+function TargetAction(const ATarget: TAtlasGutterTarget): TProc;
+var
+  mTarget: TAtlasGutterTarget;
+begin
+  mTarget := ATarget;
+  Result :=
+    procedure
+    begin
+      TAtlasIdeNavigation.GoToLocation(mTarget.FileName, mTarget.Line, mTarget.Character);
+    end;
+end;
+
+/// <summary>Schnellkorrekturen als Links; AError: Meldung, wenn der Server nicht antwortete.</summary>
+procedure AddFixes(var APanel: TAtlasIdeGutterColumn.TPanel; const AFixes: TArray<TLspCodeAction>;
+  const AError: string; const AApply: TAtlasGutterColumnApplyProc);
+var
+  mFix: TLspCodeAction;
+begin
+  if AError <> '' then
+  begin
+    APanel.AddLine(TAtlasStrings.Fmt(TAtlasTextId.GutterFixesFailed, [AError]));
+  end;
+  for mFix in AFixes do
+  begin
+    if (mFix.Disabled = '') and mFix.Kind.StartsWith('quickfix') then
+    begin
+      APanel.AddLink(mFix.Title, FixAction(AApply, mFix));
+    end;
+  end;
+  if Length(APanel.Captions) = 0 then
+  begin
+    APanel.AddLine(TAtlasStrings.Text(TAtlasTextId.GutterNoFix));
+  end;
+end;
+
+/// <summary>Ziele als Links, mit APrefix vor jedem.</summary>
+procedure AddTargets(var APanel: TAtlasIdeGutterColumn.TPanel; const ATargets: TArray<TAtlasGutterTarget>;
+  const APrefix: string);
+var
+  mTarget: TAtlasGutterTarget;
+begin
+  for mTarget in ATargets do
+  begin
+    APanel.AddLink(APrefix + TAtlasGutterColumn.TargetText(mTarget), TargetAction(mTarget));
+  end;
 end;
 
 { TAtlasIdeGutterColumn.TEvents }
@@ -210,40 +395,55 @@ begin
   Result := [High(TPaintGutterStage)];
 end;
 
+{ TAtlasIdeGutterColumn.TPanel }
+
+procedure TAtlasIdeGutterColumn.TPanel.AddLine(const ALine: string);
+begin
+  if Text <> '' then
+  begin
+    Text := Text + #10;
+  end;
+  Text := Text + ALine;
+end;
+
+procedure TAtlasIdeGutterColumn.TPanel.AddLink(const ACaption: string; const AAction: TProc);
+begin
+  Captions := Captions + [ACaption];
+  Links := Links + [AAction];
+end;
+
 { TAtlasIdeGutterColumn }
 
 constructor TAtlasIdeGutterColumn.Create(const ASession: TAtlasGutterColumnSessionFunc; const AOpenActions: TProc;
   const AApply: TAtlasGutterColumnApplyProc);
 var
-  Editors: INTACodeEditorServices;
+  mEditors: INTACodeEditorServices;
 begin
   inherited Create;
-  FSession := ASession;
   FOpenActions := AOpenActions;
   FApply := AApply;
   FIndex := -1;
   FColumn := -1;
-  FActionLine := -1;
-  FCaretLine := -1;
-  FProblemsVersion := -1;
-  FOptions := TAtlasGutterColumnOptions.All;
+  FState := TAtlasIdeGutterColumnState.Create(ASession);
   FRows := TDictionary<Integer, TRow>.Create;
   FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.GutterColumn;
   FTip.OnLink :=
     procedure(AIndex: Integer)
     var
-      Action: TProc;
+      mAction: TProc;
     begin
       HideTip;
       FHovering := False;
+      // Die Aktion selbst festhalten: Sie kann eine neue Tafel zeigen und damit FLinks ersetzen.
+      mAction := nil;
       if (AIndex >= 0) and (AIndex <= High(FLinks)) then
       begin
-        Action := FLinks[AIndex];
-        if Assigned(Action) then
-        begin
-          Action();
-        end;
+        mAction := FLinks[AIndex];
+      end;
+      if Assigned(mAction) then
+      begin
+        mAction();
       end;
     end;
   FEvents := TEvents.Create;
@@ -251,9 +451,9 @@ begin
   FEvents.OnEditorPaintGutter := PaintGutter;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
   begin
-    FIndex := Editors.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mEditors.AddEditorEventsNotifier(FEventsRef);
   end;
   FColumnsHandle := TAtlasIdeGutterColumns.Register(
     procedure
@@ -268,15 +468,15 @@ end;
 
 destructor TAtlasIdeGutterColumn.Destroy;
 var
-  Editors: INTACodeEditorServices;
+  mEditors: INTACodeEditorServices;
 begin
   FTimer.Free;
   TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
   // Erst Spalte und Notifier abmelden, dann freigeben (#493).
   DropColumn;
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
   begin
-    Editors.RemoveEditorEventsNotifier(FIndex);
+    mEditors.RemoveEditorEventsNotifier(FIndex);
   end;
   if FEvents <> nil then
   begin
@@ -289,15 +489,8 @@ begin
   FTip.Free;
   FLinks := nil;
   FRows.Free;
+  FState.Free;
   inherited Destroy;
-end;
-
-function TAtlasIdeGutterColumn.Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
 end;
 
 function TAtlasIdeGutterColumn.Active: Boolean;
@@ -306,20 +499,9 @@ begin
     TAtlasIdeSettings.GutterColumnOn;
 end;
 
-function TAtlasIdeGutterColumn.TopView: IOTAEditView;
-var
-  Editors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-  begin
-    Result := Editors.TopView;
-  end;
-end;
-
 procedure TAtlasIdeGutterColumn.EnsureColumn;
 var
-  Editors: INTACodeEditorServices280;
+  mEditors: INTACodeEditorServices280;
 begin
   if FWantedWidth <= 0 then
   begin
@@ -329,61 +511,40 @@ begin
   begin
     Exit;
   end;
-  Editors := Services;
+  mEditors := Services;
   // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
-  if (Editors = nil) or not TAtlasIdeGutterColumns.Allowed then
+  if (mEditors = nil) or not TAtlasIdeGutterColumns.Allowed then
   begin
     Exit;
   end;
   DropColumn;
-  FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterLineNumbers);
+  FColumn := mEditors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterLineNumbers);
   FWidth := FWantedWidth;
   FRows.Clear;
-  TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+  TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
 end;
 
 procedure TAtlasIdeGutterColumn.DropColumn;
 var
-  Editors: INTACodeEditorServices280;
+  mEditors: INTACodeEditorServices280;
 begin
   if FColumn < 0 then
   begin
     Exit;
   end;
-  Editors := Services;
-  if Editors <> nil then
+  mEditors := Services;
+  if mEditors <> nil then
   begin
-    Editors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+    mEditors.RemoveGutterColumn(FColumn);
+    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
   end;
   FColumn := -1;
   FRows.Clear;
 end;
 
-procedure TAtlasIdeGutterColumn.Clear;
-begin
-  FFetchedFile := '';
-  FFetchedText := '';
-  FOverrides := Default(TAtlasFileOverrides);
-  FActionFile := '';
-  FActionFound := False;
-  FActionAsked := False;
-  FProblemsFile := '';
-  FProblems := nil;
-  FFileName := '';
-end;
-
-procedure TAtlasIdeGutterColumn.ReadOptions;
-var
-  Settings: TAtlasPluginSettings;
-begin
-  Settings := TAtlasIdeSettings.Current;
-  FOptions.Problems := Settings.GutterColumnProblems;
-  FOptions.CodeActions := Settings.GutterColumnCodeActions;
-  FOptions.Overrides := Settings.GutterColumnOverrides;
-end;
-
 procedure TAtlasIdeGutterColumn.Tick(Sender: TObject);
+var
+  mFileName: string;
 begin
   try
     if not Active then
@@ -393,13 +554,19 @@ begin
       if FColumn >= 0 then
       begin
         DropColumn;
-        Clear;
+        FState.Clear;
       end;
       Exit;
     end;
-    ReadOptions;
+    FState.ReadOptions;
     EnsureColumn;
-    Track;
+    // Andere Datei oben: Die gemerkten Zeilen gehören zur alten.
+    mFileName := FState.FileName;
+    FState.Track(TopView);
+    if not SameText(mFileName, FState.FileName) then
+    begin
+      FRows.Clear;
+    end;
     CheckHover;
   except
     on E: Exception do
@@ -407,284 +574,48 @@ begin
   end;
 end;
 
-procedure TAtlasIdeGutterColumn.Track;
+function TAtlasIdeGutterColumn.RowOf(const AContext: INTACodeEditorPaintContext; out ALineText: string): TRow;
 var
-  View: IOTAEditView;
-  Text: string;
-  Moment: UInt64;
-  Session: TLspSession;
-  Store: TAtlasProblemStore;
+  mLineState: INTACodeEditorLineState;
+  mOverrides: TAtlasGutterOverrides;
 begin
-  View := TopView;
-  if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
+  Result := Default(TRow);
+  Result.FileName := AContext.FileName;
+  Result.Line := AContext.LogicalLineNum - 1;
+  Result.TopRow := AContext.EditView.TopRow;
+  Result.Rect := AContext.EditorState.GetGutterColumnRect(AContext.EditControl, AContext.EditorLineNum, FColumn);
+  mLineState := AContext.LineState;
+  ALineText := '';
+  if mLineState <> nil then
   begin
-    Exit;
+    ALineText := mLineState.Text;
   end;
-  // Neue Diagnosen: neu zeichnen, damit die Symbole folgen.
-  Store := TAtlasProblemsController.Current;
-  if (Store <> nil) and SameText(FProblemsFile, View.Buffer.FileName) and (Store.Version <> FProblemsVersion) then
+  Result.Symbol := TAtlasGutterSymbol.None;
+  if TAtlasIdeGutterColumnState.IsSource(AContext.FileName) and (Result.Line >= 0) and not Result.Rect.IsEmpty then
   begin
-    InvalidateTop;
+    Result.Symbol := TAtlasGutterColumn.Choose(FState.LineOf(AContext.FileName, Result.Line, ALineText,
+      mLineState <> nil, mOverrides), FState.Options);
   end;
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) or (FCaretLine <> View.CursorPos.Line - 1) then
+  // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
+  if (Result.Symbol <> TAtlasGutterSymbol.None) and
+    TAtlasIdeElements.Hidden(TAtlasDrawnElement.GutterColumn, AContext.FileName, ALineText) then
   begin
-    if not SameText(FFileName, View.Buffer.FileName) then
-    begin
-      FRows.Clear;
-    end;
-    FFileName := View.Buffer.FileName;
-    FText := Text;
-    FCaretLine := View.CursorPos.Line - 1;
-    FChangedAt := TThread.GetTickCount64;
-    Exit;
-  end;
-  Moment := TThread.GetTickCount64;
-  if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
-  begin
-    Exit;
-  end;
-  Session := nil;
-  if Assigned(FSession) then
-  begin
-    Session := FSession();
-  end;
-  if Session = nil then
-  begin
-    Exit;
-  end;
-  if FOptions.Overrides and not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText)) then
-  begin
-    FetchOverrides(Session);
-  end;
-  if FOptions.CodeActions and not (FActionAsked and SameText(FActionFile, FFileName) and
-    (FActionLine = FCaretLine) and (FActionText = TAtlasRecursionMarks.LineOf(FText, FCaretLine))) then
-  begin
-    FetchAction(Session);
-  end;
-end;
-
-procedure TAtlasIdeGutterColumn.FetchOverrides(ASession: TLspSession);
-var
-  Values: TJSONArray;
-  Arguments: string;
-  Answer: TJSONValue;
-begin
-  Values := TJSONArray.Create;
-  try
-    Values.Add(TLspSession.PathToUri(FFileName));
-    Arguments := Values.ToJSON;
-  finally
-    Values.Free;
-  end;
-  try
-    ASession.Sync(FFileName, FText);
-    Answer := ASession.RunCommand(OverridesCommand, Arguments, OverridesTimeoutMs);
-  except
-    on E: ELspClientError do
-    begin
-      // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, ohne den Editor zu bremsen.
-      FRetryAt := TThread.GetTickCount64 + RetryMs;
-      Exit;
-    end;
-  end;
-  try
-    FOverrides := TAtlasFileOverrides.FromJson(Answer,
-      function(AUri: string): string
-      begin
-        Result := TLspSession.UriToPath(AUri);
-      end);
-  finally
-    Answer.Free;
-  end;
-  FFetchedFile := FFileName;
-  FFetchedText := FText;
-  InvalidateTop;
-end;
-
-procedure TAtlasIdeGutterColumn.FetchAction(ASession: TLspSession);
-var
-  LineText: string;
-  Found: TArray<TLspCodeAction>;
-  Action: TLspCodeAction;
-  Had: Boolean;
-begin
-  LineText := TAtlasRecursionMarks.LineOf(FText, FCaretLine);
-  Had := FActionFound;
-  FActionFile := FFileName;
-  FActionLine := FCaretLine;
-  FActionText := LineText;
-  FActionAsked := True;
-  FActionFound := False;
-  try
-    ASession.Sync(FFileName, FText);
-    Found := ASession.CodeActions(FFileName, TLspRange.Create(FCaretLine, 0, FCaretLine, Length(LineText)),
-      ActionsTimeoutMs);
-  except
-    on E: ELspClientError do
-    begin
-      FRetryAt := TThread.GetTickCount64 + RetryMs;
-      Found := nil;
-    end;
-  end;
-  for Action in Found do
-  begin
-    if Action.Disabled = '' then
-    begin
-      FActionFound := True;
-      Break;
-    end;
-  end;
-  if Had or FActionFound then
-  begin
-    InvalidateTop;
-  end;
-end;
-
-function TAtlasIdeGutterColumn.ProblemsOf(const AFileName: string): TArray<TAtlasProblem>;
-var
-  Store: TAtlasProblemStore;
-begin
-  Store := TAtlasProblemsController.Current;
-  Result := nil;
-  if Store = nil then
-  begin
-    Exit;
-  end;
-  if not SameText(FProblemsFile, AFileName) or (FProblemsVersion <> Store.Version) then
-  begin
-    FProblemsFile := AFileName;
-    FProblemsVersion := Store.Version;
-    FProblems := Store.ForFile(AFileName);
-  end;
-  Result := FProblems;
-end;
-
-function TAtlasIdeGutterColumn.LineOf(const AFileName: string; ALine: Integer; const ALineText: string;
-  AHasText: Boolean; out AOverrides: TAtlasGutterOverrides): TAtlasGutterLine;
-begin
-  Result := Default(TAtlasGutterLine);
-  AOverrides := Default(TAtlasGutterOverrides);
-  if FOptions.Problems then
-  begin
-    Result.Problem := TAtlasGutterColumn.ProblemSymbol(ProblemsOf(AFileName), ALine);
-  end;
-  if FOptions.CodeActions and FActionFound and (ALine = FActionLine) and SameText(AFileName, FActionFile) then
-  begin
-    Result.Action := not AHasText or TAtlasRecursionMarks.LineMatches(ALineText, FActionText);
-  end;
-  // Zeile seit dem Abruf geändert: Die Pfeile warten auf die nächste Antwort.
-  if FOptions.Overrides and SameText(AFileName, FFetchedFile) and FOverrides.At(ALine, AOverrides) and
-    (not AHasText or TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FFetchedText, ALine))) then
-  begin
-    Result.Overrides := Length(AOverrides.Overrides) > 0;
-    Result.Overridden := Length(AOverrides.Overridden) > 0;
-  end;
-end;
-
-procedure TAtlasIdeGutterColumn.PaintSymbol(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol;
-  const AColors: TAtlasColors; ABack: TAtlasColor);
-var
-  Size, Left, Top, Mid, Center, Pen, Head: Integer;
-  Color: TColor;
-begin
-  Size := Max(6, Min(ARect.Width, ARect.Height) - 4);
-  Left := ARect.Left + (ARect.Width - Size) div 2;
-  Top := ARect.Top + (ARect.Height - Size) div 2;
-  Mid := Top + Size div 2;
-  Center := Left + Size div 2;
-  Pen := Max(1, Size div 7);
-  case ASymbol of
-    TAtlasGutterSymbol.Error:
-      Color := TColor(TAtlasColorMath.Mix(AColors.Error, ABack, 0.95));
-    TAtlasGutterSymbol.Warning:
-      Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.95));
-    TAtlasGutterSymbol.Hint:
-      Color := TColor(TAtlasColorMath.Mix(AColors.Muted, ABack, 0.9));
-    TAtlasGutterSymbol.Action:
-      Color := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.95));
-  else
-    Color := TColor(TAtlasColorMath.Mix(AColors.Add, ABack, 0.95));
-  end;
-  ACanvas.Pen.Color := Color;
-  ACanvas.Pen.Width := Pen;
-  ACanvas.Brush.Color := Color;
-  ACanvas.Brush.Style := bsSolid;
-  case ASymbol of
-    TAtlasGutterSymbol.Error:
-      begin
-        // ✕: zwei Diagonalen.
-        ACanvas.MoveTo(Left + 1, Top + 1);
-        ACanvas.LineTo(Left + Size - 1, Top + Size - 1);
-        ACanvas.MoveTo(Left + Size - 2, Top + 1);
-        ACanvas.LineTo(Left, Top + Size - 1);
-      end;
-    TAtlasGutterSymbol.Warning:
-      begin
-        // ▲: gefülltes Dreieck.
-        ACanvas.Pen.Width := 1;
-        ACanvas.Polygon([Point(Center, Top), Point(Left + Size - 1, Top + Size - 1), Point(Left, Top + Size - 1)]);
-      end;
-    TAtlasGutterSymbol.Hint:
-      begin
-        // ●: kleiner Punkt.
-        ACanvas.Pen.Width := 1;
-        ACanvas.Ellipse(Center - Size div 4, Mid - Size div 4, Center + Size div 4 + 1, Mid + Size div 4 + 1);
-      end;
-    TAtlasGutterSymbol.Action:
-      begin
-        // ◆: Raute.
-        ACanvas.Pen.Width := 1;
-        ACanvas.Polygon([Point(Center, Top), Point(Left + Size - 1, Mid), Point(Center, Top + Size - 1),
-          Point(Left, Mid)]);
-      end;
-    TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
-      begin
-        // ↑ bzw. ↓: Schaft und gefüllte Spitze.
-        Head := Max(2, Size div 3);
-        ACanvas.Pen.Width := 1;
-        if ASymbol = TAtlasGutterSymbol.Overrides then
-        begin
-          ACanvas.Polygon([Point(Center, Top), Point(Center + Head, Top + Head), Point(Center - Head, Top + Head)]);
-          ACanvas.Pen.Width := Pen;
-          ACanvas.MoveTo(Center, Top + Head);
-          ACanvas.LineTo(Center, Top + Size - 1);
-        end
-        else
-        begin
-          ACanvas.Polygon([Point(Center, Top + Size - 1), Point(Center + Head, Top + Size - 1 - Head),
-            Point(Center - Head, Top + Size - 1 - Head)]);
-          ACanvas.Pen.Width := Pen;
-          ACanvas.MoveTo(Center, Top);
-          ACanvas.LineTo(Center, Top + Size - 1 - Head);
-        end;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
+    Result.Symbol := TAtlasGutterSymbol.None;
   end;
 end;
 
 procedure TAtlasIdeGutterColumn.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Row: TRow;
-  LineState: INTACodeEditorLineState;
-  LineText: string;
-  HasText: Boolean;
-  Overrides: TAtlasGutterOverrides;
-  Canvas: TCanvas;
-  Sample: COLORREF;
-  Back: TAtlasColor;
-  OldBrush: TBrush;
-  OldPen: TPen;
+  mRow: TRow;
+  mLineText: string;
 begin
-  if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (FColumn < 0) or (Context = nil) or
-    (Context.EditView = nil) or (Context.EditorState = nil) then
+  if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (FColumn < 0) or (Context = nil) then
   begin
     Exit;
   end;
   try
-    if not Active then
+    if (Context.EditView = nil) or (Context.EditorState = nil) or not Active then
     begin
       Exit;
     end;
@@ -693,60 +624,14 @@ begin
     begin
       FWantedWidth := TAtlasGutterColumn.Width(Context.CellSize.cy);
     end;
-    Row := Default(TRow);
-    Row.FileName := Context.FileName;
-    Row.Line := Context.LogicalLineNum - 1;
-    Row.TopRow := Context.EditView.TopRow;
-    Row.Rect := Context.EditorState.GetGutterColumnRect(Context.EditControl, Context.EditorLineNum, FColumn);
-    LineState := Context.LineState;
-    HasText := LineState <> nil;
-    LineText := '';
-    if HasText then
+    mRow := RowOf(Context, mLineText);
+    FRows.AddOrSetValue(Context.EditorLineNum, mRow);
+    if mRow.Symbol <> TAtlasGutterSymbol.None then
     begin
-      LineText := LineState.Text;
+      PaintCell(Context.Canvas, mRow.Rect, mRow.Symbol);
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GutterColumn, Context.FileName,
+        mRow.Line, mLineText), mRow.Rect, mRow.TopRow, mRow.Rect.Height);
     end;
-    Row.Symbol := TAtlasGutterSymbol.None;
-    if IsSource(Context.FileName) and (Row.Line >= 0) and not Row.Rect.IsEmpty then
-    begin
-      Row.Symbol := TAtlasGutterColumn.Choose(LineOf(Context.FileName, Row.Line, LineText, HasText, Overrides),
-        FOptions);
-    end;
-    // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
-    if (Row.Symbol <> TAtlasGutterSymbol.None) and
-      TAtlasIdeElements.Hidden(TAtlasDrawnElement.GutterColumn, Context.FileName, LineText) then
-    begin
-      Row.Symbol := TAtlasGutterSymbol.None;
-    end;
-    FRows.AddOrSetValue(Context.EditorLineNum, Row);
-    if Row.Symbol = TAtlasGutterSymbol.None then
-    begin
-      Exit;
-    end;
-    Canvas := Context.Canvas;
-    // Farben aus dem Grund der Spalte: hell oder dunkel wie das Thema der IDE.
-    Sample := GetPixel(Canvas.Handle, Row.Rect.Left + 1, Row.Rect.Top + 1);
-    if Sample = CLR_INVALID then
-    begin
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
-    end
-    else
-    begin
-      Back := TAtlasColor(Sample);
-    end;
-    OldBrush := TBrush.Create;
-    OldPen := TPen.Create;
-    try
-      OldBrush.Assign(Canvas.Brush);
-      OldPen.Assign(Canvas.Pen);
-      PaintSymbol(Canvas, Row.Rect, Row.Symbol, TAtlasColors.ForBackground(Back), Back);
-    finally
-      Canvas.Brush.Assign(OldBrush);
-      Canvas.Pen.Assign(OldPen);
-      OldPen.Free;
-      OldBrush.Free;
-    end;
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.GutterColumn, Context.FileName, Row.Line, LineText, Row.Rect,
-      Row.TopRow, Row.Rect.Height);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
@@ -756,51 +641,52 @@ end;
 
 function TAtlasIdeGutterColumn.RowAt(X, Y: Integer; out ARow: TRow): Boolean;
 var
-  Row: TRow;
-  View: IOTAEditView;
+  mRow: TRow;
+  mView: IOTAEditView;
 begin
   ARow := Default(TRow);
   Result := False;
-  View := TopView;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
-  for Row in FRows.Values do
+  for mRow in FRows.Values do
   begin
-    if (Row.Symbol <> TAtlasGutterSymbol.None) and PtInRect(Row.Rect, Point(X, Y)) then
+    if (mRow.Symbol <> TAtlasGutterSymbol.None) and PtInRect(mRow.Rect, Point(X, Y)) then
     begin
       // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
-      if not SameText(Row.FileName, View.Buffer.FileName) or (Row.TopRow <> View.TopRow) then
+      Result := SameText(mRow.FileName, mView.Buffer.FileName) and (mRow.TopRow = mView.TopRow);
+      if Result then
       begin
-        Exit;
+        ARow := mRow;
       end;
-      ARow := Row;
-      Exit(True);
+      Exit;
     end;
   end;
 end;
 
 procedure TAtlasIdeGutterColumn.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
-  Row: TRow;
+  mRow: TRow;
 begin
   try
-    if not Active or not RowAt(X, Y, Row) then
+    if not Active or not RowAt(X, Y, mRow) then
     begin
       FHovering := False;
       HideTip;
       Exit;
     end;
-    if FHovering and SameText(FHover.FileName, Row.FileName) and (FHover.Line = Row.Line) then
+    if FHovering and SameText(FHover.FileName, mRow.FileName) and (FHover.Line = mRow.Line) then
     begin
       Exit;
     end;
     HideTip;
-    FHover := Row;
+    FHover := mRow;
     FHovering := True;
     FHoverSince := TThread.GetTickCount64;
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(Row.Rect.TopLeft), Editor.ClientToScreen(Row.Rect.BottomRight));
+    FHoverScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft),
+      Editor.ClientToScreen(mRow.Rect.BottomRight));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
@@ -810,17 +696,18 @@ end;
 procedure TAtlasIdeGutterColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Row: TRow;
+  mRow: TRow;
 begin
   try
-    if (Button <> mbLeft) or not Active or not RowAt(X, Y, Row) then
+    if (Button <> mbLeft) or not Active or not RowAt(X, Y, mRow) then
     begin
       Exit;
     end;
     HideTip;
     FHovering := False;
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(Row.Rect.TopLeft), Editor.ClientToScreen(Row.Rect.BottomRight));
-    Click(Row);
+    FHoverScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft),
+      Editor.ClientToScreen(mRow.Rect.BottomRight));
+    Click(mRow);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
@@ -829,21 +716,21 @@ end;
 
 procedure TAtlasIdeGutterColumn.CheckHover;
 var
-  Inside: Boolean;
+  mInside: Boolean;
 begin
   if not FHovering then
   begin
     Exit;
   end;
   // Maus hat das Symbol verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-  Inside := PtInRect(FHoverScreen, Mouse.CursorPos) or (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
-  if not Inside then
+  mInside := PtInRect(FHoverScreen, Mouse.CursorPos) or
+    (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
+  if not mInside then
   begin
     FHovering := False;
     HideTip;
-    Exit;
-  end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  end
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
   begin
     ShowPanel(FHover, False);
   end;
@@ -857,20 +744,9 @@ begin
   end;
 end;
 
-function TAtlasIdeGutterColumn.TargetsOf(const ARow: TRow): TArray<TAtlasGutterTarget>;
-var
-  Entry: TAtlasGutterOverrides;
-begin
-  Result := nil;
-  if SameText(ARow.FileName, FFetchedFile) and FOverrides.At(ARow.Line, Entry) then
-  begin
-    Result := Entry.Overrides + Entry.Overridden;
-  end;
-end;
-
 procedure TAtlasIdeGutterColumn.Click(const ARow: TRow);
 var
-  Targets: TArray<TAtlasGutterTarget>;
+  mTargets: TArray<TAtlasGutterTarget>;
 begin
   case ARow.Symbol of
     TAtlasGutterSymbol.Action:
@@ -878,10 +754,10 @@ begin
     TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
       begin
         // Ein Ziel: gleich hin; mehrere: Liste mit Datei und Zeile.
-        Targets := TargetsOf(ARow);
-        if Length(Targets) = 1 then
+        mTargets := FState.TargetsOf(ARow.FileName, ARow.Line);
+        if Length(mTargets) = 1 then
         begin
-          TAtlasIdeNavigation.GoToLocation(Targets[0].FileName, Targets[0].Line, Targets[0].Character);
+          TAtlasIdeNavigation.GoToLocation(mTargets[0].FileName, mTargets[0].Line, mTargets[0].Character);
         end
         else
         begin
@@ -895,215 +771,140 @@ end;
 
 procedure TAtlasIdeGutterColumn.OpenActions(const ARow: TRow);
 var
-  View: IOTAEditView;
-  Position: TOTAEditPos;
-  Text: string;
-  Column: Integer;
+  mView: IOTAEditView;
+  mPosition: TOTAEditPos;
+  mText: string;
+  mColumn: Integer;
 begin
-  View := TopView;
-  if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, ARow.FileName) then
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, ARow.FileName) then
   begin
     Exit;
   end;
   // Cursor an den Anfang des Codes der Zeile, dann die Code-Aktionen wie über das Kontextmenü.
-  Text := TAtlasEditorBuffer.LineText(View, ARow.Line + 1);
-  Column := 1;
-  while (Column <= Length(Text)) and CharInSet(Text[Column], [' ', #9]) do
+  mText := TAtlasEditorBuffer.LineText(mView, ARow.Line + 1);
+  mColumn := 1;
+  while (mColumn <= Length(mText)) and CharInSet(mText[mColumn], [' ', #9]) do
   begin
-    Inc(Column);
+    Inc(mColumn);
   end;
-  Position.Line := ARow.Line + 1;
-  Position.Col := Column;
-  View.CursorPos := Position;
-  View.MoveViewToCursor;
-  View.Paint;
+  mPosition.Line := ARow.Line + 1;
+  mPosition.Col := mColumn;
+  mView.CursorPos := mPosition;
+  mView.MoveViewToCursor;
+  mView.Paint;
   if Assigned(FOpenActions) then
   begin
     FOpenActions();
   end;
 end;
 
-procedure TAtlasIdeGutterColumn.AddLink(var ACaptions: TArray<string>; const ACaption: string;
-  const AAction: TProc);
-begin
-  ACaptions := ACaptions + [ACaption];
-  FLinks := FLinks + [AAction];
-end;
-
-function TAtlasIdeGutterColumn.FixAction(const AFix: TLspCodeAction): TProc;
-var
-  Fix: TLspCodeAction;
-begin
-  Fix := AFix;
-  Result :=
-    procedure
-    begin
-      if Assigned(FApply) then
-      begin
-        FApply(Fix);
-      end;
-    end;
-end;
-
-function TAtlasIdeGutterColumn.TargetAction(const ATarget: TAtlasGutterTarget): TProc;
-var
-  Target: TAtlasGutterTarget;
-begin
-  Target := ATarget;
-  Result :=
-    procedure
-    begin
-      TAtlasIdeNavigation.GoToLocation(Target.FileName, Target.Line, Target.Character);
-    end;
-end;
-
 function TAtlasIdeGutterColumn.ActionsAction(const ARow: TRow): TProc;
 var
-  Row: TRow;
+  mRow: TRow;
 begin
-  Row := ARow;
+  mRow := ARow;
   Result :=
     procedure
     begin
-      OpenActions(Row);
+      OpenActions(mRow);
     end;
 end;
 
-function SeverityText(ASeverity: TAtlasProblemSeverity): string;
+function TAtlasIdeGutterColumn.ProblemPanel(const ARow: TRow; AFetchFixes: Boolean; var APanel: TPanel): Boolean;
+var
+  mProblems: TArray<TAtlasProblem>;
+  mProblem: TAtlasProblem;
+  mFixes: TArray<TLspCodeAction>;
+  mError: string;
 begin
-  case ASeverity of
-    TAtlasProblemSeverity.Error:
-      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityError);
-    TAtlasProblemSeverity.Warning:
-      Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityWarning);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.GutterSeverityHint);
+  mProblems := TAtlasGutterColumn.ProblemsAt(FState.ProblemsOf(ARow.FileName), ARow.Line);
+  Result := Length(mProblems) > 0;
+  if not Result then
+  begin
+    Exit;
   end;
+  APanel.Title := TAtlasGutterColumn.ProblemTitle(mProblems[0], SeverityText(mProblems[0].Severity));
+  for mProblem in mProblems do
+  begin
+    if (mProblem.Code <> '') and (Length(mProblems) > 1) then
+    begin
+      APanel.AddLine(mProblem.Code + ': ' + mProblem.Message);
+    end
+    else
+    begin
+      APanel.AddLine(mProblem.Message);
+    end;
+  end;
+  if AFetchFixes then
+  begin
+    mFixes := FState.Fixes(ARow.FileName, mProblems[0], mError);
+    AddFixes(APanel, mFixes, mError, FApply);
+  end;
+  APanel.AddLink(TAtlasStrings.Text(TAtlasTextId.GutterAllActions), ActionsAction(ARow));
+end;
+
+function TAtlasIdeGutterColumn.OverridesPanel(const ARow: TRow; var APanel: TPanel): Boolean;
+var
+  mEntry: TAtlasGutterOverrides;
+  mUp, mDown: string;
+begin
+  Result := FState.OverridesAt(ARow.FileName, ARow.Line, mEntry);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if ARow.Symbol = TAtlasGutterSymbol.Overrides then
+  begin
+    APanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle);
+  end
+  else
+  begin
+    APanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle);
+  end;
+  // Beide Richtungen: Pfeile vor den Zielen und im Text.
+  mUp := '';
+  mDown := '';
+  if (Length(mEntry.Overrides) > 0) and (Length(mEntry.Overridden) > 0) then
+  begin
+    mUp := '↑ ';
+    mDown := '↓ ';
+    APanel.Text := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle) + ' ↑ · ' +
+      TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle) + ' ↓';
+  end;
+  AddTargets(APanel, mEntry.Overrides, mUp);
+  AddTargets(APanel, mEntry.Overridden, mDown);
 end;
 
 procedure TAtlasIdeGutterColumn.ShowPanel(const ARow: TRow; AFetchFixes: Boolean);
 var
-  Title, Text, Prefix: string;
-  Captions: TArray<string>;
-  Problems: TArray<TAtlasProblem>;
-  Problem: TAtlasProblem;
-  Entry: TAtlasGutterOverrides;
-  Target: TAtlasGutterTarget;
-  Session: TLspSession;
-  Fixes: TArray<TLspCodeAction>;
-  Fix: TLspCodeAction;
-  Row: TRow;
-  Both: Boolean;
+  mPanel: TPanel;
+  mShown: Boolean;
 begin
-  Row := ARow;
-  Text := '';
-  Captions := nil;
-  FLinks := nil;
-  case Row.Symbol of
+  mPanel := Default(TPanel);
+  case ARow.Symbol of
     TAtlasGutterSymbol.Error, TAtlasGutterSymbol.Warning, TAtlasGutterSymbol.Hint:
-      begin
-        Problems := TAtlasGutterColumn.ProblemsAt(ProblemsOf(Row.FileName), Row.Line);
-        if Length(Problems) = 0 then
-        begin
-          Exit;
-        end;
-        Title := TAtlasGutterColumn.ProblemTitle(Problems[0], SeverityText(Problems[0].Severity));
-        for Problem in Problems do
-        begin
-          if Text <> '' then
-          begin
-            Text := Text + #10;
-          end;
-          if (Problem.Code <> '') and (Length(Problems) > 1) then
-          begin
-            Text := Text + Problem.Code + ': ';
-          end;
-          Text := Text + Problem.Message;
-        end;
-        if AFetchFixes then
-        begin
-          Fixes := nil;
-          Session := nil;
-          if Assigned(FSession) then
-          begin
-            Session := FSession();
-          end;
-          if Session <> nil then
-            try
-              Session.Sync(FFileName, FText);
-              Fixes := Session.CodeActions(Row.FileName, TLspRange.Create(Problems[0].StartLine,
-                Problems[0].StartCharacter, Problems[0].EndLine, Problems[0].EndCharacter), FixesTimeoutMs);
-            except
-              on E: ELspClientError do
-              begin
-                Fixes := nil;
-                Text := Text + #10 + TAtlasStrings.Fmt(TAtlasTextId.GutterFixesFailed, [E.Message]);
-              end;
-            end;
-          for Fix in Fixes do
-          begin
-            if (Fix.Disabled = '') and Fix.Kind.StartsWith('quickfix') then
-            begin
-              AddLink(Captions, Fix.Title, FixAction(Fix));
-            end;
-          end;
-          if Length(Captions) = 0 then
-          begin
-            Text := Text + #10 + TAtlasStrings.Text(TAtlasTextId.GutterNoFix);
-          end;
-        end;
-        AddLink(Captions, TAtlasStrings.Text(TAtlasTextId.GutterAllActions), ActionsAction(Row));
-      end;
+      mShown := ProblemPanel(ARow, AFetchFixes, mPanel);
     TAtlasGutterSymbol.Action:
       begin
-        Title := TAtlasStrings.Text(TAtlasTextId.GutterActionTitle);
-        Text := TAtlasStrings.Text(TAtlasTextId.GutterActionText);
+        mPanel.Title := TAtlasStrings.Text(TAtlasTextId.GutterActionTitle);
+        mPanel.Text := TAtlasStrings.Text(TAtlasTextId.GutterActionText);
+        mShown := True;
       end;
     TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
-      begin
-        if not SameText(Row.FileName, FFetchedFile) or not FOverrides.At(Row.Line, Entry) then
-        begin
-          Exit;
-        end;
-        Both := (Length(Entry.Overrides) > 0) and (Length(Entry.Overridden) > 0);
-        if Row.Symbol = TAtlasGutterSymbol.Overrides then
-        begin
-          Title := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle);
-        end
-        else
-        begin
-          Title := TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle);
-        end;
-        Prefix := '';
-        if Both then
-        begin
-          Prefix := '↑ ';
-        end;
-        for Target in Entry.Overrides do
-        begin
-          AddLink(Captions, Prefix + TAtlasGutterColumn.TargetText(Target), TargetAction(Target));
-        end;
-        if Both then
-        begin
-          Prefix := '↓ ';
-        end;
-        for Target in Entry.Overridden do
-        begin
-          AddLink(Captions, Prefix + TAtlasGutterColumn.TargetText(Target), TargetAction(Target));
-        end;
-        if Both then
-        begin
-          Text := TAtlasStrings.Text(TAtlasTextId.GutterOverridesTitle) + ' ↑ · ' +
-            TAtlasStrings.Text(TAtlasTextId.GutterOverriddenTitle) + ' ↓';
-        end;
-      end;
+      mShown := OverridesPanel(ARow, mPanel);
   else
+    mShown := False;
+  end;
+  if not mShown then
+  begin
     Exit;
   end;
+  FLinks := mPanel.Links;
   FHovering := True;
-  FHover := Row;
+  FHover := ARow;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(Title, Text, Captions, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(mPanel.Title, mPanel.Text, mPanel.Captions, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
 end;
 
 end.

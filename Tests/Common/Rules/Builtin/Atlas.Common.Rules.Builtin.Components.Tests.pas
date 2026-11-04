@@ -153,6 +153,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Components,
+  Atlas.Common.Rules.Builtin.Components.InheritedCalls,
+  Atlas.Common.Rules.Builtin.Components.Members,
   Atlas.Tests.RuleAssert;
 
 const

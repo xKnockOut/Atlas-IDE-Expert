@@ -34,6 +34,7 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Editor.SmartPaste;
 
@@ -82,8 +83,9 @@ type
     procedure Ask(const AView: IOTAEditView);
     procedure Answered(ARequest: Integer; const AAnalysis: TAtlasPasteAnalysis);
     procedure Accept;
+    function FetchUses(ASession: TLspSession; const AUnits: TArray<string>; out AEdit: TLspWorkspaceEdit;
+      out AAdded, AMoved: TArray<string>): Boolean;
     procedure ReapWorkers(AWait: Boolean);
-    class function WantedMode: TAtlasPasteMode; static;
   public
     constructor Create(const ABusy: TFunc<Boolean>; const ASession: TAtlasSmartPasteSessionFunc;
       const AMessage: TProc<string>);
@@ -114,7 +116,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Window,
@@ -225,7 +226,7 @@ begin
   FreeAndNil(FInstance);
 end;
 
-class function TAtlasIdeSmartPaste.WantedMode: TAtlasPasteMode;
+function WantedMode: TAtlasPasteMode;
 var
   Settings: TAtlasPluginSettings;
 begin
@@ -339,132 +340,164 @@ begin
   Result := (FClipText <> '') and TAtlasSmartPaste.Qualifies(FClipText);
 end;
 
+/// <summary>Beschreibbare Pascal-Datei vorn?</summary>
+function Pastable(const AView: IOTAEditView): Boolean;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
+    IsPascal(AView.Buffer.FileName);
+end;
+
+/// <summary>Steht AClipLines direkt vor dem Cursor von AView? ALine: Zeile des Cursors (ab 0), ACharacter: Zeichen
+/// des Cursors, AStart: Zeichen, an dem der Block in der ersten Zeile beginnt.</summary>
+function PastedAt(const AView: IOTAEditView; const AClipLines: TArray<string>; out ALine, ACharacter,
+  AStart: Integer): Boolean;
+var
+  mCursor: TOTAEditPos;
+  mIndex: Integer;
+  mLines: TArray<string>;
+  mCaretLine: string;
+begin
+  mCursor := AView.CursorPos;
+  ALine := mCursor.Line - 1;
+  ACharacter := 0;
+  AStart := 0;
+  Result := ALine + 1 >= Length(AClipLines);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mCaretLine := TAtlasEditorBuffer.LineText(AView, ALine + 1);
+  ACharacter := Min(TLspSession.ColumnToIndex(mCaretLine, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
+    Length(mCaretLine));
+  SetLength(mLines, Length(AClipLines));
+  for mIndex := 0 to High(mLines) do
+  begin
+    mLines[mIndex] := TAtlasEditorBuffer.LineText(AView, ALine - High(mLines) + mIndex + 1);
+  end;
+  Result := TAtlasSmartPaste.Match(mLines, ACharacter, AClipLines, AStart);
+end;
+
 procedure TAtlasIdeSmartPaste.Check;
 var
-  Mode: TAtlasPasteMode;
-  View: IOTAEditView;
-  Cursor: TOTAEditPos;
-  Line, Character, Index, Start, Tab: Integer;
-  Lines: TArray<string>;
-  CaretLine: string;
+  mMode: TAtlasPasteMode;
+  mView: IOTAEditView;
+  mLine, mCharacter, mStart: Integer;
 begin
-  Mode := WantedMode;
-  if (Mode = TAtlasPasteMode.Off) or not FArmed or IsBusy then
+  mMode := WantedMode;
+  if (mMode = TAtlasPasteMode.Off) or not FArmed or IsBusy then
   begin
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly or not IsPascal(View.Buffer.FileName) then
-  begin
-    Exit;
-  end;
-  if not ReadClipboard then
-  begin
-    Exit;
-  end;
-  Cursor := View.CursorPos;
-  Line := Cursor.Line - 1;
-  if Line + 1 < Length(FClipLines) then
-  begin
-    Exit;
-  end;
-  Tab := TAtlasEditorBuffer.TabWidth(View.Buffer);
-  CaretLine := TAtlasEditorBuffer.LineText(View, Line + 1);
-  Character := Min(TLspSession.ColumnToIndex(CaretLine, Cursor.Col, Tab), Length(CaretLine));
-  SetLength(Lines, Length(FClipLines));
-  for Index := 0 to High(Lines) do
-  begin
-    Lines[Index] := TAtlasEditorBuffer.LineText(View, Line - High(Lines) + Index + 1);
-  end;
-  if not TAtlasSmartPaste.Match(Lines, Character, FClipLines, Start) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not Pastable(mView) or not ReadClipboard or not PastedAt(mView, FClipLines, mLine, mCharacter, mStart) then
   begin
     Exit;
   end;
   // Behandelt: Eigene Änderungen und der Cursor danach zählen nicht noch einmal.
   FArmed := False;
-  FFileName := View.Buffer.FileName;
-  FStartLine := Line - High(Lines);
-  FStartCharacter := Start;
-  FEndLine := Line;
-  FEndCharacter := Character;
-  if TAtlasSmartPaste.WantsIndent(Mode) then
+  FFileName := mView.Buffer.FileName;
+  FStartLine := mLine - High(FClipLines);
+  FStartCharacter := mStart;
+  FEndLine := mLine;
+  FEndCharacter := mCharacter;
+  if TAtlasSmartPaste.WantsIndent(mMode) then
   begin
-    Indent(View, FStartLine, FStartCharacter, FEndCharacter);
+    Indent(mView, FStartLine, FStartCharacter, FEndCharacter);
   end;
-  if TAtlasSmartPaste.WantsUses(Mode) and HasUses(FFileName) then
+  if TAtlasSmartPaste.WantsUses(mMode) and HasUses(FFileName) then
   begin
-    Ask(View);
+    Ask(mView);
   end;
+end;
+
+/// <summary>Nächste nicht leere Zeile über AStartLine ('' ohne).</summary>
+function LineAbove(const AView: IOTAEditView; AStartLine: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AStartLine - 1 downto 0 do
+  begin
+    Result := TAtlasEditorBuffer.LineText(AView, mIndex + 1);
+    if Trim(Result) <> '' then
+    begin
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>Ein Schreiber: ein Rückgängig-Schritt, nur der Leerraum am Zeilenanfang der Zeilen ab AStartLine.
+/// </summary>
+procedure WriteIndents(const ABuffer: IOTAEditBuffer; AStartLine: Integer; const AEdits: TArray<TAtlasIndentEdit>);
+var
+  mText: string;
+  mEdit: TAtlasIndentEdit;
+  mWriter: IOTAEditWriter;
+  mUtf8: UTF8String;
+begin
+  mText := TAtlasEditorBuffer.Text(ABuffer);
+  mWriter := ABuffer.CreateUndoableWriter;
+  for mEdit in AEdits do
+  begin
+    mWriter.CopyTo(TAtlasEditorBuffer.ByteOffset(mText, AStartLine + mEdit.Line, 0));
+    mWriter.DeleteTo(TAtlasEditorBuffer.ByteOffset(mText, AStartLine + mEdit.Line, mEdit.Remove));
+    mUtf8 := UTF8Encode(mEdit.Indent);
+    if mUtf8 <> '' then
+    begin
+      mWriter.Insert(PAnsiChar(mUtf8));
+    end;
+  end;
+  mWriter := nil;
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+end;
+
+/// <summary>Cursor in Zeile ALine (ab 0) an Zeichen ACharacter (höchstens ans Zeilenende).</summary>
+procedure PlaceCursor(const AView: IOTAEditView; ALine: Integer; var ACharacter: Integer);
+var
+  mLastLine: string;
+  mPosition: TOTAEditPos;
+begin
+  mLastLine := TAtlasEditorBuffer.LineText(AView, ALine + 1);
+  ACharacter := Max(0, Min(ACharacter, Length(mLastLine)));
+  AView.Block.Reset;
+  mPosition.Line := ALine + 1;
+  mPosition.Col := TLspSession.IndexToColumn(mLastLine, ACharacter, TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  AView.CursorPos := mPosition;
+  AView.MoveViewToCursor;
+  AView.Paint;
 end;
 
 procedure TAtlasIdeSmartPaste.Indent(const AView: IOTAEditView; AStartLine: Integer; var AStartCharacter,
   AEndCharacter: Integer);
 var
-  Buffer: IOTAEditBuffer;
-  Text, Prefix, Above, LastLine: string;
-  Edits: TArray<TAtlasIndentEdit>;
-  Edit: TAtlasIndentEdit;
-  Writer: IOTAEditWriter;
-  Utf8: UTF8String;
-  Index, Tab: Integer;
-  Position: TOTAEditPos;
+  mEdits: TArray<TAtlasIndentEdit>;
+  mEdit: TAtlasIndentEdit;
 begin
-  Buffer := AView.Buffer;
-  Tab := TAtlasEditorBuffer.TabWidth(Buffer);
-  Prefix := Copy(TAtlasEditorBuffer.LineText(AView, AStartLine + 1), 1, AStartCharacter);
-  Above := '';
-  for Index := AStartLine - 1 downto 0 do
-  begin
-    Above := TAtlasEditorBuffer.LineText(AView, Index + 1);
-    if Trim(Above) <> '' then
-    begin
-      Break;
-    end;
-  end;
-  if not TAtlasSmartPaste.Reindent(Prefix, Above, FClipLines, Tab, TAtlasEditorBuffer.BlockIndent(Buffer), Edits) then
+  if not TAtlasSmartPaste.Reindent(Copy(TAtlasEditorBuffer.LineText(AView, AStartLine + 1), 1, AStartCharacter),
+    LineAbove(AView, AStartLine), FClipLines, TAtlasEditorBuffer.TabWidth(AView.Buffer),
+    TAtlasEditorBuffer.BlockIndent(AView.Buffer), mEdits) then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
   FWriting := True;
   try
-    // Ein Schreiber: ein Rückgängig-Schritt, nur der Leerraum am Zeilenanfang.
-    Writer := Buffer.CreateUndoableWriter;
-    for Edit in Edits do
-    begin
-      Writer.CopyTo(TAtlasEditorBuffer.ByteOffset(Text, AStartLine + Edit.Line, 0));
-      Writer.DeleteTo(TAtlasEditorBuffer.ByteOffset(Text, AStartLine + Edit.Line, Edit.Remove));
-      Utf8 := UTF8Encode(Edit.Indent);
-      if Utf8 <> '' then
-      begin
-        Writer.Insert(PAnsiChar(Utf8));
-      end;
-    end;
-    Writer := nil;
+    WriteIndents(AView.Buffer, AStartLine, mEdits);
   finally
     FWriting := False;
   end;
-  TAtlasEditorSnapshots.Invalidate(Buffer.FileName);
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
-    if Edit.Line = 0 then
+    if mEdit.Line = 0 then
     begin
-      AStartCharacter := Length(Edit.Indent);
+      AStartCharacter := Length(mEdit.Indent);
     end;
-    if Edit.Line = High(FClipLines) then
+    if mEdit.Line = High(FClipLines) then
     begin
-      AEndCharacter := AEndCharacter + Length(Edit.Indent) - Edit.Remove;
+      AEndCharacter := AEndCharacter + Length(mEdit.Indent) - mEdit.Remove;
     end;
   end;
   // Cursor ans Ende des eingefügten Blocks.
-  LastLine := TAtlasEditorBuffer.LineText(AView, AStartLine + High(FClipLines) + 1);
-  AEndCharacter := Max(0, Min(AEndCharacter, Length(LastLine)));
-  AView.Block.Reset;
-  Position.Line := AStartLine + High(FClipLines) + 1;
-  Position.Col := TLspSession.IndexToColumn(LastLine, AEndCharacter, Tab);
-  AView.CursorPos := Position;
-  AView.MoveViewToCursor;
-  AView.Paint;
+  PlaceCursor(AView, AStartLine + High(FClipLines), AEndCharacter);
 end;
 
 procedure TAtlasIdeSmartPaste.Ask(const AView: IOTAEditView);
@@ -569,49 +602,32 @@ begin
   FWindow.ShowFor(AAnalysis, Point);
 end;
 
-procedure TAtlasIdeSmartPaste.Accept;
+/// <summary>Fragt mit den gewählten Units AUnits nach der Änderung; False mit Meldung, wenn der Server scheitert.
+/// </summary>
+function TAtlasIdeSmartPaste.FetchUses(ASession: TLspSession; const AUnits: TArray<string>;
+  out AEdit: TLspWorkspaceEdit; out AAdded, AMoved: TArray<string>): Boolean;
 var
-  Session: TLspSession;
-  View: IOTAEditView;
-  Units, Added, Moved: TArray<string>;
-  Answer: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
+  mAnswer: TJSONValue;
 begin
-  Units := TAtlasSmartPaste.Selected(FWindow.Analysis);
-  if Length(Units) = 0 then
-  begin
-    Exit;
-  end;
-  View := TAtlasEditorBuffer.ActiveView;
-  Session := nil;
-  if Assigned(FSession) then
-  begin
-    Session := FSession();
-  end;
-  // Nur auf den Stand, für den die Antwort gilt.
-  if (Session = nil) or (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFileName) or
-    (TAtlasEditorBuffer.Text(View.Buffer) <> FText) then
-  begin
-    Exit;
-  end;
-  Edit := TLspWorkspaceEdit.FromJson(nil);
-  Added := nil;
-  Moved := nil;
+  Result := False;
+  AEdit := TLspWorkspaceEdit.FromJson(nil);
+  AAdded := nil;
+  AMoved := nil;
   try
-    Session.Sync(FFileName, FText);
-    Answer := Session.RunCommand(TAtlasSmartPaste.Command, TAtlasSmartPaste.Arguments(
-      TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine, FEndCharacter, Units), TimeoutMs);
+    ASession.Sync(FFileName, FText);
+    mAnswer := ASession.RunCommand(TAtlasSmartPaste.Command, TAtlasSmartPaste.Arguments(
+      TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine, FEndCharacter, AUnits), TimeoutMs);
     try
-      if Answer is TJSONObject then
+      if mAnswer is TJSONObject then
       begin
-        Edit := TLspWorkspaceEdit.FromJson(TJSONObject(Answer).GetValue('edit'));
-        Added := ReadNames(TJSONObject(Answer).GetValue('added'));
-        Moved := ReadNames(TJSONObject(Answer).GetValue('toImplementation'));
+        AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
+        AAdded := ReadNames(TJSONObject(mAnswer).GetValue('added'));
+        AMoved := ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
       end;
     finally
-      Answer.Free;
+      mAnswer.Free;
     end;
+    Result := True;
   except
     on E: Exception do
     begin
@@ -619,16 +635,39 @@ begin
       begin
         FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteFailed, [E.Message]));
       end;
-      Exit;
     end;
   end;
-  if Edit.IsEmpty then
+end;
+
+/// <summary>Zeigt AView noch den Stand AText von AFileName?</summary>
+function SameState(const AView: IOTAEditView; const AFileName, AText: string): Boolean;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and SameText(AView.Buffer.FileName, AFileName) and
+    (TAtlasEditorBuffer.Text(AView.Buffer) = AText);
+end;
+
+procedure TAtlasIdeSmartPaste.Accept;
+var
+  mSession: TLspSession;
+  mUnits, mAdded, mMoved: TArray<string>;
+  mEdit: TLspWorkspaceEdit;
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  mUnits := TAtlasSmartPaste.Selected(FWindow.Analysis);
+  mSession := nil;
+  if Assigned(FSession) then
+  begin
+    mSession := FSession();
+  end;
+  // Nur auf den Stand, für den die Antwort gilt.
+  if (Length(mUnits) = 0) or (mSession = nil) or not SameState(TAtlasEditorBuffer.ActiveView, FFileName, FText) or
+    not FetchUses(mSession, mUnits, mEdit, mAdded, mMoved) or mEdit.IsEmpty then
   begin
     Exit;
   end;
   FWriting := True;
   try
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.OpenInEditor,
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, TAtlasUnopenedPolicy.OpenInEditor,
       TAtlasStrings.Text(TAtlasTextId.SmartPasteUsesTitle));
   finally
     FWriting := False;
@@ -637,66 +676,59 @@ begin
   begin
     Exit;
   end;
-  if Outcome.Error <> '' then
+  if mOutcome.Error <> '' then
   begin
-    FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
     Exit;
   end;
-  FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteDone, [string.Join(', ', Added)]));
-  if Length(Moved) > 0 then
+  FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteDone, [string.Join(', ', mAdded)]));
+  if Length(mMoved) > 0 then
   begin
-    FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteImplementation, [string.Join(', ', Moved)]));
+    FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteImplementation, [string.Join(', ', mMoved)]));
+  end;
+end;
+
+/// <summary>Taste AKey im offenen Fenster (ohne Strg/Alt): Enter übernimmt, Esc verwirft, Pfeile wählen; False,
+/// wenn sie das Fenster nicht betrifft.</summary>
+function WindowKey(AWindow: TAtlasSmartPasteWindow; AKey: Word): Boolean;
+begin
+  Result := (AWindow <> nil) and AWindow.IsShown and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_RETURN:
+      AWindow.Accept;
+    VK_ESCAPE:
+      AWindow.Cancel;
+    VK_UP:
+      Result := AWindow.MoveRow(-1);
+    VK_DOWN:
+      Result := AWindow.MoveRow(1);
+    VK_LEFT:
+      Result := AWindow.MoveChoice(-1);
+    VK_RIGHT:
+      Result := AWindow.MoveChoice(1);
+  else
+    Result := False;
   end;
 end;
 
 procedure TAtlasIdeSmartPaste.KeyDown(const Msg: TMsg; var Handled: Boolean);
 var
-  Key: Word;
+  mKey: Word;
 begin
-  Key := Word(Msg.wParam);
-  if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  mKey := Word(Msg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
-  if (FWindow <> nil) and FWindow.IsShown and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
-    case Key of
-      VK_RETURN:
-        begin
-          FWindow.Accept;
-          Handled := True;
-          Exit;
-        end;
-      VK_ESCAPE:
-        begin
-          FWindow.Cancel;
-          Handled := True;
-          Exit;
-        end;
-      VK_UP:
-        if FWindow.MoveRow(-1) then
-        begin
-          Handled := True;
-          Exit;
-        end;
-      VK_DOWN:
-        if FWindow.MoveRow(1) then
-        begin
-          Handled := True;
-          Exit;
-        end;
-      VK_LEFT:
-        if FWindow.MoveChoice(-1) then
-        begin
-          Handled := True;
-          Exit;
-        end;
-      VK_RIGHT:
-        if FWindow.MoveChoice(1) then
-        begin
-          Handled := True;
-          Exit;
-        end;
-    end;
+  if WindowKey(FWindow, mKey) then
+  begin
+    Handled := True;
+    Exit;
+  end;
   // Jede andere Taste schließt das Fenster und erlaubt das nächste Einfügen.
   if FWindow <> nil then
   begin

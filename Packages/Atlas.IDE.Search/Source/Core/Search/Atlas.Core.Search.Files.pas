@@ -41,6 +41,14 @@ type
     Hits: TArray<TAtlasSearchHit>;
   end;
 
+  /// <summary>Fundstelle von NextLocation: Datei in den Ergebnissen, Treffer darin; Wrapped nach einem Umlauf.
+  /// </summary>
+  TAtlasFileLocation = record
+    FileIndex: Integer;
+    HitIndex: Integer;
+    Wrapped: Boolean;
+  end;
+
   TAtlasSearchLoader = reference to function(const AFileName: string; out AText: string): Boolean;
 
   TAtlasFileSearchSummary = record
@@ -72,8 +80,7 @@ type
     /// <summary>Nächster (ABackward: voriger) Treffer ab AFrom in AFileName über alle Dateien. False ohne
     /// Treffer. Liegt AFileName nicht in AResults, beginnt es mit der ersten bzw. letzten Datei.</summary>
     class function NextLocation(const AResults: TArray<TAtlasFileHits>; const AFileName: string;
-      const AFrom: TAtlasSearchPos; ABackward: Boolean; out AFileIndex, AHitIndex: Integer;
-      out AWrapped: Boolean): Boolean; static;
+      const AFrom: TAtlasSearchPos; ABackward: Boolean; out ALocation: TAtlasFileLocation): Boolean; static;
   end;
 
 implementation
@@ -132,54 +139,66 @@ begin
     end;
 end;
 
+/// <summary>Die aktive Datei zuerst, aber nur, wenn sie zum Bereich gehört; danach alle wie in AFiles.</summary>
+function ActiveFirst(const AFiles: TArray<string>; const AFirst: string): TArray<string>;
+var
+  mFileName: string;
+begin
+  Result := nil;
+  for mFileName in AFiles do
+  begin
+    if (AFirst <> '') and SameText(mFileName, AFirst) then
+    begin
+      Result := TArray<string>.Create(mFileName);
+    end;
+  end;
+  Result := Result + AFiles;
+end;
+
+function ContainsText(const AList: TArray<string>; const AText: string): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AList do
+  begin
+    if SameText(mItem, AText) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Quelle der Datei: der Puffer aus ABuffers, wenn es einen mit Text gibt, sonst die Platte.</summary>
+function SourceFor(const AFileName: string; const ABuffers: TArray<TAtlasSearchSource>): TAtlasSearchSource;
+var
+  mBuffer: TAtlasSearchSource;
+begin
+  Result := TAtlasSearchSource.FromDisk(AFileName);
+  for mBuffer in ABuffers do
+  begin
+    if mBuffer.HasText and SameText(mBuffer.FileName, AFileName) then
+    begin
+      Result := TAtlasSearchSource.FromBuffer(AFileName, mBuffer.Text);
+    end;
+  end;
+end;
+
 class function TAtlasFileSearch.Sources(const AFiles: TArray<string>; const ABuffers: TArray<TAtlasSearchSource>;
   const AFirst: string): TArray<TAtlasSearchSource>;
 var
-  Ordered, Seen: TArray<string>;
-  FileName, Known: string;
-  Buffer, Source: TAtlasSearchSource;
-  Duplicate: Boolean;
+  mSeen: TArray<string>;
+  mFileName: string;
 begin
   Result := nil;
-  // Die aktive Datei zuerst, aber nur, wenn sie zum Bereich gehört.
-  Ordered := nil;
-  for FileName in AFiles do
+  mSeen := nil;
+  for mFileName in ActiveFirst(AFiles, AFirst) do
   begin
-    if (AFirst <> '') and SameText(FileName, AFirst) then
+    if (mFileName <> '') and IsSearchable(mFileName) and not ContainsText(mSeen, mFileName) then
     begin
-      Ordered := [FileName];
+      mSeen := mSeen + [mFileName];
+      Result := Result + [SourceFor(mFileName, ABuffers)];
     end;
-  end;
-  Ordered := Ordered + AFiles;
-  Seen := nil;
-  for FileName in Ordered do
-  begin
-    if (FileName = '') or not IsSearchable(FileName) then
-    begin
-      Continue;
-    end;
-    Duplicate := False;
-    for Known in Seen do
-    begin
-      if SameText(Known, FileName) then
-      begin
-        Duplicate := True;
-      end;
-    end;
-    if Duplicate then
-    begin
-      Continue;
-    end;
-    Seen := Seen + [FileName];
-    Source := TAtlasSearchSource.FromDisk(FileName);
-    for Buffer in ABuffers do
-    begin
-      if Buffer.HasText and SameText(Buffer.FileName, FileName) then
-      begin
-        Source := TAtlasSearchSource.FromBuffer(FileName, Buffer.Text);
-      end;
-    end;
-    Result := Result + [Source];
   end;
 end;
 
@@ -193,54 +212,58 @@ begin
     TAtlasSearchArea.Whole(Result.Lines));
 end;
 
+/// <summary>Text der Quelle; False, wenn sie sich nicht laden lässt (gesperrt, gelöscht) oder binär ist (#0 im
+/// Text, etwa ein binäres Formular).</summary>
+function SourceText(const ASource: TAtlasSearchSource; const ALoad: TAtlasSearchLoader; out AText: string): Boolean;
+begin
+  AText := ASource.Text;
+  Result := ASource.HasText;
+  if not Result then
+  begin
+    try
+      Result := Assigned(ALoad) and ALoad(ASource.FileName, AText);
+    except
+      // Gesperrt oder gelöscht: weiter mit der nächsten Datei.
+      on Exception do
+      begin
+        Result := False;
+      end;
+    end;
+  end;
+  Result := Result and (Pos(#0, AText) = 0);
+end;
+
 class function TAtlasFileSearch.Run(const ASources: TArray<TAtlasSearchSource>; const AQuery: TAtlasSearchQuery;
   const ALoad: TAtlasSearchLoader; const ACancelled: TFunc<Boolean>;
   const AFound: TProc<TAtlasFileHits>): TAtlasFileSearchSummary;
 var
-  Source: TAtlasSearchSource;
-  Text: string;
-  Found: TAtlasFileHits;
+  mSource: TAtlasSearchSource;
+  mText: string;
+  mFound: TAtlasFileHits;
 begin
   Result := Default(TAtlasFileSearchSummary);
-  for Source in ASources do
+  for mSource in ASources do
   begin
     if Assigned(ACancelled) and ACancelled() then
     begin
       Result.Cancelled := True;
       Exit;
     end;
-    Text := Source.Text;
-    if not Source.HasText then
-      try
-        if not Assigned(ALoad) or not ALoad(Source.FileName, Text) then
-        begin
-          Inc(Result.Skipped);
-          Continue;
-        end;
-      except
-        // Gesperrt oder gelöscht: weiter mit der nächsten Datei.
-        on Exception do
-        begin
-          Inc(Result.Skipped);
-          Continue;
-        end;
-      end;
-    if Pos(#0, Text) > 0 then
+    if not SourceText(mSource, ALoad, mText) then
     begin
       Inc(Result.Skipped);
       Continue;
     end;
     Inc(Result.Files);
-    Found := SearchText(Source.FileName, Text, AQuery);
-    if Length(Found.Hits) = 0 then
+    mFound := SearchText(mSource.FileName, mText, AQuery);
+    if Length(mFound.Hits) > 0 then
     begin
-      Continue;
-    end;
-    Inc(Result.FilesWithHits);
-    Inc(Result.Hits, Length(Found.Hits));
-    if Assigned(AFound) then
-    begin
-      AFound(Found);
+      Inc(Result.FilesWithHits);
+      Inc(Result.Hits, Length(mFound.Hits));
+      if Assigned(AFound) then
+      begin
+        AFound(mFound);
+      end;
     end;
   end;
 end;
@@ -271,94 +294,71 @@ begin
   Result := -1;
 end;
 
-class function TAtlasFileSearch.NextLocation(const AResults: TArray<TAtlasFileHits>; const AFileName: string;
-  const AFrom: TAtlasSearchPos; ABackward: Boolean; out AFileIndex, AHitIndex: Integer;
-  out AWrapped: Boolean): Boolean;
+/// <summary>Nächste (ABackward: vorige) Datei mit Treffern nach ACurrent (-1: vor der ersten bzw. hinter der
+/// letzten Datei); über das Ende hinaus von der anderen Seite mit AWrapped. Mindestens eine Datei muss Treffer
+/// haben.</summary>
+function NextFileWithHits(const AResults: TArray<TAtlasFileHits>; ACurrent: Integer; ABackward: Boolean;
+  var AWrapped: Boolean): Integer;
 var
-  Current, Step, Count, Index: Integer;
-  Hits: TArray<TAtlasSearchHit>;
+  mStep, mCount: Integer;
 begin
-  AFileIndex := -1;
-  AHitIndex := -1;
-  AWrapped := False;
-  Count := Length(AResults);
+  mCount := Length(AResults);
+  mStep := 1;
+  Result := ACurrent;
+  if ABackward then
+  begin
+    mStep := -1;
+    if Result < 0 then
+    begin
+      Result := mCount;
+    end;
+  end;
+  repeat
+    Result := Result + mStep;
+    if Result >= mCount then
+    begin
+      Result := 0;
+      AWrapped := True;
+    end
+    else if Result < 0 then
+    begin
+      Result := mCount - 1;
+      AWrapped := True;
+    end;
+  until Length(AResults[Result].Hits) > 0;
+end;
+
+class function TAtlasFileSearch.NextLocation(const AResults: TArray<TAtlasFileHits>; const AFileName: string;
+  const AFrom: TAtlasSearchPos; ABackward: Boolean; out ALocation: TAtlasFileLocation): Boolean;
+var
+  mCurrent: Integer;
+  mWrapped: Boolean;
+begin
+  ALocation := Default(TAtlasFileLocation);
+  ALocation.FileIndex := -1;
+  ALocation.HitIndex := -1;
   Result := HitCount(AResults) > 0;
   if not Result then
   begin
     Exit;
   end;
-  Current := IndexOfFile(AResults, AFileName);
-  if Current >= 0 then
+  mCurrent := IndexOfFile(AResults, AFileName);
+  if mCurrent >= 0 then
   begin
     // Erst in der aktuellen Datei, ohne Umlauf.
-    Hits := AResults[Current].Hits;
-    if ABackward then
+    ALocation.HitIndex := TAtlasTextSearch.Next(AResults[mCurrent].Hits, AFrom, ABackward, mWrapped);
+    if (ALocation.HitIndex >= 0) and not mWrapped then
     begin
-      for Index := High(Hits) downto 0 do
-      begin
-        if TAtlasSearchPos.Compare(Hits[Index].StartPos, AFrom) < 0 then
-        begin
-          AFileIndex := Current;
-          AHitIndex := Index;
-          Exit;
-        end;
-      end;
-    end
-    else
-    begin
-      for Index := 0 to High(Hits) do
-      begin
-        if TAtlasSearchPos.Compare(Hits[Index].StartPos, AFrom) >= 0 then
-        begin
-          AFileIndex := Current;
-          AHitIndex := Index;
-          Exit;
-        end;
-      end;
+      ALocation.FileIndex := mCurrent;
+      Exit;
     end;
   end;
-  // Dann die nächste bzw. vorige Datei mit Treffern; über das Ende hinaus von der anderen Seite.
+  // Dann die nächste bzw. vorige Datei mit Treffern.
+  ALocation.FileIndex := NextFileWithHits(AResults, mCurrent, ABackward, ALocation.Wrapped);
+  ALocation.HitIndex := 0;
   if ABackward then
   begin
-    Step := -1;
-  end
-  else
-  begin
-    Step := 1;
-  end;
-  Index := Current;
-  if Index < 0 then
-  begin
-    if ABackward then
-    begin
-      Index := Count;
-    end
-    else
-    begin
-      Index := -1;
-    end;
-  end;
-  repeat
-    Index := Index + Step;
-    if Index >= Count then
-    begin
-      Index := 0;
-      AWrapped := True;
-    end
-    else if Index < 0 then
-    begin
-      Index := Count - 1;
-      AWrapped := True;
-    end;
-  until Length(AResults[Index].Hits) > 0;
-  AFileIndex := Index;
-  if ABackward then
-  begin
-    AHitIndex := High(AResults[Index].Hits);
-  end
-  else
-  begin
-    AHitIndex := 0;
+    ALocation.HitIndex := High(AResults[ALocation.FileIndex].Hits);
   end;
 end;
 

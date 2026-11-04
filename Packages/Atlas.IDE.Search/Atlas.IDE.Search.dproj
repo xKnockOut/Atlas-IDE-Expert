@@ -108,12 +108,22 @@
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Service.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Window.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Editor.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.HistoryFile.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Session.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Painter.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Counter.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.AcrossFiles.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Stepping.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Replacing.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Commands.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Composition.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.FileSearch.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.ReplaceWindow.pas"/>
+        <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Actions.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>
+        <DCCReference Include="Source\UI\Query\Atlas.UI.Query.Parts.pas"/>
         <DCCReference Include="Source\UI\Query\Atlas.UI.Query.Frame.pas">
             <Form>AtlasCodeQueryFrame</Form>
             <FormType>dfm</FormType>
@@ -126,6 +136,8 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Search\Atlas.UI.Search.Strings.pas"/>
+        <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Data.pas"/>
+        <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Painter.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

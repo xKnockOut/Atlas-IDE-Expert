@@ -180,6 +180,7 @@ uses
   System.StrUtils,
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Popup.Accessibility;
@@ -427,9 +428,9 @@ begin
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, TAtlasStrings.DocLabels,
-    TAtlasDocSignature.Parse(FView.Data.Declaration),
-    TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip));
+  FDoc.Build(Canvas, TAtlasDocContent.Create(Doc, TAtlasDocSignature.Parse(FView.Data.Declaration),
+    TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip)), AWidth - Scale(22),
+    TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
 end;
 
 procedure TAtlasHoverTipView.ToggleDoc;

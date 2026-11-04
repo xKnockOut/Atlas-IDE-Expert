@@ -257,58 +257,81 @@ begin
   Result := False;
 end;
 
+/// <summary>Projekt für den Lauf: offen, aktiv, ein abgebrochener Lauf zurückgestellt; False mit AReason.</summary>
+function ProjectForRun(const AFileName: string; out AProject: IOTAProject; out AReason: string): Boolean;
+begin
+  AReason := '';
+  AProject := nil;
+  if TAtlasIdeStartOptions.Debugging then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesDebuggerRunning);
+    Exit(False);
+  end;
+  AProject := TAtlasIdeStartOptions.FindProject(AFileName);
+  if AProject = nil then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AFileName)]);
+    Exit(False);
+  end;
+  // „Start“ der IDE startet das aktive Projekt; die Startoptionen gelten für dessen Konfiguration und Plattform.
+  TAtlasIdeStartOptions.MakeActive(AProject);
+  // Ein Eintrag von einem abgebrochenen Lauf zuerst zurückstellen, sonst gälten danach dessen Parameter.
+  TAtlasIdeStartOptions.RecoverTemporary(AProject);
+  Result := True;
+end;
+
+/// <summary>Startoptionen für den Lauf bilden und den alten Stand merken (übersteht einen Absturz), bevor
+/// geschrieben wird; False mit AReason.</summary>
+function RememberTemporary(const AProject: IOTAProject; const AParameters: TFunc<string, string>;
+  out AOptions: TAtlasStartOptions; out AReason: string): Boolean;
+var
+  mState: TAtlasStartProfileState;
+  mCurrent: TAtlasStartOptions;
+begin
+  AReason := '';
+  AOptions := Default(TAtlasStartOptions);
+  if not TAtlasIdeStartOptions.ReadOptions(AProject, mCurrent) then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [ExtractFileName(AProject.FileName)]);
+    Exit(False);
+  end;
+  AOptions := TAtlasStartProfiles.TemporaryOptions(mCurrent, AParameters(mCurrent.Parameters));
+  mState := TAtlasStartProfiles.Load(TAtlasIdeStartOptions.Folder, AProject.FileName);
+  TAtlasStartProfiles.BeginTemporary(mState, mCurrent, AOptions.Parameters);
+  Result := TAtlasStartProfiles.Save(TAtlasIdeStartOptions.Folder, mState);
+  if not Result then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed);
+  end;
+end;
+
 class function TAtlasIdeStartOptions.RunTemporary(const AProject: string; const AParameters: TFunc<string, string>;
   ADebugger: Boolean; out AReason: string): Boolean;
 var
   mProject: IOTAProject;
-  mState: TAtlasStartProfileState;
-  mCurrent, mOptions: TAtlasStartOptions;
+  mOptions: TAtlasStartOptions;
   mChanged: Boolean;
 begin
-  Result := False;
-  AReason := '';
-  if Debugging then
+  Result := ProjectForRun(AProject, mProject, AReason) and
+    RememberTemporary(mProject, AParameters, mOptions, AReason);
+  if not Result then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesDebuggerRunning);
-    Exit;
-  end;
-  mProject := FindProject(AProject);
-  if mProject = nil then
-  begin
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
-    Exit;
-  end;
-  // „Start“ der IDE startet das aktive Projekt; die Startoptionen gelten für dessen Konfiguration und Plattform.
-  MakeActive(mProject);
-  // Ein Eintrag von einem abgebrochenen Lauf zuerst zurückstellen, sonst gälten danach dessen Parameter.
-  RecoverTemporary(mProject);
-  if not ReadOptions(mProject, mCurrent) then
-  begin
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [ExtractFileName(mProject.FileName)]);
-    Exit;
-  end;
-  mOptions := TAtlasStartProfiles.TemporaryOptions(mCurrent, AParameters(mCurrent.Parameters));
-  // Erst merken (übersteht einen Absturz), dann schreiben.
-  mState := TAtlasStartProfiles.Load(Folder, mProject.FileName);
-  TAtlasStartProfiles.BeginTemporary(mState, mCurrent, mOptions.Parameters);
-  if not TAtlasStartProfiles.Save(Folder, mState) then
-  begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed);
     Exit;
   end;
   FTemporary := mProject.FileName;
-  if not WriteOptions(mProject, mOptions, AReason) then
+  Result := WriteOptions(mProject, mOptions, AReason);
+  if not Result then
   begin
     AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [AReason]);
-    EndTemporary(mProject.FileName, mChanged);
-    Exit;
+  end
+  else
+  begin
+    Result := Execute(ADebugger, AReason);
   end;
-  if not Execute(ADebugger, AReason) then
+  if not Result then
   begin
     EndTemporary(mProject.FileName, mChanged);
-    Exit;
   end;
-  Result := True;
 end;
 
 class function TAtlasIdeStartOptions.EndTemporary(const AProject: string; out AChanged: Boolean): Boolean;

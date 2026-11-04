@@ -386,6 +386,58 @@ begin
   Result := LowerCase(AFileName);
 end;
 
+/// <summary>Stufe der Datei: offen 3, zuletzt geöffnet (ABoost > 0) 2, Projekt 1, Rest 0.</summary>
+function TierOf(AOpen: TDictionary<string, Boolean>; const AFile: TAtlasQuickOpenFile; ABoost: Integer): Integer;
+begin
+  if AOpen.ContainsKey(LowerCase(AFile.FileName)) then
+  begin
+    Result := 3;
+  end
+  else if ABoost > 0 then
+  begin
+    Result := 2;
+  end
+  else if AFile.Origin = TAtlasQuickOpenOrigin.Project then
+  begin
+    Result := 1;
+  end
+  else
+  begin
+    Result := 0;
+  end;
+end;
+
+/// <summary>Reihenfolge der Treffer: Güte, Stufe, Verlauf, Endung, Name, Pfad.</summary>
+function FileComparer(const AFiles: TAtlasQuickOpenFiles; const AScores, ATiers,
+  ABoosts: TArray<Integer>): IComparer<Integer>;
+begin
+  Result := TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      Result := AScores[B] - AScores[A];
+      if Result = 0 then
+      begin
+        Result := ATiers[B] - ATiers[A];
+      end;
+      if Result = 0 then
+      begin
+        Result := ABoosts[B] - ABoosts[A];
+      end;
+      if Result = 0 then
+      begin
+        Result := ExtensionRank(AFiles[A].Name) - ExtensionRank(AFiles[B].Name);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareText(AFiles[A].Name, AFiles[B].Name);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareText(AFiles[A].FileName, AFiles[B].FileName);
+      end;
+    end);
+end;
+
 class function TAtlasQuickOpen.Order(const AFiles: TAtlasQuickOpenFiles; const AText: string;
   const AOpen: TArray<string>; ARecent: TAtlasCommandHistory): TArray<Integer>;
 var
@@ -419,46 +471,10 @@ begin
       begin
         Boosts[Index] := ARecent.Boost(RecentKey(Files[Index].FileName));
       end;
-      // Stufen: offen 3, zuletzt geöffnet 2, Projekt 1, Rest 0.
-      if Open.ContainsKey(LowerCase(Files[Index].FileName)) then
-      begin
-        Tiers[Index] := 3;
-      end
-      else if Boosts[Index] > 0 then
-      begin
-        Tiers[Index] := 2;
-      end
-      else if Files[Index].Origin = TAtlasQuickOpenOrigin.Project then
-      begin
-        Tiers[Index] := 1;
-      end;
+      Tiers[Index] := TierOf(Open, Files[Index], Boosts[Index]);
       Found.Add(Index);
     end;
-    Found.Sort(TComparer<Integer>.Construct(
-      function(const A, B: Integer): Integer
-      begin
-        Result := Scores[B] - Scores[A];
-        if Result = 0 then
-        begin
-          Result := Tiers[B] - Tiers[A];
-        end;
-        if Result = 0 then
-        begin
-          Result := Boosts[B] - Boosts[A];
-        end;
-        if Result = 0 then
-        begin
-          Result := ExtensionRank(Files[A].Name) - ExtensionRank(Files[B].Name);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(Files[A].Name, Files[B].Name);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(Files[A].FileName, Files[B].FileName);
-        end;
-      end));
+    Found.Sort(FileComparer(Files, Scores, Tiers, Boosts));
     if Found.Count > MaxResults then
     begin
       Found.Count := MaxResults;

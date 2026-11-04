@@ -185,14 +185,14 @@ begin
   Result := TAtlasCommentEditor.Create(AHost);
   Result.Parent := AHost;
   Result.Align := alClient;
-  Result.RequestDelay := 0;
+  Result.Suggest.RequestDelay := 0;
 end;
 
 procedure TypeText(AEditor: TAtlasCommentEditor; const AText: string);
 begin
   AEditor.Memo.Text := AText;
   AEditor.Memo.SelStart := Length(AText);
-  AEditor.CheckTrigger;
+  AEditor.Suggest.Check;
 end;
 
 { TAtlasCommentEditorUiTests }
@@ -222,13 +222,13 @@ begin
   mRef := mAssist;
   try
     mEditor := NewEditor(mHost);
-    mEditor.OnSend := mCounter.Send;
+    mEditor.Events := TAtlasCommentEditorEvents.Create(mCounter.Send, nil);
     mAssist.Draft := 'alter Entwurf';
     mEditor.Enhanced := False;
     mEditor.Bind(mRef);
     Assert.AreEqual('', mEditor.Memo.Text, 'kein Entwurf ohne Editor');
     TypeText(mEditor, 'Danke @an');
-    Assert.AreEqual(0, Integer(Length(mEditor.Rows)), 'keine Vorschläge');
+    Assert.AreEqual(0, Integer(Length(mEditor.Suggest.Rows)), 'keine Vorschläge');
     Assert.AreEqual(0, Integer(Length(mAssist.UserQueries)), 'keine Anfrage');
     Press(mEditor, VK_RETURN, [ssCtrl]);
     Assert.AreEqual(1, mCounter.Sends, 'Strg+Enter sendet');
@@ -253,18 +253,18 @@ begin
     mEditor := NewEditor(mHost);
     mEditor.Bind(mRef);
     TypeText(mEditor, 'Danke @an');
-    Assert.IsTrue(mEditor.Trigger.Kind = TAtlasCommentTriggerKind.Mention);
-    Assert.AreEqual(2, Integer(Length(mEditor.Rows)));
-    Assert.AreEqual('@anna · Anna Berger', mEditor.Rows[0]);
-    Assert.AreEqual(0, mEditor.Selected);
+    Assert.IsTrue(mEditor.Suggest.Trigger.Kind = TAtlasCommentTriggerKind.Mention);
+    Assert.AreEqual(2, Integer(Length(mEditor.Suggest.Rows)));
+    Assert.AreEqual('@anna · Anna Berger', mEditor.Suggest.Rows[0]);
+    Assert.AreEqual(0, mEditor.Suggest.Selected);
     Press(mEditor, VK_DOWN, []);
-    Assert.AreEqual(1, mEditor.Selected);
+    Assert.AreEqual(1, mEditor.Suggest.Selected);
     Press(mEditor, VK_DOWN, []);
-    Assert.AreEqual(1, mEditor.Selected, 'bleibt am Ende');
+    Assert.AreEqual(1, mEditor.Suggest.Selected, 'bleibt am Ende');
     Press(mEditor, VK_RETURN, []);
     Assert.AreEqual('Danke @andreas ', mEditor.Memo.Text);
     Assert.AreEqual(15, mEditor.Memo.SelStart, 'Schreibmarke hinter dem Leerzeichen');
-    Assert.AreEqual(0, Integer(Length(mEditor.Rows)), 'Liste zu');
+    Assert.AreEqual(0, Integer(Length(mEditor.Suggest.Rows)), 'Liste zu');
   finally
     mHost.Free;
     mRef := nil;
@@ -281,12 +281,12 @@ begin
   mRef := TFakeAssist.Create;
   try
     mEditor := NewEditor(mHost);
-    mEditor.RequestDelay := TAtlasCommentEditor.DelayMs;
+    mEditor.Suggest.RequestDelay := TAtlasCommentEditor.DelayMs;
     mEditor.Bind(mRef);
     TypeText(mEditor, 'siehe ATL-');
-    Assert.IsTrue(mEditor.Trigger.Query.Kind = TAtlasIssueSearchKind.Recent);
-    Assert.AreEqual(1, Integer(Length(mEditor.Rows)), 'ohne Wartezeit');
-    Assert.AreEqual('ATL-7 · Zuletzt', mEditor.Rows[0]);
+    Assert.IsTrue(mEditor.Suggest.Trigger.Query.Kind = TAtlasIssueSearchKind.Recent);
+    Assert.AreEqual(1, Integer(Length(mEditor.Suggest.Rows)), 'ohne Wartezeit');
+    Assert.AreEqual('ATL-7 · Zuletzt', mEditor.Suggest.Rows[0]);
     Press(mEditor, VK_TAB, []);
     Assert.AreEqual('siehe ATL-7 ', mEditor.Memo.Text);
   finally
@@ -309,11 +309,11 @@ begin
   mRef := mAssist;
   try
     mEditor := NewEditor(mHost);
-    mEditor.OnCancel := mCounter.CancelClick;
+    mEditor.Events := TAtlasCommentEditorEvents.Create(nil, mCounter.CancelClick);
     mEditor.Bind(mRef);
     TypeText(mEditor, 'Danke @an');
     Press(mEditor, VK_ESCAPE, []);
-    Assert.AreEqual(0, Integer(Length(mEditor.Rows)), 'erst die Liste');
+    Assert.AreEqual(0, Integer(Length(mEditor.Suggest.Rows)), 'erst die Liste');
     Assert.AreEqual(0, mCounter.Cancels);
     Press(mEditor, VK_ESCAPE, []);
     Assert.AreEqual(1, mCounter.Cancels, 'dann das Feld');
@@ -390,13 +390,13 @@ begin
     mEditor := NewEditor(mHost);
     mEditor.Bind(mRef);
     Assert.AreEqual('Zeile 1'#13#10'Zeile 2', mEditor.Memo.Text, 'leeres Feld: gleich eingesetzt');
-    Assert.IsTrue(mEditor.DraftButton.Visible);
-    Assert.AreEqual('Verwerfen', mEditor.DraftButton.Caption);
-    Assert.IsTrue(string(mEditor.DraftNote.Caption).StartsWith('Entwurf vom 28.10.'));
-    mEditor.DraftButton.Click;
+    Assert.IsTrue(mEditor.Parts.DraftButton.Visible);
+    Assert.AreEqual('Verwerfen', mEditor.Parts.DraftButton.Caption);
+    Assert.IsTrue(string(mEditor.Parts.DraftNote.Caption).StartsWith('Entwurf vom 28.10.'));
+    mEditor.Parts.DraftButton.Click;
     Assert.AreEqual('', mEditor.Memo.Text);
     Assert.AreEqual(1, mAssist.Deleted);
-    Assert.IsFalse(mEditor.DraftButton.Visible);
+    Assert.IsFalse(mEditor.Parts.DraftButton.Visible);
   finally
     mHost.Free;
     mRef := nil;
@@ -419,14 +419,14 @@ begin
     mEditor.SetText('Erledigt in x.'#10'abc');
     mEditor.Bind(mRef);
     Assert.AreEqual('Erledigt in x.'#13#10'abc', mEditor.Memo.Text, 'Vorgabe bleibt');
-    Assert.AreEqual('mein Entwurf', mEditor.OfferedDraft);
-    Assert.AreEqual('Übernehmen', mEditor.DraftButton.Caption);
+    Assert.AreEqual('mein Entwurf', mEditor.Draft.Offered);
+    Assert.AreEqual('Übernehmen', mEditor.Parts.DraftButton.Caption);
     mEditor.Unbind;
     Assert.AreEqual(0, Integer(Length(mAssist.Saved)), 'unveränderte Vorgabe ist kein Entwurf');
     mEditor.Bind(mRef);
-    mEditor.DraftButton.Click;
+    mEditor.Parts.DraftButton.Click;
     Assert.AreEqual('mein Entwurf', mEditor.Memo.Text);
-    Assert.AreEqual('', mEditor.OfferedDraft);
+    Assert.AreEqual('', mEditor.Draft.Offered);
   finally
     mHost.Free;
     mRef := nil;
@@ -472,17 +472,17 @@ begin
   try
     mEditor := NewEditor(mHost);
     mEditor.Previewing := True;
-    Assert.IsTrue(mEditor.PreviewBox.Visible);
+    Assert.IsTrue(mEditor.Parts.Preview.Visible);
     Assert.IsFalse(mEditor.Memo.Visible);
-    Assert.AreEqual(1, mEditor.PreviewBox.ControlCount, 'Hinweis bei leerem Text');
-    Assert.AreEqual('Bearbeiten', mEditor.PreviewButton.Caption);
+    Assert.AreEqual(1, mEditor.Parts.Preview.ControlCount, 'Hinweis bei leerem Text');
+    Assert.AreEqual('Bearbeiten', mEditor.Parts.PreviewButton.Caption);
     mEditor.Previewing := False;
     mEditor.Memo.Text := '**fett**'#13#10#13#10'```pascal'#13#10'x := 1;'#13#10'```';
     mEditor.Previewing := True;
-    Assert.IsTrue(mEditor.PreviewBox.ControlCount >= 1, 'gesetzter Text');
-    Assert.IsFalse(mEditor.SnippetButton.Enabled, 'kein Textbaustein in der Vorschau');
+    Assert.IsTrue(mEditor.Parts.Preview.ControlCount >= 1, 'gesetzter Text');
+    Assert.IsFalse(mEditor.Parts.SnippetButton.Enabled, 'kein Textbaustein in der Vorschau');
     mEditor.Previewing := False;
-    Assert.AreEqual(0, mEditor.PreviewBox.ControlCount, 'aufgeräumt');
+    Assert.AreEqual(0, mEditor.Parts.Preview.ControlCount, 'aufgeräumt');
     Assert.IsTrue(mEditor.Memo.Visible);
   finally
     mHost.Free;
@@ -503,15 +503,15 @@ begin
   try
     mFrame := TAtlasIssueFrame.Create(mHost);
     mFrame.Parent := mHost;
-    Assert.IsTrue(mFrame.CommentEdit = mFrame.CommentEditor.Memo);
-    mFrame.CommentEditor.Bind(mRef);
-    mFrame.CommentEdit.Text := 'gesendet';
+    Assert.IsTrue(mFrame.Parts.CommentEdit = mFrame.Parts.Comment.Memo);
+    mFrame.Parts.Comment.Bind(mRef);
+    mFrame.Parts.CommentEdit.Text := 'gesendet';
     mFrame.CommentDone('');
-    Assert.AreEqual('', mFrame.CommentEdit.Text, 'Erfolg leert das Feld');
+    Assert.AreEqual('', mFrame.Parts.CommentEdit.Text, 'Erfolg leert das Feld');
     Assert.AreEqual(1, mAssist.Deleted, 'und löscht den Entwurf');
-    mFrame.CommentEdit.Text := 'bleibt';
+    mFrame.Parts.CommentEdit.Text := 'bleibt';
     mFrame.CommentDone('Fehler');
-    Assert.AreEqual('bleibt', mFrame.CommentEdit.Text, 'Fehler: Text bleibt');
+    Assert.AreEqual('bleibt', mFrame.Parts.CommentEdit.Text, 'Fehler: Text bleibt');
   finally
     mHost.Free;
   end;

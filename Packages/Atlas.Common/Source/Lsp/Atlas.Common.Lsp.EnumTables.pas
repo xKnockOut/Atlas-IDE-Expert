@@ -298,8 +298,8 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Stelle "%s"', [APlacement]));
   end;
   if not TEnumTables.Target(ATree, APosition, Target, Reason) or
-    not TEnumTables.CreateTable(AText, ATree, APosition, Trim(AName), Placement, AContext.ResourceStrings, Edits,
-    Reason) then
+    not TEnumTables.CreateTable(AText, ATree, APosition,
+    TEnumTableRequest.Create(Trim(AName), Placement, AContext.ResourceStrings), Edits, Reason) then
   begin
     raise Fail('Namenstabelle geht nicht: ' + Reason);
   end;

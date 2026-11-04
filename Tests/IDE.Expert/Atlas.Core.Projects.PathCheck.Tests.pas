@@ -77,6 +77,9 @@ type
     /// <summary>Units aus einer .dcp ohne Quelle (ToolsAPI aus designide) gelten als gefunden.</summary>
     [Test]
     procedure UnitsInRequiredDcpAreFound;
+    /// <summary>Der Scanner allein: mehrzeilige Strings und (*$…*) wie im Projekt.</summary>
+    [Test]
+    procedure ScanUnitReadsMultilineStringsAndParenDirectives;
   end;
 
 implementation
@@ -84,7 +87,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Core.Projects.PathCheck,
+  Atlas.Core.Projects.PathCheck.Scan;
 
 function UnitNames(const AScan: TAtlasSourceScan): string;
 var
@@ -867,6 +871,18 @@ begin
   finally
     Disk.Free;
   end;
+end;
+
+procedure TAtlasPathCheckTests.ScanUnitReadsMultilineStringsAndParenDirectives;
+var
+  Scan: TAtlasSourceScan;
+begin
+  Scan := TAtlasPathScan.Scan('unit A;'#13#10'uses B, {$IFDEF X} C, {$ENDIF} D;'#13#10'(*$DEFINE Y*)'#13#10 +
+    'const S = '''''''#13#10'  uses Z;'#13#10'  '''''';'#13#10, ['X']);
+  Assert.AreEqual('B|C|D', UnitNames(Scan));
+  Assert.AreEqual(1, Integer(Length(Scan.Defined)));
+  Assert.AreEqual('Y', Scan.Defined[0]);
+  Assert.IsTrue(TAtlasPathScan.Evaluate('defined(X) and not defined(Y)', ['x']) = TAtlasBranchState.Active);
 end;
 
 initialization

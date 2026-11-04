@@ -159,9 +159,9 @@ end;
 
 function AtlasKey(AFunc: TAtlasKeyFunction; AKey: Word; APriority, AActive: Boolean): TAtlasKeyItem;
 begin
-  Result := TAtlasKeyItem.Create(AKey, 'Taste', 'Atlas ' + IntToStr(Ord(AFunc)), TAtlasKeyOrigin.Atlas,
-    TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(AFunc), TAtlasKeyMap.SourceOf(AFunc),
-    'Atlas.Key.' + IntToStr(Ord(AFunc)), Ord(AFunc));
+  Result := TAtlasKeyItem.Create(AKey, 'Taste', 'Atlas ' + IntToStr(Ord(AFunc)),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(AFunc),
+    TAtlasKeyMap.SourceOf(AFunc), 'Atlas.Key.' + IntToStr(Ord(AFunc)), Ord(AFunc)));
   Result.Func := AFunc;
   Result.Priority := APriority;
   Result.Active := AActive;
@@ -169,14 +169,14 @@ end;
 
 function IdeAction(const AName: string; AKey: Word; AOrder: Integer): TAtlasKeyItem;
 begin
-  Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName,
-    TAtlasKeyContext.Global, TAtlasKeySource.Action, AName, AOrder);
+  Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
+    TAtlasKeyMap.IdeName, TAtlasKeyContext.Global, TAtlasKeySource.Action, AName, AOrder));
 end;
 
 function IdeBinding(const AName: string; AKey: Word): TAtlasKeyItem;
 begin
-  Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName,
-    TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), 0);
+  Result := TAtlasKeyItem.Create(AKey, 'Taste', AName, TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
+    TAtlasKeyMap.IdeName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(AKey), 0));
 end;
 
 procedure TAtlasKeyMapTests.AllFromSettingsListsEveryAtlasKey;
@@ -636,8 +636,9 @@ begin
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearchIde).Disabled,
     'ohne Übernahme gehört Strg+F12 der IDE');
   // Eine Erweiterung belegt Strg+F12 im Editor: Dort gewinnt ihre Tastaturbelegung vor der Aktion, Atlas meldet es.
-  Plugin := TAtlasKeyItem.Create(CtrlF12, 'Strg+F12', 'Tastaturbelegung des Editors', TAtlasKeyOrigin.Plugin,
-    'CnWizards_D120', TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.' + IntToStr(CtrlF12), 101);
+  Plugin := TAtlasKeyItem.Create(CtrlF12, 'Strg+F12', 'Tastaturbelegung des Editors',
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
+    TAtlasKeySource.Binding, 'Editor.' + IntToStr(CtrlF12), 101));
   Plugin.Effective := True;
   Items := [AtlasKey(TAtlasKeyFunction.UnitSearchIde, CtrlF12, True, True), Plugin];
   TAtlasKeyMap.Analyze(Items);
@@ -699,8 +700,8 @@ begin
   Assert.IsFalse(TAtlasKeyMap.Collide(A, B), 'andere Taste');
   A := AtlasKey(TAtlasKeyFunction.WelcomeSearch, $4044, True, True);
   Assert.IsFalse(TAtlasKeyMap.Collide(A, B), 'Willkommensseite und Editor überschneiden sich nicht');
-  A := TAtlasKeyItem.Create($4044, 'Taste', 'X', TAtlasKeyOrigin.Plugin, 'CnWizards', TAtlasKeyContext.Editor,
-    TAtlasKeySource.Binding, 'x', 1);
+  A := TAtlasKeyItem.Create($4044, 'Taste', 'X', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards',
+    TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'x', 1));
   B := A;
   B.Id := 'y';
   Assert.IsFalse(TAtlasKeyMap.Collide(A, B), 'dieselbe Erweiterung');
@@ -773,7 +774,8 @@ var
   Items: TArray<TAtlasKeyItem>;
 begin
   Items := [IdeAction('Neu', $404E, 7), TAtlasKeyItem.Create($404E, 'Taste', 'Fremd',
-    TAtlasKeyOrigin.Plugin, 'GExperts', TAtlasKeyContext.Global, TAtlasKeySource.Action, 'GxNew', 3),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'GExperts', TAtlasKeyContext.Global, TAtlasKeySource.Action,
+    'GxNew', 3)),
     IdeAction('Neu 2', $404E, 9)];
   TAtlasKeyMap.Analyze(Items);
   Assert.IsTrue(Items[0].Conflict);
@@ -818,8 +820,8 @@ var
 begin
   // Eine Erweiterung hat sich nach Atlas angemeldet: Ihre Belegung ist wirksam, auch gegen den Vorrang.
   Items := [AtlasKey(TAtlasKeyFunction.ShrinkSelection, $6057, True, True), TAtlasKeyItem.Create($6057, 'Taste',
-    'Tastaturbelegung', TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor, TAtlasKeySource.Binding,
-    'Editor.24663', 101)];
+    'Tastaturbelegung', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
+    TAtlasKeySource.Binding, 'Editor.24663', 101))];
   Items[1].Effective := True;
   TAtlasKeyMap.Analyze(Items);
   Assert.AreEqual(1, Items[0].Winner);

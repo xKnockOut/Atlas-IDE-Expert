@@ -433,12 +433,36 @@ begin
   end;
 end;
 
-procedure TAtlasIdePalette.Run(const ACommand: TAtlasCommand);
+/// <summary>Führt die Aktion der IDE mit dem Namen AId aus, wenn es sie noch gibt und sie aktiv ist.</summary>
+procedure RunIdeAction(const AId: string);
 var
-  Pair: TPair<TAtlasCommand, TProc>;
   Services: INTAServices;
   Index: Integer;
   Action: TContainedAction;
+begin
+  // Die Aktion neu suchen: Sie kann inzwischen freigegeben sein.
+  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  for Index := 0 to Services.ActionList.ActionCount - 1 do
+  begin
+    Action := Services.ActionList.Actions[Index];
+    if SameText(Action.Name, AId) then
+    begin
+      Action.Update;
+      if not (Action is TCustomAction) or TCustomAction(Action).Enabled then
+      begin
+        Action.Execute;
+      end;
+      Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasIdePalette.Run(const ACommand: TAtlasCommand);
+var
+  Pair: TPair<TAtlasCommand, TProc>;
   mFound: Boolean;
 begin
   FHistory.Executed(ACommand.Id);
@@ -466,25 +490,10 @@ begin
     begin
       RunModuleCommand(ACommand.Id);
     end;
-    Exit;
-  end;
-  // Die Aktion neu suchen: Sie kann inzwischen freigegeben sein.
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  end
+  else
   begin
-    Exit;
-  end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
-  begin
-    Action := Services.ActionList.Actions[Index];
-    if SameText(Action.Name, ACommand.Id) then
-    begin
-      Action.Update;
-      if not (Action is TCustomAction) or TCustomAction(Action).Enabled then
-      begin
-        Action.Execute;
-      end;
-      Exit;
-    end;
+    RunIdeAction(ACommand.Id);
   end;
 end;
 
