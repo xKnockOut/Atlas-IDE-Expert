@@ -249,6 +249,19 @@ type
     property OnSelectRow: TAtlasQuickRowProc read FOnSelectRow write FOnSelectRow;
   end;
 
+  /// <summary>Texte zu einer Zeile mit Schnellaktionen, gemeinsam für die Bereiche „Projekte“ und
+  /// „Weiterarbeiten“.</summary>
+  TAtlasQuickRowTexts = class
+  public
+    /// <summary>Pull der Zeile ist ein SVN-Update: „aktualisiert …“ statt „holt …“.</summary>
+    class function IsUpdateRow(ABar: TAtlasQuickActionsBar; ARow: Integer): Boolean; static;
+    /// <summary>Stand der letzten Schnellaktion der Zeile als Text der Marke; '' = keine Marke.</summary>
+    class function StateText(ABar: TAtlasQuickActionsBar; ARow: Integer): string; static;
+    /// <summary>Zusatz zum Tooltip der Zeile: Stand samt Grund und Hinweis auf die Tasten; '' ohne Quelle.
+    /// </summary>
+    class function HintSuffix(ABar: TAtlasQuickActionsBar; ARow: Integer): string; static;
+  end;
+
 /// <summary>Beschriftung der Aktion AAction (Knopf, Kontextmenü, Optionsdialog) ohne Zustand.</summary>
 function QuickActionTitle(AAction: TAtlasQuickAction): string;
 
@@ -264,6 +277,51 @@ uses
 const
   Separator = ' · ';
   MenuArrow = #$25BE;
+
+{ TAtlasQuickRowTexts }
+
+class function TAtlasQuickRowTexts.IsUpdateRow(ABar: TAtlasQuickActionsBar; ARow: Integer): Boolean;
+var
+  mButton: TAtlasQuickActionButton;
+begin
+  Result := False;
+  for mButton in ABar.ButtonsOf(ARow) do
+  begin
+    if mButton.Action = TAtlasQuickAction.Pull then
+    begin
+      Result := mButton.Update;
+    end;
+  end;
+end;
+
+class function TAtlasQuickRowTexts.StateText(ABar: TAtlasQuickActionsBar; ARow: Integer): string;
+begin
+  Result := TAtlasQuickActionsBar.StateText(ABar.StateOf(ARow), ABar.NowMs, IsUpdateRow(ABar, ARow));
+end;
+
+class function TAtlasQuickRowTexts.HintSuffix(ABar: TAtlasQuickActionsBar; ARow: Integer): string;
+var
+  mState: string;
+begin
+  Result := '';
+  if ABar.Source = nil then
+  begin
+    Exit;
+  end;
+  mState := StateText(ABar, ARow);
+  if (mState <> '') and (ABar.StateOf(ARow).Detail <> '') then
+  begin
+    mState := mState + ': ' + ABar.StateOf(ARow).Detail;
+  end;
+  if mState <> '' then
+  begin
+    Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintState, [mState]);
+  end;
+  if ABar.Active then
+  begin
+    Result := Result + sLineBreak + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintKeys);
+  end;
+end;
 
 { TAtlasQuickKeySink }
 
