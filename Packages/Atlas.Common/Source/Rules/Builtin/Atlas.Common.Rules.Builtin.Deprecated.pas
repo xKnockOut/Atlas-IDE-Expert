@@ -87,6 +87,16 @@ const
   KnownUnits: array[0..1] of string = ('System.SysUtils', 'SysUtils');
 
 type
+  /// <summary>Hinweis an einem verwendeten Symbol bzw. einer Unit: Direktiven, Grund aus deprecated '…' und
+  /// eindeutiger Ersatz ('' ohne).</summary>
+  TDeprecatedHint = record
+    Directives: TArray<string>;
+    Reason: string;
+    Replacement: string;
+    class function Create(const ADirectives: TArray<string>; const AReason, AReplacement: string): TDeprecatedHint;
+      static;
+  end;
+
   TDeprecatedCheck = class
   private
     FContext: TRuleContext;
@@ -108,9 +118,19 @@ type
     function ReplacementOf(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; AQualified: Boolean): string;
     function Fits(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; const ACandidate: string;
       AQualified: Boolean): Boolean;
+    /// <summary>Meldung der Art AKind für AName mit dem Hinweis AHint.</summary>
+    function MessageOf(AKind: Integer; const AName: string; const AHint: TDeprecatedHint;
+      AUnitLevel: Boolean): string;
     procedure ReportKinds(const ARange: TTextRange; ATokenIndex: Integer; const AName: string;
-      const ADirectives: TArray<string>; const AReason, AReplacement: string; AUnitLevel: Boolean);
+      const AHint: TDeprecatedHint; AUnitLevel: Boolean);
     procedure CheckUses;
+    /// <summary>Vorfilter: Gibt es in der Datei oder im Index ein Symbol AName mit Hinweis?</summary>
+    function NameHinted(const AName: string): Boolean;
+    /// <summary>Das Symbol, das der Bezeichner ATokenIndex verwendet, wenn es sicher einen Hinweis trägt.
+    /// </summary>
+    function HintedSymbolAt(ATokenIndex: Integer; out AOwner: TUnitIndex; out ASymbol: TIndexSymbol): Boolean;
+    /// <summary>Steht vor dem Token ATokenIndex (ohne Kommentare und Direktiven) ein Punkt?</summary>
+    function IsQualified(ATokenIndex: Integer): Boolean;
     procedure CheckSymbols;
     /// <summary>Abschnitte automated in Klassen (W1000 „Symbol 'AUTOMATED' ist veraltet“, #1373).</summary>
     procedure CheckAutomated;
@@ -155,6 +175,70 @@ begin
   end;
 end;
 
+/// <summary>Erstes Token ab AOffset (Tokens sind nach Offset sortiert).</summary>
+function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
+var
+  mHigh, mMiddle: Integer;
+begin
+  Result := 0;
+  mHigh := Length(ATokens);
+  while Result < mHigh do
+  begin
+    mMiddle := (Result + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
+    begin
+      Result := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
+    end;
+  end;
+end;
+
+/// <summary>(Use, Alloc, Release = 4): die Namen direkt nach "(" bzw. ","; der Wert hinter "=" ist eine
+/// Verwendung.</summary>
+procedure AddEnumNames(const ATokens: TArray<TPascalToken>; AFirst: Integer; ANode: TSyntaxNode;
+  AOffsets: TDictionary<Integer, Boolean>);
+var
+  mIndex: Integer;
+begin
+  mIndex := AFirst + 1;
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      (ATokens[mIndex - 1].IsSymbol('(') or ATokens[mIndex - 1].IsSymbol(',')) then
+    begin
+      AOffsets.AddOrSetValue(ATokens[mIndex].Offset, True);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Endet am Token AToken der Name einer Deklaration (Parameter, Typ, Wert, Typparameter)?</summary>
+function EndsDeclaredName(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Symbol) and MatchStr(AToken.Text, ['(', ':', ';', '=', '[', '(.', '<']);
+end;
+
+/// <summary>Bezeichner ab AFirst bis zum Ende des deklarierten Namens.</summary>
+procedure AddDeclaredNames(const ATokens: TArray<TPascalToken>; AFirst: Integer; ANode: TSyntaxNode;
+  AOffsets: TDictionary<Integer, Boolean>);
+var
+  mIndex: Integer;
+begin
+  mIndex := AFirst;
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) and
+    not EndsDeclaredName(ATokens[mIndex]) do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
+    begin
+      AOffsets.AddOrSetValue(ATokens[mIndex].Offset, True);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 /// <summary>Offsets der Namen, die hier deklariert werden, nicht verwendet: Routinenköpfe (procedure TFoo.Bar),
 /// Variablen, Felder, Konstanten, Typen, Parameter, Properties und Aufzählungswerte. Ein Feld Release ist keine
 /// Verwendung eines veralteten Release anderswo; die Auflösung an der Deklaration kann aber dort landen.</summary>
@@ -164,68 +248,35 @@ const
     TSyntaxKind.TypeDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar,
     TSyntaxKind.InlineConst];
 var
-  Offsets: TDictionary<Integer, Boolean>;
-  Tokens: TArray<TPascalToken>;
+  mOffsets: TDictionary<Integer, Boolean>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Offsets := TDictionary<Integer, Boolean>.Create;
-  Tokens := ATree.Tokens;
+  mOffsets := TDictionary<Integer, Boolean>.Create;
+  mTokens := ATree.Tokens;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
-    var
-      Low_, High_, Middle, Index: Integer;
     begin
       Result := True;
-      if not (ANode.Kind in NamedKinds + [TSyntaxKind.EnumType]) then
-      begin
-        Exit;
-      end;
-      // Erstes Token des Knotens (Tokens sind nach Offset sortiert).
-      Low_ := 0;
-      High_ := Length(Tokens);
-      while Low_ < High_ do
-      begin
-        Middle := (Low_ + High_) div 2;
-        if Tokens[Middle].Offset < ANode.StartOffset then
-        begin
-          Low_ := Middle + 1;
-        end
-        else
-        begin
-          High_ := Middle;
-        end;
-      end;
       if ANode.Kind = TSyntaxKind.EnumType then
       begin
-        // (Use, Alloc, Release = 4): die Namen direkt nach "(" bzw. ","; der Wert hinter "=" ist eine Verwendung.
-        for Index := Low_ + 1 to High(Tokens) do
-        begin
-          if Tokens[Index].Offset >= ANode.EndOffset then
-          begin
-            Break;
-          end;
-          if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-            (Tokens[Index - 1].IsSymbol('(') or Tokens[Index - 1].IsSymbol(',')) then
-          begin
-            Offsets.AddOrSetValue(Tokens[Index].Offset, True);
-          end;
-        end;
-        Exit;
-      end;
-      for Index := Low_ to High(Tokens) do
+        AddEnumNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
+      end
+      else if ANode.Kind in NamedKinds then
       begin
-        if (Tokens[Index].Offset >= ANode.EndOffset) or Tokens[Index].IsSymbol('(') or
-          Tokens[Index].IsSymbol(':') or Tokens[Index].IsSymbol(';') or Tokens[Index].IsSymbol('=') or
-          Tokens[Index].IsSymbol('[') or Tokens[Index].IsSymbol('<') then
-        begin
-          Break;
-        end;
-        if Tokens[Index].Kind = TPascalTokenKind.Identifier then
-        begin
-          Offsets.AddOrSetValue(Tokens[Index].Offset, True);
-        end;
+        AddDeclaredNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
       end;
     end);
-  Result := Offsets;
+  Result := mOffsets;
+end;
+
+{ TDeprecatedHint }
+
+class function TDeprecatedHint.Create(const ADirectives: TArray<string>; const AReason,
+  AReplacement: string): TDeprecatedHint;
+begin
+  Result.Directives := ADirectives;
+  Result.Reason := AReason;
+  Result.Replacement := AReplacement;
 end;
 
 { TDeprecatedCheck }
@@ -422,59 +473,62 @@ begin
   end;
 end;
 
-procedure TDeprecatedCheck.ReportKinds(const ARange: TTextRange; ATokenIndex: Integer; const AName: string;
-  const ADirectives: TArray<string>; const AReason, AReplacement: string; AUnitLevel: Boolean);
+function TDeprecatedCheck.MessageOf(AKind: Integer; const AName: string; const AHint: TDeprecatedHint;
+  AUnitLevel: Boolean): string;
 var
-  Kind: Integer;
-  State: TRuleWarnState;
-  Message, Prefix, Code: string;
-  Fixes: TArray<TRuleFix>;
-  Severity: TRuleSeverity;
+  mPrefix, mCode: string;
 begin
-  for Kind := Low(KindWords) to High(KindWords) do
+  mPrefix := '';
+  mCode := SymbolCodes[AKind];
+  if AUnitLevel then
   begin
-    if IndexText(KindWords[Kind], ADirectives) < 0 then
+    mPrefix := 'Unit ';
+    mCode := UnitCodes[AKind];
+  end;
+  Result := Format('%s%s ist %s', [mPrefix, AName, KindWords[AKind]]);
+  if (AKind = 0) and (AHint.Reason <> '') then
+  begin
+    Result := Result + ': ' + AHint.Reason;
+  end
+  else if AHint.Replacement <> '' then
+  begin
+    Result := Result + '; besser ' + AHint.Replacement;
+  end;
+  Result := Result + Format(' (wie %s).', [mCode]);
+end;
+
+procedure TDeprecatedCheck.ReportKinds(const ARange: TTextRange; ATokenIndex: Integer; const AName: string;
+  const AHint: TDeprecatedHint; AUnitLevel: Boolean);
+var
+  mKind: Integer;
+  mState: TRuleWarnState;
+  mFixes: TArray<TRuleFix>;
+  mSeverity: TRuleSeverity;
+begin
+  mFixes := nil;
+  if AHint.Replacement <> '' then
+  begin
+    mFixes := [TRuleFix.Create(Format('Durch %s ersetzen', [AHint.Replacement]),
+      [TTextEdit.Create(ARange, AHint.Replacement)])];
+  end;
+  for mKind := Low(KindWords) to High(KindWords) do
+  begin
+    if IndexText(KindWords[mKind], AHint.Directives) < 0 then
     begin
       Continue;
     end;
-    State := StateAt(Kind, AUnitLevel, ATokenIndex);
-    if not TRuleWarnSwitches.Reported(State) then
+    mState := StateAt(mKind, AUnitLevel, ATokenIndex);
+    if not TRuleWarnSwitches.Reported(mState) then
     begin
       Continue;
-    end;
-    if AUnitLevel then
-    begin
-      Prefix := 'Unit ';
-      Code := UnitCodes[Kind];
-    end
-    else
-    begin
-      Prefix := '';
-      Code := SymbolCodes[Kind];
-    end;
-    Message := Format('%s%s ist %s', [Prefix, AName, KindWords[Kind]]);
-    if (Kind = 0) and (AReason <> '') then
-    begin
-      Message := Message + ': ' + AReason;
-    end
-    else if AReplacement <> '' then
-    begin
-      Message := Message + '; besser ' + AReplacement;
-    end;
-    Message := Message + Format(' (wie %s).', [Code]);
-    Fixes := nil;
-    if AReplacement <> '' then
-    begin
-      Fixes := [TRuleFix.Create(Format('Durch %s ersetzen', [AReplacement]),
-        [TTextEdit.Create(ARange, AReplacement)])];
     end;
     // {$WARN … ERROR} macht die Warnung zum Fehler.
-    Severity := TRuleSeverity.Default;
-    if State = TRuleWarnState.AsError then
+    mSeverity := TRuleSeverity.Default;
+    if mState = TRuleWarnState.AsError then
     begin
-      Severity := TRuleSeverity.Error;
+      mSeverity := TRuleSeverity.Error;
     end;
-    FReport.AddWithSeverity(ARange, Message, Severity, Fixes);
+    FReport.AddWithSeverity(ARange, MessageOf(mKind, AName, AHint, AUnitLevel), mSeverity, mFixes);
   end;
 end;
 
@@ -513,95 +567,112 @@ begin
         Inc(Last, 2);
       end;
       ReportKinds(TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos), First, Item.Name,
-        UnitIndex.Directives, UnitIndex.DeprecatedText, '', True);
+        TDeprecatedHint.Create(UnitIndex.Directives, UnitIndex.DeprecatedText, ''), True);
     end;
   finally
     Items.Free;
   end;
 end;
 
+function TDeprecatedCheck.NameHinted(const AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in FOwn.Symbols do
+  begin
+    if SameText(mSymbol.Name, AName) and HasHint(mSymbol.Directives) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := FIndex.HasSymbol(AName,
+    function(const ACandidate: TIndexSymbol): Boolean
+    begin
+      Result := HasHint(ACandidate.Directives);
+    end);
+end;
+
+function TDeprecatedCheck.HintedSymbolAt(ATokenIndex: Integer; out AOwner: TUnitIndex;
+  out ASymbol: TIndexSymbol): Boolean;
+var
+  mToken: TPascalToken;
+  mResolved, mCandidate: TResolvedSymbol;
+  mCandidateUnit: TUnitIndex;
+  mCandidateSymbol: TIndexSymbol;
+begin
+  mToken := FContext.Tree.Tokens[ATokenIndex];
+  // Bei Überladungen zählt die Überladung, die der Aufruf wählt (FileAge(Name, Alter) nicht die veraltete
+  // FileAge(Name)). Bleibt die Wahl offen, meldet die Regel nur, wenn alle Kandidaten den Hinweis tragen.
+  mResolved := Default(TResolvedSymbol);
+  for mCandidate in FResolver.ResolveAll(FContext.Tree, FContext.RelativePath, mToken.StartPos) do
+  begin
+    if not SymbolOf(mCandidate, mCandidateUnit, mCandidateSymbol) or not HasHint(mCandidateSymbol.Directives) then
+    begin
+      Exit(False);
+    end;
+    if not mResolved.Found then
+    begin
+      mResolved := mCandidate;
+      AOwner := mCandidateUnit;
+      ASymbol := mCandidateSymbol;
+    end;
+  end;
+  // Die Deklaration selbst ist keine Verwendung.
+  Result := mResolved.Found and not ((mResolved.SelectionRange.StartPos = mToken.StartPos) and
+    SameText(mResolved.FileName, FContext.RelativePath));
+end;
+
+function TDeprecatedCheck.IsQualified(ATokenIndex: Integer): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mPrevious: Integer;
+begin
+  mTokens := FContext.Tree.Tokens;
+  mPrevious := ATokenIndex - 1;
+  while (mPrevious >= 0) and (mTokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(mPrevious);
+  end;
+  Result := (mPrevious >= 0) and mTokens[mPrevious].IsSymbol('.');
+end;
+
 procedure TDeprecatedCheck.CheckSymbols;
 var
-  Candidates: TDictionary<string, Boolean>;
-  Headers: TDictionary<Integer, Boolean>;
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Index, Previous: Integer;
-  Resolved, Candidate: TResolvedSymbol;
-  OwnerUnit, CandidateUnit: TUnitIndex;
-  Symbol, CandidateSymbol: TIndexSymbol;
-  Hinted, Qualified, Unsure: Boolean;
+  mCandidates: TDictionary<string, Boolean>;
+  mHeaders: TDictionary<Integer, Boolean>;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mIndex: Integer;
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mHinted: Boolean;
 begin
-  Tokens := FContext.Tree.Tokens;
-  Candidates := TDictionary<string, Boolean>.Create;
-  Headers := DeclarationNameOffsets(FContext.Tree);
+  mTokens := FContext.Tree.Tokens;
+  mCandidates := TDictionary<string, Boolean>.Create;
+  mHeaders := DeclarationNameOffsets(FContext.Tree);
   try
-    for Index := 0 to High(Tokens) do
+    for mIndex := 0 to High(mTokens) do
     begin
-      Token := Tokens[Index];
-      if (Token.Kind <> TPascalTokenKind.Identifier) or Headers.ContainsKey(Token.Offset) then
+      mToken := mTokens[mIndex];
+      if (mToken.Kind <> TPascalTokenKind.Identifier) or mHeaders.ContainsKey(mToken.Offset) then
       begin
         Continue;
       end;
-      // Vorfilter: Gibt es in der Datei oder im Index ein gleichnamiges Symbol mit Hinweis?
-      if not Candidates.TryGetValue(LowerCase(Token.Text), Hinted) then
+      if not mCandidates.TryGetValue(LowerCase(mToken.Text), mHinted) then
       begin
-        Hinted := False;
-        for Symbol in FOwn.Symbols do
-        begin
-          if SameText(Symbol.Name, Token.Text) and HasHint(Symbol.Directives) then
-          begin
-            Hinted := True;
-          end;
-        end;
-        if not Hinted then
-        begin
-          Hinted := FIndex.HasSymbol(Token.Text,
-            function(const ACandidate: TIndexSymbol): Boolean
-            begin
-              Result := HasHint(ACandidate.Directives);
-            end);
-        end;
-        Candidates.Add(LowerCase(Token.Text), Hinted);
+        mHinted := NameHinted(mToken.Text);
+        mCandidates.Add(LowerCase(mToken.Text), mHinted);
       end;
-      if not Hinted then
+      if mHinted and HintedSymbolAt(mIndex, mOwner, mSymbol) then
       begin
-        Continue;
+        ReportKinds(TTextRange.Create(mToken.StartPos, mToken.EndPos), mIndex, mToken.Text,
+          TDeprecatedHint.Create(mSymbol.Directives, mSymbol.DeprecatedText,
+          ReplacementOf(mSymbol, mOwner, IsQualified(mIndex))), False);
       end;
-      // Bei Überladungen zählt die Überladung, die der Aufruf wählt (FileAge(Name, Alter) nicht die veraltete
-      // FileAge(Name)). Bleibt die Wahl offen, meldet die Regel nur, wenn alle Kandidaten den Hinweis tragen.
-      Resolved := Default(TResolvedSymbol);
-      Unsure := False;
-      for Candidate in FResolver.ResolveAll(FContext.Tree, FContext.RelativePath, Token.StartPos) do
-      begin
-        if not SymbolOf(Candidate, CandidateUnit, CandidateSymbol) or not HasHint(CandidateSymbol.Directives) then
-        begin
-          Unsure := True;
-        end
-        else if not Resolved.Found then
-        begin
-          Resolved := Candidate;
-          OwnerUnit := CandidateUnit;
-          Symbol := CandidateSymbol;
-        end;
-      end;
-      if Unsure or not Resolved.Found or (Resolved.SelectionRange.StartPos = Token.StartPos) and
-        SameText(Resolved.FileName, FContext.RelativePath) then
-      begin
-        Continue;
-      end;
-      Previous := Index - 1;
-      while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Dec(Previous);
-      end;
-      Qualified := (Previous >= 0) and Tokens[Previous].IsSymbol('.');
-      ReportKinds(TTextRange.Create(Token.StartPos, Token.EndPos), Index, Token.Text, Symbol.Directives,
-        Symbol.DeprecatedText, ReplacementOf(Symbol, OwnerUnit, Qualified), False);
     end;
   finally
-    Headers.Free;
-    Candidates.Free;
+    mHeaders.Free;
+    mCandidates.Free;
   end;
 end;
 
@@ -627,8 +698,8 @@ begin
     begin
       if FTokenIndex.TryGetValue(mSection.StartOffset, mToken) then
       begin
-        ReportKinds(TTextRange.Create(mSection.StartPos, mSection.EndPos), mToken, 'automated', ['deprecated'], '',
-          '', False);
+        ReportKinds(TTextRange.Create(mSection.StartPos, mSection.EndPos), mToken, 'automated',
+          TDeprecatedHint.Create(TArray<string>.Create('deprecated'), '', ''), False);
       end;
     end;
   finally

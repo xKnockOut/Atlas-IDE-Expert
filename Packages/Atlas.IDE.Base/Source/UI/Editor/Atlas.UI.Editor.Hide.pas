@@ -82,6 +82,8 @@ type
     FOnUndo: TNotifyEvent;
     procedure TimerTick(Sender: TObject);
     function Layout(ADraw: Boolean): TSize;
+    /// <summary>„  ·  Rückgängig“ ab AX in der Zeile AY (nur mit FCanUndo); merkt FUndoRect.</summary>
+    procedure LayoutUndo(ADraw: Boolean; var AX: Integer; AY, ATextHeight: Integer);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure Paint; override;
@@ -324,17 +326,27 @@ begin
   Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
+/// <summary>Schreibt AText bei AX, AY in AColor (nur wenn ADraw) und rückt AX um seine Breite weiter.</summary>
+procedure PutText(ACanvas: TCanvas; ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string;
+  AColor: TColor);
+begin
+  if ADraw then
+  begin
+    ACanvas.Font.Color := AColor;
+    ACanvas.TextOut(AX, AY, AText);
+  end;
+  Inc(AX, ACanvas.TextWidth(AText));
+end;
+
 function TAtlasHideNoticeWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, mWidth: Integer;
-  Undo, Separator, mDetail: string;
+  mX, mY, mTextHeight, mWidth: Integer;
+  mDetail: string;
 begin
   Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
-  Undo := TAtlasStrings.Text(TAtlasTextId.HideUndo);
-  Separator := '  ·  ';
-  X := Scale(Pad);
-  Y := Scale(Pad);
+  mTextHeight := Canvas.TextHeight('Wg');
+  mX := Scale(Pad);
+  mY := Scale(Pad);
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
@@ -344,63 +356,49 @@ begin
   if FTitle <> '' then
   begin
     Canvas.Font.Style := [fsBold];
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Text);
-      Canvas.TextOut(X, Y, FTitle);
-    end;
-    Inc(X, Canvas.TextWidth(FTitle));
+    PutText(Canvas, ADraw, mX, mY, FTitle, ToColor(Colors.Text));
     Canvas.Font.Style := [];
   end
   else
   begin
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Text);
-      Canvas.TextOut(X, Y, mDetail);
-    end;
-    Inc(X, Canvas.TextWidth(mDetail));
+    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Text));
     mDetail := '';
   end;
-  FUndoRect := TRect.Empty;
-  if FCanUndo then
-  begin
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(X, Y, Separator);
-    end;
-    Inc(X, Canvas.TextWidth(Separator));
-    FUndoRect := Rect(X, Y, X + Canvas.TextWidth(Undo), Y + TextHeight);
-    if ADraw then
-    begin
-      if FUndoHot then
-      begin
-        Canvas.Font.Style := [fsUnderline];
-      end;
-      Canvas.Font.Color := ToColor(Colors.Accent);
-      Canvas.TextOut(X, Y, Undo);
-      Canvas.Font.Style := [];
-    end;
-    Inc(X, Canvas.TextWidth(Undo));
-  end;
-  mWidth := X;
+  LayoutUndo(ADraw, mX, mY, mTextHeight);
+  mWidth := mX;
   if mDetail <> '' then
   begin
-    Y := Y + TextHeight + Scale(RowGap);
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(Scale(Pad), Y, mDetail);
-    end;
-    mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(mDetail));
+    mY := mY + mTextHeight + Scale(RowGap);
+    mX := Scale(Pad);
+    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Muted));
+    mWidth := Max(mWidth, mX);
   end;
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
   Result.cx := mWidth + Scale(Pad);
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cy := mY + mTextHeight + Scale(Pad);
+end;
+
+procedure TAtlasHideNoticeWindow.LayoutUndo(ADraw: Boolean; var AX: Integer; AY, ATextHeight: Integer);
+var
+  mUndo: string;
+begin
+  FUndoRect := TRect.Empty;
+  if not FCanUndo then
+  begin
+    Exit;
+  end;
+  mUndo := TAtlasStrings.Text(TAtlasTextId.HideUndo);
+  PutText(Canvas, ADraw, AX, AY, '  ·  ', ToColor(Colors.Muted));
+  FUndoRect := Rect(AX, AY, AX + Canvas.TextWidth(mUndo), AY + ATextHeight);
+  if ADraw and FUndoHot then
+  begin
+    Canvas.Font.Style := [fsUnderline];
+  end;
+  PutText(Canvas, ADraw, AX, AY, mUndo, ToColor(Colors.Accent));
+  Canvas.Font.Style := [];
 end;
 
 procedure TAtlasHideNoticeWindow.ShowNotice(const ATitle, ADetail: string; ACanUndo: Boolean;

@@ -130,75 +130,90 @@ begin
     not ABackground and (ARequestedBy = '') and AIsTestProgram;
 end;
 
+/// <summary>Zeile und Spalten des Tests in ALines eintragen; ohne Fundstelle Zeile -1.</summary>
+procedure PlaceFailure(var AFailure: TAtlasTestFailure; const AFound: TDUnitXUnit; const ALines: TArray<string>);
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  AFailure.Line := AFound.LineOf(AFailure.Test.Fixture, AFailure.Test.Method);
+  if (AFailure.Line < 0) or (AFailure.Line > High(ALines)) then
+  begin
+    AFailure.Line := -1;
+    Exit;
+  end;
+  mText := ALines[AFailure.Line];
+  mIndex := 0;
+  while (mIndex < Length(mText)) and ((mText[mIndex + 1] = ' ') or (mText[mIndex + 1] = #9)) do
+  begin
+    Inc(mIndex);
+  end;
+  AFailure.StartCharacter := mIndex;
+  AFailure.EndCharacter := Length(TrimRight(mText));
+end;
+
+/// <summary>Unit einmal je Datei lesen und durchsuchen; das Ergebnis bleibt in AUnits und ATexts.</summary>
+procedure ScanOnce(const AFileName: string; const AReadLines: TAtlasTestReadLines;
+  AUnits: TDictionary<string, TDUnitXUnit>; ATexts: TDictionary<string, TArray<string>>;
+  out AFound: TDUnitXUnit; out ALines: TArray<string>);
+var
+  mKey: string;
+begin
+  mKey := AnsiLowerCase(AFileName);
+  if not AUnits.TryGetValue(mKey, AFound) then
+  begin
+    if not Assigned(AReadLines) or not AReadLines(AFileName, ALines) then
+    begin
+      ALines := nil;
+    end;
+    AFound := TDUnitXSource.Scan(ALines);
+    AUnits.Add(mKey, AFound);
+    ATexts.Add(mKey, ALines);
+  end;
+  ALines := ATexts[mKey];
+end;
+
 class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
   const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>;
 var
-  Units: TDictionary<string, TDUnitXUnit>;
-  Texts: TDictionary<string, TArray<string>>;
-  Item: TTestCaseResult;
-  Failure: TAtlasTestFailure;
-  Found: TDUnitXUnit;
-  Lines: TArray<string>;
-  Key, Text: string;
-  Index: Integer;
+  mUnits: TDictionary<string, TDUnitXUnit>;
+  mTexts: TDictionary<string, TArray<string>>;
+  mItem: TTestCaseResult;
+  mFailure: TAtlasTestFailure;
+  mFound: TDUnitXUnit;
+  mLines: TArray<string>;
 begin
   Result := nil;
-  Units := TDictionary<string, TDUnitXUnit>.Create;
-  Texts := TDictionary<string, TArray<string>>.Create;
+  mUnits := TDictionary<string, TDUnitXUnit>.Create;
+  mTexts := TDictionary<string, TArray<string>>.Create;
   try
-    for Item in ARun.Failures do
+    for mItem in ARun.Failures do
     begin
-      Failure := Default(TAtlasTestFailure);
-      Failure.Test := Item;
-      Failure.Line := -1;
-      if (Item.UnitName <> '') and Assigned(AUnitFile) then
+      mFailure := Default(TAtlasTestFailure);
+      mFailure.Test := mItem;
+      mFailure.Line := -1;
+      if (mItem.UnitName <> '') and Assigned(AUnitFile) then
       begin
-        Failure.FileName := AUnitFile(Item.UnitName);
+        mFailure.FileName := AUnitFile(mItem.UnitName);
       end;
-      if Failure.FileName <> '' then
+      if mFailure.FileName <> '' then
       begin
-        Key := AnsiLowerCase(Failure.FileName);
-        if not Units.TryGetValue(Key, Found) then
-        begin
-          if not Assigned(AReadLines) or not AReadLines(Failure.FileName, Lines) then
-          begin
-            Lines := nil;
-          end;
-          Found := TDUnitXSource.Scan(Lines);
-          Units.Add(Key, Found);
-          Texts.Add(Key, Lines);
-        end;
-        Lines := Texts[Key];
-        if Length(Lines) = 0 then
+        ScanOnce(mFailure.FileName, AReadLines, mUnits, mTexts, mFound, mLines);
+        if Length(mLines) = 0 then
         begin
           // Datei nicht lesbar: keine Fundstelle.
-          Failure.FileName := '';
+          mFailure.FileName := '';
         end
         else
         begin
-          Failure.Line := Found.LineOf(Item.Fixture, Item.Method);
-          if (Failure.Line >= 0) and (Failure.Line <= High(Lines)) then
-          begin
-            Text := Lines[Failure.Line];
-            Index := 0;
-            while (Index < Length(Text)) and ((Text[Index + 1] = ' ') or (Text[Index + 1] = #9)) do
-            begin
-              Inc(Index);
-            end;
-            Failure.StartCharacter := Index;
-            Failure.EndCharacter := Length(TrimRight(Text));
-          end
-          else
-          begin
-            Failure.Line := -1;
-          end;
+          PlaceFailure(mFailure, mFound, mLines);
         end;
       end;
-      Result := Result + [Failure];
+      Result := Result + [mFailure];
     end;
   finally
-    Texts.Free;
-    Units.Free;
+    mTexts.Free;
+    mUnits.Free;
   end;
 end;
 

@@ -289,9 +289,7 @@ var
   OfPos: TTextPosition;
   Values: TArray<string>;
   Prefix: string;
-  Edits: TArray<TTextEdit>;
-  Count: Integer;
-  HasElse: Boolean;
+  Completion: TCaseCompletionEdits;
 begin
   AAction := Default(TCodeAction);
   Result := False;
@@ -299,22 +297,22 @@ begin
   if (CaseNode = nil) or not TCaseCompletion.OfPosition(ATree, CaseNode, OfPos) or
     not TLspCompletion.CaseValues(AResolver, AContext.Index, ATree, AText, AContext.FileName, OfPos,
     AContext.ReadText, Values, Prefix) or
-    not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Edits, Count, HasElse) then
+    not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Completion) then
   begin
     Exit;
   end;
-  if HasElse then
+  if Completion.HasElse then
   begin
     AAction.Title := 'Fehlende Werte vor else ergänzen';
   end
   else
   begin
-    AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Count]);
+    AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Completion.Count]);
     AAction.IsPreferred := True;
   end;
   AAction.Kind := RewriteKind;
   AAction.Tag := CaseCompleteTag;
-  AAction.Edits := Edits;
+  AAction.Edits := Completion.Edits;
   Result := True;
 end;
 
