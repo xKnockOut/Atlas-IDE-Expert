@@ -283,7 +283,7 @@ type
     property PairColorsLight: string read FHighlighting.PairColorsLight write FHighlighting.PairColorsLight;
     property PairColorsDark: string read FHighlighting.PairColorsDark write FHighlighting.PairColorsDark;
     property Problems: Boolean read FEditorInsight.Problems write FEditorInsight.Problems;
-    property ProblemsList: Boolean read FEditorInsight.ProblemsList write FEditorInsight.ProblemsList;
+    property ProblemsMessageList: Boolean read FRules.ProblemsMessageList write FRules.ProblemsMessageList;
     property ProblemsWindow: Boolean read FRules.ProblemsWindow write FRules.ProblemsWindow;
     property ProblemsWindowScope: string read FRules.ProblemsWindowScope write FRules.ProblemsWindowScope;
     property ProblemsWindowGroupBy: string read FRules.ProblemsWindowGroupBy write FRules.ProblemsWindowGroupBy;

@@ -166,9 +166,6 @@ type
     Notes: Boolean;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
-    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems. Seit dem
-    /// Fenster „Atlas-Prüfung“ (#909) Vorgabe aus.</summary>
-    ProblemsList: Boolean;
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
     /// </summary>
     HoverProblemActions: Boolean;
@@ -617,7 +614,6 @@ begin
   Result.InlayMethodHints := True;
   Result.Notes := True;
   Result.Problems := True;
-  Result.ProblemsList := False;
   Result.HoverProblemActions := True;
   Result.ProblemsStatusCounter := True;
   Result.CodeLensTestUnit := True;
@@ -679,7 +675,6 @@ begin
   AIo.Flag('InlayMethodHints', InlayMethodHints);
   AIo.Flag('Notes', Notes);
   AIo.Flag('Problems', Problems);
-  AIo.Flag('ProblemsList', ProblemsList);
   AIo.Flag('HoverProblemActions', HoverProblemActions);
   AIo.Flag('ProblemsStatusCounter', ProblemsStatusCounter);
   AIo.Flag('CodeLensTestUnit', CodeLensTestUnit);
