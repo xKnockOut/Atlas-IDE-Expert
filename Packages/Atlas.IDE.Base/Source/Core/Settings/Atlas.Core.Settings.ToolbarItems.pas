@@ -61,11 +61,32 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 const
   DefaultItems: array[0..14] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
     TAtlasToolbarItems.Separator, 'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit',
     TAtlasToolbarItems.Separator, 'Atlas.UnitSearch', TAtlasToolbarItems.FindMethod, TAtlasToolbarItems.Separator,
     'Atlas.CodeActions', 'Atlas.FormatCode', 'Atlas.ProblemsWindow', TAtlasToolbarItems.CommandPalette);
+
+/// <summary>AItem kommt in die bereinigte Liste AResult: nicht leer, kein Trennstrich am Anfang oder doppelt,
+/// kein Eintrag doppelt.</summary>
+function Keeps(const AResult: TArray<string>; const AItem: string): Boolean;
+begin
+  if Trim(AItem) = '' then
+  begin
+    Result := False;
+  end
+  else if TAtlasToolbarItems.IsSeparator(AItem) then
+  begin
+    Result := (Length(AResult) > 0) and not TAtlasToolbarItems.IsSeparator(AResult[High(AResult)]);
+  end
+  else
+  begin
+    Result := not MatchText(AItem, AResult);
+  end;
+end;
 
 class function TAtlasToolbarItems.Parse(const AText: string): TArray<string>;
 var
@@ -93,41 +114,15 @@ end;
 
 class function TAtlasToolbarItems.Clean(const AItems: TArray<string>): TArray<string>;
 var
-  Item: string;
-  Index: Integer;
-  Seen: Boolean;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Trim(Item) = '' then
+    if Keeps(Result, mItem) then
     begin
-      Continue;
+      Result := Result + [Trim(mItem)];
     end;
-    if IsSeparator(Item) then
-    begin
-      // Kein Trennstrich am Anfang und keiner doppelt.
-      if (Length(Result) = 0) or IsSeparator(Result[High(Result)]) then
-      begin
-        Continue;
-      end;
-    end
-    else
-    begin
-      Seen := False;
-      for Index := 0 to High(Result) do
-      begin
-        if SameText(Result[Index], Item) then
-        begin
-          Seen := True;
-        end;
-      end;
-      if Seen then
-      begin
-        Continue;
-      end;
-    end;
-    Result := Result + [Trim(Item)];
   end;
   if (Length(Result) > 0) and IsSeparator(Result[High(Result)]) then
   begin

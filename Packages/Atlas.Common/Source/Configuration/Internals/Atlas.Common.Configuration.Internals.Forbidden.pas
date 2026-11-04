@@ -55,6 +55,10 @@ type
     function NodeText(ANode: TJsonNode): string;
     /// <summary>Text des Knotens ohne verbotene Teile; AChanged, wenn etwas fehlt.</summary>
     function Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+    /// <summary>Glied ohne Verbotenes in AChild; False, wenn das Glied ganz entfällt.</summary>
+    function RebuildItem(ANode: TJsonNode; const APath: string; var AChanged: Boolean; out AChild: string): Boolean;
+    function RebuildObject(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+    function RebuildArray(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
     /// <summary>Ist der Wert selbst verboten (String mit Zugangsdaten oder absolutem Pfad)?</summary>
     function Forbidden(ANode: TJsonNode; const APath: string): Boolean;
   public
@@ -143,69 +147,88 @@ begin
   end;
 end;
 
-function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+function TStripper.RebuildItem(ANode: TJsonNode; const APath: string; var AChanged: Boolean;
+  out AChild: string): Boolean;
 var
-  Index: Integer;
-  Key, Path, Child: string;
-  Parts: TArray<string>;
-  ChildChanged: Boolean;
+  mChildChanged: Boolean;
+begin
+  AChild := '';
+  if Forbidden(ANode, APath) then
+  begin
+    AChanged := True;
+    Exit(False);
+  end;
+  AChild := Rebuild(ANode, APath, mChildChanged);
+  if mChildChanged then
+  begin
+    AChanged := True;
+  end;
+  Result := True;
+end;
+
+function TStripper.RebuildObject(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+var
+  mIndex: Integer;
+  mKey, mPath, mChild: string;
+  mParts: TArray<string>;
 begin
   AChanged := False;
-  Parts := nil;
+  mParts := nil;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    mPath := Join(APath, mKey);
+    if TTextCheckin.IsCredentialKey(mKey) then
+    begin
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2, Format('"%s" sieht nach ' +
+        'Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher von Windows ' +
+        'verwenden) und werden ignoriert', [mPath]));
+      AChanged := True;
+    end
+    else if RebuildItem(ANode[mIndex], mPath, AChanged, mChild) then
+    begin
+      mParts := mParts + [QuoteKey(mKey) + ': ' + mChild];
+    end;
+  end;
+  Result := NodeText(ANode);
+  if AChanged then
+  begin
+    Result := '{' + string.Join(', ', mParts) + '}';
+  end;
+end;
+
+function TStripper.RebuildArray(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+var
+  mIndex: Integer;
+  mChild: string;
+  mParts: TArray<string>;
+begin
+  AChanged := False;
+  mParts := nil;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if RebuildItem(ANode[mIndex], APath + '[]', AChanged, mChild) then
+    begin
+      mParts := mParts + [mChild];
+    end;
+  end;
+  Result := NodeText(ANode);
+  if AChanged then
+  begin
+    Result := '[' + string.Join(', ', mParts) + ']';
+  end;
+end;
+
+function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+begin
+  AChanged := False;
   if ANode.Kind = TJsonKind.Object_ then
   begin
-    for Index := 0 to ANode.Count - 1 do
-    begin
-      Key := ANode.Keys[Index];
-      Path := Join(APath, Key);
-      if TTextCheckin.IsCredentialKey(Key) then
-      begin
-        Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2, Format('"%s" sieht nach ' +
-          'Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher von Windows ' +
-          'verwenden) und werden ignoriert', [Path]));
-        AChanged := True;
-        Continue;
-      end;
-      if Forbidden(ANode[Index], Path) then
-      begin
-        AChanged := True;
-        Continue;
-      end;
-      Child := Rebuild(ANode[Index], Path, ChildChanged);
-      if ChildChanged then
-      begin
-        AChanged := True;
-      end;
-      Parts := Parts + [QuoteKey(Key) + ': ' + Child];
-    end;
-    if not AChanged then
-    begin
-      Exit(NodeText(ANode));
-    end;
-    Exit('{' + string.Join(', ', Parts) + '}');
+    Exit(RebuildObject(ANode, APath, AChanged));
   end;
   if ANode.Kind = TJsonKind.Array_ then
   begin
-    Path := APath + '[]';
-    for Index := 0 to ANode.Count - 1 do
-    begin
-      if Forbidden(ANode[Index], Path) then
-      begin
-        AChanged := True;
-        Continue;
-      end;
-      Child := Rebuild(ANode[Index], Path, ChildChanged);
-      if ChildChanged then
-      begin
-        AChanged := True;
-      end;
-      Parts := Parts + [Child];
-    end;
-    if not AChanged then
-    begin
-      Exit(NodeText(ANode));
-    end;
-    Exit('[' + string.Join(', ', Parts) + ']');
+    Exit(RebuildArray(ANode, APath, AChanged));
   end;
   Result := NodeText(ANode);
 end;

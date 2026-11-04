@@ -189,6 +189,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
+  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Constants.TypedConstants,
   Atlas.Tests.RuleAssert;
 
 function ConstantFindings(const ASource: string): TArray<TRuleFinding>; overload;

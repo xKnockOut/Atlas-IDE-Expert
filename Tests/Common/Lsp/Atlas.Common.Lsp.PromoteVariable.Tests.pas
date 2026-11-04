@@ -127,14 +127,18 @@ function ExecuteAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer; const
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  Context: TPromoteVariableContext;
 begin
   Tree := TPascalParser.Parse(Text);
   Resolver := TNameResolver.Create(AIndex);
   try
     Resolver.PinTree(Tree, FileName);
     try
+      Context.Lookup := TLspPromoteVariable.Lookup(Resolver, Tree, FileName, ReadFile);
+      Context.Style := TFormatStyle.Default;
+      Context.NewName := AName;
       Result := TLspPromoteVariable.Execute(Tree, Text, TDocumentUris.FromPath(FileName), TTextPosition.Create(ALine,
-        ACharacter), AName, TLspPromoteVariable.Lookup(Resolver, Tree, FileName, ReadFile), TFormatStyle.Default);
+        ACharacter), Context);
     finally
       Resolver.UnpinTree;
     end;

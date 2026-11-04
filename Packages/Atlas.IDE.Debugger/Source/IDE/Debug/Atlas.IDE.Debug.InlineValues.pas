@@ -75,7 +75,38 @@ type
     end;
     {$SCOPEDENUMS ON}
     TPhase = (Idle, Location, Request, Evaluate);
+    /// <summary>Nach einem Wert: weiter, auf den verzögerten warten oder alles verworfen.</summary>
+    TSliceStep = (Next, Wait, Dropped);
     {$SCOPEDENUMS OFF}
+    TProgress = record
+      Phase: TPhase;
+      Stop: Integer;
+      Request: Integer;
+      Retries: Integer;
+    end;
+    /// <summary>Verzögerter Wert (LLDB) und seit wann Atlas auf ihn wartet.</summary>
+    TDeferred = record
+      Name: string;
+      Since: Cardinal;
+    end;
+    /// <summary>Schrift und Farben der Werte; je Hintergrund bzw. Editorschrift einmal bestimmt.</summary>
+    TPaintStyle = class
+    private
+      FFont: TFont;
+      FFontKey: string;
+      FBack: COLORREF;
+      FBackKnown: Boolean;
+      FTextColor: COLORREF;
+      FChangedColor: COLORREF;
+      procedure EnsureColors(ABack: COLORREF);
+      procedure EnsureFont(const AEditorFont: TFont);
+    public
+      constructor Create;
+      destructor Destroy; override;
+      procedure Ensure(ABack: COLORREF; const AEditorFont: TFont);
+      /// <summary>AItems ab AX in ARect zeichnen; Ergebnis: rechte Kante.</summary>
+      function Draw(ADC: HDC; const ARect: TRect; AX: Integer; const AItems: TAtlasInlineValueItems): Integer;
+    end;
   private class var
     FInstance: TAtlasIdeDebugInlineValues;
   private
@@ -88,40 +119,33 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FWorkers: TList<TThread>;
-    FPhase: TPhase;
-    FStop: Integer;
-    FRequest: Integer;
-    FRetries: Integer;
-    FWaitAt: Cardinal;
-    FDeferredName: string;
+    FProgress: TProgress;
+    FDeferred: TDeferred;
     FInternal: Boolean;
     FFileName: string;
     FContext: string;
     FLine: Integer;
     FText: string;
     FLines: TArray<string>;
-    FHintFont: TFont;
-    FFontKey: string;
-    FBack: COLORREF;
-    FBackKnown: Boolean;
-    FTextColor: COLORREF;
-    FChangedColor: COLORREF;
+    FStyle: TPaintStyle;
     constructor Create(const ASession: TAtlasInlineValuesSessionFunc);
     /// <summary>Werte und laufende Arbeit verwerfen; AForget auch die gemerkten Werte (Ende der Sitzung).</summary>
     procedure Drop(AForget: Boolean);
     procedure Stopped;
     procedure Tick(Sender: TObject);
-    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal bzw. aufgeben (FPhase).</summary>
+    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal bzw. aufgeben
+    /// (FProgress.Phase).</summary>
     function ReadLocation: Boolean;
     procedure Ask;
     procedure Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
     procedure EvaluateSlice;
+    /// <summary>Wartet Atlas noch auf den verzögerten Wert? Nach DeferredTimeoutMs ohne ihn weiter.</summary>
+    function DeferredPending: Boolean;
+    function EvaluateOne(const AName: string; var AChanged: Boolean): TSliceStep;
     procedure DeferredDone(const AValue: TAtlasDebugValue);
     procedure EndInternal;
     function StillStopped: Boolean;
     procedure ReapWorkers(AWait: Boolean);
-    procedure EnsureColors(ABack: COLORREF);
-    procedure EnsureHintFont(const AEditorFont: TFont);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
@@ -211,7 +235,7 @@ begin
   FValues := TAtlasInlineValues.Create;
   FEvaluator := TAtlasIdeDebugValues.Create;
   FWorkers := TList<TThread>.Create;
-  FHintFont := TFont.Create;
+  FStyle := TPaintStyle.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := TickMs;
@@ -247,7 +271,7 @@ begin
   FreeAndNil(FWorkers);
   FreeAndNil(FEvaluator);
   FreeAndNil(FValues);
-  FreeAndNil(FHintFont);
+  FreeAndNil(FStyle);
   FText := '';
   FLines := nil;
   inherited Destroy;
@@ -331,10 +355,10 @@ begin
   end;
   FEvaluator.Cancel;
   EndInternal;
-  FDeferredName := '';
+  FDeferred.Name := '';
   // Antworten noch laufender Anfragen verwerfen.
-  Inc(FRequest);
-  FPhase := TPhase.Idle;
+  Inc(FProgress.Request);
+  FProgress.Phase := TPhase.Idle;
   if AForget then
   begin
     FValues.Reset;
@@ -354,7 +378,7 @@ end;
 
 function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
 begin
-  Result := (TAtlasIdeDebugSession.StopCount = FStop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 procedure TAtlasIdeDebugInlineValues.Stopped;
@@ -365,9 +389,9 @@ begin
     Exit;
   end;
   FValues.SetUnavailable(TAtlasIdeDebugUnavailable.InlineCaption, TAtlasIdeDebugUnavailable.Patterns);
-  FStop := TAtlasIdeDebugSession.StopCount;
-  FRetries := 0;
-  FPhase := TPhase.Location;
+  FProgress.Stop := TAtlasIdeDebugSession.StopCount;
+  FProgress.Retries := 0;
+  FProgress.Phase := TPhase.Location;
   if ReadLocation then
   begin
     Ask;
@@ -384,25 +408,25 @@ begin
     TAtlasDebugStackRead.Wait:
       begin
         // LLDB: Stapel kommt später.
-        Inc(FRetries);
+        Inc(FProgress.Retries);
         FTimer.Interval := TickMs * 5;
-        FTimer.Enabled := FRetries <= LocationRetries;
+        FTimer.Enabled := FProgress.Retries <= LocationRetries;
         if not FTimer.Enabled then
         begin
-          FPhase := TPhase.Idle;
+          FProgress.Phase := TPhase.Idle;
         end;
         Exit;
       end;
     TAtlasDebugStackRead.None:
       begin
-        FPhase := TPhase.Idle;
+        FProgress.Phase := TPhase.Idle;
         Exit;
       end;
   end;
   if (Length(Frames) = 0) or not Frames[0].HasSource then
   begin
     // Kein Quelltext am Ausführungspunkt (RTL ohne Quellen, Assembler).
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TPhase.Idle;
     Exit;
   end;
   TAtlasIdeDebugSources.MarkFrames(Frames);
@@ -410,12 +434,12 @@ begin
   if Buffer = nil then
   begin
     // Die IDE öffnet die Datei des Halts gleich danach.
-    Inc(FRetries);
+    Inc(FProgress.Retries);
     FTimer.Interval := TickMs * 5;
-    FTimer.Enabled := FRetries <= LocationRetries;
+    FTimer.Enabled := FProgress.Retries <= LocationRetries;
     if not FTimer.Enabled then
     begin
-      FPhase := TPhase.Idle;
+      FProgress.Phase := TPhase.Idle;
     end;
     Exit;
   end;
@@ -424,7 +448,7 @@ begin
   FLine := Frames[0].Line - 1;
   FText := TAtlasEditorBuffer.Text(Buffer);
   FLines := FText.Split([#13#10, #10]);
-  FPhase := TPhase.Request;
+  FProgress.Phase := TPhase.Request;
   Result := True;
 end;
 
@@ -443,7 +467,7 @@ begin
   end;
   if Session = nil then
   begin
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TPhase.Idle;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -451,8 +475,8 @@ begin
   Line := FLine;
   Session.Sync(FileName, FText);
   ReapWorkers(False);
-  Inc(FRequest);
-  Request := FRequest;
+  Inc(FProgress.Request);
+  Request := FProgress.Request;
   Worker := TThread.CreateAnonymousThread(
     procedure
     var
@@ -491,17 +515,17 @@ end;
 procedure TAtlasIdeDebugInlineValues.Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
 begin
   // Nur die jüngste Antwort, und nur, solange derselbe Halt besteht.
-  if (ARequest <> FRequest) or (FPhase <> TPhase.Request) then
+  if (ARequest <> FProgress.Request) or (FProgress.Phase <> TPhase.Request) then
   begin
     Exit;
   end;
   if not StillStopped or not Enabled or (Length(ARefs) = 0) then
   begin
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TPhase.Idle;
     Exit;
   end;
   FValues.Start(FFileName, FContext, FLine, ARefs, TAtlasIdeSettings.Current.DebugInlineValuesPerLine);
-  FPhase := TPhase.Evaluate;
+  FProgress.Phase := TPhase.Evaluate;
   FTimer.Interval := TickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
@@ -515,13 +539,13 @@ begin
     Exit;
   end;
   try
-    case FPhase of
+    case FProgress.Phase of
       TPhase.Location:
         begin
           FTimer.Enabled := False;
           if not StillStopped then
           begin
-            FPhase := TPhase.Idle;
+            FProgress.Phase := TPhase.Idle;
           end
           else if ReadLocation then
           begin
@@ -544,88 +568,107 @@ end;
 
 procedure TAtlasIdeDebugInlineValues.EvaluateSlice;
 var
-  StartedAt: Cardinal;
-  Name: string;
-  Value: TAtlasDebugValue;
-  Changed: Boolean;
+  mStartedAt: Cardinal;
+  mName: string;
+  mStep: TSliceStep;
+  mChanged: Boolean;
 begin
   if not StillStopped then
   begin
     Drop(False);
     Exit;
   end;
-  // Verzögerter Wert (LLDB): höchstens DeferredTimeoutMs warten, dann ohne ihn weiter.
-  if FDeferredName <> '' then
+  if DeferredPending then
   begin
-    if GetTickCount - FWaitAt < DeferredTimeoutMs then
-    begin
-      Exit;
-    end;
-    FEvaluator.Cancel;
-    EndInternal;
-    FValues.Put(FDeferredName, '', False);
-    FDeferredName := '';
+    Exit;
   end;
-  Changed := False;
-  StartedAt := GetTickCount;
-  while FValues.NextPending(Name) do
+  mChanged := False;
+  mStep := TSliceStep.Next;
+  mStartedAt := GetTickCount;
+  while (mStep = TSliceStep.Next) and (GetTickCount - mStartedAt < SliceMs) and FValues.NextPending(mName) do
   begin
-    if GetTickCount - StartedAt >= SliceMs then
-    begin
-      Break;
-    end;
-    // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
-    Value := Default(TAtlasDebugValue);
-    TAtlasIdeDebugSession.BeginInternal;
-    FInternal := True;
-    try
-      Value := FEvaluator.Evaluate(Name, FFileName, FLine + 1, DeferredDone);
-    finally
-      if Value.State <> TAtlasDebugValueState.Pending then
-      begin
-        EndInternal;
-      end;
-    end;
-    case Value.State of
-      TAtlasDebugValueState.Pending:
-        begin
-          FDeferredName := Name;
-          FWaitAt := GetTickCount;
-          Break;
-        end;
-      TAtlasDebugValueState.Value:
-        begin
-          FValues.Put(Name, Value.Text, True);
-          Changed := True;
-        end;
-      TAtlasDebugValueState.Failed:
-        FValues.Put(Name, '', False);
-    else
-      // Kein angehaltener Prozess mehr.
-      Drop(False);
-      Exit;
-    end;
+    mStep := EvaluateOne(mName, mChanged);
   end;
-  if (FDeferredName = '') and not FValues.NextPending(Name) then
+  if mStep = TSliceStep.Dropped then
+  begin
+    Exit;
+  end;
+  if (FDeferred.Name = '') and not FValues.NextPending(mName) then
   begin
     FTimer.Enabled := False;
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TPhase.Idle;
   end;
-  if Changed then
+  if mChanged then
   begin
     Invalidate;
   end;
 end;
 
+function TAtlasIdeDebugInlineValues.DeferredPending: Boolean;
+begin
+  Result := False;
+  // Verzögerter Wert (LLDB): höchstens DeferredTimeoutMs warten, dann ohne ihn weiter.
+  if FDeferred.Name = '' then
+  begin
+    Exit;
+  end;
+  Result := GetTickCount - FDeferred.Since < DeferredTimeoutMs;
+  if not Result then
+  begin
+    FEvaluator.Cancel;
+    EndInternal;
+    FValues.Put(FDeferred.Name, '', False);
+    FDeferred.Name := '';
+  end;
+end;
+
+function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TSliceStep;
+var
+  mValue: TAtlasDebugValue;
+begin
+  Result := TSliceStep.Next;
+  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
+  mValue := Default(TAtlasDebugValue);
+  TAtlasIdeDebugSession.BeginInternal;
+  FInternal := True;
+  try
+    mValue := FEvaluator.Evaluate(AName, FFileName, FLine + 1, DeferredDone);
+  finally
+    if mValue.State <> TAtlasDebugValueState.Pending then
+    begin
+      EndInternal;
+    end;
+  end;
+  case mValue.State of
+    TAtlasDebugValueState.Pending:
+      begin
+        FDeferred.Name := AName;
+        FDeferred.Since := GetTickCount;
+        Result := TSliceStep.Wait;
+      end;
+    TAtlasDebugValueState.Value:
+      begin
+        FValues.Put(AName, mValue.Text, True);
+        AChanged := True;
+      end;
+    TAtlasDebugValueState.Failed:
+      FValues.Put(AName, '', False);
+  else
+    // Kein angehaltener Prozess mehr.
+    Drop(False);
+    Result := TSliceStep.Dropped;
+  end;
+end;
+
 procedure TAtlasIdeDebugInlineValues.DeferredDone(const AValue: TAtlasDebugValue);
 begin
-  if FDeferredName = '' then
+  if FDeferred.Name = '' then
   begin
     Exit;
   end;
   EndInternal;
-  FValues.Put(FDeferredName, AValue.Text, AValue.State = TAtlasDebugValueState.Value);
-  FDeferredName := '';
+  FValues.Put(FDeferred.Name, AValue.Text, AValue.State = TAtlasDebugValueState.Value);
+  FDeferred.Name := '';
   Invalidate;
 end;
 
@@ -648,33 +691,91 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugInlineValues.EnsureColors(ABack: COLORREF);
+{ TAtlasIdeDebugInlineValues.TPaintStyle }
+
+constructor TAtlasIdeDebugInlineValues.TPaintStyle.Create;
+begin
+  inherited Create;
+  FFont := TFont.Create;
+end;
+
+destructor TAtlasIdeDebugInlineValues.TPaintStyle.Destroy;
+begin
+  FreeAndNil(FFont);
+  inherited Destroy;
+end;
+
+procedure TAtlasIdeDebugInlineValues.TPaintStyle.EnsureColors(ABack: COLORREF);
 var
-  Colors: TAtlasHintColors;
+  mColors: TAtlasHintColors;
 begin
   if FBackKnown and (FBack = ABack) then
   begin
     Exit;
   end;
-  Colors := TAtlasColors.InlayHint(TAtlasColor(ABack));
-  FTextColor := COLORREF(ColorToRGB(TColor(Colors.Text)));
+  mColors := TAtlasColors.InlayHint(TAtlasColor(ABack));
+  FTextColor := COLORREF(ColorToRGB(TColor(mColors.Text)));
   FChangedColor := COLORREF(ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ABack)).Warn)));
   FBack := ABack;
   FBackKnown := True;
 end;
 
-procedure TAtlasIdeDebugInlineValues.EnsureHintFont(const AEditorFont: TFont);
+procedure TAtlasIdeDebugInlineValues.TPaintStyle.EnsureFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
-  FHintFont.Assign(AEditorFont);
-  FHintFont.Style := [fsItalic];
-  FFontKey := Key;
+  FFont.Assign(AEditorFont);
+  FFont.Style := [fsItalic];
+  FFontKey := mKey;
+end;
+
+procedure TAtlasIdeDebugInlineValues.TPaintStyle.Ensure(ABack: COLORREF; const AEditorFont: TFont);
+begin
+  EnsureColors(ABack);
+  EnsureFont(AEditorFont);
+end;
+
+function TAtlasIdeDebugInlineValues.TPaintStyle.Draw(ADC: HDC; const ARect: TRect; AX: Integer;
+  const AItems: TAtlasInlineValueItems): Integer;
+var
+  mSaved, mIndex, mTop: Integer;
+  mSize: TSize;
+  mPart: string;
+begin
+  Result := AX;
+  mSaved := SaveDC(ADC);
+  try
+    SelectObject(ADC, FFont.Handle);
+    SetBkMode(ADC, TRANSPARENT);
+    GetTextExtentPoint32W(ADC, 'Xg', 2, mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    for mIndex := 0 to High(AItems) do
+    begin
+      mPart := AItems[mIndex].Caption;
+      if mIndex < High(AItems) then
+      begin
+        mPart := mPart + ', ';
+      end;
+      if AItems[mIndex].Changed then
+      begin
+        SetTextColor(ADC, FChangedColor);
+      end
+      else
+      begin
+        SetTextColor(ADC, FTextColor);
+      end;
+      TextOutW(ADC, Result, mTop, PChar(mPart), Length(mPart));
+      GetTextExtentPoint32W(ADC, PChar(mPart), Length(mPart), mSize);
+      Inc(Result, mSize.cx);
+    end;
+  finally
+    RestoreDC(ADC, mSaved);
+  end;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
@@ -683,94 +784,61 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
+/// <summary>Entspricht die Zeile im Editor der abgeglichenen AStored? ATabWidth: Tabweite des Puffers.</summary>
+function LineMatches(const AContext: INTACodeEditorPaintContext; const AStored: string;
+  out ATabWidth: Integer): Boolean;
+var
+  mLineState: INTACodeEditorLineState;
+begin
+  ATabWidth := 0;
+  mLineState := AContext.LineState;
+  Result := (mLineState <> nil) and (AContext.EditView <> nil) and (AContext.EditView.Buffer <> nil);
+  if Result then
+  begin
+    ATabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
+    Result := TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
+      TrimRight(TAtlasPairs.DisplayLine(AStored, ATabWidth));
+  end;
+end;
+
 procedure TAtlasIdeDebugInlineValues.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Items: TAtlasInlineValueItems;
-  Item: TAtlasInlineValueItem;
-  LineState: INTACodeEditorLineState;
-  Line, TabWidth, X, Top: Integer;
-  Stored, Part: string;
-  Canvas: TCanvas;
-  Cell: TRect;
-  Sample: COLORREF;
-  DC: HDC;
-  Saved, Index: Integer;
-  Size: TSize;
-  TailKey: string;
+  mItems: TAtlasInlineValueItems;
+  mLine, mTabWidth, mX: Integer;
+  mStored, mTailKey: string;
+  mCell: TRect;
+  mSample: COLORREF;
+  mDC: HDC;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    Exit;
-  end;
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FValues.Active then
+  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or
+    not FValues.Active then
   begin
     Exit;
   end;
   try
-    Line := Context.LogicalLineNum - 1;
-    Items := FValues.Line(Context.FileName, Line);
-    if (Length(Items) = 0) or (Line < 0) or (Line > High(FLines)) then
-    begin
-      Exit;
-    end;
-    LineState := Context.LineState;
-    if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
-    begin
-      Exit;
-    end;
-    Stored := FLines[Line];
-    TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
+    mLine := Context.LogicalLineNum - 1;
+    mItems := FValues.Line(Context.FileName, mLine);
     // Nur, wenn die Zeile im Editor der abgeglichenen entspricht.
-    if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
-      TrimRight(TAtlasPairs.DisplayLine(Stored, TabWidth)) then
+    if (Length(mItems) = 0) or (mLine < 0) or (mLine > High(FLines)) or
+      not LineMatches(Context, FLines[mLine], mTabWidth) then
     begin
       Exit;
     end;
-    Canvas := Context.Canvas;
-    DC := Canvas.Handle;
+    mStored := FLines[mLine];
+    mDC := Context.Canvas.Handle;
     // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
-    Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, Length(TrimRight(Stored)), TabWidth) + 2,
+    mCell := Context.EditorState.GetCharacterPosPx(ColumnOf(mStored, Length(TrimRight(mStored)), mTabWidth) + 2,
       Context.EditorLineNum);
-    TailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
-    X := TAtlasLineTail.Start(Self, TailKey, Cell.Left);
-    Sample := GetPixel(DC, X, Rect.Top + 1);
-    if Sample = CLR_INVALID then
+    mTailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
+    mX := TAtlasLineTail.Start(Self, mTailKey, mCell.Left);
+    mSample := GetPixel(mDC, mX, Rect.Top + 1);
+    if mSample = CLR_INVALID then
     begin
-      Sample := COLORREF(ColorToRGB(Canvas.Brush.Color));
+      mSample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
     end;
-    EnsureColors(Sample);
-    EnsureHintFont(Canvas.Font);
-    Saved := SaveDC(DC);
-    try
-      SelectObject(DC, FHintFont.Handle);
-      SetBkMode(DC, TRANSPARENT);
-      GetTextExtentPoint32W(DC, 'Xg', 2, Size);
-      Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
-      for Index := 0 to High(Items) do
-      begin
-        Item := Items[Index];
-        Part := Item.Caption;
-        if Index < High(Items) then
-        begin
-          Part := Part + ', ';
-        end;
-        if Item.Changed then
-        begin
-          SetTextColor(DC, FChangedColor);
-        end
-        else
-        begin
-          SetTextColor(DC, FTextColor);
-        end;
-        TextOutW(DC, X, Top, PChar(Part), Length(Part));
-        GetTextExtentPoint32W(DC, PChar(Part), Length(Part), Size);
-        Inc(X, Size.cx);
-      end;
-      TAtlasLineTail.Finish(Self, TailKey, X);
-    finally
-      RestoreDC(DC, Saved);
-    end;
+    FStyle.Ensure(mSample, Context.Canvas.Font);
+    TAtlasLineTail.Finish(Self, mTailKey, FStyle.Draw(mDC, Rect, mX, mItems));
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

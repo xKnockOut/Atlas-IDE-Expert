@@ -261,7 +261,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    Result := TLspMoveClass.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TLspMoveClass.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), mDocument.Text, AUri, APosition);
   finally
     mResolver.Free;
@@ -287,10 +287,11 @@ begin
   mContext.ReadText := Reader;
   mContext.Exists := Exists;
   mContext.HasProject := Project(mFileName, mContext.Project);
+  mContext.UnitName := AArguments.Items[2].Value;
   mResolver := NewResolver;
   try
     mAnswer := TLspMoveClass.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, mFileName, mDocument.Text,
-      TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2].Value, mContext);
+      TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
@@ -626,7 +627,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).MoveMember, mDocument) then
   begin
-    Result := TLspMoveMember.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+    Result := TLspMoveMember.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
       TDocumentUris.ToPath(AUri), AUri, APosition, Index);
   end;
 end;
@@ -644,6 +645,7 @@ begin
   Result := Default(TMoveMemberContext);
   Result.Index := Index;
   Result.ReadText := Reader;
+  Result.Direction := AArguments.Items[2].Value;
 end;
 
 function TShellStructureRefactorings.MoveMemberPrepare(const AArguments: TJSONArray): TJSONValue;
@@ -653,8 +655,7 @@ var
 begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
   Result := TLspMoveMember.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
-    TDocumentUris.ToPath(AArguments.Items[0].Value), TLspPositions.ReadPosition(AArguments.Items[1]),
-    AArguments.Items[2].Value, mContext);
+    TDocumentUris.ToPath(AArguments.Items[0].Value), TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
 end;
 
 function TShellStructureRefactorings.MoveMember(const AArguments: TJSONArray): TJSONValue;
@@ -667,11 +668,12 @@ begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
   Require(AArguments, 4, 'Argument mit Mitgliedern und Zielen fehlt');
   mContext.Files := ProjectFiles;
+  mContext.Request := AArguments.Items[3];
   mResolver := NewResolver;
   try
     mAnswer := TLspMoveMember.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AArguments.Items[0].Value), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      AArguments.Items[2].Value, AArguments.Items[3], mContext);
+      mContext);
   finally
     mResolver.Free;
   end;
