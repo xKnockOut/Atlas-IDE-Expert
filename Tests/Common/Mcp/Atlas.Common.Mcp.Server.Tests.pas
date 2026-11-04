@@ -415,6 +415,45 @@ begin
   Assert.IsFalse(mTemplate.Match('delphi://unit/A', mValue));
 end;
 
+/// <summary>Eine allgemeine Ressource, eine Prompt-Ressource und eine Vorlage.</summary>
+procedure AddConventionsBuildAndUnit(const AServer: TMcpServer);
+begin
+  AServer.AddResource('delphi://conventions', 'Konventionen', '', 'text/markdown',
+    function: string
+    begin
+      Result := 'K';
+    end);
+  AServer.AddPromptResource('delphi://build/last', 'Build', '', 'text/markdown',
+    function: string
+    begin
+      Result := 'B';
+    end);
+  AServer.AddResourceTemplate('delphi://unit/{name}', 'Unit', '', 'text/markdown',
+    function(const AValue: string): string
+    begin
+      Result := AValue;
+    end);
+end;
+
+/// <summary>Ohne Prompts sind Prompts und Vorlagen leer.</summary>
+procedure AssertPromptListsEmpty(const AServer: TMcpServer);
+var
+  mResult: TJSONObject;
+begin
+  mResult := AServer.ListPrompts;
+  try
+    Assert.AreEqual(0, Integer(mResult.GetValue<TJSONArray>('prompts').Count));
+  finally
+    mResult.Free;
+  end;
+  mResult := AServer.ListResourceTemplates;
+  try
+    Assert.AreEqual(0, Integer(mResult.GetValue<TJSONArray>('resourceTemplates').Count));
+  finally
+    mResult.Free;
+  end;
+end;
+
 procedure TMcpServerTests.PromptsOffHideListsButNotTools;
 var
   mServer: TMcpServer;
@@ -431,33 +470,8 @@ begin
         Result := mEnabled; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
       end;
     mServer.AddPrompt(EchoPrompt);
-    mServer.AddResource('delphi://conventions', 'Konventionen', '', 'text/markdown',
-      function: string
-      begin
-        Result := 'K';
-      end);
-    mServer.AddPromptResource('delphi://build/last', 'Build', '', 'text/markdown',
-      function: string
-      begin
-        Result := 'B';
-      end);
-    mServer.AddResourceTemplate('delphi://unit/{name}', 'Unit', '', 'text/markdown',
-      function(const AValue: string): string
-      begin
-        Result := AValue;
-      end);
-    mResult := mServer.ListPrompts;
-    try
-      Assert.AreEqual(0, Integer(mResult.GetValue<TJSONArray>('prompts').Count));
-    finally
-      mResult.Free;
-    end;
-    mResult := mServer.ListResourceTemplates;
-    try
-      Assert.AreEqual(0, Integer(mResult.GetValue<TJSONArray>('resourceTemplates').Count));
-    finally
-      mResult.Free;
-    end;
+    AddConventionsBuildAndUnit(mServer);
+    AssertPromptListsEmpty(mServer);
     mResult := mServer.ListResources;
     try
       Assert.AreEqual(1, Integer(mResult.GetValue<TJSONArray>('resources').Count), 'nur delphi://conventions');

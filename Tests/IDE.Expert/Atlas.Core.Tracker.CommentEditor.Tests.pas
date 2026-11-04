@@ -83,7 +83,9 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.GitHubParse;
+  Atlas.Core.Tracker.GitHubParse,
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Core.Tracker.YouTrackParse;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -482,16 +484,16 @@ var
   mPeople: IAtlasTrackerPeople;
   mError: TAtlasCiFetchError;
 begin
-  mUrl := TAtlasYouTrackTracker.UsersUrl(YouTrackTarget, 'an na', 8);
+  mUrl := TAtlasYouTrackApi.UsersUrl(YouTrackTarget, 'an na', 8);
   Assert.AreEqual('https://yt.firma.de/api/users?query=an%20na&fields=login%2CfullName%2Cbanned&$top=16', mUrl);
-  Assert.AreEqual('', TAtlasYouTrackTracker.UsersUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'a', 8),
+  Assert.AreEqual('', TAtlasYouTrackApi.UsersUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'a', 8),
     'ohne Server');
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseUserList('[{"login":"anna","fullName":"Anna Berger"},' +
+  Assert.IsTrue(TAtlasYouTrackParse.ParseUserList('[{"login":"anna","fullName":"Anna Berger"},' +
     '{"login":"alt","fullName":"Alter Account","banned":true},{"fullName":"ohne Login"},' +
     '{"login":"mail","fullName":"Max Mail"}]', mUsers));
   Assert.AreEqual('anna,mail', Logins(mUsers), 'gesperrte und ohne Login fallen weg');
   Assert.AreEqual('Anna Berger', mUsers[0].Name);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseUserList('{"login":"anna"}', mUsers), 'keine Liste');
+  Assert.IsFalse(TAtlasYouTrackParse.ParseUserList('{"login":"anna"}', mUsers), 'keine Liste');
   mTransport := TUsersTransport.Create(200, '[{"login":"mail","fullName":"Max Mail"},' +
     '{"login":"anna","fullName":"Anna Berger"}]');
   mTransportRef := mTransport;
