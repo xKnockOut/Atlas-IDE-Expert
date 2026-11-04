@@ -361,6 +361,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.OverviewRuler.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PaintedLine.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Minimap.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Bar.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>
