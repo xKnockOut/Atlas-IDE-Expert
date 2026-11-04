@@ -258,8 +258,8 @@ end;
 
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
-  Result := TAtlasTrackerSyncOptions.Create(True, '', '', 'In Arbeit', True, 'Beginne {kennung}', AEndStates,
-    TAtlasTrackerWorkflow.DefaultEndComment);
+  Result := TAtlasTrackerSyncOptions.Create(True, '', '').WithStart('In Arbeit', True,
+    'Beginne {kennung}').WithEnd(AEndStates, TAtlasTrackerWorkflow.DefaultEndComment);
 end;
 
 /// <summary>Wert AName des JSON-Objekts AJson als Text ('' ohne).</summary>
@@ -421,7 +421,7 @@ begin
   Assert.IsFalse(mOptions.HasStartWork);
   Assert.IsFalse(TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create('ATL-1', '')).HasWork,
     'syncState aus: „Beginnen“ wie bisher');
-  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '', '', False, '', '', '');
+  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '');
   Assert.IsFalse(mOptions.HasStartWork, 'nichts eingestellt');
 end;
 

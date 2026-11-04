@@ -176,60 +176,69 @@ begin
     [rfReplaceAll, rfIgnoreCase]);
 end;
 
-function Sanitize(const AName: string): string;
+/// <summary>Zeichen, die Git in Namen verbietet, als "-"; "@{" ebenso.</summary>
+function ReplaceForbidden(const AName: string): string;
 var
-  Index: Integer;
-  Parts: TArray<string>;
-  Part: string;
-  PartIndex: Integer;
-  Changed: Boolean;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 1 to Length(AName) do
-    case AName[Index] of
+  for mIndex := 1 to Length(AName) do
+  begin
+    case AName[mIndex] of
       #0..' ', '~', '^', ':', '?', '*', '[', '\', #127:
         Result := Result + '-';
     else
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
+  end;
   Result := StringReplace(Result, '@{', '-', [rfReplaceAll]);
-  repeat
-    Changed := False;
-    if Pos('..', Result) > 0 then
-    begin
-      Result := StringReplace(Result, '..', '.', [rfReplaceAll]);
-      Changed := True;
-    end;
-    if Pos('--', Result) > 0 then
-    begin
-      Result := StringReplace(Result, '--', '-', [rfReplaceAll]);
-      Changed := True;
-    end;
-  until not Changed;
-  // Stücke einzeln: leere entfallen, keines beginnt mit "." oder "-" oder endet mit ".", "-" oder ".lock".
-  Parts := Result.Split(['/']);
-  Result := '';
-  for PartIndex := 0 to High(Parts) do
+end;
+
+/// <summary>".." und "--" so lange zusammenziehen, bis keines mehr vorkommt.</summary>
+function CollapseRepeats(const AName: string): string;
+begin
+  Result := AName;
+  while (Pos('..', Result) > 0) or (Pos('--', Result) > 0) do
   begin
-    Part := Parts[PartIndex];
-    while (Part <> '') and ((Part[1] = '.') or (Part[1] = '-')) do
+    Result := StringReplace(Result, '..', '.', [rfReplaceAll]);
+    Result := StringReplace(Result, '--', '-', [rfReplaceAll]);
+  end;
+end;
+
+/// <summary>Ein Stück ohne "." oder "-" am Anfang und ohne ".", "-" oder ".lock" am Ende.</summary>
+function TrimPart(const APart: string): string;
+var
+  mChanged: Boolean;
+begin
+  Result := APart;
+  while (Result <> '') and CharInSet(Result[1], ['.', '-']) do
+  begin
+    Delete(Result, 1, 1);
+  end;
+  repeat
+    mChanged := False;
+    while (Result <> '') and CharInSet(Result[Length(Result)], ['.', '-']) do
     begin
-      Delete(Part, 1, 1);
+      Delete(Result, Length(Result), 1);
+      mChanged := True;
     end;
-    repeat
-      Changed := False;
-      while (Part <> '') and ((Part[Length(Part)] = '.') or (Part[Length(Part)] = '-')) do
-      begin
-        Delete(Part, Length(Part), 1);
-        Changed := True;
-      end;
-      if SameText(Copy(Part, Length(Part) - 4, 5), '.lock') then
-      begin
-        Delete(Part, Length(Part) - 4, 5);
-        Changed := True;
-      end;
-    until not Changed;
-    if Part = '' then
+    if SameText(Copy(Result, Length(Result) - 4, 5), '.lock') then
+    begin
+      Delete(Result, Length(Result) - 4, 5);
+      mChanged := True;
+    end;
+  until not mChanged;
+end;
+
+/// <summary>Stücke einzeln: leere entfallen.</summary>
+function TrimParts(const AName: string): string;
+var
+  mPart: string;
+begin
+  Result := '';
+  for mPart in AName.Split(['/']) do
+  begin
+    if TrimPart(mPart) = '' then
     begin
       Continue;
     end;
@@ -237,8 +246,13 @@ begin
     begin
       Result := Result + '/';
     end;
-    Result := Result + Part;
+    Result := Result + TrimPart(mPart);
   end;
+end;
+
+function Sanitize(const AName: string): string;
+begin
+  Result := TrimParts(CollapseRepeats(ReplaceForbidden(AName)));
   if Length(Result) > TAtlasVcsBranchNames.MaxLength then
   begin
     Result := Copy(Result, 1, TAtlasVcsBranchNames.MaxLength);
@@ -288,88 +302,103 @@ begin
   Result := APrefix + AMessage;
 end;
 
+/// <summary>Erste Stelle ab AIndex, die keine Ziffer ist.</summary>
+function DigitsEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and IsDigit(AText[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>"#" und die Nummer ohne führende Nullen; '' für 0.</summary>
+function IssueNumber(const ADigits: string): string;
+begin
+  Result := ADigits;
+  while (Length(Result) > 1) and (Result[1] = '0') do
+  begin
+    Delete(Result, 1, 1);
+  end;
+  if Result = '0' then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := '#' + Result;
+  end;
+end;
+
+/// <summary>Die Ziffern von AStart bis vor AStop stehen allein: am Anfang bzw. nach "/", "-", "_", "#" und am
+/// Ende bzw. vor "-", "_".</summary>
+function StandsAlone(const ABranch: string; AStart, AStop: Integer): Boolean;
+begin
+  Result := ((AStart = 1) or CharInSet(ABranch[AStart - 1], ['/', '-', '_', '#'])) and
+    ((AStop > Length(ABranch)) or CharInSet(ABranch[AStop], ['-', '_']));
+end;
+
 function GitHubKeyOf(const ABranch: string): string;
 var
-  Index, Stop: Integer;
+  mIndex, mStop: Integer;
 begin
   Result := '';
-  Index := 1;
-  while Index <= Length(ABranch) do
+  mIndex := 1;
+  while mIndex <= Length(ABranch) do
   begin
-    if not IsDigit(ABranch[Index]) then
+    if not IsDigit(ABranch[mIndex]) then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    Stop := Index;
-    while (Stop <= Length(ABranch)) and IsDigit(ABranch[Stop]) do
+    mStop := DigitsEnd(ABranch, mIndex);
+    if StandsAlone(ABranch, mIndex, mStop) then
     begin
-      Inc(Stop);
+      Exit(IssueNumber(Copy(ABranch, mIndex, mStop - mIndex)));
     end;
-    if ((Index = 1) or CharInSet(ABranch[Index - 1], ['/', '-', '_', '#'])) and
-      ((Stop > Length(ABranch)) or CharInSet(ABranch[Stop], ['-', '_'])) then
-    begin
-      Result := Copy(ABranch, Index, Stop - Index);
-      // Führende Nullen gehören nicht zur Nummer.
-      while (Length(Result) > 1) and (Result[1] = '0') do
-      begin
-        Delete(Result, 1, 1);
-      end;
-      if Result = '0' then
-      begin
-        Result := '';
-      end
-      else
-      begin
-        Result := '#' + Result;
-      end;
-      Exit;
-    end;
-    Index := Stop;
+    mIndex := mStop;
   end;
+end;
+
+/// <summary>Anfang eines Kürzels: Buchstabe am Anfang oder nach einem Zeichen, das kein Buchstabe und keine
+/// Ziffer ist.</summary>
+function IsKeyStart(const AUpper: string; AIndex: Integer): Boolean;
+begin
+  Result := CharInSet(AUpper[AIndex], ['A'..'Z']) and ((AIndex = 1) or not IsAsciiAlnum(AUpper[AIndex - 1]));
 end;
 
 function YouTrackKeyOf(const AProject, ABranch: string): string;
 var
-  Upper, Project: string;
-  Index, Start, Stop: Integer;
+  mUpper, mProject: string;
+  mIndex, mStart, mStop: Integer;
 begin
   Result := '';
-  Upper := UpperCase(ABranch);
-  Project := UpperCase(Trim(AProject));
-  Index := 1;
-  while Index <= Length(Upper) do
+  mUpper := UpperCase(ABranch);
+  mProject := UpperCase(Trim(AProject));
+  mIndex := 1;
+  while mIndex <= Length(mUpper) do
   begin
-    // Anfang eines Kürzels: Buchstabe am Anfang oder nach einem Zeichen, das kein Buchstabe und keine Ziffer ist.
-    if not ((Upper[Index] >= 'A') and (Upper[Index] <= 'Z')) or ((Index > 1) and IsAsciiAlnum(Upper[Index - 1])) then
+    if not IsKeyStart(mUpper, mIndex) then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    Start := Index;
-    while (Index <= Length(Upper)) and IsAsciiAlnum(Upper[Index]) do
+    mStart := mIndex;
+    while (mIndex <= Length(mUpper)) and IsAsciiAlnum(mUpper[mIndex]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    if (Index >= Length(Upper)) or (Upper[Index] <> '-') or not IsDigit(Upper[Index + 1]) then
-    begin
-      Continue;
-    end;
-    if (Project <> '') and (Copy(Upper, Start, Index - Start) <> Project) then
+    if (mIndex >= Length(mUpper)) or (mUpper[mIndex] <> '-') or not IsDigit(mUpper[mIndex + 1]) or
+      ((mProject <> '') and (Copy(mUpper, mStart, mIndex - mStart) <> mProject)) then
     begin
       Continue;
     end;
-    Stop := Index + 1;
-    while (Stop <= Length(Upper)) and IsDigit(Upper[Stop]) do
+    mStop := DigitsEnd(mUpper, mIndex + 1);
+    if (mStop > Length(mUpper)) or not IsAsciiAlnum(mUpper[mStop]) then
     begin
-      Inc(Stop);
+      Exit(Copy(mUpper, mStart, mStop - mStart));
     end;
-    if (Stop <= Length(Upper)) and IsAsciiAlnum(Upper[Stop]) then
-    begin
-      Index := Stop;
-      Continue;
-    end;
-    Exit(Copy(Upper, Start, Stop - Start));
+    mIndex := mStop;
   end;
 end;
 
