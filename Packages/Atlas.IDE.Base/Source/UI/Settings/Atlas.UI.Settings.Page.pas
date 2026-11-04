@@ -1549,6 +1549,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.StoreValues,
+  Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems,

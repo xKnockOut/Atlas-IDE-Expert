@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Tasks.Definitions;
 
 const
