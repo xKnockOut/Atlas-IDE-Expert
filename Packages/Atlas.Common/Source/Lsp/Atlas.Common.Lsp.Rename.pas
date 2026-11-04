@@ -872,6 +872,7 @@ var
   mUri, mNewName: string;
   mPosition: TJSONValue;
   mDocument: ITextDocument;
+  mCancellation: IPascalCancellation;
   mShared: ISharedSyntaxTree;
   mResolver: TNameResolver;
   mFound: TArray<TRenameEdit>;
@@ -888,7 +889,9 @@ begin
   begin
     Exit(TJSONNull.Create);
   end;
-  mShared := TSyntaxTreeCache.Get(mDocument, TRequestCancellation.Create(ACancellation));
+  // In einer Variablen: Als const-Argument würde das Objekt nie gezählt und bliebe liegen.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     mResolver.Namespaces := Namespaces;

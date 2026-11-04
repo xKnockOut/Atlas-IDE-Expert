@@ -71,7 +71,7 @@ type
     function Open(const ATarget: string): Boolean;
     function OpenFile(const AFileName: string): Boolean;
     function Reveal(const AFileName: string): Boolean;
-    property Log: string read FLog;
+    property Calls: string read FLog;
   end;
 
 function TAtlasPreviewShell.Open(const ATarget: string): Boolean;
@@ -322,7 +322,7 @@ begin
     Assert.IsFalse(TAtlasIssuePreview.Browse('file:///C:/Windows/notepad.exe'));
     Assert.IsFalse(TAtlasIssuePreview.Browse('https://user:pass@h.de/'));
     Assert.IsFalse(TAtlasIssuePreview.BrowseIssue(nil, Entry('#1').Target, '#1'), 'ohne Anbieter');
-    Assert.AreEqual('open:https://github.com/a/b/issues/1;', mShell.Log);
+    Assert.AreEqual('open:https://github.com/a/b/issues/1;', mShell.Calls);
   finally
     TAtlasTrackerFiles.Uninstall;
   end;
@@ -343,7 +343,7 @@ begin
   try
     TAtlasIssuePreview.OpenDownloaded('a.cmd');
     TAtlasIssuePreview.OpenDownloaded('b.pdf');
-    Assert.AreEqual('reveal:a.cmd;file:b.pdf;', mShell.Log);
+    Assert.AreEqual('reveal:a.cmd;file:b.pdf;', mShell.Calls);
   finally
     TAtlasTrackerFiles.Uninstall;
   end;

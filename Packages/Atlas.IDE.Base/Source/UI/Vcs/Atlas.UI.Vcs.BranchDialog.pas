@@ -1043,7 +1043,7 @@ begin
   begin
     Exit;
   end;
-  FLocationError.Caption := LocationError(FLocationEdit.Text, ARequest.Location);
+  FLocationError.Caption := Atlas.UI.Vcs.BranchDialog.LocationError(FLocationEdit.Text, ARequest.Location);
   FLocationError.Visible := (FLocationError.Caption <> '') and ANameOk;
   FFolderPanel.Visible := ARequest.After = TAtlasVcsSvnAfter.Checkout;
   FMixedLabel.Visible := FDialog.FFacts.MixedRevision and FDialog.FNames.SelectedBase(mBase) and

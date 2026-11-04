@@ -32,6 +32,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON;
 
 procedure TPullReportCacheTests.Setup;
@@ -65,7 +66,7 @@ function TPullReportCacheTests.CountOf(const AUri, AResultId: string): Integer;
 var
   mItems: TJSONArray;
 begin
-  mItems := FCache.Get(AUri, AResultId, Compute, nil);
+  mItems := FCache.Get(AUri, AResultId, Compute(), nil);
   try
     Result := mItems.Items[0].GetValue<Integer>;
   finally

@@ -35,6 +35,7 @@
 interface
 
 uses
+  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Classes,
   Atlas.Core.Ci.Contract,
@@ -156,7 +157,6 @@ uses
   System.DateUtils,
   Vcl.Graphics,
   Vcl.Clipbrd,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,

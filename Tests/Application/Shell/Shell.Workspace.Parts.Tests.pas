@@ -15,6 +15,9 @@ type
   private
     FFolder: string;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -91,6 +94,16 @@ begin
   Result.MainSource := 'P.dpr';
   Result.Configs := AConfigs;
   Result.Platforms := APlatforms;
+end;
+
+procedure TShellWorkspacePartsTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    ListingsAndFileAccess;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellWorkspacePartsTests.SetUp;

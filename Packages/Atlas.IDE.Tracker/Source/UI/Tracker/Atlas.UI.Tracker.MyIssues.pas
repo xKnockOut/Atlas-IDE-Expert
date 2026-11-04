@@ -1425,6 +1425,10 @@ procedure TAtlasTrackerIssuesView.UpdateContent;
 var
   mOldHeight: Integer;
 begin
+  if not HasWindow then
+  begin
+    Exit;
+  end;
   mOldHeight := BodyHeight;
   FView := Default(TAtlasIssuesView);
   if FSource <> nil then

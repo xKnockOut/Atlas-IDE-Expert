@@ -985,7 +985,7 @@ begin
   Assert.IsFalse(After.Plugin.SearchEnabled);
   Assert.IsFalse(After.Plugin.WelcomePage);
   Assert.IsTrue(After.Plugin.DebugInlineValues, 'Einzelschalter auf Vorgabe, nur das Modul ist aus');
-  Assert.AreEqual(10, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
+  Assert.AreEqual(11, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
 end;
 
 initialization

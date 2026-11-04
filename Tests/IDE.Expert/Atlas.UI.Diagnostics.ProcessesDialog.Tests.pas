@@ -180,7 +180,7 @@ begin
     end;
   Dialog := TAtlasProcessesDialog.CreateDialog(nil, Actions);
   try
-    Dialog.Refresh;
+    Dialog.Reload;
     Assert.AreEqual(1, Asked);
     Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
     Assert.IsTrue(Dialog.CopyButton.Enabled);
@@ -206,7 +206,7 @@ begin
       Pending := ADone;
     end;
   Dialog := TAtlasProcessesDialog.CreateDialog(nil, Actions);
-  Dialog.Refresh;
+  Dialog.Reload;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ProcessesAsking), Dialog.StatusLabel.Caption);
   Dialog.Free;
   Assert.IsTrue(Assigned(Pending));

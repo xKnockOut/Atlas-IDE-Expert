@@ -217,7 +217,7 @@ type
     /// <summary>Diagnosen der Datei holen, wenn der Server neu gebaut hat oder die Tipp-Pause um ist.</summary>
     procedure PullIfDue(ASession: TLspSession; const AView: IOTAEditView; const AFileName, AText: string);
     /// <summary>Alle anderen abgeglichenen Dateien: Ihre Compilermeldungen können neu sein.</summary>
-    function OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TPull>;
+    function OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TAtlasProblemsSync.TPull>;
   public
     constructor Create(const ASession: TAtlasProblemsSessionFunc; const ALog: TAtlasProblemsLogProc);
     destructor Destroy; override;
@@ -831,7 +831,7 @@ begin
   FLastFile := AFileName;
 end;
 
-function TAtlasProblemsController.OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TPull>;
+function TAtlasProblemsController.OtherPulls(ASession: TLspSession; const AFileName: string): TArray<TAtlasProblemsSync.TPull>;
 var
   mOther, mOtherText: string;
   mPull: TPull;

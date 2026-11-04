@@ -22,6 +22,9 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -49,6 +52,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Page.Tree,
   System.SysUtils,
   System.Classes,
   System.UITypes,
@@ -132,6 +136,16 @@ begin
   end;
 end;
 
+procedure TTrackerSettingsSectionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    IssuesTrackerOwnPage;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TTrackerSettingsSectionTests.Setup;
 begin
   FSection := TAtlasTrackerSettingsSection.Create;
@@ -156,7 +170,7 @@ var
   Issues: TTreeNode;
   Tracker: TTabSheet;
 begin
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);

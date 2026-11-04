@@ -23,6 +23,9 @@ type
     FFolder: string;
     procedure Notify(const AMethod, AParams: string);
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -75,6 +78,16 @@ end;
 procedure NoFiles(const AFiles: TArray<string>);
 begin
   // Die Tests starten den Beobachter, ändern aber keine beobachtete Datei.
+end;
+
+procedure TShellConfigurationTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ReplaySettingsAreGlobal;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellConfigurationTests.Setup;

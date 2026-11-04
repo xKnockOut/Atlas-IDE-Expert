@@ -203,6 +203,7 @@ const
 implementation
 
 uses
+  Winapi.Windows,
   System.Math;
 
 { TAtlasUnitSearchMetrics }

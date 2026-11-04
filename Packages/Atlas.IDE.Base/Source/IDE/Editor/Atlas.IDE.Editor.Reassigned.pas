@@ -35,7 +35,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Reassigned,
-  Atlas.Core.Editor.Reassigned;
+  Atlas.Core.Editor.Reassigned,
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -117,7 +118,6 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,

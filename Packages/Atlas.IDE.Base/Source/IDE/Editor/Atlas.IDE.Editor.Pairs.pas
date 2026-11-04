@@ -31,6 +31,7 @@
 interface
 
 uses
+  Atlas.Core.Style.Color,
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
@@ -155,7 +156,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,

@@ -25,6 +25,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Vcl.Forms,
   Vcl.Graphics,
   Vcl.ImageCollection,
@@ -119,7 +120,7 @@ begin
         Result := 'gelöscht';
       end;
     WireServerPageAnswers(Page);
-    Page.Refresh;
+    Page.Reload;
     Assert.AreEqual('5 Treffer in 2 Einträgen', Page.BaselineInfo.Caption);
     Page.EditGlobal.Click;
     Assert.IsTrue(Global);

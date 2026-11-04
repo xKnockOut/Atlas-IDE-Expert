@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.PipelineSettings,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,

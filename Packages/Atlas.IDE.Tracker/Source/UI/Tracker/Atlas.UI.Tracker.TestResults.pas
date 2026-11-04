@@ -1256,6 +1256,10 @@ var
   mOldProject: string;
   mRow: TAtlasTestRow;
 begin
+  if not HasWindow then
+  begin
+    Exit;
+  end;
   mOldHeight := BodyHeight;
   mOldProject := '';
   if FView.SelectedRow(mRow) then

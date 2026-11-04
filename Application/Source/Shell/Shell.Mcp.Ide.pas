@@ -24,6 +24,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   Atlas.Common.Documents.FileEncoding,
@@ -174,7 +175,7 @@ begin
       end,
       function: Int64
       begin
-        Result := GetTickCount64;
+        Result := TThread.GetTickCount64;
       end, Reason) of
       TMcpIdeEditOutcome.Applied:
         Exit;
@@ -223,7 +224,7 @@ begin
     end,
     function: Int64
     begin
-      Result := GetTickCount64;
+      Result := TThread.GetTickCount64;
     end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
   begin
     raise EMcpToolError.Create(Reason);

@@ -425,6 +425,66 @@ end;
 
 { TLoopInvariantCallRule }
 
+/// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder mit Inc/Dec geändert?</summary>
+function ChangedInLoop(const ATokens: TTokens; const ALoop: TLoop; const AName: string): Boolean;
+var
+  mIndex, mNext, mPrevious: Integer;
+begin
+  for mIndex := ALoop.BodyFirst to ALoop.BodyLast do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) then
+    begin
+      mNext := NextCode(ATokens, mIndex + 1);
+      if (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol(':=') then
+      begin
+        Exit(True);
+      end;
+      mPrevious := PreviousCode(ATokens, mIndex);
+      if (mPrevious > 0) and ATokens[mPrevious].IsSymbol('(') and
+        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, ['Inc', 'Dec']) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Hängt der Aufruf ab AIndex an einem Bezeichner, den die Schleife ändert? Dann ist er nicht invariant.</summary>
+function ArgumentsChange(const ATokens: TTokens; const ALoop: TLoop; AIndex: Integer): Boolean;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := False;
+  mIndex := NextCode(ATokens, AIndex + 1);
+  if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('(') then
+  begin
+    Exit;
+  end;
+  mDepth := 0;
+  while mIndex <= High(ATokens) do
+  begin
+    if ATokens[mIndex].IsSymbol('(') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[mIndex].IsSymbol(')') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end
+    else if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      ChangedInLoop(ATokens, ALoop, ATokens[mIndex].Text) then
+    begin
+      Exit(True);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 const
   ExpensiveCalls: array[0..17] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
     'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'FileExists',
@@ -464,7 +524,8 @@ begin
         AReport.Add(RangeOf(Tokens, Index, Index), Format('.%s baut bei jeder Prüfung der Bedingung einen neuen ' +
           'String auf; vor der Schleife in eine Variable übernehmen', [Name]), TRuleConfidence.Medium);
       end
-      else if MatchText(Name, ExpensiveCalls) and StartsDesignator(Tokens, Index) then
+      else if MatchText(Name, ExpensiveCalls) and StartsDesignator(Tokens, Index) and
+        not ArgumentsChange(Tokens, Loop, Index) then
       begin
         AReport.Add(RangeOf(Tokens, Index, Index), Format('%s wird bei jeder Prüfung der Bedingung erneut ' +
           'ausgeführt; ändert sich das Ergebnis nicht, vor der Schleife berechnen', [Name]), TRuleConfidence.Medium);

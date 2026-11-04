@@ -38,6 +38,7 @@
 interface
 
 uses
+  Atlas.Core.Projects.Setup,
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
@@ -143,7 +144,6 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Setup,
   Atlas.Core.Projects.PathCheck,
   Atlas.Core.Projects.Baseline,
   Atlas.Core.Settings.SchemaData,
@@ -381,7 +381,7 @@ var
 begin
   Result := '';
   mOpen := False;
-  if Active then
+  if ASelf.Active then
   begin
     Result := TargetOrReport(ASelf, mOpen);
   end;

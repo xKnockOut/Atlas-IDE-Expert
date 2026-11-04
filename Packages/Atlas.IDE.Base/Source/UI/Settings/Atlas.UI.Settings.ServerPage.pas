@@ -64,7 +64,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Knöpfe nach den gesetzten Ereignissen freigeben, Anzahl der Baseline neu lesen.</summary>
-    procedure Refresh;
+    procedure Reload;
     property EditGlobal: TButton read FEditGlobal;
     property EditProject: TButton read FEditProject;
     property BaselineInfo: TLabel read FBaselineInfo;
@@ -138,7 +138,7 @@ begin
   FCacheInfo.Left := 0;
   FCacheInfo.Top := 2;
   FCacheInfo.Font.Color := clGrayText;
-  Refresh;
+  Reload;
 end;
 
 function TAtlasServerPage.AddPanel(AHeight: Integer): TPanel;
@@ -180,7 +180,7 @@ begin
   Result.OnClick := AClick;
 end;
 
-procedure TAtlasServerPage.Refresh;
+procedure TAtlasServerPage.Reload;
 begin
   FEditGlobal.Enabled := Assigned(FHooks.EditGlobal);
   FEditProject.Enabled := Assigned(FHooks.EditProject);

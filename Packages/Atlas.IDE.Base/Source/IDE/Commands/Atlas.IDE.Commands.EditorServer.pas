@@ -8,6 +8,7 @@
 interface
 
 uses
+  Atlas.Core.Lsp.WorkspaceEdits,
   ToolsAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.SlashTrigger,
@@ -51,7 +52,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.TestUnit,
   Atlas.Core.Editor.WorkspacePlan,

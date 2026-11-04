@@ -368,6 +368,10 @@ procedure TAtlasTrackerSprintView.UpdateContent;
 var
   mOldHeight: Integer;
 begin
+  if not HasWindow then
+  begin
+    Exit;
+  end;
   mOldHeight := HeightFor(ClientWidth);
   FTile := Default(TAtlasSprintTile);
   if FSource <> nil then

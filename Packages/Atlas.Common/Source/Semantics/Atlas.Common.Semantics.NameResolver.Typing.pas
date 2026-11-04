@@ -239,6 +239,7 @@ end;
 function TResolverTyping.AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
 var
   mFromUnit: TUnitIndex;
+  mAlias: TResolvedSymbol;
   mName, mKey: string;
   mWithImplementation: Boolean;
 begin
@@ -276,6 +277,13 @@ begin
   end;
   Result := FLookup.ResolveTypeText(mName, mFromUnit, mWithImplementation, AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
+  // class(TAlias) mit TAlias = TEcht: Vorfahr ist TEcht, der Alias selbst hat keine Member.
+  if Result and (AAncestor.SymbolKind = TIndexSymbolKind.TypeAlias) then
+  begin
+    mAlias := AAncestor;
+    Result := FollowAliases(mAlias, AAncestor) and not AAncestor.Builtin and
+      not SameText(AAncestor.QualifiedName, AType.QualifiedName);
+  end;
   if not Result then
   begin
     AAncestor := TResolvedSymbol.Empty;

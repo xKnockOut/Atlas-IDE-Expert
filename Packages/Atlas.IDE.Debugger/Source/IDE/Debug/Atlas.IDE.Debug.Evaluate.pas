@@ -821,7 +821,7 @@ begin
       mCurrent: TAtlasDebugEvaluateFrame;
     begin
       mCurrent := Frame;
-      Result := (mCurrent <> nil) and (AControl = mCurrent.Input);
+      Result := (mCurrent <> nil) and (AControl = mCurrent.Parts.Input);
     end;
   ApplySettings;
   // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.

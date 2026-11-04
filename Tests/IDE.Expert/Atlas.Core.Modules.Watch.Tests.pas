@@ -174,9 +174,16 @@ var
   mRegistry: IAtlasModuleRegistry;
   mScope: IAtlasModuleScope;
   mWatch: TAtlasProvidedWatch;
+  mCalls: Integer;
 begin
+  mCalls := 0;
   mRegistry := TAtlasModuleRegistry.Create;
   mWatch := TAtlasProvidedWatch.Create(mRegistry, IWatchTestThing);
+  mWatch.OnChanged :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
   mWatch.Free;
   // Nach Destroy darf eine Bereitstellung den freigegebenen Beobachter nicht erreichen.
   mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
@@ -184,7 +191,7 @@ begin
   mScope := nil;
   mRegistry.UnregisterModule('atlas.a');
   mRegistry := nil;
-  Assert.Pass;
+  Assert.AreEqual(0, mCalls);
 end;
 
 initialization

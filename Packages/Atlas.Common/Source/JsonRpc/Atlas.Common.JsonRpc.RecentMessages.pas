@@ -69,6 +69,9 @@ type
 
 implementation
 
+uses
+  System.Generics.Collections;
+
 const
   /// <summary>Platzhalter für die übrigen Werte eines Arrays bzw. Objekts über der Grenze.</summary>
   cRest = '"…"';

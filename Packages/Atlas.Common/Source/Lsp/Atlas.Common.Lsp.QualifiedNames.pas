@@ -61,7 +61,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  System.Generics.Collections;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin

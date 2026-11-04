@@ -368,7 +368,6 @@ begin
       Inc(mNewLine, AppendLines(mBlock, '+', ANew, mNewLine, mHunks[mIndex].NewStart + mHunks[mIndex].NewCount));
     end;
     mCount := AppendLines(mBlock, ' ', AOld, mOldLine, mOldStop);
-    Inc(mOldLine, mCount);
     Inc(mNewLine, mCount);
     Result := Result + [Format('@@ -%s +%s @@', [UnifiedRange(mOldStart, mOldStop - mOldStart),
       UnifiedRange(mNewStart, mNewLine - mNewStart)])] + mBlock;

@@ -71,7 +71,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Lsp.ApplyEdit;
+  Atlas.Common.Lsp.ApplyEdit,
+  System.Generics.Collections;
 
 function PathOf(const AText: string): string;
 begin

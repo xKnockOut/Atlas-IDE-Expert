@@ -498,7 +498,7 @@ begin
     Result := (mDialog.ShowModal = mrOk) and mDialog.Sent;
     AChange := mDialog.SentChange;
     // Entwurf sichern, solange das Fenster noch lebt (nach Senden ist er schon gelöscht).
-    mDialog.CommentEditor.Unbind;
+    mDialog.FParts.Editor.Unbind;
   finally
     mDialog.Free;
   end;

@@ -18,7 +18,8 @@ type
     TestsDebugFailed, TestsDebugNoProcess, TestsDebugFinished, TestsDebugKeptParameters, TestsChooseProject,
     TestsChoiceSaveFailed, TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone,
     TestsAffectedAll, TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,
-    TestsAffectedHookInstalled);
+    TestsAffectedHookInstalled,
+    WelcomeQuickReasonTestsOff, WelcomeQuickReasonNotOpened);
 
   TAtlasTestsStrings = class
   public
@@ -81,7 +82,9 @@ const
      'Betroffene Tests sind ausgeschaltet (tests.affected).',
      'Betroffene Tests: Kein Projekt geöffnet.',
      'Betroffene Tests vor dem Commit: In %s liegt schon ein fremder pre-commit-Hook; Atlas lässt ihn stehen.',
-     'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.'),
+     'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.',
+    '„Tests ausführen“ ist ausgeschaltet',
+    'Projekt nicht geöffnet'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -128,7 +131,9 @@ const
      'Affected tests are switched off (tests.affected).',
      'Affected tests: no project open.',
      'Affected tests before commit: %s already holds a foreign pre-commit hook; Atlas leaves it alone.',
-     'Affected tests before commit: pre-commit hook created in %s.'));
+     'Affected tests before commit: pre-commit hook created in %s.',
+    '“Run tests” is switched off',
+    'Project not opened'));
 
 { TAtlasTestsStrings }
 

@@ -146,6 +146,12 @@ begin
   finally
     TearDown;
   end;
+  Setup;
+  try
+    HotspotsNeedVersionControl;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellLinterTests.Setup;

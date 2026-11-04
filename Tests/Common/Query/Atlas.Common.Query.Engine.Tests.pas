@@ -15,6 +15,9 @@ type
   [TestFixture]
   TQueryEngineTests = class
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure InheritsTransitivelyAndAsWritten;
     [Test]
@@ -283,6 +286,11 @@ begin
 end;
 
 { TQueryEngineTests }
+
+procedure TQueryEngineTests.WarmUpFirstUse;
+begin
+  FormsCountComponents;
+end;
 
 procedure TQueryEngineTests.InheritsTransitivelyAndAsWritten;
 begin

@@ -362,7 +362,7 @@ function TAtlasTestsModule.RunProject(const ATestProject: string; out AReason: s
 begin
   if GTests = nil then
   begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+    AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.WelcomeQuickReasonTestsOff);
     Exit(False);
   end;
   Result := GTests.RunProject(ATestProject, AReason);

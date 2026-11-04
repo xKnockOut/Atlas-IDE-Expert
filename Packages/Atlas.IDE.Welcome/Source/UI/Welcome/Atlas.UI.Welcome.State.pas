@@ -346,6 +346,7 @@ var
   mRow: TAtlasStateRow;
   mDetail: string;
   mTextRect: TRect;
+  mText: string;
 begin
   mRow := FRows[AIndex];
   mDot := ScaleValue(DotSize);
@@ -379,7 +380,8 @@ begin
     ACanvas.Font.Style := [];
   end;
   mTextRect := Rect(mLeft, mTextTop, Max(mLeft, ARight - mDetailWidth), mTextTop + ACanvas.TextHeight('Wg'));
-  ACanvas.TextRect(mTextRect, RowText(mRow), [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
+  mText := RowText(mRow);
+  ACanvas.TextRect(mTextRect, mText, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
   ACanvas.Font.Style := [];
 end;
 

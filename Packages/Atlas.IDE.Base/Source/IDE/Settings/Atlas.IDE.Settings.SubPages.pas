@@ -307,7 +307,7 @@ begin
       begin
         Result := TAtlasIdeServerActions.ClearCache;
       end;
-    FPage.Refresh;
+    FPage.Reload;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Settings, E);

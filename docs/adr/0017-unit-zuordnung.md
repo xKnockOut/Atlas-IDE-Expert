@@ -141,6 +141,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Diagnostics.StackRing` | `Core/Diagnostics/Atlas.Core.Diagnostics.StackRing.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.StartTimes` | `Core/Diagnostics/Atlas.Core.Diagnostics.StartTimes.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Teardown` | `Core/Diagnostics/Atlas.Core.Diagnostics.Teardown.pas` | Ordner `Core/Diagnostics` |
+| `Atlas.Core.Diagnostics.ExitWatch` | `Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.ThreadList` | `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.TimeLimit` | `Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas` | Ordner `Core/Diagnostics` |
 | `Atlas.Core.Diagnostics.Timing` | `Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas` | Ordner `Core/Diagnostics` |

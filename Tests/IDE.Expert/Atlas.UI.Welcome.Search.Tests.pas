@@ -27,6 +27,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Winapi.Windows,
   System.SysUtils,
   Atlas.UI.Strings,

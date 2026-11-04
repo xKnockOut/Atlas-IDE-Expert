@@ -49,6 +49,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Settings.Page.Tree,
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
@@ -394,7 +395,7 @@ begin
 end;
 
 /// <summary>Umbenennen: vergebener Name nur mit Hinweis, Abbrechen ändert nichts.</summary>
-procedure RenameAndCancel(ASection: TAtlasWelcomeSettingsSection; var AAnswer: string; const ATold: string);
+procedure RenameAndCancel(ASection: TAtlasWelcomeSettingsSection; var AAnswer, ATold: string);
 begin
   AAnswer := 'standard';
   ASection.Layouts.RenameButton.Click;
@@ -508,7 +509,7 @@ var
   mPage: TAtlasSettingsPage;
   mWelcome: TTabSheet;
 begin
-  TAtlasSettingsPage.ForgetTreeState;
+  TAtlasSettingsPageTree.ForgetTreeState;
   mHost := TForm.CreateNew(nil);
   try
     mPage := TAtlasSettingsPage.Create(mHost);
@@ -518,7 +519,7 @@ begin
     mWelcome := SheetOf(mPage.ControlOfSetting('WelcomePage'));
     Assert.IsNotNull(mWelcome);
     Assert.IsTrue(SheetOf(FSection.Start.IdePage) = mWelcome);
-    Assert.IsTrue(SheetOf(FSection.Layouts.Choice) = mWelcome);
+    Assert.IsTrue(SheetOf(FSection.Layouts.Choice) = SheetOf(FSection.Start.Columns), 'Layouts stehen bei den Spalten');
     // Sprint-Kachel (#1277): eigener Knoten welcome.sprint (Schema).
     Assert.IsTrue(SheetOf(FSection.Tiles.Sprint) = mPage.NodeSheet('welcome.sprint'));
     // „Meine Issues“: nur der Schalter, daneben der Weg zur Seite Issue-Tracker; ohne Modul Tracker dessen Schalter.

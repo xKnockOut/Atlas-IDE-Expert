@@ -9,6 +9,7 @@
 interface
 
 uses
+  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
@@ -56,7 +57,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview;
 
@@ -83,7 +83,6 @@ var
   mWaiting: TArray<TAtlasIssueLookupDone>;
   mCount: Integer;
 begin
-  Result := False;
   if AOwner.FMissing.TryGetValue(AId, mAt) then
   begin
     Result := TThread.GetTickCount64 - mAt < TAtlasIdeIssueLookups.MissingMs;

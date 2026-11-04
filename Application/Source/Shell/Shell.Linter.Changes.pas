@@ -33,6 +33,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.ChangedFiles,

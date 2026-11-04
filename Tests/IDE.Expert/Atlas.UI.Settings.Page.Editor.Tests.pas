@@ -57,6 +57,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Reassigned,

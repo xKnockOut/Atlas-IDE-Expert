@@ -405,7 +405,6 @@ var
     mStop: Boolean;
   begin
     AKnown := False;
-    Result := False;
     mCurrent := AType;
     for mDepth := 0 to 64 do
     begin

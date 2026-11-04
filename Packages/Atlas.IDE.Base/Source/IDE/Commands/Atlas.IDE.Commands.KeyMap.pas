@@ -18,7 +18,7 @@
 // - Beim Start (keys.startupCheck) prüft Atlas nach StartDelayMs seine eigenen
 //   Tasten und meldet jeden Konflikt einmal in der Meldungsansicht, mit Verweis
 //   auf Übersicht und Einstellungen; was #494 beim Belegen schon gemeldet hat,
-//   nicht noch einmal. Nach Package-Änderungen prüft CheckNow erneut.
+//   nicht noch einmal. Nach Package-Änderungen prüft es erneut, einmal für alle Module.
 // - Gemeinsame Quelle für die Einrichtung (#625, SetupKeys), die Taste eines
 //   Atlas-Befehls in der Befehlspalette (#502, AtlasShortCut) und spätere
 //   Einstiege (#600 Tastenkürzel-Tipps, #766 Knopf auf der Willkommensseite:
@@ -88,7 +88,7 @@ type
     procedure ShowAll;
     /// <summary>„Tastenkürzel-Übersicht…“ in der Befehlspalette, sichtbar nach keys.overview.</summary>
     procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
-    /// <summary>Package geladen: nach StartDelayMs die eigenen Tasten prüfen (keys.startupCheck).</summary>
+    /// <summary>Package geladen: nach StartDelayMs einmal die eigenen Tasten prüfen (keys.startupCheck).</summary>
     procedure CheckAtStart;
     /// <summary>Eigene Tasten prüfen und neue Konflikte melden; offenes Fenster neu einlesen.</summary>
     procedure CheckNow;

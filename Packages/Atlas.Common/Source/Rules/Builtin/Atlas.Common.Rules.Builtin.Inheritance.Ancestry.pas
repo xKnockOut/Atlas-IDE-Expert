@@ -112,6 +112,8 @@ type
     /// <summary>Typ AName jeder Art (Klasse, Record, Interface, Aufzählung, Alias) aus der Datei oder dem Index
     /// (#1001); bei mehreren gleichnamigen der erste.</summary>
     function FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
+    /// <summary>In AOwner dieser Unit geschachtelter Typ AName; geht vor gleichnamigen Typen anderer Units.</summary>
+    function FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Felder, Properties, Methoden und Konstruktoren des Typs AType (#1001).</summary>
     function Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
     /// <summary>Bezeichnen A und B denselben Typ? Synonyme (Longint, Integer) gleich; Typparameter aus
@@ -285,13 +287,19 @@ end;
 
 function TAncestry.MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 var
-  mKey: string;
+  mKey, mOwner: string;
   mSymbols: TArray<TIndexSymbol>;
   mFound: TList<TIndexSymbol>;
   mIndex: Integer;
 begin
   mKey := AnsiLowerCase(AType.FileName) + '|' + AnsiLowerCase(AType.Symbol.Name) + '|' +
     IntToStr(AType.Symbol.Range.StartPos.Line) + ':' + IntToStr(AType.Symbol.Range.EndPos.Line);
+  // Member geschachtelter Typen tragen den ganzen Pfad als Container (TAussen.TInnen).
+  mOwner := AType.Symbol.Name;
+  if AType.Symbol.Container <> '' then
+  begin
+    mOwner := AType.Symbol.Container + '.' + mOwner;
+  end;
   if FMembers.TryGetValue(mKey, Result) then
   begin
     Exit;
@@ -305,7 +313,7 @@ begin
       for mIndex := 0 to High(mSymbols) do
       begin
         if (mSymbols[mIndex].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
-          TIndexSymbolKind.Constructor_]) and SameText(mSymbols[mIndex].Container, AType.Symbol.Name) and
+          TIndexSymbolKind.Constructor_]) and SameText(mSymbols[mIndex].Container, mOwner) and
           ContainsLine(AType.Symbol.Range, mSymbols[mIndex].Range.StartPos.Line) then
         begin
           mFound.Add(mSymbols[mIndex]);
@@ -478,6 +486,26 @@ begin
         AType := Location;
         Exit(True);
       end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TAncestry.FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
+const
+  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FLocal.Symbols) do
+  begin
+    if (FLocal.Symbols[mIndex].Kind in Kinds) and SameText(FLocal.Symbols[mIndex].Name, AName) and
+      (AOwner <> '') and SameText(FLocal.Symbols[mIndex].Container, AOwner) then
+    begin
+      AType := Default(TSymbolLocation);
+      AType.Symbol := FLocal.Symbols[mIndex];
+      Exit(True);
     end;
   end;
   Result := False;

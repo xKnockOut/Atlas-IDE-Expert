@@ -28,6 +28,9 @@ type
 implementation
 
 uses
+  Atlas.Core.Commands.Usage,
+  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Contracts.Tests,
   System.Types,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
@@ -218,6 +221,7 @@ begin
   begin
     Exit;
   end;
+  GWelcome.BeginStop;
   // Zuerst die Kacheln anderer Module: Ihre Steuerelemente gehen, solange die Seite noch steht.
   FreeAndNil(GTiles);
   for mIndex := High(GRegistrations) downto 0 do

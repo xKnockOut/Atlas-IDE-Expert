@@ -254,6 +254,7 @@ type
     function IsClassMethod(ANode: TSyntaxNode): Boolean;
     function TokenAt(AOffset: Integer): Integer;
     function HiddenMember(ANode: TSyntaxNode; out AReceiverType, AMember: TResolvedSymbol): Boolean;
+    function NestedSomewhere(const AName: string): Boolean;
     function ReceiverTyped(ANode: TSyntaxNode; out AReceiverType: TResolvedSymbol): Boolean;
     function Tolerated(ANode: TSyntaxNode; const AReceiverType, AMember: TResolvedSymbol): Boolean;
     procedure CheckMemberAccess(ANode: TSyntaxNode);
@@ -446,6 +447,26 @@ end;
 
 /// <summary>Ist der Empfänger ANode sicher bekannt und hat einen Typ, der keine Unit und nicht eingebaut ist?
 /// </summary>
+function TInaccessibleMemberCheck.NestedSomewhere(const AName: string): Boolean;
+const
+  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := False;
+  if FContext.Index = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in FContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in Kinds) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TInaccessibleMemberCheck.ReceiverTyped(ANode: TSyntaxNode; out AReceiverType: TResolvedSymbol): Boolean;
 var
   mReceiver: TResolvedSymbol;
@@ -454,6 +475,8 @@ begin
   Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, mReceiver, AReceiverType, mTypeFound) and
     mTypeFound;
   Result := Result and (mReceiver.Kind <> TResolvedKind.UnitName) and not AReceiverType.Builtin;
+  // var APanel: TPanel mit geschachteltem record TPanel: Der Auflöser fände sonst Vcl.ExtCtrls.TPanel.
+  Result := Result and not NestedSomewhere(AReceiverType.Name);
 end;
 
 /// <summary>Ist ANode ein Zugriff A.B, dessen Mitglied B die Auflösung mit Sichtbarkeit nicht findet, ohne sie

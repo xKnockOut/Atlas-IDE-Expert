@@ -176,7 +176,7 @@ var
 begin
   mServices := AServices;
   mLogger := ALogger;
-  mAllFiles := AServices.AllFiles;
+  mAllFiles := AServices.AllFiles();
   Result :=
     procedure
     var
