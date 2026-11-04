@@ -103,47 +103,49 @@ end;
 
 { TAtlasTestUnits }
 
+/// <summary>Zeile ALine (getrimmt) gehört zu einem Kommentar oder ist leer; führt AInComment für mehrzeilige
+/// Kommentare vor dem Kopf nach.</summary>
+function IsSkipped(const ALine: string; var AInComment: Boolean): Boolean;
+begin
+  Result := True;
+  if AInComment then
+  begin
+    AInComment := (Pos('}', ALine) = 0) and (Pos('*)', ALine) = 0);
+  end
+  else if (ALine.StartsWith('{') and (Pos('}', ALine) = 0)) or (ALine.StartsWith('(*') and (Pos('*)', ALine) = 0)) then
+  begin
+    AInComment := True;
+  end
+  else
+  begin
+    Result := (ALine = '') or ALine.StartsWith('//') or ALine.StartsWith('{') or ALine.StartsWith('(*');
+  end;
+end;
+
 class function TAtlasTestUnits.UnitLine(const ALines: TArray<string>): Integer;
 var
-  Index: Integer;
-  Line: string;
-  InComment: Boolean;
+  mIndex: Integer;
+  mLine: string;
+  mInComment, mDone: Boolean;
 begin
-  InComment := False;
-  for Index := 0 to High(ALines) do
-  begin
-    Line := Trim(ALines[Index]);
-    // Mehrzeilige Kommentare vor dem Kopf überspringen.
-    if InComment then
-    begin
-      if (Pos('}', Line) > 0) or (Pos('*)', Line) > 0) then
-      begin
-        InComment := False;
-      end;
-      Continue;
-    end;
-    if Line.StartsWith('{') and (Pos('}', Line) = 0) then
-    begin
-      InComment := True;
-      Continue;
-    end;
-    if Line.StartsWith('(*') and (Pos('*)', Line) = 0) then
-    begin
-      InComment := True;
-      Continue;
-    end;
-    if (Line = '') or Line.StartsWith('//') or Line.StartsWith('{') or Line.StartsWith('(*') then
-    begin
-      Continue;
-    end;
-    if SameText(Copy(Line, 1, 5), 'unit ') or SameText(Line, 'unit') then
-    begin
-      Exit(Index);
-    end;
-    // Erstes echtes Wort ist nicht "unit": Programm, Package oder anderes.
-    Exit(-1);
-  end;
   Result := -1;
+  mInComment := False;
+  mDone := False;
+  mIndex := 0;
+  while not mDone and (mIndex <= High(ALines)) do
+  begin
+    mLine := Trim(ALines[mIndex]);
+    if not IsSkipped(mLine, mInComment) then
+    begin
+      // Erstes echtes Wort ist nicht "unit": Programm, Package oder anderes.
+      mDone := True;
+      if SameText(Copy(mLine, 1, 5), 'unit ') or SameText(mLine, 'unit') then
+      begin
+        Result := mIndex;
+      end;
+    end;
+    Inc(mIndex);
+  end;
 end;
 
 end.

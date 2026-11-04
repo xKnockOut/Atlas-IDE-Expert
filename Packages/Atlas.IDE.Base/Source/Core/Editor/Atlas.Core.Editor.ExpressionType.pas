@@ -206,6 +206,145 @@ begin
   Result.Link := ALink;
 end;
 
+procedure ReadLocation(const AAnswer: TJSONObject; var AInfo: TAtlasExpressionTypeInfo);
+var
+  mLocation: TJSONObject;
+  mNumber: Integer;
+begin
+  if AAnswer.GetValue('location') is TJSONObject then
+  begin
+    mLocation := TJSONObject(AAnswer.GetValue('location'));
+    AInfo.FileName := StringOf(mLocation, 'file');
+    if mLocation.TryGetValue<Integer>('line', mNumber) then
+    begin
+      AInfo.Line := mNumber;
+    end;
+    if mLocation.TryGetValue<Integer>('character', mNumber) then
+    begin
+      AInfo.Character := mNumber;
+    end;
+  end;
+end;
+
+function ReadConversion(const AItem: TJSONObject): TAtlasExpressionConversion;
+begin
+  Result := Default(TAtlasExpressionConversion);
+  Result.Expression := StringOf(AItem, 'expression');
+  Result.FromType := StringOf(AItem, 'from');
+  Result.ToType := StringOf(AItem, 'to');
+  Result.Convert := StringOf(AItem, 'kind') = 'convert';
+end;
+
+function ReadConversions(const AValue: TJSONValue): TArray<TAtlasExpressionConversion>;
+var
+  mElement: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mElement in TJSONArray(AValue) do
+    begin
+      if mElement is TJSONObject then
+      begin
+        Result := Result + [ReadConversion(TJSONObject(mElement))];
+      end;
+    end;
+  end;
+end;
+
+procedure ReadValueAndError(const AAnswer: TJSONObject; var AInfo: TAtlasExpressionTypeInfo);
+var
+  mError: TJSONObject;
+  mValue: Int64;
+begin
+  if (AAnswer.GetValue('value') is TJSONNumber) and AAnswer.TryGetValue<Int64>('value', mValue) then
+  begin
+    AInfo.HasValue := True;
+    AInfo.Value := mValue;
+  end;
+  if AAnswer.GetValue('error') is TJSONObject then
+  begin
+    mError := TJSONObject(AAnswer.GetValue('error'));
+    AInfo.Error := StringOf(mError, 'kind');
+    AInfo.ErrorDetail := StringOf(mError, 'detail');
+  end;
+end;
+
+/// <summary>Text der Fehlerzeile nach der Art des Fehlers.</summary>
+function ErrorText(const AInfo: TAtlasExpressionTypeInfo; const ATexts: TAtlasExpressionTypeTexts): string;
+var
+  mDetail: string;
+begin
+  mDetail := AInfo.ErrorDetail;
+  if mDetail = '' then
+  begin
+    mDetail := AInfo.Expression;
+  end;
+  if AInfo.Error = TAtlasExpressionType.ErrorNoExpression then
+  begin
+    Result := ATexts.NoExpression;
+  end
+  else if AInfo.Error = 'unknownName' then
+  begin
+    Result := Format(ATexts.UnknownName, [mDetail]);
+  end
+  else if AInfo.Error = 'operator' then
+  begin
+    Result := OperatorText(mDetail, ATexts);
+  end
+  else if AInfo.Error = 'noResult' then
+  begin
+    Result := Format(ATexts.NoResult, [mDetail]);
+  end
+  else
+  begin
+    Result := Format(ATexts.Unknown, [mDetail]);
+  end;
+end;
+
+function ConversionText(const AConversion: TAtlasExpressionConversion; const ATexts: TAtlasExpressionTypeTexts):
+  string;
+begin
+  if AConversion.Convert then
+  begin
+    Result := Format(ATexts.Convert, [AConversion.Expression, AConversion.FromType, AConversion.ToType]);
+  end
+  else
+  begin
+    Result := Format(ATexts.Widen, [AConversion.Expression, AConversion.FromType, AConversion.ToType]);
+  end;
+end;
+
+/// <summary>Zeilen ohne Fehler: Typ (mit Basistyp), Wert, Umwandlungen, Überladung.</summary>
+function TypeRows(const AInfo: TAtlasExpressionTypeInfo; const ATexts: TAtlasExpressionTypeTexts):
+  TArray<TAtlasExpressionTypeRow>;
+var
+  mConversion: TAtlasExpressionConversion;
+  mText: string;
+begin
+  mText := AInfo.TypeName;
+  if (AInfo.BaseName <> '') and not SameText(AInfo.BaseName, AInfo.TypeName) then
+  begin
+    mText := mText + ' = ' + AInfo.BaseName;
+  end;
+  Result := TArray<TAtlasExpressionTypeRow>.Create(Row(TAtlasExpressionTypeRowKind.TypeName, mText,
+    AInfo.HasLocation));
+  if AInfo.HasValue then
+  begin
+    Result := Result + [Row(TAtlasExpressionTypeRowKind.Value, Format(ATexts.Value, [IntToStr(AInfo.Value)]),
+      False)];
+  end;
+  for mConversion in AInfo.Conversions do
+  begin
+    Result := Result + [Row(TAtlasExpressionTypeRowKind.Conversion, ConversionText(mConversion, ATexts), False)];
+  end;
+  if AInfo.Overload <> '' then
+  begin
+    Result := Result + [Row(TAtlasExpressionTypeRowKind.Overload, Format(ATexts.Overload, [AInfo.Overload]),
+      False)];
+  end;
+end;
+
 { TAtlasExpressionTypeInfo }
 
 function TAtlasExpressionTypeInfo.HasLocation: Boolean;
@@ -246,73 +385,28 @@ end;
 
 class function TAtlasExpressionType.Read(const AAnswer: TJSONValue; out AInfo: TAtlasExpressionTypeInfo): Boolean;
 var
-  Answer, Location, Error, Item: TJSONObject;
-  Element: TJSONValue;
-  Conversion: TAtlasExpressionConversion;
-  Number: Integer;
-  Value: Int64;
+  mAnswer: TJSONObject;
 begin
   AInfo := Default(TAtlasExpressionTypeInfo);
   Result := AAnswer is TJSONObject;
-  if not Result then
+  if Result then
   begin
-    Exit;
+    mAnswer := TJSONObject(AAnswer);
+    ReadRange(mAnswer.GetValue('range'), AInfo.Range);
+    AInfo.Expression := StringOf(mAnswer, 'expression');
+    AInfo.TypeName := StringOf(mAnswer, 'type');
+    AInfo.BaseName := StringOf(mAnswer, 'base');
+    AInfo.Overload := StringOf(mAnswer, 'overload');
+    ReadLocation(mAnswer, AInfo);
+    AInfo.Conversions := ReadConversions(mAnswer.GetValue('conversions'));
+    ReadValueAndError(mAnswer, AInfo);
+    // Weder Typ noch Fehler: keine verwertbare Antwort.
+    Result := AInfo.Usable;
   end;
-  Answer := TJSONObject(AAnswer);
-  ReadRange(Answer.GetValue('range'), AInfo.Range);
-  AInfo.Expression := StringOf(Answer, 'expression');
-  AInfo.TypeName := StringOf(Answer, 'type');
-  AInfo.BaseName := StringOf(Answer, 'base');
-  AInfo.Overload := StringOf(Answer, 'overload');
-  if Answer.GetValue('location') is TJSONObject then
-  begin
-    Location := TJSONObject(Answer.GetValue('location'));
-    AInfo.FileName := StringOf(Location, 'file');
-    if Location.TryGetValue<Integer>('line', Number) then
-    begin
-      AInfo.Line := Number;
-    end;
-    if Location.TryGetValue<Integer>('character', Number) then
-    begin
-      AInfo.Character := Number;
-    end;
-  end;
-  if Answer.GetValue('conversions') is TJSONArray then
-  begin
-    for Element in TJSONArray(Answer.GetValue('conversions')) do
-    begin
-      if Element is TJSONObject then
-      begin
-        Item := TJSONObject(Element);
-        Conversion := Default(TAtlasExpressionConversion);
-        Conversion.Expression := StringOf(Item, 'expression');
-        Conversion.FromType := StringOf(Item, 'from');
-        Conversion.ToType := StringOf(Item, 'to');
-        Conversion.Convert := StringOf(Item, 'kind') = 'convert';
-        AInfo.Conversions := AInfo.Conversions + [Conversion];
-      end;
-    end;
-  end;
-  if (Answer.GetValue('value') is TJSONNumber) and Answer.TryGetValue<Int64>('value', Value) then
-  begin
-    AInfo.HasValue := True;
-    AInfo.Value := Value;
-  end;
-  if Answer.GetValue('error') is TJSONObject then
-  begin
-    Error := TJSONObject(Answer.GetValue('error'));
-    AInfo.Error := StringOf(Error, 'kind');
-    AInfo.ErrorDetail := StringOf(Error, 'detail');
-  end;
-  // Weder Typ noch Fehler: keine verwertbare Antwort.
-  Result := AInfo.Usable;
 end;
 
 class function TAtlasExpressionType.Rows(const AInfo: TAtlasExpressionTypeInfo;
   const ATexts: TAtlasExpressionTypeTexts): TArray<TAtlasExpressionTypeRow>;
-var
-  Conversion: TAtlasExpressionConversion;
-  Text, Detail: string;
 begin
   Result := nil;
   if AInfo.Expression <> '' then
@@ -321,63 +415,11 @@ begin
   end;
   if AInfo.Error <> '' then
   begin
-    Detail := AInfo.ErrorDetail;
-    if Detail = '' then
-    begin
-      Detail := AInfo.Expression;
-    end;
-    if AInfo.Error = ErrorNoExpression then
-    begin
-      Text := ATexts.NoExpression;
-    end
-    else if AInfo.Error = 'unknownName' then
-    begin
-      Text := Format(ATexts.UnknownName, [Detail]);
-    end
-    else if AInfo.Error = 'operator' then
-    begin
-      Text := OperatorText(Detail, ATexts);
-    end
-    else if AInfo.Error = 'noResult' then
-    begin
-      Text := Format(ATexts.NoResult, [Detail]);
-    end
-    else
-    begin
-      Text := Format(ATexts.Unknown, [Detail]);
-    end;
-    Result := Result + [Row(TAtlasExpressionTypeRowKind.Error, Text, False)];
+    Result := Result + [Row(TAtlasExpressionTypeRowKind.Error, ErrorText(AInfo, ATexts), False)];
   end
   else
   begin
-    Text := AInfo.TypeName;
-    if (AInfo.BaseName <> '') and not SameText(AInfo.BaseName, AInfo.TypeName) then
-    begin
-      Text := Text + ' = ' + AInfo.BaseName;
-    end;
-    Result := Result + [Row(TAtlasExpressionTypeRowKind.TypeName, Text, AInfo.HasLocation)];
-    if AInfo.HasValue then
-    begin
-      Result := Result + [Row(TAtlasExpressionTypeRowKind.Value, Format(ATexts.Value, [IntToStr(AInfo.Value)]),
-        False)];
-    end;
-    for Conversion in AInfo.Conversions do
-    begin
-      if Conversion.Convert then
-      begin
-        Text := Format(ATexts.Convert, [Conversion.Expression, Conversion.FromType, Conversion.ToType]);
-      end
-      else
-      begin
-        Text := Format(ATexts.Widen, [Conversion.Expression, Conversion.FromType, Conversion.ToType]);
-      end;
-      Result := Result + [Row(TAtlasExpressionTypeRowKind.Conversion, Text, False)];
-    end;
-    if AInfo.Overload <> '' then
-    begin
-      Result := Result + [Row(TAtlasExpressionTypeRowKind.Overload, Format(ATexts.Overload, [AInfo.Overload]),
-        False)];
-    end;
+    Result := Result + TypeRows(AInfo, ATexts);
   end;
   // Erweitern nur, wo es einen Ausdruck gibt.
   if (ATexts.Expand <> '') and (AInfo.Error <> ErrorNoExpression) then
