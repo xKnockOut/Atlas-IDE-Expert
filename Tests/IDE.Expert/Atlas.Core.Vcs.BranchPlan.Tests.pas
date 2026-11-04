@@ -1113,23 +1113,15 @@ begin
   mFacts := TAtlasVcsBranchFacts.Empty;
 end;
 
-procedure TAtlasVcsBranchPlanTests.StepsSvnWithExternals;
+/// <summary>svn 1.8: Atlas schreibt im Branch selbst fest, mit der Revision der External-Arbeitskopie.</summary>
+procedure AssertSvn18PinsInBranch(const AFacts: TAtlasVcsBranchFacts);
 var
   mFacts: TAtlasVcsBranchFacts;
   mRequest: TAtlasVcsBranchRequest;
   mSteps: TArray<TAtlasVcsBranchStep>;
   mDir: string;
 begin
-  mFacts := ExternalFacts;
-  // Alle ohne Revision festschreiben, svn 1.14: --pin-externals, kein Umschreiben.
-  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
-    TAtlasVcsExternalAction.Pin]);
-  Assert.IsTrue(TAtlasVcsBranchPlan.UsesPinExternals(mRequest));
-  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
-  Assert.AreEqual(2, Integer(Length(mSteps)));
-  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch ' +
-    '--pin-externals', Line(mSteps, 0));
-  Assert.AreEqual('switch', mSteps[1].Arguments[0]);
+  mFacts := AFacts;
   // svn 1.8: Atlas schreibt im Branch selbst fest, mit der Revision der External-Arbeitskopie.
   mFacts.SvnVersion := '1.8.19';
   mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
@@ -1153,6 +1145,25 @@ begin
   Assert.IsTrue(mSteps[3].ChangesServer);
   Assert.AreEqual('switch', mSteps[4].Arguments[0]);
   Assert.Contains(TAtlasVcsBranchPlan.StepText(TAtlasVcsKind.Svn, mSteps[2]), '(svn:externals: Packages/Basis');
+end;
+
+procedure TAtlasVcsBranchPlanTests.StepsSvnWithExternals;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+begin
+  mFacts := ExternalFacts;
+  // Alle ohne Revision festschreiben, svn 1.14: --pin-externals, kein Umschreiben.
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Pin]);
+  Assert.IsTrue(TAtlasVcsBranchPlan.UsesPinExternals(mRequest));
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch ' +
+    '--pin-externals', Line(mSteps, 0));
+  Assert.AreEqual('switch', mSteps[1].Arguments[0]);
+  AssertSvn18PinsInBranch(mFacts);
   // Mitverzweigen: Package zuerst, dann Projekt, dann Umschreiben, dann umschalten.
   mFacts.SvnVersion := '1.14.3';
   mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Branch, TAtlasVcsExternalAction.Keep,

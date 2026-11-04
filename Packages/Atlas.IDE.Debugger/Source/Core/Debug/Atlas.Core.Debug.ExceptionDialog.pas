@@ -54,7 +54,9 @@ begin
   Result := Trim(StringReplace(ACaption, '&', '', [rfReplaceAll]));
   // „Fortsetzen (F9)“ und ähnliche Zusätze.
   if Pos('(', Result) > 1 then
+  begin
     Result := Trim(Copy(Result, 1, Pos('(', Result) - 1));
+  end;
 end;
 
 { TAtlasDebugDialogScan }
@@ -80,11 +82,19 @@ var
 begin
   Caption := Plain(ACaption);
   for Word in BreakWords do
+  begin
     if SameText(Caption, Word) then
+    begin
       Exit(TAtlasDebugDialogButton.BreakButton);
+    end;
+  end;
   for Word in ContinueWords do
+  begin
     if SameText(Caption, Word) then
+    begin
       Exit(TAtlasDebugDialogButton.ContinueButton);
+    end;
+  end;
   Result := TAtlasDebugDialogButton.Other;
 end;
 
@@ -97,6 +107,7 @@ begin
   Result.BreakIndex := -1;
   Result.ContinueIndex := -1;
   for Text in ATexts do
+  begin
     // Nur Texte, die wie die Meldung der IDE aussehen: mit Klasse und mit Projekt bzw. Prozess davor.
     if TAtlasDebugExceptionText.Parse(Text, ExceptionClass, Message) and
       ((Pos('raised', LowerCase(Text)) > 0) or (Pos('aufgetreten', LowerCase(Text)) > 0) or
@@ -107,14 +118,19 @@ begin
       Result.Message := Message;
       Break;
     end;
+  end;
   for Index := 0 to High(AButtons) do
     case ButtonKind(AButtons[Index]) of
       TAtlasDebugDialogButton.BreakButton:
         if Result.BreakIndex < 0 then
+        begin
           Result.BreakIndex := Index;
+        end;
       TAtlasDebugDialogButton.ContinueButton:
         if Result.ContinueIndex < 0 then
+        begin
           Result.ContinueIndex := Index;
+        end;
     end;
 end;
 

@@ -69,6 +69,19 @@ type
     Declaration: string;
   end;
 
+  /// <summary>Wie die Ersetzung geschrieben wird.</summary>
+  TPostfixLayout = record
+    /// <summary>Einrückung der Zeile.</summary>
+    Indent: string;
+    LineBreak: string;
+    /// <summary>Inline-Variablen erlaubt (Sprachversion und Einstellung).</summary>
+    InlineVar: Boolean;
+    /// <summary>LSP-Snippet mit Platzhaltern statt Klartext.</summary>
+    Snippet: Boolean;
+    class function Create(const AIndent, ALineBreak: string; AInlineVar, ASnippet: Boolean): TPostfixLayout;
+      static;
+  end;
+
   TPostfixTemplates = class
   public const
     ItemName = 'Item';
@@ -88,9 +101,9 @@ type
     /// <summary>Ersatztext für AExpr.AKey als Klartext; AIndent ist die Einrückung der Zeile.</summary>
     class function Expand(const AKey, AExpr, AIndent, ALineBreak: string; AInlineVar: Boolean): string;
       overload; static;
-    /// <summary>Ersatztext und Deklaration für AExpr.Kürzel; ASnippet: LSP-Snippet mit Platzhaltern.</summary>
-    class function Expand(const ATemplate: TPostfixTemplate; const AExpr, AIndent, ALineBreak: string;
-      const ATraits: TPostfixTraits; AInlineVar, ASnippet: Boolean): TPostfixExpansion; overload; static;
+    /// <summary>Ersatztext und Deklaration für AExpr.Kürzel, geschrieben nach ALayout.</summary>
+    class function Expand(const ATemplate: TPostfixTemplate; const AExpr: string; const ATraits: TPostfixTraits;
+      const ALayout: TPostfixLayout): TPostfixExpansion; overload; static;
     /// <summary>Deklaration für den var-Abschnitt bei .for ohne Inline-Variable, z. B. "Item: Integer;".</summary>
     class function ClassicDeclaration(const ATraits: TPostfixTraits): string; static;
     /// <summary>Variablenname zum Typ: TStringList → StringList, TArray&lt;T&gt; → Values, ohne T-Vorsatz Value.
@@ -266,246 +279,308 @@ end;
 
 class function TPostfixTemplates.Expand(const AKey, AExpr, AIndent, ALineBreak: string; AInlineVar: Boolean): string;
 var
-  Template: TPostfixTemplate;
-  Traits: TPostfixTraits;
+  mTemplate: TPostfixTemplate;
+  mTraits: TPostfixTraits;
 begin
-  Template := Default(TPostfixTemplate);
-  Template.Key := AKey;
-  Traits := Default(TPostfixTraits);
-  Result := Expand(Template, AExpr, AIndent, ALineBreak, Traits, AInlineVar, False).Text;
+  mTemplate := Default(TPostfixTemplate);
+  mTemplate.Key := AKey;
+  mTraits := Default(TPostfixTraits);
+  Result := Expand(mTemplate, AExpr, mTraits, TPostfixLayout.Create(AIndent, ALineBreak, AInlineVar, False)).Text;
 end;
 
-class function TPostfixTemplates.Expand(const ATemplate: TPostfixTemplate; const AExpr, AIndent, ALineBreak: string;
-  const ATraits: TPostfixTraits; AInlineVar, ASnippet: Boolean): TPostfixExpansion;
+{ TPostfixLayout }
+
+class function TPostfixLayout.Create(const AIndent, ALineBreak: string; AInlineVar, ASnippet: Boolean):
+  TPostfixLayout;
+begin
+  Result.Indent := AIndent;
+  Result.LineBreak := ALineBreak;
+  Result.InlineVar := AInlineVar;
+  Result.Snippet := ASnippet;
+end;
+
+type
+  /// <summary>Ersetzung einer eingebauten Vorlage.</summary>
+  TPostfixExpander = record
+    Layout: TPostfixLayout;
+    Traits: TPostfixTraits;
+    /// <summary>Ausdruck, im Snippet maskiert.</summary>
+    Expr: string;
+    /// <summary>Platzhalter ANumber mit Vorgabe ADefault; im Klartext nur die Vorgabe.</summary>
+    function Field(ANumber: Integer; const ADefault: string): string;
+    /// <summary>Endposition des Cursors.</summary>
+    function Caret: string;
+    /// <summary>Eingerückte Folgezeile nach einem Kopf wie "if … then".</summary>
+    function Next: string;
+    function TryFinally(const AFree: string): string;
+    /// <summary>Vorlagen, die nur den Ausdruck einsetzen; False bei unbekanntem Kürzel.</summary>
+    function Simple(const AKey: string; out AText: string): Boolean;
+    function ForIn: TPostfixExpansion;
+    function TryCreate: TPostfixExpansion;
+    function NewVar: TPostfixExpansion;
+  end;
+
+function TPostfixExpander.Field(ANumber: Integer; const ADefault: string): string;
+begin
+  Result := ADefault;
+  if Layout.Snippet then
+  begin
+    Result := Format('${%d:%s}', [ANumber, TPostfixTemplates.Escape(ADefault)]);
+  end;
+end;
+
+function TPostfixExpander.Caret: string;
+begin
+  Result := '';
+  if Layout.Snippet then
+  begin
+    Result := '$0';
+  end;
+end;
+
+function TPostfixExpander.Next: string;
+begin
+  Result := Layout.LineBreak + Layout.Indent + '  ' + Caret;
+end;
+
+function TPostfixExpander.TryFinally(const AFree: string): string;
+begin
+  Result := 'try' + Layout.LineBreak + Layout.Indent + '  ' + Caret + Layout.LineBreak + Layout.Indent + 'finally' +
+    Layout.LineBreak + Layout.Indent + '  ' + AFree + '.Free;' + Layout.LineBreak + Layout.Indent + 'end;';
+end;
+
+function TPostfixExpander.Simple(const AKey: string; out AText: string): Boolean;
+begin
+  Result := True;
+  case IndexStr(AKey, ['tryf', 'ifa', 'notnil', 'nil', 'not', 'if', 'fmt', 'free', 'exit']) of
+    0:
+      AText := TryFinally(Expr);
+    1, 2:
+      AText := 'if Assigned(' + Expr + ') then' + Next;
+    3:
+      AText := 'if not Assigned(' + Expr + ') then' + Next;
+    4:
+      AText := 'not ' + Expr;
+    5:
+      AText := 'if ' + Expr + ' then' + Next;
+    6:
+      AText := 'Format(' + Expr + ', [' + Caret + '])';
+    7:
+      AText := 'FreeAndNil(' + Expr + ');';
+    8:
+      AText := 'Exit(' + Expr + ');';
+  else
+    AText := '';
+    Result := False;
+  end;
+end;
+
+function TPostfixExpander.ForIn: TPostfixExpansion;
+begin
+  Result := Default(TPostfixExpansion);
+  if Layout.InlineVar then
+  begin
+    Result.Text := 'for var ' + Field(1, TPostfixTemplates.ItemName) + ' in ' + Expr + ' do' + Next;
+  end
+  else
+  begin
+    // Der Name steht auch in der Deklaration; kein Platzhalter, der nur eine Stelle ändern würde.
+    Result.Text := 'for ' + TPostfixTemplates.ItemName + ' in ' + Expr + ' do' + Next;
+    Result.Declaration := TPostfixTemplates.ClassicDeclaration(Traits);
+  end;
+end;
+
+function TPostfixExpander.TryCreate: TPostfixExpansion;
 var
-  Key, Expr, Body, Name: string;
-
-  // Platzhalter ANumber mit Vorgabe ADefault; im Klartext nur die Vorgabe.
-  function Field(ANumber: Integer; const ADefault: string): string;
+  mName, mBody: string;
+begin
+  Result := Default(TPostfixExpansion);
+  mName := TPostfixTemplates.SuggestName(Traits.TypeName);
+  if Layout.InlineVar then
   begin
-    if ASnippet then
+    mBody := 'var ' + Field(1, mName) + ' := ' + Expr + ';';
+    if Layout.Snippet then
     begin
-      Result := Format('${%d:%s}', [ANumber, Escape(ADefault)]);
-    end
-    else
-    begin
-      Result := ADefault;
+      mName := '$1';
     end;
-  end;
-
-  // Endposition des Cursors.
-  function Caret: string;
+  end
+  else
   begin
-    if ASnippet then
-    begin
-      Result := '$0';
-    end
-    else
-    begin
-      Result := '';
-    end;
+    mBody := mName + ' := ' + Expr + ';';
+    Result.Declaration := mName + ': ' + Traits.TypeName + ';';
   end;
+  Result.Text := mBody + Layout.LineBreak + Layout.Indent + TryFinally(mName);
+end;
 
-  // Eingerückte Folgezeile nach einem Kopf wie "if … then".
-  function Next: string;
+function TPostfixExpander.NewVar: TPostfixExpansion;
+var
+  mName: string;
+begin
+  Result := Default(TPostfixExpansion);
+  mName := TPostfixTemplates.SuggestName(Traits.TypeName);
+  if Layout.InlineVar then
   begin
-    Result := ALineBreak + AIndent + '  ' + Caret;
-  end;
-
-  function TryFinally(const AFree: string): string;
+    Result.Text := 'var ' + Field(1, mName) + ' := ' + Expr + ';' + Caret;
+  end
+  else
   begin
-    Result := 'try' + ALineBreak + AIndent + '  ' + Caret + ALineBreak + AIndent + 'finally' + ALineBreak + AIndent +
-      '  ' + AFree + '.Free;' + ALineBreak + AIndent + 'end;';
+    Result.Text := mName + ' := ' + Expr + ';';
+    Result.Declaration := mName + ': ' + Traits.TypeName + ';';
   end;
+end;
 
+class function TPostfixTemplates.Expand(const ATemplate: TPostfixTemplate; const AExpr: string;
+  const ATraits: TPostfixTraits; const ALayout: TPostfixLayout): TPostfixExpansion;
+var
+  mKey: string;
+  mExpander: TPostfixExpander;
 begin
   Result := Default(TPostfixExpansion);
   if ATemplate.IsCustom then
   begin
-    Result.Text := CustomText(ATemplate.Body, AExpr, AIndent, ALineBreak, ASnippet);
+    Result.Text := CustomText(ATemplate.Body, AExpr, ALayout.Indent, ALayout.LineBreak, ALayout.Snippet);
     Exit;
   end;
-  Key := LowerCase(ATemplate.Key);
-  if ASnippet then
+  mKey := LowerCase(ATemplate.Key);
+  mExpander := Default(TPostfixExpander);
+  mExpander.Layout := ALayout;
+  mExpander.Traits := ATraits;
+  mExpander.Expr := AExpr;
+  if ALayout.Snippet then
   begin
-    Expr := Escape(AExpr);
-  end
-  else
-  begin
-    Expr := AExpr;
+    mExpander.Expr := Escape(AExpr);
   end;
-  if (Key = 'for') or (Key = 'forin') then
+  if (mKey = 'for') or (mKey = 'forin') then
   begin
-    if AInlineVar then
-    begin
-      Body := 'for var ' + Field(1, ItemName) + ' in ' + Expr + ' do';
-    end
-    else
-    begin
-      // Der Name steht auch in der Deklaration; kein Platzhalter, der nur eine Stelle ändern würde.
-      Body := 'for ' + ItemName + ' in ' + Expr + ' do';
-      Result.Declaration := ClassicDeclaration(ATraits);
-    end;
-    Result.Text := Body + Next;
+    Result := mExpander.ForIn;
   end
-  else if Key = 'tryf' then
+  else if mKey = 'try' then
   begin
-    Result.Text := TryFinally(Expr);
+    Result := mExpander.TryCreate;
   end
-  else if (Key = 'ifa') or (Key = 'notnil') then
+  else if mKey = 'var' then
   begin
-    Result.Text := 'if Assigned(' + Expr + ') then' + Next;
+    Result := mExpander.NewVar;
   end
-  else if Key = 'nil' then
-  begin
-    Result.Text := 'if not Assigned(' + Expr + ') then' + Next;
-  end
-  else if Key = 'not' then
-  begin
-    Result.Text := 'not ' + Expr;
-  end
-  else if Key = 'if' then
-  begin
-    Result.Text := 'if ' + Expr + ' then' + Next;
-  end
-  else if Key = 'fmt' then
-  begin
-    Result.Text := 'Format(' + Expr + ', [' + Caret + '])';
-  end
-  else if Key = 'free' then
-  begin
-    Result.Text := 'FreeAndNil(' + Expr + ');';
-  end
-  else if Key = 'try' then
-  begin
-    Name := SuggestName(ATraits.TypeName);
-    if AInlineVar then
-    begin
-      Body := 'var ' + Field(1, Name) + ' := ' + Expr + ';';
-      if ASnippet then
-      begin
-        Name := '$1';
-      end;
-    end
-    else
-    begin
-      Body := Name + ' := ' + Expr + ';';
-      Result.Declaration := Name + ': ' + ATraits.TypeName + ';';
-    end;
-    Result.Text := Body + ALineBreak + AIndent + TryFinally(Name);
-  end
-  else if Key = 'var' then
-  begin
-    Name := SuggestName(ATraits.TypeName);
-    if AInlineVar then
-    begin
-      Result.Text := 'var ' + Field(1, Name) + ' := ' + Expr + ';' + Caret;
-    end
-    else
-    begin
-      Result.Text := Name + ' := ' + Expr + ';';
-      Result.Declaration := Name + ': ' + ATraits.TypeName + ';';
-    end;
-  end
-  else if Key = 'exit' then
-  begin
-    Result.Text := 'Exit(' + Expr + ');';
-  end
-  else
+  else if not mExpander.Simple(mKey, Result.Text) then
   begin
     Result.Text := AExpr;
+  end;
+end;
+
+/// <summary>Platzhalter $1 bzw. $0 ab AIndex; im Snippet unverändert, im Klartext leer.</summary>
+function NumberedPlaceholder(const ABody: string; var AIndex: Integer; ASnippet: Boolean): string;
+var
+  mClose: Integer;
+begin
+  mClose := AIndex + 1;
+  while (mClose <= Length(ABody)) and CharInSet(ABody[mClose], ['0'..'9']) do
+  begin
+    Inc(mClose);
+  end;
+  Result := '';
+  if ASnippet then
+  begin
+    Result := Copy(ABody, AIndex, mClose - AIndex);
+  end;
+  AIndex := mClose;
+end;
+
+/// <summary>${1:Vorgabe} bzw. ${2} ab AIndex: im Snippet unverändert, im Klartext die Vorgabe.</summary>
+function BracedPlaceholder(const ABody: string; var AIndex: Integer; ASnippet: Boolean): string;
+var
+  mClose, mColon: Integer;
+begin
+  mClose := PosEx('}', ABody, AIndex);
+  if mClose = 0 then
+  begin
+    mClose := Length(ABody) + 1;
+  end;
+  Result := '';
+  mColon := PosEx(':', ABody, AIndex);
+  if ASnippet then
+  begin
+    Result := Copy(ABody, AIndex, mClose - AIndex + 1);
+  end
+  else if (mColon > 0) and (mColon < mClose) then
+  begin
+    Result := Copy(ABody, mColon + 1, mClose - mColon - 1);
+  end;
+  AIndex := mClose + 1;
+end;
+
+/// <summary>Teil ab dem "$" an AIndex: $expr, $$, $1 oder ${1:…}; False, wenn dort kein Platzhalter steht.
+/// </summary>
+function DollarPart(const ABody, AExpr: string; var AIndex: Integer; ASnippet: Boolean; out APart: string):
+  Boolean;
+begin
+  Result := True;
+  if StartsText(TPostfixTemplates.ExprToken, Copy(ABody, AIndex, Length(TPostfixTemplates.ExprToken))) then
+  begin
+    APart := AExpr;
+    if ASnippet then
+    begin
+      APart := TPostfixTemplates.Escape(AExpr);
+    end;
+    Inc(AIndex, Length(TPostfixTemplates.ExprToken));
+  end
+  else if (AIndex < Length(ABody)) and (ABody[AIndex + 1] = '$') then
+  begin
+    // "$$" steht für ein "$".
+    APart := '$';
+    if ASnippet then
+    begin
+      APart := '\$';
+    end;
+    Inc(AIndex, 2);
+  end
+  else if (AIndex < Length(ABody)) and CharInSet(ABody[AIndex + 1], ['0'..'9']) then
+  begin
+    APart := NumberedPlaceholder(ABody, AIndex, ASnippet);
+  end
+  else if (AIndex + 2 <= Length(ABody)) and (ABody[AIndex + 1] = '{') and CharInSet(ABody[AIndex + 2], ['0'..'9']) then
+  begin
+    APart := BracedPlaceholder(ABody, AIndex, ASnippet);
+  end
+  else
+  begin
+    APart := '';
+    Result := False;
   end;
 end;
 
 class function TPostfixTemplates.CustomText(const ABody, AExpr, AIndent, ALineBreak: string;
   ASnippet: Boolean): string;
 var
-  Index, Close: Integer;
-  Body: string;
-  Ch: Char;
+  mIndex: Integer;
+  mBody, mPart: string;
+  mChar: Char;
 begin
   // Text der Vorlage: Zeilen mit #10, Folgezeilen mit der Einrückung der Cursorzeile.
-  Body := ABody.Replace(#13#10, #10).Replace(#13, #10);
+  mBody := ABody.Replace(#13#10, #10).Replace(#13, #10);
   Result := '';
-  Index := 1;
-  while Index <= Length(Body) do
+  mIndex := 1;
+  while mIndex <= Length(mBody) do
   begin
-    Ch := Body[Index];
-    if Ch = #10 then
+    mChar := mBody[mIndex];
+    if mChar = #10 then
     begin
       Result := Result + ALineBreak + AIndent;
-      Inc(Index);
     end
-    else if (Ch = '$') and StartsText(ExprToken, Copy(Body, Index, Length(ExprToken))) then
+    else if (mChar = '$') and DollarPart(mBody, AExpr, mIndex, ASnippet, mPart) then
     begin
-      if ASnippet then
-      begin
-        Result := Result + Escape(AExpr);
-      end
-      else
-      begin
-        Result := Result + AExpr;
-      end;
-      Inc(Index, Length(ExprToken));
+      Result := Result + mPart;
+      Continue;
     end
-    else if (Ch = '$') and (Index < Length(Body)) and (Body[Index + 1] = '$') then
+    else if ASnippet and CharInSet(mChar, ['\', '$', '}']) then
     begin
-      // "$$" steht für ein "$".
-      if ASnippet then
-      begin
-        Result := Result + '\$';
-      end
-      else
-      begin
-        Result := Result + '$';
-      end;
-      Inc(Index, 2);
-    end
-    else if (Ch = '$') and (Index < Length(Body)) and CharInSet(Body[Index + 1], ['0'..'9']) then
-    begin
-      // $1 bzw. $0
-      Close := Index + 1;
-      while (Close <= Length(Body)) and CharInSet(Body[Close], ['0'..'9']) do
-      begin
-        Inc(Close);
-      end;
-      if ASnippet then
-      begin
-        Result := Result + Copy(Body, Index, Close - Index);
-      end;
-      Index := Close;
-    end
-    else if (Ch = '$') and (Index + 2 <= Length(Body)) and (Body[Index + 1] = '{') and
-      CharInSet(Body[Index + 2], ['0'..'9']) then
-    begin
-      // ${1:Vorgabe} bzw. ${2}: Vorgabe bis zur schließenden Klammer.
-      Close := PosEx('}', Body, Index);
-      if Close = 0 then
-      begin
-        Close := Length(Body) + 1;
-      end;
-      if ASnippet then
-      begin
-        Result := Result + Copy(Body, Index, Close - Index + 1);
-      end
-      else if Pos(':', Copy(Body, Index, Close - Index)) > 0 then
-      begin
-        Result := Result + Copy(Body, PosEx(':', Body, Index) + 1, Close - PosEx(':', Body, Index) - 1);
-      end;
-      Index := Close + 1;
+      Result := Result + '\' + mChar;
     end
     else
     begin
-      if ASnippet and CharInSet(Ch, ['\', '$', '}']) then
-      begin
-        Result := Result + '\' + Ch;
-      end
-      else
-      begin
-        Result := Result + Ch;
-      end;
-      Inc(Index);
+      Result := Result + mChar;
     end;
+    Inc(mIndex);
   end;
 end;
 

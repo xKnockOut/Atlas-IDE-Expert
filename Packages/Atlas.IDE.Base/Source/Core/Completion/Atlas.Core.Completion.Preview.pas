@@ -25,7 +25,9 @@ class function TAtlasPreview.RestOf(const AName, APrefix, ARestOfLine: string): 
 begin
   Result := '';
   if (Trim(ARestOfLine) <> '') or (Length(AName) <= Length(APrefix)) or not StartsText(APrefix, AName) then
+  begin
     Exit;
+  end;
   Result := Copy(AName, Length(APrefix) + 1, MaxInt);
 end;
 

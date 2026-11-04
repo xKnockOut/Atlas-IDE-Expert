@@ -122,6 +122,20 @@ begin
   inherited;
 end;
 
+/// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
+function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := AContext.Index;
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Files := AContext.Files;
+  Result.ReadText := AContext.ReadText;
+end;
+
 function TSourceFile.Offset(const APosition: TTextPosition): Integer;
 begin
   Result := Lines.OffsetAt(APosition);
@@ -1038,8 +1052,7 @@ var
   mToken: Integer;
 begin
   mOrigin := ReadableSource(AFileName);
-  mFamily := TLspChangeSignature.Family(FResolver, FContext.Index, mOrigin.Tree, AFileName, APosition,
-    FContext.Files, FContext.ReadText, nil);
+  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, AFileName, APosition));
   if AAccessorCheck then
   begin
     CheckFunctionAccessor(mFamily, mOrigin, APosition);
@@ -1100,8 +1113,7 @@ begin
   begin
     raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
   end;
-  Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, AFileName, APosition,
-    FContext.Files, FContext.ReadText, nil);
+  Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, AFileName, APosition));
   Last := -1;
   for Header in Family.Headers do
   begin
@@ -1321,8 +1333,8 @@ var
   mCall: TRoutineFamilyCall;
 begin
   mOrigin := ReadableSource(ASymbol.FileName);
-  mFamily := TLspChangeSignature.Family(FResolver, FContext.Index, mOrigin.Tree, ASymbol.FileName,
-    ParameterRoutine(mOrigin, ASymbol), FContext.Files, FContext.ReadText, nil);
+  mFamily := TLspChangeSignature.Family(FamilySource(FResolver, FContext, mOrigin.Tree, ASymbol.FileName,
+    ParameterRoutine(mOrigin, ASymbol)));
   mParameter := -1;
   if mFamily.BoundEvent = '' then
   begin

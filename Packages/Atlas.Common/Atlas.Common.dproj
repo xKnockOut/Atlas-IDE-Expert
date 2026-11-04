@@ -166,6 +166,9 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration1.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration2.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration3.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
@@ -266,6 +269,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveClass.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRename.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartPaste.pas"/>

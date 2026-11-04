@@ -46,31 +46,43 @@ var
 begin
   Result := '';
   if (APluginDir = '') or not Assigned(AExists) then
+  begin
     Exit;
+  end;
   Folder := IncludeTrailingPathDelimiter(APluginDir);
   Candidate := Folder + DocsFolder + PathDelim + DocsIndex;
   if AExists(Candidate) then
+  begin
     Exit(Candidate);
+  end;
   Parent := ExtractFilePath(ExcludeTrailingPathDelimiter(Folder));
   if Parent = '' then
+  begin
     Exit;
+  end;
   Candidate := IncludeTrailingPathDelimiter(Parent) + DocsFolder + PathDelim + DocsIndex;
   if AExists(Candidate) then
+  begin
     Result := Candidate;
+  end;
 end;
 
 class function TAtlasHelp.DocsTarget(const APluginDir: string; const AExists: TFunc<string, Boolean>): string;
 begin
   Result := LocalDocs(APluginDir, AExists);
   if Result = '' then
+  begin
     Result := DocsUrl;
+  end;
 end;
 
 class function TAtlasHelp.Enabled(AButton: TAtlasHelpButton; AKeysAvailable: Boolean): Boolean;
 begin
   Result := True;
   if AButton = TAtlasHelpButton.Keys then
+  begin
     Result := AKeysAvailable;
+  end;
 end;
 
 end.

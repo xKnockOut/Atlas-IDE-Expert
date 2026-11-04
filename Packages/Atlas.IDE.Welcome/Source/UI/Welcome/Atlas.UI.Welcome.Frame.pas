@@ -122,7 +122,9 @@ begin
   while Control <> nil do
   begin
     if Control.HandleAllocated or (Control.ParentWindow <> 0) or (Control is TCustomForm) then
+    begin
       Exit(True);
+    end;
     Control := Control.Parent;
   end;
   FPendingUpdate := True;
@@ -190,14 +192,18 @@ end;
 procedure TAtlasWelcomeSectionFrame.HeightChanged;
 begin
   if Assigned(FOnHeightChanged) then
+  begin
     FOnHeightChanged(Self);
+  end;
 end;
 
 function TAtlasWelcomeSectionFrame.PreferredHeight: Integer;
 begin
   Result := BodyHeight;
   if ShowTitle then
+  begin
     Inc(Result, FTitleBar.Height);
+  end;
 end;
 
 { TAtlasWelcomeViews }
@@ -205,14 +211,18 @@ end;
 class procedure TAtlasWelcomeViews.Register(const AId: string; const AFactory: TAtlasWelcomeViewFactory);
 begin
   if FFactories = nil then
+  begin
     FFactories := TDictionary<string, TAtlasWelcomeViewFactory>.Create;
+  end;
   FFactories.AddOrSetValue(LowerCase(AId), AFactory);
 end;
 
 class procedure TAtlasWelcomeViews.Unregister(const AId: string);
 begin
   if FFactories <> nil then
+  begin
     FFactories.Remove(LowerCase(AId));
+  end;
 end;
 
 class function TAtlasWelcomeViews.Exists(const AId: string): Boolean;
@@ -226,10 +236,14 @@ var
 begin
   Result := nil;
   if (FFactories = nil) or not FFactories.TryGetValue(LowerCase(AId), Factory) then
+  begin
     Exit;
+  end;
   Result := Factory(AOwner);
   if Result <> nil then
+  begin
     Result.SectionId := AId;
+  end;
 end;
 
 class procedure TAtlasWelcomeViews.Release;

@@ -35,9 +35,13 @@ begin
   Result := ARange.TryGetValue<Integer>(AName + '.line', Line) and
     ARange.TryGetValue<Integer>(AName + '.character', Character);
   if Result then
-    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(Line, Character))
+  begin
+    AOffset := TLspTextChanges.OffsetOf(ALines, TLspTextPosition.Create(Line, Character));
+  end
   else
+  begin
     AOffset := 0;
+  end;
 end;
 
 class function TAtlasServerPlaceholders.Expansion(const AValue: TJSONValue;
@@ -51,9 +55,12 @@ var
 begin
   Result := Default(TAtlasSnippetExpansion);
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   Lines := TLineTable.Build(ADocument);
   for Item in TJSONArray(AValue) do
+  begin
     if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<Integer>('number', Stop.Number) and
       (Stop.Number >= 0) and TJSONObject(Item).TryGetValue<TJSONObject>('range', Range) and
       ReadOffset(Lines, Range, 'start', StartOffset) and ReadOffset(Lines, Range, 'end', EndOffset) and
@@ -63,14 +70,19 @@ begin
       Stop.Length := EndOffset - StartOffset;
       Result.Stops := Result.Stops + [Stop];
     end;
+  end;
   // Bei gleichem Anfang zuerst die Nummer, damit die Reihenfolge feststeht.
   TArray.Sort<TAtlasSnippetStop>(Result.Stops, TComparer<TAtlasSnippetStop>.Construct(
     function(const A, B: TAtlasSnippetStop): Integer
     begin
       if A.Start <> B.Start then
-        Result := A.Start - B.Start
+      begin
+        Result := A.Start - B.Start;
+      end
       else
+      begin
         Result := A.Number - B.Number;
+      end;
     end));
 end;
 

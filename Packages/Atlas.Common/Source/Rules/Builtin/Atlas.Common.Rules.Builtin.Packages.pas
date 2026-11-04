@@ -46,6 +46,25 @@ type
     Origin: Integer;
   end;
 
+  /// <summary>Ein Lauf über die uses-Listen ab contains; meldet jede implizite Unit einmal.</summary>
+  TImplicitImportWalk = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FSource: TPackageSource;
+    FRequired: TArray<string>;
+    FSeen: TDictionary<string, Boolean>;
+    FPending: TQueue<TPending>;
+    procedure Enqueue(const AUnitName: string; const AOrigin: Integer);
+    procedure Consider(const AItem: TPending; const AName: string);
+    function IsProvided(const AName: string): Boolean;
+    procedure ReportImplicit(const AItem: TPending; const AName: string; const AUsed: TUnitIndex);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport; const ASource: TPackageSource);
+    destructor Destroy; override;
+    procedure Run;
+  end;
+
 function FindIndexed(const AContext: TRuleContext; const AUnitName: string; out AUnit: TUnitIndex): Boolean;
 begin
   Result := AContext.Index.FindUnit(AUnitName, AUnit);
@@ -96,6 +115,118 @@ begin
   end;
 end;
 
+{ TImplicitImportWalk }
+
+constructor TImplicitImportWalk.Create(const AContext: TRuleContext; const AReport: IRuleReport;
+  const ASource: TPackageSource);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FSource := ASource;
+  FRequired := RequiredClosure(AContext, ASource);
+  FSeen := TDictionary<string, Boolean>.Create;
+  FPending := TQueue<TPending>.Create;
+end;
+
+destructor TImplicitImportWalk.Destroy;
+begin
+  FPending.Free;
+  FSeen.Free;
+  inherited;
+end;
+
+procedure TImplicitImportWalk.Enqueue(const AUnitName: string; const AOrigin: Integer);
+var
+  mItem: TPending;
+begin
+  mItem.UnitName := AUnitName;
+  mItem.Origin := AOrigin;
+  FPending.Enqueue(mItem);
+end;
+
+procedure TImplicitImportWalk.Run;
+var
+  mIndex: Integer;
+  mItem: TPending;
+  mIndexed: TUnitIndex;
+  mName: string;
+begin
+  for mIndex := 0 to High(FSource.Contains) do
+  begin
+    FSeen.AddOrSetValue(UpperCase(FSource.Contains[mIndex].Name), True);
+    Enqueue(FSource.Contains[mIndex].Name, mIndex);
+  end;
+  while FPending.Count > 0 do
+  begin
+    mItem := FPending.Dequeue;
+    if Assigned(FContext.Cancelled) and FContext.Cancelled() then
+    begin
+      Exit;
+    end;
+    // Bibliotheks-Units gehören zu Packages der Installation; ihnen wird nicht gefolgt.
+    if FindIndexed(FContext, mItem.UnitName, mIndexed) and not mIndexed.Library_ then
+    begin
+      for mName in mIndexed.InterfaceUses + mIndexed.ImplementationUses do
+      begin
+        Consider(mItem, mName);
+      end;
+    end;
+  end;
+end;
+
+procedure TImplicitImportWalk.Consider(const AItem: TPending; const AName: string);
+var
+  mUsed: TUnitIndex;
+begin
+  if FSeen.ContainsKey(UpperCase(AName)) then
+  begin
+    Exit;
+  end;
+  FSeen.Add(UpperCase(AName), True);
+  if IsProvided(AName) or not FindIndexed(FContext, AName, mUsed) or mUsed.Library_ then
+  begin
+    Exit;
+  end;
+  ReportImplicit(AItem, AName, mUsed);
+  // Was die implizite Unit verwendet, kommt ebenfalls mit.
+  Enqueue(AName, AItem.Origin);
+end;
+
+function TImplicitImportWalk.IsProvided(const AName: string): Boolean;
+var
+  mPackage: string;
+begin
+  Result := False;
+  for mPackage in FRequired do
+  begin
+    if FContext.PackageProvides(mPackage, AName) <> TRulePackageAnswer.No then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TImplicitImportWalk.ReportImplicit(const AItem: TPending; const AName: string; const AUsed: TUnitIndex);
+var
+  mPath: string;
+  mFix: TRuleFix;
+begin
+  mPath := AUsed.FileName;
+  if FContext.FileName <> '' then
+  begin
+    mPath := ExtractRelativePath(ExtractFilePath(FContext.FileName), AUsed.FileName);
+  end;
+  mFix := TRuleFix.Create(Format('"%s" in contains aufnehmen', [AName]),
+    [TRuleEdit.Create(TTextRange.Create(FSource.ContainsEnd, FSource.ContainsEnd),
+    TPackageReader.ContainsInsertion(AName, mPath, TTextLines.LineBreakOf(FContext.Text)))]);
+  FReport.Add(FSource.Contains[AItem.Origin].Range,
+    Format('"%s" wird implizit ins Package gezogen: %s verwendet %s, und die Unit steht weder in ' +
+    'contains noch in einem requires-Package (W1033).', [AName, AItem.UnitName, AName]), [mFix]);
+end;
+
+{ TImplicitPackageImportRule }
+
 function TImplicitPackageImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ImplicitPackageImportRuleId, TRuleSeverity.Warning,
@@ -104,89 +235,23 @@ end;
 
 procedure TImplicitPackageImportRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Source: TPackageSource;
-  Seen: TDictionary<string, Boolean>;
-  Pending: TQueue<TPending>;
-  Item, Next: TPending;
-  Indexed, Used: TUnitIndex;
-  Name, Path, Package: string;
-  Required: TArray<string>;
-  Index: Integer;
-  Provided: Boolean;
-  Fix: TRuleFix;
+  mSource: TPackageSource;
+  mWalk: TImplicitImportWalk;
 begin
   if (AContext.Index = nil) or not Assigned(AContext.PackageProvides) then
   begin
     Exit;
   end;
-  Source := TPackageReader.Read(AContext.Text);
-  if not Source.IsPackage or not Source.HasContains then
+  mSource := TPackageReader.Read(AContext.Text);
+  if not mSource.IsPackage or not mSource.HasContains then
   begin
     Exit;
   end;
-  Required := RequiredClosure(AContext, Source);
-  Seen := TDictionary<string, Boolean>.Create;
-  Pending := TQueue<TPending>.Create;
+  mWalk := TImplicitImportWalk.Create(AContext, AReport, mSource);
   try
-    for Index := 0 to High(Source.Contains) do
-    begin
-      Seen.AddOrSetValue(UpperCase(Source.Contains[Index].Name), True);
-      Item.UnitName := Source.Contains[Index].Name;
-      Item.Origin := Index;
-      Pending.Enqueue(Item);
-    end;
-    while Pending.Count > 0 do
-    begin
-      Item := Pending.Dequeue;
-      if Assigned(AContext.Cancelled) and AContext.Cancelled() then
-      begin
-        Exit;
-      end;
-      // Bibliotheks-Units gehören zu Packages der Installation; ihnen wird nicht gefolgt.
-      if not FindIndexed(AContext, Item.UnitName, Indexed) or Indexed.Library_ then
-      begin
-        Continue;
-      end;
-      for Name in Indexed.InterfaceUses + Indexed.ImplementationUses do
-      begin
-        if Seen.ContainsKey(UpperCase(Name)) then
-        begin
-          Continue;
-        end;
-        Seen.Add(UpperCase(Name), True);
-        Provided := False;
-        for Package in Required do
-        begin
-          if AContext.PackageProvides(Package, Name) <> TRulePackageAnswer.No then
-          begin
-            Provided := True;
-            Break;
-          end;
-        end;
-        if Provided or not FindIndexed(AContext, Name, Used) or Used.Library_ then
-        begin
-          Continue;
-        end;
-        Path := Used.FileName;
-        if AContext.FileName <> '' then
-        begin
-          Path := ExtractRelativePath(ExtractFilePath(AContext.FileName), Used.FileName);
-        end;
-        Fix := TRuleFix.Create(Format('"%s" in contains aufnehmen', [Name]),
-          [TRuleEdit.Create(TTextRange.Create(Source.ContainsEnd, Source.ContainsEnd),
-          TPackageReader.ContainsInsertion(Name, Path, TTextLines.LineBreakOf(AContext.Text)))]);
-        AReport.Add(Source.Contains[Item.Origin].Range,
-          Format('"%s" wird implizit ins Package gezogen: %s verwendet %s, und die Unit steht weder in ' +
-          'contains noch in einem requires-Package (W1033).', [Name, Item.UnitName, Name]), [Fix]);
-        // Was die implizite Unit verwendet, kommt ebenfalls mit.
-        Next.UnitName := Name;
-        Next.Origin := Item.Origin;
-        Pending.Enqueue(Next);
-      end;
-    end;
+    mWalk.Run;
   finally
-    Pending.Free;
-    Seen.Free;
+    mWalk.Free;
   end;
 end;
 

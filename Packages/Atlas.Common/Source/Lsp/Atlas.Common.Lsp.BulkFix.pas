@@ -28,7 +28,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
-  Atlas.Common.Rules.Checker;
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.BulkFix;
 
 type
   /// <summary>Was die Sammelkorrektur für eine Datei braucht.</summary>
@@ -53,6 +54,9 @@ type
     Command = 'atlas.server.fixFindings';
   private
     FInputFor: TLspBulkFixInputFunc;
+    /// <summary>Korrigiert AFileName; False, wenn die Datei nicht lesbar ist.</summary>
+    function RunFile(const AFileName: string; const AFixRules: TArray<string>; const ARequested: string;
+      out AResult: TBulkFixFile): Boolean;
   public
     constructor Create(const AInputFor: TLspBulkFixInputFunc);
     /// <summary>Befehl atlas.server.fixFindings; der Aufrufer übernimmt das Ergebnis.</summary>
@@ -66,7 +70,6 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.BulkFix,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.ApplyEdit;
 
@@ -106,19 +109,88 @@ begin
   FInputFor := AInputFor;
 end;
 
+/// <summary>Eintrag einer geänderten oder abgelehnten Datei für die Antwort.</summary>
+function FileJson(const AResult: TBulkFixFile): TJSONObject;
+var
+  mCount: TBulkFixRuleCount;
+  mRule: TJSONObject;
+  mRules: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('file', AResult.FileName);
+  Result.AddPair('fixes', TJSONNumber.Create(AResult.FixCount));
+  Result.AddPair('rejected', TJSONBool.Create(AResult.Rejected));
+  mRules := TJSONArray.Create;
+  Result.AddPair('rules', mRules);
+  for mCount in AResult.Applied do
+  begin
+    mRule := TJSONObject.Create;
+    mRule.AddPair('rule', mCount.RuleId);
+    mRule.AddPair('count', TJSONNumber.Create(mCount.Count));
+    mRules.AddElement(mRule);
+  end;
+  if AResult.Changed then
+  begin
+    Result.AddPair('diff', TBulkFix.Diff(ExtractFileName(AResult.FileName), AResult));
+    Result.AddPair('edit', TLspApplyEdit.TextEdits(AResult.FileName, TTextChanges.Diff(AResult.OldText,
+      AResult.NewText)));
+  end;
+end;
+
+/// <summary>Antwort mit Zusammenfassung und den geänderten oder abgelehnten Dateien.</summary>
+function AnswerJson(const AResults: TArray<TBulkFixFile>): TJSONObject;
+var
+  mResult: TBulkFixFile;
+  mItems: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  try
+    Result.AddPair('summary', TBulkFix.Summary(AResults, True, sLineBreak));
+    mItems := TJSONArray.Create;
+    Result.AddPair('files', mItems);
+    for mResult in AResults do
+    begin
+      if mResult.Changed or mResult.Rejected then
+      begin
+        mItems.AddElement(FileJson(mResult));
+      end;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TLspBulkFix.RunFile(const AFileName: string; const AFixRules: TArray<string>; const ARequested: string;
+  out AResult: TBulkFixFile): Boolean;
+var
+  mInput: TLspBulkFixInput;
+  mConfidence: TRuleConfidence;
+  mError: string;
+  mOptions: TBulkFixOptions;
+begin
+  Result := Assigned(FInputFor) and FInputFor(AFileName, mInput);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if not TBulkFix.MinConfidenceOf(mInput.Settings.FixMinConfidence, ARequested, mConfidence, mError) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+  end;
+  mOptions := TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries);
+  AResult := TBulkFix.Run(AFileName, mInput.Text, mOptions, TBulkFix.CheckWith(TBulkFix.RulesFor(mInput.Rules,
+    AFixRules), mInput.Settings, mInput.RelativePath, mInput.Project, mInput.Source, mInput.Baseline),
+    TBulkFix.SyntaxErrorsWith(mInput.Source));
+end;
+
 function TLspBulkFix.Execute(const AArguments: TJSONArray): TJSONValue;
 var
   mArguments: TJSONObject;
-  mFixRules, mFiles: TArray<string>;
-  mRequested, mError, mFileName, mName: string;
-  mInput: TLspBulkFixInput;
-  mConfidence: TRuleConfidence;
-  mOptions: TBulkFixOptions;
+  mFixRules: TArray<string>;
+  mRequested, mName: string;
   mResult: TBulkFixFile;
   mResults: TArray<TBulkFixFile>;
-  mCount: TBulkFixRuleCount;
-  mAnswer, mItem, mRule: TJSONObject;
-  mItems, mRules: TJSONArray;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONObject) then
   begin
@@ -131,68 +203,20 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"rules" fehlt: Regelkennungen oder "all"');
   end;
-  mFiles := StringsOf(mArguments.GetValue('files'));
   mRequested := '';
   if mArguments.GetValue('minConfidence') is TJSONString then
   begin
     mRequested := mArguments.GetValue('minConfidence').Value;
   end;
   mResults := nil;
-  for mName in mFiles do
+  for mName in StringsOf(mArguments.GetValue('files')) do
   begin
-    mFileName := PathOf(mName);
-    if not Assigned(FInputFor) or not FInputFor(mFileName, mInput) then
+    if RunFile(PathOf(mName), mFixRules, mRequested, mResult) then
     begin
-      Continue;
+      mResults := mResults + [mResult];
     end;
-    if not TBulkFix.MinConfidenceOf(mInput.Settings.FixMinConfidence, mRequested, mConfidence, mError) then
-    begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
-    end;
-    mOptions := TBulkFixOptions.Create(mFixRules, mConfidence, TRuleCatalog.Shared.Entries);
-    mResult := TBulkFix.Run(mFileName, mInput.Text, mOptions, TBulkFix.CheckWith(TBulkFix.RulesFor(mInput.Rules,
-      mFixRules), mInput.Settings, mInput.RelativePath, mInput.Project, mInput.Source, mInput.Baseline),
-      TBulkFix.SyntaxErrorsWith(mInput.Source));
-    mResults := mResults + [mResult];
   end;
-  mAnswer := TJSONObject.Create;
-  try
-    mAnswer.AddPair('summary', TBulkFix.Summary(mResults, True, sLineBreak));
-    mItems := TJSONArray.Create;
-    mAnswer.AddPair('files', mItems);
-    for mResult in mResults do
-    begin
-      if not mResult.Changed and not mResult.Rejected then
-      begin
-        Continue;
-      end;
-      mItem := TJSONObject.Create;
-      mItems.AddElement(mItem);
-      mItem.AddPair('file', mResult.FileName);
-      mItem.AddPair('fixes', TJSONNumber.Create(mResult.FixCount));
-      mItem.AddPair('rejected', TJSONBool.Create(mResult.Rejected));
-      mRules := TJSONArray.Create;
-      mItem.AddPair('rules', mRules);
-      for mCount in mResult.Applied do
-      begin
-        mRule := TJSONObject.Create;
-        mRule.AddPair('rule', mCount.RuleId);
-        mRule.AddPair('count', TJSONNumber.Create(mCount.Count));
-        mRules.AddElement(mRule);
-      end;
-      if not mResult.Changed then
-      begin
-        Continue;
-      end;
-      mItem.AddPair('diff', TBulkFix.Diff(ExtractFileName(mResult.FileName), mResult));
-      mItem.AddPair('edit', TLspApplyEdit.TextEdits(mResult.FileName, TTextChanges.Diff(mResult.OldText,
-        mResult.NewText)));
-    end;
-  except
-    mAnswer.Free;
-    raise;
-  end;
-  Result := mAnswer;
+  Result := AnswerJson(mResults);
 end;
 
 end.
