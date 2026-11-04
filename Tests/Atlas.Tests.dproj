@@ -518,6 +518,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitRename.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Shared.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>

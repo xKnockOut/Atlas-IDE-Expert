@@ -320,6 +320,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Shared.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
