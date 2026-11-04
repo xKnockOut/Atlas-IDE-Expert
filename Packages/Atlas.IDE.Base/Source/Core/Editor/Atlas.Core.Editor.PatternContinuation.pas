@@ -84,7 +84,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(ALine, 1, Index - 1);
 end;
 
@@ -105,9 +107,13 @@ begin
   begin
     SpaceStart := Index;
     while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     if Index > Length(ALine) then
+    begin
       Break;
+    end;
     Token := Default(TToken);
     Token.Space := Copy(ALine, SpaceStart, Index - SpaceStart);
     Start := Index;
@@ -115,7 +121,9 @@ begin
     if TTextChars.IsIdentStart(ALine[Index]) then
     begin
       while (Index <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Index]) do
+      begin
         Inc(Index);
+      end;
       Token.Kind := TTokenKind.Ident;
     end
     else if CharInSet(ALine[Index], ['0'..'9']) or ((ALine[Index] = '$') and (Index < Length(ALine)) and
@@ -125,26 +133,38 @@ begin
     begin
       // Vorzeichen nur, wo kein Operand davorsteht ("A - 1" bleibt eine Rechnung).
       if ALine[Index] = '-' then
+      begin
         Inc(Index);
+      end;
       if ALine[Index] = '$' then
       begin
         Inc(Index);
         while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9', 'A'..'F', 'a'..'f']) do
+        begin
           Inc(Index);
+        end;
       end
       else
+      begin
         while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9']) do
+        begin
           Inc(Index);
+        end;
+      end;
       // Gleitkommazahlen und Bereiche: nur Ganzzahlen bilden Folgen.
       if (Index < Length(ALine)) and (ALine[Index] = '.') and CharInSet(ALine[Index + 1], ['0'..'9']) then
       begin
         Inc(Index);
         while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9', 'e', 'E']) do
+        begin
           Inc(Index);
+        end;
         Token.Kind := TTokenKind.Symbol;
       end
       else
+      begin
         Token.Kind := TTokenKind.Number;
+      end;
     end
     else if ALine[Index] = '''' then
     begin
@@ -154,9 +174,13 @@ begin
         if ALine[Index] = '''' then
         begin
           if (Index < Length(ALine)) and (ALine[Index + 1] = '''') then
-            Inc(Index)
+          begin
+            Inc(Index);
+          end
           else
+          begin
             Break;
+          end;
         end;
         Inc(Index);
       end;
@@ -172,15 +196,21 @@ begin
     then
     begin
       if ALine[Index] = '{' then
-        Index := Pos('}', ALine, Index)
+      begin
+        Index := Pos('}', ALine, Index);
+      end
       else
       begin
         Index := Pos('*)', ALine, Index + 2);
         if Index > 0 then
+        begin
           Inc(Index);
+        end;
       end;
       if Index = 0 then
+      begin
         Index := Length(ALine);
+      end;
       Inc(Index);
       Token.Kind := TTokenKind.Comment;
     end
@@ -189,7 +219,9 @@ begin
       // Zweizeichige Operatoren als ein Token.
       if (Index < Length(ALine)) and ((Copy(ALine, Index, 2) = ':=') or (Copy(ALine, Index, 2) = '..') or
         (Copy(ALine, Index, 2) = '<=') or (Copy(ALine, Index, 2) = '>=') or (Copy(ALine, Index, 2) = '<>')) then
+      begin
         Inc(Index);
+      end;
       Inc(Index);
       Token.Kind := TTokenKind.Symbol;
     end;
@@ -205,13 +237,19 @@ var
 begin
   Result := False;
   if Length(A) <> Length(B) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
   begin
     if A[Index].Kind <> B[Index].Kind then
+    begin
       Exit;
+    end;
     if (A[Index].Kind in [TTokenKind.Symbol, TTokenKind.Comment]) and (A[Index].Text <> B[Index].Text) then
+    begin
       Exit;
+    end;
   end;
   Result := True;
 end;
@@ -224,17 +262,27 @@ begin
   Body := AText;
   Negative := Body.StartsWith('-');
   if Negative then
+  begin
     Delete(Body, 1, 1);
+  end;
   AHex := Body.StartsWith('$');
   if AHex then
+  begin
     Delete(Body, 1, 1);
+  end;
   ADigits := Length(Body);
   if AHex then
-    Result := TryStrToInt64('$' + Body, AValue)
+  begin
+    Result := TryStrToInt64('$' + Body, AValue);
+  end
   else
+  begin
     Result := TryStrToInt64(Body, AValue);
+  end;
   if Result and Negative then
+  begin
     AValue := -AValue;
+  end;
 end;
 
 /// <summary>Gleiche Abstände zwischen AValues? ASStep: der Abstand.</summary>
@@ -245,13 +293,21 @@ begin
   Result := False;
   AStep := 0;
   if Length(AValues) < 2 then
+  begin
     Exit;
+  end;
   AStep := AValues[1] - AValues[0];
   if AStep = 0 then
+  begin
     Exit;
+  end;
   for Index := 2 to High(AValues) do
+  begin
     if AValues[Index] - AValues[Index - 1] <> AStep then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -263,14 +319,20 @@ var
   Lower: Boolean;
 begin
   if not AHex then
+  begin
     Exit(IntToStr(AValue));
+  end;
   Digits := IntToHex(Abs(AValue), ADigits);
   Lower := ATemplate <> UpperCase(ATemplate);
   if Lower then
+  begin
     Digits := LowerCase(Digits);
+  end;
   Result := '$' + Digits;
   if AValue < 0 then
+  begin
     Result := '-' + Result;
+  end;
 end;
 
 /// <summary>Bezeichner mit Nummer am Ende: Präfix und Zahl ("Edit12" → "Edit", 12).</summary>
@@ -280,7 +342,9 @@ var
 begin
   Index := Length(AName);
   while (Index > 0) and CharInSet(AName[Index], ['0'..'9']) do
+  begin
     Dec(Index);
+  end;
   APrefix := Copy(AName, 1, Index);
   ADigits := Length(AName) - Index;
   Result := (Index > 0) and (ADigits > 0) and TryStrToInt64(Copy(AName, Index + 1, MaxInt), ANumber);
@@ -304,8 +368,12 @@ var
   begin
     Result := -1;
     for Item := 0 to High(Members) do
+    begin
       if SameText(Members[Item], AName) then
+      begin
         Exit(Item);
+      end;
+    end;
   end;
 
 begin
@@ -314,7 +382,9 @@ begin
   AFree := False;
   SetLength(Texts, Length(ATokens));
   for Index := 0 to High(ATokens) do
+  begin
     Texts[Index] := ATokens[Index][AColumn].Text;
+  end;
   Last := Texts[High(Texts)];
   SetLength(Values, Length(Texts));
   case ATokens[0][AColumn].Kind of
@@ -325,18 +395,24 @@ begin
         for Index := 0 to High(Texts) do
         begin
           if not TryNumber(Texts[Index], Value, Hex, Digits) then
+          begin
             Exit;
+          end;
           if Index = 0 then
           begin
             FirstHex := Hex;
             FirstDigits := Digits;
           end
           else if Hex <> FirstHex then
+          begin
             Exit;
+          end;
           Values[Index] := Value;
         end;
         if not ConstantStep(Values, Step) then
+        begin
           Exit;
+        end;
         AValue := FormatNumber(Values[High(Values)] + Step, Last, FirstHex, FirstDigits);
         Result := True;
       end;
@@ -345,13 +421,21 @@ begin
         // Einzelne Zeichen mit fester Schrittweite bilden eine Folge, alles andere wird ein freies Feld.
         Chars := True;
         for Index := 0 to High(Texts) do
+        begin
           if (Length(Texts[Index]) = 3) and (Texts[Index][2] <> '''') then
-            Values[Index] := Ord(Texts[Index][2])
+          begin
+            Values[Index] := Ord(Texts[Index][2]);
+          end
           else
+          begin
             Chars := False;
+          end;
+        end;
         if Chars and ConstantStep(Values, Step) and (Values[High(Values)] + Step >= 32) and
           (Values[High(Values)] + Step < $FFFF) and (Values[High(Values)] + Step <> Ord('''')) then
-          AValue := '''' + Char(Integer(Values[High(Values)] + Step)) + ''''
+        begin
+          AValue := '''' + Char(Integer(Values[High(Values)] + Step)) + '''';
+        end
         else
         begin
           AValue := '''''';
@@ -378,7 +462,9 @@ begin
             AValue := IntToStr(Values[High(Values)] + Step);
             // Führende Nullen wie im Vorbild ("Spalte01").
             while (Length(AValue) < Digits) and (Copy(Last, Length(Prefix) + 1, 1) = '0') do
+            begin
               AValue := '0' + AValue;
+            end;
             AValue := Prefix + AValue;
             // Deklariert die Zeile den Namen (Name: Typ; Name, …), darf er neu sein.
             Declares := (AColumn = 0) and (Length(ATokens[0]) > 1) and
@@ -388,20 +474,28 @@ begin
         end;
         // Werte eines Aufzählungstyps.
         if not Assigned(AEnums) then
+        begin
           Exit;
+        end;
         Position := AIndent + ATokens[High(ATokens)][AColumn].Start - 1;
         Members := AEnums(Last, ALineIndexes[High(ALineIndexes)], Position);
         if Length(Members) = 0 then
+        begin
           Exit;
+        end;
         for Index := 0 to High(Texts) do
         begin
           Values[Index] := MemberIndex(Texts[Index]);
           if Values[Index] < 0 then
+          begin
             Exit;
+          end;
         end;
         if not ConstantStep(Values, Step) or (Values[High(Values)] + Step < 0) or
           (Values[High(Values)] + Step > High(Members)) then
+        begin
           Exit;
+        end;
         AValue := Members[Values[High(Values)] + Step];
         Result := True;
       end;
@@ -424,16 +518,24 @@ begin
   ASuggestion := Default(TAtlasPatternSuggestion);
   Result := False;
   if AMinLines < MinLines then
+  begin
     AMinLines := MinLines;
+  end;
   if AMinLines > MaxLines then
+  begin
     AMinLines := MaxLines;
+  end;
   if (ALine < AMinLines) or (ALine > High(ALines)) or (Trim(ALines[ALine]) <> '') then
+  begin
     Exit;
+  end;
   Indent := LeadingSpace(ALines[ALine - 1]);
   // Längster Lauf gleicher Form direkt über der Cursorzeile, neueste Zeile zuletzt.
   Template := Tokenize(Copy(ALines[ALine - 1], Length(Indent) + 1, MaxInt));
   if Length(Template) = 0 then
+  begin
     Exit;
+  end;
   Run := [Template];
   LineIndexes := [ALine - 1];
   Line := ALine - 2;
@@ -442,13 +544,17 @@ begin
   begin
     Tokens := Tokenize(Copy(ALines[Line], Length(Indent) + 1, MaxInt));
     if not SameShape(Tokens, Template) then
+    begin
       Break;
+    end;
     Run := [Tokens] + Run;
     LineIndexes := [Line] + LineIndexes;
     Dec(Line);
   end;
   if Length(Run) < AMinLines then
+  begin
     Exit;
+  end;
   Builder := TStringBuilder.Create;
   try
     AnyVaries := False;
@@ -456,25 +562,37 @@ begin
     begin
       Varies := False;
       for Index := 1 to High(Run) do
+      begin
         if Run[Index][Column].Text <> Run[0][Column].Text then
+        begin
           Varies := True;
+        end;
+      end;
       Value := Template[Column].Text;
       Free := False;
       if Varies then
       begin
         if not NextValue(Run, LineIndexes, Column, Length(Indent), AEnums, AExists, Value, Free) then
+        begin
           Exit;
+        end;
         if not Free then
+        begin
           AnyVaries := True;
+        end;
       end;
       Builder.Append(Template[Column].Space);
       if Free then
+      begin
         ASuggestion.Fields := ASuggestion.Fields + [Builder.Length + 1];
+      end;
       Builder.Append(Value);
     end;
     // Nur freie Strings oder lauter gleiche Zeilen sind kein Muster.
     if not AnyVaries then
+    begin
       Exit;
+    end;
     ASuggestion.Text := Builder.ToString;
     ASuggestion.Indent := Indent;
     Result := True;
@@ -490,7 +608,9 @@ var
 begin
   Result := False;
   if AName = '' then
+  begin
     Exit;
+  end;
   Text := LowerCase(AText);
   Name := LowerCase(AName);
   At := Pos(Name, Text);
@@ -498,7 +618,9 @@ begin
   begin
     if ((At = 1) or not TTextChars.IsIdentChar(Text[At - 1])) and
       ((At + Length(Name) > Length(Text)) or not TTextChars.IsIdentChar(Text[At + Length(Name)])) then
+    begin
       Exit(True);
+    end;
     At := Pos(Name, Text, At + 1);
   end;
 end;
@@ -519,12 +641,16 @@ begin
   begin
     Open := At + 1;
     while (Open <= Length(Text)) and CharInSet(Text[Open], [' ', #9, #13, #10]) do
+    begin
       Inc(Open);
+    end;
     if (Open <= Length(Text)) and (Text[Open] = '(') and ((Open = Length(Text)) or (Text[Open + 1] <> '*')) then
     begin
       Close := Pos(')', Text, Open);
       if Close = 0 then
+      begin
         Exit;
+      end;
       Inner := Copy(Text, Open + 1, Close - Open - 1);
       Parts := Inner.Split([',']);
       Found := False;
@@ -533,7 +659,9 @@ begin
         // "stA = 1" erlaubt; nur der Name zählt.
         Parts[Index] := Trim(Parts[Index]);
         if Pos('=', Parts[Index]) > 0 then
+        begin
           Parts[Index] := Trim(Copy(Parts[Index], 1, Pos('=', Parts[Index]) - 1));
+        end;
         if (Parts[Index] = '') or not TTextChars.IsIdentStart(Parts[Index][1]) or (Pos(' ', Parts[Index]) > 0) or
           (Pos(':', Parts[Index]) > 0) then
         begin
@@ -542,10 +670,14 @@ begin
           Break;
         end;
         if LowerCase(Parts[Index]) = Name then
+        begin
           Found := True;
+        end;
       end;
       if Found then
+      begin
         Exit(Parts);
+      end;
     end;
     At := Pos('=', Text, At + 1);
   end;

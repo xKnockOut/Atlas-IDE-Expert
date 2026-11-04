@@ -40,24 +40,33 @@ var
   Cursor: TOTAEditPos;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   // Schon offen: nur den Reiter zeigen und springen. OpenFile öffnete die Datei sonst jedes Mal neu (Doppelklick in
   // „Atlas-Prüfung“), bei Formular-Units samt Designer.
   Module := Modules.FindModule(AFileName);
   if Module = nil then
   begin
     if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) then
+    begin
       Exit;
+    end;
     Module := Modules.FindModule(AFileName);
     if Module = nil then
+    begin
       Exit;
+    end;
   end;
   for Index := 0 to Module.ModuleFileCount - 1 do
+  begin
     if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
     begin
       Editor.Show;
       if Editor.EditViewCount = 0 then
+      begin
         Exit;
+      end;
       View := Editor.EditViews[0];
       Cursor.Line := ALine + 1;
       Cursor.Col := ACharacter + 1;
@@ -66,6 +75,7 @@ begin
       View.Paint;
       Exit;
     end;
+  end;
 end;
 
 class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;
@@ -78,16 +88,22 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   // Wie GoToLocation: OpenFile öffnete eine offene Datei erneut, bei Formular-Units samt Designer.
   Module := Modules.FindModule(AFileName);
   if Module <> nil then
+  begin
     for Index := 0 to Module.ModuleFileCount - 1 do
+    begin
       if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
       begin
         Editor.Show;
         Exit(True);
       end;
+    end;
+  end;
   Result := Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(AFileName);
 end;
 
@@ -98,10 +114,14 @@ var
   Cursor: TOTAEditPos;
 begin
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if View = nil then
+  begin
     Exit;
+  end;
   Cursor.Line := ALine + 1;
   Cursor.Col := ACharacter + 1;
   View.CursorPos := Cursor;
@@ -117,10 +137,14 @@ var
 begin
   GoToLocation(AFileName, ALine, 0);
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, AFileName) then
+  begin
     Exit;
+  end;
   // Zeilenanfang markieren, Cursor an den Anfang der nächsten Zeile, Ende markieren, Cursor zurück.
   View.Block.Style := btNonInclusive;
   Cursor.Line := ALine + 1;

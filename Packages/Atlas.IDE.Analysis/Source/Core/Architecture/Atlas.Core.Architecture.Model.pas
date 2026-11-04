@@ -446,10 +446,14 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt;
+  end;
 end;
 
 function Int64Of(const AObject: TJSONObject; const AName: string): Int64;
@@ -458,11 +462,15 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   // Über den Text: Generationen liegen über 2^32 (Kennung des Index im oberen Teil).
   if Value is TJSONNumber then
+  begin
     Result := StrToInt64Def(Value.Value, 0);
+  end;
 end;
 
 function FloatOf(const AObject: TJSONObject; const AName: string): Double;
@@ -471,10 +479,14 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsDouble;
+  end;
 end;
 
 function TextOf(const AObject: TJSONObject; const AName: string): string;
@@ -483,10 +495,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := Value.Value;
+  end;
 end;
 
 function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
@@ -495,10 +511,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONBool then
+  begin
     Result := TJSONBool(Value).AsBoolean;
+  end;
 end;
 
 function ArrayOf(const AObject: TJSONObject; const AName: string): TJSONArray;
@@ -507,10 +527,14 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONArray then
+  begin
     Result := TJSONArray(Value);
+  end;
 end;
 
 function IntsOf(const AObject: TJSONObject; const AName: string): TArray<Integer>;
@@ -521,13 +545,21 @@ begin
   Result := nil;
   Items := ArrayOf(AObject, AName);
   if Items = nil then
+  begin
     Exit;
+  end;
   SetLength(Result, Items.Count);
   for Index := 0 to Items.Count - 1 do
+  begin
     if Items.Items[Index] is TJSONNumber then
-      Result[Index] := TJSONNumber(Items.Items[Index]).AsInt
+    begin
+      Result[Index] := TJSONNumber(Items.Items[Index]).AsInt;
+    end
     else
+    begin
       Result[Index] := -1;
+    end;
+  end;
 end;
 
 function LinkOf(const AObject: TJSONObject): TAtlasArchLink;
@@ -565,37 +597,77 @@ var
 begin
   Result := False;
   for Item in AModel.Units do
+  begin
     if (Item.Subsystem < 0) or (Item.Subsystem >= Length(AModel.Subsystems)) then
+    begin
       Exit;
+    end;
+  end;
   for Edge in AModel.Edges do
+  begin
     if not ValidUnit(AModel, Edge.Source) or not ValidUnit(AModel, Edge.Target) then
+    begin
       Exit;
+    end;
+  end;
   for Member in AModel.Central do
+  begin
     if not ValidUnit(AModel, Member) then
+    begin
       Exit;
+    end;
+  end;
   for Subsystem in AModel.Subsystems do
+  begin
     for Member in Subsystem.Units do
+    begin
       if not ValidUnit(AModel, Member) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   for Cycle in AModel.Cycles do
   begin
     for Member in Cycle.Units do
+    begin
       if not ValidUnit(AModel, Member) then
+      begin
         Exit;
+      end;
+    end;
     for Link in Cycle.Edges do
+    begin
       if not ValidUnit(AModel, Link.Source) or not ValidUnit(AModel, Link.Target) then
+      begin
         Exit;
+      end;
+    end;
   end;
   for Link in AModel.CrossLinks do
+  begin
     if not ValidUnit(AModel, Link.Source) or not ValidUnit(AModel, Link.Target) then
+    begin
       Exit;
+    end;
+  end;
   for Outlier in AModel.Outliers do
+  begin
     if not ValidUnit(AModel, Outlier.Unit_) then
+    begin
       Exit;
+    end;
+  end;
   for Item in AModel.Units do
+  begin
     for mRow in Item.Assignment do
+    begin
       if (mRow.Subsystem < 0) or (mRow.Subsystem >= Length(AModel.Subsystems)) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   Result := True;
 end;
 
@@ -615,21 +687,33 @@ begin
   end;
   mRows := ArrayOf(AItem, 'assignment');
   if mRows = nil then
+  begin
     Exit;
+  end;
   SetLength(AUnit.Assignment, mRows.Count);
   for mIndex := 0 to mRows.Count - 1 do
   begin
     if not (mRows.Items[mIndex] is TJSONArray) then
+    begin
       Exit(False);
+    end;
     mRow := TJSONArray(mRows.Items[mIndex]);
     if (mRow.Count < 3) or (mRow.Count > 4) then
+    begin
       Exit(False);
+    end;
     mValues[3] := 1;
     for mPart := 0 to mRow.Count - 1 do
+    begin
       if mRow.Items[mPart] is TJSONNumber then
-        mValues[mPart] := TJSONNumber(mRow.Items[mPart]).AsInt
+      begin
+        mValues[mPart] := TJSONNumber(mRow.Items[mPart]).AsInt;
+      end
       else
+      begin
         Exit(False);
+      end;
+    end;
     AUnit.Assignment[mIndex].Subsystem := mValues[0];
     AUnit.Assignment[mIndex].Interfaces := mValues[1];
     AUnit.Assignment[mIndex].Implementations := mValues[2];
@@ -643,10 +727,16 @@ var
 begin
   Result := nil;
   if AItems = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to AItems.Count - 1 do
+  begin
     if AItems.Items[Index] is TJSONString then
+    begin
       Result := Result + [AItems.Items[Index].Value];
+    end;
+  end;
 end;
 
 function ChangeOf(const AModel: TAtlasArchitectureModel; const AText, AUnit: string): TAtlasArchChange;
@@ -673,27 +763,37 @@ begin
   Result := nil;
   Items := ArrayOf(AData, Names[AKind]);
   if Items = nil then
+  begin
     Exit;
+  end;
   if AKind in [TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits] then
   begin
     for Name in NamesOf(Items) do
+    begin
       Result := Result + [ChangeOf(AModel, Name, Name)];
+    end;
     Exit;
   end;
   for Index := 0 to Items.Count - 1 do
   begin
     if not (Items.Items[Index] is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Items.Items[Index]);
     case AKind of
       TAtlasArchChangeKind.NewCycles, TAtlasArchChangeKind.RemovedCycles:
         begin
           Members := NamesOf(ArrayOf(Item, 'units'));
           if Length(Members) = 0 then
+          begin
             Continue;
+          end;
           Change := ChangeOf(AModel, string.Join(' → ', Members) + ' → ' + Members[0], Members[0]);
           if FlagOf(Item, 'interfaceOnly') then
+          begin
             Change.Section := 'interface';
+          end;
         end;
       TAtlasArchChangeKind.Moves:
         begin
@@ -729,19 +829,27 @@ begin
   Result := nil;
   Items := ArrayOf(AData, AName);
   if Items = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Items.Count - 1 do
   begin
     if not (Items.Items[Index] is TJSONArray) then
+    begin
       Continue;
+    end;
     Pair := TJSONArray(Items.Items[Index]);
     if Pair.Count < 3 then
+    begin
       Continue;
+    end;
     Edge.Source := AModel.IndexOf(Pair.Items[0].Value);
     Edge.Target := AModel.IndexOf(Pair.Items[1].Value);
     Edge.Interface_ := Pair.Items[2].Value = 'i';
     if (Edge.Source >= 0) and (Edge.Target >= 0) then
+    begin
       Result := Result + [Edge];
+    end;
   end;
 end;
 
@@ -750,7 +858,9 @@ function ResolutionOf(const AObject: TJSONObject): Double;
 begin
   Result := 1;
   if (AObject <> nil) and (AObject.GetValue('resolution') is TJSONNumber) then
+  begin
     Result := TAtlasArchResolution.Clamp(FloatOf(AObject, 'resolution'));
+  end;
 end;
 
 function ComparisonOf(const AModel: TAtlasArchitectureModel; const AAnswer: TJSONObject): TAtlasArchComparison;
@@ -764,7 +874,9 @@ begin
   Result := Default(TAtlasArchComparison);
   Result.Error := TextOf(AAnswer, 'comparisonError');
   if not (AAnswer.GetValue('comparison') is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Baseline := TextOf(AAnswer, 'baseline');
   Data := TJSONObject(AAnswer.GetValue('comparison'));
   if Data.GetValue('baseline') is TJSONObject then
@@ -776,7 +888,9 @@ begin
     Result.BaselineResolution := ResolutionOf(Baseline);
   end
   else
+  begin
     Result.BaselineResolution := 1;
+  end;
   Result.Resolution := ResolutionOf(Data);
   Result.Failed := NamesOf(ArrayOf(Data, 'failed'));
   for Kind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
@@ -787,12 +901,16 @@ begin
   end;
   // Neue Kanten stehen im aktuellen Stand: als Nummern in Edges, damit die Karte sie wie die übrigen zeichnet.
   for Edge in MapEdgesOf(AModel, Data, 'addedEdges') do
+  begin
     for Index := 0 to High(AModel.Edges) do
+    begin
       if (AModel.Edges[Index].Source = Edge.Source) and (AModel.Edges[Index].Target = Edge.Target) then
       begin
         Result.AddedEdges := Result.AddedEdges + [Index];
         Break;
       end;
+    end;
+  end;
   Result.DroppedEdges := MapEdgesOf(AModel, Data, 'droppedEdges');
 end;
 
@@ -816,7 +934,9 @@ var
 begin
   Result := 0;
   for Item in Sections do
+  begin
     Inc(Result, Length(Item.Items));
+  end;
 end;
 
 function TAtlasArchComparison.Section(AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
@@ -825,8 +945,12 @@ var
 begin
   Result := nil;
   for Item in Sections do
+  begin
     if Item.Kind = AKind then
+    begin
       Exit(Item.Items);
+    end;
+  end;
 end;
 
 { TAtlasArchitectureModel }
@@ -845,16 +969,24 @@ begin
   Root := TJSONObject.ParseJSONValue(AAnswer);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Answer := TJSONObject(Root);
     AEnabled := FlagOf(Answer, 'enabled');
     if not AEnabled then
+    begin
       Exit(Answer.GetValue('enabled') is TJSONBool);
+    end;
     if not (Answer.GetValue('data') is TJSONObject) then
+    begin
       Exit;
+    end;
     Data := TJSONObject(Answer.GetValue('data'));
     if IntOf(Data, 'format', 0) <> Format then
+    begin
       Exit;
+    end;
     AModel.Root := TextOf(Answer, 'root');
     AModel.Title := TextOf(Data, 'title');
     AModel.Scope := TextOf(Data, 'scope');
@@ -872,11 +1004,17 @@ begin
       Item := TJSONObject(Data.GetValue('grouping'));
       AModel.Resolution := ResolutionOf(Item);
       if Item.GetValue('maxShare') is TJSONNumber then
+      begin
         AModel.MaxShare := TJSONNumber(Item.GetValue('maxShare')).AsDouble;
+      end;
       if Item.GetValue('minCohesion') is TJSONNumber then
+      begin
         AModel.MinCohesion := TJSONNumber(Item.GetValue('minCohesion')).AsDouble;
+      end;
       if TextOf(Item, 'foundations') <> '' then
+      begin
         AModel.Foundations := TextOf(Item, 'foundations');
+      end;
     end;
     if Data.GetValue('aligned') is TJSONObject then
     begin
@@ -898,7 +1036,9 @@ begin
       for Index := 0 to Items.Count - 1 do
       begin
         if not (Items.Items[Index] is TJSONObject) then
+        begin
           Exit;
+        end;
         Item := TJSONObject(Items.Items[Index]);
         AModel.Units[Index].Name := TextOf(Item, 'name');
         AModel.Units[Index].FileName := TextOf(Item, 'file');
@@ -911,7 +1051,9 @@ begin
         AModel.Units[Index].X := FloatOf(Item, 'x');
         AModel.Units[Index].Y := FloatOf(Item, 'y');
         if not AssignmentOf(Item, AModel.Units[Index]) then
+        begin
           Exit;
+        end;
       end;
     end;
     Items := ArrayOf(Data, 'edges');
@@ -921,10 +1063,14 @@ begin
       for Index := 0 to Items.Count - 1 do
       begin
         if not (Items.Items[Index] is TJSONArray) then
+        begin
           Exit;
+        end;
         Pair := TJSONArray(Items.Items[Index]);
         if (Pair.Count < 3) or not (Pair.Items[0] is TJSONNumber) or not (Pair.Items[1] is TJSONNumber) then
+        begin
           Exit;
+        end;
         AModel.Edges[Index].Source := TJSONNumber(Pair.Items[0]).AsInt;
         AModel.Edges[Index].Target := TJSONNumber(Pair.Items[1]).AsInt;
         AModel.Edges[Index].Interface_ := Pair.Items[2].Value = 'i';
@@ -936,7 +1082,9 @@ begin
     begin
       SetLength(AModel.Excludes, Items.Count);
       for Index := 0 to Items.Count - 1 do
+      begin
         AModel.Excludes[Index] := Items.Items[Index].Value;
+      end;
     end;
     Items := ArrayOf(Data, 'subsystems');
     if Items <> nil then
@@ -945,7 +1093,9 @@ begin
       for Index := 0 to Items.Count - 1 do
       begin
         if not (Items.Items[Index] is TJSONObject) then
+        begin
           Exit;
+        end;
         Item := TJSONObject(Items.Items[Index]);
         AModel.Subsystems[Index].Name := TextOf(Item, 'name');
         AModel.Subsystems[Index].Units := IntsOf(Item, 'units');
@@ -970,7 +1120,9 @@ begin
       for Index := 0 to Items.Count - 1 do
       begin
         if not (Items.Items[Index] is TJSONObject) then
+        begin
           Exit;
+        end;
         Item := TJSONObject(Items.Items[Index]);
         AModel.Outliers[Index].Unit_ := IntOf(Item, 'unit', -1);
         AModel.Outliers[Index].Suggested := IntOf(Item, 'suggested', -1);
@@ -986,7 +1138,9 @@ begin
       for Index := 0 to Items.Count - 1 do
       begin
         if not (Items.Items[Index] is TJSONObject) then
+        begin
           Exit;
+        end;
         Item := TJSONObject(Items.Items[Index]);
         AModel.Cycles[Index].InterfaceOnly := FlagOf(Item, 'interfaceOnly');
         AModel.Cycles[Index].Units := IntsOf(Item, 'units');
@@ -995,10 +1149,16 @@ begin
         begin
           SetLength(AModel.Cycles[Index].Edges, Pair.Count);
           for Inner := 0 to Pair.Count - 1 do
+          begin
             if Pair.Items[Inner] is TJSONObject then
-              AModel.Cycles[Index].Edges[Inner] := LinkOf(TJSONObject(Pair.Items[Inner]))
+            begin
+              AModel.Cycles[Index].Edges[Inner] := LinkOf(TJSONObject(Pair.Items[Inner]));
+            end
             else
+            begin
               Exit;
+            end;
+          end;
         end;
       end;
     end;
@@ -1007,24 +1167,40 @@ begin
     begin
       SetLength(AModel.CrossLinks, Items.Count);
       for Index := 0 to Items.Count - 1 do
+      begin
         if Items.Items[Index] is TJSONObject then
-          AModel.CrossLinks[Index] := LinkOf(TJSONObject(Items.Items[Index]))
+        begin
+          AModel.CrossLinks[Index] := LinkOf(TJSONObject(Items.Items[Index]));
+        end
         else
+        begin
           Exit;
+        end;
+      end;
     end;
     if not Consistent(AModel) then
+    begin
       Exit;
+    end;
     for Index := 0 to High(AModel.Outliers) do
+    begin
       AModel.Units[AModel.Outliers[Index].Unit_].Outlier := True;
+    end;
     for Index := 0 to High(AModel.Cycles) do
+    begin
       for Inner in AModel.Cycles[Index].Units do
+      begin
         AModel.Units[Inner].OnCycle := True;
+      end;
+    end;
     AModel.Comparison := ComparisonOf(AModel, Answer);
     Result := True;
   finally
     Root.Free;
     if not Result then
+    begin
       AModel := Default(TAtlasArchitectureModel);
+    end;
   end;
 end;
 
@@ -1035,7 +1211,9 @@ begin
   Name := StringReplace(AFileName, '/', PathDelim, [rfReplaceAll]);
   Name := StringReplace(Name, '\', PathDelim, [rfReplaceAll]);
   if (Name = '') or (Root = '') or (Name[1] = PathDelim) or ((Length(Name) > 1) and (Name[2] = ':')) then
+  begin
     Exit(Name);
+  end;
   Result := IncludeTrailingPathDelimiter(Root) + Name;
 end;
 
@@ -1044,8 +1222,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Units) do
+  begin
     if SameText(Units[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1054,8 +1236,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Outliers) do
+  begin
     if Outliers[Index].Unit_ = AUnit then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1064,11 +1250,17 @@ var
   Word, Name: string;
 begin
   if (AUnit < 0) or (AUnit > High(Units)) then
+  begin
     Exit(False);
+  end;
   Name := LowerCase(Units[AUnit].Name);
   for Word in LowerCase(AFilter).Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  begin
     if Pos(Word, Name) = 0 then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -1101,23 +1293,35 @@ begin
         Result := 0;
       end;
       if ADescending then
+      begin
         Result := -Result;
+      end;
       // Gleichstand eindeutig: TArray.Sort ist nicht stabil.
       if Result = 0 then
+      begin
         Result := CompareText(Left.Name, Right.Name);
+      end;
       if (Result <> 0) and ADescending and (AColumn = TAtlasArchColumn.Name) then
+      begin
         Result := -Result;
+      end;
       if Result = 0 then
+      begin
         Result := CompareValue(ALeft, ARight);
+      end;
     end));
 end;
 
 function TAtlasArchitectureModel.SubsystemName(ASubsystem: Integer): string;
 begin
   if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
-    Result := Subsystems[ASubsystem].Name
+  begin
+    Result := Subsystems[ASubsystem].Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAtlasArchitectureModel.CyclePath(const ACycle: TAtlasArchCycle): string;
@@ -1126,20 +1330,28 @@ var
 begin
   Result := '';
   for Member in ACycle.Units do
+  begin
     if (Member >= 0) and (Member < Length(Units)) then
     begin
       if Result <> '' then
+      begin
         Result := Result + ' → ';
+      end;
       Result := Result + Units[Member].Name;
     end;
+  end;
   if (Length(ACycle.Units) > 0) and (ACycle.Units[0] >= 0) and (ACycle.Units[0] < Length(Units)) then
+  begin
     Result := Result + ' → ' + Units[ACycle.Units[0]].Name;
+  end;
 end;
 
 function TAtlasArchitectureModel.NodeRadius(AUnit: Integer): Double;
 begin
   if (AUnit < 0) or (AUnit > High(Units)) then
+  begin
     Exit(5);
+  end;
   Result := 5 + Sqrt(Max(0, Units[AUnit].Total)) * 1.8;
 end;
 
@@ -1149,7 +1361,9 @@ var
 begin
   Result := False;
   if (AUnit < 0) or (AUnit > High(Units)) then
+  begin
     Exit;
+  end;
   Subsystem := Units[AUnit].Subsystem;
   Result := (Subsystem >= 0) and (Subsystem < Length(AHidden)) and AHidden[Subsystem];
 end;
@@ -1165,10 +1379,14 @@ begin
   AEdges := nil;
   Result := False;
   if (AFrom < 0) or (AFrom > High(Units)) or (ATo < 0) or (ATo > High(Units)) or (AFrom = ATo) then
+  begin
     Exit;
+  end;
   SetLength(Outgoing, Length(Units));
   for Index := 0 to High(Edges) do
+  begin
     Outgoing[Edges[Index].Source] := Outgoing[Edges[Index].Source] + [Index];
+  end;
   SetLength(Previous, Length(Units));
   SetLength(Reached, Length(Units));
   SetLength(Queue, Length(Units));
@@ -1185,7 +1403,9 @@ begin
     begin
       Index := Edges[Edge].Target;
       if Reached[Index] or (not AImplementation and not Edges[Edge].Interface_) or IsHidden(Index, AHidden) then
+      begin
         Continue;
+      end;
       Reached[Index] := True;
       Previous[Index] := Edge;
       Queue[Tail] := Index;
@@ -1193,7 +1413,9 @@ begin
     end;
   end;
   if not Reached[ATo] then
+  begin
     Exit;
+  end;
   Current := ATo;
   while Current <> AFrom do
   begin
@@ -1209,11 +1431,17 @@ var
 begin
   Result := '';
   if (AFrom < 0) or (AFrom > High(Units)) then
+  begin
     Exit;
+  end;
   Result := Units[AFrom].Name;
   for Edge in AEdges do
+  begin
     if (Edge >= 0) and (Edge <= High(Edges)) then
+    begin
       Result := Result + ' → ' + Units[Edges[Edge].Target].Name;
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.RouteOf(const ANames: TArray<string>; out AUnits, AEdges: TArray<Integer>): Boolean;
@@ -1229,35 +1457,49 @@ begin
   begin
     Unit_ := IndexOf(Name);
     if (Unit_ < 0) or ((Length(AUnits) > 0) and (AUnits[High(AUnits)] = Unit_)) then
+    begin
       Continue;
+    end;
     if Length(AUnits) > 0 then
     begin
       Previous := AUnits[High(AUnits)];
       // Vorwärts zuerst; ein Weg über Vererbung oder Umsetzung kann auch gegen die uses-Richtung laufen.
       Direct := -1;
       for Index := 0 to High(Edges) do
+      begin
         if (Edges[Index].Source = Previous) and (Edges[Index].Target = Unit_) then
         begin
           Direct := Index;
           Break;
         end;
+      end;
       if Direct < 0 then
+      begin
         for Index := 0 to High(Edges) do
+        begin
           if (Edges[Index].Source = Unit_) and (Edges[Index].Target = Previous) then
           begin
             Direct := Index;
             Break;
           end;
+        end;
+      end;
       if Direct >= 0 then
-        AEdges := AEdges + [Direct]
+      begin
+        AEdges := AEdges + [Direct];
+      end
       else if ShortestPath(Previous, Unit_, True, nil, Bridge) then
+      begin
         for Edge in Bridge do
         begin
           AEdges := AEdges + [Edge];
           // Zwischen-Units der Brücke gehören zum Weg (Ziel der letzten Kante ist Unit_ selbst).
           if Edges[Edge].Target <> Unit_ then
+          begin
             AUnits := AUnits + [Edges[Edge].Target];
+          end;
         end;
+      end;
     end;
     AUnits := AUnits + [Unit_];
   end;
@@ -1270,12 +1512,16 @@ var
 begin
   Result := '';
   for Unit_ in AUnits do
+  begin
     if (Unit_ >= 0) and (Unit_ <= High(Units)) then
     begin
       if Result <> '' then
+      begin
         Result := Result + ' → ';
+      end;
       Result := Result + Units[Unit_].Name;
     end;
+  end;
 end;
 
 function TAtlasArchitectureModel.SubsystemCount: Integer;
@@ -1284,18 +1530,28 @@ var
 begin
   Result := 0;
   for mSubsystem in Subsystems do
+  begin
     if not mSubsystem.Isolated then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
 begin
   if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) and Subsystems[ASubsystem].Foundation then
-    Result := TAtlasArchitecturePalette.FoundationColor(ADark)
+  begin
+    Result := TAtlasArchitecturePalette.FoundationColor(ADark);
+  end
   else if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
-    Result := TAtlasArchitecturePalette.Color(Subsystems[ASubsystem].ColorSlot, Subsystems[ASubsystem].Shade, ADark)
+  begin
+    Result := TAtlasArchitecturePalette.Color(Subsystems[ASubsystem].ColorSlot, Subsystems[ASubsystem].Shade, ADark);
+  end
   else
+  begin
     Result := TAtlasArchitecturePalette.Color(ASubsystem, ADark);
+  end;
 end;
 
 function TAtlasArchitectureModel.TouchesFoundation(const AEdge: TAtlasArchEdge): Boolean;
@@ -1316,15 +1572,21 @@ var
 begin
   Result := False;
   for mSubsystem in Subsystems do
+  begin
     if mSubsystem.Foundation then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.AlignedText: string;
 begin
   Result := '';
   if AlignedSource <> '' then
+  begin
     Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
+  end;
 end;
 
 function TAtlasArchitectureModel.HasAssignment: Boolean;
@@ -1333,8 +1595,12 @@ var
 begin
   Result := False;
   for mUnit in Units do
+  begin
     if Length(mUnit.Assignment) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.OwnRow(AUnit: Integer): Integer;
@@ -1343,10 +1609,16 @@ var
 begin
   Result := -1;
   if (AUnit < 0) or (AUnit >= Length(Units)) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(Units[AUnit].Assignment) do
+  begin
     if Units[AUnit].Assignment[mIndex].Subsystem = Units[AUnit].Subsystem then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.RivalRow(AUnit: Integer): Integer;
@@ -1355,11 +1627,17 @@ var
 begin
   Result := -1;
   if (AUnit < 0) or (AUnit >= Length(Units)) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(Units[AUnit].Assignment) do
+  begin
     if (Units[AUnit].Assignment[mIndex].Subsystem <> Units[AUnit].Subsystem) and
       Units[AUnit].Assignment[mIndex].Counts then
+    begin
       Exit(mIndex);
+    end;
+  end;
 end;
 
 function TAtlasArchitectureModel.LegendOrder: TArray<Integer>;
@@ -1372,17 +1650,23 @@ begin
   for mIndex := 0 to High(Subsystems) do
   begin
     if mDone[mIndex] then
+    begin
       Continue;
+    end;
     Result := Result + [mIndex];
     mDone[mIndex] := True;
     if Subsystems[mIndex].Parent = '' then
+    begin
       Continue;
+    end;
     for mOther := mIndex + 1 to High(Subsystems) do
+    begin
       if not mDone[mOther] and SameText(Subsystems[mOther].Parent, Subsystems[mIndex].Parent) then
       begin
         Result := Result + [mOther];
         mDone[mOther] := True;
       end;
+    end;
   end;
 end;
 
@@ -1409,7 +1693,9 @@ end;
 class function TAtlasArchResolution.Clamp(AValue: Double): Double;
 begin
   if IsNan(AValue) or (AValue <= 0) then
+  begin
     Exit(1);
+  end;
   Result := EnsureRange(AValue, MinValue, MaxValue);
 end;
 
@@ -1449,11 +1735,15 @@ begin
   mRoot := TAtlasJsonText.Parse(AGlobalText);
   try
     if mRoot = nil then
+    begin
       Exit;
+    end;
     mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.ValueAt(mRoot, ResolutionPath));
     try
       if mValue is TJSONNumber then
+      begin
         AResolution := TAtlasArchResolution.Clamp(TJSONNumber(mValue).AsDouble);
+      end;
     finally
       mValue.Free;
     end;
@@ -1477,13 +1767,21 @@ begin
   Result.AddPair('scope', AOptions.Scope);
   Result.AddPair('includeLibraryUnits', TJSONBool.Create(AOptions.IncludeLibrary));
   if AOptions.CompareWith <> '' then
-    Result.AddPair('compareWith', AOptions.CompareWith)
+  begin
+    Result.AddPair('compareWith', AOptions.CompareWith);
+  end
   else if not AOptions.Compare then
+  begin
     Result.AddPair('compare', TJSONBool.Create(False));
+  end;
   if AOptions.Resolution > 0 then
+  begin
     Result.AddPair('resolution', TJSONNumber.Create(TAtlasArchResolution.Clamp(AOptions.Resolution)));
+  end;
   if AOptions.RenameSubsystems then
+  begin
     Result.AddPair('renameSubsystems', TJSONBool.Create(True));
+  end;
 end;
 
 function ComparedOptions(const AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;
@@ -1560,7 +1858,9 @@ begin
   Root := TJSONObject.ParseJSONValue(AAnswer);
   try
     if Root is TJSONObject then
+    begin
       Result := TextOf(TJSONObject(Root), 'file');
+    end;
   finally
     Root.Free;
   end;
@@ -1575,9 +1875,13 @@ var
 begin
   Slot := Abs(ASubsystem) mod Count;
   if ADark then
-    Rgb := DarkColors[Slot]
+  begin
+    Rgb := DarkColors[Slot];
+  end
   else
+  begin
     Rgb := LightColors[Slot];
+  end;
   // #RRGGBB → $00BBGGRR.
   Result := ((Rgb and $FF) shl 16) or (Rgb and $FF00) or ((Rgb shr 16) and $FF);
 end;
@@ -1590,7 +1894,9 @@ var
 begin
   mBase := Color(ASlot, ADark);
   if AShade = 0 then
+  begin
     Exit(mBase);
+  end;
   mMix := Min(MaxShadeMix, ShadeStep * Abs(AShade));
   Result := 0;
   mShift := 0;
@@ -1598,9 +1904,13 @@ begin
   begin
     mChannel := (mBase shr mShift) and $FF;
     if AShade > 0 then
-      mChannel := Round(mChannel + (255 - mChannel) * mMix)
+    begin
+      mChannel := Round(mChannel + (255 - mChannel) * mMix);
+    end
     else
+    begin
       mChannel := Round(mChannel * (1 - mMix));
+    end;
     Result := Result or (Cardinal(EnsureRange(mChannel, 0, 255)) shl mShift);
     Inc(mShift, 8);
   end;
@@ -1610,9 +1920,13 @@ class function TAtlasArchitecturePalette.FoundationColor(ADark: Boolean): Cardin
 begin
   // #5D6576 bzw. #9AA2B2 als $00BBGGRR.
   if ADark then
-    Result := $B2A29A
+  begin
+    Result := $B2A29A;
+  end
   else
+  begin
     Result := $76655D;
+  end;
 end;
 
 class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;
@@ -1636,7 +1950,9 @@ begin
   OffsetX := AWidth / 2;
   OffsetY := AHeight / 2;
   if Length(AModel.Subsystems) = 0 then
+  begin
     Exit;
+  end;
   Left := MaxDouble;
   Top := MaxDouble;
   Right := -MaxDouble;
@@ -1707,11 +2023,15 @@ begin
   for Index := High(AModel.Units) downto 0 do
   begin
     if AModel.IsHidden(Index, AHidden) then
+    begin
       Continue;
+    end;
     // Mindestens 4 Bildpunkte, damit kleine Units weit herausgezoomt treffbar bleiben.
     Radius := Max(AModel.NodeRadius(Index), 4 / Scale);
     if Sqr(AModel.Units[Index].X - X) + Sqr(AModel.Units[Index].Y - Y) <= Sqr(Radius) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;

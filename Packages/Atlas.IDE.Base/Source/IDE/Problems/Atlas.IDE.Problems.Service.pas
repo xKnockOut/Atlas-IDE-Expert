@@ -156,7 +156,9 @@ end;
 procedure Say(const AText: string);
 begin
   if (State <> nil) and Assigned(State.Hooks.Message) then
+  begin
     State.Hooks.Message(AText);
+  end;
 end;
 
 function TopFile(out ALine: Integer): string;
@@ -188,20 +190,30 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Project := Modules.GetActiveProject;
   if Project = nil then
+  begin
     Exit;
+  end;
   Mains[0] := ChangeFileExt(Project.FileName, '.dpr');
   Mains[1] := ChangeFileExt(Project.FileName, '.dpk');
   for Main in Mains do
+  begin
     if TFile.Exists(Main) then
+    begin
       Result := Result + [Main];
+    end;
+  end;
   for Index := 0 to Project.GetModuleCount - 1 do
   begin
     Info := Project.GetModule(Index);
     if (Info <> nil) and SameText(ExtractFileExt(Info.FileName), '.pas') then
+    begin
       Result := Result + [Info.FileName];
+    end;
   end;
 end;
 
@@ -214,12 +226,16 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   for Index := 0 to Modules.ModuleCount - 1 do
   begin
     Module := Modules.Modules[Index];
     if (Module <> nil) and (Module.FileName <> '') then
+    begin
       Result := Result + [Module.FileName];
+    end;
   end;
 end;
 
@@ -234,7 +250,9 @@ begin
   Result := nil;
   try
     if TFile.Exists(AFileName) then
+    begin
       Result := TAtlasTextFile.Load(AFileName).Text.Split([#13#10, #10]);
+    end;
   except
     // Gesperrt, gelöscht oder binär: Die Spalte „Zeile“ bleibt leer, das Fenster läuft weiter.
     on Exception do
@@ -258,7 +276,9 @@ var
   Next: TAtlasPluginSettings;
 begin
   if AFrame = nil then
+  begin
     Exit;
+  end;
   Next := TAtlasIdeSettings.Stored;
   Next.ProblemsWindowScope := TAtlasFindings.ScopeNames[AFrame.Scope];
   Next.ProblemsWindowGroupBy := TAtlasFindings.GroupingNames[AFrame.Grouping];
@@ -268,7 +288,9 @@ begin
     (Next.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
     (Next.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
     (Next.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
+  begin
     Exit;
+  end;
   TAtlasIdeSettings.Update(Next);
 end;
 
@@ -288,19 +310,27 @@ var
 begin
   Frame := TAtlasIdeProblemsWindow.ExistingFrame;
   if (Frame = nil) or not TAtlasIdeProblemsWindow.Visible then
+  begin
     Exit;
+  end;
   Store := TAtlasProblemsController.Current;
   Current := TopFile(Line);
   Files := nil;
   Project := nil;
   if Frame.Scope <> TAtlasFindingScope.CurrentFile then
+  begin
     Project := ProjectFiles;
+  end;
   if Frame.Scope = TAtlasFindingScope.Project then
+  begin
     Files := Project;
+  end;
   // Offene Units zuerst (#1108): geöffnete Module gehören zu den Eingaben; die Modulliste ist billig.
   Opened := nil;
   if Frame.OpenFirst then
+  begin
     Opened := OpenFiles;
+  end;
   // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
   Checked := (Store <> nil) and (Current <> '') and (Store.Contains(Current) or
     Store.Contains(ChangeFileExt(Current, '.pas')));
@@ -313,7 +343,9 @@ begin
     State.Version := Store.Version;
     State.Inputs := Inputs;
     if AForce then
+    begin
       State.Findings.Clear;
+    end;
     ReadLines :=
       function(AFileName: string): TArray<string>
       begin
@@ -322,9 +354,13 @@ begin
     // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
     // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
     if Frame.Scope = TAtlasFindingScope.CurrentFile then
-      Findings := State.Findings.Build(Store, [Current], ReadLines, Changed)
+    begin
+      Findings := State.Findings.Build(Store, [Current], ReadLines, Changed);
+    end
     else
+    begin
       Findings := State.Findings.Build(Store, Files, ReadLines, Changed);
+    end;
     if Changed or InputsChanged then
     begin
       Frame.SetFindings(Findings, Current, Files, Opened, Checked);
@@ -341,10 +377,14 @@ begin
     Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusTiers, [Counts.Total, Counts.OpenUnits,
       Counts.OpenFindings, Counts.ClosedUnits, Counts.ClosedFindings]);
     if Counts.HiddenUnits > 0 then
+    begin
       Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusHidden, [Counts.HiddenUnits]);
+    end;
   end
   else
+  begin
     Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [Counts.Total, Counts.Files]);
+  end;
   Check := TAtlasProblemsController.LastCheck;
   if Check.FileName <> '' then
   begin
@@ -353,13 +393,17 @@ begin
       ExtractFileName(Check.FileName), Integer(Check.DurationMs)]);
   end;
   if (Store <> nil) and (Length(Project) > 0) then
+  begin
     Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
       [TAtlasFindings.CheckedCount(Store, Project), Length(Project)]);
+  end;
   // Projektweite Regeln (#1102) prüfen erst mit vollständigem Index; bis dahin fehlen ihre Befunde.
   if (State <> nil) and Assigned(State.Hooks.Indexing) and State.Hooks.Indexing(Percent) then
   begin
     if Percent < 0 then
+    begin
       Percent := 0;
+    end;
     Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusWaiting, [Percent]);
   end;
   if Status <> State.Status then
@@ -386,7 +430,9 @@ begin
   // Die Code-Aktion gilt für den oberen Editor: erst hin, dann anwenden.
   Open(AFinding);
   if (State <> nil) and Assigned(State.Hooks.ApplyTagged) then
+  begin
     State.Hooks.ApplyTagged(AFinding.Problem, ATag);
+  end;
 end;
 
 procedure DisableRule(const AFinding: TAtlasFinding);
@@ -406,7 +452,9 @@ begin
       begin
         Rules := Root.GetValue('rules');
         if Rules <> nil then
+        begin
           RulesJson := Rules.ToJSON;
+        end;
       end;
     finally
       Root.Free;
@@ -422,14 +470,18 @@ begin
   // Ohne Projekt: globale Datei.
   Target := TAtlasIdeSettings.GlobalFile;
   if (Target = '') or not TAtlasIdeSettings.LoadGlobal(Content) then
+  begin
     Exit;
+  end;
   Root := TAtlasJsonText.Parse(Content.Text);
   try
     if Root <> nil then
     begin
       Rules := Root.GetValue('rules');
       if Rules <> nil then
+      begin
         RulesJson := Rules.ToJSON;
+      end;
     end;
   finally
     Root.Free;
@@ -448,6 +500,7 @@ var
 begin
   Rows := TAtlasRuleTable.Rows(ACatalog, '');
   for Row in Rows do
+  begin
     if SameText(Row.Id, ARule) then
     begin
       Explanation.Id := Row.Id;
@@ -459,6 +512,7 @@ begin
       TAtlasRuleExplainDialog.Execute(Explanation);
       Exit;
     end;
+  end;
   Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainUnknown, [ARule]));
 end;
 
@@ -473,15 +527,21 @@ begin
     Exit;
   end;
   if not Assigned(State.Hooks.Command) then
+  begin
     Exit;
+  end;
   Language := 'de';
   if TAtlasStrings.Language = TAtlasLanguage.English then
+  begin
     Language := 'en';
+  end;
   State.Hooks.Command(TAtlasProjectSettings.CatalogCommand, '["' + Language + '"]',
     procedure(AValue: TJSONValue)
     begin
       if State = nil then
+      begin
         Exit;
+      end;
       if AValue = nil then
       begin
         Say(TAtlasStrings.Text(TAtlasTextId.ProblemsNoServer));
@@ -502,8 +562,12 @@ var
 begin
   AFixer := nil;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBulkFixer) do
+  begin
     if Supports(mItem, IAtlasBulkFixer, AFixer) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -545,7 +609,9 @@ begin
         begin
           // Beim Klick neu fragen (Regel 3): Das Modul kann inzwischen fort sein.
           if (State <> nil) and BulkFixer(mFixer) then
+          begin
             mFixer.FixAll(AFinding.Rule, AFrame.View.Visible);
+          end;
         end);
     end;
   AFrame.CanFixAll :=
@@ -568,7 +634,9 @@ begin
     procedure(const AFinding: TAtlasFinding)
     begin
       if (State <> nil) and Assigned(State.Hooks.ConfigureRule) then
+      begin
         State.Hooks.ConfigureRule(AFinding.Rule);
+      end;
     end;
   AFrame.OnDisable :=
     procedure(const AFinding: TAtlasFinding)
@@ -592,7 +660,9 @@ begin
     procedure(const AFindings: TArray<TAtlasFinding>)
     begin
       if (State <> nil) and Assigned(State.Hooks.CreateIssue) then
+      begin
         State.Hooks.CreateIssue(AFindings);
+      end;
     end;
   AFrame.CanCreateIssue :=
     function: Boolean
@@ -638,7 +708,9 @@ end;
 procedure TState.Tick(Sender: TObject);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+  begin
     Exit;
+  end;
   try
     Refresh(False);
   except
@@ -672,7 +744,9 @@ begin
   ATotal := 0;
   Store := TAtlasProblemsController.Current;
   if Store = nil then
+  begin
     Exit(False);
+  end;
   if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= RefreshMs) then
   begin
     ProgressFiles := ProjectFiles;
@@ -680,7 +754,9 @@ begin
   end;
   ATotal := Length(ProgressFiles);
   if ATotal = 0 then
+  begin
     Exit(False);
+  end;
   AChecked := TAtlasFindings.CheckedCount(Store, ProgressFiles);
   Result := True;
 end;
@@ -688,7 +764,9 @@ end;
 class procedure TAtlasIdeProblems.Start(const AHooks: TAtlasIdeProblemsHooks);
 begin
   if State = nil then
+  begin
     State := TState.Create;
+  end;
   State.Hooks := AHooks;
   TAtlasIdeProblemsWindow.OnFrame :=
     procedure(AFrame: TAtlasProblemsFrame)
@@ -703,13 +781,17 @@ begin
     end;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   if Enabled then
+  begin
     TAtlasIdeProblemsWindow.Prepare;
+  end;
 end;
 
 class procedure TAtlasIdeProblems.Release;
 begin
   if State <> nil then
+  begin
     SaveLayout(TAtlasIdeProblemsWindow.ExistingFrame);
+  end;
   TAtlasIdeProblemsWindow.Release;
   FreeAndNil(State);
   ProgressFiles := nil;
@@ -746,9 +828,13 @@ end;
 class procedure TAtlasIdeProblems.ShowWindow;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   if TAtlasIdeProblemsWindow.Show <> nil then
+  begin
     Refresh(True);
+  end;
 end;
 
 class procedure TAtlasIdeProblems.ShowCurrentFile;
@@ -756,10 +842,14 @@ var
   Frame: TAtlasProblemsFrame;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeProblemsWindow.Show;
   if Frame = nil then
+  begin
     Exit;
+  end;
   if Frame.Scope <> TAtlasFindingScope.CurrentFile then
   begin
     Frame.ApplySettings(TAtlasFindingScope.CurrentFile, Frame.Grouping, Frame.ColumnsText,
@@ -776,14 +866,20 @@ var
 begin
   Result := False;
   if not Enabled or not TAtlasIdeProblemsWindow.Visible then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeProblemsWindow.ExistingFrame;
   if (Frame = nil) or not Frame.Step(AForward, Finding) then
+  begin
     Exit;
+  end;
   Open(Finding);
   // Der Sprung soll die Auswahl nicht gleich wieder dem Cursor nachführen.
   if State <> nil then
+  begin
     State.Cursor := Finding.FileName + ':' + Finding.Problem.StartLine.ToString;
+  end;
   Result := True;
 end;
 

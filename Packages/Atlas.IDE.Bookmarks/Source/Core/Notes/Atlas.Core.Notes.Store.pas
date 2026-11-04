@@ -176,20 +176,26 @@ begin
   Lines := TAtlasLineAnchors.Lines(Text);
   First := -1;
   for Index := 0 to High(Lines) do
+  begin
     if Trim(Lines[Index]) <> '' then
     begin
       First := Index;
       Break;
     end;
+  end;
   if First < 0 then
+  begin
     Exit;
+  end;
   Result := Trim(Lines[First]);
   for Index := First + 1 to High(Lines) do
+  begin
     if Trim(Lines[Index]) <> '' then
     begin
       Result := Result + ' …';
       Break;
     end;
+  end;
 end;
 
 { TAtlasNoteBook }
@@ -211,8 +217,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(Notes) do
+  begin
     if SameText(Notes[Index].Id, AId) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasNoteBook.IndexAt(const AFileName: string; ALine: Integer): Integer;
@@ -221,9 +231,13 @@ var
 begin
   Result := -1;
   for Index := 0 to High(Notes) do
+  begin
     if not Notes[Index].Orphaned and (Notes[Index].Line = ALine) and
       TAtlasNotes.SameFile(Notes[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasNoteBook.AtLine(const AFileName: string; ALine: Integer): TArray<TAtlasNote>;
@@ -232,8 +246,12 @@ var
 begin
   Result := nil;
   for Note in Notes do
+  begin
     if not Note.Orphaned and (Note.Line = ALine) and TAtlasNotes.SameFile(Note.FileName, AFileName) then
+    begin
       Result := Result + [Note];
+    end;
+  end;
 end;
 
 function TAtlasNoteBook.ForFile(const AFileName: string): TArray<TAtlasNote>;
@@ -242,8 +260,12 @@ var
 begin
   Result := nil;
   for Note in Notes do
+  begin
     if TAtlasNotes.SameFile(Note.FileName, AFileName) then
+    begin
       Result := Result + [Note];
+    end;
+  end;
 end;
 
 function TAtlasNoteBook.Files: TArray<string>;
@@ -257,13 +279,17 @@ begin
   begin
     Known := False;
     for Name in Result do
+    begin
       if TAtlasNotes.SameFile(Name, Note.FileName) then
       begin
         Known := True;
         Break;
       end;
+    end;
     if not Known then
+    begin
       Result := Result + [Note.FileName];
+    end;
   end;
 end;
 
@@ -273,8 +299,12 @@ var
 begin
   Result := 0;
   for Note in Notes do
+  begin
     if Note.Orphaned then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasNoteBook.Add(const AFileName: string; const ALines: TArray<string>; ALine: Integer;
@@ -300,7 +330,9 @@ begin
   Index := IndexOf(AId);
   Result := Index >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   Notes[Index].Text := AText;
   Notes[Index].Changed := ANowUtc;
 end;
@@ -312,7 +344,9 @@ begin
   Index := IndexOf(AId);
   Result := Index >= 0;
   if Result then
+  begin
     Delete(Notes, Index, 1);
+  end;
 end;
 
 function TAtlasNoteBook.Relocate(const AFileName: string; const ALines: TArray<string>): Boolean;
@@ -324,7 +358,9 @@ begin
   for Index := 0 to High(Notes) do
   begin
     if not TAtlasNotes.SameFile(Notes[Index].FileName, AFileName) then
+    begin
       Continue;
+    end;
     if TAtlasLineAnchors.Locate(ALines, Notes[Index].Anchor, Line) = TAtlasLineMatch.Orphaned then
     begin
       if not Notes[Index].Orphaned then
@@ -351,11 +387,13 @@ var
 begin
   Result := False;
   for Index := 0 to High(Notes) do
+  begin
     if TAtlasNotes.SameFile(Notes[Index].FileName, AFileName) and not Notes[Index].Orphaned then
     begin
       Notes[Index].Orphaned := True;
       Result := True;
     end;
+  end;
 end;
 
 /// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
@@ -365,17 +403,25 @@ var
 begin
   Result := AFileName;
   for Index := Length(Result) downto 1 do
+  begin
     if CharInSet(Result[Index], ['\', '/']) then
+    begin
       Exit(Copy(Result, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 function CompareNotes(const A, B: TAtlasNote): Integer;
 begin
   Result := CompareText(ShortName(A.FileName), ShortName(B.FileName));
   if Result = 0 then
+  begin
     Result := CompareText(A.FileName, B.FileName);
+  end;
   if Result = 0 then
+  begin
     Result := A.Line - B.Line;
+  end;
 end;
 
 function TAtlasNoteBook.Groups: TArray<TAtlasNoteGroup>;
@@ -410,9 +456,13 @@ begin
     Group.Notes := Group.Notes + [Note];
   end;
   if Length(Group.Notes) > 0 then
+  begin
     Result := Result + [Group];
+  end;
   if Length(Orphans.Notes) > 0 then
+  begin
     Result := Result + [Orphans];
+  end;
 end;
 
 { JSON-Helfer }
@@ -423,8 +473,12 @@ var
 begin
   Result := False;
   for Key in AKeys do
+  begin
     if Key = AName then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -433,10 +487,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
@@ -445,12 +503,18 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else if Value is TJSONString then
+  begin
     Result := StrToIntDef(TJSONString(Value).Value, ADefault);
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -459,10 +523,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if Value is TJSONBool then
+  begin
     Result := SameText(Value.Value, 'true');
+  end;
 end;
 
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
@@ -473,14 +541,22 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   Value := AObject.GetValue(AName);
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   List := TJSONArray(Value);
   for Index := 0 to List.Count - 1 do
+  begin
     if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasLineAnchors.ContextLines) then
+    begin
       Result := Result + [TJSONString(List.Items[Index]).Value];
+    end;
+  end;
 end;
 
 function TextsJson(const ATexts: TArray<string>): TJSONArray;
@@ -489,7 +565,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Text in ATexts do
+  begin
     Result.Add(Text);
+  end;
 end;
 
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
@@ -499,12 +577,16 @@ var
   Pair: TJSONPair;
 begin
   if AOriginal = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to AOriginal.Count - 1 do
   begin
     Pair := AOriginal.Pairs[Index];
     if not Known(AKeys, Pair.JsonString.Value) then
+    begin
       ATarget.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+    end;
   end;
 end;
 
@@ -518,7 +600,9 @@ begin
   try
     KeepUnknown(Extra, AObject, NoteKeys);
     if Extra.Count > 0 then
+    begin
       Result := Extra.ToJSON;
+    end;
   finally
     Extra.Free;
   end;
@@ -530,7 +614,9 @@ var
 begin
   Result := nil;
   if AJson = '' then
+  begin
     Exit;
+  end;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -538,9 +624,13 @@ begin
       Value := nil;
   end;
   if Value is TJSONObject then
-    Result := TJSONObject(Value)
+  begin
+    Result := TJSONObject(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 function NoteOf(AObject: TJSONObject; out ANote: TAtlasNote): Boolean;
@@ -551,11 +641,15 @@ begin
   // Ohne Kennung oder Datei lässt sich die Notiz weder zeigen noch ändern.
   Result := (ANote.Id <> '') and (ANote.FileName <> '');
   if not Result then
+  begin
     Exit;
+  end;
   ANote.Text := TextOf(AObject, 'text');
   ANote.Anchor.Line := NumberOf(AObject, 'line', 1) - 1;
   if ANote.Anchor.Line < 0 then
+  begin
     ANote.Anchor.Line := 0;
+  end;
   ANote.Anchor.Text := TextOf(AObject, 'lineText');
   ANote.Anchor.Before := TextsOf(AObject, 'before');
   ANote.Anchor.After := TextsOf(AObject, 'after');
@@ -578,11 +672,17 @@ begin
   Result.AddPair('before', TextsJson(ANote.Anchor.Before));
   Result.AddPair('after', TextsJson(ANote.Anchor.After));
   if ANote.Created > 0 then
+  begin
     Result.AddPair('created', TAtlasProjectSummaries.TimeText(ANote.Created));
+  end;
   if ANote.Changed > 0 then
+  begin
     Result.AddPair('changed', TAtlasProjectSummaries.TimeText(ANote.Changed));
+  end;
   if ANote.Orphaned then
+  begin
     Result.AddPair('orphaned', TJSONBool.Create(True));
+  end;
   Extra := ParseObject(ANote.Extra);
   try
     KeepUnknown(Result, Extra, NoteKeys);
@@ -600,7 +700,9 @@ begin
   Result := '';
   Base := GetEnvironmentVariable('LOCALAPPDATA');
   if Base <> '' then
+  begin
     Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Base) + 'Atlas') + FolderName;
+  end;
 end;
 
 class function TAtlasNotes.FileFor(const AFolder, AProject: string): string;
@@ -618,8 +720,10 @@ var
   Guid: TGUID;
 begin
   if CreateGUID(Guid) <> 0 then
+  begin
     // Ohne GUID: Zeitpunkt und Zufall genügen für ein Notizbuch.
     Exit(LowerCase(IntToHex(Trunc(Now * 86400000), 12) + IntToHex(Random(MaxInt), 8)));
+  end;
   Result := LowerCase(GUIDToString(Guid));
   Result := Copy(Result, 2, Length(Result) - 2);
 end;
@@ -649,10 +753,14 @@ begin
   Root := ParseObject(AJson);
   try
     if Root = nil then
+    begin
       Exit;
+    end;
     // Ohne "format" gilt 1; ein höheres Format kennt diese Fassung nicht.
     if NumberOf(Root, 'format', 1) > Format then
+    begin
       Exit;
+    end;
     ABook.Raw := AJson;
     ABook.Project := TextOf(Root, 'project');
     Value := Root.GetValue('notes');
@@ -660,8 +768,12 @@ begin
     begin
       List := TJSONArray(Value);
       for Index := 0 to List.Count - 1 do
+      begin
         if (List.Items[Index] is TJSONObject) and NoteOf(TJSONObject(List.Items[Index]), Note) then
+        begin
           ABook.Notes := ABook.Notes + [Note];
+        end;
+      end;
     end;
     Result := True;
   finally
@@ -683,7 +795,9 @@ begin
     List := TJSONArray.Create;
     Root.AddPair('notes', List);
     for Note in ABook.Notes do
+    begin
       List.AddElement(NoteJson(Note));
+    end;
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally
@@ -702,7 +816,9 @@ begin
   ABook := TAtlasNoteBook.Create(AProject);
   Result := False;
   if (AFolder = '') or (Trim(AProject) = '') then
+  begin
     Exit;
+  end;
   FileName := FileFor(AFolder, AProject);
   Parsed := False;
   Load := TAtlasDataFile.Load(FileName, 'Notizen',
@@ -717,10 +833,14 @@ begin
   begin
     ABook := Book;
     if ABook.Project = '' then
+    begin
       ABook.Project := AProject;
+    end;
   end
   else if not TAtlasDataFile.Writable(Load) then
+  begin
     ABook.KeptFile := FileName;
+  end;
 end;
 
 class function TAtlasNotes.Save(const AFolder: string; const ABook: TAtlasNoteBook): Boolean;
@@ -729,15 +849,21 @@ var
 begin
   Result := False;
   if (AFolder = '') or (Trim(ABook.Project) = '') then
+  begin
     Exit;
+  end;
   FileName := FileFor(AFolder, ABook.Project);
   // Beim Laden gesperrt: Das Notizbuch kennt den Inhalt der Datei nicht.
   if SameFileName(FileName, ABook.KeptFile) then
+  begin
     Exit;
+  end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
     if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
+    begin
       Exit;
+    end;
     if ABook.Count = 0 then
     begin
       // Keine Notizen mehr: keine leere Datei liegen lassen.
@@ -761,16 +887,22 @@ var
 begin
   Result := nil;
   if (AFolder = '') or not DirectoryExists(AFolder) then
+  begin
     Exit;
+  end;
   if FindFirst(IncludeTrailingPathDelimiter(AFolder) + '*.json', faAnyFile, Search) = 0 then
     try
       repeat
         // Gesperrt oder verschwunden: übergehen; nur lesen, beiseitegelegt wird beim Laden des Projekts.
         if ((Search.Attr and faDirectory) <> 0) or
           not TAtlasDataFile.TryRead(IncludeTrailingPathDelimiter(AFolder) + Search.Name, Text) then
+        begin
           Continue;
+        end;
         if Parse(Text, Book) and (Book.Project <> '') then
+        begin
           Result := Result + [Book];
+        end;
       until FindNext(Search) <> 0;
     finally
       // Winapi.Windows hat ein gleichnamiges FindClose für Handles.

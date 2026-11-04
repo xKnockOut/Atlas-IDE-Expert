@@ -43,7 +43,9 @@ begin
   AContent := Default(TAtlasTextFileContent);
   Result := TFile.Exists(AFileName);
   if Result then
+  begin
     AContent := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName));
+  end;
 end;
 
 procedure TAtlasUndoDiskTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
@@ -56,21 +58,31 @@ begin
   TDirectory.CreateDirectory(ExtractFilePath(AFileName));
   TAtlasTextFile.Save(AFileName, AContent);
   if (AProject <> '') and Assigned(FOnAddToProject) then
+  begin
     FOnAddToProject(AFileName, AProject);
+  end;
 end;
 
 procedure TAtlasUndoDiskTarget.RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);
 begin
   if (AProject <> '') and Assigned(FOnRemoveFromProject) then
+  begin
     FOnRemoveFromProject(AFileName, AProject);
+  end;
   if not TFile.Exists(AFileName) then
+  begin
     Exit;
+  end;
   case AMode of
     TAtlasNewFilesMode.RecycleBin:
       if Assigned(FOnRecycle) then
-        FOnRecycle(AFileName)
+      begin
+        FOnRecycle(AFileName);
+      end
       else
+      begin
         TFile.Delete(AFileName);
+      end;
     TAtlasNewFilesMode.Delete:
       TFile.Delete(AFileName);
   else

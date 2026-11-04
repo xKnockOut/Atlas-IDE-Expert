@@ -156,9 +156,13 @@ const
     TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural);
 begin
   if APlural then
-    Result := TAtlasStrings.Text(Plural[AElement])
+  begin
+    Result := TAtlasStrings.Text(Plural[AElement]);
+  end
   else
+  begin
     Result := TAtlasStrings.Text(Singular[AElement]);
+  end;
 end;
 
 class function TAtlasHideMenu.ScopeCaption(AElement: TAtlasDrawnElement; AScope: TAtlasHideScope): string;
@@ -197,6 +201,7 @@ var
   Choice: TAtlasHideChoice;
 begin
   for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
+  begin
     if ATarget.Offers(Scope) then
     begin
       Choice := Default(TAtlasHideChoice);
@@ -204,6 +209,7 @@ begin
       Choice.Scope := Scope;
       AddChoice(AParent, ScopeCaption(ATarget.Element, Scope), Choice);
     end;
+  end;
   NewItem(AParent, '-');
   Choice := Default(TAtlasHideChoice);
   Choice.Target := ATarget;
@@ -226,19 +232,29 @@ begin
   begin
     Known := False;
     for Seen in Targets do
+    begin
       if Seen.Element = Target.Element then
+      begin
         Known := True;
+      end;
+    end;
     if not Known then
+    begin
       Targets := Targets + [Target];
+    end;
   end;
   if Length(Targets) = 1 then
-    AddTarget(FMenu.Items, Targets[0])
+  begin
+    AddTarget(FMenu.Items, Targets[0]);
+  end
   else
+  begin
     for Target in Targets do
     begin
       Sub := NewItem(FMenu.Items, ElementName(Target.Element, False));
       AddTarget(Sub, Target);
     end;
+  end;
 end;
 
 procedure TAtlasHideMenu.Choose(AIndex: Integer);
@@ -246,10 +262,14 @@ var
   Choice: TAtlasHideChoice;
 begin
   if (AIndex < 0) or (AIndex > High(FChoices)) then
+  begin
     Exit;
+  end;
   Choice := FChoices[AIndex];
   if Assigned(FOnChoose) then
+  begin
     FOnChoose(Choice);
+  end;
 end;
 
 procedure TAtlasHideMenu.ItemClick(Sender: TObject);
@@ -265,7 +285,9 @@ end;
 procedure TAtlasHideMenu.Popup(const APoint: TPoint);
 begin
   if FMenu.Items.Count > 0 then
+  begin
     FMenu.Popup(APoint.X, APoint.Y);
+  end;
 end;
 
 { TAtlasHideNoticeWindow }
@@ -290,9 +312,13 @@ begin
   mTop := APoint.Y + AGap;
   // Unten kein Platz: über die Stelle.
   if mTop + AHeight > AWorkArea.Bottom then
+  begin
     mTop := APoint.Y - AGap - AHeight;
+  end;
   if mLeft + AWidth > AWorkArea.Right then
+  begin
     mLeft := AWorkArea.Right - AWidth;
+  end;
   mLeft := Max(mLeft, AWorkArea.Left);
   mTop := Max(mTop, AWorkArea.Top);
   Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
@@ -310,7 +336,9 @@ begin
   X := Scale(Pad);
   Y := Scale(Pad);
   if ADraw then
+  begin
     Canvas.Brush.Style := bsClear;
+  end;
   // Ohne Überschrift steht der Text in der ersten Zeile, in Textfarbe.
   mDetail := FDetail;
   if FTitle <> '' then
@@ -347,7 +375,9 @@ begin
     if ADraw then
     begin
       if FUndoHot then
+      begin
         Canvas.Font.Style := [fsUnderline];
+      end;
       Canvas.Font.Color := ToColor(Colors.Accent);
       Canvas.TextOut(X, Y, Undo);
       Canvas.Font.Style := [];
@@ -366,7 +396,9 @@ begin
     mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(mDetail));
   end;
   if ADraw then
+  begin
     Canvas.Brush.Style := bsSolid;
+  end;
   Result.cx := mWidth + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
@@ -399,10 +431,14 @@ end;
 procedure TAtlasHideNoticeWindow.ClickUndo;
 begin
   if not FCanUndo then
+  begin
     Exit;
+  end;
   Dismiss;
   if Assigned(FOnUndo) then
+  begin
     FOnUndo(Self);
+  end;
 end;
 
 function TAtlasHideNoticeWindow.UndoRect: TRect;
@@ -415,7 +451,9 @@ begin
   try
     // Wer auf den Hinweis zeigt, will vielleicht zurücknehmen: noch einmal so lange.
     if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
+    begin
       Exit;
+    end;
     Dismiss;
   except
     on E: Exception do
@@ -436,7 +474,9 @@ procedure TAtlasHideNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftSt
 begin
   inherited;
   if (Button = mbLeft) and not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y)) then
+  begin
     ClickUndo;
+  end;
 end;
 
 procedure TAtlasHideNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -446,9 +486,13 @@ begin
   inherited;
   Hot := not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y));
   if Hot then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   if Hot <> FUndoHot then
   begin
     FUndoHot := Hot;

@@ -110,14 +110,20 @@ var
   Frame: TAtlasUnitRelationsFrame;
 begin
   if not (AFrame is TAtlasUnitRelationsFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasUnitRelationsFrame(AFrame);
   TAtlasIdeUnitRelationsWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeUnitRelationsWindow.OnFrame) then
+  begin
     TAtlasIdeUnitRelationsWindow.OnFrame(Frame);
+  end;
 end;
 
 function TUnitRelationsDock.GetMenuActionList: TCustomActionList;
@@ -172,8 +178,12 @@ var
 begin
   Result := nil;
   for Index := 0 to Screen.CustomFormCount - 1 do
+  begin
     if SameText(Screen.CustomForms[Index].Name, ProjectManagerName) then
+    begin
       Exit(Screen.CustomForms[Index]);
+    end;
+  end;
 end;
 
 /// <summary>Beim ersten Anlegen rechts neben die Projektverwaltung andocken (#593).</summary>
@@ -186,7 +196,9 @@ begin
   Target := ProjectManager;
   if (Form = nil) or not TAtlasDockPlan.DockToDefault(True, Form.HostDockSite = nil,
     TAtlasIdeSettings.Stored.UnitRelationsWindowPlaced, (Target <> nil) and (Target.HostDockSite <> nil)) then
+  begin
     Exit;
+  end;
   Form.ManualDock(Target.HostDockSite, nil, alClient);
   Next := TAtlasIdeSettings.Stored;
   Next.UnitRelationsWindowPlaced := True;
@@ -196,7 +208,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TUnitRelationsDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeUnitRelationsWindow }
@@ -222,7 +236,9 @@ class function TAtlasIdeUnitRelationsWindow.ExistingFrame: TAtlasUnitRelationsFr
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasUnitRelationsFrame) then
+  begin
     Result := TAtlasUnitRelationsFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeUnitRelationsWindow.Visible: Boolean;
@@ -234,7 +250,9 @@ end;
 class procedure TAtlasIdeUnitRelationsWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeUnitRelationsWindow.UpdateIcon;
@@ -242,7 +260,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -258,7 +278,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

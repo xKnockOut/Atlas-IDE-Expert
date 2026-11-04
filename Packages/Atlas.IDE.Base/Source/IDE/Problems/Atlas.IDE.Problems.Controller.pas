@@ -318,14 +318,18 @@ begin
       Jobs := FJobs;
       FJobs := nil;
       if Length(Jobs) > 0 then
+      begin
         FBusy := 1;
+      end;
     finally
       System.TMonitor.Exit(FLock);
     end;
     for Job in Jobs do
     begin
       if Terminated then
+      begin
         Break;
+      end;
       try
         Started := TThread.GetTickCount;
         Report := FSession.DocumentDiagnostics(Job.FileName, Job.PreviousId, DocumentTimeoutMs);
@@ -418,19 +422,27 @@ begin
         Known.ResultId := Report.ResultId;
         FKnown.AddOrSetValue(TAtlasProblemStore.Key(Report.FileName), Known);
         if not Report.Unchanged then
+        begin
           Changed := Changed + [Report];
+        end;
       end;
       // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
       if (Length(Changed) > 0) or Run.Known then
+      begin
         Deliver(Changed, Run);
+      end;
       // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
       if (Length(Changed) = 0) and (GetTickCount - Started < 1000) then
+      begin
         FStop.WaitFor(1000);
+      end;
     except
       on E: Exception do
       begin
         if not Terminated then
+        begin
           LogLater('Probleme (Projekt): ' + E.Message);
+        end;
         // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
         FStop.WaitFor(WorkspaceRetryMs);
       end;
@@ -488,7 +500,9 @@ begin
   ARun := FRun;
   AFinishedAgoMs := High(UInt64);
   if FRunFinishedAt > 0 then
+  begin
     AFinishedAgoMs := TThread.GetTickCount64 - FRunFinishedAt;
+  end;
   Result := (CurrentController <> nil) and FRun.Known;
 end;
 
@@ -497,10 +511,14 @@ var
   Session: TLspSession;
 begin
   if FDebugPauseSent = APaused then
+  begin
     Exit;
+  end;
   Session := FSession(False);
   if Session = nil then
+  begin
     Exit;
+  end;
   Session.Notify('atlas/workspaceCheck/pause', TJSONObject.Create.AddPair('reason', 'debug')
     .AddPair('paused', TJSONBool.Create(APaused)));
   FDebugPauseSent := APaused;
@@ -516,9 +534,13 @@ end;
 destructor TAtlasProblemsController.Destroy;
 begin
   if CurrentStore = FStore then
+  begin
     CurrentStore := nil;
+  end;
   if CurrentController = Self then
+  begin
     CurrentController := nil;
+  end;
   FTimer.Free;
   BeginShutdown;
   WaitShutdown;
@@ -571,7 +593,9 @@ begin
   FWorkerSession := nil;
   FBuildTarget.Stop(False);
   if AWait then
+  begin
     WaitShutdown;
+  end;
 end;
 
 procedure TAtlasProblemsController.FreeFinished;
@@ -579,25 +603,35 @@ var
   Index: Integer;
 begin
   for Index := FRetired.Count - 1 downto 0 do
+  begin
     if FRetired[Index].Finished then
     begin
       TThread.RemoveQueuedEvents(FRetired[Index]);
       FRetired.Delete(Index);
     end;
+  end;
 end;
 
 procedure TAtlasProblemsController.EnsureWorkers(ASession: TLspSession);
 begin
   if (FWorkerSession <> nil) and (FWorkerSession <> ASession) then
+  begin
     StopWorkers(False);
+  end;
   // Neue Sitzung, etwa nach einem Serverneustart (#393): Diagnosen aller Dateien neu holen.
   if FWorkerSession <> ASession then
+  begin
     FPulled.Clear;
+  end;
   if FDocuments = nil then
+  begin
     FDocuments := TDocumentWorker.Create(ASession, DeliverDocument, FLog);
+  end;
   // Andere Projektdateien nur für die Probleme; das Abblenden braucht nur geöffnete.
   if (FWorkspace = nil) and ShowProblems then
-    FWorkspace := TWorkspaceWorker.Create(ASession, DeliverWorkspace, FLog)
+  begin
+    FWorkspace := TWorkspaceWorker.Create(ASession, DeliverWorkspace, FLog);
+  end
   else if (FWorkspace <> nil) and not ShowProblems then
   begin
     FWorkspace.Terminate;
@@ -661,13 +695,17 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+  begin
     Exit;
+  end;
   try
     FreeFinished;
     if not Active then
     begin
       if (FDocuments <> nil) or (FWorkspace <> nil) then
+      begin
         StopWorkers(False);
+      end;
       FStore.Clear;
       FTexts.Clear;
       FVersions.Clear;
@@ -683,7 +721,9 @@ begin
     if Paused then
     begin
       if (FDocuments <> nil) or (FWorkspace <> nil) then
+      begin
         StopWorkers(False);
+      end;
       Exit;
     end;
     // Projektgruppe geschlossen oder gewechselt: Pull-Diagnosen melden weggefallene Dateien nie mehr, ihre
@@ -704,7 +744,9 @@ begin
     // Ohne Fokus ändert sich der Puffer nur über Neuladen, das den Stand ohnehin als veraltet markiert:
     // dann weder Puffer lesen noch abgleichen (P-04). Freigeben, Stoppen und Veröffentlichen laufen weiter.
     if Application.Active and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View <> nil) and (View.Buffer <> nil) and IsSource(View.Buffer.FileName) then
     begin
       FileName := View.Buffer.FileName;
@@ -722,7 +764,9 @@ begin
       end;
       Session := FSession(GetTickCount >= FRetryAt);
       if Session = nil then
-        FRetryAt := GetTickCount + 30000
+      begin
+        FRetryAt := GetTickCount + 30000;
+      end
       else
       begin
         EnsureWorkers(Session);
@@ -735,17 +779,23 @@ begin
           if FDocuments.Idle then
           begin
             if FTexts.TryGetValue(TAtlasProblemStore.Key(FLastFile), OtherText) then
+            begin
               Session.Sync(FLastFile, OtherText);
+            end;
             FLastFile := FileName;
           end;
         end
         else
+        begin
           FLastFile := FileName;
+        end;
         Refresh := Session.RefreshCount <> FRefreshSeen;
         Changed := not FPulled.TryGetValue(Key, Known) or (Known <> Text);
         // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
         if Changed and not TAtlasIdeSettings.Current.ProblemsLive and View.Buffer.IsModified then
+        begin
           Changed := False;
+        end;
         if (Refresh or (Changed and (GetTickCount - FChangedAt >= QuietMs))) and FDocuments.Idle then
         begin
           Session.Sync(FileName, Text);
@@ -754,15 +804,20 @@ begin
           Pull.Text := Text;
           Pull.ReplaceCompiler := Refresh or not FStore.Contains(FileName);
           if Pull.ReplaceCompiler then
-            Pull.PreviousId := ''
+          begin
+            Pull.PreviousId := '';
+          end
           else
+          begin
             Pull.PreviousId := FStore.ResultId(FileName);
+          end;
           Pulls := [Pull];
           if Refresh then
           begin
             FRefreshSeen := Session.RefreshCount;
             // Alle anderen abgeglichenen Dateien auch: Ihre Compilermeldungen können neu sein.
             for Other in Session.SyncedFiles do
+            begin
               if not SameText(Other, FileName) and Session.SyncedText(Other, OtherText) then
               begin
                 Pull.FileName := Other;
@@ -771,6 +826,7 @@ begin
                 Pull.ReplaceCompiler := True;
                 Pulls := Pulls + [Pull];
               end;
+            end;
           end;
           FDocuments.Add(Pulls);
         end;
@@ -796,6 +852,7 @@ var
   FileName: string;
 begin
   for FileName in ASession.SyncedFiles do
+  begin
     if not IsOpenInIde(FileName) then
     begin
       ASession.Close(FileName);
@@ -803,6 +860,7 @@ begin
       FVersions.Remove(TAtlasProblemStore.Key(FileName));
       FPulled.Remove(TAtlasProblemStore.Key(FileName));
     end;
+  end;
 end;
 
 class function TAtlasProblemsController.CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts;
@@ -812,8 +870,12 @@ var
 begin
   All := nil;
   if AStore <> nil then
+  begin
     for FileName in AStore.Files do
+    begin
       All := All + AStore.ForFile(FileName);
+    end;
+  end;
   Result := TAtlasInlineDiagnostics.Counts(All);
 end;
 
@@ -822,16 +884,24 @@ var
   Show: Boolean;
 begin
   if not Assigned(FOnCounts) then
+  begin
     Exit;
+  end;
   Show := Active and TAtlasIdeSettings.ProblemsStatusCounterOn;
   if (Show = FCountsShown) and (not Show or (FCountsVersion = FStore.Version)) then
+  begin
     Exit;
+  end;
   FCountsShown := Show;
   FCountsVersion := FStore.Version;
   if Show then
-    FOnCounts(True, CountsOf(FStore))
+  begin
+    FOnCounts(True, CountsOf(FStore));
+  end
   else
+  begin
     FOnCounts(False, Default(TAtlasProblemCounts));
+  end;
 end;
 
 procedure TAtlasProblemsController.Publish;
@@ -851,9 +921,13 @@ begin
     FListedVersion := FStore.Version;
     FListShown := Show;
     if Show then
-      FList.Update(FStore)
+    begin
+      FList.Update(FStore);
+    end
     else
+    begin
       FList.Clear;
+    end;
   end;
 end;
 
@@ -862,16 +936,22 @@ var
   Current: string;
 begin
   if not Active then
+  begin
     Exit;
+  end;
   FLastCheck.FileName := APull.FileName;
   FLastCheck.DurationMs := APull.DurationMs;
   FLastCheck.At := Now;
   if AReport.Unchanged then
+  begin
     Exit;
+  end;
   FStore.Update(APull.FileName, APull.Text, True, AReport.Problems, AReport.ResultId, APull.ReplaceCompiler);
   // Inzwischen weitergetippt: Positionen auf den aktuellen Text bringen.
   if FTexts.TryGetValue(TAtlasProblemStore.Key(APull.FileName), Current) and (Current <> APull.Text) then
+  begin
     FStore.Edit(APull.FileName, Current);
+  end;
 end;
 
 procedure TAtlasProblemsController.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>;
@@ -880,18 +960,26 @@ var
   Report: TLspDiagnosticReport;
 begin
   if not ShowProblems then
+  begin
     Exit;
+  end;
   if ARun.Known then
   begin
     // Ende des Laufs merken: Die Statusleiste meldet eine Weile „fertig“.
     if FRun.Active and not ARun.Active then
+    begin
       FRunFinishedAt := TThread.GetTickCount64;
+    end;
     FRun := ARun;
   end;
   for Report in AReports do
+  begin
     // Abgeglichene Dateien kommen über textDocument/diagnostic.
     if not FTexts.ContainsKey(TAtlasProblemStore.Key(Report.FileName)) then
+    begin
       FStore.Update(Report.FileName, '', False, Report.Problems, Report.ResultId, True);
+    end;
+  end;
 end;
 
 function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
@@ -901,8 +989,11 @@ var
 begin
   Result := nil;
   if ShowProblems then
+  begin
     Result := FStore.At(AFileName, ALine, ACharacter);
+  end;
   if ShowInactive then
+  begin
     for Problem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
     begin
       Result := Result + [Problem];
@@ -910,9 +1001,12 @@ begin
       Result[High(Result)].Message := Problem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
         TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
     end;
+  end;
   // uses-Einträge (#621): Grund in der Sprache des Plugins, Zahl der ungenutzten für „Alle entfernen“.
   if not TAtlasIdeSettings.DimUnusedUsesOn then
+  begin
     Exit;
+  end;
   Unused := Length(FStore.UnusedUses(AFileName));
   for Problem in FStore.UsesAt(AFileName, ALine, ACharacter) do
   begin
@@ -927,13 +1021,21 @@ var
   Id: TAtlasTextId;
 begin
   if AProblem.UsesState = TAtlasProblem.UsesInitialization then
-    Id := TAtlasTextId.UsesInitializationHint
+  begin
+    Id := TAtlasTextId.UsesInitializationHint;
+  end
   else if AProblem.UsesState = TAtlasProblem.UsesAllowlist then
-    Id := TAtlasTextId.UsesAllowlistHint
+  begin
+    Id := TAtlasTextId.UsesAllowlistHint;
+  end
   else if AProblem.UsesState = TAtlasProblem.UsesImplementation then
-    Id := TAtlasTextId.UsesImplementationHint
+  begin
+    Id := TAtlasTextId.UsesImplementationHint;
+  end
   else
+  begin
     Id := TAtlasTextId.UsesUnusedHint;
+  end;
   Result := TAtlasStrings.Fmt(Id, [AProblem.UsesUnit]);
 end;
 

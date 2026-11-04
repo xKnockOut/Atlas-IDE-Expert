@@ -76,12 +76,20 @@ var
   Index: Integer;
 begin
   if AKey = 0 then
+  begin
     Exit(False);
+  end;
   if Address = AKey then
+  begin
     Exit(True);
+  end;
   for Index := 0 to ParamCount - 1 do
+  begin
     if (Index < MaxParams) and (Params[Index] = AKey) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -91,10 +99,16 @@ var
 begin
   Result := nil;
   if Address <> 0 then
+  begin
     Result := Result + [UInt64(Address)];
+  end;
   for Index := 0 to Count - 1 do
+  begin
     if (Index < MaxFrames) and (Frames[Index] <> 0) then
+    begin
       Result := Result + [UInt64(Frames[Index])];
+    end;
+  end;
 end;
 
 { TAtlasStackRing }
@@ -134,10 +148,15 @@ begin
     Item := FSlots[Index];
     // Während des Kopierens neu beschrieben: auslassen.
     if (Item.Sequence = 0) or (TInterlocked.Read(FSlots[Index].Sequence) <> Item.Sequence) then
+    begin
       Continue;
+    end;
     if (Item.ThreadId <> AThreadId) or (Item.Sequence <= Best) then
+    begin
       Continue;
+    end;
     for Key in AKeys do
+    begin
       if Item.Matches(Key) then
       begin
         ARecord := Item;
@@ -145,6 +164,7 @@ begin
         Result := True;
         Break;
       end;
+    end;
   end;
 end;
 
@@ -153,7 +173,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to SlotCount - 1 do
+  begin
     TInterlocked.Exchange(FSlots[Index].Sequence, 0);
+  end;
 end;
 
 { TAtlasStackFrames }
@@ -168,18 +190,28 @@ var
 begin
   Result := AFrame;
   if (AMap = nil) or (AMapModule = '') then
+  begin
     Exit;
+  end;
   Plus := Pos('+', AFrame);
   if (Plus = 0) or not SameText(Copy(AFrame, 1, Plus - 1), AMapModule) then
+  begin
     Exit;
+  end;
   Hex := Copy(AFrame, Plus + 1, MaxInt);
   if Hex.StartsWith('$') then
+  begin
     Hex := Copy(Hex, 2, MaxInt);
+  end;
   if not TryStrToInt64('$' + Hex, Offset) then
+  begin
     Exit;
+  end;
   Location := AMap.Resolve(UInt64(Offset));
   if Location.Found then
+  begin
     Result := AFrame + ' ' + Location.ToString;
+  end;
 end;
 
 class function TAtlasStackFrames.Describe(const AAddresses: TArray<UInt64>;
@@ -195,16 +227,22 @@ begin
   for Address in AAddresses do
   begin
     if Lines >= AMax then
+    begin
       Break;
+    end;
     Frame := Format('$%x', [Address]);
     for Module in AModules do
+    begin
       if (Address >= Module.Base) and (Address < Module.Base + Module.Size) then
       begin
         Frame := Symbolize(Format('%s+$%x', [Module.Name, Address - Module.Base]), AMap, AMapModule);
         Break;
       end;
+    end;
     if Result <> '' then
+    begin
       Result := Result + sLineBreak;
+    end;
     Result := Result + Frame;
     Inc(Lines);
   end;

@@ -168,9 +168,13 @@ var
 begin
   Result := ALine;
   if (Result <> '') and (Result[Length(Result)] = #13) then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
   if Pos(#27, Result) = 0 then
+  begin
     Exit;
+  end;
   // Steuerfolgen der Konsole (pwsh färbt Fehler): CSI „ESC [ … Buchstabe“,
   // OSC „ESC ] … BEL“ bzw. „… ESC \“, sonst ESC mit einem Zeichen.
   Index := Pos(#27, Result);
@@ -181,13 +185,17 @@ begin
     begin
       Inc(Stop);
       while (Stop <= Length(Result)) and not CharInSet(Result[Stop], ['@'..'~']) do
+      begin
         Inc(Stop);
+      end;
     end
     else if (Stop <= Length(Result)) and (Result[Stop] = ']') then
     begin
       while (Stop <= Length(Result)) and (Result[Stop] <> #7) and not ((Result[Stop] = '\') and
         (Result[Stop - 1] = #27)) do
+      begin
         Inc(Stop);
+      end;
     end;
     Delete(Result, Index, Stop - Index + 1);
     Index := Pos(#27, Result);
@@ -199,10 +207,14 @@ var
   Encoding: TEncoding;
 begin
   if ACount <= 0 then
+  begin
     Exit('');
+  end;
   // Gültiges UTF-8 (ohne überlange Formen, Atlas.Text) geht vor der Codepage.
   if (FCodePage = 0) or TTextEncodingProbe.IsValidUtf8(Copy(ABytes, AStart, ACount), 0) then
+  begin
     Exit(Clean(TEncoding.UTF8.GetString(ABytes, AStart, ACount)));
+  end;
   try
     Encoding := TEncoding.GetEncoding(FCodePage);
     try
@@ -223,17 +235,21 @@ var
 begin
   Result := nil;
   if ACount <= 0 then
+  begin
     Exit;
+  end;
   Data := FPending;
   SetLength(Data, Length(FPending) + ACount);
   Move(ABytes[0], Data[Length(FPending)], ACount);
   Start := 0;
   for Index := 0 to High(Data) do
+  begin
     if Data[Index] = 10 then
     begin
       Result := Result + [Decode(Data, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   FPending := Copy(Data, Start, Length(Data) - Start);
 end;
 
@@ -241,7 +257,9 @@ function TAtlasTaskLines.Flush: TArray<string>;
 begin
   Result := nil;
   if Length(FPending) > 0 then
+  begin
     Result := [Decode(FPending, 0, Length(FPending))];
+  end;
   FPending := nil;
 end;
 
@@ -296,10 +314,14 @@ begin
     case Entry.Mode of
       TAtlasTaskBeforeBuild.Block:
         if Fails(Entry.Run) then
+        begin
           Result.Blocking := Result.Blocking + [Entry.Run];
+        end;
       TAtlasTaskBeforeBuild.Warn:
         if Fails(Entry.Run) or (Entry.Run.Counts.Total > 0) then
+        begin
           Result.Warnings := Result.Warnings + [Entry.Run];
+        end;
       TAtlasTaskBeforeBuild.Off: ;
     end;
   Result.Block := Length(Result.Blocking) > 0;
@@ -357,8 +379,12 @@ var
 begin
   Wanted := Key(AProject);
   for Project in FProjects do
+  begin
     if Project.Key = Wanted then
+    begin
       Exit(Project);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -368,14 +394,20 @@ var
 begin
   Result := Find(AProject);
   if Result <> nil then
+  begin
     Exit;
+  end;
   // Höchstens MaxProjects: das am längsten nicht benutzte fällt weg.
   if FProjects.Count >= MaxProjects then
   begin
     Oldest := 0;
     for Index := 1 to FProjects.Count - 1 do
+    begin
       if FProjects[Index].Used < FProjects[Oldest].Used then
+      begin
         Oldest := Index;
+      end;
+    end;
     FProjects.Delete(Oldest);
   end;
   Result := TProject.Create;
@@ -391,11 +423,13 @@ begin
   Project := Ensure(AProject);
   Project.Used := ARun.FinishedAt;
   for Index := 0 to High(Project.Last) do
+  begin
     if SameText(Project.Last[Index].Name, ARun.Name) then
     begin
       Project.Last[Index] := TAtlasTaskLastRun.From(ARun);
       Exit;
     end;
+  end;
   Project.Last := Project.Last + [TAtlasTaskLastRun.From(ARun)];
 end;
 
@@ -407,12 +441,16 @@ begin
   ARun := Default(TAtlasTaskLastRun);
   Project := Find(AProject);
   if Project <> nil then
+  begin
     for Run in Project.Last do
+    begin
       if SameText(Run.Name, AName) then
       begin
         ARun := Run;
         Exit(True);
       end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -423,7 +461,9 @@ begin
   Result := nil;
   Project := Find(AProject);
   if Project <> nil then
+  begin
     Result := Copy(Project.Last);
+  end;
 end;
 
 function TAtlasTaskHistory.IsHidden(const AProject, AName: string): Boolean;
@@ -431,8 +471,12 @@ var
   Name: string;
 begin
   for Name in HiddenNames(AProject) do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -443,7 +487,9 @@ var
   Name: string;
 begin
   if IsHidden(AProject, AName) = AHidden then
+  begin
     Exit;
+  end;
   Project := Ensure(AProject);
   if AHidden then
   begin
@@ -452,8 +498,12 @@ begin
   end;
   Kept := nil;
   for Name in Project.Hidden do
+  begin
     if not SameText(Name, AName) then
+    begin
       Kept := Kept + [Name];
+    end;
+  end;
   Project.Hidden := Kept;
 end;
 
@@ -464,7 +514,9 @@ begin
   Result := nil;
   Project := Find(AProject);
   if Project <> nil then
+  begin
     Result := Copy(Project.Hidden);
+  end;
 end;
 
 function TAtlasTaskHistory.ToJson: string;
@@ -487,7 +539,9 @@ begin
       Item.AddPair('used', DateToISO8601(Project.Used, False));
       Hidden := TJSONArray.Create;
       for Name in Project.Hidden do
+      begin
         Hidden.Add(Name);
+      end;
       Item.AddPair('hidden', Hidden);
       Last := TJSONObject.Create;
       Item.AddPair('last', Last);
@@ -516,7 +570,9 @@ var
 begin
   Value := AObject.GetValue(AName);
   if not (Value is TJSONNumber) or not TryStrToInt64(Value.ToString, Result) then
+  begin
     Result := 0;
+  end;
 end;
 
 function DateOf(AObject: TJSONObject; const AName: string): TDateTime;
@@ -525,7 +581,9 @@ var
 begin
   Value := AObject.GetValue(AName);
   if not (Value is TJSONString) or not TryISO8601ToDate(Value.Value, Result, False) then
+  begin
     Result := 0;
+  end;
 end;
 
 function TAtlasTaskHistory.FromJson(const AText: string): Boolean;
@@ -542,38 +600,59 @@ begin
   try
     Result := Parsed is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     Projects := TJSONObject(Parsed).GetValue('projects');
     if not (Projects is TJSONObject) then
+    begin
       Exit;
+    end;
     for Pair in TJSONObject(Projects) do
     begin
       if not (Pair.JsonValue is TJSONObject) or (FProjects.Count >= MaxProjects) then
+      begin
         Continue;
+      end;
       Project := TProject.Create;
       FProjects.Add(Project);
       Project.Key := Key(Pair.JsonString.Value);
       Project.Used := DateOf(TJSONObject(Pair.JsonValue), 'used');
       Hidden := TJSONObject(Pair.JsonValue).GetValue('hidden');
       if Hidden is TJSONArray then
+      begin
         for Element in TJSONArray(Hidden) do
+        begin
           if Element is TJSONString then
+          begin
             Project.Hidden := Project.Hidden + [Element.Value];
+          end;
+        end;
+      end;
       Last := TJSONObject(Pair.JsonValue).GetValue('last');
       if Last is TJSONObject then
+      begin
         for RunPair in TJSONObject(Last) do
         begin
           if not (RunPair.JsonValue is TJSONObject) then
+          begin
             Continue;
+          end;
           RunObject := TJSONObject(RunPair.JsonValue);
           Run := Default(TAtlasTaskLastRun);
           Run.Name := RunPair.JsonString.Value;
           Run.Outcome := TAtlasTaskOutcome.Finished;
           Element := RunObject.GetValue('outcome');
           if Element is TJSONString then
+          begin
             for Outcome := Low(TAtlasTaskOutcome) to High(TAtlasTaskOutcome) do
+            begin
               if SameText(Element.Value, OutcomeNames[Outcome]) then
+              begin
                 Run.Outcome := Outcome;
+              end;
+            end;
+          end;
           Run.ExitCode := Integer(IntOf(RunObject, 'exitCode'));
           Run.Counts.Errors := Integer(IntOf(RunObject, 'errors'));
           Run.Counts.Warnings := Integer(IntOf(RunObject, 'warnings'));
@@ -582,6 +661,7 @@ begin
           Run.FinishedAt := DateOf(RunObject, 'finished');
           Project.Last := Project.Last + [Run];
         end;
+      end;
     end;
   finally
     Parsed.Free;

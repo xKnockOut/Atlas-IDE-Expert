@@ -49,12 +49,20 @@ var
 begin
   Result := nil;
   if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  begin
     Exit;
+  end;
   if AName = '' then
+  begin
     Exit(Configurations.BaseConfiguration);
+  end;
   for Index := 0 to Configurations.ConfigurationCount - 1 do
+  begin
     if SameText(Configurations.Configurations[Index].Name, AName) then
+    begin
       Exit(Configurations.Configurations[Index]);
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeMissingUnit.AddSearchPath(const AArgumentsJson: string; const AMessage: TProc<string>);
@@ -65,7 +73,9 @@ var
   Label_, Raw: string;
 begin
   if not TAtlasSearchPathRequest.TryParse(AArgumentsJson, Request) then
+  begin
     Exit;
+  end;
   Project := TAtlasIdeFiles.GroupProject(Request.ProjectFile);
   if Project = nil then
   begin
@@ -74,7 +84,9 @@ begin
   end;
   Label_ := Request.Config;
   if Label_ = '' then
+  begin
     Label_ := TAtlasStrings.Text(TAtlasTextId.MissingUnitAllConfigs);
+  end;
   Configuration := ConfigurationOf(Project, Request.Config);
   if Configuration = nil then
   begin
@@ -111,7 +123,9 @@ var
   Project: IOTAProject;
 begin
   if not TAtlasAddUnitRequest.TryParse(AArgumentsJson, Request) then
+  begin
     Exit;
+  end;
   Project := TAtlasIdeFiles.GroupProject(Request.ProjectFile);
   if Project = nil then
   begin
@@ -143,7 +157,9 @@ var
   Text: string;
 begin
   if not TAtlasSearchPaths.TryParseInfo(AArgumentsJson, Text) then
+  begin
     Exit;
+  end;
   AMessage(Text);
   // Die Liste der durchsuchten Orte ist zu lang für die Meldungsansicht allein.
   MessageDlg(StringReplace(Text, '; ', sLineBreak, [rfReplaceAll]), mtInformation, [mbOK], 0);

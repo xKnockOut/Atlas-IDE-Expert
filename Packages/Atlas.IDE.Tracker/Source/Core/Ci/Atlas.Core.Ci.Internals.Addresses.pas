@@ -41,10 +41,14 @@ begin
   Result := AOrigin;
   Index := Pos('://', Result);
   if Index > 0 then
+  begin
     Result := Copy(Result, Index + 3, MaxInt);
+  end;
   Index := Pos(':', Result);
   if Index > 0 then
+  begin
     Result := Copy(Result, 1, Index - 1);
+  end;
 end;
 
 class function TAtlasCiAddresses.RedirectAllowed(const AFrom, ATo: string): Boolean;
@@ -54,9 +58,13 @@ begin
   FromOrigin := OriginOf(AFrom);
   ToOrigin := OriginOf(ATo);
   if (FromOrigin = '') or (ToOrigin = '') then
+  begin
     Exit(False);
+  end;
   if FromOrigin = ToOrigin then
+  begin
     Exit(True);
+  end;
   Result := FromOrigin.StartsWith('http://') and ToOrigin.StartsWith('https://') and
     SameText(HostOf(FromOrigin), HostOf(ToOrigin));
 end;
@@ -65,7 +73,9 @@ class function TAtlasCiAddresses.Resolve(const AFrom, ALocation: string): string
 begin
   Result := Trim(ALocation);
   if Result.StartsWith('/') and not Result.StartsWith('//') then
+  begin
     Result := OriginOf(AFrom) + Result;
+  end;
 end;
 
 class function TAtlasCiAddresses.MayAuthenticate(const AUrl, AServer: string): Boolean;
