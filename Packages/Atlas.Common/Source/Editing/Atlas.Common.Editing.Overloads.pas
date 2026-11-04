@@ -71,6 +71,14 @@ type
     function Reason(AKind: TOverloadKind): string;
   end;
 
+  /// <summary>Art der neuen Überladung; DefaultOf liefert den Standardwert des weggelassenen Parameters
+  /// (Namensauflösung, nil = eingebaute Regel).</summary>
+  TOverloadRequest = record
+    Kind: TOverloadKind;
+    DefaultOf: TOverloadDefaultFunc;
+    class function Create(AKind: TOverloadKind; const ADefaultOf: TOverloadDefaultFunc): TOverloadRequest; static;
+  end;
+
   TOverloadResult = record
     Edits: TArray<TTextEdit>;
     /// <summary>In Textreihenfolge, zuletzt die Endposition.</summary>
@@ -98,10 +106,10 @@ type
     /// <summary>Änderungen für die neue Überladung; False mit AReason, wenn es nicht geht.</summary>
     class function Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
       AKind: TOverloadKind; out AResult: TOverloadResult; out AReason: string): Boolean; overload; static;
-    /// <summary>Wie oben; ADefault liefert den Standardwert des weggelassenen Parameters (Namensauflösung).</summary>
+    /// <summary>Wie oben mit Art und Standardwert aus ARequest.</summary>
     class function Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
-      AKind: TOverloadKind; const ADefault: TOverloadDefaultFunc; out AResult: TOverloadResult;
-      out AReason: string): Boolean; overload; static;
+      const ARequest: TOverloadRequest; out AResult: TOverloadResult; out AReason: string): Boolean; overload;
+      static;
     /// <summary>Standardwert eingebauter Typen (0, '', #0, False, nil, []); '' bei anderen.</summary>
     class function DefaultValue(const ATypeName: string): string; static;
   end;
@@ -292,42 +300,58 @@ begin
   Result := Found;
 end;
 
+/// <summary>Köpfe der Routinen namens AName direkt in ASection; nil ohne Abschnitt.</summary>
+function SectionHeaders(ATree: TSyntaxTree; const AText, AName: string;
+  ASection: TSyntaxNode): TArray<TSignatureHeader>;
+var
+  mIndex: Integer;
+  mHeader: TSignatureHeader;
+begin
+  Result := nil;
+  if ASection = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if (ASection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ASection[mIndex].Name, AName) and
+      ReadNode(AText, ATree, TRoutineParts.HeaderOf(ASection[mIndex]), mHeader) then
+    begin
+      Result := Result + [mHeader];
+    end;
+  end;
+end;
+
+/// <summary>Köpfe der Methoden namens AName in der Klasse bzw. dem Record AType.</summary>
+function TypeHeaders(ATree: TSyntaxTree; const AText, AName: string; AType: TSyntaxNode): TArray<TSignatureHeader>;
+var
+  mIndex: Integer;
+  mHeader: TSignatureHeader;
+begin
+  Result := nil;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    if (AType[mIndex].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[mIndex].Name, AName) and
+      ReadNode(AText, ATree, AType[mIndex], mHeader) then
+    begin
+      Result := Result + [mHeader];
+    end;
+  end;
+end;
+
 /// <summary>Köpfe aller Routinen namens AName: in der Klasse AType bzw. auf Unit-Ebene (beide Teile).</summary>
 function Overloads(ATree: TSyntaxTree; const AText, AName: string; AType: TSyntaxNode): TArray<TSignatureHeader>;
 var
-  Section: TSyntaxNode;
-  Index, Part: Integer;
-  Header: TSignatureHeader;
-  Kind: TSyntaxKind;
+  mKind: TSyntaxKind;
 begin
-  Result := nil;
   if AType <> nil then
   begin
-    for Index := 0 to AType.ChildCount - 1 do
-    begin
-      if (AType[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(AType[Index].Name, AName) and
-        ReadNode(AText, ATree, AType[Index], Header) then
-      begin
-        Result := Result + [Header];
-      end;
-    end;
-    Exit;
+    Exit(TypeHeaders(ATree, AText, AName, AType));
   end;
-  for Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] do
+  Result := nil;
+  for mKind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] do
   begin
-    Section := ATree.Root.FindChild(Kind);
-    if Section = nil then
-    begin
-      Continue;
-    end;
-    for Part := 0 to Section.ChildCount - 1 do
-    begin
-      if (Section[Part].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Part].Name, AName) and
-        ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Part]), Header) then
-      begin
-        Result := Result + [Header];
-      end;
-    end;
+    Result := Result + SectionHeaders(ATree, AText, AName, ATree.Root.FindChild(mKind));
   end;
 end;
 
@@ -379,45 +403,30 @@ end;
 function FindDecl(ATree: TSyntaxTree; const AText: string; AType: TSyntaxNode; const AName: string;
   const ABody: TSignatureHeader; out ADecl: TSignatureHeader): Boolean;
 var
-  Candidates: TArray<TSignatureHeader>;
-  Candidate: TSignatureHeader;
-  Section: TSyntaxNode;
-  Index: Integer;
-  Header: TSignatureHeader;
+  mCandidates: TArray<TSignatureHeader>;
+  mCandidate: TSignatureHeader;
 begin
   ADecl := Default(TSignatureHeader);
-  Candidates := nil;
   if AType <> nil then
   begin
-    Candidates := Overloads(ATree, AText, AName, AType);
+    mCandidates := Overloads(ATree, AText, AName, AType);
   end
   else
   begin
-    Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
-    if Section <> nil then
-    begin
-      for Index := 0 to Section.ChildCount - 1 do
-      begin
-        if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AName) and
-          ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Index]), Header) then
-        begin
-          Candidates := Candidates + [Header];
-        end;
-      end;
-    end;
+    mCandidates := SectionHeaders(ATree, AText, AName, ATree.Root.FindChild(TSyntaxKind.InterfaceSection));
   end;
-  for Candidate in Candidates do
+  for mCandidate in mCandidates do
   begin
-    if SameTypes(Candidate.ParamTypes, ABody.ParamTypes) then
+    if SameTypes(mCandidate.ParamTypes, ABody.ParamTypes) then
     begin
-      ADecl := Candidate;
+      ADecl := mCandidate;
       Exit(True);
     end;
   end;
-  Result := (Length(Candidates) = 1) and (ABody.OpenToken < 0);
+  Result := (Length(mCandidates) = 1) and (ABody.OpenToken < 0);
   if Result then
   begin
-    ADecl := Candidates[0];
+    ADecl := mCandidates[0];
   end;
 end;
 
@@ -479,203 +488,303 @@ begin
   Result := False;
 end;
 
+/// <summary>Innerster Kopf einer Methode in einer Klasse bzw. einem Record, der AOffset enthält; nil ohne.
+/// </summary>
+function MemberHeaderAt(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+begin
+  Found := nil;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := TRoutineParts.Encloses(ANode, AOffset);
+      if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
+        (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
+      begin
+        Found := ANode;
+      end;
+    end);
+  Result := Found;
+end;
+
+type
+  /// <summary>Liest die Routine zu TOverloads.Target Schritt für Schritt.</summary>
+  TTargetReader = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Tokens: TArray<TPascalToken>;
+    DeclHeader: TSyntaxNode;
+    BodyNode: TSyntaxNode;
+    TypeNode: TSyntaxNode;
+    Target: TOverloadTarget;
+    /// <summary>Routine bzw. Methode, auf deren Kopf AOffset steht.</summary>
+    function Locate(AOffset: Integer): Boolean;
+    function LocateRoutine(ARoutine: TSyntaxNode): Boolean;
+    function LocateMember(AOffset: Integer): Boolean;
+    function ReadHeaders: Boolean;
+    function ReadFromDecl: Boolean;
+    function ReadFromBody: Boolean;
+    /// <summary>Klasse bzw. Record aus dem Namen der Implementierung ("TFoo.Bar").</summary>
+    function ResolveContainer: Boolean;
+    function ReadDeclOfBody: Boolean;
+    function ReadBlock: Boolean;
+    function IsGeneric: Boolean;
+    function ForwardIssue: string;
+    procedure SetReasons;
+  end;
+
+function TTargetReader.Locate(AOffset: Integer): Boolean;
+var
+  mRoutine: TSyntaxNode;
+begin
+  mRoutine := TRoutineParts.RoutineWithHeaderAt(Tree, AOffset);
+  if mRoutine <> nil then
+  begin
+    Result := LocateRoutine(mRoutine);
+  end
+  else
+  begin
+    Result := LocateMember(AOffset);
+  end;
+end;
+
+function TTargetReader.LocateRoutine(ARoutine: TSyntaxNode): Boolean;
+begin
+  Result := (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind in [TSyntaxKind.InterfaceSection,
+    TSyntaxKind.ImplementationSection]);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if ARoutine.FindChild(TSyntaxKind.Block) <> nil then
+  begin
+    BodyNode := ARoutine;
+  end
+  else if ARoutine.Parent.Kind = TSyntaxKind.InterfaceSection then
+  begin
+    DeclHeader := TRoutineParts.HeaderOf(ARoutine);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TTargetReader.LocateMember(AOffset: Integer): Boolean;
+var
+  mFound: TSyntaxNode;
+begin
+  // Kopf in einer Klasse bzw. einem Record.
+  mFound := MemberHeaderAt(Tree, AOffset);
+  Result := (mFound <> nil) and (mFound.Parent.Parent <> nil);
+  if Result then
+  begin
+    DeclHeader := mFound;
+    TypeNode := mFound.Parent;
+    Target.Container := mFound.Parent.Parent.Name;
+  end;
+end;
+
+function TTargetReader.ReadHeaders: Boolean;
+begin
+  if DeclHeader <> nil then
+  begin
+    Result := ReadFromDecl;
+  end
+  else
+  begin
+    Result := ReadFromBody;
+  end;
+end;
+
+function TTargetReader.ReadFromDecl: Boolean;
+var
+  mQualified: string;
+begin
+  Result := ReadNode(Text, Tree, DeclHeader, Target.Decl);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Target.HasDecl := True;
+  Target.Name := ShortName(Target.Decl.QualifiedName);
+  mQualified := Target.Name;
+  if Target.Container <> '' then
+  begin
+    mQualified := Target.Container + '.' + Target.Name;
+  end;
+  BodyNode := FindBody(Tree, Text, mQualified, Target.Decl, Target.Body);
+  Result := BodyNode <> nil;
+  if Result then
+  begin
+    Target.LastTypeOffset := LastTypeOffset(DeclHeader);
+  end;
+end;
+
+function TTargetReader.ResolveContainer: Boolean;
+var
+  mQualified: string;
+begin
+  Result := True;
+  mQualified := Target.Body.QualifiedName;
+  if Pos('.', mQualified) = 0 then
+  begin
+    Exit;
+  end;
+  Target.Container := Copy(mQualified, 1, LastDelimiter('.', mQualified) - 1);
+  if Pos('.', Target.Container) > 0 then
+  begin
+    Target.Container := ShortName(Target.Container);
+  end;
+  TypeNode := FindType(Tree.Root, Target.Container);
+  Result := TypeNode <> nil;
+end;
+
+function TTargetReader.ReadDeclOfBody: Boolean;
+var
+  mHeader: TSignatureHeader;
+begin
+  Result := True;
+  if FindDecl(Tree, Text, TypeNode, Target.Name, Target.Body, mHeader) then
+  begin
+    Target.Decl := mHeader;
+    Target.HasDecl := True;
+  end
+  else if Target.Container <> '' then
+  begin
+    Result := False;
+  end
+  else
+  begin
+    Target.Decl := Target.Body;
+  end;
+end;
+
+function TTargetReader.ReadFromBody: Boolean;
+begin
+  Result := ReadNode(Text, Tree, TRoutineParts.HeaderOf(BodyNode), Target.Body);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Target.Name := ShortName(Target.Body.QualifiedName);
+  Result := ResolveContainer and ReadDeclOfBody;
+  // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
+  if Result and Target.HasDecl then
+  begin
+    Target.LastTypeOffset := LastTypeOffset(HeaderNodeAt(Tree, Tokens[Target.Decl.NameToken].Offset));
+  end
+  else if Result then
+  begin
+    Target.LastTypeOffset := LastTypeOffset(TRoutineParts.HeaderOf(BodyNode));
+  end;
+end;
+
+function TTargetReader.ReadBlock: Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  mBlock := BodyNode.FindChild(TSyntaxKind.Block);
+  Result := mBlock <> nil;
+  if not Result then
+  begin
+    Exit;
+  end;
+  Target.BlockBegin := TRoutineBody.TokenAt(Tokens, mBlock.StartOffset);
+  Target.BodyLast := TChangeSignature.BodyEnd(Tree, Target.Body);
+  Result := (Target.BlockBegin <= High(Tokens)) and Tokens[Target.BlockBegin].IsKeyword('begin') and
+    (Target.BodyLast >= 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Target.BlockEnd := Target.BodyLast;
+  while (Target.BlockEnd > Target.BlockBegin) and not Tokens[Target.BlockEnd].IsKeyword('end') do
+  begin
+    Dec(Target.BlockEnd);
+  end;
+  Result := Target.BlockEnd > Target.BlockBegin;
+end;
+
+function TTargetReader.IsGeneric: Boolean;
+begin
+  Result := (Target.Decl.NameToken < High(Tokens)) and Tokens[Target.Decl.NameToken + 1].IsSymbol('<');
+end;
+
+/// <summary>Warum die Weiterleitung beim letzten Parameter nicht geht; '' = geht.</summary>
+function TTargetReader.ForwardIssue: string;
+var
+  mLast: TSignatureParameter;
+  mWanted: TArray<string>;
+  mHeader: TSignatureHeader;
+begin
+  mLast := Target.Decl.Parameters[High(Target.Decl.Parameters)];
+  if IsModifier(mLast.Modifier, 'var') or IsModifier(mLast.Modifier, 'out') or (mLast.TypeName = '') then
+  begin
+    Exit(Format(TOverloads.VarParameterReason, [mLast.Name]));
+  end;
+  Result := '';
+  mWanted := Copy(Target.Decl.ParamTypes, 0, Length(Target.Decl.Parameters) - 1);
+  for mHeader in Overloads(Tree, Text, Target.Name, TypeNode) do
+  begin
+    if SameTypes(mHeader.ParamTypes, mWanted) then
+    begin
+      Exit(Format(TOverloads.ExistsReason, [Target.Name, string.Join(', ', mWanted)]));
+    end;
+  end;
+end;
+
+procedure TTargetReader.SetReasons;
+begin
+  if Target.Decl.Keyword = 'destructor' then
+  begin
+    Target.CopyReason := TOverloads.DestructorReason;
+    Target.ForwardReason := TOverloads.DestructorReason;
+  end
+  else if IsGeneric then
+  begin
+    Target.CopyReason := TOverloads.GenericReason;
+    Target.ForwardReason := TOverloads.GenericReason;
+  end
+  else if Length(Target.Decl.Parameters) = 0 then
+  begin
+    Target.ForwardReason := TOverloads.NoParameterReason;
+  end
+  else
+  begin
+    Target.ForwardReason := ForwardIssue;
+  end;
+  if Target.Decl.HasDirective('override') then
+  begin
+    Target.Note := Format(TOverloads.OverrideNote, [Target.Name]);
+  end;
+end;
+
 { TOverloads }
 
 class function TOverloads.Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   out ATarget: TOverloadTarget): Boolean;
 var
-  Lines: TLineTable;
-  Offset: Integer;
-  Routine, DeclHeader, BodyNode, TypeNode, Block, Found: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  Header: TSignatureHeader;
-  Existing: TArray<TSignatureHeader>;
-  Wanted: TArray<string>;
-  Last: TSignatureParameter;
-  Qualified: string;
+  mReader: TTargetReader;
+  mLines: TLineTable;
 begin
-  Result := False;
   ATarget := Default(TOverloadTarget);
   if (ATree = nil) or (ATree.Root = nil) then
   begin
-    Exit;
+    Exit(False);
   end;
-  Tokens := ATree.Tokens;
-  Lines := TLineTable.Build(AText);
-  Offset := Lines.OffsetAt(APosition);
-  DeclHeader := nil;
-  BodyNode := nil;
-  TypeNode := nil;
-  Routine := TRoutineParts.RoutineWithHeaderAt(ATree, Offset);
-  if Routine <> nil then
+  mReader := Default(TTargetReader);
+  mReader.Text := AText;
+  mReader.Tree := ATree;
+  mReader.Tokens := ATree.Tokens;
+  mLines := TLineTable.Build(AText);
+  Result := mReader.Locate(mLines.OffsetAt(APosition)) and mReader.ReadHeaders and mReader.ReadBlock;
+  if Result then
   begin
-    if (Routine.Parent = nil) or not (Routine.Parent.Kind in [TSyntaxKind.InterfaceSection,
-      TSyntaxKind.ImplementationSection]) then
-    begin
-      Exit;
-    end;
-    if Routine.FindChild(TSyntaxKind.Block) <> nil then
-    begin
-      BodyNode := Routine;
-    end
-    else if Routine.Parent.Kind = TSyntaxKind.InterfaceSection then
-    begin
-      DeclHeader := TRoutineParts.HeaderOf(Routine);
-    end
-    else
-    begin
-      Exit;
-    end;
-  end
-  else
-  begin
-    // Kopf in einer Klasse bzw. einem Record.
-    Found := nil;
-    ATree.Root.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        Result := TRoutineParts.Encloses(ANode, Offset);
-        if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-          (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
-        begin
-          Found := ANode;
-        end;
-      end);
-    if (Found = nil) or (Found.Parent.Parent = nil) then
-    begin
-      Exit;
-    end;
-    DeclHeader := Found;
-    TypeNode := Found.Parent;
-    ATarget.Container := Found.Parent.Parent.Name;
+    mReader.SetReasons;
   end;
-
-  if DeclHeader <> nil then
-  begin
-    if not ReadNode(AText, ATree, DeclHeader, ATarget.Decl) then
-    begin
-      Exit;
-    end;
-    ATarget.HasDecl := True;
-    ATarget.Name := ShortName(ATarget.Decl.QualifiedName);
-    Qualified := ATarget.Name;
-    if ATarget.Container <> '' then
-    begin
-      Qualified := ATarget.Container + '.' + ATarget.Name;
-    end;
-    BodyNode := FindBody(ATree, AText, Qualified, ATarget.Decl, ATarget.Body);
-    if BodyNode = nil then
-    begin
-      Exit;
-    end;
-    ATarget.LastTypeOffset := LastTypeOffset(DeclHeader);
-  end
-  else
-  begin
-    if not ReadNode(AText, ATree, TRoutineParts.HeaderOf(BodyNode), ATarget.Body) then
-    begin
-      Exit;
-    end;
-    ATarget.Name := ShortName(ATarget.Body.QualifiedName);
-    if Pos('.', ATarget.Body.QualifiedName) > 0 then
-    begin
-      ATarget.Container := Copy(ATarget.Body.QualifiedName, 1, LastDelimiter('.', ATarget.Body.QualifiedName) - 1);
-      if Pos('.', ATarget.Container) > 0 then
-      begin
-        ATarget.Container := ShortName(ATarget.Container);
-      end;
-      TypeNode := FindType(ATree.Root, ATarget.Container);
-      if TypeNode = nil then
-      begin
-        Exit;
-      end;
-    end;
-    if FindDecl(ATree, AText, TypeNode, ATarget.Name, ATarget.Body, Header) then
-    begin
-      ATarget.Decl := Header;
-      ATarget.HasDecl := True;
-    end
-    else if ATarget.Container <> '' then
-    begin
-      Exit;
-    end
-    else
-    begin
-      ATarget.Decl := ATarget.Body;
-    end;
-    // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
-    if ATarget.HasDecl then
-    begin
-      ATarget.LastTypeOffset := LastTypeOffset(HeaderNodeAt(ATree, Tokens[ATarget.Decl.NameToken].Offset));
-    end
-    else
-    begin
-      ATarget.LastTypeOffset := LastTypeOffset(TRoutineParts.HeaderOf(BodyNode));
-    end;
-  end;
-
-  Block := BodyNode.FindChild(TSyntaxKind.Block);
-  if Block = nil then
-  begin
-    Exit;
-  end;
-  ATarget.BlockBegin := TRoutineBody.TokenAt(Tokens, Block.StartOffset);
-  ATarget.BodyLast := TChangeSignature.BodyEnd(ATree, ATarget.Body);
-  if (ATarget.BlockBegin > High(Tokens)) or not Tokens[ATarget.BlockBegin].IsKeyword('begin') or
-    (ATarget.BodyLast < 0) then
-  begin
-    Exit;
-  end;
-  ATarget.BlockEnd := ATarget.BodyLast;
-  while (ATarget.BlockEnd > ATarget.BlockBegin) and not Tokens[ATarget.BlockEnd].IsKeyword('end') do
-  begin
-    Dec(ATarget.BlockEnd);
-  end;
-  if ATarget.BlockEnd <= ATarget.BlockBegin then
-  begin
-    Exit;
-  end;
-
-  if ATarget.Decl.Keyword = 'destructor' then
-  begin
-    ATarget.CopyReason := DestructorReason;
-    ATarget.ForwardReason := DestructorReason;
-  end
-  else if (ATarget.Decl.NameToken < High(Tokens)) and Tokens[ATarget.Decl.NameToken + 1].IsSymbol('<') then
-  begin
-    ATarget.CopyReason := GenericReason;
-    ATarget.ForwardReason := GenericReason;
-  end
-  else if Length(ATarget.Decl.Parameters) = 0 then
-  begin
-    ATarget.ForwardReason := NoParameterReason;
-  end
-  else
-  begin
-    Last := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)];
-    if IsModifier(Last.Modifier, 'var') or IsModifier(Last.Modifier, 'out') or (Last.TypeName = '') then
-    begin
-      ATarget.ForwardReason := Format(VarParameterReason, [Last.Name]);
-    end
-    else
-    begin
-      Wanted := Copy(ATarget.Decl.ParamTypes, 0, Length(ATarget.Decl.Parameters) - 1);
-      Existing := Overloads(ATree, AText, ATarget.Name, TypeNode);
-      for Header in Existing do
-      begin
-        if SameTypes(Header.ParamTypes, Wanted) then
-        begin
-          ATarget.ForwardReason := Format(ExistsReason, [ATarget.Name, string.Join(', ', Wanted)]);
-          Break;
-        end;
-      end;
-    end;
-  end;
-  if ATarget.Decl.HasDirective('override') then
-  begin
-    ATarget.Note := Format(OverrideNote, [ATarget.Name]);
-  end;
-  Result := True;
+  ATarget := mReader.Target;
 end;
 
 class function TOverloads.DefaultValue(const ATypeName: string): string;
@@ -876,50 +985,57 @@ begin
     end));
 end;
 
-class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
-  AKind: TOverloadKind; out AResult: TOverloadResult; out AReason: string): Boolean;
+/// <summary>Platzhalter AField einer Einfügung, die im neuen Text an AOffset steht.</summary>
+function PlaceholderOf(const ALines: TLineTable; AOffset: Integer; const AField: TInsertField): TOverloadPlaceholder;
 begin
-  Result := Build(AText, ATree, ATarget, AKind, nil, AResult, AReason);
+  Result.Number := AField.Number;
+  Result.Range := TTextRange.Create(ALines.PositionAt(AOffset + AField.Start),
+    ALines.PositionAt(AOffset + AField.Start + AField.Length));
 end;
 
-class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
-  AKind: TOverloadKind; const ADefault: TOverloadDefaultFunc; out AResult: TOverloadResult;
-  out AReason: string): Boolean;
-var
-  Tokens: TArray<TPascalToken>;
-  Lines: TArray<string>;
-  OldLines, NewLines: TLineTable;
-  LineBreak, DeclIndent, BodyIndent, Parameters, Dropped, Value, Call, Arguments: string;
-  Inserts: TArray<TInsert>;
-  Decl, Body: TInsertBuilder;
-  Kept: TArray<TSignatureParameter>;
-  Parameter: TSignatureParameter;
-  Index, Shift, Inner, InnerEnd: Integer;
-  Field: TInsertField;
-  Placeholder: TOverloadPlaceholder;
-  Doc: TArray<string>;
-  Insert: TInsert;
-begin
-  AResult := Default(TOverloadResult);
-  AReason := ATarget.Reason(AKind);
-  if AReason <> '' then
-  begin
-    Exit(False);
+type
+  /// <summary>Baut die Einfügungen für TOverloads.Build.</summary>
+  TOverloadWriter = record
+    Text: string;
+    Tokens: TArray<TPascalToken>;
+    Target: TOverloadTarget;
+    Request: TOverloadRequest;
+    LineBreak: string;
+    DeclIndent: string;
+    BodyIndent: string;
+    /// <summary>Parameterliste der neuen Überladung ohne Klammern.</summary>
+    Parameters: string;
+    /// <summary>Weiterleitung: die Parameter ohne den letzten.</summary>
+    Kept: TArray<TSignatureParameter>;
+    Doc: TArray<string>;
+    Inserts: TArray<TInsert>;
+    procedure Prepare;
+    /// <summary>Deklaration: Kopie hinter dem Original, das selbst overload bekommt.</summary>
+    procedure AddDeclaration;
+    /// <summary>Implementierung hinter der des Originals.</summary>
+    procedure AddBody;
+    procedure AddCopyBody(var ABody: TInsertBuilder);
+    procedure AddForwardBody(var ABody: TInsertBuilder);
+    function ForwardValue: string;
+    /// <summary>Text danach, Platzhalter darin und die Änderungen.</summary>
+    function Outcome: TOverloadResult;
   end;
-  Result := True;
-  Tokens := ATree.Tokens;
-  Lines := TTextLines.SplitLines(AText);
-  LineBreak := TTextLines.LineBreakOf(AText);
-  OldLines := TLineTable.Build(AText);
-  DeclIndent := TTextLines.IndentOf(Lines[Tokens[ATarget.Decl.StartToken].StartPos.Line]);
-  BodyIndent := TTextLines.IndentOf(Lines[Tokens[ATarget.Body.StartToken].StartPos.Line]);
-  Inserts := nil;
 
-  Dropped := '';
-  if AKind = TOverloadKind.Forward then
+procedure TOverloadWriter.Prepare;
+var
+  mLines: TArray<string>;
+  mDropped: string;
+begin
+  mLines := TTextLines.SplitLines(Text);
+  LineBreak := TTextLines.LineBreakOf(Text);
+  DeclIndent := TTextLines.IndentOf(mLines[Tokens[Target.Decl.StartToken].StartPos.Line]);
+  BodyIndent := TTextLines.IndentOf(mLines[Tokens[Target.Body.StartToken].StartPos.Line]);
+  Inserts := nil;
+  mDropped := '';
+  if Request.Kind = TOverloadKind.Forward then
   begin
-    Kept := Copy(ATarget.Decl.Parameters, 0, Length(ATarget.Decl.Parameters) - 1);
-    Dropped := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)].Name;
+    Kept := Copy(Target.Decl.Parameters, 0, Length(Target.Decl.Parameters) - 1);
+    mDropped := Target.Decl.Parameters[High(Target.Decl.Parameters)].Name;
     Parameters := TChangeSignature.ParameterList(Kept, False);
     if Parameters <> '' then
     begin
@@ -928,126 +1044,201 @@ begin
   end
   else
   begin
-    Parameters := ParameterText(AText, Tokens, ATarget.Decl);
+    Parameters := ParameterText(Text, Tokens, Target.Decl);
   end;
-  Doc := DocLines(Lines, Tokens[ATarget.Decl.StartToken].StartPos.Line, Dropped);
+  Doc := DocLines(mLines, Tokens[Target.Decl.StartToken].StartPos.Line, mDropped);
+end;
 
-  // Deklaration: Kopie hinter dem Original, das selbst overload bekommt.
-  if ATarget.HasDecl then
+procedure TOverloadWriter.AddDeclaration;
+var
+  mDecl: TInsertBuilder;
+begin
+  if not Target.HasDecl then
   begin
-    Decl := Default(TInsertBuilder);
-    if NeedsOverload(ATarget.Decl) then
+    if NeedsOverload(Target.Body) then
     begin
-      if ATarget.Decl.LastToken = ATarget.Decl.EndToken then
-      begin
-        Decl.Add(' overload;');
-      end
-      else
-      begin
-        Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, ATarget.Decl.EndToken), ' overload;')];
-      end;
+      Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, Target.Body.EndToken), ' overload;')];
     end;
-    Decl.Add(LineBreak + DocBlock(Doc, DeclIndent, LineBreak) + DeclIndent);
-    AddHead(Decl, AText, Tokens, ATarget.Decl, Parameters, True);
-    Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, ATarget.Decl.LastToken), Decl)];
+    Exit;
+  end;
+  mDecl := Default(TInsertBuilder);
+  if NeedsOverload(Target.Decl) and (Target.Decl.LastToken = Target.Decl.EndToken) then
+  begin
+    mDecl.Add(' overload;');
   end
-  else if NeedsOverload(ATarget.Body) then
+  else if NeedsOverload(Target.Decl) then
   begin
-    Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, ATarget.Body.EndToken), ' overload;')];
+    Inserts := Inserts + [PlainInsert(TokenEnd(Tokens, Target.Decl.EndToken), ' overload;')];
   end;
+  mDecl.Add(LineBreak + DocBlock(Doc, DeclIndent, LineBreak) + DeclIndent);
+  AddHead(mDecl, Text, Tokens, Target.Decl, Parameters, True);
+  Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, Target.Decl.LastToken), mDecl)];
+end;
 
-  // Implementierung hinter der des Originals.
-  Body := Default(TInsertBuilder);
-  Body.Add(LineBreak + LineBreak);
-  if not ATarget.HasDecl then
+procedure TOverloadWriter.AddCopyBody(var ABody: TInsertBuilder);
+var
+  mHead, mBegin, mInner, mInnerEnd: Integer;
+begin
+  // Rest wie im Original: lokale Deklarationen, Rumpf als Platzhalter 2.
+  mHead := TokenEnd(Tokens, Target.Body.LastToken);
+  mBegin := TokenEnd(Tokens, Target.BlockBegin);
+  ABody.Add(Copy(Text, mHead + 1, mBegin - mHead));
+  if Target.BlockEnd > Target.BlockBegin + 1 then
   begin
-    Body.Add(DocBlock(Doc, BodyIndent, LineBreak));
-  end;
-  AddHead(Body, AText, Tokens, ATarget.Body, Parameters, not ATarget.HasDecl);
-  if AKind = TOverloadKind.Copy then
-  begin
-    // Rest wie im Original: lokale Deklarationen, Rumpf als Platzhalter 2.
-    Body.Add(Copy(AText, TokenEnd(Tokens, ATarget.Body.LastToken) + 1,
-      TokenEnd(Tokens, ATarget.BlockBegin) - TokenEnd(Tokens, ATarget.Body.LastToken)));
-    if ATarget.BlockEnd > ATarget.BlockBegin + 1 then
-    begin
-      Inner := Tokens[ATarget.BlockBegin + 1].Offset;
-      InnerEnd := TokenEnd(Tokens, ATarget.BlockEnd - 1);
-      Body.Add(Copy(AText, TokenEnd(Tokens, ATarget.BlockBegin) + 1, Inner - TokenEnd(Tokens, ATarget.BlockBegin)));
-      Body.Add(Copy(AText, Inner + 1, InnerEnd - Inner), 2);
-      Body.Add(Copy(AText, InnerEnd + 1, TokenEnd(Tokens, ATarget.BodyLast) - InnerEnd));
-    end
-    else
-    begin
-      // Leerer Rumpf: eine eingerückte Zeile für den Platzhalter.
-      Body.Add(LineBreak + BodyIndent + '  ');
-      Body.Add('', 2);
-      Body.Add(LineBreak + BodyIndent + Copy(AText, Tokens[ATarget.BlockEnd].Offset + 1,
-        TokenEnd(Tokens, ATarget.BodyLast) - Tokens[ATarget.BlockEnd].Offset));
-    end;
+    mInner := Tokens[Target.BlockBegin + 1].Offset;
+    mInnerEnd := TokenEnd(Tokens, Target.BlockEnd - 1);
+    ABody.Add(Copy(Text, mBegin + 1, mInner - mBegin));
+    ABody.Add(Copy(Text, mInner + 1, mInnerEnd - mInner), 2);
+    ABody.Add(Copy(Text, mInnerEnd + 1, TokenEnd(Tokens, Target.BodyLast) - mInnerEnd));
   end
   else
   begin
-    Body.Add(LineBreak + BodyIndent + 'begin' + LineBreak + BodyIndent + '  ');
-    Call := '';
-    if ATarget.Decl.IsFunction then
-    begin
-      Call := 'Result := ';
-    end;
-    Body.Add(Call + ATarget.Name + '(');
-    Arguments := '';
-    for Parameter in Kept do
-    begin
-      Arguments := Arguments + Parameter.Name + ', ';
-    end;
-    Body.Add(Arguments);
-    Parameter := ATarget.Decl.Parameters[High(ATarget.Decl.Parameters)];
-    Value := '';
-    if Assigned(ADefault) then
-    begin
-      Value := ADefault(Parameter.TypeName, ATarget.LastTypeOffset);
-    end;
-    if Value = '' then
-    begin
-      Value := DefaultValue(Parameter.TypeName);
-    end;
-    if Value = '' then
-    begin
-      Value := 'Default(' + Parameter.TypeName + ')';
-    end;
-    Body.Add(Value, 2);
-    Body.Add(');' + LineBreak + BodyIndent + 'end;');
+    // Leerer Rumpf: eine eingerückte Zeile für den Platzhalter.
+    ABody.Add(LineBreak + BodyIndent + '  ');
+    ABody.Add('', 2);
+    ABody.Add(LineBreak + BodyIndent + Copy(Text, Tokens[Target.BlockEnd].Offset + 1,
+      TokenEnd(Tokens, Target.BodyLast) - Tokens[Target.BlockEnd].Offset));
   end;
-  Body.Add('', 0);
-  Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, ATarget.BodyLast), Body)];
+end;
 
-  // Text danach und Platzhalter darin.
-  Inserts := MergeInserts(Inserts);
-  AResult.NewText := AText;
-  for Index := High(Inserts) downto 0 do
+function TOverloadWriter.ForwardValue: string;
+var
+  mParameter: TSignatureParameter;
+begin
+  mParameter := Target.Decl.Parameters[High(Target.Decl.Parameters)];
+  Result := '';
+  if Assigned(Request.DefaultOf) then
   begin
-    AResult.NewText := Copy(AResult.NewText, 1, Inserts[Index].Offset) + Inserts[Index].Text +
-      Copy(AResult.NewText, Inserts[Index].Offset + 1, MaxInt);
+    Result := Request.DefaultOf(mParameter.TypeName, Target.LastTypeOffset);
   end;
-  NewLines := TLineTable.Build(AResult.NewText);
-  Shift := 0;
-  for Insert in Inserts do
+  if Result = '' then
   begin
-    for Field in Insert.Fields do
+    Result := TOverloads.DefaultValue(mParameter.TypeName);
+  end;
+  if Result = '' then
+  begin
+    Result := 'Default(' + mParameter.TypeName + ')';
+  end;
+end;
+
+procedure TOverloadWriter.AddForwardBody(var ABody: TInsertBuilder);
+var
+  mCall, mArguments: string;
+  mParameter: TSignatureParameter;
+begin
+  ABody.Add(LineBreak + BodyIndent + 'begin' + LineBreak + BodyIndent + '  ');
+  mCall := '';
+  if Target.Decl.IsFunction then
+  begin
+    mCall := 'Result := ';
+  end;
+  ABody.Add(mCall + Target.Name + '(');
+  mArguments := '';
+  for mParameter in Kept do
+  begin
+    mArguments := mArguments + mParameter.Name + ', ';
+  end;
+  ABody.Add(mArguments);
+  ABody.Add(ForwardValue, 2);
+  ABody.Add(');' + LineBreak + BodyIndent + 'end;');
+end;
+
+procedure TOverloadWriter.AddBody;
+var
+  mBody: TInsertBuilder;
+begin
+  mBody := Default(TInsertBuilder);
+  mBody.Add(LineBreak + LineBreak);
+  if not Target.HasDecl then
+  begin
+    mBody.Add(DocBlock(Doc, BodyIndent, LineBreak));
+  end;
+  AddHead(mBody, Text, Tokens, Target.Body, Parameters, not Target.HasDecl);
+  if Request.Kind = TOverloadKind.Copy then
+  begin
+    AddCopyBody(mBody);
+  end
+  else
+  begin
+    AddForwardBody(mBody);
+  end;
+  mBody.Add('', 0);
+  Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, Target.BodyLast), mBody)];
+end;
+
+function TOverloadWriter.Outcome: TOverloadResult;
+var
+  mInserts: TArray<TInsert>;
+  mInsert: TInsert;
+  mField: TInsertField;
+  mOldLines, mNewLines: TLineTable;
+  mIndex, mShift: Integer;
+begin
+  Result := Default(TOverloadResult);
+  mInserts := MergeInserts(Inserts);
+  Result.NewText := Text;
+  for mIndex := High(mInserts) downto 0 do
+  begin
+    Result.NewText := Copy(Result.NewText, 1, mInserts[mIndex].Offset) + mInserts[mIndex].Text +
+      Copy(Result.NewText, mInserts[mIndex].Offset + 1, MaxInt);
+  end;
+  mOldLines := TLineTable.Build(Text);
+  mNewLines := TLineTable.Build(Result.NewText);
+  mShift := 0;
+  for mInsert in mInserts do
+  begin
+    for mField in mInsert.Fields do
     begin
-      Placeholder.Number := Field.Number;
-      Placeholder.Range := TTextRange.Create(NewLines.PositionAt(Insert.Offset + Shift + Field.Start),
-        NewLines.PositionAt(Insert.Offset + Shift + Field.Start + Field.Length));
-      AResult.Placeholders := AResult.Placeholders + [Placeholder];
+      Result.Placeholders := Result.Placeholders + [PlaceholderOf(mNewLines, mInsert.Offset + mShift, mField)];
     end;
-    AResult.Edits := AResult.Edits + [TTextEdit.Create(TTextRange.Create(OldLines.PositionAt(Insert.Offset),
-      OldLines.PositionAt(Insert.Offset)), Insert.Text)];
-    Shift := Shift + Length(Insert.Text);
+    Result.Edits := Result.Edits + [TTextEdit.Create(TTextRange.Create(mOldLines.PositionAt(mInsert.Offset),
+      mOldLines.PositionAt(mInsert.Offset)), mInsert.Text)];
+    mShift := mShift + Length(mInsert.Text);
   end;
-  if ATarget.Note <> '' then
+  if Target.Note <> '' then
   begin
-    AResult.Warnings := [ATarget.Note];
+    Result.Warnings := [Target.Note];
   end;
+end;
+
+{ TOverloadRequest }
+
+class function TOverloadRequest.Create(AKind: TOverloadKind; const ADefaultOf: TOverloadDefaultFunc):
+  TOverloadRequest;
+begin
+  Result.Kind := AKind;
+  Result.DefaultOf := ADefaultOf;
+end;
+
+{ TOverloads: Build }
+
+class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
+  AKind: TOverloadKind; out AResult: TOverloadResult; out AReason: string): Boolean;
+begin
+  Result := Build(AText, ATree, ATarget, TOverloadRequest.Create(AKind, nil), AResult, AReason);
+end;
+
+class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
+  const ARequest: TOverloadRequest; out AResult: TOverloadResult; out AReason: string): Boolean;
+var
+  mWriter: TOverloadWriter;
+begin
+  AResult := Default(TOverloadResult);
+  AReason := ATarget.Reason(ARequest.Kind);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  mWriter := Default(TOverloadWriter);
+  mWriter.Text := AText;
+  mWriter.Tokens := ATree.Tokens;
+  mWriter.Target := ATarget;
+  mWriter.Request := ARequest;
+  mWriter.Prepare;
+  mWriter.AddDeclaration;
+  mWriter.AddBody;
+  AResult := mWriter.Outcome;
+  Result := True;
 end;
 
 end.
