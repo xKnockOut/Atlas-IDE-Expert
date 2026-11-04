@@ -127,9 +127,9 @@ type
     /// <summary>Ist ANode ein Ausdruck vom Typ Variant bzw. OleVariant (auch über eine Kette von Aufrufen
     /// darauf)?</summary>
     function VariantReceiver(ANode: TSyntaxNode; out AOle: Boolean): Boolean;
-    /// <summary>Typ des Arguments AArgument, wenn er sicher nicht über Variant aufgerufen werden kann.</summary>
     /// <summary>Typ des Arguments, wenn es eine Variable mit sicher bekanntem Typ ist.</summary>
     function ArgumentType(AArgument: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Typ des Arguments AArgument, wenn er sicher nicht über Variant aufgerufen werden kann.</summary>
     function IllegalDispatchArgument(AArgument: TSyntaxNode; out AName: string): Boolean;
     function NamedArgument(AArgument: TSyntaxNode): Boolean;
     procedure CheckDispatchCall(ACall: TSyntaxNode);
