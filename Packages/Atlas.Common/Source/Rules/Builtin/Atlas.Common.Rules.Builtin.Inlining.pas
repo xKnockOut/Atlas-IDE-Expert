@@ -504,7 +504,7 @@ begin
     Result := UnitOfResolved(mResolved);
   end
   // Eingebaute Typen (Integer(...)) und Intrinsics (SizeOf, Length) löst der Index nicht auf.
-  else if not TNameResolver.IsBuiltinTypeName(ARef) and not TUnresolvedNames.IsIntrinsic(ARef) then
+  else if not TResolverText.IsBuiltinTypeName(ARef) and not TUnresolvedNames.IsIntrinsic(ARef) then
   begin
     AExternal := True;
   end;

@@ -592,7 +592,7 @@ var
     Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
       Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and Symbol.IsType;
     // Eingebaute Typen wie Integer stehen ohne System nicht im Index (#1369, Fall Cm.E2307).
-    if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TNameResolver.IsBuiltinTypeName(ANode.Name) and
+    if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TResolverText.IsBuiltinTypeName(ANode.Name) and
       (Length(Resolver.CallCandidates(AContext.Tree, FileName, ANode)) = 0) then
     begin
       AOther := not MatchText(ANode.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);
@@ -1102,7 +1102,7 @@ var
     Result := LowerCase(AName) + '(';
     for ParamType in AParamTypes do
     begin
-      Result := Result + LowerCase(Resolver.UnqualifyType(NormalizedType(ParamType), Local.UnitName)) + ';';
+      Result := Result + LowerCase(Resolver.Queries.UnqualifyType(NormalizedType(ParamType), Local.UnitName)) + ';';
     end;
     Result := Result + ')';
   end;
@@ -1578,7 +1578,7 @@ var
     end;
     Routine := TRoutineBody.RoutineAt(AContext.Tree, Host.StartOffset);
     if (Routine = nil) or (AParamType = '') or StartsText('array of', AParamType) or
-      not (TNameResolver.IsBuiltinTypeName(AParamType) or Resolver.ResolveTypeFrom(Local, AParamType, TypeSymbol)) then
+      not (TResolverText.IsBuiltinTypeName(AParamType) or Resolver.ResolveTypeFrom(Local, AParamType, TypeSymbol)) then
     begin
       Exit;
     end;
