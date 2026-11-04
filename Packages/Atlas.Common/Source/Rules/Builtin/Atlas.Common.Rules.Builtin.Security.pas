@@ -71,7 +71,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Text.Chars;
 
 const
   CommandCalls: array[0..7] of string = ('ShellExecute', 'ShellExecuteA', 'ShellExecuteW', 'ShellExecuteEx',
@@ -827,11 +828,6 @@ begin
   end;
 end;
 
-function IsWordChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['a'..'z', '0'..'9', '_']);
-end;
-
 /// <summary>Enthält AText (klein) das Wort AWord als ganzes Wort?</summary>
 function ContainsWord(const AText, AWord: string): Boolean;
 var
@@ -841,8 +837,8 @@ begin
   while mStart > 0 do
   begin
     mAfter := mStart + Length(AWord);
-    if ((mStart = 1) or not IsWordChar(AText[mStart - 1])) and ((mAfter > Length(AText)) or
-      not IsWordChar(AText[mAfter])) then
+    if ((mStart = 1) or not TTextChars.IsAsciiIdentChar(AText[mStart - 1])) and ((mAfter > Length(AText)) or
+      not TTextChars.IsAsciiIdentChar(AText[mAfter])) then
     begin
       Exit(True);
     end;
