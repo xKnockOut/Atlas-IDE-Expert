@@ -791,8 +791,6 @@ begin
   end;
 end;
 
-/// <summary>Abschnitt "trends"; leer ohne Abschnitt. Punkte ohne gültige Nummer bekommen eine nach der letzten.
-/// </summary>
 /// <summary>Messpunkt aus AItem; Werte in Zehnteln, fehlende bleiben Lücken.</summary>
 function TrendPointOf(AItem: TJSONObject): TAtlasTrendPoint;
 var
@@ -812,6 +810,8 @@ begin
   end;
 end;
 
+/// <summary>Abschnitt "trends"; leer ohne Abschnitt. Punkte ohne gültige Nummer bekommen eine nach der letzten.
+/// </summary>
 function TrendsOf(ASection: TJSONObject): TAtlasProjectTrends;
 var
   Points: TJSONValue;
