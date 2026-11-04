@@ -65,16 +65,6 @@ begin
   Result := TAtlasTrackerIssueCache.TrackerId(ATarget) + '|' + UpperCase(Trim(AKey));
 end;
 
-/// <summary>Ergebnis eines Abrufs fürs Log: "geladen" oder "nicht geladen (Fehlerkennung)".</summary>
-function LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
-begin
-  Result := 'geladen';
-  if not ASucceeded then
-  begin
-    Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
-  end;
-end;
-
 procedure Deliver(const ADone: TAtlasIssueLookupDone; ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
   AError: TAtlasCiFetchError);
 begin
@@ -269,7 +259,7 @@ begin
     FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
   end;
   // Anonym: nie Kennung oder Titel.
-  TAtlasGuard.Log('Issue-Kennung: ' + LoadState(ASucceeded, AError));
+  TAtlasGuard.Log('Issue-Kennung: ' + TAtlasIdeIssueContext.LoadState(ASucceeded, AError));
   for mDone in mWaiting do
   begin
     Deliver(mDone, ASucceeded, mDetails, AError);
