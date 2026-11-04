@@ -31,6 +31,8 @@ type
     Path: string;
     Page: string;
     Description: string;
+    /// <summary>x-description-en (#1458): englische Beschreibung; leer, wenn das Schema keine hat.</summary>
+    DescriptionEn: string;
     Kind: TAtlasSettingKind;
     /// <summary>Bei Choice: erlaubte Werte als JSON-Text ("\"de\"", "true").</summary>
     Choices: TArray<string>;
@@ -50,6 +52,8 @@ type
     Experimental: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
+    /// <summary>Beschreibung in der Sprache der IDE (#1458); ohne englischen Text die deutsche.</summary>
+    function DescriptionFor(AEnglish: Boolean): string;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
     function Accepts(const AJson: string): Boolean;
   end;
@@ -103,6 +107,11 @@ begin
   begin
     Result := ASchema.GetValue<string>('markdownDescription', '');
   end;
+end;
+
+function DescriptionEnOf(ASchema: TJSONObject): string;
+begin
+  Result := ASchema.GetValue<string>('x-description-en', '');
 end;
 
 function EnumChoices(AEnum: TJSONArray): TArray<string>;
@@ -227,7 +236,7 @@ begin
   Result := (AValue is TJSONBool) and TJSONBool(AValue).AsBoolean;
 end;
 
-function MakeField(const APath, APage: string; ASchema: TJSONObject; const AFallback,
+function MakeField(const APath, APage: string; ASchema: TJSONObject; const AFallback, AFallbackEn,
   AScope: string): TAtlasSettingField;
 var
   mDefault: TJSONValue;
@@ -239,6 +248,11 @@ begin
   if Result.Description = '' then
   begin
     Result.Description := AFallback;
+  end;
+  Result.DescriptionEn := DescriptionEnOf(ASchema);
+  if Result.DescriptionEn = '' then
+  begin
+    Result.DescriptionEn := AFallbackEn;
   end;
   Result.Kind := KindOf(ASchema, Result.Choices);
   mDefault := ASchema.GetValue('default');
@@ -292,7 +306,8 @@ begin
   for mSub in TJSONObject(mChildren) do
   begin
     AFields := AFields + [MakeField(AName + '.' + mSub.JsonString.Value, AChild.GetValue<string>('x-page', ''),
-      TJSONObject(mSub.JsonValue), DescriptionOf(AChild), AChild.GetValue<string>('x-scope', ''))];
+      TJSONObject(mSub.JsonValue), DescriptionOf(AChild), DescriptionEnOf(AChild),
+      AChild.GetValue<string>('x-scope', ''))];
   end;
 end;
 
@@ -331,6 +346,19 @@ begin
   end;
 end;
 
+function TAtlasSettingField.DescriptionFor(AEnglish: Boolean): string;
+begin
+  Result := '';
+  if AEnglish then
+  begin
+    Result := DescriptionEn;
+  end;
+  if Result = '' then
+  begin
+    Result := Description;
+  end;
+end;
+
 function TAtlasSettingField.PicksFile: Boolean;
 begin
   Result := Pos('Datei wählen', Control) > 0;
@@ -365,7 +393,8 @@ begin
       mChild := TJSONObject(mPair.JsonValue);
       if not AddChildFields(mPair.JsonString.Value, mChild, Result) then
       begin
-        Result := Result + [MakeField(mPair.JsonString.Value, mChild.GetValue<string>('x-page', ''), mChild, '', '')];
+        Result := Result + [MakeField(mPair.JsonString.Value, mChild.GetValue<string>('x-page', ''), mChild, '', '',
+          '')];
       end;
     end;
   finally

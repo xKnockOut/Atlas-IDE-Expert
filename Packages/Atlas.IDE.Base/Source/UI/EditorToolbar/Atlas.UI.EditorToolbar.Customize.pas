@@ -55,21 +55,16 @@ type
     FDownButton: TButton;
     FLabelsCheck: TCheckBox;
     FPositionCombo: TComboBox;
-    FDefaultButton: TButton;
     FOk: TButton;
     FCancel: TButton;
     FFilled: Boolean;
-    function NewButton(AParent: TWinControl; const ACaption, AHint: string; AClick: TNotifyEvent): TButton;
-    function NewList(AParent: TWinControl): TListBox;
     procedure BuildAvailable;
     procedure Fill(ACurrentIndex, AAvailableIndex: Integer);
     procedure UpdateButtons;
-    procedure AddClick(Sender: TObject);
-    procedure RemoveClick(Sender: TObject);
-    procedure UpClick(Sender: TObject);
-    procedure DownClick(Sender: TObject);
-    procedure DefaultClick(Sender: TObject);
-    procedure OkClick(Sender: TObject);
+    /// <summary>Knopf mit Aktion im Tag (TAtlasToolbarCustomizeAction).</summary>
+    procedure ActionClick(Sender: TObject);
+    /// <summary>Doppelklick: links hinzufügen, rechts entfernen.</summary>
+    procedure ListDblClick(Sender: TObject);
     procedure ListClick(Sender: TObject);
     procedure LabelsClick(Sender: TObject);
     procedure PositionChange(Sender: TObject);
@@ -117,6 +112,166 @@ uses
 const
   Gap = 8;
 
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Aktion eines Knopfs (im Tag).</summary>
+  TAtlasToolbarCustomizeAction = (None, Add, Remove, Up, Down, Default, Ok);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Baut die Steuerelemente des Dialogs: untere Knopfleiste, Optionen und die Listen.</summary>
+  TAtlasToolbarCustomizeBuilder = record
+    Dialog: TAtlasToolbarCustomizeDialog;
+    function NewPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
+    function NewButton(AParent: TWinControl; const ACaption, AHint: string;
+      AAction: TAtlasToolbarCustomizeAction): TButton;
+    function NewList(AParent: TWinControl): TListBox;
+    procedure BuildBottom;
+    procedure BuildOptions;
+    procedure BuildLists;
+    procedure BuildHeading;
+  end;
+
+function TAtlasToolbarCustomizeBuilder.NewPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
+begin
+  Result := TPanel.Create(Dialog);
+  Result.Parent := AParent;
+  Result.Align := AAlign;
+  Result.BevelOuter := bvNone;
+  if AAlign in [alLeft, alRight] then
+  begin
+    Result.Width := ASize;
+  end
+  else if AAlign in [alTop, alBottom] then
+  begin
+    Result.Height := ASize;
+  end;
+end;
+
+function TAtlasToolbarCustomizeBuilder.NewButton(AParent: TWinControl; const ACaption, AHint: string;
+  AAction: TAtlasToolbarCustomizeAction): TButton;
+begin
+  Result := TButton.Create(Dialog);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Hint := AHint;
+  Result.Tag := Ord(AAction);
+  if AAction <> TAtlasToolbarCustomizeAction.None then
+  begin
+    Result.OnClick := Dialog.ActionClick;
+  end;
+  Dialog.Canvas.Font := Dialog.Font;
+  Result.Width := Max(Dialog.ScaleValue(90), Dialog.Canvas.TextWidth(ACaption) + Dialog.ScaleValue(32));
+  Result.Top := Dialog.ScaleValue(Gap);
+  Result.Height := Dialog.ScaleValue(28);
+end;
+
+function TAtlasToolbarCustomizeBuilder.NewList(AParent: TWinControl): TListBox;
+begin
+  Result := TListBox.Create(Dialog);
+  Result.Parent := AParent;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(Dialog.ScaleValue(Gap), Dialog.ScaleValue(4), 0, Dialog.ScaleValue(Gap));
+  Result.OnClick := Dialog.ListClick;
+  Result.OnDblClick := Dialog.ListDblClick;
+end;
+
+procedure TAtlasToolbarCustomizeBuilder.BuildBottom;
+var
+  mBottom: TPanel;
+  mDefault: TButton;
+begin
+  mBottom := NewPanel(Dialog, alBottom, Dialog.ScaleValue(44));
+  Dialog.FCancel := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarCancel), '',
+    TAtlasToolbarCustomizeAction.None);
+  Dialog.FCancel.Cancel := True;
+  Dialog.FCancel.ModalResult := mrCancel;
+  Dialog.FCancel.Left := mBottom.ClientWidth - Dialog.FCancel.Width - Dialog.ScaleValue(Gap);
+  Dialog.FCancel.Anchors := [akTop, akRight];
+  Dialog.FOk := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarOk), '',
+    TAtlasToolbarCustomizeAction.Ok);
+  Dialog.FOk.Default := True;
+  Dialog.FOk.Left := Dialog.FCancel.Left - Dialog.FOk.Width - Dialog.ScaleValue(Gap);
+  Dialog.FOk.Anchors := [akTop, akRight];
+  mDefault := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarRestoreDefault), '',
+    TAtlasToolbarCustomizeAction.Default);
+  mDefault.Left := Dialog.ScaleValue(Gap);
+end;
+
+procedure TAtlasToolbarCustomizeBuilder.BuildOptions;
+var
+  mOptions: TPanel;
+  mCaption: TLabel;
+begin
+  mOptions := NewPanel(Dialog, alBottom, Dialog.ScaleValue(36));
+  Dialog.FLabelsCheck := TCheckBox.Create(Dialog);
+  Dialog.FLabelsCheck.Parent := mOptions;
+  Dialog.FLabelsCheck.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels);
+  Dialog.FLabelsCheck.SetBounds(Dialog.ScaleValue(Gap), Dialog.ScaleValue(Gap), Dialog.ScaleValue(220),
+    Dialog.ScaleValue(20));
+  Dialog.FLabelsCheck.Checked := Dialog.FConfig.Labels;
+  Dialog.FLabelsCheck.OnClick := Dialog.LabelsClick;
+  mCaption := TLabel.Create(Dialog);
+  mCaption.Parent := mOptions;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition);
+  mCaption.SetBounds(Dialog.ScaleValue(250), Dialog.ScaleValue(Gap + 2), Dialog.ScaleValue(70), Dialog.ScaleValue(20));
+  Dialog.FPositionCombo := TComboBox.Create(Dialog);
+  Dialog.FPositionCombo.Parent := mOptions;
+  Dialog.FPositionCombo.Style := csDropDownList;
+  Dialog.FPositionCombo.SetBounds(Dialog.ScaleValue(330), Dialog.ScaleValue(Gap - 2), Dialog.ScaleValue(240),
+    Dialog.ScaleValue(24));
+  Dialog.FPositionCombo.OnChange := Dialog.PositionChange;
+  mCaption.FocusControl := Dialog.FPositionCombo;
+end;
+
+procedure TAtlasToolbarCustomizeBuilder.BuildLists;
+var
+  mLists, mMiddle, mSide: TPanel;
+begin
+  mLists := NewPanel(Dialog, alClient, 0);
+  // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
+  mSide := NewPanel(mLists, alRight, Dialog.ScaleValue(48));
+  Dialog.FUpButton := NewButton(mSide, '↑', TAtlasStrings.Text(TAtlasTextId.EditorToolbarUpHint),
+    TAtlasToolbarCustomizeAction.Up);
+  Dialog.FUpButton.SetBounds(Dialog.ScaleValue(Gap), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
+    Dialog.ScaleValue(28));
+  Dialog.FDownButton := NewButton(mSide, '↓', TAtlasStrings.Text(TAtlasTextId.EditorToolbarDownHint),
+    TAtlasToolbarCustomizeAction.Down);
+  Dialog.FDownButton.SetBounds(Dialog.ScaleValue(Gap), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
+    Dialog.ScaleValue(28));
+  Dialog.FCurrentList := NewList(mLists);
+  Dialog.FCurrentList.Align := alRight;
+  Dialog.FCurrentList.Width := Dialog.ScaleValue(260);
+  Dialog.FCurrentList.Style := lbOwnerDrawFixed;
+  Dialog.FCurrentList.ItemHeight := Dialog.ScaleValue(24);
+  Dialog.FCurrentList.OnDrawItem := Dialog.CurrentDrawItem;
+  mMiddle := NewPanel(mLists, alRight, Dialog.ScaleValue(56));
+  Dialog.FAddButton := NewButton(mMiddle, '→', TAtlasStrings.Text(TAtlasTextId.EditorToolbarAddHint),
+    TAtlasToolbarCustomizeAction.Add);
+  Dialog.FAddButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(80), Dialog.ScaleValue(32),
+    Dialog.ScaleValue(28));
+  Dialog.FRemoveButton := NewButton(mMiddle, '←', TAtlasStrings.Text(TAtlasTextId.EditorToolbarRemoveHint),
+    TAtlasToolbarCustomizeAction.Remove);
+  Dialog.FRemoveButton.SetBounds(Dialog.ScaleValue(12), Dialog.ScaleValue(116), Dialog.ScaleValue(32),
+    Dialog.ScaleValue(28));
+  Dialog.FAvailableList := NewList(mLists);
+  Dialog.FAvailableList.Align := alClient;
+end;
+
+procedure TAtlasToolbarCustomizeBuilder.BuildHeading;
+var
+  mCaption: TLabel;
+begin
+  // Überschriften über den Listen.
+  mCaption := TLabel.Create(Dialog);
+  mCaption.Parent := Dialog;
+  mCaption.Align := alTop;
+  mCaption.AlignWithMargins := True;
+  mCaption.Margins.SetBounds(Dialog.ScaleValue(Gap), Dialog.ScaleValue(Gap), Dialog.ScaleValue(Gap), 0);
+  mCaption.ShowAccelChar := False;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarAvailable) + '  ›  ' +
+    TAtlasStrings.Text(TAtlasTextId.EditorToolbarCurrent);
+end;
+
 { TAtlasToolbarCommandInfo }
 
 class function TAtlasToolbarCommandInfo.Create(const AId, ACaption: string): TAtlasToolbarCommandInfo;
@@ -130,9 +285,8 @@ end;
 constructor TAtlasToolbarCustomizeDialog.CreateDialog(AOwner: TComponent;
   const ACommands: TArray<TAtlasToolbarCommandInfo>; const AConfig: TAtlasToolbarConfig);
 var
-  Lists, Middle, Side, Bottom, Options: TPanel;
-  Caption_: TLabel;
-  Index: Integer;
+  mBuilder: TAtlasToolbarCustomizeBuilder;
+  mPosition: string;
 begin
   inherited CreateNew(AOwner);
   FCommands := ACommands;
@@ -148,131 +302,24 @@ begin
   ClientHeight := ScaleValue(440);
   Constraints.MinWidth := ScaleValue(480);
   Constraints.MinHeight := ScaleValue(320);
-
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
-  FCancel := NewButton(Bottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarCancel), '', nil);
-  FCancel.Cancel := True;
-  FCancel.ModalResult := mrCancel;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FCancel.Anchors := [akTop, akRight];
-  FOk := NewButton(Bottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarOk), '', OkClick);
-  FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
-  FOk.Anchors := [akTop, akRight];
-  FDefaultButton := NewButton(Bottom, TAtlasStrings.Text(TAtlasTextId.EditorToolbarRestoreDefault), '',
-    DefaultClick);
-  FDefaultButton.Left := ScaleValue(Gap);
-
-  Options := TPanel.Create(Self);
-  Options.Parent := Self;
-  Options.Align := alBottom;
-  Options.Height := ScaleValue(36);
-  Options.BevelOuter := bvNone;
-  FLabelsCheck := TCheckBox.Create(Self);
-  FLabelsCheck.Parent := Options;
-  FLabelsCheck.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels);
-  FLabelsCheck.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(220), ScaleValue(20));
-  FLabelsCheck.Checked := FConfig.Labels;
-  FLabelsCheck.OnClick := LabelsClick;
-  Caption_ := TLabel.Create(Self);
-  Caption_.Parent := Options;
-  Caption_.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition);
-  Caption_.SetBounds(ScaleValue(250), ScaleValue(Gap + 2), ScaleValue(70), ScaleValue(20));
-  FPositionCombo := TComboBox.Create(Self);
-  FPositionCombo.Parent := Options;
-  FPositionCombo.Style := csDropDownList;
-  FPositionCombo.SetBounds(ScaleValue(330), ScaleValue(Gap - 2), ScaleValue(240), ScaleValue(24));
-  FPositionCombo.OnChange := PositionChange;
-  Caption_.FocusControl := FPositionCombo;
-
-  Lists := TPanel.Create(Self);
-  Lists.Parent := Self;
-  Lists.Align := alClient;
-  Lists.BevelOuter := bvNone;
-
-  // Links verfügbar, Mitte → ←, rechts die Leiste, ganz rechts ↑ ↓.
-  Side := TPanel.Create(Self);
-  Side.Parent := Lists;
-  Side.Align := alRight;
-  Side.Width := ScaleValue(48);
-  Side.BevelOuter := bvNone;
-  FUpButton := NewButton(Side, '↑', TAtlasStrings.Text(TAtlasTextId.EditorToolbarUpHint), UpClick);
-  FUpButton.SetBounds(ScaleValue(Gap), ScaleValue(80), ScaleValue(32), ScaleValue(28));
-  FDownButton := NewButton(Side, '↓', TAtlasStrings.Text(TAtlasTextId.EditorToolbarDownHint), DownClick);
-  FDownButton.SetBounds(ScaleValue(Gap), ScaleValue(116), ScaleValue(32), ScaleValue(28));
-
-  FCurrentList := NewList(Lists);
-  FCurrentList.Align := alRight;
-  FCurrentList.Width := ScaleValue(260);
-  FCurrentList.Style := lbOwnerDrawFixed;
-  FCurrentList.ItemHeight := ScaleValue(24);
-  FCurrentList.OnDrawItem := CurrentDrawItem;
-  FCurrentList.OnDblClick := RemoveClick;
-
-  Middle := TPanel.Create(Self);
-  Middle.Parent := Lists;
-  Middle.Align := alRight;
-  Middle.Width := ScaleValue(56);
-  Middle.BevelOuter := bvNone;
-  FAddButton := NewButton(Middle, '→', TAtlasStrings.Text(TAtlasTextId.EditorToolbarAddHint), AddClick);
-  FAddButton.SetBounds(ScaleValue(12), ScaleValue(80), ScaleValue(32), ScaleValue(28));
-  FRemoveButton := NewButton(Middle, '←', TAtlasStrings.Text(TAtlasTextId.EditorToolbarRemoveHint), RemoveClick);
-  FRemoveButton.SetBounds(ScaleValue(12), ScaleValue(116), ScaleValue(32), ScaleValue(28));
-
-  FAvailableList := NewList(Lists);
-  FAvailableList.Align := alClient;
-  FAvailableList.OnDblClick := AddClick;
-
-  // Überschriften über den Listen.
-  Caption_ := TLabel.Create(Self);
-  Caption_.Parent := Self;
-  Caption_.Align := alTop;
-  Caption_.AlignWithMargins := True;
-  Caption_.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), 0);
-  Caption_.ShowAccelChar := False;
-  Caption_.Caption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarAvailable) + '  ›  ' +
-    TAtlasStrings.Text(TAtlasTextId.EditorToolbarCurrent);
-
+  mBuilder.Dialog := Self;
+  mBuilder.BuildBottom;
+  mBuilder.BuildOptions;
+  mBuilder.BuildLists;
+  mBuilder.BuildHeading;
   ShowHint := True;
   BuildAvailable;
-  for Index := 0 to High(AtlasToolbarPositions) do
+  for mPosition in AtlasToolbarPositions do
   begin
-    if SameText(AtlasToolbarPositions[Index], FConfig.Position) then
+    if SameText(mPosition, FConfig.Position) then
     begin
-      FConfig.Position := AtlasToolbarPositions[Index];
+      FConfig.Position := mPosition;
     end;
   end;
   if FConfig.Position = '' then
   begin
     FConfig.Position := AtlasToolbarPositions[0];
   end;
-end;
-
-function TAtlasToolbarCustomizeDialog.NewButton(AParent: TWinControl; const ACaption, AHint: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Hint := AHint;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Max(ScaleValue(90), Canvas.TextWidth(ACaption) + ScaleValue(32));
-  Result.Top := ScaleValue(Gap);
-  Result.Height := ScaleValue(28);
-end;
-
-function TAtlasToolbarCustomizeDialog.NewList(AParent: TWinControl): TListBox;
-begin
-  Result := TListBox.Create(Self);
-  Result.Parent := AParent;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(ScaleValue(Gap), ScaleValue(4), 0, ScaleValue(Gap));
-  Result.OnClick := ListClick;
 end;
 
 function TAtlasToolbarCustomizeDialog.CaptionOf(const AId: string): string;
@@ -481,37 +528,50 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasToolbarCustomizeDialog.AddClick(Sender: TObject);
+procedure TAtlasToolbarCustomizeDialog.ActionClick(Sender: TObject);
 var
-  Target: Integer;
+  mTarget: Integer;
 begin
-  // Hinter dem ausgewählten Knopf der Leiste einfügen, sonst hinten.
-  Target := Length(FConfig.Items);
-  if FCurrentList.ItemIndex >= 0 then
-  begin
-    Target := FCurrentList.ItemIndex + 1;
+  case TAtlasToolbarCustomizeAction(TComponent(Sender).Tag) of
+    TAtlasToolbarCustomizeAction.Add:
+      begin
+        // Hinter dem ausgewählten Knopf der Leiste einfügen, sonst hinten.
+        mTarget := Length(FConfig.Items);
+        if FCurrentList.ItemIndex >= 0 then
+        begin
+          mTarget := FCurrentList.ItemIndex + 1;
+        end;
+        AddItem(FAvailableList.ItemIndex, mTarget);
+      end;
+    TAtlasToolbarCustomizeAction.Remove:
+      RemoveItem(FCurrentList.ItemIndex);
+    TAtlasToolbarCustomizeAction.Up:
+      MoveItem(FCurrentList.ItemIndex, -1);
+    TAtlasToolbarCustomizeAction.Down:
+      MoveItem(FCurrentList.ItemIndex, 1);
+    TAtlasToolbarCustomizeAction.Default:
+      RestoreDefault;
+    TAtlasToolbarCustomizeAction.Ok:
+      begin
+        // Trennstriche am Rand oder doppelt fallen beim Übernehmen weg.
+        FConfig.Items := TAtlasToolbarItems.Clean(FConfig.Items);
+        ModalResult := mrOk;
+      end;
+  else
+    // None: Abbrechen schließt über ModalResult.
   end;
-  AddItem(FAvailableList.ItemIndex, Target);
 end;
 
-procedure TAtlasToolbarCustomizeDialog.RemoveClick(Sender: TObject);
+procedure TAtlasToolbarCustomizeDialog.ListDblClick(Sender: TObject);
 begin
-  RemoveItem(FCurrentList.ItemIndex);
-end;
-
-procedure TAtlasToolbarCustomizeDialog.UpClick(Sender: TObject);
-begin
-  MoveItem(FCurrentList.ItemIndex, -1);
-end;
-
-procedure TAtlasToolbarCustomizeDialog.DownClick(Sender: TObject);
-begin
-  MoveItem(FCurrentList.ItemIndex, 1);
-end;
-
-procedure TAtlasToolbarCustomizeDialog.DefaultClick(Sender: TObject);
-begin
-  RestoreDefault;
+  if Sender = FAvailableList then
+  begin
+    ActionClick(FAddButton);
+  end
+  else
+  begin
+    ActionClick(FRemoveButton);
+  end;
 end;
 
 procedure TAtlasToolbarCustomizeDialog.LabelsClick(Sender: TObject);
@@ -525,13 +585,6 @@ begin
   begin
     FConfig.Position := AtlasToolbarPositions[FPositionCombo.ItemIndex];
   end;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.OkClick(Sender: TObject);
-begin
-  // Trennstriche am Rand oder doppelt fallen beim Übernehmen weg.
-  FConfig.Items := TAtlasToolbarItems.Clean(FConfig.Items);
-  ModalResult := mrOk;
 end;
 
 procedure TAtlasToolbarCustomizeDialog.CurrentDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;

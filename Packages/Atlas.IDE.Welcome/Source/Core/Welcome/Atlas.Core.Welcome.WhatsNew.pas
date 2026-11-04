@@ -12,7 +12,9 @@
 // der Zeile setzt; key: Einstellung mit dem Tastenkürzel (TShortCut), damit
 // die Karte die tatsächliche Belegung zeigt; command: Atlas-Befehl der
 // Palette für „Ausprobieren“, sonst sample (relativ zum Installationsordner)
-// mit Zeile ab 1. Alles außer title ist freiwillig.
+// mit Zeile ab 1. Alles außer title ist freiwillig. titleEn und textEn
+// (#1458) sind Titel und Text auf Englisch; mit englischer IDE zeigt die Karte
+// sie, ohne sie den deutschen Text.
 // Welche Versionen die Karte zeigt, regelt welcomePage.whatsNew: off nie,
 // afterUpdate einmalig nach einem Versionswechsel (alle übersprungenen
 // Versionen, nach Version gruppiert), always immer (dann ohne Ungelesenes die
@@ -32,6 +34,9 @@ type
   TAtlasWhatsNewItem = record
     Title: string;
     Text: string;
+    /// <summary>Titel und Text auf Englisch (#1458); '' = wie Title bzw. Text.</summary>
+    TitleEn: string;
+    TextEn: string;
     Setting: string;
     Key: string;
     Command: string;
@@ -40,6 +45,10 @@ type
     Line: Integer;
     /// <summary>Experimentelle Funktion (#834): eigener Abschnitt auf der Karte.</summary>
     Experimental: Boolean;
+    /// <summary>Titel in der Sprache der Oberfläche (#1458): mit AEnglish TitleEn, falls vorhanden.</summary>
+    function TitleFor(AEnglish: Boolean): string;
+    /// <summary>Text in der Sprache der Oberfläche (#1458): mit AEnglish TextEn, falls vorhanden.</summary>
+    function TextFor(AEnglish: Boolean): string;
   end;
 
   TAtlasWhatsNewVersion = record
@@ -111,6 +120,26 @@ begin
   if Value is TJSONString then
   begin
     Result := Trim(TJSONString(Value).Value);
+  end;
+end;
+
+{ TAtlasWhatsNewItem }
+
+function TAtlasWhatsNewItem.TitleFor(AEnglish: Boolean): string;
+begin
+  Result := Title;
+  if AEnglish and (TitleEn <> '') then
+  begin
+    Result := TitleEn;
+  end;
+end;
+
+function TAtlasWhatsNewItem.TextFor(AEnglish: Boolean): string;
+begin
+  Result := Text;
+  if AEnglish and (TextEn <> '') then
+  begin
+    Result := TextEn;
   end;
 end;
 
@@ -191,6 +220,8 @@ begin
         Item := Default(TAtlasWhatsNewItem);
         Item.Title := Text(TJSONObject(ItemValue), 'title');
         Item.Text := Text(TJSONObject(ItemValue), 'text');
+        Item.TitleEn := Text(TJSONObject(ItemValue), 'titleEn');
+        Item.TextEn := Text(TJSONObject(ItemValue), 'textEn');
         Item.Setting := Text(TJSONObject(ItemValue), 'setting');
         Item.Key := Text(TJSONObject(ItemValue), 'key');
         Item.Command := Text(TJSONObject(ItemValue), 'command');
