@@ -215,7 +215,8 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.QueryMigration,
+  Atlas.Core.Problems.Refresh;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -1175,6 +1176,13 @@ begin
   end;
 end;
 
+/// <summary>Früherer Wahrheitswert (true/false oder 0/1) in AValue.</summary>
+function FormerFlag(AValue: TJSONValue): Boolean;
+begin
+  Result := ((AValue is TJSONBool) and TJSONBool(AValue).AsBoolean) or
+    ((AValue is TJSONNumber) and (TJSONNumber(AValue).AsInt <> 0));
+end;
+
 /// <summary>Wert für AEntry umrechnen: 0/1 für Wahrheitswerte, Pfadmakros ausschreiben.</summary>
 function Migrate(const AEntry: TAtlasCatalogEntry; const AJson: string; const AFolders: TUserFolders;
   var AMigrated: Boolean): string;
@@ -1199,12 +1207,17 @@ begin
     if (AEntry.Name = 'XmlDocExpand') and ((Value is TJSONBool) or (Value is TJSONNumber)) then
     begin
       AMigrated := True;
-      if ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or
-        ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt <> 0)) then
+      if FormerFlag(Value) then
       begin
         Exit('"expanded"');
       end;
       Exit('"collapsed"');
+    end;
+    // problems.live (#909) war ein Wahrheitswert; problems.update ist eine Auswahl (an = live, aus = save).
+    if (AEntry.Name = 'ProblemsUpdate') and ((Value is TJSONBool) or (Value is TJSONNumber)) then
+    begin
+      AMigrated := True;
+      Exit('"' + TAtlasProblemsRefresh.FromLive(FormerFlag(Value)) + '"');
     end;
     // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
     // „Standard“ kommt.

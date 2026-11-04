@@ -1288,6 +1288,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.InlineHints.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Refresh.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Refresh.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>

@@ -776,6 +776,12 @@ begin
   Result := TAtlasIdeProblems.Enabled;
 end;
 
+/// <summary>„Datei jetzt prüfen“ (problems.update): sichtbar, solange Atlas die offene Datei prüft.</summary>
+function CheckFileVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.Problems;
+end;
+
 function QuickOpenVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.QuickOpen;
@@ -1302,6 +1308,9 @@ begin
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
+  // Offene Datei jetzt prüfen, auch ungespeichert und ohne Live-Prüfung (problems.update).
+  Add('Atlas.CheckFile', TAtlasTextId.ProblemsCheckFileCommand,
+    Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.CheckFileNow), CheckFileVisible);
   // Erzeugen-Menü (#719); nur sichtbar, solange keys.generateMenu an ist.
   Add('Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand,
     procedure

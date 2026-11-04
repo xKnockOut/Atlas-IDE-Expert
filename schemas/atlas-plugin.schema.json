@@ -2653,15 +2653,39 @@
       "x-captionEn": "Rule checks",
       "x-issue": "#1454"
     },
-    "ProblemsLive": {
-      "type": "boolean",
-      "default": true,
-      "description": "Laufende Prüfung beim Tippen ohne Speichern; aus = die offene Datei wird nur beim Speichern geprüft (Fenster zeigt „Angehalten“).",
-      "x-key": "problems.live",
+    "ProblemsUpdate": {
+      "type": "string",
+      "enum": [
+        "live",
+        "save",
+        "manual"
+      ],
+      "default": "live",
+      "description": "Wann die offene Datei geprüft wird: live = beim Tippen, sobald seit der letzten Änderung problems.liveDelayMs vergangen ist (Fenster zeigt „Live“); save = erst beim Speichern (Fenster zeigt „Beim Speichern“); manual = nur auf Anforderung über „Datei jetzt prüfen“ (Befehlspalette, Knopf im Fenster „Atlas-Prüfung“, Klick auf die Live-Prüfung in der Statusleiste), eine ungeändert geöffnete Datei einmal (Fenster zeigt „Manuell“). Compilermeldungen nach einem Build kommen in jeder Art. Ersetzt problems.live (an = live, aus = save).",
+      "x-key": "problems.update",
       "x-area": "rules",
       "x-page": "Prüfregeln",
       "x-parent": "problems.enabled",
       "x-node": "rules.window",
+      "x-control": "Auswahl „Live beim Tippen / Beim Speichern / Nur auf Anforderung“",
+      "x-formerKeys": [
+        "problems.live",
+        "ProblemsLive"
+      ],
+      "x-issue": "#909"
+    },
+    "ProblemsLiveDelayMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 10000,
+      "default": 400,
+      "description": "Verzögerung der Live-Prüfung in Millisekunden (100 bis 10000): so lange nach der letzten Änderung, bevor Atlas die offene Datei prüft. Gilt mit problems.update live (und als Ruhezeit vor der Prüfung nach dem Speichern).",
+      "x-key": "problems.liveDelayMs",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-parent": "problems.enabled",
+      "x-node": "rules.window",
+      "x-control": "Zahl",
       "x-issue": "#909"
     },
     "FixBulk": {

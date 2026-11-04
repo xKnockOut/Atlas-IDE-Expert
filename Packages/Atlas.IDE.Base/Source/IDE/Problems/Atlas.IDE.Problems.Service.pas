@@ -11,7 +11,10 @@
 // und Änderungszeit im Speicher.
 // Statuszeile: Anzahl Befunde und Dateien, letzte Prüfung (Datei, Dauer,
 // Uhrzeit, TAtlasProblemsController.LastCheck) und „a von b Units geprüft“
-// für das Projekt. Rechts „Live“ bzw. „Angehalten“ nach problems.live.
+// für das Projekt. Rechts die Prüfart nach problems.update („Live“, „Beim
+// Speichern“, „Manuell“), ohne Live-Prüfung mit „Datei jetzt prüfen“
+// (CheckFileNow, auch Befehlspalette und Klick auf die Live-Prüfung der
+// Statusleiste: Anforderung an TAtlasProblemsController).
 // Aktionen: Springen (TAtlasIdeNavigation), Schnellkorrektur und
 // „Für diese Zeile unterdrücken“ über die Code-Aktion mit Kennung (Hooks
 // ApplyTagged, Atlas.Common.Rules.CodeActions), „Regel einstellen…“ (Hook
@@ -40,7 +43,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.Refresh;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
@@ -88,6 +92,11 @@ type
     /// <summary>Fortschritt der Projektprüfung (#1232): geprüfte und alle Units des aktiven Projekts wie in der
     /// Statuszeile des Fensters. False ohne Projekt oder Speicher. Die Projektliste höchstens alle 2 s neu.</summary>
     class function ProjectProgress(out AChecked, ATotal: Integer): Boolean; static;
+    /// <summary>Wann die offene Datei geprüft wird (problems.update).</summary>
+    class function UpdateMode: TAtlasProblemsUpdate; static;
+    /// <summary>„Datei jetzt prüfen“: Der Controller prüft die Datei des oberen Editors im nächsten Takt, auch
+    /// ungespeichert und ohne Live-Prüfung.</summary>
+    class procedure CheckFileNow; static;
   end;
 
 implementation
@@ -336,7 +345,7 @@ begin
     Store.Contains(ChangeFileExt(Current, '.pas')));
   Inputs := Ord(Frame.Scope).ToString + '|' + Current + '|' + string.Join(';', Files) + '|' +
     string.Join(';', Opened) + '|' + BoolToStr(Checked, True);
-  Frame.SetLive(Settings.ProblemsLive and Settings.Problems);
+  Frame.SetUpdate(TAtlasIdeProblems.UpdateMode);
   if (Store <> nil) and (AForce or (Store.Version <> State.Version) or (Inputs <> State.Inputs)) then
   begin
     InputsChanged := AForce or (Inputs <> State.Inputs);
@@ -772,6 +781,11 @@ begin
     procedure(AFrame: TAtlasProblemsFrame)
     begin
       Wire(AFrame);
+      AFrame.OnCheckFile :=
+        procedure
+        begin
+          TAtlasIdeProblems.CheckFileNow;
+        end;
       Refresh(True);
     end;
   TAtlasIdeProblemsWindow.OnSave :=
@@ -784,6 +798,16 @@ begin
   begin
     TAtlasIdeProblemsWindow.Prepare;
   end;
+end;
+
+class function TAtlasIdeProblems.UpdateMode: TAtlasProblemsUpdate;
+begin
+  Result := TAtlasProblemsRefresh.Parse(Settings.ProblemsUpdate);
+end;
+
+class procedure TAtlasIdeProblems.CheckFileNow;
+begin
+  TAtlasProblemsCheckRequest.Request;
 end;
 
 class procedure TAtlasIdeProblems.Release;
