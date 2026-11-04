@@ -151,6 +151,74 @@ begin
     end));
 end;
 
+/// <summary>AJson als JSON-Wert; nil bei ungültigem Text.</summary>
+function ParseJson(const AJson: string): TJSONValue;
+begin
+  try
+    Result := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      Result := nil;
+  end;
+end;
+
+/// <summary>Feld AName von AValue, wenn AValue ein Objekt und das Feld ein Array ist; sonst nil.</summary>
+function ArrayOf(AValue: TJSONValue; const AName: string): TJSONArray;
+begin
+  Result := nil;
+  if (AValue is TJSONObject) and (TJSONObject(AValue).GetValue(AName) is TJSONArray) then
+  begin
+    Result := TJSONArray(TJSONObject(AValue).GetValue(AName));
+  end;
+end;
+
+/// <summary>Objekte von AArray in Reihenfolge; andere Werte fallen weg; leer ohne Array.</summary>
+function ObjectsOf(AArray: TJSONArray): TArray<TJSONObject>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if AArray = nil then
+  begin
+    Exit;
+  end;
+  for Index := 0 to AArray.Count - 1 do
+  begin
+    if AArray.Items[Index] is TJSONObject then
+    begin
+      Result := Result + [TJSONObject(AArray.Items[Index])];
+    end;
+  end;
+end;
+
+/// <summary>Eintrag eines Todos der Datei AFileName; Position 0-basiert, nie negativ.</summary>
+function TodoEntryOf(const AFileName: string; ATodo: TJSONObject): TAtlasResultEntry;
+begin
+  Result := TAtlasResultEntry.Create(AFileName, NumberOf(ATodo, 'line') - 1, NumberOf(ATodo, 'character') - 1);
+  if Result.Line < 0 then
+  begin
+    Result.Line := 0;
+  end;
+  if Result.Character < 0 then
+  begin
+    Result.Character := 0;
+  end;
+  Result.Text := TAtlasTodoList.Caption(TextOf(ATodo, 'keyword'), NumberOf(ATodo, 'priority'),
+    TextOf(ATodo, 'category'), TextOf(ATodo, 'owner'), TextOf(ATodo, 'text'));
+end;
+
+/// <summary>Kategorie, Person und Marke eines Todos in AChoices aufnehmen.</summary>
+procedure AddTodoChoices(var AChoices: TAtlasTodoChoices; ATodo: TJSONObject);
+begin
+  AddDistinct(AChoices.Categories, TextOf(ATodo, 'category'));
+  AddDistinct(AChoices.Owners, TextOf(ATodo, 'owner'));
+  // Erledigt ist kein Filter nach Marke, sondern „Erledigte zeigen“.
+  if not SameText(TextOf(ATodo, 'keyword'), 'DONE') then
+  begin
+    AddDistinct(AChoices.Keywords, UpperCase(TextOf(ATodo, 'keyword')));
+  end;
+end;
+
 { TAtlasTodoFilter }
 
 function TAtlasTodoFilter.IsEmpty: Boolean;
@@ -277,67 +345,28 @@ end;
 class function TAtlasTodoList.Entries(const AJson: string; out AEntries: TArray<TAtlasResultEntry>): Boolean;
 var
   Value: TJSONValue;
-  Root, FileItem, Todo: TJSONObject;
-  Files, Todos: TJSONArray;
-  FileIndex, TodoIndex: Integer;
-  Entry: TAtlasResultEntry;
+  Files: TJSONArray;
+  FileItem, Todo: TJSONObject;
   FileName, RootPath: string;
 begin
   AEntries := nil;
-  Result := False;
+  Value := ParseJson(AJson);
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      Value := nil;
-  end;
-  try
-    if not (Value is TJSONObject) then
+    Files := ArrayOf(Value, 'files');
+    Result := Files <> nil;
+    if not Result then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not (Root.GetValue('files') is TJSONArray) then
+    RootPath := TextOf(TJSONObject(Value), 'root');
+    for FileItem in ObjectsOf(Files) do
     begin
-      Exit;
-    end;
-    RootPath := TextOf(Root, 'root');
-    Files := TJSONArray(Root.GetValue('files'));
-    for FileIndex := 0 to Files.Count - 1 do
-    begin
-      if not (Files.Items[FileIndex] is TJSONObject) then
-      begin
-        Continue;
-      end;
-      FileItem := TJSONObject(Files.Items[FileIndex]);
       FileName := FullPath(RootPath, TextOf(FileItem, 'file'));
-      if not (FileItem.GetValue('todos') is TJSONArray) then
+      for Todo in ObjectsOf(ArrayOf(FileItem, 'todos')) do
       begin
-        Continue;
-      end;
-      Todos := TJSONArray(FileItem.GetValue('todos'));
-      for TodoIndex := 0 to Todos.Count - 1 do
-      begin
-        if not (Todos.Items[TodoIndex] is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Todo := TJSONObject(Todos.Items[TodoIndex]);
-        Entry := TAtlasResultEntry.Create(FileName, NumberOf(Todo, 'line') - 1, NumberOf(Todo, 'character') - 1);
-        if Entry.Line < 0 then
-        begin
-          Entry.Line := 0;
-        end;
-        if Entry.Character < 0 then
-        begin
-          Entry.Character := 0;
-        end;
-        Entry.Text := Caption(TextOf(Todo, 'keyword'), NumberOf(Todo, 'priority'), TextOf(Todo, 'category'),
-          TextOf(Todo, 'owner'), TextOf(Todo, 'text'));
-        AEntries := AEntries + [Entry];
+        AEntries := AEntries + [TodoEntryOf(FileName, Todo)];
       end;
     end;
-    Result := True;
   finally
     Value.Free;
   end;
@@ -346,63 +375,30 @@ end;
 class function TAtlasTodoList.Choices(const AJson: string; out AChoices: TAtlasTodoChoices): Boolean;
 var
   Value: TJSONValue;
-  Root, FileItem, Todo: TJSONObject;
-  Files, Todos: TJSONArray;
-  FileIndex, TodoIndex: Integer;
+  Files: TJSONArray;
+  FileItem, Todo: TJSONObject;
 begin
   AChoices := Default(TAtlasTodoChoices);
-  Result := False;
+  Value := ParseJson(AJson);
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      Value := nil;
-  end;
-  try
-    if not (Value is TJSONObject) then
+    Files := ArrayOf(Value, 'files');
+    Result := Files <> nil;
+    if not Result then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    if not (Root.GetValue('files') is TJSONArray) then
+    for FileItem in ObjectsOf(Files) do
     begin
-      Exit;
-    end;
-    Files := TJSONArray(Root.GetValue('files'));
-    for FileIndex := 0 to Files.Count - 1 do
-    begin
-      if not (Files.Items[FileIndex] is TJSONObject) then
-      begin
-        Continue;
-      end;
-      FileItem := TJSONObject(Files.Items[FileIndex]);
       AddDistinct(AChoices.Units, TextOf(FileItem, 'unit'));
-      if not (FileItem.GetValue('todos') is TJSONArray) then
+      for Todo in ObjectsOf(ArrayOf(FileItem, 'todos')) do
       begin
-        Continue;
-      end;
-      Todos := TJSONArray(FileItem.GetValue('todos'));
-      for TodoIndex := 0 to Todos.Count - 1 do
-      begin
-        if not (Todos.Items[TodoIndex] is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Todo := TJSONObject(Todos.Items[TodoIndex]);
-        AddDistinct(AChoices.Categories, TextOf(Todo, 'category'));
-        AddDistinct(AChoices.Owners, TextOf(Todo, 'owner'));
-        // Erledigt ist kein Filter nach Marke, sondern „Erledigte zeigen“.
-        if not SameText(TextOf(Todo, 'keyword'), 'DONE') then
-        begin
-          AddDistinct(AChoices.Keywords, UpperCase(TextOf(Todo, 'keyword')));
-        end;
+        AddTodoChoices(AChoices, Todo);
       end;
     end;
     SortTexts(AChoices.Categories);
     SortTexts(AChoices.Owners);
     SortTexts(AChoices.Units);
     SortTexts(AChoices.Keywords);
-    Result := True;
   finally
     Value.Free;
   end;
