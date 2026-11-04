@@ -451,26 +451,45 @@ var
     CheckImplicit(ANode[1], mTarget, mTypeName, 'die Zuweisung an ' + ANode.Name);
   end;
 
+  /// <summary>Ist ACall sicher der Aufruf einer Routine mit bekanntem Kopf? Liefert Symbol und Parameter.</summary>
+  function ResolvedCall(ACall: TSyntaxNode; out ASymbol: TResolvedSymbol;
+    out AParams: TArray<TSignatureParameter>): Boolean;
+  var
+    mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+  begin
+    AParams := nil;
+    Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and
+      mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ACall, ASymbol, mTypeInfo, mTypeFound);
+    Result := Result and not ASymbol.IsType and (ASymbol.SymbolKind in [TIndexSymbolKind.Method,
+      TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
+    Result := Result and mScope.DeclarationSure(ASymbol, ACall) and RoutineParams(AContext, ASymbol, AParams);
+    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
+    if Result and (ASymbol.Signature <> '') then
+    begin
+      Result := (ACall.ChildCount - 1 >= ASymbol.MinArgs) and (ACall.ChildCount - 1 <= ASymbol.MaxArgs);
+    end;
+  end;
+
+  /// <summary>Übergabeart des Parameters in Kleinbuchstaben; mit Attribut ("[ref] var") das letzte Wort.</summary>
+  function ParamModifier(const AParam: TSignatureParameter): string;
+  begin
+    Result := LowerCase(Trim(AParam.Modifier));
+    if Pos(' ', Result) > 0 then
+    begin
+      Result := Copy(Result, LastDelimiter(' ', Result) + 1, MaxInt);
+    end;
+  end;
+
   procedure CheckCall(ACall: TSyntaxNode);
   var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
+    mSymbol: TResolvedSymbol;
     mParams: TArray<TSignatureParameter>;
     mIndex: Integer;
     mModifier: string;
     mTarget: TStringTypeKind;
   begin
-    if (ACall.ChildCount < 2) or (ACall[0].Kind = TSyntaxKind.InheritedExpr) or
-      not mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ACall, mSymbol, mTypeInfo, mTypeFound) or
-      mSymbol.IsType or not (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-      TIndexSymbolKind.Constructor_]) or not mScope.DeclarationSure(mSymbol, ACall) or
-      not RoutineParams(AContext, mSymbol, mParams) then
-    begin
-      Exit;
-    end;
-    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
-    if (mSymbol.Signature <> '') and ((ACall.ChildCount - 1 < mSymbol.MinArgs) or
-      (ACall.ChildCount - 1 > mSymbol.MaxArgs)) then
+    if not ResolvedCall(ACall, mSymbol, mParams) then
     begin
       Exit;
     end;
@@ -481,12 +500,7 @@ var
         Break;
       end;
       // var und out verlangen denselben Typ (E2033), das meldet eine andere Regel.
-      mModifier := LowerCase(Trim(mParams[mIndex - 1].Modifier));
-      // Mit Attribut ("[ref] var") zählt das letzte Wort.
-      if Pos(' ', mModifier) > 0 then
-      begin
-        mModifier := Copy(mModifier, LastDelimiter(' ', mModifier) + 1, MaxInt);
-      end;
+      mModifier := ParamModifier(mParams[mIndex - 1]);
       if (mModifier = 'var') or (mModifier = 'out') then
       begin
         Continue;
@@ -586,68 +600,74 @@ var
     end;
   end;
 
-  /// <summary>C in ['a'..'z'] mit C: Char (W1050); Korrektur CharInSet.</summary>
-  procedure CheckSetMembership(ANode: TSyntaxNode);
+  /// <summary>Ist ALeft ein Zeichen vom Typ Char bzw. WideChar? ADisplay: Anzeigename des Typs.</summary>
+  function IsUnicodeChar(ALeft: TSyntaxNode; out ADisplay: string): Boolean;
   var
-    mLeft: TSyntaxNode;
     mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
-    mDisplay: string;
-    mEdits: TArray<TTextEdit>;
+  begin
+    ADisplay := 'Char';
+    if StringElement(ALeft, mBase, mBaseType) then
+    begin
+      // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
+      Exit((mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) and
+        (KindOf(mBaseType.Name) = TStringTypeKind.Unicode));
+    end;
+    Result := mScope.SureType(ALeft, mSymbol, mTypeInfo) and not mSymbol.IsType and SystemType(mTypeInfo);
+    Result := Result and MatchText(mTypeInfo.Name, ['Char', 'WideChar']) and (mSymbol.SymbolKind in
+      [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+      TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]);
+    if Result then
+    begin
+      ADisplay := mTypeInfo.Name;
+    end;
+  end;
+
+  /// <summary>Korrektur CharInSet(…) samt System.SysUtils in den uses; nil, wenn die uses nicht passen.</summary>
+  function CharInSetEdits(ANode: TSyntaxNode): TArray<TTextEdit>;
+  var
     mUsesEdit: TTextEdit;
     mUsed: TArray<string>;
   begin
-    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not AsciiCharSet(Unwrapped(ANode[1])) then
+    Result := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
+      [NodeText(ANode[0]), NodeText(ANode[1])]))];
+    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
+    if TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) or
+      TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces) then
     begin
       Exit;
     end;
-    mLeft := Unwrapped(ANode[0]);
-    if StringElement(mLeft, mBase, mBaseType) then
+    if TUsesClauses.AddUnit(mScope.Tokens, ANode.StartOffset, 'System.SysUtils',
+      TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
     begin
-      // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
-      if not (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) or
-        (KindOf(mBaseType.Name) <> TStringTypeKind.Unicode) then
-      begin
-        Exit;
-      end;
-      mDisplay := 'Char';
+      Result := Result + [mUsesEdit];
     end
     else
     begin
-      if not mScope.SureType(mLeft, mSymbol, mTypeInfo) or mSymbol.IsType or not SystemType(mTypeInfo) or
-        not MatchText(mTypeInfo.Name, ['Char', 'WideChar']) or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable,
-        TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-        TIndexSymbolKind.Constant]) then
-      begin
-        Exit;
-      end;
-      mDisplay := mTypeInfo.Name;
+      Result := nil;
     end;
-    mEdits := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
-      [NodeText(ANode[0]), NodeText(ANode[1])]))];
-    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
-    if not TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) and
-      not TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces) then
+  end;
+
+  /// <summary>C in ['a'..'z'] mit C: Char (W1050); Korrektur CharInSet.</summary>
+  procedure CheckSetMembership(ANode: TSyntaxNode);
+  var
+    mDisplay, mMessage: string;
+    mEdits: TArray<TTextEdit>;
+  begin
+    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not AsciiCharSet(Unwrapped(ANode[1])) or
+      not IsUnicodeChar(Unwrapped(ANode[0]), mDisplay) then
     begin
-      if TUsesClauses.AddUnit(mScope.Tokens, ANode.StartOffset, 'System.SysUtils',
-        TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
-      begin
-        mEdits := mEdits + [mUsesEdit];
-      end
-      else
-      begin
-        mEdits := nil;
-      end;
+      Exit;
     end;
+    mEdits := CharInSetEdits(ANode);
+    mMessage := Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).',
+      [ValueText(ANode[0]), mDisplay]);
     if mEdits = nil then
     begin
-      Report('W1050', ANode, Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt ' +
-        '(wie W1050).', [ValueText(ANode[0]), mDisplay]), TRuleConfidence.High, nil);
+      Report('W1050', ANode, mMessage, TRuleConfidence.High, nil);
     end
     else
     begin
-      Report('W1050', ANode, Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt ' +
-        '(wie W1050).', [ValueText(ANode[0]), mDisplay]), TRuleConfidence.High,
-        [TRuleFix.Create('CharInSet verwenden', mEdits)]);
+      Report('W1050', ANode, mMessage, TRuleConfidence.High, [TRuleFix.Create('CharInSet verwenden', mEdits)]);
     end;
   end;
 

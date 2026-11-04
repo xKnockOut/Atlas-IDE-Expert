@@ -98,9 +98,13 @@ var
 begin
   Product := Int64(AValue) * ANumerator;
   if Product >= 0 then
-    Result := Integer((Product + ADenominator div 2) div ADenominator)
+  begin
+    Result := Integer((Product + ADenominator div 2) div ADenominator);
+  end
   else
+  begin
     Result := -Integer((-Product + ADenominator div 2) div ADenominator);
+  end;
 end;
 
 { TAtlasTrendTile }
@@ -114,7 +118,9 @@ function TAtlasTrendTile.Last: Integer;
 begin
   Result := 0;
   if HasLast then
+  begin
     Result := Values[System.High(Values)];
+  end;
 end;
 
 function TAtlasTrendTile.Previous(out AValue: Integer): Boolean;
@@ -123,11 +129,13 @@ var
 begin
   AValue := 0;
   for Index := System.High(Has) - 1 downto 0 do
+  begin
     if Has[Index] then
     begin
       AValue := Values[Index];
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -157,15 +165,27 @@ var
 begin
   Result := nil;
   for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+  begin
     Wanted[Series] := False;
+  end;
   Parts := AText.Split([',', ';', ' ']);
   for Part in Parts do
+  begin
     for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+    begin
       if SameText(Trim(Part), SeriesKey(Series)) then
+      begin
         Wanted[Series] := True;
+      end;
+    end;
+  end;
   for Series := System.Low(TAtlasTrendSeries) to System.High(TAtlasTrendSeries) do
+  begin
     if Wanted[Series] then
+    begin
       Result := Result + [Series];
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeTrends.SeriesText(const ASeries: TAtlasTrendSeriesList): string;
@@ -176,7 +196,9 @@ begin
   for Series in ASeries do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + SeriesKey(Series);
   end;
 end;
@@ -192,12 +214,20 @@ var
 begin
   Result := '';
   if Length(AProjects) = 0 then
+  begin
     Exit;
+  end;
   Wanted := TAtlasProjectSummaries.NormalizedPath(ASelected);
   if Wanted <> '' then
+  begin
     for Project in AProjects do
+    begin
       if TAtlasProjectSummaries.NormalizedPath(Project) = Wanted then
+      begin
         Exit(Project);
+      end;
+    end;
+  end;
   Result := AProjects[0];
 end;
 
@@ -210,14 +240,18 @@ begin
   ALow := 0;
   AHigh := 0;
   for Index := 0 to Min(System.High(AValues), System.High(AHas)) do
+  begin
     if AHas[Index] then
     begin
       ALow := Min(ALow, AValues[Index]);
       AHigh := Max(AHigh, AValues[Index]);
     end;
+  end;
   // Nur Nullen (oder nichts): eine Einheit Luft nach oben.
   if AHigh = ALow then
+  begin
     AHigh := ALow + 10;
+  end;
 end;
 
 class function TAtlasWelcomeTrends.View(const ASummary: TAtlasProjectSummary; const ASeries: TAtlasTrendSeriesList;
@@ -234,7 +268,9 @@ begin
   Result.Limit := Limit;
   Points := ASummary.Trends.Points;
   if Length(Points) > Limit then
+  begin
     Points := Copy(Points, Length(Points) - Limit, Limit);
+  end;
   Result.Points := Points;
   Result.Tiles := nil;
   for Series in ASeries do
@@ -258,12 +294,16 @@ var
   Whole, Tenth: Integer;
 begin
   if not TAtlasProjectSummaries.TrendDecimals[ASeries] then
+  begin
     Exit(IntToStr(ATenths div 10));
+  end;
   Whole := Abs(ATenths) div 10;
   Tenth := Abs(ATenths) mod 10;
   Result := IntToStr(Whole) + ADecimal + IntToStr(Tenth);
   if ATenths < 0 then
+  begin
     Result := '-' + Result;
+  end;
 end;
 
 class function TAtlasWelcomeTrends.ShortCommit(const ARevision: string): string;
@@ -272,24 +312,34 @@ var
 begin
   Result := Trim(ARevision);
   if (Length(Result) <> 40) and (Length(Result) <> 64) then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(Result) do
+  begin
     if not CharInSet(Result[Index], ['0'..'9', 'a'..'f', 'A'..'F']) then
+    begin
       Exit;
+    end;
+  end;
   Result := Copy(Result, 1, 7);
 end;
 
 class function TAtlasWelcomeTrends.PointX(AIndex, ACount, ALeft, AWidth: Integer): Integer;
 begin
   if ACount <= 1 then
+  begin
     Exit(ALeft + AWidth);
+  end;
   Result := ALeft + Scaled(AIndex, AWidth, ACount - 1);
 end;
 
 class function TAtlasWelcomeTrends.PointY(AValue, ALow, AHigh, ATop, AHeight: Integer): Integer;
 begin
   if AHigh <= ALow then
+  begin
     Exit(ATop + AHeight);
+  end;
   Result := ATop + AHeight - Scaled(AValue - ALow, AHeight, AHigh - ALow);
 end;
 

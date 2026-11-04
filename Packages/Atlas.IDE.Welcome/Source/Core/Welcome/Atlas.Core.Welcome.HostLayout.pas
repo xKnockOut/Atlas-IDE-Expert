@@ -112,7 +112,9 @@ var
 begin
   Result := ADefault;
   if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Number, TAtlasRegKind.Number64]) then
+  begin
     Result := StrToIntDef(Value.Data, ADefault);
+  end;
 end;
 
 function TextOf(AKey: TAtlasRegKey; const AName: string): string;
@@ -121,7 +123,9 @@ var
 begin
   Result := '';
   if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Text, TAtlasRegKind.ExpandText]) then
+  begin
     Result := Value.Data;
+  end;
 end;
 
 function Number(const AName: string; AValue: Integer): TAtlasRegValue;
@@ -142,10 +146,14 @@ begin
   ALayout.Available := nil;
   Result := False;
   if AWelcomeKey = nil then
+  begin
     Exit;
+  end;
   Layout := AWelcomeKey.FindKey(LayoutKey);
   if Layout = nil then
+  begin
     Exit;
+  end;
   ALayout.Rows := NumberOf(Layout, 'RowsCount', 0);
   ALayout.Columns := NumberOf(Layout, 'ColumnsCount', 0);
   // Nach der Nummer im Namen, damit die Reihenfolge der IDE erhalten bleibt.
@@ -154,11 +162,15 @@ begin
   begin
     Item := Layout.FindKey(ItemPrefix + IntToStr(Index));
     if Item = nil then
+    begin
       Break;
+    end;
     Id := TextOf(Item, 'PluginID');
     if Id <> '' then
+    begin
       ALayout.Items := ALayout.Items + [TAtlasHostItem.Create(Id, NumberOf(Item, 'Row', 0),
         NumberOf(Item, 'Column', 0), NumberOf(Item, 'RowSpan', 1), NumberOf(Item, 'ColumnSpan', 1))];
+    end;
     Inc(Index);
   end;
   Available := AWelcomeKey.FindKey(AvailableKey);
@@ -168,7 +180,9 @@ begin
     while Available.FindValue(IntToStr(Index), Value) do
     begin
       if Value.Data <> '' then
+      begin
         ALayout.Available := ALayout.Available + [Value.Data];
+      end;
       Inc(Index);
     end;
   end;
@@ -182,15 +196,23 @@ var
 begin
   Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(LayoutKey));
   if Index >= 0 then
+  begin
     AWelcomeKey.Keys.Delete(Index);
+  end;
   Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(AvailableKey));
   if Index >= 0 then
+  begin
     AWelcomeKey.Keys.Delete(Index);
+  end;
   Available := AWelcomeKey.AddKey(AvailableKey);
   for Index := 0 to High(Self.Available) do
+  begin
     Available.SetValue(TAtlasRegValue.Create(IntToStr(Index), TAtlasRegKind.Text, Self.Available[Index]));
+  end;
   if Items = nil then
+  begin
     Exit;
+  end;
   Layout := AWelcomeKey.AddKey(LayoutKey);
   Layout.SetValue(Number('RowsCount', Rows));
   Layout.SetValue(Number('ColumnsCount', Columns));
@@ -210,8 +232,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Items) do
+  begin
     if SameText(Items[Index].PluginId, APluginId) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -232,11 +258,19 @@ var
 begin
   Result := True;
   for Item in Items do
+  begin
     if StartsWith(Item.PluginId, APrefix) then
+    begin
       Exit;
+    end;
+  end;
   for Id in Available do
+  begin
     if StartsWith(Id, APrefix) then
+    begin
       Exit;
+    end;
+  end;
   Result := False;
 end;
 
@@ -251,24 +285,44 @@ begin
   Result.Columns := Columns;
   Result.Items := nil;
   for Item in Items do
+  begin
     if not StartsWith(Item.PluginId, APrefix) then
+    begin
       Result.Items := Result.Items + [Item];
+    end;
+  end;
   Result.Available := nil;
   for Id in Available do
+  begin
     if not StartsWith(Id, APrefix) then
+    begin
       Result.Available := Result.Available + [Id];
+    end;
+  end;
   // Belegte Zeilen bestimmen; Bereiche, die über das Raster hinausragen, vergrößern es.
   Last := Rows;
   for Item in Result.Items do
+  begin
     if Item.Row + Item.RowSpan > Last then
+    begin
       Last := Item.Row + Item.RowSpan;
+    end;
+  end;
   SetLength(Covered, Last);
   for Row := 0 to Last - 1 do
+  begin
     Covered[Row] := False;
+  end;
   for Item in Result.Items do
+  begin
     for Row := Item.Row to Item.Row + Item.RowSpan - 1 do
+    begin
       if Row >= 0 then
+      begin
         Covered[Row] := True;
+      end;
+    end;
+  end;
   // Neue Zeile je alter: Leere Zeilen fallen weg, die folgenden rücken nach.
   SetLength(NewRow, Last);
   Count := 0;
@@ -276,11 +330,17 @@ begin
   begin
     NewRow[Row] := Count;
     if Covered[Row] then
+    begin
       Inc(Count);
+    end;
   end;
   for Index := 0 to High(Result.Items) do
+  begin
     if Result.Items[Index].Row >= 0 then
+    begin
       Result.Items[Index].Row := NewRow[Result.Items[Index].Row];
+    end;
+  end;
   Result.Rows := Count;
 end;
 
@@ -291,17 +351,27 @@ var
 begin
   Result.Columns := Columns;
   if Result.Columns < 1 then
+  begin
     Result.Columns := 1;
+  end;
   Result.Rows := Rows + BoardRows;
   Result.Items := [TAtlasHostItem.Create(ABoardId, 0, 0, BoardRows, Result.Columns)];
   for Item in Items do
+  begin
     if not SameText(Item.PluginId, ABoardId) and not StartsWith(Item.PluginId, APrefix) then
+    begin
       Result.Items := Result.Items + [TAtlasHostItem.Create(Item.PluginId, Item.Row + BoardRows, Item.Column,
         Item.RowSpan, Item.ColumnSpan)];
+    end;
+  end;
   Result.Available := nil;
   for Id in Available do
+  begin
     if not SameText(Id, ABoardId) and not StartsWith(Id, APrefix) then
+    begin
       Result.Available := Result.Available + [Id];
+    end;
+  end;
 end;
 
 function TAtlasHostLayout.HasAtlasOnTop(const ABoardId, APrefix: string): Boolean;
@@ -312,16 +382,28 @@ var
 begin
   Index := IndexOf(ABoardId);
   if Index < 0 then
+  begin
     Exit(False);
+  end;
   Item := Items[Index];
   if (Item.Row <> 0) or (Item.Column <> 0) or (Item.ColumnSpan < Columns) then
+  begin
     Exit(False);
+  end;
   for Item in Items do
+  begin
     if not SameText(Item.PluginId, ABoardId) and StartsWith(Item.PluginId, APrefix) then
+    begin
       Exit(False);
+    end;
+  end;
   for Id in Available do
+  begin
     if SameText(Id, ABoardId) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -344,24 +426,34 @@ var
 begin
   Result := nil;
   if not AStarted then
+  begin
     Exit;
+  end;
   Atlas := SameText(ALayout, 'atlas');
   if AWasShown and not AShown then
+  begin
     // Abgeschaltet: Sicherung zurück bzw. Atlas aus dem Raster der IDE nehmen.
-    Result := [TAtlasIdePageStep.Retire]
+    Result := [TAtlasIdePageStep.Retire];
+  end
   else if AShown and not AWasShown then
   begin
     // Wieder eingeschaltet: Der beim Abschalten gemerkte Stand ohne Atlas gilt nicht mehr.
     Result := [TAtlasIdePageStep.ClearPending];
     if Atlas then
+    begin
       Result := Result + [TAtlasIdePageStep.PlaceBoard];
+    end;
   end
   else if AShown and not SameText(ALastLayout, ALayout) then
   begin
     if Atlas then
-      Result := [TAtlasIdePageStep.PlaceBoard]
+    begin
+      Result := [TAtlasIdePageStep.PlaceBoard];
+    end
     else
+    begin
       Result := [TAtlasIdePageStep.Unplace];
+    end;
   end;
 end;
 
@@ -385,7 +477,9 @@ begin
   Key := AAccess.Read(AWelcomePath);
   try
     if (Key = nil) or not TAtlasHostLayout.Read(Key, Layout) or not Layout.ContainsAtlas(APrefix) then
+    begin
       Exit;
+    end;
     Cleaned := Layout.WithoutAtlas(APrefix);
     Cleaned.WriteTo(Key);
     AAccess.Replace(AWelcomePath, Key);

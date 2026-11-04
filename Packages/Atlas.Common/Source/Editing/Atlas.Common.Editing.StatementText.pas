@@ -467,6 +467,12 @@ begin
   Result := -1;
 end;
 
+/// <summary>Liegt A vor B (oder auf B)?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
 class function TStatementText.HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   AKind: TSyntaxKind): TSyntaxNode;
 var
@@ -487,9 +493,7 @@ begin
       if (ANode.Kind = AKind) and (ANode.ChildCount >= 2) then
       begin
         HeadEnd := ANode[1].StartPos;
-        if ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
-          (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < HeadEnd.Line) or
-          ((APosition.Line = HeadEnd.Line) and (APosition.Character <= HeadEnd.Character))) then
+        if NotAfter(ANode.StartPos, APosition) and NotAfter(APosition, HeadEnd) then
         begin
           Found := ANode;
         end;
