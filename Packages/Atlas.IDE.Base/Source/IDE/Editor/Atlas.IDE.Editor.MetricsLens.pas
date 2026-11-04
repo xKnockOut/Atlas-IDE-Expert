@@ -366,8 +366,8 @@ begin
     mPill := TAtlasLensPill.Paint(Context.Canvas, Rect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), mText,
       TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
     TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Context.LogicalLineNum - 1,
-      mName, mPill, Context.EditView.TopRow, Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, Context.FileName,
+      Context.LogicalLineNum - 1, mName), mPill, Context.EditView.TopRow, Rect.Height);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

@@ -186,53 +186,56 @@ end;
 
 { TLspFileOperation }
 
-class function TLspFileOperation.FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean;
-var
-  Kind, Uri, NewUri: string;
-  Options: TJSONObject;
+/// <summary>Art einer Dateioperation aus kind; False für Unbekanntes.</summary>
+function FileOperationKindOf(const AKind: string; out AResult: TLspFileOperationKind): Boolean;
 begin
-  AResult := Default(TLspFileOperation);
-  if not AValue.TryGetValue<string>('kind', Kind) then
+  Result := True;
+  AResult := TLspFileOperationKind.Create;
+  if AKind = 'rename' then
   begin
-    Exit(False);
-  end;
-  if Kind = 'create' then
-  begin
-    AResult.Kind := TLspFileOperationKind.Create;
+    AResult := TLspFileOperationKind.Rename;
   end
-  else if Kind = 'rename' then
+  else if AKind = 'delete' then
   begin
-    AResult.Kind := TLspFileOperationKind.Rename;
-  end
-  else if Kind = 'delete' then
-  begin
-    AResult.Kind := TLspFileOperationKind.Delete;
+    AResult := TLspFileOperationKind.Delete;
   end
   else
   begin
-    Exit(False);
+    Result := AKind = 'create';
   end;
+end;
+
+/// <summary>Liest die Datei (uri bzw. oldUri) und beim Umbenennen das Ziel (newUri); False, wenn eine fehlt oder
+/// kein Pfad ist.</summary>
+function ReadFileOperationFiles(const AValue: TJSONObject; var AResult: TLspFileOperation): Boolean;
+var
+  Uri, NewUri: string;
+begin
   if AResult.Kind = TLspFileOperationKind.Rename then
   begin
-    if not AValue.TryGetValue<string>('oldUri', Uri) or not AValue.TryGetValue<string>('newUri', NewUri) then
+    Result := AValue.TryGetValue<string>('oldUri', Uri) and AValue.TryGetValue<string>('newUri', NewUri);
+    if Result then
     begin
-      Exit(False);
-    end;
-    AResult.NewFileName := TLspUris.ToPath(NewUri);
-    if AResult.NewFileName = '' then
-    begin
-      Exit(False);
+      AResult.NewFileName := TLspUris.ToPath(NewUri);
+      Result := AResult.NewFileName <> '';
     end;
   end
-  else if not AValue.TryGetValue<string>('uri', Uri) then
+  else
   begin
-    Exit(False);
+    Result := AValue.TryGetValue<string>('uri', Uri);
   end;
-  AResult.FileName := TLspUris.ToPath(Uri);
-  if AResult.FileName = '' then
+  if Result then
   begin
-    Exit(False);
+    AResult.FileName := TLspUris.ToPath(Uri);
+    Result := AResult.FileName <> '';
   end;
+end;
+
+/// <summary>Liest options; overwrite gewinnt über ignoreIfExists (LSP 3.17).</summary>
+procedure ReadFileOperationOptions(const AValue: TJSONObject; var AResult: TLspFileOperation);
+var
+  Options: TJSONObject;
+begin
   if AValue.TryGetValue<TJSONObject>('options', Options) then
   begin
     Options.TryGetValue<Boolean>('overwrite', AResult.Overwrite);
@@ -240,12 +243,23 @@ begin
     Options.TryGetValue<Boolean>('ignoreIfNotExists', AResult.IgnoreIfNotExists);
     Options.TryGetValue<Boolean>('recursive', AResult.Recursive);
   end;
-  // overwrite gewinnt über ignoreIfExists (LSP 3.17).
   if AResult.Overwrite then
   begin
     AResult.IgnoreIfExists := False;
   end;
-  Result := True;
+end;
+
+class function TLspFileOperation.FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean;
+var
+  Kind: string;
+begin
+  AResult := Default(TLspFileOperation);
+  Result := AValue.TryGetValue<string>('kind', Kind) and FileOperationKindOf(Kind, AResult.Kind) and
+    ReadFileOperationFiles(AValue, AResult);
+  if Result then
+  begin
+    ReadFileOperationOptions(AValue, AResult);
+  end;
 end;
 
 function ReadEdits(const AUri: string; const AEdits: TJSONArray; out AFile: TLspFileEdits): Boolean;
@@ -269,19 +283,79 @@ begin
   Result := Length(AFile.Edits) > 0;
 end;
 
-class function TLspWorkspaceEdit.FromJson(const AValue: TJSONValue): TLspWorkspaceEdit;
+/// <summary>Stellen aus atlasUnchanged, die die Änderung nicht anpasst (mit Sicherheit).</summary>
+function UnchangedPlacesOf(const AEdit: TJSONObject): TArray<TLspUnchangedPlace>;
 var
-  Edit: TJSONObject;
-  Changes: TJSONObject;
-  DocumentChanges, Edits: TJSONArray;
-  Pair: TJSONPair;
+  Unchanged: TJSONArray;
   Item: TJSONValue;
+  Uri: string;
+  Place: TLspUnchangedPlace;
+begin
+  Result := nil;
+  if not AEdit.TryGetValue<TJSONArray>('atlasUnchanged', Unchanged) then
+  begin
+    Exit;
+  end;
+  for Item in Unchanged do
+  begin
+    if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
+    begin
+      Place.FileName := TLspUris.ToPath(Uri);
+      Place.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
+      Place.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+      Place.Confidence := TAtlasConfidence.FromJson(Item);
+      Result := Result + [Place];
+    end;
+  end;
+end;
+
+/// <summary>Ein Eintrag aus documentChanges: Dateioperation (mit kind) oder Textänderungen einer Datei.</summary>
+procedure ReadDocumentChange(const AItem: TJSONObject; var AResult: TLspWorkspaceEdit);
+var
   Document: TJSONObject;
+  Edits: TJSONArray;
   Uri: string;
   FileEdits: TLspFileEdits;
   Operation: TLspFileOperation;
-  Unchanged: TJSONArray;
-  Place: TLspUnchangedPlace;
+begin
+  if AItem.GetValue('kind') <> nil then
+  begin
+    if TLspFileOperation.FromJson(AItem, Operation) then
+    begin
+      AResult.Operations := AResult.Operations + [Operation];
+    end
+    else
+    begin
+      Inc(AResult.Unsupported);
+    end;
+  end
+  else if AItem.TryGetValue<TJSONObject>('textDocument', Document) and Document.TryGetValue<string>('uri', Uri) and
+    AItem.TryGetValue<TJSONArray>('edits', Edits) and ReadEdits(Uri, Edits, FileEdits) then
+  begin
+    AResult.Files := AResult.Files + [FileEdits];
+  end;
+end;
+
+/// <summary>Textänderungen aus changes (URI auf Liste von Änderungen).</summary>
+procedure ReadChanges(const AChanges: TJSONObject; var AResult: TLspWorkspaceEdit);
+var
+  Pair: TJSONPair;
+  FileEdits: TLspFileEdits;
+begin
+  for Pair in AChanges do
+  begin
+    if (Pair.JsonValue is TJSONArray) and ReadEdits(Pair.JsonString.Value, TJSONArray(Pair.JsonValue), FileEdits) then
+    begin
+      AResult.Files := AResult.Files + [FileEdits];
+    end;
+  end;
+end;
+
+class function TLspWorkspaceEdit.FromJson(const AValue: TJSONValue): TLspWorkspaceEdit;
+var
+  Edit, Changes: TJSONObject;
+  DocumentChanges: TJSONArray;
+  Item: TJSONValue;
 begin
   Result := Default(TLspWorkspaceEdit);
   if not (AValue is TJSONObject) then
@@ -289,59 +363,21 @@ begin
     Exit;
   end;
   Edit := TJSONObject(AValue);
-  if Edit.TryGetValue<TJSONArray>('atlasUnchanged', Unchanged) then
-  begin
-    for Item in Unchanged do
-    begin
-      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
-      begin
-        Place.FileName := TLspUris.ToPath(Uri);
-        Place.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
-        Place.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
-        Place.Confidence := TAtlasConfidence.FromJson(Item);
-        Result.Unchanged := Result.Unchanged + [Place];
-      end;
-    end;
-  end;
+  Result.Unchanged := UnchangedPlacesOf(Edit);
   // documentChanges hat Vorrang, wenn der Server beides schickt.
   if Edit.TryGetValue<TJSONArray>('documentChanges', DocumentChanges) then
   begin
     for Item in DocumentChanges do
     begin
-      if not (Item is TJSONObject) then
+      if Item is TJSONObject then
       begin
-        Continue;
-      end;
-      if TJSONObject(Item).GetValue('kind') <> nil then
-      begin
-        if TLspFileOperation.FromJson(TJSONObject(Item), Operation) then
-        begin
-          Result.Operations := Result.Operations + [Operation];
-        end
-        else
-        begin
-          Inc(Result.Unsupported);
-        end;
-        Continue;
-      end;
-      if TJSONObject(Item).TryGetValue<TJSONObject>('textDocument', Document) and
-        Document.TryGetValue<string>('uri', Uri) and TJSONObject(Item).TryGetValue<TJSONArray>('edits', Edits) and
-        ReadEdits(Uri, Edits, FileEdits) then
-      begin
-        Result.Files := Result.Files + [FileEdits];
+        ReadDocumentChange(TJSONObject(Item), Result);
       end;
     end;
-    Exit;
-  end;
-  if Edit.TryGetValue<TJSONObject>('changes', Changes) then
+  end
+  else if Edit.TryGetValue<TJSONObject>('changes', Changes) then
   begin
-    for Pair in Changes do
-    begin
-      if (Pair.JsonValue is TJSONArray) and ReadEdits(Pair.JsonString.Value, TJSONArray(Pair.JsonValue), FileEdits) then
-      begin
-        Result.Files := Result.Files + [FileEdits];
-      end;
-    end;
+    ReadChanges(Changes, Result);
   end;
 end;
 

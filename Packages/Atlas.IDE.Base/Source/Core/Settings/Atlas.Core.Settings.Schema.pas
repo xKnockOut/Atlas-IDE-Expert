@@ -31,6 +31,8 @@ type
     Path: string;
     Page: string;
     Description: string;
+    /// <summary>x-description-en (#1458): englische Beschreibung; leer, wenn das Schema keine hat.</summary>
+    DescriptionEn: string;
     Kind: TAtlasSettingKind;
     /// <summary>Bei Choice: erlaubte Werte als JSON-Text ("\"de\"", "true").</summary>
     Choices: TArray<string>;
@@ -50,6 +52,8 @@ type
     Experimental: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
+    /// <summary>Beschreibung in der Sprache der IDE (#1458); ohne englischen Text die deutsche.</summary>
+    function DescriptionFor(AEnglish: Boolean): string;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
     function Accepts(const AJson: string): Boolean;
   end;
@@ -69,6 +73,9 @@ type
   end;
 
 implementation
+
+uses
+  System.StrUtils;
 
 function TypeOf(ASchema: TJSONObject): string;
 var
@@ -102,120 +109,253 @@ begin
   end;
 end;
 
+function DescriptionEnOf(ASchema: TJSONObject): string;
+begin
+  Result := ASchema.GetValue<string>('x-description-en', '');
+end;
+
+function EnumChoices(AEnum: TJSONArray): TArray<string>;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  for mValue in AEnum do
+  begin
+    Result := Result + [mValue.ToJSON];
+  end;
+end;
+
+/// <summary>Array mit Einträgen vom Typ "string".</summary>
+function HasStringItems(ASchema: TJSONObject): Boolean;
+var
+  mItems: TJSONValue;
+begin
+  mItems := ASchema.GetValue('items');
+  Result := (mItems is TJSONObject) and (TypeOf(TJSONObject(mItems)) = 'string');
+end;
+
+/// <summary>"oneOf" mit einer Variante vom Typ "string".</summary>
+function HasStringOption(ASchema: TJSONObject): Boolean;
+var
+  mOneOf, mOption: TJSONValue;
+begin
+  Result := False;
+  mOneOf := ASchema.GetValue('oneOf');
+  if not (mOneOf is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mOption in TJSONArray(mOneOf) do
+  begin
+    if (mOption is TJSONObject) and (TypeOf(TJSONObject(mOption)) = 'string') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Art eines Schemas; Complex, wenn kein einfaches Bedienelement passt.</summary>
 function KindOf(ASchema: TJSONObject; out AChoices: TArray<string>): TAtlasSettingKind;
 var
-  Enum, Items: TJSONValue;
-  Value: TJSONValue;
-  OneOf: TJSONValue;
-  Option: TJSONValue;
-  Kind: string;
+  mEnum: TJSONValue;
+  mKind: string;
 begin
   AChoices := nil;
-  Enum := ASchema.GetValue('enum');
-  if Enum is TJSONArray then
+  mEnum := ASchema.GetValue('enum');
+  mKind := TypeOf(ASchema);
+  if mEnum is TJSONArray then
   begin
-    for Value in TJSONArray(Enum) do
-    begin
-      AChoices := AChoices + [Value.ToJSON];
-    end;
-    Exit(TAtlasSettingKind.Choice);
-  end;
-  Kind := TypeOf(ASchema);
-  if Kind = 'boolean' then
+    AChoices := EnumChoices(TJSONArray(mEnum));
+    Result := TAtlasSettingKind.Choice;
+  end
+  else if mKind = 'boolean' then
   begin
-    Exit(TAtlasSettingKind.Boolean_);
-  end;
-  if (Kind = 'integer') or (Kind = 'number') then
+    Result := TAtlasSettingKind.Boolean_;
+  end
+  else if (mKind = 'integer') or (mKind = 'number') then
   begin
-    Exit(TAtlasSettingKind.Integer_);
-  end;
-  if Kind = 'string' then
-  begin
-    Exit(TAtlasSettingKind.Text);
-  end;
-  if Kind = 'array' then
-  begin
-    Items := ASchema.GetValue('items');
-    if (Items is TJSONObject) and (TypeOf(TJSONObject(Items)) = 'string') then
-    begin
-      Exit(TAtlasSettingKind.List);
-    end;
-  end;
+    Result := TAtlasSettingKind.Integer_;
+  end
   // oneOf mit String-Variante (z. B. profile): als Text, solange der Wert ein String ist.
-  if Kind = 'oneOf' then
+  else if (mKind = 'string') or ((mKind = 'oneOf') and HasStringOption(ASchema)) then
   begin
-    OneOf := ASchema.GetValue('oneOf');
-    if OneOf is TJSONArray then
+    Result := TAtlasSettingKind.Text;
+  end
+  else if (mKind = 'array') and HasStringItems(ASchema) then
+  begin
+    Result := TAtlasSettingKind.List;
+  end
+  else
+  begin
+    Result := TAtlasSettingKind.Complex;
+  end;
+end;
+
+/// <summary>Text, aber keine Zahl (TJSONNumber erbt von TJSONString).</summary>
+function IsText(AValue: TJSONValue): Boolean;
+begin
+  Result := (AValue is TJSONString) and not (AValue is TJSONNumber);
+end;
+
+/// <summary>Array nur aus Texten.</summary>
+function IsTextList(AValue: TJSONValue): Boolean;
+var
+  mItem: TJSONValue;
+begin
+  Result := AValue is TJSONArray;
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AValue) do
+  begin
+    if not IsText(mItem) then
     begin
-      for Option in TJSONArray(OneOf) do
-      begin
-        if (Option is TJSONObject) and (TypeOf(TJSONObject(Option)) = 'string') then
-        begin
-          Exit(TAtlasSettingKind.Text);
-        end;
-      end;
+      Exit(False);
     end;
   end;
-  Result := TAtlasSettingKind.Complex;
+end;
+
+function ExamplesOf(AExamples: TJSONValue): TArray<string>;
+var
+  mExample: TJSONValue;
+begin
+  Result := nil;
+  if not (AExamples is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mExample in TJSONArray(AExamples) do
+  begin
+    Result := Result + [TAtlasSettingsSchema.Display(mExample.ToJSON)];
+  end;
+end;
+
+function IsTrueValue(AValue: TJSONValue): Boolean;
+begin
+  Result := (AValue is TJSONBool) and TJSONBool(AValue).AsBoolean;
+end;
+
+function MakeField(const APath, APage: string; ASchema: TJSONObject; const AFallback, AFallbackEn,
+  AScope: string): TAtlasSettingField;
+var
+  mDefault: TJSONValue;
+begin
+  Result := Default(TAtlasSettingField);
+  Result.Path := APath;
+  Result.Page := ASchema.GetValue<string>('x-page', APage);
+  Result.Description := DescriptionOf(ASchema);
+  if Result.Description = '' then
+  begin
+    Result.Description := AFallback;
+  end;
+  Result.DescriptionEn := DescriptionEnOf(ASchema);
+  if Result.DescriptionEn = '' then
+  begin
+    Result.DescriptionEn := AFallbackEn;
+  end;
+  Result.Kind := KindOf(ASchema, Result.Choices);
+  mDefault := ASchema.GetValue('default');
+  if mDefault <> nil then
+  begin
+    Result.DefaultJson := mDefault.ToJSON;
+  end;
+  Result.Control := ASchema.GetValue<string>('x-control', '');
+  Result.Examples := ExamplesOf(ASchema.GetValue('examples'));
+  Result.Restart := IsTrueValue(ASchema.GetValue('x-restart'));
+  Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
+  Result.Both := ASchema.GetValue<string>('x-scope', AScope) = 'both';
+  Result.Experimental := IsTrueValue(ASchema.GetValue('x-experimental'));
+end;
+
+/// <summary>Alle Glieder sind Objekte, mindestens eins mit einfachem Bedienelement.</summary>
+function HasSimpleChildren(AChildren: TJSONObject): Boolean;
+var
+  mSub: TJSONPair;
+  mChoices: TArray<string>;
+begin
+  Result := False;
+  for mSub in AChildren do
+  begin
+    if not (mSub.JsonValue is TJSONObject) then
+    begin
+      Exit(False);
+    end;
+    if KindOf(TJSONObject(mSub.JsonValue), mChoices) <> TAtlasSettingKind.Complex then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Objekt mit mindestens einem einfachen Glied: Felder je Glied, komplexe Glieder als eigenes
+/// JSON-Feld (mcp.customPrompts darf mcp.globalSettings nicht verdecken). False, wenn AChild als ein Feld
+/// gilt.</summary>
+function AddChildFields(const AName: string; AChild: TJSONObject; var AFields: TArray<TAtlasSettingField>): Boolean;
+var
+  mChildren: TJSONValue;
+  mSub: TJSONPair;
+begin
+  mChildren := AChild.GetValue('properties');
+  Result := (TypeOf(AChild) = 'object') and (mChildren is TJSONObject) and
+    HasSimpleChildren(TJSONObject(mChildren));
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mSub in TJSONObject(mChildren) do
+  begin
+    AFields := AFields + [MakeField(AName + '.' + mSub.JsonString.Value, AChild.GetValue<string>('x-page', ''),
+      TJSONObject(mSub.JsonValue), DescriptionOf(AChild), DescriptionEnOf(AChild),
+      AChild.GetValue<string>('x-scope', ''))];
+  end;
 end;
 
 { TAtlasSettingField }
 
 function TAtlasSettingField.Accepts(const AJson: string): Boolean;
 var
-  Value: TJSONValue;
-  Item: TJSONValue;
-  Choice: string;
+  mValue: TJSONValue;
 begin
   if AJson = '' then
   begin
     Exit(True);
   end;
-  Value := TJSONObject.ParseJSONValue(AJson);
-  if Value = nil then
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  if mValue = nil then
   begin
     Exit(False);
   end;
   try
     case Kind of
       TAtlasSettingKind.Boolean_:
-        Result := Value is TJSONBool;
+        Result := mValue is TJSONBool;
       TAtlasSettingKind.Integer_:
-        Result := Value is TJSONNumber;
-      // TJSONNumber erbt von TJSONString: Zahlen ausdrücklich ausschließen.
+        Result := mValue is TJSONNumber;
       TAtlasSettingKind.Text:
-        Result := (Value is TJSONString) and not (Value is TJSONNumber);
+        Result := IsText(mValue);
       TAtlasSettingKind.Choice:
-        begin
-          Result := False;
-          for Choice in Choices do
-          begin
-            if Choice = Value.ToJSON then
-            begin
-              Result := True;
-            end;
-          end;
-        end;
+        Result := MatchStr(mValue.ToJSON, Choices);
       TAtlasSettingKind.List:
-        begin
-          Result := Value is TJSONArray;
-          if Result then
-          begin
-            for Item in TJSONArray(Value) do
-            begin
-              if not (Item is TJSONString) or (Item is TJSONNumber) then
-              begin
-                Result := False;
-              end;
-            end;
-          end;
-        end;
+        Result := IsTextList(mValue);
     else
       Result := True;
     end;
   finally
-    Value.Free;
+    mValue.Free;
+  end;
+end;
+
+function TAtlasSettingField.DescriptionFor(AEnglish: Boolean): string;
+begin
+  Result := '';
+  if AEnglish then
+  begin
+    Result := DescriptionEn;
+  end;
+  if Result = '' then
+  begin
+    Result := Description;
   end;
 end;
 
@@ -228,105 +368,37 @@ end;
 
 class function TAtlasSettingsSchema.Fields(const ASchemaJson: string): TArray<TAtlasSettingField>;
 var
-  Root, Properties, Child, Children: TJSONValue;
-  Pair, Sub: TJSONPair;
-  Field: TAtlasSettingField;
-  Simple: Boolean;
-  Choices: TArray<string>;
-
-  function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback, AScope: string): TAtlasSettingField;
-  var
-    Default_, Examples, Example, Restart, Experimental: TJSONValue;
-  begin
-    Result := Default(TAtlasSettingField);
-    Result.Path := APath;
-    Result.Page := ASchema.GetValue<string>('x-page', APage);
-    Result.Description := DescriptionOf(ASchema);
-    if Result.Description = '' then
-    begin
-      Result.Description := AFallback;
-    end;
-    Result.Kind := KindOf(ASchema, Result.Choices);
-    Default_ := ASchema.GetValue('default');
-    if Default_ <> nil then
-    begin
-      Result.DefaultJson := Default_.ToJSON;
-    end;
-    Result.Control := ASchema.GetValue<string>('x-control', '');
-    Examples := ASchema.GetValue('examples');
-    if Examples is TJSONArray then
-    begin
-      for Example in TJSONArray(Examples) do
-      begin
-        Result.Examples := Result.Examples + [Display(Example.ToJSON)];
-      end;
-    end;
-    Restart := ASchema.GetValue('x-restart');
-    Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
-    Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
-    Result.Both := ASchema.GetValue<string>('x-scope', AScope) = 'both';
-    Experimental := ASchema.GetValue('x-experimental');
-    Result.Experimental := (Experimental is TJSONBool) and TJSONBool(Experimental).AsBoolean;
-  end;
-
+  mRoot, mProperties: TJSONValue;
+  mPair: TJSONPair;
+  mChild: TJSONObject;
 begin
   Result := nil;
-  Root := TJSONObject.ParseJSONValue(ASchemaJson);
+  mRoot := TJSONObject.ParseJSONValue(ASchemaJson);
   try
-    if not (Root is TJSONObject) then
+    mProperties := nil;
+    if mRoot is TJSONObject then
+    begin
+      mProperties := TJSONObject(mRoot).GetValue('properties');
+    end;
+    if not (mProperties is TJSONObject) then
     begin
       Exit;
     end;
-    Properties := TJSONObject(Root).GetValue('properties');
-    if not (Properties is TJSONObject) then
+    for mPair in TJSONObject(mProperties) do
     begin
-      Exit;
-    end;
-    for Pair in TJSONObject(Properties) do
-    begin
-      if not (Pair.JsonValue is TJSONObject) or (Pair.JsonString.Value = '$schema') then
+      if not (mPair.JsonValue is TJSONObject) or (mPair.JsonString.Value = '$schema') then
       begin
         Continue;
       end;
-      Child := Pair.JsonValue;
-      Children := TJSONObject(Child).GetValue('properties');
-      // Objekt mit mindestens einem einfachen Glied: Felder je Glied, komplexe Glieder als eigenes JSON-Feld
-      // (mcp.customPrompts darf mcp.globalSettings nicht verdecken).
-      if (TypeOf(TJSONObject(Child)) = 'object') and (Children is TJSONObject) then
+      mChild := TJSONObject(mPair.JsonValue);
+      if not AddChildFields(mPair.JsonString.Value, mChild, Result) then
       begin
-        Simple := False;
-        for Sub in TJSONObject(Children) do
-        begin
-          if (Sub.JsonValue is TJSONObject) and
-            (KindOf(TJSONObject(Sub.JsonValue), Choices) <> TAtlasSettingKind.Complex) then
-          begin
-            Simple := True;
-          end;
-        end;
-        for Sub in TJSONObject(Children) do
-        begin
-          if not (Sub.JsonValue is TJSONObject) then
-          begin
-            Simple := False;
-          end;
-        end;
-        if Simple then
-        begin
-          for Sub in TJSONObject(Children) do
-          begin
-            Result := Result + [Make(Pair.JsonString.Value + '.' + Sub.JsonString.Value,
-              TJSONObject(Child).GetValue<string>('x-page', ''), TJSONObject(Sub.JsonValue),
-              DescriptionOf(TJSONObject(Child)), TJSONObject(Child).GetValue<string>('x-scope', ''))];
-          end;
-          Continue;
-        end;
+        Result := Result + [MakeField(mPair.JsonString.Value, mChild.GetValue<string>('x-page', ''), mChild, '', '',
+          '')];
       end;
-      Field := Make(Pair.JsonString.Value, TJSONObject(Child).GetValue<string>('x-page', ''),
-        TJSONObject(Child), '', '');
-      Result := Result + [Field];
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

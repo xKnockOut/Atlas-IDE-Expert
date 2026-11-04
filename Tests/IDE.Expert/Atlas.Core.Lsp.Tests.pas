@@ -1573,7 +1573,7 @@ begin
       '"end":{"line":9,"character":0}}}}}]');
     Replies.Add('textDocument/typeDefinition', '{"uri":"file:///c:/p/kunde.pas","range":{"start":' +
       '{"line":12,"character":2},"end":{"line":12,"character":8}}}');
-    Edits := Session.OnTypeFormatting('C:\P\A.pas', 5, 0, #10, 2, True, 1000);
+    Edits := Session.OnTypeFormatting('C:\P\A.pas', 5, 0, #10, TLspFormatOptions.Create(2, True), 1000);
     Assert.AreEqual(1, Integer(Length(Edits)));
     Assert.AreEqual(4, Edits[0].StartPos.Line);
     Assert.AreEqual('uses'#13#10'  Unit2;'#13#10, Edits[0].NewText);

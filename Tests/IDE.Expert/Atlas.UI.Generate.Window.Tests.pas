@@ -114,14 +114,14 @@ begin
   Window := TAtlasGenerateWindow.CreateMenu(nil, Entries, TAtlasGenerateOptions.Default, nil, TAtlasColors.Light);
   try
     Assert.AreEqual('Erzeugen', TAtlasStrings.Text(TAtlasTextId.GenerateTitle));
-    Assert.AreEqual('Erzeugen', TAtlasGenerateWindow.GroupCaption(Window.Rows[0].Group));
+    Assert.AreEqual('Erzeugen', TAtlasGenerateTexts.GroupCaption(Window.Rows[0].Group));
     Assert.IsTrue(Window.Rows[0].IsHeader);
     Captions := nil;
     for Row in Window.Rows do
     begin
       if not Row.IsHeader then
       begin
-        Captions := Captions + [IntToStr(Row.Digit) + ' ' + TAtlasGenerateWindow.EntryCaption(Entries[Row.Entry])];
+        Captions := Captions + [IntToStr(Row.Digit) + ' ' + TAtlasGenerateTexts.EntryCaption(Entries[Row.Entry])];
       end;
     end;
     Assert.AreEqual('1 Konstruktor aus Feldern|2 Destruktor mit Freigabe|3 Property mit Feld|' +
@@ -131,8 +131,8 @@ begin
     Window.Free;
   end;
   // Ohne eigenen Text: die Kurzbeschreibung des Servers; Vorlagen und Code-Aktionen behalten ihre Beschriftung.
-  Assert.AreEqual('Server: neu', TAtlasGenerateWindow.EntryCaption(Slash('neu', TAtlasGenerateGroup.Generate)));
-  Assert.AreEqual('try…finally', TAtlasGenerateWindow.EntryCaption(TAtlasGenerateEntry.Create(
+  Assert.AreEqual('Server: neu', TAtlasGenerateTexts.EntryCaption(Slash('neu', TAtlasGenerateGroup.Generate)));
+  Assert.AreEqual('try…finally', TAtlasGenerateTexts.EntryCaption(TAtlasGenerateEntry.Create(
     TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates, 'tryf', 'try…finally')));
 end;
 
@@ -142,12 +142,12 @@ var
 begin
   for Name in CatalogNames do
   begin
-    Assert.IsFalse(TAtlasGenerateWindow.EntryCaption(Slash(Name, TAtlasGenerateGroup.Generate)).StartsWith('Server'),
+    Assert.IsFalse(TAtlasGenerateTexts.EntryCaption(Slash(Name, TAtlasGenerateGroup.Generate)).StartsWith('Server'),
       Name);
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
   Assert.AreEqual('Constructor from fields',
-    TAtlasGenerateWindow.EntryCaption(Slash('ctor', TAtlasGenerateGroup.Generate)));
+    TAtlasGenerateTexts.EntryCaption(Slash('ctor', TAtlasGenerateGroup.Generate)));
 end;
 
 procedure TAtlasGenerateWindowTests.DeleteHidesEntry;

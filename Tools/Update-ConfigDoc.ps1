@@ -7,6 +7,9 @@
     Einzige Quelle ist schemas/atlas.schema.json (#265):
     - docs/Konfiguration.md: jeder Schlüssel mit Typ, Standardwert, erlaubten
       Werten und Beschreibung; verschachtelte Objekte als eigener Abschnitt.
+    - docs/en/Configuration.md (#1458): dieselbe Doku auf Englisch aus
+      x-description-en. Wächter: Jede description im Schema hat ein nicht
+      leeres x-description-en (das Plugin zeigt es bei englischer IDE).
     - docs/Einstellungen.md: Tabelle für das Einstellungs-Plugin (#227) aus den
       Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
       x-quickToggle (mit x-plugin, x-caption, x-captionEn) an einer booleschen
@@ -60,6 +63,7 @@ $ErrorActionPreference = 'Stop'
 
 $SchemaPath = Join-Path $Root 'schemas/atlas.schema.json'
 $DocPath = Join-Path $Root 'docs/Konfiguration.md'
+$DocEnPath = Join-Path $Root 'docs/en/Configuration.md'
 $TablePath = Join-Path $Root 'docs/Einstellungen.md'
 $ParserPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Atlas.Common.Configuration.Parser.pas'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -83,6 +87,7 @@ function Escape([string] $Text) { $Text.Replace('|', '\|').Replace("`r", '').Rep
 # Experimentelle Funktionen (#834)
 $MasterPath = 'experimental.enabled'
 $ExperimentalNote = 'Experimentell (Vorgabe aus; wirkt nur mit `experimental.enabled`). '
+$ExperimentalNoteEn = 'Experimental (off by default; only active with `experimental.enabled`). '
 function Is-Experimental([hashtable] $Node) { (Has $Node 'x-experimental') -and ($Node['x-experimental'] -eq $true) }
 $ServerExperimental = New-Object System.Collections.Generic.List[string]
 foreach ($Name in $Schema['properties'].Keys) {
@@ -99,15 +104,31 @@ foreach ($Name in $PluginSchema['properties'].Keys) { if (Is-Experimental $Plugi
 # Ort eines Schlüssels: eigenes x-scope, sonst das des Objekts.
 function Scope-Of([hashtable] $Node, [string] $Inherited) { if (Has $Node 'x-scope') { $Node['x-scope'] } else { $Inherited } }
 
+# Sprache der Doku (#1458): $script:En wählt englische Texte und x-description-en.
+$script:En = $false
 function Scope-Text([string] $Scope) {
+    if ($script:En) {
+        if ($Scope -eq 'global') { return 'global (settings.json)' }
+        if ($Scope -eq 'project') { return 'project (atlas.json)' }
+        if ($Scope -eq 'both') { return 'global and project' }
+        return ''
+    }
     if ($Scope -eq 'global') { return 'global (settings.json)' }
     if ($Scope -eq 'project') { return 'Projekt (atlas.json)' }
     if ($Scope -eq 'both') { return 'global und Projekt' }
     return ''
 }
 
+# Beschreibung in der Sprache der Doku; englisch ohne x-description-en die deutsche (meldet der Wächter).
+function Description-Of([hashtable] $Node) {
+    if ($script:En -and (Has $Node 'x-description-en')) { return $Node['x-description-en'] }
+    if (Has $Node 'description') { return $Node['description'] }
+    return ''
+}
+
 function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, [string] $Prefix, [string] $ParentScope) {
-    [void]$Out.AppendLine('| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |')
+    if ($script:En) { [void]$Out.AppendLine('| Key | Place | Type | Default | Values | Meaning |') }
+    else { [void]$Out.AppendLine('| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |') }
     [void]$Out.AppendLine('|---|---|---|---|---|---|')
     foreach ($Name in $Properties.Keys) {
         if ($Name -eq '$schema') { continue }
@@ -116,15 +137,16 @@ function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, 
         if ($Type -eq 'array' -and (Has $P 'items') -and (Has $P['items'] 'type')) { $Type = "array<$($P['items']['type'])>" }
         $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
         $Values = if (Has $P 'enum') { ($P['enum'] | ForEach-Object { Format-Value $_ }) -join ', ' }
-                  elseif (Has $P 'examples') { 'z. B. ' + (($P['examples'] | ForEach-Object { Format-Value $_ }) -join ', ') }
+                  elseif (Has $P 'examples') { $(if ($script:En) { 'e.g. ' } else { 'z. B. ' }) + (($P['examples'] | ForEach-Object { Format-Value $_ }) -join ', ') }
                   elseif ((Has $P 'minimum') -or (Has $P 'maximum')) { "$(if (Has $P 'minimum') { $P['minimum'] } else { '' })…$(if (Has $P 'maximum') { $P['maximum'] } else { '' })" }
                   else { '' }
-        $Description = if (Has $P 'description') { Escape $P['description'] } else { '' }
-        if (Is-Experimental $P) { $Description = "**$($ExperimentalNote.TrimEnd())** $Description" }
+        $Description = Escape (Description-Of $P)
+        $Note = if ($script:En) { $ExperimentalNoteEn } else { $ExperimentalNote }
+        if (Is-Experimental $P) { $Description = "**$($Note.TrimEnd())** $Description" }
         $Place = Scope-Text (Scope-Of $P $ParentScope)
         if (Has $P 'properties') {
             $Inner = @($P['properties'].Values | ForEach-Object { Scope-Of $_ (Scope-Of $P $ParentScope) } | Sort-Object -Unique)
-            if ($Inner.Count -gt 1) { $Place = 'gemischt, siehe unten' }
+            if ($Inner.Count -gt 1) { $Place = $(if ($script:En) { 'mixed, see below' } else { 'gemischt, siehe unten' }) }
         }
         [void]$Out.AppendLine("| ``$Prefix$Name`` | $Place | $Type | $Default | $Values | $Description |")
     }
@@ -167,6 +189,49 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Out.AppendLine('}')
 [void]$Out.AppendLine('```')
 $Text = $Out.ToString().Replace("`r`n", "`n")
+
+# --- Englische Doku (#1458) ---
+$script:En = $true
+$Out = New-Object System.Text.StringBuilder
+[void]$Out.AppendLine('# Configuration: atlas.json')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('<!-- Generated by Tools/Update-ConfigDoc.ps1 from schemas/atlas.schema.json. Do not edit by hand. -->')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine((Escape (Description-Of $Schema)))
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('Each key has exactly one place (column "Place"): project keys live in `atlas.json` in the project folder (in the plugin *Atlas › Project settings*), global keys in `%APPDATA%\Atlas\settings.json` for all projects (in the plugin *Tools › Options › Atlas*). Exception `rules`: check rules work in both places, globally for all projects, `atlas.json` overrides per rule. A key in the wrong place is ignored and reported as a warning. Missing keys take the default value. In the IDE the running IDE determines the Delphi version (`delphiVersion` does not apply there). The check rules are described in [Regeln.md](../Regeln.md) (German). The German version of this page is [Konfiguration.md](../Konfiguration.md).')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('`atlas.json` lives in the repository and applies to everyone in the team (#486). Credentials (keys such as `token`, `password`, `user` on any level, addresses such as `https://user:pw@…` or `?token=…`) and absolute paths (drive or UNC) in the path settings (`project`, `testUnits.folder`, `testUnits.project`, `exclude`, `index.exclude`, `overrides[].files`) are ignored when reading and reported as a warning. Glob patterns from the project folder (`/Generated/**`) and relative paths (`..\Tests`) stay allowed. The global `settings.json` is personal and exempt from this. The team settings of the plugin live in the separate project file `.atlas`.')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('The language of findings, light bulb, hover and settings follows the IDE (#1458): `language` `""` takes the language of the client (Delphi IDE: its language, otherwise English), `"de"` and `"en"` fix it. `AtlasServer --check` takes `--locale de|en`.')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('## Keys')
+[void]$Out.AppendLine()
+Write-Table $Out $Schema['properties'] '' ''
+foreach ($Name in $Schema['properties'].Keys) {
+    $P = $Schema['properties'][$Name]
+    if ((Has $P 'properties')) {
+        [void]$Out.AppendLine()
+        [void]$Out.AppendLine("## $Name")
+        [void]$Out.AppendLine()
+        Write-Table $Out $P['properties'] "$Name." (Scope-Of $P '')
+    }
+}
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('## Example')
+[void]$Out.AppendLine()
+[void]$Out.AppendLine('```json')
+[void]$Out.AppendLine('{')
+[void]$Out.AppendLine('  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",')
+[void]$Out.AppendLine('  "project": "App.dproj",')
+[void]$Out.AppendLine('  "config": "Debug",')
+[void]$Out.AppendLine('  "platform": "Win64",')
+[void]$Out.AppendLine('  "rules": { "empty-except": "error" },')
+[void]$Out.AppendLine('  "exclude": ["ThirdParty/**"]')
+[void]$Out.AppendLine('}')
+[void]$Out.AppendLine('```')
+$TextEn = $Out.ToString().Replace("`r`n", "`n")
+$script:En = $false
 
 # --- Einstellungstabelle für das Plugin (#227) ---
 $Table = New-Object System.Text.StringBuilder
@@ -519,6 +584,21 @@ foreach ($Name in $SchemaKeys) {
     }
 }
 
+# --- Wächter: englische Beschreibungen (#1458) ---
+function Check-English([string] $Where, $Node) {
+    if ($Node -is [System.Collections.IDictionary]) {
+        if ((Has $Node 'description') -and ($Node['description'] -is [string]) -and
+            -not ((Has $Node 'x-description-en') -and ([string]$Node['x-description-en']).Trim() -ne '')) {
+            $Problems.Add("Schema: ""$Where"" ohne x-description-en (englische Beschreibung, #1458)")
+        }
+        foreach ($Key in @($Node.Keys)) { if ($Key -ne 'x-description-en') { Check-English "$Where/$Key" $Node[$Key] } }
+    }
+    elseif (($Node -is [System.Collections.IList]) -and -not ($Node -is [string])) {
+        for ($Index = 0; $Index -lt $Node.Count; $Index++) { Check-English "$Where[$Index]" $Node[$Index] }
+    }
+}
+Check-English '' $Schema
+
 # --- Wächter: Katalog der Plugin-Einstellungen (#723) ---
 $PluginText = [IO.File]::ReadAllText($PluginPath, $Utf8)
 $SaveNames = @([regex]::Matches($PluginText, "Write(?:Integer|String)\('(\w+)'") | ForEach-Object { $_.Groups[1].Value })
@@ -646,6 +726,7 @@ foreach ($Wanted in @(@{ File = 'minimal.json'; On = $false }, @{ File = 'nur-co
 # --- Schreiben oder prüfen ---
 $Targets = @(
     @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },
+    @{ Path = $DocEnPath; Text = $TextEn; Name = 'docs/en/Configuration.md' },
     @{ Path = $TablePath; Text = $TableText; Name = 'docs/Einstellungen.md' }
 )
 foreach ($Target in $Targets) {
@@ -653,6 +734,7 @@ foreach ($Target in $Targets) {
     if ($Current -ceq $Target.Text) { continue }
     if ($Check) { $Problems.Add("$($Target.Name) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
+        [void](New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Target.Path))
         [IO.File]::WriteAllText($Target.Path, $Target.Text, $Utf8)
         Write-Host "Geschrieben: $($Target.Path)"
     }

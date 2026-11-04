@@ -224,21 +224,16 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBoard.Wire(AFrame: TAtlasBoardFrame);
+/// <summary>Laden, Auswahl und Schließen in AEvents an AOwner; AKeep hält AOwner, solange der Frame lebt.
+/// </summary>
+procedure AddLoadEvents(var AEvents: TAtlasBoardFrameEvents; AOwner: TAtlasIdeBoard; const AKeep: IInterface);
 var
   mKeep: IInterface;
   mOwner: TAtlasIdeBoard;
 begin
-  mKeep := Self;
-  mOwner := Self;
-  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
-  if not FOnlyMineSet then
-  begin
-    FOnlyMine := TAtlasIdeSettings.Current.IssuesBoardOnlyMine;
-    FOnlyMineSet := True;
-  end;
-  AFrame.SetOnlyMine(FOnlyMine);
-  AFrame.OnRefresh :=
+  mKeep := AKeep;
+  mOwner := AOwner;
+  AEvents.Refresh :=
     procedure
     begin
       if mKeep <> nil then
@@ -246,7 +241,7 @@ begin
         mOwner.Load(mOwner.FBoardId, mOwner.FSprintId);
       end;
     end;
-  AFrame.OnBoard :=
+  AEvents.Board :=
     procedure(AId: string)
     begin
       if mKeep <> nil then
@@ -254,7 +249,7 @@ begin
         mOwner.Load(AId, '');
       end;
     end;
-  AFrame.OnSprint :=
+  AEvents.Sprint :=
     procedure(AId: string)
     begin
       if mKeep <> nil then
@@ -262,7 +257,7 @@ begin
         mOwner.Load(mOwner.FBoardId, AId);
       end;
     end;
-  AFrame.OnOnlyMine :=
+  AEvents.OnlyMine :=
     procedure(AValue: Boolean)
     begin
       if mKeep <> nil then
@@ -270,47 +265,7 @@ begin
         mOwner.FOnlyMine := AValue;
       end;
     end;
-  AFrame.OnMove :=
-    procedure(ACard, AColumn: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.Move(ACard, AColumn);
-      end;
-    end;
-  AFrame.OnOpen :=
-    procedure(ACard: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.OpenCard(ACard);
-      end;
-    end;
-  AFrame.OnStart :=
-    procedure(ACard: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.StartCard(ACard);
-      end;
-    end;
-  AFrame.OnBrowse :=
-    procedure(ACard: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.BrowseCard(ACard);
-      end;
-    end;
-  AFrame.OnAssign :=
-    procedure(ACard: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.AssignCard(ACard);
-      end;
-    end;
-  AFrame.OnHidden :=
+  AEvents.Hidden :=
     procedure
     begin
       // Fenster geschlossen: Laden abbrechen.
@@ -319,6 +274,76 @@ begin
         mOwner.CancelLoad;
       end;
     end;
+end;
+
+/// <summary>Karten in AEvents an AOwner; AKeep hält AOwner, solange der Frame lebt.</summary>
+procedure AddCardEvents(var AEvents: TAtlasBoardFrameEvents; AOwner: TAtlasIdeBoard; const AKeep: IInterface);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeBoard;
+begin
+  mKeep := AKeep;
+  mOwner := AOwner;
+  AEvents.Move :=
+    procedure(ACard, AColumn: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.Move(ACard, AColumn);
+      end;
+    end;
+  AEvents.Open :=
+    procedure(ACard: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.OpenCard(ACard);
+      end;
+    end;
+  AEvents.Start :=
+    procedure(ACard: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.StartCard(ACard);
+      end;
+    end;
+  AEvents.Browse :=
+    procedure(ACard: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.BrowseCard(ACard);
+      end;
+    end;
+  AEvents.Assign :=
+    procedure(ACard: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.AssignCard(ACard);
+      end;
+    end;
+end;
+
+/// <summary>Ereignisse des Frames an AOwner; AKeep hält AOwner, solange der Frame lebt.</summary>
+function BoardEvents(AOwner: TAtlasIdeBoard; const AKeep: IInterface): TAtlasBoardFrameEvents;
+begin
+  Result := Default(TAtlasBoardFrameEvents);
+  AddLoadEvents(Result, AOwner, AKeep);
+  AddCardEvents(Result, AOwner, AKeep);
+end;
+
+procedure TAtlasIdeBoard.Wire(AFrame: TAtlasBoardFrame);
+begin
+  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
+  if not FOnlyMineSet then
+  begin
+    FOnlyMine := TAtlasIdeSettings.Current.IssuesBoardOnlyMine;
+    FOnlyMineSet := True;
+  end;
+  AFrame.SetOnlyMine(FOnlyMine);
+  AFrame.Events := BoardEvents(Self, Self);
 end;
 
 procedure TAtlasIdeBoard.Show;
@@ -395,95 +420,130 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBoard.Load(const ABoardId, ASprintId: string);
+type
+  /// <summary>Laden im Hintergrund: was der Worker braucht.</summary>
+  TLoadJob = record
+    Generation: Integer;
+    Target: TAtlasTrackerTarget;
+    Boards: IAtlasTrackerBoards;
+    Transport: IAtlasCiTransport;
+    BoardId: string;
+    SprintId: string;
+    /// <summary>Schreibweg da: Ziehen erlaubt.</summary>
+    Write: Boolean;
+  end;
+
+  /// <summary>Verschieben im Hintergrund: was der Worker braucht.</summary>
+  TMoveJob = record
+    Target: TAtlasTrackerTarget;
+    Boards: IAtlasTrackerBoards;
+    Transport: IAtlasCiTransport;
+    /// <summary>Stand vor dem Verschieben.</summary>
+    Snapshot: TAtlasBoardSnapshot;
+    Card: TAtlasBoardCard;
+    Column: Integer;
+    ColumnName: string;
+    Comment: string;
+    /// <summary>Wert vor dem Verschieben (zum Zurückspringen).</summary>
+    Old: string;
+  end;
+
+/// <summary>Tracker des aktiven Projekts übernehmen; bei anderem Tracker (Projektwechsel) gelten Auswahl von
+/// Board und Sprint und der gezeigte Stand nicht mehr.</summary>
+procedure SelectTarget(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; const ABoardId, ASprintId: string);
 var
-  mFrame: TAtlasBoardFrame;
   mTarget: TAtlasTrackerTarget;
-  mProvider: IAtlasTrackerProvider;
-  mBoards: IAtlasTrackerBoards;
-  mTransport: IAtlasCiTransport;
-  mCached: TAtlasBoardSnapshot;
-  mGeneration: Integer;
-  mKeep: IInterface;
-  mOwner: TAtlasIdeBoard;
-  mBoardId, mSprintId: string;
-  mWrite, mOk: Boolean;
-  mSnapshot: TAtlasBoardSnapshot;
-  mError: TAtlasCiFetchError;
 begin
-  mFrame := Frame;
-  if not FStarted or (mFrame = nil) then
-  begin
-    Exit;
-  end;
-  CancelLoad;
-  Inc(FGeneration);
-  mGeneration := FGeneration;
   mTarget := Default(TAtlasTrackerTarget);
-  if Assigned(FHooks.Target) then
+  if Assigned(AOwner.FHooks.Target) then
   begin
-    mTarget := FHooks.Target();
+    mTarget := AOwner.FHooks.Target();
   end;
-  // Anderer Tracker (Projektwechsel): Auswahl von Board und Sprint und der gezeigte Stand gelten nicht mehr.
-  if not SameText(mTarget.Key, FTarget.Key) then
+  AOwner.FBoardId := ABoardId;
+  AOwner.FSprintId := ASprintId;
+  if not SameText(mTarget.Key, AOwner.FTarget.Key) then
   begin
-    mBoardId := '';
-    mSprintId := '';
-    mFrame.ShowNotice('');
+    AOwner.FBoardId := '';
+    AOwner.FSprintId := '';
+    AFrame.ShowNotice('');
+  end;
+  AOwner.FTarget := mTarget;
+  AOwner.FOnline := False;
+  AFrame.SetCanDrag(False);
+  AOwner.UpdateActive;
+end;
+
+/// <summary>Anbieter, Board-Zugriff und Transport für das Laden; False, wenn nicht geladen wird (dann ist
+/// das Fenster schon beschriftet bzw. Loaded gemeldet).</summary>
+function PrepareLoad(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; out AJob: TLoadJob): Boolean;
+var
+  mProvider: IAtlasTrackerProvider;
+  mCached: TAtlasBoardSnapshot;
+begin
+  AJob := Default(TLoadJob);
+  AJob.Generation := AOwner.FGeneration;
+  AJob.Target := AOwner.FTarget;
+  AJob.BoardId := AOwner.FBoardId;
+  AJob.SprintId := AOwner.FSprintId;
+  mProvider := AOwner.ProviderOf(AJob.Target);
+  AJob.Boards := TAtlasIdeBoard.BoardsOf(mProvider);
+  Result := (AJob.Target.Server <> '') and (mProvider <> nil) and (AJob.Boards <> nil);
+  if not Result then
+  begin
+    AFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoTracker));
+    AFrame.SetStatus('');
   end
   else
   begin
-    mBoardId := ABoardId;
-    mSprintId := ASprintId;
+    // Sofort der letzte Stand; frisch geladen ersetzt ihn.
+    if not AFrame.HasSnapshot and TAtlasTrackerBoard.Load(AOwner.FCacheFolder, AJob.Target, mCached) then
+    begin
+      AFrame.SetSnapshot(mCached, '');
+    end;
+    AFrame.SetLoading(True);
+    AOwner.FLoading := True;
+    if Assigned(AOwner.FHooks.Transport) then
+    begin
+      AJob.Transport := AOwner.FHooks.Transport(mProvider, AJob.Target);
+    end;
+    Result := AJob.Transport <> nil;
+    if not Result then
+    begin
+      // Ohne Token kein Transport.
+      AOwner.Loaded(AJob.Generation, AJob.Target, False, TAtlasBoardSnapshot.Empty,
+        TAtlasCiFetchError.Unauthorized, False);
+    end;
   end;
-  FTarget := mTarget;
-  FBoardId := mBoardId;
-  FSprintId := mSprintId;
-  FOnline := False;
-  mFrame.SetCanDrag(False);
-  UpdateActive;
-  mProvider := ProviderOf(mTarget);
-  mBoards := BoardsOf(mProvider);
-  if (mTarget.Server = '') or (mProvider = nil) or (mBoards = nil) then
+end;
+
+/// <summary>Board im Hintergrund laden; das Ergebnis geht im Hauptthread an AOwner.Loaded.</summary>
+procedure RunLoad(AOwner: TAtlasIdeBoard; const AJob: TLoadJob);
+var
+  mJob: TLoadJob;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeBoard;
+  mOk: Boolean;
+  mSnapshot: TAtlasBoardSnapshot;
+  mError: TAtlasCiFetchError;
+begin
+  mJob := AJob;
+  if not Supports(mJob.Transport, IAtlasCiCancel, AOwner.FCancel) then
   begin
-    mFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoTracker));
-    mFrame.SetStatus('');
-    Exit;
-  end;
-  // Sofort der letzte Stand; frisch geladen ersetzt ihn.
-  if not mFrame.HasSnapshot and TAtlasTrackerBoard.Load(FCacheFolder, mTarget, mCached) then
-  begin
-    mFrame.SetSnapshot(mCached, '');
-  end;
-  mFrame.SetLoading(True);
-  FLoading := True;
-  mTransport := nil;
-  if Assigned(FHooks.Transport) then
-  begin
-    mTransport := FHooks.Transport(mProvider, mTarget);
-  end;
-  if mTransport = nil then
-  begin
-    Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, TAtlasCiFetchError.Unauthorized, False);
-    Exit;
-  end;
-  if not Supports(mTransport, IAtlasCiCancel, FCancel) then
-  begin
-    FCancel := nil;
+    AOwner.FCancel := nil;
   end;
   // Ziehen nur mit Schreibweg.
-  mWrite := Supports(mTransport, IAtlasCiSend);
-  mKeep := Self;
-  mOwner := Self;
+  mJob.Write := Supports(mJob.Transport, IAtlasCiSend);
+  mKeep := AOwner;
+  mOwner := AOwner;
   mSnapshot := TAtlasBoardSnapshot.Empty;
   mOk := False;
   mError := TAtlasCiFetchError.Network;
-  if not FWorker.Run(
+  if not AOwner.FWorker.Run(
     procedure
     begin
       try
-        mOk := mBoards.LoadBoard(TAtlasBoardRequest.Create(mTarget, mTransport, mBoardId, mSprintId,
-          TAtlasTrackerBoard.TimeoutMs), mSnapshot, mError);
+        mOk := mJob.Boards.LoadBoard(TAtlasBoardRequest.Create(mJob.Target, mJob.Transport, mJob.BoardId,
+          mJob.SprintId, TAtlasTrackerBoard.TimeoutMs), mSnapshot, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -493,17 +553,142 @@ begin
           TAtlasGuard.Log('Atlas-Board: Abfrage mit ' + E.ClassName + ' abgebrochen');
         end;
       end;
-      mTransport := nil;
+      mJob.Transport := nil;
     end,
     procedure
     begin
       if mKeep <> nil then
       begin
-        mOwner.Loaded(mGeneration, mTarget, mOk, mSnapshot, mError, mWrite);
+        mOwner.Loaded(mJob.Generation, mJob.Target, mOk, mSnapshot, mError, mJob.Write);
       end;
     end) then
   begin
-    Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, TAtlasCiFetchError.Cancelled, False);
+    AOwner.Loaded(mJob.Generation, mJob.Target, False, TAtlasBoardSnapshot.Empty, TAtlasCiFetchError.Cancelled,
+      False);
+  end;
+end;
+
+/// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
+/// </summary>
+function MoveAllowed(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; ACard, AColumn: Integer;
+  out AJob: TMoveJob): Boolean;
+begin
+  AJob := Default(TMoveJob);
+  Result := False;
+  if not AOwner.FOnline or not AOwner.FCanWrite then
+  begin
+    AFrame.SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveLocked));
+  end
+  else
+  begin
+    AJob.Snapshot := AFrame.Snapshot;
+    Result := TAtlasTrackerBoard.CanMove(AJob.Snapshot, ACard, AColumn);
+    if Result then
+    begin
+      AJob.Card := AJob.Snapshot.Cards[ACard];
+      AJob.Column := AColumn;
+      AJob.ColumnName := AFrame.ColumnCaption(AColumn);
+    end;
+  end;
+end;
+
+/// <summary>Rückfrage (issues.board.confirmMove) mit Kommentar; False = abgebrochen.</summary>
+function ConfirmMove(var AJob: TMoveJob): Boolean;
+var
+  mDontAsk: Boolean;
+  mNext: TAtlasPluginSettings;
+begin
+  AJob.Comment := '';
+  Result := True;
+  if TAtlasIdeSettings.Current.IssuesBoardConfirmMove then
+  begin
+    Result := TAtlasBoardMoveDialog.Execute(AJob.Card.Key, AJob.ColumnName, AJob.Comment, mDontAsk);
+    if Result and mDontAsk then
+    begin
+      mNext := TAtlasIdeSettings.Stored;
+      mNext.IssuesBoardConfirmMove := False;
+      TAtlasIdeSettings.Update(mNext);
+    end;
+  end;
+end;
+
+/// <summary>Board-Zugriff und Transport für das Verschieben; ohne Schreibweg False und Grund in der
+/// Statuszeile.</summary>
+function PrepareMove(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; var AJob: TMoveJob): Boolean;
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  AJob.Target := AOwner.FTarget;
+  mProvider := AOwner.ProviderOf(AJob.Target);
+  AJob.Boards := TAtlasIdeBoard.BoardsOf(mProvider);
+  AJob.Transport := nil;
+  if (mProvider <> nil) and Assigned(AOwner.FHooks.Transport) then
+  begin
+    AJob.Transport := AOwner.FHooks.Transport(mProvider, AJob.Target);
+  end;
+  Result := (AJob.Boards <> nil) and (AJob.Transport <> nil);
+  if not Result then
+  begin
+    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [AJob.Card.Key,
+      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNotConfigured)]));
+  end;
+end;
+
+/// <summary>Karte im Hintergrund verschieben; das Ergebnis geht im Hauptthread an AOwner.Moved.</summary>
+procedure RunMove(AOwner: TAtlasIdeBoard; const AJob: TMoveJob);
+var
+  mJob: TMoveJob;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeBoard;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mJob := AJob;
+  mKeep := AOwner;
+  mOwner := AOwner;
+  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+  if not AOwner.FWorker.Run(
+    procedure
+    begin
+      try
+        mResult := mJob.Boards.MoveCard(TAtlasBoardMove.Create(mJob.Target, mJob.Transport, mJob.Card, mJob.Column,
+          mJob.Comment, TAtlasTrackerBoard.MoveTimeoutMs), mJob.Snapshot);
+      except
+        on E: Exception do
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+          TAtlasGuard.Log('Atlas-Board: Verschieben mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mJob.Transport := nil;
+    end,
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.Moved(mJob.Card.Key, mJob.ColumnName, mJob.Old, mResult);
+      end;
+    end) then
+  begin
+    AOwner.Moved(mJob.Card.Key, mJob.ColumnName, mJob.Old,
+      TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+  end;
+end;
+
+procedure TAtlasIdeBoard.Load(const ABoardId, ASprintId: string);
+var
+  mFrame: TAtlasBoardFrame;
+  mJob: TLoadJob;
+begin
+  mFrame := Frame;
+  if FStarted and (mFrame <> nil) then
+  begin
+    CancelLoad;
+    Inc(FGeneration);
+    SelectTarget(Self, mFrame, ABoardId, ASprintId);
+    if PrepareLoad(Self, mFrame, mJob) then
+    begin
+      RunLoad(Self, mJob);
+    end;
   end;
 end;
 
@@ -568,96 +753,20 @@ end;
 procedure TAtlasIdeBoard.Move(ACard, AColumn: Integer);
 var
   mFrame: TAtlasBoardFrame;
-  mSnapshot: TAtlasBoardSnapshot;
-  mCard: TAtlasBoardCard;
-  mColumnName, mComment, mOld: string;
-  mDontAsk: Boolean;
-  mNext: TAtlasPluginSettings;
-  mBoards: IAtlasTrackerBoards;
-  mProvider: IAtlasTrackerProvider;
-  mTransport: IAtlasCiTransport;
-  mTarget: TAtlasTrackerTarget;
-  mKeep: IInterface;
-  mOwner: TAtlasIdeBoard;
-  mResult: TAtlasTrackerWriteResult;
+  mJob: TMoveJob;
+  mGo: Boolean;
 begin
   mFrame := Frame;
-  if not FStarted or (mFrame = nil) or FMoving then
+  mGo := FStarted and (mFrame <> nil) and not FMoving;
+  mGo := mGo and MoveAllowed(Self, mFrame, ACard, AColumn, mJob) and ConfirmMove(mJob) and
+    PrepareMove(Self, mFrame, mJob);
+  if mGo then
   begin
-    Exit;
-  end;
-  // Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
-  if not FOnline or not FCanWrite then
-  begin
-    mFrame.SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveLocked));
-    Exit;
-  end;
-  mSnapshot := mFrame.Snapshot;
-  if not TAtlasTrackerBoard.CanMove(mSnapshot, ACard, AColumn) then
-  begin
-    Exit;
-  end;
-  mCard := mSnapshot.Cards[ACard];
-  mColumnName := mFrame.ColumnCaption(AColumn);
-  mComment := '';
-  if TAtlasIdeSettings.Current.IssuesBoardConfirmMove then
-  begin
-    if not TAtlasBoardMoveDialog.Execute(mCard.Key, mColumnName, mComment, mDontAsk) then
-    begin
-      Exit;
-    end;
-    if mDontAsk then
-    begin
-      mNext := TAtlasIdeSettings.Stored;
-      mNext.IssuesBoardConfirmMove := False;
-      TAtlasIdeSettings.Update(mNext);
-    end;
-  end;
-  mTarget := FTarget;
-  mProvider := ProviderOf(mTarget);
-  mBoards := BoardsOf(mProvider);
-  mTransport := nil;
-  if (mProvider <> nil) and Assigned(FHooks.Transport) then
-  begin
-    mTransport := FHooks.Transport(mProvider, mTarget);
-  end;
-  if (mBoards = nil) or (mTransport = nil) then
-  begin
-    mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [mCard.Key,
-      TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNotConfigured)]));
-    Exit;
-  end;
-  // Sofort in der Zielspalte; bei einem Fehler springt die Karte zurück.
-  mOld := mFrame.MoveCard(ACard, AColumn);
-  mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoving, [mCard.Key]));
-  FMoving := True;
-  mKeep := Self;
-  mOwner := Self;
-  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
-  if not FWorker.Run(
-    procedure
-    begin
-      try
-        mResult := mBoards.MoveCard(TAtlasBoardMove.Create(mTarget, mTransport, mCard, AColumn, mComment,
-          TAtlasTrackerBoard.MoveTimeoutMs), mSnapshot);
-      except
-        on E: Exception do
-        begin
-          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
-          TAtlasGuard.Log('Atlas-Board: Verschieben mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mTransport := nil;
-    end,
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.Moved(mCard.Key, mColumnName, mOld, mResult);
-      end;
-    end) then
-  begin
-    Moved(mCard.Key, mColumnName, mOld, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+    // Sofort in der Zielspalte; bei einem Fehler springt die Karte zurück.
+    mJob.Old := mFrame.MoveCard(ACard, AColumn);
+    mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoving, [mJob.Card.Key]));
+    FMoving := True;
+    RunMove(Self, mJob);
   end;
 end;
 

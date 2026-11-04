@@ -428,8 +428,8 @@ begin
     end;
     PinAll(AResolver, ATree, AFileName, Files);
     try
-      if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(Files), APosition,
-        Trim(AName), Scope, Lookup(AResolver), Outcome, Reason) then
+      if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(Files),
+        TTypeAliasRequest.Create(APosition, Trim(AName), Scope, Lookup(AResolver)), Outcome, Reason) then
       begin
         raise Fail('Typ-Alias geht nicht: ' + Reason);
       end;

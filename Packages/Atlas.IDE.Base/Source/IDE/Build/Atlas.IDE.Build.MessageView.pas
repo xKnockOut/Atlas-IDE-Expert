@@ -230,100 +230,160 @@ end;
 
 { TAtlasMessageView }
 
+/// <summary>Meldungsbaum des Meldungsfensters; nil mit Grund in AInfo.</summary>
+function MessageTree(out AInfo: string): TComponent;
+var
+  mIndex: Integer;
+  mForm: TForm;
+begin
+  Result := nil;
+  mForm := nil;
+  for mIndex := 0 to Screen.FormCount - 1 do
+  begin
+    if SameText(Screen.Forms[mIndex].ClassName, FormClass) then
+    begin
+      mForm := Screen.Forms[mIndex];
+    end;
+  end;
+  if mForm = nil then
+  begin
+    AInfo := FormClass + ' nicht gefunden';
+  end
+  else
+  begin
+    Result := FindTree(mForm);
+    if Result = nil then
+    begin
+      AInfo := 'Meldungsbaum nicht gefunden';
+    end;
+  end;
+end;
+
+/// <summary>Meldung aus den Daten eines Knotens; False, wenn es keine Compilermeldung ist.</summary>
+function MessageOf(const AContext: TRttiContext; AData: Pointer; out AMessage: TAtlasCompilerMessage): Boolean;
+var
+  mLine: TObject;
+begin
+  Result := (AData <> nil) and LooksLikeObject(PPointer(AData)^);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mLine := TObject(PPointer(AData)^);
+  Result := InheritsFromName(mLine, MessageLineClass);
+  if Result then
+  begin
+    AMessage := TAtlasCompilerMessages.FromIde(PropValue(AContext, mLine, 'Kind').ToString,
+      PropValue(AContext, mLine, 'Message').ToString, PropValue(AContext, mLine, 'FileName').ToString,
+      AsInt(PropValue(AContext, mLine, 'Line')), AsInt(PropValue(AContext, mLine, 'Column')));
+  end;
+end;
+
+type
+  /// <summary>Durchlauf durch den Baum über RTTI; je nach Version mit oder ohne ConsiderChildrenAbove.</summary>
+  TTreeWalk = record
+    Tree: TComponent;
+    GetFirst: TRttiMethod;
+    GetNext: TRttiMethod;
+    GetNodeData: TRttiMethod;
+    /// <summary>Methoden suchen; False mit Grund in AInfo, wenn eine fehlt.</summary>
+    function Resolve(const AContext: TRttiContext; out AInfo: string): Boolean;
+    function First: Pointer;
+    function Next(ANode: Pointer): Pointer;
+    function DataOf(ANode: Pointer): Pointer;
+  end;
+
+function TTreeWalk.Resolve(const AContext: TRttiContext; out AInfo: string): Boolean;
+var
+  mType: TRttiType;
+begin
+  mType := AContext.GetType(Tree.ClassType);
+  GetFirst := MethodWith(mType, 'GetFirst', 1);
+  if GetFirst = nil then
+  begin
+    GetFirst := MethodWith(mType, 'GetFirst', 0);
+  end;
+  GetNext := MethodWith(mType, 'GetNext', 2);
+  if GetNext = nil then
+  begin
+    GetNext := MethodWith(mType, 'GetNext', 1);
+  end;
+  GetNodeData := MethodWith(mType, 'GetNodeData', 1);
+  Result := (GetFirst <> nil) and (GetNext <> nil) and (GetNodeData <> nil);
+  if not Result then
+  begin
+    AInfo := Format('%s: über RTTI nicht erreichbar (GetFirst %s, GetNext %s, GetNodeData %s)', [Tree.ClassName,
+      BoolToStr(GetFirst <> nil, True), BoolToStr(GetNext <> nil, True), BoolToStr(GetNodeData <> nil, True)]);
+  end;
+end;
+
+function TTreeWalk.First: Pointer;
+begin
+  if Length(GetFirst.GetParameters) = 1 then
+  begin
+    Result := GetFirst.Invoke(Tree, [False]).AsType<Pointer>;
+  end
+  else
+  begin
+    Result := GetFirst.Invoke(Tree, []).AsType<Pointer>;
+  end;
+end;
+
+function TTreeWalk.Next(ANode: Pointer): Pointer;
+begin
+  if Length(GetNext.GetParameters) = 2 then
+  begin
+    Result := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], ANode), False]).AsType<Pointer>;
+  end
+  else
+  begin
+    Result := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], ANode)]).AsType<Pointer>;
+  end;
+end;
+
+function TTreeWalk.DataOf(ANode: Pointer): Pointer;
+begin
+  Result := GetNodeData.Invoke(Tree, [PointerArg(GetNodeData.GetParameters[0], ANode)]).AsType<Pointer>;
+end;
+
 class function TAtlasMessageView.Read(out AMessages: TArray<TAtlasCompilerMessage>; out AInfo: string): Boolean;
 var
-  Index, Count: Integer;
-  Form: TForm;
-  Tree: TComponent;
-  Context: TRttiContext;
-  TreeType: TRttiType;
-  GetFirst, GetNext, GetNodeData: TRttiMethod;
-  Node, Data: Pointer;
-  Line: TObject;
-  Message: TAtlasCompilerMessage;
+  mCount: Integer;
+  mContext: TRttiContext;
+  mWalk: TTreeWalk;
+  mNode: Pointer;
+  mMessage: TAtlasCompilerMessage;
 begin
   Result := False;
   AMessages := nil;
-  Form := nil;
-  for Index := 0 to Screen.FormCount - 1 do
+  mWalk := Default(TTreeWalk);
+  mWalk.Tree := MessageTree(AInfo);
+  if mWalk.Tree = nil then
   begin
-    if SameText(Screen.Forms[Index].ClassName, FormClass) then
-    begin
-      Form := Screen.Forms[Index];
-    end;
-  end;
-  if Form = nil then
-  begin
-    AInfo := FormClass + ' nicht gefunden';
     Exit;
   end;
-  Tree := FindTree(Form);
-  if Tree = nil then
-  begin
-    AInfo := 'Meldungsbaum nicht gefunden';
-    Exit;
-  end;
-  Context := TRttiContext.Create;
+  mContext := TRttiContext.Create;
   try
-    TreeType := Context.GetType(Tree.ClassType);
-    // Je nach Version mit oder ohne ConsiderChildrenAbove.
-    GetFirst := MethodWith(TreeType, 'GetFirst', 1);
-    if GetFirst = nil then
+    if not mWalk.Resolve(mContext, AInfo) then
     begin
-      GetFirst := MethodWith(TreeType, 'GetFirst', 0);
-    end;
-    GetNext := MethodWith(TreeType, 'GetNext', 2);
-    if GetNext = nil then
-    begin
-      GetNext := MethodWith(TreeType, 'GetNext', 1);
-    end;
-    GetNodeData := MethodWith(TreeType, 'GetNodeData', 1);
-    if (GetFirst = nil) or (GetNext = nil) or (GetNodeData = nil) then
-    begin
-      AInfo := Format('%s: über RTTI nicht erreichbar (GetFirst %s, GetNext %s, GetNodeData %s)', [Tree.ClassName,
-        BoolToStr(GetFirst <> nil, True), BoolToStr(GetNext <> nil, True), BoolToStr(GetNodeData <> nil, True)]);
       Exit;
     end;
-    if Length(GetFirst.GetParameters) = 1 then
+    mNode := mWalk.First;
+    mCount := 0;
+    while (mNode <> nil) and (mCount < MaxNodes) do
     begin
-      Node := GetFirst.Invoke(Tree, [False]).AsType<Pointer>;
-    end
-    else
-    begin
-      Node := GetFirst.Invoke(Tree, []).AsType<Pointer>;
-    end;
-    Count := 0;
-    while (Node <> nil) and (Count < MaxNodes) do
-    begin
-      Data := GetNodeData.Invoke(Tree, [PointerArg(GetNodeData.GetParameters[0], Node)]).AsType<Pointer>;
-      if (Data <> nil) and LooksLikeObject(PPointer(Data)^) then
+      if MessageOf(mContext, mWalk.DataOf(mNode), mMessage) and
+        (mMessage.Severity <> TAtlasCompilerSeverity.Info) then
       begin
-        Line := TObject(PPointer(Data)^);
-        if InheritsFromName(Line, MessageLineClass) then
-        begin
-          Message := TAtlasCompilerMessages.FromIde(PropValue(Context, Line, 'Kind').ToString,
-            PropValue(Context, Line, 'Message').ToString, PropValue(Context, Line, 'FileName').ToString,
-            AsInt(PropValue(Context, Line, 'Line')), AsInt(PropValue(Context, Line, 'Column')));
-          if Message.Severity <> TAtlasCompilerSeverity.Info then
-          begin
-            AMessages := AMessages + [Message];
-          end;
-        end;
+        AMessages := AMessages + [mMessage];
       end;
-      if Length(GetNext.GetParameters) = 2 then
-      begin
-        Node := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], Node), False]).AsType<Pointer>;
-      end
-      else
-      begin
-        Node := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], Node)]).AsType<Pointer>;
-      end;
-      Inc(Count);
+      mNode := mWalk.Next(mNode);
+      Inc(mCount);
     end;
-    AInfo := Format('%d Knoten, %d Meldungen', [Count, Length(AMessages)]);
+    AInfo := Format('%d Knoten, %d Meldungen', [mCount, Length(AMessages)]);
     Result := True;
   finally
-    Context.Free;
+    mContext.Free;
   end;
 end;
 
