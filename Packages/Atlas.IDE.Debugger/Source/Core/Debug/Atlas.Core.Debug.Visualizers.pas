@@ -131,6 +131,19 @@ type
   end;
 
   /// <summary>Formatierung ohne Debugger, einzeln getestet.</summary>
+  /// <summary>Aufbau der Pixel eines DIB für TAtlasVisualizerFormat.DibPixels.</summary>
+  TAtlasDibLayout = record
+    Width: Integer;
+    Height: Integer;
+    BitsPerPixel: Integer;
+    /// <summary>Bytes je Zeile (ausgerichtet).</summary>
+    WidthBytes: Integer;
+    /// <summary>Zeilen von unten nach oben (positive Höhe im DIB).</summary>
+    BottomUp: Boolean;
+    class function Create(AWidth, AHeight, ABitsPerPixel, AWidthBytes: Integer;
+      ABottomUp: Boolean): TAtlasDibLayout; static;
+  end;
+
   TAtlasVisualizerFormat = class
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
@@ -177,9 +190,10 @@ type
     /// <summary>TPoint, TRect, TSize (auch …F) kurz: „(10, 20)“, „(10, 20)–(110, 70)“, „100 × 50“; ''
     /// sonst.</summary>
     class function GeometryText(const ABaseType, AEvalResult: string): string; static;
-    /// <summary>Pixel eines DIB (24 oder 32 Bit, Zeilen auf AWidthBytes ausgerichtet) von oben nach unten.</summary>
-    class function DibPixels(const ABits: TBytes; AWidth, AHeight, ABitsPerPixel, AWidthBytes: Integer;
-      ABottomUp: Boolean; out APixels: TArray<Cardinal>): Boolean; static;
+    /// <summary>Pixel eines DIB (24 oder 32 Bit, Zeilen auf ALayout.WidthBytes ausgerichtet) von oben nach
+    /// unten.</summary>
+    class function DibPixels(const ABits: TBytes; const ALayout: TAtlasDibLayout;
+      out APixels: TArray<Cardinal>): Boolean; static;
     /// <summary>„Klasse · Count = n · [a, b, c, …]“.</summary>
     class function ListText(const AShown: string; ACount: Integer; const AItems: TArray<string>): string; static;
     /// <summary>„Klasse · Count = n · {k: v, …}“.</summary>
@@ -792,10 +806,31 @@ begin
   end;
 end;
 
+/// <summary>Name einer Standard- oder Web-Farbe mit dem RGB-Wert ARgb; '' ohne Namen.</summary>
+function RgbName(ARgb: Cardinal): string;
+var
+  mIndex: Integer;
+begin
+  for mIndex := Low(StandardColors) to High(StandardColors) do
+  begin
+    if StandardColors[mIndex].Value = ARgb then
+    begin
+      Exit(StandardColors[mIndex].Name);
+    end;
+  end;
+  Result := '';
+  for mIndex := Low(WebColors) to High(WebColors) do
+  begin
+    if WebColors[mIndex].Value = ARgb then
+    begin
+      Exit('clWeb' + WebColors[mIndex].Name);
+    end;
+  end;
+end;
+
 class function TAtlasVisualizerFormat.ColorName(AValue: Int64): string;
 var
   Rgb: Cardinal;
-  Index: Integer;
   Value: Int64;
 begin
   Result := '';
@@ -807,33 +842,19 @@ begin
   end;
   if Value = ClNone then
   begin
-    Exit('clNone');
-  end;
-  if Value = ClDefault then
+    Result := 'clNone';
+  end
+  else if Value = ClDefault then
   begin
-    Exit('clDefault');
-  end;
-  if (Value >= SystemColorBase) and (Value <= SystemColorBase + High(SystemColors)) then
+    Result := 'clDefault';
+  end
+  else if (Value >= SystemColorBase) and (Value <= SystemColorBase + High(SystemColors)) then
   begin
-    Exit(SystemColors[Value - SystemColorBase]);
-  end;
-  if not ColorRgb(Value, Rgb) then
+    Result := SystemColors[Value - SystemColorBase];
+  end
+  else if ColorRgb(Value, Rgb) then
   begin
-    Exit;
-  end;
-  for Index := Low(StandardColors) to High(StandardColors) do
-  begin
-    if StandardColors[Index].Value = Rgb then
-    begin
-      Exit(StandardColors[Index].Name);
-    end;
-  end;
-  for Index := Low(WebColors) to High(WebColors) do
-  begin
-    if WebColors[Index].Value = Rgb then
-    begin
-      Exit('clWeb' + WebColors[Index].Name);
-    end;
+    Result := RgbName(Rgb);
   end;
 end;
 
@@ -889,6 +910,16 @@ begin
   end;
 end;
 
+/// <summary>Feld AName aus AFields als ganze Zahl.</summary>
+function FieldInteger(const AFields: TArray<TAtlasDebugField>; const AName: string; out AValue: Int64): Boolean;
+var
+  mText: string;
+begin
+  AValue := 0;
+  Result := TAtlasVisualizerFormat.FieldValue(AFields, AName, mText) and
+    TAtlasVisualizerFormat.ParseInteger(mText, AValue);
+end;
+
 class function TAtlasVisualizerFormat.GuidText(const AEvalResult: string): string;
 var
   Fields, Bytes: TArray<TAtlasDebugField>;
@@ -898,10 +929,12 @@ var
   Index: Integer;
 begin
   Result := '';
-  if not ParseFields(AEvalResult, Fields) or not FieldValue(Fields, 'D1', Text) or not ParseInteger(Text, D1) or
-    not FieldValue(Fields, 'D2', Text) or not ParseInteger(Text, D2) or not FieldValue(Fields, 'D3', Text) or
-    not ParseInteger(Text, D3) or not FieldValue(Fields, 'D4', Text) or not ParseFields(Text, Bytes) or
-    (Length(Bytes) <> 8) then
+  if not ParseFields(AEvalResult, Fields) or not FieldInteger(Fields, 'D1', D1) or
+    not FieldInteger(Fields, 'D2', D2) or not FieldInteger(Fields, 'D3', D3) then
+  begin
+    Exit;
+  end;
+  if not FieldValue(Fields, 'D4', Text) or not ParseFields(Text, Bytes) or (Length(Bytes) <> 8) then
   begin
     Exit;
   end;
@@ -936,76 +969,119 @@ begin
   end;
 end;
 
+function PointText(const AFields: TArray<TAtlasDebugField>): string;
+var
+  mX, mY: string;
+begin
+  Result := '';
+  if TAtlasVisualizerFormat.FieldValue(AFields, 'X', mX) and TAtlasVisualizerFormat.FieldValue(AFields, 'Y', mY) then
+  begin
+    Result := Format('(%s, %s)', [Number(mX), Number(mY)]);
+  end;
+end;
+
+function RectText(const AFields: TArray<TAtlasDebugField>): string;
+var
+  mLeft, mTop, mRight, mBottom: string;
+begin
+  Result := '';
+  if TAtlasVisualizerFormat.FieldValue(AFields, 'Left', mLeft) and
+    TAtlasVisualizerFormat.FieldValue(AFields, 'Top', mTop) and
+    TAtlasVisualizerFormat.FieldValue(AFields, 'Right', mRight) and
+    TAtlasVisualizerFormat.FieldValue(AFields, 'Bottom', mBottom) then
+  begin
+    Result := Format('(%s, %s)–(%s, %s)', [Number(mLeft), Number(mTop), Number(mRight), Number(mBottom)]);
+  end;
+end;
+
+function SizeText(const AFields: TArray<TAtlasDebugField>): string;
+var
+  mWidth, mHeight: string;
+begin
+  Result := '';
+  if (TAtlasVisualizerFormat.FieldValue(AFields, 'cx', mWidth) and
+    TAtlasVisualizerFormat.FieldValue(AFields, 'cy', mHeight)) or
+    (TAtlasVisualizerFormat.FieldValue(AFields, 'Width', mWidth) and
+    TAtlasVisualizerFormat.FieldValue(AFields, 'Height', mHeight)) then
+  begin
+    Result := Format('%s × %s', [Number(mWidth), Number(mHeight)]);
+  end;
+end;
+
 class function TAtlasVisualizerFormat.GeometryText(const ABaseType, AEvalResult: string): string;
 var
   Fields: TArray<TAtlasDebugField>;
-  A, B, C, D: string;
 begin
   Result := '';
   if not ParseFields(AEvalResult, Fields) then
   begin
     Exit;
   end;
-  if SameText(ABaseType, 'TPoint') or SameText(ABaseType, 'TPointF') or SameText(ABaseType, 'TSmallPoint') then
+  if MatchText(ABaseType, ['TPoint', 'TPointF', 'TSmallPoint']) then
   begin
-    if FieldValue(Fields, 'X', A) and FieldValue(Fields, 'Y', B) then
-    begin
-      Result := Format('(%s, %s)', [Number(A), Number(B)]);
-    end;
+    Result := PointText(Fields);
   end
-  else if SameText(ABaseType, 'TRect') or SameText(ABaseType, 'TRectF') then
+  else if MatchText(ABaseType, ['TRect', 'TRectF']) then
   begin
-    if FieldValue(Fields, 'Left', A) and FieldValue(Fields, 'Top', B) and FieldValue(Fields, 'Right', C) and
-      FieldValue(Fields, 'Bottom', D) then
-    begin
-      Result := Format('(%s, %s)–(%s, %s)', [Number(A), Number(B), Number(C), Number(D)]);
-    end;
+    Result := RectText(Fields);
   end
-  else if SameText(ABaseType, 'TSize') or SameText(ABaseType, 'TSizeF') then
+  else if MatchText(ABaseType, ['TSize', 'TSizeF']) then
   begin
-    if (FieldValue(Fields, 'cx', A) and FieldValue(Fields, 'cy', B)) or
-      (FieldValue(Fields, 'Width', A) and FieldValue(Fields, 'Height', B)) then
-    begin
-      Result := Format('%s × %s', [Number(A), Number(B)]);
-    end;
+    Result := SizeText(Fields);
   end;
 end;
 
-class function TAtlasVisualizerFormat.DibPixels(const ABits: TBytes; AWidth, AHeight, ABitsPerPixel,
-  AWidthBytes: Integer; ABottomUp: Boolean; out APixels: TArray<Cardinal>): Boolean;
+{ TAtlasDibLayout }
+
+class function TAtlasDibLayout.Create(AWidth, AHeight, ABitsPerPixel, AWidthBytes: Integer;
+  ABottomUp: Boolean): TAtlasDibLayout;
+begin
+  Result.Width := AWidth;
+  Result.Height := AHeight;
+  Result.BitsPerPixel := ABitsPerPixel;
+  Result.WidthBytes := AWidthBytes;
+  Result.BottomUp := ABottomUp;
+end;
+
+class function TAtlasVisualizerFormat.DibPixels(const ABits: TBytes; const ALayout: TAtlasDibLayout;
+  out APixels: TArray<Cardinal>): Boolean;
 var
   X, Y, Row, Offset, Step: Integer;
   Alpha: Cardinal;
+  mWidth, mHeight, mWidthBytes: Integer;
 begin
   APixels := nil;
-  Result := (AWidth > 0) and (AHeight > 0) and ((ABitsPerPixel = 24) or (ABitsPerPixel = 32)) and
-    (AWidthBytes >= AWidth * (ABitsPerPixel div 8)) and (Int64(AWidthBytes) * AHeight <= Length(ABits));
+  mWidth := ALayout.Width;
+  mHeight := ALayout.Height;
+  mWidthBytes := ALayout.WidthBytes;
+  Result := (mWidth > 0) and (mHeight > 0) and ((ALayout.BitsPerPixel = 24) or (ALayout.BitsPerPixel = 32)) and
+    (mWidthBytes >= mWidth * (ALayout.BitsPerPixel div 8)) and (Int64(mWidthBytes) * mHeight <= Length(ABits));
   if not Result then
   begin
     Exit;
   end;
-  Step := ABitsPerPixel div 8;
-  SetLength(APixels, AWidth * AHeight);
-  for Y := 0 to AHeight - 1 do
+  Step := ALayout.BitsPerPixel div 8;
+  SetLength(APixels, mWidth * mHeight);
+  for Y := 0 to mHeight - 1 do
   begin
-    if ABottomUp then
+    if ALayout.BottomUp then
     begin
-      Row := AHeight - 1 - Y;
+      Row := mHeight - 1 - Y;
     end
     else
     begin
       Row := Y;
     end;
-    for X := 0 to AWidth - 1 do
+    for X := 0 to mWidth - 1 do
     begin
       // DIB: Blau, Grün, Rot (, Alpha).
-      Offset := Row * AWidthBytes + X * Step;
+      Offset := Row * mWidthBytes + X * Step;
       Alpha := $FF;
       if Step = 4 then
       begin
         Alpha := ABits[Offset + 3];
       end;
-      APixels[Y * AWidth + X] := (Alpha shl 24) or (Cardinal(ABits[Offset + 2]) shl 16) or
+      APixels[Y * mWidth + X] := (Alpha shl 24) or (Cardinal(ABits[Offset + 2]) shl 16) or
         (Cardinal(ABits[Offset + 1]) shl 8) or ABits[Offset];
     end;
   end;
@@ -1503,8 +1579,8 @@ begin
     TAtlasVisualizerFormat.ParseAddress(Text, Address) and (Width > 0) and (Height <> 0) and
     (Width * Abs(Height) <= AEvaluator.Options.MaxImagePixels) and
     AEvaluator.Read(Address, Integer(WidthBytes * Abs(Height)), Data) and
-    TAtlasVisualizerFormat.DibPixels(Data, Integer(Width), Integer(Abs(Height)), Integer(Bits), Integer(WidthBytes),
-    Height > 0, APixels);
+    TAtlasVisualizerFormat.DibPixels(Data, TAtlasDibLayout.Create(Integer(Width), Integer(Abs(Height)),
+    Integer(Bits), Integer(WidthBytes), Height > 0), APixels);
   if Result then
   begin
     AWidth := Integer(Width);
@@ -1584,19 +1660,170 @@ begin
   end;
 end;
 
+function ListSummary(var AEvaluator: TEvaluator; const AShown: string): string;
+var
+  mCount: Int64;
+begin
+  Result := '';
+  if AEvaluator.Int(CountProbes, mCount) then
+  begin
+    Result := TAtlasVisualizerFormat.ListText(AShown, Integer(mCount),
+      ListItems(AEvaluator, mCount, TAtlasVisualizerOptions.PreviewItems));
+  end;
+end;
+
+function DictionarySummary(var AEvaluator: TEvaluator; const AShown: string): string;
+var
+  mCount: Int64;
+  mIndex: Integer;
+  mItems: TArray<string>;
+begin
+  Result := '';
+  if not AEvaluator.Int(CountProbes, mCount) then
+  begin
+    Exit;
+  end;
+  mItems := DictionaryPairs(AEvaluator, mCount, TAtlasVisualizerOptions.PreviewItems);
+  for mIndex := 0 to High(mItems) do
+  begin
+    mItems[mIndex] := PairText(mItems[mIndex]);
+  end;
+  Result := TAtlasVisualizerFormat.DictionaryText(AShown, Integer(mCount), mItems);
+end;
+
+function DataSetSummary(var AEvaluator: TEvaluator; const AShown: string): string;
+var
+  mDataSet: TDataSetInfo;
+  mIndex: Integer;
+  mItems: TArray<string>;
+begin
+  Result := '';
+  mDataSet := ReadDataSet(AEvaluator, TAtlasVisualizerOptions.PreviewItems, False);
+  if mDataSet.State = '' then
+  begin
+    Exit;
+  end;
+  Result := AShown + Separator + mDataSet.State;
+  if mDataSet.HasPosition then
+  begin
+    Result := Result + Separator + Format('%d/%d', [mDataSet.RecNo, mDataSet.RecordCount]);
+  end;
+  mItems := nil;
+  for mIndex := 0 to High(mDataSet.Names) do
+  begin
+    mItems := mItems + [mDataSet.Names[mIndex] + ' = ' + TAtlasVisualizerFormat.Shorten(mDataSet.Values[mIndex], 30)];
+  end;
+  if Length(mItems) > 0 then
+  begin
+    Result := Result + Separator + string.Join(', ', mItems);
+  end;
+end;
+
+function BytesSummary(var AEvaluator: TEvaluator; const ABase, AShown, AEvalResult: string): string;
+var
+  mSource: TByteSource;
+begin
+  Result := '';
+  mSource := ReadBytes(AEvaluator, ABase, AEvalResult, TAtlasVisualizerOptions.PreviewBytes);
+  if not mSource.Known then
+  begin
+    Exit;
+  end;
+  Result := TAtlasVisualizerFormat.HexPreview(mSource.Bytes, mSource.Total, TAtlasVisualizerOptions.PreviewBytes);
+  if IsStreamType(ABase) then
+  begin
+    Result := AShown + Separator + Result;
+  end;
+end;
+
+function JsonSummary(var AEvaluator: TEvaluator; const AShown: string): string;
+var
+  mJson: TJsonInfo;
+begin
+  Result := '';
+  mJson := ReadJson(AEvaluator, TAtlasVisualizerOptions.PreviewItems);
+  if mJson.HasText then
+  begin
+    Exit(mJson.Text);
+  end;
+  if not mJson.HasCount then
+  begin
+    Exit;
+  end;
+  Result := Format('%s · Count = %d', [AShown, mJson.Count]);
+  if Length(mJson.Keys) > 0 then
+  begin
+    Result := Result + Separator + '{' + string.Join(', ', mJson.Keys);
+    if mJson.Count > Length(mJson.Keys) then
+    begin
+      Result := Result + ', …';
+    end;
+    Result := Result + '}';
+  end;
+end;
+
+function ColorSummary(const ABase, AEvalResult: string): string;
+var
+  mRgb: Cardinal;
+  mHasRgb: Boolean;
+begin
+  if not ColorOf(ABase, AEvalResult, Result, mRgb, mHasRgb) then
+  begin
+    Result := '';
+  end;
+end;
+
+function ImageSummary(var AEvaluator: TEvaluator; const ABase, AShown: string): string;
+var
+  mImage: TImageInfo;
+begin
+  Result := '';
+  mImage := ReadImage(AEvaluator, ABase);
+  if (mImage.Width > 0) and (mImage.Height > 0) then
+  begin
+    Result := Format('%s · %d × %d', [AShown, mImage.Width, mImage.Height]);
+    if mImage.PixelFormat <> '' then
+    begin
+      Result := Result + Separator + mImage.PixelFormat;
+    end;
+  end
+  else if mImage.PixelFormat <> '' then
+  begin
+    Result := AShown + Separator + mImage.PixelFormat;
+  end;
+end;
+
+/// <summary>Ersatztext je Art, ungekürzt.</summary>
+function Summary(AKind: TAtlasVisualizerKind; var AEvaluator: TEvaluator; const ABase, AShown,
+  AEvalResult: string): string;
+begin
+  Result := '';
+  case AKind of
+    TAtlasVisualizerKind.Lists:
+      Result := ListSummary(AEvaluator, AShown);
+    TAtlasVisualizerKind.Dictionaries:
+      Result := DictionarySummary(AEvaluator, AShown);
+    TAtlasVisualizerKind.DataSets:
+      Result := DataSetSummary(AEvaluator, AShown);
+    TAtlasVisualizerKind.Bytes:
+      Result := BytesSummary(AEvaluator, ABase, AShown, AEvalResult);
+    TAtlasVisualizerKind.Json:
+      Result := JsonSummary(AEvaluator, AShown);
+    TAtlasVisualizerKind.Colors:
+      Result := ColorSummary(ABase, AEvalResult);
+    TAtlasVisualizerKind.Guid:
+      Result := TAtlasVisualizerFormat.GuidText(AEvalResult);
+    TAtlasVisualizerKind.Geometry:
+      Result := TAtlasVisualizerFormat.GeometryText(ABase, AEvalResult);
+    TAtlasVisualizerKind.Graphics:
+      Result := ImageSummary(AEvaluator, ABase, AShown);
+  end;
+end;
+
 class function TAtlasVisualizers.Replacement(AKind: TAtlasVisualizerKind; const AExpression, ATypeName,
   AEvalResult: string; const AOptions: TAtlasVisualizerOptions; const AContext: TAtlasVisualizerContext): string;
 var
   Evaluator: TEvaluator;
-  Count, Index: Int64;
-  Base, Shown, Text: string;
-  Items: TArray<string>;
-  DataSet: TDataSetInfo;
-  Source: TByteSource;
-  Json: TJsonInfo;
-  Image: TImageInfo;
-  Rgb: Cardinal;
-  HasRgb: Boolean;
 begin
   Result := '';
   if not (AKind in AOptions.Kinds) then
@@ -1604,106 +1831,7 @@ begin
     Exit;
   end;
   Evaluator := NewEvaluator(AExpression, AOptions, AContext);
-  Base := BaseTypeName(ATypeName);
-  Shown := ShortTypeName(ATypeName);
-  case AKind of
-    TAtlasVisualizerKind.Lists:
-      if Evaluator.Int(CountProbes, Count) then
-      begin
-        Result := TAtlasVisualizerFormat.ListText(Shown, Integer(Count),
-          ListItems(Evaluator, Count, TAtlasVisualizerOptions.PreviewItems));
-      end;
-    TAtlasVisualizerKind.Dictionaries:
-      if Evaluator.Int(CountProbes, Count) then
-      begin
-        Items := DictionaryPairs(Evaluator, Count, TAtlasVisualizerOptions.PreviewItems);
-        for Index := 0 to High(Items) do
-        begin
-          Items[Index] := PairText(Items[Index]);
-        end;
-        Result := TAtlasVisualizerFormat.DictionaryText(Shown, Integer(Count), Items);
-      end;
-    TAtlasVisualizerKind.DataSets:
-      begin
-        DataSet := ReadDataSet(Evaluator, TAtlasVisualizerOptions.PreviewItems, False);
-        if DataSet.State = '' then
-        begin
-          Exit;
-        end;
-        Result := Shown + Separator + DataSet.State;
-        if DataSet.HasPosition then
-        begin
-          Result := Result + Separator + Format('%d/%d', [DataSet.RecNo, DataSet.RecordCount]);
-        end;
-        Items := nil;
-        for Index := 0 to High(DataSet.Names) do
-        begin
-          Items := Items + [DataSet.Names[Index] + ' = ' + TAtlasVisualizerFormat.Shorten(DataSet.Values[Index], 30)];
-        end;
-        if Length(Items) > 0 then
-        begin
-          Result := Result + Separator + string.Join(', ', Items);
-        end;
-      end;
-    TAtlasVisualizerKind.Bytes:
-      begin
-        Source := ReadBytes(Evaluator, Base, AEvalResult, TAtlasVisualizerOptions.PreviewBytes);
-        if Source.Known then
-        begin
-          Result := TAtlasVisualizerFormat.HexPreview(Source.Bytes, Source.Total, TAtlasVisualizerOptions.PreviewBytes);
-          if IsStreamType(Base) then
-          begin
-            Result := Shown + Separator + Result;
-          end;
-        end;
-      end;
-    TAtlasVisualizerKind.Json:
-      begin
-        Json := ReadJson(Evaluator, TAtlasVisualizerOptions.PreviewItems);
-        if Json.HasText then
-        begin
-          Result := Json.Text;
-        end
-        else if Json.HasCount then
-        begin
-          Result := Format('%s · Count = %d', [Shown, Json.Count]);
-          if Length(Json.Keys) > 0 then
-          begin
-            Result := Result + Separator + '{' + string.Join(', ', Json.Keys);
-            if Json.Count > Length(Json.Keys) then
-            begin
-              Result := Result + ', …';
-            end;
-            Result := Result + '}';
-          end;
-        end;
-      end;
-    TAtlasVisualizerKind.Colors:
-      if ColorOf(Base, AEvalResult, Text, Rgb, HasRgb) then
-      begin
-        Result := Text;
-      end;
-    TAtlasVisualizerKind.Guid:
-      Result := TAtlasVisualizerFormat.GuidText(AEvalResult);
-    TAtlasVisualizerKind.Geometry:
-      Result := TAtlasVisualizerFormat.GeometryText(Base, AEvalResult);
-    TAtlasVisualizerKind.Graphics:
-      begin
-        Image := ReadImage(Evaluator, Base);
-        if (Image.Width > 0) and (Image.Height > 0) then
-        begin
-          Result := Format('%s · %d × %d', [Shown, Image.Width, Image.Height]);
-          if Image.PixelFormat <> '' then
-          begin
-            Result := Result + Separator + Image.PixelFormat;
-          end;
-        end
-        else if Image.PixelFormat <> '' then
-        begin
-          Result := Shown + Separator + Image.PixelFormat;
-        end;
-      end;
-  end;
+  Result := Summary(AKind, Evaluator, BaseTypeName(ATypeName), ShortTypeName(ATypeName), AEvalResult);
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
@@ -1718,21 +1846,122 @@ begin
   end;
 end;
 
+procedure ViewList(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
+var
+  mCount: Int64;
+  mIndex: Integer;
+  mItems: TArray<string>;
+begin
+  if not AEvaluator.Int(CountProbes, mCount) then
+  begin
+    Exit;
+  end;
+  AView.Mode := TAtlasVisualizerViewMode.Table;
+  AView.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Value];
+  mItems := ListItems(AEvaluator, mCount, TAtlasVisualizerOptions.ViewItems);
+  for mIndex := 0 to High(mItems) do
+  begin
+    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mItems[mIndex]])];
+  end;
+  AView.Total := mCount;
+end;
+
+procedure ViewDictionary(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
+var
+  mCount: Int64;
+  mValue: string;
+  mTab: Integer;
+begin
+  if not AEvaluator.Int(CountProbes, mCount) then
+  begin
+    Exit;
+  end;
+  AView.Mode := TAtlasVisualizerViewMode.Table;
+  AView.Columns := [TAtlasVisualizerColumn.Key, TAtlasVisualizerColumn.Value];
+  for mValue in DictionaryPairs(AEvaluator, mCount, TAtlasVisualizerOptions.ViewItems) do
+  begin
+    mTab := Pos(#9, mValue);
+    AView.Rows := AView.Rows + [Row([Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt)])];
+  end;
+  AView.Total := mCount;
+end;
+
+procedure ViewDataSet(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
+var
+  mDataSet: TDataSetInfo;
+  mIndex: Integer;
+begin
+  mDataSet := ReadDataSet(AEvaluator, TAtlasVisualizerOptions.ViewItems, True);
+  AView.Mode := TAtlasVisualizerViewMode.Table;
+  AView.Columns := [TAtlasVisualizerColumn.Field, TAtlasVisualizerColumn.FieldType,
+    TAtlasVisualizerColumn.Value, TAtlasVisualizerColumn.OldValue];
+  for mIndex := 0 to High(mDataSet.Names) do
+  begin
+    AView.Rows := AView.Rows + [Row([mDataSet.Names[mIndex], mDataSet.Types[mIndex], mDataSet.Values[mIndex],
+      mDataSet.OldValues[mIndex]])];
+  end;
+end;
+
+procedure ViewBytes(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator; const ABase, AEvalResult: string);
+var
+  mSource: TByteSource;
+begin
+  mSource := ReadBytes(AEvaluator, ABase, AEvalResult, TAtlasVisualizerOptions.ViewBytes);
+  AView.Mode := TAtlasVisualizerViewMode.Hex;
+  AView.Bytes := mSource.Bytes;
+  AView.Total := mSource.Total;
+end;
+
+procedure ViewJson(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
+var
+  mJson: TJsonInfo;
+  mIndex: Integer;
+begin
+  mJson := ReadJson(AEvaluator, TAtlasVisualizerOptions.ViewItems);
+  if mJson.HasText and TAtlasVisualizerFormat.JsonTree(mJson.Text, AView.Nodes) then
+  begin
+    AView.Mode := TAtlasVisualizerViewMode.Tree;
+    Exit;
+  end;
+  AView.Mode := TAtlasVisualizerViewMode.Table;
+  AView.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Key];
+  for mIndex := 0 to High(mJson.Keys) do
+  begin
+    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mJson.Keys[mIndex]])];
+  end;
+  AView.Total := mJson.Count;
+end;
+
+procedure ViewColor(var AView: TAtlasVisualizerView; const ABase, AEvalResult: string);
+var
+  mHasRgb: Boolean;
+begin
+  AView.Mode := TAtlasVisualizerViewMode.Text;
+  if ColorOf(ABase, AEvalResult, AView.Text, AView.Color, mHasRgb) and mHasRgb then
+  begin
+    AView.Mode := TAtlasVisualizerViewMode.Color;
+  end;
+end;
+
+procedure ViewImage(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator; const ABase: string);
+var
+  mImage: TImageInfo;
+begin
+  mImage := ReadImage(AEvaluator, ABase);
+  AView.Mode := TAtlasVisualizerViewMode.Text;
+  AView.Text := AView.Summary;
+  if ImagePixels(AEvaluator, mImage, AView.Width, AView.Height, AView.Pixels) then
+  begin
+    AView.Mode := TAtlasVisualizerViewMode.Image;
+  end;
+end;
+
 class function TAtlasVisualizers.View(AKind: TAtlasVisualizerKind; const AExpression, ATypeName,
   AEvalResult: string; const AOptions: TAtlasVisualizerOptions;
   const AContext: TAtlasVisualizerContext): TAtlasVisualizerView;
 var
   Evaluator: TEvaluator;
-  Count: Int64;
-  Index: Integer;
-  Base, Value, Key: string;
-  Items: TArray<string>;
-  DataSet: TDataSetInfo;
-  Source: TByteSource;
-  Json: TJsonInfo;
-  Image: TImageInfo;
-  Tab: Integer;
-  HasRgb: Boolean;
+  Base: string;
 begin
   Result := Default(TAtlasVisualizerView);
   Result.Kind := AKind;
@@ -1745,90 +1974,24 @@ begin
   Base := BaseTypeName(ATypeName);
   case AKind of
     TAtlasVisualizerKind.Lists:
-      if Evaluator.Int(CountProbes, Count) then
-      begin
-        Result.Mode := TAtlasVisualizerViewMode.Table;
-        Result.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Value];
-        Items := ListItems(Evaluator, Count, TAtlasVisualizerOptions.ViewItems);
-        for Index := 0 to High(Items) do
-        begin
-          Result.Rows := Result.Rows + [Row([IntToStr(Index), Items[Index]])];
-        end;
-        Result.Total := Count;
-      end;
+      ViewList(Result, Evaluator);
     TAtlasVisualizerKind.Dictionaries:
-      if Evaluator.Int(CountProbes, Count) then
-      begin
-        Result.Mode := TAtlasVisualizerViewMode.Table;
-        Result.Columns := [TAtlasVisualizerColumn.Key, TAtlasVisualizerColumn.Value];
-        for Value in DictionaryPairs(Evaluator, Count, TAtlasVisualizerOptions.ViewItems) do
-        begin
-          Tab := Pos(#9, Value);
-          Key := Copy(Value, 1, Tab - 1);
-          Result.Rows := Result.Rows + [Row([Key, Copy(Value, Tab + 1, MaxInt)])];
-        end;
-        Result.Total := Count;
-      end;
+      ViewDictionary(Result, Evaluator);
     TAtlasVisualizerKind.DataSets:
-      begin
-        DataSet := ReadDataSet(Evaluator, TAtlasVisualizerOptions.ViewItems, True);
-        Result.Mode := TAtlasVisualizerViewMode.Table;
-        Result.Columns := [TAtlasVisualizerColumn.Field, TAtlasVisualizerColumn.FieldType,
-          TAtlasVisualizerColumn.Value, TAtlasVisualizerColumn.OldValue];
-        for Index := 0 to High(DataSet.Names) do
-        begin
-          Result.Rows := Result.Rows + [Row([DataSet.Names[Index], DataSet.Types[Index], DataSet.Values[Index],
-            DataSet.OldValues[Index]])];
-        end;
-      end;
+      ViewDataSet(Result, Evaluator);
     TAtlasVisualizerKind.Bytes:
-      begin
-        Source := ReadBytes(Evaluator, Base, AEvalResult, TAtlasVisualizerOptions.ViewBytes);
-        Result.Mode := TAtlasVisualizerViewMode.Hex;
-        Result.Bytes := Source.Bytes;
-        Result.Total := Source.Total;
-      end;
+      ViewBytes(Result, Evaluator, Base, AEvalResult);
     TAtlasVisualizerKind.Json:
-      begin
-        Json := ReadJson(Evaluator, TAtlasVisualizerOptions.ViewItems);
-        if Json.HasText and TAtlasVisualizerFormat.JsonTree(Json.Text, Result.Nodes) then
-        begin
-          Result.Mode := TAtlasVisualizerViewMode.Tree;
-        end
-        else
-        begin
-          Result.Mode := TAtlasVisualizerViewMode.Table;
-          Result.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Key];
-          for Index := 0 to High(Json.Keys) do
-          begin
-            Result.Rows := Result.Rows + [Row([IntToStr(Index), Json.Keys[Index]])];
-          end;
-          Result.Total := Json.Count;
-        end;
-      end;
+      ViewJson(Result, Evaluator);
     TAtlasVisualizerKind.Colors:
-      begin
-        Result.Mode := TAtlasVisualizerViewMode.Text;
-        if ColorOf(Base, AEvalResult, Result.Text, Result.Color, HasRgb) and HasRgb then
-        begin
-          Result.Mode := TAtlasVisualizerViewMode.Color;
-        end;
-      end;
+      ViewColor(Result, Base, AEvalResult);
     TAtlasVisualizerKind.Guid, TAtlasVisualizerKind.Geometry:
       begin
         Result.Mode := TAtlasVisualizerViewMode.Text;
         Result.Text := Result.Summary;
       end;
     TAtlasVisualizerKind.Graphics:
-      begin
-        Image := ReadImage(Evaluator, Base);
-        Result.Mode := TAtlasVisualizerViewMode.Text;
-        Result.Text := Result.Summary;
-        if ImagePixels(Evaluator, Image, Result.Width, Result.Height, Result.Pixels) then
-        begin
-          Result.Mode := TAtlasVisualizerViewMode.Image;
-        end;
-      end;
+      ViewImage(Result, Evaluator, Base);
   end;
   Result.NeedsMore := Evaluator.Skipped;
 end;
