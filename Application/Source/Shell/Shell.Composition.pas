@@ -62,6 +62,7 @@ uses
   Shell.Composition.CodeArea,
   Shell.Composition.CommandArea,
   Shell.Composition.DiagnosticsArea,
+  Shell.Composition.DocumentEvents,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -199,6 +200,8 @@ type
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
+    /// <summary>Teil von WireWorkspaces: Ereignisse des Dokumentspeichers (Shell.Composition.DocumentEvents).</summary>
+    procedure WireDocumentEvents;
     /// <summary>Was der Kern von der Komposition braucht.</summary>
     function CoreServices: TShellCoreServices;
     /// <summary>Teil von CoreServices: Meldungen des Kerns an die Komposition.</summary>
@@ -254,13 +257,6 @@ type
     procedure CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
     /// <summary>Gibt die Namespaces an alle Features und den Uses-Graphen.</summary>
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
-    procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-    /// <summary>WorkspaceOf unter FCore.Workspaces.Lock.</summary>
-    function LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Index und Arbeitsbereiche zu einem Dokumentereignis einer Datei auf der Platte.</summary>
-    procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-    /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
-    procedure SourceSaved(const AFileName: string);
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
     /// <summary>Teil von FreeFeatures: Editor-Features von Gliederung bis Verweise.</summary>
@@ -685,8 +681,42 @@ end;
 procedure TServerComposition.WireWorkspaces;
 begin
   FCore := TShellCore.Create(CoreServices);
-  FDocuments.Subscribe(HandleDocumentEvent);
+  WireDocumentEvents;
   FCore.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireDocumentEvents;
+var
+  mServices: TShellDocumentEventServices;
+begin
+  mServices := Default(TShellDocumentEventServices);
+  mServices.Core :=
+    function: TShellCore
+    begin
+      Result := FCore;
+    end;
+  mServices.CrashCases :=
+    function: TShellCrashCases
+    begin
+      Result := FCrashCases;
+    end;
+  mServices.Compile :=
+    function: TShellCompileHost
+    begin
+      Result := FCompile;
+    end;
+  // Die Dateiänderungen entstehen erst in WireWatchedFiles.
+  mServices.FileChanges :=
+    function: TShellFileChanges
+    begin
+      Result := FFileChanges;
+    end;
+  mServices.DeriveWorkspaces :=
+    function: Boolean
+    begin
+      Result := FDeriveWorkspaces;
+    end;
+  TShellDocumentEvents.Attach(FDocuments, mServices);
 end;
 
 function TServerComposition.CoreServices: TShellCoreServices;
@@ -1396,92 +1426,6 @@ begin
   end;
   FCodeArea.Completion.Completion.Namespaces := ANamespaces;
   FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
-end;
-
-procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-var
-  mFileName: string;
-begin
-  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
-  if (FCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
-  begin
-    FCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
-  end;
-  mFileName := TDocumentUris.ToPath(ADocument.Uri);
-  if StartsText('file:', ADocument.Uri) then
-  begin
-    DocumentIndexEvent(AKind, mFileName, ADocument.Text);
-  end;
-  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
-  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
-  begin
-    SourceSaved(mFileName);
-  end
-  else if IsConfigurationFileName(ExtractFileName(mFileName)) then
-  begin
-    FCore.Configuration.DocumentEvent(AKind, ADocument);
-  end;
-end;
-
-function TServerComposition.LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-begin
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    Result := FCore.Workspaces.WorkspaceOf(AFileName);
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
-  if FFileChanges <> nil then
-  begin
-    FFileChanges.DocumentEvent(AKind, AFileName, AText);
-  end;
-  if AKind <> TDocumentEventKind.Opened then
-  begin
-    Exit;
-  end;
-  if FDeriveWorkspaces then
-  begin
-    FCore.Folders.Derive(AFileName);
-  end;
-  // Zurückgestelltes Projekt der Gruppe (index.projectGroup = false): jetzt indizieren (#648).
-  mWorkspace := LockedWorkspaceOf(AFileName);
-  // Nur der Thread der Nachrichtenschleife entfernt Arbeitsbereiche; mWorkspace bleibt gültig.
-  if (mWorkspace <> nil) and mWorkspace.Setup.Deferred then
-  begin
-    mWorkspace.Activate;
-  end;
-end;
-
-procedure TServerComposition.SourceSaved(const AFileName: string);
-var
-  mWorkspace: TShellWorkspace;
-  mOnSave: Boolean;
-  mChoice: TCompilerBackendChoice;
-begin
-  // Index nachziehen (#500): Clients ohne Dateiüberwachung (IDE-Plugin) melden nur das Speichern;
-  // bei einer .inc liest der Index die einbindenden Units neu ein.
-  if not SameText(ExtractFileExt(AFileName), '.dpk') then
-  begin
-    FFileChanges.Handle([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
-  end;
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    mWorkspace := FCore.Workspaces.WorkspaceOf(AFileName);
-    mOnSave := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.Compiler.OnSave;
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-  if mOnSave then
-  begin
-    FCompile.Start(AFileName, False, mChoice);
-  end;
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
