@@ -260,7 +260,9 @@ begin
       Pending.Method := AMethod;
       FPending.Add(Id, Pending);
       if CountsResponseTime(AMethod) then
+      begin
         FLastMethod := AMethod;
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -270,7 +272,9 @@ begin
       Message.AddPair('id', TJSONNumber.Create(Id));
       Message.AddPair('method', AMethod);
       if AParams <> nil then
+      begin
         Message.AddPair('params', AParams);
+      end;
       Text := Message.ToJSON;
     finally
       Message.Free;
@@ -285,7 +289,9 @@ begin
         repeat
           mSlice := CancelPollMs;
           if ATimeoutMs - mWaited < mSlice then
+          begin
             mSlice := ATimeoutMs - mWaited;
+          end;
           mWait := TAtlasShutdown.WaitFor(Pending.Done, mSlice);
           Inc(mWaited, mSlice);
           if (mWait = wrTimeout) and ACancelled() then
@@ -296,18 +302,24 @@ begin
         until (mWait <> wrTimeout) or (mWaited >= ATimeoutMs);
       end
       else
+      begin
         mWait := TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs);
+      end;
       case mWait of
         wrSignaled:
           // Beendete Verbindung ist keine Antwort und zählt nicht.
           if not FClosed and CountsResponseTime(AMethod) then
+          begin
             AddResponseTime(Watch.ElapsedMilliseconds);
+          end;
         wrAbandoned:
           raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [AMethod]);
       else
         begin
           if CountsResponseTime(AMethod) then
+          begin
             AddResponseTime(ATimeoutMs);
+          end;
           // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
           CancelOnServer(Id);
           raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
@@ -322,7 +334,9 @@ begin
       end;
     end;
     if Pending.Error <> '' then
+    begin
       raise ELspClientError.Create(Pending.Error);
+    end;
     Result := Pending.Result;
     Pending.Result := nil;
   finally
@@ -336,7 +350,9 @@ var
   Token: string;
 begin
   if not Assigned(AOnPartial) then
+  begin
     Exit(Request(AMethod, AParams, ATimeoutMs));
+  end;
   TMonitor.Enter(FLock);
   try
     Inc(FNextPartial);
@@ -368,13 +384,17 @@ begin
     Message.AddPair('jsonrpc', '2.0');
     Message.AddPair('method', AMethod);
     if AParams <> nil then
+    begin
       Message.AddPair('params', AParams);
+    end;
     Text := Message.ToJSON;
   finally
     Message.Free;
   end;
   if not FClosed then
+  begin
     SendText(Text);
+  end;
 end;
 
 procedure TLspClient.CancelOnServer(AId: Integer);
@@ -395,17 +415,25 @@ var
 begin
   Result := False;
   if AMessage.GetValue<string>('method', '') <> '$/progress' then
+  begin
     Exit;
+  end;
   Params := AMessage.GetValue('params');
   if not (Params is TJSONObject) then
+  begin
     Exit;
+  end;
   Token := TJSONObject(Params).GetValue('token');
   if not (Token is TJSONString) then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FLock);
   try
     if not FPartials.TryGetValue(TJSONString(Token).Value, Partial) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -433,11 +461,15 @@ begin
   Value := TJSONObject.ParseJSONValue(AText);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Message := TJSONObject(Value);
     IdValue := Message.GetValue('id');
     if (IdValue = nil) and HandlePartial(Message) then
+    begin
       Exit;
+    end;
     if Message.GetValue('method') <> nil then
     begin
       if Assigned(FOnServerMessage) then
@@ -449,7 +481,9 @@ begin
             ;
         end;
       if IdValue = nil then
+      begin
         Exit;
+      end;
       // Anfrage, die ein Empfänger selbst beantwortet.
       if Assigned(FOnServerRequest) then
       begin
@@ -461,7 +495,9 @@ begin
             Taken := False;
         end;
         if Taken then
+        begin
           Exit;
+        end;
         IdCopy.Free;
       end;
       // Sonst mit null beantworten, damit der Server nicht wartet.
@@ -478,19 +514,27 @@ begin
       Exit;
     end;
     if not (IdValue is TJSONNumber) then
+    begin
       Exit;
+    end;
     TMonitor.Enter(FLock);
     try
       if not FPending.TryGetValue(TJSONNumber(IdValue).AsInt, Pending) then
+      begin
         Exit;
+      end;
       ErrorValue := Message.GetValue('error');
       if ErrorValue is TJSONObject then
-        Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', 'Fehlerantwort des Servers')
+      begin
+        Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', 'Fehlerantwort des Servers');
+      end
       else
       begin
         ResultValue := Message.GetValue('result');
         if (ResultValue <> nil) and not (ResultValue is TJSONNull) then
+        begin
           Pending.Result := TJSONValue(ResultValue.Clone);
+        end;
       end;
       Pending.Done.SetEvent;
     finally
@@ -511,15 +555,21 @@ begin
     Reply.AddPair('jsonrpc', '2.0');
     Reply.AddPair('id', AId);
     if AResult = nil then
-      Reply.AddPair('result', TJSONNull.Create)
+    begin
+      Reply.AddPair('result', TJSONNull.Create);
+    end
     else
+    begin
       Reply.AddPair('result', AResult);
+    end;
     Text := Reply.ToJSON;
   finally
     Reply.Free;
   end;
   if not FClosed then
+  begin
     SendText(Text);
+  end;
 end;
 
 function TLspClient.TakeMessage(out AText: string): Boolean;
@@ -532,13 +582,17 @@ begin
   // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
   Last := Length(FBuffer) - 4;
   if Last > MaxHeaderLength then
+  begin
     Last := MaxHeaderLength;
+  end;
   for Index := 0 to Last do
+  begin
     if CompareMem(@FBuffer[Index], @HeaderEnd[0], 4) then
     begin
       HeaderLength := Index;
       Break;
     end;
+  end;
   if HeaderLength < 0 then
   begin
     // Kein Kopfende in den ersten MaxHeaderLength Bytes: kein LSP, Verbindung aufgeben statt den Speicher zu füllen.
@@ -552,8 +606,12 @@ begin
   Header := TEncoding.UTF8.GetString(FBuffer, 0, HeaderLength);
   BodyLength := -1;
   for Line in Header.Split([#13#10]) do
+  begin
     if Line.StartsWith('Content-Length:', True) then
+    begin
       BodyLength := StrToIntDef(Line.Substring(Length('Content-Length:')).Trim, -1);
+    end;
+  end;
   Len := HeaderLength + 4;
   if BodyLength < 0 then
   begin
@@ -568,7 +626,9 @@ begin
       [BodyLength, MaxContentLength]);
   end;
   if Length(FBuffer) < Len + BodyLength then
+  begin
     Exit;
+  end;
   AText := TEncoding.UTF8.GetString(FBuffer, Len, BodyLength);
   Delete(FBuffer, 0, Len + BodyLength);
   Result := True;
@@ -587,20 +647,26 @@ begin
       Start := Length(FBuffer);
       SetLength(FBuffer, Start + ACount);
       if ACount > 0 then
+      begin
         Move(ABytes[0], FBuffer[Start], ACount);
+      end;
       Text := '';
       while TakeMessage(Text) do
+      begin
         if Text <> '' then
         begin
           Messages.Add(Text);
           Text := '';
         end;
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
     // Außerhalb der Sperre: HandleMessage sperrt selbst und sendet ggf.
     for Text in Messages do
+    begin
       HandleMessage(Text);
+    end;
   finally
     Messages.Free;
   end;
@@ -627,8 +693,12 @@ begin
       FCloseInfo.LastMethod := FLastMethod;
       FCloseInfo.OpenMethods := nil;
       for Pending in FPending.Values do
+      begin
         if CountsResponseTime(Pending.Method) then
+        begin
           FCloseInfo.OpenMethods := FCloseInfo.OpenMethods + [Pending.Method];
+        end;
+      end;
     end;
     for Pending in FPending.Values do
     begin
@@ -666,7 +736,9 @@ begin
     FTimes[FTimeNext] := AMilliseconds;
     FTimeNext := (FTimeNext + 1) mod TimeSamples;
     if FTimeCount < TimeSamples then
+    begin
       Inc(FTimeCount);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -687,14 +759,20 @@ begin
     ASamples := FTimeCount;
     Sum := 0;
     for Index := 0 to FTimeCount - 1 do
+    begin
       Inc(Sum, FTimes[Index]);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
   if ASamples = 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := Sum / ASamples;
+  end;
 end;
 
 end.

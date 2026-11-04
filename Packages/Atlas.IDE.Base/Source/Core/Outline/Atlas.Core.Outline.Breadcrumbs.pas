@@ -107,7 +107,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['a'..'z', 'A'..'Z', '_']) do
+  begin
     Inc(Index);
+  end;
   Result := LowerCase(Copy(ALine, 1, Index - 1));
 end;
 
@@ -132,15 +134,25 @@ begin
     begin
       Word_ := LeadingWord(Line);
       if Word_ = 'interface' then
-        Section := TAtlasCodeSection.InterfacePart
+      begin
+        Section := TAtlasCodeSection.InterfacePart;
+      end
       else if Word_ = 'implementation' then
-        Section := TAtlasCodeSection.ImplementationPart
+      begin
+        Section := TAtlasCodeSection.ImplementationPart;
+      end
       else if Word_ = 'initialization' then
-        Section := TAtlasCodeSection.Initialization_
+      begin
+        Section := TAtlasCodeSection.Initialization_;
+      end
       else if Word_ = 'finalization' then
-        Section := TAtlasCodeSection.Finalization_
+      begin
+        Section := TAtlasCodeSection.Finalization_;
+      end
       else if (Word_ = 'end') and (Copy(Line, 4, 1) = '.') then
-        Section := TAtlasCodeSection.None
+      begin
+        Section := TAtlasCodeSection.None;
+      end
       else if Word_ = 'uses' then
       begin
         BeforeUses := Section;
@@ -156,7 +168,9 @@ begin
       if Comment = '{' then
       begin
         if Line[Position] = '}' then
+        begin
           Comment := #0;
+        end;
       end
       else if Comment = '(' then
       begin
@@ -169,7 +183,9 @@ begin
       else if InString then
       begin
         if Line[Position] = '''' then
+        begin
           InString := False;
+        end;
       end
       else
         case Line[Position] of
@@ -185,14 +201,18 @@ begin
             end;
           '/':
             if (Position < Length(Line)) and (Line[Position + 1] = '/') then
+            begin
               Break;
+            end;
           ';':
             if InUses then
             begin
               InUses := False;
               // Die Zeile mit dem Semikolon gehört noch zu uses.
               if Index < ALine then
+              begin
                 Section := BeforeUses;
+              end;
             end;
         end;
       Inc(Position);
@@ -224,14 +244,22 @@ begin
       begin
         Head := '';
         if (ANodes[ANode].StartLine >= 0) and (ANodes[ANode].StartLine <= High(ALines)) then
+        begin
           Head := LowerCase(TrimLeft(Copy(ALines[ANodes[ANode].StartLine], ANodes[ANode].StartCharacter + 1, MaxInt)));
+        end;
         // class procedure/class function: das Wort nach class zählt.
         if Head.StartsWith('class ') then
+        begin
           Head := TrimLeft(Copy(Head, 7, MaxInt));
+        end;
         if Head.StartsWith('procedure') or Head.StartsWith('destructor') then
-          Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr')
+        begin
+          Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
+        end
         else
+        begin
           Result := MakeBadge(TAtlasBadgeKind.Function_, 'fn');
+        end;
       end;
   else
     Result := MakeBadge(TAtlasBadgeKind.Variable, 'va');
@@ -264,11 +292,17 @@ var
   function SameGroup(const AOther: TAtlasOutlineNode): Boolean;
   begin
     if Node.Category = TAtlasOutlineCategory.TypeDecl then
-      Result := AOther.Category = TAtlasOutlineCategory.TypeDecl
+    begin
+      Result := AOther.Category = TAtlasOutlineCategory.TypeDecl;
+    end
     else if IsRoutine(Node) then
-      Result := IsRoutine(AOther)
+    begin
+      Result := IsRoutine(AOther);
+    end
     else
+    begin
       Result := AOther.Category in [TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable];
+    end;
   end;
 
 begin
@@ -279,21 +313,29 @@ begin
   for Index := 0 to High(ANodes) do
   begin
     if ANodes[Index].Hidden and not Node.InBody then
+    begin
       Continue;
+    end;
     if TopLevel then
     begin
       // Unit-Ebene: über interface und implementation hinweg.
       if ((ANodes[Index].Parent >= 0) and not IsSection(ANodes[ANodes[Index].Parent])) or IsSection(ANodes[Index]) or
         not SameGroup(ANodes[Index]) then
+      begin
         Continue;
+      end;
     end
     else
     begin
       if ANodes[Index].Parent <> Parent then
+      begin
         Continue;
+      end;
       // Methoden zeigen nur Methoden, lokale Routinen nur lokale Routinen.
       if IsRoutine(Node) and not IsRoutine(ANodes[Index]) then
+      begin
         Continue;
+      end;
     end;
     Result := Result + [Index];
   end;
@@ -310,8 +352,12 @@ begin
   Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
   for Index := 0 to High(Result.Siblings) do
+  begin
     if Result.Siblings[Index] = ANode then
+    begin
       Result.Current := Index;
+    end;
+  end;
 end;
 
 function TextCrumb(const AText: string; const ABadge: TAtlasBadge): TAtlasCrumb;
@@ -331,7 +377,9 @@ begin
   while ANode >= 0 do
   begin
     if not IsSection(ANodes[ANode]) then
+    begin
       Result := [ANode] + Result;
+    end;
     ANode := ANodes[ANode].Parent;
   end;
 end;
@@ -372,17 +420,25 @@ begin
   // Innerster Knoten an der Stelle: Kinder stehen hinter ihren Eltern.
   Inner := -1;
   for Index := 0 to High(ANodes) do
+  begin
     if not IsSection(ANodes[Index]) and Contains(ANodes[Index], ALine, ACharacter) then
+    begin
       Inner := Index;
+    end;
+  end;
   if Inner < 0 then
+  begin
     Exit;
+  end;
   for Item in Chain(ANodes, Inner) do
   begin
     if ANodes[Item].Hidden and not ANodes[Item].InBody and (ANodes[Item].Declaration >= 0) then
     begin
       // Rumpf mit Deklaration: deren Typen und die Deklaration selbst.
       for Index in Chain(ANodes, ANodes[Item].Declaration) do
+      begin
         Result := Result + [NewCrumb(ANodes, ALines, Index)];
+      end;
     end
     else if not ANodes[Item].InBody and IsRoutine(ANodes[Item]) and (Pos('.', ANodes[Item].Name) > 0) then
     begin
@@ -391,11 +447,15 @@ begin
       Owner := Copy(Name, 1, LastDelimiter('.', Name) - 1);
       Parts := Owner.Split(['.']);
       for Owner in Parts do
+      begin
         Result := Result + [TextCrumb(Owner, MakeBadge(TAtlasBadgeKind.Type_, 'ty'))];
+      end;
       Result := Result + [NewCrumb(ANodes, ALines, Item)];
     end
     else
+    begin
       Result := Result + [NewCrumb(ANodes, ALines, Item)];
+    end;
   end;
 end;
 
@@ -408,7 +468,9 @@ begin
   begin
     Parent := ANodes[Index].Parent;
     if ANodes[Index].Hidden or IsSection(ANodes[Index]) or ((Parent >= 0) and not IsSection(ANodes[Parent])) then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -421,11 +483,15 @@ begin
   for Index := 0 to High(ANodes) do
   begin
     if ANodes[Index].Hidden or ANodes[Index].InBody or not IsRoutine(ANodes[Index]) then
+    begin
       Continue;
+    end;
     // Lokale Routinen (Eltern ist eine Routine) nicht.
     Parent := ANodes[Index].Parent;
     if (Parent >= 0) and IsRoutine(ANodes[Parent]) then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -435,11 +501,15 @@ var
   Owner: Integer;
 begin
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit('');
+  end;
   Result := ANodes[ANode].Name;
   // Rümpfe tragen den Besitzer schon im Namen („TFoo.Bar“).
   if Pos('.', Result) > 0 then
+  begin
     Exit;
+  end;
   Owner := ANodes[ANode].Parent;
   while (Owner >= 0) and (ANodes[Owner].Category = TAtlasOutlineCategory.TypeDecl) do
   begin
@@ -455,22 +525,30 @@ var
 begin
   Result := nil;
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit;
+  end;
   // Bei Routinen liegen die lokalen Routinen im Rumpf, nicht an der Deklaration.
   Owner := Target(ANodes, ANode, True);
   Routine := IsRoutine(ANodes[Owner]);
   for Index := 0 to High(ANodes) do
   begin
     if ANodes[Index].Parent <> Owner then
+    begin
       Continue;
+    end;
     if Routine then
     begin
       // Nur lokale Routinen, keine lokalen Variablen und Konstanten.
       if not IsRoutine(ANodes[Index]) then
+      begin
         Continue;
+      end;
     end
     else if ANodes[Index].Hidden then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -480,14 +558,20 @@ class function TAtlasBreadcrumbs.Target(const ANodes: TAtlasOutlineNodes; ANode:
 begin
   Result := ANode;
   if (ANode < 0) or (ANode > High(ANodes)) then
+  begin
     Exit(-1);
+  end;
   if AImplementation then
   begin
     if ANodes[ANode].Body >= 0 then
+    begin
       Result := ANodes[ANode].Body;
+    end;
   end
   else if ANodes[ANode].Declaration >= 0 then
+  begin
     Result := ANodes[ANode].Declaration;
+  end;
 end;
 
 class function TAtlasBreadcrumbs.MatchesAtWordStart(const APattern, AName: string): Boolean;
@@ -495,13 +579,21 @@ var
   Index: Integer;
 begin
   if APattern = '' then
+  begin
     Exit(True);
+  end;
   if TAtlasCompletionMatcher.Score(APattern, AName) >= TAtlasCompletionMatcher.ScoreWordStarts then
+  begin
     Exit(True);
+  end;
   for Index := 2 to Length(AName) - Length(APattern) + 1 do
+  begin
     if TAtlasCompletionMatcher.IsWordStart(AName, Index) and SameText(Copy(AName, Index, Length(APattern)),
       APattern) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -512,8 +604,12 @@ var
 begin
   Result := nil;
   for Item in ASiblings do
+  begin
     if MatchesAtWordStart(APattern, ShortName(ANodes[Item].Name)) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
 end;
 
 end.

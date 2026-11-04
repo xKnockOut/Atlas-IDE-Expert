@@ -116,11 +116,15 @@ var
   Changed: TProc;
 begin
   if not (AParams is TJSONObject) then
+  begin
     Exit;
+  end;
   Token := TJSONObject(AParams).GetValue<string>('token', '');
   Value := TJSONObject(AParams).GetValue('value');
   if not (Value is TJSONObject) then
+  begin
     Exit;
+  end;
   Kind := TJSONObject(Value).GetValue<string>('kind', '');
   FLock.Enter;
   try
@@ -129,7 +133,9 @@ begin
     begin
       FRunning.Remove(Token);
       if FLast = Token then
+      begin
         FLast := '';
+      end;
     end
     else
     begin
@@ -139,9 +145,13 @@ begin
         Entry.Percent := -1;
       end;
       if TJSONObject(Value).GetValue('title') <> nil then
+      begin
         Entry.Title := TJSONObject(Value).GetValue<string>('title', '');
+      end;
       if TJSONObject(Value).GetValue('percentage') <> nil then
+      begin
         Entry.Percent := TJSONObject(Value).GetValue<Integer>('percentage', -1);
+      end;
       FRunning.AddOrSetValue(Token, Entry);
       FLast := Token;
     end;
@@ -149,7 +159,9 @@ begin
     FLock.Leave;
   end;
   if Assigned(Changed) then
+  begin
     Changed();
+  end;
 end;
 
 procedure TLspProgress.SetOnChanged(const AProc: TProc);
@@ -173,13 +185,17 @@ begin
     Key := FLast;
     Result := (Key <> '') and FRunning.TryGetValue(Key, Entry);
     if not Result then
+    begin
       for Key in FRunning.Keys do
       begin
         Result := FRunning.TryGetValue(Key, Entry);
         Break;
       end;
+    end;
     if Result then
+    begin
       APercent := Entry.Percent;
+    end;
   finally
     FLock.Leave;
   end;
@@ -204,12 +220,18 @@ begin
       end;
     end;
     if (Key = '') or not FRunning.TryGetValue(Key, Entry) then
+    begin
       Exit;
+    end;
     Result := Entry.Title;
     if Result = '' then
+    begin
       Result := '…';
+    end;
     if Entry.Percent >= 0 then
+    begin
       Result := Format('%s %d %%', [Result, Entry.Percent]);
+    end;
   finally
     FLock.Leave;
   end;
@@ -218,11 +240,17 @@ end;
 class function TLspProgress.IndexingTextOf(AActive: Boolean; APercent: Integer): string;
 begin
   if not AActive then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if APercent >= 0 then
-    Result := Format('Atlas indiziert … (%d %%)', [APercent])
+  begin
+    Result := Format('Atlas indiziert … (%d %%)', [APercent]);
+  end
   else
+  begin
     Result := 'Atlas indiziert …';
+  end;
 end;
 
 function TLspProgress.IndexingText: string;
@@ -236,18 +264,24 @@ begin
     Key := FLast;
     Active := (Key <> '') and FRunning.TryGetValue(Key, Entry);
     if not Active then
+    begin
       for Key in FRunning.Keys do
       begin
         Active := FRunning.TryGetValue(Key, Entry);
         Break;
       end;
+    end;
   finally
     FLock.Leave;
   end;
   if Active then
-    Result := IndexingTextOf(True, Entry.Percent)
+  begin
+    Result := IndexingTextOf(True, Entry.Percent);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 { TLspIndexMetrics }
@@ -255,19 +289,29 @@ end;
 function TLspIndexMetrics.Text: string;
 begin
   if not Valid then
+  begin
     Exit('Kennzahlen nicht verfügbar (Server läuft nicht).');
+  end;
   Result := Format('Units: %d · Deklarationen: %d', [Units, Declarations]) + sLineBreak +
     'Im Speicher: ' + TLspIndexStatus.SizeText(MemoryBytes);
   if BudgetBytes > 0 then
+  begin
     Result := Result + ' von ' + TLspIndexStatus.SizeText(BudgetBytes);
+  end;
   if OffloadedUnits > 0 then
+  begin
     Result := Result + Format(' (Verwendungen von %d Units ausgelagert)', [OffloadedUnits]);
+  end;
   Result := Result + sLineBreak + 'Auf der Platte: ' + TLspIndexStatus.SizeText(DiskBytes) + sLineBreak +
     'Letzte Aktualisierung: ';
   if LastUpdate = 0 then
-    Result := Result + '–'
+  begin
+    Result := Result + '–';
+  end
   else
+  begin
     Result := Result + FormatDateTime('dd.mm.yyyy hh":"nn":"ss', LastUpdate);
+  end;
 end;
 
 { TLspIndexStatus }
@@ -279,16 +323,22 @@ begin
   Settings := TFormatSettings.Invariant;
   Settings.DecimalSeparator := ',';
   if ABytes < 1024 * 1024 then
-    Result := FormatFloat('0.0', ABytes / 1024, Settings) + ' KB'
+  begin
+    Result := FormatFloat('0.0', ABytes / 1024, Settings) + ' KB';
+  end
   else
+  begin
     Result := FormatFloat('0.0', ABytes / (1024 * 1024), Settings) + ' MB';
+  end;
 end;
 
 function LocalTimeOf(const AText: string): TDateTime;
 begin
   Result := 0;
   if AText = '' then
+  begin
     Exit;
+  end;
   try
     Result := ISO8601ToDate(AText, False);
   except
@@ -305,10 +355,14 @@ var
 begin
   Result := Default(TLspIndexMetrics);
   if not (AStatus is TJSONObject) then
+  begin
     Exit;
+  end;
   Status := TJSONObject(AStatus);
   if Status.GetValue('units') = nil then
+  begin
     Exit;
+  end;
   Result.Valid := True;
   Result.Units := Status.GetValue<Integer>('units', 0);
   Result.Declarations := Status.GetValue<Integer>('symbols', 0);
@@ -318,19 +372,27 @@ begin
   Result.DiskBytes := Status.GetValue<Int64>('diskBytes', 0);
   Workspaces := Status.GetValue('workspaces');
   if Workspaces is TJSONArray then
+  begin
     for Item in TJSONArray(Workspaces) do
+    begin
       if Item is TJSONObject then
       begin
         Update := LocalTimeOf(TJSONObject(Item).GetValue<string>('lastUpdate', ''));
         if Update > Result.LastUpdate then
+        begin
           Result.LastUpdate := Update;
+        end;
       end;
+    end;
+  end;
 end;
 
 class function TLspIndexStatus.ClearedText(const AAnswer: TJSONValue): string;
 begin
   if not (AAnswer is TJSONObject) then
+  begin
     Exit('Index gelöscht; er wird neu aufgebaut.');
+  end;
   Result := Format('Index gelöscht: %d Caches, %s frei; er wird neu aufgebaut.',
     [TJSONObject(AAnswer).GetValue<Integer>('removed', 0),
      SizeText(TJSONObject(AAnswer).GetValue<Int64>('freedBytes', 0))]);
@@ -345,7 +407,9 @@ var
 begin
   Result := nil;
   if not (AStatus is TJSONObject) then
+  begin
     Exit;
+  end;
   Status := TJSONObject(AStatus);
   Bytes := Status.GetValue<Int64>('indexBytes', 0);
   // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
@@ -354,14 +418,20 @@ begin
      SizeText(Status.GetValue<Int64>('diskBytes', 0))])];
   Workspaces := Status.GetValue('workspaces');
   if Workspaces is TJSONArray then
+  begin
     for Item in TJSONArray(Workspaces) do
+    begin
       if Item is TJSONObject then
+      begin
         Result := Result + [Format('    %s: letzter Lauf %d ms, %d gelesen, %d aus dem Cache, %d fehlen, Cache %s',
           [TJSONObject(Item).GetValue<string>('name', ''), TJSONObject(Item).GetValue<Integer>('lastIndexMs', 0),
           TJSONObject(Item).GetValue<Integer>('parsed', 0), TJSONObject(Item).GetValue<Integer>('fromCache', 0),
           TJSONObject(Item).GetValue<Integer>('missing', 0),
           SizeText(TJSONObject(Item).GetValue<Int64>('cacheBytes', 0) +
             TJSONObject(Item).GetValue<Int64>('libraryCacheBytes', 0))])];
+      end;
+    end;
+  end;
 end;
 
 end.
