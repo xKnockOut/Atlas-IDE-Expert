@@ -482,8 +482,8 @@ begin
     procedure
     begin
       try
-        mOk := mBoards.LoadBoard(mTarget, mTransport, mBoardId, mSprintId, TAtlasTrackerBoard.TimeoutMs, mSnapshot,
-          mError);
+        mOk := mBoards.LoadBoard(TAtlasBoardRequest.Create(mTarget, mTransport, mBoardId, mSprintId,
+          TAtlasTrackerBoard.TimeoutMs), mSnapshot, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -638,8 +638,8 @@ begin
     procedure
     begin
       try
-        mResult := mBoards.MoveCard(mTarget, mTransport, mSnapshot, mCard, AColumn, mComment,
-          TAtlasTrackerBoard.MoveTimeoutMs);
+        mResult := mBoards.MoveCard(TAtlasBoardMove.Create(mTarget, mTransport, mCard, AColumn, mComment,
+          TAtlasTrackerBoard.MoveTimeoutMs), mSnapshot);
       except
         on E: Exception do
         begin
