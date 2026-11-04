@@ -908,6 +908,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.UnitSearch.Actions` | `IDE/UnitSearch/Atlas.IDE.UnitSearch.Actions.pas` | Ordner `IDE/UnitSearch` |
 | `Atlas.IDE.UnitSearch.Commands` | `IDE/UnitSearch/Atlas.IDE.UnitSearch.Commands.pas` | Ordner `IDE/UnitSearch` |
 | `Atlas.UI.Query.Frame` | `UI/Query/Atlas.UI.Query.Frame.pas` | Ordner `UI/Query` |
+| `Atlas.UI.Query.Parts` | `UI/Query/Atlas.UI.Query.Parts.pas` | Ordner `UI/Query` |
 | `Atlas.UI.Search.Bar` | `UI/Search/Atlas.UI.Search.Bar.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.ReplaceFrame` | `UI/Search/Atlas.UI.Search.ReplaceFrame.pas` | Ordner `UI/Search` |
 | `Atlas.UI.Search.Strings` | `UI/Search/Atlas.UI.Search.Strings.pas` | Texte des Moduls (Suche), Sprache von Base, #1455 |
