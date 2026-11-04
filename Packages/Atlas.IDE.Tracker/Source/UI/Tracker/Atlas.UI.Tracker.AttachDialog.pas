@@ -245,7 +245,7 @@ end;
 
 class function TAtlasAttachDialog.SizeText(ABytes: Int64): string;
 begin
-  Result := FormatFloat('#,##0.0', ABytes / 1024) + ' KB';
+  Result := FormatFloat('#,##0.0', ABytes / 1024, FormatSettings) + ' KB';
 end;
 
 function TAtlasAttachDialog.AddCheck(AParent: TWinControl; ATop: Integer; const ACaption: string): TCheckBox;

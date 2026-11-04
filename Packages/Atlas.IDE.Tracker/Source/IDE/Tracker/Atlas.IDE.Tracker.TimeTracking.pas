@@ -76,20 +76,11 @@ type
     procedure UpdateStatus;
     procedure HideStatus;
     procedure ShowMenu(const APoint: TPoint);
-    procedure MenuPause(Sender: TObject);
-    procedure MenuReset(Sender: TObject);
-    procedure MenuCorrect(Sender: TObject);
-    procedure MenuBook(Sender: TObject);
-    procedure MenuOpen(Sender: TObject);
+    /// <summary>Eintrag des Menüs am Feld; Tag ist die Nummer des Eintrags (TTimeMenu).</summary>
+    procedure MenuClick(Sender: TObject);
     procedure Offer(const AIssue: TAtlasTimeIssue; const AFolder, ABranch, ABase: string);
     procedure ShowBook(const AIssue: TAtlasTimeIssue; const AText: string);
     procedure Settle(const AIssue: TAtlasTimeIssue; ASeconds: Int64);
-    function BookHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey: string; AMode: TAtlasTimeBookMode): TAtlasTimeBookEvent;
-    function PrepareHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AKey: string; const ASession: IInterface): TProc<TAtlasTrackerTimeDialog>;
-    class function TargetOf(const AIssue: TAtlasTimeIssue): TAtlasTrackerTarget; static;
-    class function DebuggerRunning: Boolean; static;
   public
     /// <summary>ASync: Buchen im Hintergrund; AProvider: Anbieter zum Namen; AReport: Zeile in die Meldungsansicht;
     /// APath: time.json.</summary>
@@ -162,6 +153,175 @@ end;
 const
   DecisionNames: array[TAtlasTimeDecision] of string = ('später', 'gebucht', 'verworfen');
 
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Einträge des Menüs am Feld (Tag der Menüeinträge).</summary>
+  TTimeMenu = (Pause, Reset, Correct, Book, Open);
+{$SCOPEDENUMS OFF}
+
+function DebuggerRunning: Boolean;
+var
+  mDebugger: IOTADebuggerServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+end;
+
+function TargetOf(const AIssue: TAtlasTimeIssue): TAtlasTrackerTarget;
+begin
+  Result := TAtlasTrackerTarget.Create(AIssue.Provider, AIssue.Url, AIssue.Project, '');
+end;
+
+/// <summary>Bucht im Hintergrund: Work Item bzw. (GitHub) Kommentar mit Aufwand und Beschreibung.</summary>
+function BookHandler(AOwner: TAtlasIdeTrackerTime; const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; AMode: TAtlasTimeBookMode): TAtlasTimeBookEvent;
+var
+  mOwner: TAtlasIdeTrackerTime;
+  mProvider: IAtlasTrackerProvider;
+  mTarget: TAtlasTrackerTarget;
+  mKey: string;
+  mMode: TAtlasTimeBookMode;
+begin
+  // Eigene Routine: Die Methodenreferenz hält nur diese Werte, keinen Rahmen von ShowBook.
+  mOwner := AOwner;
+  mProvider := AProvider;
+  mTarget := ATarget;
+  mKey := AKey;
+  mMode := AMode;
+  Result :=
+    procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
+    var
+      mComment: string;
+    begin
+      if mOwner.FStopped or (mOwner.FSync = nil) then
+      begin
+        ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+        Exit;
+      end;
+      if mMode = TAtlasTimeBookMode.WorkItem then
+      begin
+        mOwner.FSync.BookTime(mProvider, mTarget, mKey, AItem, ADone);
+        Exit;
+      end;
+      // GitHub: Aufwand als Kommentar, die Beschreibung darunter.
+      mComment := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookComment,
+        [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
+      if AItem.Text <> '' then
+      begin
+        mComment := mComment + #10#10 + AItem.Text;
+      end;
+      mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
+    end;
+end;
+
+/// <summary>Bindet den Dialog an die Sitzung und lädt Arbeitstypen und „Zeiterfassung aus“ nach.</summary>
+function PrepareHandler(AOwner: TAtlasIdeTrackerTime; const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; const ASession: IInterface): TProc<TAtlasTrackerTimeDialog>;
+var
+  mOwner: TAtlasIdeTrackerTime;
+  mProvider: IAtlasTrackerProvider;
+  mTarget: TAtlasTrackerTarget;
+  mKey: string;
+  mSession: IAtlasTimeBookSession;
+begin
+  mOwner := AOwner;
+  mProvider := AProvider;
+  mTarget := ATarget;
+  mKey := AKey;
+  mSession := ASession as IAtlasTimeBookSession;
+  Result :=
+    procedure(ADialog: TAtlasTrackerTimeDialog)
+    var
+      mWriter: IAtlasTrackerTimeWriter;
+    begin
+      mSession.SetDialog(ADialog);
+      mWriter := TAtlasIdeTrackerSync.TimeWriterOf(mProvider);
+      if (mWriter = nil) or (mOwner.FSync = nil) then
+      begin
+        Exit;
+      end;
+      ADialog.IsTrackingOff :=
+        function(const AResult: TAtlasTrackerWriteResult): Boolean
+        begin
+          Result := mWriter.IsTrackingOff(AResult);
+        end;
+      // Ohne Leserecht bleibt die Klappliste frei beschreibbar und „Buchen“ frei.
+      mOwner.FSync.TimeSettings(mProvider, mTarget, mKey,
+        procedure(ASettings: TAtlasTrackerTimeSettings; AResult: TAtlasTrackerWriteResult)
+        begin
+          if mSession.Dialog = nil then
+          begin
+            Exit;
+          end;
+          mSession.Dialog.SetWorkTypes(ASettings.WorkTypes);
+          if AResult.Succeeded and not ASettings.Enabled then
+          begin
+            mSession.Dialog.SetTrackingOff;
+          end;
+        end);
+    end;
+end;
+
+/// <summary>„Zurücksetzen“ nach Rückfrage: Zeit des aktuellen Issues verwerfen.</summary>
+procedure ResetTime(AOwner: TAtlasIdeTrackerTime);
+var
+  mIssue: TAtlasTimeIssue;
+  mTotal: Int64;
+begin
+  if AOwner.FStopped or AOwner.FClock.Issue.IsEmpty then
+  begin
+    Exit;
+  end;
+  mIssue := AOwner.FClock.Issue;
+  AOwner.Flush;
+  mTotal := AOwner.CurrentTotal;
+  if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mIssue.Key,
+    TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]), mtConfirmation, [mbYes, mbNo],
+    0) <> mrYes then
+  begin
+    Exit;
+  end;
+  AOwner.FClock.Discard;
+  AOwner.Settle(mIssue, mTotal);
+end;
+
+/// <summary>„Korrigieren“: Zeit des aktuellen Issues von Hand setzen.</summary>
+procedure CorrectTime(AOwner: TAtlasIdeTrackerTime);
+var
+  mIssue: TAtlasTimeIssue;
+  mText: string;
+  mMinutes: Integer;
+begin
+  if AOwner.FStopped or AOwner.FClock.Issue.IsEmpty then
+  begin
+    Exit;
+  end;
+  mIssue := AOwner.FClock.Issue;
+  AOwner.Flush;
+  mText := TAtlasTimeRounding.ClockText(AOwner.CurrentTotal);
+  if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeCorrectCaption),
+    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectPrompt, [mIssue.Key]), mText) then
+  begin
+    Exit;
+  end;
+  // 0 ist erlaubt (wie Zurücksetzen ohne Rückfrage); sonst muss die Dauer lesbar sein.
+  if (Trim(mText) = '0') or (Trim(mText) = '0:00') then
+  begin
+    mMinutes := 0;
+  end
+  else if not TAtlasTimeRounding.ParseDuration(mText, mMinutes) then
+  begin
+    MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AOwner.FClock.Discard;
+  AOwner.Change(
+    procedure(var ALog: TAtlasTimeLog)
+    begin
+      ALog.SetTotal(mIssue, Int64(mMinutes) * 60, Now);
+    end);
+  AOwner.UpdateStatus;
+end;
+
 { TAtlasIdeTrackerTime }
 
 constructor TAtlasIdeTrackerTime.Create(ASync: TAtlasIdeTrackerSync; const AProvider: TAtlasIdeTimeProvider;
@@ -224,18 +384,6 @@ begin
   FProvider := nil;
   FReport := nil;
   FStatus := nil;
-end;
-
-class function TAtlasIdeTrackerTime.DebuggerRunning: Boolean;
-var
-  mDebugger: IOTADebuggerServices;
-begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
-end;
-
-class function TAtlasIdeTrackerTime.TargetOf(const AIssue: TAtlasTimeIssue): TAtlasTrackerTarget;
-begin
-  Result := TAtlasTrackerTarget.Create(AIssue.Provider, AIssue.Url, AIssue.Project, '');
 end;
 
 procedure TAtlasIdeTrackerTime.TimerTick(Sender: TObject);
@@ -479,11 +627,12 @@ procedure TAtlasIdeTrackerTime.ShowMenu(const APoint: TPoint);
 var
   mItem: TMenuItem;
 
-  procedure Add(AText: TAtlasTrackerTextId; const AClick: TNotifyEvent);
+  procedure Add(AText: TAtlasTrackerTextId; AEntry: TTimeMenu);
   begin
     mItem := TMenuItem.Create(FMenu);
     mItem.Caption := TAtlasTrackerStrings.Text(AText);
-    mItem.OnClick := AClick;
+    mItem.Tag := Ord(AEntry);
+    mItem.OnClick := MenuClick;
     FMenu.Items.Add(mItem);
   end;
 
@@ -496,108 +645,49 @@ begin
   FMenu.Items.Clear;
   if FClock.Paused then
   begin
-    Add(TAtlasTrackerTextId.TimeMenuResume, MenuPause);
+    Add(TAtlasTrackerTextId.TimeMenuResume, TTimeMenu.Pause);
   end
   else
   begin
-    Add(TAtlasTrackerTextId.TimeMenuPause, MenuPause);
+    Add(TAtlasTrackerTextId.TimeMenuPause, TTimeMenu.Pause);
   end;
-  Add(TAtlasTrackerTextId.TimeMenuReset, MenuReset);
-  Add(TAtlasTrackerTextId.TimeMenuCorrect, MenuCorrect);
-  Add(TAtlasTrackerTextId.TimeMenuBook, MenuBook);
-  Add(TAtlasTrackerTextId.TimeMenuOpen, MenuOpen);
+  Add(TAtlasTrackerTextId.TimeMenuReset, TTimeMenu.Reset);
+  Add(TAtlasTrackerTextId.TimeMenuCorrect, TTimeMenu.Correct);
+  Add(TAtlasTrackerTextId.TimeMenuBook, TTimeMenu.Book);
+  Add(TAtlasTrackerTextId.TimeMenuOpen, TTimeMenu.Open);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
-procedure TAtlasIdeTrackerTime.MenuPause(Sender: TObject);
+procedure TAtlasIdeTrackerTime.MenuClick(Sender: TObject);
 begin
   if FStopped then
   begin
     Exit;
   end;
-  if FClock.Paused then
-  begin
-    FClock.Resume;
-  end
-  else
-  begin
-    FClock.Pause;
-  end;
-  UpdateStatus;
-end;
-
-procedure TAtlasIdeTrackerTime.MenuReset(Sender: TObject);
-var
-  mIssue: TAtlasTimeIssue;
-  mTotal: Int64;
-begin
-  if FStopped or FClock.Issue.IsEmpty then
-  begin
-    Exit;
-  end;
-  mIssue := FClock.Issue;
-  Flush;
-  mTotal := CurrentTotal;
-  if MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeResetConfirm, [mIssue.Key,
-    TAtlasTrackerWorkflow.DurationText(TAtlasTimeRounding.Minutes(mTotal, 1))]), mtConfirmation, [mbYes, mbNo],
-    0) <> mrYes then
-  begin
-    Exit;
-  end;
-  FClock.Discard;
-  Settle(mIssue, mTotal);
-end;
-
-procedure TAtlasIdeTrackerTime.MenuCorrect(Sender: TObject);
-var
-  mIssue: TAtlasTimeIssue;
-  mText: string;
-  mMinutes: Integer;
-begin
-  if FStopped or FClock.Issue.IsEmpty then
-  begin
-    Exit;
-  end;
-  mIssue := FClock.Issue;
-  Flush;
-  mText := TAtlasTimeRounding.ClockText(CurrentTotal);
-  if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeCorrectCaption),
-    TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectPrompt, [mIssue.Key]), mText) then
-  begin
-    Exit;
-  end;
-  // 0 ist erlaubt (wie Zurücksetzen ohne Rückfrage); sonst muss die Dauer lesbar sein.
-  if (Trim(mText) = '0') or (Trim(mText) = '0:00') then
-  begin
-    mMinutes := 0;
-  end
-  else if not TAtlasTimeRounding.ParseDuration(mText, mMinutes) then
-  begin
-    MessageDlg(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
-    Exit;
-  end;
-  FClock.Discard;
-  Change(
-    procedure(var ALog: TAtlasTimeLog)
-    begin
-      ALog.SetTotal(mIssue, Int64(mMinutes) * 60, Now);
-    end);
-  UpdateStatus;
-end;
-
-procedure TAtlasIdeTrackerTime.MenuBook(Sender: TObject);
-begin
-  if not FStopped and not FClock.Issue.IsEmpty then
-  begin
-    Offer(FClock.Issue, '', '', '');
-  end;
-end;
-
-procedure TAtlasIdeTrackerTime.MenuOpen(Sender: TObject);
-begin
-  if not FStopped then
-  begin
-    ShowOpen;
+  case TTimeMenu((Sender as TMenuItem).Tag) of
+    TTimeMenu.Pause:
+      begin
+        if FClock.Paused then
+        begin
+          FClock.Resume;
+        end
+        else
+        begin
+          FClock.Pause;
+        end;
+        UpdateStatus;
+      end;
+    TTimeMenu.Reset:
+      ResetTime(Self);
+    TTimeMenu.Correct:
+      CorrectTime(Self);
+    TTimeMenu.Book:
+      if not FClock.Issue.IsEmpty then
+      begin
+        Offer(FClock.Issue, '', '', '');
+      end;
+    TTimeMenu.Open:
+      ShowOpen;
   end;
 end;
 
@@ -664,6 +754,16 @@ begin
   end;
 end;
 
+/// <summary>Work Item, wenn der Anbieter Zeit buchen kann, sonst Kommentar (GitHub).</summary>
+function ModeOf(const AProvider: IAtlasTrackerProvider): TAtlasTimeBookMode;
+begin
+  Result := TAtlasTimeBookMode.Comment;
+  if TAtlasIdeTrackerSync.TimeWriterOf(AProvider) <> nil then
+  begin
+    Result := TAtlasTimeBookMode.WorkItem;
+  end;
+end;
+
 procedure TAtlasIdeTrackerTime.ShowBook(const AIssue: TAtlasTimeIssue; const AText: string);
 var
   mTotal: Int64;
@@ -690,17 +790,14 @@ begin
     mProvider := FProvider(AIssue.Provider);
   end;
   mTarget := TargetOf(AIssue);
-  mMode := TAtlasTimeBookMode.Comment;
-  if TAtlasIdeTrackerSync.TimeWriterOf(mProvider) <> nil then
-  begin
-    mMode := TAtlasTimeBookMode.WorkItem;
-  end;
+  mMode := ModeOf(mProvider);
   FOffering := True;
   mSession := TAtlasTimeBookSession.Create;
   try
-    mDecision := TAtlasTrackerTimeDialog.Execute(AIssue.Key, mTotal, TAtlasIdeSettings.Current.IssuesTimeRounding,
-      Date, AText, mMode, BookHandler(mProvider, mTarget, AIssue.Key, mMode),
-      PrepareHandler(mProvider, mTarget, AIssue.Key, mSession), mItem);
+    mDecision := TAtlasTrackerTimeDialog.Execute(TAtlasTimeRequest.Create(AIssue.Key, mTotal,
+      TAtlasIdeSettings.Current.IssuesTimeRounding, Date, AText, mMode),
+      BookHandler(Self, mProvider, mTarget, AIssue.Key, mMode),
+      PrepareHandler(Self, mProvider, mTarget, AIssue.Key, mSession), mItem);
   finally
     // Nachgeladene Werte kommen danach nicht mehr an den freigegebenen Dialog.
     mSession.SetDialog(nil);
@@ -719,8 +816,7 @@ begin
         if Assigned(FReport) then
         begin
           FReport(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookDone,
-            [TAtlasTrackerWorkflow.DurationText(mItem.Minutes),
-            AIssue.Key]));
+            [TAtlasTrackerWorkflow.DurationText(mItem.Minutes), AIssue.Key]));
         end;
       end;
     TAtlasTimeDecision.Discarded:
@@ -728,94 +824,6 @@ begin
   else
     // Später: Die Zeit bleibt für „Offene Zeitbuchungen …“.
   end;
-end;
-
-function TAtlasIdeTrackerTime.BookHandler(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AKey: string; AMode: TAtlasTimeBookMode): TAtlasTimeBookEvent;
-var
-  mOwner: TAtlasIdeTrackerTime;
-  mProvider: IAtlasTrackerProvider;
-  mTarget: TAtlasTrackerTarget;
-  mKey: string;
-  mMode: TAtlasTimeBookMode;
-begin
-  // Eigene Routine: Die Methodenreferenz hält nur diese Werte, keinen Rahmen von ShowBook.
-  mOwner := Self;
-  mProvider := AProvider;
-  mTarget := ATarget;
-  mKey := AKey;
-  mMode := AMode;
-  Result :=
-    procedure(const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone)
-    var
-      mComment: string;
-    begin
-      if mOwner.FStopped or (mOwner.FSync = nil) then
-      begin
-        ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
-        Exit;
-      end;
-      if mMode = TAtlasTimeBookMode.WorkItem then
-      begin
-        mOwner.FSync.BookTime(mProvider, mTarget, mKey, AItem, ADone);
-        Exit;
-      end;
-      // GitHub: Aufwand als Kommentar, die Beschreibung darunter.
-      mComment := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TimeBookComment,
-        [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
-      if AItem.Text <> '' then
-      begin
-        mComment := mComment + #10#10 + AItem.Text;
-      end;
-      mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
-    end;
-end;
-
-function TAtlasIdeTrackerTime.PrepareHandler(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AKey: string; const ASession: IInterface): TProc<TAtlasTrackerTimeDialog>;
-var
-  mOwner: TAtlasIdeTrackerTime;
-  mProvider: IAtlasTrackerProvider;
-  mTarget: TAtlasTrackerTarget;
-  mKey: string;
-  mSession: IAtlasTimeBookSession;
-begin
-  mOwner := Self;
-  mProvider := AProvider;
-  mTarget := ATarget;
-  mKey := AKey;
-  mSession := ASession as IAtlasTimeBookSession;
-  Result :=
-    procedure(ADialog: TAtlasTrackerTimeDialog)
-    var
-      mWriter: IAtlasTrackerTimeWriter;
-    begin
-      mSession.SetDialog(ADialog);
-      mWriter := TAtlasIdeTrackerSync.TimeWriterOf(mProvider);
-      if (mWriter = nil) or (mOwner.FSync = nil) then
-      begin
-        Exit;
-      end;
-      ADialog.IsTrackingOff :=
-        function(const AResult: TAtlasTrackerWriteResult): Boolean
-        begin
-          Result := mWriter.IsTrackingOff(AResult);
-        end;
-      // Ohne Leserecht bleibt die Klappliste frei beschreibbar und „Buchen“ frei.
-      mOwner.FSync.TimeSettings(mProvider, mTarget, mKey,
-        procedure(ASettings: TAtlasTrackerTimeSettings; AResult: TAtlasTrackerWriteResult)
-        begin
-          if mSession.Dialog = nil then
-          begin
-            Exit;
-          end;
-          mSession.Dialog.SetWorkTypes(ASettings.WorkTypes);
-          if AResult.Succeeded and not ASettings.Enabled then
-          begin
-            mSession.Dialog.SetTrackingOff;
-          end;
-        end);
-    end;
 end;
 
 procedure TAtlasIdeTrackerTime.ShowOpen;

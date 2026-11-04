@@ -40,23 +40,39 @@ type
   /// <summary>Der Fehler bedeutet „Zeiterfassung im Projekt aus“.</summary>
   TAtlasTimeOffCheck = reference to function(const AResult: TAtlasTrackerWriteResult): Boolean;
 
+  /// <summary>Was gebucht werden soll: ASeconds erfasste Zeit, Rounding issues.timeRounding, Date Tag der
+  /// Buchung, Text Vorlage der Beschreibung.</summary>
+  TAtlasTimeRequest = record
+    Key: string;
+    Seconds: Int64;
+    Rounding: Integer;
+    Date: TDateTime;
+    Text: string;
+    Mode: TAtlasTimeBookMode;
+    class function Create(const AKey: string; ASeconds: Int64; ARounding: Integer; ADate: TDateTime;
+      const AText: string; AMode: TAtlasTimeBookMode): TAtlasTimeRequest; static;
+  end;
+
+  /// <summary>Die Steuerelemente des Dialogs (für Tests und Nachladen).</summary>
+  TAtlasTimeDialogParts = record
+    Question: TLabel;
+    Duration: TEdit;
+    WorkType: TAtlasValueBox;
+    Text: TMemo;
+    AsComment: TCheckBox;
+    Note: TLabel;
+    Book: TButton;
+    Later: TButton;
+    Discard: TButton;
+  end;
+
   TAtlasTrackerTimeDialog = class(TForm)
   public const
     DialogWidth = 480;
     TextHeight = 90;
   private
-    FKey: string;
-    FDate: TDateTime;
-    FMode: TAtlasTimeBookMode;
-    FQuestion: TLabel;
-    FDuration: TEdit;
-    FWorkType: TAtlasValueBox;
-    FText: TMemo;
-    FAsComment: TCheckBox;
-    FNote: TLabel;
-    FBook: TButton;
-    FLater: TButton;
-    FDiscard: TButton;
+    FRequest: TAtlasTimeRequest;
+    FParts: TAtlasTimeDialogParts;
     FOnBook: TAtlasTimeBookEvent;
     FIsTrackingOff: TAtlasTimeOffCheck;
     FSending: Boolean;
@@ -67,6 +83,10 @@ type
     function AddRow(AHeight: Integer): TPanel;
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    procedure AddDuration(AMinutes: Integer);
+    procedure AddKind;
+    function AddText: TPanel;
+    procedure AddButtons(ATop: Integer);
     procedure BookClick(Sender: TObject);
     procedure DiscardClick(Sender: TObject);
     procedure DurationChange(Sender: TObject);
@@ -74,10 +94,7 @@ type
     procedure SetBusy(AValue: Boolean);
     procedure ShowNote(const AText: string; AError: Boolean);
   public
-    /// <summary>ASeconds: erfasste Zeit; ARounding: issues.timeRounding; ADate: Tag der Buchung; AText:
-    /// Vorlage der Beschreibung.</summary>
-    constructor CreateDialog(AOwner: TComponent; const AKey: string; ASeconds: Int64; ARounding: Integer;
-      ADate: TDateTime; const AText: string; AMode: TAtlasTimeBookMode);
+    constructor CreateDialog(AOwner: TComponent; const ARequest: TAtlasTimeRequest);
     /// <summary>Arbeitstypen vom Tracker für die Klappliste.</summary>
     procedure SetWorkTypes(const ATypes: TArray<string>);
     /// <summary>Zeiterfassung im Projekt aus: Hinweis, „Buchen“ gesperrt.</summary>
@@ -90,8 +107,7 @@ type
     class function QuestionText(const AKey: string; AMinutes: Integer): string; static;
     /// <summary>Modal zeigen; Entscheidung mit der gebuchten Zeit in AItem (gilt bei Booked). APrepare (darf nil
     /// sein) setzt OnBook-Ergänzungen und lädt Arbeitstypen nach.</summary>
-    class function Execute(const AKey: string; ASeconds: Int64; ARounding: Integer; ADate: TDateTime;
-      const AText: string; AMode: TAtlasTimeBookMode; const AOnBook: TAtlasTimeBookEvent;
+    class function Execute(const ARequest: TAtlasTimeRequest; const AOnBook: TAtlasTimeBookEvent;
       const APrepare: TProc<TAtlasTrackerTimeDialog>; out AItem: TAtlasTrackerWorkItem): TAtlasTimeDecision; static;
     property OnBook: TAtlasTimeBookEvent read FOnBook write FOnBook;
     property IsTrackingOff: TAtlasTimeOffCheck read FIsTrackingOff write FIsTrackingOff;
@@ -102,15 +118,7 @@ type
     property Sent: Boolean read FSent;
     property Sending: Boolean read FSending;
     property TrackingOff: Boolean read FTrackingOff;
-    property Question: TLabel read FQuestion;
-    property DurationEdit: TEdit read FDuration;
-    property WorkTypeBox: TAtlasValueBox read FWorkType;
-    property TextMemo: TMemo read FText;
-    property AsCommentCheck: TCheckBox read FAsComment;
-    property Note: TLabel read FNote;
-    property BookButton: TButton read FBook;
-    property LaterButton: TButton read FLater;
-    property DiscardButton: TButton read FDiscard;
+    property Parts: TAtlasTimeDialogParts read FParts;
   end;
 
 implementation
@@ -125,21 +133,30 @@ const
   Gap = 8;
   FieldLeft = 120;
 
+{ TAtlasTimeRequest }
+
+class function TAtlasTimeRequest.Create(const AKey: string; ASeconds: Int64; ARounding: Integer; ADate: TDateTime;
+  const AText: string; AMode: TAtlasTimeBookMode): TAtlasTimeRequest;
+begin
+  Result.Key := AKey;
+  Result.Seconds := ASeconds;
+  Result.Rounding := ARounding;
+  Result.Date := ADate;
+  Result.Text := AText;
+  Result.Mode := AMode;
+end;
+
 { TAtlasTrackerTimeDialog }
 
-constructor TAtlasTrackerTimeDialog.CreateDialog(AOwner: TComponent; const AKey: string; ASeconds: Int64;
-  ARounding: Integer; ADate: TDateTime; const AText: string; AMode: TAtlasTimeBookMode);
+constructor TAtlasTrackerTimeDialog.CreateDialog(AOwner: TComponent; const ARequest: TAtlasTimeRequest);
 var
   mRow: TPanel;
-  mButtons: TFlowPanel;
   mMinutes: Integer;
 begin
   inherited CreateNew(AOwner);
-  FKey := AKey;
-  FDate := ADate;
-  FMode := AMode;
+  FRequest := ARequest;
   FDecision := TAtlasTimeDecision.Later;
-  FItem := TAtlasTrackerWorkItem.Create(0, ADate, '', '');
+  FItem := TAtlasTrackerWorkItem.Create(0, ARequest.Date, '', '');
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookCaption);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
@@ -147,68 +164,95 @@ begin
   Font.Size := 9;
   ClientWidth := ScaleValue(DialogWidth);
   OnCloseQuery := DialogCloseQuery;
-  mMinutes := TAtlasTimeRounding.Minutes(ASeconds, ARounding);
+  mMinutes := TAtlasTimeRounding.Minutes(ARequest.Seconds, ARequest.Rounding);
 
   mRow := AddRow(22);
-  FQuestion := AddLabel(mRow, QuestionText(AKey, mMinutes));
-  FQuestion.Font.Style := [fsBold];
+  FParts.Question := AddLabel(mRow, QuestionText(ARequest.Key, mMinutes));
+  FParts.Question.Font.Style := [fsBold];
+  AddDuration(mMinutes);
+  AddKind;
+  mRow := AddText;
+  AddButtons(mRow.Top + mRow.Height + 1);
+  ActiveControl := FParts.Duration;
+end;
 
+procedure TAtlasTrackerTimeDialog.AddDuration(AMinutes: Integer);
+var
+  mRow: TPanel;
+begin
   mRow := AddRow(26);
   AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDuration));
-  FDuration := TEdit.Create(Self);
-  FDuration.Parent := mRow;
-  FDuration.Left := ScaleValue(FieldLeft);
-  FDuration.Top := 0;
-  FDuration.Width := ScaleValue(80);
-  FDuration.Text := TAtlasTimeRounding.ClockText(Int64(mMinutes) * 60);
-  FDuration.OnChange := DurationChange;
+  FParts.Duration := TEdit.Create(Self);
+  FParts.Duration.Parent := mRow;
+  FParts.Duration.Left := ScaleValue(FieldLeft);
+  FParts.Duration.Top := 0;
+  FParts.Duration.Width := ScaleValue(80);
+  FParts.Duration.Text := TAtlasTimeRounding.ClockText(Int64(AMinutes) * 60);
+  FParts.Duration.OnChange := DurationChange;
+end;
 
-  FWorkType := TAtlasValueBox.Create(Self);
-  FAsComment := TCheckBox.Create(Self);
+/// <summary>Arbeitstyp (YouTrack) bzw. Häkchen „Als Kommentar senden“ (GitHub, Vorgabe aus).</summary>
+procedure TAtlasTrackerTimeDialog.AddKind;
+var
+  mRow: TPanel;
+begin
+  FParts.WorkType := TAtlasValueBox.Create(Self);
+  FParts.AsComment := TCheckBox.Create(Self);
   mRow := AddRow(26);
-  if AMode = TAtlasTimeBookMode.WorkItem then
+  if FRequest.Mode = TAtlasTimeBookMode.WorkItem then
   begin
     AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookWorkType));
-    FWorkType.Parent := mRow;
-    FWorkType.Left := ScaleValue(FieldLeft);
-    FWorkType.Top := 0;
-    FWorkType.Width := ScaleValue(240);
+    FParts.WorkType.Parent := mRow;
+    FParts.WorkType.Left := ScaleValue(FieldLeft);
+    FParts.WorkType.Top := 0;
+    FParts.WorkType.Width := ScaleValue(240);
   end
   else
   begin
-    FAsComment.Parent := mRow;
-    FAsComment.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookAsComment);
-    FAsComment.Left := 0;
-    FAsComment.Top := ScaleValue(3);
-    FAsComment.Width := ScaleValue(DialogWidth - 2 * Gap);
-    FAsComment.Checked := False;
+    FParts.AsComment.Parent := mRow;
+    FParts.AsComment.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookAsComment);
+    FParts.AsComment.Left := 0;
+    FParts.AsComment.Top := ScaleValue(3);
+    FParts.AsComment.Width := ScaleValue(DialogWidth - 2 * Gap);
+    FParts.AsComment.Checked := False;
   end;
+end;
 
+/// <summary>Beschreibung und darunter die Zeile für Hinweise; liefert die Hinweiszeile.</summary>
+function TAtlasTrackerTimeDialog.AddText: TPanel;
+var
+  mRow: TPanel;
+begin
   mRow := AddRow(20);
   AddLabel(mRow, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookText));
-  FText := TMemo.Create(Self);
-  FText.Parent := Self;
-  FText.Align := alTop;
-  FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
-  FText.Top := mRow.Top + mRow.Height + 1;
-  FText.Height := ScaleValue(TextHeight);
-  FText.ScrollBars := ssVertical;
-  FText.WantReturns := True;
-  FText.Text := AdjustLineBreaks(AText, tlbsCRLF);
+  FParts.Text := TMemo.Create(Self);
+  FParts.Text.Parent := Self;
+  FParts.Text.Align := alTop;
+  FParts.Text.AlignWithMargins := True;
+  FParts.Text.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FParts.Text.Top := mRow.Top + mRow.Height + 1;
+  FParts.Text.Height := ScaleValue(TextHeight);
+  FParts.Text.ScrollBars := ssVertical;
+  FParts.Text.WantReturns := True;
+  FParts.Text.Text := AdjustLineBreaks(FRequest.Text, tlbsCRLF);
 
-  mRow := AddRow(34);
-  mRow.Top := FText.Top + FText.Height + 1;
-  FNote := TLabel.Create(Self);
-  FNote.Parent := mRow;
-  FNote.Align := alClient;
-  FNote.WordWrap := True;
-  FNote.Caption := '';
-  if AMode = TAtlasTimeBookMode.Comment then
+  Result := AddRow(34);
+  Result.Top := FParts.Text.Top + FParts.Text.Height + 1;
+  FParts.Note := TLabel.Create(Self);
+  FParts.Note.Parent := Result;
+  FParts.Note.Align := alClient;
+  FParts.Note.WordWrap := True;
+  FParts.Note.Caption := '';
+  if FRequest.Mode = TAtlasTimeBookMode.Comment then
   begin
     ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLocalOnly), False);
   end;
+end;
 
+procedure TAtlasTrackerTimeDialog.AddButtons(ATop: Integer);
+var
+  mButtons: TFlowPanel;
+begin
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
   mButtons.Align := alTop;
@@ -216,16 +260,15 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  mButtons.Top := mRow.Top + mRow.Height + 1;
-  FBook := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookBook));
-  FBook.OnClick := BookClick;
-  FBook.Default := True;
-  FLater := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLater));
-  FLater.ModalResult := mrCancel;
-  FLater.Cancel := True;
-  FDiscard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
-  FDiscard.OnClick := DiscardClick;
-  ActiveControl := FDuration;
+  mButtons.Top := ATop;
+  FParts.Book := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookBook));
+  FParts.Book.OnClick := BookClick;
+  FParts.Book.Default := True;
+  FParts.Later := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLater));
+  FParts.Later.ModalResult := mrCancel;
+  FParts.Later.Cancel := True;
+  FParts.Discard := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookDiscard));
+  FParts.Discard.OnClick := DiscardClick;
   ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
@@ -284,26 +327,26 @@ procedure TAtlasTrackerTimeDialog.ShowNote(const AText: string; AError: Boolean)
 begin
   if AError then
   begin
-    FNote.Font.Color := clRed;
+    FParts.Note.Font.Color := clRed;
   end
   else
   begin
-    FNote.Font.Color := clWindowText;
+    FParts.Note.Font.Color := clWindowText;
   end;
-  FNote.Caption := AText;
+  FParts.Note.Caption := AText;
 end;
 
 procedure TAtlasTrackerTimeDialog.SetWorkTypes(const ATypes: TArray<string>);
 begin
-  FWorkType.SetValues(ATypes);
+  FParts.WorkType.SetValues(ATypes);
 end;
 
 procedure TAtlasTrackerTimeDialog.SetTrackingOff;
 begin
   FTrackingOff := True;
-  FBook.Enabled := False;
-  FBook.Default := False;
-  FLater.Default := True;
+  FParts.Book.Enabled := False;
+  FParts.Book.Default := False;
+  FParts.Later.Default := True;
   ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookOff), False);
 end;
 
@@ -312,9 +355,9 @@ var
   mMinutes: Integer;
 begin
   // Die Frage folgt der eingegebenen Dauer.
-  if TAtlasTimeRounding.ParseDuration(FDuration.Text, mMinutes) then
+  if TAtlasTimeRounding.ParseDuration(FParts.Duration.Text, mMinutes) then
   begin
-    FQuestion.Caption := QuestionText(FKey, mMinutes);
+    FParts.Question.Caption := QuestionText(FRequest.Key, mMinutes);
   end;
 end;
 
@@ -323,26 +366,26 @@ var
   mMinutes: Integer;
   mType: string;
 begin
-  Result := TAtlasTimeRounding.ParseDuration(FDuration.Text, mMinutes);
+  Result := TAtlasTimeRounding.ParseDuration(FParts.Duration.Text, mMinutes);
   mType := '';
-  if FMode = TAtlasTimeBookMode.WorkItem then
+  if FRequest.Mode = TAtlasTimeBookMode.WorkItem then
   begin
-    mType := FWorkType.Value;
+    mType := FParts.WorkType.Value;
   end;
-  AItem := TAtlasTrackerWorkItem.Create(mMinutes, FDate, mType,
-    Trim(StringReplace(FText.Text, #13#10, #10, [rfReplaceAll])));
+  AItem := TAtlasTrackerWorkItem.Create(mMinutes, FRequest.Date, mType,
+    Trim(StringReplace(FParts.Text.Text, #13#10, #10, [rfReplaceAll])));
 end;
 
 procedure TAtlasTrackerTimeDialog.SetBusy(AValue: Boolean);
 begin
   FSending := AValue;
-  FDuration.ReadOnly := AValue;
-  FWorkType.Enabled := not AValue;
-  FText.ReadOnly := AValue;
-  FAsComment.Enabled := not AValue;
-  FBook.Enabled := not AValue and not FTrackingOff;
-  FLater.Enabled := not AValue;
-  FDiscard.Enabled := not AValue;
+  FParts.Duration.ReadOnly := AValue;
+  FParts.WorkType.Enabled := not AValue;
+  FParts.Text.ReadOnly := AValue;
+  FParts.AsComment.Enabled := not AValue;
+  FParts.Book.Enabled := not AValue and not FTrackingOff;
+  FParts.Later.Enabled := not AValue;
+  FParts.Discard.Enabled := not AValue;
 end;
 
 procedure TAtlasTrackerTimeDialog.BookClick(Sender: TObject);
@@ -359,7 +402,7 @@ begin
     Exit;
   end;
   // GitHub ohne Häkchen bzw. ohne Buchungsweg: nur lokal als gebucht vermerken.
-  if ((FMode = TAtlasTimeBookMode.Comment) and not FAsComment.Checked) or not Assigned(FOnBook) then
+  if ((FRequest.Mode = TAtlasTimeBookMode.Comment) and not FParts.AsComment.Checked) or not Assigned(FOnBook) then
   begin
     FDecision := TAtlasTimeDecision.Booked;
     ModalResult := mrOk;
@@ -382,7 +425,7 @@ begin
   begin
     FSent := True;
     FDecision := TAtlasTimeDecision.Booked;
-    FNote.Caption := '';
+    FParts.Note.Caption := '';
     ModalResult := mrOk;
     Exit;
   end;
@@ -392,7 +435,7 @@ begin
     Exit;
   end;
   // Kein neuer Versuch von selbst.
-  ShowNote(TAtlasTrackerEndDialog.ErrorText(FKey, AResult), True);
+  ShowNote(TAtlasTrackerEndDialog.ErrorText(FRequest.Key, AResult), True);
 end;
 
 procedure TAtlasTrackerTimeDialog.DiscardClick(Sender: TObject);
@@ -411,13 +454,12 @@ begin
   CanClose := not FSending;
 end;
 
-class function TAtlasTrackerTimeDialog.Execute(const AKey: string; ASeconds: Int64; ARounding: Integer;
-  ADate: TDateTime; const AText: string; AMode: TAtlasTimeBookMode; const AOnBook: TAtlasTimeBookEvent;
+class function TAtlasTrackerTimeDialog.Execute(const ARequest: TAtlasTimeRequest; const AOnBook: TAtlasTimeBookEvent;
   const APrepare: TProc<TAtlasTrackerTimeDialog>; out AItem: TAtlasTrackerWorkItem): TAtlasTimeDecision;
 var
   mDialog: TAtlasTrackerTimeDialog;
 begin
-  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, AKey, ASeconds, ARounding, ADate, AText, AMode);
+  mDialog := TAtlasTrackerTimeDialog.CreateDialog(nil, ARequest);
   try
     mDialog.OnBook := AOnBook;
     if Assigned(APrepare) then
