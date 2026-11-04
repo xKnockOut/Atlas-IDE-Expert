@@ -315,7 +315,7 @@ var
     begin
       Exit;
     end;
-    AResolver.AncestorNames(mType, mComplete);
+    AResolver.Queries.AncestorNames(mType, mComplete);
     if not mComplete then
     begin
       Exit;
@@ -403,7 +403,7 @@ var
         // (Winapi in Winapi.Windows.TextOut) sind keine fehlenden Bezeichner (#647).
         if InStatements and (Node.Kind = TSyntaxKind.Identifier) and (Node.Name <> '') and
           not IsIntrinsic(Node.Name) and not IsDeclared(Node.Name) and
-          not TNameResolver.IsBuiltinTypeName(Node.Name) and not mMembers.ContainsKey(Node) then
+          not TResolverText.IsBuiltinTypeName(Node.Name) and not mMembers.ContainsKey(Node) then
         begin
           // IsUnitPrefix erst danach: ResolveChain legt die Unit und den Abschnitt fest.
           Resolved := AResolver.ResolveChain(ATree, AFileName, [Node.Name], Node.StartOffset);
@@ -411,7 +411,7 @@ var
           begin
             Item.Name := Node.Name;
             Item.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
-            AResolver.ScopedEnumValue(ATree, AFileName, Node.Name, Node.StartOffset, Item.Suggestion);
+            AResolver.Queries.ScopedEnumValue(ATree, AFileName, Node.Name, Node.StartOffset, Item.Suggestion);
             Result := Result + [Item];
           end;
         end;

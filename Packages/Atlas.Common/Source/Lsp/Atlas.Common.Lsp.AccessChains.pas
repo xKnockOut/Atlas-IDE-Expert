@@ -699,9 +699,7 @@ end;
 function TCollector.ImplicitSelf(ARoot: TSyntaxNode; out ALink: TAccessLink): Boolean;
 var
   Symbol, ClassType: TResolvedSymbol;
-  With_: TSyntaxNode;
-  Element: Integer;
-  Unknown: Boolean;
+  mWith: TResolvedWithMember;
 begin
   ALink := Default(TAccessLink);
   Result := False;
@@ -716,7 +714,7 @@ begin
     Exit;
   end;
   // In with gehört der Name vielleicht zu einem Element, nicht zu Self.
-  if FResolver.WithMember(FTree, FFileName, ARoot.Name, ARoot.StartOffset, With_, Element, Unknown) or Unknown then
+  if FResolver.Queries.WithMember(FTree, FFileName, ARoot.Name, ARoot.StartOffset, mWith) or mWith.Unknown then
   begin
     Exit;
   end;

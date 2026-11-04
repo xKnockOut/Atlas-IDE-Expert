@@ -984,9 +984,9 @@ begin
         Exit(Fail(Format('%s ist kein bekanntes Interface', [Name]), AReason));
       end;
       // Nur die Methoden von AName samt Vorfahren: was schon ohne AName fehlt, bleibt außen vor.
-      Known := Resolver.MissingInterfaceMembers(Own, TypeName, Before);
+      Known := Resolver.Queries.MissingInterfaceMembers(Own, TypeName, Before);
       Missing := nil;
-      for Member in Resolver.MissingInterfaceMembers(Own, TypeName, Ancestors) do
+      for Member in Resolver.Queries.MissingInterfaceMembers(Own, TypeName, Ancestors) do
       begin
         Index := 0;
         while (Index <= High(Known)) and (MemberKey(Known[Index]) <> MemberKey(Member)) do

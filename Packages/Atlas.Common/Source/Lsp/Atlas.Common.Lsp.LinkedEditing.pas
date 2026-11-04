@@ -309,13 +309,13 @@ begin
     Seen.Add(LowerCase(Symbol.Name), True);
     for Probe in Offsets do
     begin
-      for Candidate in AResolver.OwnScopeCandidates(ATree, AFileName, Probe) do
+      for Candidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, Probe) do
       begin
         if not Seen.ContainsKey(LowerCase(Candidate.Name)) then
         begin
           Seen.Add(LowerCase(Candidate.Name), True);
           Conflict.Name := Candidate.Name;
-          Conflict.Detail := TNameResolver.ShadowText(Candidate);
+          Conflict.Detail := Candidate.ShadowText;
           Conflicts.Add(Conflict);
         end;
       end;

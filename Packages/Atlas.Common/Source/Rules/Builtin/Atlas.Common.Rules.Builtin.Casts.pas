@@ -415,7 +415,7 @@ var
     begin
       AType.SymbolKind := TIndexSymbolKind.ClassType;
     end;
-    Result := SameText(ATypeNode.Name, 'TObject') or TNameResolver.IsBuiltinTypeName(ATypeNode.Name);
+    Result := SameText(ATypeNode.Name, 'TObject') or TResolverText.IsBuiltinTypeName(ATypeNode.Name);
   end;
 
   /// <summary>Typ der Quelle sicher bekannt und als Wert verwendbar: keine Typen, keine Konstanten (untypisierte

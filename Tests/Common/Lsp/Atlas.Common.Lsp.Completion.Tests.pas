@@ -640,20 +640,20 @@ begin
   Text := WithCode('  ');
   Tree := TPascalParser.Parse(Text);
   try
-    FResolver.NameFilter :=
+    FResolver.Candidates.NameFilter :=
       function(const AName: string): Boolean
       begin
         Result := AName.StartsWith('R', True) or AName.StartsWith('M', True);
       end;
     try
       Found := '';
-      for Symbol in FResolver.ScopeCandidates(Tree, HauptFile,
+      for Symbol in FResolver.Candidates.ScopeCandidates(Tree, HauptFile,
         TLspCompletion.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
       begin
         Found := Found + Symbol.Name + ' ';
       end;
     finally
-      FResolver.NameFilter := nil;
+      FResolver.Candidates.NameFilter := nil;
     end;
     Assert.AreEqual('Wert Anzahl Self Melde Rechne', Found.Trim);
   finally

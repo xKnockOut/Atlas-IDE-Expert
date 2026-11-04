@@ -509,7 +509,7 @@ begin
   Values := nil;
   for Binding in AType.Bindings do
   begin
-    Values := Values + [AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+    Values := Values + [AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
@@ -524,7 +524,7 @@ begin
   for Binding in ABindings do
   begin
     Unqualified := Unqualified + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   Result := TInterfaceStubs.SubstituteWords(AText, Unqualified);
 end;
@@ -536,8 +536,8 @@ function ForInElement(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileN
 var
   Names: TArray<string>;
   Index: Integer;
-  Owner, TypeInfo, Member: TResolvedSymbol;
-  TypeFound: Boolean;
+  mChain: TResolvedChainType;
+  Member: TResolvedSymbol;
   OwnerType: string;
 begin
   Result := '';
@@ -563,37 +563,37 @@ begin
     end;
     Index := NextToken(ATokens, Index);
   end;
-  if (Length(Names) = 0) or not AResolver.ChainType(ATree, AFileName, Names, ATokens[ALast].Offset, Owner, TypeInfo,
-    TypeFound) then
+  if (Length(Names) = 0) or not AResolver.ChainType(ATree, AFileName, Names, ATokens[ALast].Offset, mChain) then
   begin
     Exit;
   end;
-  AOrigin := Owner;
-  OwnerType := Owner.TypeName;
-  if Owner.TypeArgs <> '' then
+  AOrigin := mChain.Owner;
+  OwnerType := mChain.Owner.TypeName;
+  if mChain.Owner.TypeArgs <> '' then
   begin
-    OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+    OwnerType := OwnerType + '<' + mChain.Owner.TypeArgs + '>';
   end;
   Result := TPostfixTemplates.ElementOf(OwnerType);
-  if (Result = '') and TypeFound then
+  if (Result = '') and mChain.TypeFound then
   begin
-    Result := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+    Result := TPostfixTemplates.ElementOf(mChain.TypeInfo.TypeName);
   end;
   if Result <> '' then
   begin
     Exit;
   end;
-  if TPostfixTemplates.IsStringType(Owner.TypeName) or
-    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name)) then
+  if TPostfixTemplates.IsStringType(mChain.Owner.TypeName) or
+    (mChain.TypeFound and mChain.TypeInfo.Builtin and TPostfixTemplates.IsStringType(mChain.TypeInfo.Name)) then
   begin
     Exit('Char');
   end;
-  if not TypeFound or TypeInfo.Builtin then
+  if not mChain.TypeFound or mChain.TypeInfo.Builtin then
   begin
     Exit;
   end;
   // Enumerator: Current von GetEnumerator, mit eingesetzten Typparametern.
-  for Member in AResolver.MemberCandidates(ATree, AFileName, Names + ['GetEnumerator'], ATokens[ALast].Offset) do
+  for Member in AResolver.Candidates.MemberCandidates(ATree, AFileName, Names + ['GetEnumerator'],
+    ATokens[ALast].Offset) do
   begin
     if SameText(Member.Name, 'Current') and (Member.TypeName <> '') then
     begin
@@ -611,8 +611,8 @@ var
   Node: TSyntaxNode;
   Index, NameToken, Assign, First, Last, Scan, Depth: Integer;
   TypeName, TypeUnit: string;
-  Resolved, Owner, TypeInfo, Origin: TResolvedSymbol;
-  TypeFound: Boolean;
+  Resolved, Origin: TResolvedSymbol;
+  mChain: TResolvedChainType;
   Found: TInferredType;
   List: TList<TInferredType>;
   Typed: Boolean;
@@ -734,14 +734,14 @@ begin
           end;
         // Typ aus dem Ausdruck über die Namensauflösung (#453): auch generisch, TList<TKunde>.Create.
         if (TypeName = '') and AResolver.ChainType(ATree, AFileName, [CleanName(Tokens[NameToken].Text)],
-          Node.EndOffset, Owner, TypeInfo, TypeFound) and TypeFound and (TypeInfo.Name <> '') then
+          Node.EndOffset, mChain) and mChain.TypeFound and (mChain.TypeInfo.Name <> '') then
         begin
-          TypeName := TypeDisplay(AResolver, TypeInfo);
-          if not TypeInfo.Builtin then
+          TypeName := TypeDisplay(AResolver, mChain.TypeInfo);
+          if not mChain.TypeInfo.Builtin then
           begin
-            TypeUnit := TypeInfo.UnitName;
+            TypeUnit := mChain.TypeInfo.UnitName;
           end;
-          Origin := TypeInfo;
+          Origin := mChain.TypeInfo;
         end;
         if (TypeName = '') and (Tokens[First].Kind = TPascalTokenKind.Identifier) then
         begin
