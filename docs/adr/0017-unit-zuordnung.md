@@ -900,9 +900,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
+| `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 
 ## Atlas.IDE.Build
 
