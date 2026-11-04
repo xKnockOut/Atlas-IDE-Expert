@@ -48,6 +48,8 @@ contains
   Atlas.Core.UnitSearch.Sections in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
   Atlas.Core.UnitSearch.UseUnit in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas',
   Atlas.Core.UnitSearch.State in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas',
+  Atlas.UI.UnitSearch.Data in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Data.pas',
+  Atlas.UI.UnitSearch.Painter in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Painter.pas',
   Atlas.UI.UnitSearch.Window in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas',
   Atlas.IDE.UnitSearch.Actions in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Actions.pas',
   Atlas.IDE.UnitSearch.Commands in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas',

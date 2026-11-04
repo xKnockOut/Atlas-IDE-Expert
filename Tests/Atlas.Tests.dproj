@@ -73,6 +73,7 @@
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas"/>
+        <DCCReference Include="Common\Localization\Atlas.Common.Localization.Texts.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TestSupport.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.Tests.pas"/>
@@ -693,6 +694,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ModuleSwitches.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.RuleChecksNotice.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Groups.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.PageNames.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
@@ -1189,6 +1191,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ModuleSwitches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.RuleChecksNotice.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Groups.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.PageNames.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
@@ -1595,6 +1598,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IdeArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.EditingArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IndexArea.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
@@ -1635,6 +1639,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.IdeArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.EditingArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.IndexArea.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Capabilities.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>

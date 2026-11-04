@@ -219,7 +219,9 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - Einstellungen exportieren, importieren, Profile laden und zurücksetzen
 - Teamweite Werte in der Projektdatei `.atlas` (neben der .dproj, in einem Ordner darüber bis zur Wurzel von Git oder SVN oder neben der .groupproj), Server- und Regeleinstellungen in `atlas.json` (*Atlas › Projekt-Einstellungen*), globale Werte in `%APPDATA%\Atlas\settings.json`
 
-Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfiguration.md](docs/Konfiguration.md).
+- Sprache wie die IDE (#1458): Mit englischer Delphi-IDE sind Beschreibungen der Einstellungen, „Neu in Atlas“ und die ersten Servertexte (Regelerklärungen, unbekannte Regel-IDs, überflüssige Unterdrückungen) englisch, mit deutscher IDE bleibt alles deutsch; `language` (`""` wie die IDE, `"de"`, `"en"`) legt sie fest, `AtlasServer --check` nimmt `--locale de|en`. Die Servertexte wandern gruppenweise in Texttabellen (`TAtlasText`); `Tools/Check-GermanText.ps1` hält neue deutsche Literale fern
+
+Alle Schlüssel: [docs/Einstellungen.md](docs/Einstellungen.md) und [docs/Konfiguration.md](docs/Konfiguration.md), englisch [docs/en/Configuration.md](docs/en/Configuration.md).
 
 ### Claude Code und MCP
 
@@ -266,10 +268,10 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 
 ## Benutzerdokumentation
 
-- [Installation](docs/Installation.md) für RAD Studio, Claude Code und die Kommandozeile
+- [Installation](docs/Installation.md) für RAD Studio, Claude Code und die Kommandozeile (englisch: [docs/en/Installation.md](docs/en/Installation.md))
 - [IDE-Plugin](docs/RAD-Studio.md): alle Funktionen im Einzelnen
 - [Einstellungen](docs/Einstellungen.md) des Plugins
-- [Konfiguration](docs/Konfiguration.md) von `atlas.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`)
+- [Konfiguration](docs/Konfiguration.md) von `atlas.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`, englisch aus `x-description-en`: [docs/en/Configuration.md](docs/en/Configuration.md))
 - [Prüfregeln](docs/Regeln.md)
 - [MCP-Werkzeuge](docs/MCP.md)
 - [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte
@@ -382,6 +384,7 @@ Ein Prüflauf wertet jede Unit einmal aus und teilt das Ergebnis mit allen Regel
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
 | `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
+| `--locale <de\|en>` | Sprache der Texte (#1458); ohne Angabe `language` aus `%APPDATA%\Atlas\settings.json`, sonst Englisch |
 | `--fail-on <S>` | ab welchem Treffer der Exit-Code 1 ist: `error` (Standard), `warning` oder `never`. So brechen Warnungen in Altprojekten keinen Pre-Commit-Hook ab |
 | `--source-root <Ordner>` | Wurzel der SARIF-Pfade; Standard ist die Git-Wurzel über dem Ziel, sonst der Ordner des Ziels. Pfade darunter tragen `uriBaseId` `%SRCROOT%`, Dateien außerhalb erscheinen als absoluter `file:`-URI |
 | `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `atlas.json` vor |

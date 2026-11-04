@@ -37,6 +37,12 @@ jobs:
       - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
         shell: pwsh
         run: ./Tools/Check-DocComments.ps1
+      - name: Deutsche Literale nur in Texttabellen (#1458), Selbsttest
+        shell: pwsh
+        run: ./Tools/Check-GermanText.ps1 -SelfTest
+      - name: Deutsche Literale nur in Texttabellen (#1458)
+        shell: pwsh
+        run: ./Tools/Check-GermanText.ps1
       - name: Jede Unit mit Logik hat Tests, jede Testunit läuft (#415)
         shell: pwsh
         run: ./Tools/Check-TestCoverage.ps1

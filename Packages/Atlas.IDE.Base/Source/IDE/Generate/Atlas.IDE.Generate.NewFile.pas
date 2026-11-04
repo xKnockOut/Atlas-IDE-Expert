@@ -303,7 +303,7 @@ begin
   mEntries := TAtlasFileTemplates.Entries(mTemplates);
   for mIndex := 0 to High(mEntries) do
   begin
-    mEntries[mIndex].Caption := TAtlasGenerateWindow.EntryCaption(mEntries[mIndex]);
+    mEntries[mIndex].Caption := TAtlasGenerateTexts.EntryCaption(mEntries[mIndex]);
   end;
   // Nur die Gruppe Vorlagen; ausgeblendete Einträge und Namen der Befehle wie im Erzeugen-Menü.
   mOptions := TAtlasGenerateOptions.Create(mSettings.GenerateMenuGroups, mSettings.GenerateMenuHidden, False,

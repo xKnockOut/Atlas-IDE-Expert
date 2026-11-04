@@ -355,6 +355,8 @@ begin
   Result.Area := InheritedText(ASchema, AParent, 'x-area');
   Result.Page := InheritedText(ASchema, AParent, 'x-page');
   Result.Caption := FirstSentence(TextOf(ASchema, 'description'));
+  // Englisch aus x-description-en (#1458), ebenso gekürzt.
+  Result.CaptionEn := FirstSentence(TextOf(ASchema, 'x-description-en'));
   Result.DefaultJson := JsonOf(ASchema, 'default');
   Result.Machine := Flag(ASchema, 'x-machine') or Flag(AParent, 'x-machine');
   Result.State := Flag(ASchema, 'x-state');

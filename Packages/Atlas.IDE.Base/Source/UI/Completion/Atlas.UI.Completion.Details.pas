@@ -93,6 +93,7 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Draw,
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings;
 
 { TAtlasDetailView }
@@ -526,8 +527,8 @@ begin
         begin
           Expanded := FDoc.Expanded;
         end;
-        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, TAtlasStrings.DocLabels,
-          TAtlasDocSignature.Parse(FDetails.Declaration), Expanded);
+        FDoc.Build(ACanvas, TAtlasDocContent.Create(FDocData, TAtlasDocSignature.Parse(FDetails.Declaration),
+          Expanded), Right - Left, TAtlasDocFonts.Create(AFont, AUIFont, APPI), TAtlasStrings.DocLabels);
         FDocWidth := Right - Left;
       end;
       // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.

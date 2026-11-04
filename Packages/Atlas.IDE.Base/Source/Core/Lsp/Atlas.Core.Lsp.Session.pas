@@ -53,6 +53,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.Session.Json,
+  Atlas.Core.Lsp.Session.Base,
   Atlas.Core.Lsp.Session.Requests;
 
 type
@@ -69,6 +70,7 @@ type
   TLspShowMessageProc = Atlas.Core.Lsp.Session.Json.TLspShowMessageProc;
   TLspCrashNotificationProc = Atlas.Core.Lsp.Session.Json.TLspCrashNotificationProc;
   TLspFormatOptions = Atlas.Core.Lsp.Session.Json.TLspFormatOptions;
+  TLspInitializeOptions = Atlas.Core.Lsp.Session.Base.TLspInitializeOptions;
 
   /// <summary>LSP-Sitzung des Plugins: Zustand und Abgleich aus TLspSessionBase, Anfragen aus
   /// TLspSessionRequests, hier Hierarchien, Auswirkungen, betroffene Tests, Debug-Werte, Inlay Hints, Diagnosen,
