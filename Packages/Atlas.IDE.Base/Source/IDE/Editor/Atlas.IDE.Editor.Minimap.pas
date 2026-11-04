@@ -163,13 +163,8 @@ type
   end;
 
 function CurrentOptions: TAtlasMinimapOptions;
-var
-  Settings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasMinimap.Options(Settings.MinimapRender, Settings.MinimapSide, Settings.MinimapShowSlider,
-    Settings.MinimapWidth, Settings.MinimapScale, Settings.MinimapMaxColumn, Settings.MinimapSectionHeaders,
-    Settings.MinimapHighlightMethod, Settings.MinimapMarkers, Settings.MinimapClickJumps);
+  Result := TAtlasMinimap.Options(TAtlasIdeSettings.Current);
 end;
 
 function SameOptions(const A, B: TAtlasMinimapOptions): Boolean;

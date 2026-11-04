@@ -530,7 +530,7 @@ begin
   S.VisibleRows := 7;
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''),
     FileOf('"highlight.pairColors": false, "completion.visibleRows": 7, "keys.palette": 0, "logLevel": "debug"'),
-    imMerge, nil, Macros(), '', '');
+      TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Status = isChange);
   Assert.AreEqual('true', ItemOf(Preview, 'highlight.pairColors').CurrentJson);
   Assert.AreEqual('false', ItemOf(Preview, 'highlight.pairColors').NewJson);
@@ -568,7 +568,7 @@ begin
   S.VisibleRows := 12;
   Preview := TAtlasSettingsTransfer.Preview(FCatalog,
     State(S, '{"highlight": {"blockPairs": false}, "logLevel": "debug"}'),
-    FileOf('"highlight.pairColors": false'), imReplace, ['highlighting'], Macros(), '', '');
+    FileOf('"highlight.pairColors": false'), TAtlasImportOptions.Create(imReplace, ['highlighting'], Macros()));
   Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Status = isSame);
   Assert.IsTrue(ItemOf(Preview, 'highlight.pairGuides').Status = isReset);
   Assert.AreEqual('true', ItemOf(Preview, 'highlight.pairGuides').NewJson);
@@ -583,7 +583,7 @@ begin
   Assert.AreEqual(12, After.Plugin.VisibleRows);
   // Mit Zusammenführen bleibt pairGuides.
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), FileOf('"highlight.pairColors": false'),
-    imMerge, ['highlighting'], Macros(), '', '');
+    TAtlasImportOptions.Create(imMerge, ['highlighting'], Macros()));
   Assert.IsFalse(HasItem(Preview, 'highlight.pairGuides'));
 end;
 
@@ -595,8 +595,8 @@ var
 begin
   Source := TAtlasSettingsTransfer.ParseFile('{"format":"atlas-settings","formatVersion":1,"schemaVersion":99,' +
     '"settings":{"welcomePage.zukunft": [1, 2], "highlight.pairColors": false}}');
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
-    Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source,
+    TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.IsTrue(Preview.Newer, 'neuere Version');
   Assert.IsTrue(ItemOf(Preview, 'welcomePage.zukunft').Status = isUnknown);
   Assert.IsFalse(ItemOf(Preview, 'welcomePage.zukunft').Selected);
@@ -617,8 +617,8 @@ begin
   Source := TAtlasSettingsTransfer.ParseFile('{"PairColors": 0, "VisibleRows": 12, "SettingsExportSecrets": "placeholder"}');
   Assert.IsTrue(Source.Valid);
   Assert.AreEqual(0, Source.SchemaVersion);
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
-    Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source,
+    TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Migrated);
   Assert.AreEqual('PairColors', ItemOf(Preview, 'highlight.pairColors').SourceKey);
   Assert.AreEqual('false', ItemOf(Preview, 'highlight.pairColors').NewJson, '0 wird false');
@@ -629,18 +629,18 @@ begin
   Assert.AreEqual('placeholder', After.Plugin.SettingsExportSecrets);
   // #770: xmlDocFull (Wahrheitswert bzw. 0/1) wird zur Auswahl xmlDocExpand.
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    FileOf('"hints.xmlDocFull": true'), imMerge, nil, Macros(), '', '');
+    FileOf('"hints.xmlDocFull": true'), TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.IsTrue(ItemOf(Preview, 'hints.xmlDocExpand').Migrated);
   Assert.AreEqual('"expanded"', ItemOf(Preview, 'hints.xmlDocExpand').NewJson);
   Source := TAtlasSettingsTransfer.ParseFile('{"XmlDocFull": 0}');
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
-    Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source,
+    TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.AreEqual('"collapsed"', ItemOf(Preview, 'hints.xmlDocExpand').NewJson);
   // Frühere Schlüssel (x-formerKeys).
   Catalog := TAtlasSettingsCatalog.Create(TestPlugin, TestServer);
   try
     Preview := TAtlasSettingsTransfer.Preview(Catalog, State(TAtlasPluginSettings.Defaults, ''),
-      FileOf('"editor.pairColors": false'), imMerge, nil, Macros(), '', '');
+      FileOf('"editor.pairColors": false'), TAtlasImportOptions.Create(imMerge, nil, Macros()));
     Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Migrated);
     Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Status = isChange);
   finally
@@ -654,7 +654,7 @@ var
 begin
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
     FileOf('"settings.exportSecrets": "alles", "highlight.pairColors": "ja", "welcomePage.help.reportUrl": "<secret>",' +
-    '"server.path": "D:\\Atlas"'), imMerge, nil, Macros(), '', '');
+    '"server.path": "D:\\Atlas"'), TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.IsTrue(ItemOf(Preview, 'settings.exportSecrets').Status = isInvalid);
   Assert.IsTrue(Length(ItemOf(Preview, 'settings.exportSecrets').Issues) > 0);
   Assert.IsTrue(ItemOf(Preview, 'highlight.pairColors').Status = isInvalid);
@@ -669,8 +669,8 @@ var
   After: TAtlasSettingsState;
 begin
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    FileOf('"welcomePage.quickActions.console": "$(LOCALAPPDATA)\\Microsoft\\WindowsApps\\wt.exe"'), imMerge, nil,
-    Macros(), '', '');
+    FileOf('"welcomePage.quickActions.console": "$(LOCALAPPDATA)\\Microsoft\\WindowsApps\\wt.exe"'),
+      TAtlasImportOptions.Create(imMerge, nil, Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Preview);
   Assert.AreEqual('C:\Users\max\AppData\Local\Microsoft\WindowsApps\wt.exe',
     After.Plugin.WelcomePageQuickActionsConsole);
@@ -688,7 +688,8 @@ var
 begin
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, '{"language": "de"}'),
     FileOf('"format.indentSize": 2, "completion.interfaceSection": "x", "welcomePage.tests.ci.provider": "jenkins",' +
-    '"welcomePage.tests.ci.intervalMinutes": 30'), imReplace, nil, Macros(), ProjectText, TeamText);
+    '"welcomePage.tests.ci.intervalMinutes": 30'), TAtlasImportOptions.Create(imReplace, nil, Macros(), ProjectText,
+      TeamText));
   // Projektwerte in der Datei werden übersprungen.
   Assert.IsTrue(ItemOf(Preview, 'format.indentSize').Status = isSkipped);
   Assert.IsTrue(ItemOf(Preview, 'completion.interfaceSection').Status = isSkipped);
@@ -709,7 +710,7 @@ begin
   Assert.AreEqual(1, Integer(Result_.Count));
   Assert.Contains(Result_.Text, '"empty-except"');
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), TAtlasSettingsTransfer.ParseFile(Result_.Text),
-    imMerge, nil, Macros(), '{"rules": {"empty-except": "error"}}', '');
+    TAtlasImportOptions.Create(imMerge, nil, Macros(), '{"rules": {"empty-except": "error"}}', ''));
   Assert.IsTrue(ItemOf(Preview, 'rules').Status = isChange);
   Assert.Contains(ItemOf(Preview, 'rules').Covered, 'atlas.json: rules');
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, ''), Preview);
@@ -736,7 +737,8 @@ begin
   Source := TAtlasSettingsTransfer.ParseFile(Backup.Text);
   Assert.IsTrue(Source.Backup);
   Changed := TAtlasPluginSettings.Defaults;
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(Changed, ''), Source, imReplace, nil, Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(Changed, ''), Source,
+    TAtlasImportOptions.Create(imReplace, nil, Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(Changed, ''), Preview);
   Assert.AreEqual(500, After.Plugin.ListWidth);
   Assert.AreEqual('C:\Users\max\Atlas\AtlasServer.exe', After.Plugin.ServerPath);
@@ -816,7 +818,7 @@ begin
   Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
   Assert.Contains(mExported.Text, '"issues.connections": [');
   mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(mExported.Text), imMerge, nil, Macros(), '', '');
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.AreEqual(1, mPreview.SelectedCount);
   mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
   Assert.AreEqual(cList, mAfter.Plugin.IssuesConnections);
@@ -841,7 +843,7 @@ begin
   Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
   Assert.Contains(mExported.Text, '"issues.projects": [');
   mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(mExported.Text), imMerge, nil, Macros(), '', '');
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
   mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
   Assert.AreEqual(cList, mAfter.Plugin.IssuesProjects);
   mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
@@ -873,7 +875,7 @@ begin
   Assert.Contains(Exported.Text, '"welcomePage.activeLayout": "Arbeit"');
   // Import auf einem frischen Rechner.
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
-    TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Macros(), '', '');
+    TAtlasSettingsTransfer.ParseFile(Exported.Text), TAtlasImportOptions.Create(imMerge, nil, Macros()));
   Assert.AreEqual(4, Preview.SelectedCount);
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Preview);
   Assert.IsFalse(After.Plugin.WelcomePageCustomLayout);
@@ -939,7 +941,7 @@ begin
   // Minimal: Zusatzfunktionen aus, Vervollständigung bleibt.
   Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson('minimal.json'));
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source,
-    TAtlasSettingsTransfer.ModeOf(Source), nil, Macros(), '', '');
+    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(Source), nil, Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Preview);
   Assert.IsTrue(After.Plugin.Enabled);
   Assert.IsTrue(After.Plugin.SettingsExportImport, 'Knöpfe bleiben');
@@ -947,8 +949,8 @@ begin
   Assert.IsFalse(After.Plugin.WelcomePage);
   // Alles an.
   Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson('alles-an.json'));
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, After, Source, TAtlasSettingsTransfer.ModeOf(Source), nil,
-    Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, After, Source,
+    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(Source), nil, Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, After, Preview);
   Assert.IsTrue(After.Plugin.PairColors);
   Assert.IsTrue(After.Plugin.BuildOnOpen);
@@ -958,8 +960,8 @@ begin
   S.VisibleRows := 12;
   Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson('atlas-standard.json'));
   Assert.IsTrue(TAtlasSettingsTransfer.ModeOf(Source) = imReplace);
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, '{"logLevel": "debug"}'), Source, imReplace, nil,
-    Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, '{"logLevel": "debug"}'), Source,
+    TAtlasImportOptions.Create(imReplace, nil, Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, '{"logLevel": "debug"}'), Preview);
   Assert.AreEqual(0, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
   // Nur Code Insight (#1454): alle Module aus, der Kern wie Atlas-Standard.
@@ -967,7 +969,8 @@ begin
   S.PairColors := False;
   Source := TAtlasSettingsTransfer.ParseFile(AtlasProfileJson('nur-code-insight.json'));
   Assert.IsTrue(TAtlasSettingsTransfer.ModeOf(Source) = imReplace);
-  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), Source, imReplace, nil, Macros(), '', '');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), Source, TAtlasImportOptions.Create(imReplace, nil,
+    Macros()));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(S, ''), Preview);
   Assert.IsTrue(After.Plugin.Enabled);
   Assert.IsTrue(After.Plugin.PairColors, 'Kern auf Vorgabe');

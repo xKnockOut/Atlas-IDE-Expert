@@ -50,6 +50,18 @@ type
     PauseWaitMs = 3000;
   private type
     TPhase = (Idle, Pausing, Watching);
+    TWatchState = record
+      Phase: TPhase;
+      PauseStarted: Cardinal;
+      SeenRunning: Boolean;
+      StartFile: string;
+      StartLine: Integer;
+    end;
+    /// <summary>Gesetzte Haltepunkte und die Orte dazu (bleiben für „Weiter beobachten“).</summary>
+    TArmedState = record
+      Locations: TArray<TAtlasEventLocation>;
+      Breaks: TArray<IOTABreakpoint>;
+    end;
   private class var
     FInstance: TAtlasIdeEventBreak;
   private
@@ -60,16 +72,18 @@ type
     FBar: TAtlasEventBreakBar;
     FChoice: TAtlasEventChoice;
     FAnswer: TAtlasEventAnswer;
-    FPhase: TPhase;
-    FPauseStarted: Cardinal;
-    FLocations: TArray<TAtlasEventLocation>;
-    FBreaks: TArray<IOTABreakpoint>;
-    FSeenRunning: Boolean;
-    FStartFile: string;
-    FStartLine: Integer;
+    FWatch: TWatchState;
+    FArmed: TArmedState;
     procedure MenuClick(Sender: TObject);
     procedure Tick(Sender: TObject);
     procedure Execute;
+    /// <summary>Server fragen und Auswahl im Dialog; False bei Abbruch oder ohne Prozess.</summary>
+    function Choose(out AProcess: IOTAProcess): Boolean;
+    /// <summary>Haltepunkte nach FChoice setzen; laufendes Programm erst anhalten.</summary>
+    procedure ArmFor(const AProcess: IOTAProcess);
+    procedure ArmVisibleForms;
+    procedure Step;
+    procedure ShowBar(const ACaption: string);
     function Query: Boolean;
     function CountText(const AChoice: TAtlasEventChoice): string;
     function VisibleForms(out AForms: TArray<string>): Boolean;
@@ -161,6 +175,67 @@ begin
   end;
 end;
 
+/// <summary>Laufender Prozess; ohne ihn eine Meldung an AReport.</summary>
+function CurrentProcess(out AProcess: IOTAProcess; const AReport: TProc<string>): Boolean;
+begin
+  AProcess := TAtlasIdeBreakpoints.CurrentProcess;
+  Result := AProcess <> nil;
+  if not Result then
+  begin
+    AReport(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
+  end;
+end;
+
+/// <summary>Behandler am Halt in ALocation; bei mehreren nach Sender.Name, -1 wenn nicht bestimmbar.</summary>
+function IdentifyHandler(const AAnswer: TAtlasEventAnswer; const ALocation: TAtlasEventLocation): Integer;
+var
+  mSender: string;
+begin
+  Result := -1;
+  if Length(ALocation.Handlers) <= 1 then
+  begin
+    Result := ALocation.Handlers[0];
+  end
+  else if TAtlasIdeEventBreak.Evaluate('Sender.Name', mSender) then
+  begin
+    Result := TAtlasEventBreak.Identify(AAnswer.Handlers, ALocation, TAtlasEventBreak.Unquote(mSender));
+  end;
+end;
+
+type
+  /// <summary>Stand nach Pause: noch warten, hält, oder PauseWaitMs ohne Halt vorbei.</summary>
+  TPauseOutcome = (Waiting, Stopped, TimedOut);
+
+function PauseOutcome(const AProcess: IOTAProcess; AStarted: Cardinal): TPauseOutcome;
+begin
+  Result := TPauseOutcome.Waiting;
+  if TAtlasIdeBreakpoints.IsStopped(AProcess) then
+  begin
+    Result := TPauseOutcome.Stopped;
+  end
+  else if GetTickCount - AStarted >= TAtlasIdeEventBreak.PauseWaitMs then
+  begin
+    Result := TPauseOutcome.TimedOut;
+  end;
+end;
+
+/// <summary>Hält das Programm an einem neuen Ort? Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
+/// </summary>
+function StoppedAnew(const AProcess: IOTAProcess; var AWatch: TAtlasIdeEventBreak.TWatchState): Boolean;
+var
+  mFileName: string;
+  mLine: Integer;
+begin
+  Result := False;
+  if not TAtlasIdeBreakpoints.IsStopped(AProcess) then
+  begin
+    AWatch.SeenRunning := True;
+    Exit;
+  end;
+  TAtlasIdeBreakpoints.Position(AProcess.CurrentThread, mFileName, mLine);
+  Result := AWatch.SeenRunning or not SameText(mFileName, AWatch.StartFile) or (mLine <> AWatch.StartLine);
+end;
+
 { TAtlasIdeEventBreak }
 
 constructor TAtlasIdeEventBreak.Create(const ASession: TAtlasEventBreakSessionFunc; const AMessage: TProc<string>);
@@ -169,7 +244,7 @@ begin
   FSession := ASession;
   FMessage := AMessage;
   FChoice := TAtlasEventChoice.Defaults;
-  FStartLine := -1;
+  FWatch.StartLine := -1;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := TickMs;
@@ -181,10 +256,10 @@ destructor TAtlasIdeEventBreak.Destroy;
 begin
   FreeAndNil(FTimer);
   // Beim Entladen mitten in der Beobachtung: keine Haltepunkte zurücklassen.
-  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
+  TAtlasIdeBreakpoints.RemoveAll(FArmed.Breaks);
   FreeAndNil(FBar);
   FreeAndNil(FMenuItem);
-  FLocations := nil;
+  FArmed.Locations := nil;
   FAnswer := Default(TAtlasEventAnswer);
   inherited;
 end;
@@ -213,7 +288,7 @@ end;
 
 class function TAtlasIdeEventBreak.Watching: Boolean;
 begin
-  Result := (FInstance <> nil) and (FInstance.FPhase <> TPhase.Idle);
+  Result := (FInstance <> nil) and (FInstance.FWatch.Phase <> TPhase.Idle);
 end;
 
 class procedure TAtlasIdeEventBreak.Run;
@@ -238,7 +313,7 @@ begin
   end;
   FInstance.UpdateMenu;
   // Ausgeschaltet während der Beobachtung: Haltepunkte gleich entfernen.
-  if not Enabled and (FInstance.FPhase <> TPhase.Idle) then
+  if not Enabled and (FInstance.FWatch.Phase <> TPhase.Idle) then
   begin
     FInstance.Finish;
   end;
@@ -355,30 +430,32 @@ end;
 
 procedure TAtlasIdeEventBreak.Execute;
 var
-  Process: IOTAProcess;
-  Choice: TAtlasEventChoice;
-  Forms: TArray<string>;
+  mProcess: IOTAProcess;
 begin
   HideBar;
   // Zweiter Aufruf: Beobachtung beenden.
-  if FPhase <> TPhase.Idle then
+  if FWatch.Phase <> TPhase.Idle then
   begin
     Finish;
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancelled));
-    Exit;
-  end;
-  Process := TAtlasIdeBreakpoints.CurrentProcess;
-  if Process = nil then
+  end
+  else if Choose(mProcess) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
-    Exit;
+    ArmFor(mProcess);
   end;
-  if not Query then
+end;
+
+function TAtlasIdeEventBreak.Choose(out AProcess: IOTAProcess): Boolean;
+var
+  mChoice: TAtlasEventChoice;
+begin
+  Result := False;
+  if not CurrentProcess(AProcess, Report) or not Query then
   begin
     Exit;
   end;
-  Choice := FChoice;
-  if not TAtlasEventBreakDialog.Execute(Choice, TAtlasEventBreak.Forms(FAnswer.Handlers),
+  mChoice := FChoice;
+  if not TAtlasEventBreakDialog.Execute(mChoice, TAtlasEventBreak.Forms(FAnswer.Handlers),
     TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded,
     function(const AChoice: TAtlasEventChoice): string
     begin
@@ -387,47 +464,54 @@ begin
   begin
     Exit;
   end;
-  FChoice := Choice;
+  FChoice := mChoice;
   if FAnswer.Unresolved > 0 then
   begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
   end;
   // Der Dialog war modal: Das Programm kann inzwischen beendet sein.
-  Process := TAtlasIdeBreakpoints.CurrentProcess;
-  if Process = nil then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
-    Exit;
-  end;
+  Result := CurrentProcess(AProcess, Report);
+end;
+
+procedure TAtlasIdeEventBreak.ArmFor(const AProcess: IOTAProcess);
+begin
   if FChoice.Scope <> TAtlasEventScope.VisibleForms then
   begin
     Arm(FChoice, nil);
-    Exit;
-  end;
-  if TAtlasIdeBreakpoints.IsStopped(Process) then
+  end
+  else if TAtlasIdeBreakpoints.IsStopped(AProcess) then
   begin
-    if VisibleForms(Forms) then
-    begin
-      Arm(FChoice, Forms);
-    end
-    else
-    begin
-      ArmAllForms;
+    ArmVisibleForms;
+  end
+  else
+  begin
+    // Programm läuft: kurz anhalten, im Takt auf den Halt warten, dann Formulare lesen.
+    FWatch.Phase := TPhase.Pausing;
+    FWatch.PauseStarted := GetTickCount;
+    FTimer.Enabled := True;
+    try
+      AProcess.Pause;
+    except
+      on E: Exception do
+      begin
+        FWatch.Phase := TPhase.Idle;
+        ArmAllForms;
+      end;
     end;
-    Exit;
   end;
-  // Programm läuft: kurz anhalten, im Takt auf den Halt warten, dann Formulare lesen.
-  FPhase := TPhase.Pausing;
-  FPauseStarted := GetTickCount;
-  FTimer.Enabled := True;
-  try
-    Process.Pause;
-  except
-    on E: Exception do
-    begin
-      FPhase := TPhase.Idle;
-      ArmAllForms;
-    end;
+end;
+
+procedure TAtlasIdeEventBreak.ArmVisibleForms;
+var
+  mForms: TArray<string>;
+begin
+  if VisibleForms(mForms) then
+  begin
+    Arm(FChoice, mForms);
+  end
+  else
+  begin
+    ArmAllForms;
   end;
 end;
 
@@ -476,22 +560,22 @@ procedure TAtlasIdeEventBreak.Arm(const AChoice: TAtlasEventChoice; const AVisib
 var
   Selected: TArray<Integer>;
 begin
-  FPhase := TPhase.Idle;
+  FWatch.Phase := TPhase.Idle;
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, AChoice,
     TAtlasEventBreakSettings.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), AVisibleForms);
-  FLocations := TAtlasEventBreak.Locations(FAnswer.Handlers, Selected);
-  if Length(FLocations) = 0 then
+  FArmed.Locations := TAtlasEventBreak.Locations(FAnswer.Handlers, Selected);
+  if Length(FArmed.Locations) = 0 then
   begin
     FTimer.Enabled := False;
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
     Exit;
   end;
-  if Length(FLocations) > TAtlasEventBreak.ManyBreakpoints then
+  if Length(FArmed.Locations) > TAtlasEventBreak.ManyBreakpoints then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FLocations)]));
+    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FArmed.Locations)]));
   end;
   Watch;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FLocations)]));
+  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FArmed.Locations)]));
 end;
 
 procedure TAtlasIdeEventBreak.Watch;
@@ -500,29 +584,29 @@ var
   Location: TAtlasEventLocation;
   Breakpoint: IOTABreakpoint;
 begin
-  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
-  for Location in FLocations do
+  TAtlasIdeBreakpoints.RemoveAll(FArmed.Breaks);
+  for Location in FArmed.Locations do
   begin
     Breakpoint := TAtlasIdeBreakpoints.Add(Location.FileName, Location.Line, BreakpointGroup);
     if Breakpoint <> nil then
     begin
-      FBreaks := FBreaks + [Breakpoint];
+      FArmed.Breaks := FArmed.Breaks + [Breakpoint];
     end;
   end;
-  FPhase := TPhase.Watching;
-  FSeenRunning := False;
-  FStartFile := '';
-  FStartLine := -1;
+  FWatch.Phase := TPhase.Watching;
+  FWatch.SeenRunning := False;
+  FWatch.StartFile := '';
+  FWatch.StartLine := -1;
   FTimer.Enabled := True;
   Process := TAtlasIdeBreakpoints.CurrentProcess;
   if TAtlasIdeBreakpoints.IsStopped(Process) then
   begin
-    TAtlasIdeBreakpoints.Position(Process.CurrentThread, FStartFile, FStartLine);
+    TAtlasIdeBreakpoints.Position(Process.CurrentThread, FWatch.StartFile, FWatch.StartLine);
     Process.Run(ormRun);
   end
   else
   begin
-    FSeenRunning := True;
+    FWatch.SeenRunning := True;
   end;
 end;
 
@@ -534,7 +618,7 @@ begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
     Exit;
   end;
-  if Length(FLocations) > 0 then
+  if Length(FArmed.Locations) > 0 then
   begin
     Watch;
   end;
@@ -543,8 +627,8 @@ end;
 procedure TAtlasIdeEventBreak.Finish;
 begin
   FTimer.Enabled := False;
-  FPhase := TPhase.Idle;
-  TAtlasIdeBreakpoints.RemoveAll(FBreaks);
+  FWatch.Phase := TPhase.Idle;
+  TAtlasIdeBreakpoints.RemoveAll(FArmed.Breaks);
 end;
 
 procedure TAtlasIdeEventBreak.HideBar;
@@ -557,36 +641,33 @@ end;
 
 procedure TAtlasIdeEventBreak.Stopped(const AProcess: IOTAProcess);
 var
-  FileName, Sender: string;
-  Line, Found, Identified: Integer;
-  Point: TPoint;
+  mFileName, mCaption: string;
+  mLine, mFound: Integer;
 begin
-  TAtlasIdeBreakpoints.Position(AProcess.CurrentThread, FileName, Line);
-  // Erster Halt, gleich wo: eigene Haltepunkte entfernen (FLocations bleibt für „Weiter beobachten“).
+  TAtlasIdeBreakpoints.Position(AProcess.CurrentThread, mFileName, mLine);
+  // Erster Halt, gleich wo: eigene Haltepunkte entfernen (FArmed.Locations bleibt für „Weiter beobachten“).
   Finish;
-  Found := TAtlasEventBreak.LocationAt(FLocations, FileName, Line);
-  if Found < 0 then
+  mFound := TAtlasEventBreak.LocationAt(FArmed.Locations, mFileName, mLine);
+  if mFound < 0 then
   begin
     if AProcess.ProcessState = psStopped then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(FileName), Line + 1]));
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(mFileName),
+        mLine + 1]));
     end;
     Exit;
   end;
-  Identified := -1;
-  if Length(FLocations[Found].Handlers) > 1 then
-  begin
-    if Evaluate('Sender.Name', Sender) then
-    begin
-      Identified := TAtlasEventBreak.Identify(FAnswer.Handlers, FLocations[Found], TAtlasEventBreak.Unquote(Sender));
-    end;
-  end
-  else
-  begin
-    Identified := FLocations[Found].Handlers[0];
-  end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped,
-    [TAtlasEventBreak.Caption(FAnswer.Handlers, FLocations[Found], Identified)]));
+  mCaption := TAtlasEventBreak.Caption(FAnswer.Handlers, FArmed.Locations[mFound], IdentifyHandler(FAnswer, FArmed.Locations[mFound]));
+  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [mCaption]));
+  ShowBar(mCaption);
+  // Im Takt bleiben, um die Leiste zu schließen, sobald das Programm weiterläuft.
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeEventBreak.ShowBar(const ACaption: string);
+var
+  mPoint: TPoint;
+begin
   if FBar = nil then
   begin
     FBar := TAtlasEventBreakBar.Create(nil);
@@ -615,83 +696,64 @@ begin
           end);
       end;
   end;
-  Point := CaretPoint;
+  mPoint := CaretPoint;
   FBar.Colors := TAtlasIdeStyle.Colors;
-  FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(Point), 1, '', 10);
-  FBar.ShowFor(TAtlasEventBreak.Caption(FAnswer.Handlers, FLocations[Found], Identified), Point);
-  // Im Takt bleiben, um die Leiste zu schließen, sobald das Programm weiterläuft.
-  FTimer.Enabled := True;
+  FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
+  FBar.ShowFor(ACaption, mPoint);
 end;
 
 procedure TAtlasIdeEventBreak.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger,
     procedure
-    var
-      Process: IOTAProcess;
-      Forms: TArray<string>;
-      FileName: string;
-      Line: Integer;
     begin
-      Process := TAtlasIdeBreakpoints.CurrentProcess;
-      // Programm beendet: aufräumen.
-      if Process = nil then
-      begin
-        HideBar;
-        if FPhase <> TPhase.Idle then
-        begin
-          Finish;
-          Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
-        end;
-        FTimer.Enabled := False;
-        Exit;
-      end;
-      case FPhase of
-        TPhase.Pausing:
-          begin
-            if not TAtlasIdeBreakpoints.IsStopped(Process) then
-            begin
-              if GetTickCount - FPauseStarted < PauseWaitMs then
-              begin
-                Exit;
-              end;
-              // Kein Halt nach Pause: alle Formulare.
-              ArmAllForms;
-              Exit;
-            end;
-            if VisibleForms(Forms) then
-            begin
-              Arm(FChoice, Forms);
-            end
-            else
-            begin
-              ArmAllForms;
-            end;
-          end;
-        TPhase.Watching:
-          begin
-            if not TAtlasIdeBreakpoints.IsStopped(Process) then
-            begin
-              FSeenRunning := True;
-              Exit;
-            end;
-            // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
-            TAtlasIdeBreakpoints.Position(Process.CurrentThread, FileName, Line);
-            if not FSeenRunning and SameText(FileName, FStartFile) and (Line = FStartLine) then
-            begin
-              Exit;
-            end;
-            Stopped(Process);
-          end;
-      else
-        // Leiste zu, sobald das Programm wieder läuft.
-        if not TAtlasIdeBreakpoints.IsStopped(Process) then
-        begin
-          HideBar;
-          FTimer.Enabled := False;
-        end;
-      end;
+      Step;
     end);
+end;
+
+procedure TAtlasIdeEventBreak.Step;
+var
+  mProcess: IOTAProcess;
+  mOutcome: TPauseOutcome;
+begin
+  mProcess := TAtlasIdeBreakpoints.CurrentProcess;
+  if mProcess = nil then
+  begin
+    // Programm beendet: aufräumen.
+    HideBar;
+    if FWatch.Phase <> TPhase.Idle then
+    begin
+      Finish;
+      Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
+    end;
+    FTimer.Enabled := False;
+  end
+  else if FWatch.Phase = TPhase.Pausing then
+  begin
+    mOutcome := PauseOutcome(mProcess, FWatch.PauseStarted);
+    if mOutcome = TPauseOutcome.Stopped then
+    begin
+      ArmVisibleForms;
+    end
+    else if mOutcome = TPauseOutcome.TimedOut then
+    begin
+      // Kein Halt nach Pause: alle Formulare.
+      ArmAllForms;
+    end;
+  end
+  else if FWatch.Phase = TPhase.Watching then
+  begin
+    if StoppedAnew(mProcess, FWatch) then
+    begin
+      Stopped(mProcess);
+    end;
+  end
+  else if not TAtlasIdeBreakpoints.IsStopped(mProcess) then
+  begin
+    // Leiste zu, sobald das Programm wieder läuft.
+    HideBar;
+    FTimer.Enabled := False;
+  end;
 end;
 
 end.

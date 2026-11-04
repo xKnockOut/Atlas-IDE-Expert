@@ -123,50 +123,83 @@ end;
 
 { TAtlasLinkedEditing }
 
-class function TAtlasLinkedEditing.FromJson(const AValue: TJSONValue; out ARanges: TAtlasLinkedRanges;
-  out AConflicts: TAtlasLinkedConflicts): Boolean;
+/// <summary>Ein Bereich {start, end} in einer Zeile; False, wenn er fehlt oder ungültig ist.</summary>
+function ReadLinkedRange(const AItem: TJSONValue; out ARange: TAtlasLinkedRange): Boolean;
 var
-  Items: TJSONArray;
-  Item: TJSONValue;
-  StartLine, StartCharacter, EndLine, EndCharacter: Integer;
-  Conflict: TAtlasLinkedConflict;
+  mStartLine, mStartCharacter, mEndLine, mEndCharacter: Integer;
 begin
-  ARanges := nil;
-  AConflicts := nil;
-  Result := False;
-  if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('ranges', Items) then
+  ARange := Default(TAtlasLinkedRange);
+  mStartLine := -1;
+  mStartCharacter := -1;
+  mEndLine := -1;
+  mEndCharacter := -1;
+  Result := (AItem is TJSONObject) and TJSONObject(AItem).TryGetValue<Integer>('start.line', mStartLine) and
+    TJSONObject(AItem).TryGetValue<Integer>('start.character', mStartCharacter) and
+    TJSONObject(AItem).TryGetValue<Integer>('end.line', mEndLine) and
+    TJSONObject(AItem).TryGetValue<Integer>('end.character', mEndCharacter);
+  Result := Result and (mStartLine = mEndLine) and (mEndCharacter >= mStartCharacter) and (mStartLine >= 0) and
+    (mStartCharacter >= 0);
+  if Result then
   begin
-    Exit;
+    ARange := TAtlasLinkedRange.Create(mStartLine, mStartCharacter, mEndCharacter - mStartCharacter);
   end;
-  for Item in Items do
+end;
+
+/// <summary>Namenskonflikte {name, detail}; ohne detail gilt der Name.</summary>
+function ReadConflicts(const AValue: TJSONObject): TAtlasLinkedConflicts;
+var
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mConflict: TAtlasLinkedConflict;
+begin
+  Result := nil;
+  if AValue.TryGetValue<TJSONArray>('atlasConflicts', mItems) then
   begin
-    if not (Item is TJSONObject) or
-      not TJSONObject(Item).TryGetValue<Integer>('start.line', StartLine) or
-      not TJSONObject(Item).TryGetValue<Integer>('start.character', StartCharacter) or
-      not TJSONObject(Item).TryGetValue<Integer>('end.line', EndLine) or
-      not TJSONObject(Item).TryGetValue<Integer>('end.character', EndCharacter) or
-      (StartLine <> EndLine) or (EndCharacter < StartCharacter) or (StartLine < 0) or (StartCharacter < 0) then
+    for mItem in mItems do
     begin
-      ARanges := nil;
-      Exit;
-    end;
-    ARanges := ARanges + [TAtlasLinkedRange.Create(StartLine, StartCharacter, EndCharacter - StartCharacter)];
-  end;
-  if TJSONObject(AValue).TryGetValue<TJSONArray>('atlasConflicts', Items) then
-  begin
-    for Item in Items do
-    begin
-      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('name', Conflict.Name) then
+      if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('name', mConflict.Name) then
       begin
-        if not TJSONObject(Item).TryGetValue<string>('detail', Conflict.Detail) then
+        if not TJSONObject(mItem).TryGetValue<string>('detail', mConflict.Detail) then
         begin
-          Conflict.Detail := Conflict.Name;
+          mConflict.Detail := mConflict.Name;
         end;
-        AConflicts := AConflicts + [Conflict];
+        Result := Result + [mConflict];
       end;
     end;
   end;
-  Result := Length(ARanges) > 0;
+end;
+
+class function TAtlasLinkedEditing.FromJson(const AValue: TJSONValue; out ARanges: TAtlasLinkedRanges;
+  out AConflicts: TAtlasLinkedConflicts): Boolean;
+var
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mRange: TAtlasLinkedRange;
+begin
+  ARanges := nil;
+  AConflicts := nil;
+  mItems := nil;
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<TJSONArray>('ranges', mItems);
+  if Result then
+  begin
+    for mItem in mItems do
+    begin
+      Result := Result and ReadLinkedRange(mItem, mRange);
+      if Result then
+      begin
+        ARanges := ARanges + [mRange];
+      end;
+    end;
+  end;
+  if Result then
+  begin
+    AConflicts := ReadConflicts(TJSONObject(AValue));
+    Result := Length(ARanges) > 0;
+  end
+  else
+  begin
+    ARanges := nil;
+  end;
 end;
 
 class function TAtlasLinkedEditing.IndexAt(const ARanges: TAtlasLinkedRanges; ALine, ACharacter: Integer): Integer;

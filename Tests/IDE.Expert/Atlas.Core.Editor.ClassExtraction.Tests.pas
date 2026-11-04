@@ -129,17 +129,17 @@ var
   Model: TAtlasClassExtractionModel;
 begin
   Model := Prepared(Basis);
-  Assert.AreEqual('TKunde', Model.SourceClass);
-  Assert.AreEqual('Kunden', Model.OwnUnit);
+  Assert.AreEqual('TKunde', Model.Source.SourceClass);
+  Assert.AreEqual('Kunden', Model.Source.OwnUnit);
   Assert.AreEqual('IKunde', Model.Name);
   Assert.AreEqual(4, Integer(Model.Count));
   Assert.AreEqual(3, Model[1].Id);
   Assert.AreEqual('function Laden: Boolean;', Model[1].Display);
   Assert.AreEqual('property', Model[3].Kind);
   Assert.AreEqual('bekommt GetName und SetName', Model[3].Reason);
-  Assert.AreEqual(1, Integer(Length(Model.Notes)));
-  Assert.AreEqual(2, Integer(Length(Model.Units)));
-  Assert.AreEqual('Kunden.Daten', Model.Units[1]);
+  Assert.AreEqual(1, Integer(Length(Model.Source.Notes)));
+  Assert.AreEqual(2, Integer(Length(Model.Source.Units)));
+  Assert.AreEqual('Kunden.Daten', Model.Source.Units[1]);
   Assert.AreEqual('', Model.TargetUnit);
 end;
 
@@ -359,11 +359,11 @@ var
 begin
   Model := Prepared(MoveUp);
   Assert.IsTrue(Model.IsMove);
-  Assert.AreEqual('Fill', Model.MemberName);
-  Assert.AreEqual('up', Model.Direction);
+  Assert.AreEqual('Fill', Model.Source.MemberName);
+  Assert.AreEqual('up', Model.Source.Direction);
   Assert.AreEqual(2, Model.TargetCount);
   Assert.AreEqual('Basis', Model.Targets[0].UnitName);
-  Assert.AreEqual('overrideSiblings', Model.OptionKind);
+  Assert.AreEqual('overrideSiblings', Model.Source.OptionKind);
   Assert.IsTrue(Model.Option);
   // Kein Name noetig, aber Fill braucht FItems.
   Assert.AreEqual(Ord(TAtlasExtractionProblem.MissingDependency), Ord(Model.Validate(Subject)));
@@ -388,8 +388,8 @@ var
   Request: TJSONObject;
 begin
   Model := Prepared(MoveDown);
-  Assert.IsTrue(Model.MultiTarget);
-  Assert.IsFalse(Model.NeedsRequired);
+  Assert.IsTrue(Model.Source.MultiTarget);
+  Assert.IsFalse(Model.Source.NeedsRequired);
   // Show benutzt FData, das oben bleiben darf.
   Assert.AreEqual(Ord(TAtlasExtractionProblem.None), Ord(Model.Validate));
   Model.SetTargetChecked(1, False);

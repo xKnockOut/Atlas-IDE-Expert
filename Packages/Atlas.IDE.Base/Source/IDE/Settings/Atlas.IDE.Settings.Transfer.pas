@@ -351,12 +351,13 @@ begin
   end;
   Current := State(ACurrent);
   ProjectTexts(ProjectText, TeamText);
-  Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasSettingsTransfer.ModeOf(Source), nil,
-    Macros(), ProjectText, TeamText);
+  Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source,
+    TAtlasImportOptions.Create(TAtlasSettingsTransfer.ModeOf(Source), nil, Macros(), ProjectText, TeamText));
   if not TAtlasImportDialog.Execute(Catalog, AFileName, Preview,
     function(AMode: TAtlasImportMode; const AAreas: TArray<string>): TAtlasImportPreview
     begin
-      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, AMode, AAreas, Macros(), ProjectText, TeamText);
+      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasImportOptions.Create(AMode, AAreas,
+        Macros(), ProjectText, TeamText));
     end, nil) then
   begin
     Exit;
