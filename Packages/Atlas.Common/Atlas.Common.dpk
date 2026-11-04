@@ -473,6 +473,7 @@ contains
   Atlas.Common.Rules.Builtin.TypeMismatch in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.pas',
   Atlas.Common.Rules.Builtin.Constants in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas',
   Atlas.Common.Rules.Builtin.Database in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas',
+  Atlas.Common.Rules.Builtin.Database.Statements in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Statements.pas',
   Atlas.Common.Rules.Builtin.DllExports in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DllExports.pas',
   Atlas.Common.Rules.Builtin.Files in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Files.pas',
   Atlas.Common.Rules.Builtin.Directives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas',
