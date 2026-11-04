@@ -491,6 +491,7 @@ contains
   Atlas.Core.Vcs.Adapters.ProcessRunner in 'Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
   Atlas.IDE.Vcs.Service in 'Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas',
   Atlas.IDE.Editor.LineChanges in 'Source\IDE\Editor\Atlas.IDE.Editor.LineChanges.pas',
+  Atlas.IDE.Editor.LineChangesData in 'Source\IDE\Editor\Atlas.IDE.Editor.LineChangesData.pas',
   Atlas.IDE.Editor.LineMove in 'Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas',
   Atlas.IDE.Editor.CommentContinuation in 'Source\IDE\Editor\Atlas.IDE.Editor.CommentContinuation.pas',
   Atlas.IDE.Editor.EnterWatch in 'Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas',

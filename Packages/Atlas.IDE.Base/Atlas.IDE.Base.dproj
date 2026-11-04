@@ -567,6 +567,7 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineChanges.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineChangesData.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.CommentContinuation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas"/>

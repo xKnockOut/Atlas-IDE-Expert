@@ -113,27 +113,20 @@ uses
   System.Classes,
   System.Types,
   System.Math,
-  System.DateUtils,
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Text.Lines,
-  Atlas.Text.Diff,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
   Atlas.UI.Popup.TitledTip,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -141,16 +134,11 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.LineChangesData;
 
 const
   TickMs = 150;
-  /// <summary>Tipp-Pause vor dem Vergleich.</summary>
-  QuietMs = 300;
-  /// <summary>So oft prüft Atlas Commit (ChangeMarker) und Speichern (Zeitstempel der Datei).</summary>
-  PollMs = 1000;
   HoverMs = 400;
   /// <summary>Höchstens so viele alte Zeilen im Fenster.</summary>
   MaxOldLines = 15;
@@ -174,6 +162,18 @@ type
     TopRow: Integer;
   end;
 
+  /// <summary>Gezeichnete Randanzeige der Zeilenhistorie.</summary>
+  TBlameMark = record
+    Rect: TRect;
+    TopRow: Integer;
+    /// <summary>Eintrag von blame; -1 ohne.</summary>
+    Entry: Integer;
+    Unsaved: Boolean;
+    Wnd: HWND;
+    /// <summary>Zeile im Puffer, 0-basiert.</summary>
+    Line: Integer;
+  end;
+
   TLineChangesState = class
   private
     FEvents: TEvents;
@@ -185,44 +185,10 @@ type
     FFontKey: string;
     FGutterOn: Boolean;
     FBlameOn: Boolean;
-    // Datei vorn und ihr Stand.
-    FFileName: string;
-    FVcs: IAtlasVersionControl;
-    FText: string;
-    FChangedAt: UInt64;
-    FPolledAt: UInt64;
-    FMarker: string;
-    FDiskAge: TDateTime;
-    // Stand im Repository; FHeadOk erst nach erfolgreichem FileAt.
-    FHead: TArray<string>;
-    FHeadOk: Boolean;
-    FHeadWanted: Boolean;
-    FHeadBusy: Boolean;
-    // Ergebnis des letzten Vergleichs und der Text, zu dem es gehört.
-    FDiffText: string;
-    FDiffBusy: Boolean;
-    FLines: TArray<string>;
-    FLineBreak: string;
-    FChanges: TAtlasLineChangeList;
-    FShown: Boolean;
-    // Zeilenhistorie der Datei auf der Platte.
-    FBlame: TArray<TAtlasVcsBlameLine>;
-    FDisk: TArray<string>;
-    FDiskHunks: TArray<TTextLineHunk>;
-    FBlameOk: Boolean;
-    FBlameWanted: Boolean;
-    FBlameBusy: Boolean;
-    // Ganze Nachrichten je Revision (#1275) und ob sie zum letzten blame gewollt waren.
-    FMessages: TDictionary<string, string>;
-    FMessagesWanted: Boolean;
+    FData: TAtlasIdeLineChangesData;
     // Gezeichnete Marken je Bildschirmzeile und der Text der Historie.
     FRows: TDictionary<Integer, TMarkRow>;
-    FBlameRect: TRect;
-    FBlameTopRow: Integer;
-    FBlameEntry: Integer;
-    FBlameUnsaved: Boolean;
-    FBlameWnd: HWND;
-    FBlameLine: Integer;
+    FBlame: TBlameMark;
     // Überfahren der Historie.
     FHovering: Boolean;
     FHoverSince: UInt64;
@@ -232,26 +198,28 @@ type
     FTipEntered: Boolean;
     procedure Tick(Sender: TObject);
     procedure Reset;
-    procedure Track(const AView: IOTAEditView);
-    procedure Poll;
-    procedure LoadHead;
-    procedure LoadBlame;
-    procedure Compare;
     procedure CheckHover;
     procedure ShowChange(AChange: Integer; const AScreen: TRect);
     procedure ShowCommit;
     procedure HideTip;
     procedure RevertChange(AChange: Integer);
-    function Fresh: Boolean;
-    function BlameCaption(ABufferLine: Integer; out AEntry: Integer; out AUnsaved: Boolean): string;
-    function MessageOf(const AEntry: TAtlasVcsBlameLine): string;
     function CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
-    function MessagesWanted: Boolean;
     procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    /// <summary>Balken und Dreieck der Zeile zeichnen und die Marke für den Klick merken.</summary>
+    procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext; AMark: TAtlasLineMark;
+      AChange, ADeleted: Integer);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    /// <summary>Zeigt die Zeile von AContext die Zeilenhistorie (Cursorzeile, aktueller Vergleich)?</summary>
+    function BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Boolean;
+      const AContext: INTACodeEditorPaintContext): Boolean;
+    /// <summary>ACaption hinter das Zeilenende schreiben; liefert die belegte Fläche.</summary>
+    function PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+      const ACaption, ALineText: string): TRect;
+    /// <summary>Marke unter X, Y, die noch dort steht (gleiche Datei, nicht gescrollt).</summary>
+    function MarkAt(X, Y: Integer; out ARow: TMarkRow): Boolean;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
   public
@@ -260,16 +228,12 @@ type
     procedure GoToChange(AForward: Boolean);
   end;
 
-var
-  // Jede Hintergrundarbeit merkt sich die Generation; nach Reset oder Freigabe verfällt ihr Ergebnis.
-  Generation: Integer;
-
 function Active: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := (Settings.GitGutter or Settings.GitBlame) and not TAtlasGuard.Disabled(TAtlasFeature.LineChanges);
+  mSettings := TAtlasIdeSettings.Current;
+  Result := (mSettings.GitGutter or mSettings.GitBlame) and not TAtlasGuard.Disabled(TAtlasFeature.LineChanges);
 end;
 
 function Current: TLineChangesState;
@@ -279,22 +243,22 @@ end;
 
 procedure Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 function TopView: IOTAEditView;
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Result := Editors.TopView;
+    Result := mEditors.TopView;
   end;
 end;
 
@@ -304,37 +268,117 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
 end;
 
-function AgeText(const AAge: TAtlasAge): string;
+/// <summary>Ergänzungen der Zeilenhistorie für den Stand; lesen die Haken der Komposition erst beim Aufruf.</summary>
+function DataHooks: TAtlasLineChangesHooks;
 begin
-  case AAge.Unit_ of
-    TAtlasAgeUnit.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameMinutes, [AAge.Count]);
-    TAtlasAgeUnit.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameHours, [AAge.Count]);
-    TAtlasAgeUnit.Yesterday:
-      Result := TAtlasStrings.Text(TAtlasTextId.BlameYesterday);
-    TAtlasAgeUnit.Days:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.BlameDays, [AAge.Count]);
-    TAtlasAgeUnit.Months:
-      if AAge.Count = 1 then
+  Result.Wanted :=
+    function: Boolean
+    var
+      mHooks: TAtlasBlameHooks;
+    begin
+      mHooks := TAtlasIdeLineChanges.FHooks;
+      Result := Assigned(mHooks.Wanted) and Assigned(mHooks.Messages) and mHooks.Wanted();
+    end;
+  Result.Loader :=
+    function: TAtlasLineMessagesFunc
+    var
+      mHook: TAtlasBlameMessagesHook;
+    begin
+      // Im Hauptthread festhalten; der Lader läuft im Hintergrund.
+      mHook := TAtlasIdeLineChanges.FHooks.Messages;
+      Result :=
+        function(const AVcs: IAtlasVersionControl; const AFileName: string;
+          const ALines: TArray<TAtlasVcsBlameLine>): TArray<TAtlasVcsRevisionMessage>
+        begin
+          Result := nil;
+          if Assigned(mHook) then
+          begin
+            Result := mHook(AVcs, AFileName, ALines);
+          end;
+        end;
+    end;
+  Result.Suffix :=
+    function(AMessage: string): string
+    begin
+      Result := '';
+      if Assigned(TAtlasIdeLineChanges.FHooks.Suffix) then
       begin
-        Result := TAtlasStrings.Text(TAtlasTextId.BlameMonth);
-      end
-      else
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.BlameMonths, [AAge.Count]);
+        Result := TAtlasIdeLineChanges.FHooks.Suffix(AMessage);
       end;
-    TAtlasAgeUnit.Years:
-      if AAge.Count = 1 then
-      begin
-        Result := TAtlasStrings.Text(TAtlasTextId.BlameYear);
-      end
-      else
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.BlameYears, [AAge.Count]);
-      end;
+    end;
+end;
+
+/// <summary>Alter Stand einer Änderung, höchstens MaxOldLines Zeilen; leere Zeilen bleiben sichtbar.</summary>
+function OldText(const AChange: TAtlasLineChange): string;
+var
+  mIndex, mShown: Integer;
+begin
+  if AChange.Kind = TAtlasLineChangeKind.Added then
+  begin
+    Exit(TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
+  end;
+  mShown := Min(Length(AChange.OldLines), MaxOldLines);
+  Result := '';
+  for mIndex := 0 to mShown - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + sLineBreak;
+    end;
+    Result := Result + AChange.OldLines[mIndex];
+    if AChange.OldLines[mIndex] = '' then
+    begin
+      Result := Result + ' ';
+    end;
+  end;
+  if Length(AChange.OldLines) > mShown then
+  begin
+    Result := Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ChangeMoreLines,
+      [Length(AChange.OldLines) - mShown]);
+  end;
+end;
+
+procedure FillBar(ADC: HDC; const ABar: TRect; AColor: TAtlasColor);
+var
+  mBrush: HGDIOBJ;
+begin
+  mBrush := CreateSolidBrush(ColorToRGB(TColor(AColor)));
+  try
+    FillRect(ADC, ABar, mBrush);
+  finally
+    DeleteObject(mBrush);
+  end;
+end;
+
+/// <summary>Dreieck nach rechts an ALeft: über der Zeile ARect, mit AAtEnd (Dateiende) unter ihr.</summary>
+procedure PaintDeleted(ADC: HDC; ALeft, ASize: Integer; const ARect: TRect; AAtEnd: Boolean; AColor: TAtlasColor);
+var
+  mPoints: array[0..2] of TPoint;
+  mBrush, mPen, mOldBrush, mOldPen: HGDIOBJ;
+begin
+  if AAtEnd then
+  begin
+    mPoints[0] := Point(ALeft, ARect.Bottom - 2 * ASize);
+    mPoints[1] := Point(ALeft, ARect.Bottom);
+    mPoints[2] := Point(ALeft + ASize, ARect.Bottom - ASize);
+  end
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.BlameJustNow);
+  begin
+    mPoints[0] := Point(ALeft, ARect.Top);
+    mPoints[1] := Point(ALeft, ARect.Top + 2 * ASize);
+    mPoints[2] := Point(ALeft + ASize, ARect.Top + ASize);
+  end;
+  mBrush := CreateSolidBrush(ColorToRGB(TColor(AColor)));
+  mPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(AColor)));
+  mOldBrush := SelectObject(ADC, mBrush);
+  mOldPen := SelectObject(ADC, mPen);
+  try
+    Polygon(ADC, mPoints, 3);
+  finally
+    SelectObject(ADC, mOldPen);
+    SelectObject(ADC, mOldBrush);
+    DeleteObject(mPen);
+    DeleteObject(mBrush);
   end;
 end;
 
@@ -360,15 +404,14 @@ end;
 
 constructor TLineChangesState.Create;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
-  Inc(Generation);
   FIndex := -1;
   FTipChange := -1;
-  FBlameEntry := -1;
+  FBlame.Entry := -1;
+  FData := TAtlasIdeLineChangesData.Create(DataHooks());
   FRows := TDictionary<Integer, TMarkRow>.Create;
-  FMessages := TDictionary<string, string>.Create;
   FFont := TFont.Create;
   FTip := TAtlasTitledTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.LineChanges;
@@ -378,9 +421,9 @@ begin
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
@@ -390,15 +433,13 @@ end;
 
 destructor TLineChangesState.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  // Ergebnisse, die noch unterwegs sind, verfallen.
-  Inc(Generation);
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintGutter := nil;
   FEvents.OnEditorPaintLine := nil;
@@ -408,68 +449,47 @@ begin
   FTip.OnLink := nil;
   FTip.Free;
   FFont.Free;
-  FMessages.Free;
   FRows.Free;
+  // Ergebnisse, die noch unterwegs sind, verfallen.
+  FData.Free;
   Invalidate;
   inherited Destroy;
 end;
 
 procedure TLineChangesState.Reset;
 begin
-  Inc(Generation);
+  FData.Reset;
   HideTip;
   FHovering := False;
-  FFileName := '';
-  FVcs := nil;
-  FText := '';
-  FMarker := '';
-  FDiskAge := 0;
-  FHead := nil;
-  FHeadOk := False;
-  FHeadWanted := False;
-  FHeadBusy := False;
-  FDiffText := '';
-  FDiffBusy := False;
-  FLines := nil;
-  FChanges := nil;
-  FBlame := nil;
-  FDisk := nil;
-  FDiskHunks := nil;
-  FBlameOk := False;
-  FBlameWanted := False;
-  FBlameBusy := False;
-  FBlameEntry := -1;
-  FMessages.Clear;
-  FMessagesWanted := False;
+  FBlame.Entry := -1;
   FRows.Clear;
-  if FShown then
-  begin
-    FShown := False;
-    Invalidate;
-  end;
-end;
-
-function TLineChangesState.Fresh: Boolean;
-begin
-  // Der letzte Vergleich gehört zum Text im Puffer.
-  Result := FHeadOk and (FDiffText = FText) and (FLines <> nil);
 end;
 
 procedure TLineChangesState.Tick(Sender: TObject);
 var
-  Settings: TAtlasPluginSettings;
-  View: IOTAEditView;
+  mSettings: TAtlasPluginSettings;
+  mView: IOTAEditView;
 begin
   try
-    Settings := TAtlasIdeSettings.Current;
-    FGutterOn := Settings.GitGutter;
-    FBlameOn := Settings.GitBlame;
-    View := TopView;
-    if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
+    mSettings := TAtlasIdeSettings.Current;
+    FGutterOn := mSettings.GitGutter;
+    FBlameOn := mSettings.GitBlame;
+    mView := TopView;
+    if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
     begin
       Exit;
     end;
-    Track(View);
+    // Andere Datei vorn: neu beginnen.
+    if not SameText(FData.FileName, mView.Buffer.FileName) then
+    begin
+      Reset;
+      FData.Start(mView);
+    end;
+    // Der alte Stand im Fenster passt nicht mehr zum Puffer.
+    if FData.Track(mView, FGutterOn, FBlameOn) and (FTipChange >= 0) then
+    begin
+      HideTip;
+    end;
     CheckHover;
   except
     on E: Exception do
@@ -477,504 +497,63 @@ begin
   end;
 end;
 
-procedure TLineChangesState.Track(const AView: IOTAEditView);
-var
-  Text: string;
-begin
-  if not SameText(FFileName, AView.Buffer.FileName) then
-  begin
-    // Andere Datei vorn: neu beginnen; ohne Arbeitskopie bleibt FVcs leer und alles still.
-    Reset;
-    FFileName := AView.Buffer.FileName;
-    FText := TAtlasEditorBuffer.Text(AView.Buffer);
-    FChangedAt := 0;
-    FPolledAt := 0;
-  end;
-  if FVcs = nil then
-  begin
-    // Prüft nur Dateien; einmal je PollMs, damit ein späteres git init oder der Start der Versionsverwaltung greift.
-    if TThread.GetTickCount64 - FPolledAt < PollMs then
-    begin
-      Exit;
-    end;
-    FPolledAt := TThread.GetTickCount64;
-    FVcs := TAtlasIdeVcs.ForFolder(ExtractFileDir(FFileName));
-    if (FVcs <> nil) and (FVcs.Kind = TAtlasVcsKind.None) then
-    begin
-      FVcs := nil;
-    end;
-    if FVcs = nil then
-    begin
-      Exit;
-    end;
-    FMarker := FVcs.ChangeMarker;
-    if not FileAge(FFileName, FDiskAge) then
-    begin
-      FDiskAge := 0;
-    end;
-    FHeadWanted := True;
-    FBlameWanted := True;
-  end;
-  Text := TAtlasEditorBuffer.Text(AView.Buffer);
-  if Text <> FText then
-  begin
-    FText := Text;
-    FChangedAt := TThread.GetTickCount64;
-    // Der alte Stand im Fenster passt nicht mehr zum Puffer.
-    if FTipChange >= 0 then
-    begin
-      HideTip;
-    end;
-  end;
-  if TThread.GetTickCount64 - FPolledAt >= PollMs then
-  begin
-    Poll;
-  end;
-  if FGutterOn or FBlameOn then
-  begin
-    if FHeadWanted and not FHeadBusy then
-    begin
-      LoadHead;
-    end;
-    if FBlameOn and FBlameWanted and not FBlameBusy then
-    begin
-      LoadBlame;
-    end;
-    if FHeadOk and not FDiffBusy and (FText <> FDiffText) and
-      (TThread.GetTickCount64 - FChangedAt >= QuietMs) then
-    begin
-      Compare;
-    end;
-  end;
-end;
-
-procedure TLineChangesState.Poll;
-var
-  Marker: string;
-  Age: TDateTime;
-begin
-  FPolledAt := TThread.GetTickCount64;
-  // Commit, Pull oder Wechsel des Branchs: Stand im Repository und Historie neu.
-  Marker := FVcs.ChangeMarker;
-  if Marker <> FMarker then
-  begin
-    FMarker := Marker;
-    FHeadWanted := True;
-    FBlameWanted := True;
-  end;
-  // Gespeichert: blame liest die Platte.
-  if not FileAge(FFileName, Age) then
-  begin
-    Age := 0;
-  end;
-  if Age <> FDiskAge then
-  begin
-    FDiskAge := Age;
-    FBlameWanted := True;
-  end;
-  // Issues in der Zeilenhistorie eingeschaltet oder Tracker jetzt da (#1275): Nachrichten nachladen.
-  if FBlameOk and not FMessagesWanted and MessagesWanted then
-  begin
-    FBlameWanted := True;
-  end;
-end;
-
-function TLineChangesState.MessagesWanted: Boolean;
-var
-  mHooks: TAtlasBlameHooks;
-begin
-  mHooks := TAtlasIdeLineChanges.FHooks;
-  Result := Assigned(mHooks.Wanted) and Assigned(mHooks.Messages) and mHooks.Wanted();
-end;
-
-procedure TLineChangesState.LoadHead;
-var
-  Vcs: IAtlasVersionControl;
-  FileName: string;
-  Gen: Integer;
-  Outcome: TAtlasVcsOutcome;
-  Lines: TArray<string>;
-begin
-  FHeadWanted := False;
-  FHeadBusy := True;
-  Vcs := FVcs;
-  FileName := FFileName;
-  Gen := Generation;
-  Outcome := TAtlasVcsOutcome.Failed;
-  Lines := nil;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    var
-      Bytes: TBytes;
-    begin
-      Outcome := Vcs.FileAt(FileName, '', Bytes);
-      if Outcome = TAtlasVcsOutcome.Ok then
-      begin
-        Lines := TTextLines.SplitLines(TAtlasTextFile.Decode(Bytes).Text);
-      end;
-    end,
-    procedure
-    var
-      State: TLineChangesState;
-    begin
-      State := Current;
-      if (State = nil) or (Gen <> Generation) then
-      begin
-        Exit;
-      end;
-      State.FHeadBusy := False;
-      // Nicht versioniert (oder git meldet einen Fehler): keine Marken.
-      State.FHeadOk := Outcome = TAtlasVcsOutcome.Ok;
-      State.FHead := Lines;
-      State.FDiffText := '';
-      State.FChanges := nil;
-      if not State.FHeadOk and State.FShown then
-      begin
-        Invalidate;
-      end;
-    end) then
-  begin
-    FHeadBusy := False;
-  end;
-end;
-
-procedure TLineChangesState.LoadBlame;
-var
-  Vcs: IAtlasVersionControl;
-  FileName: string;
-  Gen: Integer;
-  Outcome: TAtlasVcsOutcome;
-  Blame: TArray<TAtlasVcsBlameLine>;
-  Disk: TArray<string>;
-  mWanted: Boolean;
-  mHook: TAtlasBlameMessagesHook;
-  mMessages: TArray<TAtlasVcsRevisionMessage>;
-begin
-  FBlameWanted := False;
-  FBlameBusy := True;
-  Vcs := FVcs;
-  FileName := FFileName;
-  Gen := Generation;
-  Outcome := TAtlasVcsOutcome.Failed;
-  Blame := nil;
-  Disk := nil;
-  // Ganze Nachrichten (#1275) nur, wenn die Issues in der Zeilenhistorie sie brauchen.
-  mWanted := MessagesWanted;
-  mHook := TAtlasIdeLineChanges.FHooks.Messages;
-  mMessages := nil;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      Outcome := Vcs.Blame(FileName, Blame);
-      if Outcome = TAtlasVcsOutcome.Ok then
-      begin
-        Disk := TTextLines.SplitLines(TAtlasTextFile.Load(FileName).Text);
-      end;
-      if (Outcome = TAtlasVcsOutcome.Ok) and mWanted then
-      begin
-        mMessages := mHook(Vcs, FileName, Blame);
-      end;
-    end,
-    procedure
-    var
-      State: TLineChangesState;
-      mMessage: TAtlasVcsRevisionMessage;
-    begin
-      State := Current;
-      if (State = nil) or (Gen <> Generation) then
-      begin
-        Exit;
-      end;
-      State.FBlameBusy := False;
-      State.FBlameOk := Outcome = TAtlasVcsOutcome.Ok;
-      State.FBlame := Blame;
-      State.FDisk := Disk;
-      State.FMessagesWanted := mWanted;
-      State.FMessages.Clear;
-      for mMessage in mMessages do
-      begin
-        State.FMessages.AddOrSetValue(mMessage.Revision, mMessage.Message);
-      end;
-      // Zuordnung Platte → Puffer beim nächsten Vergleich neu.
-      State.FDiffText := '';
-      State.FDiskHunks := nil;
-    end) then
-  begin
-    FBlameBusy := False;
-  end;
-end;
-
-procedure TLineChangesState.Compare;
-var
-  Head, Disk, Lines: TArray<string>;
-  Text, LineBreak: string;
-  Gen: Integer;
-  Changes: TAtlasLineChangeList;
-  Hunks: TArray<TTextLineHunk>;
-begin
-  FDiffBusy := True;
-  Head := FHead;
-  Disk := FDisk;
-  Text := FText;
-  Gen := Generation;
-  Changes := nil;
-  Hunks := nil;
-  Lines := nil;
-  LineBreak := sLineBreak;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      Lines := TTextLines.SplitLines(Text, LineBreak);
-      Changes := TAtlasLineChanges.Compute(Head, Lines);
-      if Disk <> nil then
-      begin
-        Hunks := TTextDiff.Hunks(Disk, Lines);
-      end;
-    end,
-    procedure
-    var
-      State: TLineChangesState;
-    begin
-      State := Current;
-      if (State = nil) or (Gen <> Generation) then
-      begin
-        Exit;
-      end;
-      State.FDiffBusy := False;
-      State.FDiffText := Text;
-      State.FLines := Lines;
-      if LineBreak = '' then
-      begin
-        LineBreak := sLineBreak;
-      end;
-      State.FLineBreak := LineBreak;
-      State.FChanges := Changes;
-      State.FDiskHunks := Hunks;
-      State.FShown := True;
-      Invalidate;
-    end) then
-  begin
-    FDiffBusy := False;
-  end;
-end;
-
-function TLineChangesState.BlameCaption(ABufferLine: Integer; out AEntry: Integer; out AUnsaved: Boolean): string;
-var
-  DiskLine: Integer;
-  Entry: TAtlasVcsBlameLine;
-  Age: string;
-begin
-  Result := '';
-  AEntry := -1;
-  AUnsaved := False;
-  if not FBlameOk or (FDisk = nil) then
-  begin
-    Exit;
-  end;
-  DiskLine := TAtlasLineChanges.BlameLine(FDiskHunks, ABufferLine);
-  if DiskLine < 0 then
-  begin
-    AUnsaved := True;
-    Exit(TAtlasStrings.Text(TAtlasTextId.BlameUnsaved));
-  end;
-  // blame liefert die Zeilen der Reihe nach; sonst suchen.
-  if (DiskLine <= High(FBlame)) and (FBlame[DiskLine].Line = DiskLine + 1) then
-  begin
-    AEntry := DiskLine;
-  end
-  else
-  begin
-    for Entry in FBlame do
-    begin
-      Inc(AEntry);
-      if Entry.Line = DiskLine + 1 then
-      begin
-        Break;
-      end;
-    end;
-  end;
-  if (AEntry < 0) or (AEntry > High(FBlame)) or (FBlame[AEntry].Line <> DiskLine + 1) then
-  begin
-    AEntry := -1;
-    Exit;
-  end;
-  Entry := FBlame[AEntry];
-  if Entry.Uncommitted then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.BlameUncommitted));
-  end;
-  Age := AgeText(TAtlasLineChanges.Age(TTimeZone.Local.ToUniversalTime(Now), Entry.Date));
-  // Kennungen aus der Nachricht hinter der Zeit (#1275), aus dem Speicher, ohne Tracker.
-  if Assigned(TAtlasIdeLineChanges.FHooks.Suffix) then
-  begin
-    Age := Age + TAtlasIdeLineChanges.FHooks.Suffix(MessageOf(Entry));
-  end;
-  // SVN liefert keinen Betreff.
-  if Entry.Summary = '' then
-  begin
-    Result := Entry.Author + ', ' + Age;
-  end
-  else
-  begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.BlameLine, [Entry.Author, Age, Entry.Summary]);
-  end;
-end;
-
-function TLineChangesState.MessageOf(const AEntry: TAtlasVcsBlameLine): string;
-begin
-  if not FMessages.TryGetValue(AEntry.Revision, Result) then
-  begin
-    Result := AEntry.Summary;
-  end;
-end;
-
 function TLineChangesState.CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
 var
   mEntry: TAtlasVcsBlameLine;
 begin
-  mEntry := FBlame[AEntry];
+  mEntry := FData.Entry(AEntry);
   Result := Default(TAtlasBlameCommit);
-  Result.FileName := FFileName;
-  if FVcs <> nil then
-  begin
-    Result.Kind := FVcs.Kind;
-  end;
+  Result.FileName := FData.FileName;
+  Result.Kind := FData.VcsKind;
   Result.Revision := mEntry.Revision;
   Result.Author := mEntry.Author;
   Result.Date := mEntry.Date;
-  Result.Message := MessageOf(mEntry);
+  Result.Message := FData.MessageOf(mEntry);
   Result.Line := ALine;
 end;
 
 procedure TLineChangesState.EnsureFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
   FFont.Assign(AEditorFont);
   FFont.Style := [fsItalic];
-  FFontKey := Key;
+  FFontKey := mKey;
 end;
 
 procedure TLineChangesState.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Line, Index, Deleted, Width, Left, Size: Integer;
-  Mark: TAtlasLineMark;
-  Colors: TAtlasColors;
-  Row: TMarkRow;
-  Bar: TRect;
-  DC: HDC;
-  Saved: Integer;
-  Brush, Pen: HGDIOBJ;
-  OldBrush, OldPen: HGDIOBJ;
-  Points: array[0..2] of TPoint;
-  Color: TAtlasColor;
-  LineText: string;
+  mLine, mIndex, mDeleted: Integer;
+  mMark: TAtlasLineMark;
 begin
   if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
   begin
     Exit;
   end;
-  if not FGutterOn or (FChanges = nil) or TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or
-    not SameText(Context.FileName, FFileName) then
+  if not FGutterOn or (FData.Changes = nil) or TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or
+    not SameText(Context.FileName, FData.FileName) then
   begin
     Exit;
   end;
   try
-    Line := Context.LogicalLineNum - 1;
-    Mark := TAtlasLineChanges.MarkAt(FChanges, Line, Index);
-    Deleted := TAtlasLineChanges.DeletedAt(FChanges, Line, Length(FLines));
-    if (Mark = TAtlasLineMark.None) and (Deleted < 0) then
+    mLine := Context.LogicalLineNum - 1;
+    mMark := TAtlasLineChanges.MarkAt(FData.Changes, mLine, mIndex);
+    mDeleted := TAtlasLineChanges.DeletedAt(FData.Changes, mLine, FData.LineCount);
+    if (mMark = TAtlasLineMark.None) and (mDeleted < 0) then
     begin
       FRows.Remove(Context.EditorLineNum);
-      Exit;
-    end;
+    end
     // In .atlas für diese Datei ausgeblendet (#628).
-    if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitGutter, Context.FileName) then
+    else if not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitGutter, Context.FileName) then
     begin
-      Exit;
+      PaintMarks(Rect, Context, mMark, mIndex, mDeleted);
     end;
-    Colors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Left + 1, Rect.Top + 1));
-    Width := Max(3, MulDiv(3, Rect.Height, 16));
-    // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
-    Left := Rect.Right - Width - 2;
-    Bar := TRect.Create(Left, Rect.Top, Left + Width, Rect.Bottom);
-    DC := Context.Canvas.Handle;
-    Saved := SaveDC(DC);
-    try
-      if Mark <> TAtlasLineMark.None then
-      begin
-        if Mark = TAtlasLineMark.Added then
-        begin
-          Color := Colors.Add;
-        end
-        else
-        begin
-          Color := Colors.Accent;
-        end;
-        Brush := CreateSolidBrush(ColorToRGB(TColor(Color)));
-        try
-          FillRect(DC, Bar, Brush);
-        finally
-          DeleteObject(Brush);
-        end;
-      end;
-      if Deleted >= 0 then
-      begin
-        // Dreieck nach rechts: über der Zeile, am Dateiende unter der letzten Zeile.
-        Size := Max(4, Rect.Height div 3);
-        if FChanges[Deleted].Line >= Length(FLines) then
-        begin
-          Points[0] := Point(Left, Rect.Bottom - 2 * Size);
-          Points[1] := Point(Left, Rect.Bottom);
-          Points[2] := Point(Left + Size, Rect.Bottom - Size);
-        end
-        else
-        begin
-          Points[0] := Point(Left, Rect.Top);
-          Points[1] := Point(Left, Rect.Top + 2 * Size);
-          Points[2] := Point(Left + Size, Rect.Top + Size);
-        end;
-        Brush := CreateSolidBrush(ColorToRGB(TColor(Colors.Error)));
-        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(Colors.Error)));
-        OldBrush := SelectObject(DC, Brush);
-        OldPen := SelectObject(DC, Pen);
-        try
-          Polygon(DC, Points, 3);
-        finally
-          SelectObject(DC, OldPen);
-          SelectObject(DC, OldBrush);
-          DeleteObject(Pen);
-          DeleteObject(Brush);
-        end;
-        Bar.Right := Max(Bar.Right, Left + Size);
-        if Mark = TAtlasLineMark.None then
-        begin
-          Index := Deleted;
-        end;
-      end;
-    finally
-      RestoreDC(DC, Saved);
-    end;
-    Row.FileName := Context.FileName;
-    Row.Line := Line;
-    Row.Change := Index;
-    // Etwas breiter als gezeichnet, damit der Klick leicht trifft.
-    Row.Rect := TRect.Create(Bar.Left - 2, Rect.Top, Bar.Right + 2, Rect.Bottom);
-    Row.TopRow := Context.EditView.TopRow;
-    FRows.AddOrSetValue(Context.EditorLineNum, Row);
-    LineText := '';
-    if Context.LineState <> nil then
-    begin
-      LineText := Context.LineState.Text;
-    end;
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.GitGutter, Context.FileName, Line, LineText, Row.Rect, Row.TopRow,
-      Rect.Height);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
@@ -982,78 +561,137 @@ begin
   end;
 end;
 
+procedure TLineChangesState.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  AMark: TAtlasLineMark; AChange, ADeleted: Integer);
+var
+  mColors: TAtlasColors;
+  mWidth, mLeft, mSize, mSaved: Integer;
+  mBar: TRect;
+  mDC: HDC;
+  mRow: TMarkRow;
+  mLineText: string;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
+  mWidth := Max(3, MulDiv(3, ARect.Height, 16));
+  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
+  mLeft := ARect.Right - mWidth - 2;
+  mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
+  mRow.Change := AChange;
+  mDC := AContext.Canvas.Handle;
+  mSaved := SaveDC(mDC);
+  try
+    if AMark = TAtlasLineMark.Added then
+    begin
+      FillBar(mDC, mBar, mColors.Add);
+    end
+    else if AMark <> TAtlasLineMark.None then
+    begin
+      FillBar(mDC, mBar, mColors.Accent);
+    end;
+    if ADeleted >= 0 then
+    begin
+      // Über der Zeile, am Dateiende unter der letzten Zeile.
+      mSize := Max(4, ARect.Height div 3);
+      PaintDeleted(mDC, mLeft, mSize, ARect, FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
+      mBar.Right := Max(mBar.Right, mLeft + mSize);
+      if AMark = TAtlasLineMark.None then
+      begin
+        mRow.Change := ADeleted;
+      end;
+    end;
+  finally
+    RestoreDC(mDC, mSaved);
+  end;
+  mRow.FileName := AContext.FileName;
+  mRow.Line := AContext.LogicalLineNum - 1;
+  // Etwas breiter als gezeichnet, damit der Klick leicht trifft.
+  mRow.Rect := TRect.Create(mBar.Left - 2, ARect.Top, mBar.Right + 2, ARect.Bottom);
+  mRow.TopRow := AContext.EditView.TopRow;
+  FRows.AddOrSetValue(AContext.EditorLineNum, mRow);
+  mLineText := '';
+  if AContext.LineState <> nil then
+  begin
+    mLineText := AContext.LineState.Text;
+  end;
+  TAtlasIdeElements.Painted(TAtlasDrawnElement.GitGutter, AContext.FileName, mRow.Line, mLineText, mRow.Rect,
+    mRow.TopRow, ARect.Height);
+end;
+
+function TLineChangesState.BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Boolean;
+  const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  // Nur die Cursorzeile, nur zum aktuellen Vergleich.
+  Result := not ABeforeEvent and (AStage = plsEndPaint) and (AContext <> nil) and (AContext.EditView <> nil) and
+    FBlameOn and FData.BlameOk and (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
+    not TAtlasGuard.Disabled(TAtlasFeature.LineChanges) and SameText(AContext.FileName, FData.FileName) and
+    FData.Fresh;
+end;
+
+function TLineChangesState.PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  const ACaption, ALineText: string): TRect;
+var
+  mCell: TRect;
+  mKey: string;
+  mX, mTop, mSaved: Integer;
+  mDC: HDC;
+  mFront, mBack: TAtlasColor;
+  mSize: TSize;
+begin
+  mCell := AContext.EditorState.GetCharacterPosPx(
+    EndColumn(ALineText, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)) + 3, AContext.EditorLineNum);
+  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  mX := TAtlasLineTail.Start(Self, mKey, mCell.Left);
+  mDC := AContext.Canvas.Handle;
+  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1);
+  mFront := TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Muted, mBack, BlameStrength);
+  EnsureFont(AContext.Canvas.Font);
+  mSaved := SaveDC(mDC);
+  try
+    SelectObject(mDC, FFont.Handle);
+    SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mFront))));
+    SetBkMode(mDC, TRANSPARENT);
+    GetTextExtentPoint32W(mDC, PChar(ACaption), Length(ACaption), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    TextOutW(mDC, mX, mTop, PChar(ACaption), Length(ACaption));
+  finally
+    RestoreDC(mDC, mSaved);
+  end;
+  TAtlasLineTail.Finish(Self, mKey, mX + mSize.cx);
+  Result := TRect.Create(mX, mTop, mX + mSize.cx, mTop + mSize.cy);
+end;
+
 procedure TLineChangesState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Caption, Key, LineText: string;
-  Entry, X, Top, Saved: Integer;
-  Unsaved: Boolean;
-  Cell: TRect;
-  DC: HDC;
-  Front: TAtlasColor;
-  Back: TAtlasColor;
-  Size: TSize;
+  mLineText, mCaption: string;
+  mEntry: Integer;
+  mUnsaved: Boolean;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (Context.EditView = nil) then
-  begin
-    Exit;
-  end;
-  // Nur die Cursorzeile, nur zum aktuellen Vergleich.
-  if not FBlameOn or not FBlameOk or (Context.EditView.CursorPos.Line <> Context.LogicalLineNum) or
-    TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or not SameText(Context.FileName, FFileName) or not Fresh then
-  begin
-    Exit;
-  end;
   try
-    LineState := Context.LineState;
-    if LineState = nil then
+    if not BlameWanted(Stage, BeforeEvent, Context) or (Context.LineState = nil) or
+      TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitBlame, Context.FileName) then
     begin
       Exit;
     end;
-    LineText := LineState.Text;
-    if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitBlame, Context.FileName) then
+    mLineText := Context.LineState.Text;
+    mCaption := FData.BlameCaption(Context.LogicalLineNum - 1, mEntry, mUnsaved);
+    if mCaption = '' then
     begin
       Exit;
     end;
-    Caption := BlameCaption(Context.LogicalLineNum - 1, Entry, Unsaved);
-    if Caption = '' then
-    begin
-      Exit;
-    end;
-    Cell := Context.EditorState.GetCharacterPosPx(
-      EndColumn(LineText, TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer)) + 3, Context.EditorLineNum);
-    Key := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
-    X := TAtlasLineTail.Start(Self, Key, Cell.Left);
-    DC := Context.Canvas.Handle;
-    // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
-    Back := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
-    Front := TAtlasColorMath.Mix(TAtlasColors.ForBackground(Back).Muted, Back, BlameStrength);
-    EnsureFont(Context.Canvas.Font);
-    Saved := SaveDC(DC);
-    try
-      SelectObject(DC, FFont.Handle);
-      SetTextColor(DC, COLORREF(ColorToRGB(TColor(Front))));
-      SetBkMode(DC, TRANSPARENT);
-      GetTextExtentPoint32W(DC, PChar(Caption), Length(Caption), Size);
-      Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
-      TextOutW(DC, X, Top, PChar(Caption), Length(Caption));
-    finally
-      RestoreDC(DC, Saved);
-    end;
-    TAtlasLineTail.Finish(Self, Key, X + Size.cx);
-    FBlameRect := TRect.Create(X, Top, X + Size.cx, Top + Size.cy);
-    FBlameTopRow := Context.EditView.TopRow;
-    FBlameEntry := Entry;
-    FBlameUnsaved := Unsaved;
-    FBlameLine := Context.LogicalLineNum - 1;
-    FBlameWnd := 0;
+    FBlame.Rect := PaintBlame(Rect, Context, mCaption, mLineText);
+    FBlame.TopRow := Context.EditView.TopRow;
+    FBlame.Entry := mEntry;
+    FBlame.Unsaved := mUnsaved;
+    FBlame.Line := Context.LogicalLineNum - 1;
+    FBlame.Wnd := 0;
     if Context.EditControl <> nil then
     begin
-      FBlameWnd := Context.EditControl.Handle;
+      FBlame.Wnd := Context.EditControl.Handle;
     end;
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.GitBlame, Context.FileName, Context.LogicalLineNum - 1, LineText,
-      FBlameRect, FBlameTopRow, Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasDrawnElement.GitBlame, Context.FileName, FBlame.Line, mLineText, FBlame.Rect,
+      FBlame.TopRow, Rect.Height);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
@@ -1062,14 +700,14 @@ end;
 
 procedure TLineChangesState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
-  View: IOTAEditView;
-  Inside: Boolean;
+  mView: IOTAEditView;
+  mInside: Boolean;
 begin
   try
-    View := TopView;
-    Inside := FBlameOn and (FBlameEntry >= 0) and not FBlameRect.IsEmpty and PtInRect(FBlameRect, Point(X, Y)) and
-      (View <> nil) and (View.TopRow = FBlameTopRow);
-    if not Inside then
+    mView := TopView;
+    mInside := FBlameOn and (FBlame.Entry >= 0) and not FBlame.Rect.IsEmpty and PtInRect(FBlame.Rect, Point(X, Y)) and
+      (mView <> nil) and (mView.TopRow = FBlame.TopRow);
+    if not mInside then
     begin
       if FHovering then
       begin
@@ -1087,65 +725,68 @@ begin
     end;
     FHovering := True;
     FHoverSince := TThread.GetTickCount64;
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(FBlameRect.TopLeft),
-      Editor.ClientToScreen(FBlameRect.BottomRight));
+    FHoverScreen := TRect.Create(Editor.ClientToScreen(FBlame.Rect.TopLeft),
+      Editor.ClientToScreen(FBlame.Rect.BottomRight));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 
+function TLineChangesState.MarkAt(X, Y: Integer; out ARow: TMarkRow): Boolean;
+var
+  mRow: TMarkRow;
+  mView: IOTAEditView;
+begin
+  ARow := Default(TMarkRow);
+  Result := False;
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  for mRow in FRows.Values do
+  begin
+    if not Result and PtInRect(mRow.Rect, Point(X, Y)) then
+    begin
+      ARow := mRow;
+      Result := True;
+    end;
+  end;
+  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
+  Result := Result and SameText(ARow.FileName, mView.Buffer.FileName) and (ARow.TopRow = mView.TopRow) and
+    (ARow.Change >= 0) and (ARow.Change <= High(FData.Changes));
+end;
+
 procedure TLineChangesState.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Row, Found: TMarkRow;
-  Hit: Boolean;
-  View: IOTAEditView;
-  Screen: TRect;
-  Gen, Change: Integer;
+  mRow: TMarkRow;
+  mScreen: TRect;
+  mGen, mChange: Integer;
 begin
   try
     HideTip;
     FHovering := False;
-    if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FGutterOn or not Fresh then
+    if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FGutterOn or not FData.Fresh or
+      not MarkAt(X, Y, mRow) then
     begin
       Exit;
     end;
-    View := TopView;
-    if (View = nil) or (View.Buffer = nil) then
-    begin
-      Exit;
-    end;
-    Found := Default(TMarkRow);
-    Hit := False;
-    for Row in FRows.Values do
-    begin
-      if PtInRect(Row.Rect, Point(X, Y)) then
-      begin
-        Found := Row;
-        Hit := True;
-        Break;
-      end;
-    end;
-    // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-    if not Hit or not SameText(Found.FileName, View.Buffer.FileName) or (Found.TopRow <> View.TopRow) or
-      (Found.Change < 0) or (Found.Change > High(FChanges)) then
-    begin
-      Exit;
-    end;
-    Screen := TRect.Create(Editor.ClientToScreen(Found.Rect.TopLeft), Editor.ClientToScreen(Found.Rect.BottomRight));
-    Gen := Generation;
-    Change := Found.Change;
+    mScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft), Editor.ClientToScreen(mRow.Rect.BottomRight));
+    mGen := TAtlasIdeLineChangesData.Generation;
+    mChange := mRow.Change;
     // Erst nach dem Mausereignis: Der Editor setzt sonst danach den Cursor und schließt das Fenster.
     TAtlasMainThread.ForceQueue(TAtlasFeature.LineChanges,
       procedure
       var
-        State: TLineChangesState;
+        mState: TLineChangesState;
       begin
-        State := Current;
-        if (State <> nil) and (Gen = Generation) and State.Fresh and (Change <= High(State.FChanges)) then
+        mState := Current;
+        if (mState <> nil) and (mGen = TAtlasIdeLineChangesData.Generation) and mState.FData.Fresh and
+          (mChange <= High(mState.FData.Changes)) then
         begin
-          State.ShowChange(Change, Screen);
+          mState.ShowChange(mChange, mScreen);
         end;
       end);
   except
@@ -1156,13 +797,13 @@ end;
 
 procedure TLineChangesState.CheckHover;
 var
-  Inside: Boolean;
+  mInside: Boolean;
 begin
   if FTip.IsShown and (FTipChange >= 0) then
   begin
     // Fenster „alter Stand“: zu, sobald die Maus es nach dem Betreten wieder verlässt.
-    Inside := PtInRect(FTip.BoundsRect, Mouse.CursorPos);
-    if Inside then
+    mInside := PtInRect(FTip.BoundsRect, Mouse.CursorPos);
+    if mInside then
     begin
       FTipEntered := True;
     end
@@ -1176,14 +817,14 @@ begin
   begin
     Exit;
   end;
-  Inside := PtInRect(FHoverScreen, Mouse.CursorPos) or (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
-  if not Inside then
+  mInside := PtInRect(FHoverScreen, Mouse.CursorPos) or
+    (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
+  if not mInside then
   begin
     FHovering := False;
     HideTip;
-    Exit;
-  end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  end
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
   begin
     ShowCommit;
   end;
@@ -1191,107 +832,67 @@ end;
 
 procedure TLineChangesState.ShowChange(AChange: Integer; const AScreen: TRect);
 var
-  Change: TAtlasLineChange;
-  Text: string;
-  Index, Shown: Integer;
-  Gen: Integer;
+  mGen: Integer;
 begin
-  Change := FChanges[AChange];
-  if Change.Kind = TAtlasLineChangeKind.Added then
-  begin
-    Text := TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle);
-  end
-  else
-  begin
-    Shown := Min(Length(Change.OldLines), MaxOldLines);
-    Text := '';
-    for Index := 0 to Shown - 1 do
-    begin
-      if Index > 0 then
-      begin
-        Text := Text + sLineBreak;
-      end;
-      // Leere Zeilen sichtbar halten.
-      if Change.OldLines[Index] = '' then
-      begin
-        Text := Text + ' ';
-      end
-      else
-      begin
-        Text := Text + Change.OldLines[Index];
-      end;
-    end;
-    if Length(Change.OldLines) > Shown then
-    begin
-      Text := Text + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ChangeMoreLines, [Length(Change.OldLines) - Shown]);
-    end;
-  end;
-  Gen := Generation;
+  mGen := TAtlasIdeLineChangesData.Generation;
   FTip.OnLink :=
     procedure(AIndex: Integer)
     var
-      State: TLineChangesState;
+      mState: TLineChangesState;
     begin
-      State := Current;
-      if (State = nil) or (Gen <> Generation) then
+      mState := Current;
+      if (mState <> nil) and (mGen = TAtlasIdeLineChangesData.Generation) then
       begin
-        Exit;
+        mState.HideTip;
+        mState.RevertChange(AChange);
       end;
-      State.HideTip;
-      State.RevertChange(AChange);
     end;
   FTipChange := AChange;
   FTipEntered := False;
   TAtlasIdeStyle.Apply(FTip, AScreen);
-  FTip.ShowNote(TAtlasStrings.Text(TAtlasTextId.ChangeOldTitle), Text,
+  FTip.ShowNote(TAtlasStrings.Text(TAtlasTextId.ChangeOldTitle), OldText(FData.Changes[AChange]),
     [TAtlasStrings.Text(TAtlasTextId.ChangeRevert)], Point(AScreen.Right + 4, AScreen.Top));
 end;
 
 procedure TLineChangesState.ShowCommit;
 var
-  Entry: TAtlasVcsBlameLine;
-  Title, Text: string;
+  mEntry: TAtlasVcsBlameLine;
+  mTitle, mText: string;
   mLinks: TArray<string>;
   mCommit: TAtlasBlameCommit;
   mLink: TAtlasBlameLinkHook;
   mGen: Integer;
 begin
-  if FBlameUnsaved or (FBlameEntry < 0) or (FBlameEntry > High(FBlame)) then
+  FHovering := not FBlame.Unsaved and FData.HasEntry(FBlame.Entry) and not FData.Entry(FBlame.Entry).Uncommitted;
+  if not FHovering then
   begin
-    FHovering := False;
     Exit;
   end;
-  Entry := FBlame[FBlameEntry];
-  if Entry.Uncommitted then
-  begin
-    FHovering := False;
-    Exit;
-  end;
-  Title := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitTitle, [Entry.Revision]);
-  Text := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitText,
-    [Entry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(Entry.Date)), Entry.Summary]);
+  mEntry := FData.Entry(FBlame.Entry);
+  mTitle := TAtlasStrings.Fmt(TAtlasTextId.BlameCommitTitle, [mEntry.Revision]);
+  mText := TAtlasIdeLineChangesData.CommitText(mEntry);
   FTipChange := -1;
   FTip.OnLink := nil;
   mLinks := nil;
   // Issues zur Nachricht (#1275): Zeilen mit Titel und Zustand, Links zu Vorschau und „Issues zu dieser Methode“.
-  mCommit := CommitOf(FBlameEntry, FBlameLine);
+  mCommit := CommitOf(FBlame.Entry, FBlame.Line);
   if Assigned(TAtlasIdeLineChanges.FHooks.Describe) and
-    TAtlasIdeLineChanges.FHooks.Describe(mCommit, Text, mLinks) and (Length(mLinks) > 0) then
+    TAtlasIdeLineChanges.FHooks.Describe(mCommit, mText, mLinks) and (Length(mLinks) > 0) then
   begin
     mLink := TAtlasIdeLineChanges.FHooks.Link;
-    mGen := Generation;
+    mGen := TAtlasIdeLineChangesData.Generation;
     FTip.OnLink :=
       procedure(AIndex: Integer)
       var
-        State: TLineChangesState;
+        mState: TLineChangesState;
       begin
-        State := Current;
-        if (State = nil) or (mGen <> Generation) then
+        mState := Current;
+        if (mState = nil) or (mGen <> TAtlasIdeLineChangesData.Generation) then
         begin
           Exit;
         end;
-        State.FHovering := False;
-        State.HideTip;
+        mState.FHovering := False;
+        mState.HideTip;
         if Assigned(mLink) then
         begin
           mLink(mCommit, AIndex);
@@ -1299,7 +900,7 @@ begin
       end;
   end;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(Title, TrimRight(Text), mLinks, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(mTitle, TrimRight(mText), mLinks, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
 end;
 
 procedure TLineChangesState.HideTip;
@@ -1314,50 +915,28 @@ end;
 
 procedure TLineChangesState.RevertChange(AChange: Integer);
 var
-  Edit: TLspWorkspaceEdit;
-  FileEdits: TLspFileEdits;
-  LineEdit: TAtlasLineEdit;
-  TextEdit: TLspTextEdit;
-  Outcome: TAtlasWorkspaceEditResult;
+  mError: string;
 begin
-  // Nur zum Stand, den das Fenster gezeigt hat.
-  if not Fresh or (AChange < 0) or (AChange > High(FChanges)) then
+  if FData.Revert(AChange, mError) and (mError <> '') and Assigned(TAtlasIdeLineChanges.FMessage) then
   begin
-    Exit;
-  end;
-  LineEdit := TAtlasLineChanges.Revert(FChanges[AChange], FLines, FLineBreak);
-  TextEdit := Default(TLspTextEdit);
-  TextEdit.StartPos := TLspTextPosition.Create(LineEdit.StartLine, LineEdit.StartCharacter);
-  TextEdit.EndPos := TLspTextPosition.Create(LineEdit.EndLine, LineEdit.EndCharacter);
-  TextEdit.NewText := LineEdit.NewText;
-  FileEdits := Default(TLspFileEdits);
-  FileEdits.FileName := FFileName;
-  FileEdits.Edits := [TextEdit];
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [FileEdits];
-  // Ein Rückgängig-Schritt im Puffer (#397); Strg+Z stellt die Änderung wieder her.
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.OpenInEditor,
-    TAtlasStrings.Text(TAtlasTextId.ChangeRevertAction));
-  if (Outcome.Error <> '') and Assigned(TAtlasIdeLineChanges.FMessage) then
-  begin
-    TAtlasIdeLineChanges.FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    TAtlasIdeLineChanges.FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mError]));
   end;
 end;
 
 procedure TLineChangesState.GoToChange(AForward: Boolean);
 var
-  View: IOTAEditView;
-  Target: Integer;
+  mView: IOTAEditView;
+  mTarget: Integer;
 begin
-  View := TopView;
-  if not FGutterOn or (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFileName) or
-    not Fresh then
+  mView := TopView;
+  if not FGutterOn or (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FData.FileName) or
+    not FData.Fresh then
   begin
     Exit;
   end;
-  if TAtlasLineChanges.Next(FChanges, View.CursorPos.Line - 1, Length(FLines), AForward, Target) then
+  if TAtlasLineChanges.Next(FData.Changes, mView.CursorPos.Line - 1, FData.LineCount, AForward, mTarget) then
   begin
-    TAtlasIdeNavigation.GoToLocation(FFileName, Min(Target, Max(0, High(FLines))), 0);
+    TAtlasIdeNavigation.GoToLocation(FData.FileName, Min(mTarget, Max(0, FData.LineCount - 1)), 0);
   end;
 end;
 
@@ -1415,19 +994,18 @@ end;
 class function TAtlasIdeLineChanges.Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
   out ALineCount: Integer): Boolean;
 var
-  State: TLineChangesState;
+  mState: TLineChangesState;
 begin
   AChanges := nil;
   ALineCount := 0;
-  State := Current;
-  Result := (State <> nil) and State.FGutterOn and State.FHeadOk and (State.FLines <> nil) and
-    SameText(State.FFileName, AFileName);
-  if not Result then
+  mState := Current;
+  Result := (mState <> nil) and mState.FGutterOn and mState.FData.HeadOk and (mState.FData.LineCount > 0) and
+    SameText(mState.FData.FileName, AFileName);
+  if Result then
   begin
-    Exit;
+    AChanges := mState.FData.Changes;
+    ALineCount := mState.FData.LineCount;
   end;
-  AChanges := State.FChanges;
-  ALineCount := Length(State.FLines);
 end;
 
 class procedure TAtlasIdeLineChanges.SetBlameHooks(const AHooks: TAtlasBlameHooks);
@@ -1448,20 +1026,20 @@ var
 begin
   ACommit := Default(TAtlasBlameCommit);
   mState := Current;
-  Result := (mState <> nil) and mState.FBlameOn and mState.FBlameOk and (mState.FBlameEntry >= 0) and
-    (mState.FBlameEntry <= High(mState.FBlame)) and not mState.FBlameUnsaved and (AWnd <> 0) and
-    (mState.FBlameWnd = AWnd) and not mState.FBlameRect.IsEmpty and PtInRect(mState.FBlameRect, Point(X, Y));
+  Result := (mState <> nil) and mState.FBlameOn and mState.FData.BlameOk and
+    mState.FData.HasEntry(mState.FBlame.Entry) and not mState.FBlame.Unsaved and (AWnd <> 0) and
+    (mState.FBlame.Wnd = AWnd) and not mState.FBlame.Rect.IsEmpty and PtInRect(mState.FBlame.Rect, Point(X, Y));
   if not Result then
   begin
     Exit;
   end;
   // Nur, solange die Anzeige dort steht: gleiche Datei, nicht gescrollt, übernommene Zeile.
   mView := TopView;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, mState.FFileName) and
-    (mView.TopRow = mState.FBlameTopRow) and not mState.FBlame[mState.FBlameEntry].Uncommitted;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, mState.FData.FileName) and
+    (mView.TopRow = mState.FBlame.TopRow) and not mState.FData.Entry(mState.FBlame.Entry).Uncommitted;
   if Result then
   begin
-    ACommit := mState.CommitOf(mState.FBlameEntry, mState.FBlameLine);
+    ACommit := mState.CommitOf(mState.FBlame.Entry, mState.FBlame.Line);
   end;
 end;
 
