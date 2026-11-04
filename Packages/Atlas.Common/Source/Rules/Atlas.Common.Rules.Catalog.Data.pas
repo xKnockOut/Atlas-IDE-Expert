@@ -1132,7 +1132,8 @@ const
     '      "group": "robustness",',
     '      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user''s locale (decimal separator, date format)' +
     '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as ''yyyy\"-\' +
-    '"mm\"-\"dd'' or ''ddddd t''.",',
+    '"mm\"-\"dd'' or ''ddddd t''. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after S' +
+    'ystem.SysUtils in uses.",',
     '      "bad": "Line := Format(''%.2f'', [Amount]);",',
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"',
     '    },',
@@ -6319,7 +6320,8 @@ const
     '      "name": "Formatierung abhängig vom Gebietsschema",',
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
-    ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."',
+    ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen' +
+    ' Unit und einer Unit, die in uses nach System.SysUtils steht."',
     '    },',
     '    {',
     '      "id": "format-args",',

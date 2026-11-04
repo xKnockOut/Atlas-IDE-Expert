@@ -1,5 +1,11 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Fehlalarm format-without-settings bei eigener Routine Format (04.11.2026, Branch `claude/project-thread-oqfqf6` auf `Pilot-2.0.0-beta.1`)
+- Ursache: Die Regel verglich nur den Namen (`Format`, `FloatToStr` …). Marcos eigene Routine `Format` in einer anderen Unit (übergibt TFormatSettings selbst) wurde deshalb gemeldet.
+- Behoben in `TFormatWithoutSettingsRule.Check`: Nach dem Muster wird der Aufruf mit dem Resolver des Laufs aufgelöst (`CallsOwnRoutine`). Still bei lokalen Routinen, Methoden der eigenen Klasse, Routinen der eigenen Unit und Routinen einer Unit, die in uses nach System.SysUtils steht (`UsesRank`). Gemeldet wird weiter bei unaufgelösten Namen (Lauf ohne Index), bei `SysUtils.Format` und wenn System.SysUtils in uses nach der eigenen Unit steht (auch wenn die RTL nicht im Index ist).
+- Tests `FormatWithoutSettingsOwnRoutineInOtherUnit` und `…InSameUnit` (schlagen ohne die Änderung fehl); FPC: RtlTypePatterns 67/69 (die zwei `WritelnInGuiApp`-Tests scheitern unter FPC auch auf dem Basiszweig), Katalog 23/23. Katalogtext (en/de), `Catalog.Data`, `docs/Regeln.md` ergänzt.
+- Atlas mit Metriken: keine neuen Befundarten; `metric-unit-length` der Unit (4892 Zeilen) und `metric-class-size` der Testklasse (51) bestanden schon vorher und gehören den Befunde-Threads Rules/Builtin bzw. Tests. Delphi-Build offen; gleicher Fehler steckt in `release/1.2` (Übernahme bei Bedarf per Cherry-Pick).
+
 ## Speicherkorrekturen in der Rollenstruktur von 2.0 (02.11.2026, Branch `claude/project-thread-3ck2sf` auf `Pilot-2.0.0-beta.1`)
 - Ziel: Die übernommenen Korrekturen (PR #1482) liegen in Atlas.Common bzw. in Atlas.IDE.Base (Fenster „Atlas-Server“), nicht in einem Modul; alle berührten Units haben jetzt 0 Atlas-Befunde mit Metriken, ohne Grenzwerte zu ändern.
 - `Atlas.Common.Index.Builder`: Defines je Datei als Record `TIndexFileDefines` (`DefinesOf`, `KeyOf`, `IsUnder`, vorher `TIndexBuilder.IsUnder`), threadsichere Schlüsselmengen `TIndexKeySet` (fehlgeschlagene Units, laufende Aufbauten mit `Claim`), Cache-Einträge `TIndexCacheEntries`, Stufenlauf `RunStage`, `ApplyChange` je Änderung. Rückruf nach der Projektstufe jetzt Eigenschaft `OnProjectDone` statt siebtem Parameter von `Build`.
