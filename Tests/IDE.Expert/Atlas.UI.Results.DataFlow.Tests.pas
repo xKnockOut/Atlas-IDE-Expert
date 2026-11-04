@@ -146,37 +146,53 @@ begin
     TAtlasDataFlowDirection.Sources));
 end;
 
+type
+  /// <summary>Hält fest, was der Baum nachlädt und wohin er springt.</summary>
+  TDataFlowProbe = class
+  public
+    FAsked: Integer;
+    FAskedKey: string;
+    FAskedPath: TArray<string>;
+    FOpenedFile: string;
+    FOpenedLine: Integer;
+  end;
+
+/// <summary>Nachladen und Springen des Baums an die Probe hängen.</summary>
+procedure WireDataFlow(const ATarget: TAtlasResultsFrame; const AProbe: TDataFlowProbe);
+begin
+  AProbe.FAsked := 0;
+  ATarget.OnFlowExpand :=
+    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult
+    begin
+      Inc(AProbe.FAsked);
+      AProbe.FAskedKey := ASource.Key;
+      AProbe.FAskedPath := APath;
+      Result := Answer([Assignment('5', [Place(20, 'Summe := 5;')], nil)]);
+    end;
+  AProbe.FOpenedLine := -1;
+  ATarget.OnOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      AProbe.FOpenedFile := AFileName;
+      AProbe.FOpenedLine := ALine;
+    end;
+end;
+
 procedure TAtlasResultsDataFlowTests.TreeGroupsPlacesExpandsLazilyAndJumps;
 var
   Host: TForm;
   Frame: TAtlasResultsFrame;
   Source: TTreeNode;
   Allow: Boolean;
-  AskedKey, OpenedFile: string;
-  AskedPath: TArray<string>;
-  OpenedLine, Asked: Integer;
+  mProbe: TDataFlowProbe;
 begin
+mProbe := TDataFlowProbe.Create;
   Host := TForm.CreateNew(nil);
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Asked := 0;
-    Frame.OnFlowExpand :=
-      function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-        const APath: TArray<string>): TAtlasDataFlowResult
-      begin
-        Inc(Asked);
-        AskedKey := ASource.Key;
-        AskedPath := APath;
-        Result := Answer([Assignment('5', [Place(20, 'Summe := 5;')], nil)]);
-      end;
-    OpenedLine := -1;
-    Frame.OnOpen :=
-      procedure(const AFileName: string; ALine, ACharacter: Integer)
-      begin
-        OpenedFile := AFileName;
-        OpenedLine := ALine;
-      end;
+    WireDataFlow(Frame, mProbe);
     Frame.ShowDataFlow('Woher kommt X?', TAtlasDataFlowDirection.Sources,
       Answer([Assignment('0', [Place(3, 'X := 0;'), Place(8, 'X := 0;')], nil),
       Assignment('Summe', [Place(11, 'X := Summe;')], [Symbol('Summe', 'S', TAtlasDataFlowLeaf.None)])]), 6,
@@ -189,31 +205,32 @@ begin
     // Quelle mit Platzhalter; geladen wird erst beim Aufklappen.
     Source := Root(Frame, 1).Item[0];
     Assert.AreEqual(1, Integer(Source.Count));
-    Assert.AreEqual(0, Asked);
+    Assert.AreEqual(0, mProbe.FAsked);
     Allow := True;
     Frame.Tree.OnExpanding(Frame.Tree, Source, Allow);
-    Assert.AreEqual(1, Asked);
-    Assert.AreEqual('S', AskedKey);
-    Assert.AreEqual(2, Integer(Length(AskedPath)));
-    Assert.AreEqual('X', AskedPath[0]);
-    Assert.AreEqual('S', AskedPath[1]);
+    Assert.AreEqual(1, mProbe.FAsked);
+    Assert.AreEqual('S', mProbe.FAskedKey);
+    Assert.AreEqual(2, Integer(Length(mProbe.FAskedPath)));
+    Assert.AreEqual('X', mProbe.FAskedPath[0]);
+    Assert.AreEqual('S', mProbe.FAskedPath[1]);
     Assert.IsTrue(Allow);
     Assert.AreEqual(1, Integer(Source.Count));
     Assert.Contains(Source.Item[0].Text, 'Summe := 5;');
     // Ein zweites Aufklappen fragt nicht noch einmal.
     Frame.Tree.OnExpanding(Frame.Tree, Source, Allow);
-    Assert.AreEqual(1, Asked);
+    Assert.AreEqual(1, mProbe.FAsked);
     // Doppelklick springt zum Fundort.
     Frame.Tree.Selected := Source.Item[0];
     Frame.Tree.OnDblClick(Frame.Tree);
-    Assert.AreEqual('C:\P\Haupt.pas', OpenedFile);
-    Assert.AreEqual(20, OpenedLine);
+    Assert.AreEqual('C:\P\Haupt.pas', mProbe.FOpenedFile);
+    Assert.AreEqual(20, mProbe.FOpenedLine);
     Frame.Tree.Selected := Root(Frame, 0).Item[1];
     Frame.Tree.OnDblClick(Frame.Tree);
-    Assert.AreEqual(8, OpenedLine);
+    Assert.AreEqual(8, mProbe.FOpenedLine);
   finally
-    AskedPath := nil;
+    mProbe.FAskedPath := nil;
     Host.Free;
+    mProbe.Free;
   end;
 end;
 
