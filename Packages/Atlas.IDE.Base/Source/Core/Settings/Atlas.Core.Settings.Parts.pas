@@ -202,6 +202,71 @@ begin
   Result := AName.StartsWith('$');
 end;
 
+/// <summary>Schlüssel eines neuen Teils prüfen: gültig, nicht doppelt, nicht schon angemeldet. AOwnKeys nimmt
+/// sie auf.</summary>
+procedure CheckKeys(const AKeys: TArray<TAtlasSettingsKey>; const AOwnerId: string;
+  AKnown: TDictionary<string, TAtlasSettingsParts.TKeyEntry>; AOwnKeys: TList<string>);
+var
+  mKey: TAtlasSettingsKey;
+  mKnown: TAtlasSettingsParts.TKeyEntry;
+begin
+  for mKey in AKeys do
+  begin
+    if (Trim(mKey.Key) = '') or IsAdministrative(mKey.Key) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Ungültiger Schlüssel „%s“ in %s', [mKey.Key, AOwnerId]);
+    end;
+    if AOwnKeys.Contains(mKey.Key) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s doppelt in %s', [mKey.Key, AOwnerId]);
+    end;
+    if AKnown.TryGetValue(mKey.Key, mKnown) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s gehört schon %s', [mKey.Key, mKnown.OwnerId]);
+    end;
+    AOwnKeys.Add(mKey.Key);
+  end;
+end;
+
+/// <summary>Umbenennungen eines neuen Teils prüfen: Ziel ist ein eigener Schlüssel, der alte ist gültig und
+/// nirgends angemeldet.</summary>
+procedure CheckRenames(const ARenames: TArray<TAtlasSettingsKeyRename>; const AOwnerId: string;
+  AKnown: TDictionary<string, TAtlasSettingsParts.TKeyEntry>; AOwnKeys: TList<string>);
+var
+  mRename: TAtlasSettingsKeyRename;
+begin
+  for mRename in ARenames do
+  begin
+    if not AOwnKeys.Contains(mRename.NewKey) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Umbenennung nach %s: kein Schlüssel von %s', [mRename.NewKey, AOwnerId]);
+    end;
+    if (Trim(mRename.OldKey) = '') or IsAdministrative(mRename.OldKey) or AOwnKeys.Contains(mRename.OldKey) or
+      AKnown.ContainsKey(mRename.OldKey) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
+        [mRename.OldKey, AOwnerId]);
+    end;
+  end;
+end;
+
+/// <summary>Teil APart als Eintrag; ohne Teil oder Besitzer eine Ausnahme.</summary>
+function PartEntryOf(const APart: IAtlasSettingsPart): TAtlasSettingsParts.TPartEntry;
+begin
+  if APart = nil then
+  begin
+    raise EAtlasSettingsParts.Create('Kein Einstellungsteil angegeben');
+  end;
+  Result := Default(TAtlasSettingsParts.TPartEntry);
+  Result.Part := APart;
+  Result.OwnerId := Trim(APart.OwnerId);
+  Result.Keys := APart.Keys;
+  Result.Renames := APart.Renames;
+  if Result.OwnerId = '' then
+  begin
+    raise EAtlasSettingsParts.Create('Einstellungsteil ohne Besitzer');
+  end;
+end;
 { TAtlasMemorySettingsStorage }
 
 constructor TAtlasMemorySettingsStorage.Create;
@@ -471,56 +536,16 @@ var
   mItem: TAtlasPartRegistration;
   mKey: TAtlasSettingsKey;
   mKeyEntry: TKeyEntry;
-  mRename: TAtlasSettingsKeyRename;
   mOwnKeys: TList<string>;
   mChanges: TArray<TAtlasSettingsChange>;
 begin
-  if APart = nil then
-  begin
-    raise EAtlasSettingsParts.Create('Kein Einstellungsteil angegeben');
-  end;
-  mEntry.Part := APart;
-  mEntry.OwnerId := Trim(APart.OwnerId);
-  mEntry.Keys := APart.Keys;
-  mEntry.Renames := APart.Renames;
-  if mEntry.OwnerId = '' then
-  begin
-    raise EAtlasSettingsParts.Create('Einstellungsteil ohne Besitzer');
-  end;
+  mEntry := PartEntryOf(APart);
   mOwnKeys := TList<string>.Create;
   try
     FLock.Acquire;
     try
-      for mKey in mEntry.Keys do
-      begin
-        if (Trim(mKey.Key) = '') or IsAdministrative(mKey.Key) then
-        begin
-          raise EAtlasSettingsParts.CreateFmt('Ungültiger Schlüssel „%s“ in %s', [mKey.Key, mEntry.OwnerId]);
-        end;
-        if mOwnKeys.Contains(mKey.Key) then
-        begin
-          raise EAtlasSettingsParts.CreateFmt('Schlüssel %s doppelt in %s', [mKey.Key, mEntry.OwnerId]);
-        end;
-        if FKeys.TryGetValue(mKey.Key, mKeyEntry) then
-        begin
-          raise EAtlasSettingsParts.CreateFmt('Schlüssel %s gehört schon %s', [mKey.Key, mKeyEntry.OwnerId]);
-        end;
-        mOwnKeys.Add(mKey.Key);
-      end;
-      for mRename in mEntry.Renames do
-      begin
-        if not mOwnKeys.Contains(mRename.NewKey) then
-        begin
-          raise EAtlasSettingsParts.CreateFmt('Umbenennung nach %s: kein Schlüssel von %s',
-            [mRename.NewKey, mEntry.OwnerId]);
-        end;
-        if (Trim(mRename.OldKey) = '') or IsAdministrative(mRename.OldKey) or mOwnKeys.Contains(mRename.OldKey) or
-          FKeys.ContainsKey(mRename.OldKey) then
-        begin
-          raise EAtlasSettingsParts.CreateFmt('Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
-            [mRename.OldKey, mEntry.OwnerId]);
-        end;
-      end;
+      CheckKeys(mEntry.Keys, mEntry.OwnerId, FKeys, mOwnKeys);
+      CheckRenames(mEntry.Renames, mEntry.OwnerId, FKeys, mOwnKeys);
       mItem := TAtlasPartRegistration.Create(Self);
       mEntry.Item := mItem;
       mEntry.Ref := mItem;

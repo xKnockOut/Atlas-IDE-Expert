@@ -86,63 +86,79 @@ begin
   end;
 end;
 
+/// <summary>Wert von AFormer unter dem neuen Namen speichern; False bei einem Wert der falschen Art.</summary>
+function MoveValue(const AStore: IAtlasSettingsStore; const AEntry: TAtlasCatalogEntry;
+  const AFormer: string): Boolean;
+var
+  mNumber: Integer;
+  mText: string;
+begin
+  Result := ReadValue(AStore, AEntry.Kind, AFormer, mNumber, mText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if AEntry.Kind in [akBoolean, akInteger] then
+  begin
+    AStore.WriteInteger(AEntry.Name, mNumber);
+  end
+  else
+  begin
+    AStore.WriteString(AEntry.Name, mText);
+  end;
+end;
+
+/// <summary>Früheren Namen AFormer von AEntry übernehmen und entfernen.</summary>
+function RenameOne(const AStore: IAtlasSettingsStore; const ANames: IAtlasSettingsNames;
+  const AEntry: TAtlasCatalogEntry; const AFormer: string): TAtlasSettingsRename;
+begin
+  Result := Default(TAtlasSettingsRename);
+  Result.OldName := AFormer;
+  Result.OldKey := AFormer;
+  if Length(AEntry.FormerKeys) > 0 then
+  begin
+    Result.OldKey := AEntry.FormerKeys[0];
+  end;
+  Result.NewName := AEntry.Name;
+  Result.NewKey := AEntry.Key;
+  if ANames.Contains(AEntry.Name) then
+  begin
+    Result.Outcome := srSuperseded;
+  end
+  else if MoveValue(AStore, AEntry, AFormer) then
+  begin
+    Result.Outcome := srMoved;
+  end
+  else
+  begin
+    Result.Outcome := srInvalid;
+  end;
+  ANames.Remove(AFormer);
+end;
+
 { TAtlasSettingsRenames }
 
 class function TAtlasSettingsRenames.Apply(const AStore: IAtlasSettingsStore; const ANames: IAtlasSettingsNames;
   ACatalog: TAtlasSettingsCatalog): TArray<TAtlasSettingsRename>;
 var
-  Index: Integer;
-  Entry: TAtlasCatalogEntry;
-  Former: string;
-  Rename: TAtlasSettingsRename;
-  Number: Integer;
-  Text: string;
+  mIndex: Integer;
+  mEntry: TAtlasCatalogEntry;
+  mFormer: string;
 begin
   Result := nil;
-  for Index := 0 to ACatalog.Count - 1 do
+  for mIndex := 0 to ACatalog.Count - 1 do
   begin
-    Entry := ACatalog[Index];
-    if Entry.Source <> asPlugin then
+    mEntry := ACatalog[mIndex];
+    if mEntry.Source <> asPlugin then
     begin
       Continue;
     end;
-    for Former in Entry.RenamedFrom do
+    for mFormer in mEntry.RenamedFrom do
     begin
-      if SameText(Former, Entry.Name) or not ANames.Contains(Former) then
+      if not SameText(mFormer, mEntry.Name) and ANames.Contains(mFormer) then
       begin
-        Continue;
+        Result := Result + [RenameOne(AStore, ANames, mEntry, mFormer)];
       end;
-      Rename := Default(TAtlasSettingsRename);
-      Rename.OldName := Former;
-      Rename.OldKey := Former;
-      if Length(Entry.FormerKeys) > 0 then
-      begin
-        Rename.OldKey := Entry.FormerKeys[0];
-      end;
-      Rename.NewName := Entry.Name;
-      Rename.NewKey := Entry.Key;
-      if ANames.Contains(Entry.Name) then
-      begin
-        Rename.Outcome := srSuperseded;
-      end
-      else if not ReadValue(AStore, Entry.Kind, Former, Number, Text) then
-      begin
-        Rename.Outcome := srInvalid;
-      end
-      else
-      begin
-        if Entry.Kind in [akBoolean, akInteger] then
-        begin
-          AStore.WriteInteger(Entry.Name, Number);
-        end
-        else
-        begin
-          AStore.WriteString(Entry.Name, Text);
-        end;
-        Rename.Outcome := srMoved;
-      end;
-      ANames.Remove(Former);
-      Result := Result + [Rename];
     end;
   end;
 end;
