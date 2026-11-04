@@ -396,129 +396,140 @@ begin
   Result := TAtlasQuickJump.Found;
 end;
 
+/// <summary>Nächste Zeile nach ALine (AForward) bzw. davor in den sortierten ALines; am Ende ringsum.</summary>
+function NextLine(const ALines: TArray<Integer>; ALine: Integer; AForward: Boolean): Integer;
+var
+  mLine: Integer;
+begin
+  if AForward then
+  begin
+    for mLine in ALines do
+    begin
+      if mLine > ALine then
+      begin
+        Exit(mLine);
+      end;
+    end;
+    Exit(ALines[0]);
+  end;
+  Result := ALines[High(ALines)];
+  for mLine in ALines do
+  begin
+    if mLine < ALine then
+    begin
+      Result := mLine;
+    end;
+  end;
+end;
+
+/// <summary>Steht an ALine von AFileName schon ein Lesezeichen in der Spalte?</summary>
+function MarkedInColumn(const AList: TAtlasBookmarkList; const AFileName: string; ALine: Integer): Boolean;
+var
+  mExisting: TAtlasBookmark;
+begin
+  Result := False;
+  for mExisting in AList.AtLine(AFileName, ALine) do
+  begin
+    if TAtlasQuickBookmarks.InColumn(mExisting) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+function IsModifierKey(AKey: Word): Boolean;
+var
+  mModifier: Word;
+begin
+  Result := False;
+  for mModifier in ModifierKeys do
+  begin
+    if AKey = mModifier then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
 class function TAtlasQuickBookmarks.Step(const AList: TAtlasBookmarkList; const AFileName: string; ALine: Integer;
   AForward: Boolean; out ATarget: Integer): Boolean;
 var
-  Mark: TAtlasBookmark;
-  Lines: TArray<Integer>;
-  Line: Integer;
+  mMark: TAtlasBookmark;
+  mLines: TArray<Integer>;
 begin
   ATarget := -1;
-  Lines := nil;
-  for Mark in AList.ForFile(AFileName) do
+  mLines := nil;
+  for mMark in AList.ForFile(AFileName) do
   begin
-    if not Mark.Lost then
+    if not mMark.Lost then
     begin
-      Lines := Lines + [Mark.Line];
+      mLines := mLines + [mMark.Line];
     end;
   end;
-  Result := Length(Lines) > 0;
-  if not Result then
+  Result := Length(mLines) > 0;
+  if Result then
   begin
-    Exit;
-  end;
-  TArray.Sort<Integer>(Lines);
-  if AForward then
-  begin
-    for Line in Lines do
-    begin
-      if Line > ALine then
-      begin
-        ATarget := Line;
-        Exit;
-      end;
-    end;
-    ATarget := Lines[0];
-  end
-  else
-  begin
-    ATarget := Lines[High(Lines)];
-    for Line in Lines do
-    begin
-      if Line < ALine then
-      begin
-        ATarget := Line;
-      end;
-    end;
+    TArray.Sort<Integer>(mLines);
+    ATarget := NextLine(mLines, ALine, AForward);
   end;
 end;
 
 class function TAtlasQuickBookmarks.Import(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   const AMarks: TArray<TAtlasIdeBookmarkPos>; ANowUtc: TDateTime): TArray<Integer>;
 var
-  Mark: TAtlasIdeBookmarkPos;
-  Existing: TAtlasBookmark;
-  Number: Integer;
-  Present: Boolean;
+  mMark: TAtlasIdeBookmarkPos;
+  mNumber: Integer;
 begin
   Result := nil;
-  for Mark in AMarks do
+  for mMark in AMarks do
   begin
     // Lesezeichen 0 bleibt bei der IDE (Strg+0 und Strg+Umschalt+0 gehören ihr).
-    if (Mark.Number < 1) or (Mark.Number > MaxNumber) or (Mark.Line < 0) then
+    if (mMark.Number < 1) or (mMark.Number > MaxNumber) or (mMark.Line < 0) then
     begin
       Continue;
     end;
-    Number := Mark.Number;
+    mNumber := mMark.Number;
     // Nummer bei Atlas schon vergeben: unnummeriert übernehmen, nichts geht verloren.
-    if AList.IndexOfNumber(Number) >= 0 then
+    if AList.IndexOfNumber(mNumber) >= 0 then
     begin
-      Number := 0;
+      mNumber := 0;
     end;
-    Present := False;
-    if Number = 0 then
+    if (mNumber <> 0) or not MarkedInColumn(AList, AFileName, mMark.Line) then
     begin
-      for Existing in AList.AtLine(AFileName, Mark.Line) do
-      begin
-        if InColumn(Existing) then
-        begin
-          Present := True;
-        end;
-      end;
+      AddQuick(AList, AFileName, AText, mMark.Line, mNumber, ANowUtc);
     end;
-    if not Present then
-    begin
-      AddQuick(AList, AFileName, AText, Mark.Line, Number, ANowUtc);
-    end;
-    Result := Result + [Mark.Number];
+    Result := Result + [mMark.Number];
   end;
 end;
 
 class function TAtlasQuickBookmarks.Chord(AWaitMs, AElapsedMs: Integer; AKey: Word): TAtlasChordAction;
 var
-  Modifier: Word;
+  mLate: Boolean;
 begin
   if AWaitMs <= 0 then
   begin
     Exit(TAtlasChordAction.Toggle);
   end;
-  if AKey <> 0 then
+  mLate := AElapsedMs >= AWaitMs;
+  if (AKey = 0) or IsModifierKey(AKey) then
   begin
-    for Modifier in ModifierKeys do
+    if mLate then
     begin
-      if AKey = Modifier then
-      begin
-        if AElapsedMs >= AWaitMs then
-        begin
-          Exit(TAtlasChordAction.Toggle);
-        end;
-        Exit(TAtlasChordAction.Wait);
-      end;
-    end;
-    if (AElapsedMs < AWaitMs) and (AKey < $80) and (Pos(Char(AKey), FoldLetters) > 0) then
+      Result := TAtlasChordAction.Toggle;
+    end
+    else
     begin
-      Exit(TAtlasChordAction.PassOn);
+      Result := TAtlasChordAction.Wait;
     end;
-    // Andere Taste oder zu spät: Lesezeichen, die Taste läuft danach normal weiter.
-    Exit(TAtlasChordAction.Toggle);
-  end;
-  if AElapsedMs >= AWaitMs then
+  end
+  else if not mLate and (AKey < $80) and (Pos(Char(AKey), FoldLetters) > 0) then
   begin
-    Result := TAtlasChordAction.Toggle;
+    Result := TAtlasChordAction.PassOn;
   end
   else
   begin
-    Result := TAtlasChordAction.Wait;
+    // Andere Taste oder zu spät: Lesezeichen, die Taste läuft danach normal weiter.
+    Result := TAtlasChordAction.Toggle;
   end;
 end;
 
