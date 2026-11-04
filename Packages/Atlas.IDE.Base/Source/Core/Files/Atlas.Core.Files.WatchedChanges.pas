@@ -204,63 +204,69 @@ begin
   end;
 end;
 
+/// <summary>Nach oben bis zum Git-Arbeitsverzeichnis; ohne Git der Ordner selbst.</summary>
+function GitRootOf(const AFolder: string; const AExists: TAtlasPathExists): string;
+var
+  Candidate: string;
+begin
+  Result := AFolder;
+  Candidate := AFolder;
+  while Candidate <> '' do
+  begin
+    if AExists(IncludeTrailingPathDelimiter(Candidate) + '.git') then
+    begin
+      Result := Candidate;
+      Break;
+    end;
+    if ExtractFileDir(Candidate) = Candidate then
+    begin
+      Break;
+    end;
+    Candidate := ExtractFileDir(Candidate);
+  end;
+end;
+
+/// <summary>Doppelt (der erste bleibt) oder unterhalb eines anderen Ordners.</summary>
+function IsCovered(const AFound: TArray<string>; AIndex: Integer): Boolean;
+var
+  Other: Integer;
+  Current: string;
+begin
+  Result := False;
+  Current := AFound[AIndex];
+  for Other := 0 to High(AFound) do
+  begin
+    if ((Other < AIndex) and SameText(AFound[Other], Current)) or
+      ((Other <> AIndex) and Current.StartsWith(IncludeTrailingPathDelimiter(AFound[Other]), True)) then
+    begin
+      Result := True;
+      Break;
+    end;
+  end;
+end;
 class function TAtlasWatchedChanges.Roots(const AProjects: TArray<string>;
   const AExists: TAtlasPathExists): TArray<string>;
 var
-  Project, Folder, Candidate, Root, Current: string;
-  Found: TList<string>;
-  Index, Other: Integer;
-  Nested: Boolean;
+  Project, Folder: string;
+  Found: TArray<string>;
+  Index: Integer;
 begin
-  Found := TList<string>.Create;
-  try
-    for Project in AProjects do
+  Found := nil;
+  for Project in AProjects do
+  begin
+    Folder := ExcludeTrailingPathDelimiter(ExtractFilePath(Project));
+    if Folder <> '' then
     begin
-      Folder := ExcludeTrailingPathDelimiter(ExtractFilePath(Project));
-      if Folder = '' then
-      begin
-        Continue;
-      end;
-      // Nach oben bis zum Git-Arbeitsverzeichnis; ohne Git der Projektordner.
-      Root := Folder;
-      Candidate := Folder;
-      while Candidate <> '' do
-      begin
-        if AExists(IncludeTrailingPathDelimiter(Candidate) + '.git') then
-        begin
-          Root := Candidate;
-          Break;
-        end;
-        if ExtractFileDir(Candidate) = Candidate then
-        begin
-          Break;
-        end;
-        Candidate := ExtractFileDir(Candidate);
-      end;
-      Found.Add(Root);
+      Found := Found + [GitRootOf(Folder, AExists)];
     end;
-    Result := nil;
-    for Index := 0 to Found.Count - 1 do
+  end;
+  Result := nil;
+  for Index := 0 to High(Found) do
+  begin
+    if not IsCovered(Found, Index) then
     begin
-      Nested := False;
-      Current := Found[Index];
-      for Other := 0 to Found.Count - 1 do
-      begin
-        // Doppelt (der erste bleibt) oder unterhalb eines anderen Ordners.
-        if ((Other < Index) and SameText(Found[Other], Current)) or
-          ((Other <> Index) and Current.StartsWith(IncludeTrailingPathDelimiter(Found[Other]), True)) then
-        begin
-          Nested := True;
-          Break;
-        end;
-      end;
-      if not Nested then
-      begin
-        Result := Result + [Current];
-      end;
+      Result := Result + [Found[Index]];
     end;
-  finally
-    Found.Free;
   end;
 end;
 
