@@ -48,6 +48,9 @@ type
     procedure EditorSettingsCountAsGlobal;
     [Test]
     procedure IndexComesFromGlobalLayers;
+    /// <summary>initializationOptions.locale vor locale (#1458).</summary>
+    [Test]
+    procedure ClientLocaleFromInitialize;
     [Test]
     procedure EachKeyHasOnePlace;
     [Test]
@@ -129,7 +132,7 @@ end;
 procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
 begin
   FConfiguration.LoadWorkspace(Root);
-  Assert.AreEqual('de', FConfiguration.Settings.Language);
+  Assert.AreEqual('', FConfiguration.Settings.Language);
   Assert.AreEqual(1, FChanges);
   Assert.AreEqual(0, Integer(FCapture.Count));
 end;
@@ -320,6 +323,28 @@ begin
   Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
 end;
 
+procedure TLspConfigurationTests.ClientLocaleFromInitialize;
+
+  function LocaleOf(const AJson: string): string;
+  var
+    mParams: TJSONValue;
+  begin
+    mParams := TJSONObject.ParseJSONValue(AJson);
+    try
+      Result := TLspClientLocale.FromInitialize(mParams);
+    finally
+      mParams.Free;
+    end;
+  end;
+
+begin
+  Assert.AreEqual('de', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": "de"}}'));
+  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": " "}}'));
+  Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US"}'));
+  Assert.AreEqual('', LocaleOf('{"processId": 1}'));
+  Assert.AreEqual('', TLspClientLocale.FromInitialize(nil));
+end;
+
 procedure TLspConfigurationTests.IndexComesFromGlobalLayers;
 var
   Message: TJSONObject;
@@ -364,10 +389,10 @@ begin
   Assert.AreEqual('de', FConfiguration.Settings.Language);
   FConfiguration.SetEditorSettings('');
   FConfiguration.SetGlobalSettings('');
-  Assert.AreEqual('de', FConfiguration.Settings.Language);
+  Assert.AreEqual('', FConfiguration.Settings.Language);
   // Kaputte globale Datei: wie keine.
   FConfiguration.SetGlobalSettings('{"language": ');
-  Assert.AreEqual('de', FConfiguration.Settings.Language);
+  Assert.AreEqual('', FConfiguration.Settings.Language);
 end;
 
 procedure TLspConfigurationTests.ReloadsChangedFileUnlessOpen;

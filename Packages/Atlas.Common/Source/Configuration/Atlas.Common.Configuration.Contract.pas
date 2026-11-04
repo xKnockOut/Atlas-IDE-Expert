@@ -590,7 +590,8 @@ type
     /// (#1126); '' = keine. Sprachmerkmale neuerer Versionen meldet die Regel language-feature, und Code-Aktionen
     /// erzeugen sie nicht (TLanguageFeatures.LanguageLevel).</summary>
     MinDelphiVersion: string;
-    /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
+    /// <summary>Sprache der Meldungen (#1458), "de" oder "en"; '' = wie der Client (initialize.locale), sonst
+    /// Englisch (TAtlasLocale.Resolve).</summary>
     Language: string;
     /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);
     /// 65001 = UTF-8 (Standard), sonst eine ANSI-Codepage wie 1250.</summary>
@@ -1338,7 +1339,7 @@ procedure SetGeneralDefaults(var ASettings: TServerSettings);
 begin
   ASettings.DelphiVersion := '';
   ASettings.MinDelphiVersion := '';
-  ASettings.Language := 'de';
+  ASettings.Language := '';
   ASettings.DefaultEncoding := 65001;
   ASettings.Project := '';
   ASettings.Config := '';

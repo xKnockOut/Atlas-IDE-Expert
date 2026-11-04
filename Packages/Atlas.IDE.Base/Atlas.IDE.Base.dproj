@@ -276,6 +276,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ModuleSwitches.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.RuleChecksNotice.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Groups.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.PageNames.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
