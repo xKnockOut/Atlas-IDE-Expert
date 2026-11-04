@@ -94,11 +94,14 @@ contains
   Atlas.IDE.Welcome.Trends in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas',
   Atlas.IDE.Welcome.Unsaved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas',
   Atlas.IDE.Welcome.Continue in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas',
+  Atlas.IDE.Welcome.Continue.Editor in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas',
+  Atlas.IDE.Welcome.Continue.Saved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas',
   Atlas.IDE.Welcome.QuickActions in 'Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas',
   Atlas.IDE.Welcome.State in 'Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas',
   Atlas.IDE.Welcome.Discover in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas',
   Atlas.IDE.Welcome.Help in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas',
   Atlas.IDE.Welcome.Setup in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas',
+  Atlas.IDE.Welcome.Setup.Paths in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas',
   Atlas.IDE.Welcome.Layouts in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas',
   Atlas.IDE.Welcome.Tiles in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas',
   Atlas.IDE.Welcome.TileProjects in 'Source\IDE\Welcome\Atlas.IDE.Welcome.TileProjects.pas',
@@ -107,6 +110,9 @@ contains
   Atlas.IDE.Welcome.Listener in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Listener.pas',
   Atlas.IDE.Welcome.Settings in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Settings.pas',
   Atlas.IDE.Welcome.Neighbors in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Neighbors.pas',
+  Atlas.IDE.Welcome.Areas in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Areas.pas',
+  Atlas.IDE.Welcome.IdeLayout in 'Source\IDE\Welcome\Atlas.IDE.Welcome.IdeLayout.pas',
+  Atlas.IDE.Welcome.ProjectWatch in 'Source\IDE\Welcome\Atlas.IDE.Welcome.ProjectWatch.pas',
   Atlas.IDE.Welcome.Commands in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas';
 
 end.

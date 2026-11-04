@@ -156,10 +156,10 @@ end;
 procedure StartProjectSections;
 begin
   GWelcome.Search := TAtlasIdeWelcomeSearch.Create(PaletteCommands, Execute);
-  GWelcome.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
-  GWelcome.Projects := TAtlasIdeProjects.Create(Warn);
-  GWelcome.Trends := TAtlasIdeTrends.Create(GWelcome.Projects);
-  GWelcome.Unsaved := TAtlasIdeUnsaved.Create(Warn);
+  GWelcome.Areas.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
+  GWelcome.Areas.Projects := TAtlasIdeProjects.Create(Warn);
+  GWelcome.Areas.Trends := TAtlasIdeTrends.Create(GWelcome.Areas.Projects);
+  GWelcome.Areas.Unsaved := TAtlasIdeUnsaved.Create(Warn);
 end;
 
 /// <summary>Schnellaktionen (#764), „Weiterarbeiten“ (#755), Zustand (#754), „Atlas entdecken“ (#757), Hilfe
@@ -167,14 +167,14 @@ end;
 procedure StartWorkSections;
 begin
   // Meldungen tragen Pfade und gehen deshalb nur in die Meldungsansicht.
-  GWelcome.QuickActions := TAtlasIdeQuickActions.Create(GWelcome.Projects, Note);
-  TAtlasWelcomeNeighbors.Connect(GWelcome.QuickActions);
-  GWelcome.ContinueWork := TAtlasIdeContinue.Create(Warn);
-  GWelcome.ContinueWork.OnServerAccess := ShowVcsServer;
-  GWelcome.State := TAtlasIdeWelcomeState.CreateForHost;
-  GWelcome.Discover := TAtlasIdeDiscover.Create(PaletteCommands, TryCommand, Warn);
-  GWelcome.Help := TAtlasIdeHelp.Create(ShowKeys);
-  GWelcome.Setup := TAtlasWelcomeNeighbors.CreateSetup(Note);
+  GWelcome.Areas.QuickActions := TAtlasIdeQuickActions.Create(GWelcome.Areas.Projects, Note);
+  TAtlasWelcomeNeighbors.Connect(GWelcome.Areas.QuickActions);
+  GWelcome.Areas.ContinueWork := TAtlasIdeContinue.Create(Warn);
+  GWelcome.Areas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
+  GWelcome.Areas.State := TAtlasIdeWelcomeState.CreateForHost;
+  GWelcome.Areas.Discover := TAtlasIdeDiscover.Create(PaletteCommands, TryCommand, Warn);
+  GWelcome.Areas.Help := TAtlasIdeHelp.Create(ShowKeys);
+  GWelcome.Areas.Setup := TAtlasWelcomeNeighbors.CreateSetup(Note);
   GWelcome.Layouts.OnHideSetting := HideSetting;
   GWelcome.Layouts.OnShowSetting := ShowSetting;
 end;

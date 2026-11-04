@@ -30,7 +30,11 @@
 // VCL; gesucht, markiert, ersetzt und gesprungen wird vom Aufrufer
 // (Atlas.IDE.Search.Commands). Die Listen brauchen ein Fenster: gefüllt wird
 // in CreateWnd bzw. sofort, wenn es schon eins gibt; die Verlaufsliste beim
-// Aufklappen.
+// Aufklappen. Ohne Fenster liest die Leiste Bereich und Stufe aus der
+// vorbereiteten Suche statt aus den Listen (Features vor dem Einhängen,
+// Delphi 12).
+// Aufbau: Die Steuerelemente stehen in TAtlasSearchBarParts, die Ereignisse für den Aufrufer in
+// TAtlasSearchBarEvents, die Hinweiszeile zeichnet TAtlasSearchInfoLine.
 
 interface
 
@@ -67,101 +71,116 @@ type
   private
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
   public
+    /// <summary>Verlauf des Felds (gehört dem Aufrufer; nil = kein Verlauf).</summary>
+    History: TAtlasSearchHistory;
     /// <summary>Bleibt die Taste im Feld, statt als Tastenkürzel der IDE zu gelten?</summary>
     class function KeepsKey(AKey: Word; AShift: TShiftState): Boolean; static;
   end;
 
-  TAtlasSearchBar = class(TCustomPanel)
+  /// <summary>Hinweiszeile: Fehlertext eines ungültigen Ausdrucks, Vorschau des aktuellen Treffers (alter Text
+  /// durchgestrichen → neuer Text) und Meldungen.</summary>
+  TAtlasSearchInfoLine = class(TPaintBox)
   private type
 {$SCOPEDENUMS ON}
-    TInfoKind = (None, Error, Notice);
+    TKind = (None, Error, Notice);
 {$SCOPEDENUMS OFF}
   private
-    FSearchRow: TPanel;
-    FReplaceRow: TPanel;
-    FInfoRow: TPanel;
-    FToggle: TButton;
-    FTextLabel: TLabel;
-    FTextFrame: TPanel;
-    FText: TAtlasSearchCombo;
-    FCase: TCheckBox;
-    FWhole: TCheckBox;
-    FIdentifier: TCheckBox;
-    FRegex: TCheckBox;
-    FScopeLabel: TLabel;
-    FScope: TComboBox;
-    FLevel: TComboBox;
-    FCounter: TLabel;
-    FPrevious: TButton;
-    FNext: TButton;
-    FList: TButton;
-    FCancel: TButton;
-    FClose: TButton;
-    FReplaceSpacer: TPanel;
-    FReplaceLabel: TLabel;
-    FReplaceText: TAtlasSearchCombo;
-    FReplaceOne: TButton;
-    FReplaceAll: TButton;
-    FChoose: TButton;
-    FInfo: TPaintBox;
-    FQuery: TAtlasSearchQuery;
-    FLevels: TArray<string>;
-    FScopes: TArray<TAtlasSearchScope>;
-    FHasSelection: Boolean;
-    FFeatures: TAtlasSearchBarFeatures;
-    FReplaceShown: Boolean;
-    FPending: Boolean;
-    FUpdating: Boolean;
-    FInfoKind: TInfoKind;
-    FInfoText: string;
-    FPreviewBefore: string;
-    FPreviewAfter: string;
+    FKind: TKind;
+    FMessage: string;
+    FBefore: string;
+    FAfter: string;
     FHasPreview: Boolean;
-    FSearchHistory: TAtlasSearchHistory;
-    FReplaceHistory: TAtlasSearchHistory;
-    FOnQueryChanged: TProc;
-    FOnStep: TAtlasSearchBarStep;
-    FOnList: TProc;
-    FOnClose: TProc;
-    FOnControlEnter: TProc<TWinControl>;
-    FOnReplace: TProc;
-    FOnReplaceAll: TProc;
-    FOnChoose: TProc;
-    FOnCancel: TProc;
-    FOnReplaceShown: TProc;
-    function AddRow(ATop: Integer): TPanel;
-    procedure Place(ARow: TPanel; AControl: TControl; AWidth: Integer);
-    function AddLabel(ARow: TPanel; const ACaption: string): TLabel;
-    function AddCheck(const ACaption, AHint: string): TCheckBox;
-    function AddButton(ARow: TPanel; const ACaption, AHint: string; AWidth: Integer): TButton;
-    function AddCombo(ARow: TPanel; AStyle: TComboBoxStyle; AWidth: Integer): TComboBox;
-    procedure Apply;
-    procedure UpdateStates;
-    procedure UpdateLayout;
+  protected
+    procedure Paint; override;
+  public
+    procedure ShowError(const AText: string);
+    procedure ClearError;
+    procedure ShowPreview(const ABefore, AAfter: string);
+    procedure ClearPreview;
+    /// <summary>Meldung ('' = keine); bei einem Fehler ohne Wirkung.</summary>
+    procedure ShowNotice(const AText: string);
+    /// <summary>Text der Zeile, wie er gezeichnet wird.</summary>
+    function Content: string;
+    function IsError: Boolean;
+    /// <summary>Gibt es etwas zu zeigen?</summary>
+    function HasContent: Boolean;
+  end;
+
+  /// <summary>Ereignisse der Leiste für den Aufrufer.</summary>
+  TAtlasSearchBarEvents = class(TComponent)
+  public
+    /// <summary>Text, Optionen oder Bereich geändert.</summary>
+    OnQueryChanged: TProc;
+    OnStep: TAtlasSearchBarStep;
+    OnList: TProc;
+    OnClose: TProc;
+    /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
+    OnControlEnter: TProc<TWinControl>;
+    OnReplace: TProc;
+    OnReplaceAll: TProc;
+    OnChoose: TProc;
+    OnCancel: TProc;
+    /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
+    OnReplaceShown: TProc;
+    class procedure Fire(const AEvent: TProc); static;
+  end;
+
+  /// <summary>Steuerelemente der Leiste (gehören der Leiste; auch für Tests).</summary>
+  TAtlasSearchBarParts = class(TComponent)
+  public
+    SearchRow: TPanel;
+    ReplaceRow: TPanel;
+    InfoRow: TPanel;
+    ToggleButton: TButton;
+    TextFrame: TPanel;
+    TextEdit: TAtlasSearchCombo;
+    CaseBox: TCheckBox;
+    WholeBox: TCheckBox;
+    IdentifierBox: TCheckBox;
+    RegexBox: TCheckBox;
+    ScopeBox: TComboBox;
+    LevelBox: TComboBox;
+    CounterLabel: TLabel;
+    PreviousButton: TButton;
+    NextButton: TButton;
+    ListButton: TButton;
+    CancelButton: TButton;
+    CloseButton: TButton;
+    ReplaceEdit: TAtlasSearchCombo;
+    ReplaceOneButton: TButton;
+    ReplaceAllButton: TButton;
+    ChooseButton: TButton;
+    InfoLine: TAtlasSearchInfoLine;
+  end;
+
+  /// <summary>Stand der Leiste: vorbereitete Suche, Stufen, angebotene Bereiche, Einstellungen.</summary>
+  TAtlasSearchBarState = record
+    Query: TAtlasSearchQuery;
+    Levels: TArray<string>;
+    Scopes: TArray<TAtlasSearchScope>;
+    HasSelection: Boolean;
+    Features: TAtlasSearchBarFeatures;
+    ReplaceShown: Boolean;
+    // Prepare ohne Fenster: Apply folgt in CreateWnd.
+    Pending: Boolean;
+    // Felder werden per Programm gesetzt: keine Änderung melden.
+    Updating: Boolean;
+  end;
+
+  TAtlasSearchBar = class(TCustomPanel)
+  private
+    FParts: TAtlasSearchBarParts;
+    FEvents: TAtlasSearchBarEvents;
+    FState: TAtlasSearchBarState;
     procedure FitWidths;
     procedure Changed(Sender: TObject);
     procedure ReplaceChanged(Sender: TObject);
     procedure ControlEnter(Sender: TObject);
     procedure ControlKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HistoryDropDown(Sender: TObject);
-    procedure ToggleClick(Sender: TObject);
-    procedure PreviousClick(Sender: TObject);
-    procedure NextClick(Sender: TObject);
-    procedure ListClick(Sender: TObject);
-    procedure CancelClick(Sender: TObject);
-    procedure CloseClick(Sender: TObject);
-    procedure ReplaceOneClick(Sender: TObject);
-    procedure ReplaceAllClick(Sender: TObject);
-    procedure ChooseClick(Sender: TObject);
-    procedure InfoPaint(Sender: TObject);
-    procedure Step(ABackward: Boolean);
-    procedure Fire(const AEvent: TProc);
-    function HistoryOf(ABox: TComboBox): TAtlasSearchHistory;
-    function GetListVisible: Boolean;
-    procedure SetListVisible(AValue: Boolean);
+    procedure ButtonClick(Sender: TObject);
     procedure SetFeatures(const AValue: TAtlasSearchBarFeatures);
     procedure SetReplaceShown(AValue: Boolean);
-    function GetReplaceText: string;
   protected
     procedure CreateWnd; override;
   public
@@ -172,7 +191,6 @@ type
     function Query: TAtlasSearchQuery;
     /// <summary>Text des Zählers: „3 von 9“, „9 Treffer“, „Keine Treffer“ oder eine Meldung.</summary>
     procedure SetCounter(const AText: string);
-    function Counter: string;
     /// <summary>Fehlertext eines ungültigen Ausdrucks ('' = keiner): Suchfeld rot umrandet, Zeile darunter.
     /// </summary>
     procedure SetError(const AText: string);
@@ -186,48 +204,24 @@ type
     function HasError: Boolean;
     /// <summary>Suche über Dateien läuft: „Abbrechen“ zeigen.</summary>
     procedure SetSearching(AValue: Boolean);
+    /// <summary>Schaltfläche „In Meldungen“ (search.resultsInMessages).</summary>
+    procedure SetListVisible(AValue: Boolean);
     /// <summary>Verläufe für Such- und Ersetzen-Feld (gehören dem Aufrufer; nil = kein Verlauf).</summary>
     procedure SetHistories(ASearch, AReplace: TAtlasSearchHistory);
     /// <summary>Suchtext (und bei offener Ersetzen-Zeile den Ersatztext) in den Verlauf.</summary>
     procedure Remember;
     /// <summary>Fokus ins Suchfeld, Text markiert.</summary>
     procedure FocusText;
-    /// <summary>Fokus ins Ersetzen-Feld, Text markiert.</summary>
-    procedure FocusReplace;
     /// <summary>Hat ein Feld der Leiste den Fokus?</summary>
     function HasFocus: Boolean;
+    function ReplaceText: string;
     /// <summary>Name des Bereichs in der Auswahlliste („Unit“, „Projekt“ …).</summary>
     class function ScopeCaption(AScope: TAtlasSearchScope): string; static;
-    /// <summary>Schaltfläche „In Meldungen“ (search.resultsInMessages).</summary>
-    property ListVisible: Boolean read GetListVisible write SetListVisible;
-    property Features: TAtlasSearchBarFeatures read FFeatures write SetFeatures;
+    property Features: TAtlasSearchBarFeatures read FState.Features write SetFeatures;
     /// <summary>Ersetzen-Zeile offen (nur mit Features.Replace).</summary>
-    property ReplaceShown: Boolean read FReplaceShown write SetReplaceShown;
-    property ReplaceText: string read GetReplaceText;
-    property OnQueryChanged: TProc read FOnQueryChanged write FOnQueryChanged;
-    property OnStep: TAtlasSearchBarStep read FOnStep write FOnStep;
-    property OnList: TProc read FOnList write FOnList;
-    property OnClose: TProc read FOnClose write FOnClose;
-    /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
-    property OnControlEnter: TProc<TWinControl> read FOnControlEnter write FOnControlEnter;
-    property OnReplace: TProc read FOnReplace write FOnReplace;
-    property OnReplaceAll: TProc read FOnReplaceAll write FOnReplaceAll;
-    property OnChoose: TProc read FOnChoose write FOnChoose;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
-    /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
-    property OnReplaceShown: TProc read FOnReplaceShown write FOnReplaceShown;
-    // Für Tests.
-    property TextEdit: TAtlasSearchCombo read FText;
-    property ReplaceEdit: TAtlasSearchCombo read FReplaceText;
-    property ScopeBox: TComboBox read FScope;
-    property LevelBox: TComboBox read FLevel;
-    property CaseBox: TCheckBox read FCase;
-    property WholeBox: TCheckBox read FWhole;
-    property IdentifierBox: TCheckBox read FIdentifier;
-    property RegexBox: TCheckBox read FRegex;
-    property ReplaceRow: TPanel read FReplaceRow;
-    property ToggleButton: TButton read FToggle;
-    property CancelButton: TButton read FCancel;
+    property ReplaceShown: Boolean read FState.ReplaceShown write SetReplaceShown;
+    property Events: TAtlasSearchBarEvents read FEvents;
+    property Parts: TAtlasSearchBarParts read FParts;
   end;
 
 implementation
@@ -294,131 +288,156 @@ begin
   inherited;
 end;
 
-{ TAtlasSearchBar }
+{ TAtlasSearchInfoLine }
 
-constructor TAtlasSearchBar.Create(AOwner: TComponent);
+procedure TAtlasSearchInfoLine.ShowError(const AText: string);
 begin
-  inherited Create(AOwner);
-  BevelOuter := bvNone;
-  Caption := '';
-  ShowCaption := False;
-  ShowHint := True;
-  FQuery := Default(TAtlasSearchQuery);
-  FQuery.Scope := TAtlasSearchScope.UnitFile;
-  FFeatures := Default(TAtlasSearchBarFeatures);
-
-  FSearchRow := AddRow(0);
-  FReplaceRow := AddRow(1000);
-  FInfoRow := AddRow(2000);
-
-  FClose := TButton.Create(Self);
-  FClose.Parent := FSearchRow;
-  FClose.Align := alRight;
-  FClose.AlignWithMargins := True;
-  FClose.Margins.SetBounds(Gap, 3, Gap, 3);
-  FClose.Width := ScaleValue(ButtonWidth);
-  FClose.Caption := '×';
-  FClose.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCloseHint);
-  FClose.OnClick := CloseClick;
-  FClose.OnKeyDown := ControlKeyDown;
-  FClose.OnEnter := ControlEnter;
-
-  FToggle := AddButton(FSearchRow, '▸', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchToggleReplaceHint),
-    ToggleWidth);
-  FToggle.OnClick := ToggleClick;
-  FTextLabel := AddLabel(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchTextLabel));
-  // Rahmen um das Suchfeld: rot bei ungültigem Ausdruck.
-  FTextFrame := TPanel.Create(Self);
-  FTextFrame.Parent := FSearchRow;
-  FTextFrame.BevelOuter := bvNone;
-  FTextFrame.Caption := '';
-  FTextFrame.ShowCaption := False;
-  FTextFrame.Padding.SetBounds(1, 1, 1, 1);
-  Place(FSearchRow, FTextFrame, TextBoxWidth + 2);
-  FTextFrame.Margins.SetBounds(Gap, 2, 0, 2);
-  FText := TAtlasSearchCombo.Create(Self);
-  FText.Parent := FTextFrame;
-  FText.Style := csDropDown;
-  FText.Align := alClient;
-  FText.OnChange := Changed;
-  FText.OnKeyDown := ControlKeyDown;
-  FText.OnEnter := ControlEnter;
-  FText.OnDropDown := HistoryDropDown;
-  FTextLabel.FocusControl := FText;
-
-  FCase := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCaseSensitive),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCaseHint));
-  FWhole := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWholeWord),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWholeHint));
-  FIdentifier := AddCheck(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchIdentifier),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchIdentifierHint));
-  FRegex := AddCheck('.*', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchRegexHint));
-
-  FScopeLabel := AddLabel(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeLabel));
-  FScope := AddCombo(FSearchRow, csDropDownList, ScopeWidth);
-  FScope.OnChange := Changed;
-  FScopeLabel.FocusControl := FScope;
-  FLevel := AddCombo(FSearchRow, csDropDownList, LevelWidth);
-  FLevel.OnChange := Changed;
-
-  FCounter := AddLabel(FSearchRow, '');
-  FPrevious := AddButton(FSearchRow, '↑', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviousHint), ButtonWidth);
-  FPrevious.OnClick := PreviousClick;
-  FNext := AddButton(FSearchRow, '↓', TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNextHint), ButtonWidth);
-  FNext.OnClick := NextClick;
-  FList := AddButton(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListButton),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListHint), 100);
-  FList.OnClick := ListClick;
-  FCancel := AddButton(FSearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCancelButton),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCancelHint), 90);
-  FCancel.OnClick := CancelClick;
-  FCancel.Visible := False;
-
-  // Ersetzen-Zeile: das Feld steht unter dem Suchfeld (Platz für den Knopf zum Aufklappen).
-  FReplaceSpacer := TPanel.Create(Self);
-  FReplaceSpacer.Parent := FReplaceRow;
-  FReplaceSpacer.BevelOuter := bvNone;
-  FReplaceSpacer.Caption := '';
-  FReplaceSpacer.ShowCaption := False;
-  Place(FReplaceRow, FReplaceSpacer, ToggleWidth);
-  FReplaceLabel := AddLabel(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceLabel));
-  FReplaceText := AddCombo(FReplaceRow, csDropDown, TextBoxWidth) as TAtlasSearchCombo;
-  FReplaceText.OnChange := ReplaceChanged;
-  FReplaceText.OnDropDown := HistoryDropDown;
-  FReplaceLabel.FocusControl := FReplaceText;
-  FReplaceOne := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceButton),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceHint), 90);
-  FReplaceOne.OnClick := ReplaceOneClick;
-  FReplaceAll := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceAllButton),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceAllHint), 110);
-  FReplaceAll.OnClick := ReplaceAllClick;
-  FChoose := AddButton(FReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchChooseButton),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchChooseHint), 90);
-  FChoose.OnClick := ChooseClick;
-
-  FInfo := TPaintBox.Create(Self);
-  FInfo.Parent := FInfoRow;
-  FInfo.Align := alClient;
-  FInfo.AlignWithMargins := True;
-  FInfo.Margins.SetBounds(Gap + ScaleValue(ToggleWidth), 2, Gap, 2);
-  FInfo.OnPaint := InfoPaint;
-
-  UpdateLayout;
+  FKind := TKind.Error;
+  FMessage := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchRegexError, [AText]);
 end;
 
-function TAtlasSearchBar.AddRow(ATop: Integer): TPanel;
+procedure TAtlasSearchInfoLine.ClearError;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
+  if FKind = TKind.Error then
+  begin
+    FKind := TKind.None;
+    FMessage := '';
+  end;
+end;
+
+procedure TAtlasSearchInfoLine.ShowPreview(const ABefore, AAfter: string);
+begin
+  FBefore := ABefore;
+  FAfter := AAfter;
+  FHasPreview := True;
+  if FKind = TKind.None then
+  begin
+    FKind := TKind.Notice;
+  end;
+end;
+
+procedure TAtlasSearchInfoLine.ClearPreview;
+begin
+  FHasPreview := False;
+  FBefore := '';
+  FAfter := '';
+  if (FKind = TKind.Notice) and (FMessage = '') then
+  begin
+    FKind := TKind.None;
+  end;
+end;
+
+procedure TAtlasSearchInfoLine.ShowNotice(const AText: string);
+begin
+  if FKind = TKind.Error then
+  begin
+    Exit;
+  end;
+  FMessage := AText;
+  if (AText <> '') or FHasPreview then
+  begin
+    FKind := TKind.Notice;
+  end
+  else
+  begin
+    FKind := TKind.None;
+  end;
+end;
+
+function TAtlasSearchInfoLine.Content: string;
+begin
+  Result := '';
+  case FKind of
+    TKind.Error:
+      Result := FMessage;
+    TKind.Notice:
+      begin
+        if FHasPreview then
+        begin
+          Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ' + FBefore + ' → ' + FAfter;
+        end;
+        if (Result <> '') and (FMessage <> '') then
+        begin
+          Result := Result + '   ·   ';
+        end;
+        Result := Result + FMessage;
+      end;
+  else
+    // Ohne Inhalt bleibt die Zeile leer.
+  end;
+end;
+
+function TAtlasSearchInfoLine.IsError: Boolean;
+begin
+  Result := FKind = TKind.Error;
+end;
+
+function TAtlasSearchInfoLine.HasContent: Boolean;
+begin
+  Result := FKind <> TKind.None;
+end;
+
+procedure TAtlasSearchInfoLine.Paint;
+var
+  mX, mY: Integer;
+
+  procedure Put(const AText: string; AStyle: TFontStyles);
+  begin
+    Canvas.Font.Style := AStyle;
+    Canvas.TextOut(mX, mY, AText);
+    Inc(mX, Canvas.TextWidth(AText));
+  end;
+
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsClear;
+  mY := (Height - Canvas.TextHeight('Ag')) div 2;
+  mX := 0;
+  if FKind = TKind.Error then
+  begin
+    Canvas.Font.Color := ErrorColor;
+    Put(FMessage, []);
+    Exit;
+  end;
+  if FHasPreview then
+  begin
+    Put(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ', []);
+    Put(FBefore, [fsStrikeOut]);
+    Put(' → ', []);
+    Put(FAfter, [fsBold]);
+    if FMessage <> '' then
+    begin
+      Put('   ·   ', []);
+    end;
+  end;
+  Put(FMessage, []);
+end;
+
+{ TAtlasSearchBarEvents }
+
+class procedure TAtlasSearchBarEvents.Fire(const AEvent: TProc);
+begin
+  if Assigned(AEvent) then
+  begin
+    AEvent();
+  end;
+end;
+
+{ Aufbau der Leiste }
+
+function AddRow(ABar: TAtlasSearchBar; ATop: Integer): TPanel;
+begin
+  Result := TPanel.Create(ABar);
+  Result.Parent := ABar;
   Result.BevelOuter := bvNone;
   Result.Caption := '';
   Result.ShowCaption := False;
   Result.Top := ATop;
-  Result.Height := ScaleValue(BarHeight);
+  Result.Height := ABar.ScaleValue(BarHeight);
   Result.Align := alTop;
 end;
 
-procedure TAtlasSearchBar.Place(ARow: TPanel; AControl: TControl; AWidth: Integer);
+procedure Place(ABar: TAtlasSearchBar; ARow: TPanel; AControl: TControl; AWidth: Integer);
 begin
   // alLeft ordnet nach Left: jedes neue Element rechts an die vorigen (Tag zählt je Zeile).
   ARow.Tag := ARow.Tag + 10000;
@@ -428,167 +447,520 @@ begin
   AControl.Margins.SetBounds(Gap, 3, 0, 3);
   if AWidth > 0 then
   begin
-    AControl.Width := ScaleValue(AWidth);
+    AControl.Width := ABar.ScaleValue(AWidth);
   end;
 end;
 
-function TAtlasSearchBar.AddLabel(ARow: TPanel; const ACaption: string): TLabel;
+function AddLabel(ABar: TAtlasSearchBar; ARow: TPanel; const ACaption: string): TLabel;
 begin
-  Result := TLabel.Create(Self);
+  Result := TLabel.Create(ABar);
   Result.Parent := ARow;
   Result.ShowAccelChar := False;
   Result.Layout := tlCenter;
   Result.AutoSize := True;
   Result.Caption := ACaption;
-  Place(ARow, Result, 0);
+  Place(ABar, ARow, Result, 0);
   Result.Margins.Top := 0;
   Result.Margins.Bottom := 0;
 end;
 
-function TAtlasSearchBar.AddCheck(const ACaption, AHint: string): TCheckBox;
+function AddPanel(ABar: TAtlasSearchBar; ARow: TPanel; AWidth: Integer): TPanel;
 begin
-  Result := TCheckBox.Create(Self);
-  Result.Parent := FSearchRow;
-  Result.Caption := ACaption;
-  Result.Hint := AHint;
-  // Breite nach dem Text erst mit Fenster (FitWidths); bis dahin geschätzt.
-  Place(FSearchRow, Result, 24 + 7 * Length(ACaption));
-  Result.OnClick := Changed;
-  Result.OnKeyDown := ControlKeyDown;
-  Result.OnEnter := ControlEnter;
+  Result := TPanel.Create(ABar);
+  Result.Parent := ARow;
+  Result.BevelOuter := bvNone;
+  Result.Caption := '';
+  Result.ShowCaption := False;
+  Place(ABar, ARow, Result, AWidth);
 end;
 
-function TAtlasSearchBar.AddButton(ARow: TPanel; const ACaption, AHint: string; AWidth: Integer): TButton;
+function AddCheck(ABar: TAtlasSearchBar; const ACaption: string; AHint: TAtlasSearchTextId): TCheckBox;
 begin
-  Result := TButton.Create(Self);
+  Result := TCheckBox.Create(ABar);
+  Result.Parent := ABar.FParts.SearchRow;
+  Result.Caption := ACaption;
+  Result.Hint := TAtlasSearchStrings.Text(AHint);
+  // Breite nach dem Text erst mit Fenster (FitWidths); bis dahin geschätzt.
+  Place(ABar, ABar.FParts.SearchRow, Result, 24 + 7 * Length(ACaption));
+  Result.OnClick := ABar.Changed;
+  Result.OnKeyDown := ABar.ControlKeyDown;
+  Result.OnEnter := ABar.ControlEnter;
+end;
+
+function AddButton(ABar: TAtlasSearchBar; ARow: TPanel; const ACaption: string; AHint: TAtlasSearchTextId;
+  AWidth: Integer): TButton;
+begin
+  Result := TButton.Create(ABar);
   Result.Parent := ARow;
   Result.Caption := ACaption;
-  Result.Hint := AHint;
-  Place(ARow, Result, AWidth);
-  Result.OnKeyDown := ControlKeyDown;
-  Result.OnEnter := ControlEnter;
+  Result.Hint := TAtlasSearchStrings.Text(AHint);
+  Place(ABar, ARow, Result, AWidth);
+  Result.OnClick := ABar.ButtonClick;
+  Result.OnKeyDown := ABar.ControlKeyDown;
+  Result.OnEnter := ABar.ControlEnter;
 end;
 
-function TAtlasSearchBar.AddCombo(ARow: TPanel; AStyle: TComboBoxStyle; AWidth: Integer): TComboBox;
+function AddCombo(ABar: TAtlasSearchBar; AParent: TWinControl; AStyle: TComboBoxStyle): TAtlasSearchCombo;
 begin
   // Mit Tasten wie im Suchfeld (#1243): Im Ersetzen-Feld fügte Strg+V sonst in den Editor ein.
-  Result := TAtlasSearchCombo.Create(Self);
-  Result.Parent := ARow;
+  Result := TAtlasSearchCombo.Create(ABar);
+  Result.Parent := AParent;
   Result.Style := AStyle;
-  Place(ARow, Result, AWidth);
-  Result.OnKeyDown := ControlKeyDown;
-  Result.OnEnter := ControlEnter;
+  Result.OnKeyDown := ABar.ControlKeyDown;
+  Result.OnEnter := ABar.ControlEnter;
+end;
+
+/// <summary>Schließen rechts, Knopf zum Aufklappen, Suchfeld im Rahmen (rot bei ungültigem Ausdruck).</summary>
+procedure BuildTextPart(ABar: TAtlasSearchBar; AParts: TAtlasSearchBarParts);
+var
+  mLabel: TLabel;
+begin
+  AParts.CloseButton := TButton.Create(ABar);
+  AParts.CloseButton.Parent := AParts.SearchRow;
+  AParts.CloseButton.Align := alRight;
+  AParts.CloseButton.AlignWithMargins := True;
+  AParts.CloseButton.Margins.SetBounds(Gap, 3, Gap, 3);
+  AParts.CloseButton.Width := ABar.ScaleValue(ButtonWidth);
+  AParts.CloseButton.Caption := '×';
+  AParts.CloseButton.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCloseHint);
+  AParts.CloseButton.OnClick := ABar.ButtonClick;
+  AParts.CloseButton.OnKeyDown := ABar.ControlKeyDown;
+  AParts.CloseButton.OnEnter := ABar.ControlEnter;
+  AParts.ToggleButton := AddButton(ABar, AParts.SearchRow, '▸', TAtlasSearchTextId.SearchToggleReplaceHint,
+    ToggleWidth);
+  mLabel := AddLabel(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchTextLabel));
+  AParts.TextFrame := AddPanel(ABar, AParts.SearchRow, TextBoxWidth + 2);
+  AParts.TextFrame.Padding.SetBounds(1, 1, 1, 1);
+  AParts.TextFrame.Margins.SetBounds(Gap, 2, 0, 2);
+  AParts.TextEdit := AddCombo(ABar, AParts.TextFrame, csDropDown);
+  AParts.TextEdit.Align := alClient;
+  AParts.TextEdit.OnChange := ABar.Changed;
+  AParts.TextEdit.OnDropDown := ABar.HistoryDropDown;
+  mLabel.FocusControl := AParts.TextEdit;
+end;
+
+/// <summary>Optionen, Bereich, Stufe, Zähler und Knöpfe der Suchzeile.</summary>
+procedure BuildSearchRow(ABar: TAtlasSearchBar; AParts: TAtlasSearchBarParts);
+var
+  mLabel: TLabel;
+begin
+  BuildTextPart(ABar, AParts);
+  AParts.CaseBox := AddCheck(ABar, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCaseSensitive),
+    TAtlasSearchTextId.SearchCaseHint);
+  AParts.WholeBox := AddCheck(ABar, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWholeWord),
+    TAtlasSearchTextId.SearchWholeHint);
+  AParts.IdentifierBox := AddCheck(ABar, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchIdentifier),
+    TAtlasSearchTextId.SearchIdentifierHint);
+  AParts.RegexBox := AddCheck(ABar, '.*', TAtlasSearchTextId.SearchRegexHint);
+  mLabel := AddLabel(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeLabel));
+  AParts.ScopeBox := AddCombo(ABar, AParts.SearchRow, csDropDownList);
+  Place(ABar, AParts.SearchRow, AParts.ScopeBox, ScopeWidth);
+  AParts.ScopeBox.OnChange := ABar.Changed;
+  mLabel.FocusControl := AParts.ScopeBox;
+  AParts.LevelBox := AddCombo(ABar, AParts.SearchRow, csDropDownList);
+  Place(ABar, AParts.SearchRow, AParts.LevelBox, LevelWidth);
+  AParts.LevelBox.OnChange := ABar.Changed;
+  AParts.CounterLabel := AddLabel(ABar, AParts.SearchRow, '');
+  AParts.PreviousButton := AddButton(ABar, AParts.SearchRow, '↑', TAtlasSearchTextId.SearchPreviousHint, ButtonWidth);
+  AParts.NextButton := AddButton(ABar, AParts.SearchRow, '↓', TAtlasSearchTextId.SearchNextHint, ButtonWidth);
+  AParts.ListButton := AddButton(ABar, AParts.SearchRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchListButton),
+    TAtlasSearchTextId.SearchListHint, 100);
+  AParts.CancelButton := AddButton(ABar, AParts.SearchRow,
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchCancelButton), TAtlasSearchTextId.SearchCancelHint, 90);
+  AParts.CancelButton.Visible := False;
+end;
+
+/// <summary>Ersetzen-Zeile: das Feld steht unter dem Suchfeld (Platz für den Knopf zum Aufklappen).</summary>
+procedure BuildReplaceRow(ABar: TAtlasSearchBar; AParts: TAtlasSearchBarParts);
+var
+  mLabel: TLabel;
+begin
+  AddPanel(ABar, AParts.ReplaceRow, ToggleWidth);
+  mLabel := AddLabel(ABar, AParts.ReplaceRow, TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceLabel));
+  AParts.ReplaceEdit := AddCombo(ABar, AParts.ReplaceRow, csDropDown);
+  Place(ABar, AParts.ReplaceRow, AParts.ReplaceEdit, TextBoxWidth);
+  AParts.ReplaceEdit.OnChange := ABar.ReplaceChanged;
+  AParts.ReplaceEdit.OnDropDown := ABar.HistoryDropDown;
+  mLabel.FocusControl := AParts.ReplaceEdit;
+  AParts.ReplaceOneButton := AddButton(ABar, AParts.ReplaceRow,
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceButton), TAtlasSearchTextId.SearchReplaceHint, 90);
+  AParts.ReplaceAllButton := AddButton(ABar, AParts.ReplaceRow,
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceAllButton), TAtlasSearchTextId.SearchReplaceAllHint, 110);
+  AParts.ChooseButton := AddButton(ABar, AParts.ReplaceRow,
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchChooseButton), TAtlasSearchTextId.SearchChooseHint, 90);
+  AParts.InfoLine := TAtlasSearchInfoLine.Create(ABar);
+  AParts.InfoLine.Parent := AParts.InfoRow;
+  AParts.InfoLine.Align := alClient;
+  AParts.InfoLine.AlignWithMargins := True;
+  AParts.InfoLine.Margins.SetBounds(Gap + ABar.ScaleValue(ToggleWidth), 2, Gap, 2);
+end;
+
+{ Zustand der Leiste }
+
+// ItemIndex und Items.Count einer TComboBox fragen ihr Fenster ab (CB_GETCURSEL, CB_GETCOUNT) und legen es dafür
+// an. Ohne übergeordnetes Fenster scheitert das mit EInvalidOperation: Unter Delphi 12 legt die Suche ihre Leiste
+// vor dem Einhängen an (CreateBar setzt Features, dann ordnet Place sie ein); jedes Strg+F scheiterte so, und nach
+// dem dritten Versuch schaltete die Sicherung die Atlas-Suche ab. Ohne Fenster gilt darum der
+// Stand der vorbereiteten Suche; Apply schreibt ihn in die Listen, sobald es eins gibt.
+
+/// <summary>Gewählter Bereich: aus der Liste, solange sie kein Fenster hat aus der vorbereiteten Suche.</summary>
+function SelectedScope(ABar: TAtlasSearchBar): TAtlasSearchScope;
+var
+  mIndex: Integer;
+begin
+  Result := ABar.FState.Query.Scope;
+  if not ABar.FParts.ScopeBox.HandleAllocated then
+  begin
+    Exit;
+  end;
+  mIndex := ABar.FParts.ScopeBox.ItemIndex;
+  if (mIndex >= 0) and (mIndex <= High(ABar.FState.Scopes)) then
+  begin
+    Result := ABar.FState.Scopes[mIndex];
+  end;
+end;
+
+/// <summary>Gewählte Stufe: aus der Liste, ohne Fenster aus der vorbereiteten Suche.</summary>
+function SelectedLevel(ABar: TAtlasSearchBar): Integer;
+begin
+  Result := ABar.FState.Query.Level;
+  if ABar.FParts.LevelBox.HandleAllocated then
+  begin
+    Result := ABar.FParts.LevelBox.ItemIndex;
+  end;
+end;
+
+procedure UpdateStates(ABar: TAtlasSearchBar);
+var
+  mParts: TAtlasSearchBarParts;
+begin
+  mParts := ABar.FParts;
+  // State.Levels sind die Einträge der Stufenliste (Apply füllt sie daraus); Items.Count bräuchte ein Fenster.
+  mParts.LevelBox.Visible := (SelectedScope(ABar) = TAtlasSearchScope.Method) and (Length(ABar.FState.Levels) > 0);
+  // Bezeichner-Modus ohne Regex kennt nur ganze Bezeichner ohne Rücksicht auf die Schreibweise; mit Regex filtert
+  // er nur Kommentare und Strings heraus.
+  mParts.CaseBox.Enabled := not mParts.IdentifierBox.Checked or mParts.RegexBox.Checked;
+  mParts.WholeBox.Enabled := not mParts.IdentifierBox.Checked or mParts.RegexBox.Checked;
+  mParts.RegexBox.Visible := ABar.FState.Features.Regex;
+end;
+
+procedure UpdateLayout(ABar: TAtlasSearchBar);
+var
+  mParts: TAtlasSearchBarParts;
+  mRows: Integer;
+begin
+  mParts := ABar.FParts;
+  mParts.ToggleButton.Visible := ABar.FState.Features.Replace;
+  if not ABar.FState.Features.Replace then
+  begin
+    ABar.FState.ReplaceShown := False;
+  end;
+  if ABar.FState.ReplaceShown then
+  begin
+    mParts.ToggleButton.Caption := '▾';
+  end
+  else
+  begin
+    mParts.ToggleButton.Caption := '▸';
+  end;
+  mParts.ReplaceRow.Visible := ABar.FState.ReplaceShown;
+  mParts.InfoRow.Visible := mParts.InfoLine.HasContent;
+  // Reihenfolge der Zeilen festhalten: sichtbar gewordene alTop-Panels ordnen sich nach Top.
+  mParts.SearchRow.Top := 0;
+  mParts.ReplaceRow.Top := mParts.SearchRow.Height;
+  mParts.InfoRow.Top := 2 * mParts.SearchRow.Height;
+  mRows := 1;
+  if mParts.ReplaceRow.Visible then
+  begin
+    Inc(mRows);
+  end;
+  if mParts.InfoRow.Visible then
+  begin
+    Inc(mRows);
+  end;
+  ABar.Height := mRows * ABar.ScaleValue(BarHeight);
+  mParts.InfoLine.Invalidate;
+end;
+
+/// <summary>Bereiche in der Reihenfolge von TAtlasSearchScope: Unit, Methode, Auswahl, offene Dateien, Projekt,
+/// Projektgruppe. Ein Bereich, den es gerade nicht gibt (Auswahl ohne Auswahl, Dateien mit search.multiFile aus),
+/// wird Unit.</summary>
+procedure FillScopes(ABar: TAtlasSearchBar);
+var
+  mScope: TAtlasSearchScope;
+  mIndex: Integer;
+  mBox: TComboBox;
+begin
+  mBox := ABar.FParts.ScopeBox;
+  ABar.FState.Scopes := [TAtlasSearchScope.UnitFile, TAtlasSearchScope.Method];
+  if ABar.FState.HasSelection then
+  begin
+    ABar.FState.Scopes := ABar.FState.Scopes + [TAtlasSearchScope.Selection];
+  end;
+  if ABar.FState.Features.MultiFile then
+  begin
+    ABar.FState.Scopes := ABar.FState.Scopes + [TAtlasSearchScope.OpenFiles, TAtlasSearchScope.Project,
+      TAtlasSearchScope.ProjectGroup];
+  end;
+  mBox.Items.BeginUpdate;
+  try
+    mBox.Items.Clear;
+    for mScope in ABar.FState.Scopes do
+    begin
+      mBox.Items.Add(TAtlasSearchBar.ScopeCaption(mScope));
+    end;
+  finally
+    mBox.Items.EndUpdate;
+  end;
+  mBox.ItemIndex := 0;
+  for mIndex := 0 to High(ABar.FState.Scopes) do
+  begin
+    if ABar.FState.Scopes[mIndex] = ABar.FState.Query.Scope then
+    begin
+      mBox.ItemIndex := mIndex;
+    end;
+  end;
+  ABar.FState.Query.Scope := ABar.FState.Scopes[mBox.ItemIndex];
+end;
+
+procedure FillLevels(ABar: TAtlasSearchBar);
+var
+  mLevel: string;
+  mBox: TComboBox;
+begin
+  mBox := ABar.FParts.LevelBox;
+  mBox.Items.BeginUpdate;
+  try
+    mBox.Items.Clear;
+    for mLevel in ABar.FState.Levels do
+    begin
+      mBox.Items.Add(mLevel);
+    end;
+  finally
+    mBox.Items.EndUpdate;
+  end;
+  mBox.ItemIndex := -1;
+  if Length(ABar.FState.Levels) > 0 then
+  begin
+    mBox.ItemIndex := ABar.FState.Query.Level;
+    if mBox.ItemIndex < 0 then
+    begin
+      mBox.ItemIndex := 0;
+    end;
+  end;
+end;
+
+/// <summary>Vorbereitete Suche in die Felder (braucht ein Fenster).</summary>
+procedure Apply(ABar: TAtlasSearchBar);
+var
+  mParts: TAtlasSearchBarParts;
+  mQuery: TAtlasSearchQuery;
+begin
+  mParts := ABar.FParts;
+  mQuery := ABar.FState.Query;
+  ABar.FState.Pending := False;
+  ABar.FState.Updating := True;
+  try
+    mParts.TextEdit.Text := mQuery.Text;
+    mParts.CaseBox.Checked := mQuery.Options.CaseSensitive;
+    mParts.WholeBox.Checked := mQuery.Options.WholeWord;
+    mParts.IdentifierBox.Checked := mQuery.Options.Identifier;
+    mParts.RegexBox.Checked := mQuery.Options.Regex and ABar.FState.Features.Regex;
+    FillScopes(ABar);
+    FillLevels(ABar);
+    UpdateStates(ABar);
+  finally
+    ABar.FState.Updating := False;
+  end;
+end;
+
+/// <summary>Text eines Felds per Programm setzen, ohne das Blättern im Verlauf zurückzusetzen.</summary>
+procedure SetBoxText(ABar: TAtlasSearchBar; ABox: TComboBox; const AText: string);
+begin
+  ABar.FState.Updating := True;
+  try
+    ABox.Text := AText;
+    ABox.SelectAll;
+  finally
+    ABar.FState.Updating := False;
+  end;
+end;
+
+/// <summary>Pfeil hoch/runter im Such- bzw. Ersetzen-Feld: im Verlauf blättern.</summary>
+procedure StepHistory(ABar: TAtlasSearchBar; ABox: TAtlasSearchCombo; AOlder: Boolean);
+var
+  mNext: string;
+begin
+  if ABox.History = nil then
+  begin
+    Exit;
+  end;
+  mNext := ABox.History.Step(ABox.Text, AOlder);
+  if mNext = ABox.Text then
+  begin
+    Exit;
+  end;
+  // Ohne Updating setzte Changed das Blättern zurück.
+  SetBoxText(ABar, ABox, mNext);
+  // Text per Programm löst OnChange nicht aus: Suche bzw. Vorschau selbst anstoßen.
+  if ABox = ABar.FParts.TextEdit then
+  begin
+    UpdateStates(ABar);
+    TAtlasSearchBarEvents.Fire(ABar.FEvents.OnQueryChanged);
+  end
+  else
+  begin
+    TAtlasSearchBarEvents.Fire(ABar.FEvents.OnReplaceShown);
+  end;
+end;
+
+procedure Step(ABar: TAtlasSearchBar; ABackward: Boolean);
+begin
+  ABar.Remember;
+  if Assigned(ABar.FEvents.OnStep) then
+  begin
+    ABar.FEvents.OnStep(ABackward);
+  end;
+end;
+
+/// <summary>Enter: im Ersetzen-Feld ersetzen (Strg: alle), sonst nächster bzw. voriger Treffer und Liste.</summary>
+procedure PressReturn(ABar: TAtlasSearchBar; ASender: TObject; AShift: TShiftState);
+begin
+  if ASender = ABar.FParts.ReplaceEdit then
+  begin
+    ABar.Remember;
+    if ssCtrl in AShift then
+    begin
+      TAtlasSearchBarEvents.Fire(ABar.FEvents.OnReplaceAll);
+    end
+    else
+    begin
+      TAtlasSearchBarEvents.Fire(ABar.FEvents.OnReplace);
+    end;
+    Exit;
+  end;
+  Step(ABar, ssShift in AShift);
+  if not (ssShift in AShift) and ABar.FParts.ListButton.Visible then
+  begin
+    TAtlasSearchBarEvents.Fire(ABar.FEvents.OnList);
+  end;
+end;
+
+procedure FocusBox(ABox: TComboBox);
+begin
+  if ABox.CanFocus then
+  begin
+    ABox.SetFocus;
+    ABox.SelectAll;
+  end;
+end;
+
+procedure ToggleReplace(ABar: TAtlasSearchBar);
+begin
+  ABar.ReplaceShown := not ABar.ReplaceShown;
+  if ABar.ReplaceShown then
+  begin
+    FocusBox(ABar.FParts.ReplaceEdit);
+  end
+  else
+  begin
+    FocusBox(ABar.FParts.TextEdit);
+  end;
+  TAtlasSearchBarEvents.Fire(ABar.FEvents.OnReplaceShown);
+end;
+
+/// <summary>Knöpfe, die vorher den Verlauf merken: In Meldungen, Ersetzen, Alle ersetzen, Auswählen.</summary>
+function IsRemembering(ABar: TAtlasSearchBar; ASender: TObject; out AEvent: TProc): Boolean;
+var
+  mParts: TAtlasSearchBarParts;
+begin
+  mParts := ABar.FParts;
+  AEvent := nil;
+  Result := True;
+  if ASender = mParts.ListButton then
+  begin
+    AEvent := ABar.FEvents.OnList;
+  end
+  else if ASender = mParts.ReplaceOneButton then
+  begin
+    AEvent := ABar.FEvents.OnReplace;
+  end
+  else if ASender = mParts.ReplaceAllButton then
+  begin
+    AEvent := ABar.FEvents.OnReplaceAll;
+  end
+  else if ASender = mParts.ChooseButton then
+  begin
+    AEvent := ABar.FEvents.OnChoose;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+{ TAtlasSearchBar }
+
+constructor TAtlasSearchBar.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  Caption := '';
+  ShowCaption := False;
+  ShowHint := True;
+  FEvents := TAtlasSearchBarEvents.Create(Self);
+  FParts := TAtlasSearchBarParts.Create(Self);
+  FState := Default(TAtlasSearchBarState);
+  FState.Query.Scope := TAtlasSearchScope.UnitFile;
+  FParts.SearchRow := AddRow(Self, 0);
+  FParts.ReplaceRow := AddRow(Self, 1000);
+  FParts.InfoRow := AddRow(Self, 2000);
+  BuildSearchRow(Self, FParts);
+  BuildReplaceRow(Self, FParts);
+  UpdateLayout(Self);
 end;
 
 procedure TAtlasSearchBar.CreateWnd;
 begin
   inherited CreateWnd;
   FitWidths;
-  if FPending then
+  if FState.Pending then
   begin
-    Apply;
+    Apply(Self);
   end;
 end;
 
 procedure TAtlasSearchBar.FitWidths;
 var
-  Boxes: TArray<TCheckBox>;
-  Box: TCheckBox;
-  Buttons: TArray<TButton>;
-  Button: TButton;
+  mBoxes: TArray<TCheckBox>;
+  mBox: TCheckBox;
+  mButtons: TArray<TButton>;
+  mButton: TButton;
 begin
   Canvas.Font := Font;
-  Boxes := [FCase, FWhole, FIdentifier, FRegex];
-  for Box in Boxes do
+  mBoxes := [FParts.CaseBox, FParts.WholeBox, FParts.IdentifierBox, FParts.RegexBox];
+  for mBox in mBoxes do
   begin
-    Box.Width := Canvas.TextWidth(Box.Caption) + ScaleValue(24);
+    mBox.Width := Canvas.TextWidth(mBox.Caption) + ScaleValue(24);
   end;
-  Buttons := [FList, FCancel, FReplaceOne, FReplaceAll, FChoose];
-  for Button in Buttons do
+  mButtons := [FParts.ListButton, FParts.CancelButton, FParts.ReplaceOneButton, FParts.ReplaceAllButton,
+    FParts.ChooseButton];
+  for mButton in mButtons do
   begin
-    Button.Width := Canvas.TextWidth(Button.Caption) + ScaleValue(20);
+    mButton.Width := Canvas.TextWidth(mButton.Caption) + ScaleValue(20);
   end;
 end;
 
 procedure TAtlasSearchBar.Prepare(const AQuery: TAtlasSearchQuery; const ALevels: TArray<string>;
   AHasSelection: Boolean);
 begin
-  FQuery := AQuery;
-  FLevels := ALevels;
-  FHasSelection := AHasSelection;
-  FPending := True;
+  FState.Query := AQuery;
+  FState.Levels := ALevels;
+  FState.HasSelection := AHasSelection;
+  FState.Pending := True;
   if HandleAllocated then
   begin
-    Apply;
-  end;
-end;
-
-procedure TAtlasSearchBar.Apply;
-var
-  Level: string;
-  Scope: TAtlasSearchScope;
-  Index: Integer;
-begin
-  FPending := False;
-  FUpdating := True;
-  try
-    FText.Text := FQuery.Text;
-    FCase.Checked := FQuery.Options.CaseSensitive;
-    FWhole.Checked := FQuery.Options.WholeWord;
-    FIdentifier.Checked := FQuery.Options.Identifier;
-    FRegex.Checked := FQuery.Options.Regex and FFeatures.Regex;
-    // Reihenfolge wie TAtlasSearchScope: Unit, Methode, Auswahl, offene Dateien, Projekt, Projektgruppe.
-    FScopes := [TAtlasSearchScope.UnitFile, TAtlasSearchScope.Method];
-    if FHasSelection then
-    begin
-      FScopes := FScopes + [TAtlasSearchScope.Selection];
-    end;
-    if FFeatures.MultiFile then
-    begin
-      FScopes := FScopes + [TAtlasSearchScope.OpenFiles, TAtlasSearchScope.Project, TAtlasSearchScope.ProjectGroup];
-    end;
-    FScope.Items.BeginUpdate;
-    try
-      FScope.Items.Clear;
-      for Scope in FScopes do
-      begin
-        FScope.Items.Add(ScopeCaption(Scope));
-      end;
-    finally
-      FScope.Items.EndUpdate;
-    end;
-    // Ein Bereich, den es gerade nicht gibt (Auswahl ohne Auswahl, Dateien mit search.multiFile aus), wird Unit.
-    FScope.ItemIndex := 0;
-    for Index := 0 to High(FScopes) do
-    begin
-      if FScopes[Index] = FQuery.Scope then
-      begin
-        FScope.ItemIndex := Index;
-      end;
-    end;
-    FQuery.Scope := FScopes[FScope.ItemIndex];
-    FLevel.Items.BeginUpdate;
-    try
-      FLevel.Items.Clear;
-      for Level in FLevels do
-      begin
-        FLevel.Items.Add(Level);
-      end;
-    finally
-      FLevel.Items.EndUpdate;
-    end;
-    FLevel.ItemIndex := -1;
-    if Length(FLevels) > 0 then
-    begin
-      FLevel.ItemIndex := FQuery.Level;
-      if FLevel.ItemIndex < 0 then
-      begin
-        FLevel.ItemIndex := 0;
-      end;
-    end;
-    UpdateStates;
-  finally
-    FUpdating := False;
+    Apply(Self);
   end;
 end;
 
@@ -610,111 +982,54 @@ begin
   end;
 end;
 
-procedure TAtlasSearchBar.UpdateStates;
-var
-  Scope: TAtlasSearchScope;
-begin
-  Scope := TAtlasSearchScope.UnitFile;
-  if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
-  begin
-    Scope := FScopes[FScope.ItemIndex];
-  end;
-  FLevel.Visible := (Scope = TAtlasSearchScope.Method) and (FLevel.Items.Count > 0);
-  // Bezeichner-Modus ohne Regex kennt nur ganze Bezeichner ohne Rücksicht auf die Schreibweise; mit Regex filtert
-  // er nur Kommentare und Strings heraus.
-  FCase.Enabled := not FIdentifier.Checked or FRegex.Checked;
-  FWhole.Enabled := not FIdentifier.Checked or FRegex.Checked;
-  FRegex.Visible := FFeatures.Regex;
-end;
-
-procedure TAtlasSearchBar.UpdateLayout;
-var
-  Rows: Integer;
-begin
-  FToggle.Visible := FFeatures.Replace;
-  if not FFeatures.Replace then
-  begin
-    FReplaceShown := False;
-  end;
-  if FReplaceShown then
-  begin
-    FToggle.Caption := '▾';
-  end
-  else
-  begin
-    FToggle.Caption := '▸';
-  end;
-  FReplaceRow.Visible := FReplaceShown;
-  FInfoRow.Visible := FInfoKind <> TInfoKind.None;
-  // Reihenfolge der Zeilen festhalten: sichtbar gewordene alTop-Panels ordnen sich nach Top.
-  FSearchRow.Top := 0;
-  FReplaceRow.Top := FSearchRow.Height;
-  FInfoRow.Top := 2 * FSearchRow.Height;
-  Rows := 1;
-  if FReplaceRow.Visible then
-  begin
-    Inc(Rows);
-  end;
-  if FInfoRow.Visible then
-  begin
-    Inc(Rows);
-  end;
-  Height := Rows * ScaleValue(BarHeight);
-  FInfo.Invalidate;
-end;
-
 procedure TAtlasSearchBar.SetFeatures(const AValue: TAtlasSearchBarFeatures);
 begin
-  FFeatures := AValue;
-  if not FFeatures.Regex then
+  FState.Features := AValue;
+  if not FState.Features.Regex then
   begin
-    FRegex.Checked := False;
-  end;
-  if not FFeatures.Regex then
-  begin
+    FParts.RegexBox.Checked := False;
     ClearPreview;
   end;
-  UpdateStates;
-  UpdateLayout;
-  if HandleAllocated and not FPending then
+  UpdateStates(Self);
+  UpdateLayout(Self);
+  if HandleAllocated and not FState.Pending then
   begin
     // Bereiche neu aufbauen (Dateien ein/aus), Auswahl beibehalten.
-    FQuery := Query;
-    Apply;
+    FState.Query := Query;
+    Apply(Self);
   end;
 end;
 
 procedure TAtlasSearchBar.SetReplaceShown(AValue: Boolean);
+var
+  mShown: Boolean;
 begin
-  AValue := AValue and FFeatures.Replace;
-  if AValue = FReplaceShown then
+  mShown := AValue and FState.Features.Replace;
+  if mShown = FState.ReplaceShown then
   begin
     Exit;
   end;
-  FReplaceShown := AValue;
-  if not FReplaceShown then
+  FState.ReplaceShown := mShown;
+  if not FState.ReplaceShown then
   begin
     ClearPreview;
   end;
-  UpdateLayout;
+  UpdateLayout(Self);
 end;
 
-function TAtlasSearchBar.GetReplaceText: string;
+function TAtlasSearchBar.ReplaceText: string;
 begin
-  Result := FReplaceText.Text;
+  Result := FParts.ReplaceEdit.Text;
 end;
 
 function TAtlasSearchBar.Query: TAtlasSearchQuery;
 begin
-  Result := FQuery;
-  Result.Text := FText.Text;
-  Result.Options := TAtlasSearchOptions.Create(FCase.Checked, FWhole.Checked, FIdentifier.Checked,
-    FRegex.Checked and FFeatures.Regex);
-  if (FScope.ItemIndex >= 0) and (FScope.ItemIndex <= High(FScopes)) then
-  begin
-    Result.Scope := FScopes[FScope.ItemIndex];
-  end;
-  Result.Level := FLevel.ItemIndex;
+  Result := FState.Query;
+  Result.Text := FParts.TextEdit.Text;
+  Result.Options := TAtlasSearchOptions.Create(FParts.CaseBox.Checked, FParts.WholeBox.Checked,
+    FParts.IdentifierBox.Checked, FParts.RegexBox.Checked and FState.Features.Regex);
+  Result.Scope := SelectedScope(Self);
+  Result.Level := SelectedLevel(Self);
   if Result.Level < 0 then
   begin
     Result.Level := 0;
@@ -723,449 +1038,234 @@ end;
 
 procedure TAtlasSearchBar.SetCounter(const AText: string);
 begin
-  FCounter.Caption := AText;
-end;
-
-function TAtlasSearchBar.Counter: string;
-begin
-  Result := FCounter.Caption;
+  FParts.CounterLabel.Caption := AText;
 end;
 
 procedure TAtlasSearchBar.SetError(const AText: string);
 begin
   if AText <> '' then
   begin
-    FInfoKind := TInfoKind.Error;
-    FInfoText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchRegexError, [AText]);
-    FTextFrame.ParentBackground := False;
-    FTextFrame.StyleElements := FTextFrame.StyleElements - [seClient];
-    FTextFrame.Color := ErrorColor;
+    FParts.InfoLine.ShowError(AText);
+    FParts.TextFrame.ParentBackground := False;
+    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements - [seClient];
+    FParts.TextFrame.Color := ErrorColor;
   end
   else
   begin
-    if FInfoKind = TInfoKind.Error then
-    begin
-      FInfoKind := TInfoKind.None;
-      FInfoText := '';
-    end;
-    FTextFrame.StyleElements := FTextFrame.StyleElements + [seClient];
-    FTextFrame.ParentColor := True;
-    FTextFrame.ParentBackground := True;
+    FParts.InfoLine.ClearError;
+    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements + [seClient];
+    FParts.TextFrame.ParentColor := True;
+    FParts.TextFrame.ParentBackground := True;
   end;
-  UpdateLayout;
+  UpdateLayout(Self);
 end;
 
 function TAtlasSearchBar.HasError: Boolean;
 begin
-  Result := FInfoKind = TInfoKind.Error;
+  Result := FParts.InfoLine.IsError;
 end;
 
 procedure TAtlasSearchBar.SetPreview(const ABefore, AAfter: string);
 begin
-  FPreviewBefore := ABefore;
-  FPreviewAfter := AAfter;
-  FHasPreview := True;
-  if FInfoKind = TInfoKind.None then
-  begin
-    FInfoKind := TInfoKind.Notice;
-  end;
-  UpdateLayout;
+  FParts.InfoLine.ShowPreview(ABefore, AAfter);
+  UpdateLayout(Self);
 end;
 
 procedure TAtlasSearchBar.ClearPreview;
 begin
-  FHasPreview := False;
-  FPreviewBefore := '';
-  FPreviewAfter := '';
-  if (FInfoKind = TInfoKind.Notice) and (FInfoText = '') then
-  begin
-    FInfoKind := TInfoKind.None;
-  end;
-  if FInfo <> nil then
-  begin
-    UpdateLayout;
-  end;
+  FParts.InfoLine.ClearPreview;
+  UpdateLayout(Self);
 end;
 
 procedure TAtlasSearchBar.SetNotice(const AText: string);
 begin
-  if FInfoKind = TInfoKind.Error then
+  if FParts.InfoLine.IsError then
   begin
     Exit;
   end;
-  FInfoText := AText;
-  if (AText <> '') or FHasPreview then
-  begin
-    FInfoKind := TInfoKind.Notice;
-  end
-  else
-  begin
-    FInfoKind := TInfoKind.None;
-  end;
-  UpdateLayout;
+  FParts.InfoLine.ShowNotice(AText);
+  UpdateLayout(Self);
 end;
 
 function TAtlasSearchBar.InfoText: string;
 begin
-  Result := '';
-  case FInfoKind of
-    TInfoKind.Error:
-      Result := FInfoText;
-    TInfoKind.Notice:
-      begin
-        if FHasPreview then
-        begin
-          Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ' + FPreviewBefore + ' → ' +
-            FPreviewAfter;
-        end;
-        if (Result <> '') and (FInfoText <> '') then
-        begin
-          Result := Result + '   ·   ';
-        end;
-        Result := Result + FInfoText;
-      end;
-  end;
-end;
-
-procedure TAtlasSearchBar.InfoPaint(Sender: TObject);
-var
-  Canvas: TCanvas;
-  X, Y: Integer;
-
-  procedure Put(const AText: string; AStyle: TFontStyles);
-  begin
-    Canvas.Font.Style := AStyle;
-    Canvas.TextOut(X, Y, AText);
-    Inc(X, Canvas.TextWidth(AText));
-  end;
-
-begin
-  Canvas := FInfo.Canvas;
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsClear;
-  Y := (FInfo.Height - Canvas.TextHeight('Ag')) div 2;
-  X := 0;
-  if FInfoKind = TInfoKind.Error then
-  begin
-    Canvas.Font.Color := ErrorColor;
-    Put(FInfoText, []);
-    Exit;
-  end;
-  if FHasPreview then
-  begin
-    Put(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ', []);
-    Put(FPreviewBefore, [fsStrikeOut]);
-    Put(' → ', []);
-    Put(FPreviewAfter, [fsBold]);
-    if FInfoText <> '' then
-    begin
-      Put('   ·   ', []);
-    end;
-  end;
-  Put(FInfoText, []);
+  Result := FParts.InfoLine.Content;
 end;
 
 procedure TAtlasSearchBar.SetSearching(AValue: Boolean);
 begin
-  FCancel.Visible := AValue;
+  FParts.CancelButton.Visible := AValue;
+end;
+
+procedure TAtlasSearchBar.SetListVisible(AValue: Boolean);
+begin
+  FParts.ListButton.Visible := AValue;
 end;
 
 procedure TAtlasSearchBar.SetHistories(ASearch, AReplace: TAtlasSearchHistory);
 begin
-  FSearchHistory := ASearch;
-  FReplaceHistory := AReplace;
+  FParts.TextEdit.History := ASearch;
+  FParts.ReplaceEdit.History := AReplace;
 end;
 
 procedure TAtlasSearchBar.Remember;
 begin
-  if FSearchHistory <> nil then
+  if FParts.TextEdit.History <> nil then
   begin
-    FSearchHistory.Remember(FText.Text);
+    FParts.TextEdit.History.Remember(FParts.TextEdit.Text);
   end;
-  if FReplaceShown and (FReplaceHistory <> nil) then
+  if FState.ReplaceShown and (FParts.ReplaceEdit.History <> nil) then
   begin
-    FReplaceHistory.Remember(FReplaceText.Text);
-  end;
-end;
-
-function TAtlasSearchBar.HistoryOf(ABox: TComboBox): TAtlasSearchHistory;
-begin
-  Result := nil;
-  if ABox = FText then
-  begin
-    Result := FSearchHistory;
-  end
-  else if ABox = FReplaceText then
-  begin
-    Result := FReplaceHistory;
+    FParts.ReplaceEdit.History.Remember(FParts.ReplaceEdit.Text);
   end;
 end;
 
 procedure TAtlasSearchBar.HistoryDropDown(Sender: TObject);
 var
-  Box: TComboBox;
-  History: TAtlasSearchHistory;
-  Item, Text: string;
+  mBox: TAtlasSearchCombo;
+  mItem, mText: string;
 begin
-  if not (Sender is TComboBox) then
+  if not (Sender is TAtlasSearchCombo) then
   begin
     Exit;
   end;
-  Box := TComboBox(Sender);
-  History := HistoryOf(Box);
+  mBox := TAtlasSearchCombo(Sender);
   // Liste erst beim Aufklappen füllen (sie braucht ein Fenster); der Text im Feld bleibt.
-  Text := Box.Text;
-  FUpdating := True;
+  mText := mBox.Text;
+  FState.Updating := True;
   try
-    Box.Items.BeginUpdate;
+    mBox.Items.BeginUpdate;
     try
-      Box.Items.Clear;
-      if History <> nil then
+      mBox.Items.Clear;
+      if mBox.History <> nil then
       begin
-        for Item in History.Items do
+        for mItem in mBox.History.Items do
         begin
-          Box.Items.Add(Item);
+          mBox.Items.Add(mItem);
         end;
       end;
     finally
-      Box.Items.EndUpdate;
+      mBox.Items.EndUpdate;
     end;
-    Box.Text := Text;
+    mBox.Text := mText;
   finally
-    FUpdating := False;
+    FState.Updating := False;
   end;
-end;
-
-function TAtlasSearchBar.GetListVisible: Boolean;
-begin
-  Result := FList.Visible;
-end;
-
-procedure TAtlasSearchBar.SetListVisible(AValue: Boolean);
-begin
-  FList.Visible := AValue;
 end;
 
 procedure TAtlasSearchBar.FocusText;
 begin
-  if FText.CanFocus then
-  begin
-    FText.SetFocus;
-    FText.SelectAll;
-  end;
-end;
-
-procedure TAtlasSearchBar.FocusReplace;
-begin
-  if FReplaceShown and FReplaceText.CanFocus then
-  begin
-    FReplaceText.SetFocus;
-    FReplaceText.SelectAll;
-  end;
+  FocusBox(FParts.TextEdit);
 end;
 
 function TAtlasSearchBar.HasFocus: Boolean;
 var
-  Focused: HWND;
+  mFocused: HWND;
 begin
-  Focused := Winapi.Windows.GetFocus;
-  Result := HandleAllocated and (Focused <> 0) and ((Focused = Handle) or IsChild(Handle, Focused));
+  mFocused := Winapi.Windows.GetFocus;
+  Result := HandleAllocated and (mFocused <> 0) and ((mFocused = Handle) or IsChild(Handle, mFocused));
 end;
 
 procedure TAtlasSearchBar.Changed(Sender: TObject);
 begin
-  if FUpdating then
+  if FState.Updating then
   begin
     Exit;
   end;
   // Von Hand geändert: Blättern im Verlauf beginnt beim nächsten Pfeil von vorn.
-  if (Sender = FText) and (FSearchHistory <> nil) then
+  if (Sender = FParts.TextEdit) and (FParts.TextEdit.History <> nil) then
   begin
-    FSearchHistory.Reset;
+    FParts.TextEdit.History.Reset;
   end;
-  UpdateStates;
-  Fire(FOnQueryChanged);
+  UpdateStates(Self);
+  TAtlasSearchBarEvents.Fire(FEvents.OnQueryChanged);
 end;
 
 procedure TAtlasSearchBar.ReplaceChanged(Sender: TObject);
 begin
-  if FUpdating then
+  if FState.Updating then
   begin
     Exit;
   end;
-  if FReplaceHistory <> nil then
+  if FParts.ReplaceEdit.History <> nil then
   begin
-    FReplaceHistory.Reset;
+    FParts.ReplaceEdit.History.Reset;
   end;
-  Fire(FOnReplaceShown);
+  TAtlasSearchBarEvents.Fire(FEvents.OnReplaceShown);
 end;
 
 procedure TAtlasSearchBar.ControlEnter(Sender: TObject);
 begin
-  if Assigned(FOnControlEnter) and (Sender is TWinControl) then
+  if Assigned(FEvents.OnControlEnter) and (Sender is TWinControl) then
   begin
-    FOnControlEnter(TWinControl(Sender));
-  end;
-end;
-
-procedure TAtlasSearchBar.Fire(const AEvent: TProc);
-begin
-  if Assigned(AEvent) then
-  begin
-    AEvent();
-  end;
-end;
-
-procedure TAtlasSearchBar.Step(ABackward: Boolean);
-begin
-  Remember;
-  if Assigned(FOnStep) then
-  begin
-    FOnStep(ABackward);
+    FEvents.OnControlEnter(TWinControl(Sender));
   end;
 end;
 
 procedure TAtlasSearchBar.ControlKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 var
-  Box: TComboBox;
-  History: TAtlasSearchHistory;
-  Next: string;
-  Older: Boolean;
+  mKey: Word;
 begin
   // Offene Auswahlliste: Enter, Esc und die Pfeile gehören ihr.
   if (Sender is TComboBox) and TComboBox(Sender).DroppedDown then
   begin
     Exit;
   end;
+  mKey := Key;
   // Pfeil hoch/runter im Such- bzw. Ersetzen-Feld: Verlauf (Alt+↓ öffnet die Liste wie gewohnt).
-  if ((Key = VK_UP) or (Key = VK_DOWN)) and not (ssAlt in Shift) and ((Sender = FText) or (Sender = FReplaceText))
-  then
+  if ((mKey = VK_UP) or (mKey = VK_DOWN)) and not (ssAlt in Shift) and
+    ((Sender = FParts.TextEdit) or (Sender = FParts.ReplaceEdit)) then
   begin
-    Box := TComboBox(Sender);
-    History := HistoryOf(Box);
-    Older := Key = VK_UP;
     Key := 0;
-    if History = nil then
-    begin
-      Exit;
-    end;
-    Next := History.Step(Box.Text, Older);
-    if Next = Box.Text then
-    begin
-      Exit;
-    end;
-    // Ohne FUpdating setzte Changed das Blättern zurück.
-    FUpdating := True;
-    try
-      Box.Text := Next;
-      Box.SelectAll;
-    finally
-      FUpdating := False;
-    end;
-    // Text per Programm löst OnChange nicht aus: Suche bzw. Vorschau selbst anstoßen.
-    if Box = FText then
-    begin
-      UpdateStates;
-      Fire(FOnQueryChanged);
-    end
-    else
-    begin
-      Fire(FOnReplaceShown);
-    end;
+    StepHistory(Self, TAtlasSearchCombo(Sender), mKey = VK_UP);
     Exit;
   end;
-  case Key of
+  case mKey of
     VK_RETURN:
       begin
         Key := 0;
-        if Sender = FReplaceText then
-        begin
-          Remember;
-          if ssCtrl in Shift then
-          begin
-            Fire(FOnReplaceAll);
-          end
-          else
-          begin
-            Fire(FOnReplace);
-          end;
-          Exit;
-        end;
-        Step(ssShift in Shift);
-        if not (ssShift in Shift) and FList.Visible then
-        begin
-          Fire(FOnList);
-        end;
+        PressReturn(Self, Sender, Shift);
       end;
     VK_F3:
       begin
         Key := 0;
-        Step(ssShift in Shift);
+        Step(Self, ssShift in Shift);
       end;
     VK_ESCAPE:
       begin
         Key := 0;
-        Fire(FOnClose);
+        TAtlasSearchBarEvents.Fire(FEvents.OnClose);
       end;
-  end;
-end;
-
-procedure TAtlasSearchBar.ToggleClick(Sender: TObject);
-begin
-  ReplaceShown := not ReplaceShown;
-  if ReplaceShown then
-  begin
-    FocusReplace;
-  end
   else
-  begin
-    FocusText;
+    // Übrige Tasten gehören dem Feld.
   end;
-  Fire(FOnReplaceShown);
 end;
 
-procedure TAtlasSearchBar.PreviousClick(Sender: TObject);
+procedure TAtlasSearchBar.ButtonClick(Sender: TObject);
+var
+  mEvent: TProc;
 begin
-  Step(True);
-end;
-
-procedure TAtlasSearchBar.NextClick(Sender: TObject);
-begin
-  Step(False);
-end;
-
-procedure TAtlasSearchBar.ListClick(Sender: TObject);
-begin
-  Remember;
-  Fire(FOnList);
-end;
-
-procedure TAtlasSearchBar.CancelClick(Sender: TObject);
-begin
-  Fire(FOnCancel);
-end;
-
-procedure TAtlasSearchBar.CloseClick(Sender: TObject);
-begin
-  Fire(FOnClose);
-end;
-
-procedure TAtlasSearchBar.ReplaceOneClick(Sender: TObject);
-begin
-  Remember;
-  Fire(FOnReplace);
-end;
-
-procedure TAtlasSearchBar.ReplaceAllClick(Sender: TObject);
-begin
-  Remember;
-  Fire(FOnReplaceAll);
-end;
-
-procedure TAtlasSearchBar.ChooseClick(Sender: TObject);
-begin
-  Remember;
-  Fire(FOnChoose);
+  if IsRemembering(Self, Sender, mEvent) then
+  begin
+    Remember;
+    TAtlasSearchBarEvents.Fire(mEvent);
+  end
+  else if Sender = FParts.ToggleButton then
+  begin
+    ToggleReplace(Self);
+  end
+  else if (Sender = FParts.PreviousButton) or (Sender = FParts.NextButton) then
+  begin
+    Step(Self, Sender = FParts.PreviousButton);
+  end
+  else if Sender = FParts.CancelButton then
+  begin
+    TAtlasSearchBarEvents.Fire(FEvents.OnCancel);
+  end
+  else if Sender = FParts.CloseButton then
+  begin
+    TAtlasSearchBarEvents.Fire(FEvents.OnClose);
+  end;
 end;
 
 end.

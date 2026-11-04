@@ -472,6 +472,9 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Shared.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Uninitialized.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.UseAfterFree.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Shared.Tests.pas"/>
@@ -534,6 +537,9 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Shared.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Types.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Syntax.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Method.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NameSuggestions.Tests.pas"/>
