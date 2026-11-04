@@ -24,6 +24,11 @@
 // nur die Syntax). Geschrieben wird nicht hier: Der Aufrufer schreibt
 // Model.ResultText.
 
+// Aufbau in einer Vorfahrenkette, je Ebene eine Aufgabe: Rahmen mit Knöpfen
+// und Hinweis (TAtlasSettingsDialogFrame), Seitenbaum und Navigation
+// (TAtlasSettingsDialogPages), Felder einer Seite und ihre Prüfung
+// (TAtlasSettingsDialogFields), Prüfregeln (TAtlasProjectSettingsDialog).
+
 interface
 
 uses
@@ -53,16 +58,50 @@ type
   TAtlasSettingsCheckFunc = reference to function(const AText: string; out AChecked: Boolean)
     : TArray<TAtlasSettingIssue>;
 
-  TAtlasProjectSettingsDialog = class(TForm)
+  /// <summary>Rahmen des Dialogs: Titel, Knöpfe unten, Hinweis oben und die Fläche für die Felder.</summary>
+  TAtlasSettingsDialogFrame = class(TForm)
   private
+    FOnOpenFile: TProc;
+    FBuildHint: string;
+    FServerChecks: Boolean;
+    procedure CreateButtons(const AFileName: string);
+    procedure CreateHint;
+    procedure UpdateHint;
+    procedure OpenClick(Sender: TObject);
+    procedure OkClick(Sender: TObject);
+    procedure SetBuildHint(const AValue: string);
+    procedure SetServerChecks(AValue: Boolean);
+  protected
     FModel: TAtlasSettingsModel;
-    // Getippter Text der Zahlen- und JSON-Felder; ungültige Eingaben verhindern OK.
-    FRaw: TArray<string>;
-    FRawValid: TArray<Boolean>;
-    FStates: TArray<TLabel>;
-    FResets: TArray<TButton>;
-    FFileEdits: TArray<TEdit>;
-    FTextChoices: TArray<TArray<TAtlasSettingChoice>>;
+    FBox: TScrollBox;
+    FHint: TLabel;
+    /// <summary>AModel bleibt beim Aufrufer. AFileName: bearbeitete Datei für die Anzeige.</summary>
+    constructor CreateFrame(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
+    /// <summary>Fläche der Felder; nach dem Seitenbaum anlegen.</summary>
+    procedure CreateBox;
+    /// <summary>Höhe des Hinweises zur neuen Breite: Ein umbrechendes Label rechnet sie nur beim Setzen des
+    /// Textes, vor dem Anzeigen war es noch schmal und hinterließ einen hohen leeren Streifen.</summary>
+    procedure Resize; override;
+  public
+    /// <summary>Prüfen wie bei OK; True, wenn gespeichert werden darf.</summary>
+    function Validate: Boolean; virtual; abstract;
+    property Model: TAtlasSettingsModel read FModel;
+    property HintLabel: TLabel read FHint;
+    property OnOpenFile: TProc read FOnOpenFile write FOnOpenFile;
+    /// <summary>Hinweis auf eine Auswahl von Konfiguration und Plattform in der IDE (selectBuild); '' ohne.</summary>
+    property BuildHint: string read FBuildHint write SetBuildHint;
+    /// <summary>Der Server prüft beim Speichern; sonst steht oben ein Hinweis.</summary>
+    property ServerChecks: Boolean read FServerChecks write SetServerChecks;
+  end;
+
+  /// <summary>Seitenbaum: ein Knoten je Seite, unter der Seite mit "rules" einer je Regelgruppe.</summary>
+  TAtlasSettingsDialogPages = class(TAtlasSettingsDialogFrame)
+  private
+    FSelecting: Boolean;
+    procedure CreateTree;
+    procedure AddGroupNodes(APage: Integer);
+    procedure PageTreeChange(Sender: TObject; Node: TTreeNode);
+  protected
     FPages: TArray<string>;
     FPageTree: TTreeView;
     /// <summary>Knoten je Seite (Index wie FPages) und je Regelgruppe (Index wie FGroups).</summary>
@@ -72,39 +111,32 @@ type
     /// <summary>Gezeigt: Seite FCurrentPage oder Gruppe FCurrentGroup (Index), das andere -1.</summary>
     FCurrentPage: Integer;
     FCurrentGroup: Integer;
-    FSelecting: Boolean;
-    FBox: TScrollBox;
-    FHint: TLabel;
-    FOnOpenFile: TProc;
+    /// <summary>Feld "rules"; -1 ohne.</summary>
+    FRuleIndex: Integer;
+    constructor CreatePages(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
+    /// <summary>Seite mit dem Feld "rules"; -1 ohne.</summary>
+    function RulePage: Integer;
+    procedure SelectNode(ANode: TTreeNode);
+    procedure ShowCurrent;
+    procedure ShowPage(APage: Integer); virtual; abstract;
+    procedure ShowGroup(AGroup: Integer); virtual; abstract;
+  public
+    /// <summary>Seite mit diesem Namen zeigen; False ohne sie.</summary>
+    function SelectPage(const APage: string): Boolean;
+    /// <summary>Knoten der Regelgruppe AGroup; nil ohne.</summary>
+    function GroupNode(const AGroup: string): TTreeNode;
+    property Pages: TArray<string> read FPages;
+    property PageTree: TTreeView read FPageTree;
+  end;
+
+  /// <summary>Felder einer Seite mit Zustand und „Auf Standard zurücksetzen“ und ihre Prüfung vor OK.</summary>
+  TAtlasSettingsDialogFields = class(TAtlasSettingsDialogPages)
+  private
     FOnChoices: TAtlasSettingChoicesFunc;
     FOnValidate: TAtlasSettingsCheckFunc;
-    FCatalog: TJSONValue;
-    FBuildHint: string;
-    FProjectHint: string;
-    FServerChecks: Boolean;
-    // Regel-Editor: Feld "rules" und sein Wert mit den Änderungen.
-    FRuleIndex: Integer;
-    FRulesJson: string;
-    /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
-    FGlobalRulesJson: string;
-    FRuleEditor: TAtlasRulesEditor;
-    /// <summary>Höhe des Regel-Editors, mit der die Felder darunter stehen (#1296).</summary>
-    FRuleHeight: Integer;
-    function ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
-    function ResetCaption: string;
-    function AddLabel(const AText: string; ATop: Integer): TLabel;
-    procedure ClearBox;
-    procedure ShowPage(APage: Integer);
-    procedure ShowGroup(AGroup: Integer);
-    procedure ShowCurrent;
-    procedure SelectNode(ANode: TTreeNode);
-    procedure UpdateState(AIndex: Integer);
-    procedure UpdateHint;
-    function AddRuleTable(ATop: Integer; const AGroup: string): Integer;
-    procedure RuleEditorChange(Sender: TObject);
-    procedure RuleEditorResize(Sender: TObject);
-    function GetRuleList: TListView;
-    procedure PageTreeChange(Sender: TObject; Node: TTreeNode);
+    function RawProblem(AIndex: Integer): string;
+    function RawValid: Boolean;
+    function ServerAccepts: Boolean;
     procedure CheckClick(Sender: TObject);
     procedure EditChange(Sender: TObject);
     procedure ComboChange(Sender: TObject);
@@ -113,50 +145,72 @@ type
     procedure JsonChange(Sender: TObject);
     procedure BrowseClick(Sender: TObject);
     procedure ResetClick(Sender: TObject);
-    procedure OpenClick(Sender: TObject);
-    procedure OkClick(Sender: TObject);
-    procedure SetBuildHint(const AValue: string);
     procedure SetProjectHint(const AValue: string);
-    procedure SetServerChecks(AValue: Boolean);
   protected
-    /// <summary>Höhe des Hinweises zur neuen Breite: Ein umbrechendes Label rechnet sie nur beim Setzen des
-    /// Textes, vor dem Anzeigen war es noch schmal und hinterließ einen hohen leeren Streifen.</summary>
-    procedure Resize; override;
+    // Getippter Text der Zahlen- und JSON-Felder; ungültige Eingaben verhindern OK.
+    FRaw: TArray<string>;
+    FRawValid: TArray<Boolean>;
+    FStates: TArray<TLabel>;
+    FResets: TArray<TButton>;
+    FFileEdits: TArray<TEdit>;
+    FTextChoices: TArray<TArray<TAtlasSettingChoice>>;
+    FProjectHint: string;
+    constructor CreateFields(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
+    function ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
+    function AddLabel(const AText: string; ATop: Integer): TLabel;
+    procedure ClearBox; virtual;
+    procedure ShowPage(APage: Integer); override;
+    procedure UpdateState(AIndex: Integer);
+    /// <summary>Wert von AIndex auf den Standard zurücksetzen.</summary>
+    procedure ResetValue(AIndex: Integer); virtual;
+    /// <summary>Regeltabelle ab ATop, mit AGroup nur diese Gruppe; liefert die Oberkante darunter.</summary>
+    function AddRuleTable(ATop: Integer; const AGroup: string): Integer; virtual; abstract;
+  public
+    /// <summary>Text des Zustands eines Felds auf der gezeigten Seite; '' wenn nicht gezeigt.</summary>
+    function StateText(const APath: string): string;
+    function Validate: Boolean; override;
+    /// <summary>Vor dem ersten Anzeigen einer Seite setzen.</summary>
+    property OnChoices: TAtlasSettingChoicesFunc read FOnChoices write FOnChoices;
+    property OnValidate: TAtlasSettingsCheckFunc read FOnValidate write FOnValidate;
+    /// <summary>Aktives Projekt für den Hinweis beim Feld "project"; '' ohne.</summary>
+    property ProjectHint: string read FProjectHint write SetProjectHint;
+  end;
+
+  /// <summary>Der Dialog mit dem Regel-Editor (#909) für das Feld "rules".</summary>
+  TAtlasProjectSettingsDialog = class(TAtlasSettingsDialogFields)
+  private
+    FCatalog: TJSONValue;
+    // Regel-Editor: Wert von "rules" mit den Änderungen.
+    FRulesJson: string;
+    /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
+    FGlobalRulesJson: string;
+    FRuleEditor: TAtlasRulesEditor;
+    /// <summary>Höhe des Regel-Editors, mit der die Felder darunter stehen (#1296).</summary>
+    FRuleHeight: Integer;
+    function HasRule(const AId: string): Boolean;
+    function RuleTarget(const AId: string): TTreeNode;
+    procedure ApplyRules(const AUpdated: string);
+    procedure RuleEditorChange(Sender: TObject);
+    procedure RuleEditorResize(Sender: TObject);
+    function GetRuleList: TListView;
+  protected
+    procedure ShowGroup(AGroup: Integer); override;
+    procedure ClearBox; override;
+    procedure ResetValue(AIndex: Integer); override;
+    function AddRuleTable(ATop: Integer; const AGroup: string): Integer; override;
   public
     /// <summary>AModel bleibt beim Aufrufer. AFileName: bearbeitete Datei für die Anzeige.</summary>
     constructor CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
-    /// <summary>Seite mit diesem Namen zeigen; False ohne sie.</summary>
-    function SelectPage(const APage: string): Boolean;
-    /// <summary>Text des Zustands eines Felds auf der gezeigten Seite; '' wenn nicht gezeigt.</summary>
-    function StateText(const APath: string): string;
     /// <summary>Schweregrad einer Regel wie über die Tabelle setzen ('' = Vorgabe); False ohne die Regel.</summary>
     function SetRuleSeverity(const AId, ASeverity: string): Boolean;
     /// <summary>Knoten der Gruppe der Regel zeigen und die Regel markieren („Regel einstellen…“, #909); False
     /// ohne Katalog, ohne "rules" oder ohne die Regel.</summary>
     function SelectRule(const AId: string): Boolean;
-    /// <summary>Knoten der Regelgruppe AGroup; nil ohne.</summary>
-    function GroupNode(const AGroup: string): TTreeNode;
-    /// <summary>Prüfen wie bei OK; True, wenn gespeichert werden darf.</summary>
-    function Validate: Boolean;
-    property Model: TAtlasSettingsModel read FModel;
-    property Pages: TArray<string> read FPages;
-    property PageTree: TTreeView read FPageTree;
     property RuleList: TListView read GetRuleList;
     /// <summary>Regel-Editor auf der gezeigten Seite; nil ohne "rules".</summary>
     property RuleEditor: TAtlasRulesEditor read FRuleEditor;
-    property HintLabel: TLabel read FHint;
-    property OnOpenFile: TProc read FOnOpenFile write FOnOpenFile;
-    /// <summary>Vor dem ersten Anzeigen einer Seite setzen.</summary>
-    property OnChoices: TAtlasSettingChoicesFunc read FOnChoices write FOnChoices;
-    property OnValidate: TAtlasSettingsCheckFunc read FOnValidate write FOnValidate;
     /// <summary>Antwort von atlas.server.settingsCatalog für die Regeltabelle; bleibt beim Aufrufer.</summary>
     property Catalog: TJSONValue read FCatalog write FCatalog;
-    /// <summary>Hinweis auf eine Auswahl von Konfiguration und Plattform in der IDE (selectBuild); '' ohne.</summary>
-    property BuildHint: string read FBuildHint write SetBuildHint;
-    /// <summary>Aktives Projekt für den Hinweis beim Feld "project"; '' ohne.</summary>
-    property ProjectHint: string read FProjectHint write SetProjectHint;
-    /// <summary>Der Server prüft beim Speichern; sonst steht oben ein Hinweis.</summary>
-    property ServerChecks: Boolean read FServerChecks write SetServerChecks;
   end;
 
 implementation
@@ -179,105 +233,137 @@ const
 /// <summary>Gültiger JSON-Wert (auch Zahl oder String)?</summary>
 function IsJsonValue(const AText: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := TJSONObject.ParseJSONValue(TAtlasJsonText.StripComments(AText));
-  Result := Value <> nil;
-  Value.Free;
+  mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.StripComments(AText));
+  Result := mValue <> nil;
+  mValue.Free;
 end;
 
-constructor TAtlasProjectSettingsDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel;
-  const AFileName: string);
-var
-  Index: Integer;
-  Bottom: TPanel;
-  Button: TButton;
-  FileLabel: TLabel;
-  Group: string;
-  Node: TTreeNode;
+function IsEnglish: Boolean;
 begin
-  inherited CreateNew(AOwner);
-  FCurrentPage := -1;
-  FCurrentGroup := -1;
-  FModel := AModel;
-  if FModel.Global then
+  Result := TAtlasStrings.Language = TAtlasLanguage.English;
+end;
+
+function DialogTitle(AGlobal: Boolean): string;
+begin
+  if AGlobal then
   begin
-    Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
   end
   else
   begin
-    Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle);
+    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle);
   end;
+end;
+
+function OpenFileCaption(AGlobal: Boolean): string;
+begin
+  if AGlobal then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.GlobalSettingsOpenFile);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOpenFile);
+  end;
+end;
+
+function NewButton(AParent: TWinControl; const ACaption: string; ALeft, AWidth: Integer): TButton;
+begin
+  Result := TButton.Create(AParent.Owner);
+  Result.Parent := AParent;
+  Result.SetBounds(ALeft, 8, AWidth, 28);
+  Result.Caption := ACaption;
+end;
+
+/// <summary>Strings eines JSON-Arrays als Zeilen in ALines; anderes bleibt weg.</summary>
+procedure AddJsonStrings(ALines: TStrings; const AJson: string);
+var
+  mValue: TJSONValue;
+  mItem: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+    begin
+      Exit;
+    end;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if mItem is TJSONString then
+      begin
+        ALines.Add(TJSONString(mItem).Value);
+      end;
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+function HasError(const AIssues: TArray<TAtlasSettingIssue>): Boolean;
+var
+  mIssue: TAtlasSettingIssue;
+begin
+  Result := False;
+  for mIssue in AIssues do
+  begin
+    if mIssue.Error then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+{ TAtlasSettingsDialogFrame }
+
+constructor TAtlasSettingsDialogFrame.CreateFrame(AOwner: TComponent; AModel: TAtlasSettingsModel;
+  const AFileName: string);
+begin
+  inherited CreateNew(AOwner);
+  FModel := AModel;
+  Caption := DialogTitle(FModel.Global);
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   Width := 960;
   Height := 660;
   FServerChecks := True;
-  SetLength(FRaw, FModel.Count);
-  SetLength(FRawValid, FModel.Count);
-  SetLength(FStates, FModel.Count);
-  SetLength(FResets, FModel.Count);
-  SetLength(FFileEdits, FModel.Count);
-  SetLength(FTextChoices, FModel.Count);
-  for Index := 0 to FModel.Count - 1 do
-  begin
-    if FModel.Typed(Index) then
-    begin
-      FRaw[Index] := TAtlasSettingsSchema.Display(FModel.Current(Index));
-    end
-    else
-    begin
-      FRaw[Index] := FModel.Current(Index);
-    end;
-    FRawValid[Index] := True;
-  end;
-  FRuleIndex := FModel.IndexOf(RulesPath);
-  if FRuleIndex >= 0 then
-  begin
-    FRulesJson := FModel.Current(FRuleIndex);
-    if not FModel.Global then
-    begin
-      FGlobalRulesJson := FModel.Inherited_(FRuleIndex);
-    end;
-  end;
+  CreateButtons(AFileName);
+  CreateHint;
+end;
 
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := 44;
-  Bottom.BevelOuter := bvNone;
-  FileLabel := TLabel.Create(Self);
-  FileLabel.Parent := Bottom;
-  FileLabel.Left := 170;
-  FileLabel.Top := 14;
-  FileLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsFile, [AFileName]);
-  Button := TButton.Create(Self);
-  Button.Parent := Bottom;
-  Button.SetBounds(Gap, 8, 150, 28);
-  if FModel.Global then
-  begin
-    Button.Caption := TAtlasStrings.Text(TAtlasTextId.GlobalSettingsOpenFile);
-  end
-  else
-  begin
-    Button.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOpenFile);
-  end;
-  Button.OnClick := OpenClick;
-  Button := TButton.Create(Self);
-  Button.Parent := Bottom;
-  Button.SetBounds(Bottom.Width - 2 * (90 + Gap), 8, 90, 28);
-  Button.Anchors := [akTop, akRight];
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOk);
-  Button.Default := True;
-  Button.OnClick := OkClick;
-  Button := TButton.Create(Self);
-  Button.Parent := Bottom;
-  Button.SetBounds(Bottom.Width - (90 + Gap), 8, 90, 28);
-  Button.Anchors := [akTop, akRight];
-  Button.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
-  Button.Cancel := True;
-  Button.ModalResult := mrCancel;
+procedure TAtlasSettingsDialogFrame.CreateButtons(const AFileName: string);
+var
+  mBottom: TPanel;
+  mButton: TButton;
+  mFileLabel: TLabel;
+begin
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := 44;
+  mBottom.BevelOuter := bvNone;
+  mFileLabel := TLabel.Create(Self);
+  mFileLabel.Parent := mBottom;
+  mFileLabel.Left := 170;
+  mFileLabel.Top := 14;
+  mFileLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsFile, [AFileName]);
+  mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), Gap, 150);
+  mButton.OnClick := OpenClick;
+  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsOk), mBottom.Width - 2 * (90 + Gap),
+    90);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Default := True;
+  mButton.OnClick := OkClick;
+  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel), mBottom.Width - (90 + Gap),
+    90);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Cancel := True;
+  mButton.ModalResult := mrCancel;
+end;
 
+procedure TAtlasSettingsDialogFrame.CreateHint;
+begin
   // Hinweise oben: Auswahl in der IDE (selectBuild) und Prüfung ohne Server.
   FHint := TLabel.Create(Self);
   FHint.Parent := Self;
@@ -286,7 +372,90 @@ begin
   FHint.WordWrap := True;
   FHint.Font.Color := clGrayText;
   FHint.Visible := False;
+end;
 
+procedure TAtlasSettingsDialogFrame.CreateBox;
+begin
+  FBox := TScrollBox.Create(Self);
+  FBox.Parent := Self;
+  FBox.Align := alClient;
+  FBox.BorderStyle := bsNone;
+  FBox.VertScrollBar.Tracking := True;
+end;
+
+procedure TAtlasSettingsDialogFrame.UpdateHint;
+var
+  mLines: TArray<string>;
+begin
+  mLines := nil;
+  if FBuildHint <> '' then
+  begin
+    mLines := mLines + [FBuildHint];
+  end;
+  if not FServerChecks then
+  begin
+    mLines := mLines + [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsSyntaxOnly)];
+  end;
+  FHint.Caption := string.Join(sLineBreak, mLines);
+  FHint.Visible := Length(mLines) > 0;
+end;
+
+procedure TAtlasSettingsDialogFrame.Resize;
+begin
+  inherited Resize;
+  if (FHint <> nil) and FHint.Visible then
+  begin
+    FHint.AutoSize := False;
+    FHint.AutoSize := True;
+  end;
+end;
+
+procedure TAtlasSettingsDialogFrame.SetBuildHint(const AValue: string);
+begin
+  FBuildHint := AValue;
+  UpdateHint;
+end;
+
+procedure TAtlasSettingsDialogFrame.SetServerChecks(AValue: Boolean);
+begin
+  FServerChecks := AValue;
+  UpdateHint;
+end;
+
+procedure TAtlasSettingsDialogFrame.OpenClick(Sender: TObject);
+begin
+  if Assigned(FOnOpenFile) then
+  begin
+    ModalResult := mrCancel;
+    FOnOpenFile();
+  end;
+end;
+
+procedure TAtlasSettingsDialogFrame.OkClick(Sender: TObject);
+begin
+  if Validate then
+  begin
+    ModalResult := mrOk;
+  end;
+end;
+
+{ TAtlasSettingsDialogPages }
+
+constructor TAtlasSettingsDialogPages.CreatePages(AOwner: TComponent; AModel: TAtlasSettingsModel;
+  const AFileName: string);
+begin
+  inherited CreateFrame(AOwner, AModel, AFileName);
+  FCurrentPage := -1;
+  FCurrentGroup := -1;
+  FRuleIndex := FModel.IndexOf(RulesPath);
+  CreateTree;
+  CreateBox;
+end;
+
+procedure TAtlasSettingsDialogPages.CreateTree;
+var
+  mIndex: Integer;
+begin
   FPageTree := TTreeView.Create(Self);
   FPageTree.Parent := Self;
   FPageTree.Align := alLeft;
@@ -300,62 +469,71 @@ begin
   SetLength(FPageNodes, Length(FPages));
   FPageTree.Items.BeginUpdate;
   try
-    for Index := 0 to High(FPages) do
+    for mIndex := 0 to High(FPages) do
     begin
-      FPageNodes[Index] := FPageTree.Items.Add(nil,
-      TAtlasSettingsPageNames.Caption(FPages[Index], TAtlasStrings.Language = TAtlasLanguage.English));
-      FPageNodes[Index].Data := Pointer(NativeInt(Index));
+      FPageNodes[mIndex] := FPageTree.Items.Add(nil, TAtlasSettingsPageNames.Caption(FPages[mIndex], IsEnglish));
+      FPageNodes[mIndex].Data := Pointer(NativeInt(mIndex));
     end;
-    // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
-    if FRuleIndex >= 0 then
-    begin
-      for Index := 0 to High(FPages) do
-      begin
-        if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
-        begin
-          for Group in TAtlasRuleTable.GroupIds do
-          begin
-            Node := FPageTree.Items.AddChild(FPageNodes[Index], AtlasRuleGroupCaption(Group));
-            Node.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
-            FGroups := FGroups + [Group];
-            FGroupNodes := FGroupNodes + [Node];
-          end;
-          FPageNodes[Index].Expand(False);
-        end;
-      end;
-    end;
+    AddGroupNodes(RulePage);
   finally
     FPageTree.Items.EndUpdate;
   end;
+end;
 
-  FBox := TScrollBox.Create(Self);
-  FBox.Parent := Self;
-  FBox.Align := alClient;
-  FBox.BorderStyle := bsNone;
-  FBox.VertScrollBar.Tracking := True;
-
-  if Length(FPageNodes) > 0 then
+procedure TAtlasSettingsDialogPages.AddGroupNodes(APage: Integer);
+var
+  mGroup: string;
+  mNode: TTreeNode;
+begin
+  // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
+  if APage < 0 then
   begin
-    SelectNode(FPageNodes[0]);
+    Exit;
+  end;
+  for mGroup in TAtlasRuleTable.GroupIds do
+  begin
+    mNode := FPageTree.Items.AddChild(FPageNodes[APage], AtlasRuleGroupCaption(mGroup));
+    mNode.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
+    FGroups := FGroups + [mGroup];
+    FGroupNodes := FGroupNodes + [mNode];
+  end;
+  FPageNodes[APage].Expand(False);
+end;
+
+function TAtlasSettingsDialogPages.RulePage: Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if FRuleIndex < 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(FPages) do
+  begin
+    if SameText(FPages[mIndex], FModel.Fields[FRuleIndex].Page) then
+    begin
+      Result := mIndex;
+    end;
   end;
 end;
 
-function TAtlasProjectSettingsDialog.SelectPage(const APage: string): Boolean;
+function TAtlasSettingsDialogPages.SelectPage(const APage: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FPages) do
+  for mIndex := 0 to High(FPages) do
   begin
-    if SameText(FPages[Index], APage) then
+    if SameText(FPages[mIndex], APage) then
     begin
-      SelectNode(FPageNodes[Index]);
+      SelectNode(FPageNodes[mIndex]);
       Exit(True);
     end;
   end;
   Result := False;
 end;
 
-procedure TAtlasProjectSettingsDialog.SelectNode(ANode: TTreeNode);
+procedure TAtlasSettingsDialogPages.SelectNode(ANode: TTreeNode);
 begin
   // Auch ein schon gewählter Knoten baut neu auf; OnChange käme dann nicht.
   FSelecting := True;
@@ -367,26 +545,26 @@ begin
   PageTreeChange(FPageTree, ANode);
 end;
 
-procedure TAtlasProjectSettingsDialog.PageTreeChange(Sender: TObject; Node: TTreeNode);
+procedure TAtlasSettingsDialogPages.PageTreeChange(Sender: TObject; Node: TTreeNode);
 var
-  Tag: NativeInt;
+  mTag: NativeInt;
 begin
   if FSelecting or (Node = nil) or (FBox = nil) then
   begin
     Exit;
   end;
-  Tag := NativeInt(Node.Data);
-  if Tag >= GroupBase then
+  mTag := NativeInt(Node.Data);
+  if mTag >= GroupBase then
   begin
-    ShowGroup(Tag - GroupBase);
+    ShowGroup(mTag - GroupBase);
   end
   else
   begin
-    ShowPage(Tag);
+    ShowPage(mTag);
   end;
 end;
 
-procedure TAtlasProjectSettingsDialog.ShowCurrent;
+procedure TAtlasSettingsDialogPages.ShowCurrent;
 begin
   if FCurrentGroup >= 0 then
   begin
@@ -398,77 +576,354 @@ begin
   end;
 end;
 
-function TAtlasProjectSettingsDialog.GroupNode(const AGroup: string): TTreeNode;
+function TAtlasSettingsDialogPages.GroupNode(const AGroup: string): TTreeNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FGroups) do
+  for mIndex := 0 to High(FGroups) do
   begin
-    if SameText(FGroups[Index], AGroup) then
+    if SameText(FGroups[mIndex], AGroup) then
     begin
-      Exit(FGroupNodes[Index]);
+      Exit(FGroupNodes[mIndex]);
     end;
   end;
   Result := nil;
 end;
 
-function TAtlasProjectSettingsDialog.SelectRule(const AId: string): Boolean;
+{ TSettingsFieldRow }
+
+type
+  /// <summary>Baut die Zeile eines Felds auf der Seite: Name, Hinweise, Bedienelement, Zustand und
+  /// Zurücksetzen.</summary>
+  TSettingsFieldRow = record
+    Dialog: TAtlasSettingsDialogFields;
+    Box: TScrollBox;
+    Index: Integer;
+    Field: TAtlasSettingField;
+    Top: Integer;
+    Width_: Integer;
+    Control: TControl;
+    procedure Header;
+    procedure Note(const AText: string; AGray: Boolean);
+    procedure Notes;
+    procedure JsonMemo;
+    function NewCheck: TControl;
+    function NewEdit: TEdit;
+    function TextCombo(const AChoices: TArray<TAtlasSettingChoice>): TControl;
+    procedure FileButton(AEdit: TEdit);
+    procedure TextControl;
+    function ChoiceCombo: TControl;
+    function ListMemo: TControl;
+    procedure ValueControl;
+    procedure StateAndReset;
+    /// <summary>Baut die Zeile ab ATop und liefert die Oberkante der nächsten.</summary>
+    function Build(ADialog: TAtlasSettingsDialogFields; AIndex, ATop: Integer): Integer;
+  end;
+
+procedure TSettingsFieldRow.Header;
 var
-  Row: TAtlasRuleRow;
-  Target: TTreeNode;
-  Index: Integer;
+  mName: TLabel;
 begin
-  Result := False;
-  if (FRuleIndex < 0) or (FCatalog = nil) then
+  mName := TLabel.Create(Box);
+  mName.Parent := Box;
+  mName.SetBounds(Gap * 2, Top, 400, 16);
+  mName.Font.Style := [fsBold];
+  mName.Caption := Field.Path;
+  if Field.Experimental then
   begin
+    mName.Caption := mName.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+  end;
+  Inc(Top, 20);
+end;
+
+procedure TSettingsFieldRow.Note(const AText: string; AGray: Boolean);
+var
+  mNote: TLabel;
+begin
+  mNote := Dialog.AddLabel(AText, Top);
+  if AGray then
+  begin
+    mNote.Font.Color := clGrayText;
+  end;
+  Inc(Top, mNote.Height + 4);
+end;
+
+procedure TSettingsFieldRow.Notes;
+begin
+  if Field.DescriptionFor(IsEnglish) <> '' then
+  begin
+    Note(Field.DescriptionFor(IsEnglish), False);
+  end;
+  if Field.Restart then
+  begin
+    Note(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRestart), True);
+  end;
+  if (Field.Path = 'project') and (Dialog.FProjectHint <> '') then
+  begin
+    Note(TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsActiveProject, [Dialog.FProjectHint]), True);
+  end;
+end;
+
+procedure TSettingsFieldRow.JsonMemo;
+var
+  mMemo: TMemo;
+begin
+  // JSON-Text für alles, was mehr als ein einfacher Wert ist.
+  Note(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsJsonHint), True);
+  mMemo := TMemo.Create(Box);
+  mMemo.Parent := Box;
+  mMemo.Height := 120;
+  mMemo.ScrollBars := ssBoth;
+  mMemo.WordWrap := False;
+  mMemo.Font.Name := 'Consolas';
+  mMemo.Text := Dialog.FRaw[Index];
+  mMemo.OnChange := Dialog.JsonChange;
+  Control := mMemo;
+  Width_ := Max(ControlWidth, Box.ClientWidth - Gap * 5 - 300);
+end;
+
+function TSettingsFieldRow.NewCheck: TControl;
+var
+  mCheck: TCheckBox;
+begin
+  mCheck := TCheckBox.Create(Box);
+  mCheck.Parent := Box;
+  mCheck.Caption := Field.Path;
+  mCheck.Checked := Dialog.FModel.Effective(Index) = 'true';
+  mCheck.OnClick := Dialog.CheckClick;
+  Result := mCheck;
+end;
+
+function TSettingsFieldRow.NewEdit: TEdit;
+begin
+  Result := TEdit.Create(Box);
+  Result.Parent := Box;
+  if Dialog.FModel.Current(Index) <> '' then
+  begin
+    Result.Text := Dialog.FRaw[Index];
+  end
+  else
+  begin
+    Result.TextHint := TAtlasSettingsSchema.Display(Dialog.FModel.Fallback(Index));
+  end;
+  Result.OnChange := Dialog.EditChange;
+end;
+
+function TSettingsFieldRow.TextCombo(const AChoices: TArray<TAtlasSettingChoice>): TControl;
+var
+  mCombo: TComboBox;
+  mChoice: Integer;
+begin
+  // Auswahl mit freier Eingabe: Anzeige der Auswahl, gespeichert wird ihr JSON-Text.
+  Dialog.FTextChoices[Index] := AChoices;
+  mCombo := TComboBox.Create(Box);
+  mCombo.Parent := Box;
+  mCombo.Style := csDropDown;
+  for mChoice := 0 to High(AChoices) do
+  begin
+    mCombo.Items.Add(AChoices[mChoice].Caption);
+  end;
+  mChoice := TAtlasSettingChoices.IndexOf(AChoices, Dialog.FModel.Current(Index));
+  if mChoice >= 0 then
+  begin
+    mCombo.ItemIndex := mChoice;
+  end
+  else if Dialog.FModel.Current(Index) <> '' then
+  begin
+    mCombo.Text := Dialog.FRaw[Index];
+  end
+  else
+  begin
+    mCombo.TextHint := TAtlasSettingsSchema.Display(Dialog.FModel.Fallback(Index));
+  end;
+  mCombo.OnChange := Dialog.TextComboChange;
+  Result := mCombo;
+end;
+
+procedure TSettingsFieldRow.FileButton(AEdit: TEdit);
+var
+  mBrowse: TButton;
+begin
+  Dialog.FFileEdits[Index] := AEdit;
+  Width_ := ControlWidth - 34;
+  mBrowse := TButton.Create(Box);
+  mBrowse.Parent := Box;
+  mBrowse.SetBounds(Gap * 2 + ControlWidth - 30, Top, 30, 24);
+  mBrowse.Caption := '…';
+  mBrowse.Tag := Index;
+  mBrowse.OnClick := Dialog.BrowseClick;
+end;
+
+procedure TSettingsFieldRow.TextControl;
+var
+  mChoices: TArray<TAtlasSettingChoice>;
+  mEdit: TEdit;
+begin
+  mChoices := Dialog.ChoicesOf(Index);
+  if Length(mChoices) > 0 then
+  begin
+    Control := TextCombo(mChoices);
     Exit;
   end;
-  Target := nil;
-  for Row in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
+  mEdit := NewEdit;
+  Control := mEdit;
+  if Field.PicksFile then
   begin
-    if SameText(Row.Id, AId) then
+    FileButton(mEdit);
+  end;
+end;
+
+function TSettingsFieldRow.ChoiceCombo: TControl;
+var
+  mCombo: TComboBox;
+  mChoice: Integer;
+begin
+  mCombo := TComboBox.Create(Box);
+  mCombo.Parent := Box;
+  mCombo.Style := csDropDownList;
+  for mChoice := 0 to High(Field.Choices) do
+  begin
+    mCombo.Items.Add(TAtlasSettingsSchema.Display(Field.Choices[mChoice]));
+    if Field.Choices[mChoice] = Dialog.FModel.Effective(Index) then
     begin
-      // Knoten der Gruppe der Regel, sonst die Seite mit allen Regeln.
-      Target := GroupNode(Row.Group);
-      if Target = nil then
-      begin
-        for Index := 0 to High(FPages) do
-        begin
-          if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
-          begin
-            Target := FPageNodes[Index];
-          end;
-        end;
-      end;
+      mCombo.ItemIndex := mChoice;
     end;
   end;
-  if Target = nil then
-  begin
-    Exit;
-  end;
-  SelectNode(Target);
-  Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
+  mCombo.OnChange := Dialog.ComboChange;
+  Result := mCombo;
 end;
 
-function TAtlasProjectSettingsDialog.StateText(const APath: string): string;
+function TSettingsFieldRow.ListMemo: TControl;
 var
-  Index: Integer;
+  mMemo: TMemo;
+begin
+  mMemo := TMemo.Create(Box);
+  mMemo.Parent := Box;
+  mMemo.Height := 72;
+  mMemo.ScrollBars := ssVertical;
+  AddJsonStrings(mMemo.Lines, Dialog.FModel.Effective(Index));
+  mMemo.OnChange := Dialog.MemoChange;
+  Result := mMemo;
+end;
+
+procedure TSettingsFieldRow.ValueControl;
+begin
+  case Field.Kind of
+    TAtlasSettingKind.Boolean_:
+      Control := NewCheck;
+    TAtlasSettingKind.Integer_:
+      Control := NewEdit;
+    TAtlasSettingKind.Text:
+      TextControl;
+    TAtlasSettingKind.Choice:
+      Control := ChoiceCombo;
+    TAtlasSettingKind.List:
+      Control := ListMemo;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TSettingsFieldRow.StateAndReset;
+var
+  mState: TLabel;
+  mReset: TButton;
+begin
+  mState := TLabel.Create(Box);
+  mState.Parent := Box;
+  if Control <> nil then
+  begin
+    Control.Tag := Index;
+    Control.SetBounds(Gap * 2, Top, Width_, Control.Height);
+    mState.SetBounds(Gap * 2 + Width_ + Gap, Top + 4, 150, 16);
+  end
+  else
+  begin
+    mState.SetBounds(Gap * 2, Top, 150, 16);
+  end;
+  mState.Font.Color := clGrayText;
+  Dialog.FStates[Index] := mState;
+  // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
+  mReset := TButton.Create(Box);
+  mReset.Parent := Box;
+  mReset.SetBounds(mState.Left + 150 + Gap, mState.Top - 4, 140, 24);
+  mReset.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetDefault);
+  mReset.Tag := Index;
+  mReset.OnClick := Dialog.ResetClick;
+  Dialog.FResets[Index] := mReset;
+  Dialog.UpdateState(Index);
+end;
+
+function TSettingsFieldRow.Build(ADialog: TAtlasSettingsDialogFields; AIndex, ATop: Integer): Integer;
+begin
+  Dialog := ADialog;
+  Box := ADialog.FBox;
+  Index := AIndex;
+  Field := ADialog.FModel.Fields[AIndex];
+  Top := ATop;
+  Width_ := ControlWidth;
+  Control := nil;
+  Header;
+  Notes;
+  if Index = Dialog.FRuleIndex then
+  begin
+    // Regeltabelle aus dem Katalog; der Zustand gilt für "rules" als Ganzes.
+    Top := Dialog.AddRuleTable(Top, '');
+  end
+  else if not Dialog.FModel.Typed(Index) then
+  begin
+    JsonMemo;
+  end
+  else
+  begin
+    ValueControl;
+  end;
+  StateAndReset;
+  Result := Top + 24 + Gap * 2;
+  if Control <> nil then
+  begin
+    Result := Top + Control.Height + Gap * 2;
+  end;
+end;
+
+{ TAtlasSettingsDialogFields }
+
+constructor TAtlasSettingsDialogFields.CreateFields(AOwner: TComponent; AModel: TAtlasSettingsModel;
+  const AFileName: string);
+var
+  mIndex: Integer;
+begin
+  inherited CreatePages(AOwner, AModel, AFileName);
+  SetLength(FRaw, FModel.Count);
+  SetLength(FRawValid, FModel.Count);
+  SetLength(FStates, FModel.Count);
+  SetLength(FResets, FModel.Count);
+  SetLength(FFileEdits, FModel.Count);
+  SetLength(FTextChoices, FModel.Count);
+  for mIndex := 0 to FModel.Count - 1 do
+  begin
+    FRaw[mIndex] := FModel.Current(mIndex);
+    if FModel.Typed(mIndex) then
+    begin
+      FRaw[mIndex] := TAtlasSettingsSchema.Display(FModel.Current(mIndex));
+    end;
+    FRawValid[mIndex] := True;
+  end;
+end;
+
+function TAtlasSettingsDialogFields.StateText(const APath: string): string;
+var
+  mIndex: Integer;
 begin
   Result := '';
-  Index := FModel.IndexOf(APath);
-  if (Index >= 0) and (FStates[Index] <> nil) then
+  mIndex := FModel.IndexOf(APath);
+  if (mIndex >= 0) and (FStates[mIndex] <> nil) then
   begin
-    Result := FStates[Index].Caption;
+    Result := FStates[mIndex].Caption;
   end;
 end;
 
-function TAtlasProjectSettingsDialog.ResetCaption: string;
-begin
-  // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
-  Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetDefault);
-end;
-
-function TAtlasProjectSettingsDialog.ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
+function TAtlasSettingsDialogFields.ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
 begin
   Result := nil;
   if Assigned(FOnChoices) then
@@ -482,52 +937,13 @@ begin
   end;
 end;
 
-procedure TAtlasProjectSettingsDialog.UpdateHint;
-var
-  Lines: TArray<string>;
-begin
-  Lines := nil;
-  if FBuildHint <> '' then
-  begin
-    Lines := Lines + [FBuildHint];
-  end;
-  if not FServerChecks then
-  begin
-    Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsSyntaxOnly)];
-  end;
-  FHint.Caption := string.Join(sLineBreak, Lines);
-  FHint.Visible := Length(Lines) > 0;
-end;
-
-procedure TAtlasProjectSettingsDialog.Resize;
-begin
-  inherited Resize;
-  if (FHint <> nil) and FHint.Visible then
-  begin
-    FHint.AutoSize := False;
-    FHint.AutoSize := True;
-  end;
-end;
-
-procedure TAtlasProjectSettingsDialog.SetBuildHint(const AValue: string);
-begin
-  FBuildHint := AValue;
-  UpdateHint;
-end;
-
-procedure TAtlasProjectSettingsDialog.SetProjectHint(const AValue: string);
+procedure TAtlasSettingsDialogFields.SetProjectHint(const AValue: string);
 begin
   FProjectHint := AValue;
   ShowCurrent;
 end;
 
-procedure TAtlasProjectSettingsDialog.SetServerChecks(AValue: Boolean);
-begin
-  FServerChecks := AValue;
-  UpdateHint;
-end;
-
-procedure TAtlasProjectSettingsDialog.UpdateState(AIndex: Integer);
+procedure TAtlasSettingsDialogFields.UpdateState(AIndex: Integer);
 var
   mText: string;
 begin
@@ -566,7 +982,7 @@ begin
   end;
 end;
 
-function TAtlasProjectSettingsDialog.AddLabel(const AText: string; ATop: Integer): TLabel;
+function TAtlasSettingsDialogFields.AddLabel(const AText: string; ATop: Integer): TLabel;
 begin
   Result := TLabel.Create(FBox);
   Result.Parent := FBox;
@@ -576,273 +992,371 @@ begin
   Result.Caption := AText;
 end;
 
-procedure TAtlasProjectSettingsDialog.ShowPage(APage: Integer);
+procedure TAtlasSettingsDialogFields.ShowPage(APage: Integer);
 var
-  Index, Y, Choice, Width_: Integer;
-  mName, Note: TLabel;
-  Check: TCheckBox;
-  Edit: TEdit;
-  Combo: TComboBox;
-  Memo: TMemo;
-  Reset, Browse: TButton;
-  Value: TJSONValue;
-  Item: TJSONValue;
-  Control: TControl;
-  Field: TAtlasSettingField;
-  Choices: TArray<TAtlasSettingChoice>;
+  mIndex, mTop: Integer;
+  mRow: TSettingsFieldRow;
 begin
   ClearBox;
   FCurrentPage := APage;
   FCurrentGroup := -1;
-  Y := Gap;
-  for Index := 0 to FModel.Count - 1 do
+  mTop := Gap;
+  for mIndex := 0 to FModel.Count - 1 do
   begin
-    Field := FModel.Fields[Index];
-    if not SameText(Field.Page, FPages[APage]) then
+    if SameText(FModel.Fields[mIndex].Page, FPages[APage]) then
     begin
-      Continue;
-    end;
-    mName := TLabel.Create(FBox);
-    mName.Parent := FBox;
-    mName.SetBounds(Gap * 2, Y, 400, 16);
-    mName.Font.Style := [fsBold];
-    mName.Caption := Field.Path;
-    if Field.Experimental then
-    begin
-      mName.Caption := mName.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
-    end;
-    Inc(Y, 20);
-    if Field.DescriptionFor(TAtlasStrings.Language = TAtlasLanguage.English) <> '' then
-    begin
-      Inc(Y, AddLabel(Field.DescriptionFor(TAtlasStrings.Language = TAtlasLanguage.English), Y).Height + 4);
-    end;
-    if Field.Restart then
-    begin
-      Note := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRestart), Y);
-      Note.Font.Color := clGrayText;
-      Inc(Y, Note.Height + 4);
-    end;
-    if (Field.Path = 'project') and (FProjectHint <> '') then
-    begin
-      Note := AddLabel(TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsActiveProject, [FProjectHint]), Y);
-      Note.Font.Color := clGrayText;
-      Inc(Y, Note.Height + 4);
-    end;
-    Control := nil;
-    Width_ := ControlWidth;
-    if Index = FRuleIndex then
-    begin
-      // Regeltabelle aus dem Katalog; der Zustand gilt für "rules" als Ganzes.
-      Y := AddRuleTable(Y, '');
-    end
-    else if not FModel.Typed(Index) then
-    begin
-      // JSON-Text für alles, was mehr als ein einfacher Wert ist.
-      Note := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsJsonHint), Y);
-      Note.Font.Color := clGrayText;
-      Inc(Y, Note.Height + 4);
-      Memo := TMemo.Create(FBox);
-      Memo.Parent := FBox;
-      Memo.Height := 120;
-      Memo.ScrollBars := ssBoth;
-      Memo.WordWrap := False;
-      Memo.Font.Name := 'Consolas';
-      Memo.Text := FRaw[Index];
-      Memo.OnChange := JsonChange;
-      Control := Memo;
-      Width_ := Max(ControlWidth, FBox.ClientWidth - Gap * 5 - 300);
-    end
-    else
-      case Field.Kind of
-        TAtlasSettingKind.Boolean_:
-          begin
-            Check := TCheckBox.Create(FBox);
-            Check.Parent := FBox;
-            Check.Caption := Field.Path;
-            Check.Checked := FModel.Effective(Index) = 'true';
-            Check.OnClick := CheckClick;
-            Control := Check;
-          end;
-        TAtlasSettingKind.Integer_:
-          begin
-            Edit := TEdit.Create(FBox);
-            Edit.Parent := FBox;
-            if FModel.Current(Index) <> '' then
-            begin
-              Edit.Text := FRaw[Index];
-            end
-            else
-            begin
-              Edit.TextHint := TAtlasSettingsSchema.Display(FModel.Fallback(Index));
-            end;
-            Edit.OnChange := EditChange;
-            Control := Edit;
-          end;
-        TAtlasSettingKind.Text:
-          begin
-            Choices := ChoicesOf(Index);
-            if Length(Choices) > 0 then
-            begin
-              // Auswahl mit freier Eingabe: Anzeige der Auswahl, gespeichert wird ihr JSON-Text.
-              FTextChoices[Index] := Choices;
-              Combo := TComboBox.Create(FBox);
-              Combo.Parent := FBox;
-              Combo.Style := csDropDown;
-              for Choice := 0 to High(Choices) do
-              begin
-                Combo.Items.Add(Choices[Choice].Caption);
-              end;
-              Choice := TAtlasSettingChoices.IndexOf(Choices, FModel.Current(Index));
-              if Choice >= 0 then
-              begin
-                Combo.ItemIndex := Choice;
-              end
-              else if FModel.Current(Index) <> '' then
-              begin
-                Combo.Text := FRaw[Index];
-              end
-              else
-              begin
-                Combo.TextHint := TAtlasSettingsSchema.Display(FModel.Fallback(Index));
-              end;
-              Combo.OnChange := TextComboChange;
-              Control := Combo;
-            end
-            else
-            begin
-              Edit := TEdit.Create(FBox);
-              Edit.Parent := FBox;
-              if FModel.Current(Index) <> '' then
-              begin
-                Edit.Text := FRaw[Index];
-              end
-              else
-              begin
-                Edit.TextHint := TAtlasSettingsSchema.Display(FModel.Fallback(Index));
-              end;
-              Edit.OnChange := EditChange;
-              Control := Edit;
-              if Field.PicksFile then
-              begin
-                FFileEdits[Index] := Edit;
-                Width_ := ControlWidth - 34;
-                Browse := TButton.Create(FBox);
-                Browse.Parent := FBox;
-                Browse.SetBounds(Gap * 2 + ControlWidth - 30, Y, 30, 24);
-                Browse.Caption := '…';
-                Browse.Tag := Index;
-                Browse.OnClick := BrowseClick;
-              end;
-            end;
-          end;
-        TAtlasSettingKind.Choice:
-          begin
-            Combo := TComboBox.Create(FBox);
-            Combo.Parent := FBox;
-            Combo.Style := csDropDownList;
-            for Choice := 0 to High(Field.Choices) do
-            begin
-              Combo.Items.Add(TAtlasSettingsSchema.Display(Field.Choices[Choice]));
-              if Field.Choices[Choice] = FModel.Effective(Index) then
-              begin
-                Combo.ItemIndex := Choice;
-              end;
-            end;
-            Combo.OnChange := ComboChange;
-            Control := Combo;
-          end;
-        TAtlasSettingKind.List:
-          begin
-            Memo := TMemo.Create(FBox);
-            Memo.Parent := FBox;
-            Memo.Height := 72;
-            Memo.ScrollBars := ssVertical;
-            Value := TJSONObject.ParseJSONValue(FModel.Effective(Index));
-            try
-              if Value is TJSONArray then
-              begin
-                for Item in TJSONArray(Value) do
-                begin
-                  if Item is TJSONString then
-                  begin
-                    Memo.Lines.Add(TJSONString(Item).Value);
-                  end;
-                end;
-              end;
-            finally
-              Value.Free;
-            end;
-            Memo.OnChange := MemoChange;
-            Control := Memo;
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-    if Control <> nil then
-    begin
-      Control.Tag := Index;
-      Control.SetBounds(Gap * 2, Y, Width_, Control.Height);
-    end;
-    FStates[Index] := TLabel.Create(FBox);
-    FStates[Index].Parent := FBox;
-    if Control <> nil then
-    begin
-      FStates[Index].SetBounds(Gap * 2 + Width_ + Gap, Y + 4, 150, 16);
-    end
-    else
-    begin
-      FStates[Index].SetBounds(Gap * 2, Y, 150, 16);
-    end;
-    FStates[Index].Font.Color := clGrayText;
-    Reset := TButton.Create(FBox);
-    Reset.Parent := FBox;
-    Reset.SetBounds(FStates[Index].Left + 150 + Gap, FStates[Index].Top - 4, 140, 24);
-    Reset.Caption := ResetCaption;
-    Reset.Tag := Index;
-    Reset.OnClick := ResetClick;
-    FResets[Index] := Reset;
-    UpdateState(Index);
-    if Control <> nil then
-    begin
-      Inc(Y, Control.Height + Gap * 2);
-    end
-    else
-    begin
-      Inc(Y, 24 + Gap * 2);
+      mRow := Default(TSettingsFieldRow);
+      mTop := mRow.Build(Self, mIndex, mTop);
     end;
   end;
 end;
 
-procedure TAtlasProjectSettingsDialog.ClearBox;
+procedure TAtlasSettingsDialogFields.ClearBox;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FBox.VertScrollBar.Position := 0;
   while FBox.ControlCount > 0 do
   begin
     FBox.Controls[0].Free;
   end;
-  FRuleEditor := nil;
-  for Index := 0 to High(FStates) do
+  for mIndex := 0 to High(FStates) do
   begin
-    FStates[Index] := nil;
-    FResets[Index] := nil;
-    FFileEdits[Index] := nil;
+    FStates[mIndex] := nil;
+    FResets[mIndex] := nil;
+    FFileEdits[mIndex] := nil;
+  end;
+end;
+
+procedure TAtlasSettingsDialogFields.CheckClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := TCheckBox(Sender).Tag;
+  if TCheckBox(Sender).Checked then
+  begin
+    FModel.SetValue(mIndex, 'true');
+  end
+  else
+  begin
+    FModel.SetValue(mIndex, 'false');
+  end;
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.EditChange(Sender: TObject);
+var
+  mIndex, mNumber: Integer;
+  mText: string;
+begin
+  mIndex := TEdit(Sender).Tag;
+  mText := Trim(TEdit(Sender).Text);
+  FRaw[mIndex] := mText;
+  FRawValid[mIndex] := True;
+  if mText = '' then
+  begin
+    FModel.SetValue(mIndex, '');
+  end
+  else if FModel.Fields[mIndex].Kind = TAtlasSettingKind.Text then
+  begin
+    FModel.SetValue(mIndex, TAtlasJsonText.Quote(mText));
+  end
+  else if TryStrToInt(mText, mNumber) then
+  begin
+    FModel.SetValue(mIndex, IntToStr(mNumber));
+  end
+  else
+  begin
+    FRawValid[mIndex] := False;
+  end;
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.ComboChange(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := TComboBox(Sender).Tag;
+  if TComboBox(Sender).ItemIndex >= 0 then
+  begin
+    FModel.SetValue(mIndex, FModel.Fields[mIndex].Choices[TComboBox(Sender).ItemIndex]);
+  end;
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.TextComboChange(Sender: TObject);
+var
+  mIndex, mChoice: Integer;
+  mText, mJson: string;
+begin
+  mIndex := TComboBox(Sender).Tag;
+  mText := Trim(TComboBox(Sender).Text);
+  FRaw[mIndex] := mText;
+  mJson := '';
+  if mText <> '' then
+  begin
+    mJson := TAtlasJsonText.Quote(mText);
+  end;
+  // Eine Anzeige aus der Liste speichert ihren Wert ("Delphi 12 (23.0)" → "23.0"), sonst den Text.
+  for mChoice := High(FTextChoices[mIndex]) downto 0 do
+  begin
+    if FTextChoices[mIndex][mChoice].Caption = mText then
+    begin
+      mJson := FTextChoices[mIndex][mChoice].Json;
+    end;
+  end;
+  FModel.SetValue(mIndex, mJson);
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.MemoChange(Sender: TObject);
+var
+  mIndex: Integer;
+  mLine: string;
+  mList: TJSONArray;
+begin
+  mIndex := TMemo(Sender).Tag;
+  mList := TJSONArray.Create;
+  try
+    for mLine in TMemo(Sender).Lines do
+    begin
+      if Trim(mLine) <> '' then
+      begin
+        mList.Add(Trim(mLine));
+      end;
+    end;
+    if mList.Count = 0 then
+    begin
+      FModel.SetValue(mIndex, '');
+    end
+    else
+    begin
+      FModel.SetValue(mIndex, mList.ToJSON);
+    end;
+  finally
+    mList.Free;
+  end;
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.JsonChange(Sender: TObject);
+var
+  mIndex: Integer;
+  mText: string;
+begin
+  mIndex := TMemo(Sender).Tag;
+  mText := Trim(TMemo(Sender).Text);
+  FRaw[mIndex] := mText;
+  FRawValid[mIndex] := (mText = '') or IsJsonValue(mText);
+  if mText = '' then
+  begin
+    FModel.SetValue(mIndex, '');
+  end
+  else if FRawValid[mIndex] then
+  begin
+    FModel.SetValue(mIndex, mText);
+  end;
+  if FRawValid[mIndex] then
+  begin
+    TMemo(Sender).Font.Color := clWindowText;
+  end
+  else
+  begin
+    TMemo(Sender).Font.Color := clRed;
+  end;
+  UpdateState(mIndex);
+end;
+
+procedure TAtlasSettingsDialogFields.BrowseClick(Sender: TObject);
+var
+  mIndex: Integer;
+  mDialog: TSaveDialog;
+begin
+  mIndex := TButton(Sender).Tag;
+  mDialog := TSaveDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFileFilter);
+    mDialog.Options := mDialog.Options - [ofOverwritePrompt];
+    if FRaw[mIndex] <> '' then
+    begin
+      mDialog.FileName := FRaw[mIndex];
+    end;
+    if mDialog.Execute and (FFileEdits[mIndex] <> nil) then
+    begin
+      FFileEdits[mIndex].Text := mDialog.FileName;
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsDialogFields.ResetValue(AIndex: Integer);
+begin
+  FModel.Reset(AIndex);
+  FRaw[AIndex] := '';
+  FRawValid[AIndex] := True;
+end;
+
+procedure TAtlasSettingsDialogFields.ResetClick(Sender: TObject);
+begin
+  ResetValue(TButton(Sender).Tag);
+  // Nicht im Klick des Knopfs neu aufbauen: ShowPage gibt ihn frei.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
+    procedure
+    begin
+      ShowCurrent;
+    end);
+end;
+
+function TAtlasSettingsDialogFields.RawProblem(AIndex: Integer): string;
+var
+  mNumber: Integer;
+begin
+  Result := '';
+  if (FModel.Fields[AIndex].Kind = TAtlasSettingKind.Integer_) and FModel.Typed(AIndex) and (FRaw[AIndex] <> '') and
+    not TryStrToInt(FRaw[AIndex], mNumber) then
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBadNumber, [FModel.Fields[AIndex].Path, FRaw[AIndex]]);
+  end
+  else if not FRawValid[AIndex] then
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsJsonInvalid, [FModel.Fields[AIndex].Path]);
+  end;
+end;
+
+function TAtlasSettingsDialogFields.RawValid: Boolean;
+var
+  mIndex: Integer;
+  mProblem: string;
+begin
+  Result := True;
+  for mIndex := 0 to FModel.Count - 1 do
+  begin
+    mProblem := RawProblem(mIndex);
+    if mProblem <> '' then
+    begin
+      MessageBox(Handle, PChar(mProblem), PChar(Caption), MB_ICONWARNING or MB_OK);
+      Exit(False);
+    end;
+  end;
+end;
+
+function TAtlasSettingsDialogFields.ServerAccepts: Boolean;
+var
+  mIssues: TArray<TAtlasSettingIssue>;
+  mChecked: Boolean;
+  mLines: string;
+begin
+  Result := True;
+  if not FModel.Modified or not Assigned(FOnValidate) then
+  begin
+    Exit;
+  end;
+  // Derselbe Parser wie im Server; Fehler verhindern das Speichern, Hinweise fragen nach.
+  mIssues := FOnValidate(FModel.ResultText, mChecked);
+  if Length(mIssues) = 0 then
+  begin
+    Exit;
+  end;
+  mLines := string.Join(sLineBreak, TAtlasSettingsValidation.Lines(mIssues));
+  if HasError(mIssues) then
+  begin
+    MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckErrors) + sLineBreak + sLineBreak +
+      mLines), PChar(Caption), MB_ICONWARNING or MB_OK);
+    Exit(False);
+  end;
+  Result := MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckWarnings) + sLineBreak +
+    sLineBreak + mLines), PChar(Caption), MB_ICONQUESTION or MB_YESNO) = IDYES;
+end;
+
+function TAtlasSettingsDialogFields.Validate: Boolean;
+begin
+  Result := RawValid and ServerAccepts;
+end;
+
+{ TAtlasProjectSettingsDialog }
+
+constructor TAtlasProjectSettingsDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel;
+  const AFileName: string);
+begin
+  inherited CreateFields(AOwner, AModel, AFileName);
+  if FRuleIndex >= 0 then
+  begin
+    FRulesJson := FModel.Current(FRuleIndex);
+    if not FModel.Global then
+    begin
+      FGlobalRulesJson := FModel.Inherited_(FRuleIndex);
+    end;
+  end;
+  if Length(FPageNodes) > 0 then
+  begin
+    SelectNode(FPageNodes[0]);
+  end;
+end;
+
+function TAtlasProjectSettingsDialog.RuleTarget(const AId: string): TTreeNode;
+var
+  mRow: TAtlasRuleRow;
+begin
+  Result := nil;
+  if (FRuleIndex < 0) or (FCatalog = nil) then
+  begin
+    Exit;
+  end;
+  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
+  begin
+    if SameText(mRow.Id, AId) then
+    begin
+      // Knoten der Gruppe der Regel, sonst die Seite mit allen Regeln.
+      Result := GroupNode(mRow.Group);
+      if (Result = nil) and (RulePage >= 0) then
+      begin
+        Result := FPageNodes[RulePage];
+      end;
+    end;
+  end;
+end;
+
+function TAtlasProjectSettingsDialog.SelectRule(const AId: string): Boolean;
+var
+  mTarget: TTreeNode;
+begin
+  Result := False;
+  mTarget := RuleTarget(AId);
+  if mTarget <> nil then
+  begin
+    SelectNode(mTarget);
+    Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
+  end;
+end;
+
+procedure TAtlasProjectSettingsDialog.ClearBox;
+begin
+  inherited ClearBox;
+  FRuleEditor := nil;
+end;
+
+procedure TAtlasProjectSettingsDialog.ResetValue(AIndex: Integer);
+begin
+  inherited ResetValue(AIndex);
+  if AIndex = FRuleIndex then
+  begin
+    FRulesJson := '';
   end;
 end;
 
 procedure TAtlasProjectSettingsDialog.ShowGroup(AGroup: Integer);
 var
-  Title: TLabel;
+  mTitle: TLabel;
 begin
   ClearBox;
   FCurrentPage := -1;
   FCurrentGroup := AGroup;
-  Title := TLabel.Create(FBox);
-  Title.Parent := FBox;
-  Title.SetBounds(Gap * 2, Gap, 400, 16);
-  Title.Font.Style := [fsBold];
-  Title.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
+  mTitle := TLabel.Create(FBox);
+  mTitle.Parent := FBox;
+  mTitle.SetBounds(Gap * 2, Gap, 400, 16);
+  mTitle.Font.Style := [fsBold];
+  mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
   AddRuleTable(Gap + 24, FGroups[AGroup]);
 end;
 
@@ -865,8 +1379,8 @@ end;
 
 procedure TAtlasProjectSettingsDialog.RuleEditorResize(Sender: TObject);
 var
-  Index, Shift, Bottom: Integer;
-  Control: TControl;
+  mIndex, mShift, mBottom: Integer;
+  mControl: TControl;
 begin
   // Die Seite steht mit festen Positionen; der Editor wächst mit der markierten Regel (Optionen, Beispiele) und
   // überdeckte sonst die Felder darunter (#1296). Alles unter seiner alten Unterkante rückt um die Differenz.
@@ -874,21 +1388,21 @@ begin
   begin
     Exit;
   end;
-  Shift := FRuleEditor.Height - FRuleHeight;
-  if Shift = 0 then
+  mShift := FRuleEditor.Height - FRuleHeight;
+  if mShift = 0 then
   begin
     Exit;
   end;
-  Bottom := FRuleEditor.Top + FRuleHeight;
+  mBottom := FRuleEditor.Top + FRuleHeight;
   FRuleHeight := FRuleEditor.Height;
   FBox.DisableAlign;
   try
-    for Index := 0 to FBox.ControlCount - 1 do
+    for mIndex := 0 to FBox.ControlCount - 1 do
     begin
-      Control := FBox.Controls[Index];
-      if (Control <> FRuleEditor) and (Control.Top >= Bottom) then
+      mControl := FBox.Controls[mIndex];
+      if (mControl <> FRuleEditor) and (mControl.Top >= mBottom) then
       begin
-        Control.Top := Control.Top + Shift;
+        mControl.Top := mControl.Top + mShift;
       end;
     end;
   finally
@@ -905,305 +1419,48 @@ begin
   end;
 end;
 
-procedure TAtlasProjectSettingsDialog.RuleEditorChange(Sender: TObject);
+procedure TAtlasProjectSettingsDialog.ApplyRules(const AUpdated: string);
 var
-  Change: TPair<string, string>;
+  mChange: TPair<string, string>;
 begin
   // Nur die geänderten Regeln in die Datei: Kommentare und andere Regeln bleiben.
-  for Change in TAtlasRuleTable.Changes(FRulesJson, FRuleEditor.RulesJson) do
+  for mChange in TAtlasRuleTable.Changes(FRulesJson, AUpdated) do
   begin
-    FModel.SetPath(Change.Key, Change.Value);
+    FModel.SetPath(mChange.Key, mChange.Value);
   end;
-  FRulesJson := FRuleEditor.RulesJson;
+  FRulesJson := AUpdated;
+end;
+
+procedure TAtlasProjectSettingsDialog.RuleEditorChange(Sender: TObject);
+begin
+  ApplyRules(FRuleEditor.RulesJson);
   UpdateState(FRuleIndex);
 end;
 
-function TAtlasProjectSettingsDialog.SetRuleSeverity(const AId, ASeverity: string): Boolean;
+function TAtlasProjectSettingsDialog.HasRule(const AId: string): Boolean;
 var
-  Change: TPair<string, string>;
-  Rows: TArray<TAtlasRuleRow>;
-  Row: TAtlasRuleRow;
-  Updated: string;
+  mRow: TAtlasRuleRow;
+begin
+  Result := False;
+  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
+  begin
+    if SameText(mRow.Id, AId) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+function TAtlasProjectSettingsDialog.SetRuleSeverity(const AId, ASeverity: string): Boolean;
 begin
   if FRuleEditor <> nil then
   begin
     Exit(FRuleEditor.SetRuleSeverity(AId, ASeverity));
   end;
-  Rows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
-  Result := False;
-  for Row in Rows do
+  Result := HasRule(AId);
+  if Result then
   begin
-    if SameText(Row.Id, AId) then
-    begin
-      Result := True;
-    end;
-  end;
-  if not Result then
-  begin
-    Exit;
-  end;
-  Updated := TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity);
-  for Change in TAtlasRuleTable.Changes(FRulesJson, Updated) do
-  begin
-    FModel.SetPath(Change.Key, Change.Value);
-  end;
-  FRulesJson := Updated;
-end;
-
-procedure TAtlasProjectSettingsDialog.CheckClick(Sender: TObject);
-var
-  Index: Integer;
-begin
-  Index := TCheckBox(Sender).Tag;
-  if TCheckBox(Sender).Checked then
-  begin
-    FModel.SetValue(Index, 'true');
-  end
-  else
-  begin
-    FModel.SetValue(Index, 'false');
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.EditChange(Sender: TObject);
-var
-  Index, Number: Integer;
-  mText: string;
-begin
-  Index := TEdit(Sender).Tag;
-  mText := Trim(TEdit(Sender).Text);
-  FRaw[Index] := mText;
-  FRawValid[Index] := True;
-  if mText = '' then
-  begin
-    FModel.SetValue(Index, '');
-  end
-  else if FModel.Fields[Index].Kind = TAtlasSettingKind.Text then
-  begin
-    FModel.SetValue(Index, TAtlasJsonText.Quote(mText));
-  end
-  else if TryStrToInt(mText, Number) then
-  begin
-    FModel.SetValue(Index, IntToStr(Number));
-  end
-  else
-  begin
-    FRawValid[Index] := False;
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.ComboChange(Sender: TObject);
-var
-  Index: Integer;
-begin
-  Index := TComboBox(Sender).Tag;
-  if TComboBox(Sender).ItemIndex >= 0 then
-  begin
-    FModel.SetValue(Index, FModel.Fields[Index].Choices[TComboBox(Sender).ItemIndex]);
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.TextComboChange(Sender: TObject);
-var
-  Index, Choice: Integer;
-  mText: string;
-begin
-  Index := TComboBox(Sender).Tag;
-  mText := Trim(TComboBox(Sender).Text);
-  FRaw[Index] := mText;
-  // Eine Anzeige aus der Liste speichert ihren Wert ("Delphi 12 (23.0)" → "23.0"), sonst den Text.
-  for Choice := 0 to High(FTextChoices[Index]) do
-  begin
-    if FTextChoices[Index][Choice].Caption = mText then
-    begin
-      FModel.SetValue(Index, FTextChoices[Index][Choice].Json);
-      UpdateState(Index);
-      Exit;
-    end;
-  end;
-  if mText = '' then
-  begin
-    FModel.SetValue(Index, '');
-  end
-  else
-  begin
-    FModel.SetValue(Index, TAtlasJsonText.Quote(mText));
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.MemoChange(Sender: TObject);
-var
-  Index: Integer;
-  Line: string;
-  List: TJSONArray;
-begin
-  Index := TMemo(Sender).Tag;
-  List := TJSONArray.Create;
-  try
-    for Line in TMemo(Sender).Lines do
-    begin
-      if Trim(Line) <> '' then
-      begin
-        List.Add(Trim(Line));
-      end;
-    end;
-    if List.Count = 0 then
-    begin
-      FModel.SetValue(Index, '');
-    end
-    else
-    begin
-      FModel.SetValue(Index, List.ToJSON);
-    end;
-  finally
-    List.Free;
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.JsonChange(Sender: TObject);
-var
-  Index: Integer;
-  mText: string;
-begin
-  Index := TMemo(Sender).Tag;
-  mText := Trim(TMemo(Sender).Text);
-  FRaw[Index] := mText;
-  FRawValid[Index] := (mText = '') or IsJsonValue(mText);
-  if mText = '' then
-  begin
-    FModel.SetValue(Index, '');
-  end
-  else if FRawValid[Index] then
-  begin
-    FModel.SetValue(Index, mText);
-  end;
-  if FRawValid[Index] then
-  begin
-    TMemo(Sender).Font.Color := clWindowText;
-  end
-  else
-  begin
-    TMemo(Sender).Font.Color := clRed;
-  end;
-  UpdateState(Index);
-end;
-
-procedure TAtlasProjectSettingsDialog.BrowseClick(Sender: TObject);
-var
-  Index: Integer;
-  Dialog: TSaveDialog;
-begin
-  Index := TButton(Sender).Tag;
-  Dialog := TSaveDialog.Create(nil);
-  try
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsFileFilter);
-    Dialog.Options := Dialog.Options - [ofOverwritePrompt];
-    if FRaw[Index] <> '' then
-    begin
-      Dialog.FileName := FRaw[Index];
-    end;
-    if Dialog.Execute and (FFileEdits[Index] <> nil) then
-    begin
-      FFileEdits[Index].Text := Dialog.FileName;
-    end;
-  finally
-    Dialog.Free;
-  end;
-end;
-
-procedure TAtlasProjectSettingsDialog.ResetClick(Sender: TObject);
-var
-  Index: Integer;
-begin
-  Index := TButton(Sender).Tag;
-  FModel.Reset(Index);
-  FRaw[Index] := '';
-  FRawValid[Index] := True;
-  if Index = FRuleIndex then
-  begin
-    FRulesJson := '';
-  end;
-  // Nicht im Klick des Knopfs neu aufbauen: ShowPage gibt ihn frei.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-    procedure
-    begin
-      ShowCurrent;
-    end);
-end;
-
-procedure TAtlasProjectSettingsDialog.OpenClick(Sender: TObject);
-begin
-  if Assigned(FOnOpenFile) then
-  begin
-    ModalResult := mrCancel;
-    FOnOpenFile();
-  end;
-end;
-
-function TAtlasProjectSettingsDialog.Validate: Boolean;
-var
-  Index, Number: Integer;
-  Issues: TArray<TAtlasSettingIssue>;
-  Issue: TAtlasSettingIssue;
-  Checked, Errors: Boolean;
-  Lines: string;
-begin
-  Result := False;
-  for Index := 0 to FModel.Count - 1 do
-  begin
-    if (FModel.Fields[Index].Kind = TAtlasSettingKind.Integer_) and FModel.Typed(Index) and (FRaw[Index] <> '') and
-      not TryStrToInt(FRaw[Index], Number) then
-    begin
-      MessageBox(Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBadNumber,
-        [FModel.Fields[Index].Path, FRaw[Index]])), PChar(Caption), MB_ICONWARNING or MB_OK);
-      Exit;
-    end;
-    if not FRawValid[Index] then
-    begin
-      MessageBox(Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsJsonInvalid,
-        [FModel.Fields[Index].Path])), PChar(Caption), MB_ICONWARNING or MB_OK);
-      Exit;
-    end;
-  end;
-  if not FModel.Modified or not Assigned(FOnValidate) then
-  begin
-    Exit(True);
-  end;
-  // Derselbe Parser wie im Server; Fehler verhindern das Speichern, Hinweise fragen nach.
-  Issues := FOnValidate(FModel.ResultText, Checked);
-  if Length(Issues) = 0 then
-  begin
-    Exit(True);
-  end;
-  Errors := False;
-  for Issue in Issues do
-  begin
-    if Issue.Error then
-    begin
-      Errors := True;
-    end;
-  end;
-  Lines := string.Join(sLineBreak, TAtlasSettingsValidation.Lines(Issues));
-  if Errors then
-  begin
-    MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckErrors) + sLineBreak + sLineBreak +
-      Lines), PChar(Caption), MB_ICONWARNING or MB_OK);
-    Exit;
-  end;
-  Result := MessageBox(Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCheckWarnings) + sLineBreak +
-    sLineBreak + Lines), PChar(Caption), MB_ICONQUESTION or MB_YESNO) = IDYES;
-end;
-
-procedure TAtlasProjectSettingsDialog.OkClick(Sender: TObject);
-begin
-  if Validate then
-  begin
-    ModalResult := mrOk;
+    ApplyRules(TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity));
   end;
 end;
 

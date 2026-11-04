@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -147,7 +148,7 @@ begin
   Text := WithCode(ACode);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -269,7 +270,7 @@ begin
     'function Assigned(P: Pointer): Boolean;'#10'begin'#10'end;'#10'procedure TFoo.Bar;', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
+    Items := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -293,7 +294,8 @@ begin
   Text := WithCode('  SetLength(Liste, ');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Liste, '), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, 'Liste, '));
     Assert.IsTrue(Help.Found);
     Assert.AreEqual(1, Integer(Length(Help.Signatures)));
     Assert.AreEqual('procedure SetLength(var S; NewLength: NativeInt)', Help.Signatures[0].Text);
@@ -305,7 +307,8 @@ begin
   Text := WithCode('  Inc(Liste[0], ');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, '[0], '), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, '[0], '));
     Assert.AreEqual(2, Integer(Length(Help.Signatures)));
     // Die erste Überladung hat nur einen Parameter.
     Assert.AreEqual(1, Help.ActiveSignature);
@@ -316,7 +319,8 @@ begin
   Text := WithCode('  Liste.Length(');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Length('), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, 'Length('));
     Assert.IsFalse(Help.Found);
   finally
     Tree.Free;

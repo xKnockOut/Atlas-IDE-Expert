@@ -57,7 +57,6 @@ type
     function StopsAt(ANode: TFlowNode): Boolean;
     procedure ReportAccess(ANode: TFlowNode; AAccess: TSyntaxNode);
     function WalksOn(ANode: TFlowNode): Boolean;
-    procedure EnqueueSuccessors(ANode: TFlowNode; const AVisited: TArray<Boolean>; var AQueue: TArray<TFlowNode>);
     procedure Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
     procedure CheckGraph;
   public
@@ -304,22 +303,6 @@ begin
   end;
 end;
 
-/// <summary>Wege nur über eine mögliche Ausnahme (die Anweisung wirkt dann nicht) bleiben aus: lieber zu wenig.
-/// </summary>
-procedure TUseAfterFreeCheck.EnqueueSuccessors(ANode: TFlowNode; const AVisited: TArray<Boolean>;
-  var AQueue: TArray<TFlowNode>);
-var
-  Next: TFlowNode;
-begin
-  for Next in ANode.Successors do
-  begin
-    if not AVisited[Next.Index] and not ANode.IsImplicitRaiseEdge(Next) then
-    begin
-      AQueue := AQueue + [Next];
-    end;
-  end;
-end;
-
 procedure TUseAfterFreeCheck.Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
 var
   Visited: TArray<Boolean>;
@@ -332,7 +315,7 @@ begin
   FToNil := AToNil;
   SetLength(Visited, FGraph.Nodes.Count);
   Queue := nil;
-  EnqueueSuccessors(AFree, Visited, Queue);
+  QueueSuccessors(AFree, Visited, Queue);
   Head := 0;
   while Head < Length(Queue) do
   begin
@@ -343,7 +326,7 @@ begin
       Visited[Current.Index] := True;
       if WalksOn(Current) then
       begin
-        EnqueueSuccessors(Current, Visited, Queue);
+        QueueSuccessors(Current, Visited, Queue);
       end;
     end;
   end;

@@ -396,7 +396,7 @@ begin
   FStore.Open(TDocumentUris.FromPath(cImplementsMissingHauptFile), 'pascal', 1, cImplementsMissingHaupt);
   Completion := TLspCompletion.Create(FStore, Index, nil);
   try
-    Completion.ReadText :=
+    Completion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cImplementsMissingUnitBasis;

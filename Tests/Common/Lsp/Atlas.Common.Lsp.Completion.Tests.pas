@@ -439,8 +439,8 @@ begin
         Part.Items := AItems;
         Stages.Add(Names(Part));
       end;
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, #10'begin'#10'  '),
-      TCompletionMatching.Fuzzy, Postfix, Partial);
+    Items := CollectAt(LookupOf(FResolver, FIndex, Tree, Text, nil), PositionOf(Text, #10'begin'#10'  '), Postfix,
+      Partial);
     // Erst lokal, Self und eigene Unit, dann die Units aus uses; die Antwort bringt den (leeren) Rest.
     Assert.AreEqual(2, Integer(Stages.Count));
     Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo', Stages[0]);
@@ -480,8 +480,7 @@ begin
         Part.Items := AItems;
         Sent := Sent + Names(Part) + '|';
       end;
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
-      TCompletionMatching.Fuzzy, Postfix, Partial);
+    Items := CollectAt(LookupOf(FResolver, FIndex, Tree, Text, nil), PositionOf(Text, '  Rech'), Postfix, Partial);
     Assert.AreEqual('Rechne Rechne|', Sent);
     Assert.AreEqual('Rechenweg', Names(Items));
     Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);

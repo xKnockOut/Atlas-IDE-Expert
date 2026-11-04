@@ -225,71 +225,105 @@ begin
     StartsText('inline ', ATrimmed);
 end;
 
+/// <summary>Erste nicht leere Zeile; Length(ALines) ohne.</summary>
+function FirstContentLine(const ALines: TArray<string>): Integer;
+begin
+  Result := 0;
+  while (Result <= High(ALines)) and (Trim(ALines[Result]) = '') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Zeile ohne Leerraum an beiden Enden; AIndent: Einrückung.</summary>
+function SplitIndent(const ALine: string; out AIndent: Integer): string;
+begin
+  Result := TrimLeft(ALine);
+  AIndent := Length(ALine) - Length(Result);
+  Result := TrimRight(Result);
+end;
+
+/// <summary>Die Eigenschaften des Wurzelobjekts sind zu Ende: weniger eingerückt, oder gleich weit mit
+/// Kindobjekt bzw. end.</summary>
+function RootEnded(const ATrimmed: string; AIndent, ARootIndent: Integer): Boolean;
+begin
+  Result := (AIndent < ARootIndent) or
+    ((AIndent = ARootIndent) and (IsObjectLine(ATrimmed) or SameText(ATrimmed, 'end')));
+end;
+
+/// <summary>True bei „Caption = …“; ARest beginnt mit dem Gleichheitszeichen.</summary>
+function IsCaptionLine(const ATrimmed: string; out ARest: string): Boolean;
+begin
+  ARest := '';
+  Result := StartsText('Caption', ATrimmed);
+  if Result then
+  begin
+    ARest := TrimLeft(Copy(ATrimmed, Length('Caption') + 1, MaxInt));
+    Result := StartsStr('=', ARest);
+  end;
+end;
+
+/// <summary>Wert nach „Caption“; lange Werte setzt Delphi ab Zeile AIndex fort: "Caption =" allein oder Teile
+/// mit "+" am Ende.</summary>
+function CaptionValue(const ALines: TArray<string>; AIndex: Integer; const ARest: string): string;
+var
+  mValue: string;
+  mIndex: Integer;
+begin
+  mValue := Trim(Copy(ARest, 2, MaxInt));
+  mIndex := AIndex;
+  while ((mValue = '') or EndsStr('+', mValue)) and (mIndex <= High(ALines)) do
+  begin
+    mValue := mValue + ' ' + Trim(ALines[mIndex]);
+    Inc(mIndex);
+  end;
+  if not TStringLiterals.PlainText(mValue, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
 class function TUnitSearch.FormCaption(const AFormText: string): string;
 var
-  Lines: TArray<string>;
-  Index, Indent, RootIndent: Integer;
-  Line, Trimmed, Rest, Value: string;
+  mLines: TArray<string>;
+  mIndex, mIndent, mRootIndent: Integer;
+  mTrimmed, mRest: string;
 begin
   Result := '';
   if (AFormText = '') or TFormModel.IsBinary(AFormText) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AFormText);
-  Index := 0;
-  while (Index <= High(Lines)) and (Trim(Lines[Index]) = '') do
-  begin
-    Inc(Index);
-  end;
-  if (Index > High(Lines)) or not IsObjectLine(Trim(Lines[Index])) then
+  mLines := TTextLines.SplitLines(AFormText);
+  mIndex := FirstContentLine(mLines);
+  if (mIndex > High(mLines)) or not IsObjectLine(Trim(mLines[mIndex])) then
   begin
     Exit;
   end;
   // Eigenschaften des Wurzelobjekts stehen vor seinen Kindobjekten und gleich weit eingerückt; tiefer
   // eingerückte Zeilen gehören zu Listen oder Collections.
-  RootIndent := -1;
-  Inc(Index);
-  while Index <= High(Lines) do
+  mRootIndent := -1;
+  Inc(mIndex);
+  while mIndex <= High(mLines) do
   begin
-    Line := Lines[Index];
-    Trimmed := TrimLeft(Line);
-    Indent := Length(Line) - Length(Trimmed);
-    Trimmed := TrimRight(Trimmed);
-    Inc(Index);
-    if Trimmed = '' then
+    mTrimmed := SplitIndent(mLines[mIndex], mIndent);
+    Inc(mIndex);
+    if mTrimmed = '' then
     begin
       Continue;
     end;
-    if RootIndent < 0 then
+    if mRootIndent < 0 then
     begin
-      RootIndent := Indent;
+      mRootIndent := mIndent;
     end;
-    if (Indent < RootIndent) or ((Indent = RootIndent) and (IsObjectLine(Trimmed) or SameText(Trimmed, 'end'))) then
+    if RootEnded(mTrimmed, mIndent, mRootIndent) then
     begin
       Exit;
     end;
-    if (Indent > RootIndent) or not StartsText('Caption', Trimmed) then
+    if (mIndent = mRootIndent) and IsCaptionLine(mTrimmed, mRest) then
     begin
-      Continue;
+      Exit(CaptionValue(mLines, mIndex, mRest));
     end;
-    Rest := TrimLeft(Copy(Trimmed, Length('Caption') + 1, MaxInt));
-    if not StartsStr('=', Rest) then
-    begin
-      Continue;
-    end;
-    // Lange Werte setzt Delphi in Folgezeilen fort: "Caption =" allein oder Teile mit "+" am Ende.
-    Value := Trim(Copy(Rest, 2, MaxInt));
-    while ((Value = '') or EndsStr('+', Value)) and (Index <= High(Lines)) do
-    begin
-      Value := Value + ' ' + Trim(Lines[Index]);
-      Inc(Index);
-    end;
-    if not TStringLiterals.PlainText(Value, Result) then
-    begin
-      Result := '';
-    end;
-    Exit;
   end;
 end;
 
@@ -335,65 +369,89 @@ begin
   end;
 end;
 
+/// <summary>Art zu einem Basistyp: form, frame, dm; '' für andere.</summary>
+function BaseKind(const AName: string): string;
+var
+  mUpper: string;
+begin
+  mUpper := UpperCase(AName);
+  if (mUpper = 'TFORM') or (mUpper = 'TCUSTOMFORM') then
+  begin
+    Result := 'form';
+  end
+  else if (mUpper = 'TFRAME') or (mUpper = 'TCUSTOMFRAME') then
+  begin
+    Result := 'frame';
+  end
+  else if mUpper = 'TDATAMODULE' then
+  begin
+    Result := 'dm';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Art aus der Vorfahrenkette ab AAncestor (höchstens 16 Stufen); '' ohne bekannte Basis.</summary>
+function ChainKind(const AAncestor: string; const AAncestorsOf: TFunc<string, TArray<string>>;
+  ASeen: TDictionary<string, Boolean>): string;
+var
+  mName: string;
+  mAncestors: TArray<string>;
+  mDepth: Integer;
+begin
+  Result := '';
+  mName := AAncestor;
+  ASeen.Clear;
+  for mDepth := 1 to 16 do
+  begin
+    // Qualifizierte Namen (Vcl.Forms.TForm) auf den letzten Teil kürzen.
+    if Pos('.', mName) > 0 then
+    begin
+      mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+    end;
+    Result := BaseKind(mName);
+    if (Result <> '') or (mName = '') or ASeen.ContainsKey(UpperCase(mName)) or not Assigned(AAncestorsOf) then
+    begin
+      Exit;
+    end;
+    ASeen.Add(UpperCase(mName), True);
+    mAncestors := AAncestorsOf(mName);
+    if Length(mAncestors) = 0 then
+    begin
+      Exit;
+    end;
+    mName := mAncestors[0];
+  end;
+end;
+
 class function TUnitSearch.KindOf(const AUnit: TUnitIndex; const AAncestorsOf: TFunc<string, TArray<string>>;
   AHasForm, AOnlyTestProjects: Boolean): string;
 var
-  Symbol: TIndexSymbol;
-  Current, Upper: string;
-  Ancestors: TArray<string>;
-  Seen: TDictionary<string, Boolean>;
-  Depth: Integer;
+  mSymbol: TIndexSymbol;
+  mSeen: TDictionary<string, Boolean>;
 begin
   if HasUses(AUnit, 'DUnitX.TestFramework') or HasUses(AUnit, 'TestFramework') or AOnlyTestProjects then
   begin
     Exit('test');
   end;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if not Symbol.InInterface or (Symbol.Container <> '') or (Symbol.Kind <> TIndexSymbolKind.ClassType) or
-        (Length(Symbol.Ancestors) = 0) then
+      if mSymbol.InInterface and (mSymbol.Container = '') and (mSymbol.Kind = TIndexSymbolKind.ClassType) and
+        (Length(mSymbol.Ancestors) > 0) then
       begin
-        Continue;
-      end;
-      Current := Symbol.Ancestors[0];
-      Seen.Clear;
-      for Depth := 1 to 16 do
-      begin
-        // Qualifizierte Namen (Vcl.Forms.TForm) auf den letzten Teil kürzen.
-        if Pos('.', Current) > 0 then
+        Result := ChainKind(mSymbol.Ancestors[0], AAncestorsOf, mSeen);
+        if Result <> '' then
         begin
-          Current := Copy(Current, LastDelimiter('.', Current) + 1, MaxInt);
+          Exit;
         end;
-        Upper := UpperCase(Current);
-        if (Upper = 'TFORM') or (Upper = 'TCUSTOMFORM') then
-        begin
-          Exit('form');
-        end;
-        if (Upper = 'TFRAME') or (Upper = 'TCUSTOMFRAME') then
-        begin
-          Exit('frame');
-        end;
-        if Upper = 'TDATAMODULE' then
-        begin
-          Exit('dm');
-        end;
-        if (Upper = '') or Seen.ContainsKey(Upper) or not Assigned(AAncestorsOf) then
-        begin
-          Break;
-        end;
-        Seen.Add(Upper, True);
-        Ancestors := AAncestorsOf(Current);
-        if Length(Ancestors) = 0 then
-        begin
-          Break;
-        end;
-        Current := Ancestors[0];
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
   if AHasForm then
   begin
@@ -423,116 +481,147 @@ begin
   end;
 end;
 
+type
+  {$SCOPEDENUMS ON}
+  /// <summary>Was mit einer Zeile des Kopfkommentars geschieht.</summary>
+  THeaderLine = (Skip, Add, Stop);
+  {$SCOPEDENUMS OFF}
+
+/// <summary>Kommentarzeile "//" ohne Schrägstriche in AText; False für Trennlinien aus Strichen.</summary>
+function LineCommentText(const ALine: string; out AText: string): Boolean;
+begin
+  AText := Trim(Copy(ALine, 3, MaxInt));
+  // "///" wie "//" behandeln.
+  while AText.StartsWith('/') do
+  begin
+    AText := Trim(Copy(AText, 2, MaxInt));
+  end;
+  Result := (AText = '') or (AText.Replace('-', '').Replace('=', '').Replace('*', '') <> '');
+end;
+
+/// <summary>Beginn eines Blockkommentars AOpen … AClose mit dem Text in AText; liefert AClose, wenn er in der
+/// Zeile nicht endet, sonst ''.</summary>
+function OpenBlock(const ALine, AOpen, AClose: string; out AText: string): string;
+var
+  mStop: Integer;
+begin
+  mStop := Pos(AClose, ALine);
+  if mStop > 0 then
+  begin
+    AText := Trim(Copy(ALine, Length(AOpen) + 1, mStop - Length(AOpen) - 1));
+    Result := '';
+  end
+  else
+  begin
+    AText := Trim(Copy(ALine, Length(AOpen) + 1, MaxInt));
+    Result := AClose;
+  end;
+end;
+
+/// <summary>Folgezeile eines offenen Blockkommentars; True, wenn er in ihr mit AClose endet.</summary>
+function CloseBlock(const ALine, AClose: string; out AText: string): Boolean;
+var
+  mStop: Integer;
+begin
+  mStop := Pos(AClose, ALine);
+  Result := mStop > 0;
+  if Result then
+  begin
+    AText := Trim(Copy(ALine, 1, mStop - 1));
+  end
+  else
+  begin
+    AText := ALine;
+  end;
+end;
+
+/// <summary>Ordnet eine getrimmte Zeile des Dateikopfs ein. AClose: Ende des offenen Blockkommentars, ''
+/// außerhalb.</summary>
+function HeaderPart(const ALine: string; AHasOutput: Boolean; var AClose: string; out APart: string): THeaderLine;
+begin
+  APart := '';
+  Result := THeaderLine.Add;
+  if AClose <> '' then
+  begin
+    if CloseBlock(ALine, AClose, APart) then
+    begin
+      AClose := '';
+    end;
+  end
+  else if ALine = '' then
+  begin
+    // Leerzeilen nur zwischen Kommentaren.
+    if not AHasOutput then
+    begin
+      Result := THeaderLine.Skip;
+    end;
+  end
+  else if ALine.StartsWith('{$') then
+  begin
+    Result := THeaderLine.Skip;
+  end
+  else if ALine.StartsWith('//') then
+  begin
+    if not LineCommentText(ALine, APart) then
+    begin
+      Result := THeaderLine.Skip;
+    end;
+  end
+  else if ALine.StartsWith('{') then
+  begin
+    AClose := OpenBlock(ALine, '{', '}', APart);
+  end
+  else if ALine.StartsWith('(*') then
+  begin
+    AClose := OpenBlock(ALine, '(*', '*)', APart);
+  end
+  else
+  begin
+    // Erstes echtes Wort: unit, program usw.; der Kopf ist vorbei.
+    Result := THeaderLine.Stop;
+  end;
+end;
+
+/// <summary>Zeilen ohne Leerzeilen am Ende, gekürzt auf AMax Zeilen.</summary>
+function JoinHeader(const ALines: TArray<string>; AMax: Integer): string;
+var
+  mCount: Integer;
+  mOutput: TArray<string>;
+begin
+  mCount := Length(ALines);
+  while (mCount > 0) and (ALines[mCount - 1] = '') do
+  begin
+    Dec(mCount);
+  end;
+  mOutput := Copy(ALines, 0, Min(mCount, AMax));
+  if mCount > AMax then
+  begin
+    mOutput[High(mOutput)] := mOutput[High(mOutput)] + ' …';
+  end;
+  Result := string.Join(#10, mOutput);
+end;
+
 class function TUnitSearch.HeaderComment(const AText: string): string;
 var
-  Lines, Output: TArray<string>;
-  Line, Part: string;
-  InBrace, InParen: Boolean;
-  Index, Stop: Integer;
+  mLines, mOutput: TArray<string>;
+  mPart, mClose: string;
+  mIndex: Integer;
 begin
-  Lines := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-  Output := nil;
-  InBrace := False;
-  InParen := False;
-  for Index := 0 to High(Lines) do
+  mLines := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
+  mOutput := nil;
+  mClose := '';
+  for mIndex := 0 to High(mLines) do
   begin
-    Line := Trim(Lines[Index]);
-    if InBrace or InParen then
-    begin
-      if InBrace then
-      begin
-        Stop := Pos('}', Line);
-      end
-      else
-      begin
-        Stop := Pos('*)', Line);
-      end;
-      if Stop > 0 then
-      begin
-        Part := Trim(Copy(Line, 1, Stop - 1));
-        InBrace := False;
-        InParen := False;
-      end
-      else
-      begin
-        Part := Line;
-      end;
-      Output := Output + [Part];
-      Continue;
+    case HeaderPart(Trim(mLines[mIndex]), Length(mOutput) > 0, mClose, mPart) of
+      THeaderLine.Add:
+        mOutput := mOutput + [mPart];
+      THeaderLine.Stop:
+        Break;
+    else
+      // Schalter, Trennlinien und Leerzeilen vor dem ersten Kommentar entfallen.
     end;
-    if Line = '' then
-    begin
-      if Length(Output) > 0 then
-      begin
-        Output := Output + [''];
-      end;
-      Continue;
-    end;
-    if Line.StartsWith('{$') then
-    begin
-      Continue;
-    end;
-    if Line.StartsWith('//') then
-    begin
-      Part := Trim(Copy(Line, 3, MaxInt));
-      // "///" und Trennlinien aus Strichen weglassen.
-      while Part.StartsWith('/') do
-      begin
-        Part := Trim(Copy(Part, 2, MaxInt));
-      end;
-      if (Part <> '') and (Part.Replace('-', '').Replace('=', '').Replace('*', '') = '') then
-      begin
-        Continue;
-      end;
-      Output := Output + [Part];
-      Continue;
-    end;
-    if Line.StartsWith('{') then
-    begin
-      Stop := Pos('}', Line);
-      if Stop > 0 then
-      begin
-        Output := Output + [Trim(Copy(Line, 2, Stop - 2))];
-      end
-      else
-      begin
-        Output := Output + [Trim(Copy(Line, 2, MaxInt))];
-        InBrace := True;
-      end;
-      Continue;
-    end;
-    if Line.StartsWith('(*') then
-    begin
-      Stop := Pos('*)', Line);
-      if Stop > 0 then
-      begin
-        Output := Output + [Trim(Copy(Line, 3, Stop - 3))];
-      end
-      else
-      begin
-        Output := Output + [Trim(Copy(Line, 3, MaxInt))];
-        InParen := True;
-      end;
-      Continue;
-    end;
-    // Erstes echtes Wort: unit, program usw.; der Kopf ist vorbei.
-    Break;
   end;
-  // Leere Zeilen am Anfang und Ende weg, dann kürzen.
-  while (Length(Output) > 0) and (Output[High(Output)] = '') do
-  begin
-    SetLength(Output, Length(Output) - 1);
-  end;
-  while (Length(Output) > 0) and (Output[0] = '') do
-  begin
-    Delete(Output, 0, 1);
-  end;
-  if Length(Output) > MaxHeaderLines then
-  begin
-    SetLength(Output, MaxHeaderLines);
-    Output[High(Output)] := Output[High(Output)] + ' …';
-  end;
-  Result := string.Join(#10, Output);
+  Result := JoinHeader(mOutput, MaxHeaderLines);
 end;
 
 class function TUnitSearch.LineCount(const AText: string): Integer;
@@ -557,45 +646,57 @@ begin
   end;
 end;
 
+/// <summary>Zustand zum Code aus „git status --porcelain“; '' für unverändert.</summary>
+function CodeState(const ACode: string): string;
+begin
+  if ACode = '??' then
+  begin
+    Result := 'untracked';
+  end
+  else if (ACode = 'UU') or (ACode = 'AA') or (ACode = 'DD') or (Pos('U', ACode) > 0) then
+  begin
+    Result := 'conflict';
+  end
+  else if Pos('R', ACode) > 0 then
+  begin
+    Result := 'renamed';
+  end
+  else if ACode[1] = 'A' then
+  begin
+    Result := 'added';
+  end
+  else if Pos('D', ACode) > 0 then
+  begin
+    Result := 'deleted';
+  end
+  else if Pos('M', ACode) > 0 then
+  begin
+    Result := 'modified';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
 class function TUnitSearch.GitState(const ALines: TArray<string>; AInRepo: Boolean): string;
 var
-  Line, Code: string;
+  mLine, mState: string;
 begin
   if not AInRepo then
   begin
     Exit('');
   end;
   Result := 'clean';
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    if Length(Line) < 2 then
+    if Length(mLine) >= 2 then
     begin
-      Continue;
-    end;
-    Code := Copy(Line, 1, 2);
-    if Code = '??' then
-    begin
-      Exit('untracked');
-    end;
-    if (Code = 'UU') or (Code = 'AA') or (Code = 'DD') or (Pos('U', Code) > 0) then
-    begin
-      Exit('conflict');
-    end;
-    if Pos('R', Code) > 0 then
-    begin
-      Exit('renamed');
-    end;
-    if Code[1] = 'A' then
-    begin
-      Exit('added');
-    end;
-    if Pos('D', Code) > 0 then
-    begin
-      Exit('deleted');
-    end;
-    if Pos('M', Code) > 0 then
-    begin
-      Exit('modified');
+      mState := CodeState(Copy(mLine, 1, 2));
+      if mState <> '' then
+      begin
+        Exit(mState);
+      end;
     end;
   end;
 end;
@@ -659,78 +760,97 @@ begin
   Result.Bottom := ABottom;
 end;
 
+/// <summary>Lage nach Align: Ausrichtung in Reihenfolge der Datei vom Rest der Fläche ARest abziehen; ohne
+/// bekanntes Align bleibt AArea.</summary>
+function AlignedArea(const AAlign: string; const AArea: TSketchBox; AWidth, AHeight: Integer;
+  var ARest: TSketchBox): TSketchBox;
+begin
+  Result := AArea;
+  if AAlign = 'altop' then
+  begin
+    Result := Box(ARest.Left, ARest.Top, ARest.Right, ARest.Top + AHeight);
+    ARest.Top := Result.Bottom;
+  end
+  else if AAlign = 'albottom' then
+  begin
+    Result := Box(ARest.Left, ARest.Bottom - AHeight, ARest.Right, ARest.Bottom);
+    ARest.Bottom := Result.Top;
+  end
+  else if AAlign = 'alleft' then
+  begin
+    Result := Box(ARest.Left, ARest.Top, ARest.Left + AWidth, ARest.Bottom);
+    ARest.Left := Result.Right;
+  end
+  else if AAlign = 'alright' then
+  begin
+    Result := Box(ARest.Right - AWidth, ARest.Top, ARest.Right, ARest.Bottom);
+    ARest.Right := Result.Left;
+  end
+  else if AAlign = 'alclient' then
+  begin
+    Result := ARest;
+  end;
+end;
+
+/// <summary>Nicht sichtbare Komponenten (TTimer, TDataSource …) haben weder Lage noch Größe in der Datei.
+/// </summary>
+function IsVisual(AObject: TDfmObject; const AAlign: string): Boolean;
+var
+  mDummy: string;
+begin
+  Result := PropertyValue(AObject, 'Width', mDummy) or PropertyValue(AObject, 'Height', mDummy) or
+    PropertyValue(AObject, 'Left', mDummy) or (AAlign <> '');
+end;
+
+function SketchItemOf(AObject: TDfmObject; const AArea: TSketchBox; ADepth: Integer): TUnitSketchItem;
+begin
+  Result := Default(TUnitSketchItem);
+  Result.Name := AObject.Name;
+  Result.TypeName := AObject.TypeName;
+  Result.Caption := TextValue(AObject, 'Caption');
+  if Result.Caption = '' then
+  begin
+    Result.Caption := TextValue(AObject, 'Text');
+  end;
+  Result.Left := AArea.Left;
+  Result.Top := AArea.Top;
+  Result.Width := Max(0, AArea.Right - AArea.Left);
+  Result.Height := Max(0, AArea.Bottom - AArea.Top);
+  Result.Depth := ADepth;
+end;
+
 procedure AddChildren(AParent: TDfmObject; const AClient: TSketchBox; ADepth: Integer;
   var AItems: TArray<TUnitSketchItem>);
 var
-  Child: TDfmObject;
-  Item: TUnitSketchItem;
-  Align, Dummy: string;
-  Rest, Area: TSketchBox;
-  Width_, Height_: Integer;
+  mChild: TDfmObject;
+  mAlign: string;
+  mRest, mArea: TSketchBox;
+  mWidth, mHeight: Integer;
 begin
-  Rest := AClient;
-  for Child in AParent.Children do
+  mRest := AClient;
+  for mChild in AParent.Children do
   begin
     if Length(AItems) >= TUnitSearch.MaxSketchItems then
     begin
       Exit;
     end;
-    if Child.Kind = TDfmObjectKind.Item then
+    if mChild.Kind = TDfmObjectKind.Item then
     begin
       Continue;
     end;
-    Width_ := IntValue(Child, 'Width', IntValue(Child, 'ExplicitWidth', 75));
-    Height_ := IntValue(Child, 'Height', IntValue(Child, 'ExplicitHeight', 25));
-    Area.Left := AClient.Left + IntValue(Child, 'Left', 0);
-    Area.Top := AClient.Top + IntValue(Child, 'Top', 0);
-    Area.Right := Area.Left + Width_;
-    Area.Bottom := Area.Top + Height_;
-    PropertyValue(Child, 'Align', Align);
-    Align := LowerCase(Trim(Align));
-    // Ausrichtung in Reihenfolge der Datei vom Rest der Fläche abziehen.
-    if Align = 'altop' then
+    mWidth := IntValue(mChild, 'Width', IntValue(mChild, 'ExplicitWidth', 75));
+    mHeight := IntValue(mChild, 'Height', IntValue(mChild, 'ExplicitHeight', 25));
+    mArea.Left := AClient.Left + IntValue(mChild, 'Left', 0);
+    mArea.Top := AClient.Top + IntValue(mChild, 'Top', 0);
+    mArea.Right := mArea.Left + mWidth;
+    mArea.Bottom := mArea.Top + mHeight;
+    PropertyValue(mChild, 'Align', mAlign);
+    mAlign := LowerCase(Trim(mAlign));
+    mArea := AlignedArea(mAlign, mArea, mWidth, mHeight, mRest);
+    if IsVisual(mChild, mAlign) then
     begin
-      Area := Box(Rest.Left, Rest.Top, Rest.Right, Rest.Top + Height_);
-      Rest.Top := Area.Bottom;
-    end
-    else if Align = 'albottom' then
-    begin
-      Area := Box(Rest.Left, Rest.Bottom - Height_, Rest.Right, Rest.Bottom);
-      Rest.Bottom := Area.Top;
-    end
-    else if Align = 'alleft' then
-    begin
-      Area := Box(Rest.Left, Rest.Top, Rest.Left + Width_, Rest.Bottom);
-      Rest.Left := Area.Right;
-    end
-    else if Align = 'alright' then
-    begin
-      Area := Box(Rest.Right - Width_, Rest.Top, Rest.Right, Rest.Bottom);
-      Rest.Right := Area.Left;
-    end
-    else if Align = 'alclient' then
-    begin
-      Area := Rest;
-    end;
-    // Nicht sichtbare Komponenten (TTimer, TDataSource …) haben weder Lage noch Größe in der Datei.
-    if PropertyValue(Child, 'Width', Dummy) or PropertyValue(Child, 'Height', Dummy) or
-      PropertyValue(Child, 'Left', Dummy) or (Align <> '') then
-    begin
-      Item := Default(TUnitSketchItem);
-      Item.Name := Child.Name;
-      Item.TypeName := Child.TypeName;
-      Item.Caption := TextValue(Child, 'Caption');
-      if Item.Caption = '' then
-      begin
-        Item.Caption := TextValue(Child, 'Text');
-      end;
-      Item.Left := Area.Left;
-      Item.Top := Area.Top;
-      Item.Width := Max(0, Area.Right - Area.Left);
-      Item.Height := Max(0, Area.Bottom - Area.Top);
-      Item.Depth := ADepth;
-      AItems := AItems + [Item];
-      AddChildren(Child, Area, ADepth + 1, AItems);
+      AItems := AItems + [SketchItemOf(mChild, mArea, ADepth)];
+      AddChildren(mChild, mArea, ADepth + 1, AItems);
     end;
   end;
 end;
@@ -805,315 +925,440 @@ begin
   Result := UnitsJson(AContext, nil);
 end;
 
+type
+  /// <summary>Baut die Antwort auf atlas.server.units.</summary>
+  TUnitsJsonRun = class
+  private
+    FContext: TUnitSearchContext;
+    FCaptionOf: TFunc<string, string>;
+    // Projekte je Datei (Großschrift) als Indizes in FContext.Projects.
+    FOwners: TObjectDictionary<string, TList<Integer>>;
+    FSeen: TDictionary<string, Boolean>;
+    FItems: TJSONArray;
+    function ProjectJson(AIndex: Integer): TJSONObject;
+    procedure AddOwner(const AFileName: string; AIndex: Integer);
+    function Projects(const AKey: string; out AOnlyTests: Boolean): TJSONArray;
+    function AddEntry(const AName, AFile, AOrigin, AKind: string; AProjects: TJSONArray): TJSONObject;
+    procedure AddCaption(AEntry: TJSONObject; const AKind, AOrigin, AFormFile: string);
+    function MarkSeen(const AFileName: string): Boolean;
+    procedure AddIndexed(const AUnit: TUnitIndex);
+    procedure AddIncludes(const AUnit: TUnitIndex; const AOrigin: string);
+    procedure AddMissing(const AFileName: string);
+  public
+    constructor Create(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>);
+    destructor Destroy; override;
+    function Build: TJSONObject;
+  end;
+
+constructor TUnitsJsonRun.Create(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>);
+begin
+  inherited Create;
+  FContext := AContext;
+  FCaptionOf := ACaptionOf;
+  FOwners := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
+  FSeen := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TUnitsJsonRun.Destroy;
+begin
+  FSeen.Free;
+  FOwners.Free;
+  inherited;
+end;
+
+function TUnitsJsonRun.ProjectJson(AIndex: Integer): TJSONObject;
+var
+  mProject: TUnitSearchProject;
+  mFileName: string;
+begin
+  mProject := FContext.Projects[AIndex];
+  Result := TJSONObject.Create;
+  Result.AddPair('name', mProject.Name);
+  if mProject.FileName <> '' then
+  begin
+    Result.AddPair('uri', TDocumentUris.FromPath(mProject.FileName));
+  end;
+  Result.AddPair('isTest', TJSONBool.Create(mProject.IsTest));
+  for mFileName in mProject.Files do
+  begin
+    AddOwner(mFileName, AIndex);
+  end;
+end;
+
+procedure TUnitsJsonRun.AddOwner(const AFileName: string; AIndex: Integer);
+var
+  mKey: string;
+  mIndices: TList<Integer>;
+begin
+  mKey := UpperCase(AFileName);
+  if not FOwners.TryGetValue(mKey, mIndices) then
+  begin
+    mIndices := TList<Integer>.Create;
+    FOwners.Add(mKey, mIndices);
+  end;
+  if not mIndices.Contains(AIndex) then
+  begin
+    mIndices.Add(AIndex);
+  end;
+end;
+
+function TUnitsJsonRun.Projects(const AKey: string; out AOnlyTests: Boolean): TJSONArray;
+var
+  mList: TList<Integer>;
+  mIndex: Integer;
+begin
+  Result := TJSONArray.Create;
+  AOnlyTests := False;
+  if not FOwners.TryGetValue(AKey, mList) then
+  begin
+    Exit;
+  end;
+  AOnlyTests := True;
+  for mIndex in mList do
+  begin
+    Result.Add(FContext.Projects[mIndex].Name);
+    AOnlyTests := AOnlyTests and FContext.Projects[mIndex].IsTest;
+  end;
+end;
+
+function TUnitsJsonRun.AddEntry(const AName, AFile, AOrigin, AKind: string; AProjects: TJSONArray): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', AName);
+  Result.AddPair('uri', TDocumentUris.FromPath(AFile));
+  Result.AddPair('origin', AOrigin);
+  Result.AddPair('kind', AKind);
+  Result.AddPair('projects', AProjects);
+  FItems.Add(Result);
+end;
+
+procedure TUnitsJsonRun.AddCaption(AEntry: TJSONObject; const AKind, AOrigin, AFormFile: string);
+var
+  mCaption: string;
+begin
+  // Nur Formulare außerhalb der Bibliothek (#1310): Frames und Datenmodule haben keine sichtbare Caption.
+  if not Assigned(FCaptionOf) or (AKind <> 'form') or (AOrigin = 'library') or (AFormFile = '') then
+  begin
+    Exit;
+  end;
+  mCaption := FCaptionOf(AFormFile);
+  if mCaption <> '' then
+  begin
+    AEntry.AddPair('caption', mCaption);
+  end;
+end;
+
+function TUnitsJsonRun.MarkSeen(const AFileName: string): Boolean;
+var
+  mKey: string;
+begin
+  mKey := UpperCase(AFileName);
+  Result := not FSeen.ContainsKey(mKey);
+  if Result then
+  begin
+    FSeen.Add(mKey, True);
+  end;
+end;
+
+procedure TUnitsJsonRun.AddIndexed(const AUnit: TUnitIndex);
+var
+  mKey, mOrigin, mKind, mFormFile: string;
+  mOnlyTests, mInProject: Boolean;
+  mProjects: TJSONArray;
+begin
+  // Nur Units, keine Programme oder Packages.
+  if (AUnit.UnitName = '') or not SameText(ExtractFileExt(AUnit.FileName), '.pas') or
+    not MarkSeen(AUnit.FileName) then
+  begin
+    Exit;
+  end;
+  mKey := UpperCase(AUnit.FileName);
+  mInProject := FOwners.ContainsKey(mKey);
+  if mInProject then
+  begin
+    mOrigin := 'project';
+  end
+  else if AUnit.Library_ then
+  begin
+    mOrigin := 'library';
+  end
+  else
+  begin
+    mOrigin := 'searchPath';
+  end;
+  mProjects := Projects(mKey, mOnlyTests);
+  mFormFile := TUnitSearch.FormFileOf(AUnit.FileName, FContext.Exists);
+  mKind := TUnitSearch.KindOf(AUnit, FContext.AncestorsOf, mFormFile <> '', mInProject and mOnlyTests);
+  AddCaption(AddEntry(AUnit.UnitName, AUnit.FileName, mOrigin, mKind, mProjects), mKind, mOrigin, mFormFile);
+  // Include-Dateien der Projekt-Units (#264) als eigene Einträge.
+  if not AUnit.Library_ then
+  begin
+    AddIncludes(AUnit, mOrigin);
+  end;
+end;
+
+procedure TUnitsJsonRun.AddIncludes(const AUnit: TUnitIndex; const AOrigin: string);
+var
+  mInclude: string;
+  mOnlyTests: Boolean;
+begin
+  for mInclude in AUnit.Includes do
+  begin
+    if MarkSeen(mInclude) then
+    begin
+      AddEntry(ExtractFileName(mInclude), mInclude, AOrigin, 'inc', Projects(UpperCase(AUnit.FileName),
+        mOnlyTests));
+    end;
+  end;
+end;
+
+procedure TUnitsJsonRun.AddMissing(const AFileName: string);
+var
+  mKind, mFormFile: string;
+  mOnlyTests: Boolean;
+  mProjects: TJSONArray;
+begin
+  if not SameText(ExtractFileExt(AFileName), '.pas') or not MarkSeen(AFileName) then
+  begin
+    Exit;
+  end;
+  mProjects := Projects(UpperCase(AFileName), mOnlyTests);
+  mFormFile := TUnitSearch.FormFileOf(AFileName, FContext.Exists);
+  if mOnlyTests then
+  begin
+    mKind := 'test';
+  end
+  else if mFormFile <> '' then
+  begin
+    mKind := 'form';
+  end
+  else
+  begin
+    mKind := 'unit';
+  end;
+  AddCaption(AddEntry(ChangeFileExt(ExtractFileName(AFileName), ''), AFileName, 'project', mKind, mProjects), mKind,
+    'project', mFormFile);
+end;
+
+function TUnitsJsonRun.Build: TJSONObject;
+var
+  mProjectList: TJSONArray;
+  mIndex: Integer;
+  mUnit: TUnitIndex;
+  mFileName: string;
+begin
+  Result := TJSONObject.Create;
+  FItems := TJSONArray.Create;
+  Result.AddPair('units', FItems);
+  mProjectList := TJSONArray.Create;
+  Result.AddPair('projects', mProjectList);
+  for mIndex := 0 to High(FContext.Projects) do
+  begin
+    mProjectList.Add(ProjectJson(mIndex));
+  end;
+  for mUnit in FContext.Units do
+  begin
+    if mUnit.FileName <> '' then
+    begin
+      AddIndexed(mUnit);
+    end;
+  end;
+  // Projektdateien, die (noch) nicht im Index stehen.
+  for mIndex := 0 to High(FContext.Projects) do
+  begin
+    for mFileName in FContext.Projects[mIndex].Files do
+    begin
+      AddMissing(mFileName);
+    end;
+  end;
+  Result.AddPair('count', TJSONNumber.Create(FItems.Count));
+end;
+
 class function TUnitSearch.UnitsJson(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>)
   : TJSONObject;
 var
-  Owners: TObjectDictionary<string, TList<Integer>>;
-  Seen: TDictionary<string, Boolean>;
-  Items: TJSONArray;
-  ProjectList: TJSONArray;
-  Project: TUnitSearchProject;
-  ProjectIndex: Integer;
-  FileName, Key, Origin, Kind, Include, FormFile, Caption: string;
-  Item: TUnitIndex;
-  Entry: TJSONObject;
-  Indices: TList<Integer>;
-  OnlyTests, InProject: Boolean;
+  mRun: TUnitsJsonRun;
+begin
+  mRun := TUnitsJsonRun.Create(AContext, ACaptionOf);
+  try
+    Result := mRun.Build;
+  finally
+    mRun.Free;
+  end;
+end;
 
-  function Projects(const AKey: string; out AOnlyTests: Boolean): TJSONArray;
-  var
-    List: TList<Integer>;
-    Index: Integer;
+/// <summary>Unit zu AFileName im Index.</summary>
+function FindUnit(const AUnits: TArray<TUnitIndex>; const AFileName: string; out AFound: TUnitIndex): Boolean;
+var
+  mItem: TUnitIndex;
+begin
+  for mItem in AUnits do
   begin
-    Result := TJSONArray.Create;
-    AOnlyTests := False;
-    if not Owners.TryGetValue(AKey, List) then
+    if SameText(mItem.FileName, AFileName) then
     begin
-      Exit;
+      AFound := mItem;
+      Exit(True);
     end;
-    AOnlyTests := True;
-    for Index in List do
+  end;
+  AFound := Default(TUnitIndex);
+  Result := False;
+end;
+
+/// <summary>Kopfkommentar, Zeilenzahl, letzte Änderung und Git-Zustand.</summary>
+procedure AddFileInfo(AResult: TJSONObject; const AContext: TUnitSearchContext; const AFileName: string);
+var
+  mText, mState: string;
+  mModified: TDateTime;
+begin
+  mText := '';
+  if Assigned(AContext.ReadText) then
+  begin
+    mText := AContext.ReadText(AFileName);
+  end;
+  AResult.AddPair('header', TUnitSearch.HeaderComment(mText));
+  AResult.AddPair('lines', TJSONNumber.Create(TUnitSearch.LineCount(mText)));
+  mModified := 0;
+  if Assigned(AContext.Modified) then
+  begin
+    mModified := AContext.Modified(AFileName);
+  end;
+  if mModified > 0 then
+  begin
+    AResult.AddPair('modified', DateToISO8601(mModified, False));
+  end;
+  mState := '';
+  if Assigned(AContext.GitState) then
+  begin
+    mState := AContext.GitState(AFileName);
+  end;
+  AResult.AddPair('git', mState);
+end;
+
+/// <summary>Typen im interface, höchstens TUnitSearch.MaxTypes; ACount: alle.</summary>
+function TypesJson(const AUnit: TUnitIndex; out ACount: Integer): TJSONArray;
+var
+  mSymbol: TIndexSymbol;
+  mEntry: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  ACount := 0;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if not mSymbol.InInterface or (mSymbol.Container <> '') or not (mSymbol.Kind in TypeKinds) then
     begin
-      Result.Add(AContext.Projects[Index].Name);
-      if not AContext.Projects[Index].IsTest then
+      Continue;
+    end;
+    Inc(ACount);
+    if Result.Count < TUnitSearch.MaxTypes then
+    begin
+      mEntry := TJSONObject.Create;
+      mEntry.AddPair('name', mSymbol.Name);
+      mEntry.AddPair('kind', KindName(mSymbol.Kind));
+      if Length(mSymbol.Ancestors) > 0 then
       begin
-        AOnlyTests := False;
+        mEntry.AddPair('ancestor', mSymbol.Ancestors[0]);
       end;
+      Result.Add(mEntry);
     end;
   end;
+end;
 
-  procedure AddEntry(const AName, AFile, AOrigin, AKind: string; AProjects: TJSONArray);
+/// <summary>uses beider Abschnitte (#876), doppelte nur einmal.</summary>
+function UsesJson(const AUnit: TUnitIndex): TJSONArray;
+var
+  mNames: TArray<string>;
+  mName: string;
+begin
+  Result := TJSONArray.Create;
+  mNames := nil;
+  for mName in AUnit.InterfaceUses + AUnit.ImplementationUses do
   begin
-    Entry := TJSONObject.Create;
-    Entry.AddPair('name', AName);
-    Entry.AddPair('uri', TDocumentUris.FromPath(AFile));
-    Entry.AddPair('origin', AOrigin);
-    Entry.AddPair('kind', AKind);
-    Entry.AddPair('projects', AProjects);
-    Items.Add(Entry);
+    if not MatchText(mName, mNames) then
+    begin
+      mNames := mNames + [mName];
+      Result.Add(mName);
+    end;
   end;
+end;
 
-  procedure AddCaption(const AKind, AOrigin, AFormFile: string);
+procedure AddUsedBy(AResult: TJSONObject; const AUnits: TArray<TUnitIndex>; const AUnitName: string);
+var
+  mNames: TArray<string>;
+  mUsed: TJSONArray;
+  mName: string;
+begin
+  mNames := TUnitSearch.UsedBy(AUnits, AUnitName);
+  mUsed := TJSONArray.Create;
+  for mName in mNames do
   begin
-    // Nur Formulare außerhalb der Bibliothek (#1310): Frames und Datenmodule haben keine sichtbare Caption.
-    if not Assigned(ACaptionOf) or (AKind <> 'form') or (AOrigin = 'library') or (AFormFile = '') then
+    if mUsed.Count < TUnitSearch.MaxUsedBy then
     begin
-      Exit;
-    end;
-    Caption := ACaptionOf(AFormFile);
-    if Caption <> '' then
-    begin
-      Entry.AddPair('caption', Caption);
+      mUsed.Add(mName);
     end;
   end;
+  AResult.AddPair('usedBy', TJSONNumber.Create(Length(mNames)));
+  AResult.AddPair('usedByUnits', mUsed);
+end;
 
+function SketchJson(const ASketch: TUnitSketch): TJSONObject;
+var
+  mComponents: TJSONArray;
+  mItem: TUnitSketchItem;
 begin
   Result := TJSONObject.Create;
-  Items := TJSONArray.Create;
-  Result.AddPair('units', Items);
-  ProjectList := TJSONArray.Create;
-  Result.AddPair('projects', ProjectList);
-  Owners := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
-  Seen := TDictionary<string, Boolean>.Create;
-  try
-    for ProjectIndex := 0 to High(AContext.Projects) do
-    begin
-      Project := AContext.Projects[ProjectIndex];
-      Entry := TJSONObject.Create;
-      Entry.AddPair('name', Project.Name);
-      if Project.FileName <> '' then
-      begin
-        Entry.AddPair('uri', TDocumentUris.FromPath(Project.FileName));
-      end;
-      Entry.AddPair('isTest', TJSONBool.Create(Project.IsTest));
-      ProjectList.Add(Entry);
-      for FileName in Project.Files do
-      begin
-        Key := UpperCase(FileName);
-        if not Owners.TryGetValue(Key, Indices) then
-        begin
-          Indices := TList<Integer>.Create;
-          Owners.Add(Key, Indices);
-        end;
-        if not Indices.Contains(ProjectIndex) then
-        begin
-          Indices.Add(ProjectIndex);
-        end;
-      end;
-    end;
-    for Item in AContext.Units do
-    begin
-      if (Item.UnitName = '') or (Item.FileName = '') then
-      begin
-        Continue;
-      end;
-      // Nur Units, keine Programme oder Packages.
-      if not SameText(ExtractFileExt(Item.FileName), '.pas') then
-      begin
-        Continue;
-      end;
-      Key := UpperCase(Item.FileName);
-      if Seen.ContainsKey(Key) then
-      begin
-        Continue;
-      end;
-      Seen.Add(Key, True);
-      InProject := Owners.ContainsKey(Key);
-      if InProject then
-      begin
-        Origin := 'project';
-      end
-      else if Item.Library_ then
-      begin
-        Origin := 'library';
-      end
-      else
-      begin
-        Origin := 'searchPath';
-      end;
-      ProjectList := Projects(Key, OnlyTests);
-      FormFile := FormFileOf(Item.FileName, AContext.Exists);
-      Kind := KindOf(Item, AContext.AncestorsOf, FormFile <> '', InProject and OnlyTests);
-      AddEntry(Item.UnitName, Item.FileName, Origin, Kind, ProjectList);
-      AddCaption(Kind, Origin, FormFile);
-      // Include-Dateien der Projekt-Units (#264) als eigene Einträge.
-      if not Item.Library_ then
-      begin
-        for Include in Item.Includes do
-        begin
-          if Seen.ContainsKey(UpperCase(Include)) then
-          begin
-            Continue;
-          end;
-          Seen.Add(UpperCase(Include), True);
-          AddEntry(ExtractFileName(Include), Include, Origin, 'inc', Projects(Key, OnlyTests));
-        end;
-      end;
-    end;
-    // Projektdateien, die (noch) nicht im Index stehen.
-    for ProjectIndex := 0 to High(AContext.Projects) do
-    begin
-      for FileName in AContext.Projects[ProjectIndex].Files do
-      begin
-        Key := UpperCase(FileName);
-        if Seen.ContainsKey(Key) or not SameText(ExtractFileExt(FileName), '.pas') then
-        begin
-          Continue;
-        end;
-        Seen.Add(Key, True);
-        ProjectList := Projects(Key, OnlyTests);
-        FormFile := FormFileOf(FileName, AContext.Exists);
-        if OnlyTests then
-        begin
-          Kind := 'test';
-        end
-        else if FormFile <> '' then
-        begin
-          Kind := 'form';
-        end
-        else
-        begin
-          Kind := 'unit';
-        end;
-        AddEntry(ChangeFileExt(ExtractFileName(FileName), ''), FileName, 'project', Kind, ProjectList);
-        AddCaption(Kind, 'project', FormFile);
-      end;
-    end;
-  finally
-    Seen.Free;
-    Owners.Free;
+  Result.AddPair('class', ASketch.FormClass);
+  Result.AddPair('caption', ASketch.Caption);
+  Result.AddPair('width', TJSONNumber.Create(ASketch.Width));
+  Result.AddPair('height', TJSONNumber.Create(ASketch.Height));
+  mComponents := TJSONArray.Create;
+  for mItem in ASketch.Items do
+  begin
+    mComponents.Add(TJSONArray.Create.Add(mItem.Name).Add(mItem.TypeName).Add(mItem.Caption).Add(mItem.Left)
+      .Add(mItem.Top).Add(mItem.Width).Add(mItem.Height).Add(mItem.Depth));
   end;
-  Result.AddPair('count', TJSONNumber.Create(Items.Count));
+  Result.AddPair('items', mComponents);
 end;
 
 class function TUnitSearch.PreviewJson(const AContext: TUnitSearchContext; const AFileName: string;
   AWithForm, AWithUsedBy: Boolean): TJSONObject;
 var
-  Item, Found: TUnitIndex;
-  HasUnit: Boolean;
-  Text, FormFile, State: string;
-  Types, Used, Components, UsesList: TJSONArray;
-  Symbol: TIndexSymbol;
-  Entry: TJSONObject;
-  Names: TArray<string>;
-  Name: string;
-  Sketch_: TUnitSketch;
-  SketchItem: TUnitSketchItem;
-  Modified: TDateTime;
-  TypeCount: Integer;
+  mFound: TUnitIndex;
+  mHasUnit: Boolean;
+  mFormFile: string;
+  mSketch: TUnitSketch;
+  mTypeCount: Integer;
+  mTypes: TJSONArray;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('uri', TDocumentUris.FromPath(AFileName));
-  HasUnit := False;
-  Found := Default(TUnitIndex);
-  for Item in AContext.Units do
+  mHasUnit := FindUnit(AContext.Units, AFileName, mFound);
+  AddFileInfo(Result, AContext, AFileName);
+  mTypeCount := 0;
+  if mHasUnit then
   begin
-    if SameText(Item.FileName, AFileName) then
-    begin
-      Found := Item;
-      HasUnit := True;
-      Break;
-    end;
-  end;
-  if Assigned(AContext.ReadText) then
-  begin
-    Text := AContext.ReadText(AFileName);
+    mTypes := TypesJson(mFound, mTypeCount);
+    Result.AddPair('types', mTypes);
+    Result.AddPair('unit', mFound.UnitName);
+    Result.AddPair('uses', UsesJson(mFound));
   end
   else
   begin
-    Text := '';
+    Result.AddPair('types', TJSONArray.Create);
   end;
-  Result.AddPair('header', HeaderComment(Text));
-  Result.AddPair('lines', TJSONNumber.Create(LineCount(Text)));
-  Modified := 0;
-  if Assigned(AContext.Modified) then
+  Result.AddPair('typeCount', TJSONNumber.Create(mTypeCount));
+  if AWithUsedBy and mHasUnit then
   begin
-    Modified := AContext.Modified(AFileName);
+    AddUsedBy(Result, AContext.Units, mFound.UnitName);
   end;
-  if Modified > 0 then
+  mFormFile := FormFileOf(AFileName, AContext.Exists);
+  if not AWithForm or (mFormFile = '') or not Assigned(AContext.ReadText) then
   begin
-    Result.AddPair('modified', DateToISO8601(Modified, False));
+    Exit;
   end;
-  State := '';
-  if Assigned(AContext.GitState) then
+  mSketch := Sketch(AContext.ReadText(mFormFile));
+  if mSketch.FormClass <> '' then
   begin
-    State := AContext.GitState(AFileName);
-  end;
-  Result.AddPair('git', State);
-  Types := TJSONArray.Create;
-  Result.AddPair('types', Types);
-  TypeCount := 0;
-  if HasUnit then
-  begin
-    Result.AddPair('unit', Found.UnitName);
-    for Symbol in Found.Symbols do
-    begin
-      if Symbol.InInterface and (Symbol.Container = '') and (Symbol.Kind in TypeKinds) then
-      begin
-        Inc(TypeCount);
-        if Types.Count >= MaxTypes then
-        begin
-          Continue;
-        end;
-        Entry := TJSONObject.Create;
-        Entry.AddPair('name', Symbol.Name);
-        Entry.AddPair('kind', KindName(Symbol.Kind));
-        if Length(Symbol.Ancestors) > 0 then
-        begin
-          Entry.AddPair('ancestor', Symbol.Ancestors[0]);
-        end;
-        Types.Add(Entry);
-      end;
-    end;
-    // uses beider Abschnitte (#876), doppelte nur einmal.
-    UsesList := TJSONArray.Create;
-    Names := nil;
-    for Name in Found.InterfaceUses + Found.ImplementationUses do
-    begin
-      if not MatchText(Name, Names) then
-      begin
-        Names := Names + [Name];
-        UsesList.Add(Name);
-      end;
-    end;
-    Result.AddPair('uses', UsesList);
-  end;
-  Result.AddPair('typeCount', TJSONNumber.Create(TypeCount));
-  if AWithUsedBy and HasUnit then
-  begin
-    Names := UsedBy(AContext.Units, Found.UnitName);
-    Used := TJSONArray.Create;
-    for Name in Names do
-    begin
-      if Used.Count < MaxUsedBy then
-      begin
-        Used.Add(Name);
-      end;
-    end;
-    Result.AddPair('usedBy', TJSONNumber.Create(Length(Names)));
-    Result.AddPair('usedByUnits', Used);
-  end;
-  FormFile := FormFileOf(AFileName, AContext.Exists);
-  if AWithForm and (FormFile <> '') and Assigned(AContext.ReadText) then
-  begin
-    Sketch_ := Sketch(AContext.ReadText(FormFile));
-    if Sketch_.FormClass <> '' then
-    begin
-      Entry := TJSONObject.Create;
-      Entry.AddPair('class', Sketch_.FormClass);
-      Entry.AddPair('caption', Sketch_.Caption);
-      Entry.AddPair('width', TJSONNumber.Create(Sketch_.Width));
-      Entry.AddPair('height', TJSONNumber.Create(Sketch_.Height));
-      Components := TJSONArray.Create;
-      for SketchItem in Sketch_.Items do
-      begin
-        Components.Add(TJSONArray.Create.Add(SketchItem.Name).Add(SketchItem.TypeName).Add(SketchItem.Caption)
-          .Add(SketchItem.Left).Add(SketchItem.Top).Add(SketchItem.Width).Add(SketchItem.Height)
-          .Add(SketchItem.Depth));
-      end;
-      Entry.AddPair('items', Components);
-      Result.AddPair('form', Entry);
-    end;
+    Result.AddPair('form', SketchJson(mSketch));
   end;
 end;
 
@@ -1210,55 +1455,76 @@ begin
   Result.AddPair('added', AddedList);
 end;
 
+/// <summary>Namen aus dem Array, nur Zeichenketten.</summary>
+function UnitNames(AArray: TJSONArray): TArray<string>;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  for mValue in AArray do
+  begin
+    if mValue is TJSONString then
+    begin
+      Result := Result + [mValue.Value];
+    end;
+  end;
+end;
+
+/// <summary>Abschnitt aus {"section": "interface" | "implementation"}; sonst Auto.</summary>
+function TargetOf(AOptions: TJSONValue): TUsesAddTarget;
+var
+  mSection: TJSONValue;
+begin
+  Result := TUsesAddTarget.Auto;
+  if not (AOptions is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mSection := TJSONObject(AOptions).GetValue('section');
+  if not (mSection is TJSONString) then
+  begin
+    Exit;
+  end;
+  if SameText(mSection.Value, 'interface') then
+  begin
+    Result := TUsesAddTarget.Interface_;
+  end
+  else if SameText(mSection.Value, 'implementation') then
+  begin
+    Result := TUsesAddTarget.Implementation_;
+  end;
+end;
+
 function TUnitSearch.ExecuteAddUses(const AArguments: TJSONArray): TJSONValue;
 var
-  Context: TUnitSearchContext;
-  UsesContext: TUsesContext;
-  Units: TArray<string>;
-  Value, Section: TJSONValue;
-  Uri: string;
-  Target: TUsesAddTarget;
+  mContext: TUnitSearchContext;
+  mUsesContext: TUsesContext;
+  mUnits: TArray<string>;
+  mUri: string;
+  mTarget: TUsesAddTarget;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONArray) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Units := nil;
-  for Value in TJSONArray(AArguments.Items[1]) do
-  begin
-    if Value is TJSONString then
-    begin
-      Units := Units + [Value.Value];
-    end;
-  end;
-  if not FContextFor(Context) or not Assigned(Context.ReadText) then
+  mUnits := UnitNames(TJSONArray(AArguments.Items[1]));
+  if not FContextFor(mContext) or not Assigned(mContext.ReadText) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Uri := AArguments.Items[0].Value;
-  UsesContext := Default(TUsesContext);
-  if Assigned(Context.UsesFor) then
+  mUri := AArguments.Items[0].Value;
+  mUsesContext := Default(TUsesContext);
+  if Assigned(mContext.UsesFor) then
   begin
-    UsesContext := Context.UsesFor(Uri);
+    mUsesContext := mContext.UsesFor(mUri);
   end;
-  Target := TUsesAddTarget.Auto;
-  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
+  mTarget := TUsesAddTarget.Auto;
+  if AArguments.Count > 2 then
   begin
-    Section := TJSONObject(AArguments.Items[2]).GetValue('section');
-    if Section is TJSONString then
-    begin
-      if SameText(Section.Value, 'interface') then
-      begin
-        Target := TUsesAddTarget.Interface_;
-      end
-      else if SameText(Section.Value, 'implementation') then
-      begin
-        Target := TUsesAddTarget.Implementation_;
-      end;
-    end;
+    mTarget := TargetOf(AArguments.Items[2]);
   end;
-  Result := AddUsesJson(Uri, Context.ReadText(TDocumentUris.ToPath(Uri)), Units, UsesContext, Target);
+  Result := AddUsesJson(mUri, mContext.ReadText(TDocumentUris.ToPath(mUri)), mUnits, mUsesContext, mTarget);
 end;
 
 end.

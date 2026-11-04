@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
@@ -233,7 +234,7 @@ begin
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
     Request.ReadText := ReadText;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;
@@ -413,7 +414,8 @@ procedure TCompletionAttributesTests.SignatureShowsConstructor;
     Text := Split(Source(AMarked), Position);
     Tree := TPascalParser.Parse(Text);
     try
-      Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, Position, ReadText);
+      Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+        ReadText), Position);
     finally
       Tree.Free;
     end;
