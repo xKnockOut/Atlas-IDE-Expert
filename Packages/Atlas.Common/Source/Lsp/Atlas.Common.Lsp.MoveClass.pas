@@ -132,7 +132,8 @@ begin
   Name := TMoveClass.DefaultUnitName(Decl.Name);
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(AFileName, AText, ATree, APosition, Name, Lookup(AResolver), Plan, Reason) then
+    if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, AText, ATree), APosition, Name, Lookup(AResolver), Plan,
+      Reason) then
     begin
       Exit;
     end;
@@ -229,8 +230,8 @@ begin
     end;
     Tree := TSyntaxTreeCache.Parse(Text);
     try
-      if TMoveClass.UpdateUser(Text, Tree, APlan.OriginUnit, APlan.NewUnit, APlan.ClassName,
-        RangesOf(AReferences, User), not SameText(User, MainSource), Edits) then
+      if TMoveClass.UpdateUser(Text, Tree, APlan.Names, RangesOf(AReferences, User),
+        not SameText(User, MainSource), Edits) then
       begin
         AChanges.Add(User, Edits);
       end;
@@ -256,8 +257,8 @@ begin
   end;
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(AFileName, AText, ATree, APosition, AContext.UnitName, Lookup(AResolver), Plan,
-      Reason) then
+    if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, AText, ATree), APosition, AContext.UnitName,
+      Lookup(AResolver), Plan, Reason) then
     begin
       raise Failed(Reason);
     end;

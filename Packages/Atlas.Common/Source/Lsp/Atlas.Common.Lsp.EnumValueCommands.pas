@@ -15,7 +15,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.CompletionRequest;
 
 type
   TEnumValueCommands = class
@@ -35,7 +35,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Lsp.Completion.Values;
 
 class function TEnumValueCommands.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
@@ -47,6 +48,7 @@ var
   Resolver: TNameResolver;
   Values: TArray<string>;
   Answer: TJSONArray;
+  Lookup: TEnumLookup;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
@@ -62,8 +64,13 @@ begin
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
     Resolver.Namespaces := ANamespaces;
-    TLspCompletion.EnumValuesAt(Resolver, AIndex, Shared.Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(AArguments.Items[1]), AReadText, Values);
+    Lookup.Resolver := Resolver;
+    Lookup.Index := AIndex;
+    Lookup.Tree := Shared.Tree;
+    Lookup.Text := Document.Text;
+    Lookup.FileName := TDocumentUris.ToPath(Uri);
+    Lookup.ReadText := AReadText;
+    TCompletionValues.EnumValuesAt(Lookup, TLspPositions.ReadPosition(AArguments.Items[1]), Values);
   finally
     Resolver.Free;
   end;

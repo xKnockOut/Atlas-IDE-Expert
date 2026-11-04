@@ -16,7 +16,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.Values;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -88,8 +89,32 @@ function PositionOf(const AText, AMarker: string): TTextPosition;
 
 /// <summary>Unit Haupt mit ACode an der Stelle des Platzhalters.</summary>
 function WithCode(const ACode: string): string;
+/// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
+function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
+  const AReadText: TCompletionReadText): TEnumLookup;
+/// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
+/// </summary>
+function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
+/// <summary>TCompletionValues.EnumItems an APosition.</summary>
+function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
+  out ASetMode: Boolean): Boolean;
+/// <summary>TCompletionValues.DeclareItems an APosition.</summary>
+function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
+  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
+/// <summary>TCompletionDeclarations.PropertyItems an APosition mit AMatching.</summary>
+function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionDeclarations.OverrideItems an APosition.</summary>
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionDeclarations.InterfaceItems an APosition mit Abschnitt ASection.</summary>
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
 
 implementation
+
+uses
+  Atlas.Common.Lsp.Completion.Declarations;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
@@ -118,6 +143,58 @@ end;
 function WithCode(const ACode: string): string;
 begin
   Result := StringReplace(UnitHaupt, '  { Kommentar Wert } |', ACode, []);
+end;
+
+/// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
+function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
+  const AReadText: TCompletionReadText): TEnumLookup;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.FileName := HauptFile;
+  Result.ReadText := AReadText;
+end;
+
+/// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
+/// </summary>
+function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
+begin
+  Result := TCompletionRequest.Create(ALookup.Text, ALookup.FileName, APosition);
+  Result.Tree := ALookup.Tree;
+  Result.Resolver := ALookup.Resolver;
+  Result.Index := ALookup.Index;
+  Result.ReadText := ALookup.ReadText;
+  Result.Matching := TCompletionMatching.Fuzzy;
+end;
+
+/// <summary>TCompletionValues.EnumItems an APosition.</summary>
+function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
+  out ASetMode: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionValues.EnumItems(mRequest, AItems, ASetMode);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+/// <summary>TCompletionValues.DeclareItems an APosition.</summary>
+function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
+  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionValues.DeclareItems(mRequest, AInlineVar, AKnown, AItems);
+  finally
+    mRequest.Free;
+  end;
 end;
 
 procedure TLspCompletionTestCase.Prepare;
@@ -179,10 +256,54 @@ begin
     Settings := TCompletionSettings.Default;
     Settings.AssignAllFields := AOn;
     Request.Settings := Settings;
-    Result := TLspCompletion.AssignAllItem(Request, ASnippets, AItem);
+    Result := TCompletionValues.AssignAllItem(Request, ASnippets, AItem);
   finally
     Request.Free;
     Tree.Free;
+  end;
+end;
+
+function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mRequest.Matching := AMatching;
+    Result := TCompletionDeclarations.PropertyItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionDeclarations.OverrideItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.InterfaceSection := ASection;
+    mRequest.Settings := mSettings;
+    Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, ABatch);
+  finally
+    mRequest.Free;
   end;
 end;
 

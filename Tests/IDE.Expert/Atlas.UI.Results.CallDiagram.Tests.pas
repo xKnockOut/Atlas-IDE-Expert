@@ -197,32 +197,32 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.OnExpand := Children;
+    Frame.Hierarchy.OnExpand := Children;
     // Wie in NewView: ohne Projektfilter stünde IntToStr aus der RTL als vierte Box da.
-    Frame.IsProjectFile := IsProject;
+    Frame.Hierarchy.IsProjectFile := IsProject;
     Roots := TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1));
     // Ohne callHierarchy.diagram: kein Umschalter, auch nicht auf Wunsch.
-    Frame.DiagramAllowed := False;
-    Frame.ShowHierarchy('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots, True);
-    Assert.IsFalse(Frame.DiagramToggle.Visible);
-    Assert.IsFalse(Frame.ShowsDiagram);
+    Frame.Hierarchy.DiagramAllowed := False;
+    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots, True);
+    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible);
+    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram);
     Assert.IsTrue(Frame.Tree.Visible);
     // Erlaubt: Umschalter bei Aufrufhierarchien, nicht bei Typhierarchien.
-    Frame.DiagramAllowed := True;
-    Frame.ShowHierarchy('Vorfahren', TAtlasHierarchyDirection.Supertypes, Roots);
-    Assert.IsFalse(Frame.DiagramToggle.Visible, 'Typhierarchie ohne Diagramm');
-    Frame.ShowHierarchy('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots);
-    Assert.IsTrue(Frame.DiagramToggle.Visible);
-    Assert.IsFalse(Frame.ShowsDiagram, 'Vorgabe: Liste');
-    Frame.DiagramToggle.Checked := True;
-    Assert.IsTrue(Frame.ShowsDiagram);
-    Assert.IsTrue(Frame.DiagramBar.Visible);
+    Frame.Hierarchy.DiagramAllowed := True;
+    Frame.Hierarchy.Show('Vorfahren', TAtlasHierarchyDirection.Supertypes, Roots);
+    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible, 'Typhierarchie ohne Diagramm');
+    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing, Roots);
+    Assert.IsTrue(Frame.Hierarchy.Controls.Toggle.Visible);
+    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram, 'Vorgabe: Liste');
+    Frame.Hierarchy.Controls.Toggle.Checked := True;
+    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram);
+    Assert.IsTrue(Frame.Hierarchy.Controls.Bar.Visible);
     Assert.IsFalse(Frame.Tree.Visible);
-    Assert.AreEqual(3, Integer(Length(Frame.Diagram.Layout.Boxes)));
+    Assert.AreEqual(3, Integer(Length(Frame.Hierarchy.Controls.Diagram.Layout.Boxes)));
     // Abschalten der Einstellung nimmt das Diagramm weg.
-    Frame.DiagramAllowed := False;
-    Assert.IsFalse(Frame.ShowsDiagram);
-    Assert.IsFalse(Frame.DiagramToggle.Visible);
+    Frame.Hierarchy.DiagramAllowed := False;
+    Assert.IsFalse(Frame.Hierarchy.ShowsDiagram);
+    Assert.IsFalse(Frame.Hierarchy.Controls.Toggle.Visible);
     Assert.IsTrue(Frame.Tree.Visible);
   finally
     Host.Free;
@@ -239,17 +239,17 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.OnExpand := Children;
-    Frame.DiagramAllowed := True;
-    Frame.ShowHierarchy('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
+    Frame.Hierarchy.OnExpand := Children;
+    Frame.Hierarchy.DiagramAllowed := True;
+    Frame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
       TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1)), True);
-    Assert.IsTrue(Frame.ShowsDiagram, 'gleich als Diagramm');
-    Assert.IsTrue(Frame.OutgoingButton.Checked);
-    Frame.IncomingButton.Checked := True;
-    Assert.AreEqual(Ord(TAtlasHierarchyDirection.Incoming), Ord(Frame.Direction));
-    Assert.IsTrue(Frame.ShowsDiagram, 'bleibt Diagramm');
-    Assert.AreEqual('Aufrufer', Frame.Diagram.Diagram[1].Item.Name, 'dieselbe Wurzel, eingehend geladen');
-    Html := Frame.DiagramHtml;
+    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram, 'gleich als Diagramm');
+    Assert.IsTrue(Frame.Hierarchy.Controls.Outgoing.Checked);
+    Frame.Hierarchy.Controls.Incoming.Checked := True;
+    Assert.AreEqual(Ord(TAtlasHierarchyDirection.Incoming), Ord(Frame.Hierarchy.Direction));
+    Assert.IsTrue(Frame.Hierarchy.ShowsDiagram, 'bleibt Diagramm');
+    Assert.AreEqual('Aufrufer', Frame.Hierarchy.Controls.Diagram.Diagram[1].Item.Name, 'dieselbe Wurzel, eingehend geladen');
+    Html := Frame.Hierarchy.DiagramHtml;
     Assert.IsTrue(Html.StartsWith('<!DOCTYPE html>', True));
     Assert.IsTrue(Html.Contains('Aufrufer'));
     Assert.IsFalse(Html.Contains('src="http'), 'keine externen Verweise');

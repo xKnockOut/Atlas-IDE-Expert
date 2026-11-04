@@ -43,6 +43,12 @@ type
     function Scale(AValue: Integer): Integer;
     function RowHeight: Integer;
     procedure GridPaint(Sender: TObject);
+    /// <summary>Zelle der Spalte AColumn (0 = Schritt, 1–4 = Werte) in der Zeile ab ATop.</summary>
+    function CellRect(const ABounds: TRect; ATop, AColumn: Integer): TRect;
+    /// <summary>Text einer Zelle; AWarn hebt über dem Budget hervor, AMuted zeichnet gedämpft.</summary>
+    procedure DrawCell(const ARect: TRect; const AText: string; AWarn, ARight, AMuted: Boolean);
+    procedure DrawHeader(const ABounds: TRect);
+    procedure DrawRow(const ABounds: TRect; ATop: Integer; const ARow: TAtlasTimingRow);
     procedure CopyClick(Sender: TObject);
     procedure UpdateTitle;
   public
@@ -206,130 +212,142 @@ begin
   end;
 end;
 
-procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
-const
-  TextFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS;
-var
-  Canvas: TCanvas;
-  Bounds, Cell: TRect;
-  ValueWidth, mTop, Index, Column: Integer;
-  Row: TAtlasTimingRow;
-  Texts: array[0..4] of string;
-  Warns: array[0..4] of Boolean;
+type
+  TCellTexts = array[0..4] of string;
+  TCellWarns = array[0..4] of Boolean;
 
-  procedure DrawCell(const ARect: TRect; const AText: string; AWarn, ARight, AHeader: Boolean);
-  var
-    R: TRect;
-    Flags: Cardinal;
-  begin
-    if AWarn then
-    begin
-      Canvas.Brush.Style := bsSolid;
-      Canvas.Brush.Color := ToColor(FColors.WarnSoft);
-      Canvas.FillRect(ARect);
-      Canvas.Font.Color := ToColor(FColors.Warn);
-      Canvas.Font.Style := [fsBold];
-    end
-    else
-    begin
-      if AHeader then
-      begin
-        Canvas.Font.Color := ToColor(FColors.Muted);
-      end
-      else
-      begin
-        Canvas.Font.Color := ToColor(FColors.Text);
-      end;
-      Canvas.Font.Style := [];
-    end;
-    Canvas.Brush.Style := bsClear;
-    R := ARect;
-    InflateRect(R, -Scale(4), 0);
-    Flags := TextFlags;
-    if ARight then
-    begin
-      Flags := Flags or DT_RIGHT;
-    end
-    else
-    begin
-      Flags := Flags or DT_LEFT;
-    end;
-    DrawText(Canvas.Handle, PChar(AText), Length(AText), R, Flags);
-  end;
-
+/// <summary>Texte und Warnmarken der Spalten einer Zeile: Zähler ohne Budget, Zeiten in ms.</summary>
+procedure RowCells(const ARow: TAtlasTimingRow; out ATexts: TCellTexts; out AWarns: TCellWarns);
 begin
-  Canvas := FGrid.Canvas;
-  Bounds := FGrid.ClientRect;
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(Bounds);
-  ValueWidth := Scale(72);
-  // Kopfzeile.
-  Texts[0] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnStep);
-  Texts[1] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnLast);
-  Texts[2] := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticColumnMean, [Length(FQueries)]);
-  Texts[3] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnMax);
-  Texts[4] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnBudget);
-  mTop := Bounds.Top;
-  for Column := 0 to 4 do
+  ATexts[0] := TAtlasTimingFrame.Caption(ARow);
+  if ARow.Kind = TAtlasTimingRowKind.Entries then
   begin
-    if Column = 0 then
-    begin
-      Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight);
-    end
-    else
-    begin
-      Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
-        mTop + RowHeight);
-    end;
-    DrawCell(Cell, Texts[Column], False, Column > 0, True);
+    ATexts[1] := TAtlasTimingRows.CountText(ARow.Last);
+    ATexts[2] := TAtlasTimingRows.CountText(ARow.Mean);
+    ATexts[3] := TAtlasTimingRows.CountText(ARow.Maximum);
+    ATexts[4] := '';
+  end
+  else
+  begin
+    ATexts[1] := TAtlasTimingRows.Ms(ARow.Last);
+    ATexts[2] := TAtlasTimingRows.Ms(ARow.Mean);
+    ATexts[3] := TAtlasTimingRows.Ms(ARow.Maximum);
+    ATexts[4] := TAtlasTimingRows.Ms(ARow.Budget);
   end;
-  Inc(mTop, RowHeight);
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(Bounds.Left, mTop - 1);
-  Canvas.LineTo(Bounds.Right, mTop - 1);
-  for Index := 0 to High(FRows) do
+  AWarns[0] := False;
+  AWarns[1] := ARow.LastWarn;
+  AWarns[2] := ARow.MeanWarn;
+  AWarns[3] := ARow.MaxWarn;
+  AWarns[4] := False;
+end;
+
+function TAtlasTimingFrame.CellRect(const ABounds: TRect; ATop, AColumn: Integer): TRect;
+var
+  mValueWidth: Integer;
+begin
+  mValueWidth := Scale(72);
+  if AColumn = 0 then
   begin
-    Row := FRows[Index];
-    Texts[0] := Caption(Row);
-    Warns[0] := False;
-    if Row.Kind = TAtlasTimingRowKind.Entries then
+    Result := Rect(ABounds.Left, ATop, ABounds.Right - 4 * mValueWidth, ATop + RowHeight);
+  end
+  else
+  begin
+    Result := Rect(ABounds.Right - (5 - AColumn) * mValueWidth, ATop, ABounds.Right - (4 - AColumn) * mValueWidth,
+      ATop + RowHeight);
+  end;
+end;
+
+procedure TAtlasTimingFrame.DrawCell(const ARect: TRect; const AText: string; AWarn, ARight, AMuted: Boolean);
+const
+  cTextFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS;
+var
+  mCanvas: TCanvas;
+  mRect: TRect;
+  mFlags: Cardinal;
+begin
+  mCanvas := FGrid.Canvas;
+  mCanvas.Font.Style := [];
+  if AWarn then
+  begin
+    mCanvas.Brush.Style := bsSolid;
+    mCanvas.Brush.Color := ToColor(FColors.WarnSoft);
+    mCanvas.FillRect(ARect);
+    mCanvas.Font.Color := ToColor(FColors.Warn);
+    mCanvas.Font.Style := [fsBold];
+  end
+  else if AMuted then
+  begin
+    mCanvas.Font.Color := ToColor(FColors.Muted);
+  end
+  else
+  begin
+    mCanvas.Font.Color := ToColor(FColors.Text);
+  end;
+  mCanvas.Brush.Style := bsClear;
+  mRect := ARect;
+  InflateRect(mRect, -Scale(4), 0);
+  mFlags := cTextFlags or DT_LEFT;
+  if ARight then
+  begin
+    mFlags := cTextFlags or DT_RIGHT;
+  end;
+  DrawText(mCanvas.Handle, PChar(AText), Length(AText), mRect, mFlags);
+end;
+
+procedure TAtlasTimingFrame.DrawHeader(const ABounds: TRect);
+var
+  mTexts: TCellTexts;
+  mColumn: Integer;
+begin
+  mTexts[0] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnStep);
+  mTexts[1] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnLast);
+  mTexts[2] := TAtlasStrings.Fmt(TAtlasTextId.DiagnosticColumnMean, [Length(FQueries)]);
+  mTexts[3] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnMax);
+  mTexts[4] := TAtlasStrings.Text(TAtlasTextId.DiagnosticColumnBudget);
+  for mColumn := 0 to 4 do
+  begin
+    DrawCell(CellRect(ABounds, ABounds.Top, mColumn), mTexts[mColumn], False, mColumn > 0, True);
+  end;
+  FGrid.Canvas.Pen.Color := ToColor(FColors.Line);
+  FGrid.Canvas.MoveTo(ABounds.Left, ABounds.Top + RowHeight - 1);
+  FGrid.Canvas.LineTo(ABounds.Right, ABounds.Top + RowHeight - 1);
+end;
+
+procedure TAtlasTimingFrame.DrawRow(const ABounds: TRect; ATop: Integer; const ARow: TAtlasTimingRow);
+var
+  mTexts: TCellTexts;
+  mWarns: TCellWarns;
+  mCell: TRect;
+  mColumn: Integer;
+begin
+  RowCells(ARow, mTexts, mWarns);
+  for mColumn := 0 to 4 do
+  begin
+    mCell := CellRect(ABounds, ATop, mColumn);
+    // Quellen eingerückt unter dem Kontext.
+    if (mColumn = 0) and (ARow.Kind = TAtlasTimingRowKind.Provider) then
     begin
-      Texts[1] := TAtlasTimingRows.CountText(Row.Last);
-      Texts[2] := TAtlasTimingRows.CountText(Row.Mean);
-      Texts[3] := TAtlasTimingRows.CountText(Row.Maximum);
-      Texts[4] := '';
-    end
-    else
-    begin
-      Texts[1] := TAtlasTimingRows.Ms(Row.Last);
-      Texts[2] := TAtlasTimingRows.Ms(Row.Mean);
-      Texts[3] := TAtlasTimingRows.Ms(Row.Maximum);
-      Texts[4] := TAtlasTimingRows.Ms(Row.Budget);
+      Inc(mCell.Left, Scale(12));
     end;
-    Warns[1] := Row.LastWarn;
-    Warns[2] := Row.MeanWarn;
-    Warns[3] := Row.MaxWarn;
-    Warns[4] := False;
-    for Column := 0 to 4 do
-    begin
-      if Column = 0 then
-      begin
-        Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight);
-      end
-      else
-      begin
-        Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
-          mTop + RowHeight);
-      end;
-      // Quellen eingerückt unter dem Kontext.
-      if (Column = 0) and (Row.Kind = TAtlasTimingRowKind.Provider) then
-      begin
-        Inc(Cell.Left, Scale(12));
-      end;
-      DrawCell(Cell, Texts[Column], Warns[Column], Column > 0, Column = 4);
-    end;
+    DrawCell(mCell, mTexts[mColumn], mWarns[mColumn], mColumn > 0, mColumn = 4);
+  end;
+end;
+
+procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
+var
+  mBounds: TRect;
+  mTop, mIndex: Integer;
+begin
+  mBounds := FGrid.ClientRect;
+  FGrid.Canvas.Font := Font;
+  FGrid.Canvas.Brush.Style := bsSolid;
+  FGrid.Canvas.Brush.Color := ToColor(FColors.Surface);
+  FGrid.Canvas.FillRect(mBounds);
+  DrawHeader(mBounds);
+  mTop := mBounds.Top + RowHeight;
+  for mIndex := 0 to High(FRows) do
+  begin
+    DrawRow(mBounds, mTop, FRows[mIndex]);
     Inc(mTop, RowHeight);
   end;
 end;
