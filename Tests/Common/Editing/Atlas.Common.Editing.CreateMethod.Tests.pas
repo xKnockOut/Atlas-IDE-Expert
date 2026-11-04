@@ -204,14 +204,10 @@ begin
   Assert.IsFalse(TCreateMethod.WantsConst('Integer', False, False));
 end;
 
-procedure TCreateMethodTests.MethodGoesIntoSectionAndBody;
-var
-  Text: string;
-  Tree: TSyntaxTree;
-  Plan: TCreateMethodPlan;
-  Edits: TArray<TTextEdit>;
+/// <summary>Klasse TRechner, deren Methode Rechne das noch fehlende Pruefe aufruft.</summary>
+function RechnerCallsPruefe: string;
 begin
-  Text := Join([
+  Result := Join([
     'unit U;',
     'interface',
     'type',
@@ -225,6 +221,16 @@ begin
     '  Pruefe;',
     'end;',
     'end.']);
+end;
+
+procedure TCreateMethodTests.MethodGoesIntoSectionAndBody;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Plan: TCreateMethodPlan;
+  Edits: TArray<TTextEdit>;
+begin
+  Text := RechnerCallsPruefe;
   Plan := Default(TCreateMethodPlan);
   Plan.Name := 'Pruefe';
   Plan.TypeName := 'TRechner';

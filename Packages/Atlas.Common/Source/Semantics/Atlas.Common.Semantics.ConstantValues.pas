@@ -39,6 +39,10 @@ type
     function TokenAt(const APosition: TTextPosition): Integer;
     function EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
     function ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol; out AValue: Int64): Boolean;
+    /// <summary>Wert einer Konstanten, deren Deklaration im eigenen Baum steht.</summary>
+    function OwnValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+    /// <summary>Wert einer Konstanten aus einer anderen Unit über deren Index.</summary>
+    function IndexedValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
   public
     /// <summary>AResolver muss ATree (AFileName) gepinnt haben, solange die Werte gefragt werden.</summary>
     constructor Create(ATree: TSyntaxTree; const AFileName: string; const AIndex: ISymbolIndex;
@@ -161,45 +165,86 @@ begin
   Result := Low;
 end;
 
-function TConstantValues.EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Position: Int64;
-  Signature: string;
+/// <summary>Aufzählung ohne eigene Werte (a = 3) und mit ungekürzter Signatur: Positionen sind sicher.</summary>
+function PlainEnumSignature(const ASignature: string): Boolean;
 begin
-  // Position in der Aufzählung; mit eigenen Werten (a = 3) nur über den Namen vergleichbar.
-  Result := False;
-  AValue := 0;
-  if (ASymbol.Container = '') or not OwnerUnit(ASymbol, Owner) then
+  Result := (ASignature <> '') and (Pos('=', Copy(ASignature, Pos('(', ASignature) + 1, MaxInt)) = 0) and
+    not ASignature.EndsWith('…');
+end;
+
+/// <summary>Keine Deklaration der Aufzählung AContainer in AOwner hat unsichere Positionen; AKnown: es gibt eine.</summary>
+function EnumPositionsSafe(const AOwner: TUnitIndex; const AContainer: string; out AKnown: Boolean): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  AKnown := False;
+  for mSymbol in AOwner.Symbols do
   begin
-    Exit;
-  end;
-  for Symbol in Owner.Symbols do
-  begin
-    if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, ASymbol.Container) then
+    if (mSymbol.Kind = TIndexSymbolKind.EnumType) and SameText(mSymbol.QualifiedName, AContainer) then
     begin
-      Signature := Symbol.Signature;
-      if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
-        Signature.EndsWith('…') then
+      if not PlainEnumSignature(mSymbol.Signature) then
       begin
-        Exit;
+        Exit(False);
       end;
+      AKnown := True;
     end;
   end;
-  Position := 0;
-  for Symbol in Owner.Symbols do
+  Result := True;
+end;
+
+/// <summary>Position des Werts AName in der Aufzählung AContainer aus AOwner.</summary>
+function MemberPosition(const AOwner: TUnitIndex; const AContainer, AName: string; out APosition: Int64): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  APosition := 0;
+  for mSymbol in AOwner.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, ASymbol.Container) then
+    if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AContainer) then
     begin
-      if SameText(Symbol.Name, ASymbol.Name) then
+      if SameText(mSymbol.Name, AName) then
       begin
-        AValue := Position;
         Exit(True);
       end;
-      Inc(Position);
+      Inc(APosition);
     end;
   end;
+  APosition := 0;
+  Result := False;
+end;
+
+/// <summary>Namen aller Werte der Aufzählung AContainer aus AOwner; False, wenn einer in {$IFDEF} steht.</summary>
+function MemberNames(const AOwner: TUnitIndex; const AContainer: string; out ANames: TArray<string>): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  ANames := nil;
+  for mSymbol in AOwner.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AContainer) then
+    begin
+      // Werte in {$IFDEF}: Anzahl und Positionen hängen von der Konfiguration ab.
+      if mSymbol.Condition <> '' then
+      begin
+        ANames := nil;
+        Exit(False);
+      end;
+      ANames := ANames + [mSymbol.Name];
+    end;
+  end;
+  Result := Length(ANames) > 0;
+end;
+
+function TConstantValues.EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+var
+  mOwner: TUnitIndex;
+  mKnown: Boolean;
+begin
+  // Position in der Aufzählung; mit eigenen Werten (a = 3) nur über den Namen vergleichbar.
+  AValue := 0;
+  Result := (ASymbol.Container <> '') and OwnerUnit(ASymbol, mOwner) and
+    EnumPositionsSafe(mOwner, ASymbol.Container, mKnown) and
+    MemberPosition(mOwner, ASymbol.Container, ASymbol.Name, AValue);
 end;
 
 function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
@@ -257,11 +302,56 @@ begin
   Result := TOrdinalConstants.Evaluate(Tokens, Index + 1, Last, Lookup, AValue);
 end;
 
-function TConstantValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+function TConstantValues.OwnValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
 var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  First, Last, Equals: Integer;
+  mFirst, mLast, mEquals: Integer;
+begin
+  Result := False;
+  AValue := 0;
+  // Ausdruck hinter "=" bis vor das Semikolon.
+  mFirst := TokenAt(ASymbol.Range.StartPos);
+  mLast := TokenAt(ASymbol.Range.EndPos) - 1;
+  if (mFirst > High(FTokens)) or (mLast < mFirst) then
+  begin
+    Exit;
+  end;
+  // Steht die Deklaration in einem {$IF}-Zweig, den die geprüfte Stelle nicht sicher mit übersetzt, kann
+  // in der anderen Konfiguration ein anderer Wert gelten.
+  if FCheckPaths and not TConditionalBranches.Implies(FSitePath, TConditionalBranches.PathAt(FPaths, mFirst)) then
+  begin
+    Exit;
+  end;
+  if FTokens[mLast].IsSymbol(';') then
+  begin
+    Dec(mLast);
+  end;
+  mEquals := SymbolAtDepthZero(FTokens, mFirst, mLast + 1, '=');
+  Result := (mEquals >= 0) and Evaluate(mEquals + 1, mLast, AValue);
+end;
+
+function TConstantValues.IndexedValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
+var
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  AValue := 0;
+  if not OwnerUnit(ASymbol, mOwner) then
+  begin
+    Exit;
+  end;
+  for mSymbol in mOwner.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Constant) and SameText(mSymbol.Name, ASymbol.Name) and
+      (mSymbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
+      (mSymbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
+    begin
+      Exit(ForeignValue(mOwner, mSymbol, AValue));
+    end;
+  end;
+end;
+
+function TConstantValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
 begin
   Result := False;
   AValue := 0;
@@ -274,43 +364,12 @@ begin
   try
     if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
     begin
-      // Deklaration im eigenen Baum: Ausdruck hinter "=" bis vor das Semikolon.
-      First := TokenAt(ASymbol.Range.StartPos);
-      Last := TokenAt(ASymbol.Range.EndPos) - 1;
-      if (First > High(FTokens)) or (Last < First) then
-      begin
-        Exit;
-      end;
-      // Steht die Deklaration in einem {$IF}-Zweig, den die geprüfte Stelle nicht sicher mit übersetzt, kann
-      // in der anderen Konfiguration ein anderer Wert gelten.
-      if FCheckPaths and not TConditionalBranches.Implies(FSitePath, TConditionalBranches.PathAt(FPaths, First)) then
-      begin
-        Exit;
-      end;
-      if FTokens[Last].IsSymbol(';') then
-      begin
-        Dec(Last);
-      end;
-      Equals := SymbolAtDepthZero(FTokens, First, Last + 1, '=');
-      if Equals < 0 then
-      begin
-        Exit;
-      end;
-      Result := Evaluate(Equals + 1, Last, AValue);
-      Exit;
-    end;
-    if not OwnerUnit(ASymbol, Owner) then
+      // Deklaration im eigenen Baum.
+      Result := OwnValue(ASymbol, AValue);
+    end
+    else
     begin
-      Exit;
-    end;
-    for Symbol in Owner.Symbols do
-    begin
-      if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ASymbol.Name) and
-        (Symbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
-        (Symbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
-      begin
-        Exit(ForeignValue(Owner, Symbol, AValue));
-      end;
+      Result := IndexedValue(ASymbol, AValue);
     end;
   finally
     Dec(FDepth);
@@ -381,51 +440,14 @@ end;
 
 function TConstantValues.EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
 var
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Signature, Container: string;
-  Known: Boolean;
+  mOwner: TUnitIndex;
+  mKnown: Boolean;
 begin
   ANames := nil;
-  Result := False;
-  if (AEnum.SymbolKind <> TIndexSymbolKind.EnumType) or not OwnerUnit(AEnum, Owner) then
-  begin
-    Exit;
-  end;
-  Container := AEnum.QualifiedName;
-  Known := False;
-  for Symbol in Owner.Symbols do
-  begin
-    if (Symbol.Kind = TIndexSymbolKind.EnumType) and SameText(Symbol.QualifiedName, Container) then
-    begin
-      Signature := Symbol.Signature;
-      // Eigene Werte (a = 3) oder gekürzte Signatur: Positionen und Anzahl sind nicht sicher.
-      if (Signature = '') or (Pos('=', Copy(Signature, Pos('(', Signature) + 1, MaxInt)) > 0) or
-        Signature.EndsWith('…') then
-      begin
-        Exit;
-      end;
-      Known := True;
-    end;
-  end;
-  if not Known then
-  begin
-    Exit;
-  end;
-  for Symbol in Owner.Symbols do
-  begin
-    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
-    begin
-      // Werte in {$IFDEF}: Anzahl und Positionen hängen von der Konfiguration ab.
-      if Symbol.Condition <> '' then
-      begin
-        ANames := nil;
-        Exit;
-      end;
-      ANames := ANames + [Symbol.Name];
-    end;
-  end;
-  Result := Length(ANames) > 0;
+  // Eigene Werte (a = 3) oder gekürzte Signatur: Positionen und Anzahl sind nicht sicher.
+  Result := (AEnum.SymbolKind = TIndexSymbolKind.EnumType) and OwnerUnit(AEnum, mOwner) and
+    EnumPositionsSafe(mOwner, AEnum.QualifiedName, mKnown) and mKnown and
+    MemberNames(mOwner, AEnum.QualifiedName, ANames);
 end;
 
 class function TConstantValues.IntegerRange(const ATypeName: string; out ALow, AHigh: Int64): Boolean;

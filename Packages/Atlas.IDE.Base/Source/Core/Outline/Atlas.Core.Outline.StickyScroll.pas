@@ -73,6 +73,17 @@ type
     class function Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock; static;
   end;
 
+  /// <summary>Quelle des Kopfs: Gliederung Nodes, Zeilen Lines, weitere Blöcke Blocks (#1230) und die Arten Kinds,
+  /// deren Blöcke der Gliederung zählen.</summary>
+  TAtlasStickySource = record
+    Nodes: TAtlasOutlineNodes;
+    Lines: TArray<string>;
+    Blocks: TArray<TAtlasStickyBlock>;
+    Kinds: TAtlasStickyKinds;
+    class function Create(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds): TAtlasStickySource; static;
+  end;
+
   /// <summary>Wo eine Blocklinie im Kopf beginnt: in Kopfzeile Row (0-basiert) mit Haken; bei FadeIn hat ihr
   /// Element keine Kopfzeile, und sie blendet in Row (der letzten) ein. Row = -1 ohne Kopf.</summary>
   TAtlasStickyGuideStart = record
@@ -113,9 +124,8 @@ type
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows; overload;
       static;
-    /// <summary>Wie oben; von der Gliederung nur Blöcke der Arten AKinds (Types, Routines).</summary>
-    class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-      const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds; ATopLine, AMaxLines,
+    /// <summary>Wie oben aus ASource; von der Gliederung nur Blöcke der Arten ASource.Kinds.</summary>
+    class function Rows(const ASource: TAtlasStickySource; ATopLine, AMaxLines,
       ATabWidth: Integer): TAtlasStickyRows; overload; static;
     /// <summary>Wie oben mit Tabulatorbreite 8.</summary>
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
@@ -254,6 +264,35 @@ begin
   end;
 end;
 
+/// <summary>Öffnende Klammer an APosition: merkt die äußerste.</summary>
+procedure OpenParen(APosition: Integer; var ADepth, AOpen: Integer);
+begin
+  if ADepth = 0 then
+  begin
+    AOpen := APosition;
+  end;
+  Inc(ADepth);
+end;
+
+/// <summary>Schließende Klammer an APosition: AClose ist die erste Stelle, an der die Tiefe auf 0 fällt.</summary>
+procedure CloseParen(APosition: Integer; var ADepth, AOpen, AClose: Integer);
+begin
+  if ADepth = 0 then
+  begin
+    Exit;
+  end;
+  Dec(ADepth);
+  if ADepth > 0 then
+  begin
+    Exit;
+  end;
+  AOpen := 0;
+  if AClose = 0 then
+  begin
+    AClose := APosition;
+  end;
+end;
+
 /// <summary>Klammertiefe nach der Zeile, ab AFrom; Zeichenketten und //-Kommentare zählen nicht. AOpen ist die
 /// Stelle der äußersten offenen Klammer (0 = keine), AClose die Stelle, an der die Tiefe auf 0 fällt.</summary>
 procedure Scan(const ALine: string; var ADepth: Integer; out AOpen, AClose: Integer);
@@ -269,41 +308,20 @@ begin
   begin
     if InString then
     begin
-      if ALine[Position] = '''' then
-      begin
-        InString := False;
-      end;
+      InString := ALine[Position] <> '''';
+    end
+    else if (ALine[Position] = '/') and (Copy(ALine, Position + 1, 1) = '/') then
+    begin
+      Break;
     end
     else
       case ALine[Position] of
         '''':
           InString := True;
-        '/':
-          if (Position < Length(ALine)) and (ALine[Position + 1] = '/') then
-          begin
-            Break;
-          end;
         '(':
-          begin
-            if ADepth = 0 then
-            begin
-              AOpen := Position;
-            end;
-            Inc(ADepth);
-          end;
+          OpenParen(Position, ADepth, AOpen);
         ')':
-          if ADepth > 0 then
-          begin
-            Dec(ADepth);
-            if ADepth = 0 then
-            begin
-              AOpen := 0;
-              if AClose = 0 then
-              begin
-                AClose := Position;
-              end;
-            end;
-          end;
+          CloseParen(Position, ADepth, AOpen, AClose);
       end;
     Inc(Position);
   end;
@@ -401,172 +419,208 @@ begin
   Result := False;
 end;
 
+function CharAt(const AText: string; APos: Integer): Char;
+begin
+  if APos <= Length(AText) then
+  begin
+    Result := AText[APos];
+  end
+  else
+  begin
+    Result := #0;
+  end;
+end;
+
+/// <summary>Bis hinter ACloser (oder Zeilenende).</summary>
+function SkipTo(const AText: string; AFrom: Integer; const ACloser: string): Integer;
+begin
+  Result := Pos(ACloser, AText, AFrom);
+  if Result = 0 then
+  begin
+    Result := Length(AText) + 1;
+  end
+  else
+  begin
+    Inc(Result, Length(ACloser));
+  end;
+end;
+
+/// <summary>Kommentar oder Compilerdirektive ab AIndex: Ende in AEnd; False, wenn dort keiner beginnt.</summary>
+function CommentToken(const AText: string; AIndex: Integer; out AEnd: Integer;
+  out AKind: TAtlasStickySyntax): Boolean;
+begin
+  Result := True;
+  AKind := TAtlasStickySyntax.Comment;
+  if AText[AIndex] = '{' then
+  begin
+    AEnd := SkipTo(AText, AIndex + 1, '}');
+    if CharAt(AText, AIndex + 1) = '$' then
+    begin
+      AKind := TAtlasStickySyntax.Preprocessor;
+    end;
+  end
+  else if (AText[AIndex] = '(') and (CharAt(AText, AIndex + 1) = '*') then
+  begin
+    AEnd := SkipTo(AText, AIndex + 2, '*)');
+    if CharAt(AText, AIndex + 2) = '$' then
+    begin
+      AKind := TAtlasStickySyntax.Preprocessor;
+    end;
+  end
+  else if (AText[AIndex] = '/') and (CharAt(AText, AIndex + 1) = '/') then
+  begin
+    AEnd := Length(AText) + 1;
+  end
+  else
+  begin
+    AEnd := AIndex;
+    Result := False;
+  end;
+end;
+
+/// <summary>Ende des Strings ab dem Hochkomma an AIndex; '' im String ist ein Hochkomma.</summary>
+function StringEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while Result <= Length(AText) do
+  begin
+    if AText[Result] = '''' then
+    begin
+      if CharAt(AText, Result + 1) <> '''' then
+      begin
+        Break;
+      end;
+      Inc(Result);
+    end;
+    Inc(Result);
+  end;
+  if Result <= Length(AText) then
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Ende der Folge ab AIndex aus Zeichen in AChars.</summary>
+function RunEnd(const AText: string; AIndex: Integer; const AChars: TSysCharSet): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], AChars) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function IsNumberStart(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := CharInSet(AText[AIndex], ['0'..'9']) or
+    ((AText[AIndex] = '$') and CharInSet(CharAt(AText, AIndex + 1), ['0'..'9', 'a'..'f', 'A'..'F'])) or
+    ((AText[AIndex] = '%') and CharInSet(CharAt(AText, AIndex + 1), ['0', '1']));
+end;
+
+/// <summary>Ende der Zahl ab AIndex (hex, binär, mit Exponent).</summary>
+function NumberEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and (CharInSet(AText[Result], ['0'..'9', 'a'..'f', 'A'..'F', '_', '.']) or
+    (CharInSet(AText[Result], ['+', '-']) and CharInSet(AText[Result - 1], ['e', 'E']))) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function IdentEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and TTextChars.IsIdentChar(AText[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Bezeichner oder reserviertes Wort ab AIndex; hinter "." ein Mitglied (TFoo.Free, Self.Create), nie
+/// ein Schlüsselwort.</summary>
+function WordKind(const AText: string; AStart, AEnd: Integer): TAtlasStickySyntax;
+begin
+  if ((AStart = 1) or (AText[AStart - 1] <> '.')) and
+    TAtlasStickyScroll.IsReserved(Copy(AText, AStart, AEnd - AStart)) then
+  begin
+    Result := TAtlasStickySyntax.Reserved;
+  end
+  else
+  begin
+    Result := TAtlasStickySyntax.Identifier;
+  end;
+end;
+
+/// <summary>Ende und Art des Stücks ab AIndex.</summary>
+function TokenEnd(const AText: string; AIndex: Integer; out AKind: TAtlasStickySyntax): Integer;
+begin
+  if CommentToken(AText, AIndex, Result, AKind) then
+  begin
+    Exit;
+  end;
+  AKind := TAtlasStickySyntax.Symbol;
+  Result := AIndex + 1;
+  if AText[AIndex] = '''' then
+  begin
+    Result := StringEnd(AText, AIndex);
+    AKind := TAtlasStickySyntax.StringLiteral;
+  end
+  else if AText[AIndex] = '#' then
+  begin
+    Result := RunEnd(AText, AIndex + 1, ['0'..'9', 'a'..'f', 'A'..'F', '$']);
+    AKind := TAtlasStickySyntax.Character;
+  end
+  else if IsNumberStart(AText, AIndex) then
+  begin
+    Result := NumberEnd(AText, AIndex);
+    AKind := TAtlasStickySyntax.Number;
+  end
+  else if (AText[AIndex] = '&') and TTextChars.IsIdentChar(CharAt(AText, AIndex + 1)) then
+  begin
+    // &begin: escapter Bezeichner, nicht reserviert.
+    Result := IdentEnd(AText, AIndex + 1);
+    AKind := TAtlasStickySyntax.Identifier;
+  end
+  else if TTextChars.IsIdentChar(AText[AIndex]) then
+  begin
+    Result := IdentEnd(AText, AIndex);
+    AKind := WordKind(AText, AIndex, Result);
+  end
+  else if CharInSet(AText[AIndex], [' ', #9]) then
+  begin
+    Result := RunEnd(AText, AIndex, [' ', #9]);
+    AKind := TAtlasStickySyntax.Plain;
+  end;
+end;
+
 class function TAtlasStickyScroll.Syntax(const AText: string): TArray<TAtlasStickyToken>;
 var
-  Index, Start, Count: Integer;
-  Kind: TAtlasStickySyntax;
-
-  procedure Add(AStart, AStop: Integer; AKind: TAtlasStickySyntax);
-  var
-    Token: TAtlasStickyToken;
-  begin
-    if AStop <= AStart then
-    begin
-      Exit;
-    end;
-    Token.Start := AStart;
-    Token.Length := AStop - AStart;
-    Token.Kind := AKind;
-    Result := Result + [Token];
-  end;
-
-  function At(APos: Integer): Char;
-  begin
-    if APos <= Count then
-    begin
-      Result := AText[APos];
-    end
-    else
-    begin
-      Result := #0;
-    end;
-  end;
-
-  /// <summary>Bis hinter ACloser (oder Zeilenende).</summary>
-  function SkipTo(AFrom: Integer; const ACloser: string): Integer;
-  begin
-    Result := Pos(ACloser, AText, AFrom);
-    if Result = 0 then
-    begin
-      Result := Count + 1;
-    end
-    else
-    begin
-      Inc(Result, Length(ACloser));
-    end;
-  end;
-
+  mIndex, mStart: Integer;
+  mToken: TAtlasStickyToken;
 begin
   Result := nil;
-  Count := Length(AText);
-  Index := 1;
-  while Index <= Count do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    Start := Index;
-    if (AText[Index] = '{') and (At(Index + 1) = '$') then
-    begin
-      Index := SkipTo(Index + 1, '}');
-      Kind := TAtlasStickySyntax.Preprocessor;
-    end
-    else if AText[Index] = '{' then
-    begin
-      Index := SkipTo(Index + 1, '}');
-      Kind := TAtlasStickySyntax.Comment;
-    end
-    else if (AText[Index] = '(') and (At(Index + 1) = '*') then
-    begin
-      Index := SkipTo(Index + 2, '*)');
-      if At(Start + 2) = '$' then
-      begin
-        Kind := TAtlasStickySyntax.Preprocessor;
-      end
-      else
-      begin
-        Kind := TAtlasStickySyntax.Comment;
-      end;
-    end
-    else if (AText[Index] = '/') and (At(Index + 1) = '/') then
-    begin
-      Index := Count + 1;
-      Kind := TAtlasStickySyntax.Comment;
-    end
-    else if AText[Index] = '''' then
-    begin
-      Inc(Index);
-      while Index <= Count do
-      begin
-        if AText[Index] = '''' then
-        begin
-          // '' im String ist ein Hochkomma.
-          if At(Index + 1) <> '''' then
-          begin
-            Break;
-          end;
-          Inc(Index);
-        end;
-        Inc(Index);
-      end;
-      if Index <= Count then
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasStickySyntax.StringLiteral;
-    end
-    else if AText[Index] = '#' then
-    begin
-      Inc(Index);
-      while (Index <= Count) and CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '$']) do
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasStickySyntax.Character;
-    end
-    else if CharInSet(AText[Index], ['0'..'9']) or
-      ((AText[Index] = '$') and CharInSet(At(Index + 1), ['0'..'9', 'a'..'f', 'A'..'F'])) or
-      ((AText[Index] = '%') and CharInSet(At(Index + 1), ['0', '1'])) then
-    begin
-      Inc(Index);
-      while (Index <= Count) and (CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '_', '.']) or
-        (CharInSet(AText[Index], ['+', '-']) and CharInSet(AText[Index - 1], ['e', 'E']))) do
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasStickySyntax.Number;
-    end
-    else if (AText[Index] = '&') and TTextChars.IsIdentChar(At(Index + 1)) then
-    begin
-      // &begin: escapter Bezeichner, nicht reserviert.
-      Inc(Index);
-      while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasStickySyntax.Identifier;
-    end
-    else if TTextChars.IsIdentChar(AText[Index]) then
-    begin
-      while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
-      begin
-        Inc(Index);
-      end;
-      // Hinter "." ein Mitglied (TFoo.Free, Self.Create), nie ein Schlüsselwort.
-      if ((Start = 1) or (AText[Start - 1] <> '.')) and IsReserved(Copy(AText, Start, Index - Start)) then
-      begin
-        Kind := TAtlasStickySyntax.Reserved;
-      end
-      else
-      begin
-        Kind := TAtlasStickySyntax.Identifier;
-      end;
-    end
-    else if CharInSet(AText[Index], [' ', #9]) then
-    begin
-      while (Index <= Count) and CharInSet(AText[Index], [' ', #9]) do
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasStickySyntax.Plain;
-    end
-    else
-    begin
-      Inc(Index);
-      Kind := TAtlasStickySyntax.Symbol;
-    end;
-    Add(Start, Index, Kind);
+    mStart := mIndex;
+    mIndex := Max(TokenEnd(AText, mIndex, mToken.Kind), mStart + 1);
+    mToken.Start := mStart;
+    mToken.Length := mIndex - mStart;
+    Result := Result + [mToken];
   end;
 end;
 
 { TAtlasStickyBlock }
+
+class function TAtlasStickySource.Create(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds): TAtlasStickySource;
+begin
+  Result.Nodes := ANodes;
+  Result.Lines := ALines;
+  Result.Blocks := ABlocks;
+  Result.Kinds := AKinds;
+end;
 
 class function TAtlasStickyBlock.Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock;
 begin
@@ -719,58 +773,67 @@ end;
 class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
 begin
-  Result := Rows(ANodes, ALines, ABlocks, OutlineKinds, ATopLine, AMaxLines, ATabWidth);
+  Result := Rows(TAtlasStickySource.Create(ANodes, ALines, ABlocks, OutlineKinds), ATopLine, AMaxLines, ATabWidth);
 end;
 
-class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds; ATopLine, AMaxLines,
+/// <summary>Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die Kette zur kleinsten
+/// Zahl, die reicht.</summary>
+function VisibleChain(const AEntries: TArray<TEntry>; ATopLine, AMaxLines: Integer): TArray<Integer>;
+var
+  Shown: Integer;
+begin
+  Result := nil;
+  for Shown := 0 to AMaxLines do
+  begin
+    Result := EntryChain(AEntries, ATopLine + Shown);
+    if Min(Length(Result), AMaxLines) <= Shown then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Die äußeren AGrouped Ebenen der Kette AItems in einer Zeile.</summary>
+function SummaryRow(const ASource: TAtlasStickySource; const AEntries: TArray<TEntry>; const AItems: TArray<Integer>;
+  AGrouped: Integer): TAtlasStickyRow;
+var
+  Index: Integer;
+begin
+  Result := Default(TAtlasStickyRow);
+  Result.Summary := True;
+  for Index := 0 to AGrouped - 1 do
+  begin
+    if Index > 0 then
+    begin
+      Result.Text := Result.Text + TAtlasStickyScroll.Separator;
+    end;
+    Result.Text := Result.Text + EntryName(ASource.Nodes, ASource.Lines, AEntries[AItems[Index]]);
+  end;
+  Result.Line := AEntries[AItems[AGrouped - 1]].Line;
+  Result.Character := AEntries[AItems[AGrouped - 1]].Character;
+end;
+
+class function TAtlasStickyScroll.Rows(const ASource: TAtlasStickySource; ATopLine, AMaxLines,
   ATabWidth: Integer): TAtlasStickyRows;
 var
   Entries: TArray<TEntry>;
   Items: TArray<Integer>;
-  MaxLines, Grouped, Index, Shown: Integer;
-  Row: TAtlasStickyRow;
+  MaxLines, Grouped, Index: Integer;
 begin
   Result := nil;
   MaxLines := ClampLines(AMaxLines);
-  Entries := EntriesOf(ANodes, ABlocks, AKinds);
-  ATopLine := Max(0, ATopLine);
-  // Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die kleinste Zahl, die reicht.
-  Items := nil;
-  for Shown := 0 to MaxLines do
-  begin
-    Items := EntryChain(Entries, ATopLine + Shown);
-    if Min(Length(Items), MaxLines) <= Shown then
-    begin
-      Break;
-    end;
-  end;
-  if Length(Items) <= MaxLines then
-  begin
-    for Index := 0 to High(Items) do
-    begin
-      Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
-    end;
-    Exit;
-  end;
+  Entries := EntriesOf(ASource.Nodes, ASource.Blocks, ASource.Kinds);
+  Items := VisibleChain(Entries, Max(0, ATopLine), MaxLines);
   // Die inneren MaxLines - 1 Ebenen einzeln, die äußeren in einer Zeile (bei einer Zeile alle).
-  Grouped := Length(Items) - MaxLines + 1;
-  Row := Default(TAtlasStickyRow);
-  Row.Summary := True;
-  for Index := 0 to Grouped - 1 do
+  Grouped := 0;
+  if Length(Items) > MaxLines then
   begin
-    if Index > 0 then
-    begin
-      Row.Text := Row.Text + Separator;
-    end;
-    Row.Text := Row.Text + EntryName(ANodes, ALines, Entries[Items[Index]]);
+    Grouped := Length(Items) - MaxLines + 1;
+    Result := [SummaryRow(ASource, Entries, Items, Grouped)];
   end;
-  Row.Line := Entries[Items[Grouped - 1]].Line;
-  Row.Character := Entries[Items[Grouped - 1]].Character;
-  Result := [Row];
   for Index := Grouped to High(Items) do
   begin
-    Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
+    Result := Result + [EntryRow(ASource.Nodes, ASource.Lines, Entries[Items[Index]], ATabWidth)];
   end;
 end;
 
