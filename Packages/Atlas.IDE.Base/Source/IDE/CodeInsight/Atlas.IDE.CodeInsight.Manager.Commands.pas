@@ -92,7 +92,6 @@ function CommandJson(ASession: TLspSession; const ACommand, AArguments: string; 
 var
   mAnswer: TJSONValue;
 begin
-  mAnswer := nil;
   try
     mAnswer := ASession.RunCommand(ACommand, AArguments, ATimeoutMs);
   except
@@ -122,7 +121,6 @@ function WorkJson(ASession: TLspSession; const AWork: TFunc<TLspSession, TJSONVa
 var
   mAnswer: TJSONValue;
 begin
-  mAnswer := nil;
   try
     mAnswer := AWork(ASession);
   except
