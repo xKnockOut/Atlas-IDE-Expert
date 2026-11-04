@@ -844,6 +844,7 @@ uses
   Atlas.Core.Tracker.Providers.GitHub in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas',
   Atlas.Core.Tracker.GitHubBoards in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas',
   Atlas.Core.Tracker.Providers.YouTrack in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas',
+  Atlas.Core.Tracker.YouTrackWorkflow in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackWorkflow.pas',
   Atlas.Core.Tracker.Internals.YouTrackJson in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas',
   Atlas.Core.Tracker.YouTrackApi in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas',
   Atlas.Core.Tracker.YouTrackParse in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas',

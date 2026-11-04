@@ -128,7 +128,8 @@ type
     WelcomeTestsLocalRedServerGreen, WelcomeTestsEmpty, WelcomeTestsRerun, WelcomeTestsDebug, WelcomeTestsBrowse,
     WelcomeTestsServerTag, WelcomeTestsHintLocal, WelcomeTestsHintJob, WelcomeTestsHintAttempt,
     WelcomeTestsHintClick, WelcomeTestsHintFailure, WelcomeTestsMore, WelcomeTestsNotFound, CiLoginTitle,
-    CiLoginUser, CiLoginToken, CiLoginNoServer, NotificationsBuildServerRed);
+    CiLoginUser, CiLoginToken, CiLoginNoServer, NotificationsBuildServerRed,
+    BoardMoveNoTransition, BoardMoveNotAllowed, BoardMoveTransitions);
 
   TAtlasTrackerStrings = class
   public
@@ -688,7 +689,10 @@ const
      'Benutzer:',
      'API-Token (beide Felder leer = Zugang entfernen):',
      'Build-Server: Das aktive Projekt nennt in seiner .atlas keinen Server (Abschnitt „ci“, „url“).',
-     '%s #%d rot: %s'),
+     '%s #%d rot: %s',
+     '%s bleibt in „%s“: Der Workflow von YouTrack erlaubt von hier aus keinen Wechsel.',
+     '%s nicht nach „%s“ verschoben: Der Workflow von YouTrack erlaubt von „%s“ aus nur: %s.',
+     '%s Von „%s“ aus erlaubt der Workflow von YouTrack: %s.'),
     ('Show issue…',
      'No issue selected. Click an issue in “My issues” or use “Show issue…”.',
      'Back (Alt+Left)',
@@ -1230,7 +1234,10 @@ const
      'User:',
      'API token (both fields empty = remove access):',
      'Build server: the active project names no server in its .atlas (section “ci”, “url”).',
-     '%s #%d red: %s'));
+     '%s #%d red: %s',
+     '%s stays in “%s”: the YouTrack workflow allows no transition from here.',
+     '%s not moved to “%s”: from “%s” the YouTrack workflow only allows: %s.',
+     '%s From “%s” the YouTrack workflow allows: %s.'));
 
 { TAtlasTrackerStrings }
 

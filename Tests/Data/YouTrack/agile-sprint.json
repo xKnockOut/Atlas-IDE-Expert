@@ -29,7 +29,9 @@
       "description": null,
       "resolved": null,
       "customFields": [
-        {"name": "Zustand", "value": {"name": "Nachgefragt"}},
+        {"id": "82-11", "name": "Zustand", "value": {"name": "Nachgefragt"}, "$type": "StateMachineIssueCustomField",
+         "possibleEvents": [{"id": "start", "presentation": "In Arbeit", "$type": "Event"},
+           {"id": "erledigt", "presentation": "Erledigt", "$type": "Event"}]},
         {"name": "Priorität", "value": {"name": "Normal", "color": {"background": "#6b8e23"}}},
         {"name": "Zuständig", "value": {"login": "anna", "fullName": "Anna Schmidt"}},
         {"name": "Story Points", "value": {"minutes": 90, "presentation": "1h 30m", "$type": "PeriodValue"}}

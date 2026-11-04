@@ -8,7 +8,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Tracker.Sprint;
+  Atlas.Core.Tracker.Sprint,
+  Atlas.Core.Tracker.YouTrackWorkflow;
 
 type
   // Agile Boards von YouTrack (#1272), ohne VCL und Open Tools API.
@@ -23,9 +24,10 @@ type
   //   #1279), die Checkliste aus der Beschreibung (#1273), den Wert des
   //   Spaltenfeldes, den Anmeldenamen des Zuständigen und die Farbe der
   //   Priorität.
-  // - Verschieben: ein Befehl über TAtlasYouTrackApi.ApplyChange (#1266) mit dem
-  //   Spaltenfeld und dem ersten Wert der Zielspalte, Kommentar im selben
-  //   Befehl.
+  // - Verschieben nach den Workflow-Regeln (TAtlasYouTrackWorkflow): unter einer
+  //   Zustandsmaschine der passende Übergang wie im Board von YouTrack, sonst
+  //   ein Befehl über TAtlasYouTrackApi.ApplyChange (#1266) je Wert der
+  //   Zielspalte, Kommentar im selben Befehl.
   // - Sprint-Kachel (#1277): Schätzfeld des Boards (estimationField, Zahl bzw.
   //   Zeitraum in Stunden), Zeitpunkt der Erledigung (resolved) und die
   //   Arbeitstage aus GET /api/admin/timeTrackingSettings/workTimeSettings
@@ -39,7 +41,8 @@ type
     /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
     /// (Schätzung als Zeitraum, #1277).</summary>
     CardFields = 'idReadable,numberInProject,summary,description,resolved,' +
-      'customFields(name,value(name,presentation,login,fullName,minutes,color(background))),' +
+      'customFields(' + TAtlasYouTrackWorkflow.CardFieldParts +
+      ',name,value(name,presentation,login,fullName,minutes,color(background))),' +
       'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
   public
@@ -467,6 +470,7 @@ begin
         mCard.Page := TAtlasYouTrackApi.IssuePage(ATarget, mDetails.Key);
         mCard.ResolvedAt := TAtlasYouTrackJson.TimeOf(mIssue, 'resolved');
         ReadFields(mIssue, ASnapshot.Field, ASnapshot.PointsField, mCard);
+        mCard.Workflow := TAtlasYouTrackWorkflow.Find(mIssue, ASnapshot.Field);
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;
     end;
@@ -622,20 +626,9 @@ end;
 
 function TAtlasYouTrackBoards.MoveCard(const AMove: TAtlasBoardMove;
   const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
-var
-  mChange: TAtlasTrackerWrite;
 begin
-  if (AMove.Column < 0) or (AMove.Column > High(ASnapshot.Columns))
-    or (Length(ASnapshot.Columns[AMove.Column].Values) = 0) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
-  end;
-  // Derselbe Schreibweg wie „Beginnen“ und „Beenden“ (#1266): ein Befehl mit Feld, Wert und Kommentar.
-  mChange := TAtlasTrackerWrite.Empty;
-  mChange.StateField := ASnapshot.Field;
-  mChange.State := ASnapshot.Columns[AMove.Column].Values[0];
-  mChange.Comment := AMove.Comment;
-  Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange, AMove.TimeoutMs);
+  // Übergang der Zustandsmaschine bzw. Befehl je Wert der Spalte (Workflow-Regeln).
+  Result := TAtlasYouTrackWorkflow.Move(AMove, ASnapshot);
 end;
 
 function TAtlasYouTrackBoards.WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
