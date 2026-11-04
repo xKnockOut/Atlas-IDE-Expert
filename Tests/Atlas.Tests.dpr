@@ -216,6 +216,8 @@ uses
   Atlas.Common.Rules.Builtin.Forms.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Forms.Tests.pas',
   Atlas.Common.Rules.Builtin.SharedState.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.SharedState.Tests.pas',
   Atlas.Common.Rules.Builtin.Conditions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Tests.pas',
+  Atlas.Common.Rules.Builtin.Conditions.Values.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Values.Tests.pas',
+  Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests.pas',
   Atlas.Common.Rules.Builtin.Platform.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.Tests.pas',
   Atlas.Common.Rules.Builtin.Idioms.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.Tests.pas',
   Atlas.Common.Rules.Builtin.Inlining.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.Tests.pas',
