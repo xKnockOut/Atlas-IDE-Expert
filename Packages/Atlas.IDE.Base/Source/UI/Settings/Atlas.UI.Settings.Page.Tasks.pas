@@ -63,6 +63,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Strings,
+  Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Build.OpenBuildSettings;
 
 const

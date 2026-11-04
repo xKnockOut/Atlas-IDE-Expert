@@ -64,6 +64,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.UI.Strings,
+  Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Problems.InlineHints;
 
 { TAtlasSettingsEditorCodePart }
