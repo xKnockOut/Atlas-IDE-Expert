@@ -1615,6 +1615,7 @@ uses
   Atlas.Common.Editing.SmartPaste.Tests in 'Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas',
   Atlas.Common.Editing.Extract.Tests in 'Common\Editing\Atlas.Common.Editing.Extract.Tests.pas',
   Atlas.Common.Editing.Extract.Shared.Tests in 'Common\Editing\Atlas.Common.Editing.Extract.Shared.Tests.pas',
+  Atlas.Common.Editing.AnonymousMethods.Shared.Tests in 'Common\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.Tests.pas',
   Atlas.Common.Editing.Inlining.Tests in 'Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas',
   Atlas.Common.Editing.WithResolution.Tests in 'Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas',
   Atlas.Common.Editing.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas',

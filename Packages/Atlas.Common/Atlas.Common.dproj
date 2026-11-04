@@ -303,6 +303,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NestedRoutines.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineParts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.Embed.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
