@@ -2324,14 +2324,6 @@
       "x-parent": "highlight.pairColors",
       "x-node": ""
     },
-    "ProblemsMessageList": {
-      "type": "boolean",
-      "default": false,
-      "x-key": "problems.list",
-      "x-area": "editor",
-      "x-page": "Compiler",
-      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernommen (trug meist die alte Vorgabe „an“)."
-    },
     "ProblemsStatusCounter": {
       "type": "boolean",
       "default": true,
@@ -2539,6 +2531,15 @@
       "x-node": "rules.window",
       "x-control": "Schalter „Sammelkorrektur im Fenster Atlas-Prüfung“",
       "x-issue": "#1352"
+    },
+    "ProblemsMessageList": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "problems.list",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-node": "rules.window",
+      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernommen (trug meist die alte Vorgabe „an“)."
     },
     "HoverProblemActions": {
       "type": "boolean",
