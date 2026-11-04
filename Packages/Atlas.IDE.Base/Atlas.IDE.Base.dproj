@@ -239,6 +239,10 @@
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.FormatMarks.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.EditorState.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.EditorSnippets.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.EditorOpen.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.EditorCommit.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas"/>
