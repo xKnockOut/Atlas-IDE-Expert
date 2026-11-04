@@ -16,6 +16,7 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common` | VCL, FMX |
 | `Atlas.Linux` | Platform-Package nur als Quelltext für den Linux-Bau des Servers mit Free Pascal (ADR 0013, #1109); kein `.dpk` | RTL, FPC-Units für Linux (`BaseUnix`, `Process`, `Pipes`), `Atlas.Common` | Windows, VCL, FMX, `Atlas.Windows` |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows, unter Linux `Atlas.Linux` statt `Atlas.Windows` (nur in `Shell.Platform`, ADR 0013); die Versionsverwaltung des Plugins (`Atlas.Core.Vcs.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
+| `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519, ADR 0018); Shell in `Application/Source/Shell/Shell.Update*.pas`, Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
 | `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, ADR 0012) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss, ADR 0012) |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 

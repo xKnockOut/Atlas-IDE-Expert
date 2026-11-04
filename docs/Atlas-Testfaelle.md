@@ -9212,3 +9212,29 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | YK10 | `Write(Datei, Punkt)` mit `Datei: file of TPunkt`, `Writeln(Zahl:4)`, `Writeln(Text, Zahl)` mit `Text: TextFile` | Keine Meldung |
 | YK11 | `"type-kind-required": "off"`, `"group:compiler": "off"`, `"group:compiler": {"typeLevel": "off"}` bzw. `exclude` | Keine Meldung |
 | YK12 | Abgleich mit Delphi: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E2016*','Cm.E2017*','Cm.E2018*','Cm.E2019','Cm.E2021*','Cm.E2022','Cm.E2054*','Cm.E2055','Cm.E2075','Cm.E2076*','Cm.E2079','Cm.E2080','Cm.E2082','Cm.E2150','Cm.E2193*','Cm.E2460','Cm.E2467','Cm.E2474*' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Alle genannten Codes „erkannt“, keine neuen Einträge unter „zusätzlich“; `Cm.E2018b` und `Cm.E2076b` übersetzt dcc ohne Meldung, die übrigen neuen Fälle (`…b`) melden den erwarteten Code |
+
+## Update-Installer (#1519)
+
+Voraussetzung: Release-Paket einer älteren Version (z. B. 2.0.0-beta.1) in `%LOCALAPPDATA%\Programs\Atlas`, eigenes Registry-Profil (`bds -r AtlasUpdate`), `updates.check` an; ein Test-Release mit `atlas-version.json` (bzw. Kanal `update-channel`) einer neueren Version. Protokoll: `%LOCALAPPDATA%\Atlas\Updates\<Version>\update.log`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UX1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasUpdateInstallTests`, `TAtlasUpdateInstallUiTests`, `TCommonUpdates*Tests`, `TTextUpdate*Tests` grün; Win64-Gruppe samt `AtlasUpdate` und Win32-Plugin ohne Meldung |
+| UX2 | Neue Version gefunden, Zeile „Version“ im Statusfeld anklicken | Dialog „Atlas X ist verfügbar“ mit „Beim Beenden installieren“, „Änderungen ansehen“, „Später“ |
+| UX3 | In UX2 „Beim Beenden installieren“ | Kein Fenster; Zeile „Version“ zeigt „wird vorbereitet (… %)“, danach „wird beim Beenden installiert“; Meldungsansicht „Atlas X ist geprüft und wird beim Schließen der IDE installiert.“; Ordner `Updates\X\files` mit `AtlasServer.exe`, `AtlasUpdate.exe`, `Win32\…` (**Abnahme**) |
+| UX4 | IDE schließen | Konsolenfenster „AtlasUpdate“ wartet, bis die IDE beendet ist, tauscht und meldet Erfolg; Fenster schließt sich |
+| UX5 | IDE mit demselben Profil starten | Meldungsansicht „Atlas X installiert (vorher Y).“; *Hilfe › Info* zeigt X; `result.json` und der Ordner `Updates\X` sind weg (**Abnahme**) |
+| UX6 | Update mit neuem Modul, `updates.newModules = ask`; nach der Vorbereitung auf „Version“ klicken, „Module wählen …“ | Liste mit Häkchen, Kern und Verträge gewählt und grau, neues Modul „(neu)“ nicht gewählt; nach „Übernehmen“ und Schließen der IDE ist das Modul installiert; ein abgewähltes vorhandenes Modul ist entfernt und nicht mehr in den Known Packages |
+| UX7 | Während UX4 eine zweite IDE mit Atlas aus demselben Ordner offen lassen | Konsole nennt „bds.exe (PID)“ und wartet; nach dem Schließen läuft der Tausch |
+| UX8 | In UX4 Strg+C, bevor getauscht wird | „abgebrochen“; nächster Start meldet „Atlas-Update X abgebrochen; nichts wurde geändert.“ |
+| UX9 | Eine BPL im Atlas-Ordner schreibschützen, UX3/UX4 | Konsole meldet den Fehler und nimmt alles zurück, Eingabetaste schließt; nächster Start: „zurückgenommen … Protokoll: …“; die alte Version läuft |
+| UX10 | Atlas unter `C:\Program Files\Atlas` (nicht beschreibbar), UX3/UX4 | Kein UAC-Dialog; Meldung „der Atlas-Ordner ist nicht beschreibbar; … AppData\Local\Programs\Atlas …“; nichts geändert |
+| UX11 | In UX2 „Später“, dann `updates.install = auto`, IDE neu starten | Nach einigen Sekunden beginnt die Vorbereitung ohne Frage; bei einer neuen Hauptversion kommt stattdessen der Dialog mit Hinweis auf die Änderungen |
+| UX12 | `updates.install = off` | Klick auf „Version“ öffnet wie bisher die Änderungen im Browser |
+| UX13 | Atlas aus dem Repo-Ausgabeordner (`Output\Win32\Debug\Bpl`) bzw. über GetIt | Klick auf „Version“: Meldungsansicht nennt den Grund („kein Release-Ordner“ bzw. „über GetIt“), dann Browser |
+| UX14 | Vorbereitet, Klick auf „Version“, „Nicht installieren“ | Ordner `Updates\X` weg, beim Schließen keine Konsole |
+| UX15 | `updates.channel = prerelease` | Abfrage geht an `…/releases/download/update-channel/atlas-version-beta.json`; eine Vorabversion wird angeboten |
+| UX16 | Delphi 12 mit vollem RAD Studio (MSBuild), Update anbieten lassen | Zeile zeigt „wird aus dem Quelltext gebaut“; danach wie UX3–UX5 mit BPLs `…290.bpl` |
+| UX17 | Signiertes Release: in `Updates\X\files` eine BPL durch eine unsignierte ersetzen, Vorbereitung erneut | „Datei nicht signiert“ bzw. „Signatur ungültig …“; nichts installiert |
+| UX18 | `AtlasUpdate.exe install` im entpackten Paket | Fragt IDE und Profil, Ziel (Vorschlag `%LOCALAPPDATA%\Programs\Atlas`) und Module; danach lädt die IDE Atlas ohne Handarbeit; alte Einträge `Atlas.IDE.Expert`/`BetterDelphiLSP` sind aus den Known Packages entfernt |
+| UX19 | Release-Workflow mit einem Test-Tag | Release enthält `AtlasUpdate.exe` im ZIP, `atlas-ide-expert-source-<Version>.zip`, `atlas-version.json` mit `packages."37.0"` und `source` samt SHA-256; Release `update-channel` (Vorabversion) mit neuer `atlas-version-beta.json` |
