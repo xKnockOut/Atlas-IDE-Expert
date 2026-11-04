@@ -1711,8 +1711,8 @@ begin
       Item.Edits := Item.Edits + [TTextEdit.Create(TTextRange.Create(Work.Lines.PositionAt(Edit.Start),
         Work.Lines.PositionAt(Edit.Stop)), Edit.Text)];
     end;
-    if Work.NeedsUses and TUsesActions.AddUnits(Work.Tree.Tokens, [Plan.UnitName], nil, nil,
-      TTextLines.LineBreakOf(Work.Text), UsesEdits, Added) then
+    if Work.NeedsUses and TUsesActions.AddUnits(Work.Tree.Tokens,
+      TUsesAddRequest.Create([Plan.UnitName], nil, nil, TTextLines.LineBreakOf(Work.Text)), UsesEdits, Added) then
     begin
       Item.Edits := Item.Edits + UsesEdits;
     end;
