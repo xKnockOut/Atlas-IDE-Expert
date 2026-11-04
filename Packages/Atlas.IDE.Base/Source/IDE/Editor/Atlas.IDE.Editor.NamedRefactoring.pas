@@ -60,7 +60,6 @@ implementation
 
 uses
   System.JSON,
-  Vcl.Dialogs,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
 
@@ -71,10 +70,7 @@ const
 class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Arguments: TJSONValue;
-  Values, List: TJSONArray;
-  Name, ApplyArguments: string;
-  Index: Integer;
+  mName, mApplyArguments: string;
 begin
   if ASession = nil then
   begin
@@ -82,40 +78,10 @@ begin
     Exit;
   end;
   // Namen abfragen (Vorschlag des Servers) und das dritte Argument ersetzen.
-  Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
-  try
-    if not (Arguments is TJSONArray) or (TJSONArray(Arguments).Count < 3) then
-    begin
-      Exit;
-    end;
-    Values := TJSONArray(Arguments);
-    Name := Values.Items[2].Value;
-    if not InputQuery(TAtlasStrings.Text(ATexts.Title), TAtlasStrings.Text(ATexts.Prompt), Name) then
-    begin
-      Exit;
-    end;
-    Name := Trim(Name);
-    if Name = '' then
-    begin
-      Exit;
-    end;
-    List := TJSONArray.Create;
-    try
-      List.AddElement(Values.Items[0].Clone as TJSONValue);
-      List.AddElement(Values.Items[1].Clone as TJSONValue);
-      List.Add(Name);
-      for Index := 3 to Values.Count - 1 do
-      begin
-        List.AddElement(Values.Items[Index].Clone as TJSONValue);
-      end;
-      ApplyArguments := List.ToJSON;
-    finally
-      List.Free;
-    end;
-  finally
-    Arguments.Free;
+  if TAtlasIdeServerEdit.AskName(AArgumentsJson, ATexts.Title, ATexts.Prompt, mName, mApplyArguments) then
+  begin
+    Run(ASession, mApplyArguments, AApplyCommand, ATexts, APolicy, AMessage);
   end;
-  Run(ASession, ApplyArguments, AApplyCommand, ATexts, APolicy, AMessage);
 end;
 
 class procedure TAtlasIdeNamedRefactoring.ExecuteWithoutName(ASession: TLspSession; const AArgumentsJson,
@@ -133,20 +99,16 @@ end;
 class procedure TAtlasIdeNamedRefactoring.Run(ASession: TLspSession; const AApplyArguments, AApplyCommand: string;
   const ATexts: TAtlasNamedRefactoringTexts; APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  mCommand: TAtlasServerEditCommand;
   mReply: TAtlasServerEditReply;
   mPlaces, mFiles: Integer;
   mHint, mExplanation: string;
   mOutcome: TAtlasWorkspaceEditResult;
 begin
-  mCommand.Command := AApplyCommand;
-  mCommand.Arguments := AApplyArguments;
-  mCommand.TimeoutMs := TimeoutMs;
-  mCommand.Failed := ATexts.Failed;
   mPlaces := 0;
   mFiles := 0;
   mExplanation := '';
-  if not TAtlasIdeServerEdit.Fetch(ASession, mCommand,
+  if not TAtlasIdeServerEdit.Fetch(ASession,
+    TAtlasServerEditCommand.Create(AApplyCommand, AApplyArguments, TimeoutMs, ATexts.Failed),
     procedure(const AReply: TJSONObject)
     begin
       mPlaces := TAtlasIdeServerEdit.NumberOf(AReply, 'places');
