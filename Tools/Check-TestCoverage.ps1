@@ -70,6 +70,16 @@ $Exempt = @{
     'Atlas.Core.Tasks.Adapters.Process'                 = 'Prozessstart mit Pipe und Job-Objekt; die Befehlszeile testet Atlas.Core.Tasks.Commands'
     'Atlas.Core.Tracker.Adapters.Shell'                 = 'ShellExecute; die Aufrufer prüfen Adressen und Dateien selbst'
     'Shell.Application'                                 = 'Einstieg des Servers (Prozessstart, Konsole)'
+    'Atlas.Windows.Updates.Adapters.Registry'           = 'Registry des Benutzers; die Planung testet Atlas.Common.Updates.KnownPackages'
+    'Atlas.Windows.Updates.Adapters.Files'              = 'Dateisystem; Tausch und Rückfall testet Atlas.Common.Updates.FileSwap'
+    'Atlas.Windows.Updates.Adapters.Processes'          = 'Prozess- und Modulliste des Systems, Strg+C'
+    'Atlas.Windows.Updates.Adapters.Trust'              = 'WinVerifyTrust und SHA-256 echter Dateien'
+    'Atlas.Windows.Updates.Adapters.Network'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Common.Updates.Prepare'
+    'Atlas.Windows.Updates.Adapters.Archive'            = 'Hülle um System.Zip; sichere Einträge testet Atlas.Common.Updates.Archive'
+    'Atlas.Windows.Updates.Adapters.Builder'            = 'startet MSBuild der Delphi-Installation'
+    'Shell.Update'                                      = 'Einstieg von AtlasUpdate.exe (Befehlszeile, Konsole)'
+    'Shell.Update.System'                               = 'setzt nur die Windows-Adapter zusammen'
+    'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
 }
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'Tests') -Recurse -File -Filter '*.pas'

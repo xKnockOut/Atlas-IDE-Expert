@@ -1401,6 +1401,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Check.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Updates\Atlas.Core.Updates.Install.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Install.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas"/>
@@ -1443,6 +1445,9 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Vcs.BranchDialog.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Vcs.WorkingCopies.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Strings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Selection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Updates\Atlas.UI.Updates.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Updates.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
@@ -1872,6 +1877,12 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.Search.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.TabOverlay.Tests.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.UpdateFakes.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Updates.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.UpdateRun.Tests.pas"/>
+        <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
+        <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
+        <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

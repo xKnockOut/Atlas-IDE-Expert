@@ -85,6 +85,13 @@
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.SharedRead.pas"/>
         <DCCReference Include="Source\Console\Atlas.Windows.Console.StdStreams.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Windows.Editing.SystemColors.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Registry.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Files.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Processes.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Trust.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Network.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

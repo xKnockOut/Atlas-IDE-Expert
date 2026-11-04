@@ -1,4 +1,12 @@
-﻿## Atlas-Befunde in Lsp D–HoverTypes (04.11.2026, Branch `claude/project-thread-45hgxx` auf `Pilot-2.0.0-beta.1`)
+﻿## Update-Installer (#1519, 04.11.2026, Branch `claude/project-thread-0tfj25` auf `Pilot-2.0.0-beta.1`)
+- Variante A von Marco („beim Beenden installieren“), ADR 0018. Neue Konsolenanwendung `AtlasUpdate.exe` (`Application/AtlasUpdate.dpr`, Shell `Shell.Update*.pas`) mit `prepare`, `apply`, `install`; Logik `Atlas.Common.Updates.*` (Versionsdatei, Auswahl, Known Packages, Archiv, Bauen aus dem Quelltext, Tausch mit Rückfall), Texte/Records `Atlas.Text.Updates`, `Atlas.Text.UpdateRun`; Windows-Adapter `Atlas.Windows.Updates.Adapters.*`.
+- Plugin: `Atlas.Core.Updates.Install` (Modus, Kanal, Sperrgründe, Aufrufe), `Atlas.IDE.Updates.Install` (Prozesse starten, `state.json` lesen, `result.json` melden), `Atlas.UI.Updates.Offer`/`.Selection`/`.Texts`/`.Strings`; `TAtlasIdeUpdates` bietet an, bereitet mit `auto` ohne Frage vor und startet `apply`, wenn `Application.Terminated` beim Entladen gesetzt ist.
+- Einstellungen `updates.install`, `updates.channel`, `updates.newModules` (Seite „Start und Updates“).
+- `release.yml`: baut/signiert `AtlasUpdate.exe`, Quelltext-ZIP, Versionsdatei mit `packages."37.0"` und `source` samt SHA-256, `atlas-version-beta.json` im Vorab-Release `update-channel`.
+- Signatur: Ist `AtlasUpdate.exe` signiert, verlangt sie für jede EXE/BPL/DLL denselben Herausgeber; ohne Signatur nur SHA-256. Mit Zertifikat im Release wird die Prüfung also streng.
+- Geprüft: FPC 63 Tests der Update-Units grün (ohne den Diagnoseexport-Test, System.Zip fehlt im FPC-Harness), Einstellungstests grün, Atlas mit Metriken 0 Befunde in allen geänderten Units, Check-GermanText (Python-Nachbau) grün. Offen: Delphi-Build (Windows-Adapter, Shell, VCL-Teile sind nur gelesen) und Handtests UX1–UX19.
+
+## Atlas-Befunde in Lsp D–HoverTypes (04.11.2026, Branch `claude/project-thread-45hgxx` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in den Lsp-Units DataFlow bis HoverTypes (ohne Completion*), anfangs 162 in 22 Units, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde (PR #1728).
 - DataFlow: `TDataFlowRun` ist eine Klassenkette `DataFlow.Base` (Auflösen, Vorkommen, Parameter, Sammeln) → `DataFlow.Sources` (Woher) → `DataFlow.Targets` (Wohin); Dateien des Laufs in `DataFlow.Files`, Hilfen am Baum in `DataFlow.Syntax`, Typen in `DataFlow.Types` (Aliase in `DataFlow`). Neue Stellen über `TDataFlowSpot`/`TDataFlowEdge`, Aufrufargumente als `TDataFlowCallSite`, `FlowUp` als Schritte je Knotenart über `TDataFlowWalk`.
 - Hover: Inhalt und Darstellungen in `Hover.Info` (`THoverInfo`, `THoverSource`), Sammeln in `Hover.Lookup`; Typen als Aliase in `Hover`.

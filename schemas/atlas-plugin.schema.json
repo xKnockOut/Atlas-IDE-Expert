@@ -3801,6 +3801,44 @@
       "x-area": "general",
       "x-page": "Start und Updates"
     },
+    "UpdatesInstall": {
+      "type": "string",
+      "enum": [
+        "off",
+        "ask",
+        "auto"
+      ],
+      "default": "ask",
+      "x-key": "updates.install",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-issue": "#1519"
+    },
+    "UpdatesChannel": {
+      "type": "string",
+      "enum": [
+        "stable",
+        "prerelease"
+      ],
+      "default": "stable",
+      "x-key": "updates.channel",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-issue": "#1519"
+    },
+    "UpdatesNewModules": {
+      "type": "string",
+      "enum": [
+        "ask",
+        "install",
+        "skip"
+      ],
+      "default": "ask",
+      "x-key": "updates.newModules",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-issue": "#1519"
+    },
     "BugReportAnonymize": {
       "type": "boolean",
       "default": true,

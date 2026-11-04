@@ -151,6 +151,15 @@ type
     /// <summary>Einmal täglich nach einer neuen Version sehen (#495, updates.check); Vorgabe aus, beim ersten
     /// Start wird gefragt.</summary>
     UpdatesCheck: Boolean;
+    /// <summary>Updates installieren (#1519, updates.install): off (nur Hinweis wie #495), ask (Vorgabe: auf Klick
+    /// laden und beim Beenden installieren) oder auto (gleich laden, beim Beenden installieren). Wirkt nur mit
+    /// UpdatesCheck.</summary>
+    UpdatesInstall: string;
+    /// <summary>stable (Vorgabe) oder prerelease (auch Vorabversionen, #1519, updates.channel).</summary>
+    UpdatesChannel: string;
+    /// <summary>Neue Module eines Updates (#1519, updates.newModules): ask (Vorgabe, Auswahl zeigen), install oder
+    /// skip.</summary>
+    UpdatesNewModules: string;
     /// <summary>Benachrichtigungszentrale (#601, notifications.enabled): Hinweise sammeln, Zähler im
     /// Atlas-Statusfeld, Liste und Befehl Atlas.Notifications; aus = jede Funktion zeigt ihre Einblendung wie
     /// vor #601, nichts wird gesammelt.</summary>
@@ -295,6 +304,9 @@ begin
   Result.ShortcutTips := True;
   Result.ShortcutTipsScope := 'all';
   Result.UpdatesCheck := False;
+  Result.UpdatesInstall := 'ask';
+  Result.UpdatesChannel := 'stable';
+  Result.UpdatesNewModules := 'ask';
   Result.Notifications := True;
   Result.NotificationsSources := '';
   Result.NotificationsMaxEntries := 200;
@@ -341,6 +353,9 @@ begin
   NotificationsSources := TAtlasNotificationSources.Normalize(NotificationsSources);
   NotificationsMaxEntries := EnsureRange(NotificationsMaxEntries, MinNotificationEntries, MaxNotificationEntries);
   SettingsExportSecrets := Choice(SettingsExportSecrets, ['omit', 'placeholder']);
+  UpdatesInstall := Choice(UpdatesInstall, ['ask', 'off', 'auto']);
+  UpdatesChannel := Choice(UpdatesChannel, ['stable', 'prerelease']);
+  UpdatesNewModules := Choice(UpdatesNewModules, ['ask', 'install', 'skip']);
 end;
 
 procedure TAtlasPluginGeneralSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -358,6 +373,9 @@ begin
   AIo.Flag('ShortcutTips', ShortcutTips);
   AIo.Text('ShortcutTipsScope', ShortcutTipsScope);
   AIo.Flag('UpdatesCheck', UpdatesCheck);
+  AIo.Text('UpdatesInstall', UpdatesInstall);
+  AIo.Text('UpdatesChannel', UpdatesChannel);
+  AIo.Text('UpdatesNewModules', UpdatesNewModules);
   AIo.Flag('Notifications', Notifications);
   AIo.Text('NotificationsSources', NotificationsSources);
   AIo.Number('NotificationsMaxEntries', NotificationsMaxEntries);

@@ -57,6 +57,8 @@ contains
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
-  Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas';
+  Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas',
+  Atlas.Text.Updates in 'Source\Updates\Atlas.Text.Updates.pas',
+  Atlas.Text.UpdateRun in 'Source\UpdateRun\Atlas.Text.UpdateRun.pas';
 
 end.

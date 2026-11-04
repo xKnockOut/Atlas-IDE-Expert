@@ -555,6 +555,11 @@ begin
   Assert.AreEqual('Update 1.0.1 bereit', TAtlasStatusLines.VersionBrief(Info));
   Assert.AreEqual('installiert 1.0.0', TAtlasStatusLines.VersionDetail(Info));
   Assert.AreEqual('Update 1.0.1', TAtlasStatusLines.VersionSummary(Info));
+  // Stand der Installation (#1519) in Zeile und Einzelheiten.
+  Info.Install := 'wird beim Beenden installiert';
+  Assert.AreEqual('Version: Atlas 1.0.0, Update 1.0.1 bereit (wird beim Beenden installiert)',
+    TAtlasStatusLines.VersionText(Info));
+  Assert.AreEqual('wird beim Beenden installiert', TAtlasStatusLines.VersionDetail(Info));
 end;
 
 procedure TAtlasStateLinesTests.VersionWithoutUpdate;

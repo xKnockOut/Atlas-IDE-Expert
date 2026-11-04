@@ -11,9 +11,16 @@ name: Release
 #    Bildern der Tipps (#757), der lokalen HTML-Doku (#766) und den Vorlagen
 #    für atlas.json (#759) in atlas-ide-expert-<Version>.zip.
 # 3. Packt das Claude-Code-Plugin mit der EXE.
-# 4. Legt ein GitHub Release mit EXE, ZIP, Plugin, der Versionsdatei
-#    atlas-version.json (Update-Prüfung des Plugins, #495) und den Release-Notizen
-#    an (docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md).
+# 4. Legt ein GitHub Release mit EXE, ZIP, Quelltext-ZIP, Plugin, der
+#    Versionsdatei atlas-version.json (Update-Prüfung #495, Update-Installer
+#    #1519: Paket für Delphi 13 und Quelltext je mit SHA-256) und den
+#    Release-Notizen an (docs/Release-Notizen/<Version>.md, sonst der Abschnitt
+#    aus CHANGELOG.md).
+# 5. Ersetzt die Versionsdatei des Kanals für Vorabversionen
+#    (atlas-version-beta.json im festen Vorab-Release „update-channel“, #1519):
+#    „latest“ übergeht Vorabversionen, dieser Kanal enthält jede Version.
+#    AtlasUpdate.exe gehört ins ZIP; ist sie signiert, verlangt sie für jede
+#    EXE, BPL und DLL eines Updates dieselbe gültige Signatur.
 
 on:
   push:
@@ -71,14 +78,16 @@ jobs:
             Where-Object { $_.Name -notin $first -and (Test-Path "$($_.FullName)\$($_.Name).dproj") } |
             Sort-Object Name | ForEach-Object { "Packages\$($_.Name)\$($_.Name).dproj" })
           foreach ($project in @('Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
-            'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj') + $plugin) {
+            'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
+            'Application\AtlasUpdate.dproj') + $plugin) {
             $r = & $env:CC_SCRIPT build -Instance ${{ steps.ide.outputs.pid }} -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Config Release -Json | Out-String | ConvertFrom-Json
             $r | ConvertTo-Json -Depth 5 | Write-Host
             if (-not $r.ok -or -not $r.outputWritten) { throw "Build fehlgeschlagen oder keine Ausgabe geschrieben: $project" }
             if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw "Build hat Hinweise oder Warnungen: $project" }
           }
-          $exe = 'Output\Win64\Release\Bin\AtlasServer.exe'
-          if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
+          foreach ($exe in 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe') {
+            if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw "Release-exe wurde nicht neu geschrieben: $exe" }
+          }
       - name: Plugin bauen (Win32 Release)
         shell: pwsh
         run: |
@@ -113,7 +122,8 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
           try {
-            $files = @('Output\Win64\Release\Bin\AtlasServer.exe') +
+            # AtlasUpdate.exe zuerst mitsigniert: Signiert prüft sie jedes Update auf denselben Herausgeber (#1519).
+            $files = @('Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe') +
               @(Get-ChildItem 'Output\Win32\Release\Bpl\Atlas.IDE.*.bpl', 'Output\Win64\Release\Bpl\Atlas.IDE.*.bpl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
             foreach ($file in $files) {
               signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
@@ -129,7 +139,9 @@ jobs:
           $dist = Join-Path $env:RUNNER_TEMP 'atlas-ide-expert'
           Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
-          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md' $dist
+          # AtlasUpdate.exe (#1519): Erstinstallation („install“) und Updates aus dem Plugin.
+          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe', 'LICENSE', 'EULA.txt',
+            'THIRD-PARTY-NOTICES.md' $dist
           # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
           ./Tools/Update-WhatsNew.ps1 -OutFile "$dist\whatsnew.json"
           Copy-Item 'Setup\Beispiele' "$dist\Beispiele" -Recurse
@@ -190,12 +202,26 @@ jobs:
           # Mitgelieferte EXE statt PATH.
           sed -i 's#"AtlasServer.exe"#"${CLAUDE_PLUGIN_ROOT}/bin/AtlasServer.exe"#' plugin/atlas/.lsp.json plugin/atlas/.mcp.json
           (cd plugin && zip -r "../atlas-claude-plugin-$VERSION.zip" atlas)
-      - name: Versionsdatei für die Update-Prüfung (#495)
+      - name: Quelltext packen (#1519)
         run: |
-          # Das Plugin liest sie über releases/latest/download/atlas-version.json:
-          # nur die Version und der Link zu den Änderungen.
-          printf '{"version": "%s", "changes": "%s"}\n' "$VERSION" \
-            "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}" > atlas-version.json
+          # Für IDEs ohne fertiges Paket (Delphi 12): AtlasUpdate baut das Plugin daraus. Ohne Präfix, wie der Repo-Stamm.
+          git archive --format=zip -o "atlas-ide-expert-source-$VERSION.zip" HEAD
+      - name: Versionsdateien für Update-Prüfung und Update-Installer (#495, #1519)
+        run: |
+          # Das Plugin liest die stabile über releases/latest/download/atlas-version.json, die mit Vorabversionen über
+          # releases/download/update-channel/atlas-version-beta.json. Inhalt: Version, Link zu den Änderungen, Paket
+          # je CompilerVersion (37.0 = Delphi 13) und Quelltext, je mit SHA-256.
+          base="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          changes="${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          source_sha=$(sha256sum "atlas-ide-expert-source-$VERSION.zip" | cut -d' ' -f1)
+          packages=''
+          if [ -f "server/atlas-ide-expert-$VERSION.zip" ]; then
+            package_sha=$(sha256sum "server/atlas-ide-expert-$VERSION.zip" | cut -d' ' -f1)
+            packages=$(printf ', "packages": {"37.0": {"url": "%s", "sha256": "%s"}}' "$base/atlas-ide-expert-$VERSION.zip" "$package_sha")
+          fi
+          printf '{"version": "%s", "changes": "%s"%s, "source": {"url": "%s", "sha256": "%s"}}\n' "$VERSION" "$changes" \
+            "$packages" "$base/atlas-ide-expert-source-$VERSION.zip" "$source_sha" > atlas-version.json
+          cp atlas-version.json atlas-version-beta.json
           cat atlas-version.json
       - name: Release-Notizen
         shell: pwsh
@@ -212,5 +238,16 @@ jobs:
             server/AtlasServer.exe
             server/AtlasServer.map
             server/atlas-ide-expert-${{ env.VERSION }}.zip
+            atlas-ide-expert-source-${{ env.VERSION }}.zip
             atlas-version.json
           fail_on_unmatched_files: false
+      - name: Kanal für Vorabversionen ersetzen (#1519)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Fester Vorab-Release: wird nie „latest“, seine Datei zeigt immer auf die neueste Version.
+          if ! gh release view update-channel > /dev/null 2>&1; then
+            gh release create update-channel --prerelease --title 'Update-Kanal (Vorabversionen)' \
+              --notes 'Versionsdatei für updates.channel = prerelease; jeder Release ersetzt sie.'
+          fi
+          gh release upload update-channel atlas-version-beta.json --clobber
