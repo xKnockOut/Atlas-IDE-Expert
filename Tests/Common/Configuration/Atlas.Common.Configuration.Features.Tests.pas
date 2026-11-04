@@ -129,7 +129,8 @@ var
 begin
   Assert.AreEqual('Win32', TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', Issues).Platform);
   Assert.AreEqual('Win64', TConfigurationParser.ParseLayered('', '{"platform": "Win64"}', Issues).Platform);
-  Assert.AreEqual('de', TConfigurationParser.ParseLayered('', '', Issues).Language);
+  // Ohne Angabe entscheidet der Client (#1458).
+  Assert.AreEqual('', TConfigurationParser.ParseLayered('', '', Issues).Language);
   // Meldungen gelten nur der Datei.
   TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));

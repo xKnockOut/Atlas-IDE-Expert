@@ -77,7 +77,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Editing.CodeActions;
@@ -279,7 +278,8 @@ begin
     Exit;
   end;
   mTree := TSyntaxTreeCache.Parse(AText);
-  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  // Erklärung in der Sprache der Texte (#1458); der geteilte Katalog gehört dem Prozess.
+  mCatalog := TRuleCatalog.Localized;
   try
     for mFinding in TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mContext) do
     begin
@@ -302,7 +302,6 @@ begin
       AFindings := AFindings + [mItem];
     end;
   finally
-    mCatalog.Free;
     mTree.Free;
   end;
 end;

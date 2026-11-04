@@ -82,9 +82,8 @@ begin
   FBar.Parent := FForm;
   FBar.Align := alBottom;
   FBar.HandleNeeded;
-  FBar.ItemCaptions := TArray<string>.Create('Status', 'Meldungen', 'Live-Prüfung', 'Methode');
-  FBar.CustomizeCaption := 'Leiste anpassen …';
-  FBar.HideCaption := 'Statusleiste ausblenden';
+  FBar.Texts := TAtlasStatusBarTexts.Create(TArray<string>.Create('Status', 'Meldungen', 'Live-Prüfung', 'Methode'),
+    'Leiste anpassen …', 'Statusleiste ausblenden');
 end;
 
 procedure TAtlasEditorStatusBarTests.TearDown;

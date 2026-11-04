@@ -151,7 +151,13 @@ type
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
     class function InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
-      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject; static;
+      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject; overload; static;
+    /// <summary>Wie oben, dazu die Sprache der Oberfläche ALocale ("de", "en"; '' = keine) als
+    /// initializationOptions.locale und locale (#1458): Befunde, Code-Aktionen und Hover kommen in dieser
+    /// Sprache, solange settings.json keine language vorgibt.</summary>
+    class function InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean;
+      const ALocale: string): TJSONObject; overload; static;
     /// <summary>Antwort auf workspace/applyEdit ({applied, failureReason}). Gehört dem Aufrufer.</summary>
     class function ApplyEditAnswer(AApplied: Boolean; const AFailureReason: string): TJSONObject; static;
     /// <summary>type und message aus den Parametern von window/showMessage; False ohne Text.</summary>
@@ -293,6 +299,12 @@ end;
 
 class function TLspSessionJson.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
   const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject;
+begin
+  Result := InitializeParams(AProjects, AServerSettings, AContexts, AApplyEdit, '');
+end;
+
+class function TLspSessionJson.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+  const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean; const ALocale: string): TJSONObject;
 var
   Options: TJSONObject;
   Contexts: TJSONArray;
@@ -326,6 +338,16 @@ begin
       Options := TJSONObject.Create;
     end;
     Options.AddPair('projectContexts', Contexts);
+  end;
+  // Sprache der Oberfläche (#1458): eigener Schlüssel für Atlas und das Feld locale aus LSP 3.16.
+  if ALocale <> '' then
+  begin
+    Result.AddPair('locale', ALocale);
+    if Options = nil then
+    begin
+      Options := TJSONObject.Create;
+    end;
+    Options.AddPair('locale', ALocale);
   end;
   if Options <> nil then
   begin

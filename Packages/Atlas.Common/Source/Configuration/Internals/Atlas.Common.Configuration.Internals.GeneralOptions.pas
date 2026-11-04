@@ -94,13 +94,13 @@ begin
   begin
     Exit;
   end;
-  if MatchStr(mText, ['de', 'en']) then
+  if MatchStr(mText, ['', 'de', 'en']) then
   begin
     ASettings.Language := mText;
   end
   else
   begin
-    AReader.ReportNode(ANode, 'Erlaubt sind "de" und "en"');
+    AReader.ReportNode(ANode, 'Erlaubt sind "de", "en" und "" (wie die IDE)');
   end;
 end;
 

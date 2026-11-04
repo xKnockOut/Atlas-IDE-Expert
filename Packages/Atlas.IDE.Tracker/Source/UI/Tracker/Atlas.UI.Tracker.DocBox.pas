@@ -65,6 +65,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Style.Color,
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Documentation.Typeset,
   Atlas.Core.Tracker.Markdown;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -128,8 +129,8 @@ begin
   end;
   FBuiltWidth := ClientWidth;
   Canvas.Font := Font;
-  FView.Build(Canvas, FDoc, ClientWidth, FMono, Font, CurrentPPI, TAtlasDocLabels.German,
-    Default(TAtlasDocSignature), True);
+  FView.Build(Canvas, TAtlasDocContent.Create(FDoc, Default(TAtlasDocSignature), True), ClientWidth,
+    TAtlasDocFonts.Create(FMono, Font, CurrentPPI), TAtlasDocLabels.German);
   mHeight := Max(FView.Height, 1);
   if Height <> mHeight then
   begin

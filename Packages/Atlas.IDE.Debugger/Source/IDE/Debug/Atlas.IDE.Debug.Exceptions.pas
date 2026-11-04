@@ -740,7 +740,7 @@ begin
       end;
     end;
   // Rahmen aus dem Aufrufstapel (#578): Pfad ist schon aufgelöst.
-  AFrame.OnOpenFrame :=
+  AFrame.Stack.OnOpenFrame :=
     procedure(AFrameInfo: TAtlasDebugFrame)
     begin
       TAtlasIdeNavigation.GoToLocation(AFrameInfo.FileName, AFrameInfo.Line - 1, 0);
@@ -764,7 +764,7 @@ begin
       end;
       RefreshWindow;
     end;
-  AFrame.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
+  AFrame.Stack.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
   AFrame.SetHistory(FHistory, FIgnore);
 end;
 
@@ -775,7 +775,7 @@ begin
   Frame := TAtlasIdeDebugExceptionsWindow.ExistingFrame;
   if Frame <> nil then
   begin
-    Frame.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
+    Frame.Stack.JustMyCode := TAtlasIdeSettings.Current.DebugJustMyCode;
     Frame.SetHistory(FHistory, FIgnore);
   end;
 end;

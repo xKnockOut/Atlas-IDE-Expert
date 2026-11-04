@@ -131,6 +131,10 @@ begin
   begin
     Result := ASchema.GetValue<string>('x-captionEn', '');
   end;
+  if (Result = '') and AEnglish then
+  begin
+    Result := ASchema.GetValue<string>('x-description-en', '');
+  end;
   if Result = '' then
   begin
     Result := ASchema.GetValue<string>('x-caption', '');
