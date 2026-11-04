@@ -332,7 +332,8 @@ begin
   Text := WithCode('  if Assigned(Self) then Exit;');
   Tree := TPascalParser.Parse(Text);
   try
-    Info := TLspHover.InfoAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'if Assi'), NoText);
+    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
+      PositionOf(Text, 'if Assi'));
     Assert.AreEqual('function Assigned(const P): Boolean;', Info.Declaration);
     Assert.AreEqual('System', Info.UnitName);
     Assert.AreNotEqual('', Info.Documentation);
@@ -342,7 +343,8 @@ begin
   Text := StringReplace(WithCode('  '), 'TArray<Integer>', 'Int64', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Info := TLspHover.InfoAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Liste: Int'), NoText);
+    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
+      PositionOf(Text, 'Liste: Int'));
     Assert.IsTrue(Info.Declaration.StartsWith('type Int64'), Info.Declaration);
   finally
     Tree.Free;
