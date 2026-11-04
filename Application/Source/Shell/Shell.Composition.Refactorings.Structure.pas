@@ -343,13 +343,19 @@ function TShellStructureRefactorings.InlineAccessorActions(const AUri: string;
 var
   mSettings: TRefactoringSettings;
   mDocument: ITextDocument;
+  mOffer: TInlineAccessorOffer;
 begin
   Result := nil;
   mSettings := Settings(AUri);
   if TryOpen(AUri, mSettings.InlineAccessor, mDocument) then
   begin
-    Result := TLspInlineAccessor.Actions(True, mSettings.InlineAccessorBulk, TSyntaxTreeCache.Get(mDocument,
-      nil).Tree, mDocument.Text, AUri, APosition, InlineAccessorOptionsOf(mSettings), Index);
+    mOffer := Default(TInlineAccessorOffer);
+    mOffer.Enabled := True;
+    mOffer.Bulk := mSettings.InlineAccessorBulk;
+    mOffer.Options := InlineAccessorOptionsOf(mSettings);
+    mOffer.Index := Index;
+    Result := TLspInlineAccessor.Actions(mOffer, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+      APosition);
   end;
 end;
 
@@ -377,10 +383,11 @@ begin
   mContext.Options := InlineAccessorOptionsOf(mSettings);
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
+  mContext.Scope := mScope;
   mResolver := NewResolver;
   try
     mAnswer := TLspInlineAccessor.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mScope, mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
