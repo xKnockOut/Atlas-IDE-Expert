@@ -533,6 +533,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Types.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassLayout.Tests.pas"/>
