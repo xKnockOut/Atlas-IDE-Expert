@@ -246,6 +246,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Bindings.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Rules.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>

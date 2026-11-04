@@ -80,6 +80,7 @@ uses
   Atlas.Core.Vcs.ServerCheck,
   Atlas.Core.Vcs.BranchPlan,
   Atlas.UI.Settings.ChoiceBox,
+  Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -142,14 +143,6 @@ type
     Gray: Boolean;
   end;
 
-  /// <summary>Feld eines Modul-Abschnitts an einer Plugin-Einstellung (#1455): Name, Element der Seite, bei einer
-  /// Auswahl die gespeicherten Werte je Eintrag.</summary>
-  TAtlasSettingsSectionBinding = record
-    Name: string;
-    Control: TControl;
-    Values: TArray<string>;
-  end;
-
   TAtlasSettingsPage = class(TFrame)
   private
     FPages: TPageControl;
@@ -157,7 +150,11 @@ type
     FSections: TArray<IAtlasSettingsSection>;
     FSectionProviders: TArray<IAtlasSettingsSectionProvider>;
     FSectionHosts: TArray<IAtlasSettingsSectionHost>;
-    FSectionBindings: TArray<TAtlasSettingsSectionBinding>;
+    /// <summary>Felder der Modul-Abschnitte an Plugin-Einstellungen (#1455).</summary>
+    FSectionBindings: TAtlasSettingsBindings;
+    /// <summary>Einfache Elemente der Seite an ihren Plugin-Einstellungen: Laden und Speichern über den Namen.
+    /// </summary>
+    FBindings: TAtlasSettingsBindings;
     /// <summary>Reiter, die erst für einen Abschnitt entstanden sind: Bereich und Index in FSheets.</summary>
     FSectionAreas: TArray<TPair<string, Integer>>;
     FSectionWatch: IAtlasRegistryListener;
@@ -172,7 +169,6 @@ type
     FSheets: TArray<TTabSheet>;
     /// <summary>Rollbarer Inhalt je Bereich, gleicher Index wie FSheets.</summary>
     FBoxes: TArray<TScrollBox>;
-    FEnabled: TCheckBox;
     FServerPath: TEdit;
     FServerBrowse: TButton;
     FServerStatus: TLabel;
@@ -183,132 +179,35 @@ type
     FRowsLabel: TLabel;
     FRows: TEdit;
     FRowsUpDown: TUpDown;
-    FPanelCollapsed: TCheckBox;
-    FSelectionMarker: TCheckBox;
-    FAutoParentheses: TCheckBox;
-    FFixCase: TCheckBox;
-    // ARG-046 (#227): Commit-Zeichen, uses, Parameter-Hint, Verzögerung, automatische Breite.
-    FCommitChars: TCheckBox;
-    FAutoUses: TCheckBox;
-    FParameterHints: TCheckBox;
-    // Platzhalter von Format im Parameter-Hint (#451).
-    FFormatPlaceholders: TCheckBox;
-    FOpenDelay: TEdit;
     FAutoWidth: TCheckBox;
-    FFilterChips: TCheckBox;
-    FLearning: TCheckBox;
-    FGroupInherited: TCheckBox;
-    FCompletionVariantBranch: TCheckBox;
     /// <summary>Listenmodus beim Tippen und sein Geltungsbereich (#497).</summary>
     FListMode: TAtlasChoiceBox;
     FListScope: TAtlasChoiceBox;
-    FPreview: TCheckBox;
-    FHoverTooltip: TCheckBox;
     FXmlDocExpand: TAtlasChoiceBox;
-    FXmlDocMaxLines: TEdit;
-    FHangThreshold: TEdit;
-    FHangHint: TCheckBox;
-    FProviderTimeLimit: TEdit;
     FFuseList: TListBox;
     FFuseEnableSelected: TButton;
     FFuseEnableAll: TButton;
-    FReloadExternal: TCheckBox;
-    FPairColors: TCheckBox;
-    FInactiveDim: TCheckBox;
-    FOpenForEdits: TCheckBox;
-    FInlayHints: TCheckBox;
-    /// <summary>Typmarken von Inline-Variablen (#453).</summary>
-    FInlayTypeHints: TCheckBox;
-    /// <summary>Include-Symbole hinter {$I} (#860).</summary>
-    FInlayDefineHints: TCheckBox;
-    /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
-    FInlayCharHints: TCheckBox;
-    /// <summary>Marken „ohne Self“ (#686).</summary>
-    FInlayMethodHints: TCheckBox;
-    /// <summary>Blockende-Beschriftungen (#620).</summary>
-    FBlockEndLabels: TCheckBox;
-    FBlockEndLabelsMinLines: TEdit;
-    FDimUnusedUses: TCheckBox;
-    FRecursionMarkers: TCheckBox;
-    FRecursionMarkersDepth: TEdit;
     /// <summary>Fehlertext am Zeilenende (#509): aus, nur Fehler, Fehler und Warnungen, alle.</summary>
     FInlineDiagnostics: TAtlasChoiceBox;
-    FNotes: TCheckBox;
-    FBookmarksNamed: TCheckBox;
-    FBookmarksShared: TCheckBox;
-    FQuickBookmarks: TCheckBox;
-    FQuickBookmarksGutter: TCheckBox;
-    FQuickBookmarksGutterClick: TCheckBox;
-    FQuickBookmarksNumberedKeys: TCheckBox;
-    FQuickBookmarkKey: TEdit;
     FQuickBookmarkChordWait: TEdit;
     FQuickBookmarksScope: TAtlasChoiceBox;
-    FQuickBookmarksImportIde: TCheckBox;
-    FCodeLensTestUnit: TCheckBox;
-    /// <summary>Code Lens mit Code-Metriken (#66).</summary>
-    FCodeLensMetrics: TCheckBox;
-    FMetrics: TCheckBox;
-    /// <summary>Code Lens „Test ausführen“ (#69, codeLens.tests).</summary>
-    FCodeLensTests: TCheckBox;
-    /// <summary>Befehl in der Befehlspalette (#68).</summary>
-    FTodoList: TCheckBox;
-    /// <summary>Befehl in der Befehlspalette (#97).</summary>
-    FBaselineUpdate: TCheckBox;
-    /// <summary>Befehl in der Befehlspalette (#66).</summary>
-    FMetricsReport: TCheckBox;
-    /// <summary>Befehle in der Befehlspalette (#309).</summary>
-    FDfmPropertyRules: TCheckBox;
-    FPairGuides: TCheckBox;
-    FPairOwners: TCheckBox;
-    FPairGuideWidth: TEdit;
-    FPairGuideOpacity: TEdit;
     // Eigene Paarfarben je Thema, eine Fläche je Tiefe.
     FLightSwatches: array[0..4] of TShape;
     FDarkSwatches: array[0..4] of TShape;
-    FProblems: TCheckBox;
-    FProblemsList: TCheckBox;
-    /// <summary>Zähler in der Statusleiste (#509).</summary>
-    FProblemsStatusCounter: TCheckBox;
-    FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
-    /// <summary>„Prozesse am Projekt…“ (#62).</summary>
-    FDiagnosticsProcesses: TCheckBox;
-    /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
-    FServerStatusWindow: TCheckBox;
-    // Architekturübersicht (#1118).
-    FArchitecture: TCheckBox;
     /// <summary>Modul-Schalter (#1454) mit ihren Namen in TAtlasPluginSettings.Load/Save, gleiche Reihenfolge.
     /// </summary>
     FModuleChecks: TArray<TCheckBox>;
     FModuleNames: TArray<string>;
     FArchitectureScope: TAtlasChoiceBox;
-    FArchitectureLibrary: TCheckBox;
-    FArchitectureCentral: TEdit;
-    FQuery: TCheckBox;
-    // Hotspots (#1354).
-    FHotspots: TCheckBox;
-    FHotspotsMonths: TEdit;
-    FHotspotsMinCommits: TEdit;
-    FSetupChecklist: TCheckBox;
-    FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
-    // Benachrichtigungszentrale (#601); FNotificationsSpec hält notifications.sources, die beiden Auswahllisten
-    // zeigen und ändern das Verhalten der gewählten Quelle.
-    FNotifications: TCheckBox;
     FNotificationsMax: TEdit;
     FNotificationSource: TAtlasChoiceBox;
     FNotificationMode: TAtlasChoiceBox;
     FNotificationsSpec: string;
-    FNotificationsKey: TEdit;
-    FStatusSummary: TCheckBox;
     FStatusToggles: TAtlasChoiceBox;
     FIndexProgress: TAtlasChoiceBox;
     FStatusHidden: TEdit;
-    FIndexGroup: TCheckBox;
-    FIndexSearch: TCheckBox;
-    FIndexLibrary: TCheckBox;
-    FIndexUsages: TCheckBox;
-    FMemoryBudget: TEdit;
     FIndexInfo: TLabel;
     FIndexRefresh: TButton;
     FIndexRebuild: TButton;
@@ -320,9 +219,6 @@ type
     FIndexBusy: Boolean;
     FConfirmClear: TFunc<Boolean>;
     FAfterSave: TAtlasChoiceBox;
-    FCheckDelay: TEdit;
-    FCheckMax: TEdit;
-    FMcpBuild: TCheckBox;
     /// <summary>Beim Öffnen bauen (build.onOpen*): eine Auswahl „nicht bauen / Syntaxprüfung / Compilieren /
     /// Erzeugen“, Umfang in einer Gruppe, Wartezeit, ausgeschlossene Projekte, Konfiguration und Plattform
     /// (#1293).</summary>
@@ -340,24 +236,7 @@ type
     FTasksOnlyFindings: TCheckBox;
     FOpenBuildConfig: TEdit;
     FOpenBuildPlatform: TAtlasChoiceBox;
-    /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
-    /// </summary>
-    FTestRun: TCheckBox;
-    FTestsBuildFirst: TCheckBox;
-    FTestsAfterBuild: TCheckBox;
-    FTestsAffected: TCheckBox;
-    FTestsAffectedDepth: TEdit;
-    FTestsAffectedBeforeCommit: TCheckBox;
-    FBuildZeroHints: TCheckBox;
-    /// <summary>Kosten einer interface-Änderung in der Statusleiste (#554).</summary>
-    FShowInterfaceCost: TCheckBox;
-    /// <summary>Schranke für Hinweise und Warnungen (#530): Zusammenfassung und Codes, die als Fehler zählen.
-    /// </summary>
-    FBuildSummary: TCheckBox;
     FBuildWarningsAsErrors: TEdit;
-    /// <summary>Wirksame Compiler-Schalter (#558): Fenster und Feld in der Statusleiste.</summary>
-    FBuildCompilerSwitches: TCheckBox;
-    FBuildSwitchesInStatusBar: TCheckBox;
     /// <summary>Prüfung vor dem Compile (#529): build.gate (gilt auch für den Release-Wächter) und ihr Zeitlimit.
     /// </summary>
     FBuildGate: TAtlasChoiceBox;
@@ -368,219 +247,49 @@ type
     FReleaseConfigs: TEdit;
     FReleaseCheckBoxes: array[TAtlasReleaseCheck] of TCheckBox;
     FReleaseCheckChoices: array[TAtlasReleaseCheck] of TAtlasChoiceBox;
-    /// <summary>Startprofile (#575): Befehl, Statusfeld.</summary>
-    FStartProfiles: TCheckBox;
-    FStartProfilesStatusField: TCheckBox;
-    /// <summary>Einzelnen Test debuggen (#585): Befehle und Marke, Haltepunkt am Anfang der Methode.</summary>
-    FTestDebug: TCheckBox;
-    FTestBreakAtStart: TCheckBox;
-    FDebugHoverValues: TCheckBox;
-    /// <summary>Visualisierer für häufige Typen (#835).</summary>
-    FDebugVisualizers: TCheckBox;
     FDebugVisualizerKinds: array[TAtlasVisualizerKind] of TCheckBox;
     FDebugVisualizerNameFields: TEdit;
     FDebugVisualizerMaxLength: TEdit;
     FDebugVisualizerTimeout: TEdit;
     FDebugVisualizerMaxImagePixels: TEdit;
     FDebugVisualizerEvaluation: TAtlasChoiceBox;
-    /// <summary>Eigene Wertdarstellungen (#854).</summary>
-    FDebugDisplayRules: TCheckBox;
-    FDebugDisplayRulesAllowCalls: TCheckBox;
-    /// <summary>Gezielt hineinspringen (#836).</summary>
-    FDebugStepIntoTarget: TCheckBox;
-    FDebugStepFilters: TCheckBox;
     FDebugStepFilterKinds: array[TStepFilterKind] of TCheckBox;
     FDebugStepFilterPatterns: TEdit;
-    FDebugStepIntoTargetKey: TEdit;
-    FDebugBreakOnNextEvent: TCheckBox;
     FDebugBreakOnNextEventExcluded: TEdit;
-    FDebugExplainUnavailable: TCheckBox;
-    FDebugCompletionInDialogs: TCheckBox;
-    FDebugEvaluateWindow: TCheckBox;
-    FDebugEvaluateReplaceCtrlF7: TCheckBox;
-    FDebugExplainAccessViolation: TCheckBox;
     FDebugExplainAccessViolationAllowCalls: TCheckBox;
-    FDebugExceptionHistory: TCheckBox;
-    FDebugJustMyCode: TCheckBox;
-    FDebugExceptionBanner: TCheckBox;
     FDebugExceptionBannerIgnoreAtLocation: TCheckBox;
-    FDebugInlineValues: TCheckBox;
-    FDebugInlineValuesPerLine: TEdit;
     FDebugOwnCodeFolders: TEdit;
-    FActionsKey: TEdit;
-    FExpandKey: TEdit;
-    FShrinkKey: TEdit;
-    FImplementationKey: TEdit;
-    FTypeDefinitionKey: TEdit;
-    FMethodToggle: TCheckBox;
-    FMethodToggleUpKey: TEdit;
-    FMethodToggleDownKey: TEdit;
-    FTestUnitKey: TEdit;
-    FGotoInterfaceKey: TEdit;
-    FGotoImplementationKey: TEdit;
-    FNavHistory: TCheckBox;
-    FNavBackKey: TEdit;
-    FNavForwardKey: TEdit;
-    FLastEditKey: TEdit;
-    FPeek: TCheckBox;
-    FPeekHeightLines: TEdit;
-    FPeekShowImplementation: TCheckBox;
-    FDataFlow: TCheckBox;
-    FDataFlowMaxDepth: TEdit;
-    FDataFlowExcludeTests: TCheckBox;
-    FPeekDefinitionKey: TEdit;
-    FPeekReferencesKey: TEdit;
-    FReferencesInferred: TCheckBox;
-    FReferencesTextMatches: TCheckBox;
-    FCallHierarchyDiagram: TCheckBox;
-    FImpact: TCheckBox;
-    FImpactDepth: TEdit;
-    FOutline: TCheckBox;
-    FOutlineAlphabetical: TCheckBox;
-    FOutlineFollowCursor: TCheckBox;
-    FOutlineConditions: TCheckBox;
-    FBreadcrumbs: TCheckBox;
-    FBreadcrumbsShowUnit: TCheckBox;
-    FBreadcrumbsIdeColors: TCheckBox;
-    FBreadcrumbsHideIdeToolbar: TCheckBox;
-    // Mitlaufender Kopf (#506).
-    FStickyScroll: TCheckBox;
-    FStickyScrollMaxLines: TEdit;
-    // Was der Kopf zeigt: Typen, Routinen, große Anweisungsblöcke (#1230).
-    FStickyScrollTypes: TCheckBox;
-    FStickyScrollRoutines: TCheckBox;
-    FStickyScrollBlocks: TCheckBox;
-    FStickyScrollLoops: TCheckBox;
-    FStickyScrollTry: TCheckBox;
-    FStickyScrollCase: TCheckBox;
-    FStickyScrollWith: TCheckBox;
     FStickyScrollBlockMinLines: TEdit;
-    FMinimap: TCheckBox;
     FMinimapRender: TAtlasChoiceBox;
-    FMinimapWidth: TEdit;
-    FMinimapScale: TEdit;
-    FMinimapMaxColumn: TEdit;
     FMinimapSide: TAtlasChoiceBox;
     FMinimapShowSlider: TAtlasChoiceBox;
-    FMinimapSectionHeaders: TCheckBox;
-    FMinimapHighlightMethod: TCheckBox;
-    FMinimapMarkers: TCheckBox;
-    FMinimapClickJumps: TCheckBox;
-    FBreadcrumbsKey: TEdit;
-    FEditorToolbar: TCheckBox;
     FEditorToolbarPosition: TAtlasChoiceBox;
     FEditorToolbarItems: TEdit;
-    FEditorToolbarReturnButton: TCheckBox;
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
-    FEditorStatusBar: TCheckBox;
-    FEditorDesignerBar: TCheckBox;
-    FDesignerSearchKey: TEdit;
     FDesignerSearchStyle: TAtlasChoiceBox;
-    FDesignerTabOrderClick: TCheckBox;
-    FDesignerAlign: TCheckBox;
     FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
-    FGitBlame: TCheckBox;
-    FGutterColumn: TCheckBox;
-    FGutterColumnProblems: TCheckBox;
-    FGutterColumnCodeActions: TCheckBox;
-    FGutterColumnOverrides: TCheckBox;
-    FSelectionMatches: TCheckBox;
     FSelectionMatchesMinLength: TEdit;
-    FSelectionMatchesCaseSensitive: TCheckBox;
-    FSelectionMatchesWholeWord: TCheckBox;
-    FSelectionMatchesNavigateF3: TCheckBox;
     FSelectionMatchesMaxMatches: TEdit;
-    FExitPoints: TCheckBox;
-    FExitPointsExceptions: TCheckBox;
-    FExitPointsLoops: TCheckBox;
-    FExitPointsBadge: TCheckBox;
-    FReassigned: TCheckBox;
     FReassignedTargets: array[TAtlasReassignedTarget] of TCheckBox;
     FReassignedStyle: TAtlasChoiceBox;
     FReassignedColor: TEdit;
-    FExpressionType: TCheckBox;
-    FExpressionTypeConversions: TCheckBox;
-    FExpressionTypeConstValue: TCheckBox;
-    FExpressionTypeKey: TEdit;
     FMethodPlacement: TAtlasChoiceBox;
-    FNextChangeKey: TEdit;
-    FPreviousChangeKey: TEdit;
-    FOverviewRuler: TCheckBox;
     FOverviewKinds: array[TAtlasOverviewKind] of TCheckBox;
-    FJumpToMatch: TCheckBox;
-    FJumpToMatchKey: TEdit;
-    FJumpToMatchSelectKey: TEdit;
-    FMoveLines: TCheckBox;
-    FMoveLinesUpKey: TEdit;
-    FMoveLinesDownKey: TEdit;
-    FDuplicateLinesUpKey: TEdit;
-    FDuplicateLinesDownKey: TEdit;
-    FToggleBlockComment: TCheckBox;
-    FToggleBlockCommentKey: TEdit;
     FToggleBlockCommentStyle: TAtlasChoiceBox;
     FToggleBlockCommentFallback: TAtlasChoiceBox;
-    FToggleBlockCommentOwnLines: TCheckBox;
     FToggleBlockCommentScope: TAtlasChoiceBox;
-    FNewLineAround: TCheckBox;
-    FNewLineBelowKey: TEdit;
-    FNewLineAboveKey: TEdit;
-    FNewLineAroundStatementAware: TCheckBox;
-    FUnwrap: TCheckBox;
-    FUnwrapKey: TEdit;
-    FSafeDelete: TCheckBox;
-    FSafeDeleteKey: TEdit;
-    FContinueComments: TCheckBox;
-    FContinueCommentsLineComments: TCheckBox;
-    FContinueCommentsLists: TCheckBox;
     FContinueCommentsBlockPrefix: TEdit;
-    FWrapSelection: TCheckBox;
-    FWrapSelectionChars: TEdit;
-    FCompleteStatement: TCheckBox;
-    FCompleteStatementKey: TEdit;
     FCompleteStatementBeginEnd: TAtlasChoiceBox;
     FCompleteStatementTryKind: TAtlasChoiceBox;
-    FCompleteStatementMethodBody: TCheckBox;
-    FFormatCode: TCheckBox;
-    FFormatCodeKey: TEdit;
-    FContinuePattern: TCheckBox;
-    FContinuePatternMinLines: TEdit;
-    // Mehrere Einfügemarken (#589).
-    FMultiCursor: TCheckBox;
-    FLinkedEditing: TCheckBox;
     FSmartPaste: TAtlasChoiceBox;
     FMultiCursorModifier: TAtlasChoiceBox;
-    FMultiCursorNextKey: TEdit;
-    FMultiCursorSkipKey: TEdit;
-    FMultiCursorLineEndsKey: TEdit;
-    FMultiCursorAboveKey: TEdit;
-    FMultiCursorBelowKey: TEdit;
-    FBookmarkKey: TEdit;
-    FNextBookmarkKey: TEdit;
-    FPreviousBookmarkKey: TEdit;
-    /// <summary>„Element ausblenden …“ (#628).</summary>
-    FHideElementKey: TEdit;
-    /// <summary>Nächster/vorheriger Befund (#509).</summary>
-    FNextProblemKey: TEdit;
-    FPreviousProblemKey: TEdit;
-    FProblemsWindowKey: TEdit;
-    FCreateIssueKey: TEdit;
-    /// <summary>Fenster „Atlas-Prüfung“, laufende Prüfung und Aktionszeile im Hover (#909).</summary>
-    FProblemsWindow: TCheckBox;
     FProblemsWindowScope: TAtlasChoiceBox;
     FProblemsWindowGroupBy: TAtlasChoiceBox;
-    FProblemsWindowCompiler: TCheckBox;
-    FProblemsWindowFollowCursor: TCheckBox;
-    FProblemsWindowOpenFirst: TCheckBox;
     FProblemsWindowClosedUnits: TAtlasChoiceBox;
-    FProblemsWindowShowCleanActive: TCheckBox;
-    FProblemsLive: TCheckBox;
-    FFixBulk: TCheckBox;
     FProblemsCompilerMerge: TAtlasChoiceBox;
-    FProblemsShowCompilerCode: TCheckBox;
-    FHoverProblemActions: TCheckBox;
     /// <summary>Bereich Prüfregeln (#909): Index in FSheets. Die Regeln selbst stehen in den Dialogen der
     /// Einstellungsdateien (Projekt und global); hier Prüffenster, Compiler vorab, Profile und Baseline.</summary>
     FRulesArea: Integer;
@@ -594,19 +303,6 @@ type
     FRulesGlobal: TButton;
     FBaselineUpdateButton: TButton;
     FBaselineDelete: TButton;
-    FUndoKey: TEdit;
-    FRedoKey: TEdit;
-    FEditorKeysPriority: TCheckBox;
-    FSlashCommands: TCheckBox;
-    /// <summary>Erzeugen-Menü (#719).</summary>
-    FGenerateMenu: TCheckBox;
-    FGenerateMenuKey: TEdit;
-    FGenerateMenuGroups: TEdit;
-    FGenerateMenuHidden: TEdit;
-    FGenerateMenuRecentFirst: TCheckBox;
-    FGenerateMenuShowCommandNames: TCheckBox;
-    FSnippets: TCheckBox;
-    FImportIdeTemplates: TCheckBox;
     // Projektdatei .atlas (#486): Schalter, Anzeige der Werte „aus .atlas“, Öffnen; Hinweis bei den Vorlagen.
     FTeamFile: TCheckBox;
     FTeamFileInfo: TLabel;
@@ -614,49 +310,12 @@ type
     FTeamSnippets: TLabel;
     FOnTeamFile: TFunc<TAtlasTeamSettings>;
     FOnOpenTeamFile: TProc;
-    FSafeAsk: TCheckBox;
-    FSafeAuto: TCheckBox;
     FSafeKey: TAtlasChoiceBox;
-    FSafeTimeout: TEdit;
-    FSafeHistory: TEdit;
-    FUndoEnabled: TCheckBox;
-    FUndoDepth: TEdit;
-    FUndoPersist: TCheckBox;
-    FUndoMaxSize: TEdit;
     FUndoOnConflict: TAtlasChoiceBox;
     FUndoNewFiles: TAtlasChoiceBox;
-    FUpdatesCheck: TCheckBox;
-    FBugReportAnonymize: TCheckBox;
-    // Units suchen (#777).
-    FUnitSearchEnabled: TCheckBox;
-    FUnitSearchReplace: TCheckBox;
-    FUnitSearchReplaceUseUnit: TCheckBox;
-    FUnitSearchReplaceForms: TCheckBox;
     FUnitSearchPathStyle: TAtlasChoiceBox;
     FUnitSearchGroupBy: TAtlasChoiceBox;
-    FUnitSearchRememberCollapsed: TCheckBox;
-    FUnitSearchFilters: TCheckBox;
     FUnitSearchDefaultScope: TAtlasChoiceBox;
-    FUnitSearchFilterSyntax: TCheckBox;
-    FUnitSearchFormCaptions: TCheckBox;
-    FUnitSearchPreview: TCheckBox;
-    FUnitSearchPreviewForm: TCheckBox;
-    FUnitSearchPreviewUsedBy: TCheckBox;
-    FUnitSearchPreviewAutoCollapse: TCheckBox;
-    FUnitSearchMultiSelect: TCheckBox;
-    FUnitSearchActions: TCheckBox;
-    FUnitSearchAddUses: TCheckBox;
-    FUnitSearchKey: TEdit;
-    FQuickOpen: TCheckBox;
-    FQuickOpenLibrary: TCheckBox;
-    FQuickOpenKey: TEdit;
-    FSearchReplace: TCheckBox;
-    FSearchMessages: TCheckBox;
-    FSearchReplaceBar: TCheckBox;
-    FSearchRegex: TCheckBox;
-    FSearchHistory: TEdit;
-    FSearchMultiFile: TCheckBox;
-    FSearchFromFirst: TCheckBox;
     FOnBrowseProject: TAtlasProjectBrowseEvent;
     // Versionsverwaltung (#1285): Art, je Programm Pfad, „…“, „Prüfen“ und Zustand, Zeitlimit, aktuelles Projekt.
     FVcsProvider: TAtlasChoiceBox;
@@ -664,24 +323,16 @@ type
     FVcsBrowse: array[TAtlasVcsKind] of TButton;
     FVcsCheck: array[TAtlasVcsKind] of TButton;
     FVcsStates: array[TAtlasVcsKind] of TLabel;
-    FVcsTimeout: TEdit;
-    FVcsBranchConfirm: TCheckBox;
-    FVcsBranchSvnLocation: TEdit;
     FVcsBranchSvnSource: TAtlasChoiceBox;
     FVcsBranchSvnAfter: TAtlasChoiceBox;
-    FVcsBranchSvnFolder: TEdit;
-    FVcsBranchSvnMessage: TEdit;
     FVcsExternalsOnBranch: TAtlasChoiceBox;
     FVcsExternalsSuggest: TAtlasChoiceBox;
     FVcsExternalsRules: TMemo;
     FVcsExternalsRulesError: TLabel;
-    FVcsExternalsShow: TCheckBox;
     FVcsExternalsUpdate: TAtlasChoiceBox;
     FVcsBranchGitBase: TAtlasChoiceBox;
     FVcsBranchGitPush: TAtlasChoiceBox;
     FVcsBranchGitUncommitted: TAtlasChoiceBox;
-    FVcsBranchGitWorktree: TCheckBox;
-    FVcsBranchGitWorktreeFolder: TEdit;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -749,7 +400,6 @@ type
     // Einstellungen übertragen (#723): Schalter, Knöpfe unten, Punkte an geänderten Werten.
     FSettingsExportImport: TCheckBox;
     FSettingsMarkModified: TCheckBox;
-    FSettingsBackupBeforeImport: TCheckBox;
     FSettingsExportSecrets: TAtlasChoiceBox;
     FTransferBar: TWinControl;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834), Hinweis darüber und Filter unten.</summary>
@@ -850,6 +500,12 @@ type
     /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399). Palette und Prüfung stehen auf der
     /// Seite „Tastenkonflikte“ (#494).</summary>
     function AddKey(const ACaption: string): TEdit;
+    /// <summary>Bindet AControl an die Plugin-Einstellung AName (Registry-Name); liefert AControl.</summary>
+    function BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
+    function BindText(const AName: string; AControl: TEdit): TEdit;
+    function BindKey(const AName: string; AControl: TEdit): TEdit;
+    procedure BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
+      AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
     procedure ResetHistoryClick(Sender: TObject);
     procedure AddFavoritesSection;
     procedure FavoritesRemoveClick(Sender: TObject);
@@ -985,7 +641,6 @@ type
     function SectionValues(const AStore: IAtlasMemorySettingsStore): IAtlasSettingsValues;
     procedure LoadSections(const ASettings: TAtlasPluginSettings);
     procedure SaveSections(var ASettings: TAtlasPluginSettings);
-    procedure WriteText(const AStore: IAtlasMemorySettingsStore; const AName, AText: string);
     /// <summary>Abschnitte abgemeldeter Module schließen (Regel 3).</summary>
     procedure DropMissingSections;
     procedure CloseSections;
@@ -1032,7 +687,6 @@ type
     property TransferBar: TWinControl read FTransferBar;
     property SettingsExportImportCheck: TCheckBox read FSettingsExportImport;
     property SettingsMarkModifiedCheck: TCheckBox read FSettingsMarkModified;
-    property SettingsBackupBeforeImportCheck: TCheckBox read FSettingsBackupBeforeImport;
     property SettingsExportSecretsChoice: TAtlasChoiceBox read FSettingsExportSecrets;
     property ExportButton: TButton read FExportButton;
     property ImportButton: TButton read FImportButton;
@@ -1082,110 +736,33 @@ type
     property IndexInfo: TLabel read FIndexInfo;
     property IndexRebuild: TButton read FIndexRebuild;
     property IndexClear: TButton read FIndexClear;
-    /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
-    property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
-    property ServerStatusWindow: TCheckBox read FServerStatusWindow;
     property ExperimentalEnabled: TCheckBox read FExperimentalEnabled;
     property ExperimentalBanner: TWinControl read FExperimentalBanner;
     property Filter: TAtlasChoiceBox read FFilter;
     /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar (Code-Review S-07).</summary>
     property HangTestRow: TWinControl read FHangTestRow;
-    property SetupChecklist: TCheckBox read FSetupChecklist;
-    property ShortcutTips: TCheckBox read FShortcutTips;
     property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
-    /// <summary>Zum Testen: Benachrichtigungszentrale (#601).</summary>
-    property Notifications: TCheckBox read FNotifications;
     property NotificationsMax: TEdit read FNotificationsMax;
     property NotificationSource: TAtlasChoiceBox read FNotificationSource;
     property NotificationMode: TAtlasChoiceBox read FNotificationMode;
     property NotificationsSpec: string read FNotificationsSpec;
-    property NotificationsKey: TEdit read FNotificationsKey;
-    property StatusSummary: TCheckBox read FStatusSummary;
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property IndexProgress: TAtlasChoiceBox read FIndexProgress;
     property StatusHidden: TEdit read FStatusHidden;
-    /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
-    property SafeAsk: TCheckBox read FSafeAsk;
-    property SafeAuto: TCheckBox read FSafeAuto;
     property SafeKey: TAtlasChoiceBox read FSafeKey;
-    property SafeTimeout: TEdit read FSafeTimeout;
-    property SafeHistory: TEdit read FSafeHistory;
-    /// <summary>Zum Testen: Atlas-Änderungen über mehrere Dateien (#721).</summary>
-    property UndoEnabled: TCheckBox read FUndoEnabled;
-    property UndoDepth: TEdit read FUndoDepth;
-    property UndoPersist: TCheckBox read FUndoPersist;
-    property UndoMaxSize: TEdit read FUndoMaxSize;
     property UndoOnConflict: TAtlasChoiceBox read FUndoOnConflict;
     property UndoNewFiles: TAtlasChoiceBox read FUndoNewFiles;
-    property UndoKey: TEdit read FUndoKey;
-    /// <summary>Zum Testen: Deklaration/Implementierung wechseln (#775).</summary>
-    property MethodToggle: TCheckBox read FMethodToggle;
-    property MethodToggleUpKey: TEdit read FMethodToggleUpKey;
-    property MethodToggleDownKey: TEdit read FMethodToggleDownKey;
-    /// <summary>Zum Testen: Zeilen verschieben und duplizieren (#634).</summary>
-    property MoveLines: TCheckBox read FMoveLines;
-    property MoveLinesUpKey: TEdit read FMoveLinesUpKey;
-    property DuplicateLinesDownKey: TEdit read FDuplicateLinesDownKey;
-    property ToggleBlockComment: TCheckBox read FToggleBlockComment;
-    property ToggleBlockCommentKey: TEdit read FToggleBlockCommentKey;
     property ToggleBlockCommentStyle: TAtlasChoiceBox read FToggleBlockCommentStyle;
     property ToggleBlockCommentFallback: TAtlasChoiceBox read FToggleBlockCommentFallback;
-    property ToggleBlockCommentOwnLines: TCheckBox read FToggleBlockCommentOwnLines;
     property ToggleBlockCommentScope: TAtlasChoiceBox read FToggleBlockCommentScope;
-    /// <summary>Zum Testen: Neue Zeile ober- oder unterhalb (#700).</summary>
-    property NewLineAround: TCheckBox read FNewLineAround;
-    property NewLineBelowKey: TEdit read FNewLineBelowKey;
-    property NewLineAboveKey: TEdit read FNewLineAboveKey;
-    property NewLineAroundStatementAware: TCheckBox read FNewLineAroundStatementAware;
-    /// <summary>Zum Testen: Umschließung entfernen (#657).</summary>
-    property Unwrap: TCheckBox read FUnwrap;
-    property UnwrapKey: TEdit read FUnwrapKey;
-    /// <summary>Zum Testen: Sicher löschen (#716).</summary>
-    property SafeDelete: TCheckBox read FSafeDelete;
-    property SafeDeleteKey: TEdit read FSafeDeleteKey;
-    /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
-    property ContinueComments: TCheckBox read FContinueComments;
-    property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
     property ContinueCommentsBlockPrefix: TEdit read FContinueCommentsBlockPrefix;
-    /// <summary>Zum Testen: Markierung beim Tippen umschließen (#672).</summary>
-    property WrapSelection: TCheckBox read FWrapSelection;
-    property WrapSelectionChars: TEdit read FWrapSelectionChars;
-    /// <summary>Zum Testen: Anweisung vervollständigen (#697).</summary>
-    property CompleteStatement: TCheckBox read FCompleteStatement;
-    property CompleteStatementKey: TEdit read FCompleteStatementKey;
     property CompleteStatementBeginEnd: TAtlasChoiceBox read FCompleteStatementBeginEnd;
     property CompleteStatementTryKind: TAtlasChoiceBox read FCompleteStatementTryKind;
-    property CompleteStatementMethodBody: TCheckBox read FCompleteStatementMethodBody;
-    property FormatCode: TCheckBox read FFormatCode;
-    property FormatCodeKey: TEdit read FFormatCodeKey;
-    property ContinuePattern: TCheckBox read FContinuePattern;
-    property ContinuePatternMinLines: TEdit read FContinuePatternMinLines;
-    property MultiCursor: TCheckBox read FMultiCursor;
-    property StickyScroll: TCheckBox read FStickyScroll;
-    property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
-    property StickyScrollTypes: TCheckBox read FStickyScrollTypes;
-    property StickyScrollRoutines: TCheckBox read FStickyScrollRoutines;
-    property StickyScrollBlocks: TCheckBox read FStickyScrollBlocks;
-    property StickyScrollLoops: TCheckBox read FStickyScrollLoops;
-    property StickyScrollTry: TCheckBox read FStickyScrollTry;
-    property StickyScrollCase: TCheckBox read FStickyScrollCase;
-    property StickyScrollWith: TCheckBox read FStickyScrollWith;
     property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
-    property Minimap: TCheckBox read FMinimap;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
-    property MinimapWidth: TEdit read FMinimapWidth;
-    property LinkedEditing: TCheckBox read FLinkedEditing;
     property SmartPaste: TAtlasChoiceBox read FSmartPaste;
     property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
-    property MultiCursorNextKey: TEdit read FMultiCursorNextKey;
-    property MultiCursorSkipKey: TEdit read FMultiCursorSkipKey;
-    property MultiCursorLineEndsKey: TEdit read FMultiCursorLineEndsKey;
-    property MultiCursorAboveKey: TEdit read FMultiCursorAboveKey;
-    property MultiCursorBelowKey: TEdit read FMultiCursorBelowKey;
-    property RedoKey: TEdit read FRedoKey;
-    property UpdatesCheck: TCheckBox read FUpdatesCheck;
-    property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
     /// <summary>Zum Testen: Editorleiste (#1101).</summary>
     property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
     property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
@@ -1207,8 +784,6 @@ type
     property OnRemoveFavorites: TProc<TArray<string>> read FOnRemoveFavorites write FOnRemoveFavorites;
     /// <summary>Zum Testen: Favoriten (#458).</summary>
     property FavoritesCheck: TCheckBox read FFavorites;
-    property NotesCheck: TCheckBox read FNotes;
-    property McpBuildCheck: TCheckBox read FMcpBuild;
     /// <summary>Zum Testen: Beim Öffnen bauen.</summary>
     property OpenBuildChoice: TAtlasChoiceBox read FOpenBuild;
     property OpenBuildScopeChoice: TAtlasChoiceBox read FOpenBuildScope;
@@ -1226,27 +801,10 @@ type
     property TasksOnlyFindingsCheck: TCheckBox read FTasksOnlyFindings;
     property OpenBuildConfigEdit: TEdit read FOpenBuildConfig;
     property OpenBuildPlatformChoice: TAtlasChoiceBox read FOpenBuildPlatform;
-    /// <summary>Zum Testen: Tests ausführen (#69).</summary>
-    property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
-    property TestRunCheck: TCheckBox read FTestRun;
-    property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
-    property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
-    property TestsAffectedCheck: TCheckBox read FTestsAffected;
-    property TestsAffectedDepthEdit: TEdit read FTestsAffectedDepth;
-    property TestsAffectedBeforeCommitCheck: TCheckBox read FTestsAffectedBeforeCommit;
-    property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
-    property ShowInterfaceCostCheck: TCheckBox read FShowInterfaceCost;
-    /// <summary>Zum Testen: Alt+F11 und Umschalt+F12 übernehmen (#786).</summary>
-    property UnitSearchReplaceUseUnitCheck: TCheckBox read FUnitSearchReplaceUseUnit;
-    property UnitSearchReplaceFormsCheck: TCheckBox read FUnitSearchReplaceForms;
-    /// <summary>Zum Testen: Schranke für Hinweise und Warnungen (#530).</summary>
-    property BuildSummaryCheck: TCheckBox read FBuildSummary;
     property BuildWarningsAsErrorsEdit: TEdit read FBuildWarningsAsErrors;
     /// <summary>Zum Testen: Prüfung vor dem Compile (#529).</summary>
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
     property BuildGateTimeoutEdit: TEdit read FBuildGateTimeout;
-    property BuildCompilerSwitchesCheck: TCheckBox read FBuildCompilerSwitches;
-    property BuildSwitchesInStatusBarCheck: TCheckBox read FBuildSwitchesInStatusBar;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
     property ReleaseConfigsEdit: TEdit read FReleaseConfigs;
@@ -1254,127 +812,33 @@ type
     function ReleaseCheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
     /// <summary>Auswahl einer Prüfung mit Sollwert (0 = nicht prüfen, 1 = Soll aus, 2 = Soll an); sonst nil.</summary>
     function ReleaseCheckChoice(ACheck: TAtlasReleaseCheck): TAtlasChoiceBox;
-    /// <summary>Zum Testen: Startprofile (#575).</summary>
-    property StartProfilesCheck: TCheckBox read FStartProfiles;
-    property StartProfilesStatusFieldCheck: TCheckBox read FStartProfilesStatusField;
-    /// <summary>Zum Testen: Test debuggen (#585).</summary>
-    property TestDebugCheck: TCheckBox read FTestDebug;
-    property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
-    property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
-    property DebugVisualizersCheck: TCheckBox read FDebugVisualizers;
     property DebugVisualizerNameFieldsEdit: TEdit read FDebugVisualizerNameFields;
     property DebugVisualizerMaxLengthEdit: TEdit read FDebugVisualizerMaxLength;
     property DebugVisualizerEvaluationBox: TAtlasChoiceBox read FDebugVisualizerEvaluation;
-    property DebugDisplayRulesCheck: TCheckBox read FDebugDisplayRules;
-    property DebugDisplayRulesAllowCallsCheck: TCheckBox read FDebugDisplayRulesAllowCalls;
-    property DebugStepIntoTargetCheck: TCheckBox read FDebugStepIntoTarget;
-    property DebugStepFiltersCheck: TCheckBox read FDebugStepFilters;
     function DebugStepFilterKindCheck(AKind: TStepFilterKind): TCheckBox;
     property DebugStepFilterPatternsEdit: TEdit read FDebugStepFilterPatterns;
-    property DebugStepIntoTargetKeyEdit: TEdit read FDebugStepIntoTargetKey;
-    property DebugBreakOnNextEventCheck: TCheckBox read FDebugBreakOnNextEvent;
     property DebugBreakOnNextEventExcludedEdit: TEdit read FDebugBreakOnNextEventExcluded;
     function DebugVisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;
-    property DebugExplainUnavailableCheck: TCheckBox read FDebugExplainUnavailable;
-    property DebugCompletionInDialogsCheck: TCheckBox read FDebugCompletionInDialogs;
-    property DebugEvaluateWindowCheck: TCheckBox read FDebugEvaluateWindow;
-    property DebugEvaluateReplaceCtrlF7Check: TCheckBox read FDebugEvaluateReplaceCtrlF7;
-    property DebugExplainAccessViolationCheck: TCheckBox read FDebugExplainAccessViolation;
     property DebugExplainAccessViolationAllowCallsCheck: TCheckBox read FDebugExplainAccessViolationAllowCalls;
-    property DebugExceptionHistoryCheck: TCheckBox read FDebugExceptionHistory;
-    property DebugJustMyCodeCheck: TCheckBox read FDebugJustMyCode;
-    property DebugExceptionBannerCheck: TCheckBox read FDebugExceptionBanner;
     property DebugExceptionBannerIgnoreAtLocationCheck: TCheckBox read FDebugExceptionBannerIgnoreAtLocation;
-    property DebugInlineValuesCheck: TCheckBox read FDebugInlineValues;
-    property DebugInlineValuesPerLineEdit: TEdit read FDebugInlineValuesPerLine;
     property DebugOwnCodeFoldersEdit: TEdit read FDebugOwnCodeFolders;
-    /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
-    property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
-    property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
-    property BookmarkKey: TEdit read FBookmarkKey;
-    /// <summary>Zum Testen: schnelle Lesezeichen (#1104).</summary>
-    property QuickBookmarksCheck: TCheckBox read FQuickBookmarks;
-    property QuickBookmarksGutterCheck: TCheckBox read FQuickBookmarksGutter;
-    property QuickBookmarksGutterClickCheck: TCheckBox read FQuickBookmarksGutterClick;
-    property QuickBookmarksNumberedKeysCheck: TCheckBox read FQuickBookmarksNumberedKeys;
-    property QuickBookmarkKeyEdit: TEdit read FQuickBookmarkKey;
     property QuickBookmarkChordWaitEdit: TEdit read FQuickBookmarkChordWait;
     property QuickBookmarksScopeBox: TAtlasChoiceBox read FQuickBookmarksScope;
-    property QuickBookmarksImportIdeCheck: TCheckBox read FQuickBookmarksImportIde;
-    property NextBookmarkKeyEdit: TEdit read FNextBookmarkKey;
-    property PreviousBookmarkKeyEdit: TEdit read FPreviousBookmarkKey;
-    /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
-    property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
-    /// <summary>Zum Testen: Typmarken von Inline-Variablen (#453).</summary>
-    property InlayTypeHintsCheck: TCheckBox read FInlayTypeHints;
-    /// <summary>Zum Testen: Include-Symbole hinter {$I} (#860).</summary>
-    property InlayDefineHintsCheck: TCheckBox read FInlayDefineHints;
-    /// <summary>Zum Testen: Codes von Steuerzeichen (#862).</summary>
-    property InlayCharHintsCheck: TCheckBox read FInlayCharHints;
-    /// <summary>Zum Testen: Marken „ohne Self“ (#686).</summary>
-    property InlayMethodHintsCheck: TCheckBox read FInlayMethodHints;
-    property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
-    property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
-    property RecursionMarkersCheck: TCheckBox read FRecursionMarkers;
-    property GutterColumnCheck: TCheckBox read FGutterColumn;
-    property GutterColumnProblemsCheck: TCheckBox read FGutterColumnProblems;
-    property GutterColumnCodeActionsCheck: TCheckBox read FGutterColumnCodeActions;
-    property GutterColumnOverridesCheck: TCheckBox read FGutterColumnOverrides;
-    property SelectionMatchesCheck: TCheckBox read FSelectionMatches;
     property SelectionMatchesMinLength: TEdit read FSelectionMatchesMinLength;
-    property SelectionMatchesCaseSensitiveCheck: TCheckBox read FSelectionMatchesCaseSensitive;
-    property SelectionMatchesWholeWordCheck: TCheckBox read FSelectionMatchesWholeWord;
-    property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
     property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
-    property ExitPointsCheck: TCheckBox read FExitPoints;
-    property ExitPointsExceptionsCheck: TCheckBox read FExitPointsExceptions;
-    property ExitPointsLoopsCheck: TCheckBox read FExitPointsLoops;
-    property ExitPointsBadgeCheck: TCheckBox read FExitPointsBadge;
-    property ReassignedCheck: TCheckBox read FReassigned;
     /// <summary>Zum Testen: Häkchen je Art, Linie und Farbe (#712).</summary>
     function ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
     property ReassignedStyleBox: TAtlasChoiceBox read FReassignedStyle;
     property ReassignedColorEdit: TEdit read FReassignedColor;
-    /// <summary>Zum Testen: Typ des markierten Ausdrucks (#689).</summary>
-    property ExpressionTypeCheck: TCheckBox read FExpressionType;
-    property ExpressionTypeConversionsCheck: TCheckBox read FExpressionTypeConversions;
-    property ExpressionTypeConstValueCheck: TCheckBox read FExpressionTypeConstValue;
-    property ExpressionTypeKey: TEdit read FExpressionTypeKey;
     /// <summary>Zum Testen: Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
     property MethodPlacementBox: TAtlasChoiceBox read FMethodPlacement;
-    property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
-    property DataFlowCheck: TCheckBox read FDataFlow;
-    property DataFlowMaxDepthEdit: TEdit read FDataFlowMaxDepth;
-    property DataFlowExcludeTestsCheck: TCheckBox read FDataFlowExcludeTests;
-    property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
     property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
-    property ProblemsStatusCounterCheck: TCheckBox read FProblemsStatusCounter;
-    property NextProblemKey: TEdit read FNextProblemKey;
-    property PreviousProblemKey: TEdit read FPreviousProblemKey;
-    property ProblemsWindowKey: TEdit read FProblemsWindowKey;
-    property CreateIssueKey: TEdit read FCreateIssueKey;
-    /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
-    property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
-    property ArchitectureCheck: TCheckBox read FArchitecture;
     property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
-    property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
-    property QueryCheck: TCheckBox read FQuery;
-    property HotspotsCheck: TCheckBox read FHotspots;
-    property HotspotsMonthsEdit: TEdit read FHotspotsMonths;
-    property HotspotsMinCommitsEdit: TEdit read FHotspotsMinCommits;
     property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
-    property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
-    property ProblemsWindowFollowCursorCheck: TCheckBox read FProblemsWindowFollowCursor;
-    property ProblemsWindowOpenFirstCheck: TCheckBox read FProblemsWindowOpenFirst;
     property ProblemsWindowClosedUnitsChoice: TAtlasChoiceBox read FProblemsWindowClosedUnits;
-    property ProblemsWindowShowCleanActiveCheck: TCheckBox read FProblemsWindowShowCleanActive;
-    property ProblemsLiveCheck: TCheckBox read FProblemsLive;
-    property FixBulkCheck: TCheckBox read FFixBulk;
     property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
-    property ProblemsShowCompilerCodeCheck: TCheckBox read FProblemsShowCompilerCode;
-    property HoverProblemActionsCheck: TCheckBox read FHoverProblemActions;
     property RulesProjectButton: TButton read FRulesProject;
     property RulesGlobalButton: TButton read FRulesGlobal;
     /// <summary>„Projekt-Prüfregeln bearbeiten …“: Projektdialog öffnen.</summary>
@@ -1386,13 +850,6 @@ type
     property OnBaselineUpdate: TFunc<string> read FOnBaselineUpdate write FOnBaselineUpdate;
     property OnBaselineDelete: TFunc<string> read FOnBaselineDelete write FOnBaselineDelete;
     property BaselineInfoLabel: TLabel read FBaselineInfo;
-    /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
-    property GenerateMenuCheck: TCheckBox read FGenerateMenu;
-    property GenerateMenuKey: TEdit read FGenerateMenuKey;
-    property GenerateMenuGroups: TEdit read FGenerateMenuGroups;
-    property GenerateMenuHidden: TEdit read FGenerateMenuHidden;
-    property GenerateMenuRecentFirstCheck: TCheckBox read FGenerateMenuRecentFirst;
-    property GenerateMenuShowCommandNamesCheck: TCheckBox read FGenerateMenuShowCommandNames;
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
@@ -1451,28 +908,18 @@ type
     class function VcsProjectText(const AState: TAtlasVcsProjectState): string; static;
     /// <summary>Zum Testen: Versionsverwaltung (#1285).</summary>
     property VcsProviderChoice: TAtlasChoiceBox read FVcsProvider;
-    property VcsTimeout: TEdit read FVcsTimeout;
-    /// <summary>Zum Testen: vcs.branch.confirm (#1288).</summary>
-    property VcsBranchConfirm: TCheckBox read FVcsBranchConfirm;
-    /// <summary>Zum Testen: vcs.branch.svn.* (#1290).</summary>
-    property VcsBranchSvnLocation: TEdit read FVcsBranchSvnLocation;
     property VcsBranchSvnSource: TAtlasChoiceBox read FVcsBranchSvnSource;
     property VcsBranchSvnAfter: TAtlasChoiceBox read FVcsBranchSvnAfter;
-    property VcsBranchSvnFolder: TEdit read FVcsBranchSvnFolder;
-    property VcsBranchSvnMessage: TEdit read FVcsBranchSvnMessage;
     /// <summary>Zum Testen: vcs.externals.* (#1291).</summary>
     property VcsExternalsOnBranch: TAtlasChoiceBox read FVcsExternalsOnBranch;
     property VcsExternalsSuggest: TAtlasChoiceBox read FVcsExternalsSuggest;
     property VcsExternalsRules: TMemo read FVcsExternalsRules;
     property VcsExternalsRulesError: TLabel read FVcsExternalsRulesError;
-    property VcsExternalsShow: TCheckBox read FVcsExternalsShow;
     property VcsExternalsUpdate: TAtlasChoiceBox read FVcsExternalsUpdate;
     /// <summary>Zum Testen: vcs.branch.git.* (#1289); Auswahl in der Reihenfolge der Werte im Schema.</summary>
     property VcsBranchGitBase: TAtlasChoiceBox read FVcsBranchGitBase;
     property VcsBranchGitPush: TAtlasChoiceBox read FVcsBranchGitPush;
     property VcsBranchGitUncommitted: TAtlasChoiceBox read FVcsBranchGitUncommitted;
-    property VcsBranchGitWorktree: TCheckBox read FVcsBranchGitWorktree;
-    property VcsBranchGitWorktreeFolder: TEdit read FVcsBranchGitWorktreeFolder;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -1514,12 +961,6 @@ type
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
     property OnServerVersion: TFunc<string, string> read FOnServerVersion write SetOnServerVersion;
-    /// <summary>Zum Testen: Optionen aus ARG-046.</summary>
-    property CommitChars: TCheckBox read FCommitChars;
-    property AutoUses: TCheckBox read FAutoUses;
-    property ParameterHints: TCheckBox read FParameterHints;
-    property FormatPlaceholders: TCheckBox read FFormatPlaceholders;
-    property OpenDelay: TEdit read FOpenDelay;
     property AutoWidth: TCheckBox read FAutoWidth;
     property Symbol: TAtlasSymbolImage read FSymbol;
     property ServerVersion: TLabel read FServerVersion;
@@ -1608,20 +1049,6 @@ const
   UnitSearchPathStyles: array[0..2] of string = ('relative', 'compact', 'absolute');
   UnitSearchGroupings: array[0..2] of string = ('project', 'folder', 'none');
   UnitSearchScopes: array[0..3] of string = ('group', 'project', 'searchPath', 'library');
-
-function ChoiceOf(const AValue: string; const AValues: array of string): Integer;
-var
-  Index: Integer;
-begin
-  for Index := 0 to High(AValues) do
-  begin
-    if SameText(AValues[Index], AValue) then
-    begin
-      Exit(Index);
-    end;
-  end;
-  Result := 0;
-end;
 
 type
   /// <summary>Host und Wächter der Abschnitte lösen sich von der Seite, wenn sie schließt (#1455).</summary>
@@ -1873,6 +1300,8 @@ var
 begin
   inherited Create(AOwner);
   FAttached := TDictionary<TControl, TControl>.Create;
+  FBindings := TAtlasSettingsBindings.Create;
+  FSectionBindings := TAtlasSettingsBindings.Create;
   FOwnOff := TList<TControl>.Create;
   FLockedControls := TList<TControl>.Create;
   Name := 'AtlasSettingsPage';
@@ -1919,7 +1348,7 @@ begin
   FPages.Top := 100;
 
   AddSheet(TAtlasTextId.SettingsTabGeneral);
-  FEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled));
+  BindCheck('Enabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled)));
   // Modul-Schalter (#1454): je Modul auf dem Hauptknoten seines Bereichs, ganz oben.
   AddModuleSwitch('AnalysisEnabled');
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
@@ -1958,12 +1387,12 @@ begin
   FServerVersion.Left := 0;
   FServerVersion.Top := 0;
   FServerVersion.Font.Color := clGrayText;
-  FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
+  BindCheck('ReloadExternal', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload)));
   // Änderungen des Servers an nicht geöffneten Dateien (#397).
-  FOpenForEdits := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits));
+  BindCheck('OpenForEdits', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits)));
   // Atlas-Statusfeld (#591).
-  FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
-  FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
+  BindCheck('StatusField', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField)));
+  BindCheck('StatusFieldSummary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary)));
   FStatusToggles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsStatusToggles),
     [TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesBoth),
     TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesRight),
@@ -1976,34 +1405,34 @@ begin
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
-  FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
+  FDiagnosticMode := BindCheck('DiagnosticMode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode)));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
-  FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
+  BindCheck('DiagnosticsProcesses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses)));
   // Fenster „Atlas-Server“ (#1356).
-  FServerStatusWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow));
+  BindCheck('ServerStatusWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow)));
   // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
   // architecture.scope (projectGroup, project).
-  FArchitecture := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture));
+  BindCheck('ArchitectureEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture)));
   FArchitectureScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureScope),
     [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
-  FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
-  FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
+  BindCheck('ArchitectureIncludeLibraryUnits', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary)));
+  BindText('ArchitectureCentralUnits', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral)));
   // Code-Abfragen (#1351): Fenster „Atlas-Abfrage“, Befehl und Menüeintrag; Unterpunkt über x-node.
-  FQuery := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuery));
+  BindCheck('QueryEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuery)));
   // Hotspots (#1354): Unterpunkt „Hotspots“ über x-node.
-  FHotspots := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots));
-  FHotspotsMonths := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths));
-  FHotspotsMinCommits := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMinCommits));
+  BindCheck('HotspotsEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots)));
+  BindText('HotspotsMonths', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths)));
+  BindText('HotspotsCouplingMinCommits', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMinCommits)));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
-  FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
+  BindCheck('SetupChecklist', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist)));
   // Hauptschalter der experimentellen Funktionen (#834).
-  FExperimentalEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalEnabled));
+  FExperimentalEnabled := BindCheck('ExperimentalEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalEnabled)));
   // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
-  FShortcutTips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips));
+  BindCheck('ShortcutTips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips)));
   FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
     [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
   // Benachrichtigungszentrale (#601); Taste auf dem Reiter Befehle.
-  FNotifications := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications));
+  BindCheck('Notifications', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications)));
   FNotificationsMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsMax));
   AddNotificationSources;
   // Einstellungen exportieren, importieren und zurücksetzen (#723).
@@ -2030,14 +1459,14 @@ begin
   FRowsUpDown.Max := TAtlasPluginSettings.MaxVisibleRows;
   FAutoWidth := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoWidth));
   FAutoWidth.OnClick := AutoWidthClick;
-  FOpenDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay));
-  FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
-  FSelectionMarker := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMarker));
-  FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
-  FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
-  FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
-  FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
-  FCompletionVariantBranch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompletionVariantBranch));
+  BindText('OpenDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay)));
+  BindCheck('PanelCollapsed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed)));
+  BindCheck('SelectionMarker', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMarker)));
+  BindCheck('FilterChips', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips)));
+  BindCheck('Learning', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning)));
+  FFavorites := BindCheck('Favorites', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites)));
+  BindCheck('GroupInherited', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited)));
+  BindCheck('CompletionVariantBranch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompletionVariantBranch)));
   // In der Reihenfolge von TAtlasListMode bzw. TAtlasListScope.
   FListMode := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListMode),
     [TAtlasStrings.Text(TAtlasTextId.SettingsListModeFilter), TAtlasStrings.Text(TAtlasTextId.SettingsListModeAll),
@@ -2045,7 +1474,7 @@ begin
   FListScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListScope),
     [TAtlasStrings.Text(TAtlasTextId.SettingsListScopeMembers),
     TAtlasStrings.Text(TAtlasTextId.SettingsListScopeEverywhere)]);
-  FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
+  BindCheck('Preview', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview)));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -2065,58 +1494,58 @@ begin
 
   // Was beim Übernehmen eingefügt wird.
   AddSheet(TAtlasTextId.SettingsTabInsert);
-  FAutoParentheses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParentheses));
-  FFixCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixCase));
-  FCommitChars := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCommitChars));
-  FAutoUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoUses));
-  FParameterHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParameterHints));
-  FFormatPlaceholders := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatPlaceholders));
+  BindCheck('AutoParentheses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParentheses)));
+  BindCheck('FixCase', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixCase)));
+  BindCheck('CommitCharacters', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCommitChars)));
+  BindCheck('AutoUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoUses)));
+  BindCheck('ParameterHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParameterHints)));
+  BindCheck('FormatPlaceholders', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatPlaceholders)));
   // Code-Vorlagen (#51).
-  FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
-  FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
+  BindCheck('Snippets', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets)));
+  BindCheck('ImportIdeTemplates', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates)));
   // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
   FTeamSnippets := AddWrappedLabel(20, '');
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   AddModuleSwitch('BookmarksEnabled');
   AddModuleSwitch('DesignerEnabled');
-  FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
-  FHoverProblemActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions));
+  BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
   FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
     [TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocCollapsed), TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocLast),
     TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpanded)]);
-  FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
-  FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
-  FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
+  BindText('XmlDocMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines)));
+  BindCheck('PairColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs)));
+  BindCheck('PairGuides', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides)));
   // Anweisungen mitfärben, Linienbreite und Deckkraft (#653); wirken nur mit der Paarfärbung.
-  FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
-  FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
-  FPairGuideOpacity := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity));
-  FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
-  FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  BindCheck('PairOwners', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners)));
+  BindText('PairGuideWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth)));
+  BindText('PairGuideOpacity', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity)));
+  BindCheck('InactiveDim', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim)));
+  BindCheck('InlayHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints)));
   // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
-  FInlayTypeHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayTypeHints));
+  BindCheck('InlayTypeHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayTypeHints)));
   // Symbole aus Include-Dateien hinter {$I} (#860).
-  FInlayDefineHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints));
+  BindCheck('InlayDefineHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints)));
   // Code hinter Steuerzeichen wie ^C (#862).
-  FInlayCharHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints));
+  BindCheck('InlayCharHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints)));
   // Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).
-  FInlayMethodHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints));
+  BindCheck('InlayMethodHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints)));
   // Beschriftung hinter dem end langer Blöcke (#620).
-  FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
-  FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
-  FDimUnusedUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses));
+  BindCheck('BlockEndLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels)));
+  BindText('BlockEndLabelsMinLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines)));
+  BindCheck('DimUnusedUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses)));
   // Brotkrumenleiste (#590).
-  FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
-  FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
-  FBreadcrumbsIdeColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors));
-  FBreadcrumbsHideIdeToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar));
-  FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
+  BindCheck('Breadcrumbs', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs)));
+  BindCheck('BreadcrumbsShowUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit)));
+  BindCheck('BreadcrumbsIdeColors', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors)));
+  BindCheck('BreadcrumbsHideIdeToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar)));
+  BindKey('BreadcrumbsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand)));
   // Atlas-Editorleiste (#1101).
-  FEditorToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar));
+  BindCheck('EditorToolbar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbar)));
   FEditorToolbarPosition := AddChoice(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPosition),
     [TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
@@ -2131,72 +1560,72 @@ begin
   FEditorToolbarCustomize.Width := 180;
   FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
   Attach(Panel, FEditorToolbarItems);
-  FEditorToolbarReturnButton := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton));
-  FEditorToolbarLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels));
+  BindCheck('EditorToolbarReturnButton', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton)));
+  FEditorToolbarLabels := BindCheck('EditorToolbarLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels)));
   // Atlas-Statusleiste unten im Editorfenster (#1155).
-  FEditorStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar));
+  BindCheck('EditorStatusBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar)));
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
   // Aufrufdiagramm (#1122).
-  FCallHierarchyDiagram := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram));
+  BindCheck('CallHierarchyDiagram', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram)));
   // Designer-Leiste im Formular-Designer (#1442).
-  FEditorDesignerBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar));
-  FDesignerSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchKey));
+  BindCheck('EditorDesignerBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar)));
+  BindKey('DesignerSearchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchKey)));
   FDesignerSearchStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchStyle),
     [TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchWindow),
     TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchPopup)]);
-  FDesignerTabOrderClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerTabOrderClick));
-  FDesignerAlign := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerAlign));
+  BindCheck('DesignerTabOrderClick', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerTabOrderClick)));
+  BindCheck('DesignerAlign', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerAlign)));
   // Mitlaufender Kopf (#506, experimentell).
-  FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
-  FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
-  FStickyScrollTypes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTypes));
-  FStickyScrollRoutines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollRoutines));
-  FStickyScrollBlocks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks));
-  FStickyScrollLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollLoops));
-  FStickyScrollTry := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTry));
-  FStickyScrollCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollCase));
-  FStickyScrollWith := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollWith));
+  BindCheck('StickyScroll', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll)));
+  BindText('StickyScrollMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines)));
+  BindCheck('StickyScrollTypes', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTypes)));
+  BindCheck('StickyScrollRoutines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollRoutines)));
+  BindCheck('StickyScrollBlocks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks)));
+  BindCheck('StickyScrollLoops', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollLoops)));
+  BindCheck('StickyScrollTry', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTry)));
+  BindCheck('StickyScrollCase', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollCase)));
+  BindCheck('StickyScrollWith', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollWith)));
   FStickyScrollBlockMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlockMinLines));
   // Minimap neben der Scrollleiste (#873, experimentell).
-  FMinimap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap));
+  BindCheck('Minimap', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap)));
   FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
     [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapBlocks), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapCharacters)]);
-  FMinimapWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapWidth));
-  FMinimapScale := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapScale));
-  FMinimapMaxColumn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMaxColumn));
+  BindText('MinimapWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapWidth)));
+  BindText('MinimapScale', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapScale)));
+  BindText('MinimapMaxColumn', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMaxColumn)));
   FMinimapSide := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSide),
     [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRight), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapLeft)]);
   FMinimapShowSlider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSlider),
     [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderAlways),
     TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderHover)]);
-  FMinimapSectionHeaders := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapHeaders));
-  FMinimapHighlightMethod := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMethod));
-  FMinimapMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMarkers));
-  FMinimapClickJumps := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapClickJumps));
+  BindCheck('MinimapSectionHeaders', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapHeaders)));
+  BindCheck('MinimapHighlightMethod', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMethod)));
+  BindCheck('MinimapMarkers', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMarkers)));
+  BindCheck('MinimapClickJumps', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapClickJumps)));
   // Änderungsmarken und Zeilenhistorie (#507).
-  FGitGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter));
-  FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
-  FPreviousChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand));
-  FGitBlame := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame));
+  FGitGutter := BindCheck('GitGutter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter)));
+  BindKey('NextChangeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand)));
+  BindKey('PreviousChangeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand)));
+  BindCheck('GitBlame', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame)));
   // Atlas-Spalte in der Zeilenleiste (#768): Hauptschalter und je Symbolart ein Häkchen.
-  FGutterColumn := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumn));
-  FGutterColumnProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnProblems));
-  FGutterColumnCodeActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnActions));
-  FGutterColumnOverrides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnOverrides));
+  BindCheck('GutterColumn', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumn)));
+  BindCheck('GutterColumnProblems', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnProblems)));
+  BindCheck('GutterColumnCodeActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnActions)));
+  BindCheck('GutterColumnOverrides', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnOverrides)));
   // Gleichen Text wie die Markierung hervorheben (#709).
-  FSelectionMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatches));
+  BindCheck('SelectionMatches', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatches)));
   FSelectionMatchesMinLength := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMinLength));
-  FSelectionMatchesCaseSensitive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesCase));
-  FSelectionMatchesWholeWord := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord));
-  FSelectionMatchesNavigateF3 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3));
+  BindCheck('SelectionMatchesCaseSensitive', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesCase)));
+  BindCheck('SelectionMatchesWholeWord', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord)));
+  BindCheck('SelectionMatchesNavigateF3', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3)));
   FSelectionMatchesMaxMatches := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMax));
   // Austrittspunkte hervorheben (#698).
-  FExitPoints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPoints));
-  FExitPointsExceptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions));
-  FExitPointsLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops));
-  FExitPointsBadge := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge));
+  BindCheck('ExitPoints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPoints)));
+  BindCheck('ExitPointsExceptions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsExceptions)));
+  BindCheck('ExitPointsLoops', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsLoops)));
+  BindCheck('ExitPointsBadge', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExitPointsBadge)));
   // Neu zugewiesene Variablen (#712): an/aus, je Art ein Häkchen, Linie und Farbe.
-  FReassigned := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassigned));
+  BindCheck('Reassigned', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassigned)));
   FReassignedTargets[TAtlasReassignedTarget.Locals] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedLocals));
   FReassignedTargets[TAtlasReassignedTarget.LoopVars] :=
@@ -2213,17 +1642,17 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsReassignedStyleWavy)]);
   FReassignedColor := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReassignedColor));
   // Typ des markierten Ausdrucks (#689): an/aus, Umwandlungen, Wert und Kürzel.
-  FExpressionType := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionType));
-  FExpressionTypeConversions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions));
-  FExpressionTypeConstValue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue));
-  FExpressionTypeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
+  BindCheck('ExpressionType', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionType)));
+  BindCheck('ExpressionTypeConversions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConversions)));
+  BindCheck('ExpressionTypeConstValue', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExpressionTypeConstValue)));
+  BindKey('ExpressionTypeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand)));
   // Methodenrümpfe in Deklarationsreihenfolge (#660): wie die Deklaration, alphabetisch oder aus.
   FMethodPlacement := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacement),
     [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
-  FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
+  BindCheck('OverviewRuler', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler)));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewDiagnostics));
   FOverviewKinds[TAtlasOverviewKind.Search] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewSearch));
@@ -2231,41 +1660,41 @@ begin
   FOverviewKinds[TAtlasOverviewKind.Breakpoints] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBreakpoints));
   // Kommentar beim Enter fortsetzen (#696).
-  FContinueComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueComments));
-  FContinueCommentsLineComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments));
-  FContinueCommentsLists := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists));
+  BindCheck('ContinueComments', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueComments)));
+  BindCheck('ContinueCommentsLineComments', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments)));
+  BindCheck('ContinueCommentsLists', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists)));
   FContinueCommentsBlockPrefix := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsBlockPrefix));
   // Markierung beim Tippen umschließen (#672).
-  FWrapSelection := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelection));
-  FWrapSelectionChars := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelectionChars));
+  BindCheck('WrapSelection', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelection)));
+  BindText('WrapSelectionChars', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelectionChars)));
   // Anweisung vervollständigen (#697).
-  FCompleteStatement := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatement));
-  FCompleteStatementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand));
+  BindCheck('CompleteStatement', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatement)));
+  BindKey('CompleteStatementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand)));
   FCompleteStatementBeginEnd := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementBeginEnd),
     [TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndAlways),
     TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndMultiLine), TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndNever)]);
   FCompleteStatementTryKind := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementTryKind),
     [TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally),
     TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept), TAtlasStrings.Text(TAtlasTextId.SettingsTryKindAsk)]);
-  FCompleteStatementMethodBody := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody));
+  BindCheck('CompleteStatementMethodBody', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody)));
   // Formatieren (#43).
-  FFormatCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatCode));
-  FFormatCodeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand));
+  BindCheck('FormatCode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatCode)));
+  BindKey('FormatCodeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand)));
   // Muster fortsetzen (#671).
-  FContinuePattern := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern));
-  FContinuePatternMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines));
+  BindCheck('ContinuePattern', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern)));
+  BindText('ContinuePatternMinLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines)));
   // Mehrere Einfügemarken (#589, experimentell).
-  FMultiCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursor));
+  BindCheck('MultiCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursor)));
   FMultiCursorModifier := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorModifier),
     [TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAlt),
     TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorCtrl)]);
-  FMultiCursorNextKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorNext));
-  FMultiCursorSkipKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorSkip));
-  FMultiCursorLineEndsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorLineEnds));
-  FMultiCursorAboveKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAbove));
-  FMultiCursorBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorBelow));
+  BindKey('MultiCursorNextKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorNext)));
+  BindKey('MultiCursorSkipKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorSkip)));
+  BindKey('MultiCursorLineEndsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorLineEnds)));
+  BindKey('MultiCursorAboveKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAbove)));
+  BindKey('MultiCursorBelowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorBelow)));
   // Bezeichner live mitziehen (#658, experimentell).
-  FLinkedEditing := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLinkedEditing));
+  BindCheck('LinkedEditing', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLinkedEditing)));
   // Einfügen mit uses-Ergänzung (#515, experimentell).
   FSmartPaste := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsSmartPaste),
     [TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteOff), TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteUses),
@@ -2274,8 +1703,8 @@ begin
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
-  FRecursionMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers));
-  FRecursionMarkersDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth));
+  BindCheck('RecursionMarkers', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers)));
+  BindText('RecursionMarkersDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth)));
   // Fehlertext am Zeilenende (#509); die Reihenfolge folgt TAtlasInlineDiagnosticsMode.
   FInlineDiagnostics := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnostics),
     [TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsOff),
@@ -2283,30 +1712,30 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsWarnings),
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsAll)]);
   // Persönliche Notizen an Codezeilen (#545).
-  FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
+  BindCheck('Notes', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes)));
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
-  FBookmarksNamed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed));
-  FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
+  BindCheck('BookmarksNamed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed)));
+  BindCheck('BookmarksShared', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared)));
   // Schnelle Lesezeichen (#1104): Spalte, Tasten, Akkord-Wartezeit, Sprungbereich, Übernahme der IDE-Lesezeichen.
-  FQuickBookmarks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarks));
-  FQuickBookmarksGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutter));
-  FQuickBookmarksGutterClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutterClick));
-  FQuickBookmarksNumberedKeys := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksNumberedKeys));
-  FQuickBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand));
+  BindCheck('QuickBookmarks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarks)));
+  BindCheck('QuickBookmarksGutter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutter)));
+  BindCheck('QuickBookmarksGutterClick', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutterClick)));
+  BindCheck('QuickBookmarksNumberedKeys', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksNumberedKeys)));
+  BindKey('QuickBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand)));
   FQuickBookmarkChordWait := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarkChordWait));
   // Reihenfolge wie AtlasQuickBookmarkScopes.
   FQuickBookmarksScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScope),
     [TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeProject),
     TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeFile)]);
-  FQuickBookmarksImportIde := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksImportIde));
-  FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
-  FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
-  FMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll));
-  FCodeLensTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests));
-  FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
-  FBaselineUpdate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate));
-  FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
-  FDfmPropertyRules := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDfmPropertyRules));
+  BindCheck('QuickBookmarksImportIde', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksImportIde)));
+  BindCheck('CodeLensTestUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit)));
+  BindCheck('CodeLensMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics)));
+  BindCheck('Metrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll)));
+  BindCheck('CodeLensTests', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests)));
+  BindCheck('TodoList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList)));
+  BindCheck('BaselineUpdate', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate)));
+  BindCheck('MetricsReport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport)));
+  BindCheck('DfmPropertyRules', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDfmPropertyRules)));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -2331,9 +1760,9 @@ begin
 
   // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
   AddSheet(TAtlasTextId.SettingsTabIndex);
-  FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
-  FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
-  FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
+  BindCheck('IndexProjectGroup', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup)));
+  BindCheck('IndexSearchPaths', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch)));
+  BindCheck('IndexLibraryPaths', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary)));
   AddIndexSection;
 
   // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
@@ -2342,29 +1771,29 @@ begin
   AddModuleSwitch('BuildToolsEnabled');
   AddModuleSwitch('BuildPipelineEnabled');
   AddModuleSwitch('TestsEnabled');
-  FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
-  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
-  FProblemsStatusCounter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter));
+  BindCheck('Problems', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems)));
+  BindCheck('ProblemsList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList)));
+  BindCheck('ProblemsStatusCounter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter)));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
   FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
     [TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveNone), TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCheck),
     TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCompile)]);
-  FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
-  FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
+  BindText('CheckOnSaveDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay)));
+  BindText('CheckOnSaveMaxMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax)));
   // Claude Code baut über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
-  FMcpBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMcpBuild));
+  BindCheck('McpBuild', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMcpBuild)));
   // DUnitX-Tests ausführen (#69).
-  FTestRun := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestRun));
-  FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
-  FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
+  BindCheck('TestRun', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestRun)));
+  BindCheck('TestsBuildFirst', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst)));
+  BindCheck('TestsAfterBuild', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild)));
   // Betroffene Tests (#1353).
-  FTestsAffected := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffected));
-  FTestsAffectedDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedDepth));
-  FTestsAffectedBeforeCommit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedBeforeCommit));
-  FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
-  FShowInterfaceCost := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost));
+  BindCheck('TestsAffected', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffected)));
+  BindText('TestsAffectedDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedDepth)));
+  BindCheck('TestsAffectedBeforeCommit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedBeforeCommit)));
+  BindCheck('BuildZeroHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints)));
+  BindCheck('ShowInterfaceCost', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost)));
   // Schranke für Hinweise und Warnungen (#530).
-  FBuildSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSummary));
+  BindCheck('BuildSummary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSummary)));
   FBuildWarningsAsErrors := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsBuildWarningsAsErrors));
   // Prüfung vor dem Compile (#529); Reihenfolge wie TAtlasBuildGate: off, warn, block.
   FBuildGate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGate),
@@ -2372,11 +1801,11 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateBlock)]);
   FBuildGateTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateTimeout));
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
-  FBuildCompilerSwitches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildCompilerSwitches));
-  FBuildSwitchesInStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSwitchesInStatusBar));
+  BindCheck('BuildCompilerSwitches', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildCompilerSwitches)));
+  BindCheck('BuildSwitchesInStatusBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildSwitchesInStatusBar)));
   // Startprofile (#575).
-  FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
-  FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
+  BindCheck('StartProfiles', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles)));
+  BindCheck('StartProfilesStatusField', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField)));
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen).
   AddOpenBuildSection;
   // Projektaufgaben aus atlas.json (#900).
@@ -2389,30 +1818,30 @@ begin
   FRulesArea := High(FSheets);
   AddModuleSwitch('RuleChecksEnabled');
   AddRulesLinks;
-  FProblemsWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow));
+  BindCheck('ProblemsWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow)));
   FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)]);
   FProblemsWindowGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowGroupBy),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)]);
-  FProblemsWindowCompiler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler));
-  FProblemsWindowFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor));
+  BindCheck('ProblemsWindowCompiler', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler)));
+  BindCheck('ProblemsWindowFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor)));
   // Offene Units zuerst (#1108); der Hauptschalter sperrt die beiden Zeilen darunter (x-parent).
-  FProblemsWindowOpenFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowOpenFirst));
+  BindCheck('ProblemsWindowOpenFirst', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowOpenFirst)));
   FProblemsWindowClosedUnits := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowClosedUnits),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsClosedDimmed), TAtlasStrings.Text(TAtlasTextId.ProblemsClosedNormal),
     TAtlasStrings.Text(TAtlasTextId.ProblemsClosedHidden)]);
-  FProblemsWindowShowCleanActive := AddCheck(
-    TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive));
-  FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
+  BindCheck('ProblemsWindowShowCleanActive', AddCheck(
+    TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive)));
+  BindCheck('ProblemsLive', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive)));
   // Sammelkorrektur im Kontextmenü des Fensters (#1352).
-  FFixBulk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk));
+  BindCheck('FixBulk', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk)));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
     TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeBoth)]);
-  FProblemsShowCompilerCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsShowCompilerCode));
+  BindCheck('ProblemsShowCompilerCode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsShowCompilerCode)));
 
   // Release-Build-Wächter (#533).
   AddSheet(TAtlasTextId.SettingsTabRelease);
@@ -2421,12 +1850,12 @@ begin
   // Einzelnen Test im Debugger starten (#585); die Code Lens dazu steht unter Editor (codeLens.tests).
   AddSheet(TAtlasTextId.SettingsTabDebug);
   AddModuleSwitch('DebugEnabled');
-  FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
-  FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
+  BindCheck('TestDebug', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug)));
+  BindCheck('TestBreakAtStart', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart)));
   // Variablenwerte im Hover beim Debuggen (#891).
-  FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
+  BindCheck('DebugHoverValues', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues)));
   // Visualisierer für häufige Typen (#835): Hauptschalter, Arten, Namensfelder, Grenzen, Auswertung.
-  FDebugVisualizers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizers));
+  BindCheck('DebugVisualizers', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugVisualizers)));
   FDebugVisualizerKinds[TAtlasVisualizerKind.Lists] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.DebugVisualizerKindLists));
   FDebugVisualizerKinds[TAtlasVisualizerKind.Dictionaries] :=
@@ -2455,12 +1884,12 @@ begin
     TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationProperties),
     TAtlasStrings.Text(TAtlasTextId.DebugVisualizerEvaluationCalls)]);
   // Eigene Wertdarstellungen (#854): Schalter und Aufrufe in Vorlagen.
-  FDebugDisplayRules := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRules));
-  FDebugDisplayRulesAllowCalls := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRulesAllowCalls));
+  BindCheck('DebugDisplayRules', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRules)));
+  BindCheck('DebugDisplayRulesAllowCalls', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugDisplayRulesAllowCalls)));
   // Gezielt hineinspringen (#836): Schalter und Tastenkürzel.
-  FDebugStepIntoTarget := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget));
+  BindCheck('DebugStepIntoTarget', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepIntoTarget)));
   // Schrittfilter beim Hineinspringen (#850): Schalter, Arten, Muster.
-  FDebugStepFilters := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepFilters));
+  BindCheck('DebugStepFilters', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepFilters)));
   FDebugStepFilterKinds[TStepFilterKind.Getters] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindGetters));
   FDebugStepFilterKinds[TStepFilterKind.Setters] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindSetters));
   FDebugStepFilterKinds[TStepFilterKind.Trivial] := AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindTrivial));
@@ -2469,143 +1898,143 @@ begin
   FDebugStepFilterKinds[TStepFilterKind.EmptyConstructors] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.StepFilterKindEmptyConstructors));
   FDebugStepFilterPatterns := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugStepFilterPatterns));
-  FDebugStepIntoTargetKey := AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
+  BindKey('DebugStepIntoTargetKey', AddKey(TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand)));
   // Beim nächsten Ereignis anhalten (#856): Schalter und ausgenommene Ereignisse.
-  FDebugBreakOnNextEvent := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugBreakOnNextEvent));
+  BindCheck('DebugBreakOnNextEvent', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugBreakOnNextEvent)));
   FDebugBreakOnNextEventExcluded := AddTextLine(
     TAtlasStrings.Text(TAtlasTextId.SettingsDebugBreakOnNextEventExcluded));
   // „kein Zugriff auf Wert“ erklären (#840).
-  FDebugExplainUnavailable := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable));
+  BindCheck('DebugExplainUnavailable', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainUnavailable)));
   // Vervollständigung in Debugger-Dialogen (#538).
-  FDebugCompletionInDialogs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugCompletionInDialogs));
+  BindCheck('DebugCompletionInDialogs', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugCompletionInDialogs)));
   // Fenster „Auswerten“ (#784).
-  FDebugEvaluateWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateWindow));
-  FDebugEvaluateReplaceCtrlF7 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateReplaceCtrlF7));
+  BindCheck('DebugEvaluateWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateWindow)));
+  BindCheck('DebugEvaluateReplaceCtrlF7', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugEvaluateReplaceCtrlF7)));
   // Zugriffsverletzung erklären (#865)
-  FDebugExplainAccessViolation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolation));
+  BindCheck('DebugExplainAccessViolation', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolation)));
   FDebugExplainAccessViolationAllowCalls :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExplainAccessViolationAllowCalls));
   // Exception-Verlauf beim Debuggen (#517).
-  FDebugExceptionHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory));
+  BindCheck('DebugExceptionHistory', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionHistory)));
   // Nur eigener Code beim Debuggen (#578).
-  FDebugJustMyCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugJustMyCode));
+  BindCheck('DebugJustMyCode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugJustMyCode)));
   FDebugOwnCodeFolders := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsDebugOwnCodeFolders));
   // Exception-Leiste beim Debuggen (#783).
-  FDebugExceptionBanner := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBanner));
+  BindCheck('DebugExceptionBanner', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBanner)));
   FDebugExceptionBannerIgnoreAtLocation :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
   // Werte im Editor beim Debuggen (#508).
-  FDebugInlineValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValues));
-  FDebugInlineValuesPerLine := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValuesPerLine));
+  BindCheck('DebugInlineValues', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValues)));
+  BindText('DebugInlineValuesPerLine', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDebugInlineValuesPerLine)));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
-  FActionsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions));
-  FExpandKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand));
-  FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
-  FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
-  FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  BindKey('ActionsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions)));
+  BindKey('ExpandKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand)));
+  BindKey('ShrinkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink)));
+  BindKey('ImplementationKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations)));
+  BindKey('TypeDefinitionKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition)));
   // Deklaration ⇄ Implementierung (#775); aus: Klassennavigation der IDE.
-  FMethodToggle := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle));
-  FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
-  FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
+  BindCheck('MethodToggle', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle)));
+  BindKey('MethodToggleUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp)));
+  BindKey('MethodToggleDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown)));
   // Sprung zum Gegenstück (#635); aus: beide Tasten bleiben frei.
-  FJumpToMatch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsJumpToMatch));
-  FJumpToMatchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand));
-  FJumpToMatchSelectKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand));
+  BindCheck('JumpToMatch', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsJumpToMatch)));
+  BindKey('JumpToMatchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand)));
+  BindKey('JumpToMatchSelectKey', AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand)));
   // Zeilen verschieben und duplizieren (#634); aus: die Tasten bleiben der IDE.
-  FMoveLines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMoveLines));
-  FMoveLinesUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand));
-  FMoveLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand));
-  FDuplicateLinesUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand));
-  FDuplicateLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand));
+  BindCheck('MoveLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMoveLines)));
+  BindKey('MoveLinesUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand)));
+  BindKey('MoveLinesDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand)));
+  BindKey('DuplicateLinesUpKey', AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand)));
+  BindKey('DuplicateLinesDownKey', AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand)));
   // Blockkommentar umschalten (#703).
-  FToggleBlockComment := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockComment));
-  FToggleBlockCommentKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand));
+  BindCheck('ToggleBlockComment', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockComment)));
+  BindKey('ToggleBlockCommentKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand)));
   FToggleBlockCommentStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentStyle),
     [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentBraces),
     TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentParens)]);
   FToggleBlockCommentFallback := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentFallback),
     [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLineComments),
     TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefuse)]);
-  FToggleBlockCommentOwnLines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentOwnLines));
+  BindCheck('ToggleBlockCommentOwnLines', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentOwnLines)));
   FToggleBlockCommentScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentScope),
     [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentStatement),
     TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLine)]);
   // Neue Zeile ober- oder unterhalb (#700).
-  FNewLineAround := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAround));
-  FNewLineBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand));
-  FNewLineAboveKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand));
-  FNewLineAroundStatementAware := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAroundStatementAware));
+  BindCheck('NewLineAround', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAround)));
+  BindKey('NewLineBelowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand)));
+  BindKey('NewLineAboveKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand)));
+  BindCheck('NewLineAroundStatementAware', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAroundStatementAware)));
   // Umschließung entfernen (#657).
-  FUnwrap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap));
-  FUnwrapKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
+  BindCheck('Unwrap', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap)));
+  BindKey('UnwrapKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand)));
   // Sicher löschen (#716).
-  FSafeDelete := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeDelete));
-  FSafeDeleteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand));
-  FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
+  BindCheck('SafeDelete', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeDelete)));
+  BindKey('SafeDeleteKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand)));
+  BindKey('TestUnitKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit)));
   // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
-  FGotoInterfaceKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand));
-  FGotoImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand));
+  BindKey('GotoInterfaceKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand)));
+  BindKey('GotoImplementationKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GotoImplementationCommand)));
   // Navigationsverlauf über Dateien (#504).
-  FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
-  FNavBackKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand));
-  FNavForwardKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavForwardCommand));
-  FLastEditKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand));
+  BindCheck('NavHistory', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory)));
+  BindKey('NavBackKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand)));
+  BindKey('NavForwardKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavForwardCommand)));
+  BindKey('LastEditKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand)));
   // Definition und Referenzen einblenden (#505).
-  FPeek := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeek));
-  FPeekHeightLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPeekHeight));
-  FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
-  FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
-  FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  BindCheck('Peek', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeek)));
+  BindText('PeekHeightLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPeekHeight)));
+  BindCheck('PeekShowImplementation', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation)));
+  BindKey('PeekDefinitionKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand)));
+  BindKey('PeekReferencesKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand)));
   // Treffersicherheit der Verwendungen (#1119).
-  FReferencesInferred := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred));
-  FReferencesTextMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches));
+  BindCheck('ReferencesInferred', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred)));
+  BindCheck('ReferencesTextMatches', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches)));
   // Auswirkungsanalyse (#1120).
-  FImpact := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImpact));
-  FImpactDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsImpactDepth));
+  BindCheck('Impact', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImpact)));
+  BindText('ImpactDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsImpactDepth)));
   // Datenfluss im Ergebnisfenster (#690).
-  FDataFlow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlow));
-  FDataFlowMaxDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowMaxDepth));
-  FDataFlowExcludeTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowExcludeTests));
-  FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
-  FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
-  FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
-  FOutlineConditions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions));
+  BindCheck('DataFlow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlow)));
+  BindText('DataFlowMaxDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowMaxDepth)));
+  BindCheck('DataFlowExcludeTests', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDataFlowExcludeTests)));
+  BindCheck('Outline', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline)));
+  BindCheck('OutlineAlphabetical', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical)));
+  BindCheck('OutlineFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor)));
+  BindCheck('OutlineConditions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions)));
   // „Lesezeichen setzen…“ (#622).
-  FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
+  BindKey('BookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd)));
   // Nächstes/voriges Lesezeichen (#1104), ohne Vorgabe.
-  FNextBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand));
-  FPreviousBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand));
+  BindKey('NextBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand)));
+  BindKey('PreviousBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand)));
   // „Element ausblenden …“ am gezeichneten Element (#628).
-  FHideElementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand));
+  BindKey('HideElementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand)));
   // Nächster/vorheriger Befund (#509).
-  FNextProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand));
-  FPreviousProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand));
+  BindKey('NextProblemKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand)));
+  BindKey('PreviousProblemKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand)));
   // Fenster „Atlas-Prüfung“ (#909).
-  FProblemsWindowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand));
+  BindKey('ProblemsWindowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand)));
   // „Issue anlegen …“ (#1268), ohne Vorgabe.
-  FCreateIssueKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand));
-  FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
-  FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
-  FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
-  FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
+  BindKey('CreateIssueKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand)));
+  BindKey('UndoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu)));
+  BindKey('RedoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu)));
+  BindCheck('EditorKeysPriority', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority)));
+  BindCheck('SlashCommands', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands)));
   // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
-  FGenerateMenu := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu));
-  FGenerateMenuKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand));
-  FGenerateMenuGroups := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuGroups));
-  FGenerateMenuHidden := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden));
-  FGenerateMenuRecentFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst));
-  FGenerateMenuShowCommandNames := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames));
+  BindCheck('GenerateMenu', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu)));
+  BindKey('GenerateMenuKey', AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand)));
+  BindText('GenerateMenuGroups', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuGroups)));
+  BindText('GenerateMenuHidden', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden)));
+  BindCheck('GenerateMenuRecentFirst', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst)));
+  BindCheck('GenerateMenuShowCommandNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames)));
   // Liste der Benachrichtigungen (#601).
-  FNotificationsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand));
+  BindKey('NotificationsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand)));
 
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
-  FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
-  FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
+  BindText('HangThresholdMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold)));
+  BindCheck('HangHint', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint)));
   // Blockierschutz für Datenquellen (#493).
-  FProviderTimeLimit := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit));
+  BindText('ProviderTimeLimitMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit)));
   Panel := AddPanel(32);
   // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen (S-07).
   FHangTestRow := Panel;
@@ -2651,46 +2080,7 @@ begin
   AddTeamFileSection;
 
   // „Einstellungen dazu …“ am gezeichneten Element (#628) und an Bereichen der Willkommensseite (#767).
-  Bind('CodeLensMetrics', FCodeLensMetrics);
-  Bind('CodeLensTests', FCodeLensTests);
-  Bind('CodeLensTestUnit', FCodeLensTestUnit);
-  Bind('BlockEndLabels', FBlockEndLabels);
-  Bind('DimUnusedUses', FDimUnusedUses);
-  Bind('Breadcrumbs', FBreadcrumbs);
-  Bind('GitGutter', FGitGutter);
-  Bind('GitBlame', FGitBlame);
-  Bind('GutterColumn', FGutterColumn);
-  Bind('SelectionMatches', FSelectionMatches);
-  Bind('ExitPoints', FExitPoints);
-  Bind('Reassigned', FReassigned);
-  Bind('ExpressionType', FExpressionType);
-  Bind('OverviewRuler', FOverviewRuler);
-  Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
-  Bind('ProblemsStatusCounter', FProblemsStatusCounter);
-  Bind('InlayHints', FInlayHints);
-  Bind('InlayTypeHints', FInlayTypeHints);
-  Bind('InlayDefineHints', FInlayDefineHints);
-  Bind('InlayCharHints', FInlayCharHints);
-  Bind('InlayMethodHints', FInlayMethodHints);
-  Bind('Problems', FProblems);
-  Bind('ProblemsWindow', FProblemsWindow);
-  Bind('ArchitectureEnabled', FArchitecture);
-  Bind('QueryEnabled', FQuery);
-  Bind('HotspotsEnabled', FHotspots);
-  Bind('ProblemsLive', FProblemsLive);
-  Bind('HoverProblemActions', FHoverProblemActions);
-  Bind('Notes', FNotes);
-  Bind('BookmarksNamed', FBookmarksNamed);
-  Bind('QuickBookmarksGutter', FQuickBookmarksGutter);
-  Bind('PairColors', FPairColors);
-  Bind('PairGuides', FPairGuides);
-  Bind('PairOwners', FPairOwners);
-  Bind('InactiveDim', FInactiveDim);
-  Bind('Preview', FPreview);
-  Bind('HideElementKey', FHideElementKey);
-  Bind('ContinuePattern', FContinuePattern);
-  Bind('ExperimentalEnabled', FExperimentalEnabled);
   for mIndex := 0 to High(FModuleChecks) do
   begin
     Bind(FModuleNames[mIndex], FModuleChecks[mIndex]);
@@ -2892,7 +2282,7 @@ begin
   AddTitle(TAtlasTextId.SettingsVcsToolsTitle);
   AddVcsTool(TAtlasVcsKind.Git, TAtlasTextId.SettingsVcsGitPath);
   AddVcsTool(TAtlasVcsKind.Svn, TAtlasTextId.SettingsVcsSvnPath);
-  FVcsTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout));
+  BindText('VcsTimeoutSeconds', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout)));
   // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen der Seite einmal im Hintergrund abgefragt.
   AddTitle(TAtlasTextId.SettingsVcsProjectTitle);
   FVcsProjectInfo := AddWrappedLabel(70, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
@@ -2908,12 +2298,12 @@ begin
   // Unterpunkt „Branches“ (#1288, x-node vcs.branches): Dialog „Branch anlegen“ vor „Beginnen“; die Optionen aus
   // #1289 und #1290 kommen hier dazu.
   AddTitle(TAtlasTextId.SettingsVcsBranchTitle);
-  FVcsBranchConfirm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchConfirm));
+  BindCheck('VcsBranchConfirm', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchConfirm)));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchHint)).Font.Color := clGrayText;
   // Gruppe „SVN“ (#1290): Vorgaben für Ort, Quelle, Danach und Nachricht im Dialog „Branch anlegen“; Reihenfolge der
   // Auswahl wie die Werte von vcs.branch.svn.source bzw. .after.
   AddTitle(TAtlasTextId.SettingsVcsBranchSvnTitle);
-  FVcsBranchSvnLocation := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnLocation));
+  BindText('VcsBranchSvnLocation', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnLocation)));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnLocationHint)).Font.Color := clGrayText;
   FVcsBranchSvnSource := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnSource),
     [TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnSourceHead),
@@ -2923,8 +2313,8 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch), TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout),
     TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone)]);
   FVcsBranchSvnAfter.Width := 260;
-  FVcsBranchSvnFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnFolder));
-  FVcsBranchSvnMessage := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessage));
+  BindText('VcsBranchSvnCheckoutFolder', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnFolder)));
+  BindText('VcsBranchSvnMessage', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessage)));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessageHint)).Font.Color := clGrayText;
   AddVcsExternalsSection;
 end;
@@ -2965,7 +2355,7 @@ begin
   FVcsExternalsRulesError.Font.Color := clRed;
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsRulesHint)).Font.Color := clGrayText;
   // Arbeitskopien der Gruppe und Aktualisieren (#1292); Reihenfolge wie vcs.externals.update.
-  FVcsExternalsShow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsShow));
+  BindCheck('VcsExternalsShow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsShow)));
   FVcsExternalsUpdate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdate),
     [TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateWith),
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateWithout),
@@ -2987,8 +2377,8 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitStash),
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitAsk)]);
   FVcsBranchGitUncommitted.Width := 320;
-  FVcsBranchGitWorktree := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktree));
-  FVcsBranchGitWorktreeFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder));
+  BindCheck('VcsBranchGitWorktree', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktree)));
+  BindText('VcsBranchGitWorktreeFolder', AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder)));
   AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;
 end;
 
@@ -4425,9 +3815,9 @@ const
 
 begin
   AddTitle(TAtlasTextId.SettingsTransferTitle);
-  FSettingsExportImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport));
-  FSettingsMarkModified := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified));
-  FSettingsBackupBeforeImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport));
+  FSettingsExportImport := BindCheck('SettingsExportImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport)));
+  FSettingsMarkModified := BindCheck('SettingsMarkModified', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified)));
+  BindCheck('SettingsBackupBeforeImport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport)));
   FSettingsExportSecrets := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets),
     [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
     TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
@@ -4463,315 +3853,65 @@ var
   Target: TAtlasReassignedTarget;
   mIndex: Integer;
 begin
+  // Gebundene Elemente erst jetzt: Die Markierung übernimmt OnClick und Hint, die der Aufbau gesetzt hat.
+  for mIndex := 0 to FBindings.Count - 1 do
+  begin
+    FMarks.Bind(FBindings.Item(mIndex).Control, [FBindings.Item(mIndex).Name]);
+  end;
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
-  FMarks.Bind(FEnabled, ['Enabled']);
-  FMarks.Bind(FActionsKey, ['ActionsKey']);
-  FMarks.Bind(FExpandKey, ['ExpandKey']);
-  FMarks.Bind(FShrinkKey, ['ShrinkKey']);
-  FMarks.Bind(FImplementationKey, ['ImplementationKey']);
-  FMarks.Bind(FTypeDefinitionKey, ['TypeDefinitionKey']);
-  FMarks.Bind(FMethodToggle, ['MethodToggle']);
-  FMarks.Bind(FMethodToggleUpKey, ['MethodToggleUpKey']);
-  FMarks.Bind(FMethodToggleDownKey, ['MethodToggleDownKey']);
-  FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
-  FMarks.Bind(FGotoInterfaceKey, ['GotoInterfaceKey']);
-  FMarks.Bind(FGotoImplementationKey, ['GotoImplementationKey']);
-  FMarks.Bind(FNavHistory, ['NavHistory']);
-  FMarks.Bind(FNavBackKey, ['NavBackKey']);
-  FMarks.Bind(FNavForwardKey, ['NavForwardKey']);
-  FMarks.Bind(FLastEditKey, ['LastEditKey']);
-  FMarks.Bind(FPeek, ['Peek']);
-  FMarks.Bind(FPeekHeightLines, ['PeekHeightLines']);
-  FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
-  FMarks.Bind(FDataFlow, ['DataFlow']);
-  FMarks.Bind(FDataFlowMaxDepth, ['DataFlowMaxDepth']);
-  FMarks.Bind(FDataFlowExcludeTests, ['DataFlowExcludeTests']);
-  FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
-  FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
-  FMarks.Bind(FReferencesInferred, ['ReferencesInferred']);
-  FMarks.Bind(FReferencesTextMatches, ['ReferencesTextMatches']);
-  FMarks.Bind(FCallHierarchyDiagram, ['CallHierarchyDiagram']);
-  FMarks.Bind(FImpact, ['Impact']);
-  FMarks.Bind(FImpactDepth, ['ImpactDepth']);
-  FMarks.Bind(FOutline, ['Outline']);
-  FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
-  FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
-  FMarks.Bind(FOutlineConditions, ['OutlineConditions']);
-  FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
-  FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
-  FMarks.Bind(FBreadcrumbsIdeColors, ['BreadcrumbsIdeColors']);
-  FMarks.Bind(FBreadcrumbsHideIdeToolbar, ['BreadcrumbsHideIdeToolbar']);
-  FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
-  FMarks.Bind(FEditorToolbar, ['EditorToolbar']);
   FMarks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
   FMarks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
-  FMarks.Bind(FEditorToolbarReturnButton, ['EditorToolbarReturnButton']);
-  FMarks.Bind(FEditorToolbarLabels, ['EditorToolbarLabels']);
-  FMarks.Bind(FEditorStatusBar, ['EditorStatusBar']);
-  FMarks.Bind(FEditorDesignerBar, ['EditorDesignerBar']);
-  FMarks.Bind(FDesignerSearchKey, ['DesignerSearchKey']);
   FMarks.Bind(FDesignerSearchStyle, ['DesignerSearchStyle']);
-  FMarks.Bind(FDesignerTabOrderClick, ['DesignerTabOrderClick']);
-  FMarks.Bind(FDesignerAlign, ['DesignerAlign']);
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
-  FMarks.Bind(FStickyScroll, ['StickyScroll']);
-  FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
-  FMarks.Bind(FStickyScrollTypes, ['StickyScrollTypes']);
-  FMarks.Bind(FStickyScrollRoutines, ['StickyScrollRoutines']);
-  FMarks.Bind(FStickyScrollBlocks, ['StickyScrollBlocks']);
-  FMarks.Bind(FStickyScrollLoops, ['StickyScrollLoops']);
-  FMarks.Bind(FStickyScrollTry, ['StickyScrollTry']);
-  FMarks.Bind(FStickyScrollCase, ['StickyScrollCase']);
-  FMarks.Bind(FStickyScrollWith, ['StickyScrollWith']);
   FMarks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
-  FMarks.Bind(FMinimap, ['Minimap']);
   FMarks.Bind(FMinimapRender, ['MinimapRender']);
-  FMarks.Bind(FMinimapWidth, ['MinimapWidth']);
-  FMarks.Bind(FMinimapScale, ['MinimapScale']);
-  FMarks.Bind(FMinimapMaxColumn, ['MinimapMaxColumn']);
   FMarks.Bind(FMinimapSide, ['MinimapSide']);
   FMarks.Bind(FMinimapShowSlider, ['MinimapShowSlider']);
-  FMarks.Bind(FMinimapSectionHeaders, ['MinimapSectionHeaders']);
-  FMarks.Bind(FMinimapHighlightMethod, ['MinimapHighlightMethod']);
-  FMarks.Bind(FMinimapMarkers, ['MinimapMarkers']);
-  FMarks.Bind(FMinimapClickJumps, ['MinimapClickJumps']);
-  FMarks.Bind(FGitGutter, ['GitGutter']);
-  FMarks.Bind(FGitBlame, ['GitBlame']);
-  FMarks.Bind(FGutterColumn, ['GutterColumn']);
-  FMarks.Bind(FGutterColumnProblems, ['GutterColumnProblems']);
-  FMarks.Bind(FGutterColumnCodeActions, ['GutterColumnCodeActions']);
-  FMarks.Bind(FGutterColumnOverrides, ['GutterColumnOverrides']);
-  FMarks.Bind(FSelectionMatches, ['SelectionMatches']);
   FMarks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
-  FMarks.Bind(FSelectionMatchesCaseSensitive, ['SelectionMatchesCaseSensitive']);
-  FMarks.Bind(FSelectionMatchesWholeWord, ['SelectionMatchesWholeWord']);
-  FMarks.Bind(FSelectionMatchesNavigateF3, ['SelectionMatchesNavigateF3']);
   FMarks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
-  FMarks.Bind(FExitPoints, ['ExitPoints']);
-  FMarks.Bind(FExitPointsExceptions, ['ExitPointsExceptions']);
-  FMarks.Bind(FExitPointsLoops, ['ExitPointsLoops']);
-  FMarks.Bind(FExitPointsBadge, ['ExitPointsBadge']);
-  FMarks.Bind(FReassigned, ['Reassigned']);
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
     FMarks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
   end;
   FMarks.Bind(FReassignedStyle, ['ReassignedStyle']);
   FMarks.Bind(FReassignedColor, ['ReassignedColor']);
-  FMarks.Bind(FExpressionType, ['ExpressionType']);
-  FMarks.Bind(FExpressionTypeConversions, ['ExpressionTypeConversions']);
-  FMarks.Bind(FExpressionTypeConstValue, ['ExpressionTypeConstValue']);
-  FMarks.Bind(FExpressionTypeKey, ['ExpressionTypeKey']);
   FMarks.Bind(FMethodPlacement, ['MethodPlacement']);
-  FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
-  FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
-  FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
     FMarks.Bind(FOverviewKinds[Kind], ['OverviewRulerKinds']);
   end;
-  FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
-  FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
-  FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
-  FMarks.Bind(FMoveLines, ['MoveLines']);
-  FMarks.Bind(FMoveLinesUpKey, ['MoveLinesUpKey']);
-  FMarks.Bind(FMoveLinesDownKey, ['MoveLinesDownKey']);
-  FMarks.Bind(FDuplicateLinesUpKey, ['DuplicateLinesUpKey']);
-  FMarks.Bind(FDuplicateLinesDownKey, ['DuplicateLinesDownKey']);
-  FMarks.Bind(FToggleBlockComment, ['ToggleBlockComment']);
-  FMarks.Bind(FToggleBlockCommentKey, ['ToggleBlockCommentKey']);
   FMarks.Bind(FToggleBlockCommentStyle, ['ToggleBlockCommentStyle']);
   FMarks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
-  FMarks.Bind(FToggleBlockCommentOwnLines, ['ToggleBlockCommentOwnLines']);
   FMarks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
-  FMarks.Bind(FNewLineAround, ['NewLineAround']);
-  FMarks.Bind(FNewLineBelowKey, ['NewLineBelowKey']);
-  FMarks.Bind(FNewLineAboveKey, ['NewLineAboveKey']);
-  FMarks.Bind(FNewLineAroundStatementAware, ['NewLineAroundStatementAware']);
-  FMarks.Bind(FUnwrap, ['Unwrap']);
-  FMarks.Bind(FUnwrapKey, ['UnwrapKey']);
-  FMarks.Bind(FSafeDelete, ['SafeDelete']);
-  FMarks.Bind(FSafeDeleteKey, ['SafeDeleteKey']);
-  FMarks.Bind(FContinueComments, ['ContinueComments']);
-  FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
-  FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
   FMarks.Bind(FContinueCommentsBlockPrefix, ['ContinueCommentsBlockPrefix']);
-  FMarks.Bind(FWrapSelection, ['WrapSelection']);
-  FMarks.Bind(FWrapSelectionChars, ['WrapSelectionChars']);
-  FMarks.Bind(FCompleteStatement, ['CompleteStatement']);
-  FMarks.Bind(FCompleteStatementKey, ['CompleteStatementKey']);
   FMarks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
   FMarks.Bind(FCompleteStatementTryKind, ['CompleteStatementTryKind']);
-  FMarks.Bind(FCompleteStatementMethodBody, ['CompleteStatementMethodBody']);
-  FMarks.Bind(FFormatCode, ['FormatCode']);
-  FMarks.Bind(FFormatCodeKey, ['FormatCodeKey']);
-  FMarks.Bind(FContinuePattern, ['ContinuePattern']);
-  FMarks.Bind(FContinuePatternMinLines, ['ContinuePatternMinLines']);
-  FMarks.Bind(FMultiCursor, ['MultiCursor']);
   FMarks.Bind(FMultiCursorModifier, ['MultiCursorModifier']);
-  FMarks.Bind(FMultiCursorNextKey, ['MultiCursorNextKey']);
-  FMarks.Bind(FMultiCursorSkipKey, ['MultiCursorSkipKey']);
-  FMarks.Bind(FMultiCursorLineEndsKey, ['MultiCursorLineEndsKey']);
-  FMarks.Bind(FMultiCursorAboveKey, ['MultiCursorAboveKey']);
-  FMarks.Bind(FMultiCursorBelowKey, ['MultiCursorBelowKey']);
-  FMarks.Bind(FLinkedEditing, ['LinkedEditing']);
   FMarks.Bind(FSmartPaste, ['SmartPaste']);
-  FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
-  FMarks.Bind(FNextBookmarkKey, ['NextBookmarkKey']);
-  FMarks.Bind(FPreviousBookmarkKey, ['PreviousBookmarkKey']);
-  FMarks.Bind(FHideElementKey, ['HideElementKey']);
-  FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
-  FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
-  FMarks.Bind(FProblemsWindowKey, ['ProblemsWindowKey']);
-  FMarks.Bind(FCreateIssueKey, ['CreateIssueKey']);
-  FMarks.Bind(FUndoKey, ['UndoKey']);
-  FMarks.Bind(FRedoKey, ['RedoKey']);
-  FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
-  FMarks.Bind(FBugReportAnonymize, ['BugReportAnonymize']);
-  FMarks.Bind(FEditorKeysPriority, ['EditorKeysPriority']);
-  FMarks.Bind(FSlashCommands, ['SlashCommands']);
-  FMarks.Bind(FGenerateMenu, ['GenerateMenu']);
-  FMarks.Bind(FGenerateMenuKey, ['GenerateMenuKey']);
-  FMarks.Bind(FNotificationsKey, ['NotificationsKey']);
-  FMarks.Bind(FGenerateMenuGroups, ['GenerateMenuGroups']);
-  FMarks.Bind(FGenerateMenuHidden, ['GenerateMenuHidden']);
-  FMarks.Bind(FGenerateMenuRecentFirst, ['GenerateMenuRecentFirst']);
-  FMarks.Bind(FGenerateMenuShowCommandNames, ['GenerateMenuShowCommandNames']);
   FMarks.Bind(FRows, ['VisibleRows']);
-  FMarks.Bind(FPanelCollapsed, ['PanelCollapsed']);
-  FMarks.Bind(FSelectionMarker, ['SelectionMarker']);
-  FMarks.Bind(FAutoParentheses, ['AutoParentheses']);
-  FMarks.Bind(FFixCase, ['FixCase']);
-  FMarks.Bind(FCommitChars, ['CommitCharacters']);
-  FMarks.Bind(FAutoUses, ['AutoUses']);
-  FMarks.Bind(FParameterHints, ['ParameterHints']);
-  FMarks.Bind(FFormatPlaceholders, ['FormatPlaceholders']);
-  FMarks.Bind(FOpenDelay, ['OpenDelayMs']);
-  FMarks.Bind(FFilterChips, ['FilterChips']);
-  FMarks.Bind(FLearning, ['Learning']);
-  FMarks.Bind(FFavorites, ['Favorites']);
-  FMarks.Bind(FGroupInherited, ['GroupInherited']);
-  FMarks.Bind(FCompletionVariantBranch, ['CompletionVariantBranch']);
   FMarks.Bind(FListMode, ['CompletionListMode']);
   FMarks.Bind(FListScope, ['CompletionListScope']);
-  FMarks.Bind(FPreview, ['Preview']);
-  FMarks.Bind(FSnippets, ['Snippets']);
-  FMarks.Bind(FImportIdeTemplates, ['ImportIdeTemplates']);
-  FMarks.Bind(FTeamFile, ['TeamFile']);
-  FMarks.Bind(FHoverTooltip, ['HoverTooltip']);
   FMarks.Bind(FXmlDocExpand, ['XmlDocExpand']);
-  FMarks.Bind(FXmlDocMaxLines, ['XmlDocMaxLines']);
-  FMarks.Bind(FHangThreshold, ['HangThresholdMs']);
-  FMarks.Bind(FProviderTimeLimit, ['ProviderTimeLimitMs']);
-  FMarks.Bind(FHangHint, ['HangHint']);
-  FMarks.Bind(FReloadExternal, ['ReloadExternal']);
-  FMarks.Bind(FOpenForEdits, ['OpenForEdits']);
-  FMarks.Bind(FPairColors, ['PairColors']);
-  FMarks.Bind(FInactiveDim, ['InactiveDim']);
-  FMarks.Bind(FInlayHints, ['InlayHints']);
-  FMarks.Bind(FInlayTypeHints, ['InlayTypeHints']);
-  FMarks.Bind(FInlayDefineHints, ['InlayDefineHints']);
-  FMarks.Bind(FInlayCharHints, ['InlayCharHints']);
-  FMarks.Bind(FInlayMethodHints, ['InlayMethodHints']);
-  FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
-  FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
-  FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
-  FMarks.Bind(FRecursionMarkers, ['RecursionMarkers']);
-  FMarks.Bind(FRecursionMarkersDepth, ['RecursionMarkersDepth']);
   FMarks.Bind(FInlineDiagnostics, ['InlineDiagnostics']);
-  FMarks.Bind(FNotes, ['Notes']);
-  FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
-  FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
-  FMarks.Bind(FQuickBookmarks, ['QuickBookmarks']);
-  FMarks.Bind(FQuickBookmarksGutter, ['QuickBookmarksGutter']);
-  FMarks.Bind(FQuickBookmarksGutterClick, ['QuickBookmarksGutterClick']);
-  FMarks.Bind(FQuickBookmarksNumberedKeys, ['QuickBookmarksNumberedKeys']);
-  FMarks.Bind(FQuickBookmarkKey, ['QuickBookmarkKey']);
   FMarks.Bind(FQuickBookmarkChordWait, ['QuickBookmarkChordWait']);
   FMarks.Bind(FQuickBookmarksScope, ['QuickBookmarksScope']);
-  FMarks.Bind(FQuickBookmarksImportIde, ['QuickBookmarksImportIde']);
-  FMarks.Bind(FCodeLensTestUnit, ['CodeLensTestUnit']);
-  FMarks.Bind(FCodeLensMetrics, ['CodeLensMetrics']);
-  FMarks.Bind(FMetrics, ['Metrics']);
-  FMarks.Bind(FCodeLensTests, ['CodeLensTests']);
-  FMarks.Bind(FTodoList, ['TodoList']);
-  FMarks.Bind(FBaselineUpdate, ['BaselineUpdate']);
-  FMarks.Bind(FMetricsReport, ['MetricsReport']);
-  FMarks.Bind(FDfmPropertyRules, ['DfmPropertyRules']);
-  FMarks.Bind(FPairGuides, ['PairGuides']);
-  FMarks.Bind(FPairOwners, ['PairOwners']);
-  FMarks.Bind(FPairGuideWidth, ['PairGuideWidth']);
-  FMarks.Bind(FPairGuideOpacity, ['PairGuideOpacity']);
   FMarks.Bind(FLightSwatches[0], ['PairColorsLight']);
   FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
-  FMarks.Bind(FProblems, ['Problems']);
-  FMarks.Bind(FProblemsList, ['ProblemsList']);
-  FMarks.Bind(FProblemsWindow, ['ProblemsWindow']);
   FMarks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
   FMarks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
-  FMarks.Bind(FProblemsWindowCompiler, ['ProblemsWindowCompiler']);
-  FMarks.Bind(FProblemsWindowFollowCursor, ['ProblemsWindowFollowCursor']);
-  FMarks.Bind(FProblemsWindowOpenFirst, ['ProblemsWindowOpenFirst']);
   FMarks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
-  FMarks.Bind(FProblemsWindowShowCleanActive, ['ProblemsWindowShowCleanActive']);
-  FMarks.Bind(FProblemsLive, ['ProblemsLive']);
-  FMarks.Bind(FFixBulk, ['FixBulk']);
   FMarks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
-  FMarks.Bind(FProblemsShowCompilerCode, ['ProblemsShowCompilerCode']);
-  FMarks.Bind(FHoverProblemActions, ['HoverProblemActions']);
-  FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
-  FMarks.Bind(FStatusField, ['StatusField']);
-  FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
-  FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
-  FMarks.Bind(FServerStatusWindow, ['ServerStatusWindow']);
-  FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
   FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
-  FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
-  FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
-  FMarks.Bind(FQuery, ['QueryEnabled']);
-  FMarks.Bind(FHotspots, ['HotspotsEnabled']);
-  FMarks.Bind(FHotspotsMonths, ['HotspotsMonths']);
-  FMarks.Bind(FHotspotsMinCommits, ['HotspotsCouplingMinCommits']);
-  FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
-  FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
-  FMarks.Bind(FShortcutTips, ['ShortcutTips']);
   FMarks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
-  FMarks.Bind(FNotifications, ['Notifications']);
   FMarks.Bind(FNotificationsMax, ['NotificationsMaxEntries']);
   FMarks.Bind(FNotificationSource, ['NotificationsSources']);
-  FMarks.Bind(FStatusSummary, ['StatusFieldSummary']);
   FMarks.Bind(FStatusToggles, ['StatusFieldToggles']);
   FMarks.Bind(FIndexProgress, ['IndexProgressPlace']);
   FMarks.Bind(FStatusHidden, ['StatusFieldHidden']);
-  FMarks.Bind(FIndexGroup, ['IndexProjectGroup']);
-  FMarks.Bind(FIndexSearch, ['IndexSearchPaths']);
-  FMarks.Bind(FIndexLibrary, ['IndexLibraryPaths']);
-  FMarks.Bind(FIndexUsages, ['IndexUsages']);
-  FMarks.Bind(FMemoryBudget, ['MemoryBudgetMb']);
   FMarks.Bind(FAfterSave, ['CheckOnSave', 'CompileOnSave']);
-  FMarks.Bind(FCheckDelay, ['CheckOnSaveDelayMs']);
-  FMarks.Bind(FCheckMax, ['CheckOnSaveMaxMs']);
-  FMarks.Bind(FMcpBuild, ['McpBuild']);
-  FMarks.Bind(FTestRun, ['TestRun']);
-  FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
-  FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
-  FMarks.Bind(FTestsAffected, ['TestsAffected']);
-  FMarks.Bind(FTestsAffectedDepth, ['TestsAffectedDepth']);
-  FMarks.Bind(FTestsAffectedBeforeCommit, ['TestsAffectedBeforeCommit']);
-  FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
-  FMarks.Bind(FShowInterfaceCost, ['ShowInterfaceCost']);
-  FMarks.Bind(FBuildSummary, ['BuildSummary']);
   FMarks.Bind(FBuildWarningsAsErrors, ['BuildWarningsAsErrors']);
   FMarks.Bind(FBuildGateTimeout, ['BuildGateTimeoutMs']);
-  FMarks.Bind(FBuildCompilerSwitches, ['BuildCompilerSwitches']);
-  FMarks.Bind(FBuildSwitchesInStatusBar, ['BuildSwitchesInStatusBar']);
-  FMarks.Bind(FStartProfiles, ['StartProfiles']);
-  FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
-  FMarks.Bind(FTestDebug, ['TestDebug']);
-  FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
-  FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
-  FMarks.Bind(FDebugVisualizers, ['DebugVisualizers']);
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
     FMarks.Bind(FDebugVisualizerKinds[VisualizerKind], ['DebugVisualizerTypes']);
@@ -4781,92 +3921,34 @@ begin
   FMarks.Bind(FDebugVisualizerTimeout, ['DebugVisualizerTimeoutMs']);
   FMarks.Bind(FDebugVisualizerMaxImagePixels, ['DebugVisualizerMaxImagePixels']);
   FMarks.Bind(FDebugVisualizerEvaluation, ['DebugVisualizerEvaluation']);
-  FMarks.Bind(FDebugDisplayRules, ['DebugDisplayRules']);
-  FMarks.Bind(FDebugDisplayRulesAllowCalls, ['DebugDisplayRulesAllowCalls']);
-  FMarks.Bind(FDebugStepIntoTarget, ['DebugStepIntoTarget']);
-  FMarks.Bind(FDebugStepFilters, ['DebugStepFilters']);
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
     FMarks.Bind(FDebugStepFilterKinds[StepFilterKind], ['DebugStepFilterKinds']);
   end;
   FMarks.Bind(FDebugStepFilterPatterns, ['DebugStepFilterPatterns']);
-  FMarks.Bind(FDebugStepIntoTargetKey, ['DebugStepIntoTargetKey']);
-  FMarks.Bind(FDebugBreakOnNextEvent, ['DebugBreakOnNextEvent']);
   FMarks.Bind(FDebugBreakOnNextEventExcluded, ['DebugBreakOnNextEventExcluded']);
-  FMarks.Bind(FDebugExplainUnavailable, ['DebugExplainUnavailable']);
-  FMarks.Bind(FDebugCompletionInDialogs, ['DebugCompletionInDialogs']);
-  FMarks.Bind(FDebugEvaluateWindow, ['DebugEvaluateWindow']);
-  FMarks.Bind(FDebugEvaluateReplaceCtrlF7, ['DebugEvaluateReplaceCtrlF7']);
-  FMarks.Bind(FDebugExplainAccessViolation, ['DebugExplainAccessViolation']);
   FMarks.Bind(FDebugExplainAccessViolationAllowCalls, ['DebugExplainAccessViolationAllowCalls']);
-  FMarks.Bind(FDebugExceptionHistory, ['DebugExceptionHistory']);
-  FMarks.Bind(FDebugJustMyCode, ['DebugJustMyCode']);
-  FMarks.Bind(FDebugExceptionBanner, ['DebugExceptionBanner']);
   FMarks.Bind(FDebugExceptionBannerIgnoreAtLocation, ['DebugExceptionBannerIgnoreAtLocation']);
-  FMarks.Bind(FDebugInlineValues, ['DebugInlineValues']);
-  FMarks.Bind(FDebugInlineValuesPerLine, ['DebugInlineValuesPerLine']);
   FMarks.Bind(FDebugOwnCodeFolders, ['DebugOwnCodeFolders']);
-  FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
-  FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
-  FMarks.Bind(FSafeTimeout, ['SafeStartupTimeoutMs']);
-  FMarks.Bind(FSafeHistory, ['SafeKeepSettingsHistory']);
-  FMarks.Bind(FUndoEnabled, ['UndoMultiFile']);
-  FMarks.Bind(FUndoDepth, ['UndoMultiFileDepth']);
-  FMarks.Bind(FUndoPersist, ['UndoMultiFilePersist']);
-  FMarks.Bind(FUndoMaxSize, ['UndoMultiFileMaxSizeMb']);
   FMarks.Bind(FUndoOnConflict, ['UndoMultiFileOnConflict']);
   FMarks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
-  FMarks.Bind(FUnitSearchEnabled, ['UnitSearchEnabled']);
-  FMarks.Bind(FUnitSearchReplace, ['UnitSearchReplaceIdeDialog']);
-  FMarks.Bind(FUnitSearchReplaceUseUnit, ['UnitSearchReplaceUseUnitDialog']);
-  FMarks.Bind(FUnitSearchReplaceForms, ['UnitSearchReplaceFormsDialog']);
-  FMarks.Bind(FUnitSearchKey, ['UnitSearchKey']);
   FMarks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
   FMarks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
-  FMarks.Bind(FUnitSearchRememberCollapsed, ['UnitSearchRememberCollapsed']);
-  FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
   FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
-  FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
-  FMarks.Bind(FUnitSearchFormCaptions, ['UnitSearchFormCaptions']);
-  FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
-  FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
-  FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
-  FMarks.Bind(FUnitSearchPreviewAutoCollapse, ['UnitSearchPreviewAutoCollapse']);
-  FMarks.Bind(FUnitSearchMultiSelect, ['UnitSearchMultiSelect']);
-  FMarks.Bind(FUnitSearchActions, ['UnitSearchActions']);
-  FMarks.Bind(FUnitSearchAddUses, ['UnitSearchActionsAddUses']);
-  FMarks.Bind(FQuickOpen, ['QuickOpen']);
-  FMarks.Bind(FQuickOpenLibrary, ['QuickOpenLibrary']);
-  FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
-  FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
-  FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
-  FMarks.Bind(FSearchReplaceBar, ['SearchReplace']);
-  FMarks.Bind(FSearchRegex, ['SearchRegex']);
-  FMarks.Bind(FSearchHistory, ['SearchHistory']);
-  FMarks.Bind(FSearchMultiFile, ['SearchMultiFile']);
-  FMarks.Bind(FSearchFromFirst, ['SearchFromFirstHit']);
   FMarks.Bind(FVcsProvider, ['VcsProvider']);
   FMarks.Bind(FVcsProjectList, ['VcsProjects']);
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Git], ['VcsGitPath']);
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
-  FMarks.Bind(FVcsTimeout, ['VcsTimeoutSeconds']);
-  FMarks.Bind(FVcsBranchConfirm, ['VcsBranchConfirm']);
-  FMarks.Bind(FVcsBranchSvnLocation, ['VcsBranchSvnLocation']);
   FMarks.Bind(FVcsBranchSvnSource, ['VcsBranchSvnSource']);
   FMarks.Bind(FVcsBranchSvnAfter, ['VcsBranchSvnAfter']);
-  FMarks.Bind(FVcsBranchSvnFolder, ['VcsBranchSvnCheckoutFolder']);
-  FMarks.Bind(FVcsBranchSvnMessage, ['VcsBranchSvnMessage']);
   FMarks.Bind(FVcsExternalsOnBranch, ['VcsExternalsOnBranch']);
   FMarks.Bind(FVcsExternalsSuggest, ['VcsExternalsSuggestBranch']);
   FMarks.Bind(FVcsExternalsRules, ['VcsExternalsRules']);
-  FMarks.Bind(FVcsExternalsShow, ['VcsExternalsShow']);
   FMarks.Bind(FVcsExternalsUpdate, ['VcsExternalsUpdate']);
   FMarks.Bind(FVcsBranchGitBase, ['VcsBranchGitBase']);
   FMarks.Bind(FVcsBranchGitPush, ['VcsBranchGitPush']);
   FMarks.Bind(FVcsBranchGitUncommitted, ['VcsBranchGitUncommitted']);
-  FMarks.Bind(FVcsBranchGitWorktree, ['VcsBranchGitWorktree']);
-  FMarks.Bind(FVcsBranchGitWorktreeFolder, ['VcsBranchGitWorktreeFolder']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -4882,9 +3964,6 @@ begin
   FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
   FMarks.Bind(FBuildGate, ['BuildGate']);
   FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
-  FMarks.Bind(FSettingsExportImport, ['SettingsExportImport']);
-  FMarks.Bind(FSettingsMarkModified, ['SettingsMarkModified']);
-  FMarks.Bind(FSettingsBackupBeforeImport, ['SettingsBackupBeforeImport']);
   FMarks.Bind(FSettingsExportSecrets, ['SettingsExportSecrets']);
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
   begin
@@ -4907,6 +3986,8 @@ begin
   FreeAndNil(FAttached);
   FreeAndNil(FOwnOff);
   FreeAndNil(FLockedControls);
+  FreeAndNil(FBindings);
+  FreeAndNil(FSectionBindings);
   inherited;
 end;
 
@@ -6428,8 +5509,8 @@ var
 begin
   // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
   AddTitle(TAtlasTextId.SettingsIndexTitle);
-  FIndexUsages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages));
-  FMemoryBudget := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget));
+  BindCheck('IndexUsages', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages)));
+  BindText('MemoryBudgetMb', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget)));
   Panel := AddPanel(66);
   FIndexInfo := TLabel.Create(Self);
   FIndexInfo.Parent := Panel;
@@ -6638,8 +5719,8 @@ var
 begin
   // Abgesicherter Start nach einem Absturz (#722).
   AddTitle(TAtlasTextId.SettingsSafeTitle);
-  FSafeAsk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk));
-  FSafeAuto := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto));
+  BindCheck('SafeAskAfterCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk)));
+  BindCheck('SafeAutoAfterRepeatedCrash', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto)));
   Panel := AddPanel(26);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := Panel;
@@ -6654,17 +5735,17 @@ begin
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
   FSafeKey.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift),
     TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl), TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone)]);
-  FSafeTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout));
-  FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
+  BindText('SafeStartupTimeoutMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout)));
+  BindText('SafeKeepSettingsHistory', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory)));
 end;
 
 procedure TAtlasSettingsPage.AddUnitSearchSection;
 begin
-  FUnitSearchEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled));
-  FUnitSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace));
-  FUnitSearchReplaceUseUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceUseUnit));
-  FUnitSearchReplaceForms := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceForms));
-  FUnitSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey));
+  BindCheck('UnitSearchEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled)));
+  BindCheck('UnitSearchReplaceIdeDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace)));
+  BindCheck('UnitSearchReplaceUseUnitDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceUseUnit)));
+  BindCheck('UnitSearchReplaceFormsDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceForms)));
+  BindKey('UnitSearchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey)));
   FUnitSearchPathStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathStyle),
     [TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathRelative),
     TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathCompact),
@@ -6672,46 +5753,46 @@ begin
   FUnitSearchGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchGroupBy),
     [TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupProject), TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupFolder),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone)]);
-  FUnitSearchRememberCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchRememberCollapsed));
-  FUnitSearchFilters := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilters));
+  BindCheck('UnitSearchRememberCollapsed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchRememberCollapsed)));
+  BindCheck('UnitSearchFilters', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilters)));
   FUnitSearchDefaultScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchDefaultScope),
     [TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginGroup), TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginActive),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
-  FUnitSearchFilterSyntax := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax));
-  FUnitSearchFormCaptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions));
-  FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
-  FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
-  FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
-  FUnitSearchPreviewAutoCollapse := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewAutoCollapse));
-  FUnitSearchMultiSelect := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect));
-  FUnitSearchActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions));
-  FUnitSearchAddUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses));
+  BindCheck('UnitSearchFilterSyntax', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax)));
+  BindCheck('UnitSearchFormCaptions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions)));
+  BindCheck('UnitSearchPreview', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview)));
+  BindCheck('UnitSearchPreviewForm', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm)));
+  BindCheck('UnitSearchPreviewUsedBy', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy)));
+  BindCheck('UnitSearchPreviewAutoCollapse', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewAutoCollapse)));
+  BindCheck('UnitSearchMultiSelect', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect)));
+  BindCheck('UnitSearchActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions)));
+  BindCheck('UnitSearchActionsAddUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses)));
   // Datei und Symbol schnell öffnen (#503).
   AddTitle(TAtlasTextId.QuickOpenTitle);
-  FQuickOpen := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen));
-  FQuickOpenLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary));
-  FQuickOpenKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey));
+  BindCheck('QuickOpen', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen)));
+  BindCheck('QuickOpenLibrary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary)));
+  BindKey('QuickOpenKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey)));
   // Suchleiste im Editor (#878).
   AddTitle(TAtlasTextId.SettingsSearchTitle);
-  FSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace));
-  FSearchMessages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages));
+  BindCheck('SearchReplaceIde', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace)));
+  BindCheck('SearchResultsInMessages', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages)));
   // Ersetzen, Regex, Verlauf und Bereiche über Dateien (#893).
-  FSearchReplaceBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplaceBar));
-  FSearchRegex := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchRegex));
-  FSearchHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSearchHistory));
-  FSearchMultiFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMultiFile));
-  FSearchFromFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchFromFirst));
+  BindCheck('SearchReplace', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplaceBar)));
+  BindCheck('SearchRegex', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchRegex)));
+  BindText('SearchHistory', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSearchHistory)));
+  BindCheck('SearchMultiFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMultiFile)));
+  BindCheck('SearchFromFirstHit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchFromFirst)));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
 begin
   // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
   AddTitle(TAtlasTextId.SettingsUndoTitle);
-  FUndoEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoEnabled));
-  FUndoDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoDepth));
-  FUndoPersist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoPersist));
-  FUndoMaxSize := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoMaxSize));
+  BindCheck('UndoMultiFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoEnabled)));
+  BindText('UndoMultiFileDepth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoDepth)));
+  BindCheck('UndoMultiFilePersist', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoPersist)));
+  BindText('UndoMultiFileMaxSizeMb', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoMaxSize)));
   // Reihenfolge wie TAtlasUndoConflictMode und TAtlasNewFilesMode.
   FUndoOnConflict := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUndoOnConflict),
     [TAtlasStrings.Text(TAtlasTextId.SettingsUndoPartial), TAtlasStrings.Text(TAtlasTextId.SettingsUndoAbort)]);
@@ -6733,14 +5814,14 @@ begin
     TAtlasUpdates.IdeVersion]);
   FVersion.Left := 0;
   FVersion.Top := 2;
-  FUpdatesCheck := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck));
+  BindCheck('UpdatesCheck', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck)));
 end;
 
 procedure TAtlasSettingsPage.AddBugReportSection;
 begin
   // Fehlerbericht (#108).
   AddTitle(TAtlasTextId.SettingsBugReportTitle);
-  FBugReportAnonymize := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize));
+  BindCheck('BugReportAnonymize', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize)));
 end;
 
 function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
@@ -7030,96 +6111,19 @@ var
   mIndex: Integer;
 begin
   FWidths := ASettings;
-  FEnabled.Checked := ASettings.Enabled;
+  FBindings.Load(TAtlasMemorySettingsStore.FromSettings(ASettings));
   FServerPath.Text := ASettings.ServerPath;
-  FActionsKey.Text := ShortCutToText(TShortCut(ASettings.ActionsKey));
-  FExpandKey.Text := ShortCutToText(TShortCut(ASettings.ExpandKey));
-  FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
-  FImplementationKey.Text := ShortCutToText(TShortCut(ASettings.ImplementationKey));
-  FTypeDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.TypeDefinitionKey));
-  FMethodToggle.Checked := ASettings.MethodToggle;
-  FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
-  FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
-  FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
-  FGotoInterfaceKey.Text := ShortCutToText(TShortCut(ASettings.GotoInterfaceKey));
-  FGotoImplementationKey.Text := ShortCutToText(TShortCut(ASettings.GotoImplementationKey));
-  FNavHistory.Checked := ASettings.NavHistory;
-  FNavBackKey.Text := ShortCutToText(TShortCut(ASettings.NavBackKey));
-  FNavForwardKey.Text := ShortCutToText(TShortCut(ASettings.NavForwardKey));
-  FLastEditKey.Text := ShortCutToText(TShortCut(ASettings.LastEditKey));
-  FPeek.Checked := ASettings.Peek;
-  FPeekHeightLines.Text := IntToStr(ASettings.PeekHeightLines);
-  FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
-  FDataFlow.Checked := ASettings.DataFlow;
-  FDataFlowMaxDepth.Text := IntToStr(ASettings.DataFlowMaxDepth);
-  FDataFlowExcludeTests.Checked := ASettings.DataFlowExcludeTests;
-  FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
-  FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
-  FReferencesInferred.Checked := ASettings.ReferencesInferred;
-  FReferencesTextMatches.Checked := ASettings.ReferencesTextMatches;
-  FCallHierarchyDiagram.Checked := ASettings.CallHierarchyDiagram;
-  FImpact.Checked := ASettings.Impact;
-  FImpactDepth.Text := IntToStr(ASettings.ImpactDepth);
-  FOutline.Checked := ASettings.Outline;
-  FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
-  FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
-  FOutlineConditions.Checked := ASettings.OutlineConditions;
-  FBreadcrumbs.Checked := ASettings.Breadcrumbs;
-  FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
-  FBreadcrumbsIdeColors.Checked := ASettings.BreadcrumbsIdeColors;
-  FBreadcrumbsHideIdeToolbar.Checked := ASettings.BreadcrumbsHideIdeToolbar;
-  FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
-  FEditorToolbar.Checked := ASettings.EditorToolbar;
   FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, AtlasToolbarPositions));
   FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
-  FEditorToolbarReturnButton.Checked := ASettings.EditorToolbarReturnButton;
-  FEditorToolbarLabels.Checked := ASettings.EditorToolbarLabels;
-  FEditorStatusBar.Checked := ASettings.EditorStatusBar;
-  FEditorDesignerBar.Checked := ASettings.EditorDesignerBar;
-  FDesignerSearchKey.Text := ShortCutToText(TShortCut(ASettings.DesignerSearchKey));
   FDesignerSearchStyle.Choice := Ord(SameText(ASettings.DesignerSearchStyle,
     TAtlasPluginSettings.DesignerSearchPopup));
-  FDesignerTabOrderClick.Checked := ASettings.DesignerTabOrderClick;
-  FDesignerAlign.Checked := ASettings.DesignerAlign;
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
-  FStickyScroll.Checked := ASettings.StickyScroll;
-  FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
-  FStickyScrollTypes.Checked := ASettings.StickyScrollTypes;
-  FStickyScrollRoutines.Checked := ASettings.StickyScrollRoutines;
-  FStickyScrollBlocks.Checked := ASettings.StickyScrollBlocks;
-  FStickyScrollLoops.Checked := ASettings.StickyScrollLoops;
-  FStickyScrollTry.Checked := ASettings.StickyScrollTry;
-  FStickyScrollCase.Checked := ASettings.StickyScrollCase;
-  FStickyScrollWith.Checked := ASettings.StickyScrollWith;
   FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
-  FMinimap.Checked := ASettings.Minimap;
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
-  FMinimapWidth.Text := IntToStr(ASettings.MinimapWidth);
-  FMinimapScale.Text := IntToStr(ASettings.MinimapScale);
-  FMinimapMaxColumn.Text := IntToStr(ASettings.MinimapMaxColumn);
   FMinimapSide.Choice := Max(0, IndexText(ASettings.MinimapSide, ['right', 'left']));
   FMinimapShowSlider.Choice := Max(0, IndexText(ASettings.MinimapShowSlider, ['always', 'mouseover']));
-  FMinimapSectionHeaders.Checked := ASettings.MinimapSectionHeaders;
-  FMinimapHighlightMethod.Checked := ASettings.MinimapHighlightMethod;
-  FMinimapMarkers.Checked := ASettings.MinimapMarkers;
-  FMinimapClickJumps.Checked := ASettings.MinimapClickJumps;
-  FGitGutter.Checked := ASettings.GitGutter;
-  FGitBlame.Checked := ASettings.GitBlame;
-  FGutterColumn.Checked := ASettings.GutterColumn;
-  FGutterColumnProblems.Checked := ASettings.GutterColumnProblems;
-  FGutterColumnCodeActions.Checked := ASettings.GutterColumnCodeActions;
-  FGutterColumnOverrides.Checked := ASettings.GutterColumnOverrides;
-  FSelectionMatches.Checked := ASettings.SelectionMatches;
   FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
-  FSelectionMatchesCaseSensitive.Checked := ASettings.SelectionMatchesCaseSensitive;
-  FSelectionMatchesWholeWord.Checked := ASettings.SelectionMatchesWholeWord;
-  FSelectionMatchesNavigateF3.Checked := ASettings.SelectionMatchesNavigateF3;
   FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
-  FExitPoints.Checked := ASettings.ExitPoints;
-  FExitPointsExceptions.Checked := ASettings.ExitPointsExceptions;
-  FExitPointsLoops.Checked := ASettings.ExitPointsLoops;
-  FExitPointsBadge.Checked := ASettings.ExitPointsBadge;
-  FReassigned.Checked := ASettings.Reassigned;
   Targets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
@@ -7127,51 +6131,18 @@ begin
   end;
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
-  FExpressionType.Checked := ASettings.ExpressionType;
-  FExpressionTypeConversions.Checked := ASettings.ExpressionTypeConversions;
-  FExpressionTypeConstValue.Checked := ASettings.ExpressionTypeConstValue;
-  FExpressionTypeKey.Text := ShortCutToText(TShortCut(ASettings.ExpressionTypeKey));
   FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
-  FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
-  FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
-  FOverviewRuler.Checked := ASettings.OverviewRuler;
   Kinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
     FOverviewKinds[Kind].Checked := Kind in Kinds;
   end;
-  FJumpToMatch.Checked := ASettings.JumpToMatch;
-  FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
-  FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
-  FMoveLines.Checked := ASettings.MoveLines;
-  FMoveLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesUpKey));
-  FMoveLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesDownKey));
-  FDuplicateLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesUpKey));
-  FDuplicateLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesDownKey));
-  FToggleBlockComment.Checked := ASettings.ToggleBlockComment;
-  FToggleBlockCommentKey.Text := ShortCutToText(TShortCut(ASettings.ToggleBlockCommentKey));
   FToggleBlockCommentStyle.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentStyle, ['braces', 'parens']));
   FToggleBlockCommentFallback.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentFallback,
     ['lineComments', 'refuse']));
-  FToggleBlockCommentOwnLines.Checked := ASettings.ToggleBlockCommentOwnLines;
   FToggleBlockCommentScope.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentWithoutSelection,
     ['statement', 'line']));
-  FNewLineAround.Checked := ASettings.NewLineAround;
-  FNewLineBelowKey.Text := ShortCutToText(TShortCut(ASettings.NewLineBelowKey));
-  FNewLineAboveKey.Text := ShortCutToText(TShortCut(ASettings.NewLineAboveKey));
-  FNewLineAroundStatementAware.Checked := ASettings.NewLineAroundStatementAware;
-  FUnwrap.Checked := ASettings.Unwrap;
-  FUnwrapKey.Text := ShortCutToText(TShortCut(ASettings.UnwrapKey));
-  FSafeDelete.Checked := ASettings.SafeDelete;
-  FSafeDeleteKey.Text := ShortCutToText(TShortCut(ASettings.SafeDeleteKey));
-  FContinueComments.Checked := ASettings.ContinueComments;
-  FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
-  FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
   FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
-  FWrapSelection.Checked := ASettings.WrapSelection;
-  FWrapSelectionChars.Text := ASettings.WrapSelectionChars;
-  FCompleteStatement.Checked := ASettings.CompleteStatement;
-  FCompleteStatementKey.Text := ShortCutToText(TShortCut(ASettings.CompleteStatementKey));
   // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
   FCompleteStatementBeginEnd.Choice := 1;
   if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
@@ -7191,152 +6162,37 @@ begin
   begin
     FCompleteStatementTryKind.Choice := 2;
   end;
-  FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
-  FFormatCode.Checked := ASettings.FormatCode;
-  FFormatCodeKey.Text := ShortCutToText(TShortCut(ASettings.FormatCodeKey));
-  FContinuePattern.Checked := ASettings.ContinuePattern;
-  FContinuePatternMinLines.Text := IntToStr(ASettings.ContinuePatternMinLines);
-  FMultiCursor.Checked := ASettings.MultiCursor;
-  FLinkedEditing.Checked := ASettings.LinkedEditing;
   FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, ['off', 'uses', 'indent', 'both']));
   FMultiCursorModifier.Choice := 0;
   if ASettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
   begin
     FMultiCursorModifier.Choice := 1;
   end;
-  FMultiCursorNextKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorNextKey));
-  FMultiCursorSkipKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorSkipKey));
-  FMultiCursorLineEndsKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorLineEndsKey));
-  FMultiCursorAboveKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorAboveKey));
-  FMultiCursorBelowKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorBelowKey));
-  FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
-  FNextBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.NextBookmarkKey));
-  FPreviousBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.PreviousBookmarkKey));
-  FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
-  FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
-  FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
-  FProblemsWindowKey.Text := ShortCutToText(TShortCut(ASettings.ProblemsWindowKey));
-  FCreateIssueKey.Text := ShortCutToText(TShortCut(ASettings.CreateIssueKey));
-  FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
-  FSlashCommands.Checked := ASettings.SlashCommands;
-  FGenerateMenu.Checked := ASettings.GenerateMenu;
-  FGenerateMenuKey.Text := ShortCutToText(TShortCut(ASettings.GenerateMenuKey));
-  FNotificationsKey.Text := ShortCutToText(TShortCut(ASettings.NotificationsKey));
-  FGenerateMenuGroups.Text := ASettings.GenerateMenuGroups;
-  FGenerateMenuHidden.Text := ASettings.GenerateMenuHidden;
-  FGenerateMenuRecentFirst.Checked := ASettings.GenerateMenuRecentFirst;
-  FGenerateMenuShowCommandNames.Checked := ASettings.GenerateMenuShowCommandNames;
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
-  FPanelCollapsed.Checked := ASettings.PanelCollapsed;
-  FSelectionMarker.Checked := ASettings.SelectionMarker;
-  FAutoParentheses.Checked := ASettings.AutoParentheses;
-  FFixCase.Checked := ASettings.FixCase;
-  FCommitChars.Checked := ASettings.CommitCharacters;
-  FAutoUses.Checked := ASettings.AutoUses;
-  FParameterHints.Checked := ASettings.ParameterHints;
-  FFormatPlaceholders.Checked := ASettings.FormatPlaceholders;
-  FOpenDelay.Text := IntToStr(ASettings.OpenDelayMs);
   FAutoWidth.OnClick := nil;
   FAutoWidth.Checked := ASettings.ListWidth = 0;
   FAutoWidth.OnClick := AutoWidthClick;
-  FFilterChips.Checked := ASettings.FilterChips;
-  FLearning.Checked := ASettings.Learning;
-  FFavorites.Checked := ASettings.Favorites;
-  FGroupInherited.Checked := ASettings.GroupInherited;
-  FCompletionVariantBranch.Checked := ASettings.CompletionVariantBranch;
   FListMode.Choice := Ord(TAtlasListModes.ModeOf(ASettings.CompletionListMode));
   FListScope.Choice := Ord(TAtlasListModes.ScopeOf(ASettings.CompletionListScope));
-  FPreview.Checked := ASettings.Preview;
-  FSnippets.Checked := ASettings.Snippets;
-  FImportIdeTemplates.Checked := ASettings.ImportIdeTemplates;
-  FTeamFile.Checked := ASettings.TeamFile;
   RefreshTeamFile;
-  FHoverTooltip.Checked := ASettings.HoverTooltip;
-  FHoverProblemActions.Checked := ASettings.HoverProblemActions;
   FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
-  FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
-  FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
-  FProviderTimeLimit.Text := IntToStr(ASettings.ProviderTimeLimitMs);
-  FHangHint.Checked := ASettings.HangHint;
-  FReloadExternal.Checked := ASettings.ReloadExternal;
-  FOpenForEdits.Checked := ASettings.OpenForEdits;
-  FPairColors.Checked := ASettings.PairColors;
-  FInactiveDim.Checked := ASettings.InactiveDim;
-  FInlayHints.Checked := ASettings.InlayHints;
-  FInlayTypeHints.Checked := ASettings.InlayTypeHints;
-  FInlayDefineHints.Checked := ASettings.InlayDefineHints;
-  FInlayCharHints.Checked := ASettings.InlayCharHints;
-  FInlayMethodHints.Checked := ASettings.InlayMethodHints;
-  FBlockEndLabels.Checked := ASettings.BlockEndLabels;
-  FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
-  FDimUnusedUses.Checked := ASettings.DimUnusedUses;
-  FRecursionMarkers.Checked := ASettings.RecursionMarkers;
-  FRecursionMarkersDepth.Text := IntToStr(ASettings.RecursionMarkersDepth);
   FInlineDiagnostics.Choice := Ord(TAtlasInlineDiagnostics.ModeOf(ASettings.InlineDiagnostics));
-  FNotes.Checked := ASettings.Notes;
-  FBookmarksNamed.Checked := ASettings.BookmarksNamed;
-  FBookmarksShared.Checked := ASettings.BookmarksShared;
-  FQuickBookmarks.Checked := ASettings.QuickBookmarks;
-  FQuickBookmarksGutter.Checked := ASettings.QuickBookmarksGutter;
-  FQuickBookmarksGutterClick.Checked := ASettings.QuickBookmarksGutterClick;
-  FQuickBookmarksNumberedKeys.Checked := ASettings.QuickBookmarksNumberedKeys;
-  FQuickBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.QuickBookmarkKey));
   FQuickBookmarkChordWait.Text := IntToStr(ASettings.QuickBookmarkChordWait);
   FQuickBookmarksScope.Choice := Max(0, IndexText(ASettings.QuickBookmarksScope, AtlasQuickBookmarkScopes));
-  FQuickBookmarksImportIde.Checked := ASettings.QuickBookmarksImportIde;
-  FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
-  FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
-  FMetrics.Checked := ASettings.Metrics;
-  FCodeLensTests.Checked := ASettings.CodeLensTests;
-  FTodoList.Checked := ASettings.TodoList;
-  FBaselineUpdate.Checked := ASettings.BaselineUpdate;
-  FMetricsReport.Checked := ASettings.MetricsReport;
-  FDfmPropertyRules.Checked := ASettings.DfmPropertyRules;
-  FPairGuides.Checked := ASettings.PairGuides;
-  FPairOwners.Checked := ASettings.PairOwners;
-  FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
-  FPairGuideOpacity.Text := IntToStr(ASettings.PairGuideOpacity);
   ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
-  FProblems.Checked := ASettings.Problems;
-  FProblemsList.Checked := ASettings.ProblemsList;
-  FProblemsWindow.Checked := ASettings.ProblemsWindow;
   FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, ScopeValues));
   FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
-  FProblemsWindowCompiler.Checked := ASettings.ProblemsWindowCompiler;
-  FProblemsWindowFollowCursor.Checked := ASettings.ProblemsWindowFollowCursor;
-  FProblemsWindowOpenFirst.Checked := ASettings.ProblemsWindowOpenFirst;
   FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, ClosedUnitsValues));
-  FProblemsWindowShowCleanActive.Checked := ASettings.ProblemsWindowShowCleanActive;
   FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
-  FProblemsShowCompilerCode.Checked := ASettings.ProblemsShowCompilerCode;
-  FProblemsLive.Checked := ASettings.ProblemsLive;
-  FFixBulk.Checked := ASettings.FixBulk;
-  FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
-  FStatusField.Checked := ASettings.StatusField;
-  FDiagnosticMode.Checked := ASettings.DiagnosticMode;
-  FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
-  FServerStatusWindow.Checked := ASettings.ServerStatusWindow;
-  FArchitecture.Checked := ASettings.ArchitectureEnabled;
   FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
-  FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
-  FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
-  FQuery.Checked := ASettings.QueryEnabled;
-  FHotspots.Checked := ASettings.HotspotsEnabled;
-  FHotspotsMonths.Text := IntToStr(ASettings.HotspotsMonths);
-  FHotspotsMinCommits.Text := IntToStr(ASettings.HotspotsCouplingMinCommits);
-  FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
-  FSetupChecklist.Checked := ASettings.SetupChecklist;
-  FShortcutTips.Checked := ASettings.ShortcutTips;
   FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
-  FNotifications.Checked := ASettings.Notifications;
   FNotificationsMax.Text := IntToStr(ASettings.NotificationsMaxEntries);
   FNotificationsSpec := ASettings.NotificationsSources;
   NotificationSourceChange(nil);
-  FStatusSummary.Checked := ASettings.StatusFieldSummary;
   if not ASettings.StatusTogglesOnDoubleClick then
   begin
     FStatusToggles.Choice := 1;
@@ -7362,11 +6218,6 @@ begin
     FIndexProgress.Choice := 0;
   end;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
-  FIndexGroup.Checked := ASettings.IndexProjectGroup;
-  FIndexSearch.Checked := ASettings.IndexSearchPaths;
-  FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
-  FIndexUsages.Checked := ASettings.IndexUsages;
-  FMemoryBudget.Text := IntToStr(ASettings.MemoryBudgetMb);
   FAfterSave.Choice := 0;
   if ASettings.CheckOnSave then
   begin
@@ -7376,32 +6227,12 @@ begin
   begin
     FAfterSave.Choice := 2;
   end;
-  FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
-  FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
-  FMcpBuild.Checked := ASettings.McpBuild;
   LoadOpenBuild(ASettings);
   LoadTasks(ASettings);
-  FTestRun.Checked := ASettings.TestRun;
-  FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
-  FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
-  FTestsAffected.Checked := ASettings.TestsAffected;
-  FTestsAffectedDepth.Text := IntToStr(ASettings.TestsAffectedDepth);
-  FTestsAffectedBeforeCommit.Checked := ASettings.TestsAffectedBeforeCommit;
-  FBuildZeroHints.Checked := ASettings.BuildZeroHints;
-  FShowInterfaceCost.Checked := ASettings.ShowInterfaceCost;
-  FBuildSummary.Checked := ASettings.BuildSummary;
   FBuildWarningsAsErrors.Text := TAtlasBuildVerdicts.NormalizeCodes(ASettings.BuildWarningsAsErrors);
   FBuildGate.Choice := Ord(TAtlasBuildPipelineSettings.GateOf(ASettings.BuildGate));
   FBuildGateTimeout.Text := IntToStr(ASettings.BuildGateTimeoutMs);
-  FBuildCompilerSwitches.Checked := ASettings.BuildCompilerSwitches;
-  FBuildSwitchesInStatusBar.Checked := ASettings.BuildSwitchesInStatusBar;
   LoadRelease(ASettings);
-  FStartProfiles.Checked := ASettings.StartProfiles;
-  FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
-  FTestDebug.Checked := ASettings.TestDebug;
-  FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
-  FDebugHoverValues.Checked := ASettings.DebugHoverValues;
-  FDebugVisualizers.Checked := ASettings.DebugVisualizers;
   VisualizerKinds := TAtlasVisualizerSettings.ParseKinds(ASettings.DebugVisualizerTypes);
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
@@ -7412,34 +6243,16 @@ begin
   FDebugVisualizerTimeout.Text := IntToStr(ASettings.DebugVisualizerTimeoutMs);
   FDebugVisualizerMaxImagePixels.Text := IntToStr(ASettings.DebugVisualizerMaxImagePixels);
   FDebugVisualizerEvaluation.Choice := Ord(TAtlasVisualizerSettings.ParseEvaluation(ASettings.DebugVisualizerEvaluation));
-  FDebugDisplayRules.Checked := ASettings.DebugDisplayRules;
-  FDebugDisplayRulesAllowCalls.Checked := ASettings.DebugDisplayRulesAllowCalls;
-  FDebugStepIntoTarget.Checked := ASettings.DebugStepIntoTarget;
-  FDebugStepFilters.Checked := ASettings.DebugStepFilters;
   StepFilterKinds := TStepFilterNames.ParseKinds(ASettings.DebugStepFilterKinds);
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
     FDebugStepFilterKinds[StepFilterKind].Checked := StepFilterKind in StepFilterKinds;
   end;
   FDebugStepFilterPatterns.Text := ASettings.DebugStepFilterPatterns;
-  FDebugStepIntoTargetKey.Text := ShortCutToText(TShortCut(ASettings.DebugStepIntoTargetKey));
-  FDebugBreakOnNextEvent.Checked := ASettings.DebugBreakOnNextEvent;
   FDebugBreakOnNextEventExcluded.Text := ASettings.DebugBreakOnNextEventExcluded;
-  FDebugExplainUnavailable.Checked := ASettings.DebugExplainUnavailable;
-  FDebugCompletionInDialogs.Checked := ASettings.DebugCompletionInDialogs;
-  FDebugEvaluateWindow.Checked := ASettings.DebugEvaluateWindow;
-  FDebugEvaluateReplaceCtrlF7.Checked := ASettings.DebugEvaluateReplaceCtrlF7;
-  FDebugExplainAccessViolation.Checked := ASettings.DebugExplainAccessViolation;
   FDebugExplainAccessViolationAllowCalls.Checked := ASettings.DebugExplainAccessViolationAllowCalls;
-  FDebugExceptionHistory.Checked := ASettings.DebugExceptionHistory;
-  FDebugJustMyCode.Checked := ASettings.DebugJustMyCode;
-  FDebugExceptionBanner.Checked := ASettings.DebugExceptionBanner;
   FDebugExceptionBannerIgnoreAtLocation.Checked := ASettings.DebugExceptionBannerIgnoreAtLocation;
-  FDebugInlineValues.Checked := ASettings.DebugInlineValues;
-  FDebugInlineValuesPerLine.Text := IntToStr(ASettings.DebugInlineValuesPerLine);
   FDebugOwnCodeFolders.Text := ASettings.DebugOwnCodeFolders;
-  FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
-  FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
     TAtlasStartupKey.Ctrl:
       FSafeKey.Choice := 1;
@@ -7448,68 +6261,24 @@ begin
   else
     FSafeKey.Choice := 0;
   end;
-  FSafeTimeout.Text := IntToStr(ASettings.SafeStartupTimeoutMs);
-  FSafeHistory.Text := IntToStr(ASettings.SafeKeepSettingsHistory);
-  FUndoEnabled.Checked := ASettings.UndoMultiFile;
-  FUndoDepth.Text := IntToStr(ASettings.UndoMultiFileDepth);
-  FUndoPersist.Checked := ASettings.UndoMultiFilePersist;
-  FUndoMaxSize.Text := IntToStr(ASettings.UndoMultiFileMaxSizeMb);
   FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
   FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
-  FUndoKey.Text := ShortCutToText(TShortCut(ASettings.UndoKey));
-  FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
-  FUpdatesCheck.Checked := ASettings.UpdatesCheck;
-  FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
-  FUnitSearchEnabled.Checked := ASettings.UnitSearchEnabled;
-  FUnitSearchReplace.Checked := ASettings.UnitSearchReplaceIdeDialog;
-  FUnitSearchReplaceUseUnit.Checked := ASettings.UnitSearchReplaceUseUnitDialog;
-  FUnitSearchReplaceForms.Checked := ASettings.UnitSearchReplaceFormsDialog;
-  FUnitSearchKey.Text := ShortCutToText(TShortCut(ASettings.UnitSearchKey));
-  FUnitSearchPathStyle.Choice := ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
-  FUnitSearchGroupBy.Choice := ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
-  FUnitSearchRememberCollapsed.Checked := ASettings.UnitSearchRememberCollapsed;
-  FUnitSearchFilters.Checked := ASettings.UnitSearchFilters;
-  FUnitSearchDefaultScope.Choice := ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
-  FUnitSearchFilterSyntax.Checked := ASettings.UnitSearchFilterSyntax;
-  FUnitSearchFormCaptions.Checked := ASettings.UnitSearchFormCaptions;
-  FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
-  FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
-  FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
-  FUnitSearchPreviewAutoCollapse.Checked := ASettings.UnitSearchPreviewAutoCollapse;
-  FUnitSearchMultiSelect.Checked := ASettings.UnitSearchMultiSelect;
-  FUnitSearchActions.Checked := ASettings.UnitSearchActions;
-  FUnitSearchAddUses.Checked := ASettings.UnitSearchActionsAddUses;
-  FQuickOpen.Checked := ASettings.QuickOpen;
-  FQuickOpenLibrary.Checked := ASettings.QuickOpenLibrary;
-  FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
-  FSearchReplace.Checked := ASettings.SearchReplaceIde;
-  FSearchMessages.Checked := ASettings.SearchResultsInMessages;
-  FSearchReplaceBar.Checked := ASettings.SearchReplace;
-  FSearchRegex.Checked := ASettings.SearchRegex;
-  FSearchHistory.Text := IntToStr(ASettings.SearchHistory);
-  FSearchMultiFile.Checked := ASettings.SearchMultiFile;
-  FSearchFromFirst.Checked := ASettings.SearchFromFirstHit;
+  FUnitSearchPathStyle.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
+  FUnitSearchGroupBy.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
+  FUnitSearchDefaultScope.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
   FVcsProvider.Choice := Max(0, IndexText(ASettings.VcsProvider, ['auto', 'git', 'svn', 'off']));
   FVcsPaths[TAtlasVcsKind.Git].Text := ASettings.VcsGitPath;
   FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
-  FVcsTimeout.Text := IntToStr(ASettings.VcsTimeoutSeconds);
-  FVcsBranchConfirm.Checked := ASettings.VcsBranchConfirm;
-  FVcsBranchSvnLocation.Text := ASettings.VcsBranchSvnLocation;
   FVcsBranchSvnSource.Choice := Ord(AtlasVcsSvnSourceOf(ASettings.VcsBranchSvnSource));
   FVcsBranchSvnAfter.Choice := Ord(AtlasVcsSvnAfterOf(ASettings.VcsBranchSvnAfter));
-  FVcsBranchSvnFolder.Text := ASettings.VcsBranchSvnCheckoutFolder;
-  FVcsBranchSvnMessage.Text := ASettings.VcsBranchSvnMessage;
   FVcsExternalsOnBranch.Choice := Max(0, IndexText(ASettings.VcsExternalsOnBranch, ['pin', 'keep', 'ask']));
   FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
     ['modified', 'never', 'always']));
   FVcsExternalsRules.Text := TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(ASettings.VcsExternalsRules));
-  FVcsExternalsShow.Checked := ASettings.VcsExternalsShow;
   FVcsExternalsUpdate.Choice := Ord(AtlasVcsExternalsUpdateOf(ASettings.VcsExternalsUpdate));
   FVcsBranchGitBase.Choice := Max(0, IndexText(ASettings.VcsBranchGitBase, cVcsGitBases));
   FVcsBranchGitPush.Choice := Max(0, IndexText(ASettings.VcsBranchGitPush, cVcsGitPushes));
   FVcsBranchGitUncommitted.Choice := Max(0, IndexText(ASettings.VcsBranchGitUncommitted, cVcsGitUncommitted));
-  FVcsBranchGitWorktree.Checked := ASettings.VcsBranchGitWorktree;
-  FVcsBranchGitWorktreeFolder.Text := ASettings.VcsBranchGitWorktreeFolder;
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -7519,9 +6288,6 @@ begin
     FVcsProjectSelected := 0;
   end;
   RefreshVcsProjects;
-  FSettingsExportImport.Checked := ASettings.SettingsExportImport;
-  FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
-  FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
   FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
   // Modul-Schalter (#1454) über ihre Namen; ohne Eintrag an.
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
@@ -7548,54 +6314,13 @@ var
   mStore: IAtlasMemorySettingsStore;
   mIndex: Integer;
 begin
-  ASettings.Enabled := FEnabled.Checked;
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  FBindings.Save(mStore);
+  ASettings.Load(mStore);
   ASettings.ServerPath := Trim(FServerPath.Text);
-  ASettings.ActionsKey := Integer(TextToShortCut(Trim(FActionsKey.Text)));
-  ASettings.ExpandKey := Integer(TextToShortCut(Trim(FExpandKey.Text)));
-  ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
-  ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
-  ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
-  ASettings.MethodToggle := FMethodToggle.Checked;
-  ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
-  ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
-  ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
-  ASettings.GotoInterfaceKey := Integer(TextToShortCut(Trim(FGotoInterfaceKey.Text)));
-  ASettings.GotoImplementationKey := Integer(TextToShortCut(Trim(FGotoImplementationKey.Text)));
-  ASettings.NavHistory := FNavHistory.Checked;
-  ASettings.NavBackKey := Integer(TextToShortCut(Trim(FNavBackKey.Text)));
-  ASettings.NavForwardKey := Integer(TextToShortCut(Trim(FNavForwardKey.Text)));
-  ASettings.LastEditKey := Integer(TextToShortCut(Trim(FLastEditKey.Text)));
-  ASettings.Peek := FPeek.Checked;
-  ASettings.PeekHeightLines := StrToIntDef(FPeekHeightLines.Text, ASettings.PeekHeightLines);
-  ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
-  ASettings.DataFlow := FDataFlow.Checked;
-  ASettings.DataFlowMaxDepth := StrToIntDef(FDataFlowMaxDepth.Text, ASettings.DataFlowMaxDepth);
-  ASettings.DataFlowExcludeTests := FDataFlowExcludeTests.Checked;
-  ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
-  ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
-  ASettings.ReferencesInferred := FReferencesInferred.Checked;
-  ASettings.ReferencesTextMatches := FReferencesTextMatches.Checked;
-  ASettings.CallHierarchyDiagram := FCallHierarchyDiagram.Checked;
-  ASettings.Impact := FImpact.Checked;
-  ASettings.ImpactDepth := StrToIntDef(FImpactDepth.Text, ASettings.ImpactDepth);
-  ASettings.Outline := FOutline.Checked;
-  ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
-  ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
-  ASettings.OutlineConditions := FOutlineConditions.Checked;
-  ASettings.Breadcrumbs := FBreadcrumbs.Checked;
-  ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
-  ASettings.BreadcrumbsIdeColors := FBreadcrumbsIdeColors.Checked;
-  ASettings.BreadcrumbsHideIdeToolbar := FBreadcrumbsHideIdeToolbar.Checked;
-  ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
-  ASettings.EditorToolbar := FEditorToolbar.Checked;
   ASettings.EditorToolbarPosition := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
     High(AtlasToolbarPositions))];
   ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
-  ASettings.EditorToolbarReturnButton := FEditorToolbarReturnButton.Checked;
-  ASettings.EditorToolbarLabels := FEditorToolbarLabels.Checked;
-  ASettings.EditorStatusBar := FEditorStatusBar.Checked;
-  ASettings.EditorDesignerBar := FEditorDesignerBar.Checked;
-  ASettings.DesignerSearchKey := Integer(TextToShortCut(Trim(FDesignerSearchKey.Text)));
   if FDesignerSearchStyle.Choice = 1 then
   begin
     ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
@@ -7604,29 +6329,14 @@ begin
   begin
     ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchWindow;
   end;
-  ASettings.DesignerTabOrderClick := FDesignerTabOrderClick.Checked;
-  ASettings.DesignerAlign := FDesignerAlign.Checked;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
-  ASettings.StickyScroll := FStickyScroll.Checked;
-  ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
-  ASettings.StickyScrollTypes := FStickyScrollTypes.Checked;
-  ASettings.StickyScrollRoutines := FStickyScrollRoutines.Checked;
-  ASettings.StickyScrollBlocks := FStickyScrollBlocks.Checked;
-  ASettings.StickyScrollLoops := FStickyScrollLoops.Checked;
-  ASettings.StickyScrollTry := FStickyScrollTry.Checked;
-  ASettings.StickyScrollCase := FStickyScrollCase.Checked;
-  ASettings.StickyScrollWith := FStickyScrollWith.Checked;
   ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
     ASettings.StickyScrollBlockMinLines);
-  ASettings.Minimap := FMinimap.Checked;
   ASettings.MinimapRender := 'blocks';
   if FMinimapRender.Choice = 1 then
   begin
     ASettings.MinimapRender := 'characters';
   end;
-  ASettings.MinimapWidth := StrToIntDef(FMinimapWidth.Text, ASettings.MinimapWidth);
-  ASettings.MinimapScale := StrToIntDef(FMinimapScale.Text, ASettings.MinimapScale);
-  ASettings.MinimapMaxColumn := StrToIntDef(FMinimapMaxColumn.Text, ASettings.MinimapMaxColumn);
   ASettings.MinimapSide := 'right';
   if FMinimapSide.Choice = 1 then
   begin
@@ -7637,29 +6347,10 @@ begin
   begin
     ASettings.MinimapShowSlider := 'mouseover';
   end;
-  ASettings.MinimapSectionHeaders := FMinimapSectionHeaders.Checked;
-  ASettings.MinimapHighlightMethod := FMinimapHighlightMethod.Checked;
-  ASettings.MinimapMarkers := FMinimapMarkers.Checked;
-  ASettings.MinimapClickJumps := FMinimapClickJumps.Checked;
-  ASettings.GitGutter := FGitGutter.Checked;
-  ASettings.GitBlame := FGitBlame.Checked;
-  ASettings.GutterColumn := FGutterColumn.Checked;
-  ASettings.GutterColumnProblems := FGutterColumnProblems.Checked;
-  ASettings.GutterColumnCodeActions := FGutterColumnCodeActions.Checked;
-  ASettings.GutterColumnOverrides := FGutterColumnOverrides.Checked;
-  ASettings.SelectionMatches := FSelectionMatches.Checked;
   ASettings.SelectionMatchesMinLength := StrToIntDef(FSelectionMatchesMinLength.Text,
     ASettings.SelectionMatchesMinLength);
-  ASettings.SelectionMatchesCaseSensitive := FSelectionMatchesCaseSensitive.Checked;
-  ASettings.SelectionMatchesWholeWord := FSelectionMatchesWholeWord.Checked;
-  ASettings.SelectionMatchesNavigateF3 := FSelectionMatchesNavigateF3.Checked;
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
-  ASettings.ExitPoints := FExitPoints.Checked;
-  ASettings.ExitPointsExceptions := FExitPointsExceptions.Checked;
-  ASettings.ExitPointsLoops := FExitPointsLoops.Checked;
-  ASettings.ExitPointsBadge := FExitPointsBadge.Checked;
-  ASettings.Reassigned := FReassigned.Checked;
   Targets := [];
   for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
@@ -7672,15 +6363,8 @@ begin
   ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
     FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
   ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
-  ASettings.ExpressionType := FExpressionType.Checked;
-  ASettings.ExpressionTypeConversions := FExpressionTypeConversions.Checked;
-  ASettings.ExpressionTypeConstValue := FExpressionTypeConstValue.Checked;
-  ASettings.ExpressionTypeKey := Integer(TextToShortCut(Trim(FExpressionTypeKey.Text)));
   ASettings.MethodPlacement := AtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
     High(AtlasMethodPlacements))];
-  ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
-  ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
-  ASettings.OverviewRuler := FOverviewRuler.Checked;
   Kinds := [];
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
@@ -7690,16 +6374,6 @@ begin
     end;
   end;
   ASettings.OverviewRulerKinds := TAtlasOverview.KindsText(Kinds);
-  ASettings.JumpToMatch := FJumpToMatch.Checked;
-  ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
-  ASettings.JumpToMatchSelectKey := Integer(TextToShortCut(Trim(FJumpToMatchSelectKey.Text)));
-  ASettings.MoveLines := FMoveLines.Checked;
-  ASettings.MoveLinesUpKey := Integer(TextToShortCut(Trim(FMoveLinesUpKey.Text)));
-  ASettings.MoveLinesDownKey := Integer(TextToShortCut(Trim(FMoveLinesDownKey.Text)));
-  ASettings.DuplicateLinesUpKey := Integer(TextToShortCut(Trim(FDuplicateLinesUpKey.Text)));
-  ASettings.DuplicateLinesDownKey := Integer(TextToShortCut(Trim(FDuplicateLinesDownKey.Text)));
-  ASettings.ToggleBlockComment := FToggleBlockComment.Checked;
-  ASettings.ToggleBlockCommentKey := Integer(TextToShortCut(Trim(FToggleBlockCommentKey.Text)));
   ASettings.ToggleBlockCommentStyle := 'braces';
   if FToggleBlockCommentStyle.Choice = 1 then
   begin
@@ -7710,29 +6384,13 @@ begin
   begin
     ASettings.ToggleBlockCommentFallback := 'refuse';
   end;
-  ASettings.ToggleBlockCommentOwnLines := FToggleBlockCommentOwnLines.Checked;
   ASettings.ToggleBlockCommentWithoutSelection := 'statement';
   if FToggleBlockCommentScope.Choice = 1 then
   begin
     ASettings.ToggleBlockCommentWithoutSelection := 'line';
   end;
-  ASettings.NewLineAround := FNewLineAround.Checked;
-  ASettings.NewLineBelowKey := Integer(TextToShortCut(Trim(FNewLineBelowKey.Text)));
-  ASettings.NewLineAboveKey := Integer(TextToShortCut(Trim(FNewLineAboveKey.Text)));
-  ASettings.NewLineAroundStatementAware := FNewLineAroundStatementAware.Checked;
-  ASettings.Unwrap := FUnwrap.Checked;
-  ASettings.UnwrapKey := Integer(TextToShortCut(Trim(FUnwrapKey.Text)));
-  ASettings.SafeDelete := FSafeDelete.Checked;
-  ASettings.SafeDeleteKey := Integer(TextToShortCut(Trim(FSafeDeleteKey.Text)));
-  ASettings.ContinueComments := FContinueComments.Checked;
-  ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
-  ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;
   // Leerraum am Rand gehört zum Präfix (' * ').
   ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
-  ASettings.WrapSelection := FWrapSelection.Checked;
-  ASettings.WrapSelectionChars := Trim(FWrapSelectionChars.Text);
-  ASettings.CompleteStatement := FCompleteStatement.Checked;
-  ASettings.CompleteStatementKey := Integer(TextToShortCut(Trim(FCompleteStatementKey.Text)));
   case FCompleteStatementBeginEnd.Choice of
     0:
       ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndAlways;
@@ -7749,13 +6407,6 @@ begin
   else
     ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindFinally;
   end;
-  ASettings.CompleteStatementMethodBody := FCompleteStatementMethodBody.Checked;
-  ASettings.FormatCode := FFormatCode.Checked;
-  ASettings.FormatCodeKey := Integer(TextToShortCut(Trim(FFormatCodeKey.Text)));
-  ASettings.ContinuePattern := FContinuePattern.Checked;
-  ASettings.ContinuePatternMinLines := StrToIntDef(FContinuePatternMinLines.Text, ASettings.ContinuePatternMinLines);
-  ASettings.MultiCursor := FMultiCursor.Checked;
-  ASettings.LinkedEditing := FLinkedEditing.Checked;
   ASettings.SmartPaste := 'off';
   case FSmartPaste.Choice of
     1:
@@ -7770,47 +6421,7 @@ begin
   begin
     ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierCtrl;
   end;
-  ASettings.MultiCursorNextKey := Integer(TextToShortCut(Trim(FMultiCursorNextKey.Text)));
-  ASettings.MultiCursorSkipKey := Integer(TextToShortCut(Trim(FMultiCursorSkipKey.Text)));
-  ASettings.MultiCursorLineEndsKey := Integer(TextToShortCut(Trim(FMultiCursorLineEndsKey.Text)));
-  ASettings.MultiCursorAboveKey := Integer(TextToShortCut(Trim(FMultiCursorAboveKey.Text)));
-  ASettings.MultiCursorBelowKey := Integer(TextToShortCut(Trim(FMultiCursorBelowKey.Text)));
-  ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
-  ASettings.NextBookmarkKey := Integer(TextToShortCut(Trim(FNextBookmarkKey.Text)));
-  ASettings.PreviousBookmarkKey := Integer(TextToShortCut(Trim(FPreviousBookmarkKey.Text)));
-  ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
-  ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
-  ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
-  ASettings.ProblemsWindowKey := Integer(TextToShortCut(Trim(FProblemsWindowKey.Text)));
-  ASettings.CreateIssueKey := Integer(TextToShortCut(Trim(FCreateIssueKey.Text)));
-  ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
-  ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
-  ASettings.UpdatesCheck := FUpdatesCheck.Checked;
-  ASettings.BugReportAnonymize := FBugReportAnonymize.Checked;
-  ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
-  ASettings.SlashCommands := FSlashCommands.Checked;
-  ASettings.GenerateMenu := FGenerateMenu.Checked;
-  ASettings.GenerateMenuKey := Integer(TextToShortCut(Trim(FGenerateMenuKey.Text)));
-  ASettings.NotificationsKey := Integer(TextToShortCut(Trim(FNotificationsKey.Text)));
-  ASettings.GenerateMenuGroups := Trim(FGenerateMenuGroups.Text);
-  ASettings.GenerateMenuHidden := Trim(FGenerateMenuHidden.Text);
-  ASettings.GenerateMenuRecentFirst := FGenerateMenuRecentFirst.Checked;
-  ASettings.GenerateMenuShowCommandNames := FGenerateMenuShowCommandNames.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
-  ASettings.PanelCollapsed := FPanelCollapsed.Checked;
-  ASettings.SelectionMarker := FSelectionMarker.Checked;
-  ASettings.AutoParentheses := FAutoParentheses.Checked;
-  ASettings.FixCase := FFixCase.Checked;
-  ASettings.CommitCharacters := FCommitChars.Checked;
-  ASettings.AutoUses := FAutoUses.Checked;
-  ASettings.ParameterHints := FParameterHints.Checked;
-  ASettings.FormatPlaceholders := FFormatPlaceholders.Checked;
-  ASettings.OpenDelayMs := StrToIntDef(FOpenDelay.Text, ASettings.OpenDelayMs);
-  ASettings.FilterChips := FFilterChips.Checked;
-  ASettings.Learning := FLearning.Checked;
-  ASettings.Favorites := FFavorites.Checked;
-  ASettings.GroupInherited := FGroupInherited.Checked;
-  ASettings.CompletionVariantBranch := FCompletionVariantBranch.Checked;
   if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
   begin
     ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
@@ -7819,63 +6430,15 @@ begin
   begin
     ASettings.CompletionListScope := TAtlasListModes.ScopeNames[TAtlasListScope(FListScope.Choice)];
   end;
-  ASettings.Preview := FPreview.Checked;
-  ASettings.Snippets := FSnippets.Checked;
-  ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
-  ASettings.TeamFile := FTeamFile.Checked;
-  ASettings.HoverTooltip := FHoverTooltip.Checked;
-  ASettings.HoverProblemActions := FHoverProblemActions.Checked;
   ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
-  ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
-  ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
-  ASettings.ProviderTimeLimitMs := StrToIntDef(FProviderTimeLimit.Text, ASettings.ProviderTimeLimitMs);
-  ASettings.HangHint := FHangHint.Checked;
-  ASettings.ReloadExternal := FReloadExternal.Checked;
-  ASettings.OpenForEdits := FOpenForEdits.Checked;
-  ASettings.PairColors := FPairColors.Checked;
-  ASettings.InactiveDim := FInactiveDim.Checked;
-  ASettings.InlayHints := FInlayHints.Checked;
-  ASettings.InlayTypeHints := FInlayTypeHints.Checked;
-  ASettings.InlayDefineHints := FInlayDefineHints.Checked;
-  ASettings.InlayCharHints := FInlayCharHints.Checked;
-  ASettings.InlayMethodHints := FInlayMethodHints.Checked;
-  ASettings.BlockEndLabels := FBlockEndLabels.Checked;
-  ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
-  ASettings.DimUnusedUses := FDimUnusedUses.Checked;
-  ASettings.RecursionMarkers := FRecursionMarkers.Checked;
-  ASettings.RecursionMarkersDepth := StrToIntDef(FRecursionMarkersDepth.Text, ASettings.RecursionMarkersDepth);
   ASettings.InlineDiagnostics := TAtlasInlineDiagnostics.ModeName(
     TAtlasInlineDiagnosticsMode(EnsureRange(FInlineDiagnostics.Choice, 0, Ord(High(TAtlasInlineDiagnosticsMode)))));
-  ASettings.Notes := FNotes.Checked;
-  ASettings.BookmarksNamed := FBookmarksNamed.Checked;
-  ASettings.BookmarksShared := FBookmarksShared.Checked;
-  ASettings.QuickBookmarks := FQuickBookmarks.Checked;
-  ASettings.QuickBookmarksGutter := FQuickBookmarksGutter.Checked;
-  ASettings.QuickBookmarksGutterClick := FQuickBookmarksGutterClick.Checked;
-  ASettings.QuickBookmarksNumberedKeys := FQuickBookmarksNumberedKeys.Checked;
-  ASettings.QuickBookmarkKey := Integer(TextToShortCut(Trim(FQuickBookmarkKey.Text)));
   ASettings.QuickBookmarkChordWait := EnsureRange(StrToIntDef(Trim(FQuickBookmarkChordWait.Text),
     ASettings.QuickBookmarkChordWait), 0, TAtlasPluginSettings.MaxQuickChordWait);
   ASettings.QuickBookmarksScope := AtlasQuickBookmarkScopes[EnsureRange(FQuickBookmarksScope.Choice, 0,
     High(AtlasQuickBookmarkScopes))];
-  ASettings.QuickBookmarksImportIde := FQuickBookmarksImportIde.Checked;
-  ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
-  ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
-  ASettings.Metrics := FMetrics.Checked;
-  ASettings.CodeLensTests := FCodeLensTests.Checked;
-  ASettings.TodoList := FTodoList.Checked;
-  ASettings.BaselineUpdate := FBaselineUpdate.Checked;
-  ASettings.MetricsReport := FMetricsReport.Checked;
-  ASettings.DfmPropertyRules := FDfmPropertyRules.Checked;
-  ASettings.PairGuides := FPairGuides.Checked;
-  ASettings.PairOwners := FPairOwners.Checked;
-  ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
-  ASettings.PairGuideOpacity := StrToIntDef(FPairGuideOpacity.Text, ASettings.PairGuideOpacity);
   ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
-  ASettings.Problems := FProblems.Checked;
-  ASettings.ProblemsList := FProblemsList.Checked;
-  ASettings.ProblemsWindow := FProblemsWindow.Checked;
   if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
   begin
     ASettings.ProblemsWindowScope := ScopeValues[FProblemsWindowScope.Choice];
@@ -7884,27 +6447,14 @@ begin
   begin
     ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
   end;
-  ASettings.ProblemsWindowCompiler := FProblemsWindowCompiler.Checked;
-  ASettings.ProblemsWindowFollowCursor := FProblemsWindowFollowCursor.Checked;
-  ASettings.ProblemsWindowOpenFirst := FProblemsWindowOpenFirst.Checked;
   if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(ClosedUnitsValues)) then
   begin
     ASettings.ProblemsWindowClosedUnits := ClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
   end;
-  ASettings.ProblemsWindowShowCleanActive := FProblemsWindowShowCleanActive.Checked;
   if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(CompilerMergeValues)) then
   begin
     ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
   end;
-  ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;
-  ASettings.ProblemsLive := FProblemsLive.Checked;
-  ASettings.FixBulk := FFixBulk.Checked;
-  ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
-  ASettings.StatusField := FStatusField.Checked;
-  ASettings.DiagnosticMode := FDiagnosticMode.Checked;
-  ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
-  ASettings.ServerStatusWindow := FServerStatusWindow.Checked;
-  ASettings.ArchitectureEnabled := FArchitecture.Checked;
   if FArchitectureScope.Choice = 1 then
   begin
     ASettings.ArchitectureScope := 'project';
@@ -7913,21 +6463,10 @@ begin
   begin
     ASettings.ArchitectureScope := 'projectGroup';
   end;
-  ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
-  ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
-  ASettings.QueryEnabled := FQuery.Checked;
-  ASettings.HotspotsEnabled := FHotspots.Checked;
-  ASettings.HotspotsMonths := StrToIntDef(FHotspotsMonths.Text, ASettings.HotspotsMonths);
-  ASettings.HotspotsCouplingMinCommits := StrToIntDef(FHotspotsMinCommits.Text, ASettings.HotspotsCouplingMinCommits);
-  ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
-  ASettings.SetupChecklist := FSetupChecklist.Checked;
-  ASettings.ShortcutTips := FShortcutTips.Checked;
   ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
     Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
-  ASettings.Notifications := FNotifications.Checked;
   ASettings.NotificationsMaxEntries := StrToIntDef(Trim(FNotificationsMax.Text), ASettings.NotificationsMaxEntries);
   ASettings.NotificationsSources := TAtlasNotificationSources.Normalize(FNotificationsSpec);
-  ASettings.StatusFieldSummary := FStatusSummary.Checked;
   case FStatusToggles.Choice of
     1:
       ASettings.StatusFieldToggles := 'rightClick';
@@ -7945,27 +6484,10 @@ begin
     ASettings.IndexProgressPlace := 'statusField';
   end;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
-  ASettings.IndexProjectGroup := FIndexGroup.Checked;
-  ASettings.IndexSearchPaths := FIndexSearch.Checked;
-  ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
-  ASettings.IndexUsages := FIndexUsages.Checked;
-  ASettings.MemoryBudgetMb := StrToIntDef(FMemoryBudget.Text, ASettings.MemoryBudgetMb);
   ASettings.CheckOnSave := FAfterSave.Choice = 1;
   ASettings.CompileOnSave := FAfterSave.Choice = 2;
-  ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
-  ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
-  ASettings.McpBuild := FMcpBuild.Checked;
   SaveOpenBuild(ASettings);
   SaveTasks(ASettings);
-  ASettings.TestRun := FTestRun.Checked;
-  ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
-  ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
-  ASettings.TestsAffected := FTestsAffected.Checked;
-  ASettings.TestsAffectedDepth := StrToIntDef(FTestsAffectedDepth.Text, ASettings.TestsAffectedDepth);
-  ASettings.TestsAffectedBeforeCommit := FTestsAffectedBeforeCommit.Checked;
-  ASettings.BuildZeroHints := FBuildZeroHints.Checked;
-  ASettings.ShowInterfaceCost := FShowInterfaceCost.Checked;
-  ASettings.BuildSummary := FBuildSummary.Checked;
   // Ungültige Einträge fallen weg; gespeichert wird die einheitliche Form „W1035, H2164“.
   ASettings.BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(FBuildWarningsAsErrors.Text);
   if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
@@ -7974,15 +6496,7 @@ begin
   end;
   ASettings.BuildGateTimeoutMs := EnsureRange(StrToIntDef(FBuildGateTimeout.Text, ASettings.BuildGateTimeoutMs),
     TAtlasBuildPipelineSettings.GateMinTimeoutMs, TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
-  ASettings.BuildCompilerSwitches := FBuildCompilerSwitches.Checked;
-  ASettings.BuildSwitchesInStatusBar := FBuildSwitchesInStatusBar.Checked;
   SaveRelease(ASettings);
-  ASettings.StartProfiles := FStartProfiles.Checked;
-  ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
-  ASettings.TestDebug := FTestDebug.Checked;
-  ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
-  ASettings.DebugHoverValues := FDebugHoverValues.Checked;
-  ASettings.DebugVisualizers := FDebugVisualizers.Checked;
   VisualizerKinds := [];
   for VisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
@@ -8001,10 +6515,6 @@ begin
     ASettings.DebugVisualizerMaxImagePixels);
   ASettings.DebugVisualizerEvaluation := TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation(
     EnsureRange(FDebugVisualizerEvaluation.Choice, 0, Ord(High(TAtlasVisualizerEvaluation))))];
-  ASettings.DebugDisplayRules := FDebugDisplayRules.Checked;
-  ASettings.DebugDisplayRulesAllowCalls := FDebugDisplayRulesAllowCalls.Checked;
-  ASettings.DebugStepIntoTarget := FDebugStepIntoTarget.Checked;
-  ASettings.DebugStepFilters := FDebugStepFilters.Checked;
   StepFilterKinds := [];
   for StepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
@@ -8015,24 +6525,10 @@ begin
   end;
   ASettings.DebugStepFilterKinds := TStepFilterNames.KindsText(StepFilterKinds);
   ASettings.DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(FDebugStepFilterPatterns.Text);
-  ASettings.DebugStepIntoTargetKey := Integer(TextToShortCut(Trim(FDebugStepIntoTargetKey.Text)));
-  ASettings.DebugBreakOnNextEvent := FDebugBreakOnNextEvent.Checked;
   ASettings.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(FDebugBreakOnNextEventExcluded.Text);
-  ASettings.DebugExplainUnavailable := FDebugExplainUnavailable.Checked;
-  ASettings.DebugCompletionInDialogs := FDebugCompletionInDialogs.Checked;
-  ASettings.DebugEvaluateWindow := FDebugEvaluateWindow.Checked;
-  ASettings.DebugEvaluateReplaceCtrlF7 := FDebugEvaluateReplaceCtrlF7.Checked;
-  ASettings.DebugExplainAccessViolation := FDebugExplainAccessViolation.Checked;
   ASettings.DebugExplainAccessViolationAllowCalls := FDebugExplainAccessViolationAllowCalls.Checked;
-  ASettings.DebugExceptionHistory := FDebugExceptionHistory.Checked;
-  ASettings.DebugJustMyCode := FDebugJustMyCode.Checked;
-  ASettings.DebugExceptionBanner := FDebugExceptionBanner.Checked;
   ASettings.DebugExceptionBannerIgnoreAtLocation := FDebugExceptionBannerIgnoreAtLocation.Checked;
-  ASettings.DebugInlineValues := FDebugInlineValues.Checked;
-  ASettings.DebugInlineValuesPerLine := StrToIntDef(FDebugInlineValuesPerLine.Text, ASettings.DebugInlineValuesPerLine);
   ASettings.DebugOwnCodeFolders := TAtlasFolderList.Text(FDebugOwnCodeFolders.Text);
-  ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
-  ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of
     1:
       ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
@@ -8041,44 +6537,12 @@ begin
   else
     ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
   end;
-  ASettings.SafeStartupTimeoutMs := StrToIntDef(FSafeTimeout.Text, ASettings.SafeStartupTimeoutMs);
-  ASettings.SafeKeepSettingsHistory := StrToIntDef(FSafeHistory.Text, ASettings.SafeKeepSettingsHistory);
-  ASettings.UndoMultiFile := FUndoEnabled.Checked;
-  ASettings.UndoMultiFileDepth := StrToIntDef(FUndoDepth.Text, ASettings.UndoMultiFileDepth);
-  ASettings.UndoMultiFilePersist := FUndoPersist.Checked;
-  ASettings.UndoMultiFileMaxSizeMb := StrToIntDef(FUndoMaxSize.Text, ASettings.UndoMultiFileMaxSizeMb);
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
-  ASettings.UnitSearchEnabled := FUnitSearchEnabled.Checked;
-  ASettings.UnitSearchReplaceIdeDialog := FUnitSearchReplace.Checked;
-  ASettings.UnitSearchReplaceUseUnitDialog := FUnitSearchReplaceUseUnit.Checked;
-  ASettings.UnitSearchReplaceFormsDialog := FUnitSearchReplaceForms.Checked;
-  ASettings.UnitSearchKey := Integer(TextToShortCut(Trim(FUnitSearchKey.Text)));
   ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
   ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];
-  ASettings.UnitSearchRememberCollapsed := FUnitSearchRememberCollapsed.Checked;
-  ASettings.UnitSearchFilters := FUnitSearchFilters.Checked;
   ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
-  ASettings.UnitSearchFilterSyntax := FUnitSearchFilterSyntax.Checked;
-  ASettings.UnitSearchFormCaptions := FUnitSearchFormCaptions.Checked;
-  ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
-  ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
-  ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;
-  ASettings.UnitSearchPreviewAutoCollapse := FUnitSearchPreviewAutoCollapse.Checked;
-  ASettings.UnitSearchMultiSelect := FUnitSearchMultiSelect.Checked;
-  ASettings.UnitSearchActions := FUnitSearchActions.Checked;
-  ASettings.UnitSearchActionsAddUses := FUnitSearchAddUses.Checked;
-  ASettings.QuickOpen := FQuickOpen.Checked;
-  ASettings.QuickOpenLibrary := FQuickOpenLibrary.Checked;
-  ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
-  ASettings.SearchReplaceIde := FSearchReplace.Checked;
-  ASettings.SearchResultsInMessages := FSearchMessages.Checked;
-  ASettings.SearchReplace := FSearchReplaceBar.Checked;
-  ASettings.SearchRegex := FSearchRegex.Checked;
-  ASettings.SearchHistory := StrToIntDef(FSearchHistory.Text, ASettings.SearchHistory);
-  ASettings.SearchMultiFile := FSearchMultiFile.Checked;
-  ASettings.SearchFromFirstHit := FSearchFromFirst.Checked;
   case FVcsProvider.Choice of
     1:
       ASettings.VcsProvider := 'git';
@@ -8091,9 +6555,6 @@ begin
   end;
   ASettings.VcsGitPath := Trim(FVcsPaths[TAtlasVcsKind.Git].Text);
   ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
-  ASettings.VcsTimeoutSeconds := StrToIntDef(FVcsTimeout.Text, ASettings.VcsTimeoutSeconds);
-  ASettings.VcsBranchConfirm := FVcsBranchConfirm.Checked;
-  ASettings.VcsBranchSvnLocation := Trim(FVcsBranchSvnLocation.Text);
   if FVcsBranchSvnSource.Choice = Ord(TAtlasVcsSvnSource.WorkingCopy) then
   begin
     ASettings.VcsBranchSvnSource := 'workingCopy';
@@ -8110,8 +6571,6 @@ begin
   else
     ASettings.VcsBranchSvnAfter := 'switch';
   end;
-  ASettings.VcsBranchSvnCheckoutFolder := Trim(FVcsBranchSvnFolder.Text);
-  ASettings.VcsBranchSvnMessage := Trim(FVcsBranchSvnMessage.Text);
   case FVcsExternalsOnBranch.Choice of
     1:
       ASettings.VcsExternalsOnBranch := 'keep';
@@ -8133,7 +6592,6 @@ begin
   begin
     ASettings.VcsExternalsRules := TAtlasVcsExternalRules.RulesJson(mRules);
   end;
-  ASettings.VcsExternalsShow := FVcsExternalsShow.Checked;
   case FVcsExternalsUpdate.Choice of
     1:
       ASettings.VcsExternalsUpdate := 'without';
@@ -8146,12 +6604,7 @@ begin
   ASettings.VcsBranchGitPush := cVcsGitPushes[EnsureRange(FVcsBranchGitPush.Choice, 0, High(cVcsGitPushes))];
   ASettings.VcsBranchGitUncommitted := cVcsGitUncommitted[EnsureRange(FVcsBranchGitUncommitted.Choice, 0,
     High(cVcsGitUncommitted))];
-  ASettings.VcsBranchGitWorktree := FVcsBranchGitWorktree.Checked;
-  ASettings.VcsBranchGitWorktreeFolder := Trim(FVcsBranchGitWorktreeFolder.Text);
   ASettings.VcsProjects := VcsProjectsJson;
-  ASettings.SettingsExportImport := FSettingsExportImport.Checked;
-  ASettings.SettingsMarkModified := FSettingsMarkModified.Checked;
-  ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;
   ASettings.SettingsExportSecrets := 'omit';
   if FSettingsExportSecrets.Choice = 1 then
   begin
@@ -8314,7 +6767,7 @@ var
   Panel: TWinControl;
 begin
   // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
-  FTeamFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile));
+  FTeamFile := BindCheck('TeamFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile)));
   FTeamFile.OnClick := TeamFileClick;
   Attach(AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint)).Parent, FTeamFile);
   Panel := AddPanel(32);
@@ -8572,15 +7025,44 @@ end;
 procedure TAtlasSettingsPage.AddSectionBinding(const AName: string; AControl: TControl;
   const AValues: TArray<string>);
 var
-  mBinding: TAtlasSettingsSectionBinding;
+  mKind: TAtlasSettingsBindingKind;
 begin
+  mKind := sbkText;
+  if AControl is TCheckBox then
+  begin
+    mKind := sbkCheck;
+  end
+  else if AControl is TAtlasChoiceBox then
+  begin
+    mKind := sbkChoice;
+  end;
+  BindValues(FSectionBindings, AName, AControl, mKind, AValues);
   FMarks.Bind(AControl, [AName]);
+end;
+
+procedure TAtlasSettingsPage.BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
+  AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
+begin
+  ABindings.Add(AName, AControl, AKind, AValues);
   Bind(AName, AControl);
-  mBinding := Default(TAtlasSettingsSectionBinding);
-  mBinding.Name := AName;
-  mBinding.Control := AControl;
-  mBinding.Values := AValues;
-  FSectionBindings := FSectionBindings + [mBinding];
+end;
+
+function TAtlasSettingsPage.BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
+begin
+  BindValues(FBindings, AName, AControl, sbkCheck, nil);
+  Result := AControl;
+end;
+
+function TAtlasSettingsPage.BindText(const AName: string; AControl: TEdit): TEdit;
+begin
+  BindValues(FBindings, AName, AControl, sbkText, nil);
+  Result := AControl;
+end;
+
+function TAtlasSettingsPage.BindKey(const AName: string; AControl: TEdit): TEdit;
+begin
+  BindValues(FBindings, AName, AControl, sbkShortcut, nil);
+  Result := AControl;
 end;
 
 function TAtlasSettingsPage.SectionValues(const AStore: IAtlasMemorySettingsStore): IAtlasSettingsValues;
@@ -8593,31 +7075,14 @@ procedure TAtlasSettingsPage.LoadSections(const ASettings: TAtlasPluginSettings)
 var
   mStore: IAtlasMemorySettingsStore;
   mValues: IAtlasSettingsValues;
-  mBinding: TAtlasSettingsSectionBinding;
   mSection: IAtlasSettingsSection;
-  mText: string;
 begin
-  if (Length(FSections) = 0) and (Length(FSectionBindings) = 0) then
+  if (Length(FSections) = 0) and (FSectionBindings.Count = 0) then
   begin
     Exit;
   end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  for mBinding in FSectionBindings do
-  begin
-    mText := mStore.Text(mBinding.Name);
-    if mBinding.Control is TCheckBox then
-    begin
-      TCheckBox(mBinding.Control).Checked := mStore.ReadInteger(mBinding.Name, 0) <> 0;
-    end
-    else if mBinding.Control is TAtlasChoiceBox then
-    begin
-      TAtlasChoiceBox(mBinding.Control).Choice := ChoiceOf(mText, mBinding.Values);
-    end
-    else if mBinding.Control is TEdit then
-    begin
-      TEdit(mBinding.Control).Text := mText;
-    end;
-  end;
+  FSectionBindings.Load(mStore);
   mValues := SectionValues(mStore);
   for mSection in FSections do
   begin
@@ -8628,59 +7093,21 @@ end;
 procedure TAtlasSettingsPage.SaveSections(var ASettings: TAtlasPluginSettings);
 var
   mStore: IAtlasMemorySettingsStore;
-  mBinding: TAtlasSettingsSectionBinding;
   mSection: IAtlasSettingsSection;
-  mChoice: Integer;
   mValues: IAtlasSettingsValues;
 begin
-  if (Length(FSections) = 0) and (Length(FSectionBindings) = 0) then
+  if (Length(FSections) = 0) and (FSectionBindings.Count = 0) then
   begin
     Exit;
   end;
   mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  for mBinding in FSectionBindings do
-  begin
-    if mBinding.Control is TCheckBox then
-    begin
-      mStore.WriteInteger(mBinding.Name, Ord(TCheckBox(mBinding.Control).Checked));
-    end
-    else if mBinding.Control is TAtlasChoiceBox then
-    begin
-      mChoice := TAtlasChoiceBox(mBinding.Control).Choice;
-      if (mChoice >= 0) and (mChoice <= High(mBinding.Values)) then
-      begin
-        WriteText(mStore, mBinding.Name, mBinding.Values[mChoice]);
-      end;
-    end
-    else if mBinding.Control is TEdit then
-    begin
-      WriteText(mStore, mBinding.Name, Trim(TEdit(mBinding.Control).Text));
-    end;
-  end;
+  FSectionBindings.Save(mStore);
   mValues := SectionValues(mStore);
   for mSection in FSections do
   begin
     mSection.Save(mValues);
   end;
   ASettings.Load(mStore);
-end;
-
-procedure TAtlasSettingsPage.WriteText(const AStore: IAtlasMemorySettingsStore; const AName, AText: string);
-var
-  mValue: Integer;
-begin
-  // Zahlen stehen als Zahl im Speicher (wie TAtlasPluginSettings.Save), alles andere als Text.
-  if AStore.HasInteger(AName) then
-  begin
-    if TryStrToInt(AText, mValue) then
-    begin
-      AStore.WriteInteger(AName, mValue);
-    end;
-  end
-  else
-  begin
-    AStore.WriteString(AName, AText);
-  end;
 end;
 
 procedure TAtlasSettingsPage.DropMissingSections;
@@ -8748,7 +7175,10 @@ begin
   FSections := nil;
   FSectionProviders := nil;
   FSectionHosts := nil;
-  FSectionBindings := nil;
+  if FSectionBindings <> nil then
+  begin
+    FSectionBindings.Clear;
+  end;
 end;
 
 procedure TAtlasSettingsPage.SectionsWindowReady;

@@ -211,8 +211,8 @@ begin
     Minimap := Page.NodeSheet('editor.minimap');
     Assert.IsNotNull(Minimap);
     Assert.AreEqual('editor.minimap', Page.NodeOfSheet(Minimap));
-    Assert.IsTrue(SheetOf(Page.MinimapWidth) = Minimap);
-    Assert.IsFalse(SheetOf(Page.StickyScroll) = Minimap);
+    Assert.IsTrue(SheetOf(EditOf(Page, 'MinimapWidth')) = Minimap);
+    Assert.IsFalse(SheetOf(CheckOf(Page, 'StickyScroll')) = Minimap);
     Node := TreeNodeOf(Page, Minimap);
     Assert.IsNotNull(Node, 'Knoten im Baum');
     Assert.AreEqual(1, Node.Level);
@@ -304,29 +304,29 @@ begin
     Page.LoadFrom(Settings);
     Frame := Page.FrameOf('Minimap');
     Assert.IsNotNull(Frame, 'Minikarte hat einen Rahmen');
-    Assert.IsTrue(Frame.Master = Page.Minimap, 'Hauptschalter oben im Rahmen');
-    Assert.IsTrue(Page.MinimapRender.Enabled and Page.MinimapWidth.Enabled);
+    Assert.IsTrue(Frame.Master = CheckOf(Page, 'Minimap'), 'Hauptschalter oben im Rahmen');
+    Assert.IsTrue(Page.MinimapRender.Enabled and EditOf(Page, 'MinimapWidth').Enabled);
     Assert.IsFalse(Page.SheetGray(Page.NodeSheet('editor.minimap')));
-    Page.Minimap.Checked := False;
-    Assert.IsTrue(Page.Minimap.Enabled, 'der Hauptschalter bleibt bedienbar');
+    CheckOf(Page, 'Minimap').Checked := False;
+    Assert.IsTrue(CheckOf(Page, 'Minimap').Enabled, 'der Hauptschalter bleibt bedienbar');
     Assert.IsFalse(Page.MinimapRender.Enabled, 'Auswahl gesperrt');
-    Assert.IsFalse(Page.MinimapWidth.Enabled, 'Textfeld gesperrt');
+    Assert.IsFalse(EditOf(Page, 'MinimapWidth').Enabled, 'Textfeld gesperrt');
     Assert.IsFalse(Frame.Reason.Visible, 'kein Grund: Der Schalter steht im Rahmen');
     Assert.IsTrue(Page.SheetGray(Page.NodeSheet('editor.minimap')), 'Knoten grau');
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.AreEqual(90, Saved.MinimapWidth, 'Wert bleibt erhalten');
-    Page.Minimap.Checked := True;
-    Assert.IsTrue(Page.MinimapRender.Enabled and Page.MinimapWidth.Enabled, 'wieder frei');
+    CheckOf(Page, 'Minimap').Checked := True;
+    Assert.IsTrue(Page.MinimapRender.Enabled and EditOf(Page, 'MinimapWidth').Enabled, 'wieder frei');
     // Experimentelle Funktionen aus: auch der Hauptschalter gesperrt, mit Grund im Rahmen.
     Page.ExperimentalEnabled.Checked := False;
-    Assert.IsFalse(Page.Minimap.Enabled);
-    Assert.IsFalse(Page.MinimapWidth.Enabled);
+    Assert.IsFalse(CheckOf(Page, 'Minimap').Enabled);
+    Assert.IsFalse(EditOf(Page, 'MinimapWidth').Enabled);
     Assert.IsTrue(Frame.Reason.Visible);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental), Frame.Reason.Caption);
-    Assert.IsTrue(Page.Minimap.Checked, 'Wert bleibt');
+    Assert.IsTrue(CheckOf(Page, 'Minimap').Checked, 'Wert bleibt');
     Page.ExperimentalEnabled.Checked := True;
-    Assert.IsTrue(Page.Minimap.Enabled);
+    Assert.IsTrue(CheckOf(Page, 'Minimap').Enabled);
     Assert.IsFalse(Frame.Reason.Visible);
   finally
     Page.Free;
@@ -348,17 +348,17 @@ begin
     Page.LoadFrom(Settings);
     Frame := Page.FrameOf('StickyScroll');
     Assert.IsNotNull(Frame);
-    Assert.IsTrue(Page.StickyScroll.Enabled and Page.StickyScrollMaxLines.Enabled);
+    Assert.IsTrue(CheckOf(Page, 'StickyScroll').Enabled and EditOf(Page, 'StickyScrollMaxLines').Enabled);
     Master := Page.FrameOf('Enabled').Master as TCheckBox;
     Master.Checked := False;
-    Assert.IsFalse(Page.StickyScroll.Enabled, 'Hauptschalter gesperrt');
-    Assert.IsFalse(Page.StickyScrollMaxLines.Enabled, 'Unteroption gesperrt');
+    Assert.IsFalse(CheckOf(Page, 'StickyScroll').Enabled, 'Hauptschalter gesperrt');
+    Assert.IsFalse(EditOf(Page, 'StickyScrollMaxLines').Enabled, 'Unteroption gesperrt');
     Assert.IsTrue(Frame.Reason.Visible, 'Grund im Rahmen');
     Assert.IsTrue(Pos(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled).Replace('&', ''), Frame.Reason.Caption) > 0,
       Frame.Reason.Caption);
     Assert.IsFalse(Page.ControlOf('PairGuides').Enabled, 'auch Klammerfarben');
     Master.Checked := True;
-    Assert.IsTrue(Page.StickyScroll.Enabled and Page.StickyScrollMaxLines.Enabled);
+    Assert.IsTrue(CheckOf(Page, 'StickyScroll').Enabled and EditOf(Page, 'StickyScrollMaxLines').Enabled);
     Assert.IsFalse(Frame.Reason.Visible);
   finally
     Page.Free;
@@ -383,9 +383,9 @@ begin
     Assert.IsTrue(SheetOf(Mirror) <> nil);
     Assert.IsTrue(Mirror.Checked);
     Mirror.Checked := False;
-    Assert.IsFalse(Page.Minimap.Checked, 'Spiegel schaltet');
-    Assert.IsFalse(Page.MinimapWidth.Enabled);
-    Page.Minimap.Checked := True;
+    Assert.IsFalse(CheckOf(Page, 'Minimap').Checked, 'Spiegel schaltet');
+    Assert.IsFalse(EditOf(Page, 'MinimapWidth').Enabled);
+    CheckOf(Page, 'Minimap').Checked := True;
     Assert.IsTrue(Mirror.Checked, 'Spiegel folgt');
     Page.ExperimentalEnabled.Checked := False;
     Assert.IsFalse(Mirror.Enabled, 'gesperrt wie das Original');
@@ -450,8 +450,8 @@ begin
     // 16 Bereiche, „Prüfregeln“ (#909), Issue-Tracker (#1280) und Versionsverwaltung (#1285).
     Assert.AreEqual(19, Integer(Length(TopLevelNodes(Page))));
     // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
-    Page.MinimapWidth.Text := '90';
-    Page.StickyScrollMaxLines.Text := '7';
+    EditOf(Page, 'MinimapWidth').Text := '90';
+    EditOf(Page, 'StickyScrollMaxLines').Text := '7';
     Page.Navigation.OnChange(Page.Navigation, TreeNodeOf(Page, Minimap));
     Page.ResetPage;
     Saved := TAtlasPluginSettings.Defaults;
@@ -723,16 +723,16 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsFalse(Page.StatusField.Checked);
-    Assert.IsFalse(Page.StatusSummary.Checked);
+    Assert.IsFalse(CheckOf(Page, 'StatusField').Checked);
+    Assert.IsFalse(CheckOf(Page, 'StatusFieldSummary').Checked);
     Assert.AreEqual(1, Page.StatusToggles.Choice, 'nur Rechtsklick');
     Assert.AreEqual(2, Page.IndexProgress.Choice, 'Fortschritt aus');
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
     Assert.IsFalse(Page.DiagnosticMode.Checked, 'Diagnosemodus standardmäßig aus');
-    Assert.IsTrue(Page.SetupChecklist.Checked, 'Prüfliste beim Start standardmäßig an (#625)');
+    Assert.IsTrue(CheckOf(Page, 'SetupChecklist').Checked, 'Prüfliste beim Start standardmäßig an (#625)');
     Page.DiagnosticMode.Checked := True;
-    Page.SetupChecklist.Checked := False;
-    Page.StatusField.Checked := True;
+    CheckOf(Page, 'SetupChecklist').Checked := False;
+    CheckOf(Page, 'StatusField').Checked := True;
     Page.StatusToggles.Choice := 2;
     Page.IndexProgress.Choice := 1;
     Page.StatusHidden.Text := ' atlas.file, atlas.index ';
@@ -759,16 +759,16 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.ShortcutTips.Checked, 'Tipps standardmäßig an');
+    Assert.IsTrue(CheckOf(Page, 'ShortcutTips').Checked, 'Tipps standardmäßig an');
     Assert.AreEqual(1, Page.ShortcutTipsScope.Choice, 'Vorgabe all');
-    Page.ShortcutTips.Checked := False;
+    CheckOf(Page, 'ShortcutTips').Checked := False;
     Page.ShortcutTipsScope.Choice := 0;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.ShortcutTips);
     Assert.AreEqual('atlas', Saved.ShortcutTipsScope);
     Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.ShortcutTips.Checked);
+    Assert.IsFalse(CheckOf(Page, 'ShortcutTips').Checked);
     Assert.AreEqual(0, Page.ShortcutTipsScope.Choice);
   finally
     Page.Free;
@@ -784,9 +784,9 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.Notifications.Checked, 'standardmäßig an');
+    Assert.IsTrue(CheckOf(Page, 'Notifications').Checked, 'standardmäßig an');
     Assert.AreEqual('200', Page.NotificationsMax.Text);
-    Assert.AreEqual(ShortCutToText($E04E), Page.NotificationsKey.Text, 'Strg+Umschalt+Alt+N');
+    Assert.AreEqual(ShortCutToText($E04E), EditOf(Page, 'NotificationsKey').Text, 'Strg+Umschalt+Alt+N');
     // Erste Quelle (build) ohne Angabe: einblenden.
     Assert.AreEqual(0, Page.NotificationSource.Choice);
     Assert.AreEqual(0, Page.NotificationMode.Choice);
@@ -803,9 +803,9 @@ begin
     Page.NotificationSource.OnChange(Page.NotificationSource);
     Page.NotificationMode.Choice := 1;
     Page.NotificationMode.OnChange(Page.NotificationMode);
-    Page.Notifications.Checked := False;
+    CheckOf(Page, 'Notifications').Checked := False;
     Page.NotificationsMax.Text := '50';
-    Page.NotificationsKey.Text := '';
+    EditOf(Page, 'NotificationsKey').Text := '';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
   finally
@@ -825,13 +825,13 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(Page.NotesCheck.Checked, 'Notizen standardmäßig an');
-    Page.NotesCheck.Checked := False;
+    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Notizen standardmäßig an');
+    CheckOf(Page, 'Notes').Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
     Page.LoadFrom(Saved);
-    Assert.IsFalse(Page.NotesCheck.Checked);
+    Assert.IsFalse(CheckOf(Page, 'Notes').Checked);
   finally
     Page.Free;
   end;
@@ -928,14 +928,14 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsFalse(Page.SafeAsk.Checked);
-    Assert.IsTrue(Page.SafeAuto.Checked);
+    Assert.IsFalse(CheckOf(Page, 'SafeAskAfterCrash').Checked);
+    Assert.IsTrue(CheckOf(Page, 'SafeAutoAfterRepeatedCrash').Checked);
     Assert.AreEqual(1, Page.SafeKey.Choice);
-    Assert.AreEqual('20000', Page.SafeTimeout.Text);
-    Assert.AreEqual('5', Page.SafeHistory.Text);
-    Page.SafeAuto.Checked := False;
+    Assert.AreEqual('20000', EditOf(Page, 'SafeStartupTimeoutMs').Text);
+    Assert.AreEqual('5', EditOf(Page, 'SafeKeepSettingsHistory').Text);
+    CheckOf(Page, 'SafeAutoAfterRepeatedCrash').Checked := False;
     Page.SafeKey.Choice := 2;
-    Page.SafeHistory.Text := '500';
+    EditOf(Page, 'SafeKeepSettingsHistory').Text := '500';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.SafeAskAfterCrash);
@@ -1030,18 +1030,18 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.UndoEnabled.Checked);
-    Assert.AreEqual('7', Page.UndoDepth.Text);
-    Assert.IsTrue(Page.UndoPersist.Checked);
-    Assert.AreEqual('50', Page.UndoMaxSize.Text);
+    Assert.IsTrue(CheckOf(Page, 'UndoMultiFile').Checked);
+    Assert.AreEqual('7', EditOf(Page, 'UndoMultiFileDepth').Text);
+    Assert.IsTrue(CheckOf(Page, 'UndoMultiFilePersist').Checked);
+    Assert.AreEqual('50', EditOf(Page, 'UndoMultiFileMaxSizeMb').Text);
     Assert.AreEqual(1, Page.UndoOnConflict.Choice);
     Assert.AreEqual(2, Page.UndoNewFiles.Choice);
-    Assert.IsTrue(Page.UndoKey.Text <> '');
-    Assert.IsTrue(Page.RedoKey.Text <> '');
-    Page.UndoEnabled.Checked := False;
-    Page.UndoPersist.Checked := False;
-    Page.UndoDepth.Text := '999';
-    Page.UndoMaxSize.Text := '0';
+    Assert.IsTrue(EditOf(Page, 'UndoKey').Text <> '');
+    Assert.IsTrue(EditOf(Page, 'RedoKey').Text <> '');
+    CheckOf(Page, 'UndoMultiFile').Checked := False;
+    CheckOf(Page, 'UndoMultiFilePersist').Checked := False;
+    EditOf(Page, 'UndoMultiFileDepth').Text := '999';
+    EditOf(Page, 'UndoMultiFileMaxSizeMb').Text := '0';
     Page.UndoOnConflict.Choice := 0;
     Page.UndoNewFiles.Choice := 1;
     Saved := TAtlasPluginSettings.Defaults;
@@ -1101,15 +1101,15 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.IsFalse(Page.CommitChars.Checked);
-    Assert.IsFalse(Page.AutoUses.Checked);
-    Assert.IsFalse(Page.ParameterHints.Checked);
-    Assert.IsFalse(Page.FormatPlaceholders.Checked);
-    Assert.AreEqual('300', Page.OpenDelay.Text);
+    Assert.IsFalse(CheckOf(Page, 'CommitCharacters').Checked);
+    Assert.IsFalse(CheckOf(Page, 'AutoUses').Checked);
+    Assert.IsFalse(CheckOf(Page, 'ParameterHints').Checked);
+    Assert.IsFalse(CheckOf(Page, 'FormatPlaceholders').Checked);
+    Assert.AreEqual('300', EditOf(Page, 'OpenDelayMs').Text);
     Assert.IsFalse(Page.AutoWidth.Checked);
-    Page.CommitChars.Checked := True;
-    Page.FormatPlaceholders.Checked := True;
-    Page.OpenDelay.Text := '0';
+    CheckOf(Page, 'CommitCharacters').Checked := True;
+    CheckOf(Page, 'FormatPlaceholders').Checked := True;
+    EditOf(Page, 'OpenDelayMs').Text := '0';
     Page.AutoWidth.Checked := True;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -1277,23 +1277,23 @@ begin
   try
     Settings := TAtlasPluginSettings.Defaults;
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.ProblemsWindowOpenFirstCheck.Checked);
+    Assert.IsTrue(CheckOf(Page, 'ProblemsWindowOpenFirst').Checked);
     Assert.AreEqual(0, Page.ProblemsWindowClosedUnitsChoice.Choice);
-    Assert.IsTrue(Page.ProblemsWindowShowCleanActiveCheck.Checked);
-    Assert.IsTrue(SheetOf(Page.ProblemsWindowOpenFirstCheck) = Page.NodeSheet('rules.window'));
+    Assert.IsTrue(CheckOf(Page, 'ProblemsWindowShowCleanActive').Checked);
+    Assert.IsTrue(SheetOf(CheckOf(Page, 'ProblemsWindowOpenFirst')) = Page.NodeSheet('rules.window'));
     Assert.IsTrue(SheetOf(Page.ProblemsWindowClosedUnitsChoice) = Page.NodeSheet('rules.window'));
-    Assert.IsTrue(Page.ProblemsWindowClosedUnitsChoice.Enabled and Page.ProblemsWindowShowCleanActiveCheck.Enabled);
-    Page.ProblemsWindowOpenFirstCheck.Checked := False;
+    Assert.IsTrue(Page.ProblemsWindowClosedUnitsChoice.Enabled and CheckOf(Page, 'ProblemsWindowShowCleanActive').Enabled);
+    CheckOf(Page, 'ProblemsWindowOpenFirst').Checked := False;
     Assert.IsFalse(Page.ProblemsWindowClosedUnitsChoice.Enabled, 'Auswahl gesperrt');
-    Assert.IsFalse(Page.ProblemsWindowShowCleanActiveCheck.Enabled, 'Schalter gesperrt');
+    Assert.IsFalse(CheckOf(Page, 'ProblemsWindowShowCleanActive').Enabled, 'Schalter gesperrt');
     Page.ProblemsWindowClosedUnitsChoice.Choice := 2;
-    Page.ProblemsWindowShowCleanActiveCheck.Checked := False;
+    CheckOf(Page, 'ProblemsWindowShowCleanActive').Checked := False;
     Settings := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Settings);
     Assert.IsFalse(Settings.ProblemsWindowOpenFirst);
     Assert.AreEqual('hidden', Settings.ProblemsWindowClosedUnits);
     Assert.IsFalse(Settings.ProblemsWindowShowCleanActive);
-    Page.ProblemsWindowOpenFirstCheck.Checked := True;
+    CheckOf(Page, 'ProblemsWindowOpenFirst').Checked := True;
     Assert.IsTrue(Page.ProblemsWindowClosedUnitsChoice.Enabled, 'wieder frei');
   finally
     Page.Free;
@@ -1303,9 +1303,9 @@ end;
 /// <summary>Knoten des Bereichs Regeln: Prüffenster und „Profile und Baseline“, keine Regelgruppen.</summary>
 procedure AssertRulesNodes(APage: TAtlasSettingsPage);
 begin
-  Assert.IsTrue(SheetOf(APage.ProblemsWindowCheck) = APage.NodeSheet('rules.window'));
-  Assert.IsTrue(SheetOf(APage.ProblemsLiveCheck) = APage.NodeSheet('rules.window'));
-  Assert.IsTrue(SheetOf(APage.FixBulkCheck) = APage.NodeSheet('rules.window'));
+  Assert.IsTrue(SheetOf(CheckOf(APage, 'ProblemsWindow')) = APage.NodeSheet('rules.window'));
+  Assert.IsTrue(SheetOf(CheckOf(APage, 'ProblemsLive')) = APage.NodeSheet('rules.window'));
+  Assert.IsTrue(SheetOf(CheckOf(APage, 'FixBulk')) = APage.NodeSheet('rules.window'));
   Assert.IsNotNull(APage.NodeSheet('rules.profiles'));
   Assert.IsTrue(SheetOf(APage.BaselineInfoLabel) = APage.NodeSheet('rules.profiles'));
   Assert.IsNull(APage.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
@@ -1366,17 +1366,17 @@ begin
     Page.LoadFrom(Settings);
     Assert.AreEqual(1, Page.ProblemsWindowScopeChoice.Choice);
     Assert.AreEqual(2, Page.ProblemsWindowGroupByChoice.Choice);
-    Assert.IsFalse(Page.ProblemsLiveCheck.Checked, 'Live geladen');
-    Assert.IsFalse(Page.FixBulkCheck.Checked, 'Sammelkorrektur geladen');
-    Assert.IsFalse(Page.HoverProblemActionsCheck.Checked, 'Hover-Aktionen geladen');
+    Assert.IsFalse(CheckOf(Page, 'ProblemsLive').Checked, 'Live geladen');
+    Assert.IsFalse(CheckOf(Page, 'FixBulk').Checked, 'Sammelkorrektur geladen');
+    Assert.IsFalse(CheckOf(Page, 'HoverProblemActions').Checked, 'Hover-Aktionen geladen');
     Page.ProblemsWindowScopeChoice.Choice := 0;
-    Page.ProblemsWindowCompilerCheck.Checked := True;
+    CheckOf(Page, 'ProblemsWindowCompiler').Checked := True;
     // Gruppe „Compiler vorab“ (#1024): eigener Knoten mit den Plugin-Einstellungen der Gruppe.
     Assert.AreEqual(0, Page.ProblemsCompilerMergeChoice.Choice);
-    Assert.IsTrue(Page.ProblemsShowCompilerCodeCheck.Checked);
-    Assert.IsTrue(SheetOf(Page.ProblemsShowCompilerCodeCheck) = Page.NodeSheet('rules.group.compiler'));
+    Assert.IsTrue(CheckOf(Page, 'ProblemsShowCompilerCode').Checked);
+    Assert.IsTrue(SheetOf(CheckOf(Page, 'ProblemsShowCompilerCode')) = Page.NodeSheet('rules.group.compiler'));
     Page.ProblemsCompilerMergeChoice.Choice := 1;
-    Page.ProblemsShowCompilerCodeCheck.Checked := False;
+    CheckOf(Page, 'ProblemsShowCompilerCode').Checked := False;
     Settings := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Settings);
     AssertRulesAreaSaved(Settings);
