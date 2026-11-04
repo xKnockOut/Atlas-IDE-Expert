@@ -136,6 +136,7 @@ contains
   Atlas.Core.Editor.ClassExtraction in 'Source\Core\Editor\Atlas.Core.Editor.ClassExtraction.pas',
   Atlas.Core.Editor.TestUnit in 'Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas',
   Atlas.IDE.Editor.MetricsLens in 'Source\IDE\Editor\Atlas.IDE.Editor.MetricsLens.pas',
+  Atlas.IDE.Editor.Lens in 'Source\IDE\Editor\Atlas.IDE.Editor.Lens.pas',
   Atlas.IDE.Editor.RecursionGutter in 'Source\IDE\Editor\Atlas.IDE.Editor.RecursionGutter.pas',
   Atlas.IDE.Editor.GutterColumn in 'Source\IDE\Editor\Atlas.IDE.Editor.GutterColumn.pas',
   Atlas.IDE.Editor.SelectionMatches in 'Source\IDE\Editor\Atlas.IDE.Editor.SelectionMatches.pas',
