@@ -345,6 +345,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Shared.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Types.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Syntax.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NameSuggestions.pas"/>
