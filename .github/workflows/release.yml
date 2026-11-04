@@ -64,9 +64,9 @@ jobs:
         run: |
           # Projekt für Projekt: Das Testprojekt der Gruppe wird für das Release nicht gebraucht.
           $start = Get-Date
-          # Plugin: zuerst das Kern-Package und die Verträge, danach jedes Modul-Package unter Packages\Atlas.IDE.*
-          # (#1456), die gegen die .dcp beider übersetzen.
-          $first = @('Atlas.IDE.Base', 'Atlas.IDE.Contracts')
+          # Plugin: zuerst das Kern-Package mit den Verträgen, danach jedes Modul-Package unter Packages\Atlas.IDE.*
+          # (#1456), die gegen seine .dcp übersetzen.
+          $first = @('Atlas.IDE.Base')
           $plugin = @($first | ForEach-Object { "Packages\$_\$_.dproj" }) + @(Get-ChildItem 'Packages' -Directory -Filter 'Atlas.IDE.*' |
             Where-Object { $_.Name -notin $first -and (Test-Path "$($_.FullName)\$($_.Name).dproj") } |
             Sort-Object Name | ForEach-Object { "Packages\$($_.Name)\$($_.Name).dproj" })

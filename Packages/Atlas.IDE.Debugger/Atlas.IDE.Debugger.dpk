@@ -32,16 +32,15 @@
 // Modul Debugger (#1456, ADR 0017): Exception-Verlauf und -Leiste, Werte im Editor, nur eigener Code,
 // Visualisierer, eigene Wertdarstellungen und Auswerten. Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Debug.Composition über die Registry von Atlas.IDE.Base an und lässt sich ohne Neustart
-// der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package und
-// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
+// der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
 
 requires
   rtl,
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Base,
-  Atlas.IDE.Contracts;
+  Atlas.IDE.Base;
 
 contains
   Atlas.Core.Debug.Visualizers in 'Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',

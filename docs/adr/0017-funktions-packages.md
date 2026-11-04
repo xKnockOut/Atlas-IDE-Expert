@@ -178,13 +178,13 @@ Abnahme, jeder Fall mit Delphi 12 und 13, Win32 und Win64. Bestanden heißt: kei
 - P10. Desktop-Wiederherstellung: Dock-Fenster des Debuggers offen, IDE beenden, Debugger deinstallieren, IDE starten.
 - P11. `pwsh Tools/Build-Test.ps1` (Win64-Gruppe, Win32-Plugin) und alle Prüfskripte grün, 0/0/0.
 
-Stand 01.11.2026: Der Debugger liegt als `Packages/Atlas.IDE.Debugger` im eigenen Package (requires nur rtl, vcl, vclwinx, designide und den Kern), danach ebenso Designer, Rules, Tests, Bookmarks, Analysis, Search, Build, BuildPipeline, Tracker und Welcome (Entscheidung Marco: alle direkt nacheinander). Die Verträge zwischen Modulen liegen im Package `Atlas.IDE.Contracts`, der Kern heißt `Atlas.IDE.Base` (`Packages/Atlas.IDE.Base`, BPL `Atlas.IDE.Base<Ver>.bpl`); die Protokolldatei heißt weiter `Atlas.IDE.Expert<Ver>.log`. Die Fälle P1–P11 sind noch nicht in der IDE geprüft.
+Stand 01.11.2026: Der Debugger liegt als `Packages/Atlas.IDE.Debugger` im eigenen Package (requires nur rtl, vcl, vclwinx, designide und den Kern), danach ebenso Designer, Rules, Tests, Bookmarks, Analysis, Search, Build, BuildPipeline, Tracker und Welcome (Entscheidung Marco: alle direkt nacheinander). Die Verträge zwischen Modulen lagen zuerst im Package `Atlas.IDE.Contracts`, seit 04.11.2026 in Base (siehe „Verträge in Base“); der Kern heißt `Atlas.IDE.Base` (`Packages/Atlas.IDE.Base`, BPL `Atlas.IDE.Base<Ver>.bpl`); die Protokolldatei heißt weiter `Atlas.IDE.Expert<Ver>.log`. Die Fälle P1–P11 sind noch nicht in der IDE geprüft.
 
 Scheitert der Pilot an einem Fall ohne Abhilfe, greift Schritt 4: Es bleibt beim Stand nach #1455 (erzwungene Grenzen, Modul-Schalter), und dieses ADR wird fortgeschrieben.
 
 ### Offene Entscheidungen (Marco)
 
-1. ~~**Auffindbarkeit des Kerns**~~ **Entschieden (Marco, 01.11.2026): b + c.** Alle Atlas-BPLs (Base, Contracts, Module) kommen in den Bpl-Ordner von RAD Studio (`$(BDSCOMMONDIR)\Bpl`, für die 64-Bit-IDE `Bpl\Win64`), der schon auf dem PATH liegt; zusätzlich soll Base vor den Modulen geladen werden. Beim Update werden alte Kopien dort ersetzt.
+1. ~~**Auffindbarkeit des Kerns**~~ **Entschieden (Marco, 01.11.2026): b + c.** Alle Atlas-BPLs (Base, Module; bis 04.11.2026 auch Contracts) kommen in den Bpl-Ordner von RAD Studio (`$(BDSCOMMONDIR)\Bpl`, für die 64-Bit-IDE `Bpl\Win64`), der schon auf dem PATH liegt; zusätzlich soll Base vor den Modulen geladen werden. Beim Update werden alte Kopien dort ersetzt.
 2. ~~**#1455 in 1.x oder in 2.0?**~~ **Entschieden (Marco, 01.11.2026):** Der ganze Umbau ist Version 2.0.0, auch #1454 und #1455; siehe „Versionen (neu)“ unten. 1.x (`release/1.2`) bekommt davon nichts.
 3. **Einstellungen: entschieden (Marco, 01.11.2026): eine zentrale Stelle im Kern.** Der Kern führt die eine Einstellungsdatei, den einen Optionsdialog, Export, Import, Zurücksetzen und die Prüfung. Jedes Modul bringt bei seiner Anmeldung seinen Teil mit (Schlüssel mit Vorgaben, Schema-Teil, Abschnitt im Dialog, Migrationen) und meldet ihn mit Besitzer an; der Kern speichert und zeigt alles an einer Stelle. Damit braucht eine neue Moduleinstellung keinen Kern-Bau, und fremde Module (#1459) können Einstellungen haben. Werte nicht installierter Module bleiben in der Datei erhalten. Im Pilot darf der Debugger seine Felder noch im Record des Kerns lassen; die Anmeldung kommt mit #1455.
 4. ~~**Texte**~~ **Entschieden (Marco, 01.11.2026): a.** Jedes Modul hat ein eigenes Enum und eine eigene Tabelle (`TAtlasDebugTextId`); den Sprachwechsel meldet Base über einen Vertrag, der auch für fremde Module gilt. `Atlas.UI.Strings` wird je Modul aufgeteilt, `Atlas.Text` (ADR 0012) bleibt als Quelltext in Base.
@@ -199,6 +199,8 @@ Ersetzt die ersten beiden Punkte unter „Versionen“ oben: Der ganze Umbau ers
 
 ### Verträge zwischen Modulen (Marco, 01.11.2026)
 
+Überholt am 04.11.2026, siehe „Verträge in Base“ unten; der Abschnitt bleibt als Verlauf.
+
 - Base (`Atlas.IDE.Core` bzw. später `Atlas.IDE.Base`) enthält nur allgemeine Verträge: Modul, Registry, Scope, Einstellungen. Die Registry reicht Objekte nur nach Interface-GUID weiter (`Provide(IID, Obj)`, `FindAll(IID)`) und versteht nicht, was dahinter steckt.
 - Verträge zwischen Modulen (z. B. `IAtlasWelcomeTile`, `IAtlasIssueSource`, `IAtlasDebugReportSource`) liegen in einem eigenen Package **`Atlas.IDE.Contracts`**: nur Interfaces und Records, kein Code, kein Zustand; requires nur `rtl` und, wo ein Vertrag ein Steuerelement übergibt, `vcl`. Base requiret Contracts nicht; die Module requiren Base und Contracts. `Tools/Check-PackageDependencies.ps1` prüft beides.
 - Verworfen: Verträge in Base (Base trüge die Begriffe der Module, jeder neue Vertrag hieße Base und alle Module neu bauen) und je Anbieter ein Vertrags-Package (bis zu elf weitere BPLs). Gegenseitige `requires` zwischen Modulen sind in Delphi nicht möglich (Kreis) und schon in einer Richtung eine harte Kopplung.
@@ -208,3 +210,14 @@ Ersetzt die ersten beiden Punkte unter „Versionen“ oben: Der ganze Umbau ers
 ### Name des Kern-Packages (Marco, 01.11.2026)
 
 Das Kern-Package heißt **`Atlas.IDE.Base`**, nicht `Atlas.IDE.Core`. Wo dieses ADR und #1456 `Atlas.IDE.Core` schreiben, ist `Atlas.IDE.Base` gemeint. Gründe: „Core“ ist im Plugin schon die Schicht ohne VCL (`Atlas.Core.*`), und Units wie `Atlas.Core.Debug.*` lägen sonst außerhalb eines Packages namens Core; außerdem bleibt der Name stabil, falls später CodeInsight als eigenes Package abgespalten wird (ein neuer BPL-Name hieße für jeden Benutzer neu installieren).
+
+### Verträge in Base (Marco, 04.11.2026)
+
+Ersetzt den Abschnitt „Verträge zwischen Modulen“ vom 01.11.2026. Anlass war Marcos Frage, wofür das Package `Atlas.IDE.Contracts` gebraucht wird, wenn sich die Module optimalerweise gar nicht kennen.
+
+- Die Module kannten sich auch mit dem Contracts-Package nicht: Kein Modul requiret ein anderes. Ein Vertrag ist nur das gemeinsame Vokabular, wenn ein Modul eine Fähigkeit eines anderen nutzt (die Willkommensseite baut über `IAtlasBuildJobs`, der Tracker hängt die Debug-Notiz über `IAtlasDebugReportSource` an). Typsicher geht das in Delphi nur, wenn beide Seiten dieselbe Interface-Deklaration samt GUID sehen; die Registry in Base reicht das Objekt per `FindAll(IID)` weiter.
+- **Entscheidung:** Die sechs Vertrags-Units (`Atlas.IDE.Contracts.BuildTools`, `.BuildPipeline`, `.DebugReport`, `.Rules`, `.Tests`, `.WelcomeTiles`) liegen in `Atlas.IDE.Base` unter `Packages/Atlas.IDE.Base/Source/Contracts`. Die Unit-Namen bleiben, damit kein Modul seine uses ändern muss. Das Package `Atlas.IDE.Contracts` entfällt; Module requiren nur noch Base.
+- Weiter gilt: nur Interfaces und Records, kein Code, kein Zustand; benannt nach der Fähigkeit, nicht nach Anbieter oder Verbraucher (Regel 6). Base kennt weiter keine Modulnamen (Regel 9).
+- Verworfen am 04.11.2026: das eigene Package beibehalten; Querzugriffe nur über Befehls-IDs oder Text ohne Typprüfung; allgemeine Andockpunkte in Base (Schnellaktion, Kachel, Issue-Anhang), über die Module beitragen, statt dass die Willkommensseite andere Module fragt. Diese Idee bleibt als möglicher späterer Umbau.
+- Folgen: elf Packages statt zwölf (44 statt 48 Builds je Release), Installation Base, dann Module. Ein neuer oder geänderter Vertrag heißt Base neu bauen; die Module, die ihn verwenden, ebenso. Fremde Module (#1459) bringen eigene Verträge weiter in einem eigenen Package mit, weil sie Base nicht ändern können.
+- Umgesetzt: `.dpk`/`.dproj` von Base und allen Modulen, `Atlas.groupproj`, Release-Workflow, `Tools/Check-PackageDependencies.ps1` (verboten nur noch Base → Modul und Modul → Modul) mit `Tools/Test-PackageDependencies.ps1`, `docs/adr/0017-unit-zuordnung.md`, `docs/Architektur.md`, `CLAUDE.md`.

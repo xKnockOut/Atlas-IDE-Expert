@@ -93,7 +93,6 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
-        <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Adapters.Process.pas"/>

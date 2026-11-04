@@ -32,16 +32,15 @@
 // Modul Suche (#1456, ADR 0017): Suchen und Ersetzen in Dateien, Unit-Suche und Abfragefenster.
 // Meldet sich in der Unit-Initialisierung von Atlas.IDE.Search.Composition über die Registry
 // des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
-// (Regeln 1 bis 4). Requiret nur das Kern-Package und
-// Atlas.IDE.Contracts, kein anderes Modul (Regel 9).
+// (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
 
 requires
   rtl,
   vcl,
   vclwinx,
   designide,
-  Atlas.IDE.Base,
-  Atlas.IDE.Contracts;
+  Atlas.IDE.Base;
 
 contains
   Atlas.Core.UnitSearch.Model in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas',
