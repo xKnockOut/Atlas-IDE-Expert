@@ -665,6 +665,66 @@ begin
   end;
 end;
 
+/// <summary>Abfrage mit der kaputten Datei vorn; Protokollzeilen landen in ALogged.</summary>
+function CreateFailingFirstPull(const AStore: IDocumentStore; const ADiagnostics: TLspSyntaxDiagnostics;
+  const ALogged: TStringList): TLspPullDiagnostics;
+begin
+  Result := TLspPullDiagnostics.Create(AStore, ADiagnostics, nil,
+    function: TArray<string>
+    begin
+      Result := [FailingFile, ClosedFile];
+    end,
+    function(const AFileName: string; out AStamp: Int64): Boolean
+    begin
+      AStamp := 42;
+      Result := True;
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := Broken;
+      Result := True;
+    end);
+  Result.WaitMs := 0;
+  Result.FileLabel := LabelOfFile;
+  Result.Check.OnLog :=
+    procedure(const AMessage: string)
+    begin
+      TMonitor.Enter(ALogged);
+      try
+        ALogged.Add(AMessage);
+      finally
+        TMonitor.Exit(ALogged);
+      end;
+    end;
+end;
+
+/// <summary>Zwei Einträge: die kaputte Datei leer übersprungen, die nächste mit Befunden.</summary>
+procedure AssertFailingFileSkipped(const AReport: TJSONValue);
+var
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mEmpty, mFound: Integer;
+begin
+  mItems := (AReport as TJSONObject).GetValue<TJSONArray>('items');
+  Assert.AreEqual(2, Integer(mItems.Count));
+  mEmpty := 0;
+  mFound := 0;
+  for mItem in mItems do
+  begin
+    if mItem.GetValue<TJSONArray>('items').Count = 0 then
+    begin
+      Inc(mEmpty);
+      Assert.AreEqual(TDocumentUris.FromPath(FailingFile), mItem.GetValue<string>('uri'), 'übersprungen');
+    end
+    else
+    begin
+      Inc(mFound);
+    end;
+  end;
+  Assert.AreEqual(1, mEmpty);
+  Assert.AreEqual(1, mFound, 'die nächste Datei läuft weiter');
+end;
+
 procedure TLspPullDiagnosticsTests.WorkspaceSkipsFailingFile;
 var
   Store: IDocumentStore;
@@ -672,10 +732,7 @@ var
   Providers: TSyntaxDiagnosticsProviders;
   Pull: TLspPullDiagnostics;
   Result_: TJSONValue;
-  Items: TJSONArray;
-  Item: TJSONValue;
   Logged: TStringList;
-  Empty, Found: Integer;
 begin
   Store := TDocumentStore.Create;
   Providers := Default(TSyntaxDiagnosticsProviders);
@@ -686,55 +743,12 @@ begin
   try
     Diagnostics.PullMode := True;
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
-    Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
-      function: TArray<string>
-      begin
-        Result := [FailingFile, ClosedFile];
-      end,
-      function(const AFileName: string; out AStamp: Int64): Boolean
-      begin
-        AStamp := 42;
-        Result := True;
-      end,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        AText := Broken;
-        Result := True;
-      end);
-    Pull.WaitMs := 0;
-    Pull.FileLabel := LabelOfFile;
-    Pull.Check.OnLog :=
-      procedure(const AMessage: string)
-      begin
-        TMonitor.Enter(Logged);
-        try
-          Logged.Add(AMessage);
-        finally
-          TMonitor.Exit(Logged);
-        end;
-      end;
+    Pull := CreateFailingFirstPull(Store, Diagnostics, Logged);
     Pull.WorkspaceReport(nil, Token).Free;
     Assert.IsTrue(Pull.Check.WaitIdle(5000));
     Result_ := Pull.WorkspaceReport(nil, Token);
     try
-      Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
-      Assert.AreEqual(2, Integer(Items.Count));
-      Empty := 0;
-      Found := 0;
-      for Item in Items do
-      begin
-        if Item.GetValue<TJSONArray>('items').Count = 0 then
-        begin
-          Inc(Empty);
-          Assert.AreEqual(TDocumentUris.FromPath(FailingFile), Item.GetValue<string>('uri'), 'übersprungen');
-        end
-        else
-        begin
-          Inc(Found);
-        end;
-      end;
-      Assert.AreEqual(1, Empty);
-      Assert.AreEqual(1, Found, 'die nächste Datei läuft weiter');
+      AssertFailingFileSkipped(Result_);
     finally
       Result_.Free;
     end;
@@ -911,6 +925,25 @@ end;
 const
   cWorkspaceBundlescFileCount = 12;
 
+/// <summary>Regeln, bei denen jede Unit etwas Zeit braucht, wie im echten Lauf.</summary>
+function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      AContext.Rules := [
+        TCallbackRule.Create('langsam',
+          procedure
+          begin
+            Sleep(30);
+          end)];
+      Result := True;
+    end;
+end;
+
 procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;
 var
   mStore: IDocumentStore;
@@ -927,21 +960,7 @@ begin
     mFiles := mFiles + [Format('C:\P\U%d.pas', [mIndex])];
   end;
   mStore := TDocumentStore.Create;
-  mProviders := Default(TSyntaxDiagnosticsProviders);
-  // Jede Unit braucht etwas Zeit, wie im echten Lauf.
-  mProviders.Rules :=
-    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-    begin
-      AContext := Default(TRuleCheckContext);
-      AContext.Settings := TServerSettings.Default;
-      AContext.Rules := [
-        TCallbackRule.Create('langsam',
-          procedure
-          begin
-            Sleep(30);
-          end)];
-      Result := True;
-    end;
+  mProviders := SlowRuleProviders;
   mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
   try
     mDiagnostics.PullMode := True;
