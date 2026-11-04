@@ -1834,7 +1834,7 @@ begin
   Completion := TLspCompletion.Create(Store, FIndex);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.ReadText :=
+    Completion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := SameText(AFileName, DfmFile) and FileExists(AFileName);
