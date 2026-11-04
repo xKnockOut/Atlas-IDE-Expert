@@ -229,6 +229,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Lsp.Crashes` | `Core/Lsp/Atlas.Core.Lsp.Crashes.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.DataFlow` | `Core/Lsp/Atlas.Core.Lsp.DataFlow.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Progress` | `Core/Lsp/Atlas.Core.Lsp.Progress.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Json` | `Core/Lsp/Atlas.Core.Lsp.Session.Json.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Base` | `Core/Lsp/Atlas.Core.Lsp.Session.Base.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.Session.Requests` | `Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session` | `Core/Lsp/Atlas.Core.Lsp.Session.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.TextChanges` | `Core/Lsp/Atlas.Core.Lsp.TextChanges.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Uris` | `Core/Lsp/Atlas.Core.Lsp.Uris.pas` | Ordner `Core/Lsp` |

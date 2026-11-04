@@ -74,57 +74,66 @@ uses
 
 { TAtlasServerExits }
 
-class function TAtlasServerExits.Describe(ACode: Cardinal): string;
+const
+  // Bekannte Codes mit Namen; Describe nennt sie mit dem Code in Hex.
+  NamedExitCodes: array[0..13] of Cardinal = ($0EEDFADE, $40010004, $C0000005, $C0000017, $C000001D, $C0000094,
+    $C0000096, $C00000FD, $C000013A, $C0000135, $C0000142, $C0000374, $C0000409, $C0000420);
+  NamedExitTexts: array[0..13] of string = ('unbehandelte Delphi-Ausnahme',
+    'von außen beendet (Abmelden oder Debugger)', 'Zugriffsverletzung', 'zu wenig Speicher',
+    'unzulässiger Befehl', 'Ganzzahl-Division durch null', 'privilegierter Befehl', 'Stapelüberlauf',
+    'mit Strg+C abgebrochen', 'DLL nicht gefunden', 'DLL-Initialisierung fehlgeschlagen', 'Heap beschädigt',
+    'Sicherheitsabbruch (Stackpuffer-Überlauf oder Fast-Fail)', 'Assertion fehlgeschlagen');
+
+/// <summary>Name eines bekannten Codes aus NamedExitCodes; False für andere.</summary>
+function NamedExitText(ACode: Cardinal; out AText: string): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := Low(NamedExitCodes) to High(NamedExitCodes) do
+  begin
+    if NamedExitCodes[Index] = ACode then
+    begin
+      AText := NamedExitTexts[Index];
+      Exit(True);
+    end;
+  end;
+  AText := '';
+  Result := False;
+end;
+
+/// <summary>Beschreibung eines Codes ohne eigenen Text: Name mit Hex-Code, sonst Ausnahme oder Zahl.</summary>
+function DescribeNamedExit(ACode: Cardinal): string;
 var
   Name: string;
 begin
+  if NamedExitText(ACode, Name) then
+  begin
+    Result := Format('%s (0x%.8X)', [Name, ACode]);
+  end
+  else if ACode >= $80000000 then
+  begin
+    Result := Format('Ausnahme 0x%.8X', [ACode]);
+  end
+  else
+  begin
+    Result := Format('Code %d', [ACode]);
+  end;
+end;
+
+class function TAtlasServerExits.Describe(ACode: Cardinal): string;
+begin
   case ACode of
     0:
-      Exit('ohne Fehler (Code 0)');
+      Result := 'ohne Fehler (Code 0)';
     1:
-      Exit('Code 1 (unbehandelte Ausnahme oder von außen beendet)');
+      Result := 'Code 1 (unbehandelte Ausnahme oder von außen beendet)';
     217:
-      Exit('Laufzeitfehler 217 (unbehandelte Ausnahme)');
+      Result := 'Laufzeitfehler 217 (unbehandelte Ausnahme)';
     Unknown:
-      Exit('Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)');
-    $0EEDFADE:
-      Name := 'unbehandelte Delphi-Ausnahme';
-    $40010004:
-      Name := 'von außen beendet (Abmelden oder Debugger)';
-    $C0000005:
-      Name := 'Zugriffsverletzung';
-    $C0000017:
-      Name := 'zu wenig Speicher';
-    $C000001D:
-      Name := 'unzulässiger Befehl';
-    $C0000094:
-      Name := 'Ganzzahl-Division durch null';
-    $C0000096:
-      Name := 'privilegierter Befehl';
-    $C00000FD:
-      Name := 'Stapelüberlauf';
-    $C000013A:
-      Name := 'mit Strg+C abgebrochen';
-    $C0000135:
-      Name := 'DLL nicht gefunden';
-    $C0000142:
-      Name := 'DLL-Initialisierung fehlgeschlagen';
-    $C0000374:
-      Name := 'Heap beschädigt';
-    $C0000409:
-      Name := 'Sicherheitsabbruch (Stackpuffer-Überlauf oder Fast-Fail)';
-    $C0000420:
-      Name := 'Assertion fehlgeschlagen';
+      Result := 'Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)';
   else
-    begin
-      if ACode >= $80000000 then
-      begin
-        Exit(Format('Ausnahme 0x%.8X', [ACode]));
-      end;
-      Exit(Format('Code %d', [ACode]));
-    end;
+    Result := DescribeNamedExit(ACode);
   end;
-  Result := Format('%s (0x%.8X)', [Name, ACode]);
 end;
 
 class function TAtlasServerExits.Runtime(AMs: Int64): string;
