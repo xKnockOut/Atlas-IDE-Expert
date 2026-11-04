@@ -197,6 +197,7 @@ uses
   Atlas.Common.Rules.Builtin.TrivialAccessor.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TrivialAccessor.Tests.pas',
   Atlas.Common.Rules.Builtin.Expressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tests.pas',
   Atlas.Common.Rules.Builtin.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tests.pas',
+  Atlas.Common.Rules.Builtin.Statements.Tokens.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tokens.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeChecks.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeKinds.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeMismatch.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.Tests.pas',
