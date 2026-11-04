@@ -564,8 +564,7 @@ begin
   try
     // Cursor auf Units.B (Zeile 3, Spalte 12).
     Found := '';
-    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 12, 3, 12), Context, nil, True,
-      False) do
+    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 12, 3, 12), Context, True, False) do
     begin
       if Action.Tag <> '' then
       begin
@@ -575,8 +574,7 @@ begin
     Assert.AreEqual('Units.B entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Found);
     // Auf Units.A: nur in der implementation gebraucht, die Aktion für alle trägt die Kennung.
     Found := '';
-    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 3, 3, 3), Context, nil, True,
-      False) do
+    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 3, 3, 3), Context, True, False) do
     begin
       if Action.Tag <> '' then
       begin

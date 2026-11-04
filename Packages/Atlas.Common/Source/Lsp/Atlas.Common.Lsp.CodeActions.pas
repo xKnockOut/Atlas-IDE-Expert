@@ -388,7 +388,6 @@ function TCodeActionBuilder.UsesActions: TArray<TCodeAction>;
 var
   mUsesContext: TUsesContext;
   mDefines: TArray<string>;
-  mInactive: TArray<TTextRange>;
 begin
   Result := nil;
   if not ((FWantsEditing or FWantsRemoveUnused) and Assigned(FOwner.FUsesContextFor) and
@@ -396,13 +395,12 @@ begin
   begin
     Exit;
   end;
-  mInactive := nil;
+  mUsesContext.Inactive := nil;
   if FWantsEditing and Assigned(FOwner.FDefinesFor) and FOwner.FDefinesFor(FUri, mDefines) then
   begin
-    mInactive := TLspInactiveRegions.Ranges(FText, mDefines);
+    mUsesContext.Inactive := TLspInactiveRegions.Ranges(FText, mDefines);
   end;
-  Result := TCodeActions.UsesActions(FText, FTree, FRange, mUsesContext, mInactive, FWantsEditing,
-    FWantsRemoveUnused);
+  Result := TCodeActions.UsesActions(FText, FTree, FRange, mUsesContext, FWantsEditing, FWantsRemoveUnused);
 end;
 
 function TCodeActionBuilder.Style: TFormatStyle;
