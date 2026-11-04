@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($BaselinePath -eq '') { $BaselinePath = Join-Path $Root 'Tools/GermanText.baseline.json' }
 $SourceDirs = @('Packages', 'Application')
-$SkipNames = '^(Atlas\.UI\.Strings\.pas|.*SchemaData\.pas|.*ProfileData\.pas|.*Catalog\.Data(\.\w+)?\.pas)$'
+$SkipNames = '^(Atlas\.UI\.Strings\.pas|.*SchemaData\.pas|.*ProfileData\.pas|.*Catalog\.Data(\.[\w.]+)?\.pas)$'
 $GermanWords = '(?i)(?<![\w%])(und|nicht|oder|der|die|das|dem|den|des|ist|sind|mit|für|kein|keine|keinen|wird|werden|wurde|nach|beim|vom|zum|zur|eine|einen|einer|bitte|Datei|Fehler|Einstellung|gefunden|fehlt|ungültig|unbekannt)(?![\w])'
 $Umlaut = '[äöüÄÖÜß]'
 $TableStart = '(?i)\bof\s+TAtlasText\s*=\s*\('
