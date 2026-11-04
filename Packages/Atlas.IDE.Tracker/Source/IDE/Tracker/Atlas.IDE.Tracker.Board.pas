@@ -14,6 +14,11 @@
 //   Hintergrund über IAtlasTrackerBoards.MoveCard (YouTrack-Befehl wie #1266,
 //   GitHub Feld „Status“); bei einem Fehler springt sie zurück und die
 //   Statuszeile nennt den Grund (TAtlasTrackerEndDialog.ErrorText).
+// - Workflow von YouTrack: Legt die Zustandsmaschine des Spaltenfeldes die
+//   erreichbaren Spalten fest (TAtlasBoardTransitions.Known), bleibt eine
+//   Karte über einer anderen Spalte stehen und die Statuszeile nennt die
+//   erlaubten Übergänge, ohne Anfrage an den Server. Lehnt YouTrack einen
+//   Wechsel ab, nennt die Meldung sie ebenfalls.
 // - Klick zeigt die Vorschau (#1264), Doppelklick beginnt (#765),
 //   Kontextmenü: Beginnen, Vorschau, Im Browser öffnen, Kennung kopieren,
 //   Mir zuweisen (Schreibweg #1266).
@@ -83,7 +88,8 @@ type
     procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
       const ASnapshot: TAtlasBoardSnapshot; AError: TAtlasCiFetchError; AWrite: Boolean);
     procedure Move(ACard, AColumn: Integer);
-    procedure Moved(const AKey, AColumn, AOldState: string; const AResult: TAtlasTrackerWriteResult);
+    procedure Moved(const ACard: TAtlasBoardCard; const AColumn, AOldState: string;
+      const AResult: TAtlasTrackerWriteResult);
     procedure OpenCard(ACard: Integer);
     procedure StartCard(ACard: Integer);
     procedure BrowseCard(ACard: Integer);
@@ -570,6 +576,30 @@ end;
 
 /// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
 /// </summary>
+function Movable(AFrame: TAtlasBoardFrame; const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean;
+var
+  mCard: TAtlasBoardCard;
+  mNames: string;
+begin
+  Result := TAtlasBoardTransitions.Allowed(ASnapshot, ACard, AColumn);
+  if Result or not TAtlasTrackerBoard.CanMove(ASnapshot, ACard, AColumn) then
+  begin
+    Exit;
+  end;
+  // Die Zustandsmaschine von YouTrack lässt diese Spalte nicht zu: gleich sagen, welche gehen.
+  mCard := ASnapshot.Cards[ACard];
+  mNames := TAtlasBoardTransitions.Names(mCard);
+  if mNames = '' then
+  begin
+    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveNoTransition, [mCard.Key, mCard.State]));
+  end
+  else
+  begin
+    AFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveNotAllowed, [mCard.Key,
+      AFrame.ColumnCaption(AColumn), mCard.State, mNames]));
+  end;
+end;
+
 function MoveAllowed(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; ACard, AColumn: Integer;
   out AJob: TMoveJob): Boolean;
 begin
@@ -582,7 +612,7 @@ begin
   else
   begin
     AJob.Snapshot := AFrame.Snapshot;
-    Result := TAtlasTrackerBoard.CanMove(AJob.Snapshot, ACard, AColumn);
+    Result := Movable(AFrame, AJob.Snapshot, ACard, AColumn);
     if Result then
     begin
       AJob.Card := AJob.Snapshot.Cards[ACard];
@@ -665,11 +695,11 @@ begin
     begin
       if mKeep <> nil then
       begin
-        mOwner.Moved(mJob.Card.Key, mJob.ColumnName, mJob.Old, mResult);
+        mOwner.Moved(mJob.Card, mJob.ColumnName, mJob.Old, mResult);
       end;
     end) then
   begin
-    AOwner.Moved(mJob.Card.Key, mJob.ColumnName, mJob.Old,
+    AOwner.Moved(mJob.Card, mJob.ColumnName, mJob.Old,
       TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
   end;
 end;
@@ -750,6 +780,22 @@ begin
   end;
 end;
 
+/// <summary>Darf ACard nach AColumn; verbietet es der Workflow des Trackers, nennt die Statuszeile von AFrame die
+/// erlaubten Übergänge.</summary>
+/// <summary>Text der Statuszeile, wenn das Verschieben scheiterte.</summary>
+function MoveFailedText(const ACard: TAtlasBoardCard; const AResult: TAtlasTrackerWriteResult): string;
+begin
+  Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [ACard.Key,
+    TAtlasTrackerEndDialog.ErrorText(ACard.Key, AResult)]);
+  // Abgelehnt (400) unter einer Zustandsmaschine: die erlaubten Übergänge dazu.
+  if (AResult.Error = TAtlasCiFetchError.Invalid) and ACard.Workflow.StateMachine and
+    (TAtlasBoardTransitions.Names(ACard) <> '') then
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveTransitions, [Result, ACard.State,
+      TAtlasBoardTransitions.Names(ACard)]);
+  end;
+end;
+
 procedure TAtlasIdeBoard.Move(ACard, AColumn: Integer);
 var
   mFrame: TAtlasBoardFrame;
@@ -770,7 +816,8 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBoard.Moved(const AKey, AColumn, AOldState: string; const AResult: TAtlasTrackerWriteResult);
+procedure TAtlasIdeBoard.Moved(const ACard: TAtlasBoardCard; const AColumn, AOldState: string;
+  const AResult: TAtlasTrackerWriteResult);
 var
   mFrame: TAtlasBoardFrame;
 begin
@@ -783,12 +830,11 @@ begin
   TAtlasGuard.Log('Atlas-Board: verschoben, ' + TAtlasCiBuild.ErrorKey(AResult.Error));
   if not AResult.Succeeded then
   begin
-    mFrame.RevertMove(AKey, AOldState);
-    mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [AKey,
-      TAtlasTrackerEndDialog.ErrorText(AKey, AResult)]));
+    mFrame.RevertMove(ACard.Key, AOldState);
+    mFrame.SetStatus(MoveFailedText(ACard, AResult));
     Exit;
   end;
-  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoved, [AKey, AColumn]));
+  Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoved, [ACard.Key, AColumn]));
   // Der Tracker kann mehr geändert haben (Workflow-Regeln): neu laden.
   Load(FBoardId, FSprintId);
 end;
