@@ -349,6 +349,18 @@ begin
   end;
 end;
 
+/// <summary>Eingaben der Abfrage-Datenquelle aus den einzelnen Teilen.</summary>
+function QueryInput(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc; const ARoot: string;
+  const AFiles, ANamespaces: TArray<string>; const AReadText: TReferenceReadText): TLspQueryInput;
+begin
+  Result.Index := AIndex;
+  Result.EnsureUnit := AEnsureUnit;
+  Result.Root := ARoot;
+  Result.Files := AFiles;
+  Result.Namespaces := ANamespaces;
+  Result.ReadText := AReadText;
+end;
+
 function TShellSources.QuerySourceOf(out ASource: TQuerySource): Boolean;
 var
   mWorkspace, mCandidate: TShellWorkspace;
@@ -378,8 +390,8 @@ begin
   finally
     System.TMonitor.Exit(FServices.Workspaces.Lock);
   end;
-  ASource := TLspQuery.Source(FServices.Index(), FServices.EnsureUnit, mRoot, mFiles, mNamespaces,
-    FServices.ReadText, mReferences);
+  ASource := TLspQuery.Source(QueryInput(FServices.Index(), FServices.EnsureUnit, mRoot, mFiles, mNamespaces,
+    FServices.ReadText), mReferences);
   Result := True;
 end;
 

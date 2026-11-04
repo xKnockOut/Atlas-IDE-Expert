@@ -253,8 +253,8 @@ begin
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       Resolver.Namespaces := FNamespaces;
-      if not TQualifiedNames.At(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
-        AWithParameters, Result, Error) then
+      if not TQualifiedNames.At(Resolver, FIndex, Tree, TQualifiedNameRequest.Create(AFileName,
+        TTextPosition.Create(ALine - 1, AColumn - 1), AWithParameters), Result, Error) then
       begin
         raise EMcpToolError.Create(Error);
       end;
