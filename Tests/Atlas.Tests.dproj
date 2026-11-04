@@ -828,6 +828,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.ChoiceBox.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Bindings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.QueryDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsRows.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SettingsConnections.pas"/>
@@ -854,6 +855,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.SettingsSection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Rules.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Bindings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Keys.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Keys.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Events.pas"/>

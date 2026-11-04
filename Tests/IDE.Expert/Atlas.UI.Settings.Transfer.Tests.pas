@@ -55,6 +55,7 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Transfer,
   Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Transfer;
 
@@ -103,11 +104,11 @@ begin
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(Page.SettingsExportImportCheck.Checked);
     Assert.IsTrue(Page.SettingsMarkModifiedCheck.Checked);
-    Assert.IsTrue(Page.SettingsBackupBeforeImportCheck.Checked);
+    Assert.IsTrue(CheckOf(Page, 'SettingsBackupBeforeImport').Checked);
     Assert.AreEqual(0, Page.SettingsExportSecretsChoice.Choice, 'Standard: weglassen');
     Page.SettingsExportImportCheck.Checked := False;
     Page.SettingsMarkModifiedCheck.Checked := False;
-    Page.SettingsBackupBeforeImportCheck.Checked := False;
+    CheckOf(Page, 'SettingsBackupBeforeImport').Checked := False;
     Page.SettingsExportSecretsChoice.Choice := 1;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -117,7 +118,7 @@ begin
     Assert.AreEqual('placeholder', Saved.SettingsExportSecrets);
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.SettingsExportImportCheck.Checked);
-    Assert.IsFalse(Page.SettingsBackupBeforeImportCheck.Checked);
+    Assert.IsFalse(CheckOf(Page, 'SettingsBackupBeforeImport').Checked);
     Assert.AreEqual(1, Page.SettingsExportSecretsChoice.Choice);
   finally
     Page.Free;
@@ -154,25 +155,25 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsFalse(Page.Marks.IsMarked(Page.NotesCheck), 'Standard ohne Punkt');
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')), 'Standard ohne Punkt');
     Assert.IsFalse(Page.Marks.IsMarked(Page.SettingsExportSecretsChoice));
     Settings := TAtlasPluginSettings.Defaults;
     Settings.Notes := False;
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.Marks.IsMarked(Page.NotesCheck), 'geändert: Punkt');
-    Assert.IsTrue(string(Page.NotesCheck.Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'Notes')), 'geändert: Punkt');
+    Assert.IsTrue(string(CheckOf(Page, 'Notes').Caption).StartsWith(TAtlasSettingsMarks.Dot));
     Assert.IsTrue(Page.Marks.IsMarked(Page.SettingsExportSecretsChoice), 'Punkt an der Beschriftung');
-    Assert.IsFalse(Page.Marks.IsMarked(Page.SettingsBackupBeforeImportCheck));
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
     // Ändern auf der Seite setzt den Punkt sofort.
-    Page.SettingsBackupBeforeImportCheck.Checked := False;
-    Assert.IsTrue(Page.Marks.IsMarked(Page.SettingsBackupBeforeImportCheck));
-    Page.SettingsBackupBeforeImportCheck.Checked := True;
-    Assert.IsFalse(Page.Marks.IsMarked(Page.SettingsBackupBeforeImportCheck), 'zurück auf Standard: kein Punkt');
+    CheckOf(Page, 'SettingsBackupBeforeImport').Checked := False;
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
+    CheckOf(Page, 'SettingsBackupBeforeImport').Checked := True;
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')), 'zurück auf Standard: kein Punkt');
     // settings.markModified aus: keine Punkte, gespeichert wird der Text ohne Punkt.
     Page.SettingsMarkModifiedCheck.Checked := False;
-    Assert.IsFalse(Page.Marks.IsMarked(Page.NotesCheck));
-    Assert.IsFalse(string(Page.NotesCheck.Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
+    Assert.IsFalse(string(CheckOf(Page, 'Notes').Caption).StartsWith(TAtlasSettingsMarks.Dot));
   finally
     Page.Free;
   end;
@@ -190,9 +191,9 @@ begin
     Settings.SettingsBackupBeforeImport := False;
     Page.LoadFrom(Settings);
     Page.ResetNames(['Notes']);
-    Assert.IsTrue(Page.NotesCheck.Checked, 'Notizen zurück auf Standard');
-    Assert.IsFalse(Page.SettingsBackupBeforeImportCheck.Checked, 'anderer Wert bleibt');
-    Assert.IsFalse(Page.Marks.IsMarked(Page.NotesCheck));
+    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Notizen zurück auf Standard');
+    Assert.IsFalse(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'anderer Wert bleibt');
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
     // Erst OK speichert: SaveTo liefert den zurückgesetzten Wert.
     Saved := Settings;
     Page.SaveTo(Saved);
@@ -220,15 +221,15 @@ begin
     Settings.SettingsBackupBeforeImport := False;
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
-    General := SheetOf(Page.SettingsBackupBeforeImportCheck);
+    General := SheetOf(CheckOf(Page, 'SettingsBackupBeforeImport'));
     Assert.IsTrue(General <> nil);
-    Assert.IsTrue(SheetOf(Page.NotesCheck) <> General, 'Notizen auf einem anderen Reiter');
+    Assert.IsTrue(SheetOf(CheckOf(Page, 'Notes')) <> General, 'Notizen auf einem anderen Reiter');
     Page.Pages.ActivePage := General;
     Page.ResetPage;
-    Assert.IsTrue(Page.SettingsBackupBeforeImportCheck.Checked, 'Reiter zurückgesetzt');
+    Assert.IsTrue(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'Reiter zurückgesetzt');
     Assert.AreEqual(0, Page.SettingsExportSecretsChoice.Choice);
-    Assert.IsFalse(Page.NotesCheck.Checked, 'anderer Reiter bleibt');
-    Assert.IsTrue(Page.Marks.IsMarked(Page.NotesCheck));
+    Assert.IsFalse(CheckOf(Page, 'Notes').Checked, 'anderer Reiter bleibt');
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
   finally
     Host.Free;
   end;
@@ -245,16 +246,16 @@ begin
     Settings := TAtlasPluginSettings.Defaults;
     Settings.Notes := False;
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.NotesCheck.PopupMenu = Page.Marks.Menu, 'Kontextmenü am Feld');
-    Assert.AreEqual(1, Integer(Length(Page.Marks.NamesOf(Page.NotesCheck))));
+    Assert.IsTrue(CheckOf(Page, 'Notes').PopupMenu = Page.Marks.Menu, 'Kontextmenü am Feld');
+    Assert.AreEqual(1, Integer(Length(Page.Marks.NamesOf(CheckOf(Page, 'Notes')))));
     // Wie beim Rechtsklick (ohne das Menü modal zu zeigen).
-    Page.Marks.Menu.PopupComponent := Page.NotesCheck;
+    Page.Marks.Menu.PopupComponent := CheckOf(Page, 'Notes');
     Page.Marks.Menu.OnPopup(Page.Marks.Menu);
     Assert.IsTrue(Page.Marks.Menu.Items[0].Enabled);
     // Erster Eintrag: „Auf Standard zurücksetzen“.
     Item := 0;
     Page.Marks.Menu.Items[Item].Click;
-    Assert.IsTrue(Page.NotesCheck.Checked, 'zurückgesetzt');
+    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'zurückgesetzt');
   finally
     Page.Free;
   end;
@@ -302,12 +303,12 @@ begin
     Page.ImportButton.Click;
     Assert.AreEqual(1, Asked);
     Assert.IsFalse(Profile, 'Import aus Datei');
-    Assert.IsTrue(Page.NotesCheck.Checked, 'Seite zeigt den Import');
-    Assert.IsFalse(Page.SettingsBackupBeforeImportCheck.Checked);
-    Assert.IsTrue(Page.Marks.IsMarked(Page.SettingsBackupBeforeImportCheck));
+    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Seite zeigt den Import');
+    Assert.IsFalse(CheckOf(Page, 'SettingsBackupBeforeImport').Checked);
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
     Page.ResetAllButton.Click;
-    Assert.IsTrue(Page.SettingsBackupBeforeImportCheck.Checked, 'alles zurückgesetzt');
-    Assert.IsFalse(Page.Marks.IsMarked(Page.SettingsBackupBeforeImportCheck));
+    Assert.IsTrue(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'alles zurückgesetzt');
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
   finally
     Page.Free;
   end;

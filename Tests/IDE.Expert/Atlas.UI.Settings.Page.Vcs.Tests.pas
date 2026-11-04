@@ -110,21 +110,21 @@ procedure AssertVcsPageControls(APage: TAtlasSettingsPage; AVcs: TTabSheet);
 begin
   Assert.IsTrue(SheetOf(APage.VcsPath(TAtlasVcsKind.Git)) = AVcs);
   Assert.IsTrue(SheetOf(APage.VcsPath(TAtlasVcsKind.Svn)) = AVcs);
-  Assert.IsTrue(SheetOf(APage.VcsTimeout) = AVcs);
+  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsTimeoutSeconds')) = AVcs);
   Assert.IsTrue(SheetOf(APage.VcsProjectInfo) = AVcs);
   Assert.AreEqual(2, APage.VcsProviderChoice.Choice, 'svn');
   Assert.AreEqual('D:\Tools\svn.exe', APage.VcsPath(TAtlasVcsKind.Svn).Text);
-  Assert.AreEqual('45', APage.VcsTimeout.Text);
+  Assert.AreEqual('45', EditOf(APage, 'VcsTimeoutSeconds').Text);
   // #1288: Dialog „Branch anlegen“ bei „Beginnen“, Unterknoten vcs.branches (Schema).
-  Assert.IsTrue(SheetOf(APage.VcsBranchConfirm) = APage.NodeSheet('vcs.branches'));
-  Assert.IsTrue(APage.VcsBranchConfirm.Checked);
+  Assert.IsTrue(SheetOf(CheckOf(APage, 'VcsBranchConfirm')) = APage.NodeSheet('vcs.branches'));
+  Assert.IsTrue(CheckOf(APage, 'VcsBranchConfirm').Checked);
   // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
-  Assert.IsTrue(SheetOf(APage.VcsBranchSvnLocation) = APage.NodeSheet('vcs.branches'));
-  Assert.IsTrue(SheetOf(APage.VcsBranchSvnMessage) = APage.NodeSheet('vcs.branches'));
-  Assert.AreEqual('{projektwurzel}/branches/{name}', APage.VcsBranchSvnLocation.Text);
+  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsBranchSvnLocation')) = APage.NodeSheet('vcs.branches'));
+  Assert.IsTrue(SheetOf(EditOf(APage, 'VcsBranchSvnMessage')) = APage.NodeSheet('vcs.branches'));
+  Assert.AreEqual('{projektwurzel}/branches/{name}', EditOf(APage, 'VcsBranchSvnLocation').Text);
   Assert.AreEqual(0, APage.VcsBranchSvnSource.Choice, 'head');
   Assert.AreEqual(0, APage.VcsBranchSvnAfter.Choice, 'switch');
-  Assert.AreEqual('..\{projekt}-{kennung}', APage.VcsBranchSvnFolder.Text);
+  Assert.AreEqual('..\{projekt}-{kennung}', EditOf(APage, 'VcsBranchSvnCheckoutFolder').Text);
   // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
   Assert.IsTrue(SheetOf(APage.VcsExternalsRules) = APage.NodeSheet('vcs.externals'));
   Assert.AreEqual(0, APage.VcsExternalsOnBranch.Choice, 'pin');
@@ -137,8 +137,8 @@ begin
   APage.VcsExternalsRules.OnChange(APage.VcsExternalsRules);
   Assert.AreEqual('', APage.VcsExternalsRulesError.Caption);
   // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
-  Assert.IsTrue(SheetOf(APage.VcsExternalsShow) = APage.NodeSheet('vcs.externals'));
-  Assert.IsTrue(APage.VcsExternalsShow.Checked);
+  Assert.IsTrue(SheetOf(CheckOf(APage, 'VcsExternalsShow')) = APage.NodeSheet('vcs.externals'));
+  Assert.IsTrue(CheckOf(APage, 'VcsExternalsShow').Checked);
   Assert.AreEqual(0, APage.VcsExternalsUpdate.Choice, 'with');
 end;
 /// <summary>Pfad ändern prüft nur die Datei; „Prüfen“ fragt im Hintergrund und sperrt den Knopf bis zum
@@ -200,16 +200,16 @@ procedure EditVcsPage(APage: TAtlasSettingsPage);
 begin
   APage.VcsProviderChoice.Choice := 1;
   APage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
-  APage.VcsTimeout.Text := '120';
-  APage.VcsBranchConfirm.Checked := False;
-  APage.VcsBranchSvnLocation.Text := '^/branches/{kennung}';
+  EditOf(APage, 'VcsTimeoutSeconds').Text := '120';
+  CheckOf(APage, 'VcsBranchConfirm').Checked := False;
+  EditOf(APage, 'VcsBranchSvnLocation').Text := '^/branches/{kennung}';
   APage.VcsBranchSvnSource.Choice := 1;
   APage.VcsBranchSvnAfter.Choice := 1;
-  APage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
-  APage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
+  EditOf(APage, 'VcsBranchSvnCheckoutFolder').Text := 'D:\Branches\{name}';
+  EditOf(APage, 'VcsBranchSvnMessage').Text := 'Neu: {kennung}';
   APage.VcsExternalsOnBranch.Choice := 2;
   APage.VcsExternalsSuggest.Choice := 2;
-  APage.VcsExternalsShow.Checked := False;
+  CheckOf(APage, 'VcsExternalsShow').Checked := False;
   APage.VcsExternalsUpdate.Choice := 1;
 end;
 /// <summary>Speichern; eine ungültige Regelzeile lässt die bisherigen Regeln stehen.</summary>
