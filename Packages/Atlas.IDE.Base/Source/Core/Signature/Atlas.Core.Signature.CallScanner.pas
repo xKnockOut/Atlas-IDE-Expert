@@ -41,8 +41,7 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils,
-  System.Generics.Collections;
+  System.StrUtils;
 
 type
   TFrame = record
@@ -110,135 +109,189 @@ begin
   Result := Copy(AText, Index + 1, Stop - Index);
 end;
 
-class function TAtlasCallScanner.Scan(const AText: string; ACaret: Integer): TAtlasCallSite;
-var
-  Stack: TList<TFrame>;
-  Frame: TFrame;
-  Index, Stop, Start, Level: Integer;
-begin
-  Result := Default(TAtlasCallSite);
-  Result.OpenParen := -1;
-  Stop := Min(ACaret, Length(AText));
-  // 1-basiert; Anfang einer Zeile höchstens MaxLookBack Zeichen vor dem Caret.
-  Start := Max(1, Stop - MaxLookBack);
-  if Start > 1 then
-  begin
-    while (Start <= Stop) and (AText[Start - 1] <> #10) do
-    begin
-      Inc(Start);
-    end;
+type
+  /// <summary>Zustand von Scan: Text, Bereich, Leseposition (1-basiert) und offene Klammern.</summary>
+  TCallScan = record
+    Text: string;
+    Start: Integer;
+    Stop: Integer;
+    Index: Integer;
+    Stack: TArray<TFrame>;
+    /// <summary>String bis zum schließenden Anführungszeichen; '' ist ein Zeichen im String.</summary>
+    procedure SkipString;
+    procedure SkipToLineEnd;
+    /// <summary>„(*“ bis „*)“ überspringen oder eine runde Klammer öffnen.</summary>
+    procedure OpenParen;
+    procedure OpenBracket;
+    /// <summary>Bis zur passenden Klammer abbauen; fehlt sie, ist der Text unvollständig.</summary>
+    procedure Close;
+    procedure Comma;
+    /// <summary>Zeichen an Index lesen; Index steht danach auf dem letzten gelesenen.</summary>
+    procedure Step;
+    /// <summary>Innerster offener Aufruf; Klammern zur Gruppierung und [...] darüber gehören zu ihm.</summary>
+    function Site: TAtlasCallSite;
   end;
-  Stack := TList<TFrame>.Create;
-  try
-    Index := Start;
-    while Index <= Stop do
+
+procedure TCallScan.SkipString;
+begin
+  Inc(Index);
+  while (Index <= Stop) and not CharInSet(Text[Index], [#13, #10]) do
+  begin
+    if Text[Index] = '''' then
     begin
-      case AText[Index] of
-        '''':
-          begin
-            // String bis zum schließenden Anführungszeichen; '' ist ein Zeichen im String.
-            Inc(Index);
-            while (Index <= Stop) and not CharInSet(AText[Index], [#13, #10]) do
-            begin
-              if AText[Index] = '''' then
-              begin
-                if (Index < Stop) and (AText[Index + 1] = '''') then
-                begin
-                  Inc(Index);
-                end
-                else
-                begin
-                  Break;
-                end;
-              end;
-              Inc(Index);
-            end;
-          end;
-        '{':
-          while (Index <= Stop) and (AText[Index] <> '}') do
-          begin
-            Inc(Index);
-          end;
-        '/':
-          if (Index < Stop) and (AText[Index + 1] = '/') then
-          begin
-            while (Index <= Stop) and not CharInSet(AText[Index], [#13, #10]) do
-            begin
-              Inc(Index);
-            end;
-          end;
-        '(':
-          if (Index < Stop) and (AText[Index + 1] = '*') then
-          begin
-            Inc(Index, 2);
-            while (Index < Stop) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
-            begin
-              Inc(Index);
-            end;
-            Inc(Index);
-          end
-          else
-          begin
-            Frame := Default(TFrame);
-            Frame.Position := Index - 1;
-            Frame.IsParen := True;
-            Frame.IsCall := FollowsCallee(AText, Start, Index);
-            if Frame.IsCall then
-            begin
-              Frame.Name := CalleeName(AText, Start, Index);
-            end;
-            Stack.Add(Frame);
-          end;
-        '[':
-          begin
-            Frame := Default(TFrame);
-            Frame.Position := Index - 1;
-            Stack.Add(Frame);
-          end;
-        ')', ']':
-          begin
-            // Bis zur passenden Klammer abbauen; fehlt sie, ist der Text unvollständig.
-            for Level := Stack.Count - 1 downto 0 do
-            begin
-              if Stack[Level].IsParen = (AText[Index] = ')') then
-              begin
-                Stack.Count := Level;
-                Break;
-              end;
-            end;
-          end;
-        ',':
-          if Stack.Count > 0 then
-          begin
-            Frame := Stack.Last;
-            Inc(Frame.Commas);
-            Stack[Stack.Count - 1] := Frame;
-          end;
-      end;
-      Inc(Index);
-    end;
-    // Innerster offener Aufruf; Klammern zur Gruppierung und [...] darüber gehören zu ihm.
-    for Level := Stack.Count - 1 downto 0 do
-    begin
-      if Stack[Level].IsParen and Stack[Level].IsCall then
+      if (Index < Stop) and (Text[Index + 1] = '''') then
       begin
-        Result.Found := True;
-        Result.OpenParen := Stack[Level].Position;
-        Result.ActiveParameter := Stack[Level].Commas;
-        Result.Name := Stack[Level].Name;
-        for Index := 0 to Level - 1 do
-        begin
-          if Stack[Index].IsParen and Stack[Index].IsCall then
-          begin
-            Result.Outer := Result.Outer + [Stack[Index].Name];
-          end;
-        end;
+        Inc(Index);
+      end
+      else
+      begin
         Break;
       end;
     end;
-  finally
-    Stack.Free;
+    Inc(Index);
   end;
+end;
+
+procedure TCallScan.SkipToLineEnd;
+begin
+  while (Index <= Stop) and not CharInSet(Text[Index], [#13, #10]) do
+  begin
+    Inc(Index);
+  end;
+end;
+
+procedure TCallScan.OpenParen;
+var
+  mFrame: TFrame;
+begin
+  if (Index < Stop) and (Text[Index + 1] = '*') then
+  begin
+    Inc(Index, 2);
+    while (Index < Stop) and not ((Text[Index] = '*') and (Text[Index + 1] = ')')) do
+    begin
+      Inc(Index);
+    end;
+    Inc(Index);
+  end
+  else
+  begin
+    mFrame := Default(TFrame);
+    mFrame.Position := Index - 1;
+    mFrame.IsParen := True;
+    mFrame.IsCall := FollowsCallee(Text, Start, Index);
+    if mFrame.IsCall then
+    begin
+      mFrame.Name := CalleeName(Text, Start, Index);
+    end;
+    Stack := Stack + [mFrame];
+  end;
+end;
+
+procedure TCallScan.OpenBracket;
+var
+  mFrame: TFrame;
+begin
+  mFrame := Default(TFrame);
+  mFrame.Position := Index - 1;
+  Stack := Stack + [mFrame];
+end;
+
+procedure TCallScan.Close;
+var
+  mLevel: Integer;
+begin
+  for mLevel := High(Stack) downto 0 do
+  begin
+    if Stack[mLevel].IsParen = (Text[Index] = ')') then
+    begin
+      SetLength(Stack, mLevel);
+      Break;
+    end;
+  end;
+end;
+
+procedure TCallScan.Comma;
+begin
+  if Length(Stack) > 0 then
+  begin
+    Inc(Stack[High(Stack)].Commas);
+  end;
+end;
+
+procedure TCallScan.Step;
+begin
+  case Text[Index] of
+    '''':
+      SkipString;
+    '{':
+      while (Index <= Stop) and (Text[Index] <> '}') do
+      begin
+        Inc(Index);
+      end;
+    '/':
+      if (Index < Stop) and (Text[Index + 1] = '/') then
+      begin
+        SkipToLineEnd;
+      end;
+    '(':
+      OpenParen;
+    '[':
+      OpenBracket;
+    ')', ']':
+      Close;
+    ',':
+      Comma;
+  end;
+end;
+
+function TCallScan.Site: TAtlasCallSite;
+var
+  mLevel, mIndex: Integer;
+begin
+  Result := Default(TAtlasCallSite);
+  Result.OpenParen := -1;
+  for mLevel := High(Stack) downto 0 do
+  begin
+    if Stack[mLevel].IsParen and Stack[mLevel].IsCall then
+    begin
+      Result.Found := True;
+      Result.OpenParen := Stack[mLevel].Position;
+      Result.ActiveParameter := Stack[mLevel].Commas;
+      Result.Name := Stack[mLevel].Name;
+      for mIndex := 0 to mLevel - 1 do
+      begin
+        if Stack[mIndex].IsParen and Stack[mIndex].IsCall then
+        begin
+          Result.Outer := Result.Outer + [Stack[mIndex].Name];
+        end;
+      end;
+      Break;
+    end;
+  end;
+end;
+class function TAtlasCallScanner.Scan(const AText: string; ACaret: Integer): TAtlasCallSite;
+var
+  mScan: TCallScan;
+begin
+  mScan := Default(TCallScan);
+  mScan.Text := AText;
+  mScan.Stop := Min(ACaret, Length(AText));
+  // 1-basiert; Anfang einer Zeile höchstens MaxLookBack Zeichen vor dem Caret.
+  mScan.Start := Max(1, mScan.Stop - MaxLookBack);
+  if mScan.Start > 1 then
+  begin
+    while (mScan.Start <= mScan.Stop) and (AText[mScan.Start - 1] <> #10) do
+    begin
+      Inc(mScan.Start);
+    end;
+  end;
+  mScan.Index := mScan.Start;
+  while mScan.Index <= mScan.Stop do
+  begin
+    mScan.Step;
+    Inc(mScan.Index);
+  end;
+  Result := mScan.Site;
 end;
 
 class function TAtlasCallScanner.RemovedClosingParen(const AOld, ANew: string): Boolean;
