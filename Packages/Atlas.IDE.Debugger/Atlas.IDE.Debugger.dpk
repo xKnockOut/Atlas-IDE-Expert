@@ -88,6 +88,7 @@ contains
   Atlas.Core.Debug.AccessViolation in 'Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas',
   Atlas.UI.Debug.AccessViolation in 'Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas',
   Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',
+  Atlas.IDE.Debug.AccessViolationUnderline in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolationUnderline.pas',
   Atlas.Core.Debug.StepFilter in 'Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
   Atlas.IDE.Debug.Trace in 'Source\IDE\Debug\Atlas.IDE.Debug.Trace.pas',
   Atlas.UI.Debug.StepFilterFrame in 'Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas' {AtlasDebugStepFilterFrame: TFrame},
