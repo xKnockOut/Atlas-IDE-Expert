@@ -80,81 +80,107 @@ var
   // Wert von Error Insight beim ersten Lesen in dieser Sitzung; so liest ihn die IDE bis zum Neustart.
   ErrorInsightAtStart: Integer = -1;
 
-class function TAtlasIdeStructureSwitch.ApplySwitch(const ASubKey, AValueName, AMarker, ALegacyMarker: string;
-  AOwn: Boolean): Boolean;
-var
-  Services: IOTAServices;
-  Registry: TRegistry;
-  Key: string;
-  State, Next: TAtlasIdeStructure;
+/// <summary>Schalter der IDE unter AKey als Text, wie die IDE ihn schreibt.</summary>
+function SwitchText(AEnabled: Boolean): string;
+begin
+  Result := 'False';
+  if AEnabled then
+  begin
+    Result := 'True';
+  end;
+end;
+
+/// <summary>AValueName unter AKey schreiben; True, wenn der Schlüssel offen war.</summary>
+function WriteSwitch(ARegistry: TRegistry; const AKey, AValueName: string; AEnabled: Boolean): Boolean;
+begin
+  Result := ARegistry.OpenKey(AKey, True);
+  if Result then
+  begin
+    ARegistry.WriteString(AValueName, SwitchText(AEnabled));
+  end;
+  ARegistry.CloseKey;
+end;
+
+/// <summary>Merker im offenen Schlüssel gesetzt: neuer Name, solange er fehlt der alte.</summary>
+function MarkerSet(ARegistry: TRegistry; const AMarker, ALegacyMarker: string): Boolean;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  if ARegistry.ValueExists(AMarker) then
+  begin
+    Result := ARegistry.ReadInteger(AMarker) <> 0;
+  end
+  else if (ALegacyMarker <> '') and ARegistry.ValueExists(ALegacyMarker) then
+  begin
+    Result := ARegistry.ReadInteger(ALegacyMarker) <> 0;
+  end;
+end;
+
+/// <summary>Stand des Schalters unter AKey und des Merkers (neuer Name, sonst ALegacyMarker).</summary>
+function ReadSwitch(ARegistry: TRegistry; const AKey, AValueName, AMarker, ALegacyMarker: string):
+  TAtlasIdeStructure;
+begin
+  // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
+  Result.Enabled := True;
+  if ARegistry.OpenKey(AKey, True) and ARegistry.ValueExists(AValueName) then
+  begin
+    Result.Enabled := SameText(ARegistry.ReadString(AValueName), 'True');
+  end;
+  ARegistry.CloseKey;
+  Result.DisabledByAtlas := ARegistry.OpenKey(AtlasRegistryKey, True) and MarkerSet(ARegistry, AMarker, ALegacyMarker);
+  ARegistry.CloseKey;
+end;
+
+/// <summary>Den Merker immer unter seinem neuen Namen festhalten; der alte entfällt dann.</summary>
+procedure WriteMarker(ARegistry: TRegistry; const AMarker, ALegacyMarker: string; AChanged, ADisabled: Boolean);
+begin
+  if not ARegistry.OpenKey(AtlasRegistryKey, True) then
   begin
     Exit;
   end;
-  Key := Services.GetBaseRegistryKey + ASubKey;
-  Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  if AChanged or not ARegistry.ValueExists(AMarker) then
+  begin
+    ARegistry.WriteInteger(AMarker, Ord(ADisabled));
+  end;
+  if (ALegacyMarker <> '') and ARegistry.ValueExists(ALegacyMarker) then
+  begin
+    ARegistry.DeleteValue(ALegacyMarker);
+  end;
+  ARegistry.CloseKey;
+end;
+
+class function TAtlasIdeStructureSwitch.ApplySwitch(const ASubKey, AValueName, AMarker, ALegacyMarker: string;
+  AOwn: Boolean): Boolean;
+var
+  mServices: IOTAServices;
+  mRegistry: TRegistry;
+  mKey: string;
+  mState, mNext: TAtlasIdeStructure;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Exit;
+  end;
+  mKey := mServices.GetBaseRegistryKey + ASubKey;
+  mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
+    mRegistry.RootKey := HKEY_CURRENT_USER;
     try
-      // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
-      State.Enabled := True;
-      if Registry.OpenKey(Key, True) and Registry.ValueExists(AValueName) then
+      mState := ReadSwitch(mRegistry, mKey, AValueName, AMarker, ALegacyMarker);
+      mNext := TAtlasGuides.Switch(mState, AOwn);
+      if mNext.Enabled <> mState.Enabled then
       begin
-        State.Enabled := SameText(Registry.ReadString(AValueName), 'True');
+        Result := WriteSwitch(mRegistry, mKey, AValueName, mNext.Enabled);
       end;
-      Registry.CloseKey;
-      State.DisabledByAtlas := False;
-      if Registry.OpenKey(AtlasRegistryKey, True) then
-      begin
-        if Registry.ValueExists(AMarker) then
-        begin
-          State.DisabledByAtlas := Registry.ReadInteger(AMarker) <> 0;
-        end
-        else if (ALegacyMarker <> '') and Registry.ValueExists(ALegacyMarker) then
-        begin
-          State.DisabledByAtlas := Registry.ReadInteger(ALegacyMarker) <> 0;
-        end;
-      end;
-      Registry.CloseKey;
-      Next := TAtlasGuides.Switch(State, AOwn);
-      if Next.Enabled <> State.Enabled then
-      begin
-        if Registry.OpenKey(Key, True) then
-        begin
-          if Next.Enabled then
-          begin
-            Registry.WriteString(AValueName, 'True');
-          end
-          else
-          begin
-            Registry.WriteString(AValueName, 'False');
-          end;
-          Result := True;
-        end;
-        Registry.CloseKey;
-      end;
-      // Den Merker immer unter seinem neuen Namen festhalten; der alte entfällt dann.
-      if Registry.OpenKey(AtlasRegistryKey, True) then
-      begin
-        if (Next.DisabledByAtlas <> State.DisabledByAtlas) or not Registry.ValueExists(AMarker) then
-        begin
-          Registry.WriteInteger(AMarker, Ord(Next.DisabledByAtlas));
-        end;
-        if (ALegacyMarker <> '') and Registry.ValueExists(ALegacyMarker) then
-        begin
-          Registry.DeleteValue(ALegacyMarker);
-        end;
-        Registry.CloseKey;
-      end;
+      WriteMarker(mRegistry, AMarker, ALegacyMarker, mNext.DisabledByAtlas <> mState.DisabledByAtlas,
+        mNext.DisabledByAtlas);
     except
       // Ohne Schreibrecht bleibt die IDE, wie sie ist.
       on ERegistryException do
         Result := False;
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
@@ -311,19 +337,11 @@ begin
       // An allen Orten wie Help Insight (#1246): dem der Version und jedem, der den Wert schon trägt.
       for mSubKey in TAtlasCodeInsightKeys.Targets(BaseKey, KeysWithValue(ErrorInsightValue)) do
       begin
-        if Registry.OpenKey(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, True) then
+        if WriteSwitch(Registry, BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, ErrorInsightValue,
+          AEnabled) then
         begin
-          if AEnabled then
-          begin
-            Registry.WriteString(ErrorInsightValue, 'True');
-          end
-          else
-          begin
-            Registry.WriteString(ErrorInsightValue, 'False');
-          end;
           Result := True;
         end;
-        Registry.CloseKey;
       end;
       if Result and Registry.OpenKey(AtlasRegistryKey, True) then
       begin
@@ -340,68 +358,62 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeStructureSwitch.Sync;
-var
-  Settings: TAtlasPluginSettings;
-  Own, OwnTooltip: Boolean;
-  Texts: TArray<string>;
+/// <summary>Meldung zu einem geänderten Schalter: AOffId, wenn Atlas übernimmt, sonst AOnId.</summary>
+procedure AddSwitchText(var ATexts: TArray<string>; AChanged, AOwn: Boolean; AOffId, AOnId: TAtlasTextId);
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Own := Settings.PairColors and Settings.PairGuides;
-  OwnTooltip := Settings.Enabled and Settings.HoverTooltip;
-  Texts := nil;
-  if Apply(Own) then
-  begin
-    if Own then
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.PairGuidesIdeOff)];
-    end
-    else
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.PairGuidesIdeOn)];
-    end;
-  end;
-  if ApplyHelpInsight(OwnTooltip) then
-  begin
-    if OwnTooltip then
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOff)];
-    end
-    else
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOn)];
-    end;
-  end;
-  if ApplyTooltipWatches(OwnTooltip and Settings.DebugHoverValues) then
-  begin
-    if OwnTooltip and Settings.DebugHoverValues then
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOff)];
-    end
-    else
-    begin
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOn)];
-    end;
-  end;
-  if Length(Texts) = 0 then
+  if not AChanged then
   begin
     Exit;
   end;
-  // Beim Laden des Plugins ist das Meldungsfenster noch nicht bereit.
+  if AOwn then
+  begin
+    ATexts := ATexts + [TAtlasStrings.Text(AOffId)];
+  end
+  else
+  begin
+    ATexts := ATexts + [TAtlasStrings.Text(AOnId)];
+  end;
+end;
+
+/// <summary>Meldungen ins Meldungsfenster; beim Laden des Plugins ist es noch nicht bereit.</summary>
+procedure ShowSwitchTexts(const ATexts: TArray<string>);
+begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     var
-      Messages: IOTAMessageServices;
-      Text: string;
+      mMessages: IOTAMessageServices;
+      mText: string;
     begin
-      if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+      if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
       begin
-        for Text in Texts do
+        for mText in ATexts do
         begin
-          Messages.AddTitleMessage(Text);
+          mMessages.AddTitleMessage(mText);
         end;
       end;
     end);
+end;
+
+class procedure TAtlasIdeStructureSwitch.Sync;
+var
+  mSettings: TAtlasPluginSettings;
+  mOwn, mOwnTooltip, mOwnValues: Boolean;
+  mTexts: TArray<string>;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  mOwn := mSettings.PairColors and mSettings.PairGuides;
+  mOwnTooltip := mSettings.Enabled and mSettings.HoverTooltip;
+  mOwnValues := mOwnTooltip and mSettings.DebugHoverValues;
+  mTexts := nil;
+  AddSwitchText(mTexts, Apply(mOwn), mOwn, TAtlasTextId.PairGuidesIdeOff, TAtlasTextId.PairGuidesIdeOn);
+  AddSwitchText(mTexts, ApplyHelpInsight(mOwnTooltip), mOwnTooltip, TAtlasTextId.HelpInsightIdeOff,
+    TAtlasTextId.HelpInsightIdeOn);
+  AddSwitchText(mTexts, ApplyTooltipWatches(mOwnValues), mOwnValues, TAtlasTextId.TooltipWatchesIdeOff,
+    TAtlasTextId.TooltipWatchesIdeOn);
+  if Length(mTexts) > 0 then
+  begin
+    ShowSwitchTexts(mTexts);
+  end;
 end;
 
 end.

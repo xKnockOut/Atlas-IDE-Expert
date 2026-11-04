@@ -487,12 +487,13 @@ begin
       mColors.Accent, ABack, mPill.Right + 6);
   end;
   FItems[AIndex].TopRow := AContext.EditView.TopRow;
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, AContext.FileName, FItems[AIndex].Line,
-    FItems[AIndex].Selection.Caption, mPill, FItems[AIndex].TopRow, ARow.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
+    FItems[AIndex].Line, FItems[AIndex].Selection.Caption), mPill, FItems[AIndex].TopRow, ARow.Height);
   if not FItems[AIndex].DebugRect.IsEmpty then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, AContext.FileName, FItems[AIndex].Line,
-      FItems[AIndex].Selection.Caption, FItems[AIndex].DebugRect, FItems[AIndex].TopRow, ARow.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
+      FItems[AIndex].Line, FItems[AIndex].Selection.Caption), FItems[AIndex].DebugRect, FItems[AIndex].TopRow,
+      ARow.Height);
   end;
 end;
 
