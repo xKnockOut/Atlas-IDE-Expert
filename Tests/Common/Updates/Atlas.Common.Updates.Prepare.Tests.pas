@@ -73,6 +73,7 @@ begin
   Result.Command := 'prepare';
   Result.ManifestUrl := cManifestUrl;
   Result.Version := '2.0.1';
+  Result.Previous := '2.0.0';
   Result.Ide := AIde;
   Result.Platform := 'Win32';
   Result.RegistryKey := cKey;
@@ -124,6 +125,7 @@ begin
   mStage := Prepare('37.0');
   Assert.IsTrue(mStage.Phase = TUpdatePhase.Ready, mStage.Error + ' ' + mStage.Detail);
   Assert.AreEqual('2.0.1', mStage.Version);
+  Assert.AreEqual('2.0.0', mStage.Previous);
   Assert.IsFalse(mStage.FromSource);
   Assert.AreEqual(cStaging + '\files\AtlasUpdate.exe', mStage.Updater);
   Assert.AreEqual('base 2.0.1', FFake.Files.ReadText(cStaging + '\files\Win32\Atlas.IDE.Base370.bpl'));

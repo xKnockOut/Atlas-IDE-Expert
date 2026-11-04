@@ -529,7 +529,13 @@
         <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Contract.pas"/>
         <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Check.pas"/>
         <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Adapters.HttpSource.pas"/>
+        <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Install.pas"/>
         <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
+        <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Strings.pas"/>
+        <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Offer.pas"/>
+        <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Selection.pas"/>
+        <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Texts.pas"/>
+        <DCCReference Include="Source\IDE\Updates\Atlas.IDE.Updates.Install.pas"/>
         <DCCReference Include="Source\IDE\Updates\Atlas.IDE.Updates.Check.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Lines.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.ServerWindow.pas"/>

@@ -361,6 +361,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Updates.Adapters.HttpSource` | `Core/Updates/Atlas.Core.Updates.Adapters.HttpSource.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Check` | `Core/Updates/Atlas.Core.Updates.Check.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Updates.Contract` | `Core/Updates/Atlas.Core.Updates.Contract.pas` | Ordner `Core/Updates` |
+| `Atlas.Core.Updates.Install` | `Core/Updates/Atlas.Core.Updates.Install.pas` | Ordner `Core/Updates` |
 | `Atlas.Core.Vcs.Adapters.ProcessRunner` | `Core/Vcs/Atlas.Core.Vcs.Adapters.ProcessRunner.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.BranchNames` | `Core/Vcs/Atlas.Core.Vcs.BranchNames.pas` | Ordner `Core/Vcs` |
 | `Atlas.Core.Vcs.BranchPlan` | `Core/Vcs/Atlas.Core.Vcs.BranchPlan.pas` | Ordner `Core/Vcs` |
@@ -562,6 +563,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Undo.Changes` | `IDE/Undo/Atlas.IDE.Undo.Changes.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Undo.Target` | `IDE/Undo/Atlas.IDE.Undo.Target.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Updates.Check` | `IDE/Updates/Atlas.IDE.Updates.Check.pas` | Ordner `IDE/Updates` |
+| `Atlas.IDE.Updates.Install` | `IDE/Updates/Atlas.IDE.Updates.Install.pas` | Ordner `IDE/Updates` |
 | `Atlas.IDE.Vcs.Branching` | `IDE/Vcs/Atlas.IDE.Vcs.Branching.pas` | Ordner `IDE/Vcs` |
 | `Atlas.IDE.Vcs.Service` | `IDE/Vcs/Atlas.IDE.Vcs.Service.pas` | Ordner `IDE/Vcs` |
 | `Atlas.IDE.Vcs.WorkingCopies` | `IDE/Vcs/Atlas.IDE.Vcs.WorkingCopies.pas` | Ordner `IDE/Vcs` |
@@ -675,6 +677,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Undo.DiffView` | `UI/Undo/Atlas.UI.Undo.DiffView.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Undo.Messages` | `UI/Undo/Atlas.UI.Undo.Messages.pas` | Ordner `UI/Undo` |
 | `Atlas.UI.Updates.Consent` | `UI/Updates/Atlas.UI.Updates.Consent.pas` | Ordner `UI/Updates` |
+| `Atlas.UI.Updates.Offer` | `UI/Updates/Atlas.UI.Updates.Offer.pas` | Ordner `UI/Updates` |
+| `Atlas.UI.Updates.Selection` | `UI/Updates/Atlas.UI.Updates.Selection.pas` | Ordner `UI/Updates` |
+| `Atlas.UI.Updates.Strings` | `UI/Updates/Atlas.UI.Updates.Strings.pas` | Ordner `UI/Updates` |
+| `Atlas.UI.Updates.Texts` | `UI/Updates/Atlas.UI.Updates.Texts.pas` | Ordner `UI/Updates` |
 | `Atlas.UI.Vcs.BranchDialog` | `UI/Vcs/Atlas.UI.Vcs.BranchDialog.pas` | Ordner `UI/Vcs` |
 | `Atlas.UI.Vcs.WorkingCopies` | `UI/Vcs/Atlas.UI.Vcs.WorkingCopies.pas` | Ordner `UI/Vcs` |
 

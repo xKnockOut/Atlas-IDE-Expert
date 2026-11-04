@@ -127,6 +127,8 @@ type
     Command: string;
     ManifestUrl: string;
     Version: string;
+    /// <summary>Installierte Atlas-Version (für das Ergebnis „von … auf …“).</summary>
+    Previous: string;
     /// <summary>CompilerVersion der IDE, z. B. „37.0“.</summary>
     Ide: string;
     /// <summary>Win32 (klassische IDE) oder Win64 (64-Bit-IDE).</summary>
@@ -563,8 +565,8 @@ end;
 { TUpdateArguments }
 
 const
-  cArgumentNames: array[0..9] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key', 'target',
-    'staging', 'select', 'wait-pid', 'new-modules');
+  cArgumentNames: array[0..10] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key', 'target',
+    'staging', 'select', 'wait-pid', 'new-modules', 'previous');
 
 procedure AssignArgument(var AArguments: TUpdateArguments; const AName, AValue: string);
 begin
@@ -589,6 +591,8 @@ begin
       AArguments.WaitPid := StrToIntDef(AValue, 0);
     9:
       AArguments.NewModules := TUpdateNames.ParseNewModules(AValue);
+    10:
+      AArguments.Previous := AValue;
   else
     // Unbekannte Namen übergeht der Aufruf (ältere oder neuere Plugins).
   end;
@@ -640,6 +644,7 @@ begin
     end;
     AddPair(mList, 'manifest', ManifestUrl);
     AddPair(mList, 'version', Version);
+    AddPair(mList, 'previous', Previous);
     AddPair(mList, 'ide', Ide);
     AddPair(mList, 'platform', Platform);
     AddPair(mList, 'registry-key', RegistryKey);

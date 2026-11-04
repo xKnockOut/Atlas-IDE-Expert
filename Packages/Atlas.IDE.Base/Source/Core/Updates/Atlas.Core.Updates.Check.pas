@@ -3,24 +3,26 @@
 // Prüfung auf neue Versionen (#495), ohne Netzwerk und ohne IDE:
 // - Nur mit updates.check (Vorgabe aus, Zustimmung beim ersten Start) und
 //   höchstens einmal täglich; auch eine gescheiterte Abfrage zählt.
-// - Abgefragt wird die Versionsdatei des Release-Prozesses
-//   (atlas-version.json: {"version": "1.2.0", "changes": "https://…"});
-//   übertragen werden nur Atlas-Version und IDE-Version als Parameter der
-//   Adresse, keine Projektdaten.
-// - Versionen nach SemVer 2.0 (Vorabversionen vor der Version, Build-Angabe
-//   ohne Bedeutung). Neuer ist eine Version nur, wenn sie größer ist als die
-//   installierte.
+// - Abgefragt wird die Versionsdatei des Kanals (updates.channel, #1519:
+//   atlas-version.json bzw. atlas-version-beta.json, {"version": "1.2.0",
+//   "changes": "https://…", …}); übertragen werden nur Atlas-Version und
+//   IDE-Version als Parameter der Adresse, keine Projektdaten.
+// - Versionen nach SemVer 2.0 (TUpdateVersions, dieselben Regeln wie
+//   AtlasUpdate.exe). Neuer ist eine Version nur, wenn sie größer ist als
+//   die installierte.
 // - Der Zustand (gefragt, letzte Prüfung, zuletzt gefundene neuere Version)
 //   liegt in einer eigenen Datei, nicht in den Einstellungen, damit die
 //   tägliche Prüfung keine Einstellungsstände (#722) erzeugt. Die gefundene
 //   Version hält die Zeile „Version“ des Statusfelds und der Zustandskachel
 //   (#754) bis zur nächsten Prüfung bzw. bis sie installiert ist.
-// Heruntergeladen oder installiert wird nie etwas.
+// Heruntergeladen und installiert wird hier nichts; das macht AtlasUpdate.exe
+// (#1519, Atlas.Core.Updates.Install).
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Text.Updates,
   Atlas.Core.Updates.Contract;
 
 type
@@ -46,6 +48,14 @@ type
   TAtlasUpdateOutcome = (Disabled, NotDue, Failed, Current, NewVersion);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Was eine Prüfung abfragt (#1519): Versionsdatei des Kanals, installierte Atlas- und IDE-Version.
+  /// </summary>
+  TAtlasUpdateQuery = record
+    Url: string;
+    Installed: string;
+    IdeVersion: string;
+  end;
+
   TAtlasUpdateResult = record
     Outcome: TAtlasUpdateOutcome;
     Release: TAtlasRelease;
@@ -55,8 +65,8 @@ type
 
   TAtlasUpdates = class
   public const
-    VersionUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases/latest/download/atlas-version.json';
-    ReleasesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases';
+    VersionUrl = TUpdateChannels.StableUrl;
+    ReleasesUrl = TUpdateChannels.ReleasesUrl;
     TimeoutMs = 10000;
   public
     /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
@@ -77,9 +87,10 @@ type
     /// Installation des Updates gilt sie nicht mehr.</summary>
     class function Pending(const AState: TAtlasUpdateState; const AInstalled: string;
       out ARelease: TAtlasRelease): Boolean; static;
-    /// <summary>Eine Prüfung; setzt AState.LastCheck, wenn abgefragt wurde.</summary>
-    class function Run(const ASource: IAtlasVersionSource; var AState: TAtlasUpdateState; AEnabled: Boolean;
-      const AInstalled, AIdeVersion: string; ANow: TDateTime): TAtlasUpdateResult; static;
+    /// <summary>Eine Prüfung der Versionsdatei unter AQuery.Url (Kanal, #1519); setzt AState.LastCheck, wenn
+    /// abgefragt wurde.</summary>
+    class function Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
+      var AState: TAtlasUpdateState; AEnabled: Boolean; ANow: TDateTime): TAtlasUpdateResult; static;
     /// <summary>%LOCALAPPDATA%\Atlas\updates.json.</summary>
     class function StateFile: string; static;
     /// <summary>Compiler-Version der IDE, für die das Plugin gebaut ist, z. B. „37.0“ (Delphi 13).</summary>
@@ -89,18 +100,10 @@ type
 implementation
 
 uses
-  System.Math,
   System.JSON,
   System.DateUtils,
   System.NetEncoding,
-  System.RegularExpressions,
   System.IOUtils;
-
-const
-  Identifier = '(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)';
-  SemVerPattern = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)' +
-    '(-' + Identifier + '(?:\.' + Identifier + ')*)?' +
-    '(\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$';
 
 { TAtlasUpdateState }
 
@@ -174,120 +177,12 @@ end;
 
 class function TAtlasUpdates.IsValidVersion(const AVersion: string): Boolean;
 begin
-  Result := TRegEx.IsMatch(AVersion, SemVerPattern);
-end;
-
-function IsNumber(const AText: string): Boolean;
-var
-  C: Char;
-begin
-  Result := AText <> '';
-  for C in AText do
-  begin
-    if not CharInSet(C, ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
-function CompareNumbers(const A, B: string): Integer;
-begin
-  // Ohne führende Nullen (SemVer): länger ist größer, sonst Zeichen für Zeichen.
-  Result := Sign(Length(A) - Length(B));
-  if Result = 0 then
-  begin
-    Result := Sign(CompareStr(A, B));
-  end;
-end;
-
-function ComparePrerelease(const A, B: string): Integer;
-var
-  PartsA, PartsB: TArray<string>;
-  Index: Integer;
-begin
-  // Ohne Vorabversion ist eine Version größer als mit.
-  if (A = '') or (B = '') then
-  begin
-    Exit(Ord(A = '') - Ord(B = ''));
-  end;
-  PartsA := A.Split(['.']);
-  PartsB := B.Split(['.']);
-  for Index := 0 to Min(Length(PartsA), Length(PartsB)) - 1 do
-  begin
-    if IsNumber(PartsA[Index]) and IsNumber(PartsB[Index]) then
-    begin
-      Result := CompareNumbers(PartsA[Index], PartsB[Index]);
-    end
-    else if IsNumber(PartsA[Index]) then
-    begin
-      Result := -1;
-    end
-    else if IsNumber(PartsB[Index]) then
-    begin
-      Result := 1;
-    end
-    else
-    begin
-      Result := Sign(CompareStr(PartsA[Index], PartsB[Index]));
-    end;
-    if Result <> 0 then
-    begin
-      Exit;
-    end;
-  end;
-  Result := Sign(Length(PartsA) - Length(PartsB));
-end;
-
-/// <summary>Kern (drei Zahlen) und Vorabversion ohne „-“; False, wenn AVersion keine SemVer-Version ist.</summary>
-function SplitVersion(const AVersion: string; out ACore: TArray<string>; out APrerelease: string): Boolean;
-var
-  Rest: string;
-  Position: Integer;
-begin
-  Result := TRegEx.IsMatch(AVersion, SemVerPattern);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Rest := AVersion;
-  Position := Pos('+', Rest);
-  if Position > 0 then
-  begin
-    Rest := Copy(Rest, 1, Position - 1);
-  end;
-  APrerelease := '';
-  Position := Pos('-', Rest);
-  if Position > 0 then
-  begin
-    APrerelease := Copy(Rest, Position + 1, MaxInt);
-    Rest := Copy(Rest, 1, Position - 1);
-  end;
-  ACore := Rest.Split(['.']);
+  Result := TUpdateVersions.IsValidVersion(AVersion);
 end;
 
 class function TAtlasUpdates.Compare(const A, B: string): Integer;
-var
-  CoreA, CoreB: TArray<string>;
-  PreA, PreB: string;
-  ValidA, ValidB: Boolean;
-  Index: Integer;
 begin
-  ValidA := SplitVersion(A, CoreA, PreA);
-  ValidB := SplitVersion(B, CoreB, PreB);
-  if not ValidA or not ValidB then
-  begin
-    Exit(Ord(ValidA) - Ord(ValidB));
-  end;
-  for Index := 0 to 2 do
-  begin
-    Result := CompareNumbers(CoreA[Index], CoreB[Index]);
-    if Result <> 0 then
-    begin
-      Exit;
-    end;
-  end;
-  Result := ComparePrerelease(PreA, PreB);
+  Result := TUpdateVersions.Compare(A, B);
 end;
 
 class function TAtlasUpdates.TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean;
@@ -376,8 +271,8 @@ begin
   end;
 end;
 
-class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; var AState: TAtlasUpdateState;
-  AEnabled: Boolean; const AInstalled, AIdeVersion: string; ANow: TDateTime): TAtlasUpdateResult;
+class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
+  var AState: TAtlasUpdateState; AEnabled: Boolean; ANow: TDateTime): TAtlasUpdateResult;
 var
   Text: string;
 begin
@@ -394,7 +289,7 @@ begin
   end;
   // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag.
   AState.LastCheck := ANow;
-  if not ASource.Fetch(RequestUrl(VersionUrl, AInstalled, AIdeVersion), TimeoutMs, Text, Result.Error) then
+  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), TimeoutMs, Text, Result.Error) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.Failed;
     Exit;
@@ -405,7 +300,7 @@ begin
     Result.Error := 'Versionsdatei ungültig';
     Exit;
   end;
-  if Compare(Result.Release.Version, AInstalled) > 0 then
+  if Compare(Result.Release.Version, AQuery.Installed) > 0 then
   begin
     Result.Outcome := TAtlasUpdateOutcome.NewVersion;
   end
