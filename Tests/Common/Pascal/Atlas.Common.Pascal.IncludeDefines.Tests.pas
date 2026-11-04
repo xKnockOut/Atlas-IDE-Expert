@@ -230,8 +230,8 @@ begin
     Settings.ParameterNames := False;
     Settings.InferredTypes := False;
     Settings.EndMarkers := False;
-    Hints := TLspInlayHints.Collect(nil, nil, Tree, Source, MainFile, TTextRange.Create(0, 0, 7, 0), Settings,
-      nil, Processed);
+    Hints := TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree, Source, MainFile, nil),
+      TTextRange.Create(0, 0, 7, 0), Settings, Processed);
     Assert.AreEqual(1, Integer(Length(Hints)));
     Assert.AreEqual('definiert FOO, BAR', Hints[0].Text);
     Assert.AreEqual(2, Hints[0].Position.Line);
@@ -248,8 +248,8 @@ begin
     Assert.AreEqual(0, Integer(Length(TLspInlayHints.IncludeDefines(Tree, Processed,
       TTextRange.Create(3, 0, 7, 0)))));
     Settings.IncludeDefines := False;
-    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(nil, nil, Tree, Source, MainFile,
-      TTextRange.Create(0, 0, 7, 0), Settings, nil, Processed))));
+    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree,
+      Source, MainFile, nil), TTextRange.Create(0, 0, 7, 0), Settings, Processed))));
   finally
     Tree.Free;
   end;

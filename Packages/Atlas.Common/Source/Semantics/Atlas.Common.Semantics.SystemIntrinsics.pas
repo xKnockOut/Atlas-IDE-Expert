@@ -310,11 +310,31 @@ begin
   Result := False;
 end;
 
+/// <summary>AToken liegt in einer Zeile und deckt APosition ab.</summary>
+function TokenCovers(const AToken: TPascalToken; const APosition: TTextPosition): Boolean;
+begin
+  Result := (AToken.StartPos.Line = APosition.Line) and (AToken.StartPos.Character <= APosition.Character) and
+    (AToken.EndPos.Line = APosition.Line) and (AToken.EndPos.Character >= APosition.Character);
+end;
+
+/// <summary>Vor ATokens[AIndex] steht, über Kommentare und Direktiven hinweg, ein Punkt.</summary>
+function FollowsDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrevious: Integer;
+begin
+  mPrevious := AIndex - 1;
+  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(mPrevious);
+  end;
+  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
+end;
+
 class function TSystemIntrinsics.NameAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   out AName: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Previous: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   AName := '';
   Result := False;
@@ -322,30 +342,21 @@ begin
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].StartPos.Line <> APosition.Line) or (Tokens[Index].StartPos.Character > APosition.Character) or
-      (Tokens[Index].EndPos.Line <> APosition.Line) or (Tokens[Index].EndPos.Character < APosition.Character) then
+    if not TokenCovers(mTokens[mIndex], APosition) or (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+      mTokens[mIndex].Text.StartsWith('&') then
     begin
       Continue;
     end;
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or Tokens[Index].Text.StartsWith('&') then
-    begin
-      Continue;
-    end;
-    Previous := Index - 1;
-    while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-    begin
-      Dec(Previous);
-    end;
-    if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
+    if FollowsDot(mTokens, mIndex) then
     begin
       Exit;
     end;
-    if IsKnown(Tokens[Index].Text) then
+    if IsKnown(mTokens[mIndex].Text) then
     begin
-      AName := Tokens[Index].Text;
+      AName := mTokens[mIndex].Text;
       Exit(True);
     end;
   end;

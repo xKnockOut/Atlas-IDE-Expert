@@ -258,7 +258,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.CodeActions,
@@ -3008,7 +3008,7 @@ end;
 
 class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
 begin
-  Result := TNameResolver.ClassRefTarget(ASignature);
+  Result := TResolverText.ClassRefTarget(ASignature);
 end;
 
 procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

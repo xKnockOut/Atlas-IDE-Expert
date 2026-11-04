@@ -392,8 +392,9 @@ begin
     end
     else
     begin
-      TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot, StringAt(AArguments, 3),
-        StringAt(AArguments, 4), Disabled, FIndex, Version, Uri, FSlashHost, Style, Edits, Reason);
+      TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot,
+        TSlashMenuCall.Create(StringAt(AArguments, 3), StringAt(AArguments, 4),
+        TSlashEnvironment.Create(nil, Disabled, FIndex, Version, Uri, FSlashHost).WithStyle(Style)), Edits, Reason);
     end;
   end;
   Result := TJSONObject.Create;

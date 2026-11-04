@@ -43,6 +43,8 @@ type
     /// <summary>Der Uses-Graph-Dienst; ohne hereingereichten einer über FIndex. nil ohne Index.</summary>
     function UsesGraph: TUsesGraphService;
     function TextHasName(const AText, AName: string): Boolean;
+    /// <summary>Steht AName in einer der Include-Dateien? Unknown, wenn eine nicht lesbar ist.</summary>
+    function NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
   public
     /// <summary>AIndex darf nil sein (dann sucht NameIn im Text); AComplete nil = vollständig.</summary>
     constructor Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
@@ -333,7 +335,7 @@ function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnsw
 var
   Indexed: TUnitIndex;
   HasUnit: Boolean;
-  Text, Include: string;
+  Text: string;
 begin
   HasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, Indexed);
   if HasUnit then
@@ -352,21 +354,29 @@ begin
   begin
     Exit(TRuleNameAnswer.Present);
   end;
+  Result := TRuleNameAnswer.Absent;
   if HasUnit then
   begin
-    for Include in Indexed.Includes do
+    Result := NameInIncludes(Indexed.Includes, AName);
+  end;
+end;
+
+function TRuleProjectFiles.NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
+var
+  mInclude, mText: string;
+begin
+  Result := TRuleNameAnswer.Absent;
+  for mInclude in AIncludes do
+  begin
+    if not ReadText(mInclude, mText) then
     begin
-      if not ReadText(Include, Text) then
-      begin
-        Exit(TRuleNameAnswer.Unknown);
-      end;
-      if TextHasName(Text, AName) then
-      begin
-        Exit(TRuleNameAnswer.Present);
-      end;
+      Exit(TRuleNameAnswer.Unknown);
+    end;
+    if TextHasName(mText, AName) then
+    begin
+      Exit(TRuleNameAnswer.Present);
     end;
   end;
-  Result := TRuleNameAnswer.Absent;
 end;
 
 class function TRuleProjectFiles.KindOfSource(const AFileName, AText: string): TRuleProjectKind;

@@ -178,6 +178,36 @@ begin
   FIndex := nil;
 end;
 
+/// <summary>Inhalt jeder geänderten Datei nach dem Verschieben von TStock.</summary>
+procedure AssertMovedDocument(const AUri: string; const ADocument: TJSONObject);
+begin
+  if AUri = TDocumentUris.FromPath('C:\P\Stock.pas') then
+  begin
+    Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
+      '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
+      '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
+      'end.'#10, Apply('', ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(LagerFile) then
+  begin
+    Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
+      '  Helfer;'#10#10'end.'#10, Apply(UnitLager, ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(KasseFile) then
+  begin
+    Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
+      'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(ProgramFile) then
+  begin
+    Assert.Contains(Apply(TextProgram, ADocument), 'Stock in ''Stock.pas''');
+  end
+  else if AUri = TDocumentUris.FromPath(ProjectFile) then
+  begin
+    Assert.Contains(Apply(TextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
+  end;
+end;
+
 procedure TLspMoveClassTests.MovesOverTheProject;
 var
   Tree: TSyntaxTree;
@@ -210,31 +240,7 @@ begin
       end;
       Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
       Results := Results + ExtractFileName(TDocumentUris.ToPath(Uri)) + '|';
-      if Uri = TDocumentUris.FromPath('C:\P\Stock.pas') then
-      begin
-        Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
-          '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
-          '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
-          'end.'#10, Apply('', Document));
-      end
-      else if Uri = TDocumentUris.FromPath(LagerFile) then
-      begin
-        Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
-          '  Helfer;'#10#10'end.'#10, Apply(UnitLager, Document));
-      end
-      else if Uri = TDocumentUris.FromPath(KasseFile) then
-      begin
-        Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
-          'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, Document));
-      end
-      else if Uri = TDocumentUris.FromPath(ProgramFile) then
-      begin
-        Assert.Contains(Apply(TextProgram, Document), 'Stock in ''Stock.pas''');
-      end
-      else if Uri = TDocumentUris.FromPath(ProjectFile) then
-      begin
-        Assert.Contains(Apply(TextProject, Document), '<DCCReference Include="Stock.pas"/>');
-      end;
+      AssertMovedDocument(Uri, Document);
     end;
     Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
     // Gibt es die Datei schon, bricht der Befehl ab.

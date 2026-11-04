@@ -643,7 +643,7 @@ begin
       Resolves(SourceFile, ANode[0], Symbol, SymbolType, TypeFound) and TypeFound and
       not SameText(LastName(SymbolType.Name), LastName(FOwnerType)) and
       FResolver.ResolveChain(SourceFile.Tree, SourceFile.FileName, [FOwnerType], ANode.StartOffset).Found and
-      not FResolver.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, ANode.StartOffset, SymbolType.Name,
+      not FResolver.Queries.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, ANode.StartOffset, SymbolType.Name,
       FOwnerType) then
     begin
       Exit(TMatch.No);
@@ -1679,7 +1679,8 @@ begin
       Use.Node.StartOffset);
     if Actual.Found and Actual.IsType and Target.Found and Target.IsType then
     begin
-      if not FResolver.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, Use.Node.StartOffset, Use.TypeName,
+      if not FResolver.Queries.TypeDescendsFrom(SourceFile.Tree, SourceFile.FileName, Use.Node.StartOffset,
+        Use.TypeName,
         ItemType) then
       begin
         Fail(Format('%s nimmt in %s Werte vom Typ %s auf, nicht %s', [FName, LineOf(Use.Node),

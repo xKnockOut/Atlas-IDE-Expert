@@ -63,8 +63,8 @@ var
   Offsets: TArray<Integer>;
   Index, Start, Stop: Integer;
 begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits, nil,
-    AVersion) then
+  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),
+    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), Edits) then
   begin
     Exit('');
   end;

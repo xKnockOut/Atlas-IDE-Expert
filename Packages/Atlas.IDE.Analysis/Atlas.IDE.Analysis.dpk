@@ -46,6 +46,8 @@ requires
 contains
   Atlas.UI.Analysis.Strings in 'Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas',
   Atlas.Core.Architecture.Model in 'Source\Core\Architecture\Atlas.Core.Architecture.Model.pas',
+  Atlas.Core.Architecture.Commands in 'Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas',
+  Atlas.Core.Architecture.View in 'Source\Core\Architecture\Atlas.Core.Architecture.View.pas',
   Atlas.UI.Architecture.Map in 'Source\UI\Architecture\Atlas.UI.Architecture.Map.pas',
   Atlas.UI.Architecture.Slider in 'Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
   Atlas.UI.Architecture.Assignment in 'Source\UI\Architecture\Atlas.UI.Architecture.Assignment.pas',

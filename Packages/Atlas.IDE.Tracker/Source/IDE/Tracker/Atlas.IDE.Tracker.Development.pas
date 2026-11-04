@@ -85,8 +85,6 @@ type
     procedure SwitchBranch(const ABranch: TAtlasIssueBranch);
     procedure SwitchChecked(const ABranch: TAtlasIssueBranch; AChanges: Integer);
     procedure Switched(const ABranch: TAtlasIssueBranch; AOutcome: TAtlasVcsOutcome);
-    function TrackerNote(const ADevelopment: TAtlasIssueDevelopment): string;
-    class function NowUtc: TDateTime; static;
   public
     constructor Create(const AHooks: TAtlasIssueDevelopmentHooks);
     destructor Destroy; override;
@@ -154,7 +152,7 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeIssueDevelopment.NowUtc: TDateTime;
+function NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
@@ -320,6 +318,52 @@ begin
   end;
 end;
 
+/// <summary>Ereignisse der Ansicht; jedes erreicht das Objekt nur, solange AKeep es hält.</summary>
+function DevelopmentEvents(AOwner: TAtlasIdeIssueDevelopment; const AKeep: IInterface): TAtlasIssueDevelopmentEvents;
+begin
+  Result := Default(TAtlasIssueDevelopmentEvents);
+  Result.ShowDiff :=
+    procedure(AEntry: TAtlasVcsLogEntry)
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.ShowDiff(AEntry);
+      end;
+    end;
+  Result.OpenCommit :=
+    procedure(AEntry: TAtlasVcsLogEntry)
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.OpenCommit(AEntry);
+      end;
+    end;
+  Result.OpenUnit :=
+    procedure(AUnit: TAtlasIssueUnit)
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.OpenUnit(AUnit);
+      end;
+    end;
+  Result.SwitchBranch :=
+    procedure(ABranch: TAtlasIssueBranch)
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.SwitchBranch(ABranch);
+      end;
+    end;
+  Result.OpenPull :=
+    procedure(APull: TAtlasTrackerPull)
+    begin
+      if (AKeep <> nil) and Assigned(AOwner.FHooks.Browse) then
+      begin
+        AOwner.FHooks.Browse(APull.Page);
+      end;
+    end;
+end;
+
 procedure TAtlasIdeIssueDevelopment.Wire(AFrame: TAtlasIssueFrame);
 var
   mKeep: IInterface;
@@ -336,46 +380,7 @@ begin
         mOwner.Shown;
       end;
     end;
-  AFrame.Development.OnShowDiff :=
-    procedure(AEntry: TAtlasVcsLogEntry)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.ShowDiff(AEntry);
-      end;
-    end;
-  AFrame.Development.OnOpenCommit :=
-    procedure(AEntry: TAtlasVcsLogEntry)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.OpenCommit(AEntry);
-      end;
-    end;
-  AFrame.Development.OnOpenUnit :=
-    procedure(AUnit: TAtlasIssueUnit)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.OpenUnit(AUnit);
-      end;
-    end;
-  AFrame.Development.OnSwitchBranch :=
-    procedure(ABranch: TAtlasIssueBranch)
-    begin
-      if mKeep <> nil then
-      begin
-        mOwner.SwitchBranch(ABranch);
-      end;
-    end;
-  AFrame.Development.OnOpenPull :=
-    procedure(APull: TAtlasTrackerPull)
-    begin
-      if (mKeep <> nil) and Assigned(mOwner.FHooks.Browse) then
-      begin
-        mOwner.FHooks.Browse(APull.Page);
-      end;
-    end;
+  AFrame.Development.Events := DevelopmentEvents(Self, mKeep);
   FShown := False;
 end;
 
@@ -447,7 +452,8 @@ begin
   end;
 end;
 
-function TAtlasIdeIssueDevelopment.TrackerNote(const ADevelopment: TAtlasIssueDevelopment): string;
+/// <summary>Zeile zum Tracker, wenn er nicht geantwortet hat; '' sonst.</summary>
+function TrackerNote(const ADevelopment: TAtlasIssueDevelopment): string;
 begin
   Result := '';
   if ADevelopment.TrackerLoaded or (ADevelopment.TrackerError in [TAtlasCiFetchError.None,
@@ -482,19 +488,111 @@ begin
   mView.ShowDevelopment(ADevelopment, TrackerNote(ADevelopment));
 end;
 
+type
+  /// <summary>Eine Suche, wie sie in den Hintergrund geht.</summary>
+  TLoadJob = record
+    Generation: Integer;
+    Project: string;
+    Request: TAtlasIssueDevelopmentRequest;
+    Target: TAtlasTrackerTarget;
+    Provider: IAtlasTrackerProvider;
+    Transport: IAtlasCiTransport;
+  end;
+
+/// <summary>Branches und Commits aus der Versionsverwaltung des Projektordners (ohne Projekt keine).</summary>
+procedure CollectVcs(const AJob: TLoadJob; var AResult: TAtlasIssueDevelopment);
+begin
+  try
+    if AJob.Project <> '' then
+    begin
+      TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(ExtractFileDir(AJob.Project),
+        TAtlasIdeIssueDevelopment.VcsTimeoutMs), AJob.Request, AResult);
+    end;
+  except
+    on E: Exception do
+    begin
+      AResult.VcsOutcome := TAtlasVcsOutcome.Failed;
+      TAtlasGuard.Log('Issue-Entwicklung: Versionsverwaltung mit ' + E.ClassName + ' abgebrochen');
+    end;
+  end;
+end;
+
+/// <summary>Entwicklung beim Tracker (Pull Requests, VCS-Änderungen).</summary>
+procedure CollectTracker(const AJob: TLoadJob; var AResult: TAtlasIssueDevelopment);
+var
+  mDevelopment: TAtlasTrackerDevelopment;
+  mError: TAtlasCiFetchError;
+begin
+  if AJob.Provider = nil then
+  begin
+    AResult.TrackerError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if AJob.Transport = nil then
+  begin
+    AResult.TrackerError := TAtlasCiFetchError.Unauthorized;
+    Exit;
+  end;
+  try
+    AResult.TrackerLoaded := AJob.Provider.Development(AJob.Target, AJob.Transport, AJob.Request.Key,
+      TAtlasIdeIssueDevelopment.TrackerTimeoutMs, mDevelopment, mError);
+    if AResult.TrackerLoaded then
+    begin
+      AResult.Tracker := mDevelopment;
+    end
+    else
+    begin
+      AResult.TrackerError := mError;
+    end;
+  except
+    on E: Exception do
+    begin
+      AResult.TrackerError := TAtlasCiFetchError.Network;
+      TAtlasGuard.Log('Issue-Entwicklung: Tracker mit ' + E.ClassName + ' abgebrochen');
+    end;
+  end;
+end;
+
+/// <summary>Arbeit des Hintergrundthreads; das Ergebnis geht über den Hauptthread an AOwner, solange AKeep ihn
+/// hält. Eigene Routine: Die anonyme Methode hält nur ihre Parameter.</summary>
+function LoadWorker(AOwner: TAtlasIdeIssueDevelopment; const AKeep: IInterface; const AJob: TLoadJob): TProc;
+var
+  mJob: TLoadJob;
+  mKeep: IInterface;
+begin
+  mJob := AJob;
+  mKeep := AKeep;
+  Result :=
+    procedure
+    var
+      mResult: TAtlasIssueDevelopment;
+    begin
+      mResult := TAtlasIssueDevelopment.Empty;
+      mResult.Key := mJob.Request.Key;
+      CollectVcs(mJob, mResult);
+      CollectTracker(mJob, mResult);
+      mJob.Transport := nil;
+      mJob.Provider := nil;
+      if TAtlasShutdown.Signalled then
+      begin
+        Exit;
+      end;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          if mKeep <> nil then
+          begin
+            AOwner.Loaded(mJob.Generation, mJob.Project = '', mResult);
+          end;
+        end);
+    end;
+end;
+
 procedure TAtlasIdeIssueDevelopment.Load(AForce: Boolean);
 var
   mView: TAtlasIssueDevelopmentView;
   mCached: TAtlasIssueDevelopment;
-  mRequest: TAtlasIssueDevelopmentRequest;
-  mProject, mFolder: string;
-  mProjects: TArray<TAtlasIssueProject>;
-  mProvider: IAtlasTrackerProvider;
-  mTransport: IAtlasCiTransport;
-  mTarget: TAtlasTrackerTarget;
-  mGeneration: Integer;
-  mKeep: IInterface;
-  mOwner: TAtlasIdeIssueDevelopment;
+  mJob: TLoadJob;
 begin
   if not FStarted or not FHasCurrent or not Active then
   begin
@@ -514,102 +612,35 @@ begin
   Cancel;
   ReleaseThreads(False);
   Inc(FGeneration);
-  mGeneration := FGeneration;
   FShown := True;
-  mProject := ProjectFile;
-  mFolder := ExtractFileDir(mProject);
-  mProjects := GroupProjects;
-  mTarget := FTarget;
-  mRequest := TAtlasIssueDevelopmentRequest.Create(FTarget.Provider, FTarget.Project, FKey,
-    Bases(TAtlasIdeSettings.Current.IssuesBranchBase), mProjects);
+  mJob := Default(TLoadJob);
+  mJob.Generation := FGeneration;
+  mJob.Project := ProjectFile;
+  mJob.Target := FTarget;
+  mJob.Request := TAtlasIssueDevelopmentRequest.Create(FTarget.Provider, FTarget.Project, FKey,
+    Bases(TAtlasIdeSettings.Current.IssuesBranchBase), GroupProjects);
   FForce := False;
   mView.ShowLoading;
   // Der Transport entsteht hier, damit „Abbrechen“ ihn erreicht; er liest das Token ohne Dialog.
-  mProvider := nil;
-  mTransport := nil;
   if Assigned(FHooks.Provider) then
   begin
-    mProvider := FHooks.Provider(FTarget);
+    mJob.Provider := FHooks.Provider(FTarget);
   end;
-  if (mProvider <> nil) and Assigned(FHooks.Transport) then
+  if (mJob.Provider <> nil) and Assigned(FHooks.Transport) then
   begin
-    mTransport := FHooks.Transport(mProvider, FTarget);
+    mJob.Transport := FHooks.Transport(mJob.Provider, FTarget);
   end;
-  if not Supports(mTransport, IAtlasCiCancel, FCancel) then
+  if not Supports(mJob.Transport, IAtlasCiCancel, FCancel) then
   begin
     FCancel := nil;
   end;
-  mKeep := Self;
-  mOwner := Self;
   // Ohne Ergebnis aus dem Thread weiter: Der Vorgänger kann noch laufen und verfällt.
   if FThread <> nil then
   begin
     FWorkers.Add(FThread);
     FThread := nil;
   end;
-  FThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mResult: TAtlasIssueDevelopment;
-      mDevelopment: TAtlasTrackerDevelopment;
-      mError: TAtlasCiFetchError;
-    begin
-      mResult := TAtlasIssueDevelopment.Empty;
-      mResult.Key := mRequest.Key;
-      try
-        if mProject <> '' then
-        begin
-          TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(mFolder, VcsTimeoutMs), mRequest, mResult);
-        end;
-      except
-        on E: Exception do
-        begin
-          mResult.VcsOutcome := TAtlasVcsOutcome.Failed;
-          TAtlasGuard.Log('Issue-Entwicklung: Versionsverwaltung mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      if mProvider = nil then
-      begin
-        mResult.TrackerError := TAtlasCiFetchError.NotConfigured;
-      end
-      else if mTransport = nil then
-      begin
-        mResult.TrackerError := TAtlasCiFetchError.Unauthorized;
-      end
-      else
-        try
-          mResult.TrackerLoaded := mProvider.Development(mTarget, mTransport, mRequest.Key, TrackerTimeoutMs,
-            mDevelopment, mError);
-          if mResult.TrackerLoaded then
-          begin
-            mResult.Tracker := mDevelopment;
-          end
-          else
-          begin
-            mResult.TrackerError := mError;
-          end;
-        except
-          on E: Exception do
-          begin
-            mResult.TrackerError := TAtlasCiFetchError.Network;
-            TAtlasGuard.Log('Issue-Entwicklung: Tracker mit ' + E.ClassName + ' abgebrochen');
-          end;
-        end;
-      mTransport := nil;
-      mProvider := nil;
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
-        procedure
-        begin
-          if mKeep <> nil then
-          begin
-            mOwner.Loaded(mGeneration, mProject = '', mResult);
-          end;
-        end);
-    end);
+  FThread := TThread.CreateAnonymousThread(LoadWorker(Self, Self, mJob));
   FThread.FreeOnTerminate := False;
   FThread.Start;
 end;

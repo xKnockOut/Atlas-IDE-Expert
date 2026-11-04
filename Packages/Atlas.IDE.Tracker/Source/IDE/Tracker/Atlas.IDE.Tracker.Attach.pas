@@ -116,53 +116,64 @@ uses
   Atlas.IDE.Contracts.DebugReport;
 
 // Bild des Formulars im Designer des aktiven Moduls; nil ohne (Datenmodul, FMX, kein Designer).
-function DesignerImage(out AName: string): TBitmap;
+/// <summary>Bild eines Formulars bzw. Frames im Designer; nil ohne Fenster.</summary>
+function RootImage(ARoot: TComponent): TBitmap;
+begin
+  Result := nil;
+  if ARoot is TCustomForm then
+  begin
+    Result := TCustomForm(ARoot).GetFormImage;
+  end
+  else if (ARoot is TWinControl) and TWinControl(ARoot).HandleAllocated then
+  begin
+    Result := TBitmap.Create;
+    try
+      Result.SetSize(TWinControl(ARoot).Width, TWinControl(ARoot).Height);
+      TWinControl(ARoot).PaintTo(Result.Canvas.Handle, 0, 0);
+    except
+      FreeAndNil(Result);
+      raise;
+    end;
+  end;
+end;
+
+/// <summary>Wurzel des ersten Formular-Editors im Modul; nil ohne.</summary>
+function DesignerRoot(const AModule: IOTAModule): TComponent;
 var
-  mServices: IOTAModuleServices;
-  mModule: IOTAModule;
   mEditor: IOTAFormEditor;
   mComponent: INTAComponent;
-  mRoot: TComponent;
   mIndex: Integer;
 begin
   Result := nil;
-  AName := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  for mIndex := 0 to AModule.ModuleFileCount - 1 do
   begin
-    Exit;
-  end;
-  mModule := mServices.CurrentModule;
-  if mModule = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mModule.ModuleFileCount - 1 do
-  begin
-    if Supports(mModule.ModuleFileEditors[mIndex], IOTAFormEditor, mEditor) and
+    if Supports(AModule.ModuleFileEditors[mIndex], IOTAFormEditor, mEditor) and
       Supports(mEditor.GetRootComponent, INTAComponent, mComponent) then
     begin
-      mRoot := mComponent.GetComponent;
-      if mRoot is TCustomForm then
-      begin
-        Result := TCustomForm(mRoot).GetFormImage;
-      end
-      else if (mRoot is TWinControl) and TWinControl(mRoot).HandleAllocated then
-      begin
-        Result := TBitmap.Create;
-        try
-          Result.SetSize(TWinControl(mRoot).Width, TWinControl(mRoot).Height);
-          TWinControl(mRoot).PaintTo(Result.Canvas.Handle, 0, 0);
-        except
-          FreeAndNil(Result);
-          raise;
-        end;
-      end;
-      if Result <> nil then
-      begin
-        AName := mRoot.Name;
-      end;
-      Exit;
+      Exit(mComponent.GetComponent);
     end;
+  end;
+end;
+
+function DesignerImage(out AName: string): TBitmap;
+var
+  mServices: IOTAModuleServices;
+  mRoot: TComponent;
+begin
+  Result := nil;
+  AName := '';
+  mRoot := nil;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) and (mServices.CurrentModule <> nil) then
+  begin
+    mRoot := DesignerRoot(mServices.CurrentModule);
+  end;
+  if mRoot <> nil then
+  begin
+    Result := RootImage(mRoot);
+  end;
+  if Result <> nil then
+  begin
+    AName := mRoot.Name;
   end;
 end;
 
@@ -338,6 +349,75 @@ begin
   Execute(ATarget, AKey, nil);
 end;
 
+/// <summary>Eingaben des Dialogs: Tracker, Vorschläge, Kennung, Prozess, Protokolle, Debug-Notiz, Exceptions,
+/// Bild des Formulars (ohne es weiter; der Rest des Dialogs bleibt nutzbar) und weitere Dateien.</summary>
+function DialogInput(AOwner: TAtlasIdeIssueAttach; const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; const AExtra: TArray<TAtlasAttachFile>):
+  TAtlasAttachDialogInput;
+var
+  mAttach: IAtlasTrackerAttach;
+  mName: string;
+begin
+  mName := ATarget.Provider;
+  Result := TAtlasAttachDialogInput.Empty;
+  Result.Tracker := AProvider.Caption;
+  Result.CanUpload := Supports(AProvider, IAtlasTrackerAttach, mAttach) and mAttach.CanUpload;
+  if Assigned(AOwner.FHooks.Issues) then
+  begin
+    Result.Issues := AOwner.FHooks.Issues();
+  end;
+  Result.Key := AKey;
+  Result.KeyOf :=
+    function(AInput: string): string
+    begin
+      Result := TAtlasIssuePreview.KeyOf(mName, AInput);
+    end;
+  Result.ProcessId := DebugProcessId;
+  Result.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles, AOwner.ProjectFile);
+  TAtlasIdeIssueAttach.DebugNote(Result.DebugNote, Result.DebugNoteName);
+  Result.ExceptionsText := TAtlasIdeIssueAttach.ExceptionsText(Result.ExceptionCount);
+  Result.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
+  Result.Extra := AExtra;
+  try
+    Result.FormImage := DesignerImage(Result.FormName);
+  except
+    on E: Exception do
+    begin
+      Result.FormImage := nil;
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+    end;
+  end;
+end;
+
+/// <summary>Dialog zeigen; True nach „Senden“ mit der Anfrage. AInput.FormImage gibt er frei (der Dialog hat eine
+/// Kopie).</summary>
+function AskRequest(AOwner: TAtlasIdeIssueAttach; var AInput: TAtlasAttachDialogInput;
+  const ATarget: TAtlasTrackerTarget; out ARequest: TAtlasAttachRequest): Boolean;
+var
+  mDialog: TAtlasAttachDialog;
+begin
+  ARequest := Default(TAtlasAttachRequest);
+  try
+    mDialog := TAtlasAttachDialog.CreateFor(nil, AInput, AOwner.FTemp);
+  finally
+    AInput.FormImage.Free;
+    AInput.FormImage := nil;
+  end;
+  try
+    Result := mDialog.ShowModal = mrOk;
+    if Result then
+    begin
+      ARequest.Target := ATarget;
+      ARequest.Key := mDialog.Key;
+      ARequest.Files := mDialog.Files;
+      ARequest.Comment := mDialog.CommentText;
+      ARequest.WithComment := mDialog.WithComment;
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
 procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string;
   const AExtra: TArray<TAtlasAttachFile>);
 var
@@ -352,11 +432,8 @@ begin
     procedure
     var
       mProvider: IAtlasTrackerProvider;
-      mAttach: IAtlasTrackerAttach;
       mInput: TAtlasAttachDialogInput;
-      mDialog: TAtlasAttachDialog;
       mRequest: TAtlasAttachRequest;
-      mName: string;
     begin
       if not FStarted or not Active then
       begin
@@ -377,69 +454,65 @@ begin
         Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
         Exit;
       end;
-      mName := mTarget.Provider;
-      mInput := TAtlasAttachDialogInput.Empty;
-      mInput.Tracker := mProvider.Caption;
-      mInput.CanUpload := Supports(mProvider, IAtlasTrackerAttach, mAttach) and mAttach.CanUpload;
-      if Assigned(FHooks.Issues) then
-      begin
-        mInput.Issues := FHooks.Issues();
-      end;
-      mInput.Key := mKey;
-      mInput.KeyOf :=
-        function(AInput: string): string
-        begin
-          Result := TAtlasIssuePreview.KeyOf(mName, AInput);
-        end;
-      mInput.ProcessId := DebugProcessId;
-      mInput.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles, ProjectFile);
-      DebugNote(mInput.DebugNote, mInput.DebugNoteName);
-      mInput.ExceptionsText := ExceptionsText(mInput.ExceptionCount);
-      mInput.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
-      mInput.Extra := mExtra;
       DropTemp;
       FTemp := TAtlasAttachTemp.Create(TAtlasAttachTemp.DefaultRoot);
+      mInput := DialogInput(Self, mProvider, mTarget, mKey, mExtra);
+      if AskRequest(Self, mInput, mTarget, mRequest) then
+      begin
+        Send(mProvider, mRequest);
+      end
+      else
+      begin
+        DropTemp;
+      end;
+    end);
+end;
+
+/// <summary>Arbeit des Hintergrundthreads: hochladen und kommentieren; das Ergebnis geht über den Hauptthread an
+/// AOwner, solange AKeep ihn hält. Eigene Routine: Die anonyme Methode hält nur ihre Parameter.</summary>
+function SendWorker(AOwner: TAtlasIdeIssueAttach; const AKeep: IInterface; const AProvider: IAtlasTrackerProvider;
+  const ATransport: IAtlasCiTransport; const ARequest: TAtlasAttachRequest): TProc;
+var
+  mKeep: IInterface;
+  mTransport: IAtlasCiTransport;
+begin
+  mKeep := AKeep;
+  mTransport := ATransport;
+  Result :=
+    procedure
+    var
+      mResult: TAtlasAttachOutcome;
+    begin
+      mResult := Default(TAtlasAttachOutcome);
       try
-        mInput.FormImage := DesignerImage(mInput.FormName);
+        mResult := TAtlasAttachSender.Send(AProvider, mTransport, ARequest, TAtlasIdeIssueAttach.TimeoutMs);
       except
-        // Ohne Bild des Formulars weiter; der Rest des Dialogs bleibt nutzbar.
+        // Kein Dialog aus dem Hintergrund: als Netzfehler werten.
         on E: Exception do
         begin
-          mInput.FormImage := nil;
-          TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+          mResult.Error := TAtlasCiFetchError.Network;
+          TAtlasGuard.Log('Anhängen: Senden mit ' + E.ClassName + ' abgebrochen');
         end;
       end;
-      try
-        mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, FTemp);
-      finally
-        // Der Dialog hat eine Kopie.
-        mInput.FormImage.Free;
-        mInput.FormImage := nil;
+      mTransport := nil;
+      if TAtlasShutdown.Signalled then
+      begin
+        Exit;
       end;
-      try
-        if mDialog.ShowModal <> mrOk then
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
         begin
-          DropTemp;
-          Exit;
-        end;
-        mRequest := Default(TAtlasAttachRequest);
-        mRequest.Target := mTarget;
-        mRequest.Key := mDialog.Key;
-        mRequest.Files := mDialog.Files;
-        mRequest.Comment := mDialog.CommentText;
-        mRequest.WithComment := mDialog.WithComment;
-      finally
-        mDialog.Free;
-      end;
-      Send(mProvider, mRequest);
-    end);
+          if (mKeep <> nil) and AOwner.FStarted then
+          begin
+            AOwner.Sent(AProvider, ARequest, mResult);
+          end;
+        end);
+    end;
 end;
 
 procedure TAtlasIdeIssueAttach.Send(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest);
 var
   mTransport: IAtlasCiTransport;
-  mKeep: IInterface;
-  mOwner: TAtlasIdeIssueAttach;
   mOutcome: TAtlasAttachOutcome;
 begin
   if (ARequest.Key = '') or ((Length(ARequest.Files) = 0) and (ARequest.Comment = '')) then
@@ -464,38 +537,7 @@ begin
     FCancel := nil;
   end;
   Report(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachSending, [ARequest.Key]));
-  mKeep := Self;
-  mOwner := Self;
-  FThread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mResult: TAtlasAttachOutcome;
-    begin
-      mResult := Default(TAtlasAttachOutcome);
-      try
-        mResult := TAtlasAttachSender.Send(AProvider, mTransport, ARequest, TimeoutMs);
-      except
-        // Kein Dialog aus dem Hintergrund: als Netzfehler werten.
-        on E: Exception do
-        begin
-          mResult.Error := TAtlasCiFetchError.Network;
-          TAtlasGuard.Log('Anhängen: Senden mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mTransport := nil;
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
-        procedure
-        begin
-          if (mKeep <> nil) and mOwner.FStarted then
-          begin
-            mOwner.Sent(AProvider, ARequest, mResult);
-          end;
-        end);
-    end);
+  FThread := TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest));
   FThread.FreeOnTerminate := False;
   FThread.Start;
 end;
