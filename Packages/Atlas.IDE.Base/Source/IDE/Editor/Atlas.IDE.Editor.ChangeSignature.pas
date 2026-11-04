@@ -32,19 +32,14 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.JSON,
   Atlas.UI.Strings,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Results.Model,
   Atlas.Core.Editor.ChangeSignature,
-  Atlas.UI.Results.Frame,
-  Atlas.UI.Results.RenamePreview,
   Atlas.UI.Editor.ChangeSignature,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Editor.ServerEdit;
 
 const
   PrepareCommand = 'atlas.server.changeSignature.prepare';
@@ -52,155 +47,96 @@ const
   // Alle Aufrufer im Projekt suchen dauert; wie beim Umbenennen.
   TimeoutMs = 60000;
 
-/// <summary>Antwort des Servers als Objekt; nil bei anderem Wert. Der Aufrufer gibt Answer frei.</summary>
-function AsObject(AAnswer: TJSONValue): TJSONObject;
+/// <summary>Modell der Signatur vom Server; False mit Meldung, wenn er scheitert.</summary>
+function FetchModel(ASession: TLspSession; const AArgumentsJson: string; const AMessage: TProc<string>;
+  out AModel: TAtlasSignatureModel): Boolean;
+var
+  mAnswer: TJSONValue;
 begin
-  Result := nil;
-  if AAnswer is TJSONObject then
+  Result := False;
+  AModel := nil;
+  TAtlasIdeRename.SyncOpenBuffers(ASession);
+  try
+    mAnswer := ASession.RunCommand(PrepareCommand, AArgumentsJson, TimeoutMs);
+    try
+      AModel := TAtlasSignatureModel.Create(TAtlasIdeServerEdit.AsObject(mAnswer));
+    finally
+      mAnswer.Free;
+    end;
+    Result := True;
+  except
+    on E: ELspClientError do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigFailed, [E.Message]));
+    end;
+  end;
+end;
+
+/// <summary>Zeigt den Dialog; AApplyArguments sind die Argumente der Aktion mit der neuen Liste. False bei Abbruch
+/// oder ohne Änderung (dann mit Meldung).</summary>
+function ChooseSignature(ASession: TLspSession; const AArgumentsJson: string; const AMessage: TProc<string>;
+  out AApplyArguments: string): Boolean;
+var
+  mModel: TAtlasSignatureModel;
+begin
+  AApplyArguments := '';
+  Result := FetchModel(ASession, AArgumentsJson, AMessage, mModel);
+  if not Result then
   begin
-    Result := TJSONObject(AAnswer);
+    Exit;
+  end;
+  try
+    Result := TAtlasChangeSignatureDialog.Execute(mModel);
+    if Result and not mModel.Changed then
+    begin
+      AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
+      Result := False;
+    end;
+    // Argumente der Aktion um die neue Liste ergänzen.
+    Result := Result and TAtlasIdeServerEdit.Appended(AArgumentsJson, mModel.RequestJson, AApplyArguments);
+  finally
+    mModel.Free;
   end;
 end;
 
 class procedure TAtlasIdeChangeSignature.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Arguments, Answer: TJSONValue;
-  Reply: TJSONObject;
-  Values, List: TJSONArray;
-  Found: TJSONValue;
-  Model: TAtlasSignatureModel;
-  ApplyArguments, Hint, Warning: string;
-  Warnings: TArray<string>;
-  Item: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Preview: TArray<TAtlasResultEntry>;
-  Open: TAtlasResultsOpen;
+  mApplyArguments, mHint: string;
+  mReply: TAtlasServerEditReply;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  Model := nil;
-  try
-    try
-      Answer := ASession.RunCommand(PrepareCommand, AArgumentsJson, TimeoutMs);
-      try
-        Model := TAtlasSignatureModel.Create(AsObject(Answer));
-      finally
-        Answer.Free;
-      end;
-    except
-      on E: ELspClientError do
-      begin
-        AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-    if not TAtlasChangeSignatureDialog.Execute(Model) then
-    begin
-      Exit;
-    end;
-    if not Model.Changed then
-    begin
-      AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
-      Exit;
-    end;
-    // Argumente der Aktion um die neue Liste ergänzen.
-    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
-    try
-      if not (Arguments is TJSONArray) then
-      begin
-        Exit;
-      end;
-      Values := TJSONArray(Arguments);
-      Values.AddElement(Model.RequestJson);
-      ApplyArguments := Values.ToJSON;
-    finally
-      Arguments.Free;
-    end;
-  finally
-    Model.Free;
+  if not ChooseSignature(ASession, AArgumentsJson, AMessage, mApplyArguments) or
+    not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mApplyArguments, TimeoutMs,
+    TAtlasTextId.SigFailed), nil, AMessage, mReply) then
+  begin
+    Exit;
   end;
-  Warnings := nil;
-  try
-    Answer := ASession.RunCommand(ApplyCommand, ApplyArguments, TimeoutMs);
-    try
-      Reply := AsObject(Answer);
-      Found := nil;
-      List := nil;
-      if Reply <> nil then
-      begin
-        Found := Reply.GetValue('edit');
-        if Reply.GetValue('warnings') is TJSONArray then
-        begin
-          List := TJSONArray(Reply.GetValue('warnings'));
-        end;
-      end;
-      Edit := TLspWorkspaceEdit.FromJson(Found);
-      if List <> nil then
-      begin
-        for Item in List do
-        begin
-          Warnings := Warnings + [Item.Value];
-        end;
-      end;
-    finally
-      Answer.Free;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  if Edit.IsEmpty then
+  if mReply.Edit.IsEmpty then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
     Exit;
   end;
   // Vorschau wie beim Umbenennen (#400); Warnungen (Methodenzeiger, schreibgeschützte Aufrufer) im Hinweis.
-  Hint := TAtlasStrings.Fmt(TAtlasTextId.SigPreviewHint, [Edit.EditCount, Length(Edit.Files)]);
-  for Warning in Warnings do
-  begin
-    Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]);
-  end;
-  Preview := TAtlasResults.RenamePreview(Edit,
-    function(const AFileName: string): string
-    begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  Open :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-    end;
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), Hint,
-    TAtlasStrings.Text(TAtlasTextId.SigPreviewApply), TAtlasResults.Group(Preview), Open) then
+  mHint := TAtlasStrings.Fmt(TAtlasTextId.SigPreviewHint, [mReply.Edit.EditCount, Length(mReply.Edit.Files)]) +
+    TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.SigWarning);
+  if not TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), mHint,
+    TAtlasStrings.Text(TAtlasTextId.SigPreviewApply), mReply.Edit) then
   begin
     Exit;
   end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle));
-  if Outcome.Error <> '' then
+  // Warnungen auch dann, wenn das Übernehmen scheitert.
+  if TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), AMessage,
+    mOutcome) then
   begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-  end
-  else
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigDone, [Outcome.Edits, Outcome.Files]));
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigDone, [mOutcome.Edits, mOutcome.Files]));
   end;
-  for Warning in Warnings do
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]));
-  end;
-  if Outcome.Written > 0 then
-  begin
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
-  end;
+  TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.SigWarning, AMessage);
 end;
 
 end.

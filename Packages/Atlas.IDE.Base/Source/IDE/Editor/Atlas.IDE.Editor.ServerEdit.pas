@@ -28,6 +28,8 @@ type
     Arguments: string;
     TimeoutMs: Integer;
     Failed: TAtlasTextId;
+    class function Create(const ACommand, AArguments: string; ATimeoutMs: Integer; AFailed: TAtlasTextId):
+      TAtlasServerEditCommand; static;
   end;
 
   /// <summary>Was alle Antworten tragen: die Änderung und die Warnungen.</summary>
@@ -41,6 +43,16 @@ type
 
   TAtlasIdeServerEdit = class
   public
+    /// <summary>Fragt nach einem Namen (Vorschlag: drittes Element von AArgumentsJson, einem JSON-Array) und liefert
+    /// in AArguments die Argumente mit dem Namen an dritter Stelle. False bei Abbruch, leerem Namen oder weniger als
+    /// drei Argumenten.</summary>
+    class function AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasTextId; out AName,
+      AArguments: string): Boolean; static;
+    /// <summary>AArgumentsJson (ein JSON-Array) mit AValue als letztem Element; AValue gehört danach dieser Routine.
+    /// False, wenn AArgumentsJson kein Array ist.</summary>
+    class function Appended(const AArgumentsJson: string; AValue: TJSONValue; out AResult: string): Boolean; static;
+    /// <summary>AValue als Objekt, sonst nil.</summary>
+    class function AsObject(AValue: TJSONValue): TJSONObject; static;
     /// <summary>Schickt die offenen Puffer und führt ACommand aus; ARead (darf nil sein) liest weitere Werte. False,
     /// wenn der Server scheitert: Dann steht ACommand.Failed mit dessen Fehler in AMessage.</summary>
     class function Fetch(ASession: TLspSession; const ACommand: TAtlasServerEditCommand;
@@ -68,6 +80,7 @@ implementation
 
 uses
   System.Generics.Collections,
+  Vcl.Dialogs,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.Frame,
@@ -102,7 +115,66 @@ begin
   end;
 end;
 
+{ TAtlasServerEditCommand }
+
+class function TAtlasServerEditCommand.Create(const ACommand, AArguments: string; ATimeoutMs: Integer;
+  AFailed: TAtlasTextId): TAtlasServerEditCommand;
+begin
+  Result.Command := ACommand;
+  Result.Arguments := AArguments;
+  Result.TimeoutMs := ATimeoutMs;
+  Result.Failed := AFailed;
+end;
+
+/// <summary>AValues mit AName an dritter Stelle.</summary>
+function ReplaceName(const AValues: TJSONArray; const AName: string): string;
+var
+  mList: TJSONArray;
+  mIndex: Integer;
+begin
+  mList := TJSONArray.Create;
+  try
+    mList.AddElement(AValues.Items[0].Clone as TJSONValue);
+    mList.AddElement(AValues.Items[1].Clone as TJSONValue);
+    mList.Add(AName);
+    for mIndex := 3 to AValues.Count - 1 do
+    begin
+      mList.AddElement(AValues.Items[mIndex].Clone as TJSONValue);
+    end;
+    Result := mList.ToJSON;
+  finally
+    mList.Free;
+  end;
+end;
+
 { TAtlasIdeServerEdit }
+
+class function TAtlasIdeServerEdit.AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasTextId; out AName,
+  AArguments: string): Boolean;
+var
+  mArguments: TJSONValue;
+begin
+  AName := '';
+  AArguments := '';
+  mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+  try
+    Result := (mArguments is TJSONArray) and (TJSONArray(mArguments).Count >= 3);
+    if not Result then
+    begin
+      Exit;
+    end;
+    AName := TJSONArray(mArguments).Items[2].Value;
+    Result := InputQuery(TAtlasStrings.Text(ATitle), TAtlasStrings.Text(APrompt), AName);
+    AName := Trim(AName);
+    Result := Result and (AName <> '');
+    if Result then
+    begin
+      AArguments := ReplaceName(TJSONArray(mArguments), AName);
+    end;
+  finally
+    mArguments.Free;
+  end;
+end;
 
 class function TAtlasIdeServerEdit.Fetch(ASession: TLspSession; const ACommand: TAtlasServerEditCommand;
   const ARead: TAtlasServerEditRead; const AMessage: TProc<string>; out AReply: TAtlasServerEditReply): Boolean;
@@ -125,6 +197,37 @@ begin
     begin
       AMessage(TAtlasStrings.Fmt(ACommand.Failed, [E.Message]));
     end;
+  end;
+end;
+
+class function TAtlasIdeServerEdit.Appended(const AArgumentsJson: string; AValue: TJSONValue; out AResult: string):
+  Boolean;
+var
+  mArguments: TJSONValue;
+begin
+  AResult := '';
+  mArguments := nil;
+  try
+    mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    Result := mArguments is TJSONArray;
+    if Result then
+    begin
+      TJSONArray(mArguments).AddElement(AValue);
+      AValue := nil;
+      AResult := mArguments.ToJSON;
+    end;
+  finally
+    AValue.Free;
+    mArguments.Free;
+  end;
+end;
+
+class function TAtlasIdeServerEdit.AsObject(AValue: TJSONValue): TJSONObject;
+begin
+  Result := nil;
+  if AValue is TJSONObject then
+  begin
+    Result := TJSONObject(AValue);
   end;
 end;
 
