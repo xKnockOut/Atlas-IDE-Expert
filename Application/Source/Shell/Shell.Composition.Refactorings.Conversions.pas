@@ -159,6 +159,7 @@ var
   mShared: ISharedSyntaxTree;
   mResolver: TNameResolver;
   mAnswer: TJSONObject;
+  mContext: TPromoteVariableContext;
 begin
   // Argumente: URI, Position, Name.
   Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
@@ -171,9 +172,11 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
+      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mContext.Style := FormatStyle(mUri);
+      mContext.NewName := Trim(AArguments.Items[2].Value);
       mAnswer := TLspPromoteVariable.Execute(mShared.Tree, mDocument.Text, mUri,
-        TLspPositions.ReadPosition(AArguments.Items[1]), Trim(AArguments.Items[2].Value),
-        TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader), FormatStyle(mUri));
+        TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
     finally
       mResolver.UnpinTree;
     end;
@@ -313,11 +316,12 @@ begin
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
   mContext.WithStatic := mSettings.MethodKindStatic;
+  mContext.Conversion := Trim(AArguments.Items[2].Value);
+  mContext.Style := FormatStyle(mUri);
   mResolver := NewResolver;
   try
     mAnswer := TLspMethodWithoutSelf.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      Trim(AArguments.Items[2].Value), mContext, FormatStyle(mUri));
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
