@@ -22,6 +22,20 @@ type
   /// <summary>Vorbereitung vor dem Zeigen, etwa das Thema der IDE (die UI-Schicht kennt es nicht).</summary>
   TAtlasExportDialogPrepare = reference to procedure(AControl: TWinControl);
 
+  /// <summary>Texte und Datei des Dialogs: Titel, Hinweis, Vorschau, vorgeschlagener Name, Filter, Endung.</summary>
+  TAtlasExportDialogTexts = record
+    Title: string;
+    Hint: string;
+    Preview: string;
+    DefaultName: string;
+    Filter: string;
+    DefaultExt: string;
+    class function Create(const ATitle, AHint, APreview, ADefaultName, AFilter,
+      ADefaultExt: string): TAtlasExportDialogTexts; static;
+    /// <summary>Export des Diagnoselogs: Titel, Dateiname mit Datum und ZIP-Filter.</summary>
+    class function Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts; static;
+  end;
+
   TAtlasDiagnosticExportDialog = class(TForm)
   private
     FHint: TLabel;
@@ -34,18 +48,16 @@ type
   public
     constructor CreateDialog(AOwner: TComponent; const AHint, APreview: string); overload;
     /// <summary>Mit eigenem Titel, vorgeschlagenem Dateinamen, Filter und Endung.</summary>
-    constructor CreateDialog(AOwner: TComponent; const ATitle, AHint, APreview, ADefaultName, AFilter,
-      ADefaultExt: string); overload;
+    constructor CreateDialog(AOwner: TComponent; const ATexts: TAtlasExportDialogTexts); overload;
     /// <summary>True mit AFileName, wenn der Nutzer einen Speicherort gewählt hat.</summary>
     class function Execute(const AHint, APreview: string; out AFileName: string;
       const APrepare: TAtlasExportDialogPrepare): Boolean; overload; static;
     /// <summary>Wie oben mit APrepare = nil.</summary>
     class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; overload; static;
-    class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
-      out AFileName: string; const APrepare: TAtlasExportDialogPrepare): Boolean; overload; static;
+    class function Execute(const ATexts: TAtlasExportDialogTexts; out AFileName: string;
+      const APrepare: TAtlasExportDialogPrepare): Boolean; overload; static;
     /// <summary>Wie oben mit APrepare = nil.</summary>
-    class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
-      out AFileName: string): Boolean; overload; static;
+    class function Execute(const ATexts: TAtlasExportDialogTexts; out AFileName: string): Boolean; overload; static;
     property FileName: string read FFileName;
     property HintLabel: TLabel read FHint;
   end;
@@ -58,15 +70,30 @@ uses
 const
   Gap = 8;
 
-constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+class function TAtlasExportDialogTexts.Create(const ATitle, AHint, APreview, ADefaultName, AFilter,
+  ADefaultExt: string): TAtlasExportDialogTexts;
 begin
-  CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.DiagExportTitle), AHint, APreview,
+  Result.Title := ATitle;
+  Result.Hint := AHint;
+  Result.Preview := APreview;
+  Result.DefaultName := ADefaultName;
+  Result.Filter := AFilter;
+  Result.DefaultExt := ADefaultExt;
+end;
+
+class function TAtlasExportDialogTexts.Diagnostic(const AHint, APreview: string): TAtlasExportDialogTexts;
+begin
+  Result := Create(TAtlasStrings.Text(TAtlasTextId.DiagExportTitle), AHint, APreview,
     'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip', TAtlasStrings.Text(TAtlasTextId.DiagExportFilter),
     'zip');
 end;
 
-constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const ATitle, AHint, APreview,
-  ADefaultName, AFilter, ADefaultExt: string);
+constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+begin
+  CreateDialog(AOwner, TAtlasExportDialogTexts.Diagnostic(AHint, APreview));
+end;
+
+constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const ATexts: TAtlasExportDialogTexts);
 var
   Bottom: TPanel;
   Button: TButton;
@@ -74,10 +101,10 @@ var
   Memo: TMemo;
 begin
   inherited CreateNew(AOwner);
-  FDefaultName := ADefaultName;
-  FFilter := AFilter;
-  FDefaultExt := ADefaultExt;
-  Caption := ATitle;
+  FDefaultName := ATexts.DefaultName;
+  FFilter := ATexts.Filter;
+  FDefaultExt := ATexts.DefaultExt;
+  Caption := ATexts.Title;
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   Width := 900;
@@ -92,7 +119,7 @@ begin
   // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
   // bleibt so hoch, dass die Vorschau kaum Platz hat.
   mHint.Width := Width - 2 * Gap;
-  mHint.Caption := AHint;
+  mHint.Caption := ATexts.Hint;
   FHint := mHint;
   OnResize := FitHint;
 
@@ -126,7 +153,7 @@ begin
   Memo.WordWrap := False;
   Memo.Font.Name := 'Consolas';
   Memo.Font.Size := 9;
-  Memo.Lines.Text := APreview;
+  Memo.Lines.Text := ATexts.Preview;
 end;
 
 procedure TAtlasDiagnosticExportDialog.FitHint(Sender: TObject);
@@ -159,49 +186,36 @@ end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
 begin
-  Result := Execute(AHint, APreview, AFileName, nil);
-end;
-
-class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,
-  ADefaultExt: string; out AFileName: string): Boolean;
-begin
-  Result := Execute(ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt, AFileName, nil);
-end;
-
-class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,
-  ADefaultExt: string; out AFileName: string; const APrepare: TAtlasExportDialogPrepare): Boolean;
-var
-  Dialog: TAtlasDiagnosticExportDialog;
-begin
-  Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, ATitle, AHint, APreview, ADefaultName, AFilter,
-    ADefaultExt);
-  try
-    if Assigned(APrepare) then
-    begin
-      APrepare(Dialog);
-    end;
-    Result := Dialog.ShowModal = mrOk;
-    AFileName := Dialog.FileName;
-  finally
-    Dialog.Free;
-  end;
+  Result := Execute(TAtlasExportDialogTexts.Diagnostic(AHint, APreview), AFileName, nil);
 end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string;
   const APrepare: TAtlasExportDialogPrepare): Boolean;
-var
-  Dialog: TAtlasDiagnosticExportDialog;
 begin
-  Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, AHint, APreview);
+  Result := Execute(TAtlasExportDialogTexts.Diagnostic(AHint, APreview), AFileName, APrepare);
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const ATexts: TAtlasExportDialogTexts;
+  out AFileName: string): Boolean;
+begin
+  Result := Execute(ATexts, AFileName, nil);
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const ATexts: TAtlasExportDialogTexts; out AFileName: string;
+  const APrepare: TAtlasExportDialogPrepare): Boolean;
+var
+  mDialog: TAtlasDiagnosticExportDialog;
+begin
+  mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, ATexts);
   try
     if Assigned(APrepare) then
     begin
-      APrepare(Dialog);
+      APrepare(mDialog);
     end;
-    Result := Dialog.ShowModal = mrOk;
-    AFileName := Dialog.FileName;
+    Result := mDialog.ShowModal = mrOk;
+    AFileName := mDialog.FileName;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

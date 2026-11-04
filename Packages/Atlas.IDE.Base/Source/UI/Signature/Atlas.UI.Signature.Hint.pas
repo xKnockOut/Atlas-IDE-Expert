@@ -760,8 +760,8 @@ begin
       end;
       X := Row.Left;
       Canvas.Font := Font;
-      FStyled[Index].Draw(Canvas, Colors, FLayouts[Index][Line].X, FLayouts[Index][Line].Y, X,
-        Rect(Row.Left, Row.Top + Scale(2), Row.Right, Row.Bottom - Scale(2)), not Fits(Index), Scale(3));
+      FStyled[Index].Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), FLayouts[Index][Line], X,
+        Rect(Row.Left, Row.Top + Scale(2), Row.Right, Row.Bottom - Scale(2)), not Fits(Index));
       Inc(RowIndex);
     end;
   end;
