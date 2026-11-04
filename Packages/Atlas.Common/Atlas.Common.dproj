@@ -184,6 +184,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Context.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Values.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Declarations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>

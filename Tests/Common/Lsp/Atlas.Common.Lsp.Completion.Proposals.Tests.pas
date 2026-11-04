@@ -216,12 +216,13 @@ begin
   Tree := TPascalParser.Parse(Text);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, '    procedure '),
+    Assert.IsTrue(OverrideAt(LookupOf(Resolver, nil, Tree, Text,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end, Items));
+      end),
+      PositionOf(Text, '    procedure '), Items));
     // Nur virtuelle Prozeduren; Count ist eine Funktion, Fest nicht virtuell.
     Assert.AreEqual('Changed Pruefe', Names(Items));
     Assert.AreEqual('Changed; override;', Items.Items[0].InsertText);
@@ -235,7 +236,8 @@ begin
     Assert.IsTrue(Body.Contains('procedure TLogList.Pruefe(A: Integer; const B: string);'), Body);
     Assert.IsFalse(Body.Contains('inherited'), Body);
     // Außerhalb einer Klassendeklaration kein Override-Kontext.
-    Assert.IsFalse(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+    Assert.IsFalse(OverrideAt(LookupOf(Resolver, nil, Tree, Text, nil),
+      PositionOf(Text, 'uses Ba'), Items));
   finally
     Resolver.Free;
     Tree.Free;
@@ -376,12 +378,13 @@ begin
   Tree := TPascalParser.Parse(cGenericText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cGenericText, HauptFile, TTextPosition.Create(8, 4),
+    Assert.IsTrue(InterfaceAt(LookupOf(Resolver, nil, Tree, cGenericText,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cGenericUnitListen;
         Result := SameText(AFileName, 'C:\P\Listen.pas');
-      end, TCompletionInterfaceSection.Public, Items, Batch));
+      end),
+      TTextPosition.Create(8, 4), TCompletionInterfaceSection.Public, Items, Batch));
     List.Items := Items;
     Assert.AreEqual('Add Items', Names(List));
     Assert.AreEqual('IListe<TKunde>', Items[0].Container);
@@ -484,12 +487,13 @@ var
   mItems: TArray<TCompletionItem>;
   mBatch: Boolean;
 begin
-  Assert.IsTrue(TLspCompletion.InterfaceItems(AResolver, ATree, cMissingTyped, HauptFile, TTextPosition.Create(7, 6),
+  Assert.IsTrue(InterfaceAt(LookupOf(AResolver, nil, ATree, cMissingTyped,
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := cMissingUnitBasis;
       Result := True;
-    end, TCompletionInterfaceSection.Public, mItems, mBatch));
+    end),
+    TTextPosition.Create(7, 6), TCompletionInterfaceSection.Public, mItems, mBatch));
   Assert.IsFalse(mBatch);
   Assert.AreEqual(2, Integer(Length(mItems)));
   Assert.AreEqual('2 Methoden von IExporter fehlen', mItems[0].Name);
@@ -513,12 +517,13 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     // Strg+Leer auf der leeren Zeile: Liste mit Kontrollkästchen. SetName erbt die Klasse von TBasis.
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(7, 4),
+    Assert.IsTrue(InterfaceAt(LookupOf(Resolver, nil, Tree, cMissingText,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cMissingUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
-      end, TCompletionInterfaceSection.Public, Items, Batch));
+      end),
+      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Public, Items, Batch));
     Assert.IsTrue(Batch);
     List.Items := Items;
     Assert.AreEqual('Export GetName Flush', Names(List));
@@ -530,17 +535,17 @@ begin
     Assert.AreEqual(7, Items[0].SetRange.StartPos.Line);
     AssertMergedInterfaceStubs(Items);
     // Abschnitt nach Einstellung: private steht schon als letzter da, also kein neuer.
-    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(7, 4),
+    Assert.IsTrue(InterfaceAt(LookupOf(Resolver, nil, Tree, cMissingText,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := cMissingUnitBasis;
         Result := True;
-      end, TCompletionInterfaceSection.Private, Items, Batch));
+      end),
+      TTextPosition.Create(7, 4), TCompletionInterfaceSection.Private, Items, Batch));
     Assert.AreEqual('    { IExporter }'#13#10, Items[0].AdditionalEdits[0].NewText);
     // Außerhalb der Klasse nichts.
-    Assert.IsFalse(TLspCompletion.InterfaceItems(Resolver, Tree, cMissingText, HauptFile, TTextPosition.Create(2, 0),
-      nil,
-      TCompletionInterfaceSection.Public, Items, Batch));
+    Assert.IsFalse(InterfaceAt(LookupOf(Resolver, nil, Tree, cMissingText, nil),
+      TTextPosition.Create(2, 0), TCompletionInterfaceSection.Public, Items, Batch));
   finally
     Tree.Free;
   end;
@@ -1645,8 +1650,7 @@ begin
   Tree := TPascalParser.Parse(cOverrideText);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Assert.IsTrue(TLspCompletion.OverrideItems(Resolver, Tree, cOverrideText, HauptFile, PositionOf(cOverrideText,
-      '    procedure '),
+    Assert.IsTrue(OverrideAt(LookupOf(Resolver, nil, Tree, cOverrideText,
       function(const AFileName: string; out AText: string): Boolean
       var
         Seen: Integer;
@@ -1669,7 +1673,9 @@ begin
         begin
           Result := False;
         end;
-      end, Items));
+      end),
+      PositionOf(cOverrideText,
+      '    procedure '), Items));
     Assert.AreEqual('Moved Renamed Changed Cleared Sorted', Names(Items));
     // Vorher je Kandidat einmal (3 bzw. 2), jetzt je Datei einmal.
     Assert.AreEqual(2, Integer(Reads.Count));

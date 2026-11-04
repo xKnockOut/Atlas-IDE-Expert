@@ -101,8 +101,20 @@ function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out 
 /// <summary>TCompletionValues.DeclareItems an APosition.</summary>
 function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
   const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
+/// <summary>TCompletionDeclarations.PropertyItems an APosition mit AMatching.</summary>
+function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionDeclarations.OverrideItems an APosition.</summary>
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionDeclarations.InterfaceItems an APosition mit Abschnitt ASection.</summary>
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
 
 implementation
+
+uses
+  Atlas.Common.Lsp.Completion.Declarations;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
@@ -248,6 +260,50 @@ begin
   finally
     Request.Free;
     Tree.Free;
+  end;
+end;
+
+function PropertyAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mRequest.Matching := AMatching;
+    Result := TCompletionDeclarations.PropertyItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionDeclarations.OverrideItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.InterfaceSection := ASection;
+    mRequest.Settings := mSettings;
+    Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, ABatch);
+  finally
+    mRequest.Free;
   end;
 end;
 
