@@ -137,6 +137,67 @@ type
     property Debounced: Integer read FDebounced;
   end;
 
+/// <summary>Anfragen, die bis zum Abbruch oder zum Zeitlimit des Watchdogs laufen (höchstens 10 s).</summary>
+procedure RegisterSoakWaiters(const ADispatcher: TJsonRpcDispatcher);
+begin
+  // Läuft, bis $/cancelRequest eintrifft (höchstens 10 s).
+  ADispatcher.RegisterConcurrentRequest('slow',
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    var
+      Watch: TStopwatch;
+    begin
+      Watch := TStopwatch.StartNew;
+      while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
+        TThread.Sleep(1);
+      end;
+      ACancellation.ThrowIfCancellationRequested;
+      Result := TJSONString.Create('nicht abgebrochen');
+    end);
+  // Läuft, bis das Zeitlimit des Watchdogs sie abbricht (höchstens 10 s).
+  ADispatcher.RegisterConcurrentRequest('stuck',
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    var
+      Watch: TStopwatch;
+    begin
+      Watch := TStopwatch.StartNew;
+      while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
+        TThread.Sleep(1);
+      end;
+      ACancellation.ThrowIfCancellationRequested;
+      Result := TJSONString.Create('kein Zeitlimit');
+    end);
+end;
+
+/// <summary>Entprellte Änderungen wie didChange und das Warten auf alle Worker.</summary>
+procedure RegisterSoakChangeAndAwait(const ADispatcher: TJsonRpcDispatcher; const ASoak: TSoak);
+begin
+  // Wie didChange: je Schlüssel nur die letzte Änderung, ausgewertet im Thread des Debouncers.
+  ADispatcher.RegisterNotification('change',
+    procedure(const AParams: TJSONValue)
+    var
+      Text: string;
+    begin
+      Text := AParams.GetValue<string>('text', '');
+      ASoak.FDebouncer.Schedule(AParams.GetValue<string>('key', ''),
+        procedure
+        var
+          Parsed: TJSONValue;
+        begin
+          Parsed := TJSONObject.ParseJSONValue(Text);
+          Parsed.Free;
+          TInterlocked.Increment(ASoak.FDebounced);
+        end);
+    end);
+  // Wartet in der Nachrichtenschleife, bis alle Worker fertig sind.
+  ADispatcher.RegisterRequest('await',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      Result := TJSONBool.Create(ADispatcher.PendingRequests.WaitForWork(10000));
+    end);
+end;
+
 function CreateSoakDispatcher(ALeak: TWorkerLeak; ASoak: TSoak): TJsonRpcDispatcher;
 var
   Dispatcher: TJsonRpcDispatcher;
@@ -156,61 +217,12 @@ begin
       end;
       Result := TJSONString.Create('aus dem Worker');
     end);
-  // Läuft, bis $/cancelRequest eintrifft (höchstens 10 s).
-  Dispatcher.RegisterConcurrentRequest('slow',
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    var
-      Watch: TStopwatch;
-    begin
-      Watch := TStopwatch.StartNew;
-      while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
-      begin
-        TThread.Sleep(1);
-      end;
-      ACancellation.ThrowIfCancellationRequested;
-      Result := TJSONString.Create('nicht abgebrochen');
-    end);
-  // Läuft, bis das Zeitlimit des Watchdogs sie abbricht (höchstens 10 s).
-  Dispatcher.RegisterConcurrentRequest('stuck',
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    var
-      Watch: TStopwatch;
-    begin
-      Watch := TStopwatch.StartNew;
-      while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
-      begin
-        TThread.Sleep(1);
-      end;
-      ACancellation.ThrowIfCancellationRequested;
-      Result := TJSONString.Create('kein Zeitlimit');
-    end);
+  RegisterSoakWaiters(Dispatcher);
   Dispatcher.RegisterNotification('note',
     procedure(const AParams: TJSONValue)
     begin
     end);
-  // Wie didChange: je Schlüssel nur die letzte Änderung, ausgewertet im Thread des Debouncers.
-  Dispatcher.RegisterNotification('change',
-    procedure(const AParams: TJSONValue)
-    var
-      Text: string;
-    begin
-      Text := AParams.GetValue<string>('text', '');
-      ASoak.FDebouncer.Schedule(AParams.GetValue<string>('key', ''),
-        procedure
-        var
-          Parsed: TJSONValue;
-        begin
-          Parsed := TJSONObject.ParseJSONValue(Text);
-          Parsed.Free;
-          TInterlocked.Increment(ASoak.FDebounced);
-        end);
-    end);
-  // Wartet in der Nachrichtenschleife, bis alle Worker fertig sind.
-  Dispatcher.RegisterRequest('await',
-    function(const AParams: TJSONValue): TJSONValue
-    begin
-      Result := TJSONBool.Create(Dispatcher.PendingRequests.WaitForWork(10000));
-    end);
+  RegisterSoakChangeAndAwait(Dispatcher, ASoak);
   Result := Dispatcher;
 end;
 

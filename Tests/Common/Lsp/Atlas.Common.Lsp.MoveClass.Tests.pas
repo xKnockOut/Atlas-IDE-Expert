@@ -178,8 +178,8 @@ begin
   FIndex := nil;
 end;
 
-/// <summary>Prüft die Änderungen ADocument der Datei AUri nach dem Verschieben von TStock.</summary>
-procedure CheckMovedDocument(const AUri: string; ADocument: TJSONObject);
+/// <summary>Inhalt jeder geänderten Datei nach dem Verschieben von TStock.</summary>
+procedure AssertMovedDocument(const AUri: string; const ADocument: TJSONObject);
 begin
   if AUri = TDocumentUris.FromPath('C:\P\Stock.pas') then
   begin
@@ -241,7 +241,7 @@ begin
       end;
       Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
       Results := Results + ExtractFileName(TDocumentUris.ToPath(Uri)) + '|';
-      CheckMovedDocument(Uri, Document);
+      AssertMovedDocument(Uri, Document);
     end;
     Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
     // Gibt es die Datei schon, bricht der Befehl ab.

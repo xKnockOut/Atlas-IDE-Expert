@@ -58,79 +58,92 @@ begin
   end;
 end;
 
+/// <summary>Endungen aus PATHEXT (klein); ohne Angabe .com, .exe, .bat, .cmd.</summary>
+function ProgramExtensions(const APathExt: string): TArray<string>;
+var
+  mExtension: string;
+begin
+  Result := nil;
+  for mExtension in APathExt.Split([';']) do
+  begin
+    if Trim(mExtension) <> '' then
+    begin
+      Result := Result + [AnsiLowerCase(Trim(mExtension))];
+    end;
+  end;
+  if Length(Result) = 0 then
+  begin
+    Result := TArray<string>.Create('.com', '.exe', '.bat', '.cmd');
+  end;
+end;
+
+/// <summary>Arbeitsordner (falls angegeben) und die Ordner aus PATH ohne Anführungszeichen.</summary>
+function ProgramFolders(const ACwd, APath: string): TArray<string>;
+var
+  mFolder: string;
+begin
+  Result := nil;
+  if ACwd <> '' then
+  begin
+    Result := Result + [ACwd];
+  end;
+  for mFolder in APath.Split([';']) do
+  begin
+    if Trim(mFolder) <> '' then
+    begin
+      Result := Result + [Trim(StringReplace(mFolder, '"', '', [rfReplaceAll]))];
+    end;
+  end;
+end;
+
+/// <summary>ACandidate mit eigener Endung, sonst mit einer der Endungen AExtensions; '' ohne Treffer.</summary>
+function ProbeProgram(const ACandidate: string; const AExtensions: TArray<string>;
+  const AExists: TAtlasTaskFileExists): string;
+var
+  mExt: string;
+begin
+  // Mit eigener Endung zuerst so, wie sie dasteht.
+  if (ExtractFileExt(ACandidate) <> '') and AExists(ACandidate) then
+  begin
+    Exit(ACandidate);
+  end;
+  for mExt in AExtensions do
+  begin
+    if AExists(ACandidate + mExt) then
+    begin
+      Exit(ACandidate + mExt);
+    end;
+  end;
+  Result := '';
+end;
+
 { TAtlasTaskCommands }
 
 class function TAtlasTaskCommands.FindProgram(const ACommand, ACwd, APath, APathExt: string;
   const AExists: TAtlasTaskFileExists): string;
 var
-  Extensions, Folders: TArray<string>;
-  Folder, Extension, Base: string;
-
-  function Probe(const ACandidate: string; out AFound: string): Boolean;
-  var
-    Ext: string;
-  begin
-    AFound := '';
-    // Mit eigener Endung zuerst so, wie sie dasteht.
-    if (ExtractFileExt(ACandidate) <> '') and AExists(ACandidate) then
-    begin
-      AFound := ACandidate;
-      Exit(True);
-    end;
-    for Ext in Extensions do
-    begin
-      if AExists(ACandidate + Ext) then
-      begin
-        AFound := ACandidate + Ext;
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
+  mExtensions: TArray<string>;
+  mFolder, mBase: string;
 begin
   Result := '';
   if Trim(ACommand) = '' then
   begin
     Exit;
   end;
-  Extensions := nil;
-  for Extension in APathExt.Split([';']) do
-  begin
-    if Trim(Extension) <> '' then
-    begin
-      Extensions := Extensions + [AnsiLowerCase(Trim(Extension))];
-    end;
-  end;
-  if Length(Extensions) = 0 then
-  begin
-    Extensions := TArray<string>.Create('.com', '.exe', '.bat', '.cmd');
-  end;
+  mExtensions := ProgramExtensions(APathExt);
   if HasPathPart(ACommand) then
   begin
-    Base := ACommand;
-    if not ((Length(Base) >= 2) and (Base[2] = ':')) and not CharInSet(Base[1], ['\', '/']) and (ACwd <> '') then
+    mBase := ACommand;
+    if not ((Length(mBase) >= 2) and (mBase[2] = ':')) and not CharInSet(mBase[1], ['\', '/']) and (ACwd <> '') then
     begin
-      Base := JoinPath(ACwd, Base);
+      mBase := JoinPath(ACwd, mBase);
     end;
-    Probe(Base, Result);
-    Exit;
+    Exit(ProbeProgram(mBase, mExtensions, AExists));
   end;
-  Folders := nil;
-  if ACwd <> '' then
+  for mFolder in ProgramFolders(ACwd, APath) do
   begin
-    Folders := Folders + [ACwd];
-  end;
-  for Folder in APath.Split([';']) do
-  begin
-    if Trim(Folder) <> '' then
-    begin
-      Folders := Folders + [Trim(StringReplace(Folder, '"', '', [rfReplaceAll]))];
-    end;
-  end;
-  for Folder in Folders do
-  begin
-    if Probe(JoinPath(Folder, ACommand), Result) then
+    Result := ProbeProgram(JoinPath(mFolder, ACommand), mExtensions, AExists);
+    if Result <> '' then
     begin
       Exit;
     end;
