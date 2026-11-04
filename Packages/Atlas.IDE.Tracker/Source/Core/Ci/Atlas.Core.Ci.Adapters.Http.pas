@@ -28,27 +28,55 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.Types,
+  System.Diagnostics,
   System.Net.URLClient,
+  System.Net.HttpClient,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract;
 
 type
   TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,
     IAtlasCiCancel, IAtlasCiConditional)
+  private type
+    /// <summary>Eine Anfrage: AMethod "GET", "POST" oder "PATCH"; Body nur beim Schreiben, mit ContentType;
+    /// IfModifiedSince '' = ohne (#1271).</summary>
+    TRequest = record
+      Method: string;
+      Url: string;
+      Accept: string;
+      ContentType: string;
+      IfModifiedSince: string;
+      Body: TBytes;
+      TimeoutMs: Integer;
+      MaxBytes: Integer;
+      /// <summary>Ohne Inhalt und Bedingung; Inhaltstyp JSON.</summary>
+      class function Create(const AMethod, AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer): TRequest;
+        static;
+    end;
+
+    /// <summary>Antwort: Status, Inhalt und die Köpfe Last-Modified und X-Poll-Interval.</summary>
+    TReply = record
+      Status: Integer;
+      Bytes: TBytes;
+      LastModified: string;
+      PollInterval: string;
+      Error: TAtlasCiFetchError;
+    end;
   private
     FServer: string;
     FUser: string;
     FToken: string;
     FBearer: Boolean;
     FCancelled: Integer;
-    /// <summary>AMethod "GET", "POST" oder "PATCH"; ABody nur beim Schreiben (JSON).</summary>
-    function Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer;
-      out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
-    /// <summary>Wie oben, mit dem Inhaltstyp von ABody (AContentType, #1276), zusätzlichem If-Modified-Since
-    /// (AIfModifiedSince '' = ohne, #1271) und den Köpfen Last-Modified und X-Poll-Interval der Antwort.</summary>
-    function Request(const AMethod, AUrl, AAccept, AContentType, AIfModifiedSince: string; const ABody: TBytes;
-      ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified,
-      APollInterval: string; out AError: TAtlasCiFetchError): Boolean; overload;
+    function Request(const ARequest: TRequest; out AReply: TReply): Boolean;
+    /// <summary>Anfrage an AUrl (nach Weiterleitungen) beginnen; ASource nur beim Schreiben.</summary>
+    function StartRequest(AClient: THTTPClient; const ARequest: TRequest; const AUrl: string;
+      ASource, AContent: TBytesStream): IAsyncResult;
+    /// <summary>Auf das Ende von AAsync warten; False mit AError bei Zeitgrenze, Abbruch oder Entladen.</summary>
+    function AwaitResponse(const AAsync: IAsyncResult; const AWatch: TStopwatch; ATimeoutMs: Integer;
+      var AError: TAtlasCiFetchError): Boolean;
     /// <summary>Schreiben nur angemeldet beim eingetragenen Server über https, nie ohne Token.</summary>
     function MayWrite(const AUrl: string): Boolean;
     function AuthHeaders(const AUrl: string): TNetHeaders;
@@ -63,13 +91,13 @@ type
       out AError: TAtlasCiFetchError): Boolean;
     function GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
     procedure Cancel;
-    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
-    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
   end;
 
   /// <summary>IAtlasCiTransports über TAtlasCiHttpTransport (#1455); erzeugt nur die Komposition des Moduls
@@ -83,11 +111,7 @@ type
 implementation
 
 uses
-  System.Classes,
-  System.Types,
-  System.Diagnostics,
   System.NetEncoding,
-  System.Net.HttpClient,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Ci.Internals.Addresses;
 
@@ -132,69 +156,86 @@ end;
 function TAtlasCiHttpTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer;
   out AText: string; out AError: TAtlasCiFetchError): Boolean;
 var
-  mBytes: TBytes;
+  mReply: TReply;
 begin
   AText := '';
-  Result := Request('GET', AUrl, 'application/json', nil, ATimeoutMs, MaxBytes, AStatus, mBytes, AError);
+  Result := Request(TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, MaxBytes), mReply);
+  AStatus := mReply.Status;
+  AError := mReply.Error;
   if Result then
   begin
-    AText := TEncoding.UTF8.GetString(mBytes);
+    AText := TEncoding.UTF8.GetString(mReply.Bytes);
   end;
 end;
 
 function TAtlasCiHttpTransport.GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
   out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+var
+  mReply: TReply;
 begin
-  Result := Request('GET', AUrl, '*/*', nil, ATimeoutMs, AMaxBytes, AStatus, ABytes, AError);
+  Result := Request(TRequest.Create('GET', AUrl, '*/*', ATimeoutMs, AMaxBytes), mReply);
+  AStatus := mReply.Status;
+  ABytes := mReply.Bytes;
+  AError := mReply.Error;
 end;
 
-function TAtlasCiHttpTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
-var
-  mBytes: TBytes;
+/// <summary>Antwort für die Aufrufer; Inhalt und X-Poll-Interval nur, wenn AOk.</summary>
+function ResponseOf(const AReply: TAtlasCiHttpTransport.TReply; AOk: Boolean): TAtlasCiResponse;
 begin
-  AText := '';
-  AStatus := 0;
+  Result := TAtlasCiResponse.Failed(AReply.Error);
+  Result.Status := AReply.Status;
+  Result.LastModified := AReply.LastModified;
+  if AOk then
+  begin
+    Result.Text := TEncoding.UTF8.GetString(AReply.Bytes);
+    if not TryStrToInt(Trim(AReply.PollInterval), Result.PollSeconds) or (Result.PollSeconds < 0) then
+    begin
+      Result.PollSeconds := 0;
+    end;
+  end;
+end;
+
+function TAtlasCiHttpTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
+var
+  mRequest: TRequest;
+  mReply: TReply;
+begin
   Result := False;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.Unauthorized);
   if not (SameText(AMethod, 'POST') or SameText(AMethod, 'PATCH')) or not MayWrite(AUrl) then
   begin
-    AError := TAtlasCiFetchError.Unauthorized;
     Exit;
   end;
-  Result := Request(UpperCase(AMethod), AUrl, 'application/json', TEncoding.UTF8.GetBytes(ABody), ATimeoutMs,
-    MaxBytes, AStatus, mBytes, AError);
-  if Result then
-  begin
-    AText := TEncoding.UTF8.GetString(mBytes);
-  end;
+  mRequest := TRequest.Create(UpperCase(AMethod), AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest.Body := TEncoding.UTF8.GetBytes(ABody);
+  Result := Request(mRequest, mReply);
+  AResponse := ResponseOf(mReply, Result);
 end;
 
 function TAtlasCiHttpTransport.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
-  out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+  out AResponse: TAtlasCiResponse): Boolean;
 var
-  mBytes: TBytes;
-  mLastModified, mPoll: string;
+  mRequest: TRequest;
+  mReply: TReply;
 begin
-  AText := '';
-  AStatus := 0;
   Result := False;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.Unauthorized);
   if not MayWrite(AUrl) then
   begin
-    AError := TAtlasCiFetchError.Unauthorized;
     Exit;
   end;
   // Leerer Inhalt: nichts zu senden.
   if Length(ABody) = 0 then
   begin
-    AError := TAtlasCiFetchError.Invalid;
+    AResponse.Error := TAtlasCiFetchError.Invalid;
     Exit;
   end;
-  Result := Request('POST', AUrl, 'application/json', AContentType, '', ABody, ATimeoutMs, MaxBytes, AStatus, mBytes,
-    mLastModified, mPoll, AError);
-  if Result then
-  begin
-    AText := TEncoding.UTF8.GetString(mBytes);
-  end;
+  mRequest := TRequest.Create('POST', AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest.ContentType := AContentType;
+  mRequest.Body := ABody;
+  Result := Request(mRequest, mReply);
+  AResponse := ResponseOf(mReply, Result);
 end;
 
 function TAtlasCiHttpTransport.MayWrite(const AUrl: string): Boolean;
@@ -213,34 +254,32 @@ begin
 end;
 
 function TAtlasCiHttpTransport.GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer;
-  out AStatus: Integer; out AText, ALastModified: string; out APollSeconds: Integer;
-  out AError: TAtlasCiFetchError): Boolean;
+  out AResponse: TAtlasCiResponse): Boolean;
 var
-  mBytes: TBytes;
-  mPoll: string;
+  mRequest: TRequest;
+  mReply: TReply;
 begin
-  AText := '';
-  APollSeconds := 0;
-  Result := Request('GET', AUrl, 'application/json', '', AIfModifiedSince, nil, ATimeoutMs, MaxBytes, AStatus, mBytes,
-    ALastModified, mPoll, AError);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AText := TEncoding.UTF8.GetString(mBytes);
-  if not TryStrToInt(Trim(mPoll), APollSeconds) or (APollSeconds < 0) then
-  begin
-    APollSeconds := 0;
-  end;
+  mRequest := TRequest.Create('GET', AUrl, 'application/json', ATimeoutMs, MaxBytes);
+  mRequest.ContentType := '';
+  mRequest.IfModifiedSince := AIfModifiedSince;
+  Result := Request(mRequest, mReply);
+  AResponse := ResponseOf(mReply, Result);
 end;
 
-function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes;
-  ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
-var
-  mLastModified, mPoll: string;
+{ TAtlasCiHttpTransport.TRequest }
+
+class function TAtlasCiHttpTransport.TRequest.Create(const AMethod, AUrl, AAccept: string;
+  ATimeoutMs, AMaxBytes: Integer): TRequest;
 begin
-  Result := Request(AMethod, AUrl, AAccept, 'application/json; charset=utf-8', '', ABody, ATimeoutMs, AMaxBytes,
-    AStatus, ABytes, mLastModified, mPoll, AError);
+  Result := Default(TRequest);
+  Result.Method := AMethod;
+  Result.Url := AUrl;
+  Result.Accept := AAccept;
+  Result.ContentType := 'application/json; charset=utf-8';
+  Result.IfModifiedSince := '';
+  Result.Body := nil;
+  Result.TimeoutMs := ATimeoutMs;
+  Result.MaxBytes := AMaxBytes;
 end;
 
 function TAtlasCiHttpTransport.AuthHeaders(const AUrl: string): TNetHeaders;
@@ -265,152 +304,195 @@ begin
   end;
 end;
 
-function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept, AContentType, AIfModifiedSince: string;
-  const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified,
-  APollInterval: string; out AError: TAtlasCiFetchError): Boolean;
-var
-  Client: THTTPClient;
-  Content: TBytesStream;
-  Source: TBytesStream;
-  Async: IAsyncResult;
-  Response: IHTTPResponse;
-  Watch, Wait: TStopwatch;
-  Url, Next: string;
-  Redirects: Integer;
-  Headers: TNetHeaders;
+/// <summary>Client ohne Cookies und ohne eigene Weiterleitungen, mit der Zeitgrenze von ARequest.</summary>
+function ClientFor(const ARequest: TAtlasCiHttpTransport.TRequest): THTTPClient;
 begin
-  Result := False;
-  AStatus := 0;
-  ABytes := nil;
-  ALastModified := '';
-  APollInterval := '';
-  AError := TAtlasCiFetchError.Network;
-  if Cancelled then
+  Result := THTTPClient.Create;
+  Result.ConnectionTimeout := ARequest.TimeoutMs;
+  Result.ResponseTimeout := ARequest.TimeoutMs;
+  Result.HandleRedirects := False;
+  Result.AllowCookies := False;
+  Result.UserAgent := 'Atlas';
+  Result.Accept := ARequest.Accept;
+end;
+
+function TAtlasCiHttpTransport.StartRequest(AClient: THTTPClient; const ARequest: TRequest; const AUrl: string;
+  ASource, AContent: TBytesStream): IAsyncResult;
+var
+  mHeaders: TNetHeaders;
+begin
+  mHeaders := AuthHeaders(AUrl);
+  if ARequest.IfModifiedSince <> '' then
   begin
-    AError := TAtlasCiFetchError.Cancelled;
+    mHeaders := mHeaders + [TNetHeader.Create('If-Modified-Since', ARequest.IfModifiedSince)];
+  end;
+  AContent.Clear;
+  if ARequest.Method = 'GET' then
+  begin
+    Result := AClient.BeginGet(AUrl, AContent, mHeaders);
     Exit;
   end;
-  Client := THTTPClient.Create;
-  Content := TBytesStream.Create;
-  Source := nil;
-  if AMethod <> 'GET' then
+  mHeaders := mHeaders + [TNetHeader.Create('Content-Type', ARequest.ContentType)];
+  ASource.Position := 0;
+  if ARequest.Method = 'PATCH' then
   begin
-    Source := TBytesStream.Create(ABody);
-  end;
-  try
-    Client.ConnectionTimeout := ATimeoutMs;
-    Client.ResponseTimeout := ATimeoutMs;
-    Client.HandleRedirects := False;
-    Client.AllowCookies := False;
-    Client.UserAgent := 'Atlas';
-    Client.Accept := AAccept;
-    Url := AUrl;
-    Redirects := 0;
-    Watch := TStopwatch.StartNew;
-    try
-      while True do
-      begin
-        Headers := AuthHeaders(Url);
-        if AIfModifiedSince <> '' then
-        begin
-          Headers := Headers + [TNetHeader.Create('If-Modified-Since', AIfModifiedSince)];
-        end;
-        Content.Clear;
-        if AMethod = 'GET' then
-        begin
-          Async := Client.BeginGet(Url, Content, Headers);
-        end
-        else
-        begin
-          Headers := Headers + [TNetHeader.Create('Content-Type', AContentType)];
-          Source.Position := 0;
-          if AMethod = 'PATCH' then
-          begin
-            Async := Client.BeginPatch(Url, Source, Content, Headers);
-          end
-          else
-          begin
-            Async := Client.BeginPost(Url, Source, Content, Headers);
-          end;
-        end;
-        while not Async.IsCompleted do
-        begin
-          if TAtlasShutdown.Wait(SliceMs) or Cancelled or (Watch.ElapsedMilliseconds > ATimeoutMs) then
-          begin
-            if Watch.ElapsedMilliseconds > ATimeoutMs then
-            begin
-              AError := TAtlasCiFetchError.Timeout;
-            end
-            else
-            begin
-              AError := TAtlasCiFetchError.Cancelled;
-            end;
-            Async.Cancel;
-            // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
-            Wait := TStopwatch.StartNew;
-            while not Async.IsCompleted and (Wait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
-            begin
-              Sleep(10);
-            end;
-            Exit;
-          end;
-        end;
-        Response := THTTPClient.EndAsyncHTTP(Async);
-        if not IsRedirect(Response.StatusCode) then
-        begin
-          Break;
-        end;
-        // Geschrieben wird nur an die eingetragene Adresse: Eine Weiterleitung ist ein Fehler, der Inhalt ginge sonst
-        // an ein anderes Ziel.
-        if AMethod <> 'GET' then
-        begin
-          AStatus := Response.StatusCode;
-          AError := TAtlasCiFetchError.Server;
-          Exit;
-        end;
-        Inc(Redirects);
-        Next := TAtlasCiAddresses.Resolve(Url, Response.HeaderValue['Location']);
-        if (Redirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(Url, Next) then
-        begin
-          // Fremdes Ziel (z. B. Anmeldeseite eines anderen Rechners): wie eine abgelehnte Anmeldung.
-          AStatus := Response.StatusCode;
-          AError := TAtlasCiFetchError.Unauthorized;
-          Exit;
-        end;
-        Url := Next;
-      end;
-      AStatus := Response.StatusCode;
-      ALastModified := Response.HeaderValue['Last-Modified'];
-      APollInterval := Response.HeaderValue['X-Poll-Interval'];
-      if Content.Size > AMaxBytes then
-      begin
-        AError := TAtlasCiFetchError.Invalid;
-        Exit;
-      end;
-      ABytes := Copy(Content.Bytes, 0, Content.Size);
-      AError := TAtlasCiFetchError.None;
-      Result := True;
-    except
-      // Kein Netz, Name unbekannt, Zertifikat abgelehnt …: still als Fehler der Abfrage.
-      if Watch.ElapsedMilliseconds > ATimeoutMs then
-      begin
-        AError := TAtlasCiFetchError.Timeout;
-      end
-      else
-      begin
-        AError := TAtlasCiFetchError.Network;
-      end;
-    end;
-  finally
-    // Erst die Schnittstellen lösen, sie verweisen auf den Client.
-    Response := nil;
-    Async := nil;
-    Source.Free;
-    Content.Free;
-    Client.Free;
+    Result := AClient.BeginPatch(AUrl, ASource, AContent, mHeaders);
+  end
+  else
+  begin
+    Result := AClient.BeginPost(AUrl, ASource, AContent, mHeaders);
   end;
 end;
 
+function TAtlasCiHttpTransport.AwaitResponse(const AAsync: IAsyncResult; const AWatch: TStopwatch;
+  ATimeoutMs: Integer; var AError: TAtlasCiFetchError): Boolean;
+var
+  mWait: TStopwatch;
+begin
+  Result := True;
+  while Result and not AAsync.IsCompleted do
+  begin
+    Result := not (TAtlasShutdown.Wait(SliceMs) or Cancelled or (AWatch.ElapsedMilliseconds > ATimeoutMs));
+  end;
+  if Result then
+  begin
+    Exit;
+  end;
+  if AWatch.ElapsedMilliseconds > ATimeoutMs then
+  begin
+    AError := TAtlasCiFetchError.Timeout;
+  end
+  else
+  begin
+    AError := TAtlasCiFetchError.Cancelled;
+  end;
+  AAsync.Cancel;
+  // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
+  mWait := TStopwatch.StartNew;
+  while not AAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+  begin
+    Sleep(10);
+  end;
+end;
+
+/// <summary>Ziel einer Weiterleitung in AUrl; False mit Status und Fehler in AReply, wenn ihr nicht gefolgt wird.
+/// </summary>
+function FollowRedirect(const AResponse: IHTTPResponse; const AMethod: string; var AUrl: string;
+  var ARedirects: Integer; var AReply: TAtlasCiHttpTransport.TReply): Boolean;
+var
+  mNext: string;
+begin
+  Result := False;
+  AReply.Status := AResponse.StatusCode;
+  // Geschrieben wird nur an die eingetragene Adresse: Eine Weiterleitung ist ein Fehler, der Inhalt ginge sonst
+  // an ein anderes Ziel.
+  if AMethod <> 'GET' then
+  begin
+    AReply.Error := TAtlasCiFetchError.Server;
+    Exit;
+  end;
+  Inc(ARedirects);
+  mNext := TAtlasCiAddresses.Resolve(AUrl, AResponse.HeaderValue['Location']);
+  if (ARedirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(AUrl, mNext) then
+  begin
+    // Fremdes Ziel (z. B. Anmeldeseite eines anderen Rechners): wie eine abgelehnte Anmeldung.
+    AReply.Error := TAtlasCiFetchError.Unauthorized;
+    Exit;
+  end;
+  AReply.Status := 0;
+  AUrl := mNext;
+  Result := True;
+end;
+
+/// <summary>Status, Köpfe und Inhalt (höchstens AMaxBytes) der letzten Antwort in AReply.</summary>
+function ReadReply(const AResponse: IHTTPResponse; AContent: TBytesStream; AMaxBytes: Integer;
+  var AReply: TAtlasCiHttpTransport.TReply): Boolean;
+begin
+  AReply.Status := AResponse.StatusCode;
+  AReply.LastModified := AResponse.HeaderValue['Last-Modified'];
+  AReply.PollInterval := AResponse.HeaderValue['X-Poll-Interval'];
+  Result := AContent.Size <= AMaxBytes;
+  if Result then
+  begin
+    AReply.Bytes := Copy(AContent.Bytes, 0, AContent.Size);
+    AReply.Error := TAtlasCiFetchError.None;
+  end
+  else
+  begin
+    AReply.Error := TAtlasCiFetchError.Invalid;
+  end;
+end;
+
+/// <summary>Fehler einer Anfrage, die mit einer Ausnahme endete: Timeout nach der Zeitgrenze, sonst Network.
+/// </summary>
+function FailureAfter(const AWatch: TStopwatch; ATimeoutMs: Integer): TAtlasCiFetchError;
+begin
+  Result := TAtlasCiFetchError.Network;
+  if AWatch.ElapsedMilliseconds > ATimeoutMs then
+  begin
+    Result := TAtlasCiFetchError.Timeout;
+  end;
+end;
+
+function TAtlasCiHttpTransport.Request(const ARequest: TRequest; out AReply: TReply): Boolean;
+var
+  mClient: THTTPClient;
+  mContent, mSource: TBytesStream;
+  mAsync: IAsyncResult;
+  mResponse: IHTTPResponse;
+  mWatch: TStopwatch;
+  mUrl: string;
+  mRedirects: Integer;
+begin
+  Result := False;
+  AReply := Default(TReply);
+  AReply.Error := TAtlasCiFetchError.Network;
+  if Cancelled then
+  begin
+    AReply.Error := TAtlasCiFetchError.Cancelled;
+    Exit;
+  end;
+  mClient := ClientFor(ARequest);
+  mContent := TBytesStream.Create;
+  mSource := nil;
+  if ARequest.Method <> 'GET' then
+  begin
+    mSource := TBytesStream.Create(ARequest.Body);
+  end;
+  try
+    mUrl := ARequest.Url;
+    mRedirects := 0;
+    mWatch := TStopwatch.StartNew;
+    try
+      repeat
+        mAsync := StartRequest(mClient, ARequest, mUrl, mSource, mContent);
+        if not AwaitResponse(mAsync, mWatch, ARequest.TimeoutMs, AReply.Error) then
+        begin
+          Exit;
+        end;
+        mResponse := THTTPClient.EndAsyncHTTP(mAsync);
+        if IsRedirect(mResponse.StatusCode) and not FollowRedirect(mResponse, ARequest.Method, mUrl, mRedirects,
+          AReply) then
+        begin
+          Exit;
+        end;
+      until not IsRedirect(mResponse.StatusCode);
+      Result := ReadReply(mResponse, mContent, ARequest.MaxBytes, AReply);
+    except
+      // Kein Netz, Name unbekannt, Zertifikat abgelehnt …: still als Fehler der Abfrage.
+      AReply.Error := FailureAfter(mWatch, ARequest.TimeoutMs);
+    end;
+  finally
+    // Erst die Schnittstellen lösen, sie verweisen auf den Client.
+    mResponse := nil;
+    mAsync := nil;
+    mSource.Free;
+    mContent.Free;
+    mClient.Free;
+  end;
+end;
+
+{ TAtlasCiHttpTransports }
 { TAtlasCiHttpTransports }
 
 function TAtlasCiHttpTransports.Basic(const AServer, AUser, AToken: string): IAtlasCiTransport;

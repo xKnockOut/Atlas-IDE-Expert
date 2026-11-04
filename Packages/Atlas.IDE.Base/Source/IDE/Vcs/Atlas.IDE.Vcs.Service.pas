@@ -740,6 +740,29 @@ begin
   Result := QueryProject(AProjectFile, '', ADone);
 end;
 
+/// <summary>Art, Wurzel und Outcome ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.</summary>
+procedure LocalState(const AFolder: string; const AVcs: IAtlasVersionControl; var AState: TAtlasVcsProjectState);
+begin
+  if AState.Provider = TAtlasVcsProvider.Off then
+  begin
+    AState.Outcome := TAtlasVcsOutcome.Disabled;
+    Exit;
+  end;
+  AState.WorkingCopy := TAtlasVcsDetection.Find(AFolder, AState.Provider);
+  if AState.WorkingCopy.Kind = TAtlasVcsKind.None then
+  begin
+    AState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+  end
+  else if (AVcs = nil) or (AVcs.Kind = TAtlasVcsKind.None) then
+  begin
+    AState.Outcome := TAtlasVcsOutcome.ToolMissing;
+  end
+  else
+  begin
+    AState.Outcome := TAtlasVcsOutcome.Ok;
+  end;
+end;
+
 class function TAtlasIdeVcs.QueryProject(const AProjectFile, AGroupFile: string;
   const ADone: TProc<TAtlasVcsProjectState>): Boolean;
 var
@@ -766,27 +789,7 @@ begin
   mState.MainBranch := mResolution.MainBranch;
   mFolder := ExtractFileDir(AProjectFile);
   mVcs := OpenFolder(mFolder, mState.Provider, 0);
-  // Art und Wurzel ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.
-  if mState.Provider = TAtlasVcsProvider.Off then
-  begin
-    mState.Outcome := TAtlasVcsOutcome.Disabled;
-  end
-  else
-  begin
-    mState.WorkingCopy := TAtlasVcsDetection.Find(mFolder, mState.Provider);
-    if mState.WorkingCopy.Kind = TAtlasVcsKind.None then
-    begin
-      mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
-    end
-    else if (mVcs = nil) or (mVcs.Kind = TAtlasVcsKind.None) then
-    begin
-      mState.Outcome := TAtlasVcsOutcome.ToolMissing;
-    end
-    else
-    begin
-      mState.Outcome := TAtlasVcsOutcome.Ok;
-    end;
-  end;
+  LocalState(mFolder, mVcs, mState);
   if mState.Outcome <> TAtlasVcsOutcome.Ok then
   begin
     ADone(mState);

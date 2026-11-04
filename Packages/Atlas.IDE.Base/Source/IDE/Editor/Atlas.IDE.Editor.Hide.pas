@@ -68,7 +68,6 @@ type
     function RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
     function RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
     function UndoStep(const AStep: TStep): Boolean;
-    class function TeamFolder(out AFileName: string): string; static;
     class function RefusalText(ARefusal: TAtlasHideRefusal): string; static;
     class function SettingCaption(const AKey: string): string; static;
     class function CaretPoint: TPoint; static;
@@ -99,7 +98,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.IOUtils,
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,
@@ -107,23 +105,20 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.Contract,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.StructureSwitch;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Editor.HideTeamFile;
 
 { TAtlasIdeHide }
 
@@ -329,28 +324,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeHide.TeamFolder(out AFileName: string): string;
-var
-  Team: TAtlasTeamSettings;
-  Project: string;
-begin
-  // Vorhandene .atlas des aktiven Projekts, sonst neben der .dproj (wie „Projektdatei öffnen“).
-  Team := TAtlasIdeTeamFile.Current;
-  if Team.FileName <> '' then
-  begin
-    AFileName := Team.FileName;
-    Exit(Team.Folder);
-  end;
-  Project := TAtlasIdeTeamFile.ActiveProject;
-  if Project = '' then
-  begin
-    AFileName := '';
-    Exit('');
-  end;
-  Result := ExtractFileDir(Project);
-  AFileName := TPath.Combine(Result, TAtlasTeamFile.FileName);
-end;
-
 class procedure TAtlasIdeHide.Applied;
 begin
   // Wie die Schnellschalter: Strukturhervorhebung der IDE abgleichen, Treffer vergessen, neu zeichnen.
@@ -393,7 +366,7 @@ begin
   begin
     Text := TAtlasEditorBuffer.Text(View.Buffer);
   end;
-  Folder := TeamFolder(TeamFile);
+  Folder := TAtlasIdeHideTeamFile.Folder(TeamFile);
   Result := TAtlasHide.Plan(AChoice.Target, AChoice.Scope, Text, Folder, Plan, Refusal);
   if not Result then
   begin
@@ -466,49 +439,14 @@ end;
 
 function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
 var
-  FileName, Updated: string;
-  Content: TAtlasTextFileContent;
+  FileName: string;
 begin
   AStep := Default(TStep);
-  Result := False;
-  if not (TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.TeamFile) then
+  Result := TAtlasIdeHideTeamFile.Add(APlan.Place, FileName, ADetail);
+  if not Result then
   begin
-    ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedTeamFileOff);
     Exit;
   end;
-  TeamFolder(FileName);
-  if FileName = '' then
-  begin
-    ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedNoProject);
-    Exit;
-  end;
-  try
-    if FileExists(FileName) then
-    begin
-      Content := TAtlasTextFile.Load(FileName);
-    end
-    else
-    begin
-      // Neue Datei wie „Projektdatei öffnen“: UTF-8 ohne BOM.
-      Content := Default(TAtlasTextFileContent);
-      Content.Encoding := TAtlasTextEncoding.Utf8;
-    end;
-    Updated := TAtlasHiddenPlaces.AddTo(Content.Text, TAtlasTeamFile.Skeleton, APlan.Place);
-    if Updated = Content.Text then
-    begin
-      ADetail := TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready);
-      Exit;
-    end;
-    Content.Text := Updated;
-    TAtlasTextFile.Save(FileName, Content);
-  except
-    on E: Exception do
-    begin
-      ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideFailed, [E.Message]);
-      Exit;
-    end;
-  end;
-  TAtlasIdeTeamFile.Refresh;
   Applied;
   AStep.Valid := True;
   AStep.Kind := TAtlasHideKind.TeamFile;
@@ -516,7 +454,6 @@ begin
   AStep.Place := APlan.Place;
   ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideDoneTeamFile,
     [TAtlasHideMenu.ElementName(APlan.Target.Element, False), APlan.Place.FileName]);
-  Result := True;
 end;
 
 function TAtlasIdeHide.RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
@@ -558,9 +495,8 @@ end;
 function TAtlasIdeHide.UndoStep(const AStep: TStep): Boolean;
 var
   View: IOTAEditView;
-  Text, Reverted, Updated: string;
+  Text, Reverted: string;
   Offset: Integer;
-  Content: TAtlasTextFileContent;
   Stored: TAtlasPluginSettings;
   Session: TAtlasToggleSession;
 begin
@@ -583,18 +519,10 @@ begin
       end;
     TAtlasHideKind.TeamFile:
       begin
-        if not FileExists(AStep.FileName) then
+        if not TAtlasIdeHideTeamFile.Remove(AStep.FileName, AStep.Place) then
         begin
           Exit;
         end;
-        Content := TAtlasTextFile.Load(AStep.FileName);
-        Updated := TAtlasHiddenPlaces.RemoveFrom(Content.Text, AStep.Place);
-        if Updated <> Content.Text then
-        begin
-          Content.Text := Updated;
-          TAtlasTextFile.Save(AStep.FileName, Content);
-        end;
-        TAtlasIdeTeamFile.Refresh;
       end;
   else
     begin

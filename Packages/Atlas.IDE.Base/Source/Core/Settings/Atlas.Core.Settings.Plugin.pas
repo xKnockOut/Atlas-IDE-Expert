@@ -1494,7 +1494,7 @@ type
     /// <summary>SVN-Externals beim Anlegen eines Branchs (#1291, vcs.externals.*): Externals ohne Revision
     /// ("pin" festschreiben, "keep" lassen, "ask" ohne Vorauswahl), wann „mitverzweigen“ vorgeschlagen wird
     /// ("modified", "never", "always") und feste Behandlung je Quelle als JSON-Liste mit source und onBranch
-    /// (gelesen mit TAtlasVcsBranchPlan.RulesOf; '[]' = keine). Persönlich (Registry).</summary>
+    /// (gelesen mit TAtlasVcsExternalRules.RulesOf; '[]' = keine). Persönlich (Registry).</summary>
     VcsExternalsOnBranch: string;
     VcsExternalsSuggestBranch: string;
     VcsExternalsRules: string;

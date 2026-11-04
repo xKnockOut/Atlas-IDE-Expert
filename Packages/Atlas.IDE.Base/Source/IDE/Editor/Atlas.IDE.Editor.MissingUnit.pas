@@ -65,12 +65,41 @@ begin
   end;
 end;
 
+/// <summary>Trägt den Ordner von ARequest in AConfiguration ein; False mit Meldung, wenn er schon (auch geerbt)
+/// drinsteht oder die IDE ablehnt. ALabel: Name der Konfiguration für die Meldung.</summary>
+function WriteSearchPath(const AProject: IOTAProject; const AConfiguration: IOTABuildConfiguration;
+  const ARequest: TAtlasSearchPathRequest; const ALabel: string; const AMessage: TProc<string>): Boolean;
+var
+  mRaw: string;
+begin
+  Result := False;
+  try
+    // Mit Geerbtem: Steht der Ordner schon in der Basis, braucht ihn die Konfiguration nicht noch einmal.
+    if TAtlasSearchPaths.Contains(AConfiguration.GetValue(TAtlasSearchPaths.OptionName, True), ARequest.Folder) then
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathPresent, [ARequest.Folder, ALabel,
+        ExtractFileName(AProject.FileName)]));
+      Exit;
+    end;
+    mRaw := AConfiguration.GetValue(TAtlasSearchPaths.OptionName, False);
+    AConfiguration.SetValue(TAtlasSearchPaths.OptionName,
+      TAtlasSearchPaths.WithFolder(mRaw, ARequest.Folder, ARequest.Config = ''));
+    AProject.MarkModified;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathFailed, [E.Message]));
+    end;
+  end;
+end;
+
 class procedure TAtlasIdeMissingUnit.AddSearchPath(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
   Request: TAtlasSearchPathRequest;
   Project: IOTAProject;
   Configuration: IOTABuildConfiguration;
-  Label_, Raw: string;
+  Label_: string;
 begin
   if not TAtlasSearchPathRequest.TryParse(AArgumentsJson, Request) then
   begin
@@ -94,27 +123,11 @@ begin
       ExtractFileName(Project.FileName)]));
     Exit;
   end;
-  try
-    // Mit Geerbtem: Steht der Ordner schon in der Basis, braucht ihn die Konfiguration nicht noch einmal.
-    if TAtlasSearchPaths.Contains(Configuration.GetValue(TAtlasSearchPaths.OptionName, True), Request.Folder) then
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathPresent, [Request.Folder, Label_,
-        ExtractFileName(Project.FileName)]));
-      Exit;
-    end;
-    Raw := Configuration.GetValue(TAtlasSearchPaths.OptionName, False);
-    Configuration.SetValue(TAtlasSearchPaths.OptionName,
-      TAtlasSearchPaths.WithFolder(Raw, Request.Folder, Request.Config = ''));
-    Project.MarkModified;
-  except
-    on E: Exception do
-    begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathFailed, [E.Message]));
-      Exit;
-    end;
+  if WriteSearchPath(Project, Configuration, Request, Label_, AMessage) then
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathDone, [Label_, ExtractFileName(Project.FileName),
+      Request.Folder]));
   end;
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.MissingUnitSearchPathDone, [Label_, ExtractFileName(Project.FileName),
-    Request.Folder]));
 end;
 
 class procedure TAtlasIdeMissingUnit.AddUnit(const AArgumentsJson: string; const AMessage: TProc<string>);
