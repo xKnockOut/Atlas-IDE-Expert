@@ -116,7 +116,9 @@ function TAtlasWelcomeSection.IsEnabled: Boolean;
 begin
   Result := True;
   if Assigned(Enabled) then
+  begin
     Result := Enabled();
+  end;
 end;
 
 class function TAtlasWelcomeSection.Create(const AId, ATitle: string; AOrder: Integer;
@@ -136,7 +138,9 @@ class function TAtlasWelcomeIds.PluginId(const ASectionId: string): string;
 begin
   Result := ASectionId;
   if SameText(Copy(Result, 1, 6), 'atlas.') then
+  begin
     Delete(Result, 1, 6);
+  end;
   Result := PluginPrefix + Result;
 end;
 
@@ -144,8 +148,10 @@ class function TAtlasWelcomeIds.SectionOf(const APluginId: string): string;
 begin
   Result := '';
   if SameText(Copy(APluginId, 1, Length(PluginPrefix)), PluginPrefix) and (Length(APluginId) > Length(PluginPrefix)) then
+  begin
     // Kennungen der Bereiche sind klein geschrieben.
     Result := 'atlas.' + LowerCase(Copy(APluginId, Length(PluginPrefix) + 1, MaxInt));
+  end;
 end;
 
 { TAtlasWelcomeSections }
@@ -169,7 +175,9 @@ end;
 class function TAtlasWelcomeSections.Default: TAtlasWelcomeSections;
 begin
   if FDefault = nil then
+  begin
     FDefault := TAtlasWelcomeSections.Create;
+  end;
   Result := FDefault;
 end;
 
@@ -183,17 +191,25 @@ var
   Index: Integer;
 begin
   for Index := 0 to FItems.Count - 1 do
+  begin
     if SameText(FItems[Index].Id, AId) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
 function Comes(const ALeft, ARight: TAtlasWelcomeSection): Boolean;
 begin
   if ALeft.Order <> ARight.Order then
-    Result := ALeft.Order < ARight.Order
+  begin
+    Result := ALeft.Order < ARight.Order;
+  end
   else
+  begin
     Result := CompareText(ALeft.Id, ARight.Id) < 0;
+  end;
 end;
 
 procedure TAtlasWelcomeSections.Add(const ASection: TAtlasWelcomeSection);
@@ -201,15 +217,21 @@ var
   Index, Existing: Integer;
 begin
   if ASection.Id = '' then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     Existing := IndexOf(ASection.Id);
     if Existing >= 0 then
+    begin
       FItems.Delete(Existing);
+    end;
     Index := 0;
     while (Index < FItems.Count) and not Comes(ASection, FItems[Index]) do
+    begin
       Inc(Index);
+    end;
     FItems.Insert(Index, ASection);
   finally
     FLock.Leave;
@@ -225,7 +247,9 @@ begin
   try
     Index := IndexOf(AId);
     if Index < 0 then
+    begin
       Exit;
+    end;
     FItems.Delete(Index);
   finally
     FLock.Leave;
@@ -242,10 +266,14 @@ begin
     Index := IndexOf(AId);
     Result := Index >= 0;
     if Result then
-      ASection := FItems[Index]
+    begin
+      ASection := FItems[Index];
+    end
     else
+    begin
       // Nicht Default(…): Die Klasse hat selbst eine Methode Default.
       ASection := TAtlasWelcomeSection.Create('', '', 0, TAtlasWelcomeColumn.Left, nil);
+    end;
   finally
     FLock.Leave;
   end;
@@ -268,8 +296,12 @@ begin
   Result := nil;
   // Schalter außerhalb der Sperre abfragen: Sie lesen Einstellungen.
   for Section in All do
+  begin
     if Section.IsEnabled then
+    begin
       Result := Result + [Section];
+    end;
+  end;
 end;
 
 function TAtlasWelcomeSections.VisibleIds: TArray<string>;
@@ -278,7 +310,9 @@ var
 begin
   Result := nil;
   for Section in Visible do
+  begin
     Result := Result + [Section.Id];
+  end;
 end;
 
 procedure TAtlasWelcomeSections.Changed(const AId: string);
