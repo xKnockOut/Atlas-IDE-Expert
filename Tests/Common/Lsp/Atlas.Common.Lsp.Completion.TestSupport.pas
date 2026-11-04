@@ -111,10 +111,30 @@ function OverrideAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
 function InterfaceAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
   ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
 
+/// <summary>TCompletionMethods.EventItems an APosition.</summary>
+function EventsAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionForms.ComponentItems an APosition, das Formular ohne Zwischenspeicher über ALookup.ReadText.
+/// </summary>
+function ComponentsAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TArray<TCompletionItem>): Boolean;
+/// <summary>TLspCompletion.SenderItems an APosition mit Typumwandlung ACast, das Formular ohne Zwischenspeicher.
+/// </summary>
+function SendersAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ACast: TCompletionSenderCast;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionForms.DataNameItems an APosition.</summary>
+function DataNamesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+/// <summary>TCompletionGuard.GuardItems an APosition mit Freigabe AStyle.</summary>
+function GuardAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
+
 implementation
 
 uses
-  Atlas.Common.Lsp.Completion.Declarations;
+  Atlas.Common.Lsp.Completion.Declarations,
+  Atlas.Common.Lsp.Completion.Forms,
+  Atlas.Common.Lsp.Completion.Methods,
+  Atlas.Common.Lsp.Completion.Guard;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
@@ -302,6 +322,78 @@ begin
     mSettings.InterfaceSection := ASection;
     mRequest.Settings := mSettings;
     Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, ABatch);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function EventsAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionMethods.EventItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function ComponentsAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TArray<TCompletionItem>): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionForms.ComponentItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function SendersAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ACast: TCompletionSenderCast;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.SenderCast := ACast;
+    mRequest.Settings := mSettings;
+    Result := TLspCompletion.SenderItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function DataNamesAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
+  out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionForms.DataNameItems(mRequest, AItems);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+function GuardAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
+var
+  mRequest: TCompletionRequest;
+  mSettings: TCompletionSettings;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    mSettings := mRequest.Settings;
+    mSettings.FreeStyle := AStyle;
+    mRequest.Settings := mSettings;
+    Result := TCompletionGuard.GuardItems(mRequest, ANewLine, AItems);
   finally
     mRequest.Free;
   end;
