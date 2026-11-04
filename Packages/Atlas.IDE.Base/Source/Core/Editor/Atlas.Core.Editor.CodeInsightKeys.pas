@@ -57,11 +57,15 @@ var
 begin
   mKey := ABaseKey;
   while mKey.EndsWith('\') do
+  begin
     mKey := mKey.Substring(0, mKey.Length - 1);
+  end;
   mSlash := mKey.LastIndexOf('\');
   Result := mKey.Substring(mSlash + 1);
   if (Result = '') or not CharInSet(Result[1], ['0'..'9']) then
+  begin
     Result := '';
+  end;
 end;
 
 class function TAtlasCodeInsightKeys.MajorVersion(const ABaseKey: string): Integer;
@@ -72,7 +76,9 @@ begin
   mText := VersionText(ABaseKey);
   mDot := mText.IndexOf('.');
   if mDot >= 0 then
+  begin
     mText := mText.Substring(0, mDot);
+  end;
   Result := StrToIntDef(mText, 0);
 end;
 
@@ -82,11 +88,17 @@ var
 begin
   mMajor := MajorVersion(ABaseKey);
   if mMajor = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if mMajor >= cProviderVersion then
-    Result := cProviderKey
+  begin
+    Result := cProviderKey;
+  end
   else
+  begin
     Result := cEditorKey;
+  end;
 end;
 
 class function TAtlasCodeInsightKeys.Targets(const ABaseKey: string; const AWithValue: TArray<string>): TArray<string>;
@@ -96,10 +108,16 @@ class function TAtlasCodeInsightKeys.Targets(const ABaseKey: string; const AWith
     mKnown: string;
   begin
     if AKey = '' then
+    begin
       Exit;
+    end;
     for mKnown in Result do
+    begin
       if SameText(mKnown, AKey) then
+      begin
         Exit;
+      end;
+    end;
     Result := Result + [AKey];
   end;
 
@@ -108,14 +126,18 @@ var
 begin
   Result := nil;
   if VersionKey(ABaseKey) <> '' then
-    Add(VersionKey(ABaseKey))
+  begin
+    Add(VersionKey(ABaseKey));
+  end
   else
   begin
     Add(cProviderKey);
     Add(cEditorKey);
   end;
   for mKey in AWithValue do
+  begin
     Add(mKey);
+  end;
 end;
 
 class function TAtlasCodeInsightKeys.Marker(const AMarker, ABaseKey, ASubKey: string): string;

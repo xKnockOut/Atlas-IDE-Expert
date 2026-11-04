@@ -160,9 +160,13 @@ begin
   FState.SetValues(mChoices);
   // Vorgabe: der erste angebotene Zielzustand, ohne Liste „Zustand nicht ändern“.
   if Length(mChoices) > 1 then
-    FState.Value := mChoices[1]
+  begin
+    FState.Value := mChoices[1];
+  end
   else
+  begin
     FState.Value := mChoices[0];
+  end;
 
   mRow := AddRow(20);
   mLabel := TLabel.Create(Self);
@@ -231,8 +235,12 @@ begin
   // Unter das bisher unterste Element (alTop stapelt nach Top).
   mTop := 0;
   for mIndex := 0 to ControlCount - 1 do
+  begin
     if Controls[mIndex].Top + Controls[mIndex].Height + 1 > mTop then
+    begin
       mTop := Controls[mIndex].Top + Controls[mIndex].Height + 1;
+    end;
+  end;
   Result := TPanel.Create(Self);
   Result.Parent := Self;
   Result.Align := alTop;
@@ -272,10 +280,16 @@ begin
   begin
     mFound := False;
     for mChoice in mChoices do
+    begin
       if SameText(mChoice, mState) then
+      begin
         mFound := True;
+      end;
+    end;
     if not mFound then
+    begin
       mChoices := mChoices + [mState];
+    end;
   end;
   FState.SetValues(mChoices);
 end;
@@ -289,7 +303,9 @@ procedure TAtlasTrackerEndDialog.AssigneeChange(Sender: TObject);
 begin
   // Wer einen Namen einträgt, will übergeben.
   if FAssignee.Value <> '' then
+  begin
     FHandOver.Checked := True;
+  end;
 end;
 
 function TAtlasTrackerEndDialog.Change: TAtlasTrackerWrite;
@@ -298,7 +314,9 @@ var
 begin
   mState := FState.Value;
   if SameText(mState, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerEndKeepState)) then
+  begin
     mState := '';
+  end;
   Result := TAtlasTrackerWorkflow.EndChange(FOptions, mState,
     StringReplace(FComment.Text, #13#10, #10, [rfReplaceAll]), FHandOver.Checked, FAssignee.Value);
 end;
@@ -319,7 +337,9 @@ var
   mDialog: TAtlasTrackerEndDialog;
 begin
   if FSending then
+  begin
     Exit;
+  end;
   FChange := Change;
   // Nichts zu schreiben (Zustand bleibt, kein Kommentar, keine Übergabe): nur beenden.
   if not FChange.HasWork or not Assigned(FOnSend) then
@@ -367,14 +387,18 @@ procedure TAtlasTrackerEndDialog.EditorCancel(Sender: TObject);
 begin
   // Esc im Kommentarfeld (ohne offene Vorschlagsliste); der Editor hat den Entwurf schon gesichert.
   if not FSending then
+  begin
     ModalResult := mrCancel;
+  end;
 end;
 
 procedure TAtlasTrackerEndDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   // Im Kommentarfeld sendet der Editor selbst (und schluckt das Zeichen der Taste).
   if ActiveControl = FComment then
+  begin
     Exit;
+  end;
   if (Key = VK_RETURN) and (ssCtrl in Shift) then
   begin
     Key := 0;
@@ -389,9 +413,13 @@ begin
       Exit('');
     TAtlasCiFetchError.Unauthorized:
       if AResult.Status = 403 then
-        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteForbidden, [AKey, AResult.Status])
+      begin
+        Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteForbidden, [AKey, AResult.Status]);
+      end
       else
+      begin
         Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteUnauthorized, [AKey, AResult.Status]);
+      end;
     TAtlasCiFetchError.NotFound:
       Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteNotFound, [AKey, AResult.Status]);
     TAtlasCiFetchError.Invalid:
@@ -408,7 +436,9 @@ begin
     Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerWriteNetwork);
   end;
   if AResult.Message <> '' then
+  begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerWriteReason, [Result, AResult.Message]);
+  end;
 end;
 
 class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite): string;
@@ -417,7 +447,9 @@ var
 begin
   mParts := nil;
   if AChange.State <> '' then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.TrackerPartState, [AChange.State])];
+  end;
   case AChange.Assign of
     TAtlasTrackerAssign.Me:
       mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartAssigned)];
@@ -427,7 +459,9 @@ begin
     // Keep: Zuständigkeit bleibt.
   end;
   if AChange.Comment <> '' then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TrackerPartComment)];
+  end;
   Result := string.Join(', ', mParts);
 end;
 
@@ -441,7 +475,9 @@ begin
   try
     mDialog.OnSend := AOnSend;
     if Assigned(APrepare) then
+    begin
       APrepare(mDialog);
+    end;
     Result := (mDialog.ShowModal = mrOk) and mDialog.Sent;
     AChange := mDialog.SentChange;
     // Entwurf sichern, solange das Fenster noch lebt (nach Senden ist er schon gelöscht).

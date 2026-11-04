@@ -86,20 +86,30 @@ class function TAtlasCloseRules.Window(const AOpened, ANow: TAtlasEditorWindowSt
 begin
   Result := TAtlasCloseReason.None;
   if not ANow.AppActive then
-    Result := TAtlasCloseReason.Inactive
+  begin
+    Result := TAtlasCloseReason.Inactive;
+  end
   else if ANow.Focus <> AOpened.Focus then
-    Result := TAtlasCloseReason.FocusLost
+  begin
+    Result := TAtlasCloseReason.FocusLost;
+  end
   else if not SameText(ANow.FileName, AOpened.FileName) then
-    Result := TAtlasCloseReason.OtherFile
+  begin
+    Result := TAtlasCloseReason.OtherFile;
+  end
   else if ANow.Size <> AOpened.Size then
+  begin
     Result := TAtlasCloseReason.Resized;
+  end;
 end;
 
 class function TAtlasCloseRules.Popup(const AOpened, ANow: TAtlasEditorWindowState): TAtlasCloseReason;
 begin
   Result := Window(AOpened, ANow);
   if (Result = TAtlasCloseReason.None) and (ANow.TopRow <> AOpened.TopRow) then
+  begin
     Result := TAtlasCloseReason.Scrolled;
+  end;
 end;
 
 class function TAtlasCloseRules.PopupWord(ALineSame: Boolean; const ALineText: string; AWordStart,
@@ -109,15 +119,21 @@ var
 begin
   AIndex := 0;
   if not ALineSame then
+  begin
     Exit(TAtlasCloseReason.OtherLine);
+  end;
   if ACharacter < AWordStart then
+  begin
     Exit(TAtlasCloseReason.BeforeWord);
+  end;
   for Index := AWordStart + 1 to ACharacter do
+  begin
     if (Index > Length(ALineText)) or not TAtlasWord.IsIdentifierChar(ALineText[Index]) then
     begin
       AIndex := Index;
       Exit(TAtlasCloseReason.NonIdentifier);
     end;
+  end;
   Result := TAtlasCloseReason.None;
 end;
 
@@ -136,12 +152,18 @@ begin
   AMove := False;
   Result := Window(AOpened, ANow);
   if (Result <> TAtlasCloseReason.None) or (ANow.TopRow = AOpened.TopRow) then
+  begin
     Exit;
+  end;
   // Die Klammer, an der der Hint hängt, entscheidet, nicht der Caret.
   if (AAnchorLine < ANow.TopRow) or (AAnchorLine >= ANow.TopRow + ANow.Rows) then
-    Result := TAtlasCloseReason.OutOfView
+  begin
+    Result := TAtlasCloseReason.OutOfView;
+  end
   else
+  begin
     AMove := True;
+  end;
 end;
 
 class function TAtlasCloseRules.Tooltip(const AOpened, ANow: TAtlasEditorWindowState; APinned,
@@ -149,10 +171,14 @@ class function TAtlasCloseRules.Tooltip(const AOpened, ANow: TAtlasEditorWindowS
 begin
   Result := Window(AOpened, ANow);
   if (Result = TAtlasCloseReason.None) and (ANow.TopRow <> AOpened.TopRow) then
+  begin
     Result := TAtlasCloseReason.Scrolled;
+  end;
   // Angeheftet oder mit der Maus darüber: Fokus- und Tab-Wechsel lassen ihn stehen.
   if (APinned or AMouseOver) and (Result in [TAtlasCloseReason.FocusLost, TAtlasCloseReason.OtherFile]) then
+  begin
     Result := TAtlasCloseReason.None;
+  end;
 end;
 
 class function TAtlasCloseRules.Name(AReason: TAtlasCloseReason): string;

@@ -68,7 +68,9 @@ begin
   for Index := 0 to High(ASlots) do
   begin
     if not AShown[Index] then
+    begin
       Continue;
+    end;
     if not ASlots[Index].Separator then
     begin
       ButtonBefore := True;
@@ -76,12 +78,18 @@ begin
     end;
     Next := Index + 1;
     while (Next <= High(ASlots)) and (not AShown[Next] or ASlots[Next].Separator) do
+    begin
       Inc(Next);
+    end;
     if not ButtonBefore or (Next > High(ASlots)) then
-      AShown[Index] := False
+    begin
+      AShown[Index] := False;
+    end
     else
+    begin
       // Bis zum nächsten Knopf kein weiterer Trennstrich.
       ButtonBefore := False;
+    end;
   end;
 end;
 
@@ -91,8 +99,12 @@ var
 begin
   Result := 0;
   for Index := 0 to High(ASlots) do
+  begin
     if AShown[Index] then
+    begin
       Inc(Result, ASlots[Index].Width);
+    end;
+  end;
 end;
 
 class function TAtlasToolbarLayout.FullWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
@@ -102,7 +114,9 @@ var
 begin
   SetLength(Shown, Length(ASlots));
   for Index := 0 to High(Shown) do
+  begin
     Shown[Index] := True;
+  end;
   HideLoneSeparators(ASlots, Shown);
   Result := WidthOf(ASlots, Shown);
 end;
@@ -117,18 +131,26 @@ begin
   Result := Default(TAtlasToolbarFit);
   SetLength(Result.Visible, Length(ASlots));
   for Index := 0 to High(ASlots) do
+  begin
     Result.Visible[Index] := True;
+  end;
   HideLoneSeparators(ASlots, Result.Visible);
   Result.Used := WidthOf(ASlots, Result.Visible);
   if Result.Used <= AAvailable then
+  begin
     Exit;
+  end;
   Result.More := True;
   Limit := AAvailable - AMoreWidth;
   // Angeheftete zählen vorab: Sie bleiben in jedem Fall.
   Used := 0;
   for Index := 0 to High(ASlots) do
+  begin
     if ASlots[Index].Pinned then
+    begin
       Inc(Used, ASlots[Index].Width);
+    end;
+  end;
   Full := False;
   SetLength(Menu, Length(ASlots));
   for Index := 0 to High(ASlots) do
@@ -136,7 +158,9 @@ begin
     Result.Visible[Index] := ASlots[Index].Pinned;
     Menu[Index] := False;
     if ASlots[Index].Pinned then
+    begin
       Continue;
+    end;
     if not Full and (Used + ASlots[Index].Width <= Limit) then
     begin
       Result.Visible[Index] := True;
@@ -154,11 +178,13 @@ begin
   Result.Overflow := nil;
   InMenu := False;
   for Index := 0 to High(ASlots) do
+  begin
     if Menu[Index] then
     begin
       Result.Overflow := Result.Overflow + [Index];
       InMenu := True;
     end;
+  end;
   // Nur Trennstriche im Menü wären kein Grund für ».
   Result.More := InMenu;
 end;

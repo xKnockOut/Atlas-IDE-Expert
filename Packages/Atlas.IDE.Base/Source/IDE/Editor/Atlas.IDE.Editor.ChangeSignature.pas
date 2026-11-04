@@ -57,7 +57,9 @@ function AsObject(AAnswer: TJSONValue): TJSONObject;
 begin
   Result := nil;
   if AAnswer is TJSONObject then
+  begin
     Result := TJSONObject(AAnswer);
+  end;
 end;
 
 class procedure TAtlasIdeChangeSignature.Execute(ASession: TLspSession; const AArgumentsJson: string;
@@ -99,7 +101,9 @@ begin
       end;
     end;
     if not TAtlasChangeSignatureDialog.Execute(Model) then
+    begin
       Exit;
+    end;
     if not Model.Changed then
     begin
       AMessage(TAtlasStrings.Text(TAtlasTextId.SigNothing));
@@ -109,7 +113,9 @@ begin
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if not (Arguments is TJSONArray) then
+      begin
         Exit;
+      end;
       Values := TJSONArray(Arguments);
       Values.AddElement(Model.RequestJson);
       ApplyArguments := Values.ToJSON;
@@ -130,12 +136,18 @@ begin
       begin
         Found := Reply.GetValue('edit');
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           List := TJSONArray(Reply.GetValue('warnings'));
+        end;
       end;
       Edit := TLspWorkspaceEdit.FromJson(Found);
       if List <> nil then
+      begin
         for Item in List do
+        begin
           Warnings := Warnings + [Item.Value];
+        end;
+      end;
     finally
       Answer.Free;
     end;
@@ -154,7 +166,9 @@ begin
   // Vorschau wie beim Umbenennen (#400); Warnungen (Methodenzeiger, schreibgeschützte Aufrufer) im Hinweis.
   Hint := TAtlasStrings.Fmt(TAtlasTextId.SigPreviewHint, [Edit.EditCount, Length(Edit.Files)]);
   for Warning in Warnings do
+  begin
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]);
+  end;
   Preview := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin
@@ -167,16 +181,26 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle), Hint,
     TAtlasStrings.Text(TAtlasTextId.SigPreviewApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SigPreviewTitle));
   if Outcome.Error <> '' then
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end
   else
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigDone, [Outcome.Edits, Outcome.Files]));
+  end;
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.

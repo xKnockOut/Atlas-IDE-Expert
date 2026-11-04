@@ -148,10 +148,14 @@ begin
     try
       mSize := mStream.Size;
       if mSize > cMaxBytes then
+      begin
         mSize := cMaxBytes;
+      end;
       SetLength(mBytes, mSize);
       if mSize > 0 then
+      begin
         mStream.ReadBuffer(mBytes[0], mSize);
+      end;
     finally
       mStream.Free;
     end;
@@ -176,7 +180,9 @@ begin
     mStream := TFileStream.Create(AFileName, fmCreate);
     try
       if Length(mBytes) > 0 then
+      begin
         mStream.WriteBuffer(mBytes[0], Length(mBytes));
+      end;
     finally
       mStream.Free;
     end;
@@ -194,11 +200,17 @@ var
   mContent: string;
 begin
   if (AHooksDir = '') or not FileExists(HookFile(AHooksDir)) then
+  begin
     Exit(TAtlasAffectedHookState.Missing);
+  end;
   if ReadHead(HookFile(AHooksDir), mContent) and IsOwn(mContent) then
-    Result := TAtlasAffectedHookState.Own
+  begin
+    Result := TAtlasAffectedHookState.Own;
+  end
   else
+  begin
     Result := TAtlasAffectedHookState.Foreign;
+  end;
 end;
 
 class function TAtlasAffectedHook.Install(const AHooksDir, AGitDir: string;
@@ -206,7 +218,9 @@ class function TAtlasAffectedHook.Install(const AHooksDir, AGitDir: string;
 begin
   Result := False;
   if (AHooksDir = '') or (AGitDir = '') then
+  begin
     Exit;
+  end;
   case State(AHooksDir) of
     TAtlasAffectedHookState.Own:
       // Neu schreiben: eine ältere Fassung des Skripts wird so ersetzt.
@@ -215,17 +229,25 @@ begin
       Result := ForceDirectories(AHooksDir) and WriteText(HookFile(AHooksDir), Script);
   end;
   if Result then
+  begin
     Result := WriteText(ConfigFileOf(AGitDir), ConfigText(AConfig));
+  end;
 end;
 
 class function TAtlasAffectedHook.Uninstall(const AHooksDir, AGitDir: string): Boolean;
 begin
   if State(AHooksDir) = TAtlasAffectedHookState.Own then
-    Result := DeleteFile(HookFile(AHooksDir))
+  begin
+    Result := DeleteFile(HookFile(AHooksDir));
+  end
   else
+  begin
     Result := True;
+  end;
   if (AGitDir <> '') and FileExists(ConfigFileOf(AGitDir)) then
+  begin
     DeleteFile(ConfigFileOf(AGitDir));
+  end;
 end;
 
 end.

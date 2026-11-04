@@ -179,14 +179,18 @@ class function TAtlasIdeHost.RunningSession: TLspSession;
 begin
   Result := nil;
   if Assigned(FServices.Session) then
+  begin
     Result := FServices.Session();
+  end;
 end;
 
 class function TAtlasIdeHost.ActiveSession: TLspSession;
 begin
   Result := nil;
   if Assigned(FServices.ActiveSession) then
+  begin
     Result := FServices.ActiveSession();
+  end;
 end;
 
 class procedure TAtlasIdeHost.Message(const AText: string);
@@ -195,31 +199,43 @@ var
   mGroup: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
     Exit;
+  end;
   mGroup := mMessages.GetGroup('Atlas');
   if mGroup = nil then
+  begin
     mGroup := mMessages.AddMessageGroup('Atlas');
+  end;
   mMessages.AddTitleMessage(AText, mGroup);
 end;
 
 class procedure TAtlasIdeHost.Warning(const AText: string);
 begin
   if Assigned(FServices.Warning) then
-    FServices.Warning(AText)
+  begin
+    FServices.Warning(AText);
+  end
   else
+  begin
     Message(AText);
+  end;
 end;
 
 class procedure TAtlasIdeHost.Log(const AText: string);
 begin
   if Assigned(FServices.Log) then
+  begin
     FServices.Log(AText);
+  end;
 end;
 
 class procedure TAtlasIdeHost.Report(const AText: string);
 begin
   if Assigned(FServices.Report) then
+  begin
     FServices.Report(AText);
+  end;
 end;
 
 class procedure TAtlasIdeHost.SetStatusExtra(const AId, AText: string);
@@ -230,14 +246,18 @@ end;
 class procedure TAtlasIdeHost.SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
 begin
   if Assigned(FServices.StatusExtra) then
+  begin
     FServices.StatusExtra(AId, AText, AHint, AOnClick);
+  end;
 end;
 
 class function TAtlasIdeHost.CompileEvents: TAtlasCompileEvents;
 begin
   Result := nil;
   if Assigned(FServices.CompileEvents) then
+  begin
     Result := FServices.CompileEvents();
+  end;
 end;
 
 class function TAtlasIdeHost.ServerInfo: TAtlasServerInfo;
@@ -375,12 +395,16 @@ var
 begin
   Result := False;
   if not Assigned(FServices.RunCommand) or (AScope = nil) or not AScope.IsOpen then
+  begin
     Exit;
+  end;
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
   Result := FServices.RunCommand(ACommand, AArgumentsJson, ATimeoutMs, DeliverInMainThread(mAnswer, AFeature));
   // Nicht gestartet: Der Rückruf des Moduls kommt nie, also gleich lösen.
   if not Result then
+  begin
     mAnswer.Revoke;
+  end;
 end;
 
 class function TAtlasIdeHost.RunServerCommandAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
@@ -390,11 +414,15 @@ var
 begin
   Result := False;
   if not Assigned(FServices.RunServerCommand) or (AScope = nil) or not AScope.IsOpen then
+  begin
     Exit;
+  end;
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
   Result := FServices.RunServerCommand(ACommand, AArgumentsJson, ATimeoutMs, DeliverInMainThread(mAnswer, AFeature));
   if not Result then
+  begin
     mAnswer.Revoke;
+  end;
 end;
 
 class function TAtlasIdeHost.RunRequestAsync(const AScope: IAtlasModuleScope; AFeature: TAtlasFeature;
@@ -405,12 +433,16 @@ var
 begin
   Result := False;
   if not Assigned(FServices.RunRequest) or (AScope = nil) or not AScope.IsOpen then
+  begin
     Exit;
+  end;
   mAnswer := TAtlasModuleAnswer.Open(AScope, ADone);
   Result := FServices.RunRequest(AMethod, AParamsJson, ATimeoutMs, ACancelled,
     DeliverInMainThread(mAnswer, AFeature));
   if not Result then
+  begin
     mAnswer.Revoke;
+  end;
 end;
 
 class function TAtlasIdeHost.StatusLinesReady: Boolean;

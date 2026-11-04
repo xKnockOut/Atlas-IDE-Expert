@@ -72,7 +72,9 @@ begin
   // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
   try
     if TDirectory.Exists(FFolder) then
+    begin
       TDirectory.Delete(FFolder, True);
+    end;
   except
     on Exception do
       ;
@@ -84,11 +86,15 @@ var
   Pending: TArray<string>;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Build) or FRunner.Busy then
+  begin
     Exit;
+  end;
   try
     Pending := TAtlasBuildInbox.Pending(FFolder);
     if Length(Pending) > 0 then
+    begin
       Process(Pending[0]);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Build, E);
@@ -101,8 +107,12 @@ var
 begin
   Result := 0;
   for Message in AMessages do
+  begin
     if Message.Severity in [TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal] then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeBuildInbox.Process(const ARequestFile: string);
@@ -112,25 +122,35 @@ var
   OnMessage: TAtlasBuildInboxProc;
 begin
   if not TAtlasBuildInbox.Take(ARequestFile, Request, Reason) then
+  begin
     Exit;
+  end;
   mFolder := FFolder;
   OnMessage := FOnMessage;
   if Assigned(OnMessage) then
+  begin
     OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildStarted,
       [ExtractFileName(Request.Project)]));
+  end;
   // Die Antwort kommt nach dem Build (Meldungen des Lesers, #528); der Rückruf hält nur Werte, nicht Self.
   if not FRunner.Start(Request, TAtlasBuildInbox.RequestedBy,
     procedure(const AReport: TAtlasBuildReport; const AError: string)
     begin
       try
         if AError <> '' then
-          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.RefusalText(AError))
+        begin
+          TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.RefusalText(AError));
+        end
         else
+        begin
           TAtlasBuildInbox.Answer(mFolder, Request.Id, TAtlasBuildInbox.SuccessText(AReport));
+        end;
         if Assigned(OnMessage) and (AError = '') then
+        begin
           OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildFinished,
             [ExtractFileName(Request.Project),
             ErrorCount(AReport.Messages)]));
+        end;
       except
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Build, E);
@@ -139,8 +159,10 @@ begin
   begin
     TAtlasBuildInbox.Answer(FFolder, Request.Id, TAtlasBuildInbox.RefusalText(Reason));
     if Assigned(OnMessage) then
+    begin
       OnMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildRefused,
         [ExtractFileName(Request.Project), Reason]));
+    end;
   end;
 end;
 

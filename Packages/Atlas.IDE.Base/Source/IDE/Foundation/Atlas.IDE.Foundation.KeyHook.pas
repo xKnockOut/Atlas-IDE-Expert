@@ -64,11 +64,17 @@ function CurrentShift: TShiftState;
 begin
   Result := [];
   if GetKeyState(VK_SHIFT) < 0 then
+  begin
     Include(Result, ssShift);
+  end;
   if GetKeyState(VK_CONTROL) < 0 then
+  begin
     Include(Result, ssCtrl);
+  end;
   if GetKeyState(VK_MENU) < 0 then
+  begin
     Include(Result, ssAlt);
+  end;
 end;
 
 function KeyboardProc(Code: Integer; WParam: WPARAM; LParam: LPARAM): LRESULT; stdcall;
@@ -85,24 +91,30 @@ begin
       Shift := CurrentShift;
       Snapshot := Clients.ToArray;
       for Client in Snapshot do
+      begin
         if Client.WantsKey(Key, Shift) then
         begin
           // Gedrückt (auch Wiederholung): ausführen, solange der Client noch angemeldet ist.
           if (LParam and $80000000) = 0 then
+          begin
             TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
               procedure
               begin
                 try
                   if TAtlasKeyHook.Contains(Client) then
+                  begin
                     Client.HandleKey(Key, Shift);
+                  end;
                 except
                   // Die Clients melden ihre Fehler selbst; hier nur das letzte Netz (#493).
                   on E: Exception do
                     TAtlasGuard.Log('Tastatur: ' + E.ClassName + ': ' + E.Message);
                 end;
               end);
+          end;
           Exit(1);
         end;
+      end;
     end;
   except
     // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
@@ -119,21 +131,31 @@ var
   Index: Integer;
 begin
   if Clients = nil then
+  begin
     Clients := TList<TAtlasKeyClient>.Create;
+  end;
   if Clients.Contains(AClient) then
+  begin
     Exit;
+  end;
   Index := 0;
   while (Index < Clients.Count) and (Clients[Index].Priority <= AClient.Priority) do
+  begin
     Inc(Index);
+  end;
   Clients.Insert(Index, AClient);
   if Hook = 0 then
+  begin
     Hook := SetWindowsHookEx(WH_KEYBOARD, @KeyboardProc, 0, GetCurrentThreadId);
+  end;
 end;
 
 class procedure TAtlasKeyHook.Remove(AClient: TAtlasKeyClient);
 begin
   if Clients = nil then
+  begin
     Exit;
+  end;
   Clients.Remove(AClient);
   if (Clients.Count = 0) and (Hook <> 0) then
   begin
@@ -156,7 +178,9 @@ initialization
 
 finalization
   if Hook <> 0 then
+  begin
     UnhookWindowsHookEx(Hook);
+  end;
   Hook := 0;
   FreeAndNil(Clients);
 

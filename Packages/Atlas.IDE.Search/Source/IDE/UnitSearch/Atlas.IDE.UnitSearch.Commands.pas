@@ -164,12 +164,16 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ActionList.ActionCount - 1 do
   begin
     Action := Services.ActionList.Actions[Index];
     if SameText(Action.Name, IdeActionNames[AMode]) then
+    begin
       Exit(Action);
+    end;
   end;
   // Ersatz: die Aktion mit der Standardtaste.
   Key := TextToShortCut(IdeActionKeys[AMode]);
@@ -177,7 +181,9 @@ begin
   begin
     Action := Services.ActionList.Actions[Index];
     if (Action is TCustomAction) and (TCustomAction(Action).ShortCut = Key) then
+    begin
       Exit(Action);
+    end;
   end;
 end;
 
@@ -199,10 +205,16 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ActionList.ActionCount - 1 do
+  begin
     if SameText(Services.ActionList.Actions[Index].Name, AName) then
+    begin
       Exit(Services.ActionList.Actions[Index].Execute);
+    end;
+  end;
 end;
 
 function Settings: TAtlasPluginSettings;
@@ -241,13 +253,17 @@ procedure TUnitDialogHook.Notification(AComponent: TComponent; Operation: TOpera
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FAction) then
+  begin
     FAction := nil;
+  end;
 end;
 
 procedure TUnitDialogHook.RunOriginal;
 begin
   if FAction = nil then
+  begin
     Exit;
+  end;
   if Assigned(FOriginal) then
   begin
     FOriginal(FAction);
@@ -260,7 +276,9 @@ begin
     FAction.Execute;
   finally
     if FAction <> nil then
+    begin
       FAction.OnExecute := Execute;
+    end;
     FBypass := False;
   end;
 end;
@@ -270,7 +288,9 @@ var
   Plugin: TAtlasPluginSettings;
 begin
   if FBypass then
+  begin
     Exit;
+  end;
   Plugin := Settings;
   // Umschalttaste (etwa beim Klick ins Menü Ansicht) holt den IDE-Dialog.
   if not Plugin.UnitSearchEnabled or not Replaces(Plugin, FMode) or (GetKeyState(VK_SHIFT) < 0) then
@@ -289,7 +309,9 @@ begin
     begin
       TAtlasIdeUnitSearch.Show(FMode, True);
     end) then
+  begin
     RunOriginal;
+  end;
 end;
 
 { TOpenSearch }
@@ -309,8 +331,12 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     for Index := 0 to Services.ModuleCount - 1 do
+    begin
       Result := Result + [Services.Modules[Index].FileName];
+    end;
+  end;
 end;
 
 procedure MarkOpen(var AEntries: TAtlasUnitEntries);
@@ -322,9 +348,13 @@ begin
   Files := TDictionary<string, Boolean>.Create;
   try
     for FileName in OpenModules do
+    begin
       Files.AddOrSetValue(LowerCase(FileName), True);
+    end;
     for Index := 0 to High(AEntries) do
+    begin
       AEntries[Index].IsOpen := Files.ContainsKey(LowerCase(AEntries[Index].FileName));
+    end;
   finally
     Files.Free;
   end;
@@ -340,19 +370,27 @@ begin
   AActiveProject := '';
   ARoot := '';
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Group := Services.MainProjectGroup;
   if Group <> nil then
+  begin
     AGroupFile := Group.FileName;
+  end;
   Project := Services.GetActiveProject;
   if Project <> nil then
   begin
     AActiveProject := ChangeFileExt(ExtractFileName(Project.FileName), '');
     if AGroupFile = '' then
+    begin
       AGroupFile := Project.FileName;
+    end;
   end;
   if AGroupFile <> '' then
+  begin
     ARoot := ExtractFileDir(AGroupFile);
+  end;
 end;
 
 function TopFile: string;
@@ -361,17 +399,23 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopBuffer <> nil) then
+  begin
     Result := Editors.TopBuffer.FileName;
+  end;
 end;
 
 function FormFileOf(const AFileName: string): string;
 begin
   Result := ChangeFileExt(AFileName, '.dfm');
   if FileExists(Result) then
+  begin
     Exit;
+  end;
   Result := ChangeFileExt(AFileName, '.fmx');
   if not FileExists(Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function ShowForm(const AFileName: string): Boolean;
@@ -383,16 +427,22 @@ var
 begin
   Result := False;
   if not TAtlasIdeNavigation.ShowFile(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Module := Modules.FindModule(AFileName);
   if Module = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Module.ModuleFileCount - 1 do
+  begin
     if Supports(Module.ModuleFileEditors[Index], IOTAFormEditor, FormEditor) then
     begin
       FormEditor.Show;
       Exit(True);
     end;
+  end;
 end;
 
 function UnitList(const AEntries: TArray<TAtlasUnitEntry>): string;
@@ -403,7 +453,9 @@ begin
   for Entry in AEntries do
   begin
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + Entry.Name;
   end;
 end;
@@ -422,9 +474,13 @@ begin
     FHooks[Mode] := nil;
     Action := FindIdeAction(Mode);
     if Action <> nil then
-      FHooks[Mode] := TUnitDialogHook.Create(Action, Mode)
+    begin
+      FHooks[Mode] := TUnitDialogHook.Create(Action, Mode);
+    end
     else
+    begin
       TAtlasGuard.Log('Units suchen: IDE-Aktion für ' + IdeActionKeys[Mode] + ' nicht gefunden');
+    end;
   end;
 end;
 
@@ -439,7 +495,9 @@ begin
     FreeAndNil(Current);
   end;
   for Mode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
+  begin
     FreeAndNil(FHooks[Mode]);
+  end;
   FSessionOf := nil;
   FMessage := nil;
 end;
@@ -448,13 +506,17 @@ class function TAtlasIdeUnitSearch.Session: TLspSession;
 begin
   Result := nil;
   if Assigned(FSessionOf) then
+  begin
     Result := FSessionOf();
+  end;
 end;
 
 class procedure TAtlasIdeUnitSearch.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class function TAtlasIdeUnitSearch.StateFile: string;
@@ -466,7 +528,9 @@ class function TAtlasIdeUnitSearch.HookedAction: TBasicAction;
 begin
   Result := nil;
   if FHooks[TAtlasUnitSearchMode.Search] <> nil then
+  begin
     Result := TUnitDialogHook(FHooks[TAtlasUnitSearchMode.Search]).FAction;
+  end;
 end;
 
 class procedure TAtlasIdeUnitSearch.ShowIdeDialog;
@@ -477,9 +541,13 @@ end;
 class procedure TAtlasIdeUnitSearch.ShowIdeDialog(AMode: TAtlasUnitSearchMode);
 begin
   if FHooks[AMode] <> nil then
-    TUnitDialogHook(FHooks[AMode]).RunOriginal
+  begin
+    TUnitDialogHook(FHooks[AMode]).RunOriginal;
+  end
   else
+  begin
     RunNamedAction(IdeActionNames[AMode]);
+  end;
 end;
 
 class procedure TAtlasIdeUnitSearch.ShowUseUnitIdeDialog;
@@ -528,16 +596,22 @@ var
   Editor: IOTASourceEditor;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Module := Modules.FindModule(AFileName);
   if Module = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Module.ModuleFileCount - 1 do
+  begin
     if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) and (Editor.EditViewCount > 0) then
     begin
       ALive.Sync(AFileName, TAtlasEditorBuffer.Text(Editor.EditViews[0].Buffer));
       Exit;
     end;
+  end;
 end;
 
 /// <summary>„schon in uses“ und Kreise der Zielunit (#786); False ohne Antwort.</summary>
@@ -588,7 +662,9 @@ begin
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
     if AFallback then
+    begin
       ShowIdeDialog(AMode);
+    end;
     Exit;
   end;
   TargetFile := TopFile;
@@ -631,7 +707,9 @@ begin
   GroupInfo(Options.GroupFile, Options.ActiveProject, Options.Root);
   Options.Mode := AMode;
   if AMode = TAtlasUnitSearchMode.UseUnit then
+  begin
     Options.TargetUnit := ChangeFileExt(ExtractFileName(TargetFile), '');
+  end;
   Search := TOpenSearch.Create;
   Search.Mode := AMode;
   Search.State := TAtlasUnitSearchState.Create;
@@ -646,7 +724,9 @@ begin
     procedure
     begin
       if Current = nil then
+      begin
         Exit;
+      end;
       try
         Current.State.SaveToFile(StateFile);
       except
@@ -670,7 +750,9 @@ begin
       Result.UsedBy := -1;
       Live := Session;
       if Live = nil then
+      begin
         Exit;
+      end;
       Arguments := TJSONArray.Create;
       try
         Arguments.Add(TLspSession.PathToUri(AEntry.FileName));
@@ -701,7 +783,9 @@ begin
     begin
       Target := '';
       if Current <> nil then
+      begin
         Target := Current.Target;
+      end;
       TAtlasGuard.Run(TAtlasFeature.UnitSearch,
         procedure
         begin
@@ -731,7 +815,9 @@ begin
       UseInfo: TAtlasUseUnitInfo;
     begin
       if Current <> Search then
+      begin
         Exit;
+      end;
       Live := Session;
       if Live = nil then
       begin
@@ -756,12 +842,16 @@ begin
       end;
       MarkOpen(Entries);
       if Current <> Search then
+      begin
         Exit;
+      end;
       Search.Window.SetEntries(Entries);
       // Unit verwenden: Kreise und „schon in uses“ der Zielunit (#786); ohne Antwort ohne Kennzeichen.
       if (Search.Mode = TAtlasUnitSearchMode.UseUnit) and LoadUseInfo(Live, Search.Target, UseInfo) and
         (Current = Search) then
+      begin
         Search.Window.SetUseInfo(UseInfo);
+      end;
     end);
 end;
 
@@ -783,7 +873,9 @@ begin
     end;
     Live := TAtlasIdeUnitSearch.Session;
     if Live = nil then
+    begin
       Exit;
+    end;
     Values := TJSONArray.Create;
     try
       Values.Add(TLspSession.PathToUri(Entry.FileName));
@@ -807,9 +899,13 @@ begin
       Answer.Free;
     end;
     if Info.CounterpartFile <> '' then
-      TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0)
+    begin
+      TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0);
+    end
     else
+    begin
       TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoTests, [Entry.Name]));
+    end;
   end;
 end;
 
@@ -820,8 +916,12 @@ var
 begin
   Result := nil;
   for Entry in AEntries do
+  begin
     if Entry.Kind <> TAtlasUnitKind.Include then
+    begin
       Result := Result + [Entry.Name];
+    end;
+  end;
 end;
 
 /// <summary>atlas.server.addUses mit AArguments ausführen und als ein Rückgängig-Schritt anwenden.</summary>
@@ -851,7 +951,9 @@ begin
       Edit := TLspWorkspaceEdit.FromJson(EditValue);
       AddedValue := TJSONObject(Answer).GetValue('added');
       if AddedValue is TJSONArray then
+      begin
         Added := TJSONArray(AddedValue).Count;
+      end;
     end;
   finally
     Answer.Free;
@@ -866,10 +968,14 @@ begin
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
   if Outcome.Error <> '' then
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
+  begin
+    TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end
   else
+  begin
     TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
       [Added, ExtractFileName(ATarget)]));
+  end;
 end;
 
 /// <summary>Sitzung für das Einfügen in ATarget, Puffer abgeglichen; nil mit Meldung.</summary>
@@ -898,13 +1004,17 @@ var
 begin
   Live := AddUsesSession(ATarget);
   if Live = nil then
+  begin
     Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(ATarget));
     Names := TJSONArray.Create;
     for Name in UsesNames(AEntries) do
+    begin
       Names.Add(Name);
+    end;
     Values.AddElement(Names);
     Arguments := Values.ToJSON;
   finally
@@ -925,8 +1035,10 @@ begin
   end;
   Live := AddUsesSession(ATarget);
   if Live <> nil then
+  begin
     RunAddUses(Live, AEntries, ATarget, TAtlasUseUnit.AddUsesArguments(TLspSession.PathToUri(ATarget),
       UsesNames(AEntries), ASection));
+  end;
 end;
 
 procedure RunAction(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>;
@@ -936,17 +1048,23 @@ var
   FormFile, Project: string;
 begin
   if Length(AEntries) = 0 then
+  begin
     Exit;
+  end;
   case AAction of
     TAtlasUnitSearchAction.Open:
       for Entry in AEntries do
+      begin
         TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
+      end;
     TAtlasUnitSearchAction.OpenForm:
       for Entry in AEntries do
       begin
         FormFile := FormFileOf(Entry.FileName);
         if (FormFile = '') or not ShowForm(Entry.FileName) then
+        begin
           TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoForm, [Entry.Name]));
+        end;
       end;
     TAtlasUnitSearchAction.AddUses:
       AddUses(AEntries, ATarget);
@@ -960,7 +1078,9 @@ begin
         begin
           Project := string.Join(', ', Entry.Projects);
           if Project = '' then
+          begin
             Project := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoProject);
+          end;
           TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchProjectOf,
             [Entry.Name, Project]));
         end;

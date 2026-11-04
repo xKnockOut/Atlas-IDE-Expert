@@ -177,14 +177,24 @@ var
 begin
   Undone := 0;
   for Change in Files do
+  begin
     if Change.Undone then
+    begin
       Inc(Undone);
+    end;
+  end;
   if Undone = 0 then
-    Result := TAtlasChangeSetState.Applied
+  begin
+    Result := TAtlasChangeSetState.Applied;
+  end
   else if Undone = Length(Files) then
-    Result := TAtlasChangeSetState.Undone
+  begin
+    Result := TAtlasChangeSetState.Undone;
+  end
   else
+  begin
     Result := TAtlasChangeSetState.PartlyUndone;
+  end;
 end;
 
 function TAtlasChangeSet.Size: Int64;
@@ -193,8 +203,10 @@ var
 begin
   Result := Length(Action) * SizeOf(Char);
   for Change in Files do
+  begin
     Inc(Result, Int64(Length(Change.FileName) + Length(Change.Before.Text) + Length(Change.After.Text)) *
       SizeOf(Char));
+  end;
 end;
 
 function TAtlasChangeSet.IndexOf(const AFileName: string): Integer;
@@ -202,8 +214,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Files) do
+  begin
     if SameText(Files[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 

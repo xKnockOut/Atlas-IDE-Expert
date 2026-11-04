@@ -195,7 +195,9 @@ function CaptionPattern(const APattern: string): string;
 begin
   Result := APattern;
   if Result.StartsWith('/') then
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 { TAtlasGenerateWindow }
@@ -206,12 +208,20 @@ var
 begin
   Result := AEntry.Caption;
   if AEntry.Kind <> TAtlasGenerateKind.Slash then
+  begin
     Exit;
+  end;
   for Item in CommandCaptions do
+  begin
     if SameText(Item.Name, AEntry.Name) then
+    begin
       Exit(TAtlasStrings.Text(Item.Id));
+    end;
+  end;
   if Result = '' then
+  begin
     Result := AEntry.CommandName;
+  end;
 end;
 
 class function TAtlasGenerateWindow.GroupCaption(AGroup: TAtlasGenerateGroup): string;
@@ -263,7 +273,9 @@ begin
   Result := RowHeight + ScaleValue(6);
   // Im zweiten Schritt steht unter dem Titel das Eingabefeld.
   if FStep then
+  begin
     Inc(Result, RowHeight + ScaleValue(6));
+  end;
 end;
 
 function TAtlasGenerateWindow.FooterHeight: Integer;
@@ -288,10 +300,16 @@ var
 begin
   Result := FStep and (Trim(FText) <> '');
   if not Result then
+  begin
     Exit;
+  end;
   for Choice in FChoices do
+  begin
     if SameText(Choice, Trim(FText)) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasGenerateWindow.RowCount: Integer;
@@ -300,10 +318,14 @@ begin
   begin
     Result := Length(FChoiceOrder);
     if HasFreeTextRow then
+    begin
       Inc(Result);
+    end;
   end
   else
+  begin
     Result := Length(FRows);
+  end;
 end;
 
 procedure TAtlasGenerateWindow.UpdateHeight;
@@ -328,7 +350,9 @@ begin
   FTop := 0;
   FSelected := 0;
   if RowCount = 0 then
+  begin
     FSelected := -1;
+  end;
   UpdateHeight;
   Invalidate;
 end;
@@ -345,7 +369,9 @@ begin
   Top_ := ACaret.Bottom + ScaleValue(2);
   // Unten kein Platz: über die Zeile.
   if Top_ + Height > Area.Bottom then
+  begin
     Top_ := Max(Area.Top, ACaret.Top - Height - ScaleValue(2));
+  end;
   SetBounds(Left_, Top_, Width, Height);
   Show;
   SetFocus;
@@ -370,12 +396,18 @@ begin
   end;
   FSelected := EnsureRange(ARow, 0, RowCount - 1);
   if FSelected < FTop then
-    FTop := FSelected
+  begin
+    FTop := FSelected;
+  end
   else if FSelected >= FTop + VisibleRows then
+  begin
     FTop := FSelected - VisibleRows + 1;
+  end;
   // Kopf über dem ersten Eintrag mit zeigen.
   if not FStep and (FTop > 0) and (FTop = FSelected) and FRows[FTop - 1].IsHeader then
+  begin
     Dec(FTop);
+  end;
   Invalidate;
 end;
 
@@ -391,20 +423,30 @@ begin
   Next := FSelected;
   // Bild auf/ab: mehrere Schritte über Einträge, Köpfe übersprungen.
   for Index := 1 to Abs(ADelta) do
+  begin
     Next := TAtlasGenerateMenu.StepRow(FRows, Next, Sign(ADelta));
+  end;
   if Next >= 0 then
+  begin
     SelectRow(Next);
+  end;
 end;
 
 procedure TAtlasGenerateWindow.ChooseRow(ARow: Integer);
 begin
   if FStep or (ARow < 0) or (ARow > High(FRows)) or FRows[ARow].IsHeader then
+  begin
     Exit;
+  end;
   FSelected := ARow;
   if FEntries[FRows[ARow].Entry].NeedsStep then
-    EnterStep(FEntries[FRows[ARow].Entry])
+  begin
+    EnterStep(FEntries[FRows[ARow].Entry]);
+  end
   else
+  begin
     Finish(FEntries[FRows[ARow].Entry], '');
+  end;
 end;
 
 procedure TAtlasGenerateWindow.EnterStep(const AEntry: TAtlasGenerateEntry);
@@ -433,7 +475,9 @@ begin
   SetLength(FChecked, Length(FChoices));
   // Mehrfachauswahl: vorab alles gewählt (alle Felder, alle fehlenden Methoden), außer bei Pflicht-Argumenten.
   for Index := 0 to High(FChecked) do
+  begin
     FChecked[Index] := AEntry.Multi and (AEntry.Argument <> TAtlasGenerateArgument.Required);
+  end;
   RefilterChoices;
 end;
 
@@ -456,22 +500,34 @@ var
 begin
   Argument := '';
   if HasFreeTextRow and (FSelected = RowCount - 1) then
-    Argument := Trim(FText)
+  begin
+    Argument := Trim(FText);
+  end
   else if FStepEntry.Multi and (Length(FChoices) > 0) then
   begin
     AnyChecked := False;
     for Index := 0 to High(FChecked) do
+    begin
       AnyChecked := AnyChecked or FChecked[Index];
+    end;
     if AnyChecked then
+    begin
       Argument := TAtlasGenerateMenu.JoinChoices(FChoices, FChecked, FStepEntry.Separator,
-        FStepEntry.Argument <> TAtlasGenerateArgument.Required)
+        FStepEntry.Argument <> TAtlasGenerateArgument.Required);
+    end
     else
+    begin
       Argument := Trim(FText);
+    end;
   end
   else if (FSelected >= 0) and (FSelected <= High(FChoiceOrder)) then
-    Argument := FChoices[FChoiceOrder[FSelected]]
+  begin
+    Argument := FChoices[FChoiceOrder[FSelected]];
+  end
   else
+  begin
     Argument := Trim(FText);
+  end;
   // Pflicht-Argument fehlt: im Schritt bleiben, die Zeile nennt das Beispiel.
   if (Argument = '') and (FStepEntry.Argument = TAtlasGenerateArgument.Required) then
   begin
@@ -488,7 +544,9 @@ var
   Argument: string;
 begin
   if FDone then
+  begin
     Exit;
+  end;
   FDone := True;
   Handler := FOnExecute;
   Entry := AEntry;
@@ -496,11 +554,13 @@ begin
   Close;
   // Erst nach dem Schließen ausführen: Der Editor hat dann wieder den Fokus.
   if Assigned(Handler) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Generate,
       procedure
       begin
         Handler(Entry, Argument);
       end);
+  end;
   Release;
 end;
 
@@ -509,11 +569,15 @@ var
   Entry: TAtlasGenerateEntry;
 begin
   if FStep or (FSelected < 0) or (FSelected > High(FRows)) or FRows[FSelected].IsHeader then
+  begin
     Exit;
+  end;
   Entry := FEntries[FRows[FSelected].Entry];
   FOptions.Hidden := FOptions.Hidden + [Entry.Id];
   if Assigned(FOnHide) then
+  begin
     FOnHide(Entry);
+  end;
   Rebuild;
   UpdateHeight;
 end;
@@ -521,7 +585,9 @@ end;
 procedure TAtlasGenerateWindow.ToggleSelected;
 begin
   if not FStep or not FStepEntry.Multi or (FSelected < 0) or (FSelected > High(FChoiceOrder)) then
+  begin
     Exit;
+  end;
   FChecked[FChoiceOrder[FSelected]] := not FChecked[FChoiceOrder[FSelected]];
   Invalidate;
 end;
@@ -541,14 +607,22 @@ begin
   case Key of
     VK_ESCAPE:
       if FStep then
-        LeaveStep
+      begin
+        LeaveStep;
+      end
       else
+      begin
         FormDeactivate(Self);
+      end;
     VK_RETURN:
       if FStep then
-        ConfirmStep
+      begin
+        ConfirmStep;
+      end
       else
+      begin
         ChooseRow(FSelected);
+      end;
     VK_UP:
       Step(-1);
     VK_DOWN:
@@ -567,7 +641,9 @@ begin
       if FStep then
       begin
         if FText = '' then
-          LeaveStep
+        begin
+          LeaveStep;
+        end
         else
         begin
           Delete(FText, Length(FText), 1);
@@ -577,9 +653,13 @@ begin
       else if FPattern <> '' then
       begin
         if ssCtrl in Shift then
-          FPattern := ''
+        begin
+          FPattern := '';
+        end
         else
+        begin
           Delete(FPattern, Length(FPattern), 1);
+        end;
         Rebuild;
         UpdateHeight;
       end;
@@ -602,7 +682,9 @@ begin
   begin
     // Leertaste schaltet bei Mehrfachauswahl, solange nichts getippt ist.
     if (Key = ' ') and FStepEntry.Multi and (FText = '') then
-      ToggleSelected
+    begin
+      ToggleSelected;
+    end
     else
     begin
       FText := FText + Key;
@@ -615,7 +697,9 @@ begin
   begin
     Row := TAtlasGenerateMenu.RowOfDigit(FRows, Ord(Key) - Ord('0'));
     if Row >= 0 then
+    begin
       ChooseRow(Row);
+    end;
   end
   else if Key <> ' ' then
   begin
@@ -632,20 +716,30 @@ var
 begin
   inherited;
   if (Y < ListTop) or (Y >= ClientHeight - FooterHeight) then
+  begin
     Exit;
+  end;
   Row := FTop + (Y - ListTop) div RowHeight;
   if Row >= RowCount then
+  begin
     Exit;
+  end;
   if FStep then
   begin
     SelectRow(Row);
     if FStepEntry.Multi and (Row <= High(FChoiceOrder)) then
-      ToggleSelected
+    begin
+      ToggleSelected;
+    end
     else
+    begin
       ConfirmStep;
+    end;
   end
   else
+  begin
     ChooseRow(Row);
+  end;
 end;
 
 function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
@@ -670,16 +764,24 @@ var
 begin
   SetLength(Marks, Length(AText) + 1);
   if APattern <> '' then
+  begin
     for Position in TAtlasItemPresentation.Highlights(APattern, AText) do
+    begin
       if (Position >= 1) and (Position <= Length(AText)) then
+      begin
         Marks[Position] := True;
+      end;
+    end;
+  end;
   X := ARect.Left;
   Index := 1;
   while Index <= Length(AText) do
   begin
     Run := Index;
     while (Run < Length(AText)) and (Marks[Run + 1] = Marks[Index]) do
+    begin
       Inc(Run);
+    end;
     Chunk := Copy(AText, Index, Run - Index + 1);
     if Marks[Index] then
     begin
@@ -812,12 +914,18 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   if FStep then
-    DrawLabel(EntryCaption(FStepEntry), Title, FColors.Text, DT_END_ELLIPSIS)
+  begin
+    DrawLabel(EntryCaption(FStepEntry), Title, FColors.Text, DT_END_ELLIPSIS);
+  end
   else
+  begin
     DrawLabel(TAtlasStrings.Text(TAtlasTextId.GenerateTitle), Title, FColors.Text, 0);
+  end;
   Canvas.Font.Style := [];
   if FStep and FOptions.ShowCommandNames then
+  begin
     DrawLabel(FStepEntry.CommandName, Title, FColors.Muted, DT_RIGHT);
+  end;
   Canvas.Pen.Color := ToColor(FColors.Line);
   Canvas.MoveTo(0, Title.Bottom + ScaleValue(2));
   Canvas.LineTo(ClientWidth, Title.Bottom + ScaleValue(2));
@@ -833,32 +941,50 @@ begin
     InflateRect(Input, -ScaleValue(8), 0);
     Canvas.Brush.Style := bsClear;
     if FText <> '' then
-      DrawLabel(FText + '|', Input, FColors.Text, DT_END_ELLIPSIS)
+    begin
+      DrawLabel(FText + '|', Input, FColors.Text, DT_END_ELLIPSIS);
+    end
     else if FStepEntry.Example <> '' then
+    begin
       DrawLabel(TAtlasStrings.Fmt(TAtlasTextId.GenerateExample, [FStepEntry.Example]), Input, FColors.Muted,
-        DT_END_ELLIPSIS)
+        DT_END_ELLIPSIS);
+    end
     else
+    begin
       DrawLabel(TAtlasStrings.Text(TAtlasTextId.GenerateArgumentPrompt), Input, FColors.Muted, DT_END_ELLIPSIS);
+    end;
   end;
   Canvas.Brush.Style := bsSolid;
   for Row := 0 to VisibleRows - 1 do
+  begin
     if FTop + Row < RowCount then
     begin
       if FStep then
-        DrawStepRow(Row)
+      begin
+        DrawStepRow(Row);
+      end
       else
+      begin
         DrawListRow(Row);
+      end;
     end;
+  end;
   // Leere Liste: Grund statt Zeilen.
   if RowCount = 0 then
   begin
     Canvas.Brush.Style := bsClear;
     if FStep then
-      Reason := TAtlasStrings.Text(TAtlasTextId.GenerateNoChoices)
+    begin
+      Reason := TAtlasStrings.Text(TAtlasTextId.GenerateNoChoices);
+    end
     else if (FPattern <> '') and (Length(FEntries) > 0) then
-      Reason := TAtlasStrings.Text(TAtlasTextId.GenerateNoMatch)
+    begin
+      Reason := TAtlasStrings.Text(TAtlasTextId.GenerateNoMatch);
+    end
     else
+    begin
       Reason := TAtlasStrings.Text(TAtlasTextId.GenerateEmpty);
+    end;
     DrawLabel(Reason, Rect(ScaleValue(12), ListTop, ClientWidth - ScaleValue(12), ListTop + RowHeight), FColors.Muted,
       0);
   end;
@@ -871,13 +997,21 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Size := Font.Size - 1;
   if FStep and FStepEntry.Multi then
-    HintText := TAtlasStrings.Text(TAtlasTextId.GenerateStepMultiHint)
+  begin
+    HintText := TAtlasStrings.Text(TAtlasTextId.GenerateStepMultiHint);
+  end
   else if FStep then
-    HintText := TAtlasStrings.Text(TAtlasTextId.GenerateStepHint)
+  begin
+    HintText := TAtlasStrings.Text(TAtlasTextId.GenerateStepHint);
+  end
   else if FPattern <> '' then
-    HintText := TAtlasStrings.Fmt(TAtlasTextId.GenerateFilter, [FPattern])
+  begin
+    HintText := TAtlasStrings.Fmt(TAtlasTextId.GenerateFilter, [FPattern]);
+  end
   else
+  begin
     HintText := TAtlasStrings.Text(TAtlasTextId.GenerateHint);
+  end;
   DrawLabel(HintText, Footer, FColors.Muted, DT_END_ELLIPSIS);
   Canvas.Font.Size := Font.Size;
   // Rahmen des Fensters.

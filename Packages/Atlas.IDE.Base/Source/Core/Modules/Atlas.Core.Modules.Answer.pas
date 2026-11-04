@@ -63,9 +63,13 @@ begin
   Result := TAtlasModuleAnswer.Create(ADone);
   // Own löst sofort, wenn der Scope schon zu ist; ohne Scope gibt es niemanden, der lösen könnte.
   if AScope = nil then
-    Result.Revoke
+  begin
+    Result.Revoke;
+  end
   else
+  begin
     AScope.Own(Result);
+  end;
 end;
 
 procedure TAtlasModuleAnswer.DoRevoke;
@@ -94,7 +98,9 @@ begin
   Revoke;
   Result := Assigned(mDone);
   if Result then
+  begin
     mDone(AText);
+  end;
 end;
 
 end.

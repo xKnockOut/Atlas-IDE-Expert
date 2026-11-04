@@ -135,7 +135,9 @@ begin
   AConflicts := nil;
   Result := False;
   if not (AValue is TJSONObject) or not TJSONObject(AValue).TryGetValue<TJSONArray>('ranges', Items) then
+  begin
     Exit;
+  end;
   for Item in Items do
   begin
     if not (Item is TJSONObject) or
@@ -151,13 +153,19 @@ begin
     ARanges := ARanges + [TAtlasLinkedRange.Create(StartLine, StartCharacter, EndCharacter - StartCharacter)];
   end;
   if TJSONObject(AValue).TryGetValue<TJSONArray>('atlasConflicts', Items) then
+  begin
     for Item in Items do
+    begin
       if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('name', Conflict.Name) then
       begin
         if not TJSONObject(Item).TryGetValue<string>('detail', Conflict.Detail) then
+        begin
           Conflict.Detail := Conflict.Name;
+        end;
         AConflicts := AConflicts + [Conflict];
       end;
+    end;
+  end;
   Result := Length(ARanges) > 0;
 end;
 
@@ -166,8 +174,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ARanges) do
+  begin
     if ARanges[Index].Contains(ALine, ACharacter) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -175,7 +187,9 @@ class function TAtlasLinkedEditing.NameOf(const ALines: TArray<string>; const AR
 begin
   Result := '';
   if (ARange.Line < 0) or (ARange.Line > High(ALines)) or (ARange.EndCharacter > Length(ALines[ARange.Line])) then
+  begin
     Exit;
+  end;
   Result := Copy(ALines[ARange.Line], ARange.Character + 1, ARange.Length);
 end;
 
@@ -186,14 +200,22 @@ var
 begin
   Result := False;
   if Length(ARanges) = 0 then
+  begin
     Exit;
+  end;
   First := NameOf(ALines, ARanges[0]);
   if (First = '') or not IsName(First) then
+  begin
     Exit;
+  end;
   for Range in ARanges do
+  begin
     if (Range.Line > High(ALines)) or (Range.EndCharacter > Length(ALines[Range.Line])) or
       not SameText(NameOf(ALines, Range), First) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -203,8 +225,12 @@ var
 begin
   Result := True;
   for Index := 1 to Length(AName) do
+  begin
     if not TTextChars.IsIdentChar(AName[Index]) or ((Index = 1) and not TTextChars.IsIdentStart(AName[1])) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasLinkedEditing.IsReserved(const AName: string): Boolean;
@@ -219,26 +245,34 @@ begin
   ANewName := AName;
   ANewOffset := AOffset;
   if (AOffset < 0) or (AOffset > Length(AName)) then
+  begin
     Exit;
+  end;
   case AKind of
     TAtlasLinkedKey.Insert:
       begin
         if AInsert = '' then
+        begin
           Exit;
+        end;
         ANewName := Copy(AName, 1, AOffset) + AInsert + Copy(AName, AOffset + 1, MaxInt);
         ANewOffset := AOffset + Length(AInsert);
       end;
     TAtlasLinkedKey.Backspace:
       begin
         if AOffset = 0 then
+        begin
           Exit;
+        end;
         ANewName := Copy(AName, 1, AOffset - 1) + Copy(AName, AOffset + 1, MaxInt);
         ANewOffset := AOffset - 1;
       end;
     TAtlasLinkedKey.Delete:
       begin
         if AOffset = Length(AName) then
+        begin
           Exit;
+        end;
         ANewName := Copy(AName, 1, AOffset) + Copy(AName, AOffset + 2, MaxInt);
       end;
   end;
@@ -258,12 +292,16 @@ begin
   AName := '';
   Result := False;
   if (ARange.Character < 0) or (ARange.EndCharacter > Length(AOldLine)) then
+  begin
     Exit;
+  end;
   Tail := Length(AOldLine) - ARange.EndCharacter;
   if (Length(ANewLine) < ARange.Character + Tail) or
     (Copy(ANewLine, 1, ARange.Character) <> Copy(AOldLine, 1, ARange.Character)) or
     (Copy(ANewLine, Length(ANewLine) - Tail + 1, Tail) <> Copy(AOldLine, ARange.EndCharacter + 1, Tail)) then
+  begin
     Exit;
+  end;
   AName := Copy(ANewLine, ARange.Character + 1, Length(ANewLine) - ARange.Character - Tail);
   Result := True;
 end;
@@ -276,14 +314,20 @@ var
 begin
   Result := Copy(ARanges);
   if (APrimary < 0) or (APrimary > High(ARanges)) then
+  begin
     Exit;
+  end;
   Primary := ARanges[APrimary];
   Delta := ANewLength - Primary.Length;
   Result[APrimary].Length := ANewLength;
   for Index := 0 to High(Result) do
+  begin
     if (Index <> APrimary) and (Result[Index].Line = Primary.Line) and (Result[Index].Character > Primary.Character)
     then
+    begin
       Inc(Result[Index].Character, Delta);
+    end;
+  end;
 end;
 
 class function TAtlasLinkedEditing.Rename(const AText: string; const ARanges: TAtlasLinkedRanges; const AName: string;
@@ -300,20 +344,28 @@ begin
   Result := False;
   Table := TLineTable.Build(AText);
   for Range in ARanges do
+  begin
     if (Range.Line < 0) or (Range.Line >= Table.LineCount) or (Range.Character < 0) or
       (Table.LineStart(Range.Line) + Range.EndCharacter > Table.LineContentEnd(Range.Line)) then
+    begin
       Exit;
+    end;
+  end;
   // Von hinten nach vorn ersetzen, damit die Offsets davor gültig bleiben.
   Sorted := ARanges;
   SetLength(Order, Length(ARanges));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
     function(const A, B: Integer): Integer
     begin
       Result := Sorted[B].Line - Sorted[A].Line;
       if Result = 0 then
+      begin
         Result := Sorted[B].Character - Sorted[A].Character;
+      end;
     end));
   for Index in Order do
   begin
@@ -326,8 +378,12 @@ begin
   begin
     Delta := 0;
     for Other := 0 to High(ARanges) do
+    begin
       if (ARanges[Other].Line = ARanges[Index].Line) and (ARanges[Other].Character < ARanges[Index].Character) then
+      begin
         Inc(Delta, Length(AName) - ARanges[Other].Length);
+      end;
+    end;
     ANewRanges[Index] := TAtlasLinkedRange.Create(ARanges[Index].Line, ARanges[Index].Character + Delta,
       Length(AName));
   end;
@@ -342,15 +398,21 @@ begin
   ADetail := '';
   Result := TAtlasLinkedProblem.None;
   if (AName = '') or SameText(AName, AOriginal) then
+  begin
     Exit;
+  end;
   if IsReserved(AName) then
+  begin
     Exit(TAtlasLinkedProblem.Reserved);
+  end;
   for Conflict in AConflicts do
+  begin
     if SameText(Conflict.Name, AName) then
     begin
       ADetail := Conflict.Detail;
       Exit(TAtlasLinkedProblem.Visible);
     end;
+  end;
 end;
 
 end.
