@@ -160,74 +160,162 @@ begin
   end;
 end;
 
+function IsAnyWord(const AToken: TPascalToken; const AWords: array of string): Boolean;
+var
+  mWord: string;
+begin
+  for mWord in AWords do
+  begin
+    if IsWord(AToken, mWord) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Art des Ankers für das Token AIndex in Spalte 0 in AAnchor; False, wenn es keinen öffnet.</summary>
+function ColumnZeroKind(const ATokens: TArray<TPascalToken>; AIndex: Integer; var AAnchor: TAnchor): Boolean;
+var
+  mToken: TPascalToken;
+  mNext: Integer;
+  mHasNext: Boolean;
+begin
+  mToken := ATokens[AIndex];
+  mNext := NextSignificant(ATokens, AIndex);
+  mHasNext := mNext <= High(ATokens);
+  Result := True;
+  if IsRoutineWord(mToken) or (IsWord(mToken, 'class') and mHasNext and IsRoutineWord(ATokens[mNext])) then
+  begin
+    AAnchor.Kind := TAnchorKind.Routine;
+  end
+  else if IsAnyWord(mToken, ['interface', 'implementation', 'initialization', 'finalization']) or
+    (IsWord(mToken, 'end') and mHasNext and ATokens[mNext].IsSymbol('.')) then
+  begin
+    AAnchor.Kind := TAnchorKind.Section;
+  end
+  else if IsAnyWord(mToken, ['type', 'var', 'const', 'resourcestring', 'threadvar', 'uses', 'label', 'begin']) then
+  begin
+    AAnchor.Kind := TAnchorKind.Local;
+    AAnchor.IsBegin := IsWord(mToken, 'begin');
+  end
+  else if StartsTypeDecl(ATokens, AIndex) then
+  begin
+    AAnchor.Kind := TAnchorKind.TypeDecl;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Anker für das erste Token AIndex einer Zeile; False, wenn dort keiner beginnt.</summary>
+function AnchorAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AAnchor: TAnchor): Boolean;
+begin
+  AAnchor := Default(TAnchor);
+  AAnchor.Line := ATokens[AIndex].StartPos.Line;
+  if ATokens[AIndex].StartPos.Character = 0 then
+  begin
+    Result := ColumnZeroKind(ATokens, AIndex, AAnchor);
+  end
+  else
+  begin
+    Result := (ATokens[AIndex].StartPos.Character <= 2) and StartsTypeDecl(ATokens, AIndex);
+    if Result then
+    begin
+      AAnchor.Kind := TAnchorKind.TypeDecl;
+    end;
+  end;
+end;
+
 function Anchors(const ATokens: TArray<TPascalToken>): TArray<TAnchor>;
 var
-  List: TList<TAnchor>;
-  Index, Next, LastLine: Integer;
-  Anchor: TAnchor;
-  Token: TPascalToken;
+  mList: TList<TAnchor>;
+  mIndex, mLastLine: Integer;
+  mAnchor: TAnchor;
 begin
-  List := TList<TAnchor>.Create;
+  mList := TList<TAnchor>.Create;
   try
-    LastLine := -1;
-    for Index := 0 to High(ATokens) do
+    mLastLine := -1;
+    for mIndex := 0 to High(ATokens) do
     begin
-      Token := ATokens[Index];
-      if IsTrivia(Token) then
-      begin
-        Continue;
-      end;
       // Nur das erste Token einer Zeile.
-      if Token.StartPos.Line = LastLine then
+      if IsTrivia(ATokens[mIndex]) or (ATokens[mIndex].StartPos.Line = mLastLine) then
       begin
         Continue;
       end;
-      LastLine := Token.StartPos.Line;
-      Anchor := Default(TAnchor);
-      Anchor.Line := Token.StartPos.Line;
-      Next := NextSignificant(ATokens, Index);
-      if Token.StartPos.Character = 0 then
+      mLastLine := ATokens[mIndex].StartPos.Line;
+      if AnchorAt(ATokens, mIndex, mAnchor) then
       begin
-        if IsRoutineWord(Token) or (IsWord(Token, 'class') and (Next <= High(ATokens)) and
-          IsRoutineWord(ATokens[Next])) then
-        begin
-          Anchor.Kind := TAnchorKind.Routine;
-        end
-        else if IsWord(Token, 'interface') or IsWord(Token, 'implementation') or
-          IsWord(Token, 'initialization') or IsWord(Token, 'finalization') or
-          (IsWord(Token, 'end') and (Next <= High(ATokens)) and ATokens[Next].IsSymbol('.')) then
-        begin
-          Anchor.Kind := TAnchorKind.Section;
-        end
-        else if IsWord(Token, 'type') or IsWord(Token, 'var') or IsWord(Token, 'const') or
-          IsWord(Token, 'resourcestring') or IsWord(Token, 'threadvar') or IsWord(Token, 'uses') or
-          IsWord(Token, 'label') or IsWord(Token, 'begin') then
-        begin
-          Anchor.Kind := TAnchorKind.Local;
-          Anchor.IsBegin := IsWord(Token, 'begin');
-        end
-        else if StartsTypeDecl(ATokens, Index) then
-        begin
-          Anchor.Kind := TAnchorKind.TypeDecl;
-        end
-        else
-        begin
-          Continue;
-        end;
-      end
-      else if (Token.StartPos.Character <= 2) and StartsTypeDecl(ATokens, Index) then
-      begin
-        Anchor.Kind := TAnchorKind.TypeDecl;
-      end
-      else
-      begin
-        Continue;
+        mList.Add(mAnchor);
       end;
-      List.Add(Anchor);
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
+  end;
+end;
+
+/// <summary>Letzter Anker bis Zeile ALine; -1 ohne.</summary>
+function LastAnchorUpTo(const AList: TArray<TAnchor>; ALine: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AList) do
+  begin
+    if AList[mIndex].Line <= ALine then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Anker, der den Bereich an Zeile ALine öffnet: in einer Routine über ihre var-, const- und
+/// begin-Zeilen zurück. -1 ohne (Abschnitt, Hauptblock eines Programms).</summary>
+function OpeningAnchor(const AList: TArray<TAnchor>; ALine: Integer): Integer;
+var
+  mSawBegin: Boolean;
+begin
+  Result := LastAnchorUpTo(AList, ALine);
+  mSawBegin := False;
+  while (Result >= 0) and (AList[Result].Kind = TAnchorKind.Local) do
+  begin
+    // Zwei begin in Spalte 0: Das untere ist der Hauptblock eines Programms.
+    if AList[Result].IsBegin then
+    begin
+      if mSawBegin then
+      begin
+        Exit(-1);
+      end;
+      mSawBegin := True;
+    end;
+    Dec(Result);
+    if (Result >= 0) and not (AList[Result].Kind in [TAnchorKind.Local, TAnchorKind.Routine]) then
+    begin
+      Exit(-1);
+    end;
+  end;
+  if (Result >= 0) and (AList[Result].Kind = TAnchorKind.Section) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Letzte Zeile des Bereichs ab Anker AStart: Eine Klasse endet an type/var/const …, die Routine nur am
+/// nächsten Kopf, Typ oder Abschnitt.</summary>
+function ScopeEnd(const AList: TArray<TAnchor>; AStart: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := MaxInt;
+  for mIndex := AStart + 1 to High(AList) do
+  begin
+    if (AList[mIndex].Line > AList[AStart].Line) and
+      ((AList[mIndex].Kind <> TAnchorKind.Local) or (AList[AStart].Kind = TAnchorKind.TypeDecl)) then
+    begin
+      Exit(AList[mIndex].Line - 1);
+    end;
   end;
 end;
 
@@ -236,57 +324,19 @@ end;
 class function TCompletionSyntax.ScopeAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): TCompletionScope;
 var
-  List: TArray<TAnchor>;
-  Index, Start, Last: Integer;
-  SawBegin: Boolean;
+  mList: TArray<TAnchor>;
+  mStart: Integer;
 begin
   Result := Default(TCompletionScope);
   Result.FirstLine := -1;
   Result.LastLine := -1;
-  List := Anchors(ATokens);
-  // Letzter Anker bis zur Zeile des Cursors; in einer Routine über ihre var-, const- und begin-Zeilen zurück.
-  Start := -1;
-  for Index := 0 to High(List) do
-  begin
-    if List[Index].Line <= APosition.Line then
-    begin
-      Start := Index;
-    end;
-  end;
-  SawBegin := False;
-  while (Start >= 0) and (List[Start].Kind = TAnchorKind.Local) do
-  begin
-    // Zwei begin in Spalte 0: Das untere ist der Hauptblock eines Programms.
-    if List[Start].IsBegin then
-    begin
-      if SawBegin then
-      begin
-        Exit;
-      end;
-      SawBegin := True;
-    end;
-    Dec(Start);
-    if (Start >= 0) and (List[Start].Kind <> TAnchorKind.Local) and (List[Start].Kind <> TAnchorKind.Routine) then
-    begin
-      Exit;
-    end;
-  end;
-  if (Start < 0) or (List[Start].Kind = TAnchorKind.Section) then
+  mList := Anchors(ATokens);
+  mStart := OpeningAnchor(mList, APosition.Line);
+  if mStart < 0 then
   begin
     Exit;
   end;
-  // Eine Klasse endet an type/var/const …, die Routine nur am nächsten Kopf, Typ oder Abschnitt.
-  Last := MaxInt;
-  for Index := Start + 1 to High(List) do
-  begin
-    if (List[Index].Line > List[Start].Line) and
-      ((List[Index].Kind <> TAnchorKind.Local) or (List[Start].Kind = TAnchorKind.TypeDecl)) then
-    begin
-      Last := List[Index].Line - 1;
-      Break;
-    end;
-  end;
-  if List[Start].Kind = TAnchorKind.Routine then
+  if mList[mStart].Kind = TAnchorKind.Routine then
   begin
     Result.Kind := TCompletionScopeKind.Routine;
   end
@@ -294,8 +344,8 @@ begin
   begin
     Result.Kind := TCompletionScopeKind.TypeDecl;
   end;
-  Result.FirstLine := List[Start].Line;
-  Result.LastLine := Last;
+  Result.FirstLine := mList[mStart].Line;
+  Result.LastLine := ScopeEnd(mList, mStart);
 end;
 
 class function TCompletionSyntax.ScopeText(const AText: string; const AScope: TCompletionScope): string;
