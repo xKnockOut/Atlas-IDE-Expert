@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Metrics;
 

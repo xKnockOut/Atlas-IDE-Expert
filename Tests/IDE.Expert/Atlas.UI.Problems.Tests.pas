@@ -62,7 +62,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain;
 

@@ -288,6 +288,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.OverviewKinds` | `Core/Settings/Atlas.Core.Settings.OverviewKinds.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.ProblemsUpdate` | `Core/Settings/Atlas.Core.Settings.ProblemsUpdate.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.QueryMigration` | `Core/Settings/Atlas.Core.Settings.QueryMigration.pas` | Ordner `Core/Settings` |

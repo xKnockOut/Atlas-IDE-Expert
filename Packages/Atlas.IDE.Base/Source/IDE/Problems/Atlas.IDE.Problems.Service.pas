@@ -44,7 +44,8 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.Refresh;
+  Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
@@ -802,7 +803,7 @@ end;
 
 class function TAtlasIdeProblems.UpdateMode: TAtlasProblemsUpdate;
 begin
-  Result := TAtlasProblemsRefresh.Parse(Settings.ProblemsUpdate);
+  Result := TAtlasProblemsUpdateSetting.Parse(Settings.ProblemsUpdate);
 end;
 
 class procedure TAtlasIdeProblems.CheckFileNow;

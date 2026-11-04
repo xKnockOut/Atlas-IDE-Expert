@@ -11,15 +11,14 @@
 //   bleibt.
 // Eine Anforderung (TAtlasProblemsCheckRequest) gilt in jeder Art sofort. Die Bitte des Servers um neues
 // Holen (workspace/diagnostic/refresh) entscheidet der Controller selbst.
-// Vor problems.update gab es nur problems.live (an = live, aus = save).
+// Die Werte der Einstellungen stehen in Atlas.Core.Settings.ProblemsUpdate.
 
 interface
 
-type
-  {$SCOPEDENUMS ON}
-  TAtlasProblemsUpdate = (Live, Save, Manual);
-  {$SCOPEDENUMS OFF}
+uses
+  Atlas.Core.Settings.ProblemsUpdate;
 
+type
   /// <summary>Stand der offenen Datei für die Entscheidung, ob jetzt geprüft wird.</summary>
   TAtlasProblemsRefreshState = record
     /// <summary>Der Text weicht vom zuletzt geprüften ab (oder die Datei wurde noch nie geprüft).</summary>
@@ -36,24 +35,9 @@ type
 
   TAtlasProblemsRefresh = record
   public const
-    DefaultDelayMs = 400;
-    MinDelayMs = 100;
-    MaxDelayMs = 10000;
     /// <summary>Takt, in dem der Controller den Editor liest, höchstens so lang (ms).</summary>
     MaxTickMs = 250;
-    /// <summary>Werte von problems.update in der Reihenfolge von TAtlasProblemsUpdate.</summary>
-    cValues: array[TAtlasProblemsUpdate] of string = ('live', 'save', 'manual');
   public
-    /// <summary>Art zu AValue (Groß-/Kleinschreibung egal); Unbekanntes = live.</summary>
-    class function Parse(const AValue: string): TAtlasProblemsUpdate; static;
-    /// <summary>Text zu AMode, wie er in den Einstellungen steht.</summary>
-    class function Name(AMode: TAtlasProblemsUpdate): string; static;
-    /// <summary>AValue als gültiger Wert von problems.update; Unbekanntes = live.</summary>
-    class function Normalize(const AValue: string): string; static;
-    /// <summary>Wert von problems.update aus dem früheren problems.live (#909): an = live, aus = save.</summary>
-    class function FromLive(ALive: Boolean): string; static;
-    /// <summary>Verzögerung auf 100 bis 10000 ms begrenzt.</summary>
-    class function ClampDelay(ADelayMs: Integer): Integer; static;
     /// <summary>Takt des Controllers zur Verzögerung: höchstens 250 ms, sonst die Verzögerung selbst.</summary>
     class function TickMs(ADelayMs: Integer): Integer; static;
     /// <summary>Jetzt prüfen? ADelayMs gilt für live und save.</summary>
@@ -85,50 +69,9 @@ uses
 
 { TAtlasProblemsRefresh }
 
-class function TAtlasProblemsRefresh.Parse(const AValue: string): TAtlasProblemsUpdate;
-var
-  mMode: TAtlasProblemsUpdate;
-begin
-  for mMode := Low(TAtlasProblemsUpdate) to High(TAtlasProblemsUpdate) do
-  begin
-    if SameText(Trim(AValue), cValues[mMode]) then
-    begin
-      Exit(mMode);
-    end;
-  end;
-  Result := TAtlasProblemsUpdate.Live;
-end;
-
-class function TAtlasProblemsRefresh.Name(AMode: TAtlasProblemsUpdate): string;
-begin
-  Result := cValues[AMode];
-end;
-
-class function TAtlasProblemsRefresh.Normalize(const AValue: string): string;
-begin
-  Result := Name(Parse(AValue));
-end;
-
-class function TAtlasProblemsRefresh.FromLive(ALive: Boolean): string;
-begin
-  if ALive then
-  begin
-    Result := Name(TAtlasProblemsUpdate.Live);
-  end
-  else
-  begin
-    Result := Name(TAtlasProblemsUpdate.Save);
-  end;
-end;
-
-class function TAtlasProblemsRefresh.ClampDelay(ADelayMs: Integer): Integer;
-begin
-  Result := EnsureRange(ADelayMs, MinDelayMs, MaxDelayMs);
-end;
-
 class function TAtlasProblemsRefresh.TickMs(ADelayMs: Integer): Integer;
 begin
-  Result := Min(MaxTickMs, ClampDelay(ADelayMs));
+  Result := Min(MaxTickMs, TAtlasProblemsUpdateSetting.ClampDelay(ADelayMs));
 end;
 
 class function TAtlasProblemsRefresh.Due(AMode: TAtlasProblemsUpdate; const AState: TAtlasProblemsRefreshState;
@@ -144,7 +87,7 @@ begin
   begin
     Exit(False);
   end;
-  mQuiet := AState.QuietMs >= Cardinal(ClampDelay(ADelayMs));
+  mQuiet := AState.QuietMs >= Cardinal(TAtlasProblemsUpdateSetting.ClampDelay(ADelayMs));
   case AMode of
     TAtlasProblemsUpdate.Save:
       Result := mQuiet and not AState.Modified;

@@ -1688,7 +1688,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Problems.Refresh;
+  Atlas.Core.Settings.ProblemsUpdate;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -2081,8 +2081,8 @@ begin
   Result.CreateIssueKey := 0;
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
-  Result.ProblemsUpdate := TAtlasProblemsRefresh.Name(TAtlasProblemsUpdate.Live);
-  Result.ProblemsLiveDelayMs := TAtlasProblemsRefresh.DefaultDelayMs;
+  Result.ProblemsUpdate := TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Live);
+  Result.ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.DefaultDelayMs;
   Result.FixBulk := True;
   Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
@@ -2893,8 +2893,8 @@ begin
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
-  ProblemsUpdate := TAtlasProblemsRefresh.Normalize(ProblemsUpdate);
-  ProblemsLiveDelayMs := TAtlasProblemsRefresh.ClampDelay(ProblemsLiveDelayMs);
+  ProblemsUpdate := TAtlasProblemsUpdateSetting.Normalize(ProblemsUpdate);
+  ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.ClampDelay(ProblemsLiveDelayMs);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
   CreateIssueKey := EnsureRange(CreateIssueKey, 0, $FFFF);
   GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
@@ -3055,7 +3055,7 @@ begin
   // Vor problems.update: problems.live (#909) übernehmen, an = live, aus = beim Speichern.
   if ProblemsUpdate = '' then
   begin
-    ProblemsUpdate := TAtlasProblemsRefresh.FromLive(AStore.ReadInteger('ProblemsLive', 1) <> 0);
+    ProblemsUpdate := TAtlasProblemsUpdateSetting.FromLive(AStore.ReadInteger('ProblemsLive', 1) <> 0);
   end;
   ProblemsLiveDelayMs := AStore.ReadInteger('ProblemsLiveDelayMs', Default.ProblemsLiveDelayMs);
   FixBulk := AStore.ReadInteger('FixBulk', BoolValue(Default.FixBulk)) <> 0;

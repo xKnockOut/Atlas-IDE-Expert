@@ -3,7 +3,7 @@
 ## Aktualisierung der Prüfung einstellbar (04.11.2026, Branch `claude/project-thread-y5r8i0` auf `Pilot-2.0.0-beta.1`, ungebaut mit Delphi)
 - **Anlass:** Marco wollte die Prüfregeln „live (mit ms zum Einstellen) oder manuell“ aktualisieren.
 - **Was:** `problems.update` (`live`/`save`/`manual`, Plugin `ProblemsUpdate`) ersetzt `problems.live`; `problems.liveDelayMs` (100–10000, Vorgabe 400) ersetzt die feste Wartezeit von 400 ms. Alte Werte (Registry `ProblemsLive`, Import `problems.live`) werden umgesetzt: an = live, aus = save.
-- **Kern:** `Atlas.Core.Problems.Refresh` (`TAtlasProblemsRefresh.Due` entscheidet je Takt, `TAtlasProblemsCheckRequest` hält die Anforderung „Datei jetzt prüfen“). Der Controller fragt nur noch `PullDue`; der Takt folgt einer kurzen Verzögerung (`TickMs`).
+- **Kern:** Werte in `Atlas.Core.Settings.ProblemsUpdate` (Settings darf nicht von Problems abhängen, sonst Feature-Zyklus A-09); `Atlas.Core.Problems.Refresh` (`TAtlasProblemsRefresh.Due` entscheidet je Takt, `TAtlasProblemsCheckRequest` hält die Anforderung „Datei jetzt prüfen“). Der Controller fragt nur noch `PullDue`; der Takt folgt einer kurzen Verzögerung (`TickMs`).
 - **Plugin:** Knopf „Datei jetzt prüfen“ im Fenster „Atlas-Prüfung“ (nicht im Live-Modus), Befehl `Atlas.CheckFile` in der Befehlspalette, Klick auf die Live-Prüfung der Statusleiste prüft außerhalb von Live nur die offene Datei.
 - **Stand:** ungebaut; Python-Nachbau von Update-ConfigDoc (pwsh nicht installierbar). Handtests LV1–LV9, ASL7/ASL7b, AP14. Offen als Folgeidee: eigenes Tastenkürzel für „Datei jetzt prüfen“.
 
