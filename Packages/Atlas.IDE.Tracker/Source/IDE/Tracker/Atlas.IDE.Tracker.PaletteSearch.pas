@@ -32,7 +32,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
-  Atlas.IDE.Tracker.IssuePreview;
+  Atlas.IDE.Tracker.IssueContext;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>

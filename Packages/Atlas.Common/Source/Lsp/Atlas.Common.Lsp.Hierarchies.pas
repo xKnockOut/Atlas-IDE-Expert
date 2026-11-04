@@ -664,8 +664,8 @@ begin
   try
     Tree := TSyntaxTreeCache.Parse(Text);
     Trees.Add(UpperCase(AItem.FileName), Tree);
-    Locations := TLspReferences.Find(AResolver, AIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, False,
-      AFiles, AReadText, ASettings, ACancellation);
+    Locations := TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(AItem.FileName,
+      AItem.SelectionRange.StartPos, False, AFiles, AReadText), ASettings, ACancellation);
     for Location in Locations do
     begin
       if Assigned(ACancellation) then

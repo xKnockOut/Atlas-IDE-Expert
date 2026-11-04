@@ -250,9 +250,9 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil, nil));
-    Assert.IsTrue(Frame.ShowsItemsOf(TAtlasNotesList.Owner));
-    Assert.IsFalse(Frame.ShowsItemsOf('andere'));
+    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil, nil));
+    Assert.IsTrue(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner));
+    Assert.IsFalse(Frame.Items.ShowsItemsOf('andere'));
     // Gruppe Kunde.pas mit zwei Notizen nach Zeile, dann „Verwaist (1)“.
     Assert.AreEqual(5, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Kunde.pas (2)', Frame.Tree.Items[0].Text);
@@ -262,8 +262,8 @@ begin
     Assert.AreEqual('Auftrag.pas, Zeile 3: Weg damit', Frame.Tree.Items[4].Text);
     Assert.IsTrue(Frame.Tree.Items[0].Expanded);
     // Auswahl nach Kennung.
-    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, Book.Notes[0].Id, nil, nil));
-    Assert.AreEqual(Book.Notes[0].Id, Frame.SelectedItemId);
+    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, Book.Notes[0].Id, nil, nil));
+    Assert.AreEqual(Book.Notes[0].Id, Frame.Items.SelectedId);
     Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[2]);
   finally
     Host.Free;
@@ -290,7 +290,7 @@ begin
         Opened := AFileName;
         OpenedLine := ALine;
       end;
-    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '',
+    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '',
       procedure(const AId: string)
       begin
         Edited := AId;
@@ -347,13 +347,13 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     Deleted := '';
-    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
+    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
       procedure(const AId: string)
       begin
         Deleted := AId;
       end));
-    Frame.ShowEntries('Referenzen', nil);
-    Assert.IsFalse(Frame.ShowsItemsOf(TAtlasNotesList.Owner));
+    Frame.Entries.Show('Referenzen', nil);
+    Assert.IsFalse(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner));
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[3].Visible);
     Assert.IsFalse(Frame.Menu.Items[4].Visible);
@@ -379,17 +379,17 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     Deleted := '';
-    Frame.ShowItems(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
+    Frame.Items.Show(TAtlasNotesList.Build('Notizen', Book.Groups, '', nil,
       procedure(const AId: string)
       begin
         Deleted := AId;
       end));
-    Frame.ReleaseItems('andere');
+    Frame.Items.Release('andere');
     Frame.Tree.Selected := Frame.Tree.Items[1];
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsTrue(Frame.Menu.Items[4].Visible, 'fremder Besitzer gibt nichts frei');
-    Frame.ReleaseItems(TAtlasNotesList.Owner);
-    Assert.IsTrue(Frame.ShowsItemsOf(TAtlasNotesList.Owner), 'Liste bleibt sichtbar');
+    Frame.Items.Release(TAtlasNotesList.Owner);
+    Assert.IsTrue(Frame.Items.ShowsItemsOf(TAtlasNotesList.Owner), 'Liste bleibt sichtbar');
     Frame.Menu.OnPopup(Frame.Menu);
     Assert.IsFalse(Frame.Menu.Items[4].Visible, 'Löschen weg');
     Key := VK_DELETE;

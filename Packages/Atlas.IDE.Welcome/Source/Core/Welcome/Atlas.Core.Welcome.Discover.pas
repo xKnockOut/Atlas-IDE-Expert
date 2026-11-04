@@ -306,39 +306,78 @@ begin
   Result := (Value <> '') and not SameText(Value, 'off');
 end;
 
+/// <summary>Kennungen der Tipps AIndexes aus ATips.</summary>
+function IdsOf(const ATips: TAtlasTips; const AIndexes: TArray<Integer>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex in AIndexes do
+  begin
+    Result := Result + [ATips[mIndex].Id];
+  end;
+end;
+
+/// <summary>Indizes der Tipps, die kommen dürfen: Abgeschaltete Funktionen und gesperrte Tipps kommen nie.
+/// </summary>
+function AllowedTips(const ATips: TAtlasTips; const AState: TAtlasDiscoverState;
+  const AAllowed: TFunc<TAtlasTip, Boolean>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ATips) do
+  begin
+    if not AState.IsBlocked(ATips[mIndex].Id) and (not Assigned(AAllowed) or AAllowed(ATips[mIndex])) then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Am längsten nicht benutzt zuerst (ALastUsed je Tipp), bei Gleichstand wie in der Datei.</summary>
+function OldestFirst(const ALastUsed: TArray<TDateTime>): IComparer<Integer>;
+begin
+  Result := TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      if ALastUsed[A] < ALastUsed[B] then
+      begin
+        Result := -1;
+      end
+      else if ALastUsed[A] > ALastUsed[B] then
+      begin
+        Result := 1;
+      end
+      else
+      begin
+        Result := A - B;
+      end;
+    end);
+end;
+
 class function TAtlasDiscover.Order(const ATips: TAtlasTips; AUsage: TAtlasCommandUsage;
   const AState: TAtlasDiscoverState; const AAllowed: TFunc<TAtlasTip, Boolean>; ATracking: Boolean): TArray<string>;
 var
   Index, After: Integer;
-  Fresh, Known, All: TArray<Integer>;
+  Fresh, All: TArray<Integer>;
   Used: TList<Integer>;
-  Tracking: Boolean;
   LastUsed: TArray<TDateTime>;
   Moment: TDateTime;
 begin
-  Result := nil;
+  All := AllowedTips(ATips, AState, AAllowed);
+  After := TAtlasTipCatalog.IndexOf(ATips, AState.Last);
+  if not ATracking or (AUsage = nil) then
+  begin
+    // Ohne Zählung der Reihe nach.
+    Exit(IdsOf(ATips, RotateAfter(All, After)));
+  end;
   Fresh := nil;
-  All := nil;
-  Tracking := ATracking and (AUsage <> nil);
   SetLength(LastUsed, Length(ATips));
   Used := TList<Integer>.Create;
   try
-    for Index := 0 to High(ATips) do
+    for Index in All do
     begin
-      // Abgeschaltete Funktionen und gesperrte Tipps kommen nie.
-      if AState.IsBlocked(ATips[Index].Id) then
-      begin
-        Continue;
-      end;
-      if Assigned(AAllowed) and not AAllowed(ATips[Index]) then
-      begin
-        Continue;
-      end;
-      All := All + [Index];
-      if not Tracking then
-      begin
-        Continue;
-      end;
       UsageOf(ATips[Index], AUsage, Moment);
       LastUsed[Index] := Moment;
       if NeverUsed(ATips[Index], AUsage) then
@@ -350,42 +389,9 @@ begin
         Used.Add(Index);
       end;
     end;
-    After := TAtlasTipCatalog.IndexOf(ATips, AState.Last);
-    if not Tracking then
-    begin
-      // Ohne Zählung der Reihe nach.
-      for Index in RotateAfter(All, After) do
-      begin
-        Result := Result + [ATips[Index].Id];
-      end;
-      Exit;
-    end;
-    for Index in RotateAfter(Fresh, After) do
-    begin
-      Result := Result + [ATips[Index].Id];
-    end;
-    // Dann die benutzten: am längsten nicht benutzt zuerst, bei Gleichstand wie in der Datei.
-    Used.Sort(TComparer<Integer>.Construct(
-      function(const A, B: Integer): Integer
-      begin
-        if LastUsed[A] < LastUsed[B] then
-        begin
-          Result := -1;
-        end
-        else if LastUsed[A] > LastUsed[B] then
-        begin
-          Result := 1;
-        end
-        else
-        begin
-          Result := A - B;
-        end;
-      end));
-    Known := Used.ToArray;
-    for Index in Known do
-    begin
-      Result := Result + [ATips[Index].Id];
-    end;
+    // Zuerst nie benutzte, dann die benutzten.
+    Used.Sort(OldestFirst(LastUsed));
+    Result := IdsOf(ATips, RotateAfter(Fresh, After)) + IdsOf(ATips, Used.ToArray);
   finally
     Used.Free;
   end;

@@ -90,6 +90,16 @@ begin
     end;
 end;
 
+/// <summary>Eingaben der Abfrage-Datenquelle für --check: ohne Namensräume und Nachladen von Units.</summary>
+function QueryInput(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>): TLspQueryInput;
+begin
+  Result := Default(TLspQueryInput);
+  Result.Index := AIndex;
+  Result.Root := ARoot;
+  Result.Files := AFiles;
+  Result.ReadText := ReaderFunc();
+end;
+
 /// <summary>Abfragedienst über AIndex und AFiles; eigene Routine, damit der Dienst nicht den Rahmen festhält, in
 /// dem er liegt (Leck).</summary>
 function FolderQueries(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>;
@@ -98,7 +108,7 @@ begin
   Result := TCodeQueryService.Create(
     function(out AQuerySource: TQuerySource): Boolean
     begin
-      AQuerySource := TLspQuery.Source(AIndex, nil, ARoot, AFiles, nil, ReaderFunc(), AReferences);
+      AQuerySource := TLspQuery.Source(QueryInput(AIndex, ARoot, AFiles), AReferences);
       Result := True;
     end);
 end;
