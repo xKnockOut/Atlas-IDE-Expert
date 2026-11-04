@@ -12,6 +12,10 @@ type
   [TestFixture]
   TRuleCatalogTests = class
   public
+    /// <summary>Legt die geteilten Kataloge (englisch und deutsch) einmal an: Sie leben bis zum Prozessende,
+    /// der Leckmonitor zählte ihren ersten Gebrauch sonst im Test.</summary>
+    [SetupFixture]
+    procedure CreateSharedCatalogs;
     [Test]
     procedure ReadsBaseEntry;
     [Test]
@@ -30,6 +34,11 @@ type
     procedure HelpUriPointsToAnchor;
     [Test]
     procedure ExplanationHasExamplesAndLink;
+    /// <summary>#1458: Erklärung und Katalog in der Sprache der Texte.</summary>
+    [Test]
+    procedure ExplanationFollowsLanguage;
+    [Test]
+    procedure LocalizedCatalogFollowsLanguage;
     [Test]
     procedure BuiltinRulesAreInCatalogWithSameSeverity;
     [Test]
@@ -73,6 +82,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data;
 
@@ -234,6 +244,62 @@ begin
       TRuleCatalog.Explanation(Entry, #10));
   finally
     Catalog.Free;
+  end;
+end;
+
+procedure TRuleCatalogTests.ExplanationFollowsLanguage;
+var
+  mCatalog: TRuleCatalog;
+  mEntry: TRuleCatalogEntry;
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  mCatalog := TRuleCatalog.Create(Base);
+  try
+    Assert.IsTrue(mCatalog.TryFind('a-rule', mEntry));
+    mEntry.CompilerCodes := ['W1036'];
+    mEntry.OverriddenBy := ['x', 'y'];
+    TAtlasLocale.Use(TTextLanguage.English);
+    Assert.AreEqual('a-rule: A rule'#10'Text'#10#10'Wrong:'#10'X;'#10#10'Right:'#10'Y;'#10#10 +
+      'Corresponds to compiler message W1036.'#10#10'Silent while x or y is on.'#10#10'More: ' +
+      TRuleCatalog.HelpUri('a-rule'), TRuleCatalog.Explanation(mEntry, #10));
+    TAtlasLocale.Use(TTextLanguage.German);
+    Assert.IsTrue(Pos('Schweigt, solange x oder y an ist.', TRuleCatalog.Explanation(mEntry, #10)) > 0);
+  finally
+    TAtlasLocale.Use(mSaved);
+    mCatalog.Free;
+  end;
+end;
+
+procedure TRuleCatalogTests.CreateSharedCatalogs;
+var
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  try
+    TAtlasLocale.Use(TTextLanguage.German);
+    TRuleCatalog.Localized;
+    TRuleCatalog.Shared;
+  finally
+    TAtlasLocale.Use(mSaved);
+  end;
+end;
+
+procedure TRuleCatalogTests.LocalizedCatalogFollowsLanguage;
+var
+  mGerman, mEnglish: TRuleCatalogEntry;
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  try
+    TAtlasLocale.Use(TTextLanguage.English);
+    Assert.IsTrue(TRuleCatalog.Localized = TRuleCatalog.Shared);
+    Assert.IsTrue(TRuleCatalog.Localized.TryFind('empty-except', mEnglish));
+    TAtlasLocale.Use(TTextLanguage.German);
+    Assert.IsTrue(TRuleCatalog.Localized.TryFind('empty-except', mGerman));
+    Assert.AreNotEqual(mEnglish.Name, mGerman.Name);
+  finally
+    TAtlasLocale.Use(mSaved);
   end;
 end;
 
