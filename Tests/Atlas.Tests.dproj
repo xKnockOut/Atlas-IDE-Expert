@@ -397,6 +397,7 @@
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.JsonTree.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Internals.Forbidden.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Internals.Reader.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas"/>
@@ -464,6 +465,12 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Shared.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Overloads.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.TypeSizes.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.VariantRecords.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.Tests.pas"/>
