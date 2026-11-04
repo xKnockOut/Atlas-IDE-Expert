@@ -690,6 +690,7 @@
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
         <DCCReference Include="Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
         <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas"/>
+        <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.View.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.FolderList.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>

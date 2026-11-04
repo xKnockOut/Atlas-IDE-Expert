@@ -266,17 +266,24 @@ end;
 /// <summary>Zeilen des Statusfelds; Klick auf die Zeile „Server“ öffnet das Fenster „Atlas-Server“ (#1356), nur
 /// mit server.statusWindow.</summary>
 procedure CreateStatusLines;
+var
+  mSources: TAtlasStatusLineSources;
 begin
-  StatusLinesInstance := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default, ServerInfo, ServerIndexing,
+  mSources.ServerInfo := ServerInfo;
+  mSources.Indexing := ServerIndexing;
+  mSources.Query :=
     function(const ADone: TProc<string>): Boolean
     begin
       Result := (Manager <> nil) and Manager.QueryStatusAsync(ADone);
-    end,
-    Warnings(), ShowServerWindow,
+    end;
+  mSources.Report := Warnings();
+  mSources.ServerAction := ShowServerWindow;
+  mSources.ServerActionEnabled :=
     function: Boolean
     begin
       Result := TAtlasIdeServerWindow.Enabled;
-    end);
+    end;
+  StatusLinesInstance := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default, mSources);
 end;
 
 /// <summary>Atlas-Statusfeld mit Aktualisieren, Protokoll, Schnellschaltern und Neustart des Servers.</summary>
