@@ -81,22 +81,22 @@ begin
   end;
 end;
 
-class function TAtlasBuildNotices.FromRun(const AMessages: TArray<TAtlasCompilerMessage>; ASucceeded, AReadable,
-  ABackground: Boolean; APreviousErrors: Integer): TAtlasBuildNotice;
+/// <summary>Zahlen nach Schwere und erste Fehlermeldung mit Datei als Ziel.</summary>
+function Counted(const AMessages: TArray<TAtlasCompilerMessage>): TAtlasBuildNotice;
 var
-  Item: TAtlasCompilerMessage;
+  mItem: TAtlasCompilerMessage;
 begin
   Result := Default(TAtlasBuildNotice);
   Result.Severity := TAtlasNotificationSeverity.Info;
-  for Item in AMessages do
-    case Item.Severity of
+  for mItem in AMessages do
+    case mItem.Severity of
       TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal:
         begin
           Inc(Result.Errors);
-          if not Result.HasTarget and (Item.FileName <> '') then
+          if not Result.HasTarget and (mItem.FileName <> '') then
           begin
             Result.HasTarget := True;
-            Result.Target := Item;
+            Result.Target := mItem;
           end;
         end;
       TAtlasCompilerSeverity.Warning:
@@ -106,42 +106,61 @@ begin
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
-  if ABackground then
+end;
+
+/// <summary>Hintergrundprüfung: nur bei Fehlern, und einmal „wieder fehlerfrei“ (AClean).</summary>
+procedure ClassifyCheck(var ANotice: TAtlasBuildNotice; AClean: Boolean);
+begin
+  if ANotice.Errors > 0 then
   begin
-    if Result.Errors > 0 then
-    begin
-      Result.Kind := TAtlasBuildNoticeKind.CheckErrors;
-      Result.Severity := TAtlasNotificationSeverity.Error;
-    end
-    else if AReadable and ASucceeded and (APreviousErrors > 0) then
-    begin
-      Result.Kind := TAtlasBuildNoticeKind.CheckClean;
-    end
-    else
-    begin
-      Result.Kind := TAtlasBuildNoticeKind.None;
-    end;
-    Exit;
+    ANotice.Kind := TAtlasBuildNoticeKind.CheckErrors;
+    ANotice.Severity := TAtlasNotificationSeverity.Error;
+  end
+  else if AClean then
+  begin
+    ANotice.Kind := TAtlasBuildNoticeKind.CheckClean;
+  end
+  else
+  begin
+    ANotice.Kind := TAtlasBuildNoticeKind.None;
   end;
-  if Result.Errors > 0 then
+end;
+
+/// <summary>Build des Benutzers: immer ein Eintrag.</summary>
+procedure ClassifyBuild(var ANotice: TAtlasBuildNotice; ASucceeded: Boolean);
+begin
+  if ANotice.Errors > 0 then
   begin
-    Result.Kind := TAtlasBuildNoticeKind.Errors;
-    Result.Severity := TAtlasNotificationSeverity.Error;
+    ANotice.Kind := TAtlasBuildNoticeKind.Errors;
+    ANotice.Severity := TAtlasNotificationSeverity.Error;
   end
   else if not ASucceeded then
   begin
     // Fehlgeschlagen ohne lesbare Fehlermeldung (z. B. Linker, abgebrochen).
-    Result.Kind := TAtlasBuildNoticeKind.Failed;
-    Result.Severity := TAtlasNotificationSeverity.Error;
+    ANotice.Kind := TAtlasBuildNoticeKind.Failed;
+    ANotice.Severity := TAtlasNotificationSeverity.Error;
   end
-  else if Result.Warnings > 0 then
+  else if ANotice.Warnings > 0 then
   begin
-    Result.Kind := TAtlasBuildNoticeKind.Warnings;
-    Result.Severity := TAtlasNotificationSeverity.Warning;
+    ANotice.Kind := TAtlasBuildNoticeKind.Warnings;
+    ANotice.Severity := TAtlasNotificationSeverity.Warning;
   end
   else
   begin
-    Result.Kind := TAtlasBuildNoticeKind.Succeeded;
+    ANotice.Kind := TAtlasBuildNoticeKind.Succeeded;
+  end;
+end;
+class function TAtlasBuildNotices.FromRun(const AMessages: TArray<TAtlasCompilerMessage>; ASucceeded, AReadable,
+  ABackground: Boolean; APreviousErrors: Integer): TAtlasBuildNotice;
+begin
+  Result := Counted(AMessages);
+  if ABackground then
+  begin
+    ClassifyCheck(Result, AReadable and ASucceeded and (APreviousErrors > 0));
+  end
+  else
+  begin
+    ClassifyBuild(Result, ASucceeded);
   end;
 end;
 

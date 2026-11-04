@@ -45,8 +45,11 @@ type
     Ignored: Boolean;
     /// <summary>Aufrufstapel des letzten Auftretens (#578: Anzeige im Fenster, Kopieren).</summary>
     Frames: TAtlasDebugFrames;
+    /// <summary>Exception ohne Ort; den Ort setzt At.</summary>
     class function Create(ATime: TDateTime; const AClass, AMessage: string; AThreadId: Cardinal;
-      const AThreadName, AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException; static;
+      const AThreadName: string): TAtlasDebugException; static;
+    /// <summary>Kopie mit dem Ort: Datei, Zeile (1-basiert, 0 = unbekannt) und Routine.</summary>
+    function At(const AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException;
     /// <summary>Schlüssel für „gleiche Exception am gleichen Ort“: Klasse, Datei und Zeile ohne Groß/klein.
     /// </summary>
     function Key: string;
@@ -128,7 +131,7 @@ uses
 { TAtlasDebugException }
 
 class function TAtlasDebugException.Create(ATime: TDateTime; const AClass, AMessage: string; AThreadId: Cardinal;
-  const AThreadName, AFileName: string; ALine: Integer; const ARoutine: string): TAtlasDebugException;
+  const AThreadName: string): TAtlasDebugException;
 begin
   Result := Default(TAtlasDebugException);
   Result.FirstTime := ATime;
@@ -137,10 +140,16 @@ begin
   Result.Message := AMessage;
   Result.ThreadId := AThreadId;
   Result.ThreadName := AThreadName;
+  Result.Count := 1;
+end;
+
+function TAtlasDebugException.At(const AFileName: string; ALine: Integer; const ARoutine: string):
+  TAtlasDebugException;
+begin
+  Result := Self;
   Result.FileName := AFileName;
   Result.Line := ALine;
   Result.Routine := ARoutine;
-  Result.Count := 1;
 end;
 
 function TAtlasDebugException.Key: string;
@@ -150,7 +159,9 @@ begin
   Where := FileName;
   // Ohne Datei unterscheidet die Routine die Orte (Bibliothekscode ohne Quelltext).
   if Where = '' then
+  begin
     Where := Routine;
+  end;
   Result := LowerCase(ExceptionClass) + '|' + LowerCase(Where) + '|' + IntToStr(Line);
 end;
 
@@ -165,8 +176,12 @@ var
 begin
   Result := nil;
   for Part in AText.ToLower.Split([' ', #9]) do
+  begin
     if Part <> '' then
+    begin
       Result := Result + [Part];
+    end;
+  end;
 end;
 
 function TAtlasDebugException.Matches(const AClass: string; const AWords: TArray<string>): Boolean;
@@ -175,12 +190,18 @@ var
 begin
   Result := (AClass = '') or SameText(ExceptionClass, AClass);
   if not Result or (AWords = nil) then
+  begin
     Exit;
+  end;
   Haystack := (ExceptionClass + ' ' + Message + ' ' + LocationText + ' ' + Routine + ' ' + ThreadName + ' ' +
     IntToStr(ThreadId)).ToLower;
   for Word in AWords do
+  begin
     if Pos(Word, Haystack) = 0 then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TAtlasDebugException.LocationText: string;
@@ -189,20 +210,30 @@ begin
   begin
     Result := ExtractFileName(FileName);
     if Line > 0 then
+    begin
       Result := Result + ':' + IntToStr(Line);
+    end;
   end
   else
+  begin
     Result := Routine;
+  end;
 end;
 
 function TAtlasDebugException.ThreadText(const AMainLabel: string): string;
 begin
   if ThreadName <> '' then
-    Result := Format('%s (%d)', [ThreadName, ThreadId])
+  begin
+    Result := Format('%s (%d)', [ThreadName, ThreadId]);
+  end
   else if AMainLabel <> '' then
-    Result := Format('%s %d', [AMainLabel, ThreadId])
+  begin
+    Result := Format('%s %d', [AMainLabel, ThreadId]);
+  end
   else
+  begin
     Result := IntToStr(ThreadId);
+  end;
 end;
 
 function TAtlasDebugException.CopyText: string;
@@ -214,25 +245,35 @@ begin
   try
     Lines.Append(ExceptionClass);
     if Message <> '' then
+    begin
       Lines.Append(': ').Append(Message);
+    end;
     Lines.AppendLine;
     if Routine <> '' then
+    begin
       Lines.Append(Routine).AppendLine;
+    end;
     if FileName <> '' then
     begin
       Lines.Append(FileName);
       if Line > 0 then
+      begin
         Lines.Append('(').Append(Line).Append(')');
+      end;
       Lines.AppendLine;
     end;
     Lines.Append('Thread ').Append(ThreadText('')).AppendLine;
     if Count > 1 then
+    begin
       Lines.Append(Count).Append(' x').AppendLine;
+    end;
     for Frame in Frames do
     begin
       Lines.Append('  ').Append(Frame.Header);
       if Frame.HasSource then
+      begin
         Lines.Append(' (').Append(ExtractFileName(Frame.FileName)).Append(':').Append(Frame.Line).Append(')');
+      end;
       Lines.AppendLine;
     end;
     Result := Lines.ToString.TrimRight;
@@ -253,7 +294,9 @@ begin
   inherited Create;
   FMaxEntries := AMaxEntries;
   if FMaxEntries < 1 then
+  begin
     FMaxEntries := 1;
+  end;
 end;
 
 procedure TAtlasDebugExceptionHistory.StartSession;
@@ -265,7 +308,9 @@ end;
 procedure TAtlasDebugExceptionHistory.Clear;
 begin
   if FItems <> nil then
+  begin
     FChanged := True;
+  end;
   FItems := nil;
 end;
 
@@ -284,8 +329,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FItems) do
+  begin
     if FItems[Index].Key = AKey then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -295,8 +344,12 @@ var
 begin
   Result := 0;
   for Index := 1 to High(FItems) do
+  begin
     if FItems[Index].LastTime < FItems[Result].LastTime then
+    begin
       Result := Index;
+    end;
+  end;
 end;
 
 function TAtlasDebugExceptionHistory.Add(const AException: TAtlasDebugException): Integer;
@@ -321,9 +374,13 @@ begin
   end;
   Entry := AException;
   if Entry.Count < 1 then
+  begin
     Entry.Count := 1;
+  end;
   if Length(FItems) >= FMaxEntries then
+  begin
     Delete(FItems, OldestIndex, 1);
+  end;
   FItems := FItems + [Entry];
   Result := High(FItems);
 end;
@@ -338,18 +395,28 @@ begin
   List := TList<Integer>.Create;
   try
     for Index := 0 to High(FItems) do
+    begin
       if FItems[Index].Matches(AClass, Words) then
+      begin
         List.Add(Index);
+      end;
+    end;
     // Zuletzt gesehen zuerst; bei gleicher Zeit der spätere Eintrag zuerst (TList.Sort ist nicht stabil).
     List.Sort(TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         if FItems[ALeft].LastTime > FItems[ARight].LastTime then
-          Result := -1
+        begin
+          Result := -1;
+        end
         else if FItems[ALeft].LastTime < FItems[ARight].LastTime then
-          Result := 1
+        begin
+          Result := 1;
+        end
         else
+        begin
           Result := ARight - ALeft;
+        end;
       end));
     Result := List.ToArray;
   finally
@@ -370,20 +437,26 @@ begin
     begin
       Found := False;
       for Name in Known do
+      begin
         if SameText(Name, Entry.ExceptionClass) then
         begin
           Found := True;
           Break;
         end;
+      end;
       if not Found then
+      begin
         Known.Add(Entry.ExceptionClass);
+      end;
     end;
     Known.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
         Result := CompareText(ALeft, ARight);
         if Result = 0 then
+        begin
           Result := CompareStr(ALeft, ARight);
+        end;
       end));
     Result := Known.ToArray;
   finally
@@ -397,7 +470,9 @@ var
 begin
   Result := 0;
   for Entry in FItems do
+  begin
     Inc(Result, Entry.Count);
+  end;
 end;
 
 function TAtlasDebugExceptionHistory.TryFind(const AKey: string; out AException: TAtlasDebugException): Boolean;
@@ -407,9 +482,13 @@ begin
   Index := IndexOfKey(AKey);
   Result := Index >= 0;
   if Result then
-    AException := FItems[Index]
+  begin
+    AException := FItems[Index];
+  end
   else
+  begin
     AException := Default(TAtlasDebugException);
+  end;
 end;
 
 function TAtlasDebugExceptionHistory.TakeChanged: Boolean;
@@ -426,12 +505,20 @@ var
 begin
   Result := AText <> '';
   if not Result then
+  begin
     Exit;
+  end;
   if not CharInSet(AText[1], ['A'..'Z', 'a'..'z', '_']) then
+  begin
     Exit(False);
+  end;
   for Index := 2 to Length(AText) do
+  begin
     if not CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TokenAfter(const AText, AKeyword: string; out AToken: string): Boolean;
@@ -442,16 +529,24 @@ begin
   Start := Pos(LowerCase(AKeyword), LowerCase(AText));
   Result := Start > 0;
   if not Result then
+  begin
     Exit;
+  end;
   Start := Start + Length(AKeyword);
   while (Start <= Length(AText)) and (AText[Start] = ' ') do
+  begin
     Inc(Start);
+  end;
   Stop := Start;
   while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '$']) do
+  begin
     Inc(Stop);
+  end;
   // Ein Punkt am Ende gehört zum Satz.
   while (Stop > Start) and (AText[Stop - 1] = '.') do
+  begin
     Dec(Stop);
+  end;
   AToken := Copy(AText, Start, Stop - Start);
   Result := AToken <> '';
 end;
@@ -464,14 +559,20 @@ begin
   Start := Pos(LowerCase(AKeyword), LowerCase(AText));
   Result := Start > 0;
   if not Result then
+  begin
     Exit;
+  end;
   Start := PosEx('''', AText, Start + Length(AKeyword));
   if Start = 0 then
+  begin
     Exit(False);
+  end;
   // Die Meldung selbst darf Hochkommas enthalten; sie endet am letzten Hochkomma des Texts.
   Stop := LastDelimiter('''', AText);
   if Stop <= Start then
+  begin
     Exit(False);
+  end;
   AQuoted := Copy(AText, Start + 1, Stop - Start - 1);
 end;
 
@@ -489,17 +590,31 @@ begin
   Text := StringReplace(AText, sLineBreak, ' ', [rfReplaceAll]);
   Text := StringReplace(Text, #10, ' ', [rfReplaceAll]);
   for Keyword in ClassKeywords do
+  begin
     if TokenAfter(Text, Keyword + ' ', AClass) then
+    begin
       if IsClassName(AClass) or (Copy(AClass, 1, 1) = '$') then
-        Break
+      begin
+        Break;
+      end
       else
+      begin
         AClass := '';
+      end;
+    end;
+  end;
   Result := AClass <> '';
   if not Result then
+  begin
     Exit;
+  end;
   for Keyword in MessageKeywords do
+  begin
     if QuotedAfter(Text, Keyword, AMessage) then
+    begin
       Break;
+    end;
+  end;
 end;
 
 class function TAtlasDebugExceptionText.Unquote(const AText: string): string;
@@ -508,9 +623,13 @@ var
 begin
   Text := Trim(AText);
   if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
-    Result := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll])
+  begin
+    Result := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+  end
   else
+  begin
     Result := Text;
+  end;
 end;
 
 end.

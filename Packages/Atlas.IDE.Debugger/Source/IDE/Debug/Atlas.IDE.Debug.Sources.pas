@@ -47,7 +47,9 @@ uses
 class procedure TAtlasIdeDebugSources.Clear;
 begin
   if FCache <> nil then
+  begin
     FCache.Clear;
+  end;
   FOwnCodeReady := False;
   FOwnCode.Folders := nil;
 end;
@@ -59,53 +61,74 @@ begin
   FOwnCode.Folders := nil;
 end;
 
-class function TAtlasIdeDebugSources.Resolve(const AFileName: string): string;
+/// <summary>Vorhandene Datei namens AName unter den Dateien von AProject; '' ohne.</summary>
+function FindInProject(const AProject: IOTAProject; const AName: string): string;
 var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  ProjectIndex, FileIndex: Integer;
-  Name, Candidate: string;
-  Files: TStringList;
+  mFiles: TStringList;
+  mIndex: Integer;
+begin
+  Result := '';
+  mFiles := TStringList.Create;
+  try
+    AProject.GetCompleteFileList(mFiles);
+    for mIndex := 0 to mFiles.Count - 1 do
+    begin
+      if SameText(ExtractFileName(mFiles[mIndex]), AName) and FileExists(mFiles[mIndex]) then
+      begin
+        Exit(mFiles[mIndex]);
+      end;
+    end;
+  finally
+    mFiles.Free;
+  end;
+end;
+
+/// <summary>Vorhandene Datei namens AName in einem Projekt der Projektgruppe; '' ohne.</summary>
+function FindInGroup(const AName: string): string;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mGroup := mModules.MainProjectGroup;
+  if mGroup = nil then
+  begin
+    Exit;
+  end;
+  mIndex := 0;
+  while (Result = '') and (mIndex < mGroup.ProjectCount) do
+  begin
+    Result := FindInProject(mGroup.Projects[mIndex], AName);
+    Inc(mIndex);
+  end;
+end;
+
+class function TAtlasIdeDebugSources.Resolve(const AFileName: string): string;
 begin
   Result := '';
   if AFileName = '' then
+  begin
     Exit;
+  end;
   if TPath.IsPathRooted(AFileName) and FileExists(AFileName) then
+  begin
     Exit(AFileName);
+  end;
   if FCache = nil then
   begin
     FCache := TStringList.Create;
     FCache.CaseSensitive := False;
   end;
   if FCache.IndexOfName(AFileName) >= 0 then
-    Exit(FCache.Values[AFileName]);
-  Name := ExtractFileName(AFileName);
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
   begin
-    Group := Modules.MainProjectGroup;
-    Files := TStringList.Create;
-    try
-      if Group <> nil then
-        for ProjectIndex := 0 to Group.ProjectCount - 1 do
-        begin
-          Files.Clear;
-          Group.Projects[ProjectIndex].GetCompleteFileList(Files);
-          for FileIndex := 0 to Files.Count - 1 do
-          begin
-            Candidate := Files[FileIndex];
-            if SameText(ExtractFileName(Candidate), Name) and FileExists(Candidate) then
-            begin
-              Result := Candidate;
-              Break;
-            end;
-          end;
-          if Result <> '' then
-            Break;
-        end;
-    finally
-      Files.Free;
-    end;
+    Exit(FCache.Values[AFileName]);
   end;
+  Result := FindInGroup(ExtractFileName(AFileName));
   FCache.Values[AFileName] := Result;
 end;
 
@@ -123,8 +146,12 @@ begin
     begin
       Group := Modules.MainProjectGroup;
       if Group <> nil then
+      begin
         for Index := 0 to Group.ProjectCount - 1 do
+        begin
           FOwnCode.AddFolder(ExtractFileDir(Group.Projects[Index].FileName));
+        end;
+      end;
     end;
     FOwnCodeReady := True;
   end;
@@ -142,7 +169,9 @@ begin
   begin
     Path := Resolve(AFrames[Index].FileName);
     if Path <> '' then
+    begin
       AFrames[Index].FileName := Path;
+    end;
     AFrames[Index].Own := Own.IsOwnFile(Path);
   end;
 end;

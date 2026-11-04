@@ -318,46 +318,46 @@ end;
 function TAtlasNavHistory.Jump(const AEntry: TAtlasNavListEntry; const ACurrent: TAtlasNavPlace;
   out ATarget: TAtlasNavPlace): Boolean;
 var
-  Current, Next: TAtlasNavPlace;
+  mCurrent, mNext: TAtlasNavPlace;
+  mCount: Integer;
 begin
-  Result := False;
-  Current := ACurrent;
-  case AEntry.Kind of
-    TAtlasNavKind.Back:
-      begin
-        if (AEntry.Index < 0) or (AEntry.Index >= FBack.Count) then
+  mCurrent := ACurrent;
+  mCount := FEdits.Count;
+  if AEntry.Kind = TAtlasNavKind.Back then
+  begin
+    mCount := FBack.Count;
+  end
+  else if AEntry.Kind = TAtlasNavKind.Ahead then
+  begin
+    mCount := FForward.Count;
+  end;
+  Result := (AEntry.Index >= 0) and (AEntry.Index < mCount);
+  if Result then
+  begin
+    case AEntry.Kind of
+      TAtlasNavKind.Back:
         begin
-          Exit;
+          // Zurückspulen: alles über dem Eintrag wandert auf den Vor-Stapel.
+          while (FBack.Count > AEntry.Index + 1) and StepBack(mCurrent, mNext) do
+          begin
+            mCurrent := mNext;
+          end;
+          Result := StepBack(mCurrent, ATarget);
         end;
-        // Zurückspulen: alles über dem Eintrag wandert auf den Vor-Stapel.
-        while (FBack.Count > AEntry.Index + 1) and StepBack(Current, Next) do
+      TAtlasNavKind.Ahead:
         begin
-          Current := Next;
+          while (FForward.Count > AEntry.Index + 1) and StepForward(mCurrent, mNext) do
+          begin
+            mCurrent := mNext;
+          end;
+          Result := StepForward(mCurrent, ATarget);
         end;
-        Result := StepBack(Current, ATarget);
-      end;
-    TAtlasNavKind.Ahead:
-      begin
-        if (AEntry.Index < 0) or (AEntry.Index >= FForward.Count) then
+      TAtlasNavKind.Edit:
         begin
-          Exit;
+          ATarget := FEdits[AEntry.Index];
+          Jumped(ACurrent, ATarget);
         end;
-        while (FForward.Count > AEntry.Index + 1) and StepForward(Current, Next) do
-        begin
-          Current := Next;
-        end;
-        Result := StepForward(Current, ATarget);
-      end;
-    TAtlasNavKind.Edit:
-      begin
-        if (AEntry.Index < 0) or (AEntry.Index >= FEdits.Count) then
-        begin
-          Exit;
-        end;
-        ATarget := FEdits[AEntry.Index];
-        Jumped(ACurrent, ATarget);
-        Result := True;
-      end;
+    end;
   end;
 end;
 

@@ -1676,8 +1676,8 @@ var
   Active: TAtlasFileHits;
   Selection: TAtlasSearchArea;
   From: TAtlasSearchPos;
-  FileIndex, HitIndex, Index: Integer;
-  Wrapped: Boolean;
+  Index: Integer;
+  Location: TAtlasFileLocation;
 begin
   Result := True;
   if not TopView(View) then
@@ -1720,25 +1720,24 @@ begin
   begin
     From := Selection.Start;
   end;
-  if not TAtlasFileSearch.NextLocation(Results, View.Buffer.FileName, From, ABackward, FileIndex, HitIndex,
-    Wrapped) then
+  if not TAtlasFileSearch.NextLocation(Results, View.Buffer.FileName, From, ABackward, Location) then
   begin
     Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchNothing, [FLast.Text]));
     Exit;
   end;
-  if Wrapped then
+  if Location.Wrapped then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchWrapped));
   end;
-  if SameText(Results[FileIndex].FileName, View.Buffer.FileName) then
+  if SameText(Results[Location.FileIndex].FileName, View.Buffer.FileName) then
   begin
-    SelectHit(View, Lines, Results[FileIndex].Hits[HitIndex]);
+    SelectHit(View, Lines, Results[Location.FileIndex].Hits[Location.HitIndex]);
     UpdateCounter;
   end
   else
   begin
-    OpenHit(Results[FileIndex].FileName, Results[FileIndex].Hits[HitIndex].Line,
-      Results[FileIndex].Hits[HitIndex].Character);
+    OpenHit(Results[Location.FileIndex].FileName, Results[Location.FileIndex].Hits[Location.HitIndex].Line,
+      Results[Location.FileIndex].Hits[Location.HitIndex].Character);
   end;
 end;
 

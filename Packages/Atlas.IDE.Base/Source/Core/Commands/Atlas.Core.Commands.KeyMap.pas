@@ -62,6 +62,21 @@ type
     function TakenActions: TArray<TAtlasTakenAction>;
   end;
 
+  /// <summary>Wem eine Belegung gehört und woher sie stammt (für TAtlasKeyItem.Create).</summary>
+  TAtlasKeyProvenance = record
+    Origin: TAtlasKeyOrigin;
+    /// <summary>„IDE“, „Atlas“ oder der Package-Name der Erweiterung (ohne Pfad).</summary>
+    OriginName: string;
+    Context: TAtlasKeyContext;
+    Source: TAtlasKeySource;
+    /// <summary>Eindeutig je Quelle: Name der Aktion, Atlas-Funktion, Taste der Tastaturbelegung.</summary>
+    Id: string;
+    /// <summary>Reihenfolge in der Quelle (Aktionsliste, Anmeldung).</summary>
+    Order: Integer;
+    class function Create(AOrigin: TAtlasKeyOrigin; const AOriginName: string; AContext: TAtlasKeyContext;
+      ASource: TAtlasKeySource; const AId: string; AOrder: Integer): TAtlasKeyProvenance; static;
+  end;
+
   /// <summary>Eine Belegung einer Taste.</summary>
   TAtlasKeyItem = record
     ShortCut: Word;
@@ -97,9 +112,8 @@ type
     /// Zählung.</summary>
     MouseUses: Integer;
     KeyUses: Integer;
-    class function Create(AShortCut: Word; const AKeyText, ACommand: string; AOrigin: TAtlasKeyOrigin;
-      const AOriginName: string; AContext: TAtlasKeyContext; ASource: TAtlasKeySource; const AId: string;
-      AOrder: Integer): TAtlasKeyItem; static;
+    class function Create(AShortCut: Word; const AKeyText, ACommand: string;
+      const AOwner: TAtlasKeyProvenance): TAtlasKeyItem; static;
     /// <summary>„Befehl (Herkunft)“ für Meldungen.</summary>
     function Holder: string;
     /// <summary>Selten per Tastatur genutzt (TAtlasCommandUsage.IsRarelyByKeyboard).</summary>
@@ -183,22 +197,34 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Commands.Usage;
 
-{ TAtlasKeyItem }
+{ TAtlasKeyProvenance }
 
-class function TAtlasKeyItem.Create(AShortCut: Word; const AKeyText, ACommand: string; AOrigin: TAtlasKeyOrigin;
-  const AOriginName: string; AContext: TAtlasKeyContext; ASource: TAtlasKeySource; const AId: string;
-  AOrder: Integer): TAtlasKeyItem;
+class function TAtlasKeyProvenance.Create(AOrigin: TAtlasKeyOrigin; const AOriginName: string;
+  AContext: TAtlasKeyContext; ASource: TAtlasKeySource; const AId: string; AOrder: Integer): TAtlasKeyProvenance;
 begin
-  Result := Default(TAtlasKeyItem);
-  Result.ShortCut := AShortCut;
-  Result.KeyText := AKeyText;
-  Result.Command := ACommand;
   Result.Origin := AOrigin;
   Result.OriginName := AOriginName;
   Result.Context := AContext;
   Result.Source := ASource;
   Result.Id := AId;
   Result.Order := AOrder;
+end;
+
+{ TAtlasKeyItem }
+
+class function TAtlasKeyItem.Create(AShortCut: Word; const AKeyText, ACommand: string;
+  const AOwner: TAtlasKeyProvenance): TAtlasKeyItem;
+begin
+  Result := Default(TAtlasKeyItem);
+  Result.ShortCut := AShortCut;
+  Result.KeyText := AKeyText;
+  Result.Command := ACommand;
+  Result.Origin := AOwner.Origin;
+  Result.OriginName := AOwner.OriginName;
+  Result.Context := AOwner.Context;
+  Result.Source := AOwner.Source;
+  Result.Id := AOwner.Id;
+  Result.Order := AOwner.Order;
   Result.Active := True;
   Result.Winner := -1;
 end;
@@ -211,9 +237,13 @@ end;
 function TAtlasKeyItem.Holder: string;
 begin
   if OriginName = '' then
-    Result := Command
+  begin
+    Result := Command;
+  end
   else
+  begin
     Result := Command + ' (' + OriginName + ')';
+  end;
 end;
 
 { TAtlasKeyQuery }
@@ -233,11 +263,17 @@ end;
 function TAtlasKeyQuery.Matches(const AItem: TAtlasKeyItem): Boolean;
 begin
   if Text = '' then
+  begin
     Exit(True);
+  end;
   if ShortCut <> 0 then
+  begin
     Exit(AItem.ShortCut = ShortCut);
+  end;
   if Modifiers <> 0 then
+  begin
     Exit((AItem.ShortCut <> 0) and ((AItem.ShortCut and Modifiers) = Modifiers));
+  end;
   Result := (Pos(Text, LowerCase(AItem.KeyText)) > 0) or (Pos(Text, LowerCase(AItem.Command)) > 0) or
     (Pos(Text, LowerCase(AItem.Category)) > 0) or (Pos(Text, LowerCase(AItem.OriginName)) > 0);
 end;
@@ -279,128 +315,85 @@ begin
   end;
 end;
 
+const
+  /// <summary>Befehl der Befehlspalette je Atlas-Taste (CommandIdOf); '' ohne.</summary>
+  CommandIds: array[TAtlasKeyFunction] of string = (
+    '', // Palette
+    'Atlas.CheckNow', // Check
+    '', // Completion
+    '', // Signature
+    'Atlas.QuickToggles', // QuickToggle
+    '', // DiagnosticMode
+    'Atlas.CodeActions', // CodeActions
+    'Atlas.ExpandSelection', // ExpandSelection
+    'Atlas.ShrinkSelection', // ShrinkSelection
+    'Atlas.Implementations', // GoToImplementation
+    'Atlas.TypeDefinition', // TypeDefinition
+    'Atlas.UndoChange', // UndoChange
+    'Atlas.RedoChange', // RedoChange
+    '', // WelcomeSearch
+    'Atlas.ToggleMethod', // MethodToggleUp
+    'Atlas.ToggleMethod', // MethodToggleDown
+    'Atlas.SwitchTestUnit', // TestUnit
+    'Atlas.UnitSearch', // UnitSearch
+    'Atlas.UnitSearch', // UnitSearchIde
+    'Atlas.BookmarkAdd', // Bookmark
+    'Atlas.GenerateMenu', // GenerateMenu
+    'Atlas.Notifications', // Notifications
+    '', // WelcomeQuickBuild
+    '', // WelcomeQuickTests
+    'Atlas.HideElement', // HideElement
+    'Atlas.NextProblem', // NextProblem
+    'Atlas.PreviousProblem', // PreviousProblem
+    'Atlas.QuickOpen', // QuickOpen
+    'Atlas.NavBack', // NavBack
+    'Atlas.NavForward', // NavForward
+    'Atlas.LastEdit', // LastEdit
+    'Atlas.PeekDefinition', // PeekDefinition
+    'Atlas.PeekReferences', // PeekReferences
+    'Atlas.Breadcrumbs', // Breadcrumbs
+    'Atlas.JumpToMatch', // JumpToMatch
+    'Atlas.JumpToMatchSelect', // JumpToMatchSelect
+    'Atlas.NextChange', // NextChange
+    'Atlas.PreviousChange', // PreviousChange
+    'Atlas.MoveLinesUp', // MoveLinesUp
+    'Atlas.MoveLinesDown', // MoveLinesDown
+    'Atlas.DuplicateLinesUp', // DuplicateLinesUp
+    'Atlas.DuplicateLinesDown', // DuplicateLinesDown
+    'Atlas.CompleteStatement', // CompleteStatement
+    'Atlas.MultiCursorNext', // MultiCursorNext
+    '', // MultiCursorSkip
+    'Atlas.MultiCursorLineEnds', // MultiCursorLineEnds
+    'Atlas.MultiCursorAbove', // MultiCursorAbove
+    'Atlas.MultiCursorBelow', // MultiCursorBelow
+    'Atlas.Search', // Search
+    'Atlas.SearchNext', // SearchNext
+    'Atlas.SearchPrevious', // SearchPrevious
+    'Atlas.SearchInMethod', // SearchMethod
+    'Atlas.FormatCode', // FormatCode
+    'Atlas.ToggleBlockComment', // ToggleBlockComment
+    'Atlas.NewLineBelow', // NewLineBelow
+    'Atlas.NewLineAbove', // NewLineAbove
+    'Atlas.Unwrap', // Unwrap
+    'Atlas.ProblemsWindow', // ProblemsWindow
+    'Atlas.GotoInterface', // SectionInterface
+    'Atlas.GotoImplementation', // SectionImplementation
+    'Atlas.QuickBookmarkToggle', // QuickBookmark
+    '', // QuickBookmarkSet
+    '', // QuickBookmarkJump
+    'Atlas.NextBookmark', // NextBookmark
+    'Atlas.PreviousBookmark', // PreviousBookmark
+    'Atlas.SearchReplace', // SearchReplace
+    'Atlas.StepIntoTarget', // StepIntoTarget
+    'Atlas.ExpressionType', // ExpressionType
+    'Atlas.SafeDelete', // SafeDelete
+    'Atlas.CreateIssue', // CreateIssue
+    '' // DesignerSearch
+  );
+
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;
 begin
-  case AFunc of
-    TAtlasKeyFunction.Check:
-      Result := 'Atlas.CheckNow';
-    TAtlasKeyFunction.QuickToggle:
-      Result := 'Atlas.QuickToggles';
-    TAtlasKeyFunction.CodeActions:
-      Result := 'Atlas.CodeActions';
-    TAtlasKeyFunction.ExpandSelection:
-      Result := 'Atlas.ExpandSelection';
-    TAtlasKeyFunction.ShrinkSelection:
-      Result := 'Atlas.ShrinkSelection';
-    TAtlasKeyFunction.GoToImplementation:
-      Result := 'Atlas.Implementations';
-    TAtlasKeyFunction.TypeDefinition:
-      Result := 'Atlas.TypeDefinition';
-    TAtlasKeyFunction.UndoChange:
-      Result := 'Atlas.UndoChange';
-    TAtlasKeyFunction.RedoChange:
-      Result := 'Atlas.RedoChange';
-    TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown:
-      Result := 'Atlas.ToggleMethod';
-    TAtlasKeyFunction.TestUnit:
-      Result := 'Atlas.SwitchTestUnit';
-    TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde:
-      Result := 'Atlas.UnitSearch';
-    TAtlasKeyFunction.Bookmark:
-      Result := 'Atlas.BookmarkAdd';
-    TAtlasKeyFunction.GenerateMenu:
-      Result := 'Atlas.GenerateMenu';
-    TAtlasKeyFunction.Notifications:
-      Result := 'Atlas.Notifications';
-    TAtlasKeyFunction.HideElement:
-      Result := 'Atlas.HideElement';
-    TAtlasKeyFunction.NextProblem:
-      Result := 'Atlas.NextProblem';
-    TAtlasKeyFunction.PreviousProblem:
-      Result := 'Atlas.PreviousProblem';
-    TAtlasKeyFunction.QuickOpen:
-      Result := 'Atlas.QuickOpen';
-    TAtlasKeyFunction.NavBack:
-      Result := 'Atlas.NavBack';
-    TAtlasKeyFunction.NavForward:
-      Result := 'Atlas.NavForward';
-    TAtlasKeyFunction.LastEdit:
-      Result := 'Atlas.LastEdit';
-    TAtlasKeyFunction.PeekDefinition:
-      Result := 'Atlas.PeekDefinition';
-    TAtlasKeyFunction.PeekReferences:
-      Result := 'Atlas.PeekReferences';
-    TAtlasKeyFunction.Breadcrumbs:
-      Result := 'Atlas.Breadcrumbs';
-    TAtlasKeyFunction.JumpToMatch:
-      Result := 'Atlas.JumpToMatch';
-    TAtlasKeyFunction.JumpToMatchSelect:
-      Result := 'Atlas.JumpToMatchSelect';
-    TAtlasKeyFunction.NextChange:
-      Result := 'Atlas.NextChange';
-    TAtlasKeyFunction.PreviousChange:
-      Result := 'Atlas.PreviousChange';
-    TAtlasKeyFunction.MoveLinesUp:
-      Result := 'Atlas.MoveLinesUp';
-    TAtlasKeyFunction.MoveLinesDown:
-      Result := 'Atlas.MoveLinesDown';
-    TAtlasKeyFunction.DuplicateLinesUp:
-      Result := 'Atlas.DuplicateLinesUp';
-    TAtlasKeyFunction.DuplicateLinesDown:
-      Result := 'Atlas.DuplicateLinesDown';
-    TAtlasKeyFunction.CompleteStatement:
-      Result := 'Atlas.CompleteStatement';
-    TAtlasKeyFunction.MultiCursorNext:
-      Result := 'Atlas.MultiCursorNext';
-    TAtlasKeyFunction.MultiCursorLineEnds:
-      Result := 'Atlas.MultiCursorLineEnds';
-    TAtlasKeyFunction.MultiCursorAbove:
-      Result := 'Atlas.MultiCursorAbove';
-    TAtlasKeyFunction.MultiCursorBelow:
-      Result := 'Atlas.MultiCursorBelow';
-    TAtlasKeyFunction.Search:
-      Result := 'Atlas.Search';
-    TAtlasKeyFunction.SearchNext:
-      Result := 'Atlas.SearchNext';
-    TAtlasKeyFunction.SearchPrevious:
-      Result := 'Atlas.SearchPrevious';
-    TAtlasKeyFunction.SearchMethod:
-      Result := 'Atlas.SearchInMethod';
-    TAtlasKeyFunction.SearchReplace:
-      Result := 'Atlas.SearchReplace';
-    TAtlasKeyFunction.FormatCode:
-      Result := 'Atlas.FormatCode';
-    TAtlasKeyFunction.ToggleBlockComment:
-      Result := 'Atlas.ToggleBlockComment';
-    TAtlasKeyFunction.NewLineBelow:
-      Result := 'Atlas.NewLineBelow';
-    TAtlasKeyFunction.NewLineAbove:
-      Result := 'Atlas.NewLineAbove';
-    TAtlasKeyFunction.Unwrap:
-      Result := 'Atlas.Unwrap';
-    TAtlasKeyFunction.ProblemsWindow:
-      Result := 'Atlas.ProblemsWindow';
-    TAtlasKeyFunction.SectionInterface:
-      Result := 'Atlas.GotoInterface';
-    TAtlasKeyFunction.SectionImplementation:
-      Result := 'Atlas.GotoImplementation';
-    TAtlasKeyFunction.QuickBookmark:
-      Result := 'Atlas.QuickBookmarkToggle';
-    TAtlasKeyFunction.NextBookmark:
-      Result := 'Atlas.NextBookmark';
-    TAtlasKeyFunction.PreviousBookmark:
-      Result := 'Atlas.PreviousBookmark';
-    TAtlasKeyFunction.StepIntoTarget:
-      Result := 'Atlas.StepIntoTarget';
-    TAtlasKeyFunction.ExpressionType:
-      Result := 'Atlas.ExpressionType';
-    TAtlasKeyFunction.SafeDelete:
-      Result := 'Atlas.SafeDelete';
-    TAtlasKeyFunction.CreateIssue:
-      Result := 'Atlas.CreateIssue';
-  else
-    Result := '';
-  end;
+  Result := CommandIds[AFunc];
 end;
 
 class function TAtlasKeyMap.ContextOfCategory(const ACategory: string): TAtlasKeyContext;
@@ -409,11 +402,17 @@ var
 begin
   Lower := LowerCase(ACategory);
   if (Pos('designer', Lower) > 0) or (Pos('formular', Lower) > 0) then
-    Result := TAtlasKeyContext.Designer
+  begin
+    Result := TAtlasKeyContext.Designer;
+  end
   else if Pos('editor', Lower) > 0 then
-    Result := TAtlasKeyContext.Editor
+  begin
+    Result := TAtlasKeyContext.Editor;
+  end
   else
+  begin
     Result := TAtlasKeyContext.Global;
+  end;
 end;
 
 class function TAtlasKeyMap.OriginOfModule(const AModule, AIdeFolder, AAtlasModule: string;
@@ -447,9 +446,13 @@ class function TAtlasKeyMap.Collide(const A, B: TAtlasKeyItem): Boolean;
 begin
   Result := False;
   if (A.ShortCut = 0) or (A.ShortCut <> B.ShortCut) or not Overlaps(A.Context, B.Context) then
+  begin
     Exit;
+  end;
   if A.Origin <> B.Origin then
+  begin
     Exit(True);
+  end;
   case A.Origin of
     // Zwei Atlas-Funktionen auf derselben Taste: doppelt belegt.
     TAtlasKeyOrigin.Atlas:
@@ -473,92 +476,242 @@ var
 begin
   Result := AItems[AIndex].Context;
   if Result <> TAtlasKeyContext.Global then
+  begin
     Exit;
+  end;
   for Context in [TAtlasKeyContext.Editor, TAtlasKeyContext.Designer, TAtlasKeyContext.WelcomePage] do
   begin
     Found := False;
     for Partner in APartners do
+    begin
       if AItems[Partner].Context = Context then
+      begin
         Found := True;
+      end;
+    end;
     if Found then
+    begin
       Exit(Context);
+    end;
+  end;
+end;
+
+/// <summary>Willkommensseite: Das Suchfeld von Atlas nimmt die Taste, solange die Seite aktiv ist; -1 ohne.
+/// </summary>
+function WindowWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
+var
+  Candidate: Integer;
+begin
+  Result := -1;
+  for Candidate in ACandidates do
+  begin
+    if (AItems[Candidate].Source = TAtlasKeySource.Window) and AItems[Candidate].Active then
+    begin
+      Exit(Candidate);
+    end;
+  end;
+end;
+
+function IsActiveBinding(const AItem: TAtlasKeyItem): Boolean;
+begin
+  Result := (AItem.Source = TAtlasKeySource.Binding) and AItem.Active;
+end;
+
+/// <summary>Erste aktive Tastaturbelegung, die die IDE als wirksam meldet oder (AtlasFirst) von Atlas mit Vorrang;
+/// -1 ohne.</summary>
+function FirstBinding(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
+  AAtlasFirst: Boolean): Integer;
+var
+  Candidate: Integer;
+  Item: TAtlasKeyItem;
+begin
+  Result := -1;
+  for Candidate in ACandidates do
+  begin
+    Item := AItems[Candidate];
+    if not IsActiveBinding(Item) then
+    begin
+      Continue;
+    end;
+    if (not AAtlasFirst and Item.Effective) or
+      (AAtlasFirst and (Item.Origin = TAtlasKeyOrigin.Atlas) and Item.Priority) then
+    begin
+      Exit(Candidate);
+    end;
+  end;
+end;
+
+/// <summary>Löst ACandidate den bisherigen Gewinner AWinner ab? Eine spätere Tastaturbelegung schlägt eine, die
+/// weder wirksam ist noch Vorrang hat.</summary>
+function Replaces(const AItems: TArray<TAtlasKeyItem>; ACandidate, AWinner: Integer): Boolean;
+begin
+  Result := (AWinner < 0) or ((AItems[AWinner].Source = TAtlasKeySource.Binding) and
+    not AItems[AWinner].Effective and not AItems[AWinner].Priority and
+    (AItems[ACandidate].Order > AItems[AWinner].Order));
+end;
+
+/// <summary>Editor: Tastaturbelegungen vor Menübefehlen; unter ihnen die wirksame (zuletzt angemeldete).</summary>
+function EditorWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
+var
+  Candidate: Integer;
+begin
+  Result := FirstBinding(AItems, ACandidates, False);
+  if Result < 0 then
+  begin
+    Result := FirstBinding(AItems, ACandidates, True);
+  end;
+  for Candidate in ACandidates do
+  begin
+    if IsActiveBinding(AItems[Candidate]) and Replaces(AItems, Candidate, Result) then
+    begin
+      Result := Candidate;
+    end;
+  end;
+end;
+
+/// <summary>Die erste aktive Aktion der Aktionsliste; -1 ohne.</summary>
+function ActionWinner(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>): Integer;
+var
+  Candidate: Integer;
+begin
+  Result := -1;
+  for Candidate in ACandidates do
+  begin
+    if (AItems[Candidate].Source = TAtlasKeySource.Action) and AItems[Candidate].Active and
+      ((Result < 0) or (AItems[Candidate].Order < AItems[Result].Order)) then
+    begin
+      Result := Candidate;
+    end;
+  end;
+end;
+
+/// <summary>Gewinnt AWinner nur, weil alle anderen Atlas-Tasten sind, die die Taste überlassen?</summary>
+function OnlyAtlasLeft(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
+  AWinner: Integer): Boolean;
+var
+  Candidate: Integer;
+begin
+  Result := AItems[AWinner].Origin <> TAtlasKeyOrigin.Atlas;
+  for Candidate in ACandidates do
+  begin
+    if (Candidate <> AWinner) and ((AItems[Candidate].Origin <> TAtlasKeyOrigin.Atlas) or AItems[Candidate].Active)
+      then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+/// <summary>Verliert eine Aktion gegen AWinner?</summary>
+function ActionLoses(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
+  AWinner: Integer): Boolean;
+var
+  Candidate: Integer;
+begin
+  Result := False;
+  for Candidate in ACandidates do
+  begin
+    if (Candidate <> AWinner) and (AItems[Candidate].Source = TAtlasKeySource.Action) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Warum AWinner unter ACandidates gewinnt.</summary>
+function ReasonOf(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
+  AWinner: Integer): TAtlasKeyReason;
+var
+  Winner: TAtlasKeyItem;
+begin
+  Winner := AItems[AWinner];
+  if OnlyAtlasLeft(AItems, ACandidates, AWinner) then
+  begin
+    Result := TAtlasKeyReason.AtlasYields;
+  end
+  else if Winner.Source <> TAtlasKeySource.Binding then
+  begin
+    Result := TAtlasKeyReason.FirstAction;
+  end
+  else if (Winner.Origin = TAtlasKeyOrigin.Atlas) and Winner.Priority then
+  begin
+    Result := TAtlasKeyReason.AtlasPriority;
+  end
+  else if ActionLoses(AItems, ACandidates, AWinner) then
+  begin
+    Result := TAtlasKeyReason.EditorBinding;
+  end
+  else
+  begin
+    Result := TAtlasKeyReason.LastBinding;
   end;
 end;
 
 /// <summary>Gewinner unter ACandidates im Kontext AClash; -1, wenn keine die Taste hält.</summary>
 procedure Decide(const AItems: TArray<TAtlasKeyItem>; const ACandidates: TArray<Integer>;
   AClash: TAtlasKeyContext; out AWinner: Integer; out AReason: TAtlasKeyReason);
-var
-  Candidate: Integer;
-  OnlyAtlasLeft, ActionLoses: Boolean;
 begin
   AWinner := -1;
   AReason := TAtlasKeyReason.NoneActive;
-  // Willkommensseite: Das Suchfeld von Atlas nimmt die Taste, solange die Seite aktiv ist.
   if AClash = TAtlasKeyContext.WelcomePage then
-    for Candidate in ACandidates do
-      if (AItems[Candidate].Source = TAtlasKeySource.Window) and AItems[Candidate].Active then
-      begin
-        AWinner := Candidate;
-        AReason := TAtlasKeyReason.OwnWindow;
-        Exit;
-      end;
-  // Editor: Tastaturbelegungen vor Menübefehlen; unter ihnen die wirksame (zuletzt angemeldete).
+  begin
+    AWinner := WindowWinner(AItems, ACandidates);
+  end;
+  if AWinner >= 0 then
+  begin
+    AReason := TAtlasKeyReason.OwnWindow;
+    Exit;
+  end;
   if AClash = TAtlasKeyContext.Editor then
   begin
-    for Candidate in ACandidates do
-      if (AWinner < 0) and (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
-        AItems[Candidate].Effective then
-        AWinner := Candidate;
-    for Candidate in ACandidates do
-      if (AWinner < 0) and (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
-        (AItems[Candidate].Origin = TAtlasKeyOrigin.Atlas) and AItems[Candidate].Priority then
-        AWinner := Candidate;
-    for Candidate in ACandidates do
-      if (AItems[Candidate].Source = TAtlasKeySource.Binding) and AItems[Candidate].Active and
-        ((AWinner < 0) or ((AItems[AWinner].Source = TAtlasKeySource.Binding) and
-        not AItems[AWinner].Effective and not AItems[AWinner].Priority and
-        (AItems[Candidate].Order > AItems[AWinner].Order))) then
-        AWinner := Candidate;
+    AWinner := EditorWinner(AItems, ACandidates);
   end;
   // Sonst die erste Aktion der Aktionsliste.
   if AWinner < 0 then
-    for Candidate in ACandidates do
-      if (AItems[Candidate].Source = TAtlasKeySource.Action) and AItems[Candidate].Active and
-        ((AWinner < 0) or (AItems[Candidate].Order < AItems[AWinner].Order)) then
-        AWinner := Candidate;
-  if AWinner < 0 then
-    Exit;
-  OnlyAtlasLeft := AItems[AWinner].Origin <> TAtlasKeyOrigin.Atlas;
-  ActionLoses := False;
-  for Candidate in ACandidates do
-    if Candidate <> AWinner then
-    begin
-      if (AItems[Candidate].Origin <> TAtlasKeyOrigin.Atlas) or AItems[Candidate].Active then
-        OnlyAtlasLeft := False;
-      if AItems[Candidate].Source = TAtlasKeySource.Action then
-        ActionLoses := True;
-    end;
-  if OnlyAtlasLeft then
-    AReason := TAtlasKeyReason.AtlasYields
-  else if (AItems[AWinner].Origin = TAtlasKeyOrigin.Atlas) and AItems[AWinner].Priority and
-    (AItems[AWinner].Source = TAtlasKeySource.Binding) then
-    AReason := TAtlasKeyReason.AtlasPriority
-  else if AItems[AWinner].Source = TAtlasKeySource.Binding then
   begin
-    if ActionLoses then
-      AReason := TAtlasKeyReason.EditorBinding
-    else
-      AReason := TAtlasKeyReason.LastBinding;
-  end
-  else
-    AReason := TAtlasKeyReason.FirstAction;
+    AWinner := ActionWinner(AItems, ACandidates);
+  end;
+  if AWinner >= 0 then
+  begin
+    AReason := ReasonOf(AItems, ACandidates, AWinner);
+  end;
+end;
+
+/// <summary>Belegungen, die mit AItems[AIndex] kollidieren.</summary>
+function PartnersOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<Integer>;
+var
+  Other: Integer;
+begin
+  Result := nil;
+  for Other := 0 to High(AItems) do
+  begin
+    if (Other <> AIndex) and TAtlasKeyMap.Collide(AItems[AIndex], AItems[Other]) then
+    begin
+      Result := Result + [Other];
+    end;
+  end;
+end;
+
+/// <summary>AIndex und die Partner, die sich mit dem Kontext AClash überschneiden.</summary>
+function CandidatesOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer; const APartners: TArray<Integer>;
+  AClash: TAtlasKeyContext): TArray<Integer>;
+var
+  Other: Integer;
+begin
+  Result := [AIndex];
+  for Other in APartners do
+  begin
+    if TAtlasKeyMap.Overlaps(AItems[Other].Context, AClash) then
+    begin
+      Result := Result + [Other];
+    end;
+  end;
 end;
 
 class procedure TAtlasKeyMap.Analyze(var AItems: TArray<TAtlasKeyItem>);
 var
-  Index, Other, Winner: Integer;
-  Partners, Candidates: TArray<Integer>;
+  Index, Winner: Integer;
+  Partners: TArray<Integer>;
   Clash: TAtlasKeyContext;
   Reason: TAtlasKeyReason;
 begin
@@ -572,11 +725,10 @@ begin
   for Index := 0 to High(AItems) do
   begin
     if AItems[Index].ShortCut = 0 then
+    begin
       Continue;
-    Partners := nil;
-    for Other := 0 to High(AItems) do
-      if (Other <> Index) and Collide(AItems[Index], AItems[Other]) then
-        Partners := Partners + [Other];
+    end;
+    Partners := PartnersOf(AItems, Index);
     if Length(Partners) = 0 then
     begin
       AItems[Index].Winner := Index;
@@ -585,11 +737,7 @@ begin
     end;
     AItems[Index].Conflict := True;
     Clash := ClashContext(AItems, Index, Partners);
-    Candidates := [Index];
-    for Other in Partners do
-      if Overlaps(AItems[Other].Context, Clash) then
-        Candidates := Candidates + [Other];
-    Decide(AItems, Candidates, Clash, Winner, Reason);
+    Decide(AItems, CandidatesOf(AItems, Index, Partners, Clash), Clash, Winner, Reason);
     AItems[Index].Winner := Winner;
     AItems[Index].Reason := Reason;
     AItems[Index].Wins := Winner = Index;
@@ -602,8 +750,12 @@ var
 begin
   Result := 0;
   for Item in AItems do
+  begin
     if Item.Conflict then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.PartnerOf(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): Integer;
@@ -612,12 +764,20 @@ var
 begin
   Result := -1;
   if (AIndex < 0) or (AIndex > High(AItems)) or not AItems[AIndex].Conflict then
+  begin
     Exit;
+  end;
   if (AItems[AIndex].Winner >= 0) and (AItems[AIndex].Winner <> AIndex) then
+  begin
     Exit(AItems[AIndex].Winner);
+  end;
   for Other := 0 to High(AItems) do
+  begin
     if (Other <> AIndex) and Collide(AItems[AIndex], AItems[Other]) then
+    begin
       Exit(Other);
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.AtlasConflicts(const AItems: TArray<TAtlasKeyItem>): TArray<Integer>;
@@ -626,9 +786,13 @@ var
 begin
   Result := nil;
   for Index := 0 to High(AItems) do
+  begin
     if (AItems[Index].Origin = TAtlasKeyOrigin.Atlas) and AItems[Index].Conflict and
       not (AItems[Index].Wins and AItems[Index].Priority) then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 class function TAtlasKeyMap.Filter(const AItems: TArray<TAtlasKeyItem>; const AQuery: string;
@@ -644,18 +808,28 @@ begin
   Found := TList<Integer>.Create;
   try
     for Index := 0 to High(Items) do
+    begin
       if (not AOnlyConflicts or Items[Index].Conflict) and Query.Matches(Items[Index]) then
+      begin
         Found.Add(Index);
+      end;
+    end;
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         Result := CompareText(Items[A].KeyText, Items[B].KeyText);
         if Result = 0 then
+        begin
           Result := Integer(Items[A].ShortCut) - Integer(Items[B].ShortCut);
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Command, Items[B].Command);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := Found.ToArray;
   finally
@@ -667,13 +841,86 @@ end;
 function ModifierOf(const AName: string): Word;
 begin
   if (AName = 'strg') or (AName = 'ctrl') or (AName = 'control') or (AName = 'ctl') then
-    Result := TAtlasKeyMap.scCtrl
+  begin
+    Result := TAtlasKeyMap.scCtrl;
+  end
   else if (AName = 'umschalt') or (AName = 'umsch') or (AName = 'shift') or (AName = 'shft') then
-    Result := TAtlasKeyMap.scShift
+  begin
+    Result := TAtlasKeyMap.scShift;
+  end
   else if (AName = 'alt') or (AName = 'menu') then
-    Result := TAtlasKeyMap.scAlt
+  begin
+    Result := TAtlasKeyMap.scAlt;
+  end
+  else
+  begin
+    Result := 0;
+  end;
+end;
+
+type
+  /// <summary>Benannte Taste: Namen zwischen „|“ (deutsch und englisch, klein) und ihr virtueller Tastencode.
+  /// </summary>
+  TNamedKey = record
+    Names: string;
+    Key: Word;
+  end;
+
+const
+  NamedKeys: array[0..14] of TNamedKey = (
+    (Names: '|leer|leertaste|space|'; Key: $20),
+    (Names: '|eingabe|enter|return|'; Key: $0D),
+    (Names: '|esc|escape|'; Key: $1B),
+    (Names: '|tab|tabulator|'; Key: $09),
+    (Names: '|entf|del|delete|'; Key: $2E),
+    (Names: '|einfg|ins|insert|'; Key: $2D),
+    (Names: '|pos1|home|'; Key: $24),
+    (Names: '|ende|end|'; Key: $23),
+    (Names: '|bild auf|bildauf|pgup|page up|pageup|'; Key: $21),
+    (Names: '|bild ab|bildab|pgdn|page down|pagedown|'; Key: $22),
+    (Names: '|rück|rücktaste|backspace|bksp|'; Key: $08),
+    (Names: '|links|left|'; Key: $25),
+    (Names: '|oben|auf|up|'; Key: $26),
+    (Names: '|rechts|right|'; Key: $27),
+    (Names: '|unten|ab|down|'; Key: $28));
+
+/// <summary>Taste eines einzelnen Zeichens: Buchstabe, Ziffer, Punkt, Komma, Minus; 0 sonst.</summary>
+function CharKey(ACh: Char): Word;
+begin
+  case ACh of
+    'a'..'z':
+      Result := Ord(UpCase(ACh));
+    '0'..'9':
+      Result := Ord(ACh);
+    '.':
+      Result := $BE;
+    ',':
+      Result := $BC;
+    '-':
+      Result := $BD;
   else
     Result := 0;
+  end;
+end;
+
+/// <summary>Taste aus der Tabelle der benannten Tasten; 0, wenn unbekannt.</summary>
+function NamedKey(const AName: string): Word;
+var
+  Named: TNamedKey;
+begin
+  Result := 0;
+  // „|“ trennt die Namen in der Tabelle und ist selbst keiner.
+  if Pos('|', AName) > 0 then
+  begin
+    Exit;
+  end;
+  for Named in NamedKeys do
+  begin
+    if Pos('|' + AName + '|', Named.Names) > 0 then
+    begin
+      Exit(Named.Key);
+    end;
+  end;
 end;
 
 /// <summary>Virtueller Tastencode zum Namen (deutsch oder englisch); 0, wenn unbekannt. AFunctionKey bei F1–F24.
@@ -683,62 +930,23 @@ var
   Number: Integer;
 begin
   AFunctionKey := False;
-  Result := 0;
-  if AName = '' then
-    Exit;
-  if Length(AName) = 1 then
+  if Length(AName) <= 1 then
   begin
-    case AName[1] of
-      'a'..'z':
-        Exit(Ord(UpCase(AName[1])));
-      '0'..'9':
-        Exit(Ord(AName[1]));
-      '.':
-        Exit($BE);
-      ',':
-        Exit($BC);
-      '-':
-        Exit($BD);
+    Result := 0;
+    if AName <> '' then
+    begin
+      Result := CharKey(AName[1]);
     end;
-    Exit;
-  end;
-  if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), Number) and (Number >= 1) and (Number <= 24) then
+  end
+  else if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), Number) and (Number >= 1) and (Number <= 24) then
   begin
     AFunctionKey := True;
-    Exit($70 + Number - 1);
+    Result := $70 + Number - 1;
+  end
+  else
+  begin
+    Result := NamedKey(AName);
   end;
-  if (AName = 'leer') or (AName = 'leertaste') or (AName = 'space') then
-    Result := $20
-  else if (AName = 'eingabe') or (AName = 'enter') or (AName = 'return') then
-    Result := $0D
-  else if (AName = 'esc') or (AName = 'escape') then
-    Result := $1B
-  else if (AName = 'tab') or (AName = 'tabulator') then
-    Result := $09
-  else if (AName = 'entf') or (AName = 'del') or (AName = 'delete') then
-    Result := $2E
-  else if (AName = 'einfg') or (AName = 'ins') or (AName = 'insert') then
-    Result := $2D
-  else if (AName = 'pos1') or (AName = 'home') then
-    Result := $24
-  else if (AName = 'ende') or (AName = 'end') then
-    Result := $23
-  else if (AName = 'bild auf') or (AName = 'bildauf') or (AName = 'pgup') or (AName = 'page up') or
-    (AName = 'pageup') then
-    Result := $21
-  else if (AName = 'bild ab') or (AName = 'bildab') or (AName = 'pgdn') or (AName = 'page down') or
-    (AName = 'pagedown') then
-    Result := $22
-  else if (AName = 'rück') or (AName = 'rücktaste') or (AName = 'backspace') or (AName = 'bksp') then
-    Result := $08
-  else if (AName = 'links') or (AName = 'left') then
-    Result := $25
-  else if (AName = 'oben') or (AName = 'auf') or (AName = 'up') then
-    Result := $26
-  else if (AName = 'rechts') or (AName = 'right') then
-    Result := $27
-  else if (AName = 'unten') or (AName = 'ab') or (AName = 'down') then
-    Result := $28;
 end;
 
 class function TAtlasKeyMap.ParseShortCut(const AText: string; out AModifiers: Word): Word;
@@ -753,13 +961,17 @@ begin
   AModifiers := 0;
   Parts := LowerCase(Trim(AText)).Split(['+']);
   if Length(Parts) = 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Parts) do
   begin
     Part := Trim(Parts[Index]);
     if (Part = '') and (Index = High(Parts)) and (Index > 0) then
+    begin
       // „Strg+“: nur Umschalttasten.
       Exit;
+    end;
     Modifier := ModifierOf(Part);
     if Modifier <> 0 then
     begin
@@ -775,7 +987,9 @@ begin
     end;
     // Ein einzelnes Zeichen ohne Umschalttaste ist eine Textsuche, eine Funktionstaste nicht.
     if (Length(Parts) = 1) and not FunctionKey then
+    begin
       Exit;
+    end;
     Result := Key or AModifiers;
   end;
 end;
@@ -808,59 +1022,84 @@ begin
   end;
 end;
 
+const
+  /// <summary>Kopf der Seite ab der Formatvorlage bis zum Beginn von body.</summary>
+  HtmlStyle = '<style>'#13#10 +
+    'body{font:13px "Segoe UI",Arial,sans-serif;color:#1f2328;margin:24px}'#13#10 +
+    'h1{font-size:20px;margin:0 0 4px}'#13#10 +
+    'p.sub{color:#59636e;margin:0 0 12px}'#13#10 +
+    'button.print{margin:0 0 12px;padding:4px 12px}'#13#10 +
+    'table{border-collapse:collapse;width:100%}'#13#10 +
+    'th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #d1d9e0;vertical-align:top}'#13#10 +
+    'th{background:#f6f8fa}'#13#10 +
+    'td.key{font-family:Consolas,"Courier New",monospace;white-space:nowrap}'#13#10 +
+    'tr.conflict td{color:#cf222e}'#13#10 +
+    'tr.conflict td.key{font-weight:600}'#13#10 +
+    '@media print{body{margin:0}button.print{display:none}thead{display:table-header-group}' +
+    'tr{page-break-inside:avoid}tr.conflict td{color:#cf222e;-webkit-print-color-adjust:exact;' +
+    'print-color-adjust:exact}}'#13#10 +
+    '</style>'#13#10'</head>'#13#10'<body>'#13#10;
+
+/// <summary>Tabellenzeile ARow; die erste Zelle ist die Taste, Zeilen mit Konflikt sind markiert.</summary>
+procedure AppendRow(ABuilder: TStringBuilder; const ARow: TAtlasKeyHtmlRow);
+var
+  Index: Integer;
+begin
+  if ARow.Conflict then
+  begin
+    ABuilder.Append('<tr class="conflict">');
+  end
+  else
+  begin
+    ABuilder.Append('<tr>');
+  end;
+  for Index := 0 to High(ARow.Cells) do
+  begin
+    if Index = 0 then
+    begin
+      ABuilder.Append('<td class="key">');
+    end
+    else
+    begin
+      ABuilder.Append('<td>');
+    end;
+    ABuilder.Append(TAtlasKeyMap.HtmlEscape(ARow.Cells[Index])).Append('</td>');
+  end;
+  ABuilder.Append('</tr>'#13#10);
+end;
+
 class function TAtlasKeyMap.Html(const ALanguage, ATitle, ASubtitle, APrint: string;
   const AHeaders: TArray<string>; const ARows: TArray<TAtlasKeyHtmlRow>): string;
 var
   Builder: TStringBuilder;
   Header: string;
   Row: TAtlasKeyHtmlRow;
-  Index: Integer;
 begin
   Builder := TStringBuilder.Create;
   try
     Builder.Append('<!DOCTYPE html>'#13#10'<html lang="').Append(HtmlEscape(ALanguage)).Append('">'#13#10);
     Builder.Append('<head>'#13#10'<meta charset="utf-8">'#13#10);
     Builder.Append('<title>').Append(HtmlEscape(ATitle)).Append('</title>'#13#10);
-    Builder.Append('<style>'#13#10 +
-      'body{font:13px "Segoe UI",Arial,sans-serif;color:#1f2328;margin:24px}'#13#10 +
-      'h1{font-size:20px;margin:0 0 4px}'#13#10 +
-      'p.sub{color:#59636e;margin:0 0 12px}'#13#10 +
-      'button.print{margin:0 0 12px;padding:4px 12px}'#13#10 +
-      'table{border-collapse:collapse;width:100%}'#13#10 +
-      'th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #d1d9e0;vertical-align:top}'#13#10 +
-      'th{background:#f6f8fa}'#13#10 +
-      'td.key{font-family:Consolas,"Courier New",monospace;white-space:nowrap}'#13#10 +
-      'tr.conflict td{color:#cf222e}'#13#10 +
-      'tr.conflict td.key{font-weight:600}'#13#10 +
-      '@media print{body{margin:0}button.print{display:none}thead{display:table-header-group}' +
-      'tr{page-break-inside:avoid}tr.conflict td{color:#cf222e;-webkit-print-color-adjust:exact;' +
-      'print-color-adjust:exact}}'#13#10 +
-      '</style>'#13#10'</head>'#13#10'<body>'#13#10);
+    Builder.Append(HtmlStyle);
     Builder.Append('<h1>').Append(HtmlEscape(ATitle)).Append('</h1>'#13#10);
     if ASubtitle <> '' then
+    begin
       Builder.Append('<p class="sub">').Append(HtmlEscape(ASubtitle)).Append('</p>'#13#10);
+    end;
     if APrint <> '' then
+    begin
       Builder.Append('<button class="print" onclick="window.print()">').Append(HtmlEscape(APrint))
         .Append('</button>'#13#10);
+    end;
     Builder.Append('<table>'#13#10'<thead><tr>');
     for Header in AHeaders do
+    begin
       Builder.Append('<th>').Append(HtmlEscape(Header)).Append('</th>');
+    end;
     Builder.Append('</tr></thead>'#13#10'<tbody>'#13#10);
     for Row in ARows do
     begin
-      if Row.Conflict then
-        Builder.Append('<tr class="conflict">')
-      else
-        Builder.Append('<tr>');
-      for Index := 0 to High(Row.Cells) do
-      begin
-        if Index = 0 then
-          Builder.Append('<td class="key">')
-        else
-          Builder.Append('<td>');
-        Builder.Append(HtmlEscape(Row.Cells[Index])).Append('</td>');
-      end;
-      Builder.Append('</tr>'#13#10);
+      AppendRow(Builder, Row);
     end;
     Builder.Append('</tbody>'#13#10'</table>'#13#10'</body>'#13#10'</html>'#13#10);
     Result := Builder.ToString;

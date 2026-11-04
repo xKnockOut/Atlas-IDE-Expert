@@ -106,28 +106,36 @@ function TAtlasTip.UsageIds: TArray<string>;
 begin
   Result := Usage;
   if (Length(Result) = 0) and (Command <> '') then
+  begin
     Result := [Command];
+  end;
 end;
 
 function TAtlasTip.TryId: string;
 begin
   Result := TryCommand;
   if Result = '' then
+  begin
     Result := Command;
+  end;
 end;
 
 function TAtlasTip.TitleIn(AEnglish: Boolean): string;
 begin
   Result := Title;
   if AEnglish and (TitleEn <> '') then
+  begin
     Result := TitleEn;
+  end;
 end;
 
 function TAtlasTip.TextIn(AEnglish: Boolean): string;
 begin
   Result := Text;
   if AEnglish and (TextEn <> '') then
+  begin
     Result := TextEn;
+  end;
 end;
 
 { JSON-Helfer }
@@ -139,7 +147,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := Trim(TJSONString(Value).Value);
+  end;
 end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Integer;
@@ -149,11 +159,17 @@ begin
   Result := 0;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else if Value is TJSONString then
+  begin
     Result := StrToIntDef(TJSONString(Value).Value, 0);
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 function ListOf(AObject: TJSONObject; const AName: string): TArray<string>;
@@ -165,28 +181,60 @@ begin
   if Value is TJSONString then
   begin
     if Trim(TJSONString(Value).Value) <> '' then
+    begin
       Result := [Trim(TJSONString(Value).Value)];
+    end;
     Exit;
   end;
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(Value) do
+  begin
     if (Item is TJSONString) and (Trim(TJSONString(Item).Value) <> '') then
+    begin
       Result := Result + [Trim(TJSONString(Item).Value)];
+    end;
+  end;
 end;
 
 { TAtlasTipCatalog }
 
+/// <summary>Tipp aus einem Eintrag von "tips"; ohne "id" gilt "command".</summary>
+function TipOf(AItem: TJSONObject): TAtlasTip;
+begin
+  Result := Default(TAtlasTip);
+  Result.Command := TextOf(AItem, 'command');
+  Result.Id := TextOf(AItem, 'id');
+  if Result.Id = '' then
+  begin
+    Result.Id := Result.Command;
+  end;
+  Result.Usage := ListOf(AItem, 'usage');
+  Result.Setting := TextOf(AItem, 'setting');
+  Result.TryCommand := TextOf(AItem, 'try');
+  Result.Title := TextOf(AItem, 'title');
+  Result.TitleEn := TextOf(AItem, 'titleEn');
+  Result.Text := TextOf(AItem, 'text');
+  Result.TextEn := TextOf(AItem, 'textEn');
+  Result.Image := TextOf(AItem, 'image');
+  Result.Sample := TextOf(AItem, 'sample');
+  Result.Line := NumberOf(AItem, 'line');
+  Result.Column := NumberOf(AItem, 'column');
+end;
+
 class function TAtlasTipCatalog.Parse(const AJson: string): TAtlasTips;
 var
   Root, Tips, Value: TJSONValue;
-  Item: TJSONObject;
   Tip: TAtlasTip;
 begin
   Result := nil;
   // Kein Objekt: gar nicht erst parsen.
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
+  begin
     Exit;
+  end;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except
@@ -196,33 +244,25 @@ begin
   end;
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Tips := TJSONObject(Root).GetValue('tips');
     if not (Tips is TJSONArray) then
+    begin
       Exit;
+    end;
     for Value in TJSONArray(Tips) do
     begin
       if not (Value is TJSONObject) then
+      begin
         Continue;
-      Item := TJSONObject(Value);
-      Tip := Default(TAtlasTip);
-      Tip.Command := TextOf(Item, 'command');
-      Tip.Id := TextOf(Item, 'id');
-      if Tip.Id = '' then
-        Tip.Id := Tip.Command;
-      Tip.Usage := ListOf(Item, 'usage');
-      Tip.Setting := TextOf(Item, 'setting');
-      Tip.TryCommand := TextOf(Item, 'try');
-      Tip.Title := TextOf(Item, 'title');
-      Tip.TitleEn := TextOf(Item, 'titleEn');
-      Tip.Text := TextOf(Item, 'text');
-      Tip.TextEn := TextOf(Item, 'textEn');
-      Tip.Image := TextOf(Item, 'image');
-      Tip.Sample := TextOf(Item, 'sample');
-      Tip.Line := NumberOf(Item, 'line');
-      Tip.Column := NumberOf(Item, 'column');
+      end;
+      Tip := TipOf(TJSONObject(Value));
       if (Tip.Id = '') or (Tip.Title = '') or (IndexOf(Result, Tip.Id) >= 0) then
+      begin
         Continue;
+      end;
       Result := Result + [Tip];
     end;
   finally
@@ -235,8 +275,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ATips) do
+  begin
     if SameText(ATips[Index].Id, Trim(AId)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -247,13 +291,17 @@ var
 begin
   ATip := Default(TAtlasTip);
   if Trim(ACommand) = '' then
+  begin
     Exit(False);
+  end;
   for Tip in ATips do
+  begin
     if SameText(Tip.Command, Trim(ACommand)) then
     begin
       ATip := Tip;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -265,7 +313,9 @@ begin
   Relative := Trim(ARelative);
   if (Trim(AFolder) = '') or (Relative = '') or (Pos('..', Relative) > 0) or (Pos(':', Relative) > 0) or
     CharInSet(Relative[1], ['\', '/']) then
+  begin
     Exit;
+  end;
   Relative := StringReplace(Relative, '/', PathDelim, [rfReplaceAll]);
   Relative := StringReplace(Relative, '\', PathDelim, [rfReplaceAll]);
   Result := IncludeTrailingPathDelimiter(AFolder) + Relative;
@@ -277,7 +327,9 @@ var
 begin
   Result := '';
   if Trim(AFileName) = '' then
+  begin
     Exit;
+  end;
   Extension := ExtractFileExt(AFileName);
   Result := Copy(AFileName, 1, Length(AFileName) - Length(Extension)) + HighDpiSuffix + Extension;
 end;
@@ -288,10 +340,14 @@ var
 begin
   Result := AFileName;
   if (AFileName = '') or (AShownWidth <= ImageWidth) then
+  begin
     Exit;
+  end;
   Large := HighDpiName(AFileName);
   if FileExists(Large) then
+  begin
     Result := Large;
+  end;
 end;
 
 end.

@@ -200,110 +200,159 @@ begin
   AIssues := AIssues + Forbidden;
 end;
 
-function FilterScope(const AText: string; AKeep: TConfigurationScope;
-  out AIssues: TArray<TConfigurationIssue>): string;
-var
-  Root, Value: TJsonNode;
-  Index, Sub: Integer;
-  Key, Path: string;
-  Parts, Members: TArray<string>;
-  Removed, SubRemoved: Boolean;
-  Scope: TConfigurationScope;
-
-  procedure Report(AKeyStart: Integer; const AKeyText, APath: string);
-  var
-    Issue: TConfigurationIssue;
-  begin
-    Issue.Range := TTextRange.Create(TLineTable.Build(AText).PositionAt(AKeyStart),
-      TLineTable.Build(AText).PositionAt(AKeyStart + Length(AKeyText) + 2));
-    Issue.Message := Misplaced(APath, AKeep);
-    Issue.IsError := False;
-    AIssues := AIssues + [Issue];
-  end;
-
-  function Keeps(AScope: TConfigurationScope): Boolean;
-  begin
-    Result := (AScope = TConfigurationScope.Unknown) or (AScope = TConfigurationScope.Both) or (AScope = AKeep);
-  end;
-
+/// <summary>Wurzelobjekt von AText; nil bei leerem Text, Syntaxfehler (meldet der Parser) oder einer Wurzel,
+/// die kein Objekt ist.</summary>
+function ParseRootObject(const AText: string): TJsonNode;
 begin
-  AIssues := nil;
-  Result := AText;
+  Result := nil;
   if Trim(AText) = '' then
   begin
     Exit;
   end;
   try
-    Root := TJsonTree.Parse(AText);
+    Result := TJsonTree.Parse(AText);
   except
     // Syntaxfehler meldet der Parser.
     on EJsonTreeError do
       Exit;
   end;
+  if Result.Kind <> TJsonKind.Object_ then
+  begin
+    FreeAndNil(Result);
+  end;
+end;
+
+/// <summary>"schlüssel": wert aus dem Originaltext.</summary>
+function Member(const AText, AKey: string; AValue: TJsonNode): string;
+begin
+  Result := QuoteKey(AKey) + ': ' + NodeText(AText, AValue);
+end;
+
+type
+  /// <summary>Sammelt beim Filtern auf einen Ort die behaltenen Glieder und die Meldungen.</summary>
+  TScopeFilter = record
+    Text: string;
+    Keep: TConfigurationScope;
+    Issues: TArray<TConfigurationIssue>;
+    Parts: TArray<string>;
+    Removed: Boolean;
+    procedure Report(AKeyStart: Integer; const AKeyText, APath: string);
+    function Keeps(AScope: TConfigurationScope): Boolean;
+    procedure AddMixed(const AKey: string; AValue: TJsonNode);
+    procedure Add(ARoot: TJsonNode; AIndex: Integer);
+  end;
+
+procedure TScopeFilter.Report(AKeyStart: Integer; const AKeyText, APath: string);
+var
+  mIssue: TConfigurationIssue;
+begin
+  mIssue.Range := TTextRange.Create(TLineTable.Build(Text).PositionAt(AKeyStart),
+    TLineTable.Build(Text).PositionAt(AKeyStart + Length(AKeyText) + 2));
+  mIssue.Message := Misplaced(APath, Keep);
+  mIssue.IsError := False;
+  Issues := Issues + [mIssue];
+end;
+
+function TScopeFilter.Keeps(AScope: TConfigurationScope): Boolean;
+begin
+  Result := (AScope = TConfigurationScope.Unknown) or (AScope = TConfigurationScope.Both) or (AScope = Keep);
+end;
+
+procedure TScopeFilter.AddMixed(const AKey: string; AValue: TJsonNode);
+var
+  mSub: Integer;
+  mPath: string;
+  mMembers: TArray<string>;
+  mSubRemoved: Boolean;
+begin
+  mMembers := nil;
+  mSubRemoved := False;
+  for mSub := 0 to AValue.Count - 1 do
+  begin
+    mPath := AKey + '.' + AValue.Keys[mSub];
+    if Keeps(TConfigurationScopes.ScopeOf(mPath)) then
+    begin
+      mMembers := mMembers + [Member(Text, AValue.Keys[mSub], AValue[mSub])];
+    end
+    else
+    begin
+      Report(AValue.KeyStarts[mSub], AValue.Keys[mSub], mPath);
+      mSubRemoved := True;
+    end;
+  end;
+  if not mSubRemoved then
+  begin
+    Parts := Parts + [Member(Text, AKey, AValue)];
+  end
+  else
+  begin
+    Removed := True;
+    // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
+    if Length(mMembers) > 0 then
+    begin
+      Parts := Parts + [QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}'];
+    end;
+  end;
+end;
+
+procedure TScopeFilter.Add(ARoot: TJsonNode; AIndex: Integer);
+var
+  mKey: string;
+  mValue: TJsonNode;
+  mScope: TConfigurationScope;
+begin
+  mKey := ARoot.Keys[AIndex];
+  mValue := ARoot[AIndex];
+  if TConfigurationScopes.IsMixed(mKey) and (mValue.Kind = TJsonKind.Object_) then
+  begin
+    AddMixed(mKey, mValue);
+    Exit;
+  end;
+  mScope := TConfigurationScope.Unknown;
+  if mKey <> '$schema' then
+  begin
+    mScope := TConfigurationScopes.ScopeOf(mKey);
+  end;
+  if Keeps(mScope) then
+  begin
+    Parts := Parts + [Member(Text, mKey, mValue)];
+  end
+  else
+  begin
+    Report(ARoot.KeyStarts[AIndex], mKey, mKey);
+    Removed := True;
+  end;
+end;
+
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string;
+var
+  mRoot: TJsonNode;
+  mIndex: Integer;
+  mFilter: TScopeFilter;
+begin
+  AIssues := nil;
+  Result := AText;
+  mRoot := ParseRootObject(AText);
+  if mRoot = nil then
+  begin
+    Exit;
+  end;
   try
-    if Root.Kind <> TJsonKind.Object_ then
+    mFilter := Default(TScopeFilter);
+    mFilter.Text := AText;
+    mFilter.Keep := AKeep;
+    for mIndex := 0 to mRoot.Count - 1 do
     begin
-      Exit;
+      mFilter.Add(mRoot, mIndex);
     end;
-    Parts := nil;
-    Removed := False;
-    for Index := 0 to Root.Count - 1 do
+    AIssues := mFilter.Issues;
+    if mFilter.Removed then
     begin
-      Key := Root.Keys[Index];
-      Value := Root[Index];
-      if TConfigurationScopes.IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
-      begin
-        Members := nil;
-        SubRemoved := False;
-        for Sub := 0 to Value.Count - 1 do
-        begin
-          Path := Key + '.' + Value.Keys[Sub];
-          if Keeps(TConfigurationScopes.ScopeOf(Path)) then
-          begin
-            Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
-          end
-          else
-          begin
-            Report(Value.KeyStarts[Sub], Value.Keys[Sub], Path);
-            SubRemoved := True;
-          end;
-        end;
-        if not SubRemoved then
-        begin
-          Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
-        end
-        else
-        begin
-          Removed := True;
-          // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
-          if Length(Members) > 0 then
-          begin
-            Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
-          end;
-        end;
-        Continue;
-      end;
-      Scope := TConfigurationScope.Unknown;
-      if Key <> '$schema' then
-      begin
-        Scope := TConfigurationScopes.ScopeOf(Key);
-      end;
-      if Keeps(Scope) then
-      begin
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
-      end
-      else
-      begin
-        Report(Root.KeyStarts[Index], Key, Key);
-        Removed := True;
-      end;
-    end;
-    if Removed then
-    begin
-      Result := '{' + string.Join(', ', Parts) + '}';
+      Result := '{' + string.Join(', ', mFilter.Parts) + '}';
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -328,76 +377,82 @@ begin
   Result := (Trim(AText) <> '') and TConfigurationParser.Parse(AText, Ignored).ExperimentalEnabled;
 end;
 
+/// <summary>Objekt AValue ohne die Glieder aus APaths; ARemoved wird gesetzt, wenn eines fehlt.</summary>
+function WithoutListedMembers(const AText, AKey: string; AValue: TJsonNode; const APaths: TArray<string>;
+  var ARemoved: Boolean): string;
+var
+  mSub: Integer;
+  mMembers: TArray<string>;
+  mSubRemoved: Boolean;
+begin
+  mMembers := nil;
+  mSubRemoved := False;
+  for mSub := 0 to AValue.Count - 1 do
+  begin
+    if Listed(AKey + '.' + AValue.Keys[mSub], APaths) then
+    begin
+      mSubRemoved := True;
+    end
+    else
+    begin
+      mMembers := mMembers + [Member(AText, AValue.Keys[mSub], AValue[mSub])];
+    end;
+  end;
+  if not mSubRemoved then
+  begin
+    Result := Member(AText, AKey, AValue);
+  end
+  else
+  begin
+    ARemoved := True;
+    Result := QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}';
+  end;
+end;
+
 class function TConfigurationScopes.WithoutExperimental(const AText: string; const APaths: TArray<string>): string;
 var
-  Root, Value: TJsonNode;
-  Index, Sub: Integer;
-  Key: string;
-  Parts, Members: TArray<string>;
-  Removed, SubRemoved: Boolean;
+  mRoot, mValue: TJsonNode;
+  mIndex: Integer;
+  mKey: string;
+  mParts: TArray<string>;
+  mRemoved: Boolean;
 begin
   Result := AText;
-  if (Length(APaths) = 0) or (Trim(AText) = '') or ExperimentalEnabled(AText) then
+  if (Length(APaths) = 0) or ExperimentalEnabled(AText) then
+  begin
+    Exit;
+  end;
+  mRoot := ParseRootObject(AText);
+  if mRoot = nil then
   begin
     Exit;
   end;
   try
-    Root := TJsonTree.Parse(AText);
-  except
-    // Syntaxfehler meldet der Parser.
-    on EJsonTreeError do
-      Exit;
-  end;
-  try
-    if Root.Kind <> TJsonKind.Object_ then
+    mParts := nil;
+    mRemoved := False;
+    for mIndex := 0 to mRoot.Count - 1 do
     begin
-      Exit;
-    end;
-    Parts := nil;
-    Removed := False;
-    for Index := 0 to Root.Count - 1 do
-    begin
-      Key := Root.Keys[Index];
-      Value := Root[Index];
-      if Listed(Key, APaths) then
+      mKey := mRoot.Keys[mIndex];
+      mValue := mRoot[mIndex];
+      if Listed(mKey, APaths) then
       begin
-        Removed := True;
-        Continue;
-      end;
-      if Value.Kind <> TJsonKind.Object_ then
+        mRemoved := True;
+      end
+      else if mValue.Kind <> TJsonKind.Object_ then
       begin
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
-        Continue;
-      end;
-      Members := nil;
-      SubRemoved := False;
-      for Sub := 0 to Value.Count - 1 do
-      begin
-        if Listed(Key + '.' + Value.Keys[Sub], APaths) then
-        begin
-          SubRemoved := True;
-        end
-        else
-        begin
-          Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
-        end;
-      end;
-      if not SubRemoved then
-      begin
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
+        mParts := mParts + [Member(AText, mKey, mValue)];
       end
       else
       begin
-        Removed := True;
-        Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
+        mParts := mParts + [WithoutListedMembers(AText, mKey, mValue, APaths, mRemoved)];
       end;
     end;
-    if Removed then
+    if mRemoved then
     begin
-      Result := '{' + string.Join(', ', Parts) + '}';
+      Result := '{' + string.Join(', ', mParts) + '}';
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

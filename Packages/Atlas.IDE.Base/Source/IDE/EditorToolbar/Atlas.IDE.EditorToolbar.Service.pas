@@ -91,26 +91,20 @@ implementation
 uses
   Winapi.Windows,
   System.Classes,
-  System.Types,
   System.Math,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.Forms,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.ReturnPoint,
   Atlas.UI.Strings,
-  Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.EditorToolbar.Bar,
   Atlas.IDE.Foundation.EditorBarHost,
@@ -119,7 +113,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Outline.Cache;
+  Atlas.IDE.Outline.Cache,
+  Atlas.IDE.EditorToolbar.FindMethod;
 
 const
   TickMs = 150;
@@ -157,6 +152,11 @@ type
     procedure UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
       ALine, ACharacter: Integer);
     function ButtonsFor(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasToolbarButton>;
+    function CaptionOf(const AId: string; out ACaption: string): Boolean;
+    procedure MarkSection(var AButton: TAtlasToolbarButton; ATarget: TAtlasSectionTarget;
+      ALine, ACharacter: Integer; ASection: TAtlasCodeSection);
+    procedure Step(AOn: Boolean);
+    procedure SlowRefresh;
     function CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
     procedure ForgetClosedFiles;
     procedure Later(const AAction: TProc);
@@ -252,27 +252,63 @@ begin
   end;
 end;
 
-/// <summary>Caret der Ansicht als 0-basierte Zeile und Zeichenindex; False ohne Ansicht.</summary>
-function CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
+/// <summary>Tooltip: Name und, falls belegt, die Taste.</summary>
+function KeyHint(const AId, ACaption: string): string;
 var
-  Cursor: TOTAEditPos;
+  mKey: string;
 begin
-  Result := False;
-  ALine := -1;
-  ACharacter := -1;
-  if AView = nil then
+  Result := ACaption;
+  mKey := '';
+  if Assigned(TAtlasIdeEditorToolbar.FHooks.ShortCutOf) then
   begin
-    Exit;
+    mKey := TAtlasIdeEditorToolbar.FHooks.ShortCutOf(AId);
   end;
-  Cursor := AView.CursorPos;
-  if Cursor.Line < 1 then
+  if mKey <> '' then
   begin
-    Exit;
+    Result := Result + ' (' + mKey + ')';
   end;
-  ALine := Cursor.Line - 1;
-  ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
-    TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  Result := True;
+end;
+
+/// <summary>Zustand aus den Hooks: Befundpunkt an „Probleme“, gesperrtes Zurück bzw. Vor.</summary>
+procedure MarkHooks(var AButton: TAtlasToolbarButton; const AFileName: string);
+var
+  mHooks: TAtlasIdeEditorToolbar.THooks;
+  mFindings: Integer;
+begin
+  mHooks := TAtlasIdeEditorToolbar.FHooks;
+  if SameText(AButton.Id, ProblemsId) and Assigned(mHooks.FindingsOf) and (AFileName <> '') then
+  begin
+    mFindings := mHooks.FindingsOf(AFileName);
+    AButton.Dot := mFindings > 0;
+    if mFindings > 0 then
+    begin
+      AButton.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarFindings), [AButton.Hint, mFindings]);
+    end;
+  end
+  else if SameText(AButton.Id, BackId) and Assigned(mHooks.CanGoBack) then
+  begin
+    AButton.Enabled := mHooks.CanGoBack();
+  end
+  else if SameText(AButton.Id, ForwardId) and Assigned(mHooks.CanGoForward) then
+  begin
+    AButton.Enabled := mHooks.CanGoForward();
+  end;
+end;
+
+/// <summary>Befehl eines Klicks: die Palette selbst oder ein Palettenbefehl.</summary>
+procedure RunToolbarCommand(const AId: string);
+begin
+  if SameText(AId, TAtlasToolbarItems.CommandPalette) then
+  begin
+    if Assigned(TAtlasIdeEditorToolbar.FHooks.ShowPalette) then
+    begin
+      TAtlasIdeEditorToolbar.FHooks.ShowPalette();
+    end;
+  end
+  else if Assigned(TAtlasIdeEditorToolbar.FHooks.Execute) then
+  begin
+    TAtlasIdeEditorToolbar.FHooks.Execute(AId);
+  end;
 end;
 
 { TToolbarState }
@@ -392,17 +428,7 @@ begin
       Later(
         procedure
         begin
-          if SameText(Id, TAtlasToolbarItems.CommandPalette) then
-          begin
-            if Assigned(TAtlasIdeEditorToolbar.FHooks.ShowPalette) then
-            begin
-              TAtlasIdeEditorToolbar.FHooks.ShowPalette();
-            end;
-          end
-          else if Assigned(TAtlasIdeEditorToolbar.FHooks.Execute) then
-          begin
-            TAtlasIdeEditorToolbar.FHooks.Execute(Id);
-          end;
+          RunToolbarCommand(Id);
         end);
     end;
   Bar.OnReturn :=
@@ -494,7 +520,7 @@ begin
   AFileName := Snapshot.FileName;
   if (Snapshot.Version <> FSectionsVersion) or not SameText(Snapshot.FileName, FSectionsFile) then
   begin
-    FSections := TAtlasSectionScanner.Scan(TTextLines.SplitLines(Snapshot.Text));
+    FSections := TAtlasSectionScanner.Scan(Snapshot.Text);
     FSectionsVersion := Snapshot.Version;
     FSectionsFile := Snapshot.FileName;
   end;
@@ -517,90 +543,84 @@ begin
   Result := False;
 end;
 
+/// <summary>Text der Schaltfläche; False, wenn der Befehl fehlt.</summary>
+function TToolbarState.CaptionOf(const AId: string; out ACaption: string): Boolean;
+var
+  mCommand: TAtlasCommand;
+begin
+  Result := True;
+  // Die Palette selbst ist kein Palettenbefehl; abgeschaltete Funktionen fehlen in der Palette und in der Leiste.
+  if SameText(AId, TAtlasToolbarItems.CommandPalette) then
+  begin
+    ACaption := TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand);
+  end
+  else if CommandOf(AId, mCommand) then
+  begin
+    ACaption := PlainCaption(mCommand.Caption);
+  end
+  else
+  begin
+    ACaption := '';
+    Result := False;
+  end;
+end;
+
+/// <summary>Abschnittsbefehl: gesperrt ohne Ziel (mit Grund im Tooltip), hervorgehoben im eigenen Abschnitt.</summary>
+procedure TToolbarState.MarkSection(var AButton: TAtlasToolbarButton; ATarget: TAtlasSectionTarget;
+  ALine, ACharacter: Integer; ASection: TAtlasCodeSection);
+var
+  mMark: TAtlasSectionMark;
+begin
+  AButton.Enabled := (FSectionsFile <> '') and FSections.Target(ATarget, ALine, ACharacter, mMark);
+  AButton.Pressed := AButton.Enabled and SectionPressed(ATarget, ASection);
+  if AButton.Enabled then
+  begin
+    Exit;
+  end;
+  if ATarget in [TAtlasSectionTarget.InterfacePart, TAtlasSectionTarget.ImplementationPart] then
+  begin
+    AButton.Hint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoParts);
+  end
+  else
+  begin
+    AButton.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoSection), [AButton.Caption]);
+  end;
+end;
+
 function TToolbarState.ButtonsFor(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasToolbarButton>;
 var
-  Items: TArray<string>;
-  Id, Caption, Key, Hint: string;
-  Command: TAtlasCommand;
-  Button: TAtlasToolbarButton;
-  Target: TAtlasSectionTarget;
-  Mark: TAtlasSectionMark;
-  Section: TAtlasCodeSection;
-  Findings, Pinned, Index: Integer;
-  Hooks: TAtlasIdeEditorToolbar.THooks;
+  mItems: TArray<string>;
+  mId, mCaption: string;
+  mButton: TAtlasToolbarButton;
+  mTarget: TAtlasSectionTarget;
+  mSection: TAtlasCodeSection;
+  mPinned, mIndex: Integer;
 begin
   Result := nil;
-  Hooks := TAtlasIdeEditorToolbar.FHooks;
-  Items := TAtlasToolbarItems.Parse(TAtlasIdeSettings.Current.EditorToolbarItems);
-  Pinned := TAtlasToolbarItems.PinnedCount(Items);
-  Section := FSections.SectionAt(ALine, ACharacter);
-  for Index := 0 to High(Items) do
+  mItems := TAtlasToolbarItems.Parse(TAtlasIdeSettings.Current.EditorToolbarItems);
+  mPinned := TAtlasToolbarItems.PinnedCount(mItems);
+  mSection := FSections.SectionAt(ALine, ACharacter);
+  for mIndex := 0 to High(mItems) do
   begin
-    Id := Items[Index];
-    if TAtlasToolbarItems.IsSeparator(Id) then
+    mId := mItems[mIndex];
+    if TAtlasToolbarItems.IsSeparator(mId) then
     begin
       Result := Result + [TAtlasToolbarButton.Separator];
-      Continue;
-    end;
-    // Die Palette selbst ist kein Palettenbefehl; abgeschaltete Funktionen fehlen in der Palette und in der Leiste.
-    if SameText(Id, TAtlasToolbarItems.CommandPalette) then
-    begin
-      Caption := TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand);
     end
-    else if CommandOf(Id, Command) then
+    else if CaptionOf(mId, mCaption) then
     begin
-      Caption := PlainCaption(Command.Caption);
-    end
-    else
-    begin
-      Continue;
-    end;
-    Key := '';
-    if Assigned(Hooks.ShortCutOf) then
-    begin
-      Key := Hooks.ShortCutOf(Id);
-    end;
-    Hint := Caption;
-    if Key <> '' then
-    begin
-      Hint := Hint + ' (' + Key + ')';
-    end;
-    Button := TAtlasToolbarButton.Create(Id, Caption, Hint, TAtlasToolbarIcons.IconOf(Id));
-    Button.Pinned := Index < Pinned;
-    if SectionTargetOf(Id, Target) then
-    begin
-      Button.Enabled := (FSectionsFile <> '') and FSections.Target(Target, ALine, ACharacter, Mark);
-      Button.Pressed := Button.Enabled and SectionPressed(Target, Section);
-      if not Button.Enabled then
+      mButton := TAtlasToolbarButton.Create(mId, mCaption, KeyHint(mId, mCaption), TAtlasToolbarIcons.IconOf(mId));
+      mButton.Pinned := mIndex < mPinned;
+      if SectionTargetOf(mId, mTarget) then
       begin
-        if Target in [TAtlasSectionTarget.InterfacePart, TAtlasSectionTarget.ImplementationPart] then
-        begin
-          Button.Hint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoParts);
-        end
-        else
-        begin
-          Button.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarNoSection), [Caption]);
-        end;
-      end;
-    end
-    else if SameText(Id, ProblemsId) and Assigned(Hooks.FindingsOf) and (AFileName <> '') then
-    begin
-      Findings := Hooks.FindingsOf(AFileName);
-      Button.Dot := Findings > 0;
-      if Findings > 0 then
+        MarkSection(mButton, mTarget, ALine, ACharacter, mSection);
+      end
+      else
       begin
-        Button.Hint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarFindings), [Hint, Findings]);
+        MarkHooks(mButton, AFileName);
       end;
-    end
-    else if SameText(Id, BackId) and Assigned(Hooks.CanGoBack) then
-    begin
-      Button.Enabled := Hooks.CanGoBack();
-    end
-    else if SameText(Id, ForwardId) and Assigned(Hooks.CanGoForward) then
-    begin
-      Button.Enabled := Hooks.CanGoForward();
+      Result := Result + [mButton];
     end;
-    Result := Result + [Button];
   end;
 end;
 
@@ -680,16 +700,16 @@ end;
 
 procedure TToolbarState.Tick(Sender: TObject);
 var
-  On_: Boolean;
+  mOn: Boolean;
 begin
-  On_ := ToolbarOn;
+  mOn := ToolbarOn;
   // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
   if not FHost.Guard then
   begin
     Exit;
   end;
   // Ohne Leiste und ohne Rücksprungpunkte gibt es nichts zu tun.
-  if not On_ and (FPoints.Count = 0) then
+  if not mOn and (FPoints.Count = 0) then
   begin
     if FHost.Count > 0 then
     begin
@@ -699,54 +719,67 @@ begin
   end;
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
     procedure
-    var
-      View: IOTAEditView;
-      FileName: string;
-      Line, Character: Integer;
-      Bar: TAtlasEditorToolbar;
     begin
-      Inc(FSlow);
-      if FSlow >= SlowTicks then
-      begin
-        FSlow := 0;
-        if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
-        begin
-          FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
-        end;
-        ForgetClosedFiles;
-      end;
-      // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
-      if On_ then
-      begin
-        FHost.Ensure;
-      end
-      else if FHost.Count > 0 then
-      begin
-        FHost.Clear;
-      end;
-      View := TAtlasEditorBuffer.ActiveView;
-      if (View = nil) or not CaretOf(View, Line, Character) then
-      begin
-        Exit;
-      end;
-      FileName := View.Buffer.FileName;
-      Track(View, FileName, Line);
-      if not On_ then
-      begin
-        Exit;
-      end;
-      Bar := TAtlasEditorToolbar(FHost.ActiveBar);
-      if Bar = nil then
-      begin
-        Exit;
-      end;
-      SectionsOf(View, FileName);
-      if FileName = '' then
-      begin
-        FileName := View.Buffer.FileName;
-      end;
-      UpdateBar(Bar, FileName, Line, Character);
+      Step(mOn);
     end);
+end;
+
+/// <summary>Befehlsliste und offene Dateien nur alle SlowTicks Takte neu lesen.</summary>
+procedure TToolbarState.SlowRefresh;
+begin
+  Inc(FSlow);
+  if FSlow < SlowTicks then
+  begin
+    Exit;
+  end;
+  FSlow := 0;
+  if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
+  begin
+    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
+  end;
+  ForgetClosedFiles;
+end;
+
+/// <summary>Ein Takt unter dem Wächter: Leisten zeigen bzw. entfernen, Rücksprungpunkte nachführen, Leiste füllen.</summary>
+procedure TToolbarState.Step(AOn: Boolean);
+var
+  mView: IOTAEditView;
+  mFileName: string;
+  mLine, mCharacter: Integer;
+  mBar: TAtlasEditorToolbar;
+begin
+  SlowRefresh;
+  // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
+  if AOn then
+  begin
+    FHost.Ensure;
+  end
+  else if FHost.Count > 0 then
+  begin
+    FHost.Clear;
+  end;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or not TAtlasIdeFindMethod.CaretOf(mView, mLine, mCharacter) then
+  begin
+    Exit;
+  end;
+  mFileName := mView.Buffer.FileName;
+  Track(mView, mFileName, mLine);
+  mBar := nil;
+  if AOn then
+  begin
+    mBar := TAtlasEditorToolbar(FHost.ActiveBar);
+  end;
+  if mBar = nil then
+  begin
+    Exit;
+  end;
+  SectionsOf(mView, mFileName);
+  if mFileName = '' then
+  begin
+    mFileName := mView.Buffer.FileName;
+  end;
+  UpdateBar(mBar, mFileName, mLine, mCharacter);
 end;
 
 /// <summary>Erst nach dem Klick ausführen (siehe CreateBar); nur, wenn der Zustand dann noch lebt.</summary>
@@ -828,7 +861,7 @@ begin
     Exit;
   end;
   View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or not CaretOf(View, Line, Character) then
+  if (View = nil) or not TAtlasIdeFindMethod.CaretOf(View, Line, Character) then
   begin
     Exit;
   end;
@@ -912,93 +945,12 @@ begin
 end;
 
 class procedure TAtlasIdeEditorToolbar.FindMethod;
-var
-  View: IOTAEditView;
-  Snapshot: TAtlasOutlineSnapshot;
-  Nodes: TAtlasOutlineNodes;
-  Routines: TArray<Integer>;
-  Commands: TArray<TAtlasCommand>;
-  Command: TAtlasCommand;
-  Node, Line, Character: Integer;
-  FileName, Current: string;
-  Window: TAtlasPaletteWindow;
-  Area: TRect;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if View = nil then
-  begin
-    Exit;
-  end;
-  Snapshot := TAtlasIdeOutlineCache.Refresh(View);
-  Routines := nil;
-  if Snapshot.Status = TAtlasOutlineStatus.Ready then
-  begin
-    Routines := TAtlasBreadcrumbs.Routines(Snapshot.Nodes);
-  end;
-  if Length(Routines) = 0 then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.FindMethodNoOutline));
-    Exit;
-  end;
-  // Kopien: Das Popup lebt länger als der aktuelle Stand.
-  Nodes := Snapshot.Nodes;
-  FileName := Snapshot.FileName;
-  Current := '';
-  if CaretOf(View, Line, Character) then
-  begin
-    Current := TAtlasReturnPoints.ContextAt(Nodes, Line);
-  end;
-  Commands := nil;
-  for Node in Routines do
-  begin
-    Command := Default(TAtlasCommand);
-    Command.Id := IntToStr(Node);
-    Command.Caption := TAtlasBreadcrumbs.QualifiedName(Nodes, Node);
-    Command.Path := Nodes[Node].Detail;
-    Commands := Commands + [Command];
-  end;
-  Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
-  Window.Prompt := Format(TAtlasStrings.Text(TAtlasTextId.FindMethodPrompt), [ExtractFileName(FileName)]);
-  // Ohne Eingabe in Quelltextreihenfolge, die Methode am Caret vorgewählt.
-  Window.KeepOrder := True;
-  for Command in Commands do
-  begin
-    if (Current <> '') and SameText(Command.Caption, Current) then
+  TAtlasIdeFindMethod.Show(
+    procedure(AText: string)
     begin
-      Window.InitialId := Command.Id;
-    end;
-  end;
-  Window.OnExecuteShift :=
-    procedure(ACommand: TAtlasCommand; AShifted: Boolean)
-    var
-      Chosen, Target: Integer;
-    begin
-      Chosen := StrToIntDef(ACommand.Id, -1);
-      if (Chosen < 0) or (Chosen > High(Nodes)) then
-      begin
-        Exit;
-      end;
-      // Enter zur Implementierung, Umschalt+Enter zur Deklaration.
-      Target := TAtlasBreadcrumbs.Target(Nodes, Chosen, not AShifted);
-      if Target < 0 then
-      begin
-        Exit;
-      end;
-      TAtlasIdeNavigation.GoToLocation(FileName, Nodes[Target].NameLine, Nodes[Target].NameCharacter);
-    end;
-  if Screen.ActiveForm <> nil then
-  begin
-    Area := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Area := Screen.WorkAreaRect;
-  end;
-  Window.ShowOver(Area);
+      Say(AText);
+    end);
 end;
 
 class function TAtlasIdeEditorToolbar.CommandInfos: TArray<TAtlasToolbarCommandInfo>;

@@ -118,6 +118,19 @@ begin
   FIndex := nil;
 end;
 
+/// <summary>Anfrage an ALine/ACharacter mit Namensauflösung über AResolver.</summary>
+function RequestAt(AResolver: TNameResolver; ATree: TSyntaxTree; ALine, ACharacter: Integer): TAnonymousMethodRequest;
+begin
+  Result := Default(TAnonymousMethodRequest);
+  Result.Tree := ATree;
+  Result.Text := Text;
+  Result.Uri := TDocumentUris.FromPath(FileName);
+  Result.Position := TTextPosition.Create(ALine, ACharacter);
+  Result.Lookup := TLspAnonymousMethods.Lookup(AResolver, ATree, FileName, ReadFile);
+  Result.Capture := TDeferredCapture.Forward;
+  Result.Style := TFormatStyle.Default;
+end;
+
 /// <summary>Aktionen an ALine/ACharacter mit Namensauflösung.</summary>
 function ActionsAt(const AIndex: ISymbolIndex; ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
@@ -129,9 +142,7 @@ begin
   try
     Resolver.PinTree(Tree, FileName);
     try
-      Result := TLspAnonymousMethods.Actions(Tree, Text, TDocumentUris.FromPath(FileName), TTextPosition.Create(ALine,
-        ACharacter), TLspAnonymousMethods.Lookup(Resolver, Tree, FileName, ReadFile), TDeferredCapture.Forward,
-        TFormatStyle.Default);
+      Result := TLspAnonymousMethods.Actions(RequestAt(Resolver, Tree, ALine, ACharacter));
     finally
       Resolver.UnpinTree;
     end;
@@ -152,9 +163,7 @@ begin
   try
     Resolver.PinTree(Tree, FileName);
     try
-      Result := TLspAnonymousMethods.Execute(Tree, Text, TDocumentUris.FromPath(FileName), TTextPosition.Create(ALine,
-        ACharacter), AName, TLspAnonymousMethods.Lookup(Resolver, Tree, FileName, ReadFile),
-        TDeferredCapture.Forward, TFormatStyle.Default);
+      Result := TLspAnonymousMethods.Execute(RequestAt(Resolver, Tree, ALine, ACharacter), AName);
     finally
       Resolver.UnpinTree;
     end;

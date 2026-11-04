@@ -91,14 +91,22 @@ var
   mHost: string;
 begin
   if Kind = TAtlasVcsKind.Svn then
+  begin
     Exit(Url);
+  end;
   if Remote = '' then
+  begin
     Exit('');
+  end;
   mHost := TAtlasVcsServerChecks.HostOf(Url);
   if mHost = '' then
+  begin
     mHost := Url;
+  end;
   if mHost = '' then
+  begin
     Exit(Remote);
+  end;
   Result := Remote + ' · ' + mHost;
 end;
 
@@ -118,55 +126,89 @@ begin
   Result := Trim(AUrl);
   mStart := Pos('://', Result);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   Inc(mStart, 3);
   mEnd := Pos('/', Result, mStart);
   if mEnd = 0 then
+  begin
     mEnd := Length(Result) + 1;
+  end;
   // Bis zum letzten „@“ vor dem Pfad stehen Benutzer und Kennwort.
   mAuthority := Copy(Result, mStart, mEnd - mStart);
   if LastDelimiter('@', mAuthority) = 0 then
+  begin
     Exit;
+  end;
   Result := Copy(Result, 1, mStart - 1) + Copy(mAuthority, LastDelimiter('@', mAuthority) + 1, MaxInt) +
     Copy(Result, mEnd, MaxInt);
+end;
+
+/// <summary>Rechner aus dem Teil hinter "schema://" ohne Benutzer und Port (IPv6 in eckigen Klammern bleibt).
+/// </summary>
+function AuthorityHost(const AText: string): string;
+var
+  mEnd, mAt, mColon: Integer;
+begin
+  Result := AText;
+  mEnd := Pos('/', Result);
+  if mEnd > 0 then
+  begin
+    Result := Copy(Result, 1, mEnd - 1);
+  end;
+  mAt := LastDelimiter('@', Result);
+  if mAt > 0 then
+  begin
+    Result := Copy(Result, mAt + 1, MaxInt);
+  end;
+  mColon := LastDelimiter(':', Result);
+  if (mColon > 0) and (mColon > LastDelimiter(']', Result)) then
+  begin
+    Result := Copy(Result, 1, mColon - 1);
+  end;
+  Result := LowerCase(Result);
+end;
+
+/// <summary>Rechner der scp-Form [benutzer@]host:pfad; '' für ein Laufwerk wie C:\ oder einen Pfad.</summary>
+function ScpHost(const AText: string): string;
+var
+  mColon, mBackslash: Integer;
+  mHost: string;
+begin
+  Result := '';
+  mColon := Pos(':', AText);
+  mBackslash := Pos('\', AText);
+  if (mColon <= 2) or ((mBackslash > 0) and (mBackslash < mColon)) then
+  begin
+    Exit;
+  end;
+  mHost := Copy(AText, 1, mColon - 1);
+  if Pos('/', mHost) = 0 then
+  begin
+    Result := LowerCase(Copy(mHost, LastDelimiter('@', mHost) + 1, MaxInt));
+  end;
 end;
 
 class function TAtlasVcsServerChecks.HostOf(const AUrl: string): string;
 var
   mText: string;
-  mScheme, mEnd, mAt, mColon: Integer;
+  mScheme: Integer;
 begin
   mText := Trim(AUrl);
-  Result := '';
-  if mText = '' then
-    Exit;
   mScheme := Pos('://', mText);
-  if mScheme > 0 then
+  if mScheme = 0 then
   begin
-    if SameText(Copy(mText, 1, mScheme - 1), 'file') then
-      Exit;
-    mText := Copy(mText, mScheme + 3, MaxInt);
-    mEnd := Pos('/', mText);
-    if mEnd > 0 then
-      mText := Copy(mText, 1, mEnd - 1);
-    mAt := LastDelimiter('@', mText);
-    if mAt > 0 then
-      mText := Copy(mText, mAt + 1, MaxInt);
-    // Port abschneiden (IPv6 in eckigen Klammern behalten).
-    mColon := LastDelimiter(':', mText);
-    if (mColon > 0) and (mColon > LastDelimiter(']', mText)) then
-      mText := Copy(mText, 1, mColon - 1);
-    Exit(LowerCase(mText));
+    Result := ScpHost(mText);
+  end
+  else if SameText(Copy(mText, 1, mScheme - 1), 'file') then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := AuthorityHost(Copy(mText, mScheme + 3, MaxInt));
   end;
-  // scp-Form: [benutzer@]host:pfad; ein Laufwerk wie C:\ ist kein Rechner.
-  mColon := Pos(':', mText);
-  if (mColon <= 2) or ((Pos('\', mText) > 0) and (Pos('\', mText) < mColon)) then
-    Exit;
-  mText := Copy(mText, 1, mColon - 1);
-  if Pos('/', mText) > 0 then
-    Exit;
-  mAt := LastDelimiter('@', mText);
-  Result := LowerCase(Copy(mText, mAt + 1, MaxInt));
 end;
 
 class function TAtlasVcsServerChecks.RemoteFor(const AUpstream: string; const ARemotes: TArray<string>): string;
@@ -175,16 +217,28 @@ var
 begin
   Result := '';
   for mRemote in ARemotes do
+  begin
     if (mRemote <> '') and (Length(mRemote) > Length(Result)) and
       (Copy(AUpstream, 1, Length(mRemote) + 1) = mRemote + '/') then
+    begin
       Result := mRemote;
+    end;
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   for mRemote in ARemotes do
+  begin
     if mRemote = 'origin' then
+    begin
       Exit(mRemote);
+    end;
+  end;
   if Length(ARemotes) > 0 then
+  begin
     Result := ARemotes[0];
+  end;
 end;
 
 class function TAtlasVcsServerChecks.SafeRemote(const AName: string): Boolean;
@@ -193,17 +247,25 @@ var
 begin
   Result := (AName <> '') and (AName[1] <> '-');
   for mIndex := 1 to Length(AName) do
+  begin
     if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '.', '_', '-', '/']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasVcsServerChecks.ProbeArguments(AKind: TAtlasVcsKind; const ARemote: string): TArray<string>;
 begin
   if AKind = TAtlasVcsKind.Svn then
-    Result := TArray<string>.Create('info', '--non-interactive', '^/')
+  begin
+    Result := TArray<string>.Create('info', '--non-interactive', '^/');
+  end
   else
+  begin
     Result := TArray<string>.Create('-c', 'credential.interactive=never', '-c', 'core.askPass=', 'ls-remote',
       '--heads', ARemote);
+  end;
 end;
 
 class function TAtlasVcsServerChecks.LoginCommandLine(const AShell, AExecutable: string; AKind: TAtlasVcsKind;
@@ -213,14 +275,22 @@ var
 begin
   Result := '';
   if (AShell = '') or (AExecutable = '') or (Pos('"', AExecutable) > 0) then
+  begin
     Exit;
+  end;
   if AKind = TAtlasVcsKind.Svn then
+  begin
     // In Anführungszeichen ist ^ für cmd kein Fluchtzeichen.
-    mCommand := '"' + AExecutable + '" info "^/"'
+    mCommand := '"' + AExecutable + '" info "^/"';
+  end
   else if (AKind = TAtlasVcsKind.Git) and SafeRemote(ARemote) then
-    mCommand := '"' + AExecutable + '" fetch ' + ARemote
+  begin
+    mCommand := '"' + AExecutable + '" fetch ' + ARemote;
+  end
   else
+  begin
     Exit;
+  end;
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg; /k: das Fenster bleibt offen.
   Result := '"' + AShell + '" /s /k "' + mCommand + '"';
 end;
@@ -233,7 +303,9 @@ begin
   mText := VcsUtf8(AOutput);
   mEnd := Pos(#10, mText);
   if mEnd > 0 then
+  begin
     mText := Copy(mText, 1, mEnd - 1);
+  end;
   Result := Trim(mText);
 end;
 
@@ -243,16 +315,95 @@ var
 begin
   Result := nil;
   for mLine in VcsUtf8(AOutput).Split([#10]) do
+  begin
     if Trim(mLine) <> '' then
+    begin
       Result := Result + [Trim(mLine)];
+    end;
+  end;
+end;
+
+/// <summary>Lief der Aufruf und endete mit 0?</summary>
+function Succeeded(const AAnswer: TAtlasVcsRunResult): Boolean;
+begin
+  Result := (AAnswer.Outcome = TAtlasVcsOutcome.Ok) and (AAnswer.ExitCode = 0);
+end;
+
+/// <summary>svn: Wurzel des Repositorys aus der Arbeitskopie (ohne Netz) in ACheck.Url; False mit ACheck.State,
+/// wenn es keinen Server gibt.</summary>
+function SvnTarget(const ARunner: IAtlasVcsRunner; const AExecutable, ARoot: string; ATimeoutMs: Cardinal;
+  var ACheck: TAtlasVcsServerCheck): Boolean;
+var
+  mAnswer: TAtlasVcsRunResult;
+begin
+  mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('info', '--show-item', 'repos-root-url',
+    '--non-interactive'), ARoot, ATimeoutMs);
+  Result := False;
+  if not Succeeded(mAnswer) then
+  begin
+    ACheck.State := TAtlasVcsServerAccess.State(TAtlasVcsKind.Svn, mAnswer);
+    if ACheck.State = TAtlasVcsServerState.Failed then
+    begin
+      ACheck.State := TAtlasVcsServerState.NoServer;
+    end;
+    Exit;
+  end;
+  ACheck.Url := TAtlasVcsServerChecks.WithoutCredentials(FirstLine(mAnswer.Output));
+  Result := ACheck.Url <> '';
+  if not Result then
+  begin
+    ACheck.State := TAtlasVcsServerState.NoServer;
+  end;
+end;
+
+/// <summary>git: Remote des verfolgten Branchs, ohne verfolgten Branch origin bzw. das erste, in ACheck.Remote samt
+/// Adresse; False mit ACheck.State, wenn es kein brauchbares Remote gibt.</summary>
+function GitTarget(const ARunner: IAtlasVcsRunner; const AExecutable, ARoot: string; ATimeoutMs: Cardinal;
+  var ACheck: TAtlasVcsServerCheck): Boolean;
+var
+  mAnswer: TAtlasVcsRunResult;
+  mRemotes: TArray<string>;
+  mUpstream: string;
+begin
+  Result := False;
+  mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('remote'), ARoot, ATimeoutMs);
+  if not Succeeded(mAnswer) then
+  begin
+    ACheck.State := TAtlasVcsServerAccess.State(TAtlasVcsKind.Git, mAnswer);
+    Exit;
+  end;
+  mRemotes := Lines(mAnswer.Output);
+  mUpstream := '';
+  mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('rev-parse', '--abbrev-ref', '--symbolic-full-name',
+    '@{u}'), ARoot, ATimeoutMs);
+  if Succeeded(mAnswer) then
+  begin
+    mUpstream := FirstLine(mAnswer.Output);
+  end;
+  ACheck.Remote := TAtlasVcsServerChecks.RemoteFor(mUpstream, mRemotes);
+  if ACheck.Remote = '' then
+  begin
+    ACheck.State := TAtlasVcsServerState.NoServer;
+    Exit;
+  end;
+  if not TAtlasVcsServerChecks.SafeRemote(ACheck.Remote) then
+  begin
+    ACheck.State := TAtlasVcsServerState.Failed;
+    Exit;
+  end;
+  mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('remote', 'get-url', ACheck.Remote), ARoot,
+    ATimeoutMs);
+  if Succeeded(mAnswer) then
+  begin
+    ACheck.Url := TAtlasVcsServerChecks.WithoutCredentials(FirstLine(mAnswer.Output));
+  end;
+  Result := True;
 end;
 
 class function TAtlasVcsServerChecks.Check(const ARunner: IAtlasVcsRunner; AKind: TAtlasVcsKind;
   const AExecutable, ARoot: string; ATimeoutMs: Cardinal; ANow: TDateTime): TAtlasVcsServerCheck;
 var
-  mAnswer: TAtlasVcsRunResult;
-  mRemotes: TArray<string>;
-  mUpstream: string;
+  mReady: Boolean;
 begin
   Result := TAtlasVcsServerCheck.Empty;
   Result.Kind := AKind;
@@ -270,57 +421,18 @@ begin
   end;
   if AKind = TAtlasVcsKind.Svn then
   begin
-    // Wurzel des Repositorys aus der Arbeitskopie (ohne Netz).
-    mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('info', '--show-item', 'repos-root-url',
-      '--non-interactive'), ARoot, ATimeoutMs);
-    if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
-    begin
-      Result.State := TAtlasVcsServerAccess.State(AKind, mAnswer);
-      if Result.State = TAtlasVcsServerState.Failed then
-        Result.State := TAtlasVcsServerState.NoServer;
-      Exit;
-    end;
-    Result.Url := TAtlasVcsServerChecks.WithoutCredentials(FirstLine(mAnswer.Output));
-    if Result.Url = '' then
-    begin
-      Result.State := TAtlasVcsServerState.NoServer;
-      Exit;
-    end;
+    mReady := SvnTarget(ARunner, AExecutable, ARoot, ATimeoutMs, Result);
   end
   else
   begin
-    mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('remote'), ARoot, ATimeoutMs);
-    if (mAnswer.Outcome <> TAtlasVcsOutcome.Ok) or (mAnswer.ExitCode <> 0) then
-    begin
-      Result.State := TAtlasVcsServerAccess.State(AKind, mAnswer);
-      Exit;
-    end;
-    mRemotes := Lines(mAnswer.Output);
-    // Remote des verfolgten Branchs; ohne verfolgten Branch origin bzw. das erste.
-    mUpstream := '';
-    mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('rev-parse', '--abbrev-ref', '--symbolic-full-name',
-      '@{u}'), ARoot, ATimeoutMs);
-    if (mAnswer.Outcome = TAtlasVcsOutcome.Ok) and (mAnswer.ExitCode = 0) then
-      mUpstream := FirstLine(mAnswer.Output);
-    Result.Remote := RemoteFor(mUpstream, mRemotes);
-    if Result.Remote = '' then
-    begin
-      Result.State := TAtlasVcsServerState.NoServer;
-      Exit;
-    end;
-    if not SafeRemote(Result.Remote) then
-    begin
-      Result.State := TAtlasVcsServerState.Failed;
-      Exit;
-    end;
-    mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('remote', 'get-url', Result.Remote), ARoot,
-      ATimeoutMs);
-    if (mAnswer.Outcome = TAtlasVcsOutcome.Ok) and (mAnswer.ExitCode = 0) then
-      Result.Url := WithoutCredentials(FirstLine(mAnswer.Output));
+    mReady := GitTarget(ARunner, AExecutable, ARoot, ATimeoutMs, Result);
   end;
   // Die eigentliche Prüfung: einmal mit dem Server sprechen.
-  mAnswer := ARunner.Run(AExecutable, ProbeArguments(AKind, Result.Remote), ARoot, ATimeoutMs);
-  Result.State := TAtlasVcsServerAccess.State(AKind, mAnswer);
+  if mReady then
+  begin
+    Result.State := TAtlasVcsServerAccess.State(AKind, ARunner.Run(AExecutable, ProbeArguments(AKind, Result.Remote),
+      ARoot, ATimeoutMs));
+  end;
 end;
 
 end.

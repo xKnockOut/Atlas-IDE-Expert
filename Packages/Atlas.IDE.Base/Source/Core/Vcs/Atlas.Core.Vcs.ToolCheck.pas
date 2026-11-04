@@ -60,9 +60,52 @@ implementation
 class function TAtlasVcsToolChecks.VersionArguments(AKind: TAtlasVcsKind): TArray<string>;
 begin
   if AKind = TAtlasVcsKind.Svn then
-    Result := TArray<string>.Create('--version', '--quiet')
+  begin
+    Result := TArray<string>.Create('--version', '--quiet');
+  end
   else
+  begin
     Result := TArray<string>.Create('--version');
+  end;
+end;
+
+/// <summary>Erste nicht leere Zeile, getrimmt; '' ohne.</summary>
+function FirstLine(const AOutput: string): string;
+var
+  mLine: string;
+begin
+  for mLine in AOutput.Replace(#13, '').Split([#10]) do
+  begin
+    if Trim(mLine) <> '' then
+    begin
+      Exit(Trim(mLine));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Nur die ersten drei Zahlen ("2.47.1.windows.1" → "2.47.1"); '' ohne Ziffer am Anfang.</summary>
+function VersionNumber(const AText: string): string;
+var
+  mIndex, mDots: Integer;
+begin
+  Result := '';
+  if (AText = '') or not CharInSet(AText[1], ['0'..'9']) then
+  begin
+    Exit;
+  end;
+  mDots := 0;
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and (mDots < 3) and CharInSet(AText[mIndex], ['0'..'9', '.']) do
+  begin
+    if AText[mIndex] = '.' then
+    begin
+      Inc(mDots);
+    end;
+    Inc(mIndex);
+  end;
+  // Der dritte Punkt gehört nicht dazu.
+  Result := Copy(AText, 1, mIndex - 1).TrimRight(['.']);
 end;
 
 class function TAtlasVcsToolChecks.ParseVersion(AKind: TAtlasVcsKind; const AOutput: string): string;
@@ -70,58 +113,30 @@ const
   cGitPrefix = 'git version ';
 var
   mLine, mNumber: string;
-  mLines: TArray<string>;
-  mIndex, mDots: Integer;
 begin
   Result := '';
-  mLines := AOutput.Replace(#13, '').Split([#10]);
-  mLine := '';
-  for mIndex := 0 to High(mLines) do
-    if Trim(mLines[mIndex]) <> '' then
-    begin
-      mLine := Trim(mLines[mIndex]);
-      Break;
-    end;
-  if mLine = '' then
-    Exit;
-  if AKind = TAtlasVcsKind.Git then
+  mLine := FirstLine(AOutput);
+  mNumber := '';
+  if (AKind = TAtlasVcsKind.Git) and mLine.StartsWith(cGitPrefix, True) then
   begin
-    if not mLine.StartsWith(cGitPrefix, True) then
-      Exit;
-    mNumber := Trim(Copy(mLine, Length(cGitPrefix) + 1, MaxInt));
+    mNumber := VersionNumber(Trim(Copy(mLine, Length(cGitPrefix) + 1, MaxInt)));
   end
   else if AKind = TAtlasVcsKind.Svn then
-    mNumber := mLine
-  else
-    Exit;
-  // Nur die ersten drei Zahlen ("2.47.1.windows.1" → "2.47.1"); ohne Ziffer am Anfang keine Version.
-  if (mNumber = '') or not CharInSet(mNumber[1], ['0'..'9']) then
-    Exit;
-  mDots := 0;
-  for mIndex := 1 to Length(mNumber) do
   begin
-    if mNumber[mIndex] = '.' then
-    begin
-      Inc(mDots);
-      if mDots = 3 then
-      begin
-        mNumber := Copy(mNumber, 1, mIndex - 1);
-        Break;
-      end;
-    end
-    else if not CharInSet(mNumber[mIndex], ['0'..'9']) then
-    begin
-      mNumber := Copy(mNumber, 1, mIndex - 1);
-      Break;
-    end;
+    mNumber := VersionNumber(mLine);
   end;
-  mNumber := mNumber.TrimRight(['.']);
   if mNumber = '' then
+  begin
     Exit;
+  end;
   if AKind = TAtlasVcsKind.Git then
-    Result := cGitPrefix + mNumber
+  begin
+    Result := cGitPrefix + mNumber;
+  end
   else
+  begin
     Result := 'svn ' + mNumber;
+  end;
 end;
 
 class function TAtlasVcsToolChecks.Missing(AKind: TAtlasVcsKind;
@@ -139,7 +154,9 @@ class function TAtlasVcsToolChecks.Classify(AKind: TAtlasVcsKind; const ALocatio
 begin
   Result := Missing(AKind, ALocation);
   if ALocation.Executable = '' then
+  begin
     Exit;
+  end;
   case ARun.Outcome of
     TAtlasVcsOutcome.Ok:
       if ARun.ExitCode <> 0 then
@@ -152,9 +169,13 @@ begin
         Result.ExitCode := 0;
         Result.Version := ParseVersion(AKind, TEncoding.UTF8.GetString(ARun.Output));
         if Result.Version <> '' then
-          Result.State := TAtlasVcsToolState.Found
+        begin
+          Result.State := TAtlasVcsToolState.Found;
+        end
         else
+        begin
           Result.State := TAtlasVcsToolState.NotRecognized;
+        end;
       end;
     TAtlasVcsOutcome.ToolMissing:
       Result.State := TAtlasVcsToolState.Missing;
@@ -174,7 +195,9 @@ var
   mDir: string;
 begin
   if (ALocation.Executable = '') or (ARunner = nil) then
+  begin
     Exit(Missing(AKind, ALocation));
+  end;
   mDir := ExtractFileDir(ALocation.Executable);
   mRun := ARunner.Run(ALocation.Executable, VersionArguments(AKind), mDir, TimeoutMs);
   Result := Classify(AKind, ALocation, mRun);

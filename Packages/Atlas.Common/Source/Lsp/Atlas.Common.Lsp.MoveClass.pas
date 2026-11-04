@@ -40,6 +40,8 @@ type
     Files: TArray<string>;
     ReadText: TReferenceReadText;
     Exists: TMoveClassExists;
+    /// <summary>Name der neuen Unit.</summary>
+    UnitName: string;
   end;
 
   TLspMoveClass = class
@@ -49,15 +51,14 @@ type
   public
     /// <summary>Namensauflösung für den Kern über AResolver.</summary>
     class function Lookup(AResolver: TNameResolver): TMoveClassLookup; static;
-    /// <summary>Die Code-Aktion an APosition, wenn eingeschaltet und die Klasse dort verschiebbar ist; sonst nil.
-    /// Der Aufrufer übernimmt die Objekte.</summary>
-    class function Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
+    /// <summary>Die Code-Aktion an APosition, wenn die Klasse dort verschiebbar ist; sonst nil. Ob die Funktion
+    /// eingeschaltet ist, prüft der Aufrufer. Der Aufrufer übernimmt die Objekte.</summary>
+    class function Actions(AResolver: TNameResolver; ATree: TSyntaxTree;
       const AFileName, AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>; static;
     /// <summary>{"edit": WorkspaceEdit, "file": URI der neuen Unit, "warnings": [...]}; EJsonRpcError, wenn die
     /// Klasse nicht verschiebbar ist oder die Datei schon existiert. Der Aufrufer übernimmt das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; const AUnitName: string; const AContext: TMoveClassContext): TJSONObject;
-      static;
+      const APosition: TTextPosition; const AContext: TMoveClassContext): TJSONObject; static;
   end;
 
 implementation
@@ -113,7 +114,7 @@ begin
     end;
 end;
 
-class function TLspMoveClass.Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TLspMoveClass.Actions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
   Decl: TSyntaxNode;
@@ -123,10 +124,6 @@ var
   Command, Action: TJSONObject;
 begin
   Result := nil;
-  if not AEnabled then
-  begin
-    Exit;
-  end;
   Decl := TMoveClass.ClassAt(ATree, APosition);
   if Decl = nil then
   begin
@@ -158,22 +155,99 @@ begin
   Result := [Action];
 end;
 
+/// <summary>EJsonRpcError, wenn es die Datei ANewFile oder die Unit im Projekt schon gibt.</summary>
+procedure CheckNewUnit(const AContext: TMoveClassContext; const APlan: TMoveClassPlan; const ANewFile: string);
+var
+  Item: TProjectUnit;
+begin
+  if Assigned(AContext.Exists) and AContext.Exists(ANewFile) then
+  begin
+    raise Failed(Format('%s gibt es schon', [ExtractFileName(ANewFile)]));
+  end;
+  if not AContext.HasProject then
+  begin
+    Exit;
+  end;
+  for Item in AContext.Project.Units do
+  begin
+    if SameText(Item.Name, APlan.NewUnit) then
+    begin
+      raise Failed(Format('%s steht schon im Projekt', [APlan.NewUnit]));
+    end;
+  end;
+end;
+
+/// <summary>Quelldateien mit Verweisen außer AFileName, jede einmal.</summary>
+function UserFiles(const AReferences: TArray<TReferenceLocation>; const AFileName: string): TArray<string>;
+var
+  Location: TReferenceLocation;
+begin
+  Result := nil;
+  for Location in AReferences do
+  begin
+    if not SameText(Location.FileName, AFileName) and IsSource(Location.FileName) and
+      (IndexText(Location.FileName, Result) < 0) then
+    begin
+      Result := Result + [Location.FileName];
+    end;
+  end;
+end;
+
+/// <summary>Verweise in der Datei AUser.</summary>
+function RangesOf(const AReferences: TArray<TReferenceLocation>; const AUser: string): TArray<TTextRange>;
+var
+  Location: TReferenceLocation;
+begin
+  Result := nil;
+  for Location in AReferences do
+  begin
+    if SameText(Location.FileName, AUser) then
+    begin
+      Result := Result + [Location.Range];
+    end;
+  end;
+end;
+
+/// <summary>uses der verwendenden Units; die Hauptdatei des Projekts erhält die Unit unten mit Pfad.</summary>
+procedure AddUserEdits(AChanges: TWorkspaceChanges; const AContext: TMoveClassContext; const APlan: TMoveClassPlan;
+  const AReferences: TArray<TReferenceLocation>; const AFileName: string);
+var
+  MainSource, User, Text: string;
+  Tree: TSyntaxTree;
+  Edits: TArray<TTextEdit>;
+begin
+  MainSource := '';
+  if AContext.HasProject then
+  begin
+    MainSource := AContext.Project.MainSource;
+  end;
+  for User in UserFiles(AReferences, AFileName) do
+  begin
+    if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
+    begin
+      Continue;
+    end;
+    Tree := TSyntaxTreeCache.Parse(Text);
+    try
+      if TMoveClass.UpdateUser(Text, Tree, APlan.OriginUnit, APlan.NewUnit, APlan.ClassName,
+        RangesOf(AReferences, User), not SameText(User, MainSource), Edits) then
+      begin
+        AChanges.Add(User, Edits);
+      end;
+    finally
+      Tree.Free;
+    end;
+  end;
+end;
+
 class function TLspMoveClass.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-  const APosition: TTextPosition; const AUnitName: string; const AContext: TMoveClassContext): TJSONObject;
+  const APosition: TTextPosition; const AContext: TMoveClassContext): TJSONObject;
 var
   Plan: TMoveClassPlan;
-  Reason, NewFile, Text, MainSource: string;
+  Reason, NewFile: string;
   Decl: TSyntaxNode;
-  Item: TProjectUnit;
   Changes: TWorkspaceChanges;
   References: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Users: TArray<string>;
-  User: string;
-  Ranges: TArray<TTextRange>;
-  Edits: TArray<TTextEdit>;
-  Tree: TSyntaxTree;
-  Known: Boolean;
 begin
   Decl := TMoveClass.ClassAt(ATree, APosition);
   if Decl = nil then
@@ -182,25 +256,13 @@ begin
   end;
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(AFileName, AText, ATree, APosition, AUnitName, Lookup(AResolver), Plan, Reason) then
+    if not TMoveClass.Plan(AFileName, AText, ATree, APosition, AContext.UnitName, Lookup(AResolver), Plan,
+      Reason) then
     begin
       raise Failed(Reason);
     end;
     NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), Plan.NewUnit + '.pas');
-    if Assigned(AContext.Exists) and AContext.Exists(NewFile) then
-    begin
-      raise Failed(Format('%s gibt es schon', [ExtractFileName(NewFile)]));
-    end;
-    if AContext.HasProject then
-    begin
-      for Item in AContext.Project.Units do
-      begin
-        if SameText(Item.Name, Plan.NewUnit) then
-        begin
-          raise Failed(Format('%s steht schon im Projekt', [Plan.NewUnit]));
-        end;
-      end;
-    end;
+    CheckNewUnit(AContext, Plan, NewFile);
     // Verwendende Units über die Referenzsuche (#29).
     References := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Decl.StartPos, False,
       AContext.Files, AContext.ReadText);
@@ -212,53 +274,7 @@ begin
     // documentChanges: erst die neue Datei, dann die Änderungen je Datei.
     Changes.CreateFile(NewFile, Plan.Text);
     Changes.Add(AFileName, Plan.OriginEdits);
-    MainSource := '';
-    if AContext.HasProject then
-    begin
-      MainSource := AContext.Project.MainSource;
-    end;
-    Users := nil;
-    for Location in References do
-    begin
-      Known := SameText(Location.FileName, AFileName) or not IsSource(Location.FileName);
-      for User in Users do
-      begin
-        if SameText(User, Location.FileName) then
-        begin
-          Known := True;
-        end;
-      end;
-      if not Known then
-      begin
-        Users := Users + [Location.FileName];
-      end;
-    end;
-    for User in Users do
-    begin
-      if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
-      begin
-        Continue;
-      end;
-      Ranges := nil;
-      for Location in References do
-      begin
-        if SameText(Location.FileName, User) then
-        begin
-          Ranges := Ranges + [Location.Range];
-        end;
-      end;
-      Tree := TSyntaxTreeCache.Parse(Text);
-      try
-        // Die Hauptdatei des Projekts erhält die Unit unten mit Pfad.
-        if TMoveClass.UpdateUser(Text, Tree, Plan.OriginUnit, Plan.NewUnit, Plan.ClassName, Ranges,
-          not SameText(User, MainSource), Edits) then
-        begin
-          Changes.Add(User, Edits);
-        end;
-      finally
-        Tree.Free;
-      end;
-    end;
+    AddUserEdits(Changes, AContext, Plan, References, AFileName);
     // Projekt: uses bzw. contains der .dpr/.dpk und DCCReference der .dproj, jeweils mit relativem Pfad.
     Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, Plan.NewUnit);
     if Plan.Unresolved <> nil then

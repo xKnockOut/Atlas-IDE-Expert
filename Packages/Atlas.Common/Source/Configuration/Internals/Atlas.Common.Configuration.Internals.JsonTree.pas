@@ -74,6 +74,13 @@ type
     procedure Fail(const AMessage: string);
     procedure SkipSpace;
     function ReadString: string;
+    procedure ReadEscape(ABuilder: TStringBuilder);
+    /// <summary>Nach einem Glied: "," überspringen oder AClose erwarten; sonst Fehler.</summary>
+    procedure SkipSeparator(AClose: Char);
+    procedure ReadMember(ANode: TJsonNode; ADepth: Integer);
+    function ParseObject(AStart, ADepth: Integer): TJsonNode;
+    function ParseArray(AStart, ADepth: Integer): TJsonNode;
+    function ParseWord(AStart: Integer): TJsonNode;
     function ParseValue(ADepth: Integer): TJsonNode;
   public
     constructor Create(const AText: string);
@@ -164,12 +171,11 @@ end;
 
 function TReader.ReadString: string;
 var
-  Builder: TStringBuilder;
-  Code: Integer;
+  mBuilder: TStringBuilder;
 begin
   // FPos steht auf dem öffnenden Anführungszeichen.
   Inc(FPos);
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
     while True do
     begin
@@ -186,51 +192,171 @@ begin
         #10, #13:
           Fail('Zeilenumbruch im String');
         '\':
-          begin
-            Inc(FPos);
-            if FPos > Length(FText) then
-            begin
-              Fail('String nicht abgeschlossen');
-            end;
-            case FText[FPos] of
-              '"', '\', '/': Builder.Append(FText[FPos]);
-              'b': Builder.Append(#8);
-              'f': Builder.Append(#12);
-              'n': Builder.Append(#10);
-              'r': Builder.Append(#13);
-              't': Builder.Append(#9);
-              'u':
-                begin
-                  Code := StrToIntDef('$' + Copy(FText, FPos + 1, 4), -1);
-                  if (Code < 0) or (FPos + 4 > Length(FText)) then
-                  begin
-                    Fail('Ungültige \u-Folge');
-                  end;
-                  Builder.Append(Char(Code));
-                  Inc(FPos, 4);
-                end;
-            else
-              Fail('Ungültige Escape-Folge');
-            end;
-            Inc(FPos);
-          end;
+          ReadEscape(mBuilder);
       else
-        Builder.Append(FText[FPos]);
+        mBuilder.Append(FText[FPos]);
         Inc(FPos);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
+end;
+
+procedure TReader.ReadEscape(ABuilder: TStringBuilder);
+var
+  mCode: Integer;
+begin
+  // FPos steht auf dem Rückstrich.
+  Inc(FPos);
+  if FPos > Length(FText) then
+  begin
+    Fail('String nicht abgeschlossen');
+  end;
+  case FText[FPos] of
+    '"', '\', '/': ABuilder.Append(FText[FPos]);
+    'b': ABuilder.Append(#8);
+    'f': ABuilder.Append(#12);
+    'n': ABuilder.Append(#10);
+    'r': ABuilder.Append(#13);
+    't': ABuilder.Append(#9);
+    'u':
+      begin
+        mCode := StrToIntDef('$' + Copy(FText, FPos + 1, 4), -1);
+        if (mCode < 0) or (FPos + 4 > Length(FText)) then
+        begin
+          Fail('Ungültige \u-Folge');
+        end;
+        ABuilder.Append(Char(mCode));
+        Inc(FPos, 4);
+      end;
+  else
+    Fail('Ungültige Escape-Folge');
+  end;
+  Inc(FPos);
+end;
+
+procedure TReader.SkipSeparator(AClose: Char);
+begin
+  SkipSpace;
+  if (FPos <= Length(FText)) and (FText[FPos] = ',') then
+  begin
+    Inc(FPos);
+    SkipSpace;
+  end
+  else if (FPos <= Length(FText)) and (FText[FPos] <> AClose) then
+  begin
+    Fail(Format('"," oder "%s" erwartet', [AClose]));
+  end;
+end;
+
+procedure TReader.ReadMember(ANode: TJsonNode; ADepth: Integer);
+var
+  mKey: string;
+  mKeyStart: Integer;
+begin
+  if FText[FPos] <> '"' then
+  begin
+    Fail('Schlüssel in Anführungszeichen erwartet');
+  end;
+  mKeyStart := FPos - 1;
+  mKey := ReadString;
+  SkipSpace;
+  if (FPos > Length(FText)) or (FText[FPos] <> ':') then
+  begin
+    Fail('":" erwartet');
+  end;
+  Inc(FPos);
+  ANode.FKeys.Add(mKey);
+  ANode.FKeyStarts.Add(mKeyStart);
+  ANode.FItems.Add(ParseValue(ADepth + 1));
+end;
+
+function TReader.ParseObject(AStart, ADepth: Integer): TJsonNode;
+begin
+  Result := TJsonNode.Create(TJsonKind.Object_, AStart);
+  try
+    Inc(FPos);
+    SkipSpace;
+    while (FPos <= Length(FText)) and (FText[FPos] <> '}') do
+    begin
+      ReadMember(Result, ADepth);
+      SkipSeparator('}');
+    end;
+    if FPos > Length(FText) then
+    begin
+      Fail('"}" fehlt');
+    end;
+    Inc(FPos);
+    Result.FStop := FPos - 1;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TReader.ParseArray(AStart, ADepth: Integer): TJsonNode;
+begin
+  Result := TJsonNode.Create(TJsonKind.Array_, AStart);
+  try
+    Inc(FPos);
+    SkipSpace;
+    while (FPos <= Length(FText)) and (FText[FPos] <> ']') do
+    begin
+      Result.FItems.Add(ParseValue(ADepth + 1));
+      SkipSeparator(']');
+    end;
+    if FPos > Length(FText) then
+    begin
+      Fail('"]" fehlt');
+    end;
+    Inc(FPos);
+    Result.FStop := FPos - 1;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+/// <summary>null, true, false oder eine Zahl ab AStart.</summary>
+function TReader.ParseWord(AStart: Integer): TJsonNode;
+var
+  mWord: string;
+begin
+  while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z', '0'..'9', '-', '+', '.']) do
+  begin
+    Inc(FPos);
+  end;
+  mWord := Copy(FText, AStart + 1, FPos - 1 - AStart);
+  if mWord = '' then
+  begin
+    Fail('Wert erwartet');
+  end;
+  if mWord = 'null' then
+  begin
+    Result := TJsonNode.Create(TJsonKind.Null, AStart);
+  end
+  else if (mWord = 'true') or (mWord = 'false') then
+  begin
+    Result := TJsonNode.Create(TJsonKind.Boolean_, AStart);
+  end
+  else if CharInSet(mWord[1], ['-', '0'..'9']) then
+  begin
+    Result := TJsonNode.Create(TJsonKind.Number, AStart);
+  end
+  else
+  begin
+    raise EJsonTreeError.Create(Format('Unbekannter Wert "%s"', [mWord]), AStart);
+  end;
+  Result.FValue := mWord;
+  Result.FStop := FPos - 1;
 end;
 
 function TReader.ParseValue(ADepth: Integer): TJsonNode;
 var
-  Start: Integer;
-  Key: string;
-  KeyStart: Integer;
-  Word: string;
+  mStart: Integer;
+  mText: string;
 begin
   if ADepth > MaxDepth then
   begin
@@ -241,119 +367,21 @@ begin
   begin
     Fail('Wert erwartet');
   end;
-  Start := FPos - 1;
+  mStart := FPos - 1;
   case FText[FPos] of
     '{':
-      begin
-        Result := TJsonNode.Create(TJsonKind.Object_, Start);
-        try
-          Inc(FPos);
-          SkipSpace;
-          while (FPos <= Length(FText)) and (FText[FPos] <> '}') do
-          begin
-            if FText[FPos] <> '"' then
-            begin
-              Fail('Schlüssel in Anführungszeichen erwartet');
-            end;
-            KeyStart := FPos - 1;
-            Key := ReadString;
-            SkipSpace;
-            if (FPos > Length(FText)) or (FText[FPos] <> ':') then
-            begin
-              Fail('":" erwartet');
-            end;
-            Inc(FPos);
-            Result.FKeys.Add(Key);
-            Result.FKeyStarts.Add(KeyStart);
-            Result.FItems.Add(ParseValue(ADepth + 1));
-            SkipSpace;
-            if (FPos <= Length(FText)) and (FText[FPos] = ',') then
-            begin
-              Inc(FPos);
-              SkipSpace;
-            end
-            else if (FPos <= Length(FText)) and (FText[FPos] <> '}') then
-            begin
-              Fail('"," oder "}" erwartet');
-            end;
-          end;
-          if FPos > Length(FText) then
-          begin
-            Fail('"}" fehlt');
-          end;
-          Inc(FPos);
-          Result.FStop := FPos - 1;
-        except
-          Result.Free;
-          raise;
-        end;
-      end;
+      Result := ParseObject(mStart, ADepth);
     '[':
-      begin
-        Result := TJsonNode.Create(TJsonKind.Array_, Start);
-        try
-          Inc(FPos);
-          SkipSpace;
-          while (FPos <= Length(FText)) and (FText[FPos] <> ']') do
-          begin
-            Result.FItems.Add(ParseValue(ADepth + 1));
-            SkipSpace;
-            if (FPos <= Length(FText)) and (FText[FPos] = ',') then
-            begin
-              Inc(FPos);
-              SkipSpace;
-            end
-            else if (FPos <= Length(FText)) and (FText[FPos] <> ']') then
-            begin
-              Fail('"," oder "]" erwartet');
-            end;
-          end;
-          if FPos > Length(FText) then
-          begin
-            Fail('"]" fehlt');
-          end;
-          Inc(FPos);
-          Result.FStop := FPos - 1;
-        except
-          Result.Free;
-          raise;
-        end;
-      end;
+      Result := ParseArray(mStart, ADepth);
     '"':
       begin
-        Word := ReadString;
-        Result := TJsonNode.Create(TJsonKind.String_, Start);
-        Result.FValue := Word;
+        mText := ReadString;
+        Result := TJsonNode.Create(TJsonKind.String_, mStart);
+        Result.FValue := mText;
         Result.FStop := FPos - 1;
       end;
   else
-    while (FPos <= Length(FText)) and CharInSet(FText[FPos], ['A'..'Z', 'a'..'z', '0'..'9', '-', '+', '.']) do
-    begin
-      Inc(FPos);
-    end;
-    Word := Copy(FText, Start + 1, FPos - 1 - Start);
-    if Word = '' then
-    begin
-      Fail('Wert erwartet');
-    end;
-    if Word = 'null' then
-    begin
-      Result := TJsonNode.Create(TJsonKind.Null, Start);
-    end
-    else if (Word = 'true') or (Word = 'false') then
-    begin
-      Result := TJsonNode.Create(TJsonKind.Boolean_, Start);
-    end
-    else if CharInSet(Word[1], ['-', '0'..'9']) then
-    begin
-      Result := TJsonNode.Create(TJsonKind.Number, Start);
-    end
-    else
-    begin
-      raise EJsonTreeError.Create(Format('Unbekannter Wert "%s"', [Word]), Start);
-    end;
-    Result.FValue := Word;
-    Result.FStop := FPos - 1;
+    Result := ParseWord(mStart);
   end;
 end;
 

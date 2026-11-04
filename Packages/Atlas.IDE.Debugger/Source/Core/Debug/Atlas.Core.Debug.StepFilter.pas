@@ -174,7 +174,9 @@ begin
     mPatterns := TJSONArray.Create;
     mItems.AddElement(mPatterns);
     for mPattern in APatterns do
+    begin
       mPatterns.Add(mPattern);
+    end;
     Result := mItems.ToJSON;
   finally
     mItems.Free;
@@ -193,23 +195,35 @@ begin
   ARoutine.EndLine := -1;
   Result := False;
   if not (AJson is TJSONObject) then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject(AJson);
   if mRoot.GetValue<Integer>('format', 0) <> 1 then
+  begin
     Exit;
+  end;
   Result := True;
   ARoutine.Found := mRoot.GetValue<Boolean>('found', False) and (mRoot.GetValue<string>('name', '') <> '');
   if not ARoutine.Found then
+  begin
     Exit;
+  end;
   ARoutine.Name := mRoot.GetValue<string>('name', '');
   ARoutine.Container := mRoot.GetValue<string>('container', '');
   ARoutine.Routine := mRoot.GetValue<string>('routine', '');
   ARoutine.StartLine := mRoot.GetValue<Integer>('startLine', -1);
   ARoutine.EndLine := mRoot.GetValue<Integer>('endLine', -1);
   if mRoot.TryGetValue<TJSONArray>('kinds', mKinds) then
+  begin
     for mIndex := 0 to mKinds.Count - 1 do
+    begin
       if TStepFilterNames.TryKind(mKinds.Items[mIndex].Value, mKind) then
+      begin
         Include(ARoutine.Kinds, mKind);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasStepFilter.ReadCounts(AJson: TJSONValue; APatternCount: Integer;
@@ -223,23 +237,39 @@ begin
   ACounts := Default(TAtlasStepCounts);
   SetLength(ACounts.Patterns, APatternCount);
   for mIndex := 0 to High(ACounts.Patterns) do
+  begin
     ACounts.Patterns[mIndex] := 0;
+  end;
   Result := False;
   if not (AJson is TJSONObject) then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject(AJson);
   if mRoot.GetValue<Integer>('format', 0) <> 1 then
+  begin
     Exit;
+  end;
   ACounts.Files := mRoot.GetValue<Integer>('files', 0);
   ACounts.Routines := mRoot.GetValue<Integer>('routines', 0);
   ACounts.Truncated := mRoot.GetValue<Boolean>('truncated', False);
   if mRoot.TryGetValue<TJSONObject>('kinds', mKinds) then
+  begin
     for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    begin
       ACounts.Kinds[mKind] := mKinds.GetValue<Integer>(TStepFilterNames.KindNames[mKind], 0);
+    end;
+  end;
   if mRoot.TryGetValue<TJSONArray>('patterns', mPatterns) then
+  begin
     for mIndex := 0 to High(ACounts.Patterns) do
+    begin
       if (mIndex < mPatterns.Count) and (mPatterns.Items[mIndex] is TJSONNumber) then
+      begin
         ACounts.Patterns[mIndex] := TJSONNumber(mPatterns.Items[mIndex]).AsInt;
+      end;
+    end;
+  end;
   Result := True;
 end;
 
@@ -251,14 +281,18 @@ var
 begin
   Result := Default(TAtlasStepVerdict);
   if not AOptions.Enabled or not ARoutine.Found then
+  begin
     Exit;
+  end;
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     if (mKind in AOptions.Kinds) and (mKind in ARoutine.Kinds) then
     begin
       Result.Kind := TAtlasStepVerdictKind.Kind;
       Result.FilterKind := mKind;
       Exit;
     end;
+  end;
   mIndex := TStepFilterNames.MatchingPattern(AOptions.Patterns, ARoutine.Name);
   if mIndex >= 0 then
   begin

@@ -85,6 +85,8 @@ type
     FCurrent: TQueryState;
     FCurrentRef: IInterface;
     FTimeLimitMs: Integer;
+    /// <summary>Quelle antwortet nicht in der Zeit: Teil abschließen, Abbruch anfordern, melden.</summary>
+    procedure Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
     procedure QueryOne(const AEntry: TEntry; const AContext: TAtlasContext; const APart: IAtlasCompletionSink);
     /// <summary>Arbeit eines Arbeiters für AEntry: fragt die Quelle, misst sie und gibt Running wieder frei.
     /// </summary>
@@ -115,7 +117,9 @@ function TimeLimitOf(ALimitMs: Integer): Integer;
 begin
   Result := ALimitMs;
   if Result < 0 then
+  begin
     Result := TAtlasTimeLimit.LimitMs;
+  end;
 end;
 
 { TAtlasCompletionProviders.TQueryState }
@@ -137,11 +141,15 @@ end;
 procedure TAtlasCompletionProviders.TQueryState.Add(const AItems: TAtlasCompletionItems);
 begin
   if Length(AItems) = 0 then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     if FSink <> nil then
+    begin
       FSink.AddItems(AItems);
+    end;
   finally
     FLock.Leave;
   end;
@@ -153,7 +161,9 @@ begin
   FLock.Enter;
   try
     if FSink <> nil then
+    begin
       FSink.MarkIncomplete;
+    end;
   finally
     FLock.Leave;
   end;
@@ -165,7 +175,9 @@ begin
   FLock.Enter;
   try
     if FSink <> nil then
+    begin
       FSink.MarkSyntax(ANotice);
+    end;
   finally
     FLock.Leave;
   end;
@@ -207,7 +219,9 @@ begin
   FName := AName;
   FTimingId := ATimingId;
   if FTimingId > 0 then
+  begin
     FStarted := TAtlasQueryTimings.Stamp;
+  end;
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.AddItems(const AItems: TAtlasCompletionItems);
@@ -215,7 +229,9 @@ begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
   begin
     if FTimingId > 0 then
+    begin
       TInterlocked.Add(FCount, Length(AItems));
+    end;
     FState.Add(AItems);
   end;
 end;
@@ -223,13 +239,17 @@ end;
 procedure TAtlasCompletionProviders.TPartSink.MarkIncomplete;
 begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
+  begin
     FState.Incomplete;
+  end;
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
 begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
+  begin
     FState.Syntax(ANotice);
+  end;
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.Complete;
@@ -237,12 +257,16 @@ var
   Timings: TAtlasQueryTimings;
 begin
   if TInterlocked.Exchange(FDone, 1) <> 0 then
+  begin
     Exit;
+  end;
   // Vor PartDone: Das Popup soll die Zeit der Quelle schon kennen, wenn die Liste fertig ist.
   Timings := TAtlasQueryTimings.Shared;
   if (FTimingId > 0) and TAtlasQueryTimings.Enabled and (Timings <> nil) then
+  begin
     Timings.ProviderDone(FTimingId, FName, TAtlasQueryTimings.MsSince(FStarted),
       TInterlocked.CompareExchange(FCount, 0, 0));
+  end;
   FState.PartDone;
 end;
 
@@ -270,7 +294,9 @@ begin
   Entry.Provider := AProvider;
   Entry.Name := DefaultName;
   if Supports(AProvider, IAtlasNamedProvider, Named) and (Named.ProviderName <> '') then
+  begin
     Entry.Name := Named.ProviderName;
+  end;
   Entry.Running := TRunning.Create;
   Entry.RunningRef := Entry.Running;
   FLock.Enter;
@@ -317,10 +343,23 @@ begin
     end;
 end;
 
+procedure TAtlasCompletionProviders.Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
+begin
+  // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
+  APart.Complete;
+  try
+    AEntry.Provider.Cancel;
+  except
+    on E: Exception do
+      TAtlasGuard.ReportProvider(AEntry.Name, E);
+  end;
+  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
+    [TimeLimitOf(FTimeLimitMs)]));
+end;
+
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
   const APart: IAtlasCompletionSink);
 var
-  Provider: IAtlasCompletionProvider;
   Part: IAtlasCompletionSink;
   Running: TRunning;
   Error: string;
@@ -340,7 +379,6 @@ begin
     Exit;
   end;
   TInterlocked.Exchange(Running.Started, Int64(TThread.GetTickCount64));
-  Provider := AEntry.Provider;
   Part := APart;
   case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), Error, FTimeLimitMs) of
     TAtlasTimedOutcome.Done:
@@ -353,18 +391,7 @@ begin
         TAtlasGuard.ReportProvider(AEntry.Name, Error);
       end;
   else
-    begin
-      // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
-      Part.Complete;
-      try
-        Provider.Cancel;
-      except
-        on E: Exception do
-          TAtlasGuard.ReportProvider(AEntry.Name, E);
-      end;
-      TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
-        [TimeLimitOf(FTimeLimitMs)]));
-    end;
+    Abandon(AEntry, Part);
   end;
 end;
 
@@ -381,7 +408,9 @@ begin
   // Diagnosemodus (#479): Zeiten gehören zur laufenden Abfrage; aus wird nichts gemessen.
   TimingId := 0;
   if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
+  begin
     TimingId := TAtlasQueryTimings.Shared.Current;
+  end;
   FLock.Enter;
   try
     Providers := FProviders;
@@ -415,7 +444,9 @@ begin
   try
     Providers := FProviders;
     if FCurrent <> nil then
+    begin
       FCurrent.Cancel;
+    end;
     FCurrent := nil;
     // Teilsenken, die noch laufen, halten den Zustand selbst am Leben.
     FCurrentRef := nil;

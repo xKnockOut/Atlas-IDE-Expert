@@ -157,8 +157,12 @@ var
   Visibility: TAtlasOutlineVisibility;
 begin
   for Visibility in TAtlasOutline.FilterVisibilities do
+  begin
     if not (Visibility in Visibilities) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -175,19 +179,33 @@ var
 begin
   Text := LowerCase(Trim(AText));
   if Text = 'strict private' then
-    Result := TAtlasOutlineVisibility.StrictPrivate
+  begin
+    Result := TAtlasOutlineVisibility.StrictPrivate;
+  end
   else if Text = 'private' then
-    Result := TAtlasOutlineVisibility.Private
+  begin
+    Result := TAtlasOutlineVisibility.Private;
+  end
   else if Text = 'strict protected' then
-    Result := TAtlasOutlineVisibility.StrictProtected
+  begin
+    Result := TAtlasOutlineVisibility.StrictProtected;
+  end
   else if Text = 'protected' then
-    Result := TAtlasOutlineVisibility.Protected
+  begin
+    Result := TAtlasOutlineVisibility.Protected;
+  end
   else if (Text = 'public') or (Text = 'automated') then
-    Result := TAtlasOutlineVisibility.Public
+  begin
+    Result := TAtlasOutlineVisibility.Public;
+  end
   else if Text = 'published' then
-    Result := TAtlasOutlineVisibility.Published
+  begin
+    Result := TAtlasOutlineVisibility.Published;
+  end
   else
+  begin
     Result := TAtlasOutlineVisibility.None;
+  end;
 end;
 
 class function TAtlasOutline.CategoryOf(AKind: Integer; AInType: Boolean): TAtlasOutlineCategory;
@@ -207,14 +225,22 @@ begin
       Result := TAtlasOutlineCategory.EnumMember;
     KindMethod, KindConstructor, KindFunction:
       if AInType then
-        Result := TAtlasOutlineCategory.Method
+      begin
+        Result := TAtlasOutlineCategory.Method;
+      end
       else
+      begin
         Result := TAtlasOutlineCategory.Routine;
+      end;
   else
     if IsTypeKind(AKind) then
-      Result := TAtlasOutlineCategory.TypeDecl
+    begin
+      Result := TAtlasOutlineCategory.TypeDecl;
+    end
     else
+    begin
       Result := TAtlasOutlineCategory.Variable;
+    end;
   end;
 end;
 
@@ -239,6 +265,13 @@ type
   private
     FNodes: TList<TAtlasOutlineNode>;
     procedure Add(const AItems: TJSONValue; AParent, ADepth: Integer; AInType: Boolean);
+    function OwnerName(ANode: Integer): string;
+    function IsInterfaceRoutine(ANode: Integer): Boolean;
+    function IsBody(ANode: Integer): Boolean;
+    function BodyOrdinal(AIndex: Integer): Integer;
+    function Declares(AOther, AIndex: Integer; const AShort, AOwner: string): Boolean;
+    procedure Connect(AIndex, AOther: Integer);
+    procedure LinkBody(AIndex: Integer);
     procedure Link;
   public
     constructor Create;
@@ -258,59 +291,75 @@ begin
   inherited Destroy;
 end;
 
+/// <summary>Zusätze von Atlas (Sichtbarkeit, Klassenmitglied, Direktiven, Bedingung) aus AEntry.atlas.</summary>
+procedure ReadExtras(const AEntry: TJSONObject; var ANode: TAtlasOutlineNode);
+var
+  Extras: TJSONObject;
+begin
+  if not (AEntry.GetValue('atlas') is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Extras := TJSONObject(AEntry.GetValue('atlas'));
+  ANode.Visibility := TAtlasOutline.VisibilityOf(Extras.GetValue<string>('visibility', ''));
+  ANode.ClassMember := Extras.GetValue<Boolean>('classMember', False);
+  ANode.IsOverride := Extras.GetValue<Boolean>('override', False);
+  ANode.IsVirtual := Extras.GetValue<Boolean>('virtual', False);
+  ANode.IsAbstract := Extras.GetValue<Boolean>('abstract', False);
+  ANode.Unimplemented := Extras.GetValue<Boolean>('unimplemented', False);
+  ANode.Condition := Extras.GetValue<string>('condition', '');
+end;
+
+/// <summary>Eintrag AEntry als Knoten unter AParent in Tiefe ADepth (ohne InBody und Hidden).</summary>
+function NodeOf(const AEntry: TJSONObject; AParent, ADepth: Integer; AInType: Boolean): TAtlasOutlineNode;
+begin
+  Result := Default(TAtlasOutlineNode);
+  Result.Name := AEntry.GetValue<string>('name', '');
+  Result.Detail := AEntry.GetValue<string>('detail', '');
+  Result.Kind := AEntry.GetValue<Integer>('kind', 0);
+  Result.Category := TAtlasOutline.CategoryOf(Result.Kind, AInType);
+  Result.StartLine := AEntry.GetValue<Integer>('range.start.line', 0);
+  Result.StartCharacter := AEntry.GetValue<Integer>('range.start.character', 0);
+  Result.EndLine := AEntry.GetValue<Integer>('range.end.line', Result.StartLine);
+  Result.EndCharacter := AEntry.GetValue<Integer>('range.end.character', Result.StartCharacter);
+  Result.NameLine := AEntry.GetValue<Integer>('selectionRange.start.line', Result.StartLine);
+  Result.NameCharacter := AEntry.GetValue<Integer>('selectionRange.start.character', Result.StartCharacter);
+  Result.Parent := AParent;
+  Result.Depth := ADepth;
+  Result.Declaration := -1;
+  Result.Body := -1;
+  ReadExtras(AEntry, Result);
+end;
+
 procedure TOutlineReader.Add(const AItems: TJSONValue; AParent, ADepth: Integer; AInType: Boolean);
 var
   Item: TJSONValue;
-  Entry, Extras: TJSONObject;
+  Entry: TJSONObject;
   Node: TAtlasOutlineNode;
   Index: Integer;
 begin
   if not (AItems is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AItems) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Entry := TJSONObject(Item);
-    Node := Default(TAtlasOutlineNode);
-    Node.Name := Entry.GetValue<string>('name', '');
-    Node.Detail := Entry.GetValue<string>('detail', '');
-    Node.Kind := Entry.GetValue<Integer>('kind', 0);
     // Die Unit selbst ist kein Eintrag; ihre Kinder stehen oben.
-    if (Node.Kind = KindModule) and (AParent < 0) then
+    if (Entry.GetValue<Integer>('kind', 0) = KindModule) and (AParent < 0) then
     begin
       Add(Entry.GetValue('children'), -1, 0, False);
       Continue;
     end;
-    Node.Category := TAtlasOutline.CategoryOf(Node.Kind, AInType);
-    Node.StartLine := Entry.GetValue<Integer>('range.start.line', 0);
-    Node.StartCharacter := Entry.GetValue<Integer>('range.start.character', 0);
-    Node.EndLine := Entry.GetValue<Integer>('range.end.line', Node.StartLine);
-    Node.EndCharacter := Entry.GetValue<Integer>('range.end.character', Node.StartCharacter);
-    Node.NameLine := Entry.GetValue<Integer>('selectionRange.start.line', Node.StartLine);
-    Node.NameCharacter := Entry.GetValue<Integer>('selectionRange.start.character', Node.StartCharacter);
-    Node.Parent := AParent;
-    Node.Depth := ADepth;
-    Node.Declaration := -1;
-    Node.Body := -1;
-    Extras := nil;
-    if Entry.GetValue('atlas') is TJSONObject then
-      Extras := TJSONObject(Entry.GetValue('atlas'));
-    if Extras <> nil then
-    begin
-      Node.Visibility := TAtlasOutline.VisibilityOf(Extras.GetValue<string>('visibility', ''));
-      Node.ClassMember := Extras.GetValue<Boolean>('classMember', False);
-      Node.IsOverride := Extras.GetValue<Boolean>('override', False);
-      Node.IsVirtual := Extras.GetValue<Boolean>('virtual', False);
-      Node.IsAbstract := Extras.GetValue<Boolean>('abstract', False);
-      Node.Unimplemented := Extras.GetValue<Boolean>('unimplemented', False);
-      Node.Condition := Extras.GetValue<string>('condition', '');
-    end;
+    Node := NodeOf(Entry, AParent, ADepth, AInType);
     // Rümpfe mit Deklaration verbirgt Link; was in Rümpfen steht, ist immer verborgen.
     Node.InBody := (AParent >= 0) and (FNodes[AParent].InBody or (IsRoutineKind(FNodes[AParent].Kind) and
       not AInType));
-    if Node.InBody then
-      Node.Hidden := True;
+    Node.Hidden := Node.InBody;
     Index := FNodes.Add(Node);
     // Lokale Routinen und Typen in Rümpfen: nur für NodeAt, nie in der Liste.
     Add(Entry.GetValue('children'), Index, ADepth + 1, IsTypeKind(Node.Kind) and (Node.Kind <> KindEnum));
@@ -333,75 +382,117 @@ begin
   end;
 end;
 
+function TOutlineReader.OwnerName(ANode: Integer): string;
+begin
+  Result := '';
+  if (ANode >= 0) and (FNodes[ANode].Parent >= 0) and (FNodes[FNodes[ANode].Parent].Category =
+    TAtlasOutlineCategory.TypeDecl) then
+  begin
+    Result := FNodes[FNodes[ANode].Parent].Name;
+  end;
+end;
+
+function TOutlineReader.IsInterfaceRoutine(ANode: Integer): Boolean;
+begin
+  Result := (FNodes[ANode].Category = TAtlasOutlineCategory.Routine) and (FNodes[ANode].Parent >= 0) and
+    (FNodes[FNodes[ANode].Parent].Kind = KindNamespace) and SameText(FNodes[FNodes[ANode].Parent].Name, 'interface');
+end;
+
+/// <summary>Rumpf: Routine außerhalb von Typen und Rümpfen, die nicht im interface deklariert ist
+/// (implementation-Abschnitt oder program).</summary>
+function TOutlineReader.IsBody(ANode: Integer): Boolean;
+begin
+  Result := not FNodes[ANode].InBody and (FNodes[ANode].Category = TAtlasOutlineCategory.Routine) and
+    not IsInterfaceRoutine(ANode);
+end;
+
+/// <summary>Wievielter Rumpf seines Namens AIndex ist (ab 0).</summary>
+function TOutlineReader.BodyOrdinal(AIndex: Integer): Integer;
+var
+  Other: Integer;
+begin
+  Result := 0;
+  for Other := 0 to AIndex - 1 do
+  begin
+    if IsBody(Other) and SameText(FNodes[Other].Name, FNodes[AIndex].Name) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+/// <summary>Ob AOther eine Deklaration ist, zu der der Rumpf AIndex (Name AShort, Besitzer AOwner) passen kann.
+/// </summary>
+function TOutlineReader.Declares(AOther, AIndex: Integer; const AShort, AOwner: string): Boolean;
+begin
+  Result := False;
+  if (AOther = AIndex) or FNodes[AOther].Hidden or IsBody(AOther) or not IsRoutineKind(FNodes[AOther].Kind) or
+    not SameText(FNodes[AOther].Name, AShort) then
+  begin
+    Exit;
+  end;
+  if AOwner <> '' then
+  begin
+    Result := SameText(OwnerName(AOther), AOwner);
+  end
+  else
+  begin
+    Result := IsInterfaceRoutine(AOther);
+  end;
+end;
+
+/// <summary>Rumpf AIndex an Deklaration AOther binden.</summary>
+procedure TOutlineReader.Connect(AIndex, AOther: Integer);
+var
+  Node: TAtlasOutlineNode;
+begin
+  Node := FNodes[AIndex];
+  Node.Hidden := True;
+  Node.Declaration := AOther;
+  FNodes[AIndex] := Node;
+  Node := FNodes[AOther];
+  Node.Body := AIndex;
+  // Steht nur der Rumpf in einem Zweig (#845), zeigt die Deklaration dessen Bedingung.
+  if Node.Condition = '' then
+  begin
+    Node.Condition := FNodes[AIndex].Condition;
+  end;
+  FNodes[AOther] := Node;
+end;
+
+/// <summary>Rumpf AIndex der n-ten Deklaration gleichen Namens zuordnen (Überladungen in Reihenfolge).</summary>
+procedure TOutlineReader.LinkBody(AIndex: Integer);
+var
+  Other, Count, Wanted: Integer;
+  Short, Owner: string;
+begin
+  SplitName(FNodes[AIndex].Name, Short, Owner);
+  Wanted := BodyOrdinal(AIndex);
+  Count := 0;
+  for Other := 0 to FNodes.Count - 1 do
+  begin
+    if not Declares(Other, AIndex, Short, Owner) then
+    begin
+      Continue;
+    end;
+    if Count = Wanted then
+    begin
+      Connect(AIndex, Other);
+      Exit;
+    end;
+    Inc(Count);
+  end;
+end;
+
 procedure TOutlineReader.Link;
 var
-  Index, Other, Count, Wanted: Integer;
-  Short, Owner, Name: string;
-  Node: TAtlasOutlineNode;
-
-  function OwnerName(ANode: Integer): string;
-  begin
-    Result := '';
-    if (ANode >= 0) and (FNodes[ANode].Parent >= 0) and (FNodes[FNodes[ANode].Parent].Category =
-      TAtlasOutlineCategory.TypeDecl) then
-      Result := FNodes[FNodes[ANode].Parent].Name;
-  end;
-
-  function IsInterfaceRoutine(ANode: Integer): Boolean;
-  begin
-    Result := (FNodes[ANode].Category = TAtlasOutlineCategory.Routine) and (FNodes[ANode].Parent >= 0) and
-      (FNodes[FNodes[ANode].Parent].Kind = KindNamespace) and SameText(FNodes[FNodes[ANode].Parent].Name, 'interface');
-  end;
-
-  // Rumpf: Routine außerhalb von Typen und Rümpfen, die nicht im interface deklariert ist (implementation-
-  // Abschnitt oder program).
-  function IsBody(ANode: Integer): Boolean;
-  begin
-    Result := not FNodes[ANode].InBody and (FNodes[ANode].Category = TAtlasOutlineCategory.Routine) and
-      not IsInterfaceRoutine(ANode);
-  end;
-
+  Index: Integer;
 begin
-  // Jeden Rumpf der n-ten Deklaration gleichen Namens zuordnen (Überladungen in Reihenfolge).
   for Index := 0 to FNodes.Count - 1 do
   begin
-    Node := FNodes[Index];
-    if not IsBody(Index) then
-      Continue;
-    SplitName(Node.Name, Short, Owner);
-    // Wievielter Rumpf dieses Namens?
-    Wanted := 0;
-    for Other := 0 to Index - 1 do
-      if IsBody(Other) and SameText(FNodes[Other].Name, Node.Name) then
-        Inc(Wanted);
-    Count := 0;
-    for Other := 0 to FNodes.Count - 1 do
+    if IsBody(Index) then
     begin
-      if (Other = Index) or FNodes[Other].Hidden or IsBody(Other) or
-        not IsRoutineKind(FNodes[Other].Kind) then
-        Continue;
-      Name := FNodes[Other].Name;
-      if Owner <> '' then
-      begin
-        if not SameText(Name, Short) or not SameText(OwnerName(Other), Owner) then
-          Continue;
-      end
-      else if not IsInterfaceRoutine(Other) or not SameText(Name, Short) then
-        Continue;
-      if Count = Wanted then
-      begin
-        Node.Hidden := True;
-        Node.Declaration := Other;
-        FNodes[Index] := Node;
-        Node := FNodes[Other];
-        Node.Body := Index;
-        // Steht nur der Rumpf in einem Zweig (#845), zeigt die Deklaration dessen Bedingung.
-        if Node.Condition = '' then
-          Node.Condition := FNodes[Index].Condition;
-        FNodes[Other] := Node;
-        Break;
-      end;
-      Inc(Count);
+      LinkBody(Index);
     end;
   end;
 end;
@@ -442,14 +533,61 @@ function Matches(const ANode: TAtlasOutlineNode; const AFilter: TAtlasOutlineFil
 begin
   Result := False;
   if ANode.Hidden or (ANode.Category = TAtlasOutlineCategory.Section) then
+  begin
     Exit;
+  end;
   if not (ANode.Category in AFilter.Categories) then
+  begin
     Exit;
+  end;
   // Mit Sichtbarkeitsfilter zählen nur Mitglieder von Typen.
   if not AFilter.AllVisibilities and not (SimpleVisibility(ANode.Visibility) in AFilter.Visibilities) then
+  begin
     Exit;
+  end;
   Result := (AFilter.Text = '') or (TAtlasCompletionMatcher.Score(AFilter.Text, ANode.Name) <>
     TAtlasCompletionMatcher.NoMatch);
+end;
+
+/// <summary>Kinder jedes Knotens in AChildren, Knoten ohne Eltern in ARoots.</summary>
+procedure LinkChildren(const ANodes: TAtlasOutlineNodes; const AChildren: TArray<TList<Integer>>;
+  ARoots: TList<Integer>);
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ANodes) do
+  begin
+    if ANodes[Index].Parent < 0 then
+    begin
+      ARoots.Add(Index);
+    end
+    else
+    begin
+      AChildren[ANodes[Index].Parent].Add(Index);
+    end;
+  end;
+end;
+
+/// <summary>Treffer in AHit, Treffer und ihre Eltern in AKeep; Abschnitte so nur mit Inhalt.</summary>
+procedure MarkHits(const ANodes: TAtlasOutlineNodes; const AFilter: TAtlasOutlineFilter;
+  const AKeep, AHit: TArray<Boolean>);
+var
+  Index, Parent: Integer;
+begin
+  for Index := 0 to High(ANodes) do
+  begin
+    if not Matches(ANodes[Index], AFilter) then
+    begin
+      Continue;
+    end;
+    AHit[Index] := True;
+    Parent := Index;
+    while (Parent >= 0) and not AKeep[Parent] do
+    begin
+      AKeep[Parent] := True;
+      Parent := ANodes[Parent].Parent;
+    end;
+  end;
 end;
 
 class function TAtlasOutline.Rows(const ANodes: TAtlasOutlineNodes; const AFilter: TAtlasOutlineFilter;
@@ -459,7 +597,7 @@ var
   Roots: TList<Integer>;
   Keep: TArray<Boolean>;
   Hit: TArray<Boolean>;
-  Index, Parent: Integer;
+  Index: Integer;
   Output: TList<TAtlasOutlineRow>;
   Comparer: IComparer<Integer>;
   Nodes: TAtlasOutlineNodes;
@@ -474,11 +612,15 @@ var
     // Abschnitte (interface, implementation) bleiben in ihrer Reihenfolge.
     if (ASort = TAtlasOutlineSort.Alphabetical) and (Length(Ordered) > 1) and
       (ANodes[Ordered[0]].Category <> TAtlasOutlineCategory.Section) then
+    begin
       TArray.Sort<Integer>(Ordered, Comparer);
+    end;
     for Item in Ordered do
     begin
       if not Keep[Item] then
+      begin
         Continue;
+      end;
       Row.Node := Item;
       Row.Depth := ADepth;
       Row.Matched := Hit[Item];
@@ -499,36 +641,27 @@ begin
   Output := TList<TAtlasOutlineRow>.Create;
   try
     for Index := 0 to High(ANodes) do
+    begin
       Children[Index] := TList<Integer>.Create;
-    for Index := 0 to High(ANodes) do
-      if ANodes[Index].Parent < 0 then
-        Roots.Add(Index)
-      else
-        Children[ANodes[Index].Parent].Add(Index);
-    // Treffer und ihre Eltern behalten; Abschnitte nur mit Inhalt.
-    for Index := 0 to High(ANodes) do
-      if Matches(ANodes[Index], AFilter) then
-      begin
-        Hit[Index] := True;
-        Parent := Index;
-        while (Parent >= 0) and not Keep[Parent] do
-        begin
-          Keep[Parent] := True;
-          Parent := ANodes[Parent].Parent;
-        end;
-      end;
+    end;
+    LinkChildren(ANodes, Children, Roots);
+    MarkHits(ANodes, AFilter, Keep, Hit);
     Comparer := TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         Result := CompareText(Nodes[A].Name, Nodes[B].Name);
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end);
     Emit(Roots, 0);
     Result := Output.ToArray;
   finally
     for Child in Children do
+    begin
       Child.Free;
+    end;
     Roots.Free;
     Output.Free;
   end;
@@ -547,13 +680,21 @@ begin
   // Innerster Knoten: der späteste, der die Stelle enthält (Kinder stehen hinter ihren Eltern).
   Best := -1;
   for Index := 0 to High(ANodes) do
+  begin
     if (ANodes[Index].Category <> TAtlasOutlineCategory.Section) and Contains(ANodes[Index], ALine, ACharacter) then
+    begin
       Best := Index;
+    end;
+  end;
   // Lokale Routine oder Rumpf: zum äußersten Rumpf, von dort zur Deklaration.
   while (Best >= 0) and ANodes[Best].InBody do
+  begin
     Best := ANodes[Best].Parent;
+  end;
   if (Best >= 0) and ANodes[Best].Hidden then
+  begin
     Best := ANodes[Best].Declaration;
+  end;
   Result := Best;
 end;
 

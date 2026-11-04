@@ -251,7 +251,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + #10;
+  end;
 end;
 
 function AtlasProfileFiles: TArray<string>;
@@ -268,15 +270,25 @@ function AtlasProfileJson(const AFileName: string): string;
 begin
   Result := '';
   if SameText(AFileName, 'alles-an-experimentell.json') then
+  begin
     Result := Joined(Profile0);
+  end;
   if SameText(AFileName, 'alles-an.json') then
+  begin
     Result := Joined(Profile1);
+  end;
   if SameText(AFileName, 'atlas-standard.json') then
+  begin
     Result := Joined(Profile2);
+  end;
   if SameText(AFileName, 'minimal.json') then
+  begin
     Result := Joined(Profile3);
+  end;
   if SameText(AFileName, 'nur-code-insight.json') then
+  begin
     Result := Joined(Profile4);
+  end;
 end;
 
 end.

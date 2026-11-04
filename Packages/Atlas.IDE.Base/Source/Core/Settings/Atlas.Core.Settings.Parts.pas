@@ -141,7 +141,9 @@ var
 function AtlasSettingsParts: IAtlasSettingsParts;
 begin
   if (GParts = nil) and not GTornDown then
+  begin
     GParts := TAtlasSettingsParts.Create;
+  end;
   Result := GParts;
 end;
 
@@ -151,18 +153,26 @@ const
 function BooleanText(AValue: Boolean): string;
 begin
   if AValue then
-    Result := '1'
+  begin
+    Result := '1';
+  end
   else
+  begin
     Result := '0';
+  end;
 end;
 
 function TryParseBoolean(const AText: string; out AValue: Boolean): Boolean;
 begin
   Result := True;
   if (AText = '1') or SameText(AText, 'true') then
-    AValue := True
+  begin
+    AValue := True;
+  end
   else if (AText = '0') or SameText(AText, 'false') then
-    AValue := False
+  begin
+    AValue := False;
+  end
   else
   begin
     AValue := False;
@@ -174,11 +184,17 @@ function Clamp(const AKey: TAtlasSettingsKey; AValue: Integer): Integer;
 begin
   Result := AValue;
   if AKey.Minimum > AKey.Maximum then
+  begin
     Exit;
+  end;
   if Result < AKey.Minimum then
+  begin
     Result := AKey.Minimum;
+  end;
   if Result > AKey.Maximum then
+  begin
     Result := AKey.Maximum;
+  end;
 end;
 
 function IsAdministrative(const AName: string): Boolean;
@@ -186,6 +202,71 @@ begin
   Result := AName.StartsWith('$');
 end;
 
+/// <summary>Schlüssel eines neuen Teils prüfen: gültig, nicht doppelt, nicht schon angemeldet. AOwnKeys nimmt
+/// sie auf.</summary>
+procedure CheckKeys(const AKeys: TArray<TAtlasSettingsKey>; const AOwnerId: string;
+  AKnown: TDictionary<string, TAtlasSettingsParts.TKeyEntry>; AOwnKeys: TList<string>);
+var
+  mKey: TAtlasSettingsKey;
+  mKnown: TAtlasSettingsParts.TKeyEntry;
+begin
+  for mKey in AKeys do
+  begin
+    if (Trim(mKey.Key) = '') or IsAdministrative(mKey.Key) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Ungültiger Schlüssel „%s“ in %s', [mKey.Key, AOwnerId]);
+    end;
+    if AOwnKeys.Contains(mKey.Key) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s doppelt in %s', [mKey.Key, AOwnerId]);
+    end;
+    if AKnown.TryGetValue(mKey.Key, mKnown) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Schlüssel %s gehört schon %s', [mKey.Key, mKnown.OwnerId]);
+    end;
+    AOwnKeys.Add(mKey.Key);
+  end;
+end;
+
+/// <summary>Umbenennungen eines neuen Teils prüfen: Ziel ist ein eigener Schlüssel, der alte ist gültig und
+/// nirgends angemeldet.</summary>
+procedure CheckRenames(const ARenames: TArray<TAtlasSettingsKeyRename>; const AOwnerId: string;
+  AKnown: TDictionary<string, TAtlasSettingsParts.TKeyEntry>; AOwnKeys: TList<string>);
+var
+  mRename: TAtlasSettingsKeyRename;
+begin
+  for mRename in ARenames do
+  begin
+    if not AOwnKeys.Contains(mRename.NewKey) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Umbenennung nach %s: kein Schlüssel von %s', [mRename.NewKey, AOwnerId]);
+    end;
+    if (Trim(mRename.OldKey) = '') or IsAdministrative(mRename.OldKey) or AOwnKeys.Contains(mRename.OldKey) or
+      AKnown.ContainsKey(mRename.OldKey) then
+    begin
+      raise EAtlasSettingsParts.CreateFmt('Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
+        [mRename.OldKey, AOwnerId]);
+    end;
+  end;
+end;
+
+/// <summary>Teil APart als Eintrag; ohne Teil oder Besitzer eine Ausnahme.</summary>
+function PartEntryOf(const APart: IAtlasSettingsPart): TAtlasSettingsParts.TPartEntry;
+begin
+  if APart = nil then
+  begin
+    raise EAtlasSettingsParts.Create('Kein Einstellungsteil angegeben');
+  end;
+  Result := Default(TAtlasSettingsParts.TPartEntry);
+  Result.Part := APart;
+  Result.OwnerId := Trim(APart.OwnerId);
+  Result.Keys := APart.Keys;
+  Result.Renames := APart.Renames;
+  if Result.OwnerId = '' then
+  begin
+    raise EAtlasSettingsParts.Create('Einstellungsteil ohne Besitzer');
+  end;
+end;
 { TAtlasMemorySettingsStorage }
 
 constructor TAtlasMemorySettingsStorage.Create;
@@ -217,7 +298,9 @@ begin
   FLock.Acquire;
   try
     if not FValues.TryGetValue(AName, Result) then
+    begin
       Result := '';
+    end;
   finally
     FLock.Release;
   end;
@@ -253,7 +336,9 @@ begin
     FLock.Acquire;
     try
       for mName in FValues.Keys do
+      begin
         mList.Add(mName);
+      end;
     finally
       FLock.Release;
     end;
@@ -306,7 +391,9 @@ constructor TAtlasSettingsParts.Create(const AStorage: IAtlasSettingsStorage);
 begin
   inherited Create;
   if AStorage = nil then
+  begin
     raise EAtlasSettingsParts.Create('Keine Ablage angegeben');
+  end;
   FLock := TCriticalSection.Create;
   FStorage := AStorage;
   FParts := TList<TPartEntry>.Create;
@@ -321,9 +408,13 @@ var
 begin
   // Noch gehaltene Anmeldungen verweisen auf dieses Objekt: abtrennen, damit ein späteres Revoke ins Leere geht.
   for mPart in FParts do
+  begin
     mPart.Item.Detach;
+  end;
   for mListener in FListeners do
+  begin
     mListener.Item.Detach;
+  end;
   FListeners.Free;
   FKeys.Free;
   FParts.Free;
@@ -353,7 +444,9 @@ var
   mFailures: TArray<string>;
 begin
   if Length(AChanges) = 0 then
+  begin
     Exit;
+  end;
   FLock.Acquire;
   try
     mListeners := FListeners.ToArray;
@@ -362,10 +455,13 @@ begin
   end;
   mFailures := nil;
   for mChange in AChanges do
+  begin
     for mListener in mListeners do
     begin
       if mListener.Item.IsRevoked then
+      begin
         Continue;
+      end;
       try
         mListener.Listener.SettingsChanged(mChange);
       except
@@ -373,9 +469,12 @@ begin
           mFailures := mFailures + [mError.ClassName + ': ' + mError.Message];
       end;
     end;
+  end;
   // Alle Hörer haben die Änderung erfahren; erst dann den Fehler melden.
   if Length(mFailures) > 0 then
+  begin
     raise EAtlasSettingsParts.Create(string.Join(sLineBreak, mFailures));
+  end;
 end;
 
 function TAtlasSettingsParts.ApplyRenames(const AEntry: TPartEntry): TArray<TAtlasSettingsChange>;
@@ -386,7 +485,9 @@ begin
   for mRename in AEntry.Renames do
   begin
     if not FStorage.Contains(mRename.OldKey) then
+    begin
       Continue;
+    end;
     if not FStorage.Contains(mRename.NewKey) then
     begin
       FStorage.WriteText(mRename.NewKey, FStorage.ReadText(mRename.OldKey));
@@ -409,11 +510,19 @@ begin
     // Vereinigung mit dem bisherigen Vermerk: Auch Werte von Schlüsseln, die eine frühere Version des Moduls
     // hatte, entfernt ForgetOwner später.
     for mKey in FStorage.ReadText(mName).Split([#10]) do
+    begin
       if (mKey <> '') and not mKeys.Contains(mKey) then
+      begin
         mKeys.Add(mKey);
+      end;
+    end;
     for mEntry in AEntry.Keys do
+    begin
       if not mKeys.Contains(mEntry.Key) then
+      begin
         mKeys.Add(mEntry.Key);
+      end;
+    end;
     mKeys.Sort;
     FStorage.WriteText(mName, string.Join(#10, mKeys.ToArray));
   finally
@@ -427,42 +536,16 @@ var
   mItem: TAtlasPartRegistration;
   mKey: TAtlasSettingsKey;
   mKeyEntry: TKeyEntry;
-  mRename: TAtlasSettingsKeyRename;
   mOwnKeys: TList<string>;
   mChanges: TArray<TAtlasSettingsChange>;
 begin
-  if APart = nil then
-    raise EAtlasSettingsParts.Create('Kein Einstellungsteil angegeben');
-  mEntry.Part := APart;
-  mEntry.OwnerId := Trim(APart.OwnerId);
-  mEntry.Keys := APart.Keys;
-  mEntry.Renames := APart.Renames;
-  if mEntry.OwnerId = '' then
-    raise EAtlasSettingsParts.Create('Einstellungsteil ohne Besitzer');
+  mEntry := PartEntryOf(APart);
   mOwnKeys := TList<string>.Create;
   try
     FLock.Acquire;
     try
-      for mKey in mEntry.Keys do
-      begin
-        if (Trim(mKey.Key) = '') or IsAdministrative(mKey.Key) then
-          raise EAtlasSettingsParts.CreateFmt('Ungültiger Schlüssel „%s“ in %s', [mKey.Key, mEntry.OwnerId]);
-        if mOwnKeys.Contains(mKey.Key) then
-          raise EAtlasSettingsParts.CreateFmt('Schlüssel %s doppelt in %s', [mKey.Key, mEntry.OwnerId]);
-        if FKeys.TryGetValue(mKey.Key, mKeyEntry) then
-          raise EAtlasSettingsParts.CreateFmt('Schlüssel %s gehört schon %s', [mKey.Key, mKeyEntry.OwnerId]);
-        mOwnKeys.Add(mKey.Key);
-      end;
-      for mRename in mEntry.Renames do
-      begin
-        if not mOwnKeys.Contains(mRename.NewKey) then
-          raise EAtlasSettingsParts.CreateFmt('Umbenennung nach %s: kein Schlüssel von %s',
-            [mRename.NewKey, mEntry.OwnerId]);
-        if (Trim(mRename.OldKey) = '') or IsAdministrative(mRename.OldKey) or mOwnKeys.Contains(mRename.OldKey) or
-          FKeys.ContainsKey(mRename.OldKey) then
-          raise EAtlasSettingsParts.CreateFmt('Umbenennung von „%s“ in %s: Schlüssel ist angemeldet oder ungültig',
-            [mRename.OldKey, mEntry.OwnerId]);
-      end;
+      CheckKeys(mEntry.Keys, mEntry.OwnerId, FKeys, mOwnKeys);
+      CheckRenames(mEntry.Renames, mEntry.OwnerId, FKeys, mOwnKeys);
       mItem := TAtlasPartRegistration.Create(Self);
       mEntry.Item := mItem;
       mEntry.Ref := mItem;
@@ -497,21 +580,27 @@ begin
   FLock.Acquire;
   try
     for mIndex := 0 to FParts.Count - 1 do
+    begin
       if FParts[mIndex].Item = AItem then
       begin
         mEntry := FParts[mIndex];
         FParts.Delete(mIndex);
         // Nur die Zuordnung der Schlüssel fällt weg; die Werte bleiben in der Ablage.
         for mKey in mEntry.Keys do
+        begin
           FKeys.Remove(mKey.Key);
+        end;
         mFound := True;
         Break;
       end;
+    end;
   finally
     FLock.Release;
   end;
   if mFound then
+  begin
     Notify([ChangeOf(scPartRemoved, mEntry.OwnerId, '', '')]);
+  end;
 end;
 
 procedure TAtlasSettingsParts.RemoveListener(AItem: TAtlasRegistration);
@@ -522,11 +611,13 @@ begin
   FLock.Acquire;
   try
     for mIndex := 0 to FListeners.Count - 1 do
+    begin
       if FListeners[mIndex].Item = AItem then
       begin
         FListeners.Delete(mIndex);
         Break;
       end;
+    end;
   finally
     FLock.Release;
   end;
@@ -540,7 +631,9 @@ begin
   FLock.Acquire;
   try
     for mEntry in FParts do
+    begin
       Result := Result + [mEntry.Part];
+    end;
   finally
     FLock.Release;
   end;
@@ -554,9 +647,13 @@ begin
   try
     Result := FKeys.TryGetValue(AKey, mEntry);
     if Result then
-      AEntry := mEntry.Key
+    begin
+      AEntry := mEntry.Key;
+    end
     else
+    begin
       AEntry := Default(TAtlasSettingsKey);
+    end;
   finally
     FLock.Release;
   end;
@@ -574,15 +671,23 @@ var
   mChanges: TArray<TAtlasSettingsChange>;
 begin
   if AStorage = nil then
+  begin
     raise EAtlasSettingsParts.Create('Keine Ablage angegeben');
+  end;
   FLock.Acquire;
   try
     if AStorage = FStorage then
+    begin
       Exit;
+    end;
     // Was bisher nur im Arbeitsspeicher stand, zieht um; gespeicherte Werte der neuen Ablage gelten.
     for mName in FStorage.Names do
+    begin
       if not AStorage.Contains(mName) then
+      begin
         AStorage.WriteText(mName, FStorage.ReadText(mName));
+      end;
+    end;
     FStorage := AStorage;
     mChanges := TArray<TAtlasSettingsChange>.Create(ChangeOf(scStorageChanged, '', '', ''));
     for mEntry in FParts do
@@ -606,15 +711,21 @@ begin
   FLock.Acquire;
   try
     for mEntry in FParts do
+    begin
       if SameText(mEntry.OwnerId, AOwnerId) then
+      begin
         raise EAtlasSettingsParts.CreateFmt('Modul %s ist angemeldet; seine Werte bleiben', [AOwnerId]);
+      end;
+    end;
     mName := OwnerKeysName(AOwnerId);
     for mKey in FStorage.ReadText(mName).Split([#10]) do
+    begin
       if (mKey <> '') and FStorage.Contains(mKey) then
       begin
         FStorage.Remove(mKey);
         Inc(Result);
       end;
+    end;
     FStorage.Remove(mName);
   finally
     FLock.Release;
@@ -628,7 +739,9 @@ var
   mItem: TAtlasSettingsListenerRegistration;
 begin
   if AListener = nil then
+  begin
     raise EAtlasSettingsParts.Create('Kein Hörer angegeben');
+  end;
   mItem := TAtlasSettingsListenerRegistration.Create(Self);
   mEntry.Listener := AListener;
   mEntry.Item := mItem;
@@ -645,18 +758,26 @@ end;
 function TAtlasSettingsParts.KeyOf(const AKey: string; AKind: TAtlasSettingsValueKind): TKeyEntry;
 begin
   if not FKeys.TryGetValue(AKey, Result) then
+  begin
     raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
+  end;
   if Result.Key.Kind <> AKind then
+  begin
     raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist kein %s, sondern %s',
       [AKey, cKindNames[AKind], cKindNames[Result.Key.Kind]]);
+  end;
 end;
 
 function TAtlasSettingsParts.TextOf(const AEntry: TKeyEntry): string;
 begin
   if FStorage.Contains(AEntry.Key.Key) then
-    Result := FStorage.ReadText(AEntry.Key.Key)
+  begin
+    Result := FStorage.ReadText(AEntry.Key.Key);
+  end
   else
+  begin
     Result := AEntry.Key.Default;
+  end;
 end;
 
 procedure TAtlasSettingsParts.WriteValue(const AEntry: TKeyEntry; const AText: string);
@@ -667,18 +788,24 @@ begin
   try
     mChanged := not FStorage.Contains(AEntry.Key.Key) or (FStorage.ReadText(AEntry.Key.Key) <> AText);
     if mChanged then
+    begin
       FStorage.WriteText(AEntry.Key.Key, AText);
+    end;
   finally
     FLock.Release;
   end;
   if mChanged then
+  begin
     Notify([ChangeOf(scValueChanged, AEntry.OwnerId, AEntry.Key.Key, '')]);
+  end;
 end;
 
 function TAtlasSettingsParts.Contains(const AKey: string): Boolean;
 begin
   if IsAdministrative(AKey) then
+  begin
     Exit(False);
+  end;
   FLock.Acquire;
   try
     Result := FStorage.Contains(AKey);
@@ -695,7 +822,9 @@ begin
   try
     mEntry := KeyOf(AKey, svBoolean);
     if not TryParseBoolean(TextOf(mEntry), Result) then
+    begin
       TryParseBoolean(mEntry.Key.Default, Result);
+    end;
   finally
     FLock.Release;
   end;
@@ -709,7 +838,9 @@ begin
   try
     mEntry := KeyOf(AKey, svInteger);
     if not TryStrToInt(TextOf(mEntry), Result) then
+    begin
       Result := StrToIntDef(mEntry.Key.Default, 0);
+    end;
     Result := Clamp(mEntry.Key, Result);
   finally
     FLock.Release;
@@ -773,15 +904,21 @@ begin
   FLock.Acquire;
   try
     if not FKeys.TryGetValue(AKey, mEntry) then
+    begin
       raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
+    end;
     mRemoved := FStorage.Contains(AKey);
     if mRemoved then
+    begin
       FStorage.Remove(AKey);
+    end;
   finally
     FLock.Release;
   end;
   if mRemoved then
+  begin
     Notify([ChangeOf(scValueChanged, mEntry.OwnerId, AKey, '')]);
+  end;
 end;
 
 function TAtlasSettingsParts.StoredKeys: TArray<string>;
@@ -792,8 +929,12 @@ begin
   FLock.Acquire;
   try
     for mName in FStorage.Names do
+    begin
       if not IsAdministrative(mName) then
+      begin
         Result := Result + [mName];
+      end;
+    end;
   finally
     FLock.Release;
   end;

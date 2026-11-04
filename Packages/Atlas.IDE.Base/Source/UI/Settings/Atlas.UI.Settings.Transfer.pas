@@ -155,8 +155,12 @@ var
 begin
   Result := False;
   for Area in AAreas do
+  begin
     if SameText(Area, AArea) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function English: Boolean;
@@ -246,8 +250,12 @@ var
 begin
   FSave.Enabled := False;
   for Box in FAreas do
+  begin
     if Box.Checked then
+    begin
       FSave.Enabled := True;
+    end;
+  end;
 end;
 
 function TAtlasExportDialog.Options: TAtlasExportOptions;
@@ -258,11 +266,17 @@ var
 begin
   Areas := nil;
   for Index := 0 to High(FAreas) do
+  begin
     if FAreas[Index].Checked then
+    begin
       Areas := Areas + [FAreaIds[Index]];
+    end;
+  end;
   mSecrets := smOmit;
   if FSecrets.ItemIndex = 1 then
+  begin
     mSecrets := smPlaceholder;
+  end;
   Result := TAtlasExportOptions.Create(Areas, mSecrets);
 end;
 
@@ -274,10 +288,14 @@ begin
   Dialog := TAtlasExportDialog.CreateDialog(nil, ACatalog, AOptions.Secrets);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       AOptions := Dialog.Options;
+    end;
   finally
     Dialog.Free;
   end;
@@ -315,14 +333,22 @@ begin
   // Name und Beschreibung (Profile), Hinweis auf eine neuere Version.
   Info := APreview.Source.Name;
   if English and (APreview.Source.NameEn <> '') then
+  begin
     Info := APreview.Source.NameEn;
+  end;
   if English and (APreview.Source.DescriptionEn <> '') then
-    Info := Trim(Info + sLineBreak + APreview.Source.DescriptionEn)
+  begin
+    Info := Trim(Info + sLineBreak + APreview.Source.DescriptionEn);
+  end
   else if APreview.Source.Description <> '' then
+  begin
     Info := Trim(Info + sLineBreak + APreview.Source.Description);
+  end;
   if APreview.Newer then
+  begin
     Info := Trim(Info + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportNewer,
       [APreview.Source.AtlasVersion]));
+  end;
   FInfo := TLabel.Create(Self);
   FInfo.Parent := Self;
   FInfo.Align := alTop;
@@ -399,7 +425,9 @@ procedure TAtlasImportDialog.DoShow;
 begin
   inherited;
   if not FFilled then
+  begin
     Fill;
+  end;
 end;
 
 function TAtlasImportDialog.ValueText(const AItem: TAtlasImportItem; const AJson: string): string;
@@ -407,14 +435,18 @@ var
   Value: Integer;
 begin
   if AJson = '' then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.SettingsImportDefault));
+  end;
   Result := TAtlasJsonValues.Display(AJson);
   // Tastenkürzel wie im Menü.
   if (AItem.Entry >= 0) and (FCatalog[AItem.Entry].Format = 'shortcut') and TryStrToInt(Result, Value) then
   begin
     Result := ShortCutToText(TShortCut(Value));
     if Result = '' then
+    begin
       Result := '–';
+    end;
   end;
 end;
 
@@ -427,9 +459,13 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportReset);
     isUnknown:
       if FPreview.Newer then
-        Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportUnknownNewer)
+      begin
+        Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportUnknownNewer);
+      end
       else
+      begin
         Result := TAtlasStrings.Text(TAtlasTextId.SettingsImportUnknown);
+      end;
     isInvalid:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportInvalid, [string.Join('; ', AItem.Issues)]);
     isSecret:
@@ -440,9 +476,13 @@ begin
     Result := '';
   end;
   if AItem.Migrated then
+  begin
     Result := Trim(Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportMigrated, [AItem.SourceKey]));
+  end;
   if AItem.Covered <> '' then
+  begin
     Result := Trim(Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCovered, [AItem.Covered]));
+  end;
 end;
 
 procedure TAtlasImportDialog.Fill;
@@ -463,13 +503,19 @@ begin
       Row.Caption := Item.Key;
       Area := '';
       if Item.Area <> '' then
+      begin
         Area := FCatalog.AreaCaption(Item.Area, English);
+      end;
       Row.SubItems.Add(Area);
       Row.SubItems.Add(ValueText(Item, Item.CurrentJson));
       if Item.Selectable then
-        Row.SubItems.Add(ValueText(Item, Item.NewJson))
+      begin
+        Row.SubItems.Add(ValueText(Item, Item.NewJson));
+      end
       else
+      begin
         Row.SubItems.Add(TAtlasJsonValues.Display(Item.NewJson));
+      end;
       Row.SubItems.Add(NoteText(Item));
       Row.Data := Pointer(NativeInt(Index));
       Row.Checked := Item.Selected and Item.Selectable;
@@ -491,18 +537,24 @@ begin
   begin
     Index := NativeInt(Row.Data);
     if (Index < 0) or (Index > High(FPreview.Items)) then
+    begin
       Continue;
+    end;
     // Übersprungene Einträge lassen sich nicht wählen.
     if not FPreview.Items[Index].Selectable then
     begin
       if Row.Checked then
+      begin
         Row.Checked := False;
+      end;
       Continue;
     end;
     Inc(Selectable);
     FPreview.Items[Index].Selected := Row.Checked;
     if Row.Checked then
+    begin
       Inc(Selected);
+    end;
   end;
   FCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsImportCount, [Selected, Selectable]);
   FApply.Enabled := Selected > 0;
@@ -525,14 +577,22 @@ var
   mMode: TAtlasImportMode;
 begin
   if not Assigned(FOnPreview) then
+  begin
     Exit;
+  end;
   Areas := nil;
   for Index := 0 to High(FAreaBoxes) do
+  begin
     if FAreaBoxes[Index].Checked then
+    begin
       Areas := Areas + [FAreaIds[Index]];
+    end;
+  end;
   mMode := imMerge;
   if FMode.ItemIndex = 1 then
+  begin
     mMode := imReplace;
+  end;
   // Keine Bereiche gewählt: leere Vorschau statt „alle“.
   if Length(Areas) = 0 then
   begin
@@ -541,15 +601,21 @@ begin
     FPreview.Mode := mMode;
   end
   else
+  begin
     FPreview := FOnPreview(mMode, Areas);
+  end;
   if HandleAllocated then
+  begin
     Fill;
+  end;
 end;
 
 function TAtlasImportDialog.Result_: TAtlasImportPreview;
 begin
   if FFilled then
+  begin
     SyncChecks;
+  end;
   Result := FPreview;
 end;
 
@@ -561,10 +627,14 @@ begin
   Dialog := TAtlasImportDialog.CreateDialog(nil, ACatalog, AFileName, APreview, AOnPreview);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       APreview := Dialog.Result_;
+    end;
   finally
     Dialog.Free;
   end;
@@ -610,7 +680,9 @@ end;
 procedure TAtlasProfileDialog.ListDblClick(Sender: TObject);
 begin
   if FList.ItemIndex >= 0 then
+  begin
     ModalResult := mrOk;
+  end;
 end;
 
 procedure TAtlasProfileDialog.DoShow;
@@ -621,9 +693,13 @@ begin
   if FList.Items.Count = 0 then
   begin
     for mName in FNames do
+    begin
       FList.Items.Add(mName);
+    end;
     if FList.Items.Count > 0 then
+    begin
       FList.ItemIndex := 0;
+    end;
     ListClick(nil);
   end;
 end;
@@ -632,7 +708,9 @@ procedure TAtlasProfileDialog.ListClick(Sender: TObject);
 begin
   FDescription.Caption := '';
   if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FDescriptions)) then
+  begin
     FDescription.Caption := FDescriptions[FList.ItemIndex];
+  end;
   FLoad.Enabled := FList.ItemIndex >= 0;
 end;
 
@@ -645,10 +723,14 @@ begin
   Dialog := TAtlasProfileDialog.CreateDialog(nil, ANames, ADescriptions);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := (Dialog.ShowModal = mrOk) and (Dialog.List.ItemIndex >= 0);
     if Result then
+    begin
       AIndex := Dialog.List.ItemIndex;
+    end;
   finally
     Dialog.Free;
   end;

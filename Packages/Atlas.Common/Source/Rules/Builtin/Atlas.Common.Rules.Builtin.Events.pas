@@ -214,54 +214,103 @@ var
     Result := False;
   end;
 
+  // Weist der Rumpf ABlock dem Feld AName einen Wert ungleich nil zu? Nur die Token des Rumpfs statt aller
+  // Token der Datei je Routine und Feld (#1323).
+  function AssignsNonNil(ABlock: TSyntaxNode; const AName: string): Boolean;
+  var
+    mPosition: Integer;
+  begin
+    Result := False;
+    mPosition := FirstCodeAt(ABlock.StartOffset);
+    while not Result and (mPosition <= High(Code) - 2) and (Tokens[Code[mPosition]].Offset < ABlock.EndOffset) do
+    begin
+      Result := (Tokens[Code[mPosition]].Kind = TPascalTokenKind.Identifier) and
+        SameText(Tokens[Code[mPosition]].Text, AName) and Tokens[Code[mPosition + 1]].IsSymbol(':=') and
+        not Tokens[Code[mPosition + 2]].IsKeyword('nil');
+      Inc(mPosition);
+    end;
+  end;
+
+  // Rumpf der Routine ANode, wenn sie ein Konstruktor (bzw. mit AAnyMethod irgendeine Methode) von AClassName
+  // ist; sonst nil.
+  function InjectingBody(ANode: TSyntaxNode; const AClassName: string; AAnyMethod: Boolean): TSyntaxNode;
+  begin
+    Result := ANode.FindChild(TSyntaxKind.Block);
+    if (Result <> nil) and (not StartsText(AClassName + '.', ANode.Name) or
+      (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(ANode))))) then
+    begin
+      Result := nil;
+    end;
+  end;
+
   // Weist ein Konstruktor (bzw. mit AAnyMethod irgendeine Methode) von AClassName dem Feld AName einen Wert
   // ungleich nil zu? Dann ist es eine eingereichte Abhängigkeit (FReadText := AReadText) und kein Ereignis,
   // das ein Nutzer setzt.
   function Injected(ARoot: TSyntaxNode; const AClassName, AName: string; AAnyMethod: Boolean): Boolean;
   var
-    Index, Position: Integer;
-    Node, Block: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mBlock: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while not Result and (mPending.Count > 0) do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Block := Node.FindChild(TSyntaxKind.Block);
-          if (Block = nil) or not StartsText(AClassName + '.', Node.Name) or
-            (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(Node)))) then
-          begin
-            Continue;
-          end;
-          // Nur die Token des Rumpfs statt aller Token der Datei je Routine und Feld (#1323).
-          for Position := FirstCodeAt(Block.StartOffset) to High(Code) - 2 do
-          begin
-            if Tokens[Code[Position]].Offset >= Block.EndOffset then
-            begin
-              Break;
-            end;
-            if (Tokens[Code[Position]].Kind = TPascalTokenKind.Identifier) and
-              SameText(Tokens[Code[Position]].Text, AName) and Tokens[Code[Position + 1]].IsSymbol(':=') and
-              not Tokens[Code[Position + 2]].IsKeyword('nil') then
-            begin
-              Exit(True);
-            end;
-          end;
+          mBlock := InjectingBody(mNode, AClassName, AAnyMethod);
+          Result := (mBlock <> nil) and AssignsNonNil(mBlock, AName);
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
+    end;
+  end;
+
+  // Felder, die eine Property von AClass schreibt: Ereignisse, die der Nutzer der Klasse setzt.
+  function WrittenFields(AClass: TSyntaxNode): TArray<string>;
+  var
+    mIndex: Integer;
+    mField: TMatch;
+  begin
+    Result := nil;
+    for mIndex := 0 to AClass.ChildCount - 1 do
+    begin
+      if AClass[mIndex].Kind = TSyntaxKind.PropertyDecl then
+      begin
+        mField := TRegEx.Match(NodeText(AClass[mIndex]), '\bwrite\s+(\w+)', [roIgnoreCase]);
+        if mField.Success then
+        begin
+          Result := Result + [mField.Groups[1].Value];
+        end;
+      end;
+    end;
+  end;
+
+  // Typknoten des Felds oder der Property AMember, wenn er ein Ereignistyp ist; sonst nil.
+  function EventTypeOf(AMember: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if AMember.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
+    begin
+      Result := AMember.FindChild(TSyntaxKind.ProcedureType);
+      if Result = nil then
+      begin
+        Result := AMember.FindChild(TSyntaxKind.TypeReference);
+      end;
+      if (Result <> nil) and (Result.Kind = TSyntaxKind.TypeReference) and not IsEventType(NodeText(Result)) then
+      begin
+        Result := nil;
+      end;
     end;
   end;
 
@@ -269,64 +318,56 @@ var
   // schreibbare Property: irgendeine Methode der Klasse), und ohne Properties, die solche Felder lesen.
   function EventsOf(const AClassName: string; AClass: TSyntaxNode): TArray<string>;
   var
-    Index: Integer;
-    Member, TypeNode: TSyntaxNode;
-    Name: string;
-    ReadField: TMatch;
-    Written: TArray<string>;
+    mIndex: Integer;
+    mMember: TSyntaxNode;
+    mName: string;
+    mWritten: TArray<string>;
 
     function IsInjected(const AField: string): Boolean;
     begin
-      Result := Injected(AContext.Tree.Root, AClassName, AField, IndexText(AField, Written) < 0);
+      Result := Injected(AContext.Tree.Root, AClassName, AField, IndexText(AField, mWritten) < 0);
+    end;
+
+    // Liest die Property AMember ein eingereichtes Feld?
+    function ReadsInjected(AMember: TSyntaxNode): Boolean;
+    var
+      mRead: TMatch;
+    begin
+      mRead := TRegEx.Match(NodeText(AMember), '\bread\s+(\w+)', [roIgnoreCase]);
+      Result := mRead.Success and IsInjected(mRead.Groups[1].Value);
     end;
 
   begin
     Result := nil;
-    // Felder, die eine Property schreibt: Ereignisse, die der Nutzer der Klasse setzt.
-    Written := nil;
-    for Index := 0 to AClass.ChildCount - 1 do
+    mWritten := WrittenFields(AClass);
+    for mIndex := 0 to AClass.ChildCount - 1 do
     begin
-      if AClass[Index].Kind = TSyntaxKind.PropertyDecl then
+      mMember := AClass[mIndex];
+      if (EventTypeOf(mMember) = nil) or ((mMember.Kind = TSyntaxKind.PropertyDecl) and ReadsInjected(mMember)) then
       begin
-        ReadField := TRegEx.Match(NodeText(AClass[Index]), '\bwrite\s+(\w+)', [roIgnoreCase]);
-        if ReadField.Success then
+        Continue;
+      end;
+      for mName in mMember.Name.Split([',']) do
+      begin
+        if (Trim(mName) <> '') and ((mMember.Kind = TSyntaxKind.PropertyDecl) or not IsInjected(Trim(mName))) then
         begin
-          Written := Written + [ReadField.Groups[1].Value];
+          Result := Result + [Trim(mName)];
         end;
       end;
     end;
-    for Index := 0 to AClass.ChildCount - 1 do
+  end;
+
+  // Deklariert der Knoten ANode (Variable, Konstante, Parameter) den Namen AName?
+  function DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    mName: string;
+  begin
+    Result := False;
+    if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
     begin
-      Member := AClass[Index];
-      if not (Member.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) then
+      for mName in ANode.Name.Split([',']) do
       begin
-        Continue;
-      end;
-      TypeNode := Member.FindChild(TSyntaxKind.ProcedureType);
-      if (TypeNode = nil) and (Member.FindChild(TSyntaxKind.TypeReference) <> nil) and
-        IsEventType(NodeText(Member.FindChild(TSyntaxKind.TypeReference))) then
-      begin
-        TypeNode := Member.FindChild(TSyntaxKind.TypeReference);
-      end;
-      if TypeNode = nil then
-      begin
-        Continue;
-      end;
-      if Member.Kind = TSyntaxKind.PropertyDecl then
-      begin
-        ReadField := TRegEx.Match(NodeText(Member), '\bread\s+(\w+)', [roIgnoreCase]);
-        if ReadField.Success and IsInjected(ReadField.Groups[1].Value) then
-        begin
-          Continue;
-        end;
-      end;
-      for Name in Member.Name.Split([',']) do
-      begin
-        if (Trim(Name) <> '') and
-          ((Member.Kind = TSyntaxKind.PropertyDecl) or not IsInjected(Trim(Name))) then
-        begin
-          Result := Result + [Trim(Name)];
-        end;
+        Result := Result or SameText(Trim(mName), AName);
       end;
     end;
   end;
@@ -334,37 +375,26 @@ var
   // Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante oder einen Parameter AName?
   function Shadowed(ARoot: TSyntaxNode; const AName: string): Boolean;
   var
-    Index: Integer;
-    Name: string;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while not Result and (mPending.Count > 0) do
       begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
-          TSyntaxKind.InlineConst] then
+        mNode := mPending.Pop;
+        Result := DeclaresName(mNode, AName);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          for Name in Node.Name.Split([',']) do
-          begin
-            if SameText(Trim(Name), AName) then
-            begin
-              Exit(True);
-            end;
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -512,123 +542,172 @@ var
     Result := Conjunct(APrefix, Flag + '=''''') or ((Value = 'true') and Conjunct(APrefix, 'not' + Flag));
   end;
 
-  // Schützt eine Bedingung den Aufruf bei AOffset in ARoutine?
-  function Guarded(ARoutine: TSyntaxNode; AOffset: Integer; const AName: string): Boolean;
-  var
-    Node, Parent, Branch: TSyntaxNode;
-    Index: Integer;
-    Condition, Prefix, Term: string;
+  // Anweisung oder Bedingung um ANode, in der ein Kurzschluss den Aufruf schützen kann; nil auf Ebene der Routine.
+  function StatementOf(ARoutine, ANode: TSyntaxNode): TSyntaxNode;
   begin
-    Prefix := '';
-    Node := NodeAt(ARoutine, AOffset);
-    // Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)".
-    Parent := Node;
-    while (Parent <> nil) and (Parent <> ARoutine) and not (Parent.Kind in [TSyntaxKind.AssignStatement,
+    Result := ANode;
+    while (Result <> nil) and (Result <> ARoutine) and not (Result.Kind in [TSyntaxKind.AssignStatement,
       TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
       TSyntaxKind.CaseStatement, TSyntaxKind.Block]) do
     begin
-      Parent := Parent.Parent;
+      Result := Result.Parent;
     end;
-    if (Parent <> nil) and (Parent <> ARoutine) then
+    if Result = ARoutine then
     begin
-      Prefix := Normalized(Copy(AContext.Text, Parent.StartOffset + 1, AOffset - Parent.StartOffset));
-      // Ab der Bedingung: "if (Grund = '') and not F(…)".
-      if Parent.Kind = TSyntaxKind.IfStatement then
-      begin
-        Prefix := Copy(Prefix, 3, MaxInt);
-      end
-      else if Parent.Kind = TSyntaxKind.WhileStatement then
-      begin
-        Prefix := Copy(Prefix, 6, MaxInt);
-      end;
-      if (Positive(Prefix, AName) and ContainsStr(Prefix, 'assigned(' + AName + ')and')) or
-        (ContainsStr(Prefix, AName + '<>niland')) or
-        (Negative(Prefix, AName) and (ContainsStr(Prefix, 'notassigned(' + AName + ')or') or
-        ContainsStr(Prefix, AName + '=nilor'))) then
-      begin
-        Exit(True);
-      end;
+      Result := nil;
     end;
-    while (Node <> nil) and (Node <> ARoutine) do
+  end;
+
+  // Text von AStatement bis AOffset, normalisiert und ab der Bedingung: "if (Grund = '') and not F(…)".
+  function GuardPrefix(AStatement: TSyntaxNode; AOffset: Integer): string;
+  begin
+    Result := Normalized(Copy(AContext.Text, AStatement.StartOffset + 1, AOffset - AStatement.StartOffset));
+    if AStatement.Kind = TSyntaxKind.IfStatement then
     begin
-      Parent := Node.Parent;
-      if (Parent <> nil) and (Parent.Kind = TSyntaxKind.IfStatement) and (Parent.ChildCount > 1) then
-      begin
-        Condition := Normalized(NodeText(Parent[0]));
-        if (Node = Parent[1]) and (Positive(Condition, AName) or FlagFor(ARoutine, Parent.StartOffset, Condition,
-          AName)) then
-        begin
-          Exit(True);
-        end;
-        // Für MarkedUnassigned: "if Grund = '' then F(Self)" wirkt wie "(Grund = '') and F(…)".
-        if Node = Parent[1] then
-        begin
-          Prefix := Prefix + '(' + Condition + ')and';
-        end
-        else if (Parent.ChildCount > 2) and (Node = Parent[2]) and Negative(Condition, AName) then
-        begin
-          Exit(True);
-        end;
-      end;
-      // "while Assigned(F) do F(Self);"
-      if (Parent <> nil) and (Parent.Kind = TSyntaxKind.WhileStatement) and (Parent.ChildCount > 1) and
-        (Node = Parent[1]) and Positive(Normalized(NodeText(Parent[0])), AName) then
-      begin
-        Exit(True);
-      end;
-      Node := Parent;
+      Result := Copy(Result, 3, MaxInt);
+    end
+    else if AStatement.Kind = TSyntaxKind.WhileStatement then
+    begin
+      Result := Copy(Result, 6, MaxInt);
     end;
-    // "if not Assigned(F) then Exit;" bzw. "if not Ok then Exit;" mit "Ok := … and Assigned(F)" vor dem Aufruf.
+  end;
+
+  // Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)".
+  function ShortCircuit(const APrefix, AName: string): Boolean;
+  begin
+    Result := Positive(APrefix, AName) and ContainsStr(APrefix, 'assigned(' + AName + ')and');
+    Result := Result or ContainsStr(APrefix, AName + '<>niland');
+    Result := Result or (Negative(APrefix, AName) and (ContainsStr(APrefix, 'notassigned(' + AName + ')or') or
+      ContainsStr(APrefix, AName + '=nilor')));
+  end;
+
+  // Schützt die if-Anweisung AIf den Zweig ANode? Im then-Zweig ergänzt sie APrefix um ihre Bedingung (für
+  // MarkedUnassigned: "if Grund = '' then F(Self)" wirkt wie "(Grund = '') and F(…)").
+  function IfGuards(ARoutine, AIf, ANode: TSyntaxNode; const AName: string; var APrefix: string): Boolean;
+  var
+    mCondition: string;
+  begin
+    mCondition := Normalized(NodeText(AIf[0]));
+    if ANode = AIf[1] then
+    begin
+      Result := Positive(mCondition, AName) or FlagFor(ARoutine, AIf.StartOffset, mCondition, AName);
+      APrefix := APrefix + '(' + mCondition + ')and';
+    end
+    else
+    begin
+      Result := (AIf.ChildCount > 2) and (ANode = AIf[2]) and Negative(mCondition, AName);
+    end;
+  end;
+
+  // Schützt eine umgebende if- oder while-Bedingung ("while Assigned(F) do F(Self);") den Knoten ANode?
+  function EnclosingGuard(ARoutine, ANode: TSyntaxNode; const AName: string; var APrefix: string): Boolean;
+  var
+    mNode, mParent: TSyntaxNode;
+  begin
     Result := False;
-    for Index := 0 to High(Code) do
+    mNode := ANode;
+    while not Result and (mNode <> nil) and (mNode <> ARoutine) do
     begin
-      if (Token(Index).Offset > ARoutine.StartOffset) and (Token(Index).Offset < AOffset) and
-        Token(Index).IsKeyword('if') then
+      mParent := mNode.Parent;
+      if (mParent <> nil) and (mParent.ChildCount > 1) and (mParent.Kind = TSyntaxKind.IfStatement) then
       begin
-        Node := NodeAt(ARoutine, Token(Index).Offset);
-        while (Node <> nil) and (Node.Kind <> TSyntaxKind.IfStatement) and (Node <> ARoutine) do
-        begin
-          Node := Node.Parent;
-        end;
-        if (Node = nil) or (Node.Kind <> TSyntaxKind.IfStatement) or (Node.ChildCount < 2) or
-          (Node.EndOffset > AOffset) then
-        begin
-          Continue;
-        end;
-        Branch := Node[1];
-        Condition := Normalized(NodeText(Node[0]));
-        if Negative(Condition, AName) and MarkedUnassigned(Branch, Prefix) then
-        begin
-          Exit(True);
-        end;
-        if not Leaves(Branch) then
-        begin
-          Continue;
-        end;
-        if Negative(Condition, AName) then
-        begin
-          Exit(True);
-        end;
-        if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt), AName) then
-        begin
-          Exit(True);
-        end;
-        // "if not CanAssign or (Name = '') then Exit;": jedes Glied der or-Kette verlässt die Routine (#1371).
-        for Term in TRegEx.Split(NodeText(Node[0]), '\bor\b', [roIgnoreCase]) do
-        begin
-          Condition := Normalized(Term);
-          while StartsStr('(', Condition) and EndsStr(')', Condition) do
-          begin
-            Condition := Copy(Condition, 2, Length(Condition) - 2);
-          end;
-          if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt),
-            AName) then
-          begin
-            Exit(True);
-          end;
-        end;
+        Result := IfGuards(ARoutine, mParent, mNode, AName, APrefix);
+      end
+      else if (mParent <> nil) and (mParent.ChildCount > 1) and (mParent.Kind = TSyntaxKind.WhileStatement) then
+      begin
+        Result := (mNode = mParent[1]) and Positive(Normalized(NodeText(mParent[0])), AName);
       end;
+      mNode := mParent;
     end;
+  end;
+
+  // Die if-Anweisung, die mit dem Token AIndex beginnt und ganz vor AOffset in ARoutine liegt; sonst nil.
+  function IfBefore(ARoutine: TSyntaxNode; AIndex, AOffset: Integer): TSyntaxNode;
+  begin
+    Result := nil;
+    if (Token(AIndex).Offset <= ARoutine.StartOffset) or (Token(AIndex).Offset >= AOffset) or
+      not Token(AIndex).IsKeyword('if') then
+    begin
+      Exit;
+    end;
+    Result := NodeAt(ARoutine, Token(AIndex).Offset);
+    while (Result <> nil) and (Result.Kind <> TSyntaxKind.IfStatement) and (Result <> ARoutine) do
+    begin
+      Result := Result.Parent;
+    end;
+    if (Result = nil) or (Result.Kind <> TSyntaxKind.IfStatement) or (Result.ChildCount < 2) or
+      (Result.EndOffset > AOffset) then
+    begin
+      Result := nil;
+    end;
+  end;
+
+  // "if not CanAssign or (Name = '') then Exit;": Steht ein Glied der or-Kette von AIf für "not Assigned(F)"
+  // (#1371)?
+  function OrTermFlag(ARoutine, AIf: TSyntaxNode; const AName: string): Boolean;
+  var
+    mTerm, mCondition: string;
+  begin
+    Result := False;
+    for mTerm in TRegEx.Split(NodeText(AIf[0]), '\bor\b', [roIgnoreCase]) do
+    begin
+      mCondition := Normalized(mTerm);
+      while StartsStr('(', mCondition) and EndsStr(')', mCondition) do
+      begin
+        mCondition := Copy(mCondition, 2, Length(mCondition) - 2);
+      end;
+      Result := Result or (StartsStr('not', mCondition) and FlagFor(ARoutine, AIf.StartOffset,
+        Copy(mCondition, 4, MaxInt), AName));
+    end;
+  end;
+
+  // Verhindert die vorangehende if-Anweisung AIf den Aufruf: "if not Assigned(F) then Exit;" bzw.
+  // "if not Ok then Exit;" mit "Ok := … and Assigned(F)", oder ein Merker nach MarkedUnassigned?
+  function ExitGuard(ARoutine, AIf: TSyntaxNode; const AName, APrefix: string): Boolean;
+  var
+    mCondition: string;
+  begin
+    mCondition := Normalized(NodeText(AIf[0]));
+    Result := Negative(mCondition, AName) and MarkedUnassigned(AIf[1], APrefix);
+    if not Result and Leaves(AIf[1]) then
+    begin
+      Result := Negative(mCondition, AName) or (StartsStr('not', mCondition) and FlagFor(ARoutine, AIf.StartOffset,
+        Copy(mCondition, 4, MaxInt), AName)) or OrTermFlag(ARoutine, AIf, AName);
+    end;
+  end;
+
+  // Schützt eine if-Anweisung vor dem Aufruf bei AOffset ihn, indem sie die Routine verlässt?
+  function EarlierExit(ARoutine: TSyntaxNode; AOffset: Integer; const AName, APrefix: string): Boolean;
+  var
+    mIndex: Integer;
+    mIf: TSyntaxNode;
+  begin
+    Result := False;
+    mIndex := 0;
+    while not Result and (mIndex <= High(Code)) do
+    begin
+      mIf := IfBefore(ARoutine, mIndex, AOffset);
+      Result := (mIf <> nil) and ExitGuard(ARoutine, mIf, AName, APrefix);
+      Inc(mIndex);
+    end;
+  end;
+
+  // Schützt eine Bedingung den Aufruf bei AOffset in ARoutine?
+  function Guarded(ARoutine: TSyntaxNode; AOffset: Integer; const AName: string): Boolean;
+  var
+    mNode, mStatement: TSyntaxNode;
+    mPrefix: string;
+  begin
+    mPrefix := '';
+    mNode := NodeAt(ARoutine, AOffset);
+    mStatement := StatementOf(ARoutine, mNode);
+    if mStatement <> nil then
+    begin
+      mPrefix := GuardPrefix(mStatement, AOffset);
+    end;
+    Result := ShortCircuit(mPrefix, AName) or EnclosingGuard(ARoutine, mNode, AName, mPrefix);
+    // EnclosingGuard hat mPrefix um die Bedingungen der then-Zweige ergänzt.
+    Result := Result or EarlierExit(ARoutine, AOffset, AName, mPrefix);
   end;
 
   // "if Assigned(F) then" vor die Anweisung; nur in Blöcken und wenn die Anweisung allein am Zeilenanfang steht.
@@ -662,60 +741,80 @@ var
     Result := True;
   end;
 
+  // Steht bei APosition im Rumpf ABlock der Name eines Ereignisses aus AEvents?
+  function IsEventToken(ABlock: TSyntaxNode; APosition: Integer; const AEvents: TArray<string>): Boolean;
+  begin
+    Result := (Token(APosition).Offset >= ABlock.StartOffset) and (Token(APosition).Offset < ABlock.EndOffset) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and (IndexText(Token(APosition).Text, AEvents) >= 0);
+  end;
+
+  // Erstes Token des Zugriffs auf das Ereignis bei APosition ("Self.FOnX" ab Self); False bei einem anderen
+  // Objekt davor.
+  function AccessStart(APosition: Integer; out AFirst: Integer): Boolean;
+  begin
+    AFirst := APosition;
+    Result := (APosition = 0) or not Token(APosition - 1).IsSymbol('.');
+    if not Result and (APosition >= 2) and SameText(Token(APosition - 2).Text, 'Self') then
+    begin
+      AFirst := APosition - 2;
+      Result := True;
+    end;
+  end;
+
+  // Wird das Ereignis bei APosition aufgerufen? Ohne Argumente nur als eigene Anweisung: "FOnIdle;".
+  function IsCalled(AFirst, APosition: Integer): Boolean;
+  begin
+    Result := Token(APosition + 1).IsSymbol('(');
+    if not Result and ((AFirst = 0) or MatchText(Token(AFirst - 1).Text, StatementStarts)) then
+    begin
+      Result := Token(APosition + 1).IsSymbol(';') or Token(APosition + 1).IsKeyword('end') or
+        Token(APosition + 1).IsKeyword('else');
+    end;
+  end;
+
+  // Ist der Aufruf bei APosition geschützt oder meint er eine gleichnamige lokale Variable?
+  function SafeCall(ARoutine: TSyntaxNode; AFirst, APosition: Integer): Boolean;
+  var
+    mName: string;
+  begin
+    mName := LowerCase(Token(APosition).Text);
+    Result := ((AFirst = APosition) and Shadowed(ARoutine, mName)) or Guarded(ARoutine, Token(APosition).Offset,
+      mName);
+  end;
+
+  procedure ReportCall(ARoutine: TSyntaxNode; AFirst, APosition: Integer);
+  var
+    mWritten: string;
+    mFix: TRuleFix;
+    mFixes: TArray<TRuleFix>;
+  begin
+    mWritten := Token(APosition).Text;
+    mFixes := nil;
+    if WrapFix(ARoutine, AFirst, mWritten, mFix) then
+    begin
+      mFixes := [mFix];
+    end;
+    AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
+      Format('%s kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.', [mWritten]), mFixes);
+  end;
+
   procedure CheckRoutine(ARoutine: TSyntaxNode; const AEvents: TArray<string>);
   var
-    Block: TSyntaxNode;
-    Position, First, Next: Integer;
-    Name, Written: string;
-    Fix: TRuleFix;
-    Fixes: TArray<TRuleFix>;
-    IsCall: Boolean;
+    mBlock: TSyntaxNode;
+    mPosition, mFirst: Integer;
   begin
-    Block := ARoutine.FindChild(TSyntaxKind.Block);
-    if Block = nil then
+    mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+    if mBlock = nil then
     begin
       Exit;
     end;
-    for Position := 0 to High(Code) - 1 do
+    for mPosition := 0 to High(Code) - 1 do
     begin
-      if (Token(Position).Offset < Block.StartOffset) or (Token(Position).Offset >= Block.EndOffset) or
-        (Token(Position).Kind <> TPascalTokenKind.Identifier) or (IndexText(Token(Position).Text, AEvents) < 0) then
+      if IsEventToken(mBlock, mPosition, AEvents) and AccessStart(mPosition, mFirst) and
+        IsCalled(mFirst, mPosition) and not SafeCall(ARoutine, mFirst, mPosition) then
       begin
-        Continue;
+        ReportCall(ARoutine, mFirst, mPosition);
       end;
-      First := Position;
-      if (Position > 0) and Token(Position - 1).IsSymbol('.') then
-      begin
-        if (Position < 2) or not SameText(Token(Position - 2).Text, 'Self') then
-        begin
-          Continue;
-        end;
-        First := Position - 2;
-      end;
-      Next := Position + 1;
-      IsCall := Token(Next).IsSymbol('(');
-      // Ohne Argumente nur als eigene Anweisung: "FOnIdle;".
-      if not IsCall and ((First = 0) or MatchText(Token(First - 1).Text, StatementStarts)) then
-      begin
-        IsCall := Token(Next).IsSymbol(';') or Token(Next).IsKeyword('end') or Token(Next).IsKeyword('else');
-      end;
-      if not IsCall then
-      begin
-        Continue;
-      end;
-      Name := LowerCase(Token(Position).Text);
-      if ((First = Position) and Shadowed(ARoutine, Name)) or Guarded(ARoutine, Token(Position).Offset, Name) then
-      begin
-        Continue;
-      end;
-      Written := Token(Position).Text;
-      Fixes := nil;
-      if WrapFix(ARoutine, First, Written, Fix) then
-      begin
-        Fixes := [Fix];
-      end;
-      AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
-        Format('%s kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.', [Written]), Fixes);
     end;
   end;
 

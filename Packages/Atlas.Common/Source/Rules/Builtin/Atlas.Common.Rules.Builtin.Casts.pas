@@ -248,44 +248,48 @@ var
       TSyntaxKind.Dereference]);
   end;
 
+  /// <summary>T(X) mit den Klassen T (ATargetType) und X (ASourceType, nicht TObject, nicht T): Bezeichner bzw.
+  /// qualifizierter Name ohne Typargumente und genau ein Argument.</summary>
+  function ClassCast(ANode: TSyntaxNode; out AArgument: TSyntaxNode; out ATargetType,
+    ASourceType: TResolvedSymbol): Boolean;
+  var
+    mTargetSymbol, mSourceSymbol: TResolvedSymbol;
+  begin
+    AArgument := nil;
+    ATargetType := Default(TResolvedSymbol);
+    ASourceType := Default(TResolvedSymbol);
+    Result := (ANode.ChildCount = 2) and (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      (ANode[0].FindChild(TSyntaxKind.GenericArgs) = nil);
+    Result := Result and mScope.SureType(ANode, mTargetSymbol, ATargetType) and mTargetSymbol.IsType and
+      IsPlainClass(ATargetType);
+    if Result then
+    begin
+      AArgument := Unwrapped(ANode[1]);
+      Result := mScope.SureType(AArgument, mSourceSymbol, ASourceType) and not mSourceSymbol.IsType and
+        IsPlainClass(ASourceType);
+      Result := Result and not IsTObject(ASourceType) and not SameType(ASourceType, ATargetType);
+    end;
+  end;
+
+  /// <summary>Sind Ziel und Quelle nicht verwandt und haben einen anderen Aufbau?</summary>
+  function Unrelated(const ATargetType, ASourceType: TResolvedSymbol): Boolean;
+  var
+    mTargetChain, mSourceChain: TArray<TResolvedSymbol>;
+  begin
+    Result := ClassChain(mScope.Resolver, ATargetType, mTargetChain) and
+      ClassChain(mScope.Resolver, ASourceType, mSourceChain);
+    Result := Result and not Contains(mTargetChain, ASourceType) and not Contains(mSourceChain, ATargetType) and
+      not SameLayout(mTargetChain, mSourceChain);
+  end;
+
   procedure CheckCast(ANode: TSyntaxNode);
   var
     mArgument: TSyntaxNode;
-    mTargetSymbol, mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
-    mTargetChain, mSourceChain: TArray<TResolvedSymbol>;
+    mTargetType, mSourceType: TResolvedSymbol;
     mReplacement: string;
   begin
-    // T(X): Bezeichner bzw. qualifizierter Name ohne Typargumente und genau ein Argument.
-    if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-      (ANode[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
-    begin
-      Exit;
-    end;
-    if not mScope.SureType(ANode, mTargetSymbol, mTargetType) or not mTargetSymbol.IsType or
-      not IsPlainClass(mTargetType) then
-    begin
-      Exit;
-    end;
-    mArgument := Unwrapped(ANode[1]);
-    if not mScope.SureType(mArgument, mSourceSymbol, mSourceType) or mSourceSymbol.IsType or
-      not IsPlainClass(mSourceType) or IsTObject(mSourceType) or SameType(mSourceType, mTargetType) then
-    begin
-      Exit;
-    end;
-    if not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
-      not ClassChain(mScope.Resolver, mSourceType, mSourceChain) then
-    begin
-      Exit;
-    end;
-    if Contains(mTargetChain, mSourceType) or Contains(mSourceChain, mTargetType) then
-    begin
-      Exit;
-    end;
-    if SameLayout(mTargetChain, mSourceChain) then
-    begin
-      Exit;
-    end;
-    if Allowed(mAllowTypes, mSourceType.QualifiedName, mTargetType.QualifiedName) then
+    if not ClassCast(ANode, mArgument, mTargetType, mSourceType) or not Unrelated(mTargetType, mSourceType) or
+      Allowed(mAllowTypes, mSourceType.QualifiedName, mTargetType.QualifiedName) then
     begin
       Exit;
     end;
@@ -415,7 +419,7 @@ var
     begin
       AType.SymbolKind := TIndexSymbolKind.ClassType;
     end;
-    Result := SameText(ATypeNode.Name, 'TObject') or TNameResolver.IsBuiltinTypeName(ATypeNode.Name);
+    Result := SameText(ATypeNode.Name, 'TObject') or TResolverText.IsBuiltinTypeName(ATypeNode.Name);
   end;
 
   /// <summary>Typ der Quelle sicher bekannt und als Wert verwendbar: keine Typen, keine Konstanten (untypisierte
@@ -527,24 +531,14 @@ var
     mIsAs: Boolean;
     mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
   begin
-    if not CastParts(ANode, mTypeNode, mSource, mIsAs) then
-    begin
-      Exit;
-    end;
-    if not TargetOf(mTypeNode, mTargetType) then
-    begin
-      Exit;
-    end;
     // as mit Interface ruft QueryInterface und kann ein anderes Objekt liefern.
-    if mIsAs and not IsPlainClass(mTargetType) then
+    if not CastParts(ANode, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
+      mIsAs and not IsPlainClass(mTargetType) then
     begin
       Exit;
     end;
-    if not SureSource(mSource, mSourceSymbol, mSourceType) then
-    begin
-      Exit;
-    end;
-    if not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
+    if not SureSource(mSource, mSourceSymbol, mSourceType) or
+      not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
       not SameBuiltin(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
     begin
       Exit;
@@ -557,48 +551,46 @@ var
       [mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
 
+  /// <summary>Ist ANode der Name in einem Aufruf Free(…) mit Argumenten? Der ist nicht TObject.Free.</summary>
+  function FreeWithArguments(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
+      (ANode.Parent.ChildCount > 1);
+  end;
+
+  /// <summary>Ruft Free für AType den Destruktor von TObject.Free (keine Klasse der Kette deklariert Free)?
+  /// </summary>
+  function PlainFree(const AType: TResolvedSymbol): Boolean;
+  var
+    mChain: TArray<TResolvedSymbol>;
+  begin
+    Result := ClassChain(mScope.Resolver, AType, mChain) and not DeclaresFree(mChain);
+  end;
+
   /// <summary>TObject(FStrom).Free: Umwandlung einer Klasse in eine Klasse nur für Free.</summary>
   procedure CheckFree(ANode: TSyntaxNode);
   var
     mCast, mTypeNode, mSource: TSyntaxNode;
     mIsAs: Boolean;
     mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
-    mTargetChain, mSourceChain: TArray<TResolvedSymbol>;
   begin
-    if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) then
-    begin
-      Exit;
-    end;
-    // Free(…) mit Argumenten ist nicht TObject.Free.
-    if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
-      (ANode.Parent.ChildCount > 1) then
+    if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) or FreeWithArguments(ANode) then
     begin
       Exit;
     end;
     mCast := Unwrapped(ANode[0]);
-    if not CastParts(mCast, mTypeNode, mSource, mIsAs) then
-    begin
-      Exit;
-    end;
-    if not TargetOf(mTypeNode, mTargetType) or not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
-    begin
-      Exit;
-    end;
-    if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) then
+    if not CastParts(mCast, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
+      not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
     begin
       Exit;
     end;
     // Gleicher Typ meldet CheckCast.
-    if SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+    if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) or
+      SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
     begin
       Exit;
     end;
-    if not ClassChain(mScope.Resolver, mSourceType, mSourceChain) or DeclaresFree(mSourceChain) then
-    begin
-      Exit;
-    end;
-    if not IsTObject(mTargetType) and (not ClassChain(mScope.Resolver, mTargetType, mTargetChain) or
-      DeclaresFree(mTargetChain)) then
+    if not PlainFree(mSourceType) or not IsTObject(mTargetType) and not PlainFree(mTargetType) then
     begin
       Exit;
     end;

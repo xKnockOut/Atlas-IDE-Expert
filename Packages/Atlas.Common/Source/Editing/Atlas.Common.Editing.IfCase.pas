@@ -111,6 +111,12 @@ type
     function MatchSelector(ANode: TSyntaxNode): Boolean;
     function IsConstantLabel(ANode: TSyntaxNode): Boolean;
     function ReadLabels(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+    /// <summary>X = a bzw. a = X.</summary>
+    function ReadEqual(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+    /// <summary>Elemente der Menge in X in [a, b..c].</summary>
+    function ReadSet(ASet: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+    /// <summary>Marke aus einem Mengenelement: Konstante oder Bereich aus Konstanten.</summary>
+    function ElementLabel(AElement: TSyntaxNode; out AItem: TCaseLabel): Boolean;
     function ReadRange(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
     function Bound(ANode: TSyntaxNode; out AValue: TSyntaxNode; out ALower: Boolean): Boolean;
   public
@@ -229,76 +235,88 @@ begin
   ALabels := ALabels + [Item];
 end;
 
+function TChainReader.ReadEqual(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mItem: TCaseLabel;
+begin
+  mItem := Default(TCaseLabel);
+  if IsConstantLabel(ANode[1]) and MatchSelector(ANode[0]) then
+  begin
+    mItem.Low := TExpressionText.Strip(ANode[1]);
+  end
+  else if IsConstantLabel(ANode[0]) and MatchSelector(ANode[1]) then
+  begin
+    mItem.Low := TExpressionText.Strip(ANode[0]);
+  end
+  else
+  begin
+    Exit(False);
+  end;
+  ALabels := ALabels + [mItem];
+  Result := True;
+end;
+
+function TChainReader.ElementLabel(AElement: TSyntaxNode; out AItem: TCaseLabel): Boolean;
+begin
+  AItem := Default(TCaseLabel);
+  if AElement.Kind = TSyntaxKind.RangeExpr then
+  begin
+    Result := (AElement.ChildCount = 2) and IsConstantLabel(AElement[0]) and IsConstantLabel(AElement[1]);
+    if Result then
+    begin
+      AItem.Low := TExpressionText.Strip(AElement[0]);
+      AItem.High := TExpressionText.Strip(AElement[1]);
+    end;
+  end
+  else
+  begin
+    Result := IsConstantLabel(AElement);
+    AItem.Low := TExpressionText.Strip(AElement);
+  end;
+end;
+
+function TChainReader.ReadSet(ASet: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
+var
+  mIndex: Integer;
+  mItem: TCaseLabel;
+begin
+  Result := ASet.ChildCount > 0;
+  for mIndex := 0 to ASet.ChildCount - 1 do
+  begin
+    if not ElementLabel(ASet[mIndex], mItem) then
+    begin
+      Exit(False);
+    end;
+    ALabels := ALabels + [mItem];
+  end;
+end;
+
 function TChainReader.ReadLabels(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
 var
-  Node, Element: TSyntaxNode;
-  Index: Integer;
-  Item: TCaseLabel;
+  mNode: TSyntaxNode;
 begin
   Result := False;
-  Node := TExpressionText.Strip(ANode);
-  if (Node.Kind <> TSyntaxKind.BinaryExpr) or (Node.ChildCount <> 2) then
+  mNode := TExpressionText.Strip(ANode);
+  if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
   begin
     Exit;
   end;
-  if SameText(Node.Name, 'or') then
+  if SameText(mNode.Name, 'or') then
   begin
-    Exit(ReadLabels(Node[0], ALabels) and ReadLabels(Node[1], ALabels));
-  end;
-  if SameText(Node.Name, 'and') then
+    Result := ReadLabels(mNode[0], ALabels) and ReadLabels(mNode[1], ALabels);
+  end
+  else if SameText(mNode.Name, 'and') then
   begin
-    Exit(ReadRange(Node, ALabels));
-  end;
-  if Node.Name = '=' then
+    Result := ReadRange(mNode, ALabels);
+  end
+  else if mNode.Name = '=' then
   begin
-    Item.High := nil;
-    if IsConstantLabel(Node[1]) and MatchSelector(Node[0]) then
-    begin
-      Item.Low := TExpressionText.Strip(Node[1]);
-    end
-    else if IsConstantLabel(Node[0]) and MatchSelector(Node[1]) then
-    begin
-      Item.Low := TExpressionText.Strip(Node[0]);
-    end
-    else
-    begin
-      Exit;
-    end;
-    ALabels := ALabels + [Item];
-    Exit(True);
-  end;
-  if SameText(Node.Name, 'in') and (TExpressionText.Strip(Node[1]).Kind = TSyntaxKind.SetConstructor) and
-    MatchSelector(Node[0]) then
+    Result := ReadEqual(mNode, ALabels);
+  end
+  else if SameText(mNode.Name, 'in') and (TExpressionText.Strip(mNode[1]).Kind = TSyntaxKind.SetConstructor) and
+    MatchSelector(mNode[0]) then
   begin
-    Node := TExpressionText.Strip(Node[1]);
-    if Node.ChildCount = 0 then
-    begin
-      Exit;
-    end;
-    for Index := 0 to Node.ChildCount - 1 do
-    begin
-      Element := Node[Index];
-      if Element.Kind = TSyntaxKind.RangeExpr then
-      begin
-        if (Element.ChildCount <> 2) or not IsConstantLabel(Element[0]) or not IsConstantLabel(Element[1]) then
-        begin
-          Exit;
-        end;
-        Item.Low := TExpressionText.Strip(Element[0]);
-        Item.High := TExpressionText.Strip(Element[1]);
-      end
-      else
-      begin
-        if not IsConstantLabel(Element) then
-        begin
-          Exit;
-        end;
-        Item.Low := TExpressionText.Strip(Element);
-        Item.High := nil;
-      end;
-      ALabels := ALabels + [Item];
-    end;
-    Exit(True);
+    Result := ReadSet(TExpressionText.Strip(mNode[1]), ALabels);
   end;
 end;
 
@@ -375,40 +393,58 @@ begin
   end;
 end;
 
+/// <summary>Schlüssel aller Marken in AKeys; False bei einem leeren Bereich (b &lt; a).</summary>
+function CollectKeys(const AText: string; ATree: TSyntaxTree; const ALinks: TArray<TChainLink>;
+  out AKeys: TArray<TLabelKey>): Boolean;
+var
+  mLink: TChainLink;
+  mItem: TCaseLabel;
+  mKey: TLabelKey;
+begin
+  AKeys := nil;
+  for mLink in ALinks do
+  begin
+    for mItem in mLink.Labels do
+    begin
+      mKey := LabelKey(AText, ATree, mItem);
+      if mKey.Known and (mKey.High < mKey.Low) then
+      begin
+        Exit(False);
+      end;
+      AKeys := AKeys + [mKey];
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Überschneiden sich die Marken A und B (Werte bzw. gleicher Text)?</summary>
+function Overlap(const A, B: TLabelKey): Boolean;
+begin
+  if A.Known and B.Known then
+  begin
+    Result := (A.Low <= B.High) and (B.Low <= A.High);
+  end
+  else
+  begin
+    Result := A.Text = B.Text;
+  end;
+end;
+
 /// <summary>Doppelte oder überlappende Marken (im case E2030), auch leere Bereiche (b &lt; a)?</summary>
 function HasConflicts(const AText: string; ATree: TSyntaxTree; const ALinks: TArray<TChainLink>): Boolean;
 var
-  Keys: TArray<TLabelKey>;
-  Link: TChainLink;
-  Item: TCaseLabel;
-  Key: TLabelKey;
-  Index, Other: Integer;
+  mKeys: TArray<TLabelKey>;
+  mIndex, mOther: Integer;
 begin
-  Keys := nil;
-  for Link in ALinks do
+  if not CollectKeys(AText, ATree, ALinks, mKeys) then
   begin
-    for Item in Link.Labels do
-    begin
-      Key := LabelKey(AText, ATree, Item);
-      if Key.Known and (Key.High < Key.Low) then
-      begin
-        Exit(True);
-      end;
-      Keys := Keys + [Key];
-    end;
+    Exit(True);
   end;
-  for Index := 0 to High(Keys) do
+  for mIndex := 0 to High(mKeys) do
   begin
-    for Other := Index + 1 to High(Keys) do
+    for mOther := mIndex + 1 to High(mKeys) do
     begin
-      if Keys[Index].Known and Keys[Other].Known then
-      begin
-        if (Keys[Index].Low <= Keys[Other].High) and (Keys[Other].Low <= Keys[Index].High) then
-        begin
-          Exit(True);
-        end;
-      end
-      else if Keys[Index].Text = Keys[Other].Text then
+      if Overlap(mKeys[mIndex], mKeys[mOther]) then
       begin
         Exit(True);
       end;
@@ -585,93 +621,182 @@ begin
   end;
 end;
 
-class function TIfCase.ToCase(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TIfCaseLookup; const ALayout: TStatementLayout; out AConversion: TIfCaseConversion): Boolean;
-var
-  Head: TSyntaxNode;
-  Reader: TChainReader;
-  Kind: TCaseSelectorKind;
-  Layout, ItemLayout: TStatementLayout;
-  Link: TChainLink;
-  Labels: TArray<string>;
-  Item: TCaseLabel;
-  Body, Code, LineBreak, Suffix: string;
-  Statements: TArray<TSyntaxNode>;
-  EndPos: TTextPosition;
+/// <summary>Kopf der if-Kette, deren if … then APosition enthält; nil ohne.</summary>
+function ChainHeadAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 begin
-  Result := False;
-  AConversion := Default(TIfCaseConversion);
-  Head := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
-  while (Head <> nil) and IsChainElse(Head) do
+  Result := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
+  while (Result <> nil) and IsChainElse(Result) do
   begin
-    Head := Head.Parent;
+    Result := Result.Parent;
   end;
-  if Head = nil then
+end;
+
+/// <summary>case-Zweig zum Glied ALink: Marken, dahinter die Anweisung (einzeilig in derselben Zeile).</summary>
+function LinkCode(const AText: string; ATree: TSyntaxTree; const ALink: TChainLink;
+  const AItemLayout: TStatementLayout): string;
+var
+  mLabels: TArray<string>;
+  mItem: TCaseLabel;
+  mStatements: TArray<TSyntaxNode>;
+  mBody: string;
+begin
+  mLabels := nil;
+  for mItem in ALink.Labels do
+  begin
+    mLabels := mLabels + [LabelText(AText, mItem)];
+  end;
+  mStatements := TStatementText.Statements(ALink.Branch);
+  // Mehrere Anweisungen: begin … end eine Stufe unter der Marke.
+  if Length(mStatements) > 1 then
+  begin
+    mBody := TStatementText.GuardedBranch(AText, ATree, ALink.Branch, AItemLayout.Deeper, False);
+  end
+  else
+  begin
+    mBody := TStatementText.GuardedBranch(AText, ATree, ALink.Branch, AItemLayout, False);
+  end;
+  // Eine einzeilige Anweisung steht hinter der Marke, sonst in den folgenden Zeilen.
+  if (Length(mStatements) = 1) and (Pos(AItemLayout.LineBreak, Trim(mBody)) = 0) and (Pos(#0, mBody) = 0) then
+  begin
+    mBody := ' ' + Trim(mBody);
+  end;
+  if mStatements = nil then
+  begin
+    mBody := ' ;';
+  end
+  else
+  begin
+    mBody := TStatementText.Finish(mBody, ';');
+  end;
+  Result := AItemLayout.LineBreak + AItemLayout.Indent + string.Join(', ', mLabels) + ':' + mBody;
+end;
+
+/// <summary>case bis vor sein end: Kopf, ein Zweig je Glied und der else-Zweig.</summary>
+function CaseCode(const AText: string; ATree: TSyntaxTree; AReader: TChainReader;
+  const ALayout: TStatementLayout): string;
+var
+  mLink: TChainLink;
+  mStatements: TArray<TSyntaxNode>;
+begin
+  Result := 'case ' + TExpressionText.Source(AText, AReader.Selector) + ' of';
+  for mLink in AReader.Links do
+  begin
+    Result := Result + LinkCode(AText, ATree, mLink, ALayout.Deeper);
+  end;
+  if AReader.ElseBranch = nil then
   begin
     Exit;
   end;
-  Reader := TChainReader.Create(AText, ATree, ALookup);
+  mStatements := TStatementText.Statements(AReader.ElseBranch);
+  Result := Result + ALayout.LineBreak + ALayout.Indent + 'else';
+  if mStatements <> nil then
+  begin
+    Result := Result + ALayout.LineBreak + TStatementText.List(AText, ATree, mStatements, ALayout.Deeper.Indent,
+      ALayout.LineBreak);
+  end;
+end;
+
+class function TIfCase.ToCase(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ALookup: TIfCaseLookup; const ALayout: TStatementLayout; out AConversion: TIfCaseConversion): Boolean;
+var
+  mHead: TSyntaxNode;
+  mReader: TChainReader;
+  mKind: TCaseSelectorKind;
+  mLayout: TStatementLayout;
+  mCode, mSuffix: string;
+  mEndPos: TTextPosition;
+begin
+  Result := False;
+  AConversion := Default(TIfCaseConversion);
+  mHead := ChainHeadAt(ATree, APosition);
+  if mHead = nil then
+  begin
+    Exit;
+  end;
+  mReader := TChainReader.Create(AText, ATree, ALookup);
   try
-    if not Reader.Read(Head) or not SelectorUsable(Reader.Selector, ALookup, Kind) or
-      HasConflicts(AText, ATree, Reader.Links) or
-      ChainComments(ATree, Head, Reader.Links, Reader.ElseBranch) then
+    if not mReader.Read(mHead) or not SelectorUsable(mReader.Selector, ALookup, mKind) or
+      HasConflicts(AText, ATree, mReader.Links) or
+      ChainComments(ATree, mHead, mReader.Links, mReader.ElseBranch) then
     begin
       Exit;
     end;
-    LineBreak := ALayout.LineBreak;
-    Layout := TStatementLayout.Create(IndentOfNode(AText, Head), ALayout.IndentUnit, LineBreak);
-    ItemLayout := Layout.Deeper;
-    Code := 'case ' + TExpressionText.Source(AText, Reader.Selector) + ' of';
-    for Link in Reader.Links do
-    begin
-      Labels := nil;
-      for Item in Link.Labels do
-      begin
-        Labels := Labels + [LabelText(AText, Item)];
-      end;
-      Statements := TStatementText.Statements(Link.Branch);
-      // Mehrere Anweisungen: begin … end eine Stufe unter der Marke.
-      if Length(Statements) > 1 then
-      begin
-        Body := TStatementText.GuardedBranch(AText, ATree, Link.Branch, ItemLayout.Deeper, False);
-      end
-      else
-      begin
-        Body := TStatementText.GuardedBranch(AText, ATree, Link.Branch, ItemLayout, False);
-      end;
-      // Eine einzeilige Anweisung steht hinter der Marke, sonst in den folgenden Zeilen.
-      if (Length(Statements) = 1) and (Pos(LineBreak, Trim(Body)) = 0) and (Pos(#0, Body) = 0) then
-      begin
-        Body := ' ' + Trim(Body);
-      end;
-      if Statements = nil then
-      begin
-        Body := ' ;';
-      end
-      else
-      begin
-        Body := TStatementText.Finish(Body, ';');
-      end;
-      Code := Code + LineBreak + ItemLayout.Indent + string.Join(', ', Labels) + ':' + Body;
-    end;
-    if Reader.ElseBranch <> nil then
-    begin
-      Statements := TStatementText.Statements(Reader.ElseBranch);
-      Code := Code + LineBreak + Layout.Indent + 'else';
-      if Statements <> nil then
-      begin
-        Code := Code + LineBreak + TStatementText.List(AText, ATree, Statements, ItemLayout.Indent, LineBreak);
-      end;
-    end;
+    mLayout := TStatementLayout.Create(IndentOfNode(AText, mHead), ALayout.IndentUnit, ALayout.LineBreak);
+    mCode := CaseCode(AText, ATree, mReader, mLayout);
     // Kommentare hinter der letzten Anweisung (… B := 0; // Rest) wandern ins case; die Ersetzung reicht dann
     // bis hinter sie, das Semikolon steht hinter end.
-    EndPos := TStatementText.ReplacementEnd(ATree, Head, ChainSpans(ATree, Reader.Links, Reader.ElseBranch), Suffix);
-    Code := Code + LineBreak + Layout.Indent + 'end' + Suffix;
-    AConversion := TStatementRewrite.Create(ToCaseTitle, TTextEdit.Create(TTextRange.Create(Head.StartPos, EndPos),
-      Code));
+    mEndPos := TStatementText.ReplacementEnd(ATree, mHead, ChainSpans(ATree, mReader.Links, mReader.ElseBranch),
+      mSuffix);
+    mCode := mCode + mLayout.LineBreak + mLayout.Indent + 'end' + mSuffix;
+    AConversion := TStatementRewrite.Create(ToCaseTitle, TTextEdit.Create(TTextRange.Create(mHead.StartPos,
+      mEndPos), mCode));
     Result := True;
   finally
-    Reader.Free;
+    mReader.Free;
+  end;
+end;
+
+/// <summary>Liegt der Wert der Konstanten ANode zwischen 0 und 255?</summary>
+function FitsByte(const AText: string; ANode: TSyntaxNode): Boolean;
+var
+  mValue: Int64;
+begin
+  Result := TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ANode), nil, mValue) and (mValue >= 0) and
+    (mValue <= 255);
+end;
+
+/// <summary>Passen die Marken ALabels einer Ganzzahl in eine Menge (alle zwischen 0 und 255)?</summary>
+function LabelsFitByte(const AText: string; const ALabels: TArray<TSyntaxNode>): Boolean;
+var
+  mLabel: TSyntaxNode;
+begin
+  for mLabel in ALabels do
+  begin
+    if mLabel.Kind <> TSyntaxKind.RangeExpr then
+    begin
+      Result := FitsByte(AText, mLabel);
+    end
+    else
+    begin
+      Result := (mLabel.ChildCount = 2) and FitsByte(AText, mLabel[0]) and FitsByte(AText, mLabel[1]);
+    end;
+    if not Result then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Bedingung X in [a, b..c].</summary>
+function SetCondition(const AText: string; const ASelector: TExpressionPart;
+  const ALabels: TArray<TSyntaxNode>): string;
+var
+  mItems: TArray<string>;
+  mLabel: TSyntaxNode;
+begin
+  mItems := nil;
+  for mLabel in ALabels do
+  begin
+    mItems := mItems + [TExpressionText.Source(AText, mLabel)];
+  end;
+  Result := TExpressionText.Combine('in', ASelector, TExpressionPart.Create('[' + string.Join(', ', mItems) + ']',
+    PrecedenceOperand)).Text;
+end;
+
+/// <summary>Vergleich mit einer Marke: X = a bzw. (X >= a) and (X &lt;= b).</summary>
+function LabelCondition(const AText: string; const ASelector: TExpressionPart; ALabel: TSyntaxNode):
+  TExpressionPart;
+begin
+  if (ALabel.Kind = TSyntaxKind.RangeExpr) and (ALabel.ChildCount = 2) then
+  begin
+    Result := TExpressionText.Combine('and',
+      TExpressionText.Combine('>=', ASelector, TExpressionText.Part(AText, ALabel[0])),
+      TExpressionText.Combine('<=', ASelector, TExpressionText.Part(AText, ALabel[1])));
+  end
+  else
+  begin
+    Result := TExpressionText.Combine('=', ASelector, TExpressionText.Part(AText, ALabel));
   end;
 end;
 
@@ -679,71 +804,21 @@ end;
 function ConditionOf(const AText: string; const ASelector: TExpressionPart; const ALabels: TArray<TSyntaxNode>;
   AKind: TCaseSelectorKind): string;
 var
-  Parts: TArray<TExpressionPart>;
-  Items: TArray<string>;
-  LabelNode: TSyntaxNode;
-  Part, Joined: TExpressionPart;
-  InSet: Boolean;
-  Value: Int64;
-  Index: Integer;
-
-  function Fits(ANode: TSyntaxNode): Boolean;
-  begin
-    Result := TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ANode), nil, Value) and (Value >= 0) and
-      (Value <= 255);
-  end;
-
+  mJoined: TExpressionPart;
+  mIndex: Integer;
 begin
   // Mehrere Marken als Menge, wenn der Typ in eine Menge passt bzw. alle Ganzzahlen zwischen 0 und 255 liegen.
-  InSet := (Length(ALabels) > 1) and (AKind in [TCaseSelectorKind.SetElement, TCaseSelectorKind.Whole]);
-  if InSet and (AKind = TCaseSelectorKind.Whole) then
+  if (Length(ALabels) > 1) and ((AKind = TCaseSelectorKind.SetElement) or ((AKind = TCaseSelectorKind.Whole) and
+    LabelsFitByte(AText, ALabels))) then
   begin
-    for LabelNode in ALabels do
-    begin
-      if LabelNode.Kind = TSyntaxKind.RangeExpr then
-      begin
-        if (LabelNode.ChildCount <> 2) or not Fits(LabelNode[0]) or not Fits(LabelNode[1]) then
-        begin
-          InSet := False;
-        end;
-      end
-      else if not Fits(LabelNode) then
-      begin
-        InSet := False;
-      end;
-    end;
+    Exit(SetCondition(AText, ASelector, ALabels));
   end;
-  if InSet then
+  mJoined := LabelCondition(AText, ASelector, ALabels[0]);
+  for mIndex := 1 to High(ALabels) do
   begin
-    Items := nil;
-    for LabelNode in ALabels do
-    begin
-      Items := Items + [TExpressionText.Source(AText, LabelNode)];
-    end;
-    Exit(TExpressionText.Combine('in', ASelector, TExpressionPart.Create('[' + string.Join(', ', Items) + ']',
-      PrecedenceOperand)).Text);
+    mJoined := TExpressionText.Combine('or', mJoined, LabelCondition(AText, ASelector, ALabels[mIndex]));
   end;
-  Parts := nil;
-  for LabelNode in ALabels do
-  begin
-    if (LabelNode.Kind = TSyntaxKind.RangeExpr) and (LabelNode.ChildCount = 2) then
-    begin
-      Parts := Parts + [TExpressionText.Combine('and',
-        TExpressionText.Combine('>=', ASelector, TExpressionText.Part(AText, LabelNode[0])),
-        TExpressionText.Combine('<=', ASelector, TExpressionText.Part(AText, LabelNode[1])))];
-    end
-    else
-    begin
-      Parts := Parts + [TExpressionText.Combine('=', ASelector, TExpressionText.Part(AText, LabelNode))];
-    end;
-  end;
-  Joined := Parts[0];
-  for Index := 1 to High(Parts) do
-  begin
-    Part := Parts[Index];
-    Joined := TExpressionText.Combine('or', Joined, Part);
-  end;
-  Result := Joined.Text;
+  Result := mJoined.Text;
 end;
 
 /// <summary>Marken eines case-Zweigs (alle Kinder außer der Anweisung).</summary>
@@ -771,116 +846,156 @@ begin
   end;
 end;
 
-class function TIfCase.ToIf(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TIfCaseLookup; const ALayout: TStatementLayout; out AConversion: TIfCaseConversion): Boolean;
+/// <summary>Anweisungen des else-Zweigs AElse eines case ohne leere Anweisungen.</summary>
+function ElseStatementsOf(AElse: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  CaseNode, Item, Selector: TSyntaxNode;
-  Kind: TCaseSelectorKind;
-  Layout: TStatementLayout;
-  Labels, Branches: TArray<TSyntaxNode>;
-  ElseStatements: TArray<TSyntaxNode>;
-  Spans: TArray<TStatementSpan>;
-  Index, LabelIndex, Count: Integer;
-  Code, LineBreak, Suffix: string;
-  SelectorPart: TExpressionPart;
-  First: Boolean;
-  EndPos: TTextPosition;
+  mIndex: Integer;
 begin
-  Result := False;
-  AConversion := Default(TIfCaseConversion);
-  CaseNode := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.CaseStatement);
-  if CaseNode = nil then
+  Result := nil;
+  for mIndex := 0 to AElse.ChildCount - 1 do
   begin
-    Exit;
-  end;
-  Selector := CaseNode[0];
-  if not SelectorUsable(TExpressionText.Strip(Selector), ALookup, Kind) then
-  begin
-    Exit;
-  end;
-  Count := 0;
-  Branches := nil;
-  ElseStatements := nil;
-  for Index := 1 to CaseNode.ChildCount - 1 do
-  begin
-    Item := CaseNode[Index];
-    if Item.Kind = TSyntaxKind.CaseItem then
+    if TRoutineBody.IsStatement(AElse[mIndex]) and (AElse[mIndex].Kind <> TSyntaxKind.EmptyStatement) then
     begin
-      if Length(ItemLabels(Item)) = 0 then
-      begin
-        Exit;
-      end;
-      Branches := Branches + [ItemBranch(Item)];
-      Inc(Count);
+      Result := Result + [AElse[mIndex]];
+    end;
+  end;
+end;
+
+/// <summary>Zweige (je Marke ihre Anweisung) und else-Anweisungen des case ACase; False bei einem Zweig ohne Marke
+/// oder einem unbekannten Teil.</summary>
+function CaseParts(ACase: TSyntaxNode; out ABranches, AElse: TArray<TSyntaxNode>): Boolean;
+var
+  mIndex: Integer;
+  mItem: TSyntaxNode;
+begin
+  ABranches := nil;
+  AElse := nil;
+  for mIndex := 1 to ACase.ChildCount - 1 do
+  begin
+    mItem := ACase[mIndex];
+    if (mItem.Kind = TSyntaxKind.CaseItem) and (Length(ItemLabels(mItem)) > 0) then
+    begin
+      ABranches := ABranches + [ItemBranch(mItem)];
     end
-    else if Item.Kind = TSyntaxKind.CaseElse then
+    else if mItem.Kind = TSyntaxKind.CaseElse then
     begin
-      for LabelIndex := 0 to Item.ChildCount - 1 do
-      begin
-        if TRoutineBody.IsStatement(Item[LabelIndex]) and (Item[LabelIndex].Kind <> TSyntaxKind.EmptyStatement) then
-        begin
-          ElseStatements := ElseStatements + [Item[LabelIndex]];
-        end;
-      end;
+      AElse := AElse + ElseStatementsOf(mItem);
     end
     else
     begin
-      Exit;
+      Exit(False);
     end;
   end;
-  // Kommentare zwischen case und of, in den Marken oder hinter else gingen verloren.
-  Spans := TStatementText.Spans(ATree, Branches);
-  for Index := 0 to High(ElseStatements) do
+  Result := True;
+end;
+
+/// <summary>Bereiche der Zweige und der else-Anweisungen samt ihrer Kommentare.</summary>
+function CaseSpans(ATree: TSyntaxTree; const ABranches, AElse: TArray<TSyntaxNode>): TArray<TStatementSpan>;
+var
+  mIndex: Integer;
+begin
+  Result := TStatementText.Spans(ATree, ABranches);
+  for mIndex := 0 to High(AElse) do
   begin
-    Spans := Spans + [TStatementText.SpanOf(ATree, ElseStatements[Index], Index = High(ElseStatements))];
+    Result := Result + [TStatementText.SpanOf(ATree, AElse[mIndex], mIndex = High(AElse))];
   end;
-  if (Count = 0) or TStatementText.Uncovered(ATree, CaseNode.StartOffset, CaseNode.EndOffset, Spans) then
-  begin
-    Exit;
+end;
+
+type
+  /// <summary>Schreibt ein case als if-Kette.</summary>
+  TIfChainWriter = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Selector: TExpressionPart;
+    Kind: TCaseSelectorKind;
+    Layout: TStatementLayout;
+    /// <summary>Was hinter der letzten Anweisung steht (Semikolon, Kommentar).</summary>
+    Suffix: string;
+    /// <summary>Anweisung des Zweigs AItem; vor einem weiteren else (AGuard) braucht ein inneres if begin … end.
+    /// </summary>
+    function ItemCode(AItem: TSyntaxNode; AGuard: Boolean): string;
+    /// <summary>if-Kette zu den Zweigen von ACase (ACount Stück) und den else-Anweisungen AElse.</summary>
+    function Code(ACase: TSyntaxNode; ACount: Integer; const AElse: TArray<TSyntaxNode>): string;
   end;
-  LineBreak := ALayout.LineBreak;
-  Layout := TStatementLayout.Create(TTextLines.IndentOf(AText, CaseNode.StartPos.Line), ALayout.IndentUnit, LineBreak);
-  EndPos := TStatementText.ReplacementEnd(ATree, CaseNode, Spans, Suffix);
-  SelectorPart := TExpressionText.Part(AText, TExpressionText.Strip(Selector));
-  Code := '';
-  First := True;
-  for Index := 1 to CaseNode.ChildCount - 1 do
+
+function TIfChainWriter.ItemCode(AItem: TSyntaxNode; AGuard: Boolean): string;
+begin
+  if AGuard then
   begin
-    Item := CaseNode[Index];
-    if Item.Kind <> TSyntaxKind.CaseItem then
+    Result := TStatementText.Finish(TStatementText.GuardedBranch(Text, Tree, ItemBranch(AItem), Layout, True), '');
+  end
+  else
+  begin
+    Result := TStatementText.Finish(TStatementText.GuardedBranch(Text, Tree, ItemBranch(AItem), Layout, False),
+      Suffix);
+  end;
+end;
+
+function TIfChainWriter.Code(ACase: TSyntaxNode; ACount: Integer; const AElse: TArray<TSyntaxNode>): string;
+var
+  mIndex, mLeft: Integer;
+  mItem: TSyntaxNode;
+begin
+  Result := '';
+  mLeft := ACount;
+  for mIndex := 1 to ACase.ChildCount - 1 do
+  begin
+    mItem := ACase[mIndex];
+    if mItem.Kind <> TSyntaxKind.CaseItem then
     begin
       Continue;
     end;
-    Labels := ItemLabels(Item);
-    if First then
+    if Result = '' then
     begin
-      Code := 'if ';
+      Result := 'if ';
     end
     else
     begin
-      Code := Code + LineBreak + Layout.Indent + 'else if ';
+      Result := Result + Layout.LineBreak + Layout.Indent + 'else if ';
     end;
-    First := False;
-    Code := Code + ConditionOf(AText, SelectorPart, Labels, Kind) + ' then';
-    Dec(Count);
-    // Vor einem weiteren else: ein inneres if braucht begin … end.
-    if (Count > 0) or (ElseStatements <> nil) then
-    begin
-      Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, ItemBranch(Item), Layout, True), '');
-    end
-    else
-    begin
-      Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, ItemBranch(Item), Layout, False),
-        Suffix);
-    end;
+    Result := Result + ConditionOf(Text, Selector, ItemLabels(mItem), Kind) + ' then';
+    Dec(mLeft);
+    Result := Result + ItemCode(mItem, (mLeft > 0) or (AElse <> nil));
   end;
-  if ElseStatements <> nil then
+  if AElse <> nil then
   begin
-    Code := Code + LineBreak + Layout.Indent + 'else' + TStatementText.Finish(TStatementText.Branch(AText, ATree,
-      ElseStatements, Layout, True), Suffix);
+    Result := Result + Layout.LineBreak + Layout.Indent + 'else' + TStatementText.Finish(TStatementText.Branch(Text,
+      Tree, AElse, Layout, True), Suffix);
   end;
-  AConversion := TStatementRewrite.Create(ToIfTitle, TTextEdit.Create(TTextRange.Create(CaseNode.StartPos, EndPos),
-    Code));
+end;
+
+class function TIfCase.ToIf(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ALookup: TIfCaseLookup; const ALayout: TStatementLayout; out AConversion: TIfCaseConversion): Boolean;
+var
+  mCase: TSyntaxNode;
+  mWriter: TIfChainWriter;
+  mBranches, mElse: TArray<TSyntaxNode>;
+  mSpans: TArray<TStatementSpan>;
+  mEndPos: TTextPosition;
+begin
+  Result := False;
+  AConversion := Default(TIfCaseConversion);
+  mWriter := Default(TIfChainWriter);
+  mCase := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.CaseStatement);
+  if (mCase = nil) or not SelectorUsable(TExpressionText.Strip(mCase[0]), ALookup, mWriter.Kind) or
+    not CaseParts(mCase, mBranches, mElse) then
+  begin
+    Exit;
+  end;
+  // Kommentare zwischen case und of, in den Marken oder hinter else gingen verloren.
+  mSpans := CaseSpans(ATree, mBranches, mElse);
+  if (mBranches = nil) or TStatementText.Uncovered(ATree, mCase.StartOffset, mCase.EndOffset, mSpans) then
+  begin
+    Exit;
+  end;
+  mWriter.Text := AText;
+  mWriter.Tree := ATree;
+  mWriter.Layout := TStatementLayout.Create(TTextLines.IndentOf(AText, mCase.StartPos.Line), ALayout.IndentUnit,
+    ALayout.LineBreak);
+  mWriter.Selector := TExpressionText.Part(AText, TExpressionText.Strip(mCase[0]));
+  mEndPos := TStatementText.ReplacementEnd(ATree, mCase, mSpans, mWriter.Suffix);
+  AConversion := TStatementRewrite.Create(ToIfTitle, TTextEdit.Create(TTextRange.Create(mCase.StartPos, mEndPos),
+    mWriter.Code(mCase, Length(mBranches), mElse)));
   Result := True;
 end;
 

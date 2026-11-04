@@ -426,7 +426,7 @@ begin
   // Byte(X), wenn System nicht im Index steht.
   AType := Default(TResolvedSymbol);
   Result := (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.Identifier) and
-    TNameResolver.IsBuiltinTypeName(ACallee.Name) and
+    TResolverText.IsBuiltinTypeName(ACallee.Name) and
     (Length(FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee)) = 0);
   if Result then
   begin
@@ -535,7 +535,7 @@ begin
           if not FScope.Resolver.DeclaringUnit(mCurrent, mUnit) or (Pos('.', mBody) > 0) or
             not FScope.Resolver.ResolveNameFrom(mUnit, mBody, mNext) or not mNext.IsType then
           begin
-            if not TNameResolver.IsBuiltinTypeName(mBody) then
+            if not TResolverText.IsBuiltinTypeName(mBody) then
             begin
               Exit;
             end;
@@ -567,7 +567,7 @@ var
 begin
   // AType ist schon über alle Aliase verfolgt; ob ein Glied der Kette bedingt ist, zeigt erst der deklarierte Name.
   mText := TTypeIdentity.Clean(ASymbol.TypeName);
-  if (mText <> '') and not TNameResolver.IsBuiltinTypeName(mText) then
+  if (mText <> '') and not TResolverText.IsBuiltinTypeName(mText) then
   begin
     Result := Default(TValueType);
     if ASymbol.Kind = TResolvedKind.Local then
@@ -614,7 +614,7 @@ begin
   begin
     Result := ValueOfType(mType);
   end
-  else if TNameResolver.IsBuiltinTypeName(mText) then
+  else if TResolverText.IsBuiltinTypeName(mText) then
   begin
     // Ohne System im Index.
     Result := ValueOfType(BuiltinSymbol(mText));

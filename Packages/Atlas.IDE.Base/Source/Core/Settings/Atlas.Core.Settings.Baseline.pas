@@ -46,18 +46,26 @@ begin
   Root := TJSONObject.ParseJSONValue(AText);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Findings := TJSONObject(Root).GetValue('findings');
     if not (Findings is TJSONArray) then
+    begin
       Exit;
+    end;
     Result := 0;
     for Item in TJSONArray(Findings) do
     begin
       Inc(AEntries);
       if Item is TJSONObject then
-        Inc(Result, TJSONObject(Item).GetValue<Integer>('count', 1))
+      begin
+        Inc(Result, TJSONObject(Item).GetValue<Integer>('count', 1));
+      end
       else
+      begin
         Inc(Result);
+      end;
     end;
   finally
     Root.Free;
@@ -73,10 +81,14 @@ begin
   Root := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Items := TJSONObject(Root).GetValue('suppressions');
     if Items is TJSONArray then
+    begin
       for Item in TJSONArray(Items) do
+      begin
         if Item is TJSONObject then
         begin
           Row := Default(TAtlasSuppressionRow);
@@ -86,6 +98,8 @@ begin
           Row.Files := TJSONObject(Item).GetValue<Integer>('files', 0);
           Result := Result + [Row];
         end;
+      end;
+    end;
   finally
     Root.Free;
   end;

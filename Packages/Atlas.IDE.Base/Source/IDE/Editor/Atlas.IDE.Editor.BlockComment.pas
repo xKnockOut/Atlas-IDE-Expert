@@ -90,6 +90,81 @@ begin
   Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineText, AColumn, ATabWidth));
 end;
 
+type
+  // Text und Markierung des oberen Editors vor dem Umschalten.
+  TBlockCommentSource = record
+    View: IOTAEditView;
+    Text: string;
+    LineBreak: string;
+    Lines: TArray<string>;
+    TabWidth: Integer;
+    SelectionStart: TLspTextPosition;
+    SelectionEnd: TLspTextPosition;
+    HasSelection: Boolean;
+  end;
+
+/// <summary>AView hat einen beschreibbaren Puffer.</summary>
+function Writable(const AView: IOTAEditView): Boolean;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly;
+end;
+
+/// <summary>Text, Zeilen und Markierung (ohne Markierung der Cursor) aus AView.</summary>
+function ReadSource(const AView: IOTAEditView): TBlockCommentSource;
+var
+  mCursor: TOTAEditPos;
+  mBlock: IOTAEditBlock;
+begin
+  Result.View := AView;
+  Result.Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  Result.LineBreak := #10;
+  if Pos(#13#10, Result.Text) > 0 then
+  begin
+    Result.LineBreak := #13#10;
+  end;
+  Result.Lines := Result.Text.Split([#13#10, #10]);
+  Result.TabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
+  mCursor := AView.CursorPos;
+  Result.SelectionStart := PositionOf(Result.Lines, mCursor.Line, mCursor.Col, Result.TabWidth);
+  Result.SelectionEnd := Result.SelectionStart;
+  mBlock := AView.Block;
+  Result.HasSelection := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
+  if Result.HasSelection then
+  begin
+    Result.SelectionStart := PositionOf(Result.Lines, mBlock.StartingRow, mBlock.StartingColumn, Result.TabWidth);
+    Result.SelectionEnd := PositionOf(Result.Lines, mBlock.EndingRow, mBlock.EndingColumn, Result.TabWidth);
+  end;
+end;
+
+/// <summary>Schreibt AToggled in den Puffer von ASource; Markierung bzw. Cursor wandern mit dem Text.</summary>
+procedure WriteToggled(const ASource: TBlockCommentSource; const AToggled: TAtlasBlockCommentResult);
+var
+  mView: IOTAEditView;
+  mStart, mOldLength: Integer;
+  mInsert: string;
+begin
+  mView := ASource.View;
+  if TAtlasLineMover.Difference(ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines), mStart, mOldLength,
+    mInsert) then
+  begin
+    WriteBuffer(mView.Buffer, ASource.Text, mStart, mOldLength, mInsert);
+  end;
+  if ASource.HasSelection then
+  begin
+    mView.Block.Style := btNonInclusive;
+    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+    mView.Block.BeginBlock;
+    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionEnd, ASource.TabWidth);
+    mView.Block.EndBlock;
+  end
+  else
+  begin
+    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+  end;
+  mView.MoveViewToCursor;
+  mView.Paint;
+end;
+
 { TAtlasIdeBlockComment }
 
 class procedure TAtlasIdeBlockComment.Install(const AMessage: TProc<string>);
@@ -120,84 +195,32 @@ end;
 
 class procedure TAtlasIdeBlockComment.Run;
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Block: IOTAEditBlock;
-  Cursor: TOTAEditPos;
-  Text, NewText, LineBreak, Insert: string;
-  Lines: TArray<string>;
-  TabWidth, Start, OldLength: Integer;
-  SelectionStart, SelectionEnd: TLspTextPosition;
-  HasSelection: Boolean;
-  Toggled: TAtlasBlockCommentResult;
+  mView: IOTAEditView;
+  mSource: TBlockCommentSource;
+  mToggled: TAtlasBlockCommentResult;
 begin
   if not Enabled then
   begin
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not Writable(mView) then
   begin
     Exit;
   end;
-  Buffer := View.Buffer;
-  if Buffer.IsReadOnly then
+  mSource := ReadSource(mView);
+  mToggled := TAtlasBlockComment.Toggle(mSource.Lines, mSource.SelectionStart, mSource.SelectionEnd, Options);
+  if mToggled.Kind = TAtlasBlockCommentKind.Refused then
   begin
-    Exit;
-  end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
-  begin
-    LineBreak := #13#10;
-  end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  Cursor := View.CursorPos;
-  SelectionStart := PositionOf(Lines, Cursor.Line, Cursor.Col, TabWidth);
-  SelectionEnd := SelectionStart;
-  Block := View.Block;
-  HasSelection := (Block <> nil) and Block.IsValid and (Block.Size > 0);
-  if HasSelection then
-  begin
-    SelectionStart := PositionOf(Lines, Block.StartingRow, Block.StartingColumn, TabWidth);
-    SelectionEnd := PositionOf(Lines, Block.EndingRow, Block.EndingColumn, TabWidth);
-  end;
-  Toggled := TAtlasBlockComment.Toggle(Lines, SelectionStart, SelectionEnd, Options);
-  case Toggled.Kind of
-    TAtlasBlockCommentKind.None:
-      Exit;
-    TAtlasBlockCommentKind.Refused:
-      begin
-        if Assigned(FMessage) then
-        begin
-          FMessage(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefused));
-        end;
-        Exit;
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-  NewText := string.Join(LineBreak, Toggled.Lines);
-  if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
-  begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
-  end;
-  // Markierung bzw. Cursor mit dem Text.
-  if HasSelection then
-  begin
-    View.Block.Style := btNonInclusive;
-    View.CursorPos := EditPos(Toggled.Lines, Toggled.SelectionStart, TabWidth);
-    View.Block.BeginBlock;
-    View.CursorPos := EditPos(Toggled.Lines, Toggled.SelectionEnd, TabWidth);
-    View.Block.EndBlock;
+    if Assigned(FMessage) then
+    begin
+      FMessage(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefused));
+    end;
   end
-  else
+  else if mToggled.Kind <> TAtlasBlockCommentKind.None then
   begin
-    View.CursorPos := EditPos(Toggled.Lines, Toggled.SelectionStart, TabWidth);
+    WriteToggled(mSource, mToggled);
   end;
-  View.MoveViewToCursor;
-  View.Paint;
 end;
 
 end.

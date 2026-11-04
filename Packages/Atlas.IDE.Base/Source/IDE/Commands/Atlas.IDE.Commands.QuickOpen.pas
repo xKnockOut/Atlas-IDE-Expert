@@ -119,14 +119,18 @@ var
 begin
   Owner := FOwner;
   if Owner = nil then
+  begin
     Exit;
+  end;
   Name := FileName;
   // Keine Exception an die IDE (#493).
   TAtlasGuard.Run(TAtlasFeature.Palette,
     procedure
     begin
       if (NotifyCode = ofnFileOpened) and TAtlasQuickOpen.IsListed(Name) then
+      begin
         Owner.Recent.Executed(TAtlasQuickOpen.RecentKey(Name));
+      end;
       // Projektwechsel: nach dem Laden neu aufbauen (die IDE meldet vor dem Einlesen der Units).
       if ((NotifyCode = ofnActiveProjectChanged) or (((NotifyCode = ofnFileOpened) or
         (NotifyCode = ofnFileClosing)) and IsProjectFile(Name))) and not Owner.RefreshQueued then
@@ -136,7 +140,9 @@ begin
           procedure
           begin
             if State = nil then
+            begin
               Exit;
+            end;
             State.RefreshQueued := False;
             TAtlasIdeQuickOpen.Refresh;
           end);
@@ -181,7 +187,9 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopBuffer <> nil) then
+  begin
     Result := Editors.TopBuffer.FileName;
+  end;
 end;
 
 function OpenFiles: TArray<string>;
@@ -192,12 +200,16 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ModuleCount - 1 do
   begin
     Module := Services.Modules[Index];
     for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    begin
       Result := Result + [Module.ModuleFileEditors[FileIndex].FileName];
+    end;
   end;
 end;
 
@@ -213,35 +225,49 @@ var
   Macros: TAtlasPathMacros;
 begin
   if AProject = nil then
+  begin
     Exit;
+  end;
   Folder := ExtractFileDir(AProject.FileName);
   ASources.ProjectFiles := ASources.ProjectFiles + [AProject.FileName];
   Mains[0] := ChangeFileExt(AProject.FileName, '.dpr');
   Mains[1] := ChangeFileExt(AProject.FileName, '.dpk');
   for Main in Mains do
+  begin
     if FileExists(Main) then
+    begin
       ASources.ProjectFiles := ASources.ProjectFiles + [Main];
+    end;
+  end;
   for Index := 0 to AProject.GetModuleCount - 1 do
   begin
     Info := AProject.GetModule(Index);
     if (Info = nil) or (Info.FileName = '') then
+    begin
       Continue;
+    end;
     ASources.ProjectFiles := ASources.ProjectFiles + [Info.FileName];
     if Info.FormName <> '' then
+    begin
       ASources.ProjectFiles := ASources.ProjectFiles + [ChangeFileExt(Info.FileName, '.dfm')];
+    end;
     ASources.Folders := ASources.Folders + [ExtractFileDir(Info.FileName)];
   end;
   ASources.Folders := ASources.Folders + [Folder];
   Context := TAtlasIdeProjectContext.Read(AProject);
   if Context.Project = '' then
+  begin
     Exit;
+  end;
   Macros := TAtlasIdeProjectContext.Macros(Context);
   // Mit (): Variable liefert eine Funktion; ohne Klammern wäre es die Methode selbst.
   Variable := Macros.Variable();
   Skipped := nil;
   ASources.Folders := ASources.Folders + TAtlasPathCheck.ExpandPaths(Context.SearchPaths, Folder, Variable, Skipped);
   if ALibrary and (Macros.Value('BDS') <> '') and (Length(ASources.LibraryFolders) = 0) then
+  begin
     ASources.LibraryFolders := [TPath.Combine(Macros.Value('BDS'), 'source')];
+  end;
 end;
 
 function CurrentSources: TAtlasQuickOpenSources;
@@ -253,16 +279,22 @@ var
 begin
   Result := Default(TAtlasQuickOpenSources);
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   Library_ := TAtlasIdeSettings.Current.QuickOpenLibrary;
   Group := Services.MainProjectGroup;
   if (Group <> nil) and (Group.ProjectCount > 0) then
   begin
     Result.Root := ExtractFileDir(Group.FileName);
     if Result.Root = '' then
+    begin
       Result.Root := ExtractFileDir(Group.Projects[0].FileName);
+    end;
     for Index := 0 to Group.ProjectCount - 1 do
+    begin
       AddProject(Group.Projects[Index], Result, Library_);
+    end;
   end
   else if Services.GetActiveProject <> nil then
   begin
@@ -314,106 +346,161 @@ type
     Open: TArray<string>;
   end;
 
-function Query(AWindow: TWindowState; const APattern: string): TArray<TAtlasCommand>;
+/// <summary>Treffer unter den Dateien; solange die Liste entsteht und leer ist, ein Hinweis.</summary>
+function FileResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
 var
-  Parsed: TAtlasQuickOpenQuery;
   Files: TAtlasQuickOpenFiles;
+  Index: Integer;
+  Line: Integer;
+begin
+  Result := nil;
+  Files := State.List.Files;
+  if (Length(Files) = 0) and State.List.Building then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenBuilding), '', '')];
+    Exit;
+  end;
+  Line := -1;
+  if AParsed.Line > 0 then
+  begin
+    Line := AParsed.Line - 1;
+  end;
+  for Index in TAtlasQuickOpen.Order(Files, AParsed.Text, AWindow.Open, State.Recent) do
+  begin
+    Result := Result + [Target(Files[Index].FileName, Line, 0, Files[Index].Name,
+      ExtractFileDir(Files[Index].RelativePath), OriginText(Files[Index].Origin))];
+  end;
+end;
+
+/// <summary>Sprung zu einer Zeile der obersten Datei; ohne Editor oder Zeile ein Hinweis.</summary>
+function LineResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+begin
+  if AWindow.Top = '' then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+  end
+  else if AParsed.Line = 0 then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenLineHint), ExtractFileName(AWindow.Top), '')];
+  end
+  else
+  begin
+    Result := [Target(AWindow.Top, AParsed.Line - 1, 0,
+      TAtlasStrings.Fmt(TAtlasTextId.QuickOpenLine, [AParsed.Line]), ExtractFileName(AWindow.Top), '')];
+  end;
+end;
+
+/// <summary>Symbole der obersten Datei, beim ersten Mal vom Server gelesen und dann im Fenster gemerkt.</summary>
+procedure ReadFileSymbols(AWindow: TWindowState);
+var
+  Current: TLspSession;
+begin
+  if AWindow.FileSymbolsRead then
+  begin
+    Exit;
+  end;
+  AWindow.FileSymbolsRead := True;
+  Current := TAtlasIdeQuickOpen.Session;
+  if Current = nil then
+  begin
+    Exit;
+  end;
+  try
+    AWindow.FileSymbols := Current.DocumentSymbols(AWindow.Top, SymbolTimeoutMs);
+  except
+    on ELspClientError do
+      AWindow.FileSymbols := nil;
+  end;
+end;
+
+/// <summary>Treffer unter den Symbolen der obersten Datei; ohne Editor ein Hinweis.</summary>
+function FileSymbolResults(AWindow: TWindowState; const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+var
   Symbols: TArray<TAtlasSymbol>;
   Names: TArray<string>;
   Index: Integer;
+begin
+  Result := nil;
+  if AWindow.Top = '' then
+  begin
+    Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
+    Exit;
+  end;
+  ReadFileSymbols(AWindow);
+  Symbols := AWindow.FileSymbols;
+  SetLength(Names, Length(Symbols));
+  for Index := 0 to High(Symbols) do
+  begin
+    Names[Index] := Symbols[Index].Name;
+  end;
+  for Index in TAtlasQuickOpen.OrderSymbols(Names, AParsed.Text) do
+  begin
+    Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line,
+      Symbols[Index].Character, Symbols[Index].Name, Symbols[Index].Container,
+      TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
+  end;
+end;
+
+/// <summary>Zweite Zeile eines Projektsymbols: Container und Datei, ohne Container nur die Datei.</summary>
+function SymbolPlace(const ASymbol: TAtlasSymbol): string;
+begin
+  Result := ExtractFileName(ASymbol.FileName);
+  if ASymbol.Container <> '' then
+  begin
+    Result := ASymbol.Container + ' · ' + Result;
+  end;
+end;
+
+/// <summary>Symbole des ganzen Projekts vom Server; leer ohne Sitzung oder Suchtext.</summary>
+function ProjectSymbolResults(const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
+var
   Current: TLspSession;
-  Line: Integer;
+  Symbols: TArray<TAtlasSymbol>;
+  Index: Integer;
+begin
+  Result := nil;
+  Current := TAtlasIdeQuickOpen.Session;
+  if (Current = nil) or (AParsed.Text = '') then
+  begin
+    Exit;
+  end;
+  try
+    Symbols := Current.WorkspaceSymbols(AParsed.Text, SymbolTimeoutMs);
+  except
+    on ELspClientError do
+      Symbols := nil;
+  end;
+  for Index := 0 to Min(High(Symbols), TAtlasQuickOpen.MaxResults - 1) do
+  begin
+    Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line, Symbols[Index].Character,
+      Symbols[Index].Name, SymbolPlace(Symbols[Index]), TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
+  end;
+end;
+
+function Query(AWindow: TWindowState; const APattern: string): TArray<TAtlasCommand>;
+var
+  Parsed: TAtlasQuickOpenQuery;
 begin
   Result := nil;
   Parsed := TAtlasQuickOpenQuery.Parse(APattern);
   // Nur "#" fragt bei jedem Zeichen den Server; dort mit Tipppause.
   if Parsed.Mode = TAtlasQuickOpenMode.ProjectSymbols then
-    AWindow.Window.QueryDelay := ProjectSymbolDelayMs
+  begin
+    AWindow.Window.QueryDelay := ProjectSymbolDelayMs;
+  end
   else
+  begin
     AWindow.Window.QueryDelay := 0;
+  end;
   case Parsed.Mode of
     TAtlasQuickOpenMode.Files:
-      begin
-        Files := State.List.Files;
-        if (Length(Files) = 0) and State.List.Building then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenBuilding), '', '')];
-          Exit;
-        end;
-        Line := -1;
-        if Parsed.Line > 0 then
-          Line := Parsed.Line - 1;
-        for Index in TAtlasQuickOpen.Order(Files, Parsed.Text, AWindow.Open, State.Recent) do
-          Result := Result + [Target(Files[Index].FileName, Line, 0, Files[Index].Name,
-            ExtractFileDir(Files[Index].RelativePath), OriginText(Files[Index].Origin))];
-      end;
+      Result := FileResults(AWindow, Parsed);
     TAtlasQuickOpenMode.Line:
-      begin
-        if AWindow.Top = '' then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
-          Exit;
-        end;
-        if Parsed.Line = 0 then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenLineHint), ExtractFileName(AWindow.Top), '')];
-          Exit;
-        end;
-        Result := [Target(AWindow.Top, Parsed.Line - 1, 0,
-          TAtlasStrings.Fmt(TAtlasTextId.QuickOpenLine, [Parsed.Line]), ExtractFileName(AWindow.Top), '')];
-      end;
+      Result := LineResults(AWindow, Parsed);
     TAtlasQuickOpenMode.FileSymbols:
-      begin
-        if AWindow.Top = '' then
-        begin
-          Result := [Command('', TAtlasStrings.Text(TAtlasTextId.QuickOpenNoEditor), '', '')];
-          Exit;
-        end;
-        if not AWindow.FileSymbolsRead then
-        begin
-          AWindow.FileSymbolsRead := True;
-          Current := TAtlasIdeQuickOpen.Session;
-          if Current <> nil then
-            try
-              AWindow.FileSymbols := Current.DocumentSymbols(AWindow.Top, SymbolTimeoutMs);
-            except
-              on ELspClientError do
-                AWindow.FileSymbols := nil;
-            end;
-        end;
-        Symbols := AWindow.FileSymbols;
-        SetLength(Names, Length(Symbols));
-        for Index := 0 to High(Symbols) do
-          Names[Index] := Symbols[Index].Name;
-        for Index in TAtlasQuickOpen.OrderSymbols(Names, Parsed.Text) do
-          Result := Result + [Target(Symbols[Index].FileName, Symbols[Index].Line,
-            Symbols[Index].Character, Symbols[Index].Name, Symbols[Index].Container,
-            TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
-      end;
+      Result := FileSymbolResults(AWindow, Parsed);
     TAtlasQuickOpenMode.ProjectSymbols:
-      begin
-        Current := TAtlasIdeQuickOpen.Session;
-        if (Current = nil) or (Parsed.Text = '') then
-          Exit;
-        try
-          Symbols := Current.WorkspaceSymbols(Parsed.Text, SymbolTimeoutMs);
-        except
-          on ELspClientError do
-            Symbols := nil;
-        end;
-        for Index := 0 to Min(High(Symbols), TAtlasQuickOpen.MaxResults - 1) do
-        begin
-          Line := Symbols[Index].Line;
-          if Symbols[Index].Container <> '' then
-            Result := Result + [Target(Symbols[Index].FileName, Line, Symbols[Index].Character,
-              Symbols[Index].Name, Symbols[Index].Container + ' · ' + ExtractFileName(Symbols[Index].FileName),
-              TAtlasResults.SymbolBadge(Symbols[Index].Kind))]
-          else
-            Result := Result + [Target(Symbols[Index].FileName, Line, Symbols[Index].Character,
-              Symbols[Index].Name, ExtractFileName(Symbols[Index].FileName),
-              TAtlasResults.SymbolBadge(Symbols[Index].Kind))];
-        end;
-      end;
+      Result := ProjectSymbolResults(Parsed);
   end;
 end;
 
@@ -424,15 +511,23 @@ var
 begin
   Parts := ACommand.Id.Split([':']);
   if (ACommand.Description = '') or (Length(Parts) <> 2) then
+  begin
     Exit;
+  end;
   Line := StrToIntDef(Parts[0], -1);
   Character := StrToIntDef(Parts[1], 0);
   if State <> nil then
+  begin
     State.Recent.Executed(TAtlasQuickOpen.RecentKey(ACommand.Description));
+  end;
   if Line >= 0 then
-    TAtlasIdeNavigation.GoToLocation(ACommand.Description, Line, Character)
+  begin
+    TAtlasIdeNavigation.GoToLocation(ACommand.Description, Line, Character);
+  end
   else
+  begin
     TAtlasIdeNavigation.ShowFile(ACommand.Description);
+  end;
 end;
 
 { TAtlasIdeQuickOpen }
@@ -441,7 +536,9 @@ class function TAtlasIdeQuickOpen.Session: TLspSession;
 begin
   Result := nil;
   if Assigned(FSessionOf) then
+  begin
     Result := FSessionOf();
+  end;
 end;
 
 class function TAtlasIdeQuickOpen.RecentFile: string;
@@ -468,7 +565,9 @@ begin
     Owner.NotifierIndex := Services.AddNotifier(Owner.Notifier);
   end;
   if TAtlasIdeSettings.Current.QuickOpen then
+  begin
     Refresh;
+  end;
 end;
 
 class procedure TAtlasIdeQuickOpen.Uninstall;
@@ -480,12 +579,18 @@ begin
   FState := nil;
   FSessionOf := nil;
   if Owner = nil then
+  begin
     Exit;
+  end;
   if Owner.Notifier <> nil then
+  begin
     Owner.Notifier.FOwner := nil;
+  end;
   // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
   if (Owner.NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Services.RemoveNotifier(Owner.NotifierIndex);
+  end;
   try
     Owner.Recent.SaveToFile(RecentFile);
   except
@@ -498,7 +603,9 @@ end;
 class procedure TAtlasIdeQuickOpen.Refresh;
 begin
   if State = nil then
+  begin
     Exit;
+  end;
   State.List.Refresh(CurrentSources);
 end;
 
@@ -509,7 +616,9 @@ var
   Area: TRect;
 begin
   if (State = nil) or not TAtlasIdeSettings.Current.QuickOpen then
+  begin
     Exit;
+  end;
   Refresh;
   Palette := TAtlasPaletteWindow.CreatePalette(Application, nil, nil, TAtlasIdeStyle.Colors);
   Window := TWindowState.Create(Palette);
@@ -529,7 +638,9 @@ begin
     begin
       Result := nil;
       if State <> nil then
+      begin
         Result := Query(Window, APattern);
+      end;
     end;
   Palette.OnExecute :=
     procedure(ACommand: TAtlasCommand)
@@ -538,11 +649,17 @@ begin
     end;
   Palette.SetCommands(Query(Window, ''));
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Palette.ShowOver(Area);
 end;
 

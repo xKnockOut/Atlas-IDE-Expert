@@ -275,12 +275,16 @@ begin
   try
     FEnabledCheck.Checked := AEnabled;
     for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+    begin
       FKinds[mKind].Checked := mKind in AKinds;
+    end;
   finally
     FFilling := False;
   end;
   if mRebuild then
+  begin
     FillPatterns;
+  end;
   UpdateButtons;
 end;
 
@@ -293,7 +297,9 @@ begin
   if not FPatterns.HandleAllocated then
   begin
     if not HandleAllocated then
+    begin
       Exit;
+    end;
     FPatterns.HandleNeeded;
   end;
   FPatterns.Items.BeginUpdate;
@@ -338,13 +344,21 @@ var
   mIndex: Integer;
 begin
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     FKinds[mKind].Caption := KindCaption(mKind, FCountsState, FCounts);
+  end;
   FSummary.Caption := SummaryText(FCountsState, FCounts);
   if not FPatterns.HandleAllocated then
+  begin
     Exit;
+  end;
   for mIndex := 0 to FPatterns.Items.Count - 1 do
+  begin
     if FPatterns.Items[mIndex].SubItems.Count > 0 then
+    begin
       FPatterns.Items[mIndex].SubItems[0] := PatternHits(mIndex, FCountsState, FCounts);
+    end;
+  end;
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetSession(AStarted: Boolean; ASkipped: Integer;
@@ -368,13 +382,17 @@ procedure TAtlasDebugStepFilterFrame.NotifyChange;
 begin
   UpdateButtons;
   if Assigned(FOnChange) then
+  begin
     FOnChange(FEnabledValue, FKindsValue, Copy(FPatternsValue));
+  end;
 end;
 
 procedure TAtlasDebugStepFilterFrame.EnabledClick(Sender: TObject);
 begin
   if FFilling then
+  begin
     Exit;
+  end;
   FEnabledValue := FEnabledCheck.Checked;
   NotifyChange;
 end;
@@ -384,19 +402,27 @@ var
   mKind: TStepFilterKind;
 begin
   if FFilling then
+  begin
     Exit;
+  end;
   mKind := TStepFilterKind((Sender as TCheckBox).Tag);
   if FKinds[mKind].Checked then
-    Include(FKindsValue, mKind)
+  begin
+    Include(FKindsValue, mKind);
+  end
   else
+  begin
     Exclude(FKindsValue, mKind);
+  end;
   NotifyChange;
 end;
 
 procedure TAtlasDebugStepFilterFrame.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 function TAtlasDebugStepFilterFrame.AddPattern: Boolean;
@@ -407,7 +433,9 @@ begin
   Result := TStepFilterNames.IsValidPattern(mText) and (TStepFilterNames.IndexOfPattern(FPatternsValue, mText) < 0)
     and (Length(FPatternsValue) < TStepFilterNames.MaxPatterns);
   if not Result then
+  begin
     Exit;
+  end;
   FPatternsValue := TStepFilterNames.WithPattern(FPatternsValue, mText);
   FPatternEdit.Text := '';
   FillPatterns;
@@ -420,17 +448,23 @@ var
 begin
   Result := False;
   if not FPatterns.HandleAllocated or (FPatterns.Selected = nil) then
+  begin
     Exit;
+  end;
   mIndex := FPatterns.Selected.Index;
   if (mIndex < 0) or (mIndex > High(FPatternsValue)) then
+  begin
     Exit;
+  end;
   Delete(FPatternsValue, mIndex, 1);
   FillPatterns;
   // Auswahl bleibt an derselben Stelle, damit Entf mehrfach hintereinander geht.
   if FPatterns.Items.Count > 0 then
   begin
     if mIndex >= FPatterns.Items.Count then
+    begin
       mIndex := FPatterns.Items.Count - 1;
+    end;
     FPatterns.Items[mIndex].Selected := True;
   end;
   NotifyChange;
@@ -444,21 +478,31 @@ var
 begin
   Result := False;
   if (AIndex < 0) or (AIndex > High(FPatternsValue)) then
+  begin
     Exit;
+  end;
   mText := Trim(AText);
   if not TStepFilterNames.IsValidPattern(mText) then
+  begin
     Exit;
+  end;
   mOther := TStepFilterNames.IndexOfPattern(FPatternsValue, mText);
   if (mOther >= 0) and (mOther <> AIndex) then
+  begin
     Exit;
+  end;
   Result := True;
   if FPatternsValue[AIndex] = mText then
+  begin
     Exit;
+  end;
   FPatternsValue[AIndex] := mText;
   // Die Treffer gelten für das alte Muster; die IDE-Schicht zählt nach dem Speichern neu.
   if FPatterns.HandleAllocated and (AIndex < FPatterns.Items.Count) and
     (FPatterns.Items[AIndex].SubItems.Count > 0) then
+  begin
     FPatterns.Items[AIndex].SubItems[0] := '';
+  end;
   NotifyChange;
 end;
 
@@ -494,7 +538,9 @@ end;
 procedure TAtlasDebugStepFilterFrame.PatternsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if FPatterns.IsEditing then
+  begin
     Exit;
+  end;
   if (Key = VK_DELETE) and (Shift = []) then
   begin
     RemoveSelected;
@@ -511,9 +557,13 @@ procedure TAtlasDebugStepFilterFrame.PatternsEdited(Sender: TObject; Item: TList
 begin
   // Ungültig oder doppelt: Das alte Muster bleibt stehen.
   if ReplacePattern(Item.Index, S) then
-    S := Trim(S)
+  begin
+    S := Trim(S);
+  end
   else
+  begin
     S := Item.Caption;
+  end;
 end;
 
 class function TAtlasDebugStepFilterFrame.VerdictText(const AVerdict: TAtlasStepVerdict): string;
@@ -533,7 +583,9 @@ class function TAtlasDebugStepFilterFrame.KindCaption(AKind: TStepFilterKind; AS
 begin
   Result := TAtlasStrings.Text(KindTexts[AKind]);
   if AState = TAtlasStepCountsState.Ready then
+  begin
     Result := Result + ' – ' + IntToStr(ACounts.Kinds[AKind]);
+  end;
 end;
 
 class function TAtlasDebugStepFilterFrame.PatternHits(AIndex: Integer; AState: TAtlasStepCountsState;
@@ -541,7 +593,9 @@ class function TAtlasDebugStepFilterFrame.PatternHits(AIndex: Integer; AState: T
 begin
   Result := '';
   if (AState = TAtlasStepCountsState.Ready) and (AIndex >= 0) and (AIndex <= High(ACounts.Patterns)) then
+  begin
     Result := IntToStr(ACounts.Patterns[AIndex]);
+  end;
 end;
 
 class function TAtlasDebugStepFilterFrame.SummaryText(AState: TAtlasStepCountsState;
@@ -554,7 +608,9 @@ begin
       begin
         Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterSummary, [ACounts.Routines, ACounts.Files]);
         if ACounts.Truncated then
+        begin
           Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterTruncated, [ACounts.Files]);
+        end;
       end;
     TAtlasStepCountsState.Unavailable:
       Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNoCounts);
@@ -567,10 +623,14 @@ class function TAtlasDebugStepFilterFrame.SessionText(AStarted: Boolean; ASkippe
   const ALastName, ALastReason: string): string;
 begin
   if not AStarted then
+  begin
     Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterInactive));
+  end;
   Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterSession, [ASkipped]);
   if ALastName <> '' then
+  begin
     Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterLast, [ALastName, ALastReason]);
+  end;
 end;
 
 end.

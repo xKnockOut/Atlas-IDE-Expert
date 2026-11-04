@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
   Atlas.Core.Editor.Pairs;
@@ -89,8 +90,7 @@ begin
     begin
       Continue;
     end;
-    if not ((Owner = 'procedure') or (Owner = 'function') or (Owner = 'constructor') or (Owner = 'destructor') or
-      (Owner = 'operator') or (Owner = 'class')) then
+    if not MatchStr(Owner, ['procedure', 'function', 'constructor', 'destructor', 'operator', 'class']) then
     begin
       Continue;
     end;

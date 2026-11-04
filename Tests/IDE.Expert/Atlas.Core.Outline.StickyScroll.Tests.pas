@@ -112,6 +112,61 @@ begin
   end;
 end;
 
+/// <summary>Zwei lange innere Funktionen, dann der Rumpf der äußeren Routine.</summary>
+procedure AddLaden(var ALines: TArray<string>; var AMarks: TMarks);
+begin
+  AMarks.Laden := Length(ALines);
+  Add(ALines, 'procedure TForm1.Laden;');
+  AMarks.Eins := Length(ALines);
+  Add(ALines, '  function Eins: Integer;');
+  Add(ALines, '  var X: Integer;');
+  Add(ALines, '  begin');
+  AMarks.EinsBody := Length(ALines);
+  Fill(ALines, '    ', 20);
+  Add(ALines, '    Result := X;');
+  Add(ALines, '  end;');
+  AMarks.Zwei := Length(ALines);
+  Add(ALines, '  function Zwei: Integer;');
+  Add(ALines, '  var X: Integer;');
+  Add(ALines, '  begin');
+  Fill(ALines, '    ', 20);
+  Add(ALines, '    Result := X;');
+  Add(ALines, '  end;');
+  Add(ALines, 'var X: Integer;');
+  Add(ALines, 'begin');
+  AMarks.LadenBody := Length(ALines);
+  Fill(ALines, '  ', 20);
+  Add(ALines, 'end;');
+end;
+
+/// <summary>Vier Ebenen, die dritte mit mehrzeiligem Kopf.</summary>
+procedure AddTief(var ALines: TArray<string>; var AMarks: TMarks);
+begin
+  AMarks.Tief := Length(ALines);
+  Add(ALines, 'procedure TForm1.Tief;');
+  AMarks.Lokal := Length(ALines);
+  Add(ALines, '  procedure Lokal;');
+  AMarks.Pruefe := Length(ALines);
+  Add(ALines, '    function Pruefe(const S: string;');
+  Add(ALines, '      N: Integer): Boolean;');
+  AMarks.Innen := Length(ALines);
+  Add(ALines, '      procedure Innen;');
+  Add(ALines, '      var X: Integer;');
+  Add(ALines, '      begin');
+  AMarks.InnenBody := Length(ALines);
+  Fill(ALines, '        ', 10);
+  Add(ALines, '      end;');
+  Add(ALines, '    begin');
+  Add(ALines, '      Result := S <> '''';');
+  Add(ALines, '    end;');
+  Add(ALines, '  begin');
+  Add(ALines, '    Pruefe('''', 1);');
+  Add(ALines, '  end;');
+  Add(ALines, 'begin');
+  Add(ALines, '  Lokal;');
+  Add(ALines, 'end;');
+end;
+
 function Build: TSource;
 var
   Lines: TArray<string>;
@@ -132,53 +187,8 @@ begin
   Add(Lines, '    procedure Fuenf;');
   Add(Lines, '  end;');
   Add(Lines, 'implementation');
-  // Zwei lange innere Funktionen, dann der Rumpf der äußeren Routine.
-  Result.Marks.Laden := Length(Lines);
-  Add(Lines, 'procedure TForm1.Laden;');
-  Result.Marks.Eins := Length(Lines);
-  Add(Lines, '  function Eins: Integer;');
-  Add(Lines, '  var X: Integer;');
-  Add(Lines, '  begin');
-  Result.Marks.EinsBody := Length(Lines);
-  Fill(Lines, '    ', 20);
-  Add(Lines, '    Result := X;');
-  Add(Lines, '  end;');
-  Result.Marks.Zwei := Length(Lines);
-  Add(Lines, '  function Zwei: Integer;');
-  Add(Lines, '  var X: Integer;');
-  Add(Lines, '  begin');
-  Fill(Lines, '    ', 20);
-  Add(Lines, '    Result := X;');
-  Add(Lines, '  end;');
-  Add(Lines, 'var X: Integer;');
-  Add(Lines, 'begin');
-  Result.Marks.LadenBody := Length(Lines);
-  Fill(Lines, '  ', 20);
-  Add(Lines, 'end;');
-  // Vier Ebenen, die dritte mit mehrzeiligem Kopf.
-  Result.Marks.Tief := Length(Lines);
-  Add(Lines, 'procedure TForm1.Tief;');
-  Result.Marks.Lokal := Length(Lines);
-  Add(Lines, '  procedure Lokal;');
-  Result.Marks.Pruefe := Length(Lines);
-  Add(Lines, '    function Pruefe(const S: string;');
-  Add(Lines, '      N: Integer): Boolean;');
-  Result.Marks.Innen := Length(Lines);
-  Add(Lines, '      procedure Innen;');
-  Add(Lines, '      var X: Integer;');
-  Add(Lines, '      begin');
-  Result.Marks.InnenBody := Length(Lines);
-  Fill(Lines, '        ', 10);
-  Add(Lines, '      end;');
-  Add(Lines, '    begin');
-  Add(Lines, '      Result := S <> '''';');
-  Add(Lines, '    end;');
-  Add(Lines, '  begin');
-  Add(Lines, '    Pruefe('''', 1);');
-  Add(Lines, '  end;');
-  Add(Lines, 'begin');
-  Add(Lines, '  Lokal;');
-  Add(Lines, 'end;');
+  AddLaden(Lines, Result.Marks);
+  AddTief(Lines, Result.Marks);
   // Eine Methode mit 300 Zeilen.
   Result.Marks.Lang := Length(Lines);
   Add(Lines, 'procedure TForm1.Lang;');
@@ -517,23 +527,29 @@ begin
   Assert.IsFalse(TAtlasStickyScroll.OwnerKind('on', Kind));
 end;
 
+/// <summary>Kopf über ATopLine mit den Gliederungsarten AKinds (3 Zeilen, Tabulator 8).</summary>
+function KindRows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; AKinds: TAtlasStickyKinds;
+  ATopLine: Integer): TAtlasStickyRows;
+begin
+  Result := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(ANodes, ALines, nil, AKinds), ATopLine, 3, 8);
+end;
+
 procedure TAtlasStickyScrollTests.OutlineKindsCanBeSwitchedOff;
 var
   Source: TSource;
 begin
   Source := Build;
   // Klasse: nur mit Types.
-  Assert.AreEqual('TForm1 = class(TObject)', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil,
-    [TAtlasStickyKind.Types], Source.Marks.FormClass + 2, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Routines],
-    Source.Marks.FormClass + 2, 3, 8)));
+  Assert.AreEqual('TForm1 = class(TObject)', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
+    Source.Marks.FormClass + 2)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Routines],
+    Source.Marks.FormClass + 2)));
   // Routinen: nur mit Routines; ohne beide bleibt der Kopf leer.
-  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(TAtlasStickyScroll.Rows(Source.Nodes,
-    Source.Lines, nil, [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Types],
-    Source.Marks.EinsBody + 5, 3, 8)));
-  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [], Source.Marks.EinsBody + 5,
-    3, 8)));
+  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(KindRows(Source.Nodes, Source.Lines,
+    [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [TAtlasStickyKind.Types],
+    Source.Marks.EinsBody + 5)));
+  Assert.AreEqual('', Texts(KindRows(Source.Nodes, Source.Lines, [], Source.Marks.EinsBody + 5)));
 end;
 
 initialization

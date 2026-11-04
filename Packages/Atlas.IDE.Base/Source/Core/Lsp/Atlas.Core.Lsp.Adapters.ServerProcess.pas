@@ -45,6 +45,9 @@ type
     procedure Write(const ABytes: TBytes);
     /// <summary>Öffnet server-stderr.log zum Anhängen (vererbbar) und schreibt die Kopfzeile; sonst NUL.</summary>
     function OpenStderr(ASecurity: PSecurityAttributes): THandle;
+    procedure CreatePipes(ASecurity: PSecurityAttributes; var AInputRead, AOutputWrite: THandle);
+    procedure StopWriter(AWriterMs, ACancelMs: Cardinal);
+    procedure StopProcess(AProcessMs: Cardinal);
     /// <summary>Zeilen, die seit dem Start dieses Servers in server-stderr.log kamen (bei mehreren IDEs auch die
     /// der anderen Server).</summary>
     function StderrLines: Integer;
@@ -95,6 +98,8 @@ type
     FLock: TObject;
     FQueue: TArray<TBytes>;
     FWake: TEvent;
+    function TakeQueue: TArray<TBytes>;
+    function WriteAll(const ABytes: TBytes): Boolean;
   protected
     procedure Execute; override;
     procedure TerminatedSet; override;
@@ -140,36 +145,54 @@ begin
   FWake.SetEvent;
 end;
 
-procedure TWriterThread.Execute;
+/// <summary>Holt alle wartenden Nachrichten und leert die Warteschlange.</summary>
+function TWriterThread.TakeQueue: TArray<TBytes>;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FQueue;
+    FQueue := nil;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+/// <summary>Schreibt ABytes ganz in die Pipe; False, wenn der Server nichts mehr annimmt oder der Thread
+/// endet.</summary>
+function TWriterThread.WriteAll(const ABytes: TBytes): Boolean;
 var
-  Items: TArray<TBytes>;
-  Bytes: TBytes;
   Written: DWORD;
   Offset: Integer;
+begin
+  Result := True;
+  Offset := 0;
+  while Result and (Offset < Length(ABytes)) do
+  begin
+    Result := not Terminated and WriteFile(FHandle, ABytes[Offset], Length(ABytes) - Offset, Written, nil);
+    if Result then
+    begin
+      Inc(Offset, Integer(Written));
+    end;
+  end;
+  // Server nimmt nichts mehr an: Wartende Anfragen sollen nicht bis zum Zeitlimit hängen.
+  if not Result and not Terminated and (FClient <> nil) and (FOwner <> nil) then
+  begin
+    FClient.CloseWith(FOwner.EndInfo);
+  end;
+end;
+
+procedure TWriterThread.Execute;
+var
+  Bytes: TBytes;
 begin
   while not Terminated do
   begin
     FWake.WaitFor(INFINITE);
-    TMonitor.Enter(FLock);
-    try
-      Items := FQueue;
-      FQueue := nil;
-    finally
-      TMonitor.Exit(FLock);
-    end;
-    for Bytes in Items do
+    for Bytes in TakeQueue do
     begin
-      Offset := 0;
-      while Offset < Length(Bytes) do
+      if not WriteAll(Bytes) then
       begin
-        if Terminated or not WriteFile(FHandle, Bytes[Offset], Length(Bytes) - Offset, Written, nil) then
-        begin
-          // Server nimmt nichts mehr an: Wartende Anfragen sollen nicht bis zum Zeitlimit hängen.
-          if not Terminated and (FClient <> nil) and (FOwner <> nil) then
-            FClient.CloseWith(FOwner.EndInfo);
-          Exit;
-        end;
-        Inc(Offset, Integer(Written));
+        Exit;
       end;
     end;
   end;
@@ -196,7 +219,9 @@ begin
       while not Terminated do
       begin
         if not ReadFile(FHandle, Buffer[0], Length(Buffer), Read, nil) or (Read = 0) then
+        begin
           Break;
+        end;
         FClient.Receive(Buffer, Integer(Read));
       end;
     except
@@ -212,13 +237,42 @@ end;
 
 { TLspServerProcess }
 
+/// <summary>Startet AExeName mit den Kindenden der Pipes und ohne Fenster; löst bei einem Fehler
+/// EOSError aus.</summary>
+function LaunchProcess(const AExeName, AArguments: string; AInput, AOutput, AError: THandle): TProcessInformation;
+var
+  Startup: TStartupInfo;
+  CommandLine: string;
+begin
+  Startup := Default(TStartupInfo);
+  Startup.cb := SizeOf(Startup);
+  Startup.dwFlags := STARTF_USESTDHANDLES;
+  Startup.hStdInput := AInput;
+  Startup.hStdOutput := AOutput;
+  Startup.hStdError := AError;
+  CommandLine := '"' + AExeName + '" ' + AArguments;
+  UniqueString(CommandLine);
+  if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
+    PChar(ExtractFileDir(AExeName)), Startup, Result) then
+  begin
+    RaiseLastOSError;
+  end;
+end;
+
+/// <summary>Schließt AHandle, wenn es gesetzt ist (0 bzw. INVALID_HANDLE_VALUE bleiben unberührt).</summary>
+procedure CloseIfOpen(AHandle: THandle);
+begin
+  if (AHandle <> 0) and (AHandle <> INVALID_HANDLE_VALUE) then
+  begin
+    CloseHandle(AHandle);
+  end;
+end;
+
 constructor TLspServerProcess.Create(const AExeName, AArguments: string);
 var
   Security: TSecurityAttributes;
   InputRead, OutputWrite, ErrorHandle: THandle;
-  Startup: TStartupInfo;
   Info: TProcessInformation;
-  CommandLine: string;
 begin
   inherited Create;
   FWriterLock := TObject.Create;
@@ -231,33 +285,13 @@ begin
   // Die Enden des Kindprozesses schließt das finally auf jedem Weg, auch wenn die zweite Pipe oder CreateProcess
   // scheitert (Code-Review S-07); die eigenen Enden (FInputWrite, FOutputRead) schließt Destroy.
   try
-    // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
-    if not CreatePipe(InputRead, FInputWrite, @Security, 1 shl 20) then
-      RaiseLastOSError;
-    if not CreatePipe(FOutputRead, OutputWrite, @Security, 0) then
-      RaiseLastOSError;
-    // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
-    SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
-    SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
+    CreatePipes(@Security, InputRead, OutputWrite);
     ErrorHandle := OpenStderr(@Security);
-    Startup := Default(TStartupInfo);
-    Startup.cb := SizeOf(Startup);
-    Startup.dwFlags := STARTF_USESTDHANDLES;
-    Startup.hStdInput := InputRead;
-    Startup.hStdOutput := OutputWrite;
-    Startup.hStdError := ErrorHandle;
-    CommandLine := '"' + AExeName + '" ' + AArguments;
-    UniqueString(CommandLine);
-    if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
-      PChar(ExtractFileDir(AExeName)), Startup, Info) then
-      RaiseLastOSError;
+    Info := LaunchProcess(AExeName, AArguments, InputRead, OutputWrite, ErrorHandle);
   finally
-    if InputRead <> 0 then
-      CloseHandle(InputRead);
-    if OutputWrite <> 0 then
-      CloseHandle(OutputWrite);
-    if ErrorHandle <> INVALID_HANDLE_VALUE then
-      CloseHandle(ErrorHandle);
+    CloseIfOpen(InputRead);
+    CloseIfOpen(OutputWrite);
+    CloseIfOpen(ErrorHandle);
   end;
   CloseHandle(Info.hThread);
   FProcess := Info.hProcess;
@@ -267,6 +301,22 @@ begin
   TWriterThread(FWriter).Client := FClient;
   TWriterThread(FWriter).Owner := Self;
   FReader := TReaderThread.Create(FOutputRead, FClient, Self);
+end;
+
+procedure TLspServerProcess.CreatePipes(ASecurity: PSecurityAttributes; var AInputRead, AOutputWrite: THandle);
+begin
+  // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
+  if not CreatePipe(AInputRead, FInputWrite, ASecurity, 1 shl 20) then
+  begin
+    RaiseLastOSError;
+  end;
+  if not CreatePipe(FOutputRead, AOutputWrite, ASecurity, 0) then
+  begin
+    RaiseLastOSError;
+  end;
+  // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
+  SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
+  SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
 end;
 
 function TLspServerProcess.OpenStderr(ASecurity: PSecurityAttributes): THandle;
@@ -291,7 +341,9 @@ begin
     Result := CreateFile(PChar(FStderrFile), AppendData, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
       ASecurity, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if Result = INVALID_HANDLE_VALUE then
+    begin
       RaiseLastOSError;
+    end;
     Header := TEncoding.UTF8.GetBytes(Format('---- %s Serverstart ----'#13#10,
       [FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', Now)]));
     WriteFile(Result, Header[0], Length(Header), Written, nil);
@@ -300,7 +352,9 @@ begin
     on E: Exception do
     begin
       if Result <> INVALID_HANDLE_VALUE then
+      begin
         CloseHandle(Result);
+      end;
       TAtlasGuard.Log('stderr des Servers bleibt bei NUL: ' + TAtlasGuard.SafeMessage(E.Message));
       FStderrFile := '';
       Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, ASecurity, OPEN_EXISTING, 0, 0);
@@ -318,27 +372,39 @@ var
 begin
   Result := 0;
   if FStderrFile = '' then
+  begin
     Exit;
+  end;
   try
     Stream := TFileStream.Create(FStderrFile, fmOpenRead or fmShareDenyNone);
     try
       if Stream.Size <= FStderrStart then
+      begin
         Exit;
+      end;
       Stream.Position := FStderrStart;
       Count := MaxBytes;
       if Stream.Size - FStderrStart < Count then
+      begin
         Count := Integer(Stream.Size - FStderrStart);
+      end;
       SetLength(Bytes, Count);
       Stream.ReadBuffer(Bytes[0], Count);
     finally
       Stream.Free;
     end;
     for Index := 0 to Count - 1 do
+    begin
       if Bytes[Index] = 10 then
+      begin
         Inc(Result);
+      end;
+    end;
     // Letzte Zeile ohne Zeilenende zählt mit.
     if (Count > 0) and (Bytes[Count - 1] <> 10) then
+    begin
       Inc(Result);
+    end;
   except
     // Nur eine Zahl fürs Protokoll; ohne Datei bleibt sie 0.
     on Exception do
@@ -354,11 +420,15 @@ begin
   Result := Default(TLspCloseInfo);
   // Atlas beendet den Server selbst (Destroy schließt den Client vorher): kein Absturz, nichts zu warten.
   if (FClient = nil) or FClient.Closed then
+  begin
     Exit;
+  end;
   Result.RuntimeMs := Int64(TThread.GetTickCount64 - FStarted);
   WaitMs := ExitWaitMs;
   if TAtlasShutdown.Signalled then
+  begin
     WaitMs := 0;
+  end;
   if (WaitForSingleObject(FProcess, WaitMs) = WAIT_OBJECT_0) and GetExitCodeProcess(FProcess, Code) then
   begin
     Result.ExitKnown := True;
@@ -367,51 +437,42 @@ begin
   Result.ErrorLines := StderrLines;
 end;
 
-destructor TLspServerProcess.Destroy;
+procedure TLspServerProcess.StopWriter(AWriterMs, ACancelMs: Cardinal);
 var
-  WriterMs, CancelMs, ProcessMs: Cardinal;
   Writer: TThread;
 begin
-  WriterMs := 1000;
-  CancelMs := 500;
-  ProcessMs := 2000;
-  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.StopMs.
-  if TAtlasShutdown.Signalled then
+  if FWriter = nil then
   begin
-    WriterMs := 300;
-    CancelMs := 150;
-    ProcessMs := 400;
+    Exit;
   end;
-  if FClient <> nil then
-    FClient.Close;
-  // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
-  if FWriter <> nil then
+  FWriter.Terminate;
+  if WaitForSingleObject(FWriter.Handle, AWriterMs) <> WAIT_OBJECT_0 then
   begin
-    FWriter.Terminate;
-    if WaitForSingleObject(FWriter.Handle, WriterMs) <> WAIT_OBJECT_0 then
+    CancelSynchronousIoOf(FWriter.Handle);
+    if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, ACancelMs) <> WAIT_OBJECT_0) then
     begin
-      CancelSynchronousIoOf(FWriter.Handle);
-      if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, CancelMs) <> WAIT_OBJECT_0) then
-        TerminateProcess(FProcess, 1);
-    end;
-    FWriter.WaitFor;
-    // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
-    System.TMonitor.Enter(FWriterLock);
-    try
-      Writer := FWriter;
-      FWriter := nil;
-    finally
-      System.TMonitor.Exit(FWriterLock);
-    end;
-    Writer.Free;
-  end;
-  // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
-  if FInputWrite <> 0 then
-    CloseHandle(FInputWrite);
-  if FProcess <> 0 then
-  begin
-    if WaitForSingleObject(FProcess, ProcessMs) <> WAIT_OBJECT_0 then
       TerminateProcess(FProcess, 1);
+    end;
+  end;
+  FWriter.WaitFor;
+  // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
+  System.TMonitor.Enter(FWriterLock);
+  try
+    Writer := FWriter;
+    FWriter := nil;
+  finally
+    System.TMonitor.Exit(FWriterLock);
+  end;
+  Writer.Free;
+end;
+
+procedure TLspServerProcess.StopProcess(AProcessMs: Cardinal);
+begin
+  // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
+  CloseIfOpen(FInputWrite);
+  if (FProcess <> 0) and (WaitForSingleObject(FProcess, AProcessMs) <> WAIT_OBJECT_0) then
+  begin
+    TerminateProcess(FProcess, 1);
   end;
   if FReader <> nil then
   begin
@@ -419,10 +480,28 @@ begin
     FReader.Free;
   end;
   // Erst nach dem Lese-Thread: Der fragt beim Ende den Exit-Code über dieses Handle ab (EndInfo).
-  if FProcess <> 0 then
-    CloseHandle(FProcess);
-  if FOutputRead <> 0 then
-    CloseHandle(FOutputRead);
+  CloseIfOpen(FProcess);
+  CloseIfOpen(FOutputRead);
+end;
+
+destructor TLspServerProcess.Destroy;
+begin
+  if FClient <> nil then
+  begin
+    FClient.Close;
+  end;
+  // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
+  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.StopMs.
+  if TAtlasShutdown.Signalled then
+  begin
+    StopWriter(300, 150);
+    StopProcess(400);
+  end
+  else
+  begin
+    StopWriter(1000, 500);
+    StopProcess(2000);
+  end;
   FClient.Free;
   FWriterLock.Free;
   inherited;
@@ -434,7 +513,9 @@ begin
   try
     // nil: Destroy hat den Schreib-Thread schon abgebaut (Antwort des Lese-Threads beim Beenden).
     if FWriter <> nil then
+    begin
       TWriterThread(FWriter).Add(ABytes);
+    end;
   finally
     System.TMonitor.Exit(FWriterLock);
   end;

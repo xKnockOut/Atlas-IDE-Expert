@@ -105,57 +105,69 @@ begin
   Result := IsWord(AToken) and MatchText(AToken.Text, AWords);
 end;
 
+/// <summary>Beendet AToken auf Klammerebene 0 einen Typ (";", "=", ":=", ",", absolute, read …)?</summary>
+function EndsType(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(';') or AToken.IsSymbol('=') or AToken.IsSymbol(':=') or AToken.IsSymbol(',') or
+    IsWordIn(AToken, ['absolute', 'read', 'write', 'begin', 'end', 'var', 'const']);
+end;
+
+/// <summary>Öffnet AToken eine Klammer ("&lt;", "(", "[")?</summary>
+function OpensBracket(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol('<') or AToken.IsSymbol('(') or AToken.IsSymbol('[');
+end;
+
+/// <summary>Klammerebene nach AToken; False, wenn der Typ vor AToken endet.</summary>
+function TypeStep(const AToken: TPascalToken; var ADepth: Integer): Boolean;
+begin
+  Result := True;
+  if OpensBracket(AToken) then
+  begin
+    Inc(ADepth);
+  end
+  else if AToken.IsSymbol('>') or AToken.IsSymbol(']') then
+  begin
+    Dec(ADepth);
+  end
+  else if AToken.IsSymbol('>>') then
+  begin
+    Dec(ADepth, 2);
+  end
+  else if AToken.IsSymbol(')') then
+  begin
+    Result := ADepth > 0;
+    Dec(ADepth);
+  end
+  else if ADepth = 0 then
+  begin
+    Result := not EndsType(AToken);
+  end;
+  Result := Result and (ADepth >= 0);
+end;
+
 /// <summary>Typ ab ATokens[AFirst] bis vor ";", ")", "=", ":=" oder "absolute" außerhalb von Klammern.</summary>
 function TypeTextFrom(const ATokens: TArray<TPascalToken>; AFirst: Integer): string;
 var
-  Index, Depth: Integer;
-  Token: TPascalToken;
-  Glued: Boolean;
+  mIndex, mDepth: Integer;
+  mToken: TPascalToken;
+  mGlued: Boolean;
 begin
   Result := '';
-  Depth := 0;
-  Glued := False;
-  Index := AFirst;
-  while Index <= High(ATokens) do
+  mDepth := 0;
+  mGlued := False;
+  mIndex := AFirst;
+  while (mIndex <= High(ATokens)) and TypeStep(ATokens[mIndex], mDepth) do
   begin
-    Token := ATokens[Index];
-    if Token.IsSymbol('<') or Token.IsSymbol('(') or Token.IsSymbol('[') then
-    begin
-      Inc(Depth);
-    end
-    else if Token.IsSymbol('>') or Token.IsSymbol(']') then
-    begin
-      Dec(Depth);
-    end
-    else if Token.IsSymbol('>>') then
-    begin
-      Dec(Depth, 2);
-    end
-    else if Token.IsSymbol(')') then
-    begin
-      if Depth = 0 then
-      begin
-        Break;
-      end;
-      Dec(Depth);
-    end
-    else if (Depth = 0) and (Token.IsSymbol(';') or Token.IsSymbol('=') or Token.IsSymbol(':=') or
-      Token.IsSymbol(',') or IsWordIn(Token, ['absolute', 'read', 'write', 'begin', 'end', 'var', 'const'])) then
-    begin
-      Break;
-    end;
-    if Depth < 0 then
-    begin
-      Break;
-    end;
+    mToken := ATokens[mIndex];
     // Leerzeichen vor Wörtern, außer direkt nach "<", "(", "[" und ".".
-    if (Result <> '') and IsWord(Token) and not Glued then
+    if (Result <> '') and IsWord(mToken) and not mGlued then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Token.Text;
-    Glued := Token.IsSymbol('<') or Token.IsSymbol('(') or Token.IsSymbol('[') or Token.IsSymbol('.');
-    Index := TRoutineBody.NextToken(ATokens, Index);
+    Result := Result + mToken.Text;
+    mGlued := OpensBracket(mToken) or mToken.IsSymbol('.');
+    mIndex := TRoutineBody.NextToken(ATokens, mIndex);
   end;
 end;
 
@@ -243,156 +255,163 @@ begin
   Result := (Index >= 0) and IsWordIn(ATokens[Index], RoutineWords);
 end;
 
+/// <summary>Was das Wort AToken über den Abschnitt sagt: True mit ASection 'var' bzw. 'type', True mit '' bei
+/// einem anderen Schlüsselwort; False, wenn es nichts entscheidet (Name oder Teil eines Typs).</summary>
+function SectionWord(const AToken: TPascalToken; out ASection: string): Boolean;
+begin
+  ASection := '';
+  Result := True;
+  if IsWordIn(AToken, ['var', 'threadvar']) then
+  begin
+    ASection := 'var';
+  end
+  else if IsWordIn(AToken, VisibilityWords) or IsWordIn(AToken, ['record', 'object']) then
+  begin
+    ASection := 'type';
+  end
+  else
+  begin
+    // Schlüsselwörter in Typen vorheriger Deklarationen (A: string; B: array of set of T).
+    Result := (AToken.Kind = TPascalTokenKind.Keyword) and
+      not IsWordIn(AToken, ['string', 'array', 'of', 'set', 'file', 'packed']);
+  end;
+end;
+
 /// <summary>Abschnitt vor ATokens[AIndex] (über vorige Deklarationen zurück): 'var' für var und threadvar,
 /// 'type' für den Rumpf einer Klasse oder eines Records (Sichtbarkeit, class, record), sonst ''. AAt ist das
 /// Token, das den Abschnitt eröffnet.</summary>
 function SectionBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AAt: Integer): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
   AAt := -1;
-  Depth := 0;
-  Index := AIndex;
-  while Index >= 0 do
+  mDepth := 0;
+  mIndex := AIndex;
+  while mIndex >= 0 do
   begin
-    if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol('>') or ATokens[Index].IsSymbol(']') then
+    if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol('>') or ATokens[mIndex].IsSymbol(']') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('<') or ATokens[Index].IsSymbol('[') then
+    else if OpensBracket(ATokens[mIndex]) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and IsWord(ATokens[Index]) then
+    else if (mDepth = 0) and IsWord(ATokens[mIndex]) then
     begin
-      AAt := Index;
-      if IsWordIn(ATokens[Index], ['var', 'threadvar']) then
-      begin
-        Exit('var');
-      end;
-      if IsWordIn(ATokens[Index], VisibilityWords) or IsWordIn(ATokens[Index], ['record', 'object']) then
-      begin
-        Exit('type');
-      end;
-      // Schlüsselwörter in Typen vorheriger Deklarationen (A: string; B: array of set of T).
-      if (ATokens[Index].Kind = TPascalTokenKind.Keyword) and
-        not IsWordIn(ATokens[Index], ['string', 'array', 'of', 'set', 'file', 'packed']) then
+      AAt := mIndex;
+      if SectionWord(ATokens[mIndex], Result) then
       begin
         Exit;
       end;
     end;
-    Index := TRoutineBody.PreviousToken(ATokens, Index);
+    mIndex := TRoutineBody.PreviousToken(ATokens, mIndex);
   end;
 end;
 
-class function TNameSuggestions.Site(ATree: TSyntaxTree; const APosition: TTextPosition;
-  out ASite: TNameSite): Boolean;
+/// <summary>Name am Cursor (oder leere Stelle) in ASite eintragen; ANext und APrev sind die Token danach und
+/// davor.</summary>
+procedure LocateName(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition; var ASite: TNameSite;
+  out ANext, APrev: Integer);
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Name, Next, Prev, Colon: Integer;
-  Node: TSyntaxNode;
-  Section: string;
-  At: Integer;
+  mIndex: Integer;
 begin
-  ASite := Default(TNameSite);
-  Result := False;
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  Tokens := ATree.Tokens;
   // Erstes Token, das am Cursor oder dahinter endet.
-  Index := 0;
-  while (Index <= High(Tokens)) and (Compare(Tokens[Index].EndPos, APosition) < 0) do
+  mIndex := 0;
+  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].EndPos, APosition) < 0) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Name := -1;
-  if (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-    (Compare(Tokens[Index].StartPos, APosition) <= 0) then
+  if (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+    (Compare(ATokens[mIndex].StartPos, APosition) <= 0) then
   begin
-    Name := Index;
-  end;
-  if Name >= 0 then
-  begin
-    ASite.NameRange := TTextRange.Create(Tokens[Name].StartPos, Tokens[Name].EndPos);
-    ASite.Typed := Copy(Tokens[Name].Text, 1, APosition.Character - Tokens[Name].StartPos.Character);
-    ASite.Offset := Tokens[Name].Offset;
-    Next := TRoutineBody.NextToken(Tokens, Name);
-    Prev := TRoutineBody.PreviousToken(Tokens, Name);
-  end
-  else
-  begin
-    ASite.NameRange := TTextRange.Create(APosition, APosition);
-    Next := Index;
-    while (Next <= High(Tokens)) and ((Compare(Tokens[Next].StartPos, APosition) < 0) or
-      (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
-    begin
-      Inc(Next);
-    end;
-    Prev := TRoutineBody.PreviousToken(Tokens, Next);
-    if Next <= High(Tokens) then
-    begin
-      ASite.Offset := Tokens[Next].Offset;
-    end;
-  end;
-  // Weitere Namen der Liste (A, |, B: T) bis zum Doppelpunkt.
-  Colon := Next;
-  while (Colon <= High(Tokens)) and Tokens[Colon].IsSymbol(',') do
-  begin
-    Colon := TRoutineBody.NextToken(Tokens, Colon);
-    if (Colon > High(Tokens)) or (Tokens[Colon].Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Exit;
-    end;
-    Colon := TRoutineBody.NextToken(Tokens, Colon);
-  end;
-  if (Colon > High(Tokens)) or not Tokens[Colon].IsSymbol(':') or (Prev < 0) then
-  begin
+    ASite.NameRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
+    ASite.Typed := Copy(ATokens[mIndex].Text, 1, APosition.Character - ATokens[mIndex].StartPos.Character);
+    ASite.Offset := ATokens[mIndex].Offset;
+    ANext := TRoutineBody.NextToken(ATokens, mIndex);
+    APrev := TRoutineBody.PreviousToken(ATokens, mIndex);
     Exit;
   end;
-  ASite.TypeText := TypeTextFrom(Tokens, TRoutineBody.NextToken(Tokens, Colon));
-  if ASite.TypeText = '' then
+  ASite.NameRange := TTextRange.Create(APosition, APosition);
+  ANext := mIndex;
+  while (ANext <= High(ATokens)) and ((Compare(ATokens[ANext].StartPos, APosition) < 0) or
+    (ATokens[ANext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
   begin
-    Exit;
+    Inc(ANext);
   end;
-  // Vor dem Namen: Abschnitt, Trenner, Modifizierer oder Attribut.
-  if not (Tokens[Prev].IsSymbol(';') or Tokens[Prev].IsSymbol(',') or Tokens[Prev].IsSymbol('(') or
-    Tokens[Prev].IsSymbol(']') or IsWordIn(Tokens[Prev], ['var', 'threadvar', 'const', 'out', 'constref']) or
-    IsWordIn(Tokens[Prev], VisibilityWords) or IsWordIn(Tokens[Prev], ['record', 'object'])) then
+  APrev := TRoutineBody.PreviousToken(ATokens, ANext);
+  if ANext <= High(ATokens) then
   begin
-    Exit;
+    ASite.Offset := ATokens[ANext].Offset;
   end;
-  if InParameters(Tokens, Prev) then
+end;
+
+/// <summary>Doppelpunkt hinter weiteren Namen der Liste (A, |, B: T) ab ANext; -1 ohne.</summary>
+function ColonAfter(const ATokens: TArray<TPascalToken>; ANext: Integer): Integer;
+begin
+  Result := ANext;
+  while (Result <= High(ATokens)) and ATokens[Result].IsSymbol(',') do
+  begin
+    Result := TRoutineBody.NextToken(ATokens, Result);
+    if (Result > High(ATokens)) or (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
+    begin
+      Exit(-1);
+    end;
+    Result := TRoutineBody.NextToken(ATokens, Result);
+  end;
+  if (Result > High(ATokens)) or not ATokens[Result].IsSymbol(':') then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Darf vor einem Namen stehen: Abschnitt, Trenner, Modifizierer oder Attribut?</summary>
+function PrecedesName(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(';') or AToken.IsSymbol(',') or AToken.IsSymbol('(') or AToken.IsSymbol(']') or
+    IsWordIn(AToken, ['var', 'threadvar', 'const', 'out', 'constref', 'record', 'object']) or
+    IsWordIn(AToken, VisibilityWords);
+end;
+
+/// <summary>Art der Deklaration nach dem Token APrev vor dem Namen; False, wenn es keine passende ist.</summary>
+function ClassifySite(ATree: TSyntaxTree; const ATokens: TArray<TPascalToken>; APrev: Integer;
+  var ASite: TNameSite): Boolean;
+var
+  mNode: TSyntaxNode;
+  mSection: string;
+  mAt: Integer;
+begin
+  Result := True;
+  if InParameters(ATokens, APrev) then
   begin
     ASite.Kind := TNamingKind.Parameter;
-    Exit(True);
+    Exit;
   end;
-  Node := NodeAt(ATree.Root, ASite.Offset);
-  if Tokens[Prev].IsKeyword('var') and (Enclosing(Node, [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
+  if ATokens[APrev].IsKeyword('var') and (Enclosing(NodeAt(ATree.Root, ASite.Offset),
+    [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
   begin
     // Inline-Variable in einer Anweisung.
     ASite.Kind := TNamingKind.Local;
-    Exit(True);
-  end;
-  if Tokens[Prev].IsKeyword('const') or IsWordIn(Tokens[Prev], ['out', 'constref']) then
-  begin
     Exit;
   end;
-  Section := SectionBefore(Tokens, Prev, At);
-  if Section = '' then
+  mSection := '';
+  if not IsWordIn(ATokens[APrev], ['const', 'out', 'constref']) then
   begin
-    Exit;
+    mSection := SectionBefore(ATokens, APrev, mAt);
+  end;
+  if mSection = '' then
+  begin
+    Exit(False);
   end;
   // Der Abschnitt steht auch bei unfertigem Code an seinem Platz im Baum.
-  Node := NodeAt(ATree.Root, Tokens[At].Offset);
-  if (Section = 'type') or (Enclosing(Node, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
-    TSyntaxKind.HelperType]) <> nil) then
+  mNode := NodeAt(ATree.Root, ATokens[mAt].Offset);
+  if (mSection = 'type') or (Enclosing(mNode, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+    TSyntaxKind.RecordType, TSyntaxKind.HelperType]) <> nil) then
   begin
     ASite.Kind := TNamingKind.Field;
   end
-  else if Enclosing(Node, [TSyntaxKind.RoutineDecl]) <> nil then
+  else if Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> nil then
   begin
     ASite.Kind := TNamingKind.Local;
   end
@@ -400,7 +419,33 @@ begin
   begin
     ASite.Global := True;
   end;
-  Result := True;
+end;
+
+class function TNameSuggestions.Site(ATree: TSyntaxTree; const APosition: TTextPosition;
+  out ASite: TNameSite): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mNext, mPrev, mColon: Integer;
+begin
+  ASite := Default(TNameSite);
+  Result := False;
+  if ATree = nil then
+  begin
+    Exit;
+  end;
+  mTokens := ATree.Tokens;
+  LocateName(mTokens, APosition, ASite, mNext, mPrev);
+  mColon := ColonAfter(mTokens, mNext);
+  if (mColon < 0) or (mPrev < 0) then
+  begin
+    Exit;
+  end;
+  ASite.TypeText := TypeTextFrom(mTokens, TRoutineBody.NextToken(mTokens, mColon));
+  if (ASite.TypeText = '') or not PrecedesName(mTokens[mPrev]) then
+  begin
+    Exit;
+  end;
+  Result := ClassifySite(ATree, mTokens, mPrev, ASite);
 end;
 
 class function TNameSuggestions.LastWord(const AName: string): string;

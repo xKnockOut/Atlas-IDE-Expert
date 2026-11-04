@@ -113,7 +113,7 @@ begin
     Exit;
   end;
   for mFinding in TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings, Result.Path, mText,
-    ACheckProject(AFile), AGroup.Main.State.CheckSource(AFile), mScopes) do
+    TCheckOrigin.Make(ACheckProject(AFile), AGroup.Main.State.CheckSource(AFile)), mScopes) do
   begin
     if mLines.Contains(mFinding.Range.StartPos.Line) then
     begin

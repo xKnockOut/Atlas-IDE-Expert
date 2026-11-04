@@ -58,7 +58,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Editing.Contract,
@@ -75,6 +77,21 @@ const
   cExtractInterfaceOff = '"Interface herauslösen" ist abgeschaltet (refactoring.extractInterface).';
   cExtractSuperclassOff = '"Basisklasse herauslösen" ist abgeschaltet (refactoring.extractSuperclass).';
   cExtractMissing = 'Argument mit Name, Ziel und Mitgliedern fehlt';
+
+/// <summary>Ansatz für „Signatur ändern“: Dokument und Position aus den Argumenten (URI, Position).</summary>
+function SignatureSource(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ADocument: ITextDocument;
+  const AArguments: TJSONArray; const AFiles: TArray<string>; const AReadText: TReferenceReadText):
+  TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := TSyntaxTreeCache.Get(ADocument, nil).Tree;
+  Result.FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  Result.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Result.Files := AFiles;
+  Result.ReadText := AReadText;
+end;
 
 function ParameterModeOf(const ASettings: TRefactoringSettings): TNewParameterMode;
 begin
@@ -196,10 +213,8 @@ begin
   mDocument := Open(mUri, mSettings.ChangeSignature, cChangeSignatureOff);
   mResolver := NewResolver;
   try
-    Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(mResolver, Index,
-      TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
-      TLspPositions.ReadPosition(AArguments.Items[1]), ProjectFiles, Reader, nil), ParameterModeOf(mSettings),
-      mSettings.VirtualOverload);
+    Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(SignatureSource(mResolver, Index, mDocument,
+      AArguments, ProjectFiles, Reader)), ParameterModeOf(mSettings), mSettings.VirtualOverload);
   finally
     mResolver.Free;
   end;
@@ -224,9 +239,8 @@ begin
     mSettings.VirtualOverload);
   mResolver := NewResolver;
   try
-    mOutcome := TLspChangeSignature.Execute(mResolver, Index, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), TLspPositions.ReadPosition(AArguments.Items[1]), mRequest, ProjectFiles, Reader,
-      IsReadOnly, nil);
+    mOutcome := TLspChangeSignature.Execute(SignatureSource(mResolver, Index, mDocument, AArguments, ProjectFiles,
+      Reader), mRequest, IsReadOnly);
   finally
     mResolver.Free;
   end;
@@ -247,7 +261,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    Result := TLspMoveClass.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TLspMoveClass.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), mDocument.Text, AUri, APosition);
   finally
     mResolver.Free;
@@ -273,10 +287,11 @@ begin
   mContext.ReadText := Reader;
   mContext.Exists := Exists;
   mContext.HasProject := Project(mFileName, mContext.Project);
+  mContext.UnitName := AArguments.Items[2].Value;
   mResolver := NewResolver;
   try
     mAnswer := TLspMoveClass.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, mFileName, mDocument.Text,
-      TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2].Value, mContext);
+      TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
@@ -343,13 +358,19 @@ function TShellStructureRefactorings.InlineAccessorActions(const AUri: string;
 var
   mSettings: TRefactoringSettings;
   mDocument: ITextDocument;
+  mOffer: TInlineAccessorOffer;
 begin
   Result := nil;
   mSettings := Settings(AUri);
   if TryOpen(AUri, mSettings.InlineAccessor, mDocument) then
   begin
-    Result := TLspInlineAccessor.Actions(True, mSettings.InlineAccessorBulk, TSyntaxTreeCache.Get(mDocument,
-      nil).Tree, mDocument.Text, AUri, APosition, InlineAccessorOptionsOf(mSettings), Index);
+    mOffer := Default(TInlineAccessorOffer);
+    mOffer.Enabled := True;
+    mOffer.Bulk := mSettings.InlineAccessorBulk;
+    mOffer.Options := InlineAccessorOptionsOf(mSettings);
+    mOffer.Index := Index;
+    Result := TLspInlineAccessor.Actions(mOffer, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+      APosition);
   end;
 end;
 
@@ -377,10 +398,11 @@ begin
   mContext.Options := InlineAccessorOptionsOf(mSettings);
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
+  mContext.Scope := mScope;
   mResolver := NewResolver;
   try
     mAnswer := TLspInlineAccessor.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mScope, mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
@@ -605,7 +627,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).MoveMember, mDocument) then
   begin
-    Result := TLspMoveMember.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+    Result := TLspMoveMember.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
       TDocumentUris.ToPath(AUri), AUri, APosition, Index);
   end;
 end;
@@ -623,6 +645,7 @@ begin
   Result := Default(TMoveMemberContext);
   Result.Index := Index;
   Result.ReadText := Reader;
+  Result.Direction := AArguments.Items[2].Value;
 end;
 
 function TShellStructureRefactorings.MoveMemberPrepare(const AArguments: TJSONArray): TJSONValue;
@@ -632,8 +655,7 @@ var
 begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
   Result := TLspMoveMember.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
-    TDocumentUris.ToPath(AArguments.Items[0].Value), TLspPositions.ReadPosition(AArguments.Items[1]),
-    AArguments.Items[2].Value, mContext);
+    TDocumentUris.ToPath(AArguments.Items[0].Value), TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
 end;
 
 function TShellStructureRefactorings.MoveMember(const AArguments: TJSONArray): TJSONValue;
@@ -646,11 +668,12 @@ begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
   Require(AArguments, 4, 'Argument mit Mitgliedern und Zielen fehlt');
   mContext.Files := ProjectFiles;
+  mContext.Request := AArguments.Items[3];
   mResolver := NewResolver;
   try
     mAnswer := TLspMoveMember.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AArguments.Items[0].Value), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      AArguments.Items[2].Value, AArguments.Items[3], mContext);
+      mContext);
   finally
     mResolver.Free;
   end;

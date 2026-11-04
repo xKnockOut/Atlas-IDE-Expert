@@ -119,7 +119,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if (mValue is TJSONString) and not (mValue is TJSONNumber) then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 function IntegerOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
@@ -129,7 +131,9 @@ begin
   Result := ADefault;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsInt;
+  end;
 end;
 
 function BooleanOf(const AObject: TJSONObject; const AName: string): Boolean;
@@ -157,7 +161,9 @@ begin
   ACase := TAtlasCrashCase.Empty;
   Result := AParams is TJSONObject;
   if not Result then
+  begin
     Exit;
+  end;
   mObject := TJSONObject(AParams);
   ACase.Summary := StringOf(mObject, 'summary');
   ACase.Folder := StringOf(mObject, 'folder');
@@ -180,7 +186,9 @@ begin
   ASkip := Default(TAtlasCrashSkip);
   Result := AParams is TJSONObject;
   if not Result then
+  begin
     Exit;
+  end;
   mObject := TJSONObject(AParams);
   ASkip.Active := BooleanOf(mObject, 'active');
   ASkip.Method := StringOf(mObject, 'method');
@@ -198,19 +206,33 @@ var
 begin
   mWhere := '';
   if ACase.FileName <> '' then
-    mWhere := ExtractFileName(ACase.FileName)
+  begin
+    mWhere := ExtractFileName(ACase.FileName);
+  end
   else if ACase.Uri <> '' then
+  begin
     mWhere := ACase.Uri;
+  end;
   if (mWhere <> '') and (ACase.Line >= 0) then
+  begin
     mWhere := mWhere + ':' + IntToStr(ACase.Line + 1);
+  end;
   if ACase.Kind = 'timeout' then
-    mWhat := Format('überschritt das Zeitlimit von %d ms', [ATimeoutMs])
+  begin
+    mWhat := Format('überschritt das Zeitlimit von %d ms', [ATimeoutMs]);
+  end
   else
+  begin
     mWhat := 'löste ' + ACase.ExceptionClass + ' aus';
+  end;
   if mWhere <> '' then
-    Result := Format('%s in %s %s', [ACase.Method, mWhere, mWhat])
+  begin
+    Result := Format('%s in %s %s', [ACase.Method, mWhere, mWhat]);
+  end
   else
+  begin
     Result := ACase.Method + ' ' + mWhat;
+  end;
 end;
 
 class function TAtlasCrashCases.Load(const AFolder: string; out ACase: TAtlasCrashCase): Boolean;
@@ -223,7 +245,9 @@ begin
   Result := False;
   mFile := TPath.Combine(AFolder, RequestName);
   if not TFile.Exists(mFile) then
+  begin
     Exit;
+  end;
   // Ohne Ausnahme parsen: mit RaiseExc = True lässt die RTL bei kaputtem JSON das halb gebaute Objekt liegen.
   // Halb geschrieben oder von Hand verändert: kein Fall (nil).
   try
@@ -235,7 +259,9 @@ begin
   end;
   try
     if not (mRoot is TJSONObject) then
+    begin
       Exit;
+    end;
     mObject := TJSONObject(mRoot);
     ACase.Folder := AFolder;
     ACase.Method := StringOf(mObject, 'method');
@@ -271,14 +297,18 @@ begin
   ACase := TAtlasCrashCase.Empty;
   Result := False;
   if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  begin
     Exit;
+  end;
   mFolders := TList<string>.Create;
   try
     for mFolder in TDirectory.GetDirectories(ARoot) do
     begin
       mFile := TPath.Combine(mFolder, RequestName);
       if TFile.Exists(mFile) and (TFile.GetLastWriteTime(mFile) >= ASince) then
+      begin
         mFolders.Add(mFolder);
+      end;
     end;
     // Der Name beginnt mit dem Zeitpunkt (JJJJ-MM-TT_hhmmss_pid); jüngster zuletzt.
     mFolders.Sort(TComparer<string>.Construct(
@@ -287,8 +317,12 @@ begin
         Result := CompareStr(ExtractFileName(ALeft), ExtractFileName(ARight));
       end));
     for mIndex := mFolders.Count - 1 downto 0 do
+    begin
       if Load(mFolders[mIndex], ACase) then
+      begin
         Exit(True);
+      end;
+    end;
   finally
     mFolders.Free;
   end;
@@ -298,7 +332,9 @@ class function TAtlasCrashCases.SummaryText(const ACase: TAtlasCrashCase): strin
 begin
   Result := ACase.Summary;
   if (Result <> '') and (ACase.Version <> '') then
+  begin
     Result := Result + ' (Atlas ' + ACase.Version + ')';
+  end;
 end;
 
 class function TAtlasCrashCases.IssueTitle(const ACase: TAtlasCrashCase): string;
@@ -316,7 +352,9 @@ begin
   mFile := TPath.Combine(ACase.Folder, StackName);
   try
     if (ACase.Folder <> '') and TFile.Exists(mFile) then
+    begin
       mStack := Trim(TFile.ReadAllText(mFile, TEncoding.UTF8));
+    end;
   except
     // Gesperrt oder gelöscht: der Text ohne Stapel.
     on Exception do
@@ -331,14 +369,20 @@ begin
     begin
       mLines.Append('- Datei: `').Append(ExtractFileName(ACase.FileName)).Append('`');
       if ACase.Line >= 0 then
+      begin
         mLines.Append(', Zeile ').Append(IntToStr(ACase.Line + 1));
+      end;
       mLines.Append(sLineBreak);
     end;
     if ACase.ExceptionClass <> '' then
+    begin
       mLines.Append('- Ausnahme: `').Append(ACase.ExceptionClass).Append('`: ').Append(ACase.ExceptionMessage)
         .Append(sLineBreak);
+    end;
     if ACase.Version <> '' then
+    begin
       mLines.Append('- Atlas-Version: ').Append(ACase.Version).Append(sLineBreak);
+    end;
     mLines.Append('- Fall: `').Append(ExtractFileName(ACase.Folder)).Append('` (Dateien als Anhang; ')
       .Append('nachstellen mit `AtlasServer --replay anfrage.json`)').Append(sLineBreak);
     if mStack <> '' then
@@ -361,7 +405,9 @@ var
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   mFiles := TDirectory.GetFiles(AFolder);
   TArray.Sort<string>(mFiles, TComparer<string>.Construct(
     function(const ALeft, ARight: string): Integer
@@ -370,18 +416,24 @@ begin
       Result := Ord(not SameText(ExtractFileName(ALeft), RequestName)) -
         Ord(not SameText(ExtractFileName(ARight), RequestName));
       if Result = 0 then
+      begin
         Result := CompareText(ExtractFileName(ALeft), ExtractFileName(ARight));
+      end;
     end));
   for mFile in mFiles do
   begin
     mName := ExtractFileName(mFile);
     // Ein Skript im Anhang nützt dem Empfänger nichts und wirkt verdächtig.
     if SameText(ExtractFileExt(mName), '.cmd') then
+    begin
       Continue;
+    end;
     try
       mText := TFile.ReadAllText(mFile, TEncoding.UTF8);
       if Length(mText) > MaxAttachChars then
+      begin
         Continue;
+      end;
       mAttach.Name := mName;
       mAttach.Text := mText;
       Result := Result + [mAttach];
@@ -418,8 +470,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to FItems.Count - 1 do
+  begin
     if (FItems[mIndex].Method = AMethod) and SameText(FItems[mIndex].Uri, AUri) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -431,16 +487,22 @@ begin
   if ASkip.Active then
   begin
     if mIndex >= 0 then
-      FItems[mIndex] := ASkip
+    begin
+      FItems[mIndex] := ASkip;
+    end
     else
+    begin
       FItems.Add(ASkip);
+    end;
     Result := True;
   end
   else
   begin
     Result := mIndex >= 0;
     if Result then
+    begin
       FItems.Delete(mIndex);
+    end;
   end;
 end;
 

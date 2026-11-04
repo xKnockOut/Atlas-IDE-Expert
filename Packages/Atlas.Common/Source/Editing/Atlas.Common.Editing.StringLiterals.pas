@@ -31,8 +31,9 @@ type
     class function Quote(const ALine: string): string; static;
     /// <summary>APlainText als Literal. Jede Ausgabezeile beginnt mit AIndent, die erste nur mit
     /// AIndentFirst. ALineEnd trennt die Ausgabezeilen.</summary>
+    /// ASettings.LineBreak trennt die Textzeilen, ASettings.MaxLineLength bricht lange Zeilen um (0 = nicht).
     class function ToLiteral(const APlainText, AIndent: string; AIndentFirst, AMultiline: Boolean;
-      ABreak: TStringLiteralBreak; AMaxLineLength: Integer; const ALineEnd: string): string; static;
+      const ASettings: TStringLiteralSettings; const ALineEnd: string): string; static;
     /// <summary>Text eines Literal-Ausdrucks; False, wenn er etwas anderes als Literale,
     /// Zeichenkonstanten, sLineBreak und + enthält.</summary>
     class function PlainText(const AExpression: string; out AText: string): Boolean; static;
@@ -67,42 +68,47 @@ begin
   end;
 end;
 
+/// <summary>Hängt AText an AResult an; vor das erste Zeichen außerhalb eines Literals kommt das öffnende ',
+/// vor ein Steuerzeichen innerhalb das schließende.</summary>
+procedure AppendQuoted(var AResult: string; var AInQuote: Boolean; AChar: Char);
+begin
+  if Ord(AChar) < 32 then
+  begin
+    if AInQuote then
+    begin
+      AResult := AResult + '''';
+    end;
+    AInQuote := False;
+    AResult := AResult + '#' + IntToStr(Ord(AChar));
+    Exit;
+  end;
+  if not AInQuote then
+  begin
+    AResult := AResult + '''';
+  end;
+  AInQuote := True;
+  if AChar = '''' then
+  begin
+    AResult := AResult + '''''';
+  end
+  else
+  begin
+    AResult := AResult + AChar;
+  end;
+end;
+
 class function TStringLiterals.Quote(const ALine: string): string;
 var
-  C: Char;
-  InQuote: Boolean;
+  mChar: Char;
+  mInQuote: Boolean;
 begin
   Result := '';
-  InQuote := False;
-  for C in ALine do
+  mInQuote := False;
+  for mChar in ALine do
   begin
-    if Ord(C) < 32 then
-    begin
-      if InQuote then
-      begin
-        Result := Result + '''';
-      end;
-      InQuote := False;
-      Result := Result + '#' + IntToStr(Ord(C));
-    end
-    else
-    begin
-      if not InQuote then
-      begin
-        Result := Result + '''';
-      end;
-      InQuote := True;
-      if C = '''' then
-      begin
-        Result := Result + '''''';
-      end
-      else
-      begin
-        Result := Result + C;
-      end;
-    end;
+    AppendQuoted(Result, mInQuote, mChar);
   end;
-  if InQuote then
+  if mInQuote then
   begin
     Result := Result + '''';
   end
@@ -161,94 +167,112 @@ begin
   Result := Result + [Rest];
 end;
 
-class function TStringLiterals.ToLiteral(const APlainText, AIndent: string; AIndentFirst, AMultiline: Boolean;
-  ABreak: TStringLiteralBreak; AMaxLineLength: Integer; const ALineEnd: string): string;
+/// <summary>Ausgabezeilen eines mehrzeiligen Strings; der Compiler entfernt die Einrückung der schließenden '''
+/// aus allen Zeilen.</summary>
+function MultilineOutput(const ALines: TArray<string>; const AIndent: string): TArray<string>;
 var
-  Lines, Parts, Output: TArray<string>;
-  Index, Part: Integer;
-  Line, Piece, Separator: string;
-  Multiline: Boolean;
+  mLine: string;
 begin
-  Lines := TTextLines.SplitLines(APlainText);
-  Output := nil;
-  Multiline := AMultiline and FitsMultiline(Lines);
-  if Multiline then
+  Result := [''''''''];
+  for mLine in ALines do
   begin
-    // Der Compiler entfernt die Einrückung der schließenden ''' aus allen Zeilen.
-    Output := [''''''''];
-    for Line in Lines do
+    if mLine = '' then
     begin
-      if Line = '' then
-      begin
-        Output := Output + [''];
-      end
-      else
-      begin
-        Output := Output + [AIndent + '  ' + Line];
-      end;
+      Result := Result + [''];
+    end
+    else
+    begin
+      Result := Result + [AIndent + '  ' + mLine];
     end;
-    Output := Output + [AIndent + '  ' + ''''''''];
+  end;
+  Result := Result + [AIndent + '  ' + ''''''''];
+end;
+
+/// <summary>Trenner hinter einer Textzeile, die nicht die letzte ist; bei Space hängt ein Leerzeichen an ALine.
+/// </summary>
+function LineSeparator(ABreak: TStringLiteralBreak; var ALine: string): string;
+begin
+  Result := '';
+  case ABreak of
+    TStringLiteralBreak.SLineBreak:
+      Result := ' + sLineBreak';
+    TStringLiteralBreak.CrLf:
+      Result := '#13#10';
+    TStringLiteralBreak.Lf:
+      Result := '#10';
+    TStringLiteralBreak.Space:
+      ALine := ALine + ' ';
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Ausgabezeilen einer Textzeile als verkettete Literale; ALast: letzte Textzeile.</summary>
+function ConcatLine(const ALine, AIndent: string; const ASettings: TStringLiteralSettings; ALast: Boolean):
+  TArray<string>;
+var
+  mLine, mSeparator, mPiece: string;
+  mParts: TArray<string>;
+  mPart: Integer;
+begin
+  mLine := ALine;
+  mSeparator := '';
+  if not ALast then
+  begin
+    mSeparator := LineSeparator(ASettings.LineBreak, mLine);
+  end;
+  mParts := [mLine];
+  if ASettings.MaxLineLength > 0 then
+  begin
+    mParts := Chunks(mLine, ASettings.MaxLineLength - Length(AIndent) - Length(mSeparator) - 2);
+  end;
+  Result := nil;
+  for mPart := 0 to High(mParts) do
+  begin
+    mPiece := AIndent + TStringLiterals.Quote(mParts[mPart]);
+    if mPart = High(mParts) then
+    begin
+      mPiece := mPiece + mSeparator;
+    end;
+    if (mPart < High(mParts)) or not ALast then
+    begin
+      mPiece := mPiece + ' +';
+    end;
+    Result := Result + [mPiece];
+  end;
+end;
+
+class function TStringLiterals.ToLiteral(const APlainText, AIndent: string; AIndentFirst, AMultiline: Boolean;
+  const ASettings: TStringLiteralSettings; const ALineEnd: string): string;
+var
+  mLines, mOutput: TArray<string>;
+  mIndex: Integer;
+  mMultiline: Boolean;
+begin
+  mLines := TTextLines.SplitLines(APlainText);
+  mOutput := nil;
+  mMultiline := AMultiline and FitsMultiline(mLines);
+  if mMultiline then
+  begin
+    mOutput := MultilineOutput(mLines, AIndent);
   end
   else
   begin
-    for Index := 0 to High(Lines) do
+    for mIndex := 0 to High(mLines) do
     begin
-      Line := Lines[Index];
-      Separator := '';
-      if Index < High(Lines) then
-        case ABreak of
-          TStringLiteralBreak.SLineBreak:
-            Separator := ' + sLineBreak';
-          TStringLiteralBreak.CrLf:
-            Separator := '#13#10';
-          TStringLiteralBreak.Lf:
-            Separator := '#10';
-          TStringLiteralBreak.Space:
-            Line := Line + ' ';
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-      if AMaxLineLength > 0 then
-      begin
-        Parts := Chunks(Line, AMaxLineLength - Length(AIndent) - Length(Separator) - 2);
-      end
-      else
-      begin
-        Parts := [Line];
-      end;
-      for Part := 0 to High(Parts) do
-      begin
-        Piece := AIndent + Quote(Parts[Part]);
-        if Part = High(Parts) then
-        begin
-          Piece := Piece + Separator;
-        end;
-        if (Part < High(Parts)) or (Index < High(Lines)) then
-        begin
-          Piece := Piece + ' +';
-        end;
-        Output := Output + [Piece];
-      end;
+      mOutput := mOutput + ConcatLine(mLines[mIndex], AIndent, ASettings, mIndex = High(mLines));
     end;
   end;
   // Die erste Zeile steht hinter dem Text davor, z. B. hinter "SQL.Text := ".
-  if AIndentFirst and Multiline then
+  if AIndentFirst and mMultiline then
   begin
-    Output[0] := AIndent + Output[0];
+    mOutput[0] := AIndent + mOutput[0];
   end
-  else if not AIndentFirst and not Multiline then
+  else if not AIndentFirst and not mMultiline then
   begin
-    Output[0] := Copy(Output[0], Length(AIndent) + 1, MaxInt);
+    mOutput[0] := Copy(mOutput[0], Length(AIndent) + 1, MaxInt);
   end;
-  Result := '';
-  for Index := 0 to High(Output) do
-  begin
-    if Index > 0 then
-    begin
-      Result := Result + ALineEnd;
-    end;
-    Result := Result + Output[Index];
-  end;
+  Result := string.Join(ALineEnd, mOutput);
 end;
 
 /// <summary>Inhalt eines mehrzeiligen Strings: Einrückung der schließenden ''' entfernt.</summary>
@@ -353,61 +377,77 @@ begin
   Result := IsLiteralToken(AToken) or AToken.IsSymbol('+') or (AToken.Kind = TPascalTokenKind.Comment);
 end;
 
-class function TStringLiterals.LiteralAt(const AText: string; const APosition: TTextPosition;
-  out ARange: TTextRange): Boolean;
+/// <summary>Literal (oder +) an APosition; ein Literal hat Vorrang vor einem + daneben. -1 ohne.</summary>
+function HitToken(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, First, Last, Hit: Integer;
+  mIndex: Integer;
 begin
-  Tokens := TPascalLexer.Tokenize(AText);
-  Hit := -1;
-  for Index := 0 to High(Tokens) do
+  Result := -1;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if not Before(APosition, Tokens[Index].StartPos) and not Before(Tokens[Index].EndPos, APosition) and
-      (IsLiteralToken(Tokens[Index]) or Tokens[Index].IsSymbol('+')) then
+    if not Before(APosition, ATokens[mIndex].StartPos) and not Before(ATokens[mIndex].EndPos, APosition) and
+      (IsLiteralToken(ATokens[mIndex]) or ATokens[mIndex].IsSymbol('+')) then
     begin
-      Hit := Index;
-      if IsLiteralToken(Tokens[Index]) then
+      Result := mIndex;
+      if IsLiteralToken(ATokens[mIndex]) then
       begin
-        Break;
+        Exit;
       end;
     end;
   end;
-  if Hit < 0 then
+end;
+
+/// <summary>Steht zwischen AFirst und ALast ein String-Literal?</summary>
+function HasStringToken(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := AFirst to ALast do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class function TStringLiterals.LiteralAt(const AText: string; const APosition: TTextPosition;
+  out ARange: TTextRange): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mFirst, mLast, mHit: Integer;
+begin
+  mTokens := TPascalLexer.Tokenize(AText);
+  mHit := HitToken(mTokens, APosition);
+  if mHit < 0 then
   begin
     Exit(False);
   end;
   // Nach beiden Seiten über Literale, sLineBreak, + und Kommentare ausdehnen.
-  First := Hit;
-  while (First > 0) and Joins(Tokens[First - 1]) do
+  mFirst := mHit;
+  while (mFirst > 0) and Joins(mTokens[mFirst - 1]) do
   begin
-    Dec(First);
+    Dec(mFirst);
   end;
-  Last := Hit;
-  while (Last < High(Tokens)) and Joins(Tokens[Last + 1]) do
+  mLast := mHit;
+  while (mLast < High(mTokens)) and Joins(mTokens[mLast + 1]) do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  while (First <= Last) and not IsLiteralToken(Tokens[First]) do
+  while (mFirst <= mLast) and not IsLiteralToken(mTokens[mFirst]) do
   begin
-    Inc(First);
+    Inc(mFirst);
   end;
-  while (Last >= First) and not IsLiteralToken(Tokens[Last]) do
+  while (mLast >= mFirst) and not IsLiteralToken(mTokens[mLast]) do
   begin
-    Dec(Last);
+    Dec(mLast);
   end;
-  Result := False;
-  for Index := First to Last do
-  begin
-    if Tokens[Index].Kind = TPascalTokenKind.StringLiteral then
-    begin
-      Result := True;
-    end;
-  end;
+  Result := HasStringToken(mTokens, mFirst, mLast);
   if Result then
   begin
-    ARange := TTextRange.Create(Tokens[First].StartPos.Line, Tokens[First].StartPos.Character,
-      Tokens[Last].EndPos.Line, Tokens[Last].EndPos.Character);
+    ARange := TTextRange.Create(mTokens[mFirst].StartPos.Line, mTokens[mFirst].StartPos.Character,
+      mTokens[mLast].EndPos.Line, mTokens[mLast].EndPos.Character);
   end;
 end;
 
