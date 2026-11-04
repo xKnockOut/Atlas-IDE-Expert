@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{3C6E2F0A-6B2D-4F0E-9E0B-5A1D7C2B8E41}</ProjectGuid>
     </PropertyGroup>
@@ -17,9 +17,6 @@
         </Projects>
         <Projects Include="Application\AtlasUpdate.dproj">
             <Dependencies>Packages\Atlas.Text\Atlas.Text.dproj;Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
-        </Projects>
-        <Projects Include="Packages\Atlas.IDE.Contracts\Atlas.IDE.Contracts.dproj">
-            <Dependencies/>
         </Projects>
         <Projects Include="Packages\Atlas.IDE.Base\Atlas.IDE.Base.dproj">
             <Dependencies/>
