@@ -262,8 +262,6 @@ var
     Result := False;
   end;
 
-  /// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
-  /// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
   /// <summary>Ist der var-Abschnitt ASection am Attribut sichtbar? Unit-Ebene oder umgebende Routine.</summary>
   function VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
   var
@@ -285,6 +283,8 @@ var
     end;
   end;
 
+  /// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
+  /// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
   function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
   begin
     Result := (ADecl.StartOffset < AAttribute.StartOffset) and (ADecl.Kind <> TSyntaxKind.Field);

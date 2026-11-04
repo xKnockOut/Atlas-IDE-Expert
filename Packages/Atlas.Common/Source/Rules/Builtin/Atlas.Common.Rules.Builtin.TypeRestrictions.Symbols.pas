@@ -190,10 +190,6 @@ begin
   end;
 end;
 
-/// <summary>Namen des implementation-Teils, die eine Inline-Routine aus dem interface-Teil verwenden darf: echte
-/// Konstanten, Typen samt Aufzählungswerten und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1,
-/// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
-/// TG4).</summary>
 /// <summary>Namen der echten Konstanten (ohne Typ) eines const-Abschnitts.</summary>
 function UntypedConstNames(AConstSection: TSyntaxNode): TArray<string>;
 var
