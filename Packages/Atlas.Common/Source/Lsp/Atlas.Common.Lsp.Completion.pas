@@ -54,7 +54,9 @@ uses
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.CompletionAnonymous;
+  Atlas.Common.Lsp.CompletionAnonymous,
+  Atlas.Common.Lsp.Completion.Forms,
+  Atlas.Common.Lsp.Completion.Names;
 
 type
   // Typen der Vervollständigung stehen in Atlas.Common.Lsp.CompletionRequest (Code-Review S-01); hier
@@ -84,10 +86,7 @@ type
 
   TPostfixOptionsFunc = reference to function(const AUri: string): TPostfixOptions;
 
-  /// <summary>Auszug des Formulars zur Unit ASourceFile mit dem Text ASourceText (#455, #480); False ohne
-  /// Formular.</summary>
-  TCompletionFormFunc = reference to function(const ASourceFile, ASourceText: string;
-    out ASnapshot: TFormSnapshot): Boolean;
+  TCompletionFormFunc = Atlas.Common.Lsp.Completion.Forms.TCompletionFormFunc;
 
   TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
 
@@ -109,9 +108,7 @@ type
   /// Angebot (bekannter Name, kein Aufruf, abgeschaltet).</summary>
   TCompletionCreateFunc = reference to function(ARequest: TCompletionRequest; out ATitle, ADetail: string;
     out AEdits: TArray<TTextEdit>): Boolean;
-  /// <summary>Präfix für Namensvorschläge (#452) der Art AKind im Projekt von AUri: Vorgabe der Projektdatei,
-  /// sonst nach der Zählung im Index (TLspCompletion.NamingPrefix); '' ohne.</summary>
-  TCompletionNamingFunc = reference to function(const AUri: string; AKind: TNamingKind): string;
+  TCompletionNamingFunc = Atlas.Common.Lsp.Completion.Names.TCompletionNamingFunc;
 
   /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
   /// fertig mit TCompletionAnswer.Exclusive.</summary>
@@ -190,8 +187,6 @@ type
     FTreeCases: TArray<TCompletionCase>;
     procedure RegisterCases;
     procedure HandlePostfixTemplates(const AParams: TJSONValue);
-    /// <summary>Formular zur Unit über FReadText, zwischengespeichert je Stand der Formulardatei.</summary>
-    function FormSnapshot(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean;
     function ReadCached(const AFileName: string; out AText: string): Boolean;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>Antwort für ADocument an APosition; AParams (darf nil sein) liefert Auslöser und
@@ -243,83 +238,12 @@ type
     /// <summary>documentation für completionItem/resolve aus Details: Markdown als MarkupContent, sonst Klartext
     /// (ganzer XMLDoc-Text, ersatzweise der Kurztext); nil ohne Doku.</summary>
     class function ResolveDocumentation(const ADetails: TJSONObject; AMarkdown: Boolean): TJSONValue; static;
-    /// <summary>Nach "Objekt.Ereignis := " (#444): Methoden der umgebenden Klasse, deren Parameter zum
-    /// Methodenzeigertyp des Ereignisses passen, zuletzt "Neue Methode …" mit Deklaration im private-Abschnitt
-    /// und leerem Rumpf. False außerhalb dieses Kontexts.</summary>
-    class function EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
-      overload; static;
-    /// <summary>Wie oben, mit Baum, Resolver und ReadText aus ARequest.</summary>
-    class function EventItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean; overload; static;
-    /// <summary>Methodenreferenztyp ATypeText, so aufgelöst, wie er in AFromUnit stünde (#468): Deklaration aus
-    /// dem Index, Aliase bis TCompletionAnonymous.MaxAliasDepth verfolgt, Typparameter durch die Typargumente
-    /// ersetzt; ohne Deklaration im Index die von System.SysUtils (TProc, TFunc, TPredicate). False, wenn
-    /// ATypeText kein "reference to procedure/function" ist.</summary>
-    class function MethodRefOf(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const ATypeText: string;
-      out AMethodRef: TMethodRef): Boolean; static;
-    /// <summary>Gerüst einer anonymen Methode (#468), wenn das Argument bzw. die Zuweisung am Cursor einen
-    /// Methodenreferenztyp erwartet und completion.anonymousMethods gilt; der Cursor steht ohne Wort oder hinter
-    /// einem Anfang von procedure bzw. function. Mit ASnippets im Platzhalter-Modus (/bin/bash im Rumpf). Das Präfix der
-    /// Parameter kommt aus ANamingFor bzw. NamingPrefix.</summary>
-    class function AnonymousItem(ARequest: TCompletionRequest; ASnippets: Boolean;
-      const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean; static;
-    /// <summary>Komponenten des Formulars zur Unit (#455), wenn der Cursor ohne Punkt in einer Methode der
-    /// Formularklasse steht. Quelle ist die Formulardatei über AReadText, also der Stand im Designer, solange das
-    /// Formular offen ist. Je Komponente ein Feld mit ihrem Typ als Detail und Form = Formularname. Passt der Name
-    /// nicht zum Getippten, aber der Typ (eigene Klasse beginnt damit ohne "T", oder ein Vorfahr heißt genau so),
-    /// kommt sie mit ByType. False ohne Formular oder außerhalb seiner Methoden.</summary>
-    class function ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; const AReadText: TCompletionReadText; AMatching: TCompletionMatching;
-      out AItems: TArray<TCompletionItem>): Boolean; static;
-    /// <summary>Wie ComponentItems, das Formular aber über AForms (z. B. zwischengespeichert, Code-Review P-06).
-    /// Außerhalb von Routinen wird AForms nicht gerufen.</summary>
-    class function ComponentItemsFromForm(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; const AForms: TCompletionFormFunc; AMatching: TCompletionMatching;
-      out AItems: TArray<TCompletionItem>): Boolean; overload; static;
-    /// <summary>Wie oben, mit Baum, Resolver und Matching aus ARequest.</summary>
-    class function ComponentItemsFromForm(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
-      out AItems: TArray<TCompletionItem>): Boolean; overload; static;
-    /// <summary>Cursor im ersten Argument von FieldByName, FindField oder ParamByName an einer Datenmenge der
-    /// Unit (#461): die Namen aus der Formulardatei (persistente Felder, Spalten der SQL-Anweisung,
-    /// Platzhalter, Params). Jeder Eintrag ersetzt den ganzen String-Inhalt. True auch ohne Namen, denn im
-    /// String gibt es sonst nichts vorzuschlagen.</summary>
-    class function DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; overload; static;
-    /// <summary>Wie oben, mit Index und ReadText aus ARequest.</summary>
-    class function DataNameItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean; overload; static;
-    /// <summary>Freigabe absichern (#489): Nach "Liste := TStringList.Create;" in Zeile APosition.Line „Mit
-    /// try…finally absichern“ und, wenn danach noch Zeilen bis zum Routinenende folgen, dieselbe Absicherung bis
-    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check). ANewLine: Ausgelöst durch Enter am
-    /// Zeilenende; die Anweisung steht dann in der Zeile davor, und die leere Zeile des Cursors wird ersetzt.</summary>
-    class function GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
-      out AItems: TCompletionItems): Boolean; overload; static;
-    /// <summary>Wie oben, mit Baum, Resolver und Freigabe (Settings.FreeStyle) aus ARequest.</summary>
-    class function GuardItems(ARequest: TCompletionRequest; ANewLine: Boolean; out AItems: TCompletionItems): Boolean;
-      overload; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
-    /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
-    /// Formular, bei bereits umgewandeltem Sender oder wenn der gemeinsame Typ TObject ist.</summary>
-    class function SenderItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
-      AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean; static;
-    /// <summary>Wie SenderItems, das Formular aber über AForms (Code-Review P-06).</summary>
-    class function SenderItemsFromForm(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AText, AFileName: string; const APosition: TTextPosition; const AForms: TCompletionFormFunc;
-      AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean;
-      overload; static;
-    /// <summary>Wie oben, mit Baum, Resolver, Index, Matching und Typumwandlung (Settings.SenderCast) aus ARequest.
-    /// </summary>
-    class function SenderItemsFromForm(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
-      out AItems: TCompletionItems): Boolean; overload; static;
-    /// <summary>Präfix F, A bzw. L für AKind, wenn mindestens 60 % dieser Deklarationen in den Projekt-Units
-    /// von AIndex es tragen (#452); sonst ''.</summary>
-    class function NamingPrefix(const AIndex: ISymbolIndex; AKind: TNamingKind): string; static;
-    /// <summary>Namensvorschläge an der Namensposition einer Deklaration (#452): Namen aus dem Typ mit APrefix,
-    /// vergebene mit Ziffer. False, wenn keine Namensposition mit bekanntem Typ vorliegt oder
-    /// completion.nameSuggestions aus ist.</summary>
-    class function NameItems(ARequest: TCompletionRequest; const ANamingFor: TCompletionNamingFunc;
+    /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach Settings.SenderCast und den Namen. False ohne
+    /// Zuweisung im Formular (über AForms), bei bereits umgewandeltem Sender oder wenn der gemeinsame Typ TObject
+    /// ist.</summary>
+    class function SenderItems(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
       out AItems: TCompletionItems): Boolean; static;
     /// <summary>Kontextabhängige Code-Vorlagen (#51) für die Zeile von APosition: prop, changed, create, free.
     /// Mit ASnippetSupport als LSP-Snippet, sonst als Klartext ohne Platzhalter.</summary>
@@ -393,8 +317,9 @@ uses
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Values,
   Atlas.Common.Lsp.Completion.Declarations,
+  Atlas.Common.Lsp.Completion.Methods,
+  Atlas.Common.Lsp.Completion.Guard,
   Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Internals.CompletionSource,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Index.Files,
   System.Math,
@@ -418,7 +343,6 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
@@ -1785,176 +1709,6 @@ begin
   Result := True;
 end;
 
-class function TLspCompletion.NamingPrefix(const AIndex: ISymbolIndex; AKind: TNamingKind): string;
-var
-  Units: TArray<TUnitIndex>;
-  Count: TNamingCount;
-  Index: Integer;
-begin
-  Result := '';
-  if AIndex = nil then
-  begin
-    Exit;
-  end;
-  Count := Default(TNamingCount);
-  Units := AIndex.Units;
-  for Index := 0 to High(Units) do
-  begin
-    if not Units[Index].Library_ then
-    begin
-      Inc(Count.Total, Units[Index].Naming[AKind].Total);
-      Inc(Count.Prefixed, Units[Index].Naming[AKind].Prefixed);
-    end;
-  end;
-  if TNameSuggestions.UsesPrefix(Count) then
-  begin
-    Result := NamingPrefixes[AKind];
-  end;
-end;
-
-/// <summary>Namen, die an der Namensposition ASite schon vergeben sind: sichtbare Namen (lokal, eigene Klasse,
-/// eigene Unit), bei Feldern die Mitglieder der Klasse, bei Parametern die übrigen Parameter. Der Name, der an
-/// der Stelle selbst steht, zählt nicht.</summary>
-function TakenNames(ARequest: TCompletionRequest; const ASite: TNameSite): TArray<string>;
-var
-  Own, Container: string;
-  Candidate: TResolvedSymbol;
-  Symbol: TIndexSymbol;
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Name: string;
-begin
-  Result := nil;
-  Own := '';
-  if ComparePositions(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
-  begin
-    Own := Copy(ARequest.LineText(ASite.NameRange.StartPos.Line), ASite.NameRange.StartPos.Character + 1,
-      ASite.NameRange.EndPos.Character - ASite.NameRange.StartPos.Character);
-  end;
-  if ARequest.Resolver <> nil then
-  begin
-    for Candidate in ARequest.Resolver.Candidates.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, ASite.Offset) do
-    begin
-      Result := Result + [Candidate.Name];
-    end;
-  end;
-  Node := ARequest.Tree.Root;
-  while Node <> nil do
-  begin
-    Child := nil;
-    for Index := 0 to Node.ChildCount - 1 do
-    begin
-      if (Node[Index].StartOffset <= ASite.Offset) and (ASite.Offset <= Node[Index].EndOffset) then
-      begin
-        Child := Node[Index];
-      end;
-    end;
-    if Child = nil then
-    begin
-      Break;
-    end;
-    Node := Child;
-  end;
-  if ASite.Kind = TNamingKind.Parameter then
-  begin
-    while (Node <> nil) and (Node.Kind <> TSyntaxKind.Parameters) do
-    begin
-      Node := Node.Parent;
-    end;
-    if Node <> nil then
-    begin
-      for Index := 0 to Node.ChildCount - 1 do
-      begin
-        for Name in Node[Index].Name.Split([',']) do
-        begin
-          if Trim(Name) <> '' then
-          begin
-            Result := Result + [Trim(Name)];
-          end;
-        end;
-      end;
-    end;
-  end
-  else if (ASite.Kind = TNamingKind.Field) and not ASite.Global then
-  begin
-    while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
-      TSyntaxKind.RecordType, TSyntaxKind.HelperType]) do
-    begin
-      Node := Node.Parent;
-    end;
-    if (Node <> nil) and (Node.Parent <> nil) then
-    begin
-      Container := Node.Parent.Name;
-      for Symbol in ARequest.UnitIndex.Symbols do
-      begin
-        if (Symbol.Container <> '') and SameText(Symbol.Container.Substring(Symbol.Container.LastIndexOf('.') + 1),
-          Container) then
-        begin
-          Result := Result + [Symbol.Name];
-        end;
-      end;
-    end;
-  end;
-  if Own = '' then
-  begin
-    Exit;
-  end;
-  for Index := High(Result) downto 0 do
-  begin
-    if SameText(Result[Index], Own) then
-    begin
-      Delete(Result, Index, 1);
-    end;
-  end;
-end;
-
-class function TLspCompletion.NameItems(ARequest: TCompletionRequest; const ANamingFor: TCompletionNamingFunc;
-  out AItems: TCompletionItems): Boolean;
-var
-  Site: TNameSite;
-  Prefix, Name: string;
-  Item: TCompletionItem;
-begin
-  AItems := Default(TCompletionItems);
-  Result := False;
-  if not ARequest.Settings.NameSuggestions or (ARequest.Tree = nil) or
-    not TNameSuggestions.Site(ARequest.Tree, ARequest.Position, Site) then
-  begin
-    Exit;
-  end;
-  if Site.Global then
-  begin
-    Prefix := '';
-  end
-  else if Assigned(ANamingFor) then
-  begin
-    Prefix := ANamingFor(ARequest.Uri, Site.Kind);
-  end
-  else
-  begin
-    Prefix := NamingPrefix(ARequest.Index, Site.Kind);
-  end;
-  for Name in TNameSuggestions.Suggest(Site.TypeText, Prefix, TakenNames(ARequest, Site)) do
-  begin
-    Item := Default(TCompletionItem);
-    Item.Name := Name;
-    if Site.Kind = TNamingKind.Field then
-    begin
-      Item.Kind := KindField;
-    end
-    else
-    begin
-      Item.Kind := KindVariable;
-    end;
-    Item.Detail := Site.TypeText;
-    Item.Fits := True;
-    Item.HasTextEdit := True;
-    Item.TextEdit := TRuleEdit.Create(Site.NameRange, Name);
-    AItems.Items := AItems.Items + [Item];
-  end;
-  Result := Length(AItems.Items) > 0;
-end;
-
 /// <summary>Hängt ACase an ACases an.</summary>
 procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionCase);
 begin
@@ -2004,7 +1758,7 @@ begin
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
     begin
       Result := TCompletionOutcome.Next;
-      if DataNameItems(ARequest, AAnswer.Exclusive) then
+      if TCompletionForms.DataNameItems(ARequest, AAnswer.Exclusive) then
       begin
         Result := TCompletionOutcome.Answered;
       end;
@@ -2055,7 +1809,7 @@ begin
       begin
         Exit;
       end;
-      if not (ARequest.Settings.OfferTryFinally and GuardItems(ARequest, ARequest.Trigger = #10,
+      if not (ARequest.Settings.OfferTryFinally and TCompletionGuard.GuardItems(ARequest, ARequest.Trigger = #10,
         AAnswer.Exclusive)) then
       begin
         AAnswer.Exclusive := Default(TCompletionItems);
@@ -2070,7 +1824,7 @@ begin
       Item: TCompletionItem;
     begin
       Result := TCompletionOutcome.Next;
-      if not AnonymousItem(ARequest, FSnippetSupport, FNamingFor, Item) then
+      if not TCompletionMethods.AnonymousItem(ARequest, FSnippetSupport, FNamingFor, Item) then
       begin
         Exit;
       end;
@@ -2135,7 +1889,7 @@ begin
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
     begin
       Result := TCompletionOutcome.Next;
-      if NameItems(ARequest, FNamingFor, AAnswer.Exclusive) then
+      if TCompletionNames.NameItems(ARequest, FNamingFor, AAnswer.Exclusive) then
       begin
         Result := TCompletionOutcome.Answered;
       end;
@@ -2165,7 +1919,7 @@ begin
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
     begin
       Result := TCompletionOutcome.Next;
-      if EventItems(ARequest, AAnswer.Exclusive) then
+      if TCompletionMethods.EventItems(ARequest, AAnswer.Exclusive) then
       begin
         Result := TCompletionOutcome.Answered;
       end;
@@ -2222,7 +1976,7 @@ begin
       Items: TArray<TCompletionItem>;
     begin
       Result := TCompletionOutcome.Next;
-      if ComponentItemsFromForm(ARequest, AAnswer.Forms, Items) then
+      if TCompletionForms.ComponentItems(ARequest, AAnswer.Forms, Items) then
       begin
         AAnswer.Prefetched := AAnswer.Prefetched + Items;
       end;
@@ -2285,7 +2039,7 @@ begin
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
     begin
       Result := TCompletionOutcome.Next;
-      if SenderItemsFromForm(ARequest, AAnswer.Forms, AAnswer.Exclusive) then
+      if SenderItems(ARequest, AAnswer.Forms, AAnswer.Exclusive) then
       begin
         Result := TCompletionOutcome.Answered;
       end;
@@ -2390,11 +2144,7 @@ begin
     Request.Trigger := Trigger;
     Answer.Cancellation := ACancellation;
     // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
-    Answer.Forms :=
-      function(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean
-      begin
-        Result := FormSnapshot(ASourceFile, ASourceText, ASnapshot);
-      end;
+    Answer.Forms := TCompletionForms.Cached(FStore, FReadText, FForms);
     if Assigned(FNotify) and (AParams <> nil) and (AParams.GetValue('partialResultToken') is TJSONString) then
     begin
       Answer.Token := TJSONString(AParams.GetValue('partialResultToken')).Value;
@@ -2799,1066 +2549,37 @@ begin
   Data.AddPair('atlas', Details);
 end;
 
-/// <summary>Liegt APosition in ARange (Grenzen eingeschlossen)?</summary>
-function RangeHas(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
-begin
-  Result := ((APosition.Line > ARange.StartPos.Line) or ((APosition.Line = ARange.StartPos.Line) and
-    (APosition.Character >= ARange.StartPos.Character))) and ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
-end;
-
-/// <summary>Innerste Routine aus AUnit (aus dem Baum), deren Bereich APosition enthält (Code-Review P-06,
-/// P-11); lokale Prozeduren stehen nicht im Index, daher ist das die umgebende Methode bzw. Routine.</summary>
-function RoutineAt(const AUnit: TUnitIndex; const APosition: TTextPosition; out ARoutine: TIndexSymbol): Boolean;
-var
-  Index: Integer;
-begin
-  Result := False;
-  ARoutine := Default(TIndexSymbol);
-  for Index := 0 to High(AUnit.Symbols) do
-  begin
-    if (AUnit.Symbols[Index].Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
-      TIndexSymbolKind.Routine]) and RangeHas(AUnit.Symbols[Index].Range, APosition) and
-      (not Result or (AUnit.Symbols[Index].Range.StartPos.Line >= ARoutine.Range.StartPos.Line)) then
-    begin
-      ARoutine := AUnit.Symbols[Index];
-      Result := True;
-    end;
-  end;
-end;
-
-/// <summary>Zerlegt AFormText; False, wenn die Datei kein Wurzelobjekt hat.</summary>
-function ParseForm(const AFormFile, AFormText: string; out ASnapshot: TFormSnapshot): Boolean;
-var
-  Document: TDfmDocument;
-begin
-  ASnapshot := Default(TFormSnapshot);
-  Document := TDfmParser.Parse(AFormText);
-  try
-    Result := Document.Root <> nil;
-    if Result then
-    begin
-      ASnapshot := TFormSnapshotCache.FromDocument(AFormFile, Document);
-    end;
-  finally
-    Document.Free;
-  end;
-end;
-
-/// <summary>Formular zur Unit über AReadText, ohne Zwischenspeicher (für Aufrufer ohne Instanz, z. B. Tests);
-/// nil ohne AReadText.</summary>
-function UncachedForms(const AReadText: TCompletionReadText): TCompletionFormFunc;
-begin
-  Result := nil;
-  if not Assigned(AReadText) then
-  begin
-    Exit;
-  end;
-  Result :=
-    function(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean
-    var
-      FormFile, FormText: string;
-    begin
-      ASnapshot := Default(TFormSnapshot);
-      for FormFile in TFormFiles.FormFiles(ASourceFile, ASourceText) do
-      begin
-        if AReadText(FormFile, FormText) and ParseForm(FormFile, FormText, ASnapshot) then
-        begin
-          Exit(True);
-        end;
-      end;
-      Result := False;
-    end;
-end;
-
-function TLspCompletion.FormSnapshot(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean;
-var
-  FormFile, FormText, Stamp: string;
-  Document: ITextDocument;
-  Age: TDateTime;
-begin
-  ASnapshot := Default(TFormSnapshot);
-  Result := False;
-  if not Assigned(FReadText) then
-  begin
-    Exit;
-  end;
-  for FormFile in TFormFiles.FormFiles(ASourceFile, ASourceText) do
-  begin
-    // Stand des Auszugs (Code-Review P-06): Offene Formulare (Designer) über ihren Text – die Versionsnummer
-    // beginnt nach Schließen und erneutem Öffnen wieder vorn –, Dateien auf der Platte über die Dateizeit.
-    // Ohne Stand wird nicht zwischengespeichert.
-    Stamp := '';
-    FormText := '';
-    if (FStore <> nil) and FStore.TryGet(TDocumentUris.FromPath(FormFile), Document) then
-    begin
-      if not FReadText(FormFile, FormText) then
-      begin
-        Continue;
-      end;
-      Stamp := 'd' + FormText;
-    end
-    else if FileAge(FormFile, Age) then
-    begin
-      Stamp := 't' + FloatToStr(Age, TFormatSettings.Invariant);
-    end;
-    if (Stamp <> '') and FForms.TryGet(FormFile, Stamp, ASnapshot) then
-    begin
-      Exit(True);
-    end;
-    if (FormText = '') and not FReadText(FormFile, FormText) then
-    begin
-      Continue;
-    end;
-    if ParseForm(FormFile, FormText, ASnapshot) then
-    begin
-      if Stamp <> '' then
-      begin
-        FForms.Put(FormFile, Stamp, ASnapshot);
-      end;
-      Exit(True);
-    end;
-  end;
-end;
-
-/// <summary>Klassenname ohne führendes T.</summary>
-function TypeWord(const ATypeName: string): string;
-begin
-  if (Length(ATypeName) > 1) and CharInSet(ATypeName[1], ['T', 't']) then
-  begin
-    Result := Copy(ATypeName, 2, MaxInt);
-  end
-  else
-  begin
-    Result := ATypeName;
-  end;
-end;
-
-/// <summary>Ein Typ aus AChain heißt ohne "T" genau AWord.</summary>
-function ChainHas(const AChain: TArray<string>; const AWord: string): Boolean;
-var
-  Name: string;
-begin
-  for Name in AChain do
-  begin
-    if SameText(TypeWord(Name), AWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TLspCompletion.ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
-  AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
-  AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>): Boolean;
-begin
-  Result := ComponentItemsFromForm(AResolver, ATree, AText, AFileName, APosition, UncachedForms(AReadText), AMatching,
-    AItems);
-end;
-
-class function TLspCompletion.ComponentItemsFromForm(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
-  AFileName: string; const APosition: TTextPosition; const AForms: TCompletionFormFunc;
-  AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>): Boolean;
-var
-  Request: TCompletionRequest;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
-  try
-    Request.Tree := ATree;
-    Request.Resolver := AResolver;
-    Request.Matching := AMatching;
-    Result := ComponentItemsFromForm(Request, AForms, AItems);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.ComponentItemsFromForm(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
-  out AItems: TArray<TCompletionItem>): Boolean;
-const
-  // Höchstens so viele Komponenten prüfen, ob sie von hier aus als Feld sichtbar sind.
-  MaxProbes = 3;
-var
-  Context: TCompletionContext;
-  Form: TFormSnapshot;
-  Component: TFormSnapshotComponent;
-  Routine: TIndexSymbol;
-  Resolved, TypeSymbol, Ancestor: TResolvedSymbol;
-  Visible, ByType: Boolean;
-  Probes, Depth: Integer;
-  UnitIndex: TUnitIndex;
-  Ancestors: TDictionary<string, TArray<string>>;
-  Chain: TArray<string>;
-  Item: TCompletionItem;
-  Items: TList<TCompletionItem>;
-begin
-  AItems := nil;
-  Result := False;
-  if not Assigned(AForms) then
-  begin
-    Exit;
-  end;
-  Context := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
-  if Context.Kind <> TCompletionContextKind.Scope then
-  begin
-    Exit;
-  end;
-  // Komponenten gibt es nur in Routinen (Methoden der Formularklasse): außerhalb das Formular gar nicht
-  // erst lesen (Code-Review P-06).
-  UnitIndex := ARequest.UnitIndex;
-  if not RoutineAt(UnitIndex, ARequest.Position, Routine) then
-  begin
-    Exit;
-  end;
-  if not AForms(ARequest.FileName, ARequest.Text, Form) then
-  begin
-    Exit;
-  end;
-  Ancestors := TDictionary<string, TArray<string>>.Create;
-  Items := TList<TCompletionItem>.Create;
-  try
-    // Sichtbar nur in Methoden der Formularklasse: die ersten Komponenten müssen als deren Feld auflösen.
-    Visible := False;
-    Probes := 0;
-    for Component in Form.Components do
-    begin
-      Resolved := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, [Component.Name], Context.Offset);
-      if Resolved.Found and (Resolved.SymbolKind = TIndexSymbolKind.Field) and
-        SameText(Resolved.Container, Form.RootType) then
-      begin
-        Visible := True;
-        Break;
-      end;
-      Inc(Probes);
-      if Probes >= MaxProbes then
-      begin
-        Break;
-      end;
-    end;
-    if not Visible then
-    begin
-      Exit;
-    end;
-    for Component in Form.Components do
-    begin
-      ByType := MatchScore(Component.Name, Context.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch;
-      // Suche über den Typ ab zwei Zeichen: eigene Klasse beginnt damit, oder ein Vorfahr heißt genau so
-      // ("button" findet TButton und TBitBtn, aber nicht TCheckBox über TButtonControl).
-      if ByType then
-      begin
-        if Length(Context.Prefix) < 2 then
-        begin
-          Continue;
-        end;
-        if not StartsText(Context.Prefix, TypeWord(Component.TypeName)) then
-        begin
-          if not Ancestors.TryGetValue(LowerCase(Component.TypeName), Chain) then
-          begin
-            Chain := nil;
-            if ARequest.Resolver.ResolveTypeFrom(UnitIndex, Component.TypeName, TypeSymbol) then
-            begin
-              for Depth := 1 to 32 do
-              begin
-                if not ARequest.Resolver.AncestorOf(TypeSymbol, Ancestor) then
-                begin
-                  Break;
-                end;
-                Chain := Chain + [Ancestor.Name];
-                TypeSymbol := Ancestor;
-              end;
-            end;
-            Ancestors.Add(LowerCase(Component.TypeName), Chain);
-          end;
-          if not ChainHas(Chain, Context.Prefix) then
-          begin
-            Continue;
-          end;
-        end;
-      end;
-      Item := Default(TCompletionItem);
-      Item.Name := Component.Name;
-      Item.Detail := Component.TypeName;
-      Item.Kind := KindField;
-      Item.Container := Form.RootType;
-      Item.Scope := 3;
-      Item.Form := Form.RootName;
-      Item.ByType := ByType;
-      // Wie im Sammler (#882): Unscharfe Treffer und Treffer über den Typ bekommen das getippte Wort als
-      // filterText, sonst verwirft ein Editor mit eigenem Präfixfilter (VS Code) alles ohne passenden Anfang.
-      if (ARequest.Matching = TCompletionMatching.Fuzzy) and (Context.Prefix <> '') and
-        not Component.Name.StartsWith(Context.Prefix, True) then
-      begin
-        Item.FilterText := Context.Prefix;
-      end;
-      // Liste statt AItems := AItems + [...] (Code-Review P-08).
-      Items.Add(Item);
-    end;
-    AItems := Items.ToArray;
-  finally
-    Items.Free;
-    Ancestors.Free;
-  end;
-  Result := Length(AItems) > 0;
-end;
-
-class function TLspCompletion.SenderItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
-  AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean;
-begin
-  Result := SenderItemsFromForm(AResolver, AIndex, ATree, AText, AFileName, APosition, UncachedForms(AReadText),
-    AMatching, ACast, AItems);
-end;
-
-class function TLspCompletion.SenderItemsFromForm(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AText, AFileName: string; const APosition: TTextPosition;
-  const AForms: TCompletionFormFunc; AMatching: TCompletionMatching; ACast: TCompletionSenderCast;
+class function TLspCompletion.SenderItems(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
   out AItems: TCompletionItems): Boolean;
 var
-  Request: TCompletionRequest;
-  Settings: TCompletionSettings;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
-  try
-    Request.Tree := ATree;
-    Request.Resolver := AResolver;
-    Request.Index := AIndex;
-    Request.Matching := AMatching;
-    Settings := Request.Settings;
-    Settings.SenderCast := ACast;
-    Request.Settings := Settings;
-    Result := SenderItemsFromForm(Request, AForms, AItems);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.SenderItemsFromForm(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
-  out AItems: TCompletionItems): Boolean;
-const
-  // So weit sucht Atlas nach oben nach dem Kopf der Methode bzw. nach dem Parameter darin.
-  MaxHeaderDistance = 2000;
-  MaxHeaderLines = 6;
-var
-  Context: TCompletionContext;
-  Lines: TArray<string>;
-  Line, HeaderLine, ParamLine, Index, LastObject: Integer;
-  Match: TMatch;
-  MethodName, CommonType, Cast, LB, Patched: string;
-  Form: TFormSnapshot;
-  Handler: TFormSnapshotHandler;
-  Routine: TIndexSymbol;
-  Types, Names, Chain, First: TArray<string>;
-  UnitIndex: TUnitIndex;
-  Shared: Boolean;
-  Candidate: string;
-  PatchedTree: TSyntaxTree;
-  Postfix: TPostfixOptions;
-  Header, SenderParam: TRegEx;
+  mSite: TSenderSite;
+  mRequest: TCompletionRequest;
+  mPostfix: TPostfixOptions;
 begin
   AItems := Default(TCompletionItems);
-  Result := False;
-  Context := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
-  if (Context.Kind <> TCompletionContextKind.Member) or (Length(Context.Names) <> 1) or
-    not SameText(Context.Names[0], 'Sender') or not Assigned(AForms) then
-  begin
-    Exit;
-  end;
-  // Muster einmal je Aufruf übersetzen (Code-Review P-11); lokal, weil die Vervollständigung nebenläufig läuft.
-  SenderParam := TRegEx.Create('\b(Sender\s*:\s*)TObject\b', [roIgnoreCase]);
-  // Kopf der umgebenden Methode "procedure TForm1.btnAnyClick(Sender: TObject);" oberhalb des Cursors: aus dem
-  // Baum (Code-Review P-11); nur ohne passende Methode dort wie bisher Zeile für Zeile nach oben.
-  // Kopie: Die Zeile mit dem Parameter wird unten umgeschrieben.
-  Lines := Copy(ARequest.Lines);
-  UnitIndex := ARequest.UnitIndex;
-  HeaderLine := -1;
-  if RoutineAt(UnitIndex, ARequest.Position, Routine) and (Routine.Container <> '') and
-    (Routine.Range.StartPos.Line < ARequest.Position.Line) and (Routine.Range.StartPos.Line <= High(Lines)) then
-  begin
-    HeaderLine := Routine.Range.StartPos.Line;
-    MethodName := Routine.Name;
-  end
-  else
-  begin
-    Header := TRegEx.Create('^\s*(class\s+)?(procedure|function)\s+[\w.]+\.(\w+)\s*[(;:]', [roIgnoreCase]);
-    for Line := Min(ARequest.Position.Line - 1, High(Lines)) downto
-      Max(0, ARequest.Position.Line - MaxHeaderDistance) do
-    begin
-      Match := Header.Match(Lines[Line]);
-      if Match.Success then
-      begin
-        HeaderLine := Line;
-        MethodName := Match.Groups[3].Value;
-        Break;
-      end;
-    end;
-  end;
-  if HeaderLine < 0 then
-  begin
-    Exit;
-  end;
-  ParamLine := -1;
-  for Line := HeaderLine to Min(HeaderLine + MaxHeaderLines - 1, ARequest.Position.Line - 1) do
-  begin
-    if SenderParam.IsMatch(Lines[Line]) then
-    begin
-      ParamLine := Line;
-      Break;
-    end;
-  end;
-  if ParamLine < 0 then
-  begin
-    Exit;
-  end;
-  // Komponenten, deren Ereignis im Formular auf diese Methode zeigt; je Objekt die erste Zuweisung.
-  if not AForms(ARequest.FileName, ARequest.Text, Form) then
-  begin
-    Exit;
-  end;
-  Types := nil;
-  Names := nil;
-  LastObject := -1;
-  for Handler in Form.Handlers do
-  begin
-    if (Handler.ObjectIndex <> LastObject) and SameText(Handler.MethodName, MethodName) and
-      (Handler.TypeName <> '') then
-    begin
-      LastObject := Handler.ObjectIndex;
-      Names := Names + [Handler.ObjectName];
-      if IndexText(Handler.TypeName, Types) < 0 then
-      begin
-        Types := Types + [Handler.TypeName];
-      end;
-    end;
-  end;
-  if Length(Types) = 0 then
-  begin
-    Exit;
-  end;
-  // Nächster gemeinsamer Vorfahr: der erste Typ in der Kette des ersten, den alle Ketten enthalten.
-  First := TypeChain(ARequest.Resolver, UnitIndex, Types[0]);
-  CommonType := '';
-  for Candidate in First do
-  begin
-    Shared := True;
-    for Index := 1 to High(Types) do
-    begin
-      Chain := TypeChain(ARequest.Resolver, UnitIndex, Types[Index]);
-      if IndexText(Candidate, Chain) < 0 then
-      begin
-        Shared := False;
-        Break;
-      end;
-    end;
-    if Shared then
-    begin
-      CommonType := Candidate;
-      Break;
-    end;
-  end;
-  if (CommonType = '') or SameText(CommonType, 'TObject') then
-  begin
-    Exit;
-  end;
-  // Mitglieder wie bei "Sender: <Typ>": Parameter im Kopf umschreiben und neu zerlegen; die Zeile des Cursors
-  // bleibt gleich, also auch ARequest.Position.
-  LB := ARequest.LineBreak;
-  Lines[ParamLine] := SenderParam.Replace(Lines[ParamLine], '$1' + CommonType);
-  Patched := string.Join(LB, Lines);
-  PatchedTree := TSyntaxTreeCache.Parse(Patched);
-  try
-    Postfix := TPostfixOptions.Default;
-    Postfix.Enabled := False;
-    AItems := Collect(ARequest.Resolver, ARequest.Index, PatchedTree, ARequest.FileName, Patched, ARequest.Position,
-      ARequest.Matching, Postfix);
-  finally
-    PatchedTree.Free;
-  end;
-  if ARequest.Settings.SenderCast = TCompletionSenderCast.HardCast then
-  begin
-    Cast := CommonType + '(' + Context.Names[0] + ')';
-  end
-  else
-  begin
-    Cast := '(' + Context.Names[0] + ' as ' + CommonType + ')';
-  end;
-  for Index := 0 to High(AItems.Items) do
-  begin
-    AItems.Items[Index].Sender := CommonType;
-    AItems.Items[Index].SenderOf := string.Join(', ', Names);
-    if AItems.Items[Index].HasTextEdit then
-    begin
-      Continue;
-    end;
-    // "Sender.Cap" → "(Sender as TButton).Caption"
-    AItems.Items[Index].HasTextEdit := True;
-    if AItems.Items[Index].InsertText <> '' then
-    begin
-      AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, ARequest.Position),
-        Cast + '.' + AItems.Items[Index].InsertText);
-    end
-    else
-    begin
-      AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, ARequest.Position),
-        Cast + '.' + AItems.Items[Index].Name);
-    end;
-  end;
-  Result := True;
-end;
-
-class function TLspCompletion.DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string;
-  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
-var
-  Request: TCompletionRequest;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
-  try
-    Request.Index := AIndex;
-    Request.ReadText := AReadText;
-    Result := DataNameItems(Request, AItems);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.DataNameItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
-var
-  Lines: TArray<string>;
-  Call: TDataNameCall;
-  Sql, Source: string;
-  Names: TArray<TDataName>;
-  Name: TDataName;
-  Found: Boolean;
-  Item: TCompletionItem;
-  Range: TTextRange;
-begin
-  AItems := Default(TCompletionItems);
-  Lines := ARequest.Lines;
-  if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(Lines)) or
-    not TDataFieldNames.CallAt(Lines[ARequest.Position.Line], ARequest.Position.Character, Call) then
-  begin
-    Exit(False);
-  end;
-  Result := True;
-  if not Assigned(ARequest.ReadText) then
-  begin
-    Exit;
-  end;
-  // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
-  Names := TDataFieldNames.Lookup(TDataLookupSource.Create(ARequest.Text, ARequest.FileName, ARequest.Index,
-    function(const AName: string; out AContent: string): Boolean
-    begin
-      Result := ARequest.ReadText(AName, AContent);
-    end), Call, Sql, Found);
-  Source := TDataFieldNames.ShortSql(Sql);
-  Range := TTextRange.Create(ARequest.Position.Line, Call.ContentStart, ARequest.Position.Line, Call.ContentEnd);
-  for Name in Names do
-  begin
-    Item := Default(TCompletionItem);
-    Item.Name := Name.Name;
-    Item.Detail := Name.TypeName;
-    if Call.Kind = TDataNameKind.Param then
-    begin
-      Item.Kind := KindVariable;
-    end
-    else
-    begin
-      Item.Kind := KindField;
-    end;
-    // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
-    Item.HasTextEdit := True;
-    Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
-    Item.DataSet := Call.DisplayName;
-    Item.DataSource := Source;
-    AItems.Items := AItems.Items + [Item];
-  end;
-end;
-
-class function TLspCompletion.GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
-  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
-  out AItems: TCompletionItems): Boolean;
-var
-  Request: TCompletionRequest;
-  Settings: TCompletionSettings;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
-  try
-    Request.Tree := ATree;
-    Request.Resolver := AResolver;
-    Settings := Request.Settings;
-    Settings.FreeStyle := AStyle;
-    Request.Settings := Settings;
-    Result := GuardItems(Request, ANewLine, AItems);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.GuardItems(ARequest: TCompletionRequest; ANewLine: Boolean;
-  out AItems: TCompletionItems): Boolean;
-var
-  UnitIndex: TUnitIndex;
-  Offer: TGuardOffer;
-  Item: TCompletionItem;
-  Lines: TArray<string>;
-  Line: Integer;
-begin
-  AItems := Default(TCompletionItems);
-  Result := False;
-  Line := ARequest.Position.Line;
-  // Enter am Zeilenende: Anweisung in der Zeile davor, die Zeile des Cursors ist leer.
-  if ANewLine then
-  begin
-    Lines := ARequest.Lines;
-    Line := ARequest.Position.Line - 1;
-    if (Line < 0) or (ARequest.Position.Line > High(Lines)) or (Trim(Lines[ARequest.Position.Line]) <> '') then
-    begin
-      Exit;
-    end;
-  end;
-  UnitIndex := ARequest.UnitIndex;
-  // Art des erzeugten Typs: Record oder Interface schließen aus, TComponent-Nachfahren prüfen den Owner.
-  Result := TGuardFree.Check(ARequest.Tree, ARequest.Text, Line,
-    function(const ATypeName: string): TGuardTypeKind
-    var
-      Symbol: TResolvedSymbol;
-    begin
-      if not ARequest.Resolver.ResolveTypeFrom(UnitIndex, ATypeName, Symbol) then
-      begin
-        Exit(TGuardTypeKind.Unknown);
-      end;
-      if Symbol.SymbolKind <> TIndexSymbolKind.ClassType then
-      begin
-        Exit(TGuardTypeKind.Other);
-      end;
-      if IndexText('TComponent', TypeChain(ARequest.Resolver, UnitIndex, ATypeName)) >= 0 then
-      begin
-        Result := TGuardTypeKind.Component;
-      end
-      else
-      begin
-        Result := TGuardTypeKind.Class_;
-      end;
-    end, Offer);
+  Result := TCompletionForms.SenderSite(ARequest, AForms, mSite);
   if not Result then
   begin
     Exit;
   end;
-  if ANewLine then
-  begin
-    Offer.BlankLine := ARequest.Position.Line;
-  end;
-  Item := Default(TCompletionItem);
-  Item.Kind := KindSnippet;
-  Item.HasTextEdit := True;
-  if ARequest.Settings.FreeStyle = TCompletionFreeStyle.FreeAndNil then
-  begin
-    Item.Detail := 'FreeAndNil(' + Offer.Variable + ')';
-  end
-  else
-  begin
-    Item.Detail := Offer.Variable + '.Free';
-  end;
-  Item.Name := 'Mit try…finally absichern';
-  Item.Guard := 'newLine';
-  Item.TextEdit := TGuardFree.Edit(ARequest.Text, Offer, TGuardScope.NewLine, ARequest.Settings.FreeStyle);
-  AItems.Items := [Item];
-  if Offer.CanEnclose then
-  begin
-    Item.Name := 'Bis Routinenende mit try…finally absichern';
-    Item.Guard := 'routineEnd';
-    Item.TextEdit := TGuardFree.Edit(ARequest.Text, Offer, TGuardScope.ToRoutineEnd, ARequest.Settings.FreeStyle);
-    AItems.Items := AItems.Items + [Item];
-  end;
-end;
-
-/// <summary>Typen der Parameter aus "const A, B: T; var C: U; D" in Reihenfolge; untypisiert ''.</summary>
-function EventParamTypes(const AParams: string): TArray<string>;
-var
-  Group, Names, TypeText: string;
-  Count, Index: Integer;
-begin
-  Result := nil;
-  for Group in AParams.Split([';']) do
-  begin
-    if Trim(Group) = '' then
-    begin
-      Continue;
-    end;
-    Names := Group;
-    TypeText := '';
-    if Pos(':', Group) > 0 then
-    begin
-      Names := Copy(Group, 1, Pos(':', Group) - 1);
-      TypeText := Copy(Group, Pos(':', Group) + 1, MaxInt);
-      if Pos('=', TypeText) > 0 then
-      begin
-        TypeText := Copy(TypeText, 1, Pos('=', TypeText) - 1);
-      end;
-    end;
-    Count := Length(Names.Split([',']));
-    for Index := 1 to Count do
-    begin
-      Result := Result + [Trim(TypeText)];
-    end;
-  end;
-end;
-
-class function TLspCompletion.EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
-var
-  Request: TCompletionRequest;
-begin
-  Request := TCompletionRequest.Create(AText, AFileName, APosition);
+  // Mitglieder wie bei "Sender: <Typ>": den umgeschriebenen Text neu zerlegen; die Position bleibt gleich.
+  mRequest := TCompletionRequest.Create(mSite.PatchedText, ARequest.FileName, ARequest.Position);
   try
-    Request.Tree := ATree;
-    Request.Resolver := AResolver;
-    Request.ReadText := AReadText;
-    Result := EventItems(Request, AItems);
-  finally
-    Request.Free;
-  end;
-end;
-
-class function TLspCompletion.EventItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
-var
-  Match, TypeMatch: TMatch;
-  Names, TypeNames: TArray<string>;
-  Offset, Index, Number: Integer;
-  Event, EventType, Candidate: TResolvedSymbol;
-  Source, Declaration, Kind, Params, ResultType, Base, Name, Header, Body, LB, TypeName, Prefix: string;
-  ParamTypes: TArray<string>;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Taken: TDictionary<string, Boolean>;
-  Item: TCompletionItem;
-  Method: TUnmatchedMethod;
-  Edit: TRuleEdit;
-  Fits: Boolean;
-begin
-  AItems := Default(TCompletionItems);
-  Result := False;
-  // "btnSave.OnClick := btn|", "OnClick := |"; nicht "A.B := " in Ausdrücken mit "=" davor.
-  Match := TRegEx.Match(ARequest.LineBefore, '(?:^|[^\w.&])((?:&?\w+\.)*)&?(\w+)\s*:=\s*(\w*)$');
-  if not Match.Success then
-  begin
-    Exit;
-  end;
-  Prefix := Match.Groups[3].Value;
-  Names := nil;
-  for Name in Match.Groups[1].Value.Split(['.']) do
-  begin
-    if Name <> '' then
-    begin
-      Names := Names + [CleanName(Name)];
-    end;
-  end;
-  Names := Names + [Match.Groups[2].Value];
-  Offset := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position).Offset;
-  Event := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, Names, Offset);
-  if not Event.Found or not (Event.SymbolKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Field,
-    TIndexSymbolKind.Variable]) or (Event.TypeName = '') then
-  begin
-    Exit;
-  end;
-  // Methodenzeigertyp auflösen: wie im Quelltext, sonst über die Unit der Eigenschaft.
-  TypeNames := Event.TypeName.Split(['.']);
-  EventType := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName, TypeNames, Offset);
-  if not EventType.Found and (Event.UnitName <> '') then
-  begin
-    EventType := ARequest.Resolver.ResolveChain(ARequest.Tree, ARequest.FileName,
-      Event.UnitName.Split(['.']) + TypeNames, Offset);
-  end;
-  if not EventType.Found or (EventType.FileName = '') then
-  begin
-    Exit;
-  end;
-  if SameText(EventType.FileName, ARequest.FileName) then
-  begin
-    Source := ARequest.Text;
-  end
-  else if not (Assigned(ARequest.ReadText) and ARequest.ReadText(EventType.FileName, Source)) then
-  begin
-    Exit;
-  end;
-  Declaration := DeclarationOf(TextLines(Source), EventType.Range);
-  TypeMatch := TRegEx.Match(Declaration,
-    '=\s*(reference\s+to\s+)?(procedure|function)\s*(?:\((.*)\))?\s*(?::\s*([\w.<>, ]+?))?\s*(of\s+object)?\s*;',
-    [roIgnoreCase]);
-  if not TypeMatch.Success or ((TypeMatch.Groups[1].Length = 0) and (TypeMatch.Groups[5].Length = 0)) then
-  begin
-    Exit;
-  end;
-  Kind := LowerCase(TypeMatch.Groups[2].Value);
-  Params := Trim(TypeMatch.Groups[3].Value);
-  ResultType := Trim(TypeMatch.Groups[4].Value);
-  ParamTypes := EventParamTypes(Params);
-  // Umgebende Klasse: Methodenrumpf, in dem der Cursor steht.
-  UnitIndex := ARequest.UnitIndex;
-  TypeName := '';
-  for Symbol in UnitIndex.Symbols do
-  begin
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and (Symbol.Container <> '') and
-      (Symbol.Range.StartPos.Line < ARequest.Position.Line) and
-      (Symbol.Range.EndPos.Line >= ARequest.Position.Line) then
-    begin
-      TypeName := Symbol.Container;
-    end;
-  end;
-  if TypeName = '' then
-  begin
-    Exit;
-  end;
-  Result := True;
-  LB := ARequest.LineBreak;
-  Taken := TDictionary<string, Boolean>.Create;
-  try
-    for Symbol in UnitIndex.Symbols do
-    begin
-      if SameText(Symbol.Container, TypeName) then
-      begin
-        Taken.AddOrSetValue(LowerCase(Symbol.Name), True);
-      end;
-    end;
-    // Passende Methoden der Klasse samt geerbter.
-    for Candidate in ARequest.Resolver.Candidates.MemberCandidates(ARequest.Tree, ARequest.FileName, ['Self'],
-      Offset) do
-    begin
-      Taken.AddOrSetValue(LowerCase(Candidate.Name), True);
-      if (Candidate.SymbolKind <> TIndexSymbolKind.Method) or (Length(Candidate.ParamTypes) <> Length(ParamTypes)) or
-        ((Kind = 'function') <> (Candidate.TypeName <> '')) or
-        ((Kind = 'function') and (PlainType(Candidate.TypeName) <> PlainType(ResultType))) then
-      begin
-        Continue;
-      end;
-      Fits := True;
-      for Index := 0 to High(ParamTypes) do
-      begin
-        if PlainType(Candidate.ParamTypes[Index]) <> PlainType(ParamTypes[Index]) then
-        begin
-          Fits := False;
-        end;
-      end;
-      if not Fits then
-      begin
-        Continue;
-      end;
-      Item := Default(TCompletionItem);
-      Item.Name := Candidate.Name;
-      Item.Kind := KindMethod;
-      Item.Detail := Candidate.Container;
-      Item.Container := Candidate.Container;
-      Item.Depth := Candidate.Depth;
-      Item.SourceFile := Candidate.FileName;
-      Item.SourcePosition := Candidate.SelectionRange.StartPos;
-      Item.Expected := EventType.Name;
-      Item.Fits := True;
-      AItems.Items := AItems.Items + [Item];
-    end;
-    // Neue Methode: Objekt + Ereignis ohne "On" (btnSave.OnClick → btnSaveClick), eindeutig gemacht.
-    if (Length(Names) > 1) and not SameText(Names[High(Names) - 1], 'Self') then
-    begin
-      Base := Names[High(Names) - 1];
-    end
-    else if StartsText('T', TypeName) and (Pos('.', TypeName) = 0) then
-    begin
-      Base := Copy(TypeName, 2, MaxInt);
-    end
-    else
-    begin
-      Base := TypeName.Substring(TypeName.LastIndexOf('.') + 1);
-    end;
-    if StartsText('On', Match.Groups[2].Value) then
-    begin
-      Base := Base + Copy(Match.Groups[2].Value, 3, MaxInt);
-    end
-    else
-    begin
-      Base := Base + Match.Groups[2].Value;
-    end;
-    Name := Base;
-    Number := 1;
-    while Taken.ContainsKey(LowerCase(Name)) do
-    begin
-      Inc(Number);
-      Name := Base + IntToStr(Number);
+    mRequest.Tree := TSyntaxTreeCache.Parse(mSite.PatchedText);
+    try
+      mRequest.Resolver := ARequest.Resolver;
+      mRequest.Index := ARequest.Index;
+      mRequest.Matching := ARequest.Matching;
+      mPostfix := TPostfixOptions.Default;
+      mPostfix.Enabled := False;
+      AItems := Collect(mRequest, mPostfix, nil);
+    finally
+      mRequest.Tree.Free;
     end;
   finally
-    Taken.Free;
+    mRequest.Free;
   end;
-  Header := Kind + ' ' + TypeName + '.' + Name;
-  if Params <> '' then
-  begin
-    Header := Header + '(' + Params + ')';
-  end;
-  if Kind = 'function' then
-  begin
-    Header := Header + ': ' + ResultType;
-  end;
-  Item := Default(TCompletionItem);
-  Item.Name := 'Neue Methode ' + Name + ' …';
-  Item.Kind := KindMethod;
-  Item.Detail := Copy(Header, Length(Kind) + 2, MaxInt);
-  Item.InsertText := Name;
-  // Immer sichtbar, auch wenn das Getippte nicht zum Namen passt.
-  Item.FilterText := Prefix;
-  Item.Action := 'create';
-  Method := Default(TUnmatchedMethod);
-  Method.TypeName := TypeName;
-  Method.Header := Header;
-  Method.Symbol.Name := Name;
-  Method.Declared := False;
-  if TClassCompletion.AddDeclaration(ARequest.Tree, ARequest.Text, Method, Edit) then
-  begin
-    Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
-  end;
-  Body := Header + ';' + LB + 'begin' + LB + LB + 'end;';
-  if TClassCompletion.BodyEdit(ARequest.Tree, ARequest.Text, TypeName, Body, Edit) then
-  begin
-    Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
-  end;
-  AItems.Items := AItems.Items + [Item];
-end;
-
-class function TLspCompletion.MethodRefOf(AResolver: TNameResolver; const AFromUnit: TUnitIndex;
-  const ATypeText: string; out AMethodRef: TMethodRef): Boolean;
-var
-  TypeText, Base, Signature, Target: string;
-  Args, TypeParams: TArray<string>;
-  FromUnit: TUnitIndex;
-  Resolved: TResolvedSymbol;
-  Depth, Index: Integer;
-begin
-  AMethodRef := Default(TMethodRef);
-  Result := False;
-  TypeText := ATypeText;
-  FromUnit := AFromUnit;
-  for Depth := 0 to TCompletionAnonymous.MaxAliasDepth do
-  begin
-    Args := TCompletionAnonymous.TypeArgs(TypeText, Base);
-    Signature := '';
-    if (AResolver <> nil) and AResolver.ResolveTypeTextFrom(FromUnit, TypeText, Resolved) and
-      not Resolved.Builtin then
-    begin
-      Signature := Resolved.Signature;
-    end;
-    // Ohne Quellen der RTL im Index: die Deklarationen von System.SysUtils.
-    if Signature = '' then
-    begin
-      Signature := TCompletionAnonymous.RtlDeclaration(Base, Length(Args));
-    end;
-    if Signature = '' then
-    begin
-      Exit;
-    end;
-    if TCompletionAnonymous.Parse(Signature, TypeParams, AMethodRef, Target) then
-    begin
-      for Index := 0 to High(AMethodRef.Params) do
-      begin
-        AMethodRef.Params[Index].TypeText := TCompletionAnonymous.Substitute(AMethodRef.Params[Index].TypeText,
-          TypeParams, Args);
-      end;
-      AMethodRef.ResultType := TCompletionAnonymous.Substitute(AMethodRef.ResultType, TypeParams, Args);
-      Exit(True);
-    end;
-    // Alias ("TKundenFilter = TPredicate<TKunde>"): weiter mit dem Ziel, gelesen in der Unit des Alias.
-    if (Target = '') or not AResolver.DeclaringUnit(Resolved, FromUnit) then
-    begin
-      Exit;
-    end;
-    TypeText := TCompletionAnonymous.Substitute(Target, TypeParams, Args);
-  end;
-end;
-
-class function TLspCompletion.AnonymousItem(ARequest: TCompletionRequest; ASnippets: Boolean;
-  const ANamingFor: TCompletionNamingFunc; out AItem: TCompletionItem): Boolean;
-var
-  Context: TCompletionContext;
-  Expected, Prefix, LineText, Indent: string;
-  MethodRef: TMethodRef;
-  Start: TTextPosition;
-  Index: Integer;
-begin
-  AItem := Default(TCompletionItem);
-  Result := False;
-  if not ARequest.Settings.AnonymousMethods or (ARequest.Tree = nil) or (ARequest.Resolver = nil) then
-  begin
-    Exit;
-  end;
-  Context := TCompletionContexts.Analyze(ARequest.Tree, ARequest.Position);
-  if (Context.Kind <> TCompletionContextKind.Scope) or (Context.Filter <> TCompletionFilter.Any) or
-    Context.Attribute or Context.Generic then
-  begin
-    Exit;
-  end;
-  if (Context.Prefix <> '') and not StartsText(Context.Prefix, 'procedure') and
-    not StartsText(Context.Prefix, 'function') then
-  begin
-    Exit;
-  end;
-  Expected := TCompletionContexts.ExpectedFullType(ARequest.Resolver, ARequest.Tree, ARequest.FileName,
-    ARequest.Position);
-  if (Expected = '') or not MethodRefOf(ARequest.Resolver, ARequest.UnitIndex, Expected, MethodRef) then
-  begin
-    Exit;
-  end;
-  // Bindungen generischer Instanzen sind qualifiziert ("Kunden.TKunde"); im Gerüst wie im Quelltext üblich.
-  Expected := ARequest.Resolver.Queries.UnqualifyType(Expected, ARequest.UnitIndex.UnitName);
-  for Index := 0 to High(MethodRef.Params) do
-  begin
-    MethodRef.Params[Index].TypeText := ARequest.Resolver.Queries.UnqualifyType(MethodRef.Params[Index].TypeText,
-      ARequest.UnitIndex.UnitName);
-  end;
-  MethodRef.ResultType := ARequest.Resolver.Queries.UnqualifyType(MethodRef.ResultType, ARequest.UnitIndex.UnitName);
-  if Assigned(ANamingFor) then
-  begin
-    Prefix := ANamingFor(ARequest.Uri, TNamingKind.Parameter);
-  end
-  else
-  begin
-    Prefix := NamingPrefix(ARequest.Index, TNamingKind.Parameter);
-  end;
-  MethodRef := TCompletionAnonymous.Named(MethodRef, Prefix);
-  AItem.Name := TCompletionAnonymous.Header(MethodRef);
-  if MethodRef.IsFunction then
-  begin
-    AItem.FilterText := 'function';
-  end
-  else
-  begin
-    AItem.FilterText := 'procedure';
-  end;
-  AItem.Kind := KindSnippet;
-  // Den Typ zeigt Atlas als Tag (MethodRef); rechts steht, was der Eintrag ist.
-  AItem.Detail := 'anonyme Methode';
-  AItem.MethodRef := Expected;
-  AItem.Expected := Expected;
-  AItem.Fits := True;
-  AItem.Pinned := True;
-  // Erzeugt Code: keine uses-Ergänzung.
-  AItem.Action := 'anonymous';
-  AItem.HasTextEdit := True;
-  Start := ARequest.Position;
-  Start.Character := Max(0, Start.Character - Length(Context.Prefix));
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(Start, ARequest.Position), '');
-  if ASnippets then
-  begin
-    // Zeilen mit #10, die Einrückung der Zeile setzt der Editor davor.
-    AItem.Snippet := True;
-    AItem.TextEdit.NewText := TCompletionAnonymous.Snippet(MethodRef);
-  end
-  else
-  begin
-    LineText := ARequest.LineText(ARequest.Position.Line);
-    Index := 1;
-    while (Index <= Length(LineText)) and CharInSet(LineText[Index], [' ', #9]) do
-    begin
-      Inc(Index);
-    end;
-    Indent := Copy(LineText, 1, Index - 1);
-    AItem.TextEdit.NewText := TCompletionAnonymous.Plain(MethodRef, Indent, ARequest.LineBreak);
-  end;
-  Result := True;
+  TCompletionForms.ApplySender(mSite, ARequest.Position, AItems);
 end;
 
 end.

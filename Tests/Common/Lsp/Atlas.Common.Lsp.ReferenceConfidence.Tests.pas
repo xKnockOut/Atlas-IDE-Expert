@@ -533,8 +533,9 @@ var
 begin
   Tree := TPascalParser.Parse(UnitKunden);
   try
-    Edits := TLspRename.Edits(FResolver, FIndex, Tree, KundenFile, PositionOf(UnitKunden, 'Speichern; override'),
-      'Sichern', [KundenFile, HauptFile], ReadText, nil, False, Settings(True, False), Unchanged);
+    Edits := TLspRename.Edits(FResolver, FIndex, Tree, TReferenceSearch.Create(KundenFile,
+      PositionOf(UnitKunden, 'Speichern; override'), True, [KundenFile, HauptFile], ReadText),
+      TRenameRequest.Create('Sichern', False, Settings(True, False), nil), Unchanged);
   finally
     Tree.Free;
   end;

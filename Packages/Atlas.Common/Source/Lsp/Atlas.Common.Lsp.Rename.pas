@@ -43,6 +43,20 @@ type
     DeclarationFile: string;
   end;
 
+  /// <summary>Neuer Name und Art des Umbenennens.</summary>
+  TRenameRequest = record
+    NewName: string;
+    Cancellation: IJsonRpcCancellationToken;
+    /// <summary>Handler wie Button1Click beim Umbenennen von Button1 anpassen.</summary>
+    RenameHandlers: Boolean;
+    /// <summary>Welche erschlossenen Stellen mit geändert werden (#1119).</summary>
+    Settings: TReferenceSettings;
+    /// <summary>ANewName mit Handlern, ohne Abbruch, nur sichere Stellen.</summary>
+    class function Create(const ANewName: string): TRenameRequest; overload; static;
+    class function Create(const ANewName: string; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
+      const ACancellation: IJsonRpcCancellationToken): TRenameRequest; overload; static;
+  end;
+
   TLspRename = class
   public const
     PrepareMethod = 'textDocument/prepareRename';
@@ -59,6 +73,7 @@ type
     function ProjectFiles: TArray<string>;
     function HandlePrepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRename(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function SettingsOf(const AUri: string): TReferenceSettings;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
@@ -78,35 +93,24 @@ type
     /// <summary>'' oder der Grund, warum ANewName die Bedeutung ändern würde: Eine lokale Variable, ein
     /// Parameter oder ein Feld mit dem neuen Namen verdeckt danach eine umbenannte Stelle, oder das
     /// umbenannte Symbol verdeckt eine vorhandene Verwendung von ANewName. ALocations sind die Stellen aus
-    /// TLspReferences.Find samt Deklaration.</summary>
-    class function Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-      const APosition: TTextPosition; const ANewName: string; const ALocations: TArray<TReferenceLocation>;
-      const AReadText: TReferenceReadText): string; static;
+    /// TLspReferences.Find samt Deklaration; ASearch nennt Datei, Stelle und das Lesen weiterer Dateien.</summary>
+    class function Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
+      const ANewName: string; const ALocations: TArray<TReferenceLocation>): string; static;
     /// <summary>True für einen gültigen Bezeichner, der kein reserviertes Wort ist.</summary>
     class function IsValidName(const AName: string): Boolean; static;
-    /// <summary>Alle zu ersetzenden Stellen; EJsonRpcError, wenn nicht umbenennbar oder ein betroffenes
-    /// Formular binär gespeichert ist.</summary>
-    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean): TArray<TRenameEdit>;
-      overload; static;
-    /// <summary>Wie oben mit ARenameHandlers = True.</summary>
-    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>; overload; static;
-    /// <summary>Wie oben ohne Abbruch (ACancellation = nil, ARenameHandlers = True).</summary>
-    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TRenameEdit>; overload; static;
-    /// <summary>Wie oben; AUnchanged erhält die erschlossenen Stellen nach ASettings, die nicht geändert werden
+    /// <summary>Alle zu ersetzenden Stellen für das Symbol an ASearch.Position (die Deklaration zählt immer
+    /// mit); EJsonRpcError, wenn nicht umbenennbar oder ein betroffenes Formular binär gespeichert ist.
+    /// AUnchanged erhält die erschlossenen Stellen nach ARequest.Settings, die nicht geändert werden
     /// (#1119).</summary>
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
+      const ASearch: TReferenceSearch; const ARequest: TRenameRequest;
       out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>; overload; static;
+    /// <summary>Wie oben ohne AUnchanged.</summary>
+    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ASearch: TReferenceSearch; const ARequest: TRenameRequest): TArray<TRenameEdit>; overload; static;
+    /// <summary>Wie oben mit TRenameRequest.Create(ANewName).</summary>
+    class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ASearch: TReferenceSearch; const ANewName: string): TArray<TRenameEdit>; overload; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Einstellungen references.* je Datei; nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
@@ -323,117 +327,165 @@ begin
     AAfter.ShadowText, ABefore.ShadowText]);
 end;
 
-class function TLspRename.Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const APosition: TTextPosition; const ANewName: string; const ALocations: TArray<TReferenceLocation>;
-  const AReadText: TReferenceReadText): string;
-
-  function CheckTree(ATree: TSyntaxTree; const AFile: string; const ARenamed: TResolvedSymbol;
-    const AOldName: string): string;
-  var
-    Index: Integer;
-    Token: TPascalToken;
-    Location: TReferenceLocation;
-    Renamed, Before, After: TResolvedSymbol;
-    IsLocation: Boolean;
-  begin
-    Result := '';
-    Renamed := ARenamed;
-    Renamed.Name := ANewName;
-    for Index := 0 to High(ATree.Tokens) do
-    begin
-      Token := ATree.Tokens[Index];
-      if (Token.Kind <> TPascalTokenKind.Identifier) or not IsUnqualified(ATree.Tokens, Index) then
-      begin
-        Continue;
-      end;
-      IsLocation := False;
-      for Location in ALocations do
-      begin
-        if SameText(Location.FileName, AFile) and (Location.Range.StartPos = Token.StartPos) then
-        begin
-          IsLocation := True;
-        end;
-      end;
-      if IsLocation then
-      begin
-        // Umbenannte Stelle: Verdeckt dort ein anderer Name ANewName das umbenannte Symbol?
-        After := AResolver.ResolveChain(ATree, AFile, [ANewName], Token.Offset, False);
-        if Hides(After, ARenamed) then
-        begin
-          Exit(ConflictText(AFile, Token, ANewName, After, ARenamed));
-        end;
-      end
-      else if SameText(Token.Text, ANewName) or SameText(Token.Text, '&' + ANewName) then
-      begin
-        // Vorhandene Verwendung von ANewName: Sieht sie das umbenannte Symbol und läge es näher?
-        Before := AResolver.ResolveChain(ATree, AFile, [ANewName], Token.Offset, False);
-        After := AResolver.ResolveChain(ATree, AFile, [AOldName], Token.Offset, False);
-        if SameSymbol(After, ARenamed) and Hides(ARenamed, Before) then
-        begin
-          Exit(ConflictText(AFile, Token, ANewName, Renamed, Before));
-        end;
-      end;
-    end;
+type
+  /// <summary>Was die Konfliktprüfung je Datei braucht.</summary>
+  TConflictScope = record
+    Resolver: TNameResolver;
+    /// <summary>Das umbenannte Symbol mit altem Namen.</summary>
+    Renamed: TResolvedSymbol;
+    OldName: string;
+    NewName: string;
+    Locations: TArray<TReferenceLocation>;
   end;
 
+/// <summary>True, wenn AToken in AFile eine der umzubenennenden Stellen ist.</summary>
+function IsLocation(const ALocations: TArray<TReferenceLocation>; const AFile: string;
+  const AToken: TPascalToken): Boolean;
 var
-  Renamed: TResolvedSymbol;
-  OldName, FileName, Text: string;
-  Location: TReferenceLocation;
-  Checked: TArray<string>;
-  Tree: TSyntaxTree;
-  Index: Integer;
+  mLocation: TReferenceLocation;
+begin
+  for mLocation in ALocations do
+  begin
+    if SameText(mLocation.FileName, AFile) and (mLocation.Range.StartPos = AToken.StartPos) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Konflikt am Bezeichner AToken in ATree; '' ohne.</summary>
+function TokenConflict(const AScope: TConflictScope; ATree: TSyntaxTree; const AFile: string;
+  const AToken: TPascalToken): string;
+var
+  mRenamed, mBefore, mAfter: TResolvedSymbol;
 begin
   Result := '';
-  Index := TokenAt(ATree.Tokens, APosition);
-  if Index < 0 then
+  if IsLocation(AScope.Locations, AFile, AToken) then
+  begin
+    // Umbenannte Stelle: Verdeckt dort ein anderer Name den neuen Namen des umbenannten Symbols?
+    mAfter := AScope.Resolver.ResolveChain(ATree, AFile, [AScope.NewName], AToken.Offset, False);
+    if Hides(mAfter, AScope.Renamed) then
+    begin
+      Result := ConflictText(AFile, AToken, AScope.NewName, mAfter, AScope.Renamed);
+    end;
+  end
+  else if SameText(AToken.Text, AScope.NewName) or SameText(AToken.Text, '&' + AScope.NewName) then
+  begin
+    // Vorhandene Verwendung des neuen Namens: Sieht sie das umbenannte Symbol und läge es näher?
+    mBefore := AScope.Resolver.ResolveChain(ATree, AFile, [AScope.NewName], AToken.Offset, False);
+    mAfter := AScope.Resolver.ResolveChain(ATree, AFile, [AScope.OldName], AToken.Offset, False);
+    if SameSymbol(mAfter, AScope.Renamed) and Hides(AScope.Renamed, mBefore) then
+    begin
+      mRenamed := AScope.Renamed;
+      mRenamed.Name := AScope.NewName;
+      Result := ConflictText(AFile, AToken, AScope.NewName, mRenamed, mBefore);
+    end;
+  end;
+end;
+
+/// <summary>Erster Konflikt in ATree der Datei AFile; '' ohne.</summary>
+function TreeConflict(const AScope: TConflictScope; ATree: TSyntaxTree; const AFile: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(ATree.Tokens) do
+  begin
+    if (ATree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and IsUnqualified(ATree.Tokens, mIndex) then
+    begin
+      Result := TokenConflict(AScope, ATree, AFile, ATree.Tokens[mIndex]);
+      if Result <> '' then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Konflikt in den übrigen .pas-Dateien der Stellen; '' ohne.</summary>
+function OtherFilesConflict(const AScope: TConflictScope; const AFileName: string;
+  const AReadText: TReferenceReadText): string;
+var
+  mChecked: TArray<string>;
+  mLocation: TReferenceLocation;
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  Result := '';
+  mChecked := [AFileName];
+  for mLocation in AScope.Locations do
+  begin
+    if (Result <> '') or not SameText(ExtractFileExt(mLocation.FileName), '.pas') or
+      (IndexText(mLocation.FileName, mChecked) >= 0) then
+    begin
+      Continue;
+    end;
+    mChecked := mChecked + [mLocation.FileName];
+    if Assigned(AReadText) and AReadText(mLocation.FileName, mText) then
+    begin
+      mTree := TSyntaxTreeCache.Parse(mText);
+      try
+        Result := TreeConflict(AScope, mTree, mLocation.FileName);
+      finally
+        mTree.Free;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Das umbenannte Symbol: auf dem Namen einer Deklaration (Feld in der Klasse) löst Resolve nicht auf,
+/// dann zählt eine Verwendung in derselben Datei.</summary>
+function RenamedSymbol(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
+  const ALocations: TArray<TReferenceLocation>): TResolvedSymbol;
+var
+  mLocation: TReferenceLocation;
+begin
+  Result := AResolver.Resolve(ATree, ASearch.FileName, ASearch.Position);
+  for mLocation in ALocations do
+  begin
+    if (Result.Kind = TResolvedKind.None) and SameText(mLocation.FileName, ASearch.FileName) then
+    begin
+      Result := AResolver.Resolve(ATree, ASearch.FileName, mLocation.Range.StartPos);
+    end;
+  end;
+end;
+
+class function TLspRename.Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
+  const ANewName: string; const ALocations: TArray<TReferenceLocation>): string;
+var
+  mScope: TConflictScope;
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := TokenAt(ATree.Tokens, ASearch.Position);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  OldName := ATree.Tokens[Index].Text;
-  if StartsStr('&', OldName) then
+  mScope := Default(TConflictScope);
+  mScope.Resolver := AResolver;
+  mScope.NewName := ANewName;
+  mScope.Locations := ALocations;
+  mScope.OldName := ATree.Tokens[mIndex].Text;
+  if StartsStr('&', mScope.OldName) then
   begin
-    OldName := Copy(OldName, 2, MaxInt);
+    mScope.OldName := Copy(mScope.OldName, 2, MaxInt);
   end;
   // Nur die Schreibweise ändert sich: Delphi unterscheidet keine Groß- und Kleinschreibung.
-  if SameText(OldName, ANewName) then
+  if SameText(mScope.OldName, ANewName) then
   begin
     Exit;
   end;
-  // Auf dem Namen einer Deklaration (Feld in der Klasse) löst Resolve nicht auf: dann eine Verwendung nehmen.
-  Renamed := AResolver.Resolve(ATree, AFileName, APosition);
-  for Location in ALocations do
-  begin
-    if (Renamed.Kind = TResolvedKind.None) and SameText(Location.FileName, AFileName) then
-    begin
-      Renamed := AResolver.Resolve(ATree, AFileName, Location.Range.StartPos);
-    end;
-  end;
-  if Renamed.Kind in [TResolvedKind.None, TResolvedKind.UnitName] then
+  mScope.Renamed := RenamedSymbol(AResolver, ATree, ASearch, ALocations);
+  if mScope.Renamed.Kind in [TResolvedKind.None, TResolvedKind.UnitName] then
   begin
     Exit;
   end;
-
-  Result := CheckTree(ATree, AFileName, Renamed, OldName);
-  Checked := [AFileName];
-  for Location in ALocations do
+  Result := TreeConflict(mScope, ATree, ASearch.FileName);
+  if Result = '' then
   begin
-    FileName := Location.FileName;
-    if (Result <> '') or not SameText(ExtractFileExt(FileName), '.pas') or (IndexText(FileName, Checked) >= 0) then
-    begin
-      Continue;
-    end;
-    Checked := Checked + [FileName];
-    if not (Assigned(AReadText) and AReadText(FileName, Text)) then
-    begin
-      Continue;
-    end;
-    Tree := TSyntaxTreeCache.Parse(Text);
-    try
-      Result := CheckTree(Tree, FileName, Renamed, OldName);
-    finally
-      Tree.Free;
-    end;
+    Result := OtherFilesConflict(mScope, ASearch.FileName, ASearch.ReadText);
   end;
 end;
 
@@ -451,190 +503,251 @@ begin
   Result := False;
 end;
 
-function HandlerEdits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const AChecked: TRenameCheck; const ANewName: string; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
+type
+  /// <summary>Ein Umbenennen: Auflösung, Baum der Datei, Suche und Anfrage.</summary>
+  TRenameScope = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    Tree: TSyntaxTree;
+    Search: TReferenceSearch;
+    Request: TRenameRequest;
+  end;
+
+/// <summary>Umzubenennende Handler aus .dfm, .fmx und FMX-Plattformansichten (#87); jeder Handler nur einmal.</summary>
+function FormHandlerRenames(const AChecked: TRenameCheck; const AUnitText, ANewName: string;
+  const AReadText: TReferenceReadText): TArray<THandlerRename>;
 var
-  FormText, UnitText, FormFile: string;
-  Renames: TArray<THandlerRename>;
-  Rename: THandlerRename;
-  Tree: TSyntaxTree;
-  Symbols: TArray<TIndexSymbol>;
-  Symbol, Handler: TIndexSymbol;
-  Found, Taken: Boolean;
-  Location: TReferenceLocation;
-  Edit: TRenameEdit;
+  mFormFile, mFormText: string;
+  mRename: THandlerRename;
 begin
   Result := nil;
-  if AChecked.DeclarationFile = '' then
+  for mFormFile in TFormFiles.FormFiles(AChecked.DeclarationFile, AUnitText) do
   begin
-    Exit;
-  end;
-  if not AReadText(AChecked.DeclarationFile, UnitText) then
-  begin
-    Exit;
-  end;
-  // .dfm, .fmx und FMX-Plattformansichten (#87); jeder Handler nur einmal.
-  Renames := nil;
-  for FormFile in TFormFiles.FormFiles(AChecked.DeclarationFile, UnitText) do
-  begin
-    if AReadText(FormFile, FormText) then
+    if not AReadText(mFormFile, mFormText) then
     begin
-      for Rename in TDfmComponentRename.Handlers(FormText, AChecked.Name, ANewName) do
+      Continue;
+    end;
+    for mRename in TDfmComponentRename.Handlers(mFormText, AChecked.Name, ANewName) do
+    begin
+      if not HasHandler(Result, mRename.OldName) then
       begin
-        if not HasHandler(Renames, Rename.OldName) then
-        begin
-          Renames := Renames + [Rename];
-        end;
+        Result := Result + [mRename];
       end;
     end;
   end;
-  if Length(Renames) = 0 then
+end;
+
+/// <summary>Methode ARename.OldName in ASymbols; False, wenn sie fehlt oder ein Handler mit dem neuen Namen
+/// schon besteht (er würde doppelt deklariert).</summary>
+function FindHandler(const ASymbols: TArray<TIndexSymbol>; const ARename: THandlerRename;
+  out AHandler: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mFound: Boolean;
+begin
+  AHandler := Default(TIndexSymbol);
+  mFound := False;
+  for mSymbol in ASymbols do
+  begin
+    if mSymbol.Kind <> TIndexSymbolKind.Method then
+    begin
+      Continue;
+    end;
+    if SameText(mSymbol.Name, ARename.OldName) and not mFound then
+    begin
+      AHandler := mSymbol;
+      mFound := True;
+    end
+    else if SameText(mSymbol.Name, ARename.NewName) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := mFound;
+end;
+
+/// <summary>Stellen der Handler ARenames im Baum ATree der Datei AFileName.</summary>
+function HandlerLocations(const AScope: TRenameScope; ATree: TSyntaxTree; const AFileName: string;
+  const ARenames: TArray<THandlerRename>): TArray<TRenameEdit>;
+var
+  mSymbols: TArray<TIndexSymbol>;
+  mHandler: TIndexSymbol;
+  mRename: THandlerRename;
+  mLocation: TReferenceLocation;
+  mEdit: TRenameEdit;
+begin
+  Result := nil;
+  mSymbols := TIndexExtractor.Extract(ATree, AFileName).Symbols;
+  for mRename in ARenames do
+  begin
+    if not FindHandler(mSymbols, mRename, mHandler) then
+    begin
+      Continue;
+    end;
+    for mLocation in TLspReferences.Find(AScope.Resolver, AScope.Index, ATree, TReferenceSearch.Create(AFileName,
+      mHandler.SelectionRange.StartPos, True, AScope.Search.Files, AScope.Search.ReadText),
+      AScope.Request.Cancellation) do
+    begin
+      mEdit.FileName := mLocation.FileName;
+      mEdit.Range := mLocation.Range;
+      mEdit.NewText := mRename.NewName;
+      Result := Result + [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>Umbenennen der Handler einer umbenannten Komponente (#45).</summary>
+function HandlerEdits(const AScope: TRenameScope; const AChecked: TRenameCheck): TArray<TRenameEdit>;
+var
+  mUnitText: string;
+  mRenames: TArray<THandlerRename>;
+  mTree: TSyntaxTree;
+begin
+  Result := nil;
+  if (AChecked.DeclarationFile = '') or not AScope.Search.ReadText(AChecked.DeclarationFile, mUnitText) then
+  begin
+    Exit;
+  end;
+  mRenames := FormHandlerRenames(AChecked, mUnitText, AScope.Request.NewName, AScope.Search.ReadText);
+  if Length(mRenames) = 0 then
   begin
     Exit;
   end;
   // Die Handler stehen in der Unit des Formulars.
-  if SameText(AChecked.DeclarationFile, AFileName) then
+  if SameText(AChecked.DeclarationFile, AScope.Search.FileName) then
   begin
-    Tree := ATree;
-  end
-  else
-  begin
-    Tree := TSyntaxTreeCache.Parse(UnitText);
+    Exit(HandlerLocations(AScope, AScope.Tree, AChecked.DeclarationFile, mRenames));
   end;
+  mTree := TSyntaxTreeCache.Parse(mUnitText);
   try
-    Symbols := TIndexExtractor.Extract(Tree, AChecked.DeclarationFile).Symbols;
-    for Rename in Renames do
-    begin
-      Found := False;
-      Taken := False;
-      Handler := Default(TIndexSymbol);
-      for Symbol in Symbols do
-      begin
-        if Symbol.Kind = TIndexSymbolKind.Method then
-        begin
-          if SameText(Symbol.Name, Rename.OldName) and not Found then
-          begin
-            Handler := Symbol;
-            Found := True;
-          end
-          else if SameText(Symbol.Name, Rename.NewName) then
-          begin
-            Taken := True;
-          end;
-        end;
-      end;
-      // Ein vorhandener Handler mit dem neuen Namen würde doppelt deklariert.
-      if not Found or Taken then
-      begin
-        Continue;
-      end;
-      for Location in TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(AChecked.DeclarationFile,
-        Handler.SelectionRange.StartPos, True, AFiles, AReadText), ACancellation) do
-      begin
-        Edit.FileName := Location.FileName;
-        Edit.Range := Location.Range;
-        Edit.NewText := Rename.NewName;
-        Result := Result + [Edit];
-      end;
-    end;
+    Result := HandlerLocations(AScope, mTree, AChecked.DeclarationFile, mRenames);
   finally
-    if Tree <> ATree then
-    begin
-      Tree.Free;
-    end;
+    mTree.Free;
   end;
 end;
 
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-  const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
-begin
-  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, ACancellation, True);
-end;
-
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<TRenameEdit>;
-begin
-  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, nil, True);
-end;
-
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-  const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean): TArray<TRenameEdit>;
+/// <summary>Teilt AFound in umzubenennende Stellen (Ergebnis) und erschlossene, die bleiben (AUnchanged).</summary>
+function RenameableOf(const AFound: TArray<TReferenceLocation>;
+  out AUnchanged: TArray<TReferenceLocation>): TArray<TReferenceLocation>;
 var
-  Unchanged: TArray<TReferenceLocation>;
+  mLocation: TReferenceLocation;
 begin
-  Result := Edits(AResolver, AIndex, ATree, AFileName, APosition, ANewName, AFiles, AReadText, ACancellation,
-    ARenameHandlers, TReferenceSettings.SureOnly, Unchanged);
-end;
-
-class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ANewName: string;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-  const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
-  out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>;
-var
-  Checked: TRenameCheck;
-  Found, Locations: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Edit: TRenameEdit;
-  Reason: string;
-begin
-  AUnchanged := nil;
-  if not IsValidName(ANewName) then
-  begin
-
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"%s" ist kein gültiger Bezeichner.', [ANewName]));
-  end;
-  Checked := Check(AResolver, AIndex, ATree, AFileName, APosition, AFiles);
-  if Checked.Error <> '' then
-  begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Checked.Error);
-  end;
   Result := nil;
-  Found := TLspReferences.Find(AResolver, AIndex, ATree, TReferenceSearch.Create(AFileName, APosition, True, AFiles,
-    AReadText), ASettings, ACancellation);
-  Locations := nil;
-  for Location in Found do
+  AUnchanged := nil;
+  for mLocation in AFound do
   begin
-    if Location.Confidence.Renameable then
+    if mLocation.Confidence.Renameable then
     begin
-      Locations := Locations + [Location];
+      Result := Result + [mLocation];
     end
     else
     begin
-      AUnchanged := AUnchanged + [Location];
+      AUnchanged := AUnchanged + [mLocation];
     end;
   end;
-  Reason := Conflict(AResolver, ATree, AFileName, APosition, ANewName, Locations, AReadText);
-  if Reason <> '' then
+end;
+
+/// <summary>Ersetzungen von ALocations durch ANewName.</summary>
+function LocationEdits(const ALocations: TArray<TReferenceLocation>; const ANewName: string): TArray<TRenameEdit>;
+var
+  mLocation: TReferenceLocation;
+  mEdit: TRenameEdit;
+begin
+  Result := nil;
+  for mLocation in ALocations do
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Reason);
+    mEdit.FileName := mLocation.FileName;
+    mEdit.Range := mLocation.Range;
+    mEdit.NewText := ANewName;
+    Result := Result + [mEdit];
   end;
-  for Location in Locations do
+end;
+
+/// <summary>EJsonRpcError, wenn eine Ersetzung ein binär gespeichertes Formular trifft (#121).</summary>
+procedure CheckTextForms(const AEdits: TArray<TRenameEdit>);
+var
+  mEdit: TRenameEdit;
+begin
+  for mEdit in AEdits do
   begin
-    Edit.FileName := Location.FileName;
-    Edit.Range := Location.Range;
-    Edit.NewText := ANewName;
-    Result := Result + [Edit];
-  end;
-  if ARenameHandlers and Assigned(AReadText) then
-  begin
-    Result := Result + HandlerEdits(AResolver, AIndex, ATree, AFileName, Checked, ANewName, AFiles, AReadText,
-      ACancellation);
-  end;
-  for Edit in Result do
-  begin
-    if not SameText(ExtractFileExt(Edit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(Edit.FileName) then
+    if not SameText(ExtractFileExt(mEdit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(mEdit.FileName) then
     begin
       raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Format('%s ist ein binär gespeichertes Formular. ' +
-        'Bitte zuerst in Textform umwandeln, dann erneut umbenennen.', [ExtractFileName(Edit.FileName)]));
+        'Bitte zuerst in Textform umwandeln, dann erneut umbenennen.', [ExtractFileName(mEdit.FileName)]));
     end;
   end;
+end;
+
+{ TRenameRequest }
+
+class function TRenameRequest.Create(const ANewName: string): TRenameRequest;
+begin
+  Result := Create(ANewName, True, TReferenceSettings.SureOnly, nil);
+end;
+
+class function TRenameRequest.Create(const ANewName: string; ARenameHandlers: Boolean;
+  const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken): TRenameRequest;
+begin
+  Result := Default(TRenameRequest);
+  Result.NewName := ANewName;
+  Result.RenameHandlers := ARenameHandlers;
+  Result.Settings := ASettings;
+  Result.Cancellation := ACancellation;
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ANewName: string): TArray<TRenameEdit>;
+begin
+  Result := Edits(AResolver, AIndex, ATree, ASearch, TRenameRequest.Create(ANewName));
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ARequest: TRenameRequest): TArray<TRenameEdit>;
+var
+  mUnchanged: TArray<TReferenceLocation>;
+begin
+  Result := Edits(AResolver, AIndex, ATree, ASearch, ARequest, mUnchanged);
+end;
+
+class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ARequest: TRenameRequest;
+  out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>;
+var
+  mScope: TRenameScope;
+  mChecked: TRenameCheck;
+  mLocations: TArray<TReferenceLocation>;
+  mReason: string;
+begin
+  AUnchanged := nil;
+  if not IsValidName(ARequest.NewName) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"%s" ist kein gültiger Bezeichner.',
+      [ARequest.NewName]));
+  end;
+  mChecked := Check(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, ASearch.Files);
+  if mChecked.Error <> '' then
+  begin
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, mChecked.Error);
+  end;
+  mScope.Resolver := AResolver;
+  mScope.Index := AIndex;
+  mScope.Tree := ATree;
+  mScope.Search := ASearch;
+  mScope.Search.Declaration := True;
+  mScope.Request := ARequest;
+  mLocations := RenameableOf(TLspReferences.Find(AResolver, AIndex, ATree, mScope.Search, ARequest.Settings,
+    ARequest.Cancellation), AUnchanged);
+  mReason := Conflict(AResolver, ATree, mScope.Search, ARequest.NewName, mLocations);
+  if mReason <> '' then
+  begin
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, mReason);
+  end;
+  Result := LocationEdits(mLocations, ARequest.NewName);
+  if ARequest.RenameHandlers and Assigned(ASearch.ReadText) then
+  begin
+    Result := Result + HandlerEdits(mScope, mChecked);
+  end;
+  CheckTextForms(Result);
 end;
 
 function TLspRename.ProjectFiles: TArray<string>;
@@ -694,90 +807,103 @@ begin
   TJSONObject(Result).AddPair('placeholder', Checked.Name);
 end;
 
+/// <summary>Ersetzungen je Datei als "changes" einer WorkspaceEdit.</summary>
+function ChangesJson(const AEdits: TArray<TRenameEdit>): TJSONObject;
+var
+  mEdit: TRenameEdit;
+  mUri: string;
+  mList: TJSONArray;
+  mItem: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  try
+    for mEdit in AEdits do
+    begin
+      mUri := TDocumentUris.FromPath(mEdit.FileName);
+      mList := Result.GetValue(mUri) as TJSONArray;
+      if mList = nil then
+      begin
+        mList := TJSONArray.Create;
+        Result.AddPair(mUri, mList);
+      end;
+      mItem := TJSONObject.Create;
+      mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+      mItem.AddPair('newText', mEdit.NewText);
+      mList.AddElement(mItem);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+/// <summary>Erschlossene Stellen, die nicht geändert werden (Erweiterung atlasUnchanged, #1119).</summary>
+function UnchangedJson(const AUnchanged: TArray<TReferenceLocation>): TJSONArray;
+var
+  mLocation: TReferenceLocation;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mLocation in AUnchanged do
+  begin
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('uri', TDocumentUris.FromPath(mLocation.FileName));
+    mItem.AddPair('range', TLspPositions.RangeToJson(mLocation.Range));
+    mItem.AddPair('atlasConfidence', mLocation.Confidence.ToJson);
+  end;
+end;
+
+function TLspRename.SettingsOf(const AUri: string): TReferenceSettings;
+begin
+  if Assigned(FSettingsFor) then
+  begin
+    Result := FSettingsFor(AUri);
+  end
+  else
+  begin
+    Result := TReferenceSettings.Default;
+  end;
+end;
+
 function TLspRename.HandleRename(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri, NewName, EditUri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Found: TArray<TRenameEdit>;
-  Edit: TRenameEdit;
-  Changes: TJSONObject;
-  List: TJSONArray;
-  Item: TJSONObject;
-  Settings: TReferenceSettings;
-  Unchanged: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
+  mUri, mNewName: string;
+  mPosition: TJSONValue;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mFound: TArray<TRenameEdit>;
+  mUnchanged: TArray<TReferenceLocation>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
-    TJSONObject(AParams).TryGetValue<string>('newName', NewName)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition) and
+    TJSONObject(AParams).TryGetValue<string>('newName', mNewName)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri", "position" und "newName" fehlen in ' + RenameMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
-  if Assigned(FSettingsFor) then
-  begin
-    Settings := FSettingsFor(Uri);
-  end
-  else
-  begin
-    Settings := TReferenceSettings.Default;
-  end;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mShared := TSyntaxTreeCache.Get(mDocument, TRequestCancellation.Create(ACancellation));
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Found := Edits(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-      Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers, Settings, Unchanged);
+    mResolver.Namespaces := Namespaces;
+    mFound := Edits(mResolver, FIndex, mShared.Tree, TReferenceSearch.Create(TDocumentUris.ToPath(mUri),
+      TLspPositions.ReadPosition(mPosition), True, ProjectFiles, FReadText), TRenameRequest.Create(Trim(mNewName),
+      FRenameHandlers, SettingsOf(mUri), ACancellation), mUnchanged);
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Changes := TJSONObject.Create;
-  try
-    for Edit in Found do
-    begin
-      EditUri := TDocumentUris.FromPath(Edit.FileName);
-      List := Changes.GetValue(EditUri) as TJSONArray;
-      if List = nil then
-      begin
-        List := TJSONArray.Create;
-        Changes.AddPair(EditUri, List);
-      end;
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Edit.NewText);
-      List.AddElement(Item);
-    end;
-    Result := TJSONObject.Create;
-  except
-    Changes.Free;
-    raise;
-  end;
-  TJSONObject(Result).AddPair('changes', Changes);
-  // Erweiterung (#1119): erschlossene Stellen, die nicht geändert werden; Editoren ohne Kenntnis übergehen sie.
-  if Length(Unchanged) > 0 then
+  Result := TJSONObject.Create;
+  TJSONObject(Result).AddPair('changes', ChangesJson(mFound));
+  // Editoren ohne Kenntnis der Erweiterung übergehen atlasUnchanged.
+  if Length(mUnchanged) > 0 then
   begin
-    List := TJSONArray.Create;
-    TJSONObject(Result).AddPair('atlasUnchanged', List);
-    for Location in Unchanged do
-    begin
-      Item := TJSONObject.Create;
-      Item.AddPair('uri', TDocumentUris.FromPath(Location.FileName));
-      Item.AddPair('range', TLspPositions.RangeToJson(Location.Range));
-      Item.AddPair('atlasConfidence', Location.Confidence.ToJson);
-      List.AddElement(Item);
-    end;
+    TJSONObject(Result).AddPair('atlasUnchanged', UnchangedJson(mUnchanged));
   end;
 end;
 
