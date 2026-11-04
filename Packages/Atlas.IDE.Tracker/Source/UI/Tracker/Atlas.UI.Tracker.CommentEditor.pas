@@ -369,7 +369,7 @@ begin
   begin
     Exit;
   end;
-  mWhen := FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mSaved));
+  mWhen := FormatDateTime('dd.mm. hh:nn', TTimeZone.Local.ToLocalTime(mSaved), FormatSettings);
   if Trim(FMemo.Text) = '' then
   begin
     // Leeres Feld: der Entwurf gleich darin, mit „Verwerfen“.
