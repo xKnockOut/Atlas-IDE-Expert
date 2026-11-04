@@ -70,6 +70,15 @@ type
     property WrapUntil: Integer read FWrapUntil;
   end;
 
+  /// <summary>Rahmen für Wrap: Zeilen vor und hinter den umschlossenen Anweisungen und deren zusätzliche
+  /// Einrückung.</summary>
+  TWrapFrame = record
+    Head: TArray<string>;
+    Tail: TArray<string>;
+    BodyIndent: string;
+    class function Create(const AHead, ATail: array of string; const ABodyIndent: string): TWrapFrame; static;
+  end;
+
 /// <summary>"Name: Typ" bzw. "Name = Wert"; ASeparator ':' oder '='.</summary>
 function SplitDeclaration(const AArguments: string; ASeparator: Char; out AName, AValue: string): Boolean;
 /// <summary>Setzt AReasonOut und liefert False.</summary>
@@ -83,10 +92,10 @@ function LogStatement(const AContext: TSlashContext; const AExpression: string):
 function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
 /// <summary>Grund, wenn BlockEnd -1 liefert: Markierung über das Blockende hinaus oder keine Anweisungen.</summary>
 function NoStatementsReason(ASource: TCommandSource; const AName: string): string;
-/// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
-/// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
-function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
-  const ABodyIndent: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+/// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AFrame.Head, die um AFrame.BodyIndent
+/// eingerückten Anweisungen und AFrame.Tail.</summary>
+function Wrap(ASource: TCommandSource; const AName: string; const AFrame: TWrapFrame; out AEdits: TArray<TTextEdit>;
+  out AReason: string): Boolean;
 /// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
   ADeclaration: string): TTextEdit;
@@ -189,46 +198,59 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0), ANewText + FLineBreak);
 end;
 
+/// <summary>Legt ANode als erledigt und darüber seine Kinder, die ALine überdecken, auf APending.</summary>
+procedure PushCovering(APending: TStack<TSyntaxPostOrderEntry>; ANode: TSyntaxNode; ALine: Integer);
+var
+  mIndex: Integer;
+begin
+  APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    if (ANode[mIndex].StartPos.Line <= ALine) and (ANode[mIndex].EndPos.Line >= ALine) then
+    begin
+      APending.Push(TSyntaxPostOrderEntry.Create(ANode[mIndex], False));
+    end;
+  end;
+end;
+
+/// <summary>ANode ist eine Routine, in deren begin…end die Zeile ALine steht.</summary>
+function IsRoutineAround(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  Result := False;
+  if ANode.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    mBlock := ANode.FindChild(TSyntaxKind.Block);
+    Result := (mBlock <> nil) and (mBlock.StartPos.Line < ALine) and (mBlock.EndPos.Line >= ALine);
+  end;
+end;
+
 function FindRoutine(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
-  Index: Integer;
-  Block: TSyntaxNode;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1): Die innerste Routine gewinnt, also wird ein Knoten erst nach
   // seinen Kindern geprüft; unter ANode nur Knoten, die ALine überdecken.
   Result := nil;
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if not Entry.Done then
+      mEntry := mPending.Pop;
+      if not mEntry.Done then
       begin
-        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-        for Index := Entry.Node.ChildCount - 1 downto 0 do
-        begin
-          if (Entry.Node[Index].StartPos.Line <= ALine) and (Entry.Node[Index].EndPos.Line >= ALine) then
-          begin
-            Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
-          end;
-        end;
-        Continue;
-      end;
-      if Entry.Node.Kind <> TSyntaxKind.RoutineDecl then
+        PushCovering(mPending, mEntry.Node, ALine);
+      end
+      else if IsRoutineAround(mEntry.Node, ALine) then
       begin
-        Continue;
-      end;
-      Block := Entry.Node.FindChild(TSyntaxKind.Block);
-      if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line >= ALine) then
-      begin
-        Exit(Entry.Node);
+        Exit(mEntry.Node);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -291,41 +313,51 @@ begin
   Result := -1;
 end;
 
+/// <summary>ATokens[AIndex] ist das end vor dem Punkt am Ende der Unit.</summary>
+function IsUnitEnd(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  Result := False;
+  if not ATokens[AIndex].IsKeyword('end') then
+  begin
+    Exit;
+  end;
+  mNext := AIndex + 1;
+  while (mNext <= High(ATokens)) and (ATokens[mNext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Inc(mNext);
+  end;
+  Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
+end;
+
 function TCommandSource.ImplementationEnd: Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Next: Integer;
-  InImplementation: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mInImplementation: Boolean;
 begin
   Result := High(FLines);
-  InImplementation := False;
-  Tokens := FTree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mInImplementation := False;
+  mTokens := FTree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind <> TPascalTokenKind.Keyword then
+    if mTokens[mIndex].Kind <> TPascalTokenKind.Keyword then
     begin
       Continue;
     end;
-    if Tokens[Index].IsKeyword('implementation') then
+    if mTokens[mIndex].IsKeyword('implementation') then
     begin
-      InImplementation := True;
+      mInImplementation := True;
     end
-    else if InImplementation and (Tokens[Index].IsKeyword('initialization') or
-      Tokens[Index].IsKeyword('finalization')) then
+    else if mInImplementation and (mTokens[mIndex].IsKeyword('initialization') or
+      mTokens[mIndex].IsKeyword('finalization')) then
     begin
-      Exit(Tokens[Index].StartPos.Line);
+      Exit(mTokens[mIndex].StartPos.Line);
     end
-    else if InImplementation and Tokens[Index].IsKeyword('end') then
+    else if mInImplementation and IsUnitEnd(mTokens, mIndex) then
     begin
-      Next := Index + 1;
-      while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Inc(Next);
-      end;
-      if (Next <= High(Tokens)) and Tokens[Next].IsSymbol('.') then
-      begin
-        Result := Tokens[Index].StartPos.Line;
-      end;
+      Result := mTokens[mIndex].StartPos.Line;
     end;
   end;
 end;
@@ -521,52 +553,84 @@ begin
   end;
 end;
 
-/// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
-/// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
-function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
-  const ABodyIndent: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+{ TWrapFrame }
+
+function LinesOf(const ALines: array of string): TArray<string>;
 var
-  Stop, Index: Integer;
-  Indent, Text: string;
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ALines));
+  for mIndex := 0 to High(ALines) do
+  begin
+    Result[mIndex] := ALines[mIndex];
+  end;
+end;
+
+class function TWrapFrame.Create(const AHead, ATail: array of string; const ABodyIndent: string): TWrapFrame;
+begin
+  Result.Head := LinesOf(AHead);
+  Result.Tail := LinesOf(ATail);
+  Result.BodyIndent := ABodyIndent;
+end;
+
+/// <summary>Zeilen ALines, jede mit AIndent davor und dem Zeilenende von ASource dahinter.</summary>
+function IndentedLines(ASource: TCommandSource; const ALines: TArray<string>; const AIndent: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(ALines) do
+  begin
+    Result := Result + AIndent + ALines[mIndex] + ASource.LineBreak;
+  end;
+end;
+
+/// <summary>Anweisungen hinter der Befehlszeile bis vor AStop, um AFrame.BodyIndent eingerückt, in AFrame.</summary>
+function FramedText(ASource: TCommandSource; const AFrame: TWrapFrame; AStop: Integer): string;
+var
+  mIndex: Integer;
+  mIndent: string;
+begin
+  mIndent := ASource.Indent(ASource.Line);
+  Result := IndentedLines(ASource, AFrame.Head, mIndent);
+  for mIndex := ASource.Line + 1 to AStop - 1 do
+  begin
+    if Trim(ASource.Lines[mIndex]) = '' then
+    begin
+      Result := Result + ASource.LineBreak;
+    end
+    else
+    begin
+      Result := Result + AFrame.BodyIndent + ASource.Lines[mIndex] + ASource.LineBreak;
+    end;
+  end;
+  Result := Result + IndentedLines(ASource, AFrame.Tail, mIndent);
+end;
+
+/// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AFrame.Head, die um AFrame.BodyIndent
+/// eingerückten Anweisungen und AFrame.Tail.</summary>
+function Wrap(ASource: TCommandSource; const AName: string; const AFrame: TWrapFrame; out AEdits: TArray<TTextEdit>;
+  out AReason: string): Boolean;
+var
+  mStop, mIndex: Integer;
 begin
   AEdits := nil;
   if ASource.RoutineAt = nil then
   begin
     Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
   end;
-  Stop := BlockEnd(ASource, ASource.Line);
+  mStop := BlockEnd(ASource, ASource.Line);
   // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
-  Index := ASource.Line + 1;
-  while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
+  mIndex := ASource.Line + 1;
+  while (mStop > 0) and (mIndex < mStop) and (Trim(ASource.Lines[mIndex]) = '') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Stop < 0) or (Index >= Stop) then
+  if (mStop < 0) or (mIndex >= mStop) then
   begin
     Exit(Fail(NoStatementsReason(ASource, AName), AReason));
   end;
-  Indent := ASource.Indent(ASource.Line);
-  Text := '';
-  for Index := 0 to High(AHead) do
-  begin
-    Text := Text + Indent + AHead[Index] + ASource.LineBreak;
-  end;
-  for Index := ASource.Line + 1 to Stop - 1 do
-  begin
-    if Trim(ASource.Lines[Index]) = '' then
-    begin
-      Text := Text + ASource.LineBreak;
-    end
-    else
-    begin
-      Text := Text + ABodyIndent + ASource.Lines[Index] + ASource.LineBreak;
-    end;
-  end;
-  for Index := 0 to High(ATail) do
-  begin
-    Text := Text + Indent + ATail[Index] + ASource.LineBreak;
-  end;
-  AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, Stop, 0), Text)];
+  AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, mStop, 0), FramedText(ASource, AFrame, mStop))];
   Result := True;
 end;
 

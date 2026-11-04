@@ -4,6 +4,12 @@
 - API für Aufrufer: Bereiche über `GWelcome.Areas.<Bereich>` (statt `GWelcome.<Bereich>`), Registry-Zugriff über `GWelcome.IdeLayout.Access`; `TAtlasIdeContinue.Hooks` (QuickActions, OnServerAccess) und `TAtlasIdeQuickActions.Hooks` (OnBuild … OnRunTask) statt einzelner Eigenschaften. Kern: Anfragen als Records (`TAtlasUnsavedQuery`, `TAtlasContinueProbe`, `TAtlasWelcomeArea`/`Drop`/`InsertLine`).
 - FPC: Welcome-Core-Tests 264 grün, 5 rot wie auf der Basis (Umlaute im JSON). IDE-Units (ToolsAPI) nur mit Atlas geprüft. Offen: Delphi-Build und Handtest der Willkommensseite (Weiterarbeiten samt Fortsetzen und Gemerkt, Einrichten mit atlas.json, Baseline und Pfadprüfung, Atlas-Layout anwenden/zurücksetzen, Atlas-Start nach dem Schließen des letzten Projekts) und des Debugger-Fensters.
 
+## Atlas-Befunde im Editing-Formatter (04.11.2026, Branch `claude/project-thread-z75bpx` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Editing.Formatter`, `.Formatter.Indent`, `.Formatter.Layout` und `.CommandSource` (anfangs 47), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde, keine neuen Units.
+- Formatter: Ablauf in `TFormatRun` (Pipeline, geschützte Zeilen, Änderungen), Zeilenformatierung in `TLineFormatting`. Layout: `TBlockPlacing` (begin/else), `TAligning` (Ausrichten), `BreakPosition` (Umbruch). Indent: Stand und Stapel als Record `TIndentState`, Zweige `{$IF}` in `TBranchTracker`, Tokens in `TIndentTokens`, Zeilen in `TIndentLines`; Klassenkette `TIndentCore` → `TStatementIndenter` (Anweisungen) → `TIndenter` (Deklarationen, Durchlauf).
+- API: `Wrap` aus CommandSource nimmt den Rahmen als `TWrapFrame.Create(Kopf, Schluss, Einrückung)` statt drei Parametern; Aufrufer in Collection-, Database-, Refactoring-, Task- und WrapCommands angepasst (betrifft den pausierten Thread Editing H–Z).
+- Geprüft: FPC-Tests aller Editing-, Lsp-Formatting- und Completion-Testunits wie auf dem Basiszweig. Delphi-Build offen.
+
 ## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle 7 Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Engine` (Teil B der Aufteilung Common/Rules; Catalog gehört Teil A). Ergebnis: 0 Befunde (PR #1706).
 - `TRuleEngine.Run` legt einen Lauf `TRuleRun` im implementation-Teil an (Felder statt Locals, Destruktor räumt Cache und Baumauswertung auf); nachgelagerte Regeln als `TDeferredRule`. Die Bedingung „Regel läuft für die Datei“ steht einmal in `SeverityIfOn` (Run, NewNames, OverridingRule). Öffentliche API unverändert.
@@ -39,6 +45,12 @@
 - Geprüft: FPC-Tests der Core-Units grün (Abweichungen nur wie auf dem Basiszweig: LspClient 3, Session 2 AV, Recording übersetzt unter FPC nicht). VCL-Units nur von Hand und mit Atlas geprüft; Delphi-Build offen.
 
 # Übergabe: Atlas IDE Expert – Stand 30.10.2026
+
+## Atlas-Befunde in Base UI Teil 1 (04.11.2026, Branch `claude/project-thread-joyczh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/UI/{Diagnostics,Results,Popup,Notifications}` (anfangs 36), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde. PR #1696.
+- `TAtlasResultsFrame` ist zerlegt: Frame mit Titelzeile und Baum, `TAtlasResultsView` (Daten je Knoten, verteilt Ereignisse an die Teile), Teile `TAtlasResultsPart` in `Atlas.UI.Results.{Entries,Hierarchy,Changes,Items,SymbolPath,Impact,DataFlow,Issues}`, Zeilentexte in `Atlas.UI.Results.Texts`. Aufruf über den Teil: `Frame.Impact.Show`, `Frame.Hierarchy.Controls.Toggle`, `Frame.Items.ShowsItemsOf` usw. Neue Darstellung = neuer Teil, im Konstruktor des Frames anmelden.
+- Weitere Schnittstellen: `TAtlasExportDialogTexts`, `TAtlasStyledText.Draw(TAtlasStyledTarget, …)`, `TAtlasNotificationTexts`, `Rows` im Benachrichtigungsfenster.
+- Offen: Delphi-Build und Handtests (Liste im PR), vor allem das Ergebnisfenster mit allen Listen.
 
 ## Atlas-Befunde in Configuration, Mcp, Index, Projects, Query (03.–04.11.2026, Branch `claude/project-thread-g1tunh` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common/Source/Configuration`, `Mcp`, `Index`, `Projects`, `Query` (und `Rules` ohne Builtin) beheben, ohne Grenzwerte zu ändern. Ergebnis: alle Units dieser fünf Ordner 0 Befunde. PRs #1529 (Query), #1541 (Projects), #1555 (Index), #1595 (Mcp Teil 2; Teil 1 kam als #1587 aus dem Common-Thread), #1618 (Configuration.Contract, Scopes), #1635 (Parser, JsonTree, Forbidden).

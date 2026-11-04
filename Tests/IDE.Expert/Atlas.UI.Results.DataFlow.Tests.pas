@@ -32,6 +32,7 @@ uses
   Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;
 
 function Place(ALine: Integer; const AText: string): TAtlasDataFlowPlace;
@@ -107,7 +108,7 @@ begin
   Node.Via := 'Summe';
   Node.Unsafe := True;
   Node.UnsafeReason := 'pointer';
-  Text := TAtlasResultsFrame.FlowNodeText(Node);
+  Text := TAtlasResultsTexts.FlowNodeText(Node);
   Assert.StartsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowAssignment) + ': A + B', Text);
   Assert.Contains(Text, TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, ['Summe']));
   Assert.Contains(Text, TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe,
@@ -116,11 +117,11 @@ begin
   // Zusammengefasst: Anzahl und Mehrzahl, der Fundort steht darunter.
   Node := Assignment('0', [Place(3, 'X := 0;'), Place(8, 'X := 0;'), Place(9, 'X := 0;')], nil);
   Node.Literal := True;
-  Text := TAtlasResultsFrame.FlowNodeText(Node);
+  Text := TAtlasResultsTexts.FlowNodeText(Node);
   Assert.StartsWith('3 ' + TAtlasStrings.Text(TAtlasTextId.DataFlowAssignments), Text);
   Assert.Contains(Text, TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral));
   Assert.IsFalse(Text.Contains('Haupt.pas'), 'ohne Fundort');
-  Assert.AreEqual('Haupt.pas:4: X := 0;', TAtlasResultsFrame.FlowPlaceText(Node.Places[0]));
+  Assert.AreEqual('Haupt.pas:4: X := 0;', TAtlasResultsTexts.FlowPlaceText(Node.Places[0]));
 end;
 
 procedure TAtlasResultsDataFlowTests.SourceTextShowsArrowLeafAndDepth;
@@ -130,19 +131,19 @@ begin
   Child := Default(TAtlasDataFlowChild);
   Child.Kind := TAtlasDataFlowChildKind.Source;
   Child.Source := Symbol('Summe', 'S', TAtlasDataFlowLeaf.None);
-  Assert.AreEqual('← Summe  (Daten.pas:11)', TAtlasResultsFrame.FlowSourceText(Child,
+  Assert.AreEqual('← Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
-  Assert.AreEqual('→ Summe  (Daten.pas:11)', TAtlasResultsFrame.FlowSourceText(Child,
+  Assert.AreEqual('→ Summe  (Daten.pas:11)', TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Targets));
   Child.DepthReached := True;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth), TAtlasResultsFrame.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth), TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
   Child.DepthReached := False;
   Child.Source.Leaf := TAtlasDataFlowLeaf.Cycle;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle), TAtlasResultsFrame.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle), TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
   Child.Source.Leaf := TAtlasDataFlowLeaf.Constant;
-  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant), TAtlasResultsFrame.FlowSourceText(Child,
+  Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant), TAtlasResultsTexts.FlowSourceText(Child,
     TAtlasDataFlowDirection.Sources));
 end;
 
@@ -161,7 +162,7 @@ type
 procedure WireDataFlow(const ATarget: TAtlasResultsFrame; const AProbe: TDataFlowProbe);
 begin
   AProbe.FAsked := 0;
-  ATarget.OnFlowExpand :=
+  ATarget.Flow.OnExpand :=
     function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
       const APath: TArray<string>): TAtlasDataFlowResult
     begin
@@ -193,11 +194,11 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     WireDataFlow(Frame, mProbe);
-    Frame.ShowDataFlow('Woher kommt X?', TAtlasDataFlowDirection.Sources,
+    Frame.Flow.Show('Woher kommt X?', TAtlasDataFlowDirection.Sources,
       Answer([Assignment('0', [Place(3, 'X := 0;'), Place(8, 'X := 0;')], nil),
       Assignment('Summe', [Place(11, 'X := Summe;')], [Symbol('Summe', 'S', TAtlasDataFlowLeaf.None)])]), 6,
       False, False);
-    Assert.IsTrue(Frame.ShowsFlow);
+    Assert.IsTrue(Frame.Flow.Shows);
     Assert.AreEqual(2, RootCount(Frame));
     // Zusammengefasst: beide Fundorte darunter.
     Assert.AreEqual(2, Integer(Root(Frame, 0).Count));
@@ -248,7 +249,7 @@ begin
     Filtered := 0;
     OnlyProject := False;
     ExcludeTests := False;
-    Frame.OnFlowFilter :=
+    Frame.Flow.OnFilter :=
       procedure(AOnlyProject, AExcludeTests: Boolean)
       begin
         Inc(Filtered);
@@ -256,23 +257,23 @@ begin
         ExcludeTests := AExcludeTests;
       end;
     // Tiefe 1: Die Quellen der ersten Ebene gehen nicht weiter auf.
-    Frame.ShowDataFlow('Woher kommt X?', TAtlasDataFlowDirection.Sources,
+    Frame.Flow.Show('Woher kommt X?', TAtlasDataFlowDirection.Sources,
       Answer([Assignment('Summe', [Place(11, 'X := Summe;')], [Symbol('Summe', 'S', TAtlasDataFlowLeaf.None)])]),
       1, False, True);
     Assert.AreEqual(0, Integer(Root(Frame, 0).Item[0].Count));
     Assert.EndsWith(TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth), Root(Frame, 0).Item[0].Text);
     // Filter wie angefragt, Setzen meldet nichts.
-    Assert.IsFalse(Frame.OnlyProjectCheck.Checked);
-    Assert.IsTrue(Frame.ExcludeTestsCheck.Checked);
+    Assert.IsFalse(Frame.Flow.OnlyProjectCheck.Checked);
+    Assert.IsTrue(Frame.Flow.ExcludeTestsCheck.Checked);
     Assert.AreEqual(0, Filtered);
-    Frame.OnlyProjectCheck.Checked := True;
+    Frame.Flow.OnlyProjectCheck.Checked := True;
     Assert.AreEqual(1, Filtered);
     Assert.IsTrue(OnlyProject);
     Assert.IsTrue(ExcludeTests);
     // Andere Listen blenden die Filter aus und melden nichts mehr.
-    Frame.ShowEntries('Referenzen', nil);
-    Assert.IsFalse(Frame.ShowsFlow);
-    Frame.ExcludeTestsCheck.Checked := False;
+    Frame.Entries.Show('Referenzen', nil);
+    Assert.IsFalse(Frame.Flow.Shows);
+    Frame.Flow.ExcludeTestsCheck.Checked := False;
     Assert.AreEqual(1, Filtered);
   finally
     Host.Free;

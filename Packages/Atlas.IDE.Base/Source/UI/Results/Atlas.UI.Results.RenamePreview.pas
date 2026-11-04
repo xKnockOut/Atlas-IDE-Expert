@@ -18,6 +18,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Results.Model,
+  Atlas.UI.Results.View,
   Atlas.UI.Results.Frame;
 
 type
@@ -36,6 +37,59 @@ implementation
 uses
   Atlas.UI.Strings;
 
+/// <summary>Knöpfe unten rechts: „Abbrechen“ und AApply; liefert den Knopf, der übernimmt.</summary>
+function AddButtons(ADialog: TForm; const AApply: string): TButton;
+var
+  mButtons: TPanel;
+  mCancel: TButton;
+begin
+  mButtons := TPanel.Create(ADialog);
+  mButtons.Parent := ADialog;
+  mButtons.Align := alBottom;
+  mButtons.Height := ADialog.ScaleValue(44);
+  mButtons.BevelOuter := bvNone;
+  mCancel := TButton.Create(ADialog);
+  mCancel.Parent := mButtons;
+  mCancel.Caption := TAtlasStrings.Text(TAtlasTextId.RenamePreviewCancel);
+  mCancel.ModalResult := mrCancel;
+  mCancel.Cancel := True;
+  mCancel.Width := ADialog.ScaleValue(100);
+  mCancel.Top := ADialog.ScaleValue(9);
+  mCancel.Left := mButtons.ClientWidth - mCancel.Width - ADialog.ScaleValue(10);
+  mCancel.Anchors := [akTop, akRight];
+  Result := TButton.Create(ADialog);
+  Result.Parent := mButtons;
+  Result.Caption := AApply;
+  Result.ModalResult := mrOk;
+  Result.Default := True;
+  Result.Width := mCancel.Width;
+  Result.Top := mCancel.Top;
+  Result.Left := mCancel.Left - Result.Width - ADialog.ScaleValue(8);
+  Result.Anchors := [akTop, akRight];
+end;
+
+/// <summary>Stellen nach Unit; mit erschlossenen Stellen getrennt nach „Wird geändert“ und „Nicht geändert“.</summary>
+procedure ShowGroups(AResults: TAtlasResultsFrame; const AHint: string; const AGroups: TArray<TAtlasResultGroup>);
+var
+  mGroup: TAtlasResultGroup;
+  mEntries: TArray<TAtlasResultEntry>;
+begin
+  mEntries := nil;
+  for mGroup in AGroups do
+  begin
+    mEntries := mEntries + mGroup.Entries;
+  end;
+  if TAtlasResults.InferredCount(mEntries) > 0 then
+  begin
+    AResults.Entries.ShowRated(AHint, mEntries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
+      TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup));
+  end
+  else
+  begin
+    AResults.Entries.Show(AHint, AGroups);
+  end;
+end;
+
 class function TAtlasRenamePreview.Execute(const ATitle, AHint: string; const AGroups: TArray<TAtlasResultGroup>;
   const AOnOpen: TAtlasResultsOpen): Boolean;
 begin
@@ -45,66 +99,28 @@ end;
 class function TAtlasRenamePreview.Execute(const ATitle, AHint, AApply: string;
   const AGroups: TArray<TAtlasResultGroup>; const AOnOpen: TAtlasResultsOpen): Boolean;
 var
-  Dialog: TForm;
-  Results: TAtlasResultsFrame;
-  Buttons: TPanel;
-  Apply, Cancel: TButton;
-  Group: TAtlasResultGroup;
-  Entries: TArray<TAtlasResultEntry>;
+  mDialog: TForm;
+  mResults: TAtlasResultsFrame;
+  mApply: TButton;
 begin
-  Dialog := TForm.CreateNew(nil);
+  mDialog := TForm.CreateNew(nil);
   try
-    Dialog.Caption := ATitle;
-    Dialog.BorderStyle := bsSizeable;
-    Dialog.BorderIcons := [biSystemMenu];
-    Dialog.Position := poMainFormCenter;
-    Dialog.Width := Dialog.ScaleValue(720);
-    Dialog.Height := Dialog.ScaleValue(480);
-    Buttons := TPanel.Create(Dialog);
-    Buttons.Parent := Dialog;
-    Buttons.Align := alBottom;
-    Buttons.Height := Dialog.ScaleValue(44);
-    Buttons.BevelOuter := bvNone;
-    Cancel := TButton.Create(Dialog);
-    Cancel.Parent := Buttons;
-    Cancel.Caption := TAtlasStrings.Text(TAtlasTextId.RenamePreviewCancel);
-    Cancel.ModalResult := mrCancel;
-    Cancel.Cancel := True;
-    Cancel.Width := Dialog.ScaleValue(100);
-    Cancel.Top := Dialog.ScaleValue(9);
-    Cancel.Left := Buttons.ClientWidth - Cancel.Width - Dialog.ScaleValue(10);
-    Cancel.Anchors := [akTop, akRight];
-    Apply := TButton.Create(Dialog);
-    Apply.Parent := Buttons;
-    Apply.Caption := AApply;
-    Apply.ModalResult := mrOk;
-    Apply.Default := True;
-    Apply.Width := Cancel.Width;
-    Apply.Top := Cancel.Top;
-    Apply.Left := Cancel.Left - Apply.Width - Dialog.ScaleValue(8);
-    Apply.Anchors := [akTop, akRight];
-    Results := TAtlasResultsFrame.Create(Dialog);
-    Results.Parent := Dialog;
-    Results.Align := alClient;
-    Results.OnOpen := AOnOpen;
-    Entries := nil;
-    for Group in AGroups do
-    begin
-      Entries := Entries + Group.Entries;
-    end;
-    if TAtlasResults.InferredCount(Entries) > 0 then
-    begin
-      Results.ShowRated(AHint, Entries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
-        TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup));
-    end
-    else
-    begin
-      Results.ShowEntries(AHint, AGroups);
-    end;
-    Dialog.ActiveControl := Apply;
-    Result := Dialog.ShowModal = mrOk;
+    mDialog.Caption := ATitle;
+    mDialog.BorderStyle := bsSizeable;
+    mDialog.BorderIcons := [biSystemMenu];
+    mDialog.Position := poMainFormCenter;
+    mDialog.Width := mDialog.ScaleValue(720);
+    mDialog.Height := mDialog.ScaleValue(480);
+    mApply := AddButtons(mDialog, AApply);
+    mResults := TAtlasResultsFrame.Create(mDialog);
+    mResults.Parent := mDialog;
+    mResults.Align := alClient;
+    mResults.OnOpen := AOnOpen;
+    ShowGroups(mResults, AHint, AGroups);
+    mDialog.ActiveControl := mApply;
+    Result := mDialog.ShowModal = mrOk;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
