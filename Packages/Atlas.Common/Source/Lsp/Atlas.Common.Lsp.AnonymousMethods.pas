@@ -293,6 +293,14 @@ begin
   end;
 end;
 
+/// <summary>Eingabe der Umwandlung aus ARequest.</summary>
+function InputOf(const ARequest: TAnonymousMethodRequest): TAnonymousInput;
+begin
+  Result := TAnonymousInput.Create(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup);
+  Result.Capture := ARequest.Capture;
+  Result.Style := ARequest.Style;
+end;
+
 class function TLspAnonymousMethods.Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>;
 var
   Target: TAnonymousTarget;
@@ -302,8 +310,7 @@ var
   Embedded: TCodeAction;
 begin
   Result := nil;
-  if TAnonymousMethods.Target(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Capture,
-    Target, Reason) then
+  if TAnonymousMethods.Target(InputOf(ARequest), Target, Reason) then
   begin
     Arguments := TJSONArray.Create;
     Arguments.Add(ARequest.Uri);
@@ -319,8 +326,7 @@ begin
     Action.AddPair('command', Command);
     Result := Result + [Action];
   end;
-  if TAnonymousMethods.Embed(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Style,
-    Embedded, Reason) then
+  if TAnonymousMethods.Embed(InputOf(ARequest), Embedded, Reason) then
   begin
     Result := Result + [TLspCodeActions.ActionToJson(ARequest.Uri, Embedded)];
   end;
@@ -332,8 +338,7 @@ var
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TAnonymousMethods.Execute(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Capture,
-    ARequest.Style, AName, Converted, Reason) then
+  if not TAnonymousMethods.Execute(InputOf(ARequest), AName, Converted, Reason) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
   end;
