@@ -573,6 +573,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PatternContinuation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MultiCursor.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MultiCursorState.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LinkedEditing.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LinkedEditingQuery.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.SmartPaste.pas"/>

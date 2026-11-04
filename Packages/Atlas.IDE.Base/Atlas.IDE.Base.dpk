@@ -497,6 +497,7 @@ contains
   Atlas.IDE.Editor.EnterWatch in 'Source\IDE\Editor\Atlas.IDE.Editor.EnterWatch.pas',
   Atlas.IDE.Editor.PatternContinuation in 'Source\IDE\Editor\Atlas.IDE.Editor.PatternContinuation.pas',
   Atlas.IDE.Editor.MultiCursor in 'Source\IDE\Editor\Atlas.IDE.Editor.MultiCursor.pas',
+  Atlas.IDE.Editor.MultiCursorState in 'Source\IDE\Editor\Atlas.IDE.Editor.MultiCursorState.pas',
   Atlas.IDE.Editor.LinkedEditing in 'Source\IDE\Editor\Atlas.IDE.Editor.LinkedEditing.pas',
   Atlas.IDE.Editor.LinkedEditingQuery in 'Source\IDE\Editor\Atlas.IDE.Editor.LinkedEditingQuery.pas',
   Atlas.IDE.Editor.SmartPaste in 'Source\IDE\Editor\Atlas.IDE.Editor.SmartPaste.pas',
