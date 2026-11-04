@@ -229,6 +229,9 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UnitRelations.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRelations.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Nodes.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Graph.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.SymbolPath.Calls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SymbolPath.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
