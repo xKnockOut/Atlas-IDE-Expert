@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Registration.Tests;
 
-// Tests der Anmeldung eingebauter Regeln in drei Gruppen (Atlas.Common.Rules.Builtin.Registration1 bis 3):
+// Tests der Anmeldung eingebauter Regeln in drei Themen (Atlas.Common.Rules.Builtin.Registration.Declarations,
+// .Statements und .Frameworks):
 // jede Gruppe meldet Regeln an, keine Regel steht doppelt, und BuiltinRules liefert genau die Regeln aller
 // Gruppen in derselben Reihenfolge.
 
@@ -29,9 +30,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.Registration1,
-  Atlas.Common.Rules.Builtin.Registration2,
-  Atlas.Common.Rules.Builtin.Registration3;
+  Atlas.Common.Rules.Builtin.Registration.Declarations,
+  Atlas.Common.Rules.Builtin.Registration.Statements,
+  Atlas.Common.Rules.Builtin.Registration.Frameworks;
 
 type
   TRegisterProc = reference to procedure(const ARegistry: TRuleRegistry);
@@ -54,30 +55,30 @@ begin
   end;
 end;
 
-function Group1: TArray<string>;
+function DeclarationsGroup: TArray<string>;
 begin
   Result := GroupIds(
     procedure(const ARegistry: TRuleRegistry)
     begin
-      RegisterBuiltinRules1(ARegistry);
+      RegisterBuiltinDeclarationRules(ARegistry);
     end);
 end;
 
-function Group2: TArray<string>;
+function StatementsGroup: TArray<string>;
 begin
   Result := GroupIds(
     procedure(const ARegistry: TRuleRegistry)
     begin
-      RegisterBuiltinRules2(ARegistry);
+      RegisterBuiltinStatementRules(ARegistry);
     end);
 end;
 
-function Group3: TArray<string>;
+function FrameworksGroup: TArray<string>;
 begin
   Result := GroupIds(
     procedure(const ARegistry: TRuleRegistry)
     begin
-      RegisterBuiltinRules3(ARegistry);
+      RegisterBuiltinFrameworkRules(ARegistry);
     end);
 end;
 
@@ -94,9 +95,9 @@ end;
 
 procedure TBuiltinRegistrationTests.EveryGroupRegistersRules;
 begin
-  Assert.IsTrue(Length(Group1) > 0, 'Gruppe 1');
-  Assert.IsTrue(Length(Group2) > 0, 'Gruppe 2');
-  Assert.IsTrue(Length(Group3) > 0, 'Gruppe 3');
+  Assert.IsTrue(Length(DeclarationsGroup) > 0, 'Declarations');
+  Assert.IsTrue(Length(StatementsGroup) > 0, 'Statements');
+  Assert.IsTrue(Length(FrameworksGroup) > 0, 'Frameworks');
 end;
 
 procedure TBuiltinRegistrationTests.RuleIdsAreUnique;
@@ -120,7 +121,7 @@ procedure TBuiltinRegistrationTests.BuiltinRulesKeepsGroupOrder;
 var
   mExpected, mActual: TArray<string>;
 begin
-  mExpected := Group1 + Group2 + Group3;
+  mExpected := DeclarationsGroup + StatementsGroup + FrameworksGroup;
   mActual := AllIds;
   Assert.AreEqual(string.Join(',', mExpected), string.Join(',', mActual));
 end;

@@ -2,7 +2,7 @@
 
 // Tests der Teile von TNameResolver einzeln (Stelle, Units, Nachschlagen, Typen, Mitglieder, lokale Namen,
 // Ausdrücke, Ketten, Kandidaten, fehlende Interface-Methoden, Abfragen, Kern). Das Verhalten der Fassade prüfen
-// Atlas.Common.Semantics.NameResolver.Tests und NameResolverStage2.Tests.
+// Atlas.Common.Semantics.NameResolver.Tests und NameResolver.LanguageFeatures.Tests.
 
 interface
 
