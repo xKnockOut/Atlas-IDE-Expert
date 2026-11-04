@@ -93,7 +93,6 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
-        <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Query\Atlas.Core.Query.Model.pas"/>
         <DCCReference Include="Source\Core\Search\Atlas.Core.Search.Files.pas"/>
         <DCCReference Include="Source\Core\Search\Atlas.Core.Search.History.pas"/>

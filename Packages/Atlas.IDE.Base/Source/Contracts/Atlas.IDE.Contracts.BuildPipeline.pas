@@ -6,7 +6,7 @@
 // den Tests bauen), Build-Werkzeuge (Neubau nach den Projektaufgaben) und die
 // Willkommensseite (Schnellaktion „Build“, #764) fragen es über die Registry
 // und kommen ohne das Modul aus. Nur Interfaces und Records mit einfachen
-// Typen, kein Code. Liegt im Package Atlas.IDE.Contracts (#1456).
+// Typen, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
 
 interface
 

@@ -3,7 +3,7 @@
 // Haken des Testläufers (A-09), aus Atlas.IDE.Tests.Composition gelöst; die
 // Composition setzt sie in StartTests:
 // - OnBuild: vor den Tests bauen über IAtlasBuildJobs der Build-Pipeline
-//   (Atlas.IDE.Contracts, ohne Modul nicht),
+//   (Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht),
 // - OnProblems: Fehlschläge ins Problemfenster von Base,
 // - OnFinished: Projekt-Zusammenfassung (TAtlasIdeProjectSummaries, #69) und
 //   jeder IAtlasTestsListener (Schnellaktionen der Willkommensseite),

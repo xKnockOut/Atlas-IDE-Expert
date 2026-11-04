@@ -11,7 +11,7 @@
 //   „Aufgaben“ mit einem Eintrag je Aufgabe),
 // - Hörer für Einstellungen und Thema,
 // - für andere Module Startprofile und Projektaufgaben
-//   (IAtlasBuildToolsSource, Atlas.IDE.Contracts); das Ende einer Aufgabe
+//   (IAtlasBuildToolsSource, Atlas.IDE.Contracts.BuildTools); das Ende einer Aufgabe
 //   geht an jeden IAtlasTaskListener.
 // Die Build-Pipeline selbst (Läufer der Builds auf Auftrag, Prüfung vor dem
 // Kompilieren, Release-Wächter, Bewertung) ist ein eigenes Modul

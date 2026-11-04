@@ -3,7 +3,7 @@
 // Andere Module für die Willkommensseite (#1455, ADR 0017 Regel 6): Builds
 // auf Auftrag (Build-Pipeline), Testprojekte (Tests), Startprofile und
 // Projektaufgaben (Build-Werkzeuge) und die Baseline (Prüfregeln) erreicht
-// die Seite nur über deren Verträge in Atlas.IDE.Contracts und fragt bei
+// die Seite nur über deren Verträge in Base (Atlas.IDE.Contracts.*) und fragt bei
 // jedem Aufruf neu (Regel 2): Fehlt ein Modul oder ist es aus, meldet die
 // Schnellaktion den Grund, statt etwas zu tun. Vorher klebte die
 // Kompositionswurzel diese Verbindungen. Die Einrichtung (#759) bekommt hier
