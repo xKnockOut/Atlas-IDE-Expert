@@ -78,67 +78,90 @@ begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
 end;
 
+/// <summary>Die Verweise aus AReferences zwischen AStart und AStop.</summary>
+function ReferencesIn(const AReferences: TArray<TUsesReference>; const AStart, AStop: TTextPosition):
+  TArray<TUsesReference>;
+var
+  mReference: TUsesReference;
+begin
+  Result := nil;
+  for mReference in AReferences do
+  begin
+    if Before(AStart, mReference.Range.StartPos) and Before(mReference.Range.EndPos, AStop) then
+    begin
+      Result := Result + [mReference];
+    end;
+  end;
+end;
+
+/// <summary>Stellen von AUnitName (AOwn) und AActiveUnit (AActive) in AInside; -1 ohne. True, wenn beide
+/// vorkommen.</summary>
+function FindPair(const AInside: TArray<TUsesReference>; const AUnitName, AActiveUnit: string;
+  const ANamespaces: TArray<string>; out AOwn, AActive: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  AOwn := -1;
+  AActive := -1;
+  for mIndex := 0 to High(AInside) do
+  begin
+    if TUsesClauses.IsUsed([AInside[mIndex].Name], AUnitName, ANamespaces) then
+    begin
+      AOwn := mIndex;
+    end
+    else if TUsesClauses.IsUsed([AInside[mIndex].Name], AActiveUnit, ANamespaces) then
+    begin
+      AActive := mIndex;
+    end;
+  end;
+  Result := (AOwn >= 0) and (AActive >= 0);
+end;
+
+/// <summary>Entfernt AInside[AOwn] samt Komma und hängt den Namen vor AStop an: hinter dem vorigen Namen bis zu
+/// seinem Ende, als erster bis vor den nächsten.</summary>
+function MoveEdits(const AInside: TArray<TUsesReference>; AOwn: Integer; const AStop: TTextPosition):
+  TArray<TTextEdit>;
+begin
+  if AOwn > 0 then
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(AInside[AOwn - 1].Range.EndPos, AInside[AOwn].Range.EndPos), '')];
+  end
+  else
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(AInside[AOwn].Range.StartPos, AInside[AOwn + 1].Range.StartPos),
+      '')];
+  end;
+  Result := Result + [TTextEdit.Create(TTextRange.Create(AStop, AStop), ', ' + AInside[AOwn].Name)];
+end;
+
 class function TCompletionSameNames.MoveToEnd(const ATokens: TArray<TPascalToken>; const AUnitName,
   AActiveUnit: string; const ANamespaces: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Clause: TUsesClauseInfo;
-  References, Inside: TArray<TUsesReference>;
-  Reference: TUsesReference;
-  Index, Own, Active: Integer;
-  Start, Stop: TTextPosition;
+  mClause: TUsesClauseInfo;
+  mReferences, mInside: TArray<TUsesReference>;
+  mOwn, mActive: Integer;
+  mStop: TTextPosition;
 begin
   AEdits := nil;
   Result := False;
-  References := TUsesClauses.References(ATokens);
-  for Clause in TUsesClauses.Clauses(ATokens) do
+  mReferences := TUsesClauses.References(ATokens);
+  for mClause in TUsesClauses.Clauses(ATokens) do
   begin
-    if not Clause.Plain then
+    mStop := ATokens[mClause.Semicolon].StartPos;
+    if mClause.Plain then
     begin
-      Continue;
-    end;
-    Start := ATokens[Clause.UsesIndex].EndPos;
-    Stop := ATokens[Clause.Semicolon].StartPos;
-    Inside := nil;
-    for Reference in References do
-    begin
-      if Before(Start, Reference.Range.StartPos) and Before(Reference.Range.EndPos, Stop) then
+      mInside := ReferencesIn(mReferences, ATokens[mClause.UsesIndex].EndPos, mStop);
+      // Nur wenn die Variante vor der aktiven steht; sonst wäre sie schon die aktive.
+      if FindPair(mInside, AUnitName, AActiveUnit, ANamespaces, mOwn, mActive) then
       begin
-        Inside := Inside + [Reference];
+        Result := mOwn < mActive;
+        if Result then
+        begin
+          AEdits := MoveEdits(mInside, mOwn, mStop);
+        end;
+        Exit;
       end;
     end;
-    Own := -1;
-    Active := -1;
-    for Index := 0 to High(Inside) do
-    begin
-      if TUsesClauses.IsUsed([Inside[Index].Name], AUnitName, ANamespaces) then
-      begin
-        Own := Index;
-      end
-      else if TUsesClauses.IsUsed([Inside[Index].Name], AActiveUnit, ANamespaces) then
-      begin
-        Active := Index;
-      end;
-    end;
-    if (Own < 0) or (Active < 0) then
-    begin
-      Continue;
-    end;
-    // Nur wenn die Variante vor der aktiven steht; sonst wäre sie schon die aktive.
-    if Own > Active then
-    begin
-      Exit;
-    end;
-    // Entfernen samt Komma: hinter dem vorigen Namen bis zu ihrem Ende, als erster bis vor den nächsten.
-    if Own > 0 then
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(Inside[Own - 1].Range.EndPos, Inside[Own].Range.EndPos), '')];
-    end
-    else
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(Inside[Own].Range.StartPos, Inside[Own + 1].Range.StartPos), '')];
-    end;
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Stop, Stop), ', ' + Inside[Own].Name)];
-    Exit(True);
   end;
 end;
 

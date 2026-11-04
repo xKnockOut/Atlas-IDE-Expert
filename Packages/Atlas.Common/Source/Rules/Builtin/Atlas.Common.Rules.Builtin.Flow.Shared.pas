@@ -9,6 +9,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Contract;
 
 const
@@ -46,6 +47,49 @@ procedure PushChildren(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode);
 function FreedPath(ANode: TSyntaxNode): string;
 /// <summary>Gibt die Anweisung AStatement X frei? AToNil bei FreeAndNil.</summary>
 function FreedBy(AStatement: TSyntaxNode; out APath: string; out AToNil: Boolean): Boolean;
+
+/// <summary>Ausdrücke, die ein Knoten des Graphen selbst auswertet: bei einfachen Anweisungen alle Kinder,
+/// bei if, while, for, case und with nur die Bedingung bzw. den Kopf.</summary>
+function OwnParts(ASyntax: TSyntaxNode): TArray<TSyntaxNode>;
+/// <summary>Weist der Knoten APath sicher einen Wert zu (Zuweisung, Schleifenvariable)?</summary>
+function AssignsPath(ANode: TFlowNode; const APath: string): Boolean;
+/// <summary>Weist eine Anweisung unter ANode APath zu?</summary>
+function SubtreeAssigns(ANode: TSyntaxNode; const APath: string): Boolean;
+/// <summary>Parameter, lokale Variablen und Inline-Variablen der Routine (ohne lokale Routinen).</summary>
+function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
+/// <summary>Hängt die Nachfolger von ANode an AQueue, die noch nicht besucht sind; Kanten nur über eine mögliche
+/// Ausnahme (die Anweisung wirkt dann nicht) bleiben aus.</summary>
+procedure QueueSuccessors(ANode: TFlowNode; const AVisited: TArray<Boolean>; var AQueue: TArray<TFlowNode>);
+/// <summary>Hängt die noch nicht besuchten Vorgänger von ANode an AQueue.</summary>
+procedure QueuePredecessors(ANode: TFlowNode; const AVisited: TArray<Boolean>; var AQueue: TArray<TFlowNode>);
+
+/// <summary>Deklaration der Klasse AClassName (letzter Namensteil) unter ARoot; nil ohne.</summary>
+function FindClassType(ARoot: TSyntaxNode; const AClassName: string): TSyntaxNode;
+/// <summary>Felder der Klassendeklaration AClass (ohne verschachtelte Typen).</summary>
+function ClassFields(AClass: TSyntaxNode): TArray<string>;
+
+/// <summary>Anonyme Methode oder lokale Routine: eigener Rumpf, eigener Ablauf.</summary>
+function IsRoutineBody(ANode: TSyntaxNode): Boolean;
+/// <summary>Quelltext von ANode in AText.</summary>
+function SourceText(const AText: string; ANode: TSyntaxNode): string;
+/// <summary>Einrückung vor ANode in AText; False, wenn davor in der Zeile noch Code steht.</summary>
+function LineIndent(const AText: string; ANode: TSyntaxNode; out AIndent: string): Boolean;
+/// <summary>Methodenname ohne Klasse (TKlasse.Laden -&gt; Laden).</summary>
+function MethodOf(ARoutine: TSyntaxNode): string;
+/// <summary>Klasse einer Methode (TKlasse.Laden -&gt; TKlasse); '' bei einer Routine ohne Klasse.</summary>
+function ClassOf(ARoutine: TSyntaxNode): string;
+/// <summary>Letzter Namensteil der Klasse ohne Typparameter (A.TStapel&lt;T&gt; -&gt; TStapel).</summary>
+function DeclaredClassName(const AQualifiedClass: string): string;
+/// <summary>Beginnt ARoutine mit dem Wort AWord (constructor, destructor; nicht class constructor)?</summary>
+function StartsWithWord(const AText: string; ARoutine: TSyntaxNode; const AWord: string): Boolean;
+/// <summary>Ruft ARoutine die Methode AName auf (AName; AName(…); Self.AName)?</summary>
+function CallsMethod(ARoutine: TSyntaxNode; const AName: string): Boolean;
+/// <summary>Pfade, die ANode selbst auf nil prüft: Assigned(X), X = nil, nil &lt;&gt; X und ähnliche Vergleiche.
+/// </summary>
+function NilCheckedPaths(ANode: TSyntaxNode): TArray<string>;
+
+/// <summary>Stelle von AChild unter AParent; sonst -1.</summary>
+function PositionIn(AParent, AChild: TSyntaxNode): Integer;
 
 implementation
 
@@ -282,6 +326,320 @@ begin
   end;
   APath := FreedPath(Target);
   Result := APath <> '';
+end;
+
+function OwnParts(ASyntax: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Index: Integer;
+  AllChildren: Boolean;
+begin
+  Result := nil;
+  if ASyntax = nil then
+  begin
+    Exit;
+  end;
+  AllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+    TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
+  for Index := 0 to ASyntax.ChildCount - 1 do
+  begin
+    if AllChildren or not (ASyntax[Index].Kind in FlowStatementKinds) then
+    begin
+      Result := Result + [ASyntax[Index]];
+    end;
+  end;
+end;
+
+function AssignsPath(ANode: TFlowNode; const APath: string): Boolean;
+var
+  S: TSyntaxNode;
+begin
+  S := ANode.Syntax;
+  Result := SameText(ANode.Defines, APath);
+  if Result or (S = nil) then
+  begin
+    Exit;
+  end;
+  if (ANode.Kind = TFlowNodeKind.Condition) and (S.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
+    SameText(S.Name, APath) then
+  begin
+    Exit(True);
+  end;
+  Result := (S.Kind = TSyntaxKind.AssignStatement) and (S.ChildCount > 0) and SameText(FreedPath(S[0]), APath);
+end;
+
+function SubtreeAssigns(ANode: TSyntaxNode; const APath: string): Boolean;
+var
+  Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (Bericht M1).
+  Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) and
+        SameText(FreedPath(Node[0]), APath) then
+      begin
+        Exit(True);
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(Node[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+  E: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (Bericht M1).
+  Result := nil;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoutine);
+    while Pending.Count > 0 do
+    begin
+      E := Pending.Pop;
+      if (E <> ARoutine) and (E.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      begin
+        Continue;
+      end;
+      if E.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+      begin
+        for Name in E.Name.Split([',']) do
+        begin
+          Result := Result + [Trim(Name)];
+        end;
+      end;
+      for Index := E.ChildCount - 1 downto 0 do
+      begin
+        Pending.Push(E[Index]);
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+procedure QueueSuccessors(ANode: TFlowNode; const AVisited: TArray<Boolean>; var AQueue: TArray<TFlowNode>);
+var
+  Next: TFlowNode;
+begin
+  for Next in ANode.Successors do
+  begin
+    if not AVisited[Next.Index] and not ANode.IsImplicitRaiseEdge(Next) then
+    begin
+      AQueue := AQueue + [Next];
+    end;
+  end;
+end;
+
+procedure QueuePredecessors(ANode: TFlowNode; const AVisited: TArray<Boolean>; var AQueue: TArray<TFlowNode>);
+var
+  Prev: TFlowNode;
+begin
+  for Prev in ANode.Predecessors do
+  begin
+    if not AVisited[Prev.Index] then
+    begin
+      AQueue := AQueue + [Prev];
+    end;
+  end;
+end;
+
+
+function FindClassType(ARoot: TSyntaxNode; const AClassName: string): TSyntaxNode;
+var
+  Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (Bericht M1).
+  Result := nil;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AClassName) then
+      begin
+        // Ohne class-Teil (z. B. Vorwärtsdeklaration eines anderen Typs) weitersuchen.
+        Result := Node.FindChild(TSyntaxKind.ClassType);
+        if Result <> nil then
+        begin
+          Exit;
+        end;
+        Continue;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        if not (Node[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ImplementationSection]) then
+        begin
+          Pending.Push(Node[Index]);
+        end;
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+function ClassFields(AClass: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+  E: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (Bericht M1).
+  Result := nil;
+  if AClass = nil then
+  begin
+    Exit;
+  end;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(AClass);
+    while Pending.Count > 0 do
+    begin
+      E := Pending.Pop;
+      if E.Kind = TSyntaxKind.Field then
+      begin
+        for Name in E.Name.Split([',']) do
+        begin
+          Result := Result + [Trim(Name)];
+        end;
+      end;
+      for Index := E.ChildCount - 1 downto 0 do
+      begin
+        if E[Index].Kind <> TSyntaxKind.TypeSection then
+        begin
+          Pending.Push(E[Index]);
+        end;
+      end;
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+function IsRoutineBody(ANode: TSyntaxNode): Boolean;
+begin
+  Result := ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl];
+end;
+
+function SourceText(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function LineIndent(const AText: string; ANode: TSyntaxNode; out AIndent: string): Boolean;
+var
+  Start: Integer;
+begin
+  Start := ANode.StartOffset;
+  while (Start > 0) and CharInSet(AText[Start], [' ', #9]) do
+  begin
+    Dec(Start);
+  end;
+  AIndent := Copy(AText, Start + 1, ANode.StartOffset - Start);
+  Result := (Start = 0) or CharInSet(AText[Start], [#10, #13]);
+end;
+
+function MethodOf(ARoutine: TSyntaxNode): string;
+begin
+  Result := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+end;
+
+function ClassOf(ARoutine: TSyntaxNode): string;
+begin
+  Result := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+end;
+
+function DeclaredClassName(const AQualifiedClass: string): string;
+begin
+  Result := Copy(AQualifiedClass, LastDelimiter('.', AQualifiedClass) + 1, MaxInt);
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+end;
+
+function StartsWithWord(const AText: string; ARoutine: TSyntaxNode; const AWord: string): Boolean;
+var
+  Head: string;
+begin
+  Head := TrimLeft(SourceText(AText, ARoutine));
+  Result := StartsText(AWord, Head) and (Length(Head) > Length(AWord)) and
+    CharInSet(Head[Length(AWord) + 1], [' ', #9, #10, #13]);
+end;
+
+function CallsMethod(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ARoutine.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call]) and (ANode.ChildCount > 0) and
+        SameText(FreedPath(ANode[0]), Name) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+function NilCheckedPaths(ANode: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and IsName(ANode[0], 'Assigned') and
+    (FreedPath(ANode[1]) <> '') then
+  begin
+    Result := Result + [FreedPath(ANode[1])];
+  end;
+  if (ANode.Kind <> TSyntaxKind.BinaryExpr) or (ANode.ChildCount <> 2) then
+  begin
+    Exit;
+  end;
+  for Index := 0 to 1 do
+  begin
+    if (FreedPath(ANode[Index]) <> '') and (ANode[1 - Index].Kind = TSyntaxKind.Literal) and
+      SameText(ANode[1 - Index].Name, 'nil') then
+    begin
+      Result := Result + [FreedPath(ANode[Index])];
+    end;
+  end;
+end;
+
+function PositionIn(AParent, AChild: TSyntaxNode): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  for Index := 0 to AParent.ChildCount - 1 do
+  begin
+    if AParent[Index] = AChild then
+    begin
+      Result := Index;
+    end;
+  end;
 end;
 
 end.
