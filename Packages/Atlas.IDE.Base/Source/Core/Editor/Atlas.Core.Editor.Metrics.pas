@@ -121,124 +121,142 @@ uses
 
 { TAtlasFileMetrics }
 
+/// <summary>Grenzwerte je Metrik; fehlende gelten als unbegrenzt (MaxInt).</summary>
+function ReadLimits(const AValue: TJSONValue): TAtlasMetricValues;
+var
+  mMetric: TAtlasMetric;
+  mNumber: Integer;
+begin
+  for mMetric := Low(TAtlasMetric) to High(TAtlasMetric) do
+  begin
+    Result[mMetric] := MaxInt;
+    if (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>(TAtlasMetricsLens.Key(mMetric),
+      mNumber) then
+    begin
+      Result[mMetric] := mNumber;
+    end;
+  end;
+end;
+
+function StructureKindOf(const AText: string; out AKind: TAtlasStructureMetric): Boolean;
+var
+  mKind: TAtlasStructureMetric;
+begin
+  Result := False;
+  AKind := Low(TAtlasStructureMetric);
+  for mKind := Low(TAtlasStructureMetric) to High(TAtlasStructureMetric) do
+  begin
+    if SameText(AText, TAtlasMetricsLens.StructureKey(mKind)) then
+    begin
+      AKind := mKind;
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Ein Strukturwert {kind, line, value, name, atLeast, limit}; False ohne Art, Zeile oder Wert.</summary>
+function ReadStructure(const AItem: TJSONObject; out AStructure: TAtlasStructureItem): Boolean;
+var
+  mKindText: string;
+  mNumber: Integer;
+begin
+  AStructure := Default(TAtlasStructureItem);
+  Result := AItem.TryGetValue<string>('kind', mKindText) and AItem.TryGetValue<Integer>('line', mNumber) and
+    AItem.TryGetValue<Integer>('value', AStructure.Value) and StructureKindOf(mKindText, AStructure.Kind);
+  if Result then
+  begin
+    AStructure.Line := mNumber - 1;
+    AItem.TryGetValue<string>('name', AStructure.Name);
+    if not AItem.TryGetValue<Boolean>('atLeast', AStructure.AtLeast) then
+    begin
+      AStructure.AtLeast := False;
+    end;
+    if not AItem.TryGetValue<Integer>('limit', AStructure.Limit) then
+    begin
+      AStructure.Limit := MaxInt;
+    end;
+  end;
+end;
+
+function ReadStructures(const AValue: TJSONValue): TArray<TAtlasStructureItem>;
+var
+  mItem: TJSONValue;
+  mStructure: TAtlasStructureItem;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if (mItem is TJSONObject) and ReadStructure(TJSONObject(mItem), mStructure) then
+      begin
+        Result := Result + [mStructure];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Eine Methode {name, line, values}; False ohne Name oder Zeile.</summary>
+function ReadMethod(const AItem: TJSONObject; out AMethod: TAtlasMethodMetrics): Boolean;
+var
+  mValues: TJSONObject;
+  mMetric: TAtlasMetric;
+  mNumber: Integer;
+begin
+  AMethod := Default(TAtlasMethodMetrics);
+  Result := AItem.TryGetValue<string>('name', AMethod.Name) and AItem.TryGetValue<Integer>('line', mNumber);
+  if Result then
+  begin
+    AMethod.Line := mNumber - 1;
+    if AItem.GetValue('values') is TJSONObject then
+    begin
+      mValues := TJSONObject(AItem.GetValue('values'));
+      for mMetric := Low(TAtlasMetric) to High(TAtlasMetric) do
+      begin
+        if mValues.TryGetValue<Integer>(TAtlasMetricsLens.Key(mMetric), mNumber) then
+        begin
+          AMethod.Values[mMetric] := mNumber;
+        end;
+      end;
+    end;
+  end;
+end;
+
+function ReadMethods(const AValue: TJSONValue): TArray<TAtlasMethodMetrics>;
+var
+  mItem: TJSONValue;
+  mMethod: TAtlasMethodMetrics;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if (mItem is TJSONObject) and ReadMethod(TJSONObject(mItem), mMethod) then
+      begin
+        Result := Result + [mMethod];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasFileMetrics.FromJson(const AValue: TJSONValue): TAtlasFileMetrics;
 var
-  Answer, Limits, Values: TJSONObject;
-  Methods: TJSONArray;
-  Item: TJSONValue;
-  Method: TAtlasMethodMetrics;
-  Metric: TAtlasMetric;
-  Number: Integer;
-  Structure: TAtlasStructureItem;
-  Kind: TAtlasStructureMetric;
-  KindText: string;
-  Known: Boolean;
+  mAnswer: TJSONObject;
 begin
   Result := Default(TAtlasFileMetrics);
   Result.Methods := nil;
   Result.Structures := nil;
-  if not (AValue is TJSONObject) then
+  if AValue is TJSONObject then
   begin
-    Exit;
-  end;
-  Answer := TJSONObject(AValue);
-  if not Answer.TryGetValue<Boolean>('enabled', Result.Enabled) then
-  begin
-    Result.Enabled := True;
-  end;
-  if Answer.GetValue('limits') is TJSONObject then
-  begin
-    Limits := TJSONObject(Answer.GetValue('limits'));
-    for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
+    mAnswer := TJSONObject(AValue);
+    if not mAnswer.TryGetValue<Boolean>('enabled', Result.Enabled) then
     begin
-      if Limits.TryGetValue<Integer>(TAtlasMetricsLens.Key(Metric), Number) then
-      begin
-        Result.Limits[Metric] := Number;
-      end
-      else
-      begin
-        Result.Limits[Metric] := MaxInt;
-      end;
+      Result.Enabled := True;
     end;
-  end
-  else
-  begin
-    for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
-    begin
-      Result.Limits[Metric] := MaxInt;
-    end;
-  end;
-  if Answer.GetValue('structure') is TJSONArray then
-  begin
-    for Item in TJSONArray(Answer.GetValue('structure')) do
-    begin
-      if not (Item is TJSONObject) then
-      begin
-        Continue;
-      end;
-      Structure := Default(TAtlasStructureItem);
-      if not (TJSONObject(Item).TryGetValue<string>('kind', KindText) and
-        TJSONObject(Item).TryGetValue<Integer>('line', Number) and
-        TJSONObject(Item).TryGetValue<Integer>('value', Structure.Value)) then
-      begin
-        Continue;
-      end;
-      Known := False;
-      for Kind := Low(TAtlasStructureMetric) to High(TAtlasStructureMetric) do
-      begin
-        if SameText(KindText, TAtlasMetricsLens.StructureKey(Kind)) then
-        begin
-          Structure.Kind := Kind;
-          Known := True;
-        end;
-      end;
-      if not Known then
-      begin
-        Continue;
-      end;
-      Structure.Line := Number - 1;
-      TJSONObject(Item).TryGetValue<string>('name', Structure.Name);
-      if not TJSONObject(Item).TryGetValue<Boolean>('atLeast', Structure.AtLeast) then
-      begin
-        Structure.AtLeast := False;
-      end;
-      if not TJSONObject(Item).TryGetValue<Integer>('limit', Structure.Limit) then
-      begin
-        Structure.Limit := MaxInt;
-      end;
-      Result.Structures := Result.Structures + [Structure];
-    end;
-  end;
-  if not (Answer.GetValue('methods') is TJSONArray) then
-  begin
-    Exit;
-  end;
-  Methods := TJSONArray(Answer.GetValue('methods'));
-  for Item in Methods do
-  begin
-    if not (Item is TJSONObject) then
-    begin
-      Continue;
-    end;
-    Method := Default(TAtlasMethodMetrics);
-    if not (TJSONObject(Item).TryGetValue<string>('name', Method.Name) and
-      TJSONObject(Item).TryGetValue<Integer>('line', Number)) then
-    begin
-      Continue;
-    end;
-    Method.Line := Number - 1;
-    if TJSONObject(Item).GetValue('values') is TJSONObject then
-    begin
-      Values := TJSONObject(TJSONObject(Item).GetValue('values'));
-      for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
-      begin
-        if Values.TryGetValue<Integer>(TAtlasMetricsLens.Key(Metric), Number) then
-        begin
-          Method.Values[Metric] := Number;
-        end;
-      end;
-    end;
-    Result.Methods := Result.Methods + [Method];
+    Result.Limits := ReadLimits(mAnswer.GetValue('limits'));
+    Result.Structures := ReadStructures(mAnswer.GetValue('structure'));
+    Result.Methods := ReadMethods(mAnswer.GetValue('methods'));
   end;
 end;
 
