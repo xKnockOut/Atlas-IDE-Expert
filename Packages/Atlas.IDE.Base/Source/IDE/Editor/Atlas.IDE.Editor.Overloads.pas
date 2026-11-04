@@ -40,109 +40,88 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.ServerPlaceholders,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Editor.Rename,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.ServerEdit;
 
 const
   ApplyCommand = 'atlas.server.createOverload';
   TimeoutMs = 15000;
 
+/// <summary>Startet den Platzhalter-Modus, wenn AEdit nur die Datei von AView geändert hat.</summary>
+procedure StartPlaceholders(const AView: IOTAEditView; const ABefore: string; const AEdit: TLspWorkspaceEdit;
+  APlaceholders: TJSONValue; const AProc: TAtlasOverloadPlaceholdersProc);
+var
+  mExpansion: TAtlasSnippetExpansion;
+begin
+  // Platzhalter nur in der Ansicht der geänderten Datei.
+  if (AView = nil) or (AView.Buffer = nil) or (Length(AEdit.Files) <> 1) or
+    not SameText(AEdit.Files[0].FileName, AView.Buffer.FileName) then
+  begin
+    Exit;
+  end;
+  mExpansion := TAtlasServerPlaceholders.Expansion(APlaceholders, TAtlasEditorBuffer.Text(AView.Buffer));
+  if mExpansion.HasPlaceholders and Assigned(AProc) then
+  begin
+    AProc(AView, ABefore, 0, mExpansion);
+  end;
+end;
+
 class procedure TAtlasIdeOverloads.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>; const APlaceholders: TAtlasOverloadPlaceholdersProc);
 var
-  Answer, Item: TJSONValue;
-  Reply: TJSONObject;
-  Placeholders: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Warnings: TArray<string>;
-  Warning, Before, FileName: string;
-  View: IOTAEditView;
-  Expansion: TAtlasSnippetExpansion;
+  mView: IOTAEditView;
+  mBefore, mWarning: string;
+  mPlaceholders: TJSONValue;
+  mReply: TAtlasServerEditReply;
+  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if ASession = nil then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  View := TAtlasEditorBuffer.ActiveView;
-  Before := '';
-  if (View <> nil) and (View.Buffer <> nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  mBefore := '';
+  if (mView <> nil) and (mView.Buffer <> nil) then
   begin
-    Before := TAtlasEditorBuffer.Text(View.Buffer);
+    mBefore := TAtlasEditorBuffer.Text(mView.Buffer);
   end;
-  Warnings := nil;
-  Placeholders := nil;
+  mPlaceholders := nil;
   try
-    try
-      Answer := ASession.RunCommand(ApplyCommand, AArgumentsJson, TimeoutMs);
-      try
-        Edit := TLspWorkspaceEdit.FromJson(nil);
-        if Answer is TJSONObject then
-        begin
-          Reply := TJSONObject(Answer);
-          Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
-          if Reply.GetValue('placeholders') is TJSONArray then
-          begin
-            Placeholders := Reply.GetValue('placeholders').Clone as TJSONValue;
-          end;
-          if Reply.GetValue('warnings') is TJSONArray then
-          begin
-            for Item in TJSONArray(Reply.GetValue('warnings')) do
-            begin
-              Warnings := Warnings + [Item.Value];
-            end;
-          end;
-        end;
-      finally
-        Answer.Free;
-      end;
-    except
-      on E: ELspClientError do
+    if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, AArgumentsJson,
+      TimeoutMs, TAtlasTextId.OverloadFailed),
+      procedure(const AReply: TJSONObject)
       begin
-        AMessage(TAtlasStrings.Fmt(TAtlasTextId.OverloadFailed, [E.Message]));
-        Exit;
-      end;
+        if AReply.GetValue('placeholders') is TJSONArray then
+        begin
+          mPlaceholders := AReply.GetValue('placeholders').Clone as TJSONValue;
+        end;
+      end, AMessage, mReply) then
+    begin
+      Exit;
     end;
-    if Edit.IsEmpty then
+    if mReply.Edit.IsEmpty then
     begin
       AMessage(TAtlasStrings.Text(TAtlasTextId.OverloadNothing));
       Exit;
     end;
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.OverloadTitle));
-    if Outcome.Error <> '' then
+    if not TAtlasIdeServerEdit.Apply(mReply.Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.OverloadTitle), AMessage,
+      mOutcome) then
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
       Exit;
     end;
     AMessage(TAtlasStrings.Text(TAtlasTextId.OverloadDone));
-    for Warning in Warnings do
+    for mWarning in mReply.Warnings do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.OverloadNote, [Warning]));
+      AMessage(TAtlasStrings.Fmt(TAtlasTextId.OverloadNote, [mWarning]));
     end;
-    // Platzhalter nur in der Ansicht der geänderten Datei.
-    if (View = nil) or (View.Buffer = nil) or (Length(Edit.Files) <> 1) then
-    begin
-      Exit;
-    end;
-    FileName := Edit.Files[0].FileName;
-    if not SameText(FileName, View.Buffer.FileName) then
-    begin
-      Exit;
-    end;
-    Expansion := TAtlasServerPlaceholders.Expansion(Placeholders, TAtlasEditorBuffer.Text(View.Buffer));
-    if Expansion.HasPlaceholders and Assigned(APlaceholders) then
-    begin
-      APlaceholders(View, Before, 0, Expansion);
-    end;
+    StartPlaceholders(mView, mBefore, mReply.Edit, mPlaceholders, APlaceholders);
   finally
-    Placeholders.Free;
+    mPlaceholders.Free;
   end;
 end;
 

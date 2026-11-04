@@ -69,6 +69,12 @@ type
     procedure WritelnInGuiAppSilentCases;
     [Test]
     procedure WritelnInGuiAppOptions;
+  end;
+
+  /// <summary>Regeln zu Umwandlungen, Dictionary, DelimitedText, CreateProcess und globalen FormatSettings.</summary>
+  [TestFixture]
+  TRtlConversionRulesTests = class
+  public
     [Test]
     procedure UncheckedConversionIssueExample;
     [Test]
@@ -724,7 +730,7 @@ begin
     'var'#10'  Menge: Integer;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionIssueExample;
+procedure TRtlConversionRulesTests.UncheckedConversionIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -743,7 +749,7 @@ begin
   TRuleAssert.Silent(TUncheckedConversionRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionVariants;
+procedure TRtlConversionRulesTests.UncheckedConversionVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -767,7 +773,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[5].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionSilentCases;
+procedure TRtlConversionRulesTests.UncheckedConversionSilentCases;
 begin
   // Im try/except, Konstante, Variable statt Eingabe, IntToStr, StrToIntDef.
   TRuleAssert.Silent(TUncheckedConversionRule.Create, Eingabe('', '  try'#10 +
@@ -779,7 +785,7 @@ begin
     '    Menge := StrToInt(edtMenge.Text);'#10'  finally'#10'    Fertig;'#10'  end;'));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionOptions;
+procedure TRtlConversionRulesTests.UncheckedConversionOptions;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -807,7 +813,7 @@ begin
     AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetIssueExample;
+procedure TRtlConversionRulesTests.DictionaryGetIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -824,7 +830,7 @@ begin
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetVariants;
+procedure TRtlConversionRulesTests.DictionaryGetVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -846,7 +852,7 @@ begin
     '["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetSilentCases;
+procedure TRtlConversionRulesTests.DictionaryGetSilentCases;
 begin
   // ContainsKey davor, TryGetValue, Add, Schreiben, for in Keys, kein Dictionary.
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Namen: TStringList;'#10 +
@@ -883,7 +889,7 @@ begin
     '  finally'#10'    Teile.Free;'#10'  end;'#10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextIssueExample;
+procedure TRtlConversionRulesTests.DelimitedTextIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -915,7 +921,7 @@ begin
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextVariants;
+procedure TRtlConversionRulesTests.DelimitedTextVariants;
 const
   Feld =
     'unit Import;'#10 +
@@ -954,7 +960,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextSilentCases;
+procedure TRtlConversionRulesTests.DelimitedTextSilentCases;
 begin
   // Ohne eigenen Delimiter, mit StrictDelimiter := False (bewusst) oder beim Lesen.
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.DelimitedText := Zeile;'#10));
@@ -967,7 +973,7 @@ begin
     '    Teile.DelimitedText := Zeile;'#10));
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextOffAndExclude;
+procedure TRtlConversionRulesTests.DelimitedTextOffAndExclude;
 var
   Source: string;
 begin
@@ -986,7 +992,7 @@ begin
     'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastIssueExample;
+procedure TRtlConversionRulesTests.UncheckedEnumCastIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1019,7 +1025,7 @@ begin
   TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastVariants;
+procedure TRtlConversionRulesTests.UncheckedEnumCastVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1046,7 +1052,7 @@ begin
     '{"rules": {"unchecked-enum-cast": {"sources": ["LeseZahl"]}}}'))));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastSilentCases;
+procedure TRtlConversionRulesTests.UncheckedEnumCastSilentCases;
 begin
   // Geprüfte Variable, EnsureRange, Konstanten, unbekannte Typen und Klassen-Casts.
   TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
@@ -1060,7 +1066,7 @@ begin
   Assert.AreEqual('von außen', TUncheckedEnumCastRule.Origin('LeseZahl'));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastOffAndExclude;
+procedure TRtlConversionRulesTests.UncheckedEnumCastOffAndExclude;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -1081,7 +1087,7 @@ begin
     '  SI: TStartupInfo;'#10'  PI: TProcessInformation;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessIssueExample;
+procedure TRtlConversionRulesTests.CreateProcessIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1111,7 +1117,7 @@ begin
   TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessVariants;
+procedure TRtlConversionRulesTests.CreateProcessVariants;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1147,7 +1153,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessSilentCases;
+procedure TRtlConversionRulesTests.CreateProcessSilentCases;
 begin
   // Beschreibbare Puffer: UniqueString, Funktionsergebnis, mehrteilige Verkettung, Ansi-Fassung, nil.
   TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Starten('  Befehl: string;'#10,
@@ -1163,7 +1169,7 @@ begin
   Assert.AreEqual(-1, TCreateProcessReadonlyCommandLineRule.CommandLineIndex('CreateProcessA'));
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessOffAndExclude;
+procedure TRtlConversionRulesTests.CreateProcessOffAndExclude;
 var
   Source: string;
 begin
@@ -1188,7 +1194,7 @@ begin
     AVars + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsIssueExample;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1218,7 +1224,7 @@ begin
   TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsVariants;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsVariants;
 const
   Formular = 'unit Haupt;'#10'interface'#10'uses'#10'  System.SysUtils, Vcl.Forms;'#10'type'#10 +
     '  THaupt = class(TForm)'#10'    procedure FormCreate(Sender: TObject);'#10'  end;'#10'implementation'#10 +
@@ -1273,7 +1279,7 @@ begin
     TGlobalFormatSettingsModifiedRule.Subject('NormalizedLocaleName'));
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsSilentCases;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsSilentCases;
 const
   Eigene = 'unit Eigene;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TZahlFeld = class'#10 +
     '  private'#10'    DecimalSeparator: Char;'#10'    procedure Setzen;'#10'  end;'#10 +
@@ -1296,7 +1302,7 @@ begin
     '  with Feld do'#10'    DecimalSeparator := ''.'';'#10));
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsOptions;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsOptions;
 const
   Programm = 'program Start;'#10'uses'#10'  System.SysUtils;'#10'begin'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'end.';
@@ -1323,5 +1329,6 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TRtlTypePatternRulesTests);
+  TDUnitX.RegisterTestFixture(TRtlConversionRulesTests);
 
 end.

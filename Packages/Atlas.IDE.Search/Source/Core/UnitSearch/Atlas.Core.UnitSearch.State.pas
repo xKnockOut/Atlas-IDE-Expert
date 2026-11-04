@@ -36,6 +36,9 @@ type
     /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
     FKept: string;
     function GroupState(const AGroupFile: string): TGroupState;
+    function WindowJson: TJSONObject;
+    procedure LoadWindow(AWindow: TJSONObject);
+    procedure LoadGroups(AGroups: TJSONObject);
   public
     /// <summary>Lage des Fensters; Width = 0 = noch keine.</summary>
     Left, Top, Width, Height: Integer;
@@ -158,75 +161,165 @@ begin
   FGroups.AddOrSetValue(LowerCase(AGroupFile), State);
 end;
 
+function TextsToJson(const ATexts: TArray<string>): TJSONArray;
+var
+  mText: string;
+begin
+  Result := TJSONArray.Create;
+  for mText in ATexts do
+  begin
+    Result.Add(mText);
+  end;
+end;
+
+function OriginsToJson(AOrigins: TAtlasUnitOrigins): TJSONArray;
+var
+  mOrigin: TAtlasUnitOrigin;
+begin
+  Result := TJSONArray.Create;
+  for mOrigin in AOrigins do
+  begin
+    Result.Add(OriginTexts[mOrigin]);
+  end;
+end;
+
+function KindsToJson(AKinds: TAtlasUnitKinds): TJSONArray;
+var
+  mKind: TAtlasUnitKind;
+begin
+  Result := TJSONArray.Create;
+  for mKind in AKinds do
+  begin
+    Result.Add(TAtlasUnitSearch.KindText(mKind));
+  end;
+end;
+
+function GroupToJson(const AState: TAtlasUnitSearchState.TGroupState): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('collapsed', TextsToJson(AState.Collapsed));
+  if AState.HasFilters then
+  begin
+    Result.AddPair('origins', OriginsToJson(AState.Origins));
+    Result.AddPair('kinds', KindsToJson(AState.Kinds));
+  end;
+end;
+
+function TAtlasUnitSearchState.WindowJson: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('left', TJSONNumber.Create(Left));
+  Result.AddPair('top', TJSONNumber.Create(Top));
+  Result.AddPair('width', TJSONNumber.Create(Width));
+  Result.AddPair('height', TJSONNumber.Create(Height));
+  Result.AddPair('previewWidth', TJSONNumber.Create(PreviewWidth));
+  Result.AddPair('previewVisible', TJSONBool.Create(PreviewVisible));
+end;
+
 function TAtlasUnitSearchState.ToJson: string;
 var
-  Root, Groups, Item, Window: TJSONObject;
-  List: TJSONArray;
-  Pair: TPair<string, TGroupState>;
-  Value: string;
-  Origin: TAtlasUnitOrigin;
-  Kind: TAtlasUnitKind;
+  mRoot, mGroups: TJSONObject;
+  mPair: TPair<string, TGroupState>;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Window := TJSONObject.Create;
-    Window.AddPair('left', TJSONNumber.Create(Left));
-    Window.AddPair('top', TJSONNumber.Create(Top));
-    Window.AddPair('width', TJSONNumber.Create(Width));
-    Window.AddPair('height', TJSONNumber.Create(Height));
-    Window.AddPair('previewWidth', TJSONNumber.Create(PreviewWidth));
-    Window.AddPair('previewVisible', TJSONBool.Create(PreviewVisible));
-    Root.AddPair('window', Window);
-    Groups := TJSONObject.Create;
-    for Pair in FGroups do
+    mRoot.AddPair('window', WindowJson);
+    mGroups := TJSONObject.Create;
+    for mPair in FGroups do
     begin
-      Item := TJSONObject.Create;
-      List := TJSONArray.Create;
-      for Value in Pair.Value.Collapsed do
-      begin
-        List.Add(Value);
-      end;
-      Item.AddPair('collapsed', List);
-      if Pair.Value.HasFilters then
-      begin
-        List := TJSONArray.Create;
-        for Origin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
-        begin
-          if Origin in Pair.Value.Origins then
-          begin
-            List.Add(OriginTexts[Origin]);
-          end;
-        end;
-        Item.AddPair('origins', List);
-        List := TJSONArray.Create;
-        for Kind := Low(TAtlasUnitKind) to High(TAtlasUnitKind) do
-        begin
-          if Kind in Pair.Value.Kinds then
-          begin
-            List.Add(TAtlasUnitSearch.KindText(Kind));
-          end;
-        end;
-        Item.AddPair('kinds', List);
-      end;
-      Groups.AddPair(Pair.Key, Item);
+      mGroups.AddPair(mPair.Key, GroupToJson(mPair.Value));
     end;
-    Root.AddPair('groups', Groups);
-    Result := Root.ToJSON;
+    mRoot.AddPair('groups', mGroups);
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
+  end;
+end;
+
+function OriginsFromJson(AList: TJSONArray): TAtlasUnitOrigins;
+var
+  mValue: TJSONValue;
+  mOrigin: TAtlasUnitOrigin;
+begin
+  Result := [];
+  for mValue in AList do
+  begin
+    for mOrigin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
+    begin
+      if SameText(mValue.Value, OriginTexts[mOrigin]) then
+      begin
+        Include(Result, mOrigin);
+      end;
+    end;
+  end;
+end;
+
+function KindsFromJson(AList: TJSONArray): TAtlasUnitKinds;
+var
+  mValue: TJSONValue;
+  mKind: TAtlasUnitKind;
+begin
+  Result := [];
+  for mValue in AList do
+  begin
+    if TAtlasUnitSearch.KindFromText(mValue.Value, mKind) then
+    begin
+      Include(Result, mKind);
+    end;
+  end;
+end;
+
+function GroupFromJson(AItem: TJSONObject): TAtlasUnitSearchState.TGroupState;
+var
+  mList: TJSONArray;
+  mValue: TJSONValue;
+begin
+  Result := Default(TAtlasUnitSearchState.TGroupState);
+  if AItem.TryGetValue<TJSONArray>('collapsed', mList) then
+  begin
+    for mValue in mList do
+    begin
+      Result.Collapsed := Result.Collapsed + [LowerCase(mValue.Value)];
+    end;
+  end;
+  if AItem.TryGetValue<TJSONArray>('origins', mList) then
+  begin
+    Result.HasFilters := True;
+    Result.Origins := OriginsFromJson(mList);
+  end;
+  if AItem.TryGetValue<TJSONArray>('kinds', mList) then
+  begin
+    Result.Kinds := KindsFromJson(mList);
+  end;
+end;
+
+procedure TAtlasUnitSearchState.LoadWindow(AWindow: TJSONObject);
+begin
+  AWindow.TryGetValue<Integer>('left', Left);
+  AWindow.TryGetValue<Integer>('top', Top);
+  AWindow.TryGetValue<Integer>('width', Width);
+  AWindow.TryGetValue<Integer>('height', Height);
+  AWindow.TryGetValue<Integer>('previewWidth', PreviewWidth);
+  AWindow.TryGetValue<Boolean>('previewVisible', PreviewVisible);
+end;
+
+procedure TAtlasUnitSearchState.LoadGroups(AGroups: TJSONObject);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in AGroups do
+  begin
+    if mPair.JsonValue is TJSONObject then
+    begin
+      FGroups.AddOrSetValue(LowerCase(mPair.JsonString.Value), GroupFromJson(TJSONObject(mPair.JsonValue)));
+    end;
   end;
 end;
 
 function TAtlasUnitSearchState.LoadJson(const AText: string): Boolean;
 var
-  Root: TJSONValue;
-  Window, Groups, Item: TJSONObject;
-  List: TJSONArray;
-  Pair: TJSONPair;
-  Value: TJSONValue;
-  State: TGroupState;
-  Origin: TAtlasUnitOrigin;
-  Kind: TAtlasUnitKind;
+  mRoot: TJSONValue;
+  mSection: TJSONObject;
 begin
   FGroups.Clear;
   Left := 0;
@@ -235,69 +328,19 @@ begin
   Height := 0;
   PreviewWidth := 0;
   PreviewVisible := True;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Root is TJSONObject;
-    if not Result then
+    Result := mRoot is TJSONObject;
+    if Result and TJSONObject(mRoot).TryGetValue<TJSONObject>('window', mSection) then
     begin
-      Exit;
+      LoadWindow(mSection);
     end;
-    if TJSONObject(Root).TryGetValue<TJSONObject>('window', Window) then
+    if Result and TJSONObject(mRoot).TryGetValue<TJSONObject>('groups', mSection) then
     begin
-      Window.TryGetValue<Integer>('left', Left);
-      Window.TryGetValue<Integer>('top', Top);
-      Window.TryGetValue<Integer>('width', Width);
-      Window.TryGetValue<Integer>('height', Height);
-      Window.TryGetValue<Integer>('previewWidth', PreviewWidth);
-      Window.TryGetValue<Boolean>('previewVisible', PreviewVisible);
-    end;
-    if not TJSONObject(Root).TryGetValue<TJSONObject>('groups', Groups) then
-    begin
-      Exit;
-    end;
-    for Pair in Groups do
-    begin
-      if not (Pair.JsonValue is TJSONObject) then
-      begin
-        Continue;
-      end;
-      Item := TJSONObject(Pair.JsonValue);
-      State := Default(TGroupState);
-      if Item.TryGetValue<TJSONArray>('collapsed', List) then
-      begin
-        for Value in List do
-        begin
-          State.Collapsed := State.Collapsed + [LowerCase(Value.Value)];
-        end;
-      end;
-      if Item.TryGetValue<TJSONArray>('origins', List) then
-      begin
-        State.HasFilters := True;
-        for Value in List do
-        begin
-          for Origin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
-          begin
-            if SameText(Value.Value, OriginTexts[Origin]) then
-            begin
-              Include(State.Origins, Origin);
-            end;
-          end;
-        end;
-      end;
-      if Item.TryGetValue<TJSONArray>('kinds', List) then
-      begin
-        for Value in List do
-        begin
-          if TAtlasUnitSearch.KindFromText(Value.Value, Kind) then
-          begin
-            Include(State.Kinds, Kind);
-          end;
-        end;
-      end;
-      FGroups.AddOrSetValue(LowerCase(Pair.JsonString.Value), State);
+      LoadGroups(mSection);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
