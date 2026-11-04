@@ -76,6 +76,16 @@ type
     class function Added(const AName, ATypeName, AModifier, AValue: string): TParameterChange; static;
   end;
 
+  /// <summary>Änderung der Argumente eines Aufrufs: alte Parameter (für Standardwerte ausgelassener Argumente),
+  /// die neue Signatur und je neuem Parameter der Wert (Index wie Changes, '' = Value der Änderung).</summary>
+  TCallChange = record
+    Old: TArray<TSignatureParameter>;
+    Changes: TArray<TParameterChange>;
+    Values: TArray<string>;
+    class function Create(const AOld: TArray<TSignatureParameter>; const AChanges: TArray<TParameterChange>;
+      const AValues: TArray<string>): TCallChange; static;
+  end;
+
   {$SCOPEDENUMS ON}
   /// <summary>Wie ein Verweis auf die Routine verwendet wird.</summary>
   TSignatureUse = (Call, Pointer_, Accessor);
@@ -112,12 +122,9 @@ type
     /// ohne Standardwert (ohne Klammern ist es dann kein Aufruf).</summary>
     class function UseOf(const ATokens: TArray<TPascalToken>; ANameToken: Integer; AHasRequired: Boolean): TSignatureUse;
       static;
-    /// <summary>Neue Argumente eines Aufrufs. AOld: alte Parameter (für Standardwerte ausgelassener Argumente);
-    /// AValues: Wert je neuem Parameter (Index wie AChanges, '' = Value der Änderung). False, wenn sich
-    /// nichts ändert.</summary>
+    /// <summary>Neue Argumente des Aufrufs an ANameToken nach AChange. False, wenn sich nichts ändert.</summary>
     class function CallEdit(const AText: string; const ATokens: TArray<TPascalToken>; ANameToken: Integer;
-      const AOld: TArray<TSignatureParameter>; const AChanges: TArray<TParameterChange>;
-      const AValues: TArray<string>; out AEdit: TTextEdit): Boolean; static;
+      const AChange: TCallChange; out AEdit: TTextEdit): Boolean; static;
     /// <summary>Verwendungen des Namens AName (ohne Punkt davor) in Token AFirst bis ALast.</summary>
     class function Uses_(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
       const AName: string): TArray<Integer>; static;
@@ -415,64 +422,84 @@ begin
   Result.Value := AValue;
 end;
 
+{ TCallChange }
+
+class function TCallChange.Create(const AOld: TArray<TSignatureParameter>; const AChanges: TArray<TParameterChange>;
+  const AValues: TArray<string>): TCallChange;
+begin
+  Result.Old := AOld;
+  Result.Changes := AChanges;
+  Result.Values := AValues;
+end;
+
 { TChangeSignature }
+
+/// <summary>Löst Attribute wie [ref] und einen Modifizierer (const, var …) vom Anfang von ARest; sie gehören zum
+/// Modifizierer von AParameter.</summary>
+procedure ReadModifiers(var ARest: string; var AParameter: TSignatureParameter);
+var
+  mSpace: Integer;
+  mWord: string;
+begin
+  while StartsStr('[', ARest) and (Pos(']', ARest) > 0) do
+  begin
+    AParameter.Modifier := Trim(AParameter.Modifier + ' ' + Copy(ARest, 1, Pos(']', ARest)));
+    ARest := Trim(Copy(ARest, Pos(']', ARest) + 1, MaxInt));
+  end;
+  mSpace := Pos(' ', ARest);
+  mWord := Copy(ARest, 1, mSpace - 1);
+  if (mSpace > 0) and (IndexText(mWord, ModifierWords) >= 0) then
+  begin
+    AParameter.Modifier := Trim(AParameter.Modifier + ' ' + LowerCase(mWord));
+    ARest := Trim(Copy(ARest, mSpace + 1, MaxInt));
+  end;
+end;
+
+/// <summary>Löst Standardwert und Typ vom Ende von ARest; liefert die Namen davor ("A, B").</summary>
+function ReadTypeAndDefault(const ARest: string; var AParameter: TSignatureParameter): string;
+var
+  mEquals, mColon: Integer;
+begin
+  Result := ARest;
+  mEquals := TopLevelPos(Result, '=');
+  if mEquals > 0 then
+  begin
+    AParameter.DefaultValue := Trim(Copy(Result, mEquals + 1, MaxInt));
+    Result := Trim(Copy(Result, 1, mEquals - 1));
+  end;
+  mColon := TopLevelPos(Result, ':');
+  if mColon > 0 then
+  begin
+    AParameter.TypeName := Trim(Copy(Result, mColon + 1, MaxInt));
+    Result := Copy(Result, 1, mColon - 1);
+  end;
+end;
 
 class function TChangeSignature.ParseParameters(const AText: string): TArray<TSignatureParameter>;
 var
-  Group, Rest, Names, Word, Name: string;
-  Colon, Equals, Space, GroupIndex: Integer;
-  Parameter: TSignatureParameter;
+  mGroup, mRest, mName: string;
+  mGroupIndex: Integer;
+  mParameter: TSignatureParameter;
 begin
   Result := nil;
-  GroupIndex := 0;
-  for Group in SplitTopLevel(AText, ';') do
+  mGroupIndex := 0;
+  for mGroup in SplitTopLevel(AText, ';') do
   begin
-    Rest := Collapse(Group);
-    if Rest = '' then
+    mRest := Collapse(mGroup);
+    if mRest = '' then
     begin
       Continue;
     end;
-    Parameter := Default(TSignatureParameter);
-    Parameter.Group := GroupIndex;
-    Inc(GroupIndex);
-    // Attribute wie [ref] gehören zum Modifizierer.
-    while StartsStr('[', Rest) and (Pos(']', Rest) > 0) do
+    mParameter := Default(TSignatureParameter);
+    mParameter.Group := mGroupIndex;
+    Inc(mGroupIndex);
+    ReadModifiers(mRest, mParameter);
+    for mName in SplitTopLevel(ReadTypeAndDefault(mRest, mParameter), ',') do
     begin
-      Parameter.Modifier := Trim(Parameter.Modifier + ' ' + Copy(Rest, 1, Pos(']', Rest)));
-      Rest := Trim(Copy(Rest, Pos(']', Rest) + 1, MaxInt));
-    end;
-    Space := Pos(' ', Rest);
-    if Space > 0 then
-    begin
-      Word := Copy(Rest, 1, Space - 1);
-      if IndexText(Word, ModifierWords) >= 0 then
+      mParameter.Name := Trim(mName);
+      if mParameter.Name <> '' then
       begin
-        Parameter.Modifier := Trim(Parameter.Modifier + ' ' + LowerCase(Word));
-        Rest := Trim(Copy(Rest, Space + 1, MaxInt));
-      end;
-    end;
-    Equals := TopLevelPos(Rest, '=');
-    if Equals > 0 then
-    begin
-      Parameter.DefaultValue := Trim(Copy(Rest, Equals + 1, MaxInt));
-      Rest := Trim(Copy(Rest, 1, Equals - 1));
-    end;
-    Colon := TopLevelPos(Rest, ':');
-    if Colon > 0 then
-    begin
-      Parameter.TypeName := Trim(Copy(Rest, Colon + 1, MaxInt));
-      Names := Copy(Rest, 1, Colon - 1);
-    end
-    else
-    begin
-      Names := Rest;
-    end;
-    for Name in SplitTopLevel(Names, ',') do
-    begin
-      Parameter.Name := Trim(Name);
-      if Parameter.Name <> '' then
-      begin
-        Result := Result + [Parameter];
+        Result := Result + [mParameter];
       end;
     end;
   end;
@@ -501,150 +528,215 @@ begin
   Result := -1;
 end;
 
+/// <summary>Liest die Parameterliste ab ACurrent, falls dort "(" steht, und setzt ACurrent dahinter; False, wenn
+/// die Klammer offen bleibt.</summary>
+function ReadParameterList(const AText: string; const ATokens: TArray<TPascalToken>; var ACurrent: Integer;
+  var AHeader: TSignatureHeader): Boolean;
+var
+  mClose: Integer;
+begin
+  Result := True;
+  if not IsSymbolAt(ATokens, ACurrent, '(') then
+  begin
+    Exit;
+  end;
+  mClose := Matching(ATokens, ACurrent);
+  Result := mClose >= 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  AHeader.OpenToken := ACurrent;
+  AHeader.CloseToken := mClose;
+  if mClose > NextToken(ATokens, ACurrent) then
+  begin
+    AHeader.Parameters := TChangeSignature.ParseParameters(SliceText(AText, ATokens, ACurrent + 1, mClose - 1));
+  end;
+  ACurrent := NextToken(ATokens, mClose);
+end;
+
+/// <summary>Liest den Ergebnistyp ab ACurrent, falls dort ":" steht, und setzt ACurrent auf das ";" bzw. "of"
+/// dahinter; False, wenn keins folgt.</summary>
+function ReadResultType(const AText: string; const ATokens: TArray<TPascalToken>; var ACurrent: Integer;
+  var AHeader: TSignatureHeader): Boolean;
+var
+  mNext: Integer;
+begin
+  Result := True;
+  if not IsSymbolAt(ATokens, ACurrent, ':') then
+  begin
+    Exit;
+  end;
+  mNext := ACurrent;
+  while (mNext >= 0) and (mNext <= High(ATokens)) and not ATokens[mNext].IsSymbol(';') and
+    not ATokens[mNext].IsKeyword('of') do
+  begin
+    mNext := NextToken(ATokens, mNext);
+  end;
+  Result := mNext >= 0;
+  if Result then
+  begin
+    AHeader.ResultType := Collapse(SliceText(AText, ATokens, NextToken(ATokens, ACurrent),
+      PreviousToken(ATokens, mNext)));
+    ACurrent := mNext;
+  end;
+end;
+
+/// <summary>Liest die Direktiven hinter dem ";" des Kopfes (AHeader.EndToken), je bis zu ihrem ";".</summary>
+procedure ReadDirectives(const AText: string; const ATokens: TArray<TPascalToken>; var AHeader: TSignatureHeader);
+var
+  mNext, mLast: Integer;
+begin
+  AHeader.Directives := nil;
+  mNext := NextToken(ATokens, AHeader.EndToken);
+  while (mNext >= 0) and IsWord(ATokens[mNext], DirectiveWords) do
+  begin
+    mLast := mNext;
+    while (mLast >= 0) and not ATokens[mLast].IsSymbol(';') do
+    begin
+      mLast := NextToken(ATokens, mLast);
+    end;
+    if mLast < 0 then
+    begin
+      Break;
+    end;
+    AHeader.Directives := AHeader.Directives + [LowerCase(Collapse(SliceText(AText, ATokens, mNext,
+      PreviousToken(ATokens, mLast))))];
+    AHeader.LastToken := mLast;
+    mNext := NextToken(ATokens, mLast);
+  end;
+end;
+
 /// <summary>Liest Klammern, Ergebnistyp, ";" und Direktiven ab dem Token hinter dem Namen.</summary>
 function ReadTail(const AText: string; const ATokens: TArray<TPascalToken>; AAfterName: Integer;
   var AHeader: TSignatureHeader; ADirectives: Boolean): Boolean;
 var
-  Current, Close, Next, Last: Integer;
-  Directive: string;
+  mCurrent: Integer;
 begin
-  Result := False;
   AHeader.OpenToken := -1;
   AHeader.CloseToken := -1;
-  Current := AAfterName;
-  if IsSymbolAt(ATokens, Current, '(') then
+  mCurrent := AAfterName;
+  Result := ReadParameterList(AText, ATokens, mCurrent, AHeader) and
+    ReadResultType(AText, ATokens, mCurrent, AHeader);
+  if not Result then
   begin
-    Close := Matching(ATokens, Current);
-    if Close < 0 then
-    begin
-      Exit;
-    end;
-    AHeader.OpenToken := Current;
-    AHeader.CloseToken := Close;
-    if Close > NextToken(ATokens, Current) then
-    begin
-      AHeader.Parameters := TChangeSignature.ParseParameters(SliceText(AText, ATokens, Current + 1, Close - 1));
-    end;
-    Current := NextToken(ATokens, Close);
-  end;
-  if IsSymbolAt(ATokens, Current, ':') then
-  begin
-    Next := Current;
-    while (Next >= 0) and (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(';') and
-      not ATokens[Next].IsKeyword('of') do
-    begin
-      Next := NextToken(ATokens, Next);
-    end;
-    if Next < 0 then
-    begin
-      Exit;
-    end;
-    AHeader.ResultType := Collapse(SliceText(AText, ATokens, NextToken(ATokens, Current), PreviousToken(ATokens, Next)));
-    Current := Next;
-  end;
-  // Prozedurale Typen: "of object" bzw. "reference to" gehören vor das ";".
-  while (Current >= 0) and (ATokens[Current].IsKeyword('of') or SameText(ATokens[Current].Text, 'object')) do
-  begin
-    Current := NextToken(ATokens, Current);
-  end;
-  if not IsSymbolAt(ATokens, Current, ';') then
-  begin
-    // Kopf ohne ";" am Ende eines prozeduralen Typs in einer Parameterliste o. Ä.
-    if not ADirectives then
-    begin
-      AHeader.EndToken := PreviousToken(ATokens, Current);
-      AHeader.LastToken := AHeader.EndToken;
-      Exit(True);
-    end;
     Exit;
   end;
-  AHeader.EndToken := Current;
-  AHeader.LastToken := Current;
-  if not ADirectives then
+  // Prozedurale Typen: "of object" bzw. "reference to" gehören vor das ";".
+  while (mCurrent >= 0) and (ATokens[mCurrent].IsKeyword('of') or SameText(ATokens[mCurrent].Text, 'object')) do
   begin
-    Exit(True);
+    mCurrent := NextToken(ATokens, mCurrent);
   end;
-  AHeader.Directives := nil;
-  Next := NextToken(ATokens, Current);
-  while (Next >= 0) and IsWord(ATokens[Next], DirectiveWords) do
+  if IsSymbolAt(ATokens, mCurrent, ';') then
   begin
-    Last := Next;
-    while (Last >= 0) and not ATokens[Last].IsSymbol(';') do
+    AHeader.EndToken := mCurrent;
+    AHeader.LastToken := mCurrent;
+    if ADirectives then
     begin
-      Last := NextToken(ATokens, Last);
+      ReadDirectives(AText, ATokens, AHeader);
     end;
-    if Last < 0 then
+  end
+  else
+  begin
+    // Kopf ohne ";" am Ende eines prozeduralen Typs in einer Parameterliste o. Ä.
+    Result := not ADirectives;
+    if Result then
     begin
-      Break;
+      AHeader.EndToken := PreviousToken(ATokens, mCurrent);
+      AHeader.LastToken := AHeader.EndToken;
     end;
-    Directive := LowerCase(Collapse(SliceText(AText, ATokens, Next, PreviousToken(ATokens, Last))));
-    AHeader.Directives := AHeader.Directives + [Directive];
-    AHeader.LastToken := Last;
-    Next := NextToken(ATokens, Last);
   end;
-  Result := True;
+end;
+
+/// <summary>Token vor einer generischen Typangabe, deren "&gt;" an AIndex steht (TFoo&lt;T&gt;.Bar).</summary>
+function BeforeGenericType(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 0) and not ATokens[Result].IsSymbol('<') do
+  begin
+    Dec(Result);
+  end;
+  Result := PreviousToken(ATokens, Result);
+end;
+
+/// <summary>Rückwärts vom Namen über "TFoo." bzw. "TAussen.TInnen." bis zum Token davor (dem Schlüsselwort);
+/// -1, wenn die Kette kein Bezeichner ist.</summary>
+function BeforeQualifier(const ATokens: TArray<TPascalToken>; ANameToken: Integer): Integer;
+begin
+  Result := PreviousToken(ATokens, ANameToken);
+  while IsSymbolAt(ATokens, Result, '.') do
+  begin
+    Result := PreviousToken(ATokens, Result);
+    if (Result >= 0) and ATokens[Result].IsSymbol('>') then
+    begin
+      Result := BeforeGenericType(ATokens, Result);
+    end;
+    if (Result < 0) or (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
+    begin
+      Exit(-1);
+    end;
+    Result := PreviousToken(ATokens, Result);
+  end;
+end;
+
+/// <summary>Ist AIndex das "class" von "class procedure", nicht das von "TFoo = class" oder "packed class" direkt
+/// vor der ersten Methode?</summary>
+function IsClassMethodPrefix(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  Result := (AIndex >= 0) and ATokens[AIndex].IsKeyword('class');
+  if Result then
+  begin
+    mBefore := PreviousToken(ATokens, AIndex);
+    Result := not IsSymbolAt(ATokens, mBefore, '=') and
+      not ((mBefore >= 0) and SameText(ATokens[mBefore].Text, 'packed'));
+  end;
+end;
+
+/// <summary>Token hinter generischen Argumenten bzw. Parametern ab AIndex ("&lt;…&gt;"), sonst AIndex; -1, wenn
+/// die spitze Klammer offen bleibt.</summary>
+function SkipGenericArguments(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  if IsSymbolAt(ATokens, Result, '<') then
+  begin
+    Result := Matching(ATokens, Result);
+    if Result >= 0 then
+    begin
+      Result := NextToken(ATokens, Result);
+    end;
+  end;
 end;
 
 class function TChangeSignature.ReadHeader(const AText: string; const ATokens: TArray<TPascalToken>;
   ANameToken: Integer; out AHeader: TSignatureHeader): Boolean;
 var
-  Current, Next: Integer;
+  mCurrent, mBefore: Integer;
 begin
   AHeader := Default(TSignatureHeader);
-  Result := False;
-  if (ANameToken < 0) or (ANameToken > High(ATokens)) then
+  mCurrent := -1;
+  if (ANameToken >= 0) and (ANameToken <= High(ATokens)) then
   begin
-    Exit;
+    mCurrent := BeforeQualifier(ATokens, ANameToken);
+  end;
+  if (mCurrent < 0) or not IsWord(ATokens[mCurrent], RoutineWords) then
+  begin
+    Exit(False);
   end;
   AHeader.NameToken := ANameToken;
-  // Rückwärts über "TFoo." bzw. "TAussen.TInnen." bis zum Schlüsselwort.
-  Current := PreviousToken(ATokens, ANameToken);
-  while IsSymbolAt(ATokens, Current, '.') do
-  begin
-    Current := PreviousToken(ATokens, Current);
-    if (Current >= 0) and ATokens[Current].IsSymbol('>') then
-    begin
-      // Generischer Typ TFoo<T>.Bar
-      while (Current >= 0) and not ATokens[Current].IsSymbol('<') do
-      begin
-        Dec(Current);
-      end;
-      Current := PreviousToken(ATokens, Current);
-    end;
-    if (Current < 0) or (ATokens[Current].Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Exit;
-    end;
-    Current := PreviousToken(ATokens, Current);
-  end;
-  if (Current < 0) or not IsWord(ATokens[Current], RoutineWords) then
-  begin
-    Exit;
-  end;
-  AHeader.Keyword := LowerCase(ATokens[Current].Text);
-  AHeader.StartToken := Current;
-  Next := PreviousToken(ATokens, Current);
-  // "class procedure", aber nicht "TFoo = class" direkt vor der ersten Methode.
-  if (Next >= 0) and ATokens[Next].IsKeyword('class') and not IsSymbolAt(ATokens, PreviousToken(ATokens, Next), '=') and
-    not ((PreviousToken(ATokens, Next) >= 0) and SameText(ATokens[PreviousToken(ATokens, Next)].Text, 'packed')) then
+  AHeader.Keyword := LowerCase(ATokens[mCurrent].Text);
+  AHeader.StartToken := mCurrent;
+  mBefore := PreviousToken(ATokens, mCurrent);
+  if IsClassMethodPrefix(ATokens, mBefore) then
   begin
     AHeader.IsClass := True;
-    AHeader.StartToken := Next;
+    AHeader.StartToken := mBefore;
   end;
-  AHeader.QualifiedName := StringReplace(Collapse(SliceText(AText, ATokens, NextToken(ATokens, Current),
+  AHeader.QualifiedName := StringReplace(Collapse(SliceText(AText, ATokens, NextToken(ATokens, mCurrent),
     ANameToken)), ' ', '', [rfReplaceAll]);
-  Next := NextToken(ATokens, ANameToken);
-  // Generische Methode Bar<T>(...)
-  if IsSymbolAt(ATokens, Next, '<') then
-  begin
-    Next := Matching(ATokens, Next);
-    if Next < 0 then
-    begin
-      Exit;
-    end;
-    Next := NextToken(ATokens, Next);
-  end;
-  Result := ReadTail(AText, ATokens, Next, AHeader, True);
+  // Generische Methode Bar<T>(...): Bleibt die Klammer offen, scheitert ReadTail am fehlenden ";".
+  Result := ReadTail(AText, ATokens, SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken)), AHeader, True);
 end;
 
 class function TChangeSignature.ReadProcedureType(const AText: string; const ATokens: TArray<TPascalToken>;
@@ -685,65 +777,93 @@ begin
   Result := ReadTail(AText, ATokens, NextToken(ATokens, Current), AHeader, False);
 end;
 
+/// <summary>Steht der Name von AChanges[AIndex] schon weiter vorn in der Liste?</summary>
+function NamedBefore(const AChanges: TArray<TParameterChange>; AIndex: Integer): Boolean;
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to AIndex - 1 do
+  begin
+    if SameText(AChanges[mOther].Name, AChanges[AIndex].Name) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Fehler eines behaltenen Parameters; '' ohne. Merkt ihn in AUsed und einen Standardwert in
+/// ASeenDefault.</summary>
+function KeptProblem(const AOld: TArray<TSignatureParameter>; const AChange: TParameterChange;
+  var AUsed: TArray<Boolean>; var ASeenDefault: Boolean): string;
+begin
+  Result := '';
+  if AChange.Origin > High(AOld) then
+  begin
+    Result := Format('Der Parameter "%s" gehört nicht zur alten Signatur.', [AChange.Name]);
+  end
+  else if AUsed[AChange.Origin] then
+  begin
+    Result := Format('Der Parameter "%s" steht zweimal in der Liste.', [AOld[AChange.Origin].Name]);
+  end
+  else
+  begin
+    AUsed[AChange.Origin] := True;
+    ASeenDefault := ASeenDefault or (AOld[AChange.Origin].DefaultValue <> '');
+  end;
+end;
+
+/// <summary>Fehler eines neuen Parameters; '' ohne. Atlas erzeugt keine Standardwerte; hinter einem Parameter mit
+/// Standardwert (ASeenDefault) ginge es nur mit einem.</summary>
+function AddedProblem(const AChange: TParameterChange; ASeenDefault: Boolean): string;
+begin
+  Result := '';
+  if Trim(AChange.TypeName) = '' then
+  begin
+    Result := Format('Für den neuen Parameter "%s" fehlt der Typ.', [AChange.Name]);
+  end
+  else if Trim(AChange.Value) = '' then
+  begin
+    Result := Format('Für den neuen Parameter "%s" fehlt der Wert, den die bisherigen Aufrufer übergeben.',
+      [AChange.Name]);
+  end
+  else if ASeenDefault then
+  begin
+    Result := Format('Der neue Parameter "%s" stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn ' +
+      'einfügen.', [AChange.Name]);
+  end;
+end;
+
 class function TChangeSignature.Validate(const AOld: TArray<TSignatureParameter>;
   const AChanges: TArray<TParameterChange>): string;
 var
-  Index, Other: Integer;
-  Change: TParameterChange;
-  Used: TArray<Boolean>;
-  SeenDefault: Boolean;
+  mIndex: Integer;
+  mUsed: TArray<Boolean>;
+  mSeenDefault: Boolean;
 begin
   Result := '';
-  SetLength(Used, Length(AOld));
-  SeenDefault := False;
-  for Index := 0 to High(AChanges) do
+  SetLength(mUsed, Length(AOld));
+  mSeenDefault := False;
+  mIndex := 0;
+  while (Result = '') and (mIndex <= High(AChanges)) do
   begin
-    Change := AChanges[Index];
-    if not IsIdentifier(Change.Name) then
+    if not IsIdentifier(AChanges[mIndex].Name) then
     begin
-      Exit(Format('"%s" ist kein gültiger Parametername.', [Change.Name]));
-    end;
-    for Other := 0 to Index - 1 do
+      Result := Format('"%s" ist kein gültiger Parametername.', [AChanges[mIndex].Name]);
+    end
+    else if NamedBefore(AChanges, mIndex) then
     begin
-      if SameText(AChanges[Other].Name, Change.Name) then
-      begin
-        Exit(Format('Der Parameter "%s" steht zweimal in der Liste.', [Change.Name]));
-      end;
-    end;
-    if Change.Origin >= 0 then
+      Result := Format('Der Parameter "%s" steht zweimal in der Liste.', [AChanges[mIndex].Name]);
+    end
+    else if AChanges[mIndex].Origin >= 0 then
     begin
-      if Change.Origin > High(AOld) then
-      begin
-        Exit(Format('Der Parameter "%s" gehört nicht zur alten Signatur.', [Change.Name]));
-      end;
-      if Used[Change.Origin] then
-      begin
-        Exit(Format('Der Parameter "%s" steht zweimal in der Liste.', [AOld[Change.Origin].Name]));
-      end;
-      Used[Change.Origin] := True;
-      if AOld[Change.Origin].DefaultValue <> '' then
-      begin
-        SeenDefault := True;
-      end;
+      Result := KeptProblem(AOld, AChanges[mIndex], mUsed, mSeenDefault);
     end
     else
     begin
-      if Trim(Change.TypeName) = '' then
-      begin
-        Exit(Format('Für den neuen Parameter "%s" fehlt der Typ.', [Change.Name]));
-      end;
-      if Trim(Change.Value) = '' then
-      begin
-        Exit(Format('Für den neuen Parameter "%s" fehlt der Wert, den die bisherigen Aufrufer übergeben.',
-          [Change.Name]));
-      end;
-      // Atlas erzeugt keine Standardwerte; hinter einem Parameter mit Standardwert ginge es nur mit einem.
-      if SeenDefault then
-      begin
-        Exit(Format('Der neue Parameter "%s" stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn ' +
-          'einfügen.', [Change.Name]));
-      end;
+      Result := AddedProblem(AChanges[mIndex], mSeenDefault);
     end;
+    Inc(mIndex);
   end;
 end;
 
@@ -846,41 +966,32 @@ end;
 class function TChangeSignature.UseOf(const ATokens: TArray<TPascalToken>; ANameToken: Integer;
   AHasRequired: Boolean): TSignatureUse;
 var
-  Before, After: Integer;
+  mBefore: Integer;
 begin
-  Before := PreviousToken(ATokens, ANameToken);
+  mBefore := PreviousToken(ATokens, ANameToken);
   // Über "Self." bzw. "Liste." hinweg nach vorn schauen.
-  while IsSymbolAt(ATokens, Before, '.') do
+  while IsSymbolAt(ATokens, mBefore, '.') do
   begin
-    Before := PreviousToken(ATokens, Before);
-    if Before >= 0 then
+    mBefore := PreviousToken(ATokens, mBefore);
+    if mBefore >= 0 then
     begin
-      Before := PreviousToken(ATokens, Before);
+      mBefore := PreviousToken(ATokens, mBefore);
     end;
   end;
-  if (Before >= 0) and IsWord(ATokens[Before], ['read', 'write', 'stored', 'add', 'remove']) then
+  if (mBefore >= 0) and IsWord(ATokens[mBefore], ['read', 'write', 'stored', 'add', 'remove']) then
   begin
-    Exit(TSignatureUse.Accessor);
-  end;
-  if IsSymbolAt(ATokens, Before, '@') then
+    Result := TSignatureUse.Accessor;
+  end
+  else if IsSymbolAt(ATokens, mBefore, '@') then
   begin
-    Exit(TSignatureUse.Pointer_);
-  end;
-  After := NextToken(ATokens, ANameToken);
-  if IsSymbolAt(ATokens, After, '<') then
+    Result := TSignatureUse.Pointer_;
+  end
+  else if IsSymbolAt(ATokens, SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken)), '(') then
   begin
-    After := Matching(ATokens, After);
-    if After >= 0 then
-    begin
-      After := NextToken(ATokens, After);
-    end;
-  end;
-  if IsSymbolAt(ATokens, After, '(') then
-  begin
-    Exit(TSignatureUse.Call);
-  end;
+    Result := TSignatureUse.Call;
+  end
   // Ohne Klammern: Aufruf nur, wenn die Routine ohne Argumente aufrufbar ist und nicht zugewiesen wird.
-  if AHasRequired or IsSymbolAt(ATokens, Before, ':=') then
+  else if AHasRequired or IsSymbolAt(ATokens, mBefore, ':=') then
   begin
     Result := TSignatureUse.Pointer_;
   end
@@ -890,125 +1001,123 @@ begin
   end;
 end;
 
-class function TChangeSignature.CallEdit(const AText: string; const ATokens: TArray<TPascalToken>;
-  ANameToken: Integer; const AOld: TArray<TSignatureParameter>; const AChanges: TArray<TParameterChange>;
-  const AValues: TArray<string>; out AEdit: TTextEdit): Boolean;
+/// <summary>Klammern eines Aufrufs hinter ANameToken (AOpen -1 ohne Klammern) und die alten Argumente; False, wenn
+/// die Klammer offen bleibt.</summary>
+function ReadCallArguments(const AText: string; const ATokens: TArray<TPascalToken>; ANameToken: Integer;
+  out AOpen, AClose: Integer; out AArguments: TArray<string>): Boolean;
 var
-  Open, Close, Index, Last: Integer;
-  OldArgs, NewArgs: TArray<string>;
-  Missing: TArray<Boolean>;
-  Change: TParameterChange;
-  Value, Joined: string;
+  mValue: string;
 begin
-  AEdit := Default(TTextEdit);
-  Open := NextToken(ATokens, ANameToken);
-  if IsSymbolAt(ATokens, Open, '<') then
+  AArguments := nil;
+  AClose := -1;
+  AOpen := SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken));
+  if not IsSymbolAt(ATokens, AOpen, '(') then
   begin
-    Open := Matching(ATokens, Open);
-    if Open >= 0 then
+    AOpen := -1;
+    Exit(True);
+  end;
+  AClose := Matching(ATokens, AOpen);
+  if AClose > NextToken(ATokens, AOpen) then
+  begin
+    for mValue in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousToken(ATokens, AClose)),
+      ',') do
     begin
-      Open := NextToken(ATokens, Open);
+      AArguments := AArguments + [Trim(mValue)];
     end;
   end;
-  OldArgs := nil;
-  Close := -1;
-  if IsSymbolAt(ATokens, Open, '(') then
+  Result := AClose >= 0;
+end;
+
+/// <summary>Neues Argument für AChange.Changes[AIndex]: das alte Argument, bei neuen Parametern der Wert.
+/// AOmitted: Das Argument war ausgelassen (Standardwert).</summary>
+function NewArgument(const AChange: TCallChange; const AOldArguments: TArray<string>; AIndex: Integer;
+  out AOmitted: Boolean): string;
+var
+  mOrigin: Integer;
+begin
+  mOrigin := AChange.Changes[AIndex].Origin;
+  AOmitted := False;
+  Result := '';
+  if mOrigin < 0 then
   begin
-    Close := Matching(ATokens, Open);
-    if Close < 0 then
+    if AIndex <= High(AChange.Values) then
     begin
-      Exit(False);
+      Result := AChange.Values[AIndex];
     end;
-    if Close > NextToken(ATokens, Open) then
+    if Result = '' then
     begin
-      for Value in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, Open), PreviousToken(ATokens, Close)),
-        ',') do
-      begin
-        OldArgs := OldArgs + [Trim(Value)];
-      end;
+      Result := AChange.Changes[AIndex].Value;
     end;
+  end
+  else if mOrigin <= High(AOldArguments) then
+  begin
+    Result := AOldArguments[mOrigin];
   end
   else
   begin
-    Open := -1;
-  end;
-  NewArgs := nil;
-  Missing := nil;
-  for Index := 0 to High(AChanges) do
-  begin
-    Change := AChanges[Index];
-    if Change.Origin >= 0 then
+    AOmitted := True;
+    if mOrigin <= High(AChange.Old) then
     begin
-      if Change.Origin <= High(OldArgs) then
-      begin
-        NewArgs := NewArgs + [OldArgs[Change.Origin]];
-        Missing := Missing + [False];
-      end
-      else
-      begin
-        // Ausgelassenes Argument mit Standardwert.
-        if Change.Origin <= High(AOld) then
-        begin
-          Value := AOld[Change.Origin].DefaultValue;
-        end
-        else
-        begin
-          Value := '';
-        end;
-        NewArgs := NewArgs + [Value];
-        Missing := Missing + [True];
-      end;
-    end
-    else
-    begin
-      Value := '';
-      if Index <= High(AValues) then
-      begin
-        Value := AValues[Index];
-      end;
-      if Value = '' then
-      begin
-        Value := Change.Value;
-      end;
-      NewArgs := NewArgs + [Value];
-      Missing := Missing + [False];
+      Result := AChange.Old[mOrigin].DefaultValue;
     end;
   end;
-  // Ausgelassene Standardwerte am Ende bleiben ausgelassen.
-  Last := High(NewArgs);
-  while (Last >= 0) and Missing[Last] do
+end;
+
+/// <summary>Neue Argumente; ausgelassene Standardwerte am Ende bleiben ausgelassen.</summary>
+function NewArguments(const AChange: TCallChange; const AOldArguments: TArray<string>): TArray<string>;
+var
+  mIndex, mLast: Integer;
+  mOmitted: TArray<Boolean>;
+begin
+  SetLength(Result, Length(AChange.Changes));
+  SetLength(mOmitted, Length(AChange.Changes));
+  for mIndex := 0 to High(AChange.Changes) do
   begin
-    Dec(Last);
+    Result[mIndex] := NewArgument(AChange, AOldArguments, mIndex, mOmitted[mIndex]);
   end;
-  SetLength(NewArgs, Last + 1);
-  Joined := string.Join(', ', NewArgs);
-  if (Length(NewArgs) = Length(OldArgs)) and (Joined = string.Join(', ', OldArgs)) then
+  mLast := High(Result);
+  while (mLast >= 0) and mOmitted[mLast] do
+  begin
+    Dec(mLast);
+  end;
+  SetLength(Result, mLast + 1);
+end;
+
+class function TChangeSignature.CallEdit(const AText: string; const ATokens: TArray<TPascalToken>;
+  ANameToken: Integer; const AChange: TCallChange; out AEdit: TTextEdit): Boolean;
+var
+  mOpen, mClose: Integer;
+  mOldArguments, mNewArguments: TArray<string>;
+  mJoined: string;
+begin
+  AEdit := Default(TTextEdit);
+  if not ReadCallArguments(AText, ATokens, ANameToken, mOpen, mClose, mOldArguments) then
   begin
     Exit(False);
   end;
-  if Open >= 0 then
+  mNewArguments := NewArguments(AChange, mOldArguments);
+  mJoined := string.Join(', ', mNewArguments);
+  Result := not ((Length(mNewArguments) = Length(mOldArguments)) and (mJoined = string.Join(', ', mOldArguments))) and
+    ((mOpen >= 0) or (mJoined <> ''));
+  if not Result then
   begin
-    if Joined = '' then
-    begin
-      // Foo() wird zu Foo.
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[Close].EndPos), '');
-    end
-    else
-    begin
-      AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Open].StartPos, ATokens[Close].EndPos),
-        '(' + Joined + ')');
-    end;
+    Exit;
+  end;
+  if mOpen < 0 then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[ANameToken].EndPos),
+      '(' + mJoined + ')');
+  end
+  else if mJoined = '' then
+  begin
+    // Foo() wird zu Foo.
+    AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[mClose].EndPos), '');
   end
   else
   begin
-    if Joined = '' then
-    begin
-      Exit(False);
-    end;
-    AEdit := TTextEdit.Create(TTextRange.Create(ATokens[ANameToken].EndPos, ATokens[ANameToken].EndPos),
-      '(' + Joined + ')');
+    AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mOpen].StartPos, ATokens[mClose].EndPos),
+      '(' + mJoined + ')');
   end;
-  Result := True;
 end;
 
 class function TChangeSignature.Uses_(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;

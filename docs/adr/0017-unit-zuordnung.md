@@ -147,6 +147,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Documentation.Layout` | `Core/Documentation/Atlas.Core.Documentation.Layout.pas` | Ordner `Core/Documentation` |
+| `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
@@ -252,6 +253,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Colors` | `Core/Problems/Atlas.Core.Problems.Colors.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
@@ -394,6 +396,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.AnonymousMethod` | `IDE/Editor/Atlas.IDE.Editor.AnonymousMethod.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.BlockComment` | `IDE/Editor/Atlas.IDE.Editor.BlockComment.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ChangeSignature` | `IDE/Editor/Atlas.IDE.Editor.ChangeSignature.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.ClassExtraction` | `IDE/Editor/Atlas.IDE.Editor.ClassExtraction.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.CommentContinuation` | `IDE/Editor/Atlas.IDE.Editor.CommentContinuation.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.DisableWarning` | `IDE/Editor/Atlas.IDE.Editor.DisableWarning.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.EnterWatch` | `IDE/Editor/Atlas.IDE.Editor.EnterWatch.pas` | Ordner `IDE/Editor` |
@@ -624,6 +627,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.StepInto` | `IDE/Debug/Atlas.IDE.Debug.StepInto.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Trace` | `IDE/Debug/Atlas.IDE.Debug.Trace.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Unavailable` | `IDE/Debug/Atlas.IDE.Debug.Unavailable.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.UnavailableFixes` | `IDE/Debug/Atlas.IDE.Debug.UnavailableFixes.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
@@ -903,9 +907,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Affected` | `IDE/Tests/Atlas.IDE.Tests.Affected.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Debug` | `IDE/Tests/Atlas.IDE.Tests.Debug.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Lens` | `IDE/Tests/Atlas.IDE.Tests.Lens.pas` | Ordner `IDE/Tests` |
+| `Atlas.IDE.Tests.Projects` | `IDE/Tests/Atlas.IDE.Tests.Projects.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Runner` | `IDE/Tests/Atlas.IDE.Tests.Runner.pas` | Ordner `IDE/Tests` |
 | `Atlas.UI.Tests.Strings` | `UI/Tests/Atlas.UI.Tests.Strings.pas` | Texte des Moduls (Tests), Sprache von Base, #1455 |
 | `Atlas.IDE.Tests.Composition` | `IDE/Tests/Atlas.IDE.Tests.Composition.pas` | Anmeldung des Moduls `atlas.tests`, #1455 |
+| `Atlas.IDE.Tests.Composition.Hooks` | `IDE/Tests/Atlas.IDE.Tests.Composition.Hooks.pas` | Haken des Testläufers (Build, Probleme, Zusammenfassung), von der Composition gesetzt |
 
 ## Atlas.IDE.Build
 

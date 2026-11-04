@@ -79,6 +79,18 @@ type
     PathValue = '<pfad>';
     AllParts = [TAtlasPackagePart.Logs, TAtlasPackagePart.Versions, TAtlasPackagePart.Settings,
       TAtlasPackagePart.LastData];
+  private
+    class function IsDrive(const AValue: string): Boolean; static;
+    /// <summary>Escape-Folge ab AIndex (Backslash) entschlüsseln; AIndex danach hinter der Folge.</summary>
+    class function DecodeEscape(const AJson: string; var AIndex: Integer): string; static;
+    /// <summary>Zeichenkette ab AStart (öffnendes Anführungszeichen); AStop = schließendes.</summary>
+    class function DecodeString(const AJson: string; AStart: Integer; out AStop: Integer): string; static;
+    /// <summary>Folgt ab AIndex nach Leerraum ein Doppelpunkt?</summary>
+    class function ColonFollows(const AJson: string; AIndex: Integer): Boolean; static;
+    class function Pick(AEnglish: Boolean; const AEnglishText, AGermanText: string): string; static;
+    class procedure AppendVersions(ABuilder: TStringBuilder; const AInput: TAtlasPackageInput;
+      AParts: TAtlasPackageParts; AEnglish: Boolean); static;
+    class procedure AppendZip(ABuilder: TStringBuilder; const AZipName: string; AEnglish: Boolean); static;
   public
     /// <summary>Die Dateien der Teile AParts, anonymisiert, in fester Reihenfolge (Versionen, Einstellungen,
     /// Logs, letzte Diagnosedaten). Fehlende Quelldateien fallen weg.</summary>
@@ -217,109 +229,117 @@ begin
   Result := TAtlasBugReport.AnonymizeLogLine(AText, ARoots, AIdentity);
 end;
 
+class function TAtlasDiagnosticPackage.IsDrive(const AValue: string): Boolean;
+begin
+  // Laufwerk: „C:“ allein oder „C:/…“.
+  Result := (Length(AValue) >= 2) and CharInSet(AValue[1], ['A'..'Z', 'a'..'z']) and (AValue[2] = ':');
+  if Result and (Length(AValue) > 2) then
+  begin
+    Result := CharInSet(AValue[3], ['\', '/']);
+  end;
+end;
+
 class function TAtlasDiagnosticPackage.LooksLikePath(const AValue: string): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := Trim(AValue);
-  Result := False;
-  if Value = '' then
+  mValue := Trim(AValue);
+  if mValue = '' then
   begin
-    Exit;
+    Exit(False);
   end;
-  if Pos('\', Value) > 0 then
+  Result := (Pos('\', mValue) > 0) or StartsText('file:', mValue) or (mValue[1] = '/') or IsDrive(mValue);
+end;
+
+class function TAtlasDiagnosticPackage.DecodeEscape(const AJson: string; var AIndex: Integer): string;
+begin
+  // AIndex steht auf dem Backslash; danach hinter der Folge.
+  case AJson[AIndex + 1] of
+    'n':
+      Result := #10;
+    't':
+      Result := #9;
+    'r':
+      Result := #13;
+    'b':
+      Result := #8;
+    'f':
+      Result := #12;
+    'u':
+      begin
+        Result := Char(StrToIntDef('$' + Copy(AJson, AIndex + 2, 4), 63));
+        Inc(AIndex, 4);
+      end;
+  else
+    Result := AJson[AIndex + 1];
+  end;
+  Inc(AIndex, 2);
+end;
+
+class function TAtlasDiagnosticPackage.DecodeString(const AJson: string; AStart: Integer;
+  out AStop: Integer): string;
+begin
+  // Zeichenkette bis zum schließenden Anführungszeichen, Escapes entschlüsselt; AStart steht auf dem öffnenden.
+  Result := '';
+  AStop := AStart + 1;
+  while (AStop <= Length(AJson)) and (AJson[AStop] <> '"') do
   begin
-    Exit(True);
+    if (AJson[AStop] = '\') and (AStop < Length(AJson)) then
+    begin
+      Result := Result + DecodeEscape(AJson, AStop);
+    end
+    else
+    begin
+      Result := Result + AJson[AStop];
+      Inc(AStop);
+    end;
   end;
-  if StartsText('file:', Value) then
+end;
+
+class function TAtlasDiagnosticPackage.ColonFollows(const AJson: string; AIndex: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  mNext := AIndex;
+  while (mNext <= Length(AJson)) and CharInSet(AJson[mNext], [' ', #9, #10, #13]) do
   begin
-    Exit(True);
+    Inc(mNext);
   end;
-  if Value[1] = '/' then
-  begin
-    Exit(True);
-  end;
-  // Laufwerk: „C:“ allein oder „C:/…“.
-  if (Length(Value) >= 2) and CharInSet(Value[1], ['A'..'Z', 'a'..'z']) and (Value[2] = ':') and
-    ((Length(Value) = 2) or CharInSet(Value[3], ['\', '/'])) then
-  begin
-    Exit(True);
-  end;
+  Result := (mNext <= Length(AJson)) and (AJson[mNext] = ':');
 end;
 
 class function TAtlasDiagnosticPackage.SettingsWithoutPaths(const AJson: string): string;
 var
-  Builder: TStringBuilder;
-  Index, Stop, Next, Code: Integer;
-  Decoded: string;
-  IsKey: Boolean;
+  mBuilder: TStringBuilder;
+  mIndex, mStop: Integer;
+  mDecoded: string;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AJson) do
+    mIndex := 1;
+    while mIndex <= Length(AJson) do
     begin
-      if AJson[Index] <> '"' then
+      if AJson[mIndex] <> '"' then
       begin
-        Builder.Append(AJson[Index]);
-        Inc(Index);
+        mBuilder.Append(AJson[mIndex]);
+        Inc(mIndex);
         Continue;
       end;
-      // Zeichenkette bis zum schließenden Anführungszeichen, Escapes entschlüsselt.
-      Decoded := '';
-      Stop := Index + 1;
-      while (Stop <= Length(AJson)) and (AJson[Stop] <> '"') do
-      begin
-        if (AJson[Stop] = '\') and (Stop < Length(AJson)) then
-        begin
-          case AJson[Stop + 1] of
-            'n':
-              Decoded := Decoded + #10;
-            't':
-              Decoded := Decoded + #9;
-            'r':
-              Decoded := Decoded + #13;
-            'b':
-              Decoded := Decoded + #8;
-            'f':
-              Decoded := Decoded + #12;
-            'u':
-              begin
-                Code := StrToIntDef('$' + Copy(AJson, Stop + 2, 4), 63);
-                Decoded := Decoded + Char(Code);
-                Inc(Stop, 4);
-              end;
-          else
-            Decoded := Decoded + AJson[Stop + 1];
-          end;
-          Inc(Stop, 2);
-        end
-        else
-        begin
-          Decoded := Decoded + AJson[Stop];
-          Inc(Stop);
-        end;
-      end;
+      mDecoded := DecodeString(AJson, mIndex, mStop);
       // Schlüssel stehen vor einem Doppelpunkt.
-      Next := Stop + 1;
-      while (Next <= Length(AJson)) and CharInSet(AJson[Next], [' ', #9, #10, #13]) do
+      if not ColonFollows(AJson, mStop + 1) and LooksLikePath(mDecoded) then
       begin
-        Inc(Next);
-      end;
-      IsKey := (Next <= Length(AJson)) and (AJson[Next] = ':');
-      if not IsKey and LooksLikePath(Decoded) then
-      begin
-        Builder.Append('"').Append(PathValue).Append('"');
+        mBuilder.Append('"').Append(PathValue).Append('"');
       end
       else
       begin
-        Builder.Append(Copy(AJson, Index, Stop - Index + 1));
+        mBuilder.Append(Copy(AJson, mIndex, mStop - mIndex + 1));
       end;
-      Index := Stop + 1;
+      mIndex := mStop + 1;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -477,99 +497,79 @@ begin
   end;
 end;
 
+class function TAtlasDiagnosticPackage.Pick(AEnglish: Boolean; const AEnglishText, AGermanText: string): string;
+begin
+  if AEnglish then
+  begin
+    Result := AEnglishText;
+  end
+  else
+  begin
+    Result := AGermanText;
+  end;
+end;
+
+class procedure TAtlasDiagnosticPackage.AppendVersions(ABuilder: TStringBuilder; const AInput: TAtlasPackageInput;
+  AParts: TAtlasPackageParts; AEnglish: Boolean);
+begin
+  ABuilder.Append(Pick(AEnglish, '## Versions', '## Versionen'));
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+  if TAtlasPackagePart.Versions in AParts then
+  begin
+    ABuilder.Append('- Atlas: ').Append(AInput.AtlasVersion).Append(sLineBreak);
+    ABuilder.Append('- RAD Studio: ').Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
+      .Append(sLineBreak);
+    ABuilder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
+  end
+  else
+  begin
+    ABuilder.Append(Pick(AEnglish, '(not included)', '(nicht angegeben)')).Append(sLineBreak);
+  end;
+  ABuilder.Append(sLineBreak);
+end;
+
+class procedure TAtlasDiagnosticPackage.AppendZip(ABuilder: TStringBuilder; const AZipName: string;
+  AEnglish: Boolean);
+begin
+  ABuilder.Append(Pick(AEnglish, '## Diagnostic package', '## Diagnosepaket'));
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+  if AZipName <> '' then
+  begin
+    ABuilder.Append('`').Append(ExtractFileName(AZipName)).Append(Pick(AEnglish,
+      '` (anonymized, checked before sharing; please attach it to this issue)',
+      '` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)'));
+  end
+  else
+  begin
+    ABuilder.Append(Pick(AEnglish, 'No diagnostic package created.', 'Kein Diagnosepaket angelegt.'));
+  end;
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+end;
+
 class function TAtlasDiagnosticPackage.IssueTemplate(const ADescription: string; const AInput: TAtlasPackageInput;
   AParts: TAtlasPackageParts; const AZipName: string; AEnglish: Boolean): string;
 var
-  Builder: TStringBuilder;
-  Description: string;
+  mBuilder: TStringBuilder;
+  mDescription: string;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Description := Trim(ADescription);
-    if AEnglish then
+    mBuilder.Append(Pick(AEnglish, '## Description', '## Beschreibung')).Append(sLineBreak).Append(sLineBreak);
+    mDescription := Trim(ADescription);
+    if mDescription = '' then
     begin
-      Builder.Append('## Description').Append(sLineBreak).Append(sLineBreak);
-      if Description = '' then
-      begin
-        Description := '(What happened? What did you expect? Steps to reproduce.)';
-      end;
-    end
-    else
-    begin
-      Builder.Append('## Beschreibung').Append(sLineBreak).Append(sLineBreak);
-      if Description = '' then
-      begin
-        Description := '(Was ist passiert? Was hast du erwartet? Schritte zum Nachstellen.)';
-      end;
+      mDescription := Pick(AEnglish, '(What happened? What did you expect? Steps to reproduce.)',
+        '(Was ist passiert? Was hast du erwartet? Schritte zum Nachstellen.)');
     end;
-    Builder.Append(Description).Append(sLineBreak).Append(sLineBreak);
-
-    if AEnglish then
-    begin
-      Builder.Append('## Versions');
-    end
-    else
-    begin
-      Builder.Append('## Versionen');
-    end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-    if TAtlasPackagePart.Versions in AParts then
-    begin
-      Builder.Append('- Atlas: ').Append(AInput.AtlasVersion).Append(sLineBreak);
-      Builder.Append('- RAD Studio: ').Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
-        .Append(sLineBreak);
-      Builder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
-    end
-    else if AEnglish then
-    begin
-      Builder.Append('(not included)').Append(sLineBreak);
-    end
-    else
-    begin
-      Builder.Append('(nicht angegeben)').Append(sLineBreak);
-    end;
-    Builder.Append(sLineBreak);
-
-    if AEnglish then
-    begin
-      Builder.Append('## Diagnostic package');
-    end
-    else
-    begin
-      Builder.Append('## Diagnosepaket');
-    end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-    if (AZipName <> '') and AEnglish then
-    begin
-      Builder.Append('`').Append(ExtractFileName(AZipName))
-        .Append('` (anonymized, checked before sharing; please attach it to this issue)');
-    end
-    else if AZipName <> '' then
-    begin
-      Builder.Append('`').Append(ExtractFileName(AZipName))
-        .Append('` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)');
-    end
-    else if AEnglish then
-    begin
-      Builder.Append('No diagnostic package created.');
-    end
-    else
-    begin
-      Builder.Append('Kein Diagnosepaket angelegt.');
-    end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-    if AEnglish then
-    begin
-      Builder.Append('_Created with Atlas › Report a problem; Atlas itself sends nothing._');
-    end
-    else
-    begin
-      Builder.Append('_Erstellt mit Atlas › Problem melden; Atlas selbst sendet nichts._');
-    end;
-    Builder.Append(sLineBreak);
-    Result := Anonymize(Builder.ToString, AInput.Roots, AInput.Identity);
+    mBuilder.Append(mDescription).Append(sLineBreak).Append(sLineBreak);
+    AppendVersions(mBuilder, AInput, AParts, AEnglish);
+    AppendZip(mBuilder, AZipName, AEnglish);
+    mBuilder.Append(Pick(AEnglish, '_Created with Atlas › Report a problem; Atlas itself sends nothing._',
+      '_Erstellt mit Atlas › Problem melden; Atlas selbst sendet nichts._'));
+    mBuilder.Append(sLineBreak);
+    Result := Anonymize(mBuilder.ToString, AInput.Roots, AInput.Identity);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

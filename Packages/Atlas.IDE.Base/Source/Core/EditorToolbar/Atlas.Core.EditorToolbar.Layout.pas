@@ -107,6 +107,65 @@ begin
   end;
 end;
 
+/// <summary>Breite der angehefteten Plätze: Sie bleiben in jedem Fall.</summary>
+function PinnedWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  for Index := 0 to High(ASlots) do
+  begin
+    if ASlots[Index].Pinned then
+    begin
+      Inc(Result, ASlots[Index].Width);
+    end;
+  end;
+end;
+
+/// <summary>Verteilt die Plätze der Reihe nach auf Leiste und Menü, bis ALimit erreicht ist.</summary>
+procedure Distribute(const ASlots: TArray<TAtlasToolbarSlot>; ALimit: Integer; out AVisible, AMenu: TArray<Boolean>);
+var
+  Index, Used: Integer;
+  Full: Boolean;
+begin
+  Used := PinnedWidth(ASlots);
+  Full := False;
+  SetLength(AVisible, Length(ASlots));
+  SetLength(AMenu, Length(ASlots));
+  for Index := 0 to High(ASlots) do
+  begin
+    AVisible[Index] := ASlots[Index].Pinned;
+    AMenu[Index] := False;
+    if ASlots[Index].Pinned then
+    begin
+      Continue;
+    end;
+    if not Full and (Used + ASlots[Index].Width <= ALimit) then
+    begin
+      AVisible[Index] := True;
+      Inc(Used, ASlots[Index].Width);
+    end
+    else
+    begin
+      Full := True;
+      AMenu[Index] := True;
+    end;
+  end;
+end;
+
+function ShownIndices(const AShown: TArray<Boolean>): TArray<Integer>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(AShown) do
+  begin
+    if AShown[Index] then
+    begin
+      Result := Result + [Index];
+    end;
+  end;
+end;
 class function TAtlasToolbarLayout.FullWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
 var
   Shown: TArray<Boolean>;
@@ -124,8 +183,7 @@ end;
 class function TAtlasToolbarLayout.Fit(const ASlots: TArray<TAtlasToolbarSlot>; AAvailable,
   AMoreWidth: Integer): TAtlasToolbarFit;
 var
-  Index, Used, Limit: Integer;
-  Full, InMenu: Boolean;
+  Index: Integer;
   Menu: TArray<Boolean>;
 begin
   Result := Default(TAtlasToolbarFit);
@@ -136,57 +194,16 @@ begin
   end;
   HideLoneSeparators(ASlots, Result.Visible);
   Result.Used := WidthOf(ASlots, Result.Visible);
-  if Result.Used <= AAvailable then
+  if Result.Used > AAvailable then
   begin
-    Exit;
+    Distribute(ASlots, AAvailable - AMoreWidth, Result.Visible, Menu);
+    HideLoneSeparators(ASlots, Result.Visible);
+    HideLoneSeparators(ASlots, Menu);
+    Result.Used := WidthOf(ASlots, Result.Visible);
+    Result.Overflow := ShownIndices(Menu);
+    // Nur Trennstriche im Menü wären kein Grund für ».
+    Result.More := Length(Result.Overflow) > 0;
   end;
-  Result.More := True;
-  Limit := AAvailable - AMoreWidth;
-  // Angeheftete zählen vorab: Sie bleiben in jedem Fall.
-  Used := 0;
-  for Index := 0 to High(ASlots) do
-  begin
-    if ASlots[Index].Pinned then
-    begin
-      Inc(Used, ASlots[Index].Width);
-    end;
-  end;
-  Full := False;
-  SetLength(Menu, Length(ASlots));
-  for Index := 0 to High(ASlots) do
-  begin
-    Result.Visible[Index] := ASlots[Index].Pinned;
-    Menu[Index] := False;
-    if ASlots[Index].Pinned then
-    begin
-      Continue;
-    end;
-    if not Full and (Used + ASlots[Index].Width <= Limit) then
-    begin
-      Result.Visible[Index] := True;
-      Inc(Used, ASlots[Index].Width);
-    end
-    else
-    begin
-      Full := True;
-      Menu[Index] := True;
-    end;
-  end;
-  HideLoneSeparators(ASlots, Result.Visible);
-  HideLoneSeparators(ASlots, Menu);
-  Result.Used := WidthOf(ASlots, Result.Visible);
-  Result.Overflow := nil;
-  InMenu := False;
-  for Index := 0 to High(ASlots) do
-  begin
-    if Menu[Index] then
-    begin
-      Result.Overflow := Result.Overflow + [Index];
-      InMenu := True;
-    end;
-  end;
-  // Nur Trennstriche im Menü wären kein Grund für ».
-  Result.More := InMenu;
 end;
 
 end.

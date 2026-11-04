@@ -177,7 +177,7 @@ begin
   mDialog := TAtlasWorkingCopiesDialog.CreateDialog(nil, 'Kasse');
   try
     Assert.AreEqual('Arbeitskopien – Kasse', mDialog.Caption);
-    Assert.IsFalse(mDialog.UpdateAllButton.Enabled, 'ohne Liste');
+    Assert.IsFalse(mDialog.Buttons.UpdateAllButton.Enabled, 'ohne Liste');
     mDialog.HandleNeeded;
     mDialog.View.HandleNeeded;
     Assert.AreEqual(1, mDialog.View.Items.Count, 'wird ermittelt …');
@@ -185,9 +185,9 @@ begin
     mDialog.SetList(mList);
     Assert.AreEqual(3, mDialog.View.Items.Count);
     Assert.AreEqual('wird ermittelt …', mDialog.View.Items[1].SubItems[1]);
-    Assert.IsTrue(mDialog.UpdateAllButton.Enabled);
-    Assert.AreEqual('Nur Kasse aktualisieren', mDialog.UpdateOnlyButton.Caption);
-    Assert.IsTrue(mDialog.CheckButton.Visible);
+    Assert.IsTrue(mDialog.Buttons.UpdateAllButton.Enabled);
+    Assert.AreEqual('Nur Kasse aktualisieren', mDialog.Buttons.UpdateOnlyButton.Caption);
+    Assert.IsTrue(mDialog.Buttons.CheckButton.Visible);
     mRow := mList.Rows[1];
     mRow.Loaded := True;
     mRow.Revision := '48190';
@@ -197,9 +197,9 @@ begin
     mDialog.SetChecking(1, True);
     Assert.AreEqual('prüft …', mDialog.View.Items[1].SubItems[3]);
     mDialog.SetBusy(True);
-    Assert.IsFalse(mDialog.CheckButton.Enabled);
+    Assert.IsFalse(mDialog.Buttons.CheckButton.Enabled);
     mDialog.SetBusy(False);
-    Assert.IsTrue(mDialog.CheckButton.Enabled);
+    Assert.IsTrue(mDialog.Buttons.CheckButton.Enabled);
   finally
     mDialog.Free;
   end;
@@ -227,19 +227,19 @@ begin
     // Basis: Revision bekannt, ohne feste Revision.
     mDialog.View.Items[1].Selected := True;
     mDialog.Menu.OnPopup(mDialog.Menu);
-    Assert.IsTrue(mDialog.PinItem.Enabled);
-    Assert.IsTrue(mDialog.UpdateOnlyItem.Visible);
-    mDialog.PinItem.Click;
-    mDialog.UpdateItem.Click;
-    mDialog.UpdateOnlyItem.Click;
-    mDialog.OpenItem.Click;
+    Assert.IsTrue(mDialog.Menu.PinItem.Enabled);
+    Assert.IsTrue(mDialog.Menu.UpdateOnlyItem.Visible);
+    mDialog.Menu.PinItem.Click;
+    mDialog.Menu.UpdateItem.Click;
+    mDialog.Menu.UpdateOnlyItem.Click;
+    mDialog.Menu.OpenItem.Click;
     // Kunden: fest, nichts festzuschreiben.
     mDialog.View.Items[2].Selected := True;
     mDialog.Menu.OnPopup(mDialog.Menu);
-    Assert.IsFalse(mDialog.PinItem.Enabled);
-    mDialog.CheckButton.Click;
-    mDialog.UpdateAllButton.Click;
-    mDialog.UpdateOnlyButton.Click;
+    Assert.IsFalse(mDialog.Menu.PinItem.Enabled);
+    mDialog.Buttons.CheckButton.Click;
+    mDialog.Buttons.UpdateAllButton.Click;
+    mDialog.Buttons.UpdateOnlyButton.Click;
     Assert.AreEqual(7, Integer(Length(FCalls)));
     Assert.AreEqual('pin 1', FCalls[0]);
     Assert.AreEqual('update 1 False', FCalls[1]);
@@ -250,9 +250,9 @@ begin
     Assert.AreEqual('update 0 True', FCalls[6], 'nur das Projekt');
     // Während eines Laufs keine weiteren.
     mDialog.SetBusy(True);
-    mDialog.CheckButton.Click;
+    mDialog.Buttons.CheckButton.Click;
     mDialog.Menu.OnPopup(mDialog.Menu);
-    Assert.IsFalse(mDialog.UpdateItem.Enabled);
+    Assert.IsFalse(mDialog.Menu.UpdateItem.Enabled);
     Assert.AreEqual(7, Integer(Length(FCalls)));
   finally
     mDialog.Free;
@@ -287,9 +287,9 @@ begin
   try
     mDialog.HandleNeeded;
     mDialog.SetList(mList);
-    Assert.IsFalse(mDialog.CheckButton.Visible);
-    Assert.IsFalse(mDialog.UpdateOnlyButton.Visible);
-    Assert.AreEqual('Pull', StringReplace(mDialog.UpdateAllButton.Caption, '&', '', [rfReplaceAll]));
+    Assert.IsFalse(mDialog.Buttons.CheckButton.Visible);
+    Assert.IsFalse(mDialog.Buttons.UpdateOnlyButton.Visible);
+    Assert.AreEqual('Pull', StringReplace(mDialog.Buttons.UpdateAllButton.Caption, '&', '', [rfReplaceAll]));
   finally
     mDialog.Free;
   end;

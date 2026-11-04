@@ -89,13 +89,14 @@ end;
 var
   Keywords: TArray<TKeywordInfo>;
 
-procedure InitKeywords;
 const
   Directive = 'Direktive';
   Reserved = 'reserviertes Wort';
+
+/// <summary>Methoden und Routinen.</summary>
+function RoutineKeywords: TArray<TKeywordInfo>;
 begin
-  Keywords := [
-    // Methoden und Routinen
+  Result := [
     K('reintroduce', Directive, 'Verdeckt eine virtuelle Methode des Vorfahren bewusst, ohne sie zu überschreiben; ' +
       'unterdrückt die Warnung W1010.', Methods),
     K('overload', Directive, 'Erlaubt mehrere Routinen gleichen Namens mit unterschiedlichen Parametern.',
@@ -129,8 +130,13 @@ begin
     K('winapi', Directive, 'Aufrufkonvention der Plattform-API (stdcall unter Windows).',
       Routines + '#Calling_Conventions'),
     K('dispid', Directive, 'Nummer eines Mitglieds in einer Dispatch-Schnittstelle (Automation).',
-      'Automation_Objects_(Delphi)'),
-    // Hinweisdirektiven
+      'Automation_Objects_(Delphi)')];
+end;
+
+/// <summary>Hinweisdirektiven, Sichtbarkeit und Klassen.</summary>
+function ClassKeywords: TArray<TKeywordInfo>;
+begin
+  Result := [
     K('deprecated', Directive, 'Verwendung erzeugt eine Warnung; optional mit Hinweistext.', Hints),
     K('platform', Directive, 'Nur auf bestimmten Plattformen verfügbar; Verwendung erzeugt eine Warnung.', Hints),
     K('experimental', Directive, 'Noch nicht stabil; Verwendung erzeugt eine Warnung.', Hints),
@@ -155,8 +161,13 @@ begin
     K('object', Reserved, 'Veralteter Objekttyp (Turbo Pascal); heute class bzw. record verwenden.',
       'Classes_and_Objects_(Delphi)#Object_Types'),
     K('packed', Reserved, 'Felder ohne Ausrichtungslücken ablegen.',
-      'Structured_Types_(Delphi)#Alignment_of_Structured_Types'),
-    // Properties
+      'Structured_Types_(Delphi)#Alignment_of_Structured_Types')];
+end;
+
+/// <summary>Properties.</summary>
+function PropertyKeywords: TArray<TKeywordInfo>;
+begin
+  Result := [
     K('property', Reserved, 'Eigenschaft mit Lese- und Schreibzugriff über Felder oder Methoden.', Properties),
     K('implements', Directive, 'Delegiert die Implementierung einer Schnittstelle an eine Property.',
       'Using_Implements_for_Delegation'),
@@ -169,8 +180,13 @@ begin
     K('index', Directive, 'Index, den mehrere Properties an dieselbe Zugriffsmethode übergeben.',
       Properties + '#Index_Specifiers'),
     K('readonly', Directive, 'Dispatch-Property nur lesbar.', 'Automation_Objects_(Delphi)'),
-    K('writeonly', Directive, 'Dispatch-Property nur schreibbar.', 'Automation_Objects_(Delphi)'),
-    // Variablen und Anweisungen
+    K('writeonly', Directive, 'Dispatch-Property nur schreibbar.', 'Automation_Objects_(Delphi)')];
+end;
+
+/// <summary>Variablen, Anweisungen und Delphi 13.</summary>
+function StatementKeywords: TArray<TKeywordInfo>;
+begin
+  Result := [
     K('absolute', Directive, 'Variable liegt an derselben Adresse wie eine andere Variable.',
       'Variables_(Delphi)#Absolute_Addresses'),
     K('threadvar', Reserved, 'Globale Variable mit eigenem Wert je Thread.',
@@ -201,6 +217,11 @@ begin
     K('if expression', 'Ausdruck', 'Bedingungsausdruck: X := if A then B else C.', Expressions, Delphi13),
     K('is not', 'Operator', 'Negierter Typtest: X is not TFoo.', Expressions, Delphi13),
     K('not in', 'Operator', 'Negierter Mengentest: X not in [A, B].', Expressions, Delphi13)];
+end;
+
+procedure InitKeywords;
+begin
+  Keywords := RoutineKeywords + ClassKeywords + PropertyKeywords + StatementKeywords;
 end;
 
 { TKeywordReference }
@@ -296,71 +317,79 @@ begin
   end;
 end;
 
+/// <summary>Index des Schlüsselworts bzw. Bezeichners an APosition; -1 ohne.</summary>
+function WordAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ATokens) do
+  begin
+    if (ATokens[Index].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
+      Contains(ATokens[Index].StartPos, ATokens[Index].EndPos, APosition) then
+    begin
+      Exit(Index);
+    end;
+  end;
+  Result := -1;
+end;
+
+const
+  // Zweiwortige Elemente, in dieser Reihenfolge geprüft (is not vor not in).
+  PairFirst: array[0..4] of string = ('strict', 'strict', 'class', 'is', 'not');
+  PairSecond: array[0..4] of string = ('private', 'protected', 'var', 'not', 'in');
+
+/// <summary>Zweiwortiges Element aus AWord und seinem Vorgänger bzw. Nachfolger; '' ohne.</summary>
+function PairName(const APrevWord, AWord, ANextWord: string): string;
+var
+  Index: Integer;
+begin
+  for Index := Low(PairFirst) to High(PairFirst) do
+  begin
+    if ((AWord = PairFirst[Index]) and (ANextWord = PairSecond[Index])) or
+      ((APrevWord = PairFirst[Index]) and (AWord = PairSecond[Index])) then
+    begin
+      Exit(PairFirst[Index] + ' ' + PairSecond[Index]);
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Name des Eintrags zum Token AHit; '' bei alltäglichen Wörtern.</summary>
+function EntryName(const ATokens: TArray<TPascalToken>; AHit: Integer): string;
+var
+  Word: string;
+  Prev: Integer;
+begin
+  Word := WordOf(ATokens, AHit);
+  Prev := Neighbour(ATokens, AHit, -1);
+  Result := PairName(WordOf(ATokens, Prev), Word, WordOf(ATokens, Neighbour(ATokens, AHit, 1)));
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  // Hinter :=, (, , usw. ist if ein Ausdruck, keine Anweisung.
+  if (Word = 'if') and (Prev >= 0) and (ATokens[Prev].Kind = TPascalTokenKind.Symbol) and
+    (ATokens[Prev].Text <> ';') then
+  begin
+    Result := 'if expression';
+  end
+  else if not MatchText(Word, TKeywordReference.CommonWords) then
+  begin
+    Result := Word;
+  end;
+end;
+
 class function TKeywordReference.HoverAt(const AText: string; const APosition: TTextPosition;
   const ADelphiVersion: string; out AMarkdown: string): Boolean;
 var
   Tokens: TArray<TPascalToken>;
-  Index, Hit, Prev, Next: Integer;
-  Word, PrevWord, NextWord, Name: string;
+  Hit: Integer;
   Info: TKeywordInfo;
 begin
   AMarkdown := '';
   Tokens := TPascalLexer.Tokenize(AText);
-  Hit := -1;
-  for Index := 0 to High(Tokens) do
-  begin
-    if (Tokens[Index].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
-      Contains(Tokens[Index].StartPos, Tokens[Index].EndPos, APosition) then
-    begin
-      Hit := Index;
-      Break;
-    end;
-  end;
-  if Hit < 0 then
-  begin
-    Exit(False);
-  end;
-  Word := WordOf(Tokens, Hit);
-  Prev := Neighbour(Tokens, Hit, -1);
-  Next := Neighbour(Tokens, Hit, 1);
-  PrevWord := WordOf(Tokens, Prev);
-  NextWord := WordOf(Tokens, Next);
-  Name := Word;
-  if (Word = 'strict') and MatchStr(NextWord, ['private', 'protected']) then
-  begin
-    Name := 'strict ' + NextWord;
-  end
-  else if (PrevWord = 'strict') and MatchStr(Word, ['private', 'protected']) then
-  begin
-    Name := 'strict ' + Word;
-  end
-  else if (Word = 'class') and (NextWord = 'var') then
-  begin
-    Name := 'class var';
-  end
-  else if (PrevWord = 'class') and (Word = 'var') then
-  begin
-    Name := 'class var';
-  end
-  else if ((Word = 'is') and (NextWord = 'not')) or ((PrevWord = 'is') and (Word = 'not')) then
-  begin
-    Name := 'is not';
-  end
-  else if ((Word = 'not') and (NextWord = 'in')) or ((PrevWord = 'not') and (Word = 'in')) then
-  begin
-    Name := 'not in';
-  end
-  else if (Word = 'if') and (Prev >= 0) and (Tokens[Prev].Kind = TPascalTokenKind.Symbol) and
-    (Tokens[Prev].Text <> ';') then
-  begin
-    // Hinter :=, (, , usw. ist if ein Ausdruck, keine Anweisung.
-    Name := 'if expression';
-  end
-  else if MatchText(Word, CommonWords) then
-  begin
-    Exit(False);
-  end;
-  Result := Find(Name, Info);
+  Hit := WordAt(Tokens, APosition);
+  Result := (Hit >= 0) and Find(EntryName(Tokens, Hit), Info);
   if Result then
   begin
     AMarkdown := Describe(Info, ADelphiVersion);

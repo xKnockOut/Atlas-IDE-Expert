@@ -41,9 +41,9 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Files.DataFile,
   Atlas.Core.Tests.Run,
-  Atlas.Text.TestResults;
+  Atlas.Text.TestResults,
+  Atlas.IDE.Tests.Projects;
 
 type
   /// <summary>Ende des Builds vor den Tests: AError &lt;&gt; '' = nicht gebaut (Grund); sonst Erfolg und EXE.</summary>
@@ -55,8 +55,6 @@ type
   TAtlasTestsFinishedProc = reference to procedure(const AProject: string; const ATests: TAtlasProjectTests);
   /// <summary>Neuer Prozessläufer; ACancelled bricht ab.</summary>
   TAtlasTestsRunnerFactory = reference to function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
-  /// <summary>Das gefundene bzw. gewählte Testprojekt.</summary>
-  TAtlasTestsProjectProc = reference to procedure(const AProject: IOTAProject);
 
   TAtlasIdeTests = class
   private type
@@ -64,6 +62,13 @@ type
     TAlive = class(TInterfacedObject)
     public
       Alive: Boolean;
+    end;
+    /// <summary>Haken zu Build, Problemen und Willkommensseite (A-09); die Composition setzt sie.</summary>
+    THooks = record
+      OnBuild: TAtlasTestsBuildFunc;
+      OnProblems: TAtlasTestsProblemsProc;
+      OnFinished: TAtlasTestsFinishedProc;
+      OnLastFailed: TFunc<string, TArray<string>>;
     end;
   private
     FAlive: TAlive;
@@ -76,10 +81,7 @@ type
     FCases: TArray<TTestCaseResult>;
     /// <summary>Fehlgeschlagene Tests des letzten Laufs je Testprojekt (Schlüssel klein).</summary>
     FLastFailed: TDictionary<string, TArray<string>>;
-    FOnBuild: TAtlasTestsBuildFunc;
-    FOnProblems: TAtlasTestsProblemsProc;
-    FOnFinished: TAtlasTestsFinishedProc;
-    FOnLastFailed: TFunc<string, TArray<string>>;
+    FHooks: THooks;
     FDebugging: Boolean;
     procedure SetDebugging(AValue: Boolean);
     function GetBusy: Boolean;
@@ -88,12 +90,8 @@ type
     procedure Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
       const AXml: string; const AOutput: TArray<string>);
     procedure Merge(const ARun: TTestRunResult);
-    class function ProjectByFile(const AFileName: string): IOTAProject; static;
-    /// <summary>Testprojekte der Projektgruppe, die AFileName enthalten (AFileName '' = alle).</summary>
-    class function TestProjects(const AFileName: string): TArray<IOTAProject>; static;
-    /// <summary>Ein Kandidat: gleich; mehrere: gemerkte Wahl, sonst fragen und merken.</summary>
-    procedure Choose(const ACandidates: TArray<IOTAProject>; const AThen: TAtlasTestsProjectProc);
-    class function ChoiceFile: string; static;
+    /// <summary>Meldet ATarget (gültiger Bericht ARun): Probleme, Meldungsansicht, Zusammenfassung.</summary>
+    procedure Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
   public
     constructor Create(const ANewRunner: TAtlasTestsRunnerFactory);
     destructor Destroy; override;
@@ -139,10 +137,10 @@ type
     property Busy: Boolean read GetBusy;
     /// <summary>Zählt jede Änderung von Busy und Ergebnissen (Neuzeichnen der Code Lens).</summary>
     property Version: Integer read FVersion;
-    property OnBuild: TAtlasTestsBuildFunc read FOnBuild write FOnBuild;
-    property OnProblems: TAtlasTestsProblemsProc read FOnProblems write FOnProblems;
-    property OnFinished: TAtlasTestsFinishedProc read FOnFinished write FOnFinished;
-    property OnLastFailed: TFunc<string, TArray<string>> read FOnLastFailed write FOnLastFailed;
+    property OnBuild: TAtlasTestsBuildFunc read FHooks.OnBuild write FHooks.OnBuild;
+    property OnProblems: TAtlasTestsProblemsProc read FHooks.OnProblems write FHooks.OnProblems;
+    property OnFinished: TAtlasTestsFinishedProc read FHooks.OnFinished write FHooks.OnFinished;
+    property OnLastFailed: TFunc<string, TArray<string>> read FHooks.OnLastFailed write FHooks.OnLastFailed;
   end;
 
 implementation
@@ -151,20 +149,11 @@ uses
   System.IOUtils,
   System.Math,
   System.DateUtils,
-  System.Types,
-  Vcl.Forms,
-  Atlas.Core.Commands.Palette,
-  Atlas.Core.Tests.ProjectChoice,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.TextFile,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,
-  Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX;
@@ -176,39 +165,13 @@ const
 
 /// <summary>Zeilen einer Datei: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-var
-  Buffer: IOTAEditBuffer;
-  Text: string;
 begin
-  ALines := nil;
-  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if Buffer <> nil then
-  begin
-    Text := TAtlasEditorBuffer.Text(Buffer);
-  end
-  else
-  begin
-    if not FileExists(AFileName) then
-    begin
-      Exit(False);
-    end;
-    try
-      Text := TAtlasTextFile.Load(AFileName).Text;
-    except
-      on Exception do
-        Exit(False);
-    end;
-  end;
-  ALines := TTextLines.SplitLines(Text);
-  Result := True;
+  Result := TAtlasIdeTestProjects.ReadLines(AFileName, ALines);
 end;
 
-function IsTestProject(const AProject: IOTAProject): Boolean;
-var
-  Lines: TArray<string>;
+function ProjectByFile(const AFileName: string): IOTAProject;
 begin
-  Result := (AProject <> nil) and (AProject.FileName <> '') and
-    ReadLines(ChangeFileExt(AProject.FileName, '.dpr'), Lines) and TAtlasTestRun.IsTestProgram(Lines);
+  Result := TAtlasIdeTestProjects.ProjectByFile(AFileName);
 end;
 
 function ProjectName(const AFileName: string): string;
@@ -219,6 +182,33 @@ end;
 function SecondsText(AMs: Int64): string;
 begin
   Result := FormatFloat('0.00', AMs / 1000, FormatSettings);
+end;
+
+/// <summary>Lebt der Läufer noch? Für Rückrufe nach einer Wahl in der Palette.</summary>
+function AliveCheck(AAlive: TAtlasIdeTests.TAlive; const AKeep: IInterface): TFunc<Boolean>;
+var
+  mAlive: TAtlasIdeTests.TAlive;
+  mKeep: IInterface;
+begin
+  mAlive := AAlive;
+  mKeep := AKeep;
+  Result :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and mAlive.Alive;
+    end;
+end;
+
+function SayProc(ATests: TAtlasIdeTests): TAtlasTestsSayProc;
+var
+  mTests: TAtlasIdeTests;
+begin
+  mTests := ATests;
+  Result :=
+    procedure(const AText: string)
+    begin
+      mTests.Say(AText);
+    end;
 end;
 
 { TAtlasIdeTests }
@@ -265,70 +255,6 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
-class function TAtlasIdeTests.ProjectByFile(const AFileName: string): IOTAProject;
-var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-  begin
-    Exit;
-  end;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Group.ProjectCount - 1 do
-  begin
-    if (Group.Projects[Index] <> nil) and (SameText(Group.Projects[Index].FileName, AFileName) or
-      (Group.Projects[Index].FindModuleInfo(AFileName) <> nil)) and IsTestProject(Group.Projects[Index]) then
-    begin
-      Exit(Group.Projects[Index]);
-    end;
-  end;
-end;
-
-class function TAtlasIdeTests.TestProjects(const AFileName: string): TArray<IOTAProject>;
-var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Index: Integer;
-  Project: IOTAProject;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-  begin
-    Exit;
-  end;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Group.ProjectCount - 1 do
-  begin
-    Project := Group.Projects[Index];
-    if (Project = nil) or ((AFileName <> '') and not SameText(Project.FileName, AFileName) and
-      (Project.FindModuleInfo(AFileName) = nil)) then
-    begin
-      Continue;
-    end;
-    if IsTestProject(Project) then
-    begin
-      Result := Result + [Project];
-    end;
-  end;
-end;
-
-class function TAtlasIdeTests.ChoiceFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasTestProjectChoices.FileName);
-end;
-
 procedure TAtlasIdeTests.ResolveProject(const AFileName: string; const AThen: TAtlasTestsProjectProc);
 var
   Found: TArray<IOTAProject>;
@@ -337,117 +263,23 @@ begin
   // Testunit der Code Lens bzw. am Cursor: ihre Testprojekte.
   if AFileName <> '' then
   begin
-    Found := TestProjects(AFileName);
+    Found := TAtlasIdeTestProjects.TestProjects(AFileName);
   end;
   if Length(Found) = 0 then
   begin
-    if IsTestProject(GetActiveProject) then
+    if TAtlasIdeTestProjects.IsTestProject(GetActiveProject) then
     begin
       AThen(GetActiveProject);
       Exit;
     end;
-    Found := TestProjects('');
+    Found := TAtlasIdeTestProjects.TestProjects('');
   end;
   if Length(Found) = 0 then
   begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
     Exit;
   end;
-  Choose(Found, AThen);
-end;
-
-procedure TAtlasIdeTests.Choose(const ACandidates: TArray<IOTAProject>; const AThen: TAtlasTestsProjectProc);
-var
-  Files: TArray<string>;
-  Choices: TArray<TAtlasTestProjectChoice>;
-  Index: Integer;
-  Commands: TArray<TAtlasCommand>;
-  Command: TAtlasCommand;
-  Window: TAtlasPaletteWindow;
-  Area: TRect;
-  Alive: TAlive;
-  Keep: IInterface;
-begin
-  Files := nil;
-  for Index := 0 to High(ACandidates) do
-  begin
-    Files := Files + [ACandidates[Index].FileName];
-  end;
-  Choices := TAtlasTestProjectChoices.Load(ChoiceFile);
-  Index := TAtlasTestProjectChoices.Pick(Choices, Files);
-  if Index >= 0 then
-  begin
-    AThen(ACandidates[Index]);
-    Exit;
-  end;
-  // Einmal fragen; die Wahl gilt danach für genau diese Kandidaten.
-  Commands := nil;
-  for Index := 0 to High(Files) do
-  begin
-    Command := Default(TAtlasCommand);
-    Command.Id := IntToStr(Index);
-    Command.Caption := ProjectName(Files[Index]);
-    Command.Path := ExtractFileDir(Files[Index]);
-    Command.Description := Files[Index];
-    Commands := Commands + [Command];
-  end;
-  Alive := FAlive;
-  Keep := FAliveRef;
-  Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
-  Window.KeepOrder := True;
-  Window.Prompt := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChooseProject);
-  Window.OnExecute :=
-    procedure(ACommand: TAtlasCommand)
-    var
-      Chosen: Integer;
-    begin
-      Chosen := StrToIntDef(ACommand.Id, -1);
-      if (Keep = nil) or not Alive.Alive or (Chosen < 0) or (Chosen > High(Files)) then
-      begin
-        Exit;
-      end;
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        var
-          Project: IOTAProject;
-          Stored: TArray<TAtlasTestProjectChoice>;
-        begin
-          // Das Projekt kann inzwischen geschlossen sein.
-          Project := ProjectByFile(Files[Chosen]);
-          if Project = nil then
-          begin
-            Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
-            Exit;
-          end;
-          // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben (Bericht N3).
-          if TAtlasDataFile.Writable(TAtlasTestProjectChoices.Load(ChoiceFile, Stored)) then
-          begin
-            TAtlasTestProjectChoices.Remember(Stored, Files, Project.FileName);
-            if not TAtlasTestProjectChoices.Save(ChoiceFile, Stored) then
-            begin
-              Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
-            end;
-          end
-          else
-          begin
-            Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
-          end;
-          AThen(Project);
-        end);
-    end;
-  if Screen.ActiveForm <> nil then
-  begin
-    Area := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Area := Screen.WorkAreaRect;
-  end;
-  Window.ShowOver(Area);
+  TAtlasIdeTestProjects.Choose(Found, AliveCheck(FAlive, FAliveRef), SayProc(Self), AThen);
 end;
 
 class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
@@ -501,9 +333,9 @@ begin
     var
       Tests: TArray<string>;
     begin
-      if not FLastFailed.TryGetValue(AnsiLowerCase(AProject.FileName), Tests) and Assigned(FOnLastFailed) then
+      if not FLastFailed.TryGetValue(AnsiLowerCase(AProject.FileName), Tests) and Assigned(FHooks.OnLastFailed) then
       begin
-        Tests := FOnLastFailed(AProject.FileName);
+        Tests := FHooks.OnLastFailed(AProject.FileName);
       end;
       if Length(Tests) = 0 then
       begin
@@ -593,14 +425,14 @@ end;
 
 function TAtlasIdeTests.CanBuild: Boolean;
 begin
-  Result := Assigned(FOnBuild);
+  Result := Assigned(FHooks.OnBuild);
 end;
 
 function TAtlasIdeTests.BuildProject(const AProject: string; const ADone: TAtlasTestsBuildDone;
   out AReason: string): Boolean;
 begin
   AReason := '';
-  Result := Assigned(FOnBuild) and FOnBuild(AProject, ADone, AReason);
+  Result := Assigned(FHooks.OnBuild) and FHooks.OnBuild(AProject, ADone, AReason);
 end;
 
 procedure TAtlasIdeTests.ReportRun(const ATarget: TAtlasTestTarget; const AXml: string);
@@ -645,7 +477,7 @@ begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(Target.Project), Target.Platform]));
     Exit;
   end;
-  if not ABuildFirst or not Assigned(FOnBuild) then
+  if not ABuildFirst or not Assigned(FHooks.OnBuild) then
   begin
     Execute(Target);
     Exit;
@@ -654,7 +486,7 @@ begin
   Inc(FVersion);
   Alive := FAlive;
   Keep := FAliveRef;
-  if not FOnBuild(Target.Project,
+  if not FHooks.OnBuild(Target.Project,
     procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
     begin
       // Keep hält den Merker am Leben, auch wenn der Läufer schon frei ist.
@@ -688,86 +520,96 @@ begin
   end;
 end;
 
+/// <summary>Test-EXE von ATarget mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs); AXml ist der
+/// Bericht, AOutput die letzten Zeilen der Ausgabe.</summary>
+function RunTestExe(const AFactory: TAtlasTestsRunnerFactory; const ATarget: TAtlasTestTarget; out AXml: string;
+  out AOutput: TArray<string>): TAtlasVcsRunResult;
+var
+  mRunner: IAtlasVcsRunner;
+  mResultFile: string;
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  AXml := '';
+  AOutput := nil;
+  mResultFile := TPath.Combine(TPath.GetTempPath, 'atlas-tests-' +
+    TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
+  try
+    mRunner := AFactory(
+      function: Boolean
+      begin
+        Result := TAtlasShutdown.Signalled;
+      end);
+    Result := mRunner.Run(ATarget.Executable, TDUnitXCommandLine.Arguments(mResultFile, ATarget.Tests),
+      ExtractFileDir(ATarget.Executable), TAtlasTestRun.TimeoutMs);
+    if FileExists(mResultFile) then
+    begin
+      AXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
+    end;
+    mLines := TTextLines.SplitLines(TrimRight(TEncoding.ANSI.GetString(Result.Output)));
+    for mIndex := Max(0, Length(mLines) - OutputLines) to High(mLines) do
+    begin
+      AOutput := AOutput + [mLines[mIndex]];
+    end;
+  except
+    on E: Exception do
+    begin
+      Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
+      AOutput := [E.Message];
+    end;
+  end;
+  try
+    if FileExists(mResultFile) then
+    begin
+      TFile.Delete(mResultFile);
+    end;
+  except
+    on Exception do
+      ;
+  end;
+end;
+
 procedure TAtlasIdeTests.Execute(const ATarget: TAtlasTestTarget);
 var
-  Target: TAtlasTestTarget;
-  Factory: TAtlasTestsRunnerFactory;
-  Alive: TAlive;
-  Keep: IInterface;
+  mTarget: TAtlasTestTarget;
+  mFactory: TAtlasTestsRunnerFactory;
+  mAlive: TAlive;
+  mKeep: IInterface;
 begin
   if (ATarget.Executable = '') or not FileExists(ATarget.Executable) then
   begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoExe, [ProjectName(ATarget.Project), ATarget.Executable]));
     Exit;
   end;
-  Target := ATarget;
-  Factory := FNewRunner;
-  Alive := FAlive;
-  Keep := FAliveRef;
+  mTarget := ATarget;
+  mFactory := FNewRunner;
+  mAlive := FAlive;
+  mKeep := FAliveRef;
   FBusy := True;
   Inc(FVersion);
-  Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(Target.Project), Target.Configuration,
-    Target.Platform]));
+  Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsStarted, [ProjectName(mTarget.Project), mTarget.Configuration,
+    mTarget.Platform]));
   // Ein Thread je Lauf; der vorige ist fertig (FBusy), sein Objekt wird hier frei.
   FreeAndNil(FThread);
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
-      Runner: IAtlasVcsRunner;
-      Run: TAtlasVcsRunResult;
-      ResultFile, Xml: string;
-      Output: TArray<string>;
-      Lines: TArray<string>;
-      Index: Integer;
+      mRun: TAtlasVcsRunResult;
+      mXml: string;
+      mOutput: TArray<string>;
     begin
-      Xml := '';
-      Output := nil;
-      ResultFile := TPath.Combine(TPath.GetTempPath, 'atlas-tests-' +
-        TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
-      try
-        Runner := Factory(
-          function: Boolean
-          begin
-            Result := TAtlasShutdown.Signalled;
-          end);
-        Run := Runner.Run(Target.Executable, TDUnitXCommandLine.Arguments(ResultFile, Target.Tests),
-          ExtractFileDir(Target.Executable), TAtlasTestRun.TimeoutMs);
-        if FileExists(ResultFile) then
-        begin
-          Xml := TFile.ReadAllText(ResultFile, TEncoding.UTF8);
-        end;
-        Lines := TTextLines.SplitLines(TrimRight(TEncoding.ANSI.GetString(Run.Output)));
-        for Index := Max(0, Length(Lines) - OutputLines) to High(Lines) do
-        begin
-          Output := Output + [Lines[Index]];
-        end;
-      except
-        on E: Exception do
-        begin
-          Run := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
-          Output := [E.Message];
-        end;
-      end;
-      try
-        if FileExists(ResultFile) then
-        begin
-          TFile.Delete(ResultFile);
-        end;
-      except
-        on Exception do
-          ;
-      end;
+      mRun := RunTestExe(mFactory, mTarget, mXml, mOutput);
       TAtlasMainThread.Queue(TAtlasFeature.Build,
         procedure
         begin
-          if (Keep = nil) or not Alive.Alive then
+          if (mKeep = nil) or not mAlive.Alive then
           begin
             Exit;
           end;
           TAtlasGuard.Run(TAtlasFeature.Build,
             procedure
             begin
-              Finish(Target, Run.Outcome, Run.ExitCode, Xml, Output);
+              Finish(mTarget, mRun.Outcome, mRun.ExitCode, mXml, mOutput);
             end);
         end);
     end);
@@ -800,17 +642,61 @@ begin
   FCases := Kept + ARun.Cases;
 end;
 
+/// <summary>Datei einer Unit im Testprojekt AProjectFile, als Rückruf für TAtlasTestRun.Failures.</summary>
+function UnitFileFunc(const AProjectFile: string): TAtlasTestUnitFile;
+var
+  mProjectFile: string;
+begin
+  mProjectFile := AProjectFile;
+  Result :=
+    function(const AUnitName: string): string
+    begin
+      Result := TAtlasIdeTests.UnitFileOf(mProjectFile, AUnitName);
+    end;
+end;
+
+function ProblemText(const ACase: TTestCaseResult): string;
+begin
+  Result := TAtlasTestRun.ProblemText(ACase, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+    TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues));
+end;
+
+/// <summary>Meldungsansicht: je Fehlschlag eine Zeile, die zur Testmethode springt.</summary>
+procedure SayFailures(const AFailures: TArray<TAtlasTestFailure>);
+var
+  mMessages: IOTAMessageServices;
+  mGroup: IOTAMessageGroup;
+  mFailure: TAtlasTestFailure;
+  mLineRef: Pointer;
+begin
+  if (Length(AFailures) = 0) or not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    Exit;
+  end;
+  mGroup := mMessages.GetGroup(MessageGroup);
+  if mGroup = nil then
+  begin
+    mGroup := mMessages.AddMessageGroup(MessageGroup);
+  end;
+  for mFailure in AFailures do
+  begin
+    if mFailure.FileName <> '' then
+    begin
+      mMessages.AddToolMessage(mFailure.FileName, ProblemText(mFailure.Test), 'DUnitX', mFailure.Line + 1,
+        mFailure.StartCharacter + 1, nil, mLineRef, mGroup);
+    end
+    else
+    begin
+      mMessages.AddTitleMessage('  ' + ProblemText(mFailure.Test), mGroup);
+    end;
+  end;
+end;
+
 procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
   const AXml: string; const AOutput: TArray<string>);
 var
-  Run, All: TTestRunResult;
-  Failures: TArray<TAtlasTestFailure>;
-  Failure: TAtlasTestFailure;
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
-  LineRef: Pointer;
-  Line: string;
-  ProjectFile: string;
+  mRun: TTestRunResult;
+  mLine: string;
 begin
   FBusy := False;
   Inc(FVersion);
@@ -824,76 +710,52 @@ begin
       TAtlasTestRun.TimeoutMs div 1000]));
     Exit;
   end;
-  Run := TTestResults.Parse(AXml);
-  if (AOutcome <> TAtlasVcsOutcome.Ok) or not Run.Valid then
+  mRun := TTestResults.Parse(AXml);
+  if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
   begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
-    for Line in AOutput do
+    for mLine in AOutput do
     begin
-      Say('  ' + Line);
+      Say('  ' + mLine);
     end;
     Exit;
   end;
-  ProjectFile := ATarget.Project;
-  Merge(Run);
+  Report(ATarget, mRun);
+end;
+
+procedure TAtlasIdeTests.Report(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+var
+  mAll: TTestRunResult;
+  mFailures: TArray<TAtlasTestFailure>;
+begin
+  Merge(ARun);
   // Probleme aus allen Ergebnissen dieser Sitzung: Ein Lauf einzelner Tests lässt die übrigen Fehlschläge stehen.
-  All := Run;
-  All.Cases := FCases;
-  Failures := TAtlasTestRun.Failures(Run,
-    function(const AUnitName: string): string
-    begin
-      Result := UnitFileOf(ProjectFile, AUnitName);
-    end, ReadLines);
-  if Assigned(FOnProblems) then
+  mAll := ARun;
+  mAll.Cases := FCases;
+  mFailures := TAtlasTestRun.Failures(ARun, UnitFileFunc(ATarget.Project), ReadLines);
+  if Assigned(FHooks.OnProblems) then
   begin
-    FOnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(All,
-      function(const AUnitName: string): string
-      begin
-        Result := UnitFileOf(ProjectFile, AUnitName);
-      end, ReadLines), TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
+    FHooks.OnProblems(TAtlasTestRun.Problems(TAtlasTestRun.Failures(mAll, UnitFileFunc(ATarget.Project), ReadLines),
+      TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)));
   end;
-  FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, Run, Failures,
+  FLastFailed.AddOrSetValue(AnsiLowerCase(ATarget.Project), TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
     0).FailedTests);
   // Meldungsansicht: Zusammenfassung, dann je Fehlschlag eine Zeile, die zur Testmethode springt.
-  if Run.Total = 0 then
+  if ARun.Total = 0 then
   begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoTests, [ProjectName(ATarget.Project)]));
   end
   else
   begin
     Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsFinished, [ProjectName(ATarget.Project),
-      Run.Count(TTestOutcome.Passed), Run.Count(TTestOutcome.Failed), Run.Count(TTestOutcome.Error),
-      Run.Count(TTestOutcome.Skipped), SecondsText(Run.DurationMs)]));
+      ARun.Count(TTestOutcome.Passed), ARun.Count(TTestOutcome.Failed), ARun.Count(TTestOutcome.Error),
+      ARun.Count(TTestOutcome.Skipped), SecondsText(ARun.DurationMs)]));
   end;
-  if (Length(Failures) > 0) and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  SayFailures(mFailures);
+  if Assigned(FHooks.OnFinished) then
   begin
-    Group := Messages.GetGroup(MessageGroup);
-    if Group = nil then
-    begin
-      Group := Messages.AddMessageGroup(MessageGroup);
-    end;
-    for Failure in Failures do
-    begin
-      if Failure.FileName <> '' then
-      begin
-        Messages.AddToolMessage(Failure.FileName, TAtlasTestRun.ProblemText(Failure.Test,
-          TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-            TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)),
-          'DUnitX', Failure.Line + 1, Failure.StartCharacter + 1, nil, LineRef, Group);
-      end
-      else
-      begin
-        Messages.AddTitleMessage('  ' + TAtlasTestRun.ProblemText(Failure.Test,
-          TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblem),
-            TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsProblemValues)),
-          Group);
-      end;
-    end;
-  end;
-  if Assigned(FOnFinished) then
-  begin
-    FOnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, Run, Failures,
+    FHooks.OnFinished(ATarget.Project, TAtlasTestRun.SummaryOf(ATarget, ARun, mFailures,
       TTimeZone.Local.ToUniversalTime(Now)));
   end;
 end;
