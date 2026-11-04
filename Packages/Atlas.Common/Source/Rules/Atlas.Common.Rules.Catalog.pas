@@ -218,60 +218,71 @@ begin
   end;
 end;
 
+function IsOptionKind(const AKind: string): Boolean;
+var
+  mKind: string;
+begin
+  Result := False;
+  for mKind in OptionKinds do
+  begin
+    if mKind = AKind then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Eine Option aus "options" von AId; ERuleCatalog ohne Objekt, Namen oder gültigen Typ.</summary>
+function OptionOf(AItem: TJSONValue; const AId: string): TRuleOption;
+var
+  mObject: TJSONObject;
+  mDefault: TJSONValue;
+begin
+  if not (AItem is TJSONObject) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ist kein Objekt', [AId]);
+  end;
+  mObject := TJSONObject(AItem);
+  Result := Default(TRuleOption);
+  Result.Name := StringOf(mObject, 'name');
+  Result.Kind := StringOf(mObject, 'type');
+  Result.Description := StringOf(mObject, 'description');
+  if Result.Name = '' then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ohne "name"', [AId]);
+  end;
+  if not IsOptionKind(Result.Kind) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Result.Name, AId]);
+  end;
+  if Result.Kind = 'object-list' then
+  begin
+    Result.Columns := ColumnsOf(mObject, AId, Result.Name);
+  end;
+  mDefault := mObject.GetValue('default');
+  if mDefault <> nil then
+  begin
+    Result.DefaultJson := mDefault.ToJSON;
+  end;
+end;
+
 function OptionsOf(AItem: TJSONObject; const AId: string): TArray<TRuleOption>;
 var
-  Value, DefaultValue: TJSONValue;
-  Item: TJSONValue;
-  Option: TRuleOption;
-  Known: Boolean;
-  Kind: string;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AItem.GetValue('options');
-  if Value = nil then
+  mValue := AItem.GetValue('options');
+  if mValue = nil then
   begin
     Exit;
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "options"', [AId]);
   end;
-  for Item in TJSONArray(Value) do
+  for mItem in TJSONArray(mValue) do
   begin
-    if not (Item is TJSONObject) then
-    begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ist kein Objekt', [AId]);
-    end;
-    Option := Default(TRuleOption);
-    Option.Name := StringOf(TJSONObject(Item), 'name');
-    Option.Kind := StringOf(TJSONObject(Item), 'type');
-    Option.Description := StringOf(TJSONObject(Item), 'description');
-    if Option.Name = '' then
-    begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ohne "name"', [AId]);
-    end;
-    Known := False;
-    for Kind in OptionKinds do
-    begin
-      if Kind = Option.Kind then
-      begin
-        Known := True;
-      end;
-    end;
-    if not Known then
-    begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Option.Name, AId]);
-    end;
-    if Option.Kind = 'object-list' then
-    begin
-      Option.Columns := ColumnsOf(TJSONObject(Item), AId, Option.Name);
-    end;
-    DefaultValue := TJSONObject(Item).GetValue('default');
-    if DefaultValue <> nil then
-    begin
-      Option.DefaultJson := DefaultValue.ToJSON;
-    end;
-    Result := Result + [Option];
+    Result := Result + [OptionOf(mItem, AId)];
   end;
 end;
 
@@ -357,6 +368,124 @@ begin
   Result := TJSONArray(Value);
 end;
 
+/// <summary>Kategorie, Schweregrad und Gruppe (ohne "group" die der Kategorie) eines Eintrags.</summary>
+procedure ClassifyEntry(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
+begin
+  if not TRuleCatalog.TryParseCategory(StringOf(AItem, 'category'), AEntry.Category) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Kategorie', [AEntry.Id]);
+  end;
+  if not TryParseSeverity(StringOf(AItem, 'severity'), AEntry.DefaultSeverity) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keinen gültigen Schweregrad', [AEntry.Id]);
+  end;
+  AEntry.Group := TRuleCatalog.GroupOfCategory(AEntry.Category);
+  if (AItem.GetValue('group') <> nil) and not TRuleCatalog.TryParseGroup(StringOf(AItem, 'group'), AEntry.Group) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [AEntry.Id]);
+  end;
+end;
+
+/// <summary>Stufe ("", A, B oder T) und safeFix eines Eintrags.</summary>
+procedure ReadLevelAndSafeFix(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
+var
+  mSafeFix: TJSONValue;
+begin
+  AEntry.Level := StringOf(AItem, 'level');
+  if (AEntry.Level <> '') and (AEntry.Level <> 'A') and (AEntry.Level <> 'B') and (AEntry.Level <> 'T') then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [AEntry.Id, AEntry.Level]);
+  end;
+  mSafeFix := AItem.GetValue('safeFix');
+  AEntry.SafeFix := (mSafeFix is TJSONBool) and TJSONBool(mSafeFix).AsBoolean;
+  if (mSafeFix <> nil) and not (mSafeFix is TJSONBool) then
+  begin
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ein ungültiges "safeFix"', [AEntry.Id]);
+  end;
+end;
+
+/// <summary>Ein Eintrag des Grundkatalogs; ERuleCatalog bei ungültigen Angaben.</summary>
+function EntryOf(AItem: TJSONValue): TRuleCatalogEntry;
+var
+  mObject: TJSONObject;
+begin
+  if not (AItem is TJSONObject) then
+  begin
+    raise ERuleCatalog.Create('Regelkatalog: Eintrag ist kein Objekt');
+  end;
+  mObject := TJSONObject(AItem);
+  Result := Default(TRuleCatalogEntry);
+  Result.Id := StringOf(mObject, 'id');
+  if Result.Id = '' then
+  begin
+    raise ERuleCatalog.Create('Regelkatalog: Eintrag ohne "id"');
+  end;
+  Result.Name := StringOf(mObject, 'name');
+  Result.Description := StringOf(mObject, 'description');
+  Result.Bad := StringOf(mObject, 'bad');
+  Result.Good := StringOf(mObject, 'good');
+  ClassifyEntry(mObject, Result);
+  Result.Options := OptionsOf(mObject, Result.Id);
+  Result.CompilerCodes := CompilerCodesOf(mObject, Result.Id);
+  Result.OverriddenBy := OverriddenByOf(mObject, Result.Id);
+  ReadLevelAndSafeFix(mObject, Result);
+end;
+
+/// <summary>Setzt die Beschreibung der Option AName (Groß-/Kleinschreibung egal).</summary>
+procedure SetOptionDescription(var AOptions: TArray<TRuleOption>; const AName, AText: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AOptions) do
+  begin
+    if SameText(AOptions[mIndex].Name, AName) then
+    begin
+      AOptions[mIndex].Description := AText;
+    end;
+  end;
+end;
+
+/// <summary>Beschreibungen der Optionen nach Namen (#909); unbekannte Optionen bleiben unbeachtet.</summary>
+procedure TranslateOptions(AOptions: TJSONValue; var ATarget: TArray<TRuleOption>);
+var
+  mOption: TJSONValue;
+  mText: string;
+begin
+  if not (AOptions is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mOption in TJSONArray(AOptions) do
+  begin
+    if mOption is TJSONObject then
+    begin
+      mText := StringOf(TJSONObject(mOption), 'description');
+      if mText <> '' then
+      begin
+        SetOptionDescription(ATarget, StringOf(TJSONObject(mOption), 'name'), mText);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Übernimmt Name, Beschreibung und Optionstexte der Übersetzung AItem; leere Texte bleiben.</summary>
+procedure TranslateEntry(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
+var
+  mText: string;
+begin
+  mText := StringOf(AItem, 'name');
+  if mText <> '' then
+  begin
+    AEntry.Name := mText;
+  end;
+  mText := StringOf(AItem, 'description');
+  if mText <> '' then
+  begin
+    AEntry.Description := mText;
+  end;
+  TranslateOptions(AItem.GetValue('options'), AEntry.Options);
+end;
+
 { TRuleCatalog }
 
 constructor TRuleCatalog.Create(const ABase: string);
@@ -385,144 +514,52 @@ end;
 
 procedure TRuleCatalog.ParseBase(const AJson: string);
 var
-  Root: TJSONValue;
-  Rules: TJSONArray;
-  I: Integer;
-  Item: TJSONObject;
-  Entry: TRuleCatalogEntry;
+  mRoot: TJSONValue;
+  mItem: TJSONValue;
+  mEntry: TRuleCatalogEntry;
 begin
-  Root := TJSONObject.ParseJSONValue(AJson);
+  mRoot := TJSONObject.ParseJSONValue(AJson);
   try
-    Rules := RulesOf(Root);
-    for I := 0 to Rules.Count - 1 do
+    for mItem in RulesOf(mRoot) do
     begin
-      if not (Rules.Items[I] is TJSONObject) then
+      mEntry := EntryOf(mItem);
+      if IndexOf(mEntry.Id) >= 0 then
       begin
-        raise ERuleCatalog.Create('Regelkatalog: Eintrag ist kein Objekt');
+        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" doppelt', [mEntry.Id]);
       end;
-      Item := TJSONObject(Rules.Items[I]);
-      Entry := Default(TRuleCatalogEntry);
-      Entry.Id := StringOf(Item, 'id');
-      if Entry.Id = '' then
-      begin
-        raise ERuleCatalog.Create('Regelkatalog: Eintrag ohne "id"');
-      end;
-      if IndexOf(Entry.Id) >= 0 then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" doppelt', [Entry.Id]);
-      end;
-      Entry.Name := StringOf(Item, 'name');
-      Entry.Description := StringOf(Item, 'description');
-      Entry.Bad := StringOf(Item, 'bad');
-      Entry.Good := StringOf(Item, 'good');
-      if not TryParseCategory(StringOf(Item, 'category'), Entry.Category) then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Kategorie', [Entry.Id]);
-      end;
-      if not TryParseSeverity(StringOf(Item, 'severity'), Entry.DefaultSeverity) then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keinen gültigen Schweregrad', [Entry.Id]);
-      end;
-      if Item.GetValue('group') = nil then
-      begin
-        Entry.Group := GroupOfCategory(Entry.Category);
-      end
-      else if not TryParseGroup(StringOf(Item, 'group'), Entry.Group) then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [Entry.Id]);
-      end;
-      Entry.Options := OptionsOf(Item, Entry.Id);
-      Entry.CompilerCodes := CompilerCodesOf(Item, Entry.Id);
-      Entry.Level := StringOf(Item, 'level');
-      if (Entry.Level <> '') and (Entry.Level <> 'A') and (Entry.Level <> 'B') and (Entry.Level <> 'T') then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
-      end;
-      Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
-      Entry.SafeFix := False;
-      if Item.GetValue('safeFix') is TJSONBool then
-      begin
-        Entry.SafeFix := TJSONBool(Item.GetValue('safeFix')).AsBoolean;
-      end
-      else if Item.GetValue('safeFix') <> nil then
-      begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ein ungültiges "safeFix"', [Entry.Id]);
-      end;
-      FEntries.Add(Entry);
-      if not FPositions.ContainsKey(LowerCase(Entry.Id)) then
-      begin
-        FPositions.Add(LowerCase(Entry.Id), FEntries.Count - 1);
-      end;
+      FEntries.Add(mEntry);
+      FPositions.Add(LowerCase(mEntry.Id), FEntries.Count - 1);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 procedure TRuleCatalog.ApplyOverlay(const AJson: string);
 var
-  Root: TJSONValue;
-  Rules: TJSONArray;
-  I, Index, OptionIndex: Integer;
-  Item: TJSONObject;
-  Entry: TRuleCatalogEntry;
-  Text, Name: string;
-  Options, Option: TJSONValue;
+  mRoot: TJSONValue;
+  mItem: TJSONValue;
+  mIndex: Integer;
+  mEntry: TRuleCatalogEntry;
 begin
-  Root := TJSONObject.ParseJSONValue(AJson);
+  mRoot := TJSONObject.ParseJSONValue(AJson);
   try
-    Rules := RulesOf(Root);
-    for I := 0 to Rules.Count - 1 do
+    for mItem in RulesOf(mRoot) do
     begin
-      if not (Rules.Items[I] is TJSONObject) then
+      // Übersetzungen unbekannter Regeln und Einträge, die keine Objekte sind, sind harmlos und werden übergangen.
+      if mItem is TJSONObject then
       begin
-        Continue;
-      end;
-      Item := TJSONObject(Rules.Items[I]);
-      Index := IndexOf(StringOf(Item, 'id'));
-      // Übersetzungen unbekannter Regeln sind harmlos und werden übergangen.
-      if Index < 0 then
-      begin
-        Continue;
-      end;
-      Entry := FEntries[Index];
-      Text := StringOf(Item, 'name');
-      if Text <> '' then
-      begin
-        Entry.Name := Text;
-      end;
-      Text := StringOf(Item, 'description');
-      if Text <> '' then
-      begin
-        Entry.Description := Text;
-      end;
-      // Beschreibungen der Optionen nach Namen (#909); unbekannte Optionen bleiben unbeachtet.
-      Options := Item.GetValue('options');
-      if Options is TJSONArray then
-      begin
-        for Option in TJSONArray(Options) do
+        mIndex := IndexOf(StringOf(TJSONObject(mItem), 'id'));
+        if mIndex >= 0 then
         begin
-          if Option is TJSONObject then
-          begin
-            Name := StringOf(TJSONObject(Option), 'name');
-            Text := StringOf(TJSONObject(Option), 'description');
-            if Text <> '' then
-            begin
-              for OptionIndex := 0 to High(Entry.Options) do
-              begin
-                if SameText(Entry.Options[OptionIndex].Name, Name) then
-                begin
-                  Entry.Options[OptionIndex].Description := Text;
-                end;
-              end;
-            end;
-          end;
+          mEntry := FEntries[mIndex];
+          TranslateEntry(TJSONObject(mItem), mEntry);
+          FEntries[mIndex] := mEntry;
         end;
       end;
-      FEntries[Index] := Entry;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
