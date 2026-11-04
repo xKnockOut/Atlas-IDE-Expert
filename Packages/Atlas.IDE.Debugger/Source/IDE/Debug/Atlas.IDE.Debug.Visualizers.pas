@@ -28,6 +28,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Types,
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
@@ -82,8 +83,9 @@ type
     FClosed: TOTAVisualizerClosedProcedure;
     procedure FormClosed(Sender: TObject);
   public
+    /// <summary>Fenster an APosition (links oben) öffnen und den Wert zeigen.</summary>
     constructor Create(AGroup: TAtlasViewerGroup; const ASource: TAtlasViewSource; const AExpression, ATypeName,
-      AEvalResult: string; ALeft, ATop: Integer);
+      AEvalResult: string; const APosition: TPoint);
     destructor Destroy; override;
     { IOTADebuggerVisualizerExternalViewerUpdater }
     procedure CloseVisualizer;
@@ -250,7 +252,7 @@ begin
   Result := nil;
   try
     Result := TAtlasIdeViewerUpdater.Create(TAtlasViewerGroup.Visualizers, TAtlasIdeVisualizers.KindSource(Kind),
-      Expression, TypeName, EvalResult, SuggestedLeft, SuggestedTop);
+      Expression, TypeName, EvalResult, Point(SuggestedLeft, SuggestedTop));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -260,15 +262,15 @@ end;
 { TAtlasIdeViewerUpdater }
 
 constructor TAtlasIdeViewerUpdater.Create(AGroup: TAtlasViewerGroup; const ASource: TAtlasViewSource;
-  const AExpression, ATypeName, AEvalResult: string; ALeft, ATop: Integer);
+  const AExpression, ATypeName, AEvalResult: string; const APosition: TPoint);
 begin
   inherited Create;
   FGroup := AGroup;
   FSource := ASource;
   FForm := TAtlasDebugViewer.CreateViewer(Application);
   FForm.OnClosed := FormClosed;
-  FForm.Left := ALeft;
-  FForm.Top := ATop;
+  FForm.Left := APosition.X;
+  FForm.Top := APosition.Y;
   FForm.MakeFullyVisible;
   TAtlasIdeDockWindow.ApplyIdeTheme(FForm);
   FForm.Show;
