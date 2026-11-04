@@ -181,7 +181,7 @@ begin
   Result.Message := mSettings.VcsBranchSvnMessage;
   Result.ExternalsOnBranch := AtlasVcsExternalActionOf(mSettings.VcsExternalsOnBranch);
   Result.ExternalsSuggest := AtlasVcsExternalSuggestOf(mSettings.VcsExternalsSuggestBranch);
-  Result.ExternalsRules := TAtlasVcsBranchPlan.RulesOf(mSettings.VcsExternalsRules);
+  Result.ExternalsRules := TAtlasVcsExternalRules.RulesOf(mSettings.VcsExternalsRules);
   mGroup := '';
   if AProject <> '' then
   begin
