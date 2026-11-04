@@ -425,6 +425,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.NewLine` | `IDE/Editor/Atlas.IDE.Editor.NewLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Overloads` | `IDE/Editor/Atlas.IDE.Editor.Overloads.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.OverviewRuler` | `IDE/Editor/Atlas.IDE.Editor.OverviewRuler.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.PaintedLine` | `IDE/Editor/Atlas.IDE.Editor.PaintedLine.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Pairs` | `IDE/Editor/Atlas.IDE.Editor.Pairs.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PatternContinuation` | `IDE/Editor/Atlas.IDE.Editor.PatternContinuation.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.PromoteVariable` | `IDE/Editor/Atlas.IDE.Editor.PromoteVariable.pas` | Ordner `IDE/Editor` |
