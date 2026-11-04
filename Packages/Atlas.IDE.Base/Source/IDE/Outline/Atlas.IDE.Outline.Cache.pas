@@ -263,83 +263,88 @@ begin
   end;
 end;
 
+/// <summary>Eintrag von AFileName zum Stand ASnapshot laden, wenn nötig: neu, nach einer Tipppause oder nach
+/// einem Fehlschlag. Ein Takt mitten in einer Abfrage (Nachrichten beim Warten) lädt nichts.</summary>
+procedure UpdateEntry(const AFileName: string; const ASnapshot: TAtlasEditorSnapshot; AMoment: UInt64);
+var
+  Entry: TEntry;
+begin
+  if Guard.Busy then
+  begin
+    Exit;
+  end;
+  if not Entries.TryGetValue(Key(AFileName), Entry) then
+  begin
+    Entry := TEntry.Create;
+    Entry.FileName := AFileName;
+    Entries.Add(Key(AFileName), Entry);
+    Entry.Used := AMoment;
+    TrimEntries;
+    GuardedLoad(Entry, ASnapshot);
+  end
+  else if ASnapshot.Version = Entry.Version then
+  begin
+    if not Entry.Loaded and (AMoment >= Entry.RetryAt) then
+    begin
+      GuardedLoad(Entry, ASnapshot);
+    end;
+  end
+  // Erst nach einer Tipppause neu fragen.
+  else if ASnapshot.Version <> Entry.PendingVersion then
+  begin
+    Entry.PendingVersion := ASnapshot.Version;
+    Entry.PendingSince := AMoment;
+  end
+  else if AMoment - Entry.PendingSince >= PauseMs then
+  begin
+    GuardedLoad(Entry, ASnapshot);
+  end;
+end;
+
+/// <summary>Stand des Eintrags AEntry in AResult.</summary>
+procedure FillSnapshot(AEntry: TEntry; var AResult: TAtlasOutlineSnapshot);
+begin
+  AResult.Nodes := AEntry.Nodes;
+  AResult.Text := AEntry.Text;
+  AResult.Stamp := AEntry.Stamp;
+  if AEntry.NoServer and (Length(AEntry.Nodes) = 0) then
+  begin
+    AResult.Status := TAtlasOutlineStatus.NoServer;
+  end
+  else if AEntry.Stamp = 0 then
+  begin
+    AResult.Status := TAtlasOutlineStatus.Waiting;
+  end
+  else
+  begin
+    AResult.Status := TAtlasOutlineStatus.Ready;
+  end;
+end;
+
 class function TAtlasIdeOutlineCache.Refresh(const AView: IOTAEditView): TAtlasOutlineSnapshot;
 var
   Entry: TEntry;
-  Snapshot: TAtlasEditorSnapshot;
   FileName: string;
   Moment: UInt64;
 begin
   Result := Default(TAtlasOutlineSnapshot);
   Result.Status := TAtlasOutlineStatus.NoFile;
-  if (Entries = nil) or (AView = nil) or (AView.Buffer = nil) then
+  if (Entries = nil) or (AView = nil) or (AView.Buffer = nil) or not IsPascal(AView.Buffer.FileName) then
   begin
     Exit;
   end;
   FileName := AView.Buffer.FileName;
-  if not IsPascal(FileName) then
-  begin
-    Exit;
-  end;
   Result.FileName := FileName;
   Result.Status := TAtlasOutlineStatus.Waiting;
-  Snapshot := TAtlasEditorSnapshots.Get(AView);
   Moment := GetTickCount64;
-  // Ein Takt mitten in einer Abfrage (Nachrichten beim Warten): nur zeigen, was schon da ist.
-  if Guard.Busy then
-  begin
-    if not Entries.TryGetValue(Key(FileName), Entry) then
-    begin
-      Exit;
-    end;
-  end
-  else if not Entries.TryGetValue(Key(FileName), Entry) then
-  begin
-    Entry := TEntry.Create;
-    Entry.FileName := FileName;
-    Entries.Add(Key(FileName), Entry);
-    Entry.Used := Moment;
-    TrimEntries;
-    GuardedLoad(Entry, Snapshot);
-  end
-  else if Snapshot.Version <> Entry.Version then
-  begin
-    // Erst nach einer Tipppause neu fragen.
-    if Snapshot.Version <> Entry.PendingVersion then
-    begin
-      Entry.PendingVersion := Snapshot.Version;
-      Entry.PendingSince := Moment;
-    end
-    else if Moment - Entry.PendingSince >= PauseMs then
-    begin
-      GuardedLoad(Entry, Snapshot);
-    end;
-  end
-  else if not Entry.Loaded and (Moment >= Entry.RetryAt) then
-  begin
-    GuardedLoad(Entry, Snapshot);
-  end;
+  UpdateEntry(FileName, TAtlasEditorSnapshots.Get(AView), Moment);
   // Nach dem Laden neu nachschlagen: Vorgemerktes Leeren kann den Eintrag freigegeben haben.
   if (Entries = nil) or not Entries.TryGetValue(Key(FileName), Entry) then
   begin
     Exit;
   end;
   Entry.Used := Moment;
-  Result.Nodes := Entry.Nodes;
-  Result.Text := Entry.Text;
-  Result.Stamp := Entry.Stamp;
-  if Entry.NoServer and (Length(Entry.Nodes) = 0) then
-  begin
-    Result.Status := TAtlasOutlineStatus.NoServer;
-  end
-  else if Entry.Stamp = 0 then
-  begin
-    Result.Status := TAtlasOutlineStatus.Waiting;
-  end
-  else
-  begin
-    Result.Status := TAtlasOutlineStatus.Ready;
-  end;
+  FillSnapshot(Entry, Result);
 end;
 
 end.
