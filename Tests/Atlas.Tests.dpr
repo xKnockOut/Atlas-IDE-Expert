@@ -144,6 +144,7 @@ uses
   Atlas.Common.Semantics.StepCalls.Tests in 'Common\Semantics\Atlas.Common.Semantics.StepCalls.Tests.pas',
   Atlas.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas',
   Atlas.Common.Lsp.Impact.Tests in 'Common\Lsp\Atlas.Common.Lsp.Impact.Tests.pas',
+  Atlas.Common.Lsp.Impact.Forms.Tests in 'Common\Lsp\Atlas.Common.Lsp.Impact.Forms.Tests.pas',
   Atlas.Common.Lsp.AffectedTests.Tests in 'Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas',
   Atlas.Common.Lsp.Implementations.Tests in 'Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas',
   Atlas.Common.Lsp.InlayHints.Tests in 'Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas',

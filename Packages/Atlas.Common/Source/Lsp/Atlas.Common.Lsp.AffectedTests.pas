@@ -1087,8 +1087,8 @@ begin
   begin
     Exit;
   end;
-  mResults := TImpactAnalysis.AnalyzeEach(AResolver, FIndex, mStarts, FRequest.Files, FReadText, FRequest.Options,
-    ACancellation);
+  mResults := TImpactAnalysis.AnalyzeEach(AResolver, FIndex, mStarts, TImpactSources.Create(FRequest.Files,
+    FReadText), FRequest.Options, ACancellation);
   for mIndex := 0 to High(mResults) do
   begin
     mFound := mResults[mIndex];
