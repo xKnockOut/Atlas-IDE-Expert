@@ -23,6 +23,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Text.Lines,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Documents.Contract,
@@ -230,21 +231,6 @@ begin
   Result := Names;
 end;
 
-/// <summary>Stelle von AChild unter AParent; sonst -1.</summary>
-function PositionIn(AParent, AChild: TSyntaxNode): Integer;
-var
-  Index: Integer;
-begin
-  Result := -1;
-  for Index := 0 to AParent.ChildCount - 1 do
-  begin
-    if AParent[Index] = AChild then
-    begin
-      Result := Index;
-    end;
-  end;
-end;
-
 /// <summary>Folgt ANext im selben Block direkt auf AStatement?</summary>
 function FollowsDirectly(AStatement, ANext: TSyntaxNode): Boolean;
 var
@@ -320,7 +306,7 @@ begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-  FLineBreak := LineBreakOf(AContext.Text);
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
 end;
 
 /// <summary>Wird APath auf einem Weg zu ANode schon geprüft (ohne Zuweisung dazwischen)? Rückwärts beenden nur

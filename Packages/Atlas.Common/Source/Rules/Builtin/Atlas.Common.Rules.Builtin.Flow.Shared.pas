@@ -72,8 +72,6 @@ function ClassFields(AClass: TSyntaxNode): TArray<string>;
 function IsRoutineBody(ANode: TSyntaxNode): Boolean;
 /// <summary>Quelltext von ANode in AText.</summary>
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
-/// <summary>Zeilenumbruch des Textes: CRLF, wenn er vorkommt, sonst LF.</summary>
-function LineBreakOf(const AText: string): string;
 /// <summary>Einrückung vor ANode in AText; False, wenn davor in der Zeile noch Code steht.</summary>
 function LineIndent(const AText: string; ANode: TSyntaxNode; out AIndent: string): Boolean;
 /// <summary>Methodenname ohne Klasse (TKlasse.Laden -&gt; Laden).</summary>
@@ -89,6 +87,9 @@ function CallsMethod(ARoutine: TSyntaxNode; const AName: string): Boolean;
 /// <summary>Pfade, die ANode selbst auf nil prüft: Assigned(X), X = nil, nil &lt;&gt; X und ähnliche Vergleiche.
 /// </summary>
 function NilCheckedPaths(ANode: TSyntaxNode): TArray<string>;
+
+/// <summary>Stelle von AChild unter AParent; sonst -1.</summary>
+function PositionIn(AParent, AChild: TSyntaxNode): Integer;
 
 implementation
 
@@ -544,15 +545,6 @@ begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  Result := #10;
-  if Pos(#13#10, AText) > 0 then
-  begin
-    Result := #13#10;
-  end;
-end;
-
 function LineIndent(const AText: string; ANode: TSyntaxNode; out AIndent: string): Boolean;
 var
   Start: Integer;
@@ -632,6 +624,20 @@ begin
       SameText(ANode[1 - Index].Name, 'nil') then
     begin
       Result := Result + [FreedPath(ANode[Index])];
+    end;
+  end;
+end;
+
+function PositionIn(AParent, AChild: TSyntaxNode): Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  for Index := 0 to AParent.ChildCount - 1 do
+  begin
+    if AParent[Index] = AChild then
+    begin
+      Result := Index;
     end;
   end;
 end;
