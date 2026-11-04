@@ -189,13 +189,33 @@ begin
   end;
 end;
 
+/// <summary>Projekt vor Gruppe vor Ordner; -1 = keine Zeile dieser Art.</summary>
+function BestMatch(AProject, AGroup, AFolder: Integer): TAtlasProjectMatchResult;
+begin
+  Result := TAtlasProjectMatchResult.Empty;
+  if AProject >= 0 then
+  begin
+    Result.Index := AProject;
+    Result.Match := TAtlasProjectMatch.Project;
+  end
+  else if AGroup >= 0 then
+  begin
+    Result.Index := AGroup;
+    Result.Match := TAtlasProjectMatch.Group;
+  end
+  else if AFolder >= 0 then
+  begin
+    Result.Index := AFolder;
+    Result.Match := TAtlasProjectMatch.Folder;
+  end;
+end;
+
 class function TAtlasProjectMatching.Find(const AMatches: TArray<string>; const AUsable: TArray<Boolean>;
   const AProjectFile, AGroupFile: string): TAtlasProjectMatchResult;
 var
   mIndex, mFolderLength: Integer;
   mProject, mGroup, mFolder: Integer;
 begin
-  Result := TAtlasProjectMatchResult.Empty;
   mProject := -1;
   mGroup := -1;
   mFolder := -1;
@@ -227,21 +247,7 @@ begin
       // Gilt nicht für dieses Projekt.
     end;
   end;
-  if mProject >= 0 then
-  begin
-    Result.Index := mProject;
-    Result.Match := TAtlasProjectMatch.Project;
-  end
-  else if mGroup >= 0 then
-  begin
-    Result.Index := mGroup;
-    Result.Match := TAtlasProjectMatch.Group;
-  end
-  else if mFolder >= 0 then
-  begin
-    Result.Index := mFolder;
-    Result.Match := TAtlasProjectMatch.Folder;
-  end;
+  Result := BestMatch(mProject, mGroup, mFolder);
 end;
 
 class function TAtlasProjectMatching.FindForFolder(const AMatches: TArray<string>; const AUsable: TArray<Boolean>;

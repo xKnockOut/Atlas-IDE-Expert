@@ -877,8 +877,8 @@ begin
   PaintRowMarks(AContext.Canvas, mRow);
   if Length(mRow.Marks) > 0 then
   begin
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.QuickBookmarks, AContext.FileName, mRow.Line, mLineText,
-      mRow.Rect, mRow.TopRow, mRow.Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.QuickBookmarks, AContext.FileName,
+      mRow.Line, mLineText), mRow.Rect, mRow.TopRow, mRow.Rect.Height);
   end;
 end;
 

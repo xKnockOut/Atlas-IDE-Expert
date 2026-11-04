@@ -114,16 +114,39 @@ begin
   end;
 end;
 
+/// <summary>Änderung der Anfrage als kleinste Textänderung an einer Datei.</summary>
+function EditOf(const ARequest: TAtlasEditRequest): TLspWorkspaceEdit;
+var
+  mChange: TLspTextChange;
+  mTextEdit: TLspTextEdit;
+begin
+  mChange := TLspTextChanges.Between(ARequest.Expected, ARequest.Text);
+  mTextEdit.StartPos := mChange.StartPos;
+  mTextEdit.EndPos := mChange.EndPos;
+  mTextEdit.NewText := mChange.Text;
+  Result := Default(TLspWorkspaceEdit);
+  Result.Files := [Default(TLspFileEdits)];
+  Result.Files[0].FileName := ARequest.FileName;
+  Result.Files[0].Edits := [mTextEdit];
+end;
+
+procedure SaveModule(const AFileName: string);
+var
+  mModule: IOTAModule;
+begin
+  mModule := ModuleOf(AFileName);
+  if mModule <> nil then
+  begin
+    mModule.Save(False, True);
+  end;
+end;
+
 procedure TAtlasIdeEditInbox.Process(const ARequestFile: string);
 var
   Request: TAtlasEditRequest;
   Buffer: IOTAEditBuffer;
-  Change: TLspTextChange;
-  Edit: TLspWorkspaceEdit;
-  TextEdit: TLspTextEdit;
   Outcome: TAtlasWorkspaceEditResult;
   WasModified: Boolean;
-  Module: IOTAModule;
 begin
   if not TAtlasEditInbox.Take(ARequestFile, Request) then
   begin
@@ -150,15 +173,7 @@ begin
     Exit;
   end;
   WasModified := Buffer.IsModified;
-  Change := TLspTextChanges.Between(Request.Expected, Request.Text);
-  TextEdit.StartPos := Change.StartPos;
-  TextEdit.EndPos := Change.EndPos;
-  TextEdit.NewText := Change.Text;
-  Edit := Default(TLspWorkspaceEdit);
-  Edit.Files := [Default(TLspFileEdits)];
-  Edit.Files[0].FileName := Request.FileName;
-  Edit.Files[0].Edits := [TextEdit];
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(EditOf(Request), TAtlasUnopenedPolicy.WriteToDisk,
     TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
   if Outcome.Error <> '' then
   begin
@@ -168,11 +183,7 @@ begin
   // War die Datei gespeichert, bleibt sie es: Der MCP-Server liest und vergleicht über die Platte.
   if not WasModified then
   begin
-    Module := ModuleOf(Request.FileName);
-    if Module <> nil then
-    begin
-      Module.Save(False, True);
-    end;
+    SaveModule(Request.FileName);
   end;
   TAtlasEditInbox.Answer(FFolder, Request, True, False, '');
   if Assigned(FOnMessage) then

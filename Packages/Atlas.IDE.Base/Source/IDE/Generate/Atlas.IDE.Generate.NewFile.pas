@@ -234,82 +234,90 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeNewFile.Show(AKind: TAtlasNewFileKind; const AUser: TAtlasSnippetList;
-  const AMessage: TProc<string>);
-var
-  Settings: TAtlasPluginSettings;
-  Templates: TAtlasSnippetList;
-  Entries: TArray<TAtlasGenerateEntry>;
-  Options: TAtlasGenerateOptions;
-  Window: TAtlasGenerateWindow;
-  Index: Integer;
-  Area: TRect;
-  Say: TProc<string>;
+/// <summary>Eintrag ausblenden: keys.generateMenu.hidden speichern, Meldung an ASay.</summary>
+function HideFor(const ASay: TProc<string>): TAtlasGenerateHideProc;
 begin
-  Say := AMessage;
-  if GetActiveProject = nil then
-  begin
-    if Assigned(Say) then
-    begin
-      Say(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNewNoProject));
-    end;
-    Exit;
-  end;
-  Settings := TAtlasIdeSettings.Current;
-  Templates := TAtlasFileTemplates.OfKind(AUser, AKind);
-  Entries := TAtlasFileTemplates.Entries(Templates);
-  for Index := 0 to High(Entries) do
-  begin
-    Entries[Index].Caption := TAtlasGenerateWindow.EntryCaption(Entries[Index]);
-  end;
-  // Nur die Gruppe Vorlagen; ausgeblendete Einträge und Namen der Befehle wie im Erzeugen-Menü.
-  Options := TAtlasGenerateOptions.Create(Settings.GenerateMenuGroups, Settings.GenerateMenuHidden, False,
-    Settings.GenerateMenuShowCommandNames).Only([TAtlasGenerateGroup.Templates]);
-  Window := TAtlasGenerateWindow.CreateMenu(Application, Entries, Options, nil, TAtlasIdeStyle.Colors);
-  Window.OnHide :=
+  Result :=
     procedure(const AEntry: TAtlasGenerateEntry)
     var
-      Next: TAtlasPluginSettings;
+      mNext: TAtlasPluginSettings;
     begin
-      Next := TAtlasIdeSettings.Stored;
-      Next.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(Next.GenerateMenuHidden, AEntry.Id);
-      TAtlasIdeSettings.Update(Next);
-      if Assigned(Say) then
+      mNext := TAtlasIdeSettings.Stored;
+      mNext.GenerateMenuHidden := TAtlasGenerateOptions.AddHidden(mNext.GenerateMenuHidden, AEntry.Id);
+      TAtlasIdeSettings.Update(mNext);
+      if Assigned(ASay) then
       begin
-        Say(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
+        ASay(TAtlasStrings.Fmt(TAtlasTextId.GenerateHiddenSaved, [AEntry.Caption]));
       end;
     end;
-  Window.OnExecute :=
+end;
+
+/// <summary>Gewählte Vorlage als neue Datei anlegen, abgesichert über die Willkommensseite.</summary>
+function CreateFor(AKind: TAtlasNewFileKind; const ATemplates: TAtlasSnippetList; const ASay: TProc<string>):
+  TAtlasGenerateExecuteProc;
+begin
+  Result :=
     procedure(const AEntry: TAtlasGenerateEntry; const AArgument: string)
     var
-      Entry: TAtlasGenerateEntry;
+      mEntry: TAtlasGenerateEntry;
     begin
-      Entry := AEntry;
+      mEntry := AEntry;
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
         var
-          Error: string;
+          mError: string;
         begin
-          if (Entry.Source < 0) or (Entry.Source > High(Templates)) then
+          if (mEntry.Source < 0) or (mEntry.Source > High(ATemplates)) then
           begin
             Exit;
           end;
-          if not CreateFile(AKind, Templates[Entry.Source], Error) and Assigned(Say) then
+          if not TAtlasIdeNewFile.CreateFile(AKind, ATemplates[mEntry.Source], mError) and Assigned(ASay) then
           begin
-            Say(Error);
+            ASay(mError);
           end;
         end);
     end;
+end;
+
+class procedure TAtlasIdeNewFile.Show(AKind: TAtlasNewFileKind; const AUser: TAtlasSnippetList;
+  const AMessage: TProc<string>);
+var
+  mSettings: TAtlasPluginSettings;
+  mTemplates: TAtlasSnippetList;
+  mEntries: TArray<TAtlasGenerateEntry>;
+  mOptions: TAtlasGenerateOptions;
+  mWindow: TAtlasGenerateWindow;
+  mIndex: Integer;
+  mArea: TRect;
+begin
+  if GetActiveProject = nil then
+  begin
+    if Assigned(AMessage) then
+    begin
+      AMessage(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupNewNoProject));
+    end;
+    Exit;
+  end;
+  mSettings := TAtlasIdeSettings.Current;
+  mTemplates := TAtlasFileTemplates.OfKind(AUser, AKind);
+  mEntries := TAtlasFileTemplates.Entries(mTemplates);
+  for mIndex := 0 to High(mEntries) do
+  begin
+    mEntries[mIndex].Caption := TAtlasGenerateTexts.EntryCaption(mEntries[mIndex]);
+  end;
+  // Nur die Gruppe Vorlagen; ausgeblendete Einträge und Namen der Befehle wie im Erzeugen-Menü.
+  mOptions := TAtlasGenerateOptions.Create(mSettings.GenerateMenuGroups, mSettings.GenerateMenuHidden, False,
+    mSettings.GenerateMenuShowCommandNames).Only([TAtlasGenerateGroup.Templates]);
+  mWindow := TAtlasGenerateWindow.CreateMenu(Application, mEntries, mOptions, nil, TAtlasIdeStyle.Colors);
+  mWindow.OnHide := HideFor(AMessage);
+  mWindow.OnExecute := CreateFor(AKind, mTemplates, AMessage);
   // Über dem Hauptfenster: Die Willkommensseite hat keinen Cursor.
+  mArea := Screen.WorkAreaRect;
   if Application.MainForm <> nil then
   begin
-    Area := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Area := Screen.WorkAreaRect;
+    mArea := Application.MainForm.BoundsRect;
   end;
-  Window.ShowOver(Area);
+  mWindow.ShowOver(mArea);
 end;
 
 end.

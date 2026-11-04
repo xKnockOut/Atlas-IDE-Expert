@@ -949,11 +949,11 @@ begin
   begin
     Exit;
   end;
-  Names := TDataFieldNames.Lookup(AText, AFileName, Call, AIndex,
+  Names := TDataFieldNames.Lookup(TDataLookupSource.Create(AText, AFileName, AIndex,
     function(const AName: string; out AContent: string): Boolean
     begin
       Result := AReadText(AName, AContent);
-    end, Sql, Found);
+    end), Call, Sql, Found);
   // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
   if not Found or (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
   begin

@@ -629,8 +629,8 @@ begin
     if mRow.Symbol <> TAtlasGutterSymbol.None then
     begin
       PaintCell(Context.Canvas, mRow.Rect, mRow.Symbol);
-      TAtlasIdeElements.Painted(TAtlasDrawnElement.GutterColumn, Context.FileName, mRow.Line, mLineText, mRow.Rect,
-        mRow.TopRow, mRow.Rect.Height);
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.GutterColumn, Context.FileName,
+        mRow.Line, mLineText), mRow.Rect, mRow.TopRow, mRow.Rect.Height);
     end;
   except
     // Zeichnen darf die IDE nie stören.
