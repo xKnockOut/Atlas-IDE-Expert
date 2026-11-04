@@ -51,6 +51,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Vcl.Menus,
+  Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
   Atlas.UI.Architecture.Map,
   Atlas.UI.Architecture.Slider;
@@ -525,7 +526,7 @@ begin
     begin
       MapOpen(AUnit);
     end;
-  FMap.OnPathChanged :=
+  FMap.State.OnPathChanged :=
     procedure
     begin
       UpdateInfo;
@@ -775,7 +776,7 @@ begin
   FHasModel := True;
   FMessageText := '';
   FMap.SetModel(FModel);
-  FMap.Filter := FFilter.Text;
+  FMap.State.Filter := FFilter.Text;
   FillAll;
   UpdateResolutionInfo(FResolution.Value);
 end;
@@ -1137,7 +1138,7 @@ var
 begin
   Comparison := FModel.Comparison;
   FChanges.Enabled := Comparison.Present;
-  FMap.ShowChanges := FChanges.Checked;
+  FMap.State.SetFlag(TAtlasArchMapFlag.ShowChanges, FChanges.Checked);
   FClearCompare.Enabled := FHasModel and ((Comparison.Baseline <> '') or (Comparison.Error <> ''));
   if Comparison.Error <> '' then
   begin
@@ -1280,33 +1281,33 @@ var
   Item: TAtlasArchUnit;
 begin
   UpdateAssignment;
-  if Length(FMap.Route) > 0 then
+  if Length(FMap.State.Path.Route) > 0 then
   begin
     // Fester Weg aus „Weg zwischen Symbolen“ (#1117).
-    FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [Length(FMap.Route),
-      FModel.RouteText(FMap.Route)]);
+    FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [Length(FMap.State.Path.Route),
+      FModel.RouteText(FMap.State.Path.Route)]);
     Exit;
   end;
-  if FMap.PathFrom >= 0 then
+  if FMap.State.Path.From >= 0 then
   begin
-    if FMap.PathFound then
+    if FMap.State.Path.Found then
     begin
-      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [Length(FMap.Path),
-        FModel.PathText(FMap.PathFrom, FMap.Path)]);
+      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [Length(FMap.State.Path.Edges),
+        FModel.PathText(FMap.State.Path.From, FMap.State.Path.Edges)]);
     end
     else
     begin
-      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, [UnitCaption(FMap.PathFrom),
-        UnitCaption(FMap.PathTo)]);
+      FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, 
+        [UnitCaption(FMap.State.Path.From), UnitCaption(FMap.State.Path.To_)]);
     end;
     Exit;
   end;
-  if (FMap.Selected < 0) or (FMap.Selected > High(FModel.Units)) then
+  if (FMap.State.Selected < 0) or (FMap.State.Selected > High(FModel.Units)) then
   begin
     FInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
     Exit;
   end;
-  Item := FModel.Units[FMap.Selected];
+  Item := FModel.Units[FMap.State.Selected];
   FInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureUnitInfo, [Item.Name,
     FModel.SubsystemName(Item.Subsystem), Item.Direct, Item.Total, Item.Uses_]);
 end;
@@ -1317,8 +1318,8 @@ var
   mSize: TSize;
 begin
   // Steckbrief (#1368): nur mit gewählter Unit, ohne Weg und mit Zuordnung vom Server.
-  if (FMap.PathFrom >= 0) or (Length(FMap.Route) > 0) or
-    not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+  if (FMap.State.Path.From >= 0) or (Length(FMap.State.Path.Route) > 0) or
+    not TAtlasArchitectureAssignment.Available(FModel, FMap.State.Selected) then
   begin
     FAssignmentSplit.Visible := False;
     FAssignmentBox.Visible := False;
@@ -1328,7 +1329,7 @@ begin
   mBitmap := Vcl.Graphics.TBitmap.Create;
   try
     mBitmap.Canvas.Font.Assign(Font);
-    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.Selected, CurrentPPI);
+    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.State.Selected, CurrentPPI);
   finally
     mBitmap.Free;
   end;
@@ -1351,15 +1352,15 @@ var
   mColors: TAtlasColors;
   mSize: TSize;
 begin
-  if not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+  if not TAtlasArchitectureAssignment.Available(FModel, FMap.State.Selected) then
   begin
     Exit;
   end;
   mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
   FAssignment.Canvas.Font.Assign(Font);
-  mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.Selected, CurrentPPI);
+  mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.State.Selected, CurrentPPI);
   TAtlasArchitectureAssignment.Draw(FAssignment.Canvas, Rect(0, 0, Min(mSize.cx, FAssignment.Width), mSize.cy),
-    FModel, FMap.Selected, CurrentPPI, mColors);
+    FModel, FMap.State.Selected, CurrentPPI, mColors);
 end;
 
 procedure TAtlasArchitectureFrame.ExplainClick(Sender: TObject);
@@ -1491,7 +1492,7 @@ end;
 
 procedure TAtlasArchitectureFrame.ChangesClick(Sender: TObject);
 begin
-  FMap.ShowChanges := FChanges.Checked;
+  FMap.State.SetFlag(TAtlasArchMapFlag.ShowChanges, FChanges.Checked);
 end;
 
 procedure TAtlasArchitectureFrame.ScopeChange(Sender: TObject);
@@ -1521,7 +1522,7 @@ end;
 
 procedure TAtlasArchitectureFrame.FilterChange(Sender: TObject);
 begin
-  FMap.Filter := FFilter.Text;
+  FMap.State.Filter := FFilter.Text;
   FillCentral;
   FillSubsystems;
   FLinks := nil;
@@ -1537,17 +1538,17 @@ end;
 
 procedure TAtlasArchitectureFrame.NamesClick(Sender: TObject);
 begin
-  FMap.ShowNames := FNames.Checked;
+  FMap.State.SetFlag(TAtlasArchMapFlag.ShowNames, FNames.Checked);
 end;
 
 procedure TAtlasArchitectureFrame.ImplementationClick(Sender: TObject);
 begin
-  FMap.ShowImplementation := FImplementation.Checked;
+  FMap.State.SetFlag(TAtlasArchMapFlag.ShowImplementation, FImplementation.Checked);
 end;
 
 procedure TAtlasArchitectureFrame.MarkCyclesClick(Sender: TObject);
 begin
-  FMap.MarkCycles := FMarkCycles.Checked;
+  FMap.State.SetFlag(TAtlasArchMapFlag.MarkCycles, FMarkCycles.Checked);
 end;
 
 procedure TAtlasArchitectureFrame.FillSubsystemsMenu;
@@ -1591,7 +1592,7 @@ begin
     Item := TMenuItem.Create(FSubsystemsMenu);
     Item.Caption := mCaption;
     Item.Tag := Index;
-    Item.Checked := FMap.SubsystemVisible[Index];
+    Item.Checked := FMap.State.SubsystemVisible[Index];
     Item.OnClick := SubsystemItemClick;
     FSubsystemsMenu.Items.Add(Item);
   end;
@@ -1605,7 +1606,7 @@ begin
   begin
     Item := TMenuItem.Create(FSubsystemsMenu);
     Item.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationEdges);
-    Item.Checked := FMap.ShowFoundationEdges;
+    Item.Checked := FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
     Item.Tag := -1;
     Item.OnClick := FoundationEdgesClick;
     FSubsystemsMenu.Items.Add(Item);
@@ -1648,8 +1649,8 @@ var
   mItem: TMenuItem;
 begin
   mItem := Sender as TMenuItem;
-  FMap.ShowFoundationEdges := not FMap.ShowFoundationEdges;
-  mItem.Checked := FMap.ShowFoundationEdges;
+  FMap.State.SetFlag(TAtlasArchMapFlag.ShowFoundationEdges, not FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges));
+  mItem.Checked := FMap.State.Has(TAtlasArchMapFlag.ShowFoundationEdges);
 end;
 
 function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
@@ -1673,14 +1674,14 @@ var
   Item: TMenuItem;
 begin
   Item := Sender as TMenuItem;
-  FMap.SubsystemVisible[Item.Tag] := not FMap.SubsystemVisible[Item.Tag];
-  Item.Checked := FMap.SubsystemVisible[Item.Tag];
+  FMap.State.SubsystemVisible[Item.Tag] := not FMap.State.SubsystemVisible[Item.Tag];
+  Item.Checked := FMap.State.SubsystemVisible[Item.Tag];
   UpdateInfo;
 end;
 
 procedure TAtlasArchitectureFrame.ShowAllClick(Sender: TObject);
 begin
-  FMap.ShowAllSubsystems;
+  FMap.State.ShowAllSubsystems;
   UpdateInfo;
 end;
 
