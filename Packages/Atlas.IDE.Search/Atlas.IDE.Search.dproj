@@ -108,6 +108,14 @@
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Service.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Window.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Editor.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.HistoryFile.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Session.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Painter.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Counter.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.AcrossFiles.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Stepping.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Replacing.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Commands.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Composition.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.FileSearch.pas"/>
