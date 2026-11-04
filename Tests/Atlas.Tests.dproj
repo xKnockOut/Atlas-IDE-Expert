@@ -958,6 +958,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Matching.Tests.pas"/>
@@ -1036,6 +1038,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Trends.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Trends.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.PathCheck.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.PathCheck.Scan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.PathCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Setup.Tests.pas"/>
