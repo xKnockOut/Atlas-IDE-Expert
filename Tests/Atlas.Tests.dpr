@@ -203,6 +203,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeMismatch.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.Tests.pas',
   Atlas.Common.Rules.Builtin.Constants.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Tests.pas',
   Atlas.Common.Rules.Builtin.Database.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Tests.pas',
+  Atlas.Common.Rules.Builtin.Database.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Statements.Tests.pas',
   Atlas.Common.Rules.Builtin.DllExports.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DllExports.Tests.pas',
   Atlas.Common.Rules.Builtin.Files.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Files.Tests.pas',
   Atlas.Common.Rules.Builtin.Directives.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.Tests.pas',
