@@ -1228,6 +1228,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Query\Atlas.Core.Query.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Query.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Query\Atlas.UI.Query.Parts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Query\Atlas.UI.Query.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Query.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
@@ -1693,6 +1694,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionsFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Exceptions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
