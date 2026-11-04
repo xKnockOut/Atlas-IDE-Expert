@@ -189,16 +189,15 @@ var
     end;
   end;
 
-  function CompletionFixes(ACase: TSyntaxNode; const AValues: TArray<string>; const APrefix: string;
-    AHasElse: Boolean): TArray<TRuleFix>;
+  function CompletionFixes(ACase: TSyntaxNode; const AValues: TArray<string>; const APrefix: string):
+    TArray<TRuleFix>;
   var
-    mEdits: TArray<TTextEdit>;
-    mCount: Integer;
+    mCompletion: TCaseCompletionEdits;
   begin
     Result := nil;
-    if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, AValues, APrefix, mEdits, mCount, AHasElse) then
+    if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, AValues, APrefix, mCompletion) then
     begin
-      Result := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [mCount]), mEdits)];
+      Result := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [mCompletion.Count]), mCompletion.Edits)];
     end;
   end;
 
@@ -222,7 +221,7 @@ var
     end;
     AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), Format('Fehlende Werte von %s: %s.',
       [mTypeName, string.Join(', ', mAbsent)]), TRuleConfidence.High,
-      CompletionFixes(ACase, mValues, LabelPrefix(mSlot.Labels, mTypeName), mHasElse));
+      CompletionFixes(ACase, mValues, LabelPrefix(mSlot.Labels, mTypeName)));
   end;
 
   procedure Visit(ARoot: TSyntaxNode);

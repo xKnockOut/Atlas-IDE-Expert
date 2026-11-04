@@ -276,7 +276,8 @@ begin
     begin
       mXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
     end;
-    Result := TMcpTestTools.Report(ATarget, ATests, TTestResults.Parse(mXml), mCode, mOutput, AInfo.Units,
+    Result := TMcpTestTools.Report(ATarget, ATests, TTestResults.Parse(mXml),
+      TMcpTestProcess.Make(mCode, mOutput), AInfo.Units,
       ReadSourceLines);
   finally
     if FileExists(mResultFile) then

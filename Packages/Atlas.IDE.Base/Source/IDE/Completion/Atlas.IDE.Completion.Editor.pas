@@ -267,13 +267,21 @@ begin
   Result := '';
   Project := GetActiveProject;
   if Project = nil then
+  begin
     Exit;
+  end;
   Result := Project.CurrentPlatform;
   if Project.CurrentConfiguration <> '' then
+  begin
     if Result <> '' then
-      Result := Result + ' · ' + Project.CurrentConfiguration
+    begin
+      Result := Result + ' · ' + Project.CurrentConfiguration;
+    end
     else
+    begin
       Result := Project.CurrentConfiguration;
+    end;
+  end;
 end;
 
 /// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die Optionen.</summary>
@@ -281,8 +289,10 @@ function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
 begin
   Result := ADetails;
   if not Result.Display.Known then
+  begin
     Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
+  end;
 end;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
@@ -291,9 +301,13 @@ var
   Area: TRect;
 begin
   if (AWindow <> 0) and GetClientRect(AWindow, Area) then
-    Result := Point(Area.Width, Area.Height)
+  begin
+    Result := Point(Area.Width, Area.Height);
+  end
   else
+  begin
     Result := Point(0, 0);
+  end;
 end;
 
 /// <summary>Zustand für TAtlasCloseRules (#414); AWindow ist das Editorfenster mit dem Caret.</summary>
@@ -304,11 +318,15 @@ begin
   Result.Focus := AFocus;
   Result.Size := EditorSize(AWindow);
   if AView = nil then
+  begin
     Exit;
+  end;
   Result.TopRow := AView.TopRow;
   Result.Rows := AView.ViewSize.cy;
   if AView.Buffer <> nil then
+  begin
     Result.FileName := AView.Buffer.FileName;
+  end;
 end;
 
 
@@ -401,9 +419,13 @@ var
 begin
   try
     if FOwner.WantsCommand(AKey, AShift) then
-      FOwner.HandleCommand(AKey, AShift)
+    begin
+      FOwner.HandleCommand(AKey, AShift);
+    end
     else if NavigationKey(AKey, Navigation) then
+    begin
       FOwner.HandleKey(Navigation);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Completion, E);
@@ -502,7 +524,9 @@ begin
       TAtlasEditorSignature.PreferOverload(AItem.Name, FOverloadIndex);
       Commit(AItem);
       if FController.Usage <> nil then
+      begin
         TAtlasIdeHistory.Committed;
+      end;
     end;
   FPopup.OnSelect :=
     procedure(APosition: Integer)
@@ -522,7 +546,9 @@ begin
       begin
         if StartsText('http://', ALink.Url) or StartsText('https://', ALink.Url) or
           StartsText('mailto:', ALink.Url) then
+        begin
           ShellExecute(0, 'open', PChar(ALink.Url), nil, nil, SW_SHOWNORMAL);
+        end;
       end
       else if AControl and ALink.Target.HasLocation then
       begin
@@ -599,7 +625,9 @@ begin
   FreeAndNil(FPlaceholders);
   FreeAndNil(FPreview);
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  begin
     Editor.RemoveNotifier(FNotifierIndex);
+  end;
   FTimer.Free;
   FDelayTimer.Free;
   Shutdown;
@@ -614,14 +642,18 @@ end;
 procedure TAtlasEditorCompletion.Log(const AMessage: string);
 begin
   if Assigned(FLog) then
+  begin
     FLog(AMessage);
+  end;
 end;
 
 procedure TAtlasEditorCompletion.Shutdown;
 begin
   Close;
   if Assigned(FSources.Shutdown) then
+  begin
     FSources.Shutdown();
+  end;
 end;
 
 function TAtlasEditorCompletion.IndexingNow: Boolean;
@@ -630,7 +662,9 @@ var
 begin
   Result := False;
   if not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   Result := (Session <> nil) and (Session.IndexingText <> '');
 end;
@@ -661,7 +695,9 @@ begin
   Info.cbSize := SizeOf(Info);
   Result := GetGUIThreadInfo(GetCurrentThreadId, Info) and (Info.hwndCaret <> 0);
   if not Result then
+  begin
     Exit;
+  end;
   AWindow := Info.hwndCaret;
   ARect := Info.rcCaret;
   MapWindowPoints(AWindow, 0, ARect, 2);
@@ -686,9 +722,13 @@ begin
   // Diagnosemodus (#479): Kontext ab hier messen.
   Started := 0;
   if TAtlasQueryTimings.Enabled then
+  begin
     Started := TAtlasQueryTimings.Stamp;
+  end;
   if (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
@@ -721,14 +761,22 @@ begin
   Context.Started := Started;
   // Mit Esc geschlossen (#414): im selben Wort nicht automatisch wieder öffnen.
   if AAutomatic and FController.Dismissed(Context) then
+  begin
     Exit;
+  end;
   if (WordStart > 0) and (LineText[WordStart] = '.') then
-    Context.Kind := TAtlasContextKind.MemberAccess
+  begin
+    Context.Kind := TAtlasContextKind.MemberAccess;
+  end
   else
+  begin
     Context.Kind := TAtlasContextKind.Identifier;
+  end;
   // Nach "[" automatisch geöffnet (#448): nur ein Mengenkonstruktor bekommt eine Liste.
   if AAutomatic and (Character > 0) and (Character <= Length(LineText)) and (LineText[Character] = '[') then
-    Context.Trigger := '['
+  begin
+    Context.Trigger := '[';
+  end
   // Nach dem ";" hinter einem übernommenen Konstruktor (#489): nur „Mit try…finally absichern“.
   else if AAutomatic and (Character > 0) and (Character <= Length(LineText)) and (LineText[Character] = ';') and
     GuardPending(AView) then
@@ -738,10 +786,14 @@ begin
   end
   // Nach dem Zeilenende (Enter) hinter einem übernommenen Konstruktor ohne ";" (#489).
   else if AAutomatic and FGuardNewLine then
-    Context.Trigger := #10
+  begin
+    Context.Trigger := #10;
+  end
   // Nach "(" hinter einem Namen (#472): nur „Methode anlegen“, wenn der Name unbekannt ist.
   else if AAutomatic and FCallOpened then
+  begin
     Context.Trigger := '(';
+  end;
   FGuardNewLine := False;
   FCallOpened := False;
   ApplyStyle(Anchor);
@@ -768,16 +820,24 @@ begin
   RefreshSnippets;
   SendPostfixTemplates;
   if TAtlasIdeSettings.Current.Learning then
-    FController.Usage := TAtlasIdeHistory.Instance
+  begin
+    FController.Usage := TAtlasIdeHistory.Instance;
+  end
   else
+  begin
     FController.Usage := nil;
+  end;
   // Favoriten (#458): abgeschaltet weder Stern noch Sonderstellung.
   FPopup.FavoritesEnabled := TAtlasIdeSettings.Current.Favorites;
   FPopup.SelectionMarker := TAtlasIdeSettings.Current.SelectionMarker;
   if TAtlasIdeSettings.Current.Favorites then
-    FController.Favorites := TAtlasIdeFavorites.Instance
+  begin
+    FController.Favorites := TAtlasIdeFavorites.Instance;
+  end
   else
+  begin
     FController.Favorites := nil;
+  end;
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);
@@ -811,7 +871,9 @@ begin
   View := FDelayView;
   CancelDelay;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   try
     Same := View.CursorPos.Line = FDelayLine;
     LineText := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
@@ -842,7 +904,9 @@ begin
   CancelDelay;
   FController.Close;
   if FPreview <> nil then
+  begin
     FPreview.Clear;
+  end;
   ActiveChanged;
 end;
 
@@ -850,7 +914,9 @@ procedure TAtlasEditorCompletion.ViewChanged;
 begin
   Close;
   if FPlaceholders <> nil then
+  begin
     FPlaceholders.Stop;
+  end;
 end;
 
 procedure TAtlasEditorCompletion.RefreshSnippets;
@@ -861,18 +927,24 @@ var
   Stats: TAtlasLiveTemplateStats;
 begin
   if (FSnippetChecked <> 0) and (TThread.GetTickCount64 - FSnippetChecked < 3000) then
+  begin
     Exit;
+  end;
   FSnippetChecked := TThread.GetTickCount64;
   Folder := TAtlasEditorCompletion.SnippetFolder;
   IdeFolder := '';
   if TAtlasIdeSettings.Current.ImportIdeTemplates then
+  begin
     IdeFolder := TAtlasEditorCompletion.IdeTemplateFolder;
+  end;
   // Vorlagen des Projekts aus der Projektdatei .atlas (#486): gelten für alle im Team, vor den eigenen.
   TeamFolder := TAtlasIdeTeamFile.Current.SnippetFolder;
   Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder) + '#' +
     TeamFolder + '#' + TAtlasSnippets.FolderStamp(TeamFolder);
   if Stamp = FSnippetStamp then
+  begin
     Exit;
+  end;
   FSnippetStamp := Stamp;
   Own := TAtlasSnippets.LoadFolder(Folder, Errors);
   Team := TAtlasSnippets.LoadFolder(TeamFolder, TeamErrors);
@@ -898,12 +970,18 @@ var
   Session: TLspSession;
 begin
   if not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   if (Session = nil) or not Session.Initialized then
+  begin
     Exit;
+  end;
   if (Session = FPostfixSession) and (TThread.GetTickCount64 - FPostfixSent < 60000) then
+  begin
     Exit;
+  end;
   FPostfixSession := Session;
   FPostfixSent := TThread.GetTickCount64;
   // Auch eine leere Liste: Gelöschte Vorlagen verschwinden beim Server.
@@ -916,23 +994,31 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result := TAtlasLiveTemplates.Folder(TAtlasProjectContext.VersionOfRegistryKey(Services.GetBaseRegistryKey));
+  end;
 end;
 
 class function TAtlasEditorCompletion.SnippetFolder: string;
 begin
   Result := GetEnvironmentVariable('APPDATA');
   if Result <> '' then
+  begin
     Result := IncludeTrailingPathDelimiter(Result) + 'Atlas\Snippets';
+  end;
 end;
 
 procedure TAtlasEditorCompletion.ActiveChanged;
 begin
   FTimer.Enabled := FController.Active;
   if not FController.Active and (FPreview <> nil) then
+  begin
     FPreview.Clear;
+  end;
   if FController.Active then
-    InstallKeyHook
+  begin
+    InstallKeyHook;
+  end
   else
   begin
     RemoveKeyHook;
@@ -945,7 +1031,9 @@ procedure TAtlasEditorCompletion.InstallKeyHook;
 begin
   TAtlasKeyHook.Add(FKeys);
   if not TAtlasKeyHook.Installed then
+  begin
     Log('Vervollständigung: Tastatur-Hook nicht möglich: ' + SysErrorMessage(GetLastError));
+  end;
 end;
 
 procedure TAtlasEditorCompletion.RemoveKeyHook;
@@ -957,7 +1045,9 @@ function TAtlasEditorCompletion.WantsKey(AKey: TAtlasNavigationKey): Boolean;
 begin
   // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
   if AKey = TAtlasNavigationKey.Toggle then
-    Result := FController.Visible and FController.SetMode
+  begin
+    Result := FController.Visible and FController.SetMode;
+  end
   // Nur Deklarationen eines unbekannten Namens, nichts gewählt (#471): Enter gehört dem Editor.
   else if (AKey = TAtlasNavigationKey.Accept) and FController.Passive then
   begin
@@ -965,7 +1055,9 @@ begin
     Result := False;
   end
   else
+  begin
     Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
+  end;
 end;
 
 function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
@@ -985,17 +1077,29 @@ end;
 procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
 begin
   if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
-    FPopup.TogglePanel
+  begin
+    FPopup.TogglePanel;
+  end
   else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
-    Clipboard.AsText := FPopup.SelectedDocText
+  begin
+    Clipboard.AsText := FPopup.SelectedDocText;
+  end
   else if (AKey = Ord('D')) and (AShift = [ssCtrl]) then
-    ToggleFavorite(-1)
+  begin
+    ToggleFavorite(-1);
+  end
   else if (AKey = VK_UP) and (AShift = [ssAlt]) then
-    ChangeOverload(-1)
+  begin
+    ChangeOverload(-1);
+  end
   else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
-    ChangeOverload(1)
+  begin
+    ChangeOverload(1);
+  end
   else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
+  begin
     FController.SelectChipAt(AKey - Ord('1'));
+  end;
 end;
 
 procedure TAtlasEditorCompletion.ToggleFavorite(APosition: Integer);
@@ -1004,9 +1108,13 @@ var
   Outcome: TAtlasFavoriteToggle;
 begin
   if APosition < 0 then
-    Outcome := FController.ToggleSelectedFavorite(Item)
+  begin
+    Outcome := FController.ToggleSelectedFavorite(Item);
+  end
   else
+  begin
     Outcome := FController.ToggleFavorite(APosition, Item);
+  end;
   case Outcome of
     TAtlasFavoriteToggle.Added:
       begin
@@ -1024,7 +1132,9 @@ begin
         TAtlasFavorites.TypeNameOf(Item)]));
   else
     if FController.Favorites <> nil then
+    begin
       FPopup.ShowNotice(TAtlasStrings.Text(TAtlasTextId.FavoriteNotAllowed));
+    end;
   end;
   ActiveChanged;
 end;
@@ -1044,9 +1154,13 @@ var
 begin
   Queued := False;
   if FController.Active then
+  begin
     Recheck;
+  end;
   if FPlaceholders <> nil then
+  begin
     FPlaceholders.EditorModified(AView);
+  end;
   // Enter am Ende der Zeile eines übernommenen Konstruktors (#489): nach dem Zeilenende anbieten. Nicht im
   // Benachrichtigungsaufruf selbst, sondern gleich danach.
   if not FController.Active and GuardNewLine(AView) then
@@ -1061,7 +1175,9 @@ begin
         begin
           FGuardNewLine := True;
           if not Invoke(View, True) then
+          begin
             FGuardNewLine := False;
+          end;
         end;
       end);
   end;
@@ -1084,21 +1200,29 @@ begin
           begin
             FCallOpened := True;
             if not Invoke(View, True) then
+            begin
               FCallOpened := False;
+            end;
           end;
         end);
     end;
   end;
   // ")" vor der automatischen Klammer (#430): diese überspringen.
   if FAutoParen.Active and (AView <> nil) and (AView.Buffer <> nil) then
+  begin
     if AView.CursorPos.Line <> FAutoParen.Line then
-      FAutoParen.Stop
+    begin
+      FAutoParen.Stop;
+    end
     else
     begin
       FAutoParen.Update(TAtlasEditorBuffer.LineText(AView, FAutoParen.Line), RemoveAt);
       if RemoveAt >= 0 then
+      begin
         SkipAutoParen(AView, RemoveAt);
+      end;
     end;
+  end;
 end;
 
 procedure TAtlasEditorCompletion.SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
@@ -1109,7 +1233,9 @@ begin
   View := AView;
   Line := FAutoParen.Line;
   if Line = 0 then
+  begin
     Line := View.CursorPos.Line;
+  end;
   // Nicht im Benachrichtigungsaufruf selbst ändern, sondern gleich danach.
   TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
     procedure
@@ -1162,11 +1288,15 @@ begin
     Exit;
   end;
   if FDetailRequested or (TThread.GetTickCount64 < FDetailDue) then
+  begin
     Exit;
+  end;
   FDetailRequested := True;
   // Überladung (#425): deren Position statt der ersten nachfragen.
   if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
+  begin
     Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
+  end;
   // Unit im uses-Abschnitt (#469): alles Nötige liefert schon die Liste.
   if Item.UsesGroup <> '' then
   begin
@@ -1176,11 +1306,15 @@ begin
   // Helper aus nicht eingebundener Unit (#456): Hinweis, dass Enter die uses ergänzt.
   AddsUnit := '';
   if Item.IsHelper and TAtlasIdeSettings.Current.AutoUses then
+  begin
     AddsUnit := TAtlasItemPresentation.MissingUnit(Item);
+  end;
   // Im aktiven Ziel nicht deklariert (#476): Hinweis im Panel, auch ohne Details vom Server.
   Availability := '';
   if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
+  begin
     Availability := TAtlasStrings.Fmt(TAtlasTextId.UnavailableHint, [Item.Condition, FPopup.Target]);
+  end;
   if not Supports(FSources.Server, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
     procedure(const ADetails: TAtlasItemDetails)
     var
@@ -1197,6 +1331,7 @@ begin
         FPopup.ShowDetails(Shown);
       end;
     end) then
+  begin
     if (Availability <> '') or (Length(Item.SameNameUnits) > 0) then
     begin
       Details := Default(TAtlasItemDetails);
@@ -1205,7 +1340,10 @@ begin
       FPopup.ShowDetails(Details);
     end
     else
+    begin
       FPopup.ClearDetails;
+    end;
+  end;
 end;
 
 procedure TAtlasEditorCompletion.ChangeOverload(ADelta: Integer);
@@ -1213,7 +1351,9 @@ var
   Item: TAtlasCompletionItem;
 begin
   if not FController.SelectedItem(Item) or (Item.OverloadCount < 2) then
+  begin
     Exit;
+  end;
   FOverloadIndex := (FOverloadIndex + ADelta + Item.OverloadCount) mod Item.OverloadCount;
   FPopup.SetOverload(FOverloadIndex, Item.OverloadCount);
   // Sofort nachfragen, ohne die 80 ms Ruhe beim Blättern in der Liste.
@@ -1229,7 +1369,9 @@ var
   Character: Integer;
 begin
   if FPreview = nil then
+  begin
     Exit;
+  end;
   Text := '';
   if TAtlasIdeSettings.Current.Preview and FController.Visible and FController.SelectedItem(Item) and
     (FView <> nil) and (FView.Buffer <> nil) and (FView.CursorPos.Line = FLine) then
@@ -1239,9 +1381,13 @@ begin
     Text := TAtlasPreview.RestOf(Item.Name, FController.Prefix, Copy(LineText, Character + 1, MaxInt));
   end;
   if Text = '' then
-    FPreview.Clear
+  begin
+    FPreview.Clear;
+  end
   else
+  begin
     FPreview.Show(FView.Buffer.FileName, FLine, FView.CursorPos.Col, Text);
+  end;
 end;
 
 procedure TAtlasEditorCompletion.TimerTick(Sender: TObject);
@@ -1329,13 +1475,19 @@ begin
     Context.Character := Character;
     Context.Prefix := Prefix;
     if (FWordStart > 0) and (LineText[FWordStart] = '.') then
-      Context.Kind := TAtlasContextKind.MemberAccess
+    begin
+      Context.Kind := TAtlasContextKind.MemberAccess;
+    end
     else
+    begin
       Context.Kind := TAtlasContextKind.Identifier;
+    end;
     FController.Requery(Context);
   end
   else
+  begin
     FController.UpdatePrefix(Prefix);
+  end;
   ActiveChanged;
 end;
 
@@ -1355,17 +1507,23 @@ var
 begin
   View := FView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   Cursor := View.CursorPos;
   LineText := TAtlasEditorBuffer.LineText(View, Cursor.Line);
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
   // Über ein Commit-Zeichen: Das Wort endet davor, das Zeichen bleibt stehen.
   if FCommitEnd >= 0 then
-    Character := FCommitEnd
+  begin
+    Character := FCommitEnd;
+  end
   else
+  begin
     // Mitten im Wort: bis zu seinem Ende ersetzen, sonst bliebe der Rest stehen.
     Character := TAtlasWord.EndAfter(LineText, Character);
+  end;
   // Code-Vorlage (#51): eigener Weg mit Einrückung und Platzhaltern.
   if AItem.Snippet <> '' then
   begin
@@ -1375,40 +1533,60 @@ begin
   end;
   NewText := AItem.InsertText;
   if NewText = '' then
+  begin
     NewText := AItem.Name;
+  end;
   // Schreibweise (#433): abgeschaltet bleibt das Getippte, nur der Rest kommt dazu.
   if (FWordStart >= 0) and (Character >= FWordStart) then
+  begin
     NewText := TAtlasCompletionMatcher.CommitText(Copy(LineText, FWordStart + 1, Character - FWordStart), NewText,
       TAtlasIdeSettings.Current.FixCase);
+  end;
   if AItem.HasTextEdit then
+  begin
     NewText := AItem.TextEdit.NewText;
+  end;
   // Klammern (#430): Methode mit Parametern, nicht über ein Commit-Zeichen, keine "(" dahinter.
   if Character < Length(LineText) then
-    NextChar := LineText[Character + 1]
+  begin
+    NextChar := LineText[Character + 1];
+  end
   else
+  begin
     NextChar := #0;
+  end;
   AutoParen := TAtlasIdeSettings.Current.AutoParentheses and (FCommitEnd < 0) and (Pos('$0', NewText) = 0) and
     not AItem.HasTextEdit and
     TAtlasParentheses.Wanted(AItem.Kind in [TAtlasItemKind.Method, TAtlasItemKind.Function_,
       TAtlasItemKind.Procedure_, TAtlasItemKind.Constructor_], AItem.HasParameters, NextChar);
   if AutoParen then
+  begin
     NewText := NewText + '($0)';
+  end;
   // "$0" im Einfügetext (XMLDoc-Tags, #435, Klammern): dort steht der Cursor danach.
   CaretMarker := Pos('$0', NewText);
   if CaretMarker > 0 then
+  begin
     Delete(NewText, CaretMarker, 2);
+  end;
   Edits := TList<TPendingEdit>.Create;
   try
     // Das getippte Wort durch den Eintrag ersetzen; mit textEdit ab dessen Anfang (Postfix-Vorlagen, #188).
     if AItem.HasTextEdit then
-      Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, AItem.TextEdit.StartLine, AItem.TextEdit.StartCharacter)
+    begin
+      Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, AItem.TextEdit.StartLine, AItem.TextEdit.StartCharacter);
+    end
     else
+    begin
       Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, FWordStart);
+    end;
     Edit.Stop := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, Character);
     // Reicht der textEdit über das Wort hinaus (Mengenklammer bis "]", #448), bis zu seinem Ende ersetzen.
     if AItem.HasTextEdit then
+    begin
       Edit.Stop := Max(Edit.Stop, TAtlasEditorBuffer.ByteOffset(Text, AItem.TextEdit.EndLine,
         AItem.TextEdit.EndCharacter));
+    end;
     Edit.Text := NewText;
     Edit.IsWord := True;
     Edit.Marker := 0;
@@ -1416,6 +1594,7 @@ begin
     // uses-Ergänzung u. ä. (#180); abschaltbar auf der Optionsseite (ARG-046). Einträge, die Code erzeugen
     // (Methode anlegen, deklarieren), brauchen ihre Zusatzänderungen immer.
     if TAtlasIdeSettings.Current.AutoUses or AItem.IsAction then
+    begin
       for TextEdit in AItem.AdditionalEdits do
       begin
         Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.StartLine, TextEdit.StartCharacter);
@@ -1425,11 +1604,16 @@ begin
         // "$0" im neuen Rumpf (#472): Dort steht der Cursor danach, sofern der Haupttext keinen hat.
         Edit.Marker := Pos('$0', Edit.Text);
         if Edit.Marker > 0 then
+        begin
           Delete(Edit.Text, Edit.Marker, 2);
+        end;
         if CaretMarker > 0 then
+        begin
           Edit.Marker := 0;
+        end;
         Edits.Add(Edit);
       end;
+    end;
     Edits.Sort(TComparer<TPendingEdit>.Construct(
       function(const A, B: TPendingEdit): Integer
       begin
@@ -1450,19 +1634,29 @@ begin
       if Edit.IsWord then
       begin
         if CaretMarker > 0 then
-          CursorByte := Edit.Start + Shift + Length(UTF8Encode(Copy(Edit.Text, 1, CaretMarker - 1)))
+        begin
+          CursorByte := Edit.Start + Shift + Length(UTF8Encode(Copy(Edit.Text, 1, CaretMarker - 1)));
+        end
         else
+        begin
           CursorByte := Edit.Start + Shift + Length(UTF8Encode(Edit.Text));
+        end;
         if FCommitEnd >= 0 then
+        begin
           Inc(CursorByte, FCommitSuffixBytes);
+        end;
       end
       else if (Edit.Marker > 0) and (BodyByte < 0) then
+      begin
         BodyByte := Edit.Start + Shift + Length(UTF8Encode(Copy(Edit.Text, 1, Edit.Marker - 1)));
+      end;
       Inc(Shift, Length(UTF8Encode(Edit.Text)) - (Edit.Stop - Edit.Start));
     end;
     Writer := nil;
     if BodyByte >= 0 then
+    begin
       CursorByte := BodyByte;
+    end;
   finally
     Edits.Free;
   end;
@@ -1482,12 +1676,16 @@ begin
     FAutoParen := TAtlasAutoParen.Start(View.CursorPos.Line, TLspSession.ColumnToIndex(LineText,
       View.CursorPos.Col, TAtlasEditorBuffer.TabWidth(View.Buffer)), LineText);
     if Assigned(FOnOpenSignature) then
+    begin
       TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
         procedure
         begin
           if Assigned(FOnOpenSignature) then
+          begin
             FOnOpenSignature();
+          end;
         end);
+    end;
   end;
   Log(Format('Übernommen: %d Zeichen (%d weitere Änderungen)', [Length(AItem.Name), Length(AItem.AdditionalEdits)]));
   // Freigabe absichern (#489): nach dem ";" dieser Zeile anbieten. Kam das ";" als Commit-Zeichen (#429), steht es
@@ -1498,12 +1696,16 @@ begin
     FGuardLine := View.CursorPos.Line;
     FGuardFile := View.Buffer.FileName;
     if (FCommitEnd >= 0) and (FCommitEnd < Length(LineText)) and (LineText[FCommitEnd + 1] = ';') then
+    begin
       TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
         procedure
         begin
           if GuardPending(View) then
+          begin
             Invoke(View, True);
+          end;
         end);
+    end;
   end;
   RunCommand(AItem);
   ActiveChanged;
@@ -1516,7 +1718,9 @@ var
   Answer: TJSONValue;
 begin
   if (AItem.Command = '') or not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   if (Session = nil) or not Session.Initialized then
   begin
@@ -1532,7 +1736,9 @@ begin
   Answer := Session.ExecuteCommand(AItem.Command, TJSONArray(Arguments), CommandTimeoutMs);
   try
     if Answer = nil then
+    begin
       Log('Befehl des Eintrags ohne Antwort');
+    end;
   finally
     Answer.Free;
   end;
@@ -1559,7 +1765,9 @@ begin
   // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
   WordStart := FWordStart;
   if AItem.HasTextEdit and (AItem.TextEdit.StartLine = ALine - 1) then
+  begin
     WordStart := AItem.TextEdit.StartCharacter;
+  end;
   SnippetChar := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, WordStart);
   Edits := TList<TPendingEdit>.Create;
   try
@@ -1598,7 +1806,9 @@ begin
       Edit.IsWord := False;
       Edits.Add(Edit);
       if Edit.Start < Edits[0].Start then
+      begin
         Inc(CharShift, Length(Edit.Text) - (Edit.CharStop - Edit.CharStart));
+      end;
     end;
     Edits.Sort(TComparer<TPendingEdit>.Construct(
       function(const A, B: TPendingEdit): Integer
@@ -1639,7 +1849,9 @@ function TAtlasEditorCompletion.Snippets: TAtlasSnippetList;
 begin
   Result := nil;
   if not TAtlasIdeSettings.Current.Snippets then
+  begin
     Exit;
+  end;
   RefreshSnippets;
   Result := FSources.SnippetList();
 end;
@@ -1648,7 +1860,9 @@ function TAtlasEditorCompletion.FileSnippets: TAtlasSnippetList;
 begin
   Result := nil;
   if not TAtlasIdeSettings.Current.Snippets then
+  begin
     Exit;
+  end;
   RefreshSnippets;
   Result := FFileSnippets;
 end;
@@ -1661,7 +1875,9 @@ var
   TabWidth, Character, EndColumn: Integer;
 begin
   if (AView = nil) or (AView.Buffer = nil) or (ASnippet.Body = '') then
+  begin
     Exit;
+  end;
   Close;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   Cursor := AView.CursorPos;
@@ -1675,7 +1891,9 @@ begin
   begin
     EndColumn := TLspSession.IndexToColumn(LineText, Length(LineText), TabWidth);
     if Cursor.Col > EndColumn then
+    begin
       Pad := StringOfChar(' ', Cursor.Col - EndColumn);
+    end;
   end;
   Item := Default(TAtlasCompletionItem);
   Item.Name := ASnippet.Prefix;
@@ -1690,7 +1908,9 @@ procedure TAtlasEditorCompletion.StartPlaceholders(const AView: IOTAEditView; co
   AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
 begin
   if (AView = nil) or (AView.Buffer = nil) or (FPlaceholders = nil) then
+  begin
     Exit;
+  end;
   Close;
   FPlaceholders.Start(AView, ABefore, TAtlasEditorBuffer.Text(AView.Buffer), AOffset, AExpansion);
 end;

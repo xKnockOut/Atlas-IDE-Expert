@@ -117,17 +117,22 @@ end;
 function Added(const AText: string; const APosition: TTextPosition; const AUnits: TArray<string>;
   out AMoved: string): string;
 var
-  Edits: TArray<TTextEdit>;
-  Units, Moved: TArray<string>;
+  Target: TSmartPasteTarget;
+  Uses_: TSmartPasteUses;
 begin
   AMoved := '';
-  if not TSmartPaste.UsesEdits(TPascalLexer.Tokenize(AText), APosition, AUnits, InterfaceUses(), ['System'], #10,
-    Edits, Units, Moved) then
+  Target := Default(TSmartPasteTarget);
+  Target.Tokens := TPascalLexer.Tokenize(AText);
+  Target.Position := APosition;
+  Target.InterfaceUses := InterfaceUses();
+  Target.Namespaces := ['System'];
+  Target.LineBreak := #10;
+  if not TSmartPaste.UsesEdits(Target, AUnits, Uses_) then
   begin
     Exit('-');
   end;
-  AMoved := string.Join('|', Moved);
-  Result := TChangeSignature.ApplyEdits(AText, Edits);
+  AMoved := string.Join('|', Uses_.ToImplementation);
+  Result := TChangeSignature.ApplyEdits(AText, Uses_.Edits);
 end;
 
 procedure TSmartPasteTests.FindsMissingNamesInRange;

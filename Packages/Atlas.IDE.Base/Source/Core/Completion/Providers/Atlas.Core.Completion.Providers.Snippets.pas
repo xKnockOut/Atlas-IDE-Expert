@@ -63,10 +63,14 @@ begin
     Inc(Index);
   end;
   if Line < ALine then
+  begin
     Exit('');
+  end;
   Index := Start;
   while (Index <= Length(AText)) and (AText[Index] <> #10) and (AText[Index] <> #13) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, Start, Index - Start);
 end;
 
@@ -116,16 +120,26 @@ var
 begin
   Result := False;
   if Length(APrefix) > Length(ALineBefore) then
+  begin
     Exit;
+  end;
   Before := Copy(ALineBefore, 1, Length(ALineBefore) - Length(APrefix));
   // Nur Einrückung vor dem Wort; damit auch kein Punkt, kein String und kein //-Kommentar davor.
   for Index := 1 to Length(Before) do
+  begin
     if (Before[Index] <> ' ') and (Before[Index] <> #9) then
+    begin
       Exit;
+    end;
+  end;
   Quoted := False;
   for Index := 1 to Length(APrefix) do
+  begin
     if APrefix[Index] = '''' then
+    begin
       Quoted := not Quoted;
+    end;
+  end;
   Result := not Quoted;
 end;
 
@@ -145,7 +159,9 @@ begin
     Item.Signature := Snippet.Name;
     Item.Documentation := TAtlasSnippets.PlainText(Snippet.Body);
     if Snippet.Description <> '' then
+    begin
       Item.Documentation := Snippet.Description + #10#10 + Item.Documentation;
+    end;
     Item.Snippet := Snippet.Body;
     Item.UnitUsed := True;
     Item.Rank := SnippetRank + Index;
@@ -167,7 +183,9 @@ begin
   AState := Default(TAtlasFetchState);
   Result := nil;
   if not IsSnippetContext(Copy(LineOf(AContext.Text, AContext.Line), 1, AContext.Character), AContext.Prefix) then
+  begin
     Exit;
+  end;
   FSnippetLock.Enter;
   try
     Snippets := FSnippets;

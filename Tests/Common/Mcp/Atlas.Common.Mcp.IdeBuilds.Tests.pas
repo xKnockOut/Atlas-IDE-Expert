@@ -243,12 +243,12 @@ procedure TMcpIdeBuildsTests.TimesOutWhenTakenButNeverAnswered;
 var
   BuildText, Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'),
+  Assert.IsTrue(TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
     procedure
     begin
       Inc(Now_, 1000);
       Plugin(FInbox, '', Seen);
-    end, Clock, 5000, 3000, BuildText, Reason) = TMcpIdeBuildOutcome.TimedOut);
+    end, Clock, 5000, 3000), BuildText, Reason) = TMcpIdeBuildOutcome.TimedOut);
   Assert.IsNotEmpty(Reason);
   Assert.IsTrue(TMcpIdeBuilds.ModeValid('Check'));
   Assert.IsFalse(TMcpIdeBuilds.ModeValid('clean'));

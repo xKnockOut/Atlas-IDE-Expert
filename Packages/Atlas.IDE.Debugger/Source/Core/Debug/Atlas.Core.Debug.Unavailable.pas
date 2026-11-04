@@ -220,6 +220,225 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
 end;
 
+type
+  /// <summary>Prüft die Ursachen der Reihe nach; jede Stufe meldet True, wenn sie die Ursache gefunden hat.</summary>
+  TUnavailableExplainer = record
+  private
+    FFacts: TAtlasUnavailableFacts;
+    FNoSwitch: TAtlasUnavailableSwitch;
+    /// <summary>Wirksamer Stand eines Schalters: Direktive aus dem Server, sonst die Startkonfiguration, sonst
+    /// der Server.</summary>
+    function IsOn(const ASwitch: TAtlasUnavailableSwitch; const ALaunchValue: string; ADefault: Boolean): Boolean;
+    procedure Check(ACheck: TAtlasUnavailableCheck);
+    procedure Fix(AFix: TAtlasUnavailableFix);
+    procedure OptimizationFixes;
+    procedure Found(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
+    /// <summary>Ursache an einem Schalter: Direktive zeigen oder mit Debug-Informationen neu starten.</summary>
+    procedure FoundSwitch(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
+    function ReleaseBuild: Boolean;
+    function Symbols: Boolean;
+    function Optimization: Boolean;
+    function Lifetime: Boolean;
+    function InlineRoutine: Boolean;
+    function LibraryFrame: Boolean;
+  public
+    Explanation: TAtlasUnavailableExplanation;
+    class function Create(const AFacts: TAtlasUnavailableFacts): TUnavailableExplainer; static;
+    procedure Run;
+  end;
+
+class function TUnavailableExplainer.Create(const AFacts: TAtlasUnavailableFacts): TUnavailableExplainer;
+begin
+  Result.FFacts := AFacts;
+  Result.FNoSwitch := Default(TAtlasUnavailableSwitch);
+  Result.FNoSwitch.Line := -1;
+  Result.Explanation := Default(TAtlasUnavailableExplanation);
+  Result.Explanation.RoutineName := AFacts.RoutineName;
+  Result.Explanation.Configuration := AFacts.Launch.Configuration;
+  Result.Explanation.Switch := Result.FNoSwitch;
+end;
+
+function TUnavailableExplainer.IsOn(const ASwitch: TAtlasUnavailableSwitch; const ALaunchValue: string;
+  ADefault: Boolean): Boolean;
+begin
+  if ASwitch.Known and ((ASwitch.Source = TAtlasSwitchSource.Directive) or
+    (ASwitch.Source = TAtlasSwitchSource.Include)) then
+  begin
+    Result := ASwitch.Value <> '-';
+  end
+  else if FFacts.Launch.Known then
+  begin
+    Result := TAtlasDebugUnavailable.OptionOn(ALaunchValue, ADefault);
+  end
+  else if ASwitch.Known then
+  begin
+    Result := ASwitch.Value <> '-';
+  end
+  else
+  begin
+    Result := ADefault;
+  end;
+end;
+
+procedure TUnavailableExplainer.Check(ACheck: TAtlasUnavailableCheck);
+begin
+  Explanation.Checked := Explanation.Checked + [ACheck];
+end;
+
+procedure TUnavailableExplainer.Fix(AFix: TAtlasUnavailableFix);
+begin
+  if not Explanation.HasFix(AFix) then
+  begin
+    Explanation.Fixes := Explanation.Fixes + [AFix];
+  end;
+end;
+
+procedure TUnavailableExplainer.OptimizationFixes;
+begin
+  if not FFacts.RoutineEdit.IsEmpty then
+  begin
+    Fix(TAtlasUnavailableFix.RoutineOptimization);
+  end;
+  if not FFacts.UnitEdit.IsEmpty then
+  begin
+    Fix(TAtlasUnavailableFix.UnitOptimization);
+  end;
+  if FFacts.Optimization.IsDirective then
+  begin
+    Fix(TAtlasUnavailableFix.ShowDirective);
+  end;
+end;
+
+procedure TUnavailableExplainer.Found(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
+begin
+  Explanation.Cause := ACause;
+  Explanation.Switch := ASwitch;
+end;
+
+procedure TUnavailableExplainer.FoundSwitch(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
+begin
+  Found(ACause, ASwitch);
+  if ASwitch.IsDirective then
+  begin
+    Fix(TAtlasUnavailableFix.ShowDirective);
+  end
+  else
+  begin
+    Fix(TAtlasUnavailableFix.RestartWithDebug);
+  end;
+end;
+
+function TUnavailableExplainer.ReleaseBuild: Boolean;
+begin
+  // 1. Start ohne Debug-Informationen (Release).
+  Check(TAtlasUnavailableCheck.Configuration);
+  Result := FFacts.Launch.Known and not TAtlasDebugUnavailable.OptionOn(FFacts.Launch.DebugInfo, True);
+  if Result then
+  begin
+    Found(TAtlasUnavailableCause.ReleaseBuild, FNoSwitch);
+    Fix(TAtlasUnavailableFix.RestartWithDebug);
+  end;
+end;
+
+function TUnavailableExplainer.Symbols: Boolean;
+begin
+  // 2. $D- oder $L- an der Stelle; lokale Symbole zählen nur für lokale Namen.
+  Check(TAtlasUnavailableCheck.Symbols);
+  Result := True;
+  if not IsOn(FFacts.DebugInfo, FFacts.Launch.DebugInfo, True) then
+  begin
+    FoundSwitch(TAtlasUnavailableCause.NoDebugInfo, FFacts.DebugInfo);
+  end
+  else if (FFacts.Local or not FFacts.Server) and not IsOn(FFacts.LocalSymbols, FFacts.Launch.LocalSymbols,
+    True) then
+  begin
+    FoundSwitch(TAtlasUnavailableCause.NoLocalSymbols, FFacts.LocalSymbols);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TUnavailableExplainer.Optimization: Boolean;
+begin
+  // 3. Optimierung: nur lokale Namen liegen in Registern (ohne Server unbekannt, dann zählt es).
+  Check(TAtlasUnavailableCheck.Optimization);
+  Result := (FFacts.Local or not FFacts.Server) and IsOn(FFacts.Optimization, FFacts.Launch.Optimization, True);
+  if Result then
+  begin
+    Found(TAtlasUnavailableCause.Optimization, FFacts.Optimization);
+    if FFacts.Lifetime in [TAtlasValueLifetime.Unused, TAtlasValueLifetime.Before, TAtlasValueLifetime.After] then
+    begin
+      Explanation.Lifetime := FFacts.Lifetime;
+    end;
+    OptimizationFixes;
+  end;
+end;
+
+function TUnavailableExplainer.Lifetime: Boolean;
+begin
+  // 4. Lebensdauer: am Halt noch nicht oder nicht mehr gebraucht (Näherung des Servers).
+  Check(TAtlasUnavailableCheck.Lifetime);
+  Result := FFacts.Local and (FFacts.Lifetime in [TAtlasValueLifetime.Unused, TAtlasValueLifetime.Before,
+    TAtlasValueLifetime.After]);
+  if Result then
+  begin
+    Found(TAtlasUnavailableCause.Lifetime, FNoSwitch);
+    Explanation.Lifetime := FFacts.Lifetime;
+  end;
+end;
+
+function TUnavailableExplainer.InlineRoutine: Boolean;
+begin
+  // 5. inline-Routine.
+  Check(TAtlasUnavailableCheck.InlineRoutine);
+  Result := FFacts.RoutineInline;
+  if Result then
+  begin
+    Found(TAtlasUnavailableCause.InlineRoutine, FNoSwitch);
+  end;
+end;
+
+function TUnavailableExplainer.LibraryFrame: Boolean;
+begin
+  // 6. Bibliotheksrahmen ohne Debug-DCUs.
+  Check(TAtlasUnavailableCheck.LibraryFrame);
+  Result := FFacts.LibraryFrame and not TAtlasDebugUnavailable.OptionOn(FFacts.Launch.DebugDcus, False);
+  if Result then
+  begin
+    Found(TAtlasUnavailableCause.LibraryFrame, FNoSwitch);
+    Fix(TAtlasUnavailableFix.DebugDcus);
+  end;
+end;
+
+procedure TUnavailableExplainer.Run;
+var
+  mDone: Boolean;
+begin
+  mDone := ReleaseBuild;
+  if not mDone then
+  begin
+    mDone := Symbols;
+  end;
+  if not mDone then
+  begin
+    mDone := Optimization;
+  end;
+  if not mDone then
+  begin
+    mDone := Lifetime;
+  end;
+  if not mDone then
+  begin
+    mDone := InlineRoutine;
+  end;
+  if not mDone then
+  begin
+    LibraryFrame;
+  end;
+end;
+
 { TAtlasUnavailableSwitch }
 
 function TAtlasUnavailableSwitch.IsDirective: Boolean;
@@ -243,12 +462,58 @@ begin
   Result.Optimization.Line := -1;
 end;
 
+procedure ReadSwitches(var AFacts: TAtlasUnavailableFacts; ARoot: TJSONObject);
+var
+  mSwitches: TJSONArray;
+  mItem: TJSONValue;
+  mName: string;
+begin
+  if not ARoot.TryGetValue<TJSONArray>('switches', mSwitches) then
+  begin
+    Exit;
+  end;
+  for mItem in mSwitches do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mName := TJSONObject(mItem).GetValue<string>('name', '');
+      if mName = 'D' then
+      begin
+        AFacts.DebugInfo := SwitchOf(TJSONObject(mItem));
+      end
+      else if mName = 'L' then
+      begin
+        AFacts.LocalSymbols := SwitchOf(TJSONObject(mItem));
+      end
+      else if mName = 'O' then
+      begin
+        AFacts.Optimization := SwitchOf(TJSONObject(mItem));
+      end;
+    end;
+  end;
+end;
+
+procedure ReadFixes(var AFacts: TAtlasUnavailableFacts; ARoot: TJSONObject);
+var
+  mFixes, mEdit: TJSONObject;
+begin
+  if not ARoot.TryGetValue<TJSONObject>('fixes', mFixes) then
+  begin
+    Exit;
+  end;
+  if mFixes.TryGetValue<TJSONObject>('routineOptimization', mEdit) then
+  begin
+    AFacts.RoutineEdit := TLspWorkspaceEdit.FromJson(mEdit);
+  end;
+  if mFixes.TryGetValue<TJSONObject>('unitOptimization', mEdit) then
+  begin
+    AFacts.UnitEdit := TLspWorkspaceEdit.FromJson(mEdit);
+  end;
+end;
+
 procedure TAtlasUnavailableFacts.ReadServer(const AValue: TJSONValue);
 var
-  Root, Routine, Variable, Fixes, Entry, Edit: TJSONObject;
-  Switches: TJSONArray;
-  Item: TJSONValue;
-  Name: string;
+  Root, Routine, Variable: TJSONObject;
 begin
   if not (AValue is TJSONObject) then
   begin
@@ -256,29 +521,7 @@ begin
   end;
   Root := TJSONObject(AValue);
   Server := True;
-  if Root.TryGetValue<TJSONArray>('switches', Switches) then
-  begin
-    for Item in Switches do
-    begin
-      if Item is TJSONObject then
-      begin
-        Entry := TJSONObject(Item);
-        Name := Entry.GetValue<string>('name', '');
-        if Name = 'D' then
-        begin
-          DebugInfo := SwitchOf(Entry);
-        end
-        else if Name = 'L' then
-        begin
-          LocalSymbols := SwitchOf(Entry);
-        end
-        else if Name = 'O' then
-        begin
-          Optimization := SwitchOf(Entry);
-        end;
-      end;
-    end;
-  end;
+  ReadSwitches(Self, Root);
   if Root.TryGetValue<TJSONObject>('routine', Routine) then
   begin
     RoutineName := Routine.GetValue<string>('name', '');
@@ -292,17 +535,7 @@ begin
     LastUse := Variable.GetValue<Integer>('lastUse', -1);
     Lifetime := LifetimeOf(Variable.GetValue<string>('lifetime', ''));
   end;
-  if Root.TryGetValue<TJSONObject>('fixes', Fixes) then
-  begin
-    if Fixes.TryGetValue<TJSONObject>('routineOptimization', Edit) then
-    begin
-      RoutineEdit := TLspWorkspaceEdit.FromJson(Edit);
-    end;
-    if Fixes.TryGetValue<TJSONObject>('unitOptimization', Edit) then
-    begin
-      UnitEdit := TLspWorkspaceEdit.FromJson(Edit);
-    end;
-  end;
+  ReadFixes(Self, Root);
 end;
 
 { TAtlasUnavailableExplanation }
@@ -433,147 +666,11 @@ end;
 
 class function TAtlasDebugUnavailable.Explain(const AFacts: TAtlasUnavailableFacts): TAtlasUnavailableExplanation;
 var
-  Explanation: TAtlasUnavailableExplanation;
-
-  // Wirksamer Stand eines Schalters: Direktive aus dem Server, sonst die Startkonfiguration, sonst der Server.
-  function IsOn(const ASwitch: TAtlasUnavailableSwitch; const ALaunchValue: string; ADefault: Boolean): Boolean;
-  begin
-    if ASwitch.Known and ((ASwitch.Source = TAtlasSwitchSource.Directive) or
-      (ASwitch.Source = TAtlasSwitchSource.Include)) then
-    begin
-      Result := ASwitch.Value <> '-';
-    end
-    else if AFacts.Launch.Known then
-    begin
-      Result := OptionOn(ALaunchValue, ADefault);
-    end
-    else if ASwitch.Known then
-    begin
-      Result := ASwitch.Value <> '-';
-    end
-    else
-    begin
-      Result := ADefault;
-    end;
-  end;
-
-  procedure Check(ACheck: TAtlasUnavailableCheck);
-  begin
-    Explanation.Checked := Explanation.Checked + [ACheck];
-  end;
-
-  procedure Fix(AFix: TAtlasUnavailableFix);
-  begin
-    if not Explanation.HasFix(AFix) then
-    begin
-      Explanation.Fixes := Explanation.Fixes + [AFix];
-    end;
-  end;
-
-  procedure OptimizationFixes;
-  begin
-    if not AFacts.RoutineEdit.IsEmpty then
-    begin
-      Fix(TAtlasUnavailableFix.RoutineOptimization);
-    end;
-    if not AFacts.UnitEdit.IsEmpty then
-    begin
-      Fix(TAtlasUnavailableFix.UnitOptimization);
-    end;
-    if AFacts.Optimization.IsDirective then
-    begin
-      Fix(TAtlasUnavailableFix.ShowDirective);
-    end;
-  end;
-
-  procedure Found(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
-  begin
-    Explanation.Cause := ACause;
-    Explanation.Switch := ASwitch;
-  end;
-
-var
-  NoSwitch: TAtlasUnavailableSwitch;
+  Explainer: TUnavailableExplainer;
 begin
-  Explanation := Default(TAtlasUnavailableExplanation);
-  Explanation.RoutineName := AFacts.RoutineName;
-  Explanation.Configuration := AFacts.Launch.Configuration;
-  NoSwitch := Default(TAtlasUnavailableSwitch);
-  NoSwitch.Line := -1;
-  Explanation.Switch := NoSwitch;
-  // 1. Start ohne Debug-Informationen (Release).
-  Check(TAtlasUnavailableCheck.Configuration);
-  if AFacts.Launch.Known and not OptionOn(AFacts.Launch.DebugInfo, True) then
-  begin
-    Found(TAtlasUnavailableCause.ReleaseBuild, NoSwitch);
-    Fix(TAtlasUnavailableFix.RestartWithDebug);
-    Exit(Explanation);
-  end;
-  // 2. $D- oder $L- an der Stelle; lokale Symbole zählen nur für lokale Namen.
-  Check(TAtlasUnavailableCheck.Symbols);
-  if not IsOn(AFacts.DebugInfo, AFacts.Launch.DebugInfo, True) then
-  begin
-    Found(TAtlasUnavailableCause.NoDebugInfo, AFacts.DebugInfo);
-    if AFacts.DebugInfo.IsDirective then
-    begin
-      Fix(TAtlasUnavailableFix.ShowDirective);
-    end
-    else
-    begin
-      Fix(TAtlasUnavailableFix.RestartWithDebug);
-    end;
-    Exit(Explanation);
-  end;
-  if (AFacts.Local or not AFacts.Server) and not IsOn(AFacts.LocalSymbols, AFacts.Launch.LocalSymbols, True) then
-  begin
-    Found(TAtlasUnavailableCause.NoLocalSymbols, AFacts.LocalSymbols);
-    if AFacts.LocalSymbols.IsDirective then
-    begin
-      Fix(TAtlasUnavailableFix.ShowDirective);
-    end
-    else
-    begin
-      Fix(TAtlasUnavailableFix.RestartWithDebug);
-    end;
-    Exit(Explanation);
-  end;
-  // 3. Optimierung: nur lokale Namen liegen in Registern (ohne Server unbekannt, dann zählt es).
-  Check(TAtlasUnavailableCheck.Optimization);
-  if (AFacts.Local or not AFacts.Server) and IsOn(AFacts.Optimization, AFacts.Launch.Optimization, True) then
-  begin
-    Found(TAtlasUnavailableCause.Optimization, AFacts.Optimization);
-    if AFacts.Lifetime in [TAtlasValueLifetime.Unused, TAtlasValueLifetime.Before, TAtlasValueLifetime.After] then
-    begin
-      Explanation.Lifetime := AFacts.Lifetime;
-    end;
-    OptimizationFixes;
-    Exit(Explanation);
-  end;
-  // 4. Lebensdauer: am Halt noch nicht oder nicht mehr gebraucht (Näherung des Servers).
-  Check(TAtlasUnavailableCheck.Lifetime);
-  if AFacts.Local and (AFacts.Lifetime in [TAtlasValueLifetime.Unused, TAtlasValueLifetime.Before,
-    TAtlasValueLifetime.After]) then
-  begin
-    Found(TAtlasUnavailableCause.Lifetime, NoSwitch);
-    Explanation.Lifetime := AFacts.Lifetime;
-    Exit(Explanation);
-  end;
-  // 5. inline-Routine.
-  Check(TAtlasUnavailableCheck.InlineRoutine);
-  if AFacts.RoutineInline then
-  begin
-    Found(TAtlasUnavailableCause.InlineRoutine, NoSwitch);
-    Exit(Explanation);
-  end;
-  // 6. Bibliotheksrahmen ohne Debug-DCUs.
-  Check(TAtlasUnavailableCheck.LibraryFrame);
-  if AFacts.LibraryFrame and not OptionOn(AFacts.Launch.DebugDcus, False) then
-  begin
-    Found(TAtlasUnavailableCause.LibraryFrame, NoSwitch);
-    Fix(TAtlasUnavailableFix.DebugDcus);
-    Exit(Explanation);
-  end;
-  Result := Explanation;
+  Explainer := TUnavailableExplainer.Create(AFacts);
+  Explainer.Run;
+  Result := Explainer.Explanation;
 end;
 
 class function TAtlasDebugUnavailable.PreviewLines(const AEdit: TLspWorkspaceEdit): TArray<string>;

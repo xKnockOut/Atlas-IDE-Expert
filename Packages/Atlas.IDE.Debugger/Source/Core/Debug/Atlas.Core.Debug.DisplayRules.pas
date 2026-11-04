@@ -24,6 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.JSON,
   Atlas.Text.DebugDisplay,
   Atlas.Core.Debug.Visualizers,
   Atlas.Core.Settings.VisualizerKinds;
@@ -63,6 +64,10 @@ type
     FInheritNames: TDictionary<string, string>;
     function Lookup(const AName: string; out AIndex: Integer): Boolean;
     procedure MapName(const AKey: string; AIndex: Integer);
+    /// <summary>Regeln aus "rules" (Array) hinzufügen.</summary>
+    procedure AddRules(ARules: TJSONValue);
+    /// <summary>Erben aus "inherits" (Array) hinzufügen.</summary>
+    procedure AddInherits(AInherits: TJSONValue);
   public
     constructor Create;
     destructor Destroy; override;
@@ -103,9 +108,6 @@ type
   end;
 
 implementation
-
-uses
-  System.JSON;
 
 { TAtlasDisplayRule }
 
@@ -216,84 +218,112 @@ begin
   end;
 end;
 
+/// <summary>Namen aus "children": nur nicht leere Zeichenketten.</summary>
+function ChildrenOf(AChildren: TJSONValue): TArray<string>;
+var
+  mChild: TJSONValue;
+  mText: string;
+begin
+  Result := nil;
+  if not (AChildren is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mChild in TJSONArray(AChildren) do
+  begin
+    if mChild is TJSONString then
+    begin
+      mText := Trim(mChild.Value);
+      if mText <> '' then
+      begin
+        Result := Result + [mText];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Eine Regel aus einem Eintrag von "rules".</summary>
+function RuleOf(AItem: TJSONObject): TAtlasDisplayRule;
+var
+  mLine: Integer;
+  mOrigin: string;
+begin
+  Result := Default(TAtlasDisplayRule);
+  Result.Line := -1;
+  AItem.TryGetValue<string>('type', Result.TypeName);
+  AItem.TryGetValue<string>('name', Result.Name);
+  AItem.TryGetValue<string>('template', Result.Template);
+  AItem.TryGetValue<string>('file', Result.FileName);
+  if AItem.TryGetValue<Integer>('line', mLine) then
+  begin
+    Result.Line := mLine;
+  end;
+  mOrigin := '';
+  AItem.TryGetValue<string>('origin', mOrigin);
+  if mOrigin = 'attribute' then
+  begin
+    Result.Origin := TDebugDisplayOrigin.Attribute;
+  end
+  else
+  begin
+    Result.Origin := TDebugDisplayOrigin.Comment;
+  end;
+  Result.Children := ChildrenOf(AItem.GetValue('children'));
+end;
+
+procedure TAtlasDisplayRules.AddRules(ARules: TJSONValue);
+var
+  mItem: TJSONValue;
+begin
+  if not (ARules is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(ARules) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      Add(RuleOf(TJSONObject(mItem)));
+    end;
+  end;
+end;
+
+procedure TAtlasDisplayRules.AddInherits(AInherits: TJSONValue);
+var
+  mItem: TJSONValue;
+  mTypeName, mFrom: string;
+begin
+  if not (AInherits is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AInherits) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mTypeName := '';
+      mFrom := '';
+      TJSONObject(mItem).TryGetValue<string>('type', mTypeName);
+      TJSONObject(mItem).TryGetValue<string>('from', mFrom);
+      AddInherit(mTypeName, mFrom);
+    end;
+  end;
+end;
+
 function TAtlasDisplayRules.LoadJson(const AJson: string): Boolean;
 var
-  Root, Item: TJSONValue;
-  Rule: TAtlasDisplayRule;
-  Children: TJSONValue;
-  Child: TJSONValue;
-  Text, Origin: string;
-  Line: Integer;
+  Root: TJSONValue;
+  Version: Integer;
 begin
-  Result := False;
   Root := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Root is TJSONObject) or not TJSONObject(Root).TryGetValue<Integer>('format', Line) or
-      (Line <> ServerFormat) then
+    Result := (Root is TJSONObject) and TJSONObject(Root).TryGetValue<Integer>('format', Version) and
+      (Version = ServerFormat);
+    if Result then
     begin
-      Exit;
+      AddRules(TJSONObject(Root).GetValue('rules'));
+      AddInherits(TJSONObject(Root).GetValue('inherits'));
     end;
-    if TJSONObject(Root).GetValue('rules') is TJSONArray then
-    begin
-      for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
-      begin
-        if not (Item is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Rule := Default(TAtlasDisplayRule);
-        Rule.Line := -1;
-        TJSONObject(Item).TryGetValue<string>('type', Rule.TypeName);
-        TJSONObject(Item).TryGetValue<string>('name', Rule.Name);
-        TJSONObject(Item).TryGetValue<string>('template', Rule.Template);
-        TJSONObject(Item).TryGetValue<string>('file', Rule.FileName);
-        if TJSONObject(Item).TryGetValue<Integer>('line', Line) then
-        begin
-          Rule.Line := Line;
-        end;
-        Origin := '';
-        TJSONObject(Item).TryGetValue<string>('origin', Origin);
-        if Origin = 'attribute' then
-        begin
-          Rule.Origin := TDebugDisplayOrigin.Attribute;
-        end
-        else
-        begin
-          Rule.Origin := TDebugDisplayOrigin.Comment;
-        end;
-        Children := TJSONObject(Item).GetValue('children');
-        if Children is TJSONArray then
-        begin
-          for Child in TJSONArray(Children) do
-          begin
-            if Child is TJSONString then
-            begin
-              Text := Trim(Child.Value);
-              if Text <> '' then
-              begin
-                Rule.Children := Rule.Children + [Text];
-              end;
-            end;
-          end;
-        end;
-        Add(Rule);
-      end;
-    end;
-    if TJSONObject(Root).GetValue('inherits') is TJSONArray then
-    begin
-      for Item in TJSONArray(TJSONObject(Root).GetValue('inherits')) do
-      begin
-        if Item is TJSONObject then
-        begin
-          Text := '';
-          Origin := '';
-          TJSONObject(Item).TryGetValue<string>('type', Text);
-          TJSONObject(Item).TryGetValue<string>('from', Origin);
-          AddInherit(Text, Origin);
-        end;
-      end;
-    end;
-    Result := True;
   finally
     Root.Free;
   end;
@@ -431,7 +461,8 @@ begin
   Invariant := TFormatSettings.Invariant;
   if TryStrToFloat(Trim(AText), Value, Invariant) then
   begin
-    Result := FormatFloat(AFormat, Value);
+    // Anzeige in der IDE: bewusst im Gebietsschema des Benutzers.
+    Result := FormatFloat(AFormat, Value, FormatSettings);
   end;
 end;
 
