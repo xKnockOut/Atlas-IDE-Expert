@@ -1024,6 +1024,24 @@ begin
   end;
 end;
 
+/// <summary>Werkzeugsuche: svn fehlt, git ist da.</summary>
+function GitOnlyLocate: TAtlasVcsLocate;
+begin
+  Result :=
+    function(AKind: TAtlasVcsKind): string
+    begin
+      // svn fehlt, git ist da.
+      if AKind = TAtlasVcsKind.Git then
+      begin
+        Result := 'git.exe';
+      end
+      else
+      begin
+        Result := '';
+      end;
+    end;
+end;
+
 procedure TAtlasVcsTests.OpenSelectsByProviderAndReportsMissingToolOnce;
 var
   Folder: string;
@@ -1037,19 +1055,7 @@ begin
   Folder := TempFolder('open');
   ForceDirectories(Folder + PathDelim + '.svn');
   ForceDirectories(Folder + PathDelim + 'src');
-  Locate :=
-    function(AKind: TAtlasVcsKind): string
-    begin
-      // svn fehlt, git ist da.
-      if AKind = TAtlasVcsKind.Git then
-      begin
-        Result := 'git.exe';
-      end
-      else
-      begin
-        Result := '';
-      end;
-    end;
+  Locate := GitOnlyLocate();
   Reported := nil;
   TAtlasVcsNotices.Reset;
   TAtlasVcsNotices.OnToolMissing :=
@@ -1224,53 +1230,67 @@ begin
   end;
 end;
 
-procedure TAtlasVcsTests.GitParsesBranchesStashesLogAndNameStatus;
+/// <summary>#762: for-each-ref wie von git 2.43.</summary>
+procedure AssertGitBranches;
 var
-  Branches: TArray<TAtlasVcsBranch>;
-  Stashes: TArray<TAtlasVcsStash>;
-  Commits: TArray<TAtlasVcsCommit>;
-  Changes: TArray<TAtlasVcsChange>;
+  mBranches: TArray<TAtlasVcsBranch>;
 begin
   // #762: Ausgaben wie von git 2.43 (for-each-ref mit %00, "%(HEAD)" ist "*" oder " ").
-  Branches := TAtlasGitParser.ParseBranches(
+  mBranches := TAtlasGitParser.ParseBranches(
     'lokal'#0#0#0#0#0'1792071091'#0' '#10 +
     'main'#0'origin/main'#0'origin'#0'refs/heads/main'#0'ahead 2'#0'1792071092'#0'*'#10 +
     'dev'#0'origin/dev'#0'origin'#0'refs/heads/dev'#0'ahead 1, behind 4'#0'1792071000'#0' '#10 +
     'alt'#0'origin/alt'#0'origin'#0'refs/heads/alt'#0'gone'#0'1792070000'#0' '#10 +
     'sync'#0'origin/sync'#0'origin'#0'refs/heads/sync'#0#0'1792070000'#0' '#10);
-  Assert.AreEqual(5, Integer(Length(Branches)));
-  Assert.AreEqual('lokal', Branches[0].Name);
-  Assert.AreEqual('', Branches[0].Upstream);
-  Assert.IsFalse(Branches[0].Tracked);
-  Assert.AreEqual(-1, Branches[0].Ahead, 'ohne Upstream unbekannt');
-  Assert.IsFalse(Branches[0].Current);
-  Assert.IsTrue(Branches[0].TipDate > 0);
-  Assert.AreEqual('origin/main', Branches[1].Upstream);
-  Assert.AreEqual('origin', Branches[1].Remote);
-  Assert.AreEqual('refs/heads/main', Branches[1].RemoteRef);
-  Assert.AreEqual(2, Branches[1].Ahead);
-  Assert.AreEqual(0, Branches[1].Behind);
-  Assert.IsTrue(Branches[1].Current);
-  Assert.IsTrue(Branches[1].Tracked);
-  Assert.AreEqual(1, Branches[2].Ahead);
-  Assert.AreEqual(4, Branches[2].Behind);
-  Assert.IsTrue(Branches[3].Gone, 'Upstream auf dem Server gelöscht');
-  Assert.IsFalse(Branches[3].Tracked);
-  Assert.AreEqual(0, Branches[4].Ahead, 'gleichauf');
-  Assert.AreEqual(0, Branches[4].Behind);
+  Assert.AreEqual(5, Integer(Length(mBranches)));
+  Assert.AreEqual('lokal', mBranches[0].Name);
+  Assert.AreEqual('', mBranches[0].Upstream);
+  Assert.IsFalse(mBranches[0].Tracked);
+  Assert.AreEqual(-1, mBranches[0].Ahead, 'ohne Upstream unbekannt');
+  Assert.IsFalse(mBranches[0].Current);
+  Assert.IsTrue(mBranches[0].TipDate > 0);
+  Assert.AreEqual('origin/main', mBranches[1].Upstream);
+  Assert.AreEqual('origin', mBranches[1].Remote);
+  Assert.AreEqual('refs/heads/main', mBranches[1].RemoteRef);
+  Assert.AreEqual(2, mBranches[1].Ahead);
+  Assert.AreEqual(0, mBranches[1].Behind);
+  Assert.IsTrue(mBranches[1].Current);
+  Assert.IsTrue(mBranches[1].Tracked);
+  Assert.AreEqual(1, mBranches[2].Ahead);
+  Assert.AreEqual(4, mBranches[2].Behind);
+  Assert.IsTrue(mBranches[3].Gone, 'Upstream auf dem Server gelöscht');
+  Assert.IsFalse(mBranches[3].Tracked);
+  Assert.AreEqual(0, mBranches[4].Ahead, 'gleichauf');
+  Assert.AreEqual(0, mBranches[4].Behind);
   Assert.AreEqual(0, Integer(Length(TAtlasGitParser.ParseBranches(''))));
+end;
 
-  Stashes := TAtlasGitParser.ParseStashes(
+/// <summary>stash list mit Branch und Nachricht ohne WIP-Vorspann.</summary>
+procedure AssertGitStashes;
+var
+  mStashes: TArray<TAtlasVcsStash>;
+begin
+  mStashes := TAtlasGitParser.ParseStashes(
     Hash1 + #0'1792071092'#0'stash@{0}'#0'On main: Mein Name'#10 +
     Hash2 + #0'1792071000'#0'stash@{1}'#0'WIP on feature/x: 9805f75 Hover-Cache: erster Wurf'#10);
-  Assert.AreEqual(2, Integer(Length(Stashes)));
-  Assert.AreEqual(Hash1, Stashes[0].Hash);
-  Assert.AreEqual('stash@{0}', Stashes[0].Ref);
-  Assert.AreEqual('main', Stashes[0].Branch);
-  Assert.AreEqual('Mein Name', Stashes[0].Message);
-  Assert.AreEqual('feature/x', Stashes[1].Branch);
-  Assert.AreEqual('Hover-Cache: erster Wurf', Stashes[1].Message, 'ohne "WIP on …:" und Hash');
-  Assert.IsTrue(Stashes[1].Date < Stashes[0].Date);
+  Assert.AreEqual(2, Integer(Length(mStashes)));
+  Assert.AreEqual(Hash1, mStashes[0].Hash);
+  Assert.AreEqual('stash@{0}', mStashes[0].Ref);
+  Assert.AreEqual('main', mStashes[0].Branch);
+  Assert.AreEqual('Mein Name', mStashes[0].Message);
+  Assert.AreEqual('feature/x', mStashes[1].Branch);
+  Assert.AreEqual('Hover-Cache: erster Wurf', mStashes[1].Message, 'ohne "WIP on …:" und Hash');
+  Assert.IsTrue(mStashes[1].Date < mStashes[0].Date);
+end;
+
+procedure TAtlasVcsTests.GitParsesBranchesStashesLogAndNameStatus;
+var
+  Commits: TArray<TAtlasVcsCommit>;
+  Changes: TArray<TAtlasVcsChange>;
+begin
+  AssertGitBranches;
+
+  AssertGitStashes;
 
   Commits := TAtlasGitParser.ParseLog(Hash1 + #0'1792071091'#0'vier'#10 + Hash2 + #0'1792071000'#0#10);
   Assert.AreEqual(2, Integer(Length(Commits)));
@@ -1538,44 +1558,41 @@ begin
   Assert.AreEqual(5, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
 end;
 
-procedure TAtlasVcsTests.ProvidersCreateIssueBranches;
+/// <summary>Git: Branch prüfen, anlegen, wechseln, Hook-Ordner; unsichere Namen ohne Prozess.</summary>
+procedure AssertGitBranching(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner);
 const
   Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
   RemotePrefix = Prefix + '-c credential.interactive=never -c core.askPass= ';
 var
-  Runner: TFakeRunner;
-  RunnerRef: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   Branching: IAtlasVcsBranching;
   Exists, mHas: Boolean;
   Hooks, GitDir, mRevision: string;
   mSteps: TArray<TAtlasVcsBranchStep>;
 begin
-  Runner := TFakeRunner.Create;
-  RunnerRef := Runner;
-  Runner.Answer('for-each-ref', 'refs/heads/feature/753-atlas-bereiche-und' + #10 + 'refs/remotes/origin/develop' + #10);
-  Runner.Answer('rev-parse', '.git/hooks' + #10 + '.git' + #10);
-  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  ARunner.Answer('for-each-ref', 'refs/heads/feature/753-atlas-bereiche-und' + #10 + 'refs/remotes/origin/develop' + #10);
+  ARunner.Answer('rev-parse', '.git/hooks' + #10 + '.git' + #10);
+  Vcs := TAtlasGitVersionControl.Create(Root, ARunnerRef, 'git.exe', 5000);
   Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching), 'Git bietet IAtlasVcsBranching');
   Assert.IsTrue(Branching.BranchExists('feature/753-atlas-bereiche-und', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsTrue(Exists, 'vorhandener Branch');
   Assert.AreEqual(Prefix + 'for-each-ref --format=%(refname) refs/heads/feature/753-atlas-bereiche-und',
-    Runner.Calls[0]);
+    ARunner.Calls[0]);
   Assert.IsTrue(Branching.BranchExists('feature/1-neu', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsFalse(Exists, 'ein ähnlicher Ref zählt nicht');
   // Remote-Branch im lokalen Stand (#1288), ohne fetch.
   Assert.IsTrue(Branching.RemoteBranchExists('develop', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsTrue(Exists);
-  Assert.AreEqual(Prefix + 'for-each-ref --format=%(refname) refs/remotes/origin/develop', Runner.Calls[2]);
+  Assert.AreEqual(Prefix + 'for-each-ref --format=%(refname) refs/remotes/origin/develop', ARunner.Calls[2]);
   // Schritte aus dem Plan: lokal mit den festen Optionen, mit Remote zusätzlich ohne Rückfrage.
   mSteps := TAtlasVcsBranchPlan.Steps(TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/9-neu',
     TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.RemoteMain, 'develop', ''), 'egal'));
   Assert.IsTrue(Branching.RunStep(mSteps[0]) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual(Prefix + 'checkout --quiet --no-track -b feature/9-neu refs/remotes/origin/develop --',
-    Runner.Calls[3]);
+    ARunner.Calls[3]);
   Assert.IsTrue(Branching.RunStep(TAtlasVcsBranchStep.Make(TArray<string>.Create('push', '-u', 'origin',
     'feature/9-neu'), True, True)) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(RemotePrefix + 'push -u origin feature/9-neu', Runner.Calls[4]);
+  Assert.AreEqual(RemotePrefix + 'push -u origin feature/9-neu', ARunner.Calls[4]);
   // Git: keine Serverrevision, keine Externals, ohne Prozess.
   Assert.IsTrue(Branching.ServerRevision('main', mRevision) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('', mRevision);
@@ -1583,64 +1600,89 @@ begin
   Assert.IsFalse(mHas);
   Assert.IsTrue(Branching.RepositoryPath(mRevision) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('', mRevision);
-  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  Assert.AreEqual(5, Integer(Length(ARunner.Calls)));
   Assert.IsTrue(Branching.SwitchBranch('feature/753-atlas-bereiche-und') = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'checkout --quiet feature/753-atlas-bereiche-und --', Runner.Calls[5]);
+  Assert.AreEqual(Prefix + 'checkout --quiet feature/753-atlas-bereiche-und --', ARunner.Calls[5]);
   Assert.IsTrue(Branching.HookFolders(Hooks, GitDir) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'rev-parse --git-path hooks --git-dir', Runner.Calls[6]);
+  Assert.AreEqual(Prefix + 'rev-parse --git-path hooks --git-dir', ARunner.Calls[6]);
   Assert.AreEqual(Under('.git/hooks'), Hooks, 'relativ zur Wurzel aufgelöst');
   Assert.AreEqual(Under('.git'), GitDir);
   // Unsichere Namen und leere Schritte starten keinen Prozess.
   Assert.IsTrue(Branching.SwitchBranch('a..b') = TAtlasVcsOutcome.Failed);
   Assert.IsTrue(Branching.RemoteBranchExists('-x', Exists) = TAtlasVcsOutcome.Failed);
   Assert.IsTrue(Branching.RunStep(Default(TAtlasVcsBranchStep)) = TAtlasVcsOutcome.Failed);
-  Assert.AreEqual(7, Integer(Length(Runner.Calls)));
+  Assert.AreEqual(7, Integer(Length(ARunner.Calls)));
   // Git endet mit Fehler (Branch gibt es schon, Konflikt beim Wechsel): Failed.
-  Runner.ExitCode := 128;
+  ARunner.ExitCode := 128;
   Assert.IsTrue(Branching.SwitchBranch('feature/1-neu') = TAtlasVcsOutcome.Failed);
   Assert.IsTrue(Branching.RunStep(mSteps[0]) = TAtlasVcsOutcome.Failed);
-  Runner.ExitCode := 0;
+  ARunner.ExitCode := 0;
+end;
 
+/// <summary>SVN: Kopie im Repository und switch, Serverrevision, Externals, Pfad im Repository.</summary>
+procedure AssertSvnBranching(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner; out ASteps: TArray<TAtlasVcsBranchStep>);
+var
+  Vcs: IAtlasVersionControl;
+  Branching: IAtlasVcsBranching;
+  Exists, mHas: Boolean;
+  Hooks, GitDir, mRevision: string;
+begin
   // SVN: Kopie im Repository und switch, beide mit dem Server und --non-interactive.
-  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
+  Vcs := TAtlasSvnVersionControl.Create(Root, ARunnerRef, 'svn.exe');
   Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching), 'SVN bietet IAtlasVcsBranching');
-  Runner.Calls := nil;
-  mSteps := TAtlasVcsBranchPlan.Steps(TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, 'ATL-123-tracker-im-plugin',
+  ARunner.Calls := nil;
+  ASteps := TAtlasVcsBranchPlan.Steps(TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, 'ATL-123-tracker-im-plugin',
     TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Head, 'trunk', ''), 'ATL-123 Branch'));
-  Assert.IsTrue(Branching.RunStep(mSteps[0]) = TAtlasVcsOutcome.Ok);
-  Assert.IsTrue(Branching.RunStep(mSteps[1]) = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(Branching.RunStep(ASteps[0]) = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(Branching.RunStep(ASteps[1]) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('copy ^/trunk@ ^/branches/ATL-123-tracker-im-plugin@ --parents -m ATL-123 Branch --non-interactive',
-    Runner.Calls[0]);
-  Assert.AreEqual('switch ^/branches/ATL-123-tracker-im-plugin@ . --non-interactive', Runner.Calls[1]);
+    ARunner.Calls[0]);
+  Assert.AreEqual('switch ^/branches/ATL-123-tracker-im-plugin@ . --non-interactive', ARunner.Calls[1]);
   Assert.IsTrue(Branching.BranchExists('ATL-123-tracker-im-plugin', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsTrue(Exists);
-  Assert.AreEqual('info ^/branches/ATL-123-tracker-im-plugin@ --non-interactive', Runner.Calls[2]);
+  Assert.AreEqual('info ^/branches/ATL-123-tracker-im-plugin@ --non-interactive', ARunner.Calls[2]);
   // HEAD-Revision vom Server und Externals der Arbeitskopie (#1288).
-  Runner.Answer('info', '48230' + #10);
+  ARunner.Answer('info', '48230' + #10);
   Assert.IsTrue(Branching.ServerRevision('Kasse/trunk', mRevision) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('48230', mRevision);
-  Assert.AreEqual('info --show-item revision --non-interactive ^/Kasse/trunk@', Runner.Calls[3]);
-  Runner.Answer('propget', 'Libs - ^/Libs/Common/trunk Common' + #10);
+  Assert.AreEqual('info --show-item revision --non-interactive ^/Kasse/trunk@', ARunner.Calls[3]);
+  ARunner.Answer('propget', 'Libs - ^/Libs/Common/trunk Common' + #10);
   Assert.IsTrue(Branching.HasExternals(mHas) = TAtlasVcsOutcome.Ok);
   Assert.IsTrue(mHas);
-  Assert.AreEqual('propget svn:externals -R . --non-interactive', Runner.Calls[4]);
-  Runner.Answer('info', '^/Kasse/trunk' + #10);
+  Assert.AreEqual('propget svn:externals -R . --non-interactive', ARunner.Calls[4]);
+  ARunner.Answer('info', '^/Kasse/trunk' + #10);
   Assert.IsTrue(Branching.RepositoryPath(mRevision) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('Kasse/trunk', mRevision, 'voller Pfad ohne ^/');
-  Assert.AreEqual('info --show-item relative-url . --non-interactive', Runner.Calls[5]);
+  Assert.AreEqual('info --show-item relative-url . --non-interactive', ARunner.Calls[5]);
   Assert.IsTrue(Branching.RemoteBranchExists('trunk', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsFalse(Exists, 'SVN kennt keine Remote-Branches');
-  Assert.AreEqual(6, Integer(Length(Runner.Calls)), 'ohne Prozess');
+  Assert.AreEqual(6, Integer(Length(ARunner.Calls)), 'ohne Prozess');
   // Fehlt der Branch, endet svn info mit Fehler: das ist die Antwort.
-  Runner.ExitCode := 1;
+  ARunner.ExitCode := 1;
   Assert.IsTrue(Branching.BranchExists('ATL-9-neu', Exists) = TAtlasVcsOutcome.Ok);
   Assert.IsFalse(Exists);
   Assert.IsTrue(Branching.ServerRevision('trunk', mRevision) = TAtlasVcsOutcome.Failed);
   Assert.AreEqual('', mRevision);
-  Runner.ExitCode := 0;
+  ARunner.ExitCode := 0;
   Assert.IsTrue(Branching.HookFolders(Hooks, GitDir) = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('', Hooks);
-  Assert.AreEqual(8, Integer(Length(Runner.Calls)), 'Hooks ohne Prozess');
+  Assert.AreEqual(8, Integer(Length(ARunner.Calls)), 'Hooks ohne Prozess');
+end;
+
+procedure TAtlasVcsTests.ProvidersCreateIssueBranches;
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Branching: IAtlasVcsBranching;
+  Exists: Boolean;
+  mRevision: string;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  AssertGitBranching(Runner, RunnerRef);
+  AssertSvnBranching(Runner, RunnerRef, mSteps);
 
   Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching));
@@ -1649,6 +1691,36 @@ begin
   Assert.IsTrue(Branching.ServerRevision('trunk', mRevision) = TAtlasVcsOutcome.Disabled);
   Assert.AreEqual(8, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
   mSteps := nil;
+end;
+
+/// <summary>Ohne erkennbares Layout kein Ort; fester Ort mit ^/; ungültiges Muster ohne Prozess.</summary>
+procedure AssertSvnBranchLocations(ARunner: TFakeRunner; const ABranching: IAtlasVcsBranching; const AOptions: TAtlasVcsSvnBranchOptions);
+var
+  mOptions: TAtlasVcsSvnBranchOptions;
+  mExists: Boolean;
+begin
+  mOptions := AOptions;
+  // Ohne erkennbares Layout: kein Ort und kein Aufruf am Server.
+  ARunner.Commands := nil;
+  ARunner.Answers := nil;
+  ARunner.Answer('info', '^/Sonstiges' + #10);
+  ARunner.Calls := nil;
+  Assert.IsTrue(ABranching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
+  Assert.IsFalse(mExists);
+  Assert.IsTrue(ABranching.SwitchBranch('KASSE-42-bon', mOptions) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(2, Integer(Length(ARunner.Calls)), 'nur relative-url');
+  // Fester Ort mit ^/: ohne relative-url; {kennung} aus den Optionen.
+  mOptions.Location := '^/Kasse/branches/{kennung}';
+  mOptions.Key := 'KASSE-42';
+  ARunner.Calls := nil;
+  Assert.IsTrue(ABranching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(ARunner.Calls)));
+  Assert.AreEqual('info ^/Kasse/branches/KASSE-42@ --non-interactive', ARunner.Calls[0]);
+  // Ungültiges Muster: Failed ohne Prozess.
+  mOptions.Location := 'branches/{name}';
+  ARunner.Calls := nil;
+  Assert.IsTrue(ABranching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, Integer(Length(ARunner.Calls)));
 end;
 
 procedure TAtlasVcsTests.SvnBranchOptionsUseLocation;
@@ -1679,27 +1751,7 @@ begin
   Assert.AreEqual('switch ^/Kasse/branches/KASSE-42-bon@ . --non-interactive', Runner.Calls[3]);
   Assert.AreEqual(Cardinal(TAtlasVcsBranchStep.LongTimeoutMs), Runner.Timeouts[3], 'switch mit langem Zeitlimit');
   Assert.AreEqual(Cardinal(TAtlasVcsCommand.DefaultTimeoutMs), Runner.Timeouts[1], 'info mit dem üblichen');
-  // Ohne erkennbares Layout: kein Ort und kein Aufruf am Server.
-  Runner.Commands := nil;
-  Runner.Answers := nil;
-  Runner.Answer('info', '^/Sonstiges' + #10);
-  Runner.Calls := nil;
-  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
-  Assert.IsFalse(mExists);
-  Assert.IsTrue(Branching.SwitchBranch('KASSE-42-bon', mOptions) = TAtlasVcsOutcome.Failed);
-  Assert.AreEqual(2, Integer(Length(Runner.Calls)), 'nur relative-url');
-  // Fester Ort mit ^/: ohne relative-url; {kennung} aus den Optionen.
-  mOptions.Location := '^/Kasse/branches/{kennung}';
-  mOptions.Key := 'KASSE-42';
-  Runner.Calls := nil;
-  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(1, Integer(Length(Runner.Calls)));
-  Assert.AreEqual('info ^/Kasse/branches/KASSE-42@ --non-interactive', Runner.Calls[0]);
-  // Ungültiges Muster: Failed ohne Prozess.
-  mOptions.Location := 'branches/{name}';
-  Runner.Calls := nil;
-  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
-  Assert.AreEqual(0, Integer(Length(Runner.Calls)));
+  AssertSvnBranchLocations(Runner, Branching, mOptions);
   // svnversion liegt neben svn und spricht nicht mit dem Server.
   Assert.IsTrue(Supports(Vcs, IAtlasVcsSvnWorkingCopy, mSvn));
   Runner.Answer('.', '48190:48213M' + #10);
@@ -1782,13 +1834,29 @@ begin
   Runner.Answers := nil;
 end;
 
+/// <summary>Git: Submodule statt Externals.</summary>
+procedure AssertGitSubmodules(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner);
+var
+  mVcs: IAtlasVersionControl;
+  mSubmodules: IAtlasVcsSubmodules;
+  mText: string;
+begin
+  mVcs := TAtlasGitVersionControl.Create(Root + PathDelim, ARunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(mVcs, IAtlasVcsSubmodules, mSubmodules));
+  Assert.IsFalse(Supports(mVcs, IAtlasVcsSvnExternals), 'Git kennt keine Externals');
+  ARunner.Answer('submodule', ' 3f2a… Packages/Basis (heads/main)'#10);
+  Assert.IsTrue(mSubmodules.SubmoduleStatus(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(' 3f2a… Packages/Basis (heads/main)'#10, mText);
+  Assert.IsTrue(ARunner.Calls[High(ARunner.Calls)].EndsWith('submodule status --recursive'),
+    ARunner.Calls[High(ARunner.Calls)]);
+end;
+
 procedure TAtlasVcsTests.WorkingCopyStateCommands;
 var
   Runner: TFakeRunner;
   RunnerRef: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   mExternals: IAtlasVcsSvnExternals;
-  mSubmodules: IAtlasVcsSubmodules;
   mText, mFile: string;
   mCount: Integer;
 begin
@@ -1828,14 +1896,7 @@ begin
   Assert.IsTrue(mExternals.SetExternals('Packages', '^/x Lib') = TAtlasVcsOutcome.Ok);
   Assert.IsTrue(Runner.Calls[High(Runner.Calls)].EndsWith(' Packages --non-interactive'));
   mExternals := nil;
-  Vcs := TAtlasGitVersionControl.Create(Root + PathDelim, RunnerRef, 'git.exe', 5000);
-  Assert.IsTrue(Supports(Vcs, IAtlasVcsSubmodules, mSubmodules));
-  Assert.IsFalse(Supports(Vcs, IAtlasVcsSvnExternals), 'Git kennt keine Externals');
-  Runner.Answer('submodule', ' 3f2a… Packages/Basis (heads/main)'#10);
-  Assert.IsTrue(mSubmodules.SubmoduleStatus(mText) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(' 3f2a… Packages/Basis (heads/main)'#10, mText);
-  Assert.IsTrue(Runner.Calls[High(Runner.Calls)].EndsWith('submodule status --recursive'),
-    Runner.Calls[High(Runner.Calls)]);
+  AssertGitSubmodules(Runner, RunnerRef);
   mText := '';
   mFile := '';
   Runner.Calls := nil;
@@ -1844,6 +1905,35 @@ begin
   Runner.WorkingDirs := nil;
   Runner.Commands := nil;
   Runner.Answers := nil;
+end;
+
+/// <summary>worktree: eigener Ordner statt stash und checkout; Push an den Remote des Hauptbranchs.</summary>
+procedure AssertGitWorktreeBranch(ARunner: TFakeRunner; const ABranching: IAtlasVcsBranching);
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+  RemotePrefix = Prefix + '-c credential.interactive=never -c core.askPass= ';
+var
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+  mRun: TAtlasVcsBranchRun;
+  mFolder: string;
+begin
+  // worktree: eigener Ordner statt stash und checkout; Push an den Remote des Hauptbranchs.
+  ARunner.Calls := nil;
+  mFolder := ExtractFileDir(Root) + PathDelim + 'kasse-ATL-9';
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'ATL-9-neu',
+    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, 'main', '', 'upstream'), '');
+  mRequest.Stash := True;
+  mRequest.PushNow := True;
+  mRequest.WorktreeFolder := mFolder;
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  mRun := TAtlasVcsBranchPlan.Execute(ABranching, mSteps);
+  Assert.IsTrue(mRun.Succeeded);
+  Assert.AreEqual(2, Integer(Length(ARunner.Calls)));
+  Assert.AreEqual(Prefix + 'worktree add --quiet --no-track -b ATL-9-neu ' + mFolder + ' refs/heads/main',
+    ARunner.Calls[0]);
+  Assert.AreEqual(RemotePrefix + 'push --set-upstream upstream refs/heads/ATL-9-neu:refs/heads/ATL-9-neu',
+    ARunner.Calls[1]);
 end;
 
 procedure TAtlasVcsTests.ProvidersRunGitBranchOptions;
@@ -1858,7 +1948,6 @@ var
   mRequest: TAtlasVcsBranchRequest;
   mSteps: TArray<TAtlasVcsBranchStep>;
   mRun: TAtlasVcsBranchRun;
-  mFolder: string;
 begin
   Runner := TFakeRunner.Create;
   RunnerRef := Runner;
@@ -1891,22 +1980,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Runner.Calls)));
   Runner.ErrorText := '';
   Runner.ExitCode := 0;
-  // worktree: eigener Ordner statt stash und checkout; Push an den Remote des Hauptbranchs.
-  Runner.Calls := nil;
-  mFolder := ExtractFileDir(Root) + PathDelim + 'kasse-ATL-9';
-  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'ATL-9-neu',
-    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, 'main', '', 'upstream'), '');
-  mRequest.Stash := True;
-  mRequest.PushNow := True;
-  mRequest.WorktreeFolder := mFolder;
-  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
-  mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
-  Assert.IsTrue(mRun.Succeeded);
-  Assert.AreEqual(2, Integer(Length(Runner.Calls)));
-  Assert.AreEqual(Prefix + 'worktree add --quiet --no-track -b ATL-9-neu ' + mFolder + ' refs/heads/main',
-    Runner.Calls[0]);
-  Assert.AreEqual(RemotePrefix + 'push --set-upstream upstream refs/heads/ATL-9-neu:refs/heads/ATL-9-neu',
-    Runner.Calls[1]);
+  AssertGitWorktreeBranch(Runner, mBranching);
   mSteps := nil;
   mRequest := Default(TAtlasVcsBranchRequest);
 end;
@@ -2131,6 +2205,51 @@ begin
   Assert.AreEqual(Double(EncodeDate(2026, 10, 1) + EncodeTime(8, 0, 0, 0)), Double(Refs[1].TipDate), 1 / 86400);
 end;
 
+/// <summary>SVN: erst info (Pfad der Arbeitskopie), dann das ganze Repository.</summary>
+procedure AssertSvnHistory(ARunner: TFakeRunner; const ARunnerRef: IAtlasVcsRunner);
+var
+  Vcs: IAtlasVersionControl;
+  History: IAtlasVcsHistory;
+  Entries: TArray<TAtlasVcsLogEntry>;
+  Refs: TArray<TAtlasVcsRef>;
+  Content: TBytes;
+  FileOf: TAtlasVcsLogFile;
+  Ahead, Behind: Integer;
+begin
+  // SVN: erst info (Pfad der Arbeitskopie), dann das ganze Repository.
+  ARunner.Calls := nil;
+  ARunner.Commands := nil;
+  ARunner.Answers := nil;
+  ARunner.Answer('info', StringReplace(SvnInfoSample, 'projekt/branches/release-2', 'projekt/trunk',
+    [rfReplaceAll]));
+  ARunner.Answer('log', SvnLogSample);
+  ARunner.Answer('list', SvnListSample);
+  ARunner.Answer('cat', 'alt');
+  Vcs := TAtlasSvnVersionControl.Create(Root, ARunnerRef, 'svn.exe');
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History), 'SVN bietet IAtlasVcsHistory');
+  Assert.IsTrue(History.SearchLog('ATL-12', 50, Entries) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('info --xml . --non-interactive', ARunner.Calls[0]);
+  Assert.AreEqual('log --xml -v --search ATL-12 -l 50 ^/ --non-interactive', ARunner.Calls[1]);
+  Assert.AreEqual(Under('src/Main.pas'), Entries[0].Files[0].Path);
+  Assert.IsTrue(History.AllBranches(Refs) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('list --xml ^/branches --non-interactive', ARunner.Calls[3]);
+  Assert.AreEqual(2, Integer(Length(Refs)));
+  Assert.IsTrue(History.Distance('ATL-12-tracker', 'trunk', Ahead, Behind) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(-1, Ahead, 'SVN kennt keinen Vorsprung');
+  Assert.AreEqual(4, Integer(Length(ARunner.Calls)), 'ohne Prozess');
+  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[0], True, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('cat ^/projekt/branches/ATL-12-tracker/src/Main.pas@56 --non-interactive', ARunner.Calls[4]);
+  Assert.AreEqual('alt', TEncoding.UTF8.GetString(Content));
+  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[1], False, Content) = TAtlasVcsOutcome.Ok,
+    'gelöscht: danach leer');
+  Assert.AreEqual(5, Integer(Length(ARunner.Calls)));
+  // Vorher merken: Das gescheiterte SearchLog leert Entries (out).
+  FileOf := Entries[0].Files[0];
+  Assert.IsTrue(History.SearchLog('ATL-*', 50, Entries) = TAtlasVcsOutcome.Failed, 'Glob-Zeichen');
+  Assert.IsTrue(History.ContentOf('x', FileOf, True, Content) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(5, Integer(Length(ARunner.Calls)));
+end;
+
 procedure TAtlasVcsTests.ProvidersRunHistoryCommands;
 const
   Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
@@ -2188,38 +2307,7 @@ begin
   Assert.IsTrue(History.SearchLog('ATL-12', 10, Entries) = TAtlasVcsOutcome.Failed);
   Assert.AreEqual(0, Integer(Length(Entries)));
 
-  // SVN: erst info (Pfad der Arbeitskopie), dann das ganze Repository.
-  Runner.Calls := nil;
-  Runner.Commands := nil;
-  Runner.Answers := nil;
-  Runner.Answer('info', StringReplace(SvnInfoSample, 'projekt/branches/release-2', 'projekt/trunk',
-    [rfReplaceAll]));
-  Runner.Answer('log', SvnLogSample);
-  Runner.Answer('list', SvnListSample);
-  Runner.Answer('cat', 'alt');
-  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
-  Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History), 'SVN bietet IAtlasVcsHistory');
-  Assert.IsTrue(History.SearchLog('ATL-12', 50, Entries) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual('info --xml . --non-interactive', Runner.Calls[0]);
-  Assert.AreEqual('log --xml -v --search ATL-12 -l 50 ^/ --non-interactive', Runner.Calls[1]);
-  Assert.AreEqual(Under('src/Main.pas'), Entries[0].Files[0].Path);
-  Assert.IsTrue(History.AllBranches(Refs) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual('list --xml ^/branches --non-interactive', Runner.Calls[3]);
-  Assert.AreEqual(2, Integer(Length(Refs)));
-  Assert.IsTrue(History.Distance('ATL-12-tracker', 'trunk', Ahead, Behind) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(-1, Ahead, 'SVN kennt keinen Vorsprung');
-  Assert.AreEqual(4, Integer(Length(Runner.Calls)), 'ohne Prozess');
-  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[0], True, Content) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual('cat ^/projekt/branches/ATL-12-tracker/src/Main.pas@56 --non-interactive', Runner.Calls[4]);
-  Assert.AreEqual('alt', TEncoding.UTF8.GetString(Content));
-  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[1], False, Content) = TAtlasVcsOutcome.Ok,
-    'gelöscht: danach leer');
-  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
-  // Vorher merken: Das gescheiterte SearchLog leert Entries (out).
-  FileOf := Entries[0].Files[0];
-  Assert.IsTrue(History.SearchLog('ATL-*', 50, Entries) = TAtlasVcsOutcome.Failed, 'Glob-Zeichen');
-  Assert.IsTrue(History.ContentOf('x', FileOf, True, Content) = TAtlasVcsOutcome.Failed);
-  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  AssertSvnHistory(Runner, RunnerRef);
 
   Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History));
