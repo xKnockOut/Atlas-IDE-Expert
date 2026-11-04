@@ -252,7 +252,8 @@ begin
   mPrevious := TCheckProfiler.Attach(FProfiler);
   mWatch := TStopwatch.StartNew;
   try
-    Result := TFileChecker.CheckText(FRules, FSettings, ARelativePath, AText, mProject, ASource, AScopes);
+    Result := TFileChecker.CheckText(FRules, FSettings, ARelativePath, AText, TCheckOrigin.Make(mProject, ASource),
+      AScopes);
   finally
     TCheckProfiler.Attach(mPrevious);
     if FProfiler <> nil then

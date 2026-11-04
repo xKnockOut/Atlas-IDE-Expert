@@ -1478,7 +1478,7 @@ end;
 /// Typen der Datei.</summary>
 function TUnresolvedTypeCheck.KnownName(const ABare: string): Boolean;
 begin
-  Result := TNameResolver.IsBuiltinTypeName(ABare) or TSystemIntrinsics.IsType(ABare) or
+  Result := TResolverText.IsBuiltinTypeName(ABare) or TSystemIntrinsics.IsType(ABare) or
     FDeclared.ContainsKey(LowerCase(ABare));
 end;
 

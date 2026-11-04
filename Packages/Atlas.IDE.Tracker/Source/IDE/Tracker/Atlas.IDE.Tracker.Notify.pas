@@ -350,6 +350,30 @@ begin
   Poll(True);
 end;
 
+/// <summary>Ist die Verbindung fällig? Auf Anfrage nach eigener Regel, sonst nach issues.notifyInterval und
+/// Aktivität des Benutzers.</summary>
+function IsDue(var ASchedule: TAtlasTrackerNotifySchedule; AOnDemand, AActive: Boolean; ANowMs: UInt64): Boolean;
+begin
+  if AOnDemand then
+  begin
+    Result := ASchedule.DueOnDemand(ANowMs);
+  end
+  else
+  begin
+    Result := ASchedule.Due(ANowMs, AActive, TAtlasIdeSettings.Current.IssuesNotifyIntervalMinutes);
+  end;
+end;
+
+/// <summary>Abfrage einer Verbindung ab ihrem Stand.</summary>
+function PollOf(const AConnection: TAtlasTrackerNotifyConnection;
+  const ASchedule: TAtlasTrackerNotifySchedule): TAtlasTrackerPoll;
+begin
+  Result := TAtlasTrackerPoll.Create(AConnection.Since, AConnection.Me,
+    TAtlasTrackerNotify.ScopeOf(TAtlasIdeSettings.Current.IssuesNotifyScope));
+  Result.LastModified := AConnection.LastModified;
+  Result.PollSeconds := ASchedule.PollSeconds;
+end;
+
 function TAtlasIdeIssueNotify.Jobs(AOnDemand: Boolean): TArray<TJob>;
 var
   mTarget: TAtlasTrackerTarget;
@@ -357,16 +381,14 @@ var
   mIds: TList<string>;
   mConnection: TAtlasTrackerNotifyConnection;
   mSchedule: TAtlasTrackerNotifySchedule;
-  mSettings: TAtlasPluginSettings;
   mNowMs: UInt64;
-  mActive, mDue, mAdded: Boolean;
+  mActive, mAdded: Boolean;
 begin
   Result := nil;
   if not Assigned(FHooks.Targets) or not Assigned(FHooks.Provider) then
   begin
     Exit;
   end;
-  mSettings := TAtlasIdeSettings.Current;
   mNowMs := GetTickCount64;
   mActive := UserIsActive;
   mAdded := False;
@@ -382,19 +404,10 @@ begin
       end;
       mIds.Add(mJob.Id);
       mSchedule := ScheduleOf(mJob.Id);
-      if AOnDemand then
+      if IsDue(mSchedule, AOnDemand, mActive, mNowMs) then
       begin
-        mDue := mSchedule.DueOnDemand(mNowMs);
-      end
-      else
-      begin
-        mDue := mSchedule.Due(mNowMs, mActive, mSettings.IssuesNotifyIntervalMinutes);
+        mJob.Provider := FHooks.Provider(mTarget.Provider);
       end;
-      if not mDue then
-      begin
-        Continue;
-      end;
-      mJob.Provider := FHooks.Provider(mTarget.Provider);
       if mJob.Provider = nil then
       begin
         Continue;
@@ -408,10 +421,7 @@ begin
         FFile.Put(mConnection);
         mAdded := True;
       end;
-      mJob.Poll := TAtlasTrackerPoll.Create(mConnection.Since, mConnection.Me,
-        TAtlasTrackerNotify.ScopeOf(mSettings.IssuesNotifyScope));
-      mJob.Poll.LastModified := mConnection.LastModified;
-      mJob.Poll.PollSeconds := mSchedule.PollSeconds;
+      mJob.Poll := PollOf(mConnection, mSchedule);
       mSchedule.Started(mNowMs);
       FSchedules.AddOrSetValue(mJob.Id, mSchedule);
       Result := Result + [mJob];
@@ -449,6 +459,39 @@ begin
   FThread.Start;
 end;
 
+/// <summary>Eine Verbindung abfragen. Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Netz
+/// (Skipped). Den Anmeldenamen fragt sie einmal je Verbindung (eigene Änderungen und „dir zugewiesen“).</summary>
+function PollJob(const AJob: TAtlasIdeIssueNotify.TJob;
+  const ATransport: TAtlasIssuePreviewTransportHook): TAtlasIdeIssueNotify.TOutcome;
+var
+  mTransport: IAtlasCiTransport;
+  mStatus: Integer;
+  mText: string;
+  mIgnored: TAtlasCiFetchError;
+begin
+  Result := Default(TAtlasIdeIssueNotify.TOutcome);
+  Result.Job := AJob;
+  Result.Error := TAtlasCiFetchError.None;
+  mTransport := nil;
+  if Assigned(ATransport) then
+  begin
+    mTransport := ATransport(AJob.Provider, AJob.Target);
+  end;
+  Result.Skipped := mTransport = nil;
+  if Result.Skipped then
+  begin
+    Exit;
+  end;
+  if (Result.Job.Poll.Me = '') and (AJob.Provider.ProbeUrl(AJob.Target) <> '') and
+    mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.TimeoutMs, mStatus, mText,
+    mIgnored) and (mStatus = 200) then
+  begin
+    Result.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
+  end;
+  Result.Succeeded := AJob.Provider.Changes(AJob.Target, mTransport, TAtlasTrackerNotify.TimeoutMs,
+    Result.Job.Poll, Result.Changes, Result.Error);
+end;
+
 class function TAtlasIdeIssueNotify.Worker(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
   const AJobs: TArray<TJob>; const ATransport: TAtlasIssuePreviewTransportHook): TProc;
 begin
@@ -458,10 +501,6 @@ begin
     var
       mJob: TJob;
       mOutcome: TOutcome;
-      mTransport: IAtlasCiTransport;
-      mStatus: Integer;
-      mText: string;
-      mIgnored: TAtlasCiFetchError;
     begin
       for mJob in AJobs do
       begin
@@ -470,42 +509,18 @@ begin
           Exit;
         end;
         mOutcome := Default(TOutcome);
-        mOutcome.Job := mJob;
-        mOutcome.Changes := nil;
-        mOutcome.Error := TAtlasCiFetchError.None;
         try
-          // Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Netz.
-          mTransport := nil;
-          if Assigned(ATransport) then
-          begin
-            mTransport := ATransport(mJob.Provider, mJob.Target);
-          end;
-          if mTransport = nil then
-          begin
-            mOutcome.Skipped := True;
-          end
-          else
-          begin
-            // Anmeldename einmal je Verbindung: eigene Änderungen und „dir zugewiesen“.
-            if (mOutcome.Job.Poll.Me = '') and (mJob.Provider.ProbeUrl(mJob.Target) <> '') and
-              mTransport.Get(mJob.Provider.ProbeUrl(mJob.Target), TAtlasTrackerNotify.TimeoutMs, mStatus, mText,
-              mIgnored) and (mStatus = 200) then
-            begin
-              mOutcome.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
-            end;
-            mOutcome.Succeeded := mJob.Provider.Changes(mJob.Target, mTransport, TAtlasTrackerNotify.TimeoutMs,
-              mOutcome.Job.Poll, mOutcome.Changes, mOutcome.Error);
-          end;
+          mOutcome := PollJob(mJob, ATransport);
         except
           // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
           on E: Exception do
           begin
-            mOutcome.Succeeded := False;
+            mOutcome := Default(TOutcome);
+            mOutcome.Job := mJob;
             mOutcome.Error := TAtlasCiFetchError.Network;
             TAtlasGuard.Log('Issue-Meldungen: Abfrage mit ' + E.ClassName + ' abgebrochen');
           end;
         end;
-        mTransport := nil;
         if TAtlasShutdown.Signalled then
         begin
           Exit;

@@ -112,11 +112,60 @@ begin
   end;
 end;
 
+/// <summary>Herkunft eines Funds für den Titel: anderes Ziel oder Projektgruppe; sonst ''.</summary>
+function HitOrigin(const AHit: TMissingUnitHit): string;
+begin
+  Result := '';
+  if AHit.Place = TMissingUnitPlace.OtherTarget then
+  begin
+    Result := Format(' (steht in %s)', [AHit.Detail]);
+  end
+  else if AHit.Place = TMissingUnitPlace.GroupProject then
+  begin
+    Result := Format(' (aus %s)', [AHit.Detail]);
+  end;
+end;
+
+/// <summary>Suchpfad-Aktionen für den Ordner des Funds AHit; AFirst: der erste Fund ist bevorzugt.</summary>
+function FolderActions(const ASetup: TMissingUnitSetup; const AHit: TMissingUnitHit;
+  AFirst: Boolean): TArray<TJSONObject>;
+var
+  Folder, Config: string;
+begin
+  Result := nil;
+  Config := ASetup.Project.Config;
+  Folder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, AHit.Folder);
+  if Config <> '' then
+  begin
+    Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad von %s aufnehmen%s',
+      [Folder, Config, HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
+      Arguments([ASetup.Project.FileName, Folder, Config]), AFirst)];
+  end;
+  Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad aller Konfigurationen aufnehmen%s',
+    [Folder, HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
+    Arguments([ASetup.Project.FileName, Folder, '']), AFirst and (Config = ''))];
+end;
+
+/// <summary>Ohne Ordner: Hinweis auf andere Plattformen bzw. die durchsuchten Orte.</summary>
+function FallbackActions(const ASetup: TMissingUnitSetup; const APlatforms, ASearched: TArray<string>):
+  TArray<TJSONObject>;
+begin
+  if Length(APlatforms) > 0 then
+  begin
+    Result := [InfoAction(TLspMissingUnit.PlatformText(ASetup.UnitName, ASetup.Project.Platform, APlatforms),
+      TLspMissingUnit.PlatformText(ASetup.UnitName, ASetup.Project.Platform, APlatforms))];
+  end
+  else
+  begin
+    Result := [InfoAction(Format('%s nicht gefunden: durchsuchte Orte anzeigen', [ASetup.UnitName]),
+      TLspMissingUnit.NotFoundText(ASetup.UnitName, ASearched))];
+  end;
+end;
+
 class function TLspMissingUnit.ActionsFor(const ASetup: TMissingUnitSetup; const AHits: TArray<TMissingUnitHit>;
   const ASearched: TArray<string>): TArray<TJSONObject>;
 var
   Hit: TMissingUnitHit;
-  Folder, Origin, Config: string;
   Platforms: TArray<string>;
   Offered: Integer;
   SourceOffered: Boolean;
@@ -125,7 +174,6 @@ begin
   Platforms := nil;
   Offered := 0;
   SourceOffered := False;
-  Config := ASetup.Project.Config;
   for Hit in AHits do
   begin
     // Nur in der Bibliothek einer anderen Plattform: kein Pfad, sondern der Hinweis.
@@ -135,52 +183,22 @@ begin
       begin
         Platforms := Platforms + [Hit.Detail];
       end;
-      Continue;
-    end;
-    if Offered >= MaxFolders then
-    begin
-      Continue;
-    end;
-    Folder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, Hit.Folder);
-    Origin := '';
-    if Hit.Place = TMissingUnitPlace.OtherTarget then
-    begin
-      Origin := Format(' (steht in %s)', [Hit.Detail]);
     end
-    else if Hit.Place = TMissingUnitPlace.GroupProject then
+    else if Offered < MaxFolders then
     begin
-      Origin := Format(' (aus %s)', [Hit.Detail]);
+      Result := Result + FolderActions(ASetup, Hit, Offered = 0);
+      if not SourceOffered and SameText(ExtractFileExt(Hit.FileName), '.pas') then
+      begin
+        SourceOffered := True;
+        Result := Result + [CommandAction(Format('%s ins Projekt aufnehmen', [ExtractFileName(Hit.FileName)]),
+          AddUnitCommand, Arguments([ASetup.Project.FileName, Hit.FileName]), False)];
+      end;
+      Inc(Offered);
     end;
-    if Config <> '' then
-    begin
-      Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad von %s aufnehmen%s',
-        [Folder, Config, Origin]), SearchPathCommand, Arguments([ASetup.Project.FileName, Folder, Config]),
-        Offered = 0)];
-    end;
-    Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad aller Konfigurationen aufnehmen%s',
-      [Folder, Origin]), SearchPathCommand, Arguments([ASetup.Project.FileName, Folder, '']),
-      (Offered = 0) and (Config = ''))];
-    if not SourceOffered and SameText(ExtractFileExt(Hit.FileName), '.pas') then
-    begin
-      SourceOffered := True;
-      Result := Result + [CommandAction(Format('%s ins Projekt aufnehmen', [ExtractFileName(Hit.FileName)]),
-        AddUnitCommand, Arguments([ASetup.Project.FileName, Hit.FileName]), False)];
-    end;
-    Inc(Offered);
   end;
-  if Offered > 0 then
+  if Offered = 0 then
   begin
-    Exit;
-  end;
-  if Length(Platforms) > 0 then
-  begin
-    Result := [InfoAction(PlatformText(ASetup.UnitName, ASetup.Project.Platform, Platforms),
-      PlatformText(ASetup.UnitName, ASetup.Project.Platform, Platforms))];
-  end
-  else
-  begin
-    Result := [InfoAction(Format('%s nicht gefunden: durchsuchte Orte anzeigen', [ASetup.UnitName]),
-      NotFoundText(ASetup.UnitName, ASearched))];
+    Result := FallbackActions(ASetup, Platforms, ASearched);
   end;
 end;
 

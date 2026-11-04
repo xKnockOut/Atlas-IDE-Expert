@@ -17,8 +17,8 @@
       Wächter: Vorgabe aus (false bzw. x-offValue), nie am Hauptschalter
       experimental.enabled, nie an einem ganzen Objekt; Profil „Alles an“ lässt
       sie aus, Profil „Alles an, auch experimentell“ schaltet alle ein.
-    - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
-      denen im Schema entsprechen (Validierung und Schichtung).
+    - Wächter: Die Abschnitte in Atlas.Common.Configuration.Internals.*Options
+      (je Abschnitt Lesen und Schichten) müssen genau den Schlüsseln im Schema entsprechen.
     - Atlas.Common.Configuration.Internals.ScopeData: Ort jedes Schlüssels aus
       x-scope ("global" = %APPDATA%\Atlas\settings.json, "project" = atlas.json,
       "both" = an beiden Orten, das Projekt übersteuert je Glied; steht in beiden Listen).
@@ -491,17 +491,15 @@ $TableText = $Table.ToString().Replace("`r`n", "`n")
 $Problems = New-Object System.Collections.Generic.List[string]
 foreach ($Issue in $GroupIssues) { $Problems.Add($Issue) }
 $SchemaKeys = @($Schema['properties'].Keys | Where-Object { $_ -ne '$schema' } | Sort-Object)
-$ParserText = [IO.File]::ReadAllText($ParserPath, $Utf8).Replace("`r`n", "`n")
-$Starts = [regex]::Matches($ParserText, "Key = 'delphiVersion'")
-if ($Starts.Count -lt 2) { $Problems.Add('Parser: Validierung und Schichtung nicht gefunden') }
-foreach ($Start in $Starts) {
-    $Stop = $ParserText.IndexOf("`nend;", $Start.Index)
-    $Chain = $ParserText.Substring($Start.Index, $Stop - $Start.Index)
-    $Keys = @([regex]::Matches($Chain, "Key = '([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-    $Line = $ParserText.Substring(0, $Start.Index).Split("`n").Count
-    foreach ($Key in $SchemaKeys) { if ($Keys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" aus dem Schema fehlt") } }
-    foreach ($Key in $Keys) { if ($SchemaKeys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" fehlt im Schema") } }
-}
+# Jeder Schlüssel der obersten Ebene ist ein Abschnitt (Section: '…') in einer der Units
+# Internals/*Options.pas; der Abschnitt liest (Read) und schichtet (Take).
+$OptionPaths = @(Get-ChildItem -Path (Join-Path (Split-Path $ParserPath) 'Internals') -Filter 'Atlas.Common.Configuration.Internals.*Options.pas' | Sort-Object Name | ForEach-Object { $_.FullName })
+$ParserText = (@($ParserPath) + $OptionPaths | ForEach-Object { [IO.File]::ReadAllText($_, $Utf8) }) -join "`n"
+$ParserText = $ParserText.Replace("`r`n", "`n")
+$Keys = @([regex]::Matches($ParserText, "Section: '([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+if ($Keys.Count -eq 0) { $Problems.Add('Parser: keine Abschnitte in Internals/*Options.pas gefunden') }
+foreach ($Key in $SchemaKeys) { if ($Keys -cnotcontains $Key) { $Problems.Add("Parser: Abschnitt ""$Key"" aus dem Schema fehlt") } }
+foreach ($Key in $Keys) { if ($SchemaKeys -cnotcontains $Key) { $Problems.Add("Parser: Abschnitt ""$Key"" fehlt im Schema") } }
 foreach ($Name in $SchemaKeys) {
     $P = $Schema['properties'][$Name]
     if (Has $P 'properties') {

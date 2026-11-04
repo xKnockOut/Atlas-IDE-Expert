@@ -56,6 +56,18 @@ type
       const AFileName: string): TNestedRoutineLookup; static;
   end;
 
+  /// <summary>Wo und womit eine Umwandlung arbeitet: Quelltext, Baum, Cursorstelle, Typauskunft und Stil.
+  /// </summary>
+  TNestedRoutineRequest = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Position: TTextPosition;
+    Lookup: TNestedRoutineLookup;
+    Style: TFormatStyle;
+    class function Create(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle): TNestedRoutineRequest; static;
+  end;
+
   TNestedRoutines = class
   public const
     ToMethodTitle = 'In private Methode umwandeln';
@@ -65,23 +77,20 @@ type
     PassThroughSuffix = ' (durchgereichte Parameter entfernen)';
   public
     /// <summary>„In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ für die lokale Routine, deren Kopf
-    /// APosition enthält. Liegt sie in einer anderen lokalen Routine, ist AAction.Disabled der Hinweis.</summary>
-    class function Extract(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
-      overload; static;
+    /// ARequest.Position enthält. Liegt sie in einer anderen lokalen Routine, ist AAction.Disabled der Hinweis.
+    /// </summary>
+    class function Extract(const ARequest: TNestedRoutineRequest; out AAction: TCodeAction): Boolean; overload;
+      static;
     /// <summary>Wie oben; AReason nennt, warum es nicht geht.</summary>
-    class function Extract(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; out AAction: TCodeAction;
+    class function Extract(const ARequest: TNestedRoutineRequest; out AAction: TCodeAction;
       out AReason: string): Boolean; overload; static;
     /// <summary>„Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“ für die Routine, deren Kopf
-    /// (Implementierung oder Klassendeklaration) APosition enthält; mit ARemovePassThrough ohne die
+    /// (Implementierung oder Klassendeklaration) ARequest.Position enthält; mit ARemovePassThrough ohne die
     /// durchgereichten Parameter (False, wenn es keine gibt).</summary>
-    class function Embed(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
+    class function Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
       out AAction: TCodeAction): Boolean; overload; static;
     /// <summary>Wie oben; AReason nennt, warum es nicht geht.</summary>
-    class function Embed(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
+    class function Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
       out AAction: TCodeAction; out AReason: string): Boolean; overload; static;
     /// <summary>Alle passenden Aktionen an APosition.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -113,12 +122,6 @@ type
   end;
 
 { Hilfen }
-
-function Fail(const AReason: string; out AOut: string): Boolean;
-begin
-  AOut := AReason;
-  Result := False;
-end;
 
 { TNestedRoutineLookup }
 
@@ -173,59 +176,78 @@ begin
   end;
 end;
 
+/// <summary>Bearbeitung für den Aufruf ACall mit Klammern; False, wenn die schließende Klammer nicht zu finden ist.
+/// </summary>
+function ParenthesizedCallEdit(const ATokens: TArray<TPascalToken>; ANode, ACall: TSyntaxNode;
+  const ANewName, AArguments: string; var AEdits: TArray<TOffsetEdit>): Boolean;
+var
+  mClose: Integer;
+begin
+  Result := True;
+  if not SameText(ANode.Name, ANewName) then
+  begin
+    AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName)];
+  end;
+  if AArguments = '' then
+  begin
+    Exit;
+  end;
+  if ACall.ChildCount > 1 then
+  begin
+    AEdits := AEdits + [TOffsetEdit.Create(ACall[ACall.ChildCount - 1].EndOffset,
+      ACall[ACall.ChildCount - 1].EndOffset, ', ' + AArguments)];
+  end
+  else
+  begin
+    mClose := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, ACall.EndOffset));
+    Result := (mClose >= 0) and ATokens[mClose].IsSymbol(')');
+    if Result then
+    begin
+      AEdits := AEdits + [TOffsetEdit.Create(ATokens[mClose].Offset, ATokens[mClose].Offset, AArguments)];
+    end;
+  end;
+end;
+
+/// <summary>Darf der Bezeichner ANode ohne Klammern unter AParent ein Aufruf sein? Als Anweisung, bei Funktionen
+/// auch in Ausdrücken; nicht als Wert (@X, Argument, Ziel einer Zuweisung).</summary>
+function IsBareCall(ANode, AParent: TSyntaxNode; AIsFunction: Boolean): Boolean;
+begin
+  if (AParent = nil) or (AParent.Kind in [TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.MemberAccess]) then
+  begin
+    Exit(False);
+  end;
+  if AParent.Kind = TSyntaxKind.AssignStatement then
+  begin
+    Exit(AIsFunction and (AParent[0] <> ANode));
+  end;
+  Result := (AParent.Kind = TSyntaxKind.CallStatement) or AIsFunction;
+end;
+
 /// <summary>Bearbeitung, die AArguments an den Aufruf des Bezeichners ANode anhängt bzw. ihn in ANewName
 /// umbenennt; False, wenn die Routine dort nicht aufgerufen, sondern anders benutzt wird.</summary>
 function CallEdit(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode; AIsFunction: Boolean;
   const ANewName, AArguments: string; var AEdits: TArray<TOffsetEdit>): Boolean;
 var
-  Parent: TSyntaxNode;
-  Close: Integer;
+  mParent: TSyntaxNode;
 begin
-  Result := True;
-  Parent := ANode.Parent;
-  if (Parent <> nil) and (Parent.Kind = TSyntaxKind.Call) and (Parent[0] = ANode) then
+  mParent := ANode.Parent;
+  if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent[0] = ANode) then
   begin
-    if not SameText(ANode.Name, ANewName) then
-    begin
-      AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName)];
-    end;
-    if AArguments = '' then
-    begin
-      Exit;
-    end;
-    if Parent.ChildCount > 1 then
-    begin
-      AEdits := AEdits + [TOffsetEdit.Create(Parent[Parent.ChildCount - 1].EndOffset,
-        Parent[Parent.ChildCount - 1].EndOffset, ', ' + AArguments)];
-    end
-    else
-    begin
-      Close := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, Parent.EndOffset));
-      if (Close < 0) or not ATokens[Close].IsSymbol(')') then
-      begin
-        Exit(False);
-      end;
-      AEdits := AEdits + [TOffsetEdit.Create(ATokens[Close].Offset, ATokens[Close].Offset, AArguments)];
-    end;
+    Exit(ParenthesizedCallEdit(ATokens, ANode, mParent, ANewName, AArguments, AEdits));
+  end;
+  Result := IsBareCall(ANode, mParent, AIsFunction);
+  if not Result then
+  begin
     Exit;
   end;
-  // Ohne Klammern: als Anweisung, bei Funktionen auch in Ausdrücken; nicht als Wert (@X, Argument, Zuweisung).
-  if (Parent = nil) or (Parent.Kind in [TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.MemberAccess]) or
-    ((Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = ANode)) or
-    ((Parent.Kind <> TSyntaxKind.CallStatement) and not AIsFunction) or
-    ((Parent.Kind = TSyntaxKind.AssignStatement) and not AIsFunction) then
+  if AArguments <> '' then
   begin
-    Exit(False);
-  end;
-  if AArguments = '' then
+    AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName + '(' + AArguments + ')')];
+  end
+  else if not SameText(ANode.Name, ANewName) then
   begin
-    if not SameText(ANode.Name, ANewName) then
-    begin
-      AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName)];
-    end;
-    Exit;
+    AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName)];
   end;
-  AEdits := AEdits + [TOffsetEdit.Create(ANode.StartOffset, ANode.EndOffset, ANewName + '(' + AArguments + ')')];
 end;
 
 /// <summary>Kommt ein Bezeichner AName unter AIdentifiers vor?</summary>
@@ -260,811 +282,1370 @@ begin
   Result := False;
 end;
 
-function ExtractCore(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; out AAction: TCodeAction;
-  out AReason: string): Boolean;
+/// <summary>Bezeichner der Art AKind unter ANode in Quelltextreihenfolge.</summary>
+function Collected(ANode: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
 var
-  Lines: TLineTable;
-  TextLines: TArray<string>;
-  Tokens: TArray<TPascalToken>;
-  Inner, Outer, Header, OuterHeader, Node, TypeBody, Child: TSyntaxNode;
-  Cache: TLocalsCache;
-  OuterLocals: TArray<TRoutineLocal>;
-  Local: TRoutineLocal;
-  Captured: TArray<TCaptured>;
-  Identifiers: TList<TSyntaxNode>;
-  Index, Found, Count, Calls, FirstLine, LastLine, RemoveStart, RemoveEnd, InsertLine, NameFirst, NameLast: Integer;
-  ClassName, NewName, Name, Arguments, LineBreak, Indent, InnerIndent, Moved, Declaration, ConstLines,
-    Mode: string;
-  Parameters: TArray<TParameterText>;
-  Parameter: TParameterText;
-  InnerEdits, OuterEdits: TArray<TOffsetEdit>;
-  Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  Taken: TArray<string>;
-  IsMethod, IsClass, InnerIsFunction: Boolean;
+  mList: TList<TSyntaxNode>;
 begin
-  AAction := Default(TCodeAction);
-  AReason := '';
-  if (ATree = nil) or (ATree.Root = nil) then
-  begin
-    Exit(Fail('kein Baum', AReason));
+  mList := TList<TSyntaxNode>.Create;
+  try
+    TRoutineLocals.CollectKind(ANode, AKind, mList);
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
-  Lines := TLineTable.Build(AText);
-  Inner := TRoutineParts.RoutineWithHeaderAt(ATree, Lines.OffsetAt(APosition));
+end;
+
+/// <summary>Hat der Kopf AHeader Parameter, die ParameterTexts nicht lesen konnte?</summary>
+function UnreadableParameters(AHeader: TSyntaxNode; const AParameters: TArray<TParameterText>): Boolean;
+var
+  mParameters: TSyntaxNode;
+begin
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  Result := (AParameters = nil) and (mParameters <> nil) and (mParameters.ChildCount > 0);
+end;
+
+/// <summary>Bearbeitungen AEdits als Textbearbeitungen über ALines.</summary>
+function TextEdits(const ALines: TLineTable; const AEdits: TArray<TOffsetEdit>): TArray<TTextEdit>;
+var
+  mEdit: TOffsetEdit;
+begin
+  Result := nil;
+  for mEdit in AEdits do
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(ALines.PositionAt(mEdit.Start),
+      ALines.PositionAt(mEdit.Stop)), mEdit.Text)];
+  end;
+end;
+
+type
+  /// <summary>Arbeitsstand von „In private Methode umwandeln“ bzw. „Aus Routine herauslösen“: die lokale Routine
+  /// Inner der Routine Outer, die Namen Captured der äußeren, die sie nutzt, die neuen Parameter und Argumente und
+  /// die Bearbeitungen in der lokalen (InnerEdits) und der äußeren Routine (OuterEdits).</summary>
+  TExtraction = record
+    Request: TNestedRoutineRequest;
+    Lines: TLineTable;
+    Tokens: TArray<TPascalToken>;
+    Inner: TSyntaxNode;
+    Outer: TSyntaxNode;
+    Header: TSyntaxNode;
+    TypeBody: TSyntaxNode;
+    QualifiedClass: string;
+    IsMethod: Boolean;
+    IsClass: Boolean;
+    InnerIsFunction: Boolean;
+    LineBreak: string;
+    InnerIndent: string;
+    Cache: TLocalsCache;
+    OuterLocals: TArray<TRoutineLocal>;
+    Captured: TArray<TCaptured>;
+    Parameters: TArray<TParameterText>;
+    Arguments: string;
+    ConstLines: string;
+    NewName: string;
+    QualifiedName: string;
+    Declaration: string;
+    Calls: Integer;
+    InnerEdits: TArray<TOffsetEdit>;
+    OuterEdits: TArray<TOffsetEdit>;
+    /// <summary>Lokale Routine mit Kopf an APosition und ihre äußere Routine.</summary>
+    function LocateIssue(const APosition: TTextPosition): string;
+    /// <summary>Liegt die äußere Routine selbst in einer Routine?</summary>
+    function InNested: Boolean;
+    function Title: string;
+    /// <summary>Rumpf, Modifizierer, with und Klasse in der Datei.</summary>
+    function FormIssue: string;
+    /// <summary>Verbietet der Name ANode die Umwandlung (Result der äußeren Funktion, Aufruf der äußeren)?
+    /// </summary>
+    function NameIssue(ANode: TSyntaxNode): string;
+    /// <summary>Darf die lokale Routine die äußere Lokale ALocal sehen (Parameter oder davor deklariert)?</summary>
+    function IsVisible(const ALocal: TRoutineLocal): Boolean;
+    /// <summary>Index der äußeren Lokalen zum Bezeichner ANode; -1 ohne.</summary>
+    function OuterLocalOf(ANode: TSyntaxNode): Integer;
+    /// <summary>Nutzt ANode eine andere lokale Routine oder einen lokalen Typ der äußeren?</summary>
+    function OuterDeclarationIssue(ANode: TSyntaxNode): string;
+    /// <summary>Merkt die äußere Lokale AFound als genutzt durch ANode.</summary>
+    procedure Capture(ANode: TSyntaxNode; AFound: Integer);
+    /// <summary>Namen der lokalen Routine, die die äußere deklariert.</summary>
+    function CaptureIssue: string;
+    /// <summary>Lokale Typen der äußeren Routine auch in Typangaben.</summary>
+    function TypeIssue: string;
+    function AddConstant(const ACaptured: TCaptured): string;
+    function AddParameter(const ACaptured: TCaptured): string;
+    /// <summary>Neue Parameter; untypisierte Konstanten wandern als Konstanten mit.</summary>
+    function ParameterIssue: string;
+    function CallIssue(ANode: TSyntaxNode; var AEdits: TArray<TOffsetEdit>): string;
+    /// <summary>Rekursion: Ein innerer Name verdeckt die Routine oder ein neues Argument.</summary>
+    function RecursiveCallIssue(ANode: TSyntaxNode): string;
+    /// <summary>Verdeckt eine Inline- oder Schleifenvariable gleichen Namens die Routine bei ANode?</summary>
+    function ShadowedByLocal(ANode: TSyntaxNode): Boolean;
+    /// <summary>Meint der Name des neuen Arguments ACaptured bei ANode etwas anderes?</summary>
+    function ArgumentShadowed(ANode: TSyntaxNode; const ACaptured: TCaptured): Boolean;
+    function OuterCallIssue(ANode: TSyntaxNode): string;
+    /// <summary>Aufrufe in der äußeren Routine (auch in den anderen lokalen Routinen) und in der lokalen selbst.
+    /// </summary>
+    function CallsIssue: string;
+    /// <summary>Hat die äußere Klassenmethode static? Dann hat auch die neue kein Self.</summary>
+    function OuterIsStatic: Boolean;
+    /// <summary>Kopf und Deklaration der neuen Routine.</summary>
+    function HeadIssue: string;
+    /// <summary>Text: ganze Zeilen samt Kommentaren darüber, eingerückt wie die äußere Routine.</summary>
+    function MovedText: string;
+    /// <summary>Entfernen, mit einer der Leerzeilen um die Routine; folgt dann begin, auch die Leerzeile davor.
+    /// </summary>
+    function RemovalEdit: TTextEdit;
+    function EditsIssue(var AAction: TCodeAction): string;
+    function Run(var AAction: TCodeAction): string;
+  end;
+
+function TExtraction.LocateIssue(const APosition: TTextPosition): string;
+begin
+  if (Request.Tree = nil) or (Request.Tree.Root = nil) then
+  begin
+    Exit('kein Baum');
+  end;
+  Lines := TLineTable.Build(Request.Text);
+  Inner := TRoutineParts.RoutineWithHeaderAt(Request.Tree, Lines.OffsetAt(APosition));
   if (Inner = nil) or (Inner.Parent = nil) or (Inner.Parent.Kind <> TSyntaxKind.RoutineDecl) then
   begin
-    Exit(Fail('keine lokale Routine', AReason));
+    Exit('keine lokale Routine');
   end;
   Outer := Inner.Parent;
-  ClassName := TRoutineBody.QualifierOf(Outer.Name);
-  IsMethod := ClassName <> '';
+  QualifiedClass := TRoutineBody.QualifierOf(Outer.Name);
+  IsMethod := QualifiedClass <> '';
+  Result := '';
+end;
+
+function TExtraction.InNested: Boolean;
+begin
+  Result := (Outer.Parent <> nil) and (Outer.Parent.Kind = TSyntaxKind.RoutineDecl);
+end;
+
+function TExtraction.Title: string;
+begin
   if IsMethod then
   begin
-    AAction.Title := TNestedRoutines.ToMethodTitle;
+    Result := TNestedRoutines.ToMethodTitle;
   end
   else
   begin
-    AAction.Title := TNestedRoutines.ToUnitRoutineTitle;
+    Result := TNestedRoutines.ToUnitRoutineTitle;
   end;
-  AAction.Kind := RewriteKind;
-  if (Outer.Parent <> nil) and (Outer.Parent.Kind = TSyntaxKind.RoutineDecl) then
-  begin
-    // Hinweis statt Aktion: Die mittlere Routine müsste erst selbst heraus.
-    AAction.Disabled := Format('%s liegt in der lokalen Routine %s; erst diese umwandeln', [Inner.Name, Outer.Name]);
-    Exit(True);
-  end;
-  Tokens := ATree.Tokens;
+end;
+
+function TExtraction.FormIssue: string;
+var
+  mOuterHeader: TSyntaxNode;
+begin
+  Tokens := Request.Tree.Tokens;
   Header := TRoutineParts.HeaderOf(Inner);
-  OuterHeader := TRoutineParts.HeaderOf(Outer);
-  if (Header = nil) or (OuterHeader = nil) or (TRoutineBody.BodyOf(Inner) = nil) then
+  mOuterHeader := TRoutineParts.HeaderOf(Outer);
+  if (Header = nil) or (mOuterHeader = nil) or (TRoutineBody.BodyOf(Inner) = nil) then
   begin
-    Exit(Fail('Routine ohne Rumpf', AReason));
+    Exit('Routine ohne Rumpf');
   end;
   if TRoutineParts.HasWord(Tokens, Header, ['forward', 'external', 'overload', 'assembler']) or
-    TRoutineLocals.HasKind(Inner, TSyntaxKind.WithStatement) or (Pos('<', ClassName) > 0) then
+    TRoutineLocals.HasKind(Inner, TSyntaxKind.WithStatement) or (Pos('<', QualifiedClass) > 0) then
   begin
-    Exit(Fail('nicht unterstützte Form', AReason));
+    Exit('nicht unterstützte Form');
   end;
-  IsClass := TRoutineParts.IsClassHeader(Tokens, OuterHeader);
+  IsClass := TRoutineParts.IsClassHeader(Tokens, mOuterHeader);
   InnerIsFunction := TRoutineParts.IsFunction(Inner);
+  LineBreak := TTextLines.LineBreakOf(Request.Text);
+  InnerIndent := TTextLines.IndentOf(Request.Text, Inner.StartPos.Line);
   TypeBody := nil;
+  Result := '';
   if IsMethod then
   begin
-    TypeBody := TRoutineBody.TypeBody(ATree.Root, TRoutineBody.ShortNameOf(ClassName));
+    TypeBody := TRoutineBody.TypeBody(Request.Tree.Root, TRoutineBody.ShortNameOf(QualifiedClass));
     if TypeBody = nil then
     begin
-      Exit(Fail('Klasse ' + ClassName + ' nicht in der Datei', AReason));
+      Result := 'Klasse ' + QualifiedClass + ' nicht in der Datei';
     end;
   end;
-  Cache := TLocalsCache.Create(AText, ATree);
-  Identifiers := TList<TSyntaxNode>.Create;
-  try
-    OuterLocals := Cache.Locals(Outer);
-    // Jede äußere Lokale höchstens einmal: Länge vorab, nach der Schleife auf Count kürzen.
-    Captured := nil;
-    SetLength(Captured, Length(OuterLocals));
-    Count := 0;
-    InnerEdits := nil;
-    OuterEdits := nil;
-    // Namen der lokalen Routine, die die äußere deklariert.
-    TRoutineLocals.CollectKind(Inner, TSyntaxKind.Identifier, Identifiers);
-    for Node in Identifiers do
+end;
+
+function TExtraction.NameIssue(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if SameText(ANode.Name, 'Result') and TRoutineParts.IsFunction(Outer) then
+  begin
+    Result := 'Result der äußeren Routine';
+  end
+  else if not IsMethod and SameText(ANode.Name, Outer.Name) then
+  begin
+    Result := 'ruft die äußere Routine auf';
+  end;
+end;
+
+function TExtraction.IsVisible(const ALocal: TRoutineLocal): Boolean;
+begin
+  Result := (ALocal.Kind = TRoutineLocalKind.Parameter) or ((ALocal.Kind in [TRoutineLocalKind.Variable,
+    TRoutineLocalKind.Constant]) and (ALocal.Decl.StartOffset < Inner.StartOffset));
+end;
+
+function TExtraction.OuterLocalOf(ANode: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(OuterLocals) do
+  begin
+    if SameText(OuterLocals[mIndex].Name, ANode.Name) and IsVisible(OuterLocals[mIndex]) then
     begin
-      if TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
+      Result := mIndex;
+    end;
+  end;
+end;
+
+function TExtraction.OuterDeclarationIssue(ANode: TSyntaxNode): string;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  for mIndex := 0 to Outer.ChildCount - 1 do
+  begin
+    mChild := Outer[mIndex];
+    if (mChild = Inner) or (mChild.StartOffset >= Inner.StartOffset) then
+    begin
+      Continue;
+    end;
+    if (mChild.Kind = TSyntaxKind.RoutineDecl) and SameText(mChild.Name, ANode.Name) then
+    begin
+      Exit('nutzt die lokale Routine ' + mChild.Name);
+    end;
+    if (mChild.Kind = TSyntaxKind.TypeSection) and (IndexText(ANode.Name, TRoutineParts.ChildNames(mChild)) >= 0) then
+    begin
+      Exit('nutzt den lokalen Typ ' + ANode.Name);
+    end;
+  end;
+  Result := '';
+end;
+
+procedure TExtraction.Capture(ANode: TSyntaxNode; AFound: Integer);
+var
+  mIndex: Integer;
+  mCaptured: TCaptured;
+begin
+  mIndex := 0;
+  while (mIndex <= High(Captured)) and not SameText(Captured[mIndex].Local.Name, OuterLocals[AFound].Name) do
+  begin
+    Inc(mIndex);
+  end;
+  if mIndex > High(Captured) then
+  begin
+    mCaptured := Default(TCaptured);
+    mCaptured.Local := OuterLocals[AFound];
+    Captured := Captured + [mCaptured];
+  end;
+  if TRoutineLocals.AccessOf(ANode, Request.Lookup.Flow) <> TLocalAccess.Read then
+  begin
+    Captured[mIndex].Written := True;
+  end;
+  if TRoutineParts.InAnonymous(ANode, Inner) then
+  begin
+    Captured[mIndex].InAnonymous := True;
+  end;
+end;
+
+function TExtraction.CaptureIssue: string;
+var
+  mNode: TSyntaxNode;
+  mFound: Integer;
+begin
+  Result := '';
+  OuterLocals := Cache.Locals(Outer);
+  Captured := nil;
+  for mNode in Collected(Inner, TSyntaxKind.Identifier) do
+  begin
+    if TRoutineParts.Shadowed(Cache, mNode, Inner, mNode.Name, True) or SameText(mNode.Name, Inner.Name) then
+    begin
+      Continue;
+    end;
+    Result := NameIssue(mNode);
+    mFound := OuterLocalOf(mNode);
+    if (Result = '') and (mFound < 0) then
+    begin
+      Result := OuterDeclarationIssue(mNode);
+    end
+    else if Result = '' then
+    begin
+      Capture(mNode, mFound);
+    end;
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+function TExtraction.TypeIssue: string;
+var
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
+begin
+  for mNode in Collected(Inner, TSyntaxKind.TypeReference) do
+  begin
+    for mIndex := 0 to Outer.ChildCount - 1 do
+    begin
+      mChild := Outer[mIndex];
+      if (mChild.Kind = TSyntaxKind.TypeSection) and (IndexText(mNode.Name, TRoutineParts.ChildNames(mChild)) >= 0) and
+        not TRoutineParts.Shadowed(Cache, mNode, Inner, mNode.Name, True) then
       begin
-        Continue;
-      end;
-      if SameText(Node.Name, Inner.Name) then
-      begin
-        Continue;
-      end;
-      if SameText(Node.Name, 'Result') and TRoutineParts.IsFunction(Outer) then
-      begin
-        Exit(Fail('Result der äußeren Routine', AReason));
-      end;
-      if not IsMethod and SameText(Node.Name, Outer.Name) then
-      begin
-        Exit(Fail('ruft die äußere Routine auf', AReason));
-      end;
-      Found := -1;
-      for Index := 0 to High(OuterLocals) do
-      begin
-        if SameText(OuterLocals[Index].Name, Node.Name) and ((OuterLocals[Index].Kind =
-          TRoutineLocalKind.Parameter) or ((OuterLocals[Index].Kind in [TRoutineLocalKind.Variable,
-          TRoutineLocalKind.Constant]) and (OuterLocals[Index].Decl.StartOffset < Inner.StartOffset))) then
-        begin
-          Found := Index;
-        end;
-      end;
-      if Found < 0 then
-      begin
-        for Index := 0 to Outer.ChildCount - 1 do
-        begin
-          Child := Outer[Index];
-          if (Child <> Inner) and (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, Node.Name) and
-            (Child.StartOffset < Inner.StartOffset) then
-          begin
-            Exit(Fail('nutzt die lokale Routine ' + Child.Name, AReason));
-          end;
-          if (Child.Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, TRoutineParts.ChildNames(Child)) >= 0) and
-            (Child.StartOffset < Inner.StartOffset) then
-          begin
-            Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
-          end;
-        end;
-        Continue;
-      end;
-      Index := 0;
-      while (Index < Count) and not SameText(Captured[Index].Local.Name, OuterLocals[Found].Name) do
-      begin
-        Inc(Index);
-      end;
-      if Index = Count then
-      begin
-        Inc(Count);
-        Captured[Index].Local := OuterLocals[Found];
-        Captured[Index].Written := False;
-        Captured[Index].InAnonymous := False;
-      end;
-      if TRoutineLocals.AccessOf(Node, ALookup.Flow) <> TLocalAccess.Read then
-      begin
-        Captured[Index].Written := True;
-      end;
-      if TRoutineParts.InAnonymous(Node, Inner) then
-      begin
-        Captured[Index].InAnonymous := True;
+        Exit('nutzt den lokalen Typ ' + mNode.Name);
       end;
     end;
-    SetLength(Captured, Count);
-    // Lokale Typen der äußeren Routine auch in Typangaben.
-    Identifiers.Clear;
-    TRoutineLocals.CollectKind(Inner, TSyntaxKind.TypeReference, Identifiers);
-    for Node in Identifiers do
+  end;
+  Result := '';
+end;
+
+function TExtraction.AddConstant(const ACaptured: TCaptured): string;
+begin
+  if ACaptured.Written then
+  begin
+    Exit('schreibt die Konstante ' + ACaptured.Local.Name);
+  end;
+  if ConstLines = '' then
+  begin
+    ConstLines := LineBreak + InnerIndent + 'const';
+  end;
+  ConstLines := ConstLines + LineBreak + InnerIndent + TRoutineBody.IndentUnit(Request.Style) +
+    TRoutineBody.TextOf(Request.Text, ACaptured.Local.Decl);
+  Result := '';
+end;
+
+function TExtraction.AddParameter(const ACaptured: TCaptured): string;
+var
+  mParameter: TParameterText;
+begin
+  if ACaptured.Local.TypeText = '' then
+  begin
+    Exit(ACaptured.Local.Name + ' hat keinen Typ');
+  end;
+  mParameter := Default(TParameterText);
+  mParameter.Modifier := ModeOf(ACaptured, Request.Lookup, Inner.StartOffset);
+  if (mParameter.Modifier = 'var') and ACaptured.InAnonymous then
+  begin
+    Exit('eine anonyme Methode fängt ' + ACaptured.Local.Name + ' ein');
+  end;
+  mParameter.Name := ACaptured.Local.Name;
+  mParameter.Rest := ': ' + ACaptured.Local.TypeText;
+  Parameters := Parameters + [mParameter];
+  if Arguments <> '' then
+  begin
+    Arguments := Arguments + ', ';
+  end;
+  Arguments := Arguments + ACaptured.Local.Name;
+  Result := '';
+end;
+
+function TExtraction.ParameterIssue: string;
+var
+  mCaptured: TCaptured;
+begin
+  Parameters := TRoutineParts.ParameterTexts(Request.Text, Header);
+  if UnreadableParameters(Header, Parameters) then
+  begin
+    Exit('nicht unterstützte Parameter');
+  end;
+  Arguments := '';
+  ConstLines := '';
+  Result := '';
+  for mCaptured in Captured do
+  begin
+    if mCaptured.Local.Kind = TRoutineLocalKind.Constant then
     begin
-      for Index := 0 to Outer.ChildCount - 1 do
-      begin
-        if (Outer[Index].Kind = TSyntaxKind.TypeSection) and (IndexText(Node.Name, TRoutineParts.ChildNames(Outer[Index])) >= 0) and
-          not TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
-        begin
-          Exit(Fail('nutzt den lokalen Typ ' + Node.Name, AReason));
-        end;
-      end;
-    end;
-    // Neue Parameter; untypisierte Konstanten wandern als Konstanten mit.
-    Parameters := TRoutineParts.ParameterTexts(AText, Header);
-    if (Parameters = nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) and
-      (Header.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
+      Result := AddConstant(mCaptured);
+    end
+    else
     begin
-      Exit(Fail('nicht unterstützte Parameter', AReason));
+      Result := AddParameter(mCaptured);
     end;
-    Arguments := '';
-    ConstLines := '';
-    LineBreak := TTextLines.LineBreakOf(AText);
-    InnerIndent := TTextLines.IndentOf(AText, Inner.StartPos.Line);
-    for Index := 0 to High(Captured) do
+    if Result <> '' then
     begin
-      Local := Captured[Index].Local;
-      if Local.Kind = TRoutineLocalKind.Constant then
-      begin
-        if Captured[Index].Written then
-        begin
-          Exit(Fail('schreibt die Konstante ' + Local.Name, AReason));
-        end;
-        if ConstLines = '' then
-        begin
-          ConstLines := LineBreak + InnerIndent + 'const';
-        end;
-        ConstLines := ConstLines + LineBreak + InnerIndent + TRoutineBody.IndentUnit(AStyle) +
-          TRoutineBody.TextOf(AText, Local.Decl);
-        Continue;
-      end;
-      if Local.TypeText = '' then
-      begin
-        Exit(Fail(Local.Name + ' hat keinen Typ', AReason));
-      end;
-      Mode := ModeOf(Captured[Index], ALookup, Inner.StartOffset);
-      if (Mode = 'var') and Captured[Index].InAnonymous then
-      begin
-        Exit(Fail('eine anonyme Methode fängt ' + Local.Name + ' ein', AReason));
-      end;
-      Parameter.Modifier := Mode;
-      Parameter.Name := Local.Name;
-      Parameter.Rest := ': ' + Local.TypeText;
-      Parameters := Parameters + [Parameter];
-      if Arguments <> '' then
-      begin
-        Arguments := Arguments + ', ';
-      end;
-      Arguments := Arguments + Local.Name;
+      Exit;
     end;
+  end;
+end;
+
+function TExtraction.CallIssue(ANode: TSyntaxNode; var AEdits: TArray<TOffsetEdit>): string;
+begin
+  Result := '';
+  if not CallEdit(Tokens, ANode, InnerIsFunction, NewName, Arguments, AEdits) then
+  begin
+    Result := Inner.Name + ' wird nicht nur aufgerufen';
+  end;
+end;
+
+function TExtraction.RecursiveCallIssue(ANode: TSyntaxNode): string;
+var
+  mCaptured: TCaptured;
+begin
+  if TRoutineParts.Shadowed(Cache, ANode, Inner, ANode.Name, True) then
+  begin
+    Exit('');
+  end;
+  for mCaptured in Captured do
+  begin
+    if TRoutineParts.Shadowed(Cache, ANode, Inner, mCaptured.Local.Name, False) then
+    begin
+      Exit('ein Name verdeckt ' + mCaptured.Local.Name);
+    end;
+  end;
+  Result := CallIssue(ANode, InnerEdits);
+end;
+
+function TExtraction.ShadowedByLocal(ANode: TSyntaxNode): Boolean;
+var
+  mFound: Integer;
+begin
+  mFound := TRoutineLocals.IndexOf(OuterLocals, ANode.Name, ANode.StartOffset);
+  Result := (mFound >= 0) and (OuterLocals[mFound].Kind in [TRoutineLocalKind.InlineVariable,
+    TRoutineLocalKind.LoopVariable]);
+end;
+
+function TExtraction.ArgumentShadowed(ANode: TSyntaxNode; const ACaptured: TCaptured): Boolean;
+var
+  mFound: Integer;
+begin
+  if TRoutineParts.Shadowed(Cache, ANode, Outer, ACaptured.Local.Name, False) then
+  begin
+    Exit(True);
+  end;
+  mFound := TRoutineLocals.IndexOf(OuterLocals, ACaptured.Local.Name, ANode.StartOffset);
+  Result := (mFound >= 0) and (OuterLocals[mFound].Decl <> ACaptured.Local.Decl);
+end;
+
+function TExtraction.OuterCallIssue(ANode: TSyntaxNode): string;
+var
+  mCaptured: TCaptured;
+begin
+  if TRoutineParts.Shadowed(Cache, ANode, Outer, ANode.Name, False) or ShadowedByLocal(ANode) then
+  begin
+    Exit('');
+  end;
+  for mCaptured in Captured do
+  begin
+    if ArgumentShadowed(ANode, mCaptured) then
+    begin
+      Exit('ein Name verdeckt ' + mCaptured.Local.Name);
+    end;
+  end;
+  Result := CallIssue(ANode, OuterEdits);
+  if Result = '' then
+  begin
+    Inc(Calls);
+  end;
+end;
+
+function TExtraction.CallsIssue: string;
+var
+  mNode: TSyntaxNode;
+begin
+  Calls := 0;
+  InnerEdits := nil;
+  OuterEdits := nil;
+  Result := '';
+  for mNode in Collected(Outer, TSyntaxKind.Identifier) do
+  begin
+    if not SameText(mNode.Name, Inner.Name) then
+    begin
+      Continue;
+    end;
+    if TRoutineBody.Within(mNode, Inner) then
+    begin
+      Result := RecursiveCallIssue(mNode);
+    end
+    else
+    begin
+      Result := OuterCallIssue(mNode);
+    end;
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+function TExtraction.OuterIsStatic: Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  for mIndex := 0 to TypeBody.ChildCount - 1 do
+  begin
+    mChild := TypeBody[mIndex];
+    if (mChild.Kind = TSyntaxKind.RoutineHeader) and SameText(mChild.Name, TRoutineBody.ShortNameOf(Outer.Name)) and
+      TRoutineParts.HasWord(Tokens, mChild, ['static']) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TExtraction.HeadIssue: string;
+var
+  mNameFirst, mNameLast: Integer;
+begin
+  if not TRoutineParts.NameTokens(Tokens, Header, mNameFirst, mNameLast) then
+  begin
+    Exit('Kopf nicht lesbar');
+  end;
+  QualifiedName := NewName;
+  if IsMethod then
+  begin
+    QualifiedName := QualifiedClass + '.' + NewName;
+  end;
+  InnerEdits := InnerEdits + [TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
+    TRoutineParts.HeadText(Request.Text, Header, QualifiedName, Parameters, IsClass) + ConstLines)];
+  Declaration := TRoutineParts.HeadText(Request.Text, Header, NewName, Parameters, IsClass);
+  // Eine statische Klassenmethode hat kein Self: die neue auch nicht.
+  if IsClass and OuterIsStatic then
+  begin
+    Declaration := Declaration + ' static;';
+  end;
+  Result := '';
+end;
+
+function TExtraction.MovedText: string;
+var
+  mStart: Integer;
+begin
+  mStart := Lines.OffsetAt(TTextPosition.Create(TRoutineBody.RoutineInsertLine(Request.Text, Inner), 0));
+  Result := TRoutineParts.ApplyEdits(Copy(Request.Text, mStart + 1, Inner.EndOffset - mStart), mStart, InnerEdits);
+  Result := TRoutineBody.Reindent(TrimLeft(Result), InnerIndent, TTextLines.IndentOf(Request.Text,
+    Outer.StartPos.Line), LineBreak);
+end;
+
+function TExtraction.RemovalEdit: TTextEdit;
+var
+  mTextLines: TArray<string>;
+  mStart, mEnd: Integer;
+begin
+  mTextLines := TTextLines.SplitLines(Request.Text);
+  mStart := TRoutineBody.RoutineInsertLine(Request.Text, Inner);
+  mEnd := Inner.EndPos.Line + 1;
+  if TRoutineParts.LineIsBlank(mTextLines, mStart - 1) and TRoutineParts.LineIsBlank(mTextLines, mEnd) then
+  begin
+    Inc(mEnd);
+  end;
+  if TRoutineParts.LineIsBlank(mTextLines, mStart - 1) and (mEnd = TRoutineBody.BodyOf(Outer).StartPos.Line) then
+  begin
+    Dec(mStart);
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(mStart, 0, mEnd, 0), '');
+end;
+
+function TExtraction.EditsIssue(var AAction: TCodeAction): string;
+var
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
+  mMoved: string;
+  mInsertLine: Integer;
+begin
+  mMoved := MovedText;
+  mEdits := TArray<TTextEdit>.Create(RemovalEdit) + TextEdits(Lines, OuterEdits);
+  if IsMethod then
+  begin
+    mInsertLine := Outer.EndPos.Line + 1;
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      LineBreak + mMoved + LineBreak)];
+    if not TRoutineBody.MemberDeclaration(Request.Text, Request.Tree, TypeBody,
+      TMemberEntry.Create('private', Declaration), Request.Style, mEdit) then
+    begin
+      Exit('Klassendeklaration nicht erweiterbar');
+    end;
+    mEdits := mEdits + [mEdit];
+  end
+  else
+  begin
+    mInsertLine := TRoutineBody.RoutineInsertLine(Request.Text, Outer);
+    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      mMoved + LineBreak + LineBreak)];
+  end;
+  AAction.Edits := mEdits;
+  AAction.Preview := Format('Neue Signatur: %s', [TRoutineParts.HeadText(Request.Text, Header, QualifiedName,
+    Parameters, IsClass)]) + LineBreak + Format('Geänderte Aufrufe: %d', [Calls]);
+  Result := '';
+end;
+
+function TExtraction.Run(var AAction: TCodeAction): string;
+begin
+  Result := CaptureIssue;
+  if Result = '' then
+  begin
+    Result := TypeIssue;
+  end;
+  if Result = '' then
+  begin
+    Result := ParameterIssue;
+  end;
+  if Result = '' then
+  begin
     // Freier Name.
     if IsMethod then
     begin
-      Taken := TRoutineBody.MemberNames(TypeBody);
+      NewName := TRoutineParts.FreeName(Inner.Name, TRoutineBody.MemberNames(TypeBody));
     end
     else
     begin
-      Taken := TRoutineParts.UnitNames(ATree.Root);
+      NewName := TRoutineParts.FreeName(Inner.Name, TRoutineParts.UnitNames(Request.Tree.Root));
     end;
-    NewName := TRoutineParts.FreeName(Inner.Name, Taken);
-    // Aufrufe in der äußeren Routine (auch in den anderen lokalen Routinen) und in der lokalen selbst.
-    Calls := 0;
-    Identifiers.Clear;
-    TRoutineLocals.CollectKind(Outer, TSyntaxKind.Identifier, Identifiers);
-    for Node in Identifiers do
-    begin
-      if not SameText(Node.Name, Inner.Name) then
-      begin
-        Continue;
-      end;
-      if TRoutineBody.Within(Node, Inner) then
-      begin
-        // Rekursion: Ein innerer Name verdeckt die Routine oder ein neues Argument.
-        if TRoutineParts.Shadowed(Cache, Node, Inner, Node.Name, True) then
-        begin
-          Continue;
-        end;
-        for Index := 0 to High(Captured) do
-        begin
-          if TRoutineParts.Shadowed(Cache, Node, Inner, Captured[Index].Local.Name, False) then
-          begin
-            Exit(Fail('ein Name verdeckt ' + Captured[Index].Local.Name, AReason));
-          end;
-        end;
-        if not CallEdit(Tokens, Node, InnerIsFunction, NewName, Arguments, InnerEdits) then
-        begin
-          Exit(Fail(Inner.Name + ' wird nicht nur aufgerufen', AReason));
-        end;
-        Continue;
-      end;
-      if TRoutineParts.Shadowed(Cache, Node, Outer, Node.Name, False) then
-      begin
-        Continue;
-      end;
-      // Eine Inline- oder Schleifenvariable gleichen Namens verdeckt die Routine.
-      Found := TRoutineLocals.IndexOf(OuterLocals, Node.Name, Node.StartOffset);
-      if (Found >= 0) and (OuterLocals[Found].Kind in [TRoutineLocalKind.InlineVariable,
-        TRoutineLocalKind.LoopVariable]) then
-      begin
-        Continue;
-      end;
-      for Index := 0 to High(Captured) do
-      begin
-        if TRoutineParts.Shadowed(Cache, Node, Outer, Captured[Index].Local.Name, False) then
-        begin
-          Exit(Fail('ein Name verdeckt ' + Captured[Index].Local.Name, AReason));
-        end;
-        Found := TRoutineLocals.IndexOf(OuterLocals, Captured[Index].Local.Name, Node.StartOffset);
-        if (Found >= 0) and (OuterLocals[Found].Decl <> Captured[Index].Local.Decl) then
-        begin
-          Exit(Fail('ein Name verdeckt ' + Captured[Index].Local.Name, AReason));
-        end;
-      end;
-      if not CallEdit(Tokens, Node, InnerIsFunction, NewName, Arguments, OuterEdits) then
-      begin
-        Exit(Fail(Inner.Name + ' wird nicht nur aufgerufen', AReason));
-      end;
-      Inc(Calls);
-    end;
-    // Kopf der neuen Routine.
-    if not TRoutineParts.NameTokens(Tokens, Header, NameFirst, NameLast) then
-    begin
-      Exit(Fail('Kopf nicht lesbar', AReason));
-    end;
-    Name := NewName;
-    if IsMethod then
-    begin
-      Name := ClassName + '.' + NewName;
-    end;
-    InnerEdits := InnerEdits + [TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
-      TRoutineParts.HeadText(AText, Header, Name, Parameters, IsClass) + ConstLines)];
-    Declaration := TRoutineParts.HeadText(AText, Header, NewName, Parameters, IsClass);
-    // Eine statische Klassenmethode hat kein Self: die neue auch nicht.
-    if IsClass then
-    begin
-      for Index := 0 to TypeBody.ChildCount - 1 do
-      begin
-        if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeBody[Index].Name,
-          TRoutineBody.ShortNameOf(Outer.Name)) and TRoutineParts.HasWord(Tokens, TypeBody[Index], ['static']) then
-        begin
-          Declaration := Declaration + ' static;';
-          Break;
-        end;
-      end;
-    end;
-    // Text: ganze Zeilen samt Kommentaren darüber, eingerückt wie die äußere Routine.
-    FirstLine := TRoutineBody.RoutineInsertLine(AText, Inner);
-    LastLine := Inner.EndPos.Line;
-    TextLines := TTextLines.SplitLines(AText);
-    Indent := TTextLines.IndentOf(AText, Outer.StartPos.Line);
-    Moved := TRoutineParts.ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
-      Inner.EndOffset - Lines.OffsetAt(TTextPosition.Create(FirstLine, 0))),
-      Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)), InnerEdits);
-    Moved := TRoutineBody.Reindent(TrimLeft(Moved), InnerIndent, Indent, LineBreak);
-    Edits := nil;
-    // Entfernen, mit einer der Leerzeilen um die Routine.
-    // Folgt dann begin, auch die Leerzeile davor.
-    RemoveStart := FirstLine;
-    RemoveEnd := LastLine + 1;
-    if TRoutineParts.LineIsBlank(TextLines, FirstLine - 1) and TRoutineParts.LineIsBlank(TextLines, RemoveEnd) then
-    begin
-      Inc(RemoveEnd);
-    end;
-    if TRoutineParts.LineIsBlank(TextLines, RemoveStart - 1) and (RemoveEnd = TRoutineBody.BodyOf(Outer).StartPos.Line) then
-    begin
-      Dec(RemoveStart);
-    end;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(RemoveStart, 0, RemoveEnd, 0), '')];
-    for Index := 0 to High(OuterEdits) do
-    begin
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Lines.PositionAt(OuterEdits[Index].Start),
-        Lines.PositionAt(OuterEdits[Index].Stop)), OuterEdits[Index].Text)];
-    end;
-    if IsMethod then
-    begin
-      InsertLine := Outer.EndPos.Line + 1;
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
-        LineBreak + Moved + LineBreak)];
-      if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, TMemberEntry.Create('private', Declaration),
-        AStyle, Edit) then
-      begin
-        Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
-      end;
-      Edits := Edits + [Edit];
-    end
-    else
-    begin
-      InsertLine := TRoutineBody.RoutineInsertLine(AText, Outer);
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
-        Moved + LineBreak + LineBreak)];
-    end;
-    AAction.Edits := Edits;
-    AAction.Preview := Format('Neue Signatur: %s', [TRoutineParts.HeadText(AText, Header, Name, Parameters, IsClass)]) +
-      LineBreak + Format('Geänderte Aufrufe: %d', [Calls]);
-    Result := True;
-  finally
-    Identifiers.Free;
-    Cache.Free;
+    Result := CallsIssue;
   end;
+  if Result = '' then
+  begin
+    Result := HeadIssue;
+  end;
+  if Result = '' then
+  begin
+    Result := EditsIssue(AAction);
+  end;
+end;
+
+function ExtractCore(const ARequest: TNestedRoutineRequest; out AAction: TCodeAction; out AReason: string): Boolean;
+var
+  mWork: TExtraction;
+begin
+  AAction := Default(TCodeAction);
+  mWork := Default(TExtraction);
+  mWork.Request := ARequest;
+  AReason := mWork.LocateIssue(ARequest.Position);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  AAction.Title := mWork.Title;
+  AAction.Kind := RewriteKind;
+  if mWork.InNested then
+  begin
+    // Hinweis statt Aktion: Die mittlere Routine müsste erst selbst heraus.
+    AAction.Disabled := Format('%s liegt in der lokalen Routine %s; erst diese umwandeln', [mWork.Inner.Name,
+      mWork.Outer.Name]);
+    Exit(True);
+  end;
+  AReason := mWork.FormIssue;
+  if AReason = '' then
+  begin
+    mWork.Cache := TLocalsCache.Create(ARequest.Text, ARequest.Tree);
+    try
+      AReason := mWork.Run(AAction);
+    finally
+      mWork.Cache.Free;
+    end;
+  end;
+  Result := AReason = '';
 end;
 
 { Umwandlung: Routine hinein }
 
-function EmbedCore(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
-  out AAction: TCodeAction; out AReason: string): Boolean;
-var
-  Lines: TLineTable;
-  TextLines: TArray<string>;
-  Tokens: TArray<TPascalToken>;
-  Routine, Declaration, Header, TypeBody, Node, Reference, Caller, Call, CallerBody, Section, Child: TSyntaxNode;
-  References, Identifiers, Arguments, Sections: TArray<TSyntaxNode>;
-  Collected: TList<TSyntaxNode>;
-  Cache: TLocalsCache;
-  CallerLocals: TArray<TRoutineLocal>;
-  Parameters, Kept: TArray<TParameterText>;
-  Removed: TArray<Boolean>;
-  Renamed: TDictionary<string, string>;
-  Short, ClassName, LineBreak, Indent, Moved, Target, ArgumentText, ParameterType: string;
-  IsMethod, IsClass, Recursive, Any: Boolean;
-  Index, Found, FirstLine, RemoveEnd, BeginLine: Integer;
-  RoutineEdits: TArray<TOffsetEdit>;
-  Edits: TArray<TTextEdit>;
-  Members: TArray<string>;
-begin
-  AAction := Default(TCodeAction);
-  AReason := '';
-  if (ATree = nil) or (ATree.Root = nil) then
-  begin
-    Exit(Fail('kein Baum', AReason));
+type
+  /// <summary>Arbeitsstand von „Als lokale Routine einbetten“ bzw. „In lokale Routine umwandeln“: die Routine
+  /// Routine (Deklaration Declaration in der Klasse), ihr einziger Bezug Reference im Rumpf von Caller, die
+  /// Argumente des Aufrufs Call und die durchgereichten Parameter (Removed, Renamed: Parameter → Name des
+  /// Aufrufers).</summary>
+  TEmbedding = record
+    Request: TNestedRoutineRequest;
+    RemovePassThrough: Boolean;
+    Lines: TLineTable;
+    Tokens: TArray<TPascalToken>;
+    Routine: TSyntaxNode;
+    Declaration: TSyntaxNode;
+    Header: TSyntaxNode;
+    TypeBody: TSyntaxNode;
+    Short: string;
+    QualifiedClass: string;
+    IsMethod: Boolean;
+    IsClass: Boolean;
+    Cache: TLocalsCache;
+    Renamed: TDictionary<string, string>;
+    Reference: TSyntaxNode;
+    Recursive: Boolean;
+    Caller: TSyntaxNode;
+    CallerBody: TSyntaxNode;
+    Call: TSyntaxNode;
+    Arguments: TArray<TSyntaxNode>;
+    Parameters: TArray<TParameterText>;
+    Removed: TArray<Boolean>;
+    Identifiers: TArray<TSyntaxNode>;
+    CallerLocals: TArray<TRoutineLocal>;
+    LineBreak: string;
+    /// <summary>Routine der Implementierung mit Kopf an APosition.</summary>
+    function LocateIssue(const APosition: TTextPosition): string;
+    /// <summary>Die einzige Deklaration der Methode in der Klasse; sonst der Grund.</summary>
+    function FindDeclaration: string;
+    /// <summary>Private, nicht virtuelle Methode einer Klasse der Datei.</summary>
+    function MethodDeclarationIssue: string;
+    /// <summary>Deklariert ASection die Routine noch einmal?</summary>
+    function DeclaredIn(ASection: TSyntaxNode): Boolean;
+    /// <summary>Im interface oder vorab deklariert: von außen bzw. vor der Implementierung sichtbar.</summary>
+    function UnitDeclarationIssue: string;
+    function DeclarationIssue: string;
+    /// <summary>Self.Name innerhalb einer Methode?</summary>
+    function IsSelfAccess(ANode: TSyntaxNode): Boolean;
+    /// <summary>Bezüge: genau ein Aufruf außerhalb der Routine.</summary>
+    function ReferenceIssue: string;
+    /// <summary>Nur Aufrufe, kein Methodenzeiger oder Ereignis.</summary>
+    function UsageIssue: string;
+    /// <summary>Aufrufer: Routine bzw. Methode derselben Art in der Implementierung.</summary>
+    function CallerIssue: string;
+    /// <summary>Schreibt der Rumpf den Parameter AIndex, der dann kein var ist?</summary>
+    function ParameterWritten(AIndex: Integer): Boolean;
+    /// <summary>Meint ATarget im Rumpf schon etwas anderes?</summary>
+    function TargetTaken(AIndex: Integer; const ATarget: string): Boolean;
+    /// <summary>Argument AIndex ist eine Variable oder ein Parameter des Aufrufers mit demselben Typ; ATarget ist
+    /// ihr Name.</summary>
+    function IsPassThrough(AIndex: Integer; out ATarget: string): Boolean;
+    function PassThroughIssue: string;
+    function ParametersIssue: string;
+    /// <summary>Lokale Namen der Klasse des Aufrufers, wenn eine freie Routine in eine Methode wandert.</summary>
+    function CallerMembers: TArray<string>;
+    function BodyNameIssue(ANode: TSyntaxNode; const AMembers: TArray<string>): string;
+    /// <summary>Typangaben samt Kopf: ein lokaler Typ des Aufrufers verdeckte sie.</summary>
+    function TypeShadowIssue: string;
+    /// <summary>Namen des Rumpfs, die der Aufrufer anders belegt, änderten ihre Bedeutung.</summary>
+    function ShadowIssue: string;
+    function KeptParameters: TArray<TParameterText>;
+    /// <summary>Rumpf: Kopf ohne Klasse, durchgereichte Parameter durch die Namen des Aufrufers ersetzt.</summary>
+    function BodyEdits(const AKept: TArray<TParameterText>): TArray<TOffsetEdit>;
+    function MovedText(const AKept: TArray<TParameterText>): string;
+    function RemovalEdits: TArray<TTextEdit>;
+    function InsertEdit(const AMoved: string; ABeginLine: Integer): TTextEdit;
+    function ArgumentText: string;
+    /// <summary>Aufruf: Self. entfällt, durchgereichte Argumente auch.</summary>
+    function CallEdits: TArray<TTextEdit>;
+    function Title: string;
+    function BuildIssue(var AAction: TCodeAction): string;
+    function Run(var AAction: TCodeAction): string;
   end;
-  Lines := TLineTable.Build(AText);
-  Tokens := ATree.Tokens;
-  Routine := TRoutineParts.TopRoutineAt(ATree, Lines.OffsetAt(APosition), Declaration);
+
+function TEmbedding.LocateIssue(const APosition: TTextPosition): string;
+begin
+  if (Request.Tree = nil) or (Request.Tree.Root = nil) then
+  begin
+    Exit('kein Baum');
+  end;
+  Lines := TLineTable.Build(Request.Text);
+  Tokens := Request.Tree.Tokens;
+  Routine := TRoutineParts.TopRoutineAt(Request.Tree, Lines.OffsetAt(APosition), Declaration);
   if (Routine = nil) or (Routine.Parent = nil) or (Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
   begin
-    Exit(Fail('keine Routine der Implementierung', AReason));
+    Exit('keine Routine der Implementierung');
   end;
   Header := TRoutineParts.HeaderOf(Routine);
   if (Header = nil) or (TRoutineBody.BodyOf(Routine) = nil) then
   begin
-    Exit(Fail('Routine ohne Rumpf', AReason));
+    Exit('Routine ohne Rumpf');
   end;
   Short := TRoutineBody.ShortNameOf(Routine.Name);
-  ClassName := TRoutineBody.QualifierOf(Routine.Name);
-  IsMethod := ClassName <> '';
+  QualifiedClass := TRoutineBody.QualifierOf(Routine.Name);
+  IsMethod := QualifiedClass <> '';
   IsClass := TRoutineParts.IsClassHeader(Tokens, Header);
-  if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or (Pos('<', ClassName) > 0) or
-    (Pos('.', ClassName) > 0) then
+  Result := '';
+  if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or
+    (Pos('<', QualifiedClass) > 0) or (Pos('.', QualifiedClass) > 0) then
   begin
-    Exit(Fail('nicht unterstützte Form', AReason));
+    Result := 'nicht unterstützte Form';
   end;
+end;
+
+function TEmbedding.FindDeclaration: string;
+var
+  mIndex: Integer;
+begin
+  Declaration := nil;
+  for mIndex := 0 to TypeBody.ChildCount - 1 do
+  begin
+    if (TypeBody[mIndex].Kind <> TSyntaxKind.RoutineHeader) or not SameText(TypeBody[mIndex].Name, Short) then
+    begin
+      Continue;
+    end;
+    if Declaration <> nil then
+    begin
+      Exit('überladen');
+    end;
+    Declaration := TypeBody[mIndex];
+  end;
+  Result := '';
+  if Declaration = nil then
+  begin
+    Result := 'Deklaration fehlt';
+  end;
+end;
+
+function TEmbedding.MethodDeclarationIssue: string;
+begin
+  TypeBody := TRoutineBody.TypeBody(Request.Tree.Root, QualifiedClass);
+  if TypeBody = nil then
+  begin
+    Exit('Klasse ' + QualifiedClass + ' nicht in der Datei');
+  end;
+  Result := FindDeclaration;
+  if (Result = '') and not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration),
+    ['private', 'strict private']) then
+  begin
+    Result := 'nicht privat';
+  end;
+  if (Result = '') and TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract',
+    'message', 'overload', 'reintroduce', 'final', 'static']) then
+  begin
+    Result := 'virtuell, Botschaft oder überladen';
+  end;
+end;
+
+function TEmbedding.DeclaredIn(ASection: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mChild := ASection[mIndex];
+    if (mChild <> Routine) and (mChild.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl]) and
+      SameText(mChild.Name, Short) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TEmbedding.UnitDeclarationIssue: string;
+var
+  mSection: TSyntaxNode;
+begin
+  for mSection in TArray<TSyntaxNode>.Create(Request.Tree.Root.FindChild(TSyntaxKind.InterfaceSection),
+    Routine.Parent) do
+  begin
+    if (mSection <> nil) and DeclaredIn(mSection) then
+    begin
+      Exit('auch anderswo deklariert');
+    end;
+  end;
+  Result := '';
+end;
+
+function TEmbedding.DeclarationIssue: string;
+begin
   if IsMethod then
   begin
-    TypeBody := TRoutineBody.TypeBody(ATree.Root, ClassName);
-    if TypeBody = nil then
-    begin
-      Exit(Fail('Klasse ' + ClassName + ' nicht in der Datei', AReason));
-    end;
-    Declaration := nil;
-    for Index := 0 to TypeBody.ChildCount - 1 do
-    begin
-      if (TypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(TypeBody[Index].Name, Short) then
-      begin
-        if Declaration <> nil then
-        begin
-          Exit(Fail('überladen', AReason));
-        end;
-        Declaration := TypeBody[Index];
-      end;
-    end;
-    if Declaration = nil then
-    begin
-      Exit(Fail('Deklaration fehlt', AReason));
-    end;
-    if not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration), ['private', 'strict private']) then
-    begin
-      Exit(Fail('nicht privat', AReason));
-    end;
-    if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message', 'overload',
-      'reintroduce', 'final', 'static']) then
-    begin
-      Exit(Fail('virtuell, Botschaft oder überladen', AReason));
-    end;
+    Result := MethodDeclarationIssue;
   end
   else
   begin
-    // Im interface oder vorab deklariert: von außen bzw. vor der Implementierung sichtbar.
-    Sections := [ATree.Root.FindChild(TSyntaxKind.InterfaceSection), Routine.Parent];
-    for Section in Sections do
+    Result := UnitDeclarationIssue;
+  end;
+end;
+
+function TEmbedding.IsSelfAccess(ANode: TSyntaxNode): Boolean;
+begin
+  Result := IsMethod and (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self');
+end;
+
+function TEmbedding.ReferenceIssue: string;
+var
+  mNode: TSyntaxNode;
+  mReferences, mCandidates: TArray<TSyntaxNode>;
+begin
+  mReferences := nil;
+  Recursive := False;
+  mCandidates := Collected(Request.Tree.Root, TSyntaxKind.Identifier) +
+    Collected(Request.Tree.Root, TSyntaxKind.MemberAccess);
+  for mNode in mCandidates do
+  begin
+    if not SameText(mNode.Name, Short) then
     begin
-      if Section <> nil then
-      begin
-        for Index := 0 to Section.ChildCount - 1 do
-        begin
-          Child := Section[Index];
-          if (Child <> Routine) and (Child.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl]) and
-            SameText(Child.Name, Short) then
-          begin
-            Exit(Fail('auch anderswo deklariert', AReason));
-          end;
-        end;
-      end;
+      Continue;
+    end;
+    if (mNode.Kind = TSyntaxKind.MemberAccess) and not IsSelfAccess(mNode) then
+    begin
+      Exit('über ein anderes Objekt benutzt');
+    end;
+    if (mNode.Kind <> TSyntaxKind.MemberAccess) and TRoutineParts.Shadowed(Cache, mNode, nil, Short, False) then
+    begin
+      Continue;
+    end;
+    if TRoutineBody.Within(mNode, Routine) then
+    begin
+      Recursive := True;
+      Continue;
+    end;
+    mReferences := mReferences + [mNode];
+  end;
+  if Length(mReferences) <> 1 then
+  begin
+    Exit('nicht genau ein Aufruf');
+  end;
+  Reference := mReferences[0];
+  Result := '';
+end;
+
+function TEmbedding.UsageIssue: string;
+var
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Call := nil;
+  Arguments := nil;
+  Result := '';
+  mNode := Reference.Parent;
+  if (mNode.Kind = TSyntaxKind.Call) and (mNode[0] = Reference) then
+  begin
+    Call := mNode;
+    for mIndex := 1 to Call.ChildCount - 1 do
+    begin
+      Arguments := Arguments + [Call[mIndex]];
+    end;
+  end
+  else if (mNode.Kind <> TSyntaxKind.CallStatement) and (not TRoutineParts.IsFunction(Routine) or
+    (mNode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call, TSyntaxKind.AddressOf])) then
+  begin
+    Result := 'nicht als Aufruf benutzt';
+  end;
+end;
+
+function TEmbedding.CallerIssue: string;
+begin
+  Caller := Reference.Parent;
+  while (Caller <> nil) and (Caller.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    Caller := Caller.Parent;
+  end;
+  if (Caller = nil) or (Caller = Routine) or (Caller.Parent <> Routine.Parent) or
+    not TRoutineBody.Within(Reference, TRoutineBody.BodyOf(Caller)) then
+  begin
+    Exit('Aufrufer ist keine Routine der Implementierung');
+  end;
+  if IsMethod and (not SameText(TRoutineBody.QualifierOf(Caller.Name), QualifiedClass) or
+    (TRoutineParts.IsClassHeader(Tokens, TRoutineParts.HeaderOf(Caller)) <> IsClass)) then
+  begin
+    Exit('Aufrufer ist keine Methode derselben Art');
+  end;
+  CallerBody := TRoutineBody.BodyOf(Caller);
+  Result := UsageIssue;
+end;
+
+function TEmbedding.ParameterWritten(AIndex: Integer): Boolean;
+begin
+  Result := (Parameters[AIndex].Modifier = '') and WritesName(Cache, Identifiers, Routine, Parameters[AIndex].Name,
+    Request.Lookup.Flow);
+end;
+
+function TEmbedding.TargetTaken(AIndex: Integer; const ATarget: string): Boolean;
+begin
+  Result := not SameText(ATarget, Parameters[AIndex].Name) and (Cache.Declares(Routine, ATarget, MaxInt) or
+    UsesName(Identifiers, ATarget));
+end;
+
+function TEmbedding.IsPassThrough(AIndex: Integer; out ATarget: string): Boolean;
+var
+  mFound: Integer;
+  mType: string;
+begin
+  ATarget := '';
+  if Arguments[AIndex].Kind <> TSyntaxKind.Identifier then
+  begin
+    Exit(False);
+  end;
+  mFound := TRoutineLocals.IndexOf(CallerLocals, Arguments[AIndex].Name, Arguments[AIndex].StartOffset);
+  if (mFound < 0) or not (CallerLocals[mFound].Kind in [TRoutineLocalKind.Parameter, TRoutineLocalKind.Variable]) then
+  begin
+    Exit(False);
+  end;
+  mType := Trim(Copy(Parameters[AIndex].Rest, 2, MaxInt));
+  ATarget := CallerLocals[mFound].Name;
+  Result := (mType <> '') and SameText(mType, CallerLocals[mFound].TypeText) and not TargetTaken(AIndex, ATarget) and
+    not ParameterWritten(AIndex);
+end;
+
+function TEmbedding.PassThroughIssue: string;
+var
+  mIndex: Integer;
+  mTarget: string;
+  mAny: Boolean;
+begin
+  if Recursive then
+  begin
+    Exit('rekursiv');
+  end;
+  mAny := False;
+  for mIndex := 0 to Min(High(Parameters), High(Arguments)) do
+  begin
+    if IsPassThrough(mIndex, mTarget) then
+    begin
+      Removed[mIndex] := True;
+      Renamed.AddOrSetValue(LowerCase(Parameters[mIndex].Name), mTarget);
+      mAny := True;
     end;
   end;
-  Cache := TLocalsCache.Create(AText, ATree);
-  Collected := TList<TSyntaxNode>.Create;
-  Renamed := TDictionary<string, string>.Create;
-  try
-    // Bezüge: genau ein Aufruf außerhalb der Routine.
-    References := nil;
-    Recursive := False;
-    TRoutineLocals.CollectKind(ATree.Root, TSyntaxKind.Identifier, Collected);
-    TRoutineLocals.CollectKind(ATree.Root, TSyntaxKind.MemberAccess, Collected);
-    for Node in Collected do
-    begin
-      if not SameText(Node.Name, Short) then
-      begin
-        Continue;
-      end;
-      if Node.Kind = TSyntaxKind.MemberAccess then
-      begin
-        if not IsMethod or (Node[0].Kind <> TSyntaxKind.Identifier) or not SameText(Node[0].Name, 'Self') then
-        begin
-          Exit(Fail('über ein anderes Objekt benutzt', AReason));
-        end;
-      end
-      else if TRoutineParts.Shadowed(Cache, Node, nil, Short, False) then
-      begin
-        Continue;
-      end;
-      if TRoutineBody.Within(Node, Routine) then
-      begin
-        Recursive := True;
-        Continue;
-      end;
-      References := References + [Node];
-    end;
-    if Length(References) <> 1 then
-    begin
-      Exit(Fail('nicht genau ein Aufruf', AReason));
-    end;
-    Reference := References[0];
-    Caller := Reference.Parent;
-    while (Caller <> nil) and (Caller.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      Caller := Caller.Parent;
-    end;
-    if (Caller = nil) or (Caller = Routine) or (Caller.Parent <> Routine.Parent) or
-      not TRoutineBody.Within(Reference, TRoutineBody.BodyOf(Caller)) then
-    begin
-      Exit(Fail('Aufrufer ist keine Routine der Implementierung', AReason));
-    end;
-    if IsMethod and (not SameText(TRoutineBody.QualifierOf(Caller.Name), ClassName) or
-      (TRoutineParts.IsClassHeader(Tokens, TRoutineParts.HeaderOf(Caller)) <> IsClass)) then
-    begin
-      Exit(Fail('Aufrufer ist keine Methode derselben Art', AReason));
-    end;
-    // Nur Aufrufe, kein Methodenzeiger oder Ereignis.
-    Call := nil;
-    Node := Reference.Parent;
-    if (Node.Kind = TSyntaxKind.Call) and (Node[0] = Reference) then
-    begin
-      Call := Node;
-    end
-    else if (Node.Kind <> TSyntaxKind.CallStatement) and (not TRoutineParts.IsFunction(Routine) or
-      (Node.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call, TSyntaxKind.AddressOf])) then
-    begin
-      Exit(Fail('nicht als Aufruf benutzt', AReason));
-    end;
-    Arguments := nil;
-    if Call <> nil then
-    begin
-      for Index := 1 to Call.ChildCount - 1 do
-      begin
-        Arguments := Arguments + [Call[Index]];
-      end;
-    end;
-    Parameters := TRoutineParts.ParameterTexts(AText, Header);
-    if (Parameters = nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) and
-      (Header.FindChild(TSyntaxKind.Parameters).ChildCount > 0) then
-    begin
-      Exit(Fail('nicht unterstützte Parameter', AReason));
-    end;
-    SetLength(Removed, Length(Parameters));
-    for Index := 0 to High(Removed) do
-    begin
-      Removed[Index] := False;
-    end;
-    Identifiers := nil;
-    Collected.Clear;
-    TRoutineLocals.CollectKind(TRoutineBody.BodyOf(Routine), TSyntaxKind.Identifier, Collected);
-    Identifiers := Collected.ToArray;
-    CallerLocals := Cache.Locals(Caller);
-    // Durchgereichte Parameter: Argument ist eine Variable oder ein Parameter des Aufrufers mit demselben Typ.
-    if ARemovePassThrough then
-    begin
-      if Recursive then
-      begin
-        Exit(Fail('rekursiv', AReason));
-      end;
-      Any := False;
-      for Index := 0 to Min(High(Parameters), High(Arguments)) do
-      begin
-        if Arguments[Index].Kind <> TSyntaxKind.Identifier then
-        begin
-          Continue;
-        end;
-        Found := TRoutineLocals.IndexOf(CallerLocals, Arguments[Index].Name, Arguments[Index].StartOffset);
-        if (Found < 0) or not (CallerLocals[Found].Kind in [TRoutineLocalKind.Parameter,
-          TRoutineLocalKind.Variable]) then
-        begin
-          Continue;
-        end;
-        ParameterType := Trim(Copy(Parameters[Index].Rest, 2, MaxInt));
-        if (ParameterType = '') or not SameText(ParameterType, CallerLocals[Found].TypeText) then
-        begin
-          Continue;
-        end;
-        Target := CallerLocals[Found].Name;
-        if not SameText(Target, Parameters[Index].Name) and (Cache.Declares(Routine, Target, MaxInt) or
-          UsesName(Identifiers, Target)) then
-        begin
-          Continue;
-        end;
-        if (Parameters[Index].Modifier = '') and WritesName(Cache, Identifiers, Routine, Parameters[Index].Name,
-          ALookup.Flow) then
-        begin
-          Continue;
-        end;
-        Removed[Index] := True;
-        Renamed.AddOrSetValue(LowerCase(Parameters[Index].Name), Target);
-        Any := True;
-      end;
-      if not Any then
-      begin
-        Exit(Fail('keine durchgereichten Parameter', AReason));
-      end;
-    end;
-    // Namen des Rumpfs, die der Aufrufer anders belegt, änderten ihre Bedeutung.
-    CallerBody := TRoutineBody.BodyOf(Caller);
-    if Cache.Declares(Caller, Short, CallerBody.StartOffset - 1) then
-    begin
-      Exit(Fail(Caller.Name + ' kennt schon ' + Short, AReason));
-    end;
-    Members := nil;
-    if not IsMethod and (TRoutineBody.QualifierOf(Caller.Name) <> '') and (TRoutineBody.TypeBody(ATree.Root,
-      TRoutineBody.QualifierOf(Caller.Name)) <> nil) then
-    begin
-      Members := TRoutineBody.MemberNames(TRoutineBody.TypeBody(ATree.Root, TRoutineBody.QualifierOf(Caller.Name)));
-    end;
-    for Node in Identifiers do
-    begin
-      if TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, True) then
-      begin
-        Continue;
-      end;
-      if Renamed.ContainsValue(Node.Name) then
-      begin
-        Continue;
-      end;
-      if Cache.Declares(Caller, Node.Name, CallerBody.StartOffset - 1) and not SameText(Node.Name, 'Result') then
-      begin
-        Exit(Fail(Caller.Name + ' verdeckt ' + Node.Name, AReason));
-      end;
-      if IndexText(Node.Name, Members) >= 0 then
-      begin
-        Exit(Fail('ein Mitglied der Klasse verdeckt ' + Node.Name, AReason));
-      end;
-    end;
-    // Typangaben samt Kopf: ein lokaler Typ des Aufrufers verdeckte sie.
-    Collected.Clear;
-    TRoutineLocals.CollectKind(Routine, TSyntaxKind.TypeReference, Collected);
-    for Node in Collected do
-    begin
-      if not TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, True) and Cache.Declares(Caller, Node.Name,
-        CallerBody.StartOffset - 1) then
-      begin
-        Exit(Fail(Caller.Name + ' verdeckt ' + Node.Name, AReason));
-      end;
-    end;
-    if SameText(Short, 'Result') then
-    begin
-      Exit(Fail('Name Result', AReason));
-    end;
-    // Rumpf: Kopf ohne Klasse, durchgereichte Parameter durch die Namen des Aufrufers ersetzt.
-    Kept := nil;
-    for Index := 0 to High(Parameters) do
-    begin
-      if not Removed[Index] then
-      begin
-        Kept := Kept + [Parameters[Index]];
-      end;
-    end;
-    RoutineEdits := [TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
-      TRoutineParts.HeadText(AText, Header, Short, Kept, False))];
-    for Node in Identifiers do
-    begin
-      if Renamed.TryGetValue(LowerCase(Node.Name), Target) and not TRoutineParts.Shadowed(Cache, Node, Routine, Node.Name, False) and
-        not SameText(Node.Name, Target) then
-      begin
-        RoutineEdits := RoutineEdits + [TOffsetEdit.Create(Node.StartOffset, Node.EndOffset, Target)];
-      end;
-    end;
-    LineBreak := TTextLines.LineBreakOf(AText);
-    TextLines := TTextLines.SplitLines(AText);
-    FirstLine := TRoutineBody.RoutineInsertLine(AText, Routine);
-    Moved := TRoutineParts.ApplyEdits(Copy(AText, Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)) + 1,
-      Routine.EndOffset - Lines.OffsetAt(TTextPosition.Create(FirstLine, 0))),
-      Lines.OffsetAt(TTextPosition.Create(FirstLine, 0)), RoutineEdits);
-    Indent := TTextLines.IndentOf(AText, Caller.StartPos.Line) + TRoutineBody.IndentUnit(AStyle);
-    Moved := TRoutineBody.Reindent(TrimLeft(Moved), TTextLines.IndentOf(AText, Routine.StartPos.Line), Indent,
-      LineBreak);
-    BeginLine := CallerBody.StartPos.Line;
-    if CallerBody.StartPos.Character <> Length(TTextLines.IndentOf(AText, BeginLine)) then
-    begin
-      Exit(Fail('begin des Aufrufers steht nicht am Zeilenanfang', AReason));
-    end;
-    Edits := nil;
-    RemoveEnd := Routine.EndPos.Line + 1;
-    if TRoutineParts.LineIsBlank(TextLines, FirstLine - 1) and TRoutineParts.LineIsBlank(TextLines, RemoveEnd) then
-    begin
-      Inc(RemoveEnd);
-    end;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(FirstLine, 0, RemoveEnd, 0), '')];
-    if Declaration <> nil then
-    begin
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Declaration.StartPos.Line, 0,
-        Declaration.EndPos.Line + 1, 0), '')];
-    end;
-    if TRoutineParts.LineIsBlank(TextLines, BeginLine - 1) then
-    begin
-      Moved := Moved + LineBreak + LineBreak;
-    end
-    else
-    begin
-      Moved := LineBreak + Moved + LineBreak + LineBreak;
-    end;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(BeginLine, 0, BeginLine, 0), Moved)];
-    // Aufruf: Self. entfällt, durchgereichte Argumente auch.
-    if Reference.Kind = TSyntaxKind.MemberAccess then
-    begin
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Reference.StartPos, Reference.EndPos), Short)];
-    end;
-    if ARemovePassThrough then
-    begin
-      ArgumentText := '';
-      for Index := 0 to High(Arguments) do
-      begin
-        if (Index > High(Removed)) or not Removed[Index] then
-        begin
-          if ArgumentText <> '' then
-          begin
-            ArgumentText := ArgumentText + ', ';
-          end;
-          ArgumentText := ArgumentText + TRoutineBody.TextOf(AText, Arguments[Index]);
-        end;
-      end;
-      if ArgumentText <> '' then
-      begin
-        ArgumentText := '(' + ArgumentText + ')';
-      end;
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Call[0].EndPos, Call.EndPos), ArgumentText)];
-    end;
-    if IsMethod then
-    begin
-      AAction.Title := TNestedRoutines.EmbedMethodTitle;
-    end
-    else
-    begin
-      AAction.Title := TNestedRoutines.EmbedRoutineTitle;
-    end;
-    if ARemovePassThrough then
-    begin
-      AAction.Title := AAction.Title + TNestedRoutines.PassThroughSuffix;
-    end;
-    AAction.Kind := RewriteKind;
-    AAction.Edits := Edits;
-    AAction.Preview := Format('Neue lokale Routine in %s: %s', [Caller.Name,
-      TRoutineParts.HeadText(AText, Header, Short, Kept, False)]) + LineBreak + 'Geänderte Aufrufe: 1';
-    Result := True;
-  finally
-    Renamed.Free;
-    Collected.Free;
-    Cache.Free;
+  Result := '';
+  if not mAny then
+  begin
+    Result := 'keine durchgereichten Parameter';
   end;
+end;
+
+function TEmbedding.ParametersIssue: string;
+var
+  mIndex: Integer;
+begin
+  Parameters := TRoutineParts.ParameterTexts(Request.Text, Header);
+  if UnreadableParameters(Header, Parameters) then
+  begin
+    Exit('nicht unterstützte Parameter');
+  end;
+  SetLength(Removed, Length(Parameters));
+  for mIndex := 0 to High(Removed) do
+  begin
+    Removed[mIndex] := False;
+  end;
+  Identifiers := Collected(TRoutineBody.BodyOf(Routine), TSyntaxKind.Identifier);
+  CallerLocals := Cache.Locals(Caller);
+  Result := '';
+  // Durchgereichte Parameter: Argument ist eine Variable oder ein Parameter des Aufrufers mit demselben Typ.
+  if RemovePassThrough then
+  begin
+    Result := PassThroughIssue;
+  end;
+end;
+
+function TEmbedding.CallerMembers: TArray<string>;
+var
+  mQualifier: string;
+  mTypeBody: TSyntaxNode;
+begin
+  Result := nil;
+  mQualifier := TRoutineBody.QualifierOf(Caller.Name);
+  if IsMethod or (mQualifier = '') then
+  begin
+    Exit;
+  end;
+  mTypeBody := TRoutineBody.TypeBody(Request.Tree.Root, mQualifier);
+  if mTypeBody <> nil then
+  begin
+    Result := TRoutineBody.MemberNames(mTypeBody);
+  end;
+end;
+
+function TEmbedding.BodyNameIssue(ANode: TSyntaxNode; const AMembers: TArray<string>): string;
+begin
+  if TRoutineParts.Shadowed(Cache, ANode, Routine, ANode.Name, True) or Renamed.ContainsValue(ANode.Name) then
+  begin
+    Exit('');
+  end;
+  Result := '';
+  if Cache.Declares(Caller, ANode.Name, CallerBody.StartOffset - 1) and not SameText(ANode.Name, 'Result') then
+  begin
+    Result := Caller.Name + ' verdeckt ' + ANode.Name;
+  end
+  else if IndexText(ANode.Name, AMembers) >= 0 then
+  begin
+    Result := 'ein Mitglied der Klasse verdeckt ' + ANode.Name;
+  end;
+end;
+
+function TEmbedding.TypeShadowIssue: string;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in Collected(Routine, TSyntaxKind.TypeReference) do
+  begin
+    if not TRoutineParts.Shadowed(Cache, mNode, Routine, mNode.Name, True) and Cache.Declares(Caller, mNode.Name,
+      CallerBody.StartOffset - 1) then
+    begin
+      Exit(Caller.Name + ' verdeckt ' + mNode.Name);
+    end;
+  end;
+  Result := '';
+end;
+
+function TEmbedding.ShadowIssue: string;
+var
+  mMembers: TArray<string>;
+  mNode: TSyntaxNode;
+begin
+  if Cache.Declares(Caller, Short, CallerBody.StartOffset - 1) then
+  begin
+    Exit(Caller.Name + ' kennt schon ' + Short);
+  end;
+  mMembers := CallerMembers;
+  for mNode in Identifiers do
+  begin
+    Result := BodyNameIssue(mNode, mMembers);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+  Result := TypeShadowIssue;
+  if (Result = '') and SameText(Short, 'Result') then
+  begin
+    Result := 'Name Result';
+  end;
+end;
+
+function TEmbedding.KeptParameters: TArray<TParameterText>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Parameters) do
+  begin
+    if not Removed[mIndex] then
+    begin
+      Result := Result + [Parameters[mIndex]];
+    end;
+  end;
+end;
+
+function TEmbedding.BodyEdits(const AKept: TArray<TParameterText>): TArray<TOffsetEdit>;
+var
+  mNode: TSyntaxNode;
+  mTarget: string;
+begin
+  Result := TArray<TOffsetEdit>.Create(TOffsetEdit.Create(Header.StartOffset, Header.EndOffset,
+    TRoutineParts.HeadText(Request.Text, Header, Short, AKept, False)));
+  for mNode in Identifiers do
+  begin
+    if Renamed.TryGetValue(LowerCase(mNode.Name), mTarget) and
+      not TRoutineParts.Shadowed(Cache, mNode, Routine, mNode.Name, False) and not SameText(mNode.Name, mTarget) then
+    begin
+      Result := Result + [TOffsetEdit.Create(mNode.StartOffset, mNode.EndOffset, mTarget)];
+    end;
+  end;
+end;
+
+function TEmbedding.MovedText(const AKept: TArray<TParameterText>): string;
+var
+  mStart: Integer;
+  mIndent: string;
+begin
+  mStart := Lines.OffsetAt(TTextPosition.Create(TRoutineBody.RoutineInsertLine(Request.Text, Routine), 0));
+  Result := TRoutineParts.ApplyEdits(Copy(Request.Text, mStart + 1, Routine.EndOffset - mStart), mStart,
+    BodyEdits(AKept));
+  mIndent := TTextLines.IndentOf(Request.Text, Caller.StartPos.Line) + TRoutineBody.IndentUnit(Request.Style);
+  Result := TRoutineBody.Reindent(TrimLeft(Result), TTextLines.IndentOf(Request.Text, Routine.StartPos.Line),
+    mIndent, LineBreak);
+end;
+
+function TEmbedding.RemovalEdits: TArray<TTextEdit>;
+var
+  mTextLines: TArray<string>;
+  mFirstLine, mEnd: Integer;
+begin
+  mTextLines := TTextLines.SplitLines(Request.Text);
+  mFirstLine := TRoutineBody.RoutineInsertLine(Request.Text, Routine);
+  mEnd := Routine.EndPos.Line + 1;
+  if TRoutineParts.LineIsBlank(mTextLines, mFirstLine - 1) and TRoutineParts.LineIsBlank(mTextLines, mEnd) then
+  begin
+    Inc(mEnd);
+  end;
+  Result := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(mFirstLine, 0, mEnd, 0), ''));
+  if Declaration <> nil then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(Declaration.StartPos.Line, 0,
+      Declaration.EndPos.Line + 1, 0), '')];
+  end;
+end;
+
+function TEmbedding.InsertEdit(const AMoved: string; ABeginLine: Integer): TTextEdit;
+var
+  mText: string;
+begin
+  if TRoutineParts.LineIsBlank(TTextLines.SplitLines(Request.Text), ABeginLine - 1) then
+  begin
+    mText := AMoved + LineBreak + LineBreak;
+  end
+  else
+  begin
+    mText := LineBreak + AMoved + LineBreak + LineBreak;
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(ABeginLine, 0, ABeginLine, 0), mText);
+end;
+
+function TEmbedding.ArgumentText: string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(Arguments) do
+  begin
+    if (mIndex <= High(Removed)) and Removed[mIndex] then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + TRoutineBody.TextOf(Request.Text, Arguments[mIndex]);
+  end;
+  if Result <> '' then
+  begin
+    Result := '(' + Result + ')';
+  end;
+end;
+
+function TEmbedding.CallEdits: TArray<TTextEdit>;
+begin
+  Result := nil;
+  if Reference.Kind = TSyntaxKind.MemberAccess then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(Reference.StartPos, Reference.EndPos), Short)];
+  end;
+  if RemovePassThrough then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(Call[0].EndPos, Call.EndPos), ArgumentText)];
+  end;
+end;
+
+function TEmbedding.Title: string;
+begin
+  if IsMethod then
+  begin
+    Result := TNestedRoutines.EmbedMethodTitle;
+  end
+  else
+  begin
+    Result := TNestedRoutines.EmbedRoutineTitle;
+  end;
+  if RemovePassThrough then
+  begin
+    Result := Result + TNestedRoutines.PassThroughSuffix;
+  end;
+end;
+
+function TEmbedding.BuildIssue(var AAction: TCodeAction): string;
+var
+  mKept: TArray<TParameterText>;
+  mMoved: string;
+  mBeginLine: Integer;
+begin
+  LineBreak := TTextLines.LineBreakOf(Request.Text);
+  mKept := KeptParameters;
+  mMoved := MovedText(mKept);
+  mBeginLine := CallerBody.StartPos.Line;
+  if CallerBody.StartPos.Character <> Length(TTextLines.IndentOf(Request.Text, mBeginLine)) then
+  begin
+    Exit('begin des Aufrufers steht nicht am Zeilenanfang');
+  end;
+  AAction.Title := Title;
+  AAction.Kind := RewriteKind;
+  AAction.Edits := RemovalEdits + [InsertEdit(mMoved, mBeginLine)] + CallEdits;
+  AAction.Preview := Format('Neue lokale Routine in %s: %s', [Caller.Name,
+    TRoutineParts.HeadText(Request.Text, Header, Short, mKept, False)]) + LineBreak + 'Geänderte Aufrufe: 1';
+  Result := '';
+end;
+
+function TEmbedding.Run(var AAction: TCodeAction): string;
+begin
+  Result := ReferenceIssue;
+  if Result = '' then
+  begin
+    Result := CallerIssue;
+  end;
+  if Result = '' then
+  begin
+    Result := ParametersIssue;
+  end;
+  if Result = '' then
+  begin
+    Result := ShadowIssue;
+  end;
+  if Result = '' then
+  begin
+    Result := BuildIssue(AAction);
+  end;
+end;
+
+function EmbedCore(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean; out AAction: TCodeAction;
+  out AReason: string): Boolean;
+var
+  mWork: TEmbedding;
+begin
+  AAction := Default(TCodeAction);
+  mWork := Default(TEmbedding);
+  mWork.Request := ARequest;
+  mWork.RemovePassThrough := ARemovePassThrough;
+  AReason := mWork.LocateIssue(ARequest.Position);
+  if AReason = '' then
+  begin
+    AReason := mWork.DeclarationIssue;
+  end;
+  if AReason = '' then
+  begin
+    mWork.Cache := TLocalsCache.Create(ARequest.Text, ARequest.Tree);
+    mWork.Renamed := TDictionary<string, string>.Create;
+    try
+      AReason := mWork.Run(AAction);
+    finally
+      mWork.Renamed.Free;
+      mWork.Cache.Free;
+    end;
+  end;
+  Result := AReason = '';
+end;
+
+{ TNestedRoutineRequest }
+
+class function TNestedRoutineRequest.Create(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle): TNestedRoutineRequest;
+begin
+  Result.Text := AText;
+  Result.Tree := ATree;
+  Result.Position := APosition;
+  Result.Lookup := ALookup;
+  Result.Style := AStyle;
 end;
 
 { TNestedRoutines }
 
-class function TNestedRoutines.Extract(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+class function TNestedRoutines.Extract(const ARequest: TNestedRoutineRequest; out AAction: TCodeAction): Boolean;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := ExtractCore(AText, ATree, APosition, ALookup, AStyle, AAction, Reason);
+  Result := ExtractCore(ARequest, AAction, mReason);
 end;
 
-class function TNestedRoutines.Extract(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; out AAction: TCodeAction;
+class function TNestedRoutines.Extract(const ARequest: TNestedRoutineRequest; out AAction: TCodeAction;
   out AReason: string): Boolean;
 begin
-  Result := ExtractCore(AText, ATree, APosition, ALookup, AStyle, AAction, AReason);
+  Result := ExtractCore(ARequest, AAction, AReason);
 end;
 
-class function TNestedRoutines.Embed(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
+class function TNestedRoutines.Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
   out AAction: TCodeAction; out AReason: string): Boolean;
 begin
-  Result := EmbedCore(AText, ATree, APosition, ALookup, AStyle, ARemovePassThrough, AAction, AReason);
+  Result := EmbedCore(ARequest, ARemovePassThrough, AAction, AReason);
 end;
 
-class function TNestedRoutines.Embed(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle; ARemovePassThrough: Boolean;
+class function TNestedRoutines.Embed(const ARequest: TNestedRoutineRequest; ARemovePassThrough: Boolean;
   out AAction: TCodeAction): Boolean;
 var
-  Reason: string;
+  mReason: string;
 begin
-  Result := EmbedCore(AText, ATree, APosition, ALookup, AStyle, ARemovePassThrough, AAction, Reason);
+  Result := EmbedCore(ARequest, ARemovePassThrough, AAction, mReason);
 end;
 
 class function TNestedRoutines.Actions(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TNestedRoutineLookup; const AStyle: TFormatStyle): TArray<TCodeAction>;
 var
-  Action: TCodeAction;
+  mRequest: TNestedRoutineRequest;
+  mAction: TCodeAction;
 begin
   Result := nil;
-  if Extract(AText, ATree, APosition, ALookup, AStyle, Action) then
+  mRequest := TNestedRoutineRequest.Create(AText, ATree, APosition, ALookup, AStyle);
+  if Extract(mRequest, mAction) then
   begin
-    Result := Result + [Action];
+    Result := Result + [mAction];
   end;
-  if Embed(AText, ATree, APosition, ALookup, AStyle, False, Action) then
+  if Embed(mRequest, False, mAction) then
   begin
-    Result := Result + [Action];
-    if Embed(AText, ATree, APosition, ALookup, AStyle, True, Action) then
+    Result := Result + [mAction];
+    if Embed(mRequest, True, mAction) then
     begin
-      Result := Result + [Action];
+      Result := Result + [mAction];
     end;
   end;
 end;

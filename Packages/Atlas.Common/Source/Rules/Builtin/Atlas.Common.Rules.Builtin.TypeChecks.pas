@@ -162,7 +162,7 @@ var
     Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
       Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and Symbol.IsType;
     // Eingebaute Typen wie Integer stehen ohne System nicht im Index (#1369, Fall Cm.E2307).
-    if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TNameResolver.IsBuiltinTypeName(ANode.Name) and
+    if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TResolverText.IsBuiltinTypeName(ANode.Name) and
       (Length(Resolver.CallCandidates(AContext.Tree, FileName, ANode)) = 0) then
     begin
       AOther := not MatchText(ANode.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);

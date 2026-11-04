@@ -1090,8 +1090,8 @@ begin
     begin
       Exit;
     end;
-    mKnown := mResolver.MissingInterfaceMembers(AOwn, ATypeName, ABefore);
-    for mMember in mResolver.MissingInterfaceMembers(AOwn, ATypeName, ABefore + [AName]) do
+    mKnown := mResolver.Queries.MissingInterfaceMembers(AOwn, ATypeName, ABefore);
+    for mMember in mResolver.Queries.MissingInterfaceMembers(AOwn, ATypeName, ABefore + [AName]) do
     begin
       if not ContainsMember(mKnown, mMember) then
       begin

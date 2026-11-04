@@ -35,34 +35,34 @@ type
     FName: TEdit;
     FUnit: TComboBox;
     FList: TListView;
-    FAll: TButton;
-    FNone: TButton;
-    FNeeds: TButton;
     FAbstract: TCheckBox;
     FTarget: TComboBox;
     FTargetList: TCheckListBox;
     FOptionBox: TCheckBox;
     FError: TLabel;
-    FNotes: TLabel;
     FOk: TButton;
-    FCancel: TButton;
     FUpdating: Boolean;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer; AControl: TWinControl): Integer;
-    function OwnUnitCaption: string;
+    /// <summary>Knöpfe, Hinweise des Servers und Fehlerzeile unten.</summary>
+    procedure CreateFooter;
+    /// <summary>Name und Ziel-Unit oben; beim Verschieben die Ziele und die Wahl.</summary>
+    procedure CreateHeader;
+    /// <summary>Ziele und Wahl des Servers ab ARow; liefert die nächste freie Zeile.</summary>
+    function CreateMoveHeader(AHeader: TWinControl; ARow: Integer): Integer;
+    /// <summary>Knöpfe rechts neben der Liste.</summary>
+    procedure CreateSide;
+    procedure CreateList;
     procedure FillList;
     procedure Refresh;
     procedure ShowMode;
-    function KindText(AIndex: Integer): string;
-    function ProblemText(AProblem: TAtlasExtractionProblem; const ASubject: string): string;
     procedure NameChange(Sender: TObject);
     procedure TargetChange(Sender: TObject);
     procedure TargetClickCheck(Sender: TObject);
     procedure OptionClick(Sender: TObject);
-    function TargetCaption(AIndex: Integer): string;
     procedure UnitChange(Sender: TObject);
-    procedure AllClick(Sender: TObject);
-    procedure NoneClick(Sender: TObject);
+    /// <summary>„Alle“ (Tag 1) bzw. „Keine“ (Tag 0).</summary>
+    procedure CheckAllClick(Sender: TObject);
     procedure NeedsClick(Sender: TObject);
     procedure AbstractClick(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -90,15 +90,157 @@ const
   DialogWidth = 680;
   DialogHeight = 480;
 
+function OwnUnitCaption(AModel: TAtlasClassExtractionModel): string;
+begin
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersOwnUnit, [AModel.Source.OwnUnit]);
+end;
+
+function TargetCaption(AModel: TAtlasClassExtractionModel; AIndex: Integer): string;
+begin
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersTargetItem, [AModel.Targets[AIndex].Name,
+    AModel.Targets[AIndex].UnitName]);
+end;
+
+/// <summary>Hinweise des Servers, eine je Zeile.</summary>
+function NotesText(AModel: TAtlasClassExtractionModel): string;
+var
+  mNote: string;
+begin
+  Result := '';
+  for mNote in AModel.Source.Notes do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + sLineBreak;
+    end;
+    Result := Result + mNote;
+  end;
+end;
+
+function KindText(const AMember: TAtlasExtractionMember): string;
+begin
+  if AMember.Kind = 'property' then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty);
+  end
+  else if AMember.Kind = 'field' then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersField);
+  end
+  else if AMember.Abstract then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstractMethod);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersMethod);
+  end;
+end;
+
+/// <summary>Meldung zum Fehler der Eingabe in der Sprache der Oberfläche; '' ohne Fehler.</summary>
+function ProblemText(AModel: TAtlasClassExtractionModel; AProblem: TAtlasExtractionProblem;
+  const ASubject: string): string;
+var
+  mMember, mNeeded: string;
+begin
+  case AProblem of
+    TAtlasExtractionProblem.BadName:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersBadName, [ASubject]);
+    TAtlasExtractionProblem.SameName:
+      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersSameName);
+    TAtlasExtractionProblem.NoMembers:
+      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersNoMembers);
+    TAtlasExtractionProblem.BadUnit:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersBadUnit, [ASubject]);
+    TAtlasExtractionProblem.NoTarget:
+      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersNoTarget);
+    TAtlasExtractionProblem.MissingDependency:
+      begin
+        AModel.MissingDependency(mMember, mNeeded);
+        Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersMissing, [mMember, mNeeded]);
+      end;
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Nachfahren zum Ankreuzen.</summary>
+procedure FillTargetList(AList: TCheckListBox; AModel: TAtlasClassExtractionModel);
+var
+  mIndex: Integer;
+begin
+  AList.Items.BeginUpdate;
+  try
+    for mIndex := 0 to AModel.TargetCount - 1 do
+    begin
+      AList.Items.Add(TargetCaption(AModel, mIndex));
+      AList.Checked[mIndex] := AModel.Targets[mIndex].Checked;
+    end;
+  finally
+    AList.Items.EndUpdate;
+  end;
+end;
+
+/// <summary>Vorfahren zur Auswahl, der gewählte vorgewählt.</summary>
+procedure FillTargetBox(ABox: TComboBox; AModel: TAtlasClassExtractionModel);
+var
+  mIndex: Integer;
+begin
+  ABox.Items.BeginUpdate;
+  try
+    for mIndex := 0 to AModel.TargetCount - 1 do
+    begin
+      ABox.Items.Add(TargetCaption(AModel, mIndex));
+      if AModel.Targets[mIndex].Checked then
+      begin
+        ABox.ItemIndex := mIndex;
+      end;
+    end;
+  finally
+    ABox.Items.EndUpdate;
+  end;
+end;
+
+/// <summary>Unit der Klasse, die übrigen Units und das Ziel des Servers (refactoring.extractSuperclassTarget)
+/// vorgewählt.</summary>
+procedure FillUnits(ABox: TComboBox; AModel: TAtlasClassExtractionModel);
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  ABox.Items.BeginUpdate;
+  try
+    ABox.Items.Add(OwnUnitCaption(AModel));
+    for mName in AModel.Source.Units do
+    begin
+      if not SameText(mName, AModel.Source.OwnUnit) then
+      begin
+        ABox.Items.Add(mName);
+      end;
+    end;
+  finally
+    ABox.Items.EndUpdate;
+  end;
+  ABox.ItemIndex := 0;
+  if AModel.Target = '' then
+  begin
+    Exit;
+  end;
+  mIndex := ABox.Items.IndexOf(AModel.Target);
+  if mIndex >= 0 then
+  begin
+    ABox.ItemIndex := mIndex;
+  end
+  else
+  begin
+    ABox.Text := AModel.Target;
+  end;
+end;
+
 { TAtlasExtractMembersDialog }
 
 constructor TAtlasExtractMembersDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasClassExtractionModel;
   const ATitle: string);
-var
-  Bottom, Header, Right: TPanel;
-  Column: TListColumn;
-  Row: Integer;
-  Notes, Note: string;
 begin
   inherited CreateNew(AOwner);
   FModel := AModel;
@@ -110,38 +252,43 @@ begin
   Font.Size := 9;
   ClientWidth := ScaleValue(DialogWidth);
   ClientHeight := ScaleValue(DialogHeight);
-
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
-  FCancel := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersCancel), nil);
-  FCancel.Cancel := True;
-  FCancel.ModalResult := mrCancel;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersPreview), OkClick);
-  FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
-
-  // Hinweise des Servers und Fehler über den Knöpfen.
-  FNotes := TLabel.Create(Self);
-  FNotes.Parent := Self;
-  FNotes.Align := alBottom;
-  FNotes.AlignWithMargins := True;
-  FNotes.Margins.SetBounds(Gap, 0, Gap, Gap div 2);
-  FNotes.WordWrap := True;
-  FNotes.ShowAccelChar := False;
-  Notes := '';
-  for Note in AModel.Source.Notes do
+  CreateFooter;
+  CreateHeader;
+  CreateSide;
+  CreateList;
+  if FName <> nil then
   begin
-    if Notes <> '' then
-    begin
-      Notes := Notes + sLineBreak;
-    end;
-    Notes := Notes + Note;
+    ActiveControl := FName;
   end;
-  FNotes.Caption := Notes;
+end;
+
+procedure TAtlasExtractMembersDialog.CreateFooter;
+var
+  mBottom: TPanel;
+  mCancel: TButton;
+  mNotes: TLabel;
+begin
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
+  mCancel := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersCancel), nil);
+  mCancel.Cancel := True;
+  mCancel.ModalResult := mrCancel;
+  mCancel.Left := mBottom.ClientWidth - mCancel.Width - ScaleValue(Gap);
+  FOk := AddButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ExtractMembersPreview), OkClick);
+  FOk.Default := True;
+  FOk.Left := mCancel.Left - FOk.Width - ScaleValue(Gap);
+  // Hinweise des Servers und Fehler über den Knöpfen.
+  mNotes := TLabel.Create(Self);
+  mNotes.Parent := Self;
+  mNotes.Align := alBottom;
+  mNotes.AlignWithMargins := True;
+  mNotes.Margins.SetBounds(Gap, 0, Gap, Gap div 2);
+  mNotes.WordWrap := True;
+  mNotes.ShowAccelChar := False;
+  mNotes.Caption := NotesText(FModel);
   FError := TLabel.Create(Self);
   FError.Parent := Self;
   FError.Align := alBottom;
@@ -150,93 +297,119 @@ begin
   FError.WordWrap := True;
   FError.ShowAccelChar := False;
   FError.Font.Color := clRed;
+end;
 
-  // Name und Ziel oben; beim Verschieben die Ziele und die Wahl.
-  Header := TPanel.Create(Self);
-  Header.Parent := Self;
-  Header.Align := alTop;
-  Header.Height := ScaleValue(64);
-  Header.BevelOuter := bvNone;
-  Row := ScaleValue(Gap);
-  if not AModel.IsMove then
+procedure TAtlasExtractMembersDialog.CreateHeader;
+var
+  mHeader: TPanel;
+  mRow: Integer;
+begin
+  mHeader := TPanel.Create(Self);
+  mHeader.Parent := Self;
+  mHeader.Align := alTop;
+  mHeader.Height := ScaleValue(64);
+  mHeader.BevelOuter := bvNone;
+  mRow := ScaleValue(Gap);
+  if FModel.IsMove then
   begin
-    FName := TEdit.Create(Self);
-    FUnit := TComboBox.Create(Self);
-    Row := AddLabeled(Header, TAtlasStrings.Text(TAtlasTextId.ExtractMembersName), Row, FName);
-    AddLabeled(Header, TAtlasStrings.Text(TAtlasTextId.ExtractMembersUnit), Row, FUnit);
-    FName.Text := AModel.Name;
-    FName.OnChange := NameChange;
-    // Eingabe erlaubt: Ein neuer Unit-Name legt die Unit an.
-    FUnit.Style := csDropDown;
-    FUnit.OnChange := UnitChange;
+    mHeader.Height := CreateMoveHeader(mHeader, mRow) + ScaleValue(Gap div 2);
+    Exit;
+  end;
+  FName := TEdit.Create(Self);
+  FUnit := TComboBox.Create(Self);
+  mRow := AddLabeled(mHeader, TAtlasStrings.Text(TAtlasTextId.ExtractMembersName), mRow, FName);
+  AddLabeled(mHeader, TAtlasStrings.Text(TAtlasTextId.ExtractMembersUnit), mRow, FUnit);
+  FName.Text := FModel.Name;
+  FName.OnChange := NameChange;
+  // Eingabe erlaubt: Ein neuer Unit-Name legt die Unit an.
+  FUnit.Style := csDropDown;
+  FUnit.OnChange := UnitChange;
+end;
+
+function TAtlasExtractMembersDialog.CreateMoveHeader(AHeader: TWinControl; ARow: Integer): Integer;
+begin
+  Result := ARow;
+  if FModel.Source.MultiTarget then
+  begin
+    FTargetList := TCheckListBox.Create(Self);
+    Result := AddLabeled(AHeader, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTargets), Result, FTargetList);
+    FTargetList.Height := ScaleValue(66);
+    Result := Result + FTargetList.Height - ScaleValue(23);
+    FTargetList.OnClickCheck := TargetClickCheck;
   end
   else
   begin
-    if AModel.Source.MultiTarget then
-    begin
-      FTargetList := TCheckListBox.Create(Self);
-      Row := AddLabeled(Header, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTargets), Row, FTargetList);
-      FTargetList.Height := ScaleValue(66);
-      Row := Row + FTargetList.Height - ScaleValue(23);
-      FTargetList.OnClickCheck := TargetClickCheck;
-    end
-    else
-    begin
-      FTarget := TComboBox.Create(Self);
-      Row := AddLabeled(Header, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTarget), Row, FTarget);
-      FTarget.Style := csDropDownList;
-      FTarget.OnChange := TargetChange;
-    end;
-    if AModel.Source.OptionKind <> '' then
-    begin
-      FOptionBox := TCheckBox.Create(Self);
-      FOptionBox.Parent := Header;
-      if AModel.Source.OptionKind = 'keepAbstract' then
-      begin
-        FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract);
-      end
-      else
-      begin
-        FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersOverrideSiblings);
-      end;
-      FOptionBox.SetBounds(ScaleValue(120), Row, ScaleValue(DialogWidth - 120 - Gap), ScaleValue(23));
-      FOptionBox.Anchors := [akLeft, akTop, akRight];
-      FOptionBox.Checked := AModel.Option;
-      FOptionBox.OnClick := OptionClick;
-      Row := Row + ScaleValue(28);
-    end;
-    Header.Height := Row + ScaleValue(Gap div 2);
+    FTarget := TComboBox.Create(Self);
+    Result := AddLabeled(AHeader, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTarget), Result, FTarget);
+    FTarget.Style := csDropDownList;
+    FTarget.OnChange := TargetChange;
   end;
+  if FModel.Source.OptionKind = '' then
+  begin
+    Exit;
+  end;
+  FOptionBox := TCheckBox.Create(Self);
+  FOptionBox.Parent := AHeader;
+  FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersOverrideSiblings);
+  if FModel.Source.OptionKind = 'keepAbstract' then
+  begin
+    FOptionBox.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersKeepAbstract);
+  end;
+  FOptionBox.SetBounds(ScaleValue(120), Result, ScaleValue(DialogWidth - 120 - Gap), ScaleValue(23));
+  FOptionBox.Anchors := [akLeft, akTop, akRight];
+  FOptionBox.Checked := FModel.Option;
+  FOptionBox.OnClick := OptionClick;
+  Result := Result + ScaleValue(28);
+end;
 
-  // Knöpfe rechts neben der Liste.
-  Right := TPanel.Create(Self);
-  Right.Parent := Self;
-  Right.Align := alRight;
-  Right.Width := ScaleValue(100);
-  Right.BevelOuter := bvNone;
-  FAll := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersAll), AllClick);
-  FNone := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersNone), NoneClick);
-  FNeeds := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTakeNeeds), NeedsClick);
+procedure TAtlasExtractMembersDialog.CreateSide;
+var
+  mRight: TPanel;
+  mAll, mNone, mNeeds: TButton;
+  mIndex: Integer;
+begin
+  mRight := TPanel.Create(Self);
+  mRight.Parent := Self;
+  mRight.Align := alRight;
+  mRight.Width := ScaleValue(100);
+  mRight.BevelOuter := bvNone;
+  mAll := AddButton(mRight, TAtlasStrings.Text(TAtlasTextId.ExtractMembersAll), CheckAllClick);
+  mAll.Tag := 1;
+  mNone := AddButton(mRight, TAtlasStrings.Text(TAtlasTextId.ExtractMembersNone), CheckAllClick);
+  mNeeds := AddButton(mRight, TAtlasStrings.Text(TAtlasTextId.ExtractMembersTakeNeeds), NeedsClick);
   FAbstract := TCheckBox.Create(Self);
-  FAbstract.Parent := Right;
+  FAbstract.Parent := mRight;
   FAbstract.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstract);
   FAbstract.Height := ScaleValue(23);
   FAbstract.OnClick := AbstractClick;
-  FAll.Top := ScaleValue(Gap);
-  FNone.Top := FAll.Top + FAll.Height + ScaleValue(4);
-  FNeeds.Top := FNone.Top + FNone.Height + ScaleValue(3 * Gap);
-  FAbstract.Top := FNeeds.Top + FNeeds.Height + ScaleValue(Gap);
+  mAll.Top := ScaleValue(Gap);
+  mNone.Top := mAll.Top + mAll.Height + ScaleValue(4);
+  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * Gap);
+  FAbstract.Top := mNeeds.Top + mNeeds.Height + ScaleValue(Gap);
   // Nur für die Basisklasse (#713): Abhängigkeiten und abstrakte Methoden.
-  FNeeds.Visible := AModel.HasNeeds;
-  FAbstract.Visible := AModel.HasModes;
+  mNeeds.Visible := FModel.HasNeeds;
+  FAbstract.Visible := FModel.HasModes;
   FAbstract.Enabled := False;
-  for Row := 0 to Right.ControlCount - 1 do
+  for mIndex := 0 to mRight.ControlCount - 1 do
   begin
-    Right.Controls[Row].Left := ScaleValue(Gap);
-    Right.Controls[Row].Width := Right.Width - ScaleValue(2 * Gap);
-    Right.Controls[Row].Anchors := [akLeft, akTop];
+    mRight.Controls[mIndex].Left := ScaleValue(Gap);
+    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * Gap);
+    mRight.Controls[mIndex].Anchors := [akLeft, akTop];
+  end;
+end;
+
+procedure TAtlasExtractMembersDialog.CreateList;
+
+  procedure AddColumn(const ACaption: string; AWidth: Integer);
+  var
+    mColumn: TListColumn;
+  begin
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := ACaption;
+    mColumn.Width := ScaleValue(AWidth);
   end;
 
+begin
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -250,22 +423,10 @@ begin
   FList.OnItemChecked := ListChecked;
   FList.OnSelectItem := ListSelect;
   FList.OnCustomDrawItem := ListCustomDraw;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColMember);
-  Column.Width := ScaleValue(260);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColKind);
-  Column.Width := ScaleValue(70);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColVisibility);
-  Column.Width := ScaleValue(90);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ExtractMembersColReason);
-  Column.Width := ScaleValue(140);
-  if FName <> nil then
-  begin
-    ActiveControl := FName;
-  end;
+  AddColumn(TAtlasStrings.Text(TAtlasTextId.ExtractMembersColMember), 260);
+  AddColumn(TAtlasStrings.Text(TAtlasTextId.ExtractMembersColKind), 70);
+  AddColumn(TAtlasStrings.Text(TAtlasTextId.ExtractMembersColVisibility), 90);
+  AddColumn(TAtlasStrings.Text(TAtlasTextId.ExtractMembersColReason), 140);
 end;
 
 function TAtlasExtractMembersDialog.AddButton(AParent: TWinControl; const ACaption: string;
@@ -297,50 +458,21 @@ begin
   Result := ATop + ScaleValue(28);
 end;
 
-function TAtlasExtractMembersDialog.OwnUnitCaption: string;
-begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersOwnUnit, [FModel.Source.OwnUnit]);
-end;
-
 procedure TAtlasExtractMembersDialog.DoShow;
-var
-  Name: string;
-  Index: Integer;
 begin
   inherited;
   // Liste und Auswahlfeld brauchen ein Fenster: erst hier füllen.
-  if (FModel.IsMove) and (FList.Items.Count = 0) then
+  if FModel.IsMove and (FList.Items.Count = 0) then
   begin
     FUpdating := True;
     try
       if FTargetList <> nil then
       begin
-        FTargetList.Items.BeginUpdate;
-        try
-          for Index := 0 to FModel.TargetCount - 1 do
-          begin
-            FTargetList.Items.Add(TargetCaption(Index));
-            FTargetList.Checked[Index] := FModel.Targets[Index].Checked;
-          end;
-        finally
-          FTargetList.Items.EndUpdate;
-        end;
+        FillTargetList(FTargetList, FModel);
       end
       else
       begin
-        FTarget.Items.BeginUpdate;
-        try
-          for Index := 0 to FModel.TargetCount - 1 do
-          begin
-            FTarget.Items.Add(TargetCaption(Index));
-            if FModel.Targets[Index].Checked then
-            begin
-              FTarget.ItemIndex := Index;
-            end;
-          end;
-        finally
-          FTarget.Items.EndUpdate;
-        end;
+        FillTargetBox(FTarget, FModel);
       end;
     finally
       FUpdating := False;
@@ -351,33 +483,7 @@ begin
   begin
     FUpdating := True;
     try
-      FUnit.Items.BeginUpdate;
-      try
-        FUnit.Items.Add(OwnUnitCaption);
-        for Name in FModel.Source.Units do
-        begin
-          if not SameText(Name, FModel.Source.OwnUnit) then
-          begin
-            FUnit.Items.Add(Name);
-          end;
-        end;
-      finally
-        FUnit.Items.EndUpdate;
-      end;
-      FUnit.ItemIndex := 0;
-      // Ziel des Servers (refactoring.extractSuperclassTarget) vorwählen.
-      if FModel.Target <> '' then
-      begin
-        Index := FUnit.Items.IndexOf(FModel.Target);
-        if Index >= 0 then
-        begin
-          FUnit.ItemIndex := Index;
-        end
-        else
-        begin
-          FUnit.Text := FModel.Target;
-        end;
-      end;
+      FillUnits(FUnit, FModel);
     finally
       FUpdating := False;
     end;
@@ -389,27 +495,10 @@ begin
   end;
 end;
 
-function TAtlasExtractMembersDialog.KindText(AIndex: Integer): string;
-var
-  Member: TAtlasExtractionMember;
+procedure TAtlasExtractMembersDialog.CheckAllClick(Sender: TObject);
 begin
-  Member := FModel[AIndex];
-  if Member.Kind = 'property' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersProperty);
-  end
-  else if Member.Kind = 'field' then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersField);
-  end
-  else if Member.Abstract then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersAbstractMethod);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersMethod);
-  end;
+  FModel.CheckAll((Sender as TComponent).Tag = 1);
+  FillList;
 end;
 
 procedure TAtlasExtractMembersDialog.FillList;
@@ -433,7 +522,7 @@ begin
         Member := FModel[Index];
         Item := FList.Items.Add;
         Item.Caption := Member.Display;
-        Item.SubItems.Add(KindText(Index));
+        Item.SubItems.Add(KindText(Member));
         Item.SubItems.Add(Member.Visibility);
         Item.SubItems.Add(Member.Reason);
         Item.Checked := Member.Checked;
@@ -479,39 +568,13 @@ begin
   end;
 end;
 
-/// <summary>Meldung zum Fehler der Eingabe in der Sprache der Oberfläche; '' ohne Fehler.</summary>
-function TAtlasExtractMembersDialog.ProblemText(AProblem: TAtlasExtractionProblem; const ASubject: string): string;
-var
-  Member, Needed: string;
-begin
-  case AProblem of
-    TAtlasExtractionProblem.BadName:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersBadName, [ASubject]);
-    TAtlasExtractionProblem.SameName:
-      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersSameName);
-    TAtlasExtractionProblem.NoMembers:
-      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersNoMembers);
-    TAtlasExtractionProblem.BadUnit:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersBadUnit, [ASubject]);
-    TAtlasExtractionProblem.NoTarget:
-      Result := TAtlasStrings.Text(TAtlasTextId.ExtractMembersNoTarget);
-    TAtlasExtractionProblem.MissingDependency:
-      begin
-        FModel.MissingDependency(Member, Needed);
-        Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersMissing, [Member, Needed]);
-      end;
-  else
-    Result := '';
-  end;
-end;
-
 procedure TAtlasExtractMembersDialog.Refresh;
 var
   Problem: TAtlasExtractionProblem;
   Subject: string;
 begin
   Problem := FModel.Validate(Subject);
-  FError.Caption := ProblemText(Problem, Subject);
+  FError.Caption := ProblemText(FModel, Problem, Subject);
   FOk.Enabled := Problem = TAtlasExtractionProblem.None;
 end;
 
@@ -519,12 +582,6 @@ procedure TAtlasExtractMembersDialog.NameChange(Sender: TObject);
 begin
   FModel.Name := FName.Text;
   Refresh;
-end;
-
-function TAtlasExtractMembersDialog.TargetCaption(AIndex: Integer): string;
-begin
-  Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractMembersTargetItem, [FModel.Targets[AIndex].Name,
-    FModel.Targets[AIndex].UnitName]);
 end;
 
 procedure TAtlasExtractMembersDialog.TargetChange(Sender: TObject);
@@ -564,7 +621,7 @@ begin
     Exit;
   end;
   // Erster Eintrag = Unit der Klasse.
-  if (FUnit.ItemIndex = 0) or (FUnit.Text = OwnUnitCaption) then
+  if (FUnit.ItemIndex = 0) or (FUnit.Text = OwnUnitCaption(FModel)) then
   begin
     FModel.TargetUnit := '';
   end
@@ -573,18 +630,6 @@ begin
     FModel.TargetUnit := FUnit.Text;
   end;
   Refresh;
-end;
-
-procedure TAtlasExtractMembersDialog.AllClick(Sender: TObject);
-begin
-  FModel.CheckAll(True);
-  FillList;
-end;
-
-procedure TAtlasExtractMembersDialog.NoneClick(Sender: TObject);
-begin
-  FModel.CheckAll(False);
-  FillList;
 end;
 
 procedure TAtlasExtractMembersDialog.NeedsClick(Sender: TObject);
@@ -600,7 +645,7 @@ begin
     Exit;
   end;
   FModel.SetAbstract(FList.Selected.Index, FAbstract.Checked);
-  FList.Selected.SubItems[0] := KindText(FList.Selected.Index);
+  FList.Selected.SubItems[0] := KindText(FModel[FList.Selected.Index]);
   Refresh;
 end;
 

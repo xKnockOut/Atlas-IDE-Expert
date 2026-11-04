@@ -145,7 +145,7 @@ begin
   Result := LowerCase(AName) + '(';
   for ParamType in AParamTypes do
   begin
-    Result := Result + LowerCase(FResolver.UnqualifyType(NormalizedType(ParamType), FLocal.UnitName)) + ';';
+    Result := Result + LowerCase(FResolver.Queries.UnqualifyType(NormalizedType(ParamType), FLocal.UnitName)) + ';';
   end;
   Result := Result + ')';
 end;

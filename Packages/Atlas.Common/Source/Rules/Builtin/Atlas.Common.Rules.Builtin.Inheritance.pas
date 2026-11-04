@@ -3008,7 +3008,7 @@ end;
 
 class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
 begin
-  Result := TNameResolver.ClassRefTarget(ASignature);
+  Result := TResolverText.ClassRefTarget(ASignature);
 end;
 
 procedure TClassReferenceNonvirtualConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

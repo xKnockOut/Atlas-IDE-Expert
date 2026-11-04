@@ -571,7 +571,7 @@ var
     begin
       Exit;
     end;
-    mNames := mResolver.AncestorNames(mTypeInfo, mComplete);
+    mNames := mResolver.Queries.AncestorNames(mTypeInfo, mComplete);
     Result := (IndexText('TDataSet', mNames) >= 0) or not mComplete;
   end;
 

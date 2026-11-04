@@ -21,9 +21,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
-  Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.JsonRpc.TracingTransport,
-  Atlas.Common.Lsp.Lifecycle,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.TextDocumentSync,
   Atlas.Common.Lsp.SyntaxDiagnostics,
@@ -62,6 +60,8 @@ uses
   Shell.Composition.CodeArea,
   Shell.Composition.CommandArea,
   Shell.Composition.DiagnosticsArea,
+  Shell.Composition.DocumentEvents,
+  Shell.Composition.Protocol,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -71,7 +71,6 @@ uses
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Editing.UsesActions,
-  Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Lsp.WatchedFiles,
@@ -92,7 +91,6 @@ uses
   Shell.Platform,
   Shell.Workspace,
   Shell.CrashCases,
-  Atlas.Common.JsonRpc.RecentMessages,
   Shell.Diagnostics;
 
 type
@@ -105,14 +103,10 @@ type
     /// <summary>Anonymisiert das Server-Log (#647) und den Status im Diagnosepaket (#1356); kennt alle Namen der
     /// Projekte. Ohne --log bzw. mit --log-names nur für das Paket; nil nur ohne CreateForStdio.</summary>
     FLogAnonymizer: ILogAnonymizer;
-    FDispatcher: TJsonRpcDispatcher;
-    /// <summary>Die letzten Nachrichten des Clients für Absturzfälle (#1355).</summary>
-    FRecent: IJsonRpcRecentMessages;
-    /// <summary>Absturzfälle und Sicherheitsnetz (#1355); nach WireDocuments angelegt.</summary>
-    FCrashCases: TShellCrashCases;
+    /// <summary>Teilwurzel Protokoll: Verteiler, Statistik, letzte Nachrichten, Lebenszyklus, Absturzfälle.</summary>
+    FProtocol: TShellProtocol;
     /// <summary>--replay (#1355): Einstellungen aus dem Fall, keine eigenen Fälle.</summary>
     FReplay: Boolean;
-    FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
     /// <summary>Teilwurzel Diagnosen: Syntaxprüfung, Pull-Diagnosen und Projektprüfung.</summary>
@@ -139,7 +133,6 @@ type
     FAnalysisArea: TShellAnalysisArea;
     /// <summary>Host der Schnellbefehle (#297) mit seinen Quellen.</summary>
     FSlash: TShellSlash;
-    FStatistics: IJsonRpcStatistics;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
     /// <summary>Dateiänderungen von außen und Tipp-Pause (#492) (Shell.Composition.FileChanges).</summary>
@@ -164,16 +157,8 @@ type
     FDeriveWorkspaces: Boolean;
     /// <summary>Überwacht den Editor-Prozess aus initialize oder der Befehlszeile.</summary>
     procedure WatchParent(const AInitializeParams: TJSONObject);
-    /// <summary>Teil von Create (S-02): Dispatcher mit Watchdog und Fehlerprotokoll, Lebenszyklus (initialize/shutdown).</summary>
+    /// <summary>Teil von Create (S-02): Teilwurzel Protokoll mit Verteiler, Watchdog und Lebenszyklus.</summary>
     procedure WireProtocol;
-    /// <summary>Meldung des Watchdogs, wenn eine Anfrage ihr Zeitlimit überschreitet.</summary>
-    procedure RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
-    /// <summary>Absturzfall beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.</summary>
-    procedure RequestExpired(const AId, AMethod: string; ATimeoutMs: Cardinal);
-    /// <summary>Überspringt eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte (#1355).</summary>
-    procedure GuardRequest(const AMethod: string; const AParams: TJSONValue);
-    /// <summary>Protokolliert eine fehlgeschlagene Anfrage und hält sie als Absturzfall fest.</summary>
-    procedure RequestFailed(const AMethod: string; const AParams: TJSONValue; const AError: Exception);
     /// <summary>Fähigkeiten für initialize; Pull-Diagnosen nur für Clients, die sie können.</summary>
     function LifecycleCapabilities: TJSONObject;
     /// <summary>Schickt eine Benachrichtigung an den Client.</summary>
@@ -199,6 +184,8 @@ type
     function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
+    /// <summary>Teil von WireWorkspaces: Ereignisse des Dokumentspeichers (Shell.Composition.DocumentEvents).</summary>
+    procedure WireDocumentEvents;
     /// <summary>Was der Kern von der Komposition braucht.</summary>
     function CoreServices: TShellCoreServices;
     /// <summary>Teil von CoreServices: Meldungen des Kerns an die Komposition.</summary>
@@ -254,13 +241,6 @@ type
     procedure CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
     /// <summary>Gibt die Namespaces an alle Features und den Uses-Graphen.</summary>
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
-    procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-    /// <summary>WorkspaceOf unter FCore.Workspaces.Lock.</summary>
-    function LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-    /// <summary>Index und Arbeitsbereiche zu einem Dokumentereignis einer Datei auf der Platte.</summary>
-    procedure DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-    /// <summary>Gespeicherte Quelldatei: Index nachziehen (#500), bei compiler.onSave kompilieren (#40).</summary>
-    procedure SourceSaved(const AFileName: string);
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
     /// <summary>Teil von FreeFeatures: Editor-Features von Gliederung bis Verweise.</summary>
@@ -286,7 +266,7 @@ type
     /// keine) statt der des Benutzers; der Server sichert dabei keine Fälle und überspringt nichts.</summary>
     procedure PrepareReplay(const ASettingsFile: string);
     /// <summary>Absturzfälle und Sicherheitsnetz (#1355).</summary>
-    property CrashCases: TShellCrashCases read FCrashCases;
+    function CrashCases: TShellCrashCases;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
     property Index: ISymbolIndex read FIndex;
@@ -343,13 +323,13 @@ begin
   WireWatchedFiles;
   WireIde;
   WireWorkspaceFolders;
-  FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
+  FConnection := TJsonRpcConnection.Create(FTransport, FProtocol.Dispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
     begin
       FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
     end;
-  FLifecycle.OnExit :=
+  FProtocol.Lifecycle.OnExit :=
     procedure
     begin
       FEndReason := TDiagnosticEndReason.Clean;
@@ -359,85 +339,19 @@ end;
 
 procedure TServerComposition.WireProtocol;
 var
-  mWatchdog: TJsonRpcWatchdog;
+  mServices: TShellProtocolServices;
 begin
-  FDispatcher := TJsonRpcDispatcher.Create;
-  FStatistics := TJsonRpcStatistics.Create;
-  FDispatcher.Statistics := FStatistics;
-  FRecent := TJsonRpcRecentMessages.Create;
-  FDispatcher.Recent := FRecent;
-  mWatchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs, RequestTimedOut);
-  // Absturzfall auch beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.
-  mWatchdog.OnExpired := RequestExpired;
-  FDispatcher.Watchdog := mWatchdog;
-  // Sicherheitsnetz (#1355): eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte, überspringen.
-  FDispatcher.RequestGuard := GuardRequest;
-  FDispatcher.OnRequestFailed := RequestFailed;
-  FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version, LifecycleCapabilities);
-  FLifecycle.Attach(FDispatcher);
-  // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
-  FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
-end;
-
-procedure TServerComposition.RequestTimedOut(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
-begin
-  // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
-  if AAnswered then
-  begin
-    FLogger.Warning(Format('Anfrage %s nach %d ms mit RequestCancelled beantwortet (Zeitlimit)',
-      [AMethod, ATimeoutMs]));
-  end
-  else
-  begin
-    FLogger.Warning(Format('Anfrage %s hat das Zeitlimit von %d ms überschritten; Abbruch angefordert',
-      [AMethod, ATimeoutMs]));
-  end;
-end;
-
-procedure TServerComposition.RequestExpired(const AId, AMethod: string; ATimeoutMs: Cardinal);
-begin
-  if FCrashCases <> nil then
-  begin
-    FCrashCases.TimedOut(AId, AMethod, ATimeoutMs);
-  end;
-end;
-
-procedure TServerComposition.GuardRequest(const AMethod: string; const AParams: TJSONValue);
-begin
-  if FCrashCases <> nil then
-  begin
-    FCrashCases.Guard(AMethod, AParams);
-  end;
-end;
-
-procedure TServerComposition.RequestFailed(const AMethod: string; const AParams: TJSONValue;
-  const AError: Exception);
-var
-  mParams: string;
-begin
-  mParams := '';
-  if AParams <> nil then
-  begin
-    mParams := AParams.ToJSON;
-  end;
-  if Length(mParams) > 500 then
-  begin
-    mParams := Copy(mParams, 1, 500) + '…';
-  end;
-  FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
-    [AMethod, AError.ClassName, AError.Message, sLineBreak, mParams, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
-  // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
-  if FCrashCases <> nil then
-  begin
-    FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
-  end;
+  mServices.Logger := FLogger;
+  mServices.TimeoutMs := RequestTimeoutMs;
+  mServices.Capabilities := LifecycleCapabilities;
+  FProtocol := TShellProtocol.Create(mServices);
 end;
 
 function TServerComposition.LifecycleCapabilities: TJSONObject;
 begin
   Result := BuildCapabilities;
   // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
-  FDiagnosticsArea.ApplyClientCapabilities(FLifecycle.InitializeParams, Result);
+  FDiagnosticsArea.ApplyClientCapabilities(FProtocol.Lifecycle.InitializeParams, Result);
 end;
 
 procedure TServerComposition.NotifyClient(const AMethod: string; AParams: TJSONObject);
@@ -459,19 +373,7 @@ end;
 
 procedure TServerComposition.WireCrashCases;
 begin
-  FCrashCases := TShellCrashCases.Create('', FLogger, FDocuments, FRecent);
-  FCrashCases.AtlasVersion := TProductVersion.Version;
-  FCrashCases.ServerPath := ParamStr(0);
-  FCrashCases.Initialize :=
-    function: string
-    begin
-      Result := '';
-      if (FLifecycle <> nil) and (FLifecycle.InitializeParams <> nil) then
-      begin
-        Result := FLifecycle.InitializeParams.ToJSON;
-      end;
-    end;
-  FCrashCases.SettingsFiles :=
+  FProtocol.CreateCrashCases(FDocuments,
     function(const AUri: string): TArray<string>
     var
       mWorkspace: TShellWorkspace;
@@ -496,16 +398,16 @@ begin
       finally
         System.TMonitor.Exit(FCore.Workspaces.Lock);
       end;
-    end;
-  FCrashCases.Notify := NotifyClient;
+    end,
+    NotifyClient);
 end;
 
 procedure TServerComposition.PrepareReplay(const ASettingsFile: string);
 begin
   FReplay := True;
   FCore.Configuration.UseReplaySettings(ASettingsFile);
-  FCrashCases.Enabled := False;
-  FCrashCases.SkipEnabled := False;
+  FProtocol.CrashCases.Enabled := False;
+  FProtocol.CrashCases.SkipEnabled := False;
 end;
 
 procedure TServerComposition.WireCompile;
@@ -542,13 +444,13 @@ var
 begin
   FDocuments := TDocumentStore.Create(CanonicalPath);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
-  FTextDocumentSync.Attach(FDispatcher);
+  FTextDocumentSync.Attach(FProtocol.Dispatcher);
   WireCrashCases;
   WireCompile;
   mServices := Default(TShellDiagnosticsAreaServices);
   mServices.Logger := FLogger;
   mServices.Transport := FTransport;
-  mServices.Dispatcher := FDispatcher;
+  mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   // Closures: Kern und Index entstehen erst nach den Diagnosen (WireWorkspaces, WireIndex).
   mServices.Core :=
@@ -582,6 +484,11 @@ begin
   end;
 end;
 
+function TServerComposition.CrashCases: TShellCrashCases;
+begin
+  Result := FProtocol.CrashCases;
+end;
+
 function TServerComposition.CurrentRequestTimeout: Cardinal;
 begin
   Result := FRequestTimeout;
@@ -595,14 +502,14 @@ begin
   mServices := Default(TShellSlashServices);
   mServices.Transport := FTransport;
   mServices.Logger := FLogger;
-  mServices.Dispatcher := FDispatcher;
+  mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.WorkspaceOf := SlashWorkspaceOf;
   mServices.ReadText := ReadSourceText;
   // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
   mServices.ClientAppliesEdits :=
     function: Boolean
     begin
-      Result := TLspApplyEdit.ClientSupports(FLifecycle.InitializeParams);
+      Result := TLspApplyEdit.ClientSupports(FProtocol.Lifecycle.InitializeParams);
     end;
   // Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03); FConnection liest die Closure
   // erst beim Aufruf.
@@ -669,7 +576,7 @@ begin
     end;
   mServices.ReadText := ReadSourceText;
   FEditing := TShellEditing.Create(mServices);
-  FEditing.Attach(FDispatcher);
+  FEditing.Attach(FProtocol.Dispatcher);
 end;
 
 function TServerComposition.SlashWorkspaceOf(const AUri: string): TShellWorkspace;
@@ -685,8 +592,42 @@ end;
 procedure TServerComposition.WireWorkspaces;
 begin
   FCore := TShellCore.Create(CoreServices);
-  FDocuments.Subscribe(HandleDocumentEvent);
-  FCore.Attach(FDispatcher);
+  WireDocumentEvents;
+  FCore.Attach(FProtocol.Dispatcher);
+end;
+
+procedure TServerComposition.WireDocumentEvents;
+var
+  mServices: TShellDocumentEventServices;
+begin
+  mServices := Default(TShellDocumentEventServices);
+  mServices.Core :=
+    function: TShellCore
+    begin
+      Result := FCore;
+    end;
+  mServices.CrashCases :=
+    function: TShellCrashCases
+    begin
+      Result := FProtocol.CrashCases;
+    end;
+  mServices.Compile :=
+    function: TShellCompileHost
+    begin
+      Result := FCompile;
+    end;
+  // Die Dateiänderungen entstehen erst in WireWatchedFiles.
+  mServices.FileChanges :=
+    function: TShellFileChanges
+    begin
+      Result := FFileChanges;
+    end;
+  mServices.DeriveWorkspaces :=
+    function: Boolean
+    begin
+      Result := FDeriveWorkspaces;
+    end;
+  TShellDocumentEvents.Attach(FDocuments, mServices);
 end;
 
 function TServerComposition.CoreServices: TShellCoreServices;
@@ -759,14 +700,14 @@ begin
   AServices.SettingsChanged :=
     procedure(ASettings: TServerSettings)
     begin
-      FDispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
+      FProtocol.Dispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
       FRequestTimeout := ASettings.RequestTimeoutMs;
       FDiagnostics.ApplySettings(ASettings);
       // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
       if not FReplay then
       begin
-        FCrashCases.Enabled := ASettings.ServerCrashCases;
-        FCrashCases.SkipEnabled := ASettings.ServerCrashSkip;
+        FProtocol.CrashCases.Enabled := ASettings.ServerCrashCases;
+        FProtocol.CrashCases.SkipEnabled := ASettings.ServerCrashSkip;
       end;
     end;
   // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
@@ -811,7 +752,7 @@ begin
     begin
       Result := FCore.Workspaces.IndexLoading;
     end;
-  FDispatcher.Observer := FDiagnosticsRef;
+  FProtocol.Dispatcher.Observer := FDiagnosticsRef;
 end;
 
 procedure TServerComposition.WireCode;
@@ -820,7 +761,7 @@ var
 begin
   mServices := Default(TShellCodeAreaServices);
   mServices.Logger := FLogger;
-  mServices.Dispatcher := FDispatcher;
+  mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := FIndex;
   mServices.Editing := FEditing;
@@ -852,7 +793,7 @@ var
 begin
   mServices := Default(TShellAnalysisAreaServices);
   mServices.Logger := FLogger;
-  mServices.Dispatcher := FDispatcher;
+  mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := FIndex;
   mServices.FormatRoutinesFor := FormatRoutinesFor;
@@ -874,7 +815,7 @@ var
 begin
   mServices := Default(TShellCommandAreaServices);
   mServices.Logger := FLogger;
-  mServices.Dispatcher := FDispatcher;
+  mServices.Dispatcher := FProtocol.Dispatcher;
   CommandStatus(mServices.Status);
   CommandServer(mServices.Server);
   mServices.Editor.Documents := FDocuments;
@@ -894,7 +835,7 @@ procedure TServerComposition.CommandStatus(var AServices: TShellStatusServices);
 begin
   AServices.Index := FIndex;
   AServices.Documents := FDocuments;
-  AServices.Statistics := FStatistics;
+  AServices.Statistics := FProtocol.Statistics;
   AServices.ActiveProject :=
     function: string
     begin
@@ -953,7 +894,7 @@ begin
   AServices.RetryCrashCase :=
     function(const AUri: string): Integer
     begin
-      Result := FCrashCases.Retry(AUri);
+      Result := FProtocol.CrashCases.Retry(AUri);
     end;
   AServices.Recheck :=
     procedure
@@ -969,7 +910,7 @@ end;
 procedure TServerComposition.WireWatchedFiles;
 begin
   FFileChanges := TShellFileChanges.Create(FileChangesServices);
-  FFileChanges.Attach(FDispatcher);
+  FFileChanges.Attach(FProtocol.Dispatcher);
 end;
 
 function TServerComposition.FileChangesServices: TShellFileChangesServices;
@@ -1032,7 +973,7 @@ end;
 procedure TServerComposition.WireIde;
 begin
   FIde := TShellIde.Create(IdeServices);
-  FIde.Attach(FDispatcher);
+  FIde.Attach(FProtocol.Dispatcher);
   // Projektwahl je Benutzer über Neustarts (#46).
   FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
     'projektauswahl.json'));
@@ -1042,8 +983,8 @@ procedure TServerComposition.WireWorkspaceFolders;
 begin
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
   FWorkspaceFolders.OnChanged := WorkspaceFoldersChanged;
-  FWorkspaceFolders.Attach(FDispatcher);
-  FLifecycle.OnInitialized := ClientInitialized;
+  FWorkspaceFolders.Attach(FProtocol.Dispatcher);
+  FProtocol.Lifecycle.OnInitialized := ClientInitialized;
 end;
 
 procedure TServerComposition.WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
@@ -1065,11 +1006,11 @@ var
   mFolders: TArray<TWorkspaceFolder>;
   mFolder: TWorkspaceFolder;
 begin
-  WatchParent(FLifecycle.InitializeParams);
-  ApplyClientInfo(FLifecycle.InitializeParams);
-  mFolders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
+  WatchParent(FProtocol.Lifecycle.InitializeParams);
+  ApplyClientInfo(FProtocol.Lifecycle.InitializeParams);
+  mFolders := TLspWorkspaceFolders.FromInitialize(FProtocol.Lifecycle.InitializeParams);
   // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
-  FIde.Project.LoadInitialize(FLifecycle.InitializeParams);
+  FIde.Project.LoadInitialize(FProtocol.Lifecycle.InitializeParams);
   // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
   // Projekte weiter einen abgeleiteten Arbeitsbereich.
   FDeriveWorkspaces := True;
@@ -1090,7 +1031,7 @@ begin
     FCore.Folders.Add(mFolder);
   end;
   FCore.Configuration.UpdateWatchedFiles;
-  FFileChanges.RegisterWatchers(FLifecycle.InitializeParams);
+  FFileChanges.RegisterWatchers(FProtocol.Lifecycle.InitializeParams);
 end;
 
 procedure TServerComposition.ApplyClientInfo(const AParams: TJSONObject);
@@ -1100,10 +1041,10 @@ begin
     // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
     FClientName := AParams.GetValue<string>('clientInfo.name', '');
     // Absturzfälle nennen den Client (#1355).
-    FCrashCases.Client := Trim(FClientName + ' ' + AParams.GetValue<string>('clientInfo.version', ''));
+    FProtocol.CrashCases.Client := Trim(FClientName + ' ' + AParams.GetValue<string>('clientInfo.version', ''));
   end;
   // Der neue Client erfährt, was nach Abstürzen übersprungen wird.
-  FCrashCases.Announce;
+  FProtocol.CrashCases.Announce;
   // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
   // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
   // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
@@ -1142,9 +1083,9 @@ begin
   // Features und Ordner weiter.
   Unfinished := (FConnection <> nil) and FConnection.UnfinishedWork;
   FreeAndNil(FConnection);
-  if FDispatcher <> nil then
+  if FProtocol <> nil then
   begin
-    FDispatcher.Watchdog := nil;
+    FProtocol.Dispatcher.Watchdog := nil;
   end;
   // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben (Code-Review A-05):
   // Ein abgebrochener Aufbau meldet sich über OnIndexEvent im Diagnoselog, ein Compilerlauf über die
@@ -1161,9 +1102,9 @@ begin
   TSyntaxTreeCache.SetDefinesProvider(nil);
   TSyntaxTreeCache.SetIncludeProvider(nil);
   // Erst jetzt meldet sich niemand mehr beim Diagnoselog.
-  if FDispatcher <> nil then
+  if FProtocol <> nil then
   begin
-    FDispatcher.Observer := nil;
+    FProtocol.Dispatcher.Observer := nil;
   end;
   FDiagnostics := nil;
   FDiagnosticsRef := nil;
@@ -1227,11 +1168,9 @@ begin
   FreeAndNil(FIde);
   FreeAndNil(FProjectSelection);
   FreeAndNil(FTextDocumentSync);
-  // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
-  FreeAndNil(FCrashCases);
   FDocuments := nil;
-  FreeAndNil(FLifecycle);
-  FreeAndNil(FDispatcher);
+  // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
+  FreeAndNil(FProtocol);
 end;
 
 procedure TServerComposition.IndexStageDone(AProjectStage: Boolean);
@@ -1398,92 +1337,6 @@ begin
   FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
 end;
 
-procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-var
-  mFileName: string;
-begin
-  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
-  if (FCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
-  begin
-    FCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
-  end;
-  mFileName := TDocumentUris.ToPath(ADocument.Uri);
-  if StartsText('file:', ADocument.Uri) then
-  begin
-    DocumentIndexEvent(AKind, mFileName, ADocument.Text);
-  end;
-  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
-  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
-  begin
-    SourceSaved(mFileName);
-  end
-  else if IsConfigurationFileName(ExtractFileName(mFileName)) then
-  begin
-    FCore.Configuration.DocumentEvent(AKind, ADocument);
-  end;
-end;
-
-function TServerComposition.LockedWorkspaceOf(const AFileName: string): TShellWorkspace;
-begin
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    Result := FCore.Workspaces.WorkspaceOf(AFileName);
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.DocumentIndexEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
-  if FFileChanges <> nil then
-  begin
-    FFileChanges.DocumentEvent(AKind, AFileName, AText);
-  end;
-  if AKind <> TDocumentEventKind.Opened then
-  begin
-    Exit;
-  end;
-  if FDeriveWorkspaces then
-  begin
-    FCore.Folders.Derive(AFileName);
-  end;
-  // Zurückgestelltes Projekt der Gruppe (index.projectGroup = false): jetzt indizieren (#648).
-  mWorkspace := LockedWorkspaceOf(AFileName);
-  // Nur der Thread der Nachrichtenschleife entfernt Arbeitsbereiche; mWorkspace bleibt gültig.
-  if (mWorkspace <> nil) and mWorkspace.Setup.Deferred then
-  begin
-    mWorkspace.Activate;
-  end;
-end;
-
-procedure TServerComposition.SourceSaved(const AFileName: string);
-var
-  mWorkspace: TShellWorkspace;
-  mOnSave: Boolean;
-  mChoice: TCompilerBackendChoice;
-begin
-  // Index nachziehen (#500): Clients ohne Dateiüberwachung (IDE-Plugin) melden nur das Speichern;
-  // bei einer .inc liest der Index die einbindenden Units neu ein.
-  if not SameText(ExtractFileExt(AFileName), '.dpk') then
-  begin
-    FFileChanges.Handle([TFileChange.Create(AFileName, TFileChangeKind.Changed)]);
-  end;
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    mWorkspace := FCore.Workspaces.WorkspaceOf(AFileName);
-    mOnSave := (mWorkspace <> nil) and mWorkspace.Configuration.Settings.Compiler.OnSave;
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-  if mOnSave then
-  begin
-    FCompile.Start(AFileName, False, mChoice);
-  end;
-end;
-
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
 var
   mChannel: TShellStdioChannel;
@@ -1535,7 +1388,7 @@ var
   Stack: string;
 begin
   Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, AError.Message, sLineBreak,
-    FDispatcher.LastMessage]);
+    FProtocol.Dispatcher.LastMessage]);
   Stack := TShellPlatform.StackTraceOf(AError);
   if Stack <> '' then
   begin
@@ -1605,7 +1458,7 @@ var
   Previous: Integer;
 begin
   FLogger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
-  FDiagnostics.AllowMethods(FDispatcher.Methods);
+  FDiagnostics.AllowMethods(FProtocol.Dispatcher.Methods);
   Previous := FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
   // Neustarts erklären (#175): Die IDE beendet ihren Server hart (Projektwechsel, IDE geschlossen);
   // dann fehlt dessen Endzeile, und der nächste Start meldet das hier.
@@ -1620,11 +1473,11 @@ begin
     procedure
     begin
       FLogger.Info('Verbindung beendet: ' + TShellDiagnostics.EndReasonText(FEndReason));
-      FDiagnostics.EndRun(FEndReason, FLifecycle.ExitCode, AllocatedBytes);
+      FDiagnostics.EndRun(FEndReason, FProtocol.Lifecycle.ExitCode, AllocatedBytes);
     end;
   try
     FConnection.Run;
-    Result := FLifecycle.ExitCode;
+    Result := FProtocol.Lifecycle.ExitCode;
     FDiagnostics.EndRun(FEndReason, Result, AllocatedBytes);
   except
     on E: Exception do

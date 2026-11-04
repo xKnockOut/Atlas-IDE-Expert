@@ -607,8 +607,8 @@ procedure TAtlasUnitSearchWindow.RebuildRows;
 var
   Index, mTop: Integer;
 begin
-  FRows := TAtlasUnitSearch.Rows(FEntries, FOrder, FGrouping, FOptions.Root, FOptions.ActiveProject, FCollapsed,
-    Query.HasWords);
+  FRows := TAtlasUnitSearch.Rows(FEntries, FOrder,
+    TAtlasUnitLayout.Create(FGrouping, FOptions.Root, FOptions.ActiveProject, FCollapsed, Query.HasWords));
   SetLength(FRowTops, Length(FRows) + 1);
   mTop := 0;
   for Index := 0 to High(FRows) do

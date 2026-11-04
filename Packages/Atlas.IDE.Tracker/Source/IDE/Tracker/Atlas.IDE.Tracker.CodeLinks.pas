@@ -14,11 +14,9 @@
 //   Zeilen (Kommentar über mehrere Zeilen) neu. Kennungen sucht PaintLine nur in
 //   den Zeilen, die der Editor zeichnet, und merkt sie je Zeile bis zum
 //   nächsten Stand. Beim Zeichnen nie ein Netzzugriff.
-// - Hover nach TAtlasCloseRules.TooltipShowDelayMs: Stand aus dem Zwischenspeicher der
-//   Vorschau (Peek), sonst „Wird geladen …“ und eine Kurzabfrage im Hintergrund
-//   (Lookup); ein Stand älter als TAtlasIdeIssuePreview.FreshMs wird dabei
-//   aufgefrischt. Nicht gefunden: „Issue … nicht gefunden.“, die
-//   Unterstreichung bleibt.
+// - Unterstreichen und Hover (Kurzvorschau aus dem Zwischenspeicher, sonst
+//   Kurzabfrage) stehen in Atlas.IDE.Tracker.CodeLinkMarks. Nicht gefunden:
+//   „Issue … nicht gefunden.“, die Unterstreichung bleibt.
 // - Strg+Klick und Rechtsklick werden vor dem Editor abgefangen
 //   (TApplicationEvents.OnMessage wie bei den schnellen Lesezeichen #1104):
 //   Die IDE springt dann nicht und öffnet ihr Kontextmenü nicht.
@@ -37,18 +35,15 @@ uses
   System.Types,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.Graphics,
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
   Vcl.Menus,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.UI.Popup.TitledTip,
-  Atlas.UI.Tracker.IssueTip,
-  Atlas.IDE.Tracker.IssuePreview;
+  Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.CodeLinkMarks;
 
 type
   /// <summary>Tracker des aktiven Projekts; False ohne.</summary>
@@ -74,8 +69,6 @@ type
   TAtlasIdeCodeLinks = class
   private const
     TickMs = 150;
-    /// <summary>Anteil der Akzentfarbe an der Unterstreichung (Rest: Hintergrund).</summary>
-    LineStrength = 0.75;
     MenuShow = 1;
     MenuBrowse = 2;
     MenuCopy = 3;
@@ -86,15 +79,17 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    /// <summary>Gezeichnete Kennung (Koordinaten des Editors).</summary>
-    THit = record
-      Wnd: HWND;
+    /// <summary>Stand: Datei, Pufferstand, Muster (Tracker und Commit-Präfix), Zeilen und ihre Zustände.</summary>
+    TState = record
       FileName: string;
-      /// <summary>0-basiert.</summary>
-      Line: Integer;
-      TopRow: Integer;
-      Rect: TRect;
-      Match: TAtlasIssueKeyMatch;
+      Version: Cardinal;
+      PatternKey: string;
+      Target: TAtlasTrackerTarget;
+      Pattern: TAtlasIssueKeyPattern;
+      Commit: string;
+      Lines: TArray<string>;
+      States: TArray<TAtlasCodeLinkState>;
+      TabWidth: Integer;
     end;
   private class var
     FInstance: TAtlasIdeCodeLinks;
@@ -106,32 +101,17 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTimer: TTimer;
-    FTip: TAtlasTitledTip;
+    FHover: TAtlasCodeLinkHover;
     FAppEvents: TApplicationEvents;
     FMenu: TPopupMenu;
-    FMenuHit: THit;
+    FMenuHit: TAtlasCodeLinkHit;
     /// <summary>Nach einem geschluckten Drücken auch das Loslassen schlucken (WM_LBUTTONUP, WM_RBUTTONUP).
     /// </summary>
     FSwallowUp: Cardinal;
-    // Stand: Datei, Pufferstand, Muster (Tracker und Commit-Präfix), Zeilen und ihre Zustände.
-    FFileName: string;
-    FVersion: Cardinal;
-    FPatternKey: string;
-    FTarget: TAtlasTrackerTarget;
-    FPattern: TAtlasIssueKeyPattern;
-    FCommit: string;
-    FLines: TArray<string>;
-    FStates: TArray<TAtlasCodeLinkState>;
-    FTabWidth: Integer;
+    FState: TState;
     // Gefundene Kennungen je Zeile (0-basiert) des Stands; gezeichnete je Zeile des Editors.
     FMatches: TDictionary<Integer, TArray<TAtlasIssueKeyMatch>>;
-    FHits: TDictionary<Integer, TArray<THit>>;
-    // Überfahren.
-    FHover: THit;
-    FHovering: Boolean;
-    FHoverSince: UInt64;
-    FHoverScreen: TRect;
-    FTipKey: string;
+    FHits: TDictionary<Integer, TArray<TAtlasCodeLinkHit>>;
     function Active: Boolean;
     function Shown: Boolean;
     procedure Tick(Sender: TObject);
@@ -140,28 +120,12 @@ type
     function MatchesOf(ALine: Integer): TArray<TAtlasIssueKeyMatch>;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    procedure PaintMatches(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
-      const AMatches: TArray<TAtlasIssueKeyMatch>);
-    function HitAt(AWnd: HWND; X, Y: Integer; out AHit: THit): Boolean;
+    function HitAt(AWnd: HWND; X, Y: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure SetHover(const AHit: THit; AOn: Boolean);
-    procedure CheckHover;
-    procedure HideTip;
-    procedure ShowTip(const AHit: THit);
-    procedure ShowState(const AKey: string; AState: TAtlasIssueTipState; const ADetails: TAtlasTrackerDetails;
-      AError: TAtlasCiFetchError);
-    procedure LookedUp(const AKey: string; ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
-      AError: TAtlasCiFetchError);
-    procedure Act(const AHit: THit; ACommand: Integer);
-    procedure ShowMenu(const AHit: THit; const APoint: TPoint);
+    procedure Act(const AHit: TAtlasCodeLinkHit; ACommand: Integer);
+    procedure ShowMenu(const AHit: TAtlasCodeLinkHit; const APoint: TPoint);
     procedure MenuClick(Sender: TObject);
-    function AddMenuItem(const ACaption: string; ATag: Integer): TMenuItem;
-    function TargetOf(const AHit: THit): TAtlasTrackerTarget;
-    function Preview: TAtlasIdeIssuePreview;
-    function CanStart: Boolean;
-    class procedure Invalidate; static;
-    class function IsPascal(const AFileName: string): Boolean; static;
   public
     /// <summary>AHooks: Tracker, Vorschau und Beginnen aus „Meine Issues“ (alle gesetzt).</summary>
     constructor Create(const AHooks: TAtlasCodeLinksHooks);
@@ -171,28 +135,42 @@ type
 implementation
 
 uses
-  System.Math,
   System.StrUtils,
-  System.DateUtils,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh;
 
 function PatternKey(const ATarget: TAtlasTrackerTarget; const ACommit: string): string;
 begin
   Result := ATarget.Provider + #1 + ATarget.Url + #1 + ATarget.Project + #1 + ACommit;
+end;
+
+/// <summary>Den Editor vorn neu zeichnen.</summary>
+procedure InvalidateEditor;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+function IsPascal(const AFileName: string): Boolean;
+begin
+  Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc', '.lpr', '.pp']);
+end;
+
+function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;
+begin
+  Result := Assigned(AHooks.CanStart) and Assigned(AHooks.Start) and AHooks.CanStart();
 end;
 
 { TAtlasIdeCodeLinks.TEvents }
@@ -220,9 +198,8 @@ begin
   FSerialOf := FSerial;
   FInstance := Self;
   FMatches := TDictionary<Integer, TArray<TAtlasIssueKeyMatch>>.Create;
-  FHits := TDictionary<Integer, TArray<THit>>.Create;
-  FTip := TAtlasTitledTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.IssueLinks;
+  FHits := TDictionary<Integer, TArray<TAtlasCodeLinkHit>>.Create;
+  FHover := TAtlasCodeLinkHover.Create(AHooks.Preview);
   FMenu := TPopupMenu.Create(nil);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
@@ -268,33 +245,17 @@ begin
   FEventsRef := nil;
   mPainted := FHits.Count > 0;
   FreeAndNil(FMenu);
-  FreeAndNil(FTip);
+  FreeAndNil(FHover);
   Clear;
   FreeAndNil(FHits);
   FreeAndNil(FMatches);
-  FMenuHit := Default(THit);
-  FHover := Default(THit);
+  FMenuHit := Default(TAtlasCodeLinkHit);
   FHooks := Default(TAtlasCodeLinksHooks);
   if mPainted then
   begin
-    Invalidate;
+    InvalidateEditor;
   end;
   inherited Destroy;
-end;
-
-class procedure TAtlasIdeCodeLinks.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-class function TAtlasIdeCodeLinks.IsPascal(const AFileName: string): Boolean;
-begin
-  Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc', '.lpr', '.pp']);
 end;
 
 function TAtlasIdeCodeLinks.Active: Boolean;
@@ -312,17 +273,13 @@ end;
 
 function TAtlasIdeCodeLinks.Shown: Boolean;
 begin
-  Result := Active and FPattern.Active and (FFileName <> '');
+  Result := Active and FState.Pattern.Active and (FState.FileName <> '');
 end;
 
 procedure TAtlasIdeCodeLinks.Clear;
 begin
-  FFileName := '';
-  FVersion := 0;
-  FPatternKey := '';
-  FPattern := TAtlasIssueKeyPattern.Empty;
-  FLines := nil;
-  FStates := nil;
+  FState := Default(TState);
+  FState.Pattern := TAtlasIssueKeyPattern.Empty;
   if FMatches <> nil then
   begin
     FMatches.Clear;
@@ -337,10 +294,24 @@ procedure TAtlasIdeCodeLinks.Tick(Sender: TObject);
 begin
   try
     Update;
-    CheckHover;
+    FHover.Check(Shown, FState.Target);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.IssueLinks, E);
+  end;
+end;
+
+/// <summary>Pascal-Ansicht vorn mit Tracker; nil, wenn es nichts zu zeigen gibt.</summary>
+function ShownView(AOwner: TAtlasIdeCodeLinks; out ATarget: TAtlasTrackerTarget): IOTAEditView;
+begin
+  Result := nil;
+  if AOwner.Active and AOwner.FHooks.Target(ATarget) then
+  begin
+    Result := TAtlasEditorBuffer.ActiveView;
+  end;
+  if (Result <> nil) and ((Result.Buffer = nil) or not IsPascal(Result.Buffer.FileName)) then
+  begin
+    Result := nil;
   end;
 end;
 
@@ -350,21 +321,15 @@ var
   mSnapshot: TAtlasEditorSnapshot;
   mTarget: TAtlasTrackerTarget;
   mCommit, mKey: string;
-  mHad: Boolean;
 begin
-  mHad := FFileName <> '';
-  mView := nil;
-  if Active and FHooks.Target(mTarget) then
+  mView := ShownView(Self, mTarget);
+  if mView = nil then
   begin
-    mView := TAtlasEditorBuffer.ActiveView;
-  end;
-  if (mView = nil) or (mView.Buffer = nil) or not IsPascal(mView.Buffer.FileName) then
-  begin
-    SetHover(Default(THit), False);
-    if mHad then
+    FHover.SetHit(Default(TAtlasCodeLinkHit), False);
+    if FState.FileName <> '' then
     begin
       Clear;
-      Invalidate;
+      InvalidateEditor;
     end;
     Exit;
   end;
@@ -375,24 +340,25 @@ begin
   end;
   mKey := PatternKey(mTarget, mCommit);
   mSnapshot := TAtlasEditorSnapshots.Get(mView);
-  if (mSnapshot.Version = FVersion) and SameText(mSnapshot.FileName, FFileName) and (mKey = FPatternKey) then
+  if (mSnapshot.Version = FState.Version) and SameText(mSnapshot.FileName, FState.FileName) and
+    (mKey = FState.PatternKey) then
   begin
     Exit;
   end;
   // Neuer Stand: nur die Zustände der Zeilen; Kennungen sucht erst das Zeichnen der sichtbaren Zeilen.
-  SetHover(Default(THit), False);
-  FFileName := mSnapshot.FileName;
-  FVersion := mSnapshot.Version;
-  FPatternKey := mKey;
-  FTarget := mTarget;
-  FPattern := TAtlasIssueKeyPattern.ForTarget(mTarget);
-  FCommit := mCommit;
-  FLines := TTextLines.SplitLines(mSnapshot.Text);
-  FStates := TAtlasCodeLinks.States(FLines);
-  FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+  FHover.SetHit(Default(TAtlasCodeLinkHit), False);
+  FState.FileName := mSnapshot.FileName;
+  FState.Version := mSnapshot.Version;
+  FState.PatternKey := mKey;
+  FState.Target := mTarget;
+  FState.Pattern := TAtlasIssueKeyPattern.ForTarget(mTarget);
+  FState.Commit := mCommit;
+  FState.Lines := TTextLines.SplitLines(mSnapshot.Text);
+  FState.States := TAtlasCodeLinks.States(FState.Lines);
+  FState.TabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
   FMatches.Clear;
   FHits.Clear;
-  Invalidate;
+  InvalidateEditor;
 end;
 
 function TAtlasIdeCodeLinks.MatchesOf(ALine: Integer): TArray<TAtlasIssueKeyMatch>;
@@ -401,72 +367,38 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasCodeLinks.LineMatches(FPattern, FLines[ALine], FStates[ALine], FCommit);
+  Result := TAtlasCodeLinks.LineMatches(FState.Pattern, FState.Lines[ALine], FState.States[ALine], FState.Commit);
   FMatches.Add(ALine, Result);
 end;
 
-procedure TAtlasIdeCodeLinks.PaintMatches(const Rect: TRect; const Context: INTACodeEditorPaintContext;
-  const AText: string; const AMatches: TArray<TAtlasIssueKeyMatch>);
+/// <summary>Zeile des Stands, die AContext zeichnet; -1, wenn sie nicht dem Stand entspricht (sonst kommt gleich
+/// ein neuer Takt) oder nichts gezeigt wird.</summary>
+function PaintedLine(AOwner: TAtlasIdeCodeLinks; const AContext: INTACodeEditorPaintContext): Integer;
 var
-  mMatch: TAtlasIssueKeyMatch;
-  mFirst, mLast, mCode: TRect;
-  mBack: TAtlasColor;
-  mColor: COLORREF;
-  mDC: HDC;
-  mSaved, mX, mY: Integer;
-  mHit: THit;
-  mHits: TArray<THit>;
+  mLineState: INTACodeEditorLineState;
+  mLine: Integer;
 begin
-  mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
-  mColor := COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(TAtlasColors.ForBackground(mBack).Accent, mBack,
-    LineStrength))));
-  mDC := Context.Canvas.Handle;
-  mCode := Context.LineState.CodeRect;
-  mHits := nil;
-  mSaved := SaveDC(mDC);
-  try
-    if mCode.Right > mCode.Left then
-    begin
-      IntersectClipRect(mDC, mCode.Left, Rect.Top, Rect.Right, Rect.Bottom);
-    end;
-    mY := Rect.Bottom - 2;
-    for mMatch in AMatches do
-    begin
-      mFirst := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mMatch.Character, FTabWidth),
-        Context.EditorLineNum);
-      mLast := Context.EditorState.GetCharacterPosPx(
-        TLspSession.IndexToColumn(AText, mMatch.Character + mMatch.Length, FTabWidth), Context.EditorLineNum);
-      // Gepunktet wie die Links des Editors: jeder zweite Pixel.
-      mX := mFirst.Left;
-      while mX < mLast.Left do
-      begin
-        SetPixel(mDC, mX, mY, mColor);
-        Inc(mX, 2);
-      end;
-      mHit := Default(THit);
-      mHit.Wnd := Context.EditControl.Handle;
-      mHit.FileName := Context.FileName;
-      mHit.Line := Context.LogicalLineNum - 1;
-      mHit.TopRow := Context.EditView.TopRow;
-      mHit.Rect := TRect.Create(mFirst.Left, Rect.Top, Max(mLast.Left, mFirst.Left + 1), Rect.Bottom);
-      mHit.Match := mMatch;
-      mHits := mHits + [mHit];
-    end;
-  finally
-    RestoreDC(mDC, mSaved);
+  Result := -1;
+  if not AOwner.Shown or not SameText(AContext.FileName, AOwner.FState.FileName) then
+  begin
+    Exit;
   end;
-  FHits.AddOrSetValue(Context.EditorLineNum, mHits);
+  mLineState := AContext.LineState;
+  mLine := AContext.LogicalLineNum - 1;
+  if (mLineState <> nil) and (mLine >= 0) and (mLine < Length(AOwner.FState.Lines)) and
+    (TrimRight(mLineState.Text) = TrimRight(AOwner.FState.Lines[mLine])) then
+  begin
+    Result := mLine;
+  end;
 end;
 
 procedure TAtlasIdeCodeLinks.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  mLineState: INTACodeEditorLineState;
   mMatches: TArray<TAtlasIssueKeyMatch>;
-  mText: string;
   mLine: Integer;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FFileName = '') or
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FState.FileName = '') or
     TAtlasGuard.Disabled(TAtlasFeature.IssueLinks) then
   begin
     Exit;
@@ -478,30 +410,16 @@ begin
     end;
     // Was diese Zeile des Editors vorher zeigte, gilt nicht mehr.
     FHits.Remove(Context.EditorLineNum);
-    if not Shown or not SameText(Context.FileName, FFileName) then
-    begin
-      Exit;
-    end;
-    mLineState := Context.LineState;
-    if mLineState = nil then
-    begin
-      Exit;
-    end;
-    mLine := Context.LogicalLineNum - 1;
-    if (mLine < 0) or (mLine >= Length(FLines)) then
-    begin
-      Exit;
-    end;
-    mText := FLines[mLine];
-    // Nur, wenn die Zeile im Editor dem Stand entspricht (sonst kommt gleich ein neuer Takt).
-    if TrimRight(mLineState.Text) <> TrimRight(mText) then
+    mLine := PaintedLine(Self, Context);
+    if mLine < 0 then
     begin
       Exit;
     end;
     mMatches := MatchesOf(mLine);
     if Length(mMatches) > 0 then
     begin
-      PaintMatches(Rect, Context, mText, mMatches);
+      FHits.AddOrSetValue(Context.EditorLineNum, TAtlasCodeLinkPainter.Paint(Rect, Context, FState.Lines[mLine],
+        mMatches, FState.TabWidth));
     end;
   except
     // Zeichnen darf die IDE nie stören.
@@ -510,13 +428,33 @@ begin
   end;
 end;
 
-function TAtlasIdeCodeLinks.HitAt(AWnd: HWND; X, Y: Integer; out AHit: THit): Boolean;
+/// <summary>Erste gezeichnete Kennung in AWnd unter APoint.</summary>
+function FindHit(AHits: TDictionary<Integer, TArray<TAtlasCodeLinkHit>>; AWnd: HWND; const APoint: TPoint;
+  out AHit: TAtlasCodeLinkHit): Boolean;
 var
-  mHits: TArray<THit>;
-  mHit: THit;
+  mHits: TArray<TAtlasCodeLinkHit>;
+  mHit: TAtlasCodeLinkHit;
+begin
+  AHit := Default(TAtlasCodeLinkHit);
+  for mHits in AHits.Values do
+  begin
+    for mHit in mHits do
+    begin
+      if (mHit.Wnd = AWnd) and PtInRect(mHit.Rect, APoint) then
+      begin
+        AHit := mHit;
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TAtlasIdeCodeLinks.HitAt(AWnd: HWND; X, Y: Integer; out AHit: TAtlasCodeLinkHit): Boolean;
+var
   mView: IOTAEditView;
 begin
-  AHit := Default(THit);
+  AHit := Default(TAtlasCodeLinkHit);
   Result := False;
   if not Shown or (FHits.Count = 0) then
   begin
@@ -527,333 +465,204 @@ begin
   begin
     Exit;
   end;
-  for mHits in FHits.Values do
+  // Nur, wenn die Kennung noch dort steht: gleiche Datei, nicht gescrollt.
+  Result := FindHit(FHits, AWnd, Point(X, Y), AHit) and SameText(AHit.FileName, mView.Buffer.FileName) and
+    (AHit.TopRow = mView.TopRow);
+  if not Result then
   begin
-    for mHit in mHits do
-    begin
-      if (mHit.Wnd = AWnd) and PtInRect(mHit.Rect, Point(X, Y)) then
-      begin
-        // Nur, wenn die Kennung noch dort steht: gleiche Datei, nicht gescrollt.
-        if not SameText(mHit.FileName, mView.Buffer.FileName) or (mHit.TopRow <> mView.TopRow) then
-        begin
-          Exit;
-        end;
-        AHit := mHit;
-        Exit(True);
-      end;
-    end;
+    AHit := Default(TAtlasCodeLinkHit);
   end;
-end;
-
-function TAtlasIdeCodeLinks.TargetOf(const AHit: THit): TAtlasTrackerTarget;
-begin
-  Result := AHit.Match.IssueTarget(FTarget);
-end;
-
-function TAtlasIdeCodeLinks.Preview: TAtlasIdeIssuePreview;
-begin
-  Result := nil;
-  if Assigned(FHooks.Preview) then
-  begin
-    Result := FHooks.Preview();
-  end;
-end;
-
-function TAtlasIdeCodeLinks.CanStart: Boolean;
-begin
-  Result := Assigned(FHooks.CanStart) and Assigned(FHooks.Start) and FHooks.CanStart();
-end;
-
-procedure TAtlasIdeCodeLinks.SetHover(const AHit: THit; AOn: Boolean);
-var
-  mChanged: Boolean;
-begin
-  mChanged := AOn <> FHovering;
-  if AOn and FHovering then
-  begin
-    mChanged := (AHit.Wnd <> FHover.Wnd) or (AHit.Line <> FHover.Line) or
-      (AHit.Match.Character <> FHover.Match.Character) or not SameText(AHit.FileName, FHover.FileName);
-  end;
-  if not mChanged then
-  begin
-    Exit;
-  end;
-  HideTip;
-  FHovering := AOn;
-  FHover := AHit;
-  FHoverSince := TThread.GetTickCount64;
 end;
 
 procedure TAtlasIdeCodeLinks.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
-  mHit: THit;
+  mHit: TAtlasCodeLinkHit;
 begin
   try
     if (Editor = nil) or not Editor.HandleAllocated or not HitAt(Editor.Handle, X, Y, mHit) then
     begin
-      // Über dem Tooltip selbst bleibt er offen (CheckHover).
-      if not (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos)) then
+      // Über dem Tooltip selbst bleibt er offen (Check).
+      if not FHover.Over(Mouse.CursorPos) then
       begin
-        SetHover(Default(THit), False);
+        FHover.SetHit(Default(TAtlasCodeLinkHit), False);
       end;
       Exit;
     end;
-    SetHover(mHit, True);
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(mHit.Rect.TopLeft),
-      Editor.ClientToScreen(mHit.Rect.BottomRight));
+    FHover.SetHit(mHit, True);
+    FHover.SetScreen(TRect.Create(Editor.ClientToScreen(mHit.Rect.TopLeft),
+      Editor.ClientToScreen(mHit.Rect.BottomRight)));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.IssueLinks, E);
   end;
 end;
 
-procedure TAtlasIdeCodeLinks.CheckHover;
-begin
-  if not FHovering then
-  begin
-    Exit;
-  end;
-  if not Shown then
-  begin
-    SetHover(Default(THit), False);
-    Exit;
-  end;
-  // Maus hat die Kennung verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-  if not PtInRect(FHoverScreen, Mouse.CursorPos) and not (FTip.IsShown and PtInRect(FTip.BoundsRect,
-    Mouse.CursorPos)) then
-  begin
-    SetHover(Default(THit), False);
-    Exit;
-  end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= TAtlasCloseRules.TooltipShowDelayMs) then
-  begin
-    ShowTip(FHover);
-  end;
-end;
-
-procedure TAtlasIdeCodeLinks.HideTip;
-begin
-  FTipKey := '';
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
-  end;
-end;
-
-procedure TAtlasIdeCodeLinks.ShowState(const AKey: string; AState: TAtlasIssueTipState;
-  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+procedure TAtlasIdeCodeLinks.Act(const AHit: TAtlasCodeLinkHit; ACommand: Integer);
 var
-  mTitle, mText: string;
-begin
-  TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
-    TAtlasIdeIssuePreview.Active, mTitle, mText);
-  FTipKey := AKey;
-  FTip.ShowNote(mTitle, mText, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
-end;
-
-procedure TAtlasIdeCodeLinks.ShowTip(const AHit: THit);
-var
-  mPreview: TAtlasIdeIssuePreview;
   mTarget: TAtlasTrackerTarget;
-  mDetails: TAtlasTrackerDetails;
-  mKey: string;
-  mSerial: Integer;
-  mCached: Boolean;
 begin
-  mPreview := Preview;
-  if mPreview = nil then
-  begin
-    Exit;
-  end;
-  mTarget := TargetOf(AHit);
-  mKey := AHit.Match.IssueKey;
-  mCached := mPreview.Peek(mTarget, mKey, mDetails);
-  if mCached then
-  begin
-    ShowState(AHit.Match.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None);
-  end
-  else
-  begin
-    ShowState(AHit.Match.Key, TAtlasIssueTipState.Loading, mDetails, TAtlasCiFetchError.None);
-  end;
-  // Erst der Hover fragt; ein frischer Stand braucht keine Abfrage.
-  if mCached and TAtlasIdeIssuePreview.Fresh(mDetails) then
-  begin
-    Exit;
-  end;
-  mSerial := FSerialOf;
-  mKey := AHit.Match.Key;
-  mPreview.Lookup(mTarget, AHit.Match.IssueKey,
-    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
-    begin
-      if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
-      begin
-        FInstance.LookedUp(mKey, ASucceeded, ADetails, AError);
-      end;
-    end);
-end;
-
-procedure TAtlasIdeCodeLinks.LookedUp(const AKey: string; ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
-  AError: TAtlasCiFetchError);
-var
-  mCached: TAtlasTrackerDetails;
-begin
-  // Nur, solange der Tooltip noch diese Kennung zeigt.
-  if not FHovering or not FTip.IsShown or (FTipKey <> AKey) then
-  begin
-    Exit;
-  end;
-  if ASucceeded then
-  begin
-    ShowState(AKey, TAtlasIssueTipState.Found, ADetails, AError);
-  end
-  else if AError = TAtlasCiFetchError.NotFound then
-  begin
-    ShowState(AKey, TAtlasIssueTipState.NotFound, ADetails, AError);
-  end
-  else if not ((Preview <> nil) and Preview.Peek(TargetOf(FHover), FHover.Match.IssueKey, mCached)) then
-  begin
-    // Ohne Netz bleibt ein vorhandener Stand stehen; sonst der Grund.
-    ShowState(AKey, TAtlasIssueTipState.Failed, ADetails, AError);
-  end;
-end;
-
-procedure TAtlasIdeCodeLinks.Act(const AHit: THit; ACommand: Integer);
-begin
+  mTarget := AHit.Match.IssueTarget(FState.Target);
   case ACommand of
     MenuShow:
       if Assigned(FHooks.Show) then
       begin
-        FHooks.Show(TargetOf(AHit), AHit.Match.IssueKey);
+        FHooks.Show(mTarget, AHit.Match.IssueKey);
       end;
     MenuBrowse:
       if Assigned(FHooks.Browse) then
       begin
-        FHooks.Browse(TargetOf(AHit), AHit.Match.IssueKey);
+        FHooks.Browse(mTarget, AHit.Match.IssueKey);
       end;
     MenuCopy:
       Clipboard.AsText := AHit.Match.Key;
     MenuStart:
-      if CanStart then
+      if CanStart(FHooks) then
       begin
-        FHooks.Start(TargetOf(AHit), AHit.Match.IssueKey);
+        FHooks.Start(mTarget, AHit.Match.IssueKey);
       end;
   end;
 end;
 
-procedure TAtlasIdeCodeLinks.AppMessage(var Msg: TMsg; var Handled: Boolean);
+/// <summary>Im Hauptthread nachgereicht: eigenes Menü zu AHit an AWhere.</summary>
+procedure QueueMenu(const AHit: TAtlasCodeLinkHit; const AWhere: TPoint; ASerial: Integer);
 var
-  mHit: THit;
+  mHit: TAtlasCodeLinkHit;
   mWhere: TPoint;
-  mCommand, mSerial: Integer;
 begin
-  try
-    if (Msg.message = FSwallowUp) and (FSwallowUp <> 0) then
+  mHit := AHit;
+  mWhere := AWhere;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.IssueLinks,
+    procedure
     begin
-      // Loslassen zum geschluckten Drücken: Ohne Drücken darf auch es nicht an den Editor.
-      FSwallowUp := 0;
-      Handled := True;
-      if GetCapture = Msg.hwnd then
+      if (TAtlasIdeCodeLinks.FInstance <> nil) and (TAtlasIdeCodeLinks.FInstance.FSerialOf = ASerial) then
       begin
-        ReleaseCapture;
-      end;
-      if Msg.message = WM_RBUTTONUP then
-      begin
-        mHit := FMenuHit;
-        mWhere := Mouse.CursorPos;
-        mSerial := FSerialOf;
-        TAtlasMainThread.ForceQueue(TAtlasFeature.IssueLinks,
+        TAtlasGuard.Run(TAtlasFeature.IssueLinks,
           procedure
           begin
-            if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
-            begin
-              TAtlasGuard.Run(TAtlasFeature.IssueLinks,
-                procedure
-                begin
-                  FInstance.ShowMenu(mHit, mWhere);
-                end);
-            end;
+            TAtlasIdeCodeLinks.FInstance.ShowMenu(mHit, mWhere);
           end);
       end;
-      Exit;
-    end;
-    if not ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_RBUTTONDOWN)) then
+    end);
+end;
+
+/// <summary>Im Hauptthread nachgereicht: Befehl ACommand für AHit.</summary>
+procedure QueueAct(const AHit: TAtlasCodeLinkHit; ACommand, ASerial: Integer);
+var
+  mHit: TAtlasCodeLinkHit;
+begin
+  mHit := AHit;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.IssueLinks,
+    procedure
     begin
-      Exit;
-    end;
-    if (Msg.message = WM_LBUTTONDOWN) and ((Msg.wParam and MK_CONTROL) = 0) then
-    begin
-      Exit;
-    end;
-    // Umschalt+Rechtsklick: Kontextmenü der IDE.
-    if (Msg.message = WM_RBUTTONDOWN) and ((Msg.wParam and MK_SHIFT) <> 0) then
-    begin
-      Exit;
-    end;
-    if not HitAt(Msg.hwnd, SmallInt(LoWord(Msg.lParam)), SmallInt(HiWord(Msg.lParam)), mHit) then
-    begin
-      Exit;
-    end;
-    Handled := True;
-    HideTip;
-    if Msg.message = WM_RBUTTONDOWN then
-    begin
-      // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.
-      FSwallowUp := WM_RBUTTONUP;
-      FMenuHit := mHit;
-      Exit;
-    end;
-    // Strg+Klick: Vorschau bzw. Browser; Strg+Umschalt+Klick: Browser. Die IDE springt nicht.
-    FSwallowUp := WM_LBUTTONUP;
-    mCommand := MenuShow;
-    if (Msg.wParam and MK_SHIFT) <> 0 then
-    begin
-      mCommand := MenuBrowse;
-    end;
-    mSerial := FSerialOf;
-    TAtlasMainThread.ForceQueue(TAtlasFeature.IssueLinks,
-      procedure
+      if (TAtlasIdeCodeLinks.FInstance <> nil) and (TAtlasIdeCodeLinks.FInstance.FSerialOf = ASerial) then
       begin
-        if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
-        begin
-          TAtlasGuard.Run(TAtlasFeature.IssueLinks,
-            procedure
-            begin
-              FInstance.Act(mHit, mCommand);
-            end);
-        end;
-      end);
+        TAtlasGuard.Run(TAtlasFeature.IssueLinks,
+          procedure
+          begin
+            TAtlasIdeCodeLinks.FInstance.Act(mHit, ACommand);
+          end);
+      end;
+    end);
+end;
+
+/// <summary>Loslassen zum geschluckten Drücken: Ohne Drücken darf auch es nicht an den Editor; nach dem
+/// Rechtsklick öffnet hier das eigene Menü.</summary>
+procedure SwallowUp(AOwner: TAtlasIdeCodeLinks; const AMsg: TMsg; var AHandled: Boolean);
+begin
+  AOwner.FSwallowUp := 0;
+  AHandled := True;
+  if GetCapture = AMsg.hwnd then
+  begin
+    ReleaseCapture;
+  end;
+  if AMsg.message = WM_RBUTTONUP then
+  begin
+    QueueMenu(AOwner.FMenuHit, Mouse.CursorPos, AOwner.FSerialOf);
+  end;
+end;
+
+/// <summary>Strg+Klick oder Rechtsklick ohne Umschalt (Umschalt+Rechtsklick: Kontextmenü der IDE)?</summary>
+function IsLinkClick(const AMsg: TMsg): Boolean;
+begin
+  Result := ((AMsg.message = WM_LBUTTONDOWN) and ((AMsg.wParam and MK_CONTROL) <> 0)) or
+    ((AMsg.message = WM_RBUTTONDOWN) and ((AMsg.wParam and MK_SHIFT) = 0));
+end;
+
+/// <summary>Klick auf eine Kennung: Strg+Klick öffnet Vorschau bzw. Browser (Strg+Umschalt+Klick: Browser; die
+/// IDE springt nicht), Rechtsklick merkt die Kennung für das Menü beim Loslassen.</summary>
+procedure LinkClick(AOwner: TAtlasIdeCodeLinks; const AMsg: TMsg; var AHandled: Boolean);
+var
+  mHit: TAtlasCodeLinkHit;
+  mCommand: Integer;
+begin
+  if not AOwner.HitAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)), mHit) then
+  begin
+    Exit;
+  end;
+  AHandled := True;
+  AOwner.FHover.Hide;
+  if AMsg.message = WM_RBUTTONDOWN then
+  begin
+    // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.
+    AOwner.FSwallowUp := WM_RBUTTONUP;
+    AOwner.FMenuHit := mHit;
+  end
+  else
+  begin
+    AOwner.FSwallowUp := WM_LBUTTONUP;
+    mCommand := TAtlasIdeCodeLinks.MenuShow;
+    if (AMsg.wParam and MK_SHIFT) <> 0 then
+    begin
+      mCommand := TAtlasIdeCodeLinks.MenuBrowse;
+    end;
+    QueueAct(mHit, mCommand, AOwner.FSerialOf);
+  end;
+end;
+
+procedure TAtlasIdeCodeLinks.AppMessage(var Msg: TMsg; var Handled: Boolean);
+begin
+  try
+    if (FSwallowUp <> 0) and (Msg.message = FSwallowUp) then
+    begin
+      SwallowUp(Self, Msg, Handled);
+    end
+    else if IsLinkClick(Msg) then
+    begin
+      LinkClick(Self, Msg, Handled);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.IssueLinks, E);
   end;
 end;
 
-function TAtlasIdeCodeLinks.AddMenuItem(const ACaption: string; ATag: Integer): TMenuItem;
+function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FMenu);
+  Result := TMenuItem.Create(AMenu);
   Result.Caption := ACaption;
   Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  FMenu.Items.Add(Result);
+  Result.OnClick := AClick;
+  AMenu.Items.Add(Result);
 end;
 
-procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: THit; const APoint: TPoint);
+procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: TAtlasCodeLinkHit; const APoint: TPoint);
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), MenuShow).Default := True;
-  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), MenuBrowse);
-  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), MenuCopy);
-  AddMenuItem('-', 0).OnClick := nil;
-  AddMenuItem(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), MenuStart).Enabled := CanStart;
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkMenuShow), MenuShow,
+    MenuClick).Default := True;
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewBrowse), MenuBrowse, MenuClick);
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewCopyKey), MenuCopy, MenuClick);
+  AddMenuItem(FMenu, '-', 0, nil);
+  AddMenuItem(FMenu, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewStart), MenuStart,
+    MenuClick).Enabled := CanStart(FHooks);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 procedure TAtlasIdeCodeLinks.MenuClick(Sender: TObject);
 var
   mCommand: Integer;
-  mHit: THit;
+  mHit: TAtlasCodeLinkHit;
 begin
   mCommand := TMenuItem(Sender).Tag;
   mHit := FMenuHit;

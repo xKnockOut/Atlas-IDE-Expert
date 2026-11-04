@@ -42,6 +42,16 @@ type
     function OnText: string;
   end;
 
+  /// <summary>Was abgeschaltet wird, in welchem Bereich und mit welcher Begründung.</summary>
+  TDisableWarningRequest = record
+    Switch: TDisableWarningSwitch;
+    Scope: TDisableWarningScope;
+    /// <summary>Begründung für den Kommentar; '' ohne.</summary>
+    Reason: string;
+    class function Create(const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope;
+      const AReason: string): TDisableWarningRequest; static;
+  end;
+
   TDisableWarning = class
   public
     /// <summary>Schalter für ACode in der Delphi-Version AVersion (BDS-Nummer); False bei Fehlern und
@@ -51,11 +61,10 @@ type
     class function RoutineAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode; static;
     /// <summary>Zeile (ab 0), hinter der der Kopf (unit X; program X; …) endet; -1 ohne Kopf.</summary>
     class function HeaderEndLine(ATree: TSyntaxTree): Integer; static;
-    /// <summary>Einfügungen für ASwitch im Bereich AScope um Zeile ALine (ab 0); False, wenn es den Bereich dort
-    /// nicht gibt (Zeile außerhalb des Texts, keine Routine, kein Kopf).</summary>
+    /// <summary>Einfügungen für den Schalter von ARequest in seinem Bereich um Zeile ALine (ab 0); False, wenn es
+    /// den Bereich dort nicht gibt (Zeile außerhalb des Texts, keine Routine, kein Kopf).</summary>
     class function Edits(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-      const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope; const AReason: string;
-      out AEdits: TArray<TTextEdit>): Boolean; static;
+      const ARequest: TDisableWarningRequest; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Begründung als einzeiliger Kommentar; '' ohne.</summary>
     class function ReasonComment(const AReason: string): string; static;
   end;
@@ -211,9 +220,18 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(ALine, ALength, ALine, ALength), ALineBreak + AText);
 end;
 
+{ TDisableWarningRequest }
+
+class function TDisableWarningRequest.Create(const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope;
+  const AReason: string): TDisableWarningRequest;
+begin
+  Result.Switch := ASwitch;
+  Result.Scope := AScope;
+  Result.Reason := AReason;
+end;
+
 class function TDisableWarning.Edits(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-  const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope; const AReason: string;
-  out AEdits: TArray<TTextEdit>): Boolean;
+  const ARequest: TDisableWarningRequest; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Lines: TArray<string>;
   LineBreak, Indent: string;
@@ -227,14 +245,15 @@ begin
   begin
     Exit;
   end;
-  case AScope of
+  case ARequest.Scope of
     TDisableWarningScope.UnitWide:
       begin
         First := HeaderEndLine(ATree);
         Result := (First >= 0) and (First <= High(Lines));
         if Result then
         begin
-          AEdits := [After(First, Length(Lines[First]), ASwitch.OffText + ReasonComment(AReason), LineBreak)];
+          AEdits := [After(First, Length(Lines[First]), ARequest.Switch.OffText + ReasonComment(ARequest.Reason),
+            LineBreak)];
         end;
         Exit;
       end;
@@ -259,8 +278,8 @@ begin
     Exit;
   end;
   Indent := TTextLines.IndentOf(Lines[First]);
-  AEdits := [Before(First, Indent + ASwitch.OffText + ReasonComment(AReason), LineBreak),
-    After(Last, Length(Lines[Last]), Indent + ASwitch.OnText, LineBreak)];
+  AEdits := [Before(First, Indent + ARequest.Switch.OffText + ReasonComment(ARequest.Reason), LineBreak),
+    After(Last, Length(Lines[Last]), Indent + ARequest.Switch.OnText, LineBreak)];
 end;
 
 end.
