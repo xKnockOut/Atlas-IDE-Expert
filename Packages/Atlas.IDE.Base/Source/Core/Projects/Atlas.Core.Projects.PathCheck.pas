@@ -53,42 +53,14 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Projects.PathCheck.Scan;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Stand eines Zweigs: gilt, gilt nicht, oder die Bedingung ließ sich nicht auswerten.</summary>
-  TAtlasBranchState = (Active, Inactive, Unknown);
-{$SCOPEDENUMS OFF}
-
-  TAtlasUsedUnit = record
-    /// <summary>Name wie geschrieben, z. B. "System.SysUtils".</summary>
-    Name: string;
-    /// <summary>Pfad aus "in 'Pfad'"; '' ohne.</summary>
-    InFile: string;
-    /// <summary>Zeile ab 1.</summary>
-    Line: Integer;
-    State: TAtlasBranchState;
-  end;
-
-  TAtlasSymbolUse = record
-    Name: string;
-    Line: Integer;
-  end;
-
-  TAtlasSourceScan = record
-    /// <summary>Paket (.dpk): contains zählt wie uses.</summary>
-    IsPackage: Boolean;
-    Units: TArray<TAtlasUsedUnit>;
-    /// <summary>Symbole aus $IFDEF, $IFNDEF und DEFINED(…), auch in inaktiven Zweigen.</summary>
-    Referenced: TArray<TAtlasSymbolUse>;
-    /// <summary>Symbole aus $DEFINE, auch in inaktiven Zweigen (gesetzt in irgendeiner Konfiguration).</summary>
-    Defined: TArray<string>;
-    /// <summary>Dateinamen aus $I und $INCLUDE, wie geschrieben.</summary>
-    Includes: TArray<string>;
-    /// <summary>Paket (.dpk): Namen aus requires.</summary>
-    Requires: TArray<TAtlasUsedUnit>;
-  end;
+  TAtlasBranchState = Atlas.Core.Projects.PathCheck.Scan.TAtlasBranchState;
+  TAtlasUsedUnit = Atlas.Core.Projects.PathCheck.Scan.TAtlasUsedUnit;
+  TAtlasSymbolUse = Atlas.Core.Projects.PathCheck.Scan.TAtlasSymbolUse;
+  TAtlasSourceScan = Atlas.Core.Projects.PathCheck.Scan.TAtlasSourceScan;
 
   /// <summary>Fehlende Unit oder Symbol ohne Quelle: erste Stelle und Zahl der Stellen.</summary>
   TAtlasPathFinding = record
@@ -232,7 +204,6 @@ uses
   System.Math,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Text.Chars,
   Atlas.Text.Defines;
 
 const
@@ -422,748 +393,17 @@ begin
     end;
 end;
 
-{ Bedingungen }
-
-type
-  TBranch = record
-    State: TAtlasBranchState;
-    /// <summary>Ein Zweig galt sicher.</summary>
-    Taken: Boolean;
-    /// <summary>Ein Zweig war unbekannt: Spätere können nicht mehr sicher gelten.</summary>
-    Unsure: Boolean;
-    Parent: TAtlasBranchState;
-  end;
-
-  TExpressionParser = class
-  private
-    FTokens: TArray<string>;
-    FPos: Integer;
-    FDefines: TDictionary<string, Boolean>;
-    FFailed: Boolean;
-    function Peek: string;
-    function Next: string;
-    function ParseOr: TAtlasBranchState;
-    function ParseAnd: TAtlasBranchState;
-    function ParseUnary: TAtlasBranchState;
-  public
-    constructor Create(const AExpression: string; ADefines: TDictionary<string, Boolean>);
-    function Parse: TAtlasBranchState;
-  end;
-
-function Tokenize(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
-begin
-  Result := nil;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-    begin
-      Inc(Index);
-    end
-    else if TTextChars.IsIdentStart(AText[Index]) then
-    begin
-      Start := Index;
-      while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
-      begin
-        Inc(Index);
-      end;
-      Result := Result + [Copy(AText, Start, Index - Start)];
-    end
-    else
-    begin
-      Result := Result + [AText[Index]];
-      Inc(Index);
-    end;
-  end;
-end;
-
-function StateOf(AValue: Boolean): TAtlasBranchState;
-begin
-  if AValue then
-  begin
-    Result := TAtlasBranchState.Active;
-  end
-  else
-  begin
-    Result := TAtlasBranchState.Inactive;
-  end;
-end;
-
-constructor TExpressionParser.Create(const AExpression: string; ADefines: TDictionary<string, Boolean>);
-begin
-  inherited Create;
-  FTokens := Tokenize(AExpression);
-  FDefines := ADefines;
-end;
-
-function TExpressionParser.Peek: string;
-begin
-  Result := '';
-  if FPos <= High(FTokens) then
-  begin
-    Result := FTokens[FPos];
-  end;
-end;
-
-function TExpressionParser.Next: string;
-begin
-  Result := Peek;
-  Inc(FPos);
-end;
-
-function TExpressionParser.Parse: TAtlasBranchState;
-begin
-  FPos := 0;
-  FFailed := False;
-  Result := ParseOr;
-  if FFailed or (FPos <= High(FTokens)) then
-  begin
-    Result := TAtlasBranchState.Unknown;
-  end;
-end;
-
-function TExpressionParser.ParseOr: TAtlasBranchState;
-var
-  Right: TAtlasBranchState;
-begin
-  Result := ParseAnd;
-  while SameText(Peek, 'or') do
-  begin
-    Next;
-    Right := ParseAnd;
-    if (Result = TAtlasBranchState.Active) or (Right = TAtlasBranchState.Active) then
-    begin
-      Result := TAtlasBranchState.Active;
-    end
-    else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
-    begin
-      Result := TAtlasBranchState.Unknown;
-    end
-    else
-    begin
-      Result := TAtlasBranchState.Inactive;
-    end;
-  end;
-end;
-
-function TExpressionParser.ParseAnd: TAtlasBranchState;
-var
-  Right: TAtlasBranchState;
-begin
-  Result := ParseUnary;
-  while SameText(Peek, 'and') do
-  begin
-    Next;
-    Right := ParseUnary;
-    if (Result = TAtlasBranchState.Inactive) or (Right = TAtlasBranchState.Inactive) then
-    begin
-      Result := TAtlasBranchState.Inactive;
-    end
-    else if (Result = TAtlasBranchState.Unknown) or (Right = TAtlasBranchState.Unknown) then
-    begin
-      Result := TAtlasBranchState.Unknown;
-    end
-    else
-    begin
-      Result := TAtlasBranchState.Active;
-    end;
-  end;
-end;
-
-function TExpressionParser.ParseUnary: TAtlasBranchState;
-var
-  Token, Name: string;
-begin
-  Token := Next;
-  if SameText(Token, 'not') then
-  begin
-    Result := ParseUnary;
-    if Result = TAtlasBranchState.Active then
-    begin
-      Result := TAtlasBranchState.Inactive;
-    end
-    else if Result = TAtlasBranchState.Inactive then
-    begin
-      Result := TAtlasBranchState.Active;
-    end;
-    Exit;
-  end;
-  if Token = '(' then
-  begin
-    Result := ParseOr;
-    if Next <> ')' then
-    begin
-      FFailed := True;
-    end;
-    Exit;
-  end;
-  if SameText(Token, 'defined') and (Peek = '(') then
-  begin
-    Next;
-    Name := Next;
-    if (Name = '') or not TTextChars.IsIdentStart(Name[1]) or (Next <> ')') then
-    begin
-      FFailed := True;
-      Exit(TAtlasBranchState.Unknown);
-    end;
-    Exit(StateOf(FDefines.ContainsKey(UpperCase(Name))));
-  end;
-  // CompilerVersion, Declared(…), SizeOf, Zahlen, Vergleiche: nicht auswertbar.
-  FFailed := True;
-  Result := TAtlasBranchState.Unknown;
-end;
-
-{ Scanner }
-
-type
-{$SCOPEDENUMS ON}
-  TUsesState = (None, ExpectName, NamePart, AfterName, ExpectPath);
-{$SCOPEDENUMS OFF}
-
-  TScanner = class
-  private
-    FText: string;
-    FPos: Integer;
-    FLine: Integer;
-    FDefines: TDictionary<string, Boolean>;
-    FStack: TList<TBranch>;
-    FResult: TAtlasSourceScan;
-    FUses: TUsesState;
-    FPending: TAtlasUsedUnit;
-    FFirstWord: Boolean;
-    /// <summary>Liste nach requires: Namen sind Packages, keine Units.</summary>
-    FInRequires: Boolean;
-    function Current: TAtlasBranchState;
-    procedure Push(ACondition: TAtlasBranchState);
-    procedure ElseIf(ACondition: TAtlasBranchState);
-    procedure Pop;
-    procedure Directive(const AText: string; ALine: Integer);
-    procedure Reference(const AName: string; ALine: Integer);
-    procedure ReferenceAll(const AExpression: string; ALine: Integer);
-    procedure Word(const AWord: string; ALine: Integer);
-    procedure Symbol(AChar: Char);
-    procedure StringLiteral(const AValue: string);
-    procedure Commit;
-    procedure CountLines(AFrom, ATo: Integer);
-  public
-    constructor Create(const AText: string; const ADefines: TArray<string>);
-    destructor Destroy; override;
-    function Run: TAtlasSourceScan;
-  end;
-
-constructor TScanner.Create(const AText: string; const ADefines: TArray<string>);
-var
-  Name: string;
-begin
-  inherited Create;
-  FText := AText;
-  FDefines := TDictionary<string, Boolean>.Create;
-  for Name in ADefines do
-  begin
-    if Trim(Name) <> '' then
-    begin
-      FDefines.AddOrSetValue(UpperCase(Trim(Name)), True);
-    end;
-  end;
-  FStack := TList<TBranch>.Create;
-  FFirstWord := True;
-end;
-
-destructor TScanner.Destroy;
-begin
-  FStack.Free;
-  FDefines.Free;
-  inherited;
-end;
-
-function TScanner.Current: TAtlasBranchState;
-begin
-  if FStack.Count = 0 then
-  begin
-    Result := TAtlasBranchState.Active;
-  end
-  else
-  begin
-    Result := FStack.Last.State;
-  end;
-end;
-
-procedure TScanner.Push(ACondition: TAtlasBranchState);
-var
-  Branch: TBranch;
-begin
-  Branch := Default(TBranch);
-  Branch.Parent := Current;
-  case Branch.Parent of
-    TAtlasBranchState.Inactive:
-      begin
-        Branch.State := TAtlasBranchState.Inactive;
-        // Kein Zweig darunter kann gelten.
-        Branch.Taken := True;
-      end;
-    TAtlasBranchState.Unknown:
-      begin
-        if ACondition = TAtlasBranchState.Inactive then
-        begin
-          Branch.State := TAtlasBranchState.Inactive;
-        end
-        else
-        begin
-          Branch.State := TAtlasBranchState.Unknown;
-        end;
-        Branch.Taken := ACondition = TAtlasBranchState.Active;
-        Branch.Unsure := ACondition = TAtlasBranchState.Unknown;
-      end;
-  else
-    Branch.State := ACondition;
-    Branch.Taken := ACondition = TAtlasBranchState.Active;
-    Branch.Unsure := ACondition = TAtlasBranchState.Unknown;
-  end;
-  FStack.Add(Branch);
-end;
-
-procedure TScanner.ElseIf(ACondition: TAtlasBranchState);
-var
-  Branch: TBranch;
-begin
-  if FStack.Count = 0 then
-  begin
-    Exit;
-  end;
-  Branch := FStack.Last;
-  if Branch.Taken or (Branch.Parent = TAtlasBranchState.Inactive) then
-  begin
-    Branch.State := TAtlasBranchState.Inactive;
-  end
-  else if ACondition = TAtlasBranchState.Inactive then
-  begin
-    Branch.State := TAtlasBranchState.Inactive;
-  end
-  else
-  begin
-    if Branch.Unsure or (Branch.Parent = TAtlasBranchState.Unknown) or
-      (ACondition = TAtlasBranchState.Unknown) then
-    begin
-      Branch.State := TAtlasBranchState.Unknown;
-    end
-    else
-    begin
-      Branch.State := TAtlasBranchState.Active;
-    end;
-    // Gilt die Bedingung sicher, kann kein späterer Zweig mehr gelten: Entweder galt ein früherer oder dieser.
-    Branch.Taken := ACondition = TAtlasBranchState.Active;
-    Branch.Unsure := Branch.Unsure or (ACondition = TAtlasBranchState.Unknown);
-  end;
-  FStack[FStack.Count - 1] := Branch;
-end;
-
-procedure TScanner.Pop;
-begin
-  if FStack.Count > 0 then
-  begin
-    FStack.Delete(FStack.Count - 1);
-  end;
-end;
-
-procedure TScanner.Reference(const AName: string; ALine: Integer);
-var
-  Use: TAtlasSymbolUse;
-begin
-  if (AName = '') or not TTextChars.IsIdentStart(AName[1]) then
-  begin
-    Exit;
-  end;
-  Use.Name := AName;
-  Use.Line := ALine;
-  FResult.Referenced := FResult.Referenced + [Use];
-end;
-
-procedure TScanner.ReferenceAll(const AExpression: string; ALine: Integer);
-var
-  Tokens: TArray<string>;
-  Index: Integer;
-begin
-  Tokens := Tokenize(AExpression);
-  for Index := 0 to High(Tokens) - 3 do
-  begin
-    if SameText(Tokens[Index], 'defined') and (Tokens[Index + 1] = '(') and (Tokens[Index + 3] = ')') then
-    begin
-      Reference(Tokens[Index + 2], ALine);
-    end;
-  end;
-end;
-
-function FirstWord(const AText: string): string;
-var
-  Index: Integer;
-begin
-  Index := 1;
-  while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
-  begin
-    Inc(Index);
-  end;
-  Result := Copy(AText, 1, Index - 1);
-end;
-
-function Unquote(const AText: string): string;
-begin
-  Result := Trim(AText);
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-end;
-
-procedure TScanner.Directive(const AText: string; ALine: Integer);
-var
-  Name, Argument, Symbol: string;
-  Parser: TExpressionParser;
-  Condition: TAtlasBranchState;
-begin
-  Name := UpperCase(FirstWord(AText));
-  Argument := Trim(Copy(AText, Length(Name) + 1, MaxInt));
-  Symbol := FirstWord(Argument);
-  if (Name = 'IFDEF') or (Name = 'IFNDEF') then
-  begin
-    Reference(Symbol, ALine);
-    Condition := StateOf(FDefines.ContainsKey(UpperCase(Symbol)) = (Name = 'IFDEF'));
-    if Symbol = '' then
-    begin
-      Condition := TAtlasBranchState.Unknown;
-    end;
-    Push(Condition);
-  end
-  else if (Name = 'IF') or (Name = 'ELSEIF') then
-  begin
-    ReferenceAll(Argument, ALine);
-    Parser := TExpressionParser.Create(Argument, FDefines);
-    try
-      Condition := Parser.Parse;
-    finally
-      Parser.Free;
-    end;
-    if Name = 'IF' then
-    begin
-      Push(Condition);
-    end
-    else
-    begin
-      ElseIf(Condition);
-    end;
-  end
-  else if Name = 'IFOPT' then
-  begin
-    Push(TAtlasBranchState.Unknown);
-  end
-  else if Name = 'ELSE' then
-  begin
-    ElseIf(TAtlasBranchState.Active);
-  end
-  else if (Name = 'ENDIF') or (Name = 'IFEND') then
-  begin
-    Pop;
-  end
-  else if (Name = 'DEFINE') and (Symbol <> '') then
-  begin
-    FResult.Defined := FResult.Defined + [Symbol];
-    if Current = TAtlasBranchState.Active then
-    begin
-      FDefines.AddOrSetValue(UpperCase(Symbol), True);
-    end;
-  end
-  else if (Name = 'UNDEF') and (Symbol <> '') then
-  begin
-    if Current = TAtlasBranchState.Active then
-    begin
-      FDefines.Remove(UpperCase(Symbol));
-    end;
-  end
-  else if ((Name = 'I') or (Name = 'INCLUDE')) and (Argument <> '') and not CharInSet(Argument[1], ['+', '-']) then
-  begin
-    FResult.Includes := FResult.Includes + [Unquote(Argument)];
-  end;
-end;
-
-procedure TScanner.Commit;
-begin
-  if (FPending.Name <> '') and FInRequires then
-  begin
-    FResult.Requires := FResult.Requires + [FPending];
-  end
-  else if FPending.Name <> '' then
-  begin
-    FResult.Units := FResult.Units + [FPending];
-  end;
-  FPending := Default(TAtlasUsedUnit);
-end;
-
-procedure TScanner.Word(const AWord: string; ALine: Integer);
-begin
-  if FFirstWord then
-  begin
-    FFirstWord := False;
-    FResult.IsPackage := SameText(AWord, 'package');
-  end;
-  case FUses of
-    TUsesState.None:
-      if SameText(AWord, 'uses') or (FResult.IsPackage and (SameText(AWord, 'contains') or
-        SameText(AWord, 'requires'))) then
-      begin
-        FInRequires := SameText(AWord, 'requires');
-        FUses := TUsesState.ExpectName;
-        FPending := Default(TAtlasUsedUnit);
-      end;
-    TUsesState.ExpectName:
-      begin
-        FPending := Default(TAtlasUsedUnit);
-        FPending.Name := AWord;
-        FPending.Line := ALine;
-        FPending.State := Current;
-        FUses := TUsesState.AfterName;
-      end;
-    TUsesState.NamePart:
-      begin
-        FPending.Name := FPending.Name + '.' + AWord;
-        FUses := TUsesState.AfterName;
-      end;
-    TUsesState.AfterName:
-      if SameText(AWord, 'in') then
-      begin
-        FUses := TUsesState.ExpectPath;
-      end
-      else
-      begin
-        FUses := TUsesState.None;
-      end;
-  else
-    FUses := TUsesState.None;
-  end;
-end;
-
-procedure TScanner.Symbol(AChar: Char);
-begin
-  case FUses of
-    TUsesState.None:
-      Exit;
-    TUsesState.AfterName:
-      if AChar = '.' then
-      begin
-        FUses := TUsesState.NamePart;
-        Exit;
-      end;
-    TUsesState.ExpectName: ;
-    TUsesState.NamePart: ;
-    TUsesState.ExpectPath: ;
-  end;
-  if AChar = ',' then
-  begin
-    Commit;
-    FUses := TUsesState.ExpectName;
-  end
-  else if AChar = ';' then
-  begin
-    Commit;
-    FUses := TUsesState.None;
-  end
-  else
-  begin
-    FPending := Default(TAtlasUsedUnit);
-    FUses := TUsesState.None;
-  end;
-end;
-
-procedure TScanner.StringLiteral(const AValue: string);
-begin
-  if FUses = TUsesState.ExpectPath then
-  begin
-    FPending.InFile := AValue;
-    FUses := TUsesState.AfterName;
-  end
-  else if FUses <> TUsesState.None then
-  begin
-    FPending := Default(TAtlasUsedUnit);
-    FUses := TUsesState.None;
-  end;
-end;
-
-procedure TScanner.CountLines(AFrom, ATo: Integer);
-var
-  Index: Integer;
-begin
-  for Index := AFrom to ATo do
-  begin
-    if (Index >= 1) and (Index <= Length(FText)) and (FText[Index] = #10) then
-    begin
-      Inc(FLine);
-    end;
-  end;
-end;
-
-function TScanner.Run: TAtlasSourceScan;
-var
-  Len, Start, Close, StartLine: Integer;
-  C: Char;
-  Value: string;
-begin
-  FResult := Default(TAtlasSourceScan);
-  FPos := 1;
-  FLine := 1;
-  Len := Length(FText);
-  while FPos <= Len do
-  begin
-    C := FText[FPos];
-    if C = #10 then
-    begin
-      Inc(FLine);
-      Inc(FPos);
-    end
-    else if CharInSet(C, [' ', #9, #13]) then
-    begin
-      Inc(FPos);
-    end
-    else if (C = '/') and (FPos < Len) and (FText[FPos + 1] = '/') then
-    begin
-      while (FPos <= Len) and (FText[FPos] <> #10) do
-      begin
-        Inc(FPos);
-      end;
-    end
-    else if C = '{' then
-    begin
-      Close := Pos('}', FText, FPos + 1);
-      if Close = 0 then
-      begin
-        Close := Len + 1;
-      end;
-      StartLine := FLine;
-      if (FPos < Len) and (FText[FPos + 1] = '$') then
-      begin
-        Directive(Copy(FText, FPos + 2, Close - FPos - 2), StartLine);
-      end;
-      CountLines(FPos, Close);
-      FPos := Close + 1;
-    end
-    else if (C = '(') and (FPos < Len) and (FText[FPos + 1] = '*') then
-    begin
-      Close := Pos('*)', FText, FPos + 2);
-      if Close = 0 then
-      begin
-        Close := Len + 1;
-      end;
-      StartLine := FLine;
-      if (FPos + 2 <= Len) and (FText[FPos + 2] = '$') then
-      begin
-        Directive(Copy(FText, FPos + 3, Close - FPos - 3), StartLine);
-      end;
-      CountLines(FPos, Close);
-      FPos := Close + 2;
-    end
-    else if C = '''' then
-    begin
-      // Mehrzeiliger String (Delphi 12): ''' am Zeilenende bis zum nächsten '''.
-      if (Copy(FText, FPos, 3) = '''''''') and (FPos + 3 <= Len) and CharInSet(FText[FPos + 3], [#10, #13]) then
-      begin
-        Close := Pos('''''''', FText, FPos + 3);
-        if Close = 0 then
-        begin
-          Close := Len + 1;
-        end;
-        CountLines(FPos, Close);
-        FPos := Close + 3;
-        StringLiteral('');
-        Continue;
-      end;
-      Value := '';
-      Inc(FPos);
-      while FPos <= Len do
-      begin
-        if FText[FPos] = '''' then
-        begin
-          if (FPos < Len) and (FText[FPos + 1] = '''') then
-          begin
-            Value := Value + '''';
-            Inc(FPos, 2);
-            Continue;
-          end;
-          Break;
-        end;
-        if FText[FPos] = #10 then
-        begin
-          Break;
-        end;
-        Value := Value + FText[FPos];
-        Inc(FPos);
-      end;
-      // Schließendes Hochkomma überspringen; ein Zeilenende bleibt für die Zeilenzählung stehen.
-      if (FPos <= Len) and (FText[FPos] = '''') then
-      begin
-        Inc(FPos);
-      end;
-      StringLiteral(Value);
-    end
-    else if TTextChars.IsIdentStart(C) or (C = '&') then
-    begin
-      if C = '&' then
-      begin
-        Inc(FPos);
-      end;
-      Start := FPos;
-      while (FPos <= Len) and TTextChars.IsIdentChar(FText[FPos]) do
-      begin
-        Inc(FPos);
-      end;
-      if FPos > Start then
-      begin
-        Word(Copy(FText, Start, FPos - Start), FLine);
-      end;
-    end
-    else
-    begin
-      Symbol(C);
-      Inc(FPos);
-    end;
-  end;
-  Result := FResult;
-end;
-
 { TAtlasPathCheck }
 
 class function TAtlasPathCheck.Scan(const AText: string; const ADefines: TArray<string>): TAtlasSourceScan;
-var
-  Scanner: TScanner;
 begin
-  Scanner := TScanner.Create(AText, ADefines);
-  try
-    Result := Scanner.Run;
-  finally
-    Scanner.Free;
-  end;
+  Result := TAtlasPathScan.Scan(AText, ADefines);
 end;
 
 class function TAtlasPathCheck.Evaluate(const AExpression: string;
   const ADefines: TArray<string>): TAtlasBranchState;
-var
-  Defines: TDictionary<string, Boolean>;
-  Name: string;
-  Parser: TExpressionParser;
 begin
-  Defines := TDictionary<string, Boolean>.Create;
-  try
-    for Name in ADefines do
-    begin
-      Defines.AddOrSetValue(UpperCase(Trim(Name)), True);
-    end;
-    Parser := TExpressionParser.Create(AExpression, Defines);
-    try
-      Result := Parser.Parse;
-    finally
-      Parser.Free;
-    end;
-  finally
-    Defines.Free;
-  end;
+  Result := TAtlasPathScan.Evaluate(AExpression, ADefines);
 end;
 
 function IsAbsolute(const APath: string): Boolean;
@@ -1171,10 +411,34 @@ begin
   Result := ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\') or APath.StartsWith('/');
 end;
 
+/// <summary>APath ohne „.“ und leere Teile, „..“ nimmt den Teil davor weg; Trenner „\“, ohne Rand.</summary>
+function WithoutDots(const APath: string): string;
+var
+  Part: string;
+  Parts: TList<string>;
+begin
+  Parts := TList<string>.Create;
+  try
+    for Part in APath.Split(['\']) do
+    begin
+      if (Part = '..') and (Parts.Count > 0) then
+      begin
+        Parts.Delete(Parts.Count - 1);
+      end
+      else if (Part <> '') and (Part <> '.') and (Part <> '..') then
+      begin
+        Parts.Add(Part);
+      end;
+    end;
+    Result := string.Join('\', Parts.ToArray);
+  finally
+    Parts.Free;
+  end;
+end;
+
 class function TAtlasPathCheck.Combine(const AFolder, AName: string): string;
 var
-  Path, Prefix, Part: string;
-  Parts: TList<string>;
+  Path, Prefix: string;
 begin
   Path := StringReplace(Trim(AName), '/', '\', [rfReplaceAll]);
   if not IsAbsolute(Path) then
@@ -1198,30 +462,7 @@ begin
     Prefix := '\';
     Delete(Path, 1, 1);
   end;
-  Parts := TList<string>.Create;
-  try
-    for Part in Path.Split(['\']) do
-    begin
-      if (Part = '') or (Part = '.') then
-      begin
-        Continue;
-      end
-      else if Part = '..' then
-      begin
-        if Parts.Count > 0 then
-        begin
-          Parts.Delete(Parts.Count - 1);
-        end;
-      end
-      else
-      begin
-        Parts.Add(Part);
-      end;
-    end;
-    Result := Prefix + '\' + string.Join('\', Parts.ToArray);
-  finally
-    Parts.Free;
-  end;
+  Result := Prefix + '\' + WithoutDots(Path);
 end;
 
 class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string;
@@ -1585,21 +826,48 @@ begin
   Result.Use := AUse;
 end;
 
-procedure AddFinding(AList: TList<TAtlasPathFinding>; AIndex: TDictionary<string, Integer>; const AName,
-  AFileName: string; ALine: Integer; AUncertain: Boolean);
+type
+  /// <summary>Funde mit Index nach Name (groß): je Name ein Fund mit der ersten Stelle und der Zahl der
+  /// Stellen.</summary>
+  TFindingList = class
+  private
+    FItems: TList<TAtlasPathFinding>;
+    FIndex: TDictionary<string, Integer>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Add(const AName, AFileName: string; ALine: Integer; AUncertain: Boolean);
+    function ToArray: TArray<TAtlasPathFinding>;
+  end;
+
+constructor TFindingList.Create;
+begin
+  inherited Create;
+  FItems := TList<TAtlasPathFinding>.Create;
+  FIndex := TDictionary<string, Integer>.Create;
+end;
+
+destructor TFindingList.Destroy;
+begin
+  FIndex.Free;
+  FItems.Free;
+  inherited;
+end;
+
+procedure TFindingList.Add(const AName, AFileName: string; ALine: Integer; AUncertain: Boolean);
 var
   Key: string;
   Index: Integer;
   Finding: TAtlasPathFinding;
 begin
   Key := UpperCase(AName);
-  if AIndex.TryGetValue(Key, Index) then
+  if FIndex.TryGetValue(Key, Index) then
   begin
-    Finding := AList[Index];
+    Finding := FItems[Index];
     Inc(Finding.Count);
     // Sicher, sobald eine Stelle sicher fehlt.
     Finding.Uncertain := Finding.Uncertain and AUncertain;
-    AList[Index] := Finding;
+    FItems[Index] := Finding;
     Exit;
   end;
   Finding := Default(TAtlasPathFinding);
@@ -1608,395 +876,529 @@ begin
   Finding.FileName := AFileName;
   Finding.Line := ALine;
   Finding.Count := 1;
-  AIndex.Add(Key, AList.Count);
-  AList.Add(Finding);
+  FIndex.Add(Key, FItems.Count);
+  FItems.Add(Finding);
+end;
+
+function TFindingList.ToArray: TArray<TAtlasPathFinding>;
+begin
+  Result := FItems.ToArray;
+end;
+
+/// <summary>ANames groß und ohne Leerraum am Rand als Schlüssel in AKeys.</summary>
+procedure AddKeys(AKeys: TDictionary<string, Boolean>; const ANames: TArray<string>);
+var
+  Name: string;
+begin
+  for Name in ANames do
+  begin
+    AKeys.AddOrSetValue(UpperCase(Trim(Name)), True);
+  end;
+end;
+
+/// <summary>AName und AName mit jedem Namespace davor (SysUtils → System.SysUtils).</summary>
+function UnitNames(const AName: string; const ANamespaces: TArray<string>): TArray<string>;
+var
+  Namespace: string;
+begin
+  Result := [AName];
+  for Namespace in ANamespaces do
+  begin
+    if Trim(Namespace) <> '' then
+    begin
+      Result := Result + [Trim(Namespace) + '.' + AName];
+    end;
+  end;
+end;
+
+function InFolders(const AFolder: string; const AFolders: TArray<string>): Boolean;
+var
+  Each: string;
+begin
+  for Each in AFolders do
+  begin
+    if (Trim(Each) <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(AFolder)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+type
+  /// <summary>Ein Lauf von TAtlasPathCheck.Run mit seinem Zustand.</summary>
+  TPathRun = class
+  private
+    FInput: TAtlasPathCheckInput;
+    FRead: TAtlasPathReadText;
+    FList: TAtlasPathListFolder;
+    FCache: TFolderCache;
+    FProjectDir: string;
+    FProjectNames: TDictionary<string, Boolean>;
+    FKnown: TDictionary<string, Boolean>;
+    FVisited: TDictionary<string, Boolean>;
+    FHintedPackages: TDictionary<string, Boolean>;
+    /// <summary>Unit (groß) → requires-Package, aus dem sie kommt.</summary>
+    FRequired: TDictionary<string, string>;
+    FMissing: TFindingList;
+    FUndefined: TFindingList;
+    FHints: TList<TAtlasPathFinding>;
+    /// <summary>Inhalt (groß) der .dcp von requires-Packages ohne Quelle (rtl, vcl, designide …): Unit-Namen stehen
+    /// lesbar darin.</summary>
+    FDcpTexts: TList<string>;
+    FQueue: TList<TIncludeRef>;
+    FUses: TList<TSymbolAt>;
+    FSkipped: Boolean;
+    FIncludeMissing: Boolean;
+    FResult: TAtlasPathCheckResult;
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Ordner der verwendenden Datei, Projektordner, Such- und Bibliothekspfade; ohne leere.</summary>
+    function Folders(const AFrom: string): TArray<string>;
+    /// <summary>Unit des Projekts, eines requires-Packages, einer .dcp oder System/SysInit.</summary>
+    function IsKnownUnit(const AName: string): Boolean;
+    function Resolves(const AUnit: TAtlasUsedUnit; const AFrom: string): Boolean;
+    function FindInclude(const AName, AFrom: string; out APath: string): Boolean;
+    procedure Hint(const APackage, AUnit, AFileName: string; ALine: Integer);
+    /// <summary>Units eines requires-Packages der Projektgruppe als gefunden merken; ohne Quelle in der Gruppe ein
+    /// Hinweis, wenn es nur als .dcp außerhalb der Bibliothekspfade liegt.</summary>
+    procedure Require(const APackage: TAtlasUsedUnit; const AFrom: string);
+    function RequireFromGroup(const APackage: TAtlasUsedUnit; const AFrom: string): Boolean;
+    function RequireFromDcp(const APackage: string; const AFolders: TArray<string>): Boolean;
+    procedure AddProduced;
+    procedure AddRequires;
+    procedure AddScriptDefines;
+    procedure ScanSource(const ASource: string);
+    procedure ScanIncludes;
+    procedure CollectUndefined;
+  public
+    constructor Create(const AInput: TAtlasPathCheckInput; const ARead: TAtlasPathReadText;
+      const AList: TAtlasPathListFolder);
+    destructor Destroy; override;
+    function Execute: TAtlasPathCheckResult;
+  end;
+
+constructor TPathRun.Create(const AInput: TAtlasPathCheckInput; const ARead: TAtlasPathReadText;
+  const AList: TAtlasPathListFolder);
+begin
+  inherited Create;
+  FInput := AInput;
+  FRead := ARead;
+  FList := AList;
+  FSkipped := Length(AInput.SkippedMacros) > 0;
+  FProjectDir := ExtractFileDir(TAtlasPathCheck.Combine('', AInput.Project));
+  FCache := TFolderCache.Create(AList);
+  FProjectNames := TDictionary<string, Boolean>.Create;
+  FKnown := TDictionary<string, Boolean>.Create;
+  FVisited := TDictionary<string, Boolean>.Create;
+  FHintedPackages := TDictionary<string, Boolean>.Create;
+  FRequired := TDictionary<string, string>.Create;
+  FMissing := TFindingList.Create;
+  FUndefined := TFindingList.Create;
+  FHints := TList<TAtlasPathFinding>.Create;
+  FDcpTexts := TList<string>.Create;
+  FQueue := TList<TIncludeRef>.Create;
+  FUses := TList<TSymbolAt>.Create;
+end;
+
+destructor TPathRun.Destroy;
+begin
+  FUses.Free;
+  FQueue.Free;
+  FDcpTexts.Free;
+  FHints.Free;
+  FUndefined.Free;
+  FMissing.Free;
+  FRequired.Free;
+  FHintedPackages.Free;
+  FVisited.Free;
+  FKnown.Free;
+  FProjectNames.Free;
+  FCache.Free;
+  inherited;
+end;
+
+function TPathRun.ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := Assigned(FRead) and FRead(AFileName, AText);
+end;
+
+function TPathRun.Folders(const AFrom: string): TArray<string>;
+var
+  All: TArray<string>;
+  Dir: string;
+begin
+  All := [AFrom, FProjectDir] + FInput.SearchPaths + FInput.LibraryPaths;
+  Result := nil;
+  for Dir in All do
+  begin
+    if Trim(Dir) <> '' then
+    begin
+      Result := Result + [Dir];
+    end;
+  end;
+end;
+
+function TPathRun.IsKnownUnit(const AName: string): Boolean;
+var
+  Text: string;
+begin
+  Result := FProjectNames.ContainsKey(UpperCase(AName)) or FRequired.ContainsKey(UpperCase(AName)) or
+    (IndexText(AName, AlwaysThere) >= 0);
+  if Result then
+  begin
+    Exit;
+  end;
+  for Text in FDcpTexts do
+  begin
+    if Pos(UpperCase(AName), Text) > 0 then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TPathRun.Resolves(const AUnit: TAtlasUsedUnit; const AFrom: string): Boolean;
+var
+  Names: TArray<string>;
+  Each, Dir, Path: string;
+begin
+  if AUnit.InFile <> '' then
+  begin
+    Path := TAtlasPathCheck.Combine(AFrom, AUnit.InFile);
+    Exit(FCache.Has(ExtractFileDir(Path), ExtractFileName(Path)));
+  end;
+  Names := UnitNames(AUnit.Name, FInput.Namespaces);
+  for Each in Names do
+  begin
+    if IsKnownUnit(Each) then
+    begin
+      Exit(True);
+    end;
+  end;
+  for Dir in Folders(AFrom) do
+  begin
+    for Each in Names do
+    begin
+      if FCache.Has(Dir, Each + '.pas') or FCache.Has(Dir, Each + '.dcu') then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TPathRun.FindInclude(const AName, AFrom: string; out APath: string): Boolean;
+var
+  Dir, Each: string;
+  Names: TArray<string>;
+begin
+  Names := [AName];
+  if ExtractFileExt(AName) = '' then
+  begin
+    Names := Names + [AName + '.inc', AName + '.pas'];
+  end;
+  for Dir in Folders(AFrom) do
+  begin
+    for Each in Names do
+    begin
+      APath := TAtlasPathCheck.Combine(Dir, Each);
+      if FCache.Has(ExtractFileDir(APath), ExtractFileName(APath)) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  APath := '';
+  Result := False;
+end;
+
+procedure TPathRun.Hint(const APackage, AUnit, AFileName: string; ALine: Integer);
+var
+  Item: TAtlasPathFinding;
+begin
+  // Ein Hinweis je Package.
+  if FHintedPackages.ContainsKey(UpperCase(APackage)) then
+  begin
+    Exit;
+  end;
+  FHintedPackages.Add(UpperCase(APackage), True);
+  Item := Default(TAtlasPathFinding);
+  Item.Name := APackage;
+  Item.Note := AUnit;
+  Item.FileName := AFileName;
+  Item.Line := ALine;
+  Item.Count := 1;
+  FHints.Add(Item);
+end;
+
+function TPathRun.RequireFromGroup(const APackage: TAtlasUsedUnit; const AFrom: string): Boolean;
+var
+  Project, Dpk, PackageText: string;
+  Contained: TAtlasSourceScan;
+  Item: TAtlasUsedUnit;
+begin
+  for Project in FInput.GroupProjects do
+  begin
+    Dpk := ChangeFileExt(Project, '.dpk');
+    if SameText(ChangeFileExt(ExtractFileName(Project), ''), APackage.Name) and ReadText(Dpk, PackageText) then
+    begin
+      Contained := TAtlasPathCheck.Scan(PackageText, FInput.ActiveDefines);
+      for Item in Contained.Units do
+      begin
+        FRequired.AddOrSetValue(UpperCase(Item.Name), APackage.Name);
+        // Quellordner des Packages zusätzlich im Suchpfad: doppelt gefunden, Hinweis.
+        if (Item.InFile <> '') and InFolders(ExtractFileDir(TAtlasPathCheck.Combine(ExtractFileDir(Dpk),
+          Item.InFile)), FInput.SearchPaths) then
+        begin
+          Hint(APackage.Name, Item.Name, AFrom, APackage.Line);
+        end;
+      end;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TPathRun.RequireFromDcp(const APackage: string; const AFolders: TArray<string>): Boolean;
+var
+  Dir, PackageText: string;
+begin
+  for Dir in AFolders do
+  begin
+    if (Trim(Dir) <> '') and FCache.Has(Dir, APackage + '.dcp') then
+    begin
+      if ReadText(TAtlasPathCheck.Combine(Dir, APackage + '.dcp'), PackageText) then
+      begin
+        FDcpTexts.Add(UpperCase(PackageText));
+      end;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TPathRun.Require(const APackage: TAtlasUsedUnit; const AFrom: string);
+var
+  Own: TArray<string>;
+begin
+  if RequireFromGroup(APackage, AFrom) then
+  begin
+    Exit;
+  end;
+  // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
+  // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
+  if RequireFromDcp(APackage.Name, FInput.LibraryPaths) then
+  begin
+    Exit;
+  end;
+  Own := [FProjectDir] + FInput.SearchPaths;
+  if RequireFromDcp(APackage.Name, Own) then
+  begin
+    Hint(APackage.Name, '', AFrom, APackage.Line);
+  end;
+end;
+
+procedure TPathRun.AddProduced;
+var
+  Source, Text: string;
+  Scanned: TAtlasSourceScan;
+  Used: TAtlasUsedUnit;
+begin
+  // Units, die ein anderes Projekt der Gruppe in einen Ordner des Suchpfads übersetzt.
+  for Source in FInput.ProducedBy do
+  begin
+    if ReadText(ChangeFileExt(Source, '.dpk'), Text) or ReadText(ChangeFileExt(Source, '.dpr'), Text) then
+    begin
+      Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
+      for Used in Scanned.Units do
+      begin
+        FRequired.AddOrSetValue(UpperCase(Used.Name), ChangeFileExt(ExtractFileName(Source), ''));
+      end;
+    end;
+  end;
+end;
+
+procedure TPathRun.AddRequires;
+var
+  Source, Text: string;
+  Scanned: TAtlasSourceScan;
+  Used: TAtlasUsedUnit;
+begin
+  // requires der Packages zuerst: Ihre Units sind beim Prüfen der uses schon bekannt.
+  for Source in FInput.Sources do
+  begin
+    if SameText(ExtractFileExt(Source), '.dpk') and ReadText(Source, Text) then
+    begin
+      Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
+      for Used in Scanned.Requires do
+      begin
+        if Used.State = TAtlasBranchState.Active then
+        begin
+          Require(Used, Source);
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure TPathRun.AddScriptDefines;
+var
+  Folder, Name, Text: string;
+begin
+  // Build-Skripte und Lazarus-Projekte: -dX und ConditionalDefines sind Quellen.
+  for Folder in FInput.ScriptFolders do
+  begin
+    if Trim(Folder) = '' then
+    begin
+      Continue;
+    end;
+    for Name in FList(Folder) do
+    begin
+      if (IndexText(ExtractFileExt(Name), ScriptExtensions) >= 0) and
+        ReadText(TAtlasPathCheck.Combine(Folder, Name), Text) then
+      begin
+        AddKeys(FKnown, TAtlasPathCheck.ScriptDefines(Name, Text));
+      end;
+    end;
+  end;
+end;
+
+procedure TPathRun.ScanSource(const ASource: string);
+var
+  Text, Folder, Include: string;
+  Scanned: TAtlasSourceScan;
+  Used: TAtlasUsedUnit;
+  Use: TAtlasSymbolUse;
+begin
+  if FVisited.ContainsKey(UpperCase(ASource)) then
+  begin
+    Exit;
+  end;
+  FVisited.Add(UpperCase(ASource), True);
+  if not ReadText(ASource, Text) then
+  begin
+    Inc(FResult.Unreadable);
+    Exit;
+  end;
+  Inc(FResult.Files);
+  Folder := ExtractFileDir(ASource);
+  Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
+  for Used in Scanned.Units do
+  begin
+    if (Used.State = TAtlasBranchState.Active) and not Resolves(Used, Folder) then
+    begin
+      // Mit "in 'Pfad'" zählt kein Suchpfad: dann sicher.
+      FMissing.Add(Used.Name, ASource, Used.Line, FSkipped and (Used.InFile = ''));
+    end;
+  end;
+  for Use in Scanned.Referenced do
+  begin
+    FUses.Add(SymbolAt(ASource, Use));
+  end;
+  AddKeys(FKnown, Scanned.Defined);
+  for Include in Scanned.Includes do
+  begin
+    FQueue.Add(IncludeRef(Include, Folder));
+  end;
+end;
+
+procedure TPathRun.ScanIncludes;
+var
+  Index: Integer;
+  Pair: TIncludeRef;
+  Candidate, Text, Include: string;
+  Scanned: TAtlasSourceScan;
+begin
+  // Eingebundene Dateien nur nach $DEFINE durchsuchen.
+  Index := 0;
+  while (Index < FQueue.Count) and (Index < TAtlasPathCheck.MaxIncludes) do
+  begin
+    Pair := FQueue[Index];
+    Inc(Index);
+    if not FindInclude(Pair.Name, Pair.Folder, Candidate) then
+    begin
+      FIncludeMissing := True;
+      Continue;
+    end;
+    if FVisited.ContainsKey(UpperCase(Candidate)) then
+    begin
+      Continue;
+    end;
+    FVisited.Add(UpperCase(Candidate), True);
+    if not ReadText(Candidate, Text) then
+    begin
+      Continue;
+    end;
+    Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
+    AddKeys(FKnown, Scanned.Defined);
+    for Include in Scanned.Includes do
+    begin
+      FQueue.Add(IncludeRef(Include, ExtractFileDir(Candidate)));
+    end;
+  end;
+end;
+
+procedure TPathRun.CollectUndefined;
+var
+  Item: TSymbolAt;
+  Known: TArray<string>;
+  Index: Integer;
+begin
+  for Item in FUses do
+  begin
+    if not FKnown.ContainsKey(UpperCase(Item.Use.Name)) and not TTextDefines.IsCompilerSymbol(Item.Use.Name) and
+      not TAtlasPathCheck.IsForeignSymbol(Item.Use.Name) then
+    begin
+      // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
+      FUndefined.Add(Item.Use.Name, Item.FileName, Item.Use.Line, FSkipped and FIncludeMissing);
+    end;
+  end;
+  FResult.UndefinedDefines := FUndefined.ToArray;
+  // Tippfehler? Ein ähnlich geschriebenes bekanntes Symbol vorschlagen.
+  Known := FKnown.Keys.ToArray;
+  for Index := 0 to High(FResult.UndefinedDefines) do
+  begin
+    FResult.UndefinedDefines[Index].Note := TAtlasPathCheck.Suggest(FResult.UndefinedDefines[Index].Name, Known);
+  end;
+end;
+
+function TPathRun.Execute: TAtlasPathCheckResult;
+var
+  Source: string;
+begin
+  FResult := Default(TAtlasPathCheckResult);
+  FResult.SkippedMacros := FInput.SkippedMacros;
+  for Source in FInput.Sources do
+  begin
+    FProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(Source), '')), True);
+  end;
+  AddKeys(FKnown, FInput.ActiveDefines + FInput.ProjectDefines);
+  AddProduced;
+  AddRequires;
+  AddScriptDefines;
+  for Source in FInput.Sources do
+  begin
+    ScanSource(Source);
+  end;
+  ScanIncludes;
+  CollectUndefined;
+  FResult.MissingUnits := FMissing.ToArray;
+  FResult.Hints := FHints.ToArray;
+  Result := FResult;
 end;
 
 class function TAtlasPathCheck.Run(const AInput: TAtlasPathCheckInput; const ARead: TAtlasPathReadText;
   const AList: TAtlasPathListFolder): TAtlasPathCheckResult;
 var
-  Cache: TFolderCache;
-  ProjectDir, Source, Text, Folder, Name, Include, Candidate: string;
-  ProjectNames, Known, Visited: TDictionary<string, Boolean>;
-  // Unit (groß) → requires-Package, aus dem sie kommt.
-  Required: TDictionary<string, string>;
-  Missing, Undefined, Hints: TList<TAtlasPathFinding>;
-  HintedPackages: TDictionary<string, Boolean>;
-  // Inhalt (groß) der .dcp von requires-Packages ohne Quelle (rtl, vcl, designide …): Unit-Namen stehen lesbar darin.
-  DcpTexts: TList<string>;
-  MissingIndex, UndefinedIndex: TDictionary<string, Integer>;
-  Scanned: TAtlasSourceScan;
-  Used: TAtlasUsedUnit;
-  Use: TAtlasSymbolUse;
-  Queue: TList<TIncludeRef>;
-  Uses_: TList<TSymbolAt>;
-  Pair: TIncludeRef;
-  Item: TSymbolAt;
-  Index: Integer;
-  Skipped, IncludeMissing: Boolean;
-  Finding_: TAtlasPathFinding;
-
-  function Folders(const AFrom: string): TArray<string>;
-  begin
-    Result := [AFrom, ProjectDir] + AInput.SearchPaths + AInput.LibraryPaths;
-  end;
-
-  function Resolves(const AUnit: TAtlasUsedUnit; const AFrom: string): Boolean;
-  var
-    Names: TArray<string>;
-    Namespace, Each, Dir, Path: string;
-  begin
-    if AUnit.InFile <> '' then
-    begin
-      Path := Combine(AFrom, AUnit.InFile);
-      Exit(Cache.Has(ExtractFileDir(Path), ExtractFileName(Path)));
-    end;
-    Names := [AUnit.Name];
-    for Namespace in AInput.Namespaces do
-    begin
-      if Trim(Namespace) <> '' then
-      begin
-        Names := Names + [Trim(Namespace) + '.' + AUnit.Name];
-      end;
-    end;
-    for Each in Names do
-    begin
-      if ProjectNames.ContainsKey(UpperCase(Each)) or Required.ContainsKey(UpperCase(Each)) then
-      begin
-        Exit(True);
-      end;
-      for Path in DcpTexts do
-      begin
-        if Pos(UpperCase(Each), Path) > 0 then
-        begin
-          Exit(True);
-        end;
-      end;
-      for Dir in AlwaysThere do
-      begin
-        if SameText(Dir, Each) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-    for Dir in Folders(AFrom) do
-    begin
-      if Trim(Dir) <> '' then
-      begin
-        for Each in Names do
-        begin
-          if Cache.Has(Dir, Each + '.pas') or Cache.Has(Dir, Each + '.dcu') then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    Result := False;
-  end;
-
-  function FindInclude(const AName, AFrom: string; out APath: string): Boolean;
-  var
-    Dir, Each: string;
-    Names: TArray<string>;
-  begin
-    Names := [AName];
-    if ExtractFileExt(AName) = '' then
-    begin
-      Names := Names + [AName + '.inc', AName + '.pas'];
-    end;
-    for Dir in Folders(AFrom) do
-    begin
-      if Trim(Dir) <> '' then
-      begin
-        for Each in Names do
-        begin
-          APath := Combine(Dir, Each);
-          if Cache.Has(ExtractFileDir(APath), ExtractFileName(APath)) then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    APath := '';
-    Result := False;
-  end;
-
-  function InFolders(const AFolder: string; const AFolders: TArray<string>): Boolean;
-  var
-    Each: string;
-  begin
-    for Each in AFolders do
-    begin
-      if (Trim(Each) <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(AFolder)) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure Hint(const APackage, AUnit, AFileName: string; ALine: Integer);
-  var
-    Item: TAtlasPathFinding;
-  begin
-    // Ein Hinweis je Package.
-    if HintedPackages.ContainsKey(UpperCase(APackage)) then
-    begin
-      Exit;
-    end;
-    HintedPackages.Add(UpperCase(APackage), True);
-    Item := Default(TAtlasPathFinding);
-    Item.Name := APackage;
-    Item.Note := AUnit;
-    Item.FileName := AFileName;
-    Item.Line := ALine;
-    Item.Count := 1;
-    Hints.Add(Item);
-  end;
-
-  /// <summary>Units eines requires-Packages der Projektgruppe als gefunden merken; ohne Quelle in der Gruppe ein
-  /// Hinweis, wenn es nur als .dcp außerhalb der Bibliothekspfade liegt.</summary>
-  procedure Require(const APackage: TAtlasUsedUnit; const AFrom: string);
-  var
-    Project, Dpk, PackageText, Path, Dir: string;
-    Contained: TAtlasSourceScan;
-    Item: TAtlasUsedUnit;
-    Own: TArray<string>;
-  begin
-    for Project in AInput.GroupProjects do
-    begin
-      if SameText(ChangeFileExt(ExtractFileName(Project), ''), APackage.Name) then
-      begin
-        Dpk := ChangeFileExt(Project, '.dpk');
-        if not (Assigned(ARead) and ARead(Dpk, PackageText)) then
-        begin
-          Continue;
-        end;
-        Contained := Scan(PackageText, AInput.ActiveDefines);
-        for Item in Contained.Units do
-        begin
-          Required.AddOrSetValue(UpperCase(Item.Name), APackage.Name);
-          // Quellordner des Packages zusätzlich im Suchpfad: doppelt gefunden, Hinweis.
-          if Item.InFile <> '' then
-          begin
-            Path := Combine(ExtractFileDir(Dpk), Item.InFile);
-            if InFolders(ExtractFileDir(Path), AInput.SearchPaths) then
-            begin
-              Hint(APackage.Name, Item.Name, AFrom, APackage.Line);
-            end;
-          end;
-        end;
-        Exit;
-      end;
-    end;
-    // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
-    // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
-    for Dir in AInput.LibraryPaths do
-    begin
-      if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
-      begin
-        if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
-        begin
-          DcpTexts.Add(UpperCase(PackageText));
-        end;
-        Exit;
-      end;
-    end;
-    Own := [ProjectDir] + AInput.SearchPaths;
-    for Dir in Own do
-    begin
-      if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
-      begin
-        if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
-        begin
-          DcpTexts.Add(UpperCase(PackageText));
-        end;
-        Hint(APackage.Name, '', AFrom, APackage.Line);
-        Exit;
-      end;
-    end;
-  end;
-
+  Check: TPathRun;
 begin
-  Result := Default(TAtlasPathCheckResult);
-  Result.SkippedMacros := AInput.SkippedMacros;
-  Skipped := Length(AInput.SkippedMacros) > 0;
-  IncludeMissing := False;
-  ProjectDir := ExtractFileDir(Combine('', AInput.Project));
-  Cache := TFolderCache.Create(AList);
-  ProjectNames := TDictionary<string, Boolean>.Create;
-  Known := TDictionary<string, Boolean>.Create;
-  Visited := TDictionary<string, Boolean>.Create;
-  Missing := TList<TAtlasPathFinding>.Create;
-  Undefined := TList<TAtlasPathFinding>.Create;
-  MissingIndex := TDictionary<string, Integer>.Create;
-  Required := TDictionary<string, string>.Create;
-  Hints := TList<TAtlasPathFinding>.Create;
-  HintedPackages := TDictionary<string, Boolean>.Create;
-  DcpTexts := TList<string>.Create;
-  UndefinedIndex := TDictionary<string, Integer>.Create;
-  Queue := TList<TIncludeRef>.Create;
-  Uses_ := TList<TSymbolAt>.Create;
+  Check := TPathRun.Create(AInput, ARead, AList);
   try
-    for Source in AInput.Sources do
-    begin
-      ProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(Source), '')), True);
-    end;
-    for Name in AInput.ActiveDefines + AInput.ProjectDefines do
-    begin
-      Known.AddOrSetValue(UpperCase(Trim(Name)), True);
-    end;
-    // Units, die ein anderes Projekt der Gruppe in einen Ordner des Suchpfads übersetzt.
-    for Source in AInput.ProducedBy do
-    begin
-      if Assigned(ARead) and (ARead(ChangeFileExt(Source, '.dpk'), Text) or ARead(ChangeFileExt(Source, '.dpr'), Text)) then
-      begin
-        Scanned := Scan(Text, AInput.ActiveDefines);
-        for Used in Scanned.Units do
-        begin
-          Required.AddOrSetValue(UpperCase(Used.Name), ChangeFileExt(ExtractFileName(Source), ''));
-        end;
-      end;
-    end;
-    // requires der Packages zuerst: Ihre Units sind beim Prüfen der uses schon bekannt.
-    for Source in AInput.Sources do
-    begin
-      if SameText(ExtractFileExt(Source), '.dpk') and Assigned(ARead) and ARead(Source, Text) then
-      begin
-        Scanned := Scan(Text, AInput.ActiveDefines);
-        for Used in Scanned.Requires do
-        begin
-          if Used.State = TAtlasBranchState.Active then
-          begin
-            Require(Used, Source);
-          end;
-        end;
-      end;
-    end;
-    // Build-Skripte und Lazarus-Projekte: -dX und ConditionalDefines sind Quellen.
-    for Folder in AInput.ScriptFolders do
-    begin
-      if Trim(Folder) <> '' then
-      begin
-        for Name in AList(Folder) do
-        begin
-          if IndexText(ExtractFileExt(Name), ScriptExtensions) >= 0 then
-          begin
-            if Assigned(ARead) and ARead(Combine(Folder, Name), Text) then
-            begin
-              for Include in ScriptDefines(Name, Text) do
-              begin
-                Known.AddOrSetValue(UpperCase(Include), True);
-              end;
-            end;
-          end;
-        end;
-      end;
-    end;
-    for Source in AInput.Sources do
-    begin
-      if Visited.ContainsKey(UpperCase(Source)) then
-      begin
-        Continue;
-      end;
-      Visited.Add(UpperCase(Source), True);
-      if not (Assigned(ARead) and ARead(Source, Text)) then
-      begin
-        Inc(Result.Unreadable);
-        Continue;
-      end;
-      Inc(Result.Files);
-      Folder := ExtractFileDir(Source);
-      Scanned := Scan(Text, AInput.ActiveDefines);
-      for Used in Scanned.Units do
-      begin
-        if (Used.State = TAtlasBranchState.Active) and not Resolves(Used, Folder) then
-        begin
-          // Mit "in 'Pfad'" zählt kein Suchpfad: dann sicher.
-          AddFinding(Missing, MissingIndex, Used.Name, Source, Used.Line, Skipped and (Used.InFile = ''));
-        end;
-      end;
-      for Use in Scanned.Referenced do
-      begin
-        Uses_.Add(SymbolAt(Source, Use));
-      end;
-      for Name in Scanned.Defined do
-      begin
-        Known.AddOrSetValue(UpperCase(Name), True);
-      end;
-      for Include in Scanned.Includes do
-      begin
-        Queue.Add(IncludeRef(Include, Folder));
-      end;
-    end;
-    // Eingebundene Dateien nur nach $DEFINE durchsuchen.
-    Index := 0;
-    while (Index < Queue.Count) and (Index < MaxIncludes) do
-    begin
-      Pair := Queue[Index];
-      Inc(Index);
-      if not FindInclude(Pair.Name, Pair.Folder, Candidate) then
-      begin
-        IncludeMissing := True;
-        Continue;
-      end;
-      if Visited.ContainsKey(UpperCase(Candidate)) then
-      begin
-        Continue;
-      end;
-      Visited.Add(UpperCase(Candidate), True);
-      if not (Assigned(ARead) and ARead(Candidate, Text)) then
-      begin
-        Continue;
-      end;
-      Scanned := Scan(Text, AInput.ActiveDefines);
-      for Name in Scanned.Defined do
-      begin
-        Known.AddOrSetValue(UpperCase(Name), True);
-      end;
-      for Include in Scanned.Includes do
-      begin
-        Queue.Add(IncludeRef(Include, ExtractFileDir(Candidate)));
-      end;
-    end;
-    for Item in Uses_ do
-    begin
-      if not Known.ContainsKey(UpperCase(Item.Use.Name)) and not TTextDefines.IsCompilerSymbol(Item.Use.Name) and
-        not IsForeignSymbol(Item.Use.Name) then
-      begin
-        // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
-        AddFinding(Undefined, UndefinedIndex, Item.Use.Name, Item.FileName, Item.Use.Line,
-          Skipped and IncludeMissing);
-      end;
-    end;
-    // Tippfehler? Ein ähnlich geschriebenes bekanntes Symbol vorschlagen.
-    for Index := 0 to Undefined.Count - 1 do
-    begin
-      Finding_ := Undefined[Index];
-      Finding_.Note := Suggest(Finding_.Name, Known.Keys.ToArray);
-      Undefined[Index] := Finding_;
-    end;
-    Result.MissingUnits := Missing.ToArray;
-    Result.UndefinedDefines := Undefined.ToArray;
-    Result.Hints := Hints.ToArray;
+    Result := Check.Execute;
   finally
-    DcpTexts.Free;
-    HintedPackages.Free;
-    Hints.Free;
-    Required.Free;
-    Uses_.Free;
-    Queue.Free;
-    UndefinedIndex.Free;
-    MissingIndex.Free;
-    Undefined.Free;
-    Missing.Free;
-    Visited.Free;
-    Known.Free;
-    ProjectNames.Free;
-    Cache.Free;
+    Check.Free;
   end;
 end;
 

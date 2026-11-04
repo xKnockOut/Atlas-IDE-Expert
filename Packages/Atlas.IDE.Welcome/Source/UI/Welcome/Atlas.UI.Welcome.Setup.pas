@@ -59,6 +59,35 @@ type
   TAtlasSetupButton = (CreateConfig, Baseline, Paths, Options, Dismiss, NewUnit, NewForm, NewTest);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Texte des Bereichs „Einrichten“, ohne Steuerelement.</summary>
+  TAtlasSetupTexts = class
+  public
+    /// <summary>„XmlInspector für Atlas einrichten“ bzw. „Neu mit Atlas“ ohne Karte.</summary>
+    class function TitleText(const ACard: TAtlasSetupCard): string; static;
+    class function TemplateCaption(ATemplate: TAtlasSetupTemplate): string; static;
+    class function ButtonCaption(AButton: TAtlasSetupButton): string; static;
+    /// <summary>Text des Schritts ohne Knöpfe; ANow für die Sekunden eines laufenden Schritts.</summary>
+    class function StepCaption(AStep: TAtlasSetupStep; const ACard: TAtlasSetupCard; ANow: UInt64): string; static;
+    /// <summary>Zeile eines Funds der Pfadprüfung.</summary>
+    class function FindingCaption(const ALine: TAtlasSetupLine): string; static;
+    /// <summary>Zeilen unter „Suchpfade und Defines prüfen“: Fehler, Stand der Gruppe, Zahlen, unsichere Funde.
+    /// </summary>
+    class function PathsCaption(const ACard: TAtlasSetupCard): string; static;
+  end;
+
+  /// <summary>Beschriftungen des Bereichs: Marke und Text je Schritt, Zeilen unter Baseline und Prüfung, Links.
+  /// </summary>
+  TAtlasSetupLabels = record
+    Marks: array[TAtlasSetupStep] of TLabel;
+    Texts: array[TAtlasSetupStep] of TLabel;
+    BaselineInfo: TLabel;
+    PathsInfo: TLabel;
+    Findings: array[0..TAtlasWelcomeSetup.MaxLines - 1] of TLabel;
+    More: TLabel;
+    Dismiss: TLabel;
+    NewRow: TLabel;
+  end;
+
   TAtlasWelcomeSetupFrame = class(TAtlasWelcomeSectionFrame)
   public const
     Indent = 8;
@@ -72,27 +101,17 @@ type
   private
     FSource: IAtlasSetupSource;
     FCard: TAtlasSetupCard;
-    FMarks: array[TAtlasSetupStep] of TLabel;
-    FTexts: array[TAtlasSetupStep] of TLabel;
+    FLabels: TAtlasSetupLabels;
     FTemplate: TComboBox;
     FButtons: array[TAtlasSetupButton] of TButton;
-    FBaselineInfo: TLabel;
-    FPathsInfo: TLabel;
-    FFindings: array[0..TAtlasWelcomeSetup.MaxLines - 1] of TLabel;
-    FMore: TLabel;
-    FDismiss: TLabel;
-    FNewLabel: TLabel;
     FTimer: TTimer;
     FContentHeight: Integer;
     FArranging: Boolean;
     FTemplateIndex: Integer;
     procedure SetSource(const AValue: IAtlasSetupSource);
     function NewLabel: TLabel;
-    /// <summary>Farbe des IDE-Themas (hell oder dunkel).</summary>
-    function Themed(AColor: TColor): TColor;
     function NewButton(AButton: TAtlasSetupButton): TButton;
     procedure FillTemplates;
-    procedure ApplyCard;
     procedure Arrange;
     procedure BodyResize(Sender: TObject);
     procedure ButtonClick(Sender: TObject);
@@ -115,24 +134,15 @@ type
     /// <summary>Gewählte Vorlage (Vorgabe: Bestehendes Projekt).</summary>
     function SelectedTemplate: TAtlasSetupTemplate;
     procedure SelectTemplate(ATemplate: TAtlasSetupTemplate);
-    /// <summary>„XmlInspector für Atlas einrichten“ bzw. „Neu mit Atlas“ ohne Karte.</summary>
-    class function TitleText(const ACard: TAtlasSetupCard): string; static;
-    class function TemplateCaption(ATemplate: TAtlasSetupTemplate): string; static;
-    class function ButtonCaption(AButton: TAtlasSetupButton): string; static;
-    /// <summary>Text des Schritts ohne Knöpfe; ANow für die Sekunden eines laufenden Schritts.</summary>
-    class function StepCaption(AStep: TAtlasSetupStep; const ACard: TAtlasSetupCard; ANow: UInt64): string; static;
-    /// <summary>Zeile eines Funds der Pfadprüfung.</summary>
-    class function FindingCaption(const ALine: TAtlasSetupLine): string; static;
-    /// <summary>Zeilen unter „Suchpfade und Defines prüfen“: Fehler, Stand der Gruppe, Zahlen, unsichere Funde.
-    /// </summary>
-    class function PathsCaption(const ACard: TAtlasSetupCard): string; static;
+    /// <summary>Ist der Knopf sichtbar und bereit (bei „Nicht mehr fragen“ der Link)?</summary>
+    function Clickable(AButton: TAtlasSetupButton): Boolean;
     property Source: IAtlasSetupSource read FSource write SetSource;
     property Card: TAtlasSetupCard read FCard;
-    property BaselineInfo: TLabel read FBaselineInfo;
-    property PathsInfo: TLabel read FPathsInfo;
-    property MoreLabel: TLabel read FMore;
-    property DismissLabel: TLabel read FDismiss;
-    property NewRowLabel: TLabel read FNewLabel;
+    property BaselineInfo: TLabel read FLabels.BaselineInfo;
+    property PathsInfo: TLabel read FLabels.PathsInfo;
+    property MoreLabel: TLabel read FLabels.More;
+    property DismissLabel: TLabel read FLabels.Dismiss;
+    property NewRowLabel: TLabel read FLabels.NewRow;
     property TemplateBox: TComboBox read FTemplate;
   end;
 
@@ -150,6 +160,437 @@ const
   CheckMark = #$2713;
   OpenBox = #$2610;
 
+type
+  /// <summary>Überträgt die Karte auf die Steuerelemente: Farben, Schritte, Knöpfe, Ergebnisse, Funde.</summary>
+  TSetupCardView = record
+  private
+    FFrame: TAtlasWelcomeSetupFrame;
+    FShow: Boolean;
+    function Themed(AColor: TColor): TColor;
+    procedure ApplyColors;
+    procedure ApplySteps;
+    procedure ApplyButtons;
+    procedure ApplyInfos;
+    procedure ApplyFindings;
+    procedure ApplyNew;
+  public
+    constructor Create(AFrame: TAtlasWelcomeSetupFrame);
+    procedure Apply;
+  end;
+
+  /// <summary>Ordnet die Steuerelemente in Reihen an; zu breite Reihen brechen um.</summary>
+  TSetupLayout = record
+  private
+    FFrame: TAtlasWelcomeSetupFrame;
+    FMeasure: TBitmap;
+    FLeft: Integer;
+    FTextLeft: Integer;
+    FRight: Integer;
+    FTop: Integer;
+    FX: Integer;
+    FRowHeight: Integer;
+    function Scaled(AValue: Integer): Integer;
+    function ButtonWidth(AButton: TButton): Integer;
+    /// <summary>Setzt AControl rechts neben FX in die Reihe, bei zu wenig Platz in eine neue Reihe ab FTextLeft.
+    /// </summary>
+    procedure Place(AControl: TControl; AWidth, AHeight: Integer);
+    /// <summary>Den Knopf in die Reihe setzen, wenn er sichtbar ist.</summary>
+    procedure PlaceButton(AButton: TAtlasSetupButton);
+    procedure NextRow;
+    procedure PlaceLine(ALabel: TLabel);
+    procedure PlaceStep(AStep: TAtlasSetupStep);
+    procedure PlaceStepExtras(AStep: TAtlasSetupStep);
+    procedure PlaceCard;
+    procedure PlaceNew;
+  public
+    constructor Create(AFrame: TAtlasWelcomeSetupFrame);
+    /// <summary>Gibt die Messfläche frei.</summary>
+    procedure Release;
+    /// <summary>Ordnet alles an und liefert die Höhe des Inhalts.</summary>
+    function Run: Integer;
+  end;
+
+/// <summary>Führt die Aktion des Knopfs bei der Quelle aus; ohne geöffnetes Projekt öffnen Baseline und Prüfung es.
+/// </summary>
+procedure RunSetupButton(const ASource: IAtlasSetupSource; AButton: TAtlasSetupButton; AOpen: Boolean;
+  ATemplate: TAtlasSetupTemplate);
+begin
+  case AButton of
+    TAtlasSetupButton.CreateConfig:
+      ASource.CreateConfig(ATemplate);
+    TAtlasSetupButton.Baseline, TAtlasSetupButton.Paths:
+      if not AOpen then
+      begin
+        ASource.OpenProject;
+      end
+      else if AButton = TAtlasSetupButton.Baseline then
+      begin
+        ASource.StartBaseline;
+      end
+      else
+      begin
+        ASource.CheckPaths;
+      end;
+    TAtlasSetupButton.Options:
+      ASource.OpenOptions;
+    TAtlasSetupButton.Dismiss:
+      ASource.Dismiss;
+    TAtlasSetupButton.NewUnit:
+      ASource.NewFile(TAtlasNewFileKind.UnitFile);
+    TAtlasSetupButton.NewForm:
+      ASource.NewFile(TAtlasNewFileKind.FormFile);
+  else
+    ASource.NewFile(TAtlasNewFileKind.TestFile);
+  end;
+end;
+
+{ TSetupCardView }
+
+constructor TSetupCardView.Create(AFrame: TAtlasWelcomeSetupFrame);
+begin
+  FFrame := AFrame;
+  FShow := AFrame.FCard.ShowCard;
+end;
+
+function TSetupCardView.Themed(AColor: TColor): TColor;
+begin
+  // Farbe des IDE-Themas (hell oder dunkel).
+  Result := StyleServices(FFrame).GetSystemColor(AColor);
+end;
+
+procedure TSetupCardView.Apply;
+begin
+  ApplyColors;
+  ApplySteps;
+  ApplyButtons;
+  ApplyInfos;
+  ApplyFindings;
+  ApplyNew;
+  FFrame.FTimer.Enabled := FFrame.Running;
+end;
+
+procedure TSetupCardView.ApplyColors;
+var
+  mIndex: Integer;
+begin
+  FFrame.FLabels.BaselineInfo.Font.Color := Themed(clGrayText);
+  FFrame.FLabels.PathsInfo.Font.Color := Themed(clGrayText);
+  FFrame.FLabels.More.Font.Color := Themed(clGrayText);
+  FFrame.FLabels.NewRow.Font.Color := Themed(clWindowText);
+  FFrame.FLabels.Dismiss.Font.Color := Themed(clHotLight);
+  for mIndex := Low(FFrame.FLabels.Findings) to High(FFrame.FLabels.Findings) do
+  begin
+    FFrame.FLabels.Findings[mIndex].Font.Color := Themed(clWindowText);
+  end;
+end;
+
+procedure TSetupCardView.ApplySteps;
+var
+  mStep: TAtlasSetupStep;
+  mMark, mText: TLabel;
+begin
+  for mStep := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+  begin
+    mMark := FFrame.FLabels.Marks[mStep];
+    mText := FFrame.FLabels.Texts[mStep];
+    mMark.Visible := FShow;
+    mText.Visible := FShow;
+    if FFrame.FCard.StepDone(mStep) then
+    begin
+      mMark.Caption := CheckMark;
+      mMark.Font.Color := TAtlasWelcomeSetupFrame.DoneColor;
+    end
+    else
+    begin
+      mMark.Caption := OpenBox;
+      mMark.Font.Color := Themed(clWindowText);
+    end;
+    mText.Font.Color := mMark.Font.Color;
+    mText.Caption := TAtlasSetupTexts.StepCaption(mStep, FFrame.FCard, TThread.GetTickCount64);
+  end;
+end;
+
+procedure TSetupCardView.ApplyButtons;
+var
+  mCard: TAtlasSetupCard;
+  mHasSource: Boolean;
+begin
+  mCard := FFrame.FCard;
+  mHasSource := FFrame.FSource <> nil;
+  // Schritt 2: Auswahl und „Anlegen …“, solange keine Datei da ist.
+  FFrame.FTemplate.Visible := FShow and not mCard.StepDone(TAtlasSetupStep.Config);
+  FFrame.FButtons[TAtlasSetupButton.CreateConfig].Visible := FFrame.FTemplate.Visible;
+  FFrame.FButtons[TAtlasSetupButton.CreateConfig].Enabled := mHasSource;
+  // Schritt 3 und 4: Knopf, solange offen; ohne geöffnetes Projekt „Projekt öffnen“.
+  FFrame.FButtons[TAtlasSetupButton.Baseline].Visible := FShow and not mCard.StepDone(TAtlasSetupStep.Baseline);
+  FFrame.FButtons[TAtlasSetupButton.Paths].Visible := FShow and not mCard.StepDone(TAtlasSetupStep.Paths);
+  if mCard.ProjectOpen then
+  begin
+    FFrame.FButtons[TAtlasSetupButton.Baseline].Caption := TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Baseline);
+    FFrame.FButtons[TAtlasSetupButton.Paths].Caption := TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Paths);
+  end
+  else
+  begin
+    FFrame.FButtons[TAtlasSetupButton.Baseline].Caption := TAtlasWelcomeStrings.Text(
+      TAtlasWelcomeTextId.WelcomeSetupOpenProject);
+    FFrame.FButtons[TAtlasSetupButton.Paths].Caption := TAtlasWelcomeStrings.Text(
+      TAtlasWelcomeTextId.WelcomeSetupOpenProject);
+  end;
+  FFrame.FButtons[TAtlasSetupButton.Baseline].Enabled := mHasSource and (mCard.Baseline <> TAtlasSetupRun.Running);
+  FFrame.FButtons[TAtlasSetupButton.Paths].Enabled := mHasSource and (mCard.Paths <> TAtlasSetupRun.Running);
+  FFrame.FLabels.Dismiss.Visible := FShow;
+end;
+
+procedure TSetupCardView.ApplyInfos;
+var
+  mCard: TAtlasSetupCard;
+  mInfo: TLabel;
+begin
+  mCard := FFrame.FCard;
+  // Ergebnis bzw. Fehler unter Baseline und Prüfung.
+  mInfo := FFrame.FLabels.BaselineInfo;
+  mInfo.Caption := '';
+  // Nach dem Erzeugen in dieser Sitzung: Treffer der Baseline und neue Treffer (dann 0).
+  if (mCard.Baseline = TAtlasSetupRun.Done) and (mCard.BaselineNewHits >= 0) then
+  begin
+    mInfo.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupBaselineResult,
+      [mCard.BaselineTotal, mCard.BaselineFiles, mCard.BaselineNewHits]);
+  end
+  else if mCard.Baseline = TAtlasSetupRun.Failed then
+  begin
+    mInfo.Caption := mCard.BaselineError;
+  end;
+  mInfo.Visible := FShow and (mInfo.Caption <> '');
+  mInfo := FFrame.FLabels.PathsInfo;
+  mInfo.Caption := TAtlasSetupTexts.PathsCaption(mCard);
+  mInfo.Visible := FShow and (mInfo.Caption <> '');
+end;
+
+procedure TSetupCardView.ApplyFindings;
+var
+  mLines: TArray<TAtlasSetupLine>;
+  mMore, mIndex: Integer;
+  mFinding: TLabel;
+begin
+  mLines := nil;
+  mMore := 0;
+  if FShow and (FFrame.FCard.Paths <> TAtlasSetupRun.Running) then
+  begin
+    mLines := TAtlasWelcomeSetup.Lines(FFrame.FCard.Facts.Setup, Length(FFrame.FLabels.Findings), mMore);
+  end;
+  for mIndex := Low(FFrame.FLabels.Findings) to High(FFrame.FLabels.Findings) do
+  begin
+    mFinding := FFrame.FLabels.Findings[mIndex];
+    mFinding.Visible := mIndex < Length(mLines);
+    if mFinding.Visible then
+    begin
+      mFinding.Caption := TAtlasSetupTexts.FindingCaption(mLines[mIndex]);
+    end;
+  end;
+  FFrame.FLabels.More.Visible := mMore > 0;
+  if mMore > 0 then
+  begin
+    FFrame.FLabels.More.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupMore, [mMore]);
+  end;
+  FFrame.FButtons[TAtlasSetupButton.Options].Visible := Length(mLines) > 0;
+  FFrame.FButtons[TAtlasSetupButton.Options].Enabled := FFrame.FSource <> nil;
+end;
+
+procedure TSetupCardView.ApplyNew;
+var
+  mKind: TAtlasNewFileKind;
+  mButton: TButton;
+begin
+  // Neu mit Atlas.
+  FFrame.FLabels.NewRow.Visible := FFrame.FCard.ShowNew;
+  for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
+  begin
+    mButton := FFrame.FButtons[TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(mKind))];
+    mButton.Visible := FFrame.FCard.ShowNew;
+    mButton.Enabled := FFrame.FSource <> nil;
+  end;
+end;
+
+{ TSetupLayout }
+
+constructor TSetupLayout.Create(AFrame: TAtlasWelcomeSetupFrame);
+begin
+  FFrame := AFrame;
+  // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
+  FLeft := Scaled(TAtlasWelcomeSetupFrame.Indent);
+  FTextLeft := FLeft + Scaled(TAtlasWelcomeSetupFrame.MarkWidth);
+  FRight := AFrame.ClientWidth - Scaled(TAtlasWelcomeSetupFrame.Indent);
+  FTop := Scaled(TAtlasWelcomeSetupFrame.Gap) div 2;
+  FRowHeight := 0;
+  FX := FTextLeft;
+  FMeasure := TBitmap.Create;
+  FMeasure.Canvas.Font.Assign(AFrame.Font);
+end;
+
+procedure TSetupLayout.Release;
+begin
+  FreeAndNil(FMeasure);
+end;
+
+function TSetupLayout.Scaled(AValue: Integer): Integer;
+begin
+  Result := FFrame.ScaleValue(AValue);
+end;
+
+function TSetupLayout.ButtonWidth(AButton: TButton): Integer;
+begin
+  Result := FMeasure.Canvas.TextWidth(AButton.Caption) + 2 * Scaled(TAtlasWelcomeSetupFrame.ButtonPadding);
+end;
+
+procedure TSetupLayout.Place(AControl: TControl; AWidth, AHeight: Integer);
+begin
+  if (FX > FTextLeft) and (FX + AWidth > FRight) then
+  begin
+    FX := FTextLeft;
+    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+    FRowHeight := 0;
+  end;
+  AControl.SetBounds(FX, FTop, AWidth, AHeight);
+  Inc(FX, AWidth + Scaled(TAtlasWelcomeSetupFrame.Gap));
+  FRowHeight := Max(FRowHeight, AHeight);
+end;
+
+procedure TSetupLayout.PlaceButton(AButton: TAtlasSetupButton);
+var
+  mButton: TButton;
+begin
+  mButton := FFrame.FButtons[AButton];
+  if mButton.Visible then
+  begin
+    Place(mButton, ButtonWidth(mButton), Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
+  end;
+end;
+
+procedure TSetupLayout.NextRow;
+begin
+  if FRowHeight > 0 then
+  begin
+    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+  end;
+  FRowHeight := 0;
+  FX := FTextLeft;
+end;
+
+procedure TSetupLayout.PlaceLine(ALabel: TLabel);
+begin
+  if not ALabel.Visible then
+  begin
+    Exit;
+  end;
+  FX := FTextLeft;
+  Place(ALabel, FMeasure.Canvas.TextWidth(ALabel.Caption), ALabel.Height);
+  NextRow;
+end;
+
+procedure TSetupLayout.PlaceStep(AStep: TAtlasSetupStep);
+var
+  mMark, mText: TLabel;
+begin
+  mMark := FFrame.FLabels.Marks[AStep];
+  mText := FFrame.FLabels.Texts[AStep];
+  mMark.SetBounds(FLeft, FTop + Scaled(4), Scaled(TAtlasWelcomeSetupFrame.MarkWidth), mMark.Height);
+  FX := FTextLeft;
+  Place(mText, FMeasure.Canvas.TextWidth(mText.Caption), mText.Height);
+  // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
+  mText.Top := FTop + Scaled(4);
+  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
+  case AStep of
+    TAtlasSetupStep.Config:
+      if FFrame.FTemplate.Visible then
+      begin
+        Place(FFrame.FTemplate, Scaled(TAtlasWelcomeSetupFrame.ComboWidth), FFrame.FTemplate.Height);
+        PlaceButton(TAtlasSetupButton.CreateConfig);
+      end;
+    TAtlasSetupStep.Baseline:
+      PlaceButton(TAtlasSetupButton.Baseline);
+    TAtlasSetupStep.Paths:
+      PlaceButton(TAtlasSetupButton.Paths);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+  NextRow;
+  PlaceStepExtras(AStep);
+end;
+
+procedure TSetupLayout.PlaceStepExtras(AStep: TAtlasSetupStep);
+var
+  mIndex: Integer;
+begin
+  if AStep = TAtlasSetupStep.Baseline then
+  begin
+    PlaceLine(FFrame.FLabels.BaselineInfo);
+  end;
+  if AStep <> TAtlasSetupStep.Paths then
+  begin
+    Exit;
+  end;
+  PlaceLine(FFrame.FLabels.PathsInfo);
+  for mIndex := Low(FFrame.FLabels.Findings) to High(FFrame.FLabels.Findings) do
+  begin
+    PlaceLine(FFrame.FLabels.Findings[mIndex]);
+  end;
+  PlaceLine(FFrame.FLabels.More);
+  if FFrame.FButtons[TAtlasSetupButton.Options].Visible then
+  begin
+    PlaceButton(TAtlasSetupButton.Options);
+    NextRow;
+  end;
+end;
+
+procedure TSetupLayout.PlaceCard;
+var
+  mStep: TAtlasSetupStep;
+  mDismiss: TLabel;
+begin
+  for mStep := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+  begin
+    PlaceStep(mStep);
+  end;
+  mDismiss := FFrame.FLabels.Dismiss;
+  FX := FLeft;
+  Place(mDismiss, FMeasure.Canvas.TextWidth(mDismiss.Caption), mDismiss.Height);
+  mDismiss.Left := FLeft;
+  NextRow;
+end;
+
+procedure TSetupLayout.PlaceNew;
+var
+  mKind: TAtlasNewFileKind;
+  mNewRow: TLabel;
+begin
+  mNewRow := FFrame.FLabels.NewRow;
+  Inc(FTop, Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+  FX := FLeft;
+  Place(mNewRow, FMeasure.Canvas.TextWidth(mNewRow.Caption), mNewRow.Height);
+  mNewRow.Left := FLeft;
+  mNewRow.Top := FTop + Scaled(4);
+  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
+  FX := FLeft + FMeasure.Canvas.TextWidth(mNewRow.Caption) + Scaled(TAtlasWelcomeSetupFrame.Gap);
+  for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
+  begin
+    PlaceButton(TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(mKind)));
+  end;
+  NextRow;
+end;
+
+function TSetupLayout.Run: Integer;
+begin
+  if FFrame.FCard.ShowCard then
+  begin
+    PlaceCard;
+  end;
+  if FFrame.FCard.ShowNew then
+  begin
+    PlaceNew;
+  end;
+  Result := FTop + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2;
+end;
+
 { TAtlasWelcomeSetupFrame }
 
 constructor TAtlasWelcomeSetupFrame.Create(AOwner: TComponent);
@@ -162,9 +603,9 @@ begin
   FCard := TAtlasSetupCard.Empty;
   for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
   begin
-    FMarks[Step] := NewLabel;
-    FMarks[Step].Font.Style := [fsBold];
-    FTexts[Step] := NewLabel;
+    FLabels.Marks[Step] := NewLabel;
+    FLabels.Marks[Step].Font.Style := [fsBold];
+    FLabels.Texts[Step] := NewLabel;
   end;
   FTemplate := TComboBox.Create(Self);
   FTemplate.Parent := Body;
@@ -178,22 +619,22 @@ begin
       FButtons[Kind] := NewButton(Kind);
     end;
   end;
-  FBaselineInfo := NewLabel;
-  FPathsInfo := NewLabel;
-  for Index := Low(FFindings) to High(FFindings) do
+  FLabels.BaselineInfo := NewLabel;
+  FLabels.PathsInfo := NewLabel;
+  for Index := Low(FLabels.Findings) to High(FLabels.Findings) do
   begin
-    FFindings[Index] := NewLabel;
-    FFindings[Index].Cursor := crHandPoint;
-    FFindings[Index].OnClick := FindingClick;
+    FLabels.Findings[Index] := NewLabel;
+    FLabels.Findings[Index].Cursor := crHandPoint;
+    FLabels.Findings[Index].OnClick := FindingClick;
   end;
-  FMore := NewLabel;
-  FDismiss := NewLabel;
-  FDismiss.Font.Style := [fsUnderline];
-  FDismiss.Cursor := crHandPoint;
-  FDismiss.Caption := ButtonCaption(TAtlasSetupButton.Dismiss);
-  FDismiss.OnClick := DismissClick;
-  FNewLabel := NewLabel;
-  FNewLabel.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNewRow);
+  FLabels.More := NewLabel;
+  FLabels.Dismiss := NewLabel;
+  FLabels.Dismiss.Font.Style := [fsUnderline];
+  FLabels.Dismiss.Cursor := crHandPoint;
+  FLabels.Dismiss.Caption := TAtlasSetupTexts.ButtonCaption(TAtlasSetupButton.Dismiss);
+  FLabels.Dismiss.OnClick := DismissClick;
+  FLabels.NewRow := NewLabel;
+  FLabels.NewRow.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNewRow);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.Interval := 1000;
@@ -212,21 +653,16 @@ begin
   Result.StyleElements := Result.StyleElements - [seFont];
 end;
 
-function TAtlasWelcomeSetupFrame.Themed(AColor: TColor): TColor;
-begin
-  Result := StyleServices(Self).GetSystemColor(AColor);
-end;
-
 function TAtlasWelcomeSetupFrame.NewButton(AButton: TAtlasSetupButton): TButton;
 begin
   Result := TButton.Create(Self);
   Result.Parent := Body;
-  Result.Caption := ButtonCaption(AButton);
+  Result.Caption := TAtlasSetupTexts.ButtonCaption(AButton);
   Result.Tag := Ord(AButton);
   Result.OnClick := ButtonClick;
 end;
 
-class function TAtlasWelcomeSetupFrame.TitleText(const ACard: TAtlasSetupCard): string;
+class function TAtlasSetupTexts.TitleText(const ACard: TAtlasSetupCard): string;
 begin
   if ACard.ShowCard and (ACard.ProjectName <> '') then
   begin
@@ -238,7 +674,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSetupFrame.TemplateCaption(ATemplate: TAtlasSetupTemplate): string;
+class function TAtlasSetupTexts.TemplateCaption(ATemplate: TAtlasSetupTemplate): string;
 begin
   case ATemplate of
     TAtlasSetupTemplate.NewStrict:
@@ -250,7 +686,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSetupFrame.ButtonCaption(AButton: TAtlasSetupButton): string;
+class function TAtlasSetupTexts.ButtonCaption(AButton: TAtlasSetupButton): string;
 begin
   case AButton of
     TAtlasSetupButton.CreateConfig:
@@ -272,7 +708,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSetupFrame.StepCaption(AStep: TAtlasSetupStep; const ACard: TAtlasSetupCard;
+class function TAtlasSetupTexts.StepCaption(AStep: TAtlasSetupStep; const ACard: TAtlasSetupCard;
   ANow: UInt64): string;
 begin
   case AStep of
@@ -325,7 +761,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSetupFrame.FindingCaption(const ALine: TAtlasSetupLine): string;
+class function TAtlasSetupTexts.FindingCaption(const ALine: TAtlasSetupLine): string;
 begin
   // Hinweis zu einem requires-Package (#759): kein Fehler.
   if (ALine.Kind = TAtlasSetupFindingKind.Hint) and (ALine.Note <> '') then
@@ -376,7 +812,7 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeSetupFrame.PathsCaption(const ACard: TAtlasSetupCard): string;
+class function TAtlasSetupTexts.PathsCaption(const ACard: TAtlasSetupCard): string;
 var
   Setup: TAtlasProjectSetup;
   Parts: TArray<string>;
@@ -415,17 +851,17 @@ end;
 
 function TAtlasWelcomeSetupFrame.StepMark(AStep: TAtlasSetupStep): TLabel;
 begin
-  Result := FMarks[AStep];
+  Result := FLabels.Marks[AStep];
 end;
 
 function TAtlasWelcomeSetupFrame.StepText(AStep: TAtlasSetupStep): TLabel;
 begin
-  Result := FTexts[AStep];
+  Result := FLabels.Texts[AStep];
 end;
 
 function TAtlasWelcomeSetupFrame.Finding(AIndex: Integer): TLabel;
 begin
-  Result := FFindings[AIndex];
+  Result := FLabels.Findings[AIndex];
 end;
 
 function TAtlasWelcomeSetupFrame.SelectedTemplate: TAtlasSetupTemplate;
@@ -462,7 +898,7 @@ begin
   end;
   for Template := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
   begin
-    FTemplate.Items.Add(TemplateCaption(Template));
+    FTemplate.Items.Add(TAtlasSetupTexts.TemplateCaption(Template));
   end;
   FTemplate.ItemIndex := FTemplateIndex;
 end;
@@ -491,121 +927,13 @@ begin
   begin
     FCard := TAtlasSetupCard.Empty;
   end;
-  ApplyCard;
+  TSetupCardView.Create(Self).Apply;
   Arrange;
   inherited;
   if OldHeight <> FContentHeight then
   begin
     HeightChanged;
   end;
-end;
-
-procedure TAtlasWelcomeSetupFrame.ApplyCard;
-var
-  Step: TAtlasSetupStep;
-  Done, Open, Show: Boolean;
-  Lines: TArray<TAtlasSetupLine>;
-  More, Index: Integer;
-  Kind: TAtlasNewFileKind;
-  Setup: TAtlasSetupButton;
-begin
-  Show := FCard.ShowCard;
-  Open := FCard.ProjectOpen;
-  FBaselineInfo.Font.Color := Themed(clGrayText);
-  FPathsInfo.Font.Color := Themed(clGrayText);
-  FMore.Font.Color := Themed(clGrayText);
-  FNewLabel.Font.Color := Themed(clWindowText);
-  FDismiss.Font.Color := Themed(clHotLight);
-  for Index := Low(FFindings) to High(FFindings) do
-  begin
-    FFindings[Index].Font.Color := Themed(clWindowText);
-  end;
-  for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
-  begin
-    Done := FCard.StepDone(Step);
-    FMarks[Step].Visible := Show;
-    FTexts[Step].Visible := Show;
-    if Done then
-    begin
-      FMarks[Step].Caption := CheckMark;
-      FMarks[Step].Font.Color := DoneColor;
-      FTexts[Step].Font.Color := DoneColor;
-    end
-    else
-    begin
-      FMarks[Step].Caption := OpenBox;
-      FMarks[Step].Font.Color := Themed(clWindowText);
-      FTexts[Step].Font.Color := Themed(clWindowText);
-    end;
-    FTexts[Step].Caption := StepCaption(Step, FCard, TThread.GetTickCount64);
-  end;
-  // Schritt 2: Auswahl und „Anlegen …“, solange keine Datei da ist.
-  FTemplate.Visible := Show and not FCard.StepDone(TAtlasSetupStep.Config);
-  FButtons[TAtlasSetupButton.CreateConfig].Visible := FTemplate.Visible;
-  // Schritt 3 und 4: Knopf, solange offen; ohne geöffnetes Projekt „Projekt öffnen“.
-  FButtons[TAtlasSetupButton.Baseline].Visible := Show and not FCard.StepDone(TAtlasSetupStep.Baseline);
-  FButtons[TAtlasSetupButton.Paths].Visible := Show and not FCard.StepDone(TAtlasSetupStep.Paths);
-  if Open then
-  begin
-    FButtons[TAtlasSetupButton.Baseline].Caption := ButtonCaption(TAtlasSetupButton.Baseline);
-    FButtons[TAtlasSetupButton.Paths].Caption := ButtonCaption(TAtlasSetupButton.Paths);
-  end
-  else
-  begin
-    FButtons[TAtlasSetupButton.Baseline].Caption := TAtlasWelcomeStrings.Text(
-      TAtlasWelcomeTextId.WelcomeSetupOpenProject);
-    FButtons[TAtlasSetupButton.Paths].Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupOpenProject);
-  end;
-  FButtons[TAtlasSetupButton.Baseline].Enabled := (FSource <> nil) and (FCard.Baseline <> TAtlasSetupRun.Running);
-  FButtons[TAtlasSetupButton.Paths].Enabled := (FSource <> nil) and (FCard.Paths <> TAtlasSetupRun.Running);
-  FButtons[TAtlasSetupButton.CreateConfig].Enabled := FSource <> nil;
-  // Ergebnis bzw. Fehler unter Baseline und Prüfung.
-  FBaselineInfo.Caption := '';
-  // Nach dem Erzeugen in dieser Sitzung: Treffer der Baseline und neue Treffer (dann 0).
-  if (FCard.Baseline = TAtlasSetupRun.Done) and (FCard.BaselineNewHits >= 0) then
-  begin
-    FBaselineInfo.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupBaselineResult,
-      [FCard.BaselineTotal,
-      FCard.BaselineFiles, FCard.BaselineNewHits]);
-  end
-  else if FCard.Baseline = TAtlasSetupRun.Failed then
-  begin
-    FBaselineInfo.Caption := FCard.BaselineError;
-  end;
-  FBaselineInfo.Visible := Show and (FBaselineInfo.Caption <> '');
-  FPathsInfo.Caption := PathsCaption(FCard);
-  FPathsInfo.Visible := Show and (FPathsInfo.Caption <> '');
-  Lines := nil;
-  More := 0;
-  if Show and (FCard.Paths <> TAtlasSetupRun.Running) then
-  begin
-    Lines := TAtlasWelcomeSetup.Lines(FCard.Facts.Setup, Length(FFindings), More);
-  end;
-  for Index := Low(FFindings) to High(FFindings) do
-  begin
-    FFindings[Index].Visible := Index < Length(Lines);
-    if FFindings[Index].Visible then
-    begin
-      FFindings[Index].Caption := FindingCaption(Lines[Index]);
-    end;
-  end;
-  FMore.Visible := More > 0;
-  if FMore.Visible then
-  begin
-    FMore.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupMore, [More]);
-  end;
-  FButtons[TAtlasSetupButton.Options].Visible := Length(Lines) > 0;
-  FButtons[TAtlasSetupButton.Options].Enabled := FSource <> nil;
-  FDismiss.Visible := Show;
-  // Neu mit Atlas.
-  FNewLabel.Visible := FCard.ShowNew;
-  for Kind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
-  begin
-    Setup := TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(Kind));
-    FButtons[Setup].Visible := FCard.ShowNew;
-    FButtons[Setup].Enabled := FSource <> nil;
-  end;
-  FTimer.Enabled := Running;
 end;
 
 procedure TAtlasWelcomeSetupFrame.BodyResize(Sender: TObject);
@@ -623,153 +951,22 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.Arrange;
 var
-  mLeft, TextLeft, Right, mTop, X, RowHeight, Wide: Integer;
-  Measure: TBitmap;
-  Step: TAtlasSetupStep;
-  Index: Integer;
-  Kind: TAtlasNewFileKind;
-  Setup: TAtlasSetupButton;
-
-  function ButtonWidth(AButton: TButton): Integer;
-  begin
-    Result := Measure.Canvas.TextWidth(AButton.Caption) + 2 * ScaleValue(ButtonPadding);
-  end;
-
-  /// <summary>Setzt AControl rechts neben X in die Reihe, bei zu wenig Platz in eine neue Reihe ab TextLeft.
-  /// </summary>
-  procedure Place(AControl: TControl; AWidth, AHeight: Integer);
-  begin
-    if (X > TextLeft) and (X + AWidth > Right) then
-    begin
-      X := TextLeft;
-      Inc(mTop, RowHeight + ScaleValue(Gap) div 2);
-      RowHeight := 0;
-    end;
-    AControl.SetBounds(X, mTop, AWidth, AHeight);
-    Inc(X, AWidth + ScaleValue(Gap));
-    RowHeight := Max(RowHeight, AHeight);
-  end;
-
-  procedure NextRow;
-  begin
-    if RowHeight > 0 then
-    begin
-      Inc(mTop, RowHeight + ScaleValue(Gap) div 2);
-    end;
-    RowHeight := 0;
-    X := TextLeft;
-  end;
-
-  procedure PlaceLine(ALabel: TLabel);
-  begin
-    if not ALabel.Visible then
-    begin
-      Exit;
-    end;
-    X := TextLeft;
-    Place(ALabel, Measure.Canvas.TextWidth(ALabel.Caption), ALabel.Height);
-    NextRow;
-  end;
-
+  mLayout: TSetupLayout;
 begin
   // Ohne Fenster lässt sich kein Text messen; CreateWnd holt UpdateContent nach.
-  if FArranging or (FNewLabel = nil) or not HasWindow then
+  if FArranging or (FLabels.NewRow = nil) or not HasWindow then
   begin
     Exit;
   end;
   FArranging := True;
   try
     FillTemplates;
-    // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-    mLeft := ScaleValue(Indent);
-    TextLeft := mLeft + ScaleValue(MarkWidth);
-    Right := ClientWidth - ScaleValue(Indent);
-    mTop := ScaleValue(Gap) div 2;
-    RowHeight := 0;
-    X := TextLeft;
-    Measure := TBitmap.Create;
+    mLayout := TSetupLayout.Create(Self);
     try
-      Measure.Canvas.Font.Assign(Font);
-      if FCard.ShowCard then
-      begin
-        for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
-        begin
-          FMarks[Step].SetBounds(mLeft, mTop + ScaleValue(4), ScaleValue(MarkWidth), FMarks[Step].Height);
-          X := TextLeft;
-          Wide := Measure.Canvas.TextWidth(FTexts[Step].Caption);
-          // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
-          Place(FTexts[Step], Wide, FTexts[Step].Height);
-          FTexts[Step].Top := mTop + ScaleValue(4);
-          RowHeight := Max(RowHeight, ScaleValue(ButtonHeight));
-          case Step of
-            TAtlasSetupStep.Config:
-              if FTemplate.Visible then
-              begin
-                Place(FTemplate, ScaleValue(ComboWidth), FTemplate.Height);
-                Place(FButtons[TAtlasSetupButton.CreateConfig],
-                  ButtonWidth(FButtons[TAtlasSetupButton.CreateConfig]), ScaleValue(ButtonHeight));
-              end;
-            TAtlasSetupStep.Baseline:
-              if FButtons[TAtlasSetupButton.Baseline].Visible then
-              begin
-                Place(FButtons[TAtlasSetupButton.Baseline], ButtonWidth(FButtons[TAtlasSetupButton.Baseline]),
-                  ScaleValue(ButtonHeight));
-              end;
-            TAtlasSetupStep.Paths:
-              if FButtons[TAtlasSetupButton.Paths].Visible then
-              begin
-                Place(FButtons[TAtlasSetupButton.Paths], ButtonWidth(FButtons[TAtlasSetupButton.Paths]),
-                  ScaleValue(ButtonHeight));
-              end;
-          else
-            // Übrige Werte bewusst ohne Wirkung.
-          end;
-          NextRow;
-          if Step = TAtlasSetupStep.Baseline then
-          begin
-            PlaceLine(FBaselineInfo);
-          end;
-          if Step = TAtlasSetupStep.Paths then
-          begin
-            PlaceLine(FPathsInfo);
-            for Index := Low(FFindings) to High(FFindings) do
-            begin
-              PlaceLine(FFindings[Index]);
-            end;
-            PlaceLine(FMore);
-            if FButtons[TAtlasSetupButton.Options].Visible then
-            begin
-              Place(FButtons[TAtlasSetupButton.Options], ButtonWidth(FButtons[TAtlasSetupButton.Options]),
-                ScaleValue(ButtonHeight));
-              NextRow;
-            end;
-          end;
-        end;
-        X := mLeft;
-        Place(FDismiss, Measure.Canvas.TextWidth(FDismiss.Caption), FDismiss.Height);
-        FDismiss.Left := mLeft;
-        NextRow;
-      end;
-      if FCard.ShowNew then
-      begin
-        Inc(mTop, ScaleValue(Gap) div 2);
-        X := mLeft;
-        Place(FNewLabel, Measure.Canvas.TextWidth(FNewLabel.Caption), FNewLabel.Height);
-        FNewLabel.Left := mLeft;
-        FNewLabel.Top := mTop + ScaleValue(4);
-        RowHeight := Max(RowHeight, ScaleValue(ButtonHeight));
-        X := mLeft + Measure.Canvas.TextWidth(FNewLabel.Caption) + ScaleValue(Gap);
-        for Kind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
-        begin
-          Setup := TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(Kind));
-          Place(FButtons[Setup], ButtonWidth(FButtons[Setup]), ScaleValue(ButtonHeight));
-        end;
-        NextRow;
-      end;
+      FContentHeight := mLayout.Run;
     finally
-      Measure.Free;
+      mLayout.Release;
     end;
-    FContentHeight := mTop + ScaleValue(Gap) div 2;
   finally
     FArranging := False;
   end;
@@ -794,68 +991,41 @@ begin
   // Nur die Sekunden des laufenden Schritts; die Höhe bleibt.
   for Step := TAtlasSetupStep.Baseline to TAtlasSetupStep.Paths do
   begin
-    FTexts[Step].Caption := StepCaption(Step, FCard, TThread.GetTickCount64);
+    FLabels.Texts[Step].Caption := TAtlasSetupTexts.StepCaption(Step, FCard, TThread.GetTickCount64);
   end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.ClickButton(AButton: TAtlasSetupButton);
 var
   mSource: IAtlasSetupSource;
-  Open: Boolean;
-  Template: TAtlasSetupTemplate;
+  mOpen: Boolean;
+  mTemplate: TAtlasSetupTemplate;
 begin
-  if FSource = nil then
-  begin
-    Exit;
-  end;
-  if (AButton <> TAtlasSetupButton.Dismiss) and not (FButtons[AButton].Visible and FButtons[AButton].Enabled) then
-  begin
-    Exit;
-  end;
-  if (AButton = TAtlasSetupButton.Dismiss) and not FDismiss.Visible then
+  if (FSource = nil) or not Clickable(AButton) then
   begin
     Exit;
   end;
   mSource := FSource;
-  Open := FCard.ProjectOpen;
-  Template := SelectedTemplate;
+  mOpen := FCard.ProjectOpen;
+  mTemplate := SelectedTemplate;
   // Nicht im Klick des Knopfs: Vorschau und Projektoptionen sind modale Dialoge.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      case AButton of
-        TAtlasSetupButton.CreateConfig:
-          mSource.CreateConfig(Template);
-        TAtlasSetupButton.Baseline:
-          if Open then
-          begin
-            mSource.StartBaseline;
-          end
-          else
-          begin
-            mSource.OpenProject;
-          end;
-        TAtlasSetupButton.Paths:
-          if Open then
-          begin
-            mSource.CheckPaths;
-          end
-          else
-          begin
-            mSource.OpenProject;
-          end;
-        TAtlasSetupButton.Options:
-          mSource.OpenOptions;
-        TAtlasSetupButton.Dismiss:
-          mSource.Dismiss;
-        TAtlasSetupButton.NewUnit:
-          mSource.NewFile(TAtlasNewFileKind.UnitFile);
-        TAtlasSetupButton.NewForm:
-          mSource.NewFile(TAtlasNewFileKind.FormFile);
-      else
-        mSource.NewFile(TAtlasNewFileKind.TestFile);
-      end;
+      RunSetupButton(mSource, AButton, mOpen, mTemplate);
     end);
+end;
+
+function TAtlasWelcomeSetupFrame.Clickable(AButton: TAtlasSetupButton): Boolean;
+begin
+  if AButton = TAtlasSetupButton.Dismiss then
+  begin
+    Result := FLabels.Dismiss.Visible;
+  end
+  else
+  begin
+    Result := FButtons[AButton].Visible and FButtons[AButton].Enabled;
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.ButtonClick(Sender: TObject);
