@@ -58,11 +58,9 @@ type
     class function Covers(const ASpans: TArray<TAtlasColumnSpan>; AColumn, ACount: Integer): Boolean; static;
   end;
 
-  TAtlasProblemStore = class
-  public const
-    /// <summary>Quelle der Meldungen fehlgeschlagener Tests (#69).</summary>
-    TestSource = 'DUnitX';
-  private type
+  /// <summary>Einträge je Datei mit Stand (Stamp); Grundlage von TAtlasProblemStore.</summary>
+  TAtlasProblemEntries = class
+  protected type
     TEntry = class
       FileName: string;
       Text: string;
@@ -89,15 +87,11 @@ type
       /// <summary>Stand der Datei: neu bei jeder Änderung ihrer Probleme oder ihres Texts (Stamp).</summary>
       Stamp: Integer;
     end;
-  private
+  protected
     FEntries: TObjectDictionary<string, TEntry>;
     FVersion: Integer;
-    FCompilerMerge: Boolean;
-    FHiddenTasks: TArray<string>;
     // Über alle Speicher hinweg fortlaufend: Ein neuer Speicher (Neustart des Servers) wiederholt keinen Stand.
     class var FLastStamp: Integer;
-  private
-    procedure SetCompilerMerge(AValue: Boolean);
     /// <summary>Einträge ohne Server, Tests und Aufgaben entfernen.</summary>
     procedure DropEmpty;
     function Find(const AFileName: string): TEntry;
@@ -105,13 +99,26 @@ type
     /// <summary>Neuer Stand für AEntry (Stamp).</summary>
     procedure Touch(AEntry: TEntry);
     class procedure Shift(AEntry: TEntry; const ANewText: string); static;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    class function Key(const AFileName: string): string; static;
+    property Version: Integer read FVersion;
+  end;
+
+  TAtlasProblemStore = class(TAtlasProblemEntries)
+  public const
+    /// <summary>Quelle der Meldungen fehlgeschlagener Tests (#69).</summary>
+    TestSource = 'DUnitX';
+  private
+    FCompilerMerge: Boolean;
+    FHiddenTasks: TArray<string>;
+    procedure SetCompilerMerge(AValue: Boolean);
     /// <summary>Spalten der Bereiche AProblems in der Zeile (wie InactiveSpans).</summary>
     function SpansOf(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
       ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
   public
     constructor Create;
-    destructor Destroy; override;
-    class function Key(const AFileName: string): string; static;
     /// <summary>Diagnosen des Servers für AText (ATextKnown = False: Text unbekannt, etwa von der Platte).</summary>
     procedure Update(const AFileName, AText: string; ATextKnown: Boolean; const AProblems: TArray<TAtlasProblem>;
       const AResultId: string; AReplaceCompiler: Boolean);
@@ -175,7 +182,6 @@ type
     /// <summary>Stand der Datei: ändert sich mit allem, was ForFile oder LineText der Datei ändert; 0 ohne
     /// Eintrag. Wer je Datei ableitet (Fenster „Atlas-Prüfung“), baut nur Dateien mit neuem Stand neu.</summary>
     function Stamp(const AFileName: string): Integer;
-    property Version: Integer read FVersion;
     /// <summary>Bestätigte Compilermeldungen mit dem Atlas-Befund zusammenführen (problems.compilerMerge, #1024).
     /// </summary>
     property CompilerMerge: Boolean read FCompilerMerge write SetCompilerMerge;
@@ -225,12 +231,19 @@ begin
   Result := ACount > 0;
 end;
 
+{ TAtlasProblemEntries }
+
+constructor TAtlasProblemEntries.Create;
+begin
+  inherited Create;
+  FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+end;
+
 { TAtlasProblemStore }
 
 constructor TAtlasProblemStore.Create;
 begin
   inherited Create;
-  FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
   FCompilerMerge := True;
 end;
 
@@ -274,18 +287,18 @@ begin
   Result := -1;
 end;
 
-destructor TAtlasProblemStore.Destroy;
+destructor TAtlasProblemEntries.Destroy;
 begin
   FEntries.Free;
   inherited Destroy;
 end;
 
-class function TAtlasProblemStore.Key(const AFileName: string): string;
+class function TAtlasProblemEntries.Key(const AFileName: string): string;
 begin
   Result := AnsiLowerCase(AFileName);
 end;
 
-function TAtlasProblemStore.Find(const AFileName: string): TEntry;
+function TAtlasProblemEntries.Find(const AFileName: string): TEntry;
 begin
   if not FEntries.TryGetValue(Key(AFileName), Result) then
   begin
@@ -293,7 +306,7 @@ begin
   end;
 end;
 
-function TAtlasProblemStore.Ensure(const AFileName: string): TEntry;
+function TAtlasProblemEntries.Ensure(const AFileName: string): TEntry;
 begin
   Result := Find(AFileName);
   if Result = nil then
@@ -305,7 +318,7 @@ begin
   end;
 end;
 
-procedure TAtlasProblemStore.Touch(AEntry: TEntry);
+procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
 begin
   Inc(FLastStamp);
   AEntry.Stamp := FLastStamp;
@@ -372,7 +385,7 @@ begin
   Inc(FVersion);
 end;
 
-class procedure TAtlasProblemStore.Shift(AEntry: TEntry; const ANewText: string);
+class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string);
 var
   OldLines, NewLines: TArray<string>;
   Prefix, Suffix, ChangedEnd, Delta, Index: Integer;
@@ -526,66 +539,65 @@ begin
   Result := SpansOf(AFileName, Inactive(AFileName), ALine, ATabWidth);
 end;
 
+/// <summary>Spalten der ersten bzw. letzten Zeile ALine eines inaktiven Zweigs: ab dem Ende der öffnenden bis vor
+/// die schließende Direktive, nur Text, nicht das Zeilenende. False, wenn nichts bleibt.</summary>
+function EdgeSpan(const AProblem: TAtlasProblem; ALine: Integer; const AText: string; ATabWidth: Integer;
+  out ASpan: TAtlasColumnSpan): Boolean;
+var
+  mFirst, mLast: Integer;
+begin
+  mFirst := 1;
+  if ALine = AProblem.StartLine then
+  begin
+    mFirst := TAtlasPairs.ColumnOf(AText, Min(AProblem.StartCharacter, Length(AText)), ATabWidth);
+  end;
+  if ALine = AProblem.EndLine then
+  begin
+    mLast := TAtlasPairs.ColumnOf(AText, Min(AProblem.EndCharacter, Length(AText)), ATabWidth) - 1;
+  end
+  else
+  begin
+    mLast := TAtlasPairs.ColumnOf(AText, Length(AText), ATabWidth) - 1;
+  end;
+  ASpan := TAtlasColumnSpan.Create(mFirst, mLast);
+  Result := mLast >= mFirst;
+end;
+
 function TAtlasProblemStore.SpansOf(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
   ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
 var
-  Problem: TAtlasProblem;
-  Text: string;
-  HasText: Boolean;
-  First, Last: Integer;
+  mProblem: TAtlasProblem;
+  mText: string;
+  mHasText: Boolean;
+  mSpan: TAtlasColumnSpan;
 begin
   Result := nil;
-  HasText := False;
-  Text := '';
-  for Problem in AProblems do
+  mHasText := False;
+  mText := '';
+  for mProblem in AProblems do
   begin
-    if (ALine < Problem.StartLine) or (ALine > Problem.EndLine) then
+    if (ALine < mProblem.StartLine) or (ALine > mProblem.EndLine) then
     begin
       Continue;
     end;
     // Zeilen zwischen den Direktiven ganz.
-    if (ALine > Problem.StartLine) and (ALine < Problem.EndLine) then
+    if (ALine > mProblem.StartLine) and (ALine < mProblem.EndLine) then
     begin
       Result := Result + [TAtlasColumnSpan.Create(1, MaxInt)];
       Continue;
     end;
-    // Erste bzw. letzte Zeile: ab dem Ende der öffnenden bis vor die schließende Direktive.
-    if Problem.Stale then
+    if mProblem.Stale then
     begin
       Continue;
     end;
-    if not HasText then
+    if not mHasText and not LineText(AFileName, ALine, mText) then
     begin
-      if not LineText(AFileName, ALine, Text) then
-      begin
-        Exit;
-      end;
-      HasText := True;
+      Exit;
     end;
-    if ALine = Problem.StartLine then
+    mHasText := True;
+    if EdgeSpan(mProblem, ALine, mText, ATabWidth, mSpan) then
     begin
-      First := TAtlasPairs.ColumnOf(Text, Min(Problem.StartCharacter, Length(Text)), ATabWidth);
-    end
-    else
-    begin
-      First := 1;
-    end;
-    if ALine = Problem.EndLine then
-    begin
-      Last := TAtlasPairs.ColumnOf(Text, Min(Problem.EndCharacter, Length(Text)), ATabWidth) - 1;
-    end
-    else
-    begin
-      Last := MaxInt;
-    end;
-    // Nur Text dimmen, nicht das Zeilenende.
-    if Last = MaxInt then
-    begin
-      Last := TAtlasPairs.ColumnOf(Text, Length(Text), ATabWidth) - 1;
-    end;
-    if Last >= First then
-    begin
-      Result := Result + [TAtlasColumnSpan.Create(First, Last)];
+      Result := Result + [mSpan];
     end;
   end;
 end;
@@ -673,7 +685,7 @@ begin
   Result := (Entry <> nil) and Entry.FromServer;
 end;
 
-procedure TAtlasProblemStore.DropEmpty;
+procedure TAtlasProblemEntries.DropEmpty;
 var
   Entry: TEntry;
   Emptied: TArray<string>;
@@ -968,81 +980,59 @@ begin
   end;
 end;
 
-function TAtlasProblemStore.ForFile(const AFileName: string): TArray<TAtlasProblem>;
+/// <summary>Steht ein Problem an derselben Stelle mit derselben Meldung schon in AProblems?</summary>
+function HasDuplicate(const AProblems: TArray<TAtlasProblem>; const AProblem: TAtlasProblem): Boolean;
 var
-  Entry: TEntry;
-  Problem, Other: TAtlasProblem;
-  Duplicate: Boolean;
-  Visible, Merged: TArray<TAtlasProblem>;
-  Drop: TArray<Boolean>;
-  Index, Found: Integer;
+  mOther: TAtlasProblem;
 begin
+  for mOther in AProblems do
+  begin
+    if (mOther.StartLine = AProblem.StartLine) and (mOther.StartCharacter = AProblem.StartCharacter) and
+      SameText(mOther.Message, AProblem.Message) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Vom Compiler bestätigte Befunde markieren (#1024); mit AMerge ohne die bestätigende
+/// Compilermeldung.</summary>
+function Confirmed(const AProblems: TArray<TAtlasProblem>; AMerge: Boolean): TArray<TAtlasProblem>;
+var
+  mProblems: TArray<TAtlasProblem>;
+  mDrop: TArray<Boolean>;
+  mIndex, mFound: Integer;
+begin
+  mProblems := Copy(AProblems);
+  SetLength(mDrop, Length(mProblems));
+  for mIndex := 0 to High(mProblems) do
+  begin
+    mFound := -1;
+    if not mProblems[mIndex].IsCompiler and (mProblems[mIndex].CompilerCodes <> nil) then
+    begin
+      mFound := ConfirmingIndex(mProblems, mProblems[mIndex]);
+    end;
+    if mFound >= 0 then
+    begin
+      mProblems[mIndex].Confirmed := True;
+      mProblems[mIndex].ConfirmedCode := mProblems[mFound].Code;
+      mDrop[mFound] := AMerge;
+    end;
+  end;
   Result := nil;
-  Entry := Find(AFileName);
-  if Entry = nil then
+  for mIndex := 0 to High(mProblems) do
   begin
-    Exit;
-  end;
-  if Entry.VisibleValid then
-  begin
-    Exit(Entry.Visible);
-  end;
-  Visible := nil;
-  for Problem in Entry.Compiler + Entry.Atlas + Entry.Tests + Entry.Tasks do
-  begin
-    // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme.
-    if Problem.Unnecessary or Problem.IsUses then
+    if not mDrop[mIndex] then
     begin
-      Continue;
-    end;
-    // Ausgeblendete Projektaufgaben (#900).
-    if (FHiddenTasks <> nil) and TaskHidden(Problem.Source) then
-    begin
-      Continue;
-    end;
-    Duplicate := False;
-    for Other in Visible do
-    begin
-      if (Other.StartLine = Problem.StartLine) and (Other.StartCharacter = Problem.StartCharacter) and
-        SameText(Other.Message, Problem.Message) then
-      begin
-        Duplicate := True;
-      end;
-    end;
-    if not Duplicate then
-    begin
-      Visible := Visible + [Problem];
+      Result := Result + [mProblems[mIndex]];
     end;
   end;
-  // Vom Compiler bestätigte Befunde (#1024); beim Zusammenführen ohne die Compilermeldung.
-  SetLength(Drop, Length(Visible));
-  for Index := 0 to High(Visible) do
-  begin
-    if not Visible[Index].IsCompiler and (Visible[Index].CompilerCodes <> nil) then
-    begin
-      Found := ConfirmingIndex(Visible, Visible[Index]);
-      if Found < 0 then
-      begin
-        Continue;
-      end;
-      Visible[Index].Confirmed := True;
-      Visible[Index].ConfirmedCode := Visible[Found].Code;
-      if FCompilerMerge then
-      begin
-        Drop[Found] := True;
-      end;
-    end;
-  end;
-  Merged := nil;
-  for Index := 0 to High(Visible) do
-  begin
-    if not Drop[Index] then
-    begin
-      Merged := Merged + [Visible[Index]];
-    end;
-  end;
-  Visible := Merged;
-  TArray.Sort<TAtlasProblem>(Visible, TComparer<TAtlasProblem>.Construct(
+end;
+
+procedure SortByPosition(var AProblems: TArray<TAtlasProblem>);
+begin
+  TArray.Sort<TAtlasProblem>(AProblems, TComparer<TAtlasProblem>.Construct(
     function(const A, B: TAtlasProblem): Integer
     begin
       Result := A.StartLine - B.StartLine;
@@ -1055,9 +1045,39 @@ begin
         Result := Ord(A.Severity) - Ord(B.Severity);
       end;
     end));
-  Entry.Visible := Visible;
-  Entry.VisibleValid := True;
-  Result := Visible;
+end;
+
+function TAtlasProblemStore.ForFile(const AFileName: string): TArray<TAtlasProblem>;
+var
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
+  mVisible: TArray<TAtlasProblem>;
+begin
+  Result := nil;
+  mEntry := Find(AFileName);
+  if mEntry = nil then
+  begin
+    Exit;
+  end;
+  if mEntry.VisibleValid then
+  begin
+    Exit(mEntry.Visible);
+  end;
+  mVisible := nil;
+  for mProblem in mEntry.Compiler + mEntry.Atlas + mEntry.Tests + mEntry.Tasks do
+  begin
+    // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme; ausgeblendete Projektaufgaben (#900) fehlen.
+    if not mProblem.Unnecessary and not mProblem.IsUses and ((FHiddenTasks = nil) or not TaskHidden(mProblem.Source))
+      and not HasDuplicate(mVisible, mProblem) then
+    begin
+      mVisible := mVisible + [mProblem];
+    end;
+  end;
+  mVisible := Confirmed(mVisible, FCompilerMerge);
+  SortByPosition(mVisible);
+  mEntry.Visible := mVisible;
+  mEntry.VisibleValid := True;
+  Result := mVisible;
 end;
 
 function TAtlasProblemStore.OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasProblem>;
