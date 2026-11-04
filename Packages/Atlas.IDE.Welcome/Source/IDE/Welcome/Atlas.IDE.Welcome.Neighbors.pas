@@ -248,14 +248,14 @@ end;
 
 class procedure TAtlasWelcomeNeighbors.Connect(AQuickActions: TAtlasIdeQuickActions);
 begin
-  AQuickActions.OnBuild := StartBuild;
-  AQuickActions.OnTests := RunTests;
-  AQuickActions.OnTestsBusy := TestsRunning;
-  AQuickActions.OnIdeBusy := IdeBusy;
-  AQuickActions.OnProfiles := Profiles;
-  AQuickActions.OnRun := RunProfile;
-  AQuickActions.OnTaskNames := TaskNames;
-  AQuickActions.OnRunTask := RunTask;
+  AQuickActions.Hooks.OnBuild := StartBuild;
+  AQuickActions.Hooks.OnTests := RunTests;
+  AQuickActions.Hooks.OnTestsBusy := TestsRunning;
+  AQuickActions.Hooks.OnIdeBusy := IdeBusy;
+  AQuickActions.Hooks.OnProfiles := Profiles;
+  AQuickActions.Hooks.OnRun := RunProfile;
+  AQuickActions.Hooks.OnTaskNames := TaskNames;
+  AQuickActions.Hooks.OnRunTask := RunTask;
 end;
 
 class function TAtlasWelcomeNeighbors.StartBaseline(const AProject: string;
