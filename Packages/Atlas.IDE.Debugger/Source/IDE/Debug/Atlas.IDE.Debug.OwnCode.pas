@@ -74,6 +74,10 @@ type
     class procedure CheckStep; static;
     class procedure ScheduleJump; static;
     class procedure CheckJump; static;
+    /// <summary>Darf der Sprung jetzt lesen? Hält den Zeitgeber an, wenn der Halt nicht mehr gilt.</summary>
+    class function JumpReady: Boolean; static;
+    /// <summary>Zum ersten eigenen Rahmen springen und es melden.</summary>
+    class procedure JumpTo(const AFrames: TAtlasDebugFrames); static;
     class function ReadFrames(out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead; static;
     class function NewTimer(const AOnTimer: TNotifyEvent): TTimer; static;
   public
@@ -327,26 +331,49 @@ begin
   FJumpTimer.Enabled := True;
 end;
 
-class procedure TAtlasIdeDebugOwnCode.CheckJump;
-var
-  Frames: TAtlasDebugFrames;
-  Index: Integer;
+class function TAtlasIdeDebugOwnCode.JumpReady: Boolean;
 begin
+  Result := False;
   // Weitergelaufen (Fortsetzen, still fortgesetzt) oder neuer Halt: kein Sprung.
   if (TAtlasIdeDebugSession.StopCount <> FJumpStop) or (TAtlasIdeDebugSession.StoppedThread = nil) or
     (TThread.GetTickCount64 - FJumpStarted > JumpWaitMs) then
   begin
     FJumpTimer.Enabled := False;
-    Exit;
-  end;
+  end
   // Erst wenn der Exception-Dialog zu ist und die IDE ihren Ort gezeigt hat (zwei ruhige Takte).
-  if Application.ModalLevel > 0 then
+  else if Application.ModalLevel > 0 then
   begin
     FJumpQuiet := 0;
+  end
+  else
+  begin
+    Inc(FJumpQuiet);
+    Result := FJumpQuiet >= 2;
+  end;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.JumpTo(const AFrames: TAtlasDebugFrames);
+var
+  mIndex: Integer;
+begin
+  mIndex := TAtlasDebugOwnCode.JumpIndex(AFrames, TAtlasIdeSettings.Current.DebugJustMyCode);
+  if mIndex < 0 then
+  begin
     Exit;
   end;
-  Inc(FJumpQuiet);
-  if FJumpQuiet < 2 then
+  TAtlasIdeNavigation.MarkLine(AFrames[mIndex].FileName, AFrames[mIndex].Line - 1);
+  if Assigned(FMessage) then
+  begin
+    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugJustMyCodeJumped,
+      [ExtractFileName(AFrames[mIndex].FileName), AFrames[mIndex].Line, mIndex]));
+  end;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.CheckJump;
+var
+  Frames: TAtlasDebugFrames;
+begin
+  if not JumpReady then
   begin
     Exit;
   end;
@@ -358,25 +385,14 @@ begin
         begin
           FJumpTimer.Enabled := False;
         end;
-        Exit;
       end;
     TAtlasDebugStackRead.None:
-      begin
-        FJumpTimer.Enabled := False;
-        Exit;
-      end;
-  end;
-  FJumpTimer.Enabled := False;
-  Index := TAtlasDebugOwnCode.JumpIndex(Frames, TAtlasIdeSettings.Current.DebugJustMyCode);
-  if Index < 0 then
-  begin
-    Exit;
-  end;
-  TAtlasIdeNavigation.MarkLine(Frames[Index].FileName, Frames[Index].Line - 1);
-  if Assigned(FMessage) then
-  begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugJustMyCodeJumped,
-      [ExtractFileName(Frames[Index].FileName), Frames[Index].Line, Index]));
+      FJumpTimer.Enabled := False;
+  else
+    begin
+      FJumpTimer.Enabled := False;
+      JumpTo(Frames);
+    end;
   end;
 end;
 
