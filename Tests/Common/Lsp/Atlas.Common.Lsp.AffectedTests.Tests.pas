@@ -786,6 +786,39 @@ const
   cTwentyFilescUnits = 1000;
   cTwentyFilescChanged = 20;
 
+/// <summary>Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.</summary>
+procedure BuildStufenChain(out ATexts, AFiles: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  // Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.
+  SetLength(ATexts, cTwentyFilescUnits + cTwentyFilescUnits div 10);
+  SetLength(AFiles, Length(ATexts));
+  for mIndex := 0 to cTwentyFilescUnits - 1 do
+  begin
+    AFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
+    if mIndex = 0 then
+    begin
+      ATexts[mIndex] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
+        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
+    end
+    else
+    begin
+      ATexts[mIndex] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
+        'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
+        [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
+    end;
+  end;
+  for mIndex := 0 to cTwentyFilescUnits div 10 - 1 do
+  begin
+    AFiles[cTwentyFilescUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
+    ATexts[cTwentyFilescUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
+      'type'#10'  [TestFixture]'#10'  TStufe%dTests = class'#10'  public'#10'    [Test]'#10'    procedure Laeuft;'#10 +
+      '  end;'#10'implementation'#10'procedure TStufe%dTests.Laeuft;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
+      [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
+  end;
+end;
+
 procedure TAffectedTestsTests.TwentyFilesInThousandUnitsStayFast;
 var
   mTexts, mFiles: TArray<string>;
@@ -797,33 +830,8 @@ var
   mWatch: TStopwatch;
   mFound: TAffectedResult;
 begin
-  // Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.
-  SetLength(mTexts, cTwentyFilescUnits + cTwentyFilescUnits div 10);
-  SetLength(mFiles, Length(mTexts));
+  BuildStufenChain(mTexts, mFiles);
   mBig := TSymbolIndex.Create;
-  for mIndex := 0 to cTwentyFilescUnits - 1 do
-  begin
-    mFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
-    if mIndex = 0 then
-    begin
-      mTexts[mIndex] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
-        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
-    end
-    else
-    begin
-      mTexts[mIndex] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
-        'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
-        [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
-    end;
-  end;
-  for mIndex := 0 to cTwentyFilescUnits div 10 - 1 do
-  begin
-    mFiles[cTwentyFilescUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
-    mTexts[cTwentyFilescUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
-      'type'#10'  [TestFixture]'#10'  TStufe%dTests = class'#10'  public'#10'    [Test]'#10'    procedure Laeuft;'#10 +
-      '  end;'#10'implementation'#10'procedure TStufe%dTests.Laeuft;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
-      [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
-  end;
   for mIndex := 0 to High(mTexts) do
   begin
     mBig.AddUnit(TIndexExtractor.ExtractText(mTexts[mIndex], mFiles[mIndex], nil, nil, True));

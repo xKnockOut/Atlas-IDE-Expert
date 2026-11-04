@@ -510,16 +510,10 @@ begin
   Result.Start;
 end;
 
-procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
-var
-  Client: TLspClient;
-  DefinitionSent, DiagnosticSent: TEvent;
-  Definition, Diagnostic: TThread;
-  Ended, Info: TLspCloseInfo;
+/// <summary>Client, der nie antwortet und das Senden von definition und diagnostic meldet.</summary>
+function CreateSilentClient(const ADefinitionSent, ADiagnosticSent: TEvent): TLspClient;
 begin
-  DefinitionSent := TEvent.Create(nil, True, False, '');
-  DiagnosticSent := TEvent.Create(nil, True, False, '');
-  Client := TLspClient.Create(
+  Result := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
       Message: TJSONObject;
@@ -529,16 +523,28 @@ begin
       try
         if Message.GetValue<string>('method', '') = 'textDocument/definition' then
         begin
-          DefinitionSent.SetEvent;
+          ADefinitionSent.SetEvent;
         end
         else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
         begin
-          DiagnosticSent.SetEvent;
+          ADiagnosticSent.SetEvent;
         end;
       finally
         Message.Free;
       end;
     end);
+end;
+
+procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
+var
+  Client: TLspClient;
+  DefinitionSent, DiagnosticSent: TEvent;
+  Definition, Diagnostic: TThread;
+  Ended, Info: TLspCloseInfo;
+begin
+  DefinitionSent := TEvent.Create(nil, True, False, '');
+  DiagnosticSent := TEvent.Create(nil, True, False, '');
+  Client := CreateSilentClient(DefinitionSent, DiagnosticSent);
   Definition := nil;
   Diagnostic := nil;
   try
@@ -999,74 +1005,105 @@ begin
   end;
 end;
 
-procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
-var
-  Client: TLspClient;
-  Session: TLspSession;
-  Sent: TList<string>;
-  Announced: Boolean;
-  Received: TLspWorkspaceEdit;
-  Reply: TLspApplyEditReply;
-  Incoming: TBytes;
+type
+  /// <summary>Hält fest, was Client und Sitzung beim applyEdit-Test senden und empfangen.</summary>
+  TApplyEditProbe = class
+  public
+    FClient: TLspClient;
+    FSent: TList<string>;
+    FAnnounced: Boolean;
+    FReceived: TLspWorkspaceEdit;
+    FReply: TLspApplyEditReply;
+  end;
+
+/// <summary>Client, der initialize beantwortet und Antworten des Plugins in der Probe sammelt.</summary>
+function CreateApplyEditClient(const AProbe: TApplyEditProbe): TLspClient;
 begin
-  Sent := TList<string>.Create;
-  Announced := False;
-  Client := TLspClient.Create(
+  Result := TLspClient.Create(
     procedure(const ABytes: TBytes)
     var
-      Message: TJSONObject;
-      Answer: TBytes;
+      mMessage: TJSONObject;
+      mAnswer: TBytes;
     begin
-      Message := Unframe(ABytes);
+      mMessage := Unframe(ABytes);
       try
-        if Message.GetValue<string>('method', '') = 'initialize' then
+        if mMessage.GetValue<string>('method', '') = 'initialize' then
         begin
-          Announced := Message.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
-          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [Message.GetValue<Integer>('id')]));
-          Client.Receive(Answer, Length(Answer));
+          AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
+          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [mMessage.GetValue<Integer>('id')]));
+          AProbe.FClient.Receive(mAnswer, Length(mAnswer));
         end
-        else if Message.GetValue('method') = nil then
+        else if mMessage.GetValue('method') = nil then
         begin
-          Sent.Add(Message.ToJSON);
+          AProbe.FSent.Add(mMessage.ToJSON);
         end;
       finally
-        Message.Free;
+        mMessage.Free;
       end;
     end);
-  Session := TLspSession.Create(Client);
+end;
+
+/// <summary>Hängt den applyEdit-Empfang der Sitzung an die Probe.</summary>
+procedure WireApplyEdit(const ASession: TLspSession; const AProbe: TApplyEditProbe);
+begin
+  ASession.OnApplyEdit :=
+    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+    begin
+      AProbe.FReceived := AEdit;
+      AProbe.FReply := AReply;
+    end;
+end;
+
+procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
+var
+  mProbe: TApplyEditProbe;
+  mSession: TLspSession;
+  mIncoming: TBytes;
+begin
+  mProbe := TApplyEditProbe.Create;
+  mProbe.FSent := TList<string>.Create;
+  mProbe.FClient := CreateApplyEditClient(mProbe);
+  mSession := TLspSession.Create(mProbe.FClient);
   try
-    Session.OnApplyEdit :=
-      procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
-      begin
-        Received := AEdit;
-        Reply := AReply;
-      end;
-    Session.Initialize;
-    Assert.IsTrue(Announced, 'applyEdit angekündigt');
-    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+    WireApplyEdit(mSession, mProbe);
+    mSession.Initialize;
+    Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
       '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
       '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
-    Client.Receive(Incoming, Length(Incoming));
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
     // Noch keine Antwort: Die kommt erst, wenn die Änderung im Hauptthread übernommen ist.
-    Assert.AreEqual(0, Integer(Sent.Count));
-    Assert.AreEqual(1, Received.EditCount);
-    Reply(False, 'gesperrt');
-    Assert.AreEqual(1, Integer(Sent.Count));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}', Sent[0]);
+    Assert.AreEqual(0, Integer(mProbe.FSent.Count));
+    Assert.AreEqual(1, mProbe.FReceived.EditCount);
+    mProbe.FReply(False, 'gesperrt');
+    Assert.AreEqual(1, Integer(mProbe.FSent.Count));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
+      mProbe.FSent[0]);
     // Andere Anfragen weiter mit null.
-    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
-    Client.Receive(Incoming, Length(Incoming));
-    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', Sent[1]);
+    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    mProbe.FClient.Receive(mIncoming, Length(mIncoming));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
   finally
-    // Eingefangene Variablen lösen: Reply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
-    Reply := nil;
-    Received := Default(TLspWorkspaceEdit);
-    Session.OnApplyEdit := nil;
-    Session.Free;
-    Client.Free;
-    Sent.Free;
+    // Probe lösen: FReply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
+    mProbe.FReply := nil;
+    mProbe.FReceived := Default(TLspWorkspaceEdit);
+    mSession.OnApplyEdit := nil;
+    mSession.Free;
+    mProbe.FClient.Free;
+    mProbe.FSent.Free;
+    mProbe.Free;
   end;
+end;
+
+/// <summary>Projektkontext C:\P\A.dproj, Debug/Win32 mit DEBUG.</summary>
+function DebugWin32Context: TAtlasProjectContext;
+begin
+  Result := Default(TAtlasProjectContext);
+  Result.Project := 'C:\P\A.dproj';
+  Result.Configuration := 'Debug';
+  Result.Platform := 'Win32';
+  Result.Defines := ['DEBUG'];
 end;
 
 procedure TLspSessionTests.SendsProjectContextsInInitializeAndOnChange;
@@ -1107,11 +1144,7 @@ begin
     end);
   Session := TLspSession.Create(Client);
   try
-    Context := Default(TAtlasProjectContext);
-    Context.Project := 'C:\P\A.dproj';
-    Context.Configuration := 'Debug';
-    Context.Platform := 'Win32';
-    Context.Defines := ['DEBUG'];
+    Context := DebugWin32Context;
     Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'für initialize gemerkt');
     Session.Initialize;
     Assert.Contains(Initial, '"configuration":"Debug"');
