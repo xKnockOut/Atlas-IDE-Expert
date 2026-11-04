@@ -81,10 +81,6 @@ type
     FOnRemoved: TProc<TControl>;
     FShowIn: TAtlasEditorBarView;
     procedure Removed(ABar: TControl);
-    /// <summary>Soll die Leiste im Editorfenster von AEditorParent gerade zu sehen sein (Sicherung und Ansicht)?
-    /// </summary>
-    function Wanted(AEditorParent: TWinControl): Boolean;
-    procedure ApplyView(ABar: TControl; AEditorParent: TWinControl);
     function CreateFor(AEditorParent: TWinControl): TControl;
     procedure PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
     procedure Show(AShown: Boolean);
@@ -195,6 +191,42 @@ begin
         Result := True;
       end;
     end;
+  end;
+end;
+
+/// <summary>Soll die Leiste im Editorfenster von AEditorParent gerade zu sehen sein (Sicherung und Ansicht)?
+/// </summary>
+function BarWanted(AHost: TAtlasEditorBarHost; AEditorParent: TWinControl): Boolean;
+begin
+  Result := not AHost.FHidden;
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AHost.FShowIn of
+    TAtlasEditorBarView.Code:
+      // Nicht im Designer und nicht auf der Willkommensseite (#1442).
+      Result := TAtlasIdeDesignerView.CodeShown(TAtlasEditorBarHost.EditorIn(AEditorParent)) and not TAtlasIdeDesignerView.Shown(AEditorParent);
+    TAtlasEditorBarView.Designer:
+      Result := TAtlasIdeDesignerView.Shown(AEditorParent);
+  else
+    // Any: in Code und Designer.
+  end;
+end;
+
+procedure ApplyBarView(AHost: TAtlasEditorBarHost; ABar: TControl; AEditorParent: TWinControl);
+var
+  mWanted: Boolean;
+begin
+  // Any: Die Sichtbarkeit gehört dem Dienst (Suchleiste schließt sich selbst); nur die Sicherung blendet aus.
+  if AHost.FShowIn = TAtlasEditorBarView.Any then
+  begin
+    Exit;
+  end;
+  mWanted := BarWanted(AHost, AEditorParent);
+  if ABar.Visible <> mWanted then
+  begin
+    ABar.Visible := mWanted;
   end;
 end;
 
@@ -421,7 +453,7 @@ begin
     FBars.Add(mBar);
     FParents.Add(AEditorParent);
     FPlace(mBar, AEditorParent);
-    ApplyView(mBar, AEditorParent);
+    ApplyBarView(Self, mBar, AEditorParent);
     Result := mBar;
   except
     on E: Exception do
@@ -445,7 +477,7 @@ procedure TAtlasEditorBarHost.PlaceGuarded(ABar: TControl; AEditorParent: TWinCo
 begin
   try
     FPlace(ABar, AEditorParent);
-    ApplyView(ABar, AEditorParent);
+    ApplyBarView(Self, ABar, AEditorParent);
   except
     on E: Exception do
       TAtlasGuard.Report(FFeature, E);
@@ -570,40 +602,6 @@ begin
     [FName, mChain, sLineBreak, mTrace]));
 end;
 
-function TAtlasEditorBarHost.Wanted(AEditorParent: TWinControl): Boolean;
-begin
-  Result := not FHidden;
-  if not Result then
-  begin
-    Exit;
-  end;
-  case FShowIn of
-    TAtlasEditorBarView.Code:
-      // Nicht im Designer und nicht auf der Willkommensseite (#1442).
-      Result := TAtlasIdeDesignerView.CodeShown(EditorIn(AEditorParent)) and not TAtlasIdeDesignerView.Shown(AEditorParent);
-    TAtlasEditorBarView.Designer:
-      Result := TAtlasIdeDesignerView.Shown(AEditorParent);
-  else
-    // Any: in Code und Designer.
-  end;
-end;
-
-procedure TAtlasEditorBarHost.ApplyView(ABar: TControl; AEditorParent: TWinControl);
-var
-  mWanted: Boolean;
-begin
-  // Any: Die Sichtbarkeit gehört dem Dienst (Suchleiste schließt sich selbst); nur die Sicherung blendet aus.
-  if FShowIn = TAtlasEditorBarView.Any then
-  begin
-    Exit;
-  end;
-  mWanted := Wanted(AEditorParent);
-  if ABar.Visible <> mWanted then
-  begin
-    ABar.Visible := mWanted;
-  end;
-end;
-
 function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
 begin
   Result := Contains(ABar) and ABar.Visible;
@@ -618,7 +616,7 @@ begin
   begin
     if AShown and (FShowIn <> TAtlasEditorBarView.Any) then
     begin
-      ApplyView(FBars[mIndex], FParents[mIndex]);
+      ApplyBarView(Self, FBars[mIndex], FParents[mIndex]);
     end
     else if FBars[mIndex].Visible <> AShown then
     begin

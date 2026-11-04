@@ -155,6 +155,121 @@ begin
   Result := TAtlasResultsFrame;
 end;
 
+/// <summary>Öffnen, Änderungen (Rückgängig, Wiederholen, Unterschied) und Wege an die Ereignisse des Fensters.
+/// </summary>
+procedure WireNavigation(AFrame: TAtlasResultsFrame);
+begin
+  AFrame.OnOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnOpen) then
+      begin
+        TAtlasIdeResultsWindow.OnOpen(AFileName, ALine, ACharacter);
+      end;
+    end;
+  AFrame.OnChangeUndo :=
+    procedure(ASetId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeUndo) then
+      begin
+        TAtlasIdeResultsWindow.OnChangeUndo(ASetId);
+      end;
+    end;
+  AFrame.OnChangeRedo :=
+    procedure(ASetId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeRedo) then
+      begin
+        TAtlasIdeResultsWindow.OnChangeRedo(ASetId);
+      end;
+    end;
+  AFrame.OnChangeDiff :=
+    procedure(ASetId: Integer; const AFileName: string)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
+      begin
+        TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
+      end;
+    end;
+  AFrame.OnShowRoute :=
+    procedure(const AUnits: TArray<string>)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
+      begin
+        TAtlasIdeResultsWindow.OnShowRoute(AUnits);
+      end;
+    end;
+end;
+
+/// <summary>Auswirkung, Hierarchie und Datenfluss an die Ereignisse des Fensters.</summary>
+procedure WireAnalysis(AFrame: TAtlasResultsFrame);
+begin
+  AFrame.OnImpactDepth :=
+    procedure(ADepth: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
+      begin
+        TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
+      end;
+    end;
+  AFrame.OnImpactRunTests :=
+    procedure(const AImpact: TAtlasImpact)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
+      begin
+        TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
+      end;
+    end;
+  AFrame.OnExpand :=
+    function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
+    begin
+      Result := nil;
+      if Assigned(TAtlasIdeResultsWindow.OnExpand) then
+      begin
+        Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
+      end;
+    end;
+  AFrame.OnFlowExpand :=
+    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult
+    begin
+      Result := Default(TAtlasDataFlowResult);
+      if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
+      begin
+        Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
+      end;
+    end;
+  AFrame.OnFlowFilter :=
+    procedure(AOnlyProject, AExcludeTests: Boolean)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
+      begin
+        TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
+      end;
+    end;
+end;
+
+/// <summary>Tracker-Einträge an die Ereignisse des Fensters.</summary>
+procedure WireIssues(AFrame: TAtlasResultsFrame);
+begin
+  AFrame.OnIssueOpen :=
+    procedure(AList, AId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnIssueOpen) then
+      begin
+        TAtlasIdeResultsWindow.OnIssueOpen(AList, AId);
+      end;
+    end;
+  AFrame.OnIssueCommit :=
+    procedure(AList, AId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnIssueCommit) then
+      begin
+        TAtlasIdeResultsWindow.OnIssueCommit(AList, AId);
+      end;
+    end;
+end;
+
 procedure TResultsDock.FrameCreated(AFrame: TCustomFrame);
 var
   ResultsFrame: TAtlasResultsFrame;
@@ -169,105 +284,9 @@ begin
   end;
   ResultsFrame := TAtlasResultsFrame(AFrame);
   TAtlasIdeResultsWindow.UpdateIcon;
-  ResultsFrame.OnOpen :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnOpen) then
-      begin
-        TAtlasIdeResultsWindow.OnOpen(AFileName, ALine, ACharacter);
-      end;
-    end;
-  ResultsFrame.OnChangeUndo :=
-    procedure(ASetId: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnChangeUndo) then
-      begin
-        TAtlasIdeResultsWindow.OnChangeUndo(ASetId);
-      end;
-    end;
-  ResultsFrame.OnChangeRedo :=
-    procedure(ASetId: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnChangeRedo) then
-      begin
-        TAtlasIdeResultsWindow.OnChangeRedo(ASetId);
-      end;
-    end;
-  ResultsFrame.OnChangeDiff :=
-    procedure(ASetId: Integer; const AFileName: string)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
-      begin
-        TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
-      end;
-    end;
-  ResultsFrame.OnShowRoute :=
-    procedure(const AUnits: TArray<string>)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
-      begin
-        TAtlasIdeResultsWindow.OnShowRoute(AUnits);
-      end;
-    end;
-  ResultsFrame.OnImpactDepth :=
-    procedure(ADepth: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
-      begin
-        TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
-      end;
-    end;
-  ResultsFrame.OnImpactRunTests :=
-    procedure(const AImpact: TAtlasImpact)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
-      begin
-        TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
-      end;
-    end;
-  ResultsFrame.OnExpand :=
-    function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
-    begin
-      Result := nil;
-      if Assigned(TAtlasIdeResultsWindow.OnExpand) then
-      begin
-        Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
-      end;
-    end;
-  ResultsFrame.OnFlowExpand :=
-    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-      const APath: TArray<string>): TAtlasDataFlowResult
-    begin
-      Result := Default(TAtlasDataFlowResult);
-      if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
-      begin
-        Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
-      end;
-    end;
-  ResultsFrame.OnFlowFilter :=
-    procedure(AOnlyProject, AExcludeTests: Boolean)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
-      begin
-        TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
-      end;
-    end;
-  ResultsFrame.OnIssueOpen :=
-    procedure(AList, AId: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnIssueOpen) then
-      begin
-        TAtlasIdeResultsWindow.OnIssueOpen(AList, AId);
-      end;
-    end;
-  ResultsFrame.OnIssueCommit :=
-    procedure(AList, AId: Integer)
-    begin
-      if Assigned(TAtlasIdeResultsWindow.OnIssueCommit) then
-      begin
-        TAtlasIdeResultsWindow.OnIssueCommit(AList, AId);
-      end;
-    end;
+  WireNavigation(ResultsFrame);
+  WireAnalysis(ResultsFrame);
+  WireIssues(ResultsFrame);
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 

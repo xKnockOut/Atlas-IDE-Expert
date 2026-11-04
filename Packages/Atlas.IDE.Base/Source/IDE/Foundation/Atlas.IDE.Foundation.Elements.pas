@@ -103,9 +103,10 @@ type
     /// <summary>AElement an ALine (0-basiert) von AFileName gezeichnet; ARect in Koordinaten des Editors,
     /// ATopRow die oberste Zeile der Ansicht, ALineHeight die Zeilenhöhe in Pixeln.</summary>
     class procedure Painted(const ATarget: TAtlasHideTarget; const ARect: TRect; ATopRow, ALineHeight: Integer);
-      overload; static;
-    class procedure Painted(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
-      const AAnchor: string; const ARect: TRect; ATopRow, ALineHeight: Integer); overload; static;
+      static;
+    /// <summary>Ziel für Painted: AElement an ALine (0-basiert) von AFileName mit dem Rohtext AAnchor.</summary>
+    class function Target(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
+      const AAnchor: string): TAtlasHideTarget; static;
     /// <summary>Element an AAnchor (Rohtext, wird normalisiert) per .atlas ausgeblendet?</summary>
     class function Hidden(AElement: TAtlasDrawnElement; const AFileName, AAnchor: string): Boolean; static;
     /// <summary>Element in der ganzen Datei per .atlas ausgeblendet?</summary>
@@ -320,14 +321,10 @@ begin
   FInstance.FHits.AddOrSetValue(Key, Hits + [Hit]);
 end;
 
-class procedure TAtlasIdeElements.Painted(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
-  const AAnchor: string; const ARect: TRect; ATopRow, ALineHeight: Integer);
+class function TAtlasIdeElements.Target(AElement: TAtlasDrawnElement; const AFileName: string; ALine: Integer;
+  const AAnchor: string): TAtlasHideTarget;
 begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  Painted(TAtlasHideTarget.Create(AElement, AFileName, ALine, AAnchor), ARect, ATopRow, ALineHeight);
+  Result := TAtlasHideTarget.Create(AElement, AFileName, ALine, AAnchor);
 end;
 
 class function TAtlasIdeElements.Hidden(AElement: TAtlasDrawnElement; const AFileName, AAnchor: string): Boolean;

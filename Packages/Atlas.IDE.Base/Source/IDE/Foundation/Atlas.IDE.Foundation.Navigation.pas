@@ -29,53 +29,72 @@ uses
   System.SysUtils,
   ToolsAPI;
 
-class procedure TAtlasIdeNavigation.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
+/// <summary>Modul von AFileName; öffnet die Datei nur, wenn sie noch nicht offen ist. OpenFile öffnete sie sonst
+/// jedes Mal neu (Doppelklick in „Atlas-Prüfung“), bei Formular-Units samt Designer. nil, wenn das scheitert.
+/// </summary>
+function OpenModule(const AFileName: string): IOTAModule;
 var
-  Actions: IOTAActionServices;
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  Editor: IOTASourceEditor;
-  View: IOTAEditView;
-  Cursor: TOTAEditPos;
+  mActions: IOTAActionServices;
+  mModules: IOTAModuleServices;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  // Schon offen: nur den Reiter zeigen und springen. OpenFile öffnete die Datei sonst jedes Mal neu (Doppelklick in
-  // „Atlas-Prüfung“), bei Formular-Units samt Designer.
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
+  Result := mModules.FindModule(AFileName);
+  if (Result = nil) and Supports(BorlandIDEServices, IOTAActionServices, mActions) and
+    mActions.OpenFile(AFileName) then
   begin
-    if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) then
-    begin
-      Exit;
-    end;
-    Module := Modules.FindModule(AFileName);
-    if Module = nil then
+    Result := mModules.FindModule(AFileName);
+  end;
+end;
+
+/// <summary>Erster Quelltexteditor des Moduls; nil ohne.</summary>
+function SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AModule.ModuleFileCount - 1 do
+  begin
+    if Supports(AModule.ModuleFileEditors[mIndex], IOTASourceEditor, Result) then
     begin
       Exit;
     end;
   end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
+  Result := nil;
+end;
+
+class procedure TAtlasIdeNavigation.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
+var
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mView: IOTAEditView;
+  mCursor: TOTAEditPos;
+begin
+  // Schon offen: nur den Reiter zeigen und springen.
+  mModule := OpenModule(AFileName);
+  if mModule = nil then
   begin
-    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
-    begin
-      Editor.Show;
-      if Editor.EditViewCount = 0 then
-      begin
-        Exit;
-      end;
-      View := Editor.EditViews[0];
-      Cursor.Line := ALine + 1;
-      Cursor.Col := ACharacter + 1;
-      View.CursorPos := Cursor;
-      View.MoveViewToCursor;
-      View.Paint;
-      Exit;
-    end;
+    Exit;
   end;
+  mEditor := SourceEditorOf(mModule);
+  if mEditor = nil then
+  begin
+    Exit;
+  end;
+  mEditor.Show;
+  if mEditor.EditViewCount = 0 then
+  begin
+    Exit;
+  end;
+  mView := mEditor.EditViews[0];
+  mCursor.Line := ALine + 1;
+  mCursor.Col := ACharacter + 1;
+  mView.CursorPos := mCursor;
+  mView.MoveViewToCursor;
+  mView.Paint;
 end;
 
 class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;

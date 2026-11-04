@@ -231,67 +231,73 @@ begin
   Result := (mEditor <> nil) and not (RootOf(mEditor) is TWinControl);
 end;
 
-class function TAtlasIdeDesignerView.CodeShown(AEditor: TWinControl): Boolean;
-var
-  mForm: TCustomForm;
-  mHandle, mWindow, mChild: THandle;
-  mRect: TRect;
-  mPoint: TPoint;
-  mClass: array[0..127] of Char;
-  mControl: TWinControl;
+/// <summary>Sichtbarer Editor mit Formular: dessen Rechteck auf dem Bildschirm.</summary>
+function EditorArea(AEditor: TWinControl; out AForm: TCustomForm; out ARect: TRect): Boolean;
 begin
   Result := False;
+  AForm := nil;
+  ARect := TRect.Empty;
   if (AEditor = nil) or not AEditor.HandleAllocated then
   begin
     Exit;
   end;
-  mForm := GetParentForm(AEditor, False);
-  if (mForm = nil) or not mForm.HandleAllocated then
+  AForm := GetParentForm(AEditor, False);
+  Result := (AForm <> nil) and AForm.HandleAllocated and IsWindowVisible(AEditor.Handle) and
+    GetWindowRect(AEditor.Handle, ARect) and (ARect.Width > 0) and (ARect.Height > 0);
+end;
+
+/// <summary>Von der Mitte des Editors aus abwärts durch die Kindfenster von AForm: True, wenn der Weg den Editor
+/// erreicht; sonst ist AWindow das verdeckende Fenster.</summary>
+function ReachesEditor(AForm, AEditor: THandle; const ARect: TRect; out AWindow: THandle): Boolean;
+var
+  mPoint: TPoint;
+  mChild: THandle;
+  mControl: TWinControl;
+begin
+  Result := False;
+  AWindow := AForm;
+  while not Result do
   begin
-    Exit;
-  end;
-  mHandle := AEditor.Handle;
-  if not IsWindowVisible(mHandle) or not GetWindowRect(mHandle, mRect) or (mRect.Width <= 0) or
-    (mRect.Height <= 0) then
-  begin
-    Exit;
-  end;
-  // Von der Mitte des Editors aus abwärts durch die Kindfenster: Liegt etwas darüber, endet der Weg dort.
-  mPoint := mRect.CenterPoint;
-  mWindow := mForm.Handle;
-  while True do
-  begin
-    if (mWindow = mHandle) or IsChild(mHandle, mWindow) then
-    begin
-      Exit(True);
-    end;
     // Eigene Fenster von Atlas über dem Editor (Definition einblenden, Minimap …) verdecken ihn nicht.
-    mControl := FindControl(mWindow);
-    if (mControl <> nil) and mControl.ClassName.StartsWith('TAtlas') then
-    begin
-      Exit(True);
-    end;
-    if (mWindow <> mForm.Handle) and not IsChild(mWindow, mHandle) then
+    mControl := FindControl(AWindow);
+    Result := (AWindow = AEditor) or IsChild(AEditor, AWindow) or
+      ((mControl <> nil) and mControl.ClassName.StartsWith('TAtlas'));
+    if Result or ((AWindow <> AForm) and not IsChild(AWindow, AEditor)) then
     begin
       Break;
     end;
-    mPoint := mRect.CenterPoint;
-    ScreenToClient(mWindow, mPoint);
-    mChild := ChildWindowFromPointEx(mWindow, mPoint, CWP_SKIPINVISIBLE or CWP_SKIPTRANSPARENT);
-    if (mChild = 0) or (mChild = mWindow) then
+    mPoint := ARect.CenterPoint;
+    ScreenToClient(AWindow, mPoint);
+    mChild := ChildWindowFromPointEx(AWindow, mPoint, CWP_SKIPINVISIBLE or CWP_SKIPTRANSPARENT);
+    if (mChild = 0) or (mChild = AWindow) then
     begin
       Break;
     end;
-    mWindow := mChild;
+    AWindow := mChild;
   end;
-  if not FCoveredLogged then
+end;
+
+class function TAtlasIdeDesignerView.CodeShown(AEditor: TWinControl): Boolean;
+var
+  mForm: TCustomForm;
+  mWindow: THandle;
+  mRect: TRect;
+  mClass: array[0..127] of Char;
+begin
+  if not EditorArea(AEditor, mForm, mRect) then
   begin
-    FCoveredLogged := True;
-    mClass[0] := #0;
-    GetClassName(mWindow, mClass, Length(mClass));
-    TAtlasGuard.Log(Format('Code-Ansicht: Editor ist verdeckt (Fenster der Klasse %s), Code-Leisten aus',
-      [string(mClass)]));
+    Exit(False);
   end;
+  Result := ReachesEditor(mForm.Handle, AEditor.Handle, mRect, mWindow);
+  if Result or FCoveredLogged then
+  begin
+    Exit;
+  end;
+  FCoveredLogged := True;
+  mClass[0] := #0;
+  GetClassName(mWindow, mClass, Length(mClass));
+  TAtlasGuard.Log(Format('Code-Ansicht: Editor ist verdeckt (Fenster der Klasse %s), Code-Leisten aus',
+    [string(mClass)]));
 end;
 
 end.
