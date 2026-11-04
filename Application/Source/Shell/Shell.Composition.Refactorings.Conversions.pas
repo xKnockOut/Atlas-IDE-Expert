@@ -85,7 +85,7 @@ begin
   mContext.Files := ProjectFiles;
   mResolver := NewResolver;
   try
-    Result := TLspInvertBoolean.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TLspInvertBoolean.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), AUri, APosition, mContext);
   finally
     mResolver.Free;
@@ -110,11 +110,11 @@ begin
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
+  mContext.NewName := Trim(AArguments.Items[2].Value);
   mResolver := NewResolver;
   try
     mAnswer := TLspInvertBoolean.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      Trim(AArguments.Items[2].Value), mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
