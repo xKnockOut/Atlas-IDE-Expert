@@ -691,13 +691,21 @@ begin
   // Auch als JSON-Text mit Anführungszeichen, wie ihn TAtlasJsonText.ValueAt liefert.
   Text := LowerCase(Trim(AText).Trim(['"']));
   if Text = 'git' then
-    Result := TAtlasVcsProvider.Git
+  begin
+    Result := TAtlasVcsProvider.Git;
+  end
   else if Text = 'svn' then
-    Result := TAtlasVcsProvider.Svn
+  begin
+    Result := TAtlasVcsProvider.Svn;
+  end
   else if Text = 'off' then
-    Result := TAtlasVcsProvider.Off
+  begin
+    Result := TAtlasVcsProvider.Off;
+  end
   else
+  begin
     Result := TAtlasVcsProvider.Auto;
+  end;
 end;
 
 function AtlasVcsProviderText(AProvider: TAtlasVcsProvider): string;
@@ -717,31 +725,49 @@ end;
 function AtlasVcsSvnSourceOf(const AText: string): TAtlasVcsSvnSource;
 begin
   if SameText(Trim(AText), 'workingCopy') then
-    Result := TAtlasVcsSvnSource.WorkingCopy
+  begin
+    Result := TAtlasVcsSvnSource.WorkingCopy;
+  end
   else
+  begin
     Result := TAtlasVcsSvnSource.Head;
+  end;
 end;
 
 function AtlasVcsSvnAfterOf(const AText: string): TAtlasVcsSvnAfter;
 begin
   if SameText(Trim(AText), 'checkout') then
-    Result := TAtlasVcsSvnAfter.Checkout
+  begin
+    Result := TAtlasVcsSvnAfter.Checkout;
+  end
   else if SameText(Trim(AText), 'none') then
-    Result := TAtlasVcsSvnAfter.None
+  begin
+    Result := TAtlasVcsSvnAfter.None;
+  end
   else
+  begin
     Result := TAtlasVcsSvnAfter.Switch;
+  end;
 end;
 
 function AtlasVcsExternalActionOf(const AText: string): TAtlasVcsExternalAction;
 begin
   if SameText(Trim(AText), 'keep') then
-    Result := TAtlasVcsExternalAction.Keep
+  begin
+    Result := TAtlasVcsExternalAction.Keep;
+  end
   else if SameText(Trim(AText), 'ask') then
-    Result := TAtlasVcsExternalAction.Ask
+  begin
+    Result := TAtlasVcsExternalAction.Ask;
+  end
   else if SameText(Trim(AText), 'branch') then
-    Result := TAtlasVcsExternalAction.Branch
+  begin
+    Result := TAtlasVcsExternalAction.Branch;
+  end
   else
+  begin
     Result := TAtlasVcsExternalAction.Pin;
+  end;
 end;
 
 function AtlasVcsExternalActionText(AAction: TAtlasVcsExternalAction): string;
@@ -761,21 +787,33 @@ end;
 function AtlasVcsExternalSuggestOf(const AText: string): TAtlasVcsExternalSuggest;
 begin
   if SameText(Trim(AText), 'never') then
-    Result := TAtlasVcsExternalSuggest.Never
+  begin
+    Result := TAtlasVcsExternalSuggest.Never;
+  end
   else if SameText(Trim(AText), 'always') then
-    Result := TAtlasVcsExternalSuggest.Always
+  begin
+    Result := TAtlasVcsExternalSuggest.Always;
+  end
   else
+  begin
     Result := TAtlasVcsExternalSuggest.Modified;
+  end;
 end;
 
 function AtlasVcsExternalsUpdateOf(const AText: string): TAtlasVcsExternalsUpdate;
 begin
   if SameText(Trim(AText), 'without') then
-    Result := TAtlasVcsExternalsUpdate.WithoutExternals
+  begin
+    Result := TAtlasVcsExternalsUpdate.WithoutExternals;
+  end
   else if SameText(Trim(AText), 'ask') then
-    Result := TAtlasVcsExternalsUpdate.Ask
+  begin
+    Result := TAtlasVcsExternalsUpdate.Ask;
+  end
   else
+  begin
     Result := TAtlasVcsExternalsUpdate.WithExternals;
+  end;
 end;
 
 { TAtlasVcsExternalRule }
@@ -805,9 +843,13 @@ end;
 function TAtlasVcsSvnExternal.Path: string;
 begin
   if Owner = '' then
-    Result := Folder
+  begin
+    Result := Folder;
+  end
   else
+  begin
     Result := Owner + '/' + Folder;
+  end;
 end;
 
 function TAtlasVcsSvnExternal.CanBranch: Boolean;
@@ -852,11 +894,17 @@ end;
 function TAtlasVcsHead.ShortRevision(AKind: TAtlasVcsKind): string;
 begin
   if Revision = '' then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if AKind = TAtlasVcsKind.Svn then
-    Result := 'r' + Revision
+  begin
+    Result := 'r' + Revision;
+  end
   else
+  begin
     Result := Copy(Revision, 1, 7);
+  end;
 end;
 
 { TAtlasVcsBlameLine }
@@ -892,11 +940,17 @@ end;
 function TAtlasVcsLogEntry.ShortRevision(AKind: TAtlasVcsKind): string;
 begin
   if Revision = '' then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if AKind = TAtlasVcsKind.Svn then
-    Result := 'r' + Revision
+  begin
+    Result := 'r' + Revision;
+  end
   else
+  begin
     Result := Copy(Revision, 1, 7);
+  end;
 end;
 
 { TAtlasVcsRunResult }

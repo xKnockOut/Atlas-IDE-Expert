@@ -90,7 +90,9 @@ var
 begin
   Result := False;
   if FStopped then
+  begin
     Exit;
+  end;
   Work := AWork;
   Done := ADone;
   Thread := TThread.CreateAnonymousThread(
@@ -106,14 +108,18 @@ begin
           ;
       end;
       if TThread.CheckTerminated then
+      begin
         Exit;
+      end;
       Current := TThread.Current;
       TThread.Queue(Current,
         procedure
         begin
           try
             if Assigned(Done) then
+            begin
               Done();
+            end;
           finally
             Finished(Current);
           end;
@@ -154,10 +160,16 @@ begin
   repeat
     Running := False;
     for Thread in Threads do
+    begin
       if not Thread.Finished then
+      begin
         Running := True;
+      end;
+    end;
     if not Running or (TThread.GetTickCount64 >= Deadline) then
+    begin
       Break;
+    end;
     Sleep(10);
   until False;
   Result := not Running;
@@ -166,7 +178,9 @@ begin
     // Ein Thread, der nach dem Signal noch arbeitet, wird nicht freigegeben: lieber ein Rest im Speicher als
     // ein Absturz beim Entladen.
     if not Thread.Finished then
+    begin
       Continue;
+    end;
     // Ein Ergebnis kann zwischen RemoveQueuedEvents und dem Ende noch eingereiht worden sein.
     TThread.RemoveQueuedEvents(Thread);
     FLock.Enter;

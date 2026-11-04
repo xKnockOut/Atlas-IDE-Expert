@@ -60,8 +60,8 @@ begin
   mFrame.Own := True;
   Result.Frames := [mFrame, TAtlasDebugFrame.Create('Vcl.Controls.TControl.Click', '', 0)];
   Result.HasException := True;
-  Result.Exception := TAtlasDebugException.Create(Result.Time, 'EConvertError', 'Token=abc123 ungültig', 4711, '',
-    'C:\Projekte\Kasse\Main.pas', 12, 'Main.TMainForm.SaveClick');
+  Result.Exception := TAtlasDebugException.Create(Result.Time, 'EConvertError', 'Token=abc123 ungültig', 4711,
+    '').At('C:\Projekte\Kasse\Main.pas', 12, 'Main.TMainForm.SaveClick');
   Result.Exception.Count := 3;
 end;
 
@@ -162,9 +162,9 @@ var
   mExceptions: TAtlasDebugExceptions;
   mText: string;
 begin
-  mExceptions := [TAtlasDebugException.Create(Now, 'EAccessViolation', 'Zugriffsverletzung', 1, '', '', 0, ''),
-    TAtlasDebugException.Create(Now, 'EConvertError', 'Password=geheim', 2, '', 'Main.pas', 7, 'Main.Save'),
-    TAtlasDebugException.Create(Now, 'EThird', '', 3, '', '', 0, '')];
+  mExceptions := [TAtlasDebugException.Create(Now, 'EAccessViolation', 'Zugriffsverletzung', 1, ''),
+    TAtlasDebugException.Create(Now, 'EConvertError', 'Password=geheim', 2, '').At('Main.pas', 7, 'Main.Save'),
+    TAtlasDebugException.Create(Now, 'EThird', '', 3, '')];
   mText := TAtlasDebugNote.HistoryText(mExceptions, 2);
   Assert.IsTrue(mText.StartsWith('EAccessViolation: Zugriffsverletzung'), mText);
   Assert.Contains(mText, #13#10#13#10'EConvertError: Password=***');

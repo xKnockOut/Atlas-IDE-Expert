@@ -176,19 +176,81 @@ begin
   Result := (mExtension = '.pas') or (mExtension = '.dpr');
 end;
 
+/// <summary>Zählt Zeilen einer weiteren Änderung zu AChanges; -1, sobald eine Änderung sie nicht kennt.</summary>
+procedure AddLines(var AChanges: THotspotChanges; AAdded, ADeleted: Integer);
+begin
+  if AChanges.Changes = 1 then
+  begin
+    AChanges.Added := Max(AAdded, -1);
+    AChanges.Deleted := Max(ADeleted, -1);
+  end
+  else if (AChanges.Added >= 0) and (AAdded >= 0) and (ADeleted >= 0) then
+  begin
+    Inc(AChanges.Added, AAdded);
+    Inc(AChanges.Deleted, ADeleted);
+  end
+  else
+  begin
+    AChanges.Added := -1;
+    AChanges.Deleted := -1;
+  end;
+end;
+
+function HistoryEntry(const ACommit: THotspotCommit; const AFile: THotspotFileChange): THotspotLineCommit;
+begin
+  Result := Default(THotspotLineCommit);
+  Result.Revision := ACommit.Revision;
+  Result.Author := ACommit.Author;
+  Result.Date := ACommit.Date;
+  Result.Summary := ACommit.Summary;
+  Result.Added := AFile.Added;
+  Result.Deleted := AFile.Deleted;
+end;
+
+/// <summary>Zählt die Änderung AFile aus ACommit in AChanges ein.</summary>
+procedure CountChange(var AChanges: THotspotChanges; const ACommit: THotspotCommit; const AFile: THotspotFileChange);
+begin
+  Inc(AChanges.Changes);
+  AChanges.Authors := AddAuthor(AChanges.Authors, ACommit.Author);
+  AddLines(AChanges, AFile.Added, AFile.Deleted);
+  if ACommit.Date > AChanges.LastChange then
+  begin
+    AChanges.LastChange := ACommit.Date;
+  end;
+  if Length(AChanges.History) < THotspotAnalyzer.HistoryLimit then
+  begin
+    AChanges.History := AChanges.History + [HistoryEntry(ACommit, AFile)];
+  end;
+end;
+
+/// <summary>Zählt ACommit bei jeder Unit aus AByPath höchstens einmal.</summary>
+procedure CountCommit(var AChanges: TArray<THotspotChanges>; AByPath: TDictionary<string, Integer>;
+  const ACommit: THotspotCommit);
+var
+  mSeen: TArray<Boolean>;
+  mFile: THotspotFileChange;
+  mUnit: Integer;
+begin
+  SetLength(mSeen, Length(AChanges));
+  for mFile in ACommit.Files do
+  begin
+    if (mFile.Kind <> THotspotChangeKind.Deleted) and THotspotAnalyzer.IsSource(mFile.Path) and
+      AByPath.TryGetValue(LowerCase(mFile.Path), mUnit) and not mSeen[mUnit] then
+    begin
+      mSeen[mUnit] := True;
+      CountChange(AChanges[mUnit], ACommit, mFile);
+    end;
+  end;
+end;
+
 class function THotspotAnalyzer.UnitChanges(const AUnits: TArray<THotspotUnit>;
   const ACommits: TArray<THotspotCommit>): TArray<THotspotChanges>;
 var
   mByPath: TDictionary<string, Integer>;
-  mIndex, mUnit: Integer;
+  mIndex: Integer;
   mCommit: THotspotCommit;
-  mFile: THotspotFileChange;
-  mSeen: TArray<Boolean>;
-  mEntry: THotspotLineCommit;
-  mAdded, mDeleted: Integer;
 begin
   SetLength(Result, Length(AUnits));
-  SetLength(mSeen, Length(AUnits));
   for mIndex := 0 to High(Result) do
   begin
     Result[mIndex] := Default(THotspotChanges);
@@ -201,57 +263,7 @@ begin
     end;
     for mCommit in ACommits do
     begin
-      for mIndex := 0 to High(mSeen) do
-      begin
-        mSeen[mIndex] := False;
-      end;
-      for mFile in mCommit.Files do
-      begin
-        if (mFile.Kind = THotspotChangeKind.Deleted) or not IsSource(mFile.Path) or
-          not mByPath.TryGetValue(LowerCase(mFile.Path), mUnit) then
-        begin
-          Continue;
-        end;
-        mAdded := mFile.Added;
-        mDeleted := mFile.Deleted;
-        if mSeen[mUnit] then
-        begin
-          Continue;
-        end;
-        mSeen[mUnit] := True;
-        Inc(Result[mUnit].Changes);
-        Result[mUnit].Authors := AddAuthor(Result[mUnit].Authors, mCommit.Author);
-        if Result[mUnit].Changes = 1 then
-        begin
-          Result[mUnit].Added := Max(mAdded, -1);
-          Result[mUnit].Deleted := Max(mDeleted, -1);
-        end
-        else if (Result[mUnit].Added >= 0) and (mAdded >= 0) and (mDeleted >= 0) then
-        begin
-          Inc(Result[mUnit].Added, mAdded);
-          Inc(Result[mUnit].Deleted, mDeleted);
-        end
-        else
-        begin
-          Result[mUnit].Added := -1;
-          Result[mUnit].Deleted := -1;
-        end;
-        if mCommit.Date > Result[mUnit].LastChange then
-        begin
-          Result[mUnit].LastChange := mCommit.Date;
-        end;
-        if Length(Result[mUnit].History) < HistoryLimit then
-        begin
-          mEntry := Default(THotspotLineCommit);
-          mEntry.Revision := mCommit.Revision;
-          mEntry.Author := mCommit.Author;
-          mEntry.Date := mCommit.Date;
-          mEntry.Summary := mCommit.Summary;
-          mEntry.Added := mAdded;
-          mEntry.Deleted := mDeleted;
-          Result[mUnit].History := Result[mUnit].History + [mEntry];
-        end;
-      end;
+      CountCommit(Result, mByPath, mCommit);
     end;
   finally
     mByPath.Free;
@@ -413,6 +425,104 @@ begin
   end;
 end;
 
+/// <summary>Units, die ACommit ändert, je einmal und aufsteigend; ASeen ist danach wieder ganz False.</summary>
+procedure CollectTouched(const ACommit: THotspotCommit; AByKey: TDictionary<string, Integer>;
+  var ASeen: TArray<Boolean>; ATouched: TList<Integer>);
+var
+  mFile: THotspotFileChange;
+  mKey: string;
+  mUnit: Integer;
+begin
+  ATouched.Clear;
+  for mFile in ACommit.Files do
+  begin
+    mKey := '';
+    if mFile.Kind <> THotspotChangeKind.Deleted then
+    begin
+      mKey := THotspotAnalyzer.UnitKey(mFile.Path);
+    end;
+    if (mKey <> '') and AByKey.TryGetValue(mKey, mUnit) and not ASeen[mUnit] then
+    begin
+      ASeen[mUnit] := True;
+      ATouched.Add(mUnit);
+    end;
+  end;
+  ATouched.Sort;
+  for mUnit in ATouched do
+  begin
+    ASeen[mUnit] := False;
+  end;
+end;
+
+/// <summary>Zählt die Commits je Unit (ACounts) und je Paar (APairs, Schlüssel Erste * AUnitCount + Zweite).
+/// </summary>
+procedure CountPairs(ATouched: TList<Integer>; var ACounts: TArray<Integer>; APairs: TDictionary<Int64, Integer>;
+  AUnitCount: Int64);
+var
+  mIndex, mInner, mShared: Integer;
+  mKey: Int64;
+begin
+  for mIndex := 0 to ATouched.Count - 1 do
+  begin
+    Inc(ACounts[ATouched[mIndex]]);
+    for mInner := mIndex + 1 to ATouched.Count - 1 do
+    begin
+      mKey := ATouched[mIndex] * AUnitCount + ATouched[mInner];
+      if not APairs.TryGetValue(mKey, mShared) then
+      begin
+        mShared := 0;
+      end;
+      APairs.AddOrSetValue(mKey, mShared + 1);
+    end;
+  end;
+end;
+
+/// <summary>Schlüssel der Units (UnitKey) auf ihren Index in AUnits.</summary>
+procedure FillUnitKeys(AByKey: TDictionary<string, Integer>; const AUnits: TArray<THotspotUnit>);
+var
+  mIndex: Integer;
+  mKey: string;
+begin
+  for mIndex := 0 to High(AUnits) do
+  begin
+    mKey := THotspotAnalyzer.UnitKey(AUnits[mIndex].Path);
+    if mKey <> '' then
+    begin
+      AByKey.AddOrSetValue(mKey, mIndex);
+    end;
+  end;
+end;
+
+/// <summary>Kopplung des Paars APair (Schlüssel wie CountPairs, Wert gemeinsame Commits); False unter den
+/// Schwellen oder mit uses-Kante.</summary>
+function TryCoupling(const AUnits: TArray<THotspotUnit>; const ACounts: TArray<Integer>;
+  const APair: TPair<Int64, Integer>; const AOptions: THotspotOptions; const AConnected: THotspotConnectedFunc;
+  out AItem: THotspotCoupling): Boolean;
+var
+  mRatio: Double;
+  mFirst, mSecond, mShared: Integer;
+begin
+  AItem := Default(THotspotCoupling);
+  mFirst := Integer(APair.Key div Length(AUnits));
+  mSecond := Integer(APair.Key mod Length(AUnits));
+  mShared := APair.Value;
+  mRatio := mShared / ((ACounts[mFirst] + ACounts[mSecond]) / 2);
+  Result := (mShared >= AOptions.MinSharedCommits) and (mRatio + 1E-9 >= AOptions.MinCouplingRatio);
+  if Result and Assigned(AConnected) then
+  begin
+    Result := not AConnected(mFirst, mSecond);
+  end;
+  if Result then
+  begin
+    AItem.First := AUnits[mFirst];
+    AItem.Second := AUnits[mSecond];
+    AItem.Shared := mShared;
+    AItem.FirstChanges := ACounts[mFirst];
+    AItem.SecondChanges := ACounts[mSecond];
+    AItem.Ratio := mRatio;
+  end;
+end;
+
 class function THotspotAnalyzer.Coupling(const AUnits: TArray<THotspotUnit>; const ACommits: TArray<THotspotCommit>;
   const AOptions: THotspotOptions; const AConnected: THotspotConnectedFunc): TArray<THotspotCoupling>;
 var
@@ -422,13 +532,9 @@ var
   mTouched: TList<Integer>;
   mSeen: TArray<Boolean>;
   mCommit: THotspotCommit;
-  mFile: THotspotFileChange;
-  mIndex, mInner, mUnit, mFirst, mSecond, mShared: Integer;
-  mKey: string;
   mPair: TPair<Int64, Integer>;
   mItem: THotspotCoupling;
   mList: TList<THotspotCoupling>;
-  mRatio: Double;
   mUnitCount: Int64;
 begin
   mUnitCount := Length(AUnits);
@@ -439,79 +545,21 @@ begin
   mTouched := TList<Integer>.Create;
   mList := TList<THotspotCoupling>.Create;
   try
-    for mIndex := 0 to High(AUnits) do
-    begin
-      mKey := UnitKey(AUnits[mIndex].Path);
-      if mKey <> '' then
-      begin
-        mByKey.AddOrSetValue(mKey, mIndex);
-      end;
-    end;
+    FillUnitKeys(mByKey, AUnits);
     for mCommit in ACommits do
     begin
-      if Length(mCommit.Files) > AOptions.MaxCommitFiles then
+      if Length(mCommit.Files) <= AOptions.MaxCommitFiles then
       begin
-        Continue;
-      end;
-      mTouched.Clear;
-      for mFile in mCommit.Files do
-      begin
-        if mFile.Kind = THotspotChangeKind.Deleted then
-        begin
-          Continue;
-        end;
-        mKey := UnitKey(mFile.Path);
-        if (mKey = '') or not mByKey.TryGetValue(mKey, mUnit) or mSeen[mUnit] then
-        begin
-          Continue;
-        end;
-        mSeen[mUnit] := True;
-        mTouched.Add(mUnit);
-      end;
-      mTouched.Sort;
-      for mIndex := 0 to mTouched.Count - 1 do
-      begin
-        mSeen[mTouched[mIndex]] := False;
-        Inc(mCounts[mTouched[mIndex]]);
-        for mInner := mIndex + 1 to mTouched.Count - 1 do
-        begin
-          mFirst := mTouched[mIndex];
-          mSecond := mTouched[mInner];
-          if mPairs.TryGetValue(mFirst * mUnitCount + mSecond, mShared) then
-          begin
-            mPairs[mFirst * mUnitCount + mSecond] := mShared + 1;
-          end
-          else
-          begin
-            mPairs.Add(mFirst * mUnitCount + mSecond, 1);
-          end;
-        end;
+        CollectTouched(mCommit, mByKey, mSeen, mTouched);
+        CountPairs(mTouched, mCounts, mPairs, mUnitCount);
       end;
     end;
     for mPair in mPairs do
     begin
-      if mPair.Value < AOptions.MinSharedCommits then
+      if TryCoupling(AUnits, mCounts, mPair, AOptions, AConnected, mItem) then
       begin
-        Continue;
+        mList.Add(mItem);
       end;
-      mFirst := Integer(mPair.Key div mUnitCount);
-      mSecond := Integer(mPair.Key mod mUnitCount);
-      mRatio := mPair.Value / ((mCounts[mFirst] + mCounts[mSecond]) / 2);
-      if mRatio + 1E-9 < AOptions.MinCouplingRatio then
-      begin
-        Continue;
-      end;
-      if Assigned(AConnected) and AConnected(mFirst, mSecond) then
-      begin
-        Continue;
-      end;
-      mItem.First := AUnits[mFirst];
-      mItem.Second := AUnits[mSecond];
-      mItem.Shared := mPair.Value;
-      mItem.FirstChanges := mCounts[mFirst];
-      mItem.SecondChanges := mCounts[mSecond];
-      mItem.Ratio := mRatio;
-      mList.Add(mItem);
     end;
     mList.Sort(TComparer<THotspotCoupling>.Construct(CompareCoupling));
     Result := mList.ToArray;

@@ -97,24 +97,34 @@ class function TAtlasNavigationToolbar.Find(AParent: TWinControl): TWinControl;
   begin
     Result := nil;
     if ADepth > MaxSearchDepth then
+    begin
       Exit;
+    end;
     for Index := 0 to AControl.ControlCount - 1 do
     begin
       Child := AControl.Controls[Index];
       if not (Child is TWinControl) then
+      begin
         Continue;
+      end;
       if IsToolbar(Child) then
+      begin
         Exit(TWinControl(Child));
+      end;
       Result := Search(TWinControl(Child), ADepth + 1);
       if Result <> nil then
+      begin
         Exit;
+      end;
     end;
   end;
 
 begin
   Result := nil;
   if AParent <> nil then
+  begin
     Result := Search(AParent, 0);
+  end;
 end;
 
 class function TAtlasNavigationToolbar.IsHidden(AToolbar: TControl): Boolean;
@@ -133,11 +143,17 @@ var
   Index: Integer;
 begin
   if (AControl = nil) or (AControl.Parent = nil) or not AControl.Parent.HandleAllocated then
+  begin
     Exit;
+  end;
   AControl.HandleNeeded;
   for Index := 0 to AControl.ControlCount - 1 do
+  begin
     if AControl.Controls[Index] is TWinControl then
+    begin
       OwnHandles(TWinControl(AControl.Controls[Index]));
+    end;
+  end;
 end;
 
 procedure TAtlasNavigationToolbar.Apply(AParent: TWinControl; AHide: Boolean);
@@ -147,9 +163,13 @@ var
 begin
   Toolbar := Find(AParent);
   if Toolbar = nil then
+  begin
     Exit;
+  end;
   if IsHidden(Toolbar) = AHide then
+  begin
     Exit;
+  end;
   if not AHide then
   begin
     Holder := TToolbarHolder(Toolbar.Parent);
@@ -192,7 +212,9 @@ begin
       Toolbar.Parent := Holder.Parent;
       Toolbar.Top := Holder.Top;
       if Toolbar is TWinControl then
+      begin
         OwnHandles(TWinControl(Toolbar));
+      end;
     end;
     Holder.Free;
   end;
@@ -202,7 +224,9 @@ procedure TAtlasNavigationToolbar.Notification(AComponent: TComponent; Operation
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (FPanels <> nil) and (AComponent is TWinControl) then
+  begin
     FPanels.Remove(TWinControl(AComponent));
+  end;
 end;
 
 end.

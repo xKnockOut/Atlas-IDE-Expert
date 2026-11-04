@@ -49,6 +49,9 @@ type
     IsEvent: Boolean;
     /// <summary>Hat eine Vorgabe (ausdrücklich oder implizit).</summary>
     function HasDefault: Boolean;
+    /// <summary>Gehört zur gewählten Art (Ereignis oder Property); mit AOnlyDefaults nur Properties mit Vorgabe.
+    /// </summary>
+    function Matches(AEvents, AOnlyDefaults: Boolean): Boolean;
     /// <summary>Spalte „Vorgabe“ als Klartext: "crDefault", "False (implizit)", "nodefault", dazu "stored …".
     /// </summary>
     function DefaultText(const AImplicit: string): string;
@@ -147,16 +150,22 @@ end;
 function TAtlasHoverTypeRef.Key: string;
 begin
   if HasLocation then
-    Result := Format('%s|%d|%d', [UpperCase(FileName), Line, Character])
+  begin
+    Result := Format('%s|%d|%d', [UpperCase(FileName), Line, Character]);
+  end
   else
+  begin
     Result := UpperCase(Name);
+  end;
 end;
 
 class function TAtlasHoverTypeRef.FromJson(const AObject: TJSONObject): TAtlasHoverTypeRef;
 begin
   Result := Default(TAtlasHoverTypeRef);
   if AObject = nil then
+  begin
     Exit;
+  end;
   Result.Name := AObject.GetValue<string>('name', '');
   Result.UnitName := AObject.GetValue<string>('unit', '');
   Result.FileName := AObject.GetValue<string>('file', '');
@@ -171,6 +180,11 @@ begin
   Result := (DefaultKind = hdExplicit) or (DefaultKind = hdImplicit);
 end;
 
+function TAtlasHoverMember.Matches(AEvents, AOnlyDefaults: Boolean): Boolean;
+begin
+  Result := (IsEvent = AEvents) and (AEvents or not AOnlyDefaults or HasDefault);
+end;
+
 function TAtlasHoverMember.DefaultText(const AImplicit: string): string;
 begin
   case DefaultKind of
@@ -181,7 +195,9 @@ begin
     Result := '';
   end;
   if Stored <> '' then
+  begin
     Result := Trim(Result + ' stored ' + Stored);
+  end;
 end;
 
 { TAtlasHoverData }
@@ -198,20 +214,30 @@ var
 begin
   Result := '';
   if (ReassignedTarget = '') or (ReassignedWrites <= 0) then
+  begin
     Exit;
+  end;
   Lines := '';
   for Index := 0 to Min(High(ReassignedLines), MaxReassignedLines - 1) do
   begin
     if Lines <> '' then
+    begin
       Lines := Lines + ', ';
+    end;
     Lines := Lines + IntToStr(ReassignedLines[Index] + 1);
   end;
   if Length(ReassignedLines) > MaxReassignedLines then
+  begin
     Lines := Lines + ', …';
+  end;
   if ReassignedWrites = 1 then
-    Result := Format(AOne, [Lines])
+  begin
+    Result := Format(AOne, [Lines]);
+  end
   else
+  begin
     Result := Format(ACount, [ReassignedWrites, Lines]);
+  end;
 end;
 
 procedure TAtlasHoverData.ClearReassigned;
@@ -227,8 +253,12 @@ var
 begin
   Result := 0;
   for Member in Members do
+  begin
     if Member.IsEvent = AEvents then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasHoverData.VisibleMembers(AEvents, AInherited, AOnlyDefaults: Boolean): TArray<Integer>;
@@ -239,9 +269,13 @@ begin
   Result := nil;
   Own := Title;
   for Index := 0 to High(Members) do
-    if (Members[Index].IsEvent = AEvents) and (AInherited or SameText(Members[Index].DeclaringClass, Own)) and
-      (AEvents or not AOnlyDefaults or Members[Index].HasDefault) then
+  begin
+    if Members[Index].Matches(AEvents, AOnlyDefaults) and (AInherited or SameText(Members[Index].DeclaringClass, Own))
+    then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 function TAtlasHoverData.MembersText(AInherited, AOnlyDefaults: Boolean; const AImplicit: string): string;
@@ -252,14 +286,18 @@ begin
   Result := Title;
   // Erst Properties, dann Ereignisse.
   for Pass := 0 to 1 do
+  begin
     for Index in VisibleMembers(Pass = 1, AInherited, AOnlyDefaults) do
     begin
       Member := Members[Index];
       Result := Result + sLineBreak + Member.Name + #9 + Member.TypeName + #9 + Member.DefaultText(AImplicit) + #9 +
         Member.DeclaringClass;
     end;
+  end;
   if DefaultProperty <> '' then
+  begin
     Result := Result + sLineBreak + DefaultProperty + #9 + 'default';
+  end;
 end;
 
 function TAtlasHoverData.Title: string;
@@ -267,56 +305,84 @@ var
   Index: Integer;
 begin
   if (Length(Ancestors) > 0) and (Kind <> KindClassRef) then
+  begin
     Exit(Ancestors[0].Name);
+  end;
   if Location.Name <> '' then
+  begin
     Exit(Location.Name);
+  end;
   // Erster Bezeichner der Deklaration (TFoo = class, Name: Typ, procedure Bar).
   Result := Trim(Declaration);
   for Index := 1 to Length(Result) do
+  begin
     if not CharInSet(Result[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
     begin
       Result := Copy(Result, 1, Index - 1);
       Break;
     end;
+  end;
   if MatchText(Result, ['procedure', 'function', 'constructor', 'destructor', 'property', 'class', 'type',
     'var', 'const']) then
   begin
     Result := Trim(Copy(Trim(Declaration), Length(Result) + 1, MaxInt));
     for Index := 1 to Length(Result) do
+    begin
       if not CharInSet(Result[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '&']) then
       begin
         Result := Copy(Result, 1, Index - 1);
         Break;
       end;
+    end;
   end;
 end;
 
 function TAtlasHoverData.Badge: string;
 begin
   if MatchStr(Kind, ['class', 'classref', 'object', 'record', 'interface', 'helper', 'enum', 'type']) then
-    Result := 'ty'
+  begin
+    Result := 'ty';
+  end
   else if MatchStr(Kind, ['method', 'constructor', 'routine']) then
-    Result := 'fn'
+  begin
+    Result := 'fn';
+  end
   else if Kind = 'property' then
-    Result := 'pp'
+  begin
+    Result := 'pp';
+  end
   else if Kind = 'field' then
-    Result := 'fd'
+  begin
+    Result := 'fd';
+  end
   else if Kind = 'variable' then
-    Result := 'va'
+  begin
+    Result := 'va';
+  end
   else if MatchStr(Kind, ['constant', 'enumMember']) then
-    Result := 'co'
+  begin
+    Result := 'co';
+  end
   else if StartsText('unit ', Declaration) then
-    Result := 'un'
+  begin
+    Result := 'un';
+  end
   else
+  begin
     Result := 'kw';
+  end;
 end;
 
 function TAtlasHoverData.LocationText: string;
 begin
   if Location.HasLocation then
-    Result := Format('%s : %d', [ExtractFileName(Location.FileName), Location.Line + 1])
+  begin
+    Result := Format('%s : %d', [ExtractFileName(Location.FileName), Location.Line + 1]);
+  end
   else
+  begin
     Result := UnitName;
+  end;
 end;
 
 function TAtlasHoverData.VisibleChain: TArray<Integer>;
@@ -327,12 +393,16 @@ begin
   if Length(Ancestors) <= MaxChainShown then
   begin
     for Index := 0 to High(Ancestors) do
+    begin
       Result := Result + [Index];
+    end;
     Exit;
   end;
   // Die ersten vier, dann "…", dann das letzte (meist TObject).
   for Index := 0 to MaxChainShown - 2 do
+  begin
     Result := Result + [Index];
+  end;
   Result := Result + [-1, High(Ancestors)];
 end;
 
@@ -341,8 +411,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Links) do
+  begin
     if (AIndex >= Links[Index].Start) and (AIndex < Links[Index].Start + Links[Index].Length) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -352,12 +426,18 @@ var
 begin
   Result := '';
   if not (AHover is TJSONObject) then
+  begin
     Exit;
+  end;
   Contents := TJSONObject(AHover).GetValue('contents');
   if Contents is TJSONString then
-    Result := Contents.Value
+  begin
+    Result := Contents.Value;
+  end
   else if Contents is TJSONObject then
+  begin
     Result := TJSONObject(Contents).GetValue<string>('value', '');
+  end;
 end;
 
 function MemberFromJson(AObject: TJSONObject): TAtlasHoverMember;
@@ -370,103 +450,196 @@ begin
   Result.DefaultValue := AObject.GetValue<string>('default', '');
   Kind := AObject.GetValue<string>('defaultKind', '');
   if Kind = 'explicit' then
-    Result.DefaultKind := hdExplicit
+  begin
+    Result.DefaultKind := hdExplicit;
+  end
   else if Kind = 'implicit' then
-    Result.DefaultKind := hdImplicit
+  begin
+    Result.DefaultKind := hdImplicit;
+  end
   else if Kind = 'nodefault' then
+  begin
     Result.DefaultKind := hdNoDefault;
+  end;
   Result.Stored := AObject.GetValue<string>('stored', '');
   Result.DeclaringClass := AObject.GetValue<string>('declaringClass', '');
   Result.IsEvent := AObject.GetValue<Boolean>('event', False);
 end;
 
+/// <summary>Rückfall ohne "atlas": erster Absatz Deklaration, der Rest Doku; Markdown-Zäune entfernen.</summary>
+procedure ReadPlain(var AData: TAtlasHoverData; const AHover: TJSONValue);
+var
+  mText: string;
+  mSplit: Integer;
+begin
+  mText := StringReplace(PlainText(AHover), '```pascal', '', [rfReplaceAll]);
+  mText := Trim(StringReplace(mText, '```', '', [rfReplaceAll]));
+  mSplit := Pos(#10#10, mText);
+  if mSplit = 0 then
+  begin
+    AData.Declaration := mText;
+  end
+  else
+  begin
+    AData.Declaration := Trim(Copy(mText, 1, mSplit - 1));
+    AData.Documentation := Trim(Copy(mText, mSplit + 2, MaxInt));
+  end;
+end;
+
+/// <summary>Doku als Klartext und strukturiert (#654) samt Anzeige laut Server.</summary>
+procedure ReadDocumentation(var AData: TAtlasHoverData; AAtlas: TJSONObject);
+begin
+  // Seit #654 ist "documentation" strukturiert, der Klartext steht in "documentationText".
+  if not AAtlas.TryGetValue<string>('documentationText', AData.Documentation) and
+    (AAtlas.GetValue('documentation') is TJSONString) then
+  begin
+    AData.Documentation := AAtlas.GetValue('documentation').Value;
+  end;
+  AData.Doc := TAtlasDoc.FromJson(AAtlas.GetValue('documentation'));
+  // Nur Begründungen (#1123) strukturiert: die Doku als Klartext davor, sonst fiele sie weg.
+  if (AData.Documentation <> '') and not AData.Doc.IsEmpty and
+    (Length(AData.Doc.Sections) = Length(AData.Doc.SectionsOf(TAtlasDocSectionKind.Rationale))) then
+  begin
+    AData.Doc.Sections := TAtlasDoc.FromText(AData.Documentation).Sections + AData.Doc.Sections;
+  end;
+  AData.Display := TAtlasDocDisplay.FromJson(AAtlas.GetValue('xmlDoc'),
+    TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
+end;
+
+function LinksFromJson(AAtlas: TJSONObject): TArray<TAtlasHoverLink>;
+var
+  mList: TJSONArray;
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mLink: TAtlasHoverLink;
+begin
+  Result := nil;
+  if not AAtlas.TryGetValue<TJSONArray>('links', mList) then
+  begin
+    Exit;
+  end;
+  for mValue in mList do
+  begin
+    if mValue is TJSONObject then
+    begin
+      mItem := TJSONObject(mValue);
+      mLink.Start := mItem.GetValue<Integer>('start', 0);
+      mLink.Length := mItem.GetValue<Integer>('length', 0);
+      mLink.Target := TAtlasHoverTypeRef.FromJson(mItem);
+      if mLink.Length > 0 then
+      begin
+        Result := Result + [mLink];
+      end;
+    end;
+  end;
+end;
+
+function AncestorsFromJson(AAtlas: TJSONObject): TArray<TAtlasHoverTypeRef>;
+var
+  mList: TJSONArray;
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  if not AAtlas.TryGetValue<TJSONArray>('ancestors', mList) then
+  begin
+    Exit;
+  end;
+  for mValue in mList do
+  begin
+    if mValue is TJSONObject then
+    begin
+      Result := Result + [TAtlasHoverTypeRef.FromJson(TJSONObject(mValue))];
+    end;
+  end;
+end;
+
+/// <summary>published-Properties und Ereignisse (#110).</summary>
+procedure ReadPublished(var AData: TAtlasHoverData; AAtlas: TJSONObject);
+var
+  mItem: TJSONObject;
+  mList: TJSONArray;
+  mValue: TJSONValue;
+begin
+  if not AAtlas.TryGetValue<TJSONObject>('published', mItem) then
+  begin
+    Exit;
+  end;
+  AData.DefaultProperty := mItem.GetValue<string>('defaultProperty', '');
+  if not mItem.TryGetValue<TJSONArray>('members', mList) then
+  begin
+    Exit;
+  end;
+  for mValue in mList do
+  begin
+    if mValue is TJSONObject then
+    begin
+      AData.Members := AData.Members + [MemberFromJson(TJSONObject(mValue))];
+    end;
+  end;
+end;
+
+/// <summary>Neu zugewiesene Variablen (#712).</summary>
+procedure ReadReassigned(var AData: TAtlasHoverData; AAtlas: TJSONObject);
+var
+  mItem: TJSONObject;
+  mList: TJSONArray;
+  mValue: TJSONValue;
+begin
+  if not AAtlas.TryGetValue<TJSONObject>('reassigned', mItem) then
+  begin
+    Exit;
+  end;
+  AData.ReassignedTarget := mItem.GetValue<string>('target', '');
+  AData.ReassignedWrites := mItem.GetValue<Integer>('writes', 0);
+  if not mItem.TryGetValue<TJSONArray>('lines', mList) then
+  begin
+    Exit;
+  end;
+  for mValue in mList do
+  begin
+    if mValue is TJSONNumber then
+    begin
+      AData.ReassignedLines := AData.ReassignedLines + [TJSONNumber(mValue).AsInt];
+    end;
+  end;
+end;
+
 class function TAtlasHoverData.FromHover(const AHover: TJSONValue): TAtlasHoverData;
 var
-  Atlas, Item: TJSONObject;
-  List: TJSONArray;
-  Value: TJSONValue;
-  Link: TAtlasHoverLink;
-  Text: string;
-  Split: Integer;
+  mAtlas: TJSONObject;
 begin
   Result := Default(TAtlasHoverData);
-  if not (AHover is TJSONObject) then
-    Exit;
-  Atlas := TJSONObject(AHover).GetValue('atlas') as TJSONObject;
-  if Atlas = nil then
+  mAtlas := nil;
+  if AHover is TJSONObject then
   begin
-    // Rückfall: erster Absatz Deklaration, der Rest Doku; Markdown-Zäune entfernen.
-    Text := StringReplace(PlainText(AHover), '```pascal', '', [rfReplaceAll]);
-    Text := Trim(StringReplace(Text, '```', '', [rfReplaceAll]));
-    Split := Pos(#10#10, Text);
-    if Split = 0 then
-      Result.Declaration := Text
-    else
-    begin
-      Result.Declaration := Trim(Copy(Text, 1, Split - 1));
-      Result.Documentation := Trim(Copy(Text, Split + 2, MaxInt));
-    end;
+    mAtlas := TJSONObject(AHover).GetValue('atlas') as TJSONObject;
+  end;
+  if mAtlas = nil then
+  begin
+    ReadPlain(Result, AHover);
     Exit;
   end;
-  Result.Declaration := Atlas.GetValue<string>('declaration', '');
-  Result.UnitName := Atlas.GetValue<string>('unit', '');
-  // Seit #654 ist "documentation" strukturiert, der Klartext steht in "documentationText".
-  if not Atlas.TryGetValue<string>('documentationText', Result.Documentation) and
-    (Atlas.GetValue('documentation') is TJSONString) then
-    Result.Documentation := Atlas.GetValue('documentation').Value;
-  Result.Doc := TAtlasDoc.FromJson(Atlas.GetValue('documentation'));
-  // Nur Begründungen (#1123) strukturiert: die Doku als Klartext davor, sonst fiele sie weg.
-  if (Result.Documentation <> '') and not Result.Doc.IsEmpty and
-    (Length(Result.Doc.Sections) = Length(Result.Doc.SectionsOf(TAtlasDocSectionKind.Rationale))) then
-    Result.Doc.Sections := TAtlasDoc.FromText(Result.Documentation).Sections + Result.Doc.Sections;
-  Result.Display := TAtlasDocDisplay.FromJson(Atlas.GetValue('xmlDoc'),
-    TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
-  Result.Value := Atlas.GetValue<string>('value', '');
-  Result.Deprecation := Atlas.GetValue<string>('deprecation', '');
-  Result.Kind := Atlas.GetValue<string>('kind', '');
-  Result.Origin := Atlas.GetValue<string>('origin', '');
-  Result.DocWiki := Atlas.GetValue<string>('docWiki', '');
-  Result.Location := TAtlasHoverTypeRef.FromJson(Atlas);
+  Result.Declaration := mAtlas.GetValue<string>('declaration', '');
+  Result.UnitName := mAtlas.GetValue<string>('unit', '');
+  ReadDocumentation(Result, mAtlas);
+  Result.Value := mAtlas.GetValue<string>('value', '');
+  Result.Deprecation := mAtlas.GetValue<string>('deprecation', '');
+  Result.Kind := mAtlas.GetValue<string>('kind', '');
+  Result.Origin := mAtlas.GetValue<string>('origin', '');
+  Result.DocWiki := mAtlas.GetValue<string>('docWiki', '');
+  Result.Location := TAtlasHoverTypeRef.FromJson(mAtlas);
   Result.Location.Name := '';
   Result.Location.UnitName := Result.UnitName;
-  Result.ChainOf := Atlas.GetValue<string>('chainOf', '');
-  if Atlas.TryGetValue<TJSONArray>('links', List) then
-    for Value in List do
-      if Value is TJSONObject then
-      begin
-        Item := TJSONObject(Value);
-        Link.Start := Item.GetValue<Integer>('start', 0);
-        Link.Length := Item.GetValue<Integer>('length', 0);
-        Link.Target := TAtlasHoverTypeRef.FromJson(Item);
-        if Link.Length > 0 then
-          Result.Links := Result.Links + [Link];
-      end;
-  if Atlas.TryGetValue<TJSONArray>('ancestors', List) then
-    for Value in List do
-      if Value is TJSONObject then
-        Result.Ancestors := Result.Ancestors + [TAtlasHoverTypeRef.FromJson(TJSONObject(Value))];
-  // published-Properties und Ereignisse (#110).
-  if Atlas.TryGetValue<TJSONObject>('published', Item) then
-  begin
-    Result.DefaultProperty := Item.GetValue<string>('defaultProperty', '');
-    if Item.TryGetValue<TJSONArray>('members', List) then
-      for Value in List do
-        if Value is TJSONObject then
-          Result.Members := Result.Members + [MemberFromJson(TJSONObject(Value))];
-  end;
-  // Neu zugewiesene Variablen (#712).
-  if Atlas.TryGetValue<TJSONObject>('reassigned', Item) then
-  begin
-    Result.ReassignedTarget := Item.GetValue<string>('target', '');
-    Result.ReassignedWrites := Item.GetValue<Integer>('writes', 0);
-    if Item.TryGetValue<TJSONArray>('lines', List) then
-      for Value in List do
-        if Value is TJSONNumber then
-          Result.ReassignedLines := Result.ReassignedLines + [TJSONNumber(Value).AsInt];
-  end;
+  Result.ChainOf := mAtlas.GetValue<string>('chainOf', '');
+  Result.Links := LinksFromJson(mAtlas);
+  Result.Ancestors := AncestorsFromJson(mAtlas);
+  ReadPublished(Result, mAtlas);
+  ReadReassigned(Result, mAtlas);
   // Der angezeigte Typ selbst: erstes Kettenglied mit demselben Fundort.
   if (Length(Result.Ancestors) > 0) and (Result.Ancestors[0].Key = Result.Location.Key) then
+  begin
     Result.Location.Name := Result.Ancestors[0].Name;
+  end;
 end;
 
 end.

@@ -155,9 +155,13 @@ begin
   Values := TJSONArray.Create;
   try
     if AProjectUri = '' then
-      Values.AddElement(TJSONNull.Create)
+    begin
+      Values.AddElement(TJSONNull.Create);
+    end
     else
+    begin
       Values.Add(AProjectUri);
+    end;
     Result := Values.ToJSON;
   finally
     Values.Free;
@@ -174,16 +178,23 @@ begin
   AAnswer := Default(TAtlasEventAnswer);
   Result := False;
   if not (AJson is TJSONObject) then
+  begin
     Exit;
+  end;
   Root := TJSONObject(AJson);
   if Root.GetValue<Integer>('format', 0) <> 1 then
+  begin
     Exit;
+  end;
   AAnswer.Unresolved := Root.GetValue<Integer>('unresolved', 0);
   if Root.TryGetValue<TJSONArray>('handlers', List) then
+  begin
     for Index := 0 to List.Count - 1 do
     begin
       if not (List.Items[Index] is TJSONObject) then
+      begin
         Continue;
+      end;
       Item := TJSONObject(List.Items[Index]);
       Handler := Default(TAtlasEventHandler);
       Handler.Form := Item.GetValue<string>('form', '');
@@ -197,30 +208,49 @@ begin
       Handler.Line := Item.GetValue<Integer>('line', -1);
       Handler.BreakLine := Item.GetValue<Integer>('bodyLine', -1);
       if Handler.BreakLine < 0 then
+      begin
         Handler.BreakLine := Handler.Line;
+      end;
       Handler.Interval := Item.GetValue<Integer>('interval', -1);
       if (Handler.Event <> '') and (Handler.Handler <> '') and (Handler.FileName <> '') and (Handler.Line >= 0) then
+      begin
         AAnswer.Handlers := AAnswer.Handlers + [Handler];
+      end;
     end;
+  end;
   Result := True;
 end;
 
 class function TAtlasEventBreak.CategoryOf(const AEvent: string): TAtlasEventCategory;
 begin
   if MatchText(AEvent, MouseEvents) then
-    Result := TAtlasEventCategory.Mouse
+  begin
+    Result := TAtlasEventCategory.Mouse;
+  end
   else if MatchText(AEvent, KeyboardEvents) then
-    Result := TAtlasEventCategory.Keyboard
+  begin
+    Result := TAtlasEventCategory.Keyboard;
+  end
   else if SameText(AEvent, 'OnTimer') then
-    Result := TAtlasEventCategory.Timer
+  begin
+    Result := TAtlasEventCategory.Timer;
+  end
   else if MatchText(AEvent, WindowEvents) then
-    Result := TAtlasEventCategory.Window
+  begin
+    Result := TAtlasEventCategory.Window;
+  end
   else if StartsText('Before', AEvent) or StartsText('After', AEvent) or MatchText(AEvent, DatabaseEvents) then
-    Result := TAtlasEventCategory.Database
+  begin
+    Result := TAtlasEventCategory.Database;
+  end
   else if MatchText(AEvent, ActionEvents) then
-    Result := TAtlasEventCategory.Actions
+  begin
+    Result := TAtlasEventCategory.Actions;
+  end
   else
+  begin
     Result := TAtlasEventCategory.Other;
+  end;
 end;
 
 class function TAtlasEventBreak.IsFrequent(const AHandler: TAtlasEventHandler;
@@ -241,16 +271,24 @@ begin
   begin
     Handler := AHandlers[Index];
     if not (CategoryOf(Handler.Event) in AChoice.Categories) then
+    begin
       Continue;
+    end;
     if not AChoice.Frequent and IsFrequent(Handler, AExcluded) then
+    begin
       Continue;
+    end;
     case AChoice.Scope of
       TAtlasEventScope.OneForm:
         if not SameText(Handler.Form, AChoice.Form) then
+        begin
           Continue;
+        end;
       TAtlasEventScope.VisibleForms:
         if not MatchText(Handler.Form, AVisibleForms) then
+        begin
           Continue;
+        end;
       TAtlasEventScope.AllForms: ;
     end;
     Result := Result + [Index];
@@ -275,7 +313,9 @@ begin
       Result := Result + [Location];
     end
     else
+    begin
       Result[Found].Handlers := Result[Found].Handlers + [Index];
+    end;
   end;
 end;
 
@@ -285,8 +325,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ALocations) do
+  begin
     if (ALocations[Index].Line = ALine) and SameText(ALocations[Index].FileName, AFileName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -305,28 +349,40 @@ var
   Index, Found: Integer;
 begin
   if Length(ALocation.Handlers) = 1 then
+  begin
     Exit(ALocation.Handlers[0]);
+  end;
   Result := -1;
   if ASenderName = '' then
+  begin
     Exit;
+  end;
   Found := 0;
   for Index in ALocation.Handlers do
+  begin
     if SameText(LastPart(AHandlers[Index].Component), ASenderName) then
     begin
       Result := Index;
       Inc(Found);
     end;
+  end;
   // Derselbe Name zweimal (etwa auf zwei Formularen): offen lassen.
   if Found <> 1 then
+  begin
     Result := -1;
+  end;
 end;
 
 function Source(const AHandler: TAtlasEventHandler): string;
 begin
   if AHandler.Component = '' then
-    Result := AHandler.Event
+  begin
+    Result := AHandler.Event;
+  end
   else
+  begin
     Result := AHandler.Component + '.' + AHandler.Event;
+  end;
 end;
 
 class function TAtlasEventBreak.Caption(const AHandlers: TArray<TAtlasEventHandler>;
@@ -337,19 +393,31 @@ var
   Handler: TAtlasEventHandler;
 begin
   if (AIdentified >= 0) and (AIdentified <= High(AHandlers)) then
-    Handler := AHandlers[AIdentified]
+  begin
+    Handler := AHandlers[AIdentified];
+  end
   else if Length(ALocation.Handlers) > 0 then
-    Handler := AHandlers[ALocation.Handlers[0]]
+  begin
+    Handler := AHandlers[ALocation.Handlers[0]];
+  end
   else
+  begin
     Exit('');
+  end;
   if (AIdentified >= 0) and (AIdentified <= High(AHandlers)) then
-    Result := Source(Handler)
+  begin
+    Result := Source(Handler);
+  end
   else
   begin
     Sources := nil;
     for Index in ALocation.Handlers do
+    begin
       if IndexText(Source(AHandlers[Index]), Sources) < 0 then
+      begin
         Sources := Sources + [Source(AHandlers[Index])];
+      end;
+    end;
     Result := string.Join(' / ', Sources);
   end;
   Result := Result + ' → ' + Handler.Container + '.' + Handler.Handler;
@@ -361,14 +429,20 @@ var
 begin
   Result := nil;
   for Handler in AHandlers do
+  begin
     if (Handler.Form <> '') and (IndexText(Handler.Form, Result) < 0) then
+    begin
       Result := Result + [Handler.Form];
+    end;
+  end;
   TArray.Sort<string>(Result, TComparer<string>.Construct(
     function(const A, B: string): Integer
     begin
       Result := CompareText(A, B);
       if Result = 0 then
+      begin
         Result := CompareStr(A, B);
+      end;
     end));
 end;
 
@@ -391,7 +465,9 @@ class function TAtlasEventBreak.Unquote(const AValue: string): string;
 begin
   Result := Trim(AValue);
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := Copy(Result, 2, Length(Result) - 2).Replace('''''', '''');
+  end;
 end;
 
 end.

@@ -340,7 +340,7 @@ begin
       Exit(Fail('Das Literal enthält keinen Zeilenumbruch', AReason));
     end;
     Literal := TStringLiterals.ToLiteral(Plain, Source.Indent(Source.Line + 1), False, AToMultiline,
-      TStringLiteralBreak.SLineBreak, 0, Source.LineBreak);
+      TStringLiteralSettings.Default, Source.LineBreak);
     AEdits := [Source.RemoveCommand, TTextEdit.Create(Range, Literal)];
     Result := True;
   finally

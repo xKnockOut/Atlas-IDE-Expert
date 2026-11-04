@@ -105,8 +105,8 @@ type
     function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
   /// <summary>Nur GET, kein IAtlasCiSend.</summary>
@@ -169,12 +169,12 @@ begin
   Result := Reply('GET', AUrl, AStatus, AText);
 end;
 
-function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AStatus, AText);
+  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
 end;
 
 { TFakeGetTransport }
@@ -258,8 +258,8 @@ end;
 
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
-  Result := TAtlasTrackerSyncOptions.Create(True, '', '', 'In Arbeit', True, 'Beginne {kennung}', AEndStates,
-    TAtlasTrackerWorkflow.DefaultEndComment);
+  Result := TAtlasTrackerSyncOptions.Create(True, '', '').WithStart('In Arbeit', True,
+    'Beginne {kennung}').WithEnd(AEndStates, TAtlasTrackerWorkflow.DefaultEndComment);
 end;
 
 /// <summary>Wert AName des JSON-Objekts AJson als Text ('' ohne).</summary>
@@ -421,7 +421,7 @@ begin
   Assert.IsFalse(mOptions.HasStartWork);
   Assert.IsFalse(TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create('ATL-1', '')).HasWork,
     'syncState aus: „Beginnen“ wie bisher');
-  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '', '', False, '', '', '');
+  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '');
   Assert.IsFalse(mOptions.HasStartWork, 'nichts eingestellt');
 end;
 

@@ -114,10 +114,14 @@ begin
   begin
     Control := Controls[Index];
     if not Control.Visible then
+    begin
       Continue;
+    end;
     Inc(Result, Control.Height);
     if Control.AlignWithMargins then
+    begin
       Inc(Result, Control.Margins.Top + Control.Margins.Bottom);
+    end;
   end;
 end;
 
@@ -127,8 +131,12 @@ var
 begin
   // Verschachtelte Rahmen zuerst: Ihre Höhe geht in diese ein.
   for Index := 0 to ControlCount - 1 do
+  begin
     if Controls[Index] is TAtlasSettingsGroup then
+    begin
       TAtlasSettingsGroup(Controls[Index]).AdjustHeight;
+    end;
+  end;
   FAdjusting := True;
   try
     Height := ContentHeight;
@@ -143,10 +151,14 @@ var
 begin
   inherited AlignControls(AControl, Rect);
   if FAdjusting then
+  begin
     Exit;
+  end;
   Needed := ContentHeight;
   if Needed = Height then
+  begin
     Exit;
+  end;
   FAdjusting := True;
   try
     Height := Needed;

@@ -538,10 +538,13 @@ procedure TVisualizerTests.DibPixelsBottomUp;
 var
   Pixels: TArray<Cardinal>;
 begin
-  Assert.IsTrue(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3, 128), 1, 1, 32, 4, False, Pixels));
+  Assert.IsTrue(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3, 128), TAtlasDibLayout.Create(1, 1, 32, 4,
+    False), Pixels));
   Assert.AreEqual(Int64($80030201), Int64(Pixels[0]));
-  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2), 1, 1, 8, 4, False, Pixels), '8 Bit');
-  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3), 2, 1, 24, 6, False, Pixels), 'zu kurz');
+  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2), TAtlasDibLayout.Create(1, 1, 8, 4, False),
+    Pixels), '8 Bit');
+  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3), TAtlasDibLayout.Create(2, 1, 24, 6,
+    False), Pixels), 'zu kurz');
 end;
 
 procedure TVisualizerTests.HexLines;

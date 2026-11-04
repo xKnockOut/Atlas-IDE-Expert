@@ -172,8 +172,12 @@ begin
   FTemplate.OnChange := TemplateChange;
   FTemplateIndex := Ord(TAtlasSetupTemplate.Existing);
   for Kind := Low(TAtlasSetupButton) to High(TAtlasSetupButton) do
+  begin
     if Kind <> TAtlasSetupButton.Dismiss then
+    begin
       FButtons[Kind] := NewButton(Kind);
+    end;
+  end;
   FBaselineInfo := NewLabel;
   FPathsInfo := NewLabel;
   for Index := Low(FFindings) to High(FFindings) do
@@ -225,9 +229,13 @@ end;
 class function TAtlasWelcomeSetupFrame.TitleText(const ACard: TAtlasSetupCard): string;
 begin
   if ACard.ShowCard and (ACard.ProjectName <> '') then
-    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupTitle, [ACard.ProjectName])
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupTitle, [ACard.ProjectName]);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNewTitle);
+  end;
 end;
 
 class function TAtlasWelcomeSetupFrame.TemplateCaption(ATemplate: TAtlasSetupTemplate): string;
@@ -270,30 +278,50 @@ begin
   case AStep of
     TAtlasSetupStep.Found:
       if ACard.Facts.ConfigExists then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupFound)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupFound);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupFoundNoConfig);
+      end;
     TAtlasSetupStep.Config:
       if ACard.StepDone(AStep) then
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigDone, [ACard.ConfigName])
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigDone, [ACard.ConfigName]);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupConfig);
+      end;
     TAtlasSetupStep.Baseline:
       if ACard.Baseline = TAtlasSetupRun.Running then
+      begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupBaselineRunning,
-          [TAtlasWelcomeSetup.Elapsed(ACard.BaselineStarted, ANow)])
+          [TAtlasWelcomeSetup.Elapsed(ACard.BaselineStarted, ANow)]);
+      end
       else if ACard.StepDone(AStep) then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupBaselineDone)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupBaselineDone);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupBaseline);
+      end;
   else
     if ACard.Paths = TAtlasSetupRun.Running then
+    begin
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsRunning,
-        [TAtlasWelcomeSetup.Elapsed(ACard.PathsStarted, ANow)])
+        [TAtlasWelcomeSetup.Elapsed(ACard.PathsStarted, ANow)]);
+    end
     else if ACard.StepDone(AStep) then
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPathsDone)
+    begin
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPathsDone);
+    end
     else
+    begin
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPaths);
+    end;
   end;
 end;
 
@@ -301,33 +329,51 @@ class function TAtlasWelcomeSetupFrame.FindingCaption(const ALine: TAtlasSetupLi
 begin
   // Hinweis zu einem requires-Package (#759): kein Fehler.
   if (ALine.Kind = TAtlasSetupFindingKind.Hint) and (ALine.Note <> '') then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupRequiresInSearchPath, [ALine.Note, ALine.Name,
-      ALine.FileName, ALine.Line])
+      ALine.FileName, ALine.Line]);
+  end
   else if ALine.Kind = TAtlasSetupFindingKind.Hint then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupRequiresNoSource,
-      [ALine.Name, ALine.FileName, ALine.Line])
+      [ALine.Name, ALine.FileName, ALine.Line]);
+  end
   // Unsicher (Suchpfad mit unbekanntem Makro übersprungen): mit den Makros, damit es nicht wie ein Fehler wirkt.
   else if ALine.Uncertain and (ALine.Kind = TAtlasSetupFindingKind.MissingUnit) then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupMissingUnitUncertain, [ALine.Name, ALine.Macros,
-      ALine.FileName, ALine.Line])
+      ALine.FileName, ALine.Line]);
+  end
   else if ALine.Uncertain then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupUndefinedDefineUncertain,
       [ALine.Name, ALine.Macros,
-      ALine.FileName, ALine.Line])
+      ALine.FileName, ALine.Line]);
+  end
   else if ALine.Kind = TAtlasSetupFindingKind.MissingUnit then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupMissingUnit,
-      [ALine.Name, ALine.FileName, ALine.Line])
+      [ALine.Name, ALine.FileName, ALine.Line]);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupUndefinedDefine,
       [ALine.Name, ALine.FileName, ALine.Line]);
+  end;
   if ALine.Count > 1 then
+  begin
     Result := Result + ' ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupTimes, [ALine.Count]);
+  end;
   // Tippfehler? Ähnliches bekanntes Symbol.
   if (ALine.Kind = TAtlasSetupFindingKind.UndefinedDefine) and (ALine.Note <> '') then
+  begin
     Result := Result + ' – ' + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupSuggestion, [ALine.Note]);
+  end;
   // Projektgruppe: Projekt vorn.
   if ALine.Project <> '' then
+  begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupFindingInProject, [ALine.Project, Result]);
+  end;
 end;
 
 class function TAtlasWelcomeSetupFrame.PathsCaption(const ACard: TAtlasSetupCard): string;
@@ -337,20 +383,28 @@ var
   Uncertain: Integer;
 begin
   if ACard.Paths = TAtlasSetupRun.Failed then
+  begin
     Exit(ACard.PathsError);
+  end;
   Parts := nil;
   Setup := ACard.Facts.Setup;
   // Projektgruppe: noch nicht alle Projekte geprüft.
   if (ACard.GroupProjects > 0) and (ACard.GroupChecked < ACard.GroupProjects) then
+  begin
     Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsGroup, [ACard.GroupChecked,
       ACard.GroupProjects])];
+  end;
   if (Setup.Checked or (ACard.GroupChecked > 0)) and (Setup.MissingUnitCount + Setup.UndefinedDefineCount > 0) then
+  begin
     Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsSummary, [Setup.MissingUnitCount,
       Setup.UndefinedDefineCount, Setup.Files])];
+  end;
   Uncertain := Setup.UncertainUnitCount + Setup.UncertainDefineCount;
   if Uncertain > 0 then
+  begin
     Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsUncertain, [Uncertain,
       TAtlasWelcomeSetup.MacroList(Setup.SkippedMacros)])];
+  end;
   Result := string.Join(sLineBreak, Parts);
 end;
 
@@ -384,13 +438,17 @@ procedure TAtlasWelcomeSetupFrame.SelectTemplate(ATemplate: TAtlasSetupTemplate)
 begin
   FTemplateIndex := Ord(ATemplate);
   if FTemplate.HandleAllocated and (FTemplate.Items.Count > FTemplateIndex) then
+  begin
     FTemplate.ItemIndex := FTemplateIndex;
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.TemplateChange(Sender: TObject);
 begin
   if FTemplate.ItemIndex >= 0 then
+  begin
     FTemplateIndex := FTemplate.ItemIndex;
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.FillTemplates;
@@ -399,9 +457,13 @@ var
 begin
   // Die Liste braucht ein Fenster; Arrange ruft das erst mit Fenster.
   if FTemplate.Items.Count > 0 then
+  begin
     Exit;
+  end;
   for Template := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
+  begin
     FTemplate.Items.Add(TemplateCaption(Template));
+  end;
   FTemplate.ItemIndex := FTemplateIndex;
 end;
 
@@ -422,14 +484,20 @@ var
 begin
   OldHeight := FContentHeight;
   if FSource <> nil then
-    FCard := FSource.Card
+  begin
+    FCard := FSource.Card;
+  end
   else
+  begin
     FCard := TAtlasSetupCard.Empty;
+  end;
   ApplyCard;
   Arrange;
   inherited;
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.ApplyCard;
@@ -449,7 +517,9 @@ begin
   FNewLabel.Font.Color := Themed(clWindowText);
   FDismiss.Font.Color := Themed(clHotLight);
   for Index := Low(FFindings) to High(FFindings) do
+  begin
     FFindings[Index].Font.Color := Themed(clWindowText);
+  end;
   for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
   begin
     Done := FCard.StepDone(Step);
@@ -493,27 +563,37 @@ begin
   FBaselineInfo.Caption := '';
   // Nach dem Erzeugen in dieser Sitzung: Treffer der Baseline und neue Treffer (dann 0).
   if (FCard.Baseline = TAtlasSetupRun.Done) and (FCard.BaselineNewHits >= 0) then
+  begin
     FBaselineInfo.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupBaselineResult,
       [FCard.BaselineTotal,
-      FCard.BaselineFiles, FCard.BaselineNewHits])
+      FCard.BaselineFiles, FCard.BaselineNewHits]);
+  end
   else if FCard.Baseline = TAtlasSetupRun.Failed then
+  begin
     FBaselineInfo.Caption := FCard.BaselineError;
+  end;
   FBaselineInfo.Visible := Show and (FBaselineInfo.Caption <> '');
   FPathsInfo.Caption := PathsCaption(FCard);
   FPathsInfo.Visible := Show and (FPathsInfo.Caption <> '');
   Lines := nil;
   More := 0;
   if Show and (FCard.Paths <> TAtlasSetupRun.Running) then
+  begin
     Lines := TAtlasWelcomeSetup.Lines(FCard.Facts.Setup, Length(FFindings), More);
+  end;
   for Index := Low(FFindings) to High(FFindings) do
   begin
     FFindings[Index].Visible := Index < Length(Lines);
     if FFindings[Index].Visible then
+    begin
       FFindings[Index].Caption := FindingCaption(Lines[Index]);
+    end;
   end;
   FMore.Visible := More > 0;
   if FMore.Visible then
+  begin
     FMore.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupMore, [More]);
+  end;
   FButtons[TAtlasSetupButton.Options].Visible := Length(Lines) > 0;
   FButtons[TAtlasSetupButton.Options].Enabled := FSource <> nil;
   FDismiss.Visible := Show;
@@ -536,7 +616,9 @@ begin
   Arrange;
   // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.Arrange;
@@ -571,7 +653,9 @@ var
   procedure NextRow;
   begin
     if RowHeight > 0 then
+    begin
       Inc(mTop, RowHeight + ScaleValue(Gap) div 2);
+    end;
     RowHeight := 0;
     X := TextLeft;
   end;
@@ -579,7 +663,9 @@ var
   procedure PlaceLine(ALabel: TLabel);
   begin
     if not ALabel.Visible then
+    begin
       Exit;
+    end;
     X := TextLeft;
     Place(ALabel, Measure.Canvas.TextWidth(ALabel.Caption), ALabel.Height);
     NextRow;
@@ -588,7 +674,9 @@ var
 begin
   // Ohne Fenster lässt sich kein Text messen; CreateWnd holt UpdateContent nach.
   if FArranging or (FNewLabel = nil) or not HasWindow then
+  begin
     Exit;
+  end;
   FArranging := True;
   try
     FillTemplates;
@@ -623,23 +711,31 @@ begin
               end;
             TAtlasSetupStep.Baseline:
               if FButtons[TAtlasSetupButton.Baseline].Visible then
+              begin
                 Place(FButtons[TAtlasSetupButton.Baseline], ButtonWidth(FButtons[TAtlasSetupButton.Baseline]),
                   ScaleValue(ButtonHeight));
+              end;
             TAtlasSetupStep.Paths:
               if FButtons[TAtlasSetupButton.Paths].Visible then
+              begin
                 Place(FButtons[TAtlasSetupButton.Paths], ButtonWidth(FButtons[TAtlasSetupButton.Paths]),
                   ScaleValue(ButtonHeight));
+              end;
           else
             // Übrige Werte bewusst ohne Wirkung.
           end;
           NextRow;
           if Step = TAtlasSetupStep.Baseline then
+          begin
             PlaceLine(FBaselineInfo);
+          end;
           if Step = TAtlasSetupStep.Paths then
           begin
             PlaceLine(FPathsInfo);
             for Index := Low(FFindings) to High(FFindings) do
+            begin
               PlaceLine(FFindings[Index]);
+            end;
             PlaceLine(FMore);
             if FButtons[TAtlasSetupButton.Options].Visible then
             begin
@@ -697,7 +793,9 @@ begin
   end;
   // Nur die Sekunden des laufenden Schritts; die Höhe bleibt.
   for Step := TAtlasSetupStep.Baseline to TAtlasSetupStep.Paths do
+  begin
     FTexts[Step].Caption := StepCaption(Step, FCard, TThread.GetTickCount64);
+  end;
 end;
 
 procedure TAtlasWelcomeSetupFrame.ClickButton(AButton: TAtlasSetupButton);
@@ -707,11 +805,17 @@ var
   Template: TAtlasSetupTemplate;
 begin
   if FSource = nil then
+  begin
     Exit;
+  end;
   if (AButton <> TAtlasSetupButton.Dismiss) and not (FButtons[AButton].Visible and FButtons[AButton].Enabled) then
+  begin
     Exit;
+  end;
   if (AButton = TAtlasSetupButton.Dismiss) and not FDismiss.Visible then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Open := FCard.ProjectOpen;
   Template := SelectedTemplate;
@@ -724,14 +828,22 @@ begin
           mSource.CreateConfig(Template);
         TAtlasSetupButton.Baseline:
           if Open then
-            mSource.StartBaseline
+          begin
+            mSource.StartBaseline;
+          end
           else
+          begin
             mSource.OpenProject;
+          end;
         TAtlasSetupButton.Paths:
           if Open then
-            mSource.CheckPaths
+          begin
+            mSource.CheckPaths;
+          end
           else
+          begin
             mSource.OpenProject;
+          end;
         TAtlasSetupButton.Options:
           mSource.OpenOptions;
         TAtlasSetupButton.Dismiss:

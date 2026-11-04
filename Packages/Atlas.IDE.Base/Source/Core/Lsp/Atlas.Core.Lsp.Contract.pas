@@ -283,10 +283,14 @@ var
 begin
   Result := Default(TAtlasConfidence);
   if not (AItem is TJSONObject) then
+  begin
     Exit;
+  end;
   Value := TJSONObject(AItem).GetValue('atlasConfidence');
   if not (Value is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Inferred := TJSONObject(Value).GetValue<string>('level', '') = 'inferred';
   if Result.Inferred then
   begin
@@ -303,8 +307,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(Places) do
+  begin
     if Places[Index].Cause = ACause then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 function TAtlasImpact.LevelCount(ALevel: Integer): Integer;
@@ -313,8 +321,12 @@ var
 begin
   Result := 0;
   for Place in Places do
+  begin
     if Place.Level = ALevel then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasImpact.CountFrom(ALevel: Integer): Integer;
@@ -323,8 +335,12 @@ var
 begin
   Result := 0;
   for Place in Places do
+  begin
     if Place.Level >= ALevel then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasImpact.RunNames: TArray<string>;
@@ -335,12 +351,16 @@ begin
   Result := nil;
   Seen := '|';
   for Test in Tests do
+  begin
     for Name in Test.RunNames do
+    begin
       if Pos('|' + UpperCase(Name) + '|', Seen) = 0 then
       begin
         Seen := Seen + UpperCase(Name) + '|';
         Result := Result + [Name];
       end;
+    end;
+  end;
 end;
 
 function TAtlasImpact.Found: Boolean;
@@ -369,13 +389,19 @@ begin
   begin
     Stop := Pos(')', Copy(Result, Start, MaxInt)) + Start - 1;
     if Stop < Start then
+    begin
       Break;
+    end;
     Inner := Copy(Result, Start + Length(Opening), Stop - Start - Length(Opening));
     // Nur Codes wie E2034, W1000–W1007 und Trenner; anderer Text in Klammern bleibt.
     Codes := Inner <> '';
     for Index := 1 to Length(Inner) do
+    begin
       if not CharInSet(Inner[Index], ['A'..'Z', '0'..'9', ',', ' ']) and (Inner[Index] <> #$2013) then
+      begin
         Codes := False;
+      end;
+    end;
     if Codes then
     begin
       Delete(Result, Start, Stop - Start + 1);
@@ -385,7 +411,9 @@ begin
     begin
       Index := Pos(Opening, Copy(Result, Stop + 1, MaxInt));
       if Index = 0 then
+      begin
         Break;
+      end;
       Start := Stop + Index;
     end;
   end;
@@ -394,11 +422,17 @@ end;
 function TAtlasProblem.CompilerCodeText: string;
 begin
   if Confirmed then
-    Result := ConfirmedCode
+  begin
+    Result := ConfirmedCode;
+  end
   else if IsCompiler then
-    Result := Code
+  begin
+    Result := Code;
+  end
   else
+  begin
     Result := string.Join(', ', CompilerCodes);
+  end;
 end;
 
 function TAtlasProblem.IsUses: Boolean;
@@ -411,19 +445,27 @@ var
   Last: Integer;
 begin
   if (ALine < StartLine) or (ALine > EndLine) then
+  begin
     Exit(False);
+  end;
   Last := EndCharacter;
   if (StartLine = EndLine) and (EndCharacter <= StartCharacter) then
+  begin
     Last := StartCharacter + 1;
+  end;
   Result := ((ALine > StartLine) or (ACharacter >= StartCharacter)) and ((ALine < EndLine) or (ACharacter <= Last));
 end;
 
 function TAtlasProblem.Caption: string;
 begin
   if Code = '' then
-    Result := Message
+  begin
+    Result := Message;
+  end
   else
+  begin
     Result := Format('%s (%s)', [Message, Code]);
+  end;
 end;
 
 function TAtlasProblem.CanSuppress: Boolean;
@@ -436,16 +478,24 @@ var
   Platform, Config: string;
 begin
   if InactiveCondition = '' then
+  begin
     Exit(AFallback);
+  end;
   Result := Format(AConditionFormat, [InactiveCondition]);
   if (InactivePlatform = '') and (InactiveConfig = '') then
+  begin
     Exit;
+  end;
   Platform := InactivePlatform;
   Config := InactiveConfig;
   if Platform = '' then
+  begin
     Platform := '?';
+  end;
   if Config = '' then
+  begin
     Config := '?';
+  end;
   Result := Result + Format(ATargetFormat, [Platform, Config]);
 end;
 
@@ -472,9 +522,13 @@ begin
   end;
   CodeValue := AItem.GetValue('code');
   if CodeValue is TJSONString then
-    Result.Code := TJSONString(CodeValue).Value
+  begin
+    Result.Code := TJSONString(CodeValue).Value;
+  end
   else if CodeValue is TJSONNumber then
+  begin
     Result.Code := TJSONNumber(CodeValue).ToString;
+  end;
   Result.Source := AItem.GetValue<string>('source', '');
   Result.Message := AItem.GetValue<string>('message', '');
   Data := AItem.GetValue('data');
@@ -486,9 +540,15 @@ begin
     Result.FixTitle := TJSONObject(Data).GetValue<string>('fix', '');
     Codes := TJSONObject(Data).GetValue('compilerCodes');
     if Codes is TJSONArray then
+    begin
       for Item in TJSONArray(Codes) do
+      begin
         if Item is TJSONString then
+        begin
           Result.CompilerCodes := Result.CompilerCodes + [TJSONString(Item).Value];
+        end;
+      end;
+    end;
     Result.Details := TJSONObject(Data).GetValue<string>('details', '');
     Inactive := TJSONObject(Data).GetValue('inactive');
     if Inactive is TJSONObject then
@@ -506,7 +566,9 @@ begin
   end;
   RelatedItems := AItem.GetValue('relatedInformation');
   if RelatedItems is TJSONArray then
+  begin
     for Item in TJSONArray(RelatedItems) do
+    begin
       if Item is TJSONObject then
       begin
         Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
@@ -514,11 +576,17 @@ begin
         Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
         Related.Message := TJSONObject(Item).GetValue<string>('message', '');
         if Related.Uri <> '' then
+        begin
           Result.Related := Result.Related + [Related];
+        end;
       end;
+    end;
+  end;
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
+  begin
     for Tag in TJSONArray(Tags) do
+    begin
       if Tag is TJSONNumber then
         case TJSONNumber(Tag).AsInt of
           1:
@@ -526,6 +594,8 @@ begin
           2:
             Result.Deprecated := True;
         end;
+    end;
+  end;
 end;
 
 class function TAtlasProblem.ListFromJson(const AItems: TJSONArray): TArray<TAtlasProblem>;
@@ -534,10 +604,16 @@ var
 begin
   Result := nil;
   if AItems = nil then
+  begin
     Exit;
+  end;
   for Item in AItems do
+  begin
     if Item is TJSONObject then
+    begin
       Result := Result + [FromJson(TJSONObject(Item))];
+    end;
+  end;
 end;
 
 { TAtlasInlineValueRef }

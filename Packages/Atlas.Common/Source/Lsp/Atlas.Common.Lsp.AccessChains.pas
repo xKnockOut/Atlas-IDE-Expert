@@ -68,6 +68,19 @@ type
     Links: TArray<TAccessLink>;
   end;
 
+  /// <summary>Unit, deren Zeile Collect zerlegt, samt allem, was zum Auflösen der Namen nötig ist.</summary>
+  TAccessChainSource = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    /// <summary>Quelltext anderer Units (Deklarationen von Typen); darf nil sein.</summary>
+    ReadText: TReferenceReadText;
+    Tree: TSyntaxTree;
+    Text: string;
+    FileName: string;
+    /// <summary>4 (Win32) oder 8 (Win64); andere Werte gelten als 4.</summary>
+    PointerSize: Integer;
+  end;
+
   TAccessChainsResult = record
     /// <summary>Anweisungen in der Zeile.</summary>
     Statements: Integer;
@@ -93,10 +106,8 @@ type
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AEnsureUnit: TEnsureUnitFunc);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
-    /// <summary>Zugriffsketten der Anweisungen in ALine (0-basiert). APointerSize: 4 (Win32) oder 8 (Win64).
-    /// </summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      ATree: TSyntaxTree; const AText, AFileName: string; ALine, APointerSize: Integer): TAccessChainsResult; static;
+    /// <summary>Zugriffsketten der Anweisungen in ALine (0-basiert).</summary>
+    class function Collect(const ASource: TAccessChainSource; ALine: Integer): TAccessChainsResult; static;
     /// <summary>Antwort mit "statements" und "chains". Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AResult: TAccessChainsResult): TJSONObject; static;
     class function KindName(AKind: TAccessLinkKind): string; static;
@@ -107,6 +118,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
@@ -130,6 +142,22 @@ const
     TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement];
 
 type
+  /// <summary>Ein Knoten der Kette und was hinter ihm folgt.</summary>
+  TLinkStep = record
+    Node: TSyntaxNode;
+    /// <summary>Folgeknoten; beim letzten Glied eines with-Elements der Knoten selbst.</summary>
+    Next: TSyntaxNode;
+    /// <summary>Letztes Glied eines with-Elements: Hinter ihm steht kein Knoten.</summary>
+    WithLast: Boolean;
+  end;
+
+  /// <summary>Symbol und Typ eines Glieds.</summary>
+  TLinkTarget = record
+    Symbol: TResolvedSymbol;
+    TypeSymbol: TResolvedSymbol;
+    TypeFound: Boolean;
+  end;
+
   TCollector = class
   private
     FResolver: TNameResolver;
@@ -147,9 +175,19 @@ type
     function AliasText(const AType: TResolvedSymbol): string;
     function NamePositionOf(ANode: TSyntaxNode): TTextPosition;
     function NameOf(ANode: TSyntaxNode): string;
-    function MemberAfter(ANext: TSyntaxNode): string;
     function UnitFor(const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Größe eines im Index gefundenen Typs; 0 = unbekannt.</summary>
+    function ResolvedSize(const AUnit: TUnitIndex; const ATypeName: string): Integer;
     function FieldSize(const AUnit: TUnitIndex; const ATypeName: string; out AAlign: Integer): Integer;
+    /// <summary>AType und seine Vorfahren bis vor TObject, der älteste zuerst. AKnown: Der älteste stammt direkt
+    /// von TObject ab, die Versätze lassen sich also schätzen.</summary>
+    function TypeChain(const AType: TResolvedSymbol; out AKnown: Boolean): TArray<TResolvedSymbol>;
+    /// <summary>Felder von ATypeName in AUnit in der Reihenfolge der Deklaration.</summary>
+    function OwnFields(const AUnit: TUnitIndex; const ATypeName: string): TArray<TIndexSymbol>;
+    /// <summary>Feld mit Versatz ab AOffset (danach hinter dem Feld); AKnown wird False, sobald eine Größe fehlt.
+    /// </summary>
+    function PlacedField(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol; var AOffset: Integer;
+      var AKnown: Boolean): TAccessField;
     function FieldsOf(const AType: TResolvedSymbol): TArray<TAccessField>;
     function KindOf(const ASymbol, AType: TResolvedSymbol; ATypeFound: Boolean; ANode: TSyntaxNode): TAccessLinkKind;
     /// <summary>Elementtyp von Base[I], wenn Base ein dynamisches Array ist.</summary>
@@ -157,17 +195,30 @@ type
     function IsCallLink(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
     function PlainIndex(ANode: TSyntaxNode): Boolean;
     function ImplicitSelf(ARoot: TSyntaxNode; out ALink: TAccessLink): Boolean;
+    /// <summary>Symbol und Typ von ANode; False, wenn ANode kein Wert ist, der nil sein kann.</summary>
+    function ResolveLink(ANode: TSyntaxNode; out ATarget: TLinkTarget): Boolean;
+    procedure FillMember(const AStep: TLinkStep; const ATarget: TLinkTarget; var ALink: TAccessLink);
+    /// <summary>Glied zu AStep; False, wenn der Zugriff es nicht dereferenziert. ACalled: Ein Glied bis hier
+    /// ruft etwas auf.</summary>
+    function BuildLink(const AStep: TLinkStep; const ATarget: TLinkTarget; var ACalled: Boolean;
+      out ALink: TAccessLink): Boolean;
+    /// <summary>Zählt ANode als Anweisung in ALine und sammelt die Ketten ihrer Ausdrücke dort.</summary>
+    function VisitSimpleStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
+    /// <summary>Zählt den Kopf von ANode, wenn ein Ausdruck in ALine steht, und sammelt dessen Ketten.</summary>
+    function VisitStatementHead(ANode: TSyntaxNode; ALine: Integer): Boolean;
     /// <summary>AWithElement: ATop ist ein with-Element; es wird selbst dereferenziert und ist ein Glied.</summary>
     procedure AddChain(ATop: TSyntaxNode; AWithElement: Boolean);
     procedure Visit(ANode: TSyntaxNode; AAsBase: Boolean);
   public
-    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
-      ATree: TSyntaxTree; const AText, AFileName: string; APointerSize: Integer);
+    constructor Create(const ASource: TAccessChainSource);
     destructor Destroy; override;
     procedure VisitExpression(ANode: TSyntaxNode);
     /// <summary>Element einer with-Anweisung: Die Mitglieder im Rumpf greifen über es zu.</summary>
     procedure VisitWithElement(ANode: TSyntaxNode);
     function Chains: TArray<TAccessChain>;
+    /// <summary>Sammelt die Ketten von ANode, wenn es eine Anweisung in ALine ist oder ihr Kopf dort steht.
+    /// Ergebnis: ANode zählt als Anweisung der Zeile.</summary>
+    function VisitStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
   end;
 
 function SingleLine(const AText: string): string;
@@ -213,56 +264,36 @@ begin
     (Text = 'tbytes') or (Text = 'tstringdynarray') or (Text = 'tintegerdynarray');
 end;
 
-/// <summary>Größe eingebauter Typen; 0 = kein eingebauter Typ.</summary>
-function BuiltinSize(const ATypeName: string; APointerSize: Integer): Integer;
-var
-  Name: string;
+const
+  cOneByte: array[0..6] of string = ('byte', 'shortint', 'boolean', 'bytebool', 'ansichar', 'int8', 'uint8');
+  cTwoBytes: array[0..6] of string = ('word', 'smallint', 'char', 'widechar', 'wordbool', 'int16', 'uint16');
+  cFourBytes: array[0..8] of string = ('integer', 'cardinal', 'longint', 'longword', 'longbool', 'single', 'int32',
+    'uint32', 'dword');
+  cEightBytes: array[0..7] of string = ('int64', 'uint64', 'double', 'currency', 'comp', 'tdatetime', 'tdate',
+    'ttime');
+  cPointerSized: array[0..11] of string = ('nativeint', 'nativeuint', 'string', 'unicodestring', 'ansistring',
+    'widestring', 'rawbytestring', 'utf8string', 'tobject', 'iinterface', 'iunknown', 'tclass');
+
+/// <summary>Größe eingebauter Typen, die nicht von der Zeigergröße abhängt; 0 = keiner davon.</summary>
+function FixedBuiltinSize(const AName: string): Integer;
 begin
-  Name := LowerCase(Trim(ATypeName));
-  if Name.StartsWith('system.') then
-  begin
-    Name := Copy(Name, 8, MaxInt);
-  end;
-  if (Name = 'byte') or (Name = 'shortint') or (Name = 'boolean') or (Name = 'bytebool') or (Name = 'ansichar') or
-    (Name = 'int8') or (Name = 'uint8') then
+  if MatchStr(AName, cOneByte) then
   begin
     Result := 1;
   end
-  else if (Name = 'word') or (Name = 'smallint') or (Name = 'char') or (Name = 'widechar') or (Name = 'wordbool') or
-    (Name = 'int16') or (Name = 'uint16') then
+  else if MatchStr(AName, cTwoBytes) then
   begin
     Result := 2;
   end
-  else if (Name = 'integer') or (Name = 'cardinal') or (Name = 'longint') or (Name = 'longword') or
-    (Name = 'longbool') or (Name = 'single') or (Name = 'int32') or (Name = 'uint32') or (Name = 'dword') then
+  else if MatchStr(AName, cFourBytes) then
   begin
     Result := 4;
   end
-  else if (Name = 'int64') or (Name = 'uint64') or (Name = 'double') or (Name = 'currency') or (Name = 'comp') or
-    (Name = 'tdatetime') or (Name = 'tdate') or (Name = 'ttime') then
+  else if MatchStr(AName, cEightBytes) then
   begin
     Result := 8;
   end
-  else if (Name = 'nativeint') or (Name = 'nativeuint') or (Name = 'string') or (Name = 'unicodestring') or
-    (Name = 'ansistring') or (Name = 'widestring') or (Name = 'rawbytestring') or (Name = 'utf8string') or
-    (Name = 'tobject') or (Name = 'iinterface') or (Name = 'iunknown') or (Name = 'tclass') or
-    IsPointerText(Name) or IsDynArrayText(Name) then
-  begin
-    Result := APointerSize;
-  end
-  else if Name = 'extended' then
-  begin
-    // Win64 rechnet Extended als Double.
-    if APointerSize = 8 then
-    begin
-      Result := 8;
-    end
-    else
-    begin
-      Result := 10;
-    end;
-  end
-  else if Name = 'variant' then
+  else if AName = 'variant' then
   begin
     Result := 16;
   end
@@ -272,19 +303,167 @@ begin
   end;
 end;
 
+/// <summary>Größe eingebauter Typen, die von der Zeigergröße abhängt; 0 = keiner davon.</summary>
+function PointerBuiltinSize(const AName: string; APointerSize: Integer): Integer;
+begin
+  if MatchStr(AName, cPointerSized) or IsPointerText(AName) or IsDynArrayText(AName) then
+  begin
+    Result := APointerSize;
+  end
+  else if AName <> 'extended' then
+  begin
+    Result := 0;
+  end
+  else if APointerSize = 8 then
+  begin
+    // Win64 rechnet Extended als Double.
+    Result := 8;
+  end
+  else
+  begin
+    Result := 10;
+  end;
+end;
+
+/// <summary>Größe eingebauter Typen; 0 = kein eingebauter Typ.</summary>
+function BuiltinSize(const ATypeName: string; APointerSize: Integer): Integer;
+var
+  mName: string;
+begin
+  mName := LowerCase(Trim(ATypeName));
+  if mName.StartsWith('system.') then
+  begin
+    mName := Copy(mName, 8, MaxInt);
+  end;
+  Result := FixedBuiltinSize(mName);
+  if Result = 0 then
+  begin
+    Result := PointerBuiltinSize(mName, APointerSize);
+  end;
+end;
+
+/// <summary>Knoten der Kette von ATop, die Wurzel zuerst.</summary>
+function PathOf(ATop: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  mNode := ATop;
+  while mNode <> nil do
+  begin
+    Insert(mNode, Result, 0);
+    if (mNode.Kind in ChainKinds) and (mNode.ChildCount > 0) then
+    begin
+      mNode := mNode[0];
+    end
+    else
+    begin
+      mNode := nil;
+    end;
+  end;
+end;
+
+function StepAt(const APath: TArray<TSyntaxNode>; AIndex: Integer): TLinkStep;
+begin
+  Result.Node := APath[AIndex];
+  // Beim with-Element steht hinter dem letzten Glied kein Knoten; es zählt wie ein Mitgliedszugriff.
+  Result.WithLast := AIndex = High(APath);
+  if Result.WithLast then
+  begin
+    Result.Next := Result.Node;
+  end
+  else
+  begin
+    Result.Next := APath[AIndex + 1];
+  end;
+end;
+
+/// <summary>Knoten, die nie ein Glied sind.</summary>
+function IsSkippedStep(const AStep: TLinkStep): Boolean;
+begin
+  // Der Name vor einem Aufruf ist kein Wert; der Aufruf selbst ist das Glied.
+  if (not AStep.WithLast) and (AStep.Next.Kind = TSyntaxKind.Call) and (AStep.Next[0] = AStep.Node) and
+    (AStep.Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
+    Exit(True);
+  end;
+  // Literale und inherited sind nie nil; X^ ist der Wert hinter dem schon geprüften Zeiger.
+  Result := AStep.Node.Kind in [TSyntaxKind.Literal, TSyntaxKind.InheritedExpr, TSyntaxKind.Dereference];
+end;
+
+/// <summary>Größe eines Typs hinter einem Alias (Zeiger, Methodenzeiger, eingebauter Typ); 0 = unbekannt.</summary>
+function AliasSize(const AAlias: string; APointerSize: Integer): Integer;
+var
+  mLower: string;
+begin
+  mLower := LowerCase(AAlias);
+  if IsPointerText(AAlias) or IsDynArrayText(AAlias) then
+  begin
+    Result := APointerSize;
+  end
+  else if not (mLower.StartsWith('procedure') or mLower.StartsWith('function')) then
+  begin
+    Result := BuiltinSize(AAlias, APointerSize);
+  end
+  else if Pos('of object', mLower) > 0 then
+  begin
+    // Methodenzeiger (of object) sind zwei Zeiger, einfache Routinenzeiger einer.
+    Result := 2 * APointerSize;
+  end
+  else
+  begin
+    Result := APointerSize;
+  end;
+end;
+
+function MemberAfter(ANext: TSyntaxNode): string;
+begin
+  case ANext.Kind of
+    TSyntaxKind.MemberAccess:
+      Result := ANext.Name;
+    TSyntaxKind.IndexAccess:
+      Result := '[]';
+    TSyntaxKind.Dereference:
+      Result := '^';
+    TSyntaxKind.Call:
+      Result := '()';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>Der Zugriff dereferenziert das Glied (Klasse, Zeiger, Array, unbekannt).</summary>
+function IsReference(const AStep: TLinkStep; const ATarget: TLinkTarget; AKind: TAccessLinkKind;
+  APointerSize: Integer): Boolean;
+begin
+  // Records und andere Werte werden nicht dereferenziert (außer über ^, dann ist es ein Zeiger).
+  if ATarget.TypeFound and (ATarget.TypeSymbol.SymbolKind in [TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.ObjectType, TIndexSymbolKind.EnumType]) and
+    (AStep.WithLast or (AStep.Next.Kind <> TSyntaxKind.Dereference)) then
+  begin
+    Exit(False);
+  end;
+  // Werte eingebauter Typen ohne Zeigerart (Integer, string) werden nicht dereferenziert.
+  Result := ATarget.TypeFound or (ATarget.Symbol.TypeName = '') or
+    (BuiltinSize(ATarget.Symbol.TypeName, APointerSize) = 0) or (AKind <> TAccessLinkKind.Unknown);
+end;
+
 { TCollector }
 
-constructor TCollector.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; ATree: TSyntaxTree; const AText, AFileName: string; APointerSize: Integer);
+constructor TCollector.Create(const ASource: TAccessChainSource);
 begin
   inherited Create;
-  FResolver := AResolver;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FTree := ATree;
-  FText := AText;
-  FFileName := AFileName;
-  FPointerSize := APointerSize;
+  FResolver := ASource.Resolver;
+  FIndex := ASource.Index;
+  FReadText := ASource.ReadText;
+  FTree := ASource.Tree;
+  FText := ASource.Text;
+  FFileName := ASource.FileName;
+  FPointerSize := ASource.PointerSize;
+  if (FPointerSize <> 4) and (FPointerSize <> 8) then
+  begin
+    FPointerSize := 4;
+  end;
   FChains := TList<TAccessChain>.Create;
   FTexts := TDictionary<string, string>.Create;
 end;
@@ -400,22 +579,6 @@ begin
   end;
 end;
 
-function TCollector.MemberAfter(ANext: TSyntaxNode): string;
-begin
-  case ANext.Kind of
-    TSyntaxKind.MemberAccess:
-      Result := ANext.Name;
-    TSyntaxKind.IndexAccess:
-      Result := '[]';
-    TSyntaxKind.Dereference:
-      Result := '^';
-    TSyntaxKind.Call:
-      Result := '()';
-  else
-    Result := '';
-  end;
-end;
-
 function TCollector.UnitFor(const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
 begin
   AUnit := Default(TUnitIndex);
@@ -427,48 +590,34 @@ begin
   Result := (FIndex <> nil) and FIndex.FindFile(AType.FileName, AUnit);
 end;
 
-function TCollector.FieldSize(const AUnit: TUnitIndex; const ATypeName: string; out AAlign: Integer): Integer;
+function TCollector.ResolvedSize(const AUnit: TUnitIndex; const ATypeName: string): Integer;
 var
-  Resolved: TResolvedSymbol;
-  Alias: string;
+  mResolved: TResolvedSymbol;
+begin
+  Result := 0;
+  if not FResolver.ResolveTypeTextFrom(AUnit, ATypeName, mResolved) then
+  begin
+    Exit;
+  end;
+  case mResolved.SymbolKind of
+    TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
+      Result := FPointerSize;
+    TIndexSymbolKind.EnumType:
+      // Aufzählungen bis 256 Werte; größere sind selten.
+      Result := 1;
+    TIndexSymbolKind.TypeAlias:
+      Result := AliasSize(AliasText(mResolved), FPointerSize);
+  else
+    // Übrige Arten: Größe unbekannt.
+  end;
+end;
+
+function TCollector.FieldSize(const AUnit: TUnitIndex; const ATypeName: string; out AAlign: Integer): Integer;
 begin
   Result := BuiltinSize(ATypeName, FPointerSize);
   if Result = 0 then
   begin
-    if FResolver.ResolveTypeTextFrom(AUnit, ATypeName, Resolved) then
-      case Resolved.SymbolKind of
-        TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
-          Result := FPointerSize;
-        TIndexSymbolKind.EnumType:
-          // Aufzählungen bis 256 Werte; größere sind selten.
-          Result := 1;
-        TIndexSymbolKind.TypeAlias:
-          begin
-            Alias := AliasText(Resolved);
-            if IsPointerText(Alias) or IsDynArrayText(Alias) then
-            begin
-              Result := FPointerSize;
-            end
-            else if LowerCase(Alias).StartsWith('procedure') or LowerCase(Alias).StartsWith('function') then
-            begin
-              // Methodenzeiger (of object) sind zwei Zeiger, einfache Routinenzeiger einer.
-              if Pos('of object', LowerCase(Alias)) > 0 then
-              begin
-                Result := 2 * FPointerSize;
-              end
-              else
-              begin
-                Result := FPointerSize;
-              end;
-            end
-            else
-            begin
-              Result := BuiltinSize(Alias, FPointerSize);
-            end;
-          end;
-      else
-        // Übrige Arten: nichts zu tun.
-      end;
+    Result := ResolvedSize(AUnit, ATypeName);
   end;
   AAlign := Min(Max(Result, 1), 8);
   if Result = 2 * FPointerSize then
@@ -481,90 +630,103 @@ begin
   end;
 end;
 
+function TCollector.TypeChain(const AType: TResolvedSymbol; out AKnown: Boolean): TArray<TResolvedSymbol>;
+var
+  mCurrent, mAncestor: TResolvedSymbol;
+begin
+  // Vorfahren zuerst: Ihre Felder liegen vorn in der Instanz.
+  mCurrent := AType;
+  Result := TArray<TResolvedSymbol>.Create(mCurrent);
+  while (Length(Result) < 32) and FResolver.AncestorOf(mCurrent, mAncestor) and
+    not SameText(mAncestor.Name, 'TObject') do
+  begin
+    Insert(mAncestor, Result, 0);
+    mCurrent := mAncestor;
+  end;
+  // Ohne bekannten Vorfahren (ausser TObject) stimmen die Versätze nicht.
+  AKnown := (mCurrent.Ancestors = nil) or SameText(mCurrent.Ancestors[0], 'TObject') or
+    SameText(mCurrent.Ancestors[0], 'System.TObject');
+end;
+
+function TCollector.OwnFields(const AUnit: TUnitIndex; const ATypeName: string): TArray<TIndexSymbol>;
+var
+  mOwn: TList<TIndexSymbol>;
+  mSymbol: TIndexSymbol;
+begin
+  mOwn := TList<TIndexSymbol>.Create;
+  try
+    for mSymbol in AUnit.Symbols do
+    begin
+      if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, ATypeName) then
+      begin
+        mOwn.Add(mSymbol);
+      end;
+    end;
+    mOwn.Sort(TComparer<TIndexSymbol>.Construct(
+      function(const A, B: TIndexSymbol): Integer
+      begin
+        Result := CompareValue(A.Range.StartPos.Line, B.Range.StartPos.Line);
+        if Result = 0 then
+        begin
+          Result := CompareValue(A.Range.StartPos.Character, B.Range.StartPos.Character);
+        end;
+      end));
+    Result := mOwn.ToArray;
+  finally
+    mOwn.Free;
+  end;
+end;
+
+function TCollector.PlacedField(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol; var AOffset: Integer;
+  var AKnown: Boolean): TAccessField;
+var
+  mSize, mAlign: Integer;
+begin
+  Result := Default(TAccessField);
+  Result.Name := ASymbol.Name;
+  Result.Offset := -1;
+  if not AKnown then
+  begin
+    Exit;
+  end;
+  mSize := FieldSize(AUnit, ASymbol.TypeName, mAlign);
+  if mSize = 0 then
+  begin
+    AKnown := False;
+    Exit;
+  end;
+  AOffset := ((AOffset + mAlign - 1) div mAlign) * mAlign;
+  Result.Offset := AOffset;
+  Inc(AOffset, mSize);
+end;
+
 function TCollector.FieldsOf(const AType: TResolvedSymbol): TArray<TAccessField>;
 var
-  Types: TList<TResolvedSymbol>;
-  Current, Ancestor: TResolvedSymbol;
-  TypeUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Own: TList<TIndexSymbol>;
-  Field: TAccessField;
-  Offset, Size, Align, Index: Integer;
-  Known: Boolean;
+  mTypes: TArray<TResolvedSymbol>;
+  mType: TResolvedSymbol;
+  mTypeUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mOffset: Integer;
+  mKnown: Boolean;
 begin
   Result := nil;
-  Types := TList<TResolvedSymbol>.Create;
-  Own := TList<TIndexSymbol>.Create;
-  try
-    // Vorfahren zuerst: Ihre Felder liegen vorn in der Instanz.
-    Current := AType;
-    Types.Insert(0, Current);
-    while (Types.Count < 32) and FResolver.AncestorOf(Current, Ancestor) do
+  mTypes := TypeChain(AType, mKnown);
+  mOffset := FPointerSize;
+  for mType in mTypes do
+  begin
+    if not UnitFor(mType, mTypeUnit) then
     begin
-      if SameText(Ancestor.Name, 'TObject') then
-      begin
-        Break;
-      end;
-      Types.Insert(0, Ancestor);
-      Current := Ancestor;
+      mKnown := False;
+      Continue;
     end;
-    // Ohne bekannten Vorfahren (ausser TObject) stimmen die Versätze nicht.
-    Known := (Current.Ancestors = nil) or SameText(Current.Ancestors[0], 'TObject') or
-      SameText(Current.Ancestors[0], 'System.TObject');
-    Offset := FPointerSize;
-    for Index := 0 to Types.Count - 1 do
+    for mSymbol in OwnFields(mTypeUnit, mType.Name) do
     begin
-      Own.Clear;
-      if not UnitFor(Types[Index], TypeUnit) then
+      Result := Result + [PlacedField(mTypeUnit, mSymbol, mOffset, mKnown)];
+      if Length(Result) >= TLspAccessChains.MaxFields then
       begin
-        Known := False;
-        Continue;
-      end;
-      for Symbol in TypeUnit.Symbols do
-      begin
-        if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, Types[Index].Name) then
-        begin
-          Own.Add(Symbol);
-        end;
-      end;
-      Own.Sort(TComparer<TIndexSymbol>.Construct(
-        function(const A, B: TIndexSymbol): Integer
-        begin
-          Result := CompareValue(A.Range.StartPos.Line, B.Range.StartPos.Line);
-          if Result = 0 then
-          begin
-            Result := CompareValue(A.Range.StartPos.Character, B.Range.StartPos.Character);
-          end;
-        end));
-      for Symbol in Own do
-      begin
-        Field := Default(TAccessField);
-        Field.Name := Symbol.Name;
-        Field.Offset := -1;
-        if Known then
-        begin
-          Size := FieldSize(TypeUnit, Symbol.TypeName, Align);
-          if Size = 0 then
-          begin
-            Known := False;
-          end
-          else
-          begin
-            Offset := ((Offset + Align - 1) div Align) * Align;
-            Field.Offset := Offset;
-            Inc(Offset, Size);
-          end;
-        end;
-        Result := Result + [Field];
-        if Length(Result) >= TLspAccessChains.MaxFields then
-        begin
-          Exit;
-        end;
+        Exit;
       end;
     end;
-  finally
-    Own.Free;
-    Types.Free;
   end;
 end;
 
@@ -736,155 +898,124 @@ begin
   Result := True;
 end;
 
+function TCollector.ResolveLink(ANode: TSyntaxNode; out ATarget: TLinkTarget): Boolean;
+begin
+  ATarget := Default(TLinkTarget);
+  if ANode.Kind <> TSyntaxKind.ParenExpr then
+  begin
+    FResolver.NodeType(FTree, FFileName, ANode, ATarget.Symbol, ATarget.TypeSymbol, ATarget.TypeFound);
+  end;
+  // Element eines dynamischen Arrays: Typ aus der Deklaration des Arrays.
+  if (ANode.Kind = TSyntaxKind.IndexAccess) and not ATarget.TypeFound and (ANode.ChildCount > 0) then
+  begin
+    ATarget.TypeFound := ElementType(ANode[0], ATarget.TypeSymbol);
+  end;
+  // Self liefert die Klasse selbst.
+  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'Self') and ATarget.Symbol.IsType then
+  begin
+    ATarget.TypeSymbol := ATarget.Symbol;
+    ATarget.TypeFound := True;
+    ATarget.Symbol := Default(TResolvedSymbol);
+    ATarget.Symbol.Kind := TResolvedKind.Local;
+  end;
+  // Nicht auflösbare Namen (etwa Unit-Präfixe ohne Index): nichts zu sagen.
+  if (ANode.Kind = TSyntaxKind.Identifier) and not ATarget.Symbol.Found and not ATarget.TypeFound then
+  begin
+    Exit(False);
+  end;
+  // Unit- und Typnamen, Konstanten und Aufzählungswerte sind keine Werte, die nil sein können.
+  Result := not ((ATarget.Symbol.Kind = TResolvedKind.UnitName) or ATarget.Symbol.IsType or
+    (ATarget.Symbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]));
+end;
+
+procedure TCollector.FillMember(const AStep: TLinkStep; const ATarget: TLinkTarget; var ALink: TAccessLink);
+begin
+  if AStep.WithLast then
+  begin
+    ALink.Member := 'with';
+  end
+  else
+  begin
+    ALink.Member := MemberAfter(AStep.Next);
+  end;
+  if (not AStep.WithLast) and (ALink.Kind = TAccessLinkKind.DynArray) and
+    (AStep.Next.Kind = TSyntaxKind.IndexAccess) and (AStep.Next.ChildCount = 2) then
+  begin
+    ALink.IndexText := TextOf(AStep.Next[1]);
+    ALink.IndexPlain := PlainIndex(AStep.Next[1]);
+  end;
+  if (ALink.Kind = TAccessLinkKind.ClassRef) and ATarget.TypeFound then
+  begin
+    ALink.Fields := FieldsOf(ATarget.TypeSymbol);
+  end;
+end;
+
+function TCollector.BuildLink(const AStep: TLinkStep; const ATarget: TLinkTarget; var ACalled: Boolean;
+  out ALink: TAccessLink): Boolean;
+begin
+  ALink := Default(TAccessLink);
+  ALink.Kind := KindOf(ATarget.Symbol, ATarget.TypeSymbol, ATarget.TypeFound, AStep.Node);
+  Result := IsReference(AStep, ATarget, ALink.Kind, FPointerSize);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ALink.Expression := TextOf(AStep.Node);
+  ALink.Name := NameOf(AStep.Node);
+  ALink.Range := TTextRange.Create(AStep.Node.StartPos, AStep.Node.EndPos);
+  ALink.NamePosition := NamePositionOf(AStep.Node);
+  if ATarget.TypeFound then
+  begin
+    ALink.TypeName := ATarget.TypeSymbol.Name;
+  end
+  else
+  begin
+    ALink.TypeName := ATarget.Symbol.TypeName;
+  end;
+  ACalled := ACalled or IsCallLink(AStep.Node, ATarget.Symbol);
+  ALink.Call := ACalled;
+  FillMember(AStep, ATarget, ALink);
+end;
+
 procedure TCollector.AddChain(ATop: TSyntaxNode; AWithElement: Boolean);
 var
-  Path: TList<TSyntaxNode>;
-  Node, Next: TSyntaxNode;
-  Chain: TAccessChain;
-  Link: TAccessLink;
-  Symbol, AType: TResolvedSymbol;
-  TypeFound, Called, WithLast: Boolean;
-  Index, Last: Integer;
+  mPath: TArray<TSyntaxNode>;
+  mChain: TAccessChain;
+  mLink: TAccessLink;
+  mStep: TLinkStep;
+  mTarget: TLinkTarget;
+  mCalled: Boolean;
+  mIndex, mLast: Integer;
 begin
   if FChains.Count >= TLspAccessChains.MaxChains then
   begin
     Exit;
   end;
-  Path := TList<TSyntaxNode>.Create;
-  try
-    Node := ATop;
-    while Node <> nil do
+  mPath := PathOf(ATop);
+  mChain := Default(TAccessChain);
+  mChain.Text := TextOf(ATop);
+  mCalled := False;
+  if ImplicitSelf(mPath[0], mLink) then
+  begin
+    mChain.Links := mChain.Links + [mLink];
+  end;
+  mLast := High(mPath) - 1;
+  if AWithElement then
+  begin
+    mLast := High(mPath);
+  end;
+  for mIndex := 0 to mLast do
+  begin
+    mStep := StepAt(mPath, mIndex);
+    if (not IsSkippedStep(mStep)) and ResolveLink(mStep.Node, mTarget) and
+      BuildLink(mStep, mTarget, mCalled, mLink) then
     begin
-      Path.Insert(0, Node);
-      if (Node.Kind in ChainKinds) and (Node.ChildCount > 0) then
-      begin
-        Node := Node[0];
-      end
-      else
-      begin
-        Node := nil;
-      end;
+      mChain.Links := mChain.Links + [mLink];
     end;
-    Chain := Default(TAccessChain);
-    Chain.Text := TextOf(ATop);
-    Called := False;
-    if ImplicitSelf(Path[0], Link) then
-    begin
-      Chain.Links := Chain.Links + [Link];
-    end;
-    Last := Path.Count - 2;
-    if AWithElement then
-    begin
-      Last := Path.Count - 1;
-    end;
-    for Index := 0 to Last do
-    begin
-      Node := Path[Index];
-      // Beim with-Element steht hinter dem letzten Glied kein Knoten; es zählt wie ein Mitgliedszugriff.
-      WithLast := Index = Path.Count - 1;
-      if WithLast then
-      begin
-        Next := Node;
-      end
-      else
-      begin
-        Next := Path[Index + 1];
-      end;
-      // Der Name vor einem Aufruf ist kein Wert; der Aufruf selbst ist das Glied.
-      if (not WithLast) and (Next.Kind = TSyntaxKind.Call) and (Next[0] = Node) and
-        (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-      begin
-        Continue;
-      end;
-      // Literale und inherited sind nie nil; X^ ist der Wert hinter dem schon geprüften Zeiger.
-      if Node.Kind in [TSyntaxKind.Literal, TSyntaxKind.InheritedExpr, TSyntaxKind.Dereference] then
-      begin
-        Continue;
-      end;
-      Symbol := Default(TResolvedSymbol);
-      AType := Default(TResolvedSymbol);
-      TypeFound := False;
-      if Node.Kind <> TSyntaxKind.ParenExpr then
-      begin
-        FResolver.NodeType(FTree, FFileName, Node, Symbol, AType, TypeFound);
-      end;
-      // Element eines dynamischen Arrays: Typ aus der Deklaration des Arrays.
-      if (Node.Kind = TSyntaxKind.IndexAccess) and not TypeFound and (Node.ChildCount > 0) then
-      begin
-        TypeFound := ElementType(Node[0], AType);
-      end;
-      // Self liefert die Klasse selbst.
-      if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, 'Self') and Symbol.IsType then
-      begin
-        AType := Symbol;
-        TypeFound := True;
-        Symbol := Default(TResolvedSymbol);
-        Symbol.Kind := TResolvedKind.Local;
-      end;
-      // Nicht auflösbare Namen (etwa Unit-Präfixe ohne Index): nichts zu sagen.
-      if (Node.Kind = TSyntaxKind.Identifier) and not Symbol.Found and not TypeFound then
-      begin
-        Continue;
-      end;
-      // Unit- und Typnamen, Konstanten und Aufzählungswerte sind keine Werte, die nil sein können.
-      if (Symbol.Kind = TResolvedKind.UnitName) or Symbol.IsType or
-        (Symbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]) then
-      begin
-        Continue;
-      end;
-      Link := Default(TAccessLink);
-      Link.Expression := TextOf(Node);
-      Link.Name := NameOf(Node);
-      Link.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
-      Link.NamePosition := NamePositionOf(Node);
-      Link.Kind := KindOf(Symbol, AType, TypeFound, Node);
-      // Records und andere Werte werden nicht dereferenziert (außer über ^, dann ist es ein Zeiger).
-      if TypeFound and (AType.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType,
-        TIndexSymbolKind.EnumType]) and (WithLast or (Next.Kind <> TSyntaxKind.Dereference)) then
-      begin
-        Continue;
-      end;
-      if (not TypeFound) and (Symbol.TypeName <> '') and (BuiltinSize(Symbol.TypeName, FPointerSize) > 0) and
-        (Link.Kind = TAccessLinkKind.Unknown) then
-      begin
-        Continue;
-      end;
-      if TypeFound then
-      begin
-        Link.TypeName := AType.Name;
-      end
-      else
-      begin
-        Link.TypeName := Symbol.TypeName;
-      end;
-      Called := Called or IsCallLink(Node, Symbol);
-      Link.Call := Called;
-      if WithLast then
-      begin
-        Link.Member := 'with';
-      end
-      else
-      begin
-        Link.Member := MemberAfter(Next);
-      end;
-      if (not WithLast) and (Link.Kind = TAccessLinkKind.DynArray) and (Next.Kind = TSyntaxKind.IndexAccess) and
-        (Next.ChildCount = 2) then
-      begin
-        Link.IndexText := TextOf(Next[1]);
-        Link.IndexPlain := PlainIndex(Next[1]);
-      end;
-      if (Link.Kind = TAccessLinkKind.ClassRef) and TypeFound then
-      begin
-        Link.Fields := FieldsOf(AType);
-      end;
-      Chain.Links := Chain.Links + [Link];
-    end;
-    if Chain.Links <> nil then
-    begin
-      FChains.Add(Chain);
-    end;
-  finally
-    Path.Free;
+  end;
+  if mChain.Links <> nil then
+  begin
+    FChains.Add(mChain);
   end;
 end;
 
@@ -948,6 +1079,65 @@ begin
   end;
 end;
 
+function TCollector.VisitSimpleStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := ANode.StartPos.Line = ALine;
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind in ExpressionKinds then
+    begin
+      VisitExpression(ANode[mIndex]);
+    end;
+  end;
+end;
+
+function TCollector.VisitStatementHead(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    mChild := ANode[mIndex];
+    if not ((mChild.Kind in ExpressionKinds) and (mChild.StartPos.Line = ALine)) then
+    begin
+      Continue;
+    end;
+    Result := True;
+    if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
+      VisitWithElement(mChild);
+    end
+    else
+    begin
+      VisitExpression(mChild);
+    end;
+  end;
+end;
+
+function TCollector.VisitStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
+begin
+  if ANode.Kind in SimpleStatements then
+  begin
+    Result := VisitSimpleStatement(ANode, ALine);
+  end
+  else if ANode.Kind in CompoundStatements then
+  begin
+    Result := VisitStatementHead(ANode, ALine);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 { TLspAccessChains }
 
 constructor TLspAccessChains.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -982,75 +1172,30 @@ begin
   Result := Names[AKind];
 end;
 
-class function TLspAccessChains.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; ATree: TSyntaxTree; const AText, AFileName: string; ALine,
-  APointerSize: Integer): TAccessChainsResult;
+class function TLspAccessChains.Collect(const ASource: TAccessChainSource; ALine: Integer): TAccessChainsResult;
 var
-  Collector: TCollector;
-  Count: Integer;
+  mCollector: TCollector;
+  mCount: Integer;
 begin
   Result := Default(TAccessChainsResult);
-  if (APointerSize <> 4) and (APointerSize <> 8) then
-  begin
-    APointerSize := 4;
-  end;
-  Count := 0;
-  Collector := TCollector.Create(AResolver, AIndex, AReadText, ATree, AText, AFileName, APointerSize);
-  AResolver.PinTree(ATree, AFileName);
+  mCount := 0;
+  mCollector := TCollector.Create(ASource);
+  ASource.Resolver.PinTree(ASource.Tree, ASource.FileName);
   try
-    ATree.Root.Walk(
+    ASource.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
-      var
-        Index: Integer;
-        Child: TSyntaxNode;
-        Counted: Boolean;
       begin
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
-        if not Result then
+        if Result and mCollector.VisitStatement(ANode, ALine) then
         begin
-          Exit;
-        end;
-        if (ANode.Kind in SimpleStatements) and (ANode.StartPos.Line = ALine) then
-        begin
-          Inc(Count);
-          for Index := 0 to ANode.ChildCount - 1 do
-          begin
-            if ANode[Index].Kind in ExpressionKinds then
-            begin
-              Collector.VisitExpression(ANode[Index]);
-            end;
-          end;
-        end
-        else if ANode.Kind in CompoundStatements then
-        begin
-          Counted := False;
-          for Index := 0 to ANode.ChildCount - 1 do
-          begin
-            Child := ANode[Index];
-            if (Child.Kind in ExpressionKinds) and (Child.StartPos.Line = ALine) then
-            begin
-              if not Counted then
-              begin
-                Inc(Count);
-              end;
-              Counted := True;
-              if ANode.Kind = TSyntaxKind.WithStatement then
-              begin
-                Collector.VisitWithElement(Child);
-              end
-              else
-              begin
-                Collector.VisitExpression(Child);
-              end;
-            end;
-          end;
+          Inc(mCount);
         end;
       end);
-    Result.Statements := Count;
-    Result.Chains := Collector.Chains;
+    Result.Statements := mCount;
+    Result.Chains := mCollector.Chains;
   finally
-    AResolver.UnpinTree;
-    Collector.Free;
+    ASource.Resolver.UnpinTree;
+    mCollector.Free;
   end;
 end;
 
@@ -1109,38 +1254,43 @@ end;
 
 function TLspAccessChains.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  Line, PointerSize: Integer;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mSource: TAccessChainSource;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<Integer>('line', Line)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<Integer>('line', mLine)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "line" fehlen in ' + Method);
   end;
-  if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', PointerSize) then
+  mSource := Default(TAccessChainSource);
+  if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', mSource.PointerSize) then
   begin
-    PointerSize := 4;
+    mSource.PointerSize := 4;
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mSource.Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Result := ToJson(Collect(Resolver, FIndex, FReadText, Shared.Tree, Document.GetText, TDocumentUris.ToPath(Uri),
-      Line, PointerSize));
+    mSource.Resolver.Namespaces := Namespaces;
+    mSource.Index := FIndex;
+    mSource.ReadText := FReadText;
+    mSource.Tree := mShared.Tree;
+    mSource.Text := mDocument.GetText;
+    mSource.FileName := TDocumentUris.ToPath(mUri);
+    Result := ToJson(Collect(mSource, mLine));
   finally
-    Resolver.Free;
+    mSource.Resolver.Free;
   end;
 end;
 

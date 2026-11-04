@@ -149,8 +149,12 @@ begin
     begin
       Result := False;
       for mKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+      begin
         if SameText(mKey.Id, AId) then
+        begin
           Exit(mKey.Attempt());
+        end;
+      end;
     end;
 end;
 
@@ -164,11 +168,13 @@ begin
       mKey: TAtlasModuleKey;
     begin
       for mKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+      begin
         if SameText(mKey.Id, AId) and Assigned(mKey.Run) then
         begin
           mKey.Run();
           Exit;
         end;
+      end;
     end;
 end;
 
@@ -204,8 +210,12 @@ var
   Key: TKey;
 begin
   if FOwner <> nil then
+  begin
     for Key in FOwner.FKeys do
+    begin
       BindingServices.AddKeyBinding([Key.Key], Pressed, nil);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; KeyCode: TShortCut;
@@ -219,8 +229,11 @@ var
 begin
   BindingResult := krUnhandled;
   if FOwner = nil then
+  begin
     Exit;
+  end;
   for Key in FOwner.FKeys do
+  begin
     if Key.Key = KeyCode then
     begin
       Feature := Key.Feature;
@@ -234,9 +247,13 @@ begin
             Done := Attempt();
           end);
         if Done then
-          BindingResult := krHandled
+        begin
+          BindingResult := krHandled;
+        end
         else
+        begin
           BindingResult := krNextProc;
+        end;
         Exit;
       end;
       BindingResult := krHandled;
@@ -249,6 +266,7 @@ begin
         end);
       Exit;
     end;
+  end;
 end;
 
 { TAtlasIdeEditorKeys }
@@ -272,7 +290,9 @@ destructor TAtlasIdeEditorKeys.Destroy;
 begin
   // Erst abmelden, dann freigeben (#493).
   if FBinding <> nil then
+  begin
     FBinding.FOwner := nil;
+  end;
   TAtlasIdeKeys.Unbind(FBindingIndex);
   inherited;
 end;
@@ -289,7 +309,9 @@ var
   Key: TKey;
 begin
   if not TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
+  begin
     Exit;
+  end;
   Key.Key := Word(AKey);
   Key.Feature := AFeature;
   Key.Proc := AProc;
@@ -311,13 +333,21 @@ var
 begin
   // 0 = keine Taste.
   if AKey = 0 then
+  begin
     Exit;
+  end;
   // Dieselbe Taste zweimal (beide Felder gleich belegt) nur einmal binden.
   for Existing in FKeys do
+  begin
     if Existing.Key = Word(AKey) then
+    begin
       Exit;
+    end;
+  end;
   if ACheck and not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
+  begin
     Exit;
+  end;
   Key.Key := Word(AKey);
   Key.Feature := AFeature;
   Key.Proc := nil;
@@ -332,12 +362,20 @@ var
   Existing, Key: TKey;
 begin
   if AKey = 0 then
+  begin
     Exit;
+  end;
   for Existing in FKeys do
+  begin
     if Existing.Key = Word(AKey) then
+    begin
       Exit;
+    end;
+  end;
   if not TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
+  begin
     Exit;
+  end;
   Key.Key := Word(AKey);
   Key.Feature := AFeature;
   Key.Proc := nil;
@@ -376,7 +414,9 @@ var
   mModuleKey: TAtlasModuleKey;
 begin
   if FBinding = nil then
+  begin
     Exit;
+  end;
   Settings := TAtlasIdeSettings.Current;
   Previous := FBound;
   FKeys := nil;
@@ -422,6 +462,7 @@ begin
   end;
   // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
   if Settings.HideElementKey <> 0 then
+  begin
     AddAttemptKey(TAtlasFeature.Hide, Settings.HideElementKey, TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
       function: Boolean
       begin
@@ -433,6 +474,7 @@ begin
             TAtlasGuard.Report(TAtlasFeature.Hide, E);
         end;
       end, False);
+  end;
   // Nächster/vorheriger Befund (#509): nur mit Problemen im Editor.
   if Settings.Problems then
   begin
@@ -449,11 +491,13 @@ begin
   end;
   // Fenster „Atlas-Prüfung“ (#909): aus = das Kürzel gehört der IDE.
   if Settings.Problems and Settings.ProblemsWindow then
+  begin
     AddKey(TAtlasFeature.Problems, Settings.ProblemsWindowKey, TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand),
       procedure
       begin
         TAtlasIdeProblems.ShowWindow;
       end);
+  end;
   AddKey(TAtlasFeature.EditorCommands, Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin
@@ -473,13 +517,16 @@ begin
     end);
   // Formatieren (#43): aus = keine Taste.
   if Settings.FormatCode then
+  begin
     AddKey(TAtlasFeature.EditorCommands, Settings.FormatCodeKey, TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.FormatCode;
       end);
+  end;
   // Blockkommentar umschalten (#703): aus = Kürzel frei.
   if Settings.ToggleBlockComment then
+  begin
     AddKey(TAtlasFeature.EditorCommands, Settings.ToggleBlockCommentKey, TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand),
       procedure
       begin
@@ -489,6 +536,7 @@ begin
             TAtlasIdeBlockComment.Run;
           end);
       end);
+  end;
   // Neue Zeile ober- oder unterhalb (#700): aus = die Tasten gehören der IDE.
   if Settings.NewLineAround then
   begin
@@ -513,6 +561,7 @@ begin
   end;
   // Umschließung entfernen (#657): aus = das Kürzel gehört der IDE.
   if Settings.Unwrap then
+  begin
     AddKey(TAtlasFeature.Unwrap, Settings.UnwrapKey, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand),
       procedure
       begin
@@ -522,10 +571,13 @@ begin
             TAtlasIdeUnwrap.Run;
           end);
       end);
+  end;
   // Tasten der Module (#1455), z. B. „Gezielt hineinspringen“ des Debuggers: ohne Treffer an die IDE.
   // Lesezeichen (#622, #1104) samt Akkord und Zifferntasten kommen ebenso vom Modul.
   for mModuleKey in TAtlasModuleContributions.Keys(AtlasModuleRegistry) do
+  begin
     AddModuleKey(mModuleKey);
+  end;
   // Nach den Tasten der Module: Belegt die Suche (#878) F3 bzw. Umschalt+F3, schließt ihr Versuch Austrittspunkte
   // und Markierungssuche mit ein; sonst gelten diese hier.
   // Austrittspunkte (#698): F3 bzw. Umschalt+F3 springt reihum, solange die Hervorhebung steht und der Cursor auf
@@ -544,6 +596,7 @@ begin
   // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
   // übernommen. Aus = das Kürzel gehört der IDE.
   if Settings.ExpressionType then
+  begin
     AddPriorityKey(TAtlasFeature.ExpressionType, Settings.ExpressionTypeKey,
       TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand),
       procedure
@@ -554,15 +607,19 @@ begin
             TAtlasIdeExpressionType.Run;
           end);
       end, True);
+  end;
   // Sicher löschen (#716): aus = das Kürzel gehört der IDE.
   if Settings.SafeDelete then
+  begin
     AddKey(TAtlasFeature.EditorCommands, Settings.SafeDeleteKey, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand),
       procedure
       begin
         TAtlasIdeEditorCommands.SafeDelete;
       end);
+  end;
   // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
   if Settings.QuickOpen then
+  begin
     AddKey(TAtlasFeature.Palette, Settings.QuickOpenKey, TAtlasStrings.Text(TAtlasTextId.QuickOpenTitle),
       procedure
       begin
@@ -572,6 +629,7 @@ begin
             TAtlasIdeQuickOpen.Show;
           end);
       end);
+  end;
   // Navigationsverlauf (#504): aus = Alt+Links/Rechts bleiben Zurück/Vor der IDE.
   if Settings.NavHistory then
   begin
@@ -627,13 +685,16 @@ begin
   end;
   // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
   if Settings.GenerateMenu then
+  begin
     AddKey(TAtlasFeature.Generate, Settings.GenerateMenuKey, TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
       procedure
       begin
         TAtlasIdeGenerate.Show;
       end);
+  end;
   // Benachrichtigungen (#601): aus = Strg+Umschalt+Alt+N bleibt frei.
   if Settings.Notifications then
+  begin
     AddKey(TAtlasFeature.Notifications, Settings.NotificationsKey, TAtlasStrings.Text(TAtlasTextId.NotificationsCommand),
       procedure
       begin
@@ -643,6 +704,7 @@ begin
             TAtlasIdeNotifications.ShowList;
           end);
       end);
+  end;
   // Sprung zum Gegenstück (#635): aus = Strg+Ü und Strg+Umschalt+Ü bleiben frei.
   if Settings.JumpToMatch then
   begin
@@ -659,6 +721,7 @@ begin
   end;
   // Brotkrumenleiste (#590): aus = Strg+Umschalt+. bleibt frei.
   if Settings.Breadcrumbs then
+  begin
     AddKey(TAtlasFeature.Breadcrumbs, Settings.BreadcrumbsKey, TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand),
       procedure
       begin
@@ -668,6 +731,7 @@ begin
             TAtlasIdeBreadcrumbs.Focus;
           end);
       end);
+  end;
   // Nächste/vorherige Änderung (#507): aus = beide Tasten bleiben frei.
   if Settings.GitGutter then
   begin
@@ -717,6 +781,7 @@ begin
   end;
   // Anweisung vervollständigen (#697): Strg+Umschalt+Enter sucht in der IDE Referenzen; mit Vorrang übernommen.
   if Settings.CompleteStatement then
+  begin
     AddPriorityKey(TAtlasFeature.EditorCommands, Settings.CompleteStatementKey, TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand),
       procedure
       begin
@@ -726,6 +791,7 @@ begin
             TAtlasIdeStatementCompletion.Run;
           end);
       end, True);
+  end;
   // Mehrere Einfügemarken (#589, experimentell): mit Rückfall, ohne Treffer behält die IDE die Taste (Strg+D =
   // Quelltext formatieren). Bewusst eingeschaltet, darum ohne Konfliktprüfung.
   if Settings.MultiCursor then
@@ -762,11 +828,17 @@ begin
       TAtlasIdeUndo.RedoLast;
     end);
   if (FBound = Previous) and ((FBindingIndex >= 0) = (FBound <> '')) then
+  begin
     Exit;
+  end;
   if FBound = '' then
-    TAtlasIdeKeys.Unbind(FBindingIndex)
+  begin
+    TAtlasIdeKeys.Unbind(FBindingIndex);
+  end
   else
+  begin
     TAtlasIdeKeys.Bind(FBinding, FBindingIndex);
+  end;
 end;
 
 end.
